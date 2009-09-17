@@ -1,23 +1,17 @@
-From: =?ISO-8859-1?Q?Carlos_Andr=E9?= <candrecn@gmail.com>
+From: Ondrej Valousek <webserv@s3group.cz>
 Subject: Re: AutoFS+NFSv4 server down = LOOOOONG timeout.
-Date: Thu, 17 Sep 2009 09:58:45 -0300
-Message-ID: <f6ce31e30909170558i184b2197ye65d7e04fd2fad17@mail.gmail.com>
-References: <f6ce31e30907291021p769d8bb7jb7a13d0370b87bd6@mail.gmail.com>
-	<1250555418.16878.7.camel@zeus.themaw.net>
-	<f6ce31e30908240627gff0a7eeu3c884185e6324518@mail.gmail.com>
-	<4A92AA43.6070304@redhat.com> <4A9649B3.7080208@redhat.com>
-	<7A35D986-E872-4DBD-8619-1F29D97AC039@oracle.com>
-	<1251384739.5173.7.camel@heimdal.trondhjem.org>
-	<EE444BE9-552C-48EA-9F4E-CB958A8270B0@oracle.com>
-	<1251385235.5173.13.camel@heimdal.trondhjem.org>
-	<0823762D-BD01-4C34-B550-AEB7F838FF1A@oracle.com>
+Date: Thu, 17 Sep 2009 15:12:01 +0200
+Message-ID: <4AB235A1.6010105@s3group.cz>
+References: <f6ce31e30907291021p769d8bb7jb7a13d0370b87bd6@mail.gmail.com>	<1250555418.16878.7.camel@zeus.themaw.net>	<f6ce31e30908240627gff0a7eeu3c884185e6324518@mail.gmail.com>	<4A92AA43.6070304@redhat.com>
+	<4A9649B3.7080208@redhat.com>	<7A35D986-E872-4DBD-8619-1F29D97AC039@oracle.com>	<1251384739.5173.7.camel@heimdal.trondhjem.org>	<EE444BE9-552C-48EA-9F4E-CB958A8270B0@oracle.com>	<1251385235.5173.13.camel@heimdal.trondhjem.org>	<0823762D-BD01-4C34-B550-AEB7F838FF1A@oracle.com>
+	<f6ce31e30909170558i184b2197ye65d7e04fd2fad17@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="iso-8859-1"
+Content-Type: text/plain; charset="utf-8"; Format="flowed"
 Cc: Ian Kent <ikent@redhat.com>, NFS list <linux-nfs@vger.kernel.org>,
 	Linux NFSv4 mailing list <nfsv4@linux-nfs.org>
-To: Chuck Lever <chuck.lever@oracle.com>
+To: =?UTF-8?B?Q2FybG9zIEFuZHLDqQ==?= <candrecn@gmail.com>
 Return-path: <nfsv4-bounces@linux-nfs.org>
-In-Reply-To: <0823762D-BD01-4C34-B550-AEB7F838FF1A@oracle.com>
+In-Reply-To: <f6ce31e30909170558i184b2197ye65d7e04fd2fad17@mail.gmail.com>
 List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/options/nfsv4>,
 	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
 List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
@@ -29,126 +23,77 @@ Sender: nfsv4-bounces@linux-nfs.org
 Errors-To: nfsv4-bounces@linux-nfs.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi ppl,
-
-any news about this problem? :)
-
-Thanks.
-
-2009/8/27 Chuck Lever <chuck.lever@oracle.com>:
-> On Aug 27, 2009, at 11:00 AM, Trond Myklebust wrote:
->>
->> On Thu, 2009-08-27 at 10:54 -0400, Chuck Lever wrote:
->>>
->>> On Aug 27, 2009, at 10:52 AM, Trond Myklebust wrote:
->>>>
->>>> On Thu, 2009-08-27 at 10:38 -0400, Chuck Lever wrote:
->>>>>
->>>>> On Aug 27, 2009, at 4:54 AM, Ian Kent wrote:
->>>>>>
->>>>>> Ian Kent wrote:
->>>>>>>
->>>>>>> Carlos Andr=E9 wrote:
->>>>>>>>
->>>>>>>> Hi Ian,
->>>>>>>>
->>>>>>>> Thanks for patch and sorry for delay (i'm expecting receive u
->>>>>>>> reply on
->>>>>>>> bug track, not here) :)
->>>>>>>>
->>>>>>>> But, this patch doesnt worked to me like expected... =A0:(
->>>>>>>>
->>>>>>>>
->>>>>>>> Firstly I've changed "#MOUNT_WAIT=3D-1" to "MOUNT_WAIT=3D10"
->>>>>>>> and later changed "10" to "2" with same results...
->>>>>>>> (always restarting service, of course :)
->>>>>>>>
->>>>>>>> Then, tried remove "sec=3Dkrb5p", and later removed "nfs4" but i g=
-ot
->>>>>>>> same results again.
->>>>>>>>
->>>>>>>> Or i'm doing something wrong?
->>>>>>>>
->>>>>>>>
->>>>>>>> [root@KSTATION areas]# automount -V
->>>>>>>>
->>>>>>>> Linux automount version 5.0.1-0.rc2.131.bz517349.1
->>>>>>>> [...]
->>>>>>>>
->>>>>>>> [root@KSTATION areas]# time ls -la testdown
->>>>>>>> ls: testedown: No such file or directory
->>>>>>>>
->>>>>>>> real =A0 =A03m9.006s
->>>>>>>> user =A0 =A00m0.002s
->>>>>>>> sys =A0 =A0 0m0.000s
->>>>>>>
->>>>>>> OK, that isn't behaving the way I expect, I'll have a look.
->>>>>>>
->>>>>>>>
->>>>>>>> LOGGING:
->>>>>>>> -----------------------------------------
->>>>>>>> Aug 24 09:23:51 KSTATION automount[20803]: mount_mount:
->>>>>>>> mount(nfs):
->>>>>>>> calling mount -t nfs4 -s -o rw,acl,sec=3Dkrb5p 1.2.3.4:/areas/
->>>>>>>> testdown
->>>>>>>> /misc/areas/testdown
->>>>>>>> Aug 24 09:27:00 KSTATION automount[20803]: mount(nfs): nfs: mount
->>>>>>>> failure 1.2.3.4:/areas/testdown on /misc/areas/testdown
->>>>>>>> Aug 24 09:27:00 KSTATION automount[20803]: ioctl_send_fail: token
->>>>>>>> =3D 91
->>>>>>>> Aug 24 09:27:00 KSTATION automount[20803]: failed to mount /misc/
->>>>>>>> areas/testdown
->>>>>>>> -----------------------------------------
->>>>>>
->>>>>> Having a look at this I suspect the reason it doesn't work as
->>>>>> expected
->>>>>> is the waitpid(2) we do after sending the TERM signal to the mount
->>>>>> process (which we have to do) is not returning. This is likely
->>>>>> because
->>>>>> the mount process isn't giving up in a shorter time as it used to.
->>>>>
->>>>> You're thinking maybe mount(2) should be as interruptible as the
->>>>> socket calls that the mount command used to do? =A0That might be
->>>>> reasonable, and I can take a look at that.
->>>>
->>>> In recent kernels, all those RPC calls should be using TASK_KILLABLE
->>>> sleep states. SIGTERM should cause them to abort, provided that some
->>>> process isn't blocking it.
->>>>
->>>> Perhaps TASK_KILLABLE could be backported to RHEL-5?
->>>
->>> That's pretty extensive, with hooks in the page cache. =A0I doubt RH
->>> would go for that.
->>
->> You don't have to add the hooks in the page cache in order to make mount
->> interruptible. You just need to replace the sigmask-manipulation in
->> net/sunrpc and fs/nfs (a.k.a. rpc_clnt_sigmask()/rpc_clnt_sigunmask())
->> with TASK_KILLABLE.
->
-> That sounds like a schlep.
->
->> Alternatively, it might suffice to just turn on the 'intr' flag
->> temporarily while doing the mount path walk, and then switch it to
->> whatever default the user actually specified afterwards.
->
-> That sounds easy, especially for an EL5 kernel. =A0Maybe "soft" too for t=
-he
-> first few requests?
->
-> --
-> Chuck Lever
-> chuck[dot]lever[at]oracle[dot]com
->
->
->
->
-
-
-
--- =
-
-Atenciosamente,
-Carlos Andr=E9
-LPIC-1 / LPIC-2 / CCNA / CCNP
-
-candrecn.at.gmail.dot.com
+aHR0cHM6Ly9idWd6aWxsYS5yZWRoYXQuY29tL3Nob3dfYnVnLmNnaT9pZD01MTczNDkKbm8gbmV3
+cy4uLi4uCgpDYXJsb3MgQW5kcsOpIHdyb3RlOgo+IEhpIHBwbCwKPgo+IGFueSBuZXdzIGFib3V0
+IHRoaXMgcHJvYmxlbT8gOikKPgo+IFRoYW5rcy4KPgo+IDIwMDkvOC8yNyBDaHVjayBMZXZlciA8
+Y2h1Y2subGV2ZXJAb3JhY2xlLmNvbT46Cj4gICAKPj4gT24gQXVnIDI3LCAyMDA5LCBhdCAxMTow
+MCBBTSwgVHJvbmQgTXlrbGVidXN0IHdyb3RlOgo+PiAgICAgCj4+PiBPbiBUaHUsIDIwMDktMDgt
+MjcgYXQgMTA6NTQgLTA0MDAsIENodWNrIExldmVyIHdyb3RlOgo+Pj4gICAgICAgCj4+Pj4gT24g
+QXVnIDI3LCAyMDA5LCBhdCAxMDo1MiBBTSwgVHJvbmQgTXlrbGVidXN0IHdyb3RlOgo+Pj4+ICAg
+ICAgICAgCj4+Pj4+IE9uIFRodSwgMjAwOS0wOC0yNyBhdCAxMDozOCAtMDQwMCwgQ2h1Y2sgTGV2
+ZXIgd3JvdGU6Cj4+Pj4+ICAgICAgICAgICAKPj4+Pj4+IE9uIEF1ZyAyNywgMjAwOSwgYXQgNDo1
+NCBBTSwgSWFuIEtlbnQgd3JvdGU6Cj4+Pj4+PiAgICAgICAgICAgICAKPj4+Pj4+PiBJYW4gS2Vu
+dCB3cm90ZToKPj4+Pj4+PiAgICAgICAgICAgICAgIAo+Pj4+Pj4+PiBDYXJsb3MgQW5kcsOpIHdy
+b3RlOgo+Pj4+Pj4+PiAgICAgICAgICAgICAgICAgCj4+Pj4+Pj4+PiBIaSBJYW4sCj4+Pj4+Pj4+
+Pgo+Pj4+Pj4+Pj4gVGhhbmtzIGZvciBwYXRjaCBhbmQgc29ycnkgZm9yIGRlbGF5IChpJ20gZXhw
+ZWN0aW5nIHJlY2VpdmUgdQo+Pj4+Pj4+Pj4gcmVwbHkgb24KPj4+Pj4+Pj4+IGJ1ZyB0cmFjaywg
+bm90IGhlcmUpIDopCj4+Pj4+Pj4+Pgo+Pj4+Pj4+Pj4gQnV0LCB0aGlzIHBhdGNoIGRvZXNudCB3
+b3JrZWQgdG8gbWUgbGlrZSBleHBlY3RlZC4uLiAgOigKPj4+Pj4+Pj4+Cj4+Pj4+Pj4+Pgo+Pj4+
+Pj4+Pj4gRmlyc3RseSBJJ3ZlIGNoYW5nZWQgIiNNT1VOVF9XQUlUPS0xIiB0byAiTU9VTlRfV0FJ
+VD0xMCIKPj4+Pj4+Pj4+IGFuZCBsYXRlciBjaGFuZ2VkICIxMCIgdG8gIjIiIHdpdGggc2FtZSBy
+ZXN1bHRzLi4uCj4+Pj4+Pj4+PiAoYWx3YXlzIHJlc3RhcnRpbmcgc2VydmljZSwgb2YgY291cnNl
+IDopCj4+Pj4+Pj4+Pgo+Pj4+Pj4+Pj4gVGhlbiwgdHJpZWQgcmVtb3ZlICJzZWM9a3JiNXAiLCBh
+bmQgbGF0ZXIgcmVtb3ZlZCAibmZzNCIgYnV0IGkgZ290Cj4+Pj4+Pj4+PiBzYW1lIHJlc3VsdHMg
+YWdhaW4uCj4+Pj4+Pj4+Pgo+Pj4+Pj4+Pj4gT3IgaSdtIGRvaW5nIHNvbWV0aGluZyB3cm9uZz8K
+Pj4+Pj4+Pj4+Cj4+Pj4+Pj4+Pgo+Pj4+Pj4+Pj4gW3Jvb3RAS1NUQVRJT04gYXJlYXNdIyBhdXRv
+bW91bnQgLVYKPj4+Pj4+Pj4+Cj4+Pj4+Pj4+PiBMaW51eCBhdXRvbW91bnQgdmVyc2lvbiA1LjAu
+MS0wLnJjMi4xMzEuYno1MTczNDkuMQo+Pj4+Pj4+Pj4gWy4uLl0KPj4+Pj4+Pj4+Cj4+Pj4+Pj4+
+PiBbcm9vdEBLU1RBVElPTiBhcmVhc10jIHRpbWUgbHMgLWxhIHRlc3Rkb3duCj4+Pj4+Pj4+PiBs
+czogdGVzdGVkb3duOiBObyBzdWNoIGZpbGUgb3IgZGlyZWN0b3J5Cj4+Pj4+Pj4+Pgo+Pj4+Pj4+
+Pj4gcmVhbCAgICAzbTkuMDA2cwo+Pj4+Pj4+Pj4gdXNlciAgICAwbTAuMDAycwo+Pj4+Pj4+Pj4g
+c3lzICAgICAwbTAuMDAwcwo+Pj4+Pj4+Pj4gICAgICAgICAgICAgICAgICAgCj4+Pj4+Pj4+IE9L
+LCB0aGF0IGlzbid0IGJlaGF2aW5nIHRoZSB3YXkgSSBleHBlY3QsIEknbGwgaGF2ZSBhIGxvb2su
+Cj4+Pj4+Pj4+Cj4+Pj4+Pj4+ICAgICAgICAgICAgICAgICAKPj4+Pj4+Pj4+IExPR0dJTkc6Cj4+
+Pj4+Pj4+PiAtLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLQo+Pj4+Pj4+
+Pj4gQXVnIDI0IDA5OjIzOjUxIEtTVEFUSU9OIGF1dG9tb3VudFsyMDgwM106IG1vdW50X21vdW50
+Ogo+Pj4+Pj4+Pj4gbW91bnQobmZzKToKPj4+Pj4+Pj4+IGNhbGxpbmcgbW91bnQgLXQgbmZzNCAt
+cyAtbyBydyxhY2wsc2VjPWtyYjVwIDEuMi4zLjQ6L2FyZWFzLwo+Pj4+Pj4+Pj4gdGVzdGRvd24K
+Pj4+Pj4+Pj4+IC9taXNjL2FyZWFzL3Rlc3Rkb3duCj4+Pj4+Pj4+PiBBdWcgMjQgMDk6Mjc6MDAg
+S1NUQVRJT04gYXV0b21vdW50WzIwODAzXTogbW91bnQobmZzKTogbmZzOiBtb3VudAo+Pj4+Pj4+
+Pj4gZmFpbHVyZSAxLjIuMy40Oi9hcmVhcy90ZXN0ZG93biBvbiAvbWlzYy9hcmVhcy90ZXN0ZG93
+bgo+Pj4+Pj4+Pj4gQXVnIDI0IDA5OjI3OjAwIEtTVEFUSU9OIGF1dG9tb3VudFsyMDgwM106IGlv
+Y3RsX3NlbmRfZmFpbDogdG9rZW4KPj4+Pj4+Pj4+ID0gOTEKPj4+Pj4+Pj4+IEF1ZyAyNCAwOToy
+NzowMCBLU1RBVElPTiBhdXRvbW91bnRbMjA4MDNdOiBmYWlsZWQgdG8gbW91bnQgL21pc2MvCj4+
+Pj4+Pj4+PiBhcmVhcy90ZXN0ZG93bgo+Pj4+Pj4+Pj4gLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
+LS0tLS0tLS0tLS0tLS0tLS0KPj4+Pj4+Pj4+ICAgICAgICAgICAgICAgICAgIAo+Pj4+Pj4+IEhh
+dmluZyBhIGxvb2sgYXQgdGhpcyBJIHN1c3BlY3QgdGhlIHJlYXNvbiBpdCBkb2Vzbid0IHdvcmsg
+YXMKPj4+Pj4+PiBleHBlY3RlZAo+Pj4+Pj4+IGlzIHRoZSB3YWl0cGlkKDIpIHdlIGRvIGFmdGVy
+IHNlbmRpbmcgdGhlIFRFUk0gc2lnbmFsIHRvIHRoZSBtb3VudAo+Pj4+Pj4+IHByb2Nlc3MgKHdo
+aWNoIHdlIGhhdmUgdG8gZG8pIGlzIG5vdCByZXR1cm5pbmcuIFRoaXMgaXMgbGlrZWx5Cj4+Pj4+
+Pj4gYmVjYXVzZQo+Pj4+Pj4+IHRoZSBtb3VudCBwcm9jZXNzIGlzbid0IGdpdmluZyB1cCBpbiBh
+IHNob3J0ZXIgdGltZSBhcyBpdCB1c2VkIHRvLgo+Pj4+Pj4+ICAgICAgICAgICAgICAgCj4+Pj4+
+PiBZb3UncmUgdGhpbmtpbmcgbWF5YmUgbW91bnQoMikgc2hvdWxkIGJlIGFzIGludGVycnVwdGli
+bGUgYXMgdGhlCj4+Pj4+PiBzb2NrZXQgY2FsbHMgdGhhdCB0aGUgbW91bnQgY29tbWFuZCB1c2Vk
+IHRvIGRvPyAgVGhhdCBtaWdodCBiZQo+Pj4+Pj4gcmVhc29uYWJsZSwgYW5kIEkgY2FuIHRha2Ug
+YSBsb29rIGF0IHRoYXQuCj4+Pj4+PiAgICAgICAgICAgICAKPj4+Pj4gSW4gcmVjZW50IGtlcm5l
+bHMsIGFsbCB0aG9zZSBSUEMgY2FsbHMgc2hvdWxkIGJlIHVzaW5nIFRBU0tfS0lMTEFCTEUKPj4+
+Pj4gc2xlZXAgc3RhdGVzLiBTSUdURVJNIHNob3VsZCBjYXVzZSB0aGVtIHRvIGFib3J0LCBwcm92
+aWRlZCB0aGF0IHNvbWUKPj4+Pj4gcHJvY2VzcyBpc24ndCBibG9ja2luZyBpdC4KPj4+Pj4KPj4+
+Pj4gUGVyaGFwcyBUQVNLX0tJTExBQkxFIGNvdWxkIGJlIGJhY2twb3J0ZWQgdG8gUkhFTC01Pwo+
+Pj4+PiAgICAgICAgICAgCj4+Pj4gVGhhdCdzIHByZXR0eSBleHRlbnNpdmUsIHdpdGggaG9va3Mg
+aW4gdGhlIHBhZ2UgY2FjaGUuICBJIGRvdWJ0IFJICj4+Pj4gd291bGQgZ28gZm9yIHRoYXQuCj4+
+Pj4gICAgICAgICAKPj4+IFlvdSBkb24ndCBoYXZlIHRvIGFkZCB0aGUgaG9va3MgaW4gdGhlIHBh
+Z2UgY2FjaGUgaW4gb3JkZXIgdG8gbWFrZSBtb3VudAo+Pj4gaW50ZXJydXB0aWJsZS4gWW91IGp1
+c3QgbmVlZCB0byByZXBsYWNlIHRoZSBzaWdtYXNrLW1hbmlwdWxhdGlvbiBpbgo+Pj4gbmV0L3N1
+bnJwYyBhbmQgZnMvbmZzIChhLmsuYS4gcnBjX2NsbnRfc2lnbWFzaygpL3JwY19jbG50X3NpZ3Vu
+bWFzaygpKQo+Pj4gd2l0aCBUQVNLX0tJTExBQkxFLgo+Pj4gICAgICAgCj4+IFRoYXQgc291bmRz
+IGxpa2UgYSBzY2hsZXAuCj4+Cj4+ICAgICAKPj4+IEFsdGVybmF0aXZlbHksIGl0IG1pZ2h0IHN1
+ZmZpY2UgdG8ganVzdCB0dXJuIG9uIHRoZSAnaW50cicgZmxhZwo+Pj4gdGVtcG9yYXJpbHkgd2hp
+bGUgZG9pbmcgdGhlIG1vdW50IHBhdGggd2FsaywgYW5kIHRoZW4gc3dpdGNoIGl0IHRvCj4+PiB3
+aGF0ZXZlciBkZWZhdWx0IHRoZSB1c2VyIGFjdHVhbGx5IHNwZWNpZmllZCBhZnRlcndhcmRzLgo+
+Pj4gICAgICAgCj4+IFRoYXQgc291bmRzIGVhc3ksIGVzcGVjaWFsbHkgZm9yIGFuIEVMNSBrZXJu
+ZWwuICBNYXliZSAic29mdCIgdG9vIGZvciB0aGUKPj4gZmlyc3QgZmV3IHJlcXVlc3RzPwo+Pgo+
+PiAtLQo+PiBDaHVjayBMZXZlcgo+PiBjaHVja1tkb3RdbGV2ZXJbYXRdb3JhY2xlW2RvdF1jb20K
+Pj4KPj4KPj4KPj4KPj4gICAgIAo+Cj4KPgo+ICAgCgpfX19fX19fX19fX19fX19fX19fX19fX19f
+X19fX19fX19fX19fX19fX19fX19fXwpORlN2NCBtYWlsaW5nIGxpc3QKTkZTdjRAbGludXgtbmZz
+Lm9yZwpodHRwOi8vbGludXgtbmZzLm9yZy9jZ2ktYmluL21haWxtYW4vbGlzdGluZm8vbmZzdjQ=
