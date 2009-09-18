@@ -1,68 +1,91 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH 3/9] sunrpc/cache: use list_del_init for the list_head
-	entries in cache_deferred_req
-Date: Fri, 18 Sep 2009 11:48:32 -0400
-Message-ID: <20090918154832.GE21980@fieldses.org>
-References: <20090909062539.20462.67466.stgit@notabene.brown> <20090909063254.20462.7969.stgit@notabene.brown>
+From: "William A. (Andy) Adamson" <androsadamson@gmail.com>
+Subject: Re: [pnfs] [PATCH 2/2] nfsd41: add RPC header size to fore channel
+	negotiation
+Date: Fri, 18 Sep 2009 12:47:57 -0400
+Message-ID: <89c397150909180947w69b0139dx732100109e2793b0@mail.gmail.com>
+References: <1252709575-3426-1-git-send-email-andros@netapp.com>
+	 <1252709575-3426-2-git-send-email-andros@netapp.com>
+	 <1252709575-3426-3-git-send-email-andros@netapp.com>
+	 <20090914190315.GD1658@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs@vger.kernel.org
-To: NeilBrown <neilb@suse.de>
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: linux-nfs@vger.kernel.org, pnfs@linux-nfs.org
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:36048 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750855AbZIRPs2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 18 Sep 2009 11:48:28 -0400
-In-Reply-To: <20090909063254.20462.7969.stgit-wvvUuzkyo1EYVZTmpyfIwg@public.gmane.org>
+Received: from mail-yw0-f175.google.com ([209.85.211.175]:55904 "EHLO
+	mail-yw0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755648AbZIRQrx convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Sep 2009 12:47:53 -0400
+Received: by ywh5 with SMTP id 5so1422981ywh.4
+        for <linux-nfs@vger.kernel.org>; Fri, 18 Sep 2009 09:47:57 -0700 (PDT)
+In-Reply-To: <20090914190315.GD1658@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Sep 09, 2009 at 04:32:54PM +1000, NeilBrown wrote:
-> Using list_del_init is generally safer than list_del, and it will
-> allow us, in a subsequent patch, to see if an entry has already been
-> processed or not.
+On Mon, Sep 14, 2009 at 3:03 PM, J. Bruce Fields <bfields@fieldses.org>=
+ wrote:
+> On Fri, Sep 11, 2009 at 06:52:55PM -0400, andros@netapp.com wrote:
+>> From: Andy Adamson <andros@netapp.com>
+>>
+>> Both the max request and the max response size include the RPC heade=
+r with
+>> credential (request only) =A0and verifier as well as the payload.
+>>
+>> The RPCSEC_GSS credential and verifier are the largest. Kerberos is =
+the only
+>> supported GSS security mechansim, so the Kerberos GSS credential and=
+ verifier
+>> sizes are used.
+>
+> Rather than trying to estimate this is might be simplest just to use
+> what the server's using to allocate memory: RPCSVC_MAXPAGES. =A0No, t=
+hat
+> also takes into account space for the reply. =A0You could do
+>
+> =A0 =A0 =A0 =A0PAGE_SIZE * (1 + (RPCSVC_MAXPAYLOAD+PAGE_SIZE-1)/PAGE_=
+SIZE)
+>
+> Actually, by design the server's real limit is actually on the sum of
+> the request and the reply sizes.
 
-Also applied this (and the previous)--thanks.--b.
+I think the actual limit is svc_max_payload rounded up to a multiple
+of PAGE_SIZE plus PAGE_SIZE. which is a lot smaller than the sum of
+the request and reply sizes. See below.
 
-> 
-> Signed-off-by: NeilBrown <neilb@suse.de>
-> ---
-> 
->  net/sunrpc/cache.c |    8 ++++----
->  1 files changed, 4 insertions(+), 4 deletions(-)
-> 
-> diff --git a/net/sunrpc/cache.c b/net/sunrpc/cache.c
-> index baddb23..9c8f0cc 100644
-> --- a/net/sunrpc/cache.c
-> +++ b/net/sunrpc/cache.c
-> @@ -529,8 +529,8 @@ static int cache_defer_req(struct cache_req *req, struct cache_head *item)
->  	if (++cache_defer_cnt > DFR_MAX) {
->  		dreq = list_entry(cache_defer_list.prev,
->  				  struct cache_deferred_req, recent);
-> -		list_del(&dreq->recent);
-> -		list_del(&dreq->hash);
-> +		list_del_init(&dreq->recent);
-> +		list_del_init(&dreq->hash);
->  		cache_defer_cnt--;
->  	}
->  	spin_unlock(&cache_defer_lock);
-> @@ -564,7 +564,7 @@ static void cache_revisit_request(struct cache_head *item)
->  			dreq = list_entry(lp, struct cache_deferred_req, hash);
->  			lp = lp->next;
->  			if (dreq->item == item) {
-> -				list_del(&dreq->hash);
-> +				list_del_init(&dreq->hash);
->  				list_move(&dreq->recent, &pending);
->  				cache_defer_cnt--;
->  			}
-> @@ -590,7 +590,7 @@ void cache_clean_deferred(void *owner)
->  
->  	list_for_each_entry_safe(dreq, tmp, &cache_defer_list, recent) {
->  		if (dreq->owner == owner) {
-> -			list_del(&dreq->hash);
-> +			list_del_init(&dreq->hash);
->  			list_move(&dreq->recent, &pending);
->  			cache_defer_cnt--;
->  		}
-> 
-> 
+Note that svc_max_payload is what is returned in nfs4_encode_fattr for
+MAXREAD and for MAXWRITE. These attributes use svc_max_payload in the
+same way this patch does - the maximum data size not including rpc
+headers.
+
+I don't think the server wants is to advertise a MAXREAD/WRITE that it
+can't supply because the fore channel maxrequest/maxresponse is too
+small, so some additional space needs to be added to svc_max_payload
+for the fore channel.
+
+>
+> What happens if we get a request such that both the request and reply
+> are under our advertised limits, but the sum is too much? =A0Can we j=
+ust
+> declare that no client will be that weird and that we shouldn't have =
+to
+> worry about it?
+
+I think the server already has this problem. In svc_init_buffer which
+sets up the pages for a server thread request/response handling, it
+uses sv_max_mesg / PAGE_SIZE + 1 with the comment
+
+"extra page as we hold both request and reply. We assume one is at
+most one page"
+
+where
+sv_max_mesg =3D roundup(serv->sv_max_payload + PAGE_SIZE, PAGE_SIZE).
+
+-->Andy
+
+>
+> --b.
+> _______________________________________________
+> pNFS mailing list
+> pNFS@linux-nfs.org
+> http://linux-nfs.org/cgi-bin/mailman/listinfo/pnfs
+>
