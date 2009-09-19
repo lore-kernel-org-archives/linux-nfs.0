@@ -1,7 +1,7 @@
 From: James Morris <jmorris@namei.org>
-Subject: [PATCH 4/4] NFSv3: add server implementation of XATTR protocol
-Date: Sun, 20 Sep 2009 01:14:55 +1000 (EST)
-Message-ID: <alpine.LRH.2.00.0909200114100.31880@tundra.namei.org>
+Subject: [PATCH 3/4] NFSv3: add client implementation of XATTR protocol
+Date: Sun, 20 Sep 2009 01:13:47 +1000 (EST)
+Message-ID: <alpine.LRH.2.00.0909200113160.31880@tundra.namei.org>
 References: <alpine.LRH.2.00.0909200020360.31818@tundra.namei.org>
 Mime-Version: 1.0
 Content-Type: TEXT/PLAIN; charset=US-ASCII
@@ -15,64 +15,455 @@ In-Reply-To: <alpine.LRH.2.00.0909200020360.31818@tundra.namei.org>
 Sender: linux-fsdevel-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Add server support for the Linux NFSv3 extended attribute
+Add client support for the Linux NFSv3 extended attribute
 side protocol (XATTR).
+
+This extends Linux extended attributes over the network to
+servers which support the protocol.
+
+Operation is currently limited to the user.* namespace.
 
 Signed-off-by: James Morris <jmorris@namei.org>
 ---
- fs/nfsd/Kconfig            |    8 +
- fs/nfsd/Makefile           |    1 +
- fs/nfsd/nfs3xattr.c        |  352 ++++++++++++++++++++++++++++++++++++++++++++
- fs/nfsd/nfsctl.c           |    3 +
- fs/nfsd/nfssvc.c           |   60 +++++++-
- fs/nfsd/vfs.c              |    5 +-
- include/linux/nfsd/nfsd.h  |   13 ++
- include/linux/nfsd/xdr3.h  |   46 ++++++
- include/linux/sunrpc/svc.h |    2 +-
- 9 files changed, 484 insertions(+), 6 deletions(-)
- create mode 100644 fs/nfsd/nfs3xattr.c
+ fs/nfs/Kconfig            |   32 ++++++
+ fs/nfs/Makefile           |    1 +
+ fs/nfs/client.c           |   51 ++++++++++-
+ fs/nfs/internal.h         |   11 ++
+ fs/nfs/nfs3xattr.c        |  239 +++++++++++++++++++++++++++++++++++++++++++++
+ fs/nfs/nfs3xattr_user.c   |   52 ++++++++++
+ fs/nfs/nfs3xdr.c          |  187 +++++++++++++++++++++++++++++++++++
+ include/linux/nfs_fs_sb.h |    3 +-
+ include/linux/nfs_mount.h |    3 +
+ include/linux/nfs_xattr.h |   21 ++++
+ include/linux/nfs_xdr.h   |   45 +++++++++
+ 11 files changed, 643 insertions(+), 2 deletions(-)
+ create mode 100644 fs/nfs/nfs3xattr_user.c
+ create mode 100644 include/linux/nfs_xattr.h
 
-diff --git a/fs/nfsd/Kconfig b/fs/nfsd/Kconfig
-index 503b9da..4252d16 100644
---- a/fs/nfsd/Kconfig
-+++ b/fs/nfsd/Kconfig
-@@ -64,6 +64,14 @@ config NFSD_V3_ACL
+diff --git a/fs/nfs/Kconfig b/fs/nfs/Kconfig
+index ff75902..0b328b1 100644
+--- a/fs/nfs/Kconfig
++++ b/fs/nfs/Kconfig
+@@ -64,6 +64,38 @@ config NFS_V3_ACL
  
  	  If unsure, say N.
  
-+config NFSD_V3_XATTR
-+	bool "NFS server support for the NFSv3 XATTR protocol extension (EXPERIMENTAL)"
-+	depends on NFSD_V3 && EXPERIMENTAL
++config NFS_V3_XATTR
++	bool "NFS client support for the NFSv3 XATTR protocol extension (EXPERIMENTAL)"
++	depends on NFS_V3 && EXPERIMENTAL
++	select NFS_V3_XATTR_API
 +	help
-+	  NFS server support for the NFSv3 XATTR protocol.
++	  This option selects client suport for the Linux NFSv3 extended
++	  attribute protocol extension (XATTR).
++
++	  This is a side-protocol which extends general support for Linux
++	  extended attributes over the network, and is based on the GPLd
++	  IRIX implmentation (although not wire-compatible with it).
++
++	  Only the user.* namespace is currently supported.  When connected
++	  to a server which also supports XATTR, the full range of extended
++	  attribute system calls:
++
++	    getxattr(2), listxattr(2), setxattr(2) and removexattr(2)
++
++	  should work as expected.
 +
 +	  If unsure, say N.
 +
- config NFSD_V4
- 	bool "NFS server support for NFS version 4 (EXPERIMENTAL)"
- 	depends on NFSD && PROC_FS && EXPERIMENTAL
-diff --git a/fs/nfsd/Makefile b/fs/nfsd/Makefile
-index 9b118ee..e206b52 100644
---- a/fs/nfsd/Makefile
-+++ b/fs/nfsd/Makefile
-@@ -9,5 +9,6 @@ nfsd-y 			:= nfssvc.o nfsctl.o nfsproc.o nfsfh.o vfs.o \
- nfsd-$(CONFIG_NFSD_V2_ACL) += nfs2acl.o
- nfsd-$(CONFIG_NFSD_V3)	+= nfs3proc.o nfs3xdr.o
- nfsd-$(CONFIG_NFSD_V3_ACL) += nfs3acl.o
-+nfsd-$(CONFIG_NFSD_V3_XATTR) += nfs3xattr.o
- nfsd-$(CONFIG_NFSD_V4)	+= nfs4proc.o nfs4xdr.o nfs4state.o nfs4idmap.o \
- 			   nfs4acl.o nfs4callback.o nfs4recover.o
-diff --git a/fs/nfsd/nfs3xattr.c b/fs/nfsd/nfs3xattr.c
-new file mode 100644
-index 0000000..3b0ae49
---- /dev/null
-+++ b/fs/nfsd/nfs3xattr.c
-@@ -0,0 +1,352 @@
++config NFS_V3_XATTR_USER
++	bool "Extended attributes in the user namespace (EXPERIMENTAL)"
++	depends on NFS_V3_XATTR
++	help
++	  This option selects extended attributes in the user.* namespace,
++	  which are arbitrarily named and managed by users, and conveyed
++	  via the XATTR protocol extension for NFS version 3.
++
++	  If unsure, say N.
++
+ config NFS_V4
+ 	bool "NFS client support for NFS version 4 (EXPERIMENTAL)"
+ 	depends on NFS_FS && EXPERIMENTAL
+diff --git a/fs/nfs/Makefile b/fs/nfs/Makefile
+index 1e2743e..54018ee 100644
+--- a/fs/nfs/Makefile
++++ b/fs/nfs/Makefile
+@@ -12,6 +12,7 @@ nfs-$(CONFIG_ROOT_NFS)	+= nfsroot.o
+ nfs-$(CONFIG_NFS_V3)	+= nfs3proc.o nfs3xdr.o
+ nfs-$(CONFIG_NFS_V3_ACL)	+= nfs3acl.o
+ nfs-$(CONFIG_NFS_V3_XATTR_API)	+= nfs3xattr.o
++nfs-$(CONFIG_NFS_V3_XATTR_USER)	+= nfs3xattr_user.o
+ nfs-$(CONFIG_NFS_V4)	+= nfs4proc.o nfs4xdr.o nfs4state.o nfs4renewd.o \
+ 			   delegation.o idmap.o \
+ 			   callback.o callback_xdr.o callback_proc.o \
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index d36925f..2d1b066 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -97,6 +97,21 @@ struct rpc_program		nfsacl_program = {
+ };
+ #endif  /* CONFIG_NFS_V3_ACL */
+ 
++#ifdef CONFIG_NFS_V3_XATTR
++static struct rpc_stat		nfs_xattr_rpcstat = { &nfs_xattr_program };
++static struct rpc_version *	nfs_xattr_version[] = {
++	[3]			= &nfs_xattr_version3,
++};
++
++struct rpc_program		nfs_xattr_program = {
++	.name			= "nfsxattr",
++	.number			= NFS_XATTR_PROGRAM,
++	.nrvers			= ARRAY_SIZE(nfs_xattr_version),
++	.version		= nfs_xattr_version,
++	.stats			= &nfs_xattr_rpcstat,
++};
++#endif  /* CONFIG_NFS_V3_XATTR */
++
+ struct nfs_client_initdata {
+ 	const char *hostname;
+ 	const struct sockaddr *addr;
+@@ -700,6 +715,36 @@ static inline void nfs_init_server_aclclient(struct nfs_server *server)
+ #endif
+ 
+ /*
++ * Initialise an NFSv3 XATTR client connection
++ */
++#ifdef CONFIG_NFS_V3_XATTR
++static void nfs_init_server_xattrclient(struct nfs_server *server)
++{
++	if (server->nfs_client->rpc_ops->version != 3)
++		goto out_no_xattr;
++	if (server->flags & NFS_MOUNT_NOXATTR)
++		goto out_no_xattr;
++
++	server->client_xattr = rpc_bind_new_program(server->client, &nfs_xattr_program, 3);
++	if (IS_ERR(server->client_xattr))
++		goto out_no_xattr;
++
++	/* No errors! Assume that XATTR is supported */
++	server->caps |= NFS_CAP_XATTR;
++	return;
++
++out_no_xattr:
++	server->caps &= ~NFS_CAP_XATTR;
++}
++#else
++static inline void nfs_init_server_xattrclient(struct nfs_server *server)
++{
++	server->flags &= ~NFS_MOUNT_NOXATTR;
++	server->caps &= ~NFS_CAP_XATTR;
++}
++#endif
++
 +/*
-+ * Process version 3 NFSXATTR requests.
+  * Create a general RPC client
+  */
+ static int nfs_init_server_rpcclient(struct nfs_server *server,
+@@ -845,8 +890,12 @@ static int nfs_init_server(struct nfs_server *server,
+ 	server->mountd_protocol = data->mount_server.protocol;
+ 
+ 	server->namelen  = data->namlen;
+-	/* Create a client RPC handle for the NFSv3 ACL management interface */
++	/*
++	 * Create client RPC handles for the NFSv3 ACL and XATTR management
++	 * interfaces
++	 */
+ 	nfs_init_server_aclclient(server);
++	nfs_init_server_xattrclient(server);
+ 	dprintk("<-- nfs_init_server() = 0 [new %p]\n", clp);
+ 	return 0;
+ 
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index 370f61c..376bff1 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -291,6 +291,17 @@ static inline void nfs4_sequence_free_slot(const struct nfs_client *clp,
+ /* nfs3xattr.c */
+ extern struct xattr_handler *nfs3_xattr_handlers[];
+ 
++extern int nfs3_proc_getxattr(struct inode *inode, const char *namespace,
++			      const char *name, void *value, size_t size);
++extern int nfs3_proc_setxattr(struct inode *inode, const char *namespace,
++			      const char *name, const void *value,
++			      size_t size, int flags);
++extern int nfs3_proc_listxattr(struct inode *inode, char *list,
++			       size_t list_len);
++
++/* nfs3xattr_user.c */
++extern struct xattr_handler nfs3_xattr_user_handler;
++
+ /* nfs3acl.c */
+ extern struct xattr_handler nfs3_xattr_acl_access_handler;
+ extern struct xattr_handler nfs3_xattr_acl_default_handler;
+diff --git a/fs/nfs/nfs3xattr.c b/fs/nfs/nfs3xattr.c
+index de69f1e..7ff651b 100644
+--- a/fs/nfs/nfs3xattr.c
++++ b/fs/nfs/nfs3xattr.c
+@@ -1,6 +1,8 @@
+ /*
+  * Extended attribute (xattr) API and protocol for NFSv3.
+  *
++ * Based on the ACL code.
 + *
-+ * Based on the NFSACL code by:
-+ * Copyright (C) 2002-2003 Andreas Gruenbacher <agruen@suse.de>
+  * Copyright (C) 2009 Red Hat, Inc., James Morris <jmorris@redhat.com>
+  *
+  * This program is free software; you can redistribute it and/or modify
+@@ -17,9 +19,246 @@
+ #define NFSDBG_FACILITY	NFSDBG_PROC
+ 
+ struct xattr_handler *nfs3_xattr_handlers[] = {
++#ifdef CONFIG_NFS_V3_XATTR_USER
++	&nfs3_xattr_user_handler,
++#endif
+ #ifdef CONFIG_NFS_V3_ACL
+ 	&nfs3_xattr_acl_access_handler,
+ 	&nfs3_xattr_acl_default_handler,
+ #endif
+ 	NULL
+ };
++
++#ifdef CONFIG_NFS_V3_XATTR
++/*
++ * XATTR protocol
++ */
++
++/*
++ * Call GETXATTR
++ *
++ * FIXME:
++ * - Cache xattrs
++ * - Handle size probing
++ */
++int nfs3_proc_getxattr(struct inode *inode, const char *namespace,
++		       const char *name, void *value, size_t size)
++{
++	int status;
++	struct nfs_fattr fattr;
++	struct nfs_server *server = NFS_SERVER(inode);
++	struct nfs3_getxattrargs args = {
++		.fh		= NFS_FH(inode),
++	};
++	struct nfs3_getxattrres res = {
++		.fattr		= &fattr,
++	};
++	struct rpc_message msg = {
++		.rpc_argp	= &args,
++		.rpc_resp	= &res,
++	};
++
++	if (!name || !*name)
++		return -EINVAL;
++
++	if (size > XATTR_SIZE_MAX)
++		return -EINVAL;
++
++	if (!nfs_server_capable(inode, NFS_CAP_XATTR))
++		return -EOPNOTSUPP;
++
++	status = nfs_revalidate_inode(server, inode);
++	if (status < 0)
++		return status;
++
++	/*
++	 * Applications usually first probe the xattr value size, then
++	 * perform a full call.  For now, just return a dummy value.
++	 */
++	if (!size || !value)
++		return 4096;
++
++	args.xattr_namespace = namespace;
++	args.xattr_name = name;
++	args.xattr_size_max = size;
++
++	/*
++	 * FIXME
++	 *
++	 * This is ugly.  We pre-allocate a buffer for the XDR layer to use,
++	 * passing the size of the buffer via xattr_val_len, which is
++	 * updated with the actual length decoded.  We should investigate
++	 * using the page-based interface used by ACLs and others, or some
++	 * other better way.
++	 */
++	res.xattr_val_len = size;
++	res.xattr_val = kmalloc(size, GFP_KERNEL);
++	if (!res.xattr_val)
++		return -ENOMEM;
++
++	dprintk("NFS call getxattr %s%s %zd\n", namespace, name, size);
++
++	msg.rpc_proc = &server->client_xattr->cl_procinfo[XATTRPROC3_GETXATTR];
++	nfs_fattr_init(&fattr);
++	status = rpc_call_sync(server->client_xattr, &msg, 0);
++
++	dprintk("NFS reply getxattr: status=%d len=%d\n",
++		status, res.xattr_val_len);
++
++	switch (status) {
++	case 0:
++		status = nfs_refresh_inode(inode, &fattr);
++		break;
++	case -EPFNOSUPPORT:
++	case -EPROTONOSUPPORT:
++		dprintk("NFS_V3_XATTR extension not supported; disabling\n");
++		server->caps &= ~NFS_CAP_XATTR;
++	case -ENOTSUPP:
++		status = -EOPNOTSUPP;
++	default:
++		goto cleanup;
++	}
++
++	status = res.xattr_val_len;
++	if (status <= size)
++		memcpy(value, res.xattr_val, status);
++
++cleanup:
++	kfree(res.xattr_val);
++	return status;
++}
++
++/*
++ * Call SETXATTR or RMXATTR
++ *
++ * RMXATTR is invoked with a NULL buffer and XATTR_REPLACE.
++ *
++ */
++int nfs3_proc_setxattr(struct inode *inode, const char *namespace,
++		       const char *name, const void *value,
++		       size_t size, int flags)
++
++{
++	int status;
++	struct nfs_fattr fattr;
++	struct nfs_server *server = NFS_SERVER(inode);
++	struct nfs3_setxattrargs args = {
++		.fh		= NFS_FH(inode),
++	};
++	struct nfs3_setxattrres res = {
++		.fattr		= &fattr,
++	};
++	struct rpc_message msg = {
++		.rpc_argp	= &args,
++		.rpc_resp	= &res,
++	};
++
++	if (!name || !*name)
++		return -EINVAL;
++
++	if (!nfs_server_capable(inode, NFS_CAP_XATTR))
++		return -EOPNOTSUPP;
++
++	status = nfs_revalidate_inode(server, inode);
++	if (status < 0)
++		return status;
++
++	args.xattr_namespace = namespace;
++	args.xattr_name = name;
++	args.xattr_flags = flags;
++	args.xattr_val = value;
++	args.xattr_val_len = size;
++
++	dprintk("NFS call setxattr %s%s %zd 0x%08x\n",
++		namespace, name, size, flags);
++
++	msg.rpc_proc = &server->client_xattr->cl_procinfo[XATTRPROC3_SETXATTR];
++	nfs_fattr_init(&fattr);
++	status = rpc_call_sync(server->client_xattr, &msg, 0);
++
++	dprintk("NFS reply setxattr: status=%d\n", status);
++
++	switch (status) {
++	case 0:
++		status = nfs_refresh_inode(inode, &fattr);
++		break;
++	case -EPFNOSUPPORT:
++	case -EPROTONOSUPPORT:
++		dprintk("NFS_V3_XATTR extension not supported; disabling\n");
++		server->caps &= ~NFS_CAP_XATTR;
++	case -ENOTSUPP:
++		status = -EOPNOTSUPP;
++	default:
++		break;
++	}
++	return status;
++}
++
++/*
++ * Call LISTXATTR
++ */
++int nfs3_proc_listxattr(struct inode *inode, char *list, size_t list_len)
++{
++	int status;
++	struct nfs_fattr fattr;
++	struct nfs_server *server = NFS_SERVER(inode);
++	struct nfs3_listxattrargs args = {
++		.fh		= NFS_FH(inode),
++	};
++	struct nfs3_listxattrres res = {
++		.fattr		= &fattr,
++	};
++	struct rpc_message msg = {
++		.rpc_argp	= &args,
++		.rpc_resp	= &res,
++	};
++
++	if (list_len > XATTR_LIST_MAX)
++		return -EINVAL;
++
++	if (!nfs_server_capable(inode, NFS_CAP_XATTR))
++		return -EOPNOTSUPP;
++
++	dprintk("NFS call listxattr %zd\n", list_len);
++
++	/* FIXME: handle probes */
++	if (!list || !list_len)
++		return 1024;
++
++	args.xattr_list_max = list_len;
++
++	/* FIXME (see comments for getxattr) */
++	res.xattr_list_len = list_len;
++	res.xattr_list = kmalloc(list_len, GFP_KERNEL);
++	if (!res.xattr_list)
++		return -ENOMEM;
++
++	msg.rpc_proc = &server->client_xattr->cl_procinfo[XATTRPROC3_LISTXATTR];
++	nfs_fattr_init(&fattr);
++	status = rpc_call_sync(server->client_xattr, &msg, 0);
++
++	dprintk("NFS reply listxattr: status=%d\n", status);
++
++	switch (status) {
++	case 0:
++		status = nfs_refresh_inode(inode, &fattr);
++		break;
++	case -EPFNOSUPPORT:
++	case -EPROTONOSUPPORT:
++		dprintk("NFS_V3_XATTR extension not supported; disabling\n");
++		server->caps &= ~NFS_CAP_XATTR;
++	case -ENOTSUPP:
++		status = -EOPNOTSUPP;
++	default:
++		goto cleanup;
++	}
++
++	status = res.xattr_list_len;
++	if (status <= list_len)
++		memcpy(list, res.xattr_list, status);
++
++cleanup:
++	kfree(res.xattr_list);
++	return status;
++}
++#endif	/* CONFIG_NFS_V3_XATTR */
+diff --git a/fs/nfs/nfs3xattr_user.c b/fs/nfs/nfs3xattr_user.c
+new file mode 100644
+index 0000000..61ae019
+--- /dev/null
++++ b/fs/nfs/nfs3xattr_user.c
+@@ -0,0 +1,52 @@
++/*
++ * Support for extended attributes in the the user.* namespace, which are
++ * arbitrarily named and managed by users and conveyed via the XATTR
++ * protocol extension.
 + *
 + * Copyright (C) 2009 Red Hat, Inc., James Morris <jmorris@redhat.com>
 + *
@@ -80,618 +471,398 @@ index 0000000..3b0ae49
 + * it under the terms of the GNU General Public License version 2,
 + * as published by the Free Software Foundation.
 + */
-+#include <linux/sunrpc/svc.h>
++#include <linux/fs.h>
++#include <linux/nfs.h>
 +#include <linux/nfs3.h>
-+#include <linux/nfsd/nfsd.h>
-+#include <linux/nfsd/cache.h>
-+#include <linux/nfsd/xdr3.h>
-+#include <linux/xattr.h>
-+#include <linux/nfs_xattr.h>
++#include <linux/nfs_fs.h>
 +
-+#define NFSDDBG_FACILITY	NFSDDBG_PROC
-+#define RETURN_STATUS(st)	{ resp->status = (st); return (st); }
++#include "internal.h"
 +
-+/* NULL call */
-+static __be32 nfsd3_proc_null(struct svc_rqst *rqstp, void *argp, void *resp)
-+{
-+	return nfs_ok;
-+}
++#define NFSDBG_FACILITY	NFSDBG_PROC
 +
 +/*
-+ * GETXATTR
-+ *
-+ * FIXME:
-+ *  - Implement shared xattr cache
-+ *  - Audit nfs error returns
++ * The generic xattr code will call this for each helper, which is ok for
++ * now, because we only support this single namespace.  If support is
++ * expanded to more namespaces, we we'll need a custom listxattr operation.
 + */
-+static __be32 nfsd3_proc_getxattr(struct svc_rqst * rqstp,
-+				  struct nfsd3_getxattrargs *argp,
-+				  struct nfsd3_getxattrres *resp)
++static size_t nfs3_user_xattr_list(struct inode *inode, char *list,
++				   size_t list_len, const char *name,
++				   size_t name_len)
 +{
-+	__be32 nfserr = nfserrno(-EINVAL);
-+	svc_fh *fh;
-+	void *value;
-+	int ret;
-+	char *name, *xattr_name = argp->xattr_name;
-+	unsigned int size_max = argp->xattr_size_max;
-+	unsigned int name_len = argp->xattr_name_len;
-+
-+	dprintk("nfsd: GETXATTR(3)  %s %.*s %u\n", SVCFH_fmt(&argp->fh),
-+	        name_len, xattr_name, size_max);
-+
-+	if (name_len > XATTR_NAME_MAX)
-+		RETURN_STATUS(nfserr);
-+
-+	if (size_max > XATTR_SIZE_MAX)
-+		RETURN_STATUS(nfserr);
-+
-+	/* Probes must be handled by the client */
-+	if (size_max == 0)
-+		RETURN_STATUS(nfserr);
-+
-+	fh = fh_copy(&resp->fh, &argp->fh);
-+	nfserr = fh_verify(rqstp, &resp->fh, 0, NFSD_MAY_READ);
-+	if (nfserr)
-+		RETURN_STATUS(nfserr);
-+
-+	/* Convert xdr string to real string */
-+	name = kmalloc(name_len + 1, GFP_KERNEL);
-+	if (name == NULL)
-+		RETURN_STATUS(nfserrno(-ENOMEM));
-+
-+	ret = snprintf(name, name_len + 1, "%.*s", name_len, xattr_name);
-+	if (ret > name_len) {
-+		nfserr = nfserrno(-EINVAL);
-+		goto cleanup;
-+	}
-+
-+	/* Only the user namespace is currently supported by the server */
-+	if (strncmp(name, XATTR_USER_PREFIX, XATTR_USER_PREFIX_LEN)) {
-+		nfserr = nfserrno(-EINVAL);
-+		goto cleanup;
-+	}
-+
-+	ret = nfsd_getxattr(fh->fh_dentry, name, &value);
-+	if (ret <= 0) {
-+		if (ret == 0)
-+			ret = -ENODATA;
-+		nfserr = nfserrno(ret);
-+		goto cleanup;
-+	}
-+
-+	nfserr = 0;
-+	resp->xattr_val = value;
-+	resp->xattr_val_len = ret;
-+
-+cleanup:
-+	kfree(name);
-+	RETURN_STATUS(nfserr);
++	return nfs3_proc_listxattr(inode, list, list_len);
 +}
 +
-+/* cribbed from decode pathname */
-+static __be32 *decode_xattrname(__be32 *p, char **namp, unsigned int *lenp)
++static int nfs3_user_xattr_get(struct inode *inode, const char *name,
++			       void *buffer, size_t size)
 +{
-+	char *name;
-+	unsigned int i;
++	return nfs3_proc_getxattr(inode, XATTR_USER_PREFIX,
++				  name, buffer, size);
++}
 +
-+	p = xdr_decode_string_inplace(p, namp, lenp, XATTR_NAME_MAX);
-+	if (p != NULL)
-+		for (i = 0, name = *namp; i < *lenp; i++, name++)
-+			if (*name == '\0')
-+				return NULL;
++static int nfs3_user_xattr_set(struct inode *inode, const char *name,
++			       const void *value, size_t size, int flags)
++{
++	return nfs3_proc_setxattr(inode, XATTR_USER_PREFIX,
++				  name, value, size, flags);
++}
++
++struct xattr_handler nfs3_xattr_user_handler = {
++	.prefix = XATTR_USER_PREFIX,
++	.list   = nfs3_user_xattr_list,
++	.get    = nfs3_user_xattr_get,
++	.set    = nfs3_user_xattr_set,
++};
+diff --git a/fs/nfs/nfs3xdr.c b/fs/nfs/nfs3xdr.c
+index 35869a4..e2d5400 100644
+--- a/fs/nfs/nfs3xdr.c
++++ b/fs/nfs/nfs3xdr.c
+@@ -89,6 +89,26 @@
+ #define ACL3_setaclres_sz	(1+NFS3_post_op_attr_sz)
+ 
+ /*
++ * FIXME: currently, the RPC layer will allocate the maximum buffer size
++ * here for each call (which can be ~ 64k).  The Labeled NFS prototype code
++ * uses 4k, although we should not impose limits for NFS which don't exist
++ * in the OS unless absolutely necsssary.  We likely need a dynamic scheme
++ * here, possibly using pages.
++ */
++#define XATTR3_xattrname_sz	(1+(XATTR_NAME_MAX>>2))
++#define XATTR3_xattrval_sz	(1+(XATTR_SIZE_MAX>>2))
++#define XATTR3_xattrlist_sz	(1+(XATTR_LIST_MAX>>2))
++
++#define XATTR3_getxattrargs_sz	(NFS3_fh_sz+XATTR3_xattrname_sz+1)
++#define XATTR3_getxattrres_sz	(1+NFS3_post_op_attr_sz+XATTR3_xattrval_sz)
++
++#define XATTR3_setxattrargs_sz	(NFS3_fh_sz+XATTR3_xattrname_sz+XATTR3_xattrval_sz+1)
++#define XATTR3_setxattrres_sz	(1+NFS3_post_op_attr_sz)
++
++#define XATTR3_listxattrargs_sz	(NFS3_fh_sz+1)
++#define XATTR3_listxattrres_sz	(1+NFS3_post_op_attr_sz+XATTR3_xattrlist_sz)
++
++/*
+  * Map file type to S_IFMT bits
+  */
+ static const umode_t nfs_type2fmt[] = {
+@@ -728,6 +748,72 @@ nfs3_xdr_setaclargs(struct rpc_rqst *req, __be32 *p,
+ }
+ #endif  /* CONFIG_NFS_V3_ACL */
+ 
++#ifdef CONFIG_NFS_V3_XATTR
++/*
++ * Special case of xdr_encode_opaque, where the xattr helpers hand us
++ * separate namespace and name buffers, which we encode as a single XDR
++ * string over the wire.  Neither namespace nor name may be empty or null.
++ */
++static __be32 *xattr_encode_name(__be32 *p, const char *namespace, const char *name)
++{
++	unsigned int nslen, namelen, totlen, quadlen, padding;
++
++	nslen = strlen(namespace);
++	namelen = strlen(name);
++	totlen = nslen + namelen;
++	quadlen = XDR_QUADLEN(totlen);
++	padding = (quadlen << 2) - totlen;
++
++	*p++ = cpu_to_be32(totlen);
++	memcpy(p, namespace, nslen);
++	memcpy((char *)p + nslen, name, namelen);
++
++	if (padding != 0)
++		memset((char *)p + totlen, 0, padding);
++	p += quadlen;
 +	return p;
 +}
 +
-+static int nfs3svc_decode_getxattrargs(struct svc_rqst *rqstp, __be32 *p,
-+				       struct nfsd3_getxattrargs *argp)
++/*
++ * Encode GETXATTR arguments
++ */
++static int nfs3_xdr_getxattrargs(struct rpc_rqst *req, __be32 *p,
++				 struct nfs3_getxattrargs *args)
 +{
-+	if (!(p = nfs3svc_decode_fh(p, &argp->fh)))
-+		return 0;
-+	if (!(p = decode_xattrname(p, &argp->xattr_name, &argp->xattr_name_len)))
-+		return 0;
-+	argp->xattr_size_max = ntohl(*p++);
-+	return xdr_argsize_check(rqstp, p);
-+}
-+
-+static int nfs3svc_encode_getxattrres(struct svc_rqst *rqstp, __be32 *p,
-+				      struct nfsd3_getxattrres *resp)
-+{
-+	p = nfs3svc_encode_post_op_attr(rqstp, p, &resp->fh);
-+	if (resp->status == 0)
-+		p = xdr_encode_array(p, resp->xattr_val, resp->xattr_val_len);
-+	return xdr_ressize_check(rqstp, p);
-+}
-+
-+static int nfs3svc_release_getxattr(struct svc_rqst *rqstp, __be32 *p,
-+				    struct nfsd3_getxattrres *resp)
-+{
-+	fh_put(&resp->fh);
-+	kfree(resp->xattr_val);
-+	return 1;
++	p = xdr_encode_fhandle(p, args->fh);
++	p = xattr_encode_name(p, args->xattr_namespace, args->xattr_name);
++	*p++ = htonl(args->xattr_size_max);
++	req->rq_slen = xdr_adjust_iovec(req->rq_svec, p);
++	return 0;
 +}
 +
 +/*
-+ * SETXATTR and RMXATTR
-+ *
-+ * RMXATTR is detected with zero buffer len and XATTR_REPLACE.
-+ *
++ * Encode SETXATTR arguments
 + */
-+static __be32 nfsd3_proc_setxattr(struct svc_rqst * rqstp,
-+				  struct nfsd3_setxattrargs *argp,
-+				  struct nfsd3_setxattrres *resp)
++static int nfs3_xdr_setxattrargs(struct rpc_rqst *req, __be32 *p,
++				 struct nfs3_setxattrargs *args)
 +{
-+	__be32 nfserr = nfserrno(-EINVAL);
-+	svc_fh *fh;
-+	int ret;
-+	char *name, *xattr_name = argp->xattr_name;
-+	unsigned int name_len = argp->xattr_name_len;
-+	unsigned int val_len = argp->xattr_val_len;
-+	unsigned int flags = argp->xattr_flags;
-+
-+	dprintk("nfsd: SETXATTR(3)  %s %.*s %u %#x\n", SVCFH_fmt(&argp->fh),
-+		name_len, xattr_name, val_len, flags);
-+
-+	if (name_len > XATTR_NAME_MAX)
-+		RETURN_STATUS(nfserr);
-+
-+	if (val_len > XATTR_SIZE_MAX)
-+		RETURN_STATUS(nfserr);
-+
-+	if (flags & ~(XATTR_CREATE|XATTR_REPLACE))
-+		RETURN_STATUS(nfserr);
-+
-+	fh = fh_copy(&resp->fh, &argp->fh);
-+	nfserr = fh_verify(rqstp, &resp->fh, 0, NFSD_MAY_SATTR);
-+	if (nfserr)
-+		RETURN_STATUS(nfserr);
-+
-+	/* Convert xdr string to real string */
-+	name = kmalloc(name_len + 1, GFP_KERNEL);
-+	if (name == NULL)
-+		RETURN_STATUS(nfserrno(-ENOMEM));
-+
-+	ret = snprintf(name, name_len + 1, "%.*s", name_len, xattr_name);
-+	if (ret > name_len) {
-+		nfserr = nfserrno(-EINVAL);
-+		goto cleanup;
-+	}
-+
-+	/* Only the user namespace is currently supported by the server */
-+	if (strncmp(name, XATTR_USER_PREFIX, XATTR_USER_PREFIX_LEN)) {
-+		nfserr = nfserrno(-EINVAL);
-+		goto cleanup;
-+	}
-+
-+	if (!val_len) {
-+		if (flags & ~XATTR_REPLACE) {
-+			nfserr = nfserrno(-EINVAL);
-+			goto cleanup;
-+		}
-+		ret = vfs_removexattr(fh->fh_dentry, name);
-+	} else
-+		ret = vfs_setxattr(fh->fh_dentry, name,
-+				   argp->xattr_val, val_len, flags);
-+
-+	nfserr = nfserrno(ret);
-+
-+cleanup:
-+	kfree(name);
-+	RETURN_STATUS(nfserr);
-+}
-+
-+static int nfs3svc_decode_setxattrargs(struct svc_rqst *rqstp, __be32 *p,
-+				       struct nfsd3_setxattrargs *argp)
-+{
-+	if (!(p = nfs3svc_decode_fh(p, &argp->fh)))
-+		return 0;
-+	if (!(p = decode_xattrname(p, &argp->xattr_name, &argp->xattr_name_len)))
-+		return 0;
-+	if (!(p = xdr_decode_string_inplace(p, &argp->xattr_val,
-+					&argp->xattr_val_len, XATTR_SIZE_MAX)))
-+		return 0;
-+	argp->xattr_flags = ntohl(*p++);
-+	return xdr_argsize_check(rqstp, p);
-+}
-+
-+static int nfs3svc_encode_setxattrres(struct svc_rqst *rqstp, __be32 *p,
-+				      struct nfsd3_setxattrres *resp)
-+{
-+	p = nfs3svc_encode_post_op_attr(rqstp, p, &resp->fh);
-+	return xdr_ressize_check(rqstp, p);
-+}
-+
-+static int nfs3svc_release_setxattr(struct svc_rqst *rqstp, __be32 *p,
-+				    struct nfsd3_setxattrres *resp)
-+{
-+	fh_put(&resp->fh);
-+	return 1;
++	p = xdr_encode_fhandle(p, args->fh);
++	p = xattr_encode_name(p, args->xattr_namespace, args->xattr_name);
++	p = xdr_encode_array(p, args->xattr_val, args->xattr_val_len);
++	*p++ = htonl(args->xattr_flags);
++	req->rq_slen = xdr_adjust_iovec(req->rq_svec, p);
++	return 0;
 +}
 +
 +/*
-+ * LISTXATTR
-+ *
-+ * TODO: namespace filtering?
++ * Encode LISTXATTR arguments
 + */
-+static __be32 nfsd3_proc_listxattr(struct svc_rqst * rqstp,
-+				   struct nfsd3_listxattrargs *argp,
-+				   struct nfsd3_listxattrres *resp)
++static int nfs3_xdr_listxattrargs(struct rpc_rqst *req, __be32 *p,
++				  struct nfs3_listxattrargs *args)
 +{
-+	__be32 nfserr = nfserrno(-EINVAL);
-+	svc_fh *fh;
-+	char *list;
-+	int ret;
-+	unsigned int list_max = argp->xattr_list_max;
-+
-+	dprintk("nfsd: LISTXATTR(3)  %s %u\n", SVCFH_fmt(&argp->fh), list_max);
-+
-+	if (list_max > XATTR_LIST_MAX)
-+		RETURN_STATUS(nfserr);
-+
-+	/* Probes must be handled by the client */
-+	if (list_max == 0)
-+		RETURN_STATUS(nfserr);
-+
-+	fh = fh_copy(&resp->fh, &argp->fh);
-+	nfserr = fh_verify(rqstp, &resp->fh, 0, NFSD_MAY_READ);
-+	if (nfserr)
-+		RETURN_STATUS(nfserr);
-+
-+	list = kmalloc(list_max, GFP_ATOMIC);
-+	if (list == NULL)
-+		RETURN_STATUS(nfserrno(-ENOMEM));
-+
-+	ret = vfs_listxattr(fh->fh_dentry, list, list_max);
-+	if (ret <= 0) {
-+		if (ret == 0)
-+			ret = -ENODATA;
-+		RETURN_STATUS(nfserrno(ret));
-+	}
-+
-+	nfserr = 0;
-+	resp->xattr_list = list;
-+	resp->xattr_list_len = ret;
-+
-+	RETURN_STATUS(nfserr);
++	p = xdr_encode_fhandle(p, args->fh);
++	*p++ = htonl(args->xattr_list_max);
++	req->rq_slen = xdr_adjust_iovec(req->rq_svec, p);
++	return 0;
 +}
++#endif	/* CONFIG_NFS_V3_XATTR */
 +
-+static int nfs3svc_decode_listxattrargs(struct svc_rqst *rqstp, __be32 *p,
-+				        struct nfsd3_listxattrargs *argp)
-+{
-+	if (!(p = nfs3svc_decode_fh(p, &argp->fh)))
-+		return 0;
-+	argp->xattr_list_max = ntohl(*p++);
-+	return xdr_argsize_check(rqstp, p);
-+}
-+
-+static int nfs3svc_encode_listxattrres(struct svc_rqst *rqstp, __be32 *p,
-+				       struct nfsd3_listxattrres *resp)
-+{
-+	p = nfs3svc_encode_post_op_attr(rqstp, p, &resp->fh);
-+	if (resp->status == 0)
-+		p = xdr_encode_array(p, resp->xattr_list, resp->xattr_list_len);
-+	return xdr_ressize_check(rqstp, p);
-+}
-+
-+static int nfs3svc_release_listxattr(struct svc_rqst *rqstp, __be32 *p,
-+				     struct nfsd3_listxattrres *resp)
-+{
-+	fh_put(&resp->fh);
-+	kfree(resp->xattr_list);
-+	return 1;
-+}
-+
-+#define ST 1		/* status */
-+#define AT 21           /* attributes */
-+#define pAT (1+AT)      /* post attributes - conditional */
-+
-+#define nfs3svc_decode_voidargs		NULL
-+#define nfs3svc_release_void		NULL
-+#define nfsd3_voidres			nfsd3_voidargs
-+struct nfsd3_voidargs { int dummy; };
-+
-+#define PROC(name, argt, rest, relt, cache, respsize)	\
-+ { (svc_procfunc) nfsd3_proc_##name,		\
-+   (kxdrproc_t) nfs3svc_decode_##argt##args,	\
-+   (kxdrproc_t) nfs3svc_encode_##rest##res,	\
-+   (kxdrproc_t) nfs3svc_release_##relt,		\
-+   sizeof(struct nfsd3_##argt##args),		\
-+   sizeof(struct nfsd3_##rest##res),		\
-+   0,						\
-+   cache,					\
-+   respsize,					\
-+ }
-+
-+#define G_RSZ	(ST+pAT+1+(XATTR_SIZE_MAX>>2))
-+#define S_RSZ	(ST+pAT)
-+#define L_RSZ	(ST+pAT+1+(XATTR_LIST_MAX>>2))
-+
-+static struct svc_procedure nfsd_xattr_procedures3[] = {
-+  PROC(null,       void,       void,       void,       RC_NOCACHE, ST),
-+  PROC(getxattr,   getxattr,   getxattr,   getxattr,   RC_NOCACHE, G_RSZ),
-+  PROC(setxattr,   setxattr,   setxattr,   setxattr,   RC_NOCACHE, S_RSZ),
-+  PROC(listxattr,  listxattr,  listxattr,  listxattr,  RC_NOCACHE, L_RSZ),
-+};
-+
-+struct svc_version	nfsd_xattr_version3 = {
-+	.vs_vers	= 3,
-+	.vs_nproc	= 4,
-+	.vs_proc	= nfsd_xattr_procedures3,
-+	.vs_dispatch	= nfsd_dispatch,
-+	.vs_xdrsize	= NFS3_SVC_XDRSIZE,
-+	.vs_hidden	= 1,
-+};
-diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
-index 7e906c5..57b51a2 100644
---- a/fs/nfsd/nfsctl.c
-+++ b/fs/nfsd/nfsctl.c
-@@ -1385,6 +1385,8 @@ static int create_proc_exports_entry(void)
+ /*
+  * NFS XDR decode functions
+  */
+@@ -1137,6 +1223,69 @@ nfs3_xdr_setaclres(struct rpc_rqst *req, __be32 *p, struct nfs_fattr *fattr)
  }
- #endif
+ #endif  /* CONFIG_NFS_V3_ACL */
  
-+extern void __init nfsd_prog_init(void);
++#ifdef CONFIG_NFS_V3_XATTR
++/*
++ * Decode GETXATTR reply
++ *
++ * FIXME: determine appropriate error returns
++ */
++static int nfs3_xdr_getxattrres(struct rpc_rqst *req, __be32 *p,
++				struct nfs3_getxattrres *res)
++{
++	char *xattr_val;
++	unsigned int xattr_max_size = res->xattr_val_len;
++	int status = ntohl(*p++);
 +
- static int __init init_nfsd(void)
- {
- 	int retval;
-@@ -1393,6 +1395,7 @@ static int __init init_nfsd(void)
- 	retval = nfs4_state_init(); /* nfs4 locking state */
- 	if (retval)
- 		return retval;
-+	nfsd_prog_init();
- 	nfsd_stat_init();	/* Statistics */
- 	retval = nfsd_reply_cache_init();
- 	if (retval)
-diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
-index 492c79b..bd028fd 100644
---- a/fs/nfsd/nfssvc.c
-+++ b/fs/nfsd/nfssvc.c
-@@ -34,6 +34,7 @@
- #include <linux/nfsd/syscall.h>
- #include <linux/lockd/bind.h>
++	if (status != 0)
++		return nfs_stat_to_errno(status);
++
++	p = xdr_decode_post_op_attr(p, res->fattr);
++	p = xdr_decode_string_inplace(p, &xattr_val,
++	                              &res->xattr_val_len,
++	                              xattr_max_size);
++	if (p == NULL)
++		return -EINVAL;
++	memcpy(res->xattr_val, xattr_val, res->xattr_val_len);
++	return 0;
++}
++
++/*
++ * Decode SETXATTR reply
++ */
++static int nfs3_xdr_setxattrres(struct rpc_rqst *req, __be32 *p,
++				struct nfs3_setxattrres *res)
++{
++	int status = ntohl(*p++);
++
++	if (status)
++		return nfs_stat_to_errno(status);
++	xdr_decode_post_op_attr(p, res->fattr);
++	return 0;
++}
++
++/*
++ * Decode LISTXATTR reply
++ */
++static int nfs3_xdr_listxattrres(struct rpc_rqst *req, __be32 *p,
++				 struct nfs3_listxattrres *res)
++{
++	char *xattr_list;
++	unsigned int size = res->xattr_list_len;
++	int status = ntohl(*p++);
++
++	if (status != 0)
++		return nfs_stat_to_errno(status);
++
++	p = xdr_decode_post_op_attr(p, res->fattr);
++	p = xdr_decode_string_inplace(p, &xattr_list,
++	                              &res->xattr_list_len, size);
++	if (p == NULL)
++		return -EINVAL;
++	memcpy(res->xattr_list, xattr_list, res->xattr_list_len);
++	return 0;
++}
++#endif	/* CONFIG_NFS_V3_XATTR */
++
+ #define PROC(proc, argtype, restype, timer)				\
+ [NFS3PROC_##proc] = {							\
+ 	.p_proc      = NFS3PROC_##proc,					\
+@@ -1208,3 +1357,41 @@ struct rpc_version		nfsacl_version3 = {
+ 	.procs			= nfs3_acl_procedures,
+ };
+ #endif  /* CONFIG_NFS_V3_ACL */
++
++#ifdef CONFIG_NFS_V3_XATTR
++static struct rpc_procinfo	nfs3_xattr_procedures[] = {
++	[XATTRPROC3_GETXATTR] = {
++		.p_proc		= XATTRPROC3_GETXATTR,
++		.p_encode	= (kxdrproc_t) nfs3_xdr_getxattrargs,
++		.p_decode	= (kxdrproc_t) nfs3_xdr_getxattrres,
++		.p_arglen	= XATTR3_getxattrargs_sz,
++		.p_replen	= XATTR3_getxattrres_sz,
++		.p_timer	= 1,
++		.p_name		= "GETXATTR",
++	},
++	[XATTRPROC3_SETXATTR] = {
++		.p_proc		= XATTRPROC3_SETXATTR,
++		.p_encode	= (kxdrproc_t) nfs3_xdr_setxattrargs,
++		.p_decode	= (kxdrproc_t) nfs3_xdr_setxattrres,
++		.p_arglen	= XATTR3_setxattrargs_sz,
++		.p_replen	= XATTR3_setxattrres_sz,
++		.p_timer	= 1,
++		.p_name		= "SETXATTR",
++	},
++	[XATTRPROC3_LISTXATTR] = {
++		.p_proc		= XATTRPROC3_LISTXATTR,
++		.p_encode	= (kxdrproc_t) nfs3_xdr_listxattrargs,
++		.p_decode	= (kxdrproc_t) nfs3_xdr_listxattrres,
++		.p_arglen	= XATTR3_listxattrargs_sz,
++		.p_replen	= XATTR3_listxattrres_sz,
++		.p_timer	= 1,
++		.p_name		= "LISTXATTR",
++	},
++};
++
++struct rpc_version		nfs_xattr_version3 = {
++	.number			= 3,
++	.nrprocs		= ARRAY_SIZE(nfs3_xattr_procedures),
++	.procs			= nfs3_xattr_procedures,
++};
++#endif	/* CONFIG_NFS_V3_XATTR */
+diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
+index 320569e..9d34769 100644
+--- a/include/linux/nfs_fs_sb.h
++++ b/include/linux/nfs_fs_sb.h
+@@ -104,6 +104,7 @@ struct nfs_server {
+ 	struct list_head	master_link;	/* link in master servers list */
+ 	struct rpc_clnt *	client;		/* RPC client handle */
+ 	struct rpc_clnt *	client_acl;	/* ACL RPC client handle */
++	struct rpc_clnt *	client_xattr;	/* XATTR RPC client handle */
+ 	struct nlm_host		*nlm_host;	/* NLM client handle */
+ 	struct nfs_iostats *	io_stats;	/* I/O statistics */
+ 	struct backing_dev_info	backing_dev_info;
+@@ -176,7 +177,7 @@ struct nfs_server {
+ #define NFS_CAP_ATIME		(1U << 11)
+ #define NFS_CAP_CTIME		(1U << 12)
+ #define NFS_CAP_MTIME		(1U << 13)
+-
++#define NFS_CAP_XATTR		(1U << 14)
+ 
+ /* maximum number of slots to use */
+ #define NFS4_MAX_SLOT_TABLE RPC_MAX_SLOT_TABLE
+diff --git a/include/linux/nfs_mount.h b/include/linux/nfs_mount.h
+index 4499016..04bb4ee 100644
+--- a/include/linux/nfs_mount.h
++++ b/include/linux/nfs_mount.h
+@@ -70,4 +70,7 @@ struct nfs_mount_data {
+ #define NFS_MOUNT_LOOKUP_CACHE_NONE	0x20000
+ #define NFS_MOUNT_NORESVPORT		0x40000
+ 
++/* FIXME: determine semantics and modify flagmask if exposed to userland */
++#define NFS_MOUNT_NOXATTR		0x80000
++
+ #endif
+diff --git a/include/linux/nfs_xattr.h b/include/linux/nfs_xattr.h
+new file mode 100644
+index 0000000..98fdbed
+--- /dev/null
++++ b/include/linux/nfs_xattr.h
+@@ -0,0 +1,21 @@
++/*
++ * Extended attribute protocol for NFSv3 (XATTR)
++ *
++ *
++ * Copyright (C) 2009 Red Hat, Inc., James Morris <jmorris@redhat.com>
++ *
++ */
++#ifndef __LINUX_NFS_XATTR_H
++#define __LINUX_NFS_XATTR_H
++
++#include <linux/xattr.h>
++
++#define NFS_XATTR_PROGRAM	391063	/* TODO: find another value */
++
++/* xattr procedure numbers */
++#define XATTRPROC3_GETXATTR	1
++#define XATTRPROC3_SETXATTR	2
++#define XATTRPROC3_LISTXATTR	3
++#define XATTRPROC3_RMXATTR	4
++
++#endif  /* __LINUX_NFS_XATTR_H */
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index 62f63fb..35a4ddf 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -2,6 +2,7 @@
+ #define _LINUX_NFS_XDR_H
+ 
  #include <linux/nfsacl.h>
 +#include <linux/nfs_xattr.h>
  
- #define NFSDDBG_FACILITY	NFSDDBG_SVC
- 
-@@ -92,6 +93,27 @@ static struct svc_stat	nfsd_acl_svcstats = {
- };
- #endif /* defined(CONFIG_NFSD_V2_ACL) || defined(CONFIG_NFSD_V3_ACL) */
- 
-+#ifdef CONFIG_NFSD_V3_XATTR
-+static struct svc_stat	nfsd_xattr_svcstats;
-+static struct svc_version *	nfsd_xattr_version[] = {
-+	[3] = &nfsd_xattr_version3,
-+};
-+
-+#define NFSD_XATTR_MINVERS	3
-+#define NFSD_XATTR_NRVERS	ARRAY_SIZE(nfsd_xattr_version)
-+static struct svc_version *nfsd_xattr_versions[NFSD_XATTR_NRVERS];
-+
-+static struct svc_program	nfsd_xattr_program = {
-+	.pg_prog		= NFS_XATTR_PROGRAM,
-+	.pg_nvers		= NFSD_XATTR_NRVERS,
-+	.pg_vers		= nfsd_xattr_versions,
-+	.pg_name		= "nfsxattr",
-+	.pg_class		= "nfsd",		/* share nfsd auth */
-+	.pg_stats		= &nfsd_xattr_svcstats,
-+	.pg_authenticate	= &svc_set_client,
-+};
-+#endif	/* CONFIG_NFSD_V3_XATTR */
-+
- static struct svc_version *	nfsd_version[] = {
- 	[2] = &nfsd_version2,
- #if defined(CONFIG_NFSD_V3)
-@@ -107,9 +129,6 @@ static struct svc_version *	nfsd_version[] = {
- static struct svc_version *nfsd_versions[NFSD_NRVERS];
- 
- struct svc_program		nfsd_program = {
--#if defined(CONFIG_NFSD_V2_ACL) || defined(CONFIG_NFSD_V3_ACL)
--	.pg_next		= &nfsd_acl_program,
--#endif
- 	.pg_prog		= NFS_PROGRAM,		/* program number */
- 	.pg_nvers		= NFSD_NRVERS,		/* nr of entries in nfsd_version */
- 	.pg_vers		= nfsd_versions,	/* version table */
-@@ -120,6 +139,28 @@ struct svc_program		nfsd_program = {
- 
+ /*
+  * To change the maximum rsize and wsize supported by the NFS client, adjust
+@@ -512,6 +513,27 @@ struct nfs3_setaclargs {
+ 	struct page **		pages;
  };
  
-+static void __init nfsd_prog_add(struct svc_program *new)
-+{
-+	struct svc_program *p = &nfsd_program;
-+
-+	while (p->pg_next)
-+		p = p->pg_next;
-+
-+	p->pg_next = new;
-+}
-+
-+/* Dynamically initialize list of service programs */
-+void __init nfsd_prog_init(void)
-+{
-+#if defined(CONFIG_NFSD_V2_ACL) || defined(CONFIG_NFSD_V3_ACL)
-+	nfsd_prog_add(&nfsd_acl_program);
-+#endif
-+
-+#ifdef CONFIG_NFSD_V3_XATTR
-+	nfsd_prog_add(&nfsd_xattr_program);
-+#endif
-+}
-+
- u32 nfsd_supported_minorversion;
- 
- int nfsd_vers(int vers, enum vers_op change)
-@@ -133,6 +174,10 @@ int nfsd_vers(int vers, enum vers_op change)
- 		if (vers < NFSD_ACL_NRVERS)
- 			nfsd_acl_versions[vers] = nfsd_acl_version[vers];
- #endif
-+#ifdef CONFIG_NFSD_V3_XATTR
-+		if (vers < NFSD_XATTR_NRVERS)
-+			nfsd_xattr_versions[vers] = nfsd_xattr_version[vers];
-+#endif
- 		break;
- 	case NFSD_CLEAR:
- 		nfsd_versions[vers] = NULL;
-@@ -140,6 +185,10 @@ int nfsd_vers(int vers, enum vers_op change)
- 		if (vers < NFSD_ACL_NRVERS)
- 			nfsd_acl_versions[vers] = NULL;
- #endif
-+#ifdef CONFIG_NFSD_V3_XATTR
-+		if (vers < NFSD_XATTR_NRVERS)
-+			nfsd_xattr_versions[vers] = NULL;
-+#endif
- 		break;
- 	case NFSD_TEST:
- 		return nfsd_versions[vers] != NULL;
-@@ -218,6 +267,11 @@ void nfsd_reset_versions(void)
- 			nfsd_acl_program.pg_vers[i] =
- 				nfsd_acl_version[i];
- #endif
-+#ifdef CONFIG_NFSD_V3_XATTR
-+		for (i = NFSD_XATTR_MINVERS; i < NFSD_XATTR_NRVERS; i++)
-+			nfsd_xattr_program.pg_vers[i] =
-+				nfsd_xattr_version[i];
-+#endif
- 	}
- }
- 
-diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-index 23341c1..88c8c48 100644
---- a/fs/nfsd/vfs.c
-+++ b/fs/nfsd/vfs.c
-@@ -413,8 +413,9 @@ out_nfserr:
- 
- #if defined(CONFIG_NFSD_V2_ACL) || \
-     defined(CONFIG_NFSD_V3_ACL) || \
--    defined(CONFIG_NFSD_V4)
--static ssize_t nfsd_getxattr(struct dentry *dentry, char *key, void **buf)
-+    defined(CONFIG_NFSD_V4) || \
-+    defined(CONFIG_NFSD_V3_XATTR)
-+ssize_t nfsd_getxattr(struct dentry *dentry, char *key, void **buf)
- {
- 	ssize_t buflen;
- 	ssize_t ret;
-diff --git a/include/linux/nfsd/nfsd.h b/include/linux/nfsd/nfsd.h
-index 2b49d67..447692a 100644
---- a/include/linux/nfsd/nfsd.h
-+++ b/include/linux/nfsd/nfsd.h
-@@ -133,6 +133,13 @@ __be32		nfsd_permission(struct svc_rqst *, struct svc_export *,
- 				struct dentry *, int);
- int		nfsd_sync_dir(struct dentry *dp);
- 
-+#if defined(CONFIG_NFSD_V2_ACL) || \
-+    defined(CONFIG_NFSD_V3_ACL) || \
-+    defined(CONFIG_NFSD_V4) || \
-+    defined(CONFIG_NFSD_V3_XATTR)
-+ssize_t		nfsd_getxattr(struct dentry *dentry, char *key, void **buf);
-+#endif
-+
- #if defined(CONFIG_NFSD_V2_ACL) || defined(CONFIG_NFSD_V3_ACL)
- #ifdef CONFIG_NFSD_V2_ACL
- extern struct svc_version nfsd_acl_version2;
-@@ -148,6 +155,12 @@ struct posix_acl *nfsd_get_posix_acl(struct svc_fh *, int);
- int nfsd_set_posix_acl(struct svc_fh *, int, struct posix_acl *);
- #endif
- 
-+#ifdef CONFIG_NFSD_V3_XATTR
-+extern struct svc_version nfsd_xattr_version3;
-+#else
-+#define nfsd_xattr_version3 NULL
-+#endif
-+
- enum vers_op {NFSD_SET, NFSD_CLEAR, NFSD_TEST, NFSD_AVAIL };
- int nfsd_vers(int vers, enum vers_op change);
- int nfsd_minorversion(u32 minorversion, enum vers_op change);
-diff --git a/include/linux/nfsd/xdr3.h b/include/linux/nfsd/xdr3.h
-index 421eddd..a79b84e 100644
---- a/include/linux/nfsd/xdr3.h
-+++ b/include/linux/nfsd/xdr3.h
-@@ -121,6 +121,27 @@ struct nfsd3_setaclargs {
- 	struct posix_acl	*acl_default;
- };
- 
-+struct nfsd3_getxattrargs {
-+	struct svc_fh		fh;
-+	char *			xattr_name;
-+	unsigned int		xattr_name_len;
++struct nfs3_getxattrargs {
++	struct nfs_fh *		fh;
++	const char *		xattr_namespace;
++	const char *		xattr_name;
 +	unsigned int		xattr_size_max;
 +};
 +
-+struct nfsd3_setxattrargs {
-+	struct svc_fh		fh;
++struct nfs3_setxattrargs {
++	struct nfs_fh *		fh;
 +	unsigned int		xattr_flags;
-+	char *			xattr_name;
-+	unsigned int		xattr_name_len;
++	const char *		xattr_namespace;
++	const char *		xattr_name;
++	const char *		xattr_val;
++	int			xattr_val_len;
++};
++
++struct nfs3_listxattrargs {
++	struct nfs_fh *		fh;
++	unsigned int		xattr_list_max;
++};
++
+ struct nfs_diropok {
+ 	struct nfs_fh *		fh;
+ 	struct nfs_fattr *	fattr;
+@@ -644,6 +666,26 @@ struct nfs3_getaclres {
+ 	struct posix_acl *	acl_default;
+ };
+ 
++struct nfs3_getxattrres {
++	struct nfs_fattr *	fattr;
 +	char *			xattr_val;
 +	int			xattr_val_len;
 +};
 +
-+struct nfsd3_listxattrargs {
-+	struct svc_fh		fh;
-+	unsigned int		xattr_list_max;
++/*
++ * Note: if we don't add any more fields, we can get rid of this struct and
++ * just use fattr in the calling code.
++ */
++struct nfs3_setxattrres {
++	struct nfs_fattr *	fattr;
 +};
 +
- struct nfsd3_attrstat {
- 	__be32			status;
- 	struct svc_fh		fh;
-@@ -229,6 +250,25 @@ struct nfsd3_getaclres {
- 	struct posix_acl	*acl_default;
- };
- 
-+struct nfsd3_getxattrres {
-+	__be32			status;
-+	struct svc_fh		fh;
-+	char *			xattr_val;
-+	unsigned int		xattr_val_len;
-+};
-+
-+struct nfsd3_setxattrres {
-+	__be32			status;
-+	struct svc_fh		fh;
-+};
-+
-+struct nfsd3_listxattrres {
-+	__be32			status;
-+	struct svc_fh		fh;
++struct nfs3_listxattrres {
++	struct nfs_fattr *	fattr;
 +	char *			xattr_list;
-+	unsigned int		xattr_list_len;
++	int			xattr_list_len;
 +};
 +
- /* dummy type for release */
- struct nfsd3_fhandle_pair {
- 	__u32			dummy;
-@@ -249,6 +289,9 @@ union nfsd3_xdrstore {
- 	struct nfsd3_linkargs		linkargs;
- 	struct nfsd3_symlinkargs	symlinkargs;
- 	struct nfsd3_readdirargs	readdirargs;
-+	struct nfsd3_getxattrargs	getxattrargs;
-+	struct nfsd3_setxattrargs	setxattrargs;
-+	struct nfsd3_listxattrargs	listxattrargs;
- 	struct nfsd3_diropres 		diropres;
- 	struct nfsd3_accessres		accessres;
- 	struct nfsd3_readlinkres	readlinkres;
-@@ -262,6 +305,9 @@ union nfsd3_xdrstore {
- 	struct nfsd3_pathconfres	pathconfres;
- 	struct nfsd3_commitres		commitres;
- 	struct nfsd3_getaclres		getaclres;
-+	struct nfsd3_getxattrres	getxattrres;
-+	struct nfsd3_setxattrres	setxattrres;
-+	struct nfsd3_listxattrres	listxattrres;
- };
+ #ifdef CONFIG_NFS_V4
  
- #define NFS3_SVC_XDRSIZE		sizeof(union nfsd3_xdrstore)
-diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
-index ea80096..4987fc6 100644
---- a/include/linux/sunrpc/svc.h
-+++ b/include/linux/sunrpc/svc.h
-@@ -380,7 +380,7 @@ struct svc_version {
- 	u32			vs_xdrsize;	/* xdrsize needed for this version */
+ typedef u64 clientid4;
+@@ -1062,4 +1104,7 @@ extern struct rpc_version	nfs_version4;
+ extern struct rpc_version	nfsacl_version3;
+ extern struct rpc_program	nfsacl_program;
  
- 	unsigned int		vs_hidden : 1;	/* Don't register with portmapper.
--						 * Only used for nfsacl so far. */
-+						 * Used for nfsacl and nfsxattr. */
- 
- 	/* Override dispatch function (e.g. when caching replies).
- 	 * A return value of 0 means drop the request. 
++extern struct rpc_version	nfs_xattr_version3;
++extern struct rpc_program	nfs_xattr_program;
++
+ #endif
 -- 
 1.6.2.5
 
