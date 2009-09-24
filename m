@@ -1,34 +1,63 @@
-From: Manuel Lauss <manuel.lauss@googlemail.com>
-Subject: Re: NFS: nfsroot BUG() hit in latest -git
-Date: Thu, 24 Sep 2009 16:11:15 +0200
-Message-ID: <f861ec6f0909240711o4c61b8e7r867cd5c7e5f1b1d0@mail.gmail.com>
-References: <f861ec6f0909240049q69df95e5wba5260788931667c@mail.gmail.com>
-	 <0A59A8E5-E9D6-4A46-BB30-AF779EE5A7D0@oracle.com>
+From: Randy Dunlap <randy.dunlap@oracle.com>
+Subject: Re: [PATCH] net: fix htmldocs sunrpc, clnt.c
+Date: Thu, 24 Sep 2009 09:19:35 -0700
+Message-ID: <4ABB9C17.3020307@oracle.com>
+References: <1253794781.5860.29.camel@ht.satnam>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
-Cc: Linux-NFS <linux-nfs@vger.kernel.org>,
-	Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Chuck Lever <chuck.lever@oracle.com>
+Cc: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>,
+	Benny Halevy <bhalevy@panasas.com>,
+	Andy Adamson <andros@netapp.com>,
+	Trond Myklebust <Trond.Myklebust@netapp.com>,
+	David Miller <davem@davemloft.net>, linux-nfs@vger.kernel.org,
+	netdev <netdev@vger.kernel.org>,
+	LKML <linux-kernel@vger.kernel.org>
+To: Jaswinder Singh Rajput <jaswinder@kernel.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-bw0-f210.google.com ([209.85.218.210]:63408 "EHLO
-	mail-bw0-f210.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752005AbZIXOLN convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 24 Sep 2009 10:11:13 -0400
-Received: by bwz6 with SMTP id 6so1328337bwz.37
-        for <linux-nfs@vger.kernel.org>; Thu, 24 Sep 2009 07:11:15 -0700 (PDT)
-In-Reply-To: <0A59A8E5-E9D6-4A46-BB30-AF779EE5A7D0@oracle.com>
+Received: from acsinet12.oracle.com ([141.146.126.234]:25211 "EHLO
+	acsinet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752535AbZIXQTm (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 24 Sep 2009 12:19:42 -0400
+In-Reply-To: <1253794781.5860.29.camel-6Ww87KsxWewAvxtiuMwx3w@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Sep 24, 2009 at 3:58 PM, Chuck Lever <chuck.lever@oracle.com> w=
-rote:
->> It's hitting the "BUG()" in fs/nfs/client.c::nfs_init_timeout_values=
-().
->> it does not show up if I remove the "v3,tcp" from nfsroot
->> parameters, but then the whole userspace boot process takes ages.
+Jaswinder Singh Rajput wrote:
+>   DOCPROC Documentation/DocBook/networking.xml
+>   Warning(net/sunrpc/clnt.c:647): No description found for parameter 'req'
+>   Warning(net/sunrpc/clnt.c:647): No description found for parameter 'tk_ops'
+>   Warning(net/sunrpc/clnt.c:647): Excess function parameter 'ops' description in 'rpc_run_bc_task'
+> 
+> Signed-off-by: Jaswinder Singh Rajput <jaswinderrajput@gmail.com>
 
-> Viro just reported a similar problem. =A0Maybe the attached patch fix=
-es it?
+Ack.  Already sent, but possibly lost.
 
-Yes it does, thank you.
-        Manuel Lauss
+> Cc: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
+> Cc: Benny Halevy <bhalevy@panasas.com>
+> Cc: Andy Adamson <andros@netapp.com>
+> Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
+> Cc: Randy Dunlap <randy.dunlap@oracle.com>
+> Cc: David Miller <davem@davemloft.net>
+> ---
+>  net/sunrpc/clnt.c |    5 +++--
+>  1 files changed, 3 insertions(+), 2 deletions(-)
+> 
+> diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+> index a417d5a..38829e2 100644
+> --- a/net/sunrpc/clnt.c
+> +++ b/net/sunrpc/clnt.c
+> @@ -640,10 +640,11 @@ EXPORT_SYMBOL_GPL(rpc_call_async);
+>  /**
+>   * rpc_run_bc_task - Allocate a new RPC task for backchannel use, then run
+>   * rpc_execute against it
+> - * @ops: RPC call ops
+> + * @req: RPC request
+> + * @tk_ops: RPC call ops
+>   */
+>  struct rpc_task *rpc_run_bc_task(struct rpc_rqst *req,
+> -					const struct rpc_call_ops *tk_ops)
+> +				const struct rpc_call_ops *tk_ops)
+>  {
+>  	struct rpc_task *task;
+>  	struct xdr_buf *xbufp = &req->rq_snd_buf;
+
