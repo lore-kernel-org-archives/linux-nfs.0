@@ -1,77 +1,66 @@
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [GIT PULL] Please pull 2 more bugfixes for the NFS client
-Date: Thu, 24 Sep 2009 15:49:59 -0400
-Message-ID: <1253821799.10290.27.camel@heimdal.trondhjem.org>
-Mime-Version: 1.0
-Content-Type: text/plain
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
-	Alexander Viro <viro@zeniv.linux.org.uk>,
-	Jaswinder Singh Rajput <jaswinder@kernel.org>
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1754660AbZIXTuU@vger.kernel.org>
-Sender: linux-kernel-owner@vger.kernel.org
+From: andros@netapp.com
+Subject: [PATCH 1/1] nfsd41: use sv_max_mesg for forechannel max sizes
+Date: Wed, 23 Sep 2009 21:32:21 -0400
+Message-ID: <1253755941-4485-1-git-send-email-andros@netapp.com>
+Cc: linux-nfs@vger.kernel.org, pnfs@linux-nfs.org,
+	Andy Adamson <andros@netapp.com>
+To: bfields@fieldses.org
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from mx2.netapp.com ([216.240.18.37]:7172 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751613AbZIXVGW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 24 Sep 2009 17:06:22 -0400
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Linus,
+From: Andy Adamson <andros@netapp.com>
 
-Please pull from the "bugfixes" branch of the repository at
+ca_maxresponsesize and ca_maxrequest size include the RPC header.
 
-   git pull git://git.linux-nfs.org/projects/trondmy/nfs-2.6.git bugfixes
+sv_max_mesg is sv_max_payolad plus a page for overhead and is used in
+svc_init_buffer to allocate server buffer space for both the request and reply.
+Note that this means we can service an RPC compound that requires
+ca_maxrequestsize (MAXWRITE) or ca_max_responsesize (MAXREAD) but that we do
+not support an RPC compound that requires both ca_maxrequestsize and
+ca_maxresponsesize.
 
-This will update the following files through the appended changesets.
+Signed-off-by: Andy Adamson <andros@netapp.com>
+---
+ Documentation/filesystems/nfs41-server.txt |    3 +++
+ fs/nfsd/nfs4state.c                        |    3 ++-
+ 2 files changed, 5 insertions(+), 1 deletions(-)
 
-  Cheers,
-    Trond
-
-----
- fs/nfs/super.c    |    2 ++
- net/sunrpc/clnt.c |    5 +++--
- 2 files changed, 5 insertions(+), 2 deletions(-)
-
-commit 36dd2fdb37efdab15844eb72026f8ce3aa0fb560
-Author: Al Viro <viro@ZenIV.linux.org.uk>
-Date:   Thu Sep 24 14:58:42 2009 -0400
-
-    nfs[23] tcp breakage in mount with binary options
-    
-    We forget to set nfs_server.protocol in tcp case when old-style binary
-    options are passed to mount.  The thing remains zero and never validated
-    afterwards.  As the result, we hit BUG in fs/nfs/client.c:588.
-    
-    Breakage has been introduced in NFS: Add nfs_alloc_parsed_mount_data
-    merged yesterday...
-    
-    Signed-off-by: Al Viro <viro@zeniv.linux.org.uk>
-    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-
-commit 7a73fdde3990ea840b604248362876437ea8ce80
-Author: Jaswinder Singh Rajput <jaswinder@kernel.org>
-Date:   Thu Sep 24 14:58:42 2009 -0400
-
-    net: fix htmldocs sunrpc, clnt.c
-    
-    
-      DOCPROC Documentation/DocBook/networking.xml
-      Warning(net/sunrpc/clnt.c:647): No description found for parameter 'req'
-      Warning(net/sunrpc/clnt.c:647): No description found for parameter 'tk_ops'
-      Warning(net/sunrpc/clnt.c:647): Excess function parameter 'ops' description in 'rpc_run_bc_task'
-    
-    Signed-off-by: Jaswinder Singh Rajput <jaswinderrajput@gmail.com>
-    Cc: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
-    Cc: Benny Halevy <bhalevy@panasas.com>
-    Cc: Andy Adamson <andros@netapp.com>
-    Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
-    Cc: Randy Dunlap <randy.dunlap@oracle.com>
-    Cc: David Miller <davem@davemloft.net>
-    Acked-by: Randy Dunlap <randy.dunlap@oracle.com>
-    Acked-by: Benny Halevy <bhalevy@panasas.com>
-    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-
-
+diff --git a/Documentation/filesystems/nfs41-server.txt b/Documentation/filesystems/nfs41-server.txt
+index 05d81cb..6c1c4a7 100644
+--- a/Documentation/filesystems/nfs41-server.txt
++++ b/Documentation/filesystems/nfs41-server.txt
+@@ -159,3 +159,6 @@ The following cases aren't supported yet:
+   DESTROY_CLIENTID, DESTROY_SESSION, EXCHANGE_ID.
+ * DESTROY_SESSION MUST be the final operation in the COMPOUND request.
+ 
++CREATE_SESSION fore channel negotiation:
++* No support for a sessions fore channel RPC compound that requires both a
++  ca_maxrequestsize and a ca_maxresponsesize.
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 46e9ac5..e9a08e5 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -477,13 +477,14 @@ static int set_forechannel_drc_size(struct nfsd4_channel_attrs *fchan)
+ 
+ /*
+  * fchan holds the client values on input, and the server values on output
++ * sv_max_mesg is the maximum payload plus one page for overhead.
+  */
+ static int init_forechannel_attrs(struct svc_rqst *rqstp,
+ 				  struct nfsd4_channel_attrs *session_fchan,
+ 				  struct nfsd4_channel_attrs *fchan)
+ {
+ 	int status = 0;
+-	__u32   maxcount = svc_max_payload(rqstp);
++	__u32   maxcount = nfsd_serv->sv_max_mesg;
+ 
+ 	/* headerpadsz set to zero in encode routine */
+ 
 -- 
-Trond Myklebust
-Linux NFS client maintainer
+1.6.2.5
 
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
