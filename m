@@ -1,58 +1,66 @@
-From: Benny Halevy <bhalevy@panasas.com>
-Subject: Re: Ping: [pnfs] [RFC 1/1] nfs4: optionally return status from state_manager
-Date: Fri, 25 Sep 2009 17:19:10 +0300
-Message-ID: <4ABCD15E.2020009@panasas.com>
-References: <4A9EDDE6.1090308@panasas.com>	 <1251990924-3904-1-git-send-email-bhalevy@panasas.com>	 <4ABC477E.4060709@panasas.com>	 <1253885382.31072.14.camel@heimdal.trondhjem.org>	 <4ABCCB4D.4020603@panasas.com> <1253888019.31072.31.camel@heimdal.trondhjem.org>
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: Re: [PATCH 1/1] nfs41: Do not free slot if retried while operation
+ was in progress
+Date: Fri, 25 Sep 2009 11:01:58 -0400
+Message-ID: <1253890918.31072.35.camel@heimdal.trondhjem.org>
+References: <1253852945-22020-1-git-send-email-bhalevy@panasas.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: "J. Bruce Fields" <bfields@citi.umich.edu>,
-	linux-nfs@vger.kernel.org, pnfs@linux-nfs.org
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Content-Type: text/plain
+Cc: pnfs@linux-nfs.org, linux-nfs@vger.kernel.org
+To: Benny Halevy <bhalevy@panasas.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from dip-colo-pa.panasas.com ([67.152.220.67]:23449 "EHLO
-	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1752675AbZIYOTI (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 25 Sep 2009 10:19:08 -0400
-In-Reply-To: <1253888019.31072.31.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
+Received: from mx2.netapp.com ([216.240.18.37]:20206 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752204AbZIYPCd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 25 Sep 2009 11:02:33 -0400
+In-Reply-To: <1253852945-22020-1-git-send-email-bhalevy@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sep. 25, 2009, 17:13 +0300, Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
-> On Fri, 2009-09-25 at 16:53 +0300, Benny Halevy wrote:
->> That scenario is caused when the server's /etc/exports
->> is badly configured, where the export entry for nfsv4
->> (fsid=0) exports a non-existing path.
->>
->> I agree that the server should not return ENOENT
->> for PUTROOTFH as it contradicts the spec.
->> NFS4ERR_SERVERFAULT seems more appropriate.
+On Fri, 2009-09-25 at 07:29 +0300, Benny Halevy wrote:
+> The client cannot reuse a slot while the server's
+> still working on the previous RPC using it.
 > 
-> Indeed.
+> The symptom Bruce saw without this patch was occasional
+> ESERVERFAULT during Connectathon special tests, 30 MB write/read test.
 > 
->> The main reason for getting the failure from
->> the state engine in nfsv4.1 is that we need to
->> create a session before nfs4_path_walk in nfs4_create_server
->> and we do that using the state manager.
->> In the nfsv4.0 case we create no state at this point.
+> Reported-by: J. Bruce Fields <bfields@fieldses.org>
+> Tested-by: J. Bruce Fields <bfields@fieldses.org>
+> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+> ---
+>  fs/nfs/nfs4proc.c |    6 ++++++
+>  1 files changed, 6 insertions(+), 0 deletions(-)
 > 
-> OK, so this particular case, there is no state recovery possible at all.
-> If so, why not just label the cl_cons_state as NFS_CS_IRRECOVERABLE (or
-> possibly NFS_CS_SERVERFAULT) instead of trying to overload it with an
-> error value that nobody can do anything about?
+> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+> index be6544a..70895d6 100644
+> --- a/fs/nfs/nfs4proc.c
+> +++ b/fs/nfs/nfs4proc.c
+> @@ -386,6 +386,12 @@ static void nfs41_sequence_done(struct nfs_client *clp,
+>  		spin_unlock(&clp->cl_lock);
+>  		return;
+>  	}
+> +
+> +	/* Do not free slot if retried while operation was in progress */
+> +	if (res->sr_status == -NFS4ERR_DELAY) {
+> +		dprintk("%s: Operation in progress\n", __func__);
+> +		return;
+> +	}
+>  out:
+>  	/* The session may be reset by one of the error handlers. */
+>  	dprintk("%s: Error %d free the slot \n", __func__, res->sr_status);
 
-OK.  I'll try this approach then.
+OK... Can somebody please tell me how this is supposed to work? As far
+as I can see, most callers of nfs41_sequence_done() are calling
+nfs41_sequence_free_slot() themselves.
 
-Thanks!
+IOW: Who is responsible for calling nfs41_sequence_free_slot()? Is it
+nfs41_sequence_done(), or is it the callers, or is it some combination
+of the two (and if so, what determines who calls it)?
 
-Benny
+-- 
+Trond Myklebust
+Linux NFS client maintainer
 
-> 
-> I'd say that if you want to pass the error value to the administrator,
-> then the right way to do that would be via a printk. Something along the
-> lines of
-> 
-> printk("NFSv4: Server %s returned an illegal error %d when getting the
-> root filehandle\n");
-> 
-> However, I'm not really convinced that is necessary...
-> 
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
