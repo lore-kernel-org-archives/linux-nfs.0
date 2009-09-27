@@ -1,222 +1,257 @@
 From: Jeff Layton <jlayton@redhat.com>
-Subject: [RFC PATCH 1/9] sunrpc: abstract out encoding function at rpc_clnt level
-Date: Sun, 27 Sep 2009 12:50:22 -0400
-Message-ID: <1254070230-13125-2-git-send-email-jlayton@redhat.com>
+Subject: [RFC PATCH 9/9] smbtest: simple module for testing SMB/RPC code
+Date: Sun, 27 Sep 2009 12:50:30 -0400
+Message-ID: <1254070230-13125-10-git-send-email-jlayton@redhat.com>
 References: <1254070230-13125-1-git-send-email-jlayton@redhat.com>
 To: linux-nfs@vger.kernel.org, linux-cifs-client@lists.samba.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from cdptpa-omtalb.mail.rr.com ([75.180.132.122]:60227 "EHLO
+Received: from cdptpa-omtalb.mail.rr.com ([75.180.132.121]:63267 "EHLO
 	cdptpa-omtalb.mail.rr.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752807AbZI0Qu2 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 27 Sep 2009 12:50:28 -0400
+	with ESMTP id S1751513AbZI0Q5M (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 27 Sep 2009 12:57:12 -0400
 In-Reply-To: <1254070230-13125-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-In order to add the ability to do an SMB call with the sunrpc layer, we
-need to abstract out the call encoding. Add a function pointer that hangs
-off of the rpc_clnt to do the encoding. For now, all of the existing
-callers will simply set it to rpc_xdr_encode.
+Proof of concept module. This just sends a NEGOTIATE_PROTOCOL request to
+a server and verifies the response.
 
 Signed-off-by: Jeff Layton <jlayton@redhat.com>
 ---
- fs/lockd/host.c             |    3 +++
- fs/lockd/mon.c              |    3 +++
- fs/nfs/client.c             |    3 +++
- fs/nfs/mount_clnt.c         |    3 +++
- fs/nfsd/nfs4callback.c      |    3 +++
- include/linux/sunrpc/clnt.h |    7 +++++++
- net/sunrpc/clnt.c           |   14 ++++++++++----
- net/sunrpc/rpcb_clnt.c      |    6 ++++++
- 8 files changed, 38 insertions(+), 4 deletions(-)
+ fs/Makefile          |    2 +
+ fs/smbtest/Makefile  |    1 +
+ fs/smbtest/smbtest.c |  204 ++++++++++++++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 207 insertions(+), 0 deletions(-)
+ create mode 100644 fs/smbtest/Makefile
+ create mode 100644 fs/smbtest/smbtest.c
 
-diff --git a/fs/lockd/host.c b/fs/lockd/host.c
-index 4600c20..b7189ce 100644
---- a/fs/lockd/host.c
-+++ b/fs/lockd/host.c
-@@ -362,6 +362,9 @@ nlm_bind_host(struct nlm_host *host)
- 			.program	= &nlm_program,
- 			.version	= host->h_version,
- 			.authflavor	= RPC_AUTH_UNIX,
-+			.encode		= rpc_xdr_encode,
-+			.callhdr_size	= RPC_CALLHDRSIZE,
-+			.replhdr_size	= RPC_REPHDRSIZE,
- 			.flags		= (RPC_CLNT_CREATE_NOPING |
- 					   RPC_CLNT_CREATE_AUTOBIND),
- 		};
-diff --git a/fs/lockd/mon.c b/fs/lockd/mon.c
-index f956651..ea24301 100644
---- a/fs/lockd/mon.c
-+++ b/fs/lockd/mon.c
-@@ -75,6 +75,9 @@ static struct rpc_clnt *nsm_create(void)
- 		.program		= &nsm_program,
- 		.version		= NSM_VERSION,
- 		.authflavor		= RPC_AUTH_NULL,
-+		.encode			= rpc_xdr_encode,
-+		.callhdr_size		= RPC_CALLHDRSIZE,
-+		.replhdr_size		= RPC_REPHDRSIZE,
- 		.flags			= RPC_CLNT_CREATE_NOPING,
- 	};
- 
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index 63976c0..5505ddf 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -606,6 +606,9 @@ static int nfs_create_rpc_client(struct nfs_client *clp,
- 		.servername	= clp->cl_hostname,
- 		.program	= &nfs_program,
- 		.version	= clp->rpc_ops->version,
-+		.encode		= rpc_xdr_encode,
-+		.callhdr_size	= RPC_CALLHDRSIZE,
-+		.replhdr_size	= RPC_REPHDRSIZE,
- 		.authflavor	= flavor,
- 	};
- 
-diff --git a/fs/nfs/mount_clnt.c b/fs/nfs/mount_clnt.c
-index 0adefc4..14f79e5 100644
---- a/fs/nfs/mount_clnt.c
-+++ b/fs/nfs/mount_clnt.c
-@@ -159,6 +159,9 @@ int nfs_mount(struct nfs_mount_request *info)
- 		.servername	= info->hostname,
- 		.program	= &mnt_program,
- 		.version	= info->version,
-+		.encode		= rpc_xdr_encode,
-+		.callhdr_size	= RPC_CALLHDRSIZE,
-+		.replhdr_size	= RPC_REPHDRSIZE,
- 		.authflavor	= RPC_AUTH_UNIX,
- 	};
- 	struct rpc_clnt		*mnt_clnt;
-diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
-index 24e8d78..dbfd91c 100644
---- a/fs/nfsd/nfs4callback.c
-+++ b/fs/nfsd/nfs4callback.c
-@@ -494,6 +494,9 @@ int setup_callback_client(struct nfs4_client *clp)
- 		.authflavor	= clp->cl_flavor,
- 		.flags		= (RPC_CLNT_CREATE_NOPING | RPC_CLNT_CREATE_QUIET),
- 		.client_name    = clp->cl_principal,
-+		.encode		= rpc_xdr_encode,
-+		.callhdr_size	= RPC_CALLHDRSIZE,
-+		.replhdr_size	= RPC_REPHDRSIZE,
- 	};
- 	struct rpc_clnt *client;
- 
-diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
-index 8ed9642..6209c39 100644
---- a/include/linux/sunrpc/clnt.h
-+++ b/include/linux/sunrpc/clnt.h
-@@ -63,6 +63,9 @@ struct rpc_clnt {
- 	struct rpc_program *	cl_program;
- 	char			cl_inline_name[32];
- 	char			*cl_principal;	/* target to authenticate to */
-+	void			(*cl_encode) (struct rpc_task *task);
-+	size_t			cl_callhdr_sz; /* in quadwords */
-+	size_t			cl_replhdr_sz; /* in quadwords */
- };
- 
- /*
-@@ -115,6 +118,9 @@ struct rpc_create_args {
- 	unsigned long		flags;
- 	char			*client_name;
- 	struct svc_xprt		*bc_xprt;	/* NFSv4.1 backchannel */
-+	size_t			callhdr_size;	/* in quadwords */
-+	size_t			replhdr_size;	/* in quadwords */
-+	void			(*encode) (struct rpc_task *task);
- };
- 
- /* Values for "flags" field */
-@@ -150,6 +156,7 @@ struct rpc_task *rpc_call_null(struct rpc_clnt *clnt, struct rpc_cred *cred,
- 			       int flags);
- void		rpc_restart_call_prepare(struct rpc_task *);
- void		rpc_restart_call(struct rpc_task *);
-+void		rpc_xdr_encode(struct rpc_task *);
- void		rpc_setbufsize(struct rpc_clnt *, unsigned int, unsigned int);
- size_t		rpc_max_payload(struct rpc_clnt *);
- void		rpc_force_rebind(struct rpc_clnt *);
-diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index 38829e2..f675416 100644
---- a/net/sunrpc/clnt.c
-+++ b/net/sunrpc/clnt.c
-@@ -200,6 +200,10 @@ static struct rpc_clnt * rpc_new_client(const struct rpc_create_args *args, stru
- 	clnt->cl_vers     = version->number;
- 	clnt->cl_stats    = program->stats;
- 	clnt->cl_metrics  = rpc_alloc_iostats(clnt);
-+	clnt->cl_encode   = args->encode;
-+	clnt->cl_callhdr_sz	= args->callhdr_size;
-+	clnt->cl_replhdr_sz	= args->replhdr_size;
+diff --git a/fs/Makefile b/fs/Makefile
+index af6d047..0e9d1df 100644
+--- a/fs/Makefile
++++ b/fs/Makefile
+@@ -124,3 +124,5 @@ obj-$(CONFIG_OCFS2_FS)		+= ocfs2/
+ obj-$(CONFIG_BTRFS_FS)		+= btrfs/
+ obj-$(CONFIG_GFS2_FS)           += gfs2/
+ obj-$(CONFIG_EXOFS_FS)          += exofs/
 +
- 	err = -ENOMEM;
- 	if (clnt->cl_metrics == NULL)
- 		goto out_no_stats;
-@@ -905,6 +909,7 @@ call_allocate(struct rpc_task *task)
- 	unsigned int slack = task->tk_msg.rpc_cred->cr_auth->au_cslack;
- 	struct rpc_rqst *req = task->tk_rqstp;
- 	struct rpc_xprt *xprt = task->tk_xprt;
-+	struct rpc_clnt *clnt = task->tk_client;
- 	struct rpc_procinfo *proc = task->tk_msg.rpc_proc;
- 
- 	dprint_status(task);
-@@ -926,9 +931,9 @@ call_allocate(struct rpc_task *task)
- 	 * and reply headers, and convert both values
- 	 * to byte sizes.
- 	 */
--	req->rq_callsize = RPC_CALLHDRSIZE + (slack << 1) + proc->p_arglen;
-+	req->rq_callsize = clnt->cl_callhdr_sz + (slack << 1) + proc->p_arglen;
- 	req->rq_callsize <<= 2;
--	req->rq_rcvsize = RPC_REPHDRSIZE + slack + proc->p_replen;
-+	req->rq_rcvsize = clnt->cl_replhdr_sz + slack + proc->p_replen;
- 	req->rq_rcvsize <<= 2;
- 
- 	req->rq_buffer = xprt->ops->buf_alloc(task,
-@@ -975,7 +980,7 @@ rpc_xdr_buf_init(struct xdr_buf *buf, void *start, size_t len)
- /*
-  * 3.	Encode arguments of an RPC call
-  */
--static void
-+void
- rpc_xdr_encode(struct rpc_task *task)
- {
- 	struct rpc_rqst	*req = task->tk_rqstp;
-@@ -1005,6 +1010,7 @@ rpc_xdr_encode(struct rpc_task *task)
- 	task->tk_status = rpcauth_wrap_req(task, encode, req, p,
- 			task->tk_msg.rpc_argp);
- }
-+EXPORT_SYMBOL_GPL(rpc_xdr_encode);
- 
- /*
-  * 4.	Get the server port number if not yet set
-@@ -1148,7 +1154,7 @@ call_transmit(struct rpc_task *task)
- 	/* Encode here so that rpcsec_gss can use correct sequence number. */
- 	if (rpc_task_need_encode(task)) {
- 		BUG_ON(task->tk_rqstp->rq_bytes_sent != 0);
--		rpc_xdr_encode(task);
-+		task->tk_client->cl_encode(task);
- 		/* Did the encode result in an error condition? */
- 		if (task->tk_status != 0) {
- 			/* Was the error nonfatal? */
-diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
-index 830faf4..65764ba 100644
---- a/net/sunrpc/rpcb_clnt.c
-+++ b/net/sunrpc/rpcb_clnt.c
-@@ -174,6 +174,9 @@ static struct rpc_clnt *rpcb_create_local(struct sockaddr *addr,
- 		.program	= &rpcb_program,
- 		.version	= version,
- 		.authflavor	= RPC_AUTH_UNIX,
-+		.encode		= rpc_xdr_encode,
-+		.callhdr_size	= RPC_CALLHDRSIZE,
-+		.replhdr_size	= RPC_REPHDRSIZE,
- 		.flags		= RPC_CLNT_CREATE_NOPING,
- 	};
- 
-@@ -191,6 +194,9 @@ static struct rpc_clnt *rpcb_create(char *hostname, struct sockaddr *srvaddr,
- 		.program	= &rpcb_program,
- 		.version	= version,
- 		.authflavor	= RPC_AUTH_UNIX,
-+		.encode		= rpc_xdr_encode,
-+		.callhdr_size	= RPC_CALLHDRSIZE,
-+		.replhdr_size	= RPC_REPHDRSIZE,
- 		.flags		= (RPC_CLNT_CREATE_NOPING |
- 					RPC_CLNT_CREATE_NONPRIVPORT),
- 	};
++obj-m				+= smbtest/
+diff --git a/fs/smbtest/Makefile b/fs/smbtest/Makefile
+new file mode 100644
+index 0000000..d861f82
+--- /dev/null
++++ b/fs/smbtest/Makefile
+@@ -0,0 +1 @@
++obj-m += smbtest.o
+diff --git a/fs/smbtest/smbtest.c b/fs/smbtest/smbtest.c
+new file mode 100644
+index 0000000..cfcb672
+--- /dev/null
++++ b/fs/smbtest/smbtest.c
+@@ -0,0 +1,204 @@
++/*
++ * fs/smbtest/smbtest.c -- proof of concept test for SMB code in sunrpc
++ *
++ * Copyright (C) 2009 Red Hat, Inc -- Jeff Layton <jlayton@redhat.com>
++ *
++ * This program is free software; you can redistribute it and/or
++ * modify it under the terms of the GNU General Public License
++ * as published by the Free Software Foundation; either version 2
++ * of the License, or (at your option) any later version.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License
++ * along with this program; if not, write to the Free Software
++ * Foundation, Inc., 51 Franklin Street, Fifth Floor,
++ * Boston, MA 02110-1301, USA.
++ */
++
++#include <linux/init.h>
++#include <linux/module.h>
++#include <linux/kernel.h>
++#include <linux/inet.h>
++#include <linux/sched.h>
++#include <linux/smbno.h>
++#include <linux/sunrpc/clnt.h>
++#include <linux/sunrpc/xprt.h>
++#include <linux/sunrpc/xprtsmb.h>
++#include <linux/sunrpc/smb.h>
++
++#define CIFS_NEGOTIATE			0
++#define SMB_COM_NEGOTIATE		0x72
++
++static char server_address[INET6_ADDRSTRLEN];
++module_param_string(server_address, server_address, INET6_ADDRSTRLEN, 0);
++MODULE_PARM_DESC(server_address, "IPv4 address of server");
++
++typedef struct negotiate_req {
++        __u8 WordCount;
++        __le16 ByteCount;
++        unsigned char DialectsArray[1];
++} __attribute__((packed)) NEGOTIATE_REQ;
++
++typedef struct negotiate_rsp {
++        __u8 WordCount;
++        __le16 DialectIndex; /* 0xFFFF = no dialect acceptable */
++        __u8 SecurityMode;
++        __le16 MaxMpxCount;
++        __le16 MaxNumberVcs;
++        __le32 MaxBufferSize;
++        __le32 MaxRawSize;
++        __le32 SessionKey;
++        __le32 Capabilities;    /* see below */
++        __le32 SystemTimeLow;
++        __le32 SystemTimeHigh;
++        __le16 ServerTimeZone;
++        __u8 EncryptionKeyLength;
++        __u16 ByteCount;
++        union {
++                unsigned char EncryptionKey[1]; /* cap extended security off */
++                /* followed by Domain name - if extended security is off */
++                /* followed by 16 bytes of server GUID */
++                /* then security blob if cap_extended_security negotiated */
++                struct {
++                        unsigned char GUID[16];
++                        unsigned char SecurityBlob[1];
++                } __attribute__((packed)) extended_response;
++        } __attribute__((packed)) u;
++} __attribute__((packed)) NEGOTIATE_RSP;
++
++/*
++ * SMB doesn't mandate that buffers are always quadword aligned. XDR/RPC
++ * does however and that concept is pretty pervasive in the sunrpc code.
++ * Eventually, it might be better to specify sizes in bytes, but it doesn't
++ * really matter much.
++ */
++#define SMB_HDR_QUADS XDR_QUADLEN(sizeof(struct smb_header))
++
++static int
++smb_enc_negotiate(struct rpc_rqst *req, NEGOTIATE_REQ *buf, void *obj)
++{
++	char *dialects = buf->DialectsArray;
++
++	buf->WordCount = 0;
++	buf->ByteCount = 12;
++
++	dialects[0] = 0x02; /* buffer format byte */
++	strncpy(&dialects[1], "NT LM 0.12", 1000);
++
++	req->rq_slen = xdr_adjust_iovec(&req->rq_svec[0],
++					(__be32 *) &dialects[12]);
++
++	return 0;
++}
++
++static int
++smb_dec_negotiate(void *rqstp, char *data, void *obj)
++{
++	NEGOTIATE_RSP *buf = (NEGOTIATE_RSP *) (data + sizeof(struct smb_header));
++
++	printk("smbtest: Server wants dialect index %u\n",
++		le16_to_cpu(buf->DialectIndex));
++	return 0;
++}
++
++static struct rpc_procinfo	smbtest_procedures[] = {
++[CIFS_NEGOTIATE] = {
++		.p_proc		= SMB_COM_NEGOTIATE,
++		.p_encode	= (kxdrproc_t) smb_enc_negotiate,
++		.p_decode	= (kxdrproc_t) smb_dec_negotiate,
++		.p_arglen	= XDR_QUADLEN(sizeof(NEGOTIATE_REQ) + 1024),
++		.p_replen	= XDR_QUADLEN(sizeof(NEGOTIATE_RSP) + 1024),
++		.p_timer	= 0,
++		.p_statidx	= CIFS_NEGOTIATE,
++		.p_name		= "NEGOTIATE",
++	},
++};
++
++static struct rpc_version	smbtest_version1 = {
++	.number		= 1,
++	.nrprocs	= ARRAY_SIZE(smbtest_procedures),
++	.procs		= smbtest_procedures,
++};
++
++static struct rpc_version *	smbtest_version[] = {
++	[1] = &smbtest_version1,
++};
++
++static struct rpc_stat smbtest_stats;
++
++static struct rpc_program cifs_rpc_prog = {
++		.name			= "smbtest",
++		.number			= 0,
++		.nrvers			= ARRAY_SIZE(smbtest_version),
++		.version		= smbtest_version,
++		.stats			= &smbtest_stats,
++};
++
++static struct rpc_clnt	*smbtest_clnt;
++
++static int smbtest_init(void)
++{
++	struct sockaddr_in sin = {
++		.sin_family = AF_INET,
++		.sin_port = htons(445),
++	};
++	u8 *addr = (u8 *) &sin.sin_addr.s_addr;
++	int status;
++	struct rpc_create_args create_args = {
++		.protocol		= XPRT_TRANSPORT_SMB,
++		.address		= (struct sockaddr *) &sin,
++		.addrsize		= sizeof(sin),
++		.servername		= "cifs",
++		.program		= &cifs_rpc_prog,
++		.version		= 1,
++		.authflavor		= RPC_AUTH_NULL,
++		.encode			= smb_encode,
++		.decode			= smb_decode,
++		.callhdr_size		= SMB_HDR_QUADS,
++		.replhdr_size		= SMB_HDR_QUADS,
++		.flags			= RPC_CLNT_CREATE_NOPING |
++					  RPC_CLNT_CREATE_NONPRIVPORT,
++	};
++
++	NEGOTIATE_REQ		req = { };
++	NEGOTIATE_RSP		rsp = { };
++
++	struct rpc_message msg = {
++		.rpc_argp	= &req,
++		.rpc_resp	= &rsp,
++	};
++
++	if (!in4_pton(server_address, -1, addr, '\0', NULL)) {
++		printk("smbtest: in4_pton failed\n");
++		return -EINVAL;
++	}
++
++	smbtest_clnt = rpc_create(&create_args);
++	if (IS_ERR(smbtest_clnt)) {
++		printk("smbtest: rpc client creation failed\n");
++		return PTR_ERR(smbtest_clnt);
++	}
++	printk("smbtest: rpc client create succeeded\n");
++
++	msg.rpc_proc = &smbtest_clnt->cl_procinfo[CIFS_NEGOTIATE];
++	status = rpc_call_sync(smbtest_clnt, &msg, 0);
++	printk("smbtest: rpc_call_sync returned %d\n", status);
++
++	return status;
++}
++
++static void smbtest_exit(void)
++{
++	printk("%s\n", __func__);
++	rpc_shutdown_client(smbtest_clnt);
++}
++
++module_init(smbtest_init);
++module_exit(smbtest_exit);
++
++MODULE_LICENSE("GPL");
++MODULE_AUTHOR("Jeff Layton <jlayton@samba.org>");
 -- 
 1.6.0.6
 
