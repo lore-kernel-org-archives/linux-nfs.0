@@ -1,100 +1,260 @@
-From: Tim Cullen <timcullen2001@yahoo.com>
-Subject: Re: [NFS] [Ocfs2-devel]  Trouble exporting OCFS2 via NFS
-Date: Tue, 29 Sep 2009 15:02:29 -0700 (PDT)
-Message-ID: <592921.54766.qm@web43138.mail.sp1.yahoo.com>
-References: <20090929210011.GB24249@mail.oracle.com>
+From: Zdenek Kabelac <zdenek.kabelac@gmail.com>
+Subject: Re: NFS problem with past 2.6.31 git tree
+Date: Wed, 30 Sep 2009 08:55:44 +0200
+Message-ID: <c4e36d110909292355i1b5801b6r9b1ea823a9f1c9b7@mail.gmail.com>
+References: <c4e36d110909250812g74e049b7u39566d189970d77e@mail.gmail.com>
+	 <1253892426.31072.37.camel@heimdal.trondhjem.org>
+	 <c4e36d110909251246s6af618e8n663afe2b66c4cd5d@mail.gmail.com>
+	 <1254160202.7124.2.camel@heimdal.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net, ocfs2-devel@oss.oracle.com
-To: "J. Bruce Fields" <bfields@fieldses.org>,
-	Joel Becker <Joel.Becker@oracle.com>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from neil.brown.name ([220.233.11.133]:43699 "EHLO neil.brown.name"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753231AbZI2WDJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 29 Sep 2009 18:03:09 -0400
-Received: from brown by neil.brown.name with local (Exim 4.69)
-	(envelope-from <nfs-bounces@lists.sourceforge.net>)
-	id 1Mskmu-0006AL-2V
-	for linux-nfs@vger.kernel.org; Wed, 30 Sep 2009 08:03:12 +1000
-In-Reply-To: <20090929210011.GB24249-0Ol/1UON5C7fiIqoQl7HmA@public.gmane.org>
-Sender: linux-nfs-owner@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+	linux-nfs@vger.kernel.org
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1753385AbZI3Gzp@vger.kernel.org>
+In-Reply-To: <1254160202.7124.2.camel@heimdal.trondhjem.org>
+Sender: linux-kernel-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-There is an existing issue, #1179, in bugzilla that I filed a couple of days ago. I'll add the additional info you ask for as soon as possible.
+2009/9/28 Trond Myklebust <Trond.Myklebust@netapp.com>:
+> On Fri, 2009-09-25 at 21:46 +0200, Zdenek Kabelac wrote:
+>> 2009/9/25 Trond Myklebust <Trond.Myklebust@netapp.com>:
+>> > On Fri, 2009-09-25 at 17:12 +0200, Zdenek Kabelac wrote:
+>> >> Hi
+>> >>
+>> >> I've noticed that my qemu guest is now unable to use localy expor=
+ted
+>> >> nfs directory.
+>> >> Directory gets mounted, plain 'ls' shows filenames - but nothing =
+else
+>> >> could be done.
+>> >>
+>> >> ls -la gives this output:
+>> >> ls: cannot access patch: Input/output error
+>> >> ...
+>> >>
+>> >>
+>> >> Both host & guest are running same kernel:
+>> >> 851b147e4411df6a1e7e90e2a609773c277eefd2
+>> >>
+>> >> I've checked last few commits and tried to revert them -
+>> >> and this one seems to cure my problem when reverted:
+>> >>
+>> >> Sep 23: =A08a6e5deb8a8caa810fef2c525f5dbea2cfe04a47
+>> >> NFS: Get rid of the NFS_MOUNT_VER3 and NFS_MOUNT_TCP flags
+>> >>
+>> >> I should also probably note that I'm seeing this message in my dm=
+esg log:
+>> >> svc: failed to register lockdv1 RPC service (errno 97)
+>> >>
+>> >> rpcinfo -p
+>> >> =A0 =A0program vers proto =A0 port
+>> >> =A0 =A0 100000 =A0 =A02 =A0 tcp =A0 =A0111 =A0portmapper
+>> >> =A0 =A0 100000 =A0 =A02 =A0 udp =A0 =A0111 =A0portmapper
+>> >> =A0 =A0 100024 =A0 =A01 =A0 udp =A053550 =A0status
+>> >> =A0 =A0 100024 =A0 =A01 =A0 tcp =A044174 =A0status
+>> >> =A0 =A0 100021 =A0 =A01 =A0 udp =A049878 =A0nlockmgr
+>> >> =A0 =A0 100021 =A0 =A03 =A0 udp =A049878 =A0nlockmgr
+>> >> =A0 =A0 100021 =A0 =A04 =A0 udp =A049878 =A0nlockmgr
+>> >> =A0 =A0 100021 =A0 =A01 =A0 tcp =A047319 =A0nlockmgr
+>> >> =A0 =A0 100021 =A0 =A03 =A0 tcp =A047319 =A0nlockmgr
+>> >> =A0 =A0 100021 =A0 =A04 =A0 tcp =A047319 =A0nlockmgr
+>> >>
+>> >> automount(pid1720) /misc autofs
+>> >> rw,relatime,fd=3D4,pgrp=3D1720,timeout=3D300,minproto=3D2,maxprot=
+o=3D4,indirect
+>> >> 0 0
+>> >> 192.168.122.1:/home/u/export /misc/u nfs
+>> >> rw,relatime,vers=3D3,rsize=3D524288,wsize=3D524288,namlen=3D255,s=
+oft,proto=3Dtcp,port=3D65535,timeo=3D600,retrans=3D2,sec=3Dsys,mountadd=
+r=3D192.168.xxx.yyy,mountvers=3D3,mountproto=3Dtcp,addr=3D192.168.xxx.y=
+yy
+>> >> 0 0
+>> >>
+>> >>
+>> >> Zdenek
+>> > What does
+>> >
+>> > =A0 cat /proc/self/mountinfo
+>> >
+>> > give you?
+>> >
+>>
+>>
+>> Working version: (kernel 2.6.31 or current git with reverted NFS pat=
+ch)
+>>
+>> 22 12 0:17 / /misc rw,relatime - autofs automount(pid1720)
+>> rw,fd=3D4,pgrp=3D1720,timeout=3D300,minproto=3D2,maxproto=3D4,indire=
+ct
+>>
+>> 24 22 0:19 / /misc/kabi rw,relatime - nfs IP:/home/kabi/export
+>> rw,vers=3D3,rsize=3D524288,wsize=3D524288,namlen=3D255,soft,proto=3D=
+tcp,port=3D65535,timeo=3D600,retrans=3D2,sec=3Dsys,mountaddr=3DIP,mount=
+vers=3D3,mountproto=3Dtcp,addr=3DIP
+>>
+>>
+>> Nonworking version:
+>>
+>> 22 12 0:17 / /misc rw,relatime - autofs automount(pid1704)
+>> rw,fd=3D4,pgrp=3D1704,timeout=3D300,minproto=3D2,maxproto=3D4,indire=
+ct
+>>
+>> 24 22 0:19 / /misc/kabi rw,relatime - nfs IP:/home/kabi/export
+>> rw,vers=3D2,rsize=3D8192,wsize=3D8192,namlen=3D255,soft,proto=3Dtcp,=
+port=3D65535,timeo=3D600,retrans=3D2,sec=3Dsys,mountaddr=3DIP,mountvers=
+=3D3,mountproto=3Dtcp,addr=3DIP
+>>
+>>
+>>
+>> Looks like vers=3D2 =A0!=3D vers=3D3 =A0 and rsize/wsize - which is =
+also set by
+>> the kernel itself to those lower values.
+>> (i.e. my /etc/init.d/autofs doesn't modify localoptions - of course =
+I
+>> could use this to set 8192 wsize and rsize for my working kernel)
+>>
+>> Zdenek
+>
+>
+> OK. The following patch fixes the default nfs version issue for me. I
+> have another one to fix the incorrectly displayed port numbers...
 
-thanks
-tim
+Hi
 
---- On Tue, 9/29/09, Joel Becker <Joel.Becker@oracle.com> wrote:
-
-> From: Joel Becker <Joel.Becker@oracle.com>
-> Subject: Re: [Ocfs2-devel] [NFS] Trouble exporting OCFS2 via NFS
-> To: "J. Bruce Fields" <bfields@fieldses.org>
-> Cc: "Tim Cullen" <timcullen2001@yahoo.com>, nfs@lists.sourceforge.net, ocfs2-devel@oss.oracle.com
-> Date: Tuesday, September 29, 2009, 2:00 PM
-> On Tue, Sep 29, 2009 at 11:31:26AM
-> -0400, J. Bruce Fields wrote:
-> > On Mon, Sep 28, 2009 at 07:15:40PM +0000, Tim Cullen
-> wrote:
-> > > I've been attempting to export an OCFS2
-> filesystem via NFS without success. My NFS client mounts the
-> exported filesystem without problem but all subsequent
-> access to the mount point results in Stale NFS File Handle
-> error. On the NFS server in /var/log/messages I see error
-> messages like the ones below complaining about attempts to
-> access beyond the end of the disk.
-> > > 
-> > > I've spoken with a supporting engineer at Oracle
-> who didn't know what the problem might be and suggested I
-> try this list. I'm hoping somebody here might be familiar
-> with this problem.
-> > 
-> > If I had to guess I would've said it was an ocfs2
-> problem; maybe
-> > somebody on ocfs2-devel (cc'd) can help?
-> 
->     Can you file a bug report at
-> oss.oracle.com/bugzilla?  We could
-> use the message files, your export and mount options, and
-> anything you
-> do to reproduce it.
->     Walking off the end of the device is
-> weird.
-> 
-> Joel
-> 
-> -- 
-> 
-> "Conservative, n.  A statesman who is enamoured of
-> existing evils,
->  as distinguished from the Liberal, who wishes to replace
-> them
->  with others."
->     - Ambrose Bierce, The Devil's
-> Dictionary
-> 
-> Joel Becker
-> Principal Software Developer
-> Oracle
-> E-mail: joel.becker@oracle.com
-> Phone: (650) 506-8127
-> 
+Thanks - this patch seems to fix my reported problem.
 
 
-      
 
-------------------------------------------------------------------------------
-Come build with us! The BlackBerry&reg; Developer Conference in SF, CA
-is the only developer event you need to attend this year. Jumpstart your
-developing skills, take BlackBerry mobile applications to market and stay 
-ahead of the curve. Join us from November 9&#45;12, 2009. Register now&#33;
-http://p.sf.net/sfu/devconf
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
-_______________________________________________
-Please note that nfs@lists.sourceforge.net is being discontinued.
-Please subscribe to linux-nfs@vger.kernel.org instead.
-    http://vger.kernel.org/vger-lists.html#linux-nfs
+>
+> Cheers
+> =A0Trond
+> ---------------------------------------------------------------------=
+---
+> NFS: Fix a default mount regression...
+> From: Trond Myklebust <Trond.Myklebust@netapp.com>
+>
+> With the recent spate of changes, the nfs protocol version will now d=
+efault
+> to 2 instead of 3, while the mount protocol version defaults to 3.
+>
+> The following patch should ensure the defaults are consistent with th=
+e
+> previous defaults of vers=3D3,proto=3Dtcp,mountvers=3D3,mountproto=3D=
+tcp.
+>
+> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+> ---
 
+
+Reported-and-tested-by: Zdenek Kabelac <zdenek.kabelac@gmail.com>
+
+
+>
+> =A0fs/nfs/super.c | =A0 13 ++++++-------
+> =A01 files changed, 6 insertions(+), 7 deletions(-)
+>
+>
+> diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+> index 29786d3..0343ebc 100644
+> --- a/fs/nfs/super.c
+> +++ b/fs/nfs/super.c
+> @@ -728,22 +728,24 @@ static void nfs_umount_begin(struct super_block=
+ *sb)
+> =A0 =A0 =A0 =A0unlock_kernel();
+> =A0}
+>
+> -static struct nfs_parsed_mount_data *nfs_alloc_parsed_mount_data(int=
+ flags)
+> +static struct nfs_parsed_mount_data *nfs_alloc_parsed_mount_data(uns=
+igned int version)
+> =A0{
+> =A0 =A0 =A0 =A0struct nfs_parsed_mount_data *data;
+>
+> =A0 =A0 =A0 =A0data =3D kzalloc(sizeof(*data), GFP_KERNEL);
+> =A0 =A0 =A0 =A0if (data) {
+> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 data->flags =A0 =A0 =A0 =A0 =A0 =A0 =3D=
+ flags;
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0data->rsize =A0 =A0 =A0 =A0 =A0 =A0 =3D=
+ NFS_MAX_FILE_IO_SIZE;
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0data->wsize =A0 =A0 =A0 =A0 =A0 =A0 =3D=
+ NFS_MAX_FILE_IO_SIZE;
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0data->acregmin =A0 =A0 =A0 =A0 =A0=3D =
+NFS_DEF_ACREGMIN;
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0data->acregmax =A0 =A0 =A0 =A0 =A0=3D =
+NFS_DEF_ACREGMAX;
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0data->acdirmin =A0 =A0 =A0 =A0 =A0=3D =
+NFS_DEF_ACDIRMIN;
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0data->acdirmax =A0 =A0 =A0 =A0 =A0=3D =
+NFS_DEF_ACDIRMAX;
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 data->mount_server.port =3D NFS_UNSPEC_=
+PORT;
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0data->nfs_server.port =A0 =3D NFS_UNSP=
+EC_PORT;
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 data->nfs_server.protocol =3D XPRT_TRAN=
+SPORT_TCP;
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0data->auth_flavors[0] =A0 =3D RPC_AUTH=
+_UNIX;
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0data->auth_flavor_len =A0 =3D 1;
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 data->version =A0 =A0 =A0 =A0 =A0 =3D v=
+ersion;
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0data->minorversion =A0 =A0 =A0=3D 0;
+> =A0 =A0 =A0 =A0}
+> =A0 =A0 =A0 =A0return data;
+> @@ -1711,8 +1713,6 @@ static int nfs_validate_mount_data(void *option=
+s,
+>
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0if (!(data->flags & NFS_MOUNT_TCP))
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0args->nfs_server.proto=
+col =3D XPRT_TRANSPORT_UDP;
+> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 else
+> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 args->nfs_server.protoc=
+ol =3D XPRT_TRANSPORT_TCP;
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0/* N.B. caller will free nfs_server.ho=
+stname in all cases */
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0args->nfs_server.hostname =3D kstrdup(=
+data->hostname, GFP_KERNEL);
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0args->namlen =A0 =A0 =A0 =A0 =A0 =A0=3D=
+ data->namlen;
+> @@ -2106,7 +2106,7 @@ static int nfs_get_sb(struct file_system_type *=
+fs_type,
+> =A0 =A0 =A0 =A0};
+> =A0 =A0 =A0 =A0int error =3D -ENOMEM;
+>
+> - =A0 =A0 =A0 data =3D nfs_alloc_parsed_mount_data(NFS_MOUNT_VER3 | N=
+=46S_MOUNT_TCP);
+> + =A0 =A0 =A0 data =3D nfs_alloc_parsed_mount_data(3);
+> =A0 =A0 =A0 =A0mntfh =3D kzalloc(sizeof(*mntfh), GFP_KERNEL);
+> =A0 =A0 =A0 =A0if (data =3D=3D NULL || mntfh =3D=3D NULL)
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0goto out_free_fh;
+> @@ -2376,7 +2376,6 @@ static int nfs4_validate_mount_data(void *optio=
+ns,
+> =A0 =A0 =A0 =A0if (data =3D=3D NULL)
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0goto out_no_data;
+>
+> - =A0 =A0 =A0 args->version =A0 =A0 =A0 =A0 =A0 =3D 4;
+> =A0 =A0 =A0 =A0switch (data->version) {
+> =A0 =A0 =A0 =A0case 1:
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0if (data->host_addrlen > sizeof(args->=
+nfs_server.address))
+> @@ -2660,7 +2659,7 @@ static int nfs4_get_sb(struct file_system_type =
+*fs_type,
+> =A0 =A0 =A0 =A0struct nfs_parsed_mount_data *data;
+> =A0 =A0 =A0 =A0int error =3D -ENOMEM;
+>
+> - =A0 =A0 =A0 data =3D nfs_alloc_parsed_mount_data(0);
+> + =A0 =A0 =A0 data =3D nfs_alloc_parsed_mount_data(4);
+> =A0 =A0 =A0 =A0if (data =3D=3D NULL)
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0goto out_free_data;
+>
+>
+>
+>
+> --
+> Trond Myklebust
+> Linux NFS client maintainer
+>
+> NetApp
+> Trond.Myklebust@netapp.com
+> www.netapp.com
+>
