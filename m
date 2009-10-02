@@ -1,48 +1,68 @@
-Return-Path: <nfsv4-bounces@linux-nfs.org>
-From: Andreas Gruenbacher <agruen@suse.de>
-To: Steve French <smfrench@gmail.com>
-Subject: Re: POSIX ACL support for NFSV4 (using sideband protocol)
-Date: Mon, 5 Oct 2009 19:09:37 +0200
-References: <524f69650909021156lf181c17uf800eba7c35a6f45@mail.gmail.com>
-	<200910051831.56157.agruen@suse.de>
-	<524f69650910050944k9bd0a3ci7b728f13b2c8225b@mail.gmail.com>
-In-Reply-To: <524f69650910050944k9bd0a3ci7b728f13b2c8225b@mail.gmail.com>
-Message-Id: <200910051909.37910.agruen@suse.de>
-Cc: ffilzlnx@linux.vnet.ibm.com, linux-nfs@vger.kernel.org,
-        Trond Myklebust <Trond.Myklebust@netapp.com>, nfsv4@linux-nfs.org,
-        jra@samba.org
-List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/options/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
-List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
-List-Post: <mailto:nfsv4@linux-nfs.org>
-List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
-List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
-Content-Type: text/plain; charset="us-ascii"
-Sender: nfsv4-bounces@linux-nfs.org
-Errors-To: nfsv4-bounces@linux-nfs.org
-MIME-Version: 1.0
+Return-Path: <linux-nfs-owner@vger.kernel.org>
+Received: from acsinet11.oracle.com ([141.146.126.233]:53532 "EHLO
+	acsinet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756890AbZJBW7Y (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 2 Oct 2009 18:59:24 -0400
+Cc: linux-nfs@vger.kernel.org
+Message-Id: <FED38E90-C32D-43E8-A0A2-5A37E4BB894F@oracle.com>
+From: Chuck Lever <chuck.lever@oracle.com>
+To: Tom Haynes <tdh@excfb.com>
+In-Reply-To: <4AC67481.20900@excfb.com>
+Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
+Subject: Re: mount retries
+Date: Fri, 2 Oct 2009 18:59:19 -0400
+References: <4AC67481.20900@excfb.com>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+MIME-Version: 1.0
 
-On Monday 05 October 2009 18:44:34 Steve French wrote:
-> Recently I looked through NFSv4.1 spec, and it seems to address some
-> ACL incompatibilities (with CIFS) by extending the NFSv4 ACL model.
-> 
-> Should we be aiming for an eventual interface that would work for NFSv4.1
-> or limiting it to current NFSv4?
+On Oct 2, 2009, at 5:45 PM, Tom Haynes wrote:
+> Does the Linux mount client have any algorithms to retry a NFS mount?
+>
+> Or does it depend entirely on the underlying protocol.
+>
+> I.e., would TCP retry and UDP just give up?
 
-I think Automatic Inheritance [*] is important for current Windows clients:
-without it it's basically impossible to manage the permissions of entire
-directory trees without shooting yourself in the foot.
+The behavior is pretty complex.
 
-[*] http://www.nfsv4-editor.org/draft-25/draft-ietf-nfsv4-minorversion1-25.html#auto_inherit
+There's a large retry loop that can try mounts in the foreground, or  
+automatically daemonize if the mount request isn't successful at  
+first.  The retry loop continues as long as there are server or  
+network problems that prevent a definitive answer from the server from  
+getting back to the client.  There is a retry= mount option to cut off  
+retrying after a certain amount of time.
 
-> Any idea on the state of NFSv4.1 it seems to be stuck for almost a year?
+If a particular NFS version or transport is requested by the user, it  
+will attempt to use those settings, and fail if those aren't available  
+on the server.  For v2/v3, any parameters not specified by the user,  
+like port, transport, or version, are filled in with pmap queries.   
+The choice of transport is a little odd; if the user didn't specify a  
+transport, it looks like the transport that worked for the pmap query  
+is chosen regardless of what is registered.  ie, if a TCP pmap query  
+fails, but the UDP pmap query worked, we go with UDP, whether or not  
+the NFS service is registered on UDP.
 
-Sorry, don't know.
+For v4, it skips the pmap query and just dives into the kernel to try  
+connecting with the server.
 
-Andreas
-_______________________________________________
-NFSv4 mailing list
-NFSv4@linux-nfs.org
-http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4
+If none of these work, and the mount command hasn't gotten a definite  
+yes or no from the server (and all of the mount options are valid and  
+legal) it will keep trying until it works, the user hits ^C, or the  
+retry timer expires.  The ^C part doesn't apply to daemonized mounts.
+
+The exact retry behavior depends on whether user space or the kernel  
+is trying to do the talking.  NFSv4 and text-based NFSv2/v3 mounts do  
+most of the talking from the kernel.  Text-based mounts do a user  
+space pmap query or two, but the MNT request comes from the kernel.   
+Also, UDP retries a few times, but usually gives up after 30 seconds  
+or so, but TCP can retry the transport connect for over 3 minutes,  
+even before it gets to send any requests at all.
+
+I'm pretty sure I didn't answer your question.
+
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
