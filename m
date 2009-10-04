@@ -1,85 +1,66 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: [Bug 14276] nfsroot will not remount rw and claims illegal
- options
-Date: Sun, 04 Oct 2009 17:59:58 -0400
-Message-ID: <1254693598.30515.59.camel@heimdal.trondhjem.org>
-References: <bug-14276-104@http.bugzilla.kernel.org/>
-	 <200910041748.n94HmwPY005082@demeter.kernel.org>
-	 <1254683162.9064.2.camel@heimdal.trondhjem.org>
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: Re: [2.6.31] NFS4ERR_GRACE unhandled...
+Date: Sun, 04 Oct 2009 18:10:52 -0400
+Message-ID: <1254694252.30515.63.camel@heimdal.trondhjem.org>
+References: <6278d2220909261114g2e1529dfn4961d450460b00dc@mail.gmail.com>
+	 <1254161800.3308.1.camel@heimdal.trondhjem.org>
+	 <6278d2220910030859s1fb8d200n7d032e2c1b235ce@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain
-Cc: linux-nfs@vger.kernel.org,
-	"Mr. Charles Edward Lever" <Chuck.Lever@oracle.com>,
-	Hans de Bruin <bruinjm-qWit8jRvyhVmR6Xm/wNWPw@public.gmane.org>
-To: bugzilla-daemon-590EEB7GvNiWaY/ihj7yzEB+6BGkLq7r@public.gmane.org
+Cc: linux-nfs@vger.kernel.org
+To: Daniel J Blueman <daniel.blueman@gmail.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-out1.uio.no ([129.240.10.57]:53100 "EHLO mail-out1.uio.no"
+Received: from mx2.netapp.com ([216.240.18.37]:27898 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758051AbZJDWAj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 4 Oct 2009 18:00:39 -0400
-In-Reply-To: <1254683162.9064.2.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
+	id S1758093AbZJDWLp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 4 Oct 2009 18:11:45 -0400
+In-Reply-To: <6278d2220910030859s1fb8d200n7d032e2c1b235ce-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sun, 2009-10-04 at 15:06 -0400, Trond Myklebust wrote:
-> Chuck, can you see how the rpc_pton() might be breaking nfsroot?
-> The cmdline is of the form
+On Sat, 2009-10-03 at 16:59 +0100, Daniel J Blueman wrote:
+> Hi Trond,
 > 
->     root=/dev/nfs nfsroot=10.10.0.2:/nfs/gemini,v3,tcp ro ip=::::::dhcp
+> On Mon, Sep 28, 2009 at 7:16 PM, Trond Myklebust
+> <Trond.Myklebust@netapp.com> wrote:
+> > On Sat, 2009-09-26 at 19:14 +0100, Daniel J Blueman wrote:
+> >> Hi Trond,
+> >>
+> >> After rebooting my 2.6.31 NFS4 server, I see a list of NFS kernel
+> >> errors [1] on the 2.6.31 client corresponding to NFS4ERR_GRACE, so
+> >> lock or file state recovery failed. Is this expected noting that I
+> >> have an internal firewall allowing incoming TCP port 2049 on the
+> >> server, and no firewall on the client, however I can't see how it can
+> >> thus be callback related?
+> >
+> > No. It looks as if your server rebooted while the client was recovering
+> > an expired lease.
+> >
+> > The following patch should prevent future occurrences of this bug...
+> >
+> > Cheers
+> >  Trond
+> > ------------------------------------------------------------------
+> > NFSv4: Handle NFS4ERR_GRACE when recovering an expired lease.
+> >
+> > From: Trond Myklebust <Trond.Myklebust@netapp.com>
+> >
+> > If our lease expires, and the server subsequently reboot, we need to be
+> > able to handle the case where the server refuses to let us recover state,
+> > because it is in the grace period.
+> 
+> On the client, I didn't see the error messages with this patch,
+> however I did see firefox (via sqlite) continue to hang [1] (after
+> other processes continued), and an unusual level of activity with
+> rpciod/0 and rpciod/1 kernel threads. Other NFS-related kernel thread
+> state is given.
 
-I think I see it...
+What are your mount options?
 
-The difference is that rpc_pton4() starts with
+-- 
+Trond Myklebust
+Linux NFS client maintainer
 
-	memset(sap, 0, sizeof(struct sockaddr_in));
-
-That clears the port number that was set in nfs_remount(), and so the
-comparison in nfs_compare_remount_data() fails.
-
-Does the following patch fix the problem?
-
---------------------------------------------------------------------------
-NFS: Fix port initialisation in nfs_remount()
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-
-The recent changeset 53a0b9c4c99ab0085a06421f71592722e5b3fd5f (NFS: Replace
-nfs_parse_ip_address() with rpc_pton()) broke nfs_remount, since the call
-to rpc_pton() will zero out the port number in data->nfs_server.address.
-
-This is actually due to a bug in nfs_remount: it should be looking at the
-port number in nfs_server.port instead...
-
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
-
- fs/nfs/super.c |    6 ++++--
- 1 files changed, 4 insertions(+), 2 deletions(-)
-
-
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index 0d14704..fb3b280 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -1846,9 +1846,10 @@ nfs_compare_remount_data(struct nfs_server *nfss,
- 	    data->acdirmin != nfss->acdirmin / HZ ||
- 	    data->acdirmax != nfss->acdirmax / HZ ||
- 	    data->timeo != (10U * nfss->client->cl_timeout->to_initval / HZ) ||
-+	    data->nfs_server.port != nfss->port ||
- 	    data->nfs_server.addrlen != nfss->nfs_client->cl_addrlen ||
--	    memcmp(&data->nfs_server.address, &nfss->nfs_client->cl_addr,
--		   data->nfs_server.addrlen) != 0)
-+	    !rpc_cmp_addr(&data->nfs_server.address,
-+		    &nfss->nfs_client->cl_addr))
- 		return -EINVAL;
- 
- 	return 0;
-@@ -1891,6 +1892,7 @@ nfs_remount(struct super_block *sb, int *flags, char *raw_data)
- 	data->acdirmin = nfss->acdirmin / HZ;
- 	data->acdirmax = nfss->acdirmax / HZ;
- 	data->timeo = 10U * nfss->client->cl_timeout->to_initval / HZ;
-+	data->nfs_server.port = nfss->port;
- 	data->nfs_server.addrlen = nfss->nfs_client->cl_addrlen;
- 	memcpy(&data->nfs_server.address, &nfss->nfs_client->cl_addr,
- 		data->nfs_server.addrlen);
-
-
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
