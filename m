@@ -1,10 +1,11 @@
 From: Trond Myklebust <trond.myklebust@fys.uio.no>
 Subject: Re: [Bug 14276] nfsroot will not remount rw and claims illegal
  options
-Date: Sun, 04 Oct 2009 15:06:02 -0400
-Message-ID: <1254683162.9064.2.camel@heimdal.trondhjem.org>
+Date: Sun, 04 Oct 2009 17:59:58 -0400
+Message-ID: <1254693598.30515.59.camel@heimdal.trondhjem.org>
 References: <bug-14276-104@http.bugzilla.kernel.org/>
 	 <200910041748.n94HmwPY005082@demeter.kernel.org>
+	 <1254683162.9064.2.camel@heimdal.trondhjem.org>
 Mime-Version: 1.0
 Content-Type: text/plain
 Cc: linux-nfs@vger.kernel.org,
@@ -12,50 +13,73 @@ Cc: linux-nfs@vger.kernel.org,
 	Hans de Bruin <bruinjm-qWit8jRvyhVmR6Xm/wNWPw@public.gmane.org>
 To: bugzilla-daemon-590EEB7GvNiWaY/ihj7yzEB+6BGkLq7r@public.gmane.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-out2.uio.no ([129.240.10.58]:56956 "EHLO mail-out2.uio.no"
+Received: from mail-out1.uio.no ([129.240.10.57]:53100 "EHLO mail-out1.uio.no"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757644AbZJDTGn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 4 Oct 2009 15:06:43 -0400
-In-Reply-To: <200910041748.n94HmwPY005082-jEpIWWs/U2wOASNP4CLbKB2eb7JE58TQ@public.gmane.org>
+	id S1758051AbZJDWAj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 4 Oct 2009 18:00:39 -0400
+In-Reply-To: <1254683162.9064.2.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sun, 2009-10-04 at 17:48 +0000, bugzilla-daemon-590EEB7GvNiWaY/ihj7yzEB+6BGkLq7r@public.gmane.org
-wrote:
-> http://bugzilla.kernel.org/show_bug.cgi?id=14276
+On Sun, 2009-10-04 at 15:06 -0400, Trond Myklebust wrote:
+> Chuck, can you see how the rpc_pton() might be breaking nfsroot?
+> The cmdline is of the form
 > 
-> 
-> 
-> 
-> 
-> --- Comment #6 from Hans de Bruin <bruinjm-qWit8jRvyhVmR6Xm/wNWPw@public.gmane.org>  2009-10-04 17:48:57 ---
-> hans@orion:/var/diskless/kernel/linux-2.6$ git bisect bad
-> 53a0b9c4c99ab0085a06421f71592722e5b3fd5f is first bad commit
-> commit 53a0b9c4c99ab0085a06421f71592722e5b3fd5f
-> Author: Chuck Lever <chuck.lever@oracle.com>
-> Date:   Sun Aug 9 15:09:36 2009 -0400
-> 
->     NFS: Replace nfs_parse_ip_address() with rpc_pton()
-> 
->     Clean up: Use the common routine now provided in sunrpc.ko for parsing
-> mount
->     addresses.
-> 
->     Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
->     Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-> 
-> :040000 040000 31c3998309b2c325b7ea927498e1a7e78e0e7747
-> 513edbc936111eda9d1646db17e7240c77a32c42 M      fs
-> hans@orion:/var/diskless/kernel/linux-2.6$
+>     root=/dev/nfs nfsroot=10.10.0.2:/nfs/gemini,v3,tcp ro ip=::::::dhcp
 
-OK. Switching over to email.
+I think I see it...
 
-Chuck, can you see how the rpc_pton() might be breaking nfsroot?
-The cmdline is of the form
+The difference is that rpc_pton4() starts with
 
-    root=/dev/nfs nfsroot=10.10.0.2:/nfs/gemini,v3,tcp ro ip=::::::dhcp
+	memset(sap, 0, sizeof(struct sockaddr_in));
 
-Cheers
-  Trond
+That clears the port number that was set in nfs_remount(), and so the
+comparison in nfs_compare_remount_data() fails.
+
+Does the following patch fix the problem?
+
+--------------------------------------------------------------------------
+NFS: Fix port initialisation in nfs_remount()
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+
+The recent changeset 53a0b9c4c99ab0085a06421f71592722e5b3fd5f (NFS: Replace
+nfs_parse_ip_address() with rpc_pton()) broke nfs_remount, since the call
+to rpc_pton() will zero out the port number in data->nfs_server.address.
+
+This is actually due to a bug in nfs_remount: it should be looking at the
+port number in nfs_server.port instead...
+
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+
+ fs/nfs/super.c |    6 ++++--
+ 1 files changed, 4 insertions(+), 2 deletions(-)
+
+
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index 0d14704..fb3b280 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -1846,9 +1846,10 @@ nfs_compare_remount_data(struct nfs_server *nfss,
+ 	    data->acdirmin != nfss->acdirmin / HZ ||
+ 	    data->acdirmax != nfss->acdirmax / HZ ||
+ 	    data->timeo != (10U * nfss->client->cl_timeout->to_initval / HZ) ||
++	    data->nfs_server.port != nfss->port ||
+ 	    data->nfs_server.addrlen != nfss->nfs_client->cl_addrlen ||
+-	    memcmp(&data->nfs_server.address, &nfss->nfs_client->cl_addr,
+-		   data->nfs_server.addrlen) != 0)
++	    !rpc_cmp_addr(&data->nfs_server.address,
++		    &nfss->nfs_client->cl_addr))
+ 		return -EINVAL;
+ 
+ 	return 0;
+@@ -1891,6 +1892,7 @@ nfs_remount(struct super_block *sb, int *flags, char *raw_data)
+ 	data->acdirmin = nfss->acdirmin / HZ;
+ 	data->acdirmax = nfss->acdirmax / HZ;
+ 	data->timeo = 10U * nfss->client->cl_timeout->to_initval / HZ;
++	data->nfs_server.port = nfss->port;
+ 	data->nfs_server.addrlen = nfss->nfs_client->cl_addrlen;
+ 	memcpy(&data->nfs_server.address, &nfss->nfs_client->cl_addr,
+ 		data->nfs_server.addrlen);
 
 
