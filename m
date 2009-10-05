@@ -1,82 +1,48 @@
-Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-out2.uio.no ([129.240.10.58]:47759 "EHLO mail-out2.uio.no"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752738AbZJNRNs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 14 Oct 2009 13:13:48 -0400
-Subject: Re: [NFS] NFS/krb and batch jobs - doable?
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-To: raini@rainiday.com
-Cc: Jeff Layton <jlayton@redhat.com>, Kevin Coffman <kwc@citi.umich.edu>,
-        linux-nfs@vger.kernel.org
-In-Reply-To: <4603e94d7a85c40d7252308f394bb6ba.squirrel@webmail.rainiday.com>
-References: <c8e974302190b867ad8ea49d8158f1db.squirrel@webmail.rainiday.com>
-	 <20091009121602.5ec86dfb@tlielax.poochiereds.net>
-	 <1c358fde92c49215d84129a1bfe2c6ec.squirrel@webmail.rainiday.com>
-	 <20091010090039.4dfd1dfb@tlielax.poochiereds.net>
-	 <ee56329e7d86a3e4b15001a39bb7e14a.squirrel@webmail.rainiday.com>
-	 <20091013114441.2882c8b9@tlielax.poochiereds.net>
-	 <4d569c330910130851o155050djdfed6a52e1f3177a@mail.gmail.com>
-	 <1255452985.3711.85.camel@heimdal.trondhjem.org>
-	 <20091013132701.72927b4d@tlielax.poochiereds.net>
-	 <1255456293.3711.103.camel@heimdal.trondhjem.org>
-	 <20091013140306.476b20fd@tlielax.poochiereds.net>
-	 <4603e94d7a85c40d7252308f394bb6ba.squirrel@webmail.rainiday.com>
-Content-Type: text/plain
-Date: Wed, 14 Oct 2009 13:12:55 -0400
-Message-Id: <1255540375.3173.4.camel@heimdal.trondhjem.org>
-Sender: linux-nfs-owner@vger.kernel.org
-List-ID: <linux-nfs.vger.kernel.org>
+Return-Path: <nfsv4-bounces@linux-nfs.org>
+From: Andreas Gruenbacher <agruen@suse.de>
+To: Steve French <smfrench@gmail.com>
+Subject: Re: POSIX ACL support for NFSV4 (using sideband protocol)
+Date: Mon, 5 Oct 2009 19:09:37 +0200
+References: <524f69650909021156lf181c17uf800eba7c35a6f45@mail.gmail.com>
+	<200910051831.56157.agruen@suse.de>
+	<524f69650910050944k9bd0a3ci7b728f13b2c8225b@mail.gmail.com>
+In-Reply-To: <524f69650910050944k9bd0a3ci7b728f13b2c8225b@mail.gmail.com>
+Message-Id: <200910051909.37910.agruen@suse.de>
+Cc: ffilzlnx@linux.vnet.ibm.com, linux-nfs@vger.kernel.org,
+        Trond Myklebust <Trond.Myklebust@netapp.com>, nfsv4@linux-nfs.org,
+        jra@samba.org
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/options/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@linux-nfs.org>
+List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
+Content-Type: text/plain; charset="us-ascii"
+Sender: nfsv4-bounces@linux-nfs.org
+Errors-To: nfsv4-bounces@linux-nfs.org
 MIME-Version: 1.0
+List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 2009-10-14 at 09:47 -0700, raini@rainiday.com wrote:
-> > On Tue, 13 Oct 2009 13:51:33 -0400
-> > Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
-> >
-> >> On Tue, 2009-10-13 at 13:27 -0400, Jeff Layton wrote:
-> >> > Correct...and gssd actually does check the validity of the cache. If
-> >> > TGT has expired or it's not valid for some other reason, then it skips
-> >> > it and moves on.
-> >> >
-> >> > The problem comes when you have more than one valid credcache. In that
-> >> > case it picks the one with the latest mtime. It seems that it should
-> >> > instead pick the one with the latest TGT expiration time.
-> >>
-> >> So why do you think that is a problem? The result should be that
-> >> rpc.gssd always ends up with a valid credential as long as there is at
-> >> least one with a valid TGT.
-> >> IOW: Who cares if the GSS session isn't going to last as long, as long
-> >> as the RPC client can always instantiate a new one.
-> >>
-> >
-> > Hrm...good point. I suppose that as long as gssd can pick a new
-> > credcache if the context expires then this patch is superfluous. Wasn't
-> > that support only added fairly recently (around a year ago?)? If so, it
-> > may just be that raini isn't using a recent enough nfs-utils...
+On Monday 05 October 2009 18:44:34 Steve French wrote:
+> Recently I looked through NFSv4.1 spec, and it seems to address some
+> ACL incompatibilities (with CIFS) by extending the NFSv4 ACL model.
 > 
-> Hm - well I'm stuck on production machines (RHEL5) so currently on
-> nfs-utils 1.0.9 which I'm going to take a wild guess may be problematic
-> either way.  Could someone point me to information on this change (I see
-> little in http://www.kernel.org/pub/linux/utils/nfs/)?
-> 
-> The reason I thought the new code would be useful is that if default
-> tickets are non-renewable and short lifetime, it seems sensible for gssd
-> to spot and use a longer lifetime renewable ticket in another ccache file
-> - and say use krenew to keep the job alive (or even cope with the user
-> renewing the ticket manually).
-> 
-> Seems to me therefore that in the absence of per-session ccaches, gssd
-> should prefer long lifetime, and renewable.
+> Should we be aiming for an eventual interface that would work for NFSv4.1
+> or limiting it to current NFSv4?
 
-No. That is not a necessary condition.
+I think Automatic Inheritance [*] is important for current Windows clients:
+without it it's basically impossible to manage the permissions of entire
+directory trees without shooting yourself in the foot.
 
-> Would the newer code you mention cope with this situation already?
+[*] http://www.nfsv4-editor.org/draft-25/draft-ietf-nfsv4-minorversion1-25.html#auto_inherit
 
-Yes. Please reread the thread carefully again.
+> Any idea on the state of NFSv4.1 it seems to be stuck for almost a year?
 
-As long as gssd always select from among the valid (i.e. unexpired)
-TGTs, then the actual remaining lifetime of the particular TGT that was
-selected doesn't matter; gssd will always be able to renew the resulting
-RPCSEC_GSS session when it expires.
+Sorry, don't know.
 
-  Trond
-
+Andreas
+_______________________________________________
+NFSv4 mailing list
+NFSv4@linux-nfs.org
+http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4
