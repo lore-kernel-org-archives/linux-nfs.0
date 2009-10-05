@@ -1,67 +1,50 @@
-From: Boaz Harrosh <bharrosh@panasas.com>
-Subject: Re: [PATCH 2/5] nfsd: Fix independence of a few nfsd related headers
-Date: Thu, 22 Oct 2009 10:18:49 +0200
-Message-ID: <4AE01569.9000002@panasas.com>
-References: <4ADEC1EF.8040107@panasas.com>	 <1256112873-32495-1-git-send-email-bharrosh@panasas.com> <1256171298.6809.1.camel@heimdal.trondhjem.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: Benny Halevy <bhalevy@panasas.com>,
-	"J. Bruce Fields" <bfields@citi.umich.edu>,
-	pNFS Mailing List <pnfs@linux-nfs.org>,
-	NFS list <linux-nfs@vger.kernel.org>,
-	Andy Adamson <andros@netapp.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from dip-colo-pa.panasas.com ([67.152.220.67]:48432 "EHLO
-	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1752318AbZJVISv (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 22 Oct 2009 04:18:51 -0400
-In-Reply-To: <1256171298.6809.1.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
-Sender: linux-nfs-owner@vger.kernel.org
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Subject: Re: [PATCH v2] NFS: introduce writeback wait queue
+Date: Mon, 5 Oct 2009 06:55:54 -0400
+Message-ID: <F047DA72-75B3-4447-84EB-7115C77ECBA3@netapp.com>
+References: <20091004030153.GA20327@localhost> <20091005071026.GA19262@localhost> <20091005073551.GA23102@localhost> <20091005073959.GA23398@localhost>
+Mime-Version: 1.0 (iPhone Mail 7C144)
+Content-Type: text/plain;
+	format=flowed;
+	delsp=yes;
+	charset="us-ascii"
+Cc: <jens.axboe@oracle.com>, "Chris Mason" <chris.mason@oracle.com>,
+	"Andrew Morton" <akpm@linux-foundation.org>,
+	<linux-fsdevel@vger.kernel.org>,
+	"LKML" <linux-kernel@vger.kernel.org>, <linux-nfs@vger.kernel.org>
+To: "Wu Fengguang" <fengguang.wu@intel.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <20091005073959.GA23398@localhost>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 10/22/2009 02:28 AM, Trond Myklebust wrote:
-> On Wed, 2009-10-21 at 10:14 +0200, Boaz Harrosh wrote:
->> An header should be compilation independent, .i.e pull in
->> any header who's declarations are directly used by this header.
->> And not let users re-include all it's dependencies all over
->> again.
+On Oct 5, 2009, at 3:40, "Wu Fengguang" <fengguang.wu@intel.com> wrote:
+
+> On Mon, Oct 05, 2009 at 03:35:51PM +0800, Wu Fengguang wrote:
+>> Trond, I see this trace on linux-next. There are no more dirty pages
+>> when `cp' aborts after filling up the partition:
 >>
->> [At the end of the day what's the use of a header if it does
->>  not have more then one user?]
-> 
-> 
-> The problem with this is that you quickly end up including the same
-> header files over and over and over again as they get pulled in several
-> times over by different headers.
-> 
-> 
-> 
+>>        cp: writing `/mnt/test/zero3': No space left on device
+>>
+>> I noticed that since then nr_writeback is decreased very slowly
+>> (~100 pages per second). Looks like an interesting behavior.
+>
+> In the mean time, there are constant 7-8MB/s writes in the NFS server.
+> The network flow is much smaller ~400K/s. How can I debug this issue?
 
-What is the problem with that?
+Hi Fengguang
 
-two things:
-1. it is unavoidable.
-2. That's why we invented the #ifndef FOO_H #define FOO_H for.
-3. Look at the current mess, to the point that you don't understand why
-   the code does not compile, you end up just copy-past the include list
-   of that other file, and now actually do end with extra un-needed includes.
-   (Don't believe me look at the last patch as proof).
-4. So I add to an header a use of a type that now needs a new include.
-   All my users do not compile any more. What to do? OK I'll include it so
-   not to change all existing users all over again. Now we get a double
-   standard. All headers used before any users, must be carried around.
-   The late comers are escaped.
-5. The opposite of 4. An header is no longer needed. Extra header left at all
-   users.
+This is deliberate behaviour. When asynchronous writes start recieving  
+errors, then we switch to synchronous write mode until the error  
+condition clears.
 
-It used to be a problem before me and you have begun programing.
-Since then the cpp looks at it's internal structures and will not re-open.
-Note that the compiler never sees the second instance, ever.
+The reason is for doing so is firstly because some filesystems (XFS)  
+perform very poorly under ENOSPC, and so it takes forever to write  
+back pages (we don't want to cancel all writebacks for temporary  
+conditions like ENOSPC). It also allows us to deliver the errors more  
+promptly to the application.
 
-That said we have no choice of the matter. It is a Kernel style guide. I
-should know because I was banged on the head with it a couple of times.
-And rightly so.
+Cheers
+      Trond
 
-Come on that was a joke right
-Boaz
+>
