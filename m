@@ -1,119 +1,65 @@
-From: Chuck Lever <Chuck.Lever@oracle.com>
-Subject: Re: [Bug 14276] nfsroot will not remount rw and claims illegal options
-Date: Mon, 5 Oct 2009 11:00:42 -0400
-Message-ID: <3D734E24-A3B1-4015-B466-4C487255DE57@oracle.com>
-References: <bug-14276-104@http.bugzilla.kernel.org/> <200910041748.n94HmwPY005082@demeter.kernel.org> <1254683162.9064.2.camel@heimdal.trondhjem.org> <1254693598.30515.59.camel@heimdal.trondhjem.org>
-Mime-Version: 1.0 (Apple Message framework v936)
-Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
-Cc: bugzilla-daemon-590EEB7GvNiWaY/ihj7yzEB+6BGkLq7r@public.gmane.org, linux-nfs@vger.kernel.org,
-	Hans de Bruin <bruinjm-qWit8jRvyhVmR6Xm/wNWPw@public.gmane.org>
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: 4.1 NULL dereference in 2.6.32-rc3
+Date: Mon, 5 Oct 2009 19:07:36 -0400
+Message-ID: <20091005230736.GB31874@fieldses.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+To: pnfs@linux-nfs.org, linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from acsinet11.oracle.com ([141.146.126.233]:24879 "EHLO
-	acsinet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753329AbZJEPDJ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 5 Oct 2009 11:03:09 -0400
-In-Reply-To: <1254693598.30515.59.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
+Received: from fieldses.org ([174.143.236.118]:48013 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753963AbZJEXHm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 5 Oct 2009 19:07:42 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+After mounting and unmounting a 4.1 partition with client and server
+both 2.6.32-rc3, I see the following NULL dereference on the client.
 
-On Oct 4, 2009, at 5:59 PM, Trond Myklebust wrote:
+I think the only cache lookup there is in unix_gid_find().  Hm.
+Maybe it's trying to defer a request without a defer method set?
 
-> On Sun, 2009-10-04 at 15:06 -0400, Trond Myklebust wrote:
->> Chuck, can you see how the rpc_pton() might be breaking nfsroot?
->> The cmdline is of the form
->>
->>    root=/dev/nfs nfsroot=10.10.0.2:/nfs/gemini,v3,tcp ro  
->> ip=::::::dhcp
->
-> I think I see it...
->
-> The difference is that rpc_pton4() starts with
->
-> 	memset(sap, 0, sizeof(struct sockaddr_in));
->
-> That clears the port number that was set in nfs_remount(), and so the
-> comparison in nfs_compare_remount_data() fails.
->
-> Does the following patch fix the problem?
->
-> --------------------------------------------------------------------------
-> NFS: Fix port initialisation in nfs_remount()
-> From: Trond Myklebust <Trond.Myklebust@netapp.com>
->
-> The recent changeset 53a0b9c4c99ab0085a06421f71592722e5b3fd5f (NFS:  
-> Replace
-> nfs_parse_ip_address() with rpc_pton()) broke nfs_remount, since the  
-> call
-> to rpc_pton() will zero out the port number in data- 
-> >nfs_server.address.
->
-> This is actually due to a bug in nfs_remount: it should be looking  
-> at the
-> port number in nfs_server.port instead...
+Of course there's no point to the client's callback server doing this
+upcall at all.
 
-The analysis sounds correct.  After the options are parsed,  
-nfs_server.port is the port number the user specified on the command  
-line.  The user-specified value is saved separately because later the  
-socket address's port number can be changed via an rpcbind.
+--b.
 
-In the case of a remount, if the port value isn't changed by the new  
-options, the client needs to know what the originally specified value  
-was.
+BUG: unable to handle kernel NULL pointer dereference at (null)
+IP: [<(null)>] (null)
+*pde = 00000000 
+Oops: 0000 [#1] PREEMPT 
+last sysfs file: /sys/kernel/uevent_seqnum
+Modules linked in:
 
-> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-
-Acked-by: Chuck Lever <chuck.lever@oracle.com>
-
-I don't know if this will address the presenting problem, but yes,  
-nfs_remount() is definitely not correct.
-
-> ---
->
-> fs/nfs/super.c |    6 ++++--
-> 1 files changed, 4 insertions(+), 2 deletions(-)
->
->
-> diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-> index 0d14704..fb3b280 100644
-> --- a/fs/nfs/super.c
-> +++ b/fs/nfs/super.c
-> @@ -1846,9 +1846,10 @@ nfs_compare_remount_data(struct nfs_server  
-> *nfss,
-> 	    data->acdirmin != nfss->acdirmin / HZ ||
-> 	    data->acdirmax != nfss->acdirmax / HZ ||
-> 	    data->timeo != (10U * nfss->client->cl_timeout->to_initval /  
-> HZ) ||
-> +	    data->nfs_server.port != nfss->port ||
-> 	    data->nfs_server.addrlen != nfss->nfs_client->cl_addrlen ||
-> -	    memcmp(&data->nfs_server.address, &nfss->nfs_client->cl_addr,
-> -		   data->nfs_server.addrlen) != 0)
-> +	    !rpc_cmp_addr(&data->nfs_server.address,
-> +		    &nfss->nfs_client->cl_addr))
-> 		return -EINVAL;
->
-> 	return 0;
-> @@ -1891,6 +1892,7 @@ nfs_remount(struct super_block *sb, int  
-> *flags, char *raw_data)
-> 	data->acdirmin = nfss->acdirmin / HZ;
-> 	data->acdirmax = nfss->acdirmax / HZ;
-> 	data->timeo = 10U * nfss->client->cl_timeout->to_initval / HZ;
-> +	data->nfs_server.port = nfss->port;
-> 	data->nfs_server.addrlen = nfss->nfs_client->cl_addrlen;
-> 	memcpy(&data->nfs_server.address, &nfss->nfs_client->cl_addr,
-> 		data->nfs_server.addrlen);
->
->
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs"  
-> in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
+Pid: 3108, comm: nfsv4.1-svc Tainted: G        W  (2.6.32-rc3 #144) 
+EIP: 0060:[<00000000>] EFLAGS: 00010293 CPU: 0
+EIP is at 0x0
+EAX: c73edd7c EBX: c5d2f8e8 ECX: 00000000 EDX: 00000001
+ESI: c5d2f8d8 EDI: 4aca7522 EBP: c71b1e80 ESP: c71b1e58
+ DS: 007b ES: 007b FS: 0000 GS: 0000 SS: 0068
+Process nfsv4.1-svc (pid: 3108, ti=c71b0000 task=c4800020 task.ti=c71b0000)
+Stack:
+ c176f01a c71b1e80 c176f695 c71b1e90 c73edd7c c1aca8a0 fffffff5 c73ed000
+<0> c5d2f8d8 00000000 c71b1eb8 c1768dcf c71b1f30 00000fc4 c1aca7bc 00000246
+<0> c17689e2 00000001 c1aca7bc 00000000 c17c0158 c1aca944 c73ed0c8 00000000
+Call Trace:
+ [<c176f01a>] ? cache_check+0xea/0x350
+ [<c176f695>] ? sunrpc_cache_lookup+0x125/0x140
+ [<c1768dcf>] ? svcauth_unix_accept+0x15f/0x2e0
+ [<c17689e2>] ? svc_authenticate+0x142/0x1a0
+ [<c17c0158>] ? sub_preempt_count+0x8/0x90
+ [<c17689f7>] ? svc_authenticate+0x157/0x1a0
+ [<c17bd877>] ? _spin_unlock_irq+0x27/0x50
+ [<c1764cd3>] ? svc_process_common+0x3f3/0x630
+ [<c1764fd2>] ? bc_svc_process+0xc2/0x100
+ [<c1059d0b>] ? trace_hardirqs_on+0xb/0x10
+ [<c1213487>] ? nfs41_callback_svc+0x87/0x120
+ [<c1049c50>] ? autoremove_wake_function+0x0/0x50
+ [<c1213400>] ? nfs41_callback_svc+0x0/0x120
+ [<c10499a4>] ? kthread+0x74/0x80
+ [<c1049930>] ? kthread+0x0/0x80
+ [<c100363b>] ? kernel_thread_helper+0x7/0x10
+Code:  Bad EIP value.
+EIP: [<00000000>] 0x0 SS:ESP 0068:c71b1e58
+CR2: 0000000000000000
+---[ end trace 39933fa1a06d9d4b ]---
