@@ -1,136 +1,117 @@
-From: Peter Staubach <staubach@redhat.com>
-Subject: Re: [PATCH 0/4][RFC] NFSv3: implement extended attribute (XATTR)
- protocol
-Date: Tue, 06 Oct 2009 11:18:24 -0400
-Message-ID: <4ACB5FC0.7060307@redhat.com>
-References: <alpine.LRH.2.00.0909200020360.31818@tundra.namei.org>
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: [GIT PULL] Please pull NFS client bugfixes for 2.6.32-rc3
+Date: Tue, 06 Oct 2009 15:46:22 -0400
+Message-ID: <1254858382.3188.10.camel@heimdal.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
-	"J. Bruce Fields" <bfields@fieldses.org>,
-	linux-nfs@vger.kernel.org, Christoph Hellwig <hch@infradead.org>,
-	Casey Schaufler <casey@schaufler-ca.com>,
-	linux-fsdevel@vger.kernel.org
-To: James Morris <jmorris@namei.org>
+Content-Type: text/plain
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Linus Torvalds <torvalds@linux-foundation.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:52429 "EHLO mx1.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:35044 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753891AbZJFPTJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 6 Oct 2009 11:19:09 -0400
-In-Reply-To: <alpine.LRH.2.00.0909200020360.31818-CK9fWmtY32x9JUWOpEiw7w@public.gmane.org>
+	id S932950AbZJFTq7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 6 Oct 2009 15:46:59 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-James Morris wrote:
-> This patchset is the initial posting of an implementation of extended 
-> attribute support for the Linux NFSv3 code, and intended as an RFC.
-> 
-> This code is based initially on the GPL'd NFSv3 xattr code from IRIX 
-> (thanks, Casey!), as well as the existing Linux NFSv3 ACL code. It is 
-> implemented as a side-protocol and should not affect any existing protocol 
-> operation.  These patches are against the devel branch of the linux-nfs 
-> tree.
-> 
-> Currently, the code is implemented only to support Linux namespace.name 
-> xattrs in the "user" namespace.  It could be extended to support other 
-> similar name/value pair xattr implementations (and not far from IRIX wire 
-> compat), although that's not an aim of this version.  There may also be 
-> some scope for limited support of system xattrs (e.g. 'dumb' security 
-> label transport), although I've not looked beyond user.* so far.
-> 
-> Three operations are implemented by the new XATTR protocol and map to 
-> syscalls:
-> 
->  - GETXATTR     getxattr(2)
->  - LISTXTTR     listxattr(2)
->  - SETXATTR     setxattr(2) and removexattr(2)
-> 
-> This code passes basic testing of the above syscalls, although there are 
-> some areas which still need work:
-> 
+Hi Linus,
 
-Is there a set of tests which are used to test this functionality?
+Please pull from the "bugfixes" branch of the repository at
 
->  - Dynamic allocation of RPC buffers/pages (currently, the max size of 
->    e.g. the getxattr(2) value buffer is allocated at the RPC layer for 
->    each call -- suggestions on the best approach for this welcome)
-> 
->  - Determine appropriate NFS error codes for each operation
-> 
->  - Formal documentation of the XATTR protocol
-> 
+   git pull git://git.linux-nfs.org/projects/trondmy/nfs-2.6.git bugfixes
 
-These two would be a good thing.  It would be good to at least have
-a .x description, although having some of the semantics described
-as well would be a good thing.
+This will update the following files through the appended changesets.
 
->  - Interoperability with other OSs (we probably should at least
->    discuss with BSD folk)
-> 
+  Cheers,
+    Trond
 
-It would be good to include the BSD folks, but I think that more
-valuable targets would be those with volume servers that might be
-encountered at customer sites.  I think that we need NetApp, EMC,
-perhaps Sun, providing some feedback on the protocol and semantics.
+----
+ fs/nfs/client.c        |    2 +-
+ fs/nfs/nfs4namespace.c |   12 ++++++------
+ fs/nfs/super.c         |   35 +++++++++++++++++------------------
+ 3 files changed, 24 insertions(+), 25 deletions(-)
 
->  - Handle size probing for getxattr(2) and listxattr(2) in the client 
->    (currently faked).  I think we should handle this at the client and not 
->    support it over the wire, as probes are almost always followed 
->    immediately by full calls, and the protocol can be kept simpler by 
->    expecting the client to perform a full call over the wire in response 
->    to a userland probe and caching the result.
-> 
->  - Caching of xattrs at the client
-> 
+commit 517be09def6cd7bc231222ee756fde8ea245a6fe
+Author: Trond Myklebust <Trond.Myklebust@netapp.com>
+Date:   Tue Oct 6 15:42:20 2009 -0400
 
-This will need a closer specification for the semantics associated
-with these xattrs.  The need will be how to determine when to
-invalidate cached xattrs.
+    NFSv4: Fix the referral mount code
+    
+    Fix a typo which causes try_location() to use the wrong length argument
+    when calling nfs_parse_server_name(). This again, causes the initialisation
+    of the mount's sockaddr structure to fail.
+    
+    Also ensure that if nfs4_pathname_string() returns an error, then we pass
+    that error back up the stack instead of ENOENT.
+    
+    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 
-On more bullet that I might suggest is ensuring that the protocol
-is compliant with the RPC and XDR standards.
+commit f4373bf9e67e4a653c8854acd7b02dac9714c98a
+Author: Ben Hutchings <ben@decadent.org.uk>
+Date:   Tue Oct 6 15:42:18 2009 -0400
 
-	Thanx...
+    nfs: Avoid overrun when copying client IP address string
+    
+    As seen in <http://bugs.debian.org/549002>, nfs4_init_client() can
+    overrun the source string when copying the client IP address from
+    nfs_parsed_mount_data::client_address to nfs_client::cl_ipaddr.  Since
+    these are both treated as null-terminated strings elsewhere, the copy
+    should be done with strlcpy() not memcpy().
+    
+    Signed-off-by: Ben Hutchings <ben@decadent.org.uk>
+    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 
-		ps
+commit bcd2ea17da6a329a7276cde7286d802f009af332
+Author: Trond Myklebust <Trond.Myklebust@netapp.com>
+Date:   Tue Oct 6 15:41:22 2009 -0400
+
+    NFS: Fix port initialisation in nfs_remount()
+    
+    The recent changeset 53a0b9c4c99ab0085a06421f71592722e5b3fd5f (NFS: Replace
+    nfs_parse_ip_address() with rpc_pton()) broke nfs_remount, since the call
+    to rpc_pton() will zero out the port number in data->nfs_server.address.
+    
+    This is actually due to a bug in nfs_remount: it should be looking at the
+    port number in nfs_server.port instead...
+    
+    This fixes bug
+       http://bugzilla.kernel.org/show_bug.cgi?id=14276
+    
+    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+
+commit f5855fecda65c1965c894915ace1e086d4925154
+Author: Trond Myklebust <Trond.Myklebust@netapp.com>
+Date:   Tue Oct 6 15:40:37 2009 -0400
+
+    NFS: Fix port and mountport display in /proc/self/mountinfo
+    
+    Currently, the port and mount port will both display as 65535 if you do not
+    specify a port number. That would be wrong...
+    
+    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+
+commit c5811dbdd26284d63c19fca618bd740dd10ad53d
+Author: Trond Myklebust <Trond.Myklebust@netapp.com>
+Date:   Tue Oct 6 15:40:15 2009 -0400
+
+    NFS: Fix a default mount regression...
+    
+    With the recent spate of changes, the nfs protocol version will now default
+    to 2 instead of 3, while the mount protocol version defaults to 3.
+    
+    The following patch should ensure the defaults are consistent with the
+    previous defaults of vers=3,proto=tcp,mountvers=3,mountproto=tcp.
+    
+    This fixes the bug
+       http://bugzilla.kernel.org/show_bug.cgi?id=14259
+    
+    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 
 
-> Please review and comment!
-> 
-> Note that I'll be giving a talk on this at LinuxCon on Thursday: 
-> http://linuxcon.linuxfoundation.org/meetings/1589 So, in addition to 
-> discussion here, please come along to the talk if you're at the conf, and 
-> we may also be able to discuss it at Plumbers in one of the BoFs.
-> 
-> Full diffstat:
-> 
->  fs/nfs/Kconfig             |   36 ++++
->  fs/nfs/Makefile            |    2 
->  fs/nfs/client.c            |   51 ++++++
->  fs/nfs/dir.c               |    8 -
->  fs/nfs/file.c              |    8 -
->  fs/nfs/internal.h          |   19 ++
->  fs/nfs/nfs3acl.c           |  155 +++++++++++--------
->  fs/nfs/nfs3xattr.c         |  264 +++++++++++++++++++++++++++++++++
->  fs/nfs/nfs3xattr_user.c    |   52 ++++++
->  fs/nfs/nfs3xdr.c           |  187 +++++++++++++++++++++++
->  fs/nfs/super.c             |    3 
->  fs/nfsd/Kconfig            |    8 +
->  fs/nfsd/Makefile           |    1 
->  fs/nfsd/nfs3xattr.c        |  352 +++++++++++++++++++++++++++++++++++++++++++++
->  fs/nfsd/nfsctl.c           |    3 
->  fs/nfsd/nfssvc.c           |   60 +++++++
->  fs/nfsd/vfs.c              |    5 
->  include/linux/nfs_fs.h     |   16 --
->  include/linux/nfs_fs_sb.h  |    3 
->  include/linux/nfs_mount.h  |    3 
->  include/linux/nfs_xattr.h  |   21 ++
->  include/linux/nfs_xdr.h    |   45 +++++
->  include/linux/nfsd/nfsd.h  |   13 +
->  include/linux/nfsd/xdr3.h  |   46 +++++
->  include/linux/sunrpc/svc.h |    2 
->  25 files changed, 1265 insertions(+), 98 deletions(-)
-> 
-> 
-> - James
+-- 
+Trond Myklebust
+Linux NFS client maintainer
 
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
