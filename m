@@ -1,84 +1,154 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: [PATCH 3/7] SUNRPC: Clean up call_transmit_status()
-Date: Wed, 07 Oct 2009 18:22:38 -0400
-Message-ID: <1254954158.7045.33.camel@heimdal.trondhjem.org>
-References: <20091007215019.1844.17414.stgit@matisse.1015granger.net>
-	 <20091007220239.1844.1995.stgit@matisse.1015granger.net>
-Mime-Version: 1.0
-Content-Type: text/plain
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: [PATCH 2/7] SUNRPC: Allow RPCs to fail quickly if the server is unreachable
+Date: Wed, 7 Oct 2009 18:34:14 -0400
+Message-ID: <680A4087-D9CB-40D6-8C7E-239E7EB8CC21@oracle.com>
+References: <20091007215019.1844.17414.stgit@matisse.1015granger.net> <20091007220232.1844.62559.stgit@matisse.1015granger.net> <1254954039.7045.31.camel@heimdal.trondhjem.org>
+Mime-Version: 1.0 (Apple Message framework v936)
+Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
 Cc: linux-nfs@vger.kernel.org
-To: Chuck Lever <chuck.lever@oracle.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-out1.uio.no ([129.240.10.57]:50790 "EHLO mail-out1.uio.no"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755327AbZJGWXY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 7 Oct 2009 18:23:24 -0400
-In-Reply-To: <20091007220239.1844.1995.stgit-RytpoXr2tKZ9HhUboXbp9zCvJB+x5qRC@public.gmane.org>
+Received: from rcsinet11.oracle.com ([148.87.113.123]:44490 "EHLO
+	rgminet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754611AbZJGWgw (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 7 Oct 2009 18:36:52 -0400
+In-Reply-To: <1254954039.7045.31.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 2009-10-07 at 18:02 -0400, Chuck Lever wrote:
-> Clean up: re-arrange the cases in call_transmit_status() to make the
-> code easier to read.
-> 
-> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-> ---
-> 
->  net/sunrpc/clnt.c |   24 ++++++++++++------------
->  1 files changed, 12 insertions(+), 12 deletions(-)
-> 
-> diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-> index 57f39b7..c26669c 100644
-> --- a/net/sunrpc/clnt.c
-> +++ b/net/sunrpc/clnt.c
-> @@ -1175,25 +1175,21 @@ call_transmit(struct rpc_task *task)
->  
->  /*
->   * 5a.	Handle cleanup after a transmission
-> + *	If we've been waiting on the socket's write_space()
-> + *	callback, or if the server is temporarily unreachable,
-> + *	continue holding the transport lock.
->   */
->  static void
->  call_transmit_status(struct rpc_task *task)
->  {
-> +	dprint_status(task);
-> +
->  	task->tk_action = call_status;
-> +
->  	switch (task->tk_status) {
-> -	case -EAGAIN:
-> -		break;
-> -	default:
-> -		xprt_end_transmit(task);
-> -		rpc_task_force_reencode(task);
-> +	case -EAGAIN:			/* no write space */
->  		break;
-> -		/*
-> -		 * Special cases: if we've been waiting on the
-> -		 * socket's write_space() callback, or if the
-> -		 * socket just returned a connection error,
-> -		 * then hold onto the transport lock.
-> -		 */
-> -	case -ECONNREFUSED:
-> +	case -ECONNREFUSED:		/* connection problems */
->  	case -ECONNRESET:
->  	case -ENOTCONN:
->  	case -EHOSTDOWN:
-> @@ -1206,6 +1202,10 @@ call_transmit_status(struct rpc_task *task)
->  			break;
->  		}
->  		rpc_task_force_reencode(task);
-> +		break;
-> +	default:			/* success, or some other error */
-> +		xprt_end_transmit(task);
-> +		rpc_task_force_reencode(task);
->  	}
->  }
 
-This puts the most common case (success) at the very end of the switch
-statement. Most compilers will generate the most efficient code when it
-is at the very beginning...
+On Oct 7, 2009, at 6:20 PM, Trond Myklebust wrote:
 
-Trond
+> On Wed, 2009-10-07 at 18:02 -0400, Chuck Lever wrote:
+>> The kernel sometimes makes RPC calls to services that aren't running.
+>> Because the kernel's RPC client always assumes the hard retry  
+>> semantic
+>> when reconnecting a connection-oriented RPC transport, the underlying
+>> reconnect logic takes a long while to time out, even though the  
+>> remote
+>> may have responded immediately with ECONNREFUSED.
+>>
+>> In certain cases, like upcalls to our local rpcbind daemon, or for  
+>> NFS
+>> mount requests, we'd like the kernel to fail immediately if the  
+>> remote
+>> service isn't reachable, so that another transport can be tried or  
+>> the
+>> pending request can be abandoned quickly.
+>>
+>> Introduce a per-request flag which controls how  
+>> call_transmit_status()
+>> behaves when transmitting the request fails because the server cannot
+>> be reached.  The transport's connection re-establishment timeout is
+>> also ignored for such requests.
+>>
+>> We don't want soft connection semantics to apply to other errors, nor
+>> when the RPC was successfully transmitted.  The default case of the
+>> switch statement in call_transmit_status() no longer falls through;
+>> the fall through code is copied to the default case, and a "break;"  
+>> is
+>> added.
+>>
+>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+>> ---
+>>
+>> include/linux/sunrpc/sched.h |    2 ++
+>> net/sunrpc/clnt.c            |    7 +++++++
+>> net/sunrpc/xprtsock.c        |    2 +-
+>> 3 files changed, 10 insertions(+), 1 deletions(-)
+>>
+>> diff --git a/include/linux/sunrpc/sched.h b/include/linux/sunrpc/ 
+>> sched.h
+>> index 4010977..1906782 100644
+>> --- a/include/linux/sunrpc/sched.h
+>> +++ b/include/linux/sunrpc/sched.h
+>> @@ -130,12 +130,14 @@ struct rpc_task_setup {
+>> #define RPC_TASK_DYNAMIC	0x0080		/* task was kmalloc'ed */
+>> #define RPC_TASK_KILLED		0x0100		/* task was killed */
+>> #define RPC_TASK_SOFT		0x0200		/* Use soft timeouts */
+>> +#define RPC_TASK_SOFTCONN	0x0400		/* Fail if can't connect */
+>>
+>> #define RPC_IS_ASYNC(t)		((t)->tk_flags & RPC_TASK_ASYNC)
+>> #define RPC_IS_SWAPPER(t)	((t)->tk_flags & RPC_TASK_SWAPPER)
+>> #define RPC_DO_ROOTOVERRIDE(t)	((t)->tk_flags & RPC_TASK_ROOTCREDS)
+>> #define RPC_ASSASSINATED(t)	((t)->tk_flags & RPC_TASK_KILLED)
+>> #define RPC_IS_SOFT(t)		((t)->tk_flags & RPC_TASK_SOFT)
+>> +#define RPC_IS_SOFTCONN(t)	((t)->tk_flags & RPC_TASK_SOFTCONN)
+>>
+>> #define RPC_TASK_RUNNING	0
+>> #define RPC_TASK_QUEUED		1
+>> diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+>> index 38829e2..57f39b7 100644
+>> --- a/net/sunrpc/clnt.c
+>> +++ b/net/sunrpc/clnt.c
+>> @@ -1185,6 +1185,8 @@ call_transmit_status(struct rpc_task *task)
+>> 		break;
+>> 	default:
+>> 		xprt_end_transmit(task);
+>> +		rpc_task_force_reencode(task);
+>> +		break;
+>> 		/*
+>> 		 * Special cases: if we've been waiting on the
+>> 		 * socket's write_space() callback, or if the
+>> @@ -1198,6 +1200,11 @@ call_transmit_status(struct rpc_task *task)
+>> 	case -EHOSTUNREACH:
+>> 	case -ENETUNREACH:
+>> 	case -EPIPE:
+>> +		if (RPC_IS_SOFTCONN(task)) {
+>> +			xprt_end_transmit(task);
+>> +			rpc_exit(task, task->tk_status);
+>> +			break;
+>> +		}
+>
+> This doesn't look robust. The EPIPE error may mean that the socket got
+> closed as a result of server action, or a previous RPC call. Don't
+> forget that we might want to reuse SOFTCONN for NFSv4.1 session  
+> binding
+> semantics.
+
+EPIPE can easily be handled in a separate case that doesn't have soft  
+connect.
+
+If you're going to bring up NFSv4.1, though, we'll need to see some  
+use cases to understand what is needed.  I assumed this type of  
+connect behavior would be useful for single requests (like rpcbind) or  
+for the first request sent when contacting a new service.  You'll have  
+to educate me about other potential uses.
+
+>> 		rpc_task_force_reencode(task);
+>> 	}
+>> }
+>> diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+>> index 032d714..c94b3f2 100644
+>> --- a/net/sunrpc/xprtsock.c
+>> +++ b/net/sunrpc/xprtsock.c
+>> @@ -2033,7 +2033,7 @@ static void xs_connect(struct rpc_task *task)
+>> 	if (xprt_test_and_set_connecting(xprt))
+>> 		return;
+>>
+>> -	if (transport->sock != NULL) {
+>> +	if (transport->sock != NULL && !RPC_IS_SOFTCONN(task)) {
+>> 		if (xprt->reestablish_timeout != 0)
+>> 			dprintk("RPC:       xs_connect delayed xprt %p "
+>> 				"for %lu seconds\n",
+>>
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux- 
+>> nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
+> -- 
+> Trond Myklebust
+> Linux NFS client maintainer
+>
+> NetApp
+> Trond.Myklebust@netapp.com
+> www.netapp.com
+
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
 
