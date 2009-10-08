@@ -1,81 +1,134 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH 2/2] mount.nfs: Assume v2/v3 if mount-related options are present
-Date: Thu, 8 Oct 2009 13:51:28 -0400
-Message-ID: <5861547D-8C3E-4049-A78E-146E3DE01701@oracle.com>
-References: <20091008173520.12619.10662.stgit@matisse.1015granger.net> <20091008173712.12619.45807.stgit@matisse.1015granger.net> <1255023929.11961.7.camel@heimdal.trondhjem.org>
-Mime-Version: 1.0 (Apple Message framework v936)
-Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
-Cc: steved@redhat.com, linux-nfs@vger.kernel.org
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: [GIT PULL] Please pull NFS client bugfixes for 2.6.32-rc3
+Date: Thu, 08 Oct 2009 17:05:28 -0400
+Message-ID: <1255035929.17864.4.camel@heimdal.trondhjem.org>
+Mime-Version: 1.0
+Content-Type: text/plain
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Linus Torvalds <torvalds@linux-foundation.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet11.oracle.com ([148.87.113.123]:45710 "EHLO
-	rgminet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757880AbZJHRwm (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 8 Oct 2009 13:52:42 -0400
-In-Reply-To: <1255023929.11961.7.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
+Received: from mx2.netapp.com ([216.240.18.37]:21687 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757159AbZJHVGW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 8 Oct 2009 17:06:22 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Hi Linus,
 
-On Oct 8, 2009, at 1:45 PM, Trond Myklebust wrote:
+Please pull from the "bugfixes" branch of the repository at
 
-> On Thu, 2009-10-08 at 13:37 -0400, Chuck Lever wrote:
->> Don't try NFSv4 if any MNT protocol related options were presented by
->> the user.
->>
->> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
->> ---
->>
->> utils/mount/stropts.c |    7 +++++++
->> 1 files changed, 7 insertions(+), 0 deletions(-)
->>
->> diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
->> index 0685caa..3401f63 100644
->> --- a/utils/mount/stropts.c
->> +++ b/utils/mount/stropts.c
->> @@ -564,6 +564,13 @@ static int nfs_try_mount_v4(struct  
->> nfsmount_info *mi)
->> 	}
->>
->> 	if (mi->version == 0) {
->> +		if (po_contains(options, "mounthost") ||
->> +		    po_contains(options, "mountaddr") ||
->> +		    po_contains(options, "mountvers") ||
->> +		    po_contains(options, "mountproto")) {
->> +			errno = EPROTONOSUPPORT;
->
-> Shouldn't this be EINVAL ?
+   git pull git://git.linux-nfs.org/projects/trondmy/nfs-2.6.git bugfixes
 
-Since this is behind the mi->version == 0 check, we know that the user  
-didn't specify an NFS version.  In any other v4 case, the kernel's  
-mount option parser will kick these out with EINVAL.  But here, we  
-just want to avoid trying to negotiate NFSv4.  So the EPROTONOSUPPORT  
-return code will cause the logic in nfs_try_mount() to try v3/v2 next.
+This will update the following files through the appended changesets.
 
-Basically the bug is this:  before, if I didn't specify an NFS  
-version, but added some mountfoo= option, the mount.nfs command will  
-try negotiating NFSv2/v3.  Now, it will try NFSv4 first, but these are  
-illegal options for NFSv4, and the mount command will fail.  So,  
-regression.  This new logic simply skips trying NFSv4 in this case.
+  Cheers,
+    Trond
 
->
->> +			goto out_fail;
->> +		}
->> 		if (po_append(options, "vers=4") == PO_FAILED) {
->> 			errno = EINVAL;
->> 			goto out_fail;
->>
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux- 
->> nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->
->
+----
+ fs/nfs/client.c        |    2 +-
+ fs/nfs/nfs4namespace.c |   12 ++++++------
+ fs/nfs/nfs4renewd.c    |    6 ------
+ fs/nfs/super.c         |   36 +++++++++++++++++-------------------
+ 4 files changed, 24 insertions(+), 32 deletions(-)
 
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+commit 3050141bae57984dd660e6861632ccf9b8bca77e
+Author: Trond Myklebust <Trond.Myklebust@netapp.com>
+Date:   Thu Oct 8 11:50:55 2009 -0400
+
+    NFSv4: Kill nfs4_renewd_prepare_shutdown()
+    
+    The NFSv4 renew daemon is shared between all active super blocks that refer
+    to a particular NFS server, so it is wrong to be shutting it down in
+    nfs4_kill_super every time a super block is destroyed.
+    
+    This patch therefore kills nfs4_renewd_prepare_shutdown altogether, and
+    leaves it up to nfs4_shutdown_client() to also shut down the renew daemon
+    by means of the existing call to nfs4_kill_renewd().
+    
+    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+
+commit 517be09def6cd7bc231222ee756fde8ea245a6fe
+Author: Trond Myklebust <Trond.Myklebust@netapp.com>
+Date:   Tue Oct 6 15:42:20 2009 -0400
+
+    NFSv4: Fix the referral mount code
+    
+    Fix a typo which causes try_location() to use the wrong length argument
+    when calling nfs_parse_server_name(). This again, causes the initialisation
+    of the mount's sockaddr structure to fail.
+    
+    Also ensure that if nfs4_pathname_string() returns an error, then we pass
+    that error back up the stack instead of ENOENT.
+    
+    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+
+commit f4373bf9e67e4a653c8854acd7b02dac9714c98a
+Author: Ben Hutchings <ben@decadent.org.uk>
+Date:   Tue Oct 6 15:42:18 2009 -0400
+
+    nfs: Avoid overrun when copying client IP address string
+    
+    As seen in <http://bugs.debian.org/549002>, nfs4_init_client() can
+    overrun the source string when copying the client IP address from
+    nfs_parsed_mount_data::client_address to nfs_client::cl_ipaddr.  Since
+    these are both treated as null-terminated strings elsewhere, the copy
+    should be done with strlcpy() not memcpy().
+    
+    Signed-off-by: Ben Hutchings <ben@decadent.org.uk>
+    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+
+commit bcd2ea17da6a329a7276cde7286d802f009af332
+Author: Trond Myklebust <Trond.Myklebust@netapp.com>
+Date:   Tue Oct 6 15:41:22 2009 -0400
+
+    NFS: Fix port initialisation in nfs_remount()
+    
+    The recent changeset 53a0b9c4c99ab0085a06421f71592722e5b3fd5f (NFS: Replace
+    nfs_parse_ip_address() with rpc_pton()) broke nfs_remount, since the call
+    to rpc_pton() will zero out the port number in data->nfs_server.address.
+    
+    This is actually due to a bug in nfs_remount: it should be looking at the
+    port number in nfs_server.port instead...
+    
+    This fixes bug
+       http://bugzilla.kernel.org/show_bug.cgi?id=14276
+    
+    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+
+commit f5855fecda65c1965c894915ace1e086d4925154
+Author: Trond Myklebust <Trond.Myklebust@netapp.com>
+Date:   Tue Oct 6 15:40:37 2009 -0400
+
+    NFS: Fix port and mountport display in /proc/self/mountinfo
+    
+    Currently, the port and mount port will both display as 65535 if you do not
+    specify a port number. That would be wrong...
+    
+    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+
+commit c5811dbdd26284d63c19fca618bd740dd10ad53d
+Author: Trond Myklebust <Trond.Myklebust@netapp.com>
+Date:   Tue Oct 6 15:40:15 2009 -0400
+
+    NFS: Fix a default mount regression...
+    
+    With the recent spate of changes, the nfs protocol version will now default
+    to 2 instead of 3, while the mount protocol version defaults to 3.
+    
+    The following patch should ensure the defaults are consistent with the
+    previous defaults of vers=3,proto=tcp,mountvers=3,mountproto=tcp.
+    
+    This fixes the bug
+       http://bugzilla.kernel.org/show_bug.cgi?id=14259
+    
+    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 
 
+-- 
+Trond Myklebust
+Linux NFS client maintainer
 
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
