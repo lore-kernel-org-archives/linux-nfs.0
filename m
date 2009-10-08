@@ -1,8 +1,8 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
 Subject: Re: [PATCH 0/4][RFC] NFSv3: implement extended attribute (XATTR)
 	protocol
-Date: Thu, 8 Oct 2009 13:21:24 -0400
-Message-ID: <20091008172123.GA24911@fieldses.org>
+Date: Thu, 8 Oct 2009 13:22:48 -0400
+Message-ID: <20091008172248.GB24911@fieldses.org>
 References: <alpine.LRH.2.00.0909200020360.31818@tundra.namei.org> <bf63d7240910080919nf1bf6d0rd94f671d0645f674@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
@@ -31,24 +31,17 @@ On Thu, Oct 08, 2009 at 09:19:13AM -0700, Sriram Ramkrishna wrote:
 > >
 > James this is great news.  I personally am interested (as a consumer) in
 > setting up better ACL list (ala AFS) than the POSIX model we have now and
-> trying to implement it using xattr might be the right way.  But my
-> frustration of course was that everybody did xattr in different ways and no
-> filesystem implementer wanted to go on a limb and implemented such things
-> without a RFC.
+> trying to implement it using xattr might be the right way.
 
-Yes, we could allow applications on the client to access essentially
-arbitrary filesystem-specific functionality.  However, this also would
-allow applications to become dependent on particular features of the
-exported filesystem.  There's some question whether we'd really want to
-do that.
-
-I assume that it was in order to avoid that question that this initial
-implementation only exports the user.* namespace, since xattr's in that
-name space are by design not given any special interpretation by the
-filesystem--they just store and return opaque data.
+By the way, I'd be curious if you could summarize why POSIX ACLs (and
+NFSv4 ACLs?) don't meet your requirements.
 
 --b.
 
+> But my
+> frustration of course was that everybody did xattr in different ways and no
+> filesystem implementer wanted to go on a limb and implemented such things
+> without a RFC.
 > 
 > 
 > >
