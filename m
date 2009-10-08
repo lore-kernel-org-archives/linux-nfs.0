@@ -1,103 +1,72 @@
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: Re: [PATCH 3/7] SUNRPC: Clean up call_transmit_status()
-Date: Wed, 07 Oct 2009 19:43:29 -0400
-Message-ID: <1254959009.7045.47.camel@heimdal.trondhjem.org>
-References: <20091007215019.1844.17414.stgit@matisse.1015granger.net>
-	 <20091007220239.1844.1995.stgit@matisse.1015granger.net>
-	 <1254954158.7045.33.camel@heimdal.trondhjem.org>
-	 <EC5A7F29-AECC-4ECD-828E-D0E2487BDA4B@oracle.com>
+From: Steve Dickson <SteveD@redhat.com>
+Subject: [PATCH] mount.nfs: protocol version set on command line being ignored
+Date: Thu, 08 Oct 2009 11:13:48 -0400
+Message-ID: <4ACE01AC.3000806@RedHat.com>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: linux-nfs@vger.kernel.org
-To: Chuck Lever <chuck.lever@oracle.com>
+Content-Type: text/plain; charset=ISO-8859-1
+To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:6674 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:5554 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753552AbZJGXoX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 7 Oct 2009 19:44:23 -0400
-In-Reply-To: <EC5A7F29-AECC-4ECD-828E-D0E2487BDA4B@oracle.com>
+	id S932608AbZJHPOY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 8 Oct 2009 11:14:24 -0400
+Received: from int-mx04.intmail.prod.int.phx2.redhat.com (int-mx04.intmail.prod.int.phx2.redhat.com [10.5.11.17])
+	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id n98FDwTL015485
+	for <linux-nfs@vger.kernel.org>; Thu, 8 Oct 2009 11:13:58 -0400
+Received: from xenhat.boston.devel.redhat.com (xenhat.boston.devel.redhat.com [10.16.60.47])
+	by int-mx04.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id n98FDvnl013191
+	for <linux-nfs@vger.kernel.org>; Thu, 8 Oct 2009 11:13:58 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 2009-10-07 at 19:02 -0400, Chuck Lever wrote:
-> On Oct 7, 2009, at 6:22 PM, Trond Myklebust wrote:
-> > On Wed, 2009-10-07 at 18:02 -0400, Chuck Lever wrote:
-> >> Clean up: re-arrange the cases in call_transmit_status() to make the
-> >> code easier to read.
-> >>
-> >> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-> >> ---
-> >>
-> >> net/sunrpc/clnt.c |   24 ++++++++++++------------
-> >> 1 files changed, 12 insertions(+), 12 deletions(-)
-> >>
-> >> diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-> >> index 57f39b7..c26669c 100644
-> >> --- a/net/sunrpc/clnt.c
-> >> +++ b/net/sunrpc/clnt.c
-> >> @@ -1175,25 +1175,21 @@ call_transmit(struct rpc_task *task)
-> >>
-> >> /*
-> >>  * 5a.	Handle cleanup after a transmission
-> >> + *	If we've been waiting on the socket's write_space()
-> >> + *	callback, or if the server is temporarily unreachable,
-> >> + *	continue holding the transport lock.
-> >>  */
-> >> static void
-> >> call_transmit_status(struct rpc_task *task)
-> >> {
-> >> +	dprint_status(task);
-> >> +
-> >> 	task->tk_action = call_status;
-> >> +
-> >> 	switch (task->tk_status) {
-> >> -	case -EAGAIN:
-> >> -		break;
-> >> -	default:
-> >> -		xprt_end_transmit(task);
-> >> -		rpc_task_force_reencode(task);
-> >> +	case -EAGAIN:			/* no write space */
-> >> 		break;
-> >> -		/*
-> >> -		 * Special cases: if we've been waiting on the
-> >> -		 * socket's write_space() callback, or if the
-> >> -		 * socket just returned a connection error,
-> >> -		 * then hold onto the transport lock.
-> >> -		 */
-> >> -	case -ECONNREFUSED:
-> >> +	case -ECONNREFUSED:		/* connection problems */
-> >> 	case -ECONNRESET:
-> >> 	case -ENOTCONN:
-> >> 	case -EHOSTDOWN:
-> >> @@ -1206,6 +1202,10 @@ call_transmit_status(struct rpc_task *task)
-> >> 			break;
-> >> 		}
-> >> 		rpc_task_force_reencode(task);
-> >> +		break;
-> >> +	default:			/* success, or some other error */
-> >> +		xprt_end_transmit(task);
-> >> +		rpc_task_force_reencode(task);
-> >> 	}
-> >> }
-> >
-> > This puts the most common case (success) at the very end of the switch
-> > statement. Most compilers will generate the most efficient code when  
-> > it
-> > is at the very beginning...
-> 
-> I dropped this one, since it's not that important.
-> 
-> But I wouldn't expect the compiler could optimize the default: case  
-> the way you described.  No matter what order you write these in, the  
-> code has to check each of the other cases first before deciding to  
-> execute the default: arm.  If it's that important, maybe we should add  
-> a "case 0:" arm?
+Here is a bug that was found in some recent test cycles...
 
-Yes. That's probably a good idea...
--- 
-Trond Myklebust
-Linux NFS client maintainer
 
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+Author: Steve Dickson <steved@redhat.com>
+Date:   Thu Oct 8 10:56:57 2009 -0400
+
+    There are a number of different mount options that can be
+    used to set the protocol version on the command line. The
+    config file code needs to know about each option so the
+    command line value will override the config file value.
+    
+    Signed-off-by: Steve Dickson <steved@redhat.com>
+
+diff --git a/utils/mount/configfile.c b/utils/mount/configfile.c
+index e347b0e..b0aa6f0 100644
+--- a/utils/mount/configfile.c
++++ b/utils/mount/configfile.c
+@@ -185,6 +185,20 @@ void free_all(void)
+ 		free(entry);
+ 	}
+ }
++static char *versions[] = {"v2", "v3", "v4", "vers", "nfsvers", NULL};
++int inline check_vers(char *mopt, char *field)
++{
++	int i;
++
++	if (strncmp("mountvers", field, strlen("mountvers") != 0 &&
++			(strcasecmp(field, "nfsvers") == 0 || 
++				strcasecmp(field, "vers") == 0))) {
++		for (i=0; versions[i]; i++) 
++			if (strcasestr(mopt, versions[i]) != NULL)
++				return 1;
++	}
++	return 0;
++}
+ /*
+  * Parse the given section of the configuration 
+  * file to if there are any mount options set.
+@@ -207,6 +221,12 @@ conf_parse_mntopts(char *section, char *arg, char *opts)
+ 		snprintf(buf, BUFSIZ, "%s=", node->field);
+ 		if (opts && strcasestr(opts, buf) != NULL)
+ 			continue;
++		/* 
++		 * Protocol verions can be set in a number of ways
++		 */
++		if (opts && check_vers(opts, node->field))
++			continue;
++
+ 		if (lookup_entry(node->field) != NULL)
+ 			continue;
+ 		buf[0] = '\0';
