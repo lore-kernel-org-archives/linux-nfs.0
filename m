@@ -1,126 +1,65 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH 3/7] SUNRPC: Clean up call_transmit_status()
-Date: Thu, 8 Oct 2009 11:13:22 -0400
-Message-ID: <8A389FFE-FFD9-49CE-A855-77D710179BD2@oracle.com>
-References: <20091007215019.1844.17414.stgit@matisse.1015granger.net> <20091007220239.1844.1995.stgit@matisse.1015granger.net> <1254954158.7045.33.camel@heimdal.trondhjem.org> <EC5A7F29-AECC-4ECD-828E-D0E2487BDA4B@oracle.com> <1254959009.7045.47.camel@heimdal.trondhjem.org>
-Mime-Version: 1.0 (Apple Message framework v936)
-Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
-Cc: linux-nfs@vger.kernel.org
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet12.oracle.com ([148.87.113.124]:43735 "EHLO
-	rgminet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932639AbZJHPOk (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 8 Oct 2009 11:14:40 -0400
-In-Reply-To: <1254959009.7045.47.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
-Sender: linux-nfs-owner@vger.kernel.org
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH 0/4][RFC] NFSv3: implement extended attribute (XATTR)
+	protocol
+Date: Thu, 8 Oct 2009 13:21:24 -0400
+Message-ID: <20091008172123.GA24911@fieldses.org>
+References: <alpine.LRH.2.00.0909200020360.31818@tundra.namei.org> <bf63d7240910080919nf1bf6d0rd94f671d0645f674@mail.gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: James Morris <jmorris@namei.org>,
+	Trond Myklebust <trond.myklebust@fys.uio.no>,
+	linux-nfs@vger.kernel.org, Christoph Hellwig <hch@infradead.org>,
+	Casey Schaufler <casey@schaufler-ca.com>,
+	linux-fsdevel@vger.kernel.org
+To: Sriram Ramkrishna <sri@ramkrishna.me>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <bf63d7240910080919nf1bf6d0rd94f671d0645f674@mail.gmail.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Thu, Oct 08, 2009 at 09:19:13AM -0700, Sriram Ramkrishna wrote:
+> On Sat, Sep 19, 2009 at 8:09 AM, James Morris <jmorris@namei.org> wrote:
+> 
+> >
+> > Currently, the code is implemented only to support Linux namespace.name
+> > xattrs in the "user" namespace.  It could be extended to support other
+> > similar name/value pair xattr implementations (and not far from IRIX wire
+> > compat), although that's not an aim of this version.  There may also be
+> > some scope for limited support of system xattrs (e.g. 'dumb' security
+> > label transport), although I've not looked beyond user.* so far.
+> >
+> >
+> James this is great news.  I personally am interested (as a consumer) in
+> setting up better ACL list (ala AFS) than the POSIX model we have now and
+> trying to implement it using xattr might be the right way.  But my
+> frustration of course was that everybody did xattr in different ways and no
+> filesystem implementer wanted to go on a limb and implemented such things
+> without a RFC.
 
-On Oct 7, 2009, at 7:43 PM, Trond Myklebust wrote:
+Yes, we could allow applications on the client to access essentially
+arbitrary filesystem-specific functionality.  However, this also would
+allow applications to become dependent on particular features of the
+exported filesystem.  There's some question whether we'd really want to
+do that.
 
-> On Wed, 2009-10-07 at 19:02 -0400, Chuck Lever wrote:
->> On Oct 7, 2009, at 6:22 PM, Trond Myklebust wrote:
->>> On Wed, 2009-10-07 at 18:02 -0400, Chuck Lever wrote:
->>>> Clean up: re-arrange the cases in call_transmit_status() to make  
->>>> the
->>>> code easier to read.
->>>>
->>>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
->>>> ---
->>>>
->>>> net/sunrpc/clnt.c |   24 ++++++++++++------------
->>>> 1 files changed, 12 insertions(+), 12 deletions(-)
->>>>
->>>> diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
->>>> index 57f39b7..c26669c 100644
->>>> --- a/net/sunrpc/clnt.c
->>>> +++ b/net/sunrpc/clnt.c
->>>> @@ -1175,25 +1175,21 @@ call_transmit(struct rpc_task *task)
->>>>
->>>> /*
->>>> * 5a.	Handle cleanup after a transmission
->>>> + *	If we've been waiting on the socket's write_space()
->>>> + *	callback, or if the server is temporarily unreachable,
->>>> + *	continue holding the transport lock.
->>>> */
->>>> static void
->>>> call_transmit_status(struct rpc_task *task)
->>>> {
->>>> +	dprint_status(task);
->>>> +
->>>> 	task->tk_action = call_status;
->>>> +
->>>> 	switch (task->tk_status) {
->>>> -	case -EAGAIN:
->>>> -		break;
->>>> -	default:
->>>> -		xprt_end_transmit(task);
->>>> -		rpc_task_force_reencode(task);
->>>> +	case -EAGAIN:			/* no write space */
->>>> 		break;
->>>> -		/*
->>>> -		 * Special cases: if we've been waiting on the
->>>> -		 * socket's write_space() callback, or if the
->>>> -		 * socket just returned a connection error,
->>>> -		 * then hold onto the transport lock.
->>>> -		 */
->>>> -	case -ECONNREFUSED:
->>>> +	case -ECONNREFUSED:		/* connection problems */
->>>> 	case -ECONNRESET:
->>>> 	case -ENOTCONN:
->>>> 	case -EHOSTDOWN:
->>>> @@ -1206,6 +1202,10 @@ call_transmit_status(struct rpc_task *task)
->>>> 			break;
->>>> 		}
->>>> 		rpc_task_force_reencode(task);
->>>> +		break;
->>>> +	default:			/* success, or some other error */
->>>> +		xprt_end_transmit(task);
->>>> +		rpc_task_force_reencode(task);
->>>> 	}
->>>> }
->>>
->>> This puts the most common case (success) at the very end of the  
->>> switch
->>> statement. Most compilers will generate the most efficient code when
->>> it
->>> is at the very beginning...
->>
->> I dropped this one, since it's not that important.
->>
->> But I wouldn't expect the compiler could optimize the default: case
->> the way you described.  No matter what order you write these in, the
->> code has to check each of the other cases first before deciding to
->> execute the default: arm.  If it's that important, maybe we should  
->> add
->> a "case 0:" arm?
->
-> Yes. That's probably a good idea...
+I assume that it was in order to avoid that question that this initial
+implementation only exports the user.* namespace, since xattr's in that
+name space are by design not given any special interpretation by the
+filesystem--they just store and return opaque data.
 
-Well, after looking at the actual evidence (ie objdump output)...
+--b.
 
-Unfortunately, adding "case 0:" doesn't seem to change the object  
-code.  Nothing I tried seemed to prevent the compiler from placing the  
-zero case at the end of the function.  I had to add
-
-	if (task->tk_status == 0) {
-		xprt_end_transmit(task);
-		rpc_task_force_reencode(task);
-		return;
-	}
-
-	switch (task->tk_status) {
-
-    ...
-
-before the compiler would put the check for zero status first.   
-Hopefully, open coding it would make the arrangement permanent,  
-regardless of any compiler optimizations.
-
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
+> 
+> 
+> >
+> > Note that I'll be giving a talk on this at LinuxCon on Thursday:
+> > http://linuxcon.linuxfoundation.org/meetings/1589 So, in addition to
+> > discussion here, please come along to the talk if you're at the conf, and
+> > we may also be able to discuss it at Plumbers in one of the BoFs.
+> >
+> 
+> 
+> Ah, I was there, and I was asking around wanting to talk about the issue!
+> Ah well.
+> 
+> sri
