@@ -1,58 +1,81 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH 1/2] mount: ECONNREFUSED is a permanent error
-Date: Fri, 9 Oct 2009 11:13:11 -0400
-Message-ID: <DDBA069F-E9B8-4BE3-B13C-2B69406C3C9A@ORACLE.COM>
-References: <20091008173520.12619.10662.stgit@matisse.1015granger.net> <20091008173703.12619.35788.stgit@matisse.1015granger.net> <4ACF37C2.6030208@RedHat.com>
-Mime-Version: 1.0 (Apple Message framework v936)
-Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: [PATCH] nfs: remove BKL from callback server
+Date: Fri, 9 Oct 2009 11:11:51 -0400
+Message-ID: <20091009151151.GB9436@fieldses.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
 Cc: linux-nfs@vger.kernel.org
-To: Steve Dickson <SteveD@redhat.com>
+To: Trond Myklebust <trond@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet11.oracle.com ([148.87.113.123]:51033 "EHLO
-	rgminet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758850AbZJIPOO (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 9 Oct 2009 11:14:14 -0400
-In-Reply-To: <4ACF37C2.6030208-AfCzQyP5zfLQT0dZR+AlfA@public.gmane.org>
+Received: from fieldses.org ([174.143.236.118]:41727 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756745AbZJIPLt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 9 Oct 2009 11:11:49 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Oct 9, 2009, at 9:16 AM, Steve Dickson wrote:
-> On 10/08/2009 01:37 PM, Chuck Lever wrote:
->> I had assumed early on that mount.nfs should retry a refused  
->> connection.
->>
->> Apparently this is not the case.  Legacy mount.nfs4 fails immediately
->> if the NFS server refuses the connection.  Legacy mount.nfs and
->> text-based mount.nfs both fail immediately if the rpcbind service is
->> refusing connections.
->>
-> What about if the server is on the way up (i.e the network is up)
-> but has not started the NFS service? In that window, the server will
-> return ECONNREFUSED since nobody is listening, but in a very short  
-> time
-> there will be a listener... The mount should not fail in that case...
+From: J. Bruce Fields <bfields@citi.umich.edu>
 
-I agree, but I think it does fail today, and it has behaved this way  
-for a long while.  No one has complained about it.  I'm actually not  
-arguing in favor of either behavior; just reporting that the current  
-behavior is inconsistent.
+The rpc server does not require that service threads take the BKL.
 
-With the current code, legacy and text-based v2/v3 fails immediately  
-if the server's rpcbind refuses connection... Legacy mount.nfs4 fails  
-immediately if the NFS server refuses connection.  Text-based  
-mount.nfs4 retries in this case.
+Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
+---
+ fs/nfs/callback.c |   12 ------------
+ 1 files changed, 0 insertions(+), 12 deletions(-)
 
-So we will either need to fix v2/v3 to continue retrying, or fix NFSv4  
-to stop retrying.  The retries would stop after mount.nfs's retry  
-timer expires (just like the case where the server isn't responding at  
-all).
+Just noticed this while looking for something else.
 
-Automounter might want different behavior in this case, but we should  
-ask around before making a final decision, probably.
+If these BKL's were cut-and-pasted from lockd or older nfsd code under
+the assumption that the generic rpc server code needed them: that
+assumption was incorrect, and we should apply this patch.
 
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+(If there was some nfs-client-specific issue here, then ignore this
+patch.)
 
-
+diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
+index 293fa05..e66ec5d 100644
+--- a/fs/nfs/callback.c
++++ b/fs/nfs/callback.c
+@@ -78,11 +78,6 @@ nfs4_callback_svc(void *vrqstp)
+ 
+ 	set_freezable();
+ 
+-	/*
+-	 * FIXME: do we really need to run this under the BKL? If so, please
+-	 * add a comment about what it's intended to protect.
+-	 */
+-	lock_kernel();
+ 	while (!kthread_should_stop()) {
+ 		/*
+ 		 * Listen for a request on the socket
+@@ -104,7 +99,6 @@ nfs4_callback_svc(void *vrqstp)
+ 		preverr = err;
+ 		svc_process(rqstp);
+ 	}
+-	unlock_kernel();
+ 	return 0;
+ }
+ 
+@@ -160,11 +154,6 @@ nfs41_callback_svc(void *vrqstp)
+ 
+ 	set_freezable();
+ 
+-	/*
+-	 * FIXME: do we really need to run this under the BKL? If so, please
+-	 * add a comment about what it's intended to protect.
+-	 */
+-	lock_kernel();
+ 	while (!kthread_should_stop()) {
+ 		prepare_to_wait(&serv->sv_cb_waitq, &wq, TASK_INTERRUPTIBLE);
+ 		spin_lock_bh(&serv->sv_cb_lock);
+@@ -183,7 +172,6 @@ nfs41_callback_svc(void *vrqstp)
+ 		}
+ 		finish_wait(&serv->sv_cb_waitq, &wq);
+ 	}
+-	unlock_kernel();
+ 	return 0;
+ }
+ 
+-- 
+1.6.0.4
 
