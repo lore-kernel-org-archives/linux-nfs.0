@@ -1,55 +1,74 @@
 From: James Morris <jmorris@namei.org>
 Subject: Re: [PATCH 0/4][RFC] NFSv3: implement extended attribute (XATTR)
  protocol
-Date: Fri, 9 Oct 2009 11:31:55 +1100 (EST)
-Message-ID: <alpine.LRH.2.00.0910091130440.32154@tundra.namei.org>
-References: <alpine.LRH.2.00.0909200020360.31818@tundra.namei.org> <bf63d7240910080919nf1bf6d0rd94f671d0645f674@mail.gmail.com> <20091008172123.GA24911@fieldses.org>
+Date: Fri, 9 Oct 2009 11:39:21 +1100 (EST)
+Message-ID: <alpine.LRH.2.00.0910091132130.32154@tundra.namei.org>
+References: <alpine.LRH.2.00.0909200020360.31818@tundra.namei.org> <4ACB5FC0.7060307@redhat.com>
 Mime-Version: 1.0
 Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Sriram Ramkrishna <sri@ramkrishna.me>,
-	Trond Myklebust <trond.myklebust@fys.uio.no>,
+Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
+	"J. Bruce Fields" <bfields@fieldses.org>,
 	linux-nfs@vger.kernel.org, Christoph Hellwig <hch@infradead.org>,
 	Casey Schaufler <casey@schaufler-ca.com>,
 	linux-fsdevel@vger.kernel.org
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <20091008172123.GA24911@fieldses.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
+To: Peter Staubach <staubach@redhat.com>
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from tundra.namei.org ([65.99.196.166]:39889 "EHLO tundra.namei.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755970AbZJIAkZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 8 Oct 2009 20:40:25 -0400
+In-Reply-To: <4ACB5FC0.7060307@redhat.com>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 8 Oct 2009, J. Bruce Fields wrote:
+On Tue, 6 Oct 2009, Peter Staubach wrote:
 
-> I assume that it was in order to avoid that question that this initial
-> implementation only exports the user.* namespace, since xattr's in that
-> name space are by design not given any special interpretation by the
-> filesystem--they just store and return opaque data.
-
-Correct -- there are no system semantics (beyond existing DACsecurity 
-checks), so it's straightforward.
-
-Other namespaces would need to have semantics defined on a case by case 
-basis.
-
-
+> > Three operations are implemented by the new XATTR protocol and map to 
+> > syscalls:
+> > 
+> >  - GETXATTR     getxattr(2)
+> >  - LISTXTTR     listxattr(2)
+> >  - SETXATTR     setxattr(2) and removexattr(2)
+> > 
+> > This code passes basic testing of the above syscalls, although there are 
+> > some areas which still need work:
+> > 
 > 
-> --b.
-> 
-> > 
-> > 
-> > >
-> > > Note that I'll be giving a talk on this at LinuxCon on Thursday:
-> > > http://linuxcon.linuxfoundation.org/meetings/1589 So, in addition to
-> > > discussion here, please come along to the talk if you're at the conf, and
-> > > we may also be able to discuss it at Plumbers in one of the BoFs.
-> > >
-> > 
-> > 
-> > Ah, I was there, and I was asking around wanting to talk about the issue!
-> > Ah well.
-> > 
-> > sri
-> 
+> Is there a set of tests which are used to test this functionality?
 
+No, I just manually run a set of commands to verify basic behavior.
+
+I gather LTP would be the best place to add tests for this?
+
+> >  - Interoperability with other OSs (we probably should at least
+> >    discuss with BSD folk)
+> > 
+> 
+> It would be good to include the BSD folks, but I think that more
+> valuable targets would be those with volume servers that might be
+> encountered at customer sites.  I think that we need NetApp, EMC,
+> perhaps Sun, providing some feedback on the protocol and semantics.
+
+Given that IETF activity is closed for v3, I wonder what the best forum 
+would be to reach all these folk?
+
+> >  - Caching of xattrs at the client
+> > 
+> 
+> This will need a closer specification for the semantics associated
+> with these xattrs.  The need will be how to determine when to
+> invalidate cached xattrs.
+
+I suspect user namespace xattrs should be treated like file data wrt 
+caching (i.e. they're fully under the control of the user).
+
+> On more bullet that I might suggest is ensuring that the protocol
+> is compliant with the RPC and XDR standards.
+
+Thanks, I'll check that.
+
+
+- James
 -- 
 James Morris
 <jmorris@namei.org>
