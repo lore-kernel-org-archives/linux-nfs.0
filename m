@@ -1,103 +1,91 @@
-From: Ian Kent <ikent@redhat.com>
-Subject: Re: [PATCH 1/2] mount: ECONNREFUSED is a permanent error
-Date: Sat, 10 Oct 2009 00:33:22 +0800
-Message-ID: <4ACF65D2.8010809@redhat.com>
-References: <20091008173520.12619.10662.stgit@matisse.1015granger.net> <20091008173703.12619.35788.stgit@matisse.1015granger.net> <4ACF37C2.6030208@RedHat.com> <DDBA069F-E9B8-4BE3-B13C-2B69406C3C9A@ORACLE.COM> <4ACF54B4.9020900@RedHat.com> <3D7C5D2E-971F-4F59-B660-C584288ED13B@oracle.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: 4.1 NULL dereference in 2.6.32-rc3
+Date: Fri, 9 Oct 2009 13:02:19 -0400
+Message-ID: <20091009170218.GF9436@fieldses.org>
+References: <20091005230736.GB31874@fieldses.org> <20091009002020.GC26954@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: Steve Dickson <SteveD@redhat.com>, linux-nfs@vger.kernel.org
-To: Chuck Lever <chuck.lever@oracle.com>
+Content-Type: text/plain; charset=us-ascii
+To: pnfs@linux-nfs.org, linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:53621 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:36003 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933941AbZJIQd5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 9 Oct 2009 12:33:57 -0400
-In-Reply-To: <3D7C5D2E-971F-4F59-B660-C584288ED13B@oracle.com>
+	id S1756745AbZJIRCR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 9 Oct 2009 13:02:17 -0400
+In-Reply-To: <20091009002020.GC26954@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Chuck Lever wrote:
-> On Oct 9, 2009, at 11:20 AM, Steve Dickson wrote:
->> On 10/09/2009 11:13 AM, Chuck Lever wrote:
->>> On Oct 9, 2009, at 9:16 AM, Steve Dickson wrote:
->>>> On 10/08/2009 01:37 PM, Chuck Lever wrote:
->>>>> I had assumed early on that mount.nfs should retry a refused
->>>>> connection.
->>>>>
->>>>> Apparently this is not the case.  Legacy mount.nfs4 fails immediately
->>>>> if the NFS server refuses the connection.  Legacy mount.nfs and
->>>>> text-based mount.nfs both fail immediately if the rpcbind service is
->>>>> refusing connections.
->>>>>
->>>> What about if the server is on the way up (i.e the network is up)
->>>> but has not started the NFS service? In that window, the server will
->>>> return ECONNREFUSED since nobody is listening, but in a very short time
->>>> there will be a listener... The mount should not fail in that case...
->>>
->>> I agree, but I think it does fail today, and it has behaved this way for
->>> a long while.  No one has complained about it.  I'm actually not arguing
->>> in favor of either behavior; just reporting that the current behavior is
->>> inconsistent.
->>>
->>> With the current code, legacy and text-based v2/v3 fails immediately if
->>> the server's rpcbind refuses connection... Legacy mount.nfs4 fails
->>> immediately if the NFS server refuses connection.  Text-based mount.nfs4
->>> retries in this case.
->> I think the text-based mounts have it right...
+On Thu, Oct 08, 2009 at 08:20:20PM -0400, J. Bruce Fields wrote:
+> On Mon, Oct 05, 2009 at 07:07:36PM -0400, J. Bruce Fields wrote:
+> > After mounting and unmounting a 4.1 partition with client and server
+> > both 2.6.32-rc3, I see the following NULL dereference on the client.
+> > 
+> > I think the only cache lookup there is in unix_gid_find().  Hm.
+> > Maybe it's trying to defer a request without a defer method set?
 > 
-> It's a change from legacy behavior, however, so we should test
-> carefully.  The trade-off is that the mount.nfs command is less
-> responsive because it's retrying a connection refusal, but it's more
-> likely that the mount request will succeed.
+> Confirmed.  And I don't see where the client sets any defer method.  (It
+> shouldn't really have to.)
 > 
-> Again, I'm not advocating for one or the other, just pointing out the
-> compromises.
+> Anyway, I'll think of some way to bypass this upcall.
+
+Actually, it seems sort of wrong to have what's really nfs
+server-specific credential mapping in generic rpc cred parsing code.
+Maybe we should move that unix_gid_find() into pg_authenticate()
+(so svcauth_unix_set_client() in this case).
+
+--b.
+
+> I'm mystified as
+> to why others aren't seeing this, though.
 > 
->>> So we will either need to fix v2/v3 to continue retrying, or fix NFSv4
->>> to stop retrying.  The retries would stop after mount.nfs's retry timer
->>> expires (just like the case where the server isn't responding at all).
->> The former, IMHO.. I also notice that the retry timer does not work since
->> the mount waits in the kernel well passed the timer expiring...
+> --b.
 > 
-> It does work, after a fashion, but yes, it's less responsive than it was
-> before.  For background mounts it hardly matters because bg mounts retry
-> for a good long while.  The case where it gets a little ugly is fg, when
-> mount.nfs's retry timer is nearly always shorter than the kernel's
-> connect retry timeout.
-> 
-> I've got some kernel level fixes for this... see the SOFTCONN patches
-> from earlier this week.  Shortening the initial connect retry timeout in
-> the kernel will also help the case where the server isn't responding at
-> all.
-> 
->>> Automounter might want different behavior in this case, but we should
->>> ask around before making a final decision, probably.
->> Ian... What do you think??
-
-We've been here recently I think, a very similar discussion anyway.
-
-I think the interactive mounts should wait for the reasons that Chuck
-points out and Steve agrees with.
-
-The later point sounds like RPC not letting go after a specified
-timeout. I think that the any timeout that is given, user space or
-kernel space, should be obeyed and whatever needs to be done to achieve
-it should be done. That only leaves the decision of retries, which comes
-back to interactive mounts should wait (I think even system startup can
-be considered interactive in this case).
-
-As for autofs, that's a different story.
-
-Our recent, similar discussion, lead to the addition of an autofs option
-to set a timeout to wait for a mount (considered to be interactive) to
-complete which overrides the behaviour of mount. But this has two
-problems. First, sending a TERM signal to the mount(8) process kills it
-but leaves the mount.nfs(8) process to run to completion. While this
-isn't to good it achieves what's required from the interactive user
-perspective. And second, it looks like the task killable patches will
-stop the mount.nfs(8) task from terminating on a TERM signal even if we
-were to locate the process and send the signal to it.
-
-Mmmm ... bit off topic I guess.
-Ian
-
+> > 
+> > Of course there's no point to the client's callback server doing this
+> > upcall at all.
+> > 
+> > --b.
+> > 
+> > BUG: unable to handle kernel NULL pointer dereference at (null)
+> > IP: [<(null)>] (null)
+> > *pde = 00000000 
+> > Oops: 0000 [#1] PREEMPT 
+> > last sysfs file: /sys/kernel/uevent_seqnum
+> > Modules linked in:
+> > 
+> > Pid: 3108, comm: nfsv4.1-svc Tainted: G        W  (2.6.32-rc3 #144) 
+> > EIP: 0060:[<00000000>] EFLAGS: 00010293 CPU: 0
+> > EIP is at 0x0
+> > EAX: c73edd7c EBX: c5d2f8e8 ECX: 00000000 EDX: 00000001
+> > ESI: c5d2f8d8 EDI: 4aca7522 EBP: c71b1e80 ESP: c71b1e58
+> >  DS: 007b ES: 007b FS: 0000 GS: 0000 SS: 0068
+> > Process nfsv4.1-svc (pid: 3108, ti=c71b0000 task=c4800020 task.ti=c71b0000)
+> > Stack:
+> >  c176f01a c71b1e80 c176f695 c71b1e90 c73edd7c c1aca8a0 fffffff5 c73ed000
+> > <0> c5d2f8d8 00000000 c71b1eb8 c1768dcf c71b1f30 00000fc4 c1aca7bc 00000246
+> > <0> c17689e2 00000001 c1aca7bc 00000000 c17c0158 c1aca944 c73ed0c8 00000000
+> > Call Trace:
+> >  [<c176f01a>] ? cache_check+0xea/0x350
+> >  [<c176f695>] ? sunrpc_cache_lookup+0x125/0x140
+> >  [<c1768dcf>] ? svcauth_unix_accept+0x15f/0x2e0
+> >  [<c17689e2>] ? svc_authenticate+0x142/0x1a0
+> >  [<c17c0158>] ? sub_preempt_count+0x8/0x90
+> >  [<c17689f7>] ? svc_authenticate+0x157/0x1a0
+> >  [<c17bd877>] ? _spin_unlock_irq+0x27/0x50
+> >  [<c1764cd3>] ? svc_process_common+0x3f3/0x630
+> >  [<c1764fd2>] ? bc_svc_process+0xc2/0x100
+> >  [<c1059d0b>] ? trace_hardirqs_on+0xb/0x10
+> >  [<c1213487>] ? nfs41_callback_svc+0x87/0x120
+> >  [<c1049c50>] ? autoremove_wake_function+0x0/0x50
+> >  [<c1213400>] ? nfs41_callback_svc+0x0/0x120
+> >  [<c10499a4>] ? kthread+0x74/0x80
+> >  [<c1049930>] ? kthread+0x0/0x80
+> >  [<c100363b>] ? kernel_thread_helper+0x7/0x10
+> > Code:  Bad EIP value.
+> > EIP: [<00000000>] 0x0 SS:ESP 0068:c71b1e58
+> > CR2: 0000000000000000
+> > ---[ end trace 39933fa1a06d9d4b ]---
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
