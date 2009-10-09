@@ -1,81 +1,55 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: 4.1 NULL dereference in 2.6.32-rc3
-Date: Thu, 8 Oct 2009 20:20:20 -0400
-Message-ID: <20091009002020.GC26954@fieldses.org>
-References: <20091005230736.GB31874@fieldses.org>
+From: James Morris <jmorris@namei.org>
+Subject: Re: [PATCH 0/4][RFC] NFSv3: implement extended attribute (XATTR)
+ protocol
+Date: Fri, 9 Oct 2009 11:31:55 +1100 (EST)
+Message-ID: <alpine.LRH.2.00.0910091130440.32154@tundra.namei.org>
+References: <alpine.LRH.2.00.0909200020360.31818@tundra.namei.org> <bf63d7240910080919nf1bf6d0rd94f671d0645f674@mail.gmail.com> <20091008172123.GA24911@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-To: pnfs@linux-nfs.org, linux-nfs@vger.kernel.org
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:42168 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756855AbZJIAUU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 8 Oct 2009 20:20:20 -0400
-In-Reply-To: <20091005230736.GB31874@fieldses.org>
-Sender: linux-nfs-owner@vger.kernel.org
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: Sriram Ramkrishna <sri@ramkrishna.me>,
+	Trond Myklebust <trond.myklebust@fys.uio.no>,
+	linux-nfs@vger.kernel.org, Christoph Hellwig <hch@infradead.org>,
+	Casey Schaufler <casey@schaufler-ca.com>,
+	linux-fsdevel@vger.kernel.org
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <20091008172123.GA24911@fieldses.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Oct 05, 2009 at 07:07:36PM -0400, J. Bruce Fields wrote:
-> After mounting and unmounting a 4.1 partition with client and server
-> both 2.6.32-rc3, I see the following NULL dereference on the client.
-> 
-> I think the only cache lookup there is in unix_gid_find().  Hm.
-> Maybe it's trying to defer a request without a defer method set?
+On Thu, 8 Oct 2009, J. Bruce Fields wrote:
 
-Confirmed.  And I don't see where the client sets any defer method.  (It
-shouldn't really have to.)
+> I assume that it was in order to avoid that question that this initial
+> implementation only exports the user.* namespace, since xattr's in that
+> name space are by design not given any special interpretation by the
+> filesystem--they just store and return opaque data.
 
-Anyway, I'll think of some way to bypass this upcall.  I'm mystified as
-to why others aren't seeing this, though.
+Correct -- there are no system semantics (beyond existing DACsecurity 
+checks), so it's straightforward.
 
---b.
+Other namespaces would need to have semantics defined on a case by case 
+basis.
 
-> 
-> Of course there's no point to the client's callback server doing this
-> upcall at all.
+
 > 
 > --b.
 > 
-> BUG: unable to handle kernel NULL pointer dereference at (null)
-> IP: [<(null)>] (null)
-> *pde = 00000000 
-> Oops: 0000 [#1] PREEMPT 
-> last sysfs file: /sys/kernel/uevent_seqnum
-> Modules linked in:
+> > 
+> > 
+> > >
+> > > Note that I'll be giving a talk on this at LinuxCon on Thursday:
+> > > http://linuxcon.linuxfoundation.org/meetings/1589 So, in addition to
+> > > discussion here, please come along to the talk if you're at the conf, and
+> > > we may also be able to discuss it at Plumbers in one of the BoFs.
+> > >
+> > 
+> > 
+> > Ah, I was there, and I was asking around wanting to talk about the issue!
+> > Ah well.
+> > 
+> > sri
 > 
-> Pid: 3108, comm: nfsv4.1-svc Tainted: G        W  (2.6.32-rc3 #144) 
-> EIP: 0060:[<00000000>] EFLAGS: 00010293 CPU: 0
-> EIP is at 0x0
-> EAX: c73edd7c EBX: c5d2f8e8 ECX: 00000000 EDX: 00000001
-> ESI: c5d2f8d8 EDI: 4aca7522 EBP: c71b1e80 ESP: c71b1e58
->  DS: 007b ES: 007b FS: 0000 GS: 0000 SS: 0068
-> Process nfsv4.1-svc (pid: 3108, ti=c71b0000 task=c4800020 task.ti=c71b0000)
-> Stack:
->  c176f01a c71b1e80 c176f695 c71b1e90 c73edd7c c1aca8a0 fffffff5 c73ed000
-> <0> c5d2f8d8 00000000 c71b1eb8 c1768dcf c71b1f30 00000fc4 c1aca7bc 00000246
-> <0> c17689e2 00000001 c1aca7bc 00000000 c17c0158 c1aca944 c73ed0c8 00000000
-> Call Trace:
->  [<c176f01a>] ? cache_check+0xea/0x350
->  [<c176f695>] ? sunrpc_cache_lookup+0x125/0x140
->  [<c1768dcf>] ? svcauth_unix_accept+0x15f/0x2e0
->  [<c17689e2>] ? svc_authenticate+0x142/0x1a0
->  [<c17c0158>] ? sub_preempt_count+0x8/0x90
->  [<c17689f7>] ? svc_authenticate+0x157/0x1a0
->  [<c17bd877>] ? _spin_unlock_irq+0x27/0x50
->  [<c1764cd3>] ? svc_process_common+0x3f3/0x630
->  [<c1764fd2>] ? bc_svc_process+0xc2/0x100
->  [<c1059d0b>] ? trace_hardirqs_on+0xb/0x10
->  [<c1213487>] ? nfs41_callback_svc+0x87/0x120
->  [<c1049c50>] ? autoremove_wake_function+0x0/0x50
->  [<c1213400>] ? nfs41_callback_svc+0x0/0x120
->  [<c10499a4>] ? kthread+0x74/0x80
->  [<c1049930>] ? kthread+0x0/0x80
->  [<c100363b>] ? kernel_thread_helper+0x7/0x10
-> Code:  Bad EIP value.
-> EIP: [<00000000>] 0x0 SS:ESP 0068:c71b1e58
-> CR2: 0000000000000000
-> ---[ end trace 39933fa1a06d9d4b ]---
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+-- 
+James Morris
+<jmorris@namei.org>
