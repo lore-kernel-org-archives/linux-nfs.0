@@ -1,74 +1,35 @@
-From: James Morris <jmorris@namei.org>
-Subject: Re: [PATCH 0/4][RFC] NFSv3: implement extended attribute (XATTR)
- protocol
-Date: Fri, 9 Oct 2009 11:39:21 +1100 (EST)
-Message-ID: <alpine.LRH.2.00.0910091132130.32154@tundra.namei.org>
-References: <alpine.LRH.2.00.0909200020360.31818@tundra.namei.org> <4ACB5FC0.7060307@redhat.com>
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Re: [PATCH 1/2] mount: ECONNREFUSED is a permanent error
+Date: Fri, 09 Oct 2009 09:16:50 -0400
+Message-ID: <4ACF37C2.6030208@RedHat.com>
+References: <20091008173520.12619.10662.stgit@matisse.1015granger.net> <20091008173703.12619.35788.stgit@matisse.1015granger.net>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
-	"J. Bruce Fields" <bfields@fieldses.org>,
-	linux-nfs@vger.kernel.org, Christoph Hellwig <hch@infradead.org>,
-	Casey Schaufler <casey@schaufler-ca.com>,
-	linux-fsdevel@vger.kernel.org
-To: Peter Staubach <staubach@redhat.com>
+Content-Type: text/plain; charset=UTF-8
+Cc: linux-nfs@vger.kernel.org
+To: Chuck Lever <chuck.lever-MouhYhfBpPxXrIkS9f7CXA@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from tundra.namei.org ([65.99.196.166]:39889 "EHLO tundra.namei.org"
+Received: from mx1.redhat.com ([209.132.183.28]:35525 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755970AbZJIAkZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 8 Oct 2009 20:40:25 -0400
-In-Reply-To: <4ACB5FC0.7060307@redhat.com>
+	id S1752798AbZJINRa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 9 Oct 2009 09:17:30 -0400
+In-Reply-To: <20091008173703.12619.35788.stgit-RytpoXr2tKZ9HhUboXbp9zCvJB+x5qRC@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 6 Oct 2009, Peter Staubach wrote:
 
-> > Three operations are implemented by the new XATTR protocol and map to 
-> > syscalls:
-> > 
-> >  - GETXATTR     getxattr(2)
-> >  - LISTXTTR     listxattr(2)
-> >  - SETXATTR     setxattr(2) and removexattr(2)
-> > 
-> > This code passes basic testing of the above syscalls, although there are 
-> > some areas which still need work:
-> > 
+
+On 10/08/2009 01:37 PM, Chuck Lever wrote:
+> I had assumed early on that mount.nfs should retry a refused connection.
 > 
-> Is there a set of tests which are used to test this functionality?
-
-No, I just manually run a set of commands to verify basic behavior.
-
-I gather LTP would be the best place to add tests for this?
-
-> >  - Interoperability with other OSs (we probably should at least
-> >    discuss with BSD folk)
-> > 
+> Apparently this is not the case.  Legacy mount.nfs4 fails immediately
+> if the NFS server refuses the connection.  Legacy mount.nfs and
+> text-based mount.nfs both fail immediately if the rpcbind service is
+> refusing connections.
 > 
-> It would be good to include the BSD folks, but I think that more
-> valuable targets would be those with volume servers that might be
-> encountered at customer sites.  I think that we need NetApp, EMC,
-> perhaps Sun, providing some feedback on the protocol and semantics.
+What about if the server is on the way up (i.e the network is up)
+but has not started the NFS service? In that window, the server will 
+return ECONNREFUSED since nobody is listening, but in a very short time
+there will be a listener... The mount should not fail in that case...
 
-Given that IETF activity is closed for v3, I wonder what the best forum 
-would be to reach all these folk?
-
-> >  - Caching of xattrs at the client
-> > 
-> 
-> This will need a closer specification for the semantics associated
-> with these xattrs.  The need will be how to determine when to
-> invalidate cached xattrs.
-
-I suspect user namespace xattrs should be treated like file data wrt 
-caching (i.e. they're fully under the control of the user).
-
-> On more bullet that I might suggest is ensuring that the protocol
-> is compliant with the RPC and XDR standards.
-
-Thanks, I'll check that.
-
-
-- James
--- 
-James Morris
-<jmorris@namei.org>
+steved.
+ 
