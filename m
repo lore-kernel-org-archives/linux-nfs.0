@@ -1,60 +1,53 @@
-From: raini-9HxftnAiGddWk0Htik3J/w@public.gmane.org
-Subject: Re: [NFS] NFS/krb and batch jobs - doable?
-Date: Fri, 9 Oct 2009 10:05:25 -0700
-Message-ID: <9fc711a4c6b4682ba847cd51ca62f86d.squirrel@webmail.rainiday.com>
-References: <c8e974302190b867ad8ea49d8158f1db.squirrel@webmail.rainiday.com>
-	<20091009121602.5ec86dfb@tlielax.poochiereds.net>
-	<f99e65f7b2fe66fc32dee931fd6bd525.squirrel@webmail.rainiday.com>
+From: Steve Dickson <SteveD@redhat.com>
+Subject: [PATCH] nfsconfig.conf: Make transport setting case sensitive
+Date: Fri, 09 Oct 2009 13:12:58 -0400
+Message-ID: <4ACF6F1A.3040306@RedHat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-To: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=ISO-8859-1
+To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from neil.brown.name ([220.233.11.133]:58316 "EHLO neil.brown.name"
+Received: from mx1.redhat.com ([209.132.183.28]:20788 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933451AbZJIRG6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 9 Oct 2009 13:06:58 -0400
-Received: from brown by neil.brown.name with local (Exim 4.69)
-	(envelope-from <nfs-bounces@lists.sourceforge.net>)
-	id 1MwIv5-0002ou-R6
-	for linux-nfs@vger.kernel.org; Sat, 10 Oct 2009 04:06:19 +1100
-In-Reply-To: <f99e65f7b2fe66fc32dee931fd6bd525.squirrel-2RFepEojUI30fF+2cCIZ11aTQe2KTcn/@public.gmane.org>
+	id S933970AbZJIRNg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 9 Oct 2009 13:13:36 -0400
+Received: from int-mx05.intmail.prod.int.phx2.redhat.com (int-mx05.intmail.prod.int.phx2.redhat.com [10.5.11.18])
+	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id n99HD8Ir022717
+	for <linux-nfs@vger.kernel.org>; Fri, 9 Oct 2009 13:13:09 -0400
+Received: from xenhat.boston.devel.redhat.com (vpn-10-151.rdu.redhat.com [10.11.10.151])
+	by int-mx05.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id n99HD76c021497
+	for <linux-nfs@vger.kernel.org>; Fri, 9 Oct 2009 13:13:08 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
->> No, gssd (the client side daemon) will search /tmp for anything that
->> looks like a credcache for the right user, verify that it is a
->> credcache and then pick the one with the latest TGT expiration.
->
->> You're correct that NFS ignores $KRB5CCNAME. It uses the above (less
->> than optimal) heuristic instead.
->
-> Thanks for explaining this Jeff - this does accord with what I see - which
-> of course leaves my batch job system unpredictable.
->
->> Probably doable, but not trivial. IIRC, the kernel tracks credentials
->> by uid. You'd need to determine some way to split that up so that each
->> "session" has separate credentials. Once you do that, you'll have to
->> have the kernel pass enough info to the upcall for it to determine what
->> credcache it should use and modify gssd to use the new info accordingly.
->
-> Just to be clear - you mean doable to a coder who might like to improve on
-> gssd/kernel credential separation, rather than a non-coding sysadmin who
-> needs with work within the current NFS/gssd framework?
->
+Author: Steve Dickson <steved@redhat.com>
+Date:   Thu Oct 9 12:08:58 2009 -0400
 
+    Make the network transports value in the mount
+    config file case sensitive, since they are in the
+    mount command's parsing code.
+    
+    Signed-off-by: Steve Dickson <steved@redhat.com>
 
-
-------------------------------------------------------------------------------
-Come build with us! The BlackBerry(R) Developer Conference in SF, CA
-is the only developer event you need to attend this year. Jumpstart your
-developing skills, take BlackBerry mobile applications to market and stay 
-ahead of the curve. Join us from November 9 - 12, 2009. Register now!
-http://p.sf.net/sfu/devconference
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
-_______________________________________________
-Please note that nfs@lists.sourceforge.net is being discontinued.
-Please subscribe to linux-nfs@vger.kernel.org instead.
-    http://vger.kernel.org/vger-lists.html#linux-nfs
-
+diff --git a/utils/mount/nfsmount.conf b/utils/mount/nfsmount.conf
+index f9fcfcb..991838f 100644
+--- a/utils/mount/nfsmount.conf
++++ b/utils/mount/nfsmount.conf
+@@ -24,14 +24,15 @@
+ # All reads and writes to the 'nfsserver.foo.com' server 
+ # will be done with 32k (32768 bytes) block sizes.
+ #
+-#[ NFSMount_Global_Options ]
++[ NFSMount_Global_Options ]
+ # This statically named section defines global mount 
+ # options that can be applied on all NFS mount.
+ #
+ # Protocol Version [2,3]
+ # Nfsvers=3
+-# Network Transport [Udp,Tcp,Rdma]
+-# Proto=Tcp
++#
++# Network Transport [udp,tcp,rdma] (Note: values are case sensitive)
++# Proto=tcp
+ #
+ # The number of times a request will be retired before 
+ # generating a timeout 
