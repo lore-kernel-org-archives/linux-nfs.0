@@ -1,134 +1,81 @@
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [GIT PULL] Please pull NFS client bugfixes for 2.6.32-rc3
-Date: Thu, 08 Oct 2009 17:05:28 -0400
-Message-ID: <1255035929.17864.4.camel@heimdal.trondhjem.org>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: 4.1 NULL dereference in 2.6.32-rc3
+Date: Thu, 8 Oct 2009 20:20:20 -0400
+Message-ID: <20091009002020.GC26954@fieldses.org>
+References: <20091005230736.GB31874@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Linus Torvalds <torvalds@linux-foundation.org>
+Content-Type: text/plain; charset=us-ascii
+To: pnfs@linux-nfs.org, linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:21687 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:42168 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757159AbZJHVGW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 8 Oct 2009 17:06:22 -0400
+	id S1756855AbZJIAUU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 8 Oct 2009 20:20:20 -0400
+In-Reply-To: <20091005230736.GB31874@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Linus,
+On Mon, Oct 05, 2009 at 07:07:36PM -0400, J. Bruce Fields wrote:
+> After mounting and unmounting a 4.1 partition with client and server
+> both 2.6.32-rc3, I see the following NULL dereference on the client.
+> 
+> I think the only cache lookup there is in unix_gid_find().  Hm.
+> Maybe it's trying to defer a request without a defer method set?
 
-Please pull from the "bugfixes" branch of the repository at
+Confirmed.  And I don't see where the client sets any defer method.  (It
+shouldn't really have to.)
 
-   git pull git://git.linux-nfs.org/projects/trondmy/nfs-2.6.git bugfixes
+Anyway, I'll think of some way to bypass this upcall.  I'm mystified as
+to why others aren't seeing this, though.
 
-This will update the following files through the appended changesets.
+--b.
 
-  Cheers,
-    Trond
-
-----
- fs/nfs/client.c        |    2 +-
- fs/nfs/nfs4namespace.c |   12 ++++++------
- fs/nfs/nfs4renewd.c    |    6 ------
- fs/nfs/super.c         |   36 +++++++++++++++++-------------------
- 4 files changed, 24 insertions(+), 32 deletions(-)
-
-commit 3050141bae57984dd660e6861632ccf9b8bca77e
-Author: Trond Myklebust <Trond.Myklebust@netapp.com>
-Date:   Thu Oct 8 11:50:55 2009 -0400
-
-    NFSv4: Kill nfs4_renewd_prepare_shutdown()
-    
-    The NFSv4 renew daemon is shared between all active super blocks that refer
-    to a particular NFS server, so it is wrong to be shutting it down in
-    nfs4_kill_super every time a super block is destroyed.
-    
-    This patch therefore kills nfs4_renewd_prepare_shutdown altogether, and
-    leaves it up to nfs4_shutdown_client() to also shut down the renew daemon
-    by means of the existing call to nfs4_kill_renewd().
-    
-    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-
-commit 517be09def6cd7bc231222ee756fde8ea245a6fe
-Author: Trond Myklebust <Trond.Myklebust@netapp.com>
-Date:   Tue Oct 6 15:42:20 2009 -0400
-
-    NFSv4: Fix the referral mount code
-    
-    Fix a typo which causes try_location() to use the wrong length argument
-    when calling nfs_parse_server_name(). This again, causes the initialisation
-    of the mount's sockaddr structure to fail.
-    
-    Also ensure that if nfs4_pathname_string() returns an error, then we pass
-    that error back up the stack instead of ENOENT.
-    
-    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-
-commit f4373bf9e67e4a653c8854acd7b02dac9714c98a
-Author: Ben Hutchings <ben@decadent.org.uk>
-Date:   Tue Oct 6 15:42:18 2009 -0400
-
-    nfs: Avoid overrun when copying client IP address string
-    
-    As seen in <http://bugs.debian.org/549002>, nfs4_init_client() can
-    overrun the source string when copying the client IP address from
-    nfs_parsed_mount_data::client_address to nfs_client::cl_ipaddr.  Since
-    these are both treated as null-terminated strings elsewhere, the copy
-    should be done with strlcpy() not memcpy().
-    
-    Signed-off-by: Ben Hutchings <ben@decadent.org.uk>
-    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-
-commit bcd2ea17da6a329a7276cde7286d802f009af332
-Author: Trond Myklebust <Trond.Myklebust@netapp.com>
-Date:   Tue Oct 6 15:41:22 2009 -0400
-
-    NFS: Fix port initialisation in nfs_remount()
-    
-    The recent changeset 53a0b9c4c99ab0085a06421f71592722e5b3fd5f (NFS: Replace
-    nfs_parse_ip_address() with rpc_pton()) broke nfs_remount, since the call
-    to rpc_pton() will zero out the port number in data->nfs_server.address.
-    
-    This is actually due to a bug in nfs_remount: it should be looking at the
-    port number in nfs_server.port instead...
-    
-    This fixes bug
-       http://bugzilla.kernel.org/show_bug.cgi?id=14276
-    
-    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-
-commit f5855fecda65c1965c894915ace1e086d4925154
-Author: Trond Myklebust <Trond.Myklebust@netapp.com>
-Date:   Tue Oct 6 15:40:37 2009 -0400
-
-    NFS: Fix port and mountport display in /proc/self/mountinfo
-    
-    Currently, the port and mount port will both display as 65535 if you do not
-    specify a port number. That would be wrong...
-    
-    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-
-commit c5811dbdd26284d63c19fca618bd740dd10ad53d
-Author: Trond Myklebust <Trond.Myklebust@netapp.com>
-Date:   Tue Oct 6 15:40:15 2009 -0400
-
-    NFS: Fix a default mount regression...
-    
-    With the recent spate of changes, the nfs protocol version will now default
-    to 2 instead of 3, while the mount protocol version defaults to 3.
-    
-    The following patch should ensure the defaults are consistent with the
-    previous defaults of vers=3,proto=tcp,mountvers=3,mountproto=tcp.
-    
-    This fixes the bug
-       http://bugzilla.kernel.org/show_bug.cgi?id=14259
-    
-    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-
-
--- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+> 
+> Of course there's no point to the client's callback server doing this
+> upcall at all.
+> 
+> --b.
+> 
+> BUG: unable to handle kernel NULL pointer dereference at (null)
+> IP: [<(null)>] (null)
+> *pde = 00000000 
+> Oops: 0000 [#1] PREEMPT 
+> last sysfs file: /sys/kernel/uevent_seqnum
+> Modules linked in:
+> 
+> Pid: 3108, comm: nfsv4.1-svc Tainted: G        W  (2.6.32-rc3 #144) 
+> EIP: 0060:[<00000000>] EFLAGS: 00010293 CPU: 0
+> EIP is at 0x0
+> EAX: c73edd7c EBX: c5d2f8e8 ECX: 00000000 EDX: 00000001
+> ESI: c5d2f8d8 EDI: 4aca7522 EBP: c71b1e80 ESP: c71b1e58
+>  DS: 007b ES: 007b FS: 0000 GS: 0000 SS: 0068
+> Process nfsv4.1-svc (pid: 3108, ti=c71b0000 task=c4800020 task.ti=c71b0000)
+> Stack:
+>  c176f01a c71b1e80 c176f695 c71b1e90 c73edd7c c1aca8a0 fffffff5 c73ed000
+> <0> c5d2f8d8 00000000 c71b1eb8 c1768dcf c71b1f30 00000fc4 c1aca7bc 00000246
+> <0> c17689e2 00000001 c1aca7bc 00000000 c17c0158 c1aca944 c73ed0c8 00000000
+> Call Trace:
+>  [<c176f01a>] ? cache_check+0xea/0x350
+>  [<c176f695>] ? sunrpc_cache_lookup+0x125/0x140
+>  [<c1768dcf>] ? svcauth_unix_accept+0x15f/0x2e0
+>  [<c17689e2>] ? svc_authenticate+0x142/0x1a0
+>  [<c17c0158>] ? sub_preempt_count+0x8/0x90
+>  [<c17689f7>] ? svc_authenticate+0x157/0x1a0
+>  [<c17bd877>] ? _spin_unlock_irq+0x27/0x50
+>  [<c1764cd3>] ? svc_process_common+0x3f3/0x630
+>  [<c1764fd2>] ? bc_svc_process+0xc2/0x100
+>  [<c1059d0b>] ? trace_hardirqs_on+0xb/0x10
+>  [<c1213487>] ? nfs41_callback_svc+0x87/0x120
+>  [<c1049c50>] ? autoremove_wake_function+0x0/0x50
+>  [<c1213400>] ? nfs41_callback_svc+0x0/0x120
+>  [<c10499a4>] ? kthread+0x74/0x80
+>  [<c1049930>] ? kthread+0x0/0x80
+>  [<c100363b>] ? kernel_thread_helper+0x7/0x10
+> Code:  Bad EIP value.
+> EIP: [<00000000>] 0x0 SS:ESP 0068:c71b1e58
+> CR2: 0000000000000000
+> ---[ end trace 39933fa1a06d9d4b ]---
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
