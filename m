@@ -1,116 +1,87 @@
-From: Steve Dickson <SteveD@redhat.com>
-Subject: [PATCH 2/3] nfsmount.conf: New variables that explicitly set default
- (Release 2)
-Date: Mon, 12 Oct 2009 17:38:55 -0400
-Message-ID: <4AD3A1EF.9020007@RedHat.com>
-References: <4AD3A0BA.3080104@RedHat.com>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: [PATCH 0/4][RFC] NFSv3: implement extended attribute (XATTR)
+ protocol
+Date: Mon, 12 Oct 2009 18:55:58 -0400
+Message-ID: <1255388158.3711.57.camel@heimdal.trondhjem.org>
+References: <alpine.LRH.2.00.0909200020360.31818@tundra.namei.org>
+	 <4ACB5FC0.7060307@redhat.com>
+	 <alpine.LRH.2.00.0910091132130.32154@tundra.namei.org>
+	 <4AD36C82.8080904@redhat.com>
+	 <CA06CB5C-6084-45AA-B185-FBDA7E3B9754@excfb.com>
+	 <4AD384BE.2090008@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-To: linux-nfs@vger.kernel.org
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:14304 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933272AbZJLVjf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 12 Oct 2009 17:39:35 -0400
-Received: from int-mx04.intmail.prod.int.phx2.redhat.com (int-mx04.intmail.prod.int.phx2.redhat.com [10.5.11.17])
-	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id n9CLd9me005113
-	for <linux-nfs@vger.kernel.org>; Mon, 12 Oct 2009 17:39:09 -0400
-Received: from xenhat.boston.devel.redhat.com (vpn-10-119.rdu.redhat.com [10.11.10.119])
-	by int-mx04.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id n9CLd7hO009758
-	for <linux-nfs@vger.kernel.org>; Mon, 12 Oct 2009 17:39:08 -0400
-In-Reply-To: <4AD3A0BA.3080104-AfCzQyP5zfLQT0dZR+AlfA@public.gmane.org>
-Sender: linux-nfs-owner@vger.kernel.org
+Content-Type: text/plain
+Cc: Tom Haynes <tdh@excfb.com>, James Morris <jmorris@namei.org>,
+	"J. Bruce Fields" <bfields@fieldses.org>,
+	"linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+	Christoph Hellwig <hch@infradead.org>,
+	Casey Schaufler <casey@schaufler-ca.com>,
+	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
+To: Peter Staubach <staubach@redhat.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <4AD384BE.2090008@redhat.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-commit c1cf5467f3e6355b8cb19ecda5688895b912bf49
-Author: Steve Dickson <steved@redhat.com>
-Date:   Mon Oct 12 17:08:59 2009 -0400
+On Mon, 2009-10-12 at 15:34 -0400, Peter Staubach wrote:
+> > So, is this a new side band protocol or an extension to NFSv3?
+> > 
+> 
+> This is a side band protocol designed to allow the setting
+> and getting of Linux style extended attributes.  They don't
+> quite match the Solaris style sub-files approach, but I
+> think could be implemented on top of the sub-files approach.
 
-    If a mount fails due to the server not supporting the
-    version or network proto and either one of those options
-    were set as defaults in the configuration file, retry
-    the mount, after removing the options from list optlist
-    allow the mount to negotiate to the supported version
-    or network protocol.
-    
-    Signed-off-by: Steve Dickson <steved@redhat.com>
+Sub-files are really a different kettle of fish, since they don't have
+any side-effects on the main file itself.
 
-diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
-index 069bdc1..35b0797 100644
---- a/utils/mount/stropts.c
-+++ b/utils/mount/stropts.c
-@@ -92,6 +92,13 @@ struct nfsmount_info {
- 				child;		/* forked bg child? */
- };
- 
-+#ifdef MOUNT_CONFIG
-+#include "conffile.h"
-+int inline config_defaults(struct nfsmount_info *mi);
-+#else
-+int inline config_defaults(struct nfsmount_info *mi) {return 0;}
-+#endif
-+
- /*
-  * Obtain a retry timeout value based on the value of the "retry=" option.
-  *
-@@ -610,10 +617,22 @@ static int nfs_try_mount(struct nfsmount_info *mi)
- 	case 2:
- 	case 3:
- 		result = nfs_try_mount_v3v2(mi);
-+		if (result)
-+			break;
-+
-+		if (config_defaults(mi))
-+			result = nfs_try_mount_v3v2(mi);
- 		break;
-+
- 	case 4:
- 		result = nfs_try_mount_v4(mi);
-+		if (result)
-+			break;
-+
-+		if (config_defaults(mi))
-+			result = nfs_try_mount_v3v2(mi);
- 		break;
-+
- 	default:
- 		errno = EIO;
- 	}
-@@ -819,3 +838,36 @@ int nfsmount_string(const char *spec, const char *node, const char *type,
- 	free(mi.hostname);
- 	return retval;
- }
-+
-+#ifdef MOUNT_CONFIG
-+/*
-+ * If the mount fails due to a ENOSUPPORT type of error
-+ * and a default options were set in the configuration file
-+ * try the mount again without that default options set.
-+ */
-+int inline config_defaults(struct nfsmount_info *mi)
-+{
-+	if (!config_default_opts)
-+		return 0;
-+
-+	switch(mi->version) {
-+	case 4:
-+		if (errno != EPROTONOSUPPORT)
-+			return 0;
-+		break;
-+	case 3:
-+		if (errno != ESPIPE)
-+			return 0;
-+		break;
-+	default:
-+		return 0;
-+	}
-+	if (config_default_opts && DEFAULT_VERS)
-+		po_remove_all(mi->options, "vers");
-+
-+	if (config_default_opts && DEFAULT_PROTO)
-+		po_remove_all(mi->options, "proto");
-+
-+	return 1;
-+}
-+#endif
+xattrs are basically three different sets of objects bundled into one
+set of syscall interfaces.
+
+     1. There is a set of 'user' extended attributes, which are
+        basically arbitrary length named strings. Anyone with read
+        access to the file can read them, and anyone with write access
+        can set them. Setting or clearing a user attribute has no
+        side-effects on the parent file. The most common usage for these
+        strings appears to be to annotate the file with search metadata
+        (c.f. beagle)...
+     2. There are a set of 'trusted' extended attributes. These are
+        similar to user attributes, in that they have no side-effects,
+        however you need to use a privileged process in order to set or
+        read them.
+     3. The 'system' and 'security' extended attributes are where all
+        hell breaks loose. These provide storage for things like posix
+        acls, and selinux security contexts. Setting or clearing these
+        attributes will almost certainly have side-effects on the parent
+        file itself, so you really want to be very careful with what you
+        stuff into them.
+
+> > Is there some document describing the problem being solved?
+> > 
+> 
+> Not exactly, or at least, not that I've seen.  There is a need
+> to support general Linux style extended attributes over NFSv3
+> and NFSv4 prior to 4.2.  This will be used in the short term
+> to solve some of the base issues that are being addressed by
+> the Labeled NFS work currently underway in the IETF WG.  That
+> work is much more extensive and designed to be a better
+> solution, but we need something before that work will complete.
+> 
+> I am seeking to discover whether this will be a Linux to
+> Linux only solution always or whether other vendors might be
+> amenable to considering implementing this support.
+
+I don't see how it can be anything but a Linux to Linux, single
+distribution only solution if you support setting and clearing 'system'
+and 'security' extended attributes, since there appears to be no method
+outlined here for negotiating which features the client and server
+support.
+Without such negotiation (or the requirement that the client and server
+be completely homogeneous), how do I, for instance, stop the
+'restorecon' utility running on my client from breaking my mail server
+process running on a completely different machine when it decides to
+reset the 'security.selinux' label on my ~/mail folder?
+
+Cheers,
+  Trond
 
