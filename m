@@ -1,136 +1,183 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 20/26] statd: add IPv6 support in sm_notify_1_svc()
-Date: Tue, 13 Oct 2009 10:57:43 -0400
-Message-ID: <20091013145742.2424.19696.stgit@matisse.1015granger.net>
+Subject: [PATCH 15/26] statd: Use getaddrinfo(3) to generate bind address in
+	smn_create_socket()
+Date: Tue, 13 Oct 2009 10:56:46 -0400
+Message-ID: <20091013145646.2424.6943.stgit@matisse.1015granger.net>
 References: <20091013142257.2424.76946.stgit@matisse.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: chris.mason@oracle.com
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from acsinet12.oracle.com ([141.146.126.234]:47462 "EHLO
+Received: from acsinet12.oracle.com ([141.146.126.234]:43845 "EHLO
 	acsinet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1760115AbZJMO7n (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 13 Oct 2009 10:59:43 -0400
+	with ESMTP id S1760123AbZJMO5a (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 13 Oct 2009 10:57:30 -0400
 Received: from acsinet15.oracle.com (acsinet15.oracle.com [141.146.126.227])
-	by acsinet12.oracle.com (Switch-3.3.1/Switch-3.3.1) with ESMTP id n9DEx0ov004280
+	by acsinet12.oracle.com (Switch-3.3.1/Switch-3.3.1) with ESMTP id n9DEumFY031391
 	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Tue, 13 Oct 2009 14:59:01 GMT
+	for <linux-nfs@vger.kernel.org>; Tue, 13 Oct 2009 14:56:50 GMT
 Received: from acsmt357.oracle.com (acsmt357.oracle.com [141.146.40.157])
-	by acsinet15.oracle.com (Switch-3.3.1/Switch-3.3.1) with ESMTP id n9DDXl01013370
-	for <linux-nfs@vger.kernel.org>; Tue, 13 Oct 2009 15:00:00 GMT
+	by acsinet15.oracle.com (Switch-3.3.1/Switch-3.3.1) with ESMTP id n9DDXlxv013370
+	for <linux-nfs@vger.kernel.org>; Tue, 13 Oct 2009 14:57:49 GMT
 In-Reply-To: <20091013142257.2424.76946.stgit-RytpoXr2tKZ9HhUboXbp9zCvJB+x5qRC@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-We have all the pieces in place, so update sm_notify_1_svc() to handle
-SM_NOTIFY requests sent from IPv6 remotes.
+This patch updates the "bind to a user-specified port" arm of
+smn_create_socket() so it can deal with IPv6 bind addresses.
 
-This also eliminates a memory leak: the strdup'd memory containing the
-callers' presentation address was never freed.
+A single getaddrinfo(3) call can convert a user-specified bind address
+or hostname to a socket address, optionally plant a provided port
+number, or whip up an appropriate wildcard address for use as the main
+socket's bind address.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- utils/statd/callback.c |   67 ++++++++++++++++++++++++++++++++++++++++++++----
- 1 files changed, 61 insertions(+), 6 deletions(-)
+ utils/statd/sm-notify.c |   81 ++++++++++++++++++++++++++++++-----------------
+ 1 files changed, 52 insertions(+), 29 deletions(-)
 
-diff --git a/utils/statd/callback.c b/utils/statd/callback.c
-index 56163d5..1a4b800 100644
---- a/utils/statd/callback.c
-+++ b/utils/statd/callback.c
-@@ -10,7 +10,7 @@
- #include <config.h>
- #endif
+diff --git a/utils/statd/sm-notify.c b/utils/statd/sm-notify.c
+index f58783d..443fd46 100644
+--- a/utils/statd/sm-notify.c
++++ b/utils/statd/sm-notify.c
+@@ -59,7 +59,7 @@ static int		opt_debug = 0;
+ static int		opt_update_state = 1;
+ static unsigned int	opt_max_retry = 15 * 60;
+ static char *		opt_srcaddr = 0;
+-static uint16_t		opt_srcport = 0;
++static char *		opt_srcport = 0;
  
--#include <arpa/inet.h>
-+#include <netdb.h>
- 
- #include "rpcmisc.h"
- #include "statd.h"
-@@ -22,17 +22,67 @@
- 
- /* 
-  * Services SM_NOTIFY requests.
-- * Any clients that have asked us to monitor that host are put on
-- * the global callback list, which is processed as soon as statd
-- * returns to svc_run.
-+ *
-+ * When NLM uses an SM_MON request to tell statd to monitor a remote,
-+ * the request contains a "mon_name" argument.  This is usually the
-+ * "caller_name" argument of an NLMPROC_LOCK request.  On Linux, the
-+ * NLM can send statd the remote's IP address instead of its
-+ * caller_name.  The NSM protocol does not allow both the remote's
-+ * caller_name and it's IP address to be sent in the same SM_MON
-+ * request.
-+ *
-+ * The remote's caller_name is useful because it makes it simple
-+ * to identify rebooting remotes by matching the "mon_name" argument
-+ * they sent via an SM_NOTIFY request.
-+ *
-+ * The caller_name string may not be a fully qualified domain name,
-+ * or even registered in the DNS database, however.  Having the
-+ * remote's IP address is useful because then there is no ambiguity
-+ * about where to send an SM_NOTIFY after the local system reboots.
-+ *
-+ * Without the actual caller_name, however, statd must use an
-+ * heuristic to match an incoming SM_NOTIFY request to one of the
-+ * hosts it is currently monitoring.  The incoming mon_name in an
-+ * SM_NOTIFY address is converted to a list of IP addresses using
-+ * DNS.  Each mon_name on statd's monitor list is also converted to
-+ * an address list, and the two lists are checked to see if there is
-+ * a matching address.
-+ *
-+ * There are some risks to this strategy:
-+ *
-+ *   1.  The external DNS database is not reliable.  It can change
-+ *       over time, or the forward and reverse mappings could be
-+ *       inconsistent.
-+ *
-+ *   2.  Local DNS resolution can produce different results for the
-+ *       mon_name than the results the remote might see for the same
-+ *       query, especially if the remote did not send a caller_name
-+ *       or mon_name that is a fully qualified domain name.
-+ *
-+ *   3.  If the remote does not have a DNS entry at all (or if the
-+ *       remote can resolve itself, but the local host can't resolve
-+ *       the remote's hostname), the remote cannot be monitored, and
-+ *       therefore NLM locking cannot be provided for that host.
-+ *
-+ *   4.  If statd's monitor list becomes substantial, finding a match
-+ *       generates a not inconsequential amount of DNS traffic.
-+ *
-+ *   5.  statd is a single-threaded service.  When DNS becomes slow or
-+ *       unresponsive, statd also becomes slow or unresponsive.
-+ *
-+ * Note that the caller_name is passed from NFS client to server, but the
-+ * client never knows what mon_name the server might use to notify it of
-+ * a reboot.  On Linux, the client extracts the server's name from the
-+ * devname it was passed by the mount command.  This is often not a
-+ * fully-qualified domain name.
-  */
- void *
- sm_notify_1_svc(struct stat_chge *argp, struct svc_req *rqstp)
- {
- 	notify_list    *lp, *call;
- 	static char    *result = NULL;
--	struct sockaddr_in *sin = nfs_getrpccaller_in(rqstp->rq_xprt);
--	char *ip_addr = xstrdup(inet_ntoa(sin->sin_addr));
-+	struct sockaddr *sap = nfs_getrpccaller(rqstp->rq_xprt);
-+	static char	ip_addr[NI_MAXHOST];
- 
- 	xlog(D_CALL, "Received SM_NOTIFY from %s, state: %d",
- 				argp->mon_name, argp->state);
-@@ -44,6 +94,11 @@ sm_notify_1_svc(struct stat_chge *argp, struct svc_req *rqstp)
- 		return ((void *) &result);
- 	}
- 
-+	if (!nsm_present_address(sap, 0, ip_addr, sizeof(ip_addr))) {
-+		xlog_warn("Unrecognized sender address");
-+		return (void *)&result;
+ static void		notify(const int sock);
+ static int		notify_host(int, struct nsm_host *);
+@@ -194,6 +194,40 @@ out_close:
+ 	return -1;
+ }
+  
++/*
++ * If admin specified a source address or srcport, then convert those
++ * to a sockaddr and return it.   Otherwise, return an ANYADDR address.
++ */
++static struct addrinfo *
++smn_bind_address(const char *srcaddr, char *srcport)
++{
++	struct addrinfo gai_hint = {
++		.ai_family	= nsm_family,
++ 		.ai_protocol	= IPPROTO_UDP,
++ 	};
++	struct addrinfo *gai_results;
++	int error;
++
++	if (srcaddr == NULL)
++		gai_hint.ai_flags |= AI_PASSIVE;
++	if (srcport == NULL)
++		srcport = "";
++ 
++	error = getaddrinfo(srcaddr, srcport, &gai_hint, &gai_results);
++	switch (error) {
++	case 0:
++		return gai_results;
++	case EAI_SYSTEM:
++		xlog(L_ERROR, "Failed to determine bind address: %m");
++		break;
++	default:
++		xlog(L_ERROR, "Failed to determine bind address: %s",
++				gai_strerror(error));
 +	}
 +
- 	/* okir change: statd doesn't remove the remote host from its
- 	 * internal monitor list when receiving an SM_NOTIFY call from
- 	 * it. Lockd will want to continue monitoring the remote host
++	return NULL;
++}
++
+ #ifdef HAVE_LIBTIRPC
+ static int
+ smn_bindresvport(int sock, struct sockaddr *sap)
+@@ -221,62 +255,51 @@ smn_bindresvport(int sock, struct sockaddr *sap)
+  * an error occurs.
+  */
+ static int
+-smn_create_socket(const char *srcaddr, const uint16_t srcport)
++smn_create_socket(const char *srcaddr, char *srcport)
+ {
+-	struct sockaddr_storage address;
+-	struct sockaddr *local_addr = (struct sockaddr *)&address;
+ 	int sock, retry_cnt = 0;
++	struct addrinfo *ai;
+ 
+ retry:
+ 	sock = smn_socket();
+ 	if (sock < 0)
+ 		return -1;
+ 
+-	memset(&address, 0, sizeof(address));
+-	local_addr->sa_family = AF_INET;	/* Default to IPv4 */
+-
+-	/* Bind source IP if provided on command line */
+-	if (srcaddr) {
+-		struct addrinfo *ai = smn_lookup(srcaddr);
+-		if (!ai) {
+-			xlog(L_ERROR,
+-				"Not a valid hostname or address: \"%s\"",
+-				srcaddr);
+-			return -1;
+-		}
+-
+-		/* We know it's IPv4 at this point */
+-		memcpy(local_addr, ai->ai_addr, ai->ai_addrlen);
+-
+-		freeaddrinfo(ai);
+-	}
++	ai = smn_bind_address(srcaddr, srcport);
++	if (!ai)
++		return -1;
+ 
+ 	/* Use source port if provided on the command line,
+ 	 * otherwise use bindresvport */
+ 	if (srcport) {
+-		nfs_set_port(local_addr, srcport);
+-		if (bind(sock, local_addr, sizeof(struct sockaddr_in)) < 0) {
++		if (bind(sock, ai->ai_addr, ai->ai_addrlen) < 0) {
+ 			xlog(L_ERROR, "Failed to bind RPC socket: %m");
+-			return -1;
++			(void)close(sock);
++			sock = -1;
++			goto out;
+ 		}
+ 	} else {
+ 		struct servent *se;
+ 
+-		if (smn_bindresvport(sock, local_addr) == -1) {
++		if (smn_bindresvport(sock, ai->ai_addr) == -1) {
+ 			xlog(L_ERROR, "bindresvport(3): %m");
+ 			(void)close(sock);
+-			return -1;
++			sock = -1;
++			goto out;
+ 		}
+ 
+ 		/* try to avoid known ports */
+-		se = getservbyport(nfs_get_port(local_addr), "udp");
++		se = getservbyport(nfs_get_port(ai->ai_addr), "udp");
+ 		if (se && retry_cnt < 100) {
+ 			retry_cnt++;
+ 			(void)close(sock);
++			freeaddrinfo(ai);
+ 			goto retry;
+ 		}
+ 	}
+ 
++out:
++	freeaddrinfo(ai);
+ 	return sock;
+ }
+ 
+@@ -308,7 +331,7 @@ main(int argc, char **argv)
+ 			opt_update_state = 0;
+ 			break;
+ 		case 'p':
+-			opt_srcport = atoi(optarg);
++			opt_srcport = optarg;
+ 			break;
+ 		case 'v':
+ 			opt_srcaddr = optarg;
 
