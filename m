@@ -1,215 +1,177 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 12/26] statd: factor socket creation out of notify()
-Date: Tue, 13 Oct 2009 10:56:16 -0400
-Message-ID: <20091013145616.2424.50011.stgit@matisse.1015granger.net>
+Subject: [PATCH 25/26] statd: retain CAP_NET_BIND when dropping privileges
+Date: Tue, 13 Oct 2009 10:58:30 -0400
+Message-ID: <20091013145829.2424.46708.stgit@matisse.1015granger.net>
 References: <20091013142257.2424.76946.stgit@matisse.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: chris.mason@oracle.com
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from acsinet12.oracle.com ([141.146.126.234]:43810 "EHLO
-	acsinet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1760113AbZJMO53 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 13 Oct 2009 10:57:29 -0400
+Received: from acsinet11.oracle.com ([141.146.126.233]:16749 "EHLO
+	acsinet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1760128AbZJMO7p (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 13 Oct 2009 10:59:45 -0400
 Received: from rgminet13.oracle.com (rcsinet13.oracle.com [148.87.113.125])
-	by acsinet12.oracle.com (Switch-3.3.1/Switch-3.3.1) with ESMTP id n9DEulGV031330
+	by acsinet11.oracle.com (Switch-3.3.1/Switch-3.3.1) with ESMTP id n9DExPu4003097
 	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Tue, 13 Oct 2009 14:56:49 GMT
-Received: from acsmt353.oracle.com (acsmt353.oracle.com [141.146.40.153])
-	by rgminet13.oracle.com (Switch-3.3.1/Switch-3.3.1) with ESMTP id n9D4Elro001169
-	for <linux-nfs@vger.kernel.org>; Tue, 13 Oct 2009 14:57:24 GMT
+	for <linux-nfs@vger.kernel.org>; Tue, 13 Oct 2009 14:59:26 GMT
+Received: from acsmt357.oracle.com (acsmt357.oracle.com [141.146.40.157])
+	by rgminet13.oracle.com (Switch-3.3.1/Switch-3.3.1) with ESMTP id n9DExcAJ023432
+	for <linux-nfs@vger.kernel.org>; Tue, 13 Oct 2009 14:59:38 GMT
 In-Reply-To: <20091013142257.2424.76946.stgit-RytpoXr2tKZ9HhUboXbp9zCvJB+x5qRC@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The first half of notify() creates the main socket that sm-notify uses
-to do its job.  To make adding IPv6 support simpler, refactor that piece
-into a separate function.
+I'm about to switch the order of listener creation and dropping root
+privileges.  rpc.statd will drop privileges first, then create its
+listeners.  The reason for the new ordering is explained in a
+subsequent patch.
 
-The logic is modified slightly so that exit(3) is invoked only in
-main().  This is not required, but it makes the code slightly easier to
-understand and maintain.
+However, for non-TI-RPC builds, rpc_init() needs to use a privileged
+port to do pmap registrations.  For both TI-RPC and non-TI-RPC builds,
+CAP_NET_BIND is required in case the user requested a privileged
+listener port.
+
+So that these requirements are met, nsm_drop_privileges() will now
+retain CAP_NET_BIND while dropping root.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- utils/statd/sm-notify.c |  134 ++++++++++++++++++++++++++---------------------
- 1 files changed, 75 insertions(+), 59 deletions(-)
+ aclocal/libcap.m4       |   15 +++++++++++++++
+ configure.ac            |    3 +++
+ support/nsm/file.c      |   44 +++++++++++++++++++++++++++++++++++++++++++-
+ utils/statd/Makefile.am |    4 ++--
+ 4 files changed, 63 insertions(+), 3 deletions(-)
+ create mode 100644 aclocal/libcap.m4
 
-diff --git a/utils/statd/sm-notify.c b/utils/statd/sm-notify.c
-index 4c4e95d..c57dd6c 100644
---- a/utils/statd/sm-notify.c
-+++ b/utils/statd/sm-notify.c
-@@ -60,7 +60,7 @@ static unsigned int	opt_max_retry = 15 * 60;
- static char *		opt_srcaddr = 0;
- static uint16_t		opt_srcport = 0;
+diff --git a/aclocal/libcap.m4 b/aclocal/libcap.m4
+new file mode 100644
+index 0000000..eabe507
+--- /dev/null
++++ b/aclocal/libcap.m4
+@@ -0,0 +1,15 @@
++dnl Checks for libcap.so
++dnl
++AC_DEFUN([AC_LIBCAP], [
++
++  dnl look for prctl
++  AC_CHECK_FUNC([prctl], , )
++
++  dnl look for the library; do not add to LIBS if found
++  AC_CHECK_LIB([cap], [cap_get_proc], [LIBCAP=-lcap], ,)
++  AC_SUBST(LIBCAP)
++
++  AC_CHECK_HEADERS([sys/capability.h], ,
++                   [AC_MSG_ERROR([libcap headers not found.])])
++
++])dnl
+diff --git a/configure.ac b/configure.ac
+index 2b02d3b..d8ba6b3 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -164,6 +164,9 @@ fi
+ dnl Check for TI-RPC library and headers
+ AC_LIBTIRPC
  
--static void		notify(void);
-+static void		notify(const int sock);
- static int		notify_host(int, struct nsm_host *);
- static void		recv_reply(int);
- static void		insert_host(struct nsm_host *);
-@@ -134,10 +134,74 @@ static void smn_forget_host(struct nsm_host *host)
- 	free(host);
++dnl Check for -lcap
++AC_LIBCAP
++
+ # Check whether user wants TCP wrappers support
+ AC_TCP_WRAPPERS
+ 
+diff --git a/support/nsm/file.c b/support/nsm/file.c
+index 83680f9..36cddd7 100644
+--- a/support/nsm/file.c
++++ b/support/nsm/file.c
+@@ -67,6 +67,8 @@
+ #endif
+ 
+ #include <sys/types.h>
++#include <sys/capability.h>
++#include <sys/prctl.h>
+ #include <sys/stat.h>
+ 
+ #include <ctype.h>
+@@ -241,6 +243,37 @@ nsm_is_default_parentdir(void)
+ 	return strcmp(nsm_base_dirname, NSM_DEFAULT_STATEDIR) == 0;
  }
  
 +/*
-+ * Prepare a socket for sending RPC requests
-+ *
-+ * Returns a bound datagram socket file descriptor, or -1 if
-+ * an error occurs.
++ * Clear all capabilities but CAP_NET_BIND_SERVICE.  This permits
++ * callers to acquire privileged source ports, but all other root
++ * capabilities are disallowed.
 + */
 +static int
-+smn_create_socket(const char *srcaddr, const uint16_t srcport)
++statd_clear_capabilities(void)
 +{
-+	struct sockaddr_storage address;
-+	struct sockaddr *local_addr = (struct sockaddr *)&address;
-+	int sock, retry_cnt = 0;
++	bool_t result;
++	cap_t caps;
 +
-+retry:
-+	sock = socket(AF_INET, SOCK_DGRAM, 0);
-+	if (sock < 0) {
-+		xlog(L_ERROR, "Failed to create RPC socket: %m");
-+		return -1;
-+	}
-+	fcntl(sock, F_SETFL, O_NONBLOCK);
++	result = 0;
 +
-+	memset(&address, 0, sizeof(address));
-+	local_addr->sa_family = AF_INET;	/* Default to IPv4 */
-+
-+	/* Bind source IP if provided on command line */
-+	if (srcaddr) {
-+		struct addrinfo *ai = smn_lookup(srcaddr);
-+		if (!ai) {
-+			xlog(L_ERROR,
-+				"Not a valid hostname or address: \"%s\"",
-+				srcaddr);
-+			return -1;
-+		}
-+
-+		/* We know it's IPv4 at this point */
-+		memcpy(local_addr, ai->ai_addr, ai->ai_addrlen);
-+
-+		freeaddrinfo(ai);
++	caps = cap_from_text("cap_net_bind_service=ep");
++	if (caps == NULL) {
++		xlog(L_ERROR, "Failed to allocate working storage: %m");
++		return result;
 +	}
 +
-+	/* Use source port if provided on the command line,
-+	 * otherwise use bindresvport */
-+	if (srcport) {
-+		nfs_set_port(local_addr, srcport);
-+		if (bind(sock, local_addr, sizeof(struct sockaddr_in)) < 0) {
-+			xlog(L_ERROR, "Failed to bind RPC socket: %m");
-+			return -1;
-+		}
-+	} else {
-+		struct servent *se;
-+		struct sockaddr_in *sin = (struct sockaddr_in *)local_addr;
-+		(void) bindresvport(sock, sin);
-+		/* try to avoid known ports */
-+		se = getservbyport(sin->sin_port, "udp");
-+		if (se && retry_cnt < 100) {
-+			retry_cnt++;
-+			close(sock);
-+			goto retry;
-+		}
++	if (cap_set_proc(caps) == -1) {
++		xlog(L_ERROR, "Failed to set capability flags: %m");
++		goto out_free;
 +	}
 +
-+	return sock;
++	result = 1;
++
++out_free:
++	(void)cap_free(caps);
++	return result;
 +}
 +
- int
- main(int argc, char **argv)
- {
--	int	c;
-+	int	c, sock;
- 	int	force = 0;
- 	char *	progname;
+ /**
+  * nsm_drop_privileges - drop root privileges
+  * @pidfd: file descriptor of a pid file
+@@ -288,6 +321,14 @@ nsm_drop_privileges(const int pidfd)
+ 		if (fchown(pidfd, st.st_uid, st.st_gid) == -1)
+ 			xlog_warn("Failed to change owner of pidfile: %m");
  
-@@ -235,7 +299,14 @@ usage:		fprintf(stderr,
- 		close(2);
++	/*
++	 * Don't clear capabilities when dropping root.
++	 */
++        if (prctl(PR_SET_KEEPCAPS, 1, 0, 0, 0) == -1) {
++                xlog(L_ERROR, "prctl(PR_SET_KEEPCAPS) failed: %m");
++		return 0;
++	}
++
+ 	if (setgroups(0, NULL) == -1) {
+ 		xlog(L_ERROR, "Failed to drop supplementary groups: %m");
+ 		return 0;
+@@ -305,7 +346,8 @@ nsm_drop_privileges(const int pidfd)
  	}
  
--	notify();
-+	sock = smn_create_socket(opt_srcaddr, opt_srcport);
-+	if (sock < 0)
-+		exit(1);
+ 	xlog(D_CALL, "Effective UID, GID: %u, %u", st.st_uid, st.st_gid);
+-	return 1;
 +
-+	if (!nsm_drop_privileges(-1))
-+		exit(1);
-+
-+	notify(sock);
++	return statd_clear_capabilities();
+ }
  
- 	if (hosts) {
- 		struct nsm_host	*hp;
-@@ -255,68 +326,13 @@ usage:		fprintf(stderr,
-  * Notify hosts
-  */
- static void
--notify(void)
-+notify(const int sock)
- {
--	struct sockaddr_storage address;
--	struct sockaddr *local_addr = (struct sockaddr *)&address;
- 	time_t	failtime = 0;
--	int	sock = -1;
--	int retry_cnt = 0;
--
-- retry:
--	sock = socket(AF_INET, SOCK_DGRAM, 0);
--	if (sock < 0) {
--		xlog(L_ERROR, "Failed to create RPC socket: %m");
--		exit(1);
--	}
--	fcntl(sock, F_SETFL, O_NONBLOCK);
--
--	memset(&address, 0, sizeof(address));
--	local_addr->sa_family = AF_INET;	/* Default to IPv4 */
--
--	/* Bind source IP if provided on command line */
--	if (opt_srcaddr) {
--		struct addrinfo *ai = smn_lookup(opt_srcaddr);
--		if (!ai) {
--			xlog(L_ERROR,
--				"Not a valid hostname or address: \"%s\"",
--				opt_srcaddr);
--			exit(1);
--		}
--
--		/* We know it's IPv4 at this point */
--		memcpy(local_addr, ai->ai_addr, ai->ai_addrlen);
--
--		freeaddrinfo(ai);
--	}
--
--	/* Use source port if provided on the command line,
--	 * otherwise use bindresvport */
--	if (opt_srcport) {
--		nfs_set_port(local_addr, opt_srcport);
--		if (bind(sock, local_addr, sizeof(struct sockaddr_in)) < 0) {
--			xlog(L_ERROR, "Failed to bind RPC socket: %m");
--			exit(1);
--		}
--	} else {
--		struct servent *se;
--		struct sockaddr_in *sin = (struct sockaddr_in *)local_addr;
--		(void) bindresvport(sock, sin);
--		/* try to avoid known ports */
--		se = getservbyport(sin->sin_port, "udp");
--		if (se && retry_cnt < 100) {
--			retry_cnt++;
--			close(sock);
--			goto retry;
--		}
--	}
+ /**
+diff --git a/utils/statd/Makefile.am b/utils/statd/Makefile.am
+index a94c012..1744791 100644
+--- a/utils/statd/Makefile.am
++++ b/utils/statd/Makefile.am
+@@ -15,10 +15,10 @@ BUILT_SOURCES = $(GENFILES)
+ statd_LDADD = ../../support/nsm/libnsm.a \
+ 	      ../../support/nfs/libnfs.a \
+ 	      ../../support/misc/libmisc.a \
+-	      $(LIBWRAP) $(LIBNSL)
++	      $(LIBWRAP) $(LIBNSL) $(LIBCAP)
+ sm_notify_LDADD = ../../support/nsm/libnsm.a \
+ 		  ../../support/nfs/libnfs.a \
+-		  $(LIBNSL)
++		  $(LIBNSL) $(LIBCAP)
  
- 	if (opt_max_retry)
- 		failtime = time(NULL) + opt_max_retry;
+ EXTRA_DIST = sim_sm_inter.x $(man8_MANS) COPYRIGHT simulate.c
  
--	if (!nsm_drop_privileges(-1))
--		exit(1);
--
- 	while (hosts) {
- 		struct pollfd	pfd;
- 		time_t		now = time(NULL);
 
