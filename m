@@ -1,67 +1,44 @@
-From: Jeff Layton <jlayton@redhat.com>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
 Subject: Re: [NFS] NFS/krb and batch jobs - doable?
-Date: Tue, 13 Oct 2009 11:44:41 -0400
-Message-ID: <20091013114441.2882c8b9@tlielax.poochiereds.net>
+Date: Tue, 13 Oct 2009 13:51:33 -0400
+Message-ID: <1255456293.3711.103.camel@heimdal.trondhjem.org>
 References: <c8e974302190b867ad8ea49d8158f1db.squirrel@webmail.rainiday.com>
-	<20091009121602.5ec86dfb@tlielax.poochiereds.net>
-	<1c358fde92c49215d84129a1bfe2c6ec.squirrel@webmail.rainiday.com>
-	<20091010090039.4dfd1dfb@tlielax.poochiereds.net>
-	<ee56329e7d86a3e4b15001a39bb7e14a.squirrel@webmail.rainiday.com>
+	 <20091009121602.5ec86dfb@tlielax.poochiereds.net>
+	 <1c358fde92c49215d84129a1bfe2c6ec.squirrel@webmail.rainiday.com>
+	 <20091010090039.4dfd1dfb@tlielax.poochiereds.net>
+	 <ee56329e7d86a3e4b15001a39bb7e14a.squirrel@webmail.rainiday.com>
+	 <20091013114441.2882c8b9@tlielax.poochiereds.net>
+	 <4d569c330910130851o155050djdfed6a52e1f3177a@mail.gmail.com>
+	 <1255452985.3711.85.camel@heimdal.trondhjem.org>
+	 <20091013132701.72927b4d@tlielax.poochiereds.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Cc: linux-nfs@vger.kernel.org, Kevin Coffman <kwc@citi.umich.edu>
-To: raini-9HxftnAiGddWk0Htik3J/w@public.gmane.org
+Content-Type: text/plain
+Cc: Kevin Coffman <kwc@citi.umich.edu>, raini-9HxftnAiGddWk0Htik3J/w@public.gmane.org,
+	linux-nfs@vger.kernel.org
+To: Jeff Layton <jlayton@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:46673 "EHLO mx1.redhat.com"
+Received: from mail-out2.uio.no ([129.240.10.58]:56022 "EHLO mail-out2.uio.no"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1760069AbZJMPpM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 13 Oct 2009 11:45:12 -0400
-In-Reply-To: <ee56329e7d86a3e4b15001a39bb7e14a.squirrel-2RFepEojUI30fF+2cCIZ11aTQe2KTcn/@public.gmane.org>
+	id S1760478AbZJMRwR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 13 Oct 2009 13:52:17 -0400
+In-Reply-To: <20091013132701.72927b4d-9yPaYZwiELC+kQycOl6kW4xkIHaj4LzF@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 13 Oct 2009 08:28:52 -0700
-raini-9HxftnAiGddWk0Htik3J/w@public.gmane.org wrote:
-
-> Jeff Layton <jlayton@redhat.com> said:
-> >> Just to be clear - you mean doable to a coder who might like to improve
-> >> on
-> >> gssd/kernel credential separation, rather than a non-coding sysadmin who
-> >> needs with work within the current NFS/gssd framework?
-> >>
-> >
-> > Correct, that's what I mean. It'll mean modifying kernel and rpc.gssd
-> > code.
+On Tue, 2009-10-13 at 13:27 -0400, Jeff Layton wrote:
+> Correct...and gssd actually does check the validity of the cache. If
+> TGT has expired or it's not valid for some other reason, then it skips
+> it and moves on.
 > 
-> Thanks for confirming.  Skipping back a little:
-> 
-> >> > No, gssd (the client side daemon) will search /tmp for anything that
-> >> > looks like a credcache for the right user, verify that it is a
-> >> > credcache and then pick the one with the latest TGT expiration.
-> 
-> Kevin Coffman on the NFS4 list actually implied this used simple mtime
-> rather than actually scanning /tmp/krb5cc_uid* for ccache files with the
-> latest TGT expiration, which is how I originally read your statement. 
-> This seemingly would make a difference in an environment with a batch job
-> with a long lifetime ticket and subsequent interactive login generating a
-> separate ccache file with a shorter lifetime but newer mtime.
-> 
-> I'm not a coder but I scanned krb5_util.c in the gssd code, and it *seems*
-> to me it only looks at mtime, although what you suggest would be more
-> optimal.  Could you confirm whether it's scanning ccache files for longest
-> TGT, or just using mtime?
-> 
+> The problem comes when you have more than one valid credcache. In that
+> case it picks the one with the latest mtime. It seems that it should
+> instead pick the one with the latest TGT expiration time.
 
-You and Kevin are correct. rpc.gssd only looks at the mtime. When I did
-the work to allow the CIFS SPNGEO upcall to find alternate credcaches,
-I implemented the behavior I described (prefer the latest TGT
-expiration) -- sorry for the confusion...
+So why do you think that is a problem? The result should be that
+rpc.gssd always ends up with a valid credential as long as there is at
+least one with a valid TGT.
+IOW: Who cares if the GSS session isn't going to last as long, as long
+as the RPC client can always instantiate a new one.
 
-It probably wouldn't be too hard to change rpc.gssd to prefer
-credcaches with the latest TGT expiration if it was considered a
-desirable change.
+Trond
 
-Kevin, any thoughts?
-
--- 
-Jeff Layton <jlayton@redhat.com>
