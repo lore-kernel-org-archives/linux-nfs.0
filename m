@@ -1,73 +1,130 @@
-From: James Morris <jmorris@namei.org>
-Subject: Re: [PATCH 0/4][RFC] NFSv3: implement extended attribute (XATTR)
- protocol
-Date: Tue, 13 Oct 2009 18:02:42 +1100 (EST)
-Message-ID: <alpine.LRH.2.00.0910131733070.28896@tundra.namei.org>
-References: <alpine.LRH.2.00.0909200020360.31818@tundra.namei.org>  <4ACB5FC0.7060307@redhat.com>  <alpine.LRH.2.00.0910091132130.32154@tundra.namei.org>  <4AD36C82.8080904@redhat.com>  <CA06CB5C-6084-45AA-B185-FBDA7E3B9754@excfb.com>  <4AD384BE.2090008@redhat.com>
- <1255388158.3711.57.camel@heimdal.trondhjem.org>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 03/26] statd: replace smn_{get,
+	set}_port() with the shared equivalents
+Date: Tue, 13 Oct 2009 10:54:37 -0400
+Message-ID: <20091013145437.2424.1512.stgit@matisse.1015granger.net>
+References: <20091013142257.2424.76946.stgit@matisse.1015granger.net>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Peter Staubach <staubach@redhat.com>, Tom Haynes <tdh@excfb.com>,
-	"J. Bruce Fields" <bfields@fieldses.org>,
-	"linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-	Christoph Hellwig <hch@infradead.org>,
-	Casey Schaufler <casey@schaufler-ca.com>,
-	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-	David Patrick Quigley <dpquigl@tycho.nsa.gov>
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <1255388158.3711.57.camel@heimdal.trondhjem.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
+Content-Type: text/plain; charset="utf-8"
+Cc: chris.mason@oracle.com
+To: linux-nfs@vger.kernel.org
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from rcsinet11.oracle.com ([148.87.113.123]:48201 "EHLO
+	rgminet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1760066AbZJMOzU (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 13 Oct 2009 10:55:20 -0400
+Received: from rgminet15.oracle.com (rcsinet15.oracle.com [148.87.113.117])
+	by rgminet11.oracle.com (Switch-3.3.1/Switch-3.3.1) with ESMTP id n9DEtvk3008079
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Tue, 13 Oct 2009 14:55:58 GMT
+Received: from acsmt356.oracle.com (acsmt356.oracle.com [141.146.40.156])
+	by rgminet15.oracle.com (Switch-3.3.1/Switch-3.3.1) with ESMTP id n9D5r2eB001400
+	for <linux-nfs@vger.kernel.org>; Tue, 13 Oct 2009 14:54:41 GMT
+In-Reply-To: <20091013142257.2424.76946.stgit-RytpoXr2tKZ9HhUboXbp9zCvJB+x5qRC@public.gmane.org>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 12 Oct 2009, Trond Myklebust wrote:
+Clean up.  Use shared port management functions instead of duplicating
+this functionality in sm-notify.  This is now easy because sm-notify
+is linked with libnfs.a, where nfs_{get,set}_port() reside.
 
-> I don't see how it can be anything but a Linux to Linux, single
-> distribution only solution if you support setting and clearing 'system'
-> and 'security' extended attributes, since there appears to be no method
-> outlined here for negotiating which features the client and server
-> support.
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
 
-I've been focused on the basic protocol implementation for the user 
-namespace thus far, to see if the general approach is acceptable before 
-getting too deep into support for other namespaces.
+ utils/statd/sm-notify.c |   40 +++++++---------------------------------
+ 1 files changed, 7 insertions(+), 33 deletions(-)
 
-Interop for other namespaces will vary depending on their semantics -- see 
-below for my ideas on the security namespace.
+diff --git a/utils/statd/sm-notify.c b/utils/statd/sm-notify.c
+index 1d4403a..ea4ce23 100644
+--- a/utils/statd/sm-notify.c
++++ b/utils/statd/sm-notify.c
+@@ -29,6 +29,7 @@
+ #include <grp.h>
+ 
+ #include "xlog.h"
++#include "nfsrpc.h"
+ 
+ #ifndef BASEDIR
+ # ifdef NFS_STATEDIR
+@@ -90,33 +91,6 @@ static void		set_kernel_nsm_state(int state);
+ 
+ static struct nsm_host *	hosts = NULL;
+ 
+-/*
+- * Address handling utilities
+- */
+-
+-static unsigned short smn_get_port(const struct sockaddr *sap)
+-{
+-	switch (sap->sa_family) {
+-	case AF_INET:
+-		return ntohs(((struct sockaddr_in *)sap)->sin_port);
+-	case AF_INET6:
+-		return ntohs(((struct sockaddr_in6 *)sap)->sin6_port);
+-	}
+-	return 0;
+-}
+-
+-static void smn_set_port(struct sockaddr *sap, const unsigned short port)
+-{
+-	switch (sap->sa_family) {
+-	case AF_INET:
+-		((struct sockaddr_in *)sap)->sin_port = htons(port);
+-		break;
+-	case AF_INET6:
+-		((struct sockaddr_in6 *)sap)->sin6_port = htons(port);
+-		break;
+-	}
+-}
+-
+ static struct addrinfo *smn_lookup(const char *name)
+ {
+ 	struct addrinfo	*ai, hint = {
+@@ -321,7 +295,7 @@ notify(void)
+ 	/* Use source port if provided on the command line,
+ 	 * otherwise use bindresvport */
+ 	if (opt_srcport) {
+-		smn_set_port(local_addr, opt_srcport);
++		nfs_set_port(local_addr, opt_srcport);
+ 		if (bind(sock, local_addr, sizeof(struct sockaddr_in)) < 0) {
+ 			xlog(L_ERROR, "Failed to bind RPC socket: %m");
+ 			exit(1);
+@@ -455,16 +429,16 @@ notify_host(int sock, struct nsm_host *host)
+ 						first->ai_addrlen);
+ 		}
+ 
+-		smn_set_port((struct sockaddr *)&host->addr, 0);
++		nfs_set_port((struct sockaddr *)&host->addr, 0);
+ 		host->retries = 0;
+ 	}
+ 
+ 	memcpy(dest, &host->addr, destlen);
+-	if (smn_get_port(dest) == 0) {
++	if (nfs_get_port(dest) == 0) {
+ 		/* Build a PMAP packet */
+ 		xlog(D_GENERAL, "Sending portmap query to %s", host->name);
+ 
+-		smn_set_port(dest, 111);
++		nfs_set_port(dest, 111);
+ 		*p++ = htonl(100000);
+ 		*p++ = htonl(2);
+ 		*p++ = htonl(3);
+@@ -540,7 +514,7 @@ recv_reply(int sock)
+ 		return;
+ 	sap = (struct sockaddr *)&hp->addr;
+ 
+-	if (smn_get_port(sap) == 0) {
++	if (nfs_get_port(sap) == 0) {
+ 		/* This was a portmap request */
+ 		unsigned int	port;
+ 
+@@ -556,7 +530,7 @@ recv_reply(int sock)
+ 			hp->timeout = NSM_MAX_TIMEOUT;
+ 			hp->send_next += NSM_MAX_TIMEOUT;
+ 		} else {
+-			smn_set_port(sap, port);
++			nfs_set_port(sap, port);
+ 			if (hp->timeout >= NSM_MAX_TIMEOUT / 4)
+ 				hp->timeout = NSM_MAX_TIMEOUT / 4;
+ 		}
 
-> Without such negotiation (or the requirement that the client and server
-> be completely homogeneous), how do I, for instance, stop the
-> 'restorecon' utility running on my client from breaking my mail server
-> process running on a completely different machine when it decides to
-> reset the 'security.selinux' label on my ~/mail folder?
-
-This xattr approach would only cover the "dumb server" scenario, where the 
-server simply stores and retrieves security labels on behalf of the 
-client.  It's intended primarily to enable things like nfsroot, backups, 
-serving virtualized file systems etc., and not for fully trusted sharing 
-like Labeled NFS.
-
-It is essentially just security label transport.
-
-Support for this feature would be configured at the server, possibly an 
-option in /etc/exports which enables specific security namespaces, e.g:
-
-  /opt/share   10.0.0.0/8(rw,insecure,xattr="user.*,security.SMACK64")
-
-This says that the XATTR side protocol is enabled and clients can read and 
-write user and security.smack xattrs (local DAC would be applied to both).
-
-The server kernel would likely need to know that these are foreign labels, 
-and not necessarily 'trust' them for its own use, so a root_squash -like 
-option may be used to remap them to an 'untrusted' local label for local 
-enforcement purposes -- if it was running SELinux or Smack at all, which 
-it may not be.
-
-At the top of my todo list is to document the XATTR protocol -- I'll also 
-draft a specification for the security namespace along these lines.
-
-
-- James
--- 
-James Morris
-<jmorris@namei.org>
