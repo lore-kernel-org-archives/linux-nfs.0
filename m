@@ -1,68 +1,78 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from acsinet11.oracle.com ([141.146.126.233]:53532 "EHLO
-	acsinet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756890AbZJBW7Y (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 2 Oct 2009 18:59:24 -0400
-Cc: linux-nfs@vger.kernel.org
-Message-Id: <FED38E90-C32D-43E8-A0A2-5A37E4BB894F@oracle.com>
-From: Chuck Lever <chuck.lever@oracle.com>
-To: Tom Haynes <tdh@excfb.com>
-In-Reply-To: <4AC67481.20900@excfb.com>
-Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
-Subject: Re: mount retries
-Date: Fri, 2 Oct 2009 18:59:19 -0400
-References: <4AC67481.20900@excfb.com>
+Received: from mail-fx0-f227.google.com ([209.85.220.227]:52076 "EHLO
+	mail-fx0-f227.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755469AbZJNSUD convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 14 Oct 2009 14:20:03 -0400
+Received: by fxm27 with SMTP id 27so58392fxm.17
+        for <linux-nfs@vger.kernel.org>; Wed, 14 Oct 2009 11:19:25 -0700 (PDT)
+In-Reply-To: <4603e94d7a85c40d7252308f394bb6ba.squirrel@webmail.rainiday.com>
+References: <c8e974302190b867ad8ea49d8158f1db.squirrel@webmail.rainiday.com>
+	 <20091010090039.4dfd1dfb@tlielax.poochiereds.net>
+	 <ee56329e7d86a3e4b15001a39bb7e14a.squirrel@webmail.rainiday.com>
+	 <20091013114441.2882c8b9@tlielax.poochiereds.net>
+	 <4d569c330910130851o155050djdfed6a52e1f3177a@mail.gmail.com>
+	 <1255452985.3711.85.camel@heimdal.trondhjem.org>
+	 <20091013132701.72927b4d@tlielax.poochiereds.net>
+	 <1255456293.3711.103.camel@heimdal.trondhjem.org>
+	 <20091013140306.476b20fd@tlielax.poochiereds.net>
+	 <4603e94d7a85c40d7252308f394bb6ba.squirrel@webmail.rainiday.com>
+Date: Wed, 14 Oct 2009 14:19:24 -0400
+Message-ID: <4d569c330910141119t4baad67eu9bdd6dd8bdc80554@mail.gmail.com>
+Subject: Re: [NFS] NFS/krb and batch jobs - doable?
+From: Kevin Coffman <kwc@citi.umich.edu>
+To: raini@rainiday.com
+Cc: Jeff Layton <jlayton@redhat.com>,
+        Trond Myklebust <trond.myklebust@fys.uio.no>,
+        linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Oct 2, 2009, at 5:45 PM, Tom Haynes wrote:
-> Does the Linux mount client have any algorithms to retry a NFS mount?
+On Wed, Oct 14, 2009 at 12:47 PM,  <raini@rainiday.com> wrote:
+>> On Tue, 13 Oct 2009 13:51:33 -0400
+>> Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
+>>
+>>> On Tue, 2009-10-13 at 13:27 -0400, Jeff Layton wrote:
+>>> > Correct...and gssd actually does check the validity of the cache. If
+>>> > TGT has expired or it's not valid for some other reason, then it skips
+>>> > it and moves on.
+>>> >
+>>> > The problem comes when you have more than one valid credcache. In that
+>>> > case it picks the one with the latest mtime. It seems that it should
+>>> > instead pick the one with the latest TGT expiration time.
+>>>
+>>> So why do you think that is a problem? The result should be that
+>>> rpc.gssd always ends up with a valid credential as long as there is at
+>>> least one with a valid TGT.
+>>> IOW: Who cares if the GSS session isn't going to last as long, as long
+>>> as the RPC client can always instantiate a new one.
+>>>
+>>
+>> Hrm...good point. I suppose that as long as gssd can pick a new
+>> credcache if the context expires then this patch is superfluous. Wasn't
+>> that support only added fairly recently (around a year ago?)? If so, it
+>> may just be that raini isn't using a recent enough nfs-utils...
 >
-> Or does it depend entirely on the underlying protocol.
+> Hm - well I'm stuck on production machines (RHEL5) so currently on
+> nfs-utils 1.0.9 which I'm going to take a wild guess may be problematic
+> either way.  Could someone point me to information on this change (I see
+> little in http://www.kernel.org/pub/linux/utils/nfs/)?
 >
-> I.e., would TCP retry and UDP just give up?
+> The reason I thought the new code would be useful is that if default
+> tickets are non-renewable and short lifetime, it seems sensible for gssd
+> to spot and use a longer lifetime renewable ticket in another ccache file
+> - and say use krenew to keep the job alive (or even cope with the user
+> renewing the ticket manually).
+>
+> Seems to me therefore that in the absence of per-session ccaches, gssd
+> should prefer long lifetime, and renewable.
+>
+> Would the newer code you mention cope with this situation already?
 
-The behavior is pretty complex.
+The change that adds the check for "valid" credentials caches
+(including expiration) was not added until nfs-utils-1.1.3.
 
-There's a large retry loop that can try mounts in the foreground, or  
-automatically daemonize if the mount request isn't successful at  
-first.  The retry loop continues as long as there are server or  
-network problems that prevent a definitive answer from the server from  
-getting back to the client.  There is a retry= mount option to cut off  
-retrying after a certain amount of time.
+With that version of rpc.gssd, Jeff and Trond's descriptions are correct.
 
-If a particular NFS version or transport is requested by the user, it  
-will attempt to use those settings, and fail if those aren't available  
-on the server.  For v2/v3, any parameters not specified by the user,  
-like port, transport, or version, are filled in with pmap queries.   
-The choice of transport is a little odd; if the user didn't specify a  
-transport, it looks like the transport that worked for the pmap query  
-is chosen regardless of what is registered.  ie, if a TCP pmap query  
-fails, but the UDP pmap query worked, we go with UDP, whether or not  
-the NFS service is registered on UDP.
-
-For v4, it skips the pmap query and just dives into the kernel to try  
-connecting with the server.
-
-If none of these work, and the mount command hasn't gotten a definite  
-yes or no from the server (and all of the mount options are valid and  
-legal) it will keep trying until it works, the user hits ^C, or the  
-retry timer expires.  The ^C part doesn't apply to daemonized mounts.
-
-The exact retry behavior depends on whether user space or the kernel  
-is trying to do the talking.  NFSv4 and text-based NFSv2/v3 mounts do  
-most of the talking from the kernel.  Text-based mounts do a user  
-space pmap query or two, but the MNT request comes from the kernel.   
-Also, UDP retries a few times, but usually gives up after 30 seconds  
-or so, but TCP can retry the transport connect for over 3 minutes,  
-even before it gets to send any requests at all.
-
-I'm pretty sure I didn't answer your question.
-
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
+K.C.
