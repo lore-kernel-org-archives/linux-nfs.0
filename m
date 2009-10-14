@@ -1,73 +1,72 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:8129 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:48543 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750947AbZJZMwl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 26 Oct 2009 08:52:41 -0400
-Received: from int-mx04.intmail.prod.int.phx2.redhat.com (int-mx04.intmail.prod.int.phx2.redhat.com [10.5.11.17])
-	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id n9QCqkFs016251
-	for <linux-nfs@vger.kernel.org>; Mon, 26 Oct 2009 08:52:46 -0400
-Received: from localhost.localdomain (vpn-10-19.rdu.redhat.com [10.11.10.19])
-	by int-mx04.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id n9QCqj0S021864
-	for <linux-nfs@vger.kernel.org>; Mon, 26 Oct 2009 08:52:45 -0400
+	id S1751512AbZJNRVf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 14 Oct 2009 13:21:35 -0400
+Date: Wed, 14 Oct 2009 13:21:03 -0400
 From: Jeff Layton <jlayton@redhat.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 0/2] nfs-utils: add testing infrastructure to nfs-utils
-Date: Mon, 26 Oct 2009 08:52:43 -0400
-Message-Id: <1256561565-5909-1-git-send-email-jlayton@redhat.com>
+To: raini@rainiday.com
+Cc: linux-nfs@vger.kernel.org, "Kevin Coffman" <kwc@citi.umich.edu>
+Subject: Re: [NFS] NFS/krb and batch jobs - doable?
+Message-ID: <20091014132103.616383ed@tlielax.poochiereds.net>
+In-Reply-To: <6c850afdb750affdca863df8bbcafa75.squirrel@webmail.rainiday.com>
+References: <c8e974302190b867ad8ea49d8158f1db.squirrel@webmail.rainiday.com>
+	<20091009121602.5ec86dfb@tlielax.poochiereds.net>
+	<1c358fde92c49215d84129a1bfe2c6ec.squirrel@webmail.rainiday.com>
+	<20091010090039.4dfd1dfb@tlielax.poochiereds.net>
+	<ee56329e7d86a3e4b15001a39bb7e14a.squirrel@webmail.rainiday.com>
+	<20091013114441.2882c8b9@tlielax.poochiereds.net>
+	<08395e6249442278ab2b59c2ae4cfd14.squirrel@webmail.rainiday.com>
+	<20091013133138.77c2cf35@tlielax.poochiereds.net>
+	<6c850afdb750affdca863df8bbcafa75.squirrel@webmail.rainiday.com>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-This patchset is intended as a starting point for an automated test
-suite for nfs-utils. The idea here is to start simply and add a suite of
-tests that we can run via "make check" -- the standard automake method
-for running tests.
+On Wed, 14 Oct 2009 10:00:59 -0700
+raini@rainiday.com wrote:
 
-Clearly there are limits to what we can test with out a multi-host test
-harness, but my hope is that this should keep us from breaking basic
-functionality by allowing us to test it in a very simple fashion. At
-some point in the future we should also consider how to best handle
-multi-machine testing, but I see that as complimenting this code rather
-than replacing it.
+> > On Tue, 13 Oct 2009 08:59:29 -0700
+> > raini@rainiday.com wrote:
+> >
+> >> > You and Kevin are correct. rpc.gssd only looks at the mtime. When I
+> >> did
+> >> > the work to allow the CIFS SPNGEO upcall to find alternate credcaches,
+> >> > I implemented the behavior I described (prefer the latest TGT
+> >> > expiration) -- sorry for the confusion...
+> >> >
+> >> > It probably wouldn't be too hard to change rpc.gssd to prefer
+> >> > credcaches with the latest TGT expiration if it was considered a
+> >> > desirable change.
+> >> >
+> >> > Kevin, any thoughts?
+> >>
+> >> This would be a big plus from me - I still wouldn't be able to create
+> >> per-job ccaches of course, but if a user who knew they needed to run a
+> >> job
+> >> could create a long lifetime renewable ticket in
+> >> /tmp/krb5cc_<uid>_batch,
+> >> say, and NFS would use this in preference to a later login ticket, this
+> >> would really help.
+> >
+> > Ok, here's a proposed patch...only compile-tested so far. I don't have
+> > time at the moment to test it more extensively so if you could test it
+> > out and report back, that would be helpful.
+> 
+> Thanks Jeff - this looks extremely useful, caveat my other comment (and
+> perhaps lack of understanding) on the list today about what's happened in
+> recent nfs-utils which I'd like to clarify.
+> 
+> I may have trouble testing this in the short term as I'm largely bound to
+> production environments - but will get to back to you if I can.
+> 
 
-For this set, the focus is on testing statd, which is particularly
-susceptible to subtle breakage. Problems with it are often not noticed
-until lock recovery breaks, and that may greatly lag the actual
-breakage.
+Actually...I'm not convinced that it is that useful. As Trond pointed
+out, when the credentials expire, the kernel should upcall for new
+creds. As long as there is a valid TGT in a credcache for that user
+somewhere then it should just pick up that one and keep humming along.
+If that's not working for some reason then that's likely a bug.
 
-To faciitate statd testing, I've added a "statdtest" program that can
-serve as a synthetic statd client and an NLM simulator. It's very
-loosely based on the old statd simulator code. That program is dependent
-on some of Chuck's recent statd patches -- notably the ones that break
-out common NSM code into libnsm.a.
-
-For this initial drop, I'm just adding a single test that tests
-mon and unmon functionality with statd. Adding more tests shouldn't be
-too hard, however.
-
-At this point, I'm mostly interested in general feedback on the concept.
-Does this seem like a reasonable starting point for automated nfs-utils
-
-Jeff Layton (2):
-  nfs-utils: introduce new statd testing simulator
-  nfs-utils: add initial tests for statd that run via "make check"
-
- Makefile.am                          |    2 +-
- configure.ac                         |    4 +-
- tests/Makefile.am                    |    7 +
- tests/statdtest/Makefile.am          |   45 ++++
- tests/statdtest/README               |   12 +
- tests/statdtest/nlm_sm_inter.x       |   43 ++++
- tests/statdtest/statdtest.c          |  462 ++++++++++++++++++++++++++++++++++
- tests/t0001-statd-basic-mon-unmon.sh |   56 ++++
- tests/test-lib.sh                    |   41 +++
- 9 files changed, 670 insertions(+), 2 deletions(-)
- create mode 100644 tests/Makefile.am
- create mode 100644 tests/statdtest/Makefile.am
- create mode 100644 tests/statdtest/README
- create mode 100644 tests/statdtest/nlm_sm_inter.x
- create mode 100644 tests/statdtest/statdtest.c
- create mode 100755 tests/t0001-statd-basic-mon-unmon.sh
- create mode 100755 tests/test-lib.sh
-
+-- 
+Jeff Layton <jlayton@redhat.com>
