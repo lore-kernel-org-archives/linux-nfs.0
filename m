@@ -1,112 +1,64 @@
-From: "NeilBrown" <neilb@suse.de>
-Subject: Re: NFS4ERR_FILE_OPEN handling in Linux
-Date: Fri, 16 Oct 2009 07:57:29 +1100
-Message-ID: <ac125ee0f266d4c8563b504066865321.squirrel@neil.brown.name>
-References: <19158.28240.964203.341327@notabene.brown>
-	<1255611204.4317.19.camel@heimdal.trondhjem.org>
+From: Simon Kirby <sim@hostway.ca>
+Subject: Re: kernel NULL pointer dereference in rpcb_getport_done (2.6.29.4)
+Date: Thu, 15 Oct 2009 14:46:38 -0700
+Message-ID: <20091015214638.GA26270@hostway.ca>
+References: <20090619225437.GA8472@hostway.ca> <1245527855.5182.33.camel@heimdal.trondhjem.org> <20090621050941.GA17059@hostway.ca> <20090622211126.GA564@hostway.ca> <20090709172739.GG13617@hostway.ca> <20090710223408.GR10700@fieldses.org> <20090810235536.GA11617@fieldses.org> <20090811171745.GA31854@hostway.ca>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org
-To: "Trond Myklebust" <Trond.Myklebust@netapp.com>
-Return-path: <nfsv4-bounces@linux-nfs.org>
-In-Reply-To: <1255611204.4317.19.camel@heimdal.trondhjem.org>
-List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/options/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
-List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
-List-Post: <mailto:nfsv4@linux-nfs.org>
-List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
-List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
-Sender: nfsv4-bounces@linux-nfs.org
-Errors-To: nfsv4-bounces@linux-nfs.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-nfs@vger.kernel.org, Greg Banks <gnb-xTcybq6BZ68@public.gmane.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from newpeace.netnation.com ([204.174.223.7]:52217 "EHLO
+	peace.netnation.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1757273AbZJOWH1 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 15 Oct 2009 18:07:27 -0400
+In-Reply-To: <20090811171745.GA31854@hostway.ca>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, October 15, 2009 11:53 pm, Trond Myklebust wrote:
-> On Thu, 2009-10-15 at 11:35 +1100, Neil Brown wrote:
->> Hi Trond,
->>
->>  Following up for a customer who had problem with NFSv4 when talking
->>  to a Solaris server with "nbman" enabled, I have questions about the
->>  handling of NFS4ERR_FILE_OPEN.
->>  In particular:
->>    1/ should commit c514983d8d2260020543a81589a2b8c7d4bdab4e be
->>       reverted, and
->>    2/ should nfs_errtbl map NFS4ERR_FILE_OPEN to -EBUSY rather than
->>       defaulting to -EIO
->>
->>  That commit, included below for reference, causes the NFS client to
->>  retry indefinitely if NFS4ERR_FILE_OPEN is returned.  This
->>  contradicts the comment which suggests it will only "retry a few
->>  times" and cannot be correct as a file could be held open (thus
->>  causing the error) indefinitely.
->
-> I'm unfortunately unfamiliar with 'nbman' on Solaris. Could you please
-> explain what it is, and why it should cause the nfs server to start
-> returning NFS4ERR_FILE_OPEN?
+On Tue, Aug 11, 2009 at 10:17:45AM -0700, Simon Kirby wrote:
 
-I'm sorry, that should have been "nbmand" - my mistake.
-'nbmand' is an abbreviation of "non-blocking mandatory locks".
-It seems to be a ZFS option rather than an NFSv4 option and seems to
-relate to providing better CIFS semantics on ZFS.  So it is
-unsurprising that it causes and error message that, as you say, we
-would normally expect only from an MS-windows server.
+> On Mon, Aug 10, 2009 at 07:55:36PM -0400, J. Bruce Fields wrote:
+> 
+> > Looking back at that commit--I'm now confused about how it was meant to
+> > work.  In the case where the woken-up thread is waiting inside of
+> > svc_recv(), ->nwaking doesn't get decremented at all until the request
+> > is processed and svc_recv() is called again--effectively limiting the
+> > number of concurrent requests to 5 per pool, so, if I read the code
+> > correctly, likely to cause problems if your workload would benefit from
+> > lots of requests being able to wait on io simultaneously (e.g. if you
+> > have a large working set and more than 5 spindles per pool).
+> 
+> Yes, this box is serving about 50 TB of storage space, so there are more
+> than 5 spindles. :)
+> 
+> I can't believe others aren't all complaining about the same problem, but
+> I guess the loads are different.
+> 
+> > I'm inclined to revert the patch and take another look at Greg's
+> > original problem.
+> 
+> I'm inclined to be totally happy with that! :)
 
->
-> As far as I know, the purpose of the NFS4ERR_FILE_OPEN error was to
-> address the issue of MS Windows semantics, which do not allow certain
-> operations (mainly unlink() and rename()) on an open file. Since the
-> error is supposed to be transient (i.e. is caused by a lock) the current
-> behaviour was chosen in order to try to provide posix-like semantics in
-> these situations.
-> While we could change the behaviour to return -EBUSY, that might
-> conceivably break applications that expect to be able to create and
-> destroy temporary files. I therefore think that some attempt should be
-> made to wait and retry before we start returning application errors.
+By the way, the original commit for this,
+59a252ff8c0f2fa32c896f69d56ae33e641ce7ad, still seems to be in the
+kernel.  Would you like me to make a patch to remove this code?
 
-Given that this is a question of what a POSIX application can expect from
-a non-POSIX filesystem, there can be no 'definitely right' answers.
+I suspect it can't just be pulled as-is because the pool stats were
+added later which now export the "overloads-avoided" through
+/proc/fs/nfsd/pool_stats .  I suspect the header is there to make the
+format dynamic (eg: we could kill overloads-avoided) without breaking
+backwards compatibility...?
 
-A few retries could be justified I believe.  I don't think indefinite
-retries is really justifiable.  So how many retries?
-If we retries until exception->timeout exceeds HZ, that would be a max
-delay of about 2 seconds, and about 5 retries.  Does that seem a
-fair balance to you?
+I see overloads-avoided still rising even with SVC_MAX_WAKING set to
+127 instead of 5.  It seems to happen a lot when storage gets a little
+stuck, but it is probably increasing the latency of other requests that
+could be served from cache.
 
-Maybe the below (untested and probably space-damaged, given for
-illustration purposes only).
+Speaking of latency, I was also looking at blktrace output for the
+underlying devices, and it seems like there are cases where knfsd is
+issuing _read_ requests in a way that leave the queue plugged sometimes,
+causing the unplug timer to have to clear it.  I still need to try to
+track this down (see recent linux-btrace thread).
 
-Thanks,
-NeilBrown
-
-
-
-
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index ed7c269..1cb6b0f 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -270,6 +270,11 @@ static int nfs4_handle_exception(const struct
-nfs_server *server, int errorcode,
- 			/* FALLTHROUGH */
- #endif /* !defined(CONFIG_NFS_V4_1) */
- 		case -NFS4ERR_FILE_OPEN:
-+			if (exception->timeout > HZ)
-+				/* We have retried a decent amount, time to
-+				 * fail
-+				 */
-+				break;
- 		case -NFS4ERR_GRACE:
- 		case -NFS4ERR_DELAY:
- 			ret = nfs4_delay(server->client, &exception->timeout);
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index 83ad47c..dcf5e03 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -5685,6 +5685,7 @@ static struct {
- 	{ NFS4ERR_SYMLINK,	-ELOOP		},
- 	{ NFS4ERR_OP_ILLEGAL,	-EOPNOTSUPP	},
- 	{ NFS4ERR_DEADLOCK,	-EDEADLK	},
-+	{ NFS4ERR_FILE_OPEN,	-EBUSY		},
- 	{ NFS4ERR_WRONGSEC,	-EPERM		}, /* FIXME: this needs
- 						    * to be handled by a
- 						    * middle-layer.
+Simon-
