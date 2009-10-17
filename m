@@ -1,123 +1,178 @@
-From: Jeff Layton <jlayton@redhat.com>
-Subject: Re: [PATCH 06/26] statd: Introduce common routines to handle
- persistent storage
-Date: Fri, 16 Oct 2009 19:27:42 -0400
-Message-ID: <20091016192742.6b863070@tlielax.poochiereds.net>
-References: <20091013142257.2424.76946.stgit@matisse.1015granger.net>
-	<20091013145506.2424.10505.stgit@matisse.1015granger.net>
-	<20091016100544.25f686c4@tlielax.poochiereds.net>
-	<1A62E80E-FB8C-4322-B13D-D26067D14230@oracle.com>
+From: Steve Dickson <SteveD@redhat.com>
+Subject: [PATCH 1/3] nfsmount.conf: New variables that explicitly set default
+ (Release 3)
+Date: Sat, 17 Oct 2009 09:38:47 -0400
+Message-ID: <4AD9C8E7.3090506@RedHat.com>
+References: <4AD9C871.3000400@RedHat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Cc: linux-nfs@vger.kernel.org, chris.mason@oracle.com
-To: Chuck Lever <chuck.lever@oracle.com>
+Content-Type: text/plain; charset=ISO-8859-1
+To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:30101 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:55447 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750774AbZJPX1m (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 16 Oct 2009 19:27:42 -0400
-In-Reply-To: <1A62E80E-FB8C-4322-B13D-D26067D14230@oracle.com>
+	id S1751473AbZJQNi6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 17 Oct 2009 09:38:58 -0400
+Received: from int-mx08.intmail.prod.int.phx2.redhat.com (int-mx08.intmail.prod.int.phx2.redhat.com [10.5.11.21])
+	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id n9HDd3jM011991
+	for <linux-nfs@vger.kernel.org>; Sat, 17 Oct 2009 09:39:03 -0400
+Received: from xenhat.boston.devel.redhat.com (vpn-10-234.rdu.redhat.com [10.11.10.234])
+	by int-mx08.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id n9HDd2kf017978
+	for <linux-nfs@vger.kernel.org>; Sat, 17 Oct 2009 09:39:02 -0400
+In-Reply-To: <4AD9C871.3000400-AfCzQyP5zfLQT0dZR+AlfA@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, 17 Oct 2009 07:46:21 +0900
-Chuck Lever <chuck.lever@oracle.com> wrote:
+commit c41c16fca30b30796e66d997c1ad504d128f76b6
+Author: Steve Dickson <steved@redhat.com>
+Date:   Sat Oct 17 09:16:18 2009 -0400
 
-> 
-> On Oct 16, 2009, at 11:05 PM, Jeff Layton wrote:
-> 
-> > On Tue, 13 Oct 2009 10:55:06 -0400
-> > Chuck Lever <chuck.lever@oracle.com> wrote:
-> >> +
-> >> +/*
-> >> + * Stuff a 'struct mon' with callback data, and call @func.
-> >> + *
-> >> + * Returns the count of in-core records created.
-> >> + */
-> >> +static unsigned int
-> >> +nsm_parse_line(const char *hostname, const time_t timestamp, char  
-> >> *line,
-> >> +		nsm_populate_t func)
-> >> +{
-> >> +	struct sockaddr_in sin = {
-> >> +		.sin_family	= AF_INET,
-> >> +	};
-> >> +	struct mon mon;
-> >> +	int count, i;
-> >> +	char *c;
-> >> +
-> >> +	c = strchr(line, '\n');
-> >> +	if (c)
-> >> +		*c = '\0';
-> >> +
-> >> +	count = sscanf(line, "%8x %8x %8x %8x ",
-> >> +			&sin.sin_addr.s_addr,
-> >> +			&mon.mon_id.my_id.my_prog,
-> >> +			&mon.mon_id.my_id.my_vers,
-> >> +			&mon.mon_id.my_id.my_proc);
-> >> +	if (count != 4)
-> >> +		return 0;
-> >> +
-> >> +	c = line + 36;
-> >> +	for (i = 0; i < SM_PRIV_SIZE; i++) {
-> >> +		unsigned int tmp;
-> >> +		if (sscanf(c, "%2x", &tmp) != 1)
-> >> +			return 0;
-> >> +		mon.priv[i] = tmp;
-> >> +		c += 2;
-> >> +	}
-> >> +
-> >
-> > ^^^
-> > I think we need some bounds checking here. There doesn't seem to be  
-> > any
-> > guarantee that the line we read in from the "db" is a particular
-> > length. A check to verify that before trying to convert the cookie
-> > would be good.
-> 
-> You mean the line read from the file is possibly not long enough?  I  
-> think sscanf(3) will bail and we'll hit the "return 0;" if it can't  
-> find enough bytes in the cookie.  It would be worth adding a specific  
-> test or two for short db lines in the nascent statd regression/unit  
-> test suite.
-> 
+    Introducing the parsing of both 'defaultvers' and 'defaultproto'
+    config variables which will be used to set the the default
+    version and network protocol.
+    
+    A global variable will be set for each option with the
+    corresponding value. The value will be used as the
+    initial value in the server negation.
+    
+    Signed-off-by: Steve Dickson <steved@redhat.com>
 
-Ok. Now that I look again, I think you're correct. In the event that
-the line ends on the single space after the 4th field, c will point to
-a NULL byte and sscanf will just bail out.
+diff --git a/support/include/conffile.h b/support/include/conffile.h
+index 672020a..fe23ec2 100644
+--- a/support/include/conffile.h
++++ b/support/include/conffile.h
+@@ -75,4 +75,11 @@ static inline void upper2lower(char *str)
+ 	while ((c = tolower(*str)))
+ 		*str++ = c;
+ }
++
++/*
++ * Default Mount options
++ */
++extern unsigned long config_default_vers;
++extern unsigned long config_default_proto;
++
+ #endif				/* _CONFFILE_H_ */
+diff --git a/utils/mount/configfile.c b/utils/mount/configfile.c
+index d3285f8..28b722c 100644
+--- a/utils/mount/configfile.c
++++ b/utils/mount/configfile.c
+@@ -20,13 +20,19 @@
+ #include <config.h>
+ #endif
+ #include <sys/types.h>
++#include <sys/socket.h>
++#include <netinet/in.h>
+ 
+ #include <stdio.h>
+ #include <stdlib.h>
+ #include <string.h>
+ #include <ctype.h>
++#include <errno.h>
+ 
+ #include "xlog.h"
++#include "mount.h"
++#include "parse_opt.h"
++#include "network.h"
+ #include "conffile.h"
+ 
+ #define KBYTES(x)     ((x) * (1024))
+@@ -197,6 +203,51 @@ int inline check_vers(char *mopt, char *field)
+ 	}
+ 	return 0;
+ }
++
++unsigned long config_default_vers;
++unsigned long config_default_proto;
++/*
++ * Check to see if a default value is being set.
++ * If so, set the appropriate global value which will 
++ * be used as the initial value in the server negation.
++ */
++int inline default_value(char *mopt)
++{
++	struct mount_options *options = NULL;
++	int dftlen = strlen("default");
++	char *field;
++
++	if (strncasecmp(mopt, "default", dftlen) != 0)
++		return 0;
++
++	field = mopt + dftlen;
++	if (strncasecmp(field, "proto", strlen("proto")) == 0) {
++		if ((options = po_split(field)) != NULL) {
++			if (!nfs_nfs_protocol(options, &config_default_proto)) {
++				xlog_warn("Unable to set default protocol : %s", 
++					strerror(errno));
++			}
++		} else {
++			xlog_warn("Unable to alloc memory for default protocol");
++		}
++	} else if (strncasecmp(field, "vers", strlen("vers")) == 0) {
++		if ((options = po_split(field)) != NULL) {
++			if (!nfs_nfs_version(options, &config_default_vers)) {
++				xlog_warn("Unable to set default version: %s", 
++					strerror(errno));
++				
++			}
++		} else {
++			xlog_warn("Unable to alloc memory for default version");
++		}
++	} else 
++		xlog_warn("Invalid default setting: '%s'", mopt);
++
++	if (options)
++		po_destroy(options);
++
++	return 1;
++}
+ /*
+  * Parse the given section of the configuration 
+  * file to if there are any mount options set.
+@@ -320,15 +371,19 @@ char *conf_get_mntopts(char *spec, char *mount_point,
+ 		free_all();
+ 		return mount_opts;
+ 	}
++
+ 	if (mount_opts) {
+ 		strcpy(config_opts, mount_opts);
+ 		strcat(config_opts, ",");
+ 	}
+ 	SLIST_FOREACH(entry, &head, entries) {
++		if (default_value(entry->opt))
++			continue;
+ 		strcat(config_opts, entry->opt);
+ 		strcat(config_opts, ",");
+ 	}
+-	*(strrchr(config_opts, ',')) = '\0';
++	if ((ptr = strrchr(config_opts, ',')) != NULL)
++		*ptr = '\0';
+ 
+ 	free_all();
+ 	if (mount_opts)
+diff --git a/utils/mount/network.c b/utils/mount/network.c
+index bd621be..1a05351 100644
+--- a/utils/mount/network.c
++++ b/utils/mount/network.c
+@@ -1261,7 +1261,7 @@ nfs_nfs_version(struct mount_options *options, unsigned long *version)
+  * Returns TRUE if @protocol contains a valid value for this option,
+  * or FALSE if the option was specified with an invalid value.
+  */
+-static int
++int
+ nfs_nfs_protocol(struct mount_options *options, unsigned long *protocol)
+ {
+ 	char *option;
+diff --git a/utils/mount/network.h b/utils/mount/network.h
+index 402e0a5..7eb89b0 100644
+--- a/utils/mount/network.h
++++ b/utils/mount/network.h
+@@ -57,6 +57,8 @@ int clnt_ping(struct sockaddr_in *, const unsigned long,
+ struct mount_options;
+ 
+ int nfs_nfs_version(struct mount_options *options, unsigned long *version);
++int  nfs_nfs_protocol(struct mount_options *options, unsigned long *protocol);
++
+ int nfs_options2pmap(struct mount_options *,
+ 		      struct pmap *, struct pmap *);
+ 
 
-> However, any new checks we want in this particular spot should  
-> probably be added by subsequent patches (ie after the IPv6 support  
-> series is committed), so we can verify that the IPv6 changes don't  
-> alter the existing on-disk format logic -- they only copy it to a new  
-> location.  No telling what kind of odd side effects other code outside  
-> of nfs-utils may depend on here.
-> 
-
-Fair enough, that sounds reasonable. My main concern at this point was
-simply to make sure that we didn't segfault if the DB file turned out
-to be corrupt. I don't think that'll happen, AFAICT.
-
-> >> +	c++;
-> >> +	mon.mon_id.mon_name = c;
-> >> +	while (*c && *c != ' ')
-> >> +		c++;
-> >> +	if (*c)
-> >> +		*c++ = '\0';
-> >> +	while (*c == ' ')
-> >> +		c++;
-> >> +	mon.mon_id.my_id.my_name = c;
-> >> +
-> >> +	return func(hostname, (struct sockaddr *)&sin, &mon, timestamp);
-> >> +}
-> 
-> --
-> Chuck Lever
-> chuck[dot]lever[at]oracle[dot]com
-> 
-> 
-> 
-
-
--- 
-Jeff Layton <jlayton@redhat.com>
