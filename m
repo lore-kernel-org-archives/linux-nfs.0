@@ -1,33 +1,50 @@
 From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: nfs oops in 2.6.32-rc5-00041-g1d91624
-Date: Tue, 20 Oct 2009 11:29:58 +0900
-Message-ID: <1256005799.10198.2.camel@heimdal.trondhjem.org>
-References: <200910191803.26845.egon.alter@gmx.net>
-	 <200910200151.55016.elendil@planet.nl>
-	 <1255997511.2892.8.camel@heimdal.trondhjem.org>
+Subject: [PATCH] nfs: Fix nfs_parse_mount_options() kfree() leak
+Date: Tue, 20 Oct 2009 14:13:46 +0900
+Message-ID: <1256015627.12592.8.camel@heimdal.trondhjem.org>
 Mime-Version: 1.0
 Content-Type: text/plain
-Cc: Egon Alter <egon.alter@gmx.net>, linux-kernel@vger.kernel.org,
-	linux-nfs@vger.kernel.org
-To: Frans Pop <elendil-EIBgga6/0yRmR6Xm/wNWPw@public.gmane.org>
+Cc: Yinghai Lu <yinghai@kernel.org>,
+	Pekka Enberg <penberg-bbCR+/B0CizivPeTLB3BmA@public.gmane.org>,
+	Ingo Molnar <mingo@elte.hu>, linux-nfs@vger.kernel.org
+To: Linus Torvalds <torvalds@linux-foundation.org>,
+	stable <stable@kernel.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-out2.uio.no ([129.240.10.58]:38833 "EHLO mail-out2.uio.no"
+Received: from mail-out2.uio.no ([129.240.10.58]:58609 "EHLO mail-out2.uio.no"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932438AbZJTC37 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 19 Oct 2009 22:29:59 -0400
-In-Reply-To: <1255997511.2892.8.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
+	id S1750843AbZJTFOL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 20 Oct 2009 01:14:11 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 2009-10-20 at 09:11 +0900, Trond Myklebust wrote:
+From: Yinghai Lu <yinghai@kernel.org>
 
-> Hmm...It looks as though the credential doesn't have a crvalidate
-> method. I'll see if I can track this down...
+Fix a (small) memory leak in one of the error paths of
+the NFS mount options parsing code.
 
-BTW: What security flavour are you using (please see
-'cat /proc/self/mountinfo' on the client and /etc/exports on the
-server).
+Reported-by: Yinghai Lu <yinghai@kernel.org>
+Reported-by: Pekka Enberg <penberg-bbCR+/B0CizivPeTLB3BmA@public.gmane.org>
+Signed-off-by: Ingo Molnar <mingo@elte.hu>
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+Regression introduced in 2.6.30 by commit a67d18f (NFS: load the
+rpc/rdma transport module automatically). Please apply to mainline
++stable...
 
-Cheers
-  Trond
+ fs/nfs/super.c |    1 +
+ 1 files changed, 1 insertions(+), 0 deletions(-)
+
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index a2c18ac..90be551 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -1253,6 +1253,7 @@ static int nfs_parse_mount_options(char *raw,
+                        default:
+                                dfprintk(MOUNT, "NFS:   unrecognized "
+                                                "transport protocol\n");
++                               kfree(string);
+                                return 0;
+                        }
+                        break;
+
 
