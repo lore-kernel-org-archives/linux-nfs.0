@@ -1,25 +1,24 @@
-From: Peter Staubach <staubach@redhat.com>
-Subject: Re: [RFC] When locking an inexistent file, NFSv3 and NFSv4 get different
- result.
-Date: Tue, 20 Oct 2009 15:47:30 -0400
-Message-ID: <4ADE13D2.50108@redhat.com>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: [RFC] When locking an inexistent file, NFSv3 and NFSv4 get
+ different result.
+Date: Wed, 21 Oct 2009 07:00:34 +0900
+Message-ID: <1256076035.3423.3.camel@heimdal.trondhjem.org>
 References: <4ADD7D8F.1040700@cn.fujitsu.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
-Cc: trond.myklebust@fys.uio.no,
-	NFSv3 community <linux-nfs@vger.kernel.org>, mingo@elte.hu,
+Cc: NFSv3 community <linux-nfs@vger.kernel.org>, mingo@elte.hu,
 	bfields@fieldses.org
 To: Mi Jinlong <mijinlong@cn.fujitsu.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:37421 "EHLO mx1.redhat.com"
+Received: from mail-out1.uio.no ([129.240.10.57]:33157 "EHLO mail-out1.uio.no"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751797AbZJTTrt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 20 Oct 2009 15:47:49 -0400
+	id S1751889AbZJTWAg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 20 Oct 2009 18:00:36 -0400
 In-Reply-To: <4ADD7D8F.1040700@cn.fujitsu.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Mi Jinlong wrote:
+On Tue, 2009-10-20 at 17:06 +0800, Mi Jinlong wrote:
 > When locking an inexistent file, NFSv3 and NFSv4 get different result=
 =2E
 >=20
@@ -54,27 +53,6 @@ d:
 >       NLMPROC_OPEN:  client sent it to server, and server open file
 >       NLMPROC_CLOSE: client sent it to server, and server close file
 >=20
-
-Modifying the NLM protocol is pretty much a non-starter.
-While not well documented, it is implemented already by
-most implementations.  Most of those implementations have
-already placed their NFSv2 and NFSv3 implementations on
-support only and the only development occuring is on the
-NFSv4 implementation.
-
-This is another case of pretty much just how NFS has worked
-for 20+ years now.  Most people have learned how to deal
-with it and thus, fixing it, is more work than it is worth.
-
-Also, if the scenario below was the only one, it might be
-slightly worth considering.  However, what happens if the
-client never sends an NLMPROC_CLOSE?  The file can never
-be really deleted.  NFSv4 has explicit support for a
-situation like this, so would handle it.
-
-		ps
-
-
 >    2.=20
 >      If use NLM, client send NLMPROC_OPEN request to server when clie=
 nt open file,
@@ -104,4 +82,14 @@ es list
 >               |<-----------------------|
 >               V                        V
 >=20
+
+Huh??? There are no NLMPROC_OPEN/NLMPROC_CLOSE for use by NFSv3 in any
+existing protocol.
+
+If you are talking about modifying the _protocol_ to add new state, the=
+n
+the answer is that we already did that, and the result is called
+NFSv4...
+
+Trond
 
