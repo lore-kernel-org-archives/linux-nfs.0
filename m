@@ -1,51 +1,84 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: [PATCH 1/1] nfs: Panic when commit fails
-Date: Wed, 21 Oct 2009 07:06:24 +0900
-Message-ID: <1256076385.3423.4.camel@heimdal.trondhjem.org>
-References: <4ADDF708.6020901@hp.com>
+From: Boaz Harrosh <bharrosh@panasas.com>
+Subject: [PATCHSET 0/5] nfsd: Cleanup nfsd/pnfsd headers and code placment
+Date: Wed, 21 Oct 2009 10:10:23 +0200
+Message-ID: <4ADEC1EF.8040107@panasas.com>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: SteveD@redhat.com, linux-nfs@vger.kernel.org
-To: Terry Loftin <terry.loftin@hp.com>
+Content-Type: text/plain; charset=UTF-8
+To: Benny Halevy <bhalevy@gmail.com>,
+	"J. Bruce Fields" <bfields@citi.umich.edu>,
+	pNFS Mailing List <pnfs@linux-nfs.org>,
+	NFS list <linux-nfs@vger.kernel.org>,
+	Trond Myklebust <Trond.Myk
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-out2.uio.no ([129.240.10.58]:45223 "EHLO mail-out2.uio.no"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751106AbZJTWG1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 20 Oct 2009 18:06:27 -0400
-In-Reply-To: <4ADDF708.6020901@hp.com>
+Received: from dip-colo-pa.panasas.com ([67.152.220.67]:62429 "EHLO
+	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1751918AbZJUIKX (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 21 Oct 2009 04:10:23 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 2009-10-20 at 11:44 -0600, Terry Loftin wrote:
-> Actually pass the NFS_FILE_SYNC option to the server to avoid a
-> Panic in nfs_direct_write_complete() when a commit fails.
-> 
-> At the end of an nfs write, if the nfs commit fails, all the writes
-> will be rescheduled.  They are supposed to be rescheduled as NFS_FILE_SYNC
-> writes, but the rpc_task structure is not completely intialized and so
-> the option is not passed.  When the rescheduled writes complete, the
-> return indicates that they are NFS_UNSTABLE and we try to do another
-> commit.  This leads to a Panic because the commit data structure pointer
-> was set to null in the initial (failed) commit attempt.
-> 
-> Signed-off-by: Terry Loftin <terry.loftin@hp.com>
-> ---
-> 
-> diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
-> index e4e089a..1af78ff 100644
-> --- a/fs/nfs/direct.c
-> +++ b/fs/nfs/direct.c
-> @@ -457,6 +457,7 @@ static void nfs_direct_write_reschedule(struct nfs_direct_req *dreq)
->  	};
->  	struct rpc_task_setup task_setup_data = {
->  		.rpc_client = NFS_CLIENT(inode),
-> +		.rpc_message = &msg,
->  		.callback_ops = &nfs_write_direct_ops,
->  		.workqueue = nfsiod_workqueue,
->  		.flags = RPC_TASK_ASYNC,
 
-Doh! Well spotted. I'll pass this along into mainline+stable.
+In motivation to better organize pnfs code and have minimal impact
+on the rest of the nfsd code-base, I've done some cleanups and code
+movements. The begging of which was done by Andy in the last round.
 
-Cheers
-  Trond
+The first needed thing was to re-introduce some sense into nfsd
+headers. I've taken all include/linux/nfsd/*.h files, one by one,
+and included them as first header in a .c file. Then fixed any
+missing includes from that header.
 
+Here is current state after this patchset:
+
+// Still BAD
+#include <linux/nfsd/const.h> 
+	/* NEEDS #include <linux/types.h> in linux/sunrpc/msg_prot.h */
+#include <linux/nfsd/export.h> 
+	/* NEEDS #include <linux/nfsd/nfsfh.h> */
+#include <linux/nfsd/syscall.h> /* Broken because of export.h above */
+
+[Should I fix those too?]
+
+// GOOD or fixed
+#include <linux/nfsd/cache.h>
+#include <linux/nfsd/debug.h>
+#include <linux/nfsd/nfs4layoutxdr.h>
+#include <linux/nfsd/nfs4pnfsdlm.h>
+#include <linux/nfsd/nfsd4_pnfs.h>
+#include <linux/nfsd/nfsd.h>
+#include <linux/nfsd/nfsfh.h>
+#include <linux/nfsd/pnfsd.h>
+#include <linux/nfsd/state.h>
+#include <linux/nfsd/stats.h>
+#include <linux/nfsd/xdr.h>
+#include <linux/nfsd/xdr3.h>
+#include <linux/nfsd/xdr4.h>
+
+I then proceeded to re-arrange some pnfs code/definitions into
+pnfsd specific files.
+
+And finally all files thouched in this round where include-cleaned
+
+Here are the list of patches:
+
+[PATCH 1/5] sunrpc: Clean never used include files
+
+	This one is for Trond, include-cleaning
+
+[PATCH 2/5] nfsd: Fix independence of a few nfsd related headers
+[PATCH 3/5] nfsd: Fix independence of linux/nfsd/ headers
+
+	These two fix nfsd headers independence. As explained above.
+	(Should I squash these together)
+
+[PATCH 4/5] SQUASHME pnfsd: Move pnfsd code out of nfs4state.c/h
+
+	Now it is much easier to do this one.
+
+[PATCH 5/5] nfsd: Remove lots of un-needed includes
+
+	And some more include-cleaning
+
+TODO: Some more of above magic done to more nfsd files
+
+Thanks
+Boaz
