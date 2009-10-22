@@ -1,106 +1,91 @@
-From: Benny Halevy <bhalevy@panasas.com>
-Subject: Re: [pnfs] [PATCH 2/2] nfs41: fix race on session reset
-Date: Thu, 22 Oct 2009 15:47:23 +0200
-Message-ID: <4AE0626B.4090504@panasas.com>
-References: <1256149492-25481-1-git-send-email-andros@netapp.com>	 <1256149492-25481-2-git-send-email-andros@netapp.com>	 <1256149492-25481-3-git-send-email-andros@netapp.com>	 <4AE05C12.7070403@panasas.com> <89c397150910220632o5708b8efhb7223541315b4e33@mail.gmail.com>
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: Re: [PATCH 2/5] nfsd: Fix independence of a few nfsd related
+ headers
+Date: Thu, 22 Oct 2009 10:02:26 -0400
+Message-ID: <1256220146.6402.23.camel@heimdal.trondhjem.org>
+References: <4ADEC1EF.8040107@panasas.com>
+	 <1256112873-32495-1-git-send-email-bharrosh@panasas.com>
+	 <1256171298.6809.1.camel@heimdal.trondhjem.org>
+	 <4AE01569.9000002@panasas.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: linux-nfs@vger.kernel.org, pnfs@linux-nfs.org
-To: "William A. (Andy) Adamson" <androsadamson@gmail.com>
+Content-Type: text/plain
+Cc: Benny Halevy <bhalevy@panasas.com>,
+	"J. Bruce Fields" <bfields@citi.umich.edu>,
+	pNFS Mailing List <pnfs@linux-nfs.org>,
+	NFS list <linux-nfs@vger.kernel.org>,
+	Andy Adamson <andros@netapp.com>
+To: Boaz Harrosh <bharrosh@panasas.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from dip-colo-pa.panasas.com ([67.152.220.67]:24351 "EHLO
-	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1750814AbZJVNrZ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 22 Oct 2009 09:47:25 -0400
-In-Reply-To: <89c397150910220632o5708b8efhb7223541315b4e33-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
+Received: from mx2.netapp.com ([216.240.18.37]:23627 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756092AbZJVOCi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 22 Oct 2009 10:02:38 -0400
+In-Reply-To: <4AE01569.9000002@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Oct. 22, 2009, 15:32 +0200, "William A. (Andy) Adamson" <androsadamson@gmail.com> wrote:
-> On Thu, Oct 22, 2009 at 9:20 AM, Benny Halevy <bhalevy@panasas.com> wrote:
->> On Oct. 21, 2009, 20:24 +0200, andros@netapp.com wrote:
->>> From: Andy Adamson <andros@netapp.com>
->>>
->>> Do not clear the NFS4CLNT_SESSION_SETUP bit until after the session has been
->>> reset (a possible EXCHANGE_ID, a DESTROY_SESSION, and a CREATE_SESSION) to
->>> prevent a race with nfs41_setup_sequence assigning a slot on a
->>> partially reset session.
->>>
->>> Signed-off-by: Andy Adamson <andros@netapp.com>
->>> ---
->>>  fs/nfs/nfs4proc.c  |    3 +++
->>>  fs/nfs/nfs4state.c |   15 +++++++++------
->>>  2 files changed, 12 insertions(+), 6 deletions(-)
->>>
->>> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
->>> index eb245a1..80764e2 100644
->>> --- a/fs/nfs/nfs4proc.c
->>> +++ b/fs/nfs/nfs4proc.c
->>> @@ -4788,6 +4788,9 @@ int nfs4_proc_create_session(struct nfs_client *clp, int reset)
->>>       if (status)
->>>               goto out;
->>>
->>> +     /* Signal nfs41_setup_sequence that the session is ready for use */
->>> +     clear_bit(NFS4CLNT_SESSION_SETUP, &clp->cl_state);
->>> +
->>>       ptr = (unsigned *)&session->sess_id.data[0];
->>>       dprintk("%s client>seqid %d sessionid %u:%u:%u:%u\n", __func__,
->>>               clp->cl_seqid, ptr[0], ptr[1], ptr[2], ptr[3]);
->>> diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
->>> index 1394dfb..09ca30b 100644
->>> --- a/fs/nfs/nfs4state.c
->>> +++ b/fs/nfs/nfs4state.c
->>> @@ -1252,17 +1252,20 @@ static void nfs4_state_manager(struct nfs_client *clp)
->>>                               continue;
->>>               }
->>>               /* Initialize or reset the session */
->>> -             if (test_and_clear_bit(NFS4CLNT_SESSION_SETUP, &clp->cl_state)
->>> -                && nfs4_has_session(clp)) {
->>> +             if (test_bit(NFS4CLNT_SESSION_SETUP, &clp->cl_state)
->>> +                 && nfs4_has_session(clp)) {
->>>                       if (clp->cl_cons_state == NFS_CS_SESSION_INITING)
->>>                               status = nfs4_initialize_session(clp);
->>>                       else
->>>                               status = nfs4_reset_session(clp);
->>> -                     if (status) {
->>> -                             if (status == -NFS4ERR_STALE_CLIENTID)
->>> -                                     continue;
->>> +                     if (status == -NFS4ERR_STALE_CLIENTID)
->>> +                             continue;
->>> +                     /* For error case. On success the bit is cleared in
->>> +                      * nfs4_proc_create_session */
->> Why the separation?
->> Why not handle both success and error cases here?
+On Thu, 2009-10-22 at 10:18 +0200, Boaz Harrosh wrote:
+> On 10/22/2009 02:28 AM, Trond Myklebust wrote:
+> > On Wed, 2009-10-21 at 10:14 +0200, Boaz Harrosh wrote:
+> >> An header should be compilation independent, .i.e pull in
+> >> any header who's declarations are directly used by this header.
+> >> And not let users re-include all it's dependencies all over
+> >> again.
+> >>
+> >> [At the end of the day what's the use of a header if it does
+> >>  not have more then one user?]
+> > 
+> > 
+> > The problem with this is that you quickly end up including the same
+> > header files over and over and over again as they get pulled in several
+> > times over by different headers.
+> > 
+> > 
+> > 
 > 
-> We don't clear the bit on NFS4ERR_STALE_CLIENTID because we first need
-> an EXCHANGE_ID and then session reset and we don't want any rpc's
-> queued on the slot_tbl_waitq to run. The check for
-> NFS4ERR_STALE_CLIENTID is in the nfs4_state_manager. Also, all other
-> cases in the state manager clear the bits used - so I thought it best
-> to follow suit.
-
-I agree, so why clear the NFS4CLNT_SESSION_SETUP bit on success
-in nfs4_proc_create_session()
-Also, nfs4_proc_create_session() clears NFS4CLNT_LEASE_EXPIRED
-which is test_and_cleared by the state manager...
-
-Benny
-
+> What is the problem with that?
 > 
-> -->Andy
+> two things:
+> 1. it is unavoidable.
+> 2. That's why we invented the #ifndef FOO_H #define FOO_H for.
+> 3. Look at the current mess, to the point that you don't understand why
+>    the code does not compile, you end up just copy-past the include list
+>    of that other file, and now actually do end with extra un-needed includes.
+>    (Don't believe me look at the last patch as proof).
+> 4. So I add to an header a use of a type that now needs a new include.
+>    All my users do not compile any more. What to do? OK I'll include it so
+>    not to change all existing users all over again. Now we get a double
+>    standard. All headers used before any users, must be carried around.
+>    The late comers are escaped.
+> 5. The opposite of 4. An header is no longer needed. Extra header left at all
+>    users.
 > 
->> Benny
->>
->>> +                     clear_bit(NFS4CLNT_SESSION_SETUP, &clp->cl_state);
->>> +
->>> +                     if (status)
->>>                               goto out_error;
->>> -                     }
->>>               }
->>>               /* First recover reboot state... */
->>>               if (test_and_clear_bit(NFS4CLNT_RECLAIM_REBOOT, &clp->cl_state)) {
->> _______________________________________________
->> pNFS mailing list
->> pNFS@linux-nfs.org
->> http://linux-nfs.org/cgi-bin/mailman/listinfo/pnfs
->>
+> It used to be a problem before me and you have begun programing.
+> Since then the cpp looks at it's internal structures and will not re-open.
+> Note that the compiler never sees the second instance, ever.
+> 
+> That said we have no choice of the matter. It is a Kernel style guide. I
+> should know because I was banged on the head with it a couple of times.
+> And rightly so.
+> 
+> Come on that was a joke right
+> Boaz
+
+No. What I'm saying is that this doesn't have to be an absolute rule.
+The Kernel style guide assumes that everything in 'include/*' is going
+to be exported all around the kernel.
+The problem is that we put a lot of stuff which is private to fs/nfs and
+fs/nfsd in there. Those header files do not have to absolutely follow
+the style guide rule, 'cos we know what is being included before and
+after them...
+
+Cheers
+  Trond
+
+-- 
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
