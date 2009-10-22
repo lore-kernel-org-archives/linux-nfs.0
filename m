@@ -1,100 +1,46 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 4/4] statd: fix address copy in sm-notify.c
-Date: Fri, 23 Oct 2009 02:05:05 +0900
-Message-ID: <20091022170505.3519.30715.stgit@matisse.1015granger.net>
-References: <20091022165432.3519.31428.stgit@matisse.1015granger.net>
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Re: [PATCH 0/3] nfsmount.conf: New variables that explicitly set
+ default (Release 3)
+Date: Thu, 22 Oct 2009 15:48:09 -0400
+Message-ID: <4AE0B6F9.4090406@RedHat.com>
+References: <4AD9C871.3000400@RedHat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Cc: linux-nfs@vger.kernel.org
-To: steved@redhat.com
+Content-Type: text/plain; charset=ISO-8859-1
+To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from acsinet12.oracle.com ([141.146.126.234]:41192 "EHLO
-	acsinet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750882AbZJVRHH (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 22 Oct 2009 13:07:07 -0400
-In-Reply-To: <20091022165432.3519.31428.stgit-RytpoXr2tKZ9HhUboXbp9zCvJB+x5qRC@public.gmane.org>
+Received: from mx1.redhat.com ([209.132.183.28]:52371 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752118AbZJVTsW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 22 Oct 2009 15:48:22 -0400
+Received: from int-mx08.intmail.prod.int.phx2.redhat.com (int-mx08.intmail.prod.int.phx2.redhat.com [10.5.11.21])
+	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id n9MJmQi1020529
+	for <linux-nfs@vger.kernel.org>; Thu, 22 Oct 2009 15:48:26 -0400
+Received: from xenhat.boston.devel.redhat.com (vpn-8-21.rdu.redhat.com [10.11.8.21])
+	by int-mx08.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id n9MJmPCP001128
+	for <linux-nfs@vger.kernel.org>; Thu, 22 Oct 2009 15:48:26 -0400
+In-Reply-To: <4AD9C871.3000400-AfCzQyP5zfLQT0dZR+AlfA@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-One of the memcpy(3) callsites in notify_host() uses the size of the
-copy target to prevent an overrun of the target buffer.  However, the
-target is a sockaddr_storage, while the source is never larger than
-a sockaddr_in6.
 
-Copying off the end of a sockaddr_in6 returned by getaddrinfo(3) could
-potentially cause a segfault if the allocated memory containing the
-socket address is near the end of a page, and the next page is
-protected.
 
-Introduced by commit 93e355bf.
+On 10/17/2009 09:36 AM, Steve Dickson wrote:
+> Here is an update to my previous patch that allow the setting
+> of both the protocol version and network version from the 
+> mount configuration file. Here is the original justification:
+> 
+>     http://marc.info/?l=linux-nfs&m=125511238831199&w=2
+> 
+> In this release two global variables are used to keep 
+> the default values set in the configuration file. These
+> values are then used to initialize the values used in
+> the server negotiation. 
+> 
+> This patch set can be found on the 'mntconf_v3' branch
+> on my experimental git tree:
+>     git://linux-nfs.org/nfs-utils-exp
+> 
+> 
+Committed..
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
-
- utils/statd/sm-notify.c |   14 ++++++++------
- 1 files changed, 8 insertions(+), 6 deletions(-)
-
-diff --git a/utils/statd/sm-notify.c b/utils/statd/sm-notify.c
-index ea4ce23..1983ef6 100644
---- a/utils/statd/sm-notify.c
-+++ b/utils/statd/sm-notify.c
-@@ -61,6 +61,7 @@ struct nsm_host {
- 	char *			name;
- 	char *			path;
- 	struct sockaddr_storage	addr;
-+	socklen_t		addrlen;
- 	struct addrinfo		*ai;
- 	time_t			last_used;
- 	time_t			send_next;
-@@ -377,7 +378,6 @@ notify_host(int sock, struct nsm_host *host)
- {
- 	struct sockaddr_storage address;
- 	struct sockaddr *dest = (struct sockaddr *)&address;
--	socklen_t destlen = sizeof(address);
- 	static unsigned int	xid = 0;
- 	uint32_t		msgbuf[MAXMSGSIZE], *p;
- 	unsigned int		len;
-@@ -409,10 +409,11 @@ notify_host(int sock, struct nsm_host *host)
- 	 */
- 	if (host->retries >= 4) {
- 		/* don't rotate if there is only one addrinfo */
--		if (host->ai->ai_next == NULL)
-+		if (host->ai->ai_next == NULL) {
- 			memcpy(&host->addr, host->ai->ai_addr,
- 						host->ai->ai_addrlen);
--		else {
-+			host->addrlen = host->ai->ai_addrlen;
-+		} else {
- 			struct addrinfo *first = host->ai;
- 			struct addrinfo **next = &host->ai;
- 
-@@ -427,13 +428,14 @@ notify_host(int sock, struct nsm_host *host)
- 			*next = first;
- 			memcpy(&host->addr, first->ai_addr,
- 						first->ai_addrlen);
-+			host->addrlen = host->ai->ai_addrlen;
- 		}
- 
- 		nfs_set_port((struct sockaddr *)&host->addr, 0);
- 		host->retries = 0;
- 	}
- 
--	memcpy(dest, &host->addr, destlen);
-+	memcpy(dest, &host->addr, host->addrlen);
- 	if (nfs_get_port(dest) == 0) {
- 		/* Build a PMAP packet */
- 		xlog(D_GENERAL, "Sending portmap query to %s", host->name);
-@@ -472,10 +474,10 @@ notify_host(int sock, struct nsm_host *host)
- 	}
- 	len = (p - msgbuf) << 2;
- 
--	if (sendto(sock, msgbuf, len, 0, dest, destlen) < 0)
-+	if (sendto(sock, msgbuf, len, 0, dest, host->addrlen) < 0)
- 		xlog_warn("Sending Reboot Notification to "
- 			"'%s' failed: errno %d (%m)", host->name, errno);
--	
-+
- 	return 0;
- }
- 
-
+steved.
