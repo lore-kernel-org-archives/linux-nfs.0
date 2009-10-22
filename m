@@ -1,47 +1,67 @@
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: Re: [PATCH 2/5] nfsd: Fix independence of a few nfsd related
- headers
-Date: Wed, 21 Oct 2009 20:28:18 -0400
-Message-ID: <1256171298.6809.1.camel@heimdal.trondhjem.org>
-References: <4ADEC1EF.8040107@panasas.com>
-	 <1256112873-32495-1-git-send-email-bharrosh@panasas.com>
+From: Boaz Harrosh <bharrosh@panasas.com>
+Subject: Re: [PATCH 2/5] nfsd: Fix independence of a few nfsd related headers
+Date: Thu, 22 Oct 2009 10:18:49 +0200
+Message-ID: <4AE01569.9000002@panasas.com>
+References: <4ADEC1EF.8040107@panasas.com>	 <1256112873-32495-1-git-send-email-bharrosh@panasas.com> <1256171298.6809.1.camel@heimdal.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=UTF-8
 Cc: Benny Halevy <bhalevy@panasas.com>,
 	"J. Bruce Fields" <bfields@citi.umich.edu>,
 	pNFS Mailing List <pnfs@linux-nfs.org>,
 	NFS list <linux-nfs@vger.kernel.org>,
 	Andy Adamson <andros@netapp.com>
-To: Boaz Harrosh <bharrosh@panasas.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:36250 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751237AbZJVA2P (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 21 Oct 2009 20:28:15 -0400
-In-Reply-To: <1256112873-32495-1-git-send-email-bharrosh@panasas.com>
+Received: from dip-colo-pa.panasas.com ([67.152.220.67]:48432 "EHLO
+	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1752318AbZJVISv (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 22 Oct 2009 04:18:51 -0400
+In-Reply-To: <1256171298.6809.1.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 2009-10-21 at 10:14 +0200, Boaz Harrosh wrote:
-> An header should be compilation independent, .i.e pull in
-> any header who's declarations are directly used by this header.
-> And not let users re-include all it's dependencies all over
-> again.
+On 10/22/2009 02:28 AM, Trond Myklebust wrote:
+> On Wed, 2009-10-21 at 10:14 +0200, Boaz Harrosh wrote:
+>> An header should be compilation independent, .i.e pull in
+>> any header who's declarations are directly used by this header.
+>> And not let users re-include all it's dependencies all over
+>> again.
+>>
+>> [At the end of the day what's the use of a header if it does
+>>  not have more then one user?]
 > 
-> [At the end of the day what's the use of a header if it does
->  not have more then one user?]
+> 
+> The problem with this is that you quickly end up including the same
+> header files over and over and over again as they get pulled in several
+> times over by different headers.
+> 
+> 
+> 
 
+What is the problem with that?
 
-The problem with this is that you quickly end up including the same
-header files over and over and over again as they get pulled in several
-times over by different headers.
+two things:
+1. it is unavoidable.
+2. That's why we invented the #ifndef FOO_H #define FOO_H for.
+3. Look at the current mess, to the point that you don't understand why
+   the code does not compile, you end up just copy-past the include list
+   of that other file, and now actually do end with extra un-needed includes.
+   (Don't believe me look at the last patch as proof).
+4. So I add to an header a use of a type that now needs a new include.
+   All my users do not compile any more. What to do? OK I'll include it so
+   not to change all existing users all over again. Now we get a double
+   standard. All headers used before any users, must be carried around.
+   The late comers are escaped.
+5. The opposite of 4. An header is no longer needed. Extra header left at all
+   users.
 
+It used to be a problem before me and you have begun programing.
+Since then the cpp looks at it's internal structures and will not re-open.
+Note that the compiler never sees the second instance, ever.
 
+That said we have no choice of the matter. It is a Kernel style guide. I
+should know because I was banged on the head with it a couple of times.
+And rightly so.
 
--- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+Come on that was a joke right
+Boaz
