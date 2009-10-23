@@ -1,36 +1,130 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH] nfsmount.conf: New variables that explicitly set
-	default
-Date: Fri, 23 Oct 2009 13:20:02 -0400
-Message-ID: <20091023172002.GA31133@fieldses.org>
-References: <6E43AB0D-AC26-411F-A8CF-146E02F8AADA@oracle.com> <4ACFC458.8060107@RedHat.com> <BB5B8D78-DAF9-4087-AC84-9BE4F95DA11C@oracle.com> <4AD2F5B7.9040900@RedHat.com> <21B26104-0D0E-4362-8CE7-B567921B3314@oracle.com> <4AD36309.1090202@RedHat.com> <D9CAEFBB-0B58-43FE-A346-4BDD4150DB92@oracle.com> <4ADC5DC8.90500@RedHat.com> <10B38617-8037-4CA1-AE90-13F378043E42@oracle.com> <4ADF6FA2.50801@RedHat.com>
+Subject: Re: NFSv4 Kernel-server requires 2x manual restart after reboot?
+	Maybe a timing problem?
+Date: Fri, 23 Oct 2009 13:27:19 -0400
+Message-ID: <20091023172719.GB31133@fieldses.org>
+References: <babafd2f0910231007h329e75b7raa7207d0b816a72a@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org
-To: Steve Dickson <SteveD@redhat.com>
+Cc: linux-nfs@vger.kernel.org
+To: Ben DJ <bendj095124367913213465@gmail.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:60795 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:47190 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752752AbZJWRSw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 23 Oct 2009 13:18:52 -0400
-In-Reply-To: <4ADF6FA2.50801-AfCzQyP5zfLQT0dZR+AlfA@public.gmane.org>
+	id S1751186AbZJWR0F (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 23 Oct 2009 13:26:05 -0400
+In-Reply-To: <babafd2f0910231007h329e75b7raa7207d0b816a72a-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Oct 21, 2009 at 04:31:30PM -0400, Steve Dickson wrote:
-> On 10/21/2009 01:37 PM, Chuck Lever wrote:
-> > That should be simple to implement by having nfs_nfs_version
-> > leave *version set to zero if the defaultvers= option is rightmost, and
-> > then have the new logic you added in nfs_validate_options() additionally
-> > strip off defaultvers= before going ahead with the mount attempts.
-> > 
-> > Does that make sense?
-> Yes. but you are assuming defaultvers is a valid mount option and it is
-> not. So when/if it does, we can have this discussion then... Plus
-> what we have today works just fine and if we want to do tweaks like this 
-> later on, so be it... 
+On Fri, Oct 23, 2009 at 10:07:23AM -0700, Ben DJ wrote:
+> I've installed NFSv4 as nfs-kernel-server.
 
-It may be hard to change the meaning of "defaultvers" (or whatever) once
-it's in use.
+What distro and versions are you using?
+
+> I'm slowly figuring out
+> how to get it to configured and working.
+> 
+> After a system reboot, if I try to mount an export,
+> 
+> 	mount -t nfs4 192.168.1.2:/test /mnt/test
+> 
+> it just "sits there", never mounting.
+> 
+> So I 1st check what's running,
+> 
+> 	ps ax | egrep -i "idmapd|mountd|statd|nfsd|sm-notify"
+> 	 3731 ?        Ss     0:00 /usr/sbin/rpc.idmapd
+> 	 3732 ?        Ss     0:00 /usr/sbin/rpc.idmapd
+> 	 3753 ?        Ss     0:00 /usr/sbin/rpc.statd --no-notify
+> 	 3758 ?        S<     0:00 [nfsd4]
+> 	 3759 ?        S<     0:00 [nfsd]
+> 	 3760 ?        S<     0:00 [nfsd]
+> 	 3761 ?        S<     0:00 [nfsd]
+> 	 3762 ?        S<     0:00 [nfsd]
+> 	 3772 ?        Ss     0:00 /usr/sbin/rpc.mountd
+> 
+> and that looks OK.
+> 
+> After some experiments, I've discovered if I CTRL-C the mount attempt
+> and restart the server TWICE,
+> 
+> 	service nfsserver restart
+> 		Shutting down kernel based NFS server: nfsd statd mountd
+>                                                 done
+> 		Starting kernel based NFS server: idmapdexportfs: Warning: /nfs/test
+> does not support NFS export.
+
+Huh.  What filesystem is at /nfs/test?
 
 --b.
+
+> 		 mountd statd nfsd sm-notify
+>                                                 done
+> 	
+> 	service nfsserver restart
+> 		Shutting down kernel based NFS server: nfsd statd mountd
+>                                                 done
+> 		Starting kernel based NFS server: idmapd mountd statd nfsd sm-notify
+>                                                 done
+> 
+> Notice that the 2nd time the "idmapd" appears to be re-started.
+> 
+> then repeat the mount attempt,
+> 
+> 	mount -t nfs4 192.168.1.2:/test /mnt/test
+> 
+> it now works.
+> 
+> Checking what's running again,
+> 
+> 	ps ax | egrep -i "idmapd|mountd|statd|nfsd|sm-notify"
+> 	
+> 	 3731 ?        Ss     0:00 /usr/sbin/rpc.idmapd
+> 	 3732 ?        Ss     0:00 /usr/sbin/rpc.idmapd
+> 	 5213 ?        S<s    0:00 /usr/sbin/rpc.mountd
+> 	 5216 ?        S<s    0:00 /usr/sbin/rpc.statd --no-notify
+> 	 5221 ?        S<     0:00 [nfsd4]
+> 	 5222 ?        S<     0:00 [nfsd]
+> 	 5223 ?        S<     0:00 [nfsd]
+> 	 5224 ?        S<     0:00 [nfsd]
+> 	 5225 ?        S<     0:00 [nfsd]
+> 
+> It all looks the same as before.  Notice that the rpc.idmapd PIDs are
+> the same, even though the "service nfsserver restart" 2nd time around
+> looked like it restarted it.
+> 
+> I don't really understand what the 2X nfsserver restart does.  There
+> clearly IS an effect. And it looks like it has to do with idmapd.
+> 
+> I can say that
+> 
+> 	service nfsserver stop
+> 	service nfs stop
+> 	service quotad stop
+> 	service rpcbind stop
+> 	umount -a
+> 	mount  -a
+> 	service rpcbind start
+> 	service quotad start
+> 	service nfs start
+> 	service nfsserver start
+> 
+> often gives me similar errors,
+> 
+> 	Warning: /nfs/test does not support NFS export
+> 
+> that go away if I make sure there's a delay after starting nfs,
+> 
+> 	service nfs start && sleep 5
+> 	service nfsserver start
+> 
+> Maybe there's some sort of timing problem on startup?
+> 
+> Any clues?
+> 
+> BenDJ
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
