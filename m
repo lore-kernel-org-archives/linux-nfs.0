@@ -1,52 +1,87 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH] nfsmount.conf: New variables that explicitly set default
-Date: Fri, 23 Oct 2009 10:26:06 -0700
-Message-ID: <7A902BE6-8166-4739-9375-23C3A5F74FA7@oracle.com>
-References: <6E43AB0D-AC26-411F-A8CF-146E02F8AADA@oracle.com> <4ACFC458.8060107@RedHat.com> <BB5B8D78-DAF9-4087-AC84-9BE4F95DA11C@oracle.com> <4AD2F5B7.9040900@RedHat.com> <21B26104-0D0E-4362-8CE7-B567921B3314@oracle.com> <4AD36309.1090202@RedHat.com> <D9CAEFBB-0B58-43FE-A346-4BDD4150DB92@oracle.com> <4ADC5DC8.90500@RedHat.com> <10B38617-8037-4CA1-AE90-13F378043E42@oracle.com> <4ADF6FA2.50801@RedHat.com> <20091023172002.GA31133@fieldses.org>
-Mime-Version: 1.0 (Apple Message framework v936)
-Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
-Cc: Linux-NFS Mailing list <linux-nfs@vger.kernel.org>,
-	"J. Bruce Fields" <bfields@fieldses.org>
-To: Steve Dickson <SteveD@redhat.com>
+From: Ben DJ <bendj095124367913213465@gmail.com>
+Subject: Re: NFSv4 Kernel-server requires 2x manual restart after reboot?
+	Maybe a timing problem?
+Date: Fri, 23 Oct 2009 10:57:57 -0700
+Message-ID: <babafd2f0910231057o4898c643n4605ef9b0e4686d8@mail.gmail.com>
+References: <babafd2f0910231007h329e75b7raa7207d0b816a72a@mail.gmail.com>
+	<20091023172719.GB31133@fieldses.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: linux-nfs@vger.kernel.org
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet11.oracle.com ([148.87.113.123]:57492 "EHLO
-	rgminet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750866AbZJWR02 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 23 Oct 2009 13:26:28 -0400
-In-Reply-To: <20091023172002.GA31133@fieldses.org>
+Received: from mail-pw0-f42.google.com ([209.85.160.42]:54457 "EHLO
+	mail-pw0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751120AbZJWSGW convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 23 Oct 2009 14:06:22 -0400
+Received: by pwj9 with SMTP id 9so296947pwj.21
+        for <linux-nfs@vger.kernel.org>; Fri, 23 Oct 2009 11:06:26 -0700 (PDT)
+In-Reply-To: <20091023172719.GB31133@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Hi Bruce,
 
-On Oct 23, 2009, at 10:20 AM, J. Bruce Fields wrote:
-
-> On Wed, Oct 21, 2009 at 04:31:30PM -0400, Steve Dickson wrote:
->> On 10/21/2009 01:37 PM, Chuck Lever wrote:
->>> That should be simple to implement by having nfs_nfs_version
->>> leave *version set to zero if the defaultvers= option is  
->>> rightmost, and
->>> then have the new logic you added in nfs_validate_options()  
->>> additionally
->>> strip off defaultvers= before going ahead with the mount attempts.
->>>
->>> Does that make sense?
->> Yes. but you are assuming defaultvers is a valid mount option and  
->> it is
->> not. So when/if it does, we can have this discussion then... Plus
->> what we have today works just fine and if we want to do tweaks like  
->> this
->> later on, so be it...
+On Fri, Oct 23, 2009 at 10:27 AM, J. Bruce Fields <bfields@fieldses.org=
+> wrote:
+> On Fri, Oct 23, 2009 at 10:07:23AM -0700, Ben DJ wrote:
+>> I've installed NFSv4 as nfs-kernel-server.
 >
-> It may be hard to change the meaning of "defaultvers" (or whatever)  
-> once
-> it's in use.
+> What distro and versions are you using?
 
-I agree.  I can have a mount.nfs implementation of defaultvers= for  
-you very quickly, FYI.
+I'm currently working on Opensuse 11.2 RC1.
 
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+At the moment,
+
+kernel-default-base-2.6.31.3-1.1.x86_64
+kernel-default-2.6.31.3-1.1.x86_64
+kernel-default-devel-2.6.31.3-1.1.x86_64
+
+quota-nfs-3.17-3.1.x86_64
+nfsidmap-0.21-3.14.x86_64
+nfs-doc-1.1.3-20.1.x86_64
+nfs-client-1.1.3-20.1.x86_64
+nfs-kernel-server-1.1.3-20.1.x86_64
+
+
+> Huh. =A0What filesystem is at /nfs/test?
+
+I'm not entirely sure what you're asking for.
+
+/nfs/test is on my "/" volume, which is ext3 (someday, ext4 -- but not =
+yet).
+
+Is that what you mean?
+
+Also I found that switching from mounts in /etc/fstab to using autofs
+gets rid of the mount-after-boot issues
+
+cat /etc/auto.master
+	/test /etc/auto.misc
+cat /etc/auto.misc
+	cd -fstype=3Diso9660,ro,nosuid,nodev :/dev/cdrom
+	nfs4_test -fstype=3Dnfs4,rw 192.168.1.2:/
+chkconfig autofs on
+reboot
+
+But now, immediately after reboot,
+
+ls /test/nfs4_test/
+	bin/  boot/  dev/  etc/  home/  lib/  lib64/  lost+found/  media/
+mnt/  mnt.auto/  nfs/  opt/  proc/  root/  sbin/  selinux/  srv/  sys/
+ tmp/  usr/  var/
+
+which is mounted, and feels like progress.
+
+But the mount is of 192.168.1.2's "/" root.  I expected the NFSv4
+exported-root @ /nfs, instead.
+
+Thanks for your time.
+
+BenDJ
 
 
 
+Thanks.
+
+BedDJ
