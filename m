@@ -1,94 +1,61 @@
-From: Benny Halevy <bhalevy@panasas.com>
-Subject: Re: What is the purpose of those put_rpccred() statements?
-Date: Sun, 25 Oct 2009 16:39:59 +0200
-Message-ID: <4AE4633F.1010206@panasas.com>
-References: <1256327771.3238.51.camel@heimdal.trondhjem.org> <1256328550.3238.52.camel@heimdal.trondhjem.org>
+From: Daniel J Blueman <daniel.blueman@gmail.com>
+Subject: regression, bisected: getcwd() ENOENT on NFS4...
+Date: Sun, 25 Oct 2009 23:31:34 +0000
+Message-ID: <6278d2220910251631j40caec00lf2dee6159947d983@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
-Cc: William Andros Adamson <andros@netapp.com>,
+Cc: Linux Kernel <linux-kernel@vger.kernel.org>,
 	linux-nfs@vger.kernel.org
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from dip-colo-pa.panasas.com ([67.152.220.67]:38490 "EHLO
-	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1751307AbZJYOj5 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 25 Oct 2009 10:39:57 -0400
-In-Reply-To: <1256328550.3238.52.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
+Received: from mail-ew0-f208.google.com ([209.85.219.208]:62336 "EHLO
+	mail-ew0-f208.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753910AbZJYXbb (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 25 Oct 2009 19:31:31 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Oct. 23, 2009, 22:09 +0200, Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
-> On Fri, 2009-10-23 at 15:56 -0400, Trond Myklebust wrote:
->> I'm finding a bunch of random calls of the form
->>    put_rpccred(task->tk_msg.rpc_cred);
->>
->> in functions like nfs4_renew_done(), nfs41_sequence_call_done() with
->> apparently no corresponding get_rpccred(). Could you please enlighten me
->> what they are all about? They're not mentioned at all in the changelogs
->> of commits 29fba38b, and fc01cea9...
+Since 2.6.30-rc, I've been experiencing various issues relating to
+getcwd() returning ENOENT on NFS4 clients. I used an over-complicated
+but reliable reproducer [1] (on Karmic RC against a 2.6.32-rc5 NFS4
+server) to bisect [2].
 
-The original intent of this is:
-http://linux-nfs.org/pipermail/pnfs/2007-December/002093.html
+The impact of this regression is moderate (side-effects range from
+benign to failure), so we should get a fix into 2.6.32 if at all
+possible and strongly consider a 2.6.31 stable update.
 
-my bad rebase:
-54cf1c6e937fd6e2e9724adba2af39eeaa7939d9
+Thanks,
+  Daniel
 
-on top of your patch:
-b0d3ded1a21dc3057daff5a488469d9e6aa1b567
-NFSv4: Clean up nfs_expire_all_delegations()
+--- [1]
 
-left the call to put_rpccred() in nfs4_renew_state()
+$ apt-get source apt
+$ cd apt-*
+$ ./configure && make
+[snip]
+sh: getcwd() failed: No such file or directory
 
-That said, since rpcauth_bindcred gets the rpc cred
-when called from rpc_init_task
-and rpc_put_task eventually puts the creds we don't
-need to hold a reference on the creds the way
-http://linux-nfs.org/pipermail/pnfs/2007-December/002093.html
-intended...
+--- [2]
 
-Your fix below makes sense to me.
+a65318bf3afc93ce49227e849d213799b072c5fd is first bad commit
+commit a65318bf3afc93ce49227e849d213799b072c5fd
+Author: Trond Myklebust <Trond.Myklebust@netapp.com>
+Date:   Wed Mar 11 14:10:28 2009 -0400
 
-Benny
+    NFSv4: Simplify some cache consistency post-op GETATTRs
 
->>
->> Trond
-> --------------------------------------------------------------------
-> NFSv4: Fix two unbalanced put_rpccred() issues.
-> 
-> From: Trond Myklebust <Trond.Myklebust@netapp.com>
-> 
-> Commits 29fba38b (nfs41: lease renewal) and fc01cea9 (nfs41: sequence
-> operation) introduce a couple of put_rpccred() calls on credentials for
-> which there is no corresponding get_rpccred().
-> 
-> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-> ---
-> 
->  fs/nfs/nfs4proc.c |    4 ----
->  1 files changed, 0 insertions(+), 4 deletions(-)
-> 
-> 
-> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-> index 65c2527..ff37454 100644
-> --- a/fs/nfs/nfs4proc.c
-> +++ b/fs/nfs/nfs4proc.c
-> @@ -3065,9 +3065,6 @@ static void nfs4_renew_done(struct rpc_task *task, void *data)
->  	if (time_before(clp->cl_last_renewal,timestamp))
->  		clp->cl_last_renewal = timestamp;
->  	spin_unlock(&clp->cl_lock);
-> -	dprintk("%s calling put_rpccred on rpc_cred %p\n", __func__,
-> -				task->tk_msg.rpc_cred);
-> -	put_rpccred(task->tk_msg.rpc_cred);
->  }
->  
->  static const struct rpc_call_ops nfs4_renew_ops = {
-> @@ -4882,7 +4879,6 @@ void nfs41_sequence_call_done(struct rpc_task *task, void *data)
->  	nfs41_sequence_free_slot(clp, task->tk_msg.rpc_resp);
->  	dprintk("%s rpc_cred %p\n", __func__, task->tk_msg.rpc_cred);
->  
-> -	put_rpccred(task->tk_msg.rpc_cred);
->  	kfree(task->tk_msg.rpc_argp);
->  	kfree(task->tk_msg.rpc_resp);
->  
-> 
-> 
+    Certain asynchronous operations such as write() do not expect
+    (or care) that other metadata such as the file owner, mode, acls, ...
+    change. All they want to do is update and/or check the change attribute,
+    ctime, and mtime.
+    By skipping the file owner and group update, we also avoid having to do a
+    potential idmapper upcall for these asynchronous RPC calls.
+
+    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+
+:040000 040000 0c89c426fff3ad249757e3f77327ea79902df64b
+6c96fe34f548df08cd11771fbcc839b44a5607e1 M	fs
+:040000 040000 6ce4d50124b9dd214c54a42bd922a2b9da10aca2
+16f551da881e2d2faeb786e5c47cfe0a21f42ade M	include
+-- 
+Daniel J Blueman
