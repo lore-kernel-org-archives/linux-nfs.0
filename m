@@ -1,49 +1,33 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: mount.nfs in latest nfs-utils doesn't build
-Date: Mon, 26 Oct 2009 16:56:01 -0400
-Message-ID: <45A199A9-CC1A-4A9B-BA2B-382BA06FCD18@oracle.com>
-Mime-Version: 1.0 (Apple Message framework v936)
-Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
-Cc: Linux-NFS Mailing list <linux-nfs@vger.kernel.org>
-To: Steve Dickson <SteveD@redhat.com>
+Subject: [PATCH 0/2] Two short pieces for nfs-utils
+Date: Mon, 26 Oct 2009 17:03:11 -0400
+Message-ID: <20091026210110.14346.90636.stgit@matisse.1015granger.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
+Cc: linux-nfs@vger.kernel.org
+To: steved@redhat.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from acsinet12.oracle.com ([141.146.126.234]:40552 "EHLO
-	acsinet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751629AbZJZU5E (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 26 Oct 2009 16:57:04 -0400
+Received: from rcsinet11.oracle.com ([148.87.113.123]:21520 "EHLO
+	rgminet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752721AbZJZVD3 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 26 Oct 2009 17:03:29 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Commit 1d1f7016 added --enable-mountconfig, which defaults off, but  
-building nfs-utils without it fails.
+Hi Steve-
 
-Making all in mount
-libtool: link: gcc -Wall -Wstrict-prototypes -pipe -g -Wextra -fpie - 
-D_FILE_OFFSET_BITS=64 -D _FORTIFY_SOURCE=2 -pie -o mount.nfs mount.o  
-error.o network.o fstab.o token.o parse_opt.o parse_dev.o nfsmount.o  
-nfs4mount.o stropts.o nfsumount.o  ../../support/nfs/libnfs.a ../../ 
-support/export/libexport.a
-network.o: In function `nfs_probe_nfsport':
-/home/cel/src/nfs-utils/main/utils/mount/network.c:620: undefined  
-reference to `config_default_proto'
-/home/cel/src/nfs-utils/main/utils/mount/network.c:620: undefined  
-reference to `config_default_proto'
-stropts.o: In function `nfs_validate_options':
-/home/cel/src/nfs-utils/main/utils/mount/stropts.c:291: undefined  
-reference to `config_default_vers'
-/home/cel/src/nfs-utils/main/utils/mount/stropts.c:292: undefined  
-reference to `config_default_vers'
-/home/cel/src/nfs-utils/main/utils/mount/stropts.c:293: undefined  
-reference to `config_default_vers'
-collect2: ld returned 1 exit status
-make[2]: *** [mount.nfs] Error 1
-make[1]: *** [all-recursive] Error 1
-make: *** [all-recursive] Error 1
-[cel@matisse nfs-utils]$
+Here are two bug fixes for recent commits to nfs-utils.  The
+nfs_set_version fix was revised based on review comments.
 
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+---
+
+Chuck Lever (2):
+      mount: Fix po_join() call site in nfs_try_mount_v4()
+      mount.nfs: Assume v2/v3 if mount-related options are present
 
 
+ utils/mount/stropts.c |   55 +++++++++++++++++++++++++++++++++++--------------
+ 1 files changed, 39 insertions(+), 16 deletions(-)
 
+-- 
+Chuck Lever <chuck.lever@oracle.com>
