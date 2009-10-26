@@ -1,46 +1,35 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 2/2] mount: Fix po_join() call site in nfs_try_mount_v4()
-Date: Mon, 26 Oct 2009 17:03:27 -0400
-Message-ID: <20091026210327.14346.15937.stgit@matisse.1015granger.net>
-References: <20091026210110.14346.90636.stgit@matisse.1015granger.net>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Cc: linux-nfs@vger.kernel.org
-To: steved@redhat.com
+From: Robert Gordon <rbg-dkEPNP4dzOJBDgjK7y7TUQ@public.gmane.org>
+Subject: [RFC][PATCH] relax insecure option on mountd (ver 2)
+Date: Mon, 26 Oct 2009 16:40:59 -0500
+Message-ID: <DE1C4ECC-6D4A-4EA6-A4FB-BE76E31C4A40@openrbg.com>
+Mime-Version: 1.0 (Apple Message framework v1076)
+Content-Type: text/plain; charset=us-ascii; format=flowed; delsp=yes
+To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from acsinet11.oracle.com ([141.146.126.233]:64898 "EHLO
-	acsinet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752508AbZJZVFU (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 26 Oct 2009 17:05:20 -0400
-In-Reply-To: <20091026210110.14346.90636.stgit-RytpoXr2tKZ9HhUboXbp9zCvJB+x5qRC@public.gmane.org>
+Received: from mout.perfora.net ([74.208.4.195]:65074 "EHLO mout.perfora.net"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752135AbZJZVlF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 26 Oct 2009 17:41:05 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Make sure the copied options string is freed in case po_join() fails.
+In nfs-utils 1.2.0, I noticed that the insecure option validates that  
+the client port is a
+subset of IPPORT_RESERVED as opposed to just validating it is a valid
+reserved port. The following proposed patch would correct that issue.
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
+Signed-off-by: Robert Gordon <rbg-dkEPNP4dzOJBDgjK7y7TUQ@public.gmane.org>
 
- utils/mount/stropts.c |    3 ++-
- 1 files changed, 2 insertions(+), 1 deletions(-)
-
-diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
-index 0f1061c..2d74a54 100644
---- a/utils/mount/stropts.c
-+++ b/utils/mount/stropts.c
-@@ -605,12 +605,13 @@ static int nfs_try_mount_v4(struct nfsmount_info *mi)
- 		errno = EINVAL;
- 		goto out_fail;
- 	}
-+
- 	/*
- 	 * Update option string to be recorded in /etc/mtab.
- 	 */
- 	if (po_join(options, mi->extra_opts) == PO_FAILED) {
- 		errno = ENOMEM;
--		return 0;
-+		goto out_fail;
- 	}
- 
- 	result = nfs_sys_mount(mi, options);
+--- ./utils/mountd/auth.c.orig
++++ ./utils/mountd/auth.c
+@@ -169,8 +169,7 @@ auth_authenticate_internal(char *what, s
+  		}
+  	}
+  	if (!(exp->m_export.e_flags & NFSEXP_INSECURE_PORT) &&
+-		    (ntohs(caller->sin_port) <  IPPORT_RESERVED/2 ||
+-		     ntohs(caller->sin_port) >= IPPORT_RESERVED)) {
++		     ntohs(caller->sin_port) >= IPPORT_RESERVED) {
+  		*error = illegal_port;
+  		return NULL;
+  	}
 
