@@ -1,33 +1,49 @@
-From: Robert Gordon <rbg-dkEPNP4dzOJBDgjK7y7TUQ@public.gmane.org>
-Subject: [RFC][PATCH] relax insecure option on mountd
-Date: Mon, 26 Oct 2009 15:56:27 -0500
-Message-ID: <3C8019BD-4231-428F-B94C-5257111F9E96@openrbg.com>
-Mime-Version: 1.0 (Apple Message framework v1076)
-Content-Type: text/plain; charset=us-ascii; format=flowed; delsp=yes
-To: linux-nfs@vger.kernel.org
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: mount.nfs in latest nfs-utils doesn't build
+Date: Mon, 26 Oct 2009 16:56:01 -0400
+Message-ID: <45A199A9-CC1A-4A9B-BA2B-382BA06FCD18@oracle.com>
+Mime-Version: 1.0 (Apple Message framework v936)
+Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
+Cc: Linux-NFS Mailing list <linux-nfs@vger.kernel.org>
+To: Steve Dickson <SteveD@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mout.perfora.net ([74.208.4.195]:53168 "EHLO mout.perfora.net"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751040AbZJZU4d (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 26 Oct 2009 16:56:33 -0400
+Received: from acsinet12.oracle.com ([141.146.126.234]:40552 "EHLO
+	acsinet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751629AbZJZU5E (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 26 Oct 2009 16:57:04 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-In nfs-utils 1.2.0, I noticed that the insecure option validates that  
-the client port is a
-subset of IPPORT_RESERVED as opposed to just validating it is a valid
-reserved port. The following proposed patch would correct that issue.
+Commit 1d1f7016 added --enable-mountconfig, which defaults off, but  
+building nfs-utils without it fails.
 
-Signed-off-by: Robert Gordon <rbg-dkEPNP4dzOJBDgjK7y7TUQ@public.gmane.org>
+Making all in mount
+libtool: link: gcc -Wall -Wstrict-prototypes -pipe -g -Wextra -fpie - 
+D_FILE_OFFSET_BITS=64 -D _FORTIFY_SOURCE=2 -pie -o mount.nfs mount.o  
+error.o network.o fstab.o token.o parse_opt.o parse_dev.o nfsmount.o  
+nfs4mount.o stropts.o nfsumount.o  ../../support/nfs/libnfs.a ../../ 
+support/export/libexport.a
+network.o: In function `nfs_probe_nfsport':
+/home/cel/src/nfs-utils/main/utils/mount/network.c:620: undefined  
+reference to `config_default_proto'
+/home/cel/src/nfs-utils/main/utils/mount/network.c:620: undefined  
+reference to `config_default_proto'
+stropts.o: In function `nfs_validate_options':
+/home/cel/src/nfs-utils/main/utils/mount/stropts.c:291: undefined  
+reference to `config_default_vers'
+/home/cel/src/nfs-utils/main/utils/mount/stropts.c:292: undefined  
+reference to `config_default_vers'
+/home/cel/src/nfs-utils/main/utils/mount/stropts.c:293: undefined  
+reference to `config_default_vers'
+collect2: ld returned 1 exit status
+make[2]: *** [mount.nfs] Error 1
+make[1]: *** [all-recursive] Error 1
+make: *** [all-recursive] Error 1
+[cel@matisse nfs-utils]$
 
---- ./utils/mountd/auth.c.orig
-+++ ./utils/mountd/auth.c
-@@ -169,7 +169,6 @@ auth_authenticate_internal(char *what, s
-  		}
-  	}
-  	if (!(exp->m_export.e_flags & NFSEXP_INSECURE_PORT) &&
--		    (ntohs(caller->sin_port) <  IPPORT_RESERVED/2 ||
-  		     ntohs(caller->sin_port) >= IPPORT_RESERVED)) {
-  		*error = illegal_port;
-  		return NULL;
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
 
