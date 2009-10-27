@@ -1,179 +1,154 @@
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [GIT] Please pull NFS client bugfixes...
-Date: Tue, 27 Oct 2009 17:35:00 -0400
-Message-ID: <1256679301.3234.1.camel@heimdal.trondhjem.org>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: 4.1 NULL dereference in 2.6.32-rc3
+Date: Tue, 27 Oct 2009 19:17:49 -0400
+Message-ID: <20091027231749.GB14471@fieldses.org>
+References: <20091005230736.GB31874@fieldses.org> <20091009002020.GC26954@fieldses.org> <20091009170218.GF9436@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S932461AbZJ0VfP@vger.kernel.org>
-Sender: linux-kernel-owner@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+To: pnfs@linux-nfs.org, linux-nfs@vger.kernel.org
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from fieldses.org ([174.143.236.118]:43675 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755442AbZJ0XQ1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 27 Oct 2009 19:16:27 -0400
+In-Reply-To: <20091009170218.GF9436@fieldses.org>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Linus,
+On Fri, Oct 09, 2009 at 01:02:19PM -0400, J. Bruce Fields wrote:
+> On Thu, Oct 08, 2009 at 08:20:20PM -0400, J. Bruce Fields wrote:
+> > On Mon, Oct 05, 2009 at 07:07:36PM -0400, J. Bruce Fields wrote:
+> > > After mounting and unmounting a 4.1 partition with client and server
+> > > both 2.6.32-rc3, I see the following NULL dereference on the client.
+> > > 
+> > > I think the only cache lookup there is in unix_gid_find().  Hm.
+> > > Maybe it's trying to defer a request without a defer method set?
+> > 
+> > Confirmed.  And I don't see where the client sets any defer method.  (It
+> > shouldn't really have to.)
+> > 
+> > Anyway, I'll think of some way to bypass this upcall.
+> 
+> Actually, it seems sort of wrong to have what's really nfs
+> server-specific credential mapping in generic rpc cred parsing code.
+> Maybe we should move that unix_gid_find() into pg_authenticate()
+> (so svcauth_unix_set_client() in this case).
 
-Please pull from the "bugfixes" branch of the repository at
+Something like this?
 
-   git pull git://git.linux-nfs.org/projects/trondmy/nfs-2.6.git bugfixes
+It's a little annoying that we then allocate a struct group_info * to
+hold the on-the-wire auth_unix groups, even when we'll later discard
+them.
 
-This will update the following files through the appended changesets.
+But I doubt that's a big deal, and I'd prefer the cleaner nfsd/rpc
+separation.
 
-  Cheers,
-    Trond
+--b.
 
-----
- fs/nfs/dir.c      |    2 ++
- fs/nfs/direct.c   |    1 +
- fs/nfs/nfs4proc.c |   15 ++++++++-------
- fs/nfs/nfs4xdr.c  |    1 -
- 4 files changed, 11 insertions(+), 8 deletions(-)
+commit db5566449a9991110e51486cd680dc07772cb728
+Author: J. Bruce Fields <bfields@citi.umich.edu>
+Date:   Tue Oct 20 18:51:34 2009 -0400
 
-commit 9a3936aac133037f65124fcb2d676a6c201a90a4
-Author: Trond Myklebust <Trond.Myklebust@netapp.com>
-Date:   Mon Oct 26 08:09:46 2009 -0400
-
-    NFSv4: The link() operation should return any delegation on the file
+    nfsd4: don't try to map gid's in generic rpc code
     
-    Otherwise, we have to wait for the server to recall it.
+    For nfsd we provide users the option of mapping uid's to server-side
+    supplementary group lists.  That makes sense for nfsd, but not
+    necessarily for other rpc users (such as the callback client).
     
-    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+    So move that lookup to svcauth_unix_set_client, which is a
+    program-specific method.
+    
+    Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
 
-commit 141aeb9f26f9f12f1584c128ce8697cdffb046e7
-Author: Trond Myklebust <Trond.Myklebust@netapp.com>
-Date:   Mon Oct 26 08:09:46 2009 -0400
-
-    NFSv4: Fix two unbalanced put_rpccred() issues.
-    
-    Commits 29fba38b (nfs41: lease renewal) and fc01cea9 (nfs41: sequence
-    operation) introduce a couple of put_rpccred() calls on credentials for
-    which there is no corresponding get_rpccred().
-    
-    See http://bugzilla.kernel.org/show_bug.cgi?id=14249
-    
-    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-
-commit 52567b03ca38b6e556ced450d64dba8d66e23b0e
-Author: Trond Myklebust <Trond.Myklebust@netapp.com>
-Date:   Fri Oct 23 14:46:42 2009 -0400
-
-    NFSv4: Fix a bug when the server returns NFS4ERR_RESOURCE
-    
-    RFC 3530 states that when we recieve the error NFS4ERR_RESOURCE, we are not
-    supposed to bump the sequence number on OPEN, LOCK, LOCKU, CLOSE, etc
-    operations. The problem is that we map that error into EREMOTEIO in the XDR
-    layer, and so the NFSv4 middle-layer routines like seqid_mutating_err(),
-    and nfs_increment_seqid() don't recognise it.
-    
-    The fix is to defer the mapping until after the middle layers have
-    processed the error.
-    
-    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-
-commit a8b40bc7e635831b61c43acc71a86d3a68b2dff0
-Author: Terry Loftin <terry.loftin@hp.com>
-Date:   Thu Oct 22 21:36:01 2009 -0400
-
-    nfs: Panic when commit fails
-    
-    Actually pass the NFS_FILE_SYNC option to the server to avoid a
-    Panic in nfs_direct_write_complete() when a commit fails.
-    
-    At the end of an nfs write, if the nfs commit fails, all the writes
-    will be rescheduled.  They are supposed to be rescheduled as NFS_FILE_SYNC
-    writes, but the rpc_task structure is not completely intialized and so
-    the option is not passed.  When the rescheduled writes complete, the
-    return indicates that they are NFS_UNSTABLE and we try to do another
-    commit.  This leads to a Panic because the commit data structure pointer
-    was set to null in the initial (failed) commit attempt.
-    
-    Signed-off-by: Terry Loftin <terry.loftin@hp.com>
-    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-
-diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index 32062c3..7cb2985 100644
---- a/fs/nfs/dir.c
-+++ b/fs/nfs/dir.c
-@@ -1536,6 +1536,8 @@ nfs_link(struct dentry *old_dentry, struct inode *dir, struct dentry *dentry)
- 		old_dentry->d_parent->d_name.name, old_dentry->d_name.name,
- 		dentry->d_parent->d_name.name, dentry->d_name.name);
+diff --git a/net/sunrpc/svcauth_unix.c b/net/sunrpc/svcauth_unix.c
+index 117f68a..97cc3de 100644
+--- a/net/sunrpc/svcauth_unix.c
++++ b/net/sunrpc/svcauth_unix.c
+@@ -655,23 +655,25 @@ static struct unix_gid *unix_gid_lookup(uid_t uid)
+ 		return NULL;
+ }
  
-+	nfs_inode_return_delegation(inode);
-+
- 	d_drop(dentry);
- 	error = NFS_PROTO(dir)->link(inode, dir, &dentry->d_name);
- 	if (error == 0) {
-diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
-index 6c32100..e1d415e 100644
---- a/fs/nfs/direct.c
-+++ b/fs/nfs/direct.c
-@@ -457,6 +457,7 @@ static void nfs_direct_write_reschedule(struct nfs_direct_req *dreq)
- 	};
- 	struct rpc_task_setup task_setup_data = {
- 		.rpc_client = NFS_CLIENT(inode),
-+		.rpc_message = &msg,
- 		.callback_ops = &nfs_write_direct_ops,
- 		.workqueue = nfsiod_workqueue,
- 		.flags = RPC_TASK_ASYNC,
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index ed7c269..ff37454 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -72,12 +72,17 @@ static int _nfs4_proc_getattr(struct nfs_server *server, struct nfs_fh *fhandle,
- /* Prevent leaks of NFSv4 errors into userland */
- static int nfs4_map_errors(int err)
+-static int unix_gid_find(uid_t uid, struct group_info **gip,
+-			 struct svc_rqst *rqstp)
++static struct group_info *unix_gid_find(uid_t uid, struct svc_rqst *rqstp)
  {
--	if (err < -1000) {
-+	if (err >= -1000)
-+		return err;
-+	switch (err) {
-+	case -NFS4ERR_RESOURCE:
-+		return -EREMOTEIO;
-+	default:
- 		dprintk("%s could not handle NFSv4 error %d\n",
- 				__func__, -err);
--		return -EIO;
-+		break;
+-	struct unix_gid *ug = unix_gid_lookup(uid);
++	struct unix_gid *ug;
++	struct group_info *gi;
++	int ret;
++
++	ug = unix_gid_lookup(uid);
+ 	if (!ug)
+-		return -EAGAIN;
+-	switch (cache_check(&unix_gid_cache, &ug->h, &rqstp->rq_chandle)) {
++		return ERR_PTR(-EAGAIN);
++	ret = cache_check(&unix_gid_cache, &ug->h, &rqstp->rq_chandle);
++	switch (ret) {
+ 	case -ENOENT:
+-		*gip = NULL;
+-		return 0;
++		return ERR_PTR(-ENOENT);
+ 	case 0:
+-		*gip = ug->gi;
+-		get_group_info(*gip);
++		gi = get_group_info(ug->gi);
+ 		cache_put(&ug->h, &unix_gid_cache);
+-		return 0;
++		return gi;
+ 	default:
+-		return -EAGAIN;
++		return ERR_PTR(-EAGAIN);
  	}
--	return err;
-+	return -EIO;
  }
  
- /*
-@@ -3060,9 +3065,6 @@ static void nfs4_renew_done(struct rpc_task *task, void *data)
- 	if (time_before(clp->cl_last_renewal,timestamp))
- 		clp->cl_last_renewal = timestamp;
- 	spin_unlock(&clp->cl_lock);
--	dprintk("%s calling put_rpccred on rpc_cred %p\n", __func__,
--				task->tk_msg.rpc_cred);
--	put_rpccred(task->tk_msg.rpc_cred);
+@@ -681,6 +683,8 @@ svcauth_unix_set_client(struct svc_rqst *rqstp)
+ 	struct sockaddr_in *sin;
+ 	struct sockaddr_in6 *sin6, sin6_storage;
+ 	struct ip_map *ipm;
++	struct group_info *gi;
++	struct svc_cred *cred = &rqstp->rq_cred;
+ 
+ 	switch (rqstp->rq_addr.ss_family) {
+ 	case AF_INET:
+@@ -722,6 +726,17 @@ svcauth_unix_set_client(struct svc_rqst *rqstp)
+ 			ip_map_cached_put(rqstp, ipm);
+ 			break;
+ 	}
++
++	gi = unix_gid_find(cred->cr_uid, rqstp);
++	switch (PTR_ERR(gi)) {
++	case -EAGAIN:
++		return SVC_DROP;
++	case -ENOENT:
++		break;
++	default:
++		put_group_info(cred->cr_group_info);
++		cred->cr_group_info = gi;
++	}
+ 	return SVC_OK;
  }
  
- static const struct rpc_call_ops nfs4_renew_ops = {
-@@ -4877,7 +4879,6 @@ void nfs41_sequence_call_done(struct rpc_task *task, void *data)
- 	nfs41_sequence_free_slot(clp, task->tk_msg.rpc_resp);
- 	dprintk("%s rpc_cred %p\n", __func__, task->tk_msg.rpc_cred);
- 
--	put_rpccred(task->tk_msg.rpc_cred);
- 	kfree(task->tk_msg.rpc_argp);
- 	kfree(task->tk_msg.rpc_resp);
- 
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index 83ad47c..20b4e30 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -5681,7 +5681,6 @@ static struct {
- 	{ NFS4ERR_SERVERFAULT,	-ESERVERFAULT	},
- 	{ NFS4ERR_BADTYPE,	-EBADTYPE	},
- 	{ NFS4ERR_LOCKED,	-EAGAIN		},
--	{ NFS4ERR_RESOURCE,	-EREMOTEIO	},
- 	{ NFS4ERR_SYMLINK,	-ELOOP		},
- 	{ NFS4ERR_OP_ILLEGAL,	-EOPNOTSUPP	},
- 	{ NFS4ERR_DEADLOCK,	-EDEADLK	},
-
--- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+@@ -818,19 +833,11 @@ svcauth_unix_accept(struct svc_rqst *rqstp, __be32 *authp)
+ 	slen = svc_getnl(argv);			/* gids length */
+ 	if (slen > 16 || (len -= (slen + 2)*4) < 0)
+ 		goto badcred;
+-	if (unix_gid_find(cred->cr_uid, &cred->cr_group_info, rqstp)
+-	    == -EAGAIN)
++	cred->cr_group_info = groups_alloc(slen);
++	if (cred->cr_group_info == NULL)
+ 		return SVC_DROP;
+-	if (cred->cr_group_info == NULL) {
+-		cred->cr_group_info = groups_alloc(slen);
+-		if (cred->cr_group_info == NULL)
+-			return SVC_DROP;
+-		for (i = 0; i < slen; i++)
+-			GROUP_AT(cred->cr_group_info, i) = svc_getnl(argv);
+-	} else {
+-		for (i = 0; i < slen ; i++)
+-			svc_getnl(argv);
+-	}
++	for (i = 0; i < slen; i++)
++		GROUP_AT(cred->cr_group_info, i) = svc_getnl(argv);
+ 	if (svc_getu32(argv) != htonl(RPC_AUTH_NULL) || svc_getu32(argv) != 0) {
+ 		*authp = rpc_autherr_badverf;
+ 		return SVC_DENIED;
