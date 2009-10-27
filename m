@@ -1,193 +1,179 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH]  Fixed compile errors when the mount config file is not enabled
-Date: Tue, 27 Oct 2009 16:20:47 -0400
-Message-ID: <36FDE8D9-4D83-447F-A2AF-516B5FEFDAD7@oracle.com>
-References: <4AE751CE.1050300@RedHat.com>
-Mime-Version: 1.0 (Apple Message framework v936)
-Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
-Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-To: Steve Dickson <SteveD@redhat.com>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet11.oracle.com ([148.87.113.123]:62411 "EHLO
-	rgminet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756766AbZJ0UVM (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 27 Oct 2009 16:21:12 -0400
-In-Reply-To: <4AE751CE.1050300-AfCzQyP5zfLQT0dZR+AlfA@public.gmane.org>
-Sender: linux-nfs-owner@vger.kernel.org
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: [GIT] Please pull NFS client bugfixes...
+Date: Tue, 27 Oct 2009 17:35:00 -0400
+Message-ID: <1256679301.3234.1.camel@heimdal.trondhjem.org>
+Mime-Version: 1.0
+Content-Type: text/plain
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Linus Torvalds <torvalds@linux-foundation.org>
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S932461AbZJ0VfP@vger.kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi-
+Hi Linus,
 
-On Oct 27, 2009, at 4:02 PM, Steve Dickson wrote:
+Please pull from the "bugfixes" branch of the repository at
 
-> Author: Steve Dickson <steved@redhat.com>
-> Date:   Tue Oct 27 15:47:27 2009 -0400
->
->    Added wrappers around the setting of default values
->    from the config file which will be compiled out
->    when the config file is not enabled.
->
->    Signed-off-by: Steve Dickson <steved@redhat.com>
->
-> diff --git a/support/include/conffile.h b/support/include/conffile.h
-> index fe23ec2..ce7aa21 100644
-> --- a/support/include/conffile.h
-> +++ b/support/include/conffile.h
-> @@ -76,10 +76,5 @@ static inline void upper2lower(char *str)
-> 		*str++ = c;
-> }
->
-> -/*
-> - * Default Mount options
-> - */
-> -extern unsigned long config_default_vers;
-> -extern unsigned long config_default_proto;
->
-> #endif				/* _CONFFILE_H_ */
-> diff --git a/utils/mount/network.c b/utils/mount/network.c
-> index e651167..d4ecbc9 100644
-> --- a/utils/mount/network.c
-> +++ b/utils/mount/network.c
-> @@ -172,6 +172,27 @@ static const unsigned long probe_mnt3_first[] = {
-> 	0,
-> };
->
-> +inline const unsigned int *set_default_proto(void);
+   git pull git://git.linux-nfs.org/projects/trondmy/nfs-2.6.git bugfixes
 
-The "inline" directives are visual clutter, really... shouldn't this  
-be "static" instead (which in most normal cases implies "inline")?   
-Otherwise, you also clutter up the linker's symbol name space with  
-these generic function names.  I've been prefixing function names with  
-"nfs_" for most global functions, to make debugging easier.
+This will update the following files through the appended changesets.
 
-Why is a forward declaration needed for this function?
+  Cheers,
+    Trond
 
-> +#ifdef MOUNT_CONFIG
-> +inline const unsigned int *set_default_proto()
-> +{
-> +	extern unsigned long config_default_proto;
-> +	/*
-> +	 * If the default proto has been set and
-> +	 * its not TCP, start with UDP
-> +	 */
-> +	if (config_default_proto && config_default_proto != IPPROTO_TCP)
-> +		return probe_udp_first;
-> +
-> +	return probe_tcp_first;
-> +}
-> +#else
-> +inline const unsigned int *set_default_proto()
-> +{
-> +	return probe_tcp_first;
-> +}
-> +#endif /* MOUNT_CONFIG */
-> +
-> static int nfs_lookup(const char *hostname, const sa_family_t family,
-> 		      struct sockaddr *sap, socklen_t *salen)
-> {
-> @@ -590,7 +611,6 @@ out_ok:
-> 	nfs_clear_rpc_createerr();
-> 	return 1;
-> }
-> -
-> /*
->  * Probe a server's NFS service to determine which versions and
->  * transport protocols are supported.
-> @@ -611,14 +631,9 @@ static int nfs_probe_nfsport(const struct  
-> sockaddr *sap, const socklen_t salen,
-> 		return 1;
->
-> 	if (nfs_mount_data_version >= 4) {
-> -		const unsigned int *probe_proto = probe_tcp_first;
-> +		const unsigned int *probe_proto;
->
-> -		/*
-> -		 * If the default proto has been set and
-> -		 * its not TCP, start with UDP
-> -		 */
-> -		if (config_default_proto && config_default_proto != IPPROTO_TCP)
-> -			probe_proto =  probe_udp_first;
-> +		probe_proto = set_default_proto();
->
-> 		return nfs_probe_port(sap, salen, pmap,
-> 					probe_nfs3_first, probe_proto);
-> diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
-> index ceefdb0..7b63b45 100644
-> --- a/utils/mount/stropts.c
-> +++ b/utils/mount/stropts.c
-> @@ -93,6 +93,24 @@ struct nfsmount_info {
-> 				child;		/* forked bg child? */
-> };
->
-> +inline void set_default_version(struct nfsmount_info *mi);
-> +#ifdef MOUNT_CONFIG
-> +inline void set_default_version(struct nfsmount_info *mi)
-> +{
-> +	extern unsigned long config_default_vers;
-> +	/*
-> +	 * Use the default value set in the config file when
-> +	 * the version has not been explicitly set.
-> +	 */
-> +	if (mi->version == 0 && config_default_vers) {
-> +		if (config_default_vers < 4)
-> +			mi->version = config_default_vers;
-> +	}
-> +}
-> +#else
-> +inline void set_default_version(struct nfsmount_info *mi) {}
-> +#endif /* MOUNT_CONFIG */
+----
+ fs/nfs/dir.c      |    2 ++
+ fs/nfs/direct.c   |    1 +
+ fs/nfs/nfs4proc.c |   15 ++++++++-------
+ fs/nfs/nfs4xdr.c  |    1 -
+ 4 files changed, 11 insertions(+), 8 deletions(-)
 
-Er.  See recent patch I posted that created a nfs_set_version()  
-function, that is useful for a variety of purposes.  Could we build on  
-that instead?
+commit 9a3936aac133037f65124fcb2d676a6c201a90a4
+Author: Trond Myklebust <Trond.Myklebust@netapp.com>
+Date:   Mon Oct 26 08:09:46 2009 -0400
 
-> +
-> /*
->  * Obtain a retry timeout value based on the value of the "retry="  
-> option.
->  *
-> @@ -258,7 +276,6 @@ static int nfs_append_sloppy_option(struct  
-> mount_options *options)
-> 		return 0;
-> 	return 1;
-> }
-> -
+    NFSv4: The link() operation should return any delegation on the file
+    
+    Otherwise, we have to wait for the server to recall it.
+    
+    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 
-Whitespace nit: other function declarations in this source file are  
-separated by a single blank line.
+commit 141aeb9f26f9f12f1584c128ce8697cdffb046e7
+Author: Trond Myklebust <Trond.Myklebust@netapp.com>
+Date:   Mon Oct 26 08:09:46 2009 -0400
 
-> /*
->  * Set up mandatory non-version specific NFS mount options.
->  *
-> @@ -284,14 +301,12 @@ static int nfs_validate_options(struct  
-> nfsmount_info *mi)
-> 		if (option && strcmp(option, "rdma") == 0)
-> 			mi->version = 3;
-> 	}
-> +
-> 	/*
-> -	 * Use the default value set in the config file when
-> -	 * the version has not been explicitly set.
-> +	 * If enabled, see if the default version was
-> +	 * set in the config file
-> 	 */
-> -	if (mi->version == 0 && config_default_vers) {
-> -		if (config_default_vers < 4)
-> -			mi->version = config_default_vers;
-> -	}
-> +	set_default_version(mi);
->
-> 	if (!nfs_append_sloppy_option(mi->options))
-> 		return 0;
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs"  
-> in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+    NFSv4: Fix two unbalanced put_rpccred() issues.
+    
+    Commits 29fba38b (nfs41: lease renewal) and fc01cea9 (nfs41: sequence
+    operation) introduce a couple of put_rpccred() calls on credentials for
+    which there is no corresponding get_rpccred().
+    
+    See http://bugzilla.kernel.org/show_bug.cgi?id=14249
+    
+    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+commit 52567b03ca38b6e556ced450d64dba8d66e23b0e
+Author: Trond Myklebust <Trond.Myklebust@netapp.com>
+Date:   Fri Oct 23 14:46:42 2009 -0400
 
+    NFSv4: Fix a bug when the server returns NFS4ERR_RESOURCE
+    
+    RFC 3530 states that when we recieve the error NFS4ERR_RESOURCE, we are not
+    supposed to bump the sequence number on OPEN, LOCK, LOCKU, CLOSE, etc
+    operations. The problem is that we map that error into EREMOTEIO in the XDR
+    layer, and so the NFSv4 middle-layer routines like seqid_mutating_err(),
+    and nfs_increment_seqid() don't recognise it.
+    
+    The fix is to defer the mapping until after the middle layers have
+    processed the error.
+    
+    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 
+commit a8b40bc7e635831b61c43acc71a86d3a68b2dff0
+Author: Terry Loftin <terry.loftin@hp.com>
+Date:   Thu Oct 22 21:36:01 2009 -0400
 
+    nfs: Panic when commit fails
+    
+    Actually pass the NFS_FILE_SYNC option to the server to avoid a
+    Panic in nfs_direct_write_complete() when a commit fails.
+    
+    At the end of an nfs write, if the nfs commit fails, all the writes
+    will be rescheduled.  They are supposed to be rescheduled as NFS_FILE_SYNC
+    writes, but the rpc_task structure is not completely intialized and so
+    the option is not passed.  When the rescheduled writes complete, the
+    return indicates that they are NFS_UNSTABLE and we try to do another
+    commit.  This leads to a Panic because the commit data structure pointer
+    was set to null in the initial (failed) commit attempt.
+    
+    Signed-off-by: Terry Loftin <terry.loftin@hp.com>
+    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index 32062c3..7cb2985 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -1536,6 +1536,8 @@ nfs_link(struct dentry *old_dentry, struct inode *dir, struct dentry *dentry)
+ 		old_dentry->d_parent->d_name.name, old_dentry->d_name.name,
+ 		dentry->d_parent->d_name.name, dentry->d_name.name);
+ 
++	nfs_inode_return_delegation(inode);
++
+ 	d_drop(dentry);
+ 	error = NFS_PROTO(dir)->link(inode, dir, &dentry->d_name);
+ 	if (error == 0) {
+diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
+index 6c32100..e1d415e 100644
+--- a/fs/nfs/direct.c
++++ b/fs/nfs/direct.c
+@@ -457,6 +457,7 @@ static void nfs_direct_write_reschedule(struct nfs_direct_req *dreq)
+ 	};
+ 	struct rpc_task_setup task_setup_data = {
+ 		.rpc_client = NFS_CLIENT(inode),
++		.rpc_message = &msg,
+ 		.callback_ops = &nfs_write_direct_ops,
+ 		.workqueue = nfsiod_workqueue,
+ 		.flags = RPC_TASK_ASYNC,
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index ed7c269..ff37454 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -72,12 +72,17 @@ static int _nfs4_proc_getattr(struct nfs_server *server, struct nfs_fh *fhandle,
+ /* Prevent leaks of NFSv4 errors into userland */
+ static int nfs4_map_errors(int err)
+ {
+-	if (err < -1000) {
++	if (err >= -1000)
++		return err;
++	switch (err) {
++	case -NFS4ERR_RESOURCE:
++		return -EREMOTEIO;
++	default:
+ 		dprintk("%s could not handle NFSv4 error %d\n",
+ 				__func__, -err);
+-		return -EIO;
++		break;
+ 	}
+-	return err;
++	return -EIO;
+ }
+ 
+ /*
+@@ -3060,9 +3065,6 @@ static void nfs4_renew_done(struct rpc_task *task, void *data)
+ 	if (time_before(clp->cl_last_renewal,timestamp))
+ 		clp->cl_last_renewal = timestamp;
+ 	spin_unlock(&clp->cl_lock);
+-	dprintk("%s calling put_rpccred on rpc_cred %p\n", __func__,
+-				task->tk_msg.rpc_cred);
+-	put_rpccred(task->tk_msg.rpc_cred);
+ }
+ 
+ static const struct rpc_call_ops nfs4_renew_ops = {
+@@ -4877,7 +4879,6 @@ void nfs41_sequence_call_done(struct rpc_task *task, void *data)
+ 	nfs41_sequence_free_slot(clp, task->tk_msg.rpc_resp);
+ 	dprintk("%s rpc_cred %p\n", __func__, task->tk_msg.rpc_cred);
+ 
+-	put_rpccred(task->tk_msg.rpc_cred);
+ 	kfree(task->tk_msg.rpc_argp);
+ 	kfree(task->tk_msg.rpc_resp);
+ 
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index 83ad47c..20b4e30 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -5681,7 +5681,6 @@ static struct {
+ 	{ NFS4ERR_SERVERFAULT,	-ESERVERFAULT	},
+ 	{ NFS4ERR_BADTYPE,	-EBADTYPE	},
+ 	{ NFS4ERR_LOCKED,	-EAGAIN		},
+-	{ NFS4ERR_RESOURCE,	-EREMOTEIO	},
+ 	{ NFS4ERR_SYMLINK,	-ELOOP		},
+ 	{ NFS4ERR_OP_ILLEGAL,	-EOPNOTSUPP	},
+ 	{ NFS4ERR_DEADLOCK,	-EDEADLK	},
+
+-- 
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
