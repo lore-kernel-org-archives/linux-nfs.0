@@ -1,71 +1,176 @@
-From: Frank Filz <ffilzlnx@us.ibm.com>
-Subject: Re: [PATCH] nfsd: Fix sort_pacl in fs/nfsd/nf4acl.c to
-	actually	sort groups
-Date: Tue, 27 Oct 2009 20:12:00 -0700
-Message-ID: <1256699520.31791.25.camel@dyn9047022153>
-References: <1256168703.31791.14.camel@dyn9047022153>
-	 <20091027233244.GD14471@fieldses.org>
+From: Peter Staubach <staubach@redhat.com>
+Subject: Re: [PATCH]  Fixed compile errors when the mount config file is not
+ enabled
+Date: Wed, 28 Oct 2009 08:20:02 -0400
+Message-ID: <4AE836F2.7020905@redhat.com>
+References: <4AE751CE.1050300@RedHat.com>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: NFS List <linux-nfs@vger.kernel.org>,
-	NFS V4 Mailing List <nfsv4@linux-nfs.org>,
-	Frank S Filz <ffilz@us.ibm.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+To: Steve Dickson <SteveD@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from e4.ny.us.ibm.com ([32.97.182.144]:44104 "EHLO e4.ny.us.ibm.com"
+Received: from mx1.redhat.com ([209.132.183.28]:1025 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932457AbZJ1DJf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 27 Oct 2009 23:09:35 -0400
-Received: from d01relay07.pok.ibm.com (d01relay07.pok.ibm.com [9.56.227.147])
-	by e4.ny.us.ibm.com (8.14.3/8.13.1) with ESMTP id n9S31kxU013431
-	for <linux-nfs@vger.kernel.org>; Tue, 27 Oct 2009 23:01:46 -0400
-Received: from d01av04.pok.ibm.com (d01av04.pok.ibm.com [9.56.224.64])
-	by d01relay07.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id n9S39dxC1134608
-	for <linux-nfs@vger.kernel.org>; Tue, 27 Oct 2009 23:09:39 -0400
-Received: from d01av04.pok.ibm.com (loopback [127.0.0.1])
-	by d01av04.pok.ibm.com (8.14.3/8.13.1/NCO v10.0 AVout) with ESMTP id n9S39dSm006392
-	for <linux-nfs@vger.kernel.org>; Tue, 27 Oct 2009 23:09:39 -0400
-In-Reply-To: <20091027233244.GD14471@fieldses.org>
+	id S1751646AbZJ1MT6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 28 Oct 2009 08:19:58 -0400
+Received: from int-mx02.intmail.prod.int.phx2.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
+	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id n9SCK24T017393
+	for <linux-nfs@vger.kernel.org>; Wed, 28 Oct 2009 08:20:03 -0400
+In-Reply-To: <4AE751CE.1050300-AfCzQyP5zfLQT0dZR+AlfA@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 2009-10-27 at 19:32 -0400, J. Bruce Fields wrote:
-> On Wed, Oct 21, 2009 at 04:45:02PM -0700, Frank Filz wrote:
-> > We have been doing some extensive testing of Linux support for ACLs on
-> > NFDS v4. We have noticed that the server rejects ACLs where the groups
-> > are out of order, for example, the following ACL is rejected:
-> > 
-> > A::OWNER@:rwaxtTcCy
-> > A::user101@domain:rwaxtcy
-> > A::GROUP@:rwaxtcy
-> > A:g:group102@domain:rwaxtcy
-> > A:g:group101@domain:rwaxtcy
-> > A::EVERYONE@:rwaxtcy
-> > 
-> > Examining the server code, I found that after converting an NFS v4 ACL
-> > to POSIX, sort_pacl is called to sort the user ACEs and group ACEs.
-> > Unfortunately, a minor bug causes the group sort to be skipped.
+Steve Dickson wrote:
+> Author: Steve Dickson <steved@redhat.com>
+> Date:   Tue Oct 27 15:47:27 2009 -0400
 > 
-> Good grief, I'm embarassed--OK, thanks for catching that!  Do you have
-> any regression tests that'd be easy for someone else to run?
+>     Added wrappers around the setting of default values
+>     from the config file which will be compiled out
+>     when the config file is not enabled.
+>     
+>     Signed-off-by: Steve Dickson <steved@redhat.com>
+> 
+> diff --git a/support/include/conffile.h b/support/include/conffile.h
+> index fe23ec2..ce7aa21 100644
+> --- a/support/include/conffile.h
+> +++ b/support/include/conffile.h
+> @@ -76,10 +76,5 @@ static inline void upper2lower(char *str)
+>  		*str++ = c;
+>  }
+>  
+> -/*
+> - * Default Mount options
+> - */
+> -extern unsigned long config_default_vers;
+> -extern unsigned long config_default_proto;
+>  
+>  #endif				/* _CONFFILE_H_ */
+> diff --git a/utils/mount/network.c b/utils/mount/network.c
+> index e651167..d4ecbc9 100644
+> --- a/utils/mount/network.c
+> +++ b/utils/mount/network.c
+> @@ -172,6 +172,27 @@ static const unsigned long probe_mnt3_first[] = {
+>  	0,
+>  };
+>  
+> +inline const unsigned int *set_default_proto(void);
+> +#ifdef MOUNT_CONFIG
+> +inline const unsigned int *set_default_proto()
+> +{
+> +	extern unsigned long config_default_proto;
+> +	/*
+> +	 * If the default proto has been set and 
+> +	 * its not TCP, start with UDP
+> +	 */
+> +	if (config_default_proto && config_default_proto != IPPROTO_TCP)
+> +		return probe_udp_first;
+> +
 
-Using the above ACL (modified with appropriate groups and the
-appropriate domain) with nfs4_setfacl will result in an EINVAL/Invalid
-argument.
+Shouldn't there be something to account for NFSv4 only being
+supported over TCP and not UDP by specification?  The Linux
+server still supports NFSv4 over UDP, although it is not
+supposed to and should not.  Even if the default transport
+is set to UDP, NFSv4 should always be mounted over TCP.
 
-I'm working on a script to test ACL conversion, I will post it when it
-is in a better state for public consumption. It does an exhaustive test
-(which in full mode takes a day or two to complete), but I could add a
-regression test that just hit various spot conditions (it will also have
-to get smart about the ACL re-ordering in order to have an automated
-regression test for this error).
+	Thanx...
 
-We actually hit the bug by using nfs4_setfacl -a, discovering that the
-command only succeeded if the index was specified to put the new group
-ACE in the correct sorted position.
+		ps
 
-Thanks
-
-Frank
-
+> +	return probe_tcp_first; 
+> +}
+> +#else
+> +inline const unsigned int *set_default_proto() 
+> +{
+> +	return probe_tcp_first; 
+> +}
+> +#endif /* MOUNT_CONFIG */
+> +
+>  static int nfs_lookup(const char *hostname, const sa_family_t family,
+>  		      struct sockaddr *sap, socklen_t *salen)
+>  {
+> @@ -590,7 +611,6 @@ out_ok:
+>  	nfs_clear_rpc_createerr();
+>  	return 1;
+>  }
+> -
+>  /*
+>   * Probe a server's NFS service to determine which versions and
+>   * transport protocols are supported.
+> @@ -611,14 +631,9 @@ static int nfs_probe_nfsport(const struct sockaddr *sap, const socklen_t salen,
+>  		return 1;
+>  
+>  	if (nfs_mount_data_version >= 4) {
+> -		const unsigned int *probe_proto = probe_tcp_first;
+> +		const unsigned int *probe_proto;
+>  
+> -		/*
+> -		 * If the default proto has been set and 
+> -		 * its not TCP, start with UDP
+> -		 */
+> -		if (config_default_proto && config_default_proto != IPPROTO_TCP)
+> -			probe_proto =  probe_udp_first;
+> +		probe_proto = set_default_proto();
+>  
+>  		return nfs_probe_port(sap, salen, pmap,
+>  					probe_nfs3_first, probe_proto);
+> diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
+> index ceefdb0..7b63b45 100644
+> --- a/utils/mount/stropts.c
+> +++ b/utils/mount/stropts.c
+> @@ -93,6 +93,24 @@ struct nfsmount_info {
+>  				child;		/* forked bg child? */
+>  };
+>  
+> +inline void set_default_version(struct nfsmount_info *mi);
+> +#ifdef MOUNT_CONFIG
+> +inline void set_default_version(struct nfsmount_info *mi)
+> +{
+> +	extern unsigned long config_default_vers;
+> +	/*
+> +	 * Use the default value set in the config file when
+> +	 * the version has not been explicitly set.
+> +	 */
+> +	if (mi->version == 0 && config_default_vers) {
+> +		if (config_default_vers < 4)
+> +			mi->version = config_default_vers;
+> +	}
+> +}
+> +#else
+> +inline void set_default_version(struct nfsmount_info *mi) {}
+> +#endif /* MOUNT_CONFIG */
+> +
+>  /*
+>   * Obtain a retry timeout value based on the value of the "retry=" option.
+>   *
+> @@ -258,7 +276,6 @@ static int nfs_append_sloppy_option(struct mount_options *options)
+>  		return 0;
+>  	return 1;
+>  }
+> -
+>  /*
+>   * Set up mandatory non-version specific NFS mount options.
+>   *
+> @@ -284,14 +301,12 @@ static int nfs_validate_options(struct nfsmount_info *mi)
+>  		if (option && strcmp(option, "rdma") == 0)
+>  			mi->version = 3;
+>  	}
+> +
+>  	/*
+> -	 * Use the default value set in the config file when
+> -	 * the version has not been explicitly set.
+> +	 * If enabled, see if the default version was
+> +	 * set in the config file
+>  	 */
+> -	if (mi->version == 0 && config_default_vers) {
+> -		if (config_default_vers < 4)
+> -			mi->version = config_default_vers;
+> -	}
+> +	set_default_version(mi);
+>  
+>  	if (!nfs_append_sloppy_option(mi->options))
+>  		return 0;
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
