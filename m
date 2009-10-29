@@ -1,61 +1,50 @@
 From: Chuck Lever <chuck.lever@oracle.com>
 Subject: Re: [PATCH] nfs: convert proto= option to use netid's rather than a protoname
-Date: Thu, 29 Oct 2009 10:13:35 -0400
-Message-ID: <F9E982FF-1E22-4859-B515-2CA9B118271B@oracle.com>
-References: <1256758812-24928-1-git-send-email-jlayton@redhat.com> <20091029042415.GA2283@infradead.org>
+Date: Thu, 29 Oct 2009 13:51:09 -0400
+Message-ID: <75656B48-F96B-4745-8665-5ACAB5CB3530@oracle.com>
+References: <1256758812-24928-1-git-send-email-jlayton@redhat.com> <9EF4B3B4-5F00-4E66-81AA-ADDF348ADED4@oracle.com> <20091028184106.019ccbc6@tlielax.poochiereds.net>
 Mime-Version: 1.0 (Apple Message framework v936)
 Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
-Cc: Jeff Layton <jlayton@redhat.com>, linux-nfs@vger.kernel.org
-To: Christoph Hellwig <hch@infradead.org>
+Cc: linux-nfs@vger.kernel.org
+To: Jeff Layton <jlayton@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet12.oracle.com ([148.87.113.124]:29344 "EHLO
+Received: from rcsinet12.oracle.com ([148.87.113.124]:58954 "EHLO
 	rgminet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753498AbZJ2ON7 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 29 Oct 2009 10:13:59 -0400
-In-Reply-To: <20091029042415.GA2283@infradead.org>
+	with ESMTP id S1751835AbZJ2Rvf (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 29 Oct 2009 13:51:35 -0400
+In-Reply-To: <20091028184106.019ccbc6-9yPaYZwiELC+kQycOl6kW4xkIHaj4LzF@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Oct 29, 2009, at 12:24 AM, Christoph Hellwig wrote:
-> On Wed, Oct 28, 2009 at 03:40:12PM -0400, Jeff Layton wrote:
->> Solaris uses netids as values for the proto= option, so that when
->> someone specifies "tcp6" they get traffic over TCP + IPv6. Until
->> recently, this has never really been an issue for Linux since it  
->> didn't
->> support NFS over IPv6.  The netid and the protocol name were  
->> generally
->> always the same (modulo any strange configuration in /etc/netconfig).
->>
->> The solaris manpage documents their proto= option as:
->>
->>    proto= _netid_ | rdma
+On Oct 28, 2009, at 6:41 PM, Jeff Layton wrote:
+> On Wed, 28 Oct 2009 16:15:33 -0400
+> Chuck Lever <chuck.lever@oracle.com> wrote:
 >
-> I'm strictly against adding netid braindamage to Linux.  Just because
-> Solaris made a mistake we don't have to repeat it.
+>>>
+>>> /*
+>>> @@ -578,7 +609,7 @@ static void nfs_show_mount_options(struct
+>>> seq_file *m, struct nfs_server *nfss,
+>>> 			seq_puts(m, nfs_infop->nostr);
+>>> 	}
+>>> 	seq_printf(m, ",proto=%s",
+>>> -		   rpc_peeraddr2str(nfss->client, RPC_DISPLAY_PROTO));
+>>> +		   rpc_peeraddr2str(nfss->client, RPC_DISPLAY_NETID));
+>>
+>> Does that do the right thing for rdma mounts, currently?
+>>
+>
+> Unfortunately, I don't have an easy way to test this with RDMA yet,  
+> but
+> it looks like it'll do the right thing. The RPC_DISPLAY_PROTO and
+> RPC_DISPLAY_NETID strings both get set to "rdma".
+>
+> As best I can tell IPv6 support for RDMA doesn't exist yet, so that
+> seems to be the right thing to do for now.
 
-As it stands, the kernel already has some support for netids, which is  
-required for supporting NFS and RPC on IPv6 such that it can  
-interoperate with the reference NFS implementation.  We might be able  
-to address your concern if we understood specifically what was at issue.
-
-A feature request has been made to provide a mechanism to force the  
-use of IPv4 or IPv6 for mounting NFS servers that have both types of  
-address.  The use of "proto=netid" is especially preferred for  
-mount.nfs since Linux often shares automounter maps with other NFS  
-implementations.  And, netids are an internet standard at this point.   
-We could choose a different mechanism for the kernel's mount option  
-parser, but I haven't seen an alternative proposal that is cleaner  
-overall than what we have here.
-
-> Adding a hack to mount.nfs to parse it is fine, but there's not need  
-> to
-> display it again.
-
-That was our first pass, but as Jeff says, it's just bad user  
-interface design for the mount options in /proc/mounts to have  
-different semantics than what admins use in user space.  I would  
-rather keep mount.nfs and the kernel's mount parser as close together  
-as possible.
+OK... the NFS client plays some games with the internal protocol  
+settings to get NLM and MNT to go over TCP instead of RDMA.  I guess  
+the PROTO and NETID strings are still "rdma" in this case, but it's  
+worth keeping an eye on.
 
 --
 Chuck Lever
