@@ -1,35 +1,74 @@
-From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: [PATCH] nfs: convert proto= option to use netid's rather than
-	a protoname
-Date: Thu, 29 Oct 2009 00:24:15 -0400
-Message-ID: <20091029042415.GA2283@infradead.org>
-References: <1256758812-24928-1-git-send-email-jlayton@redhat.com>
+From: Neil Brown <neilb@suse.de>
+Subject: [PATCH] NFS client ignores server preferred IO size when
+   'ascii' mount options used.
+Date: Thu, 29 Oct 2009 21:14:49 +1100
+Message-ID: <19177.27417.641206.213064@notabene.brown>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-nfs@vger.kernel.org
-To: Jeff Layton <jlayton@redhat.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([18.85.46.34]:34723 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750782AbZJ2EYL (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 29 Oct 2009 00:24:11 -0400
-In-Reply-To: <1256758812-24928-1-git-send-email-jlayton@redhat.com>
+Received: from cantor2.suse.de ([195.135.220.15]:41230 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753872AbZJ2KNY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 29 Oct 2009 06:13:24 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Oct 28, 2009 at 03:40:12PM -0400, Jeff Layton wrote:
-> Solaris uses netids as values for the proto= option, so that when
-> someone specifies "tcp6" they get traffic over TCP + IPv6. Until
-> recently, this has never really been an issue for Linux since it didn't
-> support NFS over IPv6.  The netid and the protocol name were generally
-> always the same (modulo any strange configuration in /etc/netconfig).
-> 
-> The solaris manpage documents their proto= option as:
-> 
->     proto= _netid_ | rdma
 
-I'm strictly against adding netid braindamage to Linux.  Just because
-Solaris made a mistake we don't have to repeat it.
+Hi Trond et al,
 
-Adding a hack to mount.nfs to parse it is fine, but there's not need to
-display it again.
+ I just had a report from a customer that NFS (SLES11) was ignoring
+ the rsize/wsize set by the server.
+
+ A quick inspection of the code (in current upstream) shows that this
+ is indeed the case.
+
+ nfs_get_sb calls nfs_alloc_parsed_mount_data which set rsize and
+ wsize in 'data' to NFS_MAX_FILE_IO_SIZE (which is not zero).
+
+ It then calls nfs_validate_mount_data which will over-write this
+ valid if 'binary' mount options are in use, but with ascii mount
+ options, the values will only be changed in rsize and/or wsize is
+ explicitly listed.
+
+ So in the common case of ascii mount options and no rsize/wsize,
+ they remain at NFS_MAX_FILE_IO_SIZE.
+
+ Then nfs_get_sb calls nfs_create_server which calls
+ nfs_init_server which copies the rsize and rsize (being non-zero)
+ across from 'data' to 'server' (clipping to
+ NFS_{MIN,MAX}_FILE_IO_SIZE).
+
+ Then nfs_create_server calls nfs_probe_fsinfo which calls
+ nfs_server_set_fsinfo which sets ->rsize to fsinfo->rtpref
+ only if ->rsize is zero.  But it isn't, it is NFS_MAX_FILE_IO_SIZE.
+ So the ->rtpref and ->wtpref are ignored when they should be used.
+
+ I suspect the required patch will be something like the following
+ though I haven't tested it yet (it is late:-).
+ There should probably be a comment in there pointing out that these
+ values get their defaults from fsinfo.
+ I also have only looked at the v3 path, not the v4 path.
+
+ But I thought I'd let you know promptly as I'm not sure when I'll get
+ around to proper testing.
+
+NeilBrown
+
+
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index 90be551..18c5f85 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -734,8 +734,8 @@ static struct nfs_parsed_mount_data *nfs_alloc_parsed_mount_data(unsigned int ve
+ 
+ 	data = kzalloc(sizeof(*data), GFP_KERNEL);
+ 	if (data) {
+-		data->rsize		= NFS_MAX_FILE_IO_SIZE;
+-		data->wsize		= NFS_MAX_FILE_IO_SIZE;
++		data->rsize		= 0;
++		data->wsize		= 0;
+ 		data->acregmin		= NFS_DEF_ACREGMIN;
+ 		data->acregmax		= NFS_DEF_ACREGMAX;
+ 		data->acdirmin		= NFS_DEF_ACDIRMIN;
