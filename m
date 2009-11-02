@@ -1,55 +1,74 @@
-From: Peter Staubach <staubach@redhat.com>
-Subject: [PATCH] register NFS_ACL with rpcbind
-Date: Mon, 02 Nov 2009 14:03:53 -0500
-Message-ID: <4AEF2D19.5090409@redhat.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [RFC] NLM server can not process retransmited request correctly
+Date: Mon, 2 Nov 2009 15:09:56 -0500
+Message-ID: <20091102200956.GC19271@fieldses.org>
+References: <4AEEA622.6000705@cn.fujitsu.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-	Olaf Kirch <okir@suse.de>, Andreas Gruenbacher <agruen@suse.de>
-To: NFS list <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: "Trond.Myklebust" <trond.myklebust@fys.uio.no>,
+	NFSv3 list <linux-nfs@vger.kernel.org>, mingo@elte.hu
+To: Mi Jinlong <mijinlong@cn.fujitsu.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:28312 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:43067 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756728AbZKBTDx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 2 Nov 2009 14:03:53 -0500
+	id S932368AbZKBUIZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 2 Nov 2009 15:08:25 -0500
+In-Reply-To: <4AEEA622.6000705@cn.fujitsu.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi.
+On Mon, Nov 02, 2009 at 05:28:02PM +0800, Mi Jinlong wrote:
+> Hi Trond et al:
+> 
+> When i test the nfslock of NFSv3 at RHEL5.3GA (kernel: 2.6.18-128.el5),
+> NLM server can not process client's retransmited request correctly.
+> 
+> Steps of my test likes followed:
+>            client                          server
+>              |                                |
+>       step1  |           open file            |
+>       open   |------------------------------->|
+>              |              ok                |
+>              |<-------------------------------|
+>              |                                | step2
+>              |                             -> | <-  service nfslock stop
+>              |                                |
+>       step3  | WL1: write lock request{0, 0}  |
+>       fcntl  |------------------------------->|
+>              |                                |
+>              |    WL1_re: WL1 retransmit      |
+>              |------------------------------->|
+>              |                                |
+>              |       WL1.reply   ENOLCK       |
+>              |<-------------------------------|
+>              |                                | step4
+>              |                             -> | <- service nfslock start
+>              |                                |
+>       step5  | WL2: write lock request{0, 0}  |
+>       fcntl  |------------------------------->|
+>              |                                |
+>              |        WL1_re.reply OK         |
+>              |<-------------------------------|
+>              |       WL2.reply EBLOCKD        |
+>              |<-------------------------------|
+>              V                                V
+> 
+>    Client can not acquire for write lock any more after step4.
+> 
+> Reason:
+>    Server reply ENOLCK for WL1 to client because nfslock service stoped,
 
-Here is a patch to modify the NFS server to register the NFS_ACL
-services with the rpcbind daemon.  This allows the client to
-ping for the existence of the NFS_ACL support via commands such
-as "rpcinfo -t <server> nfs_acl".
+I don't completely understand that part: is it because the monitor call
+to statd fails?
 
-The changelog for the patch which turned off this functionality
-mentioned something about not registering the NFS_ACL as being
-part of some tradition.  I can't find this tradition and the
-only other implementation which supports NFS_ACL does register
-them with the rpcbind daemon.
+>    but it can not distinguish retransmited request with normal request, 
+>    so it reply OK for WL1_re to client after nfslock service start. But 
+>    fcntl client called will return when it receive WL1.reply, WL1_re.reply
+>    will be droped at Client. So that, the lock between client and server
+>    is different. When client send a some lock request to server again,
+>    it will get a EBLOCKD error from Server.
 
-	Thanx...
+But, OK, I get the idea, and generic DRC code shared by nfsd and nlm
+makes sense to me; thanks for looking into this.
 
-		ps
-
-Signed-off-by: Peter Staubach <staubach@redhat.com>
-
---- linux-2.6.31.i686/fs/nfsd/nfs2acl.c.org
-+++ linux-2.6.31.i686/fs/nfsd/nfs2acl.c
-@@ -346,5 +346,5 @@ struct svc_version	nfsd_acl_version2 = {
- 		.vs_proc	= nfsd_acl_procedures2,
- 		.vs_dispatch	= nfsd_dispatch,
- 		.vs_xdrsize	= NFS3_SVC_XDRSIZE,
--		.vs_hidden	= 1,
-+		.vs_hidden	= 0,
- };
---- linux-2.6.31.i686/fs/nfsd/nfs3acl.c.org
-+++ linux-2.6.31.i686/fs/nfsd/nfs3acl.c
-@@ -264,6 +264,6 @@ struct svc_version	nfsd_acl_version3 = {
- 		.vs_proc	= nfsd_acl_procedures3,
- 		.vs_dispatch	= nfsd_dispatch,
- 		.vs_xdrsize	= NFS3_SVC_XDRSIZE,
--		.vs_hidden	= 1,
-+		.vs_hidden	= 0,
- };
- 
+--b.
