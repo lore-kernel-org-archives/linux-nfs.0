@@ -1,122 +1,82 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: IPv6 support
-Date: Mon, 2 Nov 2009 11:40:47 -0500
-Message-ID: <B3F6BEAE-A564-475F-93D5-7D6E0FC79147@oracle.com>
-References: <4AEE9645.6010503@suse.de>
-Mime-Version: 1.0 (Apple Message framework v936)
-Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
-Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>,
-	Chris Mason <chris.mason@oracle.com>
-To: Suresh Jayaraman <sjayaraman@suse.de>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: Issue with stalled NFS
+Date: Mon, 2 Nov 2009 13:35:52 -0500
+Message-ID: <20091102183552.GA18142@fieldses.org>
+References: <4AEE04F2.2070400@o2.pl>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-nfs@vger.kernel.org
+To: Warpme <warpme-h7QdYz1kt/Q@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet11.oracle.com ([148.87.113.123]:27499 "EHLO
-	rgminet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755782AbZKBQlj (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 2 Nov 2009 11:41:39 -0500
-In-Reply-To: <4AEE9645.6010503@suse.de>
+Received: from fieldses.org ([174.143.236.118]:36416 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754190AbZKBSeT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 2 Nov 2009 13:34:19 -0500
+In-Reply-To: <4AEE04F2.2070400-h7QdYz1kt/Q@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Nov 2, 2009, at 3:20 AM, Suresh Jayaraman wrote:
-> Hi Chuck et al,
+On Sun, Nov 01, 2009 at 11:00:18PM +0100, Warpme wrote:
+> Hi *
 >
-> Thanks for all the excellent work on IPv6 support. There have been
-> considerable amount of development that has been happening recently.
-> However, it's not very clear what are the missing pieces or open
-> problems (if any).
-
-There's a working document on the linux-nfs.org wiki that has a full  
-list, but I can't seem to get to linux-nfs.org right now.
-
-> From what I understand, the current status is (CMIW):
+> I'm looking solution for following problem:
 >
-> + kernel support
->  - client side and server (kernel pieces) are almost there and the
->    missing pieces are expected to get in by 2.6.32.
+> I have file server sharing files to diskless clients via NFS.
+>
+> My /etc/export looks following:
+>
+> [CODE]myth                  
+> 192.168.1.0/24(rw,crossmnt,no_subtree_check,no_root_squash)
+> /tftpboot/PXEclient    
+> 192.168.1.0/24(rw,no_subtree_check,no_root_squash)[/CODE]
+>
+>
+> I want  have setup, where plugging ext. USB HDD will be dynamically  
+> visible on clients as new <subdir> with plugged HDD contents.
+> So if user plug USB HD on server, diskless clients should see plugged  
+> HDD contents in dynamically created <subdirectory> with name equal to HD  
+> label and HD contents inside it.
+>
+> I already wrote udev script which auto creates subdir=<label> in NFS  
+> server shared dir, and automounts USB HD in this subdir.
+> Udev script calls exportfs -r on add/remove operations.
+>
+> My issue is that sometimes, after longer period of time (hours), in  
+> diskless clients, access to dir having HSB HD <subdir> causes stall.
 
-The client-side implementation of IPv6 in the kernel is usable.   
-There's been a request for the proto= mount option to accept netids  
-instead of protocol names, and that's still pending.  Otherwise, you  
-can pass an IPv6 address to the kernel and it will do the right  
-thing.  NFSv4 is pretty much working now, NFSv2/v3 still needs the  
-IPv6-aware statd.  We've tested against NetApp and Solaris NFS servers.
+Is it possible that this is the first time those clients attempted to
+access the drive, or do they succesfully accessed the new export of the
+drive after it was mounted, and only fail much later?
 
-Server side in the kernel is nearly done.  There are a handful of  
-small patches outstanding.  Until I have mountd working, there's no  
-way to test the server side pieces thoroughly.  So for now,  
-"completion" of the server side is some time in the future.
+Next time the problem happens, it might be interesting to turn on mountd
+debugging (by adding "-d all" to the mountd commandline), then run
+exportfs -f, then try to access the directory from a client.
 
-> + userspace support
->  - nfsd support has already been added but disabled temporarily till
->    we get statd and mountd IPv6 aware.
->  - making statd IPv6 aware is currently under development/review.
+> In such case, cat /proc/fs/nfs/exports on NFS server gives:   
+>
+> [CODE][root@mythtv ~]# cat /proc/fs/nfs/exports
+> # Version 1.1
+> # Path Client(Flags) # IPs
+> /tftpboot/PXEclient      
+> 192.168.1.0/24(rw,no_root_squash,sync,wdelay,no_subtree_check,uuid=61c03e7b:9b7b4650:98dd78b4:18dc5ea6)
+> /        
+> 192.168.1.0/24(rw,no_root_squash,sync,wdelay,crossmnt,no_subtree_check,uuid=82aa90c3:2cb44663:b912a340:38f73b56)
+> /myth/video/DVD_Rip      
+> 192.168.1.0/24(rw,no_root_squash,sync,wdelay,crossmnt,no_subtree_check,uuid=cc740348:740334ac:00000000:00000000)
+> /myth    
+> 192.168.1.0/24(rw,no_root_squash,sync,wdelay,crossmnt,no_subtree_check,uuid=fd3104ea:d5c04a8f:beba8ab6:9115b192)
+> /myth/video/HD   
+> 192.168.1.0/24(rw,no_root_squash,sync,wdelay,crossmnt,no_subtree_check,uuid=c8c0a856:b8a54c08:9e4a4d48:58a37778)[/CODE]
+>
+> In above listing, DVD_Rip is <subdir> created by udev script. In this  
+> <subdir> udev script mounts USB HDD.
+> I don't have clue why NFS server shares "/". Also I'm afraid about  
+> security, as for me it looks like server is sharing root dir...
 
-Basic support is code complete and has seen some testing.  We're  
-waiting for upstream NFS maintainers to review the latest patch series.
+Is this recent Fedora?
 
->  - mount.nfs changes - done?
+Recent Fedora may do an export of /, but it should allow access only to
+directory entries on the path to other exports.  (And it should be
+marked read-only, so something's wrong in the above.)
 
-The netid changes mentioned above will require some mount.nfs support,  
-which is in the works.  2.6.33, maybe?
-
->  - rpc.mountd, exportfs changes - TBD.
-
-These are the next step.  This is going to be a fairly heavy-weight  
-change -- mountd and exportfs internals are unsuited for  
-internationalized domain names, IPv6, and mixed IPv4/IPv6  
-environments, and will need to be replaced.
-
-There is also the gssd twins.  Jeff has fixed up at least one of  
-them.  I think we've reviewed the kerberos libraries and determined  
-that they are IPv6-aware, but that could be incorrect.  TCP wrappers  
-are definitely not IPv6-aware.
-
-rpcbind and libtirpc are also prerequisites, but there are few  
-distributions I know of that have replaced portmapper with rpcbind.
-
-> How far we are from getting full IPv6 support?
-
-The short answer is mountd/exportfs will take about six months.  The  
-client side is close enough that I think we can promise basic IPv6  
-support for upcoming enterprise releases.  We're also thinking the  
-kernel work on the server is close enough that few or no kABI changes  
-will be needed once mountd is working, but that's just a guess.
-
-The long answer depends on your definition of "full".  :-)
-
-Does that include complete support for link-local IPv6 addresses?   
-Does that include full support for netids in the kernel?  Does that  
-include complete multi-homed host support in lockd and statd?  Does  
-that include full support for internationalized domain names?  Does  
-that include IPv6 netgroup support?  Does it include IPv6 support in  
-TCP wrappers?  Does it include support for systems that have no IPv4  
-addresses (not even loopback)?
-
-There are a bunch of details that still need to be worked through.   
-I've only been able to guess at what features are required, and which  
-can be implemented at a later time.  What I would dearly love to have  
-is a list of specific features that folks feel is a baseline (based on  
-actual data, of course).  Unfortunately there are very few Linux  
-customers who have deployed IPv6 and an IPv6-capable NFS  
-implementation (like Solaris) and can tell us what they would need on  
-Linux.
-
-Plus, most distributions don't have fluent user space infrastructure  
-for IPv6 yet.  NetworkManager is one area that may need work.  The  
-Network Administration tool in Fedora is still IPv4-centric, iirc.  We  
-don't have firewall admin tools that handle IPv6 rules.  Unlike IPv4,  
-admins can (and often do) use IPv6-aware kernels without ipv6.ko, so  
-all of our tools and support have to be careful about using IPv6 when  
-the O/S may not support it.  This is different than IPv4, which is  
-nearly always available.
-
-In other words, system support for IPv6 outside of NFS is kind of like  
-wireless was 5 years ago -- innumerable small admin tools that users  
-had to integrate themselves, usually without much success.
-
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
+--b.
