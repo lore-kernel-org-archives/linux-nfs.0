@@ -1,18 +1,18 @@
 From: Benny Halevy <bhalevy@panasas.com>
-Subject: Re: [pnfs] [PATCH 1/2] pnfs: fix-multiple-free-slot-calls
-Date: Tue, 03 Nov 2009 08:24:03 +0200
-Message-ID: <4AEFCC83.7050506@panasas.com>
-References: <1256217343-6991-1-git-send-email-andros@netapp.com> <1256217343-6991-2-git-send-email-andros@netapp.com>
+Subject: Re: [pnfs] [PATCH 2/2] pnfs: fix pnfs_commit update_layout range
+Date: Tue, 03 Nov 2009 08:24:18 +0200
+Message-ID: <4AEFCC92.4050002@panasas.com>
+References: <1256217343-6991-1-git-send-email-andros@netapp.com>	<1256217343-6991-2-git-send-email-andros@netapp.com> <1256217343-6991-3-git-send-email-andros@netapp.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Cc: pnfs@linux-nfs.org, linux-nfs@vger.kernel.org
 To: andros@netapp.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from dip-colo-pa.panasas.com ([67.152.220.67]:39274 "EHLO
+Received: from dip-colo-pa.panasas.com ([67.152.220.67]:40717 "EHLO
 	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1753842AbZKCGYA (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 3 Nov 2009 01:24:00 -0500
-In-Reply-To: <1256217343-6991-2-git-send-email-andros@netapp.com>
+	with ESMTP id S1754990AbZKCGYP (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 3 Nov 2009 01:24:15 -0500
+In-Reply-To: <1256217343-6991-3-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
@@ -23,63 +23,116 @@ Benny
 On Oct. 22, 2009, 15:15 +0200, andros@netapp.com wrote:
 > From: Andy Adamson <andros@netapp.com>
 > 
-> Use _nfs4_async_handle_error and pass in either the MDS or DS client
+> Whole file semantics are different for COMMIT (0,0) and layouts
+> (0,NFS4_MAX_UINT64).
 > 
-> Reported-by: Trond Myklebust <trond.myklebust@netapp.com>
+> Reported-by: Alexandros Batsakis <batsakis@netapp.com>
 > 
-> nfs41_sequence_free_slot is called multiple times on SEQUENCE operation errors.
+> Translate COMMIT whole file semantics to LAYOUTGET whole file semantics.
 > 
-> Fix this by moving the call to nfs41_sequence_free_slot from the error path of
-> nfs41_sequence_done to nfs4_async_handle_error for the SEQUENCE operation
-> error cases.
+> The LAYOUTGET request uses u64 length, change pnfs_update_layout() count field
+> type to match.
+> 
+> Replace PAGE_SIZE with PAGE_CACHE_SIZE and PAGE_CACHE_SHIFT.
 > 
 > Signed-off-by: Andy Adamson <andros@netapp.com>
-> .
 > ---
->  fs/nfs/nfs4proc.c |   12 +++++++++---
->  1 files changed, 9 insertions(+), 3 deletions(-)
+>  fs/nfs/pnfs.c |   36 ++++++++++++++++++++++++++++--------
+>  fs/nfs/pnfs.h |    2 +-
+>  2 files changed, 29 insertions(+), 9 deletions(-)
 > 
-> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-> index c6abb45..72314c2 100644
-> --- a/fs/nfs/nfs4proc.c
-> +++ b/fs/nfs/nfs4proc.c
-> @@ -70,6 +70,9 @@ static int _nfs4_proc_open(struct nfs4_opendata *data);
->  static int nfs4_do_fsinfo(struct nfs_server *, struct nfs_fh *, struct nfs_fsinfo *);
->  static int nfs4_async_handle_error(struct rpc_task *, const struct nfs_server *,
->  			 struct nfs4_state *, struct nfs4_sequence_res *);
-> +static int _nfs4_async_handle_error(struct rpc_task *,
-> +			const struct nfs_server *, struct nfs_client *,
-> +			struct nfs4_state *, struct nfs4_sequence_res *);
->  static int _nfs4_proc_lookup(struct inode *dir, const struct qstr *name, struct nfs_fh *fhandle, struct nfs_fattr *fattr);
->  static int _nfs4_proc_getattr(struct nfs_server *server, struct nfs_fh *fhandle, struct nfs_fattr *fattr);
+> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+> index 674d8b7..ffed515 100644
+> --- a/fs/nfs/pnfs.c
+> +++ b/fs/nfs/pnfs.c
+> @@ -1052,7 +1052,7 @@ void drain_layoutreturns(struct pnfs_layout_type *lo)
+>  int
+>  pnfs_update_layout(struct inode *ino,
+>  		   struct nfs_open_context *ctx,
+> -		   size_t count,
+> +		   u64 count,
+>  		   loff_t pos,
+>  		   enum pnfs_iomode iomode,
+>  		   struct pnfs_layout_segment **lsegpp)
+> @@ -1518,17 +1518,29 @@ pnfs_update_layout_commit(struct inode *inode,
+>  {
+>  	struct nfs_server *nfss = NFS_SERVER(inode);
+>  	struct nfs_page *nfs_page = nfs_list_entry(head->next);
+> +	u64 count;
+> +	loff_t start;
+>  	int status;
 >  
-> @@ -3045,7 +3048,8 @@ static int pnfs4_read_done(struct rpc_task *task, struct nfs_read_data *data)
+>  	dprintk("--> %s inode %p layout range: %Zd@%llu\n", __func__, inode,
+> -		(size_t)(npages * PAGE_SIZE),
+> -		(u64)((u64)idx_start * PAGE_SIZE));
+> +		(size_t)(npages * PAGE_CACHE_SIZE),
+> +		(u64)((u64)idx_start << PAGE_CACHE_SHIFT));
 >  
->  	/* FIXME: pass data->args.context->state to nfs4_async_handle_error
->  	   like in nfs4_read_done? */
-> -	if (nfs4_async_handle_error(task, mds_svr, NULL) == -EAGAIN) {
-> +	if (_nfs4_async_handle_error(task, NULL, client, NULL,
-> +					&data->res.seq_res) == -EAGAIN) {
->  		nfs4_restart_rpc(task, client);
->  		dprintk("<-- %s status= %d\n", __func__, -EAGAIN);
->  		return -EAGAIN;
-> @@ -3085,7 +3089,8 @@ static int pnfs4_write_done(struct rpc_task *task, struct nfs_write_data *data)
->  	*/
->  	/* FIXME: pass data->args.context->state to nfs4_async_handle_error
->  	   like in nfs4_write_done? */
-> -	if (nfs4_async_handle_error(task, mds_svr, NULL) == -EAGAIN) {
-> +	if (_nfs4_async_handle_error(task, NULL, client, NULL,
-> +					&data->res.seq_res) == -EAGAIN) {
->  		nfs4_restart_rpc(task, client);
->  		dprintk("<-- %s status= %d\n", __func__, -EAGAIN);
->  		return -EAGAIN;
-> @@ -3133,7 +3138,8 @@ static int pnfs4_commit_done(struct rpc_task *task, struct nfs_write_data *data)
+>  	if (!pnfs_enabled_sb(nfss))
+>  		return;
+> +
+> +	/* COMMIT indicates the whole file with offset = count = 0
+> +	 * whereas layout segments indicate whole file with offset = 0,
+> +	 * count = NFS4_MAX_UINT64.
+> +	 */
+> +	count = (size_t)npages * PAGE_CACHE_SIZE;
+> +	start = (loff_t)idx_start <<  PAGE_CACHE_SHIFT;
+> +	if (start == 0 && count == 0)
+> +		count = NFS4_MAX_UINT64;
+> +
+>  	status = pnfs_update_layout(inode, nfs_page->wb_context,
+> -				(size_t)npages * PAGE_SIZE,
+> -				(loff_t)idx_start * PAGE_SIZE,
+> +				count,
+> +				start,
+>  				IOMODE_RW,
+>  				NULL);
+>  	dprintk("%s  virt update status %d\n", __func__, status);
+> @@ -2057,6 +2069,7 @@ pnfs_commit(struct nfs_write_data *data, int sync)
+>  	struct nfs_page *first, *last, *p;
+>  	int npages;
+>  	enum pnfs_try_status trypnfs;
+> +	u64 count;
 >  
->  	nfs41_sequence_done(client, &data->res.seq_res, task->tk_status);
+>  	dprintk("%s: Begin\n", __func__);
 >  
-> -	if (nfs4_async_handle_error(task, mds_svr, NULL) == -EAGAIN) {
-> +	if (_nfs4_async_handle_error(task, NULL, client, NULL,
-> +					&data->res.seq_res) == -EAGAIN) {
->  		nfs4_restart_rpc(task, client);
->  		return -EAGAIN;
+> @@ -2069,6 +2082,15 @@ pnfs_commit(struct nfs_write_data *data, int sync)
+>  		last = p;
+>  		npages++;
 >  	}
+> +	/* COMMIT indicates the whole file with offset = count = 0
+> +	 * whereas layout segments indicate whole file with offset = 0,
+> +	 * count = NFS4_MAX_UINT64.
+> +	 */
+> +	count = ((npages - 1) << PAGE_CACHE_SHIFT) + first->wb_bytes +
+> +		(first != last) ? last->wb_bytes : 0;
+> +	if (first->wb_offset == 0 && count == 0)
+> +		count = NFS4_MAX_UINT64;
+> +
+>  	/* FIXME: we really ought to keep the layout segment that we used
+>  	   to write the page around for committing it and never ask for a
+>  	   new one.  If it was recalled we better commit the data first
+> @@ -2076,9 +2098,7 @@ pnfs_commit(struct nfs_write_data *data, int sync)
+>  	   either with a new layout or to the MDS */
+>  	result = pnfs_update_layout(data->inode,
+>  				    NULL,
+> -				    ((npages - 1) << PAGE_CACHE_SHIFT) +
+> -				     first->wb_bytes +
+> -				     (first != last) ? last->wb_bytes : 0,
+> +				    count,
+>  				    first->wb_offset,
+>  				    IOMODE_RW,
+>  				    &lseg);
+> diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+> index b06fde4..2f5dae4 100644
+> --- a/fs/nfs/pnfs.h
+> +++ b/fs/nfs/pnfs.h
+> @@ -34,7 +34,7 @@ extern int pnfs4_proc_layoutreturn(struct nfs4_pnfs_layoutreturn *lrp);
+>  extern const nfs4_stateid zero_stateid;
+>  
+>  int pnfs_update_layout(struct inode *ino, struct nfs_open_context *ctx,
+> -	size_t count, loff_t pos, enum pnfs_iomode access_type,
+> +	u64 count, loff_t pos, enum pnfs_iomode access_type,
+>  	struct pnfs_layout_segment **lsegpp);
+>  
+>  int _pnfs_return_layout(struct inode *, struct nfs4_pnfs_layout_segment *,
