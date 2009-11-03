@@ -1,31 +1,68 @@
-From: Steve Dickson <SteveD@redhat.com>
-Subject: Re: [PATCH 2/2] mount: Fix po_join() call site in nfs_try_mount_v4()
-Date: Tue, 03 Nov 2009 12:56:23 -0500
-Message-ID: <4AF06EC7.8040307@RedHat.com>
-References: <20091026210110.14346.90636.stgit@matisse.1015granger.net> <20091026210327.14346.15937.stgit@matisse.1015granger.net>
+From: Vasily Tarasov <tarasov-q12XvdSUhMJ7tPAFqOLdPg@public.gmane.org>
+Subject: [NFS] How to get information about the NFS version client and
+	server have negotiated on the server side?
+Date: Tue, 3 Nov 2009 15:42:28 -0500
+Message-ID: <20091103204228.GA5870@vasily.name>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: linux-nfs@vger.kernel.org
-To: Chuck Lever <chuck.lever@oracle.com>
+Content-Type: text/plain; charset="us-ascii"
+To: nfs@lists.sourceforge.net
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:53824 "EHLO mx1.redhat.com"
+Received: from neil.brown.name ([220.233.11.133]:49802 "EHLO neil.brown.name"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751363AbZKCR4W (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 3 Nov 2009 12:56:22 -0500
-In-Reply-To: <20091026210327.14346.15937.stgit-RytpoXr2tKZ9HhUboXbp9zCvJB+x5qRC@public.gmane.org>
+	id S1752176AbZKCVQQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 3 Nov 2009 16:16:16 -0500
+Received: from brown by neil.brown.name with local (Exim 4.69)
+	(envelope-from <nfs-bounces@lists.sourceforge.net>)
+	id 1N5Qje-0007Ej-NQ
+	for linux-nfs@vger.kernel.org; Wed, 04 Nov 2009 08:16:14 +1100
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Hello,
+
+I have the following question. NFS client and server negotiate the version they
+are going to use at the mount time. How can I get the info about their decision
+on the server-side?
+
+/proc/fs/nfs/exports gives me the list of currently active
+exports, though not per-client:
+
+# cat /proc/fs/nfs/exports 
+# Version 1.1
+# Path Client(Flags) # IPs
+/export 172.16.179.0/22(rw,insecure,no_root_squash,async,wdelay,no_subtree_check,fsid=0)
+
+/var/lib/nfs/rmtab file gives me the list of currently mounted clients, but
+does not specify the version:
+
+# cat /var/lib/nfs/rmtab 
+172.16.179.131:/export:0x00000001
 
 
-On 10/26/2009 05:03 PM, Chuck Lever wrote:
-> Make sure the copied options string is freed in case po_join() fails.
-> 
-> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-> ---
-> 
+nfsstat (and corresponding /proc entry) does not help to, because there might
+be multiple clients working with different protocol versions at the same time.
+And I want to know what protocol is used by a specific one, while nfsstat gives
+only aggregate statistics.
 
-Committed...
+On the client I can easily conclude protocol version from the /proc/mounts entry.
 
-steved.
+My config: CentOS5, nfs-utils-1.0.9-40.el5, kernel-2.6.18-128.el5 
+
+Any ideas? Thank you!
+
+Vasily
+
+------------------------------------------------------------------------------
+Come build with us! The BlackBerry(R) Developer Conference in SF, CA
+is the only developer event you need to attend this year. Jumpstart your
+developing skills, take BlackBerry mobile applications to market and stay 
+ahead of the curve. Join us from November 9 - 12, 2009. Register now!
+http://p.sf.net/sfu/devconference
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
+_______________________________________________
+Please note that nfs@lists.sourceforge.net is being discontinued.
+Please subscribe to linux-nfs@vger.kernel.org instead.
+    http://vger.kernel.org/vger-lists.html#linux-nfs
 
