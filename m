@@ -1,132 +1,116 @@
-From: Mi Jinlong <mijinlong@cn.fujitsu.com>
-Subject: Re: [RFC] After server stop nfslock service, client still can get
- lock success
-Date: Thu, 19 Nov 2009 17:48:23 +0800
-Message-ID: <4B051467.70404@cn.fujitsu.com>
-References: <4B027123.4060100@cn.fujitsu.com> <84C94F5A-0192-4F6D-858D-0CCA92574625@oracle.com> <4B03C366.8050009@cn.fujitsu.com> <799834E0-C52E-462A-A036-64B4C4DF5C06@oracle.com>
+From: Benny Halevy <bhalevy@panasas.com>
+Subject: Re: [pnfs] [PATCH 2/2] nfs41: fix race on session reset
+Date: Tue, 03 Nov 2009 08:22:36 +0200
+Message-ID: <4AEFCC2C.4030809@panasas.com>
+References: <1256149492-25481-1-git-send-email-andros@netapp.com>	 <1256149492-25481-2-git-send-email-andros@netapp.com>	 <1256149492-25481-3-git-send-email-andros@netapp.com>	 <4AE05C12.7070403@panasas.com>	 <89c397150910220632o5708b8efhb7223541315b4e33@mail.gmail.com>	 <4AE0626B.4090504@panasas.com> <89c397150910220714jae5e335qa8313a994e440660@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
-Cc: "Trond.Myklebust" <trond.myklebust@fys.uio.no>,
-	NFSv3 list <linux-nfs@vger.kernel.org>,
-	"J. Bruce Fields" <bfields@fieldses.org>
-To: Chuck Lever <chuck.lever@oracle.com>
+Cc: linux-nfs@vger.kernel.org, pnfs@linux-nfs.org
+To: "William A. (Andy) Adamson" <androsadamson@gmail.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from cn.fujitsu.com ([222.73.24.84]:59025 "EHLO song.cn.fujitsu.com"
-	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
-	id S1752029AbZKSJrD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 19 Nov 2009 04:47:03 -0500
-In-Reply-To: <799834E0-C52E-462A-A036-64B4C4DF5C06@oracle.com>
+Received: from dip-colo-pa.panasas.com ([67.152.220.67]:3456 "EHLO
+	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1752205AbZKCGWe (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 3 Nov 2009 01:22:34 -0500
+In-Reply-To: <89c397150910220714jae5e335qa8313a994e440660-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi
+I merged both patches also into the pnfs tree.
 
-Chuck Lever:
-> 
-> On Nov 18, 2009, at 4:50 AM, Mi Jinlong wrote:
-> 
->> Hi
->>
->> Chuck Lever:
->>>
->>> On Nov 17, 2009, at 4:47 AM, Mi Jinlong wrote:
->>>
->>>> When testing NLM, i find a bug.
->>>> After server stop nfslock service, client still can get lock success
->>>>
->>>> Test process:
->>>>
->>>> Step1: client open nfs file.
->>>> Step2: client using fcntl to get lock.
->>>> Step3: client using fcntl to release lock.
->>>> Step4: service stop it's nfslock service.
->>>> Step5: client using fcntl to get lock again.
->>>>
->>>> At step5, client should get lock fail, but it's success.
->>>>
->>>> Reason:
->>>> When server stop nfslock service, client's host struct not be
->>>> unmonitor at server. When client get lock again, the client's
->>>> host struct will be reuse but don't monitor again.
->>>> So that, at step5 client can get lock success.
->>>
->>> Effectively, the client is still monitored, since it is still in statd's
->>> monitored list.  Shutting down statd does not remove it from the monitor
->>> list.  If the local host reboots, sm-notify will still send the remote
->>> an SM_NOTIFY request, which is correct.
->>>
->>> Additionally, new clients attempting to lock files when statd is down
->>> will fail, which is correct if statd is not available.
->>>
->>> Conversely, if a monitored remote reboots, there is no way to notify the
->>> local lockd of the reboot, since statd normally relays the SM_NOTIFY to
->>> lockd, but isn't running.  That might be a problem.
->>
->>  Yes, it seems a problem.
->>
->>  I don't confirm it, so i want get your opinion.
-> 
-> Currently, there isn't a high degree of coordination between lockd and
-> statd.  This is to maintain good scalability when serving NFS lock
-> requests.  You offered a couple of alternatives for improving this
-> specific situation, but my opinion is that there are larger, more
-> general coordination issues here, and that what you observed is expected
-> behavior for the current design.
-> 
-> This still seems to me like a case of "Patient: Doctor, it hurts when I
-> do that." "Doctor: Well, then, don't do that."  In other words, we
-> assume that "service nfslock stop" won't be used under normal operating
-> conditions, and we know that NLM will misbehave if you stop statd during
-> normal operation.
-> 
->>> However, shutting down statd during normal operation is not a normal or
->>> supported thing to do.
->>>
->>>> Question:
->>>> 1. Should unmonitor the client's host struct at server
->>>>    when server stop nfslock service ?
->>>>
->>>> 2. Whether let rpc.statd tell kernel it's status(when start and stop)
->>>>    by send a SM_NOTIFY ?
->>>
->>> There are a number of other coordination issues around statd start-up
->>> and shut down.  The server's grace period, for instance, is not
->>> synchronized with sending reboot notifications.  So, we do recognize
->>> this is a general problem.
->>>
->>> In this case, however, I would expect indeterminate behavior if statd is
->>> shut down during normal operation, and that's exactly what we get.  I'm
->>> not sure it's even reasonable to support this use case.  Why would
->>> someone shut down statd and expect reliable NFSv2/v3 locking behavior?
->>> In other words, with due respect, what problem would we solve by fixing
->>> this, other than making your test case work?
->>
->>  When server's nfslock service is stop, client can get lock success
->> sometimes
->>  and can't get success sometimes, it's puzzled.
-> 
-> On Linux, the user space "nfslock" service is actually nothing more than
-> statd.  Linux's NLM service is handled in the kernel, and is started and
-> stopped when either a) there are NFS mounts, or b) NFSD is started.  The
-> kernel's NLM service has nothing to do with "service nfslock start" any
-> more.  I think there used to be a user space NLM implementation.
-> 
->>> Out of curiosity, what happens if you try this on a Solaris server?
->>
->>  I'm a new man for Solaris.
->>  When Solaris's nlockmgr is stop, client can't get lock immediately.
-> 
-> I should have been more clear: if you stop Solaris' user space NSM
-> daemon, can you lock files consistently?  My bet is that Solaris will
-> demonstrate a similar degree of inconsistent behavior if you try
-> NFSv2/v3 locking while starting and stopping its NSM service daemon.
+Benny
 
-  ^_^ 
-
-  You are right, when i stop Solaris's NSM, client still can get lock success.
-  Maybe it's the same as Linux.
-
--- 
-Regards
-Mi Jinlong
-
+On Oct. 22, 2009, 16:14 +0200, "William A. (Andy) Adamson" <androsadamson@gmail.com> wrote:
+> On Thu, Oct 22, 2009 at 9:47 AM, Benny Halevy <bhalevy@panasas.com> wrote:
+>> On Oct. 22, 2009, 15:32 +0200, "William A. (Andy) Adamson" <androsadamson@gmail.com> wrote:
+>>> On Thu, Oct 22, 2009 at 9:20 AM, Benny Halevy <bhalevy@panasas.com> wrote:
+>>>> On Oct. 21, 2009, 20:24 +0200, andros@netapp.com wrote:
+>>>>> From: Andy Adamson <andros@netapp.com>
+>>>>>
+>>>>> Do not clear the NFS4CLNT_SESSION_SETUP bit until after the session has been
+>>>>> reset (a possible EXCHANGE_ID, a DESTROY_SESSION, and a CREATE_SESSION) to
+>>>>> prevent a race with nfs41_setup_sequence assigning a slot on a
+>>>>> partially reset session.
+>>>>>
+>>>>> Signed-off-by: Andy Adamson <andros@netapp.com>
+>>>>> ---
+>>>>>  fs/nfs/nfs4proc.c  |    3 +++
+>>>>>  fs/nfs/nfs4state.c |   15 +++++++++------
+>>>>>  2 files changed, 12 insertions(+), 6 deletions(-)
+>>>>>
+>>>>> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+>>>>> index eb245a1..80764e2 100644
+>>>>> --- a/fs/nfs/nfs4proc.c
+>>>>> +++ b/fs/nfs/nfs4proc.c
+>>>>> @@ -4788,6 +4788,9 @@ int nfs4_proc_create_session(struct nfs_client *clp, int reset)
+>>>>>       if (status)
+>>>>>               goto out;
+>>>>>
+>>>>> +     /* Signal nfs41_setup_sequence that the session is ready for use */
+>>>>> +     clear_bit(NFS4CLNT_SESSION_SETUP, &clp->cl_state);
+>>>>> +
+>>>>>       ptr = (unsigned *)&session->sess_id.data[0];
+>>>>>       dprintk("%s client>seqid %d sessionid %u:%u:%u:%u\n", __func__,
+>>>>>               clp->cl_seqid, ptr[0], ptr[1], ptr[2], ptr[3]);
+>>>>> diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+>>>>> index 1394dfb..09ca30b 100644
+>>>>> --- a/fs/nfs/nfs4state.c
+>>>>> +++ b/fs/nfs/nfs4state.c
+>>>>> @@ -1252,17 +1252,20 @@ static void nfs4_state_manager(struct nfs_client *clp)
+>>>>>                               continue;
+>>>>>               }
+>>>>>               /* Initialize or reset the session */
+>>>>> -             if (test_and_clear_bit(NFS4CLNT_SESSION_SETUP, &clp->cl_state)
+>>>>> -                && nfs4_has_session(clp)) {
+>>>>> +             if (test_bit(NFS4CLNT_SESSION_SETUP, &clp->cl_state)
+>>>>> +                 && nfs4_has_session(clp)) {
+>>>>>                       if (clp->cl_cons_state == NFS_CS_SESSION_INITING)
+>>>>>                               status = nfs4_initialize_session(clp);
+>>>>>                       else
+>>>>>                               status = nfs4_reset_session(clp);
+>>>>> -                     if (status) {
+>>>>> -                             if (status == -NFS4ERR_STALE_CLIENTID)
+>>>>> -                                     continue;
+>>>>> +                     if (status == -NFS4ERR_STALE_CLIENTID)
+>>>>> +                             continue;
+>>>>> +                     /* For error case. On success the bit is cleared in
+>>>>> +                      * nfs4_proc_create_session */
+>>>> Why the separation?
+>>>> Why not handle both success and error cases here?
+>>> We don't clear the bit on NFS4ERR_STALE_CLIENTID because we first need
+>>> an EXCHANGE_ID and then session reset and we don't want any rpc's
+>>> queued on the slot_tbl_waitq to run. The check for
+>>> NFS4ERR_STALE_CLIENTID is in the nfs4_state_manager. Also, all other
+>>> cases in the state manager clear the bits used - so I thought it best
+>>> to follow suit.
+>> I agree, so why clear the NFS4CLNT_SESSION_SETUP bit on success
+>> in nfs4_proc_create_session()
+> 
+> so that nfs4_proc_get_lease_time can use the newly created session.
+> 
+>> Also, nfs4_proc_create_session() clears NFS4CLNT_LEASE_EXPIRED
+>> which is test_and_cleared by the state manager...
+> 
+> True and harmless.
+> 
+> -->Andy
+> 
+>> Benny
+>>
+>>> -->Andy
+>>>
+>>>> Benny
+>>>>
+>>>>> +                     clear_bit(NFS4CLNT_SESSION_SETUP, &clp->cl_state);
+>>>>> +
+>>>>> +                     if (status)
+>>>>>                               goto out_error;
+>>>>> -                     }
+>>>>>               }
+>>>>>               /* First recover reboot state... */
+>>>>>               if (test_and_clear_bit(NFS4CLNT_RECLAIM_REBOOT, &clp->cl_state)) {
+>>>> _______________________________________________
+>>>> pNFS mailing list
+>>>> pNFS@linux-nfs.org
+>>>> http://linux-nfs.org/cgi-bin/mailman/listinfo/pnfs
+>>>>
