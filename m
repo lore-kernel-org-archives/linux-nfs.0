@@ -1,74 +1,82 @@
 From: Steve Dickson <SteveD@redhat.com>
-Subject: Re: [RFC] [PATCH] mount.nfs: Retry v4 mounts with v3 on ENOENT errors
-Date: Tue, 03 Nov 2009 08:16:10 -0500
-Message-ID: <4AF02D1A.3060500@RedHat.com>
-References: <4ADDCB52.2050906@RedHat.com>
+Subject: Re: [PATCH]  Fixed compile errors when the mount config file is not
+ enabled
+Date: Tue, 03 Nov 2009 09:54:52 -0500
+Message-ID: <4AF0443C.50503@RedHat.com>
+References: <4AE751CE.1050300@RedHat.com> <4AE836F2.7020905@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
+Content-Type: text/plain; charset=ISO-8859-1
 Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-To: nfsv4@linux-nfs.org
-Return-path: <nfsv4-bounces@linux-nfs.org>
-In-Reply-To: <4ADDCB52.2050906@RedHat.com>
-List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/options/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
-List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
-List-Post: <mailto:nfsv4@linux-nfs.org>
-List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
-List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
-Sender: nfsv4-bounces@linux-nfs.org
-Errors-To: nfsv4-bounces@linux-nfs.org
+To: Peter Staubach <staubach@redhat.com>
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:1025 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751170AbZKCOyr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 3 Nov 2009 09:54:47 -0500
+Received: from int-mx03.intmail.prod.int.phx2.redhat.com (int-mx03.intmail.prod.int.phx2.redhat.com [10.5.11.16])
+	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id nA3EsrLO024542
+	for <linux-nfs@vger.kernel.org>; Tue, 3 Nov 2009 09:54:53 -0500
+In-Reply-To: <4AE836F2.7020905@redhat.com>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 10/20/2009 10:38 AM, Steve Dickson wrote:
-> I'm trying to convince myself this is a good idea... 
-> 
-> It would definitely help with the v3 to v4 transition
-> in the Linux community, but at the end of the day, 
-> Linux servers that numerous compared to other types 
-> of server so its not clear this will not cause other 
-> problems...
-> 
-> Comments? Suggestions?
-> 
-> steved.
-> 
-> Author: Steve Dickson <steved@redhat.com>
-> Date:   Tue Oct 20 10:25:34 EDT 2009
-> 
->     Retry v4 mounts with a v3 mount when the version
->     is not explicitly specified and the mount fails 
->     with ENOENT. The will help deal with Linux servers
->     that do not automatically export a pseudo root
-> 
->     Signed-off-by: Steve Dickson <steved@redhat.com>
-> 
-> diff -up nfs-utils-1.2.0/utils/mount/stropts.c.orig nfs-utils-1.2.0/utils/mount/stropts.c
-> --- nfs-utils-1.2.0/utils/mount/stropts.c.orig	2009-10-20 10:11:03.000000000 -0400
-> +++ nfs-utils-1.2.0/utils/mount/stropts.c	2009-10-20 10:24:41.000000000 -0400
-> @@ -613,8 +613,15 @@ static int nfs_try_mount(struct nfsmount
->  		if (linux_version_code() > MAKE_VERSION(2, 6, 31)) {
->  			errno = 0;
->  			result = nfs_try_mount_v4(mi);
-> -			if (errno != EPROTONOSUPPORT)
-> -				break;
-> +			if (errno != EPROTONOSUPPORT) {
-> +				/* 
-> +				 * To deal with legacy Linux servers that don't
-> +				 * automatically export a pseudo root, retry
-> +				 * ENOENT errors using version 3
-> +				 */
-> +				if (errno != ENOENT)
-> +					break;
-> +			}
->  		}
->  	case 2:
->  	case 3:
-I am going to go ahead an commit this and then cut a release. I 
-was waiting to include the server side dynamic pseudo root support, 
-but it appears that will not happen in a timely matter... 
+Sorry for the delayed response... 
 
-After this release, I will actively start catching up on the backlog
-of purposed patches... Thank you for your patiences....  
+On 10/28/2009 08:20 AM, Peter Staubach wrote:
+> Steve Dickson wrote:
+>> Author: Steve Dickson <steved@redhat.com>
+>> Date:   Tue Oct 27 15:47:27 2009 -0400
+>>
+>>     Added wrappers around the setting of default values
+>>     from the config file which will be compiled out
+>>     when the config file is not enabled.
+>>     
+>>     Signed-off-by: Steve Dickson <steved@redhat.com>
+>>
+>> diff --git a/support/include/conffile.h b/support/include/conffile.h
+>> index fe23ec2..ce7aa21 100644
+>> --- a/support/include/conffile.h
+>> +++ b/support/include/conffile.h
+>> @@ -76,10 +76,5 @@ static inline void upper2lower(char *str)
+>>  		*str++ = c;
+>>  }
+>>  
+>> -/*
+>> - * Default Mount options
+>> - */
+>> -extern unsigned long config_default_vers;
+>> -extern unsigned long config_default_proto;
+>>  
+>>  #endif				/* _CONFFILE_H_ */
+>> diff --git a/utils/mount/network.c b/utils/mount/network.c
+>> index e651167..d4ecbc9 100644
+>> --- a/utils/mount/network.c
+>> +++ b/utils/mount/network.c
+>> @@ -172,6 +172,27 @@ static const unsigned long probe_mnt3_first[] = {
+>>  	0,
+>>  };
+>>  
+>> +inline const unsigned int *set_default_proto(void);
+>> +#ifdef MOUNT_CONFIG
+>> +inline const unsigned int *set_default_proto()
+>> +{
+>> +	extern unsigned long config_default_proto;
+>> +	/*
+>> +	 * If the default proto has been set and 
+>> +	 * its not TCP, start with UDP
+>> +	 */
+>> +	if (config_default_proto && config_default_proto != IPPROTO_TCP)
+>> +		return probe_udp_first;
+>> +
+> 
+> Shouldn't there be something to account for NFSv4 only being
+> supported over TCP and not UDP by specification?  The Linux
+> server still supports NFSv4 over UDP, although it is not
+> supposed to and should not.  Even if the default transport
+> is set to UDP, NFSv4 should always be mounted over TCP.
+set_default_proto() is only called from nfs_probe_nfsport() which
+figures out what protocol the server supports. With v4 mounts,
+that type of probing is not done. Just TCP is used.
 
 steved.
+
