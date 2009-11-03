@@ -1,116 +1,85 @@
 From: Benny Halevy <bhalevy@panasas.com>
-Subject: Re: [pnfs] [PATCH 2/2] nfs41: fix race on session reset
-Date: Tue, 03 Nov 2009 08:22:36 +0200
-Message-ID: <4AEFCC2C.4030809@panasas.com>
-References: <1256149492-25481-1-git-send-email-andros@netapp.com>	 <1256149492-25481-2-git-send-email-andros@netapp.com>	 <1256149492-25481-3-git-send-email-andros@netapp.com>	 <4AE05C12.7070403@panasas.com>	 <89c397150910220632o5708b8efhb7223541315b4e33@mail.gmail.com>	 <4AE0626B.4090504@panasas.com> <89c397150910220714jae5e335qa8313a994e440660@mail.gmail.com>
+Subject: Re: [pnfs] [PATCH 1/2] pnfs: fix-multiple-free-slot-calls
+Date: Tue, 03 Nov 2009 08:24:03 +0200
+Message-ID: <4AEFCC83.7050506@panasas.com>
+References: <1256217343-6991-1-git-send-email-andros@netapp.com> <1256217343-6991-2-git-send-email-andros@netapp.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
-Cc: linux-nfs@vger.kernel.org, pnfs@linux-nfs.org
-To: "William A. (Andy) Adamson" <androsadamson@gmail.com>
+Cc: pnfs@linux-nfs.org, linux-nfs@vger.kernel.org
+To: andros@netapp.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from dip-colo-pa.panasas.com ([67.152.220.67]:3456 "EHLO
+Received: from dip-colo-pa.panasas.com ([67.152.220.67]:39274 "EHLO
 	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1752205AbZKCGWe (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 3 Nov 2009 01:22:34 -0500
-In-Reply-To: <89c397150910220714jae5e335qa8313a994e440660-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
+	with ESMTP id S1753842AbZKCGYA (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 3 Nov 2009 01:24:00 -0500
+In-Reply-To: <1256217343-6991-2-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I merged both patches also into the pnfs tree.
+Merged. Thanks!
 
 Benny
 
-On Oct. 22, 2009, 16:14 +0200, "William A. (Andy) Adamson" <androsadamson@gmail.com> wrote:
-> On Thu, Oct 22, 2009 at 9:47 AM, Benny Halevy <bhalevy@panasas.com> wrote:
->> On Oct. 22, 2009, 15:32 +0200, "William A. (Andy) Adamson" <androsadamson@gmail.com> wrote:
->>> On Thu, Oct 22, 2009 at 9:20 AM, Benny Halevy <bhalevy@panasas.com> wrote:
->>>> On Oct. 21, 2009, 20:24 +0200, andros@netapp.com wrote:
->>>>> From: Andy Adamson <andros@netapp.com>
->>>>>
->>>>> Do not clear the NFS4CLNT_SESSION_SETUP bit until after the session has been
->>>>> reset (a possible EXCHANGE_ID, a DESTROY_SESSION, and a CREATE_SESSION) to
->>>>> prevent a race with nfs41_setup_sequence assigning a slot on a
->>>>> partially reset session.
->>>>>
->>>>> Signed-off-by: Andy Adamson <andros@netapp.com>
->>>>> ---
->>>>>  fs/nfs/nfs4proc.c  |    3 +++
->>>>>  fs/nfs/nfs4state.c |   15 +++++++++------
->>>>>  2 files changed, 12 insertions(+), 6 deletions(-)
->>>>>
->>>>> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
->>>>> index eb245a1..80764e2 100644
->>>>> --- a/fs/nfs/nfs4proc.c
->>>>> +++ b/fs/nfs/nfs4proc.c
->>>>> @@ -4788,6 +4788,9 @@ int nfs4_proc_create_session(struct nfs_client *clp, int reset)
->>>>>       if (status)
->>>>>               goto out;
->>>>>
->>>>> +     /* Signal nfs41_setup_sequence that the session is ready for use */
->>>>> +     clear_bit(NFS4CLNT_SESSION_SETUP, &clp->cl_state);
->>>>> +
->>>>>       ptr = (unsigned *)&session->sess_id.data[0];
->>>>>       dprintk("%s client>seqid %d sessionid %u:%u:%u:%u\n", __func__,
->>>>>               clp->cl_seqid, ptr[0], ptr[1], ptr[2], ptr[3]);
->>>>> diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
->>>>> index 1394dfb..09ca30b 100644
->>>>> --- a/fs/nfs/nfs4state.c
->>>>> +++ b/fs/nfs/nfs4state.c
->>>>> @@ -1252,17 +1252,20 @@ static void nfs4_state_manager(struct nfs_client *clp)
->>>>>                               continue;
->>>>>               }
->>>>>               /* Initialize or reset the session */
->>>>> -             if (test_and_clear_bit(NFS4CLNT_SESSION_SETUP, &clp->cl_state)
->>>>> -                && nfs4_has_session(clp)) {
->>>>> +             if (test_bit(NFS4CLNT_SESSION_SETUP, &clp->cl_state)
->>>>> +                 && nfs4_has_session(clp)) {
->>>>>                       if (clp->cl_cons_state == NFS_CS_SESSION_INITING)
->>>>>                               status = nfs4_initialize_session(clp);
->>>>>                       else
->>>>>                               status = nfs4_reset_session(clp);
->>>>> -                     if (status) {
->>>>> -                             if (status == -NFS4ERR_STALE_CLIENTID)
->>>>> -                                     continue;
->>>>> +                     if (status == -NFS4ERR_STALE_CLIENTID)
->>>>> +                             continue;
->>>>> +                     /* For error case. On success the bit is cleared in
->>>>> +                      * nfs4_proc_create_session */
->>>> Why the separation?
->>>> Why not handle both success and error cases here?
->>> We don't clear the bit on NFS4ERR_STALE_CLIENTID because we first need
->>> an EXCHANGE_ID and then session reset and we don't want any rpc's
->>> queued on the slot_tbl_waitq to run. The check for
->>> NFS4ERR_STALE_CLIENTID is in the nfs4_state_manager. Also, all other
->>> cases in the state manager clear the bits used - so I thought it best
->>> to follow suit.
->> I agree, so why clear the NFS4CLNT_SESSION_SETUP bit on success
->> in nfs4_proc_create_session()
+On Oct. 22, 2009, 15:15 +0200, andros@netapp.com wrote:
+> From: Andy Adamson <andros@netapp.com>
 > 
-> so that nfs4_proc_get_lease_time can use the newly created session.
+> Use _nfs4_async_handle_error and pass in either the MDS or DS client
 > 
->> Also, nfs4_proc_create_session() clears NFS4CLNT_LEASE_EXPIRED
->> which is test_and_cleared by the state manager...
+> Reported-by: Trond Myklebust <trond.myklebust@netapp.com>
 > 
-> True and harmless.
+> nfs41_sequence_free_slot is called multiple times on SEQUENCE operation errors.
 > 
-> -->Andy
+> Fix this by moving the call to nfs41_sequence_free_slot from the error path of
+> nfs41_sequence_done to nfs4_async_handle_error for the SEQUENCE operation
+> error cases.
 > 
->> Benny
->>
->>> -->Andy
->>>
->>>> Benny
->>>>
->>>>> +                     clear_bit(NFS4CLNT_SESSION_SETUP, &clp->cl_state);
->>>>> +
->>>>> +                     if (status)
->>>>>                               goto out_error;
->>>>> -                     }
->>>>>               }
->>>>>               /* First recover reboot state... */
->>>>>               if (test_and_clear_bit(NFS4CLNT_RECLAIM_REBOOT, &clp->cl_state)) {
->>>> _______________________________________________
->>>> pNFS mailing list
->>>> pNFS@linux-nfs.org
->>>> http://linux-nfs.org/cgi-bin/mailman/listinfo/pnfs
->>>>
+> Signed-off-by: Andy Adamson <andros@netapp.com>
+> .
+> ---
+>  fs/nfs/nfs4proc.c |   12 +++++++++---
+>  1 files changed, 9 insertions(+), 3 deletions(-)
+> 
+> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+> index c6abb45..72314c2 100644
+> --- a/fs/nfs/nfs4proc.c
+> +++ b/fs/nfs/nfs4proc.c
+> @@ -70,6 +70,9 @@ static int _nfs4_proc_open(struct nfs4_opendata *data);
+>  static int nfs4_do_fsinfo(struct nfs_server *, struct nfs_fh *, struct nfs_fsinfo *);
+>  static int nfs4_async_handle_error(struct rpc_task *, const struct nfs_server *,
+>  			 struct nfs4_state *, struct nfs4_sequence_res *);
+> +static int _nfs4_async_handle_error(struct rpc_task *,
+> +			const struct nfs_server *, struct nfs_client *,
+> +			struct nfs4_state *, struct nfs4_sequence_res *);
+>  static int _nfs4_proc_lookup(struct inode *dir, const struct qstr *name, struct nfs_fh *fhandle, struct nfs_fattr *fattr);
+>  static int _nfs4_proc_getattr(struct nfs_server *server, struct nfs_fh *fhandle, struct nfs_fattr *fattr);
+>  
+> @@ -3045,7 +3048,8 @@ static int pnfs4_read_done(struct rpc_task *task, struct nfs_read_data *data)
+>  
+>  	/* FIXME: pass data->args.context->state to nfs4_async_handle_error
+>  	   like in nfs4_read_done? */
+> -	if (nfs4_async_handle_error(task, mds_svr, NULL) == -EAGAIN) {
+> +	if (_nfs4_async_handle_error(task, NULL, client, NULL,
+> +					&data->res.seq_res) == -EAGAIN) {
+>  		nfs4_restart_rpc(task, client);
+>  		dprintk("<-- %s status= %d\n", __func__, -EAGAIN);
+>  		return -EAGAIN;
+> @@ -3085,7 +3089,8 @@ static int pnfs4_write_done(struct rpc_task *task, struct nfs_write_data *data)
+>  	*/
+>  	/* FIXME: pass data->args.context->state to nfs4_async_handle_error
+>  	   like in nfs4_write_done? */
+> -	if (nfs4_async_handle_error(task, mds_svr, NULL) == -EAGAIN) {
+> +	if (_nfs4_async_handle_error(task, NULL, client, NULL,
+> +					&data->res.seq_res) == -EAGAIN) {
+>  		nfs4_restart_rpc(task, client);
+>  		dprintk("<-- %s status= %d\n", __func__, -EAGAIN);
+>  		return -EAGAIN;
+> @@ -3133,7 +3138,8 @@ static int pnfs4_commit_done(struct rpc_task *task, struct nfs_write_data *data)
+>  
+>  	nfs41_sequence_done(client, &data->res.seq_res, task->tk_status);
+>  
+> -	if (nfs4_async_handle_error(task, mds_svr, NULL) == -EAGAIN) {
+> +	if (_nfs4_async_handle_error(task, NULL, client, NULL,
+> +					&data->res.seq_res) == -EAGAIN) {
+>  		nfs4_restart_rpc(task, client);
+>  		return -EAGAIN;
+>  	}
