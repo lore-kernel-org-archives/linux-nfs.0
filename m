@@ -1,109 +1,52 @@
-From: Peter Staubach <staubach@redhat.com>
-Subject: Re: [PATCH v2] register NFS_ACL with rpcbind
-Date: Wed, 04 Nov 2009 14:54:12 -0500
-Message-ID: <4AF1DBE4.1080103@redhat.com>
-References: <4AEF2D19.5090409@redhat.com> <4AEF562B.9070606@redhat.com> <20091104185848.GD11637@fieldses.org>
+From: "J. Bruce Fields" <bfields@citi.umich.edu>
+Subject: Re: [PATCH 2/5] nfsd: Fix independence of a few nfsd related
+	headers
+Date: Wed, 4 Nov 2009 17:09:27 -0500
+Message-ID: <20091104220927.GS11637@fieldses.org>
+References: <4ADEC1EF.8040107@panasas.com> <1256112873-32495-1-git-send-email-bharrosh@panasas.com> <1256171298.6809.1.camel@heimdal.trondhjem.org> <4AE01569.9000002@panasas.com> <1256220146.6402.23.camel@heimdal.trondhjem.org> <4AE08165.2040100@panasas.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: NFS list <linux-nfs@vger.kernel.org>, Olaf Kirch <okir@suse.de>,
-	Andreas Gruenbacher <agruen@suse.de>
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
+	Benny Halevy <bhalevy@panasas.com>,
+	pNFS Mailing List <pnfs@linux-nfs.org>,
+	NFS list <linux-nfs@vger.kernel.org>,
+	Andy Adamson <andros@netapp.com>
+To: Boaz Harrosh <bharrosh@panasas.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:35605 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:50838 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751361AbZKDTyO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 4 Nov 2009 14:54:14 -0500
-In-Reply-To: <20091104185848.GD11637@fieldses.org>
+	id S1757608AbZKDWJU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 4 Nov 2009 17:09:20 -0500
+In-Reply-To: <4AE08165.2040100@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-J. Bruce Fields wrote:
-> On Mon, Nov 02, 2009 at 04:59:07PM -0500, Peter Staubach wrote:
->> Hi.
->>
->> Here is a patch to modify the NFS server to register the NFS_ACL
->> services with the rpcbind daemon.  This allows the client to
->> ping for the existence of the NFS_ACL support via commands such
->> as "rpcinfo -t <server> nfs_acl".
->>
->> This patch also modifies the NFS_ACL support so that responses
->> to version 2 NULLPROC requests can be made.
->>
->> The changelog for the patch which turned off this functionality
->> mentioned something about not registering the NFS_ACL as being
->> part of some tradition.  I can't find this tradition and the
->> only other implementation which supports NFS_ACL does register
->> them with the rpcbind daemon.
->>
->> 	Thanx...
->>
->> 		ps
->>
->> Signed-off-by: Peter Staubach <staubach@redhat.com>
->>
->> --- linux-2.6.31.i686/fs/nfsd/nfs2acl.c.org
->> +++ linux-2.6.31.i686/fs/nfsd/nfs2acl.c
->> @@ -217,6 +217,16 @@ static int nfsaclsvc_decode_accessargs(s
->>   * XDR encode functions
->>   */
->>  
->> +/*
->> + * There must be an encoding function for void results so svc_process
->> + * will work properly.
->> + */
->> +int
->> +nfsaclsvc_encode_voidres(struct svc_rqst *rqstp, __be32 *p, void *dummy)
->> +{
->> +	return xdr_ressize_check(rqstp, p);
->> +}
+On Thu, Oct 22, 2009 at 05:59:33PM +0200, Boaz Harrosh wrote:
+> On 10/22/2009 04:02 PM, Trond Myklebust wrote:
+> > No. What I'm saying is that this doesn't have to be an absolute rule.
+> > The Kernel style guide assumes that everything in 'include/*' is going
+> > to be exported all around the kernel.
+> > The problem is that we put a lot of stuff which is private to fs/nfs and
+> > fs/nfsd in there. Those header files do not have to absolutely follow
+> > the style guide rule, 'cos we know what is being included before and
+> > after them...
+> > 
 > 
-> Out of curiosity: have you tested a null rpc?
+> I'm not sure I understand
+> You are saying that the patches are very good, but only
+> the rule I stated originally could be relaxed a little with private
+> headers where we might get lazy, if the effects are very local?
 > 
-
-Yup.  "rpcinfo -t <server> nfs_acl" works like a charm
-with this patch applied for both versions 2 and 3.
-
-> Also, doesn't v3 have the same problem?
+> Well, that's not a problem then, right? just that I can relax a bit
+> if I want.
 > 
+> But I disagree: see 3, 4, 5 above and that last patch I submitted. That patch
+> is only the beginning. 85% of all source files in nfs/nfsd could receive the
+> same love. I only done these I touched. Code tends to stay much-much longer
+> then we spend time on it. Better get it in shape the first time.
 
-Nope.  It already had a similar XDR routine.  Which is
-similar to the NFS XDR routine to do the same sort of
-thing.  I suppose that someday, we could clean them up,
-but these routines aren't doing any harm for the moment.
+I'm assuming Trond's objection is just to the patch changelog
+(specifically, to the statement that any header "should be compilation
+independent"), not to these specific changes.
 
-	Thanx...
-
-		ps
-
-> --b.
-> 
->> +
->>  /* GETACL */
->>  static int nfsaclsvc_encode_getaclres(struct svc_rqst *rqstp, __be32 *p,
->>  		struct nfsd3_getaclres *resp)
->> @@ -308,7 +318,6 @@ static int nfsaclsvc_release_access(stru
->>  }
->>  
->>  #define nfsaclsvc_decode_voidargs	NULL
->> -#define nfsaclsvc_encode_voidres	NULL
->>  #define nfsaclsvc_release_void		NULL
->>  #define nfsd3_fhandleargs	nfsd_fhandle
->>  #define nfsd3_attrstatres	nfsd_attrstat
->> @@ -346,5 +355,5 @@ struct svc_version	nfsd_acl_version2 = {
->>  		.vs_proc	= nfsd_acl_procedures2,
->>  		.vs_dispatch	= nfsd_dispatch,
->>  		.vs_xdrsize	= NFS3_SVC_XDRSIZE,
->> -		.vs_hidden	= 1,
->> +		.vs_hidden	= 0,
->>  };
->> --- linux-2.6.31.i686/fs/nfsd/nfs3acl.c.org
->> +++ linux-2.6.31.i686/fs/nfsd/nfs3acl.c
->> @@ -264,6 +264,6 @@ struct svc_version	nfsd_acl_version3 = {
->>  		.vs_proc	= nfsd_acl_procedures3,
->>  		.vs_dispatch	= nfsd_dispatch,
->>  		.vs_xdrsize	= NFS3_SVC_XDRSIZE,
->> -		.vs_hidden	= 1,
->> +		.vs_hidden	= 0,
->>  };
->>  
-
+--b.
