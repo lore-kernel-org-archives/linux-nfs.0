@@ -1,52 +1,70 @@
-From: "J. Bruce Fields" <bfields@citi.umich.edu>
-Subject: Re: [PATCH 2/5] nfsd: Fix independence of a few nfsd related
-	headers
-Date: Wed, 4 Nov 2009 17:09:27 -0500
-Message-ID: <20091104220927.GS11637@fieldses.org>
-References: <4ADEC1EF.8040107@panasas.com> <1256112873-32495-1-git-send-email-bharrosh@panasas.com> <1256171298.6809.1.camel@heimdal.trondhjem.org> <4AE01569.9000002@panasas.com> <1256220146.6402.23.camel@heimdal.trondhjem.org> <4AE08165.2040100@panasas.com>
+From: Jon Forrest <jlforrest-TVLZxgkOlNX2fBVCVOL8/A@public.gmane.org>
+Subject: (ANSWER) Question About nfs3 vs. nfs4 Semantics On Sun 7310 Server
+Date: Wed, 04 Nov 2009 14:40:21 -0800
+Message-ID: <hcsvs6$dbl$1@ger.gmane.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
-	Benny Halevy <bhalevy@panasas.com>,
-	pNFS Mailing List <pnfs@linux-nfs.org>,
-	NFS list <linux-nfs@vger.kernel.org>,
-	Andy Adamson <andros@netapp.com>
-To: Boaz Harrosh <bharrosh@panasas.com>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Cc: nfsv4@linux-nfs.org
+To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:50838 "EHLO fieldses.org"
+Received: from lo.gmane.org ([80.91.229.12]:50054 "EHLO lo.gmane.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757608AbZKDWJU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 4 Nov 2009 17:09:20 -0500
-In-Reply-To: <4AE08165.2040100@panasas.com>
+	id S1758325AbZKDWkb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 4 Nov 2009 17:40:31 -0500
+Received: from list by lo.gmane.org with local (Exim 4.50)
+	id 1N5oWq-0006FD-15
+	for linux-nfs@vger.kernel.org; Wed, 04 Nov 2009 23:40:36 +0100
+Received: from nobozo.cchem.berkeley.edu ([128.32.50.5])
+        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
+        id 1AlnuQ-0007hv-00
+        for <linux-nfs@vger.kernel.org>; Wed, 04 Nov 2009 23:40:36 +0100
+Received: from jlforrest by nobozo.cchem.berkeley.edu with local (Gmexim 0.1 (Debian))
+        id 1AlnuQ-0007hv-00
+        for <linux-nfs@vger.kernel.org>; Wed, 04 Nov 2009 23:40:36 +0100
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Oct 22, 2009 at 05:59:33PM +0200, Boaz Harrosh wrote:
-> On 10/22/2009 04:02 PM, Trond Myklebust wrote:
-> > No. What I'm saying is that this doesn't have to be an absolute rule.
-> > The Kernel style guide assumes that everything in 'include/*' is going
-> > to be exported all around the kernel.
-> > The problem is that we put a lot of stuff which is private to fs/nfs and
-> > fs/nfsd in there. Those header files do not have to absolutely follow
-> > the style guide rule, 'cos we know what is being included before and
-> > after them...
-> > 
-> 
-> I'm not sure I understand
-> You are saying that the patches are very good, but only
-> the rule I stated originally could be relaxed a little with private
-> headers where we might get lazy, if the effects are very local?
-> 
-> Well, that's not a problem then, right? just that I can relax a bit
-> if I want.
-> 
-> But I disagree: see 3, 4, 5 above and that last patch I submitted. That patch
-> is only the beginning. 85% of all source files in nfs/nfsd could receive the
-> same love. I only done these I touched. Code tends to stay much-much longer
-> then we spend time on it. Better get it in shape the first time.
+The other day I posted the description below of a problem
+I was having when I was mounting from a Sun 7310
+server using NFSv3 and NFSv4 from a CentOS 5.3
+client.
 
-I'm assuming Trond's objection is just to the patch changelog
-(specifically, to the statement that any header "should be compilation
-independent"), not to these specific changes.
+It turned out that the solution was trivial - all
+I needed to do was to use the "noacl" option
+in my NFSv3 mount command. I still think that the
+client shouldn't have complained about not
+being able to preserve file protections since
+it was actually to do so.
 
---b.
+I'm still not sure if I should try NFSv4 but that's
+another issue.
+
+Cordially,
+
+-- 
+Jon Forrest
+Research Computing Support
+College of Chemistry
+173 Tan Hall
+University of California Berkeley
+Berkeley, CA
+94720-1460
+510-643-1032
+
+1    [nfs3]# touch x
+2    [nfs3]# cp -p x y
+3    cp: preserving permissions for `y': Operation not supported
+4    cp: preserving ACL for `y': Operation not supported
+5    [nfs3]# ls -l
+6    total 1
+7    -rw-r--r--+ 1 root root 0 Nov  3 14:46 x
+8    -rw-r--r--+ 1 root root 0 Nov  3 14:46 y
+9    [nfs3]# cd /tmp/x/home/jlforrest/nfs4
+10   [nfs4]# touch x
+11   [nfs4]# cp -p x y
+12   [nfs4]# ls -l
+13   total 1
+14   -rw-rw-r-- 1 nobody nobody 0 Nov  3 14:48 x
+15   -rw-rw-r-- 1 nobody nobody 0 Nov  3 14:48 y
+
+
