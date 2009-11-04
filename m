@@ -1,93 +1,78 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
+From: Chuck Lever <chuck.lever@oracle.com>
 Subject: Re: [PATCH v2] register NFS_ACL with rpcbind
-Date: Wed, 4 Nov 2009 13:58:48 -0500
-Message-ID: <20091104185848.GD11637@fieldses.org>
-References: <4AEF2D19.5090409@redhat.com> <4AEF562B.9070606@redhat.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: NFS list <linux-nfs@vger.kernel.org>, Olaf Kirch <okir@suse.de>,
-	Andreas Gruenbacher <agruen@suse.de>
+Date: Wed, 4 Nov 2009 14:45:16 -0500
+Message-ID: <8B8518B9-B6D2-4C56-94FA-E3A8420C0FEA@oracle.com>
+References: <4AEF2D19.5090409@redhat.com> <4AEF562B.9070606@redhat.com> <200911031013.27247.agruen@suse.de> <200911031017.41564.okir@suse.de> <4AF04C2A.4020203@redhat.com> <2009D157-24A6-442E-9BBB-D93690A17BFE@oracle.com> <4AF1CB83.2090204@redhat.com>
+Mime-Version: 1.0 (Apple Message framework v936)
+Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
+Cc: Olaf Kirch <okir@suse.de>, Andreas Gruenbacher <agruen@suse.de>,
+	NFS list <linux-nfs@vger.kernel.org>,
+	"J. Bruce Fields" <bfields@fieldses.org>
 To: Peter Staubach <staubach@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:37770 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751361AbZKDS6k (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 4 Nov 2009 13:58:40 -0500
-In-Reply-To: <4AEF562B.9070606@redhat.com>
+Received: from acsinet11.oracle.com ([141.146.126.233]:29389 "EHLO
+	acsinet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757594AbZKDTqJ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 4 Nov 2009 14:46:09 -0500
+In-Reply-To: <4AF1CB83.2090204@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Nov 02, 2009 at 04:59:07PM -0500, Peter Staubach wrote:
-> Hi.
-> 
-> Here is a patch to modify the NFS server to register the NFS_ACL
-> services with the rpcbind daemon.  This allows the client to
-> ping for the existence of the NFS_ACL support via commands such
-> as "rpcinfo -t <server> nfs_acl".
-> 
-> This patch also modifies the NFS_ACL support so that responses
-> to version 2 NULLPROC requests can be made.
-> 
-> The changelog for the patch which turned off this functionality
-> mentioned something about not registering the NFS_ACL as being
-> part of some tradition.  I can't find this tradition and the
-> only other implementation which supports NFS_ACL does register
-> them with the rpcbind daemon.
-> 
-> 	Thanx...
-> 
-> 		ps
-> 
-> Signed-off-by: Peter Staubach <staubach@redhat.com>
-> 
-> --- linux-2.6.31.i686/fs/nfsd/nfs2acl.c.org
-> +++ linux-2.6.31.i686/fs/nfsd/nfs2acl.c
-> @@ -217,6 +217,16 @@ static int nfsaclsvc_decode_accessargs(s
->   * XDR encode functions
->   */
->  
-> +/*
-> + * There must be an encoding function for void results so svc_process
-> + * will work properly.
-> + */
-> +int
-> +nfsaclsvc_encode_voidres(struct svc_rqst *rqstp, __be32 *p, void *dummy)
-> +{
-> +	return xdr_ressize_check(rqstp, p);
-> +}
+On Nov 4, 2009, at 1:44 PM, Peter Staubach wrote:
+> Chuck Lever wrote:
+>> On Nov 3, 2009, at 10:28 AM, Peter Staubach wrote:
+>>> Olaf Kirch wrote:
+>>>> On Tuesday 03 November 2009 10:13:27 Andreas Gruenbacher wrote:
+>>>>> I don't understand the reasoning behind .vs_hidden for NFS_ACL,
+>>>>> hopefully
+>>>>> Olaf can clarify. NFS_ACL is the only user of .vs_hidden as far  
+>>>>> as I
+>>>>> can
+>>>>> see though, so if this is changeg, shouldn't the entire commit  
+>>>>> bc5fea4
+>>>>> which introduced the flag be reverted?
+>>>>
+>>>> I can't remember the details of that one. I do remember that this  
+>>>> is
+>>>> based on someone's request who told me that we shouldn't register  
+>>>> nfsacl
+>>>> with portmap. I didn't check myself whether Solaris did or did  
+>>>> not do
+>>>> it at that time.
+>>>>
+>>>> I have no issue with reverting that change, and removing the whole
+>>>> .vs_hidden kludge too.
+>>>>
+>>>
+>>> It seems that vs_hidden is used in 1 place outside of the NFS_ACL
+>>> server code.  It is used in the NFSv4 callback code.
+>>>
+>>> I will look to see how difficult that might be to fix this spot
+>>> as well and then get rid of vs_hidden.
+>>
+>> See archive of this mailing list from earlier in October.  This  
+>> change
+>> was added because it's hard to get rid of the svc_unregister() call  
+>> done
+>> by svc_create().
+>>
+>> I have another solution for that problem that I'm preparing for  
+>> 2.6.33.
+>>
+>
+> Cool.
+>
+> In the meantime, can we get this one in, Bruce?
 
-Out of curiosity: have you tested a null rpc?
+As far as I know, there is no "meantime" in this case.  2.6.33 is the  
+next merge window.
 
-Also, doesn't v3 have the same problem?
+I don't have a problem with getting rid of .vs_hidden anyway... all  
+I'm saying is maybe you don't have to work too hard at it.  :-)
 
---b.
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
 
-> +
->  /* GETACL */
->  static int nfsaclsvc_encode_getaclres(struct svc_rqst *rqstp, __be32 *p,
->  		struct nfsd3_getaclres *resp)
-> @@ -308,7 +318,6 @@ static int nfsaclsvc_release_access(stru
->  }
->  
->  #define nfsaclsvc_decode_voidargs	NULL
-> -#define nfsaclsvc_encode_voidres	NULL
->  #define nfsaclsvc_release_void		NULL
->  #define nfsd3_fhandleargs	nfsd_fhandle
->  #define nfsd3_attrstatres	nfsd_attrstat
-> @@ -346,5 +355,5 @@ struct svc_version	nfsd_acl_version2 = {
->  		.vs_proc	= nfsd_acl_procedures2,
->  		.vs_dispatch	= nfsd_dispatch,
->  		.vs_xdrsize	= NFS3_SVC_XDRSIZE,
-> -		.vs_hidden	= 1,
-> +		.vs_hidden	= 0,
->  };
-> --- linux-2.6.31.i686/fs/nfsd/nfs3acl.c.org
-> +++ linux-2.6.31.i686/fs/nfsd/nfs3acl.c
-> @@ -264,6 +264,6 @@ struct svc_version	nfsd_acl_version3 = {
->  		.vs_proc	= nfsd_acl_procedures3,
->  		.vs_dispatch	= nfsd_dispatch,
->  		.vs_xdrsize	= NFS3_SVC_XDRSIZE,
-> -		.vs_hidden	= 1,
-> +		.vs_hidden	= 0,
->  };
->  
+
+
