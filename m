@@ -1,41 +1,95 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from lo.gmane.org ([80.91.229.12]:48770 "EHLO lo.gmane.org"
+Received: from mx1.redhat.com ([209.132.183.28]:27385 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757361AbZKXTzB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 24 Nov 2009 14:55:01 -0500
-Received: from list by lo.gmane.org with local (Exim 4.50)
-	id 1ND1Td-0000au-Mw
-	for linux-nfs@vger.kernel.org; Tue, 24 Nov 2009 20:55:05 +0100
-Received: from 143.166.197.6 ([143.166.197.6])
-        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-nfs@vger.kernel.org>; Tue, 24 Nov 2009 20:55:05 +0100
-Received: from charles by 143.166.197.6 with local (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-nfs@vger.kernel.org>; Tue, 24 Nov 2009 20:55:05 +0100
-To: linux-nfs@vger.kernel.org
-From: Charles Duffy <charles@dyfis.net>
-Subject: Apparent race condition w/ NFSv3 mktemp+write+rename
-Date: Tue, 24 Nov 2009 13:26:44 -0600
-Message-ID: <hehc8g$k8f$1@ger.gmane.org>
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+	id S1756302AbZKEODm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 5 Nov 2009 09:03:42 -0500
+Received: from int-mx02.intmail.prod.int.phx2.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
+	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id nA5E3lOL030498
+	for <linux-nfs@vger.kernel.org>; Thu, 5 Nov 2009 09:03:48 -0500
+Subject: [PATCH] nfs-utils: mount options can be lost when using bg option
+From: Harshula Jayasuriya <harshula@redhat.com>
+To: Steve Dickson <steved@redhat.com>
+Cc: linux-nfs@vger.kernel.org
+Content-Type: text/plain
+Date: Fri, 06 Nov 2009 01:03:45 +1100
+Message-Id: <1257429825.2984.26.camel@localhost.localdomain>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Howdy. With a very heavily loaded (CentOS 5 - Linux 2.6.18-128.el5) 
-NFSv3 client and server, I've experienced the following sporadic issue:
+Hi,
 
-function atomic_write() {
-     local filename="$1"
-     local tempfile
-     tempfile="$(mktemp "${filename}.XXXXXX")"
-     cat >"${tempfile}" && mv "${tempfile}" "${filename}"
-}
+When mounting an NFS export *without* the "bg" option, try_mount() is
+called only once. Before calling it, the variables mount_opts and
+extra_opts are set up. Then try_mount() calls nfsmount(), the latter
+assumes that the aforementioned variables can be modified. Most
+significantly, it allows the variable extra_opts to be modified.
 
-$ atomic_write /mnt/foobar <<<"baz"
-mv: cannot move `/mnt/foobar.gO1881' to `/mnt/foobar': No such file or 
-directory
+When the "bg" mount option is used *and* the first try_mount() attempt
+fails, it daemonizes the process and calls try_mount() again,
+unfortunately, we've lost the required mount options in the variable
+extra_opts.
 
-Are my assumptions regarding available semantics fair and reasonable?
+See https://bugzilla.redhat.com/show_bug.cgi?id=529370 for details.
+
+Signed-off-by: Harshula Jayasuriya <harshula@redhat.com>
+---
+ utils/mount/mount.c    |    3 +++
+ utils/mount/nfsmount.c |    7 +++++--
+ 2 files changed, 8 insertions(+), 2 deletions(-)
+
+diff --git a/utils/mount/mount.c b/utils/mount/mount.c
+index 355df79..6b9e164 100644
+--- a/utils/mount/mount.c
++++ b/utils/mount/mount.c
+@@ -593,6 +593,9 @@ int main(int argc, char *argv[])
+ 	if (mnt_err == EX_BG) {
+ 		printf(_("%s: backgrounding \"%s\"\n"),
+ 			progname, spec);
++		printf(_("%s: mount options: \"%s\"\n"),
++			progname, extra_opts);
++
+ 		fflush(stdout);
+ 
+ 		/*
+diff --git a/utils/mount/nfsmount.c b/utils/mount/nfsmount.c
+index 6355681..6b3356c 100644
+--- a/utils/mount/nfsmount.c
++++ b/utils/mount/nfsmount.c
+@@ -170,7 +170,7 @@ parse_options(char *old_opts, struct nfs_mount_data *data,
+ 	struct pmap *mnt_pmap = &mnt_server->pmap;
+ 	struct pmap *nfs_pmap = &nfs_server->pmap;
+ 	int len;
+-	char *opt, *opteq, *p, *opt_b;
++	char *opt, *opteq, *p, *opt_b, *tmp_opts;
+ 	char *mounthost = NULL;
+ 	char cbuf[128];
+ 	int open_quote = 0;
+@@ -179,7 +179,8 @@ parse_options(char *old_opts, struct nfs_mount_data *data,
+ 	*bg = 0;
+ 
+ 	len = strlen(new_opts);
+-	for (p=old_opts, opt_b=NULL; p && *p; p++) {
++	tmp_opts = xstrdup(old_opts);
++	for (p=tmp_opts, opt_b=NULL; p && *p; p++) {
+ 		if (!opt_b)
+ 			opt_b = p;		/* begin of the option item */
+ 		if (*p == '"')
+@@ -457,10 +458,12 @@ parse_options(char *old_opts, struct nfs_mount_data *data,
+ 			goto out_bad;
+ 		*mnt_server->hostname = mounthost;
+ 	}
++	free(tmp_opts);
+ 	return 1;
+  bad_parameter:
+ 	nfs_error(_("%s: Bad nfs mount parameter: %s\n"), progname, opt);
+  out_bad:
++	free(tmp_opts);
+ 	return 0;
+ }
+ 
+--
+
+cya,
+#
 
