@@ -1,41 +1,45 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH v2] register NFS_ACL with rpcbind
-Date: Thu, 5 Nov 2009 11:56:15 -0500
-Message-ID: <20091105165615.GD29981@fieldses.org>
-References: <4AEF2D19.5090409@redhat.com> <4AEF562B.9070606@redhat.com> <20091104185848.GD11637@fieldses.org> <4AF1DBE4.1080103@redhat.com>
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: Re: [PATCH 2/5] nfsd: Fix independence of a few nfsd related
+ headers
+Date: Thu, 05 Nov 2009 08:59:02 -0800
+Message-ID: <1257440343.3114.7.camel@heimdal.trondhjem.org>
+References: <4ADEC1EF.8040107@panasas.com>
+	 <1256112873-32495-1-git-send-email-bharrosh@panasas.com>
+	 <1256171298.6809.1.camel@heimdal.trondhjem.org>
+	 <4AE01569.9000002@panasas.com>
+	 <1256220146.6402.23.camel@heimdal.trondhjem.org>
+	 <4AE08165.2040100@panasas.com> <20091104220927.GS11637@fieldses.org>
+	 <4AF2914F.60803@panasas.com> <20091105163333.GB29981@fieldses.org>
+	 <20091105164145.GC29981@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: NFS list <linux-nfs@vger.kernel.org>, Olaf Kirch <okir@suse.de>,
-	Andreas Gruenbacher <agruen@suse.de>
-To: Peter Staubach <staubach@redhat.com>
+Content-Type: text/plain
+Cc: Boaz Harrosh <bharrosh@panasas.com>,
+	Benny Halevy <bhalevy@panasas.com>,
+	pNFS Mailing List <pnfs@linux-nfs.org>,
+	NFS list <linux-nfs@vger.kernel.org>,
+	Andy Adamson <andros@netapp.com>
+To: "J. Bruce Fields" <bfields@citi.umich.edu>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:60119 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:5402 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756912AbZKEQ4G (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 5 Nov 2009 11:56:06 -0500
-In-Reply-To: <4AF1DBE4.1080103@redhat.com>
+	id S1757262AbZKEQ66 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 5 Nov 2009 11:58:58 -0500
+In-Reply-To: <20091105164145.GC29981@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Nov 04, 2009 at 02:54:12PM -0500, Peter Staubach wrote:
-> J. Bruce Fields wrote:
-> > Out of curiosity: have you tested a null rpc?
-> > 
-> 
-> Yup.  "rpcinfo -t <server> nfs_acl" works like a charm
-> with this patch applied for both versions 2 and 3.
-> 
-> > Also, doesn't v3 have the same problem?
-> > 
-> 
-> Nope.  It already had a similar XDR routine.  Which is
-> similar to the NFS XDR routine to do the same sort of
-> thing.  I suppose that someday, we could clean them up,
+On Thu, 2009-11-05 at 11:41 -0500, J. Bruce Fields wrote:
+> By the way, along the lines of your .h moves, while looking at steved's
+> export stuff I was reminded again of how much in include/linux/nfsd is
+> really internal to nfsd, so I'm thinking of committing this.
 
-Yes.
+Right. Most of the NFS client include files should really be moved into
+fs/nfs rather than into a new directory in include/linux.
 
-> but these routines aren't doing any harm for the moment.
+-- 
+Trond Myklebust
+Linux NFS client maintainer
 
-OK.  Applied.
-
---b.
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
