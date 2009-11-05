@@ -1,85 +1,80 @@
-From: Harshula Jayasuriya <harshula@redhat.com>
-Subject: [PATCH] nfs-utils: NFSv4: fix backgrounding
-Date: Fri, 06 Nov 2009 02:31:28 +1100
-Message-ID: <1257435088.2984.66.camel@localhost.localdomain>
+From: "J. Bruce Fields" <bfields@citi.umich.edu>
+Subject: Re: [PATCH 2/5] nfsd: Fix independence of a few nfsd related
+	headers
+Date: Thu, 5 Nov 2009 11:33:33 -0500
+Message-ID: <20091105163333.GB29981@fieldses.org>
+References: <4ADEC1EF.8040107@panasas.com> <1256112873-32495-1-git-send-email-bharrosh@panasas.com> <1256171298.6809.1.camel@heimdal.trondhjem.org> <4AE01569.9000002@panasas.com> <1256220146.6402.23.camel@heimdal.trondhjem.org> <4AE08165.2040100@panasas.com> <20091104220927.GS11637@fieldses.org> <4AF2914F.60803@panasas.com>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: linux-nfs@vger.kernel.org
-To: Steve Dickson <steved@redhat.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
+	Benny Halevy <bhalevy@panasas.com>,
+	pNFS Mailing List <pnfs@linux-nfs.org>,
+	NFS list <linux-nfs@vger.kernel.org>,
+	Andy Adamson <andros@netapp.com>
+To: Boaz Harrosh <bharrosh@panasas.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:12702 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:52883 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754291AbZKEPbZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 5 Nov 2009 10:31:25 -0500
-Received: from int-mx03.intmail.prod.int.phx2.redhat.com (int-mx03.intmail.prod.int.phx2.redhat.com [10.5.11.16])
-	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id nA5FVURo026907
-	for <linux-nfs@vger.kernel.org>; Thu, 5 Nov 2009 10:31:30 -0500
+	id S1756623AbZKEQd0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 5 Nov 2009 11:33:26 -0500
+In-Reply-To: <4AF2914F.60803@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi,
+On Thu, Nov 05, 2009 at 10:48:15AM +0200, Boaz Harrosh wrote:
+> On 11/05/2009 12:09 AM, J. Bruce Fields wrote:
+> > On Thu, Oct 22, 2009 at 05:59:33PM +0200, Boaz Harrosh wrote:
+> >> On 10/22/2009 04:02 PM, Trond Myklebust wrote:
+> >>> No. What I'm saying is that this doesn't have to be an absolute rule.
+> >>> The Kernel style guide assumes that everything in 'include/*' is going
+> >>> to be exported all around the kernel.
+> >>> The problem is that we put a lot of stuff which is private to fs/nfs and
+> >>> fs/nfsd in there. Those header files do not have to absolutely follow
+> >>> the style guide rule, 'cos we know what is being included before and
+> >>> after them...
+> >>>
+> >>
+> >> I'm not sure I understand
+> >> You are saying that the patches are very good, but only
+> >> the rule I stated originally could be relaxed a little with private
+> >> headers where we might get lazy, if the effects are very local?
+> >>
+> >> Well, that's not a problem then, right? just that I can relax a bit
+> >> if I want.
+> >>
+> >> But I disagree: see 3, 4, 5 above and that last patch I submitted. That patch
+> >> is only the beginning. 85% of all source files in nfs/nfsd could receive the
+> >> same love. I only done these I touched. Code tends to stay much-much longer
+> >> then we spend time on it. Better get it in shape the first time.
+> > 
+> > I'm assuming Trond's objection is just to the patch changelog
+> > (specifically, to the statement that any header "should be compilation
+> > independent"), not to these specific changes.
+> > 
+> > --b.
+> 
+> Speaking of which, Bruce I have a question.
+> 
+> There are a few files in include/linux/ that define xdr definitions
+> these are used by exportfs nfs and nfsd. Some of it gets exposed
+> to filesystems.
 
-The nfsmount() function checks if !bg before running
-switch(rpc_createerr.cf_stat). On the other hand, the nfs4mount()
-function does not, and results in exiting the loop on the first
-iteration even with the bg mount option.
+Which specifically?
 
-NOTE: This and the previous patch ("nfs-utils: mount options can be lost
-when using bg option") are relevant to non text-based mount options.
+> With the pNFS tree we are adding lots more of these,
+> specifically I'm now to move the pnfs_osd_xdr stuff as well, and blocks.
+> 
+> Could I open up a new  include/linux/exportfs/ folder and put there any thing
+> xdr and exportfs related?
 
-See https://bugzilla.redhat.com/show_bug.cgi?id=529370 for details.
+Well, if it's just a few things, maybe include/linux/exportfs.h?
 
-Signed-off-by: Harshula Jayasuriya <harshula@redhat.com>
----
- utils/mount/nfs4mount.c |   25 +++++++++++++++----------
- 1 files changed, 15 insertions(+), 10 deletions(-)
+But, sure, makes sense if there's includes that are specific to pNFS and
+that wouldn't be needed by any filesystem that included exportfs.h.
 
-diff --git a/utils/mount/nfs4mount.c b/utils/mount/nfs4mount.c
-index a2f318f..4a2fab7 100644
---- a/utils/mount/nfs4mount.c
-+++ b/utils/mount/nfs4mount.c
-@@ -217,8 +217,11 @@ int nfs4mount(const char *spec, const char *node, int flags,
- 				progname);
- 		goto fail;
- 	}
--	snprintf(new_opts, sizeof(new_opts), "%s%saddr=%s",
--		 old_opts, *old_opts ? "," : "", s);
-+	if (running_bg)
-+		strncpy(new_opts, old_opts, sizeof(new_opts));
-+	else
-+		snprintf(new_opts, sizeof(new_opts), "%s%saddr=%s",
-+			 old_opts, *old_opts ? "," : "", s);
- 	*extra_opts = xstrdup(new_opts);
- 
- 	/* Set default options.
-@@ -434,15 +437,17 @@ int nfs4mount(const char *spec, const char *node, int flags,
- 			break;
- 		}
- 
--		switch(rpc_createerr.cf_stat){
--		case RPC_TIMEDOUT:
--			break;
--		case RPC_SYSTEMERROR:
--			if (errno == ETIMEDOUT)
-+		if (!bg) {
-+			switch(rpc_createerr.cf_stat) {
-+			case RPC_TIMEDOUT:
- 				break;
--		default:
--			rpc_mount_errors(hostname, 0, bg);
--			goto fail;
-+			case RPC_SYSTEMERROR:
-+				if (errno == ETIMEDOUT)
-+					break;
-+			default:
-+				rpc_mount_errors(hostname, 0, bg);
-+				goto fail;
-+			}
- 		}
- 
- 		if (bg && !running_bg) {
---
+> What should be the scope of the move, should any include/linux/ common
+> files used both by nfs & nfsd be moved there?
 
-cya,
-#
+I don't see why we'd want to do that, but maybe I'm missing something.
 
+--b.
