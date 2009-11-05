@@ -1,73 +1,118 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 04/11] SUNRPC: Check explicitly for tk_status == 0 in
-	call_transmit_status()
-Date: Thu, 05 Nov 2009 13:22:57 -0500
-Message-ID: <20091105182257.2796.50928.stgit@matisse.1015granger.net>
+Subject: [PATCH 05/11] SUNRPC: Allow RPCs to fail quickly if the server is
+	unreachable
+Date: Thu, 05 Nov 2009 13:23:05 -0500
+Message-ID: <20091105182304.2796.76586.stgit@matisse.1015granger.net>
 References: <20091105181924.2796.9313.stgit@matisse.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org
 To: trond.myklebust@netapp.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from adsl-76-241-169-38.dsl.sfldmi.sbcglobal.net ([76.241.169.38]:37608
+Received: from adsl-76-241-169-38.dsl.sfldmi.sbcglobal.net ([76.241.169.38]:43326
 	"EHLO matisse.1015granger.net" rhost-flags-OK-FAIL-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1758077AbZKESW7 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 5 Nov 2009 13:22:59 -0500
+	by vger.kernel.org with ESMTP id S1758158AbZKESXI (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 5 Nov 2009 13:23:08 -0500
 In-Reply-To: <20091105181924.2796.9313.stgit-RytpoXr2tKZ9HhUboXbp9zCvJB+x5qRC@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The success case, where task->tk_status == 0, is by far the most
-frequent case in call_transmit_status().
+The kernel sometimes makes RPC calls to services that aren't running.
+Because the kernel's RPC client always assumes the hard retry semantic
+when reconnecting a connection-oriented RPC transport, the underlying
+reconnect logic takes a long while to time out, even though the remote
+may have responded immediately with ECONNREFUSED.
 
-The default: arm of the switch statement in call_transmit_status()
-handles the 0 case.  default: was moved close to the top of the switch
-statement in call_transmit_status() under the theory that the compiler
-places object code for the earliest arms of a switch statement first,
-making the CPU do less work.
+In certain cases, like upcalls to our local rpcbind daemon, or for NFS
+mount requests, we'd like the kernel to fail immediately if the remote
+service isn't reachable.  This allows another transport to be tried
+immediately, or the pending request can be abandoned quickly.
 
-The default: arm of a switch statement, however, is executed only
-after all the other cases have been checked.  Even if the compiler
-rearranges the object code, the default: arm is the "last resort",
-meaning all of the other cases have been explicitly exhausted.  That
-makes the current arrangement about as inefficient as it gets for the
-common case.
+Introduce a per-request flag which controls how call_transmit_status()
+behaves when request transmission fails because the server cannot be
+reached.
 
-To fix this, add an explicit check for zero before the switch
-statement.  That forces the compiler to do the zero check first, no
-matter what optimizations it might try to do to the switch statement.
+We don't want soft connection semantics to apply to other errors.  The
+default case of the switch statement in call_transmit_status() no
+longer falls through; the fall through code is copied to the default
+case, and a "break;" is added.
+
+The transport's connection re-establishment timeout is also ignored for
+such requests.  We want the request to fail immediately, so the
+reconnect delay is skipped.  Additionally, we don't want a connect
+failure here to further increase the reconnect timeout value, since
+this request will not be retried.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- net/sunrpc/clnt.c |   12 ++++++++++++
- 1 files changed, 12 insertions(+), 0 deletions(-)
+ include/linux/sunrpc/sched.h |    2 ++
+ net/sunrpc/clnt.c            |   11 +++++++++--
+ net/sunrpc/xprtsock.c        |    2 +-
+ 3 files changed, 12 insertions(+), 3 deletions(-)
 
+diff --git a/include/linux/sunrpc/sched.h b/include/linux/sunrpc/sched.h
+index 4010977..1906782 100644
+--- a/include/linux/sunrpc/sched.h
++++ b/include/linux/sunrpc/sched.h
+@@ -130,12 +130,14 @@ struct rpc_task_setup {
+ #define RPC_TASK_DYNAMIC	0x0080		/* task was kmalloc'ed */
+ #define RPC_TASK_KILLED		0x0100		/* task was killed */
+ #define RPC_TASK_SOFT		0x0200		/* Use soft timeouts */
++#define RPC_TASK_SOFTCONN	0x0400		/* Fail if can't connect */
+ 
+ #define RPC_IS_ASYNC(t)		((t)->tk_flags & RPC_TASK_ASYNC)
+ #define RPC_IS_SWAPPER(t)	((t)->tk_flags & RPC_TASK_SWAPPER)
+ #define RPC_DO_ROOTOVERRIDE(t)	((t)->tk_flags & RPC_TASK_ROOTCREDS)
+ #define RPC_ASSASSINATED(t)	((t)->tk_flags & RPC_TASK_KILLED)
+ #define RPC_IS_SOFT(t)		((t)->tk_flags & RPC_TASK_SOFT)
++#define RPC_IS_SOFTCONN(t)	((t)->tk_flags & RPC_TASK_SOFTCONN)
+ 
+ #define RPC_TASK_RUNNING	0
+ #define RPC_TASK_QUEUED		1
 diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index 38829e2..7bcd931 100644
+index 7bcd931..68a2358 100644
 --- a/net/sunrpc/clnt.c
 +++ b/net/sunrpc/clnt.c
-@@ -1180,10 +1180,22 @@ static void
- call_transmit_status(struct rpc_task *task)
- {
- 	task->tk_action = call_status;
-+
-+	/*
-+	 * Common case: success.  Force the compiler to put this
-+	 * test first.
-+	 */
-+	if (task->tk_status == 0) {
-+		xprt_end_transmit(task);
-+		rpc_task_force_reencode(task);
-+		return;
-+	}
-+
- 	switch (task->tk_status) {
- 	case -EAGAIN:
- 		break;
+@@ -1197,6 +1197,8 @@ call_transmit_status(struct rpc_task *task)
  	default:
-+		dprint_status(task);
+ 		dprint_status(task);
  		xprt_end_transmit(task);
++		rpc_task_force_reencode(task);
++		break;
  		/*
  		 * Special cases: if we've been waiting on the
+ 		 * socket's write_space() callback, or if the
+@@ -1204,11 +1206,16 @@ call_transmit_status(struct rpc_task *task)
+ 		 * then hold onto the transport lock.
+ 		 */
+ 	case -ECONNREFUSED:
+-	case -ECONNRESET:
+-	case -ENOTCONN:
+ 	case -EHOSTDOWN:
+ 	case -EHOSTUNREACH:
+ 	case -ENETUNREACH:
++		if (RPC_IS_SOFTCONN(task)) {
++			xprt_end_transmit(task);
++			rpc_exit(task, task->tk_status);
++			break;
++		}
++	case -ECONNRESET:
++	case -ENOTCONN:
+ 	case -EPIPE:
+ 		rpc_task_force_reencode(task);
+ 	}
+diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+index 37c5475..ff312f8 100644
+--- a/net/sunrpc/xprtsock.c
++++ b/net/sunrpc/xprtsock.c
+@@ -2033,7 +2033,7 @@ static void xs_connect(struct rpc_task *task)
+ 	if (xprt_test_and_set_connecting(xprt))
+ 		return;
+ 
+-	if (transport->sock != NULL) {
++	if (transport->sock != NULL && !RPC_IS_SOFTCONN(task)) {
+ 		dprintk("RPC:       xs_connect delayed xprt %p for %lu "
+ 				"seconds\n",
+ 				xprt, xprt->reestablish_timeout / HZ);
 
