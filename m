@@ -1,70 +1,56 @@
-From: Jeff Layton <jlayton@redhat.com>
-Subject: Re: [PATCH] proc: revalidate dentry returned by
- proc_pid_follow_link
-Date: Fri, 6 Nov 2009 16:06:12 -0500
-Message-ID: <20091106160612.4cd05e76@tlielax.poochiereds.net>
-References: <1257513594-31071-1-git-send-email-jlayton@redhat.com>
-	<20091106203601.GD27751@shareable.org>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [RFC] NLM server can not process retransmited request correctly
+Date: Fri, 6 Nov 2009 18:07:22 -0500
+Message-ID: <20091106230722.GN18459@fieldses.org>
+References: <4AEEA622.6000705@cn.fujitsu.com> <20091102200956.GC19271@fieldses.org> <4AEFF9D2.8030506@cn.fujitsu.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	linux-nfs@vger.kernel.org, adobriyan@gmail.com,
-	viro@ZenIV.linux.org.uk
-To: Jamie Lokier <jamie@shareable.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: "Trond.Myklebust" <trond.myklebust@fys.uio.no>,
+	NFSv3 list <linux-nfs@vger.kernel.org>, mingo@elte.hu
+To: Mi Jinlong <mijinlong@cn.fujitsu.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:8823 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:34387 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759769AbZKFVGS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 6 Nov 2009 16:06:18 -0500
-In-Reply-To: <20091106203601.GD27751@shareable.org>
+	id S1759989AbZKFXHT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 6 Nov 2009 18:07:19 -0500
+In-Reply-To: <4AEFF9D2.8030506@cn.fujitsu.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 6 Nov 2009 20:36:01 +0000
-Jamie Lokier <jamie@shareable.org> wrote:
-
-> Jeff Layton wrote:
-> > The problem here is that this makes that code shortcut any lookup or
-> > revalidation of the dentry. In general, this isn't a problem -- in most
-> > cases the dentry is known to be good. It is a problem however for NFSv4.
-> > If this symlink is followed on an open operation no actual open call
-> > occurs and the open state isn't properly established. This causes
-> > problems when we later try to use this file descriptor for actual
-> > operations.
+On Tue, Nov 03, 2009 at 05:37:22PM +0800, Mi Jinlong wrote:
+> Hi Bruce
 > 
-> As NFS uses open() as a kind of fcntl-lock barrier, I can see it's
-> important to do _something_ on new opens, rather than just cloning
-> most of the file descriptor.
+>  Thanks for your answer.
 > 
-
-I guess you mean the close-to-open cache consistency? If so, this
-problem doesn't actually break that. The actual nfs_file_open call does
-occur even when you're opening by following one of these symlinks. I
-believe the cache consistency code occurs there.
-
-The problem here is really nfsv4 specific. There the on-the-wire open
-call and initialization of state actually happens during d_lookup and
-d_revalidate. Neither of these happens with these LAST_BIND symlinks so
-we end up with a filp that has no NFSv4 state attached.
-
-> > This patch takes a minimalist approach to fixing this by making the
-> > /proc/pid follow_link routine revalidate the dentry before returning it.
+> J. Bruce Fields:
+> > On Mon, Nov 02, 2009 at 05:28:02PM +0800, Mi Jinlong wrote:
+> >> Hi Trond et al:
+> >>
 > 
-> What happens if the file descriptor you are re-opening is for a file
-> which has been deleted.  Does it still have a revalidatable dentry?
+> ..snip..
 > 
+> >>    Server reply ENOLCK for WL1 to client because nfslock service stoped,
+> > 
+> > I don't completely understand that part: is it because the monitor call
+> > to statd fails?
+> 
+> yes. 
+> 
+> > 
+> >>    but it can not distinguish retransmited request with normal request, 
+> >>    so it reply OK for WL1_re to client after nfslock service start. But 
+> >>    fcntl client called will return when it receive WL1.reply, WL1_re.reply
+> >>    will be droped at Client. So that, the lock between client and server
+> >>    is different. When client send a some lock request to server again,
+> >>    it will get a EBLOCKD error from Server.
+> > 
+> > But, OK, I get the idea, and generic DRC code shared by nfsd and nlm
+> > makes sense to me; thanks for looking into this.
+> 
+> In my patch, the generic DRC code as a part of sunrpc, is it ok? or we
+> should put it at fs/nfs_common?
 
-Well, these LAST_BIND symlinks return a real dget'ed dentry today. If
-we assume that it always returns a valid dentry (which seems to be the
-case), then I suppose it's OK to do a d_revalidate against it.
+Sunrpc makes sense to me; this should be purely rpc-level code without
+any special knowledge of nfs.
 
-It's possible though that that revalidate will either fail though or
-return that it's no good. In that case, this code just returns ESTALE
-which should make the path walking code revalidate all the way up the
-chain. That should (hopefully) make whatever syscall we're servicing
-return an error.
-
-Thanks for the review so far.
-
--- 
-Jeff Layton <jlayton@redhat.com>
+--b.
