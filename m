@@ -1,59 +1,47 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: Question: NFS behaviour in case of concurrent local and remote
-	access
-Date: Mon, 9 Nov 2009 13:24:09 -0500
-Message-ID: <20091109182409.GA22652@fieldses.org>
-References: <1257770569.7276.31.camel@home.yosifov.net> <1257773136.3754.17.camel@heimdal.trondhjem.org> <1257779590.9200.28.camel@home.yosifov.net>
+From: Jesper Krogh <jesper-Q2TZfHgGEy4@public.gmane.org>
+Subject: 2.6.31 under "heavy" NFS load.
+Date: Mon, 09 Nov 2009 20:30:44 +0100
+Message-ID: <4AF86DE4.5010607@krogh.cc>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
-	linux-nfs@vger.kernel.org
-To: Ivan Yosifov <iyosifov@gmail.com>
+Content-Type: text/plain; charset=ISO-8859-1
+To: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:42120 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752036AbZKISX5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 9 Nov 2009 13:23:57 -0500
-In-Reply-To: <1257779590.9200.28.camel-+yaoqMNIL58NKrj9nap9fg@public.gmane.org>
+Received: from 2605ds1-ynoe.0.fullrate.dk ([90.184.12.24]:47537 "EHLO
+	shrek.krogh.cc" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751353AbZKITiw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 9 Nov 2009 14:38:52 -0500
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Nov 09, 2009 at 05:13:10PM +0200, Ivan Yosifov wrote:
-> Sounds encouraging. Just to clarify, I assume local writers don't pass
-> through NFS. 
-> 
-> Out of curiosity, do you know how it's implemented ? 
-> 
-> I looked at fs/nfsd and fs/nfs in the kernel source but didn't really
-> understand a lot. I got the impression that nfs clients and the server
-> pass nfsd4_change_info objects ( defined in include/linux/nfsd/xdr4.h )
-> around with the before_change and after_change fields being "file
-> version" of sorts - ie. they are changed when the file is changed and
-> don't depend on timestamp resolution or anything like that.
-> 
-> My concern is that the normal fs has only timestamps ( right ? ) which
-> have a finite resolution and can't be used as file version indicators.
-> So it seems necessary for the normal fs code to notify the NFS code for
-> every write/change to a file that's also opened through NFS. Such a
-> tight coupling both seems hard to get and I didn't notice anything like
-> it in the source. 
+Hi List.
 
-Right, the linux server is designed to support concurrent local and nfs
-access, but there are two problems that I know of:
+When a lot (~60 all on 1GbitE) of NFS clients are hitting an NFS server
+that has an 10GbitE NIC sitting on it I'm seeing high IO-wait load
+(>50%) and load number over 100 on the server. This is a change since
+2.6.29 where the IO-wait load under similar workload was less than 10%.
 
-	- timestamp granularity: ext3's timestamps only had 1-second
-	  granularity.  Ext4's appear to be a jiffy, but that's still
-	  coarse enough that it could miss an update.  There's a special
-	  mount option for ext4 that will cause it to update an
-	  i_version field on every update, in which case the nfsv4
-	  server will use that as its change attribute.  We should fix
-	  that to not require a mount option.
+The system has 16 Opteron cores.
 
-	- delegations are not revoked on all operations: we use leases
-	  to implement delegations.  That insures that if you open a
-	  file locally, any delegations will be revoked.  However, we
-	  should also be revoking delegations on operations other than
-	  open (such as rename and unlink).  I have some patches that do
-	  this, but they still have bugs, and need some more work.
+All data the NFS-clients are reading are "memory recident" since they
+are all reading off the same 10GB of data and the server has 32GB of
+main memory dedicated to nothing else than serving NFS.
 
---b.
+A snapshot of top looks like this:
+http://krogh.cc/~jesper/top-hest-2.6.31.txt
+
+The load is generally alot higher than on 2.6.29 and it "explodes" to
+over 100 when a few processes begin utillizing the disk while serving
+files over NFS. "dstat" reports a read-out of 10-20MB/s from disk which
+is close to what I'd expect. and the system delivers around 600-800MB/s
+over the NIC in this workload.
+
+
+Sorry that I cannot be more specific, I can answer questions on a
+running 2.6.31 kernel, but I cannot reboot the system back to 2.6.29
+just to test since the system is "in production". I tried 2.6.30 and it
+has the same pattern as 2.6.31, so based on that fragile evidence the
+change should be found in between 2.6.29 and 2.6.30. I hope a "wague"
+report is better than none.
+
+-- 
+Jesper
