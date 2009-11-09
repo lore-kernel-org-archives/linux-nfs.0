@@ -1,81 +1,51 @@
-From: Jeff Layton <jlayton@redhat.com>
-Subject: Re: [PATCH] proc: revalidate dentry returned by
- proc_pid_follow_link
-Date: Mon, 9 Nov 2009 08:11:31 -0500
-Message-ID: <20091109081131.7ebfde76@tlielax.poochiereds.net>
-References: <1257513594-31071-1-git-send-email-jlayton@redhat.com>
-	<20091106203601.GD27751@shareable.org>
-	<20091106160612.4cd05e76@tlielax.poochiereds.net>
-	<m17hu1miea.fsf@fess.ebiederm.org>
-	<20091108201237.79af5cac@tupile.poochiereds.net>
-	<m1hbt49xxs.fsf@fess.ebiederm.org>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: [RFC][PATCH] client cannot get lock after other client got
+ lock occur network partition.
+Date: Mon, 09 Nov 2009 08:16:48 -0500
+Message-ID: <1257772609.3754.11.camel@heimdal.trondhjem.org>
+References: <4AF7DEAB.20202@cn.fujitsu.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Cc: Jamie Lokier <jamie@shareable.org>, linux-kernel@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-	adobriyan@gmail.com, viro@ZenIV.linux.org.uk
-To: ebiederm@xmission.com (Eric W. Biederman)
+Content-Type: text/plain
+Cc: NFSv3 list <linux-nfs@vger.kernel.org>,
+	"J. Bruce Fields" <bfields@fieldses.org>
+To: Mi Jinlong <mijinlong@cn.fujitsu.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:58051 "EHLO mx1.redhat.com"
+Received: from mail-out2.uio.no ([129.240.10.58]:53118 "EHLO mail-out2.uio.no"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754664AbZKINLc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 9 Nov 2009 08:11:32 -0500
-In-Reply-To: <m1hbt49xxs.fsf-+imSwln9KH6u2/kzUuoCbdi2O/JbrIOy@public.gmane.org>
+	id S1754492AbZKINQr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 9 Nov 2009 08:16:47 -0500
+In-Reply-To: <4AF7DEAB.20202@cn.fujitsu.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sun, 08 Nov 2009 19:30:55 -0800
-ebiederm@xmission.com (Eric W. Biederman) wrote:
-
-> Jeff Layton <jlayton@redhat.com> writes:
+On Mon, 2009-11-09 at 17:19 +0800, Mi Jinlong wrote:
+> Hi Trond et all
 > 
-> >> Hmm.  Looking at the code I get the impression that a file bind mount
-> >> will have exactly the same problem.
-> >> 
-> >> Can you confirm.
-> >> 
-> >> If file bind mounts also have this problem a bugfix to to just
-> >> proc seems questionable.
-> >> 
-> >
-> > I'm not sure I understand what you mean by "file bind mount". Is that
-> > something like mounting with "-o loop" ?
+> There is a bug, when i test NFSv3 file's lock as followed:
 > 
-> # cd /tmp
-> # echo foo > foo
-> # echo bar > bar
-> # mount --bind foo bar
-> # cat bar
-> foo
-> #
+> Step1: ClientA and ClientB open a same nfs file;
+> Step2: ClientA locks file with write lock, it's ok;
+> Step3: Cut off the network between ClientA and Server;
+> Step4: ClientB can not acquire for write lock successful forever, even though
+>        the network partition larger than NLM_HOST_EXPIRE.
 > 
-> > I'm not at all opposed to fixing this in a more broad fashion, but as
-> > best I can tell, the only place that LAST_BIND is used is in procfs.
+> As i know, If use NFSv4, step4 can success after LEASE_TIME.
 > 
-> proc does appear to be the only user of LAST_BIND.  With a file bind
-> mount we can get to the same ok: label without a revalidate.  The
-> difference is that we came from __follow_mount instead of follow_link.
+> Is it necessary to fix NFSv3 ? 
 > 
-> At least that is how I read the code.
-> 
+> The attached patch can make this case OK, but i am not sure it's good.
 
-Thanks.
+Unfortunately, NLM (the NFSv2 and v3 locking protocol) is not lease
+based, so the above scenario is truly an unfixable one.
 
-Yes, you're correct. That scenario does seem to have a similar problem.
-I'm not quite sure yet how to fix it there yet.
+The problem with applying your patch is, in essence, that we risk
+breaking another scenario where a client grabs a lock, and then holds it
+for a while.
+The reason this breaks is that there is no equivalent in the NLM
+protocol of the NFSv4 RENEW operation to tell the server that "This
+client is still alive and wants you to keep its state".
 
-It's easy enough to force a d_revalidate at a higher level. The tricky
-bit is what to do when that returns 0 or an error. When I spoke to Al
-about this, he suggested returning -ESTALE from the follow_link routine
-if that occurs. That would force LOOKUP_REVAL to get set and cause the
-whole chain of dentries to be revalidated back up to the root (if
-necessary).
+Cheers,
+  Trond
 
-That's a little more difficult in the file bind mount case as I don't
-see where it calls link_path_walk at all and hence can't really deal
-with an ESTALE on a reval properly. I'll need to study this code some
-more to see what the right fix is. If you (or anyone) has a suggestion,
-I'd love to hear it.
 
--- 
-Jeff Layton <jlayton@redhat.com>
