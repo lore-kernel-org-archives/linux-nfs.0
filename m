@@ -1,505 +1,601 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 08/29] statd: Use the new nsm_ file.c calls in rpc.statd
-Date: Tue, 10 Nov 2009 16:57:38 -0500
-Message-ID: <20091110215738.23822.22510.stgit@matisse.1015granger.net>
+Subject: [PATCH 09/29] libnsm.a: Add RPC construction helper functions
+Date: Tue, 10 Nov 2009 16:57:47 -0500
+Message-ID: <20091110215747.23822.97141.stgit@matisse.1015granger.net>
 References: <20091110215447.23822.15275.stgit@matisse.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org, Chris.Mason@oracle.com
 To: steved@redhat.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet12.oracle.com ([148.87.113.124]:48531 "EHLO
-	rgminet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757936AbZKJV5y (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 10 Nov 2009 16:57:54 -0500
+Received: from acsinet11.oracle.com ([141.146.126.233]:44168 "EHLO
+	acsinet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758473AbZKJV6V (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 10 Nov 2009 16:58:21 -0500
 In-Reply-To: <20091110215447.23822.15275.stgit-RytpoXr2tKZ9HhUboXbp9zCvJB+x5qRC@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Replace open-coded accesses to on-disk NSM information in rpc.statd
-with calls to the new API.
+To manage concurrency, both statd and sm-notify construct raw RPC
+requests in socket buffers, and use a minimal request scheduler
+to send these requests and manage replies.  Both statd and sm-notify
+open code the RPC request construction.
+
+Introduce helper functions that can construct and send raw
+NSMPROC_NOTIFY, NLM downcalls, and portmapper calls over a datagram
+socket, and receive and parse their replies.  Support for IPv6 and
+RPCB_GETADDR is featured.  This code (and the IPv6 support it
+introduces) can now be shared by statd and sm-notify, eliminating
+code and bug duplication.
+
+This implementation is based on what's in utils/statd/rmtcall.c now,
+but is wrapped up in a nice API and includes extra error checking.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- utils/statd/misc.c    |   24 --------
- utils/statd/monitor.c |  140 ++++++++++++++++---------------------------------
- utils/statd/statd.c   |  116 ++++-------------------------------------
- utils/statd/statd.h   |   23 --------
- 4 files changed, 57 insertions(+), 246 deletions(-)
+ support/include/nsm.h   |   25 ++
+ support/nsm/Makefile.am |    2 
+ support/nsm/rpc.c       |  505 +++++++++++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 531 insertions(+), 1 deletions(-)
+ create mode 100644 support/nsm/rpc.c
 
-diff --git a/utils/statd/misc.c b/utils/statd/misc.c
-index 44af30e..f2a086f 100644
---- a/utils/statd/misc.c
-+++ b/utils/statd/misc.c
-@@ -49,27 +49,3 @@ xstrdup (const char *string)
+diff --git a/support/include/nsm.h b/support/include/nsm.h
+index 594f0d9..96b23f2 100644
+--- a/support/include/nsm.h
++++ b/support/include/nsm.h
+@@ -59,4 +59,29 @@ extern int	nsm_insert_monitored_host(const char *hostname,
+ extern void	nsm_delete_monitored_host(const char *hostname);
+ extern void	nsm_delete_notified_host(const char *hostname);
  
-   return (result);
- }
--
--
--/*
-- * Unlinking a file.
-- */
--void
--xunlink (char *path, char *host)
--{
--	char *tozap;
--
--	tozap = malloc(strlen(path)+strlen(host)+2);
--	if (tozap == NULL) {
--		xlog(L_ERROR, "xunlink: malloc failed: errno %d (%m)", errno);
--		return;
--	}
--	sprintf (tozap, "%s/%s", path, host);
--
--	if (unlink (tozap) == -1)
--		xlog(L_ERROR, "unlink (%s): %m", tozap);
--	else
--		xlog(D_GENERAL, "Unlinked %s", tozap);
--
--	free(tozap);
--}
-diff --git a/utils/statd/monitor.c b/utils/statd/monitor.c
-index 09f03da..8d9f663 100644
---- a/utils/statd/monitor.c
-+++ b/utils/statd/monitor.c
-@@ -23,14 +23,13 @@
++/* rpc.c */
++
++#define NSM_MAXMSGSIZE	(2048 / sizeof(uint32_t))
++
++extern uint32_t nsm_xmit_getport(const int sock,
++			const struct sockaddr_in *sin,
++			const unsigned long program,
++			const unsigned long version);
++extern uint32_t nsm_xmit_getaddr(const int sock,
++			const struct sockaddr_in6 *sin6,
++			const rpcprog_t program, const rpcvers_t version);
++extern uint32_t nsm_xmit_rpcbind(const int sock, const struct sockaddr *sap,
++			const rpcprog_t program, const rpcvers_t version);
++extern uint32_t nsm_xmit_notify(const int sock, const struct sockaddr *sap,
++			const socklen_t salen, const rpcprog_t program,
++			const char *mon_name, const int state);
++extern uint32_t nsm_xmit_nlmcall(const int sock, const struct sockaddr *sap,
++			const socklen_t salen, const struct mon *mon,
++			const int state);
++extern uint32_t nsm_parse_reply(XDR *xdrs);
++extern unsigned long
++		nsm_recv_getport(XDR *xdrs);
++extern uint16_t nsm_recv_getaddr(XDR *xdrs);
++extern uint16_t nsm_recv_rpcbind(const int family, XDR *xdrs);
++
+ #endif	/* !_NFS_UTILS_SUPPORT_NSM_H */
+diff --git a/support/nsm/Makefile.am b/support/nsm/Makefile.am
+index e359a43..2038e68 100644
+--- a/support/nsm/Makefile.am
++++ b/support/nsm/Makefile.am
+@@ -10,7 +10,7 @@ GENFILES	= $(GENFILES_CLNT) $(GENFILES_SVC) $(GENFILES_XDR) $(GENFILES_H)
+ EXTRA_DIST	= sm_inter.x
  
- #include "rpcmisc.h"
- #include "misc.h"
+ noinst_LIBRARIES = libnsm.a
+-libnsm_a_SOURCES = $(GENFILES) file.c
++libnsm_a_SOURCES = $(GENFILES) file.c rpc.c
+ 
+ BUILT_SOURCES = $(GENFILES)
+ 
+diff --git a/support/nsm/rpc.c b/support/nsm/rpc.c
+new file mode 100644
+index 0000000..a9d3a62
+--- /dev/null
++++ b/support/nsm/rpc.c
+@@ -0,0 +1,505 @@
++/*
++ * Copyright 2009 Oracle.  All rights reserved.
++ *
++ * This file is part of nfs-utils.
++ *
++ * nfs-utils is free software; you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License as published by
++ * the Free Software Foundation; either version 2 of the License, or
++ * (at your option) any later version.
++ *
++ * nfs-utils is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License
++ * along with nfs-utils.  If not, see <http://www.gnu.org/licenses/>.
++ */
++
++/*
++ * NSM for Linux.
++ *
++ * Instead of using ONC or TI RPC library calls, statd constructs
++ * RPC calls directly in socket buffers.  This allows a single
++ * socket to be concurrently shared among several different RPC
++ * programs and versions using a simple RPC request dispatcher.
++ *
++ * This file contains the details of RPC header and call
++ * construction and reply parsing, and a method for creating a
++ * socket for use with these functions.
++ */
++
++#ifdef HAVE_CONFIG_H
++#include <config.h>
++#endif	/* HAVE_CONFIG_H */
++
++#include <time.h>
++#include <netdb.h>
++#include <string.h>
++#include <unistd.h>
++#include <fcntl.h>
++
++#include <sys/types.h>
++#include <sys/socket.h>
++#include <sys/time.h>
++#include <netinet/in.h>
++#include <net/if.h>
++#include <arpa/inet.h>
++
++#include <rpc/rpc.h>
++#include <rpc/pmap_prot.h>
++#include <rpc/pmap_rmt.h>
++
++#ifdef HAVE_LIBTIRPC
++#include <netconfig.h>
++#include <rpc/rpcb_prot.h>
++#endif	/* HAVE_LIBTIRPC */
++
++#include "xlog.h"
++#include "nfsrpc.h"
 +#include "nsm.h"
- #include "statd.h"
- #include "notlist.h"
- #include "ha-callout.h"
- 
- notify_list *		rtnl = NULL;	/* Run-time notify list. */
- 
--#define LINELEN (4*(8+1)+SM_PRIV_SIZE*2+1)
--
- /*
-  * Reject requests from non-loopback addresses in order
-  * to prevent attack described in CERT CA-99.05.
-@@ -60,11 +59,12 @@ sm_mon_1_svc(struct mon *argp, struct svc_req *rqstp)
- 	char		*mon_name = argp->mon_id.mon_name,
- 			*my_name  = argp->mon_id.my_id.my_name;
- 	struct my_id	*id = &argp->mon_id.my_id;
--	char            *path;
- 	char		*cp;
--	int             fd;
- 	notify_list	*clnt;
--	struct in_addr	my_addr;
-+	struct sockaddr_in my_addr = {
-+		.sin_family		= AF_INET,
-+		.sin_addr.s_addr	= htonl(INADDR_LOOPBACK),
-+	};
- 	char		*dnsname;
- 	struct hostent	*hostinfo = NULL;
- 
-@@ -80,7 +80,6 @@ sm_mon_1_svc(struct mon *argp, struct svc_req *rqstp)
- 	 */
- 	if (!caller_is_localhost(rqstp))
- 		goto failure;
--	my_addr.s_addr = htonl(INADDR_LOOPBACK);
- 
- 	/* 2.	Reject any registrations for non-lockd services.
- 	 *
-@@ -172,7 +171,7 @@ sm_mon_1_svc(struct mon *argp, struct svc_req *rqstp)
- 		goto failure;
- 	}
- 
--	NL_ADDR(clnt) = my_addr;
-+	NL_ADDR(clnt) = my_addr.sin_addr;
- 	NL_MY_PROG(clnt) = id->my_prog;
- 	NL_MY_VERS(clnt) = id->my_vers;
- 	NL_MY_PROC(clnt) = id->my_proc;
-@@ -182,39 +181,15 @@ sm_mon_1_svc(struct mon *argp, struct svc_req *rqstp)
- 	/*
- 	 * Now, Create file on stable storage for host.
- 	 */
--
--	path=xmalloc(strlen(SM_DIR)+strlen(dnsname)+2);
--	sprintf(path, "%s/%s", SM_DIR, dnsname);
--	if ((fd = open(path, O_WRONLY|O_SYNC|O_CREAT|O_APPEND,
--		       S_IRUSR|S_IWUSR)) < 0) {
--		/* Didn't fly.  We won't monitor. */
--		xlog(L_ERROR, "creat(%s) failed: %m", path);
-+	if (!nsm_insert_monitored_host(dnsname,
-+					(struct sockaddr *)&my_addr, argp)) {
- 		nlist_free(NULL, clnt);
--		free(path);
- 		goto failure;
- 	}
--	{
--		char buf[LINELEN + 1 + SM_MAXSTRLEN*2 + 4];
--		char *e;
--		int i;
--		e = buf + sprintf(buf, "%08x %08x %08x %08x ",
--				  my_addr.s_addr, id->my_prog,
--				  id->my_vers, id->my_proc);
--		for (i=0; i<SM_PRIV_SIZE; i++)
--			e += sprintf(e, "%02x", 0xff & (argp->priv[i]));
--		if (e+1-buf != LINELEN) abort();
--		e += sprintf(e, " %s %s\n", mon_name, my_name);
--		if (write(fd, buf, e-buf) != (e-buf)) {
--			xlog_warn("writing to %s failed: errno %d (%s)",
--				path, errno, strerror(errno));
--		}
--	}
- 
--	free(path);
- 	/* PRC: do the HA callout: */
- 	ha_callout("add-client", mon_name, my_name, -1);
- 	nlist_insert(&rtnl, clnt);
--	close(fd);
- 	xlog(D_GENERAL, "MONITORING %s for %s", mon_name, my_name);
-  success:
- 	result.res_stat = STAT_SUCC;
-@@ -236,71 +211,46 @@ failure:
- 	return (&result);
- }
- 
--void load_state(void)
-+static unsigned int
-+load_one_host(const char *hostname, const struct sockaddr *sap,
-+		const struct mon *mon,
-+		__attribute__((unused)) const time_t timestamp)
- {
--	DIR *d;
--	struct dirent *de;
--	char buf[LINELEN + 1 + SM_MAXSTRLEN + 2];
--
--	d = opendir(SM_DIR);
--	if (!d)
--		return;
--	while ((de = readdir(d))) {
--		char *path;
--		FILE *f;
--		int p;
--
--		if (de->d_name[0] == '.')
--			continue;
--		path = xmalloc(strlen(SM_DIR)+strlen(de->d_name)+2);
--		sprintf(path, "%s/%s", SM_DIR, de->d_name);
--		f = fopen(path, "r");
--		free(path);
--		if (f == NULL)
--			continue;
--		while (fgets(buf, sizeof(buf), f) != NULL) {
--			int addr, proc, prog, vers;
--			char priv[SM_PRIV_SIZE];
--			char *monname, *myname;
--			char *b;
--			int i;
--			notify_list	*clnt;
--
--			buf[sizeof(buf)-1] = 0;
--			b = strchr(buf, '\n');
--			if (b) *b = 0;
--			sscanf(buf, "%x %x %x %x ",
--			       &addr, &prog, &vers, &proc);
--			b = buf+36;
--			for (i=0; i<SM_PRIV_SIZE; i++) {
--				sscanf(b, "%2x", &p);
--				priv[i] = p;
--				b += 2;
--			}
--			b++;
--			monname = b;
--			while (*b && *b != ' ') b++;
--			if (*b) *b++ = '\0';
--			while (*b == ' ') b++;
--			myname = b;
--			clnt = nlist_new(myname, monname, 0);
--			if (!clnt)
--				break;
--			NL_ADDR(clnt).s_addr = addr;
--			NL_MY_PROG(clnt) = prog;
--			NL_MY_VERS(clnt) = vers;
--			NL_MY_PROC(clnt) = proc;
--			clnt->dns_name = xstrdup(de->d_name);
--			memcpy(NL_PRIV(clnt), priv, SM_PRIV_SIZE);
--			nlist_insert(&rtnl, clnt);
--		}
--		fclose(f);
-+	const struct sockaddr_in *sin = (const struct sockaddr_in *)sap;
-+	notify_list *clnt;
++#include "sm_inter.h"
 +
-+	clnt = nlist_new(mon->mon_id.my_id.my_name,
-+				mon->mon_id.mon_name, 0);
-+	if (clnt == NULL)
++/*
++ * Returns a fresh XID appropriate for RPC over UDP -- never zero.
++ */
++static uint32_t
++nsm_next_xid(void)
++{
++	static uint32_t nsm_xid = 0;
++	struct timeval now;
++
++	if (nsm_xid == 0) {
++		(void)gettimeofday(&now, NULL);
++		nsm_xid = getpid() ^ now.tv_sec ^ now.tv_usec;
++	}
++
++	return nsm_xid++;
++}
++
++/*
++ * Select a fresh XID and construct an RPC header in @mesg.
++ * Always use AUTH_NULL credentials and verifiers.
++ *
++ * Returns the new XID.
++ */
++static uint32_t
++nsm_init_rpc_header(const rpcprog_t program, const rpcvers_t version,
++			const rpcproc_t procedure, struct rpc_msg *mesg)
++{
++	struct call_body *cb = &mesg->rm_call;
++
++	mesg->rm_xid = nsm_next_xid();
++	mesg->rm_direction = CALL;
++
++	cb->cb_rpcvers = RPC_MSG_VERSION;
++	cb->cb_prog = program;
++	cb->cb_vers = version;
++	cb->cb_proc = procedure;
++
++	cb->cb_cred.oa_flavor = AUTH_NULL;
++	cb->cb_cred.oa_base = (caddr_t) NULL;
++	cb->cb_cred.oa_length = 0;
++	cb->cb_verf.oa_flavor = AUTH_NULL;
++	cb->cb_verf.oa_base = (caddr_t) NULL;
++	cb->cb_verf.oa_length = 0;
++
++	return mesg->rm_xid;
++}
++
++/*
++ * Send a completed RPC call on a socket.
++ *
++ * Returns 1 if all the bytes were sent successfully; otherwise
++ * zero if any error occurred.
++ */
++static int
++nsm_rpc_sendto(const int sock, const struct sockaddr *sap,
++			const socklen_t salen, XDR *xdrs, void *buf)
++{
++	const unsigned int len = xdr_getpos(xdrs);
++	ssize_t err;
++
++	err = sendto(sock, buf, len, 0, sap, salen);
++	if ((err < 0) || ((size_t)err != len)) {
++		xlog(L_ERROR, "%s: sendto failed: %m", __func__);
 +		return 0;
-+
-+	clnt->dns_name = strdup(hostname);
-+	if (clnt->dns_name == NULL) {
-+		nlist_free(NULL, clnt);
-+		return 0;
- 	}
--	closedir(d);
--}
- 
-+	xlog(D_GENERAL, "Adding record for %s to the monitor list...",
-+			hostname);
-+
-+	NL_ADDR(clnt) = sin->sin_addr;
-+	NL_MY_PROG(clnt) = mon->mon_id.my_id.my_prog;
-+	NL_MY_VERS(clnt) = mon->mon_id.my_id.my_vers;
-+	NL_MY_PROC(clnt) = mon->mon_id.my_id.my_proc;
-+	memcpy(NL_PRIV(clnt), mon->priv, SM_PRIV_SIZE);
-+
-+	nlist_insert(&rtnl, clnt);
++	}
 +	return 1;
 +}
- 
-+void load_state(void)
++
++/**
++ * nsm_xmit_getport - post a PMAP_GETPORT call on a socket descriptor
++ * @sock: datagram socket descriptor
++ * @sin: pointer to AF_INET socket address of server
++ * @program: RPC program number to query
++ * @version: RPC version number to query
++ *
++ * Send a PMAP_GETPORT call to the portmap daemon at @sin using
++ * socket descriptor @sock.  This request queries the RPC program
++ * [program, version, IPPROTO_UDP].
++ *
++ * NB: PMAP_GETPORT works only for IPv4 hosts.  This implementation
++ *     works only over UDP, and queries only UDP registrations.
++ *
++ * Returns the XID of the call, or zero if an error occurred.
++ */
++uint32_t
++nsm_xmit_getport(const int sock, const struct sockaddr_in *sin,
++			const unsigned long program,
++			const unsigned long version)
 +{
-+	unsigned int count;
- 
-+	count = nsm_load_monitor_list(load_one_host);
-+	if (count)
-+		xlog(D_GENERAL, "Loaded %u previously monitored hosts");
++	struct pmap parms = {
++		.pm_prog	= program,
++		.pm_vers	= version,
++		.pm_prot	= IPPROTO_UDP,
++		.pm_port	= 0,
++	};
++	unsigned int msgbuf[NSM_MAXMSGSIZE];
++	struct rpc_msg mesg;
++	uint32_t xid;
++	int err = 0;
++	XDR xdr;
++
++	xlog(D_CALL, "Sending PMAP_GETPORT for %u, %u, udp", program, version);
++
++	xid = nsm_init_rpc_header(PMAPPROG, PMAPVERS,
++					(rpcproc_t)PMAPPROC_GETPORT, &mesg);
++
++	xdrmem_create(&xdr, (caddr_t)msgbuf, sizeof(msgbuf), XDR_ENCODE);
++
++	if (xdr_callmsg(&xdr, &mesg) && xdr_pmap(&xdr, &parms)) {
++		struct sockaddr_in addr = *sin;
++
++		addr.sin_port = htons((uint16_t)PMAPPORT);
++		err = nsm_rpc_sendto(sock, (struct sockaddr *)&addr,
++					(socklen_t)sizeof(addr), &xdr, msgbuf);
++	} else
++		xlog(L_ERROR, "%s: can't encode PMAP_GETPORT call", __func__);
++
++	xdr_destroy(&xdr);
++
++	return err? xid : 0;
 +}
- 
- /*
-  * Services SM_UNMON requests.
-@@ -359,7 +309,7 @@ sm_unmon_1_svc(struct mon_id *argp, struct svc_req *rqstp)
- 			/* PRC: do the HA callout: */
- 			ha_callout("del-client", mon_name, my_name, -1);
- 
--			xunlink(SM_DIR, clnt->dns_name);
-+			nsm_delete_monitored_host(clnt->dns_name);
- 			nlist_free(&rtnl, clnt);
- 
- 			return (&result);
-@@ -413,7 +363,7 @@ sm_unmon_all_1_svc(struct my_id *argp, struct svc_req *rqstp)
- 			temp = NL_NEXT(clnt);
- 			/* PRC: do the HA callout: */
- 			ha_callout("del-client", mon_name, my_name, -1);
--			xunlink(SM_DIR, clnt->dns_name);
-+			nsm_delete_monitored_host(clnt->dns_name);
- 			nlist_free(&rtnl, clnt);
- 			++count;
- 			clnt = temp;
-diff --git a/utils/statd/statd.c b/utils/statd/statd.c
-index 6148952..72c9b41 100644
---- a/utils/statd/statd.c
-+++ b/utils/statd/statd.c
-@@ -25,25 +25,15 @@
- #include <sys/resource.h>
- #include <sys/wait.h>
- #include <grp.h>
 +
- #include "statd.h"
- #include "nfslib.h"
-+#include "nsm.h"
- 
- /* Socket operations */
- #include <sys/types.h>
- #include <sys/socket.h>
- 
--/* Added to enable specification of state directory path at run-time
-- * j_carlos_gomez@yahoo.com
-- */
--
--char * DIR_BASE = DEFAULT_DIR_BASE;
--
--char *  SM_DIR = DEFAULT_SM_DIR;
--char *  SM_BAK_DIR =  DEFAULT_SM_BAK_DIR;
--char *  SM_STAT_PATH = DEFAULT_SM_STAT_PATH;
--
--/* ----- end of state directory path stuff ------- */
--
- int	run_mode = 0;		/* foreground logging mode */
- 
- /* LH - I had these local to main, but it seemed silly to have 
-@@ -73,7 +63,6 @@ static struct option longopts[] =
- };
- 
- extern void sm_prog_1 (struct svc_req *, register SVCXPRT *);
--static void load_state_number(void);
- 
- #ifdef SIMULATIONS
- extern void simulator (int, char **);
-@@ -190,38 +179,6 @@ static void truncate_pidfile(void)
- 	}
- }
- 
--static void drop_privs(void)
--{
--	struct stat st;
--
--	if (stat(SM_DIR, &st) == -1 &&
--	    stat(DIR_BASE, &st) == -1) {
--		st.st_uid = 0;
--		st.st_gid = 0;
--	}
--
--	if (st.st_uid == 0) {
--		xlog_warn("Running as 'root'.  "
--			"chown %s to choose different user\n", SM_DIR);
--		return;
--	}
--	/* better chown the pid file before dropping, as if it
--	 * if over nfs we might loose access
--	 */
--	if (pidfd >= 0) {
--		if (fchown(pidfd, st.st_uid, st.st_gid) < 0) {
--			xlog(L_ERROR, "Unable to change owner of %s: %d (%s)",
--					SM_DIR, strerror (errno));
--		}
--	}
--	setgroups(0, NULL);
--	if (setgid(st.st_gid) == -1
--	    || setuid(st.st_uid) == -1) {
--		xlog(L_ERROR, "Fail to drop privileges");
--		exit(1);
--	}
--}
--
- static void run_sm_notify(int outport)
- {
- 	char op[20];
-@@ -316,34 +273,8 @@ int main (int argc, char **argv)
- 			MY_NAME = xstrdup(optarg);
- 			break;
- 		case 'P':
--
--			if ((DIR_BASE = xstrdup(optarg)) == NULL) {
--				fprintf(stderr, "%s: xstrdup(%s) failed!\n",
--					argv[0], optarg);
-+			if (!nsm_setup_pathnames(argv[0], optarg))
- 				exit(1);
--			}
--
--			SM_DIR = xmalloc(strlen(DIR_BASE) + 1 + sizeof("sm"));
--			SM_BAK_DIR = xmalloc(strlen(DIR_BASE) + 1 + sizeof("sm.bak"));
--			SM_STAT_PATH = xmalloc(strlen(DIR_BASE) + 1 + sizeof("state"));
--
--			if ((SM_DIR == NULL) 
--			    || (SM_BAK_DIR == NULL) 
--			    || (SM_STAT_PATH == NULL)) {
--
--				fprintf(stderr, "%s: xmalloc() failed!\n",
--					argv[0]);
--				exit(1);
--			}
--			if (DIR_BASE[strlen(DIR_BASE)-1] == '/') {
--				sprintf(SM_DIR, "%ssm", DIR_BASE );
--				sprintf(SM_BAK_DIR, "%ssm.bak", DIR_BASE );
--				sprintf(SM_STAT_PATH, "%sstate", DIR_BASE );
--			} else {
--				sprintf(SM_DIR, "%s/sm", DIR_BASE );
--				sprintf(SM_BAK_DIR, "%s/sm.bak", DIR_BASE );
--				sprintf(SM_STAT_PATH, "%s/state", DIR_BASE );
--			}
- 			break;
- 		case 'H': /* PRC: specify the ha-callout program */
- 			if ((ha_callout_prog = xstrdup(optarg)) == NULL) {
-@@ -421,10 +352,6 @@ int main (int argc, char **argv)
- 		/* Child.	*/
- 		close(pipefds[0]);
- 		setsid ();
--		if (chdir (DIR_BASE) == -1) {
--			perror("statd: Could not chdir");
--			exit(1);
--		}
- 
- 		while (pipefds[1] <= 2) {
- 			pipefds[1] = dup(pipefds[1]);
-@@ -490,7 +417,13 @@ int main (int argc, char **argv)
- 	 * pass on any SM_NOTIFY that arrives
- 	 */
- 	load_state();
--	load_state_number();
++/**
++ * nsm_xmit_getaddr - post an RPCB_GETADDR call on a socket descriptor
++ * @sock: datagram socket descriptor
++ * @sin: pointer to AF_INET6 socket address of server
++ * @program: RPC program number to query
++ * @version: RPC version number to query
++ *
++ * Send an RPCB_GETADDR call to the rpcbind daemon at @sap using
++ * socket descriptor @sock.  This request queries the RPC program
++ * [program, version, "udp6"].
++ *
++ * NB: RPCB_GETADDR works for both IPv4 and IPv6 hosts.  This
++ *     implementation works only over UDP and AF_INET6, and queries
++ *     only "udp6" registrations.
++ *
++ * Returns the XID of the call, or zero if an error occurred.
++ */
++#ifdef HAVE_LIBTIRPC
++uint32_t
++nsm_xmit_getaddr(const int sock, const struct sockaddr_in6 *sin6,
++			const rpcprog_t program, const rpcvers_t version)
++{
++	struct rpcb parms = {
++		.r_prog		= program,
++		.r_vers		= version,
++		.r_netid	= "udp6",
++		.r_owner	= "",
++	};
++	unsigned int msgbuf[NSM_MAXMSGSIZE];
++	struct rpc_msg mesg;
++	uint32_t xid;
++	int err = 0;
++	XDR xdr;
 +
-+	MY_STATE = nsm_get_state(0);
-+	if (MY_STATE == 0)
-+		exit(1);
-+	xlog(D_GENERAL, "Local NSM state number: %d", MY_STATE);
-+	nsm_update_kernel_state(MY_STATE);
++	xlog(D_CALL, "Sending RPCB_GETADDR for %u, %u, udp6", program, version);
 +
- 	pmap_unset (SM_PROG, SM_VERS);
- 
- 	/* this registers both UDP and TCP services */
-@@ -507,7 +440,8 @@ int main (int argc, char **argv)
- 		pipefds[1] = -1;
- 	}
- 
--	drop_privs();
-+	if (!nsm_drop_privileges(pidfd))
-+		exit(1);
- 
- 	for (;;) {
- 		/*
-@@ -536,29 +470,3 @@ int main (int argc, char **argv)
- 	}
- 	return 0;
- }
--
--static void
--load_state_number(void)
--{
--	int fd;
--	const char *file = "/proc/sys/fs/nfs/nsm_local_state";
--
--	if ((fd = open(SM_STAT_PATH, O_RDONLY)) == -1)
--		return;
--
--	if (read(fd, &MY_STATE, sizeof(MY_STATE)) != sizeof(MY_STATE)) {
--		xlog_warn("Unable to read state from '%s': errno %d (%s)",
--				SM_STAT_PATH, errno, strerror(errno));
--	}
--	close(fd);
--	fd = open(file, O_WRONLY);
--	if (fd >= 0) {
--		char buf[20];
--		snprintf(buf, sizeof(buf), "%d", MY_STATE);
--		if (write(fd, buf, strlen(buf)) != strlen(buf))
--			xlog_warn("Writing to '%s' failed: errno %d (%s)",
--				file, errno, strerror(errno));
--		close(fd);
--	}
--
--}
-diff --git a/utils/statd/statd.h b/utils/statd/statd.h
-index 085f32d..542a877 100644
---- a/utils/statd/statd.h
-+++ b/utils/statd/statd.h
-@@ -14,28 +14,6 @@
- #include "xlog.h"
- 
- /*
-- * Paths and filenames.
-- */
--#if defined(NFS_STATEDIR)
--# define DEFAULT_DIR_BASE	NFS_STATEDIR "/"
--#else
--# define DEFAULT_DIR_BASE	"/var/lib/nfs/"
--#endif
--
--#define DEFAULT_SM_DIR		DEFAULT_DIR_BASE "sm"
--#define DEFAULT_SM_BAK_DIR	DEFAULT_DIR_BASE "sm.bak"
--#define DEFAULT_SM_STAT_PATH	DEFAULT_DIR_BASE "state"
--
--/* Added to support run-time specification of state directory path.
-- * j_carlos_gomez@yahoo.com
-- */
--
--extern char * DIR_BASE;
--extern char *  SM_DIR;
--extern char *  SM_BAK_DIR;
--extern char *  SM_STAT_PATH;
--
--/*
-  * Status definitions.
-  */
- #define STAT_FAIL	stat_fail
-@@ -53,7 +31,6 @@ extern int	process_notify_list(void);
- extern int	process_reply(FD_SET_TYPE *);
- extern char *	xstrdup(const char *);
- extern void *	xmalloc(size_t);
--extern void	xunlink (char *, char *);
- extern void	load_state(void);
- 
- /*
++	xid = nsm_init_rpc_header(RPCBPROG, RPCBVERS,
++					(rpcproc_t)RPCBPROC_GETADDR, &mesg);
++
++	parms.r_addr = nfs_sockaddr2universal((struct sockaddr *)sin6);
++	if (parms.r_addr == NULL) {
++		xlog(L_ERROR, "%s: can't encode socket address", __func__);
++		return 0;
++	}
++
++	xdrmem_create(&xdr, (caddr_t)msgbuf, sizeof(msgbuf), XDR_ENCODE);
++
++	if (xdr_callmsg(&xdr, &mesg) && xdr_rpcb(&xdr, &parms)) {
++		struct sockaddr_in6 addr = *sin6;
++
++		addr.sin6_port = htons((uint16_t)PMAPPORT);
++		err = nsm_rpc_sendto(sock, (struct sockaddr *)&addr,
++					(socklen_t)sizeof(addr), &xdr, msgbuf);
++	} else
++		xlog(L_ERROR, "%s: can't encode RPCB_GETADDR call", __func__);
++
++	xdr_destroy(&xdr);
++	free(parms.r_addr);
++
++	return err? xid : 0;
++}
++#else	/* !HAVE_LIBTIRPC */
++uint32_t
++nsm_xmit_getaddr(const int sock __attribute__((unused)),
++			const struct sockaddr_in6 *sin6 __attribute__((unused)),
++			const rpcprog_t program __attribute__((unused)),
++			const rpcvers_t version __attribute__((unused)))
++{
++	return 0;
++}
++#endif	/* !HAVE_LIBTIRPC */
++
++/**
++ * nsm_xmit_rpcbind - post an rpcbind request
++ * @sock: datagram socket descriptor
++ * @sap: pointer to socket address of server
++ * @program: RPC program number to query
++ * @version: RPC version number to query
++ *
++ * Send an rpcbind query to the rpcbind daemon at @sap using
++ * socket descriptor @sock.
++ *
++ * NB: This implementation works only over UDP, but can query IPv4 or IPv6
++ *     hosts.  It queries only UDP registrations.
++ *
++ * Returns the XID of the call, or zero if an error occurred.
++ */
++uint32_t
++nsm_xmit_rpcbind(const int sock, const struct sockaddr *sap,
++			const rpcprog_t program, const rpcvers_t version)
++{
++	switch (sap->sa_family) {
++	case AF_INET:
++		return nsm_xmit_getport(sock, (const struct sockaddr_in *)sap,
++						program, version);
++	case AF_INET6:
++		return nsm_xmit_getaddr(sock, (const struct sockaddr_in6 *)sap,
++						program, version);
++	}
++	return 0;
++}
++
++/**
++ * nsm_xmit_notify - post an NSMPROC_NOTIFY call on a socket descriptor
++ * @sock: datagram socket descriptor
++ * @sap: pointer to socket address of peer to notify (port already filled in)
++ * @salen: length of socket address
++ * @program: RPC program number to use
++ * @mon_name: mon_name of local peer (ie the rebooting system)
++ * @state: state of local peer
++ *
++ * Send an NSMPROC_NOTIFY call to the peer at @sap using socket descriptor @sock.
++ * This request notifies the peer that we have rebooted.
++ *
++ * NB: This implementation works only over UDP, but supports both AF_INET
++ *     and AF_INET6.
++ *
++ * Returns the XID of the call, or zero if an error occurred.
++ */
++uint32_t
++nsm_xmit_notify(const int sock, const struct sockaddr *sap,
++			const socklen_t salen, const rpcprog_t program,
++			const char *mon_name, const int state)
++{
++	struct stat_chge state_change = {
++		.mon_name	= strdup(mon_name),
++		.state		= state,
++	};
++	unsigned int msgbuf[NSM_MAXMSGSIZE];
++	struct rpc_msg mesg;
++	uint32_t xid;
++	int err = 0;
++	XDR xdr;
++
++	if (state_change.mon_name == NULL) {
++		xlog(L_ERROR, "%s: no memory", __func__);
++		return 0;
++	}
++
++	xlog(D_CALL, "Sending SM_NOTIFY for %s", mon_name);
++
++	xid = nsm_init_rpc_header(program, SM_VERS, SM_NOTIFY, &mesg);
++
++	xdrmem_create(&xdr, (caddr_t)msgbuf, sizeof(msgbuf), XDR_ENCODE);
++
++	if (xdr_callmsg(&xdr, &mesg) && xdr_stat_chge(&xdr, &state_change)) {
++		err = nsm_rpc_sendto(sock, sap, salen, &xdr, msgbuf);
++	} else
++		xlog(L_ERROR, "%s: can't encode NSMPROC_NOTIFY call",
++				__func__);
++
++	xdr_destroy(&xdr);
++	free(state_change.mon_name);
++
++	return err? xid : 0;
++}
++
++/**
++ * nsm_xmit_nlmcall - post an unnamed call to local NLM on a socket descriptor
++ * @sock: datagram socket descriptor
++ * @sap: address/port of NLM service to contact
++ * @salen: size of @sap
++ * @mon: callback data defining RPC call to make
++ * @state: state of rebooting host
++ *
++ * Send an unnamed call (previously requested via NSMPROC_MON) to the
++ * specified local UDP-based RPC service using socket descriptor @sock.
++ *
++ * NB: This implementation works only over UDP, but supports both AF_INET
++ *     and AF_INET6.
++ *
++ * Returns the XID of the call, or zero if an error occurred.
++ */
++uint32_t
++nsm_xmit_nlmcall(const int sock, const struct sockaddr *sap,
++			const socklen_t salen, const struct mon *mon,
++			const int state)
++{
++	struct status new_status = {
++		.mon_name	= mon->mon_id.mon_name,
++		.state		= state,
++	};
++	const struct my_id *id = &mon->mon_id.my_id;
++	unsigned int msgbuf[NSM_MAXMSGSIZE];
++	struct rpc_msg mesg;
++	uint32_t xid;
++	int err = 0;
++	XDR xdr;
++
++	xlog(D_CALL, "Sending NLM downcall for %s", mon->mon_id.mon_name);
++
++	xid = nsm_init_rpc_header(id->my_prog, id->my_vers, id->my_proc, &mesg);
++
++	memcpy(&new_status.priv, &mon->priv, sizeof(new_status.priv));
++	xdrmem_create(&xdr, (caddr_t)msgbuf, sizeof(msgbuf), XDR_ENCODE);
++
++	if (xdr_callmsg(&xdr, &mesg) && xdr_status(&xdr, &new_status))
++		err = nsm_rpc_sendto(sock, sap, salen, &xdr, msgbuf);
++	else
++		xlog(L_ERROR, "%s: can't encode NLM downcall", __func__);
++
++	xdr_destroy(&xdr);
++
++	return err? xid : 0;
++}
++
++/**
++ * nsm_parse_reply - parse and validate the header in an RPC reply
++ * @xdrs: pointer to XDR
++ *
++ * Returns the XID of the reply, or zero if an error occurred.
++ */
++uint32_t
++nsm_parse_reply(XDR *xdrs)
++{
++	struct rpc_msg mesg = {
++		.rm_reply.rp_acpt.ar_results.proc	= (xdrproc_t)xdr_void,
++	};
++
++	if (!xdr_replymsg(xdrs, &mesg)) {
++		xlog(L_ERROR, "%s: can't decode RPC reply", __func__);
++		return 0;
++	}
++
++	if (mesg.rm_reply.rp_stat != 0) {
++		xlog(L_ERROR, "%s: [0x%x] RPC status %d", 
++			__func__, mesg.rm_xid, mesg.rm_reply.rp_stat);
++		return 0;
++	}
++
++	if (mesg.rm_reply.rp_acpt.ar_stat != 0) {
++		xlog(L_ERROR, "%s: [0x%x] RPC accept status %d",
++			__func__, mesg.rm_xid, mesg.rm_reply.rp_acpt.ar_stat);
++		return 0;
++	}
++
++	return mesg.rm_xid;
++}
++
++/**
++ * nsm_recv_getport - parse PMAP_GETPORT reply
++ * @xdrs: pointer to XDR
++ *
++ * Returns the port number from the RPC reply, or zero
++ * if an error occurred.
++ */
++unsigned long
++nsm_recv_getport(XDR *xdrs)
++{
++	unsigned long port = 0;
++
++	if (!xdr_u_long(xdrs, &port))
++		xlog(L_ERROR, "%s: can't decode pmap reply",
++			__func__);
++	if (port > UINT16_MAX) {
++		xlog(L_ERROR, "%s: bad port number",
++			__func__);
++		port = 0;
++	}
++
++	xlog(D_CALL, "Received PMAP_GETPORT result: %lu", port);
++	return port;
++}
++
++/**
++ * nsm_recv_getaddr - parse RPCB_GETADDR reply
++ * @xdrs: pointer to XDR
++ *
++ * Returns the port number from the RPC reply, or zero
++ * if an error occurred.
++ */
++uint16_t
++nsm_recv_getaddr(XDR *xdrs)
++{
++	int port;
++	char *uaddr = NULL;
++
++	if (!xdr_wrapstring(xdrs, &uaddr))
++		xlog(L_ERROR, "%s: can't decode rpcb reply",
++			__func__);
++
++	if ((uaddr == NULL) || (uaddr[0] == '\0')) {
++		xlog(D_CALL, "Received RPCB_GETADDR result: "
++				"program not registered");
++		return 0;
++	}
++
++	port = nfs_universal2port(uaddr);
++
++	xdr_free((xdrproc_t)xdr_wrapstring, (char *)&uaddr);
++
++	if (port < 0 || port > UINT16_MAX) {
++		xlog(L_ERROR, "%s: bad port number",
++			__func__);
++		return 0;
++	}
++
++	xlog(D_CALL, "Received RPCB_GETADDR result: %d", port);
++	return port;
++}
++
++/**
++ * nsm_recv_rpcbind - parse rpcbind reply
++ * @af: address family of reply
++ * @xdrs: pointer to XDR
++ *
++ * Returns the port number from the RPC reply, or zero
++ * if an error occurred.
++ */
++uint16_t
++nsm_recv_rpcbind(const int family, XDR *xdrs)
++{
++	switch (family) {
++	case AF_INET:
++		return nsm_recv_getport(xdrs);
++	case AF_INET6:
++		return nsm_recv_getaddr(xdrs);
++	}
++	return 0;
++}
 
