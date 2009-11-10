@@ -1,385 +1,353 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 07/29] statd: Use the new nsm_ file.c calls in sm_notify
-Date: Tue, 10 Nov 2009 16:57:25 -0500
-Message-ID: <20091110215725.23822.41261.stgit@matisse.1015granger.net>
+Subject: [PATCH 08/29] statd: Use the new nsm_ file.c calls in rpc.statd
+Date: Tue, 10 Nov 2009 16:57:38 -0500
+Message-ID: <20091110215738.23822.22510.stgit@matisse.1015granger.net>
 References: <20091110215447.23822.15275.stgit@matisse.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org, Chris.Mason@oracle.com
 To: steved@redhat.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet11.oracle.com ([148.87.113.123]:49852 "EHLO
-	rgminet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758432AbZKJV5q (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 10 Nov 2009 16:57:46 -0500
+Received: from rcsinet12.oracle.com ([148.87.113.124]:48531 "EHLO
+	rgminet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757936AbZKJV5y (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 10 Nov 2009 16:57:54 -0500
 In-Reply-To: <20091110215447.23822.15275.stgit-RytpoXr2tKZ9HhUboXbp9zCvJB+x5qRC@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Replace open-coded accesses to on-disk NSM information in sm_notify.c
+Replace open-coded accesses to on-disk NSM information in rpc.statd
 with calls to the new API.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- utils/statd/sm-notify.c |  278 ++++++++++-------------------------------------
- 1 files changed, 57 insertions(+), 221 deletions(-)
+ utils/statd/misc.c    |   24 --------
+ utils/statd/monitor.c |  140 ++++++++++++++++---------------------------------
+ utils/statd/statd.c   |  116 ++++-------------------------------------
+ utils/statd/statd.h   |   23 --------
+ 4 files changed, 57 insertions(+), 246 deletions(-)
 
-diff --git a/utils/statd/sm-notify.c b/utils/statd/sm-notify.c
-index 1983ef6..6466d8a 100644
---- a/utils/statd/sm-notify.c
-+++ b/utils/statd/sm-notify.c
-@@ -29,25 +29,9 @@
- #include <grp.h>
+diff --git a/utils/statd/misc.c b/utils/statd/misc.c
+index 44af30e..f2a086f 100644
+--- a/utils/statd/misc.c
++++ b/utils/statd/misc.c
+@@ -49,27 +49,3 @@ xstrdup (const char *string)
  
- #include "xlog.h"
+   return (result);
+ }
+-
+-
+-/*
+- * Unlinking a file.
+- */
+-void
+-xunlink (char *path, char *host)
+-{
+-	char *tozap;
+-
+-	tozap = malloc(strlen(path)+strlen(host)+2);
+-	if (tozap == NULL) {
+-		xlog(L_ERROR, "xunlink: malloc failed: errno %d (%m)", errno);
+-		return;
+-	}
+-	sprintf (tozap, "%s/%s", path, host);
+-
+-	if (unlink (tozap) == -1)
+-		xlog(L_ERROR, "unlink (%s): %m", tozap);
+-	else
+-		xlog(D_GENERAL, "Unlinked %s", tozap);
+-
+-	free(tozap);
+-}
+diff --git a/utils/statd/monitor.c b/utils/statd/monitor.c
+index 09f03da..8d9f663 100644
+--- a/utils/statd/monitor.c
++++ b/utils/statd/monitor.c
+@@ -23,14 +23,13 @@
+ 
+ #include "rpcmisc.h"
+ #include "misc.h"
 +#include "nsm.h"
- #include "nfsrpc.h"
+ #include "statd.h"
+ #include "notlist.h"
+ #include "ha-callout.h"
  
--#ifndef BASEDIR
--# ifdef NFS_STATEDIR
--#  define BASEDIR		NFS_STATEDIR
--# else
--#  define BASEDIR		"/var/lib/nfs"
--# endif
--#endif
+ notify_list *		rtnl = NULL;	/* Run-time notify list. */
+ 
+-#define LINELEN (4*(8+1)+SM_PRIV_SIZE*2+1)
 -
--#define DEFAULT_SM_STATE_PATH	BASEDIR "/state"
--#define	DEFAULT_SM_DIR_PATH	BASEDIR "/sm"
--#define	DEFAULT_SM_BAK_PATH	DEFAULT_SM_DIR_PATH ".bak"
+ /*
+  * Reject requests from non-loopback addresses in order
+  * to prevent attack described in CERT CA-99.05.
+@@ -60,11 +59,12 @@ sm_mon_1_svc(struct mon *argp, struct svc_req *rqstp)
+ 	char		*mon_name = argp->mon_id.mon_name,
+ 			*my_name  = argp->mon_id.my_id.my_name;
+ 	struct my_id	*id = &argp->mon_id.my_id;
+-	char            *path;
+ 	char		*cp;
+-	int             fd;
+ 	notify_list	*clnt;
+-	struct in_addr	my_addr;
++	struct sockaddr_in my_addr = {
++		.sin_family		= AF_INET,
++		.sin_addr.s_addr	= htonl(INADDR_LOOPBACK),
++	};
+ 	char		*dnsname;
+ 	struct hostent	*hostinfo = NULL;
+ 
+@@ -80,7 +80,6 @@ sm_mon_1_svc(struct mon *argp, struct svc_req *rqstp)
+ 	 */
+ 	if (!caller_is_localhost(rqstp))
+ 		goto failure;
+-	my_addr.s_addr = htonl(INADDR_LOOPBACK);
+ 
+ 	/* 2.	Reject any registrations for non-lockd services.
+ 	 *
+@@ -172,7 +171,7 @@ sm_mon_1_svc(struct mon *argp, struct svc_req *rqstp)
+ 		goto failure;
+ 	}
+ 
+-	NL_ADDR(clnt) = my_addr;
++	NL_ADDR(clnt) = my_addr.sin_addr;
+ 	NL_MY_PROG(clnt) = id->my_prog;
+ 	NL_MY_VERS(clnt) = id->my_vers;
+ 	NL_MY_PROC(clnt) = id->my_proc;
+@@ -182,39 +181,15 @@ sm_mon_1_svc(struct mon *argp, struct svc_req *rqstp)
+ 	/*
+ 	 * Now, Create file on stable storage for host.
+ 	 */
 -
--char *_SM_BASE_PATH = BASEDIR;
--char *_SM_STATE_PATH = DEFAULT_SM_STATE_PATH;
--char *_SM_DIR_PATH = DEFAULT_SM_DIR_PATH;
--char *_SM_BAK_PATH = DEFAULT_SM_BAK_PATH;
--
- #define NSM_PROG	100024
- #define NSM_PROGRAM	100024
- #define NSM_VERSION	1
-@@ -59,7 +43,6 @@ char *_SM_BAK_PATH = DEFAULT_SM_BAK_PATH;
- struct nsm_host {
- 	struct nsm_host *	next;
- 	char *			name;
--	char *			path;
- 	struct sockaddr_storage	addr;
- 	socklen_t		addrlen;
- 	struct addrinfo		*ai;
-@@ -78,17 +61,12 @@ static unsigned int	opt_max_retry = 15 * 60;
- static char *		opt_srcaddr = 0;
- static uint16_t		opt_srcport = 0;
+-	path=xmalloc(strlen(SM_DIR)+strlen(dnsname)+2);
+-	sprintf(path, "%s/%s", SM_DIR, dnsname);
+-	if ((fd = open(path, O_WRONLY|O_SYNC|O_CREAT|O_APPEND,
+-		       S_IRUSR|S_IWUSR)) < 0) {
+-		/* Didn't fly.  We won't monitor. */
+-		xlog(L_ERROR, "creat(%s) failed: %m", path);
++	if (!nsm_insert_monitored_host(dnsname,
++					(struct sockaddr *)&my_addr, argp)) {
+ 		nlist_free(NULL, clnt);
+-		free(path);
+ 		goto failure;
+ 	}
+-	{
+-		char buf[LINELEN + 1 + SM_MAXSTRLEN*2 + 4];
+-		char *e;
+-		int i;
+-		e = buf + sprintf(buf, "%08x %08x %08x %08x ",
+-				  my_addr.s_addr, id->my_prog,
+-				  id->my_vers, id->my_proc);
+-		for (i=0; i<SM_PRIV_SIZE; i++)
+-			e += sprintf(e, "%02x", 0xff & (argp->priv[i]));
+-		if (e+1-buf != LINELEN) abort();
+-		e += sprintf(e, " %s %s\n", mon_name, my_name);
+-		if (write(fd, buf, e-buf) != (e-buf)) {
+-			xlog_warn("writing to %s failed: errno %d (%s)",
+-				path, errno, strerror(errno));
+-		}
+-	}
  
--static unsigned int	nsm_get_state(int);
- static void		notify(void);
- static int		notify_host(int, struct nsm_host *);
- static void		recv_reply(int);
--static void		backup_hosts(const char *, const char *);
--static void		get_hosts(const char *);
- static void		insert_host(struct nsm_host *);
- static struct nsm_host *find_host(uint32_t);
- static int		record_pid(void);
--static void		drop_privs(void);
--static void		set_kernel_nsm_state(int state);
- 
- static struct nsm_host *	hosts = NULL;
- 
-@@ -112,10 +90,38 @@ static struct addrinfo *smn_lookup(const char *name)
- 	return ai;
+-	free(path);
+ 	/* PRC: do the HA callout: */
+ 	ha_callout("add-client", mon_name, my_name, -1);
+ 	nlist_insert(&rtnl, clnt);
+-	close(fd);
+ 	xlog(D_GENERAL, "MONITORING %s for %s", mon_name, my_name);
+  success:
+ 	result.res_stat = STAT_SUCC;
+@@ -236,71 +211,46 @@ failure:
+ 	return (&result);
  }
  
-+static struct nsm_host *
-+smn_alloc_host(const char *hostname, const time_t timestamp)
-+{
-+	struct nsm_host	*host;
-+
-+	host = calloc(1, sizeof(*host));
-+	if (host == NULL)
-+		goto out_nomem;
-+
-+	host->name = strdup(hostname);
-+	if (host->name == NULL) {
-+		free(host);
-+		goto out_nomem;
-+	}
-+
-+	host->last_used = timestamp;
-+	host->timeout = NSM_TIMEOUT;
-+	host->retries = 100;		/* force address retry */
-+
-+	return host;
-+
-+out_nomem:
-+	xlog_warn("Unable to allocate memory");
-+	return NULL;
-+}
-+
- static void smn_forget_host(struct nsm_host *host)
- {
--	unlink(host->path);
--	free(host->path);
-+	xlog(D_CALL, "Removing %s from notify list", host->name);
-+
-+	nsm_delete_notified_host(host->name);
-+
- 	free(host->name);
- 	if (host->ai)
- 		freeaddrinfo(host->ai);
-@@ -123,6 +129,23 @@ static void smn_forget_host(struct nsm_host *host)
- 	free(host);
- }
- 
+-void load_state(void)
 +static unsigned int
-+smn_get_host(const char *hostname,
-+		__attribute__((unused)) const struct sockaddr *sap,
-+		__attribute__((unused)) const struct mon *mon,
-+		const time_t timestamp)
-+{
-+	struct nsm_host	*host;
++load_one_host(const char *hostname, const struct sockaddr *sap,
++		const struct mon *mon,
++		__attribute__((unused)) const time_t timestamp)
+ {
+-	DIR *d;
+-	struct dirent *de;
+-	char buf[LINELEN + 1 + SM_MAXSTRLEN + 2];
+-
+-	d = opendir(SM_DIR);
+-	if (!d)
+-		return;
+-	while ((de = readdir(d))) {
+-		char *path;
+-		FILE *f;
+-		int p;
+-
+-		if (de->d_name[0] == '.')
+-			continue;
+-		path = xmalloc(strlen(SM_DIR)+strlen(de->d_name)+2);
+-		sprintf(path, "%s/%s", SM_DIR, de->d_name);
+-		f = fopen(path, "r");
+-		free(path);
+-		if (f == NULL)
+-			continue;
+-		while (fgets(buf, sizeof(buf), f) != NULL) {
+-			int addr, proc, prog, vers;
+-			char priv[SM_PRIV_SIZE];
+-			char *monname, *myname;
+-			char *b;
+-			int i;
+-			notify_list	*clnt;
+-
+-			buf[sizeof(buf)-1] = 0;
+-			b = strchr(buf, '\n');
+-			if (b) *b = 0;
+-			sscanf(buf, "%x %x %x %x ",
+-			       &addr, &prog, &vers, &proc);
+-			b = buf+36;
+-			for (i=0; i<SM_PRIV_SIZE; i++) {
+-				sscanf(b, "%2x", &p);
+-				priv[i] = p;
+-				b += 2;
+-			}
+-			b++;
+-			monname = b;
+-			while (*b && *b != ' ') b++;
+-			if (*b) *b++ = '\0';
+-			while (*b == ' ') b++;
+-			myname = b;
+-			clnt = nlist_new(myname, monname, 0);
+-			if (!clnt)
+-				break;
+-			NL_ADDR(clnt).s_addr = addr;
+-			NL_MY_PROG(clnt) = prog;
+-			NL_MY_VERS(clnt) = vers;
+-			NL_MY_PROC(clnt) = proc;
+-			clnt->dns_name = xstrdup(de->d_name);
+-			memcpy(NL_PRIV(clnt), priv, SM_PRIV_SIZE);
+-			nlist_insert(&rtnl, clnt);
+-		}
+-		fclose(f);
++	const struct sockaddr_in *sin = (const struct sockaddr_in *)sap;
++	notify_list *clnt;
 +
-+	host = smn_alloc_host(hostname, timestamp);
-+	if (host == NULL)
++	clnt = nlist_new(mon->mon_id.my_id.my_name,
++				mon->mon_id.mon_name, 0);
++	if (clnt == NULL)
 +		return 0;
 +
-+	insert_host(host);
-+	xlog(D_GENERAL, "Added host %s to notify list", hostname);
++	clnt->dns_name = strdup(hostname);
++	if (clnt->dns_name == NULL) {
++		nlist_free(NULL, clnt);
++		return 0;
+ 	}
+-	closedir(d);
+-}
+ 
++	xlog(D_GENERAL, "Adding record for %s to the monitor list...",
++			hostname);
++
++	NL_ADDR(clnt) = sin->sin_addr;
++	NL_MY_PROG(clnt) = mon->mon_id.my_id.my_prog;
++	NL_MY_VERS(clnt) = mon->mon_id.my_id.my_vers;
++	NL_MY_PROC(clnt) = mon->mon_id.my_id.my_proc;
++	memcpy(NL_PRIV(clnt), mon->priv, SM_PRIV_SIZE);
++
++	nlist_insert(&rtnl, clnt);
 +	return 1;
 +}
+ 
++void load_state(void)
++{
++	unsigned int count;
+ 
++	count = nsm_load_monitor_list(load_one_host);
++	if (count)
++		xlog(D_GENERAL, "Loaded %u previously monitored hosts");
++}
+ 
+ /*
+  * Services SM_UNMON requests.
+@@ -359,7 +309,7 @@ sm_unmon_1_svc(struct mon_id *argp, struct svc_req *rqstp)
+ 			/* PRC: do the HA callout: */
+ 			ha_callout("del-client", mon_name, my_name, -1);
+ 
+-			xunlink(SM_DIR, clnt->dns_name);
++			nsm_delete_monitored_host(clnt->dns_name);
+ 			nlist_free(&rtnl, clnt);
+ 
+ 			return (&result);
+@@ -413,7 +363,7 @@ sm_unmon_all_1_svc(struct my_id *argp, struct svc_req *rqstp)
+ 			temp = NL_NEXT(clnt);
+ 			/* PRC: do the HA callout: */
+ 			ha_callout("del-client", mon_name, my_name, -1);
+-			xunlink(SM_DIR, clnt->dns_name);
++			nsm_delete_monitored_host(clnt->dns_name);
+ 			nlist_free(&rtnl, clnt);
+ 			++count;
+ 			clnt = temp;
+diff --git a/utils/statd/statd.c b/utils/statd/statd.c
+index 6148952..72c9b41 100644
+--- a/utils/statd/statd.c
++++ b/utils/statd/statd.c
+@@ -25,25 +25,15 @@
+ #include <sys/resource.h>
+ #include <sys/wait.h>
+ #include <grp.h>
 +
- int
- main(int argc, char **argv)
- {
-@@ -157,20 +180,8 @@ main(int argc, char **argv)
- 			opt_srcaddr = optarg;
- 			break;
- 		case 'P':
--			_SM_BASE_PATH = strdup(optarg);
--			_SM_STATE_PATH = malloc(strlen(optarg)+1+sizeof("state"));
--			_SM_DIR_PATH = malloc(strlen(optarg)+1+sizeof("sm"));
--			_SM_BAK_PATH = malloc(strlen(optarg)+1+sizeof("sm.bak"));
--			if (_SM_BASE_PATH == NULL ||
--			    _SM_STATE_PATH == NULL ||
--			    _SM_DIR_PATH == NULL ||
--			    _SM_BAK_PATH == NULL) {
--				fprintf(stderr, "unable to allocate memory");
-+			if (!nsm_setup_pathnames(argv[0], optarg))
- 				exit(1);
--			}
--			strcat(strcpy(_SM_STATE_PATH, _SM_BASE_PATH), "/state");
--			strcat(strcpy(_SM_DIR_PATH, _SM_BASE_PATH), "/sm");
--			strcat(strcpy(_SM_BAK_PATH, _SM_BASE_PATH), "/sm.bak");
- 			break;
+ #include "statd.h"
+ #include "nfslib.h"
++#include "nsm.h"
  
- 		default:
-@@ -196,7 +207,7 @@ usage:		fprintf(stderr,
- 	xlog_open(progname);
- 	xlog(L_NOTICE, "Version " VERSION " starting");
+ /* Socket operations */
+ #include <sys/types.h>
+ #include <sys/socket.h>
  
--	if (strcmp(_SM_BASE_PATH, BASEDIR) == 0) {
-+	if (nsm_is_default_parentdir()) {
- 		if (record_pid() == 0 && force == 0 && opt_update_state == 1) {
- 			/* already run, don't try again */
- 			xlog(L_NOTICE, "Already notifying clients; Exiting!");
-@@ -212,18 +223,16 @@ usage:		fprintf(stderr,
- 		exit(1);
+-/* Added to enable specification of state directory path at run-time
+- * j_carlos_gomez@yahoo.com
+- */
+-
+-char * DIR_BASE = DEFAULT_DIR_BASE;
+-
+-char *  SM_DIR = DEFAULT_SM_DIR;
+-char *  SM_BAK_DIR =  DEFAULT_SM_BAK_DIR;
+-char *  SM_STAT_PATH = DEFAULT_SM_STAT_PATH;
+-
+-/* ----- end of state directory path stuff ------- */
+-
+ int	run_mode = 0;		/* foreground logging mode */
+ 
+ /* LH - I had these local to main, but it seemed silly to have 
+@@ -73,7 +63,6 @@ static struct option longopts[] =
+ };
+ 
+ extern void sm_prog_1 (struct svc_req *, register SVCXPRT *);
+-static void load_state_number(void);
+ 
+ #ifdef SIMULATIONS
+ extern void simulator (int, char **);
+@@ -190,38 +179,6 @@ static void truncate_pidfile(void)
  	}
- 
--	backup_hosts(_SM_DIR_PATH, _SM_BAK_PATH);
--	get_hosts(_SM_BAK_PATH);
--
--	/* If there are not hosts to notify, just exit */
--	if (!hosts) {
-+	(void)nsm_retire_monitored_hosts();
-+	if (!nsm_load_notify_list(smn_get_host)) {
- 		xlog(D_GENERAL, "No hosts to notify; exiting");
- 		return 0;
- 	}
- 
--	/* Get and update the NSM state. This will call sync() */
- 	nsm_state = nsm_get_state(opt_update_state);
--	set_kernel_nsm_state(nsm_state);
-+	if (nsm_state == 0)
-+		exit(1);
-+	nsm_update_kernel_state(nsm_state);
- 
- 	if (!opt_debug) {
- 		xlog(L_NOTICE, "Backgrounding to notify hosts...\n");
-@@ -317,7 +326,8 @@ notify(void)
- 	if (opt_max_retry)
- 		failtime = time(NULL) + opt_max_retry;
- 
--	drop_privs();
-+	if (!nsm_drop_privileges(-1))
-+		exit(1);
- 
- 	while (hosts) {
- 		struct pollfd	pfd;
-@@ -556,82 +566,6 @@ fail:	/* Re-insert the host */
  }
  
- /*
-- * Back up all hosts from the sm directory to sm.bak
-- */
--static void
--backup_hosts(const char *dirname, const char *bakname)
--{
--	struct dirent	*de;
--	DIR		*dir;
--
--	if (!(dir = opendir(dirname))) {
--		xlog_warn("Failed to open %s: %m", dirname);
--		return;
--	}
--
--	while ((de = readdir(dir)) != NULL) {
--		char	src[1024], dst[1024];
--
--		if (de->d_name[0] == '.')
--			continue;
--
--		snprintf(src, sizeof(src), "%s/%s", dirname, de->d_name);
--		snprintf(dst, sizeof(dst), "%s/%s", bakname, de->d_name);
--		if (rename(src, dst) < 0)
--			xlog_warn("Failed to rename %s -> %s: %m", src, dst);
--	}
--	closedir(dir);
--}
--
--/*
-- * Get all entries from sm.bak and convert them to host entries
-- */
--static void
--get_hosts(const char *dirname)
--{
--	struct nsm_host	*host;
--	struct dirent	*de;
--	DIR		*dir;
--
--	if (!(dir = opendir(dirname))) {
--		xlog_warn("Failed to open %s: %m", dirname);
--		return;
--	}
--
--	host = NULL;
--	while ((de = readdir(dir)) != NULL) {
--		struct stat	stb;
--		char		path[1024];
--
--		if (de->d_name[0] == '.')
--			continue;
--		if (host == NULL)
--			host = calloc(1, sizeof(*host));
--		if (host == NULL) {
--			xlog_warn("Unable to allocate memory");
--			return;
--		}
--
--		snprintf(path, sizeof(path), "%s/%s", dirname, de->d_name);
--		if (stat(path, &stb) < 0)
--			continue;
--
--		host->last_used = stb.st_mtime;
--		host->timeout = NSM_TIMEOUT;
--		host->path = strdup(path);
--		host->name = strdup(de->d_name);
--		host->retries = 100; /* force address retry */
--
--		insert_host(host);
--		host = NULL;
--	}
--	closedir(dir);
--
--	if (host)
--		free(host);
--}
--
--/*
-  * Insert host into sorted list
-  */
- static void
-@@ -678,60 +612,6 @@ find_host(uint32_t xid)
- 	return NULL;
- }
- 
--
--/*
-- * Retrieve the current NSM state
-- */
--static unsigned int
--nsm_get_state(int update)
--{
--	char		newfile[PATH_MAX];
--	int		fd, state;
--
--	if ((fd = open(_SM_STATE_PATH, O_RDONLY)) < 0) {
--		xlog_warn("%s: %m", _SM_STATE_PATH);
--		xlog_warn("Creating %s, set initial state 1",
--			_SM_STATE_PATH);
--		state = 1;
--		update = 1;
--	} else {
--		if (read(fd, &state, sizeof(state)) != sizeof(state)) {
--			xlog_warn("%s: bad file size, setting state = 1",
--				_SM_STATE_PATH);
--			state = 1;
--			update = 1;
--		} else {
--			if (!(state & 1))
--				state += 1;
--		}
--		close(fd);
--	}
--
--	if (update) {
--		state += 2;
--		snprintf(newfile, sizeof(newfile),
--				"%s.new", _SM_STATE_PATH);
--		if ((fd = open(newfile, O_CREAT|O_WRONLY, 0644)) < 0) {
--			xlog(L_ERROR, "Cannot create %s: %m", newfile);
--			exit(1);
--		}
--		if (write(fd, &state, sizeof(state)) != sizeof(state)) {
--			xlog(L_ERROR,
--				"Failed to write state to %s", newfile);
--			exit(1);
--		}
--		close(fd);
--		if (rename(newfile, _SM_STATE_PATH) < 0) {
--			xlog(L_ERROR,
--				"Cannot create %s: %m", _SM_STATE_PATH);
--			exit(1);
--		}
--		sync();
--	}
--
--	return state;
--}
--
- /*
-  * Record pid in /var/run/sm-notify.pid
-  * This file should remain until a reboot, even if the
-@@ -754,47 +634,3 @@ static int record_pid(void)
- 	close(fd);
- 	return 1;
- }
--
--/* Drop privileges to match owner of state-directory
-- * (in case a reply triggers some unknown bug).
-- */
 -static void drop_privs(void)
 -{
 -	struct stat st;
 -
--	if (stat(_SM_DIR_PATH, &st) == -1 &&
--	    stat(_SM_BASE_PATH, &st) == -1) {
+-	if (stat(SM_DIR, &st) == -1 &&
+-	    stat(DIR_BASE, &st) == -1) {
 -		st.st_uid = 0;
 -		st.st_gid = 0;
 -	}
 -
 -	if (st.st_uid == 0) {
 -		xlog_warn("Running as 'root'.  "
--			"chown %s to choose different user", _SM_DIR_PATH);
+-			"chown %s to choose different user\n", SM_DIR);
 -		return;
 -	}
--
+-	/* better chown the pid file before dropping, as if it
+-	 * if over nfs we might loose access
+-	 */
+-	if (pidfd >= 0) {
+-		if (fchown(pidfd, st.st_uid, st.st_gid) < 0) {
+-			xlog(L_ERROR, "Unable to change owner of %s: %d (%s)",
+-					SM_DIR, strerror (errno));
+-		}
+-	}
 -	setgroups(0, NULL);
 -	if (setgid(st.st_gid) == -1
 -	    || setuid(st.st_uid) == -1) {
@@ -388,20 +356,150 @@ index 1983ef6..6466d8a 100644
 -	}
 -}
 -
--static void set_kernel_nsm_state(int state)
+ static void run_sm_notify(int outport)
+ {
+ 	char op[20];
+@@ -316,34 +273,8 @@ int main (int argc, char **argv)
+ 			MY_NAME = xstrdup(optarg);
+ 			break;
+ 		case 'P':
+-
+-			if ((DIR_BASE = xstrdup(optarg)) == NULL) {
+-				fprintf(stderr, "%s: xstrdup(%s) failed!\n",
+-					argv[0], optarg);
++			if (!nsm_setup_pathnames(argv[0], optarg))
+ 				exit(1);
+-			}
+-
+-			SM_DIR = xmalloc(strlen(DIR_BASE) + 1 + sizeof("sm"));
+-			SM_BAK_DIR = xmalloc(strlen(DIR_BASE) + 1 + sizeof("sm.bak"));
+-			SM_STAT_PATH = xmalloc(strlen(DIR_BASE) + 1 + sizeof("state"));
+-
+-			if ((SM_DIR == NULL) 
+-			    || (SM_BAK_DIR == NULL) 
+-			    || (SM_STAT_PATH == NULL)) {
+-
+-				fprintf(stderr, "%s: xmalloc() failed!\n",
+-					argv[0]);
+-				exit(1);
+-			}
+-			if (DIR_BASE[strlen(DIR_BASE)-1] == '/') {
+-				sprintf(SM_DIR, "%ssm", DIR_BASE );
+-				sprintf(SM_BAK_DIR, "%ssm.bak", DIR_BASE );
+-				sprintf(SM_STAT_PATH, "%sstate", DIR_BASE );
+-			} else {
+-				sprintf(SM_DIR, "%s/sm", DIR_BASE );
+-				sprintf(SM_BAK_DIR, "%s/sm.bak", DIR_BASE );
+-				sprintf(SM_STAT_PATH, "%s/state", DIR_BASE );
+-			}
+ 			break;
+ 		case 'H': /* PRC: specify the ha-callout program */
+ 			if ((ha_callout_prog = xstrdup(optarg)) == NULL) {
+@@ -421,10 +352,6 @@ int main (int argc, char **argv)
+ 		/* Child.	*/
+ 		close(pipefds[0]);
+ 		setsid ();
+-		if (chdir (DIR_BASE) == -1) {
+-			perror("statd: Could not chdir");
+-			exit(1);
+-		}
+ 
+ 		while (pipefds[1] <= 2) {
+ 			pipefds[1] = dup(pipefds[1]);
+@@ -490,7 +417,13 @@ int main (int argc, char **argv)
+ 	 * pass on any SM_NOTIFY that arrives
+ 	 */
+ 	load_state();
+-	load_state_number();
++
++	MY_STATE = nsm_get_state(0);
++	if (MY_STATE == 0)
++		exit(1);
++	xlog(D_GENERAL, "Local NSM state number: %d", MY_STATE);
++	nsm_update_kernel_state(MY_STATE);
++
+ 	pmap_unset (SM_PROG, SM_VERS);
+ 
+ 	/* this registers both UDP and TCP services */
+@@ -507,7 +440,8 @@ int main (int argc, char **argv)
+ 		pipefds[1] = -1;
+ 	}
+ 
+-	drop_privs();
++	if (!nsm_drop_privileges(pidfd))
++		exit(1);
+ 
+ 	for (;;) {
+ 		/*
+@@ -536,29 +470,3 @@ int main (int argc, char **argv)
+ 	}
+ 	return 0;
+ }
+-
+-static void
+-load_state_number(void)
 -{
 -	int fd;
 -	const char *file = "/proc/sys/fs/nfs/nsm_local_state";
 -
--	fd = open(file ,O_WRONLY);
+-	if ((fd = open(SM_STAT_PATH, O_RDONLY)) == -1)
+-		return;
+-
+-	if (read(fd, &MY_STATE, sizeof(MY_STATE)) != sizeof(MY_STATE)) {
+-		xlog_warn("Unable to read state from '%s': errno %d (%s)",
+-				SM_STAT_PATH, errno, strerror(errno));
+-	}
+-	close(fd);
+-	fd = open(file, O_WRONLY);
 -	if (fd >= 0) {
 -		char buf[20];
--		snprintf(buf, sizeof(buf), "%d", state);
--		if (write(fd, buf, strlen(buf)) != strlen(buf)) {
--			xlog_warn("Writing to '%s' failed: errno %d (%m)",
--				file, errno);
--		}
+-		snprintf(buf, sizeof(buf), "%d", MY_STATE);
+-		if (write(fd, buf, strlen(buf)) != strlen(buf))
+-			xlog_warn("Writing to '%s' failed: errno %d (%s)",
+-				file, errno, strerror(errno));
 -		close(fd);
 -	}
+-
 -}
+diff --git a/utils/statd/statd.h b/utils/statd/statd.h
+index 085f32d..542a877 100644
+--- a/utils/statd/statd.h
++++ b/utils/statd/statd.h
+@@ -14,28 +14,6 @@
+ #include "xlog.h"
+ 
+ /*
+- * Paths and filenames.
+- */
+-#if defined(NFS_STATEDIR)
+-# define DEFAULT_DIR_BASE	NFS_STATEDIR "/"
+-#else
+-# define DEFAULT_DIR_BASE	"/var/lib/nfs/"
+-#endif
+-
+-#define DEFAULT_SM_DIR		DEFAULT_DIR_BASE "sm"
+-#define DEFAULT_SM_BAK_DIR	DEFAULT_DIR_BASE "sm.bak"
+-#define DEFAULT_SM_STAT_PATH	DEFAULT_DIR_BASE "state"
+-
+-/* Added to support run-time specification of state directory path.
+- * j_carlos_gomez@yahoo.com
+- */
+-
+-extern char * DIR_BASE;
+-extern char *  SM_DIR;
+-extern char *  SM_BAK_DIR;
+-extern char *  SM_STAT_PATH;
+-
+-/*
+  * Status definitions.
+  */
+ #define STAT_FAIL	stat_fail
+@@ -53,7 +31,6 @@ extern int	process_notify_list(void);
+ extern int	process_reply(FD_SET_TYPE *);
+ extern char *	xstrdup(const char *);
+ extern void *	xmalloc(size_t);
+-extern void	xunlink (char *, char *);
+ extern void	load_state(void);
+ 
+ /*
 
