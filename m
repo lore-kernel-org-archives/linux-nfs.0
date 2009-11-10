@@ -1,31 +1,105 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yw0-f182.google.com ([209.85.211.182]:43760 "EHLO
-	mail-yw0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932851AbZKXU2d (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 24 Nov 2009 15:28:33 -0500
-Received: by ywh12 with SMTP id 12so6798883ywh.21
-        for <linux-nfs@vger.kernel.org>; Tue, 24 Nov 2009 12:28:39 -0800 (PST)
-Message-ID: <4B0C4116.10903@dyfis.net>
-Date: Tue, 24 Nov 2009 14:24:54 -0600
-From: Charles Duffy <charles@dyfis.net>
-To: Peter Staubach <staubach@redhat.com>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: Apparent race condition w/ NFSv3 mktemp+write+rename
-References: <hehc8g$k8f$1@ger.gmane.org> <4B0C3BF8.1070904@redhat.com>
-In-Reply-To: <4B0C3BF8.1070904@redhat.com>
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Received: from acsinet11.oracle.com ([141.146.126.233]:42518 "EHLO
+	acsinet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758201AbZKJV5K (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 10 Nov 2009 16:57:10 -0500
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 00/29] IPv6 support for statd
+To: steved@redhat.com
+Cc: linux-nfs@vger.kernel.org, Chris.Mason@oracle.com
+Date: Tue, 10 Nov 2009 16:56:09 -0500
+Message-ID: <20091110215447.23822.15275.stgit@matisse.1015granger.net>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Peter Staubach wrote:
-> At the end, does /mnt/foobar exist and contain the string, "baz"?
->   
-I'll follow up with that information with that after the issue is next 
-reproduced. (The mv operation is replacing a prior instance of 
-/mnt/foobar, so content will need to be inspected to determine whether 
-it was successful).
+Hi Steve-
 
-> What mount options are being used on the client?
->   
-rw,vers=3,rsize=32768,wsize=32768,hard,intr,proto=tcp,timeo=600,retrans=2,sec=sys,addr=<redacted>
+There have been some bug fixes since I posted the statd IPv6 support
+patch series a month ago.  Jeff suggested I should post a refresh.
+
+---
+
+Chuck Lever (29):
+      statd: Send unqualified and fully qualified mon_name in SM_NOTIFY
+      statd: Use my_name when sending SM_NOTIFY requests
+      statd: update rpc.statd(8) and sm-notify(8) to reflect IPv6 support
+      statd: Support TI-RPC statd listener
+      libnsm.a: retain CAP_NET_BIND when dropping privileges
+      statd: Support IPv6 in sm_stat_1_svc()
+      statd: Support IPv6 in sm_mon_1_svc()
+      statd: Support IPv6 in sm_simu_crash_1_svc
+      statd: Support IPv6 is caller_is_localhost()
+      statd: add IPv6 support in sm_notify_1_svc()
+      statd: add nsm_present_address() API
+      statd: Introduce statd version of matchhostname()
+      statd: squelch compiler warning in sm-notify.c
+      statd: Support IPv6 DNS lookups in smn_lookup
+      statd: Use getaddrinfo(3) to generate bind address in smn_create_socket()
+      statd: IPv6 support in reserved port binding in smn_create_socket()
+      statd: Support creating a PF_INET6 socket in smn_create_socket()
+      statd: factor socket creation out of notify()
+      statd: Update rmtcall.c
+      statd: Support sending SM_NOTIFY requests to IPv6 remotes
+      libnsm.a: Add RPC construction helper functions
+      statd: Use the new nsm_ file.c calls in rpc.statd
+      statd: Use the new nsm_ file.c calls in sm_notify
+      libnsm.a: Introduce common routines to handle persistent storage
+      libnsm.a: Move the sm_inter XDR pieces to libnsm.a
+      statd: fix address copy in sm-notify.c
+      statd: replace smn_{get,set}_port() with the shared equivalents
+      statd: Replace nsm_log() with xlog() in sm-notify command
+      statd: Replace note() with xlog() in rpc.statd
+
+
+ .gitignore                   |    9 
+ aclocal/libcap.m4            |   15 +
+ configure.ac                 |    4 
+ support/Makefile.am          |    2 
+ support/include/Makefile.am  |    1 
+ support/include/ha-callout.h |    4 
+ support/include/nsm.h        |   87 ++++
+ support/include/rpcmisc.h    |    5 
+ support/nfs/Makefile.am      |    3 
+ support/nfs/svc_create.c     |  213 ++++++++++
+ support/nsm/Makefile.am      |   45 ++
+ support/nsm/file.c           |  816 ++++++++++++++++++++++++++++++++++++++++
+ support/nsm/rpc.c            |  505 +++++++++++++++++++++++++
+ support/nsm/sm_inter.x       |  131 ++++++
+ utils/statd/Makefile.am      |   22 -
+ utils/statd/callback.c       |   76 +++-
+ utils/statd/hostname.c       |  251 ++++++++++++
+ utils/statd/log.c            |   95 -----
+ utils/statd/log.h            |   42 --
+ utils/statd/misc.c           |   30 -
+ utils/statd/monitor.c        |  237 +++++-------
+ utils/statd/notlist.c        |    4 
+ utils/statd/rmtcall.c        |  165 ++------
+ utils/statd/simu.c           |   37 +-
+ utils/statd/simulate.c       |   52 +--
+ utils/statd/sm-notify.c      |  854 +++++++++++++++++++-----------------------
+ utils/statd/sm-notify.man    |  409 ++++++++++++++------
+ utils/statd/sm_inter.x       |  131 ------
+ utils/statd/stat.c           |   14 -
+ utils/statd/statd.c          |  199 +++-------
+ utils/statd/statd.h          |   38 --
+ utils/statd/statd.man        |  494 +++++++++++++++++-------
+ utils/statd/svc_run.c        |    7 
+ utils/statd/version.h        |    7 
+ 34 files changed, 3432 insertions(+), 1572 deletions(-)
+ create mode 100644 aclocal/libcap.m4
+ create mode 100644 support/include/nsm.h
+ create mode 100644 support/nfs/svc_create.c
+ create mode 100644 support/nsm/Makefile.am
+ create mode 100644 support/nsm/file.c
+ create mode 100644 support/nsm/rpc.c
+ create mode 100644 support/nsm/sm_inter.x
+ create mode 100644 utils/statd/hostname.c
+ delete mode 100644 utils/statd/log.c
+ delete mode 100644 utils/statd/log.h
+ delete mode 100644 utils/statd/sm_inter.x
+ delete mode 100644 utils/statd/version.h
+
+-- 
+Signature
