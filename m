@@ -1,47 +1,60 @@
-From: Jesper Krogh <jesper-Q2TZfHgGEy4@public.gmane.org>
-Subject: 2.6.31 under "heavy" NFS load.
-Date: Mon, 09 Nov 2009 20:30:44 +0100
-Message-ID: <4AF86DE4.5010607@krogh.cc>
+From: Mi Jinlong <mijinlong@cn.fujitsu.com>
+Subject: Re: [RFC][PATCH] client cannot get lock after other client got lock
+ occur network partition.
+Date: Tue, 10 Nov 2009 17:38:41 +0800
+Message-ID: <4AF934A1.9040908@cn.fujitsu.com>
+References: <4AF7DEAB.20202@cn.fujitsu.com> <1257772609.3754.11.camel@heimdal.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-To: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=Shift_JIS
+Cc: NFSv3 list <linux-nfs@vger.kernel.org>,
+	"J. Bruce Fields" <bfields@fieldses.org>
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from 2605ds1-ynoe.0.fullrate.dk ([90.184.12.24]:47537 "EHLO
-	shrek.krogh.cc" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751353AbZKITiw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 9 Nov 2009 14:38:52 -0500
+Received: from cn.fujitsu.com ([222.73.24.84]:64040 "EHLO song.cn.fujitsu.com"
+	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
+	id S1752456AbZKJJhZ convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 10 Nov 2009 04:37:25 -0500
+In-Reply-To: <1257772609.3754.11.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi List.
+Hi Trond
 
-When a lot (~60 all on 1GbitE) of NFS clients are hitting an NFS server
-that has an 10GbitE NIC sitting on it I'm seeing high IO-wait load
-(>50%) and load number over 100 on the server. This is a change since
-2.6.29 where the IO-wait load under similar workload was less than 10%.
+Trond Myklebust =8E=CA=93=B9:
+> On Mon, 2009-11-09 at 17:19 +0800, Mi Jinlong wrote:
+>> Hi Trond et all
+>>
+>> There is a bug, when i test NFSv3 file's lock as followed:
+>>
+>> Step1: ClientA and ClientB open a same nfs file;
+>> Step2: ClientA locks file with write lock, it's ok;
+>> Step3: Cut off the network between ClientA and Server;
+>> Step4: ClientB can not acquire for write lock successful forever, ev=
+en though
+>>        the network partition larger than NLM_HOST_EXPIRE.
+>>
+>> As i know, If use NFSv4, step4 can success after LEASE_TIME.
+>>
+>> Is it necessary to fix NFSv3 ?=20
+>>
+>> The attached patch can make this case OK, but i am not sure it's goo=
+d.
+>=20
+> Unfortunately, NLM (the NFSv2 and v3 locking protocol) is not lease
+> based, so the above scenario is truly an unfixable one.
+>=20
+> The problem with applying your patch is, in essence, that we risk
+> breaking another scenario where a client grabs a lock, and then holds=
+ it
+> for a while.
+> The reason this breaks is that there is no equivalent in the NLM
+> protocol of the NFSv4 RENEW operation to tell the server that "This
+> client is still alive and wants you to keep its state".
 
-The system has 16 Opteron cores.
+Thanks for your answer!
 
-All data the NFS-clients are reading are "memory recident" since they
-are all reading off the same 10GB of data and the server has 32GB of
-main memory dedicated to nothing else than serving NFS.
+This bug seems serious, shouldn't we fix it?
 
-A snapshot of top looks like this:
-http://krogh.cc/~jesper/top-hest-2.6.31.txt
+thanks,
+Mi Jinlong
 
-The load is generally alot higher than on 2.6.29 and it "explodes" to
-over 100 when a few processes begin utillizing the disk while serving
-files over NFS. "dstat" reports a read-out of 10-20MB/s from disk which
-is close to what I'd expect. and the system delivers around 600-800MB/s
-over the NIC in this workload.
-
-
-Sorry that I cannot be more specific, I can answer questions on a
-running 2.6.31 kernel, but I cannot reboot the system back to 2.6.29
-just to test since the system is "in production". I tried 2.6.30 and it
-has the same pattern as 2.6.31, so based on that fragile evidence the
-change should be found in between 2.6.29 and 2.6.30. I hope a "wague"
-report is better than none.
-
--- 
-Jesper
