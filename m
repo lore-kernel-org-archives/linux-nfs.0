@@ -1,7 +1,7 @@
 From: Jeff Layton <jlayton@redhat.com>
-Subject: [PATCH 1/2] vfs: force reval of dentries for LAST_BIND symlinks on open
-Date: Tue, 10 Nov 2009 11:27:35 -0500
-Message-ID: <1257870456-31188-2-git-send-email-jlayton@redhat.com>
+Subject: [PATCH 2/2] vfs: force reval on dentry of bind mounted files for LOOKUP_OPEN
+Date: Tue, 10 Nov 2009 11:27:36 -0500
+Message-ID: <1257870456-31188-3-git-send-email-jlayton@redhat.com>
 References: <1257870456-31188-1-git-send-email-jlayton@redhat.com>
 Cc: ebiederm@xmission.com, adobriyan@gmail.com,
 	viro@ZenIV.linux.org.uk, jamie@shareable.org
@@ -12,79 +12,52 @@ In-Reply-To: <1257870456-31188-1-git-send-email-jlayton@redhat.com>
 Sender: linux-fsdevel-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-procfs-style symlinks return a last_type of LAST_BIND without an actual
-path string. This causes __follow_link to skip calling __vfs_follow_link
-and so the dentry isn't revalidated.
+In the case of a bind mounted file, the path walking code will assume
+that a cached dentry is valid and doesn't revalidate it. This is a
+problem for NFSv4 in a way that's similar to LAST_BIND symlinks.
 
-This is a problem when the link target sits on NFSv4 as it depends on
-the VFS to revalidate the dentry before using it on an open call. Ensure
-that this occurs by forcing a revalidation of the target dentry of
-LAST_BIND symlinks.
+Fix this by revalidating the dentry if LOOKUP_OPEN is set and
+__follow_mount returns true.
 
 Signed-off-by: Jeff Layton <jlayton@redhat.com>
 ---
- fs/namei.c |   41 +++++++++++++++++++++++++++++++++++++++++
- 1 files changed, 41 insertions(+), 0 deletions(-)
+ fs/namei.c |    9 +++++++--
+ 1 files changed, 7 insertions(+), 2 deletions(-)
 
 diff --git a/fs/namei.c b/fs/namei.c
-index 3374917..5c8ef80 100644
+index 5c8ef80..b7c9747 100644
 --- a/fs/namei.c
 +++ b/fs/namei.c
-@@ -414,6 +414,45 @@ do_revalidate(struct dentry *dentry, struct nameidata *nd)
- }
+@@ -839,6 +839,7 @@ static int do_lookup(struct nameidata *nd, struct qstr *name,
+ {
+ 	struct vfsmount *mnt = nd->path.mnt;
+ 	struct dentry *dentry = __d_lookup(nd->path.dentry, name);
++	int error = 0;
  
- /*
-+ * open_reval_path - force revalidation of a dentry for file opens
-+ *
-+ * in some situations the path walking code will trust dentries without
-+ * revalidating them. This causes problems for filesystems that depend on
-+ * d_revalidate to handle the actual file open (e.g. NFSv4). When LOOKUP_OPEN
-+ * is set, force a revalidation if the dentry appears to be valid and a
-+ * d_revalidate routine exists.
-+ *
-+ * Returns 0 if the revalidation was successful. If the revalidation fails,
-+ * either return the error returned by d_revalidate or -ESTALE if the
-+ * revalidation indicates an invalid dentry. On error, references to the dentry
-+ * and vfsmount in the path are put.
-+ */
-+static int
-+open_reval_path(struct path *path, struct nameidata *nd)
-+{
-+	struct dentry *dentry = path->dentry;
-+
-+	/* only bother with this for opens */
-+	if (!(nd->flags & LOOKUP_OPEN))
-+		return 0;
-+
-+	/* no reval routine, just return */
-+	if (!dentry->d_op || !dentry->d_op->d_revalidate)
-+		return 0;
-+
-+	dentry = do_revalidate(dentry, nd);
-+	if (dentry && !IS_ERR(dentry))
-+		return 0;
-+
-+	mntput(path->mnt);
-+
-+	if (!dentry)
-+		return -ESTALE;
-+
-+	return PTR_ERR(dentry);
-+}
-+
-+/*
-  * Internal lookup() using the new generic dcache.
-  * SMP-safe
-  */
-@@ -641,6 +680,8 @@ static __always_inline int __do_follow_link(struct path *path, struct nameidata
- 		error = 0;
- 		if (s)
- 			error = __vfs_follow_link(nd, s);
-+		else if (nd->last_type == LAST_BIND)
-+			error = open_reval_path(&nd->path, nd);
- 		if (dentry->d_inode->i_op->put_link)
- 			dentry->d_inode->i_op->put_link(dentry, nd, cookie);
+ 	if (!dentry)
+ 		goto need_lookup;
+@@ -847,8 +848,9 @@ static int do_lookup(struct nameidata *nd, struct qstr *name,
+ done:
+ 	path->mnt = mnt;
+ 	path->dentry = dentry;
+-	__follow_mount(path);
+-	return 0;
++	if (__follow_mount(path))
++		error = open_reval_path(path, nd);
++	return error;
+ 
+ need_lookup:
+ 	dentry = real_lookup(nd->path.dentry, name, nd);
+@@ -1836,6 +1838,9 @@ do_last:
+ 		error = -ELOOP;
+ 		if (flag & O_NOFOLLOW)
+ 			goto exit_dput;
++		error = open_reval_path(&path, &nd);
++		if (error)
++			goto exit;
  	}
+ 
+ 	error = -ENOENT;
 -- 
 1.5.5.6
 
