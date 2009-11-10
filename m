@@ -1,244 +1,208 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 11/29] statd: Update rmtcall.c
-Date: Tue, 10 Nov 2009 16:58:06 -0500
-Message-ID: <20091110215806.23822.51439.stgit@matisse.1015granger.net>
+Subject: [PATCH 12/29] statd: factor socket creation out of notify()
+Date: Tue, 10 Nov 2009 16:58:15 -0500
+Message-ID: <20091110215815.23822.89905.stgit@matisse.1015granger.net>
 References: <20091110215447.23822.15275.stgit@matisse.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org, Chris.Mason@oracle.com
 To: steved@redhat.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from acsinet11.oracle.com ([141.146.126.233]:18994 "EHLO
-	acsinet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757384AbZKJV6g (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 10 Nov 2009 16:58:36 -0500
+Received: from acsinet12.oracle.com ([141.146.126.234]:27056 "EHLO
+	acsinet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758445AbZKJV6h (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 10 Nov 2009 16:58:37 -0500
 In-Reply-To: <20091110215447.23822.15275.stgit-RytpoXr2tKZ9HhUboXbp9zCvJB+x5qRC@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Replace the open code to construct NLM downcalls and PMAP_GETPORT RPC
-requests with calls to our new library routines.
+The first half of notify() creates the main socket that sm-notify uses
+to do its job.  To make adding IPv6 support simpler, refactor that piece
+into a separate function.
 
-This clean up removes redundant code in rmtcall.c, and enables the
-possibility of making NLM downcalls via IPv6 transports.  We won't
-support that for a long while, however.
+The logic is modified slightly so that exit(3) is invoked only in
+main().  This is not required, but it makes the code slightly easier to
+understand and maintain.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- utils/statd/rmtcall.c |  143 +++++++++----------------------------------------
- 1 files changed, 26 insertions(+), 117 deletions(-)
+ utils/statd/sm-notify.c |  134 ++++++++++++++++++++++++++---------------------
+ 1 files changed, 75 insertions(+), 59 deletions(-)
 
-diff --git a/utils/statd/rmtcall.c b/utils/statd/rmtcall.c
-index 5700fc7..139b1de 100644
---- a/utils/statd/rmtcall.c
-+++ b/utils/statd/rmtcall.c
-@@ -45,13 +45,15 @@
- #include "notlist.h"
- #include "ha-callout.h"
+diff --git a/utils/statd/sm-notify.c b/utils/statd/sm-notify.c
+index 9ed5df1..b80d90d 100644
+--- a/utils/statd/sm-notify.c
++++ b/utils/statd/sm-notify.c
+@@ -60,7 +60,7 @@ static unsigned int	opt_max_retry = 15 * 60;
+ static char *		opt_srcaddr = 0;
+ static uint16_t		opt_srcport = 0;
  
-+#include "nsm.h"
-+#include "nfsrpc.h"
-+
- #if SIZEOF_SOCKLEN_T - 0 == 0
- #define socklen_t int
- #endif
- 
- #define MAXMSGSIZE	(2048 / sizeof(unsigned int))
- 
--static unsigned long	xid = 0;	/* RPC XID counter */
- static int		sockfd = -1;	/* notify socket */
- 
- /*
-@@ -103,80 +105,15 @@ statd_get_socket(void)
- 	return sockfd;
+-static void		notify(void);
++static void		notify(const int sock);
+ static int		notify_host(int, struct nsm_host *);
+ static void		recv_reply(int);
+ static void		insert_host(struct nsm_host *);
+@@ -145,10 +145,74 @@ smn_get_host(const char *hostname,
+ 	return 1;
  }
  
--static unsigned long
--xmit_call(struct sockaddr_in *sin,
--	  u_int32_t prog, u_int32_t vers, u_int32_t proc,
--	  xdrproc_t func, void *obj)
--/* 		__u32 prog, __u32 vers, __u32 proc, xdrproc_t func, void *obj) */
--{
--	unsigned int		msgbuf[MAXMSGSIZE], msglen;
--	struct rpc_msg		mesg;
--	struct pmap		pmap;
--	XDR			xdr, *xdrs = &xdr;
--	int			err;
--
--	if (!xid)
--		xid = getpid() + time(NULL);
--
--	mesg.rm_xid = ++xid;
--	mesg.rm_direction = CALL;
--	mesg.rm_call.cb_rpcvers = 2;
--	if (sin->sin_port == 0) {
--		sin->sin_port = htons(PMAPPORT);
--		mesg.rm_call.cb_prog = PMAPPROG;
--		mesg.rm_call.cb_vers = PMAPVERS;
--		mesg.rm_call.cb_proc = PMAPPROC_GETPORT;
--		pmap.pm_prog = prog;
--		pmap.pm_vers = vers;
--		pmap.pm_prot = IPPROTO_UDP;
--		pmap.pm_port = 0;
--		func = (xdrproc_t) xdr_pmap;
--		obj  = &pmap;
--	} else {
--		mesg.rm_call.cb_prog = prog;
--		mesg.rm_call.cb_vers = vers;
--		mesg.rm_call.cb_proc = proc;
--	}
--	mesg.rm_call.cb_cred.oa_flavor = AUTH_NULL;
--	mesg.rm_call.cb_cred.oa_base = (caddr_t) NULL;
--	mesg.rm_call.cb_cred.oa_length = 0;
--	mesg.rm_call.cb_verf.oa_flavor = AUTH_NULL;
--	mesg.rm_call.cb_verf.oa_base = (caddr_t) NULL;
--	mesg.rm_call.cb_verf.oa_length = 0;
--
--	/* Create XDR memory object for encoding */
--	xdrmem_create(xdrs, (caddr_t) msgbuf, sizeof(msgbuf), XDR_ENCODE);
--
--	/* Encode the RPC header part and payload */
--	if (!xdr_callmsg(xdrs, &mesg) || !func(xdrs, obj)) {
--		xlog(D_GENERAL, "%s: can't encode RPC message!", __func__);
--		xdr_destroy(xdrs);
--		return 0;
--	}
--
--	/* Get overall length of datagram */
--	msglen = xdr_getpos(xdrs);
--
--	if ((err = sendto(sockfd, msgbuf, msglen, 0,
--			(struct sockaddr *) sin, sizeof(*sin))) < 0) {
--		xlog_warn("%s: sendto failed: %m", __func__);
--	} else if (err != msglen) {
--		xlog_warn("%s: short write: %m", __func__);
--	}
--
--	xdr_destroy(xdrs);
--
--	return err == msglen? xid : 0;
--}
--
- static notify_list *
- recv_rply(struct sockaddr_in *sin, u_long *portp)
++/*
++ * Prepare a socket for sending RPC requests
++ *
++ * Returns a bound datagram socket file descriptor, or -1 if
++ * an error occurs.
++ */
++static int
++smn_create_socket(const char *srcaddr, const uint16_t srcport)
++{
++	struct sockaddr_storage address;
++	struct sockaddr *local_addr = (struct sockaddr *)&address;
++	int sock, retry_cnt = 0;
++
++retry:
++	sock = socket(AF_INET, SOCK_DGRAM, 0);
++	if (sock < 0) {
++		xlog(L_ERROR, "Failed to create RPC socket: %m");
++		return -1;
++	}
++	fcntl(sock, F_SETFL, O_NONBLOCK);
++
++	memset(&address, 0, sizeof(address));
++	local_addr->sa_family = AF_INET;	/* Default to IPv4 */
++
++	/* Bind source IP if provided on command line */
++	if (srcaddr) {
++		struct addrinfo *ai = smn_lookup(srcaddr);
++		if (!ai) {
++			xlog(L_ERROR,
++				"Not a valid hostname or address: \"%s\"",
++				srcaddr);
++			return -1;
++		}
++
++		/* We know it's IPv4 at this point */
++		memcpy(local_addr, ai->ai_addr, ai->ai_addrlen);
++
++		freeaddrinfo(ai);
++	}
++
++	/* Use source port if provided on the command line,
++	 * otherwise use bindresvport */
++	if (srcport) {
++		nfs_set_port(local_addr, srcport);
++		if (bind(sock, local_addr, sizeof(struct sockaddr_in)) < 0) {
++			xlog(L_ERROR, "Failed to bind RPC socket: %m");
++			return -1;
++		}
++	} else {
++		struct servent *se;
++		struct sockaddr_in *sin = (struct sockaddr_in *)local_addr;
++		(void) bindresvport(sock, sin);
++		/* try to avoid known ports */
++		se = getservbyport(sin->sin_port, "udp");
++		if (se && retry_cnt < 100) {
++			retry_cnt++;
++			close(sock);
++			goto retry;
++		}
++	}
++
++	return sock;
++}
++
+ int
+ main(int argc, char **argv)
  {
--	unsigned int		msgbuf[MAXMSGSIZE], msglen;
--	struct rpc_msg		mesg;
-+	unsigned int		msgbuf[NSM_MAXMSGSIZE];
-+	ssize_t			msglen;
- 	notify_list		*lp = NULL;
- 	XDR			xdr, *xdrs = &xdr;
- 	socklen_t		alen = sizeof(*sin);
-+	uint32_t		xid;
+-	int	c;
++	int	c, sock;
+ 	int	force = 0;
+ 	char *	progname;
  
- 	/* Receive message */
- 	if ((msglen = recvfrom(sockfd, msgbuf, sizeof(msgbuf), 0,
-@@ -187,36 +124,15 @@ recv_rply(struct sockaddr_in *sin, u_long *portp)
- 
- 	/* Create XDR object for decoding buffer */
- 	xdrmem_create(xdrs, (caddr_t) msgbuf, msglen, XDR_DECODE);
--
--	memset(&mesg, 0, sizeof(mesg));
--	mesg.rm_reply.rp_acpt.ar_results.where = NULL;
--	mesg.rm_reply.rp_acpt.ar_results.proc = (xdrproc_t) xdr_void;
--
--	if (!xdr_replymsg(xdrs, &mesg)) {
--		xlog_warn("%s: can't decode RPC message!", __func__);
--		goto done;
--	}
--
--	if (mesg.rm_reply.rp_stat != 0) {
--		xlog_warn("%s: [%s] RPC status %d", 
--				__func__,
--				inet_ntoa(sin->sin_addr),
--				mesg.rm_reply.rp_stat);
--		goto done;
--	}
--	if (mesg.rm_reply.rp_acpt.ar_stat != 0) {
--		xlog_warn("%s: [%s] RPC status %d",
--				__func__,
--				inet_ntoa(sin->sin_addr),
--				mesg.rm_reply.rp_acpt.ar_stat);
-+	xid = nsm_parse_reply(xdrs);
-+	if (xid == 0)
- 		goto done;
--	}
- 
- 	for (lp = notify; lp != NULL; lp = lp->next) {
- 		/* LH - this was a bug... it should have been checking
- 		 * the xid from the response message from the client,
- 		 * not the static, internal xid */
--		if (lp->xid != mesg.rm_xid)
-+		if (lp->xid != xid)
- 			continue;
- 		if (lp->addr.s_addr != sin->sin_addr.s_addr) {
- 			char addr [18];
-@@ -227,15 +143,8 @@ recv_rply(struct sockaddr_in *sin, u_long *portp)
- 				"expected %s, got %s", __func__,
- 				addr, inet_ntoa(sin->sin_addr));
- 		}
--		if (lp->port == 0) {
--			if (!xdr_u_long(xdrs, portp)) {
--				xlog_warn("%s: [%s] can't decode reply body!",
--					__func__,
--					inet_ntoa(sin->sin_addr));
--				lp = NULL;
--				goto done;
--			}
--		}
-+		if (lp->port == 0)
-+			*portp = nsm_recv_rpcbind(AF_INET, xdrs);
- 		break;
+@@ -246,7 +310,14 @@ usage:		fprintf(stderr,
+ 		close(2);
  	}
  
-@@ -251,11 +160,7 @@ static int
- process_entry(notify_list *lp)
- {
- 	struct sockaddr_in	sin;
--	struct status		new_status;
--	xdrproc_t		func;
--	void			*objp;
--	u_int32_t		proc, vers, prog;
--/* 	__u32			proc, vers, prog; */
-+	struct sockaddr		*sap = (struct sockaddr *)&sin;
- 
- 	if (NL_TIMES(lp) == 0) {
- 		xlog(D_GENERAL, "%s: Cannot notify %s, giving up",
-@@ -268,21 +173,25 @@ process_entry(notify_list *lp)
- 	sin.sin_port   = lp->port;
- 	/* LH - moved address into switch */
- 
--	prog = NL_MY_PROG(lp);
--	vers = NL_MY_VERS(lp);
--	proc = NL_MY_PROC(lp);
--
- 	/* __FORCE__ loopback for callbacks to lockd ... */
- 	/* Just in case we somehow ignored it thus far */
- 	sin.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
- 
--	func = (xdrproc_t) xdr_status;
--	objp = &new_status;
--	new_status.mon_name = NL_MON_NAME(lp);
--	new_status.state    = NL_STATE(lp);
--	memcpy(new_status.priv, NL_PRIV(lp), SM_PRIV_SIZE);
-+	if (nfs_get_port(sap) == 0)
-+		lp->xid = nsm_xmit_rpcbind(sockfd, sap,
-+				NL_MY_PROG(lp), NL_MY_VERS(lp));
-+	else {
-+		struct mon mon;
+-	notify();
++	sock = smn_create_socket(opt_srcaddr, opt_srcport);
++	if (sock < 0)
++		exit(1);
 +
-+		memcpy(mon.priv, NL_PRIV(lp), SM_PRIV_SIZE);
-+		mon.mon_id.mon_name = NL_MON_NAME(lp);
-+		mon.mon_id.my_id.my_prog = NL_MY_PROG(lp);
-+		mon.mon_id.my_id.my_vers = NL_MY_VERS(lp);
-+		mon.mon_id.my_id.my_proc = NL_MY_PROC(lp);
++	if (!nsm_drop_privileges(-1))
++		exit(1);
++
++	notify(sock);
  
--	lp->xid = xmit_call(&sin, prog, vers, proc, func, objp);
-+		lp->xid = nsm_xmit_nlmcall(sockfd, sap, sizeof(sin),
-+						&mon, NL_STATE(lp));
-+	}
- 	if (!lp->xid) {
- 		xlog_warn("%s: failed to notify port %d",
- 				__func__, ntohs(lp->port));
+ 	if (hosts) {
+ 		struct nsm_host	*hp;
+@@ -266,68 +337,13 @@ usage:		fprintf(stderr,
+  * Notify hosts
+  */
+ static void
+-notify(void)
++notify(const int sock)
+ {
+-	struct sockaddr_storage address;
+-	struct sockaddr *local_addr = (struct sockaddr *)&address;
+ 	time_t	failtime = 0;
+-	int	sock = -1;
+-	int retry_cnt = 0;
+-
+- retry:
+-	sock = socket(AF_INET, SOCK_DGRAM, 0);
+-	if (sock < 0) {
+-		xlog(L_ERROR, "Failed to create RPC socket: %m");
+-		exit(1);
+-	}
+-	fcntl(sock, F_SETFL, O_NONBLOCK);
+-
+-	memset(&address, 0, sizeof(address));
+-	local_addr->sa_family = AF_INET;	/* Default to IPv4 */
+-
+-	/* Bind source IP if provided on command line */
+-	if (opt_srcaddr) {
+-		struct addrinfo *ai = smn_lookup(opt_srcaddr);
+-		if (!ai) {
+-			xlog(L_ERROR,
+-				"Not a valid hostname or address: \"%s\"",
+-				opt_srcaddr);
+-			exit(1);
+-		}
+-
+-		/* We know it's IPv4 at this point */
+-		memcpy(local_addr, ai->ai_addr, ai->ai_addrlen);
+-
+-		freeaddrinfo(ai);
+-	}
+-
+-	/* Use source port if provided on the command line,
+-	 * otherwise use bindresvport */
+-	if (opt_srcport) {
+-		nfs_set_port(local_addr, opt_srcport);
+-		if (bind(sock, local_addr, sizeof(struct sockaddr_in)) < 0) {
+-			xlog(L_ERROR, "Failed to bind RPC socket: %m");
+-			exit(1);
+-		}
+-	} else {
+-		struct servent *se;
+-		struct sockaddr_in *sin = (struct sockaddr_in *)local_addr;
+-		(void) bindresvport(sock, sin);
+-		/* try to avoid known ports */
+-		se = getservbyport(sin->sin_port, "udp");
+-		if (se && retry_cnt < 100) {
+-			retry_cnt++;
+-			close(sock);
+-			goto retry;
+-		}
+-	}
+ 
+ 	if (opt_max_retry)
+ 		failtime = time(NULL) + opt_max_retry;
+ 
+-	if (!nsm_drop_privileges(-1))
+-		exit(1);
+-
+ 	while (hosts) {
+ 		struct pollfd	pfd;
+ 		time_t		now = time(NULL);
 
