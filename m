@@ -1,69 +1,123 @@
-From: Jesper Krogh <jesper-Q2TZfHgGEy4@public.gmane.org>
-Subject: Re: 2.6.31 under "heavy" NFS load.
-Date: Tue, 10 Nov 2009 20:05:56 +0100
-Message-ID: <4AF9B994.8040301@krogh.cc>
-References: <4AF86DE4.5010607@krogh.cc> <20091110184126.GD15000@fieldses.org>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 03/29] statd: replace smn_{get,
+	set}_port() with the shared equivalents
+Date: Tue, 10 Nov 2009 16:56:39 -0500
+Message-ID: <20091110215639.23822.99083.stgit@matisse.1015granger.net>
+References: <20091110215447.23822.15275.stgit@matisse.1015granger.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
-	Greg Banks <gnb-xTcybq6BZ68@public.gmane.org>
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Content-Type: text/plain; charset="utf-8"
+Cc: linux-nfs@vger.kernel.org, Chris.Mason@oracle.com
+To: steved@redhat.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from 2605ds1-ynoe.0.fullrate.dk ([90.184.12.24]:46435 "EHLO
-	shrek.krogh.cc" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757672AbZKJTF6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 10 Nov 2009 14:05:58 -0500
-In-Reply-To: <20091110184126.GD15000@fieldses.org>
+Received: from rcsinet11.oracle.com ([148.87.113.123]:49234 "EHLO
+	rgminet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758238AbZKJV5N (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 10 Nov 2009 16:57:13 -0500
+In-Reply-To: <20091110215447.23822.15275.stgit-RytpoXr2tKZ9HhUboXbp9zCvJB+x5qRC@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-J. Bruce Fields wrote:
-> On Mon, Nov 09, 2009 at 08:30:44PM +0100, Jesper Krogh wrote:
->> When a lot (~60 all on 1GbitE) of NFS clients are hitting an NFS server
->> that has an 10GbitE NIC sitting on it I'm seeing high IO-wait load
->> (>50%) and load number over 100 on the server. This is a change since
->> 2.6.29 where the IO-wait load under similar workload was less than 10%.
->>
->> The system has 16 Opteron cores.
->>
->> All data the NFS-clients are reading are "memory recident" since they
->> are all reading off the same 10GB of data and the server has 32GB of
->> main memory dedicated to nothing else than serving NFS.
->>
->> A snapshot of top looks like this:
->> http://krogh.cc/~jesper/top-hest-2.6.31.txt
->>
->> The load is generally alot higher than on 2.6.29 and it "explodes" to
->> over 100 when a few processes begin utillizing the disk while serving
->> files over NFS. "dstat" reports a read-out of 10-20MB/s from disk which
->> is close to what I'd expect. and the system delivers around 600-800MB/s
->> over the NIC in this workload.
-> 
-> Is that the bandwidth you get with 2.6.31, with 2.6.29, or with both?
+Clean up.  Use shared port management functions instead of duplicating
+this functionality in sm-notify.  This is now easy because sm-notify
+is linked with libnfs.a, where nfs_{get,set}_port() reside.
 
-Without being able to be fully accurate, I have a strong feeling that
-the comparative numbers on 2.6.29 were more around 800-1000MB/s. But
-this isn't based on any measurements so dont put too much into it. I'll
-try to make up something that I can use for testing over multiple
-kernel-versions.
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
 
-> Are you just noticing a change in the statistics, or are there concrete
-> changes in the performance of the server?
+ utils/statd/sm-notify.c |   40 +++++++---------------------------------
+ 1 files changed, 7 insertions(+), 33 deletions(-)
 
-Interactivity on the console is alot worse. Still usable, but top takes
-~5s to start up on 2.6.31 where I didn't remember any lags on 2.6.29 (so
-less than 2s).
+diff --git a/utils/statd/sm-notify.c b/utils/statd/sm-notify.c
+index 1d4403a..ea4ce23 100644
+--- a/utils/statd/sm-notify.c
++++ b/utils/statd/sm-notify.c
+@@ -29,6 +29,7 @@
+ #include <grp.h>
+ 
+ #include "xlog.h"
++#include "nfsrpc.h"
+ 
+ #ifndef BASEDIR
+ # ifdef NFS_STATEDIR
+@@ -90,33 +91,6 @@ static void		set_kernel_nsm_state(int state);
+ 
+ static struct nsm_host *	hosts = NULL;
+ 
+-/*
+- * Address handling utilities
+- */
+-
+-static unsigned short smn_get_port(const struct sockaddr *sap)
+-{
+-	switch (sap->sa_family) {
+-	case AF_INET:
+-		return ntohs(((struct sockaddr_in *)sap)->sin_port);
+-	case AF_INET6:
+-		return ntohs(((struct sockaddr_in6 *)sap)->sin6_port);
+-	}
+-	return 0;
+-}
+-
+-static void smn_set_port(struct sockaddr *sap, const unsigned short port)
+-{
+-	switch (sap->sa_family) {
+-	case AF_INET:
+-		((struct sockaddr_in *)sap)->sin_port = htons(port);
+-		break;
+-	case AF_INET6:
+-		((struct sockaddr_in6 *)sap)->sin6_port = htons(port);
+-		break;
+-	}
+-}
+-
+ static struct addrinfo *smn_lookup(const char *name)
+ {
+ 	struct addrinfo	*ai, hint = {
+@@ -321,7 +295,7 @@ notify(void)
+ 	/* Use source port if provided on the command line,
+ 	 * otherwise use bindresvport */
+ 	if (opt_srcport) {
+-		smn_set_port(local_addr, opt_srcport);
++		nfs_set_port(local_addr, opt_srcport);
+ 		if (bind(sock, local_addr, sizeof(struct sockaddr_in)) < 0) {
+ 			xlog(L_ERROR, "Failed to bind RPC socket: %m");
+ 			exit(1);
+@@ -455,16 +429,16 @@ notify_host(int sock, struct nsm_host *host)
+ 						first->ai_addrlen);
+ 		}
+ 
+-		smn_set_port((struct sockaddr *)&host->addr, 0);
++		nfs_set_port((struct sockaddr *)&host->addr, 0);
+ 		host->retries = 0;
+ 	}
+ 
+ 	memcpy(dest, &host->addr, destlen);
+-	if (smn_get_port(dest) == 0) {
++	if (nfs_get_port(dest) == 0) {
+ 		/* Build a PMAP packet */
+ 		xlog(D_GENERAL, "Sending portmap query to %s", host->name);
+ 
+-		smn_set_port(dest, 111);
++		nfs_set_port(dest, 111);
+ 		*p++ = htonl(100000);
+ 		*p++ = htonl(2);
+ 		*p++ = htonl(3);
+@@ -540,7 +514,7 @@ recv_reply(int sock)
+ 		return;
+ 	sap = (struct sockaddr *)&hp->addr;
+ 
+-	if (smn_get_port(sap) == 0) {
++	if (nfs_get_port(sap) == 0) {
+ 		/* This was a portmap request */
+ 		unsigned int	port;
+ 
+@@ -556,7 +530,7 @@ recv_reply(int sock)
+ 			hp->timeout = NSM_MAX_TIMEOUT;
+ 			hp->send_next += NSM_MAX_TIMEOUT;
+ 		} else {
+-			smn_set_port(sap, port);
++			nfs_set_port(sap, port);
+ 			if (hp->timeout >= NSM_MAX_TIMEOUT / 4)
+ 				hp->timeout = NSM_MAX_TIMEOUT / 4;
+ 		}
 
->> Sorry that I cannot be more specific, I can answer questions on a
->> running 2.6.31 kernel, but I cannot reboot the system back to 2.6.29
->> just to test since the system is "in production". I tried 2.6.30 and it
->> has the same pattern as 2.6.31, so based on that fragile evidence the
->> change should be found in between 2.6.29 and 2.6.30. I hope a "wague"
->> report is better than none.
-> 
-> Can you test whether this helps?
-
-I'll schedule testing..
-
--- 
-Jesper
