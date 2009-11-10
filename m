@@ -1,176 +1,83 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 15/29] statd: Use getaddrinfo(3) to generate bind address in
+Subject: [PATCH 14/29] statd: IPv6 support in reserved port binding in
 	smn_create_socket()
-Date: Tue, 10 Nov 2009 16:58:43 -0500
-Message-ID: <20091110215842.23822.97306.stgit@matisse.1015granger.net>
+Date: Tue, 10 Nov 2009 16:58:34 -0500
+Message-ID: <20091110215833.23822.97389.stgit@matisse.1015granger.net>
 References: <20091110215447.23822.15275.stgit@matisse.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org, Chris.Mason@oracle.com
 To: steved@redhat.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from acsinet11.oracle.com ([141.146.126.233]:19985 "EHLO
-	acsinet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758453AbZKJV7K (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 10 Nov 2009 16:59:10 -0500
+Received: from rcsinet12.oracle.com ([148.87.113.124]:50200 "EHLO
+	rgminet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758446AbZKJV7H (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 10 Nov 2009 16:59:07 -0500
 In-Reply-To: <20091110215447.23822.15275.stgit-RytpoXr2tKZ9HhUboXbp9zCvJB+x5qRC@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This patch updates the "bind to a user-specified port" arm of
+This patch updates the "bind to an arbitrary privileged port" arm of
 smn_create_socket() so it can deal with IPv6 bind addresses.
-
-A single getaddrinfo(3) call can convert a user-specified bind address
-or hostname to a socket address, optionally plant a provided port
-number, or whip up an appropriate wildcard address for use as the main
-socket's bind address.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- utils/statd/sm-notify.c |   81 ++++++++++++++++++++++++++++++-----------------
- 1 files changed, 52 insertions(+), 29 deletions(-)
+ utils/statd/sm-notify.c |   33 +++++++++++++++++++++++++++++----
+ 1 files changed, 29 insertions(+), 4 deletions(-)
 
 diff --git a/utils/statd/sm-notify.c b/utils/statd/sm-notify.c
-index 0069a99..9639e92 100644
+index 15f68fc..0069a99 100644
 --- a/utils/statd/sm-notify.c
 +++ b/utils/statd/sm-notify.c
-@@ -59,7 +59,7 @@ static int		opt_debug = 0;
- static int		opt_update_state = 1;
- static unsigned int	opt_max_retry = 15 * 60;
- static char *		opt_srcaddr = 0;
--static uint16_t		opt_srcport = 0;
-+static char *		opt_srcport = 0;
- 
- static void		notify(const int sock);
- static int		notify_host(int, struct nsm_host *);
-@@ -218,6 +218,40 @@ static int smn_socket(void)
+@@ -218,6 +218,26 @@ static int smn_socket(void)
  }
  #endif	/* !IPV6_SUPPORTED */
   
-+/*
-+ * If admin specified a source address or srcport, then convert those
-+ * to a sockaddr and return it.   Otherwise, return an ANYADDR address.
-+ */
-+static struct addrinfo *
-+smn_bind_address(const char *srcaddr, char *srcport)
++#ifdef HAVE_LIBTIRPC
++static int
++smn_bindresvport(int sock, struct sockaddr *sap)
 +{
-+	struct addrinfo gai_hint = {
-+		.ai_family	= nsm_family,
-+ 		.ai_protocol	= IPPROTO_UDP,
-+ 	};
-+	struct addrinfo *gai_results;
-+	int error;
-+
-+	if (srcaddr == NULL)
-+		gai_hint.ai_flags |= AI_PASSIVE;
-+	if (srcport == NULL)
-+		srcport = "";
-+ 
-+	error = getaddrinfo(srcaddr, srcport, &gai_hint, &gai_results);
-+	switch (error) {
-+	case 0:
-+		return gai_results;
-+	case EAI_SYSTEM:
-+		xlog(L_ERROR, "Failed to determine bind address: %m");
-+		break;
-+	default:
-+		xlog(L_ERROR, "Failed to determine bind address: %s",
-+				gai_strerror(error));
-+	}
-+
-+	return NULL;
++	return bindresvport_sa(sock, sap);
 +}
 +
- #ifdef HAVE_LIBTIRPC
- static int
- smn_bindresvport(int sock, struct sockaddr *sap)
-@@ -245,62 +279,51 @@ smn_bindresvport(int sock, struct sockaddr *sap)
-  * an error occurs.
-  */
- static int
--smn_create_socket(const char *srcaddr, const uint16_t srcport)
-+smn_create_socket(const char *srcaddr, char *srcport)
- {
--	struct sockaddr_storage address;
--	struct sockaddr *local_addr = (struct sockaddr *)&address;
- 	int sock, retry_cnt = 0;
-+	struct addrinfo *ai;
- 
- retry:
- 	sock = smn_socket();
- 	if (sock < 0)
- 		return -1;
- 
--	memset(&address, 0, sizeof(address));
--	local_addr->sa_family = AF_INET;	/* Default to IPv4 */
--
--	/* Bind source IP if provided on command line */
--	if (srcaddr) {
--		struct addrinfo *ai = smn_lookup(srcaddr);
--		if (!ai) {
--			xlog(L_ERROR,
--				"Not a valid hostname or address: \"%s\"",
--				srcaddr);
--			return -1;
--		}
--
--		/* We know it's IPv4 at this point */
--		memcpy(local_addr, ai->ai_addr, ai->ai_addrlen);
--
--		freeaddrinfo(ai);
--	}
-+	ai = smn_bind_address(srcaddr, srcport);
-+	if (!ai)
++#else	/* !HAVE_LIBTIRPC */
++static int
++smn_bindresvport(int sock, struct sockaddr *sap)
++{
++	if (sap->sa_family != AF_INET) {
++		errno = EAFNOSUPPORT;
 +		return -1;
- 
- 	/* Use source port if provided on the command line,
- 	 * otherwise use bindresvport */
- 	if (srcport) {
--		nfs_set_port(local_addr, srcport);
--		if (bind(sock, local_addr, sizeof(struct sockaddr_in)) < 0) {
-+		if (bind(sock, ai->ai_addr, ai->ai_addrlen) < 0) {
- 			xlog(L_ERROR, "Failed to bind RPC socket: %m");
--			return -1;
-+			(void)close(sock);
-+			sock = -1;
-+			goto out;
++	}
++
++	return bindresvport(sock, (struct sockaddr_in *)sap);
++}
++#endif	/* !HAVE_LIBTIRPC */
++
+ /*
+  * Prepare a socket for sending RPC requests
+  *
+@@ -265,13 +285,18 @@ retry:
  		}
  	} else {
  		struct servent *se;
- 
--		if (smn_bindresvport(sock, local_addr) == -1) {
-+		if (smn_bindresvport(sock, ai->ai_addr) == -1) {
- 			xlog(L_ERROR, "bindresvport(3): %m");
- 			(void)close(sock);
--			return -1;
-+			sock = -1;
-+			goto out;
- 		}
- 
+-		struct sockaddr_in *sin = (struct sockaddr_in *)local_addr;
+-		(void) bindresvport(sock, sin);
++
++		if (smn_bindresvport(sock, local_addr) == -1) {
++			xlog(L_ERROR, "bindresvport(3): %m");
++			(void)close(sock);
++			return -1;
++		}
++
  		/* try to avoid known ports */
--		se = getservbyport(nfs_get_port(local_addr), "udp");
-+		se = getservbyport(nfs_get_port(ai->ai_addr), "udp");
+-		se = getservbyport(sin->sin_port, "udp");
++		se = getservbyport(nfs_get_port(local_addr), "udp");
  		if (se && retry_cnt < 100) {
  			retry_cnt++;
- 			(void)close(sock);
-+			freeaddrinfo(ai);
+-			close(sock);
++			(void)close(sock);
  			goto retry;
  		}
  	}
- 
-+out:
-+	freeaddrinfo(ai);
- 	return sock;
- }
- 
-@@ -332,7 +355,7 @@ main(int argc, char **argv)
- 			opt_update_state = 0;
- 			break;
- 		case 'p':
--			opt_srcport = atoi(optarg);
-+			opt_srcport = optarg;
- 			break;
- 		case 'v':
- 			opt_srcaddr = optarg;
 
