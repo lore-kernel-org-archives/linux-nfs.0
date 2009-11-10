@@ -1,217 +1,244 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 10/29] statd: Support sending SM_NOTIFY requests to IPv6
-	remotes
-Date: Tue, 10 Nov 2009 16:57:57 -0500
-Message-ID: <20091110215757.23822.85641.stgit@matisse.1015granger.net>
+Subject: [PATCH 11/29] statd: Update rmtcall.c
+Date: Tue, 10 Nov 2009 16:58:06 -0500
+Message-ID: <20091110215806.23822.51439.stgit@matisse.1015granger.net>
 References: <20091110215447.23822.15275.stgit@matisse.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org, Chris.Mason@oracle.com
 To: steved@redhat.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet11.oracle.com ([148.87.113.123]:50813 "EHLO
-	rgminet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757305AbZKJV6g (ORCPT
+Received: from acsinet11.oracle.com ([141.146.126.233]:18994 "EHLO
+	acsinet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757384AbZKJV6g (ORCPT
 	<rfc822;linux-nfs@vger.kernel.org>); Tue, 10 Nov 2009 16:58:36 -0500
 In-Reply-To: <20091110215447.23822.15275.stgit-RytpoXr2tKZ9HhUboXbp9zCvJB+x5qRC@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Replace the open code to construct SM_NOTIFY and PMAP_GETPORT RPC
-requests with calls to our new library routines that support
-IPv6 and RPCB_GETADDR as well.
+Replace the open code to construct NLM downcalls and PMAP_GETPORT RPC
+requests with calls to our new library routines.
 
-This change allows sm-notify to send RPCB_GETADDR, but it won't do
-that until the main sm-notify socket supports PF_INET6, and the DNS
-resolution logic is updated to return IPv6 addresses.
-
-I would prefer to use high level RPC client library calls to send
-these requests instead of this open coded solution.  That would give
-us a number of benefits, including support for sending SM_NOTIFY via
-TCP so we can penetrate firewalls that block UDP.
-
-However, that would also involve replacing the scheduler logic in
-sm-notify with something like fork(3) or pthreads, to deal with the
-synchronous RPC client library calls.  That's probably too much for
-folks to swallow right now.
+This clean up removes redundant code in rmtcall.c, and enables the
+possibility of making NLM downcalls via IPv6 transports.  We won't
+support that for a long while, however.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- utils/statd/sm-notify.c |  110 +++++++++++------------------------------------
- 1 files changed, 26 insertions(+), 84 deletions(-)
+ utils/statd/rmtcall.c |  143 +++++++++----------------------------------------
+ 1 files changed, 26 insertions(+), 117 deletions(-)
 
-diff --git a/utils/statd/sm-notify.c b/utils/statd/sm-notify.c
-index 6466d8a..9ed5df1 100644
---- a/utils/statd/sm-notify.c
-+++ b/utils/statd/sm-notify.c
-@@ -38,7 +38,6 @@
- #define NSM_TIMEOUT	2
- #define NSM_NOTIFY	6
- #define NSM_MAX_TIMEOUT	120	/* don't make this too big */
--#define MAXMSGSIZE	256
+diff --git a/utils/statd/rmtcall.c b/utils/statd/rmtcall.c
+index 5700fc7..139b1de 100644
+--- a/utils/statd/rmtcall.c
++++ b/utils/statd/rmtcall.c
+@@ -45,13 +45,15 @@
+ #include "notlist.h"
+ #include "ha-callout.h"
  
- struct nsm_host {
- 	struct nsm_host *	next;
-@@ -388,14 +387,6 @@ notify_host(int sock, struct nsm_host *host)
- {
- 	struct sockaddr_storage address;
- 	struct sockaddr *dest = (struct sockaddr *)&address;
--	static unsigned int	xid = 0;
--	uint32_t		msgbuf[MAXMSGSIZE], *p;
--	unsigned int		len;
++#include "nsm.h"
++#include "nfsrpc.h"
++
+ #if SIZEOF_SOCKLEN_T - 0 == 0
+ #define socklen_t int
+ #endif
+ 
+ #define MAXMSGSIZE	(2048 / sizeof(unsigned int))
+ 
+-static unsigned long	xid = 0;	/* RPC XID counter */
+ static int		sockfd = -1;	/* notify socket */
+ 
+ /*
+@@ -103,80 +105,15 @@ statd_get_socket(void)
+ 	return sockfd;
+ }
+ 
+-static unsigned long
+-xmit_call(struct sockaddr_in *sin,
+-	  u_int32_t prog, u_int32_t vers, u_int32_t proc,
+-	  xdrproc_t func, void *obj)
+-/* 		__u32 prog, __u32 vers, __u32 proc, xdrproc_t func, void *obj) */
+-{
+-	unsigned int		msgbuf[MAXMSGSIZE], msglen;
+-	struct rpc_msg		mesg;
+-	struct pmap		pmap;
+-	XDR			xdr, *xdrs = &xdr;
+-	int			err;
 -
 -	if (!xid)
 -		xid = getpid() + time(NULL);
--	if (!host->xid)
--		host->xid = xid++;
- 
- 	if (host->ai == NULL) {
- 		host->ai = smn_lookup(host->name);
-@@ -406,12 +397,6 @@ notify_host(int sock, struct nsm_host *host)
- 		}
- 	}
- 
--	memset(msgbuf, 0, sizeof(msgbuf));
--	p = msgbuf;
--	*p++ = htonl(host->xid);
--	*p++ = 0;
--	*p++ = htonl(2);
 -
- 	/* If we retransmitted 4 times, reset the port to force
- 	 * a new portmap lookup (in case statd was restarted).
- 	 * We also rotate through multiple IP addresses at this
-@@ -446,48 +431,13 @@ notify_host(int sock, struct nsm_host *host)
- 	}
- 
- 	memcpy(dest, &host->addr, host->addrlen);
--	if (nfs_get_port(dest) == 0) {
--		/* Build a PMAP packet */
--		xlog(D_GENERAL, "Sending portmap query to %s", host->name);
--
--		nfs_set_port(dest, 111);
--		*p++ = htonl(100000);
--		*p++ = htonl(2);
--		*p++ = htonl(3);
--
--		/* Auth and verf */
--		*p++ = 0; *p++ = 0;
--		*p++ = 0; *p++ = 0;
--
--		*p++ = htonl(NSM_PROGRAM);
--		*p++ = htonl(NSM_VERSION);
--		*p++ = htonl(IPPROTO_UDP);
--		*p++ = 0;
+-	mesg.rm_xid = ++xid;
+-	mesg.rm_direction = CALL;
+-	mesg.rm_call.cb_rpcvers = 2;
+-	if (sin->sin_port == 0) {
+-		sin->sin_port = htons(PMAPPORT);
+-		mesg.rm_call.cb_prog = PMAPPROG;
+-		mesg.rm_call.cb_vers = PMAPVERS;
+-		mesg.rm_call.cb_proc = PMAPPROC_GETPORT;
+-		pmap.pm_prog = prog;
+-		pmap.pm_vers = vers;
+-		pmap.pm_prot = IPPROTO_UDP;
+-		pmap.pm_port = 0;
+-		func = (xdrproc_t) xdr_pmap;
+-		obj  = &pmap;
 -	} else {
--		/* Build an SM_NOTIFY packet */
--		xlog(D_GENERAL, "Sending SM_NOTIFY to %s", host->name);
--
--		*p++ = htonl(NSM_PROGRAM);
--		*p++ = htonl(NSM_VERSION);
--		*p++ = htonl(NSM_NOTIFY);
--
--		/* Auth and verf */
--		*p++ = 0; *p++ = 0;
--		*p++ = 0; *p++ = 0;
--
--		/* state change */
--		len = strlen(nsm_hostname);
--		*p++ = htonl(len);
--		memcpy(p, nsm_hostname, len);
--		p += (len + 3) >> 2;
--		*p++ = htonl(nsm_state);
+-		mesg.rm_call.cb_prog = prog;
+-		mesg.rm_call.cb_vers = vers;
+-		mesg.rm_call.cb_proc = proc;
 -	}
--	len = (p - msgbuf) << 2;
+-	mesg.rm_call.cb_cred.oa_flavor = AUTH_NULL;
+-	mesg.rm_call.cb_cred.oa_base = (caddr_t) NULL;
+-	mesg.rm_call.cb_cred.oa_length = 0;
+-	mesg.rm_call.cb_verf.oa_flavor = AUTH_NULL;
+-	mesg.rm_call.cb_verf.oa_base = (caddr_t) NULL;
+-	mesg.rm_call.cb_verf.oa_length = 0;
 -
--	if (sendto(sock, msgbuf, len, 0, dest, host->addrlen) < 0)
--		xlog_warn("Sending Reboot Notification to "
--			"'%s' failed: errno %d (%m)", host->name, errno);
+-	/* Create XDR memory object for encoding */
+-	xdrmem_create(xdrs, (caddr_t) msgbuf, sizeof(msgbuf), XDR_ENCODE);
 -
-+	if (nfs_get_port(dest) == 0)
-+		host->xid = nsm_xmit_rpcbind(sock, dest,
-+				NSM_PROGRAM, NSM_VERSION);
-+	else
-+		host->xid = nsm_xmit_notify(sock, dest, host->addrlen,
-+				NSM_PROGRAM, nsm_hostname, nsm_state);
-+	
- 	return 0;
- }
- 
-@@ -499,40 +449,32 @@ recv_reply(int sock)
+-	/* Encode the RPC header part and payload */
+-	if (!xdr_callmsg(xdrs, &mesg) || !func(xdrs, obj)) {
+-		xlog(D_GENERAL, "%s: can't encode RPC message!", __func__);
+-		xdr_destroy(xdrs);
+-		return 0;
+-	}
+-
+-	/* Get overall length of datagram */
+-	msglen = xdr_getpos(xdrs);
+-
+-	if ((err = sendto(sockfd, msgbuf, msglen, 0,
+-			(struct sockaddr *) sin, sizeof(*sin))) < 0) {
+-		xlog_warn("%s: sendto failed: %m", __func__);
+-	} else if (err != msglen) {
+-		xlog_warn("%s: short write: %m", __func__);
+-	}
+-
+-	xdr_destroy(xdrs);
+-
+-	return err == msglen? xid : 0;
+-}
+-
+ static notify_list *
+ recv_rply(struct sockaddr_in *sin, u_long *portp)
  {
- 	struct nsm_host	*hp;
- 	struct sockaddr *sap;
--	uint32_t	msgbuf[MAXMSGSIZE], *p, *end;
-+	uint32_t	msgbuf[NSM_MAXMSGSIZE];
- 	uint32_t	xid;
--	int		res;
-+	ssize_t		msglen;
-+	XDR		xdr, *xdrs = &xdr;
+-	unsigned int		msgbuf[MAXMSGSIZE], msglen;
+-	struct rpc_msg		mesg;
++	unsigned int		msgbuf[NSM_MAXMSGSIZE];
++	ssize_t			msglen;
+ 	notify_list		*lp = NULL;
+ 	XDR			xdr, *xdrs = &xdr;
+ 	socklen_t		alen = sizeof(*sin);
++	uint32_t		xid;
  
--	res = recv(sock, msgbuf, sizeof(msgbuf), 0);
--	if (res < 0)
-+	msglen = recv(sock, msgbuf, sizeof(msgbuf), 0);
-+	if (msglen < 0)
- 		return;
+ 	/* Receive message */
+ 	if ((msglen = recvfrom(sockfd, msgbuf, sizeof(msgbuf), 0,
+@@ -187,36 +124,15 @@ recv_rply(struct sockaddr_in *sin, u_long *portp)
  
- 	xlog(D_GENERAL, "Received packet...");
- 
--	p = msgbuf;
--	end = p + (res >> 2);
+ 	/* Create XDR object for decoding buffer */
+ 	xdrmem_create(xdrs, (caddr_t) msgbuf, msglen, XDR_DECODE);
 -
--	xid = ntohl(*p++);
--	if (*p++ != htonl(1)	/* must be REPLY */
--	 || *p++ != htonl(0)	/* must be ACCEPTED */
--	 || *p++ != htonl(0)	/* must be NULL verifier */
--	 || *p++ != htonl(0)
--	 || *p++ != htonl(0))	/* must be SUCCESS */
--		return;
-+	xdrmem_create(xdrs, (caddr_t)msgbuf, msglen, XDR_DECODE);
+-	memset(&mesg, 0, sizeof(mesg));
+-	mesg.rm_reply.rp_acpt.ar_results.where = NULL;
+-	mesg.rm_reply.rp_acpt.ar_results.proc = (xdrproc_t) xdr_void;
+-
+-	if (!xdr_replymsg(xdrs, &mesg)) {
+-		xlog_warn("%s: can't decode RPC message!", __func__);
+-		goto done;
+-	}
+-
+-	if (mesg.rm_reply.rp_stat != 0) {
+-		xlog_warn("%s: [%s] RPC status %d", 
+-				__func__,
+-				inet_ntoa(sin->sin_addr),
+-				mesg.rm_reply.rp_stat);
+-		goto done;
+-	}
+-	if (mesg.rm_reply.rp_acpt.ar_stat != 0) {
+-		xlog_warn("%s: [%s] RPC status %d",
+-				__func__,
+-				inet_ntoa(sin->sin_addr),
+-				mesg.rm_reply.rp_acpt.ar_stat);
 +	xid = nsm_parse_reply(xdrs);
 +	if (xid == 0)
-+		goto out;
+ 		goto done;
+-	}
  
- 	/* Before we look at the data, find the host struct for
- 	   this reply */
- 	if ((hp = find_host(xid)) == NULL)
--		return;
-+		goto out;
- 	sap = (struct sockaddr *)&hp->addr;
- 
- 	if (nfs_get_port(sap) == 0) {
--		/* This was a portmap request */
--		unsigned int	port;
-+		uint16_t port;
- 
--		port = ntohl(*p++);
--		if (p > end)
--			goto fail;
-+		port = nsm_recv_rpcbind(sap->sa_family, xdrs);
- 
- 		hp->send_next = time(NULL);
- 		if (port == 0) {
-@@ -553,16 +495,16 @@ recv_reply(int sock)
- 		 * check that we didn't read past the end of the
- 		 * packet)
- 		 */
--		if (p <= end) {
--			xlog(D_GENERAL, "Host %s notified successfully",
--					hp->name);
--			smn_forget_host(hp);
--			return;
+ 	for (lp = notify; lp != NULL; lp = lp->next) {
+ 		/* LH - this was a bug... it should have been checking
+ 		 * the xid from the response message from the client,
+ 		 * not the static, internal xid */
+-		if (lp->xid != mesg.rm_xid)
++		if (lp->xid != xid)
+ 			continue;
+ 		if (lp->addr.s_addr != sin->sin_addr.s_addr) {
+ 			char addr [18];
+@@ -227,15 +143,8 @@ recv_rply(struct sockaddr_in *sin, u_long *portp)
+ 				"expected %s, got %s", __func__,
+ 				addr, inet_ntoa(sin->sin_addr));
+ 		}
+-		if (lp->port == 0) {
+-			if (!xdr_u_long(xdrs, portp)) {
+-				xlog_warn("%s: [%s] can't decode reply body!",
+-					__func__,
+-					inet_ntoa(sin->sin_addr));
+-				lp = NULL;
+-				goto done;
+-			}
 -		}
-+		xlog(D_GENERAL, "Host %s notified successfully",
-+				hp->name);
-+		smn_forget_host(hp);
-+		goto out;
++		if (lp->port == 0)
++			*portp = nsm_recv_rpcbind(AF_INET, xdrs);
+ 		break;
  	}
  
--fail:	/* Re-insert the host */
- 	insert_host(hp);
-+
-+out:
-+	xdr_destroy(xdrs);
- }
+@@ -251,11 +160,7 @@ static int
+ process_entry(notify_list *lp)
+ {
+ 	struct sockaddr_in	sin;
+-	struct status		new_status;
+-	xdrproc_t		func;
+-	void			*objp;
+-	u_int32_t		proc, vers, prog;
+-/* 	__u32			proc, vers, prog; */
++	struct sockaddr		*sap = (struct sockaddr *)&sin;
  
- /*
+ 	if (NL_TIMES(lp) == 0) {
+ 		xlog(D_GENERAL, "%s: Cannot notify %s, giving up",
+@@ -268,21 +173,25 @@ process_entry(notify_list *lp)
+ 	sin.sin_port   = lp->port;
+ 	/* LH - moved address into switch */
+ 
+-	prog = NL_MY_PROG(lp);
+-	vers = NL_MY_VERS(lp);
+-	proc = NL_MY_PROC(lp);
+-
+ 	/* __FORCE__ loopback for callbacks to lockd ... */
+ 	/* Just in case we somehow ignored it thus far */
+ 	sin.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+ 
+-	func = (xdrproc_t) xdr_status;
+-	objp = &new_status;
+-	new_status.mon_name = NL_MON_NAME(lp);
+-	new_status.state    = NL_STATE(lp);
+-	memcpy(new_status.priv, NL_PRIV(lp), SM_PRIV_SIZE);
++	if (nfs_get_port(sap) == 0)
++		lp->xid = nsm_xmit_rpcbind(sockfd, sap,
++				NL_MY_PROG(lp), NL_MY_VERS(lp));
++	else {
++		struct mon mon;
++
++		memcpy(mon.priv, NL_PRIV(lp), SM_PRIV_SIZE);
++		mon.mon_id.mon_name = NL_MON_NAME(lp);
++		mon.mon_id.my_id.my_prog = NL_MY_PROG(lp);
++		mon.mon_id.my_id.my_vers = NL_MY_VERS(lp);
++		mon.mon_id.my_id.my_proc = NL_MY_PROC(lp);
+ 
+-	lp->xid = xmit_call(&sin, prog, vers, proc, func, objp);
++		lp->xid = nsm_xmit_nlmcall(sockfd, sap, sizeof(sin),
++						&mon, NL_STATE(lp));
++	}
+ 	if (!lp->xid) {
+ 		xlog_warn("%s: failed to notify port %d",
+ 				__func__, ntohs(lp->port));
 
