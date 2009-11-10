@@ -1,46 +1,90 @@
 From: Jeff Layton <jlayton@redhat.com>
-Subject: [PATCH 0/2] vfs: ensure that dentries are revalidated on open (try #2)
-Date: Tue, 10 Nov 2009 11:27:34 -0500
-Message-ID: <1257870456-31188-1-git-send-email-jlayton@redhat.com>
+Subject: [PATCH 1/2] vfs: force reval of dentries for LAST_BIND symlinks on open
+Date: Tue, 10 Nov 2009 11:27:35 -0500
+Message-ID: <1257870456-31188-2-git-send-email-jlayton@redhat.com>
+References: <1257870456-31188-1-git-send-email-jlayton@redhat.com>
 Cc: ebiederm@xmission.com, adobriyan@gmail.com,
 	viro@ZenIV.linux.org.uk, jamie@shareable.org
 To: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
 	linux-nfs@vger.kernel.org
 Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <1257870456-31188-1-git-send-email-jlayton@redhat.com>
 Sender: linux-fsdevel-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This is the second attempt to fix this problem. The first one attempted
-to fix this in procfs, but Eric Biederman pointed out that file bind
-mounts have a similar problem. This set attempts to fix the issue at a
-higher level, in the generic VFS layer.
+procfs-style symlinks return a last_type of LAST_BIND without an actual
+path string. This causes __follow_link to skip calling __vfs_follow_link
+and so the dentry isn't revalidated.
 
-In certain situations, when it knows that they are valid, the path
-walking code will skip revalidating dentries that it finds in the cache.
-This causes problems with filesystems such as NFSv4 and CIFS that depend
-on the d_revalidate routine to do opens during lookup.
+This is a problem when the link target sits on NFSv4 as it depends on
+the VFS to revalidate the dentry before using it on an open call. Ensure
+that this occurs by forcing a revalidation of the target dentry of
+LAST_BIND symlinks.
 
-A simple way to demonstrate this problem is by having a program open a
-file that sits on NFSv4 via a procfs symlink or file bind mount, and
-then try to set a fcntl read lock on the file. The lock operation will
-return -ENOLCK because the open file has no NFSv4 state attached.
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/namei.c |   41 +++++++++++++++++++++++++++++++++++++++++
+ 1 files changed, 41 insertions(+), 0 deletions(-)
 
-This set fixes this problem by adding a new routine to force a
-revalidation of the dentry in these situations when they're being done
-in order to open a file.
-
-This fixes my testcase, and I haven't seen any other adverse affects on
-it. I am however, far from certain that I'm not breaking the refcounting
-in the situation where open_reval_path returns an error. I'd appreciate
-someone giving me some sanity checks there. Also, have I missed any
-places that need to force a revalidate like this?
-
-Comments welcome...
-
-Jeff Layton (2):
-  vfs: force reval of dentries for LAST_BIND symlinks on open
-  vfs: force reval on dentry of bind mounted files for LOOKUP_OPEN
-
- fs/namei.c |   50 ++++++++++++++++++++++++++++++++++++++++++++++++--
- 1 files changed, 48 insertions(+), 2 deletions(-)
+diff --git a/fs/namei.c b/fs/namei.c
+index 3374917..5c8ef80 100644
+--- a/fs/namei.c
++++ b/fs/namei.c
+@@ -414,6 +414,45 @@ do_revalidate(struct dentry *dentry, struct nameidata *nd)
+ }
+ 
+ /*
++ * open_reval_path - force revalidation of a dentry for file opens
++ *
++ * in some situations the path walking code will trust dentries without
++ * revalidating them. This causes problems for filesystems that depend on
++ * d_revalidate to handle the actual file open (e.g. NFSv4). When LOOKUP_OPEN
++ * is set, force a revalidation if the dentry appears to be valid and a
++ * d_revalidate routine exists.
++ *
++ * Returns 0 if the revalidation was successful. If the revalidation fails,
++ * either return the error returned by d_revalidate or -ESTALE if the
++ * revalidation indicates an invalid dentry. On error, references to the dentry
++ * and vfsmount in the path are put.
++ */
++static int
++open_reval_path(struct path *path, struct nameidata *nd)
++{
++	struct dentry *dentry = path->dentry;
++
++	/* only bother with this for opens */
++	if (!(nd->flags & LOOKUP_OPEN))
++		return 0;
++
++	/* no reval routine, just return */
++	if (!dentry->d_op || !dentry->d_op->d_revalidate)
++		return 0;
++
++	dentry = do_revalidate(dentry, nd);
++	if (dentry && !IS_ERR(dentry))
++		return 0;
++
++	mntput(path->mnt);
++
++	if (!dentry)
++		return -ESTALE;
++
++	return PTR_ERR(dentry);
++}
++
++/*
+  * Internal lookup() using the new generic dcache.
+  * SMP-safe
+  */
+@@ -641,6 +680,8 @@ static __always_inline int __do_follow_link(struct path *path, struct nameidata
+ 		error = 0;
+ 		if (s)
+ 			error = __vfs_follow_link(nd, s);
++		else if (nd->last_type == LAST_BIND)
++			error = open_reval_path(&nd->path, nd);
+ 		if (dentry->d_inode->i_op->put_link)
+ 			dentry->d_inode->i_op->put_link(dentry, nd, cookie);
+ 	}
+-- 
+1.5.5.6
 
