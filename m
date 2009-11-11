@@ -1,54 +1,37 @@
-From: Fabio Olive Leite <fabio.olive@gmail.com>
-Subject: Re: [Bugme-new] [Bug 14546] New: Off-by-two stack buffer overflow
- in function rpc_uaddr2sockaddr() of net/sunrpc/addr.c
-Date: Wed, 11 Nov 2009 10:11:59 -0200
-Message-ID: <20091111101159.72ad3014@gmail.com>
-References: <bug-14546-10286@http.bugzilla.kernel.org/>
-	<20091110152908.7558a471.akpm@linux-foundation.org>
-	<967DC2CE-588D-4207-BF2D-59727454DC2E@oracle.com>
-	<20091111075128.GA28323@evola>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: [PATCH 0/2] vfs: ensure that dentries are revalidated on open
+ (try #2)
+Date: Wed, 11 Nov 2009 21:17:19 +0900
+Message-ID: <1257941839.2949.9.camel@heimdal.trondhjem.org>
+References: <1257870456-31188-1-git-send-email-jlayton@redhat.com>
+	 <E1N884c-0006Br-Je@pomaz-ex.szeredi.hu>
+	 <1257927970.5138.24.camel@heimdal.trondhjem.org>
+	 <E1N88eK-0006Im-1F@pomaz-ex.szeredi.hu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: Chuck Lever <chuck.lever@oracle.com>,
-	bugzilla-daemon-590EEB7GvNiWaY/ihj7yzEB+6BGkLq7r@public.gmane.org,
-	bugme-daemon-590EEB7GvNiWaY/ihj7yzEB+6BGkLq7r@public.gmane.org,
-	Linux Network Developers <netdev@vger.kernel.org>,
-	"J. Bruce Fields" <bfields@fieldses.org>,
-	Trond Myklebust <trond.myklebust@fys.uio.no>,
-	Neil Brown <neilb@suse.de>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-To: Patroklos Argyroudis <argp-YZAGAMbGdGKGw+nKnLezzg@public.gmane.org>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yx0-f187.google.com ([209.85.210.187]:43633 "EHLO
-	mail-yx0-f187.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756862AbZKKMMG (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 11 Nov 2009 07:12:06 -0500
-In-Reply-To: <20091111075128.GA28323@evola>
-Sender: linux-nfs-owner@vger.kernel.org
+Content-Type: text/plain
+Cc: jlayton@redhat.com, linux-kernel@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+	ebiederm@xmission.com, adobriyan@gmail.com,
+	viro@ZenIV.linux.org.uk, jamie@shareable.org
+To: Miklos Szeredi <miklos@szeredi.hu>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <E1N88eK-0006Im-1F@pomaz-ex.szeredi.hu>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 2009-11-11 Patroklos Argyroudis wrote:
-> On Tue, Nov 10, 2009 at 06:38:05PM -0500, Chuck Lever wrote:
-> > Why wouldn't you bump the size of the buffer by two as well?
-> > Otherwise valid universal addresses that are RPCBIND_MAXUADDRLEN
-> > bytes long will fail here.
-> >=20
-> > >	memcpy(buf, uaddr, uaddr_len);
->=20
-> There is no need to increase the size of the buffer since the new
-> check (if (uaddr_len > sizeof(buf) - 2)) will terminate the function
-> in case the valid universal address is RPCBIND_MAXUADDRLEN bytes.
+On Wed, 2009-11-11 at 09:33 +0100, Miklos Szeredi wrote:
+> On Wed, 11 Nov 2009, Trond Myklebust wrote:
+> > Aren't both proc symlinks and bind mounts pretty much guaranteed to
+> > point to a valid dentry?
+> 
+> It could for example happen that client bind mounts a regular file,
+> then the file is unlinked on the server.  Then the bind mounted dentry
+> is no longer valid.
 
-=46ailing to convert a valid address is incorrect and unexpected. What
-Chuck meant is that since it is valid to have an address up to
-RPCBIND_MAXUADDRLEN bytes long, the function should be able to work on
-that, by having an internal buffer that allows for the extra "\n\0".
+The mountpoint dentry is still supposed to remain valid and accessible
+on the client even if the object it points to on the server is invalid.
+Otherwise you will not be able to unmount.
 
-Cheers,
-=46=C3=A1bio Oliv=C3=A9
---=20
-ex sed lex awk yacc, e pluribus unix, amem
-na matem=C3=A1tica das id=C3=A9ias, permuta =C3=A9 igual a adi=C3=A7=C3=
-=A3o
-e um debate inteligente implementa a multiplica=C3=A7=C3=A3o
+Cheers
+  Trond
+
