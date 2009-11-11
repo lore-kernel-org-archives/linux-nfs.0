@@ -1,36 +1,50 @@
-From: Miklos Szeredi <miklos@szeredi.hu>
-Subject: Re: [PATCH 0/2] vfs: ensure that dentries are revalidated on open (try #2)
-Date: Wed, 11 Nov 2009 08:57:02 +0100
-Message-ID: <E1N884c-0006Br-Je@pomaz-ex.szeredi.hu>
-References: <1257870456-31188-1-git-send-email-jlayton@redhat.com>
-Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	linux-nfs@vger.kernel.org, ebiederm@xmission.com,
-	adobriyan@gmail.com, viro@ZenIV.linux.org.uk, jamie@shareable.org
-To: Jeff Layton <jlayton@redhat.com>
+From: Patroklos Argyroudis <argp-YZAGAMbGdGKGw+nKnLezzg@public.gmane.org>
+Subject: Re: [Bugme-new] [Bug 14546] New: Off-by-two stack buffer overflow
+ in function rpc_uaddr2sockaddr() of net/sunrpc/addr.c
+Date: Wed, 11 Nov 2009 09:51:28 +0200
+Message-ID: <20091111075128.GA28323@evola>
+References: <bug-14546-10286@http.bugzilla.kernel.org/>
+ <20091110152908.7558a471.akpm@linux-foundation.org>
+ <967DC2CE-588D-4207-BF2D-59727454DC2E@oracle.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: bugzilla-daemon-590EEB7GvNiWaY/ihj7yzEB+6BGkLq7r@public.gmane.org,
+	bugme-daemon-590EEB7GvNiWaY/ihj7yzEB+6BGkLq7r@public.gmane.org,
+	Linux Network Developers <netdev@vger.kernel.org>,
+	"J. Bruce Fields" <bfields@fieldses.org>,
+	Trond Myklebust <trond.myklebust@fys.uio.no>,
+	Neil Brown <neilb@suse.de>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fxip-0047f.externet.hu ([88.209.222.127]:41160 "EHLO
-	pomaz-ex.szeredi.hu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751685AbZKKH5F (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 11 Nov 2009 02:57:05 -0500
-In-reply-to: <1257870456-31188-1-git-send-email-jlayton@redhat.com> (message
-	from Jeff Layton on Tue, 10 Nov 2009 11:27:34 -0500)
+Received: from mail6.webfaction.com ([74.55.86.74]:40154 "EHLO
+	smtp.webfaction.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755249AbZKKIRI (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 11 Nov 2009 03:17:08 -0500
+In-Reply-To: <967DC2CE-588D-4207-BF2D-59727454DC2E@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 10 Nov 2009, Jeff Layton wrote:
-> This is the second attempt to fix this problem. The first one attempted
-> to fix this in procfs, but Eric Biederman pointed out that file bind
-> mounts have a similar problem. This set attempts to fix the issue at a
-> higher level, in the generic VFS layer.
+On Nov 10, 2009, at 6:29 PM, Andrew Morton wrote:
+> >
+> >Please don't submit patches via bugzilla.
+> >
+> >Please prepare this patch as per Documentation/SubmittingPatches and
+> >email it to all the recipients of this email, thanks.
 
-I suspect the correct fix would be to clean up the open API so that
-NFSv4 doesn't have to hack its stateful open routine into the
-->lookup() and ->d_revalidate() methods.
+Ok, I will do so.
 
-Having said that, doing revalidation for proc symlinks and bind mounts
-(and not just for opens) might make sense.  This is something similar
-to FS_REVAL_DOT, so perhaps make it conditional on this flag (or a
-new, appropriately named one).
+On Tue, Nov 10, 2009 at 06:38:05PM -0500, Chuck Lever wrote:
+> Why wouldn't you bump the size of the buffer by two as well?
+> Otherwise valid universal addresses that are RPCBIND_MAXUADDRLEN
+> bytes long will fail here.
+> 
+> >	memcpy(buf, uaddr, uaddr_len);
 
-Thanks,
-Miklos
+There is no need to increase the size of the buffer since the new check
+(if (uaddr_len > sizeof(buf) - 2)) will terminate the function in case
+the valid universal address is RPCBIND_MAXUADDRLEN bytes.
+
+Cheers,
+Patroklos
