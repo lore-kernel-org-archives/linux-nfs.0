@@ -1,50 +1,76 @@
-From: Fabio Olive Leite <fabio.olive@gmail.com>
-Subject: Re: [Bugme-new] [Bug 14546] New: Off-by-two stack buffer overflow
- in function rpc_uaddr2sockaddr() of net/sunrpc/addr.c
-Date: Wed, 11 Nov 2009 10:34:42 -0200
-Message-ID: <20091111103442.03a6a06d@gmail.com>
-References: <bug-14546-10286@http.bugzilla.kernel.org/>
-	<20091110152908.7558a471.akpm@linux-foundation.org>
-	<967DC2CE-588D-4207-BF2D-59727454DC2E@oracle.com>
-	<20091111075128.GA28323@evola>
+From: Jeff Layton <jlayton@redhat.com>
+Subject: Re: [PATCH 0/2] vfs: ensure that dentries are revalidated on open
+ (try #2)
+Date: Wed, 11 Nov 2009 07:36:02 -0500
+Message-ID: <20091111073602.66e89147@tlielax.poochiereds.net>
+References: <1257870456-31188-1-git-send-email-jlayton@redhat.com>
+	<E1N884c-0006Br-Je@pomaz-ex.szeredi.hu>
+	<1257927970.5138.24.camel@heimdal.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: Chuck Lever <chuck.lever@oracle.com>,
-	bugzilla-daemon-590EEB7GvNiWaY/ihj7yzEB+6BGkLq7r@public.gmane.org,
-	bugme-daemon-590EEB7GvNiWaY/ihj7yzEB+6BGkLq7r@public.gmane.org,
-	Linux Network Developers <netdev@vger.kernel.org>,
-	"J. Bruce Fields" <bfields@fieldses.org>,
-	Trond Myklebust <trond.myklebust@fys.uio.no>,
-	Neil Brown <neilb@suse.de>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-To: Patroklos Argyroudis <argp-YZAGAMbGdGKGw+nKnLezzg@public.gmane.org>
+Content-Type: text/plain; charset=US-ASCII
+Cc: Miklos Szeredi <miklos@szeredi.hu>, linux-kernel@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+	ebiederm@xmission.com, adobriyan@gmail.com,
+	viro@ZenIV.linux.org.uk, jamie@shareable.org
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yx0-f187.google.com ([209.85.210.187]:56877 "EHLO
-	mail-yx0-f187.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751204AbZKKMes (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 11 Nov 2009 07:34:48 -0500
-In-Reply-To: <20091111075128.GA28323@evola>
+Received: from mx1.redhat.com ([209.132.183.28]:62123 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753377AbZKKMgS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 11 Nov 2009 07:36:18 -0500
+In-Reply-To: <1257927970.5138.24.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 2009-11-11 Patroklos Argyroudis wrote:
-> There is no need to increase the size of the buffer since the new
-> check (if (uaddr_len > sizeof(buf) - 2)) will terminate the function
-> in case the valid universal address is RPCBIND_MAXUADDRLEN bytes.
+On Wed, 11 Nov 2009 17:26:10 +0900
+Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
 
-On a second note, why is '\n' needed there? You should only need '\0',
-as a '\n' at the end is not required by any of the string functions use=
-d
-to convert the address.
+> On Wed, 2009-11-11 at 08:57 +0100, Miklos Szeredi wrote:
+> > On Tue, 10 Nov 2009, Jeff Layton wrote:
+> > > This is the second attempt to fix this problem. The first one attempted
+> > > to fix this in procfs, but Eric Biederman pointed out that file bind
+> > > mounts have a similar problem. This set attempts to fix the issue at a
+> > > higher level, in the generic VFS layer.
+> > 
+> > I suspect the correct fix would be to clean up the open API so that
+> > NFSv4 doesn't have to hack its stateful open routine into the
+> > ->lookup() and ->d_revalidate() methods.
+> 
+> I've been working on that. I hope to have patches soon...
+> 
 
-I believe you could go with buf[RPCBIND_MAXUADDRLEN+1] for the extra
-NUL only.
+Yes, that would be a much cleaner fix. It's good to hear that you're
+working on it. Another approach for fixing this in the NFSv4 code did
+occur to me too:
 
-Cheers,
-=46=C3=A1bio Oliv=C3=A9
---=20
-ex sed lex awk yacc, e pluribus unix, amem
-na matem=C3=A1tica das id=C3=A9ias, permuta =C3=A9 igual a adi=C3=A7=C3=
-=A3o
-e um debate inteligente implementa a multiplica=C3=A7=C3=A3o
+We could have nfs4_intent_set_file call lookup_instantiate_filp with an
+open function pointer that's different from nfs_file_open. That function
+would basically do what nfs_file_open does now. We could then fix
+nfs_file_open to do a stateful open when it gets a filp with no state.
+
+Until you have the VFS open interface fixed that might be the safest
+approach in case there are other ways to skip dentry revalidation that
+we haven't identified yet.
+
+> > Having said that, doing revalidation for proc symlinks and bind mounts
+> > (and not just for opens) might make sense.  This is something similar
+> > to FS_REVAL_DOT, so perhaps make it conditional on this flag (or a
+> > new, appropriately named one).
+> 
+
+> Aren't both proc symlinks and bind mounts pretty much guaranteed to
+> point to a valid dentry? Once we fix the open case, I can't see that we
+> need to do much more. Networked filesystems may want to revalidate the
+> inode attributes, but not the dentry itself...
+> 
+
+As Miklos pointed out, removing the file on the server would make even
+those invalid...
+
+A new fs_flag sounds like a reasonable idea. Assuming that I didn't
+break the refcounting, my main worry with the set I have so far is that
+it'll slow down path walking. A new fs_flag should help minimize that
+for filesystems where this isn't an issue.
+
+-- 
+Jeff Layton <jlayton@redhat.com>
