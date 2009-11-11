@@ -1,76 +1,86 @@
-From: Jeff Layton <jlayton@redhat.com>
-Subject: Re: [PATCH 0/2] vfs: ensure that dentries are revalidated on open
- (try #2)
-Date: Wed, 11 Nov 2009 07:36:02 -0500
-Message-ID: <20091111073602.66e89147@tlielax.poochiereds.net>
-References: <1257870456-31188-1-git-send-email-jlayton@redhat.com>
-	<E1N884c-0006Br-Je@pomaz-ex.szeredi.hu>
-	<1257927970.5138.24.camel@heimdal.trondhjem.org>
+From: Peter Staubach <staubach@redhat.com>
+Subject: Re: [RFC][PATCH] client cannot get lock after other client got lock
+ occur network partition.
+Date: Wed, 11 Nov 2009 09:02:49 -0500
+Message-ID: <4AFAC409.4050100@redhat.com>
+References: <4AF7DEAB.20202@cn.fujitsu.com>	 <1257772609.3754.11.camel@heimdal.trondhjem.org>	 <4AF934A1.9040908@cn.fujitsu.com> <1257856550.3046.6.camel@heimdal.trondhjem.org> <4AFA853F.6000805@cn.fujitsu.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Cc: Miklos Szeredi <miklos@szeredi.hu>, linux-kernel@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-	ebiederm@xmission.com, adobriyan@gmail.com,
-	viro@ZenIV.linux.org.uk, jamie@shareable.org
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
+Content-Type: text/plain; charset=UTF-8
+Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
+	NFSv3 list <linux-nfs@vger.kernel.org>,
+	"J. Bruce Fields" <bfields@fieldses.org>
+To: Mi Jinlong <mijinlong@cn.fujitsu.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:62123 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:34055 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753377AbZKKMgS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 11 Nov 2009 07:36:18 -0500
-In-Reply-To: <1257927970.5138.24.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
+	id S1751405AbZKKOCy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 11 Nov 2009 09:02:54 -0500
+In-Reply-To: <4AFA853F.6000805@cn.fujitsu.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 11 Nov 2009 17:26:10 +0900
-Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
+On 11/11/2009 04:34 AM, Mi Jinlong wrote:
+> Hi Trond
+>=20
+> Trond Myklebust =E5=86=99=E9=81=93:
+>> On Tue, 2009-11-10 at 17:38 +0800, Mi Jinlong wrote:
+>>> Hi Trond
+>>>
+>>> Trond Myklebust =E5=86=99=E9=81=93:
+>>>> On Mon, 2009-11-09 at 17:19 +0800, Mi Jinlong wrote:
+>>>>> Hi Trond et all
+>>>>>
+>>>>> There is a bug, when i test NFSv3 file's lock as followed:
+>>>>>
+>>>>> Step1: ClientA and ClientB open a same nfs file;
+>>>>> Step2: ClientA locks file with write lock, it's ok;
+>>>>> Step3: Cut off the network between ClientA and Server;
+>>>>> Step4: ClientB can not acquire for write lock successful forever,=
+ even though
+>>>>>        the network partition larger than NLM_HOST_EXPIRE.
+>>>>>
+>>>>> As i know, If use NFSv4, step4 can success after LEASE_TIME.
+>>>>>
+>>>>> Is it necessary to fix NFSv3 ?=20
+>>>>>
+>>>>> The attached patch can make this case OK, but i am not sure it's =
+good.
+>>>> Unfortunately, NLM (the NFSv2 and v3 locking protocol) is not leas=
+e
+>>>> based, so the above scenario is truly an unfixable one.
+>>>>
+>>>> The problem with applying your patch is, in essence, that we risk
+>>>> breaking another scenario where a client grabs a lock, and then ho=
+lds it
+>>>> for a while.
+>>>> The reason this breaks is that there is no equivalent in the NLM
+>>>> protocol of the NFSv4 RENEW operation to tell the server that "Thi=
+s
+>>>> client is still alive and wants you to keep its state".
+>>> Thanks for your answer!
+>>>
+>>> This bug seems serious, shouldn't we fix it?
+>>
+>> Unless you can think of a fix which works with the current NLM proto=
+col,
+>> I'd suggest simply encouraging people to move to a protocol with lea=
+se
+>> based locks: i.e. NFSv4...
+>=20
+> Can we add a process(like NFSv4's nfsd4) to call the nlm_gc_hosts() p=
+eriodically?
+> At nlm_gc_hosts, then call rpc_ping() to check whether network is OK,=
+ if not,
+> its resource will be release.
+>=20
 
-> On Wed, 2009-11-11 at 08:57 +0100, Miklos Szeredi wrote:
-> > On Tue, 10 Nov 2009, Jeff Layton wrote:
-> > > This is the second attempt to fix this problem. The first one attempted
-> > > to fix this in procfs, but Eric Biederman pointed out that file bind
-> > > mounts have a similar problem. This set attempts to fix the issue at a
-> > > higher level, in the generic VFS layer.
-> > 
-> > I suspect the correct fix would be to clean up the open API so that
-> > NFSv4 doesn't have to hack its stateful open routine into the
-> > ->lookup() and ->d_revalidate() methods.
-> 
-> I've been working on that. I hope to have patches soon...
-> 
+This would also violate the semantics that the current NLM has.
+If, while holding the lock, the client does not need to contact
+the server, it may not even notice the network partition and
+will continue to expect that it holds the lock.
 
-Yes, that would be a much cleaner fix. It's good to hear that you're
-working on it. Another approach for fixing this in the NFSv4 code did
-occur to me too:
+It might have been interesting to fix this problem about 20
+years ago.  However, nowadays, we just live with it.  If it is
+a real problem, then using NFSv4 can be a good solution.
 
-We could have nfs4_intent_set_file call lookup_instantiate_filp with an
-open function pointer that's different from nfs_file_open. That function
-would basically do what nfs_file_open does now. We could then fix
-nfs_file_open to do a stateful open when it gets a filp with no state.
-
-Until you have the VFS open interface fixed that might be the safest
-approach in case there are other ways to skip dentry revalidation that
-we haven't identified yet.
-
-> > Having said that, doing revalidation for proc symlinks and bind mounts
-> > (and not just for opens) might make sense.  This is something similar
-> > to FS_REVAL_DOT, so perhaps make it conditional on this flag (or a
-> > new, appropriately named one).
-> 
-
-> Aren't both proc symlinks and bind mounts pretty much guaranteed to
-> point to a valid dentry? Once we fix the open case, I can't see that we
-> need to do much more. Networked filesystems may want to revalidate the
-> inode attributes, but not the dentry itself...
-> 
-
-As Miklos pointed out, removing the file on the server would make even
-those invalid...
-
-A new fs_flag sounds like a reasonable idea. Assuming that I didn't
-break the refcounting, my main worry with the set I have so far is that
-it'll slow down path walking. A new fs_flag should help minimize that
-for filesystems where this isn't an issue.
-
--- 
-Jeff Layton <jlayton@redhat.com>
+		ps
