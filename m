@@ -1,49 +1,38 @@
-From: Patroklos Argyroudis <argp@census-labs.com>
-Subject: [PATCH] sunrpc: off-by-two stack buffer overflow in function
- rpc_uaddr2sockaddr()
-Date: Wed, 11 Nov 2009 13:02:29 +0200
-Message-ID: <20091111110229.GA12676@evola>
-References: <bug-14546-10286@http.bugzilla.kernel.org/>
- <20091110152908.7558a471.akpm@linux-foundation.org>
+From: Dan Carpenter <error27@gmail.com>
+Subject: [patch] dereferencing ERR_PTR()
+Date: Wed, 11 Nov 2009 14:02:53 +0200 (SAST)
+Message-ID: <alpine.DEB.2.00.0911102247070.21319@bicker>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: netdev@vger.kernel.org, "J. Bruce Fields" <bfields@fieldses.org>,
-	Trond Myklebust <trond.myklebust@fys.uio.no>,
-	Neil Brown <neilb@suse.de>, linux-nfs@vger.kernel.org
-To: Andrew Morton <akpm@linux-foundation.org>
-Return-path: <netdev-owner@vger.kernel.org>
-In-Reply-To: <20091110152908.7558a471.akpm@linux-foundation.org>
-Sender: netdev-owner@vger.kernel.org
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: bfields@fieldses.org, neilb@suse.de
+To: linux-nfs@vger.kernel.org
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from mail-fx0-f221.google.com ([209.85.220.221]:52753 "EHLO
+	mail-fx0-f221.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751881AbZKKMDJ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 11 Nov 2009 07:03:09 -0500
+Received: by fxm21 with SMTP id 21so915884fxm.21
+        for <linux-nfs@vger.kernel.org>; Wed, 11 Nov 2009 04:03:13 -0800 (PST)
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-There is an off-by-two stack buffer overflow in function rpc_uaddr2sockaddr()
-of file net/sunrpc/addr.c in the Linux kernel SUNRPC implementation.
- 
-The function rpc_uaddr2sockaddr() that is used to convert a universal address
-to a socket address takes as an argument the size_t variable uaddr_len (the
-length of the universal address string). The stack buffer buf is declared in
-line 315 to be of size RPCBIND_MAXUADDRLEN. If the passed argument uaddr_len is
-equal to RPCBIND_MAXUADDRLEN then the check at line 319 passes and then at
-lines 324 and 325 there are two out-of-bounds assignments:
- 
-    319         if (uaddr_len > sizeof(buf))
-    320                 return 0;
- ...
-    324         buf[uaddr_len] = '\n';
-    325         buf[uaddr_len + 1] = '\0';
+It's possible for __rpc_lookup_create() to return ERR_PTR(-ENOMEM).
 
-Signed-off-by: Patroklos Argyroudis <argp@census-labs.com>
----
+Found by smatch static checker.
 
---- linux-2.6/net/sunrpc/addr.c.orig    2009-11-11 12:33:04.000000000 +0200
-+++ linux-2.6/net/sunrpc/addr.c 2009-11-11 12:33:32.000000000 +0200
-@@ -316,7 +316,7 @@ size_t rpc_uaddr2sockaddr(const char *ua
-    unsigned long portlo, porthi;
-    unsigned short port;
- 
--   if (uaddr_len > sizeof(buf))
-+   if (uaddr_len > sizeof(buf) - 2)
-        return 0;
- 
-    memcpy(buf, uaddr, uaddr_len);
+regards,
+dan carpenter
 
+Signed-off-by: Dan Carpenter <error27@gmail.com>
+
+--- orig/net/sunrpc/rpc_pipe.c	2009-11-10 22:43:11.000000000 +0200
++++ devel/net/sunrpc/rpc_pipe.c	2009-11-10 22:44:19.000000000 +0200
+@@ -587,6 +587,8 @@
+ 	struct dentry *dentry;
+ 
+ 	dentry = __rpc_lookup_create(parent, name);
++	if (IS_ERR(dentry))
++		return dentry;
+ 	if (dentry->d_inode == NULL)
+ 		return dentry;
+ 	dput(dentry);
