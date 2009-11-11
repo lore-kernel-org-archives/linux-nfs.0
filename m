@@ -1,52 +1,36 @@
-From: Norbert van Bolhuis <nvbolhuis-bYiImlzuGf1HoQZOM9yvow@public.gmane.org>
-Subject: Re: exportfs: Warning: /adir does not support NFS export.
-Date: Wed, 11 Nov 2009 08:13:53 +0100
-Message-ID: <4AFA6431.9010405@aimvalley.nl>
-References: <4AF99861.7030103@aimvalley.nl> <20091110180747.GA15000@fieldses.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii; format=flowed
-Cc: linux-nfs@vger.kernel.org
-To: "J. Bruce Fields" <bfields@fieldses.org>
+From: Miklos Szeredi <miklos@szeredi.hu>
+Subject: Re: [PATCH 0/2] vfs: ensure that dentries are revalidated on open (try #2)
+Date: Wed, 11 Nov 2009 08:57:02 +0100
+Message-ID: <E1N884c-0006Br-Je@pomaz-ex.szeredi.hu>
+References: <1257870456-31188-1-git-send-email-jlayton@redhat.com>
+Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	linux-nfs@vger.kernel.org, ebiederm@xmission.com,
+	adobriyan@gmail.com, viro@ZenIV.linux.org.uk, jamie@shareable.org
+To: Jeff Layton <jlayton@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp-vbr8.xs4all.nl ([194.109.24.28]:4073 "EHLO
-	smtp-vbr8.xs4all.nl" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751300AbZKKHNx (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 11 Nov 2009 02:13:53 -0500
-In-Reply-To: <20091110180747.GA15000@fieldses.org>
+Received: from fxip-0047f.externet.hu ([88.209.222.127]:41160 "EHLO
+	pomaz-ex.szeredi.hu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751685AbZKKH5F (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 11 Nov 2009 02:57:05 -0500
+In-reply-to: <1257870456-31188-1-git-send-email-jlayton@redhat.com> (message
+	from Jeff Layton on Tue, 10 Nov 2009 11:27:34 -0500)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-J. Bruce Fields wrote:
-> On Tue, Nov 10, 2009 at 05:44:17PM +0100, Norbert van Bolhuis wrote:
->> I get the following exportfs 1.2.0 warning:
->>
->> exportfs: Warning: /adir does not support NFS export.
->>
->> Although everything works fine, I'm worried about this.
->>
->> The directoy "/adir" is the path to a ISOZFS loop mounted image.
-> 
-> What's ISOZFS?
-> 
+On Tue, 10 Nov 2009, Jeff Layton wrote:
+> This is the second attempt to fix this problem. The first one attempted
+> to fix this in procfs, but Eric Biederman pointed out that file bind
+> mounts have a similar problem. This set attempts to fix the issue at a
+> higher level, in the generic VFS layer.
 
-The ISO9660 filesystem (with rockridge extension), see mkzftree(1).
+I suspect the correct fix would be to clean up the open API so that
+NFSv4 doesn't have to hack its stateful open routine into the
+->lookup() and ->d_revalidate() methods.
 
->> The ISO(Z)FS image itself resides on a UBIFS filesystem (/flashfs/isozfs_image.iso).
->> The root dir ("/"), as well as "/adir" and "/flashfs" is initramfs.
->>
->> So afaik I'm exporting a ISOFS, this is supported by nfsd (in the kernel), so
->> why is the warning there ?
->>
->> I know UBIFS doesn't support to be (nfsd) exported by the kernel,
->> but ISO(Z)FS and initramfs do, right ?
->>
->> Am I doing something illegal ?
-> 
-> Which distribution are you using?  Is it something that worked before,
-> and stopped working, or is this the first time you've tried it?
-> 
-> --b.
+Having said that, doing revalidation for proc symlinks and bind mounts
+(and not just for opens) might make sense.  This is something similar
+to FS_REVAL_DOT, so perhaps make it conditional on this flag (or a
+new, appropriately named one).
 
-I'm building an embedded linux system.
-This is the first time I try this.
-
+Thanks,
+Miklos
