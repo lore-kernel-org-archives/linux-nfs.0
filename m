@@ -1,50 +1,45 @@
-From: Patroklos Argyroudis <argp-YZAGAMbGdGKGw+nKnLezzg@public.gmane.org>
-Subject: Re: [Bugme-new] [Bug 14546] New: Off-by-two stack buffer overflow
- in function rpc_uaddr2sockaddr() of net/sunrpc/addr.c
-Date: Wed, 11 Nov 2009 09:51:28 +0200
-Message-ID: <20091111075128.GA28323@evola>
-References: <bug-14546-10286@http.bugzilla.kernel.org/>
- <20091110152908.7558a471.akpm@linux-foundation.org>
- <967DC2CE-588D-4207-BF2D-59727454DC2E@oracle.com>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: [PATCH 0/2] vfs: ensure that dentries are revalidated on open
+ (try #2)
+Date: Wed, 11 Nov 2009 17:26:10 +0900
+Message-ID: <1257927970.5138.24.camel@heimdal.trondhjem.org>
+References: <1257870456-31188-1-git-send-email-jlayton@redhat.com>
+	 <E1N884c-0006Br-Je@pomaz-ex.szeredi.hu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: bugzilla-daemon-590EEB7GvNiWaY/ihj7yzEB+6BGkLq7r@public.gmane.org,
-	bugme-daemon-590EEB7GvNiWaY/ihj7yzEB+6BGkLq7r@public.gmane.org,
-	Linux Network Developers <netdev@vger.kernel.org>,
-	"J. Bruce Fields" <bfields@fieldses.org>,
-	Trond Myklebust <trond.myklebust@fys.uio.no>,
-	Neil Brown <neilb@suse.de>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-To: Chuck Lever <chuck.lever@oracle.com>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail6.webfaction.com ([74.55.86.74]:40154 "EHLO
-	smtp.webfaction.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755249AbZKKIRI (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 11 Nov 2009 03:17:08 -0500
-In-Reply-To: <967DC2CE-588D-4207-BF2D-59727454DC2E@oracle.com>
-Sender: linux-nfs-owner@vger.kernel.org
+Content-Type: text/plain
+Cc: Jeff Layton <jlayton@redhat.com>, linux-kernel@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+	ebiederm@xmission.com, adobriyan@gmail.com,
+	viro@ZenIV.linux.org.uk, jamie@shareable.org
+To: Miklos Szeredi <miklos@szeredi.hu>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <E1N884c-0006Br-Je@pomaz-ex.szeredi.hu>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Nov 10, 2009, at 6:29 PM, Andrew Morton wrote:
-> >
-> >Please don't submit patches via bugzilla.
-> >
-> >Please prepare this patch as per Documentation/SubmittingPatches and
-> >email it to all the recipients of this email, thanks.
-
-Ok, I will do so.
-
-On Tue, Nov 10, 2009 at 06:38:05PM -0500, Chuck Lever wrote:
-> Why wouldn't you bump the size of the buffer by two as well?
-> Otherwise valid universal addresses that are RPCBIND_MAXUADDRLEN
-> bytes long will fail here.
+On Wed, 2009-11-11 at 08:57 +0100, Miklos Szeredi wrote:
+> On Tue, 10 Nov 2009, Jeff Layton wrote:
+> > This is the second attempt to fix this problem. The first one attempted
+> > to fix this in procfs, but Eric Biederman pointed out that file bind
+> > mounts have a similar problem. This set attempts to fix the issue at a
+> > higher level, in the generic VFS layer.
 > 
-> >	memcpy(buf, uaddr, uaddr_len);
+> I suspect the correct fix would be to clean up the open API so that
+> NFSv4 doesn't have to hack its stateful open routine into the
+> ->lookup() and ->d_revalidate() methods.
 
-There is no need to increase the size of the buffer since the new check
-(if (uaddr_len > sizeof(buf) - 2)) will terminate the function in case
-the valid universal address is RPCBIND_MAXUADDRLEN bytes.
+I've been working on that. I hope to have patches soon...
 
-Cheers,
-Patroklos
+> Having said that, doing revalidation for proc symlinks and bind mounts
+> (and not just for opens) might make sense.  This is something similar
+> to FS_REVAL_DOT, so perhaps make it conditional on this flag (or a
+> new, appropriately named one).
+
+Aren't both proc symlinks and bind mounts pretty much guaranteed to
+point to a valid dentry? Once we fix the open case, I can't see that we
+need to do much more. Networked filesystems may want to revalidate the
+inode attributes, but not the dentry itself...
+
+Cheers
+  Trond
+
