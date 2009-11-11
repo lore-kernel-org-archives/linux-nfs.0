@@ -1,38 +1,54 @@
-From: Dan Carpenter <error27@gmail.com>
-Subject: [patch] dereferencing ERR_PTR()
-Date: Wed, 11 Nov 2009 14:02:53 +0200 (SAST)
-Message-ID: <alpine.DEB.2.00.0911102247070.21319@bicker>
+From: Fabio Olive Leite <fabio.olive@gmail.com>
+Subject: Re: [Bugme-new] [Bug 14546] New: Off-by-two stack buffer overflow
+ in function rpc_uaddr2sockaddr() of net/sunrpc/addr.c
+Date: Wed, 11 Nov 2009 10:11:59 -0200
+Message-ID: <20091111101159.72ad3014@gmail.com>
+References: <bug-14546-10286@http.bugzilla.kernel.org/>
+	<20091110152908.7558a471.akpm@linux-foundation.org>
+	<967DC2CE-588D-4207-BF2D-59727454DC2E@oracle.com>
+	<20091111075128.GA28323@evola>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: bfields@fieldses.org, neilb@suse.de
-To: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
+Cc: Chuck Lever <chuck.lever@oracle.com>,
+	bugzilla-daemon-590EEB7GvNiWaY/ihj7yzEB+6BGkLq7r@public.gmane.org,
+	bugme-daemon-590EEB7GvNiWaY/ihj7yzEB+6BGkLq7r@public.gmane.org,
+	Linux Network Developers <netdev@vger.kernel.org>,
+	"J. Bruce Fields" <bfields@fieldses.org>,
+	Trond Myklebust <trond.myklebust@fys.uio.no>,
+	Neil Brown <neilb@suse.de>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+To: Patroklos Argyroudis <argp-YZAGAMbGdGKGw+nKnLezzg@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-fx0-f221.google.com ([209.85.220.221]:52753 "EHLO
-	mail-fx0-f221.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751881AbZKKMDJ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 11 Nov 2009 07:03:09 -0500
-Received: by fxm21 with SMTP id 21so915884fxm.21
-        for <linux-nfs@vger.kernel.org>; Wed, 11 Nov 2009 04:03:13 -0800 (PST)
+Received: from mail-yx0-f187.google.com ([209.85.210.187]:43633 "EHLO
+	mail-yx0-f187.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756862AbZKKMMG (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 11 Nov 2009 07:12:06 -0500
+In-Reply-To: <20091111075128.GA28323@evola>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-It's possible for __rpc_lookup_create() to return ERR_PTR(-ENOMEM).
+On 2009-11-11 Patroklos Argyroudis wrote:
+> On Tue, Nov 10, 2009 at 06:38:05PM -0500, Chuck Lever wrote:
+> > Why wouldn't you bump the size of the buffer by two as well?
+> > Otherwise valid universal addresses that are RPCBIND_MAXUADDRLEN
+> > bytes long will fail here.
+> >=20
+> > >	memcpy(buf, uaddr, uaddr_len);
+>=20
+> There is no need to increase the size of the buffer since the new
+> check (if (uaddr_len > sizeof(buf) - 2)) will terminate the function
+> in case the valid universal address is RPCBIND_MAXUADDRLEN bytes.
 
-Found by smatch static checker.
+=46ailing to convert a valid address is incorrect and unexpected. What
+Chuck meant is that since it is valid to have an address up to
+RPCBIND_MAXUADDRLEN bytes long, the function should be able to work on
+that, by having an internal buffer that allows for the extra "\n\0".
 
-regards,
-dan carpenter
-
-Signed-off-by: Dan Carpenter <error27@gmail.com>
-
---- orig/net/sunrpc/rpc_pipe.c	2009-11-10 22:43:11.000000000 +0200
-+++ devel/net/sunrpc/rpc_pipe.c	2009-11-10 22:44:19.000000000 +0200
-@@ -587,6 +587,8 @@
- 	struct dentry *dentry;
- 
- 	dentry = __rpc_lookup_create(parent, name);
-+	if (IS_ERR(dentry))
-+		return dentry;
- 	if (dentry->d_inode == NULL)
- 		return dentry;
- 	dput(dentry);
+Cheers,
+=46=C3=A1bio Oliv=C3=A9
+--=20
+ex sed lex awk yacc, e pluribus unix, amem
+na matem=C3=A1tica das id=C3=A9ias, permuta =C3=A9 igual a adi=C3=A7=C3=
+=A3o
+e um debate inteligente implementa a multiplica=C3=A7=C3=A3o
