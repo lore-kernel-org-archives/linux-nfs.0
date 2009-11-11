@@ -1,58 +1,27 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
+From: Norbert van Bolhuis <nvbolhuis-bYiImlzuGf1HoQZOM9yvow@public.gmane.org>
 Subject: Re: exportfs: Warning: /adir does not support NFS export.
-Date: Wed, 11 Nov 2009 09:13:18 -0500
-Message-ID: <20091111141318.GA335@fieldses.org>
-References: <4AF99861.7030103@aimvalley.nl> <20091110180747.GA15000@fieldses.org> <4AFA6431.9010405@aimvalley.nl>
+Date: Wed, 11 Nov 2009 15:16:42 +0100
+Message-ID: <4AFAC74A.5000503@aimvalley.nl>
+References: <4AF99861.7030103@aimvalley.nl> <20091110180747.GA15000@fieldses.org> <4AFA6431.9010405@aimvalley.nl> <20091111141318.GA335@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=us-ascii; format=flowed
 Cc: linux-nfs@vger.kernel.org
-To: Norbert van Bolhuis <nvbolhuis-bYiImlzuGf1HoQZOM9yvow@public.gmane.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:53192 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755913AbZKKONC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 11 Nov 2009 09:13:02 -0500
-In-Reply-To: <4AFA6431.9010405-bYiImlzuGf1HoQZOM9yvow@public.gmane.org>
+Received: from smtp-vbr1.xs4all.nl ([194.109.24.21]:2788 "EHLO
+	smtp-vbr1.xs4all.nl" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751696AbZKKOQs (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 11 Nov 2009 09:16:48 -0500
+In-Reply-To: <20091111141318.GA335@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Nov 11, 2009 at 08:13:53AM +0100, Norbert van Bolhuis wrote:
-> J. Bruce Fields wrote:
->> On Tue, Nov 10, 2009 at 05:44:17PM +0100, Norbert van Bolhuis wrote:
->>> I get the following exportfs 1.2.0 warning:
->>>
->>> exportfs: Warning: /adir does not support NFS export.
->>>
->>> Although everything works fine, I'm worried about this.
->>>
->>> The directoy "/adir" is the path to a ISOZFS loop mounted image.
->>
->> What's ISOZFS?
->>
->
-> The ISO9660 filesystem (with rockridge extension), see mkzftree(1).
->
->>> The ISO(Z)FS image itself resides on a UBIFS filesystem (/flashfs/isozfs_image.iso).
->>> The root dir ("/"), as well as "/adir" and "/flashfs" is initramfs.
->>>
->>> So afaik I'm exporting a ISOFS, this is supported by nfsd (in the kernel), so
->>> why is the warning there ?
->>>
->>> I know UBIFS doesn't support to be (nfsd) exported by the kernel,
->>> but ISO(Z)FS and initramfs do, right ?
->>>
->>> Am I doing something illegal ?
->>
->> Which distribution are you using?  Is it something that worked before,
->> and stopped working, or is this the first time you've tried it?
->>
->> --b.
->
-> I'm building an embedded linux system.
+> 
+> What source are you using for nfs-utils?
+> 
 
-What source are you using for nfs-utils?
+779cf81044e92cb51ad590960e7b3671  nfs-utils-1.2.0.tar.bz2
 
---b.
+I got it from:
+http://sourceforge.net/projects/nfs/files/nfs-utils/nfs-utils-1.2.0.tar.bz2
 
-> This is the first time I try this.
->
