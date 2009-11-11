@@ -1,37 +1,50 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: [PATCH 0/2] vfs: ensure that dentries are revalidated on open
- (try #2)
-Date: Wed, 11 Nov 2009 21:17:19 +0900
-Message-ID: <1257941839.2949.9.camel@heimdal.trondhjem.org>
-References: <1257870456-31188-1-git-send-email-jlayton@redhat.com>
-	 <E1N884c-0006Br-Je@pomaz-ex.szeredi.hu>
-	 <1257927970.5138.24.camel@heimdal.trondhjem.org>
-	 <E1N88eK-0006Im-1F@pomaz-ex.szeredi.hu>
+From: Fabio Olive Leite <fabio.olive@gmail.com>
+Subject: Re: [Bugme-new] [Bug 14546] New: Off-by-two stack buffer overflow
+ in function rpc_uaddr2sockaddr() of net/sunrpc/addr.c
+Date: Wed, 11 Nov 2009 10:34:42 -0200
+Message-ID: <20091111103442.03a6a06d@gmail.com>
+References: <bug-14546-10286@http.bugzilla.kernel.org/>
+	<20091110152908.7558a471.akpm@linux-foundation.org>
+	<967DC2CE-588D-4207-BF2D-59727454DC2E@oracle.com>
+	<20091111075128.GA28323@evola>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: jlayton@redhat.com, linux-kernel@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-	ebiederm@xmission.com, adobriyan@gmail.com,
-	viro@ZenIV.linux.org.uk, jamie@shareable.org
-To: Miklos Szeredi <miklos@szeredi.hu>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <E1N88eK-0006Im-1F@pomaz-ex.szeredi.hu>
-Sender: linux-fsdevel-owner@vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
+Cc: Chuck Lever <chuck.lever@oracle.com>,
+	bugzilla-daemon-590EEB7GvNiWaY/ihj7yzEB+6BGkLq7r@public.gmane.org,
+	bugme-daemon-590EEB7GvNiWaY/ihj7yzEB+6BGkLq7r@public.gmane.org,
+	Linux Network Developers <netdev@vger.kernel.org>,
+	"J. Bruce Fields" <bfields@fieldses.org>,
+	Trond Myklebust <trond.myklebust@fys.uio.no>,
+	Neil Brown <neilb@suse.de>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+To: Patroklos Argyroudis <argp-YZAGAMbGdGKGw+nKnLezzg@public.gmane.org>
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from mail-yx0-f187.google.com ([209.85.210.187]:56877 "EHLO
+	mail-yx0-f187.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751204AbZKKMes (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 11 Nov 2009 07:34:48 -0500
+In-Reply-To: <20091111075128.GA28323@evola>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 2009-11-11 at 09:33 +0100, Miklos Szeredi wrote:
-> On Wed, 11 Nov 2009, Trond Myklebust wrote:
-> > Aren't both proc symlinks and bind mounts pretty much guaranteed to
-> > point to a valid dentry?
-> 
-> It could for example happen that client bind mounts a regular file,
-> then the file is unlinked on the server.  Then the bind mounted dentry
-> is no longer valid.
+On 2009-11-11 Patroklos Argyroudis wrote:
+> There is no need to increase the size of the buffer since the new
+> check (if (uaddr_len > sizeof(buf) - 2)) will terminate the function
+> in case the valid universal address is RPCBIND_MAXUADDRLEN bytes.
 
-The mountpoint dentry is still supposed to remain valid and accessible
-on the client even if the object it points to on the server is invalid.
-Otherwise you will not be able to unmount.
+On a second note, why is '\n' needed there? You should only need '\0',
+as a '\n' at the end is not required by any of the string functions use=
+d
+to convert the address.
 
-Cheers
-  Trond
+I believe you could go with buf[RPCBIND_MAXUADDRLEN+1] for the extra
+NUL only.
 
+Cheers,
+=46=C3=A1bio Oliv=C3=A9
+--=20
+ex sed lex awk yacc, e pluribus unix, amem
+na matem=C3=A1tica das id=C3=A9ias, permuta =C3=A9 igual a adi=C3=A7=C3=
+=A3o
+e um debate inteligente implementa a multiplica=C3=A7=C3=A3o
