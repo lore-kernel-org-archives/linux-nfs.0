@@ -1,140 +1,210 @@
 From: Benny Halevy <bhalevy@panasas.com>
-Subject: Re: [pnfs] [PATCH 2/5] nfsd: Fix independence of a few nfsd related
- headers
-Date: Thu, 12 Nov 2009 15:07:07 +0200
-Message-ID: <4AFC087B.1080101@panasas.com>
-References: <4ADEC1EF.8040107@panasas.com>	 <1256112873-32495-1-git-send-email-bharrosh@panasas.com>	 <4AFBE34B.8020905@panasas.com> <1258022133.2973.5.camel@heimdal.trondhjem.org> <4AFC0429.6030803@panasas.com>
+Subject: Re: [pnfs] [PATCH 2/2] nfs41: fix state manager deadlock in session
+ reset
+Date: Thu, 12 Nov 2009 15:29:57 +0200
+Message-ID: <4AFC0DD5.7030707@panasas.com>
+References: <1257967214-7068-1-git-send-email-andros@netapp.com>	<1257967214-7068-2-git-send-email-andros@netapp.com>	<1257967214-7068-3-git-send-email-andros@netapp.com> <89c397150911111151q7458d1e3m84bf0c39710a8537@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: Boaz Harrosh <bharrosh@panasas.com>,
-	"J. Bruce Fields" <bfields@citi.umich.edu>,
-	pNFS Mailing List <pnfs@linux-nfs.org>,
-	NFS list <linux-nfs@vger.kernel.org>,
-	Andy Adamson <andros@netapp.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: trond.myklebust@netapp.com, Andy Adamson <andros@netapp.com>,
+	linux-nfs@vger.kernel.org, pnfs@linux-nfs.org
+To: "William A. (Andy) Adamson" <androsadamson@gmail.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:64201 "EHLO
+Received: from daytona.panasas.com ([67.152.220.89]:22700 "EHLO
 	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1752299AbZKLNWP (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 12 Nov 2009 08:22:15 -0500
-In-Reply-To: <4AFC0429.6030803@panasas.com>
+	with ESMTP id S1751503AbZKLN3y (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 12 Nov 2009 08:29:54 -0500
+In-Reply-To: <89c397150911111151q7458d1e3m84bf0c39710a8537-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Nov. 12, 2009, 14:48 +0200, Boaz Harrosh <bharrosh@panasas.com> wrote:
-> On 11/12/2009 12:35 PM, Trond Myklebust wrote:
->> On Thu, 2009-11-12 at 12:28 +0200, Boaz Harrosh wrote:
->>> On 10/21/2009 10:14 AM, Boaz Harrosh wrote:
->>>> An header should be compilation independent, .i.e pull in
->>>> any header who's declarations are directly used by this header.
->>>> And not let users re-include all it's dependencies all over
->>>> again.
->>>>
->>>> [At the end of the day what's the use of a header if it does
->>>>  not have more then one user?]
->>>>
->>>> Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
->>> Trond do I have an ACK on this patch.
->>> If not, then what should be changed to get it accepted?
->>>
->>>> ---
->>>>  include/linux/nfs_xdr.h   |    1 +
->>> This header is used exclusively by fs/nfs/... files and could just be moved
->>> there. The include must be fixed as below though.
->>>
->>>>  include/linux/nfsacl.h    |    1 +
->>> This file is used mixed between fs/nfs && fs/nfsd
->>>
->>>>  include/linux/posix_acl.h |    1 +
->>> Used by nfsd and filesystems
->>>
->>>>  3 files changed, 3 insertions(+), 0 deletions(-)
->>>>
->>>> diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
->>>> index 2848a26..c316ca8 100644
->>>> --- a/include/linux/nfs_xdr.h
->>>> +++ b/include/linux/nfs_xdr.h
->>>> @@ -2,6 +2,7 @@
->>>>  #define _LINUX_NFS_XDR_H
->>>>  
->>>>  #include <linux/nfsacl.h>
->>>> +#include <linux/nfs3.h>
->>>>  
->>>>  /*
->>>>   * To change the maximum rsize and wsize supported by the NFS client, adjust
->>>> diff --git a/include/linux/nfsacl.h b/include/linux/nfsacl.h
->>>> index 43011b6..f321b57 100644
->>>> --- a/include/linux/nfsacl.h
->>>> +++ b/include/linux/nfsacl.h
->>>> @@ -29,6 +29,7 @@
->>>>  #ifdef __KERNEL__
->>>>  
->>>>  #include <linux/posix_acl.h>
->>>> +#include <linux/sunrpc/xdr.h>
->>>>  
->>>>  /* Maximum number of ACL entries over NFS */
->>>>  #define NFS_ACL_MAX_ENTRIES	1024
->>>> diff --git a/include/linux/posix_acl.h b/include/linux/posix_acl.h
->>>> index 065a365..0dcf674 100644
->>>> --- a/include/linux/posix_acl.h
->>>> +++ b/include/linux/posix_acl.h
->>>> @@ -9,6 +9,7 @@
->>>>  #define __LINUX_POSIX_ACL_H
->>>>  
->>>>  #include <linux/slab.h>
->>>> +#include <linux/fs.h>
->> NACK to this. Pretty much _all_ filesystems already include linux/fs.h
->> somewhere in their include chains. There should be no need to include it
->> in posix_acl.h too.
+On Nov. 11, 2009, 21:51 +0200, "William A. (Andy) Adamson" <androsadamson@gmail.com> wrote:
+> On Wed, Nov 11, 2009 at 2:20 PM,  <andros@netapp.com> wrote:
+>> From: Andy Adamson <andros@netapp.com>
 >>
-> 
-> from posix_acl.h:
-> extern int posix_acl_permission(struct inode *, const struct posix_acl *, int);
-
-get_cached_acl's inline definition would make a better example
-as it actually needs the formal definition of struct inode;
-
-> 
-> stuct inode is defined in fs.h. hence the direct dependency.
-> 
-> Again a double inclusion is not a bad thing, it costs absolutely *nothing*.
-> 
-> A miss-inclusion on the other hand is a bad thing. it causes a miss-compilation.
-> 
-> It does not matter that filesystems include fs.h or not. What matters is that they
-> now have to do this headers ordering magic. One places code compiles fine, another
-> place it does not. When it does not, people *never* analyze the missing dependency
-> what they do is copy-paste an include list from another file that works.
-> 
-> Proof of the matter the last patches in this patchset.
-> 
->>>>  
->>>>  #define ACL_UNDEFINED_ID	(-1)
->>>>  
->> So, what is the motivation for all this? We have no dependency problems
->> here today. What is changing in the pNFS tree that makes this so
->> necessary?
+>> If the session is reset during state recovery, the state manager thread can
+>> sleep on the slot_tbl_waitq causing a deadlock.
 >>
+>> Add a completion framework to the session.  Have the state manager thread set
+>> a new session state (NFS4CLNT_SESSION_DRAINING) and wait for the session slot
+>> table to drain.
+>>
+>> Signal the state manager thread in nfs41_sequence_free_slot when the
+>> NFS4CLNT_SESSION_DRAINING bit is set and the session is drained.
+>>
+>> Reported-by: Trond Myklebust <trond@netapp.com>
+>> Signed-off-by: Andy Adamson <andros@netapp.com>
+>> ---
+>>  fs/nfs/nfs4_fs.h          |    1 +
+>>  fs/nfs/nfs4proc.c         |   25 ++++++++++++++++---------
+>>  fs/nfs/nfs4state.c        |   15 +++++++++++++++
+>>  include/linux/nfs_fs_sb.h |    1 +
+>>  4 files changed, 33 insertions(+), 9 deletions(-)
+>>
+>> diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
+>> index 6ea07a3..e8604af 100644
+>> --- a/fs/nfs/nfs4_fs.h
+>> +++ b/fs/nfs/nfs4_fs.h
+>> @@ -45,6 +45,7 @@ enum nfs4_client_state {
+>>        NFS4CLNT_RECLAIM_NOGRACE,
+>>        NFS4CLNT_DELEGRETURN,
+>>        NFS4CLNT_SESSION_SETUP,
+>> +       NFS4CLNT_SESSION_DRAINING,
+>>  };
+>>
+>>  /*
+>> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+>> index 44d1c14..ebde948 100644
+>> --- a/fs/nfs/nfs4proc.c
+>> +++ b/fs/nfs/nfs4proc.c
+>> @@ -355,6 +355,16 @@ void nfs41_sequence_free_slot(const struct nfs_client *clp,
+>>        }
+>>        nfs4_free_slot(tbl, res->sr_slotid);
+>>        res->sr_slotid = NFS4_MAX_SLOT_TABLE;
+>> +
+>> +       /* Signal state manager thread if session is drained */
+>> +       if (test_bit(NFS4CLNT_SESSION_DRAINING, &clp->cl_state)) {
+>> +               spin_lock(&tbl->slot_tbl_lock);
+>> +               if (tbl->highest_used_slotid == -1) {
+>> +                       dprintk("%s COMPLETE: Session Drained\n", __func__);
+>> +                       complete(&clp->cl_session->complete);
+>> +               }
+>> +               spin_unlock(&tbl->slot_tbl_lock);
+>> +       }
+>>  }
+>>
+>>  static void nfs41_sequence_done(struct nfs_client *clp,
+>> @@ -448,15 +458,11 @@ static int nfs41_setup_sequence(struct nfs4_session *session,
+>>
+>>        spin_lock(&tbl->slot_tbl_lock);
+>>        if (test_bit(NFS4CLNT_SESSION_SETUP, &session->clp->cl_state)) {
+>> -               if (tbl->highest_used_slotid != -1) {
+>> -                       rpc_sleep_on(&tbl->slot_tbl_waitq, task, NULL);
+>> -                       spin_unlock(&tbl->slot_tbl_lock);
+>> -                       dprintk("<-- %s: Session reset: draining\n", __func__);
+>> -                       return -EAGAIN;
+>> -               }
+>> -
+>> -               /* The slot table is empty; start the reset thread */
+>> -               dprintk("%s Session Reset\n", __func__);
+>> +               /*
+>> +                * The state manager will wait until the slot table is empty.
+>> +                * Schedule the reset thread
+>> +                */
+>> +               dprintk("%s Schedule Session Reset\n", __func__);
+>>                rpc_sleep_on(&tbl->slot_tbl_waitq, task, NULL);
+>>                nfs4_schedule_state_manager(session->clp);
+>>                spin_unlock(&tbl->slot_tbl_lock);
+>> @@ -4583,6 +4589,7 @@ struct nfs4_session *nfs4_alloc_session(struct nfs_client *clp)
+>>         * nfs_client struct
+>>         */
+>>        clp->cl_cons_state = NFS_CS_SESSION_INITING;
+>> +       init_completion(&session->complete);
+>>
+>>        tbl = &session->fc_slot_table;
+>>        spin_lock_init(&tbl->slot_tbl_lock);
+>> diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+>> index 50a1b04..f08abe8 100644
+>> --- a/fs/nfs/nfs4state.c
+>> +++ b/fs/nfs/nfs4state.c
+>> @@ -1162,8 +1162,23 @@ static void nfs4_session_recovery_handle_error(struct nfs_client *clp, int err)
+>>
+>>  static int nfs4_reset_session(struct nfs_client *clp)
+>>  {
+>> +       struct nfs4_session *ses = clp->cl_session;
+>> +       struct nfs4_slot_table *tbl = &ses->fc_slot_table;
+>>        int status;
+>>
+>> +       spin_lock(&tbl->slot_tbl_lock);
+>> +       if (tbl->highest_used_slotid != -1) {
+>> +               set_bit(NFS4CLNT_SESSION_DRAINING, &clp->cl_state);
+>> +               spin_unlock(&tbl->slot_tbl_lock);
+>> +               status = wait_for_completion_interruptible(&ses->complete);
+>> +               clear_bit(NFS4CLNT_SESSION_DRAINING, &clp->cl_state);
+>> +               if (status) /* -ERESTARTSYS */
+>> +                       goto out;
+>> +               INIT_COMPLETION(ses->complete);
+> 
+> 
+> Looking at my own code - I need to move the INIT_COMPLETION after the
+> wait_for_completion_interruptible and before the status check so that
+> it gets called even on -ERESTARTSYS.
 
-The motivation for this patchset was mainly patch 4/5
-pnfsd: Move pnfsd code out of nfs4state.c/h
-Boaz meant to amortize the cleanup effort on this mini-project.
-Otherwise, by itself, I don't think we'd have started doing it...
+Might there be a race with nfs41_sequence_free_slot?
+Can't you just call INIT_COMPLETION under the slot_tbl_lock
+before calling wait_for_completion_interruptible?
+
+I.e, in nfs41_sequence_free_slot:
+ 	}
+ 	nfs4_free_slot(tbl, res->sr_slotid);
+ 	res->sr_slotid = NFS4_MAX_SLOT_TABLE;
++
++	/* Signal state manager thread if session is drained */
++	if (test_bit(NFS4CLNT_SESSION_DRAINING, &clp->cl_state)) {
++		spin_lock(&tbl->slot_tbl_lock);
++		if (tbl->highest_used_slotid == -1 &&
++		    test_bit(NFS4CLNT_SESSION_DRAINING, &clp->cl_state)) {
++			dprintk("%s COMPLETE: Session Drained\n", __func__);
++			complete(&clp->cl_session->complete);
++		}
++		spin_unlock(&tbl->slot_tbl_lock);
++	}
+ }
+
+and here:
+
+ static int nfs4_reset_session(struct nfs_client *clp)
+ {
++	struct nfs4_session *ses = clp->cl_session;
++	struct nfs4_slot_table *tbl = &ses->fc_slot_table;
+ 	int status;
+ 
++	spin_lock(&tbl->slot_tbl_lock);
++	if (tbl->highest_used_slotid != -1) {
++		set_bit(NFS4CLNT_SESSION_DRAINING, &clp->cl_state);
++		INIT_COMPLETION(ses->complete);
++		spin_unlock(&tbl->slot_tbl_lock);
++		status = wait_for_completion_interruptible(&ses->complete);
++		clear_bit(NFS4CLNT_SESSION_DRAINING, &clp->cl_state);
++		if (status) /* -ERESTARTSYS */
++			goto out;
 
 Benny
 
 > 
-> We do have a dependency problem today!! look at the patchset. It is a grate
-> cleanup and improvement of code today. And a much smoother ride for the future.
+> I'll wait for other comments before sending a fix.
 > 
-> What changed is that all this code was touched today. I have not done the cleanup for
-> any files not touched by pnfsd. Though I could and should, because they will greatly
-> improve just like these I did touch. Should I go head and do the reset of the files?
+> -->Andy
 > 
-> And please note that this particular file is an NFSD and vfs related file only, it
-> has nothing to do with nfs.
 > 
->> Trond
+>> +       } else {
+>> +               spin_unlock(&tbl->slot_tbl_lock);
+>> +       }
+>> +
+>>        status = nfs4_proc_destroy_session(clp->cl_session);
+>>        if (status && status != -NFS4ERR_BADSESSION &&
+>>            status != -NFS4ERR_DEADSESSION) {
+>> diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
+>> index 320569e..34fc6be 100644
+>> --- a/include/linux/nfs_fs_sb.h
+>> +++ b/include/linux/nfs_fs_sb.h
+>> @@ -209,6 +209,7 @@ struct nfs4_session {
+>>        unsigned long                   session_state;
+>>        u32                             hash_alg;
+>>        u32                             ssv_len;
+>> +       struct completion               complete;
 >>
-> 
-> Boaz
+>>        /* The fore and back channel */
+>>        struct nfs4_channel_attrs       fc_attrs;
+>> --
+>> 1.6.0.6
+>>
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>
+> _______________________________________________
+> pNFS mailing list
+> pNFS@linux-nfs.org
+> http://linux-nfs.org/cgi-bin/mailman/listinfo/pnfs
