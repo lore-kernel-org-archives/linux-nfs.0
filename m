@@ -1,58 +1,37 @@
-From: Neil Brown <neilb@suse.de>
-Subject: Re: [Bugme-new] [Bug 14546] New: Off-by-two stack buffer overflow in function rpc_uaddr2sockaddr() of net/sunrpc/addr.c
-Date: Thu, 12 Nov 2009 16:56:47 +1100
-Message-ID: <19195.41887.250696.801873@notabene.brown>
-References: <bug-14546-10286@http.bugzilla.kernel.org/>
-	<20091110152908.7558a471.akpm@linux-foundation.org>
-	<967DC2CE-588D-4207-BF2D-59727454DC2E@oracle.com>
-	<2031D0B0-56C9-406E-B5CF-EE050E2CB437@oracle.com>
+From: Norbert van Bolhuis <nvbolhuis-bYiImlzuGf1HoQZOM9yvow@public.gmane.org>
+Subject: Re: exportfs: Warning: /adir does not support NFS export.
+Date: Thu, 12 Nov 2009 08:41:25 +0100
+Message-ID: <4AFBBC25.5090109@aimvalley.nl>
+References: <4AF99861.7030103@aimvalley.nl> <20091110180747.GA15000@fieldses.org> <4AFA6431.9010405@aimvalley.nl> <20091111141318.GA335@fieldses.org> <4AFAC74A.5000503@aimvalley.nl> <20091111175333.GA3951@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Fabio Olive Leite <fabio.olive@gmail.com>, argp-YZAGAMbGdGKGw+nKnLezzg@public.gmane.org,
-	bugzilla-daemon-590EEB7GvNiWaY/ihj7yzEB+6BGkLq7r@public.gmane.org,
-	bugme-daemon-590EEB7GvNiWaY/ihj7yzEB+6BGkLq7r@public.gmane.org,
-	Linux Network Developers <netdev@vger.kernel.org>,
-	"J. Bruce Fields" <bfields@fieldses.org>,
-	Trond Myklebust <trond.myklebust@fys.uio.no>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-To: Chuck Lever <chuck.lever@oracle.com>
+Content-Type: text/plain; charset=us-ascii; format=flowed
+Cc: linux-nfs@vger.kernel.org
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:38447 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750957AbZKLFzN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 12 Nov 2009 00:55:13 -0500
-In-Reply-To: message from Chuck Lever on Wednesday November 11
+Received: from smtp-vbr3.xs4all.nl ([194.109.24.23]:1902 "EHLO
+	smtp-vbr3.xs4all.nl" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751259AbZKLHlZ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 12 Nov 2009 02:41:25 -0500
+In-Reply-To: <20091111175333.GA3951@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wednesday November 11, chuck.lever@oracle.com wrote:
-> On 2009-11-11 Fabio Olive Leite wrote:
-> > On 2009-11-11 Patroklos Argyroudis wrote:
-> >> There is no need to increase the size of the buffer since the new
-> >> check (if (uaddr_len > sizeof(buf) - 2)) will terminate the function
-> >> in case the valid universal address is RPCBIND_MAXUADDRLEN bytes.
-> > On a second note, why is '\n' needed there? You should only need  
-> > '\0', as a '\n'
 > 
-> > at the end is not required by any of the string functions used to  
-> > convert the
-> > address. I believe you could go with buf[RPCBIND_MAXUADDRLEN+1] for  
-> > the extra NUL only.
+> Thanks.  From your description, yes, that sounds like a configuration
+> that should work.  But maybe there's some detail wrong--could you show
+> us the full output of the "mount" and "exportfs -v" commands?
 > 
-> AFAICT, strict_strtoul() requires the '\n\0' termination.
 
-	if ((*tail == '\0') ||
-		((len == (size_t)(tail - cp) + 1) && (*tail == '\n'))) {
-		*res = val;
-		return 0;
-	}
+ok.
 
+# mount
+proc on /proc type proc (rw)
+devpts on /dev/pts type devpts (rw,gid=5,mode=620)
+sysfs on /sys type sysfs (rw)
+ubi0:rootfs on /flashfs type ubifs (rw)
+/flashfs/isd0 on /mountedisd type iso9660 (rw,loop=/dev/loop0,offset=1024)
 
-allows, not requires.  Though admittedly that code isn't as clear as
-one might like:
-        if (tail[0] == 0 || (tail[0] == '\n' && tail[1] == 0) {
-                .....
-        }
+# exportfs -v
+/mountedisd     172.31.0.0/255.255.0.0(ro,wdelay,no_root_squash,no_subtree_check)
 
-NeilBrown
+thanks for helping me with this.
