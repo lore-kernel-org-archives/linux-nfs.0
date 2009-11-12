@@ -1,37 +1,58 @@
-From: Norbert van Bolhuis <nvbolhuis-bYiImlzuGf1HoQZOM9yvow@public.gmane.org>
-Subject: Re: exportfs: Warning: /adir does not support NFS export.
-Date: Thu, 12 Nov 2009 08:41:25 +0100
-Message-ID: <4AFBBC25.5090109@aimvalley.nl>
-References: <4AF99861.7030103@aimvalley.nl> <20091110180747.GA15000@fieldses.org> <4AFA6431.9010405@aimvalley.nl> <20091111141318.GA335@fieldses.org> <4AFAC74A.5000503@aimvalley.nl> <20091111175333.GA3951@fieldses.org>
+From: Mi Jinlong <mijinlong@cn.fujitsu.com>
+Subject: [PATCH] Fix bug at nlmclnt_lock()
+Date: Thu, 12 Nov 2009 17:40:19 +0800
+Message-ID: <4AFBD803.9080204@cn.fujitsu.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii; format=flowed
-Cc: linux-nfs@vger.kernel.org
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Content-Type: text/plain; charset=UTF-8
+Cc: NFSv3 list <linux-nfs@vger.kernel.org>,
+	"J. Bruce Fields" <bfields@fieldses.org>
+To: "Trond.Myklebust" <trond.myklebust@fys.uio.no>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp-vbr3.xs4all.nl ([194.109.24.23]:1902 "EHLO
-	smtp-vbr3.xs4all.nl" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751259AbZKLHlZ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 12 Nov 2009 02:41:25 -0500
-In-Reply-To: <20091111175333.GA3951@fieldses.org>
+Received: from cn.fujitsu.com ([222.73.24.84]:62259 "EHLO song.cn.fujitsu.com"
+	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
+	id S1751736AbZKLJjA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 12 Nov 2009 04:39:00 -0500
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-> 
-> Thanks.  From your description, yes, that sounds like a configuration
-> that should work.  But maybe there's some detail wrong--could you show
-> us the full output of the "mount" and "exportfs -v" commands?
-> 
+When testing NLM, i found a bug.
 
-ok.
+Test process:
+step1: client open file.
+step2: keep network partition.
+step3: client call fcntl with SETLKW to get lock.
+       (it will timeout and return -1)
+step4: recover network.
+step5: client try to get lock again, but it always fail.
 
-# mount
-proc on /proc type proc (rw)
-devpts on /dev/pts type devpts (rw,gid=5,mode=620)
-sysfs on /sys type sysfs (rw)
-ubi0:rootfs on /flashfs type ubifs (rw)
-/flashfs/isd0 on /mountedisd type iso9660 (rw,loop=/dev/loop0,offset=1024)
+At nlmclnt_lock(), resp->status is set to "nlm_lck_blocked" 
+by default before call nlmclnt_call().
 
-# exportfs -v
-/mountedisd     172.31.0.0/255.255.0.0(ro,wdelay,no_root_squash,no_subtree_check)
+So at step3, when nlmclnt_call return error because network partition,
+client will think the nlm_lck_blocked was replied from server, and it
+just send cancel request not unlock.
 
-thanks for helping me with this.
+Signed-off-by: mijinlong@cn.fujitsu.com
+---
+ fs/lockd/clntproc.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
+
+diff --git a/fs/lockd/clntproc.c b/fs/lockd/clntproc.c
+index c81249f..a631582 100644
+--- a/fs/lockd/clntproc.c
++++ b/fs/lockd/clntproc.c
+@@ -535,7 +535,7 @@ again:
+ 	 * Initialise resp->status to a valid non-zero value,
+ 	 * since 0 == nlm_lck_granted
+ 	 */
+-	resp->status = nlm_lck_blocked;
++	resp->status = nlm_lck_denied_nolocks;
+ 	for(;;) {
+ 		/* Reboot protection */
+ 		fl->fl_u.nfs_fl.state = host->h_state;
+-- 
+1.6.2
+
+thanks,
+Mi Jinlong
+
