@@ -1,144 +1,71 @@
-From: andros@netapp.com
-Subject: [PATCH 2/2] nfs41: fix state manager deadlock in session reset
-Date: Wed, 11 Nov 2009 17:47:18 -0500
-Message-ID: <1257979638-2444-3-git-send-email-andros@netapp.com>
-References: <1257979638-2444-1-git-send-email-andros@netapp.com>
- <1257979638-2444-2-git-send-email-andros@netapp.com>
-Cc: linux-nfs@vger.kernel.org, pnfs@linux-nfs.org,
+From: Boaz Harrosh <bharrosh@panasas.com>
+Subject: Re: [pnfs] [PATCH 2/5] nfsd: Fix independence of a few nfsd related
+ headers
+Date: Thu, 12 Nov 2009 16:45:52 +0200
+Message-ID: <4AFC1FA0.7040309@panasas.com>
+References: <4ADEC1EF.8040107@panasas.com>	 <1256112873-32495-1-git-send-email-bharrosh@panasas.com>	 <4AFBE34B.8020905@panasas.com>	 <1258022133.2973.5.camel@heimdal.trondhjem.org>	 <4AFC0429.6030803@panasas.com> <1258033010.2968.12.camel@heimdal.trondhjem.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Cc: Benny Halevy <bhalevy@panasas.com>,
+	"J. Bruce Fields" <bfields@citi.umich.edu>,
+	pNFS Mailing List <pnfs@linux-nfs.org>,
+	NFS list <linux-nfs@vger.kernel.org>,
 	Andy Adamson <andros@netapp.com>
-To: trond.myklebust@netapp.com
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:22486 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752605AbZKLOiS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 12 Nov 2009 09:38:18 -0500
-In-Reply-To: <1257979638-2444-2-git-send-email-andros@netapp.com>
+Received: from daytona.panasas.com ([67.152.220.89]:49620 "EHLO
+	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1752522AbZKLOpu (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 12 Nov 2009 09:45:50 -0500
+In-Reply-To: <1258033010.2968.12.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Andy Adamson <andros@netapp.com>
+On 11/12/2009 03:36 PM, Trond Myklebust wrote:
+> On Thu, 2009-11-12 at 14:48 +0200, Boaz Harrosh wrote:
+>>
+>> from posix_acl.h:
+>> extern int posix_acl_permission(struct inode *, const struct posix_acl *, int);
+>>
+>> stuct inode is defined in fs.h. hence the direct dependency.
+> 
+> Add a forward declaration of the form
+> 
+> struct inode;
+> 
 
-If the session is reset during state recovery, the state manager thread can
-sleep on the slot_tbl_waitq causing a deadlock.
+This will not work.
 
-Add a completion framework to the session.  Have the state manager thread set
-a new session state (NFS4CLNT_SESSION_DRAINING) and wait for the session slot
-table to drain.
+<quote>
+...
 
-Signal the state manager thread in nfs41_sequence_free_slot when the
-NFS4CLNT_SESSION_DRAINING bit is set and the session is drained.
+static inline struct posix_acl *get_cached_acl(struct inode *inode, int type)
+{
+	struct posix_acl **p, *acl;
+	switch (type) {
+	case ACL_TYPE_ACCESS:
+		p = &inode->i_acl;
+		break;
+	case ACL_TYPE_DEFAULT:
+		p = &inode->i_default_acl;
+		break;
+	default:
+		return ERR_PTR(-EINVAL);
+	}
+...
+</quote>
 
-Reported-by: Trond Myklebust <trond@netapp.com>
-Signed-off-by: Andy Adamson <andros@netapp.com>
----
- fs/nfs/nfs4_fs.h          |    1 +
- fs/nfs/nfs4proc.c         |   25 ++++++++++++++++---------
- fs/nfs/nfs4state.c        |   15 +++++++++++++++
- include/linux/nfs_fs_sb.h |    1 +
- 4 files changed, 33 insertions(+), 9 deletions(-)
+the header has inlines that directly manipulate inode members
+a forward declaration is not enough.
 
-diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
-index 6ea07a3..e8604af 100644
---- a/fs/nfs/nfs4_fs.h
-+++ b/fs/nfs/nfs4_fs.h
-@@ -45,6 +45,7 @@ enum nfs4_client_state {
- 	NFS4CLNT_RECLAIM_NOGRACE,
- 	NFS4CLNT_DELEGRETURN,
- 	NFS4CLNT_SESSION_SETUP,
-+	NFS4CLNT_SESSION_DRAINING,
- };
- 
- /*
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 44d1c14..ebde948 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -355,6 +355,16 @@ void nfs41_sequence_free_slot(const struct nfs_client *clp,
- 	}
- 	nfs4_free_slot(tbl, res->sr_slotid);
- 	res->sr_slotid = NFS4_MAX_SLOT_TABLE;
-+
-+	/* Signal state manager thread if session is drained */
-+	if (test_bit(NFS4CLNT_SESSION_DRAINING, &clp->cl_state)) {
-+		spin_lock(&tbl->slot_tbl_lock);
-+		if (tbl->highest_used_slotid == -1) {
-+			dprintk("%s COMPLETE: Session Drained\n", __func__);
-+			complete(&clp->cl_session->complete);
-+		}
-+		spin_unlock(&tbl->slot_tbl_lock);
-+	}
- }
- 
- static void nfs41_sequence_done(struct nfs_client *clp,
-@@ -448,15 +458,11 @@ static int nfs41_setup_sequence(struct nfs4_session *session,
- 
- 	spin_lock(&tbl->slot_tbl_lock);
- 	if (test_bit(NFS4CLNT_SESSION_SETUP, &session->clp->cl_state)) {
--		if (tbl->highest_used_slotid != -1) {
--			rpc_sleep_on(&tbl->slot_tbl_waitq, task, NULL);
--			spin_unlock(&tbl->slot_tbl_lock);
--			dprintk("<-- %s: Session reset: draining\n", __func__);
--			return -EAGAIN;
--		}
--
--		/* The slot table is empty; start the reset thread */
--		dprintk("%s Session Reset\n", __func__);
-+		/*
-+		 * The state manager will wait until the slot table is empty.
-+		 * Schedule the reset thread
-+		 */
-+		dprintk("%s Schedule Session Reset\n", __func__);
- 		rpc_sleep_on(&tbl->slot_tbl_waitq, task, NULL);
- 		nfs4_schedule_state_manager(session->clp);
- 		spin_unlock(&tbl->slot_tbl_lock);
-@@ -4583,6 +4589,7 @@ struct nfs4_session *nfs4_alloc_session(struct nfs_client *clp)
- 	 * nfs_client struct
- 	 */
- 	clp->cl_cons_state = NFS_CS_SESSION_INITING;
-+	init_completion(&session->complete);
- 
- 	tbl = &session->fc_slot_table;
- 	spin_lock_init(&tbl->slot_tbl_lock);
-diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-index 50a1b04..2e93b61 100644
---- a/fs/nfs/nfs4state.c
-+++ b/fs/nfs/nfs4state.c
-@@ -1162,8 +1162,23 @@ static void nfs4_session_recovery_handle_error(struct nfs_client *clp, int err)
- 
- static int nfs4_reset_session(struct nfs_client *clp)
- {
-+	struct nfs4_session *ses = clp->cl_session;
-+	struct nfs4_slot_table *tbl = &ses->fc_slot_table;
- 	int status;
- 
-+	INIT_COMPLETION(ses->complete);
-+	spin_lock(&tbl->slot_tbl_lock);
-+	if (tbl->highest_used_slotid != -1) {
-+		set_bit(NFS4CLNT_SESSION_DRAINING, &clp->cl_state);
-+		spin_unlock(&tbl->slot_tbl_lock);
-+		status = wait_for_completion_interruptible(&ses->complete);
-+		clear_bit(NFS4CLNT_SESSION_DRAINING, &clp->cl_state);
-+		if (status) /* -ERESTARTSYS */
-+			goto out;
-+	} else {
-+		spin_unlock(&tbl->slot_tbl_lock);
-+	}
-+
- 	status = nfs4_proc_destroy_session(clp->cl_session);
- 	if (status && status != -NFS4ERR_BADSESSION &&
- 	    status != -NFS4ERR_DEADSESSION) {
-diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
-index 320569e..34fc6be 100644
---- a/include/linux/nfs_fs_sb.h
-+++ b/include/linux/nfs_fs_sb.h
-@@ -209,6 +209,7 @@ struct nfs4_session {
- 	unsigned long			session_state;
- 	u32				hash_alg;
- 	u32				ssv_len;
-+	struct completion		complete;
- 
- 	/* The fore and back channel */
- 	struct nfs4_channel_attrs	fc_attrs;
--- 
-1.6.0.6
+<snip>
+>> And please note that this particular file is an NFSD and vfs related file only, it
+>> has nothing to do with nfs.
+> 
+> ...and hence you need to send it to the VFS maintainer. I'm not touching
+> that patch, or the patchset that "requires" it.
+> 
 
+OK This particular hunk I will send to fsdevel, anything else?
+
+Boaz
