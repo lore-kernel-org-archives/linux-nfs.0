@@ -1,92 +1,101 @@
-From: Jeff Layton <jlayton@redhat.com>
-Subject: Re: [PATCH] nfs4: handle situation where dentry wasn't revalidated
- on open
-Date: Fri, 13 Nov 2009 09:13:52 -0500
-Message-ID: <20091113091352.51bddfdb@tlielax.poochiereds.net>
-References: <1258118636-1348-1-git-send-email-jlayton@redhat.com>
-	<1258119000.7430.5.camel@heimdal.trondhjem.org>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH] SUNRPC: Address buffer overrun in rpc_uaddr2sockaddr()
+Date: Fri, 13 Nov 2009 10:52:55 -0500
+Message-ID: <20091113154934.1828.46527.stgit@matisse.1015granger.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	linux-kernel@vger.kernel.org, ebiederm@xmission.com,
-	adobriyan@gmail.com, viro@ZenIV.linux.org.uk, jamie@shareable.org
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <1258119000.7430.5.camel@heimdal.trondhjem.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
+Content-Type: text/plain; charset=utf-8
+Cc: linux-nfs@vger.kernel.org
+To: trond.myklebust@fys.uio.no
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from adsl-76-241-169-38.dsl.sfldmi.sbcglobal.net ([76.241.169.38]:47415
+	"EHLO matisse.1015granger.net" rhost-flags-OK-FAIL-OK-FAIL)
+	by vger.kernel.org with ESMTP id S1755722AbZKMPxP (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 13 Nov 2009 10:53:15 -0500
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 13 Nov 2009 22:30:00 +0900
-Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
+The size of buf[] must account for the string termination needed for
+the first strict_strtoul() call.  Introduced in commit a02d6926.
 
-> On Fri, 2009-11-13 at 08:23 -0500, Jeff Layton wrote:
-> > This patch is an alternate approach to fixing this problem that doesn't
-> > rely on VFS changes...
-> > 
-> > Currently, the NFSv4 client code relies on the ->lookup and
-> > ->d_revalidate codepaths to handle the open processing during lookup. In
-> > certain situations (notably LAST_BIND symlinks and file bind mounts)
-> > it's possible for the VFS to skip calling d_revalidate on a dentry that
-> > it finds in the cache. If this is done on an open call, the file doesn't
-> > get opened on the wire, no state is established and stateful operations
-> > fail against it.
-> > 
-> > This patchset fixes this problem by taking advantage of the fact that we
-> > can pass an open routine to lookup_instantiate_filp. A new open file
-> > operation for NFSv4 is added that should only be called if the filp
-> > wasn't instantiated during lookup. The original open routine is passed
-> > to lookup_instantiate_filp to ensure no change in behavior there.
-> > 
-> > Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> > ---
-> <snip>
-> > +/*
-> > + * should only be called when VFS skips revalidation
-> > + */
-> > +int
-> > +nfs4_open(struct inode *inode, struct file *filp)
-> > +{
-> > +	struct inode *dir = filp->f_path.dentry->d_parent->d_inode;
-> > +	struct rpc_cred *cred;
-> > +	struct nfs_open_context *ctx;
-> > +
-> > +	cred = rpc_lookup_cred();
-> > +	if (IS_ERR(cred))
-> > +		return PTR_ERR(cred);
-> > +
-> > +	ctx = alloc_nfs_open_context(filp->f_path.mnt, filp->f_path.dentry, cred);
-> > +	if (ctx == NULL) {
-> > +		put_rpccred(cred);
-> > +		return -ENOMEM;
-> > +	}
-> > +
-> > +	ctx->state = nfs4_do_open(dir, &filp->f_path, filp->f_mode, filp->f_flags, NULL, cred);
-> > +	put_rpccred(cred);
-> > +	if (IS_ERR(ctx->state)) {
-> > +		put_nfs_open_context(ctx);
-> > +		return PTR_ERR(ctx->state);
-> > +	}
-> > +	ctx->mode = filp->f_mode;
-> > +	nfs_set_verifier(filp->f_path.dentry, nfs_save_change_attribute(dir));
-> > +	nfs_file_set_open_context(filp, ctx);
-> > +	put_nfs_open_context(ctx);
-> > +	nfs_fscache_set_inode_cookie(inode, filp);
-> > +	return 0;
-> > +}
-> > +
-> 
-> So what happens if the file has been renamed/deleted/replaced since the
-> lookup occurred? You basically end up with a state that corresponds to a
-> different file than the filp->f_path...
-> 
+=46=C3=A1bio Oliv=C3=A9 Leite points out that strict_strtoul() requires=
+ _either_
+'\n\0' _or_ '\0' termination, so use the simpler '\0' here instead.
 
-Good point...
+See http://bugzilla.kernel.org/show_bug.cgi?id=3D14546 .
 
-I suppose I could add a check that the state->inode is the right one.
-I'm not certain what to do if they aren't though...
+Reported-by: argp-YZAGAMbGdGKGw+nKnLezzg@public.gmane.org
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Signed-off-by: F=C3=A1bio Oliv=C3=A9 Leite <fleite@redhat.com>
+---
 
-I suppose we'd need to unhash the old dentry, and instantiate a new one,
-but it is OK to swap out the dentry in the f_path with the new one?
-Maybe I should just wait for your overhaul of the open codepath...
--- 
-Jeff Layton <jlayton@redhat.com>
+Hi Trond-
+
+I haven't heard from the reporter, but since 2.6.32-final is imminent,
+would you consider this for 2.6.32-rc ?  As far as I can tell, this
+issue was introduced in 2.6.32-rc and is not applicable for stable.
+
+Thanks.
+
+ net/sunrpc/addr.c |   18 ++++++++----------
+ 1 files changed, 8 insertions(+), 10 deletions(-)
+
+diff --git a/net/sunrpc/addr.c b/net/sunrpc/addr.c
+index 22e8fd8..c7450c8 100644
+--- a/net/sunrpc/addr.c
++++ b/net/sunrpc/addr.c
+@@ -306,24 +306,25 @@ EXPORT_SYMBOL_GPL(rpc_sockaddr2uaddr);
+  * @sap: buffer into which to plant socket address
+  * @salen: size of buffer
+  *
++ * @uaddr does not have to be '\0'-terminated, but strict_strtoul() an=
+d
++ * rpc_pton() require proper string termination to be successful.
++ *
+  * Returns the size of the socket address if successful; otherwise
+  * zero is returned.
+  */
+ size_t rpc_uaddr2sockaddr(const char *uaddr, const size_t uaddr_len,
+ 			  struct sockaddr *sap, const size_t salen)
+ {
+-	char *c, buf[RPCBIND_MAXUADDRLEN];
++	char *c, buf[RPCBIND_MAXUADDRLEN + sizeof('\0')];
+ 	unsigned long portlo, porthi;
+ 	unsigned short port;
+=20
+-	if (uaddr_len > sizeof(buf))
++	if (uaddr_len > RPCBIND_MAXUADDRLEN)
+ 		return 0;
+=20
+ 	memcpy(buf, uaddr, uaddr_len);
+=20
+-	buf[uaddr_len] =3D '\n';
+-	buf[uaddr_len + 1] =3D '\0';
+-
++	buf[uaddr_len] =3D '\0';
+ 	c =3D strrchr(buf, '.');
+ 	if (unlikely(c =3D=3D NULL))
+ 		return 0;
+@@ -332,9 +333,7 @@ size_t rpc_uaddr2sockaddr(const char *uaddr, const =
+size_t uaddr_len,
+ 	if (unlikely(portlo > 255))
+ 		return 0;
+=20
+-	c[0] =3D '\n';
+-	c[1] =3D '\0';
+-
++	*c =3D '\0';
+ 	c =3D strrchr(buf, '.');
+ 	if (unlikely(c =3D=3D NULL))
+ 		return 0;
+@@ -345,8 +344,7 @@ size_t rpc_uaddr2sockaddr(const char *uaddr, const =
+size_t uaddr_len,
+=20
+ 	port =3D (unsigned short)((porthi << 8) | portlo);
+=20
+-	c[0] =3D '\0';
+-
++	*c =3D '\0';
+ 	if (rpc_pton(buf, strlen(buf), sap, salen) =3D=3D 0)
+ 		return 0;
+=20
+
