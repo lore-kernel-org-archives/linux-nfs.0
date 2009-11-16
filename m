@@ -1,67 +1,44 @@
-From: Chuck Lever <chuck.lever-MouhYhfBpPxXrIkS9f7CXA@public.gmane.org>
-Subject: Re: [PATCH 1/2] mount: ECONNREFUSED is a permanent error
-Date: Mon, 16 Nov 2009 13:16:47 -0500
-Message-ID: <E5331E4C-EE5B-4C60-9330-1B81F2FA065B@ORACLE.COM>
-References: <20091008173520.12619.10662.stgit@matisse.1015granger.net> <20091008173703.12619.35788.stgit@matisse.1015granger.net> <4B019664.3020002@RedHat.com>
-Mime-Version: 1.0 (Apple Message framework v936)
-Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Re: [RFC][PATCH] relax insecure option on mountd (ver 2)
+Date: Mon, 16 Nov 2009 13:26:19 -0500
+Message-ID: <4B01994B.3010202@RedHat.com>
+References: <DE1C4ECC-6D4A-4EA6-A4FB-BE76E31C4A40@openrbg.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
 Cc: linux-nfs@vger.kernel.org
-To: Steve Dickson <SteveD@redhat.com>
+To: Robert Gordon <rbg-dkEPNP4dzOJBDgjK7y7TUQ@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet12.oracle.com ([148.87.113.124]:43208 "EHLO
-	rgminet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751893AbZKPSRF (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 16 Nov 2009 13:17:05 -0500
-In-Reply-To: <4B019664.3020002-AfCzQyP5zfLQT0dZR+AlfA@public.gmane.org>
+Received: from mx1.redhat.com ([209.132.183.28]:46445 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751927AbZKPS0Q (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 16 Nov 2009 13:26:16 -0500
+In-Reply-To: <DE1C4ECC-6D4A-4EA6-A4FB-BE76E31C4A40-dkEPNP4dzOJBDgjK7y7TUQ@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
-On Nov 16, 2009, at 1:13 PM, Steve Dickson wrote:
 
->
->
-> On 10/08/2009 01:37 PM, Chuck Lever wrote:
->> I had assumed early on that mount.nfs should retry a refused  
->> connection.
->>
->> Apparently this is not the case.  Legacy mount.nfs4 fails immediately
->> if the NFS server refuses the connection.  Legacy mount.nfs and
->> text-based mount.nfs both fail immediately if the rpcbind service is
->> refusing connections.
->>
->> So, banish ECONNREFUSED returns from mount(2) to the domain of
->> permanent errors.
->>
->> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
->> ---
->>
->> utils/mount/stropts.c |    1 -
->> 1 files changed, 0 insertions(+), 1 deletions(-)
->>
->> diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
->> index 069bdc1..0685caa 100644
->> --- a/utils/mount/stropts.c
->> +++ b/utils/mount/stropts.c
->> @@ -639,7 +639,6 @@ static int nfs_is_permanent_error(int error)
->> 	switch (error) {
->> 	case ESTALE:
->> 	case ETIMEDOUT:
->> -	case ECONNREFUSED:
->> 		return 0;	/* temporary */
->> 	default:
->> 		return 1;	/* permanent */
->>
-> I'm going to hold of on this one... I just think we should
-> continue to try on ECONNREFUSED errors until the retry timer pops...
+On 10/26/2009 05:40 PM, Robert Gordon wrote:
+> In nfs-utils 1.2.0, I noticed that the insecure option validates that
+> the client port is a
+> subset of IPPORT_RESERVED as opposed to just validating it is a valid
+> reserved port. The following proposed patch would correct that issue.
+> 
+> Signed-off-by: Robert Gordon <rbg-dkEPNP4dzOJBDgjK7y7TUQ@public.gmane.org>
+> 
+> --- ./utils/mountd/auth.c.orig
+> +++ ./utils/mountd/auth.c
+> @@ -169,8 +169,7 @@ auth_authenticate_internal(char *what, s
+>          }
+>      }
+>      if (!(exp->m_export.e_flags & NFSEXP_INSECURE_PORT) &&
+> -            (ntohs(caller->sin_port) <  IPPORT_RESERVED/2 ||
+> -             ntohs(caller->sin_port) >= IPPORT_RESERVED)) {
+> +             ntohs(caller->sin_port) >= IPPORT_RESERVED) {
+>          *error = illegal_port;
+>          return NULL;
+>      }
+> 
+Committed...
 
-I thought we had agreed that ECONNREFUSED should be retried (ie this  
-particular patch was vetoed a while ago).  Currently it is retried for  
-NFSv4, but not for NFSv2/3, and I have a patch that makes v2/v3 retry.
-
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
+steved.
