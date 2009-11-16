@@ -1,53 +1,54 @@
 From: Steve Dickson <SteveD@redhat.com>
-Subject: Re: [PATCH 2/2] mount.nfs: Assume v2/v3 if mount-related options
- are	present
-Date: Mon, 16 Nov 2009 12:54:22 -0500
-Message-ID: <4B0191CE.4000709@RedHat.com>
-References: <20091008173520.12619.10662.stgit@matisse.1015granger.net> <20091008173712.12619.45807.stgit@matisse.1015granger.net>
+Subject: Re: [PATCH 1/2] mount: ECONNREFUSED is a permanent error
+Date: Mon, 16 Nov 2009 13:13:56 -0500
+Message-ID: <4B019664.3020002@RedHat.com>
+References: <20091008173520.12619.10662.stgit@matisse.1015granger.net> <20091008173703.12619.35788.stgit@matisse.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
 Cc: linux-nfs@vger.kernel.org
-To: Chuck Lever <chuck.lever@oracle.com>
+To: Chuck Lever <chuck.lever-MouhYhfBpPxXrIkS9f7CXA@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:13330 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:43030 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751542AbZKPRyY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 16 Nov 2009 12:54:24 -0500
-In-Reply-To: <20091008173712.12619.45807.stgit-RytpoXr2tKZ9HhUboXbp9zCvJB+x5qRC@public.gmane.org>
+	id S1752121AbZKPSNz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 16 Nov 2009 13:13:55 -0500
+In-Reply-To: <20091008173703.12619.35788.stgit-RytpoXr2tKZ9HhUboXbp9zCvJB+x5qRC@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
 
 On 10/08/2009 01:37 PM, Chuck Lever wrote:
-> Don't try NFSv4 if any MNT protocol related options were presented by
-> the user.
+> I had assumed early on that mount.nfs should retry a refused connection.
+> 
+> Apparently this is not the case.  Legacy mount.nfs4 fails immediately
+> if the NFS server refuses the connection.  Legacy mount.nfs and
+> text-based mount.nfs both fail immediately if the rpcbind service is
+> refusing connections.
+> 
+> So, banish ECONNREFUSED returns from mount(2) to the domain of
+> permanent errors.
 > 
 > Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 > ---
 > 
->  utils/mount/stropts.c |    7 +++++++
->  1 files changed, 7 insertions(+), 0 deletions(-)
+>  utils/mount/stropts.c |    1 -
+>  1 files changed, 0 insertions(+), 1 deletions(-)
 > 
 > diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
-> index 0685caa..3401f63 100644
+> index 069bdc1..0685caa 100644
 > --- a/utils/mount/stropts.c
 > +++ b/utils/mount/stropts.c
-> @@ -564,6 +564,13 @@ static int nfs_try_mount_v4(struct nfsmount_info *mi)
->  	}
->  
->  	if (mi->version == 0) {
-> +		if (po_contains(options, "mounthost") ||
-> +		    po_contains(options, "mountaddr") ||
-> +		    po_contains(options, "mountvers") ||
-> +		    po_contains(options, "mountproto")) {
-> +			errno = EPROTONOSUPPORT;
-> +			goto out_fail;
-> +		}
->  		if (po_append(options, "vers=4") == PO_FAILED) {
->  			errno = EINVAL;
->  			goto out_fail;
+> @@ -639,7 +639,6 @@ static int nfs_is_permanent_error(int error)
+>  	switch (error) {
+>  	case ESTALE:
+>  	case ETIMEDOUT:
+> -	case ECONNREFUSED:
+>  		return 0;	/* temporary */
+>  	default:
+>  		return 1;	/* permanent */
 > 
-Committed... with a comment...
+I'm going to hold of on this one... I just think we should 
+continue to try on ECONNREFUSED errors until the retry timer pops...
 
 steved.
