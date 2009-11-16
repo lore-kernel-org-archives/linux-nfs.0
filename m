@@ -1,44 +1,74 @@
-From: Steve Dickson <SteveD@redhat.com>
-Subject: Re: [PATCH] nfs-utils: mount options can be lost when using bg option
-Date: Mon, 16 Nov 2009 13:43:26 -0500
-Message-ID: <4B019D4E.7080406@RedHat.com>
-References: <1257429825.2984.26.camel@localhost.localdomain>
+From: Christopher Metter
+	<christopher.metter-jNDFPZUTrfSeRcrpBB1ZFQkon6kHRKkiG9Ur7JDdleE@public.gmane.org>
+Subject: Problems Migrating from NFSv3 to NFSv4
+Date: Mon, 16 Nov 2009 19:57:57 +0100
+Message-ID: <4B01A0B5.80501@informatik.uni-wuerzburg.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: linux-nfs@vger.kernel.org
-To: Harshula Jayasuriya <harshula@redhat.com>
+Content-Type: text/plain; charset=ISO-8859-15; format=flowed
+To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:4200 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752155AbZKPSnV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 16 Nov 2009 13:43:21 -0500
-Received: from int-mx02.intmail.prod.int.phx2.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
-	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id nAGIhRc1007516
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Mon, 16 Nov 2009 13:43:27 -0500
-In-Reply-To: <1257429825.2984.26.camel-bi+AKbBUZKY6gyzm1THtWbp2dZbC/Bob@public.gmane.org>
+Received: from mailscanner2.rox.net ([213.214.0.47]:35003 "EHLO
+	mailscanner2.rox.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751331AbZKPTnc (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 16 Nov 2009 14:43:32 -0500
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Hi there folks!
+
+Im trying to migrate from NFSv3 to NFSv4. I've read diverse Articles and 
+Howtos, but i cant find a solution to my problem.
+
+For better understanding: My NFSv4 Root is /srv/data/, a Folder that 
+existed before and has diverse Subfolders in it. These Folders are 
+really there and are not mounted by "mount --bind".
+
+The Servers IP: 192.168.0.10
+Client1: 192.168.0.1
+Client2: 192.168.0.2
+
+Setup with NFSv3:
+2 Folders (scratch and software) were shared for 2 Clients. In Scratch 
+both clients had full RW-access and on software only Client2 had rw, 
+Client1 had RO.
+Config:
+/srv/data/scratch-all    *(rw,async,no_root_squash,nohide,no_subtree_check)
+/srv/data/software    
+10.0.12.4(ro,sync,no_root_squash,nohide,no_subtree_check) 
+10.0.12.5(rw,sync,no_root_squash,nohide,no_subtree_check)
+
+My NFSv4 Config (from Server/etc/exports)
+|/srv/data/ 
+192.168.0.2(rw,sync,fsid=0,insecure,no_root_squash,no_subtree_check) 
+192.168.0.1(rw,sync,fsid=0,insecure,no_root_squash,no_subtree_check)
+/srv/data/scratch *(rw,async,no_root_squash,no_subtree_check)
+/srv/data/software 192.168.0.1(ro,sync,no_root_squash,no_subtree_check) 
+192.168.0.2(rw,sync,no_root_squash,no_subtree_check)
+|
+After that i mounted from Client1 and Client2  the Sharefolders 
+directrly (e.g. software: mount -t nfs4 -o intr,hard,rw 
+192.168.0.10:/software  /targetfolder), everything works perfect, every 
+Client has its specific rights and so on.
+
+But if im mounting Servers Root (mount -t nfs4 -o intr,hard,rw 
+192.168.0.10:/ /targetfolder)  from Client1 I do have complete RW Access 
+to the full "Data" folder, even with RW for Software (which i set for 
+RO). I also do see folders I didnot specificly share (e.g. there is a 
+folder 'lost+found' in /srv/data which should not be shared).
+
+My Question is:
+What do i have to do, that even if im mounting Servers root, I only can 
+see and access the specificly for this client configurated exports? 
+(Also with correct access, of course)
+Is it possible that way or do i have to make a complete new folder, set 
+it as new root, mount --bind the needed folders in there and then share 
+them?
+
+I tried setting Roots Parameters for Client1 to RO, but after that i 
+even didnt have RW to /scratch per direct mount.
+
+What am I doing wrong? Im looking forward to any feedback.
 
 
-On 11/05/2009 09:03 AM, Harshula Jayasuriya wrote:
-> Hi,
-> 
-> When mounting an NFS export *without* the "bg" option, try_mount() is
-> called only once. Before calling it, the variables mount_opts and
-> extra_opts are set up. Then try_mount() calls nfsmount(), the latter
-> assumes that the aforementioned variables can be modified. Most
-> significantly, it allows the variable extra_opts to be modified.
-> 
-> When the "bg" mount option is used *and* the first try_mount() attempt
-> fails, it daemonizes the process and calls try_mount() again,
-> unfortunately, we've lost the required mount options in the variable
-> extra_opts.
-> 
-> See https://bugzilla.redhat.com/show_bug.cgi?id=529370 for details.
-> 
-> Signed-off-by: Harshula Jayasuriya <harshula@redhat.com>
-Committed...
-
-steved.
+Greetings,
+Christopher
