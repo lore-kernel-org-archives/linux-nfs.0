@@ -1,74 +1,69 @@
-From: Christopher Metter
-	<christopher.metter-jNDFPZUTrfSeRcrpBB1ZFQkon6kHRKkiG9Ur7JDdleE@public.gmane.org>
-Subject: Problems Migrating from NFSv3 to NFSv4
-Date: Mon, 16 Nov 2009 19:57:57 +0100
-Message-ID: <4B01A0B5.80501@informatik.uni-wuerzburg.de>
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Re: [PATCH 1/2] mount: ECONNREFUSED is a permanent error
+Date: Mon, 16 Nov 2009 14:47:14 -0500
+Message-ID: <4B01AC42.5040902@RedHat.com>
+References: <20091008173520.12619.10662.stgit@matisse.1015granger.net> <20091008173703.12619.35788.stgit@matisse.1015granger.net> <4B019664.3020002@RedHat.com> <E5331E4C-EE5B-4C60-9330-1B81F2FA065B@ORACLE.COM>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-15; format=flowed
-To: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: linux-nfs@vger.kernel.org
+To: Chuck Lever <chuck.lever-MouhYhfBpPxXrIkS9f7CXA@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mailscanner2.rox.net ([213.214.0.47]:35003 "EHLO
-	mailscanner2.rox.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751331AbZKPTnc (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 16 Nov 2009 14:43:32 -0500
+Received: from mx1.redhat.com ([209.132.183.28]:30080 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751993AbZKPTrN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 16 Nov 2009 14:47:13 -0500
+In-Reply-To: <E5331E4C-EE5B-4C60-9330-1B81F2FA065B-MouhYhfBpPxXrIkS9f7CXA@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi there folks!
-
-Im trying to migrate from NFSv3 to NFSv4. I've read diverse Articles and 
-Howtos, but i cant find a solution to my problem.
-
-For better understanding: My NFSv4 Root is /srv/data/, a Folder that 
-existed before and has diverse Subfolders in it. These Folders are 
-really there and are not mounted by "mount --bind".
-
-The Servers IP: 192.168.0.10
-Client1: 192.168.0.1
-Client2: 192.168.0.2
-
-Setup with NFSv3:
-2 Folders (scratch and software) were shared for 2 Clients. In Scratch 
-both clients had full RW-access and on software only Client2 had rw, 
-Client1 had RO.
-Config:
-/srv/data/scratch-all    *(rw,async,no_root_squash,nohide,no_subtree_check)
-/srv/data/software    
-10.0.12.4(ro,sync,no_root_squash,nohide,no_subtree_check) 
-10.0.12.5(rw,sync,no_root_squash,nohide,no_subtree_check)
-
-My NFSv4 Config (from Server/etc/exports)
-|/srv/data/ 
-192.168.0.2(rw,sync,fsid=0,insecure,no_root_squash,no_subtree_check) 
-192.168.0.1(rw,sync,fsid=0,insecure,no_root_squash,no_subtree_check)
-/srv/data/scratch *(rw,async,no_root_squash,no_subtree_check)
-/srv/data/software 192.168.0.1(ro,sync,no_root_squash,no_subtree_check) 
-192.168.0.2(rw,sync,no_root_squash,no_subtree_check)
-|
-After that i mounted from Client1 and Client2  the Sharefolders 
-directrly (e.g. software: mount -t nfs4 -o intr,hard,rw 
-192.168.0.10:/software  /targetfolder), everything works perfect, every 
-Client has its specific rights and so on.
-
-But if im mounting Servers Root (mount -t nfs4 -o intr,hard,rw 
-192.168.0.10:/ /targetfolder)  from Client1 I do have complete RW Access 
-to the full "Data" folder, even with RW for Software (which i set for 
-RO). I also do see folders I didnot specificly share (e.g. there is a 
-folder 'lost+found' in /srv/data which should not be shared).
-
-My Question is:
-What do i have to do, that even if im mounting Servers root, I only can 
-see and access the specificly for this client configurated exports? 
-(Also with correct access, of course)
-Is it possible that way or do i have to make a complete new folder, set 
-it as new root, mount --bind the needed folders in there and then share 
-them?
-
-I tried setting Roots Parameters for Client1 to RO, but after that i 
-even didnt have RW to /scratch per direct mount.
-
-What am I doing wrong? Im looking forward to any feedback.
 
 
-Greetings,
-Christopher
+On 11/16/2009 01:16 PM, Chuck Lever wrote:
+> 
+> On Nov 16, 2009, at 1:13 PM, Steve Dickson wrote:
+> 
+>>
+>>
+>> On 10/08/2009 01:37 PM, Chuck Lever wrote:
+>>> I had assumed early on that mount.nfs should retry a refused connection.
+>>>
+>>> Apparently this is not the case.  Legacy mount.nfs4 fails immediately
+>>> if the NFS server refuses the connection.  Legacy mount.nfs and
+>>> text-based mount.nfs both fail immediately if the rpcbind service is
+>>> refusing connections.
+>>>
+>>> So, banish ECONNREFUSED returns from mount(2) to the domain of
+>>> permanent errors.
+>>>
+>>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+>>> ---
+>>>
+>>> utils/mount/stropts.c |    1 -
+>>> 1 files changed, 0 insertions(+), 1 deletions(-)
+>>>
+>>> diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
+>>> index 069bdc1..0685caa 100644
+>>> --- a/utils/mount/stropts.c
+>>> +++ b/utils/mount/stropts.c
+>>> @@ -639,7 +639,6 @@ static int nfs_is_permanent_error(int error)
+>>>     switch (error) {
+>>>     case ESTALE:
+>>>     case ETIMEDOUT:
+>>> -    case ECONNREFUSED:
+>>>         return 0;    /* temporary */
+>>>     default:
+>>>         return 1;    /* permanent */
+>>>
+>> I'm going to hold of on this one... I just think we should
+>> continue to try on ECONNREFUSED errors until the retry timer pops...
+> 
+> I thought we had agreed that ECONNREFUSED should be retried (ie this
+> particular patch was vetoed a while ago).  
+Right... Just clearing my que... ;-)
+
+> Currently it is retried for NFSv4, but not for NFSv2/3, and I have 
+> a patch that makes v2/v3 retry.
+Post it when its ready...
+
+steved.
+
