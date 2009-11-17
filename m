@@ -1,61 +1,84 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet12.oracle.com ([148.87.113.124]:38674 "EHLO
-	rgminet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S933357AbZKXPVS (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 24 Nov 2009 10:21:18 -0500
-Cc: linux-nfs@vger.kernel.org, Chris.Mason@oracle.com
-Message-Id: <0CF4EA0D-3D25-4E5E-ADBD-DFF8B1E7172F@oracle.com>
-From: Chuck Lever <chuck.lever@oracle.com>
-To: Steve Dickson <SteveD@redhat.com>
-In-Reply-To: <4B0BEAFD.1040701@RedHat.com>
-Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
-Subject: Re: [PATCH 0/2] Use xlog() for statd/sm-notify syslogging
-Date: Tue, 24 Nov 2009 10:20:27 -0500
-References: <20091123215833.26806.28348.stgit@ingres.1015granger.net> <4B0BEAFD.1040701@RedHat.com>
+Received: from dot.freshdot.net ([213.154.229.18]:33164 "EHLO dot.freshdot.net"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754024AbZKQPjX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 17 Nov 2009 10:39:23 -0500
+Date: Tue, 17 Nov 2009 16:39:28 +0100
+From: Sander Smeenk <ssmeenk@freshdot.net>
+To: linux-nfs@vger.kernel.org
+Subject: rpc.mountd --manage-gids breaks on UID differences
+Message-ID: <20091117153928.GA12493@dot.freshdot.net>
+Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Nov 24, 2009, at 9:17 AM, Steve Dickson wrote:
-> On 11/23/2009 05:00 PM, Chuck Lever wrote:
->> Steve -
->>
->> As requested, here are the two patches that convert statd and
->> sm-notify to use the nfs-utils' xlog() facility, replacing local
->> variants.
->>
->> ---
-> Committed and thanks for breaking them up!
->
-> Question, How did you differentiate between D_CALL and D_GENERAL?
->
-> I'm thinking about rolling both those types into a new xlog_debug()
-> function... since that what those types seem to be...
+Hi,
 
-These are existing enum values.  See support/include/xlog.h.  D_CALL  
-is generally used for function tracing, more or less, and D_GENERAL is  
-used as a grab bag.
+I ran into this problem the other day which i'd like to report as a
+possible bug or at least an inconvenience. Please read and spill your
+thoughts if you want.
 
-The debug level is set via xlog_config() or xlog_sconfig().  It looks  
-like mountd uses the whole range of values, and you can set them on  
-the command line.  It would be nice if statd allowed that too.
+In this situation i had a x86_64 Linux machine running Ubuntu 8.04.3 LTS
+with kernel 2.6.24-25-generic and nfs-utils 1:1.1.2-2ubuntu2.
+/usr/sbin/rpc.mountd identifies itself as 'kmountd 1.1.2'.
+This machine acts as the server and has '--manage-gids' specified in
+/etc/default/nfs-kernel-server's RPCMOUNTDOPTS. It exports one share
+to a /24 subnet with (rw,sync,no_subtree_check,no_root_squash) options.
 
-You don't need to change or eliminate any of the values.  A putative  
-xlog_debug() function might look like this:
+I have another machine acting as client, same OS-release, same kernel,
+this machine only has nfs-common utilities installed and thus does not
+run rpc.mountd. It mounts the NFS-server with 'rw,addr=172.17.145.210'
+mountoptions. Nothing fancy there either.
 
-void
-xlog_debug(const char* fmt, ...)
-{
-         va_list args;
+There's no firewall between the machines.
 
-         va_start(args, fmt);
-         xlog_backend(D_GENERAL, fmt, args);
-         va_end(args);
-}
+On the server i have a user 'foo' with UID '1000' and GID '65000',
+On the client i have a user 'foo' with UID '1001' and GID '65000'.
+Username is identical as is the GID, the UID isn't.
 
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+If user 'foo' on the nfs-client tries to reach the mountpoint where the
+nfs-server is mounted the shell of this user will freeze. For example,
+user 'foo' on the nfs-client types 'cd /mnt/nfs/ap<tabtab>' and stalls.
 
+The clientmachine then begins to log 'nfs: server 172.17.145.210 not
+responding, still trying' and this user's shell doesn't recover in any
+way until forcefully killed.
 
+Funny thing is, a user 'bar' with the same UID on the server- and
+client machine can still access the NFS-mount on the client even when
+the session for user 'foo' is stalling. Also, running 'rpcinfo -p' or
+'rpcinfo -u <host> <progid>' on the server reports all normal values.
 
+The server logs nothing.
+
+Aparently this has to do with UIDs being different on the nfs-server and
+the nfs-client as i discovered debugging this problem in two VMs. It's
+quite easy to reproduce and also seems to happen if the user on the
+clientmachine is nonexistant on the servermachine.
+
+Disabling '--manage-gids' and remouting, restarting or rebooting
+completely fixes the problem. Reintroducing '--manage-gids' breaks it
+again.
+
+It appears to me '--manage-gids' is completely broken in this setup, or
+i misunderstand what --manage-gids does, completely.  I haven't tried
+this on newer kernels (2.6.31-14-generic f.e.).
+
+I do have kernel debug logs during broken and working NFS transactions
+which i got by echoing the correct bitmask to /proc/sys/sunrpc/*debug.
+
+http://www.freshdot.net/tmp/client-broken-syslog
+http://www.freshdot.net/tmp/server-broken-syslog
+vs
+http://www.freshdot.net/tmp/client-working-syslog
+http://www.freshdot.net/tmp/server-working-syslog
+
+Is this behaviour intended?
+Hope to hear from you!
+
+With regards,
+Sander Smeenk.
+-- 
+| When you've seen one shopping center you've seen a mall.
+| 4096R/20CC6CD2 - 6D40 1A20 B9AA 87D4 84C7  FBD6 F3A9 9442 20CC 6CD2
