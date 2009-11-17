@@ -1,63 +1,54 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
+From: Sander Smeenk <ssmeenk@freshdot.net>
 Subject: Re: rpc.mountd --manage-gids breaks on UID differences
-Date: Tue, 17 Nov 2009 15:08:31 -0500
-Message-ID: <20091117200831.GA3969@fieldses.org>
-References: <20091117153928.GA12493@dot.freshdot.net>
+Date: Tue, 17 Nov 2009 21:43:33 +0100
+Message-ID: <20091117204332.GA15295@dot.freshdot.net>
+References: <20091117153928.GA12493@dot.freshdot.net> <20091117200831.GA3969@fieldses.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs@vger.kernel.org
-To: Sander Smeenk <ssmeenk@freshdot.net>
+To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:33163 "EHLO fieldses.org"
+Received: from dot.freshdot.net ([213.154.229.18]:34473 "EHLO dot.freshdot.net"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751639AbZKQUIA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 17 Nov 2009 15:08:00 -0500
-In-Reply-To: <20091117153928.GA12493-N0d2glMUd7m2/GFIlvLUCQ@public.gmane.org>
+	id S1751758AbZKQUn2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 17 Nov 2009 15:43:28 -0500
+In-Reply-To: <20091117200831.GA3969@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Nov 17, 2009 at 04:39:28PM +0100, Sander Smeenk wrote:
-> Aparently this has to do with UIDs being different on the nfs-server and
-> the nfs-client as i discovered debugging this problem in two VMs. It's
-> quite easy to reproduce and also seems to happen if the user on the
-> clientmachine is nonexistant on the servermachine.
-> 
-> Disabling '--manage-gids' and remouting, restarting or rebooting
-> completely fixes the problem. Reintroducing '--manage-gids' breaks it
-> again.
+Quoting J. Bruce Fields (bfields@fieldses.org):
 
-Just from those symptoms it sounds to me like rpc.mountd isn't
-responding to upcalls when asked about a uid for which there's no
-account on the server.  It should be returning a negative response
-immediately.
+> > Disabling '--manage-gids' and remouting, restarting or rebooting
+> > completely fixes the problem. Reintroducing '--manage-gids' breaks it
+> > again.
+> Just from those symptoms it sounds to me like rpc.mountd isn't
+> responding to upcalls when asked about a uid for which there's no
+> account on the server.  It should be returning a negative response
+> immediately.
 
-(I assume your server isn't using ldap or nis or something that could
-cause lookups of a uid to take a long time?)
+Something like that sounds right. Aparently the client is waiting for
+the server to respond, that's what i can tell from the debug logs[1]
+timestamped 14243124.709876 through 14243184.647892. Which eventually
+leads to the kernel logging the 'not responding' message at
+14243306.507319.
 
---b.
+[1] http://www.freshdot.net/tmp/client-broken-syslog
 
-> It appears to me '--manage-gids' is completely broken in this setup, or
-> i misunderstand what --manage-gids does, completely.  I haven't tried
-> this on newer kernels (2.6.31-14-generic f.e.).
-> 
-> I do have kernel debug logs during broken and working NFS transactions
-> which i got by echoing the correct bitmask to /proc/sys/sunrpc/*debug.
-> 
-> http://www.freshdot.net/tmp/client-broken-syslog
-> http://www.freshdot.net/tmp/server-broken-syslog
-> vs
-> http://www.freshdot.net/tmp/client-working-syslog
-> http://www.freshdot.net/tmp/server-working-syslog
-> 
-> Is this behaviour intended?
-> Hope to hear from you!
-> 
-> With regards,
-> Sander Smeenk.
-> -- 
-> | When you've seen one shopping center you've seen a mall.
-> | 4096R/20CC6CD2 - 6D40 1A20 B9AA 87D4 84C7  FBD6 F3A9 9442 20CC 6CD2
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> (I assume your server isn't using ldap or nis or something that could
+> cause lookups of a uid to take a long time?)
+
+Correct. My client and server are using UNIX auth from shadow files.
+
+The timeframe described above matches the lines from the beginning up to
+3732517.859721 in the server debug log[2]. I'd have to dig in the kernel
+code to find out what lines 3732513.221898 through 3732513.221913
+exactly tell me. Is anyone on this list an RPC-code ninja?
+
+And what exactly is the 'NFSD laundromat service' :)
+
+[2] http://www.freshdot.net/tmp/server-broken-syslog
+
+Thanks,
+Sander.
+-- 
+| A box without hinges, key, or lid, yet golden treasure inside is hid.
+| 4096R/20CC6CD2 - 6D40 1A20 B9AA 87D4 84C7  FBD6 F3A9 9442 20CC 6CD2
