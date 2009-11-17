@@ -1,116 +1,57 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: Potential lockd bug can cause orphaned locks
-Date: Tue, 17 Nov 2009 16:39:40 -0500
-Message-ID: <20091117213940.GD5121@fieldses.org>
-References: <4B00858E.7090400@hp.com>
+From: akpm@linux-foundation.org
+Subject: [patch 1/1] sunrpc: use formatting of module name in SUNRPC
+Date: Tue, 17 Nov 2009 14:46:57 -0800
+Message-ID: <200911172246.nAHMkvuI004689@imap1.linux-foundation.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-To: Rob Gardner <rob.gardner@hp.com>
+Content-Type: text/plain; charset=ANSI_X3.4-1968
+Cc: linux-nfs@vger.kernel.org, akpm@linux-foundation.org,
+	raa.lkml@gmail.com, Trond.Myklebust@netapp.com, cel@citi.umich.edu,
+	davem@davemloft.net, tmtalpey@gmail.com
+To: trond.myklebust@fys.uio.no
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:44128 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753027AbZKQVjI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 17 Nov 2009 16:39:08 -0500
-In-Reply-To: <4B00858E.7090400@hp.com>
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:50540 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1756590AbZKQWrw (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 17 Nov 2009 17:47:52 -0500
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sun, Nov 15, 2009 at 03:49:50PM -0700, Rob Gardner wrote:
->
-> I've discovered some behavior in lockd that I think is questionable. In
-> conjunction with file systems that provide their own locking functions
-> (ie, file->f_op->lock()), lockd seems to handle cancel requests
-> inconsistently, with the result that a file may be left with a byte
-> range lock on it but with no owner.
->
-> There are several scenarios in which lockd would like to cancel a lock
-> request:
-> 1. Client sends explicit unlock or cancel request
-> 2. A non-blocking lock request times out
-> 3. A 'cleanup' type request, ie, client reboot and subsequent SM_NOTIFY
-> which attempts to clear all locks and requests for that client
->
-> In all scenarios, lockd believes that the locks and lock requests for
-> the file have been cleaned up, and it closes the file and releases
-> references to the file.
->
-> In the first scenario, lockd calls vfs_cancel_lock to alert the file
-> system that it would like to cancel the lock request; Then,
-> nlmsvc_unlink_block() calls posix_unblock_lock() which cancels any
-> outstanding posix lock request.
->
-> But in the other two scenarios, vfs_cancel_lock() is never called, only
-> posix_unblock_lock().
+From: Alex Riesen <raa.lkml@gmail.com>
 
-Yes, I agree that this is a bug, thanks for the description.
+gcc-4.3.3 produces the warning:
+  "format not a string literal and no format arguments"
 
-> It seems to me that scenarios 2 and 3 are perfectly good "cancel lock"
-> situations and lockd should call vfs_cancel_lock() in both cases to
-> reduce the possibility of a future grant for a file no longer opened by
-> lockd. Depending on the vague and ambiguous advice in the locks.c
-> comment seems very dangerous; Releasing a lock may not result in the
-> same state as canceling the lock request that caused the grant so it
-> should always be preferable to cancel a lock if possible, rather than
-> waiting for a grant then unlocking it.
+Signed-off-by: Alex Riesen <raa.lkml@gmail.com>
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: Chuck Lever <cel@citi.umich.edu>
+Cc: David S. Miller <davem@davemloft.net>
+Acked-by: Tom Talpey <tmtalpey@gmail.com>
+Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
+---
 
-That suggests there are other races between a grant and a cancel that
-we're not addressing here.
+ net/sunrpc/xprt.c |    5 +----
+ 1 file changed, 1 insertion(+), 4 deletions(-)
 
-...
-> Possible code change (not tested):
->
-> --- svclock.c.linux-2.6.32-rc6    2009-11-15 13:54:03.000000000 -0700
-> +++ svclock.c    2009-11-15 13:57:15.000000000 -0700
-> @@ -288,8 +288,9 @@
->        if (list_empty(&block->b_list))
->            continue;
->        kref_get(&block->b_count);
->        mutex_unlock(&file->f_mutex);
-> +        vfs_cancel_lock(block->b_file->f_file,
-> +              &block->b_call->a_args.lock.fl);
->        nlmsvc_unlink_block(block);
->        nlmsvc_release_block(block);
->        goto restart;
->    }
-> @@ -399,8 +400,9 @@
->            ret = nlm_granted;
->            goto out;
->        }
->        if (block->b_flags & B_TIMED_OUT) {
-> +            vfs_cancel_lock(block->b_file->f_file,
-> +                  &block->b_call->a_args.lock.fl);
->            nlmsvc_unlink_block(block);
->            ret = nlm_lck_denied;
->            goto out;
->        }
-
-Seems reasonable, though it is a bit annoying trying to determine which
-of these should be called where, so...
-
-> Another possibility is to change nlmsvc_unlink_block() to make the call to
-> vfs_cancel_lock() and then remove the call to vfs_cancel_lock in
-> nlmsvc_cancel_blocked(). But I don't really like this as most other
-> calls to nlmsvc_unlink_block() do not require a call to vfs_cancel_lock().
-
-..yes, I understand why the ideal initially appeals, but don't have a
-better suggestion.
-
---b.
-
->
-> I am interested in hearing opinions on this... is there a better  
-> solution? Or is it not really a problem because of something else?
->
->
-> Rob Gardner
->
->
->
->
->
->
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+diff -puN net/sunrpc/xprt.c~sunrpc-use-formatting-of-module-name-in-sunrpc net/sunrpc/xprt.c
+--- a/net/sunrpc/xprt.c~sunrpc-use-formatting-of-module-name-in-sunrpc
++++ a/net/sunrpc/xprt.c
+@@ -165,7 +165,6 @@ EXPORT_SYMBOL_GPL(xprt_unregister_transp
+ int xprt_load_transport(const char *transport_name)
+ {
+ 	struct xprt_class *t;
+-	char module_name[sizeof t->name + 5];
+ 	int result;
+ 
+ 	result = 0;
+@@ -177,9 +176,7 @@ int xprt_load_transport(const char *tran
+ 		}
+ 	}
+ 	spin_unlock(&xprt_list_lock);
+-	strcpy(module_name, "xprt");
+-	strncat(module_name, transport_name, sizeof t->name);
+-	result = request_module(module_name);
++	result = request_module("xprt%s", transport_name);
+ out:
+ 	return result;
+ }
+_
