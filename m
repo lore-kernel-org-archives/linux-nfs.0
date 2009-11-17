@@ -1,69 +1,76 @@
-From: Steve Dickson <SteveD@redhat.com>
-Subject: Re: [PATCH 1/2] mount: ECONNREFUSED is a permanent error
-Date: Mon, 16 Nov 2009 14:47:14 -0500
-Message-ID: <4B01AC42.5040902@RedHat.com>
-References: <20091008173520.12619.10662.stgit@matisse.1015granger.net> <20091008173703.12619.35788.stgit@matisse.1015granger.net> <4B019664.3020002@RedHat.com> <E5331E4C-EE5B-4C60-9330-1B81F2FA065B@ORACLE.COM>
+From: NeilBrown <neilb@suse.de>
+Subject: [PATCH 1/2] NFS4ERR_FILE_OPEN handling in Linux/NFS
+Date: Tue, 17 Nov 2009 15:21:24 +1100
+Message-ID: <20091117042123.1563.20912.stgit@notabene.brown>
+References: <20091117042004.1563.95871.stgit@notabene.brown>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: linux-nfs@vger.kernel.org
-To: Chuck Lever <chuck.lever-MouhYhfBpPxXrIkS9f7CXA@public.gmane.org>
+Content-Type: text/plain; charset="utf-8"
+Cc: linux-nfs@vger.kernel.org, NeilBrown <neilb@suse.de>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:30080 "EHLO mx1.redhat.com"
+Received: from cantor.suse.de ([195.135.220.2]:46279 "EHLO mx1.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751993AbZKPTrN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 16 Nov 2009 14:47:13 -0500
-In-Reply-To: <E5331E4C-EE5B-4C60-9330-1B81F2FA065B-MouhYhfBpPxXrIkS9f7CXA@public.gmane.org>
+	id S1753824AbZKQEVZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 16 Nov 2009 23:21:25 -0500
+In-Reply-To: <20091117042004.1563.95871.stgit-wvvUuzkyo1EYVZTmpyfIwg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+NFS4ERR_FILE_OPEN is returned by the server when an operation cannot be
+performed because the file is currently open and local (to the server)
+semantics prohibit the operation while the file is open.
+A typical case is a RENAME operation on an MS-Windows platform, which
+prevents rename while the file is open.
 
+While it is possible that such a condition is transitory, it is also
+very possible that the file will be held open for an extended period
+of time thus preventing the operation.
 
-On 11/16/2009 01:16 PM, Chuck Lever wrote:
-> 
-> On Nov 16, 2009, at 1:13 PM, Steve Dickson wrote:
-> 
->>
->>
->> On 10/08/2009 01:37 PM, Chuck Lever wrote:
->>> I had assumed early on that mount.nfs should retry a refused connection.
->>>
->>> Apparently this is not the case.  Legacy mount.nfs4 fails immediately
->>> if the NFS server refuses the connection.  Legacy mount.nfs and
->>> text-based mount.nfs both fail immediately if the rpcbind service is
->>> refusing connections.
->>>
->>> So, banish ECONNREFUSED returns from mount(2) to the domain of
->>> permanent errors.
->>>
->>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
->>> ---
->>>
->>> utils/mount/stropts.c |    1 -
->>> 1 files changed, 0 insertions(+), 1 deletions(-)
->>>
->>> diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
->>> index 069bdc1..0685caa 100644
->>> --- a/utils/mount/stropts.c
->>> +++ b/utils/mount/stropts.c
->>> @@ -639,7 +639,6 @@ static int nfs_is_permanent_error(int error)
->>>     switch (error) {
->>>     case ESTALE:
->>>     case ETIMEDOUT:
->>> -    case ECONNREFUSED:
->>>         return 0;    /* temporary */
->>>     default:
->>>         return 1;    /* permanent */
->>>
->> I'm going to hold of on this one... I just think we should
->> continue to try on ECONNREFUSED errors until the retry timer pops...
-> 
-> I thought we had agreed that ECONNREFUSED should be retried (ie this
-> particular patch was vetoed a while ago).  
-Right... Just clearing my que... ;-)
+The current behaviour of Linux/NFS is to retry the operation
+indefinitely.  This is not appropriate - we do not expect a rename to
+take an arbitrary amount of time to complete.
 
-> Currently it is retried for NFSv4, but not for NFSv2/3, and I have 
-> a patch that makes v2/v3 retry.
-Post it when its ready...
+Rather, an error should be returned.  The most obvious error code
+would be EBUSY, which is a legal at least for 'rename' and 'unlink',
+and accurately captures the reason for the error.
 
-steved.
+This patch allows a few retries until about 2 seconds have elapsed,
+then returns EBUSY.
+
+Signed-off-by: NeilBrown <neilb@suse.de>
+---
+
+ fs/nfs/nfs4proc.c |    5 +++++
+ fs/nfs/nfs4xdr.c  |    1 +
+ 2 files changed, 6 insertions(+), 0 deletions(-)
+
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index ff37454..be26c0c 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -275,6 +275,11 @@ static int nfs4_handle_exception(const struct nfs_server *server, int errorcode,
+ 			/* FALLTHROUGH */
+ #endif /* !defined(CONFIG_NFS_V4_1) */
+ 		case -NFS4ERR_FILE_OPEN:
++			if (exception->timeout > HZ)
++				/* We have retried a decent amount, time to
++				 * fail
++				 */
++				break;
+ 		case -NFS4ERR_GRACE:
+ 		case -NFS4ERR_DELAY:
+ 			ret = nfs4_delay(server->client, &exception->timeout);
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index 20b4e30..e50246d 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -5684,6 +5684,7 @@ static struct {
+ 	{ NFS4ERR_SYMLINK,	-ELOOP		},
+ 	{ NFS4ERR_OP_ILLEGAL,	-EOPNOTSUPP	},
+ 	{ NFS4ERR_DEADLOCK,	-EDEADLK	},
++	{ NFS4ERR_FILE_OPEN,	-EBUSY		},
+ 	{ NFS4ERR_WRONGSEC,	-EPERM		}, /* FIXME: this needs
+ 						    * to be handled by a
+ 						    * middle-layer.
+
 
