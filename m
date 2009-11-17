@@ -1,50 +1,49 @@
-From: NeilBrown <neilb@suse.de>
-Subject: [PATCH 2/2] NFS: honour preferred rsize/wsize reported by server.
-Date: Tue, 17 Nov 2009 15:21:24 +1100
-Message-ID: <20091117042124.1563.32006.stgit@notabene.brown>
-References: <20091117042004.1563.95871.stgit@notabene.brown>
+From: Mi Jinlong <mijinlong@cn.fujitsu.com>
+Subject: [RFC] After server stop nfslock service, client still can get lock
+ success
+Date: Tue, 17 Nov 2009 17:47:15 +0800
+Message-ID: <4B027123.4060100@cn.fujitsu.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Cc: linux-nfs@vger.kernel.org, NeilBrown <neilb@suse.de>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Content-Type: text/plain; charset=UTF-8
+To: "Trond.Myklebust" <trond.myklebust@fys.uio.no>,
+	NFSv3 list <linux-nfs@vger.kernel.org>,
+	"J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from cantor.suse.de ([195.135.220.2]:46284 "EHLO mx1.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754087AbZKQEVb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 16 Nov 2009 23:21:31 -0500
-In-Reply-To: <20091117042004.1563.95871.stgit-wvvUuzkyo1EYVZTmpyfIwg@public.gmane.org>
+Received: from cn.fujitsu.com ([222.73.24.84]:51769 "EHLO song.cn.fujitsu.com"
+	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
+	id S1753442AbZKQJpw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 17 Nov 2009 04:45:52 -0500
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-When a filesystem is mounted with ASCII mount options, and no rsize
-or wsize is given, the client should default to using the preferred
-sizes reported in the FSINFO request.
-However it does not.  These values are initialised to
-NFS_MAX_FILE_IO_SIZE and as they are now non-zero, the default does
-not get applied.
+When testing NLM, i find a bug.
+After server stop nfslock service, client still can get lock success
 
-So initialise to 0 thus allowing appropriate defaults to apply.
+Test process:
 
-Signed-off-by: NeilBrown <neilb@suse.de>
----
+  Step1: client open nfs file.
+  Step2: client using fcntl to get lock.
+  Step3: client using fcntl to release lock.
+  Step4: service stop it's nfslock service.
+  Step5: client using fcntl to get lock again.
 
- fs/nfs/super.c |    4 ++--
- 1 files changed, 2 insertions(+), 2 deletions(-)
+At step5, client should get lock fail, but it's success.
 
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index 90be551..18c5f85 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -734,8 +734,8 @@ static struct nfs_parsed_mount_data *nfs_alloc_parsed_mount_data(unsigned int ve
- 
- 	data = kzalloc(sizeof(*data), GFP_KERNEL);
- 	if (data) {
--		data->rsize		= NFS_MAX_FILE_IO_SIZE;
--		data->wsize		= NFS_MAX_FILE_IO_SIZE;
-+		data->rsize		= 0;
-+		data->wsize		= 0;
- 		data->acregmin		= NFS_DEF_ACREGMIN;
- 		data->acregmax		= NFS_DEF_ACREGMAX;
- 		data->acdirmin		= NFS_DEF_ACDIRMIN;
+Reason:
+  When server stop nfslock service, client's host struct not be
+  unmonitor at server. When client get lock again, the client's
+  host struct will be reuse but don't monitor again. 
+  So that, at step5 client can get lock success.
+
+Question:
+  1. Should unmonitor the client's host struct at server 
+     when server stop nfslock service ?
+
+  2. Whether let rpc.statd tell kernel it's status(when start and stop)
+     by send a SM_NOTIFY ?
+
+-- 
+Regards
+Mi Jinlong
 
 
