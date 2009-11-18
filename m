@@ -1,49 +1,60 @@
-From: Christopher Metter
-	<christopher.metter-jNDFPZUTrfSeRcrpBB1ZFQkon6kHRKkiG9Ur7JDdleE@public.gmane.org>
-Subject: Re: Problems Migrating from NFSv3 to NFSv4
-Date: Wed, 18 Nov 2009 13:02:16 +0100
-Message-ID: <4B03E248.4050002@informatik.uni-wuerzburg.de>
-References: <4B01A0B5.80501@informatik.uni-wuerzburg.de> <4B02AF7D.4090503@RedHat.com>
+From: Jeff Layton <jlayton@redhat.com>
+Subject: Re: [PATCH 0/2] vfs: ensure that dentries are revalidated on open
+ (try #2)
+Date: Wed, 18 Nov 2009 07:29:16 -0500
+Message-ID: <20091118072916.720471b0@tlielax.poochiereds.net>
+References: <1257870456-31188-1-git-send-email-jlayton@redhat.com>
+	<20091118041906.GB1395@ucw.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-15; format=flowed
-Cc: linux-nfs@vger.kernel.org
-To: Steve Dickson <SteveD@redhat.com>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mailscanner1.rox.net ([213.214.0.46]:49483 "EHLO
-	mailscanner1.rox.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752602AbZKRMCy (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 18 Nov 2009 07:02:54 -0500
-In-Reply-To: <4B02AF7D.4090503-AfCzQyP5zfLQT0dZR+AlfA@public.gmane.org>
-Sender: linux-nfs-owner@vger.kernel.org
+Content-Type: text/plain; charset=US-ASCII
+Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	linux-nfs@vger.kernel.org, ebiederm@xmission.com,
+	adobriyan@gmail.com, viro@ZenIV.linux.org.uk, jamie@shareable.org
+To: Pavel Machek <pavel@ucw.cz>
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1751659AbZKRM30@vger.kernel.org>
+In-Reply-To: <20091118041906.GB1395@ucw.cz>
+Sender: linux-kernel-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Steve Dickson schrieb:
->> My Question is:
->> What do i have to do, that even if im mounting Servers root, I only can
->> see and access the specificly for this client configurated exports?
->> (Also with correct access, of course)
->>     
-> I'm not sure I understand your question... Are you asking is there a 
-> way for clients to only see particular directories on a the server's root?
->
-> steved.
->
->   
-Hi Steve,
+On Wed, 18 Nov 2009 05:19:06 +0100
+Pavel Machek <pavel@ucw.cz> wrote:
 
-thats what im talking about. 
-Clients should only see(+write) particular directories on the server, 
-after I've set the permission for this.
+> Hi!
+> 
+> > This is the second attempt to fix this problem. The first one attempted
+> > to fix this in procfs, but Eric Biederman pointed out that file bind
+> > mounts have a similar problem. This set attempts to fix the issue at a
+> > higher level, in the generic VFS layer.
+> > 
+> > In certain situations, when it knows that they are valid, the path
+> > walking code will skip revalidating dentries that it finds in the cache.
+> > This causes problems with filesystems such as NFSv4 and CIFS that depend
+> > on the d_revalidate routine to do opens during lookup.
+> 
+> ...and it allows bypassing directory permissions. Could we fix both
+> here?
+> 									Pavel
 
-Example:
+Does it? Here's what I just did to check that:
 
-/srv/data  is NFSv4Root and includes:
-/srv/data/folder1
-/srv/data/folder2
-/srv/data/folder3
+# cp /bin/sleep /root/sleep
 
-Now I set permission for Client1 to readonly folder1 and readwrite 
-folder2 and no permissions for folder3.
+# ls -l /root /root/sleep
+dr-xr-x---. 19 root root  4096 2009-11-18 07:20 /root
+-rwxr-xr-x.  1 root root 29152 2009-11-18 07:20 /root/sleep
 
-After mounting servers root, I only see folder1 and only can write in 
-folder2. And the Client doesnt know anything about folder3
+# /root/sleep 600
+
+...then as unprivileged user:
+
+$ ps -ef | grep sleep 
+(find pid of sleep program that root is running)
+
+$ /proc/5258/exe 600
+bash: /proc/5258/exe: Permission denied
+
+...it looks like directory permissions are respected here. Did I
+misunderstand what you're concerned about?
+
+-- 
+Jeff Layton <jlayton@redhat.com>
