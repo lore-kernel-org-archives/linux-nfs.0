@@ -1,137 +1,91 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [RFC] After server stop nfslock service, client still can get lock success
-Date: Wed, 18 Nov 2009 12:03:42 -0500
-Message-ID: <799834E0-C52E-462A-A036-64B4C4DF5C06@oracle.com>
-References: <4B027123.4060100@cn.fujitsu.com> <84C94F5A-0192-4F6D-858D-0CCA92574625@oracle.com> <4B03C366.8050009@cn.fujitsu.com>
-Mime-Version: 1.0 (Apple Message framework v936)
-Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
-Cc: "Trond.Myklebust" <trond.myklebust@fys.uio.no>,
-	NFSv3 list <linux-nfs@vger.kernel.org>,
-	"J. Bruce Fields" <bfields@fieldses.org>
-To: Mi Jinlong <mijinlong@cn.fujitsu.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: Problems Migrating from NFSv3 to NFSv4
+Date: Wed, 18 Nov 2009 16:14:19 -0500
+Message-ID: <20091118211419.GA2650@fieldses.org>
+References: <4B01A0B5.80501@informatik.uni-wuerzburg.de>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-nfs@vger.kernel.org
+To: Christopher Metter
+	<christopher.metter-jNDFPZUTrfSeRcrpBB1ZFQkon6kHRKkiG9Ur7JDdleE@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from acsinet11.oracle.com ([141.146.126.233]:53204 "EHLO
-	acsinet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757916AbZKRREA (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 18 Nov 2009 12:04:00 -0500
-In-Reply-To: <4B03C366.8050009@cn.fujitsu.com>
+Received: from fieldses.org ([174.143.236.118]:47666 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753197AbZKRVNp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 18 Nov 2009 16:13:45 -0500
+In-Reply-To: <4B01A0B5.80501-jNDFPZUTrfSeRcrpBB1ZFQkon6kHRKkiG9Ur7JDdleE@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-On Nov 18, 2009, at 4:50 AM, Mi Jinlong wrote:
-
-> Hi
+On Mon, Nov 16, 2009 at 07:57:57PM +0100, Christopher Metter wrote:
+> Hi there folks!
 >
-> Chuck Lever:
->>
->> On Nov 17, 2009, at 4:47 AM, Mi Jinlong wrote:
->>
->>> When testing NLM, i find a bug.
->>> After server stop nfslock service, client still can get lock success
->>>
->>> Test process:
->>>
->>> Step1: client open nfs file.
->>> Step2: client using fcntl to get lock.
->>> Step3: client using fcntl to release lock.
->>> Step4: service stop it's nfslock service.
->>> Step5: client using fcntl to get lock again.
->>>
->>> At step5, client should get lock fail, but it's success.
->>>
->>> Reason:
->>> When server stop nfslock service, client's host struct not be
->>> unmonitor at server. When client get lock again, the client's
->>> host struct will be reuse but don't monitor again.
->>> So that, at step5 client can get lock success.
->>
->> Effectively, the client is still monitored, since it is still in  
->> statd's
->> monitored list.  Shutting down statd does not remove it from the  
->> monitor
->> list.  If the local host reboots, sm-notify will still send the  
->> remote
->> an SM_NOTIFY request, which is correct.
->>
->> Additionally, new clients attempting to lock files when statd is down
->> will fail, which is correct if statd is not available.
->>
->> Conversely, if a monitored remote reboots, there is no way to  
->> notify the
->> local lockd of the reboot, since statd normally relays the  
->> SM_NOTIFY to
->> lockd, but isn't running.  That might be a problem.
+> Im trying to migrate from NFSv3 to NFSv4. I've read diverse Articles and  
+> Howtos, but i cant find a solution to my problem.
 >
->  Yes, it seems a problem.
+> For better understanding: My NFSv4 Root is /srv/data/, a Folder that  
+> existed before and has diverse Subfolders in it. These Folders are  
+> really there and are not mounted by "mount --bind".
 >
->  I don't confirm it, so i want get your opinion.
-
-Currently, there isn't a high degree of coordination between lockd and  
-statd.  This is to maintain good scalability when serving NFS lock  
-requests.  You offered a couple of alternatives for improving this  
-specific situation, but my opinion is that there are larger, more  
-general coordination issues here, and that what you observed is  
-expected behavior for the current design.
-
-This still seems to me like a case of "Patient: Doctor, it hurts when  
-I do that." "Doctor: Well, then, don't do that."  In other words, we  
-assume that "service nfslock stop" won't be used under normal  
-operating conditions, and we know that NLM will misbehave if you stop  
-statd during normal operation.
-
->> However, shutting down statd during normal operation is not a  
->> normal or
->> supported thing to do.
->>
->>> Question:
->>> 1. Should unmonitor the client's host struct at server
->>>    when server stop nfslock service ?
->>>
->>> 2. Whether let rpc.statd tell kernel it's status(when start and  
->>> stop)
->>>    by send a SM_NOTIFY ?
->>
->> There are a number of other coordination issues around statd start-up
->> and shut down.  The server's grace period, for instance, is not
->> synchronized with sending reboot notifications.  So, we do recognize
->> this is a general problem.
->>
->> In this case, however, I would expect indeterminate behavior if  
->> statd is
->> shut down during normal operation, and that's exactly what we get.   
->> I'm
->> not sure it's even reasonable to support this use case.  Why would
->> someone shut down statd and expect reliable NFSv2/v3 locking  
->> behavior?
->> In other words, with due respect, what problem would we solve by  
->> fixing
->> this, other than making your test case work?
+> The Servers IP: 192.168.0.10
+> Client1: 192.168.0.1
+> Client2: 192.168.0.2
 >
->  When server's nfslock service is stop, client can get lock success  
-> sometimes
->  and can't get success sometimes, it's puzzled.
-
-On Linux, the user space "nfslock" service is actually nothing more  
-than statd.  Linux's NLM service is handled in the kernel, and is  
-started and stopped when either a) there are NFS mounts, or b) NFSD is  
-started.  The kernel's NLM service has nothing to do with "service  
-nfslock start" any more.  I think there used to be a user space NLM  
-implementation.
-
->> Out of curiosity, what happens if you try this on a Solaris server?
+> Setup with NFSv3:
+> 2 Folders (scratch and software) were shared for 2 Clients. In Scratch  
+> both clients had full RW-access and on software only Client2 had rw,  
+> Client1 had RO.
+> Config:
+> /srv/data/scratch-all    *(rw,async,no_root_squash,nohide,no_subtree_check)
+> /srv/data/software     
+> 10.0.12.4(ro,sync,no_root_squash,nohide,no_subtree_check)  
+> 10.0.12.5(rw,sync,no_root_squash,nohide,no_subtree_check)
 >
->  I'm a new man for Solaris.
->  When Solaris's nlockmgr is stop, client can't get lock immediately.
+> My NFSv4 Config (from Server/etc/exports)
+> |/srv/data/  
+> 192.168.0.2(rw,sync,fsid=0,insecure,no_root_squash,no_subtree_check)  
+> 192.168.0.1(rw,sync,fsid=0,insecure,no_root_squash,no_subtree_check)
+> /srv/data/scratch *(rw,async,no_root_squash,no_subtree_check)
+> /srv/data/software 192.168.0.1(ro,sync,no_root_squash,no_subtree_check)  
+> 192.168.0.2(rw,sync,no_root_squash,no_subtree_check)
+> |
+> After that i mounted from Client1 and Client2  the Sharefolders  
+> directrly (e.g. software: mount -t nfs4 -o intr,hard,rw  
+> 192.168.0.10:/software  /targetfolder), everything works perfect, every  
+> Client has its specific rights and so on.
+>
+> But if im mounting Servers Root (mount -t nfs4 -o intr,hard,rw  
+> 192.168.0.10:/ /targetfolder)  from Client1 I do have complete RW Access  
+> to the full "Data" folder, even with RW for Software (which i set for  
+> RO).
 
-I should have been more clear: if you stop Solaris' user space NSM  
-daemon, can you lock files consistently?  My bet is that Solaris will  
-demonstrate a similar degree of inconsistent behavior if you try NFSv2/ 
-v3 locking while starting and stopping its NSM service daemon.
+Exports don't operate on "folders", only on filesystems: if you export
+/srv/data/ read-write, and if /srv/data/software is on the same
+filesystem as /srv/data, then /srv/data will also be exported, and also
+writeable.
 
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+--b.
 
-
-
+> I also do see folders I didnot specificly share (e.g. there is a  
+> folder 'lost+found' in /srv/data which should not be shared).
+>
+> My Question is:
+> What do i have to do, that even if im mounting Servers root, I only can  
+> see and access the specificly for this client configurated exports?  
+> (Also with correct access, of course)
+> Is it possible that way or do i have to make a complete new folder, set  
+> it as new root, mount --bind the needed folders in there and then share  
+> them?
+>
+> I tried setting Roots Parameters for Client1 to RO, but after that i  
+> even didnt have RW to /scratch per direct mount.
+>
+> What am I doing wrong? Im looking forward to any feedback.
+>
+>
+> Greetings,
+> Christopher
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
