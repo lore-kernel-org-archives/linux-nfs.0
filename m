@@ -1,57 +1,65 @@
-From: akpm@linux-foundation.org
-Subject: [patch 1/1] sunrpc: use formatting of module name in SUNRPC
-Date: Tue, 17 Nov 2009 14:46:57 -0800
-Message-ID: <200911172246.nAHMkvuI004689@imap1.linux-foundation.org>
+From: Neil Brown <neilb@suse.de>
+Subject: Another possible race in put_rpccred / rpcauth_unhash_cred
+Date: Wed, 18 Nov 2009 11:56:57 +1100
+Message-ID: <19203.18009.945354.446817@notabene.brown>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ANSI_X3.4-1968
-Cc: linux-nfs@vger.kernel.org, akpm@linux-foundation.org,
-	raa.lkml@gmail.com, Trond.Myklebust@netapp.com, cel@citi.umich.edu,
-	davem@davemloft.net, tmtalpey@gmail.com
-To: trond.myklebust@fys.uio.no
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-nfs@vger.kernel.org
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:50540 "EHLO
-	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1756590AbZKQWrw (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 17 Nov 2009 17:47:52 -0500
+Received: from cantor2.suse.de ([195.135.220.15]:57201 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752278AbZKRAzV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 17 Nov 2009 19:55:21 -0500
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Alex Riesen <raa.lkml@gmail.com>
 
-gcc-4.3.3 produces the warning:
-  "format not a string literal and no format arguments"
+Hi again Trond,
 
-Signed-off-by: Alex Riesen <raa.lkml@gmail.com>
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: Chuck Lever <cel@citi.umich.edu>
-Cc: David S. Miller <davem@davemloft.net>
-Acked-by: Tom Talpey <tmtalpey@gmail.com>
-Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
----
-
- net/sunrpc/xprt.c |    5 +----
- 1 file changed, 1 insertion(+), 4 deletions(-)
-
-diff -puN net/sunrpc/xprt.c~sunrpc-use-formatting-of-module-name-in-sunrpc net/sunrpc/xprt.c
---- a/net/sunrpc/xprt.c~sunrpc-use-formatting-of-module-name-in-sunrpc
-+++ a/net/sunrpc/xprt.c
-@@ -165,7 +165,6 @@ EXPORT_SYMBOL_GPL(xprt_unregister_transp
- int xprt_load_transport(const char *transport_name)
- {
- 	struct xprt_class *t;
--	char module_name[sizeof t->name + 5];
- 	int result;
+ I've been looking at a customer report of an oops in
+ rpcauth_lookup_credcache.
+   https://bugzilla.novell.com/show_bug.cgi?id=547137
  
- 	result = 0;
-@@ -177,9 +176,7 @@ int xprt_load_transport(const char *tran
- 		}
- 	}
- 	spin_unlock(&xprt_list_lock);
--	strcpy(module_name, "xprt");
--	strncat(module_name, transport_name, sizeof t->name);
--	result = request_module(module_name);
-+	result = request_module("xprt%s", transport_name);
- out:
- 	return result;
+ It appears that one of the hash chains in the cache has become
+ corrupted.
+
+ In trying to guess how this might happen, the one possibility I have
+ found is that it might be possible for hlist_del_rcu to be called on
+ an rpc_cred that is not hashed.  This certainly could cause list
+ corruption.
+
+ put_rpccred checks if the cred is hashed (RPCAUTH_CRED_HASHED) and if
+ not, it takes a lock and then - if the cred it not uptodate -
+ calls rpcauth_unhash_cred which will call hlist_del_rcu.
+ If some other thread unhashed the cred while this thread was waiting
+ for rpc_credcache_lock, we could get list corruption.
+
+ The kernel in question did not have commit 5f707eb429 which claims to
+ fix a race in much the same place, however I don't think that patch
+ would fix this problem.
+ 
+ I think the simplest fix would be to use hlist_del_init_rcu in place
+ of hlist_del_rcu as shown below.  That version protects again
+ deleting the same element multiple times.
+
+ Do you agree with this fix?
+
+Thanks,
+NeilBrown
+
+
+
+diff --git a/net/sunrpc/auth.c b/net/sunrpc/auth.c
+index 54a4e04..323eff6 100644
+--- a/net/sunrpc/auth.c
++++ b/net/sunrpc/auth.c
+@@ -118,7 +118,7 @@ static DEFINE_SPINLOCK(rpc_credcache_lock);
+ static void
+ rpcauth_unhash_cred_locked(struct rpc_cred *cred)
+ {
+-	hlist_del_rcu(&cred->cr_hash);
++	hlist_del_init_rcu(&cred->cr_hash);
+ 	smp_mb__before_clear_bit();
+ 	clear_bit(RPCAUTH_CRED_HASHED, &cred->cr_flags);
  }
-_
