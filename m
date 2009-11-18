@@ -1,65 +1,39 @@
-From: Neil Brown <neilb@suse.de>
-Subject: Another possible race in put_rpccred / rpcauth_unhash_cred
-Date: Wed, 18 Nov 2009 11:56:57 +1100
-Message-ID: <19203.18009.945354.446817@notabene.brown>
+From: Pavel Machek <pavel@ucw.cz>
+Subject: Re: [PATCH 0/2] vfs: ensure that dentries are revalidated on open
+	(try #2)
+Date: Wed, 18 Nov 2009 05:19:06 +0100
+Message-ID: <20091118041906.GB1395@ucw.cz>
+References: <1257870456-31188-1-git-send-email-jlayton@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs@vger.kernel.org
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
+Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	linux-nfs@vger.kernel.org, ebiederm@xmission.com,
+	adobriyan@gmail.com, viro@ZenIV.linux.org.uk, jamie@shareable.org
+To: Jeff Layton <jlayton@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:57201 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752278AbZKRAzV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 17 Nov 2009 19:55:21 -0500
+Received: from atrey.karlin.mff.cuni.cz ([195.113.26.193]:39540 "EHLO
+	atrey.karlin.mff.cuni.cz" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754162AbZKRI5g (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 18 Nov 2009 03:57:36 -0500
+In-Reply-To: <1257870456-31188-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Hi!
 
-Hi again Trond,
+> This is the second attempt to fix this problem. The first one attempted
+> to fix this in procfs, but Eric Biederman pointed out that file bind
+> mounts have a similar problem. This set attempts to fix the issue at a
+> higher level, in the generic VFS layer.
+> 
+> In certain situations, when it knows that they are valid, the path
+> walking code will skip revalidating dentries that it finds in the cache.
+> This causes problems with filesystems such as NFSv4 and CIFS that depend
+> on the d_revalidate routine to do opens during lookup.
 
- I've been looking at a customer report of an oops in
- rpcauth_lookup_credcache.
-   https://bugzilla.novell.com/show_bug.cgi?id=547137
- 
- It appears that one of the hash chains in the cache has become
- corrupted.
-
- In trying to guess how this might happen, the one possibility I have
- found is that it might be possible for hlist_del_rcu to be called on
- an rpc_cred that is not hashed.  This certainly could cause list
- corruption.
-
- put_rpccred checks if the cred is hashed (RPCAUTH_CRED_HASHED) and if
- not, it takes a lock and then - if the cred it not uptodate -
- calls rpcauth_unhash_cred which will call hlist_del_rcu.
- If some other thread unhashed the cred while this thread was waiting
- for rpc_credcache_lock, we could get list corruption.
-
- The kernel in question did not have commit 5f707eb429 which claims to
- fix a race in much the same place, however I don't think that patch
- would fix this problem.
- 
- I think the simplest fix would be to use hlist_del_init_rcu in place
- of hlist_del_rcu as shown below.  That version protects again
- deleting the same element multiple times.
-
- Do you agree with this fix?
-
-Thanks,
-NeilBrown
-
-
-
-diff --git a/net/sunrpc/auth.c b/net/sunrpc/auth.c
-index 54a4e04..323eff6 100644
---- a/net/sunrpc/auth.c
-+++ b/net/sunrpc/auth.c
-@@ -118,7 +118,7 @@ static DEFINE_SPINLOCK(rpc_credcache_lock);
- static void
- rpcauth_unhash_cred_locked(struct rpc_cred *cred)
- {
--	hlist_del_rcu(&cred->cr_hash);
-+	hlist_del_init_rcu(&cred->cr_hash);
- 	smp_mb__before_clear_bit();
- 	clear_bit(RPCAUTH_CRED_HASHED, &cred->cr_flags);
- }
+...and it allows bypassing directory permissions. Could we fix both
+here?
+									Pavel
+-- 
+(english) http://www.livejournal.com/~pavelmachek
+(cesky, pictures) http://atrey.karlin.mff.cuni.cz/~pavel/picture/horses/blog.html
