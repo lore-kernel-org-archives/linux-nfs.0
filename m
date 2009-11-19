@@ -1,95 +1,77 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:27385 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756302AbZKEODm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 5 Nov 2009 09:03:42 -0500
-Received: from int-mx02.intmail.prod.int.phx2.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
-	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id nA5E3lOL030498
-	for <linux-nfs@vger.kernel.org>; Thu, 5 Nov 2009 09:03:48 -0500
-Subject: [PATCH] nfs-utils: mount options can be lost when using bg option
-From: Harshula Jayasuriya <harshula@redhat.com>
-To: Steve Dickson <steved@redhat.com>
-Cc: linux-nfs@vger.kernel.org
-Content-Type: text/plain
-Date: Fri, 06 Nov 2009 01:03:45 +1100
-Message-Id: <1257429825.2984.26.camel@localhost.localdomain>
+Received: from 2605ds1-ynoe.0.fullrate.dk ([90.184.12.24]:51490 "EHLO
+	shrek.krogh.cc" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752792AbZKSUWy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 19 Nov 2009 15:22:54 -0500
+Message-ID: <4B05A91D.1090305@krogh.cc>
+Date: Thu, 19 Nov 2009 21:22:53 +0100
+From: Jesper Krogh <jesper@krogh.cc>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        Greg Banks <gnb@fmeh.org>
+Subject: Re: 2.6.31 under "heavy" NFS load.
+References: <4AF86DE4.5010607@krogh.cc> <20091110184126.GD15000@fieldses.org> <4AF9B994.8040301@krogh.cc>
+In-Reply-To: <4AF9B994.8040301@krogh.cc>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Hi,
+Jesper Krogh wrote:
+> J. Bruce Fields wrote:
+>> On Mon, Nov 09, 2009 at 08:30:44PM +0100, Jesper Krogh wrote:
+>>> When a lot (~60 all on 1GbitE) of NFS clients are hitting an NFS server
+>>> that has an 10GbitE NIC sitting on it I'm seeing high IO-wait load
+>>> (>50%) and load number over 100 on the server. This is a change since
+>>> 2.6.29 where the IO-wait load under similar workload was less than 10%.
+>>>
+>>> The system has 16 Opteron cores.
+>>>
+>>> All data the NFS-clients are reading are "memory recident" since they
+>>> are all reading off the same 10GB of data and the server has 32GB of
+>>> main memory dedicated to nothing else than serving NFS.
+>>>
+>>> A snapshot of top looks like this:
+>>> http://krogh.cc/~jesper/top-hest-2.6.31.txt
+>>>
+>>> The load is generally alot higher than on 2.6.29 and it "explodes" to
+>>> over 100 when a few processes begin utillizing the disk while serving
+>>> files over NFS. "dstat" reports a read-out of 10-20MB/s from disk which
+>>> is close to what I'd expect. and the system delivers around 600-800MB/s
+>>> over the NIC in this workload.
+>> Is that the bandwidth you get with 2.6.31, with 2.6.29, or with both?
+> 
+> Without being able to be fully accurate, I have a strong feeling that
+> the comparative numbers on 2.6.29 were more around 800-1000MB/s. But
+> this isn't based on any measurements so dont put too much into it. I'll
+> try to make up something that I can use for testing over multiple
+> kernel-versions.
+> 
+>> Are you just noticing a change in the statistics, or are there concrete
+>> changes in the performance of the server?
+> 
+> Interactivity on the console is alot worse. Still usable, but top takes
+> ~5s to start up on 2.6.31 where I didn't remember any lags on 2.6.29 (so
+> less than 2s).
+> 
+>>> Sorry that I cannot be more specific, I can answer questions on a
+>>> running 2.6.31 kernel, but I cannot reboot the system back to 2.6.29
+>>> just to test since the system is "in production". I tried 2.6.30 and it
+>>> has the same pattern as 2.6.31, so based on that fragile evidence the
+>>> change should be found in between 2.6.29 and 2.6.30. I hope a "wague"
+>>> report is better than none.
+>> Can you test whether this helps?
+> 
+> I'll schedule testing..
 
-When mounting an NFS export *without* the "bg" option, try_mount() is
-called only once. Before calling it, the variables mount_opts and
-extra_opts are set up. Then try_mount() calls nfsmount(), the latter
-assumes that the aforementioned variables can be modified. Most
-significantly, it allows the variable extra_opts to be modified.
+Ok, I still haven't had the "excact same" workload put on the host, but
+it has been running on the patched kernel for 8 days now and I havent
+seen load numbers over 32 while service 1100MB/s over NFS (dd'ing 512
+bytes blocks out of the server from the clients) while doing local disk
+IO for an iowait of ~25% (4 cores sucking what they can). This workload
+is "similar" to the one sending it to load numbers of over 100 earlier.
 
-When the "bg" mount option is used *and* the first try_mount() attempt
-fails, it daemonizes the process and calls try_mount() again,
-unfortunately, we've lost the required mount options in the variable
-extra_opts.
+So I'm confident that the problem is solved by reverting the patch.
 
-See https://bugzilla.redhat.com/show_bug.cgi?id=529370 for details.
-
-Signed-off-by: Harshula Jayasuriya <harshula@redhat.com>
----
- utils/mount/mount.c    |    3 +++
- utils/mount/nfsmount.c |    7 +++++--
- 2 files changed, 8 insertions(+), 2 deletions(-)
-
-diff --git a/utils/mount/mount.c b/utils/mount/mount.c
-index 355df79..6b9e164 100644
---- a/utils/mount/mount.c
-+++ b/utils/mount/mount.c
-@@ -593,6 +593,9 @@ int main(int argc, char *argv[])
- 	if (mnt_err == EX_BG) {
- 		printf(_("%s: backgrounding \"%s\"\n"),
- 			progname, spec);
-+		printf(_("%s: mount options: \"%s\"\n"),
-+			progname, extra_opts);
-+
- 		fflush(stdout);
- 
- 		/*
-diff --git a/utils/mount/nfsmount.c b/utils/mount/nfsmount.c
-index 6355681..6b3356c 100644
---- a/utils/mount/nfsmount.c
-+++ b/utils/mount/nfsmount.c
-@@ -170,7 +170,7 @@ parse_options(char *old_opts, struct nfs_mount_data *data,
- 	struct pmap *mnt_pmap = &mnt_server->pmap;
- 	struct pmap *nfs_pmap = &nfs_server->pmap;
- 	int len;
--	char *opt, *opteq, *p, *opt_b;
-+	char *opt, *opteq, *p, *opt_b, *tmp_opts;
- 	char *mounthost = NULL;
- 	char cbuf[128];
- 	int open_quote = 0;
-@@ -179,7 +179,8 @@ parse_options(char *old_opts, struct nfs_mount_data *data,
- 	*bg = 0;
- 
- 	len = strlen(new_opts);
--	for (p=old_opts, opt_b=NULL; p && *p; p++) {
-+	tmp_opts = xstrdup(old_opts);
-+	for (p=tmp_opts, opt_b=NULL; p && *p; p++) {
- 		if (!opt_b)
- 			opt_b = p;		/* begin of the option item */
- 		if (*p == '"')
-@@ -457,10 +458,12 @@ parse_options(char *old_opts, struct nfs_mount_data *data,
- 			goto out_bad;
- 		*mnt_server->hostname = mounthost;
- 	}
-+	free(tmp_opts);
- 	return 1;
-  bad_parameter:
- 	nfs_error(_("%s: Bad nfs mount parameter: %s\n"), progname, opt);
-  out_bad:
-+	free(tmp_opts);
- 	return 0;
- }
- 
---
-
-cya,
-#
-
+-- 
+Jesper
