@@ -1,75 +1,82 @@
-From: Ivan Shmakov <ivan-tPYS1JDixHzCyp4qypjU+w@public.gmane.org>
-Subject: Re: IPv6 support
-Date: Thu, 19 Nov 2009 22:18:31 +0600
-Message-ID: <878we2bi94.fsf@violet.siamics.ipv6.uusia.org>
-References: <4AEE9645.6010503@suse.de> <B3F6BEAE-A564-475F-93D5-7D6E0FC79147@oracle.com>
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: [GIT] Please pull NFS client bugfixes
+Date: Thu, 19 Nov 2009 11:35:08 -0500
+Message-ID: <1258648508.30333.16.camel@localhost>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-To: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
+Cc: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org
+To: Linus Torvalds <torvalds@linux-foundation.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from lo.gmane.org ([80.91.229.12]:52729 "EHLO lo.gmane.org"
+Received: from mx2.netapp.com ([216.240.18.37]:60927 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752931AbZKSQSw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 19 Nov 2009 11:18:52 -0500
-Received: from list by lo.gmane.org with local (Exim 4.50)
-	id 1NB9ij-0002vM-KR
-	for linux-nfs@vger.kernel.org; Thu, 19 Nov 2009 17:18:57 +0100
-Received: from 81.201.254.124 ([81.201.254.124])
-        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-nfs@vger.kernel.org>; Thu, 19 Nov 2009 17:18:57 +0100
-Received: from ivan by 81.201.254.124 with local (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-nfs@vger.kernel.org>; Thu, 19 Nov 2009 17:18:57 +0100
+	id S1750715AbZKSQgM convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 19 Nov 2009 11:36:12 -0500
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
->>>>> "CL" == Chuck Lever <chuck.lever...> writes:
+Hi Linus,
 
-[...]
+Please pull from the "bugfixes" branch of the repository at
 
- CL> In other words, system support for IPv6 outside of NFS is kind of
- CL> like wireless was 5 years ago -- innumerable small admin tools that
- CL> users had to integrate themselves, usually without much success.
+   git pull git://git.linux-nfs.org/projects/trondmy/nfs-2.6.git bugfix=
+es
 
-	BTW, I tend to disagree with that.  I've ``discovered'' IPv6
-	only this summer, and for me, the whole thing was smooth...
+This will update the following files through the appended changesets.
 
-	... Almost.  There were only a few issues:
+  Cheers,
+    Trond
 
-	* /etc/network/interfaces (like in Debian GNU/Linux) handling is
-	  a bit IPv4-centric (even more so in Etch, oldstable); say, one
-	  may have to resort to the hacks like:
+----
+ fs/nfs/nfs4proc.c |    2 +-
+ net/sunrpc/addr.c |   18 ++++++++----------
+ 2 files changed, 9 insertions(+), 11 deletions(-)
 
-iface eth1 inet6 static
-    address X:Y:Z:W::1234:5678
-    netmask 64
-    gateway X:Y:Z:W::1
-    post-up ip -6 addr add G:H:I:J::DEAD:1/64 dev "$IFACE" && ip -6 addr add K:L:M:N::1337:CAFE/64 dev "$IFACE"
+commit 1e360a60b24ad8f8685af66fa6de10ce46693a4b
+Author: Chuck Lever <chuck.lever@oracle.com>
+Date:   Fri Nov 13 10:52:55 2009 -0500
 
-	  (with Etch, one'd have to add IPv6 management commands to the
-	  existing IPv4 interfaces' stanzas.)
+    SUNRPC: Address buffer overrun in rpc_uaddr2sockaddr()
+   =20
+    The size of buf[] must account for the string termination needed fo=
+r
+    the first strict_strtoul() call.  Introduced in commit a02d6926.
+   =20
+    F=C3=A1bio Oliv=C3=A9 Leite points out that strict_strtoul() requir=
+es _either_
+    '\n\0' _or_ '\0' termination, so use the simpler '\0' here instead.
+   =20
+    See http://bugzilla.kernel.org/show_bug.cgi?id=3D14546 .
+   =20
+    Reported-by: argp-YZAGAMbGdGKGw+nKnLezzg@public.gmane.org
+    Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+    Signed-off-by: F=C3=A1bio Oliv=C3=A9 Leite <fleite@redhat.com>
+    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 
-	* the stable version of Squid lacks IPv6 support completely;
-	  Apache has it, but it lacks caching, which is a must for me;
+commit 96d25e532234bec1a1989e6e1baf702d43a78b0d
+Author: Trond Myklebust <Trond.Myklebust@netapp.com>
+Date:   Wed Nov 11 16:15:42 2009 +0900
 
-	* there're no VoIP switches with IPv6 support in Debian; in
-	  particular, Asterisk speaks no IPv6, while FreeSWITCH is not
-	  in Debian; (there was an ITP); there's Linphone for an
-	  IPv6-compatible user agent;
+    NFSv4: Fix a cache validation bug which causes getcwd() to return E=
+NOENT
+   =20
+    Changeset a65318bf3afc93ce49227e849d213799b072c5fd (NFSv4: Simplify=
+ some
+    cache consistency post-op GETATTRs) incorrectly changed the getattr
+    bitmap for readdir().
+    This causes the readdir() function to fail to return a
+    fileid/inode number, which again exposed a bug in the NFS readdir c=
+ode that
+    causes spurious ENOENT errors to appear in applications (see
+    http://bugzilla.kernel.org/show_bug.cgi?id=3D14541).
+   =20
+    The immediate band aid is to revert the incorrect bitmap change, bu=
+t more
+    long term, we should change the NFS readdir code to cope with the
+    fact that NFSv4 servers are not required to support fileids/inode n=
+umbers.
+   =20
+    Reported-by: Daniel J Blueman <daniel.blueman@gmail.com>
+    Cc: stable@kernel.org
+    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 
-	* NFS.
-
-	Otherwise, I use IPv6 on a daily basis, both at home and at
-	work, and there seems to be no significant flaws, other than
-	those few above.
-
-	Occasionally, some hardware seems to behave strangely (e. g., I
-	was unable to use IPv6 in one of classrooms here), and sometimes
-	there're noticeable response times from hosts using old NICs,
-	but hey, there're still a couple of 10 Mbit/s hubs in the darker
-	corners of the network, and nobody seems to worry about it much.
-
--- 
-FSF associate member #7257
 
