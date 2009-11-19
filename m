@@ -1,82 +1,66 @@
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [GIT] Please pull NFS client bugfixes
-Date: Thu, 19 Nov 2009 11:35:08 -0500
-Message-ID: <1258648508.30333.16.camel@localhost>
+From: Joshua Baker-LePain <jlb17-4+jYJfmkT58@public.gmane.org>
+Subject: [NFS] simple NFSv4 setup
+Date: Thu, 19 Nov 2009 15:11:58 -0500 (EST)
+Message-ID: <alpine.LRH.2.00.0911191507420.8086@hogwarts.egr.duke.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org
-To: Linus Torvalds <torvalds@linux-foundation.org>
+Content-Type: text/plain; charset="us-ascii"
+To: nfs@lists.sourceforge.net
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:60927 "EHLO mx2.netapp.com"
+Received: from neil.brown.name ([220.233.11.133]:49393 "EHLO neil.brown.name"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750715AbZKSQgM convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 19 Nov 2009 11:36:12 -0500
+	id S1754817AbZKSUcN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 19 Nov 2009 15:32:13 -0500
+Received: from brown by neil.brown.name with local (Exim 4.69)
+	(envelope-from <nfs-bounces@lists.sourceforge.net>)
+	id 1NBDfu-00028Z-Rb
+	for linux-nfs@vger.kernel.org; Fri, 20 Nov 2009 07:32:18 +1100
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Linus,
+(I've tried this on both the CentOS and RHEL5 lists, so apologies if 
+you've gotten this multiple times.)
 
-Please pull from the "bugfixes" branch of the repository at
+I'm trying to setup a simple NFSv4 mount between two CentOS 5.4 x86_64 
+hosts. On the server, I have this in /etc/exports:
 
-   git pull git://git.linux-nfs.org/projects/trondmy/nfs-2.6.git bugfix=
-es
+/export         $CLIENT(ro,fsid=0)
+/export/qb3     $CLIENT(rw,nohide)
 
-This will update the following files through the appended changesets.
+/export is its own filesystem.  This results in the following
+'exportfs -v' output:
 
-  Cheers,
-    Trond
+/export/qb3     $CLIENT(rw,wdelay,nohide,root_squash,no_subtree_check,anonuid=65534,anongid=65534)
+/export         $CLIENT(ro,wdelay,root_squash,no_subtree_check,fsid=0,anonuid=65534,anongid=65534)
 
-----
- fs/nfs/nfs4proc.c |    2 +-
- net/sunrpc/addr.c |   18 ++++++++----------
- 2 files changed, 9 insertions(+), 11 deletions(-)
+ON $CLIENT, I mount via:
 
-commit 1e360a60b24ad8f8685af66fa6de10ce46693a4b
-Author: Chuck Lever <chuck.lever@oracle.com>
-Date:   Fri Nov 13 10:52:55 2009 -0500
+mount -t nfs4 $SERVER:/qb3 /usr/local/sge62/qb3
 
-    SUNRPC: Address buffer overrun in rpc_uaddr2sockaddr()
-   =20
-    The size of buf[] must account for the string termination needed fo=
-r
-    the first strict_strtoul() call.  Introduced in commit a02d6926.
-   =20
-    F=C3=A1bio Oliv=C3=A9 Leite points out that strict_strtoul() requir=
-es _either_
-    '\n\0' _or_ '\0' termination, so use the simpler '\0' here instead.
-   =20
-    See http://bugzilla.kernel.org/show_bug.cgi?id=3D14546 .
-   =20
-    Reported-by: argp-YZAGAMbGdGKGw+nKnLezzg@public.gmane.org
-    Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-    Signed-off-by: F=C3=A1bio Oliv=C3=A9 Leite <fleite@redhat.com>
-    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+However:
 
-commit 96d25e532234bec1a1989e6e1baf702d43a78b0d
-Author: Trond Myklebust <Trond.Myklebust@netapp.com>
-Date:   Wed Nov 11 16:15:42 2009 +0900
+$ touch /usr/local/sge62/qb3/foo
+touch: cannot touch `/usr/local/sge62/qb3/foo': Read-only file system
 
-    NFSv4: Fix a cache validation bug which causes getcwd() to return E=
-NOENT
-   =20
-    Changeset a65318bf3afc93ce49227e849d213799b072c5fd (NFSv4: Simplify=
- some
-    cache consistency post-op GETATTRs) incorrectly changed the getattr
-    bitmap for readdir().
-    This causes the readdir() function to fail to return a
-    fileid/inode number, which again exposed a bug in the NFS readdir c=
-ode that
-    causes spurious ENOENT errors to appear in applications (see
-    http://bugzilla.kernel.org/show_bug.cgi?id=3D14541).
-   =20
-    The immediate band aid is to revert the incorrect bitmap change, bu=
-t more
-    long term, we should change the NFS readdir code to cope with the
-    fact that NFSv4 servers are not required to support fileids/inode n=
-umbers.
-   =20
-    Reported-by: Daniel J Blueman <daniel.blueman@gmail.com>
-    Cc: stable@kernel.org
-    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+I'd really rather not export the pseudo-root read-write, so how do I get 
+this working?  I've tried putting the crossmnt option on /export (with and 
+without using nohide on /export/qb3), and that doesn't help.  Any hints as 
+to what I'm doing wrong would be appreciated.  Thanks.
 
+-- 
+Joshua Baker-LePain
+QB3 Shared Cluster Sysadmin
+UCSF
+
+------------------------------------------------------------------------------
+Let Crystal Reports handle the reporting - Free Crystal Reports 2008 30-Day 
+trial. Simplify your report design, integration and deployment - and focus on 
+what you do best, core application coding. Discover what's new with
+Crystal Reports now.  http://p.sf.net/sfu/bobj-july
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
+_______________________________________________
+Please note that nfs@lists.sourceforge.net is being discontinued.
+Please subscribe to linux-nfs@vger.kernel.org instead.
+    http://vger.kernel.org/vger-lists.html#linux-nfs
 
