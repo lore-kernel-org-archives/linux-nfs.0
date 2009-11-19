@@ -1,159 +1,184 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [RFC] After server stop nfslock service, client still can get lock success
-Date: Thu, 19 Nov 2009 10:41:42 -0500
-Message-ID: <2BC36A73-DFF1-48E4-9994-6100A6E199D9@oracle.com>
-References: <4B027123.4060100@cn.fujitsu.com> <84C94F5A-0192-4F6D-858D-0CCA92574625@oracle.com> <4B03C366.8050009@cn.fujitsu.com> <799834E0-C52E-462A-A036-64B4C4DF5C06@oracle.com> <4B051467.70404@cn.fujitsu.com>
+Subject: Re: IPv6 support: dreaming of...
+Date: Thu, 19 Nov 2009 11:05:55 -0500
+Message-ID: <46303206-4A71-4FE8-BAC6-52281B8FB055@oracle.com>
+References: <4AEE9645.6010503@suse.de> <B3F6BEAE-A564-475F-93D5-7D6E0FC79147@oracle.com> <87hbsqbl3d.fsf_-_@violet.siamics.ipv6.uusia.org>
 Mime-Version: 1.0 (Apple Message framework v936)
 Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
-Cc: "Trond.Myklebust" <trond.myklebust@fys.uio.no>,
-	NFSv3 list <linux-nfs@vger.kernel.org>,
-	"J. Bruce Fields" <bfields@fieldses.org>
-To: Mi Jinlong <mijinlong@cn.fujitsu.com>
+Cc: linux-nfs@vger.kernel.org
+To: Ivan Shmakov <ivan-tPYS1JDixHzCyp4qypjU+w@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from acsinet11.oracle.com ([141.146.126.233]:36139 "EHLO
-	acsinet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756161AbZKSPmF (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 19 Nov 2009 10:42:05 -0500
-In-Reply-To: <4B051467.70404@cn.fujitsu.com>
+Received: from rcsinet12.oracle.com ([148.87.113.124]:37578 "EHLO
+	rgminet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753469AbZKSQGW (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 19 Nov 2009 11:06:22 -0500
+In-Reply-To: <87hbsqbl3d.fsf_-_-Hr8DDCuc/25fzK4uoAgqGcYP0srqJqIshoJSb6RVeLg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Thanks, Ivan.  That echoes my own concept of a basic NFS over IPv6  
+deployment use case.
 
-On Nov 19, 2009, at 4:48 AM, Mi Jinlong wrote:
+On Nov 19, 2009, at 10:17 AM, Ivan Shmakov wrote:
 
-> Hi
+>>>>>> "CL" == Chuck Lever <chuck.lever...> writes:
+>>>>>> "SJ" == Suresh Jayaraman wrote:
 >
-> Chuck Lever:
->>
->> On Nov 18, 2009, at 4:50 AM, Mi Jinlong wrote:
->>
->>> Hi
->>>
->>> Chuck Lever:
->>>>
->>>> On Nov 17, 2009, at 4:47 AM, Mi Jinlong wrote:
->>>>
->>>>> When testing NLM, i find a bug.
->>>>> After server stop nfslock service, client still can get lock  
->>>>> success
->>>>>
->>>>> Test process:
->>>>>
->>>>> Step1: client open nfs file.
->>>>> Step2: client using fcntl to get lock.
->>>>> Step3: client using fcntl to release lock.
->>>>> Step4: service stop it's nfslock service.
->>>>> Step5: client using fcntl to get lock again.
->>>>>
->>>>> At step5, client should get lock fail, but it's success.
->>>>>
->>>>> Reason:
->>>>> When server stop nfslock service, client's host struct not be
->>>>> unmonitor at server. When client get lock again, the client's
->>>>> host struct will be reuse but don't monitor again.
->>>>> So that, at step5 client can get lock success.
->>>>
->>>> Effectively, the client is still monitored, since it is still in  
->>>> statd's
->>>> monitored list.  Shutting down statd does not remove it from the  
->>>> monitor
->>>> list.  If the local host reboots, sm-notify will still send the  
->>>> remote
->>>> an SM_NOTIFY request, which is correct.
->>>>
->>>> Additionally, new clients attempting to lock files when statd is  
->>>> down
->>>> will fail, which is correct if statd is not available.
->>>>
->>>> Conversely, if a monitored remote reboots, there is no way to  
->>>> notify the
->>>> local lockd of the reboot, since statd normally relays the  
->>>> SM_NOTIFY to
->>>> lockd, but isn't running.  That might be a problem.
->>>
->>> Yes, it seems a problem.
->>>
->>> I don't confirm it, so i want get your opinion.
->>
->> Currently, there isn't a high degree of coordination between lockd  
->> and
->> statd.  This is to maintain good scalability when serving NFS lock
->> requests.  You offered a couple of alternatives for improving this
->> specific situation, but my opinion is that there are larger, more
->> general coordination issues here, and that what you observed is  
->> expected
->> behavior for the current design.
->>
->> This still seems to me like a case of "Patient: Doctor, it hurts  
->> when I
->> do that." "Doctor: Well, then, don't do that."  In other words, we
->> assume that "service nfslock stop" won't be used under normal  
->> operating
->> conditions, and we know that NLM will misbehave if you stop statd  
->> during
->> normal operation.
->>
->>>> However, shutting down statd during normal operation is not a  
->>>> normal or
->>>> supported thing to do.
->>>>
->>>>> Question:
->>>>> 1. Should unmonitor the client's host struct at server
->>>>>   when server stop nfslock service ?
->>>>>
->>>>> 2. Whether let rpc.statd tell kernel it's status(when start and  
->>>>> stop)
->>>>>   by send a SM_NOTIFY ?
->>>>
->>>> There are a number of other coordination issues around statd  
->>>> start-up
->>>> and shut down.  The server's grace period, for instance, is not
->>>> synchronized with sending reboot notifications.  So, we do  
->>>> recognize
->>>> this is a general problem.
->>>>
->>>> In this case, however, I would expect indeterminate behavior if  
->>>> statd is
->>>> shut down during normal operation, and that's exactly what we  
->>>> get.  I'm
->>>> not sure it's even reasonable to support this use case.  Why would
->>>> someone shut down statd and expect reliable NFSv2/v3 locking  
->>>> behavior?
->>>> In other words, with due respect, what problem would we solve by  
->>>> fixing
->>>> this, other than making your test case work?
->>>
->>> When server's nfslock service is stop, client can get lock success
->>> sometimes
->>> and can't get success sometimes, it's puzzled.
->>
->> On Linux, the user space "nfslock" service is actually nothing more  
->> than
->> statd.  Linux's NLM service is handled in the kernel, and is  
->> started and
->> stopped when either a) there are NFS mounts, or b) NFSD is  
->> started.  The
->> kernel's NLM service has nothing to do with "service nfslock start"  
->> any
->> more.  I think there used to be a user space NLM implementation.
->>
->>>> Out of curiosity, what happens if you try this on a Solaris server?
->>>
->>> I'm a new man for Solaris.
->>> When Solaris's nlockmgr is stop, client can't get lock immediately.
->>
->> I should have been more clear: if you stop Solaris' user space NSM
->> daemon, can you lock files consistently?  My bet is that Solaris will
->> demonstrate a similar degree of inconsistent behavior if you try
->> NFSv2/v3 locking while starting and stopping its NSM service daemon.
+> 	... And first of all: it seems that there're an immense amount
+> 	of work being done to add the NFS over IPv6 support for
+> 	GNU/Linux.  Thanks for that!
 >
->  ^_^
+> [...]
 >
->  You are right, when i stop Solaris's NSM, client still can get lock  
-> success.
->  Maybe it's the same as Linux.
-
-Thanks for trying this.
+> SJ> How far we are from getting full IPv6 support?
+>
+> CL> The short answer is mountd/exportfs will take about six months.
+> CL> The client side is close enough that I think we can promise basic
+> CL> IPv6 support for upcoming enterprise releases.  We're also  
+> thinking
+> CL> the kernel work on the server is close enough that few or no kABI
+> CL> changes will be needed once mountd is working, but that's just a
+> CL> guess.
+>
+> CL> The long answer depends on your definition of "full".  :-)
+>
+> 	Well, I'll try to answer to it based on my own use of NFS
+> 	(mostly NFSv3, at this moment), as was suggested.
+>
+> 	Basically, every now and then I have to set up some shared
+> 	filesystem-like resources.  To this end, I usually deploy (at
+> 	the same time):
+>
+> 	* HTTP, for its ubiquity;
+>
+> Alias /public /var/public
+>
+> <Directory /var/public>
+>    Options Indexes SymLinksIfOwnerMatch IncludesNoExec ExecCGI
+>    AllowOverride FileInfo AuthConfig Limit
+> </Directory>
+>
+> 	* Rsync, for its superior handling of replication;
+>
+> [public]
+> 	path		= /var/public
+> 	comment		= Public directory
+>
+> 	* NFS, for it requires no specific support from the applications
+> 	  themselves.
+>
+> /var/public		*(ro,all_squash,async,insecure)
+> /var/public/debian	*(ro,all_squash,async,insecure)
+> /var/public/storage	*(ro,all_squash,async,insecure)
+>
+> 	Mostly, these are used to conserve disk space by allowing a few
+> 	copies of certain files to be used by a number of users.  Rarely
+> 	I need to maintain anything writable, and if possible, prefer to
+> 	deploy SSH/SFTP for ``uploading''.
+>
+> 	I need almost no access management, as most of the data was
+> 	received from open sources (say, http://www.debian.org/,
+> 	http://www.landcover.org/ or http://wist.echo.nasa.gov/), and
+> 	there were no DoS-doers or bandwidth hogs so far.
+>
+> 	Actually, even NFSv3 suits my needs almost completely, though
+> 	occasionally I need Kerberos.
+>
+> CL> Does that include complete support for link-local IPv6 addresses?
+>
+> 	No.  Not for me, at the least.  IIUC, these are to be used
+> 	mainly for low-level network services and testing.  It could be
+> 	handy to support these widely, but I'd not make it a priority
+> 	task.
+>
+> CL> Does that include full support for netids in the kernel?
+>
+> 	No clue on this, sorry.
+>
+> CL> Does that include complete multi-homed host support in lockd and
+> CL> statd?
+>
+> 	I believe that multi-homing is going to be more likely in IPv6
+> 	environments.  I've never experimented with NFS on multi-homed
+> 	IPv4 hosts, though, so I'm not sure what's meant by ``complete
+> 	support'' here.
+>
+> CL> Does that include full support for internationalized domain names?
+>
+> 	Not for me.
+>
+> CL> Does that include IPv6 netgroup support?
+>
+> 	Do you mean netgroup like in NIS (or LDAP with a NIS-like
+> 	schema)?  These also could be handy, but not a priority task, at
+> 	least for me.
+>
+> CL> Does it include IPv6 support in TCP wrappers?
+>
+> 	In general, I see TCP wrappers as, roughly, a functional
+> 	equivalent of netfilter / ip6tables(8).  So, once again, not a
+> 	priority for me.  (If I don't miss something.)
+>
+> CL> Does it include support for systems that have no IPv4 addresses
+> CL> (not even loopback)?
+>
+> 	Absolutely.  But it surely can wait.
+>
+> CL> There are a bunch of details that still need to be worked through.
+> CL> I've only been able to guess at what features are required, and
+> CL> which can be implemented at a later time.  What I would dearly  
+> love
+> CL> to have is a list of specific features that folks feel is a
+> CL> baseline (based on actual data, of course).
+>
+> 	Hopefully, the bits above will help.
+>
+> CL> Unfortunately there are very few Linux customers who have deployed
+> CL> IPv6 and an IPv6-capable NFS implementation (like Solaris) and can
+> CL> tell us what they would need on Linux.
+>
+> 	It seems that my brother's going to do me a favor and install
+> 	OpenSolaris for me (which, as I saw today, is being able to
+> 	export and mount filesystems using NFS over IPv6.)
+>
+> 	(I wonder, are there Apache and Rsync bundled with OpenSolaris?)
+>
+> 	Perhaps I'll be able to experiment with some (up to 20 or so)
+> 	Debian GNU/Linux hosts using it as a file server.
+>
+> CL> Plus, most distributions don't have fluent user space
+> CL> infrastructure for IPv6 yet.  NetworkManager is one area that may
+> CL> need work.  The Network Administration tool in Fedora is still
+> CL> IPv4-centric, iirc.
+>
+> 	... And, unfortunately, even interfaces(5) handling in Debian
+> 	has flaws in that respect.  Sigh.
+>
+> CL> We don't have firewall admin tools that handle IPv6 rules.
+>
+> 	Personally, I prefer ip6tables(8), which does.
+>
+> CL> Unlike IPv4, admins can (and often do) use IPv6-aware kernels
+> CL> without ipv6.ko, so all of our tools and support have to be  
+> careful
+> CL> about using IPv6 when the O/S may not support it.  This is
+> CL> different than IPv4, which is nearly always available.
+>
+> 	Agreed.
+>
+> CL> In other words, system support for IPv6 outside of NFS is kind of
+> CL> like wireless was 5 years ago -- innumerable small admin tools  
+> that
+> CL> users had to integrate themselves, usually without much success.
+>
+> -- 
+> FSF associate member #7257
+>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs"  
+> in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
 --
 Chuck Lever
