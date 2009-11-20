@@ -1,24 +1,22 @@
 From: Chuck Lever <chuck.lever@oracle.com>
 Subject: Re: [PATCH 07/11] SUNRPC: Use a cached RPC client and transport for rpcbind upcalls
-Date: Fri, 20 Nov 2009 15:19:32 -0500
-Message-ID: <7894188C-5BAF-4E7A-9A58-F9617CF8E29A@oracle.com>
+Date: Fri, 20 Nov 2009 16:50:34 -0500
+Message-ID: <560F5576-A0D0-4126-983D-F1DECA61CE02@oracle.com>
 References: <20091105181924.2796.9313.stgit@matisse.1015granger.net> <20091105182319.2796.62305.stgit@matisse.1015granger.net> <1258748285.2494.84.camel@localhost>
 Mime-Version: 1.0 (Apple Message framework v936)
 Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
 Cc: linux-nfs@vger.kernel.org
 To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from acsinet11.oracle.com ([141.146.126.233]:59667 "EHLO
-	acsinet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753299AbZKTUUE (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 20 Nov 2009 15:20:04 -0500
+Received: from rcsinet12.oracle.com ([148.87.113.124]:33341 "EHLO
+	rgminet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754550AbZKTVul (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 20 Nov 2009 16:50:41 -0500
 In-Reply-To: <1258748285.2494.84.camel@localhost>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
 On Nov 20, 2009, at 3:18 PM, Trond Myklebust wrote:
-
 > On Thu, 2009-11-05 at 13:23 -0500, Chuck Lever wrote:
 >> The kernel's rpcbind client creates and deletes an rpc_clnt and its
 >> underlying transport socket for every upcall to the local rpcbind
@@ -122,7 +120,14 @@ On Nov 20, 2009, at 3:18 PM, Trond Myklebust wrote:
 > You can't have tested this. At the very least you cannot have done so
 > with spinlock debugging enabled...
 
-I did test it, but not with spinlock debugging.
+I moved the rpcb_create_local_lock spinlock out of the function,  
+enabled every spinlock checkbox I could under kernel hacking, and gave  
+the guest 2 CPUs.  The spinlock checker reported a problem almost  
+immediately with XFS (even with just one virtual CPU), so I know it's  
+enabled and working.
+
+I can't reproduce any problems with the rpcbind upcall here.  Do you  
+have anything more specific?
 
 --
 Chuck Lever
