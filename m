@@ -1,50 +1,51 @@
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: Re: [PATCH 07/11] SUNRPC: Use a cached RPC client and transport
- for rpcbind upcalls
-Date: Fri, 20 Nov 2009 18:47:55 -0500
-Message-ID: <1258760875.2982.1.camel@localhost>
-References: <20091105181924.2796.9313.stgit@matisse.1015granger.net>
-	 <20091105182319.2796.62305.stgit@matisse.1015granger.net>
-	 <1258748285.2494.84.camel@localhost>
-	 <560F5576-A0D0-4126-983D-F1DECA61CE02@oracle.com>
-	 <20091120220506.GB13109@fieldses.org>
-	 <8EA5EB4E-A6EF-4501-AE13-856105142F9A@oracle.com>
-	 <20091120223644.GB13840@fieldses.org>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: [PATCH] SUNRPC: Use a cached RPC client and transport for
+ rpcbind upcalls
+Date: Fri, 20 Nov 2009 18:57:01 -0500
+Message-ID: <1258761421.2982.7.camel@localhost>
+References: <20091120224437.3504.1598.stgit@matisse.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="UTF-8"
-Cc: Chuck Lever <chuck.lever-MouhYhfBpPxXrIkS9f7CXA@public.gmane.org>,
-	NFSv3 list <linux-nfs@vger.kernel.org>
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: linux-nfs@vger.kernel.org
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:58498 "EHLO mx2.netapp.com"
+Received: from mail-out1.uio.no ([129.240.10.57]:34349 "EHLO mail-out1.uio.no"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752264AbZKTXsm convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 20 Nov 2009 18:48:42 -0500
-In-Reply-To: <20091120223644.GB13840@fieldses.org>
+	id S1752962AbZKTX47 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 20 Nov 2009 18:56:59 -0500
+In-Reply-To: <20091120224437.3504.1598.stgit-RytpoXr2tKZ9HhUboXbp9zCvJB+x5qRC@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 2009-11-20 at 17:36 -0500, J. Bruce Fields wrote: 
-> On Fri, Nov 20, 2009 at 05:24:43PM -0500, Chuck Lever wrote:
-> > On Nov 20, 2009, at 5:05 PM, J. Bruce Fields wrote:
-> >> On Fri, Nov 20, 2009 at 04:50:34PM -0500, Chuck Lever wrote:
-> >>> I can't reproduce any problems with the rpcbind upcall here.  Do you
-> >>> have anything more specific?
-> >>
-> >> Isn't there an rpc ping in rpc_bind_new_program?
-> >
-> > Hrm, I suppose there is.  That's weird, clearly I didn't see the  
-> > rpc_ping() call, even though I was looking for it when I wrote this.  A 
-> > GFP_KERNEL memory allocation can sleep too, can't it?
+On Fri, 2009-11-20 at 17:46 -0500, Chuck Lever wrote: 
+> The kernel's rpcbind client creates and deletes an rpc_clnt and its
+> underlying transport socket for every upcall to the local rpcbind
+> daemon.
 > 
-> Yes.  I'd be really curious to know how that got through--if
-> CONFIG_DEBUG_SPINLOCK_SLEEP can't catch a case that cut-and-dried, then
-> it's totally broken....
+> When starting a typical NFS server on IPv4 and IPv6, the NFS service
+> itself does three upcalls (one per version) times two upcalls (one
+> per transport) times two upcalls (one per address family), making 12,
+> plus another one for the initial call to unregister previous NFS
+> services.  Starting the NLM service adds an additional 13 upcalls,
+> for similar reasons.
 > 
-> --b.
+> (Currently the NFS service doesn't start IPv6 listeners, but it will
+> soon enough).
+> 
+> Instead, let's create an rpc_clnt for rpcbind upcalls during the
+> first local rpcbind query, and cache it.  This saves the overhead of
+> creating and destroying an rpc_clnt and a socket for every upcall.
+> 
+> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> ---
+> 
+> Trond-
+> 
+> Does this refresh address your concern?
 
-Furthermore, there are memory allocations galore in the call to
-rpc_create(). Any attempt to run that while holding a spinlock should
-cause CONFIG_DEBUG_SPINLOCK_SLEEP to throw a series of fits...
+Most of them. You still need to fix cleanup_rpcb_clnt() so that it
+doesn't try to call rpc_shutdown_client() with NULL arguments.
 
-Trond
+Cheers
+  Trond
+
