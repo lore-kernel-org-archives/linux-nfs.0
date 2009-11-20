@@ -1,79 +1,90 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [NFS] simple NFSv4 setup
-Date: Fri, 20 Nov 2009 13:19:35 -0500
-Message-ID: <20091120181935.GB8841@fieldses.org>
-References: <alpine.LRH.2.00.0911191507420.8086@hogwarts.egr.duke.edu>
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: Re: [PATCH 1/2] NFS4ERR_FILE_OPEN handling in Linux/NFS
+Date: Fri, 20 Nov 2009 14:58:33 -0500
+Message-ID: <1258747113.2494.81.camel@localhost>
+References: <20091117042004.1563.95871.stgit@notabene.brown>
+	 <20091117042123.1563.20912.stgit@notabene.brown>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
-To: Joshua Baker-LePain <jlb17-4+jYJfmkT58@public.gmane.org>
+Content-Type: text/plain; charset="UTF-8"
+Cc: linux-nfs@vger.kernel.org
+To: NeilBrown <neilb@suse.de>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from neil.brown.name ([220.233.11.133]:32962 "EHLO neil.brown.name"
+Received: from mx2.netapp.com ([216.240.18.37]:42012 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753718AbZKTSTi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 20 Nov 2009 13:19:38 -0500
-Received: from brown by neil.brown.name with local (Exim 4.69)
-	(envelope-from <nfs-bounces@lists.sourceforge.net>)
-	id 1NBY59-0007oU-7S
-	for linux-nfs@vger.kernel.org; Sat, 21 Nov 2009 05:19:43 +1100
-In-Reply-To: <alpine.LRH.2.00.0911191507420.8086-W36viC/h94rN/LjLm1us4tXUKCiYXWp1@public.gmane.org>
+	id S1753711AbZKTT6o convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 20 Nov 2009 14:58:44 -0500
+In-Reply-To: <20091117042123.1563.20912.stgit-wvvUuzkyo1EYVZTmpyfIwg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Nov 19, 2009 at 03:11:58PM -0500, Joshua Baker-LePain wrote:
-> (I've tried this on both the CentOS and RHEL5 lists, so apologies if 
-> you've gotten this multiple times.)
+On Tue, 2009-11-17 at 15:21 +1100, NeilBrown wrote: 
+> NFS4ERR_FILE_OPEN is returned by the server when an operation cannot be
+> performed because the file is currently open and local (to the server)
+> semantics prohibit the operation while the file is open.
+> A typical case is a RENAME operation on an MS-Windows platform, which
+> prevents rename while the file is open.
 > 
-> I'm trying to setup a simple NFSv4 mount between two CentOS 5.4 x86_64 
-> hosts. On the server, I have this in /etc/exports:
+> While it is possible that such a condition is transitory, it is also
+> very possible that the file will be held open for an extended period
+> of time thus preventing the operation.
 > 
-> /export         $CLIENT(ro,fsid=0)
-> /export/qb3     $CLIENT(rw,nohide)
+> The current behaviour of Linux/NFS is to retry the operation
+> indefinitely.  This is not appropriate - we do not expect a rename to
+> take an arbitrary amount of time to complete.
 > 
-> /export is its own filesystem.  This results in the following
-> 'exportfs -v' output:
+> Rather, an error should be returned.  The most obvious error code
+> would be EBUSY, which is a legal at least for 'rename' and 'unlink',
+> and accurately captures the reason for the error.
 > 
-> /export/qb3     $CLIENT(rw,wdelay,nohide,root_squash,no_subtree_check,anonuid=65534,anongid=65534)
-> /export         $CLIENT(ro,wdelay,root_squash,no_subtree_check,fsid=0,anonuid=65534,anongid=65534)
+> This patch allows a few retries until about 2 seconds have elapsed,
+> then returns EBUSY.
 > 
-> ON $CLIENT, I mount via:
+> Signed-off-by: NeilBrown <neilb@suse.de>
+> ---
 > 
-> mount -t nfs4 $SERVER:/qb3 /usr/local/sge62/qb3
+>  fs/nfs/nfs4proc.c |    5 +++++
+>  fs/nfs/nfs4xdr.c  |    1 +
+>  2 files changed, 6 insertions(+), 0 deletions(-)
 > 
-> However:
+> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+> index ff37454..be26c0c 100644
+> --- a/fs/nfs/nfs4proc.c
+> +++ b/fs/nfs/nfs4proc.c
+> @@ -275,6 +275,11 @@ static int nfs4_handle_exception(const struct nfs_server *server, int errorcode,
+>  			/* FALLTHROUGH */
+>  #endif /* !defined(CONFIG_NFS_V4_1) */
+>  		case -NFS4ERR_FILE_OPEN:
+> +			if (exception->timeout > HZ)
+> +				/* We have retried a decent amount, time to
+> +				 * fail
+> +				 */
+> +				break;
+>  		case -NFS4ERR_GRACE:
+>  		case -NFS4ERR_DELAY:
+>  			ret = nfs4_delay(server->client, &exception->timeout);
+> diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+> index 20b4e30..e50246d 100644
+> --- a/fs/nfs/nfs4xdr.c
+> +++ b/fs/nfs/nfs4xdr.c
+> @@ -5684,6 +5684,7 @@ static struct {
+>  	{ NFS4ERR_SYMLINK,	-ELOOP		},
+>  	{ NFS4ERR_OP_ILLEGAL,	-EOPNOTSUPP	},
+>  	{ NFS4ERR_DEADLOCK,	-EDEADLK	},
+> +	{ NFS4ERR_FILE_OPEN,	-EBUSY		},
+>  	{ NFS4ERR_WRONGSEC,	-EPERM		}, /* FIXME: this needs
+>  						    * to be handled by a
+>  						    * middle-layer.
 > 
-> $ touch /usr/local/sge62/qb3/foo
-> touch: cannot touch `/usr/local/sge62/qb3/foo': Read-only file system
 > 
-> I'd really rather not export the pseudo-root read-write, so how do I get 
-> this working?  I've tried putting the crossmnt option on /export (with and 
-> without using nohide on /export/qb3), and that doesn't help.  Any hints as 
-> to what I'm doing wrong would be appreciated.  Thanks.
 
-I'm assuming /export and /export/qb3 are on the same filesystem?
+If you add an entry for NFS4ERR_FILE_OPEN into nfs4_stat_to_errno(),
+then the result of the RPC call will be -EBUSY rather than
+NFS4ERR_FILE_OPEN.
+In that case, I can't see how the NFS4ERR_FILE_OPEN is being propagated
+to nfs4_handle_exception().
 
-In that case, adding a mountpoint at /export/qb3:
+See
+http://git.kernel.org/?p=linux/kernel/git/torvalds/linux-2.6.git&a=commitdiff&h=52567b03ca38b6e556ced450d64dba8d66e23b0e for how we fixed up a similar problem with NFS4ERR_RESOURCE...
 
-	mount --bind /export/qb3 /export/qb3
-
-(and adding crossmnt on /export) will probably work around the problem.
-
-As stated elsewhere, this isn't really secure: an attacker with access
-to the network will probably still be able to write to /export/.  If
-that's a problem, then you need qb3 to really be its own filesystem.
-
---b.
-
-------------------------------------------------------------------------------
-Let Crystal Reports handle the reporting - Free Crystal Reports 2008 30-Day 
-trial. Simplify your report design, integration and deployment - and focus on 
-what you do best, core application coding. Discover what's new with
-Crystal Reports now.  http://p.sf.net/sfu/bobj-july
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
-_______________________________________________
-Please note that nfs@lists.sourceforge.net is being discontinued.
-Please subscribe to linux-nfs@vger.kernel.org instead.
-    http://vger.kernel.org/vger-lists.html#linux-nfs
-
+Cheers
+  Trond
