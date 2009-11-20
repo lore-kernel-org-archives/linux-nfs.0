@@ -1,90 +1,120 @@
 From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: Re: [PATCH 1/2] NFS4ERR_FILE_OPEN handling in Linux/NFS
-Date: Fri, 20 Nov 2009 14:58:33 -0500
-Message-ID: <1258747113.2494.81.camel@localhost>
-References: <20091117042004.1563.95871.stgit@notabene.brown>
-	 <20091117042123.1563.20912.stgit@notabene.brown>
+Subject: Re: [PATCH 07/11] SUNRPC: Use a cached RPC client and transport
+ for rpcbind upcalls
+Date: Fri, 20 Nov 2009 15:18:05 -0500
+Message-ID: <1258748285.2494.84.camel@localhost>
+References: <20091105181924.2796.9313.stgit@matisse.1015granger.net>
+	 <20091105182319.2796.62305.stgit@matisse.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="UTF-8"
 Cc: linux-nfs@vger.kernel.org
-To: NeilBrown <neilb@suse.de>
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:42012 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:6855 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753711AbZKTT6o convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 20 Nov 2009 14:58:44 -0500
-In-Reply-To: <20091117042123.1563.20912.stgit-wvvUuzkyo1EYVZTmpyfIwg@public.gmane.org>
+	id S1753299AbZKTUSQ convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 20 Nov 2009 15:18:16 -0500
+In-Reply-To: <20091105182319.2796.62305.stgit-RytpoXr2tKZ9HhUboXbp9zCvJB+x5qRC@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 2009-11-17 at 15:21 +1100, NeilBrown wrote: 
-> NFS4ERR_FILE_OPEN is returned by the server when an operation cannot be
-> performed because the file is currently open and local (to the server)
-> semantics prohibit the operation while the file is open.
-> A typical case is a RENAME operation on an MS-Windows platform, which
-> prevents rename while the file is open.
+On Thu, 2009-11-05 at 13:23 -0500, Chuck Lever wrote: 
+> The kernel's rpcbind client creates and deletes an rpc_clnt and its
+> underlying transport socket for every upcall to the local rpcbind
+> daemon.
 > 
-> While it is possible that such a condition is transitory, it is also
-> very possible that the file will be held open for an extended period
-> of time thus preventing the operation.
+> When starting a typical NFS server on IPv4 and IPv6, the NFS service
+> itself does three upcalls (one per version) times two upcalls (one
+> per transport) times two upcalls (one per address family), making 12,
+> plus another one for the initial call to unregister previous NFS
+> services.  Starting the NLM service adds an additional 13 upcalls,
+> for similar reasons.
 > 
-> The current behaviour of Linux/NFS is to retry the operation
-> indefinitely.  This is not appropriate - we do not expect a rename to
-> take an arbitrary amount of time to complete.
+> (Currently the NFS service doesn't start IPv6 listeners, but it will
+> soon enough).
 > 
-> Rather, an error should be returned.  The most obvious error code
-> would be EBUSY, which is a legal at least for 'rename' and 'unlink',
-> and accurately captures the reason for the error.
+> Instead, let's create an rpc_clnt for rpcbind upcalls during the
+> first local rpcbind query, and cache it.  This saves the overhead of
+> creating and destroying an rpc_clnt and a socket for every upcall.
 > 
-> This patch allows a few retries until about 2 seconds have elapsed,
-> then returns EBUSY.
-> 
-> Signed-off-by: NeilBrown <neilb@suse.de>
+> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 > ---
 > 
->  fs/nfs/nfs4proc.c |    5 +++++
->  fs/nfs/nfs4xdr.c  |    1 +
->  2 files changed, 6 insertions(+), 0 deletions(-)
+>  net/sunrpc/rpcb_clnt.c   |   78 +++++++++++++++++++++++++++++++++++++---------
+>  net/sunrpc/sunrpc_syms.c |    3 ++
+>  2 files changed, 65 insertions(+), 16 deletions(-)
 > 
-> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-> index ff37454..be26c0c 100644
-> --- a/fs/nfs/nfs4proc.c
-> +++ b/fs/nfs/nfs4proc.c
-> @@ -275,6 +275,11 @@ static int nfs4_handle_exception(const struct nfs_server *server, int errorcode,
->  			/* FALLTHROUGH */
->  #endif /* !defined(CONFIG_NFS_V4_1) */
->  		case -NFS4ERR_FILE_OPEN:
-> +			if (exception->timeout > HZ)
-> +				/* We have retried a decent amount, time to
-> +				 * fail
-> +				 */
-> +				break;
->  		case -NFS4ERR_GRACE:
->  		case -NFS4ERR_DELAY:
->  			ret = nfs4_delay(server->client, &exception->timeout);
-> diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-> index 20b4e30..e50246d 100644
-> --- a/fs/nfs/nfs4xdr.c
-> +++ b/fs/nfs/nfs4xdr.c
-> @@ -5684,6 +5684,7 @@ static struct {
->  	{ NFS4ERR_SYMLINK,	-ELOOP		},
->  	{ NFS4ERR_OP_ILLEGAL,	-EOPNOTSUPP	},
->  	{ NFS4ERR_DEADLOCK,	-EDEADLK	},
-> +	{ NFS4ERR_FILE_OPEN,	-EBUSY		},
->  	{ NFS4ERR_WRONGSEC,	-EPERM		}, /* FIXME: this needs
->  						    * to be handled by a
->  						    * middle-layer.
-> 
-> 
+> diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
+> index 28f50da..1ec4a1a 100644
+> --- a/net/sunrpc/rpcb_clnt.c
+> +++ b/net/sunrpc/rpcb_clnt.c
+> @@ -20,6 +20,7 @@
+>  #include <linux/in6.h>
+>  #include <linux/kernel.h>
+>  #include <linux/errno.h>
+> +#include <linux/spinlock.h>
+>  #include <net/ipv6.h>
+>  
+>  #include <linux/sunrpc/clnt.h>
+> @@ -110,6 +111,9 @@ static void			rpcb_getport_done(struct rpc_task *, void *);
+>  static void			rpcb_map_release(void *data);
+>  static struct rpc_program	rpcb_program;
+>  
+> +static struct rpc_clnt *	rpcb_local_clnt;
+> +static struct rpc_clnt *	rpcb_local_clnt4;
+> +
+>  struct rpcbind_args {
+>  	struct rpc_xprt *	r_xprt;
+>  
+> @@ -163,7 +167,7 @@ static const struct sockaddr_in rpcb_inaddr_loopback = {
+>  	.sin_port		= htons(RPCBIND_PORT),
+>  };
+>  
+> -static struct rpc_clnt *rpcb_create_local(u32 version)
+> +static int rpcb_create_local(void)
+>  {
+>  	struct rpc_create_args args = {
+>  		.protocol	= XPRT_TRANSPORT_UDP,
+> @@ -171,12 +175,37 @@ static struct rpc_clnt *rpcb_create_local(u32 version)
+>  		.addrsize	= sizeof(rpcb_inaddr_loopback),
+>  		.servername	= "localhost",
+>  		.program	= &rpcb_program,
+> -		.version	= version,
+> +		.version	= RPCBVERS_2,
+>  		.authflavor	= RPC_AUTH_UNIX,
+>  		.flags		= RPC_CLNT_CREATE_NOPING,
+>  	};
+> +	static DEFINE_SPINLOCK(rpcb_create_local_lock);
+> +	struct rpc_clnt *clnt, *clnt4;
+> +	int result = 0;
+> +
+> +	spin_lock(&rpcb_create_local_lock);
+> +	if (rpcb_local_clnt)
+> +		goto out;
+> +
+> +	clnt = rpc_create(&args);
+> +	if (IS_ERR(clnt)) {
+> +		result = -PTR_ERR(clnt);
+> +		goto out;
+> +	}
+>  
+> -	return rpc_create(&args);
+> +	clnt4 = rpc_bind_new_program(clnt, &rpcb_program, RPCBVERS_4);
+> +	if (IS_ERR(clnt4)) {
+> +		result = -PTR_ERR(clnt4);
+> +		rpc_shutdown_client(clnt);
+> +		goto out;
+> +	}
+> +
+> +	rpcb_local_clnt = clnt;
+> +	rpcb_local_clnt4 = clnt4;
+> +
+> +out:
+> +	spin_unlock(&rpcb_create_local_lock);
+> +	return result;
+>  }
 
-If you add an entry for NFS4ERR_FILE_OPEN into nfs4_stat_to_errno(),
-then the result of the RPC call will be -EBUSY rather than
-NFS4ERR_FILE_OPEN.
-In that case, I can't see how the NFS4ERR_FILE_OPEN is being propagated
-to nfs4_handle_exception().
+You can't have tested this. At the very least you cannot have done so
+with spinlock debugging enabled...
 
-See
-http://git.kernel.org/?p=linux/kernel/git/torvalds/linux-2.6.git&a=commitdiff&h=52567b03ca38b6e556ced450d64dba8d66e23b0e for how we fixed up a similar problem with NFS4ERR_RESOURCE...
-
-Cheers
-  Trond
+Trond
