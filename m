@@ -1,66 +1,73 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: XFS, NFS and inode64 on 2.6.27
-Date: Mon, 23 Nov 2009 10:51:09 -0500
-Message-ID: <20091123155109.GA3292@fieldses.org>
-References: <200911231419.50678@zmi.at>
+From: Boaz Harrosh <bharrosh@panasas.com>
+Subject: [PATCHSET 0-6] nfsd: #includes cleanup
+Date: Mon, 23 Nov 2009 17:54:33 +0200
+Message-ID: <4B0AB039.6020608@panasas.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Cc: linux-nfs@vger.kernel.org
-To: Michael Monnerie <michael.monnerie@is.it-management.at>
+Content-Type: text/plain; charset=UTF-8
+Cc: NFS list <linux-nfs@vger.kernel.org>,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	Randy Dunlap <randy.dunlap@oracle.com>
+To: "J. Bruce Fields" <bfields@citi.umich.edu>,
+	Benny Halevy <bhalevy@panasas.com>,
+	Trond Myklebust <Trond.Myklebust@netapp.com>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	pNFS Mailing
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:59056 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752250AbZKWPu0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 23 Nov 2009 10:50:26 -0500
-In-Reply-To: <200911231419.50678-xqLQU7OFoCs@public.gmane.org>
+Received: from daytona.panasas.com ([67.152.220.89]:41320 "EHLO
+	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1753165AbZKWPyh (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Nov 2009 10:54:37 -0500
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Nov 23, 2009 at 02:19:50PM +0100, Michael Monnerie wrote:
-> after searching for a long time I guess I found that inode64 on XFS w=
-ith=20
-> kernel 2.6.27 (shipped with openSUSE 11.1) is incompatible with NFS.=20
-> Sorry if this was already know, it wasn't for me and finding the prob=
-lem=20
-> was complicated.
->=20
-> This is my nfs4 root (fsid=3D0):
->=20
-> # ls -li
-> insgesamt 0
-> 4666 drwxr-xr-x 2 root root 48 15. Nov 19:54 daten
-> 4668 drwxr-xr-x 2 root root 48 15. Nov 19:54 download2
-> 4667 drwxr-xr-x 2 root root 48 15. Nov 19:54 dvd-images
-> 4661 drwxr-xr-x 2 root root 48 19. Nov 06:51 mailsrv-backup
-> 4669 drwxr-xr-x 2 root root 48 15. Nov 19:54 q
-> 4670 drwxr-xr-x 2 root root 48 15. Nov 19:54 z
->=20
-> Then I mount those subdirs (mount --bind ....) to fill it with the di=
-rs=20
-> I want to share:
->=20
-> # ls -li
-> insgesamt 20
->         256 drwxr-xr-x 14 root root  4096 19. Nov 03:01 daten
->  6454034730 drwxrwx---  3 zmi  users   61 26. M=C3=A4r 2009  download=
-2
->     4070671 drwxr-xr-x  2 root root    76 13. Nov 12:17 dvd-images
->  6500330752 drwxr-xr-x  5 root root  4096  8. Nov 04:31 mailsrv-backu=
-p
->  8591091465 drwxr-xr-x 17 root root  4096 12. Nov 02:01 q
->  2147483904 drwxrwx--- 31 zmi  bh    4096  7. Nov 09:58 z
->=20
-> The shares "daten" and "dvd-images" can be mounted from other servers=
-=2E
 
-But not the other four directories?  What error do you get when you try=
-?
-What client are you using, and are you mounting with NFSv2, NFSv3, or
-NFSv4?  Could we see a network trace of a failed mount?  (So, run
+Hi Bruce
 
-	tcpdump -s0 -wtmp.pcap
+This time I've based the patchset on the:
+	git://linux-nfs.org/~bfields/linux.git for-2.6.33 branch
 
-then attempt to mount one of the directories with a too-big inode
-number, then kill tcpdump and send us tmp.pcap.)
+I was hoping to find that nfsd.h cleanup you sent to the mailing list
+the other day. But I don't see it. Should I rebase this work on some
+other branch? would you like to submit that patch, which made lots of
+sense in my opinion, and I'll wait and base this work on that?
+[On the other we might be able to move the complete nfsd.h to fs/nfsd/]
 
---b.
+I have gone deeper and wider this time. And it is based on upcoming
+main-line, not pnfs tree like before. So it can actually be applied
+this time. Please lets decide on some time table because these things
+are moving targets.
+
+I've removed the hunk from posix_acl.h that Trond did not like, I'll
+take care of that one, another time. (For late comers, posix_acl.h intimately
+fiddles with fs.h types but does not #include it)
+
+With these patches Benny will suffer on his next rebase, both in conflicts
+and a few miss-compiling files, but it should be trivial to fix, I'll help.
+
+The next step after these patches, is to move lots of files from include/linux/nfsd/*
+to fs/nfsd/... I have found that the include/linux/nfsd/xdr?.h, nfsd.h and cache.h
+are all essentially only used by fs/nfsd source, except they are *wrongly* included by
+some compat.c source files. Once I'll fix that they can move.
+
+[PATCH 1/6] nfsd: Remove nfsfh.h dependency on sunrpc
+    Bruce, what about this patch. It is independent of the others. Currently sunrpc
+    is loaded/unloaded with nfs or nfsd. exportfs and filesystems don't expect to need
+    it. It works because depmod is doing it's job. Do we really need this dprintk?
+
+[PATCH 2/6] sunrpc: Clean never used include files
+[PATCH 3/6] nfsd: Fix independence of a few nfsd related headers
+    I wish these two patches could go through Bruce's tree as one group.
+    Who's ACKs do we need on them? Trond?
+
+[PATCH 4/6] nfsd: Headers Independence and include cleanups
+[PATCH 5/6] nfsd: Source files #include cleanups
+    Please review these patches to understand the motivation behind all
+    this.
+
+[PATCH 6/6] compat.c: Remove dependence on nfsd private headers
+    This patch is a beginning of the next step to move the nfsd private
+    headers to inside the fs/nfsd subdirectory.
+
+Thanks
+Boaz
+
