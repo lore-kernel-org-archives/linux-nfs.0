@@ -1,174 +1,140 @@
 From: Alexandros Batsakis <batsakis@netapp.com>
-Subject: [PATCH 06/10] nfs41: initial support for CB_RECALL_ANY
-Date: Mon, 23 Nov 2009 13:54:43 -0800
-Message-ID: <1259013287-3349-6-git-send-email-batsakis@netapp.com>
+Subject: [PATCH 10/10] nfs41: check SEQUENCE status flag
+Date: Mon, 23 Nov 2009 13:54:47 -0800
+Message-ID: <1259013287-3349-10-git-send-email-batsakis@netapp.com>
 References: <1259013287-3349-1-git-send-email-batsakis@netapp.com>
  <1259013287-3349-2-git-send-email-batsakis@netapp.com>
  <1259013287-3349-3-git-send-email-batsakis@netapp.com>
  <1259013287-3349-4-git-send-email-batsakis@netapp.com>
  <1259013287-3349-5-git-send-email-batsakis@netapp.com>
+ <1259013287-3349-6-git-send-email-batsakis@netapp.com>
+ <1259013287-3349-7-git-send-email-batsakis@netapp.com>
+ <1259013287-3349-8-git-send-email-batsakis@netapp.com>
+ <1259013287-3349-9-git-send-email-batsakis@netapp.com>
 Cc: Alexandros Batsakis <batsakis@netapp.com>
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
 Received: from mx2.netapp.com ([216.240.18.37]:42997 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757275AbZKWV7Z (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 23 Nov 2009 16:59:25 -0500
-In-Reply-To: <1259013287-3349-5-git-send-email-batsakis@netapp.com>
+	id S1757294AbZKWV70 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 23 Nov 2009 16:59:26 -0500
+In-Reply-To: <1259013287-3349-9-git-send-email-batsakis@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-For now the clients returns _all_ the delegations of the specificed type
-it holds
+the server can indicate a number of error conditions by setting the
+appropriate bits in the SEQUENCE operation. The client re-establishes
+state with the server when it receives one of those, with the action
+depending on the specific case.
 
 Signed-off-by: Alexandros Batsakis <batsakis@netapp.com>
 ---
- fs/nfs/callback.h      |   10 ++++++++++
- fs/nfs/callback_proc.c |   30 ++++++++++++++++++++++++++++++
- fs/nfs/callback_xdr.c  |   27 ++++++++++++++++++++++++++-
- fs/nfs/delegation.h    |    1 +
- 4 files changed, 67 insertions(+), 1 deletions(-)
+ fs/nfs/nfs4_fs.h        |    1 +
+ fs/nfs/nfs4proc.c       |    2 ++
+ fs/nfs/nfs4state.c      |   22 ++++++++++++++++++++++
+ fs/nfs/nfs4xdr.c        |    4 ++--
+ include/linux/nfs4.h    |    2 ++
+ include/linux/nfs_xdr.h |    1 +
+ 6 files changed, 30 insertions(+), 2 deletions(-)
 
-diff --git a/fs/nfs/callback.h b/fs/nfs/callback.h
-index 07baa82..b4cd63c 100644
---- a/fs/nfs/callback.h
-+++ b/fs/nfs/callback.h
-@@ -103,8 +103,18 @@ struct cb_sequenceres {
- 	uint32_t			csr_target_highestslotid;
- };
- 
-+#define RCA4_TYPE_MASK_RDATA_DLG	0
-+#define RCA4_TYPE_MASK_WDATA_DLG	1
-+
-+struct cb_recallanyargs {
-+	struct sockaddr 		*craa_addr;
-+	uint32_t 			craa_objs_to_keep;
-+	uint32_t 			craa_type_mask;
-+};
-+
- extern unsigned nfs4_callback_sequence(struct cb_sequenceargs *args,
- 				       struct cb_sequenceres *res);
-+extern unsigned nfs4_callback_recallany(struct cb_recallanyargs *args, void *dummy);
- 
- #endif /* CONFIG_NFS_V4_1 */
- 
-diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
-index b7da1f5..d37e8c9 100644
---- a/fs/nfs/callback_proc.c
-+++ b/fs/nfs/callback_proc.c
-@@ -227,4 +227,34 @@ out:
- 	return res->csr_status;
+diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
+index df1299e..d792b7d 100644
+--- a/fs/nfs/nfs4_fs.h
++++ b/fs/nfs/nfs4_fs.h
+@@ -267,6 +267,7 @@ extern void nfs4_state_set_mode_locked(struct nfs4_state *, fmode_t);
+ extern void nfs4_schedule_state_recovery(struct nfs_client *);
+ extern void nfs4_schedule_state_manager(struct nfs_client *);
+ extern int nfs4_state_mark_reclaim_nograce(struct nfs_client *clp, struct nfs4_state *state);
++extern void nfs41_handle_sequence_flag_errors(struct nfs_client *clp, u32 flags);
+ extern void nfs4_put_lock_state(struct nfs4_lock_state *lsp);
+ extern int nfs4_set_lock_state(struct nfs4_state *state, struct file_lock *fl);
+ extern void nfs4_copy_stateid(nfs4_stateid *, struct nfs4_state *, fl_owner_t);
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 6a0f9ea..4b1938b 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -388,6 +388,8 @@ static void nfs41_sequence_done(struct nfs_client *clp,
+ 		if (time_before(clp->cl_last_renewal, timestamp))
+ 			clp->cl_last_renewal = timestamp;
+ 		spin_unlock(&clp->cl_lock);
++		/* Check sequence flags */
++		nfs41_handle_sequence_flag_errors(clp, res->sr_status_flags);
+ 		return;
+ 	}
+ out:
+diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+index 2ef4fec..340cdee 100644
+--- a/fs/nfs/nfs4state.c
++++ b/fs/nfs/nfs4state.c
+@@ -1151,6 +1151,28 @@ static int nfs4_reclaim_lease(struct nfs_client *clp)
  }
  
-+unsigned nfs4_callback_recallany(struct cb_recallanyargs *args,
-+				 void *dummy)
+ #ifdef CONFIG_NFS_V4_1
++void nfs41_handle_sequence_flag_errors(struct nfs_client *clp, u32 flags)
 +{
-+	struct nfs_client *clp;
-+	int status;
-+	fmode_t flags = 0;
-+
-+	status = htonl(NFS4ERR_OP_NOT_IN_SESSION);
-+	clp = nfs_find_client(args->craa_addr, 4);
-+	if (clp == NULL)
-+		goto out;
-+
-+	dprintk("NFS: RECALL_ANY callback request from %s\n",
-+		rpc_peeraddr2str(clp->cl_rpcclient, RPC_DISPLAY_ADDR));
-+
-+	if (test_bit(RCA4_TYPE_MASK_RDATA_DLG, (const unsigned long *)
-+		     &args->craa_type_mask))
-+		flags = FMODE_READ;
-+	if (test_bit(RCA4_TYPE_MASK_WDATA_DLG, (const unsigned long *)
-+		     &args->craa_type_mask))
-+		flags |= FMODE_WRITE;
-+
-+	if (flags)
-+		nfs_expire_all_delegation_types(clp, flags);
-+	status = htonl(NFS4_OK);
-+ out:
-+	dprintk("%s: exit with status = %d\n", __func__, ntohl(status));
-+	return status;
++	if (!flags)
++		return;
++	else if (flags & SEQ4_STATUS_RESTART_RECLAIM_NEEDED) {
++		set_bit(NFS4CLNT_LEASE_EXPIRED, &clp->cl_state);
++		nfs4_state_start_reclaim_reboot(clp);
++		nfs4_schedule_state_recovery(clp);
++	} else if (flags & (SEQ4_STATUS_EXPIRED_ALL_STATE_REVOKED |
++			    SEQ4_STATUS_EXPIRED_SOME_STATE_REVOKED |
++			    SEQ4_STATUS_ADMIN_STATE_REVOKED |
++			    SEQ4_STATUS_RECALLABLE_STATE_REVOKED |
++			    SEQ4_STATUS_LEASE_MOVED)) {
++		set_bit(NFS4CLNT_LEASE_EXPIRED, &clp->cl_state);
++		nfs4_state_start_reclaim_nograce(clp);
++		nfs4_schedule_state_recovery(clp);
++	} else if (flags & (SEQ4_STATUS_CB_PATH_DOWN |
++			    SEQ4_STATUS_BACKCHANNEL_FAULT |
++			    SEQ4_STATUS_CB_PATH_DOWN_SESSION))
++		nfs_expire_all_delegations(clp);
 +}
 +
- #endif /* CONFIG_NFS_V4_1 */
-diff --git a/fs/nfs/callback_xdr.c b/fs/nfs/callback_xdr.c
-index 0fda5e6..8e1a251 100644
---- a/fs/nfs/callback_xdr.c
-+++ b/fs/nfs/callback_xdr.c
-@@ -23,6 +23,7 @@
- #if defined(CONFIG_NFS_V4_1)
- #define CB_OP_SEQUENCE_RES_MAXSZ	(CB_OP_HDR_RES_MAXSZ + \
- 					4 + 1 + 3)
-+#define CB_OP_RECALLANY_RES_MAXSZ	(CB_OP_HDR_RES_MAXSZ)
- #endif /* CONFIG_NFS_V4_1 */
+ static void nfs4_session_recovery_handle_error(struct nfs_client *clp, int err)
+ {
+ 	switch (err) {
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index 3875759..ec5aec1 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -4614,8 +4614,8 @@ static int decode_sequence(struct xdr_stream *xdr,
+ 	dummy = be32_to_cpup(p++);
+ 	/* target highest slot id - currently not processed */
+ 	dummy = be32_to_cpup(p++);
+-	/* result flags - currently not processed */
+-	dummy = be32_to_cpup(p);
++	/* result flags */
++	res->sr_status_flags = be32_to_cpup(p);
+ 	status = 0;
+ out_err:
+ 	res->sr_status = status;
+diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
+index c4c0602..89404bf 100644
+--- a/include/linux/nfs4.h
++++ b/include/linux/nfs4.h
+@@ -128,6 +128,8 @@
+ #define SEQ4_STATUS_RECALLABLE_STATE_REVOKED	0x00000040
+ #define SEQ4_STATUS_LEASE_MOVED			0x00000080
+ #define SEQ4_STATUS_RESTART_RECLAIM_NEEDED	0x00000100
++#define SEQ4_STATUS_CB_PATH_DOWN_SESSION	0x00000200
++#define SEQ4_STATUS_BACKCHANNEL_FAULT		0x00000400
  
- #define NFSDBG_FACILITY NFSDBG_CALLBACK
-@@ -326,6 +327,25 @@ out_free:
- 	goto out;
- }
+ #define NFS4_MAX_UINT64	(~(u64)0)
  
-+static unsigned decode_recallany_args(struct svc_rqst *rqstp,
-+				      struct xdr_stream *xdr,
-+				      struct cb_recallanyargs *args)
-+{
-+	uint32_t *p;
-+
-+	args->craa_addr = svc_addr(rqstp);
-+	p = read_buf(xdr, 4);
-+	if (unlikely(p == NULL))
-+		return htonl(NFS4ERR_BADXDR);
-+	args->craa_objs_to_keep = ntohl(*p++);
-+	p = read_buf(xdr, 4);
-+	if (unlikely(p == NULL))
-+		return htonl(NFS4ERR_BADXDR);
-+	args->craa_type_mask = ntohl(*p);
-+
-+	return 0;
-+}
-+
- #endif /* CONFIG_NFS_V4_1 */
- 
- static __be32 encode_string(struct xdr_stream *xdr, unsigned int len, const char *str)
-@@ -533,6 +553,7 @@ preprocess_nfs41_op(int nop, unsigned int op_nr, struct callback_op **op)
- 	case OP_CB_GETATTR:
- 	case OP_CB_RECALL:
- 	case OP_CB_SEQUENCE:
-+	case OP_CB_RECALL_ANY:
- 		*op = &callback_ops[op_nr];
- 		break;
- 
-@@ -540,7 +561,6 @@ preprocess_nfs41_op(int nop, unsigned int op_nr, struct callback_op **op)
- 	case OP_CB_NOTIFY_DEVICEID:
- 	case OP_CB_NOTIFY:
- 	case OP_CB_PUSH_DELEG:
--	case OP_CB_RECALL_ANY:
- 	case OP_CB_RECALLABLE_OBJ_AVAIL:
- 	case OP_CB_RECALL_SLOT:
- 	case OP_CB_WANTS_CANCELLED:
-@@ -688,6 +708,11 @@ static struct callback_op callback_ops[] = {
- 		.encode_res = (callback_encode_res_t)encode_cb_sequence_res,
- 		.res_maxsize = CB_OP_SEQUENCE_RES_MAXSZ,
- 	},
-+	[OP_CB_RECALL_ANY] = {
-+		.process_op = (callback_process_op_t)nfs4_callback_recallany,
-+		.decode_args = (callback_decode_arg_t)decode_recallany_args,
-+		.res_maxsize = CB_OP_RECALLANY_RES_MAXSZ,
-+	},
- #endif /* CONFIG_NFS_V4_1 */
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index 62f63fb..b0c65e4 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -172,6 +172,7 @@ struct nfs4_sequence_res {
+ 	u8			sr_slotid;	/* slot used to send request */
+ 	unsigned long		sr_renewal_time;
+ 	int			sr_status;	/* sequence operation status */
++	u32			sr_status_flags;
  };
  
-diff --git a/fs/nfs/delegation.h b/fs/nfs/delegation.h
-index 09f3837..ad8b18d 100644
---- a/fs/nfs/delegation.h
-+++ b/fs/nfs/delegation.h
-@@ -40,6 +40,7 @@ void nfs_inode_return_delegation_noreclaim(struct inode *inode);
- struct inode *nfs_delegation_find_inode(struct nfs_client *clp, const struct nfs_fh *fhandle);
- void nfs_super_return_all_delegations(struct super_block *sb);
- void nfs_expire_all_delegations(struct nfs_client *clp);
-+void nfs_expire_all_delegation_types(struct nfs_client *clp, fmode_t flags);
- void nfs_expire_unreferenced_delegations(struct nfs_client *clp);
- void nfs_handle_cb_pathdown(struct nfs_client *clp);
- void nfs_client_return_marked_delegations(struct nfs_client *clp);
+ struct nfs4_get_lease_time_args {
 -- 
 1.6.2.5
 
