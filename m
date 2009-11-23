@@ -1,73 +1,61 @@
 From: Boaz Harrosh <bharrosh@panasas.com>
-Subject: [PATCHSET 0-6] nfsd: #includes cleanup
-Date: Mon, 23 Nov 2009 17:54:33 +0200
-Message-ID: <4B0AB039.6020608@panasas.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: NFS list <linux-nfs@vger.kernel.org>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+Subject: [PATCH 1/6] nfsd: Remove nfsfh.h dependency on sunrpc
+Date: Mon, 23 Nov 2009 17:58:30 +0200
+Message-ID: <1258991910-25335-1-git-send-email-bharrosh@panasas.com>
+References: <4B0AB039.6020608@panasas.com>
+Cc: linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	Al Viro <viro@ZenIV.linux.org.uk>,
 	Randy Dunlap <randy.dunlap@oracle.com>
 To: "J. Bruce Fields" <bfields@citi.umich.edu>,
 	Benny Halevy <bhalevy@panasas.com>,
-	Trond Myklebust <Trond.Myklebust@netapp.com>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	pNFS Mailing
+	NFS list <linux-nfs@vger.kernel.org>,
+	pNFS Mailing List <pnfs@linux-nfs.org>,
+	Trond Myklebust <Trond.M
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:41320 "EHLO
+Received: from daytona.panasas.com ([67.152.220.89]:2076 "EHLO
 	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1753165AbZKWPyh (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Nov 2009 10:54:37 -0500
+	with ESMTP id S1752719AbZKWP63 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Nov 2009 10:58:29 -0500
+In-Reply-To: <4B0AB039.6020608@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+linux/nfsd/nfsfh.h defines some low level types which
+are needed by exportfs and though by filesystems.
 
-Hi Bruce
+In the file, fh_lock() uses the sunrpc dprint facility which
+might cause a dependency of exportfs (and filesystems) on
+sunrpc which is unwanted / unexpected.
 
-This time I've based the patchset on the:
-	git://linux-nfs.org/~bfields/linux.git for-2.6.33 branch
+Remove the debug-print from fh_lock() and avoid this dependency.
 
-I was hoping to find that nfsd.h cleanup you sent to the mailing list
-the other day. But I don't see it. Should I rebase this work on some
-other branch? would you like to submit that patch, which made lots of
-sense in my opinion, and I'll wait and base this work on that?
-[On the other we might be able to move the complete nfsd.h to fs/nfsd/]
+Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+---
+ include/linux/nfsd/nfsfh.h |    4 ----
+ 1 files changed, 0 insertions(+), 4 deletions(-)
 
-I have gone deeper and wider this time. And it is based on upcoming
-main-line, not pnfs tree like before. So it can actually be applied
-this time. Please lets decide on some time table because these things
-are moving targets.
-
-I've removed the hunk from posix_acl.h that Trond did not like, I'll
-take care of that one, another time. (For late comers, posix_acl.h intimately
-fiddles with fs.h types but does not #include it)
-
-With these patches Benny will suffer on his next rebase, both in conflicts
-and a few miss-compiling files, but it should be trivial to fix, I'll help.
-
-The next step after these patches, is to move lots of files from include/linux/nfsd/*
-to fs/nfsd/... I have found that the include/linux/nfsd/xdr?.h, nfsd.h and cache.h
-are all essentially only used by fs/nfsd source, except they are *wrongly* included by
-some compat.c source files. Once I'll fix that they can move.
-
-[PATCH 1/6] nfsd: Remove nfsfh.h dependency on sunrpc
-    Bruce, what about this patch. It is independent of the others. Currently sunrpc
-    is loaded/unloaded with nfs or nfsd. exportfs and filesystems don't expect to need
-    it. It works because depmod is doing it's job. Do we really need this dprintk?
-
-[PATCH 2/6] sunrpc: Clean never used include files
-[PATCH 3/6] nfsd: Fix independence of a few nfsd related headers
-    I wish these two patches could go through Bruce's tree as one group.
-    Who's ACKs do we need on them? Trond?
-
-[PATCH 4/6] nfsd: Headers Independence and include cleanups
-[PATCH 5/6] nfsd: Source files #include cleanups
-    Please review these patches to understand the motivation behind all
-    this.
-
-[PATCH 6/6] compat.c: Remove dependence on nfsd private headers
-    This patch is a beginning of the next step to move the nfsd private
-    headers to inside the fs/nfsd subdirectory.
-
-Thanks
-Boaz
+diff --git a/include/linux/nfsd/nfsfh.h b/include/linux/nfsd/nfsfh.h
+index 8f641c9..2973e11 100644
+--- a/include/linux/nfsd/nfsfh.h
++++ b/include/linux/nfsd/nfsfh.h
+@@ -20,7 +20,6 @@
+ # include <linux/fs.h>
+ #endif
+ #include <linux/nfsd/const.h>
+-#include <linux/nfsd/debug.h>
+ 
+ /*
+  * This is the old "dentry style" Linux NFSv2 file handle.
+@@ -329,9 +328,6 @@ fh_lock_nested(struct svc_fh *fhp, unsigned int subclass)
+ 	struct dentry	*dentry = fhp->fh_dentry;
+ 	struct inode	*inode;
+ 
+-	dfprintk(FILEOP, "nfsd: fh_lock(%s) locked = %d\n",
+-			SVCFH_fmt(fhp), fhp->fh_locked);
+-
+ 	BUG_ON(!dentry);
+ 
+ 	if (fhp->fh_locked) {
+-- 
+1.6.5.2
 
