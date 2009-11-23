@@ -1,73 +1,163 @@
-From: "J. Bruce Fields" <bfields@citi.umich.edu>
-Subject: Re: [PATCH 1/6] nfsd: Remove nfsfh.h dependency on sunrpc
-Date: Mon, 23 Nov 2009 17:17:05 -0500
-Message-ID: <20091123221705.GF8534@fieldses.org>
-References: <4B0AB039.6020608@panasas.com> <1258991910-25335-1-git-send-email-bharrosh@panasas.com>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: [PATCH 01/10] nfs41: adjust max_rqst_sz, max_resp_sz w.r.t to
+ rsize, wsize
+Date: Mon, 23 Nov 2009 17:57:20 -0500
+Message-ID: <1259017040.8700.94.camel@localhost>
+References: <1259013287-3349-1-git-send-email-batsakis@netapp.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Benny Halevy <bhalevy@panasas.com>,
-	NFS list <linux-nfs@vger.kernel.org>,
-	pNFS Mailing List <pnfs@linux-nfs.org>,
-	Trond Myklebust <Trond.Myklebust@netapp.com>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	Al Viro <viro@ZenIV.linux.org.uk>,
-	Randy Dunlap <randy.dunlap@oracle.com>
-To: Boaz Harrosh <bharrosh@panasas.com>
+Content-Type: text/plain; charset="UTF-8"
+Cc: linux-nfs@vger.kernel.org
+To: Alexandros Batsakis <batsakis@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:45634 "EHLO fieldses.org"
+Received: from mail-out1.uio.no ([129.240.10.57]:35486 "EHLO mail-out1.uio.no"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757307AbZKWWQY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 23 Nov 2009 17:16:24 -0500
-In-Reply-To: <1258991910-25335-1-git-send-email-bharrosh@panasas.com>
+	id S1753226AbZKWW5T (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 23 Nov 2009 17:57:19 -0500
+In-Reply-To: <1259013287-3349-1-git-send-email-batsakis@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Nov 23, 2009 at 05:58:30PM +0200, Boaz Harrosh wrote:
-> linux/nfsd/nfsfh.h defines some low level types which
-> are needed by exportfs and though by filesystems.
+On Mon, 2009-11-23 at 13:54 -0800, Alexandros Batsakis wrote: 
+> The v4.1 client should take into account the desired rsize, wsize when
+> negotiating the max size in CREATE_SESSION. Accordingly, it should use
+> rsize, wsize that are smaller than the session negotiated values.
 > 
-> In the file, fh_lock() uses the sunrpc dprint facility which
-> might cause a dependency of exportfs (and filesystems) on
-
-"might cause"?
-
-Does mere inclusion of this .h (without referencing fh_lock_nested() or
-its callers) actually create a dependency?
-
---b.
-
-> sunrpc which is unwanted / unexpected.
-> 
-> Remove the debug-print from fh_lock() and avoid this dependency.
-> 
-> Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+> Signed-off-by: Alexandros Batsakis <batsakis@netapp.com>
 > ---
->  include/linux/nfsd/nfsfh.h |    4 ----
->  1 files changed, 0 insertions(+), 4 deletions(-)
+>  fs/nfs/client.c   |   14 ++++++++++----
+>  fs/nfs/internal.h |    4 ++++
+>  fs/nfs/nfs4proc.c |    7 +++++--
+>  fs/nfs/nfs4xdr.c  |   14 ++++++++++++++
+>  4 files changed, 33 insertions(+), 6 deletions(-)
 > 
-> diff --git a/include/linux/nfsd/nfsfh.h b/include/linux/nfsd/nfsfh.h
-> index 8f641c9..2973e11 100644
-> --- a/include/linux/nfsd/nfsfh.h
-> +++ b/include/linux/nfsd/nfsfh.h
-> @@ -20,7 +20,6 @@
->  # include <linux/fs.h>
+> diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+> index 99ea196..f360739 100644
+> --- a/fs/nfs/client.c
+> +++ b/fs/nfs/client.c
+> @@ -911,8 +911,10 @@ static void nfs_server_set_fsinfo(struct nfs_server *server, struct nfs_fsinfo *
+>  
+>  	server->maxfilesize = fsinfo->maxfilesize;
+>  
+> -	/* We're airborne Set socket buffersize */
+> -	rpc_setbufsize(server->client, server->wsize + 100, server->rsize + 100);
+> +	/* We're airborne Set socket buffersize. */
+> +	if (!nfs4_has_session(server->nfs_client))
+> +		rpc_setbufsize(server->client, server->wsize + 100,
+> +			       server->rsize + 100);
+>  }
+
+Please move this out of generic NFS code.
+
+I really don't like this ugly proliferation of 'if (nfs4_has_session())'
+that appears to be creeping into every single function in the NFS client
+code.
+
+> /*
+> @@ -1260,10 +1262,14 @@ error:
+>  static void nfs4_session_set_rwsize(struct nfs_server *server)
+>  {
+>  #ifdef CONFIG_NFS_V4_1
+> +	struct nfs4_session *sess;
+>  	if (!nfs4_has_session(server->nfs_client))
+>  		return;
+> -	server->rsize = server->nfs_client->cl_session->fc_attrs.max_resp_sz;
+> -	server->wsize = server->nfs_client->cl_session->fc_attrs.max_rqst_sz;
+> +	sess = server->nfs_client->cl_session;
+> +	server->rsize = sess->fc_attrs.max_resp_sz - nfs41_maxread_overhead;
+> +	server->wsize = sess->fc_attrs.max_rqst_sz - nfs41_maxwrite_overhead;
+
+
+For one thing, the r/wsize is conventionally set to be a power of 2,
+since most disks have block sizes of that form.
+
+Secondly, what if the server has given you a max_resp_sz/max_rqst_sz
+that is larger than what you asked for?
+
+> +	rpc_setbufsize(server->client, sess->fc_attrs.max_rqst_sz,
+> +		       sess->fc_attrs.max_resp_sz);
+
+Is anyone ever going to use NFSv4.1 over UDP?
+
+> #endif /* CONFIG_NFS_V4_1 */
+>  }
+>  
+> diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+> index e21b1bb..d946936 100644
+> --- a/fs/nfs/internal.h
+> +++ b/fs/nfs/internal.h
+> @@ -195,6 +195,10 @@ static inline void nfs4_restart_rpc(struct rpc_task *task,
+>  #ifdef CONFIG_NFS_V4
+>  extern __be32 *nfs4_decode_dirent(__be32 *p, struct nfs_entry *entry, int plus);
 >  #endif
->  #include <linux/nfsd/const.h>
-> -#include <linux/nfsd/debug.h>
+> +#ifdef CONFIG_NFS_V4_1
+> +extern const u32 nfs41_maxread_overhead;
+> +extern const u32 nfs41_maxwrite_overhead;
+> +#endif
 >  
->  /*
->   * This is the old "dentry style" Linux NFSv2 file handle.
-> @@ -329,9 +328,6 @@ fh_lock_nested(struct svc_fh *fhp, unsigned int subclass)
->  	struct dentry	*dentry = fhp->fh_dentry;
->  	struct inode	*inode;
+>  /* nfs4proc.c */
+>  #ifdef CONFIG_NFS_V4
+> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+> index ff37454..ef77d40 100644
+> --- a/fs/nfs/nfs4proc.c
+> +++ b/fs/nfs/nfs4proc.c
+> @@ -4827,13 +4827,16 @@ int nfs4_proc_destroy_session(struct nfs4_session *session)
+>  int nfs4_init_session(struct nfs_server *server)
+>  {
+>  	struct nfs_client *clp = server->nfs_client;
+> +	struct nfs4_session *session;
+>  	int ret;
 >  
-> -	dfprintk(FILEOP, "nfsd: fh_lock(%s) locked = %d\n",
-> -			SVCFH_fmt(fhp), fhp->fh_locked);
-> -
->  	BUG_ON(!dentry);
+>  	if (!nfs4_has_session(clp))
+>  		return 0;
 >  
->  	if (fhp->fh_locked) {
+> -	clp->cl_session->fc_attrs.max_rqst_sz = server->wsize;
+> -	clp->cl_session->fc_attrs.max_resp_sz = server->rsize;
+> +	session = clp->cl_session;
+> +	session->fc_attrs.max_rqst_sz = server->wsize + nfs41_maxwrite_overhead;
+> +	session->fc_attrs.max_resp_sz = server->rsize + nfs41_maxread_overhead;
+> +
+>  	ret = nfs4_recover_expired_lease(server);
+>  	if (!ret)
+>  		ret = nfs4_check_client_ready(clp);
+> diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+> index 20b4e30..fc36af4 100644
+> --- a/fs/nfs/nfs4xdr.c
+> +++ b/fs/nfs/nfs4xdr.c
+> @@ -46,6 +46,7 @@
+>  #include <linux/proc_fs.h>
+>  #include <linux/kdev_t.h>
+>  #include <linux/sunrpc/clnt.h>
+> +#include <linux/sunrpc/msg_prot.h>
+>  #include <linux/nfs.h>
+>  #include <linux/nfs4.h>
+>  #include <linux/nfs_fs.h>
+> @@ -676,6 +677,19 @@ static int nfs4_stat_to_errno(int);
+>  					 decode_sequence_maxsz + \
+>  					 decode_putrootfh_maxsz + \
+>  					 decode_fsinfo_maxsz)
+> +
+> +const u32 nfs41_maxwrite_overhead = ((RPC_MAX_HEADER_WITH_AUTH +
+> +				      compound_encode_hdr_maxsz +
+> +				      encode_sequence_maxsz +
+> +				      encode_putfh_maxsz +
+> +				      encode_getattr_maxsz) *
+> +				     XDR_UNIT);
+> +
+> +const u32 nfs41_maxread_overhead = ((RPC_MAX_HEADER_WITH_AUTH +
+> +				     compound_decode_hdr_maxsz +
+> +				     decode_sequence_maxsz +
+> +				     decode_putfh_maxsz) *
+> +				    XDR_UNIT);
+>  #endif /* CONFIG_NFS_V4_1 */
+>  
+>  static const umode_t nfs_type2fmt[] = {
 > -- 
-> 1.6.5.2
+> 1.6.2.5
 > 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+
+
