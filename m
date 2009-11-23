@@ -1,7 +1,7 @@
 From: Boaz Harrosh <bharrosh@panasas.com>
-Subject: [PATCH 4/6] nfsd: Headers Independence and include cleanups
-Date: Mon, 23 Nov 2009 17:59:38 +0200
-Message-ID: <1258991978-25419-1-git-send-email-bharrosh@panasas.com>
+Subject: [PATCH 5/6] nfsd: Source files #include cleanups
+Date: Mon, 23 Nov 2009 17:59:51 +0200
+Message-ID: <1258991991-25446-1-git-send-email-bharrosh@panasas.com>
 References: <4B0AB039.6020608@panasas.com>
 Cc: linux-fsdevel <linux-fsdevel@vger.kernel.org>,
 	Al Viro <viro@ZenIV.linux.org.uk>,
@@ -11,194 +11,617 @@ To: "J. Bruce Fields" <bfields@citi.umich.edu>,
 	NFS list <linux-nfs@vger.kernel.org>,
 	pNFS Mailing List <pnfs@linux-nfs.org>,
 	Trond Myklebust <Trond.M
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:17944 "EHLO
-	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1754978AbZKWP7h (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Nov 2009 10:59:37 -0500
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 In-Reply-To: <4B0AB039.6020608@panasas.com>
-Sender: linux-nfs-owner@vger.kernel.org
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-* Add includes that are directly used by headers
-* Remove includes that are not needed
+Now that the headers are fixed and carry their own wait, all fs/nfsd/
+source files can include a minimal set of headers. and still compile just
+fine.
 
-These are the changes made:
-
-[xdr.h]
-struct nfsd_readdirres has an embedded struct readdir_cd from nfsd.h
-fixing that we can drop other includes
-
-[xdr4.h]
-embedded types defined both at state.h and nfsd.h
-
-[syscall.h]
-After export.h fix none of these stuff is needed.
-fix extra space in # include <> statement
-
-[stats.h]
-does not need <linux/nfs4.h> but was export to user-mode
-so I don't touch it
-
-[state.h]
-embedded types from nfsfh.h like struct knfsd_fh. bringing that
-eliminates the need for all other includes
-
-[nfsfh.h]
-directly manipulating types from sunrpc/svc.h.
-Removed Other unused headers.
-
-[nfsd.h]
-removed unused headers include
-
-[export.h]
-lots of sunrpc/svc.h types and a single prototype declaration
-with pointer from nfsfh.h, but all users of export.h do need
-nfsfh.h any way. remove now un-needed include.
-
-[const.h]
-Unfixed (not independent)
-
-[cache.h]
-could do with a forward declaration of "struct svc_rqst;"
-from sunrpc/svc.h but all users absolutely will need
-sunrpc/svc.h it is easier overall this way.
+This patch should improve the compilation speed of the nfsd module.
 
 Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
 ---
- include/linux/nfsd/cache.h   |    3 +--
- include/linux/nfsd/export.h  |    2 +-
- include/linux/nfsd/nfsd.h    |    4 ----
- include/linux/nfsd/nfsfh.h   |    3 +--
- include/linux/nfsd/state.h   |    4 +---
- include/linux/nfsd/syscall.h |    8 +-------
- include/linux/nfsd/xdr.h     |    3 +--
- include/linux/nfsd/xdr4.h    |    3 ++-
- 8 files changed, 8 insertions(+), 22 deletions(-)
+ fs/nfsd/auth.c         |    4 ----
+ fs/nfsd/export.c       |   15 ---------------
+ fs/nfsd/lockd.c        |    5 -----
+ fs/nfsd/nfs2acl.c      |    4 ----
+ fs/nfsd/nfs3acl.c      |    3 ---
+ fs/nfsd/nfs3proc.c     |   13 -------------
+ fs/nfsd/nfs3xdr.c      |   11 -----------
+ fs/nfsd/nfs4acl.c      |    8 --------
+ fs/nfsd/nfs4callback.c |   13 -------------
+ fs/nfsd/nfs4idmap.c    |   15 +--------------
+ fs/nfsd/nfs4proc.c     |   10 ----------
+ fs/nfsd/nfs4recover.c  |    8 --------
+ fs/nfsd/nfs4state.c    |   15 ---------------
+ fs/nfsd/nfs4xdr.c      |   12 +-----------
+ fs/nfsd/nfscache.c     |    8 --------
+ fs/nfsd/nfsctl.c       |   25 -------------------------
+ fs/nfsd/nfsfh.c        |    9 ---------
+ fs/nfsd/nfsproc.c      |   13 -------------
+ fs/nfsd/nfssvc.c       |   15 ---------------
+ fs/nfsd/nfsxdr.c       |    8 --------
+ fs/nfsd/stats.c        |    5 -----
+ fs/nfsd/vfs.c          |   21 ---------------------
+ 22 files changed, 2 insertions(+), 238 deletions(-)
 
-diff --git a/include/linux/nfsd/cache.h b/include/linux/nfsd/cache.h
-index 3a3f589..a165425 100644
---- a/include/linux/nfsd/cache.h
-+++ b/include/linux/nfsd/cache.h
-@@ -10,8 +10,7 @@
- #ifndef NFSCACHE_H
- #define NFSCACHE_H
+diff --git a/fs/nfsd/auth.c b/fs/nfsd/auth.c
+index 36fcabb..ad354d2 100644
+--- a/fs/nfsd/auth.c
++++ b/fs/nfsd/auth.c
+@@ -4,12 +4,8 @@
+  * Copyright (C) 1995, 1996 Olaf Kirch <okir@monad.swb.de>
+  */
  
+-#include <linux/types.h>
+ #include <linux/sched.h>
+-#include <linux/sunrpc/svc.h>
+-#include <linux/sunrpc/svcauth.h>
+ #include <linux/nfsd/nfsd.h>
+-#include <linux/nfsd/export.h>
+ #include "auth.h"
+ 
+ int nfsexp_flags(struct svc_rqst *rqstp, struct svc_export *exp)
+diff --git a/fs/nfsd/export.c b/fs/nfsd/export.c
+index b73baba..68e63f4 100644
+--- a/fs/nfsd/export.c
++++ b/fs/nfsd/export.c
+@@ -14,27 +14,12 @@
+  * Copyright (C) 1995, 1996 Olaf Kirch, <okir@monad.swb.de>
+  */
+ 
+-#include <linux/unistd.h>
+-#include <linux/slab.h>
+-#include <linux/stat.h>
+-#include <linux/in.h>
+-#include <linux/seq_file.h>
+-#include <linux/syscalls.h>
+-#include <linux/rwsem.h>
+-#include <linux/dcache.h>
+ #include <linux/namei.h>
+-#include <linux/mount.h>
+-#include <linux/hash.h>
+ #include <linux/module.h>
+ #include <linux/exportfs.h>
+ 
+-#include <linux/sunrpc/svc.h>
+ #include <linux/nfsd/nfsd.h>
+-#include <linux/nfsd/nfsfh.h>
+ #include <linux/nfsd/syscall.h>
+-#include <linux/lockd/bind.h>
+-#include <linux/sunrpc/msg_prot.h>
+-#include <linux/sunrpc/gss_api.h>
+ #include <net/ipv6.h>
+ 
+ #define NFSDDBG_FACILITY	NFSDDBG_EXPORT
+diff --git a/fs/nfsd/lockd.c b/fs/nfsd/lockd.c
+index b2786a5..19a16e1 100644
+--- a/fs/nfsd/lockd.c
++++ b/fs/nfsd/lockd.c
+@@ -8,12 +8,7 @@
+  * Copyright (C) 1996, Olaf Kirch <okir@monad.swb.de>
+  */
+ 
+-#include <linux/types.h>
+-#include <linux/fs.h>
+ #include <linux/file.h>
+-#include <linux/mount.h>
+-#include <linux/sunrpc/clnt.h>
+-#include <linux/sunrpc/svc.h>
+ #include <linux/nfsd/nfsd.h>
+ #include <linux/lockd/bind.h>
+ 
+diff --git a/fs/nfsd/nfs2acl.c b/fs/nfsd/nfs2acl.c
+index e2a17f0..64c368b 100644
+--- a/fs/nfsd/nfs2acl.c
++++ b/fs/nfsd/nfs2acl.c
+@@ -6,13 +6,9 @@
+  * Copyright (C) 2002-2003 Andreas Gruenbacher <agruen@suse.de>
+  */
+ 
+-#include <linux/sunrpc/svc.h>
+-#include <linux/nfs.h>
+ #include <linux/nfsd/nfsd.h>
+ #include <linux/nfsd/cache.h>
+-#include <linux/nfsd/xdr.h>
+ #include <linux/nfsd/xdr3.h>
+-#include <linux/posix_acl.h>
+ #include <linux/nfsacl.h>
+ 
+ #define NFSDDBG_FACILITY		NFSDDBG_PROC
+diff --git a/fs/nfsd/nfs3acl.c b/fs/nfsd/nfs3acl.c
+index ff73596..8e44949 100644
+--- a/fs/nfsd/nfs3acl.c
++++ b/fs/nfsd/nfs3acl.c
+@@ -6,12 +6,9 @@
+  * Copyright (C) 2002-2003 Andreas Gruenbacher <agruen@suse.de>
+  */
+ 
+-#include <linux/sunrpc/svc.h>
+-#include <linux/nfs3.h>
+ #include <linux/nfsd/nfsd.h>
+ #include <linux/nfsd/cache.h>
+ #include <linux/nfsd/xdr3.h>
+-#include <linux/posix_acl.h>
+ #include <linux/nfsacl.h>
+ 
+ #define RETURN_STATUS(st)	{ resp->status = (st); return (st); }
+diff --git a/fs/nfsd/nfs3proc.c b/fs/nfsd/nfs3proc.c
+index a713c41..ed6112e 100644
+--- a/fs/nfsd/nfs3proc.c
++++ b/fs/nfsd/nfs3proc.c
+@@ -6,25 +6,12 @@
+  * Copyright (C) 1996, 1997, 1998 Olaf Kirch <okir@monad.swb.de>
+  */
+ 
+-#include <linux/linkage.h>
+-#include <linux/time.h>
+-#include <linux/errno.h>
+ #include <linux/fs.h>
+ #include <linux/ext2_fs.h>
+-#include <linux/stat.h>
+-#include <linux/fcntl.h>
+-#include <linux/net.h>
+-#include <linux/in.h>
+-#include <linux/unistd.h>
+-#include <linux/slab.h>
+-#include <linux/major.h>
+ #include <linux/magic.h>
+ 
+-#include <linux/sunrpc/svc.h>
+-#include <linux/nfsd/nfsd.h>
+ #include <linux/nfsd/cache.h>
+ #include <linux/nfsd/xdr3.h>
+-#include <linux/nfs3.h>
+ 
+ #define NFSDDBG_FACILITY		NFSDDBG_PROC
+ 
+diff --git a/fs/nfsd/nfs3xdr.c b/fs/nfsd/nfs3xdr.c
+index edf926e..97b3619 100644
+--- a/fs/nfsd/nfs3xdr.c
++++ b/fs/nfsd/nfs3xdr.c
+@@ -8,18 +8,7 @@
+  * 2003-08-09 Jamie Lokier: Use htonl() for nanoseconds, not htons()!
+  */
+ 
+-#include <linux/types.h>
+-#include <linux/time.h>
+-#include <linux/nfs3.h>
+-#include <linux/list.h>
+-#include <linux/spinlock.h>
+-#include <linux/dcache.h>
+ #include <linux/namei.h>
+-#include <linux/mm.h>
+-#include <linux/vfs.h>
+-#include <linux/sunrpc/xdr.h>
+-#include <linux/sunrpc/svc.h>
+-#include <linux/nfsd/nfsd.h>
+ #include <linux/nfsd/xdr3.h>
+ #include "auth.h"
+ 
+diff --git a/fs/nfsd/nfs4acl.c b/fs/nfsd/nfs4acl.c
+index 6d9c6aa..d6f0cea 100644
+--- a/fs/nfsd/nfs4acl.c
++++ b/fs/nfsd/nfs4acl.c
+@@ -36,15 +36,7 @@
+  *  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+  */
+ 
+-#include <linux/string.h>
+-#include <linux/slab.h>
+-#include <linux/list.h>
+-#include <linux/types.h>
+-#include <linux/fs.h>
+-#include <linux/module.h>
+ #include <linux/nfs_fs.h>
+-#include <linux/posix_acl.h>
+-#include <linux/nfs4.h>
+ #include <linux/nfs4_acl.h>
+ 
+ 
+diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
+index 24e8d78..4fe3960 100644
+--- a/fs/nfsd/nfs4callback.c
++++ b/fs/nfsd/nfs4callback.c
+@@ -33,22 +33,9 @@
+  *  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+  */
+ 
+-#include <linux/module.h>
+-#include <linux/list.h>
+-#include <linux/inet.h>
+-#include <linux/errno.h>
+-#include <linux/delay.h>
+-#include <linux/sched.h>
+-#include <linux/kthread.h>
+-#include <linux/sunrpc/xdr.h>
+-#include <linux/sunrpc/svc.h>
+ #include <linux/sunrpc/clnt.h>
+-#include <linux/sunrpc/svcsock.h>
+ #include <linux/nfsd/nfsd.h>
+ #include <linux/nfsd/state.h>
+-#include <linux/sunrpc/sched.h>
+-#include <linux/nfs4.h>
+-#include <linux/sunrpc/xprtsock.h>
+ 
+ #define NFSDDBG_FACILITY                NFSDDBG_PROC
+ 
+diff --git a/fs/nfsd/nfs4idmap.c b/fs/nfsd/nfs4idmap.c
+index ba2c199..8e518cd 100644
+--- a/fs/nfsd/nfs4idmap.c
++++ b/fs/nfsd/nfs4idmap.c
+@@ -35,22 +35,9 @@
+  */
+ 
+ #include <linux/module.h>
+-#include <linux/init.h>
+-
+-#include <linux/mm.h>
+-#include <linux/errno.h>
+-#include <linux/string.h>
+-#include <linux/sunrpc/clnt.h>
+-#include <linux/nfs.h>
+-#include <linux/nfs4.h>
+-#include <linux/nfs_fs.h>
+-#include <linux/nfs_page.h>
+-#include <linux/sunrpc/cache.h>
+ #include <linux/nfsd_idmap.h>
+-#include <linux/list.h>
+-#include <linux/time.h>
+ #include <linux/seq_file.h>
+-#include <linux/sunrpc/svcauth.h>
++#include <linux/sched.h>
+ 
+ /*
+  * Cache entry
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index bebc0c2..e3c1e6d 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -34,20 +34,10 @@
+  *  NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+  *  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+  */
+-
+-#include <linux/param.h>
+-#include <linux/major.h>
+-#include <linux/slab.h>
+ #include <linux/file.h>
+ 
+-#include <linux/sunrpc/svc.h>
+-#include <linux/nfsd/nfsd.h>
+ #include <linux/nfsd/cache.h>
+-#include <linux/nfs4.h>
+-#include <linux/nfsd/state.h>
+ #include <linux/nfsd/xdr4.h>
+-#include <linux/nfs4_acl.h>
+-#include <linux/sunrpc/gss_api.h>
+ 
+ #define NFSDDBG_FACILITY		NFSDDBG_PROC
+ 
+diff --git a/fs/nfsd/nfs4recover.c b/fs/nfsd/nfs4recover.c
+index b534840..be9e712 100644
+--- a/fs/nfsd/nfs4recover.c
++++ b/fs/nfsd/nfs4recover.c
+@@ -33,20 +33,12 @@
+ *
+ */
+ 
+-#include <linux/err.h>
+-#include <linux/sunrpc/svc.h>
+ #include <linux/nfsd/nfsd.h>
+-#include <linux/nfs4.h>
+ #include <linux/nfsd/state.h>
+-#include <linux/nfsd/xdr4.h>
+-#include <linux/param.h>
+ #include <linux/file.h>
+ #include <linux/namei.h>
+-#include <asm/uaccess.h>
+-#include <linux/scatterlist.h>
+ #include <linux/crypto.h>
+ #include <linux/sched.h>
+-#include <linux/mount.h>
+ 
+ #define NFSDDBG_FACILITY                NFSDDBG_PROC
+ 
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index c8b621a..93f801c 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -34,26 +34,11 @@
+ *
+ */
+ 
+-#include <linux/param.h>
+-#include <linux/major.h>
+-#include <linux/slab.h>
+-
+-#include <linux/sunrpc/svc.h>
+-#include <linux/nfsd/nfsd.h>
+-#include <linux/nfsd/cache.h>
+ #include <linux/file.h>
+-#include <linux/mount.h>
+-#include <linux/workqueue.h>
+ #include <linux/smp_lock.h>
+-#include <linux/kthread.h>
+-#include <linux/nfs4.h>
+-#include <linux/nfsd/state.h>
+ #include <linux/nfsd/xdr4.h>
+ #include <linux/namei.h>
+ #include <linux/swap.h>
+-#include <linux/mutex.h>
+-#include <linux/lockd/bind.h>
+-#include <linux/module.h>
+ #include <linux/sunrpc/svcauth_gss.h>
+ #include <linux/sunrpc/clnt.h>
+ 
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index 0fbd50c..444eeca 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -40,22 +40,12 @@
+  * at the end of nfs4svc_decode_compoundargs.
+  */
+ 
+-#include <linux/param.h>
+-#include <linux/smp.h>
+-#include <linux/fs.h>
+ #include <linux/namei.h>
+-#include <linux/vfs.h>
++#include <linux/statfs.h>
+ #include <linux/utsname.h>
+-#include <linux/sunrpc/xdr.h>
+-#include <linux/sunrpc/svc.h>
+-#include <linux/sunrpc/clnt.h>
+-#include <linux/nfsd/nfsd.h>
+-#include <linux/nfsd/state.h>
+ #include <linux/nfsd/xdr4.h>
+ #include <linux/nfsd_idmap.h>
+-#include <linux/nfs4.h>
+ #include <linux/nfs4_acl.h>
+-#include <linux/sunrpc/gss_api.h>
+ #include <linux/sunrpc/svcauth_gss.h>
+ 
+ #define NFSDDBG_FACILITY		NFSDDBG_XDR
+diff --git a/fs/nfsd/nfscache.c b/fs/nfsd/nfscache.c
+index 4638635..96694b8 100644
+--- a/fs/nfsd/nfscache.c
++++ b/fs/nfsd/nfscache.c
+@@ -10,14 +10,6 @@
+  * Copyright (C) 1995, 1996 Olaf Kirch <okir@monad.swb.de>
+  */
+ 
+-#include <linux/kernel.h>
+-#include <linux/time.h>
+-#include <linux/slab.h>
+-#include <linux/string.h>
+-#include <linux/spinlock.h>
+-#include <linux/list.h>
+-
+-#include <linux/sunrpc/svc.h>
+ #include <linux/nfsd/nfsd.h>
+ #include <linux/nfsd/cache.h>
+ 
+diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
+index 5c01fc1..e4f49fd 100644
+--- a/fs/nfsd/nfsctl.c
++++ b/fs/nfsd/nfsctl.c
+@@ -6,42 +6,17 @@
+  * Copyright (C) 1995, 1996 Olaf Kirch <okir@monad.swb.de>
+  */
+ 
+-#include <linux/module.h>
+-
+-#include <linux/linkage.h>
+-#include <linux/time.h>
+-#include <linux/errno.h>
+-#include <linux/fs.h>
+ #include <linux/namei.h>
+-#include <linux/fcntl.h>
+-#include <linux/net.h>
+-#include <linux/in.h>
+-#include <linux/syscalls.h>
+-#include <linux/unistd.h>
+-#include <linux/slab.h>
+-#include <linux/proc_fs.h>
+-#include <linux/seq_file.h>
+-#include <linux/pagemap.h>
+-#include <linux/init.h>
+-#include <linux/inet.h>
+-#include <linux/string.h>
+ #include <linux/ctype.h>
+ 
+-#include <linux/nfs.h>
+ #include <linux/nfsd_idmap.h>
+-#include <linux/lockd/bind.h>
+-#include <linux/sunrpc/svc.h>
+ #include <linux/sunrpc/svcsock.h>
+ #include <linux/nfsd/nfsd.h>
+ #include <linux/nfsd/cache.h>
+-#include <linux/nfsd/xdr.h>
+ #include <linux/nfsd/syscall.h>
+ #include <linux/lockd/lockd.h>
+ #include <linux/sunrpc/clnt.h>
+ 
+-#include <asm/uaccess.h>
+-#include <net/ipv6.h>
+-
+ /*
+  *	We have a single directory with 9 nodes in it.
+  */
+diff --git a/fs/nfsd/nfsfh.c b/fs/nfsd/nfsfh.c
+index 01965b2..01f142f 100644
+--- a/fs/nfsd/nfsfh.c
++++ b/fs/nfsd/nfsfh.c
+@@ -9,17 +9,8 @@
+  * ... and again Southern-Winter 2001 to support export_operations
+  */
+ 
+-#include <linux/slab.h>
+-#include <linux/fs.h>
+-#include <linux/unistd.h>
+-#include <linux/string.h>
+-#include <linux/stat.h>
+-#include <linux/dcache.h>
+ #include <linux/exportfs.h>
+-#include <linux/mount.h>
+ 
+-#include <linux/sunrpc/clnt.h>
+-#include <linux/sunrpc/svc.h>
+ #include <linux/sunrpc/svcauth_gss.h>
+ #include <linux/nfsd/nfsd.h>
+ #include "auth.h"
+diff --git a/fs/nfsd/nfsproc.c b/fs/nfsd/nfsproc.c
+index c5393d1..2307693 100644
+--- a/fs/nfsd/nfsproc.c
++++ b/fs/nfsd/nfsproc.c
+@@ -7,21 +7,8 @@
+  * Copyright (C) 1995-1997 Olaf Kirch <okir@monad.swb.de>
+  */
+ 
+-#include <linux/linkage.h>
+-#include <linux/time.h>
+-#include <linux/errno.h>
+-#include <linux/fs.h>
+-#include <linux/stat.h>
+-#include <linux/fcntl.h>
+-#include <linux/net.h>
+-#include <linux/in.h>
+ #include <linux/namei.h>
+-#include <linux/unistd.h>
+-#include <linux/slab.h>
+ 
+-#include <linux/sunrpc/clnt.h>
+-#include <linux/sunrpc/svc.h>
+-#include <linux/nfsd/nfsd.h>
+ #include <linux/nfsd/cache.h>
+ #include <linux/nfsd/xdr.h>
+ 
+diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
+index 67ea83e..ab4b321 100644
+--- a/fs/nfsd/nfssvc.c
++++ b/fs/nfsd/nfssvc.c
+@@ -8,30 +8,15 @@
+  * Copyright (C) 1995, 1996, 1997 Olaf Kirch <okir@monad.swb.de>
+  */
+ 
+-#include <linux/module.h>
+ #include <linux/sched.h>
+-#include <linux/time.h>
+-#include <linux/errno.h>
+-#include <linux/nfs.h>
 -#include <linux/in.h>
 -#include <linux/uio.h>
-+#include <linux/sunrpc/svc.h>
- 
- /*
-  * Representation of a reply cache entry.
-diff --git a/include/linux/nfsd/export.h b/include/linux/nfsd/export.h
-index a6d9ef2..ef3d416 100644
---- a/include/linux/nfsd/export.h
-+++ b/include/linux/nfsd/export.h
-@@ -12,7 +12,7 @@
- 
- # include <linux/types.h>
- #ifdef __KERNEL__
--# include <linux/in.h>
-+# include <linux/nfsd/nfsfh.h>
- #endif
- 
- /*
-diff --git a/include/linux/nfsd/nfsd.h b/include/linux/nfsd/nfsd.h
-index 510ffdd..b6fdc76 100644
---- a/include/linux/nfsd/nfsd.h
-+++ b/include/linux/nfsd/nfsd.h
-@@ -11,13 +11,9 @@
- #define LINUX_NFSD_NFSD_H
- 
- #include <linux/types.h>
 -#include <linux/unistd.h>
--#include <linux/fs.h>
--#include <linux/posix_acl.h>
- #include <linux/mount.h>
+-#include <linux/slab.h>
+-#include <linux/smp.h>
+ #include <linux/freezer.h>
+ #include <linux/fs_struct.h>
+-#include <linux/kthread.h>
+ #include <linux/swap.h>
  
- #include <linux/nfsd/debug.h>
--#include <linux/nfsd/nfsfh.h>
- #include <linux/nfsd/export.h>
- #include <linux/nfsd/stats.h>
- /*
-diff --git a/include/linux/nfsd/nfsfh.h b/include/linux/nfsd/nfsfh.h
-index 2973e11..49523ed 100644
---- a/include/linux/nfsd/nfsfh.h
-+++ b/include/linux/nfsd/nfsfh.h
-@@ -16,8 +16,7 @@
+-#include <linux/sunrpc/types.h>
+ #include <linux/sunrpc/stats.h>
+-#include <linux/sunrpc/svc.h>
+ #include <linux/sunrpc/svcsock.h>
+-#include <linux/sunrpc/cache.h>
+ #include <linux/nfsd/nfsd.h>
+-#include <linux/nfsd/stats.h>
+ #include <linux/nfsd/cache.h>
+-#include <linux/nfsd/syscall.h>
+ #include <linux/lockd/bind.h>
+ #include <linux/nfsacl.h>
+ #include <linux/seq_file.h>
+diff --git a/fs/nfsd/nfsxdr.c b/fs/nfsd/nfsxdr.c
+index afd08e2..5e0603d 100644
+--- a/fs/nfsd/nfsxdr.c
++++ b/fs/nfsd/nfsxdr.c
+@@ -6,15 +6,7 @@
+  * Copyright (C) 1995, 1996 Olaf Kirch <okir@monad.swb.de>
+  */
  
- # include <linux/types.h>
- #ifdef __KERNEL__
--# include <linux/string.h>
--# include <linux/fs.h>
-+# include <linux/sunrpc/svc.h>
- #endif
- #include <linux/nfsd/const.h>
- 
-diff --git a/include/linux/nfsd/state.h b/include/linux/nfsd/state.h
-index 5aadf8a..2af7568 100644
---- a/include/linux/nfsd/state.h
-+++ b/include/linux/nfsd/state.h
-@@ -37,9 +37,7 @@
- #ifndef _NFSD4_STATE_H
- #define _NFSD4_STATE_H
- 
--#include <linux/list.h>
--#include <linux/kref.h>
--#include <linux/sunrpc/clnt.h>
-+#include <linux/nfsd/nfsfh.h>
- 
- typedef struct {
- 	u32             cl_boot;
-diff --git a/include/linux/nfsd/syscall.h b/include/linux/nfsd/syscall.h
-index 7a3b565..812bc1e 100644
---- a/include/linux/nfsd/syscall.h
-+++ b/include/linux/nfsd/syscall.h
-@@ -9,14 +9,8 @@
- #ifndef NFSD_SYSCALL_H
- #define NFSD_SYSCALL_H
- 
--# include <linux/types.h>
--#ifdef __KERNEL__
--# include <linux/in.h>
--#endif 
--#include <linux/posix_types.h>
--#include <linux/nfsd/const.h>
-+#include <linux/types.h>
- #include <linux/nfsd/export.h>
--#include <linux/nfsd/nfsfh.h>
- 
- /*
-  * Version of the syscall interface
-diff --git a/include/linux/nfsd/xdr.h b/include/linux/nfsd/xdr.h
-index a0132ef..58f824d 100644
---- a/include/linux/nfsd/xdr.h
-+++ b/include/linux/nfsd/xdr.h
-@@ -7,9 +7,8 @@
- #ifndef LINUX_NFSD_H
- #define LINUX_NFSD_H
- 
--#include <linux/fs.h>
- #include <linux/vfs.h>
+-#include <linux/types.h>
+-#include <linux/time.h>
 -#include <linux/nfs.h>
-+#include <linux/nfsd/nfsd.h>
+-#include <linux/vfs.h>
+-#include <linux/sunrpc/xdr.h>
+-#include <linux/sunrpc/svc.h>
+-#include <linux/nfsd/nfsd.h>
+ #include <linux/nfsd/xdr.h>
+-#include <linux/mm.h>
+ #include "auth.h"
  
- struct nfsd_fhandle {
- 	struct svc_fh		fh;
-diff --git a/include/linux/nfsd/xdr4.h b/include/linux/nfsd/xdr4.h
-index 73164c2..1bf2662 100644
---- a/include/linux/nfsd/xdr4.h
-+++ b/include/linux/nfsd/xdr4.h
-@@ -39,7 +39,8 @@
- #ifndef _LINUX_NFSD_XDR4_H
- #define _LINUX_NFSD_XDR4_H
+ #define NFSDDBG_FACILITY		NFSDDBG_XDR
+diff --git a/fs/nfsd/stats.c b/fs/nfsd/stats.c
+index 71944cd..e3e411e 100644
+--- a/fs/nfsd/stats.c
++++ b/fs/nfsd/stats.c
+@@ -23,14 +23,9 @@
+  * Copyright (C) 1995, 1996, 1997 Olaf Kirch <okir@monad.swb.de>
+  */
  
+-#include <linux/kernel.h>
+-#include <linux/time.h>
+-#include <linux/proc_fs.h>
+ #include <linux/seq_file.h>
+-#include <linux/stat.h>
+ #include <linux/module.h>
+ 
+-#include <linux/sunrpc/svc.h>
+ #include <linux/sunrpc/stats.h>
+ #include <linux/nfsd/nfsd.h>
+ #include <linux/nfsd/stats.h>
+diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+index 6385739..a899429 100644
+--- a/fs/nfsd/vfs.c
++++ b/fs/nfsd/vfs.c
+@@ -16,43 +16,22 @@
+  * Zerocpy NFS support (C) 2002 Hirokazu Takahashi <taka@valinux.co.jp>
+  */
+ 
+-#include <linux/string.h>
+-#include <linux/time.h>
+-#include <linux/errno.h>
+ #include <linux/fs.h>
+ #include <linux/file.h>
+-#include <linux/mount.h>
+-#include <linux/major.h>
+ #include <linux/splice.h>
+-#include <linux/proc_fs.h>
+-#include <linux/stat.h>
+ #include <linux/fcntl.h>
+-#include <linux/net.h>
+-#include <linux/unistd.h>
+-#include <linux/slab.h>
+-#include <linux/pagemap.h>
+-#include <linux/in.h>
+-#include <linux/module.h>
+ #include <linux/namei.h>
+-#include <linux/vfs.h>
+-#include <linux/delay.h>
+-#include <linux/sunrpc/svc.h>
+ #include <linux/nfsd/nfsd.h>
+ #ifdef CONFIG_NFSD_V3
+-#include <linux/nfs3.h>
+ #include <linux/nfsd/xdr3.h>
+ #endif /* CONFIG_NFSD_V3 */
+-#include <linux/nfsd/nfsfh.h>
+ #include <linux/quotaops.h>
+ #include <linux/fsnotify.h>
+-#include <linux/posix_acl.h>
+ #include <linux/posix_acl_xattr.h>
+ #include <linux/xattr.h>
+ #ifdef CONFIG_NFSD_V4
 -#include <linux/nfs4.h>
-+#include <linux/nfsd/state.h>
-+#include <linux/nfsd/nfsd.h>
- 
- #define NFSD4_MAX_TAGLEN	128
- #define XDR_LEN(n)                     (((n) + 3) & ~3)
+ #include <linux/nfs4_acl.h>
+ #include <linux/nfsd_idmap.h>
+-#include <linux/security.h>
+ #endif /* CONFIG_NFSD_V4 */
+ #include <linux/jhash.h>
+ #include <linux/ima.h>
 -- 
 1.6.5.2
 
