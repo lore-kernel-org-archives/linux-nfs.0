@@ -1,46 +1,38 @@
 From: Peter Staubach <staubach@redhat.com>
 Subject: Re: Apparent race condition w/ NFSv3 mktemp+write+rename
-Date: Tue, 24 Nov 2009 15:03:04 -0500
-Message-ID: <4B0C3BF8.1070904@redhat.com>
-References: <hehc8g$k8f$1@ger.gmane.org>
+Date: Tue, 24 Nov 2009 15:30:47 -0500
+Message-ID: <4B0C4277.8050004@redhat.com>
+References: <hehc8g$k8f$1@ger.gmane.org> <4B0C3BF8.1070904@redhat.com> <4B0C4116.10903@dyfis.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Cc: linux-nfs@vger.kernel.org
 To: Charles Duffy <charles-7s4ginpmXnFeoWH0uzbU5w@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:21397 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:59479 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757601AbZKXUDA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 24 Nov 2009 15:03:00 -0500
-In-Reply-To: <hehc8g$k8f$1@ger.gmane.org>
+	id S932833AbZKXUam (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 24 Nov 2009 15:30:42 -0500
+In-Reply-To: <4B0C4116.10903-7s4ginpmXnFeoWH0uzbU5w@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 Charles Duffy wrote:
-> Howdy. With a very heavily loaded (CentOS 5 - Linux 2.6.18-128.el5)
-> NFSv3 client and server, I've experienced the following sporadic issue:
+> Peter Staubach wrote:
+>> At the end, does /mnt/foobar exist and contain the string, "baz"?
+>>   
+> I'll follow up with that information with that after the issue is next
+> reproduced. (The mv operation is replacing a prior instance of
+> /mnt/foobar, so content will need to be inspected to determine whether
+> it was successful).
 > 
-> function atomic_write() {
->     local filename="$1"
->     local tempfile
->     tempfile="$(mktemp "${filename}.XXXXXX")"
->     cat >"${tempfile}" && mv "${tempfile}" "${filename}"
-> }
-> 
-> $ atomic_write /mnt/foobar <<<"baz"
-> mv: cannot move `/mnt/foobar.gO1881' to `/mnt/foobar': No such file or
-> directory
-> 
-> Are my assumptions regarding available semantics fair and reasonable?
+>> What mount options are being used on the client?
+>>   
+> rw,vers=3,rsize=32768,wsize=32768,hard,intr,proto=tcp,timeo=600,retrans=2,sec=sys,addr=<redacted>
 > 
 
-At the end, does /mnt/foobar exist and contain the string, "baz"?
+Hmmm.  This appears to be the defaults.
 
-What mount options are being used on the client?
-
-It sounds to me as if the duplicate request cache on the server
-is not working, perhaps because entries are being recycled too
-quickly, and does not catch a retransmitted RENAME operation.
+Does this take a very long time to run when it fails like this?
 
 	Thanx...
 
