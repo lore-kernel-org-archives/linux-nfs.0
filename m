@@ -1,105 +1,94 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from acsinet11.oracle.com ([141.146.126.233]:42518 "EHLO
-	acsinet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758201AbZKJV5K (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 10 Nov 2009 16:57:10 -0500
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 00/29] IPv6 support for statd
-To: steved@redhat.com
-Cc: linux-nfs@vger.kernel.org, Chris.Mason@oracle.com
-Date: Tue, 10 Nov 2009 16:56:09 -0500
-Message-ID: <20091110215447.23822.15275.stgit@matisse.1015granger.net>
-Content-Type: text/plain; charset="utf-8"
+Received: from cantor.suse.de ([195.135.220.2]:46555 "EHLO mx1.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755655AbZKXCyI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 23 Nov 2009 21:54:08 -0500
+Date: Tue, 24 Nov 2009 13:56:03 +1100
+From: Neil Brown <neilb@suse.de>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 1/2] NFS4ERR_FILE_OPEN handling in Linux/NFS
+Message-ID: <20091124135603.6434548f@notabene.brown>
+In-Reply-To: <1258747113.2494.81.camel@localhost>
+References: <20091117042004.1563.95871.stgit@notabene.brown>
+	<20091117042123.1563.20912.stgit@notabene.brown>
+	<1258747113.2494.81.camel@localhost>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Hi Steve-
+On Fri, 20 Nov 2009 14:58:33 -0500
+Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
 
-There have been some bug fixes since I posted the statd IPv6 support
-patch series a month ago.  Jeff suggested I should post a refresh.
+> If you add an entry for NFS4ERR_FILE_OPEN into nfs4_stat_to_errno(),
+> then the result of the RPC call will be -EBUSY rather than
+> NFS4ERR_FILE_OPEN.
+> In that case, I can't see how the NFS4ERR_FILE_OPEN is being
+> propagated to nfs4_handle_exception().
+> 
+> See
+> http://git.kernel.org/?p=linux/kernel/git/torvalds/linux-2.6.git&a=commitdiff&h=52567b03ca38b6e556ced450d64dba8d66e23b0e
+> for how we fixed up a similar problem with NFS4ERR_RESOURCE...
 
+Thanks.  That all makes lots of sense.
+I don't think I need nfs4_map_errors to understand NFS4ERR_FILE_OPEN
+in this case as it can be completely handled in nfs4_handle_exception.
+
+So how about this:
+
+Thanks,
+NeilBrown
+
+
+From: NeilBrown <neilb@suse.de>
+Date: Tue, 24 Nov 2009 13:50:52 +1100
+Subject: [PATCH] NFS4ERR_FILE_OPEN handling in Linux/NFS
+
+NFS4ERR_FILE_OPEN is return by the server when an operation cannot be
+performed because the file is currently open and local (to the server)
+semantics prohibit the operation while the file is open.
+A typical case is a RENAME operation on an MS-Windows platform, which
+prevents rename while the file is open.
+
+While it is possible that such a condition is transitory, it is also
+very possible that the file will be held open for an extended period
+of time thus preventing the operation.
+
+The current behaviour of Linux/NFS is to retry the operation
+indefinitely.  This is not appropriate - we do not expect a rename to
+take an arbitrary amount of time to complete.
+
+Rather, and error should be returned.  The most obvious error code
+would be EBUSY, which is a legal at least for 'rename' and 'unlink',
+and accurately captures the reason for the error.
+
+This patch allows a few retries until about 2 seconds have elapsed,
+then returns EBUSY.
+
+Signed-off-by: NeilBrown <neilb@suse.de>
 ---
+ fs/nfs/nfs4proc.c |    7 +++++++
+ 1 files changed, 7 insertions(+), 0 deletions(-)
 
-Chuck Lever (29):
-      statd: Send unqualified and fully qualified mon_name in SM_NOTIFY
-      statd: Use my_name when sending SM_NOTIFY requests
-      statd: update rpc.statd(8) and sm-notify(8) to reflect IPv6 support
-      statd: Support TI-RPC statd listener
-      libnsm.a: retain CAP_NET_BIND when dropping privileges
-      statd: Support IPv6 in sm_stat_1_svc()
-      statd: Support IPv6 in sm_mon_1_svc()
-      statd: Support IPv6 in sm_simu_crash_1_svc
-      statd: Support IPv6 is caller_is_localhost()
-      statd: add IPv6 support in sm_notify_1_svc()
-      statd: add nsm_present_address() API
-      statd: Introduce statd version of matchhostname()
-      statd: squelch compiler warning in sm-notify.c
-      statd: Support IPv6 DNS lookups in smn_lookup
-      statd: Use getaddrinfo(3) to generate bind address in smn_create_socket()
-      statd: IPv6 support in reserved port binding in smn_create_socket()
-      statd: Support creating a PF_INET6 socket in smn_create_socket()
-      statd: factor socket creation out of notify()
-      statd: Update rmtcall.c
-      statd: Support sending SM_NOTIFY requests to IPv6 remotes
-      libnsm.a: Add RPC construction helper functions
-      statd: Use the new nsm_ file.c calls in rpc.statd
-      statd: Use the new nsm_ file.c calls in sm_notify
-      libnsm.a: Introduce common routines to handle persistent storage
-      libnsm.a: Move the sm_inter XDR pieces to libnsm.a
-      statd: fix address copy in sm-notify.c
-      statd: replace smn_{get,set}_port() with the shared equivalents
-      statd: Replace nsm_log() with xlog() in sm-notify command
-      statd: Replace note() with xlog() in rpc.statd
-
-
- .gitignore                   |    9 
- aclocal/libcap.m4            |   15 +
- configure.ac                 |    4 
- support/Makefile.am          |    2 
- support/include/Makefile.am  |    1 
- support/include/ha-callout.h |    4 
- support/include/nsm.h        |   87 ++++
- support/include/rpcmisc.h    |    5 
- support/nfs/Makefile.am      |    3 
- support/nfs/svc_create.c     |  213 ++++++++++
- support/nsm/Makefile.am      |   45 ++
- support/nsm/file.c           |  816 ++++++++++++++++++++++++++++++++++++++++
- support/nsm/rpc.c            |  505 +++++++++++++++++++++++++
- support/nsm/sm_inter.x       |  131 ++++++
- utils/statd/Makefile.am      |   22 -
- utils/statd/callback.c       |   76 +++-
- utils/statd/hostname.c       |  251 ++++++++++++
- utils/statd/log.c            |   95 -----
- utils/statd/log.h            |   42 --
- utils/statd/misc.c           |   30 -
- utils/statd/monitor.c        |  237 +++++-------
- utils/statd/notlist.c        |    4 
- utils/statd/rmtcall.c        |  165 ++------
- utils/statd/simu.c           |   37 +-
- utils/statd/simulate.c       |   52 +--
- utils/statd/sm-notify.c      |  854 +++++++++++++++++++-----------------------
- utils/statd/sm-notify.man    |  409 ++++++++++++++------
- utils/statd/sm_inter.x       |  131 ------
- utils/statd/stat.c           |   14 -
- utils/statd/statd.c          |  199 +++-------
- utils/statd/statd.h          |   38 --
- utils/statd/statd.man        |  494 +++++++++++++++++-------
- utils/statd/svc_run.c        |    7 
- utils/statd/version.h        |    7 
- 34 files changed, 3432 insertions(+), 1572 deletions(-)
- create mode 100644 aclocal/libcap.m4
- create mode 100644 support/include/nsm.h
- create mode 100644 support/nfs/svc_create.c
- create mode 100644 support/nsm/Makefile.am
- create mode 100644 support/nsm/file.c
- create mode 100644 support/nsm/rpc.c
- create mode 100644 support/nsm/sm_inter.x
- create mode 100644 utils/statd/hostname.c
- delete mode 100644 utils/statd/log.c
- delete mode 100644 utils/statd/log.h
- delete mode 100644 utils/statd/sm_inter.x
- delete mode 100644 utils/statd/version.h
-
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index ff37454..f37f466 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -275,6 +275,13 @@ static int nfs4_handle_exception(const struct nfs_server *server, int errorcode,
+ 			/* FALLTHROUGH */
+ #endif /* !defined(CONFIG_NFS_V4_1) */
+ 		case -NFS4ERR_FILE_OPEN:
++			if (exception->timeout > HZ) {
++				/* We have retried a decent amount, time to
++				 * fail
++				 */
++				err = -EBUSY;
++				break;
++			}
+ 		case -NFS4ERR_GRACE:
+ 		case -NFS4ERR_DELAY:
+ 			ret = nfs4_delay(server->client, &exception->timeout);
 -- 
-Signature
+1.6.4.3
+
