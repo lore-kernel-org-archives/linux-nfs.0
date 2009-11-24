@@ -1,71 +1,71 @@
-From: Peter Staubach <staubach@redhat.com>
-Subject: Re: [nfs-utils PATCH] retry on EPERM from NFSv4 mount attempt
-Date: Tue, 24 Nov 2009 16:19:32 -0500
-Message-ID: <4B0C4DE4.1090008@redhat.com>
-References: <19211.7054.291514.185591@notabene.brown> <4B0BEDDB.1010203@RedHat.com> <20091124205616.GB29856@fieldses.org>
+From: Grant Grundler <grundler-6jwH94ZQLHl74goWV3ctuw@public.gmane.org>
+Subject: Re: [PATCHSET 0-5] remove unneeded nfsd #includes
+Date: Tue, 24 Nov 2009 14:27:06 -0700
+Message-ID: <20091124212706.GB25755@lackof.org>
+References: <4B0C1EB7.50508@panasas.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: Steve Dickson <SteveD@redhat.com>, Neil Brown <neilb@suse.de>,
-	linux-nfs@vger.kernel.org
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: "J. Bruce Fields" <bfields@citi.umich.edu>,
+	Linux Kernel <linux-kernel@vger.kernel.org>,
+	linux-parisc <linux-parisc@vger.kernel.org>,
+	sparclinux <sparclinux@vger.kernel.org>,
+	linux-s390 <linux-s390@vger.kernel.org>,
+	NFS list <linux-nfs@vger.kernel.org>,
+	pNFS Mailing List <pnfs@linux-nfs.org>,
+	Andrew Morton <akpm@linux-foundation.org>
+To: Boaz Harrosh <bharrosh@panasas.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:36316 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933754AbZKXVTf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 24 Nov 2009 16:19:35 -0500
-In-Reply-To: <20091124205616.GB29856@fieldses.org>
+Received: from complete.lackof.org ([198.49.126.79]:39835 "EHLO
+	complete.lackof.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S934007AbZKXV1B (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 24 Nov 2009 16:27:01 -0500
+In-Reply-To: <4B0C1EB7.50508@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-J. Bruce Fields wrote:
-> On Tue, Nov 24, 2009 at 09:29:47AM -0500, Steve Dickson wrote:
->>
->> On 11/23/2009 06:32 PM, Neil Brown wrote:
->>> Hi,
->>>  I recently packaged nfs-utils 1.2.1 for openSUSE and fairly quickly
->>>  got a bug report - "-o nfsvers=3" was needed to mount NFSv3
->>>  filesystems.
->>>
->>>  mount.nfs in 1.2.1 will first try a v4 mount but will fall-back to v3
->>>  if it gets ENOENT.  This works fine.
->>>  However for kernel prior to 2.6.25, you don't get ENOENT, you get
->>>  EPERM.
->>>  In that case the fall-back to v3 doesn't happen and you get a failure
->>>  to mount.
->>>
->>>  So I think we need to fall back on EPERM as well.  See below.
->> I already posted this patch on the v4 mailing list
->> http://linux-nfs.org/pipermail/nfsv4/2009-November/011595.html
->> but it got shot down...  at least that's how I interpreted the
->> responses... 
->>
->> But I do thing we need this, since there are so many server 
->> that will simple break if we don't... Agreed?
-> 
-> My position is that servers should either a) turn off NFSv4 or b) add a
-> pseudoroot, and that we should modify initscripts to make this harder to
-> screw up.
-> 
-> (For now (without automatic pseudoroot creation) we should by default be
-> running rpc.nfsd with -N 4; and adding the v4 support should be
-> something administrators do when they add a pseudoroot.)
-> 
-> ((If this is really totally unfeasible, then I should quickly cue up a
-> revert for the patch I have queued for 2.6.33 which changes this error
-> again, to SERVERFAULT....))
-> 
+On Tue, Nov 24, 2009 at 07:58:15PM +0200, Boaz Harrosh wrote:
+> Some arch files had unneeded #includes directives from linux/nfsd/*.
+> Some vfs files had unneeded #includes directives from linux/nfsd/*.
+...
+> patches:
+> [PATCH 1/5] parsic: remove unused nfsd #includes
+> 	Some kind soul, please compile with this patch? compile
+> 	is all that's needed.
 
-None helps new client systems who are forced to deal with older
-server deployments.  It is a bad thing to force customers to change
-old servers simply because they want to deploy new clients.  New
-systems are generally just supposed to fit into existing networks
-and not have to mold those networks to fit the new client's view
-of the world.
+Boaz,
+linux-2.6 compiles for parisc with this patch. Please add:
+    Tested-by: Grant Grundler <grundler-6jwH94ZQLHl74goWV3ctuw@public.gmane.org>
 
-Is this such a bad patch, to account for our own short sightedness
-when designing the original NFSv4 server implementation?  It is
-even at the user level and not in the kernel...
+thanks,
+grant
 
-	Thanx...
-
-		ps
+> 
+> [PATCH 2/5] sparc: remove unused nfsd #includes
+> [PATCH 3/5] s390: remove unused nfsd #includes
+> 	These two were cross compiled. Should we submit them through
+> 	nfsd tree or the ARCH trees?
+> 
+> [PATCH 4/5] vfs: nfsctl.c unused nfsd #includes
+> [PATCH 5/5] lockd: Remove unused nfsd headers #includes
+> 	Can these patches go through the nfsd tree?
+> 	Who's ACKs should we collect? Andrew?
+> 
+> Bruce Hi
+> With this set applied, the only nfsd files used publicly are:
+> 	const.h	export.h nfsfh.h stats.h syscall.h
+> 
+> These files can be moved to source folder:
+> 	cache.h  debug.h  nfsd.h  state.h xdr3.h  xdr4.h  xdr.h
+> 
+> Why is debug.h exported from Kernel? (include/linux/nfsd/Kbuild)
+> 
+> So just to see how this move might look like see last patch:
+> [RFC] nfsd: Move private headers to source directory
+> 	This patch was compiled, as well, on x86(32/64), sparc64, s390
+> 
+> Thanks
+> Boaz
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-parisc" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
