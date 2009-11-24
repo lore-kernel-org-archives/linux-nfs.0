@@ -1,51 +1,126 @@
-From: Neil Brown <neilb@suse.de>
-Subject: [nfs-utils PATCH] retry on EPERM from NFSv4 mount attempt
-Date: Tue, 24 Nov 2009 10:32:30 +1100
-Message-ID: <19211.7054.291514.185591@notabene.brown>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs@vger.kernel.org
-To: Steve Dickson <SteveD@redhat.com>
+From: Alexandros Batsakis <batsakis@netapp.com>
+Subject: [PATCH 1/10] nfs41: V2 adjust max_rqst_sz, max_resp_sz w.r.t to rsize, wsize
+Date: Mon, 23 Nov 2009 18:49:34 -0800
+Message-ID: <1259030975-6773-1-git-send-email-batsakis@netapp.com>
+Cc: Alexandros Batsakis <batsakis@netapp.com>
+To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from cantor.suse.de ([195.135.220.2]:42876 "EHLO mx1.suse.de"
+Received: from mx2.netapp.com ([216.240.18.37]:28225 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755852AbZKWXab (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 23 Nov 2009 18:30:31 -0500
+	id S1757635AbZKXCy3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 23 Nov 2009 21:54:29 -0500
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+The v4.1 client should take into account the desired rsize, wsize when
+negotiating the max size in CREATE_SESSION. Accordingly, it should use
+rsize, wsize that are smaller than the session negotiated values.
 
-Hi,
- I recently packaged nfs-utils 1.2.1 for openSUSE and fairly quickly
- got a bug report - "-o nfsvers=3" was needed to mount NFSv3
- filesystems.
+Signed-off-by: Alexandros Batsakis <batsakis@netapp.com>
+---
+ fs/nfs/client.c   |   14 ++++++++++++--
+ fs/nfs/internal.h |    4 ++++
+ fs/nfs/nfs4proc.c |    7 +++++--
+ fs/nfs/nfs4xdr.c  |   14 ++++++++++++++
+ 4 files changed, 35 insertions(+), 4 deletions(-)
 
- mount.nfs in 1.2.1 will first try a v4 mount but will fall-back to v3
- if it gets ENOENT.  This works fine.
- However for kernel prior to 2.6.25, you don't get ENOENT, you get
- EPERM.
- In that case the fall-back to v3 doesn't happen and you get a failure
- to mount.
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index 99ea196..ee77713 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -1260,10 +1260,20 @@ error:
+ static void nfs4_session_set_rwsize(struct nfs_server *server)
+ {
+ #ifdef CONFIG_NFS_V4_1
++	struct nfs4_session *sess;
++	u32 server_resp_sz;
++	u32 server_rqst_sz;
++
+ 	if (!nfs4_has_session(server->nfs_client))
+ 		return;
+-	server->rsize = server->nfs_client->cl_session->fc_attrs.max_resp_sz;
+-	server->wsize = server->nfs_client->cl_session->fc_attrs.max_rqst_sz;
++	sess = server->nfs_client->cl_session;
++	server_resp_sz = sess->fc_attrs.max_resp_sz - nfs41_maxread_overhead;
++	server_rqst_sz = sess->fc_attrs.max_rqst_sz - nfs41_maxwrite_overhead;
++
++	if (server->rsize > server_resp_sz)
++		server->rsize = server_resp_sz;
++	if (server->wsize > server_rqst_sz)
++		server->wsize = server_rqst_sz;
+ #endif /* CONFIG_NFS_V4_1 */
+ }
+ 
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index e21b1bb..d946936 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -195,6 +195,10 @@ static inline void nfs4_restart_rpc(struct rpc_task *task,
+ #ifdef CONFIG_NFS_V4
+ extern __be32 *nfs4_decode_dirent(__be32 *p, struct nfs_entry *entry, int plus);
+ #endif
++#ifdef CONFIG_NFS_V4_1
++extern const u32 nfs41_maxread_overhead;
++extern const u32 nfs41_maxwrite_overhead;
++#endif
+ 
+ /* nfs4proc.c */
+ #ifdef CONFIG_NFS_V4
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index ff37454..ef77d40 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -4827,13 +4827,16 @@ int nfs4_proc_destroy_session(struct nfs4_session *session)
+ int nfs4_init_session(struct nfs_server *server)
+ {
+ 	struct nfs_client *clp = server->nfs_client;
++	struct nfs4_session *session;
+ 	int ret;
+ 
+ 	if (!nfs4_has_session(clp))
+ 		return 0;
+ 
+-	clp->cl_session->fc_attrs.max_rqst_sz = server->wsize;
+-	clp->cl_session->fc_attrs.max_resp_sz = server->rsize;
++	session = clp->cl_session;
++	session->fc_attrs.max_rqst_sz = server->wsize + nfs41_maxwrite_overhead;
++	session->fc_attrs.max_resp_sz = server->rsize + nfs41_maxread_overhead;
++
+ 	ret = nfs4_recover_expired_lease(server);
+ 	if (!ret)
+ 		ret = nfs4_check_client_ready(clp);
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index 20b4e30..fc36af4 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -46,6 +46,7 @@
+ #include <linux/proc_fs.h>
+ #include <linux/kdev_t.h>
+ #include <linux/sunrpc/clnt.h>
++#include <linux/sunrpc/msg_prot.h>
+ #include <linux/nfs.h>
+ #include <linux/nfs4.h>
+ #include <linux/nfs_fs.h>
+@@ -676,6 +677,19 @@ static int nfs4_stat_to_errno(int);
+ 					 decode_sequence_maxsz + \
+ 					 decode_putrootfh_maxsz + \
+ 					 decode_fsinfo_maxsz)
++
++const u32 nfs41_maxwrite_overhead = ((RPC_MAX_HEADER_WITH_AUTH +
++				      compound_encode_hdr_maxsz +
++				      encode_sequence_maxsz +
++				      encode_putfh_maxsz +
++				      encode_getattr_maxsz) *
++				     XDR_UNIT);
++
++const u32 nfs41_maxread_overhead = ((RPC_MAX_HEADER_WITH_AUTH +
++				     compound_decode_hdr_maxsz +
++				     decode_sequence_maxsz +
++				     decode_putfh_maxsz) *
++				    XDR_UNIT);
+ #endif /* CONFIG_NFS_V4_1 */
+ 
+ static const umode_t nfs_type2fmt[] = {
+-- 
+1.6.2.5
 
- So I think we need to fall back on EPERM as well.  See below.
-
-Thanks,
-NeilBrown
-
-
-diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
-index b595649..68eb82b 100644
---- a/utils/mount/stropts.c
-+++ b/utils/mount/stropts.c
-@@ -657,8 +657,10 @@ static int nfs_try_mount(struct nfsmount_info *mi)
- 				 * To deal with legacy Linux servers that don't
- 				 * automatically export a pseudo root, retry
- 				 * ENOENT errors using version 3
-+				 * And for Linux servers prior to 2.6.25, retry
-+				 * EPERM
- 				 */
--				if (errno != ENOENT)
-+				if (errno != ENOENT && errno != EPERM)
- 					break;
- 			}
- 		}
