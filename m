@@ -1,37 +1,26 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH 01/10] nfs41: adjust max_rqst_sz, max_resp_sz w.r.t to
-	rsize, wsize
-Date: Tue, 24 Nov 2009 15:39:23 -0500
-Message-ID: <20091124203923.GA29856@fieldses.org>
-References: <1259013287-3349-1-git-send-email-batsakis@netapp.com> <1259017040.8700.94.camel@localhost> <4B0C2FA2.8000207@redhat.com>
+From: Charles Duffy <charles-7s4ginpmXnFeoWH0uzbU5w@public.gmane.org>
+Subject: Re: Apparent race condition w/ NFSv3 mktemp+write+rename
+Date: Tue, 24 Nov 2009 14:36:37 -0600
+Message-ID: <4B0C43D5.7000103@dyfis.net>
+References: <hehc8g$k8f$1@ger.gmane.org> <4B0C3BF8.1070904@redhat.com> <4B0C4116.10903@dyfis.net> <4B0C4277.8050004@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
-	Alexandros Batsakis <batsakis@netapp.com>,
-	linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Cc: linux-nfs@vger.kernel.org
 To: Peter Staubach <staubach@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:37351 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932945AbZKXUio (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 24 Nov 2009 15:38:44 -0500
-In-Reply-To: <4B0C2FA2.8000207@redhat.com>
+Received: from mail-gx0-f226.google.com ([209.85.217.226]:48350 "EHLO
+	mail-gx0-f226.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932153AbZKXUkP (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 24 Nov 2009 15:40:15 -0500
+Received: by gxk26 with SMTP id 26so7079123gxk.1
+        for <linux-nfs@vger.kernel.org>; Tue, 24 Nov 2009 12:40:21 -0800 (PST)
+In-Reply-To: <4B0C4277.8050004@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Nov 24, 2009 at 02:10:26PM -0500, Peter Staubach wrote:
-> Trond Myklebust wrote:
-> > 
-> > Is anyone ever going to use NFSv4.1 over UDP?
-> > 
-> 
-> I thought that NFSv4 over UDP was outlawed because UDP, as
-> a transport, did not offer the correct set of semantics
-> required.  I know that the Linux NFSv4 server registers
-> NFSv4 over UDP, but I don't know of any other servers which
-> do.
-> 
-> I was going to file a bug and a patch to stop NFSv4 from
-> being transported over UDP.  :-)
-
-OK by me.--b.
+Peter Staubach wrote:
+> Does this take a very long time to run when it fails like this?
+>   
+Total runtime for script invocations where the failure occurred has in 
+all cases (two today -- one at 7:59AM, the other at 12:08PM) been less 
+than three seconds.
