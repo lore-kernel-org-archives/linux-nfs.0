@@ -1,39 +1,37 @@
-From: Peter Staubach <staubach@redhat.com>
-Subject: Re: Apparent race condition w/ NFSv3 mktemp+write+rename
-Date: Tue, 24 Nov 2009 15:30:47 -0500
-Message-ID: <4B0C4277.8050004@redhat.com>
-References: <hehc8g$k8f$1@ger.gmane.org> <4B0C3BF8.1070904@redhat.com> <4B0C4116.10903@dyfis.net>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH 01/10] nfs41: adjust max_rqst_sz, max_resp_sz w.r.t to
+	rsize, wsize
+Date: Tue, 24 Nov 2009 15:39:23 -0500
+Message-ID: <20091124203923.GA29856@fieldses.org>
+References: <1259013287-3349-1-git-send-email-batsakis@netapp.com> <1259017040.8700.94.camel@localhost> <4B0C2FA2.8000207@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: linux-nfs@vger.kernel.org
-To: Charles Duffy <charles-7s4ginpmXnFeoWH0uzbU5w@public.gmane.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
+	Alexandros Batsakis <batsakis@netapp.com>,
+	linux-nfs@vger.kernel.org
+To: Peter Staubach <staubach@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:59479 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:37351 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932833AbZKXUam (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 24 Nov 2009 15:30:42 -0500
-In-Reply-To: <4B0C4116.10903-7s4ginpmXnFeoWH0uzbU5w@public.gmane.org>
+	id S932945AbZKXUio (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 24 Nov 2009 15:38:44 -0500
+In-Reply-To: <4B0C2FA2.8000207@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Charles Duffy wrote:
-> Peter Staubach wrote:
->> At the end, does /mnt/foobar exist and contain the string, "baz"?
->>   
-> I'll follow up with that information with that after the issue is next
-> reproduced. (The mv operation is replacing a prior instance of
-> /mnt/foobar, so content will need to be inspected to determine whether
-> it was successful).
+On Tue, Nov 24, 2009 at 02:10:26PM -0500, Peter Staubach wrote:
+> Trond Myklebust wrote:
+> > 
+> > Is anyone ever going to use NFSv4.1 over UDP?
+> > 
 > 
->> What mount options are being used on the client?
->>   
-> rw,vers=3,rsize=32768,wsize=32768,hard,intr,proto=tcp,timeo=600,retrans=2,sec=sys,addr=<redacted>
+> I thought that NFSv4 over UDP was outlawed because UDP, as
+> a transport, did not offer the correct set of semantics
+> required.  I know that the Linux NFSv4 server registers
+> NFSv4 over UDP, but I don't know of any other servers which
+> do.
 > 
+> I was going to file a bug and a patch to stop NFSv4 from
+> being transported over UDP.  :-)
 
-Hmmm.  This appears to be the defaults.
-
-Does this take a very long time to run when it fails like this?
-
-	Thanx...
-
-		ps
+OK by me.--b.
