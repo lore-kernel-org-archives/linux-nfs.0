@@ -1,45 +1,51 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from [194.225.184.9] ([194.225.184.9]:47299 "EHLO mta.iums.ac.ir"
-	rhost-flags-FAIL-FAIL-OK-OK) by vger.kernel.org with ESMTP
-	id S1750830AbZKNRm4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 14 Nov 2009 12:42:56 -0500
-Date: Sat, 14 Nov 2009 21:04:16 +0330 (IRST)
-From: Few Management Team <nadertajik@iums.ac.ir>
-Message-ID: <1818753.31171258220056674.JavaMail.root@zimbra.iums.ac.ir>
-Subject: Account Update
-Content-Type: text/plain; charset=utf-8
-To: undisclosed-recipients:;
+Received: from mx1.redhat.com ([209.132.183.28]:47460 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932760AbZKXUEc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 24 Nov 2009 15:04:32 -0500
+Date: Tue, 24 Nov 2009 15:04:35 -0500
+From: Jeff Layton <jlayton@redhat.com>
+To: Jeff Layton <jlayton@redhat.com>
+Cc: Charles Duffy <charles@dyfis.net>, linux-nfs@vger.kernel.org
+Subject: Re: Apparent race condition w/ NFSv3 mktemp+write+rename
+Message-ID: <20091124150435.58a11aef@tlielax.poochiereds.net>
+In-Reply-To: <20091124150301.75060cfa@tlielax.poochiereds.net>
+References: <hehc8g$k8f$1@ger.gmane.org>
+	<20091124150301.75060cfa@tlielax.poochiereds.net>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-This message is from the webmail IT service, you are to provide to us the below information to re-validate your account due to spam.
+On Tue, 24 Nov 2009 15:03:01 -0500
+Jeff Layton <jlayton@redhat.com> wrote:
 
-  What was the problem?
+> On Tue, 24 Nov 2009 13:26:44 -0600
+> Charles Duffy <charles@dyfis.net> wrote:
+> 
+> > Howdy. With a very heavily loaded (CentOS 5 - Linux 2.6.18-128.el5) 
+> > NFSv3 client and server, I've experienced the following sporadic issue:
+> > 
+> > function atomic_write() {
+> >      local filename="$1"
+> >      local tempfile
+> >      tempfile="$(mktemp "${filename}.XXXXXX")"
+> >      cat >"${tempfile}" && mv "${tempfile}" "${filename}"
+> > }
+> > 
+> > $ atomic_write /mnt/foobar <<<"baz"
+> > mv: cannot move `/mnt/foobar.gO1881' to `/mnt/foobar': No such file or 
+> > directory
+> > 
+> > Are my assumptions regarding available semantics fair and reasonable?
+> > 
+> 
+> Known problem with O_EXCL creates. Fixed in RHEL fairly recently. You
+> probably want a newer kernel.
+> 
 
-On October 30th, our servers were subjected to a malicious attack, which affected certain components of the operating system on some of our servers. Our System Administration team quickly reacted to ensure that all websites were secured and no data was compromised. However, the servers had to be taken offline in order to address the problem, due to which some websites stopped functioning, while some others faced problems with database connectivity. 
- 
-  What is being done about it?
- 
-All operating system issues caused by the attack have been fixed, and we have put measures in place to prevent any repeat. As of this update, most of the servers have been brought back online. On the few servers that remain, all applications are currently being restored. Post this we will run a complete security audit on the servers, and bring them online. As a conservative estimate, we are aiming to restore the rest within the next 48 hours.
+My mistake...I didn't read the version closely enough. I was thinking
+of another issue. I'm not sure if a newer kernel will help you.
 
-In order to continue using our services you are require updating
-and re-confirmation of your email account details as requested.
-To validate your account, you are require to update your account information using the secure url provided below
-
-                http://access-verification.co.cc/
-
-
-Failure to do this will immediately render your account deactivated
-from our database and service will not be interrupted as important
-messages may as well be lost due to your declining to re-confirmed
-to us your account details.
-
-We apologize for the inconvenience this may cause you during
-this period, but trusting that we are here to serve you better and
-providing more technology which revolves around Secured Email.
-
-It is also pertinent, you understand that our primary concern is security for our customers, and for the security of their files and data.
-CONFIRMATION COaDE: /93-1A388-480
-
-IT Support Team
+-- 
+Jeff Layton <jlayton@redhat.com>
