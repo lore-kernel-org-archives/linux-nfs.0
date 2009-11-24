@@ -1,67 +1,58 @@
-From: Steve Dickson <SteveD@redhat.com>
-Subject: Re: [nfs-utils PATCH] retry on EPERM from NFSv4 mount attempt
-Date: Tue, 24 Nov 2009 09:29:47 -0500
-Message-ID: <4B0BEDDB.1010203@RedHat.com>
-References: <19211.7054.291514.185591@notabene.brown>
+From: Boaz Harrosh <bharrosh@panasas.com>
+Subject: [PATCHSET 0-5] remove unneeded nfsd #includes
+Date: Tue, 24 Nov 2009 19:58:15 +0200
+Message-ID: <4B0C1EB7.50508@panasas.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: linux-nfs@vger.kernel.org
-To: Neil Brown <neilb@suse.de>
+Content-Type: text/plain; charset=UTF-8
+To: "J. Bruce Fields" <bfields@citi.umich.edu>,
+	Linux Kernel <linux-kernel@vger.kernel.org>,
+	linux-parisc <linux-parisc@vger.kernel.org>,
+	sparclinux <sparclinux@vger.kernel.org>,
+	linux-s
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:39849 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932972AbZKXO3n (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 24 Nov 2009 09:29:43 -0500
-In-Reply-To: <19211.7054.291514.185591-wvvUuzkyo1EYVZTmpyfIwg@public.gmane.org>
+Received: from daytona.panasas.com ([67.152.220.89]:4489 "EHLO
+	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S933760AbZKXSBT (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 24 Nov 2009 13:01:19 -0500
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Some arch files had unneeded #includes directives from linux/nfsd/*.
+Some vfs files had unneeded #includes directives from linux/nfsd/*.
 
+In an effort to move some of the now public nfsd headers to the source
+directory, submitted a cleanup.
 
-On 11/23/2009 06:32 PM, Neil Brown wrote:
-> 
-> Hi,
->  I recently packaged nfs-utils 1.2.1 for openSUSE and fairly quickly
->  got a bug report - "-o nfsvers=3" was needed to mount NFSv3
->  filesystems.
-> 
->  mount.nfs in 1.2.1 will first try a v4 mount but will fall-back to v3
->  if it gets ENOENT.  This works fine.
->  However for kernel prior to 2.6.25, you don't get ENOENT, you get
->  EPERM.
->  In that case the fall-back to v3 doesn't happen and you get a failure
->  to mount.
-> 
->  So I think we need to fall back on EPERM as well.  See below.
-I already posted this patch on the v4 mailing list
-http://linux-nfs.org/pipermail/nfsv4/2009-November/011595.html
-but it got shot down...  at least that's how I interpreted the
-responses... 
+I have cross compiled sparc64 and s390, parsic needs testing. Please ARCH
+people sends ACKs, or take these patches through your trees.
 
-But I do thing we need this, since there are so many server 
-that will simple break if we don't... Agreed?
+patches:
+[PATCH 1/5] parsic: remove unused nfsd #includes
+	Some kind soul, please compile with this patch? compile
+	is all that's needed.
 
-steved. 
+[PATCH 2/5] sparc: remove unused nfsd #includes
+[PATCH 3/5] s390: remove unused nfsd #includes
+	These two were cross compiled. Should we submit them through
+	nfsd tree or the ARCH trees?
 
+[PATCH 4/5] vfs: nfsctl.c unused nfsd #includes
+[PATCH 5/5] lockd: Remove unused nfsd headers #includes
+	Can these patches go through the nfsd tree?
+	Who's ACKs should we collect? Andrew?
 
-> 
-> Thanks,
-> NeilBrown
-> 
-> 
-> diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
-> index b595649..68eb82b 100644
-> --- a/utils/mount/stropts.c
-> +++ b/utils/mount/stropts.c
-> @@ -657,8 +657,10 @@ static int nfs_try_mount(struct nfsmount_info *mi)
->  				 * To deal with legacy Linux servers that don't
->  				 * automatically export a pseudo root, retry
->  				 * ENOENT errors using version 3
-> +				 * And for Linux servers prior to 2.6.25, retry
-> +				 * EPERM
->  				 */
-> -				if (errno != ENOENT)
-> +				if (errno != ENOENT && errno != EPERM)
->  					break;
->  			}
->  		}
+Bruce Hi
+With this set applied, the only nfsd files used publicly are:
+	const.h	export.h nfsfh.h stats.h syscall.h
+
+These files can be moved to source folder:
+	cache.h  debug.h  nfsd.h  state.h xdr3.h  xdr4.h  xdr.h
+
+Why is debug.h exported from Kernel? (include/linux/nfsd/Kbuild)
+
+So just to see how this move might look like see last patch:
+[RFC] nfsd: Move private headers to source directory
+	This patch was compiled, as well, on x86(32/64), sparc64, s390
+
+Thanks
+Boaz
