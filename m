@@ -1,49 +1,31 @@
-From: "J. Bruce Fields" <bfields@citi.umich.edu>
-Subject: Re: [PATCH 1/6] nfsd: Remove nfsfh.h dependency on sunrpc
-Date: Wed, 25 Nov 2009 15:57:23 -0500
-Message-ID: <20091125205723.GM32502@fieldses.org>
-References: <4B0AB039.6020608@panasas.com> <1258991910-25335-1-git-send-email-bharrosh@panasas.com> <20091123221705.GF8534@fieldses.org> <4B0B994B.10108@panasas.com>
+From: Christoph Hellwig <hch@infradead.org>
+Subject: Re: XFS, NFS and inode64 on 2.6.27
+Date: Wed, 25 Nov 2009 16:13:24 -0500
+Message-ID: <20091125211324.GA12833@infradead.org>
+References: <200911231419.50678@zmi.at> <20091123155109.GA3292@fieldses.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Benny Halevy <bhalevy@panasas.com>,
-	NFS list <linux-nfs@vger.kernel.org>,
-	pNFS Mailing List <pnfs@linux-nfs.org>,
-	Trond Myklebust <Trond.Myklebust@netapp.com>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	Al Viro <viro@ZenIV.linux.org.uk>,
-	Randy Dunlap <randy.dunlap@oracle.com>
-To: Boaz Harrosh <bharrosh@panasas.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <4B0B994B.10108@panasas.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
+Cc: Michael Monnerie <michael.monnerie@is.it-management.at>,
+	linux-nfs@vger.kernel.org
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from bombadil.infradead.org ([18.85.46.34]:38313 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753678AbZKYVNU (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 25 Nov 2009 16:13:20 -0500
+In-Reply-To: <20091123155109.GA3292@fieldses.org>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Nov 24, 2009 at 10:28:59AM +0200, Boaz Harrosh wrote:
-> On 11/24/2009 12:17 AM, J. Bruce Fields wrote:
-> > On Mon, Nov 23, 2009 at 05:58:30PM +0200, Boaz Harrosh wrote:
-> >> linux/nfsd/nfsfh.h defines some low level types which
-> >> are needed by exportfs and though by filesystems.
-> >>
-> >> In the file, fh_lock() uses the sunrpc dprint facility which
-> >> might cause a dependency of exportfs (and filesystems) on
-> > 
-> > "might cause"?
-> > 
-> > Does mere inclusion of this .h (without referencing fh_lock_nested() or
-> > its callers) actually create a dependency?
-> > 
-> > --b.
-> > 
-> 
-> No, only if code actually uses fh_lock_nested it will cause a dependency.
-> Which is only used in fs/nfsd/...
-> 
-> But I would like to discourage nfsd/debug.h at this level.
-> 
-> Should I move fh_lock_nested() and it's siblings to the new private vfs.h header
-> you made, and get rid of it this way?
+On Mon, Nov 23, 2009 at 10:51:09AM -0500, J. Bruce Fields wrote:
+> But not the other four directories?  What error do you get when you try?
+> What client are you using, and are you mounting with NFSv2, NFSv3, or
+> NFSv4?  Could we see a network trace of a failed mount?  (So, run
 
-Sure, that sounds reasonable.
+>From information Michael posted on the xfs list he is not exporting the
+root of filesystems, which means we use a file system handle format that
+needs to encode the inode.  And all but the uuid16 format can only
+encode 32 bit inode numbers.  I very strongly suspect that this is the
+underlying issue here, but I'm currenly not uptodate on the filesystem
+handle selection in nfsutils.
 
---b.
