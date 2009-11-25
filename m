@@ -1,79 +1,49 @@
 From: "J. Bruce Fields" <bfields@citi.umich.edu>
-Subject: Re: [PATCH 4/5] lockd: Remove unused nfsd headers #includes
-Date: Wed, 25 Nov 2009 15:23:24 -0500
-Message-ID: <20091125202323.GJ32502@fieldses.org>
-References: <4B0C1EB7.50508@panasas.com> <4B0C1FE0.8040105@panasas.com> <20091125201011.GG32502@fieldses.org>
+Subject: Re: [PATCH 1/6] nfsd: Remove nfsfh.h dependency on sunrpc
+Date: Wed, 25 Nov 2009 15:57:23 -0500
+Message-ID: <20091125205723.GM32502@fieldses.org>
+References: <4B0AB039.6020608@panasas.com> <1258991910-25335-1-git-send-email-bharrosh@panasas.com> <20091123221705.GF8534@fieldses.org> <4B0B994B.10108@panasas.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Linux Kernel <linux-kernel@vger.kernel.org>,
-	linux-parisc <linux-parisc@vger.kernel.org>,
-	sparclinux <sparclinux@vger.kernel.org>,
-	linux-s390 <linux-s390@vger.kernel.org>,
+Cc: Benny Halevy <bhalevy@panasas.com>,
 	NFS list <linux-nfs@vger.kernel.org>,
 	pNFS Mailing List <pnfs@linux-nfs.org>,
-	Andrew Morton <akpm@linux-foundation.org>
+	Trond Myklebust <Trond.Myklebust@netapp.com>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	Al Viro <viro@ZenIV.linux.org.uk>,
+	Randy Dunlap <randy.dunlap@oracle.com>
 To: Boaz Harrosh <bharrosh@panasas.com>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:53216 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753574AbZKYUWf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 25 Nov 2009 15:22:35 -0500
-In-Reply-To: <20091125201011.GG32502@fieldses.org>
-Sender: linux-nfs-owner@vger.kernel.org
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <4B0B994B.10108@panasas.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Nov 25, 2009 at 03:10:11PM -0500, J. Bruce Fields wrote:
-> On Tue, Nov 24, 2009 at 08:03:12PM +0200, Boaz Harrosh wrote:
+On Tue, Nov 24, 2009 at 10:28:59AM +0200, Boaz Harrosh wrote:
+> On 11/24/2009 12:17 AM, J. Bruce Fields wrote:
+> > On Mon, Nov 23, 2009 at 05:58:30PM +0200, Boaz Harrosh wrote:
+> >> linux/nfsd/nfsfh.h defines some low level types which
+> >> are needed by exportfs and though by filesystems.
+> >>
+> >> In the file, fh_lock() uses the sunrpc dprint facility which
+> >> might cause a dependency of exportfs (and filesystems) on
 > > 
-> > In what history where these ever needed? Well not
-> > any more.
+> > "might cause"?
+> > 
+> > Does mere inclusion of this .h (without referencing fh_lock_nested() or
+> > its callers) actually create a dependency?
+> > 
+> > --b.
+> > 
 > 
-> Applied, thanks.--b.
+> No, only if code actually uses fh_lock_nested it will cause a dependency.
+> Which is only used in fs/nfsd/...
+> 
+> But I would like to discourage nfsd/debug.h at this level.
+> 
+> Should I move fh_lock_nested() and it's siblings to the new private vfs.h header
+> you made, and get rid of it this way?
 
-Um, I said that before I actually tried to compile it....  OK, dropping
-for now (assuming I'm missing some earlier patch).
+Sure, that sounds reasonable.
 
 --b.
-
-> 
-> > 
-> > Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
-> > ---
-> >  fs/lockd/svc4proc.c |    4 ----
-> >  fs/lockd/svcproc.c  |    4 ----
-> >  2 files changed, 0 insertions(+), 8 deletions(-)
-> > 
-> > diff --git a/fs/lockd/svc4proc.c b/fs/lockd/svc4proc.c
-> > index bd173a6..a7966ee 100644
-> > --- a/fs/lockd/svc4proc.c
-> > +++ b/fs/lockd/svc4proc.c
-> > @@ -11,10 +11,6 @@
-> >  #include <linux/time.h>
-> >  #include <linux/slab.h>
-> >  #include <linux/smp_lock.h>
-> > -#include <linux/in.h>
-> > -#include <linux/sunrpc/svc.h>
-> > -#include <linux/sunrpc/clnt.h>
-> > -#include <linux/nfsd/nfsd.h>
-> >  #include <linux/lockd/lockd.h>
-> >  #include <linux/lockd/share.h>
-> >  
-> > diff --git a/fs/lockd/svcproc.c b/fs/lockd/svcproc.c
-> > index e1d28dd..56c9519 100644
-> > --- a/fs/lockd/svcproc.c
-> > +++ b/fs/lockd/svcproc.c
-> > @@ -11,10 +11,6 @@
-> >  #include <linux/time.h>
-> >  #include <linux/slab.h>
-> >  #include <linux/smp_lock.h>
-> > -#include <linux/in.h>
-> > -#include <linux/sunrpc/svc.h>
-> > -#include <linux/sunrpc/clnt.h>
-> > -#include <linux/nfsd/nfsd.h>
-> >  #include <linux/lockd/lockd.h>
-> >  #include <linux/lockd/share.h>
-> >  
-> > -- 
-> > 1.6.5.2
-> > 
-> > 
