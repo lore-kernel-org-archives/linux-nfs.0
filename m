@@ -1,49 +1,94 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: Fw: Deadlock regression in v2.6.31.6
-Date: Thu, 26 Nov 2009 10:20:59 -0500
-Message-ID: <1259248859.6715.50.camel@localhost>
-References: <20091124233555.da6439c4.akpm@linux-foundation.org>
-	 <64b4daae0911250056g3364d24l98850a272dcfe483@mail.gmail.com>
-	 <1259159512.3314.12.camel@localhost>
-	 <64b4daae0911251511q7a070b0aj1c07cdc5d6719b41@mail.gmail.com>
-	 <1259247707.6715.46.camel@localhost>
-	 <64b4daae0911260707i4064f608w4f7169441640567@mail.gmail.com>
+From: Helge Deller <deller@gmx.de>
+Subject: Re: [PATCH 1/5] parsic: remove unused nfsd #includes
+Date: Thu, 26 Nov 2009 22:47:53 +0100
+Message-ID: <4B0EF789.8060805@gmx.de>
+References: <4B0C1EB7.50508@panasas.com> <4B0C1F1A.8070605@panasas.com> <4B0E94D4.5090800@panasas.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Cc: Andrew Morton <akpm@linux-foundation.org>,
-	linux-nfs@vger.kernel.org
-To: "Stephen R. van den Berg" <srb-PCMv+cxZuL0@public.gmane.org>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-out1.uio.no ([129.240.10.57]:56722 "EHLO mail-out1.uio.no"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755050AbZKZPU7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 26 Nov 2009 10:20:59 -0500
-In-Reply-To: <64b4daae0911260707i4064f608w4f7169441640567-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
-Sender: linux-nfs-owner@vger.kernel.org
+Content-Type: text/plain; charset=UTF-8; format=flowed
+Cc: "J. Bruce Fields" <bfields@citi.umich.edu>,
+	linux-parisc <linux-parisc@vger.kernel.org>,
+	Grant Grundler <grundler@parisc-linux.org>,
+	Kyle McMartin <kyle@mcmartin.ca>,
+	"James E.J. Bottomley" <jejb@parisc-linux.org>,
+	Linux Kernel <linux-kernel@vger.kernel.org>,
+	sparclinux <sparclinux@vger.kernel.org>,
+	linux-s390 <linux-s390@vger.kernel.org>,
+	NFS list <linux-nfs@vger.kernel.org>,
+	pNFS Mailing List <pnfs@linux-nfs.org>,
+	Andrew Morton <akpm@linux-foundation.org>
+To: Boaz Harrosh <bharrosh@panasas.com>
+Return-path: <linux-parisc-owner@vger.kernel.org>
+In-Reply-To: <4B0E94D4.5090800@panasas.com>
+Sender: linux-parisc-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 2009-11-26 at 16:07 +0100, Stephen R. van den Berg wrote: 
-> On Thu, Nov 26, 2009 at 16:01, Trond Myklebust
-> <trond.myklebust@fys.uio.no> wrote:
-> > On Thu, 2009-11-26 at 00:11 +0100, Stephen R. van den Berg wrote:
-> >> 1.2.3.167 is the Linux client kernel which locks up, 1.2.3.151 is the
-> >> unfs server.
-> >> It looks like the client terminates the TCP connection.  The server
-> >> confirms it, the client then sends a final acknowledge.  At that point
-> >> the client kernel locks up in the infinite loop.
-> 
-> > OK. Have you tried running with RPCDBG_TRANS debugging enabled? I
-> > suspect you might see a flood of 'sendmsg returned unrecognized error'
-> > or 'connect returned unhandled error' messages if you do.
-> 
-> The pcap trace is not conclusive (enough)?
-> I can run with RPCDBG_TRANS enabled, if it is needed to further
-> pinpoint the problem.
+On 11/26/2009 03:46 PM, Boaz Harrosh wrote:
+> On 11/24/2009 11:27 PM, Grant Grundler wrote:
+>> On Tue, Nov 24, 2009 at 07:58:15PM +0200, Boaz Harrosh wrote:
+>>> Some arch files had unneeded #includes directives from linux/nfsd/*.
+>>> Some vfs files had unneeded #includes directives from linux/nfsd/*.
+>> ...
+>>> patches:
+>>> [PATCH 1/5] parsic: remove unused nfsd #includes
+>>> 	Some kind soul, please compile with this patch? compile
+>>> 	is all that's needed.
+>>
+>> Boaz,
+>> linux-2.6 compiles for parisc with this patch. Please add:
+>>      Tested-by: Grant Grundler<grundler@parisc-linux.org>
+>>
+>> thanks,
+>> grant
+>>
+>
+> CCing registered parsic maintainers. Could we please get an ACK on
+> this patch, and cary this through the nfsd tree?
 
-The pcap trace shows what is happening: the socket is getting closed
-correctly, and so the RPC client needs to initiate a reconnection before
-it can transmit again. What I don't understand is why it is failing to
-do so...
+Sure.
 
-   Trond
+Acked-by: Helge Deller <deller@gmx.de>
+
+Helge
+
+
+>
+> Thanks
+> Boaz
+>
+> On 11/24/2009 07:59 PM, Boaz Harrosh wrote:
+>>
+>> Some unused includes removed.
+>>
+>> This patch is in an effort to cleanup nfsd headers and move
+>> private definitions to source directory.
+>>
+>> Signed-off-by: Boaz Harrosh<bharrosh@panasas.com>
+>> ---
+>>   arch/parisc/kernel/sys_parisc32.c |    6 ------
+>>   1 files changed, 0 insertions(+), 6 deletions(-)
+>>
+>> diff --git a/arch/parisc/kernel/sys_parisc32.c b/arch/parisc/kernel/sys_parisc32.c
+>> index 561388b..4a8ca63 100644
+>> --- a/arch/parisc/kernel/sys_parisc32.c
+>> +++ b/arch/parisc/kernel/sys_parisc32.c
+>> @@ -26,13 +26,7 @@
+>>   #include<linux/shm.h>
+>>   #include<linux/slab.h>
+>>   #include<linux/uio.h>
+>> -#include<linux/nfs_fs.h>
+>>   #include<linux/ncp_fs.h>
+>> -#include<linux/sunrpc/svc.h>
+>> -#include<linux/nfsd/nfsd.h>
+>> -#include<linux/nfsd/cache.h>
+>> -#include<linux/nfsd/xdr.h>
+>> -#include<linux/nfsd/syscall.h>
+>>   #include<linux/poll.h>
+>>   #include<linux/personality.h>
+>>   #include<linux/stat.h>
+>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-kernel" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> Please read the FAQ at  http://www.tux.org/lkml/
 
