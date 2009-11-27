@@ -1,94 +1,62 @@
-From: Helge Deller <deller@gmx.de>
-Subject: Re: [PATCH 1/5] parsic: remove unused nfsd #includes
-Date: Thu, 26 Nov 2009 22:47:53 +0100
-Message-ID: <4B0EF789.8060805@gmx.de>
-References: <4B0C1EB7.50508@panasas.com> <4B0C1F1A.8070605@panasas.com> <4B0E94D4.5090800@panasas.com>
+From: "Stephen R. van den Berg" <srb-PCMv+cxZuL0@public.gmane.org>
+Subject: Re: Fw: Deadlock regression in v2.6.31.6
+Date: Fri, 27 Nov 2009 01:07:46 +0100
+Message-ID: <64b4daae0911261607m10d1ba3al8c067f85249c198f@mail.gmail.com>
+References: <20091124233555.da6439c4.akpm@linux-foundation.org>
+	 <64b4daae0911250056g3364d24l98850a272dcfe483@mail.gmail.com>
+	 <1259159512.3314.12.camel@localhost>
+	 <64b4daae0911251511q7a070b0aj1c07cdc5d6719b41@mail.gmail.com>
+	 <1259247707.6715.46.camel@localhost>
+	 <64b4daae0911260707i4064f608w4f7169441640567@mail.gmail.com>
+	 <1259248859.6715.50.camel@localhost>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8; format=flowed
-Cc: "J. Bruce Fields" <bfields@citi.umich.edu>,
-	linux-parisc <linux-parisc@vger.kernel.org>,
-	Grant Grundler <grundler@parisc-linux.org>,
-	Kyle McMartin <kyle@mcmartin.ca>,
-	"James E.J. Bottomley" <jejb@parisc-linux.org>,
-	Linux Kernel <linux-kernel@vger.kernel.org>,
-	sparclinux <sparclinux@vger.kernel.org>,
-	linux-s390 <linux-s390@vger.kernel.org>,
-	NFS list <linux-nfs@vger.kernel.org>,
-	pNFS Mailing List <pnfs@linux-nfs.org>,
-	Andrew Morton <akpm@linux-foundation.org>
-To: Boaz Harrosh <bharrosh@panasas.com>
-Return-path: <linux-parisc-owner@vger.kernel.org>
-In-Reply-To: <4B0E94D4.5090800@panasas.com>
-Sender: linux-parisc-owner@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: Andrew Morton <akpm@linux-foundation.org>,
+	linux-nfs@vger.kernel.org
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from mail-fx0-f213.google.com ([209.85.220.213]:52079 "EHLO
+	mail-fx0-f213.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751141AbZK0AHl (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Nov 2009 19:07:41 -0500
+Received: by fxm5 with SMTP id 5so1174898fxm.28
+        for <linux-nfs@vger.kernel.org>; Thu, 26 Nov 2009 16:07:46 -0800 (PST)
+In-Reply-To: <1259248859.6715.50.camel@localhost>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 11/26/2009 03:46 PM, Boaz Harrosh wrote:
-> On 11/24/2009 11:27 PM, Grant Grundler wrote:
->> On Tue, Nov 24, 2009 at 07:58:15PM +0200, Boaz Harrosh wrote:
->>> Some arch files had unneeded #includes directives from linux/nfsd/*.
->>> Some vfs files had unneeded #includes directives from linux/nfsd/*.
->> ...
->>> patches:
->>> [PATCH 1/5] parsic: remove unused nfsd #includes
->>> 	Some kind soul, please compile with this patch? compile
->>> 	is all that's needed.
->>
->> Boaz,
->> linux-2.6 compiles for parisc with this patch. Please add:
->>      Tested-by: Grant Grundler<grundler@parisc-linux.org>
->>
->> thanks,
->> grant
->>
->
-> CCing registered parsic maintainers. Could we please get an ACK on
-> this patch, and cary this through the nfsd tree?
+On Thu, Nov 26, 2009 at 16:20, Trond Myklebust
+<trond.myklebust@fys.uio.no> wrote:
+>> I can run with RPCDBG_TRANS enabled, if it is needed to further
+>> pinpoint the problem.
 
-Sure.
+I don't think I understand how to enable RPCDBG_TRANS exactly.
+Anyway, I activated the dprintks in xprtsock.c with the following
+(endless) result:
 
-Acked-by: Helge Deller <deller@gmx.de>
+RPC:       cfa94400 connect status 99 connected 0 sock state 7
+RPC:       xs_tcp_send_request(32896) = -32
+RPC:       xs_tcp_state_change client cfa94400...
+RPC:       state 7 conn 0 dead 0 zapped 1
+RPC:       xs_connect delayed xprt cfa94400 for 0 seconds
+RPC:       worker connecting xprt cfa94400 to address: addr=1.2.3.151
+port=2049 proto=tcp
+RPC:       cfa94400 connect status 99 connected 0 sock state 7
+RPC:       xs_tcp_send_request(32896) = -32
+RPC:       xs_tcp_state_change client cfa94400...
+RPC:       state 7 conn 0 dead 0 zapped 1
+RPC:       xs_connect delayed xprt cfa94400 for 0 seconds
+RPC:       worker connecting xprt cfa94400 to address: addr=1.2.3.151
+port=2049 proto=tcp
+RPC:       cfa94400 connect status 99 connected 0 sock state 7
+RPC:       xs_tcp_send_request(32896) = -32
+RPC:       xs_tcp_state_change client cfa94400...
+RPC:       state 7 conn 0 dead 0 zapped 1
+RPC:       xs_connect delayed xprt cfa94400 for 0 seconds
+RPC:       worker connecting xprt cfa94400 to address: addr=1.2.3.151
+port=2049 proto=tcp
 
-Helge
-
-
->
-> Thanks
-> Boaz
->
-> On 11/24/2009 07:59 PM, Boaz Harrosh wrote:
->>
->> Some unused includes removed.
->>
->> This patch is in an effort to cleanup nfsd headers and move
->> private definitions to source directory.
->>
->> Signed-off-by: Boaz Harrosh<bharrosh@panasas.com>
->> ---
->>   arch/parisc/kernel/sys_parisc32.c |    6 ------
->>   1 files changed, 0 insertions(+), 6 deletions(-)
->>
->> diff --git a/arch/parisc/kernel/sys_parisc32.c b/arch/parisc/kernel/sys_parisc32.c
->> index 561388b..4a8ca63 100644
->> --- a/arch/parisc/kernel/sys_parisc32.c
->> +++ b/arch/parisc/kernel/sys_parisc32.c
->> @@ -26,13 +26,7 @@
->>   #include<linux/shm.h>
->>   #include<linux/slab.h>
->>   #include<linux/uio.h>
->> -#include<linux/nfs_fs.h>
->>   #include<linux/ncp_fs.h>
->> -#include<linux/sunrpc/svc.h>
->> -#include<linux/nfsd/nfsd.h>
->> -#include<linux/nfsd/cache.h>
->> -#include<linux/nfsd/xdr.h>
->> -#include<linux/nfsd/syscall.h>
->>   #include<linux/poll.h>
->>   #include<linux/personality.h>
->>   #include<linux/stat.h>
->
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-kernel" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> Please read the FAQ at  http://www.tux.org/lkml/
-
+Does this tell you more?
+-- 
+Sincerely,
+                Stephen R. van den Berg.
