@@ -1,77 +1,90 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: Fw: Deadlock regression in v2.6.31.6
-Date: Sat, 28 Nov 2009 10:30:15 -0500
-Message-ID: <1259422215.3486.77.camel@localhost>
-References: <20091124233555.da6439c4.akpm@linux-foundation.org>
-	 <64b4daae0911250056g3364d24l98850a272dcfe483@mail.gmail.com>
-	 <1259159512.3314.12.camel@localhost>
-	 <64b4daae0911251511q7a070b0aj1c07cdc5d6719b41@mail.gmail.com>
-	 <1259247707.6715.46.camel@localhost>
-	 <64b4daae0911260707i4064f608w4f7169441640567@mail.gmail.com>
-	 <1259248859.6715.50.camel@localhost>
-	 <64b4daae0911261607m10d1ba3al8c067f85249c198f@mail.gmail.com>
-	 <64b4daae0911261614l471fb74fx79db2988f0c65738@mail.gmail.com>
-	 <1259357036.3486.38.camel@localhost>
-	 <64b4daae0911271620k46a99666td81528fc863e69f0@mail.gmail.com>
+From: "Brian J. Murrell" <brian-SquOHqY54CVWr29BmMi2cA@public.gmane.org>
+Subject: NFSv4 and EPERM for all but one user
+Date: Sat, 28 Nov 2009 16:46:45 -0500
+Message-ID: <1259444804.13762.29.camel@pc.interlinx.bc.ca>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Cc: Andrew Morton <akpm@linux-foundation.org>,
-	linux-nfs@vger.kernel.org
-To: "Stephen R. van den Berg" <srb-PCMv+cxZuL0@public.gmane.org>
+Content-Type: multipart/signed; micalg="pgp-sha1"; protocol="application/pgp-signature"; boundary="=-o8B4L+Oxl5IbEBGZWAWc"
+To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-out2.uio.no ([129.240.10.58]:57034 "EHLO mail-out2.uio.no"
+Received: from lo.gmane.org ([80.91.229.12]:45989 "EHLO lo.gmane.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751893AbZK1PaR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 28 Nov 2009 10:30:17 -0500
-In-Reply-To: <64b4daae0911271620k46a99666td81528fc863e69f0-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
+	id S1752381AbZK1VrD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 28 Nov 2009 16:47:03 -0500
+Received: from list by lo.gmane.org with local (Exim 4.50)
+	id 1NEV8G-0005fm-2Z
+	for linux-nfs@vger.kernel.org; Sat, 28 Nov 2009 22:47:08 +0100
+Received: from d67-193-197-208.home3.cgocable.net ([67.193.197.208])
+        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
+        id 1AlnuQ-0007hv-00
+        for <linux-nfs@vger.kernel.org>; Sat, 28 Nov 2009 22:47:08 +0100
+Received: from brian by d67-193-197-208.home3.cgocable.net with local (Gmexim 0.1 (Debian))
+        id 1AlnuQ-0007hv-00
+        for <linux-nfs@vger.kernel.org>; Sat, 28 Nov 2009 22:47:08 +0100
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, 2009-11-28 at 01:20 +0100, Stephen R. van den Berg wrote: 
-> On Fri, Nov 27, 2009 at 22:23, Trond Myklebust
-> <trond.myklebust@fys.uio.no> wrote:
-> > On Fri, 2009-11-27 at 01:14 +0100, Stephen R. van den Berg wrote:
-> >> On Fri, Nov 27, 2009 at 01:07, Stephen R. van den Berg <srb-PCMv+cxZuL0@public.gmane.org> wrote:
-> > Does the following patch fix matters?
-> 
-> >        if (!xprt_lock_write(xprt, task))
-> >                return;
-> > +
-> > +       if (test_and_clear_bit(XPRT_CLOSE_WAIT, &xprt->state))
-> > +               xprt->ops->close(xprt);
-> > +
-> >        if (xprt_connected(xprt))
-> 
-> Sorry.  No go.  I got the following trace, I'm not sure if this is
-> relevant, because it is difficult to determine if the logging
-> corresponds to the experienced problem.
-> 
-> RPC: 14194 xprt_connect_status: retrying
-> RPC: 14194 xprt_prepare_transmit
-> RPC: 14194 xprt_transmit(112)
-> RPC:       disconnected transport cfa82400
-> RPC: 14194 xprt_connect xprt cfa82400 is not connected
-> RPC: 14194 xprt_connect_status: retrying
-> RPC: 14194 xprt_prepare_transmit
-> RPC: 14194 xprt_transmit(112)
-> RPC:       disconnected transport cfa82400
-> RPC: 14194 xprt_connect xprt cfa82400 is not connected
-> RPC: 14194 xprt_connect_status: retrying
-> RPC: 14194 xprt_prepare_transmit
-> RPC: 14194 xprt_transmit(112)
-> RPC:       disconnected transport cfa82400
-> RPC: 14194 xprt_connect xprt cfa82400 is not connected
-> RPC: 14194 xprt_connect_status: retrying
-> RPC: 14194 xprt_prepare_transmit
-> RPC: 14194 xprt_transmit(112)
-> RPC:       disconnected transport cfa82400
-> RPC: 14194 xprt_connect xprt cfa82400 is not connected
-> RPC: 14194 xprt_connect_status: retrying
-> RPC: 14194 xprt_prepare_transmit
-> RPC: 14194 xprt_transmit(112)
 
-Did anything change w.r.t. the RPCDBG_TRANS (or better still - the
-RPCDBG_XPRT|RPCDBG_TRANS) trace?
+--=-o8B4L+Oxl5IbEBGZWAWc
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
 
-Trond
+I have an NFSv4 export configured on a server with kernel
+2.6.24-24-generic:
+
+/usr/local      pc(sec=3Dkrb5,rw,no_root_squash,sync,subtree_check) \
+                pvr(sync,subtree_check)
+
+On the machine "pc" one user (me) is able to read it:
+
+$ sudo su - brian -c "ls -l /usr/local"
+total 36
+drwxr-xr-x  2 root root 4096 2009-06-19 10:05 bin
+drwxr-xr-x  4 root root 4096 2009-01-01 09:56 Brother
+drwxr-xr-x  2 root root 4096 2008-11-29 10:49 etc
+drwxr-xr-x  2 root root 4096 2007-03-24 21:01 games
+drwxr-xr-x  2 root root 4096 2007-03-24 21:01 include
+drwxr-xr-x  7 root root 4096 2009-08-02 11:54 lib
+lrwxrwxrwx  1 root root    9 2007-03-24 21:01 man -> share/man
+drwxr-xr-x  2 root root 4096 2007-03-24 21:01 sbin
+drwxr-xr-x 12 root root 4096 2009-07-07 08:40 share
+drwxr-xr-x  2 root root 4096 2007-03-24 21:01 src
+
+But any other user is not:
+
+$ sudo su - brianm -c "ls -l /usr/local"
+No directory, logging in with HOME=3D/
+bind: Address already in use
+ls: cannot open directory /usr/local: Permission denied
+
+$ sudo su - nobody -c "ls -l /usr/local"
+No directory, logging in with HOME=3D/
+bind: Address already in use
+ls: cannot open directory /usr/local: Permission denied
+
+This filesystem is mounted with autofs on "pc" which is running
+2.6.30-10-generic:
+
+/usr/local	-fstype=3Dnfs4,sec=3Dkrb5	linux:/usr/local
+
+I'm positive this is PEBKAC but I'm not sure of what nature.
+
+Any ideas?
+
+b.
+
+
+--=-o8B4L+Oxl5IbEBGZWAWc
+Content-Type: application/pgp-signature; name="signature.asc"
+Content-Description: This is a digitally signed message part
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.9 (GNU/Linux)
+
+iEYEABECAAYFAksRmkEACgkQl3EQlGLyuXCDcACeLNPiJuKQUHOyl7WoB/NgF4tn
+RZAAoJ4NTtmYvPBhSdjoyqEnDSgrOqVe
+=gZoC
+-----END PGP SIGNATURE-----
+
+--=-o8B4L+Oxl5IbEBGZWAWc--
+
 
