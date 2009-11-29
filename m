@@ -1,61 +1,100 @@
-From: Jesper Krogh <jesper-Q2TZfHgGEy4@public.gmane.org>
-Subject: Client cache updates missing? (2.6.31.5)
-Date: Sun, 29 Nov 2009 09:24:18 +0100
-Message-ID: <4B122FB2.7040505@krogh.cc>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH] nfs: remove BKL from callback server
+Date: Sun, 29 Nov 2009 16:24:44 -0500
+Message-ID: <20091129212444.GC7216@fieldses.org>
+References: <20091009151151.GB9436@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-To: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-nfs@vger.kernel.org
+To: Trond Myklebust <trond@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from 2605ds1-ynoe.0.fullrate.dk ([90.184.12.24]:52073 "EHLO
-	shrek.krogh.cc" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753706AbZK2IYZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 29 Nov 2009 03:24:25 -0500
-Received: from localhost (localhost [127.0.0.1])
-	by shrek.krogh.cc (Postfix) with ESMTP id BE0001DFD05
-	for <linux-nfs@vger.kernel.org>; Sun, 29 Nov 2009 09:24:30 +0100 (CET)
-Received: from shrek.krogh.cc ([127.0.0.1])
-	by localhost (shrek.krogh.cc [127.0.0.1]) (amavisd-new, port 10024)
-	with ESMTP id 6WD4qUVJLowY for <linux-nfs@vger.kernel.org>;
-	Sun, 29 Nov 2009 09:24:22 +0100 (CET)
-Received: from [90.184.13.137] (unknown [90.184.13.137])
-	(using TLSv1 with cipher DHE-RSA-AES256-SHA (256/256 bits))
-	(No client certificate requested)
-	(Authenticated sender: jesper-Q2TZfHgGEy4@public.gmane.org)
-	by shrek.krogh.cc (Postfix) with ESMTPSA id 115D41DFD03
-	for <linux-nfs@vger.kernel.org>; Sun, 29 Nov 2009 09:24:22 +0100 (CET)
+Received: from fieldses.org ([174.143.236.118]:57715 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751895AbZK2VXr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 29 Nov 2009 16:23:47 -0500
+In-Reply-To: <20091009151151.GB9436@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi.
+By the way, did this get applied?
 
-I'm seeing some random odd behaviour on my NFS clients. It is
-not directly reproducible, but I have had users telling me about, but
-until you hit stuff like this yourself .. you almost dont believe it.
+And is there someplace I should be looking for your pending patches
+other than
 
-jk@bach:~$ ssh nfsserver ls -ltrah | grep blast-2.out
--rw-rw-r--   1 jk jk 552K 2009-11-29 09:10 blast-2.out
-jk@bach:~$ ls -tlrha  | grep blast-2.out
-jk@bach:~$ date
-Sun Nov 29 09:17:14 CET 2009
-jk@bach:~$ stat blast-2.out
-  File: `blast-2.out'
-  Size: 564283    	Blocks: 1112       IO Block: 1048576 regular file
-Device: 18h/24d	Inode: 139405089   Links: 1
-Access: (0664/-rw-rw-r--)  Uid: ( 1000/      jk)   Gid: ( 1000/      jk)
-Access: 2009-11-29 09:07:34.000000000 +0100
-Modify: 2009-11-29 09:10:27.000000000 +0100
-Change: 2009-11-29 09:10:27.0000
+	git://git.linux-nfs.org/projects/trondmy/nfs-2.6.git
 
-So.. the file has been present for 7 minutes on the NFS-server (and any
-client doing a fresh mount) but the client I'm sitting on is not having
-the file in the directory listing, but if I explicitly ask for it.. its
-there.
+?  Currently they don't seem to have anything not upstream.  (But I may
+have overlooked something.)
 
-Wether or not it has anything to do. The file has been written to the
-NFS-server from another NFS-client. The server is running 2.6.31.5 and
-the client that above was run on is 2.6.24-24 (Ubuntu Jaunty), the
-client that wrote the file was running 2.6.29.1.
+--b.
 
-Jesper
--- 
-Jesper
+On Fri, Oct 09, 2009 at 11:11:51AM -0400, J. Bruce Fields wrote:
+> From: J. Bruce Fields <bfields@citi.umich.edu>
+> 
+> The rpc server does not require that service threads take the BKL.
+> 
+> Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
+> ---
+>  fs/nfs/callback.c |   12 ------------
+>  1 files changed, 0 insertions(+), 12 deletions(-)
+> 
+> Just noticed this while looking for something else.
+> 
+> If these BKL's were cut-and-pasted from lockd or older nfsd code under
+> the assumption that the generic rpc server code needed them: that
+> assumption was incorrect, and we should apply this patch.
+> 
+> (If there was some nfs-client-specific issue here, then ignore this
+> patch.)
+> 
+> diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
+> index 293fa05..e66ec5d 100644
+> --- a/fs/nfs/callback.c
+> +++ b/fs/nfs/callback.c
+> @@ -78,11 +78,6 @@ nfs4_callback_svc(void *vrqstp)
+>  
+>  	set_freezable();
+>  
+> -	/*
+> -	 * FIXME: do we really need to run this under the BKL? If so, please
+> -	 * add a comment about what it's intended to protect.
+> -	 */
+> -	lock_kernel();
+>  	while (!kthread_should_stop()) {
+>  		/*
+>  		 * Listen for a request on the socket
+> @@ -104,7 +99,6 @@ nfs4_callback_svc(void *vrqstp)
+>  		preverr = err;
+>  		svc_process(rqstp);
+>  	}
+> -	unlock_kernel();
+>  	return 0;
+>  }
+>  
+> @@ -160,11 +154,6 @@ nfs41_callback_svc(void *vrqstp)
+>  
+>  	set_freezable();
+>  
+> -	/*
+> -	 * FIXME: do we really need to run this under the BKL? If so, please
+> -	 * add a comment about what it's intended to protect.
+> -	 */
+> -	lock_kernel();
+>  	while (!kthread_should_stop()) {
+>  		prepare_to_wait(&serv->sv_cb_waitq, &wq, TASK_INTERRUPTIBLE);
+>  		spin_lock_bh(&serv->sv_cb_lock);
+> @@ -183,7 +172,6 @@ nfs41_callback_svc(void *vrqstp)
+>  		}
+>  		finish_wait(&serv->sv_cb_waitq, &wq);
+>  	}
+> -	unlock_kernel();
+>  	return 0;
+>  }
+>  
+> -- 
+> 1.6.0.4
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
