@@ -1,90 +1,61 @@
-From: "Brian J. Murrell" <brian-SquOHqY54CVWr29BmMi2cA@public.gmane.org>
-Subject: NFSv4 and EPERM for all but one user
-Date: Sat, 28 Nov 2009 16:46:45 -0500
-Message-ID: <1259444804.13762.29.camel@pc.interlinx.bc.ca>
+From: Jesper Krogh <jesper-Q2TZfHgGEy4@public.gmane.org>
+Subject: Client cache updates missing? (2.6.31.5)
+Date: Sun, 29 Nov 2009 09:24:18 +0100
+Message-ID: <4B122FB2.7040505@krogh.cc>
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg="pgp-sha1"; protocol="application/pgp-signature"; boundary="=-o8B4L+Oxl5IbEBGZWAWc"
+Content-Type: text/plain; charset=ISO-8859-1
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from lo.gmane.org ([80.91.229.12]:45989 "EHLO lo.gmane.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752381AbZK1VrD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 28 Nov 2009 16:47:03 -0500
-Received: from list by lo.gmane.org with local (Exim 4.50)
-	id 1NEV8G-0005fm-2Z
-	for linux-nfs@vger.kernel.org; Sat, 28 Nov 2009 22:47:08 +0100
-Received: from d67-193-197-208.home3.cgocable.net ([67.193.197.208])
-        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-nfs@vger.kernel.org>; Sat, 28 Nov 2009 22:47:08 +0100
-Received: from brian by d67-193-197-208.home3.cgocable.net with local (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-nfs@vger.kernel.org>; Sat, 28 Nov 2009 22:47:08 +0100
+Received: from 2605ds1-ynoe.0.fullrate.dk ([90.184.12.24]:52073 "EHLO
+	shrek.krogh.cc" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753706AbZK2IYZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 29 Nov 2009 03:24:25 -0500
+Received: from localhost (localhost [127.0.0.1])
+	by shrek.krogh.cc (Postfix) with ESMTP id BE0001DFD05
+	for <linux-nfs@vger.kernel.org>; Sun, 29 Nov 2009 09:24:30 +0100 (CET)
+Received: from shrek.krogh.cc ([127.0.0.1])
+	by localhost (shrek.krogh.cc [127.0.0.1]) (amavisd-new, port 10024)
+	with ESMTP id 6WD4qUVJLowY for <linux-nfs@vger.kernel.org>;
+	Sun, 29 Nov 2009 09:24:22 +0100 (CET)
+Received: from [90.184.13.137] (unknown [90.184.13.137])
+	(using TLSv1 with cipher DHE-RSA-AES256-SHA (256/256 bits))
+	(No client certificate requested)
+	(Authenticated sender: jesper-Q2TZfHgGEy4@public.gmane.org)
+	by shrek.krogh.cc (Postfix) with ESMTPSA id 115D41DFD03
+	for <linux-nfs@vger.kernel.org>; Sun, 29 Nov 2009 09:24:22 +0100 (CET)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Hi.
 
---=-o8B4L+Oxl5IbEBGZWAWc
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
+I'm seeing some random odd behaviour on my NFS clients. It is
+not directly reproducible, but I have had users telling me about, but
+until you hit stuff like this yourself .. you almost dont believe it.
 
-I have an NFSv4 export configured on a server with kernel
-2.6.24-24-generic:
+jk@bach:~$ ssh nfsserver ls -ltrah | grep blast-2.out
+-rw-rw-r--   1 jk jk 552K 2009-11-29 09:10 blast-2.out
+jk@bach:~$ ls -tlrha  | grep blast-2.out
+jk@bach:~$ date
+Sun Nov 29 09:17:14 CET 2009
+jk@bach:~$ stat blast-2.out
+  File: `blast-2.out'
+  Size: 564283    	Blocks: 1112       IO Block: 1048576 regular file
+Device: 18h/24d	Inode: 139405089   Links: 1
+Access: (0664/-rw-rw-r--)  Uid: ( 1000/      jk)   Gid: ( 1000/      jk)
+Access: 2009-11-29 09:07:34.000000000 +0100
+Modify: 2009-11-29 09:10:27.000000000 +0100
+Change: 2009-11-29 09:10:27.0000
 
-/usr/local      pc(sec=3Dkrb5,rw,no_root_squash,sync,subtree_check) \
-                pvr(sync,subtree_check)
+So.. the file has been present for 7 minutes on the NFS-server (and any
+client doing a fresh mount) but the client I'm sitting on is not having
+the file in the directory listing, but if I explicitly ask for it.. its
+there.
 
-On the machine "pc" one user (me) is able to read it:
+Wether or not it has anything to do. The file has been written to the
+NFS-server from another NFS-client. The server is running 2.6.31.5 and
+the client that above was run on is 2.6.24-24 (Ubuntu Jaunty), the
+client that wrote the file was running 2.6.29.1.
 
-$ sudo su - brian -c "ls -l /usr/local"
-total 36
-drwxr-xr-x  2 root root 4096 2009-06-19 10:05 bin
-drwxr-xr-x  4 root root 4096 2009-01-01 09:56 Brother
-drwxr-xr-x  2 root root 4096 2008-11-29 10:49 etc
-drwxr-xr-x  2 root root 4096 2007-03-24 21:01 games
-drwxr-xr-x  2 root root 4096 2007-03-24 21:01 include
-drwxr-xr-x  7 root root 4096 2009-08-02 11:54 lib
-lrwxrwxrwx  1 root root    9 2007-03-24 21:01 man -> share/man
-drwxr-xr-x  2 root root 4096 2007-03-24 21:01 sbin
-drwxr-xr-x 12 root root 4096 2009-07-07 08:40 share
-drwxr-xr-x  2 root root 4096 2007-03-24 21:01 src
-
-But any other user is not:
-
-$ sudo su - brianm -c "ls -l /usr/local"
-No directory, logging in with HOME=3D/
-bind: Address already in use
-ls: cannot open directory /usr/local: Permission denied
-
-$ sudo su - nobody -c "ls -l /usr/local"
-No directory, logging in with HOME=3D/
-bind: Address already in use
-ls: cannot open directory /usr/local: Permission denied
-
-This filesystem is mounted with autofs on "pc" which is running
-2.6.30-10-generic:
-
-/usr/local	-fstype=3Dnfs4,sec=3Dkrb5	linux:/usr/local
-
-I'm positive this is PEBKAC but I'm not sure of what nature.
-
-Any ideas?
-
-b.
-
-
---=-o8B4L+Oxl5IbEBGZWAWc
-Content-Type: application/pgp-signature; name="signature.asc"
-Content-Description: This is a digitally signed message part
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.9 (GNU/Linux)
-
-iEYEABECAAYFAksRmkEACgkQl3EQlGLyuXCDcACeLNPiJuKQUHOyl7WoB/NgF4tn
-RZAAoJ4NTtmYvPBhSdjoyqEnDSgrOqVe
-=gZoC
------END PGP SIGNATURE-----
-
---=-o8B4L+Oxl5IbEBGZWAWc--
-
-
+Jesper
+-- 
+Jesper
