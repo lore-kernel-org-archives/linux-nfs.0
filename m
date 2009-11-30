@@ -1,39 +1,98 @@
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: Re: [PATCH] nfs: remove BKL from callback server
-Date: Mon, 30 Nov 2009 08:44:21 -0500
-Message-ID: <1259588661.3419.5.camel@localhost>
-References: <20091009151151.GB9436@fieldses.org>
-	 <20091129212444.GC7216@fieldses.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Cc: linux-nfs@vger.kernel.org
-To: "J. Bruce Fields" <bfields@fieldses.org>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: [nfs-utils PATCH] retry on EPERM from NFSv4 mount attempt
+Date: Mon, 30 Nov 2009 11:43:29 -0500
+Message-ID: <C027313D-A09F-4A72-926A-3D0EC2795E73@oracle.com>
+References: <19211.7054.291514.185591@notabene.brown> <4B0BEDDB.1010203@RedHat.com> <4B13C48E.5020009@RedHat.com>
+Mime-Version: 1.0 (Apple Message framework v936)
+Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
+Cc: linux-nfs@vger.kernel.org, Neil Brown <neilb@suse.de>
+To: Steve Dickson <SteveD@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:64645 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753126AbZK3NoZ convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Nov 2009 08:44:25 -0500
-In-Reply-To: <20091129212444.GC7216@fieldses.org>
+Received: from rcsinet11.oracle.com ([148.87.113.123]:55841 "EHLO
+	rgminet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752402AbZK3QoD (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Nov 2009 11:44:03 -0500
+In-Reply-To: <4B13C48E.5020009-AfCzQyP5zfLQT0dZR+AlfA@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sun, 2009-11-29 at 16:24 -0500, J. Bruce Fields wrote: 
-> By the way, did this get applied?
+On Nov 30, 2009, at 8:11 AM, Steve Dickson wrote:
+> Sorry for the delayed response, I took some time off...
+>
+> On 11/24/2009 09:29 AM, Steve Dickson wrote:
+>>
+>>
+>> On 11/23/2009 06:32 PM, Neil Brown wrote:
+>>>
+>>> Hi,
+>>> I recently packaged nfs-utils 1.2.1 for openSUSE and fairly quickly
+>>> got a bug report - "-o nfsvers=3" was needed to mount NFSv3
+>>> filesystems.
+>>>
+>>> mount.nfs in 1.2.1 will first try a v4 mount but will fall-back to  
+>>> v3
+>>> if it gets ENOENT.  This works fine.
+>>> However for kernel prior to 2.6.25, you don't get ENOENT, you get
+>>> EPERM.
+>>> In that case the fall-back to v3 doesn't happen and you get a  
+>>> failure
+>>> to mount.
+>>>
+>>> So I think we need to fall back on EPERM as well.  See below.
+>> I already posted this patch on the v4 mailing list
+>> http://linux-nfs.org/pipermail/nfsv4/2009-November/011595.html
+>> but it got shot down...  at least that's how I interpreted the
+>> responses...
+>>
+>> But I do thing we need this, since there are so many server
+>> that will simple break if we don't... Agreed?
+>
+> There appears to be a consensus that we need to do something
+> but no agreement on what....
+>
+> I believe the options are:
+>   1) Start servers with '-N 4' when there is no root configured.
+>      * The problem I see with this is, in the event v4 support is  
+> wanted
+>        its yet another configuration knob that has to be turned,  
+> basically
+>        making it more difficult for people use v4.
+>
+>   2) Change the kernel to return NFS4ERR_SERVERFAULT when there is no
+>      root configured.
+>      * I see this is yet another errno the mounting code has to deal  
+> with..
+>        We are up to two errnos, do we really want to add a third?
+>
+> Neither one of these solutions deal with legacy servers or move
+> the "v4 technology" forward... IMHO...
 
-I found a 100% identical patch that I wrote immediately after I got back
-from the kernel summit. However, since it looks as if your patch
-predates mine, I'll replace it...
+To quote Yoda, "No.  There is another."
 
-> And is there someplace I should be looking for your pending patches
-> other than
-> 
-> 	git://git.linux-nfs.org/projects/trondmy/nfs-2.6.git
-> 
-> ?  Currently they don't seem to have anything not upstream.  (But I may
-> have overlooked something.)
+Distributions can choose to revert the recently added behavior which  
+makes mount.nfs try vers=4 by default.  That's what the mount config  
+file is for, yes?  That seems like a responsible choice, given the  
+number of legacy servers still in the field.
 
-I'm still running my own tests, so nothing has been published yet...
+At some later point (say, when your pseudoroot work is more widely  
+deployed), distributions can make vers=4 the default as shipped simply  
+by flipping a switch in the mount config file.  For now, the default  
+behavior stays the same, with an option for individual sites to try  
+something new.  In my opinion, default behavior out of the shrinkwrap  
+should always be the behavior most likely to work in any environment  
+-- principle of least surprise, and all that sort of thing.
 
-Cheers
-  Trond
+This seems like the way we normally deploy new features like this, and  
+would give the many very recent changes in mount.nfs more soak time  
+with early adopters before we force them on everyone.
+
+I know you won't like that idea Steve, but at least we should discuss  
+it before rejecting the idea out of hand.
+
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
 
