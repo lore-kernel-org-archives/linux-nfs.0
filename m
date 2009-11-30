@@ -1,102 +1,60 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [nfs-utils PATCH] retry on EPERM from NFSv4 mount attempt
-Date: Mon, 30 Nov 2009 13:18:58 -0500
-Message-ID: <20091130181858.GA6348@fieldses.org>
-References: <19211.7054.291514.185591@notabene.brown> <4B0BEDDB.1010203@RedHat.com> <4B13C48E.5020009@RedHat.com>
+Subject: Re: Client cache updates missing? (2.6.31.5)
+Date: Mon, 30 Nov 2009 13:26:43 -0500
+Message-ID: <20091130182643.GB6348@fieldses.org>
+References: <4B122FB2.7040505@krogh.cc>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs@vger.kernel.org, Neil Brown <neilb@suse.de>
-To: Steve Dickson <SteveD@redhat.com>
+Cc: linux-nfs@vger.kernel.org
+To: Jesper Krogh <jesper-Q2TZfHgGEy4@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:34596 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:38407 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752601AbZK3SR7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 30 Nov 2009 13:17:59 -0500
-In-Reply-To: <4B13C48E.5020009-AfCzQyP5zfLQT0dZR+AlfA@public.gmane.org>
+	id S1752601AbZK3SZn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 30 Nov 2009 13:25:43 -0500
+In-Reply-To: <4B122FB2.7040505-Q2TZfHgGEy4@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Nov 30, 2009 at 08:11:42AM -0500, Steve Dickson wrote:
-> Sorry for the delayed response, I took some time off...
+On Sun, Nov 29, 2009 at 09:24:18AM +0100, Jesper Krogh wrote:
+> Hi.
 > 
-> On 11/24/2009 09:29 AM, Steve Dickson wrote:
-> > 
-> > 
-> > On 11/23/2009 06:32 PM, Neil Brown wrote:
-> >>
-> >> Hi,
-> >>  I recently packaged nfs-utils 1.2.1 for openSUSE and fairly quickly
-> >>  got a bug report - "-o nfsvers=3" was needed to mount NFSv3
-> >>  filesystems.
-> >>
-> >>  mount.nfs in 1.2.1 will first try a v4 mount but will fall-back to v3
-> >>  if it gets ENOENT.  This works fine.
-> >>  However for kernel prior to 2.6.25, you don't get ENOENT, you get
-> >>  EPERM.
-> >>  In that case the fall-back to v3 doesn't happen and you get a failure
-> >>  to mount.
-> >>
-> >>  So I think we need to fall back on EPERM as well.  See below.
-> > I already posted this patch on the v4 mailing list
-> > http://linux-nfs.org/pipermail/nfsv4/2009-November/011595.html
-> > but it got shot down...  at least that's how I interpreted the
-> > responses... 
-> > 
-> > But I do thing we need this, since there are so many server 
-> > that will simple break if we don't... Agreed?
+> I'm seeing some random odd behaviour on my NFS clients. It is
+> not directly reproducible, but I have had users telling me about, but
+> until you hit stuff like this yourself .. you almost dont believe it.
 > 
-> There appears to be a consensus that we need to do something
-> but no agreement on what.... 
+> jk@bach:~$ ssh nfsserver ls -ltrah | grep blast-2.out
+> -rw-rw-r--   1 jk jk 552K 2009-11-29 09:10 blast-2.out
+> jk@bach:~$ ls -tlrha  | grep blast-2.out
+> jk@bach:~$ date
+> Sun Nov 29 09:17:14 CET 2009
+> jk@bach:~$ stat blast-2.out
+>   File: `blast-2.out'
+>   Size: 564283    	Blocks: 1112       IO Block: 1048576 regular file
+> Device: 18h/24d	Inode: 139405089   Links: 1
+> Access: (0664/-rw-rw-r--)  Uid: ( 1000/      jk)   Gid: ( 1000/      jk)
+> Access: 2009-11-29 09:07:34.000000000 +0100
+> Modify: 2009-11-29 09:10:27.000000000 +0100
+> Change: 2009-11-29 09:10:27.0000
 > 
-> I believe the options are:
-
-Note we want to do more than one of these; in particular:
-
->    1) Start servers with '-N 4' when there is no root configured.
-
-This is required.  The current behavior is a bug, and we must not start
-servers with v4 support without having a pseudoroot.
-
->       * The problem I see with this is, in the event v4 support is wanted 
->         its yet another configuration knob that has to be turned, basically
->         making it more difficult for people use v4. 
-
-Yes.  There are things we can do to help (the pseudoroot patches, for
-example).  However, continuing to turn on v4 by default in the absence
-of a pseudoroot is not an option.
-
->    2) Change the kernel to return NFS4ERR_SERVERFAULT when there is no
->       root configured. 
->       * I see this is yet another errno the mounting code has to deal with..
->         We are up to two errnos, do we really want to add a third?
-
-I think SERVERFAULT is a little more accurate, but I'm open to argument.
-
-> Neither one of these solutions deal with legacy servers or move
-> the "v4 technology" forward... IMHO...   
-
-Yes, so we also need to do one of these:
-
-> So what I suggest we do is:
->    1) Finish the dynamic pseudo root support asap, since all this
->       goes away when that support exists. 
-
-Sure.
-
->    2) We commit the "roll back to v3 on EPERM errors" and we draw a 
->       line in the sand saying if a server does not return one of these
->       errors on v4 mounts when there is a not a root configured, the
->       server is broken and needs to be fix. Point, these are the only
->       two errnos that will cause a v3 roll back.
->       * My only concern is how we are going to work with 
->         non-linux servers and how much extra network trace will 
->         this cause during automount storms... 
+> So.. the file has been present for 7 minutes on the NFS-server (and any
+> client doing a fresh mount) but the client I'm sitting on is not having
+> the file in the directory listing, but if I explicitly ask for it.. its
+> there.
 > 
-> But in the end, I think we will have to go with the "roll back on EPERM errors"
-> patch, because there is simply no way a mount command can be released 
-> in an enterprise environment that is not backward compatible with
-> existing servers.
+> Wether or not it has anything to do. The file has been written to the
+> NFS-server from another NFS-client. The server is running 2.6.31.5 and
+> the client that above was run on is 2.6.24-24 (Ubuntu Jaunty), the
+> client that wrote the file was running 2.6.29.1.
 
-OK.
+I this v3 or v4?  What's the exported filesystem?  (ext3?)
+
+It's probably a timestamp resolution problem; if the directory was
+modified twice in the same second, the later change won't change the
+timestamp, and so the client may assume its cache is still good.
+
+Recent clients try a little harder to work around this.  On the server
+side it should help to switch to a filesystem with better than 1-second
+timestamp resolution.
 
 --b.
