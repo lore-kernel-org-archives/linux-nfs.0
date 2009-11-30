@@ -1,75 +1,97 @@
-From: Jesper Krogh <jesper-Q2TZfHgGEy4@public.gmane.org>
-Subject: 2.6.31.6, unresponsiveness and something with nfs
-Date: Mon, 30 Nov 2009 18:07:51 +0100
-Message-ID: <4B13FBE7.9040304@krogh.cc>
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Re: [nfs-utils PATCH] retry on EPERM from NFSv4 mount attempt
+Date: Mon, 30 Nov 2009 12:41:30 -0500
+Message-ID: <4B1403CA.8050107@RedHat.com>
+References: <19211.7054.291514.185591@notabene.brown> <4B0BEDDB.1010203@RedHat.com> <4B13C48E.5020009@RedHat.com> <C027313D-A09F-4A72-926A-3D0EC2795E73@oracle.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
-To: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org
+Cc: linux-nfs@vger.kernel.org, Neil Brown <neilb@suse.de>
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from 2605ds1-ynoe.0.fullrate.dk ([90.184.12.24]:36818 "EHLO
-	shrek.krogh.cc" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752187AbZK3RHv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 30 Nov 2009 12:07:51 -0500
+Received: from mx1.redhat.com ([209.132.183.28]:19398 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751649AbZK3Rld (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 30 Nov 2009 12:41:33 -0500
+In-Reply-To: <C027313D-A09F-4A72-926A-3D0EC2795E73@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi.
+On 11/30/2009 11:43 AM, Chuck Lever wrote:
+> On Nov 30, 2009, at 8:11 AM, Steve Dickson wrote:
+>> Sorry for the delayed response, I took some time off...
+>>
+>> On 11/24/2009 09:29 AM, Steve Dickson wrote:
+>>>
+>>>
+>>> On 11/23/2009 06:32 PM, Neil Brown wrote:
+>>>>
+>>>> Hi,
+>>>> I recently packaged nfs-utils 1.2.1 for openSUSE and fairly quickly
+>>>> got a bug report - "-o nfsvers=3" was needed to mount NFSv3
+>>>> filesystems.
+>>>>
+>>>> mount.nfs in 1.2.1 will first try a v4 mount but will fall-back to v3
+>>>> if it gets ENOENT.  This works fine.
+>>>> However for kernel prior to 2.6.25, you don't get ENOENT, you get
+>>>> EPERM.
+>>>> In that case the fall-back to v3 doesn't happen and you get a failure
+>>>> to mount.
+>>>>
+>>>> So I think we need to fall back on EPERM as well.  See below.
+>>> I already posted this patch on the v4 mailing list
+>>> http://linux-nfs.org/pipermail/nfsv4/2009-November/011595.html
+>>> but it got shot down...  at least that's how I interpreted the
+>>> responses...
+>>>
+>>> But I do thing we need this, since there are so many server
+>>> that will simple break if we don't... Agreed?
+>>
+>> There appears to be a consensus that we need to do something
+>> but no agreement on what....
+>>
+>> I believe the options are:
+>>   1) Start servers with '-N 4' when there is no root configured.
+>>      * The problem I see with this is, in the event v4 support is wanted
+>>        its yet another configuration knob that has to be turned,
+>> basically
+>>        making it more difficult for people use v4.
+>>
+>>   2) Change the kernel to return NFS4ERR_SERVERFAULT when there is no
+>>      root configured.
+>>      * I see this is yet another errno the mounting code has to deal
+>> with..
+>>        We are up to two errnos, do we really want to add a third?
+>>
+>> Neither one of these solutions deal with legacy servers or move
+>> the "v4 technology" forward... IMHO...
+> 
+> To quote Yoda, "No.  There is another."
+> 
+> Distributions can choose to revert the recently added behavior which
+> makes mount.nfs try vers=4 by default.  That's what the mount config
+> file is for, yes?  That seems like a responsible choice, given the
+> number of legacy servers still in the field.
+Yes... That was the main reason for the configuration file.
 
-I have a system running 2.6.31.6 that when running a particular process
-become "unresponsive". I cannot really tell what it is but the effect is
-that logins as ordinary users hangs, when that user has its home on a
-remote NFS-server.
+> 
+> At some later point (say, when your pseudoroot work is more widely
+> deployed), distributions can make vers=4 the default as shipped simply
+> by flipping a switch in the mount config file.  For now, the default
+> behavior stays the same, with an option for individual sites to try
+> something new.  In my opinion, default behavior out of the shrinkwrap
+> should always be the behavior most likely to work in any environment --
+> principle of least surprise, and all that sort of thing.
+Not matter how or when we flip the switch, we'll have to deal 
+with the legacy servers...
 
-so from root "su - localuser" works excellent. But su - user-with-home
-on-nfs doesnt.
+> 
+> This seems like the way we normally deploy new features like this, and
+> would give the many very recent changes in mount.nfs more soak time with
+> early adopters before we force them on everyone.
+Take a look at the Fedora 12... Its set up exactly as you just described
+with only difference vers=3 is set in the configuration file...
 
-It is not as if NIS/NFS doesnt work, since i can get a directory-listing
-from the NFS-share as root without problems.
+So in my opinion, we are at the point of no return.... ;-)
 
-But here is the last 10 lines from "strace -f su -
-user-with-home-on-nfs" .. it get into an un-interruptible hang.
-
-[pid 24599] close(3)                    = 0
-[pid 24599] open("/etc/localtime", O_RDONLY) = 3
-[pid 24599] fstat(3, {st_mode=S_IFREG|0644, st_size=2134, ...}) = 0
-[pid 24599] fstat(3, {st_mode=S_IFREG|0644, st_size=2134, ...}) = 0
-[pid 24599] mmap(NULL, 4096, PROT_READ|PROT_WRITE,
-MAP_PRIVATE|MAP_ANONYMOUS, -1, 0) = 0x7f6b0c5b2000
-[pid 24599] read(3,
-"TZif2\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\6\0\0\0\6\0\0"..., 4096) = 2134
-[pid 24599] lseek(3, -1368, SEEK_CUR)   = 766
-[pid 24599] read(3,
-"TZif2\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\10\0\0\0\10\0"..., 4096) = 1368
-[pid 24599] close(3)                    = 0
-[pid 24599] munmap(0x7f6b0c5b2000, 4096) = 0
-[pid 24599] stat("/etc/localtime", {st_mode=S_IFREG|0644, st_size=2134,
-...}) = 0
-[pid 24599] fstat(1,
-
-^C^C^C^C
-
-
-or at least not uninterruptable, because I have a process merging 20,
-1.5GB presorted files using "sort -m" from GNU-coreutils.. on an ext4
-volume, a few seconds after I kill -9 the sorting process.. all hanging
-login continues.. the above process continues(and the system returns to
-"normal state"):
-
-{st_mode=S_IFREG|0664, st_size=246138, ...}) = 0
-[pid 24599] --- SIGINT (Interrupt) @ 0 (0) ---
-Process 24542 resumed
-Process 24599 detached
-[pid 24542] <... wait4 resumed> 0x7fffa656c5a4, 0, NULL) = ? ERESTARTSYS
-(To be restarted)
-[pid 24542] --- SIGINT (Interrupt) @ 0 (0) ---
-
-The merging process is on an ext4 volume of 8TB in size. strace of the
-sorting process, shows it progresses nicely.
-
-The system is running 2.6.31.6 with
-59a252ff8c0f2fa32c896f69d56ae33e641ce7ad reverted as suggested by J.
-Bruce Fields, to me it seems unrelated.
-
-Jesper
--- 
-Jesper
+steved.
+ 
