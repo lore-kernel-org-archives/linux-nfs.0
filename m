@@ -1,184 +1,105 @@
 From: Jeff Layton <jlayton@redhat.com>
-Subject: Re: [PATCH] NLM: add network test when host expire but hold lock at
- nlm_gc_hosts
-Date: Wed, 2 Dec 2009 07:26:44 -0500
-Message-ID: <20091202072644.31c5d17e@tlielax.poochiereds.net>
-References: <4B163798.7010309@cn.fujitsu.com>
+Subject: Re: rpc.statd problem: lockd: cannot monitor server
+Date: Wed, 2 Dec 2009 07:29:28 -0500
+Message-ID: <20091202072928.14b9399c@tlielax.poochiereds.net>
+References: <4B154EE7.8050700@bull.net>
+	<98062189-30B8-4AF6-8F6F-4534495230C2@oracle.com>
+	<4B163FF9.9050700@bull.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=US-ASCII
-Cc: NFSv3 list <linux-nfs@vger.kernel.org>,
-	"Trond.Myklebust" <trond.myklebust@fys.uio.no>,
-	"J. Bruce Fields" <bfields@fieldses.org>
-To: Mi Jinlong <mijinlong@cn.fujitsu.com>
+Cc: Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org
+To: Diego Moreno <Diego.Moreno-Lazaro@bull.net>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:62911 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:8535 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750957AbZLBM0y (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 2 Dec 2009 07:26:54 -0500
-In-Reply-To: <4B163798.7010309@cn.fujitsu.com>
+	id S1750957AbZLBM32 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 2 Dec 2009 07:29:28 -0500
+In-Reply-To: <4B163FF9.9050700@bull.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 02 Dec 2009 17:47:04 +0800
-Mi Jinlong <mijinlong@cn.fujitsu.com> wrote:
+On Wed, 02 Dec 2009 11:22:49 +0100
+Diego Moreno <Diego.Moreno-Lazaro@bull.net> wrote:
 
-> After a client get lock, it's network partition for some reasons.
-> other client cannot get lock success forever.
 > 
-> This patch can avoid this problem using rpc_ping to test client's
-> network when host expired but hold lock.
 > 
-> If the client's network is partition, server will release client's 
-> lock, other client will get lock success.
+> Chuck Lever wrote:
+> > On Dec 1, 2009, at 12:14 PM, Diego Moreno wrote:
+> >> Hi guys,
+> >>
+> >> We are having a problem with locks in NFSv3 with Fedora11. I've been 
+> >> searching this problem in the list for a while but I haven't found it.
+> >>
+> >> The problem is in Fedora11, kernel 2.6.29.6-217.2.16.fc11 and 
+> >> nfs-utils-1.1.5-6.fc11
+> >>
+> >> When I try to make two locks with two different process I get the 
+> >> message "No locks available". rpc.statd is running on client and 
+> >> server, also lockd. If I try with just one process I obtain the same 
+> >> result.
+> >>
+> >> I tried to debug with wireshark and I can see client is not trying to 
+> >> make a lock. I also tried to enable NLM debug and I get next messages:
+> >>
+> >> Syslog:
+> >>
+> >> 1259574201 2009 Nov 30 10:43:21 myclient kern warning kernel lockd: 
+> >> get host myserver
+> >> 1259574201 2009 Nov 30 10:43:21 myclient kern warning kernel lockd: 
+> >> get host myserver
+> >> 1259574201 2009 Nov 30 10:43:21 myclient kern warning kernel lockd: 
+> >> nsm_monitor(myserver)
+> >> 1259574201 2009 Nov 30 10:43:21 myclient kern warning kernel lockd: 
+> >> get host myserver
+> >> 1259574201 2009 Nov 30 10:43:21 myclient kern warning kernel lockd: 
+> >> get host myserver
+> >> 1259574201 2009 Nov 30 10:43:21 myclient kern warning kernel lockd: 
+> >> nsm_monitor(myserver)
+> >> 1259574201 2009 Nov 30 10:43:21 myclient kern warning kernel lockd: 
+> >> xdr_dec_stat_res status 1 state -1
+> >> 1259574201 2009 Nov 30 10:43:21 myclient kern notice kernel lockd: 
+> >> cannot monitor myserver
+> >> 1259574201 2009 Nov 30 10:43:21 myclient kern warning kernel lockd: 
+> >> release host myserver
+> >> 1259574201 2009 Nov 30 10:43:21 myclient kern warning kernel lockd: 
+> >> release host myserver
+> >> 1259574201 2009 Nov 30 10:43:21 myclient daemon warning rpc.statd 
+> >> creat(/var/lib/nfs/statd/sm/myserver) failed: No such file or directory
+> >> 1259574201 2009 Nov 30 10:43:21 myclient daemon notice rpc.statd 
+> >> STAT_FAIL to myclient for SM_MON of 10.0.4.60
+> >> 1259574201 2009 Nov 30 10:43:21 myclient daemon warning rpc.statd 
+> >> creat(/var/lib/nfs/statd/sm/myserver) failed: No such file or directory
+> > 
+> > Statd can't create the monitor record for this remote peer for some 
+> > reason.  Check that /var/lib/nfs/statd and /var/lib/nfs/statd/sm exist, 
+> > and are permitted so that rpc.statd can create files in it.  Check which 
+> > uid and gid statd is running under: I think F11 uses 29 for both.
+> >
 > 
-> Signed-off-by: mijinlong@cn.fujitsu.com
-
-Yikes! That sounds like it'll make locking subject to the reliability
-of the network. I don't think that's a good idea.
-
-What might be more reasonable is to consider implementing something
-like the clear_locks command in Solaris. That is, a way for an admin to
-remove server-side locks held by a client that he knows is never going
-to come back. With that, this sort of thing at least becomes a willful
-act...
-
-> ---
->  fs/lockd/host.c             |   54 ++++++++++++++++++++++++++++++++++++++++++-
->  include/linux/sunrpc/clnt.h |    1 +
->  net/sunrpc/clnt.c           |    4 +-
->  3 files changed, 56 insertions(+), 3 deletions(-)
+> Thanks Chuck. That made the trick. Directory /var/lib/nfs/statd/ was 
+> empty in client and server. Adding these directories locking works. But 
+> it's just a workaround as I have 30 more clients having the same 
+> problem. I'm going to try to find out why this is happening. Maybe it is 
+> a bug in fedora installation? When are supposed the files under 
+> "/var/lib/nfs/statd/" to be created?
 > 
-> diff --git a/fs/lockd/host.c b/fs/lockd/host.c
-> index 4600c20..73f6732 100644
-> --- a/fs/lockd/host.c
-> +++ b/fs/lockd/host.c
-> @@ -31,6 +31,7 @@ static int			nrhosts;
->  static DEFINE_MUTEX(nlm_host_mutex);
->  
->  static void			nlm_gc_hosts(void);
-> +static int			nlm_test_host(struct nlm_host *);
->  
->  struct nlm_lookup_host_info {
->  	const int		server;		/* search for server|client */
-> @@ -550,13 +551,24 @@ nlm_gc_hosts(void)
->  
->  	for (chain = nlm_hosts; chain < nlm_hosts + NLM_HOST_NRHASH; ++chain) {
->  		hlist_for_each_entry_safe(host, pos, next, chain, h_hash) {
-> -			if (atomic_read(&host->h_count) || host->h_inuse
-> +			if (atomic_read(&host->h_count) 
->  			 || time_before(jiffies, host->h_expires)) {
->  				dprintk("nlm_gc_hosts skipping %s (cnt %d use %d exp %ld)\n",
->  					host->h_name, atomic_read(&host->h_count),
->  					host->h_inuse, host->h_expires);
->  				continue;
->  			}
-> +
-> +			if (host->h_inuse) {
-> +				if (!nlm_test_host(host)) {
-> +					dprintk("nlm_gc_hosts skipping %s (cnt %d use %d exp %ld)\n",
-> +						host->h_name, atomic_read(&host->h_count),
-> +						host->h_inuse, host->h_expires);
-> +					continue;
-> +				}
-> +				nlmsvc_free_host_resources(host);
-> +			}
-> +
->  			dprintk("lockd: delete host %s\n", host->h_name);
->  			hlist_del_init(&host->h_hash);
->  
-> @@ -567,3 +579,43 @@ nlm_gc_hosts(void)
->  
->  	next_gc = jiffies + NLM_HOST_COLLECT;
->  }
-> +
-> +static int
-> +nlm_test_host(struct nlm_host *host)
-> +{
-> +	struct rpc_clnt *clnt;
-> +
-> +	dprintk("lockd: test host %s\n", host->h_name);
-> +	clnt = host->h_rpcclnt;
-> +	if (clnt == NULL) {
-> +		unsigned long increment = HZ;
-> +		struct rpc_timeout timeparms = {
-> +			.to_initval	= increment,
-> +			.to_increment	= increment,
-> +			.to_maxval	= increment * 3UL,
-> +			.to_retries	= 2U,
-> +		};
-> +
-> +		struct rpc_create_args args = {
-> +			.protocol	= host->h_proto,
-> +			.address	= nlm_addr(host),
-> +			.addrsize	= host->h_addrlen,
-> +			.saddress	= nlm_srcaddr(host),
-> +			.timeout	= &timeparms,
-> +			.servername	= host->h_name,
-> +			.program	= &nlm_program,
-> +			.version	= host->h_version,
-> +			.authflavor	= RPC_AUTH_UNIX,
-> +			.flags		= RPC_CLNT_CREATE_AUTOBIND,
-> +		};
-> +
-> +		clnt = rpc_create(&args);
-> +		if (IS_ERR(clnt)) 
-> +			return -EIO;
-> +
-> +		rpc_shutdown_client(clnt);
-> +		return 0;
-> +	}
-> +
-> +	return rpc_ping(clnt, RPC_TASK_SOFT);
-> +}
+> statd is running under the right uid and gid and /var/lib/nfs/statd is 
+> owned by rpcuser as it should be.
+> 
 
-Hmm...this runs in lockd's context too, right? While it's waiting for a
-ping to come back, the server can't service any lock requests. That
-could really slow down lockd in the event of a network partition. In
-general, it's best to avoid blocking operations in lockd's context if
-at all possible.
+Sounds like a packaging bug, but when I look at CVS for that nfs-utils
+version it looks ok:
 
-> diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
-> index 8ed9642..b221f8f 100644
-> --- a/include/linux/sunrpc/clnt.h
-> +++ b/include/linux/sunrpc/clnt.h
-> @@ -162,6 +162,7 @@ size_t		rpc_pton(const char *, const size_t,
->  char *		rpc_sockaddr2uaddr(const struct sockaddr *);
->  size_t		rpc_uaddr2sockaddr(const char *, const size_t,
->  				   struct sockaddr *, const size_t);
-> +int 		rpc_ping(struct rpc_clnt *clnt, int flags);
->  
->  static inline unsigned short rpc_get_port(const struct sockaddr *sap)
->  {
-> diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-> index 38829e2..53b9f34 100644
-> --- a/net/sunrpc/clnt.c
-> +++ b/net/sunrpc/clnt.c
-> @@ -79,7 +79,6 @@ static void	call_connect_status(struct rpc_task *task);
->  
->  static __be32	*rpc_encode_header(struct rpc_task *task);
->  static __be32	*rpc_verify_header(struct rpc_task *task);
-> -static int	rpc_ping(struct rpc_clnt *clnt, int flags);
->  
->  static void rpc_register_client(struct rpc_clnt *clnt)
->  {
-> @@ -1675,7 +1674,7 @@ static struct rpc_procinfo rpcproc_null = {
->  	.p_decode = rpcproc_decode_null,
->  };
->  
-> -static int rpc_ping(struct rpc_clnt *clnt, int flags)
-> +int rpc_ping(struct rpc_clnt *clnt, int flags)
->  {
->  	struct rpc_message msg = {
->  		.rpc_proc = &rpcproc_null,
-> @@ -1686,6 +1685,7 @@ static int rpc_ping(struct rpc_clnt *clnt, int flags)
->  	put_rpccred(msg.rpc_cred);
->  	return err;
->  }
-> +EXPORT_SYMBOL_GPL(rpc_ping);
->  
->  struct rpc_task *rpc_call_null(struct rpc_clnt *clnt, struct rpc_cred *cred, int flags)
->  {
+%files
 
+[...]
+
+%dir %attr(700,rpcuser,rpcuser) /var/lib/nfs/statd
+%dir %attr(700,rpcuser,rpcuser) /var/lib/nfs/statd/sm
+%dir %attr(700,rpcuser,rpcuser) /var/lib/nfs/statd/sm.bak
+
+...if you uninstall and reinstall the nfs-utils package on one of these
+hosts, do these directories get put in place correctly?
 
 -- 
 Jeff Layton <jlayton@redhat.com>
