@@ -1,164 +1,107 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH 7/9] nfsd/idmap: drop special request deferal in favour
-	of improved default.
-Date: Wed, 2 Dec 2009 17:18:36 -0500
-Message-ID: <20091202221836.GC18690@fieldses.org>
-References: <20090909062539.20462.67466.stgit@notabene.brown> <20090909063254.20462.80299.stgit@notabene.brown>
+From: Kelly Anderson <kelly-lACMDn57031vQQPgy9v2K1aTQe2KTcn/@public.gmane.org>
+Subject: [NFS] Nfs4 over Ipv6 patch to fix ipv6 subnetting in /etc/exports
+Date: Wed, 02 Dec 2009 15:50:49 -0700
+Message-ID: <4B16EF49.8040106@silka.with-linux.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs@vger.kernel.org
-To: NeilBrown <neilb@suse.de>
+Content-Type: multipart/mixed; boundary="------------060700060003030603020707"
+To: nfs@lists.sourceforge.net
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:46744 "EHLO fieldses.org"
+Received: from neil.brown.name ([220.233.11.133]:41374 "EHLO neil.brown.name"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755453AbZLBWRc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 2 Dec 2009 17:17:32 -0500
-In-Reply-To: <20090909063254.20462.80299.stgit-wvvUuzkyo1EYVZTmpyfIwg@public.gmane.org>
+	id S1754349AbZLBXIe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 2 Dec 2009 18:08:34 -0500
+Received: from brown by neil.brown.name with local (Exim 4.69)
+	(envelope-from <nfs-bounces@lists.sourceforge.net>)
+	id 1NFyJL-0001lL-GZ
+	for linux-nfs@vger.kernel.org; Thu, 03 Dec 2009 10:08:39 +1100
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Sep 09, 2009 at 04:32:54PM +1000, NeilBrown wrote:
-> The idmap code manages request deferal by waiting for a reply from
-> userspace rather than putting the NFS request on a queue to be retried
-> from the start.
-> Now that the common deferal code does this there is no need for the
-> special code in idmap.
+This is a multi-part message in MIME format.
+--------------060700060003030603020707
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
 
-This patch makes me happy....
+Hopefully this mail gets through to someone who can apply this patch to 
+NfsUtils git.
 
---b.
+I have been trying on and off for a year or so to get Nfs4 mounts to 
+work over Ipv6.  Finally with the latest git it seemed to work.  That 
+is, it worked when you wildcard all internet addresses.
 
-> 
-> Signed-off-by: NeilBrown <neilb@suse.de>
-> ---
-> 
->  fs/nfsd/nfs4idmap.c |  105 +++++----------------------------------------------
->  1 files changed, 11 insertions(+), 94 deletions(-)
-> 
-> diff --git a/fs/nfsd/nfs4idmap.c b/fs/nfsd/nfs4idmap.c
-> index cdfa86f..22574f3 100644
-> --- a/fs/nfsd/nfs4idmap.c
-> +++ b/fs/nfsd/nfs4idmap.c
-> @@ -497,109 +497,26 @@ nfsd_idmap_shutdown(void)
->  	cache_unregister(&nametoid_cache);
->  }
->  
-> -/*
-> - * Deferred request handling
-> - */
-> -
-> -struct idmap_defer_req {
-> -       struct cache_req		req;
-> -       struct cache_deferred_req deferred_req;
-> -       wait_queue_head_t	waitq;
-> -       atomic_t			count;
-> -};
-> -
-> -static inline void
-> -put_mdr(struct idmap_defer_req *mdr)
-> -{
-> -	if (atomic_dec_and_test(&mdr->count))
-> -		kfree(mdr);
-> -}
-> -
-> -static inline void
-> -get_mdr(struct idmap_defer_req *mdr)
-> -{
-> -	atomic_inc(&mdr->count);
-> -}
-> -
-> -static void
-> -idmap_revisit(struct cache_deferred_req *dreq, int toomany)
-> -{
-> -	struct idmap_defer_req *mdr =
-> -		container_of(dreq, struct idmap_defer_req, deferred_req);
-> -
-> -	wake_up(&mdr->waitq);
-> -	put_mdr(mdr);
-> -}
-> -
-> -static struct cache_deferred_req *
-> -idmap_defer(struct cache_req *req)
-> -{
-> -	struct idmap_defer_req *mdr =
-> -		container_of(req, struct idmap_defer_req, req);
-> -
-> -	mdr->deferred_req.revisit = idmap_revisit;
-> -	get_mdr(mdr);
-> -	return (&mdr->deferred_req);
-> -}
-> -
-> -static inline int
-> -do_idmap_lookup(struct ent *(*lookup_fn)(struct ent *), struct ent *key,
-> -		struct cache_detail *detail, struct ent **item,
-> -		struct idmap_defer_req *mdr)
-> -{
-> -	*item = lookup_fn(key);
-> -	if (!*item)
-> -		return -ENOMEM;
-> -	return cache_check(detail, &(*item)->h, &mdr->req);
-> -}
-> -
-> -static inline int
-> -do_idmap_lookup_nowait(struct ent *(*lookup_fn)(struct ent *),
-> -			struct ent *key, struct cache_detail *detail,
-> -			struct ent **item)
-> -{
-> -	int ret = -ENOMEM;
-> -
-> -	*item = lookup_fn(key);
-> -	if (!*item)
-> -		goto out_err;
-> -	ret = -ETIMEDOUT;
-> -	if (!test_bit(CACHE_VALID, &(*item)->h.flags)
-> -			|| (*item)->h.expiry_time < get_seconds()
-> -			|| detail->flush_time > (*item)->h.last_refresh)
-> -		goto out_put;
-> -	ret = -ENOENT;
-> -	if (test_bit(CACHE_NEGATIVE, &(*item)->h.flags))
-> -		goto out_put;
-> -	return 0;
-> -out_put:
-> -	cache_put(&(*item)->h, detail);
-> -out_err:
-> -	*item = NULL;
-> -	return ret;
-> -}
-> -
->  static int
->  idmap_lookup(struct svc_rqst *rqstp,
->  		struct ent *(*lookup_fn)(struct ent *), struct ent *key,
->  		struct cache_detail *detail, struct ent **item)
->  {
-> -	struct idmap_defer_req *mdr;
->  	int ret;
->  
-> -	mdr = kzalloc(sizeof(*mdr), GFP_KERNEL);
-> -	if (!mdr)
-> +	*item = lookup_fn(key);
-> +	if (!*item)
->  		return -ENOMEM;
-> -	atomic_set(&mdr->count, 1);
-> -	init_waitqueue_head(&mdr->waitq);
-> -	mdr->req.defer = idmap_defer;
-> -	ret = do_idmap_lookup(lookup_fn, key, detail, item, mdr);
-> -	if (ret == -EAGAIN) {
-> -		wait_event_interruptible_timeout(mdr->waitq,
-> -			test_bit(CACHE_VALID, &(*item)->h.flags), 1 * HZ);
-> -		ret = do_idmap_lookup_nowait(lookup_fn, key, detail, item);
-> + retry:
-> +	ret = cache_check(detail, &(*item)->h, &rqstp->rq_chandle);
-> +
-> +	if (ret == -ETIMEDOUT) {
-> +		struct ent *prev_item = *item;
-> +		*item = lookup_fn(key);
-> +		if (*item != prev_item)
-> +			goto retry;
-> +		cache_put(&(*item)->h, detail);
->  	}
-> -	put_mdr(mdr);
->  	return ret;
->  }
->  
-> 
-> 
+/home/nfs4  *(rw,fsid=0,sync,root_squash,no_all_squash,no_subtree_check)
+
+Unfortunately subnetting wasn't working, so I dug into the code to 
+figure out why.  It turned out that it was something simple (once I 
+managed to get my head into the code).  I've attached a patch against 
+the current git that fixes it.  With the patch applied, ipv6 subnetting 
+such as the following works.
+
+/home/nfs4  
+2001:470:b:3e::/64(rw,fsid=0,sync,root_squash,no_all_squash,no_subtree_check)
+/home/nfs4  
+2001:470:b:3e::/ffff:ffff:ffff:ffff::(rw,fsid=0,sync,root_squash,no_all_squash,no_subtree_check)
+
+Regards,
+
+Kelly Anderson
+
+--------------060700060003030603020707
+Content-Type: text/x-patch;
+ name="NfsUtils-check_subnet_v6.patch"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+ filename="NfsUtils-check_subnet_v6.patch"
+
+--- ./support/export/client.c.orig	2009-11-30 08:06:18.000000000 -0700
++++ ./support/export/client.c	2009-12-02 15:16:55.361725808 -0700
+@@ -505,16 +505,16 @@ check_subnet_v6(const struct sockaddr_in
+ 			continue;
+ 
+ 		if (mask_match(address->sin6_addr.s6_addr32[0],
+-				sin6->sin6_addr.s6_addr[0],
++				sin6->sin6_addr.s6_addr32[0],
+ 		      		mask->sin6_addr.s6_addr32[0]) &&
+ 		    mask_match(address->sin6_addr.s6_addr32[1],
+-				sin6->sin6_addr.s6_addr[1],
++				sin6->sin6_addr.s6_addr32[1],
+ 		      		mask->sin6_addr.s6_addr32[1]) &&
+ 		    mask_match(address->sin6_addr.s6_addr32[2],
+-				sin6->sin6_addr.s6_addr[2],
++				sin6->sin6_addr.s6_addr32[2],
+ 		      		mask->sin6_addr.s6_addr32[2]) &&
+ 		    mask_match(address->sin6_addr.s6_addr32[3],
+-				sin6->sin6_addr.s6_addr[3],
++				sin6->sin6_addr.s6_addr32[3],
+ 		      		mask->sin6_addr.s6_addr32[3]))
+ 			return 1;
+ 	}
+
+--------------060700060003030603020707
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
+------------------------------------------------------------------------------
+Join us December 9, 2009 for the Red Hat Virtual Experience,
+a free event focused on virtualization and cloud computing. 
+Attend in-depth sessions from your desk. Your couch. Anywhere.
+http://p.sf.net/sfu/redhat-sfdev2dev
+--------------060700060003030603020707
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
+_______________________________________________
+Please note that nfs@lists.sourceforge.net is being discontinued.
+Please subscribe to linux-nfs@vger.kernel.org instead.
+    http://vger.kernel.org/vger-lists.html#linux-nfs
+
+--------------060700060003030603020707--
+
+
