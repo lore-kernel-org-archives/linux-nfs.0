@@ -1,105 +1,61 @@
-From: Jeff Layton <jlayton@redhat.com>
-Subject: Re: rpc.statd problem: lockd: cannot monitor server
-Date: Wed, 2 Dec 2009 07:29:28 -0500
-Message-ID: <20091202072928.14b9399c@tlielax.poochiereds.net>
-References: <4B154EE7.8050700@bull.net>
-	<98062189-30B8-4AF6-8F6F-4534495230C2@oracle.com>
-	<4B163FF9.9050700@bull.net>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: [PATCH] NLM: add network test when host expire but hold lock
+ at nlm_gc_hosts
+Date: Wed, 02 Dec 2009 09:29:03 -0500
+Message-ID: <1259764143.2663.10.camel@localhost>
+References: <4B163798.7010309@cn.fujitsu.com>
+	 <20091202072644.31c5d17e@tlielax.poochiereds.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Cc: Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org
-To: Diego Moreno <Diego.Moreno-Lazaro@bull.net>
+Content-Type: text/plain; charset="UTF-8"
+Cc: Mi Jinlong <mijinlong@cn.fujitsu.com>,
+	NFSv3 list <linux-nfs@vger.kernel.org>,
+	"J. Bruce Fields" <bfields@fieldses.org>
+To: Jeff Layton <jlayton@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:8535 "EHLO mx1.redhat.com"
+Received: from mail-out2.uio.no ([129.240.10.58]:40909 "EHLO mail-out2.uio.no"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750957AbZLBM32 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 2 Dec 2009 07:29:28 -0500
-In-Reply-To: <4B163FF9.9050700@bull.net>
+	id S1753644AbZLBO3F (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 2 Dec 2009 09:29:05 -0500
+In-Reply-To: <20091202072644.31c5d17e-9yPaYZwiELC+kQycOl6kW4xkIHaj4LzF@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 02 Dec 2009 11:22:49 +0100
-Diego Moreno <Diego.Moreno-Lazaro@bull.net> wrote:
-
+On Wed, 2009-12-02 at 07:26 -0500, Jeff Layton wrote: 
+> On Wed, 02 Dec 2009 17:47:04 +0800
+> Mi Jinlong <mijinlong@cn.fujitsu.com> wrote:
 > 
-> 
-> Chuck Lever wrote:
-> > On Dec 1, 2009, at 12:14 PM, Diego Moreno wrote:
-> >> Hi guys,
-> >>
-> >> We are having a problem with locks in NFSv3 with Fedora11. I've been 
-> >> searching this problem in the list for a while but I haven't found it.
-> >>
-> >> The problem is in Fedora11, kernel 2.6.29.6-217.2.16.fc11 and 
-> >> nfs-utils-1.1.5-6.fc11
-> >>
-> >> When I try to make two locks with two different process I get the 
-> >> message "No locks available". rpc.statd is running on client and 
-> >> server, also lockd. If I try with just one process I obtain the same 
-> >> result.
-> >>
-> >> I tried to debug with wireshark and I can see client is not trying to 
-> >> make a lock. I also tried to enable NLM debug and I get next messages:
-> >>
-> >> Syslog:
-> >>
-> >> 1259574201 2009 Nov 30 10:43:21 myclient kern warning kernel lockd: 
-> >> get host myserver
-> >> 1259574201 2009 Nov 30 10:43:21 myclient kern warning kernel lockd: 
-> >> get host myserver
-> >> 1259574201 2009 Nov 30 10:43:21 myclient kern warning kernel lockd: 
-> >> nsm_monitor(myserver)
-> >> 1259574201 2009 Nov 30 10:43:21 myclient kern warning kernel lockd: 
-> >> get host myserver
-> >> 1259574201 2009 Nov 30 10:43:21 myclient kern warning kernel lockd: 
-> >> get host myserver
-> >> 1259574201 2009 Nov 30 10:43:21 myclient kern warning kernel lockd: 
-> >> nsm_monitor(myserver)
-> >> 1259574201 2009 Nov 30 10:43:21 myclient kern warning kernel lockd: 
-> >> xdr_dec_stat_res status 1 state -1
-> >> 1259574201 2009 Nov 30 10:43:21 myclient kern notice kernel lockd: 
-> >> cannot monitor myserver
-> >> 1259574201 2009 Nov 30 10:43:21 myclient kern warning kernel lockd: 
-> >> release host myserver
-> >> 1259574201 2009 Nov 30 10:43:21 myclient kern warning kernel lockd: 
-> >> release host myserver
-> >> 1259574201 2009 Nov 30 10:43:21 myclient daemon warning rpc.statd 
-> >> creat(/var/lib/nfs/statd/sm/myserver) failed: No such file or directory
-> >> 1259574201 2009 Nov 30 10:43:21 myclient daemon notice rpc.statd 
-> >> STAT_FAIL to myclient for SM_MON of 10.0.4.60
-> >> 1259574201 2009 Nov 30 10:43:21 myclient daemon warning rpc.statd 
-> >> creat(/var/lib/nfs/statd/sm/myserver) failed: No such file or directory
+> > After a client get lock, it's network partition for some reasons.
+> > other client cannot get lock success forever.
 > > 
-> > Statd can't create the monitor record for this remote peer for some 
-> > reason.  Check that /var/lib/nfs/statd and /var/lib/nfs/statd/sm exist, 
-> > and are permitted so that rpc.statd can create files in it.  Check which 
-> > uid and gid statd is running under: I think F11 uses 29 for both.
-> >
+> > This patch can avoid this problem using rpc_ping to test client's
+> > network when host expired but hold lock.
+> > 
+> > If the client's network is partition, server will release client's 
+> > lock, other client will get lock success.
+> > 
+> > Signed-off-by: mijinlong@cn.fujitsu.com
 > 
-> Thanks Chuck. That made the trick. Directory /var/lib/nfs/statd/ was 
-> empty in client and server. Adding these directories locking works. But 
-> it's just a workaround as I have 30 more clients having the same 
-> problem. I'm going to try to find out why this is happening. Maybe it is 
-> a bug in fedora installation? When are supposed the files under 
-> "/var/lib/nfs/statd/" to be created?
+> Yikes! That sounds like it'll make locking subject to the reliability
+> of the network. I don't think that's a good idea.
 > 
-> statd is running under the right uid and gid and /var/lib/nfs/statd is 
-> owned by rpcuser as it should be.
-> 
+> What might be more reasonable is to consider implementing something
+> like the clear_locks command in Solaris. That is, a way for an admin to
+> remove server-side locks held by a client that he knows is never going
+> to come back. With that, this sort of thing at least becomes a willful
+> act...
 
-Sounds like a packaging bug, but when I look at CVS for that nfs-utils
-version it looks ok:
+Agreed on both counts.
 
-%files
+We should not be changing the semantics of either NFSv3 or NLM at this
+time. That will break existing setups that are treating NFSv3 as being a
+stable platform.
+As I've said in previous correspondence: NFSv4 already offers lease
+based locking. If people are worried about network partitions and/or
+locks being held by clients that are dead, then they can switch to that.
 
-[...]
+On the other hand, a clear_locks command could be useful in order to
+tell a server that a given client is dead. It should be fairly easy to
+leverage the existing NSM/statd protocol to implement this.
 
-%dir %attr(700,rpcuser,rpcuser) /var/lib/nfs/statd
-%dir %attr(700,rpcuser,rpcuser) /var/lib/nfs/statd/sm
-%dir %attr(700,rpcuser,rpcuser) /var/lib/nfs/statd/sm.bak
+Trond
 
-...if you uninstall and reinstall the nfs-utils package on one of these
-hosts, do these directories get put in place correctly?
-
--- 
-Jeff Layton <jlayton@redhat.com>
