@@ -1,57 +1,111 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:56650 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:46264 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757127AbZLDUZw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 4 Dec 2009 15:25:52 -0500
-From: andros@netapp.com
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 0/12] Fix session reset deadlocks Version 4
-Date: Fri,  4 Dec 2009 15:25:35 -0500
-Message-Id: <1259958347-9031-1-git-send-email-andros@netapp.com>
+	id S1754898AbZLBAim (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 1 Dec 2009 19:38:42 -0500
+From: "J. Bruce Fields" <bfields@citi.umich.edu>
+To: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org
+Cc: Steve Dickson <steved@redhat.com>
+Subject: pseudoroot kernel patches
+Date: Tue,  1 Dec 2009 19:39:36 -0500
+Message-Id: <1259714383-32577-1-git-send-email-bfields@citi.umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
 MIME-Version: 1.0
 
-Fix session reset deadlocks Version 4.
+This is my revision of Steve Dickson's series of patches that allow
+automatically constructing the NFSv4 psuedoroot.  I think it's close to
+a final version.
 
-These patches apply to 2.6.32
+The basic idea is for mountd to automatically export all of the
+filesystems which must be traversed to reach any exported filesystem.
+This raises obvious security concerns.  Steved's solution is to greatly
+restrict access to those exports, by adding a new export flag
+(NFSEXP_V4ROOT), which tells the kernel that *only* the single object at
+the given path is meant to be exported, *not* the rest of the filesystem
+underneath it.  Thus mountd actually generates a separate export for
+every directory along the path to a real export.
 
-Fix races and bugs as well as implement a new session draining scheme
-designed by Trond.
+Changes since the last version steved posted:
+	- fix nfsd_verify to prevent filehandle-guessing attacks from
+	  allowing access to unexported objects on V4ROOT filesystems.
+	- fix a bug which could cause NFSv4's readdir to return bad
+	  filehandles for directory entries.
+	- Allow V4ROOT exports of symlink objects (to allow the path
+	  listed in /etc/exports to be a symlink, as has traditionally
+	  been permitted with v2/v3).  The mountd side of this is not
+	  yet written.
+	- Simplify the code somewhat by moving most of the readdir and
+	  lookup checks into nfsd_crossmnt.
 
-0001-nfs41-add-create-session-into-establish_clid.patch
-0002-nfs41-rename-cl_state-session-SETUP-bit-to-RESET.patch
-0003-nfs41-nfs4_get_lease_time-will-never-session-reset.patch
-0004-nfs41-call-free-slot-from-nfs4_restart_rpc.patch
-0005-nfs41-free-the-slot-on-unhandled-read-errors.patch
-0006-nfs41-fix-switch-in-nfs4_handle_exception.patch
-0007-nfs41-fix-switch-in-nfs4_recovery_handle_error.patch
-0008-nfs41-don-t-clear-tk_action-on-success.patch
-0009-nfs41-remove-nfs4_recover_session.patch
-0010-nfs41-nfs41-fix-state-manager-deadlock-in-session.patch
-0011-nfs41-drain-session-cleanup.patch
-0012-nfs41-only-state-manager-sets-NFS4CLNT_SESSION_SETU.patch
+Some problems will remain:
 
-Testing:
+The exported v4 namespace will still not be entirely identical with the
+v2/v3 namespace; to some degree this is inevitable:
 
-CONFIG_NFS_V4_1
-v41 mount: Connectathon tests passed. PyNFS testclient.py SESSIONRESET tests
+	- If /export and /export/foo are two different filesystems, both
+	  exported, then a v2/v3 client that mounts /export will not see
+	  the filesystem /foo.
 
-The INJECT_ERROR testclient.py test where NFS4ERR_BADSESSION was returned
-every 50th SEQUENCE operation and the session destroyed
-durring a Connectathon basic test run.  This passed all but the bigfile test
-where the check_lease op->renew_lease nfs4_proc_sequence state manager
-session reset call could not get a slot due to the async error handler
-restart read/write RPC's getting slots prior to any rpc tasks waiting on
-queues. This will be fixed in a subsequent patch set.
+	  This is an inherent limitation of the v2/v3 protocols, which
+	  don't require clients to know how to traverse mountpoints.
+	  
+	  The server's current behavior in this case is simply to show
+	  the contents of the directory named "foo" on the filesystem
+	  /export.   This may allow the client to see (even create)
+	  directory objects on /export which are invisible to users on
+	  the server, because the filesystem mounted on top of
+	  /export/foo hides them.
 
-v4 mount: Connectathon tests passed.
+	  We could instead modify the server to hide the contents of
+	  foo/ from the client somehow.  This must be done carefully:
+	  the directory "foo" itself must still be present in case the
+	  client wants to mount something there itself.
 
-no CONFIG_NFS_V4_1
-v4 mount: Connectathon tests passed.
+	- Nested exports on the same filesystem also pose a problem;
+	  given:
+		/export		*(rw)
+		/export/foo	*(ro)
+	  with foo on the same filesystem as /export,
+	  	mount -tnfs server:/export/foo /mnt
+	  will give a read-only filesystem,
+		mount -nfs4 server:/export/foo /mnt
+	  will give a read-write filesystem.  A v4 client won't see
+	  any change in export options as it traverses into foo.
 
--->Andy
-~                                              
+There are also some potential drawbacks to this approach, which we can
+probably live with:
 
+	- It requires creating an entry in the export cache for any
+	  directory that is an ancestor of a directory, and for every
+	  entry of each directory (a negative cache entry in the case of
+	  entries that don't lead to exports).  Improvements in the
+	  cache management may be sufficient to mitigate problems that
+	  show up.
+	- Handling filehandle->export mapping will require stat'ing all
+	  the parents of exports, as well as exports, possibility
+	  exacerbating problems previously raised on this list with
+	  spinning up idle disks unnecessarily.
+	- It will never work in cases where "/" and other filesystems
+	  which must be traversed on the way to an export are not
+	  themselves nfs-exportable.  This is probably a rare corner
+	  case, but we've seen at least one example of somebody doing
+	  embedded work who does this.  We should at least make sure we
+	  fail gracefully in this case (e.g. by turning off attempts to
+	  build pseudofilesystem).
+	- It doesn't provide a simple upgrade path for anyone using the
+	  current manual pseudoroot-construction who would also like
+	  paths consistent with v2/v3.  That problem is actually very
+	  simple to solve in nfs-utils, and I'll post patches for that.
+	- The additional automatic exports may raise security risks.  I
+	  believe we're now restricting access correctly, but additional
+	  eyes here wouldn't hurt.
+
+Before we merge this, I'd also like to look a little more into which
+interfaces V4ROOT exports should be visible (versus which they should be
+hidden from--as they're not quite "real" exports).  And we have a few
+problems on the nfs-utils side which I believe Steve is resolving (if he
+hasn't already).
+
+--b.
