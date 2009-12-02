@@ -1,39 +1,119 @@
-From: Jesper Krogh <jesper-Q2TZfHgGEy4@public.gmane.org>
-Subject: Re: 2.6.31.6, unresponsiveness and something with nfs
-Date: Wed, 02 Dec 2009 22:19:40 +0100
-Message-ID: <4B16D9EC.7080009@krogh.cc>
-References: <4B13FBE7.9040304@krogh.cc>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: [PATCH 5/9] sunrpc/cache: allow threads to block while waiting
+ for cache update.
+Date: Wed, 02 Dec 2009 16:23:05 -0500
+Message-ID: <1259788985.2663.38.camel@localhost>
+References: <20090909062539.20462.67466.stgit@notabene.brown>
+	 <20090909063254.20462.99277.stgit@notabene.brown>
+	 <20091202205928.GF15045@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-To: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
+Cc: NeilBrown <neilb@suse.de>, linux-nfs@vger.kernel.org
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from 2605ds1-ynoe.0.fullrate.dk ([90.184.12.24]:41501 "EHLO
-	shrek.krogh.cc" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753016AbZLBVTn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 2 Dec 2009 16:19:43 -0500
-In-Reply-To: <4B13FBE7.9040304-Q2TZfHgGEy4@public.gmane.org>
+Received: from mail-out1.uio.no ([129.240.10.57]:44352 "EHLO mail-out1.uio.no"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753800AbZLBVXF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 2 Dec 2009 16:23:05 -0500
+In-Reply-To: <20091202205928.GF15045@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-> I have a system running 2.6.31.6 that when running a particular process
-> become "unresponsive". I cannot really tell what it is but the effect is
-> that logins as ordinary users hangs, when that user has its home on a
-> remote NFS-server.
+On Wed, 2009-12-02 at 15:59 -0500, J. Bruce Fields wrote: 
+> On Wed, Sep 09, 2009 at 04:32:54PM +1000, NeilBrown wrote:
+> > The current practice of waiting for cache updates by queueing the
+> > whole request to be retried has (at least) two problems.
 > 
-> so from root "su - localuser" works excellent. But su - user-with-home
-> on-nfs doesnt.
+> Apologies for the delay!
+> 
+> > 1/ With NFSv4, requests can be quite complex and re-trying a whole
+> >   request when a latter part fails should only be a last-resort, not a
+> >   normal practice.
+> > 
+> > 2/ Large requests, and in particular any 'write' request, will not be
+> >   queued by the current code and doing so would be undesirable.
+> > 
+> > In many cases only a very sort wait is needed before the cache gets
+> > valid data.
+> > 
+> > So, providing the underlying transport permits it by setting
+> >  ->thread_wait,
+> > arrange to wait briefly for an upcall to be completed (as reflected in
+> > the clearing of CACHE_PENDING).
+> > If the short wait was not long enough and CACHE_PENDING is still set,
+> > fall back on the old approach.
+> > 
+> > The 'thread_wait' value is set to 5 seconds when there are spare
+> > threads, and 1 second when there are no spare threads.
+> > 
+> > These values are probably much higher than needed, but will ensure
+> > some forward progress.
+> 
+> This looks fine, and I want to merge it.  One mainly superficial
+> complaint:
+> 
+> >  static int cache_defer_req(struct cache_req *req, struct cache_head *item)
+> >  {
+> >  	struct cache_deferred_req *dreq, *discard;
+> >  	int hash = DFR_HASH(item);
+> > +	struct thread_deferred_req sleeper;
+> >  
+> >  	if (cache_defer_cnt >= DFR_MAX) {
+> >  		/* too much in the cache, randomly drop this one,
+> > @@ -510,7 +522,14 @@ static int cache_defer_req(struct cache_req *req, struct cache_head *item)
+> >  		if (net_random()&1)
+> >  			return -ENOMEM;
+> >  	}
+> > -	dreq = req->defer(req);
+> > +	if (req->thread_wait) {
+> > +		dreq = &sleeper.handle;
+> > +		init_waitqueue_head(&sleeper.wait);
+> > +		dreq->revisit = cache_restart_thread;
+> > +	} else
+> > +		dreq = req->defer(req);
+> > +
+> > + retry:
+> >  	if (dreq == NULL)
+> >  		return -ENOMEM;
+> >  
+> > @@ -544,6 +563,29 @@ static int cache_defer_req(struct cache_req *req, struct cache_head *item)
+> >  		cache_revisit_request(item);
+> >  		return -EAGAIN;
+> >  	}
+> > +
+> > +	if (dreq == &sleeper.handle) {
+> > +		wait_event_interruptible_timeout(
+> > +			sleeper.wait,
+> > +			!test_bit(CACHE_PENDING, &item->flags)
+> > +			|| list_empty(&sleeper.handle.hash),
+> > +			req->thread_wait);
+> > +		spin_lock(&cache_defer_lock);
+> > +		if (!list_empty(&sleeper.handle.hash)) {
+> > +			list_del_init(&sleeper.handle.recent);
+> > +			list_del_init(&sleeper.handle.hash);
+> > +			cache_defer_cnt--;
+> > +		}
+> > +		spin_unlock(&cache_defer_lock);
+> > +		if (test_bit(CACHE_PENDING, &item->flags)) {
+> > +			/* item is still pending, try request
+> > +			 * deferral
+> > +			 */
+> > +			dreq = req->defer(req);
+> > +			goto retry;
+> > +		}
+> > +		return 0;
+> > +	}
+> 
+> With this, cache_defer_req is tending towards the long and complicated
+> side.  It'd probably suffice to do something as simple as moving some of
+> the code into helper functions to hide the details.
 
-Ok, the situation is more advanced than just that. I now have the
-"sorting" process running while there is high cpu-only load and that
-doesn't trigger the problem, so it seems to be that I have to have
-"large merging, high cpu-load and lots of networktraffic on the NIC
-(10GbitE)" before I encounter the prooblem.
+Couldn't you also simplify things a good deal by just adding a
+completion to struct cache_deferred_req, and then letting
+cache_defer_req() call wait_for_completion_timeout()?
 
-Is there anything I can do to get a trace or other information about
-what's holding the "login" process back the next time I get into this
-situation?
+That's pretty much all we do in fs/nfs/cache_lib.c...
 
-Thanks
--- 
-Jesper
+Cheers
+  Trond
 
