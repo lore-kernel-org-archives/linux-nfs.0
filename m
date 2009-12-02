@@ -1,107 +1,52 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: rpc.statd problem: lockd: cannot monitor server
-Date: Tue, 1 Dec 2009 12:34:53 -0500
-Message-ID: <98062189-30B8-4AF6-8F6F-4534495230C2@oracle.com>
-References: <4B154EE7.8050700@bull.net>
-Mime-Version: 1.0 (Apple Message framework v936)
-Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
-Cc: linux-nfs@vger.kernel.org
-To: Diego Moreno <Diego.Moreno-Lazaro@bull.net>
+From: "J. Bruce Fields" <bfields@citi.umich.edu>
+Subject: [PATCH 5/7] nfsd: allow exports of symlinks
+Date: Tue,  1 Dec 2009 19:39:41 -0500
+Message-ID: <1259714383-32577-6-git-send-email-bfields@citi.umich.edu>
+References: <1259714383-32577-1-git-send-email-bfields@citi.umich.edu>
+ <1259714383-32577-2-git-send-email-bfields@citi.umich.edu>
+ <1259714383-32577-3-git-send-email-bfields@citi.umich.edu>
+ <1259714383-32577-4-git-send-email-bfields@citi.umich.edu>
+ <1259714383-32577-5-git-send-email-bfields@citi.umich.edu>
+Cc: Steve Dickson <steved@redhat.com>,
+	"J. Bruce Fields" <bfields@citi.umich.edu>
+To: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from acsinet11.oracle.com ([141.146.126.233]:21153 "EHLO
-	acsinet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752132AbZLARfB (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 1 Dec 2009 12:35:01 -0500
-In-Reply-To: <4B154EE7.8050700@bull.net>
+Received: from fieldses.org ([174.143.236.118]:46257 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754881AbZLBAim (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 1 Dec 2009 19:38:42 -0500
+In-Reply-To: <1259714383-32577-5-git-send-email-bfields@citi.umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Dec 1, 2009, at 12:14 PM, Diego Moreno wrote:
-> Hi guys,
->
-> We are having a problem with locks in NFSv3 with Fedora11. I've been  
-> searching this problem in the list for a while but I haven't found it.
->
-> The problem is in Fedora11, kernel 2.6.29.6-217.2.16.fc11 and nfs- 
-> utils-1.1.5-6.fc11
->
-> When I try to make two locks with two different process I get the  
-> message "No locks available". rpc.statd is running on client and  
-> server, also lockd. If I try with just one process I obtain the same  
-> result.
->
-> I tried to debug with wireshark and I can see client is not trying  
-> to make a lock. I also tried to enable NLM debug and I get next  
-> messages:
->
-> Syslog:
->
-> 1259574201 2009 Nov 30 10:43:21 myclient kern warning kernel lockd:  
-> get host myserver
-> 1259574201 2009 Nov 30 10:43:21 myclient kern warning kernel lockd:  
-> get host myserver
-> 1259574201 2009 Nov 30 10:43:21 myclient kern warning kernel lockd:  
-> nsm_monitor(myserver)
-> 1259574201 2009 Nov 30 10:43:21 myclient kern warning kernel lockd:  
-> get host myserver
-> 1259574201 2009 Nov 30 10:43:21 myclient kern warning kernel lockd:  
-> get host myserver
-> 1259574201 2009 Nov 30 10:43:21 myclient kern warning kernel lockd:  
-> nsm_monitor(myserver)
-> 1259574201 2009 Nov 30 10:43:21 myclient kern warning kernel lockd:  
-> xdr_dec_stat_res status 1 state -1
-> 1259574201 2009 Nov 30 10:43:21 myclient kern notice kernel lockd:  
-> cannot monitor myserver
-> 1259574201 2009 Nov 30 10:43:21 myclient kern warning kernel lockd:  
-> release host myserver
-> 1259574201 2009 Nov 30 10:43:21 myclient kern warning kernel lockd:  
-> release host myserver
-> 1259574201 2009 Nov 30 10:43:21 myclient daemon warning rpc.statd  
-> creat(/var/lib/nfs/statd/sm/myserver) failed: No such file or  
-> directory
-> 1259574201 2009 Nov 30 10:43:21 myclient daemon notice rpc.statd  
-> STAT_FAIL to myclient for SM_MON of 10.0.4.60
-> 1259574201 2009 Nov 30 10:43:21 myclient daemon warning rpc.statd  
-> creat(/var/lib/nfs/statd/sm/myserver) failed: No such file or  
-> directory
+We want to allow exports of symlinks, to allow mountd to communicate to
+the kernel which symlinks lead to exports, and hence which symlinks need
+to be visible on the pseudofilesystem.
 
-Statd can't create the monitor record for this remote peer for some  
-reason.  Check that /var/lib/nfs/statd and /var/lib/nfs/statd/sm  
-exist, and are permitted so that rpc.statd can create files in it.   
-Check which uid and gid statd is running under: I think F11 uses 29  
-for both.
+Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
+---
+ fs/nfsd/export.c |    6 ++++--
+ 1 files changed, 4 insertions(+), 2 deletions(-)
 
-> 1259574201 2009 Nov 30 10:43:21 myclient daemon notice rpc.statd  
-> STAT_FAIL to myclient for SM_MON of 10.0.4.60
-> 1259574201 2009 Nov 30 10:43:21 myclient kern warning kernel lockd:  
-> clnt proc returns -37
-> 1259574201 2009 Nov 30 10:43:21 myclient kern warning kernel lockd:  
-> xdr_dec_stat_res status 1 state -1
-> 1259574201 2009 Nov 30 10:43:21 myclient kern notice kernel lockd:  
-> cannot monitor myserver
-> 1259574201 2009 Nov 30 10:43:21 myclient kern warning kernel lockd:  
-> release host myserver
-> 1259574201 2009 Nov 30 10:43:21 myclient kern warning kernel lockd:  
-> release host myserver
-> 1259574201 2009 Nov 30 10:43:21 myclient kern warning kernel lockd:  
-> clnt proc returns -37
->
-> It's like if rpc.statd was not running, but it is. Should ../statd/ 
-> sm/ directory be already created when we try the lock?
->
-> Is this a known problem?
->
-> Thanks,
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs"  
-> in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
+diff --git a/fs/nfsd/export.c b/fs/nfsd/export.c
+index b9e4977..0bcd10a 100644
+--- a/fs/nfsd/export.c
++++ b/fs/nfsd/export.c
+@@ -372,10 +372,12 @@ static struct svc_export *svc_export_lookup(struct svc_export *);
+ static int check_export(struct inode *inode, int flags, unsigned char *uuid)
+ {
+ 
+-	/* We currently export only dirs and regular files.
+-	 * This is what umountd does.
++	/*
++	 * We currently export only dirs, regular files, and (for v4
++	 * pseudoroot) symlinks.
+ 	 */
+ 	if (!S_ISDIR(inode->i_mode) &&
++	    !S_ISLNK(inode->i_mode) &&
+ 	    !S_ISREG(inode->i_mode))
+ 		return -ENOTDIR;
+ 
 -- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
+1.6.3.3
 
