@@ -1,160 +1,109 @@
-From: Mi Jinlong <mijinlong@cn.fujitsu.com>
-Subject: [PATCH] NLM: add network test when host expire but hold lock at nlm_gc_hosts
-Date: Wed, 02 Dec 2009 17:47:04 +0800
-Message-ID: <4B163798.7010309@cn.fujitsu.com>
+From: Diego Moreno <Diego.Moreno-Lazaro@bull.net>
+Subject: Re: rpc.statd problem: lockd: cannot monitor server
+Date: Wed, 02 Dec 2009 11:22:49 +0100
+Message-ID: <4B163FF9.9050700@bull.net>
+References: <4B154EE7.8050700@bull.net> <98062189-30B8-4AF6-8F6F-4534495230C2@oracle.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-To: NFSv3 list <linux-nfs@vger.kernel.org>,
-	"Trond.Myklebust" <trond.myklebust@fys.uio.no>,
-	"J. Bruce Fields" <bfields@fieldses.org>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Cc: linux-nfs@vger.kernel.org
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from cn.fujitsu.com ([222.73.24.84]:57966 "EHLO song.cn.fujitsu.com"
-	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
-	id S1750927AbZLBJpU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 2 Dec 2009 04:45:20 -0500
+Received: from ecfrec.frec.bull.fr ([129.183.4.8]:37546 "EHLO
+	ecfrec.frec.bull.fr" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751605AbZLBKZs (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 2 Dec 2009 05:25:48 -0500
+In-Reply-To: <98062189-30B8-4AF6-8F6F-4534495230C2@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-After a client get lock, it's network partition for some reasons.
-other client cannot get lock success forever.
-
-This patch can avoid this problem using rpc_ping to test client's
-network when host expired but hold lock.
-
-If the client's network is partition, server will release client's 
-lock, other client will get lock success.
-
-Signed-off-by: mijinlong@cn.fujitsu.com
----
- fs/lockd/host.c             |   54 ++++++++++++++++++++++++++++++++++++++++++-
- include/linux/sunrpc/clnt.h |    1 +
- net/sunrpc/clnt.c           |    4 +-
- 3 files changed, 56 insertions(+), 3 deletions(-)
-
-diff --git a/fs/lockd/host.c b/fs/lockd/host.c
-index 4600c20..73f6732 100644
---- a/fs/lockd/host.c
-+++ b/fs/lockd/host.c
-@@ -31,6 +31,7 @@ static int			nrhosts;
- static DEFINE_MUTEX(nlm_host_mutex);
- 
- static void			nlm_gc_hosts(void);
-+static int			nlm_test_host(struct nlm_host *);
- 
- struct nlm_lookup_host_info {
- 	const int		server;		/* search for server|client */
-@@ -550,13 +551,24 @@ nlm_gc_hosts(void)
- 
- 	for (chain = nlm_hosts; chain < nlm_hosts + NLM_HOST_NRHASH; ++chain) {
- 		hlist_for_each_entry_safe(host, pos, next, chain, h_hash) {
--			if (atomic_read(&host->h_count) || host->h_inuse
-+			if (atomic_read(&host->h_count) 
- 			 || time_before(jiffies, host->h_expires)) {
- 				dprintk("nlm_gc_hosts skipping %s (cnt %d use %d exp %ld)\n",
- 					host->h_name, atomic_read(&host->h_count),
- 					host->h_inuse, host->h_expires);
- 				continue;
- 			}
-+
-+			if (host->h_inuse) {
-+				if (!nlm_test_host(host)) {
-+					dprintk("nlm_gc_hosts skipping %s (cnt %d use %d exp %ld)\n",
-+						host->h_name, atomic_read(&host->h_count),
-+						host->h_inuse, host->h_expires);
-+					continue;
-+				}
-+				nlmsvc_free_host_resources(host);
-+			}
-+
- 			dprintk("lockd: delete host %s\n", host->h_name);
- 			hlist_del_init(&host->h_hash);
- 
-@@ -567,3 +579,43 @@ nlm_gc_hosts(void)
- 
- 	next_gc = jiffies + NLM_HOST_COLLECT;
- }
-+
-+static int
-+nlm_test_host(struct nlm_host *host)
-+{
-+	struct rpc_clnt *clnt;
-+
-+	dprintk("lockd: test host %s\n", host->h_name);
-+	clnt = host->h_rpcclnt;
-+	if (clnt == NULL) {
-+		unsigned long increment = HZ;
-+		struct rpc_timeout timeparms = {
-+			.to_initval	= increment,
-+			.to_increment	= increment,
-+			.to_maxval	= increment * 3UL,
-+			.to_retries	= 2U,
-+		};
-+
-+		struct rpc_create_args args = {
-+			.protocol	= host->h_proto,
-+			.address	= nlm_addr(host),
-+			.addrsize	= host->h_addrlen,
-+			.saddress	= nlm_srcaddr(host),
-+			.timeout	= &timeparms,
-+			.servername	= host->h_name,
-+			.program	= &nlm_program,
-+			.version	= host->h_version,
-+			.authflavor	= RPC_AUTH_UNIX,
-+			.flags		= RPC_CLNT_CREATE_AUTOBIND,
-+		};
-+
-+		clnt = rpc_create(&args);
-+		if (IS_ERR(clnt)) 
-+			return -EIO;
-+
-+		rpc_shutdown_client(clnt);
-+		return 0;
-+	}
-+
-+	return rpc_ping(clnt, RPC_TASK_SOFT);
-+}
-diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
-index 8ed9642..b221f8f 100644
---- a/include/linux/sunrpc/clnt.h
-+++ b/include/linux/sunrpc/clnt.h
-@@ -162,6 +162,7 @@ size_t		rpc_pton(const char *, const size_t,
- char *		rpc_sockaddr2uaddr(const struct sockaddr *);
- size_t		rpc_uaddr2sockaddr(const char *, const size_t,
- 				   struct sockaddr *, const size_t);
-+int 		rpc_ping(struct rpc_clnt *clnt, int flags);
- 
- static inline unsigned short rpc_get_port(const struct sockaddr *sap)
- {
-diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index 38829e2..53b9f34 100644
---- a/net/sunrpc/clnt.c
-+++ b/net/sunrpc/clnt.c
-@@ -79,7 +79,6 @@ static void	call_connect_status(struct rpc_task *task);
- 
- static __be32	*rpc_encode_header(struct rpc_task *task);
- static __be32	*rpc_verify_header(struct rpc_task *task);
--static int	rpc_ping(struct rpc_clnt *clnt, int flags);
- 
- static void rpc_register_client(struct rpc_clnt *clnt)
- {
-@@ -1675,7 +1674,7 @@ static struct rpc_procinfo rpcproc_null = {
- 	.p_decode = rpcproc_decode_null,
- };
- 
--static int rpc_ping(struct rpc_clnt *clnt, int flags)
-+int rpc_ping(struct rpc_clnt *clnt, int flags)
- {
- 	struct rpc_message msg = {
- 		.rpc_proc = &rpcproc_null,
-@@ -1686,6 +1685,7 @@ static int rpc_ping(struct rpc_clnt *clnt, int flags)
- 	put_rpccred(msg.rpc_cred);
- 	return err;
- }
-+EXPORT_SYMBOL_GPL(rpc_ping);
- 
- struct rpc_task *rpc_call_null(struct rpc_clnt *clnt, struct rpc_cred *cred, int flags)
- {
--- 
-1.6.4.1
 
 
+Chuck Lever wrote:
+> On Dec 1, 2009, at 12:14 PM, Diego Moreno wrote:
+>> Hi guys,
+>>
+>> We are having a problem with locks in NFSv3 with Fedora11. I've been 
+>> searching this problem in the list for a while but I haven't found it.
+>>
+>> The problem is in Fedora11, kernel 2.6.29.6-217.2.16.fc11 and 
+>> nfs-utils-1.1.5-6.fc11
+>>
+>> When I try to make two locks with two different process I get the 
+>> message "No locks available". rpc.statd is running on client and 
+>> server, also lockd. If I try with just one process I obtain the same 
+>> result.
+>>
+>> I tried to debug with wireshark and I can see client is not trying to 
+>> make a lock. I also tried to enable NLM debug and I get next messages:
+>>
+>> Syslog:
+>>
+>> 1259574201 2009 Nov 30 10:43:21 myclient kern warning kernel lockd: 
+>> get host myserver
+>> 1259574201 2009 Nov 30 10:43:21 myclient kern warning kernel lockd: 
+>> get host myserver
+>> 1259574201 2009 Nov 30 10:43:21 myclient kern warning kernel lockd: 
+>> nsm_monitor(myserver)
+>> 1259574201 2009 Nov 30 10:43:21 myclient kern warning kernel lockd: 
+>> get host myserver
+>> 1259574201 2009 Nov 30 10:43:21 myclient kern warning kernel lockd: 
+>> get host myserver
+>> 1259574201 2009 Nov 30 10:43:21 myclient kern warning kernel lockd: 
+>> nsm_monitor(myserver)
+>> 1259574201 2009 Nov 30 10:43:21 myclient kern warning kernel lockd: 
+>> xdr_dec_stat_res status 1 state -1
+>> 1259574201 2009 Nov 30 10:43:21 myclient kern notice kernel lockd: 
+>> cannot monitor myserver
+>> 1259574201 2009 Nov 30 10:43:21 myclient kern warning kernel lockd: 
+>> release host myserver
+>> 1259574201 2009 Nov 30 10:43:21 myclient kern warning kernel lockd: 
+>> release host myserver
+>> 1259574201 2009 Nov 30 10:43:21 myclient daemon warning rpc.statd 
+>> creat(/var/lib/nfs/statd/sm/myserver) failed: No such file or directory
+>> 1259574201 2009 Nov 30 10:43:21 myclient daemon notice rpc.statd 
+>> STAT_FAIL to myclient for SM_MON of 10.0.4.60
+>> 1259574201 2009 Nov 30 10:43:21 myclient daemon warning rpc.statd 
+>> creat(/var/lib/nfs/statd/sm/myserver) failed: No such file or directory
+> 
+> Statd can't create the monitor record for this remote peer for some 
+> reason.  Check that /var/lib/nfs/statd and /var/lib/nfs/statd/sm exist, 
+> and are permitted so that rpc.statd can create files in it.  Check which 
+> uid and gid statd is running under: I think F11 uses 29 for both.
+>
+
+Thanks Chuck. That made the trick. Directory /var/lib/nfs/statd/ was 
+empty in client and server. Adding these directories locking works. But 
+it's just a workaround as I have 30 more clients having the same 
+problem. I'm going to try to find out why this is happening. Maybe it is 
+a bug in fedora installation? When are supposed the files under 
+"/var/lib/nfs/statd/" to be created?
+
+statd is running under the right uid and gid and /var/lib/nfs/statd is 
+owned by rpcuser as it should be.
+
+>> 1259574201 2009 Nov 30 10:43:21 myclient daemon notice rpc.statd 
+>> STAT_FAIL to myclient for SM_MON of 10.0.4.60
+>> 1259574201 2009 Nov 30 10:43:21 myclient kern warning kernel lockd: 
+>> clnt proc returns -37
+>> 1259574201 2009 Nov 30 10:43:21 myclient kern warning kernel lockd: 
+>> xdr_dec_stat_res status 1 state -1
+>> 1259574201 2009 Nov 30 10:43:21 myclient kern notice kernel lockd: 
+>> cannot monitor myserver
+>> 1259574201 2009 Nov 30 10:43:21 myclient kern warning kernel lockd: 
+>> release host myserver
+>> 1259574201 2009 Nov 30 10:43:21 myclient kern warning kernel lockd: 
+>> release host myserver
+>> 1259574201 2009 Nov 30 10:43:21 myclient kern warning kernel lockd: 
+>> clnt proc returns -37
+>>
+>> It's like if rpc.statd was not running, but it is. Should ../statd/sm/ 
+>> directory be already created when we try the lock?
+>>
+>> Is this a known problem?
+>>
+>> Thanks,
+>> -- 
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
