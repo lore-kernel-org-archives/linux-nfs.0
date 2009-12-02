@@ -1,140 +1,160 @@
-From: "J. Bruce Fields" <bfields@citi.umich.edu>
-Subject: [PATCH 6/7] nfsd: restrict filehandles accepted in V4ROOT case
-Date: Tue,  1 Dec 2009 19:39:42 -0500
-Message-ID: <1259714383-32577-7-git-send-email-bfields@citi.umich.edu>
-References: <1259714383-32577-1-git-send-email-bfields@citi.umich.edu>
- <1259714383-32577-2-git-send-email-bfields@citi.umich.edu>
- <1259714383-32577-3-git-send-email-bfields@citi.umich.edu>
- <1259714383-32577-4-git-send-email-bfields@citi.umich.edu>
- <1259714383-32577-5-git-send-email-bfields@citi.umich.edu>
- <1259714383-32577-6-git-send-email-bfields@citi.umich.edu>
-Cc: Steve Dickson <steved@redhat.com>,
-	Steve Dickson <SteveD@redhat.com>,
-	"J. Bruce Fields" <bfields@citi.umich.edu>
-To: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org
+From: Mi Jinlong <mijinlong@cn.fujitsu.com>
+Subject: [PATCH] NLM: add network test when host expire but hold lock at nlm_gc_hosts
+Date: Wed, 02 Dec 2009 17:47:04 +0800
+Message-ID: <4B163798.7010309@cn.fujitsu.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+To: NFSv3 list <linux-nfs@vger.kernel.org>,
+	"Trond.Myklebust" <trond.myklebust@fys.uio.no>,
+	"J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:46267 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754899AbZLBAim (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 1 Dec 2009 19:38:42 -0500
-In-Reply-To: <1259714383-32577-6-git-send-email-bfields@citi.umich.edu>
+Received: from cn.fujitsu.com ([222.73.24.84]:57966 "EHLO song.cn.fujitsu.com"
+	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
+	id S1750927AbZLBJpU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 2 Dec 2009 04:45:20 -0500
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Steve Dickson <SteveD@redhat.com>
+After a client get lock, it's network partition for some reasons.
+other client cannot get lock success forever.
 
-On V4ROOT exports, only accept filehandles that are the *root* of some
-export.  This allows mountd to allow or deny access to individual paths
-and symlinks on the pseudofilesystem.
+This patch can avoid this problem using rpc_ping to test client's
+network when host expired but hold lock.
 
-Note that the checks in readdir and lookup are not enough, since a
-malicious host with access to the network could guess filehandles that
-they weren't able to obtain through lookup or readdir.
+If the client's network is partition, server will release client's 
+lock, other client will get lock success.
 
-Signed-Off-By: Steve Dickson <steved@redhat.com>
-Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
+Signed-off-by: mijinlong@cn.fujitsu.com
 ---
- fs/nfsd/nfsd.h  |    4 ++++
- fs/nfsd/nfsfh.c |   35 +++++++++++++++++++++++++++++++++++
- fs/nfsd/vfs.c   |    7 +------
- 3 files changed, 40 insertions(+), 6 deletions(-)
- create mode 100644 fs/nfsd/nfsd.h
+ fs/lockd/host.c             |   54 ++++++++++++++++++++++++++++++++++++++++++-
+ include/linux/sunrpc/clnt.h |    1 +
+ net/sunrpc/clnt.c           |    4 +-
+ 3 files changed, 56 insertions(+), 3 deletions(-)
 
-diff --git a/fs/nfsd/nfsd.h b/fs/nfsd/nfsd.h
-new file mode 100644
-index 0000000..7a1ad80
---- /dev/null
-+++ b/fs/nfsd/nfsd.h
-@@ -0,0 +1,4 @@
-+static inline int nfsd_v4client(struct svc_rqst *rq)
-+{
-+	return rq->rq_prog == NFS_PROGRAM && rq->rq_vers == 4;
-+}
-diff --git a/fs/nfsd/nfsfh.c b/fs/nfsd/nfsfh.c
-index a77efb8..9b902c0 100644
---- a/fs/nfsd/nfsfh.c
-+++ b/fs/nfsd/nfsfh.c
-@@ -22,6 +22,7 @@
- #include <linux/sunrpc/svc.h>
- #include <linux/sunrpc/svcauth_gss.h>
- #include <linux/nfsd/nfsd.h>
-+#include "nfsd.h"
- #include "vfs.h"
- #include "auth.h"
+diff --git a/fs/lockd/host.c b/fs/lockd/host.c
+index 4600c20..73f6732 100644
+--- a/fs/lockd/host.c
++++ b/fs/lockd/host.c
+@@ -31,6 +31,7 @@ static int			nrhosts;
+ static DEFINE_MUTEX(nlm_host_mutex);
  
-@@ -110,6 +111,36 @@ static __be32 nfsd_setuser_and_check_port(struct svc_rqst *rqstp,
- 	return nfserrno(nfsd_setuser(rqstp, exp));
+ static void			nlm_gc_hosts(void);
++static int			nlm_test_host(struct nlm_host *);
+ 
+ struct nlm_lookup_host_info {
+ 	const int		server;		/* search for server|client */
+@@ -550,13 +551,24 @@ nlm_gc_hosts(void)
+ 
+ 	for (chain = nlm_hosts; chain < nlm_hosts + NLM_HOST_NRHASH; ++chain) {
+ 		hlist_for_each_entry_safe(host, pos, next, chain, h_hash) {
+-			if (atomic_read(&host->h_count) || host->h_inuse
++			if (atomic_read(&host->h_count) 
+ 			 || time_before(jiffies, host->h_expires)) {
+ 				dprintk("nlm_gc_hosts skipping %s (cnt %d use %d exp %ld)\n",
+ 					host->h_name, atomic_read(&host->h_count),
+ 					host->h_inuse, host->h_expires);
+ 				continue;
+ 			}
++
++			if (host->h_inuse) {
++				if (!nlm_test_host(host)) {
++					dprintk("nlm_gc_hosts skipping %s (cnt %d use %d exp %ld)\n",
++						host->h_name, atomic_read(&host->h_count),
++						host->h_inuse, host->h_expires);
++					continue;
++				}
++				nlmsvc_free_host_resources(host);
++			}
++
+ 			dprintk("lockd: delete host %s\n", host->h_name);
+ 			hlist_del_init(&host->h_hash);
+ 
+@@ -567,3 +579,43 @@ nlm_gc_hosts(void)
+ 
+ 	next_gc = jiffies + NLM_HOST_COLLECT;
  }
- 
-+static inline __be32 check_pseudo_root(struct svc_rqst *rqstp,
-+	struct dentry *dentry, struct svc_export *exp)
++
++static int
++nlm_test_host(struct nlm_host *host)
 +{
-+	if (!(exp->ex_flags & NFSEXP_V4ROOT))
-+		return nfs_ok;
-+	/*
-+	 * v2/v3 clients have no need for the V4ROOT export--they use
-+	 * the mount protocl instead; also, further V4ROOT checks may be
-+	 * in v4-specific code, in which case v2/v3 clients could bypass
-+	 * them.
-+	 */
-+	if (!nfsd_v4client(rqstp))
-+		return nfserr_stale;
-+	/*
-+	 * We're exposing only the directories and symlinks that have to be
-+	 * traversed on the way to real exports:
-+	 */
-+	if (unlikely(!S_ISDIR(dentry->d_inode->i_mode) &&
-+		     !S_ISLNK(dentry->d_inode->i_mode)))
-+		return nfserr_stale;
-+	/*
-+	 * A pseudoroot export gives permission to access only one
-+	 * single directory; the kernel has to make another upcall
-+	 * before granting access to anything else under it:
-+	 */
-+	if (unlikely(dentry->d_parent != exp->ex_path.dentry))
-+		return nfserr_stale;
-+	return nfs_ok;
++	struct rpc_clnt *clnt;
++
++	dprintk("lockd: test host %s\n", host->h_name);
++	clnt = host->h_rpcclnt;
++	if (clnt == NULL) {
++		unsigned long increment = HZ;
++		struct rpc_timeout timeparms = {
++			.to_initval	= increment,
++			.to_increment	= increment,
++			.to_maxval	= increment * 3UL,
++			.to_retries	= 2U,
++		};
++
++		struct rpc_create_args args = {
++			.protocol	= host->h_proto,
++			.address	= nlm_addr(host),
++			.addrsize	= host->h_addrlen,
++			.saddress	= nlm_srcaddr(host),
++			.timeout	= &timeparms,
++			.servername	= host->h_name,
++			.program	= &nlm_program,
++			.version	= host->h_version,
++			.authflavor	= RPC_AUTH_UNIX,
++			.flags		= RPC_CLNT_CREATE_AUTOBIND,
++		};
++
++		clnt = rpc_create(&args);
++		if (IS_ERR(clnt)) 
++			return -EIO;
++
++		rpc_shutdown_client(clnt);
++		return 0;
++	}
++
++	return rpc_ping(clnt, RPC_TASK_SOFT);
 +}
-+
- /*
-  * Use the given filehandle to look up the corresponding export and
-  * dentry.  On success, the results are used to set fh_export and
-@@ -306,6 +337,10 @@ fh_verify(struct svc_rqst *rqstp, struct svc_fh *fhp, int type, int access)
- 	 *	  (for example, if different id-squashing options are in
- 	 *	  effect on the new filesystem).
- 	 */
-+	error = check_pseudo_root(rqstp, dentry, exp);
-+	if (error)
-+		goto out;
-+
- 	error = nfsd_setuser_and_check_port(rqstp, exp);
- 	if (error)
- 		goto out;
-diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-index caf4794..f20d7b4 100644
---- a/fs/nfsd/vfs.c
-+++ b/fs/nfsd/vfs.c
-@@ -56,6 +56,7 @@
- #endif /* CONFIG_NFSD_V4 */
- #include <linux/jhash.h>
- #include <linux/ima.h>
-+#include "nfsd.h"
- #include "vfs.h"
+diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
+index 8ed9642..b221f8f 100644
+--- a/include/linux/sunrpc/clnt.h
++++ b/include/linux/sunrpc/clnt.h
+@@ -162,6 +162,7 @@ size_t		rpc_pton(const char *, const size_t,
+ char *		rpc_sockaddr2uaddr(const struct sockaddr *);
+ size_t		rpc_uaddr2sockaddr(const char *, const size_t,
+ 				   struct sockaddr *, const size_t);
++int 		rpc_ping(struct rpc_clnt *clnt, int flags);
  
- #include <asm/uaccess.h>
-@@ -90,12 +91,6 @@ struct raparm_hbucket {
- #define RAPARM_HASH_MASK	(RAPARM_HASH_SIZE-1)
- static struct raparm_hbucket	raparm_hash[RAPARM_HASH_SIZE];
+ static inline unsigned short rpc_get_port(const struct sockaddr *sap)
+ {
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index 38829e2..53b9f34 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -79,7 +79,6 @@ static void	call_connect_status(struct rpc_task *task);
  
--static inline int
--nfsd_v4client(struct svc_rqst *rq)
--{
--    return rq->rq_prog == NFS_PROGRAM && rq->rq_vers == 4;
--}
--
- /* 
-  * Called from nfsd_lookup and encode_dirent. Check if we have crossed 
-  * a mount point.
+ static __be32	*rpc_encode_header(struct rpc_task *task);
+ static __be32	*rpc_verify_header(struct rpc_task *task);
+-static int	rpc_ping(struct rpc_clnt *clnt, int flags);
+ 
+ static void rpc_register_client(struct rpc_clnt *clnt)
+ {
+@@ -1675,7 +1674,7 @@ static struct rpc_procinfo rpcproc_null = {
+ 	.p_decode = rpcproc_decode_null,
+ };
+ 
+-static int rpc_ping(struct rpc_clnt *clnt, int flags)
++int rpc_ping(struct rpc_clnt *clnt, int flags)
+ {
+ 	struct rpc_message msg = {
+ 		.rpc_proc = &rpcproc_null,
+@@ -1686,6 +1685,7 @@ static int rpc_ping(struct rpc_clnt *clnt, int flags)
+ 	put_rpccred(msg.rpc_cred);
+ 	return err;
+ }
++EXPORT_SYMBOL_GPL(rpc_ping);
+ 
+ struct rpc_task *rpc_call_null(struct rpc_clnt *clnt, struct rpc_cred *cred, int flags)
+ {
 -- 
-1.6.3.3
+1.6.4.1
+
 
