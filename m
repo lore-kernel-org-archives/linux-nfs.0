@@ -1,93 +1,85 @@
 From: "J. Bruce Fields" <bfields@citi.umich.edu>
-Subject: [PATCH 1/7] nfsd: introduce export flag for v4 pseudoroot
-Date: Tue,  1 Dec 2009 19:39:37 -0500
-Message-ID: <1259714383-32577-2-git-send-email-bfields@citi.umich.edu>
+Subject: [PATCH 4/7] nfsd: special readdir exception for V4ROOT
+Date: Tue,  1 Dec 2009 19:39:40 -0500
+Message-ID: <1259714383-32577-5-git-send-email-bfields@citi.umich.edu>
 References: <1259714383-32577-1-git-send-email-bfields@citi.umich.edu>
+ <1259714383-32577-2-git-send-email-bfields@citi.umich.edu>
+ <1259714383-32577-3-git-send-email-bfields@citi.umich.edu>
+ <1259714383-32577-4-git-send-email-bfields@citi.umich.edu>
 Cc: Steve Dickson <steved@redhat.com>,
-	Steve Dickson <SteveD@redhat.com>,
 	"J. Bruce Fields" <bfields@citi.umich.edu>
 To: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:46255 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:46261 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754882AbZLBAim (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	id S1754884AbZLBAim (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
 	Tue, 1 Dec 2009 19:38:42 -0500
-In-Reply-To: <1259714383-32577-1-git-send-email-bfields@citi.umich.edu>
+In-Reply-To: <1259714383-32577-4-git-send-email-bfields@citi.umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Steve Dickson <SteveD@redhat.com>
-
-NFSv4 differs from v2 and v3 in that it presents a single unified
-filesystem tree, whereas v2 and v3 exported multiple filesystem (whose
-roots could be found using a separate mount protocol).
-
-Our original NFSv4 server implementation asked the administrator to
-designate a single filesystem as the NFSv4 root, then to mount
-filesystems they wished to export underneath.  (Often using bind mounts
-of already-existing filesystems.)
-
-This was conceptually simple, and allowed easy implementation, but
-created a serious obstacle to upgrading between v2/v3: since the paths
-to v4 filesystems were different, administrators would have to adjust
-all the paths in client-side mount commands when switching to v4.
-
-Various workarounds are possible.  For example, the administrator could
-export "/" and designate it as the v4 root.  However, the security risks
-of that approach are obvious, and in any case we shouldn't be requiring
-the administrator to take extra steps to fix this problem; instead, the
-server should present consistent paths across different versions by
-default.
-
-These patches take a modified version of that approach: we provide a new
-export option which exports only a subset of a filesystem.  With this
-flag, it becomes safe for mountd to export "/" by default, with no need
-for additional configuration.
-
-We begin just by defining the new flag.
-
-Signed-Off-By: Steve Dickson <steved@redhat.com>
-Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
+Code here is a little ugly; maybe do some cleanup first.
 ---
- fs/nfsd/export.c            |    1 +
- include/linux/nfsd/export.h |   12 +++++++++++-
- 2 files changed, 12 insertions(+), 1 deletions(-)
+ fs/nfsd/nfs4xdr.c |   10 +++++++---
+ fs/nfsd/vfs.c     |    2 +-
+ fs/nfsd/vfs.h     |    1 +
+ 3 files changed, 9 insertions(+), 4 deletions(-)
 
-diff --git a/fs/nfsd/export.c b/fs/nfsd/export.c
-index b73baba..b9e4977 100644
---- a/fs/nfsd/export.c
-+++ b/fs/nfsd/export.c
-@@ -1439,6 +1439,7 @@ static struct flags {
- 	{ NFSEXP_CROSSMOUNT, {"crossmnt", ""}},
- 	{ NFSEXP_NOSUBTREECHECK, {"no_subtree_check", ""}},
- 	{ NFSEXP_NOAUTHNLM, {"insecure_locks", ""}},
-+	{ NFSEXP_V4ROOT, {"v4root", ""}},
- #ifdef MSNFS
- 	{ NFSEXP_MSNFS, {"msnfs", ""}},
- #endif
-diff --git a/include/linux/nfsd/export.h b/include/linux/nfsd/export.h
-index a6d9ef2..e963ba9 100644
---- a/include/linux/nfsd/export.h
-+++ b/include/linux/nfsd/export.h
-@@ -39,7 +39,17 @@
- #define NFSEXP_FSID		0x2000
- #define	NFSEXP_CROSSMOUNT	0x4000
- #define	NFSEXP_NOACL		0x8000	/* reserved for possible ACL related use */
--#define NFSEXP_ALLFLAGS		0xFE3F
-+/*
-+ * The NFSEXP_V4ROOT flag causes the kernel to give access only to NFSv4
-+ * clients, and only to the single directory that is the root of the
-+ * export; further lookup and readdir operations are treated as if every
-+ * subdirectory was a mountpoint, and ignored if they are not themselves
-+ * exported.  This is used by nfsd and mountd to construct the NFSv4
-+ * pseudofilesystem, which provides access only to paths leading to each
-+ * exported filesystem.
-+ */
-+#define	NFSEXP_V4ROOT		0x10000
-+#define NFSEXP_ALLFLAGS		0x1FE3F
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index db0fc55..931fa96 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -2205,11 +2205,14 @@ nfsd4_encode_dirent_fattr(struct nfsd4_readdir *cd,
+ 	 * we will not follow the cross mount and will fill the attribtutes
+ 	 * directly from the mountpoint dentry.
+ 	 */
+-	if (d_mountpoint(dentry) && !attributes_need_mount(cd->rd_bmval))
+-		ignore_crossmnt = 1;
+-	else if (d_mountpoint(dentry)) {
++	if (nfsd_mountpoint(dentry, exp)) {
+ 		int err;
  
- /* The flags that may vary depending on security flavor: */
- #define NFSEXP_SECINFO_FLAGS	(NFSEXP_READONLY | NFSEXP_ROOTSQUASH \
++		if (!(exp->ex_flags & NFSEXP_V4ROOT)
++				&& !attributes_need_mount(cd->rd_bmval)) {
++			ignore_crossmnt = 1;
++			goto out_encode;
++		}
+ 		/*
+ 		 * Why the heck aren't we just using nfsd_lookup??
+ 		 * Different "."/".." handling?  Something else?
+@@ -2225,6 +2228,7 @@ nfsd4_encode_dirent_fattr(struct nfsd4_readdir *cd,
+ 			goto out_put;
+ 
+ 	}
++out_encode:
+ 	nfserr = nfsd4_encode_fattr(NULL, exp, dentry, p, buflen, cd->rd_bmval,
+ 					cd->rd_rqstp, ignore_crossmnt);
+ out_put:
+diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+index 5136e61..caf4794 100644
+--- a/fs/nfsd/vfs.c
++++ b/fs/nfsd/vfs.c
+@@ -188,7 +188,7 @@ static int nfsd_lookup_parent(struct svc_rqst *rqstp, struct dentry *dparent, st
+  * For nfsd purposes, we treat V4ROOT exports as though there was an
+  * export at *every* directory.
+  */
+-static int nfsd_mountpoint(struct dentry *dentry, struct svc_export *exp)
++int nfsd_mountpoint(struct dentry *dentry, struct svc_export *exp)
+ {
+ 	if (d_mountpoint(dentry))
+ 		return 1;
+diff --git a/fs/nfsd/vfs.h b/fs/nfsd/vfs.h
+index b8011fd..f4fa6d3 100644
+--- a/fs/nfsd/vfs.h
++++ b/fs/nfsd/vfs.h
+@@ -40,6 +40,7 @@ __be32		 nfsd_lookup_dentry(struct svc_rqst *, struct svc_fh *,
+ 				struct svc_export **, struct dentry **);
+ __be32		nfsd_setattr(struct svc_rqst *, struct svc_fh *,
+ 				struct iattr *, int, time_t);
++int nfsd_mountpoint(struct dentry *, struct svc_export *);
+ #ifdef CONFIG_NFSD_V4
+ __be32          nfsd4_set_nfs4_acl(struct svc_rqst *, struct svc_fh *,
+                     struct nfs4_acl *);
 -- 
 1.6.3.3
 
