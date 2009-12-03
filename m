@@ -1,61 +1,56 @@
 From: Boaz Harrosh <bharrosh@panasas.com>
-Subject: [PATCHSET 00/12 repost] nfsd: #includes cleanup
-Date: Thu, 03 Dec 2009 20:26:24 +0200
-Message-ID: <4B1802D0.8060206@panasas.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Subject: [PATCH 01/12] nfsd: Remove nfsfh.h dependency on sunrpc
+Date: Thu,  3 Dec 2009 20:28:04 +0200
+Message-ID: <1259864884-4661-1-git-send-email-bharrosh@panasas.com>
+References: <4B1802D0.8060206@panasas.com>
 To: "J. Bruce Fields" <bfields@citi.umich.edu>,
 	NFS list <linux-nfs@vger.kernel.org>,
 	pNFS Mailing List <pnfs@linux-nfs.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:51520 "EHLO
+Received: from daytona.panasas.com ([67.152.220.89]:30036 "EHLO
 	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1754198AbZLCS0V (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 3 Dec 2009 13:26:21 -0500
+	with ESMTP id S1754198AbZLCS2A (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 3 Dec 2009 13:28:00 -0500
+In-Reply-To: <4B1802D0.8060206@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+linux/nfsd/nfsfh.h defines some low level types which
+are needed by exportfs and though by filesystems.
 
-Hi Bruce
+In the file, fh_lock() uses the sunrpc dprint facility which
+might cause a dependency of exportfs (and filesystems) on
+sunrpc which is unwanted / unexpected.
 
-I'm reposting the all set together
+Remove the debug-print from fh_lock() and avoid this dependency.
 
-There are two patches that people have said will go through
-other trees (see below). So either wait with patch 12/12 after
-they get into Linus. Or also submit them through nfsd, it should
-not cause any problems to post the same patch from two sub-trees,
-right?
+Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+---
+ include/linux/nfsd/nfsfh.h |    4 ----
+ 1 files changed, 0 insertions(+), 4 deletions(-)
 
-(For the things done here please let it sit in linux-next for
- a couple of nights)
-
-[PATCH 01/12] nfsd: Remove nfsfh.h dependency on sunrpc
-[PATCH 02/12] sunrpc: Clean never used include files   
-[PATCH 03/12] nfsd: Fix independence of a few nfsd related headers
-[PATCH 04/12] nfsd: Headers Independence and include cleanups     
-[PATCH 05/12] nfsd: Source files #include cleanups
-
-	First batch
-
-[PATCH 06/12] compat.c: Remove dependence on nfsd private headers
-[PATCH 07/12] parsic: remove un-used nfsd #includes
-
-	This patch we have ACK on
-
-[PATCH 08/12] sparc: remove un-used nfsd #includes
-[PATCH 09/12] s390: remove un-used nfsd #includes
-
-	These two were reported as submitted into ARCH tree for 2.6.33
-
-[PATCH 10/12] lockd: Remove un-used nfsd headers #includes
-[PATCH 11/12] vfs: nfsctl.c un-used nfsd #includes
-
-[PATCH 12/12] nfsd: Move private headers to source directory
-	
-	this patch is the only one that depends on all
-	the other parts, and need all patches in.
-	(And will cause Benny's tree to adjust)
-
-Thanks
-Boaz
+diff --git a/include/linux/nfsd/nfsfh.h b/include/linux/nfsd/nfsfh.h
+index 8f641c9..2973e11 100644
+--- a/include/linux/nfsd/nfsfh.h
++++ b/include/linux/nfsd/nfsfh.h
+@@ -20,7 +20,6 @@
+ # include <linux/fs.h>
+ #endif
+ #include <linux/nfsd/const.h>
+-#include <linux/nfsd/debug.h>
+ 
+ /*
+  * This is the old "dentry style" Linux NFSv2 file handle.
+@@ -329,9 +328,6 @@ fh_lock_nested(struct svc_fh *fhp, unsigned int subclass)
+ 	struct dentry	*dentry = fhp->fh_dentry;
+ 	struct inode	*inode;
+ 
+-	dfprintk(FILEOP, "nfsd: fh_lock(%s) locked = %d\n",
+-			SVCFH_fmt(fhp), fhp->fh_locked);
+-
+ 	BUG_ON(!dentry);
+ 
+ 	if (fhp->fh_locked) {
+-- 
+1.6.5.2
 
