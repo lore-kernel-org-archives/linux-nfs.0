@@ -1,103 +1,107 @@
-From: Kelly Anderson <kelly-lACMDn57031vQQPgy9v2K1aTQe2KTcn/@public.gmane.org>
-Subject: Re: [NFS] Nfs4 over Ipv6 patch to fix ipv6 subnetting in /etc/exports
-Date: Wed, 02 Dec 2009 17:16:04 -0700
-Message-ID: <4B170344.9070205@silka.with-linux.com>
-References: <4B16EF49.8040106@silka.with-linux.com> <5A28692A-9683-4B49-A016-6639BD80E1BC@oracle.com>
+From: Diego Moreno <Diego.Moreno-Lazaro@bull.net>
+Subject: Re: rpc.statd problem: lockd: cannot monitor server
+Date: Thu, 03 Dec 2009 11:24:42 +0100
+Message-ID: <4B1791EA.1050606@bull.net>
+References: <4B154EE7.8050700@bull.net>	<98062189-30B8-4AF6-8F6F-4534495230C2@oracle.com>	<4B163FF9.9050700@bull.net> <20091202072928.14b9399c@tlielax.poochiereds.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-To: Chuck Lever <chuck.lever@oracle.com>
+Cc: Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org
+To: Jeff Layton <jlayton@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from 216-146-103-100.dsl.nemontel.net ([216.146.103.100]:60599 "EHLO
-	silka.with-linux.com" rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org
-	with ESMTP id S1752034AbZLCAag (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 2 Dec 2009 19:30:36 -0500
-In-Reply-To: <5A28692A-9683-4B49-A016-6639BD80E1BC@oracle.com>
+Received: from ecfrec.frec.bull.fr ([129.183.4.8]:49854 "EHLO
+	ecfrec.frec.bull.fr" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755534AbZLCK1q (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 3 Dec 2009 05:27:46 -0500
+In-Reply-To: <20091202072928.14b9399c-9yPaYZwiELC+kQycOl6kW4xkIHaj4LzF@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 12/02/2009 04:32 PM, Chuck Lever wrote:
-> [Cc: correct mailing list]
->
-> IPv6 support in mountd is entirely experimental (ie not guaranteed to 
-> work), and exists only my personal git repo, not in the official 
-> nfs-utils git repo.  However, it looks like you are working against my 
-> code.
-
-I got it from the following.
-git://git.linux-nfs.org/projects/cel/nfs-utils.git
-
->
->
-> Also, we prefer patches submitted inline, not as attachments, as that 
-> makes it easy to hit "reply" and comment on the content of the patch.  
-> A patch description and a Signed-off-by: line is required.  Take a 
-> look in the archives of this mailing list for examples.
->
-> Basically your patch misapplies the address mask in check_subnet_v6, 
-> so I don't think it's the right fix.  Instead of "sin6 & mask" you 
-> have "sin6 & sin6" which basically means the mask is ignored, and the 
-> check will always succeed.
->
-> Maybe the mask generation code in init_netmask() is not correct?
-
-I think you missread the patch. So I posted the complete patched 
-function.  The problem was sin6->sin6_addr.s6_addr should be 
-sin6->sin6_addr.s6_addr32.  It doesn't make sense to compare an 8 bit 
-value with a 32 bit value.  Notice it's really comparing "address" to 
-"sin6" so it's really ((address ^ sin6) & mask).  sin6 is a poor choice 
-of variable names in this case since it makes it hard to interpret the code.
-
-static int
-check_subnet_v6(const struct sockaddr_in6 *address,
-         const struct sockaddr_in6 *mask, const struct addrinfo *ai)
-{
-     for (; ai; ai = ai->ai_next) {
-         struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)ai->ai_addr;
-
-         if (sin6->sin6_family != AF_INET6)
-             continue;
-
-         if (mask_match(address->sin6_addr.s6_addr32[0],
-                 sin6->sin6_addr.s6_addr32[0],
-                       mask->sin6_addr.s6_addr32[0]) &&
-             mask_match(address->sin6_addr.s6_addr32[1],
-                 sin6->sin6_addr.s6_addr32[1],
-                       mask->sin6_addr.s6_addr32[1]) &&
-             mask_match(address->sin6_addr.s6_addr32[2],
-                 sin6->sin6_addr.s6_addr32[2],
-                       mask->sin6_addr.s6_addr32[2]) &&
-             mask_match(address->sin6_addr.s6_addr32[3],
-                 sin6->sin6_addr.s6_addr32[3],
-                       mask->sin6_addr.s6_addr32[3]))
-             return 1;
-     }
-     return 0;
-}
 
 
---- ./support/export/client.c.orig    2009-11-30 08:06:18.000000000 -0700
-+++ ./support/export/client.c    2009-12-02 15:16:55.361725808 -0700
-@@ -505,16 +505,16 @@ check_subnet_v6(const struct sockaddr_in
-              continue;
+Jeff Layton wrote:
+> On Wed, 02 Dec 2009 11:22:49 +0100
+> Diego Moreno <Diego.Moreno-Lazaro@bull.net> wrote:
+> 
+>>
+>> Chuck Lever wrote:
+>>> On Dec 1, 2009, at 12:14 PM, Diego Moreno wrote:
+>>>> Hi guys,
+>>>>
+>>>> We are having a problem with locks in NFSv3 with Fedora11. I've been 
+>>>> searching this problem in the list for a while but I haven't found it.
+>>>>
+>>>> The problem is in Fedora11, kernel 2.6.29.6-217.2.16.fc11 and 
+>>>> nfs-utils-1.1.5-6.fc11
+>>>>
+>>>> When I try to make two locks with two different process I get the 
+>>>> message "No locks available". rpc.statd is running on client and 
+>>>> server, also lockd. If I try with just one process I obtain the same 
+>>>> result.
+>>>>
+>>>> I tried to debug with wireshark and I can see client is not trying to 
+>>>> make a lock. I also tried to enable NLM debug and I get next messages:
+>>>>
+>>>> Syslog:
+>>>>
+>>>> 1259574201 2009 Nov 30 10:43:21 myclient kern warning kernel lockd: 
+>>>> get host myserver
+>>>> 1259574201 2009 Nov 30 10:43:21 myclient kern warning kernel lockd: 
+>>>> get host myserver
+>>>> 1259574201 2009 Nov 30 10:43:21 myclient kern warning kernel lockd: 
+>>>> nsm_monitor(myserver)
+>>>> 1259574201 2009 Nov 30 10:43:21 myclient kern warning kernel lockd: 
+>>>> get host myserver
+>>>> 1259574201 2009 Nov 30 10:43:21 myclient kern warning kernel lockd: 
+>>>> get host myserver
+>>>> 1259574201 2009 Nov 30 10:43:21 myclient kern warning kernel lockd: 
+>>>> nsm_monitor(myserver)
+>>>> 1259574201 2009 Nov 30 10:43:21 myclient kern warning kernel lockd: 
+>>>> xdr_dec_stat_res status 1 state -1
+>>>> 1259574201 2009 Nov 30 10:43:21 myclient kern notice kernel lockd: 
+>>>> cannot monitor myserver
+>>>> 1259574201 2009 Nov 30 10:43:21 myclient kern warning kernel lockd: 
+>>>> release host myserver
+>>>> 1259574201 2009 Nov 30 10:43:21 myclient kern warning kernel lockd: 
+>>>> release host myserver
+>>>> 1259574201 2009 Nov 30 10:43:21 myclient daemon warning rpc.statd 
+>>>> creat(/var/lib/nfs/statd/sm/myserver) failed: No such file or directory
+>>>> 1259574201 2009 Nov 30 10:43:21 myclient daemon notice rpc.statd 
+>>>> STAT_FAIL to myclient for SM_MON of 10.0.4.60
+>>>> 1259574201 2009 Nov 30 10:43:21 myclient daemon warning rpc.statd 
+>>>> creat(/var/lib/nfs/statd/sm/myserver) failed: No such file or directory
+>>> Statd can't create the monitor record for this remote peer for some 
+>>> reason.  Check that /var/lib/nfs/statd and /var/lib/nfs/statd/sm exist, 
+>>> and are permitted so that rpc.statd can create files in it.  Check which 
+>>> uid and gid statd is running under: I think F11 uses 29 for both.
+>>>
+>> Thanks Chuck. That made the trick. Directory /var/lib/nfs/statd/ was 
+>> empty in client and server. Adding these directories locking works. But 
+>> it's just a workaround as I have 30 more clients having the same 
+>> problem. I'm going to try to find out why this is happening. Maybe it is 
+>> a bug in fedora installation? When are supposed the files under 
+>> "/var/lib/nfs/statd/" to be created?
+>>
+>> statd is running under the right uid and gid and /var/lib/nfs/statd is 
+>> owned by rpcuser as it should be.
+>>
+> 
+> Sounds like a packaging bug, but when I look at CVS for that nfs-utils
+> version it looks ok:
+> 
+> %files
+> 
+> [...]
+> 
+> %dir %attr(700,rpcuser,rpcuser) /var/lib/nfs/statd
+> %dir %attr(700,rpcuser,rpcuser) /var/lib/nfs/statd/sm
+> %dir %attr(700,rpcuser,rpcuser) /var/lib/nfs/statd/sm.bak
+> 
+> ...if you uninstall and reinstall the nfs-utils package on one of these
+> hosts, do these directories get put in place correctly?
+> 
 
-          if (mask_match(address->sin6_addr.s6_addr32[0],
--                sin6->sin6_addr.s6_addr[0],
-+                sin6->sin6_addr.s6_addr32[0],
-                        mask->sin6_addr.s6_addr32[0]) &&
-              mask_match(address->sin6_addr.s6_addr32[1],
--                sin6->sin6_addr.s6_addr[1],
-+                sin6->sin6_addr.s6_addr32[1],
-                        mask->sin6_addr.s6_addr32[1]) &&
-              mask_match(address->sin6_addr.s6_addr32[2],
--                sin6->sin6_addr.s6_addr[2],
-+                sin6->sin6_addr.s6_addr32[2],
-                        mask->sin6_addr.s6_addr32[2]) &&
-              mask_match(address->sin6_addr.s6_addr32[3],
--                sin6->sin6_addr.s6_addr[3],
-+                sin6->sin6_addr.s6_addr32[3],
-                        mask->sin6_addr.s6_addr32[3]))
-              return 1;
-      }
+That's right Jeff. Uninstalling and reinstalling nfs-utils everything 
+worked fine and now statd files are there with locks working as they should.
 
+Thanks!
 
