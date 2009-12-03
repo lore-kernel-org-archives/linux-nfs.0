@@ -1,78 +1,50 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH 6/9] sunrpc/cache: retry cache lookups that return
-	-ETIMEDOUT
-Date: Thu, 3 Dec 2009 11:57:29 -0500
-Message-ID: <20091203165729.GB1393@fieldses.org>
-References: <20090909062539.20462.67466.stgit@notabene.brown> <20090909063254.20462.41616.stgit@notabene.brown> <20091202221127.GB18690@fieldses.org>
+From: "J. Bruce Fields" <bfields@citi.umich.edu>
+Subject: Re: [PATCH 4/5] lockd: Remove unused nfsd headers #includes
+Date: Thu, 3 Dec 2009 12:27:28 -0500
+Message-ID: <20091203172728.GF1393@fieldses.org>
+References: <4B0C1EB7.50508@panasas.com> <4B0C1FE0.8040105@panasas.com> <20091125201011.GG32502@fieldses.org> <20091125202323.GJ32502@fieldses.org> <4B0E76F5.1030006@panasas.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs@vger.kernel.org
-To: NeilBrown <neilb@suse.de>
+Cc: Linux Kernel <linux-kernel@vger.kernel.org>,
+	linux-parisc <linux-parisc@vger.kernel.org>,
+	sparclinux <sparclinux@vger.kernel.org>,
+	linux-s390 <linux-s390@vger.kernel.org>,
+	NFS list <linux-nfs@vger.kernel.org>,
+	pNFS Mailing List <pnfs@linux-nfs.org>,
+	Andrew Morton <akpm@linux-foundation.org>
+To: Boaz Harrosh <bharrosh@panasas.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:40099 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:45174 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754924AbZLCQ4X (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 3 Dec 2009 11:56:23 -0500
-In-Reply-To: <20091202221127.GB18690@fieldses.org>
+	id S1753458AbZLCR0X (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 3 Dec 2009 12:26:23 -0500
+In-Reply-To: <4B0E76F5.1030006@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Dec 02, 2009 at 05:11:27PM -0500, J. Bruce Fields wrote:
-> On Wed, Sep 09, 2009 at 04:32:54PM +1000, NeilBrown wrote:
-> > @@ -793,9 +793,18 @@ exp_find_key(svc_client *clp, int fsid_type, u32 *fsidv, struct cache_req *reqp)
-> >  	memcpy(key.ek_fsid, fsidv, key_len(fsid_type));
-> >  
-> >  	ek = svc_expkey_lookup(&key);
-> > + again:
-> >  	if (ek == NULL)
-> >  		return ERR_PTR(-ENOMEM);
-> >  	err = cache_check(&svc_expkey_cache, &ek->h, reqp);
-> > +	if (err == -ETIMEDOUT) {
-> > +		struct svc_expkey *prev_ek = ek;
-> > +		ek = svc_expkey_lookup(&key);
-> > +		if (ek != prev_ek)
-> > +			goto again;
-> > +		if (ek)
-> > +			cache_put(&ek->h, &svc_expkey_cache);
-> > +	}
+On Thu, Nov 26, 2009 at 02:39:17PM +0200, Boaz Harrosh wrote:
+> On 11/25/2009 10:23 PM, J. Bruce Fields wrote:
+> > On Wed, Nov 25, 2009 at 03:10:11PM -0500, J. Bruce Fields wrote:
+> >> On Tue, Nov 24, 2009 at 08:03:12PM +0200, Boaz Harrosh wrote:
+> >>>
+> >>> In what history where these ever needed? Well not
+> >>> any more.
+> >>
+> >> Applied, thanks.--b.
+> > 
+> > Um, I said that before I actually tried to compile it....  OK, dropping
+> > for now (assuming I'm missing some earlier patch).
+> > 
+> > --b.
+> > 
 > 
-> This is very subtle.  (We're comparing to a pointer which may not
-> actually point to anything any more.)  And it's repeated in every
-> caller.  Is there any simpler way to handle this?
+> OK, I didn't realize it but, yes I have these on top of the previous 6
+> so it makes sense.
+> 
+> I have posted the previous 6 rebased on your new current tree, have you seen
+> it? All the patches are the same but [5/6] which has a "version 3". Do I need
+> to re post?
 
-Actually, is it even right?  After the cache_check:
-
-> >  	err = cache_check(&svc_expkey_cache, &ek->h, reqp);
-
-we no longer hold a reference on ek, so it could be freed.  There's no
-reason that address couldn't then be reused for something else.  It's
-even possible that a new entry could be created at the same address
-here.  So:
-
-> > +	if (err == -ETIMEDOUT) {
-> > +		struct svc_expkey *prev_ek = ek;
-> > +		ek = svc_expkey_lookup(&key);
-
-the "ek" that's returned might well equal prev_ek,
-
-> > +		if (ek != prev_ek)
-> > +			goto again;
-
-but that doesn't necessarily imply that this is the same object that
-used to exist at that address.  So we could still return an ek which
-isn't actually a positive cache entry.
-
-Am I missing something?
+Apologies, yes, would you mind reposting?
 
 --b.
-
-> > +		if (ek)
-> > +			cache_put(&ek->h, &svc_expkey_cache);
-> > +	}
-
-> 
-> --b.
-> 
-> >  	if (err)
-> >  		return ERR_PTR(err);
-> >  	return ek;
