@@ -1,44 +1,38 @@
-From: Steve Dickson <SteveD@redhat.com>
-Subject: Re: Question: why only 8 security flavors per export??
-Date: Fri, 04 Dec 2009 13:30:19 -0500
-Message-ID: <4B19553B.9090706@RedHat.com>
-References: <4B1934A7.90801@RedHat.com> <68742FB7-C923-4219-909F-F47B992584C6@netapp.com>
+From: "J. Bruce Fields" <bfields@citi.umich.edu>
+Subject: Re: [PATCH 6/7] nfsd: restrict filehandles accepted in V4ROOT case
+Date: Fri, 4 Dec 2009 13:49:59 -0500
+Message-ID: <20091204184959.GA19236@fieldses.org>
+References: <1259714383-32577-1-git-send-email-bfields@citi.umich.edu> <1259714383-32577-2-git-send-email-bfields@citi.umich.edu> <1259714383-32577-3-git-send-email-bfields@citi.umich.edu> <1259714383-32577-4-git-send-email-bfields@citi.umich.edu> <1259714383-32577-5-git-send-email-bfields@citi.umich.edu> <1259714383-32577-6-git-send-email-bfields@citi.umich.edu> <1259714383-32577-7-git-send-email-bfields@citi.umich.edu> <4B192525.4050301@RedHat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-To: Andy Adamson <andros@netapp.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org
+To: Steve Dickson <SteveD@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:28780 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:53915 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754035AbZLDSaP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 4 Dec 2009 13:30:15 -0500
-In-Reply-To: <68742FB7-C923-4219-909F-F47B992584C6@netapp.com>
+	id S1751396AbZLDSsv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 4 Dec 2009 13:48:51 -0500
+In-Reply-To: <4B192525.4050301-AfCzQyP5zfLQT0dZR+AlfA@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Fri, Dec 04, 2009 at 10:05:09AM -0500, Steve Dickson wrote:
+> 
+> 
+> On 12/01/2009 07:39 PM, J. Bruce Fields wrote:
+> > +	/*
+> > +	 * A pseudoroot export gives permission to access only one
+> > +	 * single directory; the kernel has to make another upcall
+> > +	 * before granting access to anything else under it:
+> > +	 */
+> > +	if (unlikely(dentry->d_parent != exp->ex_path.dentry))
+> Remember this is wrong... it needs to be 
+> -	if (unlikely(dentry->d_parent != exp->ex_path.dentry))
+> +	if (unlikely(dentry != exp->ex_path.dentry))
 
+Oops, thanks.  Looking back through the git reflogs....  It seems that I
+had this fix in a separate patch, was rebasing the series and squashing
+that patch in at the same time, and missed this chunk.  Fixed in my
+local version.
 
-On 12/04/2009 12:08 PM, Andy Adamson wrote:
-> 
-> 
->> Hello,
->>
->> Why are only 8 (SECFLAVOR_COUNT) security flavors allow
->> per export when 13 security flavors are supported
->> (see flav_map[] in  nfs/exports.c)?
->>
->> I'm trying to create an export that supports all possible
->> security flavors and its erroring out with "mountd: more than
->> 8 security flavors on an export"
-> 
-> SPKM3 drafts have expired, and the LIPKEY RFC is based on SPKM3 and was
-> never implemented. The SPKM3 implementation was used for
-> experimentation, but never in production anywhere and should probably be
-> removed from the kernel. So in reality, the list of all possible
-> security flavors is:
-> 
-> AUTH_NONE, AUTH_NULL, AUTH_SYS, AUTH_UNIX, krb5, krb5i and krb5p.
-> 
-Ok... thanks... 
-
-steved.
+--b.
