@@ -1,38 +1,44 @@
-From: "J. Bruce Fields" <bfields@citi.umich.edu>
-Subject: Re: [PATCH 6/7] nfsd: restrict filehandles accepted in V4ROOT case
-Date: Fri, 4 Dec 2009 13:49:59 -0500
-Message-ID: <20091204184959.GA19236@fieldses.org>
-References: <1259714383-32577-1-git-send-email-bfields@citi.umich.edu> <1259714383-32577-2-git-send-email-bfields@citi.umich.edu> <1259714383-32577-3-git-send-email-bfields@citi.umich.edu> <1259714383-32577-4-git-send-email-bfields@citi.umich.edu> <1259714383-32577-5-git-send-email-bfields@citi.umich.edu> <1259714383-32577-6-git-send-email-bfields@citi.umich.edu> <1259714383-32577-7-git-send-email-bfields@citi.umich.edu> <4B192525.4050301@RedHat.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org
-To: Steve Dickson <SteveD@redhat.com>
+From: andros@netapp.com
+Subject: [PATCH 03/11] nfs41: nfs4_get_lease_time will never session reset
+Date: Fri,  4 Dec 2009 15:25:38 -0500
+Message-ID: <1259958347-9031-4-git-send-email-andros@netapp.com>
+References: <1259958347-9031-1-git-send-email-andros@netapp.com>
+ <1259958347-9031-2-git-send-email-andros@netapp.com>
+ <1259958347-9031-3-git-send-email-andros@netapp.com>
+Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
+To: trond.myklebust@netapp.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:53915 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:56650 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751396AbZLDSsv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 4 Dec 2009 13:48:51 -0500
-In-Reply-To: <4B192525.4050301-AfCzQyP5zfLQT0dZR+AlfA@public.gmane.org>
+	id S1757170AbZLDUZy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 4 Dec 2009 15:25:54 -0500
+In-Reply-To: <1259958347-9031-3-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Dec 04, 2009 at 10:05:09AM -0500, Steve Dickson wrote:
-> 
-> 
-> On 12/01/2009 07:39 PM, J. Bruce Fields wrote:
-> > +	/*
-> > +	 * A pseudoroot export gives permission to access only one
-> > +	 * single directory; the kernel has to make another upcall
-> > +	 * before granting access to anything else under it:
-> > +	 */
-> > +	if (unlikely(dentry->d_parent != exp->ex_path.dentry))
-> Remember this is wrong... it needs to be 
-> -	if (unlikely(dentry->d_parent != exp->ex_path.dentry))
-> +	if (unlikely(dentry != exp->ex_path.dentry))
+From: Andy Adamson <andros@netapp.com>
 
-Oops, thanks.  Looking back through the git reflogs....  It seems that I
-had this fix in a separate patch, was rebasing the series and squashing
-that patch in at the same time, and missed this chunk.  Fixed in my
-local version.
+Make this clear by calling rpc_restart-call.
+Prepare for nfs4_restart_rpc() to free slots.
 
---b.
+Signed-off-by: Andy Adamson <andros@netapp.com>
+---
+ fs/nfs/nfs4proc.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
+
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 1e13d53..979d2e3 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -4389,7 +4389,7 @@ static void nfs4_get_lease_time_done(struct rpc_task *task, void *calldata)
+ 		dprintk("%s Retry: tk_status %d\n", __func__, task->tk_status);
+ 		rpc_delay(task, NFS4_POLL_RETRY_MIN);
+ 		task->tk_status = 0;
+-		nfs4_restart_rpc(task, data->clp);
++		rpc_restart_call(task);
+ 		return;
+ 	}
+ 	nfs41_sequence_free_slot(data->clp, &data->res->lr_seq_res);
+-- 
+1.6.0.6
+
