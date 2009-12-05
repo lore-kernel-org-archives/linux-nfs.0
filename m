@@ -1,42 +1,61 @@
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: Re: [Patch 0/4] RECLAIM_COMPLETE functionality
-Date: Sat, 05 Dec 2009 15:51:01 -0500
-Message-ID: <1260046261.29208.10.camel@localhost>
-References: <>
-	 <1260044428-16341-1-git-send-email-Ricardo.Labiaga@netapp.com>
+From: "Labiaga, Ricardo" <ricardo.labiaga@netapp.com>
+Subject: Re: [PATCH 1/3] nfs41: Mark stateids in need of reclaim if state
+ manager gets stale clientid
+Date: Sat, 05 Dec 2009 13:12:11 -0800
+Message-ID: <C7400CAB.108B0%ricardo.labiaga@netapp.com>
+References: <1260045253.29208.6.camel@localhost>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Cc: linux-nfs@vger.kernel.org
-To: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
+Content-Type: text/plain;
+	charset="US-ASCII"
+Cc: <linux-nfs@vger.kernel.org>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:21613 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:24645 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752273AbZLEUvV convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 5 Dec 2009 15:51:21 -0500
-Received: from sacrsexc2-prd.hq.netapp.com (sacrsexc2-prd.hq.netapp.com [10.99.115.28])
-	by smtp2.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id nB5KpSsj008065
-	for <linux-nfs@vger.kernel.org>; Sat, 5 Dec 2009 12:51:28 -0800 (PST)
-In-Reply-To: <1260044428-16341-1-git-send-email-Ricardo.Labiaga@netapp.com>
+	id S1754353AbZLEVMH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 5 Dec 2009 16:12:07 -0500
+Received: from sacrsexc1-prd.hq.netapp.com (sacrsexc1-prd.hq.netapp.com [10.99.115.27])
+	by smtp2.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id nB5LCDkI013302
+	for <linux-nfs@vger.kernel.org>; Sat, 5 Dec 2009 13:12:13 -0800 (PST)
+In-Reply-To: <1260045253.29208.6.camel@localhost>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, 2009-12-05 at 12:20 -0800, Ricardo Labiaga wrote: 
-> The following patches implement RECLAIM_COMPLETE functionality to
-> indicate completion of _global_ reclaims for the client.  They do
-> not yet implement RECLAIM_COMPLETE for file system migration.
-> 
-> [PATCH 1/4] Cleanup some NFSv4 XDR decode comments
-> [PATCH 2/4] nfs41: RECLAIM_COMPLETE XDR functionality
-> [PATCH 3/4] nfs41: RECLAIM_COMPLETE functionality
-> [PATCH 4/4] nfs41: Invoke RECLAIM_COMPLETE
-> 
-> A separate patch will be mailed to Bruce to integrate skeleton
-> functionality on the server side.  
-> 
-> The patches apply to Trond's master branch.  They were tested on
-> top of an old version of Andy's session draining patches, and
-> the previous state reclaim bug fix series.
+On 12/5/09 12:34 PM, "Trond Myklebust" <Trond.Myklebust@netapp.com> wrote:
 
-Applied. Thanks Ricardo...
+> On Sat, 2009-12-05 at 12:11 -0800, Ricardo Labiaga wrote:
+>> The state manager was not marking the stateids as needing to be reclaimed
+>> after reestablishing the clientid.
+>> 
+>> Signed-off-by: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
+>> ---
+>>  fs/nfs/nfs4state.c |    1 +
+>>  1 files changed, 1 insertions(+), 0 deletions(-)
+>> 
+>> diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+>> index 630199d..ae90df8 100644
+>> --- a/fs/nfs/nfs4state.c
+>> +++ b/fs/nfs/nfs4state.c
+>> @@ -1157,6 +1157,7 @@ static void nfs4_session_recovery_handle_error(struct
+>> nfs_client *clp, int err)
+>> case -NFS4ERR_STALE_CLIENTID:
+>> set_bit(NFS4CLNT_LEASE_EXPIRED, &clp->cl_state);
+>> set_bit(NFS4CLNT_SESSION_SETUP, &clp->cl_state);
+>> +  nfs4_state_start_reclaim_reboot(clp);
+>> }
+>>  }
+>>  
+> 
+> So, why do we need a special nfs4_session_recovery_handle_error() that
+> just mirrors the existing nfs4_recovery_handle_error().
+> 
 
+Good point.  The early exit from nfs4_state_end_reclaim_reboot() if
+NFS4CLNT_RECLAIM_REBOOT is set makes it equivalent.  I'll make the change.
+
+- ricardo
+
+> Please just get rid of it...
+> 
+> Trond
 
