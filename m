@@ -1,63 +1,73 @@
-From: "Labiaga, Ricardo" <Ricardo.Labiaga@netapp.com>
-Subject: RE: [PATCH 0/12] Fix session reset deadlocks Version 4
-Date: Fri, 4 Dec 2009 23:05:49 -0800
-Message-ID: <273FE88A07F5D445824060902F70034408A1A330@SACMVEXC1-PRD.hq.netapp.com>
-References: <1259965498.2825.5.camel@localhost>
+From: Larry Alkoff <labradley@mindspring.com>
+Subject: [NFS] Please help with NFS on Kubuntu Karmic 9.10
+Date: Sat, 05 Dec 2009 11:58:33 -0600
+Message-ID: <4B1A9F49.4000606@mindspring.com>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="us-ascii"
-Cc: <linux-nfs@vger.kernel.org>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-	"Adamson, Andy" <William.Adamson@netapp.com>
+Content-Type: text/plain; charset="us-ascii"
+To: nfs@lists.sourceforge.net
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:22834 "EHLO mx2.netapp.com"
+Received: from neil.brown.name ([220.233.11.133]:39754 "EHLO neil.brown.name"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752308AbZLEHGi convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 5 Dec 2009 02:06:38 -0500
-Received: from svlrsexc1-prd.hq.netapp.com (svlrsexc1-prd.hq.netapp.com [10.57.115.30])
-	by smtp2.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id nB576gPv001817
-	for <linux-nfs@vger.kernel.org>; Fri, 4 Dec 2009 23:06:42 -0800 (PST)
-In-Reply-To: <1259965498.2825.5.camel@localhost>
+	id S1757308AbZLER7D (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 5 Dec 2009 12:59:03 -0500
+Received: from brown by neil.brown.name with local (Exim 4.69)
+	(envelope-from <nfs-bounces@lists.sourceforge.net>)
+	id 1NGyuS-0005kG-DI
+	for linux-nfs@vger.kernel.org; Sun, 06 Dec 2009 04:59:08 +1100
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I'm seeing a problem with the bits in the nfs-for-next branch when I run
-v4.1.  If a bad session is received after a server reboot, the client
-issues a flood of sequence requests.  The sequence RPCs contain the last
-sequenceID from the previous session with the new sessionID.  This is
-repeated over and over until you ctrl-C the triggering process.  The
-server replies with sequence misordered, but the client issues the exact
-same RPC over and over.
+I am unable to connect with Kubuntu netbook remix Karmic 9.10.
 
-Also to note is that right after the session is destroyed, the client
-will issue sequence requests with sessionID of 0 right before the create
-session succeeds.
+I have seen many posts and articles on this issue.
 
-- ricardo
+The problem seems to be centered around the nfs version being used
+and I have placed the following 2 lines in /etc/fstab:
+
+kata:/          /mnt/kata       nfs     defaults,noauto,nfsver=2  0 0
+kata:/home      /mnt/kata/home  nfs     defaults,noauto,nfsver=2  0 0
+kata is the netbook server which I am trying to mount on the client
+called arriba which runs on Kubuntu 8.04 LSB.
+
+Most of the posts I have read say to add 'nfsver-2' to the fstab lines.
+However on both client and server, cat /proc/filesystems |grep nfs
+shows only:
+nodev nfs
+nodev nfs4 and
+nodev nfsd.
+
+It seems that this problem appears when people upgrade to (K)ubuntu 9.10
+from an earlier version.  In my case, this is a new netbook and I loaded 
+the most recent version Kubuntu 9.10.  Efforts to load Kubuntu 8.04 LTS
+which I use on my other machines failed - possibly because of the 
+limited facilities on this small HP 110 Netbook.
+
+This result happens on both server kata and client arriba.
+I don't know that the 'nodev' means.
+
+I would like to add either nfs2 or nfs3 but have no idea how to specify
+this in apt-get or aptitude.
+
+I'd also like to add that I have used Linux desktops and nfs for years 
+(mostly on the command line) and believe it's setup correctly.
+
+Please I am requesting troubleshooting advice.
+It's getting really old to have to use a thumb drive to transfer files.
+
+Larryalk
 
 
-> -----Original Message-----
-> From: Myklebust, Trond
-> Sent: Friday, December 04, 2009 2:25 PM
-> To: Adamson, Andy
-> Cc: linux-nfs@vger.kernel.org
-> Subject: Re: [PATCH 0/12] Fix session reset deadlocks Version 4
-> 
-> On Fri, 2009-12-04 at 17:01 -0500, Trond Myklebust wrote:
-> > Those look good to me. I had to fix them up a bit in order to have
-them
-> > apply on top of the nfs-for-next branch, but nothing major.
-> 
-> I figured I might as well push them out immediately. They compile, and
-> they don't seem to have any adverse effects on the NFSv4 stuff.
-> 
-> You can find them as the nfs-for-next branch on
-> git://git.linux-nfs.org/projects/trondmy/nfs-2.6.git
-> 
-> Cheers
->   Trond
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs"
-in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+------------------------------------------------------------------------------
+Join us December 9, 2009 for the Red Hat Virtual Experience,
+a free event focused on virtualization and cloud computing. 
+Attend in-depth sessions from your desk. Your couch. Anywhere.
+http://p.sf.net/sfu/redhat-sfdev2dev
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
+_______________________________________________
+Please note that nfs@lists.sourceforge.net is being discontinued.
+Please subscribe to linux-nfs@vger.kernel.org instead.
+    http://vger.kernel.org/vger-lists.html#linux-nfs
+
