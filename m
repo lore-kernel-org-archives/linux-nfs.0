@@ -1,11 +1,12 @@
 From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: Re: [PATCH 1/3] nfs41: Mark stateids in need of reclaim if state
- manager gets stale clientid
-Date: Sat, 05 Dec 2009 15:34:13 -0500
-Message-ID: <1260045253.29208.6.camel@localhost>
+Subject: Re: [PATCH 2/3] nfs41: Handle session errors during delegation
+ return
+Date: Sat, 05 Dec 2009 15:38:36 -0500
+Message-ID: <1260045516.29208.8.camel@localhost>
 References: <>
 	 <1260043884-16267-1-git-send-email-Ricardo.Labiaga@netapp.com>
 	 <1260043884-16267-2-git-send-email-Ricardo.Labiaga@netapp.com>
+	 <1260043884-16267-3-git-send-email-Ricardo.Labiaga@netapp.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="UTF-8"
 Cc: linux-nfs@vger.kernel.org
@@ -13,40 +14,51 @@ To: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
 Received: from mx2.netapp.com ([216.240.18.37]:8326 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755484AbZLEUlS convert rfc822-to-8bit (ORCPT
+	id S1756521AbZLEUlS convert rfc822-to-8bit (ORCPT
 	<rfc822;linux-nfs@vger.kernel.org>); Sat, 5 Dec 2009 15:41:18 -0500
 Received: from svlrsexc2-prd.hq.netapp.com (svlrsexc2-prd.hq.netapp.com [10.57.115.31])
-	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id nB5KfO3j011185
+	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id nB5KfO3l011185
 	for <linux-nfs@vger.kernel.org>; Sat, 5 Dec 2009 12:41:25 -0800 (PST)
-In-Reply-To: <1260043884-16267-2-git-send-email-Ricardo.Labiaga@netapp.com>
+In-Reply-To: <1260043884-16267-3-git-send-email-Ricardo.Labiaga@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 On Sat, 2009-12-05 at 12:11 -0800, Ricardo Labiaga wrote: 
-> The state manager was not marking the stateids as needing to be reclaimed
-> after reestablishing the clientid.
+> Add session error handling to nfs4_open_delegation_recall()
 > 
 > Signed-off-by: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
 > ---
->  fs/nfs/nfs4state.c |    1 +
->  1 files changed, 1 insertions(+), 0 deletions(-)
+>  fs/nfs/nfs4proc.c |   12 ++++++++++++
+>  1 files changed, 12 insertions(+), 0 deletions(-)
 > 
-> diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-> index 630199d..ae90df8 100644
-> --- a/fs/nfs/nfs4state.c
-> +++ b/fs/nfs/nfs4state.c
-> @@ -1157,6 +1157,7 @@ static void nfs4_session_recovery_handle_error(struct nfs_client *clp, int err)
->  	case -NFS4ERR_STALE_CLIENTID:
->  		set_bit(NFS4CLNT_LEASE_EXPIRED, &clp->cl_state);
->  		set_bit(NFS4CLNT_SESSION_SETUP, &clp->cl_state);
-> +		nfs4_state_start_reclaim_reboot(clp);
->  	}
->  }
->  
+> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+> index fb94ed0..97d4a82 100644
+> --- a/fs/nfs/nfs4proc.c
+> +++ b/fs/nfs/nfs4proc.c
+> @@ -1169,6 +1169,18 @@ int nfs4_open_delegation_recall(struct nfs_open_context *ctx, struct nfs4_state
+>  			case -ENOENT:
+>  			case -ESTALE:
+>  				goto out;
+> +			case -NFS4ERR_BADSESSION:
+> +			case -NFS4ERR_BADSLOT:
+> +			case -NFS4ERR_BAD_HIGH_SLOT:
+> +			case -NFS4ERR_CONN_NOT_BOUND_TO_SESSION:
+> +			case -NFS4ERR_DEADSESSION:
+> +			case -NFS4ERR_SEQ_FALSE_RETRY:
+> +			case -NFS4ERR_SEQ_MISORDERED:
+> +				dprintk("%s ERROR: %d Reset session\n",
+> +					__func__, err);
+> +				set_bit(NFS4CLNT_SESSION_SETUP,
+> +					&server->nfs_client->cl_state);
+> +				goto out;
+>  			case -NFS4ERR_STALE_CLIENTID:
+>  			case -NFS4ERR_STALE_STATEID:
+>  			case -NFS4ERR_EXPIRED:
 
-So, why do we need a special nfs4_session_recovery_handle_error() that
-just mirrors the existing nfs4_recovery_handle_error().
+BADSESSION and DEADSESSION should call nfs4_schedule_state_recovery()
+instead.
 
-Please just get rid of it...
+The rest can continue to call NFS4CLNT_SESSION_RESET, but should also
+call nfs4_schedule_state_manager().
 
 Trond
