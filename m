@@ -1,186 +1,195 @@
 From: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
-Subject: [PATCH 2/4] nfs41: RECLAIM_COMPLETE XDR functionality
-Date: Sat,  5 Dec 2009 12:20:26 -0800
-Message-ID: <1260044428-16341-3-git-send-email-Ricardo.Labiaga@netapp.com>
+Subject: [PATCH 3/4] nfs41: RECLAIM_COMPLETE functionality
+Date: Sat,  5 Dec 2009 12:20:27 -0800
+Message-ID: <1260044428-16341-4-git-send-email-Ricardo.Labiaga@netapp.com>
 References: <>
  <1260044428-16341-1-git-send-email-Ricardo.Labiaga@netapp.com>
  <1260044428-16341-2-git-send-email-Ricardo.Labiaga@netapp.com>
+ <1260044428-16341-3-git-send-email-Ricardo.Labiaga@netapp.com>
 Cc: linux-nfs@vger.kernel.org,
 	Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
 To: trond.myklebust@netapp.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:61724 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:13611 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756529AbZLEU0H (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	id S1756743AbZLEU0H (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
 	Sat, 5 Dec 2009 15:26:07 -0500
-In-Reply-To: <1260044428-16341-2-git-send-email-Ricardo.Labiaga@netapp.com>
+In-Reply-To: <1260044428-16341-3-git-send-email-Ricardo.Labiaga@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-XDR encoding and decoding for RECLAIM_COMPLETE.  Implements the necessary
-encoding to indicate reclaim complete for the entire client.  In the future,
-it can be extended to provide reclaim complete functionality for a single
-file system after migration.
+Implements RECLAIM_COMPLETE as an asynchronous RPC.
+NFS4ERR_DELAY is retried, NFS4ERR_DEADSESSION invokes the error handling
+but does not result in a retry, since we don't want to have a lingering
+RECLAIM_COMPLETE call sent in the middle of a possible new state recovery
+cycle.  If a session reset occurs, a new wave of reclaim operations will
+follow, containing their own RECLAIM_COMPLETE call.  We don't want a
+retry to get on the way of recovery by incorrectly indicating to the
+server that we're done reclaiming state.
+
+A subsequent patch invokes the functionality.
 
 Signed-off-by: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
 ---
- fs/nfs/nfs4xdr.c        |   66 +++++++++++++++++++++++++++++++++++++++++++++++
- include/linux/nfs4.h    |    1 +
- include/linux/nfs_xdr.h |   10 +++++++
- 3 files changed, 77 insertions(+), 0 deletions(-)
+ fs/nfs/nfs4_fs.h   |    1 +
+ fs/nfs/nfs4proc.c  |  105 ++++++++++++++++++++++++++++++++++++++++++++++++++++
+ fs/nfs/nfs4state.c |    8 ++++
+ 3 files changed, 114 insertions(+), 0 deletions(-)
 
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index 1969ba4..ee0a15b 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -299,6 +299,8 @@ static int nfs4_stat_to_errno(int);
- 				XDR_QUADLEN(NFS4_MAX_SESSIONID_LEN) + 4)
- #define decode_sequence_maxsz	(op_decode_hdr_maxsz + \
- 				XDR_QUADLEN(NFS4_MAX_SESSIONID_LEN) + 5)
-+#define encode_reclaim_complete_maxsz	(op_encode_hdr_maxsz + 4)
-+#define decode_reclaim_complete_maxsz	(op_decode_hdr_maxsz + 4)
- #else /* CONFIG_NFS_V4_1 */
- #define encode_sequence_maxsz	0
- #define decode_sequence_maxsz	0
-@@ -676,6 +678,12 @@ static int nfs4_stat_to_errno(int);
- 					 decode_sequence_maxsz + \
- 					 decode_putrootfh_maxsz + \
- 					 decode_fsinfo_maxsz)
-+#define NFS4_enc_reclaim_complete_sz	(compound_encode_hdr_maxsz + \
-+					 encode_sequence_maxsz + \
-+					 encode_reclaim_complete_maxsz)
-+#define NFS4_dec_reclaim_complete_sz	(compound_decode_hdr_maxsz + \
-+					 decode_sequence_maxsz + \
-+					 decode_reclaim_complete_maxsz)
- #endif /* CONFIG_NFS_V4_1 */
+diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
+index e8604af..1aac065 100644
+--- a/fs/nfs/nfs4_fs.h
++++ b/fs/nfs/nfs4_fs.h
+@@ -181,6 +181,7 @@ struct nfs4_state_recovery_ops {
+ 	int (*recover_lock)(struct nfs4_state *, struct file_lock *);
+ 	int (*establish_clid)(struct nfs_client *, struct rpc_cred *);
+ 	struct rpc_cred * (*get_clid_cred)(struct nfs_client *);
++	int (*reclaim_complete)(struct nfs_client *);
+ };
  
- static const umode_t nfs_type2fmt[] = {
-@@ -1592,6 +1600,19 @@ static void encode_destroy_session(struct xdr_stream *xdr,
- 	hdr->nops++;
- 	hdr->replen += decode_destroy_session_maxsz;
+ struct nfs4_state_maintenance_ops {
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 25f4180..990533a 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -4948,6 +4948,110 @@ static int nfs41_proc_async_sequence(struct nfs_client *clp,
+ 			      &nfs41_sequence_ops, (void *)clp);
  }
+ 
++struct nfs4_reclaim_complete_data {
++	struct nfs_client *clp;
++	struct nfs41_reclaim_complete_args arg;
++	struct nfs41_reclaim_complete_res res;
++};
 +
-+static void encode_reclaim_complete(struct xdr_stream *xdr,
-+				    struct nfs41_reclaim_complete_args *args,
-+				    struct compound_hdr *hdr)
++static void nfs4_reclaim_complete_prepare(struct rpc_task *task, void *data)
 +{
-+	__be32 *p;
++	struct nfs4_reclaim_complete_data *calldata = data;
 +
-+	p = reserve_space(xdr, 8);
-+	*p++ = cpu_to_be32(OP_RECLAIM_COMPLETE);
-+	*p++ = cpu_to_be32(args->one_fs);
-+	hdr->nops++;
-+	hdr->replen += decode_reclaim_complete_maxsz;
++	if (nfs4_setup_sequence(calldata->clp, &calldata->arg.seq_args,
++				&calldata->res.seq_res, 0, task))
++		return;
++
++	rpc_call_start(task);
 +}
- #endif /* CONFIG_NFS_V4_1 */
- 
- static void encode_sequence(struct xdr_stream *xdr,
-@@ -2420,6 +2441,26 @@ static int nfs4_xdr_enc_get_lease_time(struct rpc_rqst *req, uint32_t *p,
- 	encode_nops(&hdr);
- 	return 0;
- }
++
++static void nfs4_reclaim_complete_done(struct rpc_task *task, void *data)
++{
++	struct nfs4_reclaim_complete_data *calldata = data;
++	struct nfs_client *clp = calldata->clp;
++	struct nfs4_sequence_res *res = &calldata->res.seq_res;
++
++	dprintk("--> %s\n", __func__);
++	nfs41_sequence_done(clp, res, task->tk_status);
++	switch (task->tk_status) {
++	case 0:
++	case -NFS4ERR_COMPLETE_ALREADY:
++		break;
++	case -NFS4ERR_BADSESSION:
++	case -NFS4ERR_DEADSESSION:
++		/*
++		 * Handle the session error, but do not retry the operation, as
++		 * we have no way of telling whether the clientid had to be
++		 * reset before we got our reply.  If reset, a new wave of
++		 * reclaim operations will follow, containing their own reclaim
++		 * complete.  We don't want our retry to get on the way of
++		 * recovery by incorrectly indicating to the server that we're
++		 * done reclaiming state since the process had to be restarted.
++		 */
++		_nfs4_async_handle_error(task, NULL, clp, NULL);
++		break;
++	default:
++		if (_nfs4_async_handle_error(
++				task, NULL, clp, NULL) == -EAGAIN) {
++			rpc_restart_call_prepare(task);
++			return;
++		}
++	}
++	nfs41_sequence_free_slot(clp, res);
++
++	dprintk("<-- %s\n", __func__);
++}
++
++static void nfs4_free_reclaim_complete_data(void *data)
++{
++	struct nfs4_reclaim_complete_data *calldata = data;
++
++	kfree(calldata);
++}
++
++static const struct rpc_call_ops nfs4_reclaim_complete_call_ops = {
++	.rpc_call_prepare = nfs4_reclaim_complete_prepare,
++	.rpc_call_done = nfs4_reclaim_complete_done,
++	.rpc_release = nfs4_free_reclaim_complete_data,
++};
 +
 +/*
-+ * a RECLAIM_COMPLETE request
++ * Issue a global reclaim complete.
 + */
-+static int nfs4_xdr_enc_reclaim_complete(struct rpc_rqst *req, uint32_t *p,
-+				     struct nfs41_reclaim_complete_args *args)
++static int nfs41_proc_reclaim_complete(struct nfs_client *clp)
 +{
-+	struct xdr_stream xdr;
-+	struct compound_hdr hdr = {
-+		.minorversion = nfs4_xdr_minorversion(&args->seq_args)
++	struct nfs4_reclaim_complete_data *calldata;
++	struct rpc_task *task;
++	struct rpc_message msg = {
++		.rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_RECLAIM_COMPLETE],
 +	};
++	struct rpc_task_setup task_setup_data = {
++		.rpc_client = clp->cl_rpcclient,
++		.rpc_message = &msg,
++		.callback_ops = &nfs4_reclaim_complete_call_ops,
++		.flags = RPC_TASK_ASYNC,
++	};
++	int status = -ENOMEM;
 +
-+	xdr_init_encode(&xdr, &req->rq_snd_buf, p);
-+	encode_compound_hdr(&xdr, req, &hdr);
-+	encode_sequence(&xdr, &args->seq_args, &hdr);
-+	encode_reclaim_complete(&xdr, args, &hdr);
-+	encode_nops(&hdr);
-+	return 0;
-+}
++	dprintk("--> %s\n", __func__);
++	calldata = kzalloc(sizeof(*calldata), GFP_KERNEL);
++	if (calldata == NULL)
++		goto out;
++	calldata->clp = clp;
++	calldata->arg.one_fs = 0;
++	calldata->res.seq_res.sr_slotid = NFS4_MAX_SLOT_TABLE;
 +
- #endif /* CONFIG_NFS_V4_1 */
- 
- static void print_overflow_msg(const char *func, const struct xdr_stream *xdr)
-@@ -4528,6 +4569,11 @@ static int decode_destroy_session(struct xdr_stream *xdr, void *dummy)
- {
- 	return decode_op_hdr(xdr, OP_DESTROY_SESSION);
- }
-+
-+static int decode_reclaim_complete(struct xdr_stream *xdr, void *dummy)
-+{
-+	return decode_op_hdr(xdr, OP_RECLAIM_COMPLETE);
-+}
- #endif /* CONFIG_NFS_V4_1 */
- 
- static int decode_sequence(struct xdr_stream *xdr,
-@@ -5591,6 +5637,25 @@ static int nfs4_xdr_dec_get_lease_time(struct rpc_rqst *rqstp, uint32_t *p,
- 		status = decode_fsinfo(&xdr, res->lr_fsinfo);
- 	return status;
- }
-+
-+/*
-+ * Decode RECLAIM_COMPLETE response
-+ */
-+static int nfs4_xdr_dec_reclaim_complete(struct rpc_rqst *rqstp, uint32_t *p,
-+					 struct nfs41_reclaim_complete_res *res)
-+{
-+	struct xdr_stream xdr;
-+	struct compound_hdr hdr;
-+	int status;
-+
-+	xdr_init_decode(&xdr, &rqstp->rq_rcv_buf, p);
-+	status = decode_compound_hdr(&xdr, &hdr);
-+	if (!status)
-+		status = decode_sequence(&xdr, &res->seq_res, rqstp);
-+	if (!status)
-+		status = decode_reclaim_complete(&xdr, (void *)NULL);
++	msg.rpc_argp = &calldata->arg;
++	msg.rpc_resp = &calldata->res;
++	task_setup_data.callback_data = calldata;
++	task = rpc_run_task(&task_setup_data);
++	if (IS_ERR(task))
++		status = PTR_ERR(task);
++	rpc_put_task(task);
++out:
++	dprintk("<-- %s status=%d\n", __func__, status);
 +	return status;
 +}
  #endif /* CONFIG_NFS_V4_1 */
  
- __be32 *nfs4_decode_dirent(__be32 *p, struct nfs_entry *entry, int plus)
-@@ -5767,6 +5832,7 @@ struct rpc_procinfo	nfs4_procedures[] = {
-   PROC(DESTROY_SESSION,	enc_destroy_session,	dec_destroy_session),
-   PROC(SEQUENCE,	enc_sequence,	dec_sequence),
-   PROC(GET_LEASE_TIME,	enc_get_lease_time,	dec_get_lease_time),
-+  PROC(RECLAIM_COMPLETE, enc_reclaim_complete,  dec_reclaim_complete),
- #endif /* CONFIG_NFS_V4_1 */
+ struct nfs4_state_recovery_ops nfs40_reboot_recovery_ops = {
+@@ -4967,6 +5071,7 @@ struct nfs4_state_recovery_ops nfs41_reboot_recovery_ops = {
+ 	.recover_lock	= nfs4_lock_reclaim,
+ 	.establish_clid = nfs4_proc_exchange_id,
+ 	.get_clid_cred	= nfs4_get_exchange_id_cred,
++	.reclaim_complete = nfs41_proc_reclaim_complete,
  };
- 
-diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
-index c4c0602..f7bb8e0 100644
---- a/include/linux/nfs4.h
-+++ b/include/linux/nfs4.h
-@@ -528,6 +528,7 @@ enum {
- 	NFSPROC4_CLNT_DESTROY_SESSION,
- 	NFSPROC4_CLNT_SEQUENCE,
- 	NFSPROC4_CLNT_GET_LEASE_TIME,
-+	NFSPROC4_CLNT_RECLAIM_COMPLETE,
- };
- 
- /* nfs41 types */
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index 62f63fb..1810d1f 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -938,6 +938,16 @@ struct nfs41_create_session_args {
- struct nfs41_create_session_res {
- 	struct nfs_client	       *client;
- };
-+
-+struct nfs41_reclaim_complete_args {
-+	/* In the future extend to include curr_fh for use with migration */
-+	unsigned char			one_fs:1;
-+	struct nfs4_sequence_args	seq_args;
-+};
-+
-+struct nfs41_reclaim_complete_res {
-+	struct nfs4_sequence_res	seq_res;
-+};
  #endif /* CONFIG_NFS_V4_1 */
  
- struct nfs_page;
+diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+index ae90df8..e325b64 100644
+--- a/fs/nfs/nfs4state.c
++++ b/fs/nfs/nfs4state.c
+@@ -1011,6 +1011,14 @@ static void nfs4_state_start_reclaim_reboot(struct nfs_client *clp)
+ 	nfs4_state_mark_reclaim_helper(clp, nfs4_state_mark_reclaim_reboot);
+ }
+ 
++static void nfs4_reclaim_complete(struct nfs_client *clp,
++				 const struct nfs4_state_recovery_ops *ops)
++{
++	/* Notify the server we're done reclaiming our state */
++	if (ops->reclaim_complete)
++		(void)ops->reclaim_complete(clp);
++}
++
+ static void nfs4_state_end_reclaim_reboot(struct nfs_client *clp)
+ {
+ 	struct nfs4_state_owner *sp;
 -- 
 1.5.4.3
 
