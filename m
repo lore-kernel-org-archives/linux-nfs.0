@@ -1,34 +1,69 @@
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: Re: [PATCH 0/12] Fix session reset deadlocks Version 4
-Date: Fri, 04 Dec 2009 17:24:58 -0500
-Message-ID: <1259965498.2825.5.camel@localhost>
-References: <1259958347-9031-1-git-send-email-andros@netapp.com>
-	 <1259964091.22044.3.camel@localhost>
+From: "J. Bruce Fields" <bfields@citi.umich.edu>
+Subject: Re: [PATCHSET 00/12 repost] nfsd: #includes cleanup
+Date: Fri, 4 Dec 2009 20:00:04 -0500
+Message-ID: <20091205010004.GC22497@fieldses.org>
+References: <4B1802D0.8060206@panasas.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Cc: linux-nfs@vger.kernel.org
-To: andros@netapp.com
+Content-Type: text/plain; charset=us-ascii
+Cc: NFS list <linux-nfs@vger.kernel.org>,
+	pNFS Mailing List <pnfs@linux-nfs.org>
+To: Boaz Harrosh <bharrosh@panasas.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:41784 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:46618 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755047AbZLDWZp convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 4 Dec 2009 17:25:45 -0500
-Received: from svlrsexc1-prd.hq.netapp.com (svlrsexc1-prd.hq.netapp.com [10.57.115.30])
-	by smtp2.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id nB4MPoX3008087
-	for <linux-nfs@vger.kernel.org>; Fri, 4 Dec 2009 14:25:52 -0800 (PST)
-In-Reply-To: <1259964091.22044.3.camel@localhost>
+	id S1757550AbZLEA64 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 4 Dec 2009 19:58:56 -0500
+In-Reply-To: <4B1802D0.8060206@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 2009-12-04 at 17:01 -0500, Trond Myklebust wrote: 
-> Those look good to me. I had to fix them up a bit in order to have them
-> apply on top of the nfs-for-next branch, but nothing major.
+On Thu, Dec 03, 2009 at 08:26:24PM +0200, Boaz Harrosh wrote:
+> 
+> Hi Bruce
+> 
+> I'm reposting the all set together
 
-I figured I might as well push them out immediately. They compile, and
-they don't seem to have any adverse effects on the NFSv4 stuff.
+Applied locally (but pushed to branch for linux-next), thanks.
 
-You can find them as the nfs-for-next branch on
-git://git.linux-nfs.org/projects/trondmy/nfs-2.6.git
+--b.
 
-Cheers
-  Trond
+> 
+> There are two patches that people have said will go through
+> other trees (see below). So either wait with patch 12/12 after
+> they get into Linus. Or also submit them through nfsd, it should
+> not cause any problems to post the same patch from two sub-trees,
+> right?
+> 
+> (For the things done here please let it sit in linux-next for
+>  a couple of nights)
+> 
+> [PATCH 01/12] nfsd: Remove nfsfh.h dependency on sunrpc
+> [PATCH 02/12] sunrpc: Clean never used include files   
+> [PATCH 03/12] nfsd: Fix independence of a few nfsd related headers
+> [PATCH 04/12] nfsd: Headers Independence and include cleanups     
+> [PATCH 05/12] nfsd: Source files #include cleanups
+> 
+> 	First batch
+> 
+> [PATCH 06/12] compat.c: Remove dependence on nfsd private headers
+> [PATCH 07/12] parsic: remove un-used nfsd #includes
+> 
+> 	This patch we have ACK on
+> 
+> [PATCH 08/12] sparc: remove un-used nfsd #includes
+> [PATCH 09/12] s390: remove un-used nfsd #includes
+> 
+> 	These two were reported as submitted into ARCH tree for 2.6.33
+> 
+> [PATCH 10/12] lockd: Remove un-used nfsd headers #includes
+> [PATCH 11/12] vfs: nfsctl.c un-used nfsd #includes
+> 
+> [PATCH 12/12] nfsd: Move private headers to source directory
+> 	
+> 	this patch is the only one that depends on all
+> 	the other parts, and need all patches in.
+> 	(And will cause Benny's tree to adjust)
+> 
+> Thanks
+> Boaz
+> 
