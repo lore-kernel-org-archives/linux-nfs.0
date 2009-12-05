@@ -1,195 +1,53 @@
 From: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
-Subject: [PATCH 3/4] nfs41: RECLAIM_COMPLETE functionality
-Date: Sat,  5 Dec 2009 12:20:27 -0800
-Message-ID: <1260044428-16341-4-git-send-email-Ricardo.Labiaga@netapp.com>
+Subject: [PATCH 4/4] nfs41: Invoke RECLAIM_COMPLETE
+Date: Sat,  5 Dec 2009 12:20:28 -0800
+Message-ID: <1260044428-16341-5-git-send-email-Ricardo.Labiaga@netapp.com>
 References: <>
  <1260044428-16341-1-git-send-email-Ricardo.Labiaga@netapp.com>
  <1260044428-16341-2-git-send-email-Ricardo.Labiaga@netapp.com>
  <1260044428-16341-3-git-send-email-Ricardo.Labiaga@netapp.com>
+ <1260044428-16341-4-git-send-email-Ricardo.Labiaga@netapp.com>
 Cc: linux-nfs@vger.kernel.org,
 	Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
 To: trond.myklebust@netapp.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:13611 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:61724 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756743AbZLEU0H (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	id S1756414AbZLEU0H (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
 	Sat, 5 Dec 2009 15:26:07 -0500
-In-Reply-To: <1260044428-16341-3-git-send-email-Ricardo.Labiaga@netapp.com>
+In-Reply-To: <1260044428-16341-4-git-send-email-Ricardo.Labiaga@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Implements RECLAIM_COMPLETE as an asynchronous RPC.
-NFS4ERR_DELAY is retried, NFS4ERR_DEADSESSION invokes the error handling
-but does not result in a retry, since we don't want to have a lingering
-RECLAIM_COMPLETE call sent in the middle of a possible new state recovery
-cycle.  If a session reset occurs, a new wave of reclaim operations will
-follow, containing their own RECLAIM_COMPLETE call.  We don't want a
-retry to get on the way of recovery by incorrectly indicating to the
-server that we're done reclaiming state.
+This patch invokes RECLAIM_COMPLETE after the client is done
+reclaiming state.
 
-A subsequent patch invokes the functionality.
+There are interpretations of the spec that suggest that
+RECLAIM_COMPLETE should also be issued after a new clientid
+has been obtained from the server and even if there is no
+state to reclaim.  This tells the server that the client
+has no state to reclaim even if the client isn't aware the
+server may have rebooted.
 
 Signed-off-by: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
 ---
- fs/nfs/nfs4_fs.h   |    1 +
- fs/nfs/nfs4proc.c  |  105 ++++++++++++++++++++++++++++++++++++++++++++++++++++
- fs/nfs/nfs4state.c |    8 ++++
- 3 files changed, 114 insertions(+), 0 deletions(-)
+ fs/nfs/nfs4state.c |    3 +++
+ 1 files changed, 3 insertions(+), 0 deletions(-)
 
-diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
-index e8604af..1aac065 100644
---- a/fs/nfs/nfs4_fs.h
-+++ b/fs/nfs/nfs4_fs.h
-@@ -181,6 +181,7 @@ struct nfs4_state_recovery_ops {
- 	int (*recover_lock)(struct nfs4_state *, struct file_lock *);
- 	int (*establish_clid)(struct nfs_client *, struct rpc_cred *);
- 	struct rpc_cred * (*get_clid_cred)(struct nfs_client *);
-+	int (*reclaim_complete)(struct nfs_client *);
- };
- 
- struct nfs4_state_maintenance_ops {
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 25f4180..990533a 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -4948,6 +4948,110 @@ static int nfs41_proc_async_sequence(struct nfs_client *clp,
- 			      &nfs41_sequence_ops, (void *)clp);
- }
- 
-+struct nfs4_reclaim_complete_data {
-+	struct nfs_client *clp;
-+	struct nfs41_reclaim_complete_args arg;
-+	struct nfs41_reclaim_complete_res res;
-+};
-+
-+static void nfs4_reclaim_complete_prepare(struct rpc_task *task, void *data)
-+{
-+	struct nfs4_reclaim_complete_data *calldata = data;
-+
-+	if (nfs4_setup_sequence(calldata->clp, &calldata->arg.seq_args,
-+				&calldata->res.seq_res, 0, task))
-+		return;
-+
-+	rpc_call_start(task);
-+}
-+
-+static void nfs4_reclaim_complete_done(struct rpc_task *task, void *data)
-+{
-+	struct nfs4_reclaim_complete_data *calldata = data;
-+	struct nfs_client *clp = calldata->clp;
-+	struct nfs4_sequence_res *res = &calldata->res.seq_res;
-+
-+	dprintk("--> %s\n", __func__);
-+	nfs41_sequence_done(clp, res, task->tk_status);
-+	switch (task->tk_status) {
-+	case 0:
-+	case -NFS4ERR_COMPLETE_ALREADY:
-+		break;
-+	case -NFS4ERR_BADSESSION:
-+	case -NFS4ERR_DEADSESSION:
-+		/*
-+		 * Handle the session error, but do not retry the operation, as
-+		 * we have no way of telling whether the clientid had to be
-+		 * reset before we got our reply.  If reset, a new wave of
-+		 * reclaim operations will follow, containing their own reclaim
-+		 * complete.  We don't want our retry to get on the way of
-+		 * recovery by incorrectly indicating to the server that we're
-+		 * done reclaiming state since the process had to be restarted.
-+		 */
-+		_nfs4_async_handle_error(task, NULL, clp, NULL);
-+		break;
-+	default:
-+		if (_nfs4_async_handle_error(
-+				task, NULL, clp, NULL) == -EAGAIN) {
-+			rpc_restart_call_prepare(task);
-+			return;
-+		}
-+	}
-+	nfs41_sequence_free_slot(clp, res);
-+
-+	dprintk("<-- %s\n", __func__);
-+}
-+
-+static void nfs4_free_reclaim_complete_data(void *data)
-+{
-+	struct nfs4_reclaim_complete_data *calldata = data;
-+
-+	kfree(calldata);
-+}
-+
-+static const struct rpc_call_ops nfs4_reclaim_complete_call_ops = {
-+	.rpc_call_prepare = nfs4_reclaim_complete_prepare,
-+	.rpc_call_done = nfs4_reclaim_complete_done,
-+	.rpc_release = nfs4_free_reclaim_complete_data,
-+};
-+
-+/*
-+ * Issue a global reclaim complete.
-+ */
-+static int nfs41_proc_reclaim_complete(struct nfs_client *clp)
-+{
-+	struct nfs4_reclaim_complete_data *calldata;
-+	struct rpc_task *task;
-+	struct rpc_message msg = {
-+		.rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_RECLAIM_COMPLETE],
-+	};
-+	struct rpc_task_setup task_setup_data = {
-+		.rpc_client = clp->cl_rpcclient,
-+		.rpc_message = &msg,
-+		.callback_ops = &nfs4_reclaim_complete_call_ops,
-+		.flags = RPC_TASK_ASYNC,
-+	};
-+	int status = -ENOMEM;
-+
-+	dprintk("--> %s\n", __func__);
-+	calldata = kzalloc(sizeof(*calldata), GFP_KERNEL);
-+	if (calldata == NULL)
-+		goto out;
-+	calldata->clp = clp;
-+	calldata->arg.one_fs = 0;
-+	calldata->res.seq_res.sr_slotid = NFS4_MAX_SLOT_TABLE;
-+
-+	msg.rpc_argp = &calldata->arg;
-+	msg.rpc_resp = &calldata->res;
-+	task_setup_data.callback_data = calldata;
-+	task = rpc_run_task(&task_setup_data);
-+	if (IS_ERR(task))
-+		status = PTR_ERR(task);
-+	rpc_put_task(task);
-+out:
-+	dprintk("<-- %s status=%d\n", __func__, status);
-+	return status;
-+}
- #endif /* CONFIG_NFS_V4_1 */
- 
- struct nfs4_state_recovery_ops nfs40_reboot_recovery_ops = {
-@@ -4967,6 +5071,7 @@ struct nfs4_state_recovery_ops nfs41_reboot_recovery_ops = {
- 	.recover_lock	= nfs4_lock_reclaim,
- 	.establish_clid = nfs4_proc_exchange_id,
- 	.get_clid_cred	= nfs4_get_exchange_id_cred,
-+	.reclaim_complete = nfs41_proc_reclaim_complete,
- };
- #endif /* CONFIG_NFS_V4_1 */
- 
 diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-index ae90df8..e325b64 100644
+index e325b64..24bde5e 100644
 --- a/fs/nfs/nfs4state.c
 +++ b/fs/nfs/nfs4state.c
-@@ -1011,6 +1011,14 @@ static void nfs4_state_start_reclaim_reboot(struct nfs_client *clp)
- 	nfs4_state_mark_reclaim_helper(clp, nfs4_state_mark_reclaim_reboot);
- }
+@@ -1025,6 +1025,9 @@ static void nfs4_state_end_reclaim_reboot(struct nfs_client *clp)
+ 	struct rb_node *pos;
+ 	struct nfs4_state *state;
  
-+static void nfs4_reclaim_complete(struct nfs_client *clp,
-+				 const struct nfs4_state_recovery_ops *ops)
-+{
-+	/* Notify the server we're done reclaiming our state */
-+	if (ops->reclaim_complete)
-+		(void)ops->reclaim_complete(clp);
-+}
++	nfs4_reclaim_complete(clp,
++		nfs4_reboot_recovery_ops[clp->cl_minorversion]);
 +
- static void nfs4_state_end_reclaim_reboot(struct nfs_client *clp)
- {
- 	struct nfs4_state_owner *sp;
+ 	if (!test_and_clear_bit(NFS4CLNT_RECLAIM_REBOOT, &clp->cl_state))
+ 		return;
+ 
 -- 
 1.5.4.3
 
