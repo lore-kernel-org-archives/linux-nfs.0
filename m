@@ -1,52 +1,34 @@
 From: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
-Subject: [PATCH 2/3] nfs41: Handle session errors during delegation return
-Date: Sat,  5 Dec 2009 12:11:23 -0800
-Message-ID: <1260043884-16267-3-git-send-email-Ricardo.Labiaga@netapp.com>
-References: <>
- <1260043884-16267-1-git-send-email-Ricardo.Labiaga@netapp.com>
- <1260043884-16267-2-git-send-email-Ricardo.Labiaga@netapp.com>
-Cc: linux-nfs@vger.kernel.org,
-	Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
+Subject: [Patch 0/4] RECLAIM_COMPLETE functionality
+Date: Sat,  5 Dec 2009 12:20:24 -0800
+Message-ID: <1260044428-16341-1-git-send-email-Ricardo.Labiaga@netapp.com>
+Cc: linux-nfs@vger.kernel.org
 To: trond.myklebust@netapp.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:12341 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:13611 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757936AbZLEURG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 5 Dec 2009 15:17:06 -0500
-In-Reply-To: <1260043884-16267-2-git-send-email-Ricardo.Labiaga@netapp.com>
+	id S1756365AbZLEU0F (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 5 Dec 2009 15:26:05 -0500
+In-Reply-To: <>
+References: <>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Add session error handling to nfs4_open_delegation_recall()
+The following patches implement RECLAIM_COMPLETE functionality to
+indicate completion of _global_ reclaims for the client.  They do
+not yet implement RECLAIM_COMPLETE for file system migration.
 
-Signed-off-by: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
----
- fs/nfs/nfs4proc.c |   12 ++++++++++++
- 1 files changed, 12 insertions(+), 0 deletions(-)
+[PATCH 1/4] Cleanup some NFSv4 XDR decode comments
+[PATCH 2/4] nfs41: RECLAIM_COMPLETE XDR functionality
+[PATCH 3/4] nfs41: RECLAIM_COMPLETE functionality
+[PATCH 4/4] nfs41: Invoke RECLAIM_COMPLETE
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index fb94ed0..97d4a82 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -1169,6 +1169,18 @@ int nfs4_open_delegation_recall(struct nfs_open_context *ctx, struct nfs4_state
- 			case -ENOENT:
- 			case -ESTALE:
- 				goto out;
-+			case -NFS4ERR_BADSESSION:
-+			case -NFS4ERR_BADSLOT:
-+			case -NFS4ERR_BAD_HIGH_SLOT:
-+			case -NFS4ERR_CONN_NOT_BOUND_TO_SESSION:
-+			case -NFS4ERR_DEADSESSION:
-+			case -NFS4ERR_SEQ_FALSE_RETRY:
-+			case -NFS4ERR_SEQ_MISORDERED:
-+				dprintk("%s ERROR: %d Reset session\n",
-+					__func__, err);
-+				set_bit(NFS4CLNT_SESSION_SETUP,
-+					&server->nfs_client->cl_state);
-+				goto out;
- 			case -NFS4ERR_STALE_CLIENTID:
- 			case -NFS4ERR_STALE_STATEID:
- 			case -NFS4ERR_EXPIRED:
--- 
-1.5.4.3
+A separate patch will be mailed to Bruce to integrate skeleton
+functionality on the server side.  
+
+The patches apply to Trond's master branch.  They were tested on
+top of an old version of Andy's session draining patches, and
+the previous state reclaim bug fix series.
+
+- ricardo
 
