@@ -1,55 +1,122 @@
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: Re: [PATCH 4/5] nfs41: New NFS4CLNT_RECLAIM_COMPLETE_PENDING state
-Date: Mon, 07 Dec 2009 09:47:51 -0500
-Message-ID: <1260197272.32136.19.camel@localhost>
-References: <>
-	 <1260174111-23160-1-git-send-email-Ricardo.Labiaga@netapp.com>
-	 <1260174111-23160-2-git-send-email-Ricardo.Labiaga@netapp.com>
-	 <1260174111-23160-3-git-send-email-Ricardo.Labiaga@netapp.com>
-	 <1260174111-23160-4-git-send-email-Ricardo.Labiaga@netapp.com>
-	 <1260174111-23160-5-git-send-email-Ricardo.Labiaga@netapp.com>
+From: Diego Moreno <Diego.Moreno-Lazaro@bull.net>
+Subject: Re: rpc.statd problem: lockd: cannot monitor server
+Date: Mon, 07 Dec 2009 15:52:46 +0100
+Message-ID: <4B1D16BE.5090806@bull.net>
+References: <4B154EE7.8050700@bull.net>	<98062189-30B8-4AF6-8F6F-4534495230C2@oracle.com>	<4B163FF9.9050700@bull.net>	<20091202072928.14b9399c@tlielax.poochiereds.net>	<4B1791EA.1050606@bull.net> <20091203072030.0a2f029a@barsoom.rdu.redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Cc: linux-nfs@vger.kernel.org
-To: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Cc: Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org
+To: Jeff Layton <jlayton@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:47353 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757419AbZLGOrq convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 7 Dec 2009 09:47:46 -0500
-Received: from sacrsexc1-prd.hq.netapp.com (sacrsexc1-prd.hq.netapp.com [10.99.115.27])
-	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id nB7ElrPR000948
-	for <linux-nfs@vger.kernel.org>; Mon, 7 Dec 2009 06:47:53 -0800 (PST)
-In-Reply-To: <1260174111-23160-5-git-send-email-Ricardo.Labiaga@netapp.com>
+Received: from ecfrec.frec.bull.fr ([129.183.4.8]:46093 "EHLO
+	ecfrec.frec.bull.fr" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757332AbZLGOxO (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 7 Dec 2009 09:53:14 -0500
+In-Reply-To: <20091203072030.0a2f029a-xSBYVWDuneFaJnirhKH9O4GKTjYczspe@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 2009-12-07 at 00:21 -0800, Ricardo Labiaga wrote: 
-> nfs4_state_end_reclaim_reboot() can also be invoked as a
-> result of error processing, so it is not a safe place to
-> invoke RECLAIM_COMPLETE.  Instead, create a new state
-> flag that tracks the fact that a RECLAIM_COMPLETE needs
-> to be issued when all state has been reclaimed, or when
-> we're done establishing the session for the first time.
+
+
+Jeff Layton wrote:
+> On Thu, 03 Dec 2009 11:24:42 +0100
+> Diego Moreno <Diego.Moreno-Lazaro@bull.net> wrote:
 > 
-> If an error occurs in the main state manager loop, just clear the
-> flag.  No sense in checking if the flag is set in order to clear it.
-> We're not going to issue the RECLAIM_COMPLETE since there's a high
-> probability that we had some kind of communication or session problem
-> which is s how we ended up in the error case.
+>>
+>> Jeff Layton wrote:
+>>> On Wed, 02 Dec 2009 11:22:49 +0100
+>>> Diego Moreno <Diego.Moreno-Lazaro@bull.net> wrote:
+>>>
+>>>> Chuck Lever wrote:
+>>>>> On Dec 1, 2009, at 12:14 PM, Diego Moreno wrote:
+>>>>>> Hi guys,
+>>>>>>
+>>>>>> We are having a problem with locks in NFSv3 with Fedora11. I've been 
+>>>>>> searching this problem in the list for a while but I haven't found it.
+>>>>>>
+>>>>>> The problem is in Fedora11, kernel 2.6.29.6-217.2.16.fc11 and 
+>>>>>> nfs-utils-1.1.5-6.fc11
+>>>>>>
+>>>>>> When I try to make two locks with two different process I get the 
+>>>>>> message "No locks available". rpc.statd is running on client and 
+>>>>>> server, also lockd. If I try with just one process I obtain the same 
+>>>>>> result.
+>>>>>>
+>>>>>> I tried to debug with wireshark and I can see client is not trying to 
+>>>>>> make a lock. I also tried to enable NLM debug and I get next messages:
+>>>>>>
+>>>>>> Syslog:
+>>>>>>
+>>>>>> 1259574201 2009 Nov 30 10:43:21 myclient kern warning kernel lockd: 
+>>>>>> get host myserver
+>>>>>> 1259574201 2009 Nov 30 10:43:21 myclient kern warning kernel lockd: 
+>>>>>> get host myserver
+>>>>>> 1259574201 2009 Nov 30 10:43:21 myclient kern warning kernel lockd: 
+>>>>>> nsm_monitor(myserver)
+>>>>>> 1259574201 2009 Nov 30 10:43:21 myclient kern warning kernel lockd: 
+>>>>>> get host myserver
+>>>>>> 1259574201 2009 Nov 30 10:43:21 myclient kern warning kernel lockd: 
+>>>>>> get host myserver
+>>>>>> 1259574201 2009 Nov 30 10:43:21 myclient kern warning kernel lockd: 
+>>>>>> nsm_monitor(myserver)
+>>>>>> 1259574201 2009 Nov 30 10:43:21 myclient kern warning kernel lockd: 
+>>>>>> xdr_dec_stat_res status 1 state -1
+>>>>>> 1259574201 2009 Nov 30 10:43:21 myclient kern notice kernel lockd: 
+>>>>>> cannot monitor myserver
+>>>>>> 1259574201 2009 Nov 30 10:43:21 myclient kern warning kernel lockd: 
+>>>>>> release host myserver
+>>>>>> 1259574201 2009 Nov 30 10:43:21 myclient kern warning kernel lockd: 
+>>>>>> release host myserver
+>>>>>> 1259574201 2009 Nov 30 10:43:21 myclient daemon warning rpc.statd 
+>>>>>> creat(/var/lib/nfs/statd/sm/myserver) failed: No such file or directory
+>>>>>> 1259574201 2009 Nov 30 10:43:21 myclient daemon notice rpc.statd 
+>>>>>> STAT_FAIL to myclient for SM_MON of 10.0.4.60
+>>>>>> 1259574201 2009 Nov 30 10:43:21 myclient daemon warning rpc.statd 
+>>>>>> creat(/var/lib/nfs/statd/sm/myserver) failed: No such file or directory
+>>>>> Statd can't create the monitor record for this remote peer for some 
+>>>>> reason.  Check that /var/lib/nfs/statd and /var/lib/nfs/statd/sm exist, 
+>>>>> and are permitted so that rpc.statd can create files in it.  Check which 
+>>>>> uid and gid statd is running under: I think F11 uses 29 for both.
+>>>>>
+>>>> Thanks Chuck. That made the trick. Directory /var/lib/nfs/statd/ was 
+>>>> empty in client and server. Adding these directories locking works. But 
+>>>> it's just a workaround as I have 30 more clients having the same 
+>>>> problem. I'm going to try to find out why this is happening. Maybe it is 
+>>>> a bug in fedora installation? When are supposed the files under 
+>>>> "/var/lib/nfs/statd/" to be created?
+>>>>
+>>>> statd is running under the right uid and gid and /var/lib/nfs/statd is 
+>>>> owned by rpcuser as it should be.
+>>>>
+>>> Sounds like a packaging bug, but when I look at CVS for that nfs-utils
+>>> version it looks ok:
+>>>
+>>> %files
+>>>
+>>> [...]
+>>>
+>>> %dir %attr(700,rpcuser,rpcuser) /var/lib/nfs/statd
+>>> %dir %attr(700,rpcuser,rpcuser) /var/lib/nfs/statd/sm
+>>> %dir %attr(700,rpcuser,rpcuser) /var/lib/nfs/statd/sm.bak
+>>>
+>>> ...if you uninstall and reinstall the nfs-utils package on one of these
+>>> hosts, do these directories get put in place correctly?
+>>>
+>> That's right Jeff. Uninstalling and reinstalling nfs-utils everything 
+>> worked fine and now statd files are there with locks working as they should.
+>>
+>> Thanks!
+>>
+> 
+> Strange. Were these machines fresh installs, or were they upgrades from
+> an earlier fedora release?
+> 
 
-This patch looks wrong for two reasons.
+Now we know why we had this problem. The problem comes from a system 
+management tool we're developing. We made system snapshots for 
+installation and we were not copying statd directory. This solution 
+worked (well?) with Red Hat 5.3 as if there is no statd directory it's 
+created when a lock is required (but under root user, not 'rpcuser'). 
+But with Fedora 11 this directory is not created again.
 
-     1. We only want to call RECLAIM_COMPLETE if we saw a STALE_CLIENTID
-        error prior to the last attempt to re-establish the client id. 
-     2. We have to call it before we can start the no-grace reclaims.
-
-Looking at the code, I'm not convinced that we need a separate
-'RECLAIM_COMPLETE_PENDING' state. It should be pretty much identical to
-the existing NFS4CLNT_RECLAIM_REBOOT state.
-The only difference is that in the NFSv4.1 case we want to be able to
-call RECLAIM_COMPLETE even in the case where we have no state to
-reclaim.
-
-Cheers
-  Trond
+- Which is the good behavior (if there's any good behavior...)?
