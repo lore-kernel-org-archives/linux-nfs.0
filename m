@@ -1,113 +1,88 @@
 From: " J. Bruce Fields" <bfields@citi.umich.edu>
-Subject: Re: [PATCH v2 03/35] pnfsd, pnfs: protocol level pnfs constants
-Date: Mon, 7 Dec 2009 14:25:33 -0500
-Message-ID: <20091207192533.GA32454@fieldses.org>
-References: <4B1CCA52.8020900@panasas.com> <1260178224-14745-1-git-send-email-bhalevy@panasas.com>
+Subject: Re: [PATCH v2 04/35] pnfsd: return pnfs flags on exchange_id
+Date: Mon, 7 Dec 2009 14:51:41 -0500
+Message-ID: <20091207195141.GB32454@fieldses.org>
+References: <4B1CCA52.8020900@panasas.com> <1260178237-14780-1-git-send-email-bhalevy@panasas.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-nfs@vger.kernel.org, pnfs@linux-nfs.org,
-	linux-fsdevel@vger.kernel.org, Marc Eshel <eshel@almaden.ibm.com>,
-	Fred Isaman <iisaman@citi.umich.edu>
+	linux-fsdevel@vger.kernel.org, Dean Hildebrand <dhildeb@us.ibm.com>
 To: Benny Halevy <bhalevy@panasas.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:55748 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:52513 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758351AbZLGTZY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 7 Dec 2009 14:25:24 -0500
-In-Reply-To: <1260178224-14745-1-git-send-email-bhalevy@panasas.com>
+	id S932781AbZLGTvc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 7 Dec 2009 14:51:32 -0500
+In-Reply-To: <1260178237-14780-1-git-send-email-bhalevy@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Dec 07, 2009 at 11:30:24AM +0200, Benny Halevy wrote:
-> [extracted from pnfsd: Initial pNFS server implementation.]
+On Mon, Dec 07, 2009 at 11:30:37AM +0200, Benny Halevy wrote:
+> Set the cl_exchange_flags to be non_pnfs if we do not set
+> either pnfs or ds (in the plain old nfs41 case).
+> 
+> pnfsd: set EXCHGID4_FLAG_USE_NON_PNFS when !CONFIG_PNFSD:
+> EXCHGID4_FLAG_USE_NON_PNFS should be set when the server does not support
+> operations (e.g. LAYOUTGET) or attributes that pertain to pNFS.
+> 
+> [extraced from pnfsd: Initial pNFS server implementation.]
 > Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-> [pnfsd: update pNFS server ops to draft 13]
-> Signed-off-by: Marc Eshel <eshel@almaden.ibm.com>
-> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-> [pnfs: Move getdeviceinfo to draft-19 on client] [for NOTIFY_DEVICEID4_* defs]
-> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-> [pnfs: pnfs_notify_deviceid_type4 should define bitmasks not offsets]
->     The notify_deviceid_type4 values in the spec denote bit offsets, not
->     bitmask values.  Since we use these constants as bitmasks, just define them
->     this way.
-> [removed LAYOUT_PVFS2's definition]
-> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-> [compile fixes for pnfs branch]
-> Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
-> [removed #ifdef CONFIG_PNFS{,D}]
+> [pnfsd: Fixup nfsd4_set_ex_flags.]
+> Signed-off-by: Dean Hildebrand <dhildeb@us.ibm.com>
+> [pnfsd: set EXCHGID4_FLAG_USE_NON_PNFS when !CONFIG_PNFSD]
+> [pnfsd: fix compiler warning in nfsd4_set_ex_flags when CONFIG_PNFSD is not defined]
 > Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 > ---
->  include/linux/nfs4.h |   45 +++++++++++++++++++++++++++++++++++++++++++++
->  1 files changed, 45 insertions(+), 0 deletions(-)
+>  fs/nfsd/nfs4state.c |   15 +++++++++++++++
+>  1 files changed, 15 insertions(+), 0 deletions(-)
 > 
-> diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
-> index c4c0602..a899cff 100644
-> --- a/include/linux/nfs4.h
-> +++ b/include/linux/nfs4.h
-> @@ -469,6 +469,8 @@ enum lock_type4 {
->  #define FATTR4_WORD1_TIME_MODIFY        (1UL << 21)
->  #define FATTR4_WORD1_TIME_MODIFY_SET    (1UL << 22)
->  #define FATTR4_WORD1_MOUNTED_ON_FILEID  (1UL << 23)
-> +#define FATTR4_WORD1_FS_LAYOUT_TYPES    (1UL << 30)
-> +#define FATTR4_WORD2_LAYOUT_BLKSIZE     (1UL << 1)
->  
->  #define NFSPROC4_NULL 0
->  #define NFSPROC4_COMPOUND 1
-> @@ -546,6 +548,49 @@ enum state_protect_how4 {
->  	SP4_SSV		= 2
->  };
->  
-> +enum pnfs_layouttype {
-> +	LAYOUT_NFSV4_FILES  = 1,
-> +	LAYOUT_OSD2_OBJECTS = 2,
-> +	LAYOUT_BLOCK_VOLUME = 3,
-> +};
-> +
-> +/* FIXME: should recall and return types be combined? */
+> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> index 2923e6c..9ecbc25 100644
+> --- a/fs/nfsd/nfs4state.c
+> +++ b/fs/nfsd/nfs4state.c
+> @@ -1098,8 +1098,23 @@ nfsd4_replay_cache_entry(struct nfsd4_compoundres *resp,
+>  static void
+>  nfsd4_set_ex_flags(struct nfs4_client *new, struct nfsd4_exchange_id *clid)
+>  {
+> +#if defined(CONFIG_PNFSD)
+> +	int mds_and_ds = EXCHGID4_FLAG_USE_PNFS_MDS | EXCHGID4_FLAG_USE_PNFS_DS;
+> +	int mds_or_ds = 0;
 
-Is there any reason not to?
+initialization isn't used.
+
+> +
+> +	/* Save the client's MDS or DS flags, or set them both.
+> +	 * XXX We currently do not have a method of determining
+> +	 * what a server supports prior to receiving a filehandle
+> +	 * e.g. at exchange id time. */
+> +	mds_or_ds = clid->flags & mds_and_ds;
+> +	if (mds_or_ds)
+> +		new->cl_exchange_flags |= mds_or_ds;
+> +	else
+> +		new->cl_exchange_flags |= mds_and_ds;
+
+Why do we need to do this?  If the fact is that we're going to accept
+either DS or MDS traffic over this session, let's just always set both
+flags.  That doesn't stop the client from dedicating sessions to one or
+the other use if that's what it wants.
+
+> +#else  /* CONFIG_PNFSD */
+>  	/* pNFS is not supported */
+>  	new->cl_exchange_flags |= EXCHGID4_FLAG_USE_NON_PNFS;
+> +#endif /* CONFIG_PNFSD */
+
+The ifdef should be easy enough to hide in the usual way, with a
+conditionally defined
+
+	new->cl_exchange_flags |= get_pnfs_flags(clid->flags)
+
+(or something to that effect).
 
 --b.
 
-> +enum pnfs_layoutrecall_type {
-> +	RECALL_FILE = 1,
-> +	RECALL_FSID = 2,
-> +	RECALL_ALL  = 3
-> +};
-> +
-> +enum pnfs_layoutreturn_type {
-> +	RETURN_FILE = 1,
-> +	RETURN_FSID = 2,
-> +	RETURN_ALL  = 3
-> +};
-> +
-> +enum pnfs_iomode {
-> +	IOMODE_READ = 1,
-> +	IOMODE_RW = 2,
-> +	IOMODE_ANY = 3,
-> +};
-> +
-> +enum pnfs_notify_deviceid_type4 {
-> +	NOTIFY_DEVICEID4_CHANGE = 1 << 1,
-> +	NOTIFY_DEVICEID4_DELETE = 1 << 2,
-> +};
-> +
-> +#define NFL4_UFLG_MASK			0x0000003F
-> +#define NFL4_UFLG_DENSE			0x00000001
-> +#define NFL4_UFLG_COMMIT_THRU_MDS	0x00000002
-> +#define NFL4_UFLG_STRIPE_UNIT_SIZE_MASK	0xFFFFFFC0
-> +
-> +/* Encoded in the loh_body field of type layouthint4 */
-> +enum filelayout_hint_care4 {
-> +	NFLH4_CARE_DENSE		= NFL4_UFLG_DENSE,
-> +	NFLH4_CARE_COMMIT_THRU_MDS	= NFL4_UFLG_COMMIT_THRU_MDS,
-> +	NFLH4_CARE_STRIPE_UNIT_SIZE	= 0x00000040,
-> +	NFLH4_CARE_STRIPE_COUNT		= 0x00000080
-> +};
-> +
->  #endif
->  #endif
 >  
+>  	/* Referrals are supported, Migration is not. */
+>  	new->cl_exchange_flags |= EXCHGID4_FLAG_SUPP_MOVED_REFER;
 > -- 
 > 1.6.5.1
 > 
