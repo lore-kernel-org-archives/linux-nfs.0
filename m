@@ -1,141 +1,178 @@
 From: Benny Halevy <bhalevy@panasas.com>
-Subject: [PATCH v2 09/35] pnfsd: layout verify
-Date: Mon,  7 Dec 2009 11:31:43 +0200
-Message-ID: <1260178303-14957-1-git-send-email-bhalevy@panasas.com>
+Subject: [PATCH v2 10/35] pnfsd: introduce exp_xdr.h
+Date: Mon,  7 Dec 2009 11:31:57 +0200
+Message-ID: <1260178317-14996-1-git-send-email-bhalevy@panasas.com>
 References: <4B1CCA52.8020900@panasas.com>
 Cc: linux-nfs@vger.kernel.org, pnfs@linux-nfs.org,
-	linux-fsdevel@vger.kernel.org, Benny Halevy <bhalevy@panasas.com>,
-	Dean Hildebrand <seattleplus@gmail.com>,
-	Marc Eshel <eshel@almaden.ibm.com>,
-	Dean Hildebrand <dhildeb@us.ibm.com>,
-	Andy Adamson <andros@netapp.com>
+	linux-fsdevel@vger.kernel.org, Benny Halevy <bhalevy@panasas.com>
 To: " J. Bruce Fields" <bfields@citi.umich.edu>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from daytona.panasas.com ([67.152.220.89]:55312 "EHLO
+	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S934857AbZLGJbA (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 7 Dec 2009 04:31:00 -0500
 In-Reply-To: <4B1CCA52.8020900@panasas.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Verify whether the server and file system support the given layout type.
+Containing xdr encoding helpers.
 
-[was pnfsd: Streamline error code checking for non-pnfs filesystems]
-Signed-off-by: Dean Hildebrand <seattleplus@gmail.com>
-[pnfsd: Add super block to layout_type()]
-Signed-off-by: Marc Eshel <eshel@almaden.ibm.com>
-[pnfsd: Fix order of ops in nfsd4_layout_verify]
-Signed-off-by: Dean Hildebrand <dhildeb@us.ibm.com>
-[pnfsd: convert generic code to use new pnfs api]
-[pnfsd: define pnfs_export_operations]
-[pnfsd: obliterate old vfs api]
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-[pnfsd: layout verify all layout types]
-Signed-off-by: Andy Adamson <andros@netapp.com>
-[pnfsd: tone nfsd4_layout_verify printk down to dprintk]
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-[pnfsd: check ex_pnfs in nfsd4_verify_layout]
-Signed-off-by: Andy Adamson <andros@netapp.com>
-[pnfsd: handle s_pnfs_op==NULL]
+[nfsd: fix exp_xdr_encode_u64 parameter type]
+Reported-by: J. Bruce Fields <bfields@citi.umich.edu>
+[exportfs: exp_xdr.h: Use #include <linux/string.h> instead of <asm/string.h>]
 Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 ---
- fs/nfsd/export.c                |    6 ++++++
- fs/nfsd/nfs4proc.c              |   34 ++++++++++++++++++++++++++++++++++
- fs/nfsd/pnfsd.h                 |    2 ++
- include/linux/nfsd/nfsd4_pnfs.h |    3 ++-
- 4 files changed, 44 insertions(+), 1 deletions(-)
+ include/linux/exp_xdr.h |  141 +++++++++++++++++++++++++++++++++++++++++++++++
+ 1 files changed, 141 insertions(+), 0 deletions(-)
+ create mode 100644 include/linux/exp_xdr.h
 
-diff --git a/fs/nfsd/export.c b/fs/nfsd/export.c
-index ca745cc..7c3fa87 100644
---- a/fs/nfsd/export.c
-+++ b/fs/nfsd/export.c
-@@ -397,6 +397,12 @@ static int check_export(struct inode *inode, int flags, unsigned char *uuid,
- 		return 0;
- 	}
- 
-+	if (inode->i_sb->s_pnfs_op &&
-+	    !inode->i_sb->s_pnfs_op->layout_type) {
-+		dprintk("exp_export: export of invalid fs pnfs export ops.\n");
-+		return -EINVAL;
-+	}
+diff --git a/include/linux/exp_xdr.h b/include/linux/exp_xdr.h
+new file mode 100644
+index 0000000..b69c309
+--- /dev/null
++++ b/include/linux/exp_xdr.h
+@@ -0,0 +1,141 @@
++#ifndef _LINUX_EXP_XDR_H
++#define _LINUX_EXP_XDR_H
 +
- 	return 0;
- 
- }
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index e2b5666..4c78642 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -39,6 +39,7 @@
- #include "cache.h"
- #include "xdr4.h"
- #include "vfs.h"
-+#include "pnfsd.h"
- 
- #define NFSDDBG_FACILITY		NFSDDBG_PROC
- 
-@@ -936,6 +937,39 @@ nfsd4_verify(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	return status == nfserr_same ? nfs_ok : status;
- }
- 
-+#if defined(CONFIG_PNFSD)
-+static __be32
-+nfsd4_layout_verify(struct super_block *sb, struct svc_export *exp,
-+		    unsigned int layout_type)
++#include <asm/byteorder.h>
++#include <asm/unaligned.h>
++#include <linux/string.h>
++
++struct exp_xdr_stream {
++	__be32 *p;
++	__be32 *end;
++};
++
++/**
++ * exp_xdr_qwords - Calculate the number of quad-words holding nbytes
++ * @nbytes: number of bytes to encode
++ */
++static inline size_t
++exp_xdr_qwords(__u32 nbytes)
 +{
-+	int status, type;
-+
-+	/* check to see if pNFS  is supported. */
-+	status = nfserr_layoutunavailable;
-+	if (exp->ex_pnfs == 0 || !sb->s_pnfs_op || !sb->s_pnfs_op->layout_type) {
-+		dprintk("%s: Underlying file system "
-+			"does not support pNFS\n", __func__);
-+		goto out;
-+	}
-+
-+	type = sb->s_pnfs_op->layout_type(sb);
-+
-+	/* check to see if requested layout type is supported. */
-+	status = nfserr_unknown_layouttype;
-+	if (!type)
-+		dprintk("BUG: %s: layout_type 0 is reserved and must not be "
-+			"used by filesystem\n", __func__);
-+	else if (type != layout_type)
-+		dprintk("%s: requested layout type %d "
-+		       "does not match supported type %d\n",
-+			__func__, layout_type, type);
-+	else
-+		status = nfs_ok;
-+out:
-+	return status;
++	return DIV_ROUND_UP(nbytes, 4);
 +}
-+#endif /* CONFIG_PNFSD */
 +
- /*
-  * NULL call.
-  */
-diff --git a/fs/nfsd/pnfsd.h b/fs/nfsd/pnfsd.h
-index 65fb57e..7c46791 100644
---- a/fs/nfsd/pnfsd.h
-+++ b/fs/nfsd/pnfsd.h
-@@ -34,4 +34,6 @@
- #ifndef LINUX_NFSD_PNFSD_H
- #define LINUX_NFSD_PNFSD_H
- 
-+#include <linux/nfsd/nfsd4_pnfs.h>
++/**
++ * exp_xdr_qbytes - Calculate the number of bytes holding qwords
++ * @qwords: number of quad-words to encode
++ */
++static inline size_t
++exp_xdr_qbytes(size_t qwords)
++{
++	return qwords << 2;
++}
 +
- #endif /* LINUX_NFSD_PNFSD_H */
-diff --git a/include/linux/nfsd/nfsd4_pnfs.h b/include/linux/nfsd/nfsd4_pnfs.h
-index ff6613e..c44e13d 100644
---- a/include/linux/nfsd/nfsd4_pnfs.h
-+++ b/include/linux/nfsd/nfsd4_pnfs.h
-@@ -45,7 +45,8 @@
-  * All other methods are optional and can be set to NULL if not implemented.
-  */
- struct pnfs_export_operations {
--	/* stub */
-+	/* Returns the supported pnfs_layouttype4. */
-+	int (*layout_type) (struct super_block *);
- };
- 
- #endif /* _LINUX_NFSD_NFSD4_PNFS_H */
++/**
++ * exp_xdr_reserve_space - Reserve buffer space for sending
++ * @xdr: pointer to exp_xdr_stream
++ * @nbytes: number of bytes to reserve
++ *
++ * Checks that we have enough buffer space to encode 'nbytes' more
++ * bytes of data. If so, update the xdr stream.
++ */
++static inline __be32 *
++exp_xdr_reserve_space(struct exp_xdr_stream *xdr, size_t nbytes)
++{
++	__be32 *p = xdr->p;
++	__be32 *q;
++
++	/* align nbytes on the next 32-bit boundary */
++	q = p + exp_xdr_qwords(nbytes);
++	if (unlikely(q > xdr->end || q < p))
++		return NULL;
++	xdr->p = q;
++	return p;
++}
++
++/**
++ * exp_xdr_reserve_qwords - Reserve buffer space for sending
++ * @xdr: pointer to exp_xdr_stream
++ * @nwords: number of quad words (u32's) to reserve
++ */
++static inline __be32 *
++exp_xdr_reserve_qwords(struct exp_xdr_stream *xdr, size_t qwords)
++{
++	return exp_xdr_reserve_space(xdr, exp_xdr_qbytes(qwords));
++}
++
++/**
++ * exp_xdr_encode_u32 - Encode an unsigned 32-bit value onto a xdr stream
++ * @p: pointer to encoding destination
++ * @val: value to encode
++ */
++static inline __be32 *
++exp_xdr_encode_u32(__be32 *p, __u32 val)
++{
++	*p = cpu_to_be32(val);
++	return p + 1;
++}
++
++/**
++ * exp_xdr_encode_u64 - Encode an unsigned 64-bit value onto a xdr stream
++ * @p: pointer to encoding destination
++ * @val: value to encode
++ */
++static inline __be32 *
++exp_xdr_encode_u64(__be32 *p, __u64 val)
++{
++	put_unaligned_be64(val, p);
++	return p + 2;
++}
++
++/**
++ * exp_xdr_encode_bytes - Encode an array of bytes onto a xdr stream
++ * @p: pointer to encoding destination
++ * @ptr: pointer to the array of bytes
++ * @nbytes: number of bytes to encode
++ */
++static inline __be32 *
++exp_xdr_encode_bytes(__be32 *p, const void *ptr, __u32 nbytes)
++{
++	if (likely(nbytes != 0)) {
++		unsigned int qwords = exp_xdr_qwords(nbytes);
++		unsigned int padding = exp_xdr_qbytes(qwords) - nbytes;
++
++		memcpy(p, ptr, nbytes);
++		if (padding != 0)
++			memset((char *)p + nbytes, 0, padding);
++		p += qwords;
++	}
++	return p;
++}
++
++/**
++ * exp_xdr_encode_opaque - Encode an opaque type onto a xdr stream
++ * @p: pointer to encoding destination
++ * @ptr: pointer to the opaque array
++ * @nbytes: number of bytes to encode
++ *
++ * Encodes the 32-bit opaque size in bytes followed by the opaque value.
++ */
++static inline __be32 *
++exp_xdr_encode_opaque(__be32 *p, const void *ptr, __u32 nbytes)
++{
++	p = exp_xdr_encode_u32(p, nbytes);
++	return exp_xdr_encode_bytes(p, ptr, nbytes);
++}
++
++/**
++ * exp_xdr_encode_opaque_qlen - Encode the opaque length onto a xdr stream
++ * @lenp: pointer to the opaque length destination
++ * @endp: pointer to the end of the opaque array
++ *
++ * Encodes the 32-bit opaque size in bytes given the start and end pointers
++ */
++static inline __be32 *
++exp_xdr_encode_opaque_len(__be32 *lenp, const void *endp)
++{
++	size_t nbytes = (char *)endp - (char *)(lenp + 1);
++
++	exp_xdr_encode_u32(lenp, nbytes);
++	return lenp + 1 + exp_xdr_qwords(nbytes);
++}
++#endif /* _LINUX_EXP_XDR_H */
 -- 
 1.6.5.1
 
