@@ -1,58 +1,47 @@
-From: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
-Subject: [PATCH 3/5] nfs41: Retry delegation return if it failed with session error
-Date: Mon,  7 Dec 2009 00:21:49 -0800
-Message-ID: <1260174111-23160-4-git-send-email-Ricardo.Labiaga@netapp.com>
-References: <>
- <1260174111-23160-1-git-send-email-Ricardo.Labiaga@netapp.com>
- <1260174111-23160-2-git-send-email-Ricardo.Labiaga@netapp.com>
- <1260174111-23160-3-git-send-email-Ricardo.Labiaga@netapp.com>
-Cc: linux-nfs@vger.kernel.org,
-	Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
-To: trond.myklebust@netapp.com
+From: Benny Halevy <bhalevy@panasas.com>
+Subject: [PATCH v2 01/35] pnfsd: Define CONFIG_PNFSD
+Date: Mon,  7 Dec 2009 11:29:57 +0200
+Message-ID: <1260178197-14673-1-git-send-email-bhalevy@panasas.com>
+References: <4B1CCA52.8020900@panasas.com>
+Cc: linux-nfs@vger.kernel.org, pnfs@linux-nfs.org,
+	linux-fsdevel@vger.kernel.org, Benny Halevy <bhalevy@panasas.com>,
+	Ricardo Labiaga <ricardo.labiaga@netapp.com>
+To: " J. Bruce Fields" <bfields@citi.umich.edu>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:46403 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759111AbZLGI1o (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 7 Dec 2009 03:27:44 -0500
-In-Reply-To: <1260174111-23160-3-git-send-email-Ricardo.Labiaga@netapp.com>
+Received: from daytona.panasas.com ([67.152.220.89]:60331 "EHLO
+	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1759170AbZLGJ3B (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 7 Dec 2009 04:29:01 -0500
+In-Reply-To: <4B1CCA52.8020900@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Update nfs4_delegreturn_done() to retry the operation after setting the
-NFS4CLNT_SESSION_SETUP bit to indicate the need to reset the session.
-
-Signed-off-by: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
+Signed-off-by: Ricardo Labiaga <ricardo.labiaga@netapp.com>
+[rephrased text and moved down to fs/nfsd/Kconfig]
+[remove CONFIG_PNFSD's dependency on NFSD_V4_1]
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 ---
- fs/nfs/nfs4proc.c |   15 +++++++++++++--
- 1 files changed, 13 insertions(+), 2 deletions(-)
+ fs/nfsd/Kconfig |   10 ++++++++++
+ 1 files changed, 10 insertions(+), 0 deletions(-)
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 6a8861c..53b0a7d 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -3490,9 +3490,20 @@ static void nfs4_delegreturn_done(struct rpc_task *task, void *calldata)
- 	nfs4_sequence_done(data->res.server, &data->res.seq_res,
- 			task->tk_status);
+diff --git a/fs/nfsd/Kconfig b/fs/nfsd/Kconfig
+index 503b9da..05f72e4 100644
+--- a/fs/nfsd/Kconfig
++++ b/fs/nfsd/Kconfig
+@@ -79,3 +79,13 @@ config NFSD_V4
+ 	  available from http://linux-nfs.org/.
  
--	data->rpc_status = task->tk_status;
--	if (data->rpc_status == 0)
-+	switch (task->tk_status) {
-+	case -NFS4ERR_STALE_STATEID:
-+	case -NFS4ERR_EXPIRED:
-+	case 0:
- 		renew_lease(data->res.server, data->timestamp);
-+		break;
-+	default:
-+		if (nfs4_async_handle_error(task, data->res.server, NULL) ==
-+				-EAGAIN) {
-+			nfs4_restart_rpc(task, data->res.server->nfs_client);
-+			return;
-+		}
-+	}
-+	data->rpc_status = task->tk_status;
- }
- 
- static void nfs4_delegreturn_release(void *calldata)
+ 	  If unsure, say N.
++
++config PNFSD
++	bool "NFSv4.1 server support for Parallel NFS (pNFS) (DEVELOPER ONLY)"
++	depends on NFSD_V4 && EXPERIMENTAL
++	help
++	  This option enables support for the parallel NFS features of the
++	  minor version 1 of the NFSv4 protocol (draft-ietf-nfsv4-minorversion1)
++	  in the kernel's NFS server.
++
++	  Unless you're an NFS developer, say N.
 -- 
-1.5.4.3
+1.6.5.1
 
