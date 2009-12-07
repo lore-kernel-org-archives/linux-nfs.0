@@ -1,38 +1,33 @@
-From: Steve Dickson <SteveD@redhat.com>
-Subject: Re: [nfs-utils PATCH] retry on EPERM from NFSv4 mount attempt
-Date: Mon, 07 Dec 2009 17:27:45 -0500
-Message-ID: <4B1D8161.8090300@RedHat.com>
-References: <19211.7054.291514.185591@notabene.brown>
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: Re: [PATCH] SUNRPC: IS_ERR/PTR_ERR confusion
+Date: Mon, 07 Dec 2009 18:04:19 -0500
+Message-ID: <1260227059.2951.13.camel@localhost>
+References: <4B1CE844.1040108@gmail.com>
+	 <20091207152654.GA29416@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: linux-nfs@vger.kernel.org
-To: Neil Brown <neilb@suse.de>
+Content-Type: text/plain; charset="UTF-8"
+Cc: Neil Brown <neilb@suse.de>, linux-nfs@vger.kernel.org,
+	Andrew Morton <akpm@linux-foundation.org>,
+	LKML <linux-kernel@vger.kernel.org>,
+	Roel Kluin <roel.kluin@gmail.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:7510 "EHLO mx1.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:60575 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S934201AbZLGW1o (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 7 Dec 2009 17:27:44 -0500
-In-Reply-To: <19211.7054.291514.185591-wvvUuzkyo1EYVZTmpyfIwg@public.gmane.org>
+	id S935635AbZLGXEO convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 7 Dec 2009 18:04:14 -0500
+In-Reply-To: <20091207152654.GA29416@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-
-On 11/23/2009 06:32 PM, Neil Brown wrote:
+On Mon, 2009-12-07 at 10:26 -0500, J. Bruce Fields wrote: 
+> On Mon, Dec 07, 2009 at 12:34:28PM +0100, Roel Kluin wrote:
+> > IS_ERR returns 1 or 0, PTR_ERR returns the error value.
 > 
-> Hi,
->  I recently packaged nfs-utils 1.2.1 for openSUSE and fairly quickly
->  got a bug report - "-o nfsvers=3" was needed to mount NFSv3
->  filesystems.
-> 
->  mount.nfs in 1.2.1 will first try a v4 mount but will fall-back to v3
->  if it gets ENOENT.  This works fine.
->  However for kernel prior to 2.6.25, you don't get ENOENT, you get
->  EPERM.
->  In that case the fall-back to v3 doesn't happen and you get a failure
->  to mount.
-> 
->  So I think we need to fall back on EPERM as well.  See below.
-Committed! We have to... but the line in the sand is drawn... 
+> Whoops, thanks, looks like that was my mistake, from
+> 79a3f20b641f9f93787ada49d1d7cfa98ee5a11e "rpc: use count of pipe openers
+> to wait for first open".
 
-steved.
+Are you planning on shepherding this fix into mainline, or should I?
+
+Trond
