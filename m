@@ -1,53 +1,48 @@
 From: Benny Halevy <bhalevy@panasas.com>
-Subject: [PATCH v2 30/35] pnfsd: gfs2: use generic file layout pnfs operations vector
-Date: Mon,  7 Dec 2009 11:36:26 +0200
-Message-ID: <1260178586-15984-1-git-send-email-bhalevy@panasas.com>
+Subject: [PATCH v2 31/35] posix_acl: resolve compile dependency in posix_acl.h
+Date: Mon,  7 Dec 2009 11:36:39 +0200
+Message-ID: <1260178599-16019-1-git-send-email-bhalevy@panasas.com>
 References: <4B1CCA52.8020900@panasas.com>
 Cc: linux-nfs@vger.kernel.org, pnfs@linux-nfs.org,
-	linux-fsdevel@vger.kernel.org, Andy Adamson <andros@netapp.com>,
-	Benny Halevy <bhalevy@panasas.com>
+	linux-fsdevel@vger.kernel.org, Benny Halevy <bhalevy@panasas.com>,
+	Alexander Viro <viro@zeniv.linux.org.uk>,
+	"J. Bruce Fields" <bfields@fieldses.org>,
+	Trond Myklebust <Trond.Myklebust@netapp.com>
 To: " J. Bruce Fields" <bfields@citi.umich.edu>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:42227 "EHLO
+Received: from daytona.panasas.com ([67.152.220.89]:12160 "EHLO
 	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S934920AbZLGJfa (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 7 Dec 2009 04:35:30 -0500
+	with ESMTP id S934923AbZLGJfn (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 7 Dec 2009 04:35:43 -0500
 In-Reply-To: <4B1CCA52.8020900@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Andy Adamson <andros@netapp.com>
+get_cached_acl is defined as inline in posix_acl.h
+requiring the full definition of struct inode as it
+dereferences its struct inode * parameter.
 
-Signed-off-by: Andy Adamson <andros@netapp.com>
-[gfs2: set pnfs_dlm_export_ops only for CONFIG_PNFSD]
+Cc: Alexander Viro <viro@zeniv.linux.org.uk>
+Cc: linux-fsdevel@vger.kernel.org
+Cc: J. Bruce Fields <bfields@fieldses.org>
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
 Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-Acked-by: Steven Whitehouse <swhiteho@redhat.com>
 ---
- fs/gfs2/ops_fstype.c |    4 ++++
- 1 files changed, 4 insertions(+), 0 deletions(-)
+ include/linux/posix_acl.h |    1 +
+ 1 files changed, 1 insertions(+), 0 deletions(-)
 
-diff --git a/fs/gfs2/ops_fstype.c b/fs/gfs2/ops_fstype.c
-index 52fb6c0..f5abd93 100644
---- a/fs/gfs2/ops_fstype.c
-+++ b/fs/gfs2/ops_fstype.c
-@@ -18,6 +18,7 @@
- #include <linux/mount.h>
- #include <linux/gfs2_ondisk.h>
- #include <linux/slow-work.h>
-+#include <linux/nfsd/nfs4pnfsdlm.h>
+diff --git a/include/linux/posix_acl.h b/include/linux/posix_acl.h
+index 065a365..f422bbe 100644
+--- a/include/linux/posix_acl.h
++++ b/include/linux/posix_acl.h
+@@ -8,6 +8,7 @@
+ #ifndef __LINUX_POSIX_ACL_H
+ #define __LINUX_POSIX_ACL_H
  
- #include "gfs2.h"
- #include "incore.h"
-@@ -1147,6 +1148,9 @@ static int fill_super(struct super_block *sb, void *data, int silent)
- 	sb->s_magic = GFS2_MAGIC;
- 	sb->s_op = &gfs2_super_ops;
- 	sb->s_export_op = &gfs2_export_ops;
-+#if defined(CONFIG_PNFSD)
-+	sb->s_pnfs_op = &pnfs_dlm_export_ops;
-+#endif /* CONFIG_PNFSD */
- 	sb->s_xattr = gfs2_xattr_handlers;
- 	sb->s_time_gran = 1;
- 	sb->s_maxbytes = MAX_LFS_FILESIZE;
++#include <linux/fs.h>
+ #include <linux/slab.h>
+ 
+ #define ACL_UNDEFINED_ID	(-1)
 -- 
 1.6.5.1
 
