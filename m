@@ -1,145 +1,81 @@
 From: Benny Halevy <bhalevy@panasas.com>
-Subject: [PATCH v2 24/35] pnfsd: new nfsd filesystem file: pnfs_dlm_device
-Date: Mon,  7 Dec 2009 11:35:07 +0200
-Message-ID: <1260178507-15763-1-git-send-email-bhalevy@panasas.com>
+Subject: [PATCH v2 25/35] pnfsd: nfsd4_pnfs_dlm_getdeviter
+Date: Mon,  7 Dec 2009 11:35:20 +0200
+Message-ID: <1260178520-15798-1-git-send-email-bhalevy@panasas.com>
 References: <4B1CCA52.8020900@panasas.com>
 Cc: linux-nfs@vger.kernel.org, pnfs@linux-nfs.org,
 	linux-fsdevel@vger.kernel.org, Andy Adamson <andros@netapp.com>,
+	"David M. Richter" <richterd@citi.umich.edu>,
+	Frank Filz <ffilzlnx@us.ibm.com>,
 	Benny Halevy <bhalevy@panasas.com>
 To: " J. Bruce Fields" <bfields@citi.umich.edu>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:1378 "EHLO
-	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S934899AbZLGJeK (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 7 Dec 2009 04:34:10 -0500
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 In-Reply-To: <4B1CCA52.8020900@panasas.com>
-Sender: linux-nfs-owner@vger.kernel.org
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 From: Andy Adamson <andros@netapp.com>
 
-Change nfsd filesystem name from pnfs_ds_list to pnfs_dlm_device
-write the per block device dlm data server cache
+Export nfsd4_pnfs_dlm_getdeviter for dlm cluster file system use.
 
+[was pnfsd: hardwire DLM cluster file layout get device iterator]
+Signed-off-by: David M. Richter <richterd@citi.umich.edu>
+Signed-off-by: Frank Filz <ffilzlnx@us.ibm.com>
+[pnfs-gfs2: return correct error value in GETDEVICEINFO]
+Signed-off-by: David M. Richter <richterd@citi.umich.edu>
+[Use the GFS2 iterator as the default file layout iterator.]
+Signed-off-by: Andy Adamson <andros@netapp.com>
+[Add the pnfsd default file layout getdevice info]
+Signed-off-by: David M. Richter <richterd@citi.umich.edu>
+Signed-off-by: Frank Filz <ffilzlnx@us.ibm.com>
+[pnfs-gfs2: return correct error value in GETDEVICEINFO]
+Signed-off-by: David M. Richter <richterd@citi.umich.edu>
+[pnfsd: move and rename nfsd4_pnfs_fl_getdeviter]
 Signed-off-by: Andy Adamson <andros@netapp.com>
 Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 Acked-by: Steven Whitehouse <swhiteho@redhat.com>
+[pnfsd: dev_iter: clean up export API]
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 ---
- fs/nfsd/nfsctl.c |   73 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
- 1 files changed, 73 insertions(+), 0 deletions(-)
+ fs/nfsd/nfs4pnfsdlm.c |   21 +++++++++++++++++++++
+ 1 files changed, 21 insertions(+), 0 deletions(-)
 
-diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
-index a44c1c2..14b9f37 100644
---- a/fs/nfsd/nfsctl.c
-+++ b/fs/nfsd/nfsctl.c
-@@ -49,6 +49,9 @@ enum {
- 	NFSD_Leasetime,
- 	NFSD_RecoveryDir,
- #endif
-+#ifdef CONFIG_PNFSD
-+	NFSD_pnfs_dlm_device,
-+#endif
- };
+diff --git a/fs/nfsd/nfs4pnfsdlm.c b/fs/nfsd/nfs4pnfsdlm.c
+index 9d91721..617a2f4 100644
+--- a/fs/nfsd/nfs4pnfsdlm.c
++++ b/fs/nfsd/nfs4pnfsdlm.c
+@@ -23,6 +23,7 @@
  
- /*
-@@ -73,6 +76,9 @@ static ssize_t write_maxblksize(struct file *file, char *buf, size_t size);
- static ssize_t write_leasetime(struct file *file, char *buf, size_t size);
- static ssize_t write_recoverydir(struct file *file, char *buf, size_t size);
- #endif
-+#ifdef CONFIG_PNFSD
-+static ssize_t write_pnfs_dlm_device(struct file *file, char *buf, size_t size);
-+#endif
+ #include <linux/nfsd/debug.h>
+ #include <linux/nfsd/nfs4pnfsdlm.h>
++#include <linux/nfsd/nfs4layoutxdr.h>
  
- static ssize_t (*write_op[])(struct file *, char *, size_t) = {
- 	[NFSD_Svc] = write_svc,
-@@ -94,6 +100,9 @@ static ssize_t (*write_op[])(struct file *, char *, size_t) = {
- 	[NFSD_Leasetime] = write_leasetime,
- 	[NFSD_RecoveryDir] = write_recoverydir,
- #endif
-+#ifdef CONFIG_PNFSD
-+	[NFSD_pnfs_dlm_device] = write_pnfs_dlm_device,
-+#endif
- };
+ #define NFSDDBG_FACILITY                NFSDDBG_PROC
  
- static ssize_t nfsctl_transaction_write(struct file *file, const char __user *buf, size_t size, loff_t *pos)
-@@ -1291,6 +1300,66 @@ static ssize_t write_recoverydir(struct file *file, char *buf, size_t size)
- 
- #endif
- 
-+#ifdef CONFIG_PNFSD
+@@ -160,3 +161,23 @@ void nfsd4_pnfs_dlm_shutdown(void)
+ 	}
+ 	spin_unlock(&dlm_device_list_lock);
+ }
 +
-+static ssize_t __write_pnfs_dlm_device(struct file *file, char *buf,
-+				       size_t size)
++static int nfsd4_pnfs_dlm_getdeviter(struct super_block *sb,
++				     u32 layout_type,
++				     struct nfsd4_pnfs_dev_iter_res *res)
 +{
-+	char *mesg = buf;
-+	char *pnfs_dlm_device;
-+	int max_size = NFSD_PNFS_DLM_DEVICE_MAX;
-+	int len, ret = 0;
-+
-+	if (size > 0) {
-+		ret = -EINVAL;
-+		if (size > max_size || buf[size-1] != '\n')
-+			return ret;
-+		buf[size-1] = 0;
-+
-+		pnfs_dlm_device = mesg;
-+		len = qword_get(&mesg, pnfs_dlm_device, size);
-+		if (len <= 0)
-+			return ret;
-+
-+		ret = nfsd4_set_pnfs_dlm_device(pnfs_dlm_device, len);
++	if (layout_type != LAYOUT_NFSV4_FILES) {
++		printk(KERN_ERR "%s: ERROR: layout type isn't 'file' "
++			"(type: %x)\n", __func__, layout_type);
++		return -ENOTSUPP;
 +	}
-+	return ret <= 0 ? ret : strlen(buf);
++
++	res->gd_eof = 1;
++	if (res->gd_cookie)
++		return -ENOENT;
++
++	res->gd_cookie = 1;
++	res->gd_verf = 1;
++	res->gd_devid = 1;
++	return 0;
 +}
-+
-+/**
-+ * write_pnfs_dlm_device - Set or report the current pNFS data server list
-+ *
-+ * Input:
-+ *			buf:		ignored
-+ *			size:		zero
-+ *
-+ * OR
-+ *
-+ * Input:
-+ *			buf:		C string containing a block device name,
-+ *					a colon, and then a comma separated
-+ *					list of pNFS data server IPv4 addresses
-+ *			size:		non-zero length of C string in @buf
-+ * Output:
-+ *	On success:	passed-in buffer filled with '\n'-terminated C
-+ *			string containing a block device name, a colon, and
-+ *			then a comma separated list of pNFS
-+ *			data server IPv4 addresses.
-+ *			return code is the size in bytes of the string
-+ *	On error:	return code is a negative errno value
-+ */
-+static ssize_t write_pnfs_dlm_device(struct file *file, char *buf, size_t size)
-+{
-+	ssize_t rv;
-+
-+	mutex_lock(&nfsd_mutex);
-+	rv = __write_pnfs_dlm_device(file, buf, size);
-+	mutex_unlock(&nfsd_mutex);
-+	return rv;
-+}
-+
-+#endif /* CONFIG_PNFSD */
-+
- /*----------------------------------------------------------------------------*/
- /*
-  *	populating the filesystem.
-@@ -1322,6 +1391,10 @@ static int nfsd_fill_super(struct super_block * sb, void * data, int silent)
- 		[NFSD_Leasetime] = {"nfsv4leasetime", &transaction_ops, S_IWUSR|S_IRUSR},
- 		[NFSD_RecoveryDir] = {"nfsv4recoverydir", &transaction_ops, S_IWUSR|S_IRUSR},
- #endif
-+#ifdef CONFIG_PNFSD
-+		[NFSD_pnfs_dlm_device] = {"pnfs_dlm_device", &transaction_ops,
-+					   S_IWUSR|S_IRUSR},
-+#endif
- 		/* last one */ {""}
- 	};
- 	return simple_fill_super(sb, 0x6e667364, nfsd_files);
 -- 
 1.6.5.1
 
