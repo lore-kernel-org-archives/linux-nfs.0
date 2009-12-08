@@ -1,133 +1,144 @@
-Return-Path: <nfsv4-bounces@linux-nfs.org>
+Return-Path: <linux-nfs-owner@vger.kernel.org>
+Received: from cdptpa-omtalb.mail.rr.com ([75.180.132.120]:61554 "EHLO
+	cdptpa-omtalb.mail.rr.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S937865AbZLHUor (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Dec 2009 15:44:47 -0500
 From: Jeff Layton <jlayton@redhat.com>
 To: steved@redhat.com
-Subject: [PATCH] gssd: clean up function args for read_service_info
-Date: Fri, 18 Dec 2009 09:24:51 -0500
-Message-Id: <1261146291-2561-1-git-send-email-jlayton@redhat.com>
-Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org
-List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/options/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
-List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
-List-Post: <mailto:nfsv4@linux-nfs.org>
-List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
-List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
-Content-Type: text/plain; charset="us-ascii"
-Sender: nfsv4-bounces@linux-nfs.org
-Errors-To: nfsv4-bounces@linux-nfs.org
-MIME-Version: 1.0
+Cc: chuck.lever@oracle.com, linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org
+Subject: [PATCH] gssd: have gssd deal with scopeid field in upcall
+Date: Tue,  8 Dec 2009 15:44:51 -0500
+Message-Id: <1260305091-19523-1-git-send-email-jlayton@redhat.com>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
+MIME-Version: 1.0
 
-All of the parameters are pointers to fields in a clnt_info struct. Just
-pass a pointer to the struct instead.
+Recent kernels (2.6.32) have started displaying the scopeid for some
+addresses in the upcall. gssd doesn't know how to deal with them. Change
+gssd to use getaddrinfo instead of inet_pton since that can deal with
+scopeid's in addresses. That also allows us to elminate the port
+conversion in read_service_info.
+
+If getaddrinfo returns an address with a non-zero sin6_scope_id however,
+reject it. getnameinfo ignores that field and just uses the sin6_addr
+part when resolving. But, two addresses that differ only in
+sin6_scope_id could refer to completely different hosts.
 
 Signed-off-by: Jeff Layton <jlayton@redhat.com>
 ---
- utils/gssd/gssd_proc.c |   43 ++++++++++++++++++++-----------------------
- 1 files changed, 20 insertions(+), 23 deletions(-)
+ utils/gssd/gssd_proc.c |   60 ++++++++++++++++++++++++++++--------------------
+ 1 files changed, 35 insertions(+), 25 deletions(-)
 
 diff --git a/utils/gssd/gssd_proc.c b/utils/gssd/gssd_proc.c
-index 795e06c..2649236 100644
+index 33a31c3..795e06c 100644
 --- a/utils/gssd/gssd_proc.c
 +++ b/utils/gssd/gssd_proc.c
-@@ -202,9 +202,8 @@ sockaddr_to_hostname(const struct sockaddr *sa, const char *addr)
+@@ -108,7 +108,7 @@ int pollsize;  /* the size of pollaray (in pollfd's) */
  
- /* XXX buffer problems: */
+ /*
+  * convert a presentation address string to a sockaddr_storage struct. Returns
+- * true on success and false on failure.
++ * true on success or false on failure.
+  *
+  * Note that we do not populate the sin6_scope_id field here for IPv6 addrs.
+  * gssd nececessarily relies on hostname resolution and DNS AAAA records
+@@ -120,26 +120,43 @@ int pollsize;  /* the size of pollaray (in pollfd's) */
+  * not really feasible at present.
+  */
  static int
--read_service_info(char *info_file_name, char **servicename, char **servername,
--		  int *prog, int *vers, char **protocol,
--		  struct sockaddr *addr) {
-+read_service_info(char *info_file_name, struct clnt_info *clp)
-+{
- #define INFOBUFLEN 256
- 	char		buf[INFOBUFLEN + 1];
- 	static char	dummy[128];
-@@ -218,8 +217,9 @@ read_service_info(char *info_file_name, char **servicename, char **servername,
+-addrstr_to_sockaddr(struct sockaddr *sa, const char *addr, const int port)
++addrstr_to_sockaddr(struct sockaddr *sa, const char *node, const char *port)
+ {
+-	struct sockaddr_in	*s4 = (struct sockaddr_in *) sa;
+-#ifdef IPV6_SUPPORTED
+-	struct sockaddr_in6	*s6 = (struct sockaddr_in6 *) sa;
+-#endif /* IPV6_SUPPORTED */
++	int rc;
++	struct addrinfo *res;
++	struct addrinfo hints = { .ai_flags = AI_NUMERICHOST | AI_NUMERICSERV };
+ 
+-	if (inet_pton(AF_INET, addr, &s4->sin_addr)) {
+-		s4->sin_family = AF_INET;
+-		s4->sin_port = htons(port);
+-#ifdef IPV6_SUPPORTED
+-	} else if (inet_pton(AF_INET6, addr, &s6->sin6_addr)) {
+-		s6->sin6_family = AF_INET6;
+-		s6->sin6_port = htons(port);
++#ifndef IPV6_SUPPORTED
++	hints.ai_family = AF_INET;
+ #endif /* IPV6_SUPPORTED */
+-	} else {
+-		printerr(0, "ERROR: unable to convert %s to address\n", addr);
++
++	rc = getaddrinfo(node, port, &hints, &res);
++	if (rc) {
++		printerr(0, "ERROR: unable to convert %s|%s to sockaddr: %s\n",
++			 node, port, rc == EAI_SYSTEM ? strerror(errno) :
++						gai_strerror(rc));
+ 		return 0;
+ 	}
+ 
++#ifdef IPV6_SUPPORTED
++	/*
++	 * getnameinfo ignores the scopeid. If the address turns out to have
++	 * a non-zero scopeid, we can't use it -- the resolved host might be
++	 * completely different from the one intended.
++	 */
++	if (res->ai_addr->sa_family == AF_INET6) {
++		struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)res->ai_addr;
++		if (sin6->sin6_scope_id) {
++			printerr(0, "ERROR: address %s has non-zero "
++				    "sin6_scope_id!\n", node);
++			freeaddrinfo(res);
++			return 0;
++		}
++	}
++#endif /* IPV6_SUPPORTED */
++
++	memcpy(sa, res->ai_addr, res->ai_addrlen);
++	freeaddrinfo(res);
+ 	return 1;
+ }
+ 
+@@ -197,11 +214,10 @@ read_service_info(char *info_file_name, char **servicename, char **servername,
+ 	char		program[16];
+ 	char		version[16];
+ 	char		protoname[16];
+-	char		cb_port[128];
++	char		port[128];
  	char		*p;
  	int		fd = -1;
  	int		numfields;
-+	struct sockaddr *addr = (struct sockaddr *) &clp->addr;
+-	int		port = 0;
  
--	*servicename = *servername = *protocol = NULL;
-+	clp->servicename = clp->servername = clp->protocol = NULL;
+ 	*servicename = *servername = *protocol = NULL;
  
- 	if ((fd = open(info_file_name, O_RDONLY)) == -1) {
- 		printerr(0, "ERROR: can't open %s: %s\n", info_file_name,
-@@ -253,43 +253,43 @@ read_service_info(char *info_file_name, char **servicename, char **servername,
+@@ -230,9 +246,9 @@ read_service_info(char *info_file_name, char **servicename, char **servername,
+ 		goto fail;
+ 	}
+ 
+-	cb_port[0] = '\0';
++	port[0] = '\0';
+ 	if ((p = strstr(buf, "port")) != NULL)
+-		sscanf(p, "port: %127s\n", cb_port);
++		sscanf(p, "port: %127s\n", port);
+ 
  	/* check service, program, and version */
  	if (memcmp(service, "nfs", 3) != 0)
- 		return -1;
--	*prog = atoi(program + 1); /* skip open paren */
--	*vers = atoi(version);
-+	clp->prog = atoi(program + 1); /* skip open paren */
-+	clp->vers = atoi(version);
- 
- 	if (strlen(service) == 3 ) {
--		if ((*prog != 100003) || ((*vers != 2) && (*vers != 3) &&
--		    (*vers != 4)))
-+		if ((clp->prog != 100003) || ((clp->vers != 2) && (clp->vers != 3) &&
-+		    (clp->vers != 4)))
- 			goto fail;
- 	} else if (memcmp(service, "nfs4_cb", 7) == 0) {
--		if (*vers != 1)
-+		if (clp->vers != 1)
+@@ -249,12 +265,6 @@ read_service_info(char *info_file_name, char **servicename, char **servername,
  			goto fail;
  	}
  
+-	if (cb_port[0] != '\0') {
+-		port = atoi(cb_port);
+-		if (port < 0 || port > 65535)
+-			goto fail;
+-	}
+-
  	if (!addrstr_to_sockaddr(addr, address, port))
  		goto fail;
  
--	*servername = sockaddr_to_hostname(addr, address);
--	if (*servername == NULL)
-+	clp->servername = sockaddr_to_hostname(addr, address);
-+	if (clp->servername == NULL)
- 		goto fail;
- 
--	nbytes = snprintf(buf, INFOBUFLEN, "%s@%s", service, *servername);
-+	nbytes = snprintf(buf, INFOBUFLEN, "%s@%s", service, clp->servername);
- 	if (nbytes > INFOBUFLEN)
- 		goto fail;
- 
--	if (!(*servicename = calloc(strlen(buf) + 1, 1)))
-+	if (!(clp->servicename = calloc(strlen(buf) + 1, 1)))
- 		goto fail;
--	memcpy(*servicename, buf, strlen(buf));
-+	memcpy(clp->servicename, buf, strlen(buf));
- 
--	if (!(*protocol = strdup(protoname)))
-+	if (!(clp->protocol = strdup(protoname)))
- 		goto fail;
- 	return 0;
- fail:
- 	printerr(0, "ERROR: failed to read service info\n");
- 	if (fd != -1) close(fd);
--	free(*servername);
--	free(*servicename);
--	free(*protocol);
--	*servicename = *servername = *protocol = NULL;
-+	free(clp->servername);
-+	free(clp->servicename);
-+	free(clp->protocol);
-+	clp->servicename = clp->servername = clp->protocol = NULL;
- 	return -1;
- }
- 
-@@ -382,10 +382,7 @@ process_clnt_dir_files(struct clnt_info * clp)
- 		return -1;
- 	snprintf(info_file_name, sizeof(info_file_name), "%s/info",
- 			clp->dirname);
--	if ((clp->servicename == NULL) &&
--	     read_service_info(info_file_name, &clp->servicename,
--				&clp->servername, &clp->prog, &clp->vers,
--				&clp->protocol, (struct sockaddr *) &clp->addr))
-+	if (!clp->servicename && read_service_info(info_file_name, clp))
- 		return -1;
- 	return 0;
- }
 -- 
 1.6.5.2
 
-_______________________________________________
-NFSv4 mailing list
-NFSv4@linux-nfs.org
-http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4
