@@ -1,89 +1,81 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 02/10] mount.nfs: support netids in nfs_options2pmap()
-Date: Tue, 08 Dec 2009 12:59:27 -0500
-Message-ID: <20091208175927.2544.16520.stgit@localhost.localdomain>
+Subject: [PATCH 09/10] mount.nfs: Remove nfs_name_to_address()
+Date: Tue, 08 Dec 2009 13:00:43 -0500
+Message-ID: <20091208180043.2544.97150.stgit@localhost.localdomain>
 References: <20091208175128.2544.457.stgit@localhost.localdomain>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org
 To: steved@redhat.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet11.oracle.com ([148.87.113.123]:62940 "EHLO
-	rgminet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S965750AbZLHSAw (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Dec 2009 13:00:52 -0500
+Received: from rcsinet12.oracle.com ([148.87.113.124]:62440 "EHLO
+	rgminet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S965750AbZLHSBA (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Dec 2009 13:01:00 -0500
 In-Reply-To: <20091208175128.2544.457.stgit-bi+AKbBUZKY6gyzm1THtWbp2dZbC/Bob@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-When parsing mount options in nfs_options2pmap(), treat the value of
-proto= (and mountproto=) as a netid by looking it up in local
-netconfig and protocol databases to convert it to a protocol number.
-If TI-RPC is not available, the traditional behavior is preserved.
-
-The meaning of the "udp" and "tcp" mount options is not affected by
-this change.
+Clean up:  nfs_name_to_address() has no more callers.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- utils/mount/network.c |   28 ++++++----------------------
- 1 files changed, 6 insertions(+), 22 deletions(-)
+ utils/mount/network.c |   23 ++---------------------
+ utils/mount/network.h |    1 -
+ 2 files changed, 2 insertions(+), 22 deletions(-)
 
 diff --git a/utils/mount/network.c b/utils/mount/network.c
-index 7b1152a..ecb5acc 100644
+index d598fcf..e3ad5c2 100644
 --- a/utils/mount/network.c
 +++ b/utils/mount/network.c
-@@ -1289,6 +1289,7 @@ nfs_nfs_version(struct mount_options *options, unsigned long *version)
- int
- nfs_nfs_protocol(struct mount_options *options, unsigned long *protocol)
- {
-+	sa_family_t family;
- 	char *option;
+@@ -253,25 +253,6 @@ int nfs_lookup(const char *hostname, const sa_family_t family,
+ }
  
- 	switch (po_rightmost(options, nfs_transport_opttbl)) {
-@@ -1300,17 +1301,8 @@ nfs_nfs_protocol(struct mount_options *options, unsigned long *protocol)
- 		return 1;
- 	case 2: /* proto */
- 		option = po_get(options, "proto");
--		if (option) {
--			if (strcmp(option, "tcp") == 0) {
--				*protocol = IPPROTO_TCP;
--				return 1;
--			}
--			if (strcmp(option, "udp") == 0) {
--				*protocol = IPPROTO_UDP;
--				return 1;
--			}
--			return 0;
--		}
-+		if (option != NULL)
-+			return nfs_get_proto(option, &family, protocol);
- 	}
- 
- 	/*
-@@ -1419,20 +1411,12 @@ nfs_mount_version(struct mount_options *options, unsigned long *version)
- static int
- nfs_mount_protocol(struct mount_options *options, unsigned long *protocol)
- {
-+	sa_family_t family;
- 	char *option;
- 
- 	option = po_get(options, "mountproto");
--	if (option) {
--		if (strcmp(option, "tcp") == 0) {
--			*protocol = IPPROTO_TCP;
--			return 1;
--		}
--		if (strcmp(option, "udp") == 0) {
--			*protocol = IPPROTO_UDP;
--			return 1;
--		}
--		return 0;
--	}
-+	if (option != NULL)
-+		return nfs_get_proto(option, &family, protocol);
- 
- 	/*
- 	 * MNT transport protocol wasn't specified.  If the NFS
+ /**
+- * nfs_name_to_address - resolve hostname to an IPv4 or IPv6 socket address
+- * @hostname: pointer to C string containing DNS hostname to resolve
+- * @sap: pointer to buffer to fill with socket address
+- * @len: IN: size of buffer to fill; OUT: size of socket address
+- *
+- * Returns 1 and places a socket address at @sap if successful;
+- * otherwise zero.
+- */
+-int nfs_name_to_address(const char *hostname,
+-			struct sockaddr *sap, socklen_t *salen)
+-{
+-#ifdef IPV6_SUPPORTED
+-	return nfs_lookup(hostname, AF_UNSPEC, sap, salen);
+-#else	/* !IPV6_SUPPORTED */
+-	return nfs_lookup(hostname, AF_INET, sap, salen);
+-#endif	/* !IPV6_SUPPORTED */
+-}
+-
+-/**
+  * nfs_gethostbyname - resolve a hostname to an IPv4 address
+  * @hostname: pointer to a C string containing a DNS hostname
+  * @sin: returns an IPv4 address 
+@@ -293,8 +274,8 @@ int nfs_gethostbyname(const char *hostname, struct sockaddr_in *sin)
+  *		OUT: length of converted socket address
+  *
+  * Convert a presentation format address string to a socket address.
+- * Similar to nfs_name_to_address(), but the DNS query is squelched,
+- * and won't make any noise if the getaddrinfo() call fails.
++ * Similar to nfs_lookup(), but the DNS query is squelched, and it
++ * won't make any noise if the getaddrinfo() call fails.
+  *
+  * Returns 1 and fills in @sap and @salen if successful; otherwise zero.
+  *
+diff --git a/utils/mount/network.h b/utils/mount/network.h
+index da095e3..2a3a110 100644
+--- a/utils/mount/network.h
++++ b/utils/mount/network.h
+@@ -44,7 +44,6 @@ int nfs_probe_bothports(const struct sockaddr *, const socklen_t,
+ 			struct pmap *, const struct sockaddr *,
+ 			const socklen_t, struct pmap *);
+ int nfs_gethostbyname(const char *, struct sockaddr_in *);
+-int nfs_name_to_address(const char *, struct sockaddr *, socklen_t *);
+ int nfs_lookup(const char *hostname, const sa_family_t family,
+ 		struct sockaddr *sap, socklen_t *salen);
+ int nfs_string_to_sockaddr(const char *, struct sockaddr *, socklen_t *);
 
