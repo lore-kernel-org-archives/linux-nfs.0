@@ -1,77 +1,128 @@
-From: Benny Halevy <bhalevy@panasas.com>
-Subject: Re: [PATCH v2 05/35] pnfsd: don't set up back channel on	create_session
- for ds
-Date: Tue, 08 Dec 2009 16:50:46 +0200
-Message-ID: <4B1E67C6.5060401@panasas.com>
-References: <4B1CCA52.8020900@panasas.com> <1260178251-14816-1-git-send-email-bhalevy@panasas.com> <20091207201038.GC32454@fieldses.org>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 03/10] mount.nfs: support netids in v2/v3 version/transport
+	negotiation
+Date: Tue, 08 Dec 2009 12:59:36 -0500
+Message-ID: <20091208175936.2544.78807.stgit@localhost.localdomain>
+References: <20091208175128.2544.457.stgit@localhost.localdomain>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: linux-nfs@vger.kernel.org, pnfs@linux-nfs.org,
-	linux-fsdevel@vger.kernel.org,
-	Dean Hildebrand <seattleplus@gmail.com>,
-	Dean Hildebrand <dhildeb@us.ibm.com>
-To: "J. Bruce Fields" <bfields@citi.umich.edu>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <20091207201038.GC32454@fieldses.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
+Content-Type: text/plain; charset="utf-8"
+Cc: linux-nfs@vger.kernel.org
+To: steved@redhat.com
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from acsinet11.oracle.com ([141.146.126.233]:40877 "EHLO
+	acsinet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S965709AbZLHSAP (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Dec 2009 13:00:15 -0500
+In-Reply-To: <20091208175128.2544.457.stgit-bi+AKbBUZKY6gyzm1THtWbp2dZbC/Bob@public.gmane.org>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Dec. 07, 2009, 22:10 +0200, " J. Bruce Fields" <bfields@citi.umich.edu> wrote:
-> On Mon, Dec 07, 2009 at 11:30:51AM +0200, Benny Halevy wrote:
->> From: Dean Hildebrand <seattleplus@gmail.com>
->>
->> [was pnfsd: Add use of pnfs exchange flags]
->> Should this code be surrounded by CONFIG_PNFSD?
-> 
-> Might be nice, but I suppose it's not important.
-> 
->> Signed-off-by: Dean Hildebrand <dhildeb@us.ibm.com>
->> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
->> ---
->>  fs/nfsd/nfs4state.c |    4 ++++
->>  1 files changed, 4 insertions(+), 0 deletions(-)
->>
->> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
->> index 9ecbc25..dc9d553 100644
->> --- a/fs/nfsd/nfs4state.c
->> +++ b/fs/nfsd/nfs4state.c
->> @@ -1349,6 +1349,10 @@ nfsd4_create_session(struct svc_rqst *rqstp,
->>  		cr_ses->flags &= ~SESSION4_PERSIST;
->>  		cr_ses->flags &= ~SESSION4_RDMA;
->>  
->> +		if (!(unconf->cl_exchange_flags & EXCHGID4_FLAG_USE_PNFS_MDS) &&
->> +		    (unconf->cl_exchange_flags & EXCHGID4_FLAG_USE_PNFS_DS))
->> +			cr_ses->flags &= ~SESSION4_BACK_CHAN;
->> +
-> 
-> Might be easier to read as:
-> 
-> 	if (is_ds_only_session(unconf))
-> 		cr_ses->flags &= ~SESSION4_BACK_CHAN;
-> 
-> with is_ds_only_session() defined in the obvious way.
+When rewriting mount options during v2/v3 negotiation, restore the
+correct netids, rather than protocol names, in the rewritten protocol
+options.  If TI-RPC is not available, the traditional behavior is
+preserved.
 
-Yeah.  Actually we have exchgid_is_ds_only() defined for the client
-as follows:
+This patch assumes the kernel can recognize a netid, instead of a
+protocol name, as the value of the proto= options.
 
-static inline bool exchgid_is_ds_only(struct nfs_client *clp)
-{
-	u32 mask = EXCHGID4_FLAG_USE_PNFS_DS | EXCHGID4_FLAG_USE_PNFS_MDS;
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
 
-	return (clp->cl_exchange_flags & mask) == EXCHGID4_FLAG_USE_PNFS_DS;
-}
+ utils/mount/stropts.c |   51 +++++++++++++++++++++----------------------------
+ 1 files changed, 22 insertions(+), 29 deletions(-)
 
-we can define it as common code working on the exchange flags
-rather than on the high level client structure...
+diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
+index a0b9e7f..40f8bd9 100644
+--- a/utils/mount/stropts.c
++++ b/utils/mount/stropts.c
+@@ -38,6 +38,7 @@
+ #include "xcommon.h"
+ #include "mount.h"
+ #include "nls.h"
++#include "nfsrpc.h"
+ #include "mount_constants.h"
+ #include "stropts.h"
+ #include "error.h"
+@@ -371,10 +372,13 @@ static int nfs_extract_server_addresses(struct mount_options *options,
+ }
+ 
+ static int nfs_construct_new_options(struct mount_options *options,
++				     struct sockaddr *nfs_saddr,
+ 				     struct pmap *nfs_pmap,
++				     struct sockaddr *mnt_saddr,
+ 				     struct pmap *mnt_pmap)
+ {
+ 	char new_option[64];
++	char *netid;
+ 
+ 	po_remove_all(options, "nfsprog");
+ 	po_remove_all(options, "mountprog");
+@@ -391,20 +395,14 @@ static int nfs_construct_new_options(struct mount_options *options,
+ 	po_remove_all(options, "proto");
+ 	po_remove_all(options, "udp");
+ 	po_remove_all(options, "tcp");
+-	switch (nfs_pmap->pm_prot) {
+-	case IPPROTO_TCP:
+-		snprintf(new_option, sizeof(new_option) - 1,
+-			 "proto=tcp");
+-		if (po_append(options, new_option) == PO_FAILED)
+-			return 0;
+-		break;
+-	case IPPROTO_UDP:
+-		snprintf(new_option, sizeof(new_option) - 1,
+-			 "proto=udp");
+-		if (po_append(options, new_option) == PO_FAILED)
+-			return 0;
+-		break;
+-	}
++	netid = nfs_get_netid(nfs_saddr->sa_family, nfs_pmap->pm_prot);
++	if (netid == NULL)
++		return 0;
++	snprintf(new_option, sizeof(new_option) - 1,
++			 "proto=%s", netid);
++	free(netid);
++	if (po_append(options, new_option) == PO_FAILED)
++		return 0;
+ 
+ 	po_remove_all(options, "port");
+ 	if (nfs_pmap->pm_port != NFS_PORT) {
+@@ -421,20 +419,14 @@ static int nfs_construct_new_options(struct mount_options *options,
+ 		return 0;
+ 
+ 	po_remove_all(options, "mountproto");
+-	switch (mnt_pmap->pm_prot) {
+-	case IPPROTO_TCP:
+-		snprintf(new_option, sizeof(new_option) - 1,
+-			 "mountproto=tcp");
+-		if (po_append(options, new_option) == PO_FAILED)
+-			return 0;
+-		break;
+-	case IPPROTO_UDP:
+-		snprintf(new_option, sizeof(new_option) - 1,
+-			 "mountproto=udp");
+-		if (po_append(options, new_option) == PO_FAILED)
+-			return 0;
+-		break;
+-	}
++	netid = nfs_get_netid(mnt_saddr->sa_family, mnt_pmap->pm_prot);
++	if (netid == NULL)
++		return 0;
++	snprintf(new_option, sizeof(new_option) - 1,
++			 "mountproto=%s", netid);
++	free(netid);
++	if (po_append(options, new_option) == PO_FAILED)
++		return 0;
+ 
+ 	po_remove_all(options, "mountport");
+ 	snprintf(new_option, sizeof(new_option) - 1,
+@@ -510,7 +502,8 @@ nfs_rewrite_pmap_mount_options(struct mount_options *options)
+ 		return 0;
+ 	}
+ 
+-	if (!nfs_construct_new_options(options, &nfs_pmap, &mnt_pmap)) {
++	if (!nfs_construct_new_options(options, nfs_saddr, &nfs_pmap,
++					mnt_saddr, &mnt_pmap)) {
+ 		errno = EINVAL;
+ 		return 0;
+ 	}
 
-Benny
-
-> 
-> --b.
-> 
->>  		if (cr_ses->flags & SESSION4_BACK_CHAN) {
->>  			unconf->cl_cb_xprt = rqstp->rq_xprt;
->>  			svc_xprt_get(unconf->cl_cb_xprt);
->> -- 
->> 1.6.5.1
->>
