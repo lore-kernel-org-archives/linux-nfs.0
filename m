@@ -1,63 +1,63 @@
-From: " J. Bruce Fields" <bfields@citi.umich.edu>
-Subject: Re: [PATCH 2/3] SQUASHME: pnfsd: always set both MDS and DS
-	exchangeid capability flags
-Date: Wed, 9 Dec 2009 13:54:03 -0500
-Message-ID: <20091209185403.GB23234@fieldses.org>
-References: <4B1F7AF6.2080305@panasas.com> <1260354440-12073-1-git-send-email-bhalevy@panasas.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH] rpc: remove unneeded function parameter in
+	gss_add_msg()
+Date: Wed, 9 Dec 2009 13:57:33 -0500
+Message-ID: <20091209185733.GC23234@fieldses.org>
+References: <1260380722-7599-1-git-send-email-sjayaraman@suse.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-	pnfs@linux-nfs.org
-To: Benny Halevy <bhalevy@panasas.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <1260354440-12073-1-git-send-email-bhalevy@panasas.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
+	linux-nfs@vger.kernel.org
+To: Suresh Jayaraman <sjayaraman@suse.de>
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from fieldses.org ([174.143.236.118]:32773 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757101AbZLIS5U (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 9 Dec 2009 13:57:20 -0500
+In-Reply-To: <1260380722-7599-1-git-send-email-sjayaraman@suse.de>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Dec 09, 2009 at 12:27:20PM +0200, Benny Halevy wrote:
-> We always support both modes when CONFIG_PNFSD is enabled.
-> The client needs to remember what the session is used for
-> if it cares to distiguish between DSs and MDSs.
+On Wed, Dec 09, 2009 at 11:15:22PM +0530, Suresh Jayaraman wrote:
+> The pointer to struct gss_auth parameter in gss_add_msg is not really needed
+> after commit 5b7ddd4a. Zap it.
 
-OK, thanks.
-
-> 
-> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-> ---
->  fs/nfsd/nfs4state.c |   15 ++-------------
->  1 files changed, 2 insertions(+), 13 deletions(-)
-> 
-> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> index 108cb3e..aa2e9c2 100644
-> --- a/fs/nfsd/nfs4state.c
-> +++ b/fs/nfsd/nfs4state.c
-> @@ -1103,20 +1103,9 @@ static void
->  nfsd4_set_ex_flags(struct nfs4_client *new, struct nfsd4_exchange_id *clid)
->  {
->  #if defined(CONFIG_PNFSD)
-> -	int mds_and_ds = EXCHGID4_FLAG_USE_PNFS_MDS | EXCHGID4_FLAG_USE_PNFS_DS;
-> -	int mds_or_ds = 0;
-> -
-> -	/* Save the client's MDS or DS flags, or set them both.
-> -	 * XXX We currently do not have a method of determining
-> -	 * what a server supports prior to receiving a filehandle
-> -	 * e.g. at exchange id time. */
-> -	mds_or_ds = clid->flags & mds_and_ds;
-> -	if (mds_or_ds)
-> -		new->cl_exchange_flags |= mds_or_ds;
-> -	else
-> -		new->cl_exchange_flags |= mds_and_ds;
-> +	new->cl_exchange_flags |= EXCHGID4_FLAG_USE_PNFS_MDS |
-> +				  EXCHGID4_FLAG_USE_PNFS_DS;
->  #else  /* CONFIG_PNFSD */
-> -	/* pNFS is not supported */
->  	new->cl_exchange_flags |= EXCHGID4_FLAG_USE_NON_PNFS;
->  #endif /* CONFIG_PNFSD */
-
-As usual, let's also hide the ifdef's e.g.:
-
-	new->cl_exchange_flags |= PNFS_EXCHGID_FLAGS
-
-with the define conditional on CONFIG_PNFSD.
+Looks straightforward to me, thanks.  (Assuming Trond will take it.)
 
 --b.
+
+> 
+> Signed-off-by: Suresh Jayaraman <sjayaraman@suse.de>
+> ---
+>  net/sunrpc/auth_gss/auth_gss.c |    4 ++--
+>  1 files changed, 2 insertions(+), 2 deletions(-)
+> 
+> diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
+> index fc6a43c..85ee2ca 100644
+> --- a/net/sunrpc/auth_gss/auth_gss.c
+> +++ b/net/sunrpc/auth_gss/auth_gss.c
+> @@ -304,7 +304,7 @@ __gss_find_upcall(struct rpc_inode *rpci, uid_t uid)
+>   * to that upcall instead of adding the new upcall.
+>   */
+>  static inline struct gss_upcall_msg *
+> -gss_add_msg(struct gss_auth *gss_auth, struct gss_upcall_msg *gss_msg)
+> +gss_add_msg(struct gss_upcall_msg *gss_msg)
+>  {
+>  	struct rpc_inode *rpci = gss_msg->inode;
+>  	struct inode *inode = &rpci->vfs_inode;
+> @@ -445,7 +445,7 @@ gss_setup_upcall(struct rpc_clnt *clnt, struct gss_auth *gss_auth, struct rpc_cr
+>  	gss_new = gss_alloc_msg(gss_auth, uid, clnt, gss_cred->gc_machine_cred);
+>  	if (IS_ERR(gss_new))
+>  		return gss_new;
+> -	gss_msg = gss_add_msg(gss_auth, gss_new);
+> +	gss_msg = gss_add_msg(gss_new);
+>  	if (gss_msg == gss_new) {
+>  		struct inode *inode = &gss_new->inode->vfs_inode;
+>  		int res = rpc_queue_upcall(inode, &gss_new->msg);
+> -- 
+> 1.6.4.2
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
