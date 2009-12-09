@@ -1,199 +1,30 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH] gssd: have gssd deal with scopeid field in upcall
-Date: Wed, 9 Dec 2009 15:16:49 -0500
-Message-ID: <20091209201649.GE23234@fieldses.org>
-References: <1260305091-19523-1-git-send-email-jlayton@redhat.com> <20091209185050.GA23234@fieldses.org> <20091209141049.61e8fb0b@tlielax.poochiereds.net>
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: Re: [PATCH] rpc: remove unneeded function parameter in
+ gss_add_msg()
+Date: Wed, 09 Dec 2009 15:18:38 -0500
+Message-ID: <1260389918.2646.2.camel@localhost>
+References: <1260380722-7599-1-git-send-email-sjayaraman@suse.de>
+	 <20091209185733.GC23234@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: steved@redhat.com, chuck.lever@oracle.com,
-	linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org
-To: Jeff Layton <jlayton@redhat.com>
+Content-Type: text/plain; charset="UTF-8"
+Cc: Suresh Jayaraman <sjayaraman@suse.de>, linux-nfs@vger.kernel.org
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:46748 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:45257 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750730AbZLIUQh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 9 Dec 2009 15:16:37 -0500
-In-Reply-To: <20091209141049.61e8fb0b-9yPaYZwiELC+kQycOl6kW4xkIHaj4LzF@public.gmane.org>
+	id S1752595AbZLIUSd convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 9 Dec 2009 15:18:33 -0500
+In-Reply-To: <20091209185733.GC23234@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Dec 09, 2009 at 02:10:49PM -0500, Jeff Layton wrote:
-> On Wed, 9 Dec 2009 13:50:50 -0500
-> "J. Bruce Fields" <bfields@fieldses.org> wrote:
+On Wed, 2009-12-09 at 13:57 -0500, J. Bruce Fields wrote: 
+> On Wed, Dec 09, 2009 at 11:15:22PM +0530, Suresh Jayaraman wrote:
+> > The pointer to struct gss_auth parameter in gss_add_msg is not really needed
+> > after commit 5b7ddd4a. Zap it.
 > 
-> > On Tue, Dec 08, 2009 at 03:44:51PM -0500, Jeff Layton wrote:
-> > > Recent kernels (2.6.32) have started displaying the scopeid for some
-> > > addresses in the upcall.
-> > 
-> > Does this mean we lost compatibility with old gssd's?
-> > 
-> > (Would it be better to keep the "address" line the same (if that's the
-> > problematic line), and add a new line that old gssd's can avoid?)
-> > 
-> > Or are the new addresses only going to occur in cases that would have
-> > stumped old gssd's anyway?  (In which case, how did old gssd's fail?)
-> > 
-> 
-> The problem is only with IPv6 addresses (obviously) and even then, it
-> only tacks them onto certain addresses -- link-local and site-local
-> addrs. I only happened to notice because I was using a site-local
-> prefix on a private network segment for testing.
-> 
-> IMO, NFS+IPv6+krb5 is new enough that we can just chalk this up to a bug
-> and not worry too much about backward compatibility.
+> Looks straightforward to me, thanks.  (Assuming Trond will take it.)
 
-OK, thanks.  So old gssd's couldn't handle context initialization over
-ipv6 anyway, so there's no regression, as long as they just ignored
-upcalls with addresses they didn't understand (rather than, say,
-crashing, or trying to talk to connect to some random address).
+Yes. I'll pick it up...
 
---b.
-
-> 
-> I think the only real kernel changes that we need to consider are:
-> 
-> 1) should site-local addresses have a scopeid appended to them at all
-> when displayed in presentation format?
-> 
-> 2) should we avoid displaying the scopeid on any address when it's 0?
-> 
-> The RFC's surrounding site-local addresses are very confusing and often
-> contradictory unfortunately so Chuck has been trying to get
-> clarification on the netdev list. They've been deprecated in some later
-> RFC's but we're still a bit unclear on what that means.
-> 
-> Most of the existing code out there seems to treat a zero scopeid and
-> an absent scopeid the same, so I think the answer to #2 should probably
-> be "yes".
-> 
-> > 
-> > > gssd doesn't know how to deal with them. Change
-> > > gssd to use getaddrinfo instead of inet_pton since that can deal with
-> > > scopeid's in addresses. That also allows us to elminate the port
-> > > conversion in read_service_info.
-> > > 
-> > > If getaddrinfo returns an address with a non-zero sin6_scope_id however,
-> > > reject it. getnameinfo ignores that field and just uses the sin6_addr
-> > > part when resolving. But, two addresses that differ only in
-> > > sin6_scope_id could refer to completely different hosts.
-> > > 
-> > > Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> > > ---
-> > >  utils/gssd/gssd_proc.c |   60 ++++++++++++++++++++++++++++--------------------
-> > >  1 files changed, 35 insertions(+), 25 deletions(-)
-> > > 
-> > > diff --git a/utils/gssd/gssd_proc.c b/utils/gssd/gssd_proc.c
-> > > index 33a31c3..795e06c 100644
-> > > --- a/utils/gssd/gssd_proc.c
-> > > +++ b/utils/gssd/gssd_proc.c
-> > > @@ -108,7 +108,7 @@ int pollsize;  /* the size of pollaray (in pollfd's) */
-> > >  
-> > >  /*
-> > >   * convert a presentation address string to a sockaddr_storage struct. Returns
-> > > - * true on success and false on failure.
-> > > + * true on success or false on failure.
-> > >   *
-> > >   * Note that we do not populate the sin6_scope_id field here for IPv6 addrs.
-> > >   * gssd nececessarily relies on hostname resolution and DNS AAAA records
-> > > @@ -120,26 +120,43 @@ int pollsize;  /* the size of pollaray (in pollfd's) */
-> > >   * not really feasible at present.
-> > >   */
-> > >  static int
-> > > -addrstr_to_sockaddr(struct sockaddr *sa, const char *addr, const int port)
-> > > +addrstr_to_sockaddr(struct sockaddr *sa, const char *node, const char *port)
-> > >  {
-> > > -	struct sockaddr_in	*s4 = (struct sockaddr_in *) sa;
-> > > -#ifdef IPV6_SUPPORTED
-> > > -	struct sockaddr_in6	*s6 = (struct sockaddr_in6 *) sa;
-> > > -#endif /* IPV6_SUPPORTED */
-> > > +	int rc;
-> > > +	struct addrinfo *res;
-> > > +	struct addrinfo hints = { .ai_flags = AI_NUMERICHOST | AI_NUMERICSERV };
-> > >  
-> > > -	if (inet_pton(AF_INET, addr, &s4->sin_addr)) {
-> > > -		s4->sin_family = AF_INET;
-> > > -		s4->sin_port = htons(port);
-> > > -#ifdef IPV6_SUPPORTED
-> > > -	} else if (inet_pton(AF_INET6, addr, &s6->sin6_addr)) {
-> > > -		s6->sin6_family = AF_INET6;
-> > > -		s6->sin6_port = htons(port);
-> > > +#ifndef IPV6_SUPPORTED
-> > > +	hints.ai_family = AF_INET;
-> > >  #endif /* IPV6_SUPPORTED */
-> > > -	} else {
-> > > -		printerr(0, "ERROR: unable to convert %s to address\n", addr);
-> > > +
-> > > +	rc = getaddrinfo(node, port, &hints, &res);
-> > > +	if (rc) {
-> > > +		printerr(0, "ERROR: unable to convert %s|%s to sockaddr: %s\n",
-> > > +			 node, port, rc == EAI_SYSTEM ? strerror(errno) :
-> > > +						gai_strerror(rc));
-> > >  		return 0;
-> > >  	}
-> > >  
-> > > +#ifdef IPV6_SUPPORTED
-> > > +	/*
-> > > +	 * getnameinfo ignores the scopeid. If the address turns out to have
-> > > +	 * a non-zero scopeid, we can't use it -- the resolved host might be
-> > > +	 * completely different from the one intended.
-> > > +	 */
-> > > +	if (res->ai_addr->sa_family == AF_INET6) {
-> > > +		struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)res->ai_addr;
-> > > +		if (sin6->sin6_scope_id) {
-> > > +			printerr(0, "ERROR: address %s has non-zero "
-> > > +				    "sin6_scope_id!\n", node);
-> > > +			freeaddrinfo(res);
-> > > +			return 0;
-> > > +		}
-> > > +	}
-> > > +#endif /* IPV6_SUPPORTED */
-> > > +
-> > > +	memcpy(sa, res->ai_addr, res->ai_addrlen);
-> > > +	freeaddrinfo(res);
-> > >  	return 1;
-> > >  }
-> > >  
-> > > @@ -197,11 +214,10 @@ read_service_info(char *info_file_name, char **servicename, char **servername,
-> > >  	char		program[16];
-> > >  	char		version[16];
-> > >  	char		protoname[16];
-> > > -	char		cb_port[128];
-> > > +	char		port[128];
-> > >  	char		*p;
-> > >  	int		fd = -1;
-> > >  	int		numfields;
-> > > -	int		port = 0;
-> > >  
-> > >  	*servicename = *servername = *protocol = NULL;
-> > >  
-> > > @@ -230,9 +246,9 @@ read_service_info(char *info_file_name, char **servicename, char **servername,
-> > >  		goto fail;
-> > >  	}
-> > >  
-> > > -	cb_port[0] = '\0';
-> > > +	port[0] = '\0';
-> > >  	if ((p = strstr(buf, "port")) != NULL)
-> > > -		sscanf(p, "port: %127s\n", cb_port);
-> > > +		sscanf(p, "port: %127s\n", port);
-> > >  
-> > >  	/* check service, program, and version */
-> > >  	if (memcmp(service, "nfs", 3) != 0)
-> > > @@ -249,12 +265,6 @@ read_service_info(char *info_file_name, char **servicename, char **servername,
-> > >  			goto fail;
-> > >  	}
-> > >  
-> > > -	if (cb_port[0] != '\0') {
-> > > -		port = atoi(cb_port);
-> > > -		if (port < 0 || port > 65535)
-> > > -			goto fail;
-> > > -	}
-> > > -
-> > >  	if (!addrstr_to_sockaddr(addr, address, port))
-> > >  		goto fail;
-> > >  
-> > > -- 
-> > > 1.6.5.2
-> > > 
-> 
-> -- 
-> Jeff Layton <jlayton@redhat.com>
+Trond
