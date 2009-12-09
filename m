@@ -1,57 +1,51 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-out2.uio.no ([129.240.10.58]:59029 "EHLO mail-out2.uio.no"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757948AbZLKSUl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 11 Dec 2009 13:20:41 -0500
-Subject: Re: starting 90-second grace period
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-To: Tharindu Rukshan Bamunuarachchi <btharindu@gmail.com>
-Cc: Andy Adamson <andros@netapp.com>, linux-nfs@vger.kernel.org
-In-Reply-To: <f5b5ebae0912111009i4c665758gab583a34dbaea0d9@mail.gmail.com>
-References: <f5b5ebae0912110300t78ceb985oc7a21b20a3429a52@mail.gmail.com>
-	 <1629BB1E-EB8B-478C-8170-60413A5140A2@netapp.com>
-	 <f5b5ebae0912110925o510667far7201adf429c18a5@mail.gmail.com>
-	 <1260554515.15701.0.camel@localhost>
-	 <f5b5ebae0912111009i4c665758gab583a34dbaea0d9@mail.gmail.com>
-Content-Type: text/plain; charset="UTF-8"
-Date: Fri, 11 Dec 2009 13:20:43 -0500
-Message-Id: <1260555643.15701.4.camel@localhost>
+Received: from daytona.panasas.com ([67.152.220.89]:6236 "EHLO
+	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1753406AbZLIKYt (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 9 Dec 2009 05:24:49 -0500
+Message-ID: <4B1F7AF6.2080305@panasas.com>
+Date: Wed, 09 Dec 2009 12:24:54 +0200
+From: Benny Halevy <bhalevy@panasas.com>
+To: "J. Bruce Fields" <bfields@citi.umich.edu>
+CC: linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        NFS list <linux-nfs@vger.kernel.org>,
+        pNFS Mailing List <pnfs@linux-nfs.org>
+Subject: [PATCH 0/9] fixes to Initial pnfsd file layout support v2, comments
+ {3,4,5}/35
+References: <4B1CCA52.8020900@panasas.com>
+In-Reply-To: <4B1CCA52.8020900@panasas.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Fri, 2009-12-11 at 23:39 +0530, Tharindu Rukshan Bamunuarachchi
-wrote: 
-> then why is it 90 by default ... is it RFC/Protocol requirement ?
+Bruce,
 
-The purpose of the grace period is to give the clients enough time to
-notice that the server has rebooted, and to reclaim their existing locks
-without danger of having somebody else steal the lock from them.
+The following SQUASHME patches address your review comments for:
+[PATCH v2 03/35] pnfsd, pnfs: protocol level pnfs constants
+[PATCH v2 04/35] pnfsd: return pnfs flags on exchange_id
+[PATCH v2 05/35] pnfsd: don't set up back channel on create_session for ds
 
-It is not a protocol requirement, but it is definitely a strongly
-recommended feaature if you don't want to see corruption in your
-mailbox/database/logfile/... that relies on those locks.
+I'm also posting the respective patches to the rest of the
+linux-pnfs tree:
 
-Trond
+pnfsd-files-next:
+[PATCH 1/3] SQUASHME: pnfsd: unify enum pnfs_layout{return,recall}_type
+[PATCH 2/3] SQUASHME: pnfsd: always set both MDS and DS exchangeid capability flags
+[PATCH 3/3] SQUASHME: pnfsd: define a is_ds_only_session helper
 
-> On Fri, Dec 11, 2009 at 11:31 PM, Trond Myklebust
-> <trond.myklebust@fys.uio.no> wrote:
-> > On Fri, 2009-12-11 at 22:55 +0530, Tharindu Rukshan Bamunuarachchi
-> > wrote:
-> >> thankx a lot for the info.
-> >>
-> >> btw, if i set nfs4leasetime to ~10 seconds ... is there any negative effect ?
-> >>
-> >
-> > You mean aside from the very likely event that your clients will lose
-> > all their locks when the server reboots?
-> >
-> > Trond
-> >
-> >
-> 
-> 
-> 
+pnfsd:
+[PATCH 4/4] SQUASHME: pnfsd: use only RETURN_* constants
 
+spnfs:
+[PATCH 5/5] SQUASHME: spnfs: use only RETURN_* constants
 
+spnfs-blocks
+[PATCH 6/6] SQUASHME: spnfs-block: use only RETURN_* constants
 
+pnfsd-exofs:
+[PATCH 7/7] SQUASHME: pnfsd-exofs: use only pnfs_layoutreturn_type
+
+pnfs:
+[PATCH 8/9] SQUASHME: pnfs: use only pnfs_layoutreturn_type
+[PATCH 9/9] SQUASHME: pnfs: filelayout: mask out server's MDS capability flag for DSs
