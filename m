@@ -1,7 +1,7 @@
 From: Eric Paris <eparis@redhat.com>
 Subject: VFS and IMA API patch series please pull
 Date: Wed, 09 Dec 2009 16:25:52 -0500
-Message-ID: <1260393952.3344.18.camel__8284.5346689739$1260394495$gmane$org@localhost>
+Message-ID: <1260393952.3344.18.camel__18874.4471794509$1260394496$gmane$org@localhost>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="UTF-8"
 Cc: rdunlap@xenotime.net, zohar@linux.vnet.ibm.com, eparis@redhat.com,
@@ -23,8 +23,8 @@ To: linux-doc@vger.kernel.org, linux-kernel@vger.kernel.org,
 	linux-cachefs@redhat.com, ecryptfs-devel@lists.launchpad.net,
 	linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
 	linux-
-Return-path: <linux-security-module-owner@vger.kernel.org>
-Sender: linux-security-module-owner@vger.kernel.org
+Return-path: <netdev-owner@vger.kernel.org>
+Sender: netdev-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 I've sent this patch series out a couple of times but at now 18 patches
