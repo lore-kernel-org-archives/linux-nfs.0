@@ -1,80 +1,191 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:61616 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:19139 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752536AbZLNNji (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 14 Dec 2009 08:39:38 -0500
-Date: Mon, 14 Dec 2009 08:38:43 -0500
+	id S1756804AbZLITKx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 9 Dec 2009 14:10:53 -0500
+Date: Wed, 9 Dec 2009 14:10:49 -0500
 From: Jeff Layton <jlayton@redhat.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
-Subject: Re: mountpoint-crossing
-Message-ID: <20091214083843.5e6e73f5@tlielax.poochiereds.net>
-In-Reply-To: <1260743595.3076.12.camel@localhost>
-References: <20091213213945.GB20421@fieldses.org>
-	<1260743595.3076.12.camel@localhost>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: steved@redhat.com, chuck.lever@oracle.com, linux-nfs@vger.kernel.org,
+        nfsv4@linux-nfs.org
+Subject: Re: [PATCH] gssd: have gssd deal with scopeid field in upcall
+Message-ID: <20091209141049.61e8fb0b@tlielax.poochiereds.net>
+In-Reply-To: <20091209185050.GA23234@fieldses.org>
+References: <1260305091-19523-1-git-send-email-jlayton@redhat.com>
+	<20091209185050.GA23234@fieldses.org>
 Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Sun, 13 Dec 2009 17:33:15 -0500
-Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
+On Wed, 9 Dec 2009 13:50:50 -0500
+"J. Bruce Fields" <bfields@fieldses.org> wrote:
 
-> On Sun, 2009-12-13 at 16:39 -0500, J. Bruce Fields wrote: 
-> > On a recent kernel:
-> > 
-> > 	# mount -tnfs4 pearlet1:/ /mnt/
-> > 	# find /mnt/
-> > 	/mnt/
-> > 	find: File system loop detected; `/mnt/DIR' is part of the same
-> > 	file system loop as `/mnt/'.
-> > 
-> > Here /mnt/DIR is a server-side mountpoint, hence has a different fsid
-> > than /mnt/.  Wireshark confirms that the server is returning a different
-> > fsid.  However, 'strace -v find /mnt/' shows stat returning
-> > st_dev=makedev(0, 22) for both /mnt and /mnt/DIR.
-> > 
-> > If I then do a 'ls /mnt/DIR', followed by another find, the error goes
-> > away, and this time an strace shows that stat is returning (0, 23) for
-> > /mnt/DIR.
-> > 
-> > I don't see any obvious problem with the network trace, so it looks to
-> > me like the client is failing to recognize the mountpoint when it
-> > should?
+> On Tue, Dec 08, 2009 at 03:44:51PM -0500, Jeff Layton wrote:
+> > Recent kernels (2.6.32) have started displaying the scopeid for some
+> > addresses in the upcall.
 > 
-> This is a known consequence of the way we treat submounts (and
-> referrals); we're basically treating them as a special kind of symlink.
-> The problem then arises when syscalls such as stat() fail to set the
-> LOOKUP_FOLLOW flag, and so the user is granted a temporary peek of the
-> underlying inode.
+> Does this mean we lost compatibility with old gssd's?
 > 
-> I'm not sure how we should treat this. I suppose we could change the
-> test in __link_path_walk() so that it always call follow_link() if the
-> inode is not a symlink...
+> (Would it be better to keep the "address" line the same (if that's the
+> problematic line), and add a new line that old gssd's can avoid?)
+> 
+> Or are the new addresses only going to occur in cases that would have
+> stumped old gssd's anyway?  (In which case, how did old gssd's fail?)
 > 
 
-I looked at this problem recently based on a request by some of our
-coreutils folks. A bit of the discussion is here:
+The problem is only with IPv6 addresses (obviously) and even then, it
+only tacks them onto certain addresses -- link-local and site-local
+addrs. I only happened to notice because I was using a site-local
+prefix on a private network segment for testing.
 
-    https://bugzilla.redhat.com/show_bug.cgi?id=533569
+IMO, NFS+IPv6+krb5 is new enough that we can just chalk this up to a bug
+and not worry too much about backward compatibility.
 
-...and earlier:
+I think the only real kernel changes that we need to consider are:
 
-    https://bugzilla.redhat.com/show_bug.cgi?id=501848
+1) should site-local addresses have a scopeid appended to them at all
+when displayed in presentation format?
 
-Jim Meyering also brought this up on LKML:
+2) should we avoid displaying the scopeid on any address when it's 0?
 
-    http://lkml.org/lkml/2009/11/4/451
+The RFC's surrounding site-local addresses are very confusing and often
+contradictory unfortunately so Chuck has been trying to get
+clarification on the netdev list. They've been deprecated in some later
+RFC's but we're still a bit unclear on what that means.
 
-I'm a little leery of triggering a mount for any server-side mountpoint
-that we just happen to have a peek at. That seems like it might get
-expensive. Suppose you had 1000 filesystems mounted under the root
-share here?
+Most of the existing code out there seems to treat a zero scopeid and
+an absent scopeid the same, so I think the answer to #2 should probably
+be "yes".
 
-One idea in the mailing list discussion is to flag these inodes with
-some sort of "i'm actually a mountpoint" flag and teach utilities that
-care about inode numbers to deal with that. Not a great solution but it
-wouldn't incur extra overhead.
+> 
+> > gssd doesn't know how to deal with them. Change
+> > gssd to use getaddrinfo instead of inet_pton since that can deal with
+> > scopeid's in addresses. That also allows us to elminate the port
+> > conversion in read_service_info.
+> > 
+> > If getaddrinfo returns an address with a non-zero sin6_scope_id however,
+> > reject it. getnameinfo ignores that field and just uses the sin6_addr
+> > part when resolving. But, two addresses that differ only in
+> > sin6_scope_id could refer to completely different hosts.
+> > 
+> > Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> > ---
+> >  utils/gssd/gssd_proc.c |   60 ++++++++++++++++++++++++++++--------------------
+> >  1 files changed, 35 insertions(+), 25 deletions(-)
+> > 
+> > diff --git a/utils/gssd/gssd_proc.c b/utils/gssd/gssd_proc.c
+> > index 33a31c3..795e06c 100644
+> > --- a/utils/gssd/gssd_proc.c
+> > +++ b/utils/gssd/gssd_proc.c
+> > @@ -108,7 +108,7 @@ int pollsize;  /* the size of pollaray (in pollfd's) */
+> >  
+> >  /*
+> >   * convert a presentation address string to a sockaddr_storage struct. Returns
+> > - * true on success and false on failure.
+> > + * true on success or false on failure.
+> >   *
+> >   * Note that we do not populate the sin6_scope_id field here for IPv6 addrs.
+> >   * gssd nececessarily relies on hostname resolution and DNS AAAA records
+> > @@ -120,26 +120,43 @@ int pollsize;  /* the size of pollaray (in pollfd's) */
+> >   * not really feasible at present.
+> >   */
+> >  static int
+> > -addrstr_to_sockaddr(struct sockaddr *sa, const char *addr, const int port)
+> > +addrstr_to_sockaddr(struct sockaddr *sa, const char *node, const char *port)
+> >  {
+> > -	struct sockaddr_in	*s4 = (struct sockaddr_in *) sa;
+> > -#ifdef IPV6_SUPPORTED
+> > -	struct sockaddr_in6	*s6 = (struct sockaddr_in6 *) sa;
+> > -#endif /* IPV6_SUPPORTED */
+> > +	int rc;
+> > +	struct addrinfo *res;
+> > +	struct addrinfo hints = { .ai_flags = AI_NUMERICHOST | AI_NUMERICSERV };
+> >  
+> > -	if (inet_pton(AF_INET, addr, &s4->sin_addr)) {
+> > -		s4->sin_family = AF_INET;
+> > -		s4->sin_port = htons(port);
+> > -#ifdef IPV6_SUPPORTED
+> > -	} else if (inet_pton(AF_INET6, addr, &s6->sin6_addr)) {
+> > -		s6->sin6_family = AF_INET6;
+> > -		s6->sin6_port = htons(port);
+> > +#ifndef IPV6_SUPPORTED
+> > +	hints.ai_family = AF_INET;
+> >  #endif /* IPV6_SUPPORTED */
+> > -	} else {
+> > -		printerr(0, "ERROR: unable to convert %s to address\n", addr);
+> > +
+> > +	rc = getaddrinfo(node, port, &hints, &res);
+> > +	if (rc) {
+> > +		printerr(0, "ERROR: unable to convert %s|%s to sockaddr: %s\n",
+> > +			 node, port, rc == EAI_SYSTEM ? strerror(errno) :
+> > +						gai_strerror(rc));
+> >  		return 0;
+> >  	}
+> >  
+> > +#ifdef IPV6_SUPPORTED
+> > +	/*
+> > +	 * getnameinfo ignores the scopeid. If the address turns out to have
+> > +	 * a non-zero scopeid, we can't use it -- the resolved host might be
+> > +	 * completely different from the one intended.
+> > +	 */
+> > +	if (res->ai_addr->sa_family == AF_INET6) {
+> > +		struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)res->ai_addr;
+> > +		if (sin6->sin6_scope_id) {
+> > +			printerr(0, "ERROR: address %s has non-zero "
+> > +				    "sin6_scope_id!\n", node);
+> > +			freeaddrinfo(res);
+> > +			return 0;
+> > +		}
+> > +	}
+> > +#endif /* IPV6_SUPPORTED */
+> > +
+> > +	memcpy(sa, res->ai_addr, res->ai_addrlen);
+> > +	freeaddrinfo(res);
+> >  	return 1;
+> >  }
+> >  
+> > @@ -197,11 +214,10 @@ read_service_info(char *info_file_name, char **servicename, char **servername,
+> >  	char		program[16];
+> >  	char		version[16];
+> >  	char		protoname[16];
+> > -	char		cb_port[128];
+> > +	char		port[128];
+> >  	char		*p;
+> >  	int		fd = -1;
+> >  	int		numfields;
+> > -	int		port = 0;
+> >  
+> >  	*servicename = *servername = *protocol = NULL;
+> >  
+> > @@ -230,9 +246,9 @@ read_service_info(char *info_file_name, char **servicename, char **servername,
+> >  		goto fail;
+> >  	}
+> >  
+> > -	cb_port[0] = '\0';
+> > +	port[0] = '\0';
+> >  	if ((p = strstr(buf, "port")) != NULL)
+> > -		sscanf(p, "port: %127s\n", cb_port);
+> > +		sscanf(p, "port: %127s\n", port);
+> >  
+> >  	/* check service, program, and version */
+> >  	if (memcmp(service, "nfs", 3) != 0)
+> > @@ -249,12 +265,6 @@ read_service_info(char *info_file_name, char **servicename, char **servername,
+> >  			goto fail;
+> >  	}
+> >  
+> > -	if (cb_port[0] != '\0') {
+> > -		port = atoi(cb_port);
+> > -		if (port < 0 || port > 65535)
+> > -			goto fail;
+> > -	}
+> > -
+> >  	if (!addrstr_to_sockaddr(addr, address, port))
+> >  		goto fail;
+> >  
+> > -- 
+> > 1.6.5.2
+> > 
 
 -- 
 Jeff Layton <jlayton@redhat.com>
