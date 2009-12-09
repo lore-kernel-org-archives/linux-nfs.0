@@ -1,45 +1,167 @@
-From: Suresh Jayaraman <sjayaraman@suse.de>
-Subject: [PATCH] rpc: remove unneeded function parameter in gss_add_msg()
-Date: Wed,  9 Dec 2009 23:15:22 +0530
-Message-ID: <1260380722-7599-1-git-send-email-sjayaraman@suse.de>
-Cc: linux-nfs@vger.kernel.org,
-	"J. Bruce Fields" <bfields@fieldses.org>,
-	Suresh Jayaraman <sjayaraman@suse.de>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Sender: linux-nfs-owner@vger.kernel.org
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH] gssd: have gssd deal with scopeid field in upcall
+Date: Wed, 9 Dec 2009 13:50:50 -0500
+Message-ID: <20091209185050.GA23234@fieldses.org>
+References: <1260305091-19523-1-git-send-email-jlayton@redhat.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
+Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org
+To: Jeff Layton <jlayton@redhat.com>
+Return-path: <nfsv4-bounces@linux-nfs.org>
+In-Reply-To: <1260305091-19523-1-git-send-email-jlayton@redhat.com>
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/options/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@linux-nfs.org>
+List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
+Sender: nfsv4-bounces@linux-nfs.org
+Errors-To: nfsv4-bounces@linux-nfs.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The pointer to struct gss_auth parameter in gss_add_msg is not really needed
-after commit 5b7ddd4a. Zap it.
+On Tue, Dec 08, 2009 at 03:44:51PM -0500, Jeff Layton wrote:
+> Recent kernels (2.6.32) have started displaying the scopeid for some
+> addresses in the upcall.
 
-Signed-off-by: Suresh Jayaraman <sjayaraman@suse.de>
----
- net/sunrpc/auth_gss/auth_gss.c |    4 ++--
- 1 files changed, 2 insertions(+), 2 deletions(-)
+Does this mean we lost compatibility with old gssd's?
 
-diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
-index fc6a43c..85ee2ca 100644
---- a/net/sunrpc/auth_gss/auth_gss.c
-+++ b/net/sunrpc/auth_gss/auth_gss.c
-@@ -304,7 +304,7 @@ __gss_find_upcall(struct rpc_inode *rpci, uid_t uid)
-  * to that upcall instead of adding the new upcall.
-  */
- static inline struct gss_upcall_msg *
--gss_add_msg(struct gss_auth *gss_auth, struct gss_upcall_msg *gss_msg)
-+gss_add_msg(struct gss_upcall_msg *gss_msg)
- {
- 	struct rpc_inode *rpci = gss_msg->inode;
- 	struct inode *inode = &rpci->vfs_inode;
-@@ -445,7 +445,7 @@ gss_setup_upcall(struct rpc_clnt *clnt, struct gss_auth *gss_auth, struct rpc_cr
- 	gss_new = gss_alloc_msg(gss_auth, uid, clnt, gss_cred->gc_machine_cred);
- 	if (IS_ERR(gss_new))
- 		return gss_new;
--	gss_msg = gss_add_msg(gss_auth, gss_new);
-+	gss_msg = gss_add_msg(gss_new);
- 	if (gss_msg == gss_new) {
- 		struct inode *inode = &gss_new->inode->vfs_inode;
- 		int res = rpc_queue_upcall(inode, &gss_new->msg);
--- 
-1.6.4.2
+(Would it be better to keep the "address" line the same (if that's the
+problematic line), and add a new line that old gssd's can avoid?)
 
+Or are the new addresses only going to occur in cases that would have
+stumped old gssd's anyway?  (In which case, how did old gssd's fail?)
+
+--b.
+
+> gssd doesn't know how to deal with them. Change
+> gssd to use getaddrinfo instead of inet_pton since that can deal with
+> scopeid's in addresses. That also allows us to elminate the port
+> conversion in read_service_info.
+> 
+> If getaddrinfo returns an address with a non-zero sin6_scope_id however,
+> reject it. getnameinfo ignores that field and just uses the sin6_addr
+> part when resolving. But, two addresses that differ only in
+> sin6_scope_id could refer to completely different hosts.
+> 
+> Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> ---
+>  utils/gssd/gssd_proc.c |   60 ++++++++++++++++++++++++++++--------------------
+>  1 files changed, 35 insertions(+), 25 deletions(-)
+> 
+> diff --git a/utils/gssd/gssd_proc.c b/utils/gssd/gssd_proc.c
+> index 33a31c3..795e06c 100644
+> --- a/utils/gssd/gssd_proc.c
+> +++ b/utils/gssd/gssd_proc.c
+> @@ -108,7 +108,7 @@ int pollsize;  /* the size of pollaray (in pollfd's) */
+>  
+>  /*
+>   * convert a presentation address string to a sockaddr_storage struct. Returns
+> - * true on success and false on failure.
+> + * true on success or false on failure.
+>   *
+>   * Note that we do not populate the sin6_scope_id field here for IPv6 addrs.
+>   * gssd nececessarily relies on hostname resolution and DNS AAAA records
+> @@ -120,26 +120,43 @@ int pollsize;  /* the size of pollaray (in pollfd's) */
+>   * not really feasible at present.
+>   */
+>  static int
+> -addrstr_to_sockaddr(struct sockaddr *sa, const char *addr, const int port)
+> +addrstr_to_sockaddr(struct sockaddr *sa, const char *node, const char *port)
+>  {
+> -	struct sockaddr_in	*s4 = (struct sockaddr_in *) sa;
+> -#ifdef IPV6_SUPPORTED
+> -	struct sockaddr_in6	*s6 = (struct sockaddr_in6 *) sa;
+> -#endif /* IPV6_SUPPORTED */
+> +	int rc;
+> +	struct addrinfo *res;
+> +	struct addrinfo hints = { .ai_flags = AI_NUMERICHOST | AI_NUMERICSERV };
+>  
+> -	if (inet_pton(AF_INET, addr, &s4->sin_addr)) {
+> -		s4->sin_family = AF_INET;
+> -		s4->sin_port = htons(port);
+> -#ifdef IPV6_SUPPORTED
+> -	} else if (inet_pton(AF_INET6, addr, &s6->sin6_addr)) {
+> -		s6->sin6_family = AF_INET6;
+> -		s6->sin6_port = htons(port);
+> +#ifndef IPV6_SUPPORTED
+> +	hints.ai_family = AF_INET;
+>  #endif /* IPV6_SUPPORTED */
+> -	} else {
+> -		printerr(0, "ERROR: unable to convert %s to address\n", addr);
+> +
+> +	rc = getaddrinfo(node, port, &hints, &res);
+> +	if (rc) {
+> +		printerr(0, "ERROR: unable to convert %s|%s to sockaddr: %s\n",
+> +			 node, port, rc == EAI_SYSTEM ? strerror(errno) :
+> +						gai_strerror(rc));
+>  		return 0;
+>  	}
+>  
+> +#ifdef IPV6_SUPPORTED
+> +	/*
+> +	 * getnameinfo ignores the scopeid. If the address turns out to have
+> +	 * a non-zero scopeid, we can't use it -- the resolved host might be
+> +	 * completely different from the one intended.
+> +	 */
+> +	if (res->ai_addr->sa_family == AF_INET6) {
+> +		struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)res->ai_addr;
+> +		if (sin6->sin6_scope_id) {
+> +			printerr(0, "ERROR: address %s has non-zero "
+> +				    "sin6_scope_id!\n", node);
+> +			freeaddrinfo(res);
+> +			return 0;
+> +		}
+> +	}
+> +#endif /* IPV6_SUPPORTED */
+> +
+> +	memcpy(sa, res->ai_addr, res->ai_addrlen);
+> +	freeaddrinfo(res);
+>  	return 1;
+>  }
+>  
+> @@ -197,11 +214,10 @@ read_service_info(char *info_file_name, char **servicename, char **servername,
+>  	char		program[16];
+>  	char		version[16];
+>  	char		protoname[16];
+> -	char		cb_port[128];
+> +	char		port[128];
+>  	char		*p;
+>  	int		fd = -1;
+>  	int		numfields;
+> -	int		port = 0;
+>  
+>  	*servicename = *servername = *protocol = NULL;
+>  
+> @@ -230,9 +246,9 @@ read_service_info(char *info_file_name, char **servicename, char **servername,
+>  		goto fail;
+>  	}
+>  
+> -	cb_port[0] = '\0';
+> +	port[0] = '\0';
+>  	if ((p = strstr(buf, "port")) != NULL)
+> -		sscanf(p, "port: %127s\n", cb_port);
+> +		sscanf(p, "port: %127s\n", port);
+>  
+>  	/* check service, program, and version */
+>  	if (memcmp(service, "nfs", 3) != 0)
+> @@ -249,12 +265,6 @@ read_service_info(char *info_file_name, char **servicename, char **servername,
+>  			goto fail;
+>  	}
+>  
+> -	if (cb_port[0] != '\0') {
+> -		port = atoi(cb_port);
+> -		if (port < 0 || port > 65535)
+> -			goto fail;
+> -	}
+> -
+>  	if (!addrstr_to_sockaddr(addr, address, port))
+>  		goto fail;
+>  
+> -- 
+> 1.6.5.2
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
