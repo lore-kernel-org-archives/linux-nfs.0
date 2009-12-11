@@ -1,52 +1,42 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: starting 90-second grace period
-Date: Fri, 11 Dec 2009 15:12:21 -0500
-Message-ID: <20091211201221.GD15758@fieldses.org>
-References: <f5b5ebae0912110300t78ceb985oc7a21b20a3429a52@mail.gmail.com> <1629BB1E-EB8B-478C-8170-60413A5140A2@netapp.com> <f5b5ebae0912110925o510667far7201adf429c18a5@mail.gmail.com> <1260554515.15701.0.camel@localhost> <f5b5ebae0912111009i4c665758gab583a34dbaea0d9@mail.gmail.com> <1260555643.15701.4.camel@localhost> <20091211195047.GA15758@fieldses.org> <1260562171.15701.40.camel@localhost>
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Re: [PATCH 00/10] mount.nfs support for netids
+Date: Fri, 11 Dec 2009 16:17:54 -0500
+Message-ID: <4B22B702.5040303@RedHat.com>
+References: <20091208175128.2544.457.stgit@localhost.localdomain>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Tharindu Rukshan Bamunuarachchi <btharindu@gmail.com>,
-	Andy Adamson <andros@netapp.com>, linux-nfs@vger.kernel.org
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
+Content-Type: text/plain; charset=UTF-8
+Cc: linux-nfs@vger.kernel.org
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:37894 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:16985 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751184AbZLKUMO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 11 Dec 2009 15:12:14 -0500
-In-Reply-To: <1260562171.15701.40.camel@localhost>
+	id S1755844AbZLKVRv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 11 Dec 2009 16:17:51 -0500
+In-Reply-To: <20091208175128.2544.457.stgit-bi+AKbBUZKY6gyzm1THtWbp2dZbC/Bob@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Dec 11, 2009 at 03:09:31PM -0500, Trond Myklebust wrote:
-> On Fri, 2009-12-11 at 14:50 -0500, J. Bruce Fields wrote: 
-> > On Fri, Dec 11, 2009 at 01:20:43PM -0500, Trond Myklebust wrote:
-> > > On Fri, 2009-12-11 at 23:39 +0530, Tharindu Rukshan Bamunuarachchi
-> > > wrote: 
-> > > > then why is it 90 by default ... is it RFC/Protocol requirement ?
-> > > 
-> > > The purpose of the grace period is to give the clients enough time to
-> > > notice that the server has rebooted, and to reclaim their existing locks
-> > > without danger of having somebody else steal the lock from them.
-> > > 
-> > > It is not a protocol requirement, but it is definitely a strongly
-> > > recommended feaature if you don't want to see corruption in your
-> > > mailbox/database/logfile/... that relies on those locks.
-> > 
-> > There are a few things we could do to lessen the pain of the grace
-> > period, though--such as ending it when we know it's done.  (In the v4
-> > case, that's just when we know there are no clients to recover state; in
-> > the v4.1 case, that's when all the RECLAIM_COMPLETE's are done.)
+
+
+On 12/08/2009 12:59 PM, Chuck Lever wrote:
+> Hi Steve-
 > 
-> You can't clear the grace period unless you know that all 3 protocols
-> are done. I.e. the list of NSM monitored clients was empty, the list of
-> NFSv4 clients was empty, and the NFSv4.1 reclaim_completes are all done
-> (or the list was empty).
+> For 2.6.33, Trond has included Jeff's patch that adds support to the
+> kernel NFS client for "proto=netid."  Here are the user space changes
+> we think are necessary to complete this support.  See:
+> 
+>   https://bugzilla.redhat.com/show_bug.cgi?id=479350
+> 
+> This series has seen some light testing here, and Jeff is planning to
+> do more of his own independent testing.
+> 
+> Note that last patch in the series has a rather full set of updates
+> to nfs(5) that document NFS client side support for NFS over IPv6,
+> including support for "proto=netid."
+> 
+> Please have a look and let me know what you think.
+Committed... 
 
-Yup.
+I did some regression testing and didn't find any problems... 
 
-> In no case should it be done by adjusting the duration of the lease
-> period.
-
-Agreed.
-
---b.
+steved.
