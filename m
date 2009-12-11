@@ -1,108 +1,40 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [NFS] Nfs4 over Ipv6 patch to fix ipv6 subnetting in
-	/etc/exports
-Date: Fri, 11 Dec 2009 13:24:24 -0500
-Message-ID: <E8A3627D-67A4-4188-BD55-ECD71AE5787F@oracle.com>
-References: <4B16EF49.8040106@silka.with-linux.com>
-	<4B228D4B.7000007@RedHat.com>
-Mime-Version: 1.0 (Apple Message framework v936)
-Content-Type: text/plain; charset="us-ascii"
-Cc: Kelly Anderson <kelly-lACMDn57031vQQPgy9v2K1aTQe2KTcn/@public.gmane.org>,
-	nfs@lists.sourceforge.net
-To: Steve Dickson <SteveD@redhat.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: starting 90-second grace period
+Date: Fri, 11 Dec 2009 14:50:47 -0500
+Message-ID: <20091211195047.GA15758@fieldses.org>
+References: <f5b5ebae0912110300t78ceb985oc7a21b20a3429a52@mail.gmail.com> <1629BB1E-EB8B-478C-8170-60413A5140A2@netapp.com> <f5b5ebae0912110925o510667far7201adf429c18a5@mail.gmail.com> <1260554515.15701.0.camel@localhost> <f5b5ebae0912111009i4c665758gab583a34dbaea0d9@mail.gmail.com> <1260555643.15701.4.camel@localhost>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Tharindu Rukshan Bamunuarachchi <btharindu@gmail.com>,
+	Andy Adamson <andros@netapp.com>, linux-nfs@vger.kernel.org
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from neil.brown.name ([220.233.11.133]:58443 "EHLO neil.brown.name"
+Received: from fieldses.org ([174.143.236.118]:44611 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753432AbZLKSZL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 11 Dec 2009 13:25:11 -0500
-Received: from brown by neil.brown.name with local (Exim 4.69)
-	(envelope-from <nfs-bounces@lists.sourceforge.net>)
-	id 1NJAB2-0005ri-IU
-	for linux-nfs@vger.kernel.org; Sat, 12 Dec 2009 05:25:16 +1100
-In-Reply-To: <4B228D4B.7000007-AfCzQyP5zfLQT0dZR+AlfA@public.gmane.org>
+	id S1755596AbZLKTup (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 11 Dec 2009 14:50:45 -0500
+In-Reply-To: <1260555643.15701.4.camel@localhost>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Steve-
+On Fri, Dec 11, 2009 at 01:20:43PM -0500, Trond Myklebust wrote:
+> On Fri, 2009-12-11 at 23:39 +0530, Tharindu Rukshan Bamunuarachchi
+> wrote: 
+> > then why is it 90 by default ... is it RFC/Protocol requirement ?
+> 
+> The purpose of the grace period is to give the clients enough time to
+> notice that the server has rebooted, and to reclaim their existing locks
+> without danger of having somebody else steal the lock from them.
+> 
+> It is not a protocol requirement, but it is definitely a strongly
+> recommended feaature if you don't want to see corruption in your
+> mailbox/database/logfile/... that relies on those locks.
 
-This patch is against my private repo, not against upstream nfs-utils.
+There are a few things we could do to lessen the pain of the grace
+period, though--such as ending it when we know it's done.  (In the v4
+case, that's just when we know there are no clients to recover state; in
+the v4.1 case, that's when all the RECLAIM_COMPLETE's are done.)
 
-On Dec 11, 2009, at 1:19 PM, Steve Dickson wrote:
+I'm hoping to work on that for 2.6.34.
 
-> Hello,
->
-> On 12/02/2009 05:50 PM, Kelly Anderson wrote:
->> --- ./support/export/client.c.orig	2009-11-30 08:06:18.000000000  
->> -0700
->> +++ ./support/export/client.c	2009-12-02 15:16:55.361725808 -0700
->> @@ -505,16 +505,16 @@ check_subnet_v6(const struct sockaddr_in
->> 			continue;
->>
->> 		if (mask_match(address->sin6_addr.s6_addr32[0],
->> -				sin6->sin6_addr.s6_addr[0],
->> +				sin6->sin6_addr.s6_addr32[0],
->> 		      		mask->sin6_addr.s6_addr32[0]) &&
->> 		    mask_match(address->sin6_addr.s6_addr32[1],
->> -				sin6->sin6_addr.s6_addr[1],
->> +				sin6->sin6_addr.s6_addr32[1],
->> 		      		mask->sin6_addr.s6_addr32[1]) &&
->> 		    mask_match(address->sin6_addr.s6_addr32[2],
->> -				sin6->sin6_addr.s6_addr[2],
->> +				sin6->sin6_addr.s6_addr32[2],
->> 		      		mask->sin6_addr.s6_addr32[2]) &&
->> 		    mask_match(address->sin6_addr.s6_addr32[3],
->> -				sin6->sin6_addr.s6_addr[3],
->> +				sin6->sin6_addr.s6_addr32[3],
->> 		      		mask->sin6_addr.s6_addr32[3]))
->> 			return 1;
->> 	}
-> I'm a bit confused here... I don't see a check_subnet_v6() routine
-> in support/export/client.c and from the git logs says there never
-> was a routine called check_subnet_v6()... what am I missing?
->
-> In the future, please add the Signed-off-by: label to the bottom
-> of the patch description... thanks!
->
->
-> steved.
->
-> ------------------------------------------------------------------------------
-> Return on Information:
-> Google Enterprise Search pays you back
-> Get the facts.
-> http://p.sf.net/sfu/google-dev2dev
-> _______________________________________________
-> NFS maillist  -  NFS@lists.sourceforge.net
-> https://lists.sourceforge.net/lists/listinfo/nfs
-> _______________________________________________
-> Please note that nfs@lists.sourceforge.net is being discontinued.
-> Please subscribe to linux-nfs@vger.kernel.org instead.
->    http://vger.kernel.org/vger-lists.html#linux-nfs
->
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs"  
-> in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
-
-
-------------------------------------------------------------------------------
-Return on Information:
-Google Enterprise Search pays you back
-Get the facts.
-http://p.sf.net/sfu/google-dev2dev
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
-_______________________________________________
-Please note that nfs@lists.sourceforge.net is being discontinued.
-Please subscribe to linux-nfs@vger.kernel.org instead.
-    http://vger.kernel.org/vger-lists.html#linux-nfs
-
+--b.
