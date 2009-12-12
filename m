@@ -1,43 +1,41 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH] libexport.a: fix a long-standing typo in name_cmp()
-Date: Fri, 11 Dec 2009 16:27:31 -0500
-Message-ID: <20091211212608.29241.27167.stgit@localhost.localdomain>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Cc: linux-nfs@vger.kernel.org
-To: neilb@suse.de
+From: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
+Subject: [PATCH] nfsd41: Create the recovery entry for the NFSv4.1 client
+Date: Fri, 11 Dec 2009 19:10:48 -0800
+Message-ID: <1260587449-29538-1-git-send-email-Ricardo.Labiaga@netapp.com>
+Cc: linux-nfs@vger.kernel.org,
+	Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
+To: bfields@fieldses.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet12.oracle.com ([148.87.113.124]:20529 "EHLO
-	rcsinet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S933120AbZLKV1r (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 11 Dec 2009 16:27:47 -0500
+Received: from mx2.netapp.com ([216.240.18.37]:20975 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1761774AbZLLDLJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 11 Dec 2009 22:11:09 -0500
+In-Reply-To: <>
+References: <>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Not sure what "(!*a || !a == ',')" means... but just a few lines later is
-"(!*a || *a == ',')".  I think "a is '\0' or ','" is what was intended.
-
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Signed-off-by: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
 ---
+ fs/nfsd/nfs4state.c |    4 +++-
+ 1 files changed, 3 insertions(+), 1 deletions(-)
 
-Neil --
-
-Looks like a typo.  Comments?
-
- support/export/client.c |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
-
-diff --git a/support/export/client.c b/support/export/client.c
-index b08dda2..cb6e659 100644
---- a/support/export/client.c
-+++ b/support/export/client.c
-@@ -266,7 +266,7 @@ name_cmp(char *a, char *b)
- 	/* compare strings a and b, but only upto ',' in a */
- 	while (*a && *b && *a != ',' && *a == *b)
- 		a++, b++;
--	if (!*b && (!*a || !a == ',') )
-+	if (!*b && (!*a || *a == ','))
- 		return 0;
- 	if (!*b) return 1;
- 	if (!*a || *a == ',') return -1;
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 2153f9b..32aa837 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -2487,8 +2487,10 @@ nfsd4_process_open2(struct svc_rqst *rqstp, struct svc_fh *current_fh, struct nf
+ 	}
+ 	memcpy(&open->op_stateid, &stp->st_stateid, sizeof(stateid_t));
+ 
+-	if (nfsd4_has_session(&resp->cstate))
++	if (nfsd4_has_session(&resp->cstate)) {
+ 		open->op_stateowner->so_confirmed = 1;
++		nfsd4_create_clid_dir(open->op_stateowner->so_client);
++	}
+ 
+ 	/*
+ 	* Attempt to hand out a delegation. No error return, because the
+-- 
+1.5.4.3
 
