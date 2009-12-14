@@ -1,55 +1,87 @@
-From: Tharindu Rukshan Bamunuarachchi <btharindu@gmail.com>
-Subject: Re: starting 90-second grace period : leasetime less than 10
-Date: Mon, 14 Dec 2009 17:40:20 +0530
-Message-ID: <f5b5ebae0912140410t2814d7bck688549103b3104ea@mail.gmail.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: mountpoint-crossing
+Date: Mon, 14 Dec 2009 10:24:18 -0500
+Message-ID: <20091214152418.GA12946@fieldses.org>
+References: <20091213213945.GB20421@fieldses.org> <1260743595.3076.12.camel@localhost> <20091214083843.5e6e73f5@tlielax.poochiereds.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-To: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
+	linux-nfs@vger.kernel.org
+To: Jeff Layton <jlayton@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-iw0-f171.google.com ([209.85.223.171]:60494 "EHLO
-	mail-iw0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757127AbZLNMNw (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 14 Dec 2009 07:13:52 -0500
-Received: by iwn1 with SMTP id 1so99584iwn.33
-        for <linux-nfs@vger.kernel.org>; Mon, 14 Dec 2009 04:13:50 -0800 (PST)
+Received: from fieldses.org ([174.143.236.118]:47750 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757519AbZLNPYT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 14 Dec 2009 10:24:19 -0500
+In-Reply-To: <20091214083843.5e6e73f5-9yPaYZwiELC+kQycOl6kW4xkIHaj4LzF@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I can not set nfs4leasetime value less than 10 seconds.
+On Mon, Dec 14, 2009 at 08:38:43AM -0500, Jeff Layton wrote:
+> On Sun, 13 Dec 2009 17:33:15 -0500
+> Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
+> 
+> > On Sun, 2009-12-13 at 16:39 -0500, J. Bruce Fields wrote: 
+> > > On a recent kernel:
+> > > 
+> > > 	# mount -tnfs4 pearlet1:/ /mnt/
+> > > 	# find /mnt/
+> > > 	/mnt/
+> > > 	find: File system loop detected; `/mnt/DIR' is part of the same
+> > > 	file system loop as `/mnt/'.
+> > > 
+> > > Here /mnt/DIR is a server-side mountpoint, hence has a different fsid
+> > > than /mnt/.  Wireshark confirms that the server is returning a different
+> > > fsid.  However, 'strace -v find /mnt/' shows stat returning
+> > > st_dev=makedev(0, 22) for both /mnt and /mnt/DIR.
+> > > 
+> > > If I then do a 'ls /mnt/DIR', followed by another find, the error goes
+> > > away, and this time an strace shows that stat is returning (0, 23) for
+> > > /mnt/DIR.
+> > > 
+> > > I don't see any obvious problem with the network trace, so it looks to
+> > > me like the client is failing to recognize the mountpoint when it
+> > > should?
+> > 
+> > This is a known consequence of the way we treat submounts (and
+> > referrals); we're basically treating them as a special kind of symlink.
+> > The problem then arises when syscalls such as stat() fail to set the
+> > LOOKUP_FOLLOW flag, and so the user is granted a temporary peek of the
+> > underlying inode.
+> > 
+> > I'm not sure how we should treat this. I suppose we could change the
+> > test in __link_path_walk() so that it always call follow_link() if the
+> > inode is not a symlink...
+> > 
+> 
+> I looked at this problem recently based on a request by some of our
+> coreutils folks. A bit of the discussion is here:
+> 
+>     https://bugzilla.redhat.com/show_bug.cgi?id=533569
+> 
+> ...and earlier:
+> 
+>     https://bugzilla.redhat.com/show_bug.cgi?id=501848
+> 
+> Jim Meyering also brought this up on LKML:
+> 
+>     http://lkml.org/lkml/2009/11/4/451
+> 
+> I'm a little leery of triggering a mount for any server-side mountpoint
+> that we just happen to have a peek at. That seems like it might get
+> expensive. Suppose you had 1000 filesystems mounted under the root
+> share here?
 
-there is a verification in __write_leasetime(). (lease < 10 || lease > 3600)
+For what it's worth, I'll admit that I ran across this just in
+artificial testing--I'm not claiming it was causing me a real problem.
 
-I am going to change this to ~2 second (to make NFS HA failover happen
-in less than 10 seconds with HeartBeat).
+--b.
 
-Any reason why is this checked for 10 (i.e. lease < 10) ... ?
-
-
-
-
-
-static ssize_t __write_leasetime(struct file *file, char *buf, size_t size)
-{
-        /* if size > 10 seconds, call
-         * nfs4_reset_lease() then write out the new lease (seconds) as reply
-         */
-        char *mesg = buf;
-        int rv, lease;
-
-        if (size > 0) {
-                if (nfsd_serv)
-                        return -EBUSY;
-                rv = get_int(&mesg, &lease);
-                if (rv)
-                        return rv;
-                if (lease < 10 || lease > 3600)
-                        return -EINVAL;
-                nfs4_reset_lease(lease);
-        }
-
-        return scnprintf(buf, SIMPLE_TRANSACTION_LIMIT, "%ld\n",
-                                                        nfs4_lease_time());
-}
-
--- 
-Tharindu Rukshan Bamunuarachchi
+> 
+> One idea in the mailing list discussion is to flag these inodes with
+> some sort of "i'm actually a mountpoint" flag and teach utilities that
+> care about inode numbers to deal with that. Not a great solution but it
+> wouldn't incur extra overhead.
+> 
+> -- 
+> Jeff Layton <jlayton@redhat.com>
