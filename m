@@ -1,52 +1,55 @@
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: Re: mountpoint-crossing
-Date: Sun, 13 Dec 2009 17:33:15 -0500
-Message-ID: <1260743595.3076.12.camel@localhost>
-References: <20091213213945.GB20421@fieldses.org>
+From: Tharindu Rukshan Bamunuarachchi <btharindu@gmail.com>
+Subject: Re: starting 90-second grace period : leasetime less than 10
+Date: Mon, 14 Dec 2009 17:40:20 +0530
+Message-ID: <f5b5ebae0912140410t2814d7bck688549103b3104ea@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Cc: linux-nfs@vger.kernel.org
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Content-Type: text/plain; charset=ISO-8859-1
+To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:48406 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751534AbZLMWdc convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 13 Dec 2009 17:33:32 -0500
-In-Reply-To: <20091213213945.GB20421@fieldses.org>
+Received: from mail-iw0-f171.google.com ([209.85.223.171]:60494 "EHLO
+	mail-iw0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757127AbZLNMNw (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 14 Dec 2009 07:13:52 -0500
+Received: by iwn1 with SMTP id 1so99584iwn.33
+        for <linux-nfs@vger.kernel.org>; Mon, 14 Dec 2009 04:13:50 -0800 (PST)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sun, 2009-12-13 at 16:39 -0500, J. Bruce Fields wrote: 
-> On a recent kernel:
-> 
-> 	# mount -tnfs4 pearlet1:/ /mnt/
-> 	# find /mnt/
-> 	/mnt/
-> 	find: File system loop detected; `/mnt/DIR' is part of the same
-> 	file system loop as `/mnt/'.
-> 
-> Here /mnt/DIR is a server-side mountpoint, hence has a different fsid
-> than /mnt/.  Wireshark confirms that the server is returning a different
-> fsid.  However, 'strace -v find /mnt/' shows stat returning
-> st_dev=makedev(0, 22) for both /mnt and /mnt/DIR.
-> 
-> If I then do a 'ls /mnt/DIR', followed by another find, the error goes
-> away, and this time an strace shows that stat is returning (0, 23) for
-> /mnt/DIR.
-> 
-> I don't see any obvious problem with the network trace, so it looks to
-> me like the client is failing to recognize the mountpoint when it
-> should?
+I can not set nfs4leasetime value less than 10 seconds.
 
-This is a known consequence of the way we treat submounts (and
-referrals); we're basically treating them as a special kind of symlink.
-The problem then arises when syscalls such as stat() fail to set the
-LOOKUP_FOLLOW flag, and so the user is granted a temporary peek of the
-underlying inode.
+there is a verification in __write_leasetime(). (lease < 10 || lease > 3600)
 
-I'm not sure how we should treat this. I suppose we could change the
-test in __link_path_walk() so that it always call follow_link() if the
-inode is not a symlink...
+I am going to change this to ~2 second (to make NFS HA failover happen
+in less than 10 seconds with HeartBeat).
 
-Cheers
-  Trond
+Any reason why is this checked for 10 (i.e. lease < 10) ... ?
+
+
+
+
+
+static ssize_t __write_leasetime(struct file *file, char *buf, size_t size)
+{
+        /* if size > 10 seconds, call
+         * nfs4_reset_lease() then write out the new lease (seconds) as reply
+         */
+        char *mesg = buf;
+        int rv, lease;
+
+        if (size > 0) {
+                if (nfsd_serv)
+                        return -EBUSY;
+                rv = get_int(&mesg, &lease);
+                if (rv)
+                        return rv;
+                if (lease < 10 || lease > 3600)
+                        return -EINVAL;
+                nfs4_reset_lease(lease);
+        }
+
+        return scnprintf(buf, SIMPLE_TRANSACTION_LIMIT, "%ld\n",
+                                                        nfs4_lease_time());
+}
+
+-- 
+Tharindu Rukshan Bamunuarachchi
