@@ -1,157 +1,179 @@
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [GIT PULL] Please pull a couple of extra bugfixes for the NFSv4.1
- client
-Date: Tue, 15 Dec 2009 15:10:02 -0500
-Message-ID: <1260907802.2883.7.camel@localhost>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: pull nfsd changes for 2.6.33
+Date: Tue, 15 Dec 2009 16:35:14 -0500
+Message-ID: <20091215213514.GJ5176@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org
 To: Linus Torvalds <torvalds@linux-foundation.org>
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S933206AbZLOUKe@vger.kernel.org>
-Sender: linux-kernel-owner@vger.kernel.org
+Return-path: <nfsv4-bounces@linux-nfs.org>
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/options/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@linux-nfs.org>
+List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
+Sender: nfsv4-bounces@linux-nfs.org
+Errors-To: nfsv4-bounces@linux-nfs.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Linus,
+The following nfsd-related changes are available from the for-2.6.33
+branch at:
 
-Please pull from the "bugfixes" branch of the repository at
+  git://linux-nfs.org/~bfields/linux.git for-2.6.33
 
-   git pull git://git.linux-nfs.org/projects/trondmy/nfs-2.6.git bugfixes
+Thanks to extreme persistence from Steve Dickson, this includes patches
+to fix an inconsistency between v4 and v2/v3 export paths, making it
+easier for clients to automatically negotiate between v2, v3, and v4.
 
-This will update the following files through the appended changesets.
+Boaz also did some long-overdue reshuffling of the nfsd headers to help
+clarify what's private to nfsd.
 
-These patches mainly fix issues with the NFSv4.1 session and state recovery code.
+And there are a few smaller bugfixes.
 
-  Cheers,
-    Trond
+--b.
 
-----
- fs/nfs/nfs4_fs.h             |    5 +
- fs/nfs/nfs4proc.c            |  203 ++++++++++++++++++++++++++++++++----------
- fs/nfs/nfs4state.c           |   61 ++++++++-----
- include/linux/sunrpc/sched.h |   14 +++-
- net/sunrpc/sched.c           |   15 +++
- 5 files changed, 224 insertions(+), 74 deletions(-)
+Andy Adamson (1):
+      nfsd41: use sv_max_mesg for forechannel max sizes
 
-commit 72211dbe727f7c1451aa5adfcbd1197b090eb276
-Author: Trond Myklebust <Trond.Myklebust@netapp.com>
-Date:   Tue Dec 15 14:47:36 2009 -0500
+Benny Halevy (1):
+      nfsd: use STATEID_FMT and STATEID_VAL for printing stateids
 
-    NFSv4: Release the sequence id before restarting a CLOSE rpc call
-    
-    If the CLOSE or OPEN_DOWNGRADE call triggers a state recovery, and has
-    to be resent, then we must release the seqid. Otherwise the open
-    recovery will wait for the close to finish, which causes a deadlock.
-    
-    This is mainly a NFSv4.1 problem, although it can theoretically happen
-    with NFSv4.0 too, in a OPEN_DOWNGRADE situation.
-    
-    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+Boaz Harrosh (12):
+      nfsd: Remove unused dprintk
+      sunrpc: Clean never used include files
+      nfsd: Fix independence of a few nfsd related headers
+      nfsd: Headers Independence and include cleanups
+      nfsd: Source files #include cleanups
+      compat.c: Remove dependence on nfsd private headers
+      parsic: remove un-used nfsd #includes
+      sparc: remove un-used nfsd #includes
+      s390: remove un-used nfsd #includes
+      lockd: Remove un-used nfsd headers #includes
+      vfs: nfsctl.c un-used nfsd #includes
+      nfsd: Move private headers to source directory
 
-commit 68bf05efb7facbcf4a7b8d6b48a0800a90895511
-Author: Andy Adamson <andros@netapp.com>
-Date:   Tue Dec 15 12:55:02 2009 -0500
+Frank Filz (1):
+      nfsd: Fix sort_pacl in fs/nfsd/nf4acl.c to actually sort groups
 
-    nfs41: fix session fore channel negotiation
-    
-    If the rsize or wsize is not set on the mount command, negotiate the highest
-    supported rsize and wsize in session creation.
-    
-    Fixes a bug where the client negotiated nfs41_maxwrite_overhead as
-    ca_maxrequestsize and nfs41_maxread_overhead as ca_maxresponsesize resulting
-    in NFS4ERR_REQ_TOO_BIG errors on writes.
-    
-    Signed-off-by: Andy Adamson <andros@netapp.com>
-    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+J. Bruce Fields (26):
+      nfsd: fix Documentation typo
+      nfsd4: cross mountpoints when looking up parents
+      nfsd: minor nfsd_lookup cleanup
+      nfsd4: fix error return when pseudoroot missing
+      Merge commit 'v2.6.32-rc5' into for-2.6.33
+      nfs: new subdir Documentation/filesystems/nfs
+      nfsd4.1: fix session memory use calculation
+      nfsd4.1: common slot allocation size calculation
+      nfsd4: don't try to map gid's in generic rpc code
+      nfs: move more to Documentation/filesystems/nfs
+      nfsd: make fs/nfsd/vfs.h for common includes
+      Revert "knfsd: avoid overloading the CPU scheduler with enormous load averages"
+      Merge commit 'v2.6.32-rc8' into HEAD
+      nfsd: simplify fh_verify access checks
+      nfsd4: fix share mode permissions
+      nfsd: new interface to advertise export features
+      nfsd: let "insecure" flag vary by pseudoflavor
+      nfsd4: don't continue "under" mounts in V4ROOT case
+      nfsd: filter lookup results in V4ROOT case
+      nfsd: filter readdir results in V4ROOT case
+      nfsd: allow exports of symlinks
+      nfsd: make V4ROOT exports read-only
+      nfsd: enable V4ROOT exports
+      nfsd: remove unused field rq_reffh
+      nfsd: move most of nfsfh.h to fs/nfsd
+      nfsd: remove pointless paths in file headers
 
-commit a5523b84c40d34d2c30b45096fbb099b98e4b5a3
-Author: Andy Adamson <andros@netapp.com>
-Date:   Mon Dec 14 15:46:16 2009 -0500
+Peter Staubach (1):
+      nfsd: register NFS_ACL with rpcbind
 
-    nfs41: do not zero seqid portion of stateid on close
-    
-    Remove code left over from a previous minorversion draft.
-    which specified zeroing seqid portions of stateid's.
-    
-    Signed-off-by: Andy Adamson <andros@netapp.com>
-    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+Steve Dickson (2):
+      nfsd: introduce export flag for v4 pseudoroot
+      nfsd: restrict filehandles accepted in V4ROOT case
 
-commit 5601a00d671fe89f9b087513244abcd08ad67e7d
-Author: Alexandros Batsakis <batsakis@netapp.com>
-Date:   Mon Dec 14 21:27:58 2009 -0800
+ Documentation/filesystems/00-INDEX                 |   12 +-
+ Documentation/filesystems/nfs/00-INDEX             |   16 ++
+ Documentation/filesystems/{ => nfs}/Exporting      |    0
+ .../filesystems/{ => nfs}/knfsd-stats.txt          |    0
+ Documentation/filesystems/{ => nfs}/nfs-rdma.txt   |    0
+ Documentation/filesystems/{ => nfs}/nfs.txt        |    0
+ .../filesystems/{ => nfs}/nfs41-server.txt         |    9 +-
+ Documentation/filesystems/{ => nfs}/nfsroot.txt    |    0
+ Documentation/filesystems/{ => nfs}/rpc-cache.txt  |    0
+ Documentation/filesystems/porting                  |    2 +-
+ Documentation/kernel-parameters.txt                |    6 +-
+ arch/parisc/kernel/sys_parisc32.c                  |    6 -
+ arch/s390/kernel/compat_linux.c                    |    6 -
+ arch/s390/kernel/compat_linux.h                    |    4 -
+ arch/sparc/kernel/sys_sparc32.c                    |    5 -
+ fs/cifs/export.c                                   |    2 +-
+ fs/compat.c                                        |    2 -
+ fs/exportfs/expfs.c                                |    2 +-
+ fs/isofs/export.c                                  |    2 +-
+ fs/lockd/svc4proc.c                                |    4 -
+ fs/lockd/svcproc.c                                 |    4 -
+ fs/nfs/Kconfig                                     |    2 +-
+ fs/nfsctl.c                                        |    2 -
+ fs/nfsd/auth.c                                     |   12 +-
+ {include/linux => fs}/nfsd/cache.h                 |    5 +-
+ fs/nfsd/export.c                                   |   65 ++++---
+ fs/nfsd/lockd.c                                    |   10 +-
+ fs/nfsd/nfs2acl.c                                  |   27 ++-
+ fs/nfsd/nfs3acl.c                                  |   15 +-
+ fs/nfsd/nfs3proc.c                                 |   20 +--
+ fs/nfsd/nfs3xdr.c                                  |   15 +--
+ fs/nfsd/nfs4acl.c                                  |   12 +-
+ fs/nfsd/nfs4callback.c                             |   19 +--
+ fs/nfsd/nfs4idmap.c                                |   17 +--
+ fs/nfsd/nfs4proc.c                                 |   19 +--
+ fs/nfsd/nfs4recover.c                              |   16 +--
+ fs/nfsd/nfs4state.c                                |   84 +++-----
+ fs/nfsd/nfs4xdr.c                                  |   26 +--
+ fs/nfsd/nfscache.c                                 |   14 +--
+ fs/nfsd/nfsctl.c                                   |   51 +++---
+ {include/linux => fs}/nfsd/nfsd.h                  |   98 +---------
+ fs/nfsd/nfsfh.c                                    |  102 ++++++----
+ fs/nfsd/nfsfh.h                                    |  208 ++++++++++++++++++++
+ fs/nfsd/nfsproc.c                                  |   22 +--
+ fs/nfsd/nfssvc.c                                   |   22 +--
+ fs/nfsd/nfsxdr.c                                   |   12 +-
+ {include/linux => fs}/nfsd/state.h                 |   14 +-
+ fs/nfsd/stats.c                                    |   11 +-
+ fs/nfsd/vfs.c                                      |  134 +++++++------
+ fs/nfsd/vfs.h                                      |  101 ++++++++++
+ {include/linux => fs}/nfsd/xdr.h                   |   10 +-
+ {include/linux => fs}/nfsd/xdr3.h                  |    4 +-
+ {include/linux => fs}/nfsd/xdr4.h                  |    5 +-
+ include/linux/exportfs.h                           |    2 +-
+ include/linux/nfs_xdr.h                            |    1 +
+ include/linux/nfsacl.h                             |    1 +
+ include/linux/nfsd/export.h                        |   19 ++-
+ include/linux/nfsd/nfsfh.h                         |  206 +-------------------
+ include/linux/nfsd/syscall.h                       |    8 +-
+ include/linux/sunrpc/debug.h                       |    3 -
+ include/linux/sunrpc/rpc_rdma.h                    |    2 +
+ include/linux/sunrpc/svc.h                         |    7 -
+ net/ipv4/Kconfig                                   |    6 +-
+ net/ipv4/ipconfig.c                                |    2 +-
+ net/sunrpc/svc_xprt.c                              |   31 +--
+ net/sunrpc/svcauth_unix.c                          |   53 +++---
+ 66 files changed, 719 insertions(+), 878 deletions(-)
+ create mode 100644 Documentation/filesystems/nfs/00-INDEX
+ rename Documentation/filesystems/{ => nfs}/Exporting (100%)
+ rename Documentation/filesystems/{ => nfs}/knfsd-stats.txt (100%)
+ rename Documentation/filesystems/{ => nfs}/nfs-rdma.txt (100%)
+ rename Documentation/filesystems/{ => nfs}/nfs.txt (100%)
+ rename Documentation/filesystems/{ => nfs}/nfs41-server.txt (96%)
+ rename Documentation/filesystems/{ => nfs}/nfsroot.txt (100%)
+ rename Documentation/filesystems/{ => nfs}/rpc-cache.txt (100%)
+ rename {include/linux => fs}/nfsd/cache.h (95%)
+ rename {include/linux => fs}/nfsd/nfsd.h (79%)
+ create mode 100644 fs/nfsd/nfsfh.h
+ rename {include/linux => fs}/nfsd/state.h (98%)
+ create mode 100644 fs/nfsd/vfs.h
+ rename {include/linux => fs}/nfsd/xdr.h (96%)
+ rename {include/linux => fs}/nfsd/xdr3.h (99%)
+ rename {include/linux => fs}/nfsd/xdr4.h (99%)
 
-    nfs: run state manager in privileged mode
-    
-    Signed-off-by: Alexandros Batsakis <batsakis@netapp.com>
-    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-
-commit b257957e502a2c467c3c75005215a3f45ecb7f25
-Author: Alexandros Batsakis <batsakis@netapp.com>
-Date:   Mon Dec 14 21:27:57 2009 -0800
-
-    nfs: make recovery state manager operations privileged
-    
-    Signed-off-by: Alexandros Batsakis <batsakis@netapp.com>
-    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-
-commit 689cf5c15baf603a8041565ff0bd0d65d1634fd7
-Author: Alexandros Batsakis <batsakis@netapp.com>
-Date:   Mon Dec 14 21:27:56 2009 -0800
-
-    nfs: enforce FIFO ordering of operations trying to acquire slot
-    
-    Signed-off-by: Alexandros Batsakis <batsakis@netapp.com>
-    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-
-commit cf3b01b54880debb01ea7d471123da5887a7c2cb
-Author: Alexandros Batsakis <batsakis@netapp.com>
-Date:   Mon Dec 14 21:27:55 2009 -0800
-
-    rpc: add a new priority in RPC task
-    
-    Signed-off-by: Alexandros Batsakis <batsakis@netapp.com>
-    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-
-commit 40ead580ae70bba1f66f426aeb938051e4e83900
-Author: Alexandros Batsakis <batsakis@netapp.com>
-Date:   Mon Dec 14 21:27:54 2009 -0800
-
-    nfs: remove rpc_task argument from nfs4_find_slot
-    
-    Signed-off-by: Alexandros Batsakis <batsakis@netapp.com>
-    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-
-commit 48f186124220794fce85ed1439fc32f16f69d3e2
-Author: Alexandros Batsakis <batsakis@netapp.com>
-Date:   Mon Dec 14 21:27:53 2009 -0800
-
-    rpc: add rpc_queue_empty function
-    
-    Signed-off-by: Alexandros Batsakis <batsakis@netapp.com>
-    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-
-commit afe6c27ccb8cc31ce8ed0bd3589ce549f523c8e7
-Author: Alexandros Batsakis <batsakis@netapp.com>
-Date:   Wed Dec 9 01:50:14 2009 -0800
-
-    nfs: change nfs4_do_setlk params to identify recovery type
-    
-    Signed-off-by: Alexandros Batsakis <batsakis@netapp.com>
-    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-
-commit 0f7e720694e88bacf808b525069fb72d1c237171
-Author: Alexandros Batsakis <batsakis@netapp.com>
-Date:   Wed Dec 9 01:50:13 2009 -0800
-
-    nfs: do not do a LOOKUP after open
-    
-    Signed-off-by: Alexandros Batsakis <batsakis@netapp.com>
-    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-
-commit 3bfb0fc59192f7fffae0a1caada8dc68af53997a
-Author: Alexandros Batsakis <batsakis@netapp.com>
-Date:   Wed Dec 9 01:50:11 2009 -0800
-
-    nfs: minor cleanup of session draining
-    
-    Signed-off-by: Alexandros Batsakis <batsakis@netapp.com>
-    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+--b.
