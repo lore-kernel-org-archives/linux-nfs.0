@@ -1,63 +1,54 @@
-From: Neil Brown <neilb@suse.de>
-Subject: Re: [PATCH 6/9] sunrpc/cache: retry cache lookups that return
- -ETIMEDOUT
-Date: Tue, 15 Dec 2009 17:27:29 +1100
-Message-ID: <20091215172729.5e1d0190@notabene.brown>
-References: <20090909062539.20462.67466.stgit@notabene.brown>
-	<20090909063254.20462.41616.stgit@notabene.brown>
-	<20091202221127.GB18690@fieldses.org>
-	<20091203165729.GB1393@fieldses.org>
-	<20091204153845.1ec83de5@notabene.brown>
-	<20091205011742.GH22497@fieldses.org>
+From: Mi Jinlong <mijinlong@cn.fujitsu.com>
+Subject: [RFC] server's statd and lockd will not sync after its nfslock restart
+Date: Tue, 15 Dec 2009 18:02:11 +0800
+Message-ID: <4B275EA3.9030603@cn.fujitsu.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Cc: linux-nfs@vger.kernel.org
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Content-Type: text/plain; charset=UTF-8
+To: "Trond.Myklebust" <trond.myklebust@fys.uio.no>,
+	"J. Bruce Fields" <bfields@fieldses.org>,
+	NFSv3 list <linux-nfs@vger.kernel.org>,
+	Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:46110 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752560AbZLOG1j (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 15 Dec 2009 01:27:39 -0500
-In-Reply-To: <20091205011742.GH22497@fieldses.org>
+Received: from cn.fujitsu.com ([222.73.24.84]:56755 "EHLO song.cn.fujitsu.com"
+	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
+	id S1751293AbZLOKAW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 15 Dec 2009 05:00:22 -0500
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 4 Dec 2009 20:17:42 -0500
-"J. Bruce Fields" <bfields@fieldses.org> wrote:
+Hi,
 
-> > 
-> > How about this as an alternate.  I have only compile tested it, nothing more.
-> > But if it looks good to you I'll make sure it really works.  
-> 
-> Well, without having really thinking about it:
-> 
-> 	- If this were two separate patches, I'd have an easier time
-> 	  sorting out the interesting stuff from the trivial (though
-> 	  nevertheless good) hash-function reshuffling.
+When testing the NLM at the latest kernel(2.6.32),  i find a bug.
+When a client hold locks, after server restart its nfslock service, 
+server's statd will not synchronize with lockd.
+If server restart nfslock twice or more, client's lock will be lost.
 
-I'll see what I can come up with...
+Test process:
 
-> 	- Adding code to the common lookup_and_check() instead of to
-> 	  every caller certainly seems better, but too bad about the
-> 	  special cases that remain.
+  Step1: client open nfs file.
+  Step2: client using fcntl to get lock.
+  Step3: server restart it's nfslock service.
 
-yeah.... I could possibly add a pass-by-reference to lookup_and_check
-which points to a possible cached value, but that would have
-only one user, so the special case would be moved elsewhere...
-??
+After step3, server's lockd records client holding locks, but statd's 
+/var/lib/nfs/statd/sm/ directory is empty. It means statd and lockd are 
+not sync. If server restart it's nfslock again, client's locks will be lost.
 
-> 	- Something still seems odd here: we shouldn't ever have
-> 	  duplicate cache entries with the same key, because during
-> 	  their lifetimes cache entries are always kept in the hash.  So
-> 	  why do we need extra code to check for that case?  I may just
-> 	  be forgetting what we're doing here.  Should I go reread the
-> 	  rest of the series?
+The Primary Reason:
 
-When sunrpc_update_cache is called to update and item that is
-already valid, it unhashes that item and creates a new one.
-(The unhashed item disappears once all the refcounts go).
-So if we wait for user-space to update an entry for us, we
-might find out that it has been unhashed, so we need to find
-the new one.
+  At step3, when client's reclaimed lock request is sent to server, 
+client's host(the host struct) is reused but not be re-monitored at
+server's lockd. After that, statd and lockd are not sync.
 
-NeilBrown
+Question:
+
+In my opinion, if lockd is allowed reuseing the client's host, it should
+send a SM_MON to statd when reuse. If not allowed, the client's host should 
+be destroyed immediately.
+ 
+What should lockd to do?  Reuse ? Destroy ? Or some other action?
+
+
+thanks,
+
+Mi Jinlong
+
