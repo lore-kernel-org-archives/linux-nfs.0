@@ -1,17 +1,17 @@
 From: Trond Myklebust <Trond.Myklebust@netapp.com>
 Subject: Re: null dereference in nfs4_begin_drain_session
-Date: Tue, 15 Dec 2009 17:32:00 -0500
-Message-ID: <1260916320.3219.1.camel@localhost>
+Date: Tue, 15 Dec 2009 17:52:20 -0500
+Message-ID: <1260917540.3219.2.camel@localhost>
 References: <20091215222449.GD8686@fieldses.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="UTF-8"
-Cc: Trond Myklebust <trond@netapp.com>, linux-nfs@vger.kernel.org
+Cc: linux-nfs@vger.kernel.org
 To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:49443 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:55012 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932201AbZLOWcr convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 Dec 2009 17:32:47 -0500
+	id S933855AbZLOWxK convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 Dec 2009 17:53:10 -0500
 In-Reply-To: <20091215222449.GD8686@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
@@ -62,8 +62,74 @@ On Tue, 2009-12-15 at 17:24 -0500, J. Bruce Fields wrote:
 > note: 192.168.122.129[3137] exited with preempt_count 1
 > 
 
-Argh! This is exactly why I wanted those nfs4_begin_drain_session()
-calls out of the state manager main loop. They _only_ make sense for the
-NFSv4.1 code path, damnit!
+The following patch should suffice to fix this...
 
-Trond
+Cheers
+  Trond
+----------------------------------------------------------------------------------------------------- 
+commit 380454126f1357db9270f9d1ca05dfe1a6e4ad47
+Author: Trond Myklebust <Trond.Myklebust@netapp.com>
+Date:   Tue Dec 15 17:36:57 2009 -0500
+
+    NFSv4: Fix a regression in the NFSv4 state manager
+    
+    Commit 5601a00d671fe89f9b087513244abcd08ad67e7d (nfs: run state manager
+    in privileged mode) introduces a regression in the NFSv4 code when
+    compiled with CONFIG_NFS_V4_1. The calls to nfs4_end_drain_session()
+    from the main loop in nfs4_state_manager() Oops due to the lack of an
+    NFSv4.1 session when running NFSv4.0.
+    
+    The fix is to move those two calls back into nfs41_init_clientid() and
+    nfs4_reset_session().
+    
+    The calls to nfs4_end_drain_session() that remain inside
+    nfs4_state_manager() are safe, since the NFSv4.0 code will never set the
+    NFS4CLNT_SESSION_DRAINING bit.
+    
+    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+
+diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+index 18e8b26..6d263ed 100644
+--- a/fs/nfs/nfs4state.c
++++ b/fs/nfs/nfs4state.c
+@@ -176,6 +176,7 @@ int nfs41_init_clientid(struct nfs_client *clp, struct rpc_cred *cred)
+ {
+ 	int status;
+ 
++	nfs4_begin_drain_session(clp);
+ 	status = nfs4_proc_exchange_id(clp, cred);
+ 	if (status != 0)
+ 		goto out;
+@@ -1274,6 +1275,7 @@ static int nfs4_reset_session(struct nfs_client *clp)
+ {
+ 	int status;
+ 
++	nfs4_begin_drain_session(clp);
+ 	status = nfs4_proc_destroy_session(clp->cl_session);
+ 	if (status && status != -NFS4ERR_BADSESSION &&
+ 	    status != -NFS4ERR_DEADSESSION) {
+@@ -1299,7 +1301,6 @@ out:
+ 
+ #else /* CONFIG_NFS_V4_1 */
+ static int nfs4_reset_session(struct nfs_client *clp) { return 0; }
+-static int nfs4_begin_drain_session(struct nfs_client *clp) { return 0; }
+ static int nfs4_end_drain_session(struct nfs_client *clp) { return 0; }
+ #endif /* CONFIG_NFS_V4_1 */
+ 
+@@ -1332,7 +1333,6 @@ static void nfs4_state_manager(struct nfs_client *clp)
+ 	for(;;) {
+ 		if (test_and_clear_bit(NFS4CLNT_LEASE_EXPIRED, &clp->cl_state)) {
+ 			/* We're going to have to re-establish a clientid */
+-			nfs4_begin_drain_session(clp);
+ 			status = nfs4_reclaim_lease(clp);
+ 			if (status) {
+ 				nfs4_set_lease_expired(clp, status);
+@@ -1359,7 +1359,6 @@ static void nfs4_state_manager(struct nfs_client *clp)
+ 		/* Initialize or reset the session */
+ 		if (test_and_clear_bit(NFS4CLNT_SESSION_RESET, &clp->cl_state)
+ 		   && nfs4_has_session(clp)) {
+-			nfs4_begin_drain_session(clp);
+ 			status = nfs4_reset_session(clp);
+ 			if (test_bit(NFS4CLNT_LEASE_EXPIRED, &clp->cl_state))
+ 				continue;
+
