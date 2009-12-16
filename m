@@ -1,51 +1,73 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:45560 "EHLO
-	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1758116AbZLIWVf (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 9 Dec 2009 17:21:35 -0500
-Message-ID: <4B2022F5.9060002@panasas.com>
-Date: Thu, 10 Dec 2009 00:21:41 +0200
-From: Benny Halevy <bhalevy@panasas.com>
-To: pnfs@linux-nfs.org
-CC: "J. Bruce Fields" <bfields@citi.umich.edu>, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org
-Subject: Re: [pnfs] [PATCH 9/9] SQUASHME: pnfs: filelayout: mask out server's
- MDS capability flag for DSs
-References: <4B1F7AF6.2080305@panasas.com> <1260354530-12578-1-git-send-email-bhalevy@panasas.com>
-In-Reply-To: <1260354530-12578-1-git-send-email-bhalevy@panasas.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mx1.redhat.com ([209.132.183.28]:14674 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S964944AbZLPTkm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 16 Dec 2009 14:40:42 -0500
+Received: from int-mx02.intmail.prod.int.phx2.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
+	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id nBGJeflG005692
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Wed, 16 Dec 2009 14:40:42 -0500
+From: Jeff Layton <jlayton@redhat.com>
+To: steved@redhat.com
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH 0/2] nfs-utils: add testing infrastructure to nfs-utils
+Date: Wed, 16 Dec 2009 14:40:38 -0500
+Message-Id: <1260992440-8234-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Dec. 09, 2009, 12:28 +0200, Benny Halevy <bhalevy@panasas.com> wrote:
-> When establishing a session with a DS mask out its MDS
-> exchange_id flag so we know we use it as DS-only.
-> 
-> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-> ---
->  fs/nfs/nfs4filelayoutdev.c |    3 +++
->  1 files changed, 3 insertions(+), 0 deletions(-)
-> 
-> diff --git a/fs/nfs/nfs4filelayoutdev.c b/fs/nfs/nfs4filelayoutdev.c
-> index 128715a..cb8ae88 100644
-> --- a/fs/nfs/nfs4filelayoutdev.c
-> +++ b/fs/nfs/nfs4filelayoutdev.c
-> @@ -272,6 +272,9 @@ nfs4_pnfs_ds_create(struct nfs_server *mds_srv, struct nfs4_pnfs_ds *ds)
->  	if (err)
->  		goto out_put;
->  
-> +	/* mask out the server's MDS capability flag */
-> +	clp->cl_exchange_flags |= EXCHGID4_FLAG_USE_PNFS_DS;
-> +
+This set is the same as the one I sent a month or so ago, with some
+small changes to account for header file changes in Chuck's tree. This
+patchset depends on the patches that add libnsm.a to nfs-utils.
 
-Duh, that should be
-	clp->cl_exchange_flags &= ~EXCHGID4_FLAG_USE_PNFS_MDS;
+This patchset is intended as a starting point for an automated test
+suite for nfs-utils. The idea here is to start simply and add a suite of
+tests that we can run via "make check" -- the standard automake method
+for running tests.
 
-Or I'm just utterly tired ;-)
+Clearly there are limits to what we can test without a multi-host test
+harness. My hope is that this should help keep us from breaking basic
+functionality by allowing us to test it in a very simple fashion. At
+some point in the future we should also consider how to best handle
+multi-machine testing, but I see that as complimenting this code rather
+than replacing it.
 
-Benny
+For this set, the focus is on testing statd, which is particularly
+susceptible to subtle breakage. Problems with it are often not noticed
+until lock recovery breaks, and that may greatly lag the actual
+breakage.
 
->  	if (!(clp->cl_exchange_flags & EXCHGID4_FLAG_USE_PNFS_DS)) {
->  		printk(KERN_INFO "ip:port %s is not a pNFS Data Server\n",
->  			ds->r_addr);
+To faciitate statd testing, I've added a "statdtest" program that can
+serve as a synthetic statd client and an NLM simulator. It's very
+loosely based on the old statd simulator code. That program is dependent
+on some of Chuck Lever's recent statd patches -- notably the ones that
+break out common NSM code into libnsm.a.
+
+For this initial drop, I'm just adding a single test that tests mon and
+unmon functionality with statd. Adding more tests should fairly simple
+to do.
+
+Jeff Layton (2):
+  nfs-utils: introduce new statd testing simulator
+  nfs-utils: add initial tests for statd that run via "make check"
+
+ Makefile.am                          |    2 +-
+ configure.ac                         |    4 +-
+ tests/Makefile.am                    |    7 +
+ tests/statdtest/Makefile.am          |   45 ++++
+ tests/statdtest/README               |   12 +
+ tests/statdtest/nlm_sm_inter.x       |   43 +++
+ tests/statdtest/statdtest.c          |  464 ++++++++++++++++++++++++++++++++++
+ tests/t0001-statd-basic-mon-unmon.sh |   55 ++++
+ tests/test-lib.sh                    |   41 +++
+ 9 files changed, 671 insertions(+), 2 deletions(-)
+ create mode 100644 tests/Makefile.am
+ create mode 100644 tests/statdtest/Makefile.am
+ create mode 100644 tests/statdtest/README
+ create mode 100644 tests/statdtest/nlm_sm_inter.x
+ create mode 100644 tests/statdtest/statdtest.c
+ create mode 100755 tests/t0001-statd-basic-mon-unmon.sh
+ create mode 100755 tests/test-lib.sh
+
