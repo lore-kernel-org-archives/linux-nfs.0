@@ -1,189 +1,119 @@
 From: Benny Halevy <bhalevy@panasas.com>
-Subject: Re: [RFC 04/11] nfsd: mark client for renew
-Date: Wed, 16 Dec 2009 23:56:05 +0200
-Message-ID: <4B295775.1000301@panasas.com>
-References: <4B291B4C.3060603@panasas.com> <1260985272-21481-1-git-send-email-bhalevy@panasas.com> <20091216204839.GA28822@fieldses.org> <20091216205301.GB28822@fieldses.org>
+Subject: Re: [RFC 10/11] nfsd: close delegation only on last reference
+Date: Thu, 17 Dec 2009 00:04:37 +0200
+Message-ID: <4B295975.5010007@panasas.com>
+References: <4B291B4C.3060603@panasas.com> <1260985349-21701-1-git-send-email-bhalevy@panasas.com> <20091216211848.GD28822@fieldses.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Cc: linux-nfs@vger.kernel.org, pnfs@linux-nfs.org
 To: "J. Bruce Fields" <bfields@citi.umich.edu>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:20705 "EHLO
+Received: from daytona.panasas.com ([67.152.220.89]:34862 "EHLO
 	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S932754AbZLPV4J (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 16 Dec 2009 16:56:09 -0500
-In-Reply-To: <20091216205301.GB28822@fieldses.org>
+	with ESMTP id S932421AbZLPWEj (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 16 Dec 2009 17:04:39 -0500
+In-Reply-To: <20091216211848.GD28822@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Dec. 16, 2009, 22:53 +0200, " J. Bruce Fields" <bfields@citi.umich.edu> wrote:
-> On Wed, Dec 16, 2009 at 03:48:39PM -0500,  J. Bruce Fields wrote:
->> On Wed, Dec 16, 2009 at 07:41:12PM +0200, Benny Halevy wrote:
->>> Mark the nfs4_client for renew on operations holding a stateid (or nfs41
->>> OP_SEQUENCE).
->>> Do the actual lru list update when the compound processing is complete.
->>> This will prevents the client from being expired by the laundromat while
->>> the compound is in progress.
->>>
->>> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
->>> ---
->>>  fs/nfsd/nfs4proc.c  |    5 +++++
->>>  fs/nfsd/nfs4state.c |   39 +++++++++++++++++++++++++++++++++++----
->>>  fs/nfsd/state.h     |    1 +
->>>  fs/nfsd/xdr4.h      |    1 +
->>>  4 files changed, 42 insertions(+), 4 deletions(-)
->>>
->>> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
->>> index 37514c4..a8e9731 100644
->>> --- a/fs/nfsd/nfs4proc.c
->>> +++ b/fs/nfsd/nfs4proc.c
->>> @@ -1010,6 +1010,7 @@ nfsd4_proc_compound(struct svc_rqst *rqstp,
->>>  	resp->opcnt = 0;
->>>  	resp->rqstp = rqstp;
->>>  	resp->cstate.minorversion = args->minorversion;
->>> +	resp->cstate.renew_client = NULL;
->>>  	resp->cstate.replay_owner = NULL;
->>>  	fh_init(&resp->cstate.current_fh, NFS4_FHSIZE);
->>>  	fh_init(&resp->cstate.save_fh, NFS4_FHSIZE);
->>> @@ -1114,6 +1115,10 @@ encode_op:
->>>  	fh_put(&resp->cstate.current_fh);
->>>  	fh_put(&resp->cstate.save_fh);
->>>  	BUG_ON(resp->cstate.replay_owner);
->>> +	if (resp->cstate.renew_client) {
->>> +		renew_client(resp->cstate.renew_client);
->>> +		put_nfs4_client(resp->cstate.renew_client);
->>> +	}
->>>  out:
->>>  	nfsd4_release_compoundargs(args);
->>>  	/* Reset deferral mechanism for RPC deferrals */
->>> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
->>> index c456551..16ccab3 100644
->>> --- a/fs/nfsd/nfs4state.c
->>> +++ b/fs/nfsd/nfs4state.c
->>> @@ -634,8 +634,39 @@ free_session(struct kref *kref)
->>>  }
->>>  
->>>  static inline void
->>> +mark_client_for_renew(struct nfsd4_compound_state *cstate,
->>> +		      struct nfs4_client *clp)
->>> +{
->>> +	int old_state = atomic_cmpxchg(&clp->cl_state, CL_STATE_NORMAL,
->>> +				       CL_STATE_RENEW);
->>> +
->>> +	if (old_state != CL_STATE_EXPIRED) {
->>> +		cstate->renew_client = clp;
->>> +		get_nfs4_client(clp);
->> If cstate->renew_client is already set, then we may leak a reference
->> count here, right?
->>
->> Also: at least in the v4 case, I don't think there's anything preventing
->> cstate->renew_client being already set to a different client.  (With
->> sessions hopefully that's not possible.)
->>
+On Dec. 16, 2009, 23:18 +0200, " J. Bruce Fields" <bfields@citi.umich.edu> wrote:
+> On Wed, Dec 16, 2009 at 07:42:29PM +0200, Benny Halevy wrote:
+>> as dl_vfs_file may be used while the delegation structure is
+>> being referenced.
+> 
+> A callback to the client (which can last a while if the client is
+> unresponsive) can also hold a reference to the delegation.  It doesn't
+> need a reference on the file.
+> 
+> I guess I can't see any bug in holding a reference on the file in that
+> case, but it seems better not to (if only to allow freeing it earlier).
+> 
+> Maybe the limited amount of information used by the callback should be
+> reference-counted separately.  I'm not sure.
+> 
 
-Yeah.  That's a valid point.  So if it is already set then
-if it is the same client we can do nothing, else we can renew
-the previous one here put it and replace cstate->renew_client.
+If we lock the delegation, say by grabbing the global deleg_lock
+(or a fine-grained per-deleg lock) we can make sure dl_vfs_file
+is accessed atomically in nfs4_new_open and nfs4_preprocess_stateid_op
+vs. being freed in close_delegation.
+
+That said, it looks like get_file on the *filpp nfs4_preprocess_stateid_op
+is setting (on both legs of the is_delegation_stateid() condition)
+should happen inside nfs4_preprocess_stateid_op rather while it holds
+a ref count on the delegation (and under the lock proposed above)
+rather than by its callers, nfsd4_read and nfsd4_write.
 
 Benny
 
->> This patch doesn't appear to stand alone as it removes the client
->> renewals without yet replacing them by anything.
-> 
-> Sorry, scratch the last sentence, I was overlooking the second
-> nfs4proc.c chunk above!
-> 
 > --b.
 > 
->> --b.
+>> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+>> ---
+>>  fs/nfsd/nfs4state.c |   27 +++++++++++++--------------
+>>  1 files changed, 13 insertions(+), 14 deletions(-)
 >>
->>> +	}
->>> +
->>> +	dprintk("%s: client (clientid %08x/%08x) %s\n",
->>> +		__func__,
->>> +		clp->cl_clientid.cl_boot,
->>> +		clp->cl_clientid.cl_id,
->>> +		old_state == CL_STATE_EXPIRED ? "already expired" :
->>> +						"marked for renew");
->>> +}
->>> +
->>> +void
->>>  renew_client(struct nfs4_client *clp)
->>>  {
->>> +	int old_state = atomic_cmpxchg(&clp->cl_state, CL_STATE_RENEW,
->>> +				       CL_STATE_NORMAL);
->>> +
->>> +	if (old_state == CL_STATE_EXPIRED) {
->>> +		dprintk("%s: client (clientid %08x/%08x) already expired\n",
->>> +			__func__,
->>> +			clp->cl_clientid.cl_boot,
->>> +			clp->cl_clientid.cl_id);
->>> +		return;
->>> +	}
->>> +
->>>  	/*
->>>  	* Move client to the end to the LRU list.
->>>  	*/
->>> @@ -1471,7 +1502,7 @@ out:
->>>  	/* Renew the clientid on success and on replay */
->>>  	if (cstate->session) {
->>>  		nfs4_lock_state();
->>> -		renew_client(session->se_client);
->>> +		mark_client_for_renew(cstate, session->se_client);
->>>  		nfs4_unlock_state();
->>>  	}
->>>  	dprintk("%s: return %d\n", __func__, ntohl(status));
->>> @@ -2830,7 +2861,7 @@ nfs4_preprocess_stateid_op(struct nfsd4_compound_state *cstate,
->>>  		status = nfs4_check_delegmode(dp, flags);
->>>  		if (status)
->>>  			goto out;
->>> -		renew_client(dp->dl_client);
->>> +		mark_client_for_renew(cstate, dp->dl_client);
->>>  		if (filpp)
->>>  			*filpp = dp->dl_vfs_file;
->>>  	} else { /* open or lock stateid */
->>> @@ -2850,7 +2881,7 @@ nfs4_preprocess_stateid_op(struct nfsd4_compound_state *cstate,
->>>  		status = nfs4_check_openmode(stp, flags);
->>>  		if (status)
->>>  			goto out;
->>> -		renew_client(stp->st_stateowner->so_client);
->>> +		mark_client_for_renew(cstate, stp->st_stateowner->so_client);
->>>  		if (filpp)
->>>  			*filpp = stp->st_vfs_file;
->>>  	}
->>> @@ -2970,7 +3001,7 @@ nfs4_preprocess_seqid_op(struct nfsd4_compound_state *cstate, u32 seqid,
->>>  	status = check_stateid_generation(stateid, &stp->st_stateid, flags);
->>>  	if (status)
->>>  		return status;
->>> -	renew_client(sop->so_client);
->>> +	mark_client_for_renew(cstate, sop->so_client);
->>>  	return nfs_ok;
->>>  
->>>  check_replay:
->>> diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
->>> index 21109d4..b684c84 100644
->>> --- a/fs/nfsd/state.h
->>> +++ b/fs/nfsd/state.h
->>> @@ -385,6 +385,7 @@ extern void nfs4_lock_state(void);
->>>  extern void nfs4_unlock_state(void);
->>>  extern int nfs4_in_grace(void);
->>>  extern __be32 nfs4_check_open_reclaim(clientid_t *clid);
->>> +extern void renew_client(struct nfs4_client *);
->>>  extern void get_nfs4_client(struct nfs4_client *);
->>>  extern void put_nfs4_client(struct nfs4_client *clp);
->>>  extern void nfs4_free_stateowner(struct kref *kref);
->>> diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
->>> index efa3377..e48d5c7 100644
->>> --- a/fs/nfsd/xdr4.h
->>> +++ b/fs/nfsd/xdr4.h
->>> @@ -46,6 +46,7 @@
->>>  struct nfsd4_compound_state {
->>>  	struct svc_fh		current_fh;
->>>  	struct svc_fh		save_fh;
->>> +	struct nfs4_client	*renew_client;
->>>  	struct nfs4_stateowner	*replay_owner;
->>>  	/* For sessions DRC */
->>>  	struct nfsd4_session	*session;
->>> -- 
->>> 1.6.5.1
->>>
+>> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+>> index 411226a..053fd2b 100644
+>> --- a/fs/nfsd/nfs4state.c
+>> +++ b/fs/nfsd/nfs4state.c
+>> @@ -203,29 +203,17 @@ alloc_init_deleg(struct nfs4_client *clp, struct nfs4_stateid *stp, struct svc_f
+>>  	return dp;
+>>  }
+>>  
+>> -void
+>> -nfs4_put_delegation(struct nfs4_delegation *dp)
+>> -{
+>> -	if (atomic_dec_and_test(&dp->dl_count)) {
+>> -		dprintk("NFSD: freeing dp %p\n",dp);
+>> -		put_nfs4_file(dp->dl_file);
+>> -		kmem_cache_free(deleg_slab, dp);
+>> -		num_delegations--;
+>> -	}
+>> -}
+>> -
+>>  /* Remove the associated file_lock first, then remove the delegation.
+>>   * lease_modify() is called to remove the FS_LEASE file_lock from
+>>   * the i_flock list, eventually calling nfsd's lock_manager
+>>   * fl_release_callback.
+>>   */
+>>  static void
+>> -nfs4_close_delegation(struct nfs4_delegation *dp)
+>> +__close_delegation(struct nfs4_delegation *dp)
+>>  {
+>>  	struct file *filp = dp->dl_vfs_file;
+>>  
+>>  	dprintk("NFSD: close_delegation dp %p\n",dp);
+>> -	dp->dl_vfs_file = NULL;
+>>  	/* The following nfsd_close may not actually close the file,
+>>  	 * but we want to remove the lease in any case. */
+>>  	if (dp->dl_flock)
+>> @@ -233,6 +221,18 @@ nfs4_close_delegation(struct nfs4_delegation *dp)
+>>  	nfsd_close(filp);
+>>  }
+>>  
+>> +void
+>> +nfs4_put_delegation(struct nfs4_delegation *dp)
+>> +{
+>> +	if (atomic_dec_and_test(&dp->dl_count)) {
+>> +		dprintk("NFSD: freeing dp %p\n",dp);
+>> +		__close_delegation(dp);
+>> +		put_nfs4_file(dp->dl_file);
+>> +		kmem_cache_free(deleg_slab, dp);
+>> +		num_delegations--;
+>> +	}
+>> +}
+>> +
+>>  /* Called under the state lock. */
+>>  static void
+>>  unhash_delegation(struct nfs4_delegation *dp)
+>> @@ -242,7 +242,6 @@ unhash_delegation(struct nfs4_delegation *dp)
+>>  	list_del_init(&dp->dl_perclnt);
+>>  	list_del_init(&dp->dl_recall_lru);
+>>  	spin_unlock(&deleg_lock);
+>> -	nfs4_close_delegation(dp);
+>>  	nfs4_put_delegation(dp);
+>>  }
+>>  
+>> -- 
+>> 1.6.5.1
+>>
