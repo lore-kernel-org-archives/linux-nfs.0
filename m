@@ -1,71 +1,161 @@
 From: Benny Halevy <bhalevy@panasas.com>
-Subject: [RFC 03/11] nfsd: introduce get_nfs4_client
-Date: Wed, 16 Dec 2009 19:40:59 +0200
-Message-ID: <1260985259-21446-1-git-send-email-bhalevy@panasas.com>
+Subject: [RFC 04/11] nfsd: mark client for renew
+Date: Wed, 16 Dec 2009 19:41:12 +0200
+Message-ID: <1260985272-21481-1-git-send-email-bhalevy@panasas.com>
 References: <4B291B4C.3060603@panasas.com>
 Cc: linux-nfs@vger.kernel.org, pnfs@linux-nfs.org,
 	Benny Halevy <bhalevy@panasas.com>
 To: " J. Bruce Fields" <bfields@citi.umich.edu>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:23083 "EHLO
+Received: from daytona.panasas.com ([67.152.220.89]:32502 "EHLO
 	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S932275AbZLPRlE (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 16 Dec 2009 12:41:04 -0500
+	with ESMTP id S1753844AbZLPRlP (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 16 Dec 2009 12:41:15 -0500
 In-Reply-To: <4B291B4C.3060603@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-define a public interface for increment the nfs4_client reference count.
+Mark the nfs4_client for renew on operations holding a stateid (or nfs41
+OP_SEQUENCE).
+Do the actual lru list update when the compound processing is complete.
+This will prevents the client from being expired by the laundromat while
+the compound is in progress.
 
 Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 ---
- fs/nfsd/nfs4callback.c |    2 +-
- fs/nfsd/nfs4state.c    |    6 ++++++
- fs/nfsd/state.h        |    1 +
- 3 files changed, 8 insertions(+), 1 deletions(-)
+ fs/nfsd/nfs4proc.c  |    5 +++++
+ fs/nfsd/nfs4state.c |   39 +++++++++++++++++++++++++++++++++++----
+ fs/nfsd/state.h     |    1 +
+ fs/nfsd/xdr4.h      |    1 +
+ 4 files changed, 42 insertions(+), 4 deletions(-)
 
-diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
-index c6eed2a..2b4d27b 100644
---- a/fs/nfsd/nfs4callback.c
-+++ b/fs/nfsd/nfs4callback.c
-@@ -567,7 +567,7 @@ nfsd4_probe_callback(struct nfs4_client *clp)
- 	}
- 
- 	/* the task holds a reference to the nfs4_client struct */
--	atomic_inc(&clp->cl_count);
-+	get_nfs4_client(clp);
- 
- 	do_probe_callback(clp);
- }
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index 37514c4..a8e9731 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -1010,6 +1010,7 @@ nfsd4_proc_compound(struct svc_rqst *rqstp,
+ 	resp->opcnt = 0;
+ 	resp->rqstp = rqstp;
+ 	resp->cstate.minorversion = args->minorversion;
++	resp->cstate.renew_client = NULL;
+ 	resp->cstate.replay_owner = NULL;
+ 	fh_init(&resp->cstate.current_fh, NFS4_FHSIZE);
+ 	fh_init(&resp->cstate.save_fh, NFS4_FHSIZE);
+@@ -1114,6 +1115,10 @@ encode_op:
+ 	fh_put(&resp->cstate.current_fh);
+ 	fh_put(&resp->cstate.save_fh);
+ 	BUG_ON(resp->cstate.replay_owner);
++	if (resp->cstate.renew_client) {
++		renew_client(resp->cstate.renew_client);
++		put_nfs4_client(resp->cstate.renew_client);
++	}
+ out:
+ 	nfsd4_release_compoundargs(args);
+ 	/* Reset deferral mechanism for RPC deferrals */
 diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index dd76682..c456551 100644
+index c456551..16ccab3 100644
 --- a/fs/nfsd/nfs4state.c
 +++ b/fs/nfsd/nfs4state.c
-@@ -708,6 +708,12 @@ free_client(struct nfs4_client *clp)
+@@ -634,8 +634,39 @@ free_session(struct kref *kref)
  }
  
- void
-+get_nfs4_client(struct nfs4_client *clp)
+ static inline void
++mark_client_for_renew(struct nfsd4_compound_state *cstate,
++		      struct nfs4_client *clp)
 +{
-+	atomic_inc(&clp->cl_count);
++	int old_state = atomic_cmpxchg(&clp->cl_state, CL_STATE_NORMAL,
++				       CL_STATE_RENEW);
++
++	if (old_state != CL_STATE_EXPIRED) {
++		cstate->renew_client = clp;
++		get_nfs4_client(clp);
++	}
++
++	dprintk("%s: client (clientid %08x/%08x) %s\n",
++		__func__,
++		clp->cl_clientid.cl_boot,
++		clp->cl_clientid.cl_id,
++		old_state == CL_STATE_EXPIRED ? "already expired" :
++						"marked for renew");
 +}
 +
 +void
- put_nfs4_client(struct nfs4_client *clp)
+ renew_client(struct nfs4_client *clp)
  {
- 	if (atomic_dec_and_test(&clp->cl_count))
++	int old_state = atomic_cmpxchg(&clp->cl_state, CL_STATE_RENEW,
++				       CL_STATE_NORMAL);
++
++	if (old_state == CL_STATE_EXPIRED) {
++		dprintk("%s: client (clientid %08x/%08x) already expired\n",
++			__func__,
++			clp->cl_clientid.cl_boot,
++			clp->cl_clientid.cl_id);
++		return;
++	}
++
+ 	/*
+ 	* Move client to the end to the LRU list.
+ 	*/
+@@ -1471,7 +1502,7 @@ out:
+ 	/* Renew the clientid on success and on replay */
+ 	if (cstate->session) {
+ 		nfs4_lock_state();
+-		renew_client(session->se_client);
++		mark_client_for_renew(cstate, session->se_client);
+ 		nfs4_unlock_state();
+ 	}
+ 	dprintk("%s: return %d\n", __func__, ntohl(status));
+@@ -2830,7 +2861,7 @@ nfs4_preprocess_stateid_op(struct nfsd4_compound_state *cstate,
+ 		status = nfs4_check_delegmode(dp, flags);
+ 		if (status)
+ 			goto out;
+-		renew_client(dp->dl_client);
++		mark_client_for_renew(cstate, dp->dl_client);
+ 		if (filpp)
+ 			*filpp = dp->dl_vfs_file;
+ 	} else { /* open or lock stateid */
+@@ -2850,7 +2881,7 @@ nfs4_preprocess_stateid_op(struct nfsd4_compound_state *cstate,
+ 		status = nfs4_check_openmode(stp, flags);
+ 		if (status)
+ 			goto out;
+-		renew_client(stp->st_stateowner->so_client);
++		mark_client_for_renew(cstate, stp->st_stateowner->so_client);
+ 		if (filpp)
+ 			*filpp = stp->st_vfs_file;
+ 	}
+@@ -2970,7 +3001,7 @@ nfs4_preprocess_seqid_op(struct nfsd4_compound_state *cstate, u32 seqid,
+ 	status = check_stateid_generation(stateid, &stp->st_stateid, flags);
+ 	if (status)
+ 		return status;
+-	renew_client(sop->so_client);
++	mark_client_for_renew(cstate, sop->so_client);
+ 	return nfs_ok;
+ 
+ check_replay:
 diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index 7e67eca..21109d4 100644
+index 21109d4..b684c84 100644
 --- a/fs/nfsd/state.h
 +++ b/fs/nfsd/state.h
 @@ -385,6 +385,7 @@ extern void nfs4_lock_state(void);
  extern void nfs4_unlock_state(void);
  extern int nfs4_in_grace(void);
  extern __be32 nfs4_check_open_reclaim(clientid_t *clid);
-+extern void get_nfs4_client(struct nfs4_client *);
++extern void renew_client(struct nfs4_client *);
+ extern void get_nfs4_client(struct nfs4_client *);
  extern void put_nfs4_client(struct nfs4_client *clp);
  extern void nfs4_free_stateowner(struct kref *kref);
- extern int set_callback_cred(void);
+diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
+index efa3377..e48d5c7 100644
+--- a/fs/nfsd/xdr4.h
++++ b/fs/nfsd/xdr4.h
+@@ -46,6 +46,7 @@
+ struct nfsd4_compound_state {
+ 	struct svc_fh		current_fh;
+ 	struct svc_fh		save_fh;
++	struct nfs4_client	*renew_client;
+ 	struct nfs4_stateowner	*replay_owner;
+ 	/* For sessions DRC */
+ 	struct nfsd4_session	*session;
 -- 
 1.6.5.1
 
