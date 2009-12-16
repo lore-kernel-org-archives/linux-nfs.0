@@ -1,172 +1,158 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [RFC] server's statd and lockd will not sync after its nfslock restart
-Date: Wed, 16 Dec 2009 14:33:20 -0500
-Message-ID: <E6EC8330-4C4C-4917-AEE3-A2BEE35B9F8A@oracle.com>
-References: <4B275EA3.9030603@cn.fujitsu.com> <F9F5EA38-B51C-44A4-9812-873EEE1891C9@oracle.com> <4B28B5FD.5000103@cn.fujitsu.com>
-Mime-Version: 1.0 (Apple Message framework v936)
-Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
-Cc: "Trond.Myklebust" <trond.myklebust@fys.uio.no>,
-	"J. Bruce Fields" <bfields@fieldses.org>,
-	NFSv3 list <linux-nfs@vger.kernel.org>
-To: Mi Jinlong <mijinlong@cn.fujitsu.com>
+From: Jeff Layton <jlayton@redhat.com>
+Subject: [PATCH 2/2] nfs-utils: add initial tests for statd that run via "make check"
+Date: Wed, 16 Dec 2009 14:40:40 -0500
+Message-ID: <1260992440-8234-3-git-send-email-jlayton@redhat.com>
+References: <1260992440-8234-1-git-send-email-jlayton@redhat.com>
+Cc: linux-nfs@vger.kernel.org
+To: steved@redhat.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet11.oracle.com ([148.87.113.123]:22401 "EHLO
-	rgminet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S935487AbZLPTeX (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 16 Dec 2009 14:34:23 -0500
-In-Reply-To: <4B28B5FD.5000103@cn.fujitsu.com>
+Received: from mx1.redhat.com ([209.132.183.28]:42524 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S964962AbZLPTkp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 16 Dec 2009 14:40:45 -0500
+Received: from int-mx02.intmail.prod.int.phx2.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
+	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id nBGJeio2006582
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Wed, 16 Dec 2009 14:40:44 -0500
+In-Reply-To: <1260992440-8234-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Dec 16, 2009, at 5:27 AM, Mi Jinlong wrote:
-> Chuck Lever:
->> On Dec 15, 2009, at 5:02 AM, Mi Jinlong wrote:
->>> Hi,
->>>
->>> When testing the NLM at the latest kernel(2.6.32),  i find a bug.
->>> When a client hold locks, after server restart its nfslock service,
->>> server's statd will not synchronize with lockd.
->>> If server restart nfslock twice or more, client's lock will be lost.
->>>
->>> Test process:
->>>
->>> Step1: client open nfs file.
->>> Step2: client using fcntl to get lock.
->>> Step3: server restart it's nfslock service.
->>
->> I'll assume here that you mean the equivalent of "service nfslock
->> restart".  This restarts statd and possibly runs sm-notify, but it  
->> has
->> no effect on lockd.
->
->  Yes, i used "service nfslock restart".
->
->  It has effect on lockd too, when service stop, lockd will get a  
-> KILL signal.
->  Lockd will release all client's locks, and go into grace_period and  
-> wait
->  client reclaime it's lock.
->
->>
->> Again, this test seems artificial to me.  Is there a real world use  
->> case
->> where someone would deliberately restart statd while an NFS server is
->> serving files?  I pose this question because I've worked on statd  
->> only
->> for a year or so, and I am quite likely ignorant of all the ways it  
->> can
->> be deployed.
->
->  ^/^, but maybe someone will restart nfslock when an NFS server is  
-> serving files.
->  It is inevitable.
->
->>> After step3, server's lockd records client holding locks, but  
->>> statd's
->>> /var/lib/nfs/statd/sm/ directory is empty. It means statd and  
->>> lockd are
->>> not sync. If server restart it's nfslock again, client's locks  
->>> will be
->>> lost.
->>>
->>> The Primary Reason:
->>>
->>> At step3, when client's reclaimed lock request is sent to server,
->>> client's host(the host struct) is reused but not be re-monitored at
->>> server's lockd. After that, statd and lockd are not sync.
->>
->> The kernel squashes SM_MON upcalls for hosts that it already believes
->> are monitored.  This is a scalability feature.
->
->  When statd start, it will move files from /var/lib/nfs/statd/sm/ to
->  /var/lib/nfs/statd/sm.bak/.
+Leverage the support that automake already has for running tests via
+make check. Add a simple test that just checks that the statd mon and
+unmon calls actually work.
 
-Well, it's really sm-notify that does this.  sm-notify is run by  
-rpc.statd when it starts up.
+Adding more tests should be a simple matter of adding new scripts
+exit 0 on success and non-zero on fail, and adding those to the
+Makefile.am.
 
-However, sm-notify should only retire the monitor list the first time  
-it is run after a reboot.  Simply restarting statd should not change  
-the on-disk monitor list in the slightest.  If it does, there's some  
-kind of problem with the way sm-notify's pid file is managed, or  
-perhaps with the nfslock script.
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ tests/Makefile.am                    |    2 +
+ tests/t0001-statd-basic-mon-unmon.sh |   55 ++++++++++++++++++++++++++++++++++
+ tests/test-lib.sh                    |   41 +++++++++++++++++++++++++
+ 3 files changed, 98 insertions(+), 0 deletions(-)
+ create mode 100755 tests/t0001-statd-basic-mon-unmon.sh
+ create mode 100755 tests/test-lib.sh
 
-> If lockd don't send a SM_MON to statd,
->  statd will not monitor those client which be monitored before statd  
-> restart.
->
->>> Question:
->>>
->>> In my opinion, if lockd is allowed reuseing the client's host, it  
->>> should
->>> send a SM_MON to statd when reuse. If not allowed, the client's host
->>> should
->>> be destroyed immediately.
->>>
->>> What should lockd to do?  Reuse ? Destroy ? Or some other action?
->>
->> I don't immediately see why lockd should change it's behavior.   
->> Perhaps
->> statd/sm-notify were incorrect to delete the monitor list when you
->> restarted the nfslock service?
->
->  Sorry, maybe i did not express clearly.
->  I mean, lockd reuse the host struct which was created before statd  
-> restart.
->
->  It seems have deleted the monitor list when nfslock restart.
-
-lockd does not touch any user space files; the on-disk monitor list is  
-managed by statd and sm-notify.  A remote peer rebooting does not  
-clear the "monitored" flag for that peer in the local kernel's lockd,  
-so it won't send another SM_MON request.
-
-Now, it may be the case that "service nfslock start" uses a command  
-line option that forces a fresh sm-notify run, and that is what is  
-wiping the on-disk monitor list.  That would be the bug in this case  
--- sm-notify can and should be allowed to make its own determination  
-of whether the monitor list gets retired.  Notification should not  
-normally be forced by command line options in the nfslock script.
-
->> Can you show exactly how statd's state (ie it's on-disk monitor  
->> list in
->> /var/lib/nfs/statd/sm) changed across the restart?  Did sm-notify run
->> when you restarted statd?  If so, why didn't the sm-notify pid file  
->> stop
->> it?
->
->  The statd and lockd's state at server when nfslock restart:
->
->        lockd                   statd         |
->                                              |
->      host(monitored = 1)      /sm/client     |  client get locks  
-> success at first
->          (locks)                             |
->                                              |
->      host(monitored = 1)      /sm/client     |  nfslock stop (lockd  
-> release client's locks)
->          (no locks)                          |
->                                              |
->      host(monitored = 1)      /sm/           |  nfslock start  
-> (client reclaim locks)
->          (locks)                             |                (but  
-> statd don't monitor it)
->
->  note: host(monitored=1)  means: client's host struct is created,  
-> and is marked be monitored.
->        (locks), (no locks)means: host strcut holds locks, or not.
->        /sm/client         means: there have a file under /var/lib/ 
-> nfs/statd/sm directory
->        /sm/               means: /var/lib/nfs/statd/sm is empty!
->
->
-> thanks,
-> Mi Jinlong
->
-
+diff --git a/tests/Makefile.am b/tests/Makefile.am
+index 997ac51..634fb7b 100644
+--- a/tests/Makefile.am
++++ b/tests/Makefile.am
+@@ -3,3 +3,5 @@
+ SUBDIRS = statdtest
+ 
+ MAINTAINERCLEANFILES = Makefile.in
++
++TESTS = t0001-statd-basic-mon-unmon.sh
+diff --git a/tests/t0001-statd-basic-mon-unmon.sh b/tests/t0001-statd-basic-mon-unmon.sh
+new file mode 100755
+index 0000000..d5dffc5
+--- /dev/null
++++ b/tests/t0001-statd-basic-mon-unmon.sh
+@@ -0,0 +1,55 @@
++#!/bin/bash
++#
++# statd_basic_mon_unmon -- test basic mon/unmon functionality with statd
++#
++# Copyright (C) 2009  Red Hat, Jeff Layton <jlayton@redhat.com>
++#
++# This program is free software; you can redistribute it and/or
++# modify it under the terms of the GNU General Public License
++# as published by the Free Software Foundation; either version 2
++# of the License, or (at your option) any later version.
++#
++# This program is distributed in the hope that it will be useful,
++# but WITHOUT ANY WARRANTY; without even the implied warranty of
++# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++# GNU General Public License for more details.
++#
++# You should have received a copy of the GNU General Public License
++# along with this program; if not, write to the Free Software Foundation, Inc.,
++# 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
++#
++
++. ./test-lib.sh
++
++start_statd
++if [ $? -ne 0 ]; then
++	echo "FAIL: problem starting statd"
++	exit 1
++fi
++
++COOKIE=`echo $$ | md5sum | cut -d' ' -f1`
++MON_NAME=`hostname`
++
++statdtest mon $MON_NAME $COOKIE
++if [ $? -ne 0 ]; then
++	echo "FAIL: mon failed"
++	kill_statd
++	exit 1
++fi
++
++grep -q $COOKIE /var/lib/nfs/statd/sm/$MON_NAME 
++if [ $? -ne 0 ]; then
++	echo "FAIL: $COOKIE not present in monitor file"
++	kill_statd
++	exit 1
++fi
++
++statdtest unmon $MON_NAME
++if [ $? -ne 0 ]; then
++	echo "FAIL: unmon failed"
++	kill_statd
++	exit 1
++fi
++
++kill_statd
++
+diff --git a/tests/test-lib.sh b/tests/test-lib.sh
+new file mode 100755
+index 0000000..053e46d
+--- /dev/null
++++ b/tests/test-lib.sh
+@@ -0,0 +1,41 @@
++#!/bin/bash
++#
++# test-lib.sh -- library of functions for nfs-utils tests
++#
++# Copyright (C) 2009  Red Hat, Jeff Layton <jlayton@redhat.com>
++#
++# This program is free software; you can redistribute it and/or
++# modify it under the terms of the GNU General Public License
++# as published by the Free Software Foundation; either version 2
++# of the License, or (at your option) any later version.
++#
++# This program is distributed in the hope that it will be useful,
++# but WITHOUT ANY WARRANTY; without even the implied warranty of
++# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++# GNU General Public License for more details.
++#
++# You should have received a copy of the GNU General Public License
++# along with this program; if not, write to the Free Software Foundation, Inc.,
++# 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
++#
++
++export PATH=$PATH:$srcdir/statdtest
++
++lockd_registered() {
++	rpcinfo -p | grep -q nlockmgr
++	return $?
++}
++
++start_statd() {
++	rpcinfo -u 127.0.0.1 status 1 &> /dev/null
++	if [ $? -eq 0 ]; then
++		echo "***ERROR***: statd is already running and should "
++		echo "             be down when starting this test"
++		return 1
++	fi
++	$srcdir/../utils/statd/statd --no-notify
++}
++
++kill_statd() {
++	kill `cat /var/run/rpc.statd.pid`
++}
 -- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
+1.6.5.2
 
