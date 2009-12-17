@@ -1,83 +1,58 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [RFC] server's statd and lockd will not sync after its nfslock
-	restart
-Date: Thu, 17 Dec 2009 15:14:31 -0500
-Message-ID: <20091217201430.GA20185@fieldses.org>
-References: <4B275EA3.9030603@cn.fujitsu.com> <F9F5EA38-B51C-44A4-9812-873EEE1891C9@oracle.com> <4B28B5FD.5000103@cn.fujitsu.com> <E6EC8330-4C4C-4917-AEE3-A2BEE35B9F8A@oracle.com> <4B2A02C6.6080501@cn.fujitsu.com> <35D45F43-D98F-460E-8060-F7C5F3ADFCFE@oracle.com>
+From: "J. Bruce Fields" <bfields@citi.umich.edu>
+Subject: Re: [RFC 04/11] nfsd: mark client for renew
+Date: Thu, 17 Dec 2009 15:19:14 -0500
+Message-ID: <20091217201914.GB20185@fieldses.org>
+References: <4B291B4C.3060603@panasas.com> <1260985272-21481-1-git-send-email-bhalevy@panasas.com> <20091216204839.GA28822@fieldses.org> <20091216205301.GB28822@fieldses.org> <4B295775.1000301@panasas.com> <20091216220600.GG28822@fieldses.org> <4B295DED.4080609@panasas.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Cc: "Trond.Myklebust Myklebust" <trond.myklebust@fys.uio.no>,
-	Neil Brown <neilb@suse.de>, Steve Dickson <SteveD@redhat.com>,
-	NFSv3 list <linux-nfs@vger.kernel.org>,
-	Mi Jinlong <mijinlong@cn.fujitsu.com>
-To: Chuck Lever <chuck.lever@oracle.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-nfs@vger.kernel.org, pnfs@linux-nfs.org
+To: Benny Halevy <bhalevy@panasas.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:45959 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:38906 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S935840AbZLQUOe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 17 Dec 2009 15:14:34 -0500
-In-Reply-To: <35D45F43-D98F-460E-8060-F7C5F3ADFCFE@oracle.com>
+	id S1754423AbZLQUTI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 17 Dec 2009 15:19:08 -0500
+In-Reply-To: <4B295DED.4080609@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Dec 17, 2009 at 11:18:53AM -0500, Chuck Lever wrote:
-> run_sm_notify() simply forks and execs the sm-notify program.  This =20
-> program checks for the existence of a pid file.  If the pid file exis=
-ts,=20
-> then sm-notify exits.  If it does not, then sm-notify retires the rec=
-ords=20
-> in /var/lib/nfs/statd/sm and posts reboot notifications.
->
-> Jeff Layton pointed out to me yesterday that Red Hat's nfslock script=
- =20
-> unconditionally deletes sm-notify's pid file every time "service nfsl=
-ock=20
-> start" is done, which effectively defeats sm-notify's reboot detectio=
-n.
->
-> sm-notify was written by a developer at SuSE.  SuSE Linux uses a tmpf=
-s =20
-> for /var/run, but Red Hat uses permanent storage for this directory. =
- =20
-> Thus on SuSE, the pid file gets deleted automatically by a reboot, bu=
-t =20
-> on Red Hat, the pid file must be deleted "by hand" or reboot =20
-> notification never occurs.
->
-> So the root cause of this problem is that the current mechanism sm-=20
-> notify uses to detect a reboot is not portable across distributions.
->
-> My new-statd prototype used a semaphor instead of a pid file to detec=
-t =20
-> reboots.  A semaphor is shared (visible to other processes) and will =
-=20
-> continue to exist until it is deleted or the system reboots.  It is a=
- =20
-> resource that is not destroyed automatically when the sm-notify proce=
-ss=20
-> exits.  If creating the semaphor fails, sm-notify exits.  If creating=
- it=20
-> succeeds, it runs.
->
-> Would anyone strongly object to using a semaphor instead of a pid fil=
-e =20
-> here?  Is support for semaphors always built into kernels?  Would the=
-re=20
-> be any problems with the small size of the semaphor name space?  Is t=
-here=20
-> another similar facility that might be better?
+On Thu, Dec 17, 2009 at 12:23:41AM +0200, Benny Halevy wrote:
+> On Dec. 17, 2009, 0:06 +0200, "J. Bruce Fields" <bfields@citi.umich.edu> wrote:
+> > On Wed, Dec 16, 2009 at 11:56:05PM +0200, Benny Halevy wrote:
+> >> On Dec. 16, 2009, 22:53 +0200, " J. Bruce Fields" <bfields@citi.umich.edu> wrote:
+> >>> On Wed, Dec 16, 2009 at 03:48:39PM -0500,  J. Bruce Fields wrote:
+> >>>> On Wed, Dec 16, 2009 at 07:41:12PM +0200, Benny Halevy wrote:
+> >>>>>  static inline void
+> >>>>> +mark_client_for_renew(struct nfsd4_compound_state *cstate,
+> >>>>> +		      struct nfs4_client *clp)
+> >>>>> +{
+> >>>>> +	int old_state = atomic_cmpxchg(&clp->cl_state, CL_STATE_NORMAL,
+> >>>>> +				       CL_STATE_RENEW);
+> >>>>> +
+> >>>>> +	if (old_state != CL_STATE_EXPIRED) {
+> >>>>> +		cstate->renew_client = clp;
+> >>>>> +		get_nfs4_client(clp);
+> >>>> If cstate->renew_client is already set, then we may leak a reference
+> >>>> count here, right?
+> >>>>
+> >>>> Also: at least in the v4 case, I don't think there's anything preventing
+> >>>> cstate->renew_client being already set to a different client.  (With
+> >>>> sessions hopefully that's not possible.)
+> >>>>
+> >> Yeah.  That's a valid point.  So if it is already set then
+> >> if it is the same client we can do nothing, else we can renew
+> >> the previous one here put it and replace cstate->renew_client.
+> > 
+> > I'm not sure if that can only happen if someone's intentionally messing
+> > with us, or if maybe there's a legitimate case where it can happen
+> > (maybe when a new client is created by some op in the compound?) But,
+> > yes, that sounds like a safe way to handle it.
+> > 
+> 
+> Can the client send a compound with multiple I/Os for different
+> stateids (and even filehandles) that lead back to different clientids?
 
-I don't know much about those (except that I think there's an e at the
-end); looks like sem_overview(7) is the place to start?
-
-It says:
-
-	" Prior to kernel 2.6, Linux only supported unnamed,
-	thread-shared  sema=E2=80=90 phores.   On a system with Linux 2.6 and =
-a
-	glibc that provides the NPTL threading implementation, a
-	complete implementation of POSIX semaphores is provided."
-
-So would it mean dropping support for 2.4?
+I don't know of anything in rfc 3530 that forbids it, but I doubt it
+would be useful to any legitimate client.
 
 --b.
