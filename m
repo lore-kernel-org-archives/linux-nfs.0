@@ -1,40 +1,54 @@
-From: Al Viro <viro@ZenIV.linux.org.uk>
-Subject: Re: [revert] commit e9496ff46a20a8592fdc7bdaaf41b45eb808d310 needs
-	to be reverted
-Date: Thu, 17 Dec 2009 20:37:26 +0000
-Message-ID: <20091217203726.GE18217@ZenIV.linux.org.uk>
-References: <1261075774.2868.16.camel@localhost> <20091217202613.GD18217@ZenIV.linux.org.uk>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: [RFC] server's statd and lockd will not sync after its nfslock
+ restart
+Date: Thu, 17 Dec 2009 15:48:03 -0500
+Message-ID: <1261082883.4080.28.camel@localhost>
+References: <4B275EA3.9030603@cn.fujitsu.com>
+	 <F9F5EA38-B51C-44A4-9812-873EEE1891C9@oracle.com>
+	 <4B28B5FD.5000103@cn.fujitsu.com>
+	 <E6EC8330-4C4C-4917-AEE3-A2BEE35B9F8A@oracle.com>
+	 <4B2A02C6.6080501@cn.fujitsu.com>
+	 <35D45F43-D98F-460E-8060-F7C5F3ADFCFE@oracle.com>
+	 <1261081664.4080.18.camel@localhost>
+	 <76D5AD4C-2DDA-4A12-BD53-168D04CA9E7C@oracle.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org
-To: Linus Torvalds <torvalds@linux-foundation.org>
+Content-Type: text/plain; charset="UTF-8"
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+	Neil Brown <neilb@suse.de>, Steve Dickson <SteveD@redhat.com>,
+	NFSv3 list <linux-nfs@vger.kernel.org>,
+	Mi Jinlong <mijinlong@cn.fujitsu.com>
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from zeniv.linux.org.uk ([195.92.253.2]:35196 "EHLO
-	ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1762908AbZLQUh1 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Dec 2009 15:37:27 -0500
-In-Reply-To: <20091217202613.GD18217@ZenIV.linux.org.uk>
+Received: from mail-out2.uio.no ([129.240.10.58]:49448 "EHLO mail-out2.uio.no"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1764895AbZLQUsN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 17 Dec 2009 15:48:13 -0500
+In-Reply-To: <76D5AD4C-2DDA-4A12-BD53-168D04CA9E7C@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Dec 17, 2009 at 08:26:13PM +0000, Al Viro wrote:
-> On Thu, Dec 17, 2009 at 01:49:34PM -0500, Eric Paris wrote:
-> > I pulled from Linus Dec16 and didn't have problems.  This is a pull from
-> > Dec17, plus some of my own patches which I'd be surprised to learn were
-> > related.  I have an NFS mount in my fstab, I assume this is that being
-> > mounted on boot.  I'll start a bisect if needed, but maybe someone will
-> > know what they broke instantly....
+On Thu, 2009-12-17 at 15:34 -0500, Chuck Lever wrote: 
+> On Dec 17, 2009, at 3:27 PM, Trond Myklebust wrote:
+> > One alternative might be to just record the kernel's random boot_id in
+> > the pid file. That gets regenerated on each boot, so should be unique.
 > 
-> Gyah...  Please, revert e9496ff46a20a8592fdc7bdaaf41b45eb808d310;
-> it's dependent on a lot of other stuff not currently in mainline
-> and badly broken with current fs/namespace.c.  Sorry, badly out-of-order
-> cherry-pick from old queue.
+> Where do you get it in user space?  Is it available on earlier  
+> kernels?  ("should be unique" -- I hope it doesn't have the same  
+> problem we had with XID replay on diskless systems).
 
-PS: there's a large pending series reworking the refcounting and lifetime
-rules for vfsmounts that will, among other things, allow to rip a subtree
-away _without_ dissolving connections in it, to be garbage-collected
-when all active references are gone.  It's considerably saner wrt "is
-the subtree busy" logics, but it's nowhere near being ready for merge
-at the moment; this changeset is one of the things becoming possible
-with that sucker, but it certainly shouldn't have been picked during this
-cycle.  My apologies...
+You can access it from userland as the 'kernel.random.boot_id' sysctl.
+
+It is available on 2.4 kernels and newer.
+
+It is based on the kernel random number generator, so should be
+reasonably unique.
+
+> Fwiw, I tried using the boot time stamp at one point, but  
+> unfortunately that's adjusted by the ntp offset, so it can take  
+> different values over time.  It was difficult to compare it to a time  
+> stamp recorded in a file.
+
+Agreed. You can't rely on time stamps.
+
+Trond
+
