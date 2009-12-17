@@ -1,172 +1,45 @@
 From: Chuck Lever <chuck.lever@oracle.com>
 Subject: Re: [RFC] server's statd and lockd will not sync after its nfslock restart
-Date: Thu, 17 Dec 2009 15:34:35 -0500
-Message-ID: <76D5AD4C-2DDA-4A12-BD53-168D04CA9E7C@oracle.com>
-References: <4B275EA3.9030603@cn.fujitsu.com> <F9F5EA38-B51C-44A4-9812-873EEE1891C9@oracle.com> <4B28B5FD.5000103@cn.fujitsu.com> <E6EC8330-4C4C-4917-AEE3-A2BEE35B9F8A@oracle.com> <4B2A02C6.6080501@cn.fujitsu.com> <35D45F43-D98F-460E-8060-F7C5F3ADFCFE@oracle.com> <1261081664.4080.18.camel@localhost>
+Date: Thu, 17 Dec 2009 15:35:42 -0500
+Message-ID: <5F4CA47C-B0D1-488C-8B91-FE26DC9AF01A@oracle.com>
+References: <4B275EA3.9030603@cn.fujitsu.com> <F9F5EA38-B51C-44A4-9812-873EEE1891C9@oracle.com> <4B28B5FD.5000103@cn.fujitsu.com> <E6EC8330-4C4C-4917-AEE3-A2BEE35B9F8A@oracle.com> <4B2A02C6.6080501@cn.fujitsu.com> <35D45F43-D98F-460E-8060-F7C5F3ADFCFE@oracle.com> <20091217201430.GA20185@fieldses.org>
 Mime-Version: 1.0 (Apple Message framework v936)
-Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+Content-Type: text/plain; charset=UTF-8;
+	format=flowed	delsp=yes
+Cc: "Trond.Myklebust Myklebust" <trond.myklebust@fys.uio.no>,
 	Neil Brown <neilb@suse.de>, Steve Dickson <SteveD@redhat.com>,
 	NFSv3 list <linux-nfs@vger.kernel.org>,
 	Mi Jinlong <mijinlong@cn.fujitsu.com>
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet11.oracle.com ([148.87.113.123]:20980 "EHLO
-	rgminet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1759909AbZLQUfo (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Dec 2009 15:35:44 -0500
-In-Reply-To: <1261081664.4080.18.camel@localhost>
+Received: from acsinet11.oracle.com ([141.146.126.233]:34687 "EHLO
+	acsinet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1762781AbZLQUhM convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Dec 2009 15:37:12 -0500
+In-Reply-To: <20091217201430.GA20185@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-On Dec 17, 2009, at 3:27 PM, Trond Myklebust wrote:
-
-> On Thu, 2009-12-17 at 11:18 -0500, Chuck Lever wrote:
->> On Dec 17, 2009, at 5:07 AM, Mi Jinlong wrote:
->>> Chuck Lever :
->>>> On Dec 16, 2009, at 5:27 AM, Mi Jinlong wrote:
->>>>> Chuck Lever:
->>>>>> On Dec 15, 2009, at 5:02 AM, Mi Jinlong wrote:
->>>>>>> Hi,
->>>
->>> ...snip...
->>>
->>>>>>>
->>>>>>> The Primary Reason:
->>>>>>>
->>>>>>> At step3, when client's reclaimed lock request is sent to  
->>>>>>> server,
->>>>>>> client's host(the host struct) is reused but not be re-monitored
->>>>>>> at
->>>>>>> server's lockd. After that, statd and lockd are not sync.
->>>>>>
->>>>>> The kernel squashes SM_MON upcalls for hosts that it already
->>>>>> believes
->>>>>> are monitored.  This is a scalability feature.
->>>>>
->>>>> When statd start, it will move files from /var/lib/nfs/statd/sm/  
->>>>> to
->>>>> /var/lib/nfs/statd/sm.bak/.
->>>>
->>>> Well, it's really sm-notify that does this.  sm-notify is run by
->>>> rpc.statd when it starts up.
->>>>
->>>> However, sm-notify should only retire the monitor list the first
->>>> time it
->>>> is run after a reboot.  Simply restarting statd should not change  
->>>> the
->>>> on-disk monitor list in the slightest.  If it does, there's some
->>>> kind of
->>>> problem with the way sm-notify's pid file is managed, or perhaps  
->>>> with
->>>> the nfslock script.
->>>
->>> When starting, statd will call run_sm_notify() function to run sm-
->>> notify.
->>> Using command "service nfslock restart" will case statd stop and
->>> start,
->>> so sm-notify will be run. If sm-notify run, the on-disk monitor list
->>> will be changed.
->>>
->>>>
->>>>> If lockd don't send a SM_MON to statd,
->>>>> statd will not monitor those client which be monitored before  
->>>>> statd
->>>>> restart.
->>>>>
->>>>>>> Question:
->>>>>>>
->>>>>>> In my opinion, if lockd is allowed reuseing the client's host,  
->>>>>>> it
->>>>>>> should
->>>>>>> send a SM_MON to statd when reuse. If not allowed, the client's
->>>>>>> host
->>>>>>> should
->>>>>>> be destroyed immediately.
->>>>>>>
->>>>>>> What should lockd to do?  Reuse ? Destroy ? Or some other  
->>>>>>> action?
->>>>>>
->>>>>> I don't immediately see why lockd should change it's behavior.
->>>>>> Perhaps
->>>>>> statd/sm-notify were incorrect to delete the monitor list when  
->>>>>> you
->>>>>> restarted the nfslock service?
->>>>>
->>>>> Sorry, maybe i did not express clearly.
->>>>> I mean, lockd reuse the host struct which was created before statd
->>>>> restart.
->>>>>
->>>>> It seems have deleted the monitor list when nfslock restart.
->>>>
->>>> lockd does not touch any user space files; the on-disk monitor list
->>>> is
->>>> managed by statd and sm-notify.  A remote peer rebooting does not
->>>> clear
->>>> the "monitored" flag for that peer in the local kernel's lockd,  
->>>> so it
->>>> won't send another SM_MON request.
->>>
->>> Yes, that's right.
->>>
->>> But, this case refers to server's lockd, not the remote peer.
->>> I thank, when local system's nfslock restart, local kernel's lockd
->>> clear all other client's host strcut's "monitored" flag.
->>>
->>>>
->>>> Now, it may be the case that "service nfslock start" uses a command
->>>> line
->>>> option that forces a fresh sm-notify run, and that is what is
->>>> wiping the
->>>> on-disk monitor list.  That would be the bug in this case -- sm-
->>>> notify
->>>> can and should be allowed to make its own determination of whether
->>>> the
->>>> monitor list gets retired.  Notification should not normally be
->>>> forced
->>>> by command line options in the nfslock script.
->>>
->>> A fresh sm-notify run is cause by statd start.
->>> I find it through codes by followed.
->>>
->>> utils/statd/statd.c
->>> ...
->>> 478         if (! (run_mode & MODE_NO_NOTIFY))
->>> 479                 switch (pid = fork()) {
->>> 480                 case 0:
->>> 481                         run_sm_notify(out_port);
->>> 482                         break;
->>> 483                 case -1:
->>> 484                         break;
->>> 485                 default:
->>> 486                         waitpid(pid, NULL, 0);
->>> 487                 }
->>> ....
->>>
->>>
->>> I thank, when statd restart and call sm-notify, the on-disk monitor
->>> list will
->>> be deleted, so lockd should clear all other client's host strcut's
->>> "monitored" flag.
->>> After that, a reused host struct will be re-monitored, a on-disk
->>> monitor
->>> will be re-created. Like that, lockd and statd will sync .
->>
+On Dec 17, 2009, at 3:14 PM, J. Bruce Fields wrote:
+> On Thu, Dec 17, 2009 at 11:18:53AM -0500, Chuck Lever wrote:
 >> run_sm_notify() simply forks and execs the sm-notify program.  This
->> program checks for the existence of a pid file.  If the pid file
->> exists, then sm-notify exits.  If it does not, then sm-notify retires
->> the records in /var/lib/nfs/statd/sm and posts reboot notifications.
+>> program checks for the existence of a pid file.  If the pid file =20
+>> exists,
+>> then sm-notify exits.  If it does not, then sm-notify retires the =20
+>> records
+>> in /var/lib/nfs/statd/sm and posts reboot notifications.
 >>
->> Jeff Layton pointed out to me yesterday that Red Hat's nfslock script
->> unconditionally deletes sm-notify's pid file every time "service
->> nfslock start" is done, which effectively defeats sm-notify's reboot
+>> Jeff Layton pointed out to me yesterday that Red Hat's nfslock scrip=
+t
+>> unconditionally deletes sm-notify's pid file every time "service =20
+>> nfslock
+>> start" is done, which effectively defeats sm-notify's reboot =20
 >> detection.
 >>
->> sm-notify was written by a developer at SuSE.  SuSE Linux uses a  
+>> sm-notify was written by a developer at SuSE.  SuSE Linux uses a =20
 >> tmpfs
 >> for /var/run, but Red Hat uses permanent storage for this directory.
->> Thus on SuSE, the pid file gets deleted automatically by a reboot,  
+>> Thus on SuSE, the pid file gets deleted automatically by a reboot, =20
 >> but
 >> on Red Hat, the pid file must be deleted "by hand" or reboot
 >> notification never occurs.
@@ -174,33 +47,44 @@ On Dec 17, 2009, at 3:27 PM, Trond Myklebust wrote:
 >> So the root cause of this problem is that the current mechanism sm-
 >> notify uses to detect a reboot is not portable across distributions.
 >>
->> My new-statd prototype used a semaphor instead of a pid file to  
+>> My new-statd prototype used a semaphor instead of a pid file to =20
 >> detect
 >> reboots.  A semaphor is shared (visible to other processes) and will
->> continue to exist until it is deleted or the system reboots.  It is a
->> resource that is not destroyed automatically when the sm-notify
->> process exits.  If creating the semaphor fails, sm-notify exits.  If
->> creating it succeeds, it runs.
+>> continue to exist until it is deleted or the system reboots.  It is =
+a
+>> resource that is not destroyed automatically when the sm-notify =20
+>> process
+>> exits.  If creating the semaphor fails, sm-notify exits.  If =20
+>> creating it
+>> succeeds, it runs.
 >>
->> Would anyone strongly object to using a semaphor instead of a pid  
+>> Would anyone strongly object to using a semaphor instead of a pid =20
 >> file
->> here?  Is support for semaphors always built into kernels?  Would
->> there be any problems with the small size of the semaphor name space?
->> Is there another similar facility that might be better?
+>> here?  Is support for semaphors always built into kernels?  Would =20
+>> there
+>> be any problems with the small size of the semaphor name space?  Is =
+=20
+>> there
+>> another similar facility that might be better?
 >
-> One alternative might be to just record the kernel's random boot_id in
-> the pid file. That gets regenerated on each boot, so should be unique.
+> I don't know much about those (except that I think there's an e at th=
+e
+> end); looks like sem_overview(7) is the place to start?
+>
+> It says:
+>
+> 	" Prior to kernel 2.6, Linux only supported unnamed,
+> 	thread-shared  sema=E2=80=90 phores.   On a system with Linux 2.6 an=
+d a
+> 	glibc that provides the NPTL threading implementation, a
+> 	complete implementation of POSIX semaphores is provided."
+>
+> So would it mean dropping support for 2.4?
 
-Where do you get it in user space?  Is it available on earlier  
-kernels?  ("should be unique" -- I hope it doesn't have the same  
-problem we had with XID replay on diskless systems).
+No, it would mean using them only on systems that supported shared =20
+semaphores.
 
-Fwiw, I tried using the boot time stamp at one point, but  
-unfortunately that's adjusted by the ntp offset, so it can take  
-different values over time.  It was difficult to compare it to a time  
-stamp recorded in a file.
-
--- 
+--=20
 Chuck Lever
 chuck[dot]lever[at]oracle[dot]com
 
