@@ -1,99 +1,69 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: null dereference in nfs4_begin_drain_session
-Date: Thu, 17 Dec 2009 17:54:29 -0500
-Message-ID: <20091217225429.GK21454@fieldses.org>
-References: <20091215222449.GD8686@fieldses.org> <1260917540.3219.2.camel@localhost>
+From: Neil Brown <neilb@suse.de>
+Subject: Re: [RFC] server's statd and lockd will not sync after its nfslock
+ restart
+Date: Fri, 18 Dec 2009 10:14:38 +1100
+Message-ID: <20091218101438.48eb06a4@notabene.brown>
+References: <4B275EA3.9030603@cn.fujitsu.com>
+	<F9F5EA38-B51C-44A4-9812-873EEE1891C9@oracle.com>
+	<4B28B5FD.5000103@cn.fujitsu.com>
+	<E6EC8330-4C4C-4917-AEE3-A2BEE35B9F8A@oracle.com>
+	<4B2A02C6.6080501@cn.fujitsu.com>
+	<35D45F43-D98F-460E-8060-F7C5F3ADFCFE@oracle.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs@vger.kernel.org
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Content-Type: text/plain; charset=US-ASCII
+Cc: "Trond.Myklebust Myklebust" <trond.myklebust@fys.uio.no>,
+	"J. Bruce Fields" <bfields@fieldses.org>,
+	Steve Dickson <SteveD@redhat.com>,
+	NFSv3 list <linux-nfs@vger.kernel.org>,
+	Mi Jinlong <mijinlong@cn.fujitsu.com>
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:58088 "EHLO fieldses.org"
+Received: from cantor.suse.de ([195.135.220.2]:32946 "EHLO mx1.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750746AbZLQWyW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 17 Dec 2009 17:54:22 -0500
-In-Reply-To: <1260917540.3219.2.camel@localhost>
+	id S1756692AbZLQXOu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 17 Dec 2009 18:14:50 -0500
+In-Reply-To: <35D45F43-D98F-460E-8060-F7C5F3ADFCFE@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Dec 15, 2009 at 05:52:20PM -0500, Trond Myklebust wrote:
-> On Tue, 2009-12-15 at 17:24 -0500, J. Bruce Fields wrote: 
-> The following patch should suffice to fix this...
+On Thu, 17 Dec 2009 11:18:53 -0500
+Chuck Lever <chuck.lever@oracle.com> wrote:
 
-Yup, not seeing this any more, thanks!
+> Jeff Layton pointed out to me yesterday that Red Hat's nfslock script  
+> unconditionally deletes sm-notify's pid file every time "service  
+> nfslock start" is done, which effectively defeats sm-notify's reboot  
+> detection.
+> 
+> sm-notify was written by a developer at SuSE.  SuSE Linux uses a tmpfs  
+> for /var/run, but Red Hat uses permanent storage for this directory.   
+> Thus on SuSE, the pid file gets deleted automatically by a reboot, but  
+> on Red Hat, the pid file must be deleted "by hand" or reboot  
+> notification never occurs.
 
-(Sorry for the slow confirmation--my test hosts stopped booting.  Argh!
-Looks like it was something temporarily broken upstream...).
+Just to make sure the facts are straight:
+ SuSE does not use tmpfs for /var/run (much as I personally think that
+ would be a very sensible approach for both /var/run and /var/locks).
+ It appears that Debian can use tmpfs for these, but doesn't by default.
 
---b.
+ Both SuSE and Debian have boot time scripts that clean up /var/run and other
+ directories.  They remove all non-directories other than /var/run/utmp.
 
-> 
-> Cheers
->   Trond
-> ----------------------------------------------------------------------------------------------------- 
-> commit 380454126f1357db9270f9d1ca05dfe1a6e4ad47
-> Author: Trond Myklebust <Trond.Myklebust@netapp.com>
-> Date:   Tue Dec 15 17:36:57 2009 -0500
-> 
->     NFSv4: Fix a regression in the NFSv4 state manager
->     
->     Commit 5601a00d671fe89f9b087513244abcd08ad67e7d (nfs: run state manager
->     in privileged mode) introduces a regression in the NFSv4 code when
->     compiled with CONFIG_NFS_V4_1. The calls to nfs4_end_drain_session()
->     from the main loop in nfs4_state_manager() Oops due to the lack of an
->     NFSv4.1 session when running NFSv4.0.
->     
->     The fix is to move those two calls back into nfs41_init_clientid() and
->     nfs4_reset_session().
->     
->     The calls to nfs4_end_drain_session() that remain inside
->     nfs4_state_manager() are safe, since the NFSv4.0 code will never set the
->     NFS4CLNT_SESSION_DRAINING bit.
->     
->     Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-> 
-> diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-> index 18e8b26..6d263ed 100644
-> --- a/fs/nfs/nfs4state.c
-> +++ b/fs/nfs/nfs4state.c
-> @@ -176,6 +176,7 @@ int nfs41_init_clientid(struct nfs_client *clp, struct rpc_cred *cred)
->  {
->  	int status;
->  
-> +	nfs4_begin_drain_session(clp);
->  	status = nfs4_proc_exchange_id(clp, cred);
->  	if (status != 0)
->  		goto out;
-> @@ -1274,6 +1275,7 @@ static int nfs4_reset_session(struct nfs_client *clp)
->  {
->  	int status;
->  
-> +	nfs4_begin_drain_session(clp);
->  	status = nfs4_proc_destroy_session(clp->cl_session);
->  	if (status && status != -NFS4ERR_BADSESSION &&
->  	    status != -NFS4ERR_DEADSESSION) {
-> @@ -1299,7 +1301,6 @@ out:
->  
->  #else /* CONFIG_NFS_V4_1 */
->  static int nfs4_reset_session(struct nfs_client *clp) { return 0; }
-> -static int nfs4_begin_drain_session(struct nfs_client *clp) { return 0; }
->  static int nfs4_end_drain_session(struct nfs_client *clp) { return 0; }
->  #endif /* CONFIG_NFS_V4_1 */
->  
-> @@ -1332,7 +1333,6 @@ static void nfs4_state_manager(struct nfs_client *clp)
->  	for(;;) {
->  		if (test_and_clear_bit(NFS4CLNT_LEASE_EXPIRED, &clp->cl_state)) {
->  			/* We're going to have to re-establish a clientid */
-> -			nfs4_begin_drain_session(clp);
->  			status = nfs4_reclaim_lease(clp);
->  			if (status) {
->  				nfs4_set_lease_expired(clp, status);
-> @@ -1359,7 +1359,6 @@ static void nfs4_state_manager(struct nfs_client *clp)
->  		/* Initialize or reset the session */
->  		if (test_and_clear_bit(NFS4CLNT_SESSION_RESET, &clp->cl_state)
->  		   && nfs4_has_session(clp)) {
-> -			nfs4_begin_drain_session(clp);
->  			status = nfs4_reset_session(clp);
->  			if (test_bit(NFS4CLNT_LEASE_EXPIRED, &clp->cl_state))
->  				continue;
-> 
+If Redhat doesn't clean up /var/run at boot time, then I would think that is
+very odd.  The files in there represent something that is running.  At boot,
+nothing is running, so it should all be cleaned up.  Are you sure Redhat
+doesn't clean out /var/run???
+
+I just had a look at master.kernel.org (the only fedora machine I can think
+of that I have access to) and in /etc/rc.d/rc.sysinit I find
+
+    find /var/lock /var/run ! -type d -exec rm -f {} \;
+
+So I'm thinking that if you just remove
+
+        # Make sure locks are recovered
+        rm -f /var/run/sm-notify.pid
+
+from /etc/init.d/nfslock, then it will do the right thing.
+
+NeilBrown
+
