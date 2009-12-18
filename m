@@ -1,47 +1,54 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: [PATCH] sunrpc: on successful gss error pipe write, don't
- return error (try #2)
-Date: Fri, 18 Dec 2009 16:02:34 -0500
-Message-ID: <1261170154.3420.69.camel@localhost>
-References: <1261153637-6209-1-git-send-email-jlayton@redhat.com>
-	 <1261163139.3420.17.camel@localhost>
-	 <20091218151345.5e86149d@tlielax.poochiereds.net>
-	 <1261167866.3420.40.camel@localhost>
-	 <20091218153841.1fbd5357@tlielax.poochiereds.net>
-	 <1261169812.3420.68.camel@localhost>
+From: Steve Rago <sar-a+KepyhlMvJWk0Htik3J/w@public.gmane.org>
+Subject: Re: [PATCH] improve the performance of large sequential write NFS
+	workloads
+Date: Fri, 18 Dec 2009 16:20:11 -0500
+Message-ID: <1261171211.1947.135.camel@serenity>
+References: <1261015420.1947.54.camel@serenity>
+	 <1261037877.27920.36.camel@laptop> <1261164799.1947.123.camel@serenity>
+	 <20091218194129.GB6153@elte.hu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org
-To: Jeff Layton <jlayton@redhat.com>
+Content-Type: text/plain
+Cc: Peter Zijlstra <peterz@infradead.org>, linux-nfs@vger.kernel.org,
+	linux-kernel@vger.kernel.org, Trond.Myklebust@netapp.com,
+	Wu Fengguang <fengguang.wu@intel.com>,
+	"jens.axboe" <jens.axboe@oracle.com>
+To: Ingo Molnar <mingo@elte.hu>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-out1.uio.no ([129.240.10.57]:56384 "EHLO mail-out1.uio.no"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932952AbZLRVCi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 18 Dec 2009 16:02:38 -0500
-In-Reply-To: <1261169812.3420.68.camel@localhost>
+Received: from mail.nec-labs.com ([138.15.200.209]:50382 "EHLO
+	mail.nec-labs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932608AbZLRVUP (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Dec 2009 16:20:15 -0500
+In-Reply-To: <20091218194129.GB6153@elte.hu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 2009-12-18 at 15:56 -0500, Trond Myklebust wrote: 
-> switch (err) {
-> case -EACCES:
-> gss_msg->msg.errno = -EACCES;
-> break;
-> case -EFAULT:
-> case -ENOMEM:
-> case -EINVAL:
-> case -ENOSYS:
-> gss_msg->msg.errno = -EAGAIN;
-> break;
-> default:
-> BUG();
-> }
+
+On Fri, 2009-12-18 at 20:41 +0100, Ingo Molnar wrote:
+> * Steve Rago <sar-a+KepyhlMvJWk0Htik3J/w@public.gmane.org> wrote:
 > 
-> Yup. That looks good to me...
+> > > Also, I don't think this needs to have a sysctl, it should just work.
+> > 
+> > The sysctl is a *good thing* in that it allows the eager writeback behavior 
+> > to be tuned and shut off if need be.  I can only test the changes on a 
+> > finite set of systems, so better safe than sorry.
+> 
+> This issue has been settled many years ago and that's not what we do in the 
+> Linux kernel. We prefer patches to core code where we are reasonably sure they 
+> result in good behavior - and then we fix bugs in the new behavior, if any. 
+> 
+> (Otherwise odd sysctls would mushroom quickly and the system would become 
+> untestable in practice.)
+> 
+> 	Ingo
 
+I don't disagree, but "that's not what we do" hardly provides insight
+into making the judgment call.  In this case, the variety of
+combinations of NFS server speed, NFS client speed, transmission link
+speed, client memory size, and server memory size argues for a tunable
+parameter, because one value probably won't work well in all
+combinations.  Making it change dynamically based on these parameters is
+more complicated than these circumstances call for, IMHO.
 
-Well... Minus the helpful reformatting that evolution did for me after I
-pressed the 'send' button.
+Steve
 
-Trond
 
