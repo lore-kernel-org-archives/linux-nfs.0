@@ -1,69 +1,66 @@
-From: Peter Zijlstra <peterz@infradead.org>
-Subject: Re: [PATCH] improve the performance of large sequential write NFS
- workloads
-Date: Fri, 18 Dec 2009 20:44:03 +0100
-Message-ID: <1261165443.20899.555.camel@laptop>
-References: <1261015420.1947.54.camel@serenity>
-	 <1261037877.27920.36.camel@laptop>  <1261164799.1947.123.camel@serenity>
+From: Jeff Layton <jlayton@redhat.com>
+Subject: Re: [PATCH] sunrpc: on successful gss error pipe write, don't
+	return error (try #2)
+Date: Fri, 18 Dec 2009 15:13:45 -0500
+Message-ID: <20091218151345.5e86149d@tlielax.poochiereds.net>
+References: <1261153637-6209-1-git-send-email-jlayton@redhat.com>
+	<1261163139.3420.17.camel@localhost>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
-	Trond.Myklebust@netapp.com, Wu Fengguang <fengguang.wu@intel.com>,
-	"jens.axboe" <jens.axboe@oracle.com>
-To: Steve Rago <sar-a+KepyhlMvJWk0Htik3J/w@public.gmane.org>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from casper.infradead.org ([85.118.1.10]:38491 "EHLO
-	casper.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751203AbZLRToe (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Dec 2009 14:44:34 -0500
-In-Reply-To: <1261164799.1947.123.camel@serenity>
-Sender: linux-nfs-owner@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Return-path: <nfsv4-bounces@linux-nfs.org>
+In-Reply-To: <1261163139.3420.17.camel@localhost>
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/options/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@linux-nfs.org>
+List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
+Sender: nfsv4-bounces@linux-nfs.org
+Errors-To: nfsv4-bounces@linux-nfs.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 2009-12-18 at 14:33 -0500, Steve Rago wrote:
-> > > +void nfs_wait_woutstanding(struct inode *inode)
-> > > +{
-> > > +   if (nfs_max_woutstanding != 0) {
-> > > +           unsigned long background_thresh;
-> > > +           unsigned long dirty_thresh;
-> > > +           long npages;
-> > > +           struct nfs_inode *nfsi = NFS_I(inode);
-> > > +
-> > > +           get_dirty_limits(&background_thresh, &dirty_thresh, NULL, NULL);
-> > > +           npages = global_page_state(NR_FILE_DIRTY) +
-> > > +                    global_page_state(NR_UNSTABLE_NFS) +
-> > > +                    global_page_state(NR_WRITEBACK);
-> > > +           if (npages >= background_thresh)
-> > > +                   wait_event(nfsi->writes_wq,
-> > > +                      atomic_read(&nfsi->writes) < nfs_max_woutstanding);
-> > > +   }
-> > > +}
+On Fri, 18 Dec 2009 14:05:39 -0500
+Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
+
+> On Fri, 2009-12-18 at 11:27 -0500, Jeff Layton wrote: 
+> > When handling the gssd downcall, the kernel should distinguish between a
+> > successful downcall that contains an error code and a failed downcall
+> > (i.e. where the parsing failed or some other sort of problem occurred).
 > > 
-> > This looks utterly busted too, why the global state and not the nfs
-> > client's bdi state?
+> > In the former case, gss_pipe_downcall should be returning the number of
+> > bytes written to the pipe instead of an error.
 > > 
-> > Also, why create this extra workqueue and not simply use the congestion
-> > interface that is present? If the congestion stuff doesn't work for you,
-> > fix that, don't add extra muck like this.
+> > Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> > ---
+> >  net/sunrpc/auth_gss/auth_gss.c |    3 +++
+> >  1 files changed, 3 insertions(+), 0 deletions(-)
+> > 
+> > diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
+> > index 3c3c50f..7afc8e2 100644
+> > --- a/net/sunrpc/auth_gss/auth_gss.c
+> > +++ b/net/sunrpc/auth_gss/auth_gss.c
+> > @@ -645,6 +645,9 @@ gss_pipe_downcall(struct file *filp, const char __user *src, size_t mlen)
+> >  	if (IS_ERR(p)) {
+> >  		err = PTR_ERR(p);
+> >  		gss_msg->msg.errno = (err == -EAGAIN) ? -EAGAIN : -EACCES;
+> > +		/* special case: downcall was successful, but held an error */
+> > +		if (err == -EACCES)
+> > +			err = mlen;
 > 
-> Pages are a global resource.  Once we hit the dirty_threshold, the
-> system is going to work harder to flush the pages out.  This code
-> prevents the caller from creating more dirty pages in this state,
-> thereby making matters worse, when eager writeback is enabled.
+> That line immediately above your fix still looks wrong. The point is
+> that AFAICS, err is never going to be set to EAGAIN. It can be EFAULT,
+> ENOSYS, or ENOMEM, but it will never be EAGAIN...
+> 
+> I think we should rather reverse that test. Really, what we want to do,
+> is to set msg.errno to -EAGAIN for -EFAULT and -ENOMEM (and probably for
+> ENOSYS too), and then set it to -EACCES _only_ in the case where the
+> user was not authorised.
 
-You misunderstand, dirty limits are per BDI, all those npages might be
-for !NFS traffic, in which case forcing the NFS into sync mode might be
-the wrong thing to do.
+What should we do if err is "none of the above"? Set msg.errno to
+-EACCES and return the error to the pipe writer?
 
-The dirty pages are no longer a global resource in the current Linux
-tree.
-
-> This wait queue is used for different purposes than the congestion_wait
-> interface.  Here we are preventing the caller from proceeding if there
-> are too many NFS writes outstanding for this thread and we are in a
-> memory pressure state.  It has nothing to do with the state of the bdi
-> congestion. 
-
-I'm thinking it ought to, congestion is exactly that, when the device
-gets backed up and need to get moving.
-
+-- 
+Jeff Layton <jlayton@redhat.com>
