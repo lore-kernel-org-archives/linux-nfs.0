@@ -1,54 +1,37 @@
-From: Steve Rago <sar-a+KepyhlMvJWk0Htik3J/w@public.gmane.org>
-Subject: Re: [PATCH] improve the performance of large sequential write NFS
-	workloads
-Date: Fri, 18 Dec 2009 16:20:11 -0500
-Message-ID: <1261171211.1947.135.camel@serenity>
-References: <1261015420.1947.54.camel@serenity>
-	 <1261037877.27920.36.camel@laptop> <1261164799.1947.123.camel@serenity>
-	 <20091218194129.GB6153@elte.hu>
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: Re: [PATCH] sunrpc: on successful gss error pipe write, don't
+	return error (try #3)
+Date: Fri, 18 Dec 2009 16:30:18 -0500
+Message-ID: <1261171818.3420.71.camel@localhost>
+References: <1261171430-15075-1-git-send-email-jlayton@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: Peter Zijlstra <peterz@infradead.org>, linux-nfs@vger.kernel.org,
-	linux-kernel@vger.kernel.org, Trond.Myklebust@netapp.com,
-	Wu Fengguang <fengguang.wu@intel.com>,
-	"jens.axboe" <jens.axboe@oracle.com>
-To: Ingo Molnar <mingo@elte.hu>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.nec-labs.com ([138.15.200.209]:50382 "EHLO
-	mail.nec-labs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932608AbZLRVUP (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Dec 2009 16:20:15 -0500
-In-Reply-To: <20091218194129.GB6153@elte.hu>
-Sender: linux-nfs-owner@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org
+To: Jeff Layton <jlayton@redhat.com>
+Return-path: <nfsv4-bounces@linux-nfs.org>
+In-Reply-To: <1261171430-15075-1-git-send-email-jlayton@redhat.com>
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/options/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@linux-nfs.org>
+List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
+Sender: nfsv4-bounces@linux-nfs.org
+Errors-To: nfsv4-bounces@linux-nfs.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-On Fri, 2009-12-18 at 20:41 +0100, Ingo Molnar wrote:
-> * Steve Rago <sar-a+KepyhlMvJWk0Htik3J/w@public.gmane.org> wrote:
+On Fri, 2009-12-18 at 16:23 -0500, Jeff Layton wrote: 
+> When handling the gssd downcall, the kernel should distinguish between a
+> successful downcall that contains an error code and a failed downcall
+> (i.e. where the parsing failed or some other sort of problem occurred).
 > 
-> > > Also, I don't think this needs to have a sysctl, it should just work.
-> > 
-> > The sysctl is a *good thing* in that it allows the eager writeback behavior 
-> > to be tuned and shut off if need be.  I can only test the changes on a 
-> > finite set of systems, so better safe than sorry.
-> 
-> This issue has been settled many years ago and that's not what we do in the 
-> Linux kernel. We prefer patches to core code where we are reasonably sure they 
-> result in good behavior - and then we fix bugs in the new behavior, if any. 
-> 
-> (Otherwise odd sysctls would mushroom quickly and the system would become 
-> untestable in practice.)
-> 
-> 	Ingo
+> In the former case, gss_pipe_downcall should be returning the number of
+> bytes written to the pipe instead of an error. In the event of other
+> errors, we generally want the initiating task to retry the upcall so
+> we set msg.errno to -EAGAIN. An unexpected error code here is a bug
+> however, so BUG() in that case.
 
-I don't disagree, but "that's not what we do" hardly provides insight
-into making the judgment call.  In this case, the variety of
-combinations of NFS server speed, NFS client speed, transmission link
-speed, client memory size, and server memory size argues for a tunable
-parameter, because one value probably won't work well in all
-combinations.  Making it change dynamically based on these parameters is
-more complicated than these circumstances call for, IMHO.
+That looks good. I'll apply it after the two other fixes.
 
-Steve
-
-
+Trond
