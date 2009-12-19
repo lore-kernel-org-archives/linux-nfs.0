@@ -1,70 +1,47 @@
-Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.nec-labs.com ([138.15.200.209]:48177 "EHLO
-	mail.nec-labs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751607AbZLVQUS (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 Dec 2009 11:20:18 -0500
+From: Arjan van de Ven <arjan@infradead.org>
 Subject: Re: [PATCH] improve the performance of large sequential write NFS
-	workloads
-From: Steve Rago <sar@nec-labs.com>
-To: Jan Kara <jack@suse.cz>
-Cc: Wu Fengguang <fengguang.wu@intel.com>,
-        Peter Zijlstra <peterz@infradead.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>,
-        "jens.axboe" <jens.axboe@oracle.com>,
-        Peter Staubach <staubach@redhat.com>
-In-Reply-To: <20091222122557.GA604@atrey.karlin.mff.cuni.cz>
+ workloads
+Date: Sat, 19 Dec 2009 09:08:24 +0100
+Message-ID: <20091219090824.1bc4a1c8@infradead.org>
 References: <1261015420.1947.54.camel@serenity>
-	 <1261037877.27920.36.camel@laptop> <20091219122033.GA11360@localhost>
-	 <1261232747.1947.194.camel@serenity>
-	 <20091222122557.GA604@atrey.karlin.mff.cuni.cz>
-Content-Type: text/plain
-Date: Tue, 22 Dec 2009 11:20:15 -0500
-Message-Id: <1261498815.13028.63.camel@serenity>
+	<1261037877.27920.36.camel@laptop>
+	<1261164799.1947.123.camel@serenity>
+	<20091218194129.GB6153@elte.hu>
+	<1261171211.1947.135.camel@serenity>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
+Cc: Ingo Molnar <mingo@elte.hu>, Peter Zijlstra <peterz@infradead.org>,
+	linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+	Trond.Myklebust@netapp.com, Wu Fengguang <fengguang.wu@intel.com>,
+	"jens.axboe" <jens.axboe@oracle.com>
+To: Steve Rago <sar-a+KepyhlMvJWk0Htik3J/w@public.gmane.org>
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from casper.infradead.org ([85.118.1.10]:50578 "EHLO
+	casper.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752097AbZLSIGR (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 19 Dec 2009 03:06:17 -0500
+In-Reply-To: <1261171211.1947.135.camel@serenity>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-MIME-Version: 1.0
 
+On Fri, 18 Dec 2009 16:20:11 -0500
+Steve Rago <sar-a+KepyhlMvJWk0Htik3J/w@public.gmane.org> wrote:
 
-On Tue, 2009-12-22 at 13:25 +0100, Jan Kara wrote:
-> > I originally spent several months playing with the balance_dirty_pages
-> > algorithm.  The main drawback is that it affects more than the inodes
-> > that the caller is writing and that the control of what to do is too
->   Can you be more specific here please?
-
-Sure;  balance_dirty_pages() will schedule writeback by the flusher
-thread once the number of dirty pages exceeds dirty_background_ratio.
-The flusher thread calls writeback_inodes_wb() to flush all dirty inodes
-associated with the bdi.  Similarly, the process dirtying the pages will
-call writeback_inodes_wbc() when it's bdi threshold has been exceeded.
-The first problem is that these functions process all dirty inodes with
-the same backing device, which can lead to excess (duplicate) flushing
-of the same inode.  Second, there is no distinction between pages that
-need to be committed and pages that have commits pending in
-NR_UNSTABLE_NFS/BDI_RECLAIMABLE (a page that has a commit pending won't
-be cleaned any faster by sending more commits).  This tends to overstate
-the amount of memory that can be cleaned, leading to additional commit
-requests.  Third, these functions generate a commit for each set of
-writes they do, which might not be appropriate.  For background writing,
-you'd like to delay the commit as long as possible.
-
-[snip]
-
-> > 
-> > Part of the patch does implement a heuristic write-behind.  See where
-> > nfs_wb_eager() is called.
->   I believe that if we had per-bdi dirty_background_ratio and set it low
-> for NFS's bdi, then the write-behind logic would not be needed
-> (essentially the flusher thread should submit the writes to the server
-> early).
 > 
-> 								Honza
+> I don't disagree, but "that's not what we do" hardly provides insight
+> into making the judgment call.  In this case, the variety of
+> combinations of NFS server speed, NFS client speed, transmission link
+> speed, client memory size, and server memory size argues for a tunable
+> parameter, because one value probably won't work well in all
+> combinations.  Making it change dynamically based on these parameters
+> is more complicated than these circumstances call for, IMHO.
 
-Maybe so, but you still need something to prevent the process that is
-dirtying pages from continuing, because a process can always write to
-memory faster than writing to disk/network, so the flusher won't be able
-to keep up.
 
-Steve
+if you as the expert do not know how to tune this... how is a sysadmin
+supposed to know better?
 
+
+-- 
+Arjan van de Ven 	Intel Open Source Technology Centre
+For development, discussion and tips for power savings, 
+visit http://www.lesswatts.org
