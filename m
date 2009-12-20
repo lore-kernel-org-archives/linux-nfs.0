@@ -1,34 +1,39 @@
 From: Michael Guntsche <mike-Z92qn3yYq0hWk0Htik3J/w@public.gmane.org>
 Subject: Re: Problem with 2.6.33-rc1 and insecure flag
-Date: Sun, 20 Dec 2009 10:28:44 +0100
-Message-ID: <20091220092844.GA1961@trillian.comsick.at>
+Date: Sun, 20 Dec 2009 10:46:26 +0100
+Message-ID: <20091220094625.GA2159@trillian.comsick.at>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-nfs <linux-nfs@vger.kernel.org>
 To: bfields@citi.umich.edu
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from lvps87-230-0-242.dedicated.hosteurope.de ([87.230.0.242]:35175
+Received: from lvps87-230-0-242.dedicated.hosteurope.de ([87.230.0.242]:35447
 	"EHLO lvps87-230-0-242.dedicated.hosteurope.de" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751558AbZLTJ2x (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 20 Dec 2009 04:28:53 -0500
+	by vger.kernel.org with ESMTP id S1752484AbZLTJqd (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 20 Dec 2009 04:46:33 -0500
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Good morning
+I think I figured out the problem. 
 
-Some more info on this topic.
-
-I tried mounting the same export from the server itself for testing.
-Using the noresvport flag I got the same result as with the macosx
-client.
-
-mount -onoresvport gibson:/var/media /mnt
-mount.nfs: Operation not permitted
-
-The relevant part from my exports file.
-
-/var/media         192.168.42.0/24(rw,async,no_subtree_check,insecure)
-dreambox(rw,async,no_subtree_check,insecure,anonuid=1000)
+Apparently the code checked if insecure was set, while it should check if it was NOT set.
 
 Kind regards,
 Michael
+
+diff --git a/fs/nfsd/nfsfh.c b/fs/nfsd/nfsfh.c
+index 1c12177..55c8e63 100644
+--- a/fs/nfsd/nfsfh.c
++++ b/fs/nfsd/nfsfh.c
+@@ -89,7 +89,7 @@ static __be32 nfsd_setuser_and_check_port(struct svc_rqst *rqstp,
+        int flags = nfsexp_flags(rqstp, exp);
+ 
+        /* Check if the request originated from a secure port. */
+-       if (!rqstp->rq_secure && (flags & NFSEXP_INSECURE_PORT)) {
++       if (!rqstp->rq_secure && !(flags & NFSEXP_INSECURE_PORT)) {
+                RPC_IFDEBUG(char buf[RPC_MAX_ADDRBUFLEN]);
+                dprintk(KERN_WARNING
+                       "nfsd: request from insecure port %s!\n",
+
+
+
