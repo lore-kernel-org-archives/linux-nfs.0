@@ -1,73 +1,87 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: starting 90-second grace period : leasetime less than 10
-Date: Mon, 21 Dec 2009 14:36:30 -0500
-Message-ID: <20091221193630.GB22943@fieldses.org>
-References: <f5b5ebae0912140410t2814d7bck688549103b3104ea@mail.gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs@vger.kernel.org
-To: Tharindu Rukshan Bamunuarachchi <btharindu@gmail.com>
+From: andros@netapp.com
+Subject: [PATCH 1/2] nfs41: prepare for back channel drc
+Date: Mon, 21 Dec 2009 17:46:05 -0500
+Message-ID: <1261435566-13814-2-git-send-email-andros@netapp.com>
+References: <1261435566-13814-1-git-send-email-andros@netapp.com>
+Cc: linux-nfs@vger.kernel.org, pnfs@linux-nfs.org,
+	Andy Adamson <andros@netapp.com>
+To: trond.myklebust@netapp.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:59778 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:1482 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751304AbZLUTgP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 21 Dec 2009 14:36:15 -0500
-In-Reply-To: <f5b5ebae0912140410t2814d7bck688549103b3104ea-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
+	id S1755997AbZLUWrE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 21 Dec 2009 17:47:04 -0500
+In-Reply-To: <1261435566-13814-1-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Dec 14, 2009 at 05:40:20PM +0530, Tharindu Rukshan Bamunuarachchi wrote:
-> I can not set nfs4leasetime value less than 10 seconds.
-> 
-> there is a verification in __write_leasetime(). (lease < 10 || lease > 3600)
-> 
-> I am going to change this to ~2 second (to make NFS HA failover happen
-> in less than 10 seconds with HeartBeat).
-> 
-> Any reason why is this checked for 10 (i.e. lease < 10) ... ?
+From: Andy Adamson <andros@netapp.com>
 
-No reason for that particular limit, but this does mean every client
-will have to send a small NFSv4 operation to the server at least once
-every 2 seconds as long as it holds any opens or other state. And if the
-network goes down for more than 2 seonds the client will probably lose
-that state.
+Make all cb_sequence arguments available to verify_seqid which will make
+replay decisions.
 
-Is it the grace-period time on the takeover server that you're trying to
-limit?
+Signed-off-by: Andy Adamson <andros@netapp.com>
+---
+ fs/nfs/callback_proc.c |   19 +++++++++----------
+ 1 files changed, 9 insertions(+), 10 deletions(-)
 
---b.
+diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
+index defa9b4..7f92b6d 100644
+--- a/fs/nfs/callback_proc.c
++++ b/fs/nfs/callback_proc.c
+@@ -153,34 +153,34 @@ int nfs41_validate_delegation_stateid(struct nfs_delegation *delegation, const n
+  * a single outstanding callback request at a time.
+  */
+ static int
+-validate_seqid(struct nfs4_slot_table *tbl, u32 slotid, u32 seqid)
++validate_seqid(struct nfs4_slot_table *tbl, struct cb_sequenceargs * args)
+ {
+ 	struct nfs4_slot *slot;
+ 
+ 	dprintk("%s enter. slotid %d seqid %d\n",
+-		__func__, slotid, seqid);
++		__func__, args->csa_slotid, args->csa_sequenceid);
+ 
+-	if (slotid > NFS41_BC_MAX_CALLBACKS)
++	if (args->csa_slotid > NFS41_BC_MAX_CALLBACKS)
+ 		return htonl(NFS4ERR_BADSLOT);
+ 
+-	slot = tbl->slots + slotid;
++	slot = tbl->slots + args->csa_slotid;
+ 	dprintk("%s slot table seqid: %d\n", __func__, slot->seq_nr);
+ 
+ 	/* Normal */
+-	if (likely(seqid == slot->seq_nr + 1)) {
++	if (likely(args->csa_sequenceid == slot->seq_nr + 1)) {
+ 		slot->seq_nr++;
+ 		return htonl(NFS4_OK);
+ 	}
+ 
+ 	/* Replay */
+-	if (seqid == slot->seq_nr) {
++	if (args->csa_sequenceid == slot->seq_nr) {
+ 		dprintk("%s seqid %d is a replay - no DRC available\n",
+-			__func__, seqid);
++			__func__, args->csa_sequenceid);
+ 		return htonl(NFS4_OK);
+ 	}
+ 
+ 	/* Wraparound */
+-	if (seqid == 1 && (slot->seq_nr + 1) == 0) {
++	if (args->csa_sequenceid == 1 && (slot->seq_nr + 1) == 0) {
+ 		slot->seq_nr = 1;
+ 		return htonl(NFS4_OK);
+ 	}
+@@ -241,8 +241,7 @@ unsigned nfs4_callback_sequence(struct cb_sequenceargs *args,
+ 	if (clp == NULL)
+ 		goto out;
+ 
+-	status = validate_seqid(&clp->cl_session->bc_slot_table,
+-				args->csa_slotid, args->csa_sequenceid);
++	status = validate_seqid(&clp->cl_session->bc_slot_table, args);
+ 	if (status)
+ 		goto out_putclient;
+ 
+-- 
+1.6.0.6
 
-> 
-> 
-> 
-> 
-> 
-> static ssize_t __write_leasetime(struct file *file, char *buf, size_t size)
-> {
->         /* if size > 10 seconds, call
->          * nfs4_reset_lease() then write out the new lease (seconds) as reply
->          */
->         char *mesg = buf;
->         int rv, lease;
-> 
->         if (size > 0) {
->                 if (nfsd_serv)
->                         return -EBUSY;
->                 rv = get_int(&mesg, &lease);
->                 if (rv)
->                         return rv;
->                 if (lease < 10 || lease > 3600)
->                         return -EINVAL;
->                 nfs4_reset_lease(lease);
->         }
-> 
->         return scnprintf(buf, SIMPLE_TRANSACTION_LIMIT, "%ld\n",
->                                                         nfs4_lease_time());
-> }
-> 
-> -- 
-> Tharindu Rukshan Bamunuarachchi
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
