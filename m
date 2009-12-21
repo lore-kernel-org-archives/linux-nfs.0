@@ -1,66 +1,75 @@
-From: f3ar007 <f3ar007@gmail.com>
-Subject: two exports on server, only one directory appears on client
-Date: Sun, 20 Dec 2009 20:33:24 -0800
-Message-ID: <94de02aa0912202033g1002f945o5a752606fead7215@mail.gmail.com>
+From: Liuwenyi <qingshenlwy@gmail.com>
+Subject: [PATCHv2 09/12]posix_acl: Add the check items
+Date: Mon, 21 Dec 2009 19:59:52 +0800
+Message-ID: <4B2F6338.2040609@gmail.com>
+Reply-To: qingshenlwy@gmail.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-To: linux-nfs@vger.kernel.org
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-iw0-f171.google.com ([209.85.223.171]:56336 "EHLO
-	mail-iw0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751707AbZLUEdZ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 20 Dec 2009 23:33:25 -0500
-Received: by iwn1 with SMTP id 1so3443728iwn.33
-        for <linux-nfs@vger.kernel.org>; Sun, 20 Dec 2009 20:33:24 -0800 (PST)
-Sender: linux-nfs-owner@vger.kernel.org
+Content-Type: text/plain; charset=GB2312
+To: bfields@fieldses.org, neilb@suse.de, ffilzlnx@us.ibm.com,
+	bharrosh@panasas.com, linux-nfs@vger.kernel.org,
+	linux-kernel@vger.kernel.org, strongzgy@gmail.com,
+	onlyflyer@gmail.com
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1756678AbZLUL4q@vger.kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-hi,
+move the ACL validation check in to fs/posix_acl.c.
+Including nullpointer check and PTR_ERR check.
 
-i have a problem mounting two separate directories on the client.  the
-exports, on the server, are defined as two different directories.  and
-exportfs -rav outputs the correct ipaddr:/path/to/mount on the server.
- when i mount the separate directories on the client "mount -t nfs
-ipaddr:/full/path /mnt/hd1" and "mount -t nfs ipaddr:/full/path
-/mnt/hd2" both directories on the client /mnt/hd1 and /mnt/hd2 list
-the contents of only hd2.  for example, on the client, ls /mnt/hd1
-outputs the same directories as ls /mnt/hd2.  the server has the
-correct mount points /dev/sda1 as /mnt/1tb and /dev/sdb1 as
-/mnt/320gb.
+---
+Signed-off-by: Liuwenyi <qingshenlwy@gmail.com>
+Cc: J. Bruce Fields <bfields@fieldses.org>
+Cc: Neil Brown <neilb@suse.de>
+Cc: Frank Filz <ffilzlnx@us.ibm.com>
+Cc: Boaz Harrosh <bharrosh@panasas.com>
+Cc: linux-nfs@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org
 
-here is the code to clarify:
+---
 
-# server output of `mount | grep /dev/sd`
-/dev/sda1  on  /mnt/1tb      type vfat  (rw,noexec,nosuid,nodev,umask=000)
-/dev/sdb1  on  /mnt/320gb  type vfat  (rw,noexec,nosuid,nodev,umask=000)
-# notes two different harddrives here, so the directories in each are different.
+diff --git a/fs/nfsd/nfs4acl.c b/fs/nfsd/nfs4acl.c
+index 8815068..0c2cd6c 100644
+--- a/fs/nfsd/nfs4acl.c
++++ b/fs/nfsd/nfs4acl.c
+@@ -135,27 +135,21 @@ nfs4_acl_posix_to_nfsv4(struct posix_acl *pacl,
+struct posix_acl *dpacl,
+struct nfs4_acl *acl;
+int size = 0;
 
-# server output of `cat /etc/exports`
-/mnt/1tb     client-ipaddress(rw,fsid=0,subtree_check,no_root_squash,crossmnt,async)
-/mnt/320gb client-ipaddress(rw,fsid=0,subtree_check,no_root_squash,crossmnt,async)
+- if (pacl) {
+- if (posix_acl_valid(pacl) < 0)
+- return ERR_PTR(-EINVAL);
+- size += 2*pacl->a_count;
+- }
+- if (dpacl) {
+- if (posix_acl_valid(dpacl) < 0)
+- return ERR_PTR(-EINVAL);
+- size += 2*dpacl->a_count;
+- }
++ if (posix_acl_valid(pacl) < 0)
++ return ERR_PTR(-EINVAL);
++ size += 2*pacl->a_count;
++
++ if (posix_acl_valid(dpacl) < 0)
++ return ERR_PTR(-EINVAL);
++ size += 2*dpacl->a_count;
 
-# server output of `exportfs -rav`
-exporting client-ipaddress:/mnt/1tb
-exporting client-ipaddress:/mnt/320gb
+/* Allocate for worst case: one (deny, allow) pair each: */
+acl = nfs4_acl_new(size);
+if (acl == NULL)
+return ERR_PTR(-ENOMEM);
 
-### end of server ###
+- if (pacl)
+- _posix_to_nfsv4_one(pacl, acl, flags & ~NFS4_ACL_TYPE_DEFAULT);
+-
+- if (dpacl)
+- _posix_to_nfsv4_one(dpacl, acl, flags | NFS4_ACL_TYPE_DEFAULT);
++ _posix_to_nfsv4_one(pacl, acl, flags & ~NFS4_ACL_TYPE_DEFAULT);
++ _posix_to_nfsv4_one(dpacl, acl, flags | NFS4_ACL_TYPE_DEFAULT);
 
-### client ###
+return acl;
+}
 
-# client commands
-mount -t nfs server-ip:/mnt/1tb /mnt/nfs-1tb
-mount -t nfs server-ip:/mnt/320gb /mnt/nfs-320gb
-
-# client output of `mount | grep server-ip`
-server-ip:/mnt/1tb  on  /mnt/nfs-1tb  (rw,addr=server-ip)
-server-ip:/mnt/320gb  on  /mnt/nfs-320gb  (rw,addr=server-ip)
-
-# client output of `ls /mnt/nfs-1tb` == `ls /mnt/nfs-320gb`
-# note the client output of these two commands should be the contents
-of server /dev/sda1 then server /dev/sdb1
-
-my question is: how do i mount the two directories separately in order
-to list contents of both harddrives? is there a separator in
-/etc/exports that i am missing, causing it to read only the second
-export?
-is there anything i am missing here?
+-- 
+Best Regards,
+Liuwenyi
