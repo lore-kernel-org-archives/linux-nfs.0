@@ -1,49 +1,142 @@
-From: Martin Knoblauch <knobi-Ys4E+72pFW0hFhg+JK9F0w@public.gmane.org>
-Subject: Re: [PATCH] improve the performance of large sequential write NFS workloads
-Date: Tue, 22 Dec 2009 05:01:46 -0800 (PST)
-Message-ID: <787373.9318.qm@web113309.mail.gq1.yahoo.com>
-References: <1261015420.1947.54.camel@serenity> <1261037877.27920.36.camel@laptop> <20091219122033.GA11360@localhost> <1261232747.1947.194.camel@serenity> <20091222015907.GA6223@localhost>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Peter Zijlstra <peterz@infradead.org>,
-	"linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-	"Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>,
-	"jens.axboe" <jens.axboe@oracle.com>
-To: Wu Fengguang <fengguang.wu@intel.com>,
-	Steve Rago <sar-a+KepyhlMvJWk0Htik3J/w@public.gmane.org>
+From: andros@netapp.com
+Subject: [PATCH 2/2] nfs41: back channel drc minimal implementation
+Date: Mon, 21 Dec 2009 18:01:27 -0500
+Message-ID: <1261436487-14084-1-git-send-email-andros@netapp.com>
+Cc: linux-nfs@vger.kernel.org, pnfs@linux-nfs.org,
+	Andy Adamson <andros@netapp.com>
+To: trond.myklebust@netapp.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from web113309.mail.gq1.yahoo.com ([98.136.167.9]:48061 "HELO
-	web113309.mail.gq1.yahoo.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with SMTP id S1751153AbZLVNI2 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 Dec 2009 08:08:28 -0500
-In-Reply-To: <20091222015907.GA6223@localhost>
+Received: from mx2.netapp.com ([216.240.18.37]:22364 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751013AbZLVOIM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 22 Dec 2009 09:08:12 -0500
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
------ Original Message ----
+From: Andy Adamson <andros@netapp.com>
 
-> From: Wu Fengguang <fengguang.wu@intel.com>
-> To: Steve Rago <sar-a+KepyhlMvJWk0Htik3J/w@public.gmane.org>
-> Cc: Peter Zijlstra <peterz@infradead.org>; "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>; "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>; "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>; jens.axboe <jens.axboe@oracle.com>
-> Sent: Tue, December 22, 2009 2:59:07 AM
-> Subject: Re: [PATCH] improve the performance of large sequential write NFS workloads
-> 
+For now the back channel ca_maxresponsesize_cached is 0 and there is no
+backchannel DRC. Return NFS4ERR_REP_TOO_BIG_TO_CACHE when a cb_sequence
+cachethis is true.  When it is false, return NFS4ERR_RETRY_UNCACHED_REP as the
+next operation error.
 
-[big snip]
+Remember the replay error accross compound operation processing.
 
-> 
-> In general it's reasonable to keep NFS per-file nr_dirty low, however
-> questionable to do per-file nr_writeback throttling. This does not
-> work well with the global limits - eg. when there are many dirty
-> files, the summed-up nr_writeback will still grow out of control.
-> And it's more likely to impact user visible responsiveness than
-> a global limit. But my opinion can be biased -- me have a patch to
-> do global NFS nr_writeback limit ;)
-> 
+Signed-off-by: Andy Adamson <andros@netapp.com>
+---
+ fs/nfs/callback_proc.c |   25 +++++++++++++++++--------
+ fs/nfs/callback_xdr.c  |   19 +++++++++++++++----
+ 2 files changed, 32 insertions(+), 12 deletions(-)
 
+diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
+index 7f92b6d..3cc2333 100644
+--- a/fs/nfs/callback_proc.c
++++ b/fs/nfs/callback_proc.c
+@@ -143,9 +143,8 @@ int nfs41_validate_delegation_stateid(struct nfs_delegation *delegation, const n
+  * Return success if the sequenceID is one more than what we last saw on
+  * this slot, accounting for wraparound.  Increments the slot's sequence.
+  *
+- * We don't yet implement a duplicate request cache, so at this time
+- * we will log replays, and process them as if we had not seen them before,
+- * but we don't bump the sequence in the slot.  Not too worried about it,
++ * We don't yet implement a duplicate request cache, instead we set the
++ * back channel ca_maxresponsesize_cached to zero. This is OK for now
+  * since we only currently implement idempotent callbacks anyway.
+  *
+  * We have a single slot backchannel at this time, so we don't bother
+@@ -174,9 +173,15 @@ validate_seqid(struct nfs4_slot_table *tbl, struct cb_sequenceargs * args)
+ 
+ 	/* Replay */
+ 	if (args->csa_sequenceid == slot->seq_nr) {
+-		dprintk("%s seqid %d is a replay - no DRC available\n",
++		dprintk("%s seqid %d is a replay\n",
+ 			__func__, args->csa_sequenceid);
+-		return htonl(NFS4_OK);
++		/* Signal process_op to set this error on next op */
++		if (args->csa_cachethis == 0)
++			return htonl(NFS4ERR_RETRY_UNCACHED_REP);
++
++		/* The ca_maxresponsesize_cached is 0 with no DRC */
++		else if (args->csa_cachethis == 1)
++			return htonl(NFS4ERR_REP_TOO_BIG_TO_CACHE);
+ 	}
+ 
+ 	/* Wraparound */
+@@ -255,9 +260,13 @@ unsigned nfs4_callback_sequence(struct cb_sequenceargs *args,
+ out_putclient:
+ 	nfs_put_client(clp);
+ out:
+-	dprintk("%s: exit with status = %d\n", __func__, ntohl(status));
+-	res->csr_status = status;
+-	return res->csr_status;
++	if (status == htonl(NFS4ERR_RETRY_UNCACHED_REP))
++		res->csr_status = 0;
++	else
++		res->csr_status = status;
++	dprintk("%s: exit with status = %d res->csr_status %d\n", __func__,
++		ntohl(status), ntohl(res->csr_status));
++	return status;
+ }
+ 
+ unsigned nfs4_callback_recallany(struct cb_recallanyargs *args, void *dummy)
+diff --git a/fs/nfs/callback_xdr.c b/fs/nfs/callback_xdr.c
+index 8e1a251..0365f79 100644
+--- a/fs/nfs/callback_xdr.c
++++ b/fs/nfs/callback_xdr.c
+@@ -602,7 +602,7 @@ preprocess_nfs4_op(unsigned int op_nr, struct callback_op **op)
+ static __be32 process_op(uint32_t minorversion, int nop,
+ 		struct svc_rqst *rqstp,
+ 		struct xdr_stream *xdr_in, void *argp,
+-		struct xdr_stream *xdr_out, void *resp)
++		struct xdr_stream *xdr_out, void *resp, int* drc_status)
+ {
+ 	struct callback_op *op = &callback_ops[0];
+ 	unsigned int op_nr = OP_CB_ILLEGAL;
+@@ -624,6 +624,11 @@ static __be32 process_op(uint32_t minorversion, int nop,
+ 				preprocess_nfs4_op(op_nr, &op);
+ 	if (status == htonl(NFS4ERR_OP_ILLEGAL))
+ 		op_nr = OP_CB_ILLEGAL;
++
++	if (*drc_status) {
++		status = *drc_status;
++		goto encode_hdr;
++	}
+ out:
+ 	maxlen = xdr_out->end - xdr_out->p;
+ 	if (maxlen > 0 && maxlen < PAGE_SIZE) {
+@@ -634,6 +639,12 @@ out:
+ 	} else
+ 		status = htonl(NFS4ERR_RESOURCE);
+ 
++	/* Only set by OP_CB_SEQUENCE processing */
++	if (status == htonl(NFS4ERR_RETRY_UNCACHED_REP)) {
++		*drc_status = status;
++		status = 0;
++	}
++encode_hdr:
+ 	res = encode_op_hdr(xdr_out, op_nr, status);
+ 	if (status == 0)
+ 		status = res;
+@@ -652,7 +663,7 @@ static __be32 nfs4_callback_compound(struct svc_rqst *rqstp, void *argp, void *r
+ 	struct cb_compound_hdr_res hdr_res = { NULL };
+ 	struct xdr_stream xdr_in, xdr_out;
+ 	__be32 *p;
+-	__be32 status;
++	__be32 status, drc_status = 0;
+ 	unsigned int nops = 0;
+ 
+ 	dprintk("%s: start\n", __func__);
+@@ -672,8 +683,8 @@ static __be32 nfs4_callback_compound(struct svc_rqst *rqstp, void *argp, void *r
+ 		return rpc_system_err;
+ 
+ 	while (status == 0 && nops != hdr_arg.nops) {
+-		status = process_op(hdr_arg.minorversion, nops,
+-				    rqstp, &xdr_in, argp, &xdr_out, resp);
++		status = process_op(hdr_arg.minorversion, nops, rqstp,
++				    &xdr_in, argp, &xdr_out, resp, &drc_status);
+ 		nops++;
+ 	}
+ 
+-- 
+1.6.0.6
 
- is that  "NFS: introduce writeback wait queue", which you sent me a while ago and I did not test until now :-( ?
-
-Cheers
-Martin
