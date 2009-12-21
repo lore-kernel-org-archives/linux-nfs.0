@@ -1,74 +1,66 @@
-From: "J. Bruce Fields" <bfields@citi.umich.edu>
-Subject: Re: Problem with 2.6.33-rc1 and insecure flag
-Date: Sun, 20 Dec 2009 10:46:24 -0500
-Message-ID: <20091220154624.GC2841@fieldses.org>
-References: <20091220094625.GA2159@trillian.comsick.at> <7A24DF798E223B4C9864E8F92E8C93EC04EBFD3F@SACMVEXC1-PRD.hq.netapp.com>
+From: f3ar007 <f3ar007@gmail.com>
+Subject: two exports on server, only one directory appears on client
+Date: Sun, 20 Dec 2009 20:33:24 -0800
+Message-ID: <94de02aa0912202033g1002f945o5a752606fead7215@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Michael Guntsche <mike-Z92qn3yYq0hWk0Htik3J/w@public.gmane.org>,
-	linux-nfs <linux-nfs@vger.kernel.org>
-To: "Muntz, Daniel" <Dan.Muntz@netapp.com>
+Content-Type: text/plain; charset=ISO-8859-1
+To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:51898 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752080AbZLTPqP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 20 Dec 2009 10:46:15 -0500
-In-Reply-To: <7A24DF798E223B4C9864E8F92E8C93EC04EBFD3F-hX7t0kiaRRpT+ZUat5FNkAK/GNPrWCqfQQ4Iyu8u01E@public.gmane.org>
+Received: from mail-iw0-f171.google.com ([209.85.223.171]:56336 "EHLO
+	mail-iw0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751707AbZLUEdZ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 20 Dec 2009 23:33:25 -0500
+Received: by iwn1 with SMTP id 1so3443728iwn.33
+        for <linux-nfs@vger.kernel.org>; Sun, 20 Dec 2009 20:33:24 -0800 (PST)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sun, Dec 20, 2009 at 02:13:07AM -0800, Muntz, Daniel wrote:
-> If one were to hit this bug with v4.x, would the error be something like
-> this in the RPC layer:
-> 
->    Reply State: denied (1)
->    Reject State: AUTH_ERROR (1)
->    Auth State: bad credential (seal broken) (1) 
+hi,
 
-Since we let the "insecure" flag vary by filesystem, we don't catch this
-until we decode filehandles, so return an nfs-level error.
+i have a problem mounting two separate directories on the client.  the
+exports, on the server, are defined as two different directories.  and
+exportfs -rav outputs the correct ipaddr:/path/to/mount on the server.
+ when i mount the separate directories on the client "mount -t nfs
+ipaddr:/full/path /mnt/hd1" and "mount -t nfs ipaddr:/full/path
+/mnt/hd2" both directories on the client /mnt/hd1 and /mnt/hd2 list
+the contents of only hd2.  for example, on the client, ls /mnt/hd1
+outputs the same directories as ls /mnt/hd2.  the server has the
+correct mount points /dev/sda1 as /mnt/1tb and /dev/sdb1 as
+/mnt/320gb.
 
---b.
+here is the code to clarify:
 
-> 
->   -Dan
-> 
-> > -----Original Message-----
-> > From: Michael Guntsche [mailto:mike-Z92qn3yYq0hWk0Htik3J/w@public.gmane.org] 
-> > Sent: Sunday, December 20, 2009 1:46 AM
-> > To: bfields@citi.umich.edu
-> > Cc: linux-nfs
-> > Subject: Re: Problem with 2.6.33-rc1 and insecure flag
-> > 
-> > I think I figured out the problem. 
-> > 
-> > Apparently the code checked if insecure was set, while it 
-> > should check if it was NOT set.
-> > 
-> > Kind regards,
-> > Michael
-> > 
-> > diff --git a/fs/nfsd/nfsfh.c b/fs/nfsd/nfsfh.c
-> > index 1c12177..55c8e63 100644
-> > --- a/fs/nfsd/nfsfh.c
-> > +++ b/fs/nfsd/nfsfh.c
-> > @@ -89,7 +89,7 @@ static __be32 
-> > nfsd_setuser_and_check_port(struct svc_rqst *rqstp,
-> >         int flags = nfsexp_flags(rqstp, exp);
-> >  
-> >         /* Check if the request originated from a secure port. */
-> > -       if (!rqstp->rq_secure && (flags & NFSEXP_INSECURE_PORT)) {
-> > +       if (!rqstp->rq_secure && !(flags & NFSEXP_INSECURE_PORT)) {
-> >                 RPC_IFDEBUG(char buf[RPC_MAX_ADDRBUFLEN]);
-> >                 dprintk(KERN_WARNING
-> >                        "nfsd: request from insecure port %s!\n",
-> > 
-> > 
-> > 
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe 
-> > linux-nfs" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> > 
-> 
+# server output of `mount | grep /dev/sd`
+/dev/sda1  on  /mnt/1tb      type vfat  (rw,noexec,nosuid,nodev,umask=000)
+/dev/sdb1  on  /mnt/320gb  type vfat  (rw,noexec,nosuid,nodev,umask=000)
+# notes two different harddrives here, so the directories in each are different.
+
+# server output of `cat /etc/exports`
+/mnt/1tb     client-ipaddress(rw,fsid=0,subtree_check,no_root_squash,crossmnt,async)
+/mnt/320gb client-ipaddress(rw,fsid=0,subtree_check,no_root_squash,crossmnt,async)
+
+# server output of `exportfs -rav`
+exporting client-ipaddress:/mnt/1tb
+exporting client-ipaddress:/mnt/320gb
+
+### end of server ###
+
+### client ###
+
+# client commands
+mount -t nfs server-ip:/mnt/1tb /mnt/nfs-1tb
+mount -t nfs server-ip:/mnt/320gb /mnt/nfs-320gb
+
+# client output of `mount | grep server-ip`
+server-ip:/mnt/1tb  on  /mnt/nfs-1tb  (rw,addr=server-ip)
+server-ip:/mnt/320gb  on  /mnt/nfs-320gb  (rw,addr=server-ip)
+
+# client output of `ls /mnt/nfs-1tb` == `ls /mnt/nfs-320gb`
+# note the client output of these two commands should be the contents
+of server /dev/sda1 then server /dev/sdb1
+
+my question is: how do i mount the two directories separately in order
+to list contents of both harddrives? is there a separator in
+/etc/exports that i am missing, causing it to read only the second
+export?
+is there anything i am missing here?
