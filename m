@@ -1,32 +1,40 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-out1.uio.no ([129.240.10.57]:46166 "EHLO mail-out1.uio.no"
+Received: from mx2.netapp.com ([216.240.18.37]:1482 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756844AbZLKSBx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 11 Dec 2009 13:01:53 -0500
-Subject: Re: starting 90-second grace period
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-To: Tharindu Rukshan Bamunuarachchi <btharindu@gmail.com>
-Cc: Andy Adamson <andros@netapp.com>, linux-nfs@vger.kernel.org
-In-Reply-To: <f5b5ebae0912110925o510667far7201adf429c18a5@mail.gmail.com>
-References: <f5b5ebae0912110300t78ceb985oc7a21b20a3429a52@mail.gmail.com>
-	 <1629BB1E-EB8B-478C-8170-60413A5140A2@netapp.com>
-	 <f5b5ebae0912110925o510667far7201adf429c18a5@mail.gmail.com>
-Content-Type: text/plain; charset="UTF-8"
-Date: Fri, 11 Dec 2009 13:01:55 -0500
-Message-Id: <1260554515.15701.0.camel@localhost>
+	id S1755599AbZLUWrB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 21 Dec 2009 17:47:01 -0500
+From: andros@netapp.com
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, pnfs@linux-nfs.org
+Subject: [PATCH 0/2] nfsv4 back channel drc mininal implementation
+Date: Mon, 21 Dec 2009 17:46:04 -0500
+Message-Id: <1261435566-13814-1-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Fri, 2009-12-11 at 22:55 +0530, Tharindu Rukshan Bamunuarachchi
-wrote: 
-> thankx a lot for the info.
-> 
-> btw, if i set nfs4leasetime to ~10 seconds ... is there any negative effect ?
-> 
 
-You mean aside from the very likely event that your clients will lose
-all their locks when the server reboots?
+nfs41: back channel drc minimal implementation
+Patches against 2-6-33-rc1
 
-Trond
+For now the back channel ca_maxresponsesize_cached is 0 and there is no
+backchannel DRC. Return NFS4ERR_REP_TOO_BIG_TO_CACHE when a cb_sequence
+cachethis is true.  When it is false, return NFS4ERR_RETRY_UNCACHED_REP as the
+next operation error.
+
+0001-nfs41-prepare-for-back-channel-drc.patch
+0002-nfs41-back-channel-drc-minimal-implementation.patch
+
+Tested:
+CONFIG_NFS_V4_1
+NFSv4.1 mount: Connectathon passes.
+
+Hardcoded a pyNFS server to always replay a cb_recall. Tested with cachethis of
+True and False. Then held a RO file open and performed a RW open from a different client to force a recall.  This could be added to testclient.py
+
+
+NFSv4.0 mount: Connectatahon passes.
+
+-->Andy
 
