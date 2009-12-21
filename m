@@ -1,53 +1,73 @@
-From: Christoph Hellwig <hch@lst.de>
-Subject: Re: [PATCHv2 00/12]posix_acl: Add the check items
-Date: Mon, 21 Dec 2009 13:36:54 +0100
-Message-ID: <20091221123654.GA9201__41342.0190722265$1261412983$gmane$org@lst.de>
-References: <4B2F6153.8010609@gmail.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: starting 90-second grace period : leasetime less than 10
+Date: Mon, 21 Dec 2009 14:36:30 -0500
+Message-ID: <20091221193630.GB22943@fieldses.org>
+References: <f5b5ebae0912140410t2814d7bck688549103b3104ea@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: adilger@sun.com, jack@suse.cz, neilb@suse.de, jeffm@suse.com,
-        joel.becker@oracle.com, bfields@fieldses.org,
-        linux-mtd@lists.infradead.org, onlyflyer@gmail.com, hch@lst.de,
-        tiger.yang@oracle.com, strongzgy@gmail.com, ffilzlnx@us.ibm.com,
-        sandeen@sandeen.net, jmorris@namei.org, cluster-devel@redhat.com,
-        aelder@sgi.com, cjb@laptop.org, mfasheh@suse.com, bharrosh@panasas.com,
-        reiserfs-devel@vger.kernel.org, xfs@oss.sgi.com,
-        xfs-masters@oss.sgi.com, viro@zeniv.linux.org.uk, swhiteho@redhat.com,
-        chris.mason@oracle.com, linux-nfs@vger.kernel.org,
-        linux-ext4@vger.kernel.org, tytso@mit.edu, akpm@linux-foundation.org,
-        linux-kernel@vger.kernel.org, linux-btrfs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, serue@us.ibm.com, dwmw2@infradead.orgã,
-        ocfs2-devel@oss.oracle.com
-To: Liuwenyi <qingshenlwy@gmail.com>
-Return-path: <xfs-bounces@oss.sgi.com>
-In-Reply-To: <4B2F6153.8010609@gmail.com>
-List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
-List-Archive: <http://oss.sgi.com/pipermail/xfs>
-List-Post: <mailto:xfs@oss.sgi.com>
-List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
-List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
-Sender: xfs-bounces@oss.sgi.com
-Errors-To: xfs-bounces@oss.sgi.com
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-nfs@vger.kernel.org
+To: Tharindu Rukshan Bamunuarachchi <btharindu@gmail.com>
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from fieldses.org ([174.143.236.118]:59778 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751304AbZLUTgP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 21 Dec 2009 14:36:15 -0500
+In-Reply-To: <f5b5ebae0912140410t2814d7bck688549103b3104ea-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I like taking these checks into posix_acl_valid, but I think the patch
-submission needs a bit more work.
+On Mon, Dec 14, 2009 at 05:40:20PM +0530, Tharindu Rukshan Bamunuarachchi wrote:
+> I can not set nfs4leasetime value less than 10 seconds.
+> 
+> there is a verification in __write_leasetime(). (lease < 10 || lease > 3600)
+> 
+> I am going to change this to ~2 second (to make NFS HA failover happen
+> in less than 10 seconds with HeartBeat).
+> 
+> Any reason why is this checked for 10 (i.e. lease < 10) ... ?
 
-All the patches are extremly whitespace mangled.  And I don't think
-splitting them up makes a whole lot of sense, when we do API changes
-like this we usually fix up all callers.  So please try to fix your
-mailer, merged them all into one, and maybe also chose a more
-descriptive subject line, e.g.
+No reason for that particular limit, but this does mean every client
+will have to send a small NFSv4 operation to the server at least once
+every 2 seconds as long as it holds any opens or other state. And if the
+network goes down for more than 2 seonds the client will probably lose
+that state.
 
-Subject: take checks for NULL and error pointers into posix_acl_valid()
+Is it the grace-period time on the takeover server that you're trying to
+limit?
 
+--b.
 
-And btw, at least the XFS change seems incorrect - previously we
-returned NULL acl pointer and this patch changes it to -EINVAL.
-
-_______________________________________________
-xfs mailing list
-xfs@oss.sgi.com
-http://oss.sgi.com/mailman/listinfo/xfs
+> 
+> 
+> 
+> 
+> 
+> static ssize_t __write_leasetime(struct file *file, char *buf, size_t size)
+> {
+>         /* if size > 10 seconds, call
+>          * nfs4_reset_lease() then write out the new lease (seconds) as reply
+>          */
+>         char *mesg = buf;
+>         int rv, lease;
+> 
+>         if (size > 0) {
+>                 if (nfsd_serv)
+>                         return -EBUSY;
+>                 rv = get_int(&mesg, &lease);
+>                 if (rv)
+>                         return rv;
+>                 if (lease < 10 || lease > 3600)
+>                         return -EINVAL;
+>                 nfs4_reset_lease(lease);
+>         }
+> 
+>         return scnprintf(buf, SIMPLE_TRANSACTION_LIMIT, "%ld\n",
+>                                                         nfs4_lease_time());
+> }
+> 
+> -- 
+> Tharindu Rukshan Bamunuarachchi
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
