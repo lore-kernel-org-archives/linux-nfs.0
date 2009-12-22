@@ -1,152 +1,118 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.nec-labs.com ([138.15.200.209]:50874 "EHLO
-	mail.nec-labs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753517AbZLVQl4 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 Dec 2009 11:41:56 -0500
-Subject: Re: [PATCH] improve the performance of large sequential write NFS
-	workloads
-From: Steve Rago <sar@nec-labs.com>
-To: Wu Fengguang <fengguang.wu@intel.com>
-Cc: Peter Zijlstra <peterz@infradead.org>,
+Received: from atrey.karlin.mff.cuni.cz ([195.113.26.193]:57877 "EHLO
+	atrey.karlin.mff.cuni.cz" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750931AbZLVM0P (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 Dec 2009 07:26:15 -0500
+Date: Tue, 22 Dec 2009 13:25:57 +0100
+From: Jan Kara <jack@suse.cz>
+To: Steve Rago <sar@nec-labs.com>
+Cc: Wu Fengguang <fengguang.wu@intel.com>,
+        Peter Zijlstra <peterz@infradead.org>,
         "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
         "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
         "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>,
         "jens.axboe" <jens.axboe@oracle.com>,
-        Peter Staubach <staubach@redhat.com>, Jan Kara <jack@suse.cz>,
-        Arjan van de Ven <arjan@infradead.org>, Ingo Molnar <mingo@elte.hu>,
-        linux-fsdevel@vger.kernel.org
-In-Reply-To: <20091222015907.GA6223@localhost>
-References: <1261015420.1947.54.camel@serenity>
-	 <1261037877.27920.36.camel@laptop> <20091219122033.GA11360@localhost>
-	 <1261232747.1947.194.camel@serenity>  <20091222015907.GA6223@localhost>
-Content-Type: text/plain
-Date: Tue, 22 Dec 2009 11:41:53 -0500
-Message-Id: <1261500113.13028.78.camel@serenity>
+        Peter Staubach <staubach@redhat.com>
+Subject: Re: [PATCH] improve the performance of large sequential write NFS workloads
+Message-ID: <20091222122557.GA604@atrey.karlin.mff.cuni.cz>
+References: <1261015420.1947.54.camel@serenity> <1261037877.27920.36.camel@laptop> <20091219122033.GA11360@localhost> <1261232747.1947.194.camel@serenity>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1261232747.1947.194.camel@serenity>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+  Hi,
 
-On Tue, 2009-12-22 at 09:59 +0800, Wu Fengguang wrote:
-> Steve,
-> 
-> On Sat, Dec 19, 2009 at 10:25:47PM +0800, Steve Rago wrote:
+> On Sat, 2009-12-19 at 20:20 +0800, Wu Fengguang wrote:
+> > Hi Steve,
 > > 
-> > On Sat, 2009-12-19 at 20:20 +0800, Wu Fengguang wrote:
-> > > 
-> > > On Thu, Dec 17, 2009 at 04:17:57PM +0800, Peter Zijlstra wrote:
-> > > > On Wed, 2009-12-16 at 21:03 -0500, Steve Rago wrote:
-> > > > > Eager Writeback for NFS Clients
-> > > > > -------------------------------
-> > > > > Prevent applications that write large sequential streams of data (like backup, for example)
-> > > > > from entering into a memory pressure state, which degrades performance by falling back to
-> > > > > synchronous operations (both synchronous writes and additional commits).
-> > > 
-> > > What exactly is the "memory pressure state" condition?  What's the
-> > > code to do the "synchronous writes and additional commits" and maybe
-> > > how they are triggered?
+> > // I should really read the NFS code, but maybe you can help us better
+> > // understand the problem :)
 > > 
-> > Memory pressure occurs when most of the client pages have been dirtied
-> > by an application (think backup server writing multi-gigabyte files that
-> > exceed the size of main memory).  The system works harder to be able to
-> > free dirty pages so that they can be reused.  For a local file system,
-> > this means writing the pages to disk.  For NFS, however, the writes
-> > leave the pages in an "unstable" state until the server responds to a
-> > commit request.  Generally speaking, commit processing is far more
-> > expensive than write processing on the server; both are done with the
-> > inode locked, but since the commit takes so long, all writes are
-> > blocked, which stalls the pipeline.
+> > On Thu, Dec 17, 2009 at 04:17:57PM +0800, Peter Zijlstra wrote:
+> > > On Wed, 2009-12-16 at 21:03 -0500, Steve Rago wrote:
+> > > > Eager Writeback for NFS Clients
+> > > > -------------------------------
+> > > > Prevent applications that write large sequential streams of data (like backup, for example)
+> > > > from entering into a memory pressure state, which degrades performance by falling back to
+> > > > synchronous operations (both synchronous writes and additional commits).
+> > 
+> > What exactly is the "memory pressure state" condition?  What's the
+> > code to do the "synchronous writes and additional commits" and maybe
+> > how they are triggered?
 > 
-> Let me try reiterate the problem with code, please correct me if I'm
-> wrong.
-> 
-> 1) normal fs sets I_DIRTY_DATASYNC when extending i_size, however NFS
->    will set the flag for any pages written -- why this trick? To
->    guarantee the call of nfs_commit_inode()? Which unfortunately turns
->    almost every server side NFS write into sync writes..
+> Memory pressure occurs when most of the client pages have been dirtied
+> by an application (think backup server writing multi-gigabyte files that
+> exceed the size of main memory).  The system works harder to be able to
+> free dirty pages so that they can be reused.  For a local file system,
+> this means writing the pages to disk.  For NFS, however, the writes
+> leave the pages in an "unstable" state until the server responds to a
+> commit request.  Generally speaking, commit processing is far more
+> expensive than write processing on the server; both are done with the
+> inode locked, but since the commit takes so long, all writes are
+> blocked, which stalls the pipeline.
+  I'm not sure I understand the problem you are trying to solve. So we
+generate dirty pages on an NFS filesystem. At some point we reach the
+dirty_threshold so writing process is throttled and forced to do some
+writes. For NFS it takes a longer time before we can really free the
+pages because sever has to acknowledge the write (BTW e.g. for optical
+media like DVD-RW it also takes a long time to really write the data).
+  Now the problem you are trying to solve is that the system basically
+gets out of free memory (so that it has to start doing synchronous
+writeback from the allocator) because the writer manages to dirty
+remaining free memory before the submitted writes are acknowledged from
+the server? If that is so, then it might make sence to introduce also
+per-bdi equivalent of dirty_background_ratio so that we can start
+background writeback of dirty data at different times for different
+backing devices - that would make sence to me in general, not only
+for NFS.
+  Another complementary piece to my above proposal would be something
+like Fenguang's patches that actually don't let the process dirty too
+much memory by throttling it in balance_dirty_pages until number of
+unstable pages gets lower.
 
-Not really.  The commit needs to be sent, but the writes are still
-asynchronous.  It's just that the pages can't be recycled until they are
-on stable storage.
-
+> > > > This is accomplished by preventing the client application from
+> > > > dirtying pages faster than they can be written to the server:
+> > > > clients write pages eagerly instead of lazily.
+> > 
+> > We already have the balance_dirty_pages() based global throttling.
+> > So what makes the performance difference in your proposed "per-inode" throttling?
+> > balance_dirty_pages() does have much larger threshold than yours. 
 > 
->  writeback_single_inode:
->     do_writepages
->       nfs_writepages
->         nfs_writepage ----[short time later]---> nfs_writeback_release*
->                                                    nfs_mark_request_commit
->                                                      __mark_inode_dirty(I_DIRTY_DATASYNC);
->                                     
->     if (I_DIRTY_SYNC || I_DIRTY_DATASYNC)  <---- so this will be true for most time
->       write_inode
->         nfs_write_inode
->           nfs_commit_inode
-> 
-> 
-> 2) NFS commit stops pipeline because it sleep&wait inside i_mutex,
->    which blocks all other NFSDs trying to write/writeback the inode.
-> 
->    nfsd_sync:
->      take i_mutex
->        filemap_fdatawrite
->        filemap_fdatawait
->      drop i_mutex
->      
->    If filemap_fdatawait() can be moved out of i_mutex (or just remove
->    the lock), we solve the root problem:
-> 
->    nfsd_sync:
->      [take i_mutex]
->        filemap_fdatawrite  => can also be blocked, but less a problem
->      [drop i_mutex]
->        filemap_fdatawait
->  
->    Maybe it's a dumb question, but what's the purpose of i_mutex here?
->    For correctness or to prevent livelock? I can imagine some livelock
->    problem here (current implementation can easily wait for extra
->    pages), however not too hard to fix.
+> I originally spent several months playing with the balance_dirty_pages
+> algorithm.  The main drawback is that it affects more than the inodes
+> that the caller is writing and that the control of what to do is too
+  Can you be more specific here please?
 
-Commits and writes on the same inode need to be serialized for
-consistency (write can change the data and metadata; commit [fsync]
-needs to provide guarantees that the written data are stable). The
-performance problem arises because NFS writes are fast (they generally
-just deposit data into the server's page cache), but commits can take a
-long time, especially if there is a lot of cached data to flush to
-stable storage.
+> coarse.  My final changes (which worked well for 1Gb connections) were
+> more heuristic than the changes in the patch -- I basically had to come
+> up with alternate ways to write pages without generating commits on
+> inodes.  Doing this was distasteful, as I was adjusting generic system
+> behavior for an NFS-only problem.  Then a colleague found Peter
+> Staubach's patch, which worked just as well in less code, and isolated
+> the change to the NFS component, which is where it belongs.
+  As I said above, the problem of slow writes happens also in other
+cases. What's specific to NFS is that pages aren't in writeback state
+for long but they instead stay in unstable state. But
+balance_dirty_pages should handle that and if it does not, it should be
+fixed.
 
+> > > > The eager writeback is controlled by a sysctl: fs.nfs.nfs_max_woutstanding set to 0 disables
+> > > > the feature.  Otherwise it contains the maximum number of outstanding NFS writes that can be
+> > > > in flight for a given file.  This is used to block the application from dirtying more pages
+> > > > until the writes are complete.
+> > 
+> > What if we do heuristic write-behind for sequential NFS writes?
 > 
-> 
-> The proposed patch essentially takes two actions in nfs_file_write()
-> - to start writeback when the per-file nr_dirty goes high
->   without committing
-> - to throttle dirtying when the per-file nr_writeback goes high
->   I guess this effectively prevents pdflush from kicking in with
->   its bad committing behavior
-> 
-> In general it's reasonable to keep NFS per-file nr_dirty low, however
-> questionable to do per-file nr_writeback throttling. This does not
-> work well with the global limits - eg. when there are many dirty
-> files, the summed-up nr_writeback will still grow out of control.
+> Part of the patch does implement a heuristic write-behind.  See where
+> nfs_wb_eager() is called.
+  I believe that if we had per-bdi dirty_background_ratio and set it low
+for NFS's bdi, then the write-behind logic would not be needed
+(essentially the flusher thread should submit the writes to the server
+early).
 
-Not with the eager writeback patch.  The nr_writeback for NFS is limited
-by the woutstanding tunable parameter multiplied by the number of active
-NFS files being written.
-
-> And it's more likely to impact user visible responsiveness than
-> a global limit. But my opinion can be biased -- me have a patch to
-> do global NFS nr_writeback limit ;)
-
-What affects user-visible responsiveness is avoiding long delays and
-avoiding delays that vary widely.  Whether the limit is global or
-per-file is less important (but I'd be happy to be convinced otherwise).
-
-Steve
-
-> 
-> Thanks,
-> Fengguang
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
+								Honza
+-- 
+Jan Kara <jack@suse.cz>
+SuSE CR Labs
