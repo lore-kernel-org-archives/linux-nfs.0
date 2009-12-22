@@ -1,142 +1,46 @@
-From: andros@netapp.com
-Subject: [PATCH 2/2] nfs41: back channel drc minimal implementation
-Date: Mon, 21 Dec 2009 18:01:27 -0500
-Message-ID: <1261436487-14084-1-git-send-email-andros@netapp.com>
-Cc: linux-nfs@vger.kernel.org, pnfs@linux-nfs.org,
-	Andy Adamson <andros@netapp.com>
-To: trond.myklebust@netapp.com
+From: David Howells <dhowells@redhat.com>
+Subject: [PATCH] NFS: Avoid warnings when CONFIG_NFS_V4=n
+Date: Tue, 22 Dec 2009 18:00:25 +0000
+Message-ID: <20091222180025.22975.51433.stgit@warthog.procyon.org.uk>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
+Cc: linux-nfs@vger.kernel.org, dhowells@redhat.com
+To: Trond.Myklebust@netapp.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:22364 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:5431 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751013AbZLVOIM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 22 Dec 2009 09:08:12 -0500
+	id S1751233AbZLVSBN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 22 Dec 2009 13:01:13 -0500
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Andy Adamson <andros@netapp.com>
+Avoid the following warnings when CONFIG_NFS_V4=n:
 
-For now the back channel ca_maxresponsesize_cached is 0 and there is no
-backchannel DRC. Return NFS4ERR_REP_TOO_BIG_TO_CACHE when a cb_sequence
-cachethis is true.  When it is false, return NFS4ERR_RETRY_UNCACHED_REP as the
-next operation error.
+	fs/nfs/sysctl.c:19: warning: unused variable `nfs_set_port_max'
+	fs/nfs/sysctl.c:18: warning: unused variable `nfs_set_port_min'
 
-Remember the replay error accross compound operation processing.
+by making those variables contingent on NFSv4 being configured.
 
-Signed-off-by: Andy Adamson <andros@netapp.com>
+Signed-off-by: David Howells <dhowells@redhat.com>
 ---
- fs/nfs/callback_proc.c |   25 +++++++++++++++++--------
- fs/nfs/callback_xdr.c  |   19 +++++++++++++++----
- 2 files changed, 32 insertions(+), 12 deletions(-)
 
-diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
-index 7f92b6d..3cc2333 100644
---- a/fs/nfs/callback_proc.c
-+++ b/fs/nfs/callback_proc.c
-@@ -143,9 +143,8 @@ int nfs41_validate_delegation_stateid(struct nfs_delegation *delegation, const n
-  * Return success if the sequenceID is one more than what we last saw on
-  * this slot, accounting for wraparound.  Increments the slot's sequence.
-  *
-- * We don't yet implement a duplicate request cache, so at this time
-- * we will log replays, and process them as if we had not seen them before,
-- * but we don't bump the sequence in the slot.  Not too worried about it,
-+ * We don't yet implement a duplicate request cache, instead we set the
-+ * back channel ca_maxresponsesize_cached to zero. This is OK for now
-  * since we only currently implement idempotent callbacks anyway.
-  *
-  * We have a single slot backchannel at this time, so we don't bother
-@@ -174,9 +173,15 @@ validate_seqid(struct nfs4_slot_table *tbl, struct cb_sequenceargs * args)
+ fs/nfs/sysctl.c |    2 ++
+ 1 files changed, 2 insertions(+), 0 deletions(-)
+
+
+diff --git a/fs/nfs/sysctl.c b/fs/nfs/sysctl.c
+index 70e1fbb..ad4d2e7 100644
+--- a/fs/nfs/sysctl.c
++++ b/fs/nfs/sysctl.c
+@@ -15,8 +15,10 @@
  
- 	/* Replay */
- 	if (args->csa_sequenceid == slot->seq_nr) {
--		dprintk("%s seqid %d is a replay - no DRC available\n",
-+		dprintk("%s seqid %d is a replay\n",
- 			__func__, args->csa_sequenceid);
--		return htonl(NFS4_OK);
-+		/* Signal process_op to set this error on next op */
-+		if (args->csa_cachethis == 0)
-+			return htonl(NFS4ERR_RETRY_UNCACHED_REP);
-+
-+		/* The ca_maxresponsesize_cached is 0 with no DRC */
-+		else if (args->csa_cachethis == 1)
-+			return htonl(NFS4ERR_REP_TOO_BIG_TO_CACHE);
- 	}
+ #include "callback.h"
  
- 	/* Wraparound */
-@@ -255,9 +260,13 @@ unsigned nfs4_callback_sequence(struct cb_sequenceargs *args,
- out_putclient:
- 	nfs_put_client(clp);
- out:
--	dprintk("%s: exit with status = %d\n", __func__, ntohl(status));
--	res->csr_status = status;
--	return res->csr_status;
-+	if (status == htonl(NFS4ERR_RETRY_UNCACHED_REP))
-+		res->csr_status = 0;
-+	else
-+		res->csr_status = status;
-+	dprintk("%s: exit with status = %d res->csr_status %d\n", __func__,
-+		ntohl(status), ntohl(res->csr_status));
-+	return status;
- }
++#ifdef CONFIG_NFS_V4
+ static const int nfs_set_port_min = 0;
+ static const int nfs_set_port_max = 65535;
++#endif
+ static struct ctl_table_header *nfs_callback_sysctl_table;
  
- unsigned nfs4_callback_recallany(struct cb_recallanyargs *args, void *dummy)
-diff --git a/fs/nfs/callback_xdr.c b/fs/nfs/callback_xdr.c
-index 8e1a251..0365f79 100644
---- a/fs/nfs/callback_xdr.c
-+++ b/fs/nfs/callback_xdr.c
-@@ -602,7 +602,7 @@ preprocess_nfs4_op(unsigned int op_nr, struct callback_op **op)
- static __be32 process_op(uint32_t minorversion, int nop,
- 		struct svc_rqst *rqstp,
- 		struct xdr_stream *xdr_in, void *argp,
--		struct xdr_stream *xdr_out, void *resp)
-+		struct xdr_stream *xdr_out, void *resp, int* drc_status)
- {
- 	struct callback_op *op = &callback_ops[0];
- 	unsigned int op_nr = OP_CB_ILLEGAL;
-@@ -624,6 +624,11 @@ static __be32 process_op(uint32_t minorversion, int nop,
- 				preprocess_nfs4_op(op_nr, &op);
- 	if (status == htonl(NFS4ERR_OP_ILLEGAL))
- 		op_nr = OP_CB_ILLEGAL;
-+
-+	if (*drc_status) {
-+		status = *drc_status;
-+		goto encode_hdr;
-+	}
- out:
- 	maxlen = xdr_out->end - xdr_out->p;
- 	if (maxlen > 0 && maxlen < PAGE_SIZE) {
-@@ -634,6 +639,12 @@ out:
- 	} else
- 		status = htonl(NFS4ERR_RESOURCE);
- 
-+	/* Only set by OP_CB_SEQUENCE processing */
-+	if (status == htonl(NFS4ERR_RETRY_UNCACHED_REP)) {
-+		*drc_status = status;
-+		status = 0;
-+	}
-+encode_hdr:
- 	res = encode_op_hdr(xdr_out, op_nr, status);
- 	if (status == 0)
- 		status = res;
-@@ -652,7 +663,7 @@ static __be32 nfs4_callback_compound(struct svc_rqst *rqstp, void *argp, void *r
- 	struct cb_compound_hdr_res hdr_res = { NULL };
- 	struct xdr_stream xdr_in, xdr_out;
- 	__be32 *p;
--	__be32 status;
-+	__be32 status, drc_status = 0;
- 	unsigned int nops = 0;
- 
- 	dprintk("%s: start\n", __func__);
-@@ -672,8 +683,8 @@ static __be32 nfs4_callback_compound(struct svc_rqst *rqstp, void *argp, void *r
- 		return rpc_system_err;
- 
- 	while (status == 0 && nops != hdr_arg.nops) {
--		status = process_op(hdr_arg.minorversion, nops,
--				    rqstp, &xdr_in, argp, &xdr_out, resp);
-+		status = process_op(hdr_arg.minorversion, nops, rqstp,
-+				    &xdr_in, argp, &xdr_out, resp, &drc_status);
- 		nops++;
- 	}
- 
--- 
-1.6.0.6
+ static ctl_table nfs_cb_sysctls[] = {
 
