@@ -1,44 +1,49 @@
-From: Jan Kara <jack@suse.cz>
+From: Martin Knoblauch <knobi-Ys4E+72pFW0hFhg+JK9F0w@public.gmane.org>
 Subject: Re: [PATCH] improve the performance of large sequential write NFS workloads
-Date: Tue, 22 Dec 2009 13:55:32 +0100
-Message-ID: <20091222125532.GC604@atrey.karlin.mff.cuni.cz>
-References: <1261015420.1947.54.camel@serenity> <1261037877.27920.36.camel@laptop> <20091219122033.GA11360@localhost> <1261232747.1947.194.camel@serenity> <20091222122557.GA604@atrey.karlin.mff.cuni.cz> <1261485515.4937.28.camel@laptop>
+Date: Tue, 22 Dec 2009 05:01:46 -0800 (PST)
+Message-ID: <787373.9318.qm@web113309.mail.gq1.yahoo.com>
+References: <1261015420.1947.54.camel@serenity> <1261037877.27920.36.camel@laptop> <20091219122033.GA11360@localhost> <1261232747.1947.194.camel@serenity> <20091222015907.GA6223@localhost>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, Steve Rago <sar-a+KepyhlMvJWk0Htik3J/w@public.gmane.org>,
-	Wu Fengguang <fengguang.wu@intel.com>,
+Cc: Peter Zijlstra <peterz@infradead.org>,
 	"linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
 	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
 	"Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>,
-	"jens.axboe" <jens.axboe@oracle.com>,
-	Peter Staubach <staubach@redhat.com>
-To: Peter Zijlstra <peterz@infradead.org>
+	"jens.axboe" <jens.axboe@oracle.com>
+To: Wu Fengguang <fengguang.wu@intel.com>,
+	Steve Rago <sar-a+KepyhlMvJWk0Htik3J/w@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from atrey.karlin.mff.cuni.cz ([195.113.26.193]:38844 "EHLO
-	atrey.karlin.mff.cuni.cz" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750711AbZLVMzd (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 Dec 2009 07:55:33 -0500
-In-Reply-To: <1261485515.4937.28.camel@laptop>
+Received: from web113309.mail.gq1.yahoo.com ([98.136.167.9]:48061 "HELO
+	web113309.mail.gq1.yahoo.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with SMTP id S1751153AbZLVNI2 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 Dec 2009 08:08:28 -0500
+In-Reply-To: <20091222015907.GA6223@localhost>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-> On Tue, 2009-12-22 at 13:25 +0100, Jan Kara wrote:
-> >   I believe that if we had per-bdi dirty_background_ratio and set it low
-> > for NFS's bdi, 
-> 
-> There's two things there I think:
->  1) bdi_background
->  2) different background ratios per bdi
-  Right.
+----- Original Message ----
 
-> 1) could be 'trivially' done much like we do bdi_dirty in
-> get_dirty_limits().
+> From: Wu Fengguang <fengguang.wu@intel.com>
+> To: Steve Rago <sar-a+KepyhlMvJWk0Htik3J/w@public.gmane.org>
+> Cc: Peter Zijlstra <peterz@infradead.org>; "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>; "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>; "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>; jens.axboe <jens.axboe@oracle.com>
+> Sent: Tue, December 22, 2009 2:59:07 AM
+> Subject: Re: [PATCH] improve the performance of large sequential write NFS workloads
 > 
-> 2) I'm not at all convinced we want to go there.
-  Yeah. Doing 1) and playing with bdi->min_ratio and bdi->max_ratio should
-be the first thing we should try...
 
-									Honza
--- 
-Jan Kara <jack@suse.cz>
-SuSE CR Labs
+[big snip]
+
+> 
+> In general it's reasonable to keep NFS per-file nr_dirty low, however
+> questionable to do per-file nr_writeback throttling. This does not
+> work well with the global limits - eg. when there are many dirty
+> files, the summed-up nr_writeback will still grow out of control.
+> And it's more likely to impact user visible responsiveness than
+> a global limit. But my opinion can be biased -- me have a patch to
+> do global NFS nr_writeback limit ;)
+> 
+
+
+ is that  "NFS: introduce writeback wait queue", which you sent me a while ago and I did not test until now :-( ?
+
+Cheers
+Martin
