@@ -1,166 +1,96 @@
-From: Wu Fengguang <fengguang.wu@intel.com>
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
 Subject: Re: [PATCH] improve the performance of large sequential write NFS
-	workloads
-Date: Thu, 24 Dec 2009 13:25:15 +0800
-Message-ID: <20091224052515.GA9698@localhost>
-References: <1261015420.1947.54.camel@serenity> <1261037877.27920.36.camel@laptop> <20091219122033.GA11360@localhost> <1261232747.1947.194.camel@serenity> <20091222015907.GA6223@localhost> <20091222123538.GB604@atrey.karlin.mff.cuni.cz> <20091223084302.GA14912@infradead.org> <20091223133244.GB3159@quack.suse.cz>
+ workloads
+Date: Thu, 24 Dec 2009 13:04:41 +0100
+Message-ID: <1261656281.3596.1.camel@localhost>
+References: <1261015420.1947.54.camel@serenity>
+	 <1261037877.27920.36.camel@laptop> <20091219122033.GA11360@localhost>
+	 <1261232747.1947.194.camel@serenity> <20091222015907.GA6223@localhost>
+	 <1261578107.2606.11.camel@localhost> <20091223180551.GD3159@quack.suse.cz>
+	 <1261595574.6775.2.camel@localhost>  <20091224025228.GA12477@localhost>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Christoph Hellwig <hch@infradead.org>,
-	Steve Rago <sar-a+KepyhlMvJWk0Htik3J/w@public.gmane.org>,
+Content-Type: text/plain; charset="UTF-8"
+Cc: Jan Kara <jack@suse.cz>, Steve Rago <sar-a+KepyhlMvJWk0Htik3J/w@public.gmane.org>,
 	Peter Zijlstra <peterz@infradead.org>,
 	"linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
 	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-	"Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>,
 	"jens.axboe" <jens.axboe@oracle.com>,
 	Peter Staubach <staubach@redhat.com>,
 	Arjan van de Ven <arjan@infradead.org>,
 	Ingo Molnar <mingo@elte.hu>,
 	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
-To: Jan Kara <jack@suse.cz>
+To: Wu Fengguang <fengguang.wu@intel.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mga14.intel.com ([143.182.124.37]:6064 "EHLO mga14.intel.com"
+Received: from mx2.netapp.com ([216.240.18.37]:43262 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751426AbZLXFZT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 24 Dec 2009 00:25:19 -0500
-In-Reply-To: <20091223133244.GB3159-+0h/O2h83AeN3ZZ/Hiejyg@public.gmane.org>
+	id S1750872AbZLXMFc convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 24 Dec 2009 07:05:32 -0500
+In-Reply-To: <20091224025228.GA12477@localhost>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Dec 23, 2009 at 09:32:44PM +0800, Jan Kara wrote:
-> On Wed 23-12-09 03:43:02, Christoph Hellwig wrote:
-> > On Tue, Dec 22, 2009 at 01:35:39PM +0100, Jan Kara wrote:
-> > > >    nfsd_sync:
-> > > >      [take i_mutex]
-> > > >        filemap_fdatawrite  => can also be blocked, but less a problem
-> > > >      [drop i_mutex]
-> > > >        filemap_fdatawait
+On Thu, 2009-12-24 at 10:52 +0800, Wu Fengguang wrote: 
+> Trond,
+> 
+> On Thu, Dec 24, 2009 at 03:12:54AM +0800, Trond Myklebust wrote:
+> > On Wed, 2009-12-23 at 19:05 +0100, Jan Kara wrote: 
+> > > On Wed 23-12-09 15:21:47, Trond Myklebust wrote:
+> > > > @@ -474,6 +482,18 @@ writeback_single_inode(struct inode *inode, struct writeback_control *wbc)
+> > > >  	}
 > > > >  
-> > > >    Maybe it's a dumb question, but what's the purpose of i_mutex here?
-> > > >    For correctness or to prevent livelock? I can imagine some livelock
-> > > >    problem here (current implementation can easily wait for extra
-> > > >    pages), however not too hard to fix.
-> > >   Generally, most filesystems take i_mutex during fsync to
-> > > a) avoid all sorts of livelocking problems
-> > > b) serialize fsyncs for one inode (mostly for simplicity)
-> > >   I don't see what advantage would it bring that we get rid of i_mutex
-> > > for fdatawait - only that maybe writers could proceed while we are
-> > > waiting but is that really the problem?
+> > > >  	spin_lock(&inode_lock);
+> > > > +	/*
+> > > > +	 * Special state for cleaning NFS unstable pages
+> > > > +	 */
+> > > > +	if (inode->i_state & I_UNSTABLE_PAGES) {
+> > > > +		int err;
+> > > > +		inode->i_state &= ~I_UNSTABLE_PAGES;
+> > > > +		spin_unlock(&inode_lock);
+> > > > +		err = commit_unstable_pages(inode, wait);
+> > > > +		if (ret == 0)
+> > > > +			ret = err;
+> > > > +		spin_lock(&inode_lock);
+> > > > +	}
+> > >   I don't quite understand this chunk: We've called writeback_single_inode
+> > > because it had some dirty pages. Thus it has I_DIRTY_DATASYNC set and a few
+> > > lines above your chunk, we've called nfs_write_inode which sent commit to
+> > > the server. Now here you sometimes send the commit again? What's the
+> > > purpose?
 > > 
-> > It would match what we do in vfs_fsync for the non-nfsd path, so it's
-> > a no-brainer to do it.  In fact I did switch it over to vfs_fsync a
-> > while ago but that go reverted because it caused deadlocks for
-> > nfsd_sync_dir which for some reason can't take the i_mutex (I'd have to
-> > check the archives why).
+> > We no longer set I_DIRTY_DATASYNC. We only set I_DIRTY_PAGES (and later
+> > I_UNSTABLE_PAGES).
 > > 
-> > Here's a RFC patch to make some more sense of the fsync callers in nfsd,
-> > including fixing up the data write/wait calling conventions to match the
-> > regular fsync path (which might make this a -stable candidate):
->   The patch looks good to me from general soundness point of view :).
-> Someone with more NFS knowledge should tell whether dropping i_mutex for
-> fdatawrite_and_wait is fine for NFS.
+> > The point is that we now do the commit only _after_ we've sent all the
+> > dirty pages, and waited for writeback to complete, whereas previously we
+> > did it in the wrong order.
+> 
+> Sorry I still don't get it. The timing used to be:
+> 
+> write 4MB   ==> WRITE block 0 (ie. first 512KB)
+>                 WRITE block 1
+>                 WRITE block 2
+>                 WRITE block 3         ack from server for WRITE block 0 => mark 0 as unstable (inode marked need-commit)
+>                 WRITE block 4         ack from server for WRITE block 1 => mark 1 as unstable
+>                 WRITE block 5         ack from server for WRITE block 2 => mark 2 as unstable
+>                 WRITE block 6         ack from server for WRITE block 3 => mark 3 as unstable
+>                 WRITE block 7         ack from server for WRITE block 4 => mark 4 as unstable
+>                                       ack from server for WRITE block 5 => mark 5 as unstable
+> write_inode ==> COMMIT blocks 0-5
+>                                       ack from server for WRITE block 6 => mark 6 as unstable (inode marked need-commit)
+>                                       ack from server for WRITE block 7 => mark 7 as unstable 
+> 
+>                                       ack from server for COMMIT blocks 0-5 => mark 0-5 as clean
+> 
+> write_inode ==> COMMIT blocks 6-7
+> 
+>                                       ack from server for COMMIT blocks 6-7 => mark 6-7 as clean
+> 
+> Note that the first COMMIT is submitted before receiving all ACKs for
+> the previous writes, hence the second COMMIT is necessary. It seems
+> that your patch does not improve the timing at all.
 
-I believe it's safe to drop i_mutex for fdatawrite_and_wait().
-Because NFS
-1) client: collect all unstable pages (which server ACKed that have
-   reach its page cache)
-2) client: send COMMIT
-3) server: fdatawrite_and_wait(), which makes sure pages in 1) get cleaned
-4) client: put all pages collected in 1) to clean state
+That would indicate that we're cycling through writeback_single_inode()
+more than once. Why?
 
-So there's no need to take i_mutex to prevent concurrent
-write/commits.
+Trond
 
-If someone else concurrently truncate and then extend i_size, the NFS
-verf will be changed and thus client will resend the pages? (whether
-it should overwrite the pages is another problem..)
-
-Thanks,
-Fengguang
-
-
->  
-> > Index: linux-2.6/fs/nfsd/vfs.c
-> > ===================================================================
-> > --- linux-2.6.orig/fs/nfsd/vfs.c	2009-12-23 09:32:45.693170043 +0100
-> > +++ linux-2.6/fs/nfsd/vfs.c	2009-12-23 09:39:47.627170082 +0100
-> > @@ -769,45 +769,27 @@ nfsd_close(struct file *filp)
-> >  }
-> >  
-> >  /*
-> > - * Sync a file
-> > - * As this calls fsync (not fdatasync) there is no need for a write_inode
-> > - * after it.
-> > + * Sync a directory to disk.
-> > + *
-> > + * This is odd compared to all other fsync callers because we
-> > + *
-> > + *  a) do not have a file struct available
-> > + *  b) expect to have i_mutex already held by the caller
-> >   */
-> > -static inline int nfsd_dosync(struct file *filp, struct dentry *dp,
-> > -			      const struct file_operations *fop)
-> > +int
-> > +nfsd_sync_dir(struct dentry *dentry)
-> >  {
-> > -	struct inode *inode = dp->d_inode;
-> > -	int (*fsync) (struct file *, struct dentry *, int);
-> > +	struct inode *inode = dentry->d_inode;
-> >  	int err;
-> >  
-> > -	err = filemap_fdatawrite(inode->i_mapping);
-> > -	if (err == 0 && fop && (fsync = fop->fsync))
-> > -		err = fsync(filp, dp, 0);
-> > -	if (err == 0)
-> > -		err = filemap_fdatawait(inode->i_mapping);
-> > +	WARN_ON(!mutex_is_locked(&inode->i_mutex));
-> >  
-> > +	err = filemap_write_and_wait(inode->i_mapping);
-> > +	if (err == 0 && inode->i_fop->fsync)
-> > +		err = inode->i_fop->fsync(NULL, dentry, 0);
-> >  	return err;
-> >  }
-> >  
-> > -static int
-> > -nfsd_sync(struct file *filp)
-> > -{
-> > -        int err;
-> > -	struct inode *inode = filp->f_path.dentry->d_inode;
-> > -	dprintk("nfsd: sync file %s\n", filp->f_path.dentry->d_name.name);
-> > -	mutex_lock(&inode->i_mutex);
-> > -	err=nfsd_dosync(filp, filp->f_path.dentry, filp->f_op);
-> > -	mutex_unlock(&inode->i_mutex);
-> > -
-> > -	return err;
-> > -}
-> > -
-> > -int
-> > -nfsd_sync_dir(struct dentry *dp)
-> > -{
-> > -	return nfsd_dosync(NULL, dp, dp->d_inode->i_fop);
-> > -}
-> > -
-> >  /*
-> >   * Obtain the readahead parameters for the file
-> >   * specified by (dev, ino).
-> > @@ -1011,7 +993,7 @@ static int wait_for_concurrent_writes(st
-> >  
-> >  	if (inode->i_state & I_DIRTY) {
-> >  		dprintk("nfsd: write sync %d\n", task_pid_nr(current));
-> > -		err = nfsd_sync(file);
-> > +		err = vfs_fsync(file, file->f_path.dentry, 0);
-> >  	}
-> >  	last_ino = inode->i_ino;
-> >  	last_dev = inode->i_sb->s_dev;
-> > @@ -1180,7 +1162,7 @@ nfsd_commit(struct svc_rqst *rqstp, stru
-> >  		return err;
-> >  	if (EX_ISSYNC(fhp->fh_export)) {
-> >  		if (file->f_op && file->f_op->fsync) {
-> > -			err = nfserrno(nfsd_sync(file));
-> > +			err = nfserrno(vfs_fsync(file, file->f_path.dentry, 0));
-> >  		} else {
-> >  			err = nfserr_notsupp;
-> >  		}
-> -- 
-> Jan Kara <jack@suse.cz>
-> SUSE Labs, CR
