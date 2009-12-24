@@ -1,96 +1,185 @@
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: Re: [PATCH] improve the performance of large sequential write NFS
- workloads
-Date: Thu, 24 Dec 2009 13:04:41 +0100
-Message-ID: <1261656281.3596.1.camel@localhost>
-References: <1261015420.1947.54.camel@serenity>
-	 <1261037877.27920.36.camel@laptop> <20091219122033.GA11360@localhost>
-	 <1261232747.1947.194.camel@serenity> <20091222015907.GA6223@localhost>
-	 <1261578107.2606.11.camel@localhost> <20091223180551.GD3159@quack.suse.cz>
-	 <1261595574.6775.2.camel@localhost>  <20091224025228.GA12477@localhost>
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Re: [PATCH 2/2] nfs-utils: add initial tests for statd that run via
+ "make check"
+Date: Thu, 24 Dec 2009 08:27:01 -0500
+Message-ID: <4B336C25.7000705@RedHat.com>
+References: <1260992440-8234-1-git-send-email-jlayton@redhat.com> <1260992440-8234-3-git-send-email-jlayton@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Cc: Jan Kara <jack@suse.cz>, Steve Rago <sar-a+KepyhlMvJWk0Htik3J/w@public.gmane.org>,
-	Peter Zijlstra <peterz@infradead.org>,
-	"linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-	"jens.axboe" <jens.axboe@oracle.com>,
-	Peter Staubach <staubach@redhat.com>,
-	Arjan van de Ven <arjan@infradead.org>,
-	Ingo Molnar <mingo@elte.hu>,
-	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
-To: Wu Fengguang <fengguang.wu@intel.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: linux-nfs@vger.kernel.org
+To: Jeff Layton <jlayton@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:43262 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:39292 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750872AbZLXMFc convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 24 Dec 2009 07:05:32 -0500
-In-Reply-To: <20091224025228.GA12477@localhost>
+	id S1751583AbZLXN1D (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 24 Dec 2009 08:27:03 -0500
+Received: from int-mx03.intmail.prod.int.phx2.redhat.com (int-mx03.intmail.prod.int.phx2.redhat.com [10.5.11.16])
+	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id nBODR2ws000502
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Thu, 24 Dec 2009 08:27:03 -0500
+In-Reply-To: <1260992440-8234-3-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 2009-12-24 at 10:52 +0800, Wu Fengguang wrote: 
-> Trond,
+On 12/16/2009 02:40 PM, Jeff Layton wrote:
+> Leverage the support that automake already has for running tests via
+> make check. Add a simple test that just checks that the statd mon and
+> unmon calls actually work.
 > 
-> On Thu, Dec 24, 2009 at 03:12:54AM +0800, Trond Myklebust wrote:
-> > On Wed, 2009-12-23 at 19:05 +0100, Jan Kara wrote: 
-> > > On Wed 23-12-09 15:21:47, Trond Myklebust wrote:
-> > > > @@ -474,6 +482,18 @@ writeback_single_inode(struct inode *inode, struct writeback_control *wbc)
-> > > >  	}
-> > > >  
-> > > >  	spin_lock(&inode_lock);
-> > > > +	/*
-> > > > +	 * Special state for cleaning NFS unstable pages
-> > > > +	 */
-> > > > +	if (inode->i_state & I_UNSTABLE_PAGES) {
-> > > > +		int err;
-> > > > +		inode->i_state &= ~I_UNSTABLE_PAGES;
-> > > > +		spin_unlock(&inode_lock);
-> > > > +		err = commit_unstable_pages(inode, wait);
-> > > > +		if (ret == 0)
-> > > > +			ret = err;
-> > > > +		spin_lock(&inode_lock);
-> > > > +	}
-> > >   I don't quite understand this chunk: We've called writeback_single_inode
-> > > because it had some dirty pages. Thus it has I_DIRTY_DATASYNC set and a few
-> > > lines above your chunk, we've called nfs_write_inode which sent commit to
-> > > the server. Now here you sometimes send the commit again? What's the
-> > > purpose?
-> > 
-> > We no longer set I_DIRTY_DATASYNC. We only set I_DIRTY_PAGES (and later
-> > I_UNSTABLE_PAGES).
-> > 
-> > The point is that we now do the commit only _after_ we've sent all the
-> > dirty pages, and waited for writeback to complete, whereas previously we
-> > did it in the wrong order.
+> Adding more tests should be a simple matter of adding new scripts
+> exit 0 on success and non-zero on fail, and adding those to the
+> Makefile.am.
 > 
-> Sorry I still don't get it. The timing used to be:
+> Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> ---
+>  tests/Makefile.am                    |    2 +
+>  tests/t0001-statd-basic-mon-unmon.sh |   55 ++++++++++++++++++++++++++++++++++
+>  tests/test-lib.sh                    |   41 +++++++++++++++++++++++++
+>  3 files changed, 98 insertions(+), 0 deletions(-)
+>  create mode 100755 tests/t0001-statd-basic-mon-unmon.sh
+>  create mode 100755 tests/test-lib.sh
 > 
-> write 4MB   ==> WRITE block 0 (ie. first 512KB)
->                 WRITE block 1
->                 WRITE block 2
->                 WRITE block 3         ack from server for WRITE block 0 => mark 0 as unstable (inode marked need-commit)
->                 WRITE block 4         ack from server for WRITE block 1 => mark 1 as unstable
->                 WRITE block 5         ack from server for WRITE block 2 => mark 2 as unstable
->                 WRITE block 6         ack from server for WRITE block 3 => mark 3 as unstable
->                 WRITE block 7         ack from server for WRITE block 4 => mark 4 as unstable
->                                       ack from server for WRITE block 5 => mark 5 as unstable
-> write_inode ==> COMMIT blocks 0-5
->                                       ack from server for WRITE block 6 => mark 6 as unstable (inode marked need-commit)
->                                       ack from server for WRITE block 7 => mark 7 as unstable 
-> 
->                                       ack from server for COMMIT blocks 0-5 => mark 0-5 as clean
-> 
-> write_inode ==> COMMIT blocks 6-7
-> 
->                                       ack from server for COMMIT blocks 6-7 => mark 6-7 as clean
-> 
-> Note that the first COMMIT is submitted before receiving all ACKs for
-> the previous writes, hence the second COMMIT is necessary. It seems
-> that your patch does not improve the timing at all.
+> diff --git a/tests/Makefile.am b/tests/Makefile.am
+> index 997ac51..634fb7b 100644
+> --- a/tests/Makefile.am
+> +++ b/tests/Makefile.am
+> @@ -3,3 +3,5 @@
+>  SUBDIRS = statdtest
+>  
+>  MAINTAINERCLEANFILES = Makefile.in
+> +
+> +TESTS = t0001-statd-basic-mon-unmon.sh
+> diff --git a/tests/t0001-statd-basic-mon-unmon.sh b/tests/t0001-statd-basic-mon-unmon.sh
+> new file mode 100755
+> index 0000000..d5dffc5
+> --- /dev/null
+> +++ b/tests/t0001-statd-basic-mon-unmon.sh
+> @@ -0,0 +1,55 @@
+> +#!/bin/bash
+> +#
+> +# statd_basic_mon_unmon -- test basic mon/unmon functionality with statd
+> +#
+> +# Copyright (C) 2009  Red Hat, Jeff Layton <jlayton@redhat.com>
+> +#
+> +# This program is free software; you can redistribute it and/or
+> +# modify it under the terms of the GNU General Public License
+> +# as published by the Free Software Foundation; either version 2
+> +# of the License, or (at your option) any later version.
+> +#
+> +# This program is distributed in the hope that it will be useful,
+> +# but WITHOUT ANY WARRANTY; without even the implied warranty of
+> +# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+> +# GNU General Public License for more details.
+> +#
+> +# You should have received a copy of the GNU General Public License
+> +# along with this program; if not, write to the Free Software Foundation, Inc.,
+> +# 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+> +#
+> +
+> +. ./test-lib.sh
+> +
+> +start_statd
+> +if [ $? -ne 0 ]; then
+> +	echo "FAIL: problem starting statd"
+> +	exit 1
+> +fi
+> +
+> +COOKIE=`echo $$ | md5sum | cut -d' ' -f1`
+> +MON_NAME=`hostname`
+> +
+> +statdtest mon $MON_NAME $COOKIE
+> +if [ $? -ne 0 ]; then
+> +	echo "FAIL: mon failed"
+> +	kill_statd
+> +	exit 1
+> +fi
+> +
+> +grep -q $COOKIE /var/lib/nfs/statd/sm/$MON_NAME
+This is a distro specific path... The default is /var/lib/nfs/sm
+It would be nice if somehow we could pull in the NFS_STATEDIR define
+from support/include/config.h file... 
 
-That would indicate that we're cycling through writeback_single_inode()
-more than once. Why?
+> +if [ $? -ne 0 ]; then
+> +	echo "FAIL: $COOKIE not present in monitor file"
+> +	kill_statd
+> +	exit 1
+> +fi
+> +
+> +statdtest unmon $MON_NAME
+> +if [ $? -ne 0 ]; then
+> +	echo "FAIL: unmon failed"
+> +	kill_statd
+> +	exit 1
+> +fi
+> +
+> +kill_statd
+> +
+> diff --git a/tests/test-lib.sh b/tests/test-lib.sh
+> new file mode 100755
+> index 0000000..053e46d
+> --- /dev/null
+> +++ b/tests/test-lib.sh
+> @@ -0,0 +1,41 @@
+> +#!/bin/bash
+> +#
+> +# test-lib.sh -- library of functions for nfs-utils tests
+> +#
+> +# Copyright (C) 2009  Red Hat, Jeff Layton <jlayton@redhat.com>
+> +#
+> +# This program is free software; you can redistribute it and/or
+> +# modify it under the terms of the GNU General Public License
+> +# as published by the Free Software Foundation; either version 2
+> +# of the License, or (at your option) any later version.
+> +#
+> +# This program is distributed in the hope that it will be useful,
+> +# but WITHOUT ANY WARRANTY; without even the implied warranty of
+> +# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+> +# GNU General Public License for more details.
+> +#
+> +# You should have received a copy of the GNU General Public License
+> +# along with this program; if not, write to the Free Software Foundation, Inc.,
+> +# 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+> +#
+> +
+> +export PATH=$PATH:$srcdir/statdtest
+> +
+> +lockd_registered() {
+> +	rpcinfo -p | grep -q nlockmgr
+> +	return $?
+> +}
+> +
+> +start_statd() {
+> +	rpcinfo -u 127.0.0.1 status 1 &> /dev/null
+> +	if [ $? -eq 0 ]; then
+> +		echo "***ERROR***: statd is already running and should "
+> +		echo "             be down when starting this test"
+> +		return 1
+> +	fi
+> +	$srcdir/../utils/statd/statd --no-notify
+the $srcdir variable is not define so the script fails
+right out of the box... So maybe something like this...
+Initialize srcdir=`dirname $PWD`
+then '$srcdir/utils/statd/statd --no-notify' will work.
 
-Trond
+> +}
+> +
+> +kill_statd() {
+> +	kill `cat /var/run/rpc.statd.pid`
+> +}
+
+Overall I like the idea of having a test harness... but I have
+to wonder if we start building the harness in shell scripts 
+if we are not limiting things right out of the box... 
+
+Maybe we should consider doing the harness in a more up to date
+scripting languages like perl or python or even java... Granted 
+I'm not as familiar (or comfortable) with those languages as with
+shell scripting. Plus its not clear what type of dependencies that
+would added to the core nfs-utils code, but we should at least
+think about using a language that might give us more 
+possibilities down the road... Who knowns, in the end, shell scripting
+might be the best way to go... 
+
+steved.
+
 
