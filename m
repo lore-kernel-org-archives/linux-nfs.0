@@ -1,103 +1,210 @@
-From: Steve Rago <sar-a+KepyhlMvJWk0Htik3J/w@public.gmane.org>
-Subject: Re: [PATCH] improve the performance of large sequential write NFS
-	workloads
-Date: Thu, 24 Dec 2009 09:49:40 -0500
-Message-ID: <1261666180.13028.175.camel@serenity>
-References: <1261015420.1947.54.camel@serenity>
-	 <1261037877.27920.36.camel@laptop> <20091219122033.GA11360@localhost>
-	 <1261232747.1947.194.camel@serenity> <20091222015907.GA6223@localhost>
-	 <1261500113.13028.78.camel@serenity>  <20091224012101.GA8486@localhost>
+From: Jeff Layton <jlayton@redhat.com>
+Subject: Re: [PATCH 2/2] nfs-utils: add initial tests for statd that run via
+ "make check"
+Date: Thu, 24 Dec 2009 19:20:07 -0500
+Message-ID: <20091224192007.217a9ed5@tupile.poochiereds.net>
+References: <1260992440-8234-1-git-send-email-jlayton@redhat.com>
+	<1260992440-8234-3-git-send-email-jlayton@redhat.com>
+	<4B336C25.7000705@RedHat.com>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: Peter Zijlstra <peterz@infradead.org>,
-	"linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-	"Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>,
-	"jens.axboe" <jens.axboe@oracle.com>,
-	Peter Staubach <staubach@redhat.com>, Jan Kara <jack@suse.cz>,
-	Arjan van de Ven <arjan@infradead.org>,
-	Ingo Molnar <mingo@elte.hu>,
-	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
-To: Wu Fengguang <fengguang.wu@intel.com>
+Content-Type: text/plain; charset=US-ASCII
+Cc: linux-nfs@vger.kernel.org
+To: Steve Dickson <SteveD@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.nec-labs.com ([138.15.200.209]:41906 "EHLO
-	mail.nec-labs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752831AbZLXOtn (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 24 Dec 2009 09:49:43 -0500
-In-Reply-To: <20091224012101.GA8486@localhost>
+Received: from mx1.redhat.com ([209.132.183.28]:64481 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753665AbZLYATo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 24 Dec 2009 19:19:44 -0500
+Received: from int-mx08.intmail.prod.int.phx2.redhat.com (int-mx08.intmail.prod.int.phx2.redhat.com [10.5.11.21])
+	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id nBP0JhYC030066
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Thu, 24 Dec 2009 19:19:43 -0500
+In-Reply-To: <4B336C25.7000705-AfCzQyP5zfLQT0dZR+AlfA@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Thu, 24 Dec 2009 08:27:01 -0500
+Steve Dickson <SteveD@redhat.com> wrote:
 
-On Thu, 2009-12-24 at 09:21 +0800, Wu Fengguang wrote:
-
-> > Commits and writes on the same inode need to be serialized for
-> > consistency (write can change the data and metadata; commit [fsync]
-> > needs to provide guarantees that the written data are stable). The
-> > performance problem arises because NFS writes are fast (they generally
-> > just deposit data into the server's page cache), but commits can take a
+> On 12/16/2009 02:40 PM, Jeff Layton wrote:
+> > Leverage the support that automake already has for running tests via
+> > make check. Add a simple test that just checks that the statd mon and
+> > unmon calls actually work.
+> > 
+> > Adding more tests should be a simple matter of adding new scripts
+> > exit 0 on success and non-zero on fail, and adding those to the
+> > Makefile.am.
+> > 
+> > Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> > ---
+> >  tests/Makefile.am                    |    2 +
+> >  tests/t0001-statd-basic-mon-unmon.sh |   55 ++++++++++++++++++++++++++++++++++
+> >  tests/test-lib.sh                    |   41 +++++++++++++++++++++++++
+> >  3 files changed, 98 insertions(+), 0 deletions(-)
+> >  create mode 100755 tests/t0001-statd-basic-mon-unmon.sh
+> >  create mode 100755 tests/test-lib.sh
+> > 
+> > diff --git a/tests/Makefile.am b/tests/Makefile.am
+> > index 997ac51..634fb7b 100644
+> > --- a/tests/Makefile.am
+> > +++ b/tests/Makefile.am
+> > @@ -3,3 +3,5 @@
+> >  SUBDIRS = statdtest
+> >  
+> >  MAINTAINERCLEANFILES = Makefile.in
+> > +
+> > +TESTS = t0001-statd-basic-mon-unmon.sh
+> > diff --git a/tests/t0001-statd-basic-mon-unmon.sh b/tests/t0001-statd-basic-mon-unmon.sh
+> > new file mode 100755
+> > index 0000000..d5dffc5
+> > --- /dev/null
+> > +++ b/tests/t0001-statd-basic-mon-unmon.sh
+> > @@ -0,0 +1,55 @@
+> > +#!/bin/bash
+> > +#
+> > +# statd_basic_mon_unmon -- test basic mon/unmon functionality with statd
+> > +#
+> > +# Copyright (C) 2009  Red Hat, Jeff Layton <jlayton@redhat.com>
+> > +#
+> > +# This program is free software; you can redistribute it and/or
+> > +# modify it under the terms of the GNU General Public License
+> > +# as published by the Free Software Foundation; either version 2
+> > +# of the License, or (at your option) any later version.
+> > +#
+> > +# This program is distributed in the hope that it will be useful,
+> > +# but WITHOUT ANY WARRANTY; without even the implied warranty of
+> > +# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+> > +# GNU General Public License for more details.
+> > +#
+> > +# You should have received a copy of the GNU General Public License
+> > +# along with this program; if not, write to the Free Software Foundation, Inc.,
+> > +# 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+> > +#
+> > +
+> > +. ./test-lib.sh
+> > +
+> > +start_statd
+> > +if [ $? -ne 0 ]; then
+> > +	echo "FAIL: problem starting statd"
+> > +	exit 1
+> > +fi
+> > +
+> > +COOKIE=`echo $$ | md5sum | cut -d' ' -f1`
+> > +MON_NAME=`hostname`
+> > +
+> > +statdtest mon $MON_NAME $COOKIE
+> > +if [ $? -ne 0 ]; then
+> > +	echo "FAIL: mon failed"
+> > +	kill_statd
+> > +	exit 1
+> > +fi
+> > +
+> > +grep -q $COOKIE /var/lib/nfs/statd/sm/$MON_NAME
+> This is a distro specific path... The default is /var/lib/nfs/sm
+> It would be nice if somehow we could pull in the NFS_STATEDIR define
+> from support/include/config.h file... 
 > 
-> Right. 
+
+Good point. I'll need to think on how we can deal with that. Maybe what
+I should do is add a new "statdtest" command that prints out this
+directory? Unless someone has a better idea, I'll respin this set with
+that change soon.
+
+> > +if [ $? -ne 0 ]; then
+> > +	echo "FAIL: $COOKIE not present in monitor file"
+> > +	kill_statd
+> > +	exit 1
+> > +fi
+> > +
+> > +statdtest unmon $MON_NAME
+> > +if [ $? -ne 0 ]; then
+> > +	echo "FAIL: unmon failed"
+> > +	kill_statd
+> > +	exit 1
+> > +fi
+> > +
+> > +kill_statd
+> > +
+> > diff --git a/tests/test-lib.sh b/tests/test-lib.sh
+> > new file mode 100755
+> > index 0000000..053e46d
+> > --- /dev/null
+> > +++ b/tests/test-lib.sh
+> > @@ -0,0 +1,41 @@
+> > +#!/bin/bash
+> > +#
+> > +# test-lib.sh -- library of functions for nfs-utils tests
+> > +#
+> > +# Copyright (C) 2009  Red Hat, Jeff Layton <jlayton@redhat.com>
+> > +#
+> > +# This program is free software; you can redistribute it and/or
+> > +# modify it under the terms of the GNU General Public License
+> > +# as published by the Free Software Foundation; either version 2
+> > +# of the License, or (at your option) any later version.
+> > +#
+> > +# This program is distributed in the hope that it will be useful,
+> > +# but WITHOUT ANY WARRANTY; without even the implied warranty of
+> > +# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+> > +# GNU General Public License for more details.
+> > +#
+> > +# You should have received a copy of the GNU General Public License
+> > +# along with this program; if not, write to the Free Software Foundation, Inc.,
+> > +# 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+> > +#
+> > +
+> > +export PATH=$PATH:$srcdir/statdtest
+> > +
+> > +lockd_registered() {
+> > +	rpcinfo -p | grep -q nlockmgr
+> > +	return $?
+> > +}
+> > +
+> > +start_statd() {
+> > +	rpcinfo -u 127.0.0.1 status 1 &> /dev/null
+> > +	if [ $? -eq 0 ]; then
+> > +		echo "***ERROR***: statd is already running and should "
+> > +		echo "             be down when starting this test"
+> > +		return 1
+> > +	fi
+> > +	$srcdir/../utils/statd/statd --no-notify
+> the $srcdir variable is not define so the script fails
+> right out of the box... So maybe something like this...
+> Initialize srcdir=`dirname $PWD`
+> then '$srcdir/utils/statd/statd --no-notify' will work.
 > 
-> > long time, especially if there is a lot of cached data to flush to
-> > stable storage.
+
+This script is run via "make check". Automake or autoconf (I forget
+which) set $srcdir. There's no need to redefine it here.
+
+> > +}
+> > +
+> > +kill_statd() {
+> > +	kill `cat /var/run/rpc.statd.pid`
+> > +}
 > 
-> "a lot of cached data to flush" is not likely with pdflush, since it
-> roughly send one COMMIT per 4MB WRITEs. So in average each COMMIT
-> syncs 4MB at the server side.
-
-Maybe on paper, but empirically I see anywhere from one commit per 8MB
-to one commit per 64 MB.
-
+> Overall I like the idea of having a test harness... but I have
+> to wonder if we start building the harness in shell scripts 
+> if we are not limiting things right out of the box... 
 > 
-> Your patch adds another pre-pdlush async write logic, which greatly
-> reduced the number of COMMITs by pdflush. Can this be the major factor
-> of the performance gain?
-
-My patch removes pdflush from the picture almost entirely.  See my
-comments below.
-
+> Maybe we should consider doing the harness in a more up to date
+> scripting languages like perl or python or even java... Granted 
+> I'm not as familiar (or comfortable) with those languages as with
+> shell scripting. Plus its not clear what type of dependencies that
+> would added to the core nfs-utils code, but we should at least
+> think about using a language that might give us more 
+> possibilities down the road... Who knowns, in the end, shell scripting
+> might be the best way to go... 
 > 
-> Jan has been proposing to change the pdflush logic from
-> 
->         loop over dirty files {
->                 writeback 4MB
->                 write_inode
->         }
-> to
->         loop over dirty files {
->                 writeback all its dirty pages
->                 write_inode
->         }
-> 
-> This should also be able to reduce the COMMIT numbers. I wonder if
-> this (more general) approach can achieve the same performance gain.
 
-The pdflush mechanism is fine for random writes and small sequential
-writes, because it promotes concurrency -- instead of the application
-blocking while it tries to write and commit its data, the application
-can go on doing other more useful things, and the data gets flushed in
-the background.  There is also a benefit if the application makes
-another modification to a page that is already dirty, because then
-multiple modifications are coalesced into a single write.
+One of the nice things about this "test harness" is that it's pretty
+minimalistic. You can write tests in whatever you like as long as it
+can be run from the makefile. While this test is written as a shell
+script, the bulk of the test is a C program (statdtest.c).
 
-However, the pdflush mechanism is wrong for large sequential writes
-(like a backup stream, for example).  First, there is no concurrency to
-exploit -- the application is only going to dirty more pages, so
-removing the need for it to block writing the pages out only adds to the
-problem of memory pressure.  Second, the application is not going to go
-back and modify a page it has already written, so leaving it in the
-cache for someone else to write provides no additional benefit.
+I have no objection to writing tests in something else, but that does
+add additional dependencies. There's something to be said for not
+adding those unless they're really needed.
 
-Note that this assumes the application actually cares about the
-consistency of its data and will call fsync() when it is done.  If the
-application doesn't call fsync(), then it doesn't matter when the pages
-are written to backing store, because the interface makes no guarantees
-in this case.
-
-Thanks,
-
-Steve
-
-
-
+Thanks for the review so far,
+-- 
+Jeff Layton <jlayton@redhat.com>
