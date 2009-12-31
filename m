@@ -1,95 +1,61 @@
-From: Wu Fengguang <fengguang.wu@intel.com>
-Subject: Re: [PATCH] improve the performance of large sequential write NFS
-	workloads
-Date: Thu, 31 Dec 2009 13:04:41 +0800
-Message-ID: <20091231050441.GB19627@localhost>
-References: <20091219122033.GA11360@localhost> <1261232747.1947.194.camel@serenity> <20091222015907.GA6223@localhost> <1261578107.2606.11.camel@localhost> <20091223180551.GD3159@quack.suse.cz> <1261595574.6775.2.camel@localhost> <20091224025228.GA12477@localhost> <1261656281.3596.1.camel@localhost> <20091225055617.GA8595@localhost> <1262190168.7332.6.camel@localhost>
+From: Randy Dunlap <rdunlap@xenotime.net>
+Subject: Re: [PATCH] sunrpc: fix build-time warning
+Date: Thu, 31 Dec 2009 09:18:15 -0800
+Message-ID: <20091231091815.a1ea7e51.rdunlap@xenotime.net>
+References: <1262226195-27733-1-git-send-email-jlayton@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, Steve Rago <sar-a+KepyhlMvJWk0Htik3J/w@public.gmane.org>,
-	Peter Zijlstra <peterz@infradead.org>,
-	"linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-	"jens.axboe" <jens.axboe@oracle.com>,
-	Peter Staubach <staubach@redhat.com>,
-	Arjan van de Ven <arjan@infradead.org>,
-	Ingo Molnar <mingo@elte.hu>,
-	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Content-Type: text/plain; charset=US-ASCII
+Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
+	Stephen Rothwell <sfr@canb.auug.org.au>,
+	linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org
+To: Jeff Layton <jlayton@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mga14.intel.com ([143.182.124.37]:34653 "EHLO mga14.intel.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750720AbZLaFEp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 31 Dec 2009 00:04:45 -0500
-In-Reply-To: <1262190168.7332.6.camel@localhost>
+Received: from xenotime.net ([72.52.64.118]:46740 "HELO xenotime.net"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with SMTP
+	id S1752746AbZLaRSH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 31 Dec 2009 12:18:07 -0500
+Received: from chimera.site ([96.253.169.185]) by xenotime.net for <linux-nfs@vger.kernel.org>; Thu, 31 Dec 2009 09:18:03 -0800
+In-Reply-To: <1262226195-27733-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Trond,
+On Wed, 30 Dec 2009 21:23:15 -0500 Jeff Layton wrote:
 
-On Thu, Dec 31, 2009 at 12:22:48AM +0800, Trond Myklebust wrote:
+> Commit 486bad2e40e938cd68fd853b7a9fa3115a9d3a4a introduced this warning
+> at build time on some 32-bit architectures:
+> 
+> net/sunrpc/auth_gss/auth_gss.c: In function 'gss_pipe_downcall':
+> net/sunrpc/auth_gss/auth_gss.c:660: warning: format '%ld' expects type 'long int', but argument 3 has type 'ssize_t
+> 
+> ...fix it by changing the length modifier in the printk.
+> 
+> Reported-by: Stephen Rothwell <sfr@canb.auug.org.au>
+> Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> ---
+>  net/sunrpc/auth_gss/auth_gss.c |    2 +-
+>  1 files changed, 1 insertions(+), 1 deletions(-)
+> 
+> diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
+> index 66cb89c..6de4f91 100644
+> --- a/net/sunrpc/auth_gss/auth_gss.c
+> +++ b/net/sunrpc/auth_gss/auth_gss.c
+> @@ -657,7 +657,7 @@ gss_pipe_downcall(struct file *filp, const char __user *src, size_t mlen)
+>  			break;
+>  		default:
+>  			printk(KERN_CRIT "%s: bad return from "
+> -				"gss_fill_context: %ld\n", __func__, err);
+> +				"gss_fill_context: %Zd\n", __func__, err);
+>  			BUG();
+>  		}
+>  		goto err_release_msg;
+> -- 
 
-> it ignores the commit request if the caller is just doing a
-> WB_SYNC_NONE background flush, waiting instead for the ensuing
-> WB_SYNC_ALL request...
+I have that almost-same patch in my (unposted) linux-next patch queue,
+so basically, ack, except that we try to use 'z' instead of 'Z' nowadays.
 
-I'm afraid this will block balance_dirty_pages() until explicit
-sync/fsync calls: COMMITs are bad, however if we don't send them
-regularly, NR_UNSTABLE_NFS will grow large and block
-balance_dirty_pages() as well as throttle_vm_writeout()..
+My quick kernel source tree count is 173 %Z to 966 %z.
+(Please don't anyone start a project of converting %Z to %z.)
 
-        > +int nfs_commit_unstable_pages(struct address_space *mapping,
-        > +               struct writeback_control *wbc)
-        > +{
-        > +       struct inode *inode = mapping->host;
-        > +       int flags = FLUSH_SYNC;
-        > +       int ret;
-        > +
-==>     > +       /* Don't commit if this is just a non-blocking flush */
-==>     > +       if (wbc->sync_mode != WB_SYNC_ALL) {
-==>     > +               mark_inode_unstable_pages(inode);
-==>     > +               return 0;
-==>     > +       }
-        > +       if (wbc->nonblocking)
-        > +               flags = 0;
-        > +       ret = nfs_commit_inode(inode, flags);
-        > +       if (ret > 0)
-        > +               return 0;
-        > +       return ret;
-        > +}
 
-The NFS protocol provides no painless way to reclaim unstable pages
-other than the COMMIT (or sync write)..  This leaves us in a dilemma.
-
-We may reasonably reduce the number of COMMITs, and possibly even
-delay them for a while (and hope the server have writeback the pages
-before the COMMIT, somehow fragile).
-
-What we can obviously do is to avoid sending a COMMIT
-- if there are already an ongoing COMMIT for the same inode
-- or when there are ongoing WRITE for the inode
-  (are there easy way to detect this?)
-
-What do you think?
-
-Thanks,
-Fengguang
 ---
- fs/nfs/inode.c |    5 ++++-
- 1 file changed, 4 insertions(+), 1 deletion(-)
-
---- linux.orig/fs/nfs/inode.c	2009-12-25 09:25:38.000000000 +0800
-+++ linux/fs/nfs/inode.c	2009-12-25 10:13:06.000000000 +0800
-@@ -105,8 +105,11 @@ int nfs_write_inode(struct inode *inode,
- 		ret = filemap_fdatawait(inode->i_mapping);
- 		if (ret == 0)
- 			ret = nfs_commit_inode(inode, FLUSH_SYNC);
--	} else
-+	} else if (!radix_tree_tagged(&NFS_I(inode)->nfs_page_tree,
-+				      NFS_PAGE_TAG_LOCKED))
- 		ret = nfs_commit_inode(inode, 0);
-+	else
-+		ret = -EAGAIN;
- 	if (ret >= 0)
- 		return 0;
- 	__mark_inode_dirty(inode, I_DIRTY_DATASYNC);
+~Randy
