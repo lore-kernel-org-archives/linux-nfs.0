@@ -1,58 +1,95 @@
-From: Xiaotian Feng <dfeng@redhat.com>
-Subject: [PATCH] sunrpc: fix peername failed on closed listener
-Date: Thu, 31 Dec 2009 10:52:36 +0800
-Message-ID: <1262227956-21470-1-git-send-email-dfeng@redhat.com>
-Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
-	Xiaotian Feng <dfeng@redhat.com>,
-	"J. Bruce Fields" <bfields@fieldses.org>,
-	Neil Brown <neilb@suse.de>,
-	Trond Myklebust <Trond.Myklebust@netapp.com>,
-	"David S. Miller" <davem@davemloft.net>
-To: linux-nfs@vger.kernel.org
+From: Wu Fengguang <fengguang.wu@intel.com>
+Subject: Re: [PATCH] improve the performance of large sequential write NFS
+	workloads
+Date: Thu, 31 Dec 2009 13:04:41 +0800
+Message-ID: <20091231050441.GB19627@localhost>
+References: <20091219122033.GA11360@localhost> <1261232747.1947.194.camel@serenity> <20091222015907.GA6223@localhost> <1261578107.2606.11.camel@localhost> <20091223180551.GD3159@quack.suse.cz> <1261595574.6775.2.camel@localhost> <20091224025228.GA12477@localhost> <1261656281.3596.1.camel@localhost> <20091225055617.GA8595@localhost> <1262190168.7332.6.camel@localhost>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack@suse.cz>, Steve Rago <sar-a+KepyhlMvJWk0Htik3J/w@public.gmane.org>,
+	Peter Zijlstra <peterz@infradead.org>,
+	"linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+	"jens.axboe" <jens.axboe@oracle.com>,
+	Peter Staubach <staubach@redhat.com>,
+	Arjan van de Ven <arjan@infradead.org>,
+	Ingo Molnar <mingo@elte.hu>,
+	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:1026 "EHLO mx1.redhat.com"
+Received: from mga14.intel.com ([143.182.124.37]:34653 "EHLO mga14.intel.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752243AbZLaCy4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 30 Dec 2009 21:54:56 -0500
+	id S1750720AbZLaFEp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 31 Dec 2009 00:04:45 -0500
+In-Reply-To: <1262190168.7332.6.camel@localhost>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-There're some warnings of "nfsd: peername failed (err 107)!"
-socket error -107 means Transport endpoint is not connected.
-This warning message was outputed by svc_tcp_accept() [net/sunrpc/svcsock.c],
-when kernel_getpeername returns -107. This means socket might be CLOSED.
+Trond,
 
-And svc_tcp_accept was called by svc_recv() [net/sunrpc/svc_xprt.c]
+On Thu, Dec 31, 2009 at 12:22:48AM +0800, Trond Myklebust wrote:
 
-        if (test_bit(XPT_LISTENER, &xprt->xpt_flags)) {
-        <snip>
-                newxpt = xprt->xpt_ops->xpo_accept(xprt);
-        <snip>
+> it ignores the commit request if the caller is just doing a
+> WB_SYNC_NONE background flush, waiting instead for the ensuing
+> WB_SYNC_ALL request...
 
-So this might happen when xprt->xpt_flags has both XPT_LISTENER and XPT_CLOSE.
+I'm afraid this will block balance_dirty_pages() until explicit
+sync/fsync calls: COMMITs are bad, however if we don't send them
+regularly, NR_UNSTABLE_NFS will grow large and block
+balance_dirty_pages() as well as throttle_vm_writeout()..
 
-Let's take a look at commit b0401d72, this commit has moved the close
-processing after do recvfrom method, but this commit also introduces this
-warnings, if the xpt_flags has both XPT_LISTENER and XPT_CLOSED, we should
-close it, not accpet then close.
+        > +int nfs_commit_unstable_pages(struct address_space *mapping,
+        > +               struct writeback_control *wbc)
+        > +{
+        > +       struct inode *inode = mapping->host;
+        > +       int flags = FLUSH_SYNC;
+        > +       int ret;
+        > +
+==>     > +       /* Don't commit if this is just a non-blocking flush */
+==>     > +       if (wbc->sync_mode != WB_SYNC_ALL) {
+==>     > +               mark_inode_unstable_pages(inode);
+==>     > +               return 0;
+==>     > +       }
+        > +       if (wbc->nonblocking)
+        > +               flags = 0;
+        > +       ret = nfs_commit_inode(inode, flags);
+        > +       if (ret > 0)
+        > +               return 0;
+        > +       return ret;
+        > +}
 
-Signed-off-by: Xiaotian Feng <dfeng@redhat.com>
-Cc: J. Bruce Fields <bfields@fieldses.org>
-Cc: Neil Brown <neilb@suse.de>
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: David S. Miller <davem@davemloft.net>
+The NFS protocol provides no painless way to reclaim unstable pages
+other than the COMMIT (or sync write)..  This leaves us in a dilemma.
+
+We may reasonably reduce the number of COMMITs, and possibly even
+delay them for a while (and hope the server have writeback the pages
+before the COMMIT, somehow fragile).
+
+What we can obviously do is to avoid sending a COMMIT
+- if there are already an ongoing COMMIT for the same inode
+- or when there are ongoing WRITE for the inode
+  (are there easy way to detect this?)
+
+What do you think?
+
+Thanks,
+Fengguang
 ---
-diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-index 1c924ee..187f0f4 100644
---- a/net/sunrpc/svc_xprt.c
-+++ b/net/sunrpc/svc_xprt.c
-@@ -699,7 +699,8 @@ int svc_recv(struct svc_rqst *rqstp, long timeout)
- 	spin_unlock_bh(&pool->sp_lock);
- 
- 	len = 0;
--	if (test_bit(XPT_LISTENER, &xprt->xpt_flags)) {
-+	if (test_bit(XPT_LISTENER, &xprt->xpt_flags) &&
-+	    !test_bit(XPT_CLOSE, &xprt->xpt_flags)) {
- 		struct svc_xprt *newxpt;
- 		newxpt = xprt->xpt_ops->xpo_accept(xprt);
- 		if (newxpt) {
+ fs/nfs/inode.c |    5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
+
+--- linux.orig/fs/nfs/inode.c	2009-12-25 09:25:38.000000000 +0800
++++ linux/fs/nfs/inode.c	2009-12-25 10:13:06.000000000 +0800
+@@ -105,8 +105,11 @@ int nfs_write_inode(struct inode *inode,
+ 		ret = filemap_fdatawait(inode->i_mapping);
+ 		if (ret == 0)
+ 			ret = nfs_commit_inode(inode, FLUSH_SYNC);
+-	} else
++	} else if (!radix_tree_tagged(&NFS_I(inode)->nfs_page_tree,
++				      NFS_PAGE_TAG_LOCKED))
+ 		ret = nfs_commit_inode(inode, 0);
++	else
++		ret = -EAGAIN;
+ 	if (ret >= 0)
+ 		return 0;
+ 	__mark_inode_dirty(inode, I_DIRTY_DATASYNC);
