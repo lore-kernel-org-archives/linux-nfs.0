@@ -1,56 +1,91 @@
-From: Jeff Layton <jlayton@redhat.com>
-Subject: Re: [PATCH v2] sunrpc: fix build-time warning
-Date: Sun, 3 Jan 2010 06:51:05 -0500
-Message-ID: <20100103065105.54bba3e8@tlielax.poochiereds.net>
-References: <1262226195-27733-1-git-send-email-jlayton@redhat.com>
-	<20091231091815.a1ea7e51.rdunlap@xenotime.net>
-	<20091231205454.0f84f091@tupile.poochiereds.net>
-	<20100101182514.cb1f49ef.randy.dunlap@oracle.com>
+From: Nikola Ciprich <extmaillist-Jp3n8lUXroTtwjQa/ONI9g@public.gmane.org>
+Subject: Re: [PATCH] sunrpc: fix peername failed on closed listener
+Date: Mon, 4 Jan 2010 08:12:17 +0100
+Message-ID: <20100104071216.GA14930@develbox.linuxbox.cz>
+References: <1262227956-21470-1-git-send-email-dfeng@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
-	Stephen Rothwell <sfr@canb.auug.org.au>,
-	linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org
-To: Randy Dunlap <randy.dunlap@oracle.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-nfs@vger.kernel.org, netdev@vger.kernel.org,
+	linux-kernel@vger.kernel.org,
+	"J. Bruce Fields" <bfields@fieldses.org>,
+	Neil Brown <neilb@suse.de>,
+	Trond Myklebust <Trond.Myklebust@netapp.com>,
+	"David S. Miller" <davem@davemloft.net>,
+	nikola.ciprich-Jp3n8lUXroTtwjQa/ONI9g@public.gmane.org, stable@kernel.org
+To: Xiaotian Feng <dfeng@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:42844 "EHLO mx1.redhat.com"
+Received: from gwu.lbox.cz ([62.245.111.132]:41815 "EHLO gwu.lbox.cz"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752388Ab0ACLxA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 3 Jan 2010 06:53:00 -0500
-In-Reply-To: <20100101182514.cb1f49ef.randy.dunlap@oracle.com>
+	id S1753280Ab0ADHMa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 4 Jan 2010 02:12:30 -0500
+In-Reply-To: <1262227956-21470-1-git-send-email-dfeng@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 1 Jan 2010 18:25:14 -0800
-Randy Dunlap <randy.dunlap@oracle.com> wrote:
+(CCing stable@kernel.org)
+Greg, once this patch is ACKed, can You also queue it for 
+2.6.32.x please?
+thanks!
+nik
 
-> From: Randy Dunlap <randy.dunlap@oracle.com>
+On Thu, Dec 31, 2009 at 10:52:36AM +0800, Xiaotian Feng wrote:
+> There're some warnings of "nfsd: peername failed (err 107)!"
+> socket error -107 means Transport endpoint is not connected.
+> This warning message was outputed by svc_tcp_accept() [net/sunrpc/svcsock.c],
+> when kernel_getpeername returns -107. This means socket might be CLOSED.
 > 
-> Fix auth_gss printk format warning:
+> And svc_tcp_accept was called by svc_recv() [net/sunrpc/svc_xprt.c]
 > 
-> net/sunrpc/auth_gss/auth_gss.c:660: warning: format '%ld' expects type 'long int', but argument 3 has type 'ssize_t'
+>         if (test_bit(XPT_LISTENER, &xprt->xpt_flags)) {
+>         <snip>
+>                 newxpt = xprt->xpt_ops->xpo_accept(xprt);
+>         <snip>
 > 
-> Signed-off-by: Randy Dunlap <randy.dunlap@oracle.com>
-
-Acked-by: Jeff Layton <jlayton@redhat.com>
-
+> So this might happen when xprt->xpt_flags has both XPT_LISTENER and XPT_CLOSE.
+> 
+> Let's take a look at commit b0401d72, this commit has moved the close
+> processing after do recvfrom method, but this commit also introduces this
+> warnings, if the xpt_flags has both XPT_LISTENER and XPT_CLOSED, we should
+> close it, not accpet then close.
+> 
+> Signed-off-by: Xiaotian Feng <dfeng@redhat.com>
+> Cc: J. Bruce Fields <bfields@fieldses.org>
+> Cc: Neil Brown <neilb@suse.de>
+> Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
+> Cc: David S. Miller <davem@davemloft.net>
 > ---
->  net/sunrpc/auth_gss/auth_gss.c |    2 +-
->  1 file changed, 1 insertion(+), 1 deletion(-)
+> diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
+> index 1c924ee..187f0f4 100644
+> --- a/net/sunrpc/svc_xprt.c
+> +++ b/net/sunrpc/svc_xprt.c
+> @@ -699,7 +699,8 @@ int svc_recv(struct svc_rqst *rqstp, long timeout)
+>  	spin_unlock_bh(&pool->sp_lock);
+>  
+>  	len = 0;
+> -	if (test_bit(XPT_LISTENER, &xprt->xpt_flags)) {
+> +	if (test_bit(XPT_LISTENER, &xprt->xpt_flags) &&
+> +	    !test_bit(XPT_CLOSE, &xprt->xpt_flags)) {
+>  		struct svc_xprt *newxpt;
+>  		newxpt = xprt->xpt_ops->xpo_accept(xprt);
+>  		if (newxpt) {
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-kernel" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> Please read the FAQ at  http://www.tux.org/lkml/
 > 
-> --- linux-next-20091229.orig/net/sunrpc/auth_gss/auth_gss.c
-> +++ linux-next-20091229/net/sunrpc/auth_gss/auth_gss.c
-> @@ -657,7 +657,7 @@ gss_pipe_downcall(struct file *filp, con
->  			break;
->  		default:
->  			printk(KERN_CRIT "%s: bad return from "
-> -				"gss_fill_context: %ld\n", __func__, err);
-> +				"gss_fill_context: %zd\n", __func__, err);
->  			BUG();
->  		}
->  		goto err_release_msg;
-> ---
-
 
 -- 
-Jeff Layton <jlayton@redhat.com>
+-------------------------------------
+Ing. Nikola CIPRICH
+LinuxBox.cz, s.r.o.
+28. rijna 168, 709 01 Ostrava
+
+tel.:   +420 596 603 142
+fax:    +420 596 621 273
+mobil:  +420 777 093 799
+www.linuxbox.cz
+
+mobil servis: +420 737 238 656
+email servis: servis-Jp3n8lUXroTtwjQa/ONI9g@public.gmane.org
+-------------------------------------
