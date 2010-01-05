@@ -1,176 +1,152 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH 2/3] nfs-utils: add statdb_dump utility
-Date: Tue, 5 Jan 2010 14:25:51 -0500
-Message-ID: <0B721DD7-0E4B-4070-A11E-49BF489BB91C@oracle.com>
-References: <1262706035-4929-1-git-send-email-jlayton@redhat.com> <1262706035-4929-3-git-send-email-jlayton@redhat.com> <248F9B15-E200-419D-96A0-6D64008D8750@oracle.com> <20100105141732.4590bcce@tlielax.poochiereds.net>
-Mime-Version: 1.0 (Apple Message framework v936)
-Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
-Cc: steved@redhat.com, linux-nfs@vger.kernel.org
-To: Jeff Layton <jlayton@redhat.com>
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Re: [PATCH] showmount: try v3 before falling back to v1
+Date: Tue, 05 Jan 2010 15:38:00 -0500
+Message-ID: <4B43A328.5000702@RedHat.com>
+References: <1262655247-16849-1-git-send-email-dpmcgee@gmail.com> <6E89479D-45D6-4C59-9639-7C4B893F2A5E@oracle.com> <4B438712.1080101@RedHat.com> <3F8F085F-E90B-4568-9BB2-F820A7C71A4D@oracle.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: Dan McGee <dpmcgee@gmail.com>, linux-nfs@vger.kernel.org
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from acsinet11.oracle.com ([141.146.126.233]:49600 "EHLO
-	acsinet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755237Ab0AET0i (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 5 Jan 2010 14:26:38 -0500
-In-Reply-To: <20100105141732.4590bcce-9yPaYZwiELC+kQycOl6kW4xkIHaj4LzF@public.gmane.org>
+Received: from mx1.redhat.com ([209.132.183.28]:18424 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755322Ab0AEUiI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 5 Jan 2010 15:38:08 -0500
+In-Reply-To: <3F8F085F-E90B-4568-9BB2-F820A7C71A4D@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-On Jan 5, 2010, at 2:17 PM, Jeff Layton wrote:
-
-> On Tue, 5 Jan 2010 11:09:20 -0500
-> Chuck Lever <chuck.lever@oracle.com> wrote:
->
+On 01/05/2010 02:23 PM, Chuck Lever wrote:
 >>
->> On Jan 5, 2010, at 10:40 AM, Jeff Layton wrote:
+>> Author: Steve Dickson <steved@redhat.com>
+>> Date:   Tue Jan 5 13:29:07 2010 -0500
 >>
->>> To dump contents of statd's monitor DB.
->>>
->>> Signed-off-by: Jeff Layton <jlayton@redhat.com>
->>> ---
->>> tests/Makefile.am   |    6 ++++
->>> tests/statdb_dump.c |   75 ++++++++++++++++++++++++++++++++++++++++ 
->>> ++
->>> +++++++++
->>> 2 files changed, 81 insertions(+), 0 deletions(-)
->>> create mode 100644 tests/statdb_dump.c
->>>
->>> diff --git a/tests/Makefile.am b/tests/Makefile.am
->>> index 375af80..a20b42b 100644
->>> --- a/tests/Makefile.am
->>> +++ b/tests/Makefile.am
->>> @@ -1,5 +1,11 @@
->>> ## Process this file with automake to produce Makefile.in
->>>
->>> +check_PROGRAMS = statdb_dump
->>> +statdb_dump_SOURCES = statdb_dump.c
->>> +
->>> +statdb_dump_LDADD = ../support/nfs/libnfs.a \
->>> +		    ../support/nsm/libnsm.a $(LIBCAP)
->>> +
->>> SUBDIRS = nsm_client
->>>
->>> MAINTAINERCLEANFILES = Makefile.in
->>> diff --git a/tests/statdb_dump.c b/tests/statdb_dump.c
->>> new file mode 100644
->>> index 0000000..655213a
->>> --- /dev/null
->>> +++ b/tests/statdb_dump.c
->>> @@ -0,0 +1,75 @@
->>> +/*
->>> + * statdb_dump.c -- dump contents of statd's monitor DB
->>> + *
->>> + * Copyright (C) 2010  Red Hat, Jeff Layton <jlayton@redhat.com>
->>> + *
->>> + * This program is free software; you can redistribute it and/or
->>> + * modify it under the terms of the GNU General Public License
->>> + * as published by the Free Software Foundation; either version 2
->>> + * of the License, or (at your option) any later version.
->>> + *
->>> + * This program is distributed in the hope that it will be useful,
->>> + * but WITHOUT ANY WARRANTY; without even the implied warranty of
->>> + * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
->>> + * GNU General Public License for more details.
->>> + *
->>> + * You should have received a copy of the GNU General Public  
->>> License
->>> + * along with this program; if not, write to the Free Software
->>> + * Foundation, Inc., 51 Franklin Street, Fifth Floor,
->>> + * Boston, MA 02110-1301, USA.
->>> + *
->>> + * Output format is:
->>> + *
->>> + * <hostname> <cookie> <mon_name>
+>>    showmount: Try the highest mount version then fall back to lower ones
 >>
->> my_name might also be interesting when we get local multi-homed
->> support going.  Perhaps some command line switches could control what
->> is displayed.
+>>    Showmount should try the highest mount version first then fall
+>>    back to the lower ones when the server returns a RPC_PROGVERSMISMATCH
+>>    error. The idea being not using the lower mount versions will begin
+>>    the process of moving away from NFSv2 support.
 >>
->
-> Ok, I can add my_name. I'm not crazy about adding options though. My
-> thinking at this point is to keep the program really simple and let  
-> the
-> caller parse out what it needs.
+>>    Signed-off-by: Steve Dickson <steved@redhat.com>
+>>
+>> diff --git a/utils/showmount/showmount.c b/utils/showmount/showmount.c
+>> index 418e8b9..17224a6 100644
+>> --- a/utils/showmount/showmount.c
+>> +++ b/utils/showmount/showmount.c
+>> @@ -85,22 +85,29 @@ static const char *nfs_sm_pgmtbl[] = {
+>>     NULL,
+>> };
+>>
+>> +static const int mount_vers[] = {
+> 
+> RPC version numbers are rpcvers_t, not int.
+True..
 
-In that case you should probably display the socket address and RPC  
-number parameters as well.
+> 
+> The array above this one is called "nfs_sm_pgmtbl"... to be consistent
+> with existing code you should name this one "nfs_sm_verstbl".
+> 
+>> +    MOUNTVERS_NFSV3,
+>> +    MOUNTVERS_POSIX,
+>> +    MOUNTVERS,
+>> +};
+>> +static const int max_vers = (sizeof(mount_vers)/sizeof(mount_vers[0]));
+> 
+> Array indices are unsigned.
+Sure... 
 
->>> + *
->>> + */
->>> +
->>> +#ifdef HAVE_CONFIG_H
->>> +#include "config.h"
->>> +#endif
->>> +
->>> +#include <stdio.h>
->>> +
->>> +#include "nsm.h"
->>> +#include "xlog.h"
->>> +
->>> +static char cookiebuf[(SM_PRIV_SIZE * 2) + 1];
->>> +
->>> +static _Bool
->>> +error_check(const int len, const size_t buflen)
->>> +{
->>> +        return (len < 0) || ((size_t)len >= buflen);
->>> +}
->>> +
->>> +static unsigned int
->>> +dump_host(const char *hostname, const struct sockaddr *sa, const
->>> struct mon *m,
->>> +	  const time_t timestamp)
->>> +{
->>> +	int i, len;
->>> +	char *buf = cookiebuf;
->>> +	size_t remaining = sizeof(cookiebuf);
->>> +
->>> +	/* convert cookie to text string */
->>> +	for (i = 0; i < SM_PRIV_SIZE; i++) {
->>> +		len = snprintf(buf, remaining, "%02x",
->>> +				(unsigned int)(0xff & m->priv[i]));
->>> +		if (error_check(len, remaining))
->>> +			return 0;
->>> +		buf += len;
->>> +		remaining -= (size_t)len;
->>> +	}
+> 
+> Calling this "max_vers" suggests it's actually a version number, and not
+> an index into the version array; that's confusing.
+Its pretty simple code.. don't see this confusion.... but..
+It changed to  mount_vers_tbl
+> 
+> The array above this one has a NULL entry as it's final element.  To be
+> consistent with existing code, you should copy that logic for this array
+> instead of using a separate "max_vers" variable.
+Having the NULL messes up the sizeof calculations
+ 
+> 
+>> +
+>> /*
+>>  * Generate an RPC client handle connected to the mountd service
+>>  * at @hostname, or die trying.
+>>  *
+>>  * Supports both AF_INET and AF_INET6 server addresses.
+>>  */
+>> -static CLIENT *nfs_get_mount_client(const char *hostname)
+>> +static CLIENT *nfs_get_mount_client(const char *hostname, int vers)
+> 
+> RPC version numbers are rpcvers_t, not int.  At the very least,
+> clnt_create(3t) takes an unsigned version number argument.
+> 
+>> {
+>>     rpcprog_t program = nfs_getrpcbyname(MOUNTPROG, nfs_sm_pgmtbl);
+>>     CLIENT *client;
 >>
->> I wonder if having a shared helper in support/nsm/file.c for
->> converting a priv cookie to a string would be generally useful.
+>> -    client = clnt_create(hostname, program, MOUNTVERS, "tcp");
+>> +    client = clnt_create(hostname, program, vers, "tcp");
+>>     if (client)
+>>         return client;
 >>
->
-> I thought about that too but didn't because I only saw one other place
-> that did this. Still though, it's probably the right thing to do. I'll
-> have a look at that.
->
->>> +
->>> +	printf("%s %s %s\n", hostname, cookiebuf, m->mon_id.mon_name);
->>> +	return 1;
->>> +}
->>> +
->>> +int
->>> +main(int argc, char **argv)
->>> +{
->>> +	xlog_syslog(0);
->>> +	xlog_stderr(1);
->>> +	xlog_open(argv[0]);
->>> +	
->>> +	nsm_load_monitor_list(dump_host);
->>> +	return 0;
->>> +}
->>> -- 
->>> 1.6.5.2
->>>
+>> -    client = clnt_create(hostname, program, MOUNTVERS, "udp");
+>> +    client = clnt_create(hostname, program, vers, "udp");
+>>     if (client)
+>>         return client;
 >>
->
->
-> -- 
-> Jeff Layton <jlayton@redhat.com>
+>> @@ -122,7 +129,7 @@ int main(int argc, char **argv)
+>>     mountlist list;
+>>     int i;
+>>     int n;
+>> -    int maxlen;
+>> +    int maxlen, vers=0;
+> 
+> Array indices are unsigned integers.
+> 
+> Calling this "vers" suggests it's actually a version number, and not an
+> index into the version array; that's confusing.
+and an index call 'j' or 'i' is descriptive?? vers is clear enough imho...
 
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+> 
+>>     char **dumpv;
+>>
+>>     program_name = argv[0];
+>> @@ -185,7 +192,8 @@ int main(int argc, char **argv)
+>>         break;
+>>     }
+>>
+>> -    mclient = nfs_get_mount_client(hostname);
+>> +again:
+>> +    mclient = nfs_get_mount_client(hostname, mount_vers[vers]);
+>>     mclient->cl_auth = authunix_create_default();
+>>     total_timeout.tv_sec = TOTAL_TIMEOUT;
+>>     total_timeout.tv_usec = 0;
+>> @@ -197,6 +205,10 @@ int main(int argc, char **argv)
+>>             (xdrproc_t) xdr_void, NULL,
+>>             (xdrproc_t) xdr_exports, (caddr_t) &exportlist,
+>>             total_timeout);
+>> +        if (clnt_stat == RPC_PROGVERSMISMATCH) {
+>> +            if (++vers <  max_vers)
+>> +                goto again;
+>> +        }
+> 
+> clnt_create(3t) should tell you if the requested version number is
+> working; libtirpc's version does a NULLPROC call, for example.  It would
+> be simpler to move this check into nfs_get_mount_client(), then you
+> wouldn't need the retry loop here.
+clnt_create() does not fail.. the clnt_call() does.. 
+
+> 
+> But nfs_get_mount_client() already doesn't care why the clnt_create(3t)
+> call fails, it just retries the creation with different parameters if it
+> didn't succeed.  Do we really care enough to retry _only_ if the
+> specific RPC version isn't available?  We use the same procedure number
+> with the same arguments and the same results for all three protocol
+> versions, yes?
+Let not make a mountain out of mole hill... the goal of this patch is stop using the lower mount protocol version so server can only support v3 and v4... nothing
+more... 
 
 
-
+steved.
 
