@@ -1,31 +1,49 @@
-From: Christoph Hellwig <hch@lst.de>
-Subject: Re: [PATCH 1/2] nfsd: make sure data is on disk before calling ->fsync
-Date: Tue, 5 Jan 2010 16:22:31 +0100
-Message-ID: <20100105152231.GA32332@lst.de>
-References: <20091225164445.GA4578@lst.de> <20100104135045.GA18072@lst.de> <20100104204206.GD30129@fieldses.org>
+From: Peter Staubach <staubach@redhat.com>
+Subject: Re: Proper way to request async from NFS server?
+Date: Tue, 05 Jan 2010 10:39:22 -0500
+Message-ID: <4B435D2A.7040009@redhat.com>
+References: <20100105075610.GA435@esri.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Christoph Hellwig <hch@lst.de>, viro@zeniv.linux.org.uk,
-	jack@suse.cz, linux-nfs@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <20100104204206.GD30129@fieldses.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: linux-nfs@vger.kernel.org
+To: Ray Van Dolson <rvandolson-v48TKWNzwFw@public.gmane.org>
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:11322 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754797Ab0AEPj1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 5 Jan 2010 10:39:27 -0500
+In-Reply-To: <20100105075610.GA435-v48TKWNzwFw@public.gmane.org>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Jan 04, 2010 at 03:42:06PM -0500, J. Bruce Fields wrote:
-> On Mon, Jan 04, 2010 at 02:50:45PM +0100, Christoph Hellwig wrote:
-> > ping?  this fixes a quite nasty issue introduced in 2.6.32, so we should
-> > fix it ASAP (including backport to -stable)
+Ray Van Dolson wrote:
+> RHEL 5.4 NFSv3 client accessing a Solaris 10 NFS export.
 > 
-> Apologies for the delay.  Which commit exactly introduced the original
-> regression?  I'll take over getting them into 2.6.33 and 2.6.32.y unless
-> you tell me you're already doing that.
+> Solaris 10 does not offer a way to specify whether a given share is
+> async or sync as the Linux NFS server does.  As far as I understand it,
+> its NFS server will honor whatever the connecting NFS client requests.
+> 
+> I'm mounting a Solaris NFS share with -o async (or using async in the
+> options field in fstab).  Though this completes without complaint, I
+> don't see "async" listed in the mount options under /proc/mounts and
+> when I do a snoop on the Solaris side, all the write requests are FSYNC
+> instead of ASYNC.
+> 
+> Am I doing something wrong?  What's the correct way to get the Linux
+> NFS client to request asynchronous operation?
+> 
+> This is with nfs-utils 1.0.9 and of course, the RHEL5 kernel
+> 2.6.18-164.6.1.el5.
+> 
 
-2daea67e966dc0c42067ebea015ddac6834cef88 changed the calling convention.
-Removal of the explicit wait in the filesystem might have been another
-few commits.
+Simply mounting with no specific options should cause the
+client to generate WRITE requests with the appropriate setting.
+When it can, the client generates UNSTABLE requests followed
+by COMMIT operations.  When it is required to, the client
+generates FSYNC requests.
 
-If you can easily take care of getting the first patch into -stable I'll
-leave it to you.
+If you are only seeing FSYNC requests over the wire, then I
+might suggest checking the application to see how it opens
+the file.
+
+		ps
