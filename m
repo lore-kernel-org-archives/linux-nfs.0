@@ -1,42 +1,36 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 2/2] SUNRPC: Don't display zero scope IDs
-Date: Tue, 12 Jan 2010 17:41:20 -0500
-Message-ID: <20100112224120.3167.22567.stgit@localhost.localdomain>
-References: <20100112223826.3167.13900.stgit@localhost.localdomain>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Cc: linux-nfs@vger.kernel.org
-To: trond.myklebust@netapp.com
+Subject: rpcbind doesn't build on Fedora 12 ?
+Date: Tue, 5 Jan 2010 12:12:31 -0500
+Message-ID: <268D6516-A19A-4CC7-BF03-6FBFA7C79D0B@oracle.com>
+Mime-Version: 1.0 (Apple Message framework v936)
+Content-Type: text/plain; charset=WINDOWS-1252;
+	format=flowed	delsp=yes
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+To: Steve Dickson <SteveD@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from acsinet12.oracle.com ([141.146.126.234]:47206 "EHLO
-	acsinet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751808Ab0ALWmg (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 12 Jan 2010 17:42:36 -0500
-In-Reply-To: <20100112223826.3167.13900.stgit-bi+AKbBUZKY6gyzm1THtWbp2dZbC/Bob@public.gmane.org>
+Received: from acsinet11.oracle.com ([141.146.126.233]:60338 "EHLO
+	acsinet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754224Ab0AERNK convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 5 Jan 2010 12:13:10 -0500
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-A zero scope ID means that it wasn't set, so we don't need to append
-it to presentation format addresses.
+security.c:24:27: error: rpcsvc/rquota.h: No such file or directory
+security.c: In function =91check_callit=92:
+security.c:286: error: =91RQUOTAPROG=92 undeclared (first use in this =20
+function)
+security.c:286: error: (Each undeclared identifier is reported only onc=
+e
+security.c:286: error: for each function it appears in.)
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-Acked-by: Jeff Layton <jlayton@redhat.com>
----
+I have libtirpc-devel installed, but a "find" on /usr/include turns up =
+=20
+no file named rquota.h.  Am I missing some other package?
 
- net/sunrpc/addr.c |    2 ++
- 1 files changed, 2 insertions(+), 0 deletions(-)
+--=20
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
 
-diff --git a/net/sunrpc/addr.c b/net/sunrpc/addr.c
-index 0756c5d..f845d9d 100644
---- a/net/sunrpc/addr.c
-+++ b/net/sunrpc/addr.c
-@@ -73,6 +73,8 @@ static size_t rpc_ntop6(const struct sockaddr *sap,
- 
- 	if (!(ipv6_addr_type(&sin6->sin6_addr) & IPV6_ADDR_LINKLOCAL))
- 		return len;
-+	if (sin6->sin6_scope_id == 0)
-+		return len;
- 
- 	rc = snprintf(scopebuf, sizeof(scopebuf), "%c%u",
- 			IPV6_SCOPE_DELIMITER, sin6->sin6_scope_id);
+
+
 
