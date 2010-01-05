@@ -1,149 +1,142 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH 2/3] nfs-utils: add statdb_dump utility
-Date: Tue, 5 Jan 2010 11:09:20 -0500
-Message-ID: <248F9B15-E200-419D-96A0-6D64008D8750@oracle.com>
-References: <1262706035-4929-1-git-send-email-jlayton@redhat.com> <1262706035-4929-3-git-send-email-jlayton@redhat.com>
-Mime-Version: 1.0 (Apple Message framework v936)
-Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
-Cc: steved@redhat.com, linux-nfs@vger.kernel.org
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Re: [PATCH 3/3] nfs-utils: add initial tests for statd that run via
+ "make check"
+Date: Tue, 05 Jan 2010 11:37:39 -0500
+Message-ID: <4B436AD3.2080107@RedHat.com>
+References: <1262706035-4929-1-git-send-email-jlayton@redhat.com> <1262706035-4929-4-git-send-email-jlayton@redhat.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: chuck.lever@oracle.com, linux-nfs@vger.kernel.org
 To: Jeff Layton <jlayton@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet12.oracle.com ([148.87.113.124]:54539 "EHLO
-	rcsinet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754022Ab0AEQJs (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 5 Jan 2010 11:09:48 -0500
-In-Reply-To: <1262706035-4929-3-git-send-email-jlayton@redhat.com>
+Received: from mx1.redhat.com ([209.132.183.28]:4924 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754317Ab0AEQh4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 5 Jan 2010 11:37:56 -0500
+In-Reply-To: <1262706035-4929-4-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
-On Jan 5, 2010, at 10:40 AM, Jeff Layton wrote:
 
-> To dump contents of statd's monitor DB.
->
+On 01/05/2010 10:40 AM, Jeff Layton wrote:
+> Leverage the support that automake already has for running tests via
+> make check. Add a simple test that just checks that the statd mon and
+> unmon calls actually work.
+> 
+> Adding more tests should be a simple matter of adding new scripts
+> exit 0 on success and non-zero on fail, and adding those to the
+> Makefile.am.
+> 
 > Signed-off-by: Jeff Layton <jlayton@redhat.com>
 > ---
-> tests/Makefile.am   |    6 ++++
-> tests/statdb_dump.c |   75 ++++++++++++++++++++++++++++++++++++++++++ 
-> +++++++++
-> 2 files changed, 81 insertions(+), 0 deletions(-)
-> create mode 100644 tests/statdb_dump.c
->
+>  tests/Makefile.am                    |    2 +
+>  tests/t0001-statd-basic-mon-unmon.sh |   55 ++++++++++++++++++++++++++++++++++
+>  tests/test-lib.sh                    |   41 +++++++++++++++++++++++++
+>  3 files changed, 98 insertions(+), 0 deletions(-)
+>  create mode 100755 tests/t0001-statd-basic-mon-unmon.sh
+>  create mode 100755 tests/test-lib.sh
+> 
 > diff --git a/tests/Makefile.am b/tests/Makefile.am
-> index 375af80..a20b42b 100644
+> index a20b42b..faa8197 100644
 > --- a/tests/Makefile.am
 > +++ b/tests/Makefile.am
-> @@ -1,5 +1,11 @@
-> ## Process this file with automake to produce Makefile.in
->
-> +check_PROGRAMS = statdb_dump
-> +statdb_dump_SOURCES = statdb_dump.c
+> @@ -9,3 +9,5 @@ statdb_dump_LDADD = ../support/nfs/libnfs.a \
+>  SUBDIRS = nsm_client
+>  
+>  MAINTAINERCLEANFILES = Makefile.in
 > +
-> +statdb_dump_LDADD = ../support/nfs/libnfs.a \
-> +		    ../support/nsm/libnsm.a $(LIBCAP)
-> +
-> SUBDIRS = nsm_client
->
-> MAINTAINERCLEANFILES = Makefile.in
-> diff --git a/tests/statdb_dump.c b/tests/statdb_dump.c
-> new file mode 100644
-> index 0000000..655213a
+> +TESTS = t0001-statd-basic-mon-unmon.sh
+> diff --git a/tests/t0001-statd-basic-mon-unmon.sh b/tests/t0001-statd-basic-mon-unmon.sh
+> new file mode 100755
+> index 0000000..6e0b869
 > --- /dev/null
-> +++ b/tests/statdb_dump.c
-> @@ -0,0 +1,75 @@
-> +/*
-> + * statdb_dump.c -- dump contents of statd's monitor DB
-> + *
-> + * Copyright (C) 2010  Red Hat, Jeff Layton <jlayton@redhat.com>
-> + *
-> + * This program is free software; you can redistribute it and/or
-> + * modify it under the terms of the GNU General Public License
-> + * as published by the Free Software Foundation; either version 2
-> + * of the License, or (at your option) any later version.
-> + *
-> + * This program is distributed in the hope that it will be useful,
-> + * but WITHOUT ANY WARRANTY; without even the implied warranty of
-> + * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-> + * GNU General Public License for more details.
-> + *
-> + * You should have received a copy of the GNU General Public License
-> + * along with this program; if not, write to the Free Software
-> + * Foundation, Inc., 51 Franklin Street, Fifth Floor,
-> + * Boston, MA 02110-1301, USA.
-> + *
-> + * Output format is:
-> + *
-> + * <hostname> <cookie> <mon_name>
+> +++ b/tests/t0001-statd-basic-mon-unmon.sh
+> @@ -0,0 +1,55 @@
+> +#!/bin/bash
+> +#
+> +# statd_basic_mon_unmon -- test basic mon/unmon functionality with statd
+> +#
+> +# Copyright (C) 2010  Red Hat, Jeff Layton <jlayton@redhat.com>
+> +#
+> +# This program is free software; you can redistribute it and/or
+> +# modify it under the terms of the GNU General Public License
+> +# as published by the Free Software Foundation; either version 2
+> +# of the License, or (at your option) any later version.
+> +#
+> +# This program is distributed in the hope that it will be useful,
+> +# but WITHOUT ANY WARRANTY; without even the implied warranty of
+> +# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+> +# GNU General Public License for more details.
+> +#
+> +# You should have received a copy of the GNU General Public License
+> +# along with this program; if not, write to the Free Software Foundation, Inc.,
+> +# 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+> +#
+> +
+> +. ./test-lib.sh
+> +
+> +start_statd
+> +if [ $? -ne 0 ]; then
+> +	echo "FAIL: problem starting statd"
+> +	exit 1
+> +fi
+> +
+> +COOKIE=`echo $$ | md5sum | cut -d' ' -f1`
+> +MON_NAME=`hostname`
+> +
+> +nsm_client mon $MON_NAME $COOKIE
+> +if [ $? -ne 0 ]; then
+> +	echo "FAIL: mon failed"
+> +	kill_statd
+> +	exit 1
+> +fi
+> +
+> +./statdb_dump | grep $MON_NAME | grep -q $COOKIE
+> +if [ $? -ne 0 ]; then
+> +	echo "FAIL: monitor DB doesn't seem to contain entry"
+> +	kill_statd
+> +	exit 1
+> +fi
+> +
+> +nsm_client unmon $MON_NAME
+> +if [ $? -ne 0 ]; then
+> +	echo "FAIL: unmon failed"
+> +	kill_statd
+> +	exit 1
+> +fi
+> +
+> +kill_statd
+> +
+> diff --git a/tests/test-lib.sh b/tests/test-lib.sh
+> new file mode 100755
+> index 0000000..e509859
+> --- /dev/null
+> +++ b/tests/test-lib.sh
+> @@ -0,0 +1,41 @@
+> +#!/bin/bash
+> +#
+> +# test-lib.sh -- library of functions for nfs-utils tests
+> +#
+> +# Copyright (C) 2010  Red Hat, Jeff Layton <jlayton@redhat.com>
+> +#
+> +# This program is free software; you can redistribute it and/or
+> +# modify it under the terms of the GNU General Public License
+> +# as published by the Free Software Foundation; either version 2
+> +# of the License, or (at your option) any later version.
+> +#
+> +# This program is distributed in the hope that it will be useful,
+> +# but WITHOUT ANY WARRANTY; without even the implied warranty of
+> +# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+> +# GNU General Public License for more details.
+> +#
+> +# You should have received a copy of the GNU General Public License
+> +# along with this program; if not, write to the Free Software Foundation, Inc.,
+> +# 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+> +#
+> +
+> +export PATH=$PATH:$srcdir/nsm_client
+How or Where is '$srcdir' set??
 
-my_name might also be interesting when we get local multi-homed  
-support going.  Perhaps some command line switches could control what  
-is displayed.
-
-> + *
-> + */
-> +
-> +#ifdef HAVE_CONFIG_H
-> +#include "config.h"
-> +#endif
-> +
-> +#include <stdio.h>
-> +
-> +#include "nsm.h"
-> +#include "xlog.h"
-> +
-> +static char cookiebuf[(SM_PRIV_SIZE * 2) + 1];
-> +
-> +static _Bool
-> +error_check(const int len, const size_t buflen)
-> +{
-> +        return (len < 0) || ((size_t)len >= buflen);
-> +}
-> +
-> +static unsigned int
-> +dump_host(const char *hostname, const struct sockaddr *sa, const  
-> struct mon *m,
-> +	  const time_t timestamp)
-> +{
-> +	int i, len;
-> +	char *buf = cookiebuf;
-> +	size_t remaining = sizeof(cookiebuf);
-> +
-> +	/* convert cookie to text string */
-> +	for (i = 0; i < SM_PRIV_SIZE; i++) {
-> +		len = snprintf(buf, remaining, "%02x",
-> +				(unsigned int)(0xff & m->priv[i]));
-> +		if (error_check(len, remaining))
-> +			return 0;
-> +		buf += len;
-> +		remaining -= (size_t)len;
-> +	}
-
-I wonder if having a shared helper in support/nsm/file.c for  
-converting a priv cookie to a string would be generally useful.
-
-> +
-> +	printf("%s %s %s\n", hostname, cookiebuf, m->mon_id.mon_name);
-> +	return 1;
-> +}
-> +
-> +int
-> +main(int argc, char **argv)
-> +{
-> +	xlog_syslog(0);
-> +	xlog_stderr(1);
-> +	xlog_open(argv[0]);
-> +	
-> +	nsm_load_monitor_list(dump_host);
-> +	return 0;
-> +}
-> -- 
-> 1.6.5.2
->
-
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
+steved.
 
