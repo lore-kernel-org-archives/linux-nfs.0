@@ -1,142 +1,59 @@
-From: Steve Dickson <SteveD@redhat.com>
-Subject: Re: [PATCH 3/3] nfs-utils: add initial tests for statd that run via
- "make check"
-Date: Tue, 05 Jan 2010 11:37:39 -0500
-Message-ID: <4B436AD3.2080107@RedHat.com>
-References: <1262706035-4929-1-git-send-email-jlayton@redhat.com> <1262706035-4929-4-git-send-email-jlayton@redhat.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: chuck.lever@oracle.com, linux-nfs@vger.kernel.org
-To: Jeff Layton <jlayton@redhat.com>
+From: Alexandros Batsakis <batsakis@netapp.com>
+Subject: [PATCH 1/1] nfs41: ensure negotiated session values are reasonable
+Date: Tue,  5 Jan 2010 04:46:45 -0800
+Message-ID: <1262695605-2335-1-git-send-email-batsakis@netapp.com>
+Cc: Alexandros Batsakis <batsakis@netapp.com>
+To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:4924 "EHLO mx1.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:27495 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754317Ab0AEQh4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 5 Jan 2010 11:37:56 -0500
-In-Reply-To: <1262706035-4929-4-git-send-email-jlayton@redhat.com>
+	id S1754570Ab0AEQnT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 5 Jan 2010 11:43:19 -0500
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Signed-off-by: Alexandros Batsakis <batsakis@netapp.com>
+---
+ fs/nfs/nfs4proc.c |   19 +++++++++++++++++--
+ 1 files changed, 17 insertions(+), 2 deletions(-)
 
-
-On 01/05/2010 10:40 AM, Jeff Layton wrote:
-> Leverage the support that automake already has for running tests via
-> make check. Add a simple test that just checks that the statd mon and
-> unmon calls actually work.
-> 
-> Adding more tests should be a simple matter of adding new scripts
-> exit 0 on success and non-zero on fail, and adding those to the
-> Makefile.am.
-> 
-> Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> ---
->  tests/Makefile.am                    |    2 +
->  tests/t0001-statd-basic-mon-unmon.sh |   55 ++++++++++++++++++++++++++++++++++
->  tests/test-lib.sh                    |   41 +++++++++++++++++++++++++
->  3 files changed, 98 insertions(+), 0 deletions(-)
->  create mode 100755 tests/t0001-statd-basic-mon-unmon.sh
->  create mode 100755 tests/test-lib.sh
-> 
-> diff --git a/tests/Makefile.am b/tests/Makefile.am
-> index a20b42b..faa8197 100644
-> --- a/tests/Makefile.am
-> +++ b/tests/Makefile.am
-> @@ -9,3 +9,5 @@ statdb_dump_LDADD = ../support/nfs/libnfs.a \
->  SUBDIRS = nsm_client
->  
->  MAINTAINERCLEANFILES = Makefile.in
-> +
-> +TESTS = t0001-statd-basic-mon-unmon.sh
-> diff --git a/tests/t0001-statd-basic-mon-unmon.sh b/tests/t0001-statd-basic-mon-unmon.sh
-> new file mode 100755
-> index 0000000..6e0b869
-> --- /dev/null
-> +++ b/tests/t0001-statd-basic-mon-unmon.sh
-> @@ -0,0 +1,55 @@
-> +#!/bin/bash
-> +#
-> +# statd_basic_mon_unmon -- test basic mon/unmon functionality with statd
-> +#
-> +# Copyright (C) 2010  Red Hat, Jeff Layton <jlayton@redhat.com>
-> +#
-> +# This program is free software; you can redistribute it and/or
-> +# modify it under the terms of the GNU General Public License
-> +# as published by the Free Software Foundation; either version 2
-> +# of the License, or (at your option) any later version.
-> +#
-> +# This program is distributed in the hope that it will be useful,
-> +# but WITHOUT ANY WARRANTY; without even the implied warranty of
-> +# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-> +# GNU General Public License for more details.
-> +#
-> +# You should have received a copy of the GNU General Public License
-> +# along with this program; if not, write to the Free Software Foundation, Inc.,
-> +# 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
-> +#
-> +
-> +. ./test-lib.sh
-> +
-> +start_statd
-> +if [ $? -ne 0 ]; then
-> +	echo "FAIL: problem starting statd"
-> +	exit 1
-> +fi
-> +
-> +COOKIE=`echo $$ | md5sum | cut -d' ' -f1`
-> +MON_NAME=`hostname`
-> +
-> +nsm_client mon $MON_NAME $COOKIE
-> +if [ $? -ne 0 ]; then
-> +	echo "FAIL: mon failed"
-> +	kill_statd
-> +	exit 1
-> +fi
-> +
-> +./statdb_dump | grep $MON_NAME | grep -q $COOKIE
-> +if [ $? -ne 0 ]; then
-> +	echo "FAIL: monitor DB doesn't seem to contain entry"
-> +	kill_statd
-> +	exit 1
-> +fi
-> +
-> +nsm_client unmon $MON_NAME
-> +if [ $? -ne 0 ]; then
-> +	echo "FAIL: unmon failed"
-> +	kill_statd
-> +	exit 1
-> +fi
-> +
-> +kill_statd
-> +
-> diff --git a/tests/test-lib.sh b/tests/test-lib.sh
-> new file mode 100755
-> index 0000000..e509859
-> --- /dev/null
-> +++ b/tests/test-lib.sh
-> @@ -0,0 +1,41 @@
-> +#!/bin/bash
-> +#
-> +# test-lib.sh -- library of functions for nfs-utils tests
-> +#
-> +# Copyright (C) 2010  Red Hat, Jeff Layton <jlayton@redhat.com>
-> +#
-> +# This program is free software; you can redistribute it and/or
-> +# modify it under the terms of the GNU General Public License
-> +# as published by the Free Software Foundation; either version 2
-> +# of the License, or (at your option) any later version.
-> +#
-> +# This program is distributed in the hope that it will be useful,
-> +# but WITHOUT ANY WARRANTY; without even the implied warranty of
-> +# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-> +# GNU General Public License for more details.
-> +#
-> +# You should have received a copy of the GNU General Public License
-> +# along with this program; if not, write to the Free Software Foundation, Inc.,
-> +# 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
-> +#
-> +
-> +export PATH=$PATH:$srcdir/nsm_client
-How or Where is '$srcdir' set??
-
-steved.
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 198d51d..a4b7d69 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -4832,6 +4832,21 @@ static int nfs4_verify_channel_attrs(struct nfs41_create_session_args *args,
+ 	return ret;
+ }
+ 
++static int nfs4_check_sane_channel_attrs(struct nfs4_session *session)
++{
++	int ret = 0;
++
++        ret |= session->fc_attrs.max_rqst_sz < NFS_MIN_FILE_IO_SIZE + nfs41_maxwrite_overhead;
++	ret |= session->fc_attrs.max_resp_sz < NFS_MIN_FILE_IO_SIZE + nfs41_maxread_overhead;
++	ret |= session->fc_attrs.max_ops < NFS4_MAX_OPS;
++
++	if (ret) {
++		printk(KERN_WARNING "Session INVALID: negotiated channel values too small");
++		ret = -EINVAL;
++	}
++	return ret;
++}
++
+ static int _nfs4_proc_create_session(struct nfs_client *clp)
+ {
+ 	struct nfs4_session *session = clp->cl_session;
+@@ -4855,8 +4870,8 @@ static int _nfs4_proc_create_session(struct nfs_client *clp)
+ 	status = rpc_call_sync(session->clp->cl_rpcclient, &msg, 0);
+ 
+ 	if (!status)
+-		/* Verify the session's negotiated channel_attrs values */
+-		status = nfs4_verify_channel_attrs(&args, session);
++		status = nfs4_verify_channel_attrs(&args, session) |
++			nfs4_check_sane_channel_attrs(session);
+ 	if (!status) {
+ 		/* Increment the clientid slot sequence id */
+ 		clp->cl_seqid++;
+-- 
+1.6.2.5
 
