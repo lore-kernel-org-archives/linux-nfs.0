@@ -1,161 +1,50 @@
-From: Jeff Layton <jlayton@redhat.com>
-Subject: Re: [PATCH 2/3] nfs-utils: add statdb_dump utility
-Date: Tue, 5 Jan 2010 14:17:32 -0500
-Message-ID: <20100105141732.4590bcce@tlielax.poochiereds.net>
-References: <1262706035-4929-1-git-send-email-jlayton@redhat.com>
-	<1262706035-4929-3-git-send-email-jlayton@redhat.com>
-	<248F9B15-E200-419D-96A0-6D64008D8750@oracle.com>
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Re: rpcbind doesn't build on Fedora 12 ?
+Date: Tue, 05 Jan 2010 14:22:30 -0500
+Message-ID: <4B439176.5080702@RedHat.com>
+References: <268D6516-A19A-4CC7-BF03-6FBFA7C79D0B@oracle.com> <4B43887D.2000006@RedHat.com> <158159AE-BD50-4D41-9B14-450241B42E23@oracle.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Cc: steved@redhat.com, linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=windows-1252
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
 To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:7120 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:19786 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754306Ab0AETRi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 5 Jan 2010 14:17:38 -0500
-In-Reply-To: <248F9B15-E200-419D-96A0-6D64008D8750@oracle.com>
+	id S1754363Ab0AETWf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 5 Jan 2010 14:22:35 -0500
+In-Reply-To: <158159AE-BD50-4D41-9B14-450241B42E23@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 5 Jan 2010 11:09:20 -0500
-Chuck Lever <chuck.lever@oracle.com> wrote:
-
-> 
-> On Jan 5, 2010, at 10:40 AM, Jeff Layton wrote:
-> 
-> > To dump contents of statd's monitor DB.
-> >
-> > Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> > ---
-> > tests/Makefile.am   |    6 ++++
-> > tests/statdb_dump.c |   75 ++++++++++++++++++++++++++++++++++++++++++ 
-> > +++++++++
-> > 2 files changed, 81 insertions(+), 0 deletions(-)
-> > create mode 100644 tests/statdb_dump.c
-> >
-> > diff --git a/tests/Makefile.am b/tests/Makefile.am
-> > index 375af80..a20b42b 100644
-> > --- a/tests/Makefile.am
-> > +++ b/tests/Makefile.am
-> > @@ -1,5 +1,11 @@
-> > ## Process this file with automake to produce Makefile.in
-> >
-> > +check_PROGRAMS = statdb_dump
-> > +statdb_dump_SOURCES = statdb_dump.c
-> > +
-> > +statdb_dump_LDADD = ../support/nfs/libnfs.a \
-> > +		    ../support/nsm/libnsm.a $(LIBCAP)
-> > +
-> > SUBDIRS = nsm_client
-> >
-> > MAINTAINERCLEANFILES = Makefile.in
-> > diff --git a/tests/statdb_dump.c b/tests/statdb_dump.c
-> > new file mode 100644
-> > index 0000000..655213a
-> > --- /dev/null
-> > +++ b/tests/statdb_dump.c
-> > @@ -0,0 +1,75 @@
-> > +/*
-> > + * statdb_dump.c -- dump contents of statd's monitor DB
-> > + *
-> > + * Copyright (C) 2010  Red Hat, Jeff Layton <jlayton@redhat.com>
-> > + *
-> > + * This program is free software; you can redistribute it and/or
-> > + * modify it under the terms of the GNU General Public License
-> > + * as published by the Free Software Foundation; either version 2
-> > + * of the License, or (at your option) any later version.
-> > + *
-> > + * This program is distributed in the hope that it will be useful,
-> > + * but WITHOUT ANY WARRANTY; without even the implied warranty of
-> > + * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-> > + * GNU General Public License for more details.
-> > + *
-> > + * You should have received a copy of the GNU General Public License
-> > + * along with this program; if not, write to the Free Software
-> > + * Foundation, Inc., 51 Franklin Street, Fifth Floor,
-> > + * Boston, MA 02110-1301, USA.
-> > + *
-> > + * Output format is:
-> > + *
-> > + * <hostname> <cookie> <mon_name>
-> 
-> my_name might also be interesting when we get local multi-homed  
-> support going.  Perhaps some command line switches could control what  
-> is displayed.
-> 
-
-Ok, I can add my_name. I'm not crazy about adding options though. My
-thinking at this point is to keep the program really simple and let the
-caller parse out what it needs.
-
-> > + *
-> > + */
-> > +
-> > +#ifdef HAVE_CONFIG_H
-> > +#include "config.h"
-> > +#endif
-> > +
-> > +#include <stdio.h>
-> > +
-> > +#include "nsm.h"
-> > +#include "xlog.h"
-> > +
-> > +static char cookiebuf[(SM_PRIV_SIZE * 2) + 1];
-> > +
-> > +static _Bool
-> > +error_check(const int len, const size_t buflen)
-> > +{
-> > +        return (len < 0) || ((size_t)len >= buflen);
-> > +}
-> > +
-> > +static unsigned int
-> > +dump_host(const char *hostname, const struct sockaddr *sa, const  
-> > struct mon *m,
-> > +	  const time_t timestamp)
-> > +{
-> > +	int i, len;
-> > +	char *buf = cookiebuf;
-> > +	size_t remaining = sizeof(cookiebuf);
-> > +
-> > +	/* convert cookie to text string */
-> > +	for (i = 0; i < SM_PRIV_SIZE; i++) {
-> > +		len = snprintf(buf, remaining, "%02x",
-> > +				(unsigned int)(0xff & m->priv[i]));
-> > +		if (error_check(len, remaining))
-> > +			return 0;
-> > +		buf += len;
-> > +		remaining -= (size_t)len;
-> > +	}
-> 
-> I wonder if having a shared helper in support/nsm/file.c for  
-> converting a priv cookie to a string would be generally useful.
-> 
-
-I thought about that too but didn't because I only saw one other place
-that did this. Still though, it's probably the right thing to do. I'll
-have a look at that.
-
-> > +
-> > +	printf("%s %s %s\n", hostname, cookiebuf, m->mon_id.mon_name);
-> > +	return 1;
-> > +}
-> > +
-> > +int
-> > +main(int argc, char **argv)
-> > +{
-> > +	xlog_syslog(0);
-> > +	xlog_stderr(1);
-> > +	xlog_open(argv[0]);
-> > +	
-> > +	nsm_load_monitor_list(dump_host);
-> > +	return 0;
-> > +}
-> > -- 
-> > 1.6.5.2
-> >
-> 
 
 
--- 
-Jeff Layton <jlayton@redhat.com>
+On 01/05/2010 01:58 PM, Chuck Lever wrote:
+> On Jan 5, 2010, at 1:44 PM, Steve Dickson wrote:
+>> On 01/05/2010 12:12 PM, Chuck Lever wrote:
+>>> security.c:24:27: error: rpcsvc/rquota.h: No such file or directory
+>>> security.c: In function =91check_callit=92:
+>>> security.c:286: error: =91RQUOTAPROG=92 undeclared (first use in th=
+is
+>>> function)
+>>> security.c:286: error: (Each undeclared identifier is reported only=
+ once
+>>> security.c:286: error: for each function it appears in.)
+>>>
+>>> I have libtirpc-devel installed, but a "find" on /usr/include turns=
+ up
+>>> no file named rquota.h.  Am I missing some other package?
+>>>
+>> Yeah... 'yum install quota-devel' is your friend...
+>=20
+> That fixes it, but... I never had to install this package before.=20
+> Either it's new with Fedora 12, or the Fedora 12 install with "softwa=
+re
+> development" checked doesn't install this one any more.
+Packages do come and go with different Fedora releases...=20
+>=20
+> Is there a good reason why an RPC header would be separated into a
+> non-obvious package like this?
+>=20
+Not that I know of...
+
+steved.
