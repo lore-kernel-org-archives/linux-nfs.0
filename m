@@ -1,194 +1,154 @@
-From: Dan McGee <dpmcgee@gmail.com>
+From: Chuck Lever <chuck.lever@oracle.com>
 Subject: Re: [PATCH] showmount: try v3 before falling back to v1
-Date: Tue, 5 Jan 2010 15:36:31 -0600
-Message-ID: <449c10961001051336xb9fa70fp50805f93785a9d55@mail.gmail.com>
-References: <1262655247-16849-1-git-send-email-dpmcgee@gmail.com>
-	 <6E89479D-45D6-4C59-9639-7C4B893F2A5E@oracle.com>
-	 <4B438712.1080101@RedHat.com>
-	 <3F8F085F-E90B-4568-9BB2-F820A7C71A4D@oracle.com>
-	 <4B43A328.5000702@RedHat.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org
+Date: Tue, 5 Jan 2010 17:31:15 -0500
+Message-ID: <F262923D-5E5F-403D-86FC-601AD8F464A1@oracle.com>
+References: <1262655247-16849-1-git-send-email-dpmcgee@gmail.com> <4B43A3EF.4080401@RedHat.com>
+Mime-Version: 1.0 (Apple Message framework v936)
+Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
+Cc: Dan McGee <dpmcgee@gmail.com>, linux-nfs@vger.kernel.org
 To: Steve Dickson <SteveD@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-px0-f174.google.com ([209.85.216.174]:48775 "EHLO
-	mail-px0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932173Ab0AEVgc convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 5 Jan 2010 16:36:32 -0500
-Received: by pxi4 with SMTP id 4so12436188pxi.33
-        for <linux-nfs@vger.kernel.org>; Tue, 05 Jan 2010 13:36:31 -0800 (PST)
-In-Reply-To: <4B43A328.5000702-AfCzQyP5zfLQT0dZR+AlfA@public.gmane.org>
+Received: from acsinet11.oracle.com ([141.146.126.233]:27142 "EHLO
+	acsinet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932069Ab0AEWcd (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 5 Jan 2010 17:32:33 -0500
+In-Reply-To: <4B43A3EF.4080401-AfCzQyP5zfLQT0dZR+AlfA@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Jan 5, 2010 at 2:38 PM, Steve Dickson <SteveD@redhat.com> wrote=
-:
-> On 01/05/2010 02:23 PM, Chuck Lever wrote:
->>>
->>> Author: Steve Dickson <steved@redhat.com>
->>> Date: =C2=A0 Tue Jan 5 13:29:07 2010 -0500
->>>
->>> =C2=A0 =C2=A0showmount: Try the highest mount version then fall bac=
-k to lower ones
->>>
->>> =C2=A0 =C2=A0Showmount should try the highest mount version first t=
-hen fall
->>> =C2=A0 =C2=A0back to the lower ones when the server returns a RPC_P=
-ROGVERSMISMATCH
->>> =C2=A0 =C2=A0error. The idea being not using the lower mount versio=
-ns will begin
->>> =C2=A0 =C2=A0the process of moving away from NFSv2 support.
->>>
->>> =C2=A0 =C2=A0Signed-off-by: Steve Dickson <steved@redhat.com>
->>>
->>> diff --git a/utils/showmount/showmount.c b/utils/showmount/showmoun=
-t.c
->>> index 418e8b9..17224a6 100644
->>> --- a/utils/showmount/showmount.c
->>> +++ b/utils/showmount/showmount.c
->>> @@ -85,22 +85,29 @@ static const char *nfs_sm_pgmtbl[] =3D {
->>> =C2=A0 =C2=A0 NULL,
->>> };
->>>
->>> +static const int mount_vers[] =3D {
->>
->> RPC version numbers are rpcvers_t, not int.
-> True..
->
->>
->> The array above this one is called "nfs_sm_pgmtbl"... to be consiste=
-nt
->> with existing code you should name this one "nfs_sm_verstbl".
->>
->>> + =C2=A0 =C2=A0MOUNTVERS_NFSV3,
->>> + =C2=A0 =C2=A0MOUNTVERS_POSIX,
->>> + =C2=A0 =C2=A0MOUNTVERS,
->>> +};
->>> +static const int max_vers =3D (sizeof(mount_vers)/sizeof(mount_ver=
-s[0]));
->>
->> Array indices are unsigned.
-> Sure...
->
->>
->> Calling this "max_vers" suggests it's actually a version number, and=
- not
->> an index into the version array; that's confusing.
-> Its pretty simple code.. don't see this confusion.... but..
-> It changed to =C2=A0mount_vers_tbl
->>
->> The array above this one has a NULL entry as it's final element. =C2=
-=A0To be
->> consistent with existing code, you should copy that logic for this a=
-rray
->> instead of using a separate "max_vers" variable.
-> Having the NULL messes up the sizeof calculations
->
->>
->>> +
->>> /*
->>> =C2=A0* Generate an RPC client handle connected to the mountd servi=
-ce
->>> =C2=A0* at @hostname, or die trying.
->>> =C2=A0*
->>> =C2=A0* Supports both AF_INET and AF_INET6 server addresses.
->>> =C2=A0*/
->>> -static CLIENT *nfs_get_mount_client(const char *hostname)
->>> +static CLIENT *nfs_get_mount_client(const char *hostname, int vers=
-)
->>
->> RPC version numbers are rpcvers_t, not int. =C2=A0At the very least,
->> clnt_create(3t) takes an unsigned version number argument.
->>
->>> {
->>> =C2=A0 =C2=A0 rpcprog_t program =3D nfs_getrpcbyname(MOUNTPROG, nfs=
-_sm_pgmtbl);
->>> =C2=A0 =C2=A0 CLIENT *client;
->>>
->>> - =C2=A0 =C2=A0client =3D clnt_create(hostname, program, MOUNTVERS,=
- "tcp");
->>> + =C2=A0 =C2=A0client =3D clnt_create(hostname, program, vers, "tcp=
-");
->>> =C2=A0 =C2=A0 if (client)
->>> =C2=A0 =C2=A0 =C2=A0 =C2=A0 return client;
->>>
->>> - =C2=A0 =C2=A0client =3D clnt_create(hostname, program, MOUNTVERS,=
- "udp");
->>> + =C2=A0 =C2=A0client =3D clnt_create(hostname, program, vers, "udp=
-");
->>> =C2=A0 =C2=A0 if (client)
->>> =C2=A0 =C2=A0 =C2=A0 =C2=A0 return client;
->>>
->>> @@ -122,7 +129,7 @@ int main(int argc, char **argv)
->>> =C2=A0 =C2=A0 mountlist list;
->>> =C2=A0 =C2=A0 int i;
->>> =C2=A0 =C2=A0 int n;
->>> - =C2=A0 =C2=A0int maxlen;
->>> + =C2=A0 =C2=A0int maxlen, vers=3D0;
->>
->> Array indices are unsigned integers.
->>
->> Calling this "vers" suggests it's actually a version number, and not=
- an
->> index into the version array; that's confusing.
-> and an index call 'j' or 'i' is descriptive?? vers is clear enough im=
-ho...
->
->>
->>> =C2=A0 =C2=A0 char **dumpv;
->>>
->>> =C2=A0 =C2=A0 program_name =3D argv[0];
->>> @@ -185,7 +192,8 @@ int main(int argc, char **argv)
->>> =C2=A0 =C2=A0 =C2=A0 =C2=A0 break;
->>> =C2=A0 =C2=A0 }
->>>
->>> - =C2=A0 =C2=A0mclient =3D nfs_get_mount_client(hostname);
->>> +again:
->>> + =C2=A0 =C2=A0mclient =3D nfs_get_mount_client(hostname, mount_ver=
-s[vers]);
->>> =C2=A0 =C2=A0 mclient->cl_auth =3D authunix_create_default();
->>> =C2=A0 =C2=A0 total_timeout.tv_sec =3D TOTAL_TIMEOUT;
->>> =C2=A0 =C2=A0 total_timeout.tv_usec =3D 0;
->>> @@ -197,6 +205,10 @@ int main(int argc, char **argv)
->>> =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 (xdrproc_t) xdr_void, NUL=
-L,
->>> =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 (xdrproc_t) xdr_exports, =
-(caddr_t) &exportlist,
->>> =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 total_timeout);
->>> + =C2=A0 =C2=A0 =C2=A0 =C2=A0if (clnt_stat =3D=3D RPC_PROGVERSMISMA=
-TCH) {
->>> + =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0if (++vers < =C2=A0max_v=
-ers)
->>> + =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0goto again=
-;
->>> + =C2=A0 =C2=A0 =C2=A0 =C2=A0}
->>
->> clnt_create(3t) should tell you if the requested version number is
->> working; libtirpc's version does a NULLPROC call, for example. =C2=A0=
-It would
->> be simpler to move this check into nfs_get_mount_client(), then you
->> wouldn't need the retry loop here.
-> clnt_create() does not fail.. the clnt_call() does..
->
->>
->> But nfs_get_mount_client() already doesn't care why the clnt_create(=
-3t)
->> call fails, it just retries the creation with different parameters i=
-f it
->> didn't succeed. =C2=A0Do we really care enough to retry _only_ if th=
-e
->> specific RPC version isn't available? =C2=A0We use the same procedur=
-e number
->> with the same arguments and the same results for all three protocol
->> versions, yes?
-> Let not make a mountain out of mole hill... the goal of this patch is=
- stop using the lower mount protocol version so server can only support=
- v3 and v4... nothing
-> more...
 
-As a side note, I don't care what gets accepted as long as it works
-with modern versions of NFS. Let me know if you need anything more
-from me, but I'm glad I got the discussion going.
+On Jan 5, 2010, at 3:41 PM, Steve Dickson wrote:
 
--Dan
+> Revised patch incorporating the code review comments...
+>
+> steved.
+>
+> commit a96b79f57f49ce5b4d05b6b9da79bdec03b13764
+> Author: Steve Dickson <steved@redhat.com>
+> Date:   Tue Jan 5 15:39:00 2010 -0500
+>
+>    showmount: Try the highest mount version then fall back to lower  
+> ones
+>
+>    Showmount should try the highest mount version first then fall
+>    back to the lower ones when the server returns a  
+> RPC_PROGVERSMISMATCH
+>    error. The idea being not using the lower mount versions will begin
+>    the process of moving away from NFSv2 support.
+>
+>    Signed-off-by: Steve Dickson <steved@redhat.com>
+>
+> diff --git a/utils/showmount/showmount.c b/utils/showmount/showmount.c
+> index 418e8b9..74cf116 100644
+> --- a/utils/showmount/showmount.c
+> +++ b/utils/showmount/showmount.c
+> @@ -78,29 +78,36 @@ static void usage(FILE *fp, int n)
+> 	exit(n);
+> }
+>
+> -static const char *nfs_sm_pgmtbl[] = {
+> +static const char *mount_pgm_tbl[] = {
+> 	"showmount",
+> 	"mount",
+> 	"mountd",
+> 	NULL,
+> };
+>
+> +static const rpcvers_t mount_vers_tbl[] = {
+> +	MOUNTVERS_NFSV3,
+> +	MOUNTVERS_POSIX,
+> +	MOUNTVERS,
+> +};
+> +static const int max_vers_tblsz =
+> +	(sizeof(mount_vers_tbl)/sizeof(mount_vers_tbl[0]));
+> +
+> /*
+>  * Generate an RPC client handle connected to the mountd service
+>  * at @hostname, or die trying.
+>  *
+>  * Supports both AF_INET and AF_INET6 server addresses.
+>  */
+> -static CLIENT *nfs_get_mount_client(const char *hostname)
+> +static CLIENT *nfs_get_mount_client(const char *hostname, rpcvers_t  
+> vers)
+> {
+> -	rpcprog_t program = nfs_getrpcbyname(MOUNTPROG, nfs_sm_pgmtbl);
+> +	rpcprog_t program = nfs_getrpcbyname(MOUNTPROG, mount_pgm_tbl);
+> 	CLIENT *client;
+>
+> -	client = clnt_create(hostname, program, MOUNTVERS, "tcp");
+> +	client = clnt_create(hostname, program, vers, "tcp");
+> 	if (client)
+> 		return client;
+> -
+> -	client = clnt_create(hostname, program, MOUNTVERS, "udp");
+> +	client = clnt_create(hostname, program, vers, "udp");
+> 	if (client)
+> 		return client;
+>
+> @@ -123,6 +130,7 @@ int main(int argc, char **argv)
+> 	int i;
+> 	int n;
+> 	int maxlen;
+> +	int unsigned vers=0;
+> 	char **dumpv;
+>
+> 	program_name = argv[0];
+> @@ -185,7 +193,8 @@ int main(int argc, char **argv)
+> 		break;
+> 	}
+>
+> -	mclient = nfs_get_mount_client(hostname);
+> +again:
+> +	mclient = nfs_get_mount_client(hostname, mount_vers_tbl[vers]);
+> 	mclient->cl_auth = authunix_create_default();
+> 	total_timeout.tv_sec = TOTAL_TIMEOUT;
+> 	total_timeout.tv_usec = 0;
+> @@ -197,6 +206,10 @@ int main(int argc, char **argv)
+> 			(xdrproc_t) xdr_void, NULL,
+> 			(xdrproc_t) xdr_exports, (caddr_t) &exportlist,
+> 			total_timeout);
+> +		if (clnt_stat == RPC_PROGVERSMISMATCH) {
+> +			if (++vers <  max_vers_tblsz)
+> +				goto again;
+> +		}
+
+If you're going to do this, you should destroy the clnt before  
+retrying.  Better yet you can use CLNT_CONTROL() to change the RPC  
+version of the clnt on the fly... that way you don't have to destroy  
+the clnt and create a new one, which has to try creating both "tcp"  
+and "udp" in some cases, making for a long timeout each time if the  
+server doesn't support "tcp".
+
+My preference however, is to do the simple thing, and use  
+clnt_create_vers(3t) in nfs_get_mount_client().  AFAICT you wouldn't  
+need any of this extra logic or the new table.
+
+> 		if (clnt_stat != RPC_SUCCESS) {
+> 			clnt_perror(mclient, "rpc mount export");
+> 			clnt_destroy(mclient);
+> @@ -232,6 +245,10 @@ int main(int argc, char **argv)
+> 		(xdrproc_t) xdr_void, NULL,
+> 		(xdrproc_t) xdr_mountlist, (caddr_t) &dumplist,
+> 		total_timeout);
+> +	if (clnt_stat == RPC_PROGVERSMISMATCH) {
+> +		if (++vers <  max_vers_tblsz)
+> +			goto again;
+> +	}
+> 	if (clnt_stat != RPC_SUCCESS) {
+> 		clnt_perror(mclient, "rpc mount dump");
+> 		clnt_destroy(mclient);
+>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs"  
+> in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
+
