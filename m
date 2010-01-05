@@ -1,59 +1,44 @@
-From: Dan McGee <dpmcgee@gmail.com>
-Subject: [PATCH] showmount: try v3 before falling back to v1
-Date: Mon,  4 Jan 2010 19:34:07 -0600
-Message-ID: <1262655247-16849-1-git-send-email-dpmcgee@gmail.com>
-Cc: Dan McGee <dpmcgee@gmail.com>
+From: Ray Van Dolson <rvandolson-v48TKWNzwFw@public.gmane.org>
+Subject: Proper way to request async from NFS server?
+Date: Mon, 4 Jan 2010 23:56:10 -0800
+Message-ID: <20100105075610.GA435@esri.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-gx0-f211.google.com ([209.85.217.211]:59664 "EHLO
-	mail-gx0-f211.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753481Ab0AEBeL (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 4 Jan 2010 20:34:11 -0500
-Received: by gxk3 with SMTP id 3so3305318gxk.1
-        for <linux-nfs@vger.kernel.org>; Mon, 04 Jan 2010 17:34:11 -0800 (PST)
+Received: from esrismtp2.esri.com ([198.102.62.103]:59444 "EHLO esri3.esri.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754400Ab0AEIBz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 5 Jan 2010 03:01:55 -0500
+Received: from leoray.esri.com (leoray.esri.com [10.27.102.12])
+	by esri3.esri.com (8.11.7p3+Sun/8.11.7) with ESMTP id o057uA629233
+	for <linux-nfs@vger.kernel.org>; Mon, 4 Jan 2010 23:56:10 -0800 (PST)
+Received: from leoray.esri.com (leoray.esri.com [127.0.0.1])
+	by leoray.esri.com (8.14.3/8.14.3) with ESMTP id o057uAY7000542
+	for <linux-nfs@vger.kernel.org>; Mon, 4 Jan 2010 23:56:10 -0800
+Received: (from ray5147@localhost)
+	by leoray.esri.com (8.14.3/8.14.3/Submit) id o057uAQl000540
+	for linux-nfs@vger.kernel.org; Mon, 4 Jan 2010 23:56:10 -0800
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-A lot of people don't have anything below v3 enabled, so showmount is
-completely unusable. Try v3 {tcp, udp} first; if they don't work, fall back
-to v1 {tcp, udp}; if those don't work then just fail as before.
+RHEL 5.4 NFSv3 client accessing a Solaris 10 NFS export.
 
-Signed-off-by: Dan McGee <dpmcgee@gmail.com>
----
+Solaris 10 does not offer a way to specify whether a given share is
+async or sync as the Linux NFS server does.  As far as I understand it,
+its NFS server will honor whatever the connecting NFS client requests.
 
-First (and quick) attempt at a patch here for showmount. Let me know if you see
-serious problems with it or the approach. It seemed relatively sane to me and
-fixed my problems after brief testing.
+I'm mounting a Solaris NFS share with -o async (or using async in the
+options field in fstab).  Though this completes without complaint, I
+don't see "async" listed in the mount options under /proc/mounts and
+when I do a snoop on the Solaris side, all the write requests are FSYNC
+instead of ASYNC.
 
-See a report like this for some proof this is an issue in the wild:
-http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=557954
+Am I doing something wrong?  What's the correct way to get the Linux
+NFS client to request asynchronous operation?
+
+This is with nfs-utils 1.0.9 and of course, the RHEL5 kernel
+2.6.18-164.6.1.el5.
 
 Thanks,
-
--Dan
-
- utils/showmount/showmount.c |    8 ++++++++
- 1 files changed, 8 insertions(+), 0 deletions(-)
-
-diff --git a/utils/showmount/showmount.c b/utils/showmount/showmount.c
-index 418e8b9..716c06d 100644
---- a/utils/showmount/showmount.c
-+++ b/utils/showmount/showmount.c
-@@ -96,6 +96,14 @@ static CLIENT *nfs_get_mount_client(const char *hostname)
- 	rpcprog_t program = nfs_getrpcbyname(MOUNTPROG, nfs_sm_pgmtbl);
- 	CLIENT *client;
- 
-+	client = clnt_create(hostname, program, MOUNTVERS_NFSV3, "tcp");
-+	if (client)
-+		return client;
-+
-+	client = clnt_create(hostname, program, MOUNTVERS_NFSV3, "udp");
-+	if (client)
-+		return client;
-+
- 	client = clnt_create(hostname, program, MOUNTVERS, "tcp");
- 	if (client)
- 		return client;
--- 
-1.6.6
-
+Ray
