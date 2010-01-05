@@ -1,66 +1,135 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH] sunrpc: fix peername failed on closed listener
-Date: Tue, 5 Jan 2010 18:01:31 -0500
-Message-ID: <20100105230131.GA22850@fieldses.org>
-References: <1262227956-21470-1-git-send-email-dfeng@redhat.com>
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Re: [PATCH] showmount: try v3 before falling back to v1
+Date: Tue, 05 Jan 2010 18:24:00 -0500
+Message-ID: <4B43CA10.8080907@RedHat.com>
+References: <1262655247-16849-1-git-send-email-dpmcgee@gmail.com> <4B43A3EF.4080401@RedHat.com> <F262923D-5E5F-403D-86FC-601AD8F464A1@oracle.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs@vger.kernel.org, netdev@vger.kernel.org,
-	linux-kernel@vger.kernel.org, Neil Brown <neilb@suse.de>,
-	Trond Myklebust <Trond.Myklebust@netapp.com>,
-	"David S. Miller" <davem@davemloft.net>
-To: Xiaotian Feng <dfeng@redhat.com>
-Return-path: <netdev-owner@vger.kernel.org>
-In-Reply-To: <1262227956-21470-1-git-send-email-dfeng@redhat.com>
-Sender: netdev-owner@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: Dan McGee <dpmcgee@gmail.com>, linux-nfs@vger.kernel.org
+To: Chuck Lever <chuck.lever@oracle.com>
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:32099 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751179Ab0AEXYF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 5 Jan 2010 18:24:05 -0500
+In-Reply-To: <F262923D-5E5F-403D-86FC-601AD8F464A1@oracle.com>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Dec 31, 2009 at 10:52:36AM +0800, Xiaotian Feng wrote:
-> There're some warnings of "nfsd: peername failed (err 107)!"
-> socket error -107 means Transport endpoint is not connected.
-> This warning message was outputed by svc_tcp_accept() [net/sunrpc/svcsock.c],
-> when kernel_getpeername returns -107. This means socket might be CLOSED.
-> 
-> And svc_tcp_accept was called by svc_recv() [net/sunrpc/svc_xprt.c]
-> 
->         if (test_bit(XPT_LISTENER, &xprt->xpt_flags)) {
->         <snip>
->                 newxpt = xprt->xpt_ops->xpo_accept(xprt);
->         <snip>
-> 
-> So this might happen when xprt->xpt_flags has both XPT_LISTENER and XPT_CLOSE.
-> 
-> Let's take a look at commit b0401d72, this commit has moved the close
-> processing after do recvfrom method, but this commit also introduces this
-> warnings, if the xpt_flags has both XPT_LISTENER and XPT_CLOSED, we should
-> close it, not accpet then close.
 
-The logic here seems unnecessarily complicated now, but as a minimal
-fix, this seems fine.
 
-Is the *only* justification for this to silence this warning, or is
-there some more serious problem I'm missing?
-
---b.
+On 01/05/2010 05:31 PM, Chuck Lever wrote:
+> 
+> On Jan 5, 2010, at 3:41 PM, Steve Dickson wrote:
+> 
+>> Revised patch incorporating the code review comments...
+>>
+>> steved.
+>>
+>> commit a96b79f57f49ce5b4d05b6b9da79bdec03b13764
+>> Author: Steve Dickson <steved@redhat.com>
+>> Date:   Tue Jan 5 15:39:00 2010 -0500
+>>
+>>    showmount: Try the highest mount version then fall back to lower ones
+>>
+>>    Showmount should try the highest mount version first then fall
+>>    back to the lower ones when the server returns a RPC_PROGVERSMISMATCH
+>>    error. The idea being not using the lower mount versions will begin
+>>    the process of moving away from NFSv2 support.
+>>
+>>    Signed-off-by: Steve Dickson <steved@redhat.com>
+>>
+>> diff --git a/utils/showmount/showmount.c b/utils/showmount/showmount.c
+>> index 418e8b9..74cf116 100644
+>> --- a/utils/showmount/showmount.c
+>> +++ b/utils/showmount/showmount.c
+>> @@ -78,29 +78,36 @@ static void usage(FILE *fp, int n)
+>>     exit(n);
+>> }
+>>
+>> -static const char *nfs_sm_pgmtbl[] = {
+>> +static const char *mount_pgm_tbl[] = {
+>>     "showmount",
+>>     "mount",
+>>     "mountd",
+>>     NULL,
+>> };
+>>
+>> +static const rpcvers_t mount_vers_tbl[] = {
+>> +    MOUNTVERS_NFSV3,
+>> +    MOUNTVERS_POSIX,
+>> +    MOUNTVERS,
+>> +};
+>> +static const int max_vers_tblsz =
+>> +    (sizeof(mount_vers_tbl)/sizeof(mount_vers_tbl[0]));
+>> +
+>> /*
+>>  * Generate an RPC client handle connected to the mountd service
+>>  * at @hostname, or die trying.
+>>  *
+>>  * Supports both AF_INET and AF_INET6 server addresses.
+>>  */
+>> -static CLIENT *nfs_get_mount_client(const char *hostname)
+>> +static CLIENT *nfs_get_mount_client(const char *hostname, rpcvers_t
+>> vers)
+>> {
+>> -    rpcprog_t program = nfs_getrpcbyname(MOUNTPROG, nfs_sm_pgmtbl);
+>> +    rpcprog_t program = nfs_getrpcbyname(MOUNTPROG, mount_pgm_tbl);
+>>     CLIENT *client;
+>>
+>> -    client = clnt_create(hostname, program, MOUNTVERS, "tcp");
+>> +    client = clnt_create(hostname, program, vers, "tcp");
+>>     if (client)
+>>         return client;
+>> -
+>> -    client = clnt_create(hostname, program, MOUNTVERS, "udp");
+>> +    client = clnt_create(hostname, program, vers, "udp");
+>>     if (client)
+>>         return client;
+>>
+>> @@ -123,6 +130,7 @@ int main(int argc, char **argv)
+>>     int i;
+>>     int n;
+>>     int maxlen;
+>> +    int unsigned vers=0;
+>>     char **dumpv;
+>>
+>>     program_name = argv[0];
+>> @@ -185,7 +193,8 @@ int main(int argc, char **argv)
+>>         break;
+>>     }
+>>
+>> -    mclient = nfs_get_mount_client(hostname);
+>> +again:
+>> +    mclient = nfs_get_mount_client(hostname, mount_vers_tbl[vers]);
+>>     mclient->cl_auth = authunix_create_default();
+>>     total_timeout.tv_sec = TOTAL_TIMEOUT;
+>>     total_timeout.tv_usec = 0;
+>> @@ -197,6 +206,10 @@ int main(int argc, char **argv)
+>>             (xdrproc_t) xdr_void, NULL,
+>>             (xdrproc_t) xdr_exports, (caddr_t) &exportlist,
+>>             total_timeout);
+>> +        if (clnt_stat == RPC_PROGVERSMISMATCH) {
+>> +            if (++vers <  max_vers_tblsz)
+>> +                goto again;
+>> +        }
+> 
+> If you're going to do this, you should destroy the clnt before
+> retrying.  Better yet you can use CLNT_CONTROL() to change the RPC
+> version of the clnt on the fly... that way you don't have to destroy the
+> clnt and create a new one, which has to try creating both "tcp" and
+> "udp" in some cases, making for a long timeout each time if the server
+> doesn't support "tcp".
+This is a very short lived command and 99.9% of the time this code will
+not executed... so I guess I was not too worried about opening a couple
+extra fd in the every unlikely case a server does not support v3... 
 
 > 
-> Signed-off-by: Xiaotian Feng <dfeng@redhat.com>
-> Cc: J. Bruce Fields <bfields@fieldses.org>
-> Cc: Neil Brown <neilb@suse.de>
-> Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
-> Cc: David S. Miller <davem@davemloft.net>
-> ---
-> diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-> index 1c924ee..187f0f4 100644
-> --- a/net/sunrpc/svc_xprt.c
-> +++ b/net/sunrpc/svc_xprt.c
-> @@ -699,7 +699,8 @@ int svc_recv(struct svc_rqst *rqstp, long timeout)
->  	spin_unlock_bh(&pool->sp_lock);
->  
->  	len = 0;
-> -	if (test_bit(XPT_LISTENER, &xprt->xpt_flags)) {
-> +	if (test_bit(XPT_LISTENER, &xprt->xpt_flags) &&
-> +	    !test_bit(XPT_CLOSE, &xprt->xpt_flags)) {
->  		struct svc_xprt *newxpt;
->  		newxpt = xprt->xpt_ops->xpo_accept(xprt);
->  		if (newxpt) {
+> My preference however, is to do the simple thing, and use
+> clnt_create_vers(3t) in nfs_get_mount_client().  AFAICT you wouldn't
+> need any of this extra logic or the new table.
+Yes I saw clnt_create_vers()... but I thought staying backwards
+compatible with the glibc was a better idea... 
+
+steved. 
+
