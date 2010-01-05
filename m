@@ -1,135 +1,76 @@
-From: Steve Dickson <SteveD@redhat.com>
-Subject: Re: [PATCH] showmount: try v3 before falling back to v1
-Date: Tue, 05 Jan 2010 18:24:00 -0500
-Message-ID: <4B43CA10.8080907@RedHat.com>
-References: <1262655247-16849-1-git-send-email-dpmcgee@gmail.com> <4B43A3EF.4080401@RedHat.com> <F262923D-5E5F-403D-86FC-601AD8F464A1@oracle.com>
+From: Quentin Barnes <qbarnes+nfs@yahoo-inc.com>
+Subject: Difference between v2.6.31 and v2.6.32 spikes READs
+Date: Tue, 5 Jan 2010 17:23:42 -0600
+Message-ID: <20100105232342.GA22969@yahoo-inc.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: Dan McGee <dpmcgee@gmail.com>, linux-nfs@vger.kernel.org
-To: Chuck Lever <chuck.lever@oracle.com>
+Content-Type: text/plain; charset=us-ascii
+To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:32099 "EHLO mx1.redhat.com"
+Received: from mrout3.yahoo.com ([216.145.54.173]:41333 "EHLO mrout3.yahoo.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751179Ab0AEXYF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 5 Jan 2010 18:24:05 -0500
-In-Reply-To: <F262923D-5E5F-403D-86FC-601AD8F464A1@oracle.com>
+	id S1752434Ab0AEXmA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 5 Jan 2010 18:42:00 -0500
+Received: from enemycanmeet.champ.corp.yahoo.com (enemycanmeet.champ.corp.yahoo.com [10.74.90.165])
+	by mrout3.yahoo.com (8.13.6/8.13.6/y.out) with ESMTP id o05NPOiL081958
+	for <linux-nfs@vger.kernel.org>; Tue, 5 Jan 2010 15:25:25 -0800 (PST)
+Received: from enemycanmeet.champ.corp.yahoo.com (localhost.localdomain [127.0.0.1])
+	by enemycanmeet.champ.corp.yahoo.com (8.13.8/8.13.8) with ESMTP id o05NNgZx023027
+	for <linux-nfs@vger.kernel.org>; Tue, 5 Jan 2010 17:23:42 -0600
+Received: (from qbarnes@localhost)
+	by enemycanmeet.champ.corp.yahoo.com (8.13.8/8.13.8/Submit) id o05NNgjE023026
+	for linux-nfs@vger.kernel.org; Tue, 5 Jan 2010 17:23:42 -0600
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+I moved from v2.6.31.3 to v2.6.32.2 and noticed a huge spike in the
+number of NFSv3 READs issued for the application I'm porting.  The
+app has a mixed load of short NFS I/O operations, but about 50% of
+the time the app is doing an open(2), append to the file a small
+amount of data (~300 bytes), then closes the file.  On v2.6.31.3,
+this resulted in a LOOKUP, ACCESS, and a WRITE of 300 bytes.  Now
+for the append operations with v2.6.32.2, I see LOOKUP, ACCESS,
+READ, and WRITE.
 
+Here's the network trace for an append with 2.6.31.3:
+===========
+LOOKUP Call, DH:0x0308031e/scr2
+LOOKUP Reply, FH:0x29f0b5d0
+ACCESS Call, FH:0x29f0b5d0
+ACCESS Reply
+WRITE Call, FH:0x29f0b5d0 Offset:17284 Len:300 UNSTABLE
+WRITE Reply Len:300 UNSTABLE
+COMMIT Call, FH:0x29f0b5d0
+COMMIT Reply
+===========
 
-On 01/05/2010 05:31 PM, Chuck Lever wrote:
-> 
-> On Jan 5, 2010, at 3:41 PM, Steve Dickson wrote:
-> 
->> Revised patch incorporating the code review comments...
->>
->> steved.
->>
->> commit a96b79f57f49ce5b4d05b6b9da79bdec03b13764
->> Author: Steve Dickson <steved@redhat.com>
->> Date:   Tue Jan 5 15:39:00 2010 -0500
->>
->>    showmount: Try the highest mount version then fall back to lower ones
->>
->>    Showmount should try the highest mount version first then fall
->>    back to the lower ones when the server returns a RPC_PROGVERSMISMATCH
->>    error. The idea being not using the lower mount versions will begin
->>    the process of moving away from NFSv2 support.
->>
->>    Signed-off-by: Steve Dickson <steved@redhat.com>
->>
->> diff --git a/utils/showmount/showmount.c b/utils/showmount/showmount.c
->> index 418e8b9..74cf116 100644
->> --- a/utils/showmount/showmount.c
->> +++ b/utils/showmount/showmount.c
->> @@ -78,29 +78,36 @@ static void usage(FILE *fp, int n)
->>     exit(n);
->> }
->>
->> -static const char *nfs_sm_pgmtbl[] = {
->> +static const char *mount_pgm_tbl[] = {
->>     "showmount",
->>     "mount",
->>     "mountd",
->>     NULL,
->> };
->>
->> +static const rpcvers_t mount_vers_tbl[] = {
->> +    MOUNTVERS_NFSV3,
->> +    MOUNTVERS_POSIX,
->> +    MOUNTVERS,
->> +};
->> +static const int max_vers_tblsz =
->> +    (sizeof(mount_vers_tbl)/sizeof(mount_vers_tbl[0]));
->> +
->> /*
->>  * Generate an RPC client handle connected to the mountd service
->>  * at @hostname, or die trying.
->>  *
->>  * Supports both AF_INET and AF_INET6 server addresses.
->>  */
->> -static CLIENT *nfs_get_mount_client(const char *hostname)
->> +static CLIENT *nfs_get_mount_client(const char *hostname, rpcvers_t
->> vers)
->> {
->> -    rpcprog_t program = nfs_getrpcbyname(MOUNTPROG, nfs_sm_pgmtbl);
->> +    rpcprog_t program = nfs_getrpcbyname(MOUNTPROG, mount_pgm_tbl);
->>     CLIENT *client;
->>
->> -    client = clnt_create(hostname, program, MOUNTVERS, "tcp");
->> +    client = clnt_create(hostname, program, vers, "tcp");
->>     if (client)
->>         return client;
->> -
->> -    client = clnt_create(hostname, program, MOUNTVERS, "udp");
->> +    client = clnt_create(hostname, program, vers, "udp");
->>     if (client)
->>         return client;
->>
->> @@ -123,6 +130,7 @@ int main(int argc, char **argv)
->>     int i;
->>     int n;
->>     int maxlen;
->> +    int unsigned vers=0;
->>     char **dumpv;
->>
->>     program_name = argv[0];
->> @@ -185,7 +193,8 @@ int main(int argc, char **argv)
->>         break;
->>     }
->>
->> -    mclient = nfs_get_mount_client(hostname);
->> +again:
->> +    mclient = nfs_get_mount_client(hostname, mount_vers_tbl[vers]);
->>     mclient->cl_auth = authunix_create_default();
->>     total_timeout.tv_sec = TOTAL_TIMEOUT;
->>     total_timeout.tv_usec = 0;
->> @@ -197,6 +206,10 @@ int main(int argc, char **argv)
->>             (xdrproc_t) xdr_void, NULL,
->>             (xdrproc_t) xdr_exports, (caddr_t) &exportlist,
->>             total_timeout);
->> +        if (clnt_stat == RPC_PROGVERSMISMATCH) {
->> +            if (++vers <  max_vers_tblsz)
->> +                goto again;
->> +        }
-> 
-> If you're going to do this, you should destroy the clnt before
-> retrying.  Better yet you can use CLNT_CONTROL() to change the RPC
-> version of the clnt on the fly... that way you don't have to destroy the
-> clnt and create a new one, which has to try creating both "tcp" and
-> "udp" in some cases, making for a long timeout each time if the server
-> doesn't support "tcp".
-This is a very short lived command and 99.9% of the time this code will
-not executed... so I guess I was not too worried about opening a couple
-extra fd in the every unlikely case a server does not support v3... 
+And for 2.6.32.2:
+===========
+LOOKUP Call, DH:0x0308031e/scr2
+LOOKUP Reply, FH:0x29f0b5d0
+ACCESS Call, FH:0x29f0b5d0
+ACCESS Reply
+READ Call, FH:0x29f0b5d0 Offset:16384 Len:900
+READ Reply Len:900
+WRITE Call, FH:0x29f0b5d0 Offset:16384 Len:1200 UNSTABLE
+WRITE Reply Len:1200 UNSTABLE
+COMMIT Call, FH:0x29f0b5d0
+COMMIT Reply
+===========
 
-> 
-> My preference however, is to do the simple thing, and use
-> clnt_create_vers(3t) in nfs_get_mount_client().  AFAICT you wouldn't
-> need any of this extra logic or the new table.
-Yes I saw clnt_create_vers()... but I thought staying backwards
-compatible with the glibc was a better idea... 
+My think the behavior change is due to "read-modify-write page
+updating" patch with adding the nfs_want_read_modify_write()
+function, but that's just a guess.
 
-steved. 
+Even with the additional READs, in some modes of the app performance
+has gone up with v2.6.32 by 4.0%.  (Good!)  However, in other modes,
+it has dropped 22%.  (Not good!)
 
+If my guess is right, I'm wondering if the read-modify-write
+updating patch accounted for files opened read-write, but only
+written to or appended to before closing.
+
+Can the read-modify-write page updating be altered to better handle
+opens in read-write (O_RDWR) that only end up writing before
+closing?
+
+Quentin
