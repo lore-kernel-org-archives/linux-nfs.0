@@ -1,148 +1,98 @@
-From: KAMEZAWA Hiroyuki <kamezawa.hiroyu-+CUm20s59erQFUHtdCDX3A@public.gmane.org>
-Subject: Re: [PATCH] nodmask.h: remove macro any_online_node
-Date: Thu, 7 Jan 2010 08:51:46 +0900
-Message-ID: <20100107085146.59cc9888.kamezawa.hiroyu@jp.fujitsu.com>
-References: <201001061624.59118.hartleys@visionengravers.com>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: vfs related crash in 2.6.33-rc2
+Date: Wed, 06 Jan 2010 18:55:58 -0500
+Message-ID: <1262822158.4251.179.camel@localhost>
+References: <200912301733.19077.marvin24@gmx.de>
+	 <87637oi6v8.fsf@devron.myhome.or.jp> <200912302144.36718.marvin24@gmx.de>
+	 <87637omb4b.fsf@devron.myhome.or.jp>
+	 <20100106154123.b12547f3.akpm@linux-foundation.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Cc: Linux Kernel <linux-kernel@vger.kernel.org>,
-	linuxppc-dev-mnsaURCQ41sdnm+yROfE0A@public.gmane.org, devicetree-discuss@lists.ozlabs.org,
-	linux-nfs@vger.kernel.org, netdev@vger.kernel.org,
-	akpm@linux-foundation.org, rientjes@google.com, mel-wPRd99KPJ+uzQB+pC5nmwQ@public.gmane.org,
-	lee.schermerhorn@hp.com, benh@kernel.crashing.org,
-	paulus@samba.org, dave@linux.vnet.ibm.com, miltonm-ogEGBHC/i9Y@public.gmane.org,
-	nfont-V7BBcbaFuwjMbYB6QlFGEg@public.gmane.org, geoffrey.levand-mEdOJwZ7QcZBDgjK7y7TUQ@public.gmane.org,
-	grant.likely-s3s/WqlpOiPyB63q8FvJNQ@public.gmane.org, bfields@fieldses.org, neilb@suse.de,
-	Trond.Myklebust@netapp.com, davem@davemloft.net,
-	bhalevy@panasas.com, chuck.lever@oracle.com,
-	Ricardo.Labiaga@netapp.com
-To: H Hartley Sweeten <hartleys-3FF4nKcrg1dE2c76skzGb0EOCMrvLtNR@public.gmane.org>
+Content-Type: text/plain; charset="UTF-8"
+Cc: OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>,
+	Marvin <marvin24@gmx.de>,
+	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+	linux-nfs@vger.kernel.org
+To: Andrew Morton <akpm@linux-foundation.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fgwmail6.fujitsu.co.jp ([192.51.44.36]:59405 "EHLO
-	fgwmail6.fujitsu.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S933074Ab0AFXzs (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 6 Jan 2010 18:55:48 -0500
-In-Reply-To: <201001061624.59118.hartleys-3FF4nKcrg1dE2c76skzGb0EOCMrvLtNR@public.gmane.org>
+Received: from mail-out1.uio.no ([129.240.10.57]:39552 "EHLO mail-out1.uio.no"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S933187Ab0AFX4I (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 6 Jan 2010 18:56:08 -0500
+In-Reply-To: <20100106154123.b12547f3.akpm@linux-foundation.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 6 Jan 2010 16:24:58 -0700
-H Hartley Sweeten <hartleys-3FF4nKcrg1dE2c76skzGb0EOCMrvLtNR@public.gmane.org> wrote:
-
-> nodmask.h: remove macro any_online_node
+On Wed, 2010-01-06 at 15:41 -0800, Andrew Morton wrote: 
+> On Thu, 31 Dec 2009 05:59:32 +0900
+> OGAWA Hirofumi <hirofumi@mail.parknet.co.jp> wrote:
 > 
-> The macro any_online_node is prone to producing sparse warnings
-> due to the local symbol 'node'. Since all the in-tree users are really
-> requesting the first online node (the mask argument is either
-> NODE_MASK_ALL or node_online_map) just use the first_online_node
-> macro and remove the any_online_node macro since there are no users.
+> > Marvin <marvin24@gmx.de> writes:
+> > 
+> > >> Marvin <marvin24@gmx.de> writes:
+> > >> > Hi,
+> > >> >
+> > >> > I'm getting a lot of these:
+> > >> >
+> > >> > kernel: general protection fault: 0000 [#1] SMP
+> > >> > kernel: last sysfs file: /sys/devices/pci0000:00/0000:00:18.3/modalias
+> > >> > kernel: CPU 0
+> > >> > kernel: Pid: 12177, comm: packagekitd Not tainted 2.6.33-rc2 #1
+> > >> > ...
+> > >> >
+> > >> > filesystem is ext4 (in case it matters).
+> > >> 
+> > >> BTW, are you using nfs client on this machine?
+> > >>
+> > >
+> > > um - yes, now that I think about it... I killed a nfs umount process (because of an 
+> > > offline server) shortly before the oopses started to fire.
+> > 
+> > OK. Probably, this oops would be same with one which happened on my
+> > machine recently. That path in patch corrupts dcache hash, so it can be
+> > the cause of strange behavior or oops on dcache hash.
+> > 
+> > If so, the attached patch would fix it.
+> > 
+> > Thanks.
+> > -- 
+> > OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>
+> > 
+> > 
+> > Recent change is missing to update "rehash". With that change, it will
+> > become the cause of adding dentry to hash twice.
+> > 
+> > This explains the reason of Oops (dereference the freed dentry in
+> > __d_lookup()) on my machine.
+> > 
+> > Signed-off-by: OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>
+> > ---
+> > 
+> >  fs/nfs/dir.c |    1 +
+> >  1 file changed, 1 insertion(+)
+> > 
+> > diff -puN fs/nfs/dir.c~nfs-d_rehash-fix fs/nfs/dir.c
+> > --- linux-2.6/fs/nfs/dir.c~nfs-d_rehash-fix	2009-12-28 06:18:09.000000000 +0900
+> > +++ linux-2.6-hirofumi/fs/nfs/dir.c	2009-12-28 06:18:16.000000000 +0900
+> > @@ -1615,6 +1615,7 @@ static int nfs_rename(struct inode *old_
+> >  				goto out;
+> >  
+> >  			new_dentry = dentry;
+> > +			rehash = NULL;
+> >  			new_inode = NULL;
+> >  		}
+> >  	}
+> 
+> Guys, what's the status of this fix?  Did Marvin have a chance to test
+> it?  Are the NFS developers aware of it?
+> 
+> Thanks.
 > 
 
-Reviewed-by: KAMEZAWA Hiroyuki <kamezawa.hiroyu-+CUm20s59erQFUHtdCDX3A@public.gmane.org>
-Thank you.
-BTW, it's better to add diffstat to this kind of changes.
+Sorry for the delay. The above fix looks correct to me, but I too would
+like a confirmation that it fixes the Oops before I push it to Linus.
 
-Regards,
--Kame
+In the meantime, I've committed it to my linux-next branch.
 
-> Signed-off-by: H Hartley Sweeten <hsweeten-3FF4nKcrg1dE2c76skzGb0EOCMrvLtNR@public.gmane.org>
-> Cc: Andrew Morton <akpm@linux-foundation.org>
-> Cc: David Rientjes <rientjes@google.com>
-> Cc: KAMEZAWA Hiroyuki <kamezawa.hiroyu-+CUm20s59erQFUHtdCDX3A@public.gmane.org>
-> Cc: Mel Gorman <mel-wPRd99KPJ+uzQB+pC5nmwQ@public.gmane.org>
-> Cc: Lee Schermerhorn <lee.schermerhorn@hp.com>
-> Cc: Benjamin Herrenschmidt <benh@kernel.crashing.org>
-> Cc: Paul Mackerras <paulus@samba.org>
-> Cc: Dave Hansen <dave@linux.vnet.ibm.com>
-> Cc: Milton Miller <miltonm-ogEGBHC/i9Y@public.gmane.org>
-> Cc: Nathan Fontenot <nfont-V7BBcbaFuwjMbYB6QlFGEg@public.gmane.org>
-> Cc: Geoff Levand <geoffrey.levand-mEdOJwZ7QcZBDgjK7y7TUQ@public.gmane.org>
-> Cc: Grant Likely <grant.likely-s3s/WqlpOiPyB63q8FvJNQ@public.gmane.org>
-> Cc: J. Bruce Fields <bfields@fieldses.org>
-> Cc: Neil Brown <neilb@suse.de>
-> Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
-> Cc: David S. Miller <davem@davemloft.net>
-> Cc: Benny Halevy <bhalevy@panasas.com>
-> Cc: Chuck Lever <chuck.lever@oracle.com>
-> Cc: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
-> 
-> ---
-> 
-> diff --git a/arch/powerpc/mm/numa.c b/arch/powerpc/mm/numa.c
-> index b037d95..64c0022 100644
-> --- a/arch/powerpc/mm/numa.c
-> +++ b/arch/powerpc/mm/numa.c
-> @@ -451,7 +451,7 @@ static int __cpuinit numa_setup_cpu(unsigned long lcpu)
->  	nid = of_node_to_nid_single(cpu);
->  
->  	if (nid < 0 || !node_online(nid))
-> -		nid = any_online_node(NODE_MASK_ALL);
-> +		nid = first_online_node;
->  out:
->  	map_cpu_to_node(lcpu, nid);
->  
-> @@ -1114,7 +1114,7 @@ int hot_add_scn_to_nid(unsigned long scn_addr)
->  	int nid, found = 0;
->  
->  	if (!numa_enabled || (min_common_depth < 0))
-> -		return any_online_node(NODE_MASK_ALL);
-> +		return first_online_node;
->  
->  	memory = of_find_node_by_path("/ibm,dynamic-reconfiguration-memory");
->  	if (memory) {
-> @@ -1125,7 +1125,7 @@ int hot_add_scn_to_nid(unsigned long scn_addr)
->  	}
->  
->  	if (nid < 0 || !node_online(nid))
-> -		nid = any_online_node(NODE_MASK_ALL);
-> +		nid = first_online_node;
->  
->  	if (NODE_DATA(nid)->node_spanned_pages)
->  		return nid;
-> diff --git a/include/linux/nodemask.h b/include/linux/nodemask.h
-> index 454997c..c4fa64b 100644
-> --- a/include/linux/nodemask.h
-> +++ b/include/linux/nodemask.h
-> @@ -69,8 +69,6 @@
->   * int node_online(node)		Is some node online?
->   * int node_possible(node)		Is some node possible?
->   *
-> - * int any_online_node(mask)		First online node in mask
-> - *
->   * node_set_online(node)		set bit 'node' in node_online_map
->   * node_set_offline(node)		clear bit 'node' in node_online_map
->   *
-> @@ -467,15 +465,6 @@ static inline int num_node_state(enum node_states state)
->  #define node_online_map 	node_states[N_ONLINE]
->  #define node_possible_map 	node_states[N_POSSIBLE]
->  
-> -#define any_online_node(mask)			\
-> -({						\
-> -	int node;				\
-> -	for_each_node_mask(node, (mask))	\
-> -		if (node_online(node))		\
-> -			break;			\
-> -	node;					\
-> -})
-> -
->  #define num_online_nodes()	num_node_state(N_ONLINE)
->  #define num_possible_nodes()	num_node_state(N_POSSIBLE)
->  #define node_online(node)	node_state((node), N_ONLINE)
-> diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
-> index 538ca43..832c1fe 100644
-> --- a/net/sunrpc/svc.c
-> +++ b/net/sunrpc/svc.c
-> @@ -133,7 +133,7 @@ svc_pool_map_choose_mode(void)
->  		return SVC_POOL_PERNODE;
->  	}
->  
-> -	node = any_online_node(node_online_map);
-> +	node = first_online_node;
->  	if (nr_cpus_node(node) > 2) {
->  		/*
->  		 * Non-trivial SMP, or CONFIG_NUMA on
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-kernel" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> Please read the FAQ at  http://www.tux.org/lkml/
+Cheers
+  Trond
+
