@@ -1,36 +1,40 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH 1/2] nfsd: make sure data is on disk before calling
-	->fsync
-Date: Wed, 6 Jan 2010 17:46:21 -0500
-Message-ID: <20100106224621.GB11677@fieldses.org>
-References: <20091225164445.GA4578@lst.de> <20100104135045.GA18072@lst.de> <20100104204206.GD30129@fieldses.org> <20100105152231.GA32332@lst.de>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: [PATCH v2] sunrpc: fix build-time warning
+Date: Wed, 06 Jan 2010 18:10:20 -0500
+Message-ID: <1262819420.4251.171.camel@localhost>
+References: <1262226195-27733-1-git-send-email-jlayton@redhat.com>
+	 <20091231091815.a1ea7e51.rdunlap@xenotime.net>
+	 <20091231205454.0f84f091@tupile.poochiereds.net>
+	 <20100101182514.cb1f49ef.randy.dunlap@oracle.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: viro@zeniv.linux.org.uk, jack@suse.cz, linux-nfs@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org
-To: Christoph Hellwig <hch@lst.de>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <20100105152231.GA32332@lst.de>
-Sender: linux-fsdevel-owner@vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
+Cc: Jeff Layton <jlayton@redhat.com>,
+	Stephen Rothwell <sfr@canb.auug.org.au>,
+	linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org
+To: Randy Dunlap <randy.dunlap@oracle.com>
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from mail-out1.uio.no ([129.240.10.57]:36511 "EHLO mail-out1.uio.no"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932372Ab0AFXKf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 6 Jan 2010 18:10:35 -0500
+In-Reply-To: <20100101182514.cb1f49ef.randy.dunlap@oracle.com>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Jan 05, 2010 at 04:22:31PM +0100, Christoph Hellwig wrote:
-> On Mon, Jan 04, 2010 at 03:42:06PM -0500, J. Bruce Fields wrote:
-> > On Mon, Jan 04, 2010 at 02:50:45PM +0100, Christoph Hellwig wrote:
-> > > ping?  this fixes a quite nasty issue introduced in 2.6.32, so we should
-> > > fix it ASAP (including backport to -stable)
-> > 
-> > Apologies for the delay.  Which commit exactly introduced the original
-> > regression?  I'll take over getting them into 2.6.33 and 2.6.32.y unless
-> > you tell me you're already doing that.
+On Fri, 2010-01-01 at 18:25 -0800, Randy Dunlap wrote: 
+> From: Randy Dunlap <randy.dunlap@oracle.com>
 > 
-> 2daea67e966dc0c42067ebea015ddac6834cef88 changed the calling convention.
-> Removal of the explicit wait in the filesystem might have been another
-> few commits.
+> Fix auth_gss printk format warning:
 > 
-> If you can easily take care of getting the first patch into -stable I'll
-> leave it to you.
+> net/sunrpc/auth_gss/auth_gss.c:660: warning: format '%ld' expects type 'long int', but argument 3 has type 'ssize_t'
+> 
+> Signed-off-by: Randy Dunlap <randy.dunlap@oracle.com>
 
-OK, thanks, done.  And the other patch queued up for 2.6.34.
+Thanks Randy!
 
---b.
+Sorry for the delay. This patch has been applied today, and should
+therefore appear in the linux-next tree tomorrow...
+
+Cheers
+  Trond
+
