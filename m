@@ -1,117 +1,110 @@
-Return-Path: <nfsv4-bounces@linux-nfs.org>
-Message-Id: <7123090D-5BB9-4CF5-A024-56345DD8136F@oracle.com>
-From: Chuck Lever <chuck.lever@oracle.com>
-To: Guillaume Rousse <guillaume.rousse@inria.fr>
-In-Reply-To: <4B530EFF.9000205@inria.fr>
-Subject: Re: unmount -l does not send unmount request to the server
-Date: Tue, 19 Jan 2010 11:37:43 -0500
-References: <4B530EFF.9000205@inria.fr>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Linux NFSv4 mailing list <nfsv4@linux-nfs.org>
-List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/options/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
-List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
-List-Post: <mailto:nfsv4@linux-nfs.org>
-List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
-List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
-Content-Type: text/plain; charset="us-ascii"; Format="flowed"; DelSp="yes"
-Sender: nfsv4-bounces@linux-nfs.org
-Errors-To: nfsv4-bounces@linux-nfs.org
-MIME-Version: 1.0
+Return-Path: <linux-nfs-owner@vger.kernel.org>
+Received: from cantor2.suse.de ([195.135.220.15]:41320 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754821Ab0AFUJk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 6 Jan 2010 15:09:40 -0500
+Date: Wed, 6 Jan 2010 21:09:28 +0100
+From: Jan Kara <jack@suse.cz>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: Peter Zijlstra <peterz@infradead.org>,
+        Wu Fengguang <fengguang.wu@intel.com>, Jan Kara <jack@suse.cz>,
+        Steve Rago <sar@nec-labs.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "jens.axboe" <jens.axboe@oracle.com>,
+        Peter Staubach <staubach@redhat.com>,
+        Arjan van de Ven <arjan@infradead.org>, Ingo Molnar <mingo@elte.hu>,
+        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
+Subject: Re: [PATCH] improve the performance of large sequential write NFS
+ workloads
+Message-ID: <20100106200928.GB22781@quack.suse.cz>
+References: <20091231050441.GB19627@localhost>
+ <1262286828.8151.113.camel@localhost>
+ <20100106030346.GA15962@localhost>
+ <1262796962.4251.91.camel@localhost>
+ <1262802387.4251.117.camel@localhost>
+ <1262803040.4049.62.camel@laptop>
+ <1262803927.4251.133.camel@localhost>
+ <1262804876.4049.66.camel@laptop>
+ <1262805667.4251.135.camel@localhost>
+ <1262807594.4251.155.camel@localhost>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1262807594.4251.155.camel@localhost>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+MIME-Version: 1.0
 
-Cc'ing NFSv3 mailing list.
+On Wed 06-01-10 14:53:14, Trond Myklebust wrote:
+> ...and finally, this should convert the previous NFS patch to use the
+> per-bdi accounting.
+> 
+> Cheers
+>   Trond
+> 
+> -------------------------------------------------------------------------------------- 
+> VM: Use per-bdi unstable accounting to improve use of wbc->force_commit
+> 
+> From: Trond Myklebust <Trond.Myklebust@netapp.com>
+> 
+> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+  I like this. You can add
+Acked-by: Jan Kara <jack@suse.cz>
+  to this patch previous patches adding unstable pages accounting.
 
-On Jan 17, 2010, at 8:22 AM, Guillaume Rousse wrote:
-
-> Hello list.
->
-> A mandriva user report than unmount filesystem at shutdown is broken
-> since the move of {mount,unmount}.nfs commands from coreutils to
-> nfs-utils, some times ago:
-> https://qa.mandriva.com/show_bug.cgi?id=36490
->
-> It seems to be caused by the use of -l option in initscripts, which
-> apparently don't send an umount request to the server anymore. A  
-> simple
-> test is enough to confirm it:
->
-> When using 'mount.nfs server:/dir dir && umount.nfs dir' on the  
-> client,
-> the server logs:
-> Jan 17 14:01:12  mountd[18714]: authenticated mount request from
-> 192.168.0.1:840 for /home (/home)
-> Jan 17 14:01:12  mountd[18714]: authenticated unmount request from
-> 192.168.0.1:1012 for /home (/home)
->
-> When using 'mount.nfs server:/dir dir && umount.nfs dir -l' on the
-> client, the server logs:
-> Jan 17 14:09:17  mountd[18714]: authenticated mount request from
-> 192.168.0.1:955 for /home (/home)
->
-> The filesystem is umounted client-side, but the server still thinks he
-> is connected:
-> [root@oberkampf Desktop]# showmount
-> Hosts on oberkampf:
-> 192.168.0.1
->
-> client uses nfs-utils 1.2.0.
->
-> Reading the code in nfsumount.c, as suggested by comment #11
-> (https://qa.mandriva.com/show_bug.cgi?id=36490#c11) seems to imply  
-> this
-> is on purpose:
->    if (mc) {
->        if (!lazy && strcmp(mc->m.mnt_type, "nfs4") != 0)
->            /* We ignore the error from nfs_umount23.
->             * If the actual umount succeeds (in del_mtab),
->             * we don't want to signal an error, as that
->             * could cause /sbin/mount to retry!
->             */
->            nfs_umount23(mc->m.mnt_fsname, mc->m.mnt_opts);
->        ret = del_mtab(mc->m.mnt_fsname, mc->m.mnt_dir) ?: ret;
->    } else if (*spec != '/') {
->        if (!lazy)
->            ret = nfs_umount23(spec, "tcp,v3");
->
-> The description of this option seems to imply than he filesystem is
-> marked as unmounted right now in mtab, and than he is actually  
-> umounted
-> properly as soon as possible. This doesn't says anything about the
-> server, tough, and I doesn't see anything in the code dealing with  
-> this
-> 'as soon as possible' event anyway...
-
-The init scripts use "-l" because they don't want a hang at shutdown.   
-A hang might occur if the server is unreachable.
-
-A UMNT is usually sent when the client knows it won't be using that  
-export any longer.
-
-As far as I understand it, "-l" means the kernel will do the local  
-detach from the system's file name space whenever there are no more  
-users (ie entirely asynchronously).  I don't think umount2(MNT_DETACH)  
-indicates whether the kernel was able to completely unmount that file  
-system by the time the call returns, so there's perhaps no way for  
-umount.nfs to know whether it should send the UMNT request.  If the  
-server is slow or unresponsive, that file system won't be unmounted  
-until long after the umount.nfs command has exited.
-
-This shouldn't be much of a big deal, since the server's rmtab is  
-"ornamental" according to the man page.  No one should rely on it  
-being accurate.
-
-A possible way to fix this is to have the kernel send the UMNT.
-
+								Honza
+> ---
+> 
+>  mm/page-writeback.c |   13 +++++++------
+>  1 files changed, 7 insertions(+), 6 deletions(-)
+> 
+> 
+> diff --git a/mm/page-writeback.c b/mm/page-writeback.c
+> index d90a0db..c537543 100644
+> --- a/mm/page-writeback.c
+> +++ b/mm/page-writeback.c
+> @@ -487,7 +487,6 @@ static void balance_dirty_pages(struct address_space *mapping,
+>  {
+>  	long nr_reclaimable, bdi_nr_reclaimable;
+>  	long nr_writeback, bdi_nr_writeback;
+> -	long nr_unstable_nfs;
+>  	unsigned long background_thresh;
+>  	unsigned long dirty_thresh;
+>  	unsigned long bdi_thresh;
+> @@ -504,18 +503,20 @@ static void balance_dirty_pages(struct address_space *mapping,
+>  			.nr_to_write	= write_chunk,
+>  			.range_cyclic	= 1,
+>  		};
+> +		long bdi_nr_unstable = 0;
+>  
+>  		get_dirty_limits(&background_thresh, &dirty_thresh,
+>  				&bdi_thresh, bdi);
+>  
+> -		nr_unstable_nfs = global_page_state(NR_UNSTABLE_NFS);
+>  		nr_reclaimable = global_page_state(NR_FILE_DIRTY) +
+> -					nr_unstable_nfs;
+> +					global_page_state(NR_UNSTABLE_NFS);
+>  		nr_writeback = global_page_state(NR_WRITEBACK);
+>  
+>  		bdi_nr_reclaimable = bdi_stat(bdi, BDI_DIRTY);
+> -		if (bdi_cap_account_unstable(bdi))
+> -			bdi_nr_reclaimable += bdi_stat(bdi, BDI_UNSTABLE);
+> +		if (bdi_cap_account_unstable(bdi)) {
+> +			bdi_nr_unstable = bdi_stat(bdi, BDI_UNSTABLE);
+> +			bdi_nr_reclaimable += bdi_nr_unstable;
+> +		}
+>  		bdi_nr_writeback = bdi_stat(bdi, BDI_WRITEBACK);
+>  
+>  		if (bdi_nr_reclaimable + bdi_nr_writeback <= bdi_thresh)
+> @@ -545,7 +546,7 @@ static void balance_dirty_pages(struct address_space *mapping,
+>  		if (bdi_nr_reclaimable > bdi_thresh) {
+>  			wbc.force_commit = 0;
+>  			/* Force NFS to also free up unstable writes. */
+> -			if (nr_unstable_nfs > nr_reclaimable / 2)
+> +			if (bdi_nr_unstable > bdi_nr_reclaimable / 2)
+>  				wbc.force_commit = 1;
+>  
+>  			writeback_inodes_wbc(&wbc);
+> 
 -- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
-
-_______________________________________________
-NFSv4 mailing list
-NFSv4@linux-nfs.org
-http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
