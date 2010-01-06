@@ -1,49 +1,60 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cantor.suse.de ([195.135.220.2]:33827 "EHLO mx1.suse.de"
+Received: from mx2.netapp.com ([216.240.18.37]:15942 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751322Ab0ATMWE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 20 Jan 2010 07:22:04 -0500
-Message-ID: <4B56F565.7080104@suse.de>
-Date: Wed, 20 Jan 2010 17:51:57 +0530
-From: Suresh Jayaraman <sjayaraman@suse.de>
-To: trond.myklebust@netapp.com, David Howells <dhowells@redhat.com>
-Cc: Linux NFS mailing list <linux-nfs@vger.kernel.org>
-Subject: [RFC][PATCH] nfs: don't assume fscache_acquire_cookie will always
- succeed
-Content-Type: text/plain; charset=UTF-8
+	id S932827Ab0AFU7d (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 6 Jan 2010 15:59:33 -0500
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: [PATCH 0/6] Re: [PATCH] improve the performance of large
+ sequential write NFS workloads
+To: Wu Fengguang <fengguang.wu@intel.com>
+Cc: Peter Zijlstra <peterz@infradead.org>, Jan Kara <jack@suse.cz>,
+        Steve Rago <sar@nec-labs.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "jens.axboe" <jens.axboe@oracle.com>,
+        Peter Staubach <staubach@redhat.com>,
+        Arjan van de Ven <arjan@infradead.org>, Ingo Molnar <mingo@elte.hu>,
+        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
+Date: Wed, 06 Jan 2010 15:51:10 -0500
+Message-ID: <20100106205110.22547.85345.stgit@localhost.localdomain>
+In-Reply-To: <20100106200928.GB22781@quack.suse.cz>
+References: <20100106200928.GB22781@quack.suse.cz>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-We seem to be assuming fscache_acquire_cookie will always succeed and will
-obtain a valid cookie. But, under low memory conditions kmem_cache_alloc
-could fail and that would leave nfsi->fscache being set to NULL.
+OK, here is the full series so far. I'm resending because I had to fix
+up a couple of BDI_UNSTABLE typos in Peter's patch...
 
-This could lead to a possibility of a page with PG_fscache flag set but
-cookie not set(i.e. NULL). This inconsistency could trigger a kernel BUG in
-nfs_fscache_release_page() and other places as we do BUG_ON(!cookie), I think.
+Cheers
+  Trond
 
-I'm aware that there are other places where we would need such checks, but
-wanted to validate this patch before getting on to them.
-
-Signed-off-by: Suresh Jayaraman <sjayaraman@suse.de>
 ---
 
- fs/nfs/client.c |    2 ++
- 1 files changed, 2 insertions(+), 0 deletions(-)
+Peter Zijlstra (1):
+      VM: Split out the accounting of unstable writes from BDI_RECLAIMABLE
 
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index ee77713..7776e8a 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -155,6 +155,8 @@ static struct nfs_client *nfs_alloc_client(const struct nfs_client_initdata *cl_
- 		clp->cl_machine_cred = cred;
- 
- 	nfs_fscache_get_client_cookie(clp);
-+	if (!clp->fscache)
-+		goto error_cleanup;
- 
- 	return clp;
- 
--- 
-Suresh Jayaraman
+Trond Myklebust (5):
+      NFS: Run COMMIT as an asynchronous RPC call when wbc->for_background is set
+      VM: Use per-bdi unstable accounting to improve use of wbc->force_commit
+      VM: Don't call bdi_stat(BDI_UNSTABLE) on non-nfs backing-devices
+      VM/NFS: The VM must tell the filesystem when to free reclaimable pages
+      VFS: Ensure that writeback_single_inode() commits unstable writes
+
+
+ fs/fs-writeback.c           |   31 ++++++++++++++++++++++++++++++-
+ fs/nfs/client.c             |    1 +
+ fs/nfs/file.c               |    1 +
+ fs/nfs/inode.c              |   16 ----------------
+ fs/nfs/internal.h           |    3 ++-
+ fs/nfs/super.c              |    2 --
+ fs/nfs/write.c              |   39 +++++++++++++++++++++++++++++++++++----
+ include/linux/backing-dev.h |    9 ++++++++-
+ include/linux/fs.h          |    9 +++++++++
+ include/linux/writeback.h   |    5 +++++
+ mm/backing-dev.c            |    6 ++++--
+ mm/filemap.c                |    2 +-
+ mm/page-writeback.c         |   30 ++++++++++++++++++++++++------
+ mm/truncate.c               |    2 +-
+ 14 files changed, 121 insertions(+), 35 deletions(-)
+
