@@ -1,88 +1,59 @@
-From: Andrew Morton <akpm@linux-foundation.org>
-Subject: Re: vfs related crash in 2.6.33-rc2
-Date: Wed, 6 Jan 2010 15:41:23 -0800
-Message-ID: <20100106154123.b12547f3.akpm@linux-foundation.org>
-References: <200912301733.19077.marvin24@gmx.de>
-	<87637oi6v8.fsf@devron.myhome.or.jp>
-	<200912302144.36718.marvin24@gmx.de>
-	<87637omb4b.fsf@devron.myhome.or.jp>
+From: Stephen Rothwell <sfr@canb.auug.org.au>
+Subject: Re: [PATCH v2] sunrpc: fix build-time warning
+Date: Thu, 7 Jan 2010 10:51:30 +1100
+Message-ID: <20100107105130.dfae78e3.sfr@canb.auug.org.au>
+References: <1262226195-27733-1-git-send-email-jlayton@redhat.com>
+	<20091231091815.a1ea7e51.rdunlap@xenotime.net>
+	<20091231205454.0f84f091@tupile.poochiereds.net>
+	<20100101182514.cb1f49ef.randy.dunlap@oracle.com>
+	<1262819420.4251.171.camel@localhost>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Cc: Marvin <marvin24@gmx.de>,
-	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-	Trond Myklebust <trond.myklebust@fys.uio.no>,
+Content-Type: multipart/signed; protocol="application/pgp-signature";
+ micalg="PGP-SHA1";
+ boundary="Signature=_Thu__7_Jan_2010_10_51_30_+1100_RdOm4p3r28qPxABR"
+Cc: Randy Dunlap <randy.dunlap@oracle.com>,
+	Jeff Layton <jlayton@redhat.com>, linux-kernel@vger.kernel.org,
 	linux-nfs@vger.kernel.org
-To: OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:35742 "EHLO
-	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S932266Ab0AFXll (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 6 Jan 2010 18:41:41 -0500
-In-Reply-To: <87637omb4b.fsf-x/W9pkDDSe1TgC2z9Sl/nXf5DAMn2ifp@public.gmane.org>
+Received: from chilli.pcug.org.au ([203.10.76.44]:43685 "EHLO smtps.tip.net.au"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932822Ab0AFXvg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 6 Jan 2010 18:51:36 -0500
+In-Reply-To: <1262819420.4251.171.camel@localhost>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 31 Dec 2009 05:59:32 +0900
-OGAWA Hirofumi <hirofumi@mail.parknet.co.jp> wrote:
+--Signature=_Thu__7_Jan_2010_10_51_30_+1100_RdOm4p3r28qPxABR
+Content-Type: text/plain; charset=US-ASCII
+Content-Disposition: inline
+Content-Transfer-Encoding: quoted-printable
 
-> Marvin <marvin24@gmx.de> writes:
-> 
-> >> Marvin <marvin24@gmx.de> writes:
-> >> > Hi,
-> >> >
-> >> > I'm getting a lot of these:
-> >> >
-> >> > kernel: general protection fault: 0000 [#1] SMP
-> >> > kernel: last sysfs file: /sys/devices/pci0000:00/0000:00:18.3/modalias
-> >> > kernel: CPU 0
-> >> > kernel: Pid: 12177, comm: packagekitd Not tainted 2.6.33-rc2 #1
-> >> > ...
-> >> >
-> >> > filesystem is ext4 (in case it matters).
-> >> 
-> >> BTW, are you using nfs client on this machine?
-> >>
-> >
-> > um - yes, now that I think about it... I killed a nfs umount process (because of an 
-> > offline server) shortly before the oopses started to fire.
-> 
-> OK. Probably, this oops would be same with one which happened on my
-> machine recently. That path in patch corrupts dcache hash, so it can be
-> the cause of strange behavior or oops on dcache hash.
-> 
-> If so, the attached patch would fix it.
-> 
-> Thanks.
-> -- 
-> OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>
-> 
-> 
-> Recent change is missing to update "rehash". With that change, it will
-> become the cause of adding dentry to hash twice.
-> 
-> This explains the reason of Oops (dereference the freed dentry in
-> __d_lookup()) on my machine.
-> 
-> Signed-off-by: OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>
-> ---
-> 
->  fs/nfs/dir.c |    1 +
->  1 file changed, 1 insertion(+)
-> 
-> diff -puN fs/nfs/dir.c~nfs-d_rehash-fix fs/nfs/dir.c
-> --- linux-2.6/fs/nfs/dir.c~nfs-d_rehash-fix	2009-12-28 06:18:09.000000000 +0900
-> +++ linux-2.6-hirofumi/fs/nfs/dir.c	2009-12-28 06:18:16.000000000 +0900
-> @@ -1615,6 +1615,7 @@ static int nfs_rename(struct inode *old_
->  				goto out;
->  
->  			new_dentry = dentry;
-> +			rehash = NULL;
->  			new_inode = NULL;
->  		}
->  	}
+Hi Trond,
 
-Guys, what's the status of this fix?  Did Marvin have a chance to test
-it?  Are the NFS developers aware of it?
+On Wed, 06 Jan 2010 18:10:20 -0500 Trond Myklebust <trond.myklebust-N1bbTUo86Qc@public.gmane.org=
+.no> wrote:
+>
+> Sorry for the delay. This patch has been applied today, and should
+> therefore appear in the linux-next tree tomorrow...
 
-Thanks.
+Actually today - since I am following the normal Australian practice of
+being slack and starting work late in January :-)
 
+--=20
+Cheers,
+Stephen Rothwell                    sfr@canb.auug.org.au
+http://www.canb.auug.org.au/~sfr/
+
+--Signature=_Thu__7_Jan_2010_10_51_30_+1100_RdOm4p3r28qPxABR
+Content-Type: application/pgp-signature
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.10 (GNU/Linux)
+
+iEYEARECAAYFAktFIgIACgkQjjKRsyhoI8xIIwCfdLXC2Jpw1WYEBFzZeDnJKRht
+A3AAni3fIEMHyw37k9Hhh6RuCub4GgOT
+=AW0I
+-----END PGP SIGNATURE-----
+
+--Signature=_Thu__7_Jan_2010_10_51_30_+1100_RdOm4p3r28qPxABR--
