@@ -1,276 +1,162 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mrout2-b.corp.re1.yahoo.com ([69.147.107.21]:25333 "EHLO
-	mrout2-b.corp.re1.yahoo.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751079Ab0AXSs4 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 24 Jan 2010 13:48:56 -0500
-Date: Sun, 24 Jan 2010 12:46:34 -0600
-From: Quentin Barnes <qbarnes+nfs@yahoo-inc.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+Received: from mx2.netapp.com ([216.240.18.37]:12648 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932388Ab0AFS1b convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 6 Jan 2010 13:27:31 -0500
+Subject: Re: [PATCH] improve the performance of large sequential write NFS
+ workloads
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Wu Fengguang <fengguang.wu@intel.com>
+Cc: Jan Kara <jack@suse.cz>, Steve Rago <sar@nec-labs.com>,
+        Peter Zijlstra <peterz@infradead.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "jens.axboe" <jens.axboe@oracle.com>,
+        Peter Staubach <staubach@redhat.com>,
+        Arjan van de Ven <arjan@infradead.org>, Ingo Molnar <mingo@elte.hu>,
         "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
-Subject: Re: Random I/O over NFS has horrible performance due to small I/O transfers
-Message-ID: <20100124184634.GA19426@yahoo-inc.com>
-References: <20091226204531.GA3356@yahoo-inc.com> <E7A7B701-B471-4D14-8D45-B0FF691D1CCC@oracle.com> <20100121011238.GA30642@yahoo-inc.com> <B02A2206-CFEB-4FF4-8825-E953CFD7637C@oracle.com>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <B02A2206-CFEB-4FF4-8825-E953CFD7637C@oracle.com>
+In-Reply-To: <1262796962.4251.91.camel@localhost>
+References: <20091222015907.GA6223@localhost>
+	 <1261578107.2606.11.camel@localhost> <20091223180551.GD3159@quack.suse.cz>
+	 <1261595574.6775.2.camel@localhost> <20091224025228.GA12477@localhost>
+	 <1261656281.3596.1.camel@localhost> <20091225055617.GA8595@localhost>
+	 <1262190168.7332.6.camel@localhost> <20091231050441.GB19627@localhost>
+	 <1262286828.8151.113.camel@localhost>  <20100106030346.GA15962@localhost>
+	 <1262796962.4251.91.camel@localhost>
+Content-Type: text/plain; charset="UTF-8"
+Date: Wed, 06 Jan 2010 13:26:27 -0500
+Message-ID: <1262802387.4251.117.camel@localhost>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-> > Sorry I've been slow in responding.  I had a recent death in my
-> > family which has been occupying all my time for the last three
-> > weeks.
+On Wed, 2010-01-06 at 11:56 -0500, Trond Myklebust wrote: 
+> On Wed, 2010-01-06 at 11:03 +0800, Wu Fengguang wrote: 
+> > Trond,
+> > 
+> > On Fri, Jan 01, 2010 at 03:13:48AM +0800, Trond Myklebust wrote:
+> > > The above change improves on the existing code, but doesn't solve the
+> > > problem that write_inode() isn't a good match for COMMIT. We need to
+> > > wait for all the unstable WRITE rpc calls to return before we can know
+> > > whether or not a COMMIT is needed (some commercial servers never require
+> > > commit, even if the client requested an unstable write). That was the
+> > > other reason for the change.
+> > 
+> > Ah good to know that reason. However we cannot wait for ongoing WRITEs
+> > for unlimited time or pages, otherwise nr_unstable goes up and squeeze 
+> > nr_dirty and nr_writeback to zero, and stall the cp process for a long
+> > time, as demonstrated by the trace (more reasoning in previous email).
 > 
-> My condolences.
-
-Thank you.
-
-> > I'm sure I didn't have actimeo=0 or noac.  What I was referring to
-> > is the code in nfs_revalidate_file_size() which forces revalidation
-> > with O_DIRECT files.  According to the comments this is done to
-> > minimize the window (race) with other clients writing to the file.
-> > I saw this behavior as well in wireshark/tcpdump traces I collected.
-> > With O_DIRECT, the attributes would often be refetched from the
-> > server prior to each file operation.  (Might have been just for
-> > write and lseek file operations.)  I could dig up traces if you
-> > like.
+> OK. I think we need a mechanism to allow balance_dirty_pages() to
+> communicate to the filesystem that it really is holding too many
+> unstable pages. Currently, all we do is say that 'your total is too
+> big', and then let the filesystem figure out what it needs to do.
 > 
-> nfs_revalidate_file_size() is not invoked in the O_DIRECT read path.   
-> You were complaining about read-ahead.  So I'd say this problem is  
-> independent of the issues you reported earlier with read-ahead.
+> So how about if we modify your heuristic to do something like this? It
+> applies on top of the previous patch.
 
-Sorry for the confusion in the segue.  To summarize, the app
-on another OS was originally was designed to use O_DIRECT as a
-side-effect to disable read-ahead.  However, when ported to Linux,
-the O_DIRECT flag with NFS files triggers a new GETATTR every time
-the app did an lseek(2), write(2), or close(2).  As an alternative,
-I experimented with having the app on Linux not use O_DIRECT but
-call posix_fadvise(...,POSIX_FADV_RANDOM).  That got rid of the
-extra GETATTRs and the read-aheads, but then that caused the larger
-read(2)s to run very inefficiently with the dozens of 4K page-sized
-NFS READs.
+Gah! I misread the definitions of bdi_nr_reclaimable and
+bdi_nr_writeback. Please ignore the previous patch.
 
-> > Aside from O_DIRECT not using cached file attributes before file
-> > I/O, this also has an odd side-effect on closing a file.  After
-> > a write(2) is done by the app, the following close(2) triggers a
-> > refetch of the attributes.  I don't care what the file attributes
-> > are -- just let the file close already!  For example, here in user
-> > space I'm doing a:
-> >   fd = open(..., O_RDWR|O_DIRECT);
-> >   write(fd, ...);
-> >   sleep(3);
-> >   close(fd);
-> >
-> > Which results in:
-> >   4.191210 NFS V3 ACCESS Call, FH:0x0308031e
-> >   4.191391 NFS V3 ACCESS Reply
-> >   4.191431 NFS V3 LOOKUP Call, DH:0x0308031e/scr2
-> >   4.191613 NFS V3 LOOKUP Reply, FH:0x29f0b5d0
-> >   4.191645 NFS V3 ACCESS Call, FH:0x29f0b5d0
-> >   4.191812 NFS V3 ACCESS Reply
-> >   4.191852 NFS V3 WRITE Call, FH:0x29f0b5d0 Offset:0 Len:300 FILE_SYNC
-> >   4.192095 NFS V3 WRITE Reply Len:300 FILE_SYNC
-> >   7.193535 NFS V3 GETATTR Call, FH:0x29f0b5d0
-> >   7.193724 NFS V3 GETATTR Reply Regular File mode:0644 uid:28238 gid: 
-> > 100
-> >
-> > As you can see by the first column time index that the GETATTR is done
-> > after the sleep(3) as the file is being closed.  (This was collected  
-> > on a 2.6.32.2 kernel.)
-> >
-> > Is there any actual need for doing that GETATTR on close that I don't
-> > understand, or is it just a goof?
-> 
-> This GETATTR is required generally for cached I/O and close-to-open  
-> cache coherency.  The Linux NFS FAQ at nfs.sourceforge.net has more  
-> information on close-to-open.
+OK. It looks as if the only key to finding out how many unstable writes
+we have is to use global_page_state(NR_UNSTABLE_NFS), so we can't
+specifically target our own backing-dev.
 
-I know CTO well.  In my version of nfs.ko, I've added a O_NFS_NOCTO
-flag to the open(2) syscall.  We need the ability to fine tune
-specifically which files have "no CTO" feature active.  The "nocto"
-mount flag is too sweeping.  Has a per-file "nocto" feature been
-discussed before?
+Also, on reflection, I think it might be more helpful to use the
+writeback control to signal when we want to force a commit. That makes
+it a more general mechanism.
 
-> For close-to-open to work, a close(2) call must flush any pending  
-> changes, and the next open(2) call on that file needs to check that  
-> the file's attributes haven't changed since the file was last accessed  
-> on this client.  The mtime, ctime, and size are compared between the  
-> two to determine if the client's copy of the file's data is stale.
+There is one thing that we might still want to do here. Currently we do
+not update wbc->nr_to_write inside nfs_commit_unstable_pages(), which
+again means that we don't update 'pages_written' if the only effect of
+the writeback_inodes_wbc() was to commit pages. Perhaps it might not be
+a bad idea to do this (but that should be in a separate patch)...
 
-Yes, that's the client's way to validate its cached CTO data.
+Cheers
+  Trond
+------------------------------------------------------------------------------------- 
+VM/NFS: The VM must tell the filesystem when to free reclaimable pages
 
-> The flush done by a close(2) call after a write(2) may cause the  
-> server to update the mtime, ctime, and size of the file.  So, after  
-> the flush, the client has to grab the latest copy of the file's  
-> attributes from the server (the server, not the client, maintains the  
-> values of mtime, ctime, and size).
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
 
-When referring to "flush" above, are you refering to the NFS flush
-call (nfs_file_flush) or the action of flushing cached data from
-client to server?
+balance_dirty_pages() should really tell the filesystem whether or not it
+has an excess of actual dirty pages, or whether it would be more useful to
+start freeing up the unstable writes.
 
-If the flush call has no data to flush, the GETATTR is pointless.
-The file's cached attribute information is already as valid as can
-ever be hoped for with NFS and its life is limited by the normal
-attribute timeout.  On the other hand, if the flush has cached data
-to write out, I would expect the WRITE will return the updated
-attributes with the post-op attribute status, again making the
-GETATTR on close pointless.  Can you explain what I'm not following?
+Assume that if the number of unstable writes is more than 1/2 the number of
+reclaimable pages, then we should force NFS to free up the former.
 
-However, I tore into the code to better understand what was triggering
-the GETATTR on close.  A close(2) does two things, a flush
-(nfs_file_flush) and a release (nfs_file_release).  I had thought the
-GETATTR was happening as part of the nfs_file_flush().  It's not.  The
-GETATTR is triggered by the nfs_file_release().  As part of it doing a
-put_nfs_open_context() -> nfs_close_context() -> nfs_revalidate_inode(),
-that triggers the NFS_PROTO(inode)->getattr()!
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
 
-I'm not sure, but I suspect that O_DIRECT files take the
-put_nfs_open_context() path that results in the extraneous GETATTR
-on close(2) because filp->private_data is non-NULL where for regular
-files it's NULL.  Is that right?  If so, can this problem be easily
-fixed?
+ fs/nfs/write.c            |    2 +-
+ include/linux/writeback.h |    5 +++++
+ mm/page-writeback.c       |    9 ++++++++-
+ 3 files changed, 14 insertions(+), 2 deletions(-)
 
-> Otherwise, the client would have  
-> cached file attributes that were valid _before_ the flush, but not  
-> afterwards.  The next open(2) would be spoofed into thinking that the  
-> file had been changed by some other client, when it was its own  
-> activity that caused the mtime/ctime/size change.
 
-I just don't see how that can happen.  The attributes should be
-automatically updated by the post-op reply, right?
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index 910be28..ee3daf4 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -1417,7 +1417,7 @@ int nfs_commit_unstable_pages(struct address_space *mapping,
+ 	/* Don't commit yet if this is a non-blocking flush and there are
+ 	 * outstanding writes for this mapping.
+ 	 */
+-	if (wbc->sync_mode != WB_SYNC_ALL &&
++	if (!wbc->force_commit && wbc->sync_mode != WB_SYNC_ALL &&
+ 	    radix_tree_tagged(&NFS_I(inode)->nfs_page_tree,
+ 		    NFS_PAGE_TAG_LOCKED)) {
+ 		mark_inode_unstable_pages(inode);
+diff --git a/include/linux/writeback.h b/include/linux/writeback.h
+index 76e8903..3fd5c3e 100644
+--- a/include/linux/writeback.h
++++ b/include/linux/writeback.h
+@@ -62,6 +62,11 @@ struct writeback_control {
+ 	 * so we use a single control to update them
+ 	 */
+ 	unsigned no_nrwrite_index_update:1;
++	/*
++	 * The following is used by balance_dirty_pages() to
++	 * force NFS to commit unstable pages.
++	 */
++	unsigned force_commit:1;
+ };
+ 
+ /*
+diff --git a/mm/page-writeback.c b/mm/page-writeback.c
+index 0b19943..ede5356 100644
+--- a/mm/page-writeback.c
++++ b/mm/page-writeback.c
+@@ -485,6 +485,7 @@ static void balance_dirty_pages(struct address_space *mapping,
+ {
+ 	long nr_reclaimable, bdi_nr_reclaimable;
+ 	long nr_writeback, bdi_nr_writeback;
++	long nr_unstable_nfs;
+ 	unsigned long background_thresh;
+ 	unsigned long dirty_thresh;
+ 	unsigned long bdi_thresh;
+@@ -505,8 +506,9 @@ static void balance_dirty_pages(struct address_space *mapping,
+ 		get_dirty_limits(&background_thresh, &dirty_thresh,
+ 				&bdi_thresh, bdi);
+ 
++		nr_unstable_nfs = global_page_state(NR_UNSTABLE_NFS);
+ 		nr_reclaimable = global_page_state(NR_FILE_DIRTY) +
+-					global_page_state(NR_UNSTABLE_NFS);
++					nr_unstable_nfs;
+ 		nr_writeback = global_page_state(NR_WRITEBACK);
+ 
+ 		bdi_nr_reclaimable = bdi_stat(bdi, BDI_RECLAIMABLE);
+@@ -537,6 +539,11 @@ static void balance_dirty_pages(struct address_space *mapping,
+ 		 * up.
+ 		 */
+ 		if (bdi_nr_reclaimable > bdi_thresh) {
++			wbc.force_commit = 0;
++			/* Force NFS to also free up unstable writes. */
++			if (nr_unstable_nfs > nr_reclaimable / 2)
++				wbc.force_commit = 1;
++
+ 			writeback_inodes_wbc(&wbc);
+ 			pages_written += write_chunk - wbc.nr_to_write;
+ 			get_dirty_limits(&background_thresh, &dirty_thresh,
 
-> But again, you would only see this for normal cached accesses, or for  
-> llseek(SEEK_END).  The O_DIRECT path splits off well before that  
-> nfs_revalidate_file_size() call in nfs_file_write().
-> 
-> For llseek(SEEK_END), this is the preferred way to get the size of a  
-> file through an O_DIRECT file descriptor.  This is precisely because  
-> O_DIRECT does not guarantee that the client's copy of the file's  
-> attributes are up to date.
-
-Yes, that makes sense and is what the code comments help with
-understanding.
-
-> I see that the WRITE from your trace is a FILE_SYNC write.  In this  
-> case, perhaps the GETATTR is really not required for close-to-open.   
-> Especially if the server has returned post-op attributes in the WRITE  
-> reply, the client would already have up-to-date file attributes  
-> available to it.
-
-Yes, FILE_SYNC is normal for O_DIRECT WRITEs on NFSv3 and v4.
-
-> >> Above you said that "any readahead is a waste."  That's only true if
-> >> your database is significantly larger than available physical memory.
-> >
-> > It is.  It's waaaay larger than all available physical memory on
-> > a given client machine.  (Think of tens of millions of users' email
-> > accounts.)
-> 
-> If the accesses on any given client are localized in the file (eg.  
-> there are only a few e-mail users on that client) this should be  
-> handily dealt with by normal O/S caching behavior, even with an  
-> enormous database file.  It really depends on the file's resident set  
-> on each client.
-
-As to how the incoming requests are assigned to specific or random
-clients, I am unsure.  I'm not on their team.  I've just been assisting
-with the backend issues (NFS client performance).
-
-In this particular use case, there isn't a single enormous database.
-Each user has their own file which itself is their private database.
-(Better for privacy and security.)
-
-> >> Otherwise, you are simply populating the local page cache faster than
-> >> if your app read exactly what was needed each time.
-> >
-> > It's a multithreaded app running across many clients accessing many
-> > servers.  Any excess network traffic at all to the database is a
-> > very bad idea being detrimental to both to the particular client's
-> > throughput but all other clients wanting to access files on the
-> > burdened NFS servers.
-> 
-> Which is why you might be better off relying on client-side caches in  
-> this case.  Efficient client caching is absolutely required for good  
-> network and server scalability with such workloads.
-
-It is a very unusual workload due to the sheer number of files
-and their access patterns.  Data cache hits are typically very
-low because of the large amount of data and the bimodal access
-patterns between MTAs and users, and users are pretty arbitrary too.
-Attribute cache hits are typically low too, but due to their small
-size, the attributes are more likely to stay in their cache.
-
-> If all of this data is contained in a single large file, your  
-> application is relying on a single set of file attributes to determine  
-> whether the client's cache for all the file data is stale.  So  
-> basically, read ahead is pulling a bunch of data into the client's  
-> page cache, then someone changes one byte in the file, and all that  
-> data is invalidated in one swell foop.  In this case, it's not  
-> necessarily read-ahead that's killing your performance, it's excessive  
-> client data cache invalidations.
-
-That's not the general case here since we're dealing with tens of
-millions of files on one server, but I didn't know that all the data
-of a file pulled gets invalidated like that.  I would expect only
-the page (4K) to be marked, not the whole set.
-
-> >> On fast modern
-> >> networks there is little latency difference between reading a single
-> >> page and reading 16 pages in a single NFS read request.  The cost  
-> >> is a
-> >> larger page cache footprint.
-> >
-> > Believe me, the extra file accesses do make a huge difference.
-> 
-> If your rsize is big enough, the read-ahead traffic usually won't  
-> increase the number of NFS READs on the wire; it increases the size of  
-> each request.
-
-rsize is 32K.  That's generally true (especially after Wu's fix),
-but that extra network traffic is overburdening the NFS servers.
-
-> Client read coalescing will attempt to bundle the  
-> additional requested data into a minimal number of wire READs.  A  
-> closer examination of the on-the-wire READ count vs. the amount of  
-> data read might be interesting.  It might also be useful to see how  
-> often the same client reads the same page in the file repeatedly.
-
-Because the app was designed with O_DIRECT in mind, the app does its
-own file buffering in user space.
-
-If for the Linux port we can move away from O_DIRECT, it would be
-interesting to see if that extra user space buffering could be
-disabled and let the kernel do its job.
-
-> > The kernel can't adjust its strategy over time.  There is no history
-> > maintained because the app opens a given file, updates it, closes
-> > it, then moves on to the next file.  The file descriptor is not kept
-> > open beyond just one or two read or write operations.  Also, the
-> > chance of the same file needing to be updated by the same client
-> > within any reasonable time frame is very small.
-> 
-> Yes, read-ahead context is abandoned when a file descriptor is  
-> closed.  That immediately suggests that file descriptors should be  
-> left open, but that's only as practical as your application allows.
-
-Not in this case with tens of millions of files.
-
-> > Hope all this helps understand the problems I'm dealing with.
-> 
-> Yes, this is more clear, thanks.
-
-Glad it helped!
-
-> --
-> Chuck Lever
-> chuck[dot]lever[at]oracle[dot]com
-> 
-> 
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
-Quentin
