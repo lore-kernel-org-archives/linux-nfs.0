@@ -1,48 +1,51 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from verein.lst.de ([213.95.11.210]:39995 "EHLO verein.lst.de"
+Received: from mx2.netapp.com ([216.240.18.37]:58531 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751977Ab0ADNux (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 4 Jan 2010 08:50:53 -0500
-Date: Mon, 4 Jan 2010 14:50:45 +0100
-From: Christoph Hellwig <hch@lst.de>
-To: bfields@fieldses.org, viro@zeniv.linux.org.uk, jack@suse.cz
-Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org
-Subject: Re: [PATCH 1/2] nfsd: make sure data is on disk before calling ->fsync
-Message-ID: <20100104135045.GA18072@lst.de>
-References: <20091225164445.GA4578@lst.de>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20091225164445.GA4578@lst.de>
+	id S1756020Ab0AFSwz convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 6 Jan 2010 13:52:55 -0500
+Subject: Re: [PATCH] improve the performance of large sequential write NFS
+ workloads
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Peter Zijlstra <peterz@infradead.org>
+Cc: Wu Fengguang <fengguang.wu@intel.com>, Jan Kara <jack@suse.cz>,
+        Steve Rago <sar@nec-labs.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "jens.axboe" <jens.axboe@oracle.com>,
+        Peter Staubach <staubach@redhat.com>,
+        Arjan van de Ven <arjan@infradead.org>, Ingo Molnar <mingo@elte.hu>,
+        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
+In-Reply-To: <1262803040.4049.62.camel@laptop>
+References: <20091222015907.GA6223@localhost>
+	 <1261578107.2606.11.camel@localhost> <20091223180551.GD3159@quack.suse.cz>
+	 <1261595574.6775.2.camel@localhost> <20091224025228.GA12477@localhost>
+	 <1261656281.3596.1.camel@localhost> <20091225055617.GA8595@localhost>
+	 <1262190168.7332.6.camel@localhost> <20091231050441.GB19627@localhost>
+	 <1262286828.8151.113.camel@localhost>  <20100106030346.GA15962@localhost>
+	 <1262796962.4251.91.camel@localhost>  <1262802387.4251.117.camel@localhost>
+	 <1262803040.4049.62.camel@laptop>
+Content-Type: text/plain; charset="UTF-8"
+Date: Wed, 06 Jan 2010 13:52:07 -0500
+Message-ID: <1262803927.4251.133.camel@localhost>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-ping?  this fixes a quite nasty issue introduced in 2.6.32, so we should
-fix it ASAP (including backport to -stable)
+On Wed, 2010-01-06 at 19:37 +0100, Peter Zijlstra wrote: 
+> On Wed, 2010-01-06 at 13:26 -0500, Trond Myklebust wrote:
+> > OK. It looks as if the only key to finding out how many unstable writes
+> > we have is to use global_page_state(NR_UNSTABLE_NFS), so we can't
+> > specifically target our own backing-dev. 
+> 
+> Would be a simple matter of splitting BDI_UNSTABLE out from
+> BDI_RECLAIMABLE, no?
+> 
+> Something like
 
-On Fri, Dec 25, 2009 at 05:44:45PM +0100, Christoph Hellwig wrote:
-> nfsd is not using vfs_fsync, so I missed it when changing the calling
-> convention during the 2.6.32 window.  This patch fixes it to not only
-> start the data writeout, but also wait for it to complete before calling
-> into ->fsync.
-> 
-> Signed-off-by: Christoph Hellwig <hch@lst.de>
-> 
-> Index: linux-2.6/fs/nfsd/vfs.c
-> ===================================================================
-> --- linux-2.6.orig/fs/nfsd/vfs.c	2009-12-25 17:21:32.371024157 +0100
-> +++ linux-2.6/fs/nfsd/vfs.c	2009-12-25 17:31:39.644006085 +0100
-> @@ -780,12 +780,9 @@ static inline int nfsd_dosync(struct fil
->  	int (*fsync) (struct file *, struct dentry *, int);
->  	int err;
->  
-> -	err = filemap_fdatawrite(inode->i_mapping);
-> +	err = filemap_write_and_wait(inode->i_mapping);
->  	if (err == 0 && fop && (fsync = fop->fsync))
->  		err = fsync(filp, dp, 0);
-> -	if (err == 0)
-> -		err = filemap_fdatawait(inode->i_mapping);
-> -
->  	return err;
->  }
->  
----end quoted text---
+OK. How about if we also add in a bdi->capabilities flag to tell that we
+might have BDI_UNSTABLE? That would allow us to avoid the potentially
+expensive extra calls to bdi_stat() and bdi_stat_sum() for the non-nfs
+case?
+
+Cheers
+   Trond
