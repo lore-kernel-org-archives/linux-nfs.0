@@ -1,49 +1,36 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: [PATCH 0/6] Re: [PATCH] improve the performance of large
- sequential write NFS workloads
-Date: Wed, 06 Jan 2010 17:03:29 -0500
-Message-ID: <1262815409.4251.169.camel@localhost>
-References: <20100106200928.GB22781@quack.suse.cz>
-	 <20100106205110.22547.85345.stgit@localhost.localdomain>
-	 <20100106214456.GE22781@quack.suse.cz>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH 1/2] nfsd: make sure data is on disk before calling
+	->fsync
+Date: Wed, 6 Jan 2010 17:46:21 -0500
+Message-ID: <20100106224621.GB11677@fieldses.org>
+References: <20091225164445.GA4578@lst.de> <20100104135045.GA18072@lst.de> <20100104204206.GD30129@fieldses.org> <20100105152231.GA32332@lst.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Cc: Wu Fengguang <fengguang.wu@intel.com>,
-	Peter Zijlstra <peterz@infradead.org>,
-	Steve Rago <sar@nec-labs.com>,
-	"linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-	"jens.axboe" <jens.axboe@oracle.com>,
-	Peter Staubach <staubach@redhat.com>,
-	Arjan van de Ven <arjan@infradead.org>,
-	Ingo Molnar <mingo@elte.hu>,
-	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
-To: Jan Kara <jack@suse.cz>
+Content-Type: text/plain; charset=us-ascii
+Cc: viro@zeniv.linux.org.uk, jack@suse.cz, linux-nfs@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org
+To: Christoph Hellwig <hch@lst.de>
 Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <20100106214456.GE22781@quack.suse.cz>
+In-Reply-To: <20100105152231.GA32332@lst.de>
 Sender: linux-fsdevel-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 2010-01-06 at 22:44 +0100, Jan Kara wrote: 
-> On Wed 06-01-10 15:51:10, Trond Myklebust wrote:
-> > Peter Zijlstra (1):
-> >       VM: Split out the accounting of unstable writes from BDI_RECLAIMABLE
+On Tue, Jan 05, 2010 at 04:22:31PM +0100, Christoph Hellwig wrote:
+> On Mon, Jan 04, 2010 at 03:42:06PM -0500, J. Bruce Fields wrote:
+> > On Mon, Jan 04, 2010 at 02:50:45PM +0100, Christoph Hellwig wrote:
+> > > ping?  this fixes a quite nasty issue introduced in 2.6.32, so we should
+> > > fix it ASAP (including backport to -stable)
 > > 
-> > Trond Myklebust (5):
-> >       NFS: Run COMMIT as an asynchronous RPC call when wbc->for_background is set
-> >       VM: Use per-bdi unstable accounting to improve use of wbc->force_commit
-> >       VM: Don't call bdi_stat(BDI_UNSTABLE) on non-nfs backing-devices
-> >       VM/NFS: The VM must tell the filesystem when to free reclaimable pages
-> >       VFS: Ensure that writeback_single_inode() commits unstable writes
->   I think the series would be nicer if you made Peter's patch #2 and join
-> your patches
-> "VM/NFS: The VM must tell the filesystem when to free reclaimable pages"
-> and
-> "VM: Use per-bdi unstable accounting to improve use of wbc->force_commit"
+> > Apologies for the delay.  Which commit exactly introduced the original
+> > regression?  I'll take over getting them into 2.6.33 and 2.6.32.y unless
+> > you tell me you're already doing that.
 > 
-> 									Honza
+> 2daea67e966dc0c42067ebea015ddac6834cef88 changed the calling convention.
+> Removal of the explicit wait in the filesystem might have been another
+> few commits.
+> 
+> If you can easily take care of getting the first patch into -stable I'll
+> leave it to you.
 
-Indeed, and if everyone is OK with Peter's patch, I'll do that.
+OK, thanks, done.  And the other patch queued up for 2.6.34.
 
-Cheers
-  Trond
-
+--b.
