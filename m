@@ -1,183 +1,143 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH 3/4] nfs-utils: add statdb_dump utility
-Date: Wed, 6 Jan 2010 10:47:04 -0500
-Message-ID: <CB3DBE5E-BAF5-426A-92D1-364CB81A953D@oracle.com>
-References: <1262791209-8045-1-git-send-email-jlayton@redhat.com> <1262791209-8045-4-git-send-email-jlayton@redhat.com>
-Mime-Version: 1.0 (Apple Message framework v936)
-Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
-Cc: steved@redhat.com, linux-nfs@vger.kernel.org
-To: Jeff Layton <jlayton@redhat.com>
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: Re: [PATCH] improve the performance of large sequential write NFS
+ workloads
+Date: Wed, 06 Jan 2010 11:56:02 -0500
+Message-ID: <1262796962.4251.91.camel@localhost>
+References: <20091222015907.GA6223@localhost>
+	 <1261578107.2606.11.camel@localhost> <20091223180551.GD3159@quack.suse.cz>
+	 <1261595574.6775.2.camel@localhost> <20091224025228.GA12477@localhost>
+	 <1261656281.3596.1.camel@localhost> <20091225055617.GA8595@localhost>
+	 <1262190168.7332.6.camel@localhost> <20091231050441.GB19627@localhost>
+	 <1262286828.8151.113.camel@localhost>  <20100106030346.GA15962@localhost>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="UTF-8"
+Cc: Jan Kara <jack@suse.cz>, Steve Rago <sar-a+KepyhlMvJWk0Htik3J/w@public.gmane.org>,
+	Peter Zijlstra <peterz@infradead.org>,
+	"linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+	"jens.axboe" <jens.axboe@oracle.com>,
+	Peter Staubach <staubach@redhat.com>,
+	Arjan van de Ven <arjan@infradead.org>,
+	Ingo Molnar <mingo@elte.hu>,
+	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
+To: Wu Fengguang <fengguang.wu@intel.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet12.oracle.com ([148.87.113.124]:23352 "EHLO
-	rcsinet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755925Ab0AFPrl (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 6 Jan 2010 10:47:41 -0500
-In-Reply-To: <1262791209-8045-4-git-send-email-jlayton@redhat.com>
+Received: from mx2.netapp.com ([216.240.18.37]:55246 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932306Ab0AFQ5M convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 6 Jan 2010 11:57:12 -0500
+In-Reply-To: <20100106030346.GA15962@localhost>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Wed, 2010-01-06 at 11:03 +0800, Wu Fengguang wrote: 
+> Trond,
+> 
+> On Fri, Jan 01, 2010 at 03:13:48AM +0800, Trond Myklebust wrote:
+> > The above change improves on the existing code, but doesn't solve the
+> > problem that write_inode() isn't a good match for COMMIT. We need to
+> > wait for all the unstable WRITE rpc calls to return before we can know
+> > whether or not a COMMIT is needed (some commercial servers never require
+> > commit, even if the client requested an unstable write). That was the
+> > other reason for the change.
+> 
+> Ah good to know that reason. However we cannot wait for ongoing WRITEs
+> for unlimited time or pages, otherwise nr_unstable goes up and squeeze 
+> nr_dirty and nr_writeback to zero, and stall the cp process for a long
+> time, as demonstrated by the trace (more reasoning in previous email).
 
-On Jan 6, 2010, at 10:20 AM, Jeff Layton wrote:
+OK. I think we need a mechanism to allow balance_dirty_pages() to
+communicate to the filesystem that it really is holding too many
+unstable pages. Currently, all we do is say that 'your total is too
+big', and then let the filesystem figure out what it needs to do.
 
-> To dump contents of statd's monitor DB.
->
-> Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> ---
-> tests/Makefile.am   |    6 +++
-> tests/statdb_dump.c |   99 ++++++++++++++++++++++++++++++++++++++++++ 
-> +++++++++
-> 2 files changed, 105 insertions(+), 0 deletions(-)
-> create mode 100644 tests/statdb_dump.c
->
-> diff --git a/tests/Makefile.am b/tests/Makefile.am
-> index 375af80..a20b42b 100644
-> --- a/tests/Makefile.am
-> +++ b/tests/Makefile.am
-> @@ -1,5 +1,11 @@
-> ## Process this file with automake to produce Makefile.in
->
-> +check_PROGRAMS = statdb_dump
-> +statdb_dump_SOURCES = statdb_dump.c
-> +
-> +statdb_dump_LDADD = ../support/nfs/libnfs.a \
-> +		    ../support/nsm/libnsm.a $(LIBCAP)
-> +
-> SUBDIRS = nsm_client
->
-> MAINTAINERCLEANFILES = Makefile.in
-> diff --git a/tests/statdb_dump.c b/tests/statdb_dump.c
-> new file mode 100644
-> index 0000000..6b69008
-> --- /dev/null
-> +++ b/tests/statdb_dump.c
-> @@ -0,0 +1,99 @@
-> +/*
-> + * statdb_dump.c -- dump contents of statd's monitor DB
-> + *
-> + * Copyright (C) 2010  Red Hat, Jeff Layton <jlayton@redhat.com>
-> + *
-> + * This program is free software; you can redistribute it and/or
-> + * modify it under the terms of the GNU General Public License
-> + * as published by the Free Software Foundation; either version 2
-> + * of the License, or (at your option) any later version.
-> + *
-> + * This program is distributed in the hope that it will be useful,
-> + * but WITHOUT ANY WARRANTY; without even the implied warranty of
-> + * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-> + * GNU General Public License for more details.
-> + *
-> + * You should have received a copy of the GNU General Public License
-> + * along with this program; if not, write to the Free Software
-> + * Foundation, Inc., 51 Franklin Street, Fifth Floor,
-> + * Boston, MA 02110-1301, USA.
-> + */
-> +
-> +#ifdef HAVE_CONFIG_H
-> +#include "config.h"
-> +#endif
-> +
-> +#include <stdio.h>
-> +#include <errno.h>
-> +#include <arpa/inet.h>
-> +
-> +#include "nsm.h"
-> +#include "xlog.h"
-> +
-> +static char cookiebuf[(SM_PRIV_SIZE * 2) + 1];
-> +static char addrbuf[INET6_ADDRSTRLEN + 1];
+So how about if we modify your heuristic to do something like this? It
+applies on top of the previous patch.
 
-Just a nit, but if you use these only inside of dump_host(), you could  
-declare them in there too, even though they are static.  Both are  
-pretty small buffers, so you could just as easily put them on the  
-stack, I suppose.
+Cheers
+  Trond
+--------------------------------------------------------------------------------------------------------- 
+VM/NFS: The VM must tell the filesystem when to free reclaimable pages
 
-> +
-> +static unsigned int
-> +dump_host(const char *hostname, const struct sockaddr *sa, const  
-> struct mon *m,
-> +	  const time_t timestamp)
-> +{
-> +	int ret;
-> +	const char *addr;
-> +	struct sockaddr_in *sin;
-> +	struct sockaddr_in6 *sin6;
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
 
-Since *sa is a const pointer, do these need to be const as well?
+balance_dirty_pages() should really tell the filesystem whether or not it
+has an excess of actual dirty pages, or whether it would be more useful to
+start freeing up the reclaimable pages.
 
-> +
-> +	ret = nsm_priv_to_hex(m->priv, cookiebuf, sizeof(cookiebuf));
-> +	if (!ret) {
-> +		xlog(L_ERROR, "Unable to convert cookie to hex string.\n");
-> +		return ret;
-> +	}
-> +
-> +	switch (sa->sa_family) {
-> +	case AF_INET:
-> +		sin = (struct sockaddr_in *)sa;
+Assume that if the number of dirty pages associated with this backing-dev
+is less than 1/2 the number of reclaimable pages, then we should
+concentrate on freeing up the latter.
 
-If you build with -Wstrict-aliasing=2 (I think) you might see some  
-warnings about pointer aliasing here.  I'm pretty sure if you cast to  
-(char *) you will eliminate that warning, and help the compiler create  
-better optimized code.
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
 
-> +		addr = inet_ntop(sa->sa_family, &sin->sin_addr.s_addr, addrbuf,
-> +				 sizeof(*sin));
-
-As you discovered, this needs to be (socklen_t)sizeof(addrbuf), not  
-sizeof(*sin).  Likewise below.
-
-> +		break;
-> +	case AF_INET6:
-> +		sin6 = (struct sockaddr_in6 *)sa;
-
-> +		addr = inet_ntop(sa->sa_family, &sin6->sin6_addr, addrbuf,
-> +				 sizeof(*sin6));
-> +		break;
-> +	default:
-> +		xlog(L_ERROR, "Unrecognized address family: %hu\n",
-> +			sa->sa_family);
-> +		return 0;
-> +	}
-> +
-> +	if (addr == NULL) {
-> +		xlog(L_ERROR, "Unable to convert sockaddr to string: %s\n",
-> +				strerror(errno));
-> +		return 0;
-> +	}
-> +
-> +	/*
-> +	 * Callers of this program should assume that in the future, extra
-> +	 * fields may be added to the output. Anyone adding extra fields to
-> +	 * the output should add them to the end of the line.
-> +	 */
-> +	printf("%s %s %s %s %s %d %d %d\n",
-> +			hostname, addr, cookiebuf,
-> +			m->mon_id.mon_name,
-> +			m->mon_id.my_id.my_name,
-> +			m->mon_id.my_id.my_prog,
-> +			m->mon_id.my_id.my_vers,
-> +			m->mon_id.my_id.my_proc);
-> +
-> +	return 1;
-> +}
-> +
-> +int
-> +main(int argc, char **argv)
-> +{
-> +	xlog_syslog(0);
-> +	xlog_stderr(1);
-> +	xlog_open(argv[0]);
-> +	
-> +	nsm_load_monitor_list(dump_host);
-> +	return 0;
-> +}
-> -- 
-> 1.6.5.2
->
-
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+ fs/nfs/write.c              |    9 +++++++--
+ include/linux/backing-dev.h |    6 ++++++
+ mm/page-writeback.c         |    7 +++++--
+ 3 files changed, 18 insertions(+), 4 deletions(-)
 
 
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index 910be28..36113e6 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -1420,8 +1420,10 @@ int nfs_commit_unstable_pages(struct address_space *mapping,
+ 	if (wbc->sync_mode != WB_SYNC_ALL &&
+ 	    radix_tree_tagged(&NFS_I(inode)->nfs_page_tree,
+ 		    NFS_PAGE_TAG_LOCKED)) {
+-		mark_inode_unstable_pages(inode);
+-		return 0;
++		if (wbc->bdi == NULL)
++			goto out_nocommit;
++		if (wbc->bdi->dirty_exceeded != BDI_RECLAIMABLE_EXCEEDED)
++			goto out_nocommit;
+ 	}
+ 	if (wbc->nonblocking)
+ 		flags = 0;
+@@ -1429,6 +1431,9 @@ int nfs_commit_unstable_pages(struct address_space *mapping,
+ 	if (ret > 0)
+ 		ret = 0;
+ 	return ret;
++out_nocommit:
++	mark_inode_unstable_pages(inode);
++	return 0;
+ }
+ 
+ #else
+diff --git a/include/linux/backing-dev.h b/include/linux/backing-dev.h
+index fcbc26a..cd1645e 100644
+--- a/include/linux/backing-dev.h
++++ b/include/linux/backing-dev.h
+@@ -94,6 +94,12 @@ struct backing_dev_info {
+ #endif
+ };
+ 
++enum bdi_dirty_exceeded_state {
++	BDI_NO_DIRTY_EXCESS = 0,
++	BDI_DIRTY_EXCEEDED,
++	BDI_RECLAIMABLE_EXCEEDED,
++};
++
+ int bdi_init(struct backing_dev_info *bdi);
+ void bdi_destroy(struct backing_dev_info *bdi);
+ 
+diff --git a/mm/page-writeback.c b/mm/page-writeback.c
+index 0b19943..0133c8f 100644
+--- a/mm/page-writeback.c
++++ b/mm/page-writeback.c
+@@ -524,8 +524,11 @@ static void balance_dirty_pages(struct address_space *mapping,
+ 				(background_thresh + dirty_thresh) / 2)
+ 			break;
+ 
+-		if (!bdi->dirty_exceeded)
+-			bdi->dirty_exceeded = 1;
++		if (bdi_nr_writeback > bdi_nr_reclaimable / 2) {
++			if (bdi->dirty_exceeded != BDI_DIRTY_EXCEEDED)
++				bdi->dirty_exceeded = BDI_DIRTY_EXCEEDED;
++		} else if (bdi->dirty_exceeded != BDI_RECLAIMABLE_EXCEEDED)
++				bdi->dirty_exceeded = BDI_RECLAIMABLE_EXCEEDED;
+ 
+ 		/* Note: nr_reclaimable denotes nr_dirty + nr_unstable.
+ 		 * Unstable writes are a feature of certain networked
 
