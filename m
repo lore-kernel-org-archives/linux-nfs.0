@@ -1,9 +1,9 @@
 From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH 0/5] Re: [PATCH] improve the performance of large
- sequential write NFS workloads
-Date: Thu, 07 Jan 2010 09:41:42 -0500
-Message-ID: <20100107144137.17158.53673.stgit@localhost.localdomain>
-References: <20100107143735.GA20300@localhost>
+Subject: [PATCH 4/5] VM/NFS: The VM must tell the filesystem when to free
+ reclaimable pages
+Date: Thu, 07 Jan 2010 09:41:43 -0500
+Message-ID: <20100107144143.17158.53629.stgit@localhost.localdomain>
+References: <20100107144137.17158.53673.stgit@localhost.localdomain>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: Peter Zijlstra <peterz@infradead.org>, Jan Kara <jack@suse.cz>,
@@ -16,45 +16,95 @@ Cc: Peter Zijlstra <peterz@infradead.org>, Jan Kara <jack@suse.cz>,
 	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
 To: Wu Fengguang <fengguang.wu@intel.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:17898 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:20685 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752342Ab0AGOoj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 7 Jan 2010 09:44:39 -0500
-In-Reply-To: <20100107143735.GA20300@localhost>
+	id S1752430Ab0AGOol (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 7 Jan 2010 09:44:41 -0500
+In-Reply-To: <20100107144137.17158.53673.stgit-bi+AKbBUZKY6gyzm1THtWbp2dZbC/Bob@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Take 3. Incorporate Fengguang's suggestion that we change the name of
-the force_commit flag.
+balance_dirty_pages() should really tell the filesystem whether or not it
+has an excess of actual dirty pages, or whether it would be more useful to
+start freeing up the unstable writes.
 
-Cheers
-  Trond
+Assume that if the number of unstable writes is more than 1/2 the number of
+reclaimable pages, then we should force NFS to free up the former.
 
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+Acked-by: Jan Kara <jack@suse.cz>
+Acked-by: Peter Zijlstra <peterz@infradead.org>
 ---
 
-Peter Zijlstra (1):
-      VM: Split out the accounting of unstable writes from BDI_RECLAIMABLE
+ fs/nfs/write.c            |    2 +-
+ include/linux/writeback.h |    5 +++++
+ mm/page-writeback.c       |   12 ++++++++++--
+ 3 files changed, 16 insertions(+), 3 deletions(-)
 
-Trond Myklebust (4):
-      NFS: Run COMMIT as an asynchronous RPC call when wbc->for_background is set
-      VM/NFS: The VM must tell the filesystem when to free reclaimable pages
-      VM: Don't call bdi_stat(BDI_UNSTABLE) on non-nfs backing-devices
-      VFS: Ensure that writeback_single_inode() commits unstable writes
-
-
- fs/fs-writeback.c           |   31 ++++++++++++++++++++++++++++++-
- fs/nfs/client.c             |    1 +
- fs/nfs/file.c               |    1 +
- fs/nfs/inode.c              |   16 ----------------
- fs/nfs/internal.h           |    3 ++-
- fs/nfs/super.c              |    2 --
- fs/nfs/write.c              |   39 +++++++++++++++++++++++++++++++++++----
- include/linux/backing-dev.h |    9 ++++++++-
- include/linux/fs.h          |    9 +++++++++
- include/linux/writeback.h   |    5 +++++
- mm/backing-dev.c            |    6 ++++--
- mm/filemap.c                |    2 +-
- mm/page-writeback.c         |   30 ++++++++++++++++++++++++------
- mm/truncate.c               |    2 +-
- 14 files changed, 121 insertions(+), 35 deletions(-)
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index 36549b1..43e47b4 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -1417,7 +1417,7 @@ int nfs_commit_unstable_pages(struct address_space *mapping,
+ 	/* Don't commit yet if this is a non-blocking flush and there are
+ 	 * outstanding writes for this mapping.
+ 	 */
+-	if (wbc->sync_mode != WB_SYNC_ALL &&
++	if (!wbc->force_commit_unstable && wbc->sync_mode != WB_SYNC_ALL &&
+ 	    radix_tree_tagged(&NFS_I(inode)->nfs_page_tree,
+ 		    NFS_PAGE_TAG_LOCKED)) {
+ 		mark_inode_unstable_pages(inode);
+diff --git a/include/linux/writeback.h b/include/linux/writeback.h
+index 76e8903..8229139 100644
+--- a/include/linux/writeback.h
++++ b/include/linux/writeback.h
+@@ -62,6 +62,11 @@ struct writeback_control {
+ 	 * so we use a single control to update them
+ 	 */
+ 	unsigned no_nrwrite_index_update:1;
++	/*
++	 * The following is used by balance_dirty_pages() to
++	 * force NFS to commit unstable pages.
++	 */
++	unsigned force_commit_unstable:1;
+ };
+ 
+ /*
+diff --git a/mm/page-writeback.c b/mm/page-writeback.c
+index c06739b..6a0aec7 100644
+--- a/mm/page-writeback.c
++++ b/mm/page-writeback.c
+@@ -503,6 +503,7 @@ static void balance_dirty_pages(struct address_space *mapping,
+ 			.nr_to_write	= write_chunk,
+ 			.range_cyclic	= 1,
+ 		};
++		long bdi_nr_unstable = 0;
+ 
+ 		get_dirty_limits(&background_thresh, &dirty_thresh,
+ 				&bdi_thresh, bdi);
+@@ -512,8 +513,10 @@ static void balance_dirty_pages(struct address_space *mapping,
+ 		nr_writeback = global_page_state(NR_WRITEBACK);
+ 
+ 		bdi_nr_reclaimable = bdi_stat(bdi, BDI_DIRTY);
+-		if (bdi_cap_account_unstable(bdi))
+-			bdi_nr_reclaimable += bdi_stat(bdi, BDI_UNSTABLE);
++		if (bdi_cap_account_unstable(bdi)) {
++			bdi_nr_unstable = bdi_stat(bdi, BDI_UNSTABLE);
++			bdi_nr_reclaimable += bdi_nr_unstable;
++		}
+ 		bdi_nr_writeback = bdi_stat(bdi, BDI_WRITEBACK);
+ 
+ 		if (bdi_nr_reclaimable + bdi_nr_writeback <= bdi_thresh)
+@@ -541,6 +544,11 @@ static void balance_dirty_pages(struct address_space *mapping,
+ 		 * up.
+ 		 */
+ 		if (bdi_nr_reclaimable > bdi_thresh) {
++			wbc.force_commit_unstable = 0;
++			/* Force NFS to also free up unstable writes. */
++			if (bdi_nr_unstable > bdi_nr_reclaimable / 2)
++				wbc.force_commit_unstable = 1;
++
+ 			writeback_inodes_wbc(&wbc);
+ 			pages_written += write_chunk - wbc.nr_to_write;
+ 			get_dirty_limits(&background_thresh, &dirty_thresh,
 
