@@ -1,40 +1,61 @@
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: Re: [PATCH 2/6] VM/NFS: The VM must tell the filesystem when to
- free reclaimable pages
-Date: Thu, 07 Jan 2010 00:30:43 -0500
-Message-ID: <1262842243.2185.47.camel@localhost>
-References: <20100106205110.22547.85345.stgit@localhost.localdomain>
-	 <20100106205110.22547.81645.stgit@localhost.localdomain>
-	 <20100107022903.GD9475@localhost> <1262839763.2185.25.camel@localhost>
-	 <20100107050307.GA19399@localhost>
+From: Peter Zijlstra <peterz@infradead.org>
+Subject: Re: [PATCH 0/6] Re: [PATCH] improve the performance of large
+ sequential write NFS workloads
+Date: Thu, 07 Jan 2010 09:16:16 +0100
+Message-ID: <1262852176.4049.72.camel@laptop>
+References: <20100106200928.GB22781@quack.suse.cz>
+	 <20100106205110.22547.85345.stgit@localhost.localdomain>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="UTF-8"
-Cc: Peter Zijlstra <peterz@infradead.org>, Jan Kara <jack@suse.cz>,
-	Steve Rago <sar-a+KepyhlMvJWk0Htik3J/w@public.gmane.org>,
+Cc: Wu Fengguang <fengguang.wu@intel.com>, Jan Kara <jack@suse.cz>,
+	Steve Rago <sar@nec-labs.com>,
 	"linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
 	"jens.axboe" <jens.axboe@oracle.com>,
 	Peter Staubach <staubach@redhat.com>,
 	Arjan van de Ven <arjan@infradead.org>,
 	Ingo Molnar <mingo@elte.hu>,
 	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
-To: Wu Fengguang <fengguang.wu@intel.com>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:14784 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751345Ab0AGFkG convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Jan 2010 00:40:06 -0500
-In-Reply-To: <20100107050307.GA19399@localhost>
-Sender: linux-nfs-owner@vger.kernel.org
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <20100106205110.22547.85345.stgit@localhost.localdomain>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 2010-01-07 at 13:03 +0800, Wu Fengguang wrote:
+On Wed, 2010-01-06 at 15:51 -0500, Trond Myklebust wrote:
+> OK, here is the full series so far. I'm resending because I had to fix
+> up a couple of BDI_UNSTABLE typos in Peter's patch...
 
-> "commit" could also be misread as "commit a transaction"?
-> Anyway I think adding an "nfs" limits the scope to NFS thus makes code
-> reading somehow easier. Just a personal feeling.
+Looks good and thanks for fixing things up!
 
-How about 'force_commit_unstable' instead? That ties it up to the
-unstable writes rather than NFS.
+Acked-by: Peter Zijlstra <peterz@infradead.org>
 
-Cheers
-  Trond
+> 
+> Peter Zijlstra (1):
+>       VM: Split out the accounting of unstable writes from BDI_RECLAIMABLE
+> 
+> Trond Myklebust (5):
+>       NFS: Run COMMIT as an asynchronous RPC call when wbc->for_background is set
+>       VM: Use per-bdi unstable accounting to improve use of wbc->force_commit
+>       VM: Don't call bdi_stat(BDI_UNSTABLE) on non-nfs backing-devices
+>       VM/NFS: The VM must tell the filesystem when to free reclaimable pages
+>       VFS: Ensure that writeback_single_inode() commits unstable writes
+> 
+> 
+>  fs/fs-writeback.c           |   31 ++++++++++++++++++++++++++++++-
+>  fs/nfs/client.c             |    1 +
+>  fs/nfs/file.c               |    1 +
+>  fs/nfs/inode.c              |   16 ----------------
+>  fs/nfs/internal.h           |    3 ++-
+>  fs/nfs/super.c              |    2 --
+>  fs/nfs/write.c              |   39 +++++++++++++++++++++++++++++++++++----
+>  include/linux/backing-dev.h |    9 ++++++++-
+>  include/linux/fs.h          |    9 +++++++++
+>  include/linux/writeback.h   |    5 +++++
+>  mm/backing-dev.c            |    6 ++++--
+>  mm/filemap.c                |    2 +-
+>  mm/page-writeback.c         |   30 ++++++++++++++++++++++++------
+>  mm/truncate.c               |    2 +-
+>  14 files changed, 121 insertions(+), 35 deletions(-)
+> 
+
+
