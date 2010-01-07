@@ -1,52 +1,42 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:32484 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:23253 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752079Ab0ALVs5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 12 Jan 2010 16:48:57 -0500
-From: andros@netapp.com
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 0/6] nfs41: return correct errors on callback replays version 2 
-Date: Tue, 12 Jan 2010 16:48:33 -0500
-Message-Id: <1263332919-2900-1-git-send-email-andros@netapp.com>
+	id S1751839Ab0AGXc5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 7 Jan 2010 18:32:57 -0500
+Message-ID: <4B466F20.1090907@RedHat.com>
+Date: Thu, 07 Jan 2010 18:32:48 -0500
+From: Steve Dickson <SteveD@redhat.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 0/2] showmount bug fixes
+References: <20100107162421.27102.21422.stgit@localhost.localdomain> <4B461F48.4070906@RedHat.com> <7FEF347F-051D-4B08-A647-27506CFEC12A@oracle.com> <4B464355.1000405@RedHat.com> <3C1CD7DD-E915-4FDB-815A-6D9B78A68AE5@oracle.com>
+In-Reply-To: <3C1CD7DD-E915-4FDB-815A-6D9B78A68AE5@oracle.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
+On 01/07/2010 05:43 PM, Chuck Lever wrote:
+> On Jan 7, 2010, at 3:25 PM, Steve Dickson wrote:
+> If you think v2-only servers are so rare, why even bother downshifting
+> the protocol version at all?  
+I did think of this... since a point of this exercise is to begin
+the end of v2 support... but since we have a habit of being backwards 
+compatible (as well as being portable), I figure downshifting was the 
+right thing to do...  
 
-Responded to Tronds comments.
+ 
+> The original showmount command does not
+> have any problem connecting to a v2-only server, since it used only
+> MNTv1 to do the EXPORT request.
+True... The problem is showmount does not handle v3 only servers
+which is another point of this discussion... 
 
-The first three patches clean up callback processing
-0001-nfs41-fix-wrong-error-on-callback-hdr-xdr-overflow.patch
-0002-nfs41-directly-encode-back-channel-error.patch
-0003-nfs41-remove-uneeded-checks-in-callback-processing.patch
+> 
+> Most legacy servers are NFSv2 only.  I bought a new-in-box ReadyNAS a
+> year or so ago that ran Linux 2.4, and it's NFS server was, in fact,
+> v2-only.
+Really.. that is surprising... how well did it perform and could it 
+negotiate up to v3?? 
 
-These next two implement correct error returns for v4.1 callback replays.
-Since our back channel has a ca_maxrequestsize_cached = 0, a replay with
-cachethis set to true results in a NFS4ERR_TOO_BIG_TO_CACHE error.
-This code is set up to do a real DRC.
-A replay with cachethis set to false returns a NFS4ERR_RETRY_UNCACHED_REP
-error.
-0004-nfs41-prepare-for-back-channel-drc.patch
-0005-nfs41-back-channel-drc-minimal-implementation.patch
-
-ADDED:
-0006 nfs41:-implement-cb_recall_slot.patch
-The fore channel session is drained, then the new highest_slot is set.
-
-TODO: The callback code currently returns NFS4ERR_RESOURCE on all xdr
-overflows. This is correct for v4.0, incorrect for v4.1.
-
-Testing:
-
-Modified nfsv4.1 pynfs server tested cb_recall replays with the cb_sequence
-cachethis set to False and to True.
-
-Modified nfs4.1 pyNFS server sends CB_RECALL_SLOT call during the Connectathon
-basic big file test which uses all available slots.
-
-Connectathon tests pass.
-
--->Andy
-
+steved.
