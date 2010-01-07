@@ -1,8 +1,8 @@
 From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH 2/5] VM: Split out the accounting of unstable writes from
- BDI_RECLAIMABLE
+Subject: [PATCH 1/5] VFS: Ensure that writeback_single_inode() commits
+ unstable writes
 Date: Wed, 06 Jan 2010 23:53:31 -0500
-Message-ID: <20100107045331.5986.77158.stgit@localhost.localdomain>
+Message-ID: <20100107045331.5986.87344.stgit@localhost.localdomain>
 References: <20100107045330.5986.55090.stgit@localhost.localdomain>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -18,177 +18,272 @@ To: Wu Fengguang <fengguang.wu@intel.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
 Received: from mx2.netapp.com ([216.240.18.37]:1365 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750771Ab0AGFAn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 7 Jan 2010 00:00:43 -0500
+	id S1750776Ab0AGFAo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 7 Jan 2010 00:00:44 -0500
 In-Reply-To: <20100107045330.5986.55090.stgit-bi+AKbBUZKY6gyzm1THtWbp2dZbC/Bob@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Peter Zijlstra <peterz@infradead.org>
+If the call to do_writepages() succeeded in starting writeback, we do not
+know whether or not we will need to COMMIT any unstable writes until after
+the write RPC calls are finished. Currently, we assume that at least one
+write RPC call will have finished, and set I_DIRTY_DATASYNC by the time
+do_writepages is done, so that write_inode() is triggered.
 
-Signed-off-by: Peter Zijlstra <peterz@infradead.org>
+In order to ensure reliable operation (i.e. ensure that a single call to
+writeback_single_inode() with WB_SYNC_ALL set suffices to ensure that pages
+are on disk) we need to first wait for filemap_fdatawait() to complete,
+then test for unstable pages.
+
+Since NFS is currently the only filesystem that has unstable pages, we can
+add a new inode state I_UNSTABLE_PAGES that NFS alone will set. When set,
+this will trigger a callback to a new address_space_operation to call the
+COMMIT.
+
 Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 Acked-by: Jan Kara <jack@suse.cz>
 ---
 
- fs/nfs/write.c              |    6 +++---
- include/linux/backing-dev.h |    3 ++-
- mm/backing-dev.c            |    6 ++++--
- mm/filemap.c                |    2 +-
- mm/page-writeback.c         |   16 ++++++++++------
- mm/truncate.c               |    2 +-
- 6 files changed, 21 insertions(+), 14 deletions(-)
+ fs/fs-writeback.c  |   31 ++++++++++++++++++++++++++++++-
+ fs/nfs/file.c      |    1 +
+ fs/nfs/inode.c     |   16 ----------------
+ fs/nfs/internal.h  |    3 ++-
+ fs/nfs/super.c     |    2 --
+ fs/nfs/write.c     |   33 ++++++++++++++++++++++++++++++++-
+ include/linux/fs.h |    9 +++++++++
+ 7 files changed, 74 insertions(+), 21 deletions(-)
 
+diff --git a/fs/fs-writeback.c b/fs/fs-writeback.c
+index 1a7c42c..3640769 100644
+--- a/fs/fs-writeback.c
++++ b/fs/fs-writeback.c
+@@ -389,6 +389,17 @@ static int write_inode(struct inode *inode, int sync)
+ }
+ 
+ /*
++ * Commit the NFS unstable pages.
++ */
++static int commit_unstable_pages(struct address_space *mapping,
++		struct writeback_control *wbc)
++{
++	if (mapping->a_ops && mapping->a_ops->commit_unstable_pages)
++		return mapping->a_ops->commit_unstable_pages(mapping, wbc);
++	return 0;
++}
++
++/*
+  * Wait for writeback on an inode to complete.
+  */
+ static void inode_wait_for_writeback(struct inode *inode)
+@@ -475,6 +486,18 @@ writeback_single_inode(struct inode *inode, struct writeback_control *wbc)
+ 	}
+ 
+ 	spin_lock(&inode_lock);
++	/*
++	 * Special state for cleaning NFS unstable pages
++	 */
++	if (inode->i_state & I_UNSTABLE_PAGES) {
++		int err;
++		inode->i_state &= ~I_UNSTABLE_PAGES;
++		spin_unlock(&inode_lock);
++		err = commit_unstable_pages(mapping, wbc);
++		if (ret == 0)
++			ret = err;
++		spin_lock(&inode_lock);
++	}
+ 	inode->i_state &= ~I_SYNC;
+ 	if (!(inode->i_state & (I_FREEING | I_CLEAR))) {
+ 		if ((inode->i_state & I_DIRTY_PAGES) && wbc->for_kupdate) {
+@@ -533,6 +556,12 @@ select_queue:
+ 				inode->i_state |= I_DIRTY_PAGES;
+ 				redirty_tail(inode);
+ 			}
++		} else if (inode->i_state & I_UNSTABLE_PAGES) {
++			/*
++			 * The inode has got yet more unstable pages to
++			 * commit. Requeue...
++			 */
++			redirty_tail(inode);
+ 		} else if (atomic_read(&inode->i_count)) {
+ 			/*
+ 			 * The inode is clean, inuse
+@@ -1051,7 +1080,7 @@ void __mark_inode_dirty(struct inode *inode, int flags)
+ 
+ 	spin_lock(&inode_lock);
+ 	if ((inode->i_state & flags) != flags) {
+-		const int was_dirty = inode->i_state & I_DIRTY;
++		const int was_dirty = inode->i_state & (I_DIRTY|I_UNSTABLE_PAGES);
+ 
+ 		inode->i_state |= flags;
+ 
+diff --git a/fs/nfs/file.c b/fs/nfs/file.c
+index 6b89132..67e50ac 100644
+--- a/fs/nfs/file.c
++++ b/fs/nfs/file.c
+@@ -526,6 +526,7 @@ const struct address_space_operations nfs_file_aops = {
+ 	.migratepage = nfs_migrate_page,
+ 	.launder_page = nfs_launder_page,
+ 	.error_remove_page = generic_error_remove_page,
++	.commit_unstable_pages = nfs_commit_unstable_pages,
+ };
+ 
+ /*
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index faa0918..8341709 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -97,22 +97,6 @@ u64 nfs_compat_user_ino64(u64 fileid)
+ 	return ino;
+ }
+ 
+-int nfs_write_inode(struct inode *inode, int sync)
+-{
+-	int ret;
+-
+-	if (sync) {
+-		ret = filemap_fdatawait(inode->i_mapping);
+-		if (ret == 0)
+-			ret = nfs_commit_inode(inode, FLUSH_SYNC);
+-	} else
+-		ret = nfs_commit_inode(inode, 0);
+-	if (ret >= 0)
+-		return 0;
+-	__mark_inode_dirty(inode, I_DIRTY_DATASYNC);
+-	return ret;
+-}
+-
+ void nfs_clear_inode(struct inode *inode)
+ {
+ 	/*
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index 29e464d..7bb326f 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -211,7 +211,6 @@ extern int nfs_access_cache_shrinker(int nr_to_scan, gfp_t gfp_mask);
+ extern struct workqueue_struct *nfsiod_workqueue;
+ extern struct inode *nfs_alloc_inode(struct super_block *sb);
+ extern void nfs_destroy_inode(struct inode *);
+-extern int nfs_write_inode(struct inode *,int);
+ extern void nfs_clear_inode(struct inode *);
+ #ifdef CONFIG_NFS_V4
+ extern void nfs4_clear_inode(struct inode *);
+@@ -253,6 +252,8 @@ extern int nfs4_path_walk(struct nfs_server *server,
+ extern void nfs_read_prepare(struct rpc_task *task, void *calldata);
+ 
+ /* write.c */
++extern int nfs_commit_unstable_pages(struct address_space *mapping,
++		struct writeback_control *wbc);
+ extern void nfs_write_prepare(struct rpc_task *task, void *calldata);
+ #ifdef CONFIG_MIGRATION
+ extern int nfs_migrate_page(struct address_space *,
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index ce907ef..805c1a0 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -265,7 +265,6 @@ struct file_system_type nfs_xdev_fs_type = {
+ static const struct super_operations nfs_sops = {
+ 	.alloc_inode	= nfs_alloc_inode,
+ 	.destroy_inode	= nfs_destroy_inode,
+-	.write_inode	= nfs_write_inode,
+ 	.statfs		= nfs_statfs,
+ 	.clear_inode	= nfs_clear_inode,
+ 	.umount_begin	= nfs_umount_begin,
+@@ -334,7 +333,6 @@ struct file_system_type nfs4_referral_fs_type = {
+ static const struct super_operations nfs4_sops = {
+ 	.alloc_inode	= nfs_alloc_inode,
+ 	.destroy_inode	= nfs_destroy_inode,
+-	.write_inode	= nfs_write_inode,
+ 	.statfs		= nfs_statfs,
+ 	.clear_inode	= nfs4_clear_inode,
+ 	.umount_begin	= nfs_umount_begin,
 diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index 910be28..36549b1 100644
+index d171696..910be28 100644
 --- a/fs/nfs/write.c
 +++ b/fs/nfs/write.c
-@@ -440,7 +440,7 @@ nfs_mark_request_commit(struct nfs_page *req)
- 			NFS_PAGE_TAG_COMMIT);
+@@ -441,7 +441,7 @@ nfs_mark_request_commit(struct nfs_page *req)
  	spin_unlock(&inode->i_lock);
  	inc_zone_page_state(req->wb_page, NR_UNSTABLE_NFS);
--	inc_bdi_stat(req->wb_page->mapping->backing_dev_info, BDI_RECLAIMABLE);
-+	inc_bdi_stat(req->wb_page->mapping->backing_dev_info, BDI_UNSTABLE);
- 	mark_inode_unstable_pages(inode);
+ 	inc_bdi_stat(req->wb_page->mapping->backing_dev_info, BDI_RECLAIMABLE);
+-	__mark_inode_dirty(inode, I_DIRTY_DATASYNC);
++	mark_inode_unstable_pages(inode);
  }
  
-@@ -451,7 +451,7 @@ nfs_clear_request_commit(struct nfs_page *req)
- 
- 	if (test_and_clear_bit(PG_CLEAN, &(req)->wb_flags)) {
- 		dec_zone_page_state(page, NR_UNSTABLE_NFS);
--		dec_bdi_stat(page->mapping->backing_dev_info, BDI_RECLAIMABLE);
-+		dec_bdi_stat(page->mapping->backing_dev_info, BDI_UNSTABLE);
- 		return 1;
+ static int
+@@ -1406,11 +1406,42 @@ int nfs_commit_inode(struct inode *inode, int how)
  	}
- 	return 0;
-@@ -1322,7 +1322,7 @@ nfs_commit_list(struct inode *inode, struct list_head *head, int how)
- 		nfs_mark_request_commit(req);
- 		dec_zone_page_state(req->wb_page, NR_UNSTABLE_NFS);
- 		dec_bdi_stat(req->wb_page->mapping->backing_dev_info,
--				BDI_RECLAIMABLE);
-+				BDI_UNSTABLE);
- 		nfs_clear_page_tag_locked(req);
- 	}
- 	return -ENOMEM;
-diff --git a/include/linux/backing-dev.h b/include/linux/backing-dev.h
-index fcbc26a..42c3e2a 100644
---- a/include/linux/backing-dev.h
-+++ b/include/linux/backing-dev.h
-@@ -36,7 +36,8 @@ enum bdi_state {
- typedef int (congested_fn)(void *, int);
- 
- enum bdi_stat_item {
--	BDI_RECLAIMABLE,
-+	BDI_DIRTY,
-+	BDI_UNSTABLE,
- 	BDI_WRITEBACK,
- 	NR_BDI_STAT_ITEMS
- };
-diff --git a/mm/backing-dev.c b/mm/backing-dev.c
-index 0e8ca03..88f3655 100644
---- a/mm/backing-dev.c
-+++ b/mm/backing-dev.c
-@@ -88,7 +88,8 @@ static int bdi_debug_stats_show(struct seq_file *m, void *v)
- #define K(x) ((x) << (PAGE_SHIFT - 10))
- 	seq_printf(m,
- 		   "BdiWriteback:     %8lu kB\n"
--		   "BdiReclaimable:   %8lu kB\n"
-+		   "BdiDirty:         %8lu kB\n"
-+		   "BdiUnstable:      %8lu kB\n"
- 		   "BdiDirtyThresh:   %8lu kB\n"
- 		   "DirtyThresh:      %8lu kB\n"
- 		   "BackgroundThresh: %8lu kB\n"
-@@ -102,7 +103,8 @@ static int bdi_debug_stats_show(struct seq_file *m, void *v)
- 		   "wb_list:          %8u\n"
- 		   "wb_cnt:           %8u\n",
- 		   (unsigned long) K(bdi_stat(bdi, BDI_WRITEBACK)),
--		   (unsigned long) K(bdi_stat(bdi, BDI_RECLAIMABLE)),
-+		   (unsigned long) K(bdi_stat(bdi, BDI_DIRTY)),
-+		   (unsigned long) K(bdi_stat(bdi, BDI_UNSTABLE)),
- 		   K(bdi_thresh), K(dirty_thresh),
- 		   K(background_thresh), nr_wb, nr_dirty, nr_io, nr_more_io,
- 		   !list_empty(&bdi->bdi_list), bdi->state, bdi->wb_mask,
-diff --git a/mm/filemap.c b/mm/filemap.c
-index 96ac6b0..458387d 100644
---- a/mm/filemap.c
-+++ b/mm/filemap.c
-@@ -136,7 +136,7 @@ void __remove_from_page_cache(struct page *page)
- 	 */
- 	if (PageDirty(page) && mapping_cap_account_dirty(mapping)) {
- 		dec_zone_page_state(page, NR_FILE_DIRTY);
--		dec_bdi_stat(mapping->backing_dev_info, BDI_RECLAIMABLE);
-+		dec_bdi_stat(mapping->backing_dev_info, BDI_DIRTY);
- 	}
+ 	return res;
  }
- 
-diff --git a/mm/page-writeback.c b/mm/page-writeback.c
-index 0b19943..23d3fc6 100644
---- a/mm/page-writeback.c
-+++ b/mm/page-writeback.c
-@@ -272,7 +272,8 @@ static void clip_bdi_dirty_limit(struct backing_dev_info *bdi,
- 	else
- 		avail_dirty = 0;
- 
--	avail_dirty += bdi_stat(bdi, BDI_RECLAIMABLE) +
-+	avail_dirty += bdi_stat(bdi, BDI_DIRTY) +
-+		bdi_stat(bdi, BDI_UNSTABLE) +
- 		bdi_stat(bdi, BDI_WRITEBACK);
- 
- 	*pbdi_dirty = min(*pbdi_dirty, avail_dirty);
-@@ -509,7 +510,8 @@ static void balance_dirty_pages(struct address_space *mapping,
- 					global_page_state(NR_UNSTABLE_NFS);
- 		nr_writeback = global_page_state(NR_WRITEBACK);
- 
--		bdi_nr_reclaimable = bdi_stat(bdi, BDI_RECLAIMABLE);
-+		bdi_nr_reclaimable = bdi_stat(bdi, BDI_DIRTY) +
-+				     bdi_stat(bdi, BDI_UNSTABLE);
- 		bdi_nr_writeback = bdi_stat(bdi, BDI_WRITEBACK);
- 
- 		if (bdi_nr_reclaimable + bdi_nr_writeback <= bdi_thresh)
-@@ -554,10 +556,12 @@ static void balance_dirty_pages(struct address_space *mapping,
- 		 * deltas.
- 		 */
- 		if (bdi_thresh < 2*bdi_stat_error(bdi)) {
--			bdi_nr_reclaimable = bdi_stat_sum(bdi, BDI_RECLAIMABLE);
-+			bdi_nr_reclaimable = bdi_stat_sum(bdi, BDI_DIRTY) +
-+					     bdi_stat_sum(bdi, BDI_UNSTABLE);
- 			bdi_nr_writeback = bdi_stat_sum(bdi, BDI_WRITEBACK);
- 		} else if (bdi_nr_reclaimable) {
--			bdi_nr_reclaimable = bdi_stat(bdi, BDI_RECLAIMABLE);
-+			bdi_nr_reclaimable = bdi_stat(bdi, BDI_DIRTY) +
-+					     bdi_stat(bdi, BDI_UNSTABLE);
- 			bdi_nr_writeback = bdi_stat(bdi, BDI_WRITEBACK);
- 		}
- 
-@@ -1079,7 +1083,7 @@ void account_page_dirtied(struct page *page, struct address_space *mapping)
++
++int nfs_commit_unstable_pages(struct address_space *mapping,
++		struct writeback_control *wbc)
++{
++	struct inode *inode = mapping->host;
++	int flags = FLUSH_SYNC;
++	int ret;
++
++	/* Don't commit yet if this is a non-blocking flush and there are
++	 * outstanding writes for this mapping.
++	 */
++	if (wbc->sync_mode != WB_SYNC_ALL &&
++	    radix_tree_tagged(&NFS_I(inode)->nfs_page_tree,
++		    NFS_PAGE_TAG_LOCKED)) {
++		mark_inode_unstable_pages(inode);
++		return 0;
++	}
++	if (wbc->nonblocking)
++		flags = 0;
++	ret = nfs_commit_inode(inode, flags);
++	if (ret > 0)
++		ret = 0;
++	return ret;
++}
++
+ #else
+ static inline int nfs_commit_list(struct inode *inode, struct list_head *head, int how)
  {
- 	if (mapping_cap_account_dirty(mapping)) {
- 		__inc_zone_page_state(page, NR_FILE_DIRTY);
--		__inc_bdi_stat(mapping->backing_dev_info, BDI_RECLAIMABLE);
-+		__inc_bdi_stat(mapping->backing_dev_info, BDI_DIRTY);
- 		task_dirty_inc(current);
- 		task_io_account_write(PAGE_CACHE_SIZE);
- 	}
-@@ -1255,7 +1259,7 @@ int clear_page_dirty_for_io(struct page *page)
- 		if (TestClearPageDirty(page)) {
- 			dec_zone_page_state(page, NR_FILE_DIRTY);
- 			dec_bdi_stat(mapping->backing_dev_info,
--					BDI_RECLAIMABLE);
-+					BDI_DIRTY);
- 			return 1;
- 		}
- 		return 0;
-diff --git a/mm/truncate.c b/mm/truncate.c
-index 342deee..b0ce8fb 100644
---- a/mm/truncate.c
-+++ b/mm/truncate.c
-@@ -75,7 +75,7 @@ void cancel_dirty_page(struct page *page, unsigned int account_size)
- 		if (mapping && mapping_cap_account_dirty(mapping)) {
- 			dec_zone_page_state(page, NR_FILE_DIRTY);
- 			dec_bdi_stat(mapping->backing_dev_info,
--					BDI_RECLAIMABLE);
-+					BDI_DIRTY);
- 			if (account_size)
- 				task_io_account_cancelled_write(account_size);
- 		}
+ 	return 0;
+ }
++
++int nfs_commit_unstable_pages(struct address_space *mapping,
++		struct writeback_control *wbc)
++{
++	return 0;
++}
+ #endif
+ 
+ long nfs_sync_mapping_wait(struct address_space *mapping, struct writeback_control *wbc, int how)
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index 9147ca8..de594b3 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -602,6 +602,8 @@ struct address_space_operations {
+ 	int (*is_partially_uptodate) (struct page *, read_descriptor_t *,
+ 					unsigned long);
+ 	int (*error_remove_page)(struct address_space *, struct page *);
++	int (*commit_unstable_pages)(struct address_space *,
++			struct writeback_control *);
+ };
+ 
+ /*
+@@ -1635,6 +1637,8 @@ struct super_operations {
+ #define I_CLEAR			64
+ #define __I_SYNC		7
+ #define I_SYNC			(1 << __I_SYNC)
++#define __I_UNSTABLE_PAGES	8
++#define I_UNSTABLE_PAGES	(1 << __I_UNSTABLE_PAGES)
+ 
+ #define I_DIRTY (I_DIRTY_SYNC | I_DIRTY_DATASYNC | I_DIRTY_PAGES)
+ 
+@@ -1649,6 +1653,11 @@ static inline void mark_inode_dirty_sync(struct inode *inode)
+ 	__mark_inode_dirty(inode, I_DIRTY_SYNC);
+ }
+ 
++static inline void mark_inode_unstable_pages(struct inode *inode)
++{
++	__mark_inode_dirty(inode, I_UNSTABLE_PAGES);
++}
++
+ /**
+  * inc_nlink - directly increment an inode's link count
+  * @inode: inode
 
