@@ -1,119 +1,78 @@
-From: Jeff Layton <jlayton@poochiereds.net>
-Subject: Re: [PATCH 4/4] nfs: handle NFSv2 -EKEYEXPIRED returns from RPC
-	layer appropriately
-Date: Thu, 7 Jan 2010 14:48:14 -0500
-Message-ID: <20100107144814.07130908@tlielax.poochiereds.net>
-References: <1262875325-4488-1-git-send-email-jlayton@redhat.com>
-	<1262875325-4488-5-git-send-email-jlayton@redhat.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: nfsv4@linux-nfs.org, linux-nfs@vger.kernel.org, Trond.Myklebust@netapp.com
-To: Jeff Layton <jlayton@redhat.com>
-Return-path: <nfsv4-bounces@linux-nfs.org>
-In-Reply-To: <1262875325-4488-5-git-send-email-jlayton@redhat.com>
-List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/options/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
-List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
-List-Post: <mailto:nfsv4@linux-nfs.org>
-List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
-List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
-Sender: nfsv4-bounces@linux-nfs.org
-Errors-To: nfsv4-bounces@linux-nfs.org
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: [PATCH 0/2] showmount bug fixes
+Date: Thu, 7 Jan 2010 17:43:20 -0500
+Message-ID: <3C1CD7DD-E915-4FDB-815A-6D9B78A68AE5@oracle.com>
+References: <20100107162421.27102.21422.stgit@localhost.localdomain> <4B461F48.4070906@RedHat.com> <7FEF347F-051D-4B08-A647-27506CFEC12A@oracle.com> <4B464355.1000405@RedHat.com>
+Mime-Version: 1.0 (Apple Message framework v936)
+Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
+Cc: linux-nfs@vger.kernel.org
+To: Steve Dickson <SteveD@redhat.com>
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from acsinet12.oracle.com ([141.146.126.234]:60782 "EHLO
+	acsinet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753086Ab0AGWsu (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Jan 2010 17:48:50 -0500
+In-Reply-To: <4B464355.1000405-AfCzQyP5zfLQT0dZR+AlfA@public.gmane.org>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu,  7 Jan 2010 09:42:05 -0500
-Jeff Layton <jlayton@redhat.com> wrote:
+On Jan 7, 2010, at 3:25 PM, Steve Dickson wrote:
+> On 01/07/2010 01:38 PM, Chuck Lever wrote:
+>> On Jan 7, 2010, at 12:52 PM, Steve Dickson wrote:
+>>> On 01/07/2010 11:26 AM, Chuck Lever wrote:
+>>>> Hi Steve-
+>>>>
+>>>> As promised, a couple of bug fixes for the recent improvements to  
+>>>> the
+>>>> showmount command.
+>>>>
+>>>> ---
+>>>>
+>>>> Chuck Lever (2):
+>>>>     showmount: Use CLNT_CONTROL for version fallback
+>>> Why is calling CLNT_CONTROL() verses calling clnt_create again
+>>> so much better?? In between failures the server status could
+>>> change so why not just ping it again??
+>>>
+>>
+>> The clnt_create(3) library call is quite heavyweight.  It does a DNS
+>> lookup via its own transport socket, a GETPORT via its own transport
+>> socket, then creates and connects a socket to do the application's  
+>> RPC
+>> work.
+>>
+>> Each time showmount calls clnt_create(3), the library will set up a
+>> socket for the DNS lookup (usually but not always UDP), set up a  
+>> socket
+>> to do a GETPORT, and then set up a third socket for the  
+>> MNTPROC_EXPORT
+>> request.  That's three sockets, each time through your retry loop.
+>>
+>> When contacting a MNTv1-only server over TCP, the showmount command  
+>> can
+>> leave up to six TCP sockets in TIME_WAIT (not counting sockets used  
+>> for
+>> DNS) for 120 seconds after the command exits, if it doesn't use
+>> CLNT_CONTROL.
+> Now really... who do you know that runs an v2 only server...
+> I would call that badly misconfigured server... and I just
+> don't think it happens...because if it did, the bug would have
+> become much more prevalent a long time ago...
 
-> Add a wrapper around rpc_call_sync that handles -EKEYEXPIRED errors from
-> the RPC layer as it would an -EJUKEBOX error if NFSv2 had such a thing.
-> Also, add a handler for that error for async calls that makes it
-> resubmit the RPC on -EKEYEXPIRED.
-> 
-> Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> ---
->  fs/nfs/proc.c |   41 +++++++++++++++++++++++++++++++++++++++++
->  1 files changed, 41 insertions(+), 0 deletions(-)
-> 
-> diff --git a/fs/nfs/proc.c b/fs/nfs/proc.c
-> index ef58385..2b6b6de 100644
-> --- a/fs/nfs/proc.c
-> +++ b/fs/nfs/proc.c
-> @@ -47,6 +47,39 @@
->  #define NFSDBG_FACILITY		NFSDBG_PROC
->  
->  /*
-> + * wrapper to handle the -EKEYEXPIRED error message. This should generally
-> + * only happen if using krb5 auth and a user's TGT expires. NFSv2 doesn't
-> + * support the NFSERR_JUKEBOX error code, but we handle this situation in the
-> + * same way that we handle that error with NFSv3.
-> + */
-> +static int
-> +nfs_rpc_wrapper(struct rpc_clnt *clnt, struct rpc_message *msg, int flags)
-> +{
-> +	int res;
-> +	do {
-> +		res = rpc_call_sync(clnt, msg, flags);
-> +		if (res != -EKEYEXPIRED)
-> +			break;
-> +		schedule_timeout_killable(NFS_JUKEBOX_RETRY_TIME);
-> +		res = -ERESTARTSYS;
-> +	} while (!fatal_signal_pending(current));
-> +	return res;
-> +}
-> +
-> +#define rpc_call_sync(clnt, msg, flags)	nfs_rpc_wrapper(clnt, msg, flags)
-> +
-> +static int
-> +nfs_async_handle_expired_key(struct rpc_task *task, struct inode *inode)
-							^^^^^^^^^^^^^^^^
-I did just notice something silly. The inode parameter here is unused
-and can be eliminated. I'll plan to drop that from later versions of
-this set.
+If you think v2-only servers are so rare, why even bother downshifting  
+the protocol version at all?  The original showmount command does not  
+have any problem connecting to a v2-only server, since it used only  
+MNTv1 to do the EXPORT request.
 
-> +{
-> +	if (task->tk_status != -EKEYEXPIRED)
-> +		return 0;
-> +	task->tk_status = 0;
-> +	rpc_restart_call(task);
-> +	rpc_delay(task, NFS_JUKEBOX_RETRY_TIME);
-> +	return 1;
-> +}
-> +
-> +/*
->   * Bare-bones access to getattr: this is for nfs_read_super.
->   */
->  static int
-> @@ -307,6 +340,8 @@ nfs_proc_unlink_setup(struct rpc_message *msg, struct inode *dir)
->  
->  static int nfs_proc_unlink_done(struct rpc_task *task, struct inode *dir)
->  {
-> +	if (nfs_async_handle_expired_key(task, dir))
-> +		return 0;
->  	nfs_mark_for_revalidate(dir);
->  	return 1;
->  }
-> @@ -560,6 +595,9 @@ nfs_proc_pathconf(struct nfs_server *server, struct nfs_fh *fhandle,
->  
->  static int nfs_read_done(struct rpc_task *task, struct nfs_read_data *data)
->  {
-> +	if (nfs_async_handle_expired_key(task, data->inode))
-> +		return -EAGAIN;
-> +
->  	nfs_invalidate_atime(data->inode);
->  	if (task->tk_status >= 0) {
->  		nfs_refresh_inode(data->inode, data->res.fattr);
-> @@ -579,6 +617,9 @@ static void nfs_proc_read_setup(struct nfs_read_data *data, struct rpc_message *
->  
->  static int nfs_write_done(struct rpc_task *task, struct nfs_write_data *data)
->  {
-> +	if (nfs_async_handle_expired_key(task, data->inode))
-> +		return -EAGAIN;
-> +
->  	if (task->tk_status >= 0)
->  		nfs_post_op_update_inode_force_wcc(data->inode, data->res.fattr);
->  	return 0;
+Most legacy servers are NFSv2 only.  I bought a new-in-box ReadyNAS a  
+year or so ago that ran Linux 2.4, and it's NFS server was, in fact,  
+v2-only.
+
+/me gives up.
+
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
 
 
--- 
-Jeff Layton <jlayton@poochiereds.net>
+
