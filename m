@@ -1,39 +1,61 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:49847 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:1365 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753738Ab0A2Qm2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 29 Jan 2010 11:42:28 -0500
-Date: Fri, 29 Jan 2010 11:42:29 -0500
-To: caiqian@redhat.com
-Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org, pnfs@linux-nfs.org,
-        James Laska <jlaska@redhat.com>
-Subject: Re: [pnfs] Fedora NFSv4 Test Day
-Message-ID: <20100129164229.GB24042@fieldses.org>
-References: <803354499.556481264778096200.JavaMail.root@zmail06.collab.prod.int.phx2.redhat.com> <1666074695.559241264778354166.JavaMail.root@zmail06.collab.prod.int.phx2.redhat.com>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1666074695.559241264778354166.JavaMail.root@zmail06.collab.prod.int.phx2.redhat.com>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+	id S1750759Ab0AGFAn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 7 Jan 2010 00:00:43 -0500
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: [PATCH 0/5] Re: [PATCH] improve the performance of large
+ sequential write NFS workloads
+To: Wu Fengguang <fengguang.wu@intel.com>
+Cc: Peter Zijlstra <peterz@infradead.org>, Jan Kara <jack@suse.cz>,
+        Steve Rago <sar@nec-labs.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "jens.axboe" <jens.axboe@oracle.com>,
+        Peter Staubach <staubach@redhat.com>,
+        Arjan van de Ven <arjan@infradead.org>, Ingo Molnar <mingo@elte.hu>,
+        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
+Date: Wed, 06 Jan 2010 23:53:31 -0500
+Message-ID: <20100107045330.5986.55090.stgit@localhost.localdomain>
+In-Reply-To: <20100107044817.GA18996@localhost>
+References: <20100107044817.GA18996@localhost>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Fri, Jan 29, 2010 at 10:19:14AM -0500, caiqian@redhat.com wrote:
-> Hi guys,
-> 
-> There will be a NFS test event [1] focus on NFSv4 by default feature [2] and secure NFS in upcoming Fedora 13 next Thursday - 4th Feb. While we are still trying to finalize a few details there, your suggestion on other testing areas for NFS are also welcome. We are trying to make the tests as easy to follow, and provide Fedora LiveCD images during the event if possible. We will guide you and answer questions you have during the event on IRC freenode -> #fedora-test-day.
+Take 2 of this series, incorporating the suggested changes from Jan
+and Fengguang...
 
-Note on https://fedoraproject.org/wiki/QA:Testcase_nfs_pynfs there seems
-to be a mix-up between pynfs and connectathon instructions.
+Cheers
+  Trond
 
---b.
+---
 
-> 
-> Looking forwards to see you there!
-> CAI Qian
-> 
-> [1] https://fedoraproject.org/wiki/Test_Day:2010-02-04_NFS
-> [2] https://fedoraproject.org/wiki/Features/NFSv4Default
-> _______________________________________________
-> pNFS mailing list
-> pNFS@linux-nfs.org
-> http://linux-nfs.org/cgi-bin/mailman/listinfo/pnfs
+Peter Zijlstra (1):
+      VM: Split out the accounting of unstable writes from BDI_RECLAIMABLE
+
+Trond Myklebust (4):
+      NFS: Run COMMIT as an asynchronous RPC call when wbc->for_background is set
+      VM/NFS: The VM must tell the filesystem when to free reclaimable pages
+      VM: Don't call bdi_stat(BDI_UNSTABLE) on non-nfs backing-devices
+      VFS: Ensure that writeback_single_inode() commits unstable writes
+
+
+ fs/fs-writeback.c           |   31 ++++++++++++++++++++++++++++++-
+ fs/nfs/client.c             |    1 +
+ fs/nfs/file.c               |    1 +
+ fs/nfs/inode.c              |   16 ----------------
+ fs/nfs/internal.h           |    3 ++-
+ fs/nfs/super.c              |    2 --
+ fs/nfs/write.c              |   39 +++++++++++++++++++++++++++++++++++----
+ include/linux/backing-dev.h |    9 ++++++++-
+ include/linux/fs.h          |    9 +++++++++
+ include/linux/writeback.h   |    5 +++++
+ mm/backing-dev.c            |    6 ++++--
+ mm/filemap.c                |    2 +-
+ mm/page-writeback.c         |   30 ++++++++++++++++++++++++------
+ mm/truncate.c               |    2 +-
+ 14 files changed, 121 insertions(+), 35 deletions(-)
+
+-- 
+Signature
