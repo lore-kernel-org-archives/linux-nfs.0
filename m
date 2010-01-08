@@ -1,108 +1,150 @@
 From: Jeff Layton <jlayton@redhat.com>
-Subject: [PATCH 1/4] nfs-utils: make private cookie to hex conversion a library routine
-Date: Fri,  8 Jan 2010 09:56:00 -0500
-Message-ID: <1262962563-5554-2-git-send-email-jlayton@redhat.com>
+Subject: [PATCH 3/4] nfs-utils: add statdb_dump utility
+Date: Fri,  8 Jan 2010 09:56:02 -0500
+Message-ID: <1262962563-5554-4-git-send-email-jlayton@redhat.com>
 References: <1262962563-5554-1-git-send-email-jlayton@redhat.com>
 Cc: chuck.lever@oracle.com, bfields@fieldses.org,
 	linux-nfs@vger.kernel.org
 To: steved@redhat.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:56399 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:1025 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752161Ab0AHO4I (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 8 Jan 2010 09:56:08 -0500
+	id S1753515Ab0AHO4M (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 8 Jan 2010 09:56:12 -0500
 In-Reply-To: <1262962563-5554-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+To dump contents of statd's monitor DB.
+
 Signed-off-by: Jeff Layton <jlayton@redhat.com>
 ---
- support/include/nsm.h |    2 ++
- support/nsm/file.c    |   44 ++++++++++++++++++++++++++++++++++----------
- 2 files changed, 36 insertions(+), 10 deletions(-)
+ tests/Makefile.am   |    6 +++
+ tests/statdb_dump.c |   99 +++++++++++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 105 insertions(+), 0 deletions(-)
+ create mode 100644 tests/statdb_dump.c
 
-diff --git a/support/include/nsm.h b/support/include/nsm.h
-index 850c191..db53eb2 100644
---- a/support/include/nsm.h
-+++ b/support/include/nsm.h
-@@ -71,6 +71,8 @@ extern void	nsm_delete_monitored_host(const char *hostname,
- 			const char *mon_name, const char *my_name);
- extern void	nsm_delete_notified_host(const char *hostname,
- 			const char *mon_name, const char *my_name);
-+extern size_t	nsm_priv_to_hex(const char *priv, char *buf,
-+				const size_t buflen);
+diff --git a/tests/Makefile.am b/tests/Makefile.am
+index 375af80..a20b42b 100644
+--- a/tests/Makefile.am
++++ b/tests/Makefile.am
+@@ -1,5 +1,11 @@
+ ## Process this file with automake to produce Makefile.in
  
- /* rpc.c */
- 
-diff --git a/support/nsm/file.c b/support/nsm/file.c
-index 635fb4e..7e923ef 100644
---- a/support/nsm/file.c
-+++ b/support/nsm/file.c
-@@ -677,6 +677,33 @@ nsm_retire_monitored_hosts(void)
- }
- 
- /*
-+ * nsm_priv_to_hex - convert a NSM private cookie to a hex string.
-+ *
-+ * @priv: buffer holding the binary NSM private cookie
-+ * @buf: output buffer for NULL terminated hex string
-+ * @buflen: size of output buffer
-+ *
-+ * Returns the length of the resulting string or 0 on error
-+ */
-+size_t
-+nsm_priv_to_hex(const char *priv, char *buf, const size_t buflen)
-+{
-+	int i, len;
-+	size_t remaining = buflen;
++check_PROGRAMS = statdb_dump
++statdb_dump_SOURCES = statdb_dump.c
 +
-+	for (i = 0; i < SM_PRIV_SIZE; i++) {
-+		len = snprintf(buf, remaining, "%02x",
-+				(unsigned int)(0xff & priv[i]));
-+		if (error_check(len, remaining))
-+			return 0;
-+		buf += len;
-+		remaining -= (size_t)len;
++statdb_dump_LDADD = ../support/nfs/libnfs.a \
++		    ../support/nsm/libnsm.a $(LIBCAP)
++
+ SUBDIRS = nsm_client
+ 
+ MAINTAINERCLEANFILES = Makefile.in
+diff --git a/tests/statdb_dump.c b/tests/statdb_dump.c
+new file mode 100644
+index 0000000..92d63f2
+--- /dev/null
++++ b/tests/statdb_dump.c
+@@ -0,0 +1,99 @@
++/*
++ * statdb_dump.c -- dump contents of statd's monitor DB
++ *
++ * Copyright (C) 2010  Red Hat, Jeff Layton <jlayton@redhat.com>
++ *
++ * This program is free software; you can redistribute it and/or
++ * modify it under the terms of the GNU General Public License
++ * as published by the Free Software Foundation; either version 2
++ * of the License, or (at your option) any later version.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License
++ * along with this program; if not, write to the Free Software
++ * Foundation, Inc., 51 Franklin Street, Fifth Floor,
++ * Boston, MA 02110-1301, USA.
++ */
++
++#ifdef HAVE_CONFIG_H
++#include "config.h"
++#endif
++
++#include <stdio.h>
++#include <errno.h>
++#include <arpa/inet.h>
++
++#include "nsm.h"
++#include "xlog.h"
++
++static char cookiebuf[(SM_PRIV_SIZE * 2) + 1];
++static char addrbuf[INET6_ADDRSTRLEN + 1];
++
++static unsigned int
++dump_host(const char *hostname, const struct sockaddr *sa, const struct mon *m,
++	  const time_t timestamp)
++{
++	int ret;
++	const char *addr;
++	const struct sockaddr_in *sin;
++	const struct sockaddr_in6 *sin6;
++
++	ret = nsm_priv_to_hex(m->priv, cookiebuf, sizeof(cookiebuf));
++	if (!ret) {
++		xlog(L_ERROR, "Unable to convert cookie to hex string.\n");
++		return ret;
 +	}
 +
-+	return buflen - remaining;
++	switch (sa->sa_family) {
++	case AF_INET:
++		sin = (struct sockaddr_in *)(char *)sa;
++		addr = inet_ntop(sa->sa_family, &sin->sin_addr.s_addr, addrbuf,
++				 (socklen_t)sizeof(addrbuf));
++		break;
++	case AF_INET6:
++		sin6 = (struct sockaddr_in6 *)(char *)sa;
++		addr = inet_ntop(sa->sa_family, &sin6->sin6_addr, addrbuf,
++				 (socklen_t)sizeof(addrbuf));
++		break;
++	default:
++		xlog(L_ERROR, "Unrecognized address family: %hu\n",
++			sa->sa_family);
++		return 0;
++	}
++
++	if (addr == NULL) {
++		xlog(L_ERROR, "Unable to convert sockaddr to string: %s\n",
++				strerror(errno));
++		return 0;
++	}
++
++	/*
++	 * Callers of this program should assume that in the future, extra
++	 * fields may be added to the output. Anyone adding extra fields to
++	 * the output should add them to the end of the line.
++	 */
++	printf("%s %s %s %s %s %d %d %d\n",
++			hostname, addr, cookiebuf,
++			m->mon_id.mon_name,
++			m->mon_id.my_id.my_name,
++			m->mon_id.my_id.my_prog,
++			m->mon_id.my_id.my_vers,
++			m->mon_id.my_id.my_proc); 
++
++	return 1;
 +}
 +
-+/*
-  * Returns the length in bytes of the created record.
-  */
- __attribute_noinline__
-@@ -685,8 +712,8 @@ nsm_create_monitor_record(char *buf, const size_t buflen,
- 		const struct sockaddr *sap, const struct mon *m)
- {
- 	const struct sockaddr_in *sin = (const struct sockaddr_in *)sap;
--	size_t remaining = buflen;
--	int i, len;
-+	size_t hexlen, remaining = buflen;
-+	int len;
- 
- 	len = snprintf(buf, remaining, "%08x %08x %08x %08x ",
- 			(unsigned int)sin->sin_addr.s_addr,
-@@ -698,14 +725,11 @@ nsm_create_monitor_record(char *buf, const size_t buflen,
- 	buf += len;
- 	remaining -= (size_t)len;
- 
--	for (i = 0; i < SM_PRIV_SIZE; i++) {
--		len = snprintf(buf, remaining, "%02x",
--				(unsigned int)(0xff & m->priv[i]));
--		if (error_check(len, remaining))
--			return 0;
--		buf += len;
--		remaining -= (size_t)len;
--	}
-+	hexlen = nsm_priv_to_hex(m->priv, buf, remaining);
-+	if (hexlen == 0)
-+		return 0;
-+	buf += hexlen;
-+	remaining -= hexlen;
- 
- 	len = snprintf(buf, remaining, " %s %s\n",
- 			m->mon_id.mon_name, m->mon_id.my_id.my_name);
++int
++main(int argc, char **argv)
++{
++	xlog_syslog(0);
++	xlog_stderr(1);
++	xlog_open(argv[0]);
++	
++	nsm_load_monitor_list(dump_host);
++	return 0;
++}
 -- 
 1.6.5.2
 
