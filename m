@@ -1,39 +1,88 @@
-From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: [PATCH 1/6] VFS: Ensure that writeback_single_inode() commits
-	unstable writes
-Date: Fri, 8 Jan 2010 04:25:42 -0500
-Message-ID: <20100108092542.GA27480@infradead.org>
-References: <20100106205110.22547.85345.stgit@localhost.localdomain> <20100106205110.22547.17971.stgit@localhost.localdomain> <20100107021849.GC9475@localhost> <1262839082.2185.15.camel@localhost> <20100107145635.GB20300@localhost> <1262877022.3309.11.camel@localhost>
+From: Bian Naimeng <biannm@cn.fujitsu.com>
+Subject: Re: whether can NFS exports option 'nohide' work?
+Date: Fri, 08 Jan 2010 17:49:42 +0800
+Message-ID: <4B46FFB6.9010901@cn.fujitsu.com>
+References: <4B45A234.8080503@cn.fujitsu.com> <20100108050259.GA4984@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Wu Fengguang <fengguang.wu@intel.com>,
-	Peter Zijlstra <peterz@infradead.org>, Jan Kara <jack@suse.cz>,
-	Steve Rago <sar-a+KepyhlMvJWk0Htik3J/w@public.gmane.org>,
-	"linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-	"jens.axboe" <jens.axboe@oracle.com>,
-	Peter Staubach <staubach@redhat.com>,
-	Arjan van de Ven <arjan@infradead.org>,
-	Ingo Molnar <mingo@elte.hu>,
-	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Content-Type: text/plain; charset=Shift_JIS
+Cc: linux-nfs@vger.kernel.org,
+	Trond Myklebust <trond.myklebust@fys.uio.no>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([18.85.46.34]:56674 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750920Ab0AHJZ5 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 8 Jan 2010 04:25:57 -0500
-In-Reply-To: <1262877022.3309.11.camel@localhost>
+Received: from cn.fujitsu.com ([222.73.24.84]:51121 "EHLO song.cn.fujitsu.com"
+	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
+	id S1751112Ab0AHJu4 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 8 Jan 2010 04:50:56 -0500
+In-Reply-To: <20100108050259.GA4984@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Jan 07, 2010 at 10:10:22AM -0500, Trond Myklebust wrote:
-> As I said previously, the write_inode() call is done _before_ you sync
-> the dirty pages to the server, whereas commit_unstable_pages() wants to
-> be done _after_ syncing. So the two are not the same, and we cannot
-> replace commit_unstable_pages() with write_inode().
 
-But that's more an accident of how this code was written.  The right
-order nees to be to write the pages first, then call write_inode.  Most
-modern filesystems have to work around this in their write_inode method
-by waiting for the pages themselves.  I already fixed the same ordering
-issue in fsync, and the writeback code is next on the agenda.
+
+J. Bruce Fields =8E=CA=93=B9:
+> On Thu, Jan 07, 2010 at 04:58:28PM +0800, Bian Naimeng wrote:
+>> Hi,
+>>
+>> I want to use this option=81C but i find it doesn't work at RHEL5.4G=
+A and Fedora12.
+>>
+>> My /etc/exports like this:
+>> # cat /etc/exports
+>>   /nfsroot/nfsv4	127.0.0.1(rw,nohide,fsid=3D0)
+>>   /nfsroot/nfsv4/dir1	127.0.0.1(rw,nohide,crossmnt)
+>>   /nfsroot/nfsv4/dir2	127.0.0.1(rw,nohide,crossmnt)
+>>
+>> Then:
+>>
+>> # mkdir /nfsroot/nfsv4/dir1/tmpdir
+>> # echo "best wishes" > /nfsroot/nfsv4/dir1/file1
+>> # echo "happy new year" > /nfsroot/nfsv4/dir2/file2
+>>
+>> # service nfs restart
+>> # mount -t nfs4 127.0.0.1:/dir2 /nfsroot/nfsv4/dir1/tmpdir
+>> # mount -t nfs4 127.0.0.1:/dir1 /mnt
+>>
+>> There is file2 at /nfsroot/nfsv4/dir1/tmpdir, but nothing at /mnt/tm=
+pdir.
+>> I'm not sure i have used it correctly, and whether it really work?=20
+>> Thanks for your help.
+>=20
+> You can't re-export nfs filesystems.
+>=20
+> (I wonder why we aren't warning about this?)
+>=20
+
+  Though i does not mount nfs filesystem, instead by ext3 filesystem /d=
+ev/hda,
+  there is not anyting at /mnt/tmpdir.
+
+  # mount /dev/hda3 /nfsroot/nfsv4/dir1/tmpdir
+  # mount -t nfs4 127.0.0.1:/dir1  /mnt
+
+  # ll /mnt/tmpdir/
+    total 0
+
+  Then, i test it at two different RHEL5.4 host.
+
+  host1=81infs server=81j:
+  # cat /etc/exports
+    /nfsroot/nfsv4		host2(rw,nohide,crossmnt,fsid=3D0)
+    /nfsroot/nfsv4/dir1		host2(rw,nohide,crossmnt)
+
+  # mount /dev/hda3 /nfsroot/nfsv4/dir1/tmpdir
+
+  host2 (nfs client):
+  # mount -t nfs4 host1:/dir1 /mnt
+  # ll /mnt/
+    ls: /nfsv4/tmpdir: Stale NFS file handle
+    total 4
+    -rw-r--r-- 1 root root    0 Jan  5  2010 file1
+    drwxr-xr-x 6 root root 4096 Jan  6  2010 tmpdir
+
+  # ll /nfsv4/tmpdir
+    ls: /nfsv4/tmpdir: Stale NFS file handle
+    ls: /nfsv4/tmpdir: Stale NFS file handle
+
+ Best Regards
+  Bian
 
