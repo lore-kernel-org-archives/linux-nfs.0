@@ -1,151 +1,79 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:40729 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:34031 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932163Ab0A0WYb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 27 Jan 2010 17:24:31 -0500
-From: "J. Bruce Fields" <bfields@citi.umich.edu>
-To: Steve Dickson <steved@redhat.com>
-Cc: linux-nfs@vger.kernel.org, "J. Bruce Fields" <bfields@citi.umich.edu>
-Subject: [PATCH 2/2] nfsd: default to kernel default for minorversion 1
-Date: Wed, 27 Jan 2010 17:26:06 -0500
-Message-Id: <1264631166-21898-2-git-send-email-bfields@citi.umich.edu>
-In-Reply-To: <1264631166-21898-1-git-send-email-bfields@citi.umich.edu>
-References: <1264631166-21898-1-git-send-email-bfields@citi.umich.edu>
+	id S1753250Ab0AHO4M (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 8 Jan 2010 09:56:12 -0500
+From: Jeff Layton <jlayton@redhat.com>
+To: steved@redhat.com
+Cc: chuck.lever@oracle.com, bfields@fieldses.org, linux-nfs@vger.kernel.org
+Subject: [PATCH 0/4] nfs-utils: add testing infrastructure to nfs-utils (try #6)
+Date: Fri,  8 Jan 2010 09:55:59 -0500
+Message-Id: <1262962563-5554-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
 MIME-Version: 1.0
 
-The current kernel code should not be enabled by default, because it
-does not yet attempt to be a conform completely to the rfc; for example,
-some required pieces of protocol are missing.
+This is an updated patchset for adding test infrastructure to nfs-utils.
+The main differences in this patchset are:
 
-Therefore the kernel defaults to leaving minorversion1 off.  When the
-code matures sufficiently, that default will change.
+1) some bugfixes in the statdb_dump program
 
-That kernel default becomes meaningless if nfs-utils always explicitly
-turns 4.1 on or off.  So, nfs-utils should by default do nothing.
+2) an extra check for root privs in the t0001 test. If the caller
+doesn't have root privs, then the test is skipped
 
-Provide a --enable-experimental-v41-support option to turn it on
-explicitly.  The option is intentionally spelled out (and has no short
-equivalent), to help ensure that users know what they're getting into.
+This patchset is intended as a starting point for an automated test
+suite for nfs-utils. The idea here is to start simply and add a suite of
+tests that we can run via "make check" -- the standard automake method
+for running tests.
 
-Once 4.1 defaults to on, that option will become unnecessary (and can
-probably just be dropped from nfs-utils), and only the -N 4.1 option
-will be necessary.
+Clearly there are limits to what we can test without a multi-host test
+harness. My hope is that this should help keep us from breaking basic
+functionality by allowing us to test it in a very simple fashion. At
+some point in the future we should also consider how to best handle
+multi-machine testing, but I see that as complimenting this code rather
+than replacing it.
 
-Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
----
- support/include/nfs/nfs.h |    3 ---
- utils/nfsd/nfsd.c         |   17 +++++++++++++----
- utils/nfsd/nfssvc.c       |   10 ++++------
- 3 files changed, 17 insertions(+), 13 deletions(-)
+For this set, the focus is on testing statd, which is particularly
+susceptible to subtle breakage. Problems with it are often not noticed
+until lock recovery breaks, and that may greatly lag the actual
+breakage.
 
-diff --git a/support/include/nfs/nfs.h b/support/include/nfs/nfs.h
-index a64eb0a..824f604 100644
---- a/support/include/nfs/nfs.h
-+++ b/support/include/nfs/nfs.h
-@@ -13,9 +13,6 @@
- #define NFSD_MINVERS 2
- #define NFSD_MAXVERS 4
- 
--#define NFSD_MINMINORVERS4 1
--#define NFSD_MAXMINORVERS4 1
--
- struct nfs_fh_len {
- 	int		fh_size;
- 	u_int8_t	fh_handle[NFS3_FHSIZE];
-diff --git a/utils/nfsd/nfsd.c b/utils/nfsd/nfsd.c
-index 1cda1e5..c72f73e 100644
---- a/utils/nfsd/nfsd.c
-+++ b/utils/nfsd/nfsd.c
-@@ -49,6 +49,7 @@ static struct option longopts[] =
- 	{ "port", 1, 0, 'p' },
- 	{ "debug", 0, 0, 'd' },
- 	{ "syslog", 0, 0, 's' },
-+	{ "enable-experimental-v41-support", 0, 0, 'X' },
- 	{ NULL, 0, 0, 0 }
- };
- 
-@@ -103,7 +104,7 @@ main(int argc, char **argv)
- 	char *p, *progname, *port;
- 	char *haddr = NULL;
- 	int	socket_up = 0;
--	int minorvers4 = NFSD_MAXMINORVERS4;	/* nfsv4 minor version */
-+	int minorvers41 = 0;	/* nfsv4 minor version */
- 	unsigned int versbits = NFSCTL_ALLBITS;
- 	unsigned int protobits = NFSCTL_ALLBITS;
- 	unsigned int proto4 = 0;
-@@ -163,7 +164,12 @@ main(int argc, char **argv)
- 			switch((c = strtol(optarg, &p, 0))) {
- 			case 4:
- 				if (*p == '.') {
--					minorvers4 = -atoi(p + 1);
-+					int i = atoi(p+1);
-+					if (i != 1) {
-+						fprintf(stderr, "%s: unsupported minor version\n", optarg);
-+						exit(1);
-+					}
-+					minorvers41 = -1;
- 					break;
- 				}
- 			case 3:
-@@ -185,6 +191,9 @@ main(int argc, char **argv)
- 		case 'U':
- 			NFSCTL_UDPUNSET(protobits);
- 			break;
-+		case 'X':
-+			minorvers41 = 1;
-+			break;
- 		default:
- 			fprintf(stderr, "Invalid argument: '%c'\n", c);
- 		case 'h':
-@@ -257,7 +266,7 @@ main(int argc, char **argv)
- 	 * registered with rpcbind. Note that on older kernels w/o the right
- 	 * interfaces, these are a no-op.
- 	 */
--	nfssvc_setvers(versbits, minorvers4);
-+	nfssvc_setvers(versbits, minorvers41);
-  
- 	error = nfssvc_set_sockets(AF_INET, proto4, haddr, port);
- 	if (!error)
-@@ -309,7 +318,7 @@ static void
- usage(const char *prog)
- {
- 	fprintf(stderr, "Usage:\n"
--		"%s [-d|--debug] [-H hostname] [-p|-P|--port port] [-N|--no-nfs-version version ] [-s|--syslog] [-T|--no-tcp] [-U|--no-udp] nrservs\n", 
-+		"%s [-d|--debug] [-H hostname] [-p|-P|--port port] [-N|--no-nfs-version version ] [-s|--syslog] [-T|--no-tcp] [-U|--no-udp] [--enable-experimental-v41-support] nrservs\n", 
- 		prog);
- 	exit(2);
- }
-diff --git a/utils/nfsd/nfssvc.c b/utils/nfsd/nfssvc.c
-index 7bbbaba..ec9446a 100644
---- a/utils/nfsd/nfssvc.c
-+++ b/utils/nfsd/nfssvc.c
-@@ -227,7 +227,7 @@ nfssvc_set_sockets(const int family, const unsigned int protobits,
- }
- 
- void
--nfssvc_setvers(unsigned int ctlbits, int minorvers4)
-+nfssvc_setvers(unsigned int ctlbits, int minorvers41)
- {
- 	int fd, n, off;
- 	char *ptr;
-@@ -238,11 +238,9 @@ nfssvc_setvers(unsigned int ctlbits, int minorvers4)
- 	if (fd < 0)
- 		return;
- 
--	n = minorvers4 >= 0 ? minorvers4 : -minorvers4;
--	if (n >= NFSD_MINMINORVERS4 && n <= NFSD_MAXMINORVERS4)
--		    off += snprintf(ptr+off, sizeof(buf) - off, "%c4.%d",
--				    minorvers4 > 0 ? '+' : '-',
--				    n);
-+	if (minorvers41)
-+		off += snprintf(ptr+off, sizeof(buf) - off, "%c4.1",
-+				minorvers41 > 0 ? '+' : '-');
- 	for (n = NFSD_MINVERS; n <= NFSD_MAXVERS; n++) {
- 		if (NFSCTL_VERISSET(ctlbits, n))
- 		    off += snprintf(ptr+off, sizeof(buf) - off, "+%d ", n);
--- 
-1.6.3.3
+To faciitate statd testing, I've added a "nsm_client" program that can
+serve as a synthetic statd client and an NLM simulator. It's very
+loosely based on the old statd simulator code. That program is dependent
+on some of Chuck Lever's recent statd patches -- notably the ones that
+break out common NSM code into libnsm.a.
+
+For this initial drop, I'm just adding a single test that tests mon and
+unmon functionality with statd. Adding more tests should be fairly simple
+to do.
+
+Jeff Layton (4):
+  nfs-utils: make private cookie to hex conversion a library routine
+  nfs-utils: introduce new statd testing simulator
+  nfs-utils: add statdb_dump utility
+  nfs-utils: add initial tests for statd that run via "make check"
+
+ Makefile.am                          |    2 +-
+ configure.ac                         |    4 +-
+ support/include/nsm.h                |    2 +
+ support/nsm/file.c                   |   44 +++-
+ tests/Makefile.am                    |   13 +
+ tests/nsm_client/Makefile.am         |   45 ++++
+ tests/nsm_client/README              |   12 +
+ tests/nsm_client/nlm_sm_inter.x      |   43 +++
+ tests/nsm_client/nsm_client.c        |  465 ++++++++++++++++++++++++++++++++++
+ tests/statdb_dump.c                  |   99 +++++++
+ tests/t0001-statd-basic-mon-unmon.sh |   58 +++++
+ tests/test-lib.sh                    |   60 +++++
+ 12 files changed, 835 insertions(+), 12 deletions(-)
+ create mode 100644 tests/Makefile.am
+ create mode 100644 tests/nsm_client/Makefile.am
+ create mode 100644 tests/nsm_client/README
+ create mode 100644 tests/nsm_client/nlm_sm_inter.x
+ create mode 100644 tests/nsm_client/nsm_client.c
+ create mode 100644 tests/statdb_dump.c
+ create mode 100755 tests/t0001-statd-basic-mon-unmon.sh
+ create mode 100755 tests/test-lib.sh
 
