@@ -1,201 +1,68 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH 4/4] nfs-utils: add initial tests for statd that run via "make check"
-Date: Fri, 8 Jan 2010 11:49:16 -0500
-Message-ID: <70DEDD50-4AC5-4377-B5FA-A1FBCD92EBF3@oracle.com>
-References: <1262962563-5554-1-git-send-email-jlayton@redhat.com> <1262962563-5554-5-git-send-email-jlayton@redhat.com>
-Mime-Version: 1.0 (Apple Message framework v936)
-Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
+From: Jeff Layton <jlayton@redhat.com>
+Subject: Re: [PATCH 4/4] nfs-utils: add initial tests for statd that run via
+ "make check"
+Date: Fri, 8 Jan 2010 11:56:51 -0500
+Message-ID: <20100108115651.7a84a3c5@tlielax.poochiereds.net>
+References: <1262962563-5554-1-git-send-email-jlayton@redhat.com>
+	<1262962563-5554-5-git-send-email-jlayton@redhat.com>
+	<70DEDD50-4AC5-4377-B5FA-A1FBCD92EBF3@oracle.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Cc: steved@redhat.com, bfields@fieldses.org, linux-nfs@vger.kernel.org
-To: Jeff Layton <jlayton@redhat.com>
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from acsinet11.oracle.com ([141.146.126.233]:64813 "EHLO
-	acsinet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752774Ab0AHQtu (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 8 Jan 2010 11:49:50 -0500
-In-Reply-To: <1262962563-5554-5-git-send-email-jlayton@redhat.com>
+Received: from mx1.redhat.com ([209.132.183.28]:28114 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752709Ab0AHQ46 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 8 Jan 2010 11:56:58 -0500
+In-Reply-To: <70DEDD50-4AC5-4377-B5FA-A1FBCD92EBF3@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Fri, 8 Jan 2010 11:49:16 -0500
+Chuck Lever <chuck.lever@oracle.com> wrote:
 
-On Jan 8, 2010, at 9:56 AM, Jeff Layton wrote:
+> 
+> Basically what this tells me is that you can't runs these tests at all  
+> if your development tree lives on an NFSv2/3 mount point.
+> 
 
-> Leverage the support that automake already has for running tests via
-> make check. Add a simple test that just checks that the statd mon and
-> unmon calls actually work.
->
-> Adding more tests should be a simple matter of adding new scripts
-> exit 0 on success and non-zero on fail, and adding those to the
-> Makefile.am.
->
-> Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> ---
-> tests/Makefile.am                    |    2 +
-> tests/t0001-statd-basic-mon-unmon.sh |   58 +++++++++++++++++++++++++ 
-> +++++++
-> tests/test-lib.sh                    |   60 +++++++++++++++++++++++++ 
-> +++++++++
-> 3 files changed, 120 insertions(+), 0 deletions(-)
-> create mode 100755 tests/t0001-statd-basic-mon-unmon.sh
-> create mode 100755 tests/test-lib.sh
->
-> diff --git a/tests/Makefile.am b/tests/Makefile.am
-> index a20b42b..faa8197 100644
-> --- a/tests/Makefile.am
-> +++ b/tests/Makefile.am
-> @@ -9,3 +9,5 @@ statdb_dump_LDADD = ../support/nfs/libnfs.a \
-> SUBDIRS = nsm_client
->
-> MAINTAINERCLEANFILES = Makefile.in
-> +
-> +TESTS = t0001-statd-basic-mon-unmon.sh
-> diff --git a/tests/t0001-statd-basic-mon-unmon.sh b/tests/t0001- 
-> statd-basic-mon-unmon.sh
-> new file mode 100755
-> index 0000000..00127fb
-> --- /dev/null
-> +++ b/tests/t0001-statd-basic-mon-unmon.sh
-> @@ -0,0 +1,58 @@
-> +#!/bin/bash
-> +#
-> +# statd_basic_mon_unmon -- test basic mon/unmon functionality with  
-> statd
-> +#
-> +# Copyright (C) 2010  Red Hat, Jeff Layton <jlayton@redhat.com>
-> +#
-> +# This program is free software; you can redistribute it and/or
-> +# modify it under the terms of the GNU General Public License
-> +# as published by the Free Software Foundation; either version 2
-> +# of the License, or (at your option) any later version.
-> +#
-> +# This program is distributed in the hope that it will be useful,
-> +# but WITHOUT ANY WARRANTY; without even the implied warranty of
-> +# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-> +# GNU General Public License for more details.
-> +#
-> +# You should have received a copy of the GNU General Public License
-> +# along with this program; if not, write to the Free Software  
-> Foundation, Inc.,
-> +# 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
-> +#
-> +
-> +. ./test-lib.sh
-> +
-> +# This test needs root privileges
-> +check_root
-> +
-> +start_statd
-> +if [ $? -ne 0 ]; then
-> +	echo "FAIL: problem starting statd"
-> +	exit 1
-> +fi
-> +
-> +COOKIE=`echo $$ | md5sum | cut -d' ' -f1`
-> +MON_NAME=`hostname`
-> +
-> +nsm_client mon $MON_NAME $COOKIE
-> +if [ $? -ne 0 ]; then
-> +	echo "FAIL: mon failed"
-> +	kill_statd
-> +	exit 1
-> +fi
-> +
-> +statdb_dump | grep $MON_NAME | grep -q $COOKIE
-> +if [ $? -ne 0 ]; then
-> +	echo "FAIL: monitor DB doesn't seem to contain entry"
-> +	kill_statd
-> +	exit 1
-> +fi
-> +
-> +nsm_client unmon $MON_NAME
-> +if [ $? -ne 0 ]; then
-> +	echo "FAIL: unmon failed"
-> +	kill_statd
-> +	exit 1
-> +fi
-> +
-> +kill_statd
-> +
-> diff --git a/tests/test-lib.sh b/tests/test-lib.sh
-> new file mode 100755
-> index 0000000..3d47264
-> --- /dev/null
-> +++ b/tests/test-lib.sh
-> @@ -0,0 +1,60 @@
-> +#!/bin/bash
-> +#
-> +# test-lib.sh -- library of functions for nfs-utils tests
-> +#
-> +# Copyright (C) 2010  Red Hat, Jeff Layton <jlayton@redhat.com>
-> +#
-> +# This program is free software; you can redistribute it and/or
-> +# modify it under the terms of the GNU General Public License
-> +# as published by the Free Software Foundation; either version 2
-> +# of the License, or (at your option) any later version.
-> +#
-> +# This program is distributed in the hope that it will be useful,
-> +# but WITHOUT ANY WARRANTY; without even the implied warranty of
-> +# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-> +# GNU General Public License for more details.
-> +#
-> +# You should have received a copy of the GNU General Public License
-> +# along with this program; if not, write to the Free Software  
-> Foundation, Inc.,
-> +# 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
-> +#
-> +
-> +# make sure $srcdir is set and sanity check it
-> +srcdir=${srcdir-.}
-> +if [ ! -d ${srcdir} ]; then
-> +	echo "***ERROR***: bad installation -- \$srcdir=${srcdir}"
-> +	exit 1
-> +fi
-> +
-> +export PATH=$PATH:${srcdir}:${srcdir}/nsm_client
-> +
-> +# Some tests require root privileges. Check for them and skip the  
-> test (exit 77)
-> +# if the caller doesn't have them.
-> +check_root() {
-> +	if [ $EUID -ne 0 ]; then
-> +		echo "*** Skipping this test as it requires root privs ***"
-> +		exit 77
-> +	fi
-> +}
-> +
-> +# is lockd registered as a service?
-> +lockd_registered() {
-> +	rpcinfo -p | grep -q nlockmgr
-> +	return $?
-> +}
-> +
-> +# start up statd
-> +start_statd() {
-> +	rpcinfo -u 127.0.0.1 status 1 &> /dev/null
-> +	if [ $? -eq 0 ]; then
-> +		echo "***ERROR***: statd is already running and should "
-> +		echo "             be down when starting this test"
-> +		return 1
+I don't think the test I have so far will do any fcntl locking, so that
+one would probably work. No guarantees on any that are added later though.
 
-Basically what this tells me is that you can't runs these tests at all  
-if your development tree lives on an NFSv2/3 mount point.
+It's probably best to assume that doing so would be problematic.
 
-> +	fi
-> +	$srcdir/../utils/statd/statd --no-notify
+> > +	fi
+> > +	$srcdir/../utils/statd/statd --no-notify
+> 
+> Is --no-notify really needed?  I guess that's just a safety net.
+> 
 
-Is --no-notify really needed?  I guess that's just a safety net.
+Yeah. On the off chance that someone has monitored hosts in the db
+after shutting down statd, I don't think we want to start spraying
+notifications when we start the test.
 
-> +}
-> +
-> +# shut down statd
-> +kill_statd() {
-> +	kill `cat /var/run/rpc.statd.pid`
-> +}
-> -- 
-> 1.6.5.2
-
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+> > +}
+> > +
+> > +# shut down statd
+> > +kill_statd() {
+> > +	kill `cat /var/run/rpc.statd.pid`
+> > +}
+> > -- 
+> > 1.6.5.2
+> 
+> --
+> Chuck Lever
+> chuck[dot]lever[at]oracle[dot]com
+> 
+> 
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
 
 
-
+-- 
+Jeff Layton <jlayton@redhat.com>
