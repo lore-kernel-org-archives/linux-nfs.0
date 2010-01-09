@@ -1,235 +1,47 @@
-From: andros@netapp.com
-Subject: [PATCH 6/6] nfs41: implement cb_recall_slot
-Date: Fri,  8 Jan 2010 15:23:03 -0500
-Message-ID: <1262982183-2412-2-git-send-email-andros@netapp.com>
-References: <1262982183-2412-1-git-send-email-andros@netapp.com>
-Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
-To: trond.myklebust@netapp.com
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: [RFC PATCH 0/2] Fix up the NFS mmap code
+Date: Fri, 08 Jan 2010 19:56:24 -0500
+Message-ID: <20100109005624.7473.33215.stgit@localhost.localdomain>
+References: <1262913974.2659.101.camel@localhost>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
+Cc: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org
+To: Andi Kleen <andi@firstfloor.org>,
+	Linus Torvalds <torvalds@linux-foundation.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:47877 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:24768 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752289Ab0AHUXV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 8 Jan 2010 15:23:21 -0500
-In-Reply-To: <1262982183-2412-1-git-send-email-andros@netapp.com>
+	id S1752351Ab0AIBGs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 8 Jan 2010 20:06:48 -0500
+In-Reply-To: <1262913974.2659.101.camel@localhost>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Andy Adamson <andros@netapp.com>
+How about something like the following. I chose to wrap the call to
+do_mmap_pgoff() instead of making a special ->pre_mmap(), since that
+seems more consistent with the way we handle ->read() and ->write().
 
-Drain the fore channel and reset the max_slots to the new value.
+I also left sys_uselib() and do_execve() to rely on revalidate at
+open(), since executables and libraries really are not ever expected to
+change while open.
 
-Signed-off-by: Andy Adamson <andros@netapp.com>
+Cheers
+  Trond
+
 ---
- fs/nfs/callback.h         |    8 ++++++++
- fs/nfs/callback_proc.c    |   32 ++++++++++++++++++++++++++++++++
- fs/nfs/callback_xdr.c     |   22 +++++++++++++++++++++-
- fs/nfs/nfs4_fs.h          |    2 ++
- fs/nfs/nfs4state.c        |   23 +++++++++++++++++++++++
- include/linux/nfs_fs_sb.h |    2 ++
- 6 files changed, 88 insertions(+), 1 deletions(-)
 
-diff --git a/fs/nfs/callback.h b/fs/nfs/callback.h
-index d4036be..85a7cfd 100644
---- a/fs/nfs/callback.h
-+++ b/fs/nfs/callback.h
-@@ -119,6 +119,14 @@ struct cb_recallanyargs {
- };
- 
- extern unsigned nfs4_callback_recallany(struct cb_recallanyargs *args, void *dummy);
-+
-+struct cb_recallslotargs {
-+	struct sockaddr	*crsa_addr;
-+	uint32_t	crsa_target_max_slots;
-+};
-+extern unsigned nfs4_callback_recallslot(struct cb_recallslotargs *args,
-+					  void *dummy);
-+
- #endif /* CONFIG_NFS_V4_1 */
- 
- extern __be32 nfs4_callback_getattr(struct cb_getattrargs *args, struct cb_getattrres *res);
-diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
-index 3cc2333..e81e1ea 100644
---- a/fs/nfs/callback_proc.c
-+++ b/fs/nfs/callback_proc.c
-@@ -297,4 +297,36 @@ out:
- 	dprintk("%s: exit with status = %d\n", __func__, ntohl(status));
- 	return status;
- }
-+
-+/* Reduce the fore channel's max_slots to the target value */
-+unsigned nfs4_callback_recallslot(struct cb_recallslotargs *args, void *dummy)
-+{
-+	struct nfs_client *clp;
-+	struct nfs4_slot_table *fc_stbl;
-+	int status;
-+
-+	status = htonl(NFS4ERR_OP_NOT_IN_SESSION);
-+	clp = nfs_find_client(args->crsa_addr, 4);
-+	if (clp == NULL)
-+		goto out;
-+
-+	dprintk("NFS: RECALL_SLOT callback request from %s "
-+		" with target max slots: %d\n",
-+		rpc_peeraddr2str(clp->cl_rpcclient, RPC_DISPLAY_ADDR),
-+		args->crsa_target_max_slots);
-+
-+	fc_stbl = &clp->cl_session->fc_slot_table;
-+
-+	status = htonl(NFS4ERR_BAD_HIGH_SLOT);
-+	if (args->crsa_target_max_slots >= fc_stbl->max_slots ||
-+	    args->crsa_target_max_slots < 1)
-+		goto out;
-+
-+	fc_stbl->target_max_slots = args->crsa_target_max_slots;
-+	nfs41_handle_recall_slot(clp);
-+	status = htonl(NFS4_OK);
-+out:
-+	dprintk("%s: exit with status = %d\n", __func__, ntohl(status));
-+	return status;
-+}
- #endif /* CONFIG_NFS_V4_1 */
-diff --git a/fs/nfs/callback_xdr.c b/fs/nfs/callback_xdr.c
-index 76d082e..241321b 100644
---- a/fs/nfs/callback_xdr.c
-+++ b/fs/nfs/callback_xdr.c
-@@ -24,6 +24,7 @@
- #define CB_OP_SEQUENCE_RES_MAXSZ	(CB_OP_HDR_RES_MAXSZ + \
- 					4 + 1 + 3)
- #define CB_OP_RECALLANY_RES_MAXSZ	(CB_OP_HDR_RES_MAXSZ)
-+#define CB_OP_RECALLSLOT_RES_MAXSZ	(CB_OP_HDR_RES_MAXSZ)
- #endif /* CONFIG_NFS_V4_1 */
- 
- #define NFSDBG_FACILITY NFSDBG_CALLBACK
-@@ -346,6 +347,20 @@ static unsigned decode_recallany_args(struct svc_rqst *rqstp,
- 	return 0;
- }
- 
-+static unsigned decode_recallslot_args(struct svc_rqst *rqstp,
-+					struct xdr_stream *xdr,
-+					struct cb_recallslotargs *args)
-+{
-+	__be32 *p;
-+
-+	args->crsa_addr = svc_addr(rqstp);
-+	p = read_buf(xdr, 4);
-+	if (unlikely(p == NULL))
-+		return htonl(NFS4ERR_BADXDR);
-+	args->crsa_target_max_slots = ntohl(*p++);
-+	return 0;
-+}
-+
- #endif /* CONFIG_NFS_V4_1 */
- 
- static __be32 encode_string(struct xdr_stream *xdr, unsigned int len, const char *str)
-@@ -554,6 +569,7 @@ preprocess_nfs41_op(int nop, unsigned int op_nr, struct callback_op **op)
- 	case OP_CB_RECALL:
- 	case OP_CB_SEQUENCE:
- 	case OP_CB_RECALL_ANY:
-+	case OP_CB_RECALL_SLOT:
- 		*op = &callback_ops[op_nr];
- 		break;
- 
-@@ -562,7 +578,6 @@ preprocess_nfs41_op(int nop, unsigned int op_nr, struct callback_op **op)
- 	case OP_CB_NOTIFY:
- 	case OP_CB_PUSH_DELEG:
- 	case OP_CB_RECALLABLE_OBJ_AVAIL:
--	case OP_CB_RECALL_SLOT:
- 	case OP_CB_WANTS_CANCELLED:
- 	case OP_CB_NOTIFY_LOCK:
- 		return htonl(NFS4ERR_NOTSUPP);
-@@ -724,6 +739,11 @@ static struct callback_op callback_ops[] = {
- 		.decode_args = (callback_decode_arg_t)decode_recallany_args,
- 		.res_maxsize = CB_OP_RECALLANY_RES_MAXSZ,
- 	},
-+	[OP_CB_RECALL_SLOT] = {
-+		.process_op = (callback_process_op_t)nfs4_callback_recallslot,
-+		.decode_args = (callback_decode_arg_t)decode_recallslot_args,
-+		.res_maxsize = CB_OP_RECALLSLOT_RES_MAXSZ,
-+	},
- #endif /* CONFIG_NFS_V4_1 */
- };
- 
-diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
-index 865265b..cd93dfc 100644
---- a/fs/nfs/nfs4_fs.h
-+++ b/fs/nfs/nfs4_fs.h
-@@ -46,6 +46,7 @@ enum nfs4_client_state {
- 	NFS4CLNT_DELEGRETURN,
- 	NFS4CLNT_SESSION_RESET,
- 	NFS4CLNT_SESSION_DRAINING,
-+	NFS4CLNT_RECALL_SLOT,
- };
- 
- /*
-@@ -278,6 +279,7 @@ extern void nfs4_schedule_state_recovery(struct nfs_client *);
- extern void nfs4_schedule_state_manager(struct nfs_client *);
- extern int nfs4_state_mark_reclaim_nograce(struct nfs_client *clp, struct nfs4_state *state);
- extern void nfs41_handle_sequence_flag_errors(struct nfs_client *clp, u32 flags);
-+extern void nfs41_handle_recall_slot(struct nfs_client *clp);
- extern void nfs4_put_lock_state(struct nfs4_lock_state *lsp);
- extern int nfs4_set_lock_state(struct nfs4_state *state, struct file_lock *fl);
- extern void nfs4_copy_stateid(nfs4_stateid *, struct nfs4_state *, fl_owner_t);
-diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-index 6d263ed..4f71bb1 100644
---- a/fs/nfs/nfs4state.c
-+++ b/fs/nfs/nfs4state.c
-@@ -1249,6 +1249,12 @@ static int nfs4_reclaim_lease(struct nfs_client *clp)
- }
- 
- #ifdef CONFIG_NFS_V4_1
-+void nfs41_handle_recall_slot(struct nfs_client *clp)
-+{
-+	set_bit(NFS4CLNT_RECALL_SLOT, &clp->cl_state);
-+	nfs4_schedule_state_recovery(clp);
-+}
-+
- void nfs41_handle_sequence_flag_errors(struct nfs_client *clp, u32 flags)
- {
- 	if (!flags)
-@@ -1299,6 +1305,16 @@ out:
- 	return status;
- }
- 
-+static void nfs4_recall_slot(struct nfs_client *clp)
-+{
-+	struct nfs4_slot_table *fc_stbl = &clp->cl_session->fc_slot_table;
-+
-+	nfs4_begin_drain_session(clp);
-+	fc_stbl->max_slots = fc_stbl->target_max_slots;
-+	fc_stbl->target_max_slots = 0;
-+	nfs4_end_drain_session(clp);
-+}
-+
- #else /* CONFIG_NFS_V4_1 */
- static int nfs4_reset_session(struct nfs_client *clp) { return 0; }
- static int nfs4_end_drain_session(struct nfs_client *clp) { return 0; }
-@@ -1397,6 +1413,13 @@ static void nfs4_state_manager(struct nfs_client *clp)
- 			nfs_client_return_marked_delegations(clp);
- 			continue;
- 		}
-+		/* Recall session slots */
-+		if (test_and_clear_bit(NFS4CLNT_RECALL_SLOT, &clp->cl_state)
-+		   && nfs4_has_session(clp)) {
-+			nfs4_recall_slot(clp);
-+			continue;
-+		}
-+
- 
- 		nfs4_clear_state_manager_bit(clp);
- 		/* Did we race with an attempt to give us more work? */
-diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
-index 34fc6be..ecd9e6c 100644
---- a/include/linux/nfs_fs_sb.h
-+++ b/include/linux/nfs_fs_sb.h
-@@ -193,6 +193,8 @@ struct nfs4_slot_table {
- 	int		max_slots;		/* # slots in table */
- 	int		highest_used_slotid;	/* sent to server on each SEQ.
- 						 * op for dynamic resizing */
-+	int		target_max_slots;	/* Set by CB_RECALL_SLOT as
-+						 * the new max_slots */
- };
- 
- static inline int slot_idx(struct nfs4_slot_table *tbl, struct nfs4_slot *sp)
+Trond Myklebust (2):
+      NFS: Fix a potential deadlock in nfs_file_mmap()
+      VFS: Add a mmap_file() callback to struct file_operations
+
+
+ fs/nfs/file.c      |   28 ++++++++++++++++++++++------
+ fs/nfs/inode.c     |    4 ++++
+ include/linux/fs.h |    5 +++++
+ mm/filemap.c       |   23 +++++++++++++++++++++++
+ mm/mmap.c          |   11 ++++++++---
+ mm/nommu.c         |   11 ++++++++---
+ 6 files changed, 70 insertions(+), 12 deletions(-)
+
 -- 
-1.6.5.2
-
+Signature
