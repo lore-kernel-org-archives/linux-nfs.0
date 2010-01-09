@@ -1,32 +1,34 @@
-From: Al Viro <viro@ZenIV.linux.org.uk>
-Subject: Re: [RFC PATCH 0/2] Fix up the NFS mmap code
-Date: Sat, 9 Jan 2010 02:43:53 +0000
-Message-ID: <20100109024353.GJ30528@ZenIV.linux.org.uk>
-References: <1262913974.2659.101.camel@localhost> <20100109005624.7473.33215.stgit@localhost.localdomain> <alpine.LFD.2.00.1001081709470.7821@localhost.localdomain> <20100109013825.GD30528@ZenIV.linux.org.uk> <alpine.LFD.2.00.1001081750080.7821@localhost.localdomain> <20100109021124.GG30528@ZenIV.linux.org.uk> <alpine.LFD.2.00.1001081814240.7821@localhost.localdomain> <20100109023035.GH30528@ZenIV.linux.org.uk> <20100109024005.GI30528@ZenIV.linux.org.uk>
+From: Joe Perches <joe@perches.com>
+Subject: [PATCH] net/sunrpc/addr.c: Remove unnecessary semicolons
+Date: Fri, 08 Jan 2010 22:36:23 -0800
+Message-ID: <1263018983.20926.9.camel@Joe-Laptop.home>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
-	Andi Kleen <andi@firstfloor.org>, linux-kernel@vger.kernel.org,
-	linux-nfs@vger.kernel.org
-To: Linus Torvalds <torvalds@linux-foundation.org>
+Content-Type: text/plain; charset="UTF-8"
+Cc: "David S. Miller" <davem@davemloft.net>,
+	netdev <netdev@vger.kernel.org>, linux-nfs@vger.kernel.org
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from zeniv.linux.org.uk ([195.92.253.2]:43905 "EHLO
-	ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754208Ab0AICn5 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 8 Jan 2010 21:43:57 -0500
-In-Reply-To: <20100109024005.GI30528@ZenIV.linux.org.uk>
+Received: from mail.perches.com ([173.55.12.10]:1027 "EHLO mail.perches.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750896Ab0AIGgY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 9 Jan 2010 01:36:24 -0500
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, Jan 09, 2010 at 02:40:05AM +0000, Al Viro wrote:
-> On Sat, Jan 09, 2010 at 02:30:35AM +0000, Al Viro wrote:
-> 
-> > Interesting...  There's nfs_update_inode(), but it ought to scream bloody
-> > murder on the type change (and its return value is ignore by nfs_fhget(),
-> > BTW).
-> 
-> Uh-oh...  Just what will happen if we get FATTR_MODE without FATTR_TYPE,
-> BTW?  AFAICS, the check for changed type won't trigger, but we will
-> get type bits in i_mode set to 0.  Probably unrelated, but...
+Signed-off-by: Joe Perches <joe@perches.com>
 
-Definitely unrelated - we'll get i_mode buggered, but i_op remains set.
+diff --git a/net/sunrpc/addr.c b/net/sunrpc/addr.c
+index 6dcdd25..2ef893e 100644
+--- a/net/sunrpc/addr.c
++++ b/net/sunrpc/addr.c
+@@ -149,7 +149,7 @@ static size_t rpc_pton4(const char *buf, const size_t buflen,
+ 		return 0;
+ 
+ 	sin->sin_family = AF_INET;
+-	return sizeof(struct sockaddr_in);;
++	return sizeof(struct sockaddr_in);
+ }
+ 
+ #if defined(CONFIG_IPV6) || defined(CONFIG_IPV6_MODULE)
+
+
