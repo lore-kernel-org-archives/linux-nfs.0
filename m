@@ -1,45 +1,39 @@
-From: Al Viro <viro@ZenIV.linux.org.uk>
+From: Linus Torvalds <torvalds@linux-foundation.org>
 Subject: Re: [RFC PATCH 0/2] Fix up the NFS mmap code
-Date: Sat, 9 Jan 2010 02:11:25 +0000
-Message-ID: <20100109021124.GG30528@ZenIV.linux.org.uk>
+Date: Fri, 8 Jan 2010 18:22:01 -0800 (PST)
+Message-ID: <alpine.LFD.2.00.1001081814240.7821@localhost.localdomain>
 References: <1262913974.2659.101.camel@localhost> <20100109005624.7473.33215.stgit@localhost.localdomain> <alpine.LFD.2.00.1001081709470.7821@localhost.localdomain> <20100109013825.GD30528@ZenIV.linux.org.uk> <alpine.LFD.2.00.1001081750080.7821@localhost.localdomain>
+ <20100109021124.GG30528@ZenIV.linux.org.uk>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: TEXT/PLAIN; charset=US-ASCII
 Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
 	Andi Kleen <andi@firstfloor.org>, linux-kernel@vger.kernel.org,
 	linux-nfs@vger.kernel.org
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from zeniv.linux.org.uk ([195.92.253.2]:49905 "EHLO
-	ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751274Ab0AICL3 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 8 Jan 2010 21:11:29 -0500
-In-Reply-To: <alpine.LFD.2.00.1001081750080.7821-bi+AKbBUZKY6gyzm1THtWbp2dZbC/Bob@public.gmane.org>
-Sender: linux-nfs-owner@vger.kernel.org
+To: Al Viro <viro@ZenIV.linux.org.uk>
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1754520Ab0AICWi@vger.kernel.org>
+In-Reply-To: <20100109021124.GG30528@ZenIV.linux.org.uk>
+Sender: linux-kernel-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Jan 08, 2010 at 05:57:27PM -0800, Linus Torvalds wrote:
-> 
-> 
-> On Sat, 9 Jan 2010, Al Viro wrote:
-> > 
-> > readdir() is certainly a red herring.
-> 
-> That's the one that lockdep reports, though. I still don't see why. Afaik, 
-> the only place where NFS gets an inode is nfs_fhget(), and that seems to 
-> do things correctly.
 
-Well, sure - it steps on i_mutex-before-mmmap_sem first from ls somewhere and
-records the ordering for posterity.  Then NFS steps into mmap() (on a
-different inode) and gets conflicting ordering.
- 
-It would be a false positive if rules for NFS *really* had been different
-and it could safely grab i_mutex on NFS inodes inside mmap_sem.  It can't.
-The rules really are the same.  And readdir is just the earliest case of
-kernel stepping on mmap_sem while holding *some* i_mutex.  write() is
-another and there i_mutex can very well be the same as in case of mmap().
 
-lockdep doesn't make a distinction (and really, how many paths reinforcing
-the normal lock ordering would you record?), but if we'd given i_mutex of
-NFS regular files a class of its own, we'd see a warning with nfs write
-instead of readdir...
+On Sat, 9 Jan 2010, Al Viro wrote:
+> 
+> Well, sure - it steps on i_mutex-before-mmmap_sem first from ls somewhere and
+> records the ordering for posterity.  Then NFS steps into mmap() (on a
+> different inode) and gets conflicting ordering.
+
+Look closer: the inodes for directories and for non-directories have 
+i_mutex in different lockdep classes.
+
+So that "on a different inode" thing should have made it a non-issue, 
+since there is no actual chain back. There is "mmap_sem -> 
+i_mutex_regular_file" (for mmap) and there is "i_mutex_directory -> 
+mmap_sem" (for filldir), but that isn't an ABBA.
+
+The problem _seems_ to be (if I read Andi's chain correctly) that a 
+directory hasn't gone through the i_mutex_dir_key change, so filldir ends 
+up being counted against the default i_mutex_key.
+
+
+		Linus
