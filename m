@@ -1,122 +1,54 @@
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [RFC PATCH 2/2] NFS: Fix a potential deadlock in nfs_file_mmap()
-Date: Fri, 08 Jan 2010 19:56:24 -0500
-Message-ID: <20100109005624.7473.15560.stgit@localhost.localdomain>
-References: <20100109005624.7473.33215.stgit@localhost.localdomain>
+From: Linus Torvalds <torvalds@linux-foundation.org>
+Subject: Re: [RFC PATCH 0/2] Fix up the NFS mmap code
+Date: Fri, 8 Jan 2010 17:17:14 -0800 (PST)
+Message-ID: <alpine.LFD.2.00.1001081709470.7821@localhost.localdomain>
+References: <1262913974.2659.101.camel@localhost> <20100109005624.7473.33215.stgit@localhost.localdomain>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Cc: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org
-To: Andi Kleen <andi@firstfloor.org>,
-	Linus Torvalds <torvalds@linux-foundation.org>
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1754314Ab0AIBHm@vger.kernel.org>
-In-Reply-To: <20100109005624.7473.33215.stgit@localhost.localdomain>
-Sender: linux-kernel-owner@vger.kernel.org
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: Andi Kleen <andi@firstfloor.org>, linux-kernel@vger.kernel.org,
+	linux-nfs@vger.kernel.org
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:55998 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751644Ab0AIBRu (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 8 Jan 2010 20:17:50 -0500
+In-Reply-To: <20100109005624.7473.33215.stgit-bi+AKbBUZKY6gyzm1THtWbp2dZbC/Bob@public.gmane.org>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-We cannot call nfs_invalidate_mapping() inside file->f_ops->mmap(), since
-this would cause us to grab the inode->i_mutex while already holding the
-current->mm->mmap_sem (thus causing a potential ABBA deadlock with the file
-write code, which can grab those locks in the opposite order).
 
-We can fix this situation for the mmap() system call by using the new
-mmap_pgoff() callback, which is called prior to taking the
-current->mm->mmap_sem mutex.
 
-We also add ensure that open() invalidates the mapping if the inode data is
-stale so that other users of mmap() (mainly the exec and uselib system
-calls) get up to date data too.
+On Fri, 8 Jan 2010, Trond Myklebust wrote:
+>
+> How about something like the following. I chose to wrap the call to
+> do_mmap_pgoff() instead of making a special ->pre_mmap(), since that
+> seems more consistent with the way we handle ->read() and ->write().
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
+I still don't think that you can ever do mmap _and_ readdir on the same 
+inode, so there's something wrong with the lockdep annotations.
 
- fs/nfs/file.c  |   28 ++++++++++++++++++++++------
- fs/nfs/inode.c |    4 ++++
- 2 files changed, 26 insertions(+), 6 deletions(-)
+See my earlier mail about putting directory inodes in a different class 
+from non-directory inodes, and the email after that that points out that 
+we already do:
 
-diff --git a/fs/nfs/file.c b/fs/nfs/file.c
-index 6b89132..723e254 100644
---- a/fs/nfs/file.c
-+++ b/fs/nfs/file.c
-@@ -42,6 +42,9 @@ static int nfs_file_open(struct inode *, struct file *);
- static int nfs_file_release(struct inode *, struct file *);
- static loff_t nfs_file_llseek(struct file *file, loff_t offset, int origin);
- static int  nfs_file_mmap(struct file *, struct vm_area_struct *);
-+static unsigned long nfs_file_mmap_pgoff(struct file * file,
-+		unsigned long addr, unsigned long len, unsigned long prot,
-+		unsigned long flags, unsigned long pgoff);
- static ssize_t nfs_file_splice_read(struct file *filp, loff_t *ppos,
- 					struct pipe_inode_info *pipe,
- 					size_t count, unsigned int flags);
-@@ -78,6 +81,7 @@ const struct file_operations nfs_file_operations = {
- 	.splice_write	= nfs_file_splice_write,
- 	.check_flags	= nfs_check_flags,
- 	.setlease	= nfs_setlease,
-+	.mmap_pgoff	= nfs_file_mmap_pgoff,
- };
- 
- const struct inode_operations nfs_file_inode_operations = {
-@@ -290,24 +294,36 @@ nfs_file_splice_read(struct file *filp, loff_t *ppos,
- static int
- nfs_file_mmap(struct file * file, struct vm_area_struct * vma)
- {
--	struct dentry *dentry = file->f_path.dentry;
--	struct inode *inode = dentry->d_inode;
- 	int	status;
- 
- 	dprintk("NFS: mmap(%s/%s)\n",
--		dentry->d_parent->d_name.name, dentry->d_name.name);
-+			file->f_path.dentry->d_parent->d_name.name,
-+			file->f_path.dentry->d_name.name);
- 
- 	/* Note: generic_file_mmap() returns ENOSYS on nommu systems
- 	 *       so we call that before revalidating the mapping
- 	 */
- 	status = generic_file_mmap(file, vma);
--	if (!status) {
-+	if (!status)
- 		vma->vm_ops = &nfs_file_vm_ops;
--		status = nfs_revalidate_mapping(inode, file->f_mapping);
--	}
- 	return status;
- }
- 
-+static unsigned long
-+nfs_file_mmap_pgoff(struct file * file, unsigned long addr,
-+		unsigned long len, unsigned long prot,
-+		unsigned long flags, unsigned long pgoff)
-+{
-+	struct inode *inode = file->f_path.dentry->d_inode;
-+	int status;
-+
-+	status = nfs_revalidate_mapping(inode, file->f_mapping);
-+	if (status < 0)
-+		return status;
-+
-+	return generic_file_mmap_pgoff(file, addr, len, prot, flags, pgoff);
-+}
-+
- /*
-  * Flush any dirty pages for this process, and check for write errors.
-  * The return status from this call provides a reliable indication of
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index faa0918..90e1d67 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -56,6 +56,8 @@
- static int enable_ino64 = NFS_64_BIT_INODE_NUMBERS_ENABLED;
- 
- static void nfs_invalidate_inode(struct inode *);
-+static int nfs_invalidate_mapping(struct inode *inode,
-+		struct address_space *mapping);
- static int nfs_update_inode(struct inode *, struct nfs_fattr *);
- 
- static struct kmem_cache * nfs_inode_cachep;
-@@ -694,6 +696,8 @@ int nfs_open(struct inode *inode, struct file *filp)
- 	nfs_file_set_open_context(filp, ctx);
- 	put_nfs_open_context(ctx);
- 	nfs_fscache_set_inode_cookie(inode, filp);
-+	if (NFS_I(inode)->cache_validity & NFS_INO_INVALID_DATA)
-+		nfs_invalidate_mapping(inode, filp->f_mapping);
- 	return 0;
- }
- 
+ - inode_init_always():
+	lockdep_set_class(&inode->i_mutex, &sb->s_type->i_mutex_key);
+
+ - unlock_new_inode() (for directories):
+	lockdep_set_class(&inode->i_mutex, &type->i_mutex_dir_key);
+
+and I suspect that the reason why NFS triggers lockdep problems is that 
+NFS probably plays some game with inodes (presumably the root inode) that 
+ends up bypassing the normal new-inode handling.
+
+In short - I really don't think this issue merits VFS-level (or VM, 
+whatever you want to call it) hooks. There's a bug there, but I don't 
+think you're actually fixing the right thing.
+
+And _especially_ not the way you did it, where the filesystem can wrap the 
+whole complex do_mmap_pgoff. The NFS use you have doesn't seem too bad, 
+but anybody who tries to be clever and avoid "generic_mmap_do_pgoff()" 
+would immediately be a major disaster.
+
+		Linus
