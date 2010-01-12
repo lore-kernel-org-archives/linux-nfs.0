@@ -1,34 +1,40 @@
 From: Steve Dickson <SteveD@redhat.com>
-Subject: Re: [PATCH 0/2] showmount bug fixes
-Date: Tue, 12 Jan 2010 07:26:32 -0500
-Message-ID: <4B4C6A78.1080604@RedHat.com>
-References: <20100107162421.27102.21422.stgit@localhost.localdomain>
+Subject: Re: [PATCH] gssd: on krb5 upcall, have gssd send a more granular
+ error code
+Date: Tue, 12 Jan 2010 07:36:37 -0500
+Message-ID: <4B4C6CD5.9070703@RedHat.com>
+References: <1262875355-4522-1-git-send-email-jlayton@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: linux-nfs@vger.kernel.org
-To: Chuck Lever <chuck.lever@oracle.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org
+To: Jeff Layton <jlayton@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:1894 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:23952 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751256Ab0ALM0l (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 12 Jan 2010 07:26:41 -0500
-In-Reply-To: <20100107162421.27102.21422.stgit-bi+AKbBUZKY6gyzm1THtWbp2dZbC/Bob@public.gmane.org>
+	id S1751292Ab0ALMgk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 12 Jan 2010 07:36:40 -0500
+In-Reply-To: <1262875355-4522-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
 
-On 01/07/2010 11:26 AM, Chuck Lever wrote:
-> Hi Steve-
+On 01/07/2010 09:42 AM, Jeff Layton wrote:
+> Currently if a krb5 context expires, GSSAPI authenticated RPC calls
+> start returning error (-EACCES in particular). This is bad when someone has
+> a long running job that's doing filesystem ops on a krb5 authenticated NFS
+> mount and just happens to forget to redo a 'kinit' in time.
 > 
-> As promised, a couple of bug fixes for the recent improvements to the
-> showmount command.
+> The existing gssd always does a downcall with a '-1' error code if there
+> are problems, and the kernel always ignores this error code. Begin to
+> fix this by having gssd distinguish between someone that has no
+> credcache at all, and someone who has an expired one. In the case where
+> there is an existing credcache, have gssd downcall with an error code of
+> -EKEYEXPIRED. If there's not a credcache, then downcall with an error of
+> -EACCES.
 > 
-> ---
-> 
-> Chuck Lever (2):
->       showmount: Use CLNT_CONTROL for version fallback
->       showmount: Eliminate compiler warnings
+> We can then have the kernel use this error code to handle these
+> situations differently.
 > 
 Committed...
 
