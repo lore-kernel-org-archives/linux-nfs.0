@@ -1,93 +1,52 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet12.oracle.com ([148.87.113.124]:49498 "EHLO
-	rcsinet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754879Ab0AUU32 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 21 Jan 2010 15:29:28 -0500
-Message-ID: <4B58B8FE.80800@oracle.com>
-Date: Thu, 21 Jan 2010 15:28:46 -0500
-From: Chuck Lever <chuck.lever@oracle.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Jeff Layton <jlayton@redhat.com>, linux-nfs@vger.kernel.org,
-        steved@redhat.com, trond.myklebust@fys.uio.no
-Subject: Re: [PATCH] mount.nfs: prefer IPv4 addresses over IPv6 (try #2)
-References: <1263907662-19107-1-git-send-email-jlayton@redhat.com> <1667647A-2BB1-478D-8881-CE8EA2191F97@oracle.com> <20100120082905.1825f806@tlielax.poochiereds.net> <8E556CE2-569B-4E6D-BD02-7EF5CA84900D@oracle.com> <20100121191515.GA22021@fieldses.org> <4B58AD16.8040309@oracle.com> <20100121195746.GC22021@fieldses.org>
-In-Reply-To: <20100121195746.GC22021@fieldses.org>
-Content-Type: text/plain; charset=us-ascii; format=flowed
+Received: from mx2.netapp.com ([216.240.18.37]:32484 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752079Ab0ALVs5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 12 Jan 2010 16:48:57 -0500
+From: andros@netapp.com
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH 0/6] nfs41: return correct errors on callback replays version 2 
+Date: Tue, 12 Jan 2010 16:48:33 -0500
+Message-Id: <1263332919-2900-1-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On 01/21/2010 02:57 PM, J. Bruce Fields wrote:
-> On Thu, Jan 21, 2010 at 02:37:58PM -0500, Chuck Lever wrote:
->> On 01/21/2010 02:15 PM, J. Bruce Fields wrote:
->>> On Wed, Jan 20, 2010 at 10:36:36AM -0500, Chuck Lever wrote:
->>>> For the record, we looked at Solaris behavior yesterday.  With bi-family
->>>> servers, its mount command tries IPv6 first, but appears smart enough to
->>>> fall back to IPv4.  One thing we haven't tried is to see how difficult it
->>>> would be to fix the real problem by adding proper protocol family
->>>> negotiation to our own mount command.
->>>
->>> Sorry, I probably just haven't been following: what's "proper protocol
->>> family negotiation"?  I thought the only ways to negotiate were either
->>> rpcbind (v2, v3) or trial and error (v4)?
->>
->> In TI-RPC parlance, a "protocol" is the transport protocol (UDP, for
->> example), and a "protocol family" is the address family ("inet6", for
->> example).  A netid represents a particular combination of the two:  the
->> netid "udp6" represents UDP over "inet6".
->>
->> The "protocol family" is really the value that is passed to socket(2).
->> This call generally takes PF_INET or something like that as its first
->> argument.  All of the PF_FOO thingies have the same integer value as
->> their AF_FOO counterparts.  For TI-RPC, we have "inet" and "inet6",
->> which are strings that match up with the AF_FOO and PF_FOO names.
->>
->> rpcb_getaddr(3t) is designed to use the rpcbind protocol to determine
->> the address and transport to use when contacting a remote service.  Our
->> mount command has its own negotiation mechanism that is a superset of
->> rpcbind calls, in addition to having a faster timeout than
->> rpcb_getaddr(3t).
->
-> What does "is a superset of rpcbind calls" mean?
 
-rpcb_getaddr(3t) performs a single specific rpcbind query with a long 
-fixed timeout.  mount.nfs uses several rpcbind queries, in a particular 
-order, to identify which NFS-related services are available.  mount.nfs 
-uses individual queries rather than a single DUMPALL in order to enable 
-firewalls to detect which ports should be opened.
+Responded to Tronds comments.
 
-> I still don't
-> understand what the proper protocol family negotiation is: what actually
-> happens on the wire?
+The first three patches clean up callback processing
+0001-nfs41-fix-wrong-error-on-callback-hdr-xdr-overflow.patch
+0002-nfs41-directly-encode-back-channel-error.patch
+0003-nfs41-remove-uneeded-checks-in-callback-processing.patch
 
-If a particular RPC service (including rpcbind) cannot be contacted via 
-"inet6," and the server has an "inet" address listed in DNS, then 
-mount.nfs should be smart enough to try the mount request via the "inet" 
-address too.  This is in addition to support for rpcbind queries that 
-can return a netid, which would include information about which protocol 
-family to use).
+These next two implement correct error returns for v4.1 callback replays.
+Since our back channel has a ca_maxrequestsize_cached = 0, a replay with
+cachethis set to true results in a NFS4ERR_TOO_BIG_TO_CACHE error.
+This code is set up to do a real DRC.
+A replay with cachethis set to false returns a NFS4ERR_RETRY_UNCACHED_REP
+error.
+0004-nfs41-prepare-for-back-channel-drc.patch
+0005-nfs41-back-channel-drc-minimal-implementation.patch
 
-Currently our mount.nfs command fails if the target server has at least 
-one IPv6 address listed in DNS in addition to an IPv4 address, but does 
-not support NFS/IPv6.
+ADDED:
+0006 nfs41:-implement-cb_recall_slot.patch
+The fore channel session is drained, then the new highest_slot is set.
 
-For NFSv4, a server that has an IPv6 address but does not support 
-NFS/IPv6 will refuse connection to port 2049 over IPv6.  In that case, 
-mount.nfs should tell the kernel to retry the mount with the server's 
-IPv4 address, if it has one.
+TODO: The callback code currently returns NFS4ERR_RESOURCE on all xdr
+overflows. This is correct for v4.0, incorrect for v4.1.
 
-For NFSv3, a server that has an IPv6 address, but does not support 
-NFS/IPv6, will not register any inet6 netids in its rpcbind database. 
-Thus the mount.nfs command has to be smart enough to retry 
-PROGNOTREGISTERED results with the server's IPv4 address, if it has one.
+Testing:
 
-If the server has an IPv6 address, but is running portmap instead of 
-rpcbind, the initial rpcbind query connection will be refused (portmap 
-does not set up an IPv6 listener).  In that case, the mount request 
-should be retried with the server's IPv4 address, if it has one.
+Modified nfsv4.1 pynfs server tested cb_recall replays with the cb_sequence
+cachethis set to False and to True.
 
-Note that in any of these cases, if an NFS server does not have any IPv6 
-addresses listed in DNS, then behavior should be the same as before.
+Modified nfs4.1 pyNFS server sends CB_RECALL_SLOT call during the Connectathon
+basic big file test which uses all available slots.
 
--- 
-chuck[dot]lever[at]oracle[dot]com
+Connectathon tests pass.
+
+-->Andy
+
