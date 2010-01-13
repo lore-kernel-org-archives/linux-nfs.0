@@ -1,48 +1,43 @@
-From: Erik Bryer <erik_bryer@yahoo.com>
-Subject: [NFS] how to display fsid on client?
-Date: Wed, 13 Jan 2010 14:14:25 -0800 (PST)
-Message-ID: <55270.93264.qm@web37306.mail.mud.yahoo.com>
+From: Wendy Cheng <s.wendy.cheng@gmail.com>
+Subject: Re: [NFS] how to display fsid on client?
+Date: Wed, 13 Jan 2010 15:32:53 -0800
+Message-ID: <4B4E5825.1080305@gmail.com>
+References: <55270.93264.qm@web37306.mail.mud.yahoo.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-To: nfs@lists.sourceforge.net
+Cc: nfs@lists.sourceforge.net
+To: Erik Bryer <erik_bryer@yahoo.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from neil.brown.name ([220.233.11.133]:54274 "EHLO neil.brown.name"
+Received: from neil.brown.name ([220.233.11.133]:60627 "EHLO neil.brown.name"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756443Ab0AMWOv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 13 Jan 2010 17:14:51 -0500
+	id S1755655Ab0AMXrY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 13 Jan 2010 18:47:24 -0500
 Received: from brown by neil.brown.name with local (Exim 4.69)
 	(envelope-from <nfs-bounces@lists.sourceforge.net>)
-	id 1NVBUH-000699-Du
-	for linux-nfs@vger.kernel.org; Thu, 14 Jan 2010 09:14:49 +1100
+	id 1NVCvq-0006lM-3t
+	for linux-nfs@vger.kernel.org; Thu, 14 Jan 2010 10:47:22 +1100
+In-Reply-To: <55270.93264.qm-0WRSi9NJipCvuULXzWHTWIglqE1Y4D90QQ4Iyu8u01E@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I'm using (client and server) CentOS 5 (2.6.18). If I set the fsid to a small integer in the server's exports files (e.g. 1, 19 or 0x10, 0xffff and so on), then exportfs -arf, then unmount and mount on the client, I get the same device number from running ``stat'' on the mount point. It goes like this (client=10.10.99.102):
-root@server# cat /etc/exports
-/home           10.10.99.102(ro,sync,no_root_squash)
-root@client# cat /etc/fstab | grep server
-server:/home /n/server/home nfs hard,intr,bg,sync,ro  0 0
-root@client# mount /n/server/home
-root@client# stat /n/server/home
-  File: `/n/server/home'
-  Size: 4096            Blocks: 16         IO Block: 4096   directory
-Device: 31h/49d Inode: 2           Links: 8
-Access: (0755/drwxr-xr-x)  Uid: (    0/    root)   Gid: (  301/   users)
-Access: 2010-01-08 14:15:43.000000000 -0500
-Modify: 2009-03-09 18:42:01.000000000 -0400
-Change: 2009-11-23 19:45:51.000000000 -0500
-root@server# cat /etc/exports
-/home           10.10.99.102(ro,sync,no_root_squash,sid=0x19)
-root@server# exportfs -arf
-root@client# umount /n/server/home
-root@client# mount /n/server/home
-root@client# stat /n/server/home
-[ same information as above, specifically the same Device # ]
+Erik Bryer wrote:
+>
+> I've tried this many times, read the faq, and so on. Do I misunderstand? Is the st_dev, "ID of device containing file", as read on the client not going to be the same as what is forced by "fsid=n" in the exports file?
+>
+>   
+No, they are *different* IDs. The Linux NFS server's fsid is for export 
+purpose (used to construct NFS file handler). It has *nothing* to do 
+with "st_dev" obtained from "stat" system call (that is used by Linux 
+VFS layer).
 
-I've tried this many times, read the faq, and so on. Do I misunderstand? Is the st_dev, "ID of device containing file", as read on the client not going to be the same as what is forced by "fsid=n" in the exports file?
+To display the linux (nfs) server fsid on client, the easiest way (I 
+think) is probably using some network protocol analyzers that know how 
+to interpret Linux server's file handler (did you try "ethereal" yet ?). 
+If you decode the server's file handler, the fsid you're look for should 
+be there.
 
+-- Wendy
 
-      
 
 ------------------------------------------------------------------------------
 Throughout its 18-year history, RSA Conference consistently attracts the
