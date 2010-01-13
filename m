@@ -1,265 +1,134 @@
-From: Andy Adamson <andros@netapp.com>
-Subject: Re: [PATCH 6/6] nfs41: implement cb_recall_slot
-Date: Wed, 13 Jan 2010 15:58:24 -0500
-Message-ID: <599FC2DB-3DC7-4B2E-95F5-F6621FADAC86@netapp.com>
-References: <1263332919-2900-1-git-send-email-andros@netapp.com> <1263332919-2900-2-git-send-email-andros@netapp.com> <1263332919-2900-3-git-send-email-andros@netapp.com> <1263332919-2900-4-git-send-email-andros@netapp.com> <1263332919-2900-5-git-send-email-andros@netapp.com> <1263332919-2900-6-git-send-email-andros@netapp.com> <1263332919-2900-7-git-send-email-andros@netapp.com>
-Mime-Version: 1.0 (Apple Message framework v936)
-Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
-Cc: trond.myklebust@netapp.com, linux-nfs@vger.kernel.org
-To: andros@netapp.com
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 3/3] NFSD: Enable NFS server use of PF_INET6
+Date: Wed, 13 Jan 2010 16:10:48 -0500
+Message-ID: <20100113211048.19409.86029.stgit@localhost.localdomain>
+References: <20100113210650.19409.38009.stgit@localhost.localdomain>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
+Cc: linux-nfs@vger.kernel.org
+To: bfields@fieldses.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:41473 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755424Ab0AMU6o (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 13 Jan 2010 15:58:44 -0500
-In-Reply-To: <1263332919-2900-7-git-send-email-andros@netapp.com>
+Received: from rcsinet12.oracle.com ([148.87.113.124]:29814 "EHLO
+	rcsinet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752707Ab0AMVLE (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 13 Jan 2010 16:11:04 -0500
+In-Reply-To: <20100113210650.19409.38009.stgit-bi+AKbBUZKY6gyzm1THtWbp2dZbC/Bob@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Please disregard this version of this patch. I've found problems and  
-will resend.
+Try to use an PF_INET6 listener for NFSD if IPv6 is enabled in the
+kernel.
 
-Thanks.
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
 
--->Andy
+ fs/nfsd/nfsctl.c |   36 +++++++++++++++++++++++++++++-------
+ fs/nfsd/nfssvc.c |   27 ++++++++++++++++++++++-----
+ 2 files changed, 51 insertions(+), 12 deletions(-)
 
-On Jan 12, 2010, at 4:48 PM, andros@netapp.com wrote:
-
-> From: Andy Adamson <andros@netapp.com>
->
-> Drain the fore channel and reset the max_slots to the new value.
->
-> Signed-off-by: Andy Adamson <andros@netapp.com>
-> ---
-> fs/nfs/callback.h         |    8 ++++++++
-> fs/nfs/callback_proc.c    |   32 ++++++++++++++++++++++++++++++++
-> fs/nfs/callback_xdr.c     |   22 +++++++++++++++++++++-
-> fs/nfs/nfs4_fs.h          |    2 ++
-> fs/nfs/nfs4state.c        |   23 +++++++++++++++++++++++
-> include/linux/nfs_fs_sb.h |    2 ++
-> 6 files changed, 88 insertions(+), 1 deletions(-)
->
-> diff --git a/fs/nfs/callback.h b/fs/nfs/callback.h
-> index d4036be..85a7cfd 100644
-> --- a/fs/nfs/callback.h
-> +++ b/fs/nfs/callback.h
-> @@ -119,6 +119,14 @@ struct cb_recallanyargs {
-> };
->
-> extern unsigned nfs4_callback_recallany(struct cb_recallanyargs  
-> *args, void *dummy);
-> +
-> +struct cb_recallslotargs {
-> +	struct sockaddr	*crsa_addr;
-> +	uint32_t	crsa_target_max_slots;
-> +};
-> +extern unsigned nfs4_callback_recallslot(struct cb_recallslotargs  
-> *args,
-> +					  void *dummy);
-> +
-> #endif /* CONFIG_NFS_V4_1 */
->
-> extern __be32 nfs4_callback_getattr(struct cb_getattrargs *args,  
-> struct cb_getattrres *res);
-> diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
-> index 3cc2333..e81e1ea 100644
-> --- a/fs/nfs/callback_proc.c
-> +++ b/fs/nfs/callback_proc.c
-> @@ -297,4 +297,36 @@ out:
-> 	dprintk("%s: exit with status = %d\n", __func__, ntohl(status));
-> 	return status;
-> }
-> +
-> +/* Reduce the fore channel's max_slots to the target value */
-> +unsigned nfs4_callback_recallslot(struct cb_recallslotargs *args,  
-> void *dummy)
-> +{
-> +	struct nfs_client *clp;
-> +	struct nfs4_slot_table *fc_stbl;
-> +	int status;
-> +
-> +	status = htonl(NFS4ERR_OP_NOT_IN_SESSION);
-> +	clp = nfs_find_client(args->crsa_addr, 4);
-> +	if (clp == NULL)
-> +		goto out;
-> +
-> +	dprintk("NFS: RECALL_SLOT callback request from %s "
-> +		" with target max slots: %d\n",
-> +		rpc_peeraddr2str(clp->cl_rpcclient, RPC_DISPLAY_ADDR),
-> +		args->crsa_target_max_slots);
-> +
-> +	fc_stbl = &clp->cl_session->fc_slot_table;
-> +
-> +	status = htonl(NFS4ERR_BAD_HIGH_SLOT);
-> +	if (args->crsa_target_max_slots >= fc_stbl->max_slots ||
-> +	    args->crsa_target_max_slots < 1)
-> +		goto out;
-> +
-> +	fc_stbl->target_max_slots = args->crsa_target_max_slots;
-> +	nfs41_handle_recall_slot(clp);
-> +	status = htonl(NFS4_OK);
-> +out:
-> +	dprintk("%s: exit with status = %d\n", __func__, ntohl(status));
-> +	return status;
-> +}
-> #endif /* CONFIG_NFS_V4_1 */
-> diff --git a/fs/nfs/callback_xdr.c b/fs/nfs/callback_xdr.c
-> index 08b430d..8e66e20 100644
-> --- a/fs/nfs/callback_xdr.c
-> +++ b/fs/nfs/callback_xdr.c
-> @@ -24,6 +24,7 @@
-> #define CB_OP_SEQUENCE_RES_MAXSZ	(CB_OP_HDR_RES_MAXSZ + \
-> 					4 + 1 + 3)
-> #define CB_OP_RECALLANY_RES_MAXSZ	(CB_OP_HDR_RES_MAXSZ)
-> +#define CB_OP_RECALLSLOT_RES_MAXSZ	(CB_OP_HDR_RES_MAXSZ)
-> #endif /* CONFIG_NFS_V4_1 */
->
-> #define NFSDBG_FACILITY NFSDBG_CALLBACK
-> @@ -349,6 +350,20 @@ static unsigned decode_recallany_args(struct  
-> svc_rqst *rqstp,
-> 	return 0;
-> }
->
-> +static unsigned decode_recallslot_args(struct svc_rqst *rqstp,
-> +					struct xdr_stream *xdr,
-> +					struct cb_recallslotargs *args)
-> +{
-> +	__be32 *p;
-> +
-> +	args->crsa_addr = svc_addr(rqstp);
-> +	p = read_buf(xdr, 4);
-> +	if (unlikely(p == NULL))
-> +		return htonl(NFS4ERR_BADXDR);
-> +	args->crsa_target_max_slots = ntohl(*p++);
-> +	return 0;
-> +}
-> +
-> #endif /* CONFIG_NFS_V4_1 */
->
-> static __be32 encode_string(struct xdr_stream *xdr, unsigned int  
-> len, const char *str)
-> @@ -557,6 +572,7 @@ preprocess_nfs41_op(int nop, unsigned int op_nr,  
-> struct callback_op **op)
-> 	case OP_CB_RECALL:
-> 	case OP_CB_SEQUENCE:
-> 	case OP_CB_RECALL_ANY:
-> +	case OP_CB_RECALL_SLOT:
-> 		*op = &callback_ops[op_nr];
-> 		break;
->
-> @@ -565,7 +581,6 @@ preprocess_nfs41_op(int nop, unsigned int op_nr,  
-> struct callback_op **op)
-> 	case OP_CB_NOTIFY:
-> 	case OP_CB_PUSH_DELEG:
-> 	case OP_CB_RECALLABLE_OBJ_AVAIL:
-> -	case OP_CB_RECALL_SLOT:
-> 	case OP_CB_WANTS_CANCELLED:
-> 	case OP_CB_NOTIFY_LOCK:
-> 		return htonl(NFS4ERR_NOTSUPP);
-> @@ -734,6 +749,11 @@ static struct callback_op callback_ops[] = {
-> 		.decode_args = (callback_decode_arg_t)decode_recallany_args,
-> 		.res_maxsize = CB_OP_RECALLANY_RES_MAXSZ,
-> 	},
-> +	[OP_CB_RECALL_SLOT] = {
-> +		.process_op = (callback_process_op_t)nfs4_callback_recallslot,
-> +		.decode_args = (callback_decode_arg_t)decode_recallslot_args,
-> +		.res_maxsize = CB_OP_RECALLSLOT_RES_MAXSZ,
-> +	},
-> #endif /* CONFIG_NFS_V4_1 */
-> };
->
-> diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
-> index 865265b..cd93dfc 100644
-> --- a/fs/nfs/nfs4_fs.h
-> +++ b/fs/nfs/nfs4_fs.h
-> @@ -46,6 +46,7 @@ enum nfs4_client_state {
-> 	NFS4CLNT_DELEGRETURN,
-> 	NFS4CLNT_SESSION_RESET,
-> 	NFS4CLNT_SESSION_DRAINING,
-> +	NFS4CLNT_RECALL_SLOT,
-> };
->
-> /*
-> @@ -278,6 +279,7 @@ extern void nfs4_schedule_state_recovery(struct  
-> nfs_client *);
-> extern void nfs4_schedule_state_manager(struct nfs_client *);
-> extern int nfs4_state_mark_reclaim_nograce(struct nfs_client *clp,  
-> struct nfs4_state *state);
-> extern void nfs41_handle_sequence_flag_errors(struct nfs_client  
-> *clp, u32 flags);
-> +extern void nfs41_handle_recall_slot(struct nfs_client *clp);
-> extern void nfs4_put_lock_state(struct nfs4_lock_state *lsp);
-> extern int nfs4_set_lock_state(struct nfs4_state *state, struct  
-> file_lock *fl);
-> extern void nfs4_copy_stateid(nfs4_stateid *, struct nfs4_state *,  
-> fl_owner_t);
-> diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-> index 6d263ed..4f71bb1 100644
-> --- a/fs/nfs/nfs4state.c
-> +++ b/fs/nfs/nfs4state.c
-> @@ -1249,6 +1249,12 @@ static int nfs4_reclaim_lease(struct  
-> nfs_client *clp)
-> }
->
-> #ifdef CONFIG_NFS_V4_1
-> +void nfs41_handle_recall_slot(struct nfs_client *clp)
-> +{
-> +	set_bit(NFS4CLNT_RECALL_SLOT, &clp->cl_state);
-> +	nfs4_schedule_state_recovery(clp);
-> +}
-> +
-> void nfs41_handle_sequence_flag_errors(struct nfs_client *clp, u32  
-> flags)
-> {
-> 	if (!flags)
-> @@ -1299,6 +1305,16 @@ out:
-> 	return status;
-> }
->
-> +static void nfs4_recall_slot(struct nfs_client *clp)
-> +{
-> +	struct nfs4_slot_table *fc_stbl = &clp->cl_session->fc_slot_table;
-> +
-> +	nfs4_begin_drain_session(clp);
-> +	fc_stbl->max_slots = fc_stbl->target_max_slots;
-> +	fc_stbl->target_max_slots = 0;
-> +	nfs4_end_drain_session(clp);
-> +}
-> +
-> #else /* CONFIG_NFS_V4_1 */
-> static int nfs4_reset_session(struct nfs_client *clp) { return 0; }
-> static int nfs4_end_drain_session(struct nfs_client *clp) { return  
-> 0; }
-> @@ -1397,6 +1413,13 @@ static void nfs4_state_manager(struct  
-> nfs_client *clp)
-> 			nfs_client_return_marked_delegations(clp);
-> 			continue;
-> 		}
-> +		/* Recall session slots */
-> +		if (test_and_clear_bit(NFS4CLNT_RECALL_SLOT, &clp->cl_state)
-> +		   && nfs4_has_session(clp)) {
-> +			nfs4_recall_slot(clp);
-> +			continue;
-> +		}
-> +
->
-> 		nfs4_clear_state_manager_bit(clp);
-> 		/* Did we race with an attempt to give us more work? */
-> diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
-> index 34fc6be..ecd9e6c 100644
-> --- a/include/linux/nfs_fs_sb.h
-> +++ b/include/linux/nfs_fs_sb.h
-> @@ -193,6 +193,8 @@ struct nfs4_slot_table {
-> 	int		max_slots;		/* # slots in table */
-> 	int		highest_used_slotid;	/* sent to server on each SEQ.
-> 						 * op for dynamic resizing */
-> +	int		target_max_slots;	/* Set by CB_RECALL_SLOT as
-> +						 * the new max_slots */
-> };
->
-> static inline int slot_idx(struct nfs4_slot_table *tbl, struct  
-> nfs4_slot *sp)
-> -- 
-> 1.6.5.2
->
+diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
+index 2604c3e..7ebb7a5 100644
+--- a/fs/nfsd/nfsctl.c
++++ b/fs/nfsd/nfsctl.c
+@@ -981,6 +981,26 @@ static ssize_t __write_ports_delfd(char *buf)
+ 	return len;
+ }
+ 
++static ssize_t __write_ports_create_xprt(struct svc_serv *serv,
++					 const char *transport,
++					 const int family,
++					 const unsigned short port)
++{
++	int err;
++
++	err = svc_create_xprt(serv, transport, family, port,
++						SVC_SOCK_ANONYMOUS);
++
++	if (err < 0) {
++		/* Give a reasonable perror msg for bad transport string */
++		if (err == -ENOENT)
++			err = -EPROTONOSUPPORT;
++		return err;
++	}
++
++	return 0;
++}
++
+ /*
+  * A transport listener is added by writing it's transport name and
+  * a port number.
+@@ -1000,14 +1020,16 @@ static ssize_t __write_ports_addxprt(char *buf)
+ 	if (err != 0)
+ 		return err;
+ 
+-	err = svc_create_xprt(nfsd_serv, transport,
+-				PF_INET, port, SVC_SOCK_ANONYMOUS);
+-	if (err < 0) {
+-		/* Give a reasonable perror msg for bad transport string */
+-		if (err == -ENOENT)
+-			err = -EPROTONOSUPPORT;
++	err = __write_ports_create_xprt(nfsd_serv, transport, PF_INET, port);
++	if (err < 0)
+ 		return err;
+-	}
++
++#if defined(CONFIG_IPV6) || defined(CONFIG_IPV6_MODULE)
++	err = __write_ports_create_xprt(nfsd_serv, transport, PF_INET6, port);
++	if (err < 0 && err != -EAFNOSUPPORT)
++		return err;
++#endif	/* CONFIG_IPV6 || CONFIG_IPV6_MODULE */
++
+ 	return 0;
+ }
+ 
+diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
+index 171699e..7af14c1 100644
+--- a/fs/nfsd/nfssvc.c
++++ b/fs/nfsd/nfssvc.c
+@@ -275,14 +275,32 @@ int nfsd_create_serv(void)
+ 	return err;
+ }
+ 
+-static int nfsd_init_socks(int port)
++static int nfsd_create_xprt(const char *transport, const unsigned short port)
++{
++	int ret;
++
++	ret = svc_create_xprt(nfsd_serv, transport, PF_INET, port,
++							SVC_SOCK_DEFAULTS);
++	if (ret < 0)
++		return ret;
++
++#if defined(CONFIG_IPV6) || defined(CONFIG_IPV6_MODULE)
++	ret = svc_create_xprt(nfsd_serv, transport, PF_INET6, port,
++							SVC_SOCK_DEFAULTS);
++	if (ret < 0 && ret != -EAFNOSUPPORT)
++		return ret;
++#endif	/* CONFIG_IPV6 || CONFIG_IPV6_MODULE */
++
++	return 0;
++}
++
++static int nfsd_init_socks(const unsigned short port)
+ {
+ 	int error;
+ 	if (!list_empty(&nfsd_serv->sv_permsocks))
+ 		return 0;
+ 
+-	error = svc_create_xprt(nfsd_serv, "udp", PF_INET, port,
+-					SVC_SOCK_DEFAULTS);
++	error = nfsd_create_xprt("udp", port);
+ 	if (error < 0)
+ 		return error;
+ 
+@@ -290,8 +308,7 @@ static int nfsd_init_socks(int port)
+ 	if (error < 0)
+ 		return error;
+ 
+-	error = svc_create_xprt(nfsd_serv, "tcp", PF_INET, port,
+-					SVC_SOCK_DEFAULTS);
++	error = nfsd_create_xprt("tcp", port);
+ 	if (error < 0)
+ 		return error;
+ 
 
