@@ -1,143 +1,96 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 05/24] sm-notify: Support creating a PF_INET6 socket in
-	smn_create_socket()
-Date: Thu, 14 Jan 2010 12:29:35 -0500
-Message-ID: <20100114172935.26079.54006.stgit@localhost.localdomain>
+Subject: [PATCH 14/24] statd: Support IPv6 in sm_simu_crash_1_svc
+Date: Thu, 14 Jan 2010 12:30:54 -0500
+Message-ID: <20100114173053.26079.21107.stgit@localhost.localdomain>
 References: <20100114172457.26079.66627.stgit@localhost.localdomain>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: chris.mason@oracle.com, linux-nfs@vger.kernel.org
 To: steved@redhat.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from acsinet11.oracle.com ([141.146.126.233]:36021 "EHLO
-	acsinet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757393Ab0ANRbL (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 14 Jan 2010 12:31:11 -0500
+Received: from rcsinet11.oracle.com ([148.87.113.123]:43552 "EHLO
+	rcsinet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757391Ab0ANRbW (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 14 Jan 2010 12:31:22 -0500
 In-Reply-To: <20100114172457.26079.66627.stgit-bi+AKbBUZKY6gyzm1THtWbp2dZbC/Bob@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Socket creation is unfortunately complicated by the need to handle the
-case where sm-notify is built with IPv6 support, but the local system
-has disabled it entirely at run-time (ie, socket(3) returns
-EAFNOSUPPORT when we try to create an AF_INET6 socket).
-
-The run-time address family setting is made available in the global
-variable nsm_family.  This setting can control the family of the
-socket's bind address and what kind of addresses we want returned by
-smn_lookup().  Support for that is added in subsequent patches.
+Ensure that SM_SIMU_CRASH does not allow non-AF_INET callers to
+bypass the localhost check.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- utils/statd/sm-notify.c |   81 ++++++++++++++++++++++++++++++++++++++++++++---
- 1 files changed, 76 insertions(+), 5 deletions(-)
+ utils/statd/simu.c |   35 +++++++++++++++++++----------------
+ 1 files changed, 19 insertions(+), 16 deletions(-)
 
-diff --git a/utils/statd/sm-notify.c b/utils/statd/sm-notify.c
-index 462ba79..0ba817a 100644
---- a/utils/statd/sm-notify.c
-+++ b/utils/statd/sm-notify.c
-@@ -49,6 +49,7 @@ struct nsm_host {
+diff --git a/utils/statd/simu.c b/utils/statd/simu.c
+index 7df04d9..825e428 100644
+--- a/utils/statd/simu.c
++++ b/utils/statd/simu.c
+@@ -8,8 +8,10 @@
+ #include <config.h>
+ #endif
  
- static char		nsm_hostname[256];
- static int		nsm_state;
-+static int		nsm_family = AF_INET;
- static int		opt_debug = 0;
- static _Bool		opt_update_state = true;
- static unsigned int	opt_max_retry = 15 * 60;
-@@ -141,6 +142,79 @@ smn_get_host(const char *hostname,
- 	return 1;
- }
++#include <netdb.h>
+ #include <arpa/inet.h>
  
-+#ifdef IPV6_SUPPORTED
-+static int smn_socket(void)
-+{
-+	int sock;
-+
-+	/*
-+	 * Use an AF_INET socket if IPv6 is disabled on the
-+	 * local system.
-+	 */
-+	sock = socket(AF_INET6, SOCK_DGRAM, 0);
-+	if (sock == -1) {
-+		if (errno != EAFNOSUPPORT) {
-+			xlog(L_ERROR, "Failed to create RPC socket: %m");
-+			return -1;
-+		}
-+		sock = socket(AF_INET, SOCK_DGRAM, 0);
-+		if (sock < 0) {
-+			xlog(L_ERROR, "Failed to create RPC socket: %m");
-+			return -1;
-+		}
-+	} else
-+		nsm_family = AF_INET6;
-+
-+	if (fcntl(sock, F_SETFL, O_NONBLOCK) == -1) {
-+		xlog(L_ERROR, "fcntl(3) on RPC socket failed: %m");
-+		goto out_close;
-+	}
-+
-+	/*
-+	 * TI-RPC over IPv6 (udp6/tcp6) does not handle IPv4.  However,
-+	 * since sm-notify open-codes all of its RPC support, it can
-+	 * use a single socket and let the local network stack provide
-+	 * the correct mapping between address families automatically.
-+	 * This is the same thing that is done in the kernel.
-+	 */
-+	if (nsm_family == AF_INET6) {
-+		const int zero = 0;
-+		socklen_t zerolen = (socklen_t)sizeof(zero);
-+
-+		if (setsockopt(sock, SOL_IPV6, IPV6_V6ONLY,
-+					(char *)&zero, zerolen) == -1) {
-+			xlog(L_ERROR, "setsockopt(3) on RPC socket failed: %m");
-+			goto out_close;
-+		}
-+	}
-+
-+	return sock;
-+
-+out_close:
-+	(void)close(sock);
-+	return -1;
-+}
-+#else	/* !IPV6_SUPPORTED */
-+static int smn_socket(void)
-+{
-+	int sock;
-+
-+	sock = socket(AF_INET, SOCK_DGRAM, 0);
-+	if (sock == -1) {
-+		xlog(L_ERROR, "Failed to create RPC socket: %m");
-+		return -1;
-+	}
-+
-+	if (fcntl(sock, F_SETFL, O_NONBLOCK) == -1) {
-+		xlog(L_ERROR, "fcntl(3) on RPC socket failed: %m");
-+		(void)close(sock);
-+		return -1;
-+	}
-+
-+	return sock;
-+}
-+#endif	/* !IPV6_SUPPORTED */
-+
++#include "sockaddr.h"
+ #include "rpcmisc.h"
+ #include "statd.h"
+ #include "notlist.h"
+@@ -19,30 +21,25 @@ extern void my_svc_exit (void);
+ 
  /*
-  * Prepare a socket for sending RPC requests
-  *
-@@ -155,12 +229,9 @@ smn_create_socket(const char *srcaddr, const uint16_t srcport)
- 	int sock, retry_cnt = 0;
+  * Services SM_SIMU_CRASH requests.
++ *
++ * Although the kernel contacts the statd service via only IPv4
++ * transports, the statd service can receive other requests, such
++ * as SM_NOTIFY, from remote peers via IPv6.
+  */
+ void *
+-sm_simu_crash_1_svc (void *argp, struct svc_req *rqstp)
++sm_simu_crash_1_svc (__attribute__ ((unused)) void *argp, struct svc_req *rqstp)
+ {
+-  struct sockaddr_in *sin = nfs_getrpccaller_in(rqstp->rq_xprt);
++  struct sockaddr *sap = nfs_getrpccaller(rqstp->rq_xprt);
++  char buf[INET6_ADDRSTRLEN];
+   static char *result = NULL;
+-  struct in_addr caller;
  
- retry:
--	sock = socket(AF_INET, SOCK_DGRAM, 0);
--	if (sock < 0) {
--		xlog(L_ERROR, "Failed to create RPC socket: %m");
-+	sock = smn_socket();
-+	if (sock == -1)
- 		return -1;
--	}
--	fcntl(sock, F_SETFL, O_NONBLOCK);
+   xlog(D_CALL, "Received SM_SIMU_CRASH");
  
- 	memset(&address, 0, sizeof(address));
- 	local_addr->sa_family = AF_INET;	/* Default to IPv4 */
+-  if (sin->sin_family != AF_INET) {
+-    xlog_warn("Call to statd from non-AF_INET address");
+-    goto failure;
+-  }
++  if (!nfs_is_v4_loopback(sap))
++    goto out_nonlocal;
+ 
+-  caller = sin->sin_addr;
+-  if (caller.s_addr != htonl(INADDR_LOOPBACK)) {
+-    xlog_warn("Call to statd from non-local host %s",
+-      inet_ntoa(caller));
+-    goto failure;
+-  }
+-
+-  if (ntohs(sin->sin_port) >= 1024) {
+-    xlog_warn("Call to statd-simu-crash from unprivileged port");
++  if ((int)nfs_get_port(sap) >= IPPORT_RESERVED) {
++    xlog_warn("SM_SIMU_CRASH call from unprivileged port");
+     goto failure;
+   }
+ 
+@@ -54,4 +51,10 @@ sm_simu_crash_1_svc (void *argp, struct svc_req *rqstp)
+ 
+  failure:
+   return ((void *)&result);
++
++ out_nonlocal:
++  if (!statd_present_address(sap, buf, sizeof(buf)))
++    buf[0] = '\0';
++  xlog_warn("SM_SIMU_CRASH call from non-local host %s", buf);
++  goto failure;
+ }
 
