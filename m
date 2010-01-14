@@ -1,63 +1,50 @@
-From: Jon Forrest <jlforrest-TVLZxgkOlNX2fBVCVOL8/A@public.gmane.org>
-Subject: To Automount or to Not Automount?
-Date: Thu, 14 Jan 2010 12:00:48 -0800
-Message-ID: <hint4t$gjt$1@ger.gmane.org>
+From: Thomas Haynes <Thomas.Haynes-UdXhSnd/wVw@public.gmane.org>
+Subject: Re: To Automount or to Not Automount?
+Date: Thu, 14 Jan 2010 14:58:29 -0600
+Message-ID: <4B4F8575.1010505@sun.com>
+References: <hint4t$gjt$1@ger.gmane.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-To: linux-nfs@vger.kernel.org
+Content-Type: text/plain; CHARSET=US-ASCII; format=flowed
+Cc: linux-nfs@vger.kernel.org
+To: Jon Forrest <jlforrest-TVLZxgkOlNX2fBVCVOL8/A@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from lo.gmane.org ([80.91.229.12]:42798 "EHLO lo.gmane.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757553Ab0ANUA6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 14 Jan 2010 15:00:58 -0500
-Received: from list by lo.gmane.org with local (Exim 4.50)
-	id 1NVVsF-0001nM-Sq
-	for linux-nfs@vger.kernel.org; Thu, 14 Jan 2010 21:00:55 +0100
-Received: from nobozo.cchem.berkeley.edu ([128.32.50.5])
-        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-nfs@vger.kernel.org>; Thu, 14 Jan 2010 21:00:55 +0100
-Received: from jlforrest by nobozo.cchem.berkeley.edu with local (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-nfs@vger.kernel.org>; Thu, 14 Jan 2010 21:00:55 +0100
+Received: from brmea-mail-2.Sun.COM ([192.18.98.43]:49691 "EHLO
+	brmea-mail-2.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753047Ab0ANVNW (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 14 Jan 2010 16:13:22 -0500
+Received: from fe-amer-10.sun.com ([192.18.109.80])
+	by brmea-mail-2.sun.com (8.13.6+Sun/8.12.9) with ESMTP id o0EKwZjp001005
+	for <linux-nfs@vger.kernel.org>; Thu, 14 Jan 2010 20:58:36 GMT
+Received: from conversion-daemon.mail-amer.sun.com by mail-amer.sun.com
+ (Sun Java(tm) System Messaging Server 7u2-7.04 64bit (built Jul  2 2009))
+ id <0KW900K0085BCL00-suYR2Hc8r9/lQFUxb2hVpgC/G2K4zDHf@public.gmane.org> for linux-nfs@vger.kernel.org; Thu,
+ 14 Jan 2010 13:58:35 -0700 (MST)
+In-reply-to: <hint4t$gjt$1@ger.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I run several Beowulf-style compute clusters
-using CentOS 5. The question has come up of
-whether having the compute nodes automount
-needed filesystems is really necessary.
-Using the automounter complicates other
-aspects of configuring the cluster, but
-the cluster software designers believe
-that the benefits of automounting outweigh
-the negatives.
+Jon Forrest wrote:
+>
+> So, I'd like to ask the NFS experts on this
+> list whether in a CentOS 5 environment with
+> NFS3 mounts over a functional private network,
+> would using static mounts result in any negatives
+> as compared to automounts. I'm especially interested
+> in overhead on the NFS server.
+>
+> Cordially,
 
-In a Beowulf-style cluster there is a private
-usually >= 1Gb/sec ethernet that handles the
-NFS traffic. There are no routers involved.
-If the network has problems that would cause
-NFS to misbehave then the cluster as a whole
-is probably in trouble. So, you can assume
-a properly configured and functioning network.
+Is every node mounting every other node?
 
-So, I'd like to ask the NFS experts on this
-list whether in a CentOS 5 environment with
-NFS3 mounts over a functional private network,
-would using static mounts result in any negatives
-as compared to automounts. I'm especially interested
-in overhead on the NFS server.
+Or are you talking about every node mounting a central
+server?
 
-Cordially,
+The static mounts would happen on boot and you might
+have issues if every node was trying to mount every other
+node. With automounts, you would delay the mounting
+until the booting node has to access the other node.
 
--- 
-Jon Forrest
-Research Computing Support
-College of Chemistry
-173 Tan Hall
-University of California Berkeley
-Berkeley, CA
-94720-1460
-510-643-1032
-jlforrest-TVLZxgkOlNX2fBVCVOL8/A@public.gmane.org
-
+I had this issue way back in 1998 with a Beowulf
+cluster.  Heating issues forced me to shut down all
+of the nodes at the same time and the interdependencies
+in the mounts caused the bringup to be slow. :->
