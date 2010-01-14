@@ -1,77 +1,91 @@
-From: Daniel J Blueman <daniel.blueman@gmail.com>
-Subject: Re: [2.6.33-rc3] NFS4 and dentry issues...
-Date: Thu, 14 Jan 2010 08:39:52 +0000
-Message-ID: <6278d2221001140039m711f2ae4o163d6c7f8d5b98d0@mail.gmail.com>
-References: <6278d2221001090632m7fdd77qc73c203840a2a78e@mail.gmail.com>
-	 <1263154093.2987.34.camel@localhost>
+From: Mi Jinlong <mijinlong@cn.fujitsu.com>
+Subject: Re: [RFC] After nfs restart, locks can't be recovered which record
+ by lockd before
+Date: Thu, 14 Jan 2010 17:41:13 +0800
+Message-ID: <4B4EE6B9.8090104@cn.fujitsu.com>
+References: <4B4D979D.6090307@cn.fujitsu.com> <20100113075155.5c409567@barsoom.rdu.redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: linux-nfs@vger.kernel.org,
-	Linux Kernel <linux-kernel@vger.kernel.org>
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
+Content-Type: text/plain; charset=UTF-8
+Cc: "Trond.Myklebust" <trond.myklebust@fys.uio.no>,
+	"J. Bruce Fields" <bfields@fieldses.org>,
+	Chuck Lever <chuck.lever@oracle.com>,
+	NFSv3 list <linux-nfs@vger.kernel.org>
+To: Jeff Layton <jlayton@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from ey-out-2122.google.com ([74.125.78.25]:51547 "EHLO
-	ey-out-2122.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753528Ab0ANIjy (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 14 Jan 2010 03:39:54 -0500
-In-Reply-To: <1263154093.2987.34.camel@localhost>
+Received: from cn.fujitsu.com ([222.73.24.84]:61330 "EHLO song.cn.fujitsu.com"
+	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
+	id S1751313Ab0ANJlV convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 14 Jan 2010 04:41:21 -0500
+In-Reply-To: <20100113075155.5c409567-xSBYVWDuneFaJnirhKH9O4GKTjYczspe@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Trond,
+Hi Jeff,
 
-On Sun, Jan 10, 2010 at 8:08 PM, Trond Myklebust
-<trond.myklebust@fys.uio.no> wrote:
-> On Sat, 2010-01-09 at 14:32 +0000, Daniel J Blueman wrote:
->> When synchronising files (unison, like a two way rsync) over an NFS4
->> mount (server with 2.6.32.2) on a client running 2.6.33-rc3 (also
->> -rc2), I ran into dcache issues [1].
+Jeff Layton =E5=86=99=E9=81=93:
+> On Wed, 13 Jan 2010 17:51:25 +0800
+> Mi Jinlong <mijinlong@cn.fujitsu.com> wrote:
+>=20
+>> Hi,
 >>
->> I've been unable to consistently reproduce this for bisecting, and
->> filesystem benchmarks via NFS on tmpfs over localhost fails to
->> reproduce it either.
+>> When testing the nfs's lock at NFSv3, I get a problem.
+>> So I want someone help me, thanks!
 >>
->> What additional information may be useful?
->
-> There is a known issue in 2.6.33-rc3 with rename causing corruption of
-> the dentry lookup hash lists.
->
-> A fix for that problem has already been merged into mainline as
-> http://git.kernel.org/?p=linux/kernel/git/torvalds/linux-2.6.git&a=commitdiff&h=56335936de1a41c8978fde62b2158af77ddc7258
->
-> Could you see if you can reproduce your problem with that fix applied?
+>> Test Process:
+>>   Step1, ClientA get an exclusive lock success.
+>>   Step2, Using command "service nfs restart" to restart server's nfs=
+ service.
+>=20
+> "service nfs restart" on an RH-derived distro is the same as running
+> "/etc/init.d/nfs restart". Init scripts vary between distros (and eve=
+n
+> between releases on the same distro). Since you're asking this in a
+> more generic forum, you should probably be specific about what's
+> actually being restarted (and in what order). Understanding that may
+> also help you answer your own question here.
 
-2.6.33-rc4 with the fix does address this issue, though I am now
-occasionally seeing 'Stale NFS file handle' during parallel kernel
-compilation over NFS4 [1], seemingly when stat(2) is called.
+  I test it on RHEL5(kernel 2.6.18, nfs-utils 1.0.9) and Fedora 12(kern=
+el 2.6.33-rc3,
+   nfs-utils 1.2.0).
 
-Client mount options are:
+>=20
+>>   Step3. ClientB get lock should fail, but success.
+>>
+>> I think after step2 (nfs service restart), clientA's lock should be =
+recovered.
+>> But like above, clientA's lock doesn=E2=80=99t be recovered.
+>>
+>> When tracing the kernel, I find nfsd will cause lockd stop when it s=
+top.
+>> When lockd stop, all locks will be release which is record before at=
+ lockd.
+>>
+>> When nfsd start, the lockd will start also, but the statd don't know=
+ what happened
+>>  at kernel, so after that, locks will be lost.
+>>
+>> Is it right when nfs stop, the lockd will stop too?=20
+>> If it's right, should locks be recovered after lockd start?
+>>
+>=20
+> Assuming you're using a RH-derived distro like Fedora or RHEL, then n=
+o.
+> statd is controlled by a separate init script (nfslock) and when you
+> run "service nfs restart" you're not restarting it. NSM notifications
+> are not sent and clients generally won't reclaim their locks.
 
-x1:/ /net nfs4 rw,relatime,vers=4,rsize=262144,wsize=262144,namlen=255,acregmin=30,hard,proto=tcp,timeo=600,retrans=2,sec=sys,clientaddr=192.168.10.2,addr=192.168.10.250
-0 0
+  Yes, the statd don't restart when nfs restart. But, nfs restart will
+  cause lockd restart. If lockd restart, locks which record before will=
+ be lost.
 
-I'll see which -rc this was introduced in, from limited time.
+> IOW, "you're doing it wrong". If you want locks to be reclaimed then
+> you probably need to restart the nfslock service too.
+>=20
 
-Thanks,
-  Daniel
+  Don't you think it's more reasonable that locks should be recovered=20
+  when nfs restart cause lockd restart?
 
---- [1]
+--=20
+Regards
+Mi Jinlong
 
-$ CONCURRENCY_LEVEL=4 fakeroot make-kpkg --append-to-version -308cd
---initrd kernel-image
-...
-  CC [M]  drivers/net/wireless/rt2x00/rt2500usb.o
-  CC [M]  drivers/net/wireless/rt2x00/rt73usb.o
-  CC [M]  drivers/net/wireless/rt2x00/rt2800usb.o
-  LD [M]  drivers/net/wireless/rt2x00/rt2x00lib.o
-  Building modules, stage 2.
-make[2]: stat: arch/x86/crypto/aes-x86_64.o: Stale NFS file handle
-make[2]: stat: arch/x86/crypto/aesni-intel.o: Stale NFS file handle
-make[2]: stat: arch/x86/crypto/salsa20-x86_64.o: Stale NFS file handle
-make[2]: stat: arch/x86/crypto/twofish-x86_64.o: Stale NFS file handle
-make[2]: stat: arch/x86/kernel/cpu/cpufreq/p4-clockmod.o: Stale NFS file handle
-make[2]: stat: arch/x86/kernel/cpu/cpufreq/speedstep-lib.o: Stale NFS
-file handle
-....
--- 
-Daniel J Blueman
