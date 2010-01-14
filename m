@@ -1,91 +1,129 @@
 From: Mi Jinlong <mijinlong@cn.fujitsu.com>
 Subject: Re: [RFC] After nfs restart, locks can't be recovered which record
  by lockd before
-Date: Thu, 14 Jan 2010 17:41:13 +0800
-Message-ID: <4B4EE6B9.8090104@cn.fujitsu.com>
-References: <4B4D979D.6090307@cn.fujitsu.com> <20100113075155.5c409567@barsoom.rdu.redhat.com>
+Date: Thu, 14 Jan 2010 18:06:42 +0800
+Message-ID: <4B4EECB2.8050400@cn.fujitsu.com>
+References: <4B4D979D.6090307@cn.fujitsu.com> <20100113075155.5c409567@barsoom.rdu.redhat.com> <4B4E16C3.4050206@oracle.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
-Cc: "Trond.Myklebust" <trond.myklebust@fys.uio.no>,
+Cc: Jeff Layton <jlayton@redhat.com>,
+	"Trond.Myklebust" <trond.myklebust@fys.uio.no>,
 	"J. Bruce Fields" <bfields@fieldses.org>,
-	Chuck Lever <chuck.lever@oracle.com>,
 	NFSv3 list <linux-nfs@vger.kernel.org>
-To: Jeff Layton <jlayton@redhat.com>
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from cn.fujitsu.com ([222.73.24.84]:61330 "EHLO song.cn.fujitsu.com"
+Received: from cn.fujitsu.com ([222.73.24.84]:59331 "EHLO song.cn.fujitsu.com"
 	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
-	id S1751313Ab0ANJlV convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 14 Jan 2010 04:41:21 -0500
-In-Reply-To: <20100113075155.5c409567-xSBYVWDuneFaJnirhKH9O4GKTjYczspe@public.gmane.org>
+	id S1750856Ab0ANKG7 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 14 Jan 2010 05:06:59 -0500
+In-Reply-To: <4B4E16C3.4050206@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Jeff,
+Hi Chuck,
 
-Jeff Layton =E5=86=99=E9=81=93:
-> On Wed, 13 Jan 2010 17:51:25 +0800
-> Mi Jinlong <mijinlong@cn.fujitsu.com> wrote:
+Chuck Lever =E5=86=99=E9=81=93:
+> On 01/13/2010 07:51 AM, Jeff Layton wrote:
+>> On Wed, 13 Jan 2010 17:51:25 +0800
+>> Mi Jinlong<mijinlong@cn.fujitsu.com>  wrote:
+>>
+>> Assuming you're using a RH-derived distro like Fedora or RHEL, then =
+no.
+>> statd is controlled by a separate init script (nfslock) and when you
+>> run "service nfs restart" you're not restarting it. NSM notification=
+s
+>> are not sent and clients generally won't reclaim their locks.
+>>
+>> IOW, "you're doing it wrong". If you want locks to be reclaimed then
+>> you probably need to restart the nfslock service too.
 >=20
->> Hi,
->>
->> When testing the nfs's lock at NFSv3, I get a problem.
->> So I want someone help me, thanks!
->>
->> Test Process:
->>   Step1, ClientA get an exclusive lock success.
->>   Step2, Using command "service nfs restart" to restart server's nfs=
- service.
+> Mi Jinlong is exercising another case we know doesn't work right, but=
+ we
+> don't expect admins will ever perform this kind of "down-up" on a nor=
+mal
+> production server.  In other words, we expect it to work this way, an=
+d
+> it's been good enough, so far.
 >=20
-> "service nfs restart" on an RH-derived distro is the same as running
-> "/etc/init.d/nfs restart". Init scripts vary between distros (and eve=
-n
-> between releases on the same distro). Since you're asking this in a
-> more generic forum, you should probably be specific about what's
-> actually being restarted (and in what order). Understanding that may
-> also help you answer your own question here.
+> As Jeff points out, the "nfs" and the "nfslock" services are separate=
+=2E
+> This is because "nfslock" is required for both client and server side
+> NFS, but "nfs" is required only on the server.  This split also dicta=
+tes
+> the way sm-notify works, since it has to behave differently on NFS
+> clients and servers.
+>=20
+> Two other points:
+>=20
+>   + lockd would not restart itself in this case if there happened to =
+be
+> NFS mounts on that system
 
-  I test it on RHEL5(kernel 2.6.18, nfs-utils 1.0.9) and Fedora 12(kern=
-el 2.6.33-rc3,
-   nfs-utils 1.2.0).
+  When testing, i find nfs restart will cause lockd restart.
+  I find some codes which cause the lock stop when nfs stop.
+
+ At kernel 2.6.18, fs/lockd/svc.c
+ ...
+ 354         if (nlmsvc_users) {
+ 355                 if (--nlmsvc_users)
+ 356                         goto out;
+ 357         } else
+ 358                 printk(KERN_WARNING "lockd_down: no users! pid=3D%=
+d\n", nlmsvc_pid);
+ ...
+ 366=20
+ 367         kill_proc(nlmsvc_pid, SIGKILL, 1);
+ ...
+=20
+ At kernel 2.6.18, fs/lockd/svc.c
+ ...
+ 344         if (nlmsvc_users) {
+ 345                 if (--nlmsvc_users)
+ 346                         goto out;
+ 347         } else {
+ 348                 printk(KERN_ERR "lockd_down: no users! task=3D%p\n=
+",
+ 349                         nlmsvc_task);
+ 350                 BUG();
+ 351         }
+ ....
+ 357         kthread_stop(nlmsvc_task);
+ 358         svc_exit_thread(nlmsvc_rqst);
+ ...
+
+ As above, when nlmsvc_users <=3D 1, the lockd will be killed.
 
 >=20
->>   Step3. ClientB get lock should fail, but success.
->>
->> I think after step2 (nfs service restart), clientA's lock should be =
-recovered.
->> But like above, clientA's lock doesn=E2=80=99t be recovered.
->>
->> When tracing the kernel, I find nfsd will cause lockd stop when it s=
-top.
->> When lockd stop, all locks will be release which is record before at=
- lockd.
->>
->> When nfsd start, the lockd will start also, but the statd don't know=
- what happened
->>  at kernel, so after that, locks will be lost.
->>
->> Is it right when nfs stop, the lockd will stop too?=20
->> If it's right, should locks be recovered after lockd start?
->>
+>   + lockd doesn't currently poke statd when it restarts to tell it to
+> send reboot notifications, but it probably should
+
+  Yes, I agree with you. But now, when some reason cause lockd restart =
+but
+  statd not restart, locks which hold before will lost.
+
+  Maybe, the kernel should fix this.
+
 >=20
-> Assuming you're using a RH-derived distro like Fedora or RHEL, then n=
-o.
-> statd is controlled by a separate init script (nfslock) and when you
-> run "service nfs restart" you're not restarting it. NSM notifications
-> are not sent and clients generally won't reclaim their locks.
+> We know that lockd will start up when someone mounts the first NFS
+> share, or when the NFS server is started.  If lockd sent statd an
+> SM_SIMU_CRASH (or something like it) every time it cold started, stat=
+d
+> could send reboot notifications at the right time on both servers and
+> clients without extra logic in the init scripts, and we wouldn't need
+> that kludge in sm-notify to know when a machine has rebooted.
 
-  Yes, the statd don't restart when nfs restart. But, nfs restart will
-  cause lockd restart. If lockd restart, locks which record before will=
- be lost.
+  What's the meaning of cold start?? System reboot? Or statd reboot?
 
-> IOW, "you're doing it wrong". If you want locks to be reclaimed then
-> you probably need to restart the nfslock service too.
->=20
+  I want to know when using cammond "service nfslock restart" restart t=
+he=20
+  nfslock service(means restart statd and lockd), will the statd call s=
+m-notify=20
+  to notify other client? Or don't?
 
-  Don't you think it's more reasonable that locks should be recovered=20
-  when nfs restart cause lockd restart?
+  At RHEL5 and Fedora, the sm-notify will be call and send SM-NOTIFY ev=
+ery time=20
+  when nfslock restart.
 
---=20
-Regards
+thanks,
 Mi Jinlong
 
