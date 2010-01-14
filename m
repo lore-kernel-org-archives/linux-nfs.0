@@ -1,211 +1,630 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 04/24] sm-notify: factor socket creation out of notify()
-Date: Thu, 14 Jan 2010 12:29:26 -0500
-Message-ID: <20100114172926.26079.30399.stgit@localhost.localdomain>
+Subject: [PATCH 01/24] libnsm.a: Add RPC construction helper functions
+Date: Thu, 14 Jan 2010 12:28:57 -0500
+Message-ID: <20100114172857.26079.57370.stgit@localhost.localdomain>
 References: <20100114172457.26079.66627.stgit@localhost.localdomain>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: chris.mason@oracle.com, linux-nfs@vger.kernel.org
 To: steved@redhat.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from acsinet11.oracle.com ([141.146.126.233]:36010 "EHLO
+Received: from acsinet11.oracle.com ([141.146.126.233]:35948 "EHLO
 	acsinet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757390Ab0ANRbK (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 14 Jan 2010 12:31:10 -0500
+	with ESMTP id S1757385Ab0ANRbH (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 14 Jan 2010 12:31:07 -0500
 In-Reply-To: <20100114172457.26079.66627.stgit-bi+AKbBUZKY6gyzm1THtWbp2dZbC/Bob@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The top half of the notify() function creates the main socket that
-sm-notify uses to do its job.  To make adding IPv6 support simpler,
-refactor that piece into a separate function.
+To manage concurrency, both statd and sm-notify construct raw RPC
+requests in socket buffers, and use a minimal request scheduler
+to send these requests and manage replies.  Both statd and sm-notify
+open code the RPC request construction.
 
-The logic is modified slightly so that exit(3) is invoked only in
-main().  This is not required, but it makes the code slightly easier
-to understand and maintain.
+Introduce helper functions that can construct and send raw
+NSMPROC_NOTIFY, NLM downcalls, and portmapper calls over a datagram
+socket, and receive and parse their replies.  Support for IPv6 and
+RPCB_GETADDR is featured.  This code (and the IPv6 support it
+introduces) can now be shared by statd and sm-notify, eliminating
+code and bug duplication.
+
+This implementation is based on what's in utils/statd/rmtcall.c now,
+but is wrapped up in a nice API and includes extra error checking.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- utils/statd/sm-notify.c |  137 ++++++++++++++++++++++++++---------------------
- 1 files changed, 77 insertions(+), 60 deletions(-)
+ support/include/nsm.h   |   25 ++
+ support/nsm/Makefile.am |    2 
+ support/nsm/rpc.c       |  534 +++++++++++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 560 insertions(+), 1 deletions(-)
+ create mode 100644 support/nsm/rpc.c
 
-diff --git a/utils/statd/sm-notify.c b/utils/statd/sm-notify.c
-index e49c722..462ba79 100644
---- a/utils/statd/sm-notify.c
-+++ b/utils/statd/sm-notify.c
-@@ -55,7 +55,7 @@ static unsigned int	opt_max_retry = 15 * 60;
- static char *		opt_srcaddr = 0;
- static uint16_t		opt_srcport = 0;
+diff --git a/support/include/nsm.h b/support/include/nsm.h
+index 28314d1..ce9e294 100644
+--- a/support/include/nsm.h
++++ b/support/include/nsm.h
+@@ -63,4 +63,29 @@ extern void	nsm_delete_notified_host(const char *hostname);
+ extern size_t	nsm_priv_to_hex(const char *priv, char *buf,
+ 				const size_t buflen);
  
--static void		notify(void);
-+static void		notify(const int sock);
- static int		notify_host(int, struct nsm_host *);
- static void		recv_reply(int);
- static void		insert_host(struct nsm_host *);
-@@ -141,11 +141,76 @@ smn_get_host(const char *hostname,
- 	return 1;
- }
++/* rpc.c */
++
++#define NSM_MAXMSGSIZE	(2048u)
++
++extern uint32_t nsm_xmit_getport(const int sock,
++			const struct sockaddr_in *sin,
++			const unsigned long program,
++			const unsigned long version);
++extern uint32_t nsm_xmit_getaddr(const int sock,
++			const struct sockaddr_in6 *sin6,
++			const rpcprog_t program, const rpcvers_t version);
++extern uint32_t nsm_xmit_rpcbind(const int sock, const struct sockaddr *sap,
++			const rpcprog_t program, const rpcvers_t version);
++extern uint32_t nsm_xmit_notify(const int sock, const struct sockaddr *sap,
++			const socklen_t salen, const rpcprog_t program,
++			const char *mon_name, const int state);
++extern uint32_t nsm_xmit_nlmcall(const int sock, const struct sockaddr *sap,
++			const socklen_t salen, const struct mon *m,
++			const int state);
++extern uint32_t nsm_parse_reply(XDR *xdrs);
++extern unsigned long
++		nsm_recv_getport(XDR *xdrs);
++extern uint16_t nsm_recv_getaddr(XDR *xdrs);
++extern uint16_t nsm_recv_rpcbind(const sa_family_t family, XDR *xdrs);
++
+ #endif	/* !NFS_UTILS_SUPPORT_NSM_H */
+diff --git a/support/nsm/Makefile.am b/support/nsm/Makefile.am
+index e359a43..2038e68 100644
+--- a/support/nsm/Makefile.am
++++ b/support/nsm/Makefile.am
+@@ -10,7 +10,7 @@ GENFILES	= $(GENFILES_CLNT) $(GENFILES_SVC) $(GENFILES_XDR) $(GENFILES_H)
+ EXTRA_DIST	= sm_inter.x
  
+ noinst_LIBRARIES = libnsm.a
+-libnsm_a_SOURCES = $(GENFILES) file.c
++libnsm_a_SOURCES = $(GENFILES) file.c rpc.c
+ 
+ BUILT_SOURCES = $(GENFILES)
+ 
+diff --git a/support/nsm/rpc.c b/support/nsm/rpc.c
+new file mode 100644
+index 0000000..4e5f40e
+--- /dev/null
++++ b/support/nsm/rpc.c
+@@ -0,0 +1,534 @@
 +/*
-+ * Prepare a socket for sending RPC requests
++ * Copyright 2009 Oracle.  All rights reserved.
 + *
-+ * Returns a bound datagram socket file descriptor, or -1 if
-+ * an error occurs.
++ * This file is part of nfs-utils.
++ *
++ * nfs-utils is free software; you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License as published by
++ * the Free Software Foundation; either version 2 of the License, or
++ * (at your option) any later version.
++ *
++ * nfs-utils is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License
++ * along with nfs-utils.  If not, see <http://www.gnu.org/licenses/>.
 + */
-+static int
-+smn_create_socket(const char *srcaddr, const uint16_t srcport)
++
++/*
++ * NSM for Linux.
++ *
++ * Instead of using ONC or TI RPC library calls, statd constructs
++ * RPC calls directly in socket buffers.  This allows a single
++ * socket to be concurrently shared among several different RPC
++ * programs and versions using a simple RPC request dispatcher.
++ *
++ * This file contains the details of RPC header and call
++ * construction and reply parsing, and a method for creating a
++ * socket for use with these functions.
++ */
++
++#ifdef HAVE_CONFIG_H
++#include <config.h>
++#endif	/* HAVE_CONFIG_H */
++
++#include <sys/types.h>
++#include <sys/socket.h>
++#include <sys/time.h>
++
++#include <time.h>
++#include <stdbool.h>
++#include <string.h>
++#include <unistd.h>
++#include <fcntl.h>
++
++#include <netinet/in.h>
++#include <net/if.h>
++#include <arpa/inet.h>
++#include <netdb.h>
++
++#include <rpc/rpc.h>
++#include <rpc/pmap_prot.h>
++#include <rpc/pmap_rmt.h>
++
++#ifdef HAVE_LIBTIRPC
++#include <netconfig.h>
++#include <rpc/rpcb_prot.h>
++#endif	/* HAVE_LIBTIRPC */
++
++#include "xlog.h"
++#include "nfsrpc.h"
++#include "nsm.h"
++#include "sm_inter.h"
++
++/*
++ * Returns a fresh XID appropriate for RPC over UDP -- never zero.
++ */
++static uint32_t
++nsm_next_xid(void)
 +{
-+	struct sockaddr_storage address;
-+	struct sockaddr *local_addr = (struct sockaddr *)&address;
-+	int sock, retry_cnt = 0;
++	static uint32_t nsm_xid = 0;
++	struct timeval now;
 +
-+retry:
-+	sock = socket(AF_INET, SOCK_DGRAM, 0);
-+	if (sock < 0) {
-+		xlog(L_ERROR, "Failed to create RPC socket: %m");
-+		return -1;
-+	}
-+	fcntl(sock, F_SETFL, O_NONBLOCK);
-+
-+	memset(&address, 0, sizeof(address));
-+	local_addr->sa_family = AF_INET;	/* Default to IPv4 */
-+
-+	/* Bind source IP if provided on command line */
-+	if (srcaddr) {
-+		struct addrinfo *ai = smn_lookup(srcaddr);
-+		if (!ai) {
-+			xlog(L_ERROR,
-+				"Not a valid hostname or address: \"%s\"",
-+				srcaddr);
-+			(void)close(sock);
-+			return -1;
-+		}
-+
-+		/* We know it's IPv4 at this point */
-+		memcpy(local_addr, ai->ai_addr, ai->ai_addrlen);
-+
-+		freeaddrinfo(ai);
++	if (nsm_xid == 0) {
++		(void)gettimeofday(&now, NULL);
++		nsm_xid = (uint32_t)getpid() ^
++				(uint32_t)now.tv_sec ^ (uint32_t)now.tv_usec;
 +	}
 +
-+	/* Use source port if provided on the command line,
-+	 * otherwise use bindresvport */
-+	if (srcport) {
-+		nfs_set_port(local_addr, srcport);
-+		if (bind(sock, local_addr, sizeof(struct sockaddr_in)) < 0) {
-+			xlog(L_ERROR, "Failed to bind RPC socket: %m");
-+			(void)close(sock);
-+			return -1;
-+		}
-+	} else {
-+		struct servent *se;
-+		struct sockaddr_in *sin = (struct sockaddr_in *)local_addr;
-+		(void) bindresvport(sock, sin);
-+		/* try to avoid known ports */
-+		se = getservbyport(sin->sin_port, "udp");
-+		if (se && retry_cnt < 100) {
-+			retry_cnt++;
-+			close(sock);
-+			goto retry;
-+		}
-+	}
-+
-+	return sock;
++	return nsm_xid++;
 +}
 +
- int
- main(int argc, char **argv)
- {
--	int	c;
--	int	force = 0;
-+	int	c, sock, force = 0;
- 	char *	progname;
- 
- 	progname = strrchr(argv[0], '/');
-@@ -242,7 +307,14 @@ usage:		fprintf(stderr,
- 		close(2);
- 	}
- 
--	notify();
-+	sock = smn_create_socket(opt_srcaddr, opt_srcport);
-+	if (sock == -1)
-+		exit(1);
++/*
++ * Select a fresh XID and construct an RPC header in @mesg.
++ * Always use AUTH_NULL credentials and verifiers.
++ *
++ * Returns the new XID.
++ */
++static uint32_t
++nsm_init_rpc_header(const rpcprog_t program, const rpcvers_t version,
++			const rpcproc_t procedure, struct rpc_msg *mesg)
++{
++	struct call_body *cb = &mesg->rm_call;
++	uint32_t xid = nsm_next_xid();
 +
-+	if (!nsm_drop_privileges(-1))
-+		exit(1);
++	memset(mesg, 0, sizeof(*mesg));
 +
-+	notify(sock);
- 
- 	if (hosts) {
- 		struct nsm_host	*hp;
-@@ -262,68 +334,13 @@ usage:		fprintf(stderr,
-  * Notify hosts
-  */
- static void
--notify(void)
-+notify(const int sock)
- {
--	struct sockaddr_storage address;
--	struct sockaddr *local_addr = (struct sockaddr *)&address;
- 	time_t	failtime = 0;
--	int	sock = -1;
--	int retry_cnt = 0;
--
-- retry:
--	sock = socket(AF_INET, SOCK_DGRAM, 0);
--	if (sock < 0) {
--		xlog(L_ERROR, "Failed to create RPC socket: %m");
--		exit(1);
--	}
--	fcntl(sock, F_SETFL, O_NONBLOCK);
--
--	memset(&address, 0, sizeof(address));
--	local_addr->sa_family = AF_INET;	/* Default to IPv4 */
--
--	/* Bind source IP if provided on command line */
--	if (opt_srcaddr) {
--		struct addrinfo *ai = smn_lookup(opt_srcaddr);
--		if (!ai) {
--			xlog(L_ERROR,
--				"Not a valid hostname or address: \"%s\"",
--				opt_srcaddr);
--			exit(1);
--		}
--
--		/* We know it's IPv4 at this point */
--		memcpy(local_addr, ai->ai_addr, ai->ai_addrlen);
--
--		freeaddrinfo(ai);
--	}
--
--	/* Use source port if provided on the command line,
--	 * otherwise use bindresvport */
--	if (opt_srcport) {
--		nfs_set_port(local_addr, opt_srcport);
--		if (bind(sock, local_addr, sizeof(struct sockaddr_in)) < 0) {
--			xlog(L_ERROR, "Failed to bind RPC socket: %m");
--			exit(1);
--		}
--	} else {
--		struct servent *se;
--		struct sockaddr_in *sin = (struct sockaddr_in *)local_addr;
--		(void) bindresvport(sock, sin);
--		/* try to avoid known ports */
--		se = getservbyport(sin->sin_port, "udp");
--		if (se && retry_cnt < 100) {
--			retry_cnt++;
--			close(sock);
--			goto retry;
--		}
--	}
- 
- 	if (opt_max_retry)
- 		failtime = time(NULL) + opt_max_retry;
- 
--	if (!nsm_drop_privileges(-1))
--		exit(1);
--
- 	while (hosts) {
- 		struct pollfd	pfd;
- 		time_t		now = time(NULL);
++	mesg->rm_xid = (unsigned long)xid;
++	mesg->rm_direction = CALL;
++
++	cb->cb_rpcvers = RPC_MSG_VERSION;
++	cb->cb_prog = program;
++	cb->cb_vers = version;
++	cb->cb_proc = procedure;
++
++	cb->cb_cred.oa_flavor = AUTH_NULL;
++	cb->cb_cred.oa_base = (caddr_t) NULL;
++	cb->cb_cred.oa_length = 0;
++	cb->cb_verf.oa_flavor = AUTH_NULL;
++	cb->cb_verf.oa_base = (caddr_t) NULL;
++	cb->cb_verf.oa_length = 0;
++
++	return xid;
++}
++
++/*
++ * Initialize the network send buffer and XDR memory for encoding.
++ */
++static void
++nsm_init_xdrmem(char *msgbuf, const unsigned int msgbuflen,
++		XDR *xdrp)
++{
++	memset(msgbuf, 0, (size_t)msgbuflen);
++	memset(xdrp, 0, sizeof(*xdrp));
++	xdrmem_create(xdrp, msgbuf, msgbuflen, XDR_ENCODE);
++}
++
++/*
++ * Send a completed RPC call on a socket.
++ *
++ * Returns true if all the bytes were sent successfully; otherwise
++ * false if any error occurred.
++ */
++static _Bool
++nsm_rpc_sendto(const int sock, const struct sockaddr *sap,
++			const socklen_t salen, XDR *xdrs, void *buf)
++{
++	const size_t buflen = (size_t)xdr_getpos(xdrs);
++	ssize_t err;
++
++	err = sendto(sock, buf, buflen, 0, sap, salen);
++	if ((err < 0) || ((size_t)err != buflen)) {
++		xlog(L_ERROR, "%s: sendto failed: %m", __func__);
++		return false;
++	}
++	return true;
++}
++
++/**
++ * nsm_xmit_getport - post a PMAP_GETPORT call on a socket descriptor
++ * @sock: datagram socket descriptor
++ * @sin: pointer to AF_INET socket address of server
++ * @program: RPC program number to query
++ * @version: RPC version number to query
++ *
++ * Send a PMAP_GETPORT call to the portmap daemon at @sin using
++ * socket descriptor @sock.  This request queries the RPC program
++ * [program, version, IPPROTO_UDP].
++ *
++ * NB: PMAP_GETPORT works only for IPv4 hosts.  This implementation
++ *     works only over UDP, and queries only UDP registrations.
++ *
++ * Returns the XID of the call, or zero if an error occurred.
++ */
++uint32_t
++nsm_xmit_getport(const int sock, const struct sockaddr_in *sin,
++			const unsigned long program,
++			const unsigned long version)
++{
++	char msgbuf[NSM_MAXMSGSIZE];
++	struct sockaddr_in addr;
++	struct rpc_msg mesg;
++	_Bool sent = false;
++	struct pmap parms = {
++		.pm_prog	= program,
++		.pm_vers	= version,
++		.pm_prot	= (unsigned long)IPPROTO_UDP,
++	};
++	uint32_t xid;
++	XDR xdr;
++
++	xlog(D_CALL, "Sending PMAP_GETPORT for %u, %u, udp", program, version);
++
++	nsm_init_xdrmem(msgbuf, NSM_MAXMSGSIZE, &xdr);
++	xid = nsm_init_rpc_header(PMAPPROG, PMAPVERS,
++					(rpcproc_t)PMAPPROC_GETPORT, &mesg);
++
++	addr = *sin;
++	addr.sin_port = htons(PMAPPORT);
++
++	if (xdr_callmsg(&xdr, &mesg) == TRUE &&
++	    xdr_pmap(&xdr, &parms) == TRUE)
++		sent = nsm_rpc_sendto(sock, (struct sockaddr *)(char *)&addr,
++					(socklen_t)sizeof(addr), &xdr, msgbuf);
++	else
++		xlog(L_ERROR, "%s: can't encode PMAP_GETPORT call", __func__);
++
++	xdr_destroy(&xdr);
++
++	if (sent == false)
++		return 0;
++	return xid;
++}
++
++/**
++ * nsm_xmit_getaddr - post an RPCB_GETADDR call on a socket descriptor
++ * @sock: datagram socket descriptor
++ * @sin: pointer to AF_INET6 socket address of server
++ * @program: RPC program number to query
++ * @version: RPC version number to query
++ *
++ * Send an RPCB_GETADDR call to the rpcbind daemon at @sap using
++ * socket descriptor @sock.  This request queries the RPC program
++ * [program, version, "udp6"].
++ *
++ * NB: RPCB_GETADDR works for both IPv4 and IPv6 hosts.  This
++ *     implementation works only over UDP and AF_INET6, and queries
++ *     only "udp6" registrations.
++ *
++ * Returns the XID of the call, or zero if an error occurred.
++ */
++#ifdef HAVE_LIBTIRPC
++uint32_t
++nsm_xmit_getaddr(const int sock, const struct sockaddr_in6 *sin6,
++			const rpcprog_t program, const rpcvers_t version)
++{
++	char msgbuf[NSM_MAXMSGSIZE];
++	struct sockaddr_in6 addr;
++	struct rpc_msg mesg;
++	_Bool sent = false;
++	struct rpcb parms = {
++		.r_prog		= program,
++		.r_vers		= version,
++		.r_netid	= "udp6",
++		.r_owner	= "",
++	};
++	uint32_t xid;
++	XDR xdr;
++
++	xlog(D_CALL, "Sending RPCB_GETADDR for %u, %u, udp6", program, version);
++
++	nsm_init_xdrmem(msgbuf, NSM_MAXMSGSIZE, &xdr);
++	xid = nsm_init_rpc_header(RPCBPROG, RPCBVERS,
++					(rpcproc_t)RPCBPROC_GETADDR, &mesg);
++
++	addr = *sin6;
++	addr.sin6_port = htons(PMAPPORT);
++	parms.r_addr = nfs_sockaddr2universal((struct sockaddr *)(char *)&addr);
++	if (parms.r_addr == NULL) {
++		xlog(L_ERROR, "%s: can't encode socket address", __func__);
++		return 0;
++	}
++
++	if (xdr_callmsg(&xdr, &mesg) == TRUE &&
++	    xdr_rpcb(&xdr, &parms) == TRUE)
++		sent = nsm_rpc_sendto(sock, (struct sockaddr *)(char *)&addr,
++					(socklen_t)sizeof(addr), &xdr, msgbuf);
++	else
++		xlog(L_ERROR, "%s: can't encode RPCB_GETADDR call", __func__);
++
++	xdr_destroy(&xdr);
++	free(parms.r_addr);
++
++	if (sent == false)
++		return 0;
++	return xid;
++}
++#else	/* !HAVE_LIBTIRPC */
++uint32_t
++nsm_xmit_getaddr(const int sock __attribute__((unused)),
++			const struct sockaddr_in6 *sin6 __attribute__((unused)),
++			const rpcprog_t program __attribute__((unused)),
++			const rpcvers_t version __attribute__((unused)))
++{
++	return 0;
++}
++#endif	/* !HAVE_LIBTIRPC */
++
++/**
++ * nsm_xmit_rpcbind - post an rpcbind request
++ * @sock: datagram socket descriptor
++ * @sap: pointer to socket address of server
++ * @program: RPC program number to query
++ * @version: RPC version number to query
++ *
++ * Send an rpcbind query to the rpcbind daemon at @sap using
++ * socket descriptor @sock.
++ *
++ * NB: This implementation works only over UDP, but can query IPv4 or IPv6
++ *     hosts.  It queries only UDP registrations.
++ *
++ * Returns the XID of the call, or zero if an error occurred.
++ */
++uint32_t
++nsm_xmit_rpcbind(const int sock, const struct sockaddr *sap,
++			const rpcprog_t program, const rpcvers_t version)
++{
++	switch (sap->sa_family) {
++	case AF_INET:
++		return nsm_xmit_getport(sock, (const struct sockaddr_in *)sap,
++						program, version);
++	case AF_INET6:
++		return nsm_xmit_getaddr(sock, (const struct sockaddr_in6 *)sap,
++						program, version);
++	}
++	return 0;
++}
++
++/**
++ * nsm_xmit_notify - post an NSMPROC_NOTIFY call on a socket descriptor
++ * @sock: datagram socket descriptor
++ * @sap: pointer to socket address of peer to notify (port already filled in)
++ * @salen: length of socket address
++ * @program: RPC program number to use
++ * @mon_name: mon_name of local peer (ie the rebooting system)
++ * @state: state of local peer
++ *
++ * Send an NSMPROC_NOTIFY call to the peer at @sap using socket descriptor @sock.
++ * This request notifies the peer that we have rebooted.
++ *
++ * NB: This implementation works only over UDP, but supports both AF_INET
++ *     and AF_INET6.
++ *
++ * Returns the XID of the call, or zero if an error occurred.
++ */
++uint32_t
++nsm_xmit_notify(const int sock, const struct sockaddr *sap,
++			const socklen_t salen, const rpcprog_t program,
++			const char *mon_name, const int state)
++{
++	char msgbuf[NSM_MAXMSGSIZE];
++	struct stat_chge state_change;
++	struct rpc_msg mesg;
++	_Bool sent = false;
++	uint32_t xid;
++	XDR xdr;
++
++	state_change.mon_name = strdup(mon_name);
++	if (state_change.mon_name == NULL) {
++		xlog(L_ERROR, "%s: no memory", __func__);
++		return 0;
++	}
++	state_change.state = state;
++
++	xlog(D_CALL, "Sending SM_NOTIFY for %s", mon_name);
++
++	nsm_init_xdrmem(msgbuf, NSM_MAXMSGSIZE, &xdr);
++	xid = nsm_init_rpc_header(program, SM_VERS, SM_NOTIFY, &mesg);
++
++	if (xdr_callmsg(&xdr, &mesg) == TRUE &&
++	    xdr_stat_chge(&xdr, &state_change) == TRUE)
++		sent = nsm_rpc_sendto(sock, sap, salen, &xdr, msgbuf);
++	else
++		xlog(L_ERROR, "%s: can't encode NSMPROC_NOTIFY call",
++				__func__);
++
++	xdr_destroy(&xdr);
++	free(state_change.mon_name);
++
++	if (sent == false)
++		return 0;
++	return xid;
++}
++
++/**
++ * nsm_xmit_nlmcall - post an unnamed call to local NLM on a socket descriptor
++ * @sock: datagram socket descriptor
++ * @sap: address/port of NLM service to contact
++ * @salen: size of @sap
++ * @m: callback data defining RPC call to make
++ * @state: state of rebooting host
++ *
++ * Send an unnamed call (previously requested via NSMPROC_MON) to the
++ * specified local UDP-based RPC service using socket descriptor @sock.
++ *
++ * NB: This implementation works only over UDP, but supports both AF_INET
++ *     and AF_INET6.
++ *
++ * Returns the XID of the call, or zero if an error occurred.
++ */
++uint32_t
++nsm_xmit_nlmcall(const int sock, const struct sockaddr *sap,
++			const socklen_t salen, const struct mon *m,
++			const int state)
++{
++	const struct my_id *id = &m->mon_id.my_id;
++	char msgbuf[NSM_MAXMSGSIZE];
++	struct status new_status;
++	struct rpc_msg mesg;
++	_Bool sent = false;
++	uint32_t xid;
++	XDR xdr;
++
++	xlog(D_CALL, "Sending NLM downcall for %s", m->mon_id.mon_name);
++
++	nsm_init_xdrmem(msgbuf, NSM_MAXMSGSIZE, &xdr);
++	xid = nsm_init_rpc_header((rpcprog_t)id->my_prog,
++					(rpcvers_t)id->my_vers,
++					(rpcproc_t)id->my_proc, &mesg);
++
++	new_status.mon_name = m->mon_id.mon_name;
++	new_status.state = state;
++	memcpy(&new_status.priv, &m->priv, sizeof(new_status.priv));
++
++	if (xdr_callmsg(&xdr, &mesg) == TRUE &&
++	    xdr_status(&xdr, &new_status) == TRUE)
++		sent = nsm_rpc_sendto(sock, sap, salen, &xdr, msgbuf);
++	else
++		xlog(L_ERROR, "%s: can't encode NLM downcall", __func__);
++
++	xdr_destroy(&xdr);
++
++	if (sent == false)
++		return 0;
++	return xid;
++}
++
++/**
++ * nsm_parse_reply - parse and validate the header in an RPC reply
++ * @xdrs: pointer to XDR
++ *
++ * Returns the XID of the reply, or zero if an error occurred.
++ */
++uint32_t
++nsm_parse_reply(XDR *xdrs)
++{
++	struct rpc_msg mesg = {
++		.rm_reply.rp_acpt.ar_results.proc	= (xdrproc_t)xdr_void,
++	};
++	uint32_t xid;
++
++	if (xdr_replymsg(xdrs, &mesg) == FALSE) {
++		xlog(L_ERROR, "%s: can't decode RPC reply", __func__);
++		return 0;
++	}
++	xid = (uint32_t)mesg.rm_xid;
++
++	if (mesg.rm_reply.rp_stat != MSG_ACCEPTED) {
++		xlog(L_ERROR, "%s: [0x%x] RPC status %d",
++			__func__, xid, mesg.rm_reply.rp_stat);
++		return 0;
++	}
++
++	if (mesg.rm_reply.rp_acpt.ar_stat != SUCCESS) {
++		xlog(L_ERROR, "%s: [0x%x] RPC accept status %d",
++			__func__, xid, mesg.rm_reply.rp_acpt.ar_stat);
++		return 0;
++	}
++
++	return xid;
++}
++
++/**
++ * nsm_recv_getport - parse PMAP_GETPORT reply
++ * @xdrs: pointer to XDR
++ *
++ * Returns the port number from the RPC reply, or zero
++ * if an error occurred.
++ */
++unsigned long
++nsm_recv_getport(XDR *xdrs)
++{
++	unsigned long port = 0;
++
++	if (xdr_u_long(xdrs, &port) == FALSE)
++		xlog(L_ERROR, "%s: can't decode pmap reply",
++			__func__);
++	if (port > UINT16_MAX) {
++		xlog(L_ERROR, "%s: bad port number",
++			__func__);
++		port = 0;
++	}
++
++	xlog(D_CALL, "Received PMAP_GETPORT result: %lu", port);
++	return port;
++}
++
++/**
++ * nsm_recv_getaddr - parse RPCB_GETADDR reply
++ * @xdrs: pointer to XDR
++ *
++ * Returns the port number from the RPC reply, or zero
++ * if an error occurred.
++ */
++uint16_t
++nsm_recv_getaddr(XDR *xdrs)
++{
++	char *uaddr = NULL;
++	int port;
++
++	if (xdr_wrapstring(xdrs, &uaddr) == FALSE)
++		xlog(L_ERROR, "%s: can't decode rpcb reply",
++			__func__);
++
++	if ((uaddr == NULL) || (uaddr[0] == '\0')) {
++		xlog(D_CALL, "Received RPCB_GETADDR result: "
++				"program not registered");
++		return 0;
++	}
++
++	port = nfs_universal2port(uaddr);
++
++	xdr_free((xdrproc_t)xdr_wrapstring, (char *)&uaddr);
++
++	if (port < 0 || port > UINT16_MAX) {
++		xlog(L_ERROR, "%s: bad port number",
++			__func__);
++		return 0;
++	}
++
++	xlog(D_CALL, "Received RPCB_GETADDR result: %d", port);
++	return (uint16_t)port;
++}
++
++/**
++ * nsm_recv_rpcbind - parse rpcbind reply
++ * @af: address family of reply
++ * @xdrs: pointer to XDR
++ *
++ * Returns the port number from the RPC reply, or zero
++ * if an error occurred.
++ */
++uint16_t
++nsm_recv_rpcbind(const sa_family_t family, XDR *xdrs)
++{
++	switch (family) {
++	case AF_INET:
++		return (uint16_t)nsm_recv_getport(xdrs);
++	case AF_INET6:
++		return nsm_recv_getaddr(xdrs);
++	}
++	return 0;
++}
 
