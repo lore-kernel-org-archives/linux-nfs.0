@@ -1,43 +1,66 @@
-From: H Hartley Sweeten <hartleys-3FF4nKcrg1dE2c76skzGb0EOCMrvLtNR@public.gmane.org>
-Subject: [PATCH] fs/nfs/write.c: make local symbol static
-Date: Thu, 14 Jan 2010 20:16:57 -0700
-Message-ID: <201001142016.57297.hartleys@visionengravers.com>
+From: "Becker Vosloo" <Becker.Vosloo-WpcINk3L64l+l3BRcVcdTQ@public.gmane.org>
+Subject: NFS V3 Problems
+Date: Fri, 15 Jan 2010 10:17:52 +0200
+Message-ID: <1266C849500FBB49BA6B7927D692F26B06DC439F@MX-EVS-1.za.saabgroup.com>
 Mime-Version: 1.0
 Content-Type: text/plain;
-  charset="utf-8"
-Cc: Trond.Myklebust@netapp.com
-To: Linux Kernel <linux-kernel@vger.kernel.org>,
-	linux-nfs@vger.kernel.org
+	charset="us-ascii"
+To: <linux-nfs@vger.kernel.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from [206.15.93.42] ([206.15.93.42]:15485 "EHLO
-	visionfs1.visionengravers.com" rhost-flags-FAIL-FAIL-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1751674Ab0AODQv (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 14 Jan 2010 22:16:51 -0500
+Received: from mail.za.saabgroup.com ([196.11.195.164]:12123 "EHLO
+	zahfmm01.za.saabgroup.com" rhost-flags-OK-OK-OK-FAIL)
+	by vger.kernel.org with ESMTP id S1751937Ab0AOIR6 convert rfc822-to-8bit
+	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 15 Jan 2010 03:17:58 -0500
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-fs/nfs/write.c: make local symbol static
+Good Day,
 
-The symbol nfs_commitdata_release is only used locally
-in this file. Make it static to prevent the following sparse warning:
 
-warning: symbol 'nfs_commitdata_release' was not declared. Should it be static?
+I am using a Linux NFS client to mount to a dedicate NFS server
+implemented using Wind River VxWorks 6.5.
 
-Signed-off-by: H Hartley Sweeten <hsweeten-3FF4nKcrg1dE2c76skzGb0EOCMrvLtNR@public.gmane.org>
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
-
----
-
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index d171696..78b5c56 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -1233,7 +1233,7 @@ int nfs_writeback_done(struct rpc_task *task, struct nfs_write_data *data)
  
+
+The VxWorks server has the ability to support NFS using either UDP or
+TCP. With configuration files I can disable the NFS-UDP services on my
+VxWorks server, as well as disable the NFS-TCP services.
+
  
- #if defined(CONFIG_NFS_V3) || defined(CONFIG_NFS_V4)
--void nfs_commitdata_release(void *data)
-+static void nfs_commitdata_release(void *data)
- {
- 	struct nfs_write_data *wdata = data;
+
+The following were observed: 
+
+1. With my VxWorks server configured to only support NFS-UDP services, I
+mount (proto=udp) from a Linux client, all works well, very responsive.
+
+2. With my VxWorks server configured to only support NFS-TCP services, I
+mount (proto=tcp ) from a Linux client, all works well, very responsive.
+
+3. With my VxWorks server configured to support both NFS-TCP and NFS-UDP
+services, I mount (proto=tcp) from a Linux client, all works well.
+
+4. With my VxWorks server configured to support both NFS-TCP and NFS-UDP
+services, I mount (proto=udp) from a Linux client, then things become
+very slow when performing file system type commands from the client. For
+example, performing a command ls /mnt/01, takes approximately 45 seconds
+to complete, where in the other cases this command took less than 200ms
+to complete. Using wireShark to record the network traffic, I noticed,
+that in the latter case (4), the Linux client issue a huge amount of
+GETATTR requests, after the READDIR requests. These extra GETATTR seems
+to be the problem, as they do not appear in cases 1, 2 and 3 above. Any
+idea what I can do to solve this? 
+
+
+
+
+P.S.  Unfortunately I have to cater for the case, due to legacy, to
+handle clients across UDP and TCP. Transferring a file from the mounted
+volume while connected as described in case 4 is fine. The data
+throughput is as expected and correlates to that measured in steps 1, 2
+and 3. It is only the mount, unmount and file system related RPCs that
+is slow.
+
  
+
+Becker Vosloo
