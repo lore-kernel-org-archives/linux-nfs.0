@@ -1,221 +1,251 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 3/6] tcp_wrapper: Clean up logit()
-Date: Fri, 15 Jan 2010 16:31:37 -0500
-Message-ID: <20100115213137.18214.74309.stgit@localhost.localdomain>
+Subject: [PATCH 2/6] tcp_wrappers: Use getifaddrs(3) if it is available
+Date: Fri, 15 Jan 2010 16:31:26 -0500
+Message-ID: <20100115213126.18214.58700.stgit@localhost.localdomain>
 References: <20100115212102.18214.19398.stgit@localhost.localdomain>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain; charset="utf-8"
 Cc: chris.mason@oracle.com, linux-nfs@vger.kernel.org
 To: steved@redhat.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from acsinet12.oracle.com ([141.146.126.234]:29231 "EHLO
-	acsinet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758429Ab0AOVdp (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 15 Jan 2010 16:33:45 -0500
+Received: from rcsinet12.oracle.com ([148.87.113.124]:63715 "EHLO
+	rcsinet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757655Ab0AOVg3 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 15 Jan 2010 16:36:29 -0500
 In-Reply-To: <20100115212102.18214.19398.stgit-bi+AKbBUZKY6gyzm1THtWbp2dZbC/Bob@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Eliminate these compiler warnings:
+After glibc 2.3.3, getifaddrs(3) can return AF_INET6 addresses for
+local network interfaces.  Using the library call is easier than
+trying to update the open code in from_local(), and means we have
+less to maintain in nfs-utils going forward.
 
-tcpwrapper.c: In function =E2=80=98logit=E2=80=99:
-tcpwrapper.c:225: warning: unused parameter =E2=80=98procnum=E2=80=99
-tcpwrapper.c:225: warning: unused parameter =E2=80=98prognum=E2=80=99
+And, since from_local() can now support IPv6, change its synopsis to
+take a "struct sockaddr *" .
 
-Actually, @procnum is not used anywhere in our tcpwrapper.c, so let's
-just get rid of it.
+Note that the original code discovers local addresses once.  These
+days, with wifi, DHCP, and NetworkManager, the local network
+configuration can change dynamically over time.  So, call getifaddrs()
+more often to ensure from_local() has up-to-date network configuration
+information.
 
-Since there is only one logit() call site in tcpwrapper.c, the macro
-wrapper just adds needless clutter.  Let's get rid of that too.
+This implementation refreshes the list if from_local() has not been
+called in the last second.  This is actually not terribly honerous.
+check_default() invokes from_local() only when the remote host is not
+in its access cache, or the access/deny files have changed.
 
-=46inally, both mountd and statd now use xlog(), which adds an
-appropriate program name prefix to every message.  Replace the
-open-coded syslog(2) call with an xlog() call in order to consistently
-identify the RPC service reporting the intrusion.
+So new hosts will cause a refresh, but previously seen hosts
+(including localhost) should not.
 
-Since logit() no longer references "deny_severity" and no nfs-utils
-caller sets either allow_severity or deny_severity, we remove them.
+On the other hand, it still may not be often enough.  After the first
+call, if only previously seen hosts attempt to access our daemons,
+from_local() would never be called, and the local list would never be
+updated.  This might be possible during steady-state operation with
+a small number of servers and clients.
+
+It would also be nice if we could free the local interface address
+list at shutdown time, but that would be a lot of trouble for little
+gain.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- support/include/tcpwrapper.h  |    8 +-----
- support/misc/tcpwrapper.c     |   56 ++++++++++++++++++---------------=
---------
- utils/mountd/mount_dispatch.c |    2 +
- utils/statd/statd.c           |    2 +
- 4 files changed, 27 insertions(+), 41 deletions(-)
+ aclocal/ipv6.m4              |    4 +-
+ configure.ac                 |    2 -
+ support/include/tcpwrapper.h |    2 -
+ support/misc/from_local.c    |   96 +++++++++++++++++++++++++++++++++++++++---
+ support/misc/tcpwrapper.c    |    2 -
+ 5 files changed, 94 insertions(+), 12 deletions(-)
 
-diff --git a/support/include/tcpwrapper.h b/support/include/tcpwrapper.=
-h
-index f1145bd..941394e 100644
+diff --git a/aclocal/ipv6.m4 b/aclocal/ipv6.m4
+index 2490f3d..5ee8fb6 100644
+--- a/aclocal/ipv6.m4
++++ b/aclocal/ipv6.m4
+@@ -15,8 +15,8 @@ AC_DEFUN([AC_IPV6], [
+     fi
+ 
+     dnl IPv6-enabled networking functions required for IPv6
+-    AC_CHECK_FUNCS([getnameinfo bindresvport_sa], ,
+-                   [AC_MSG_ERROR([Missing functions needed for IPv6.])])
++    AC_CHECK_FUNCS([getifaddrs getnameinfo bindresvport_sa], ,
++                   [AC_MSG_ERROR([Missing library functions needed for IPv6.])])
+ 
+     dnl Need to detect presence of IPv6 networking at run time via
+     dnl getaddrinfo(3); old versions of glibc do not support ADDRCONFIG
+diff --git a/configure.ac b/configure.ac
+index c77c5ba..1dc4249 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -330,7 +330,7 @@ AC_FUNC_STAT
+ AC_FUNC_VPRINTF
+ AC_CHECK_FUNCS([alarm atexit dup2 fdatasync ftruncate getcwd \
+                gethostbyaddr gethostbyname gethostname getmntent \
+-               getnameinfo getrpcbyname \
++               getnameinfo getrpcbyname getifaddrs \
+                gettimeofday hasmntopt inet_ntoa innetgr memset mkdir pathconf \
+                realpath rmdir select socket strcasecmp strchr strdup \
+                strerror strrchr strtol strtoul sigprocmask])
+diff --git a/support/include/tcpwrapper.h b/support/include/tcpwrapper.h
+index 98cf806..f1145bd 100644
 --- a/support/include/tcpwrapper.h
 +++ b/support/include/tcpwrapper.h
-@@ -5,14 +5,8 @@
- #include <netinet/in.h>
- #include <arpa/inet.h>
-=20
--extern int verboselog;
--
--extern int allow_severity;
--extern int deny_severity;
--
+@@ -11,7 +11,7 @@ extern int allow_severity;
+ extern int deny_severity;
+ 
  extern int good_client(char *daemon, struct sockaddr_in *addr);
- extern int from_local(const struct sockaddr *sap);
--extern int check_default(char *daemon, struct sockaddr_in *addr,
--			 u_long proc, u_long prog);
-+extern int check_default(char *daemon, struct sockaddr_in *addr, u_lon=
-g prog);
-=20
- #endif /* TCP_WRAPPER_H */
-diff --git a/support/misc/tcpwrapper.c b/support/misc/tcpwrapper.c
-index af626ad..b981d58 100644
---- a/support/misc/tcpwrapper.c
-+++ b/support/misc/tcpwrapper.c
-@@ -34,13 +34,12 @@
- #ifdef HAVE_CONFIG_H
- #include <config.h>
- #endif
-+
- #ifdef HAVE_LIBWRAP
--#include <tcpwrapper.h>
- #include <unistd.h>
- #include <string.h>
- #include <rpc/rpc.h>
- #include <rpc/pmap_prot.h>
--#include <syslog.h>
- #include <netdb.h>
- #include <pwd.h>
+-extern int from_local (struct sockaddr_in *addr);
++extern int from_local(const struct sockaddr *sap);
+ extern int check_default(char *daemon, struct sockaddr_in *addr,
+ 			 u_long proc, u_long prog);
+ 
+diff --git a/support/misc/from_local.c b/support/misc/from_local.c
+index 3f46b99..e2de969 100644
+--- a/support/misc/from_local.c
++++ b/support/misc/from_local.c
+@@ -43,6 +43,7 @@ static char sccsid[] = "@(#) from_local.c 1.3 96/05/31 15:52:57";
+ 
  #include <sys/types.h>
-@@ -49,6 +48,7 @@
- #include <sys/stat.h>
- #include <tcpd.h>
-=20
-+#include "tcpwrapper.h"
+ #include <sys/socket.h>
++#include <stdbool.h>
+ #include <stdio.h>
+ #include <unistd.h>
+ #include <netdb.h>
+@@ -52,6 +53,7 @@ static char sccsid[] = "@(#) from_local.c 1.3 96/05/31 15:52:57";
+ #include <stdlib.h>
+ #include <string.h>
+ 
++#include "sockaddr.h"
+ #include "tcpwrapper.h"
  #include "xlog.h"
-=20
- #ifdef SYSV40
-@@ -56,21 +56,8 @@
- #include <rpc/rpcent.h>
+ 
+@@ -60,11 +62,75 @@ static char sccsid[] = "@(#) from_local.c 1.3 96/05/31 15:52:57";
+ #define FALSE	0
  #endif
-=20
--static void logit(int severity, struct sockaddr_in *addr,
--		  u_long procnum, u_long prognum, char *text);
- static int check_files(void);
-=20
--/*
-- * These need to exist since they are externed=20
-- * public header files.
-- */
--int     verboselog =3D 0;
--int     allow_severity =3D LOG_INFO;
--int     deny_severity =3D LOG_WARNING;
--
--#define log_bad_host(addr, proc, prog) \
--  logit(deny_severity, addr, proc, prog, "request from unauthorized ho=
-st")
--
- #define ALLOW 1
- #define DENY 0
-=20
-@@ -143,6 +130,16 @@ haccess_t *haccess_lookup(struct sockaddr_in *addr=
-, u_long prog)
- 	return NULL;
- }
-=20
-+static void
-+logit(const struct sockaddr_in *sin)
-+{
-+	char buf[INET_ADDRSTRLEN];
+ 
+- /*
+-  * With virtual hosting, each hardware network interface can have multiple
+-  * network addresses. On such machines the number of machine addresses can
+-  * be surprisingly large.
+-  */
++#ifdef HAVE_GETIFADDRS
 +
-+	xlog_warn("connect from %s denied: request from unauthorized host",
-+			inet_ntop(AF_INET, &sin->sin_addr, buf, sizeof(buf)));
-+	=09
++#include <ifaddrs.h>
++#include <time.h>
++
++/**
++ * from_local - determine whether request comes from the local system
++ * @sap: pointer to socket address to check
++ *
++ * With virtual hosting, each hardware network interface can have
++ * multiple network addresses. On such machines the number of machine
++ * addresses can be surprisingly large.
++ *
++ * We also expect the local network configuration to change over time,
++ * so call getifaddrs(3) more than once, but not too often.
++ *
++ * Returns TRUE if the sockaddr contains an address of one of the local
++ * network interfaces.  Otherwise FALSE is returned.
++ */
++int
++from_local(const struct sockaddr *sap)
++{
++	static struct ifaddrs *ifaddr = NULL;
++	static time_t last_update = 0;
++	struct ifaddrs *ifa;
++	unsigned int count;
++	time_t now;
++
++	if (time(&now) == ((time_t)-1)) {
++		xlog(L_ERROR, "%s: time(2): %m", __func__);
++
++		/* If we don't know what time it is, use the
++		 * existing ifaddr list, if one exists  */
++		now = last_update;
++		if (ifaddr == NULL)
++			now++;
++	}
++	if (now != last_update) {
++		xlog(D_GENERAL, "%s: updating local if addr list", __func__);
++
++		if (ifaddr)
++			freeifaddrs(ifaddr);
++
++		if (getifaddrs(&ifaddr) == -1) {
++			xlog(L_ERROR, "%s: getifaddrs(3): %m", __func__);
++			return FALSE;
++		}
++
++		last_update = now;
++	}
++
++	count = 0;
++	for (ifa = ifaddr; ifa; ifa = ifa->ifa_next) {
++		if ((ifa->ifa_flags & IFF_UP) &&
++		    nfs_compare_sockaddr(sap, ifa->ifa_addr)) {
++			xlog(D_GENERAL, "%s: incoming address matches "
++					"local interface address", __func__);
++			return TRUE;
++		} else
++			count++;
++	}
++
++	xlog(D_GENERAL, "%s: checked %u local if addrs; "
++			"incoming address not found", __func__, count);
++	return FALSE;
 +}
 +
- int
- good_client(daemon, addr)
- char *daemon;
-@@ -186,14 +183,17 @@ static int check_files()
- 	return changed;
++#else	/* !HAVE_GETIFADDRS */
++
+ static int num_local;
+ static int num_addrs;
+ static struct in_addr *addrs;
+@@ -155,12 +221,26 @@ find_local(void)
+     return (num_local);
  }
-=20
--/* check_default - additional checks for NULL, DUMP, GETPORT and unkno=
-wn */
--
+ 
+-/* from_local - determine whether request comes from the local system */
 +/**
-+ * check_default - additional checks for NULL, DUMP, GETPORT and unkno=
-wn
-+ * @daemon: pointer to '\0'-terminated ASCII string containing name of=
- the
-+ *		daemon requesting the access check
-+ * @addr: pointer to socket address containing address of caller
-+ * @prog: RPC program number caller is attempting to access
++ * from_local - determine whether request comes from the local system
++ * @sap: pointer to socket address to check
 + *
-+ * Returns TRUE if the caller is allowed access; otherwise FALSE is re=
-turned.
++ * With virtual hosting, each hardware network interface can have
++ * multiple network addresses. On such machines the number of machine
++ * addresses can be surprisingly large.
++ *
++ * Returns TRUE if the sockaddr contains an address of one of the local
++ * network interfaces.  Otherwise FALSE is returned.
 + */
  int
--check_default(daemon, addr, proc, prog)
--char *daemon;
--struct sockaddr_in *addr;
--u_long  proc;
--u_long  prog;
-+check_default(char *daemon, struct sockaddr_in *addr, u_long prog)
+-from_local(struct sockaddr_in *addr)
++from_local(const struct sockaddr *sap)
  {
- 	haccess_t *acc =3D NULL;
- 	int changed =3D check_files();
-@@ -203,7 +203,7 @@ u_long  prog;
- 		return (acc->access);
-=20
- 	if (!(from_local((struct sockaddr *)addr) || good_client(daemon, addr=
-))) {
--		log_bad_host(addr, proc, prog);
-+		logit(addr);
- 		if (acc)
- 			acc->access =3D FALSE;
- 		else=20
-@@ -219,12 +219,4 @@ u_long  prog;
-     return (TRUE);
++    const struct sockaddr_in *addr = (const struct sockaddr_in *)sap;
+     int     i;
+ 
++    if (sap->sa_family != AF_INET)
++	return (FALSE);
++
+     if (addrs == 0 && find_local() == 0)
+ 	xlog(L_ERROR, "Cannot find any active local network interfaces");
+ 
+@@ -184,3 +264,5 @@ int main(void)
  }
-=20
--/* logit - report events of interest via the syslog daemon */
--
--static void logit(int severity, struct sockaddr_in *addr,
--		  u_long procnum, u_long prognum, char *text)
--{
--	syslog(severity, "connect from %s denied: %s",
--	       inet_ntoa(addr->sin_addr), text);
--}
--#endif
-+#endif	/* HAVE_LIBWRAP */
-diff --git a/utils/mountd/mount_dispatch.c b/utils/mountd/mount_dispatc=
-h.c
-index 199fcec..d2802ef 100644
---- a/utils/mountd/mount_dispatch.c
-+++ b/utils/mountd/mount_dispatch.c
-@@ -75,7 +75,7 @@ mount_dispatch(struct svc_req *rqstp, SVCXPRT *transp=
-)
-=20
- 	/* remote host authorization check */
- 	if (sin->sin_family =3D=3D AF_INET &&
--	    !check_default("mountd", sin, rqstp->rq_proc, MOUNTPROG)) {
-+	    !check_default("mountd", sin, MOUNTPROG)) {
- 		svcerr_auth (transp, AUTH_FAILED);
- 		return;
- 	}
-diff --git a/utils/statd/statd.c b/utils/statd/statd.c
-index 7be6454..fa3c6d5 100644
---- a/utils/statd/statd.c
-+++ b/utils/statd/statd.c
-@@ -79,7 +79,7 @@ sm_prog_1_wrapper (struct svc_req *rqstp, register SV=
-CXPRT *transp)
-=20
- 	/* remote host authorization check */
- 	if (sin->sin_family =3D=3D AF_INET &&
--	    !check_default("statd", sin, rqstp->rq_proc, SM_PROG)) {
-+	    !check_default("statd", sin, SM_PROG)) {
- 		svcerr_auth (transp, AUTH_FAILED);
- 		return;
- 	}
+ 
+ #endif	/* TEST */
++
++#endif	/* !HAVE_GETIFADDRS */
+diff --git a/support/misc/tcpwrapper.c b/support/misc/tcpwrapper.c
+index 1da6020..af626ad 100644
+--- a/support/misc/tcpwrapper.c
++++ b/support/misc/tcpwrapper.c
+@@ -202,7 +202,7 @@ u_long  prog;
+ 	if (acc && changed == 0)
+ 		return (acc->access);
+ 
+-	if (!(from_local(addr) || good_client(daemon, addr))) {
++	if (!(from_local((struct sockaddr *)addr) || good_client(daemon, addr))) {
+ 		log_bad_host(addr, proc, prog);
+ 		if (acc)
+ 			acc->access = FALSE;
 
