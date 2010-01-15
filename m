@@ -1,224 +1,106 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 2/6] tcp_wrappers: Use getifaddrs(3) if it is available
-Date: Fri, 15 Jan 2010 12:49:49 -0500
-Message-ID: <20100115174949.30104.94932.stgit@localhost.localdomain>
+Subject: [PATCH 4/6] tcpwrapper: Fix signage problems in the tcp_wrappers hash
+	function
+Date: Fri, 15 Jan 2010 12:50:06 -0500
+Message-ID: <20100115175006.30104.12728.stgit@localhost.localdomain>
 References: <20100115174426.30104.3492.stgit@localhost.localdomain>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=utf-8
 Cc: chris.mason@oracle.com, linux-nfs@vger.kernel.org
 To: steved@redhat.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from acsinet11.oracle.com ([141.146.126.233]:20949 "EHLO
-	acsinet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751709Ab0AORuU (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 15 Jan 2010 12:50:20 -0500
+Received: from acsinet12.oracle.com ([141.146.126.234]:53303 "EHLO
+	acsinet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752638Ab0AORuY (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 15 Jan 2010 12:50:24 -0500
 In-Reply-To: <20100115174426.30104.3492.stgit-bi+AKbBUZKY6gyzm1THtWbp2dZbC/Bob@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-After glibc 2.3.3, getifaddrs(3) can return AF_INET6 addresses for
-local network interfaces.  Using the library call is easier than
-trying to update the open code in from_local(), and means we have
-less to maintain in nfs-utils.
+Eliminate the following compiler warnings:
 
-Since from_local() can now support IPv6, change its synopsis to take a
-"struct sockaddr *" .
+tcpwrapper.c:78: warning: no previous prototype for =E2=80=98strtoint=E2=
+=80=99
+tcpwrapper.c: In function =E2=80=98strtoint=E2=80=99:
+tcpwrapper.c:81: warning: conversion to =E2=80=98int=E2=80=99 from =E2=80=
+=98size_t=E2=80=99 may change the sign of the result
+tcpwrapper.c:85: warning: conversion to =E2=80=98unsigned int=E2=80=99 =
+from =E2=80=98int=E2=80=99 may change the sign of the result
+tcpwrapper.c: In function =E2=80=98hashint=E2=80=99:
+tcpwrapper.c:91: warning: conversion to =E2=80=98int=E2=80=99 from =E2=80=
+=98unsigned int=E2=80=99 may change the sign of the result
 
-Note that the original code discovers local addresses once.  These
-days, with wifi, DHCP, and NetworkManager, the local network
-configuration can change dynamically over time.  So, call getifaddrs()
-more often to ensure from_local() has up-to-date network configuration
-information.
+The hash value is probably computed consistently even with unexpected
+sign inversions.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- aclocal/ipv6.m4              |    4 +-
- configure.ac                 |    2 -
- support/include/tcpwrapper.h |    2 -
- support/misc/from_local.c    |   87 +++++++++++++++++++++++++++++++++++++++---
- support/misc/tcpwrapper.c    |    2 -
- 5 files changed, 85 insertions(+), 12 deletions(-)
+ support/misc/tcpwrapper.c |   34 ++++++++++++++++++++--------------
+ 1 files changed, 20 insertions(+), 14 deletions(-)
 
-diff --git a/aclocal/ipv6.m4 b/aclocal/ipv6.m4
-index 2490f3d..5ee8fb6 100644
---- a/aclocal/ipv6.m4
-+++ b/aclocal/ipv6.m4
-@@ -15,8 +15,8 @@ AC_DEFUN([AC_IPV6], [
-     fi
- 
-     dnl IPv6-enabled networking functions required for IPv6
--    AC_CHECK_FUNCS([getnameinfo bindresvport_sa], ,
--                   [AC_MSG_ERROR([Missing functions needed for IPv6.])])
-+    AC_CHECK_FUNCS([getifaddrs getnameinfo bindresvport_sa], ,
-+                   [AC_MSG_ERROR([Missing library functions needed for IPv6.])])
- 
-     dnl Need to detect presence of IPv6 networking at run time via
-     dnl getaddrinfo(3); old versions of glibc do not support ADDRCONFIG
-diff --git a/configure.ac b/configure.ac
-index c77c5ba..1dc4249 100644
---- a/configure.ac
-+++ b/configure.ac
-@@ -330,7 +330,7 @@ AC_FUNC_STAT
- AC_FUNC_VPRINTF
- AC_CHECK_FUNCS([alarm atexit dup2 fdatasync ftruncate getcwd \
-                gethostbyaddr gethostbyname gethostname getmntent \
--               getnameinfo getrpcbyname \
-+               getnameinfo getrpcbyname getifaddrs \
-                gettimeofday hasmntopt inet_ntoa innetgr memset mkdir pathconf \
-                realpath rmdir select socket strcasecmp strchr strdup \
-                strerror strrchr strtol strtoul sigprocmask])
-diff --git a/support/include/tcpwrapper.h b/support/include/tcpwrapper.h
-index 98cf806..f1145bd 100644
---- a/support/include/tcpwrapper.h
-+++ b/support/include/tcpwrapper.h
-@@ -11,7 +11,7 @@ extern int allow_severity;
- extern int deny_severity;
- 
- extern int good_client(char *daemon, struct sockaddr_in *addr);
--extern int from_local (struct sockaddr_in *addr);
-+extern int from_local(const struct sockaddr *sap);
- extern int check_default(char *daemon, struct sockaddr_in *addr,
- 			 u_long proc, u_long prog);
- 
-diff --git a/support/misc/from_local.c b/support/misc/from_local.c
-index 3f46b99..57529ad 100644
---- a/support/misc/from_local.c
-+++ b/support/misc/from_local.c
-@@ -43,6 +43,7 @@ static char sccsid[] = "@(#) from_local.c 1.3 96/05/31 15:52:57";
- 
- #include <sys/types.h>
- #include <sys/socket.h>
-+#include <stdbool.h>
- #include <stdio.h>
- #include <unistd.h>
- #include <netdb.h>
-@@ -52,6 +53,7 @@ static char sccsid[] = "@(#) from_local.c 1.3 96/05/31 15:52:57";
- #include <stdlib.h>
- #include <string.h>
- 
-+#include "sockaddr.h"
- #include "tcpwrapper.h"
- #include "xlog.h"
- 
-@@ -60,11 +62,66 @@ static char sccsid[] = "@(#) from_local.c 1.3 96/05/31 15:52:57";
- #define FALSE	0
- #endif
- 
-- /*
--  * With virtual hosting, each hardware network interface can have multiple
--  * network addresses. On such machines the number of machine addresses can
--  * be surprisingly large.
--  */
-+#ifdef HAVE_GETIFADDRS
-+
-+#include <ifaddrs.h>
-+#include <time.h>
-+
-+/**
-+ * from_local - determine whether request comes from the local system
-+ * @sap: pointer to socket address to check
-+ *
-+ * With virtual hosting, each hardware network interface can have
-+ * multiple network addresses. On such machines the number of machine
-+ * addresses can be surprisingly large.
-+ *
-+ * We also expect the local network configuration to change over time,
-+ * so call getifaddrs(3) more than once, but not too often.
-+ *
-+ * Returns TRUE if the sockaddr contains an address of one of the local
-+ * network interfaces.  Otherwise FALSE is returned.
-+ */
-+int
-+from_local(const struct sockaddr *sap)
-+{
-+	static struct ifaddrs *ifaddr = NULL;
-+	static time_t last_update = 0;
-+	struct ifaddrs *ifa;
-+	time_t now;
-+
-+	if (time(&now) == ((time_t)-1)) {
-+		xlog(L_ERROR, "%s: time(2): %m", __func__);
-+
-+		/* If we don't know what time it is, use the
-+		 * existing ifaddr list, if one exists  */
-+		now = last_update;
-+		if (ifaddr == NULL)
-+			now++;
-+	}
-+	if (now != last_update) {
-+		xlog(D_GENERAL, "%s: updating if addr list", __func__);
-+
-+		if (ifaddr)
-+			freeifaddrs(ifaddr);
-+
-+		if (getifaddrs(&ifaddr) == -1) {
-+			xlog(L_ERROR, "%s: getifaddrs(3): %m", __func__);
-+			return FALSE;
-+		}
-+
-+		last_update = now;
-+	}
-+
-+	for (ifa = ifaddr; ifa; ifa = ifa->ifa_next)
-+		if ((ifa->ifa_flags & IFF_UP) &&
-+		    nfs_compare_sockaddr(sap, ifa->ifa_addr))
-+			return TRUE;
-+
-+	return FALSE;
-+}
-+
-+#else	/* !HAVE_GETIFADDRS */
-+
- static int num_local;
- static int num_addrs;
- static struct in_addr *addrs;
-@@ -155,12 +212,26 @@ find_local(void)
-     return (num_local);
- }
- 
--/* from_local - determine whether request comes from the local system */
-+/**
-+ * from_local - determine whether request comes from the local system
-+ * @sap: pointer to socket address to check
-+ *
-+ * With virtual hosting, each hardware network interface can have
-+ * multiple network addresses. On such machines the number of machine
-+ * addresses can be surprisingly large.
-+ *
-+ * Returns TRUE if the sockaddr contains an address of one of the local
-+ * network interfaces.  Otherwise FALSE is returned.
-+ */
- int
--from_local(struct sockaddr_in *addr)
-+from_local(const struct sockaddr *sap)
- {
-+    const struct sockaddr_in *addr = (const struct sockaddr_in *)sap;
-     int     i;
- 
-+    if (sap->sa_family != AF_INET)
-+	return (FALSE);
-+
-     if (addrs == 0 && find_local() == 0)
- 	xlog(L_ERROR, "Cannot find any active local network interfaces");
- 
-@@ -184,3 +255,5 @@ int main(void)
- }
- 
- #endif	/* TEST */
-+
-+#endif	/* !HAVE_GETIFADDRS */
 diff --git a/support/misc/tcpwrapper.c b/support/misc/tcpwrapper.c
-index 1da6020..af626ad 100644
+index b981d58..6f65c13 100644
 --- a/support/misc/tcpwrapper.c
 +++ b/support/misc/tcpwrapper.c
-@@ -202,7 +202,7 @@ u_long  prog;
- 	if (acc && changed == 0)
- 		return (acc->access);
- 
--	if (!(from_local(addr) || good_client(daemon, addr))) {
-+	if (!(from_local((struct sockaddr *)addr) || good_client(daemon, addr))) {
- 		log_bad_host(addr, proc, prog);
- 		if (acc)
- 			acc->access = FALSE;
+@@ -75,29 +75,35 @@ hash_head haccess_tbl[HASH_TABLE_SIZE];
+ static haccess_t *haccess_lookup(struct sockaddr_in *addr, u_long);
+ static void haccess_add(struct sockaddr_in *addr, u_long, int);
+=20
+-inline unsigned int strtoint(char *str)
++static unsigned long
++strtoint(const char *str)
+ {
+-	unsigned int n =3D 0;
+-	int len =3D strlen(str);
+-	int i;
++	unsigned long i, n =3D 0;
++	size_t len =3D strlen(str);
+=20
+-	for (i=3D0; i < len; i++)
+-		n+=3D((int)str[i])*i;
++	for (i =3D 0; i < len; i++)
++		n +=3D (unsigned char)str[i] * i;
+=20
+ 	return n;
+ }
+-static inline int hashint(unsigned int num)
++
++static unsigned int
++hashint(const unsigned long num)
++{
++	return (unsigned int)(num % HASH_TABLE_SIZE);
++}
++
++static unsigned int
++HASH(const char *addr, const unsigned long program)
+ {
+-	return num % HASH_TABLE_SIZE;
++	return hashint(strtoint(addr) + program);
+ }
+-#define HASH(_addr, _prog) \
+-	hashint((strtoint((_addr))+(_prog)))
+=20
+ void haccess_add(struct sockaddr_in *addr, u_long prog, int access)
+ {
+ 	hash_head *head;
+- 	haccess_t *hptr;
+-	int hash;
++	haccess_t *hptr;
++	unsigned int hash;
+=20
+ 	hptr =3D (haccess_t *)malloc(sizeof(haccess_t));
+ 	if (hptr =3D=3D NULL)
+@@ -117,8 +123,8 @@ void haccess_add(struct sockaddr_in *addr, u_long p=
+rog, int access)
+ haccess_t *haccess_lookup(struct sockaddr_in *addr, u_long prog)
+ {
+ 	hash_head *head;
+- 	haccess_t *hptr;
+-	int hash;
++	haccess_t *hptr;
++	unsigned int hash;
+=20
+ 	hash =3D HASH(inet_ntoa(addr->sin_addr), prog);
+ 	head =3D &(haccess_tbl[hash]);
 
