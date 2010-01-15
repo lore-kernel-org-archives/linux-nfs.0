@@ -1,106 +1,175 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 4/6] tcpwrapper: Fix signage problems in the tcp_wrappers hash
-	function
-Date: Fri, 15 Jan 2010 12:50:06 -0500
-Message-ID: <20100115175006.30104.12728.stgit@localhost.localdomain>
+Subject: [PATCH 5/6] tcpwrapper: Eliminated shadowed declaration warnings
+Date: Fri, 15 Jan 2010 12:50:15 -0500
+Message-ID: <20100115175015.30104.75099.stgit@localhost.localdomain>
 References: <20100115174426.30104.3492.stgit@localhost.localdomain>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=utf-8
 Cc: chris.mason@oracle.com, linux-nfs@vger.kernel.org
 To: steved@redhat.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from acsinet12.oracle.com ([141.146.126.234]:53303 "EHLO
+Received: from acsinet12.oracle.com ([141.146.126.234]:53600 "EHLO
 	acsinet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752638Ab0AORuY (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 15 Jan 2010 12:50:24 -0500
+	with ESMTP id S1752950Ab0AORuk (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 15 Jan 2010 12:50:40 -0500
 In-Reply-To: <20100115174426.30104.3492.stgit-bi+AKbBUZKY6gyzm1THtWbp2dZbC/Bob@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Eliminate the following compiler warnings:
+Clean up: the use of identifiers called "access" and "daemon" shadow
+function declarations in unistd.h.  Seen with "-Wextra -pedantic".
 
-tcpwrapper.c:78: warning: no previous prototype for =E2=80=98strtoint=E2=
-=80=99
-tcpwrapper.c: In function =E2=80=98strtoint=E2=80=99:
-tcpwrapper.c:81: warning: conversion to =E2=80=98int=E2=80=99 from =E2=80=
-=98size_t=E2=80=99 may change the sign of the result
-tcpwrapper.c:85: warning: conversion to =E2=80=98unsigned int=E2=80=99 =
-from =E2=80=98int=E2=80=99 may change the sign of the result
-tcpwrapper.c: In function =E2=80=98hashint=E2=80=99:
-tcpwrapper.c:91: warning: conversion to =E2=80=98int=E2=80=99 from =E2=80=
-=98unsigned int=E2=80=99 may change the sign of the result
+tcpwrapper.c: In function =E2=80=98haccess_add=E2=80=99:
+tcpwrapper.c:112: warning: declaration of =E2=80=98access=E2=80=99 shad=
+ows a global
+declaration
+/usr/include/unistd.h:288: warning: shadowed declaration is here
+tcpwrapper.c: In function =E2=80=98good_client=E2=80=99:
+tcpwrapper.c:161: warning: declaration of =E2=80=98daemon=E2=80=99 shad=
+ows a global
+declaration
+/usr/include/unistd.h:953: warning: shadowed declaration is here
+tcpwrapper.c: In function =E2=80=98check_default=E2=80=99:
+tcpwrapper.c:212: warning: declaration of =E2=80=98daemon=E2=80=99 shad=
+ows a global
+declaration
+/usr/include/unistd.h:953: warning: shadowed declaration is here
 
-The hash value is probably computed consistently even with unexpected
-sign inversions.
+Note that good_client() is used only in support/misc/tcpwrapper.c, so
+make it static (and update its prototype to c99 standard form).
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- support/misc/tcpwrapper.c |   34 ++++++++++++++++++++--------------
- 1 files changed, 20 insertions(+), 14 deletions(-)
+ support/include/tcpwrapper.h |    3 +--
+ support/misc/tcpwrapper.c    |   32 +++++++++++++++-----------------
+ 2 files changed, 16 insertions(+), 19 deletions(-)
 
+diff --git a/support/include/tcpwrapper.h b/support/include/tcpwrapper.=
+h
+index 941394e..930ec6a 100644
+--- a/support/include/tcpwrapper.h
++++ b/support/include/tcpwrapper.h
+@@ -5,8 +5,7 @@
+ #include <netinet/in.h>
+ #include <arpa/inet.h>
+=20
+-extern int good_client(char *daemon, struct sockaddr_in *addr);
+ extern int from_local(const struct sockaddr *sap);
+-extern int check_default(char *daemon, struct sockaddr_in *addr, u_lon=
+g prog);
++extern int check_default(char *name, struct sockaddr_in *addr, u_long =
+prog);
+=20
+ #endif /* TCP_WRAPPER_H */
 diff --git a/support/misc/tcpwrapper.c b/support/misc/tcpwrapper.c
-index b981d58..6f65c13 100644
+index 6f65c13..03f5dc4 100644
 --- a/support/misc/tcpwrapper.c
 +++ b/support/misc/tcpwrapper.c
-@@ -75,29 +75,35 @@ hash_head haccess_tbl[HASH_TABLE_SIZE];
+@@ -62,9 +62,9 @@ static int check_files(void);
+ #define DENY 0
+=20
+ typedef struct _haccess_t {
+-	TAILQ_ENTRY(_haccess_t) list;
+-	int access;
+-    struct in_addr addr;
++	TAILQ_ENTRY(_haccess_t)	list;
++	int			allowed;
++	struct in_addr		addr;
+ } haccess_t;
+=20
+ #define HASH_TABLE_SIZE 1021
+@@ -73,7 +73,6 @@ typedef struct _hash_head {
+ } hash_head;
+ hash_head haccess_tbl[HASH_TABLE_SIZE];
  static haccess_t *haccess_lookup(struct sockaddr_in *addr, u_long);
- static void haccess_add(struct sockaddr_in *addr, u_long, int);
+-static void haccess_add(struct sockaddr_in *addr, u_long, int);
 =20
--inline unsigned int strtoint(char *str)
-+static unsigned long
-+strtoint(const char *str)
- {
--	unsigned int n =3D 0;
--	int len =3D strlen(str);
--	int i;
-+	unsigned long i, n =3D 0;
-+	size_t len =3D strlen(str);
-=20
--	for (i=3D0; i < len; i++)
--		n+=3D((int)str[i])*i;
-+	for (i =3D 0; i < len; i++)
-+		n +=3D (unsigned char)str[i] * i;
-=20
- 	return n;
+ static unsigned long
+ strtoint(const char *str)
+@@ -99,7 +98,8 @@ HASH(const char *addr, const unsigned long program)
+ 	return hashint(strtoint(addr) + program);
  }
--static inline int hashint(unsigned int num)
-+
-+static unsigned int
-+hashint(const unsigned long num)
-+{
-+	return (unsigned int)(num % HASH_TABLE_SIZE);
-+}
-+
-+static unsigned int
-+HASH(const char *addr, const unsigned long program)
- {
--	return num % HASH_TABLE_SIZE;
-+	return hashint(strtoint(addr) + program);
- }
--#define HASH(_addr, _prog) \
--	hashint((strtoint((_addr))+(_prog)))
 =20
- void haccess_add(struct sockaddr_in *addr, u_long prog, int access)
+-void haccess_add(struct sockaddr_in *addr, u_long prog, int access)
++static void
++haccess_add(struct sockaddr_in *addr, u_long prog, int allowed)
  {
  	hash_head *head;
-- 	haccess_t *hptr;
--	int hash;
-+	haccess_t *hptr;
-+	unsigned int hash;
-=20
- 	hptr =3D (haccess_t *)malloc(sizeof(haccess_t));
- 	if (hptr =3D=3D NULL)
-@@ -117,8 +123,8 @@ void haccess_add(struct sockaddr_in *addr, u_long p=
+ 	haccess_t *hptr;
+@@ -112,7 +112,7 @@ void haccess_add(struct sockaddr_in *addr, u_long p=
 rog, int access)
- haccess_t *haccess_lookup(struct sockaddr_in *addr, u_long prog)
- {
- 	hash_head *head;
-- 	haccess_t *hptr;
--	int hash;
-+	haccess_t *hptr;
-+	unsigned int hash;
-=20
  	hash =3D HASH(inet_ntoa(addr->sin_addr), prog);
  	head =3D &(haccess_tbl[hash]);
+=20
+-	hptr->access =3D access;
++	hptr->allowed =3D allowed;
+ 	hptr->addr.s_addr =3D addr->sin_addr.s_addr;
+=20
+ 	if (TAILQ_EMPTY(&head->h_head))
+@@ -146,14 +146,12 @@ logit(const struct sockaddr_in *sin)
+ 	=09
+ }
+=20
+-int
+-good_client(daemon, addr)
+-char *daemon;
+-struct sockaddr_in *addr;
++static int
++good_client(char *name, struct sockaddr_in *addr)
+ {
+ 	struct request_info req;
+=20
+-	request_init(&req, RQ_DAEMON, daemon, RQ_CLIENT_SIN, addr, 0);
++	request_init(&req, RQ_DAEMON, name, RQ_CLIENT_SIN, addr, 0);
+ 	sock_methods(&req);
+=20
+ 	if (hosts_access(&req))=20
+@@ -191,7 +189,7 @@ static int check_files()
+=20
+ /**
+  * check_default - additional checks for NULL, DUMP, GETPORT and unkno=
+wn
+- * @daemon: pointer to '\0'-terminated ASCII string containing name of=
+ the
++ * @name: pointer to '\0'-terminated ASCII string containing name of t=
+he
+  *		daemon requesting the access check
+  * @addr: pointer to socket address containing address of caller
+  * @prog: RPC program number caller is attempting to access
+@@ -199,26 +197,26 @@ static int check_files()
+  * Returns TRUE if the caller is allowed access; otherwise FALSE is re=
+turned.
+  */
+ int
+-check_default(char *daemon, struct sockaddr_in *addr, u_long prog)
++check_default(char *name, struct sockaddr_in *addr, u_long prog)
+ {
+ 	haccess_t *acc =3D NULL;
+ 	int changed =3D check_files();
+=20
+ 	acc =3D haccess_lookup(addr, prog);
+ 	if (acc && changed =3D=3D 0)
+-		return (acc->access);
++		return acc->allowed;
+=20
+-	if (!(from_local((struct sockaddr *)addr) || good_client(daemon, addr=
+))) {
++	if (!(from_local((struct sockaddr *)addr) || good_client(name, addr))=
+) {
+ 		logit(addr);
+ 		if (acc)
+-			acc->access =3D FALSE;
++			acc->allowed =3D FALSE;
+ 		else=20
+ 			haccess_add(addr, prog, FALSE);
+ 		return (FALSE);
+ 	}
+=20
+ 	if (acc)
+-		acc->access =3D TRUE;
++		acc->allowed =3D TRUE;
+ 	else=20
+ 		haccess_add(addr, prog, TRUE);
+=20
 
