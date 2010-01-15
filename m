@@ -1,251 +1,117 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 2/6] tcp_wrappers: Use getifaddrs(3) if it is available
-Date: Fri, 15 Jan 2010 16:31:26 -0500
-Message-ID: <20100115213126.18214.58700.stgit@localhost.localdomain>
-References: <20100115212102.18214.19398.stgit@localhost.localdomain>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH 1/3] SUNRPC: Use rpc_pton() in ip_map_parse()
+Date: Fri, 15 Jan 2010 17:25:08 -0500
+Message-ID: <20100115222508.GE30624@fieldses.org>
+References: <20100113210650.19409.38009.stgit@localhost.localdomain> <20100113211031.19409.92550.stgit@localhost.localdomain>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Cc: chris.mason@oracle.com, linux-nfs@vger.kernel.org
-To: steved@redhat.com
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-nfs@vger.kernel.org
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet12.oracle.com ([148.87.113.124]:63715 "EHLO
-	rcsinet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757655Ab0AOVg3 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 15 Jan 2010 16:36:29 -0500
-In-Reply-To: <20100115212102.18214.19398.stgit-bi+AKbBUZKY6gyzm1THtWbp2dZbC/Bob@public.gmane.org>
+Received: from fieldses.org ([174.143.236.118]:35838 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755765Ab0AOWX7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 15 Jan 2010 17:23:59 -0500
+In-Reply-To: <20100113211031.19409.92550.stgit-bi+AKbBUZKY6gyzm1THtWbp2dZbC/Bob@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-After glibc 2.3.3, getifaddrs(3) can return AF_INET6 addresses for
-local network interfaces.  Using the library call is easier than
-trying to update the open code in from_local(), and means we have
-less to maintain in nfs-utils going forward.
+On Wed, Jan 13, 2010 at 04:10:31PM -0500, Chuck Lever wrote:
+> The existing logic in ip_map_parse() can not currently parse
+> shorthanded IPv6 addresses (anything with a double colon), nor can
+> it parse an IPv6 presentation address with a scope ID.  An
+> IPv6-enabled mountd can pass down both.
 
-And, since from_local() can now support IPv6, change its synopsis to
-take a "struct sockaddr *" .
+Why does mountd need to be able to do that?
 
-Note that the original code discovers local addresses once.  These
-days, with wifi, DHCP, and NetworkManager, the local network
-configuration can change dynamically over time.  So, call getifaddrs()
-more often to ensure from_local() has up-to-date network configuration
-information.
+--b.
 
-This implementation refreshes the list if from_local() has not been
-called in the last second.  This is actually not terribly honerous.
-check_default() invokes from_local() only when the remote host is not
-in its access cache, or the access/deny files have changed.
-
-So new hosts will cause a refresh, but previously seen hosts
-(including localhost) should not.
-
-On the other hand, it still may not be often enough.  After the first
-call, if only previously seen hosts attempt to access our daemons,
-from_local() would never be called, and the local list would never be
-updated.  This might be possible during steady-state operation with
-a small number of servers and clients.
-
-It would also be nice if we could free the local interface address
-list at shutdown time, but that would be a lot of trouble for little
-gain.
-
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
-
- aclocal/ipv6.m4              |    4 +-
- configure.ac                 |    2 -
- support/include/tcpwrapper.h |    2 -
- support/misc/from_local.c    |   96 +++++++++++++++++++++++++++++++++++++++---
- support/misc/tcpwrapper.c    |    2 -
- 5 files changed, 94 insertions(+), 12 deletions(-)
-
-diff --git a/aclocal/ipv6.m4 b/aclocal/ipv6.m4
-index 2490f3d..5ee8fb6 100644
---- a/aclocal/ipv6.m4
-+++ b/aclocal/ipv6.m4
-@@ -15,8 +15,8 @@ AC_DEFUN([AC_IPV6], [
-     fi
- 
-     dnl IPv6-enabled networking functions required for IPv6
--    AC_CHECK_FUNCS([getnameinfo bindresvport_sa], ,
--                   [AC_MSG_ERROR([Missing functions needed for IPv6.])])
-+    AC_CHECK_FUNCS([getifaddrs getnameinfo bindresvport_sa], ,
-+                   [AC_MSG_ERROR([Missing library functions needed for IPv6.])])
- 
-     dnl Need to detect presence of IPv6 networking at run time via
-     dnl getaddrinfo(3); old versions of glibc do not support ADDRCONFIG
-diff --git a/configure.ac b/configure.ac
-index c77c5ba..1dc4249 100644
---- a/configure.ac
-+++ b/configure.ac
-@@ -330,7 +330,7 @@ AC_FUNC_STAT
- AC_FUNC_VPRINTF
- AC_CHECK_FUNCS([alarm atexit dup2 fdatasync ftruncate getcwd \
-                gethostbyaddr gethostbyname gethostname getmntent \
--               getnameinfo getrpcbyname \
-+               getnameinfo getrpcbyname getifaddrs \
-                gettimeofday hasmntopt inet_ntoa innetgr memset mkdir pathconf \
-                realpath rmdir select socket strcasecmp strchr strdup \
-                strerror strrchr strtol strtoul sigprocmask])
-diff --git a/support/include/tcpwrapper.h b/support/include/tcpwrapper.h
-index 98cf806..f1145bd 100644
---- a/support/include/tcpwrapper.h
-+++ b/support/include/tcpwrapper.h
-@@ -11,7 +11,7 @@ extern int allow_severity;
- extern int deny_severity;
- 
- extern int good_client(char *daemon, struct sockaddr_in *addr);
--extern int from_local (struct sockaddr_in *addr);
-+extern int from_local(const struct sockaddr *sap);
- extern int check_default(char *daemon, struct sockaddr_in *addr,
- 			 u_long proc, u_long prog);
- 
-diff --git a/support/misc/from_local.c b/support/misc/from_local.c
-index 3f46b99..e2de969 100644
---- a/support/misc/from_local.c
-+++ b/support/misc/from_local.c
-@@ -43,6 +43,7 @@ static char sccsid[] = "@(#) from_local.c 1.3 96/05/31 15:52:57";
- 
- #include <sys/types.h>
- #include <sys/socket.h>
-+#include <stdbool.h>
- #include <stdio.h>
- #include <unistd.h>
- #include <netdb.h>
-@@ -52,6 +53,7 @@ static char sccsid[] = "@(#) from_local.c 1.3 96/05/31 15:52:57";
- #include <stdlib.h>
- #include <string.h>
- 
-+#include "sockaddr.h"
- #include "tcpwrapper.h"
- #include "xlog.h"
- 
-@@ -60,11 +62,75 @@ static char sccsid[] = "@(#) from_local.c 1.3 96/05/31 15:52:57";
- #define FALSE	0
- #endif
- 
-- /*
--  * With virtual hosting, each hardware network interface can have multiple
--  * network addresses. On such machines the number of machine addresses can
--  * be surprisingly large.
--  */
-+#ifdef HAVE_GETIFADDRS
-+
-+#include <ifaddrs.h>
-+#include <time.h>
-+
-+/**
-+ * from_local - determine whether request comes from the local system
-+ * @sap: pointer to socket address to check
-+ *
-+ * With virtual hosting, each hardware network interface can have
-+ * multiple network addresses. On such machines the number of machine
-+ * addresses can be surprisingly large.
-+ *
-+ * We also expect the local network configuration to change over time,
-+ * so call getifaddrs(3) more than once, but not too often.
-+ *
-+ * Returns TRUE if the sockaddr contains an address of one of the local
-+ * network interfaces.  Otherwise FALSE is returned.
-+ */
-+int
-+from_local(const struct sockaddr *sap)
-+{
-+	static struct ifaddrs *ifaddr = NULL;
-+	static time_t last_update = 0;
-+	struct ifaddrs *ifa;
-+	unsigned int count;
-+	time_t now;
-+
-+	if (time(&now) == ((time_t)-1)) {
-+		xlog(L_ERROR, "%s: time(2): %m", __func__);
-+
-+		/* If we don't know what time it is, use the
-+		 * existing ifaddr list, if one exists  */
-+		now = last_update;
-+		if (ifaddr == NULL)
-+			now++;
-+	}
-+	if (now != last_update) {
-+		xlog(D_GENERAL, "%s: updating local if addr list", __func__);
-+
-+		if (ifaddr)
-+			freeifaddrs(ifaddr);
-+
-+		if (getifaddrs(&ifaddr) == -1) {
-+			xlog(L_ERROR, "%s: getifaddrs(3): %m", __func__);
-+			return FALSE;
-+		}
-+
-+		last_update = now;
-+	}
-+
-+	count = 0;
-+	for (ifa = ifaddr; ifa; ifa = ifa->ifa_next) {
-+		if ((ifa->ifa_flags & IFF_UP) &&
-+		    nfs_compare_sockaddr(sap, ifa->ifa_addr)) {
-+			xlog(D_GENERAL, "%s: incoming address matches "
-+					"local interface address", __func__);
-+			return TRUE;
-+		} else
-+			count++;
-+	}
-+
-+	xlog(D_GENERAL, "%s: checked %u local if addrs; "
-+			"incoming address not found", __func__, count);
-+	return FALSE;
-+}
-+
-+#else	/* !HAVE_GETIFADDRS */
-+
- static int num_local;
- static int num_addrs;
- static struct in_addr *addrs;
-@@ -155,12 +221,26 @@ find_local(void)
-     return (num_local);
- }
- 
--/* from_local - determine whether request comes from the local system */
-+/**
-+ * from_local - determine whether request comes from the local system
-+ * @sap: pointer to socket address to check
-+ *
-+ * With virtual hosting, each hardware network interface can have
-+ * multiple network addresses. On such machines the number of machine
-+ * addresses can be surprisingly large.
-+ *
-+ * Returns TRUE if the sockaddr contains an address of one of the local
-+ * network interfaces.  Otherwise FALSE is returned.
-+ */
- int
--from_local(struct sockaddr_in *addr)
-+from_local(const struct sockaddr *sap)
- {
-+    const struct sockaddr_in *addr = (const struct sockaddr_in *)sap;
-     int     i;
- 
-+    if (sap->sa_family != AF_INET)
-+	return (FALSE);
-+
-     if (addrs == 0 && find_local() == 0)
- 	xlog(L_ERROR, "Cannot find any active local network interfaces");
- 
-@@ -184,3 +264,5 @@ int main(void)
- }
- 
- #endif	/* TEST */
-+
-+#endif	/* !HAVE_GETIFADDRS */
-diff --git a/support/misc/tcpwrapper.c b/support/misc/tcpwrapper.c
-index 1da6020..af626ad 100644
---- a/support/misc/tcpwrapper.c
-+++ b/support/misc/tcpwrapper.c
-@@ -202,7 +202,7 @@ u_long  prog;
- 	if (acc && changed == 0)
- 		return (acc->access);
- 
--	if (!(from_local(addr) || good_client(daemon, addr))) {
-+	if (!(from_local((struct sockaddr *)addr) || good_client(daemon, addr))) {
- 		log_bad_host(addr, proc, prog);
- 		if (acc)
- 			acc->access = FALSE;
-
+> 
+> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> ---
+> 
+>  net/sunrpc/svcauth_unix.c |   47 +++++++++++++++++++++++++--------------------
+>  1 files changed, 26 insertions(+), 21 deletions(-)
+> 
+> diff --git a/net/sunrpc/svcauth_unix.c b/net/sunrpc/svcauth_unix.c
+> index d8c0411..97f0e9e 100644
+> --- a/net/sunrpc/svcauth_unix.c
+> +++ b/net/sunrpc/svcauth_unix.c
+> @@ -15,6 +15,7 @@
+>  #include <linux/kernel.h>
+>  #define RPCDBG_FACILITY	RPCDBG_AUTH
+>  
+> +#include <linux/sunrpc/clnt.h>
+>  
+>  /*
+>   * AUTHUNIX and AUTHNULL credentials are both handled here.
+> @@ -187,10 +188,13 @@ static int ip_map_parse(struct cache_detail *cd,
+>  	 * for scratch: */
+>  	char *buf = mesg;
+>  	int len;
+> -	int b1, b2, b3, b4, b5, b6, b7, b8;
+> -	char c;
+>  	char class[8];
+> -	struct in6_addr addr;
+> +	union {
+> +		struct sockaddr		sa;
+> +		struct sockaddr_in	s4;
+> +		struct sockaddr_in6	s6;
+> +	} address;
+> +	struct sockaddr_in6 sin6;
+>  	int err;
+>  
+>  	struct ip_map *ipmp;
+> @@ -209,24 +213,24 @@ static int ip_map_parse(struct cache_detail *cd,
+>  	len = qword_get(&mesg, buf, mlen);
+>  	if (len <= 0) return -EINVAL;
+>  
+> -	if (sscanf(buf, "%u.%u.%u.%u%c", &b1, &b2, &b3, &b4, &c) == 4) {
+> -		addr.s6_addr32[0] = 0;
+> -		addr.s6_addr32[1] = 0;
+> -		addr.s6_addr32[2] = htonl(0xffff);
+> -		addr.s6_addr32[3] =
+> -			htonl((((((b1<<8)|b2)<<8)|b3)<<8)|b4);
+> -       } else if (sscanf(buf, "%04x:%04x:%04x:%04x:%04x:%04x:%04x:%04x%c",
+> -			&b1, &b2, &b3, &b4, &b5, &b6, &b7, &b8, &c) == 8) {
+> -		addr.s6_addr16[0] = htons(b1);
+> -		addr.s6_addr16[1] = htons(b2);
+> -		addr.s6_addr16[2] = htons(b3);
+> -		addr.s6_addr16[3] = htons(b4);
+> -		addr.s6_addr16[4] = htons(b5);
+> -		addr.s6_addr16[5] = htons(b6);
+> -		addr.s6_addr16[6] = htons(b7);
+> -		addr.s6_addr16[7] = htons(b8);
+> -       } else
+> +	if (rpc_pton(buf, len, &address.sa, sizeof(address)) == 0)
+>  		return -EINVAL;
+> +	switch (address.sa.sa_family) {
+> +	case AF_INET:
+> +		/* Form a mapped IPv4 address in sin6 */
+> +		memset(&sin6, 0, sizeof(sin6));
+> +		sin6.sin6_family = AF_INET6;
+> +		sin6.sin6_addr.s6_addr32[2] = htonl(0xffff);
+> +		sin6.sin6_addr.s6_addr32[3] = address.s4.sin_addr.s_addr;
+> +		break;
+> +#if defined(CONFIG_IPV6) || defined(CONFIG_IPV6_MODULE)
+> +	case AF_INET6:
+> +		memcpy(&sin6, &address.s6, sizeof(sin6));
+> +		break;
+> +#endif
+> +	default:
+> +		return -EINVAL;
+> +	}
+>  
+>  	expiry = get_expiry(&mesg);
+>  	if (expiry ==0)
+> @@ -243,7 +247,8 @@ static int ip_map_parse(struct cache_detail *cd,
+>  	} else
+>  		dom = NULL;
+>  
+> -	ipmp = ip_map_lookup(class, &addr);
+> +	/* IPv6 scope IDs are ignored for now */
+> +	ipmp = ip_map_lookup(class, &sin6.sin6_addr);
+>  	if (ipmp) {
+>  		err = ip_map_update(ipmp,
+>  			     container_of(dom, struct unix_domain, h),
+> 
