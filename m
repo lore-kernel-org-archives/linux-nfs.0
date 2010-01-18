@@ -1,60 +1,53 @@
 From: Steve Dickson <SteveD@redhat.com>
-Subject: Re: [PATCH 00/24] Remaining IPv6 patches for statd
-Date: Sat, 16 Jan 2010 08:22:22 -0500
-Message-ID: <4B51BD8E.5060106@RedHat.com>
-References: <20100114172457.26079.66627.stgit@localhost.localdomain>
+Subject: Re: [PATCH 0/6] IPv6 support for nfs-utils tcpwrapper shim (take
+ 2)
+Date: Sun, 17 Jan 2010 20:54:49 -0500
+Message-ID: <4B53BF69.80801@RedHat.com>
+References: <20100115212102.18214.19398.stgit@localhost.localdomain>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
 Cc: chris.mason@oracle.com, linux-nfs@vger.kernel.org
 To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:25716 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:14882 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750936Ab0APNW0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 16 Jan 2010 08:22:26 -0500
-In-Reply-To: <20100114172457.26079.66627.stgit-bi+AKbBUZKY6gyzm1THtWbp2dZbC/Bob@public.gmane.org>
+	id S1751072Ab0ARByy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 17 Jan 2010 20:54:54 -0500
+In-Reply-To: <20100115212102.18214.19398.stgit-bi+AKbBUZKY6gyzm1THtWbp2dZbC/Bob@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
 
-On 01/14/2010 12:28 PM, Chuck Lever wrote:
-> The Fedora 13 feature freeze is next week, and RHEL 6 beta is coming
-> up in just a month or two.  Because both of these releases should have
-> at least client-side NFS/IPv6 support, we've decided to accelerate the
-> submission of nfs-utils IPv6 patches.
+On 01/15/2010 04:31 PM, Chuck Lever wrote:
+> These patches provide IPv6 support for the tcpwrapper shim inside
+> nfs-utils.
 > 
-> This patch set introduces basic IPv6 support to statd and sm-notify.
-> Functionality when IPv6 and TI-RPC are disabled should be unchanged,
-> except that monitor record files can now contain more than one line.
+> We've confirmed that libwrap.a (at least the version included in
+> Fedora 12) does support IPv6.  Some of the man pages are missing some
+> updates.
+> 
+> I've constructed some simple unit tests using an old program that can
+> send bogus SM_NOTIFY requests.  Switching hostnames and IPv6 addresses
+> in and out of /etc/hosts.{allow,deny} shows this code with my patches
+> to be operating as designed, for basic scenarios.
+> 
+> I also added more verbose logging in from_local() to confirm how the
+> new getifaddrs(3) code is working.  No unpleasant surprises there.
+> 
+> Testing resulted in no operational changes to the logic in any of
+> these patches, but the extra logging seemed worth including, hence
+> this redrive.
 > 
 > ---
 > 
-> Chuck Lever (24):
->       statd: update rpc.statd(8) and sm-notify(8) to reflect IPv6 support
->       statd: Support TI-RPC statd listener
->       libnsm.a: retain CAP_NET_BIND when dropping privileges
->       statd: Remove NL_ADDR() macro
->       statd: Support IPv6 in sm_stat_1_svc()
->       statd: Support IPv6 in sm_mon_1_svc()
->       statd: Add API to canonicalize mon_names
->       libnsm.a: Add support for multiple lines in monitor record files
->       libnsm.a: Factor atomic write code out of nsm_get_state()
->       sm-notify: Save mon_name and my_name strings
->       statd: Support IPv6 in sm_simu_crash_1_svc
->       statd: Support IPv6 is caller_is_localhost()
->       statd: add IPv6 support in sm_notify_1_svc()
->       statd: add nsm_present_address() API
->       statd: Introduce statd version of matchhostname()
->       nfs-utils: Collect socket address helpers into one location
->       sm-notify: Support IPv6 DNS lookups in smn_lookup
->       sm-notify: Use getaddrinfo(3) to create bind address in smn_create_socket()
->       sm-notify: IPv6 support in reserved port binding in smn_create_socket()
->       sm-notify: Support creating a PF_INET6 socket in smn_create_socket()
->       sm-notify: factor socket creation out of notify()
->       statd: Update rmtcall.c
->       sm-notify: Replace RPC code
->       libnsm.a: Add RPC construction helper functions
+> Chuck Lever (6):
+>       tcpwrapper: Add support for IPv6
+>       tcpwrapper: Eliminated shadowed declaration warnings
+>       tcpwrapper: Fix signage problems in the tcp_wrappers hash function
+>       tcp_wrapper: Clean up logit()
+>       tcp_wrappers: Use getifaddrs(3) if it is available
+>       tcpwrappers: Use xlog() instead of perror(3) and syslog(2)
 > 
 Committed...
 
