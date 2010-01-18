@@ -1,42 +1,82 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:23253 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:62995 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751839Ab0AGXc5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 7 Jan 2010 18:32:57 -0500
-Message-ID: <4B466F20.1090907@RedHat.com>
-Date: Thu, 07 Jan 2010 18:32:48 -0500
-From: Steve Dickson <SteveD@redhat.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 0/2] showmount bug fixes
-References: <20100107162421.27102.21422.stgit@localhost.localdomain> <4B461F48.4070906@RedHat.com> <7FEF347F-051D-4B08-A647-27506CFEC12A@oracle.com> <4B464355.1000405@RedHat.com> <3C1CD7DD-E915-4FDB-815A-6D9B78A68AE5@oracle.com>
-In-Reply-To: <3C1CD7DD-E915-4FDB-815A-6D9B78A68AE5@oracle.com>
-Content-Type: text/plain; charset=ISO-8859-1
+	id S1752102Ab0ARUqz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 18 Jan 2010 15:46:55 -0500
+Date: Mon, 18 Jan 2010 15:46:43 -0500
+From: Jeff Layton <jlayton@redhat.com>
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+Cc: linux-nfs@vger.kernel.org, chuck.lever@oracle.com, steved@redhat.com
+Subject: Re: should mount.nfs prefer IPv4 addresses (was: enabling IPv6)
+Message-ID: <20100118154643.05faa05a@tlielax.poochiereds.net>
+In-Reply-To: <1263846450.4127.71.camel@localhost>
+References: <20100118144746.1e05865e@tlielax.poochiereds.net>
+	<20100118152047.70f9ab80@tlielax.poochiereds.net>
+	<1263846450.4127.71.camel@localhost>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 01/07/2010 05:43 PM, Chuck Lever wrote:
-> On Jan 7, 2010, at 3:25 PM, Steve Dickson wrote:
-> If you think v2-only servers are so rare, why even bother downshifting
-> the protocol version at all?  
-I did think of this... since a point of this exercise is to begin
-the end of v2 support... but since we have a habit of being backwards 
-compatible (as well as being portable), I figure downshifting was the 
-right thing to do...  
+On Mon, 18 Jan 2010 15:27:30 -0500
+Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
 
- 
-> The original showmount command does not
-> have any problem connecting to a v2-only server, since it used only
-> MNTv1 to do the EXPORT request.
-True... The problem is showmount does not handle v3 only servers
-which is another point of this discussion... 
-
+> On Mon, 2010-01-18 at 15:20 -0500, Jeff Layton wrote: 
+> > On Mon, 18 Jan 2010 14:47:46 -0500
+> > Jeff Layton <jlayton@redhat.com> wrote:
+> > 
+> > > With the commit of the statd patches over the weekend, we're now
+> > > positioned to be able to ship IPv6-enabled nfs-utils in distros. There
+> > > is a potential snag though...
+> > > 
+> > > Consider this situation:
+> > > 
+> > > Admin has a Linux server set up. Server has both IPv4 and IPv6 addrs.
+> > > Both addresses are in DNS.
+> > > 
+> > > Without an IPv6-enabled nfs-utils, he mounts via IPv4 and all works
+> > > fine. Now with an IPv6 enabled nfs-utils, mount.nfs prefers the IPv6
+> > > addr and the mount fails (or hangs for a long time and then fails, if
+> > > it's using NFSv4)...
+> > > 
+> > > While I don't really like it, I think we may need to consider making
+> > > mount.nfs prefer IPv4 addrs when it can resolve a hostname to both v4
+> > > and v6. Otherwise, we run the risk of breaking an awful lot of working
+> > > setups...
+> > > 
+> > 
+> > Apologies for the self reply and non-descript initial title.
+> > 
+> > For discussion purposes, here's a patch to do what I'm thinking of. It
+> > seems to work and do the right thing. You can still force a mount over
+> > ipv6 by using the right proto/mountproto options.
 > 
-> Most legacy servers are NFSv2 only.  I bought a new-in-box ReadyNAS a
-> year or so ago that ran Linux 2.4, and it's NFS server was, in fact,
-> v2-only.
-Really.. that is surprising... how well did it perform and could it 
-negotiate up to v3?? 
+> How do other applications deal with this problem? Surely, not every
+> application out there is having to filter away IPv6 addresses?
+> 
+> I thought that glibc was by default set up to prefer IPv4 addresses, and
+> allows you to further configure that using /etc/gai.conf. Why is this
+> failing?
+> 
+> Cheers
+>   Trond
+> 
 
-steved.
+At least on my test box (which has no gai.conf set up), IPv6 addrs seem
+to come first in the list returned by getaddrinfo, and I think that's
+how it'll turn out for most people. There's a bit of discussion on this
+in Ulrich's writeup here:
+
+http://people.redhat.com/drepper/linux-rfc3484.html
+
+(see "The BIG Problem")
+
+Though that's sort of orthogonal to the issue. I'm not worried about
+unreachable IPv6 addresses. The problem is that there is a large
+installed base of servers that do not support serving NFS over IPv6.
+Many of those may have IPv6 connectivity set up for other reasons. We
+don't want clients to start failing to mount them when they get an
+ipv6-enabled nfs-utils.
+
+-- 
+Jeff Layton <jlayton@redhat.com>
