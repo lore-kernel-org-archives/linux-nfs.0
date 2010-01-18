@@ -1,39 +1,46 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: Git repository / package repository for Cthon 2010
-Date: Tue, 19 Jan 2010 17:46:10 -0500
-Message-ID: <1263941170.4920.22.camel@localhost>
-References: <4B56327C.7030909@sun.com>
+From: VK <admin-lRdVob4M4GsjmsMGrRdz4w@public.gmane.org>
+Subject: =?UTF-8?B?0JjRgNC40L3QsCDQl9C+0LvQvtGC0L7QstCwIGhhcyBhZGRlZCB5b3UgYXMg?=
+ =?UTF-8?B?YSBmcmllbmQgb24gdGhlIHdlYnNpdGUgVksuY29t?=
+Date: Mon, 18 Jan 2010 20:16:05 +0300
+Message-ID: <922a4a6137cb173b4dce83dcaa1ca1a1@localhost.localdomain>
+Reply-To: "Pavel Durov, inContact.ru Admin" <admin-lRdVob4M4GsjmsMGrRdz4w@public.gmane.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-To: Tom Haynes <Thomas.Haynes-UdXhSnd/wVw@public.gmane.org>
+Content-Type: text/plain; charset=UTF-8
+To: linux-nfs <linux-nfs@vger.kernel.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-out2.uio.no ([129.240.10.58]:44067 "EHLO mail-out2.uio.no"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755829Ab0ASWqO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 19 Jan 2010 17:46:14 -0500
-In-Reply-To: <4B56327C.7030909-xsfywfwIY+M@public.gmane.org>
+Received: from cs14.vkontakte.ru ([93.186.224.14]:44876 "EHLO vkontakte.ru"
+	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1754805Ab0ATAbo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 19 Jan 2010 19:31:44 -0500
+Received: from localhost ([127.0.0.1] helo=localhost.localdomain)
+	by vkontakte.ru with esmtp (Exim 4.63)
+	(envelope-from <admin-lRdVob4M4GsjmsMGrRdz4w@public.gmane.org>)
+	id 1NWvCv-0006LK-Ch
+	for linux-nfs@vger.kernel.org; Mon, 18 Jan 2010 20:16:05 +0300
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 2010-01-19 at 16:30 -0600, Tom Haynes wrote: 
-> Is there a common kernel tree and/or package distro you guys use?
-> 
-> I.e., would it make sense to preload this before Cthon (or have someone
-> bring it) and have it available for all to share? We're supposed to have
-> a lot more internet connectivity, but a wet straw is still a wet straw.
-> 
-> We have disk space and could maybe solve this issue.
+linux-nfs,
 
-Bruce and I can probably work something out. There is plenty of free
-space on my 500Gig usb drive, and I'm planning on bringing that along
-anyway. I've heard of this cool protocol called NFS that is supposed to
-allow you to share stuff on usb drives.
+=D0=98=D1=80=D0=B8=D0=BD=D0=B0 =D0=97=D0=BE=D0=BB=D0=BE=D1=82=D0=BE=D0=B2=
+=D0=B0 has added you as a friend on the website VK.com
 
-We could probably also make it available on the linux-nfs.org git trees
-before we leave for Cthon, so that you have a chance to play around and
-do all our work for us... :-)
+You can log in and view your friends` pages using your email and automa=
+tically created password: OjWWUOfh
 
-Cheers
-    Trond
+VK.com is a website that helps dozens of millions of people find their =
+old friends, share photos and events and always stay in touch.
+
+To log in, please follow this link:
+http://vkontakte.ru/login.php?regemail=3Dlinux-nfs@vger.kernel.org#OjWW=
+UOfh
+
+You can change your password in Settings.
+
+Attention: If you ignore this invitation, your registration will not be=
+ activated.
+
+Good luck!Best regards,
+VK Administration
+
 
