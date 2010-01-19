@@ -1,133 +1,140 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:19566 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752078Ab0ASAjX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 18 Jan 2010 19:39:23 -0500
-Date: Mon, 18 Jan 2010 19:39:18 -0500
-From: Jeff Layton <jlayton@redhat.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: steved@redhat.com, linux-nfs@vger.kernel.org
-Subject: Re: enabling IPv6
-Message-ID: <20100118193918.06695933@tlielax.poochiereds.net>
-In-Reply-To: <3744FBA8-9198-43D4-BEE9-8E646C92BC02@oracle.com>
-References: <20100118144746.1e05865e@tlielax.poochiereds.net>
-	<0FE403CA-9487-485C-9949-FEC072EC2314@oracle.com>
-	<20100118173336.18a8323b@tlielax.poochiereds.net>
-	<3744FBA8-9198-43D4-BEE9-8E646C92BC02@oracle.com>
-Content-Type: text/plain; charset=US-ASCII
+Received: from rcsinet11.oracle.com ([148.87.113.123]:40200 "EHLO
+	rcsinet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753801Ab0ASPok (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 19 Jan 2010 10:44:40 -0500
+Cc: linux-nfs@vger.kernel.org, steved@redhat.com, trond.myklebust@fys.uio.no
+Message-Id: <1667647A-2BB1-478D-8881-CE8EA2191F97@oracle.com>
+From: Chuck Lever <chuck.lever@oracle.com>
+To: Jeff Layton <jlayton@redhat.com>
+In-Reply-To: <1263907662-19107-1-git-send-email-jlayton@redhat.com>
+Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
+Subject: Re: [PATCH] mount.nfs: prefer IPv4 addresses over IPv6 (try #2)
+Date: Tue, 19 Jan 2010 10:43:34 -0500
+References: <1263907662-19107-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Mon, 18 Jan 2010 18:28:02 -0500
-Chuck Lever <chuck.lever@oracle.com> wrote:
 
-> 
-> On Jan 18, 2010, at 5:33 PM, Jeff Layton wrote:
-> 
-> > On Mon, 18 Jan 2010 16:28:39 -0500
-> > Chuck Lever <chuck.lever@oracle.com> wrote:
-> >
-> >>
-> >> On Jan 18, 2010, at 2:47 PM, Jeff Layton wrote:
-> >>
-> >>> With the commit of the statd patches over the weekend, we're now
-> >>> positioned to be able to ship IPv6-enabled nfs-utils in distros.  
-> >>> There
-> >>> is a potential snag though...
-> >>>
-> >>> Consider this situation:
-> >>>
-> >>> Admin has a Linux server set up. Server has both IPv4 and IPv6  
-> >>> addrs.
-> >>> Both addresses are in DNS.
-> >>>
-> >>> Without an IPv6-enabled nfs-utils, he mounts via IPv4 and all works
-> >>> fine. Now with an IPv6 enabled nfs-utils, mount.nfs prefers the IPv6
-> >>> addr and the mount fails (or hangs for a long time and then fails,  
-> >>> if
-> >>> it's using NFSv4)...
-> >>
-> >> Why should it fail?
-> >
-> > Because Linux NFS servers that work over IPv6 pretty much don't exist
-> > yet.
-> 
-> More specifically, mount version and transport negotation is not  
-> working in this case.  Otherwise, specifying "proto=" would be an  
-> adequate solution.
-> 
-> >>> While I don't really like it, I think we may need to consider making
-> >>> mount.nfs prefer IPv4 addrs when it can resolve a hostname to both  
-> >>> v4
-> >>> and v6. Otherwise, we run the risk of breaking an awful lot of  
-> >>> working
-> >>> setups...
-> >>
-> >> Isn't that what "proto=udp" vs. "proto=udp6" is for?
-> >
-> > Yes. But that assumes that the admin will know to use that. As it
-> > stands now, they'll have to do a bit of investigation to figure out  
-> > why
-> > the mount failed and then figure out how to fix it.
-> >
-> > Obviously, that's less ideal than a solution that leaves setups  
-> > working
-> > that are working today. I don't think we ought to put the onus on  
-> > users
-> > to add extra mount options to stay working.
-> 
-> Notice that the server already tells you what it can and can't  
-> support.  If the server doesn't support rpcbind v3 or v4, you can't  
-> use IPv6.  If it does, it can report to the client that "udp6" and  
-> "tcp6" are not registered.  Really, then, what we want is to teach  
-> mount's version and transport negotiation to negotiate the protocol  
-> family as well as the transport and NFS version.
-> 
+On Jan 19, 2010, at 8:27 AM, Jeff Layton wrote:
 
-Maybe I'm not understanding the terminology correctly. Here's sort of
-the "problem" as I see it:
-
-mount.nfs decides the address of the server very early on. Once it
-decides that address, it doesn't ever go back and try another. In the
-absence of a proto= option, you get whatever address family happens to
-be first in the list.
-
-So, even if you can do a rpcbind query to determine what the server
-supports (which isn't a given with NFSv4), by the time you find out
-that it doesn't support NFS over IPv6 it's too late to do anything but
-fail.
-
-This problem is compounded by the fact that we now attempt NFSv4 by
-default. In that case we can't really rely on being able to talk to
-rpcbind and determine this quickly. It also takes a while for the
-kernel's mount attempt to time out, so it's not really reasonable to
-try multiple addresses in succession.
-
-> But for now, it seems like the only case we are worried about here is  
-> when the "proto/mountproto" options aren't specified on a text-based  
-> mount.  Always choosing an IPv4 address in this case is likely a good  
-> compromise.  nfs_validate_options() might be a better spot to sort all  
-> this out than nfs_lookup(), though.
+> We're poised to enable IPv6 in nfs-utils in distros. There is a
+> potential problem however. mount.nfs will prefer IPv6 addrs.
 >
-> It should also be pretty easy to parametrize this behavior in the  
-> config file.
-> 
+> If someone has a working IPv4 server today that has an IPv6 address,
+> then clients may start trying to mount over that address. If the  
+> server
+> doesn't support NFS serving over IPv6 (and virtually no linux servers
+> currently do), then the mount will start failing.
+>
+> Avoid this problem by making the mount code prefer IPv4 addresses
+> when they are available and an address family isn't specified.
+>
+> This is the second attempt at this patch. This moves the changes
+> into nfs_validate_options. Chuck also mentioned parameterizing this
+> behavior too. This patch doesn't include that, as I wasn't exactly
+> clear on what he had in mind.
+>
+> Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> ---
+> utils/mount/stropts.c |   32 +++++++++++++++++++++++++-------
+> 1 files changed, 25 insertions(+), 7 deletions(-)
+>
+> diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
+> index 57a4b32..f0937a2 100644
+> --- a/utils/mount/stropts.c
+> +++ b/utils/mount/stropts.c
+> @@ -326,6 +326,29 @@ static int nfs_set_version(struct nfsmount_info  
+> *mi)
+> 	return 1;
+> }
+>
+> +static int nfs_addr_option_lookup(struct nfsmount_info *mi)
+> +{
+> +	struct sockaddr *sap = &mi->address.sa;
+> +	sa_family_t family;
+> +
+> +	if (!nfs_nfs_proto_family(mi->options, &family))
+> +		return 0;
 
-Yes, the absence of a "proto=" option is the main worry.
+The real problem is that nfs_nfs_proto_family() returns AF_UNSPEC if  
+"proto=" was not specified.  The negotiation logic here in this file  
+can't handle that return properly.
 
-We could put this in nfs_validate_options. It'll potentially mean 2
-getaddrinfo calls for an IPv6 server, but it's doable if you think
-that'll be cleaner.
+We could change nfs_nfs_proto_family(), or we could decide that  
+returning AF_UNSPEC is the right thing to do when "proto=" isn't  
+specified.  If the latter, then nfs_nfs_proto_family() (and  
+nfs_mount_proto_family) should get a documenting comment that  
+describes the meaning of the AF_UNSPEC return.
 
-By parameterize, you mean adding something like a "afpref=" option?
-Something like:
+Also, do you need to look at how nfs_mount_proto_family is used in  
+other nearby routines?  It has the same problem.  What do you do when  
+"mountproto=udp6" is specified?
 
-    afpref=inet|inet6
+> +
+> +	mi->salen = sizeof(mi->address);
+> +
+> +#ifdef IPV6_SUPPORTED
+> +	/*
+> +	 * A lot of servers don't support NFS over IPv6 yet. For now,
+> +	 * IPv4 addresses are preferred.
+> +	 */
 
-If so, that should be doable too. I'm reticent to add new options if
-we can help it, but am willing to go along with that if you and others
-think it's the right solution.
+I think that doesn't describe this workaround adequately.  This is a  
+temporary crutch that prevents us from using IPv6 if "proto=" isn't  
+specified.  The underlying problem here is that nfs_lookup() returns  
+just one address.
+
+> +	if (family == AF_UNSPEC &&
+> +	    nfs_lookup(mi->hostname, AF_INET, sap, &mi->salen))
+> +		return 1;
+> +#endif /* IPV6_SUPPORTED */
+> +
+> +	return nfs_lookup(mi->hostname, family, sap, &mi->salen);
+> +}
+> +
+> /*
+>  * Set up mandatory non-version specific NFS mount options.
+>  *
+> @@ -333,16 +356,11 @@ static int nfs_set_version(struct  
+> nfsmount_info *mi)
+>  */
+> static int nfs_validate_options(struct nfsmount_info *mi)
+> {
+> -	struct sockaddr *sap = &mi->address.sa;
+> -	sa_family_t family;
+>
+> 	if (!nfs_parse_devname(mi->spec, &mi->hostname, NULL))
+> 		return 0;
+>
+> -	if (!nfs_nfs_proto_family(mi->options, &family))
+> -		return 0;
+> -	mi->salen = sizeof(mi->address);
+> -	if (!nfs_lookup(mi->hostname, family, sap, &mi->salen))
+> +	if (!nfs_addr_option_lookup(mi))
+> 		return 0;
+>
+> 	if (!nfs_set_version(mi))
+> @@ -351,7 +369,7 @@ static int nfs_validate_options(struct  
+> nfsmount_info *mi)
+> 	if (!nfs_append_sloppy_option(mi->options))
+> 		return 0;
+>
+> -	if (!nfs_append_addr_option(sap, mi->salen, mi->options))
+> +	if (!nfs_append_addr_option(&mi->address.sa, mi->salen, mi- 
+> >options))
+> 		return 0;
+>
+> 	return 1;
+> -- 
+> 1.6.5.2
+>
 
 -- 
-Jeff Layton <jlayton@redhat.com>
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
+
