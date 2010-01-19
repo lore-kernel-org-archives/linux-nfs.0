@@ -1,41 +1,65 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: [PATCH] mount.nfs: prefer IPv4 addresses over IPv6 (try #2)
-Date: Tue, 19 Jan 2010 15:51:44 -0500
-Message-ID: <1263934304.4920.4.camel@localhost>
-References: <1263907662-19107-1-git-send-email-jlayton@redhat.com>
-	 <1667647A-2BB1-478D-8881-CE8EA2191F97@oracle.com>
-	 <20100119153826.67dd97a5@tlielax.poochiereds.net>
+From: "David P. Quigley" <dpquigl@tycho.nsa.gov>
+Subject: Re: Weird exportfs behavior
+Date: Tue, 19 Jan 2010 15:59:33 -0500
+Message-ID: <1263934773.2399.162.camel@moss-terrapins.epoch.ncsc.mil>
+References: <1263933130.2399.160.camel@moss-terrapins.epoch.ncsc.mil>
+	 <20100119204828.GJ5694@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Cc: Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org,
-	steved@redhat.com
-To: Jeff Layton <jlayton@redhat.com>
+Content-Type: text/plain
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+	Linux NFSv4 mailing list <nfsv4@linux-nfs.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-out2.uio.no ([129.240.10.58]:42316 "EHLO mail-out2.uio.no"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755497Ab0ASUvx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 19 Jan 2010 15:51:53 -0500
-In-Reply-To: <20100119153826.67dd97a5-9yPaYZwiELC+kQycOl6kW4xkIHaj4LzF@public.gmane.org>
+Received: from msux-gh1-uea02.nsa.gov ([63.239.67.2]:49594 "EHLO
+	msux-gh1-uea02.nsa.gov" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754759Ab0ASVEU (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 19 Jan 2010 16:04:20 -0500
+In-Reply-To: <20100119204828.GJ5694@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 2010-01-19 at 15:38 -0500, Jeff Layton wrote: 
-> On Tue, 19 Jan 2010 10:43:34 -0500
-> Chuck Lever <chuck.lever@oracle.com> wrote:
-> > I think that doesn't describe this workaround adequately.  This is a  
-> > temporary crutch that prevents us from using IPv6 if "proto=" isn't  
-> > specified.  The underlying problem here is that nfs_lookup() returns  
-> > just one address.
+On Tue, 2010-01-19 at 15:48 -0500, J. Bruce Fields wrote:
+> On Tue, Jan 19, 2010 at 03:32:10PM -0500, David P. Quigley wrote:
+> > Hello,
+> > 	I'm working on a new export option for labeled nfs and I'm getting some
+> > really weird behavior out of exportfs. I reverted my work to see if it
+> > was the cause of the problem however the error still persists. For a
+> > while I was getting errors about exportfs not knowing about
+> > no_all_squashlabelloc=key so I tried to fix that and in the process I'd
+> > had managed to get it to ignore labelloc all together. I don't think
+> > that is the cause of the problems though. When I cat /var/lib/nfs/etab I
+> > get a really weird line.
 > > 
+> > /exports	*(rw,sync,wdelay,security_label,hide,nocrossmnt,insecure,root_squash,no_all_squash,no_subtree_check,secure_locks,acl,fsid=0,anonuid=65534,anongid=65534,sec=unix,rw,root_squash,no_all_squash)
+> > 
+> > if you notice rw,root_squash, and no_all_squash are in that line twice.
 > 
-> Yes. The best solution would be to somehow try all addresses in the
-> list until one works. That's a larger project however and we'll
-> probably need some significant kernel changes to handle that anyway.
+> That's normal; it also allows some flags to vary on a
+> per-security-flavor basis, so that last bit:
+> 
+> 	sec=unix,rw,root_squash,no_all_squash
+> 
+> is just telling you what their values are for the specific sec=unix
+> case.  It's redundant but harmless.
+> 
+> > I can't seem to figure out where the second set of those come from. I
+> > believe that is causing the problem with my labelloc export because I
+> > can't figure out how to get the last no_all_squash to have a comma after
+> > it.
+> 
+> Looks like you have to modify both support/nfs/exports.c:putexportent()
+> and utils/exportfs/exportfs.c:dump(), in addition to parseopts().
+> (Which is really confusing.  Someone should fix that..) Maybe you're
+> forgetting one of those?
+> 
+> --b.
 
-Why would that involve kernel changes? I'm assuming that we can just
-retry the mount call if we see that the server isn't listening on a
-particular ip address+port combination.
+I'm almost certain I am. I'll look over my patches again to take a look
+at that. I also need to look over my update code for the kernel export
+function because I was getting the labelloc entry in /var/lib/nfs/etab
+on initial daemon start but subsequent exportfs options seem to make it
+go away.
 
-Cheers
-  Trond
+Thanks,
+	Dave
 
