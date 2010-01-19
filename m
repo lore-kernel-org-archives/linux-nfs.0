@@ -1,111 +1,133 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:44353 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:19566 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751864Ab0A0TcD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 27 Jan 2010 14:32:03 -0500
-Message-ID: <4B6094A5.6000309@redhat.com>
-Date: Wed, 27 Jan 2010 14:31:49 -0500
-From: Peter Staubach <staubach@redhat.com>
-To: Whoop Whouzer <tiredandnumb@gmail.com>
-CC: Trond Myklebust <trond.myklebust@fys.uio.no>,
-        Chuck Lever <chuck.lever@oracle.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        "Muntz, Daniel" <Dan.Muntz@netapp.com>,
-        Peter Chacko <peterchacko35@gmail.com>, linux-nfs@vger.kernel.org
-Subject: Re: nfs client performance while server is down
-References: <d7f0b3a81001230745h18dbb14fi42f28adff0c45294@mail.gmail.com>	 <d7f0b3a81001241609v35e54740yea3fa1a251b4f953@mail.gmail.com>	 <0BA6F612-CE3A-47E9-B436-57E48506D769@oracle.com>	 <d7f0b3a81001251102p5e631706jfd9f147a00487061@mail.gmail.com>	 <641EC97D-2252-41FB-AEE8-0F1B77B5EA65@oracle.com>	 <20100126232148.GA806@fieldses.org> <4B608492.2020702@oracle.com>	 <1264617603.3788.77.camel@localhost>	 <d7f0b3a81001271047l72adcc14ycf24cceb64a50644@mail.gmail.com>	 <1264619372.3788.96.camel@localhost> <d7f0b3a81001271125t6a4bd395mc77d04ef663094da@mail.gmail.com>
-In-Reply-To: <d7f0b3a81001271125t6a4bd395mc77d04ef663094da@mail.gmail.com>
-Content-Type: text/plain; charset=ISO-8859-1
+	id S1752078Ab0ASAjX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 18 Jan 2010 19:39:23 -0500
+Date: Mon, 18 Jan 2010 19:39:18 -0500
+From: Jeff Layton <jlayton@redhat.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: steved@redhat.com, linux-nfs@vger.kernel.org
+Subject: Re: enabling IPv6
+Message-ID: <20100118193918.06695933@tlielax.poochiereds.net>
+In-Reply-To: <3744FBA8-9198-43D4-BEE9-8E646C92BC02@oracle.com>
+References: <20100118144746.1e05865e@tlielax.poochiereds.net>
+	<0FE403CA-9487-485C-9949-FEC072EC2314@oracle.com>
+	<20100118173336.18a8323b@tlielax.poochiereds.net>
+	<3744FBA8-9198-43D4-BEE9-8E646C92BC02@oracle.com>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Whoop Whouzer wrote:
-> I am not stating this is an NFS problem at all. I am not asking anybody to fix
-> anything.
-> I asked if this issue was by design. I was told it wasn't (as nfs is stateless).
-> So, therefore I considered it as a bug (which I don't believe to
-> reside in either nfs or nautilus). I am just trying to figure out
-> where the problem lies.
+On Mon, 18 Jan 2010 18:28:02 -0500
+Chuck Lever <chuck.lever@oracle.com> wrote:
+
+> 
+> On Jan 18, 2010, at 5:33 PM, Jeff Layton wrote:
+> 
+> > On Mon, 18 Jan 2010 16:28:39 -0500
+> > Chuck Lever <chuck.lever@oracle.com> wrote:
+> >
+> >>
+> >> On Jan 18, 2010, at 2:47 PM, Jeff Layton wrote:
+> >>
+> >>> With the commit of the statd patches over the weekend, we're now
+> >>> positioned to be able to ship IPv6-enabled nfs-utils in distros.  
+> >>> There
+> >>> is a potential snag though...
+> >>>
+> >>> Consider this situation:
+> >>>
+> >>> Admin has a Linux server set up. Server has both IPv4 and IPv6  
+> >>> addrs.
+> >>> Both addresses are in DNS.
+> >>>
+> >>> Without an IPv6-enabled nfs-utils, he mounts via IPv4 and all works
+> >>> fine. Now with an IPv6 enabled nfs-utils, mount.nfs prefers the IPv6
+> >>> addr and the mount fails (or hangs for a long time and then fails,  
+> >>> if
+> >>> it's using NFSv4)...
+> >>
+> >> Why should it fail?
+> >
+> > Because Linux NFS servers that work over IPv6 pretty much don't exist
+> > yet.
+> 
+> More specifically, mount version and transport negotation is not  
+> working in this case.  Otherwise, specifying "proto=" would be an  
+> adequate solution.
+> 
+> >>> While I don't really like it, I think we may need to consider making
+> >>> mount.nfs prefer IPv4 addrs when it can resolve a hostname to both  
+> >>> v4
+> >>> and v6. Otherwise, we run the risk of breaking an awful lot of  
+> >>> working
+> >>> setups...
+> >>
+> >> Isn't that what "proto=udp" vs. "proto=udp6" is for?
+> >
+> > Yes. But that assumes that the admin will know to use that. As it
+> > stands now, they'll have to do a bit of investigation to figure out  
+> > why
+> > the mount failed and then figure out how to fix it.
+> >
+> > Obviously, that's less ideal than a solution that leaves setups  
+> > working
+> > that are working today. I don't think we ought to put the onus on  
+> > users
+> > to add extra mount options to stay working.
+> 
+> Notice that the server already tells you what it can and can't  
+> support.  If the server doesn't support rpcbind v3 or v4, you can't  
+> use IPv6.  If it does, it can report to the client that "udp6" and  
+> "tcp6" are not registered.  Really, then, what we want is to teach  
+> mount's version and transport negotiation to negotiate the protocol  
+> family as well as the transport and NFS version.
 > 
 
-There is a misconception here.  NFS is not stateless.  To
-be accurate, the NFSv2 and NFSv3 protocols were defined in
-such as to allow the NFS server to be stateless.  The server
-was not supposed to be required to remember anything about
-what a client was doing from operation to the next.  (In
-reality, there are non-idempotent operations, ie. operations
-which can not be done twice and get the same results, so it
-is very helpful if the server remembers some state.)
+Maybe I'm not understanding the terminology correctly. Here's sort of
+the "problem" as I see it:
 
-NFS clients have always been _very_ stateful.  They have to
-know about all mounted file systems, open files, current
-directories, etc.
+mount.nfs decides the address of the server very early on. Once it
+decides that address, it doesn't ever go back and try another. In the
+absence of a proto= option, you get whatever address family happens to
+be first in the list.
 
-The problem here is some application which is attempting to
-touch all of the mounted file systems.  When it tries to
-touch one from a non-responsive NFS server, then it hangs.
-This represents an architectural problem with the
-application making an assumption that is okay and acceptable
-to access all file systems which are currently mounted.
-This assumption leads to situations such as you are observing.
+So, even if you can do a rpcbind query to determine what the server
+supports (which isn't a given with NFSv4), by the time you find out
+that it doesn't support NFS over IPv6 it's too late to do anything but
+fail.
 
-This isn't new.
+This problem is compounded by the fact that we now attempt NFSv4 by
+default. In that case we can't really rely on being able to talk to
+rpcbind and determine this quickly. It also takes a while for the
+kernel's mount attempt to time out, so it's not really reasonable to
+try multiple addresses in succession.
 
-		ps
-
-> I am not talking about implementing "disconnected NFS" mode,
-> synchronisation or anything like that. There is not something missing,
-> there is something not working properly, somewhere, and I'm trying to
-> find out where..
+> But for now, it seems like the only case we are worried about here is  
+> when the "proto/mountproto" options aren't specified on a text-based  
+> mount.  Always choosing an IPv4 address in this case is likely a good  
+> compromise.  nfs_validate_options() might be a better spot to sort all  
+> this out than nfs_lookup(), though.
+>
+> It should also be pretty easy to parametrize this behavior in the  
+> config file.
 > 
-> On Wed, Jan 27, 2010 at 8:09 PM, Trond Myklebust
-> <trond.myklebust@fys.uio.no> wrote:
->> So? I don't see why that would be an NFS problem.
->>
->> As far as I can see from this thread, you are basically asking us to fix
->> these broken applications by implementing a "disconnected NFS" mode.
->> While that may indeed be a cool thing to support, I haven't seen anybody
->> so far stepping up and saying that they have the time and resources to
->> work on it. Are you volunteering?
->>
->> Trond
->>
->> On Wed, 2010-01-27 at 19:47 +0100, Whoop Whouzer wrote:
->>> ok, but it's not just GNOME/nautilus behaviour. For one, I am
->>> experiencing problems with just about all applications that require
->>> (local) disk access. Furthermore, problems have also been reported
->>> with xfce/thunar and also with KDE.
->>>
->>> A bug for this issue has just been created for xfce/thunar:
->>> http://bugzilla.xfce.org/show_bug.cgi?id=6185
->>>
->>> On Wed, Jan 27, 2010 at 7:40 PM, Trond Myklebust
->>> <trond.myklebust@fys.uio.no> wrote:
->>>> On Wed, 2010-01-27 at 13:23 -0500, Chuck Lever wrote:
->>>>> On 01/26/2010 06:21 PM, J. Bruce Fields wrote:
->>>>>> I wonder if nautilus (or some library it uses) likes to regularly
->>>>>> "statfs" all the filesystems it knows about?
->>>>> The NFS client seems to like to send these periodically, but I've never
->>>>> looked into why.  It's probably triggered by some cache timeout, and
->>>>> gathers recent server file system information.
->>>> No. It is entirely application driven. Furthermore, most of the statfs
->>>> data is uncached, since it should not be performance critical in any
->>>> sane application environment.
->>>>
->>>> IOW: I agree with Bruce that this is most likely GNOME or nautilus
->>>> triggering statfs calls. Indeed, when I do actually open a window on
->>>> some directory it also appears to display the free space.
->>>>
->>>> Trond
->>>>
->>>>
->>>>
->>
->>
->>
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
+Yes, the absence of a "proto=" option is the main worry.
+
+We could put this in nfs_validate_options. It'll potentially mean 2
+getaddrinfo calls for an IPv6 server, but it's doable if you think
+that'll be cleaner.
+
+By parameterize, you mean adding something like a "afpref=" option?
+Something like:
+
+    afpref=inet|inet6
+
+If so, that should be doable too. I'm reticent to add new options if
+we can help it, but am willing to go along with that if you and others
+think it's the right solution.
+
+-- 
+Jeff Layton <jlayton@redhat.com>
