@@ -1,148 +1,117 @@
-Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:16279 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750922Ab0ATN3R (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 20 Jan 2010 08:29:17 -0500
-Date: Wed, 20 Jan 2010 08:29:05 -0500
-From: Jeff Layton <jlayton@redhat.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: linux-nfs@vger.kernel.org, steved@redhat.com, trond.myklebust@fys.uio.no
-Subject: Re: [PATCH] mount.nfs: prefer IPv4 addresses over IPv6 (try #2)
-Message-ID: <20100120082905.1825f806@tlielax.poochiereds.net>
-In-Reply-To: <1667647A-2BB1-478D-8881-CE8EA2191F97@oracle.com>
-References: <1263907662-19107-1-git-send-email-jlayton@redhat.com>
-	<1667647A-2BB1-478D-8881-CE8EA2191F97@oracle.com>
-Content-Type: text/plain; charset=US-ASCII
-Sender: linux-nfs-owner@vger.kernel.org
-List-ID: <linux-nfs.vger.kernel.org>
+Return-Path: <nfsv4-bounces@linux-nfs.org>
+Message-Id: <7123090D-5BB9-4CF5-A024-56345DD8136F@oracle.com>
+From: Chuck Lever <chuck.lever@oracle.com>
+To: Guillaume Rousse <guillaume.rousse@inria.fr>
+In-Reply-To: <4B530EFF.9000205@inria.fr>
+Subject: Re: unmount -l does not send unmount request to the server
+Date: Tue, 19 Jan 2010 11:37:43 -0500
+References: <4B530EFF.9000205@inria.fr>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Linux NFSv4 mailing list <nfsv4@linux-nfs.org>
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/options/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@linux-nfs.org>
+List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
+Content-Type: text/plain; charset="us-ascii"; Format="flowed"; DelSp="yes"
+Sender: nfsv4-bounces@linux-nfs.org
+Errors-To: nfsv4-bounces@linux-nfs.org
 MIME-Version: 1.0
+List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 19 Jan 2010 10:43:34 -0500
-Chuck Lever <chuck.lever@oracle.com> wrote:
+Cc'ing NFSv3 mailing list.
 
-> 
-> On Jan 19, 2010, at 8:27 AM, Jeff Layton wrote:
-> 
-> > We're poised to enable IPv6 in nfs-utils in distros. There is a
-> > potential problem however. mount.nfs will prefer IPv6 addrs.
-> >
-> > If someone has a working IPv4 server today that has an IPv6 address,
-> > then clients may start trying to mount over that address. If the  
-> > server
-> > doesn't support NFS serving over IPv6 (and virtually no linux servers
-> > currently do), then the mount will start failing.
-> >
-> > Avoid this problem by making the mount code prefer IPv4 addresses
-> > when they are available and an address family isn't specified.
-> >
-> > This is the second attempt at this patch. This moves the changes
-> > into nfs_validate_options. Chuck also mentioned parameterizing this
-> > behavior too. This patch doesn't include that, as I wasn't exactly
-> > clear on what he had in mind.
-> >
+On Jan 17, 2010, at 8:22 AM, Guillaume Rousse wrote:
 
-After playing around with this some more, I'm coming to the conclusion
-that my first patch for this (the one that modified nfs_lookup) is
-really the best one.
+> Hello list.
+>
+> A mandriva user report than unmount filesystem at shutdown is broken
+> since the move of {mount,unmount}.nfs commands from coreutils to
+> nfs-utils, some times ago:
+> https://qa.mandriva.com/show_bug.cgi?id=36490
+>
+> It seems to be caused by the use of -l option in initscripts, which
+> apparently don't send an umount request to the server anymore. A  
+> simple
+> test is enough to confirm it:
+>
+> When using 'mount.nfs server:/dir dir && umount.nfs dir' on the  
+> client,
+> the server logs:
+> Jan 17 14:01:12  mountd[18714]: authenticated mount request from
+> 192.168.0.1:840 for /home (/home)
+> Jan 17 14:01:12  mountd[18714]: authenticated unmount request from
+> 192.168.0.1:1012 for /home (/home)
+>
+> When using 'mount.nfs server:/dir dir && umount.nfs dir -l' on the
+> client, the server logs:
+> Jan 17 14:09:17  mountd[18714]: authenticated mount request from
+> 192.168.0.1:955 for /home (/home)
+>
+> The filesystem is umounted client-side, but the server still thinks he
+> is connected:
+> [root@oberkampf Desktop]# showmount
+> Hosts on oberkampf:
+> 192.168.0.1
+>
+> client uses nfs-utils 1.2.0.
+>
+> Reading the code in nfsumount.c, as suggested by comment #11
+> (https://qa.mandriva.com/show_bug.cgi?id=36490#c11) seems to imply  
+> this
+> is on purpose:
+>    if (mc) {
+>        if (!lazy && strcmp(mc->m.mnt_type, "nfs4") != 0)
+>            /* We ignore the error from nfs_umount23.
+>             * If the actual umount succeeds (in del_mtab),
+>             * we don't want to signal an error, as that
+>             * could cause /sbin/mount to retry!
+>             */
+>            nfs_umount23(mc->m.mnt_fsname, mc->m.mnt_opts);
+>        ret = del_mtab(mc->m.mnt_fsname, mc->m.mnt_dir) ?: ret;
+>    } else if (*spec != '/') {
+>        if (!lazy)
+>            ret = nfs_umount23(spec, "tcp,v3");
+>
+> The description of this option seems to imply than he filesystem is
+> marked as unmounted right now in mtab, and than he is actually  
+> umounted
+> properly as soon as possible. This doesn't says anything about the
+> server, tough, and I doesn't see anything in the code dealing with  
+> this
+> 'as soon as possible' event anyway...
 
-As Chuck pointed out, we need to have the address resolution behave
-consistently, so I'd need to have other places that currently call
-nfs_lookup do something similar.
+The init scripts use "-l" because they don't want a hang at shutdown.   
+A hang might occur if the server is unreachable.
 
-There are 4 callers of nfs_lookup currently:
+A UMNT is usually sent when the client knows it won't be using that  
+export any longer.
 
-nfs_gethostbyname
-nfs_umount_do_umnt
-nfs_fix_mounthost_option
-nfs_validate_options
+As far as I understand it, "-l" means the kernel will do the local  
+detach from the system's file name space whenever there are no more  
+users (ie entirely asynchronously).  I don't think umount2(MNT_DETACH)  
+indicates whether the kernel was able to completely unmount that file  
+system by the time the call returns, so there's perhaps no way for  
+umount.nfs to know whether it should send the UMNT request.  If the  
+server is slow or unresponsive, that file system won't be unmounted  
+until long after the umount.nfs command has exited.
 
-...all of these with the exception of nfs_gethostbyname will need to do
-this "sorting". nfs_gethostbyname passes in AF_INET for the family, so
-it's guaranteed to return a IPv4 address or nothing anyway.
+This shouldn't be much of a big deal, since the server's rmtab is  
+"ornamental" according to the man page.  No one should rely on it  
+being accurate.
 
-I've tried a more-or-less exhaustive combination of proto=/mountproto=
-options (and lack thereof) and I think with the original patch I posted
-it works as expected.
+A possible way to fix this is to have the kernel send the UMNT.
 
-On IRC, Chuck mentioned replacing nfs_lookup with direct calls to
-getaddrinfo, but that's a larger change and I don't really think it's
-necessary.
-
-Chuck also suggested that we should have mount.nfs never attempt to use
-an IPv6 address unless someone explicitly adds proto=tcp6|udp6. I'm not
-a fan of that solution. I think if a hostname resolves to only an IPv6
-address it ought to "just work" and mount via that address without
-needing extra options.
-
-For discussion, the original patch follows:
-
------------------[snip]-------------------
-
-mount.nfs: prefer IPv4 addresses over IPv6
-
-We're poised to enable IPv6 in nfs-utils in distros. There is a potential
-problem however. mount.nfs will prefer IPv6 addrs.
-
-If someone has a working IPv4 server today that has an IPv6 address,
-then clients may start trying to mount over that address. If the server
-doesn't support NFS serving over IPv6 (and virtually no linux servers
-currently do), then the mount will start failing.
-
-Avoid this problem by making the mount.nfs code prefer IPv4 addresses
-when they are available.
-
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- utils/mount/network.c |   27 ++++++++++++++++++++++-----
- 1 files changed, 22 insertions(+), 5 deletions(-)
-
-diff --git a/utils/mount/network.c b/utils/mount/network.c
-index 92bba2d..6723f8f 100644
---- a/utils/mount/network.c
-+++ b/utils/mount/network.c
-@@ -203,7 +203,7 @@ static const unsigned int *nfs_default_proto()
- int nfs_lookup(const char *hostname, const sa_family_t family,
- 		struct sockaddr *sap, socklen_t *salen)
- {
--	struct addrinfo *gai_results;
-+	struct addrinfo *gai_results, *gai_pref;
- 	struct addrinfo gai_hint = {
- #ifdef HAVE_DECL_AI_ADDRCONFIG
- 		.ai_flags	= AI_ADDRCONFIG,
-@@ -229,12 +229,29 @@ int nfs_lookup(const char *hostname, const sa_family_t family,
- 		return ret;
- 	}
- 
--	switch (gai_results->ai_addr->sa_family) {
-+	/*
-+	 * It will probably be quite a while before we have enough IPv6
-+	 * capable servers to be able to prefer using IPv6. For now, we
-+	 * only use IPv6 when there is no IPv4 address available in the
-+	 * results.
-+	 */
-+	gai_pref = gai_results;
-+	while (gai_pref) {
-+		if (gai_pref->ai_addr->sa_family == AF_INET)
-+			break;
-+		gai_pref = gai_pref->ai_next;
-+	}
-+
-+	/* no IPv4 addr found, just use first on the list */
-+	if (gai_pref == NULL)
-+		gai_pref = gai_results;
-+
-+	switch (gai_pref->ai_addr->sa_family) {
- 	case AF_INET:
- 	case AF_INET6:
--		if (len >= gai_results->ai_addrlen) {
--			*salen = gai_results->ai_addrlen;
--			memcpy(sap, gai_results->ai_addr, *salen);
-+		if (len >= gai_pref->ai_addrlen) {
-+			*salen = gai_pref->ai_addrlen;
-+			memcpy(sap, gai_pref->ai_addr, *salen);
- 			ret = 1;
- 		}
- 		break;
 -- 
-1.6.5.2
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
 
+
+
+
+_______________________________________________
+NFSv4 mailing list
+NFSv4@linux-nfs.org
+http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4
