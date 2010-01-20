@@ -1,108 +1,128 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mga14.intel.com ([143.182.124.37]:43027 "EHLO mga14.intel.com"
+Received: from mx1.redhat.com ([209.132.183.28]:31374 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756048Ab0AGEsX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 6 Jan 2010 23:48:23 -0500
-Date: Thu, 7 Jan 2010 12:48:17 +0800
-From: Wu Fengguang <fengguang.wu@intel.com>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: Peter Zijlstra <peterz@infradead.org>, Jan Kara <jack@suse.cz>,
-        Steve Rago <sar@nec-labs.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "jens.axboe" <jens.axboe@oracle.com>,
-        Peter Staubach <staubach@redhat.com>,
-        Arjan van de Ven <arjan@infradead.org>, Ingo Molnar <mingo@elte.hu>,
-        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
-Subject: Re: [PATCH 1/6] VFS: Ensure that writeback_single_inode() commits
-	unstable writes
-Message-ID: <20100107044817.GA18996@localhost>
-References: <20100106205110.22547.85345.stgit@localhost.localdomain> <20100106205110.22547.17971.stgit@localhost.localdomain> <20100107021849.GC9475@localhost> <1262839082.2185.15.camel@localhost>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1262839082.2185.15.camel@localhost>
+	id S1751780Ab0ATQej (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 20 Jan 2010 11:34:39 -0500
+Date: Wed, 20 Jan 2010 11:34:22 -0500
+From: Jeff Layton <jlayton@redhat.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: linux-nfs@vger.kernel.org, steved@redhat.com, trond.myklebust@fys.uio.no
+Subject: Re: [PATCH] mount.nfs: prefer IPv4 addresses over IPv6 (try #2)
+Message-ID: <20100120113422.6071bfbd@tlielax.poochiereds.net>
+In-Reply-To: <8E556CE2-569B-4E6D-BD02-7EF5CA84900D@oracle.com>
+References: <1263907662-19107-1-git-send-email-jlayton@redhat.com>
+	<1667647A-2BB1-478D-8881-CE8EA2191F97@oracle.com>
+	<20100120082905.1825f806@tlielax.poochiereds.net>
+	<8E556CE2-569B-4E6D-BD02-7EF5CA84900D@oracle.com>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Thu, Jan 07, 2010 at 12:38:02PM +0800, Myklebust, Trond wrote:
-> On Thu, 2010-01-07 at 10:18 +0800, Wu Fengguang wrote:
-> > On Thu, Jan 07, 2010 at 04:51:10AM +0800, Trond Myklebust wrote:
-> > > @@ -533,6 +556,12 @@ select_queue:
-> > >                             inode->i_state |= I_DIRTY_PAGES;
-> > >                             redirty_tail(inode);
-> > >                     }
-> > > +           } else if (inode->i_state & I_UNSTABLE_PAGES) {
-> > > +                   /*
-> > > +                    * The inode has got yet more unstable pages to
-> > > +                    * commit. Requeue on b_more_io
-> > > +                    */
-> > > +                   requeue_io(inode);
-> >
-> > This risks "busy retrying" inodes with unstable pages, when
-> >
-> > - nfs_commit_unstable_pages() don't think it's time to commit
-> > - NFS server somehow response slowly
-> >
-> > The workaround is to use redirty_tail() for now. But that risks delay
-> > the COMMIT for up to 30s, which obviously might stuck applications in
-> > balance_dirty_pages() for too long.
-> >
-> > I have a patch to shorten the retry time to 1s (or other constant)
-> > by introducing b_more_io_wait. It currently sits in my writeback queue
-> > series whose main blocking issue is the constantly broken NFS pipeline..
+On Wed, 20 Jan 2010 10:36:36 -0500
+Chuck Lever <chuck.lever@oracle.com> wrote:
+
 > 
+> On Jan 20, 2010, at 8:29 AM, Jeff Layton wrote:
 > 
-> OK. Should I use redirty_tail() for the moment then, and assume you will
-> fix when you introduce the new state?
-
-OK, I'll change your redirty_tail() then :)
-
-> > > diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-> > > index d171696..910be28 100644
-> > > --- a/fs/nfs/write.c
-> > > +++ b/fs/nfs/write.c
-> > > @@ -441,7 +441,7 @@ nfs_mark_request_commit(struct nfs_page *req)
-> > >     spin_unlock(&inode->i_lock);
-> > >     inc_zone_page_state(req->wb_page, NR_UNSTABLE_NFS);
-> > >     inc_bdi_stat(req->wb_page->mapping->backing_dev_info, BDI_RECLAIMABLE);
-> > > -   __mark_inode_dirty(inode, I_DIRTY_DATASYNC);
-> > > +   mark_inode_unstable_pages(inode);
+> > On Tue, 19 Jan 2010 10:43:34 -0500
+> > Chuck Lever <chuck.lever@oracle.com> wrote:
 > >
-> > Then we shall mark I_DIRTY_DATASYNC on other places that extend i_size.
-> 
-> Why? The NFS client itself shouldn't ever set I_DIRTY_DATASYNC after
-> this patch is applied. We won't ever need it.
-> 
-> If the VM or VFS is doing it, then they ought to be fixed: there is no
-> reason to assume that all filesystems need to sync their inodes on
-> i_size changes.
-
-Ah OK, I took it for certain..
-
-> > > +   /* Don't commit yet if this is a non-blocking flush and there are
-> > > +    * outstanding writes for this mapping.
-> > > +    */
-> > > +   if (wbc->sync_mode != WB_SYNC_ALL &&
-> > > +       radix_tree_tagged(&NFS_I(inode)->nfs_page_tree,
-> > > +               NFS_PAGE_TAG_LOCKED)) {
-> > > +           mark_inode_unstable_pages(inode);
-> > > +           return 0;
-> > > +   }
+> >>
+> >> On Jan 19, 2010, at 8:27 AM, Jeff Layton wrote:
+> >>
+> >>> We're poised to enable IPv6 in nfs-utils in distros. There is a
+> >>> potential problem however. mount.nfs will prefer IPv6 addrs.
+> >>>
+> >>> If someone has a working IPv4 server today that has an IPv6 address,
+> >>> then clients may start trying to mount over that address. If the
+> >>> server
+> >>> doesn't support NFS serving over IPv6 (and virtually no linux  
+> >>> servers
+> >>> currently do), then the mount will start failing.
+> >>>
+> >>> Avoid this problem by making the mount code prefer IPv4 addresses
+> >>> when they are available and an address family isn't specified.
+> >>>
+> >>> This is the second attempt at this patch. This moves the changes
+> >>> into nfs_validate_options. Chuck also mentioned parameterizing this
+> >>> behavior too. This patch doesn't include that, as I wasn't exactly
+> >>> clear on what he had in mind.
+> >>>
 > >
-> > A dumb question: does NFS_PAGE_TAG_LOCKED means either flying COMMITs
-> > or WRITEs? As an NFS newbie, I'm only confident on the COMMIT part :)
+> > After playing around with this some more, I'm coming to the conclusion
+> > that my first patch for this (the one that modified nfs_lookup) is
+> > really the best one.
+> >
+> > As Chuck pointed out, we need to have the address resolution behave
+> > consistently, so I'd need to have other places that currently call
+> > nfs_lookup do something similar.
+> >
+> > There are 4 callers of nfs_lookup currently:
+> >
+> > nfs_gethostbyname
+> > nfs_umount_do_umnt
+> > nfs_fix_mounthost_option
+> > nfs_validate_options
+> >
+> > ...all of these with the exception of nfs_gethostbyname will need to  
+> > do
+> > this "sorting". nfs_gethostbyname passes in AF_INET for the family, so
+> > it's guaranteed to return a IPv4 address or nothing anyway.
+> >
+> > I've tried a more-or-less exhaustive combination of proto=/mountproto=
+> > options (and lack thereof) and I think with the original patch I  
+> > posted
+> > it works as expected.
+> >
+> > On IRC, Chuck mentioned replacing nfs_lookup with direct calls to
+> > getaddrinfo, but that's a larger change and I don't really think it's
+> > necessary.
+> >
+> > Chuck also suggested that we should have mount.nfs never attempt to  
+> > use
+> > an IPv6 address unless someone explicitly adds proto=tcp6|udp6. I'm  
+> > not
+> > a fan of that solution. I think if a hostname resolves to only an IPv6
+> > address it ought to "just work" and mount via that address without
+> > needing extra options.
+> >
+> > For discussion, the original patch follows:
 > 
-> Both writebacks and commits will cause NFS_PAGE_TAG_LOCKED to be set, as
-> will attempts to change the page contents. See the calls to
-> nfs_set_page_tag_locked()...
+> For the record, we looked at Solaris behavior yesterday.  With bi- 
+> family servers, its mount command tries IPv6 first, but appears smart  
+> enough to fall back to IPv4.  One thing we haven't tried is to see how  
+> difficult it would be to fix the real problem by adding proper  
+> protocol family negotiation to our own mount command.  This patch is  
+> predicated on the idea that would be hard to implement, which hasn't  
+> been demonstrated.
+> 
+> I'm worried about putting this preference behavior in released code,  
+> and then changing it yet again later.  I don't know how much time we  
+> have to fix this, but if we have a few days, I could try implementing  
+> real protocol family negotiation.
+> 
+> If you go forward with this solution, it should be made clear in the  
+> documenting comments (and in the patch description) that this is a  
+> temporary workaround.  If we intend to further correct this behavior  
+> down the road, we should avoid building on the new behavior, even by  
+> accident.
+> 
 
-Thanks for the tip!
+Changing behavior is a valid concern and something we generally like to
+avoid. OTOH, if someone doesn't specify proto=/mountproto= options
+explicitly, then I think it's fair game to change the address
+preference if we think it's reasonable and necessary.
 
-> IOW: the above code will fail to trigger if there are outstanding WRITE
-> RPC calls, or if there is a second process that happens to be writing to
-> this inode's page cache...
+I agree that doing proper negotiation would be ideal. I'll note that
+with a 2.6.33-ish kernel, I quick -ECONNREFUSED errors when attempting
+a NFSv4 mount to a server that doesn't support NFS over IPv6, so it
+seems doable.
 
-IOW: for a busy "cp", the commit of inode may be delayed until
-"nr_unstable > nr_dirty / 2"?  OK that's what we want.
+If you think you can get proper negotiation done within a few days,
+then I say go for it and I'll hold off on asking Steve to take this
+patch. If it turns out to be more difficult, we can always revisit this
+patch.
 
-Thanks,
-Fengguang
+-- 
+Jeff Layton <jlayton@redhat.com>
