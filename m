@@ -1,38 +1,55 @@
-From: Steve Dickson <SteveD@redhat.com>
-Subject: Re: [PATCH] mount.nfs: Configuration file parser ignoring options
-Date: Wed, 20 Jan 2010 15:07:23 -0500
-Message-ID: <4B57627B.6060700@RedHat.com>
-References: <4B54D6E5.7030609@RedHat.com>
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: Re: [PATCH 6/7] nfs41: implement cb_recall_slot
+Date: Wed, 20 Jan 2010 15:38:44 -0500
+Message-ID: <1264019924.7799.0.camel@localhost>
+References: <1263509110-3097-1-git-send-email-andros@netapp.com>
+	 <1263509110-3097-2-git-send-email-andros@netapp.com>
+	 <1263509110-3097-3-git-send-email-andros@netapp.com>
+	 <1263509110-3097-4-git-send-email-andros@netapp.com>
+	 <1263509110-3097-5-git-send-email-andros@netapp.com>
+	 <1263509110-3097-6-git-send-email-andros@netapp.com>
+	 <1263509110-3097-7-git-send-email-andros@netapp.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
+Cc: linux-nfs@vger.kernel.org
+To: andros@netapp.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:3700 "EHLO mx1.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:7769 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751962Ab0ATUHZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 20 Jan 2010 15:07:25 -0500
-Received: from int-mx01.intmail.prod.int.phx2.redhat.com (int-mx01.intmail.prod.int.phx2.redhat.com [10.5.11.11])
-	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id o0KK7ORX011341
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Wed, 20 Jan 2010 15:07:25 -0500
-Received: from badhat.bos.devel.redhat.com (vpn-233-34.phx2.redhat.com [10.3.233.34])
-	by int-mx01.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id o0KK7NlZ017842
-	for <linux-nfs@vger.kernel.org>; Wed, 20 Jan 2010 15:07:24 -0500
-In-Reply-To: <4B54D6E5.7030609-AfCzQyP5zfLQT0dZR+AlfA@public.gmane.org>
+	id S1753711Ab0ATUjP convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 20 Jan 2010 15:39:15 -0500
+Received: from sacrsexc2-prd.hq.netapp.com (sacrsexc2-prd.hq.netapp.com [10.99.115.28])
+	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id o0KKcm9l009061
+	for <linux-nfs@vger.kernel.org>; Wed, 20 Jan 2010 12:38:49 -0800 (PST)
+In-Reply-To: <1263509110-3097-7-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Thu, 2010-01-14 at 17:45 -0500, andros@netapp.com wrote:=20
+> From: Andy Adamson <andros@netapp.com>
+>=20
+> Drain the fore channel and reset the max_slots to the new value.
+>=20
+> Signed-off-by: Andy Adamson <andros@netapp.com>
+> ---
+>  fs/nfs/callback.h         |    8 ++++++++
+>  fs/nfs/callback_proc.c    |   32 ++++++++++++++++++++++++++++++++
+>  fs/nfs/callback_xdr.c     |   22 +++++++++++++++++++++-
+>  fs/nfs/nfs4_fs.h          |    2 ++
+>  fs/nfs/nfs4state.c        |   43 +++++++++++++++++++++++++++++++++++=
+++++++++
+>  include/linux/nfs_fs_sb.h |    2 ++
+>  6 files changed, 108 insertions(+), 1 deletions(-)
 
+  CC [M]  fs/nfs/nfs4state.o
+/home/trondmy/devel/linux/linux_nfs-2.6/fs/nfs/nfs4state.c: In function
+=E2=80=98nfs4_state_manager=E2=80=99:
+/home/trondmy/devel/linux/linux_nfs-2.6/fs/nfs/nfs4state.c:1437: error:
+implicit declaration of function =E2=80=98nfs4_recall_slot=E2=80=99
+make[2]: *** [fs/nfs/nfs4state.o] Error 1
+make[1]: *** [fs/nfs/nfs4state.o] Error 2
+make: *** [sub-make] Error 2
 
-On 01/18/2010 04:47 PM, Steve Dickson wrote:
->     mount.nfs: Configuration file parser ignoring options
-> 
->     When the protocol version is set on the command line,
->     none of the variables set in the configuration file
->     are passed down to the kernel due to a bug in the 
->     parsing routine. 
-> 
-> Tested-by: Jeff Layton <jlayton@redhat.com>
-Committed...
+Does not compile without CONFIG_NFS_V4_1
 
-steved.
+Trond
