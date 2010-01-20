@@ -1,310 +1,148 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mga01.intel.com ([192.55.52.88]:37895 "EHLO mga01.intel.com"
+Received: from mx1.redhat.com ([209.132.183.28]:16279 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752322Ab0AGCSy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 6 Jan 2010 21:18:54 -0500
-Date: Thu, 7 Jan 2010 10:18:49 +0800
-From: Wu Fengguang <fengguang.wu@intel.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: Peter Zijlstra <peterz@infradead.org>, Jan Kara <jack@suse.cz>,
-        Steve Rago <sar@nec-labs.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "jens.axboe" <jens.axboe@oracle.com>,
-        Peter Staubach <staubach@redhat.com>,
-        Arjan van de Ven <arjan@infradead.org>, Ingo Molnar <mingo@elte.hu>,
-        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
-Subject: Re: [PATCH 1/6] VFS: Ensure that writeback_single_inode() commits
-	unstable writes
-Message-ID: <20100107021849.GC9475@localhost>
-References: <20100106205110.22547.85345.stgit@localhost.localdomain> <20100106205110.22547.17971.stgit@localhost.localdomain>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20100106205110.22547.17971.stgit@localhost.localdomain>
+	id S1750922Ab0ATN3R (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 20 Jan 2010 08:29:17 -0500
+Date: Wed, 20 Jan 2010 08:29:05 -0500
+From: Jeff Layton <jlayton@redhat.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: linux-nfs@vger.kernel.org, steved@redhat.com, trond.myklebust@fys.uio.no
+Subject: Re: [PATCH] mount.nfs: prefer IPv4 addresses over IPv6 (try #2)
+Message-ID: <20100120082905.1825f806@tlielax.poochiereds.net>
+In-Reply-To: <1667647A-2BB1-478D-8881-CE8EA2191F97@oracle.com>
+References: <1263907662-19107-1-git-send-email-jlayton@redhat.com>
+	<1667647A-2BB1-478D-8881-CE8EA2191F97@oracle.com>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Thu, Jan 07, 2010 at 04:51:10AM +0800, Trond Myklebust wrote:
-> If the call to do_writepages() succeeded in starting writeback, we do not
-> know whether or not we will need to COMMIT any unstable writes until after
-> the write RPC calls are finished. Currently, we assume that at least one
-> write RPC call will have finished, and set I_DIRTY_DATASYNC by the time
-> do_writepages is done, so that write_inode() is triggered.
+On Tue, 19 Jan 2010 10:43:34 -0500
+Chuck Lever <chuck.lever@oracle.com> wrote:
+
 > 
-> In order to ensure reliable operation (i.e. ensure that a single call to
-> writeback_single_inode() with WB_SYNC_ALL set suffices to ensure that pages
-> are on disk) we need to first wait for filemap_fdatawait() to complete,
-> then test for unstable pages.
+> On Jan 19, 2010, at 8:27 AM, Jeff Layton wrote:
 > 
-> Since NFS is currently the only filesystem that has unstable pages, we can
-> add a new inode state I_UNSTABLE_PAGES that NFS alone will set. When set,
-> this will trigger a callback to a new address_space_operation to call the
-> COMMIT.
-> 
-> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-> Acked-by: Jan Kara <jack@suse.cz>
-> ---
-> 
->  fs/fs-writeback.c  |   31 ++++++++++++++++++++++++++++++-
->  fs/nfs/file.c      |    1 +
->  fs/nfs/inode.c     |   16 ----------------
->  fs/nfs/internal.h  |    3 ++-
->  fs/nfs/super.c     |    2 --
->  fs/nfs/write.c     |   33 ++++++++++++++++++++++++++++++++-
->  include/linux/fs.h |    9 +++++++++
->  7 files changed, 74 insertions(+), 21 deletions(-)
-> 
-> diff --git a/fs/fs-writeback.c b/fs/fs-writeback.c
-> index 1a7c42c..3bc0a96 100644
-> --- a/fs/fs-writeback.c
-> +++ b/fs/fs-writeback.c
-> @@ -389,6 +389,17 @@ static int write_inode(struct inode *inode, int sync)
->  }
->  
->  /*
-> + * Commit the NFS unstable pages.
-> + */
-> +static int commit_unstable_pages(struct address_space *mapping,
-> +		struct writeback_control *wbc)
-> +{
-> +	if (mapping->a_ops && mapping->a_ops->commit_unstable_pages)
-> +		return mapping->a_ops->commit_unstable_pages(mapping, wbc);
-> +	return 0;
-> +}
-> +
-> +/*
->   * Wait for writeback on an inode to complete.
->   */
->  static void inode_wait_for_writeback(struct inode *inode)
-> @@ -475,6 +486,18 @@ writeback_single_inode(struct inode *inode, struct writeback_control *wbc)
->  	}
->  
->  	spin_lock(&inode_lock);
-> +	/*
-> +	 * Special state for cleaning NFS unstable pages
-> +	 */
-> +	if (inode->i_state & I_UNSTABLE_PAGES) {
-> +		int err;
-> +		inode->i_state &= ~I_UNSTABLE_PAGES;
-> +		spin_unlock(&inode_lock);
-> +		err = commit_unstable_pages(mapping, wbc);
-> +		if (ret == 0)
-> +			ret = err;
-> +		spin_lock(&inode_lock);
-> +	}
->  	inode->i_state &= ~I_SYNC;
->  	if (!(inode->i_state & (I_FREEING | I_CLEAR))) {
->  		if ((inode->i_state & I_DIRTY_PAGES) && wbc->for_kupdate) {
-> @@ -533,6 +556,12 @@ select_queue:
->  				inode->i_state |= I_DIRTY_PAGES;
->  				redirty_tail(inode);
->  			}
-> +		} else if (inode->i_state & I_UNSTABLE_PAGES) {
-> +			/*
-> +			 * The inode has got yet more unstable pages to
-> +			 * commit. Requeue on b_more_io
-> +			 */
-> +			requeue_io(inode);
+> > We're poised to enable IPv6 in nfs-utils in distros. There is a
+> > potential problem however. mount.nfs will prefer IPv6 addrs.
+> >
+> > If someone has a working IPv4 server today that has an IPv6 address,
+> > then clients may start trying to mount over that address. If the  
+> > server
+> > doesn't support NFS serving over IPv6 (and virtually no linux servers
+> > currently do), then the mount will start failing.
+> >
+> > Avoid this problem by making the mount code prefer IPv4 addresses
+> > when they are available and an address family isn't specified.
+> >
+> > This is the second attempt at this patch. This moves the changes
+> > into nfs_validate_options. Chuck also mentioned parameterizing this
+> > behavior too. This patch doesn't include that, as I wasn't exactly
+> > clear on what he had in mind.
+> >
 
-This risks "busy retrying" inodes with unstable pages, when
+After playing around with this some more, I'm coming to the conclusion
+that my first patch for this (the one that modified nfs_lookup) is
+really the best one.
 
-- nfs_commit_unstable_pages() don't think it's time to commit
-- NFS server somehow response slowly
+As Chuck pointed out, we need to have the address resolution behave
+consistently, so I'd need to have other places that currently call
+nfs_lookup do something similar.
 
-The workaround is to use redirty_tail() for now. But that risks delay
-the COMMIT for up to 30s, which obviously might stuck applications in
-balance_dirty_pages() for too long.
+There are 4 callers of nfs_lookup currently:
 
-I have a patch to shorten the retry time to 1s (or other constant)
-by introducing b_more_io_wait. It currently sits in my writeback queue
-series whose main blocking issue is the constantly broken NFS pipeline..
+nfs_gethostbyname
+nfs_umount_do_umnt
+nfs_fix_mounthost_option
+nfs_validate_options
 
->  		} else if (atomic_read(&inode->i_count)) {
->  			/*
->  			 * The inode is clean, inuse
-> @@ -1051,7 +1080,7 @@ void __mark_inode_dirty(struct inode *inode, int flags)
->  
->  	spin_lock(&inode_lock);
->  	if ((inode->i_state & flags) != flags) {
-> -		const int was_dirty = inode->i_state & I_DIRTY;
-> +		const int was_dirty = inode->i_state & (I_DIRTY|I_UNSTABLE_PAGES);
->  
->  		inode->i_state |= flags;
->  
-> diff --git a/fs/nfs/file.c b/fs/nfs/file.c
-> index 6b89132..67e50ac 100644
-> --- a/fs/nfs/file.c
-> +++ b/fs/nfs/file.c
-> @@ -526,6 +526,7 @@ const struct address_space_operations nfs_file_aops = {
->  	.migratepage = nfs_migrate_page,
->  	.launder_page = nfs_launder_page,
->  	.error_remove_page = generic_error_remove_page,
-> +	.commit_unstable_pages = nfs_commit_unstable_pages,
->  };
->  
->  /*
-> diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-> index faa0918..8341709 100644
-> --- a/fs/nfs/inode.c
-> +++ b/fs/nfs/inode.c
-> @@ -97,22 +97,6 @@ u64 nfs_compat_user_ino64(u64 fileid)
->  	return ino;
->  }
->  
-> -int nfs_write_inode(struct inode *inode, int sync)
-> -{
-> -	int ret;
-> -
-> -	if (sync) {
-> -		ret = filemap_fdatawait(inode->i_mapping);
-> -		if (ret == 0)
-> -			ret = nfs_commit_inode(inode, FLUSH_SYNC);
-> -	} else
-> -		ret = nfs_commit_inode(inode, 0);
-> -	if (ret >= 0)
-> -		return 0;
-> -	__mark_inode_dirty(inode, I_DIRTY_DATASYNC);
-> -	return ret;
-> -}
-> -
->  void nfs_clear_inode(struct inode *inode)
->  {
->  	/*
-> diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-> index 29e464d..7bb326f 100644
-> --- a/fs/nfs/internal.h
-> +++ b/fs/nfs/internal.h
-> @@ -211,7 +211,6 @@ extern int nfs_access_cache_shrinker(int nr_to_scan, gfp_t gfp_mask);
->  extern struct workqueue_struct *nfsiod_workqueue;
->  extern struct inode *nfs_alloc_inode(struct super_block *sb);
->  extern void nfs_destroy_inode(struct inode *);
-> -extern int nfs_write_inode(struct inode *,int);
->  extern void nfs_clear_inode(struct inode *);
->  #ifdef CONFIG_NFS_V4
->  extern void nfs4_clear_inode(struct inode *);
-> @@ -253,6 +252,8 @@ extern int nfs4_path_walk(struct nfs_server *server,
->  extern void nfs_read_prepare(struct rpc_task *task, void *calldata);
->  
->  /* write.c */
-> +extern int nfs_commit_unstable_pages(struct address_space *mapping,
-> +		struct writeback_control *wbc);
->  extern void nfs_write_prepare(struct rpc_task *task, void *calldata);
->  #ifdef CONFIG_MIGRATION
->  extern int nfs_migrate_page(struct address_space *,
-> diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-> index ce907ef..805c1a0 100644
-> --- a/fs/nfs/super.c
-> +++ b/fs/nfs/super.c
-> @@ -265,7 +265,6 @@ struct file_system_type nfs_xdev_fs_type = {
->  static const struct super_operations nfs_sops = {
->  	.alloc_inode	= nfs_alloc_inode,
->  	.destroy_inode	= nfs_destroy_inode,
-> -	.write_inode	= nfs_write_inode,
->  	.statfs		= nfs_statfs,
->  	.clear_inode	= nfs_clear_inode,
->  	.umount_begin	= nfs_umount_begin,
-> @@ -334,7 +333,6 @@ struct file_system_type nfs4_referral_fs_type = {
->  static const struct super_operations nfs4_sops = {
->  	.alloc_inode	= nfs_alloc_inode,
->  	.destroy_inode	= nfs_destroy_inode,
-> -	.write_inode	= nfs_write_inode,
->  	.statfs		= nfs_statfs,
->  	.clear_inode	= nfs4_clear_inode,
->  	.umount_begin	= nfs_umount_begin,
-> diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-> index d171696..910be28 100644
-> --- a/fs/nfs/write.c
-> +++ b/fs/nfs/write.c
-> @@ -441,7 +441,7 @@ nfs_mark_request_commit(struct nfs_page *req)
->  	spin_unlock(&inode->i_lock);
->  	inc_zone_page_state(req->wb_page, NR_UNSTABLE_NFS);
->  	inc_bdi_stat(req->wb_page->mapping->backing_dev_info, BDI_RECLAIMABLE);
-> -	__mark_inode_dirty(inode, I_DIRTY_DATASYNC);
-> +	mark_inode_unstable_pages(inode);
+...all of these with the exception of nfs_gethostbyname will need to do
+this "sorting". nfs_gethostbyname passes in AF_INET for the family, so
+it's guaranteed to return a IPv4 address or nothing anyway.
 
-Then we shall mark I_DIRTY_DATASYNC on other places that extend i_size.
+I've tried a more-or-less exhaustive combination of proto=/mountproto=
+options (and lack thereof) and I think with the original patch I posted
+it works as expected.
 
->  }
->  
->  static int
-> @@ -1406,11 +1406,42 @@ int nfs_commit_inode(struct inode *inode, int how)
->  	}
->  	return res;
->  }
-> +
-> +int nfs_commit_unstable_pages(struct address_space *mapping,
-> +		struct writeback_control *wbc)
-> +{
-> +	struct inode *inode = mapping->host;
-> +	int flags = FLUSH_SYNC;
-> +	int ret;
-> +
-> +	/* Don't commit yet if this is a non-blocking flush and there are
-> +	 * outstanding writes for this mapping.
-> +	 */
-> +	if (wbc->sync_mode != WB_SYNC_ALL &&
-> +	    radix_tree_tagged(&NFS_I(inode)->nfs_page_tree,
-> +		    NFS_PAGE_TAG_LOCKED)) {
-> +		mark_inode_unstable_pages(inode);
-> +		return 0;
-> +	}
+On IRC, Chuck mentioned replacing nfs_lookup with direct calls to
+getaddrinfo, but that's a larger change and I don't really think it's
+necessary.
 
-A dumb question: does NFS_PAGE_TAG_LOCKED means either flying COMMITs
-or WRITEs? As an NFS newbie, I'm only confident on the COMMIT part :)
+Chuck also suggested that we should have mount.nfs never attempt to use
+an IPv6 address unless someone explicitly adds proto=tcp6|udp6. I'm not
+a fan of that solution. I think if a hostname resolves to only an IPv6
+address it ought to "just work" and mount via that address without
+needing extra options.
 
-> +	if (wbc->nonblocking)
-> +		flags = 0;
-> +	ret = nfs_commit_inode(inode, flags);
-> +	if (ret > 0)
-> +		ret = 0;
-> +	return ret;
-> +}
-> +
->  #else
->  static inline int nfs_commit_list(struct inode *inode, struct list_head *head, int how)
->  {
->  	return 0;
->  }
-> +
-> +int nfs_commit_unstable_pages(struct address_space *mapping,
-> +		struct writeback_control *wbc)
-> +{
-> +	return 0;
-> +}
->  #endif
->  
->  long nfs_sync_mapping_wait(struct address_space *mapping, struct writeback_control *wbc, int how)
-> diff --git a/include/linux/fs.h b/include/linux/fs.h
-> index 9147ca8..ea0b7a3 100644
-> --- a/include/linux/fs.h
-> +++ b/include/linux/fs.h
-> @@ -602,6 +602,8 @@ struct address_space_operations {
->  	int (*is_partially_uptodate) (struct page *, read_descriptor_t *,
->  					unsigned long);
->  	int (*error_remove_page)(struct address_space *, struct page *);
-> +	int (*commit_unstable_pages)(struct address_space *,
-> +			struct writeback_control *);
->  };
->  
->  /*
-> @@ -1635,6 +1637,8 @@ struct super_operations {
->  #define I_CLEAR			64
->  #define __I_SYNC		7
->  #define I_SYNC			(1 << __I_SYNC)
-> +#define __I_UNSTABLE_PAGES	9
-> +#define I_UNSTABLE_PAGES	(1 << __I_UNSTABLE_PAGES)
->  
->  #define I_DIRTY (I_DIRTY_SYNC | I_DIRTY_DATASYNC | I_DIRTY_PAGES)
->  
-> @@ -1649,6 +1653,11 @@ static inline void mark_inode_dirty_sync(struct inode *inode)
->  	__mark_inode_dirty(inode, I_DIRTY_SYNC);
->  }
->  
-> +static inline void mark_inode_unstable_pages(struct inode *inode)
-> +{
-> +	__mark_inode_dirty(inode, I_UNSTABLE_PAGES);
-> +}
-> +
->  /**
->   * inc_nlink - directly increment an inode's link count
->   * @inode: inode
-> 
+For discussion, the original patch follows:
+
+-----------------[snip]-------------------
+
+mount.nfs: prefer IPv4 addresses over IPv6
+
+We're poised to enable IPv6 in nfs-utils in distros. There is a potential
+problem however. mount.nfs will prefer IPv6 addrs.
+
+If someone has a working IPv4 server today that has an IPv6 address,
+then clients may start trying to mount over that address. If the server
+doesn't support NFS serving over IPv6 (and virtually no linux servers
+currently do), then the mount will start failing.
+
+Avoid this problem by making the mount.nfs code prefer IPv4 addresses
+when they are available.
+
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ utils/mount/network.c |   27 ++++++++++++++++++++++-----
+ 1 files changed, 22 insertions(+), 5 deletions(-)
+
+diff --git a/utils/mount/network.c b/utils/mount/network.c
+index 92bba2d..6723f8f 100644
+--- a/utils/mount/network.c
++++ b/utils/mount/network.c
+@@ -203,7 +203,7 @@ static const unsigned int *nfs_default_proto()
+ int nfs_lookup(const char *hostname, const sa_family_t family,
+ 		struct sockaddr *sap, socklen_t *salen)
+ {
+-	struct addrinfo *gai_results;
++	struct addrinfo *gai_results, *gai_pref;
+ 	struct addrinfo gai_hint = {
+ #ifdef HAVE_DECL_AI_ADDRCONFIG
+ 		.ai_flags	= AI_ADDRCONFIG,
+@@ -229,12 +229,29 @@ int nfs_lookup(const char *hostname, const sa_family_t family,
+ 		return ret;
+ 	}
+ 
+-	switch (gai_results->ai_addr->sa_family) {
++	/*
++	 * It will probably be quite a while before we have enough IPv6
++	 * capable servers to be able to prefer using IPv6. For now, we
++	 * only use IPv6 when there is no IPv4 address available in the
++	 * results.
++	 */
++	gai_pref = gai_results;
++	while (gai_pref) {
++		if (gai_pref->ai_addr->sa_family == AF_INET)
++			break;
++		gai_pref = gai_pref->ai_next;
++	}
++
++	/* no IPv4 addr found, just use first on the list */
++	if (gai_pref == NULL)
++		gai_pref = gai_results;
++
++	switch (gai_pref->ai_addr->sa_family) {
+ 	case AF_INET:
+ 	case AF_INET6:
+-		if (len >= gai_results->ai_addrlen) {
+-			*salen = gai_results->ai_addrlen;
+-			memcpy(sap, gai_results->ai_addr, *salen);
++		if (len >= gai_pref->ai_addrlen) {
++			*salen = gai_pref->ai_addrlen;
++			memcpy(sap, gai_pref->ai_addr, *salen);
+ 			ret = 1;
+ 		}
+ 		break;
+-- 
+1.6.5.2
+
