@@ -1,45 +1,61 @@
 From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: Re: [PATCH 6/7] nfs41: implement cb_recall_slot
-Date: Wed, 20 Jan 2010 16:27:29 -0500
-Message-ID: <1264022849.7799.4.camel@localhost>
-References: <1264021587-27697-1-git-send-email-andros@netapp.com>
+Subject: Re: [RFC][PATCH] nfs: don't assume fscache_acquire_cookie will
+ always succeed
+Date: Wed, 20 Jan 2010 16:35:06 -0500
+Message-ID: <1264023306.7799.9.camel@localhost>
+References: <4B56F565.7080104@suse.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="UTF-8"
-Cc: linux-nfs@vger.kernel.org
-To: andros@netapp.com, "Sager, Mike" <Mike.Sager@netapp.com>
+Cc: David Howells <dhowells@redhat.com>,
+	Linux NFS mailing list <linux-nfs@vger.kernel.org>
+To: Suresh Jayaraman <sjayaraman@suse.de>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:20684 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:43963 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753384Ab0ATV2F convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 20 Jan 2010 16:28:05 -0500
-Received: from svlrsexc1-prd.hq.netapp.com (svlrsexc1-prd.hq.netapp.com [10.57.115.30])
-	by smtp2.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id o0KLRZt1000822
-	for <linux-nfs@vger.kernel.org>; Wed, 20 Jan 2010 13:27:50 -0800 (PST)
-In-Reply-To: <1264021587-27697-1-git-send-email-andros@netapp.com>
+	id S1752998Ab0ATVf5 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 20 Jan 2010 16:35:57 -0500
+In-Reply-To: <4B56F565.7080104@suse.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 2010-01-20 at 16:06 -0500, andros@netapp.com wrote: 
-> Resend with fix to compile without CONFIG_NFS_V4_1.
+On Wed, 2010-01-20 at 17:51 +0530, Suresh Jayaraman wrote: 
+> We seem to be assuming fscache_acquire_cookie will always succeed and will
+> obtain a valid cookie. But, under low memory conditions kmem_cache_alloc
+> could fail and that would leave nfsi->fscache being set to NULL.
 > 
-> Sorry 'bout that Trond.
+> This could lead to a possibility of a page with PG_fscache flag set but
+> cookie not set(i.e. NULL). This inconsistency could trigger a kernel BUG in
+> nfs_fscache_release_page() and other places as we do BUG_ON(!cookie), I think.
 > 
-> -->Andy
+> I'm aware that there are other places where we would need such checks, but
+> wanted to validate this patch before getting on to them.
+> 
+> Signed-off-by: Suresh Jayaraman <sjayaraman@suse.de>
+> ---
+> 
+>  fs/nfs/client.c |    2 ++
+>  1 files changed, 2 insertions(+), 0 deletions(-)
+> 
+> diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+> index ee77713..7776e8a 100644
+> --- a/fs/nfs/client.c
+> +++ b/fs/nfs/client.c
+> @@ -155,6 +155,8 @@ static struct nfs_client *nfs_alloc_client(const struct nfs_client_initdata *cl_
+>  		clp->cl_machine_cred = cred;
+>  
+>  	nfs_fscache_get_client_cookie(clp);
+> +	if (!clp->fscache)
+> +		goto error_cleanup;
+>  
+>  	return clp;
+>  
 
-No problem. However I did hit a conflict between your patchset and one
-of Mike's. The conflicting patches were
+That looks like it will always fail when mounting without -ofscache
+and/or compiling without CONFIG_NFS_FSCACHE.
 
-commit 8f4a598ccfa936dc850323859af8f52bb1ef15c1 nfs41: back channel drc
-minimal implementation
-
-and
-
-commit f93f599e8f6f8c26a99beb8324b15bc8c5f3663a nfs41: Process
-callback's referring call list
-
-
-Could you please both check that I fixed it up correctly in the
-nfsv41-for-next branch?
+It seems like a better idea to have nfs_fscache_get_client_cookie()
+explicitly set clp->fscache to ERR_PTR(-ENOMEM) value if the
+fscache_acquire_cookie fails.
 
 Cheers
   Trond
