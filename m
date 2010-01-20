@@ -1,46 +1,73 @@
-From: VK <admin-lRdVob4M4GsjmsMGrRdz4w@public.gmane.org>
-Subject: =?UTF-8?B?0JjRgNC40L3QsCDQl9C+0LvQvtGC0L7QstCwIGhhcyBhZGRlZCB5b3UgYXMg?=
- =?UTF-8?B?YSBmcmllbmQgb24gdGhlIHdlYnNpdGUgVksuY29t?=
-Date: Mon, 18 Jan 2010 20:16:05 +0300
-Message-ID: <922a4a6137cb173b4dce83dcaa1ca1a1@localhost.localdomain>
-Reply-To: "Pavel Durov, inContact.ru Admin" <admin-lRdVob4M4GsjmsMGrRdz4w@public.gmane.org>
+From: jin zhencheng <zhenchengjin@gmail.com>
+Subject: nfs-error-RPC: multiple fragments per record not supported
+Date: Wed, 20 Jan 2010 19:20:34 +0800
+Message-ID: <de04351e1001200320y2e763680gc7e3b20319c6386e@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-To: linux-nfs <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=ISO-8859-1
+To: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+	zhenchengjin-9Onoh4P/yGk@public.gmane.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from cs14.vkontakte.ru ([93.186.224.14]:44876 "EHLO vkontakte.ru"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1754805Ab0ATAbo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 19 Jan 2010 19:31:44 -0500
-Received: from localhost ([127.0.0.1] helo=localhost.localdomain)
-	by vkontakte.ru with esmtp (Exim 4.63)
-	(envelope-from <admin-lRdVob4M4GsjmsMGrRdz4w@public.gmane.org>)
-	id 1NWvCv-0006LK-Ch
-	for linux-nfs@vger.kernel.org; Mon, 18 Jan 2010 20:16:05 +0300
+Received: from mail-pz0-f190.google.com ([209.85.222.190]:64657 "EHLO
+	mail-pz0-f190.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751181Ab0ATLUe (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 20 Jan 2010 06:20:34 -0500
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-linux-nfs,
+I use kernel 2.6.26.2
 
-=D0=98=D1=80=D0=B8=D0=BD=D0=B0 =D0=97=D0=BE=D0=BB=D0=BE=D1=82=D0=BE=D0=B2=
-=D0=B0 has added you as a friend on the website VK.com
+I use  29 clients,
 
-You can log in and view your friends` pages using your email and automa=
-tically created password: OjWWUOfh
+every client mount parameters as this: mount -t nfs -o
+rw,noatime,v3,rsize=32768,wsize=32768,hard,intr,tcp,nolock
 
-VK.com is a website that helps dozens of millions of people find their =
-old friends, share photos and events and always stay in touch.
+my system have many errors lke these :
 
-To log in, please follow this link:
-http://vkontakte.ru/login.php?regemail=3Dlinux-nfs@vger.kernel.org#OjWW=
-UOfh
+RPC: multiple fragments per record not supported
+RPC: multiple fragments per record not supported
+RPC: fragment too large: 0x318c87ee
+RPC: multiple fragments per record not supported
+RPC: fragment too large: 0x78bdeedb
+RPC: multiple fragments per record not supported
+RPC: fragment too large: 0x75cf8a33
+RPC: fragment too large: 0x44764ada
+RPC: multiple fragments per record not supported
+RPC: fragment too large: 0x0a08e7c0
+RPC: multiple fragments per record not supported
+RPC: multiple fragments per record not supported
+RPC: fragment too large: 0x5b4e13a1
+RPC: fragment too large: 0x08351a9f
 
-You can change your password in Settings.
-
-Attention: If you ignore this invitation, your registration will not be=
- activated.
-
-Good luck!Best regards,
-VK Administration
 
 
+
+cat /var/lib/nfs/rmtab
+52.2.1.1:/share/vd01/share01:0x00000088
+52.2.1.3:/share/vd01/share01:0x00000085
+52.2.1.4:/share/vd01/share01:0x0000005c
+52.2.1.6:/share/vd01/share01:0x00000052
+52.2.1.7:/share/vd01/share01:0x0000005a
+52.2.1.9:/share/vd01/share01:0x0000004e
+52.2.1.10:/share/vd01/share01:0x0000008b
+52.2.1.11:/share/vd01/share01:0x00000071
+52.2.1.12:/share/vd01/share01:0x0000007b
+52.2.1.13:/share/vd01/share01:0x0000005d
+52.2.1.14:/share/vd01/share01:0x0000007c
+52.2.1.15:/share/vd01/share01:0x0000004e
+52.2.1.17:/share/vd02/share02:0x00000068
+52.2.1.18:/share/vd02/share02:0x00000052
+52.2.1.19:/share/vd02/share02:0x00000088
+52.2.1.41:/share/vd02/share02:0x00000066
+52.2.1.42:/share/vd02/share02:0x0000005f
+52.2.1.43:/share/vd02/share02:0x00000075
+52.2.1.44:/share/vd02/share02:0x0000008c
+52.2.1.45:/share/vd02/share02:0x0000009b
+52.2.1.46:/share/vd02/share02:0x00000038
+52.2.1.47:/share/vd02/share02:0x000000a0
+52.2.1.81:/share/vd02/share02:0x00000014
+52.2.1.21:/share/vd02/share02:0x00000062
+52.2.1.22:/share/vd02/share02:0x00000077
+52.2.1.23:/share/vd02/share02:0x0000007b
+52.2.1.2:/share/vd01/share01:0x0000005f
+52.2.1.20:/share/vd02/share02:0x0000009f
+52.2.0.201:/share/vd02/share02:0x00000002
