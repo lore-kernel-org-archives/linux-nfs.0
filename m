@@ -1,74 +1,66 @@
-From: "William A. (Andy) Adamson" <androsadamson@gmail.com>
-Subject: Re: [PATCH 2/2] nfs41: clear NFS4CLNT_RECALL_SLOT bit on session
-	reset
-Date: Thu, 21 Jan 2010 14:47:29 -0500
-Message-ID: <89c397151001211147taee2c21pabb4ed222e581f8f@mail.gmail.com>
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: Re: [PATCH 1/2] nfs41: fix nfs4_callback_recallslot
+Date: Thu, 21 Jan 2010 14:47:22 -0500
+Message-ID: <1264103242.3721.12.camel@localhost>
 References: <1264101557-6619-1-git-send-email-andros@netapp.com>
-	 <1264101557-6619-2-git-send-email-andros@netapp.com>
-	 <1264102975.3721.9.camel@localhost>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset="UTF-8"
 Cc: linux-nfs@vger.kernel.org
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: andros@netapp.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yx0-f187.google.com ([209.85.210.187]:63078 "EHLO
-	mail-yx0-f187.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753519Ab0AUTr3 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 21 Jan 2010 14:47:29 -0500
-Received: by yxe17 with SMTP id 17so343318yxe.33
-        for <linux-nfs@vger.kernel.org>; Thu, 21 Jan 2010 11:47:29 -0800 (PST)
-In-Reply-To: <1264102975.3721.9.camel@localhost>
+Received: from mx2.netapp.com ([216.240.18.37]:61854 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754703Ab0AUTro convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 21 Jan 2010 14:47:44 -0500
+Received: from sacrsexc2-prd.hq.netapp.com (sacrsexc2-prd.hq.netapp.com [10.99.115.28])
+	by smtp2.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id o0LJlfNT029717
+	for <linux-nfs@vger.kernel.org>; Thu, 21 Jan 2010 11:47:44 -0800 (PST)
+In-Reply-To: <1264101557-6619-1-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Jan 21, 2010 at 2:42 PM, Trond Myklebust
-<Trond.Myklebust@netapp.com> wrote:
-> On Thu, 2010-01-21 at 14:19 -0500, andros@netapp.com wrote:
->> From: Andy Adamson <andros@netapp.com>
->>
->> Signed-off-by: Andy Adamson <andros@netapp.com>
->> ---
->> =A0fs/nfs/nfs4state.c | =A0 =A07 +++++--
->> =A01 files changed, 5 insertions(+), 2 deletions(-)
->>
->> diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
->> index 069dcb3..c7f2944 100644
->> --- a/fs/nfs/nfs4state.c
->> +++ b/fs/nfs/nfs4state.c
->> @@ -1291,9 +1291,12 @@ static int nfs4_reset_session(struct nfs_clie=
-nt *clp)
->>
->> =A0 =A0 =A0 memset(clp->cl_session->sess_id.data, 0, NFS4_MAX_SESSIO=
-NID_LEN);
->> =A0 =A0 =A0 status =3D nfs4_proc_create_session(clp);
->> - =A0 =A0 if (status)
->> + =A0 =A0 if (status) {
->> =A0 =A0 =A0 =A0 =A0 =A0 =A0 status =3D nfs4_recovery_handle_error(cl=
-p, status);
->> -
->> + =A0 =A0 =A0 =A0 =A0 =A0 goto out;
->> + =A0 =A0 }
->> + =A0 =A0 /* create_session negotiated new slot table */
->> + =A0 =A0 clear_bit(NFS4CLNT_RECALL_SLOT, &clp->cl_state);
->> =A0out:
->> =A0 =A0 =A0 /*
->> =A0 =A0 =A0 =A0* Let the state manager reestablish state
->
-> Errm.... Looking at nfs4_reset_session, wouldn't it make sense to mov=
-e
-> that 'out:' label down one line, so that we can get rid of that test =
-for
-> 'status =3D=3D 0'?
+On Thu, 2010-01-21 at 14:19 -0500, andros@netapp.com wrote: 
+> From: Andy Adamson <andros@netapp.com>
+> 
+> Return NFS4_OK if target high slotid equals enforced high slotid.
+> Fix nfs_client reference leak.
+> 
+> Signed-off-by: Andy Adamson <andros@netapp.com>
+> ---
+>  fs/nfs/callback_proc.c |   10 +++++++---
+>  1 files changed, 7 insertions(+), 3 deletions(-)
+> 
+> diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
+> index e5155d9..c79e18c 100644
+> --- a/fs/nfs/callback_proc.c
+> +++ b/fs/nfs/callback_proc.c
+> @@ -381,13 +381,17 @@ unsigned nfs4_callback_recallslot(struct cb_recallslotargs *args, void *dummy)
+>  	fc_tbl = &clp->cl_session->fc_slot_table;
+>  
+>  	status = htonl(NFS4ERR_BAD_HIGH_SLOT);
 
-yes indeed it would.
+This is not related directly to your patch, but "sparse" is going to
+have a field day with all these scattered around the place. Are there
+any plans to clean all this up, and replace those 'int' and 'unsigned'
+declarations that are being assigned big ended values with the correct
+'__be32' type?
 
--->Andy
+> -	if (args->crsa_target_max_slots >= fc_tbl->max_slots ||
+> +	if (args->crsa_target_max_slots > fc_tbl->max_slots ||
+>  	    args->crsa_target_max_slots < 1)
+> -		goto out;
+> +		goto out_putclient;
+> +
+> +	status = htonl(NFS4_OK);
+> +	if (args->crsa_target_max_slots == fc_tbl->max_slots)
+> +		goto out_putclient;
+>  
+>  	fc_tbl->target_max_slots = args->crsa_target_max_slots;
+>  	nfs41_handle_recall_slot(clp);
+> -	status = htonl(NFS4_OK);
+> +out_putclient:
+>  	nfs_put_client(clp);	/* balance nfs_find_client */
+>  out:
+>  	dprintk("%s: exit with status = %d\n", __func__, ntohl(status));
 
->
-> Trond
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" =
-in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at =A0http://vger.kernel.org/majordomo-info.html
->
+
