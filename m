@@ -1,51 +1,31 @@
-From: Andy Adamson <andros@netapp.com>
-Subject: Re: [PATCH 6/7] nfs41: implement cb_recall_slot
-Date: Thu, 21 Jan 2010 11:33:08 -0500
-Message-ID: <4A744F24-CA10-47FE-B7C8-038E75FA5B66@netapp.com>
-References: <1264021587-27697-1-git-send-email-andros@netapp.com> <1264022849.7799.4.camel@localhost>
-Mime-Version: 1.0 (Apple Message framework v1077)
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH] mount.nfs: prefer IPv4 addresses over IPv6 (try #2)
+Date: Thu, 21 Jan 2010 14:15:15 -0500
+Message-ID: <20100121191515.GA22021@fieldses.org>
+References: <1263907662-19107-1-git-send-email-jlayton@redhat.com> <1667647A-2BB1-478D-8881-CE8EA2191F97@oracle.com> <20100120082905.1825f806@tlielax.poochiereds.net> <8E556CE2-569B-4E6D-BD02-7EF5CA84900D@oracle.com>
+Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: "Sager, Mike" <Mike.Sager@netapp.com>, linux-nfs@vger.kernel.org
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: Jeff Layton <jlayton@redhat.com>, linux-nfs@vger.kernel.org,
+	steved@redhat.com, trond.myklebust@fys.uio.no
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:41911 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:46712 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751457Ab0AUQdY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 21 Jan 2010 11:33:24 -0500
-In-Reply-To: <1264022849.7799.4.camel@localhost>
+	id S1754019Ab0AUTNx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 21 Jan 2010 14:13:53 -0500
+In-Reply-To: <8E556CE2-569B-4E6D-BD02-7EF5CA84900D@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Wed, Jan 20, 2010 at 10:36:36AM -0500, Chuck Lever wrote:
+> For the record, we looked at Solaris behavior yesterday.  With bi-family 
+> servers, its mount command tries IPv6 first, but appears smart enough to 
+> fall back to IPv4.  One thing we haven't tried is to see how difficult it 
+> would be to fix the real problem by adding proper protocol family 
+> negotiation to our own mount command.
 
-On Jan 20, 2010, at 4:27 PM, Trond Myklebust wrote:
+Sorry, I probably just haven't been following: what's "proper protocol
+family negotiation"?  I thought the only ways to negotiate were either
+rpcbind (v2, v3) or trial and error (v4)?
 
-> On Wed, 2010-01-20 at 16:06 -0500, andros@netapp.com wrote: 
->> Resend with fix to compile without CONFIG_NFS_V4_1.
->> 
->> Sorry 'bout that Trond.
->> 
->> -->Andy
-> 
-> No problem. However I did hit a conflict between your patchset and one
-> of Mike's. The conflicting patches were
-> 
-> commit 8f4a598ccfa936dc850323859af8f52bb1ef15c1 nfs41: back channel drc
-> minimal implementation
-> 
-> and
-> 
-> commit f93f599e8f6f8c26a99beb8324b15bc8c5f3663a nfs41: Process
-> callback's referring call list
-> 
-> 
-> Could you please both check that I fixed it up correctly in the
-> nfsv41-for-next branch?
-
-Looks correct to me.
-
--->Andy
-
-> 
-> Cheers
->  Trond
-
+--b.
