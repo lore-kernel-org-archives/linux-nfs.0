@@ -1,24 +1,24 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
 Subject: Re: [PATCH 3/3] NFSD: Enable NFS server use of PF_INET6
-Date: Thu, 21 Jan 2010 17:07:26 -0500
-Message-ID: <20100121220726.GI23322@fieldses.org>
-References: <20100113210650.19409.38009.stgit@localhost.localdomain> <20100113211048.19409.86029.stgit@localhost.localdomain> <20100115224405.GH30624@fieldses.org> <FD469623-92A6-43E4-9D9B-999A5BCDC0BD@oracle.com>
+Date: Thu, 21 Jan 2010 17:52:23 -0500
+Message-ID: <20100121225223.GR23322@fieldses.org>
+References: <20100113210650.19409.38009.stgit@localhost.localdomain> <20100113211048.19409.86029.stgit@localhost.localdomain> <20100115223519.GF30624@fieldses.org> <157AD76E-D7E1-49AC-8F1A-A4EA588EE3A9@oracle.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-nfs@vger.kernel.org
 To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:44496 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:54301 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754909Ab0AUWGE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 21 Jan 2010 17:06:04 -0500
-In-Reply-To: <FD469623-92A6-43E4-9D9B-999A5BCDC0BD@oracle.com>
+	id S1752155Ab0AUWvB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 21 Jan 2010 17:51:01 -0500
+In-Reply-To: <157AD76E-D7E1-49AC-8F1A-A4EA588EE3A9@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Jan 15, 2010 at 06:17:38PM -0500, Chuck Lever wrote:
+On Fri, Jan 15, 2010 at 06:09:17PM -0500, Chuck Lever wrote:
 >
-> On Jan 15, 2010, at 5:44 PM, J. Bruce Fields wrote:
+> On Jan 15, 2010, at 5:35 PM, J. Bruce Fields wrote:
 >
 >> On Wed, Jan 13, 2010 at 04:10:48PM -0500, Chuck Lever wrote:
 >>> Try to use an PF_INET6 listener for NFSD if IPv6 is enabled in the
@@ -53,134 +53,21 @@ On Fri, Jan 15, 2010 at 06:17:38PM -0500, Chuck Lever wrote:
 >>> +		/* Give a reasonable perror msg for bad transport string */
 >>> +		if (err == -ENOENT)
 >>> +			err = -EPROTONOSUPPORT;
->>> +		return err;
->>> +	}
->>> +
->>> +	return 0;
->>> +}
->>> +
->>> /*
->>>  * A transport listener is added by writing it's transport name and
->>>  * a port number.
->>> @@ -1000,14 +1020,16 @@ static ssize_t __write_ports_addxprt(char  
->>> *buf)
->>> 	if (err != 0)
->>> 		return err;
->>>
->>> -	err = svc_create_xprt(nfsd_serv, transport,
->>> -				PF_INET, port, SVC_SOCK_ANONYMOUS);
->>> -	if (err < 0) {
->>> -		/* Give a reasonable perror msg for bad transport string */
->>> -		if (err == -ENOENT)
->>> -			err = -EPROTONOSUPPORT;
->>> +	err = __write_ports_create_xprt(nfsd_serv, transport, PF_INET,  
->>> port);
->>> +	if (err < 0)
->>> 		return err;
->>> -	}
->>> +
->>> +#if defined(CONFIG_IPV6) || defined(CONFIG_IPV6_MODULE)
->>> +	err = __write_ports_create_xprt(nfsd_serv, transport, PF_INET6,  
->>> port);
->>> +	if (err < 0 && err != -EAFNOSUPPORT)
->>> +		return err;
->>> +#endif	/* CONFIG_IPV6 || CONFIG_IPV6_MODULE */
 >>
->> Does every caller of __write_ports_create_xprt() with PF_INET6 end up
->> being under this ifdef?  Could we instead just move the ifdef inside  
->> it
->> (or inside __svc_xpo_create())?  (As usual I'd rather keep any  
->> necessary
->> hidden away to the extent possible.)
+>> I realize you're just moving this code, not writing it, so this is a
+>> separate question, but: it looks like it's svc_create_xprt() itself  
+>> that
+>> chooses ENOENT for this case.  Is there any reason it shouldn't just  
+>> use
+>> EPROTONOSUPPORT from the start?
 >
-> The only two call sites are right here:  one with PF_INET and one with  
-> PF_INET6.
+> I guess this little transformation is for the benefit of rpc.nfsd?  I  
+> don't know of a reason offhand why you couldn't change  
+> svc_create_xprt().  I don't immediately see any of svc_create_xprt's  
+> callers that might depend on getting ENOENT, but I didn't look very  
+> hard.
 
-OK, but svc_create_xprt has a few more.
-
->
-> When IPv6 support is not enabled, we want only the first call (with  
-> PF_INET).  When IPv6 support is enabled, we want two calls; one with  
-> PF_INET and then one with PF_INET6.
-
-Right, I understand, but we could equally well do that by calling
-svc_create_xprt twice, and depending on it (or __svc_xpo_create(), or
-someone else there) to return -EAFNOSUPPORT in the !defined(CONFIG_IPV6)
-&& !defined(CONFIG_IPV6_MODULE case.  Right?
-
-No change in behavior, I just want the #ifdef's buried a little further
-if it's possible.
+Could I talk you into writing a patch that does that, as long as you're
+touching this code?
 
 --b.
-
->
-> This particular interface is for creating a named transport.  We don't  
-> name our IPv6 transports separately from IPv4 transports, so this is a  
-> simple way to get IPv6 enabled listeners.  It's actually been a while  
-> since I sat down and thought through this.
->
->> --b.
->>
->>> +
->>> 	return 0;
->>> }
->>>
->>> diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
->>> index 171699e..7af14c1 100644
->>> --- a/fs/nfsd/nfssvc.c
->>> +++ b/fs/nfsd/nfssvc.c
->>> @@ -275,14 +275,32 @@ int nfsd_create_serv(void)
->>> 	return err;
->>> }
->>>
->>> -static int nfsd_init_socks(int port)
->>> +static int nfsd_create_xprt(const char *transport, const unsigned  
->>> short port)
->>> +{
->>> +	int ret;
->>> +
->>> +	ret = svc_create_xprt(nfsd_serv, transport, PF_INET, port,
->>> +							SVC_SOCK_DEFAULTS);
->>> +	if (ret < 0)
->>> +		return ret;
->>> +
->>> +#if defined(CONFIG_IPV6) || defined(CONFIG_IPV6_MODULE)
->>> +	ret = svc_create_xprt(nfsd_serv, transport, PF_INET6, port,
->>> +							SVC_SOCK_DEFAULTS);
->>> +	if (ret < 0 && ret != -EAFNOSUPPORT)
->>> +		return ret;
->>> +#endif	/* CONFIG_IPV6 || CONFIG_IPV6_MODULE */
->>> +
->>> +	return 0;
->>> +}
->>> +
->>> +static int nfsd_init_socks(const unsigned short port)
->>> {
->>> 	int error;
->>> 	if (!list_empty(&nfsd_serv->sv_permsocks))
->>> 		return 0;
->>>
->>> -	error = svc_create_xprt(nfsd_serv, "udp", PF_INET, port,
->>> -					SVC_SOCK_DEFAULTS);
->>> +	error = nfsd_create_xprt("udp", port);
->>> 	if (error < 0)
->>> 		return error;
->>>
->>> @@ -290,8 +308,7 @@ static int nfsd_init_socks(int port)
->>> 	if (error < 0)
->>> 		return error;
->>>
->>> -	error = svc_create_xprt(nfsd_serv, "tcp", PF_INET, port,
->>> -					SVC_SOCK_DEFAULTS);
->>> +	error = nfsd_create_xprt("tcp", port);
->>> 	if (error < 0)
->>> 		return error;
->>>
->>>
->
-> --
-> Chuck Lever
-> chuck[dot]lever[at]oracle[dot]com
->
->
->
