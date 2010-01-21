@@ -1,66 +1,54 @@
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: Re: [PATCH 1/2] nfs41: fix nfs4_callback_recallslot
-Date: Thu, 21 Jan 2010 14:47:22 -0500
-Message-ID: <1264103242.3721.12.camel@localhost>
-References: <1264101557-6619-1-git-send-email-andros@netapp.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Cc: linux-nfs@vger.kernel.org
-To: andros@netapp.com
+From: andros@netapp.com
+Subject: [PATCH 2/2] nfs41: clear NFS4CLNT_RECALL_SLOT bit on session reset
+Date: Thu, 21 Jan 2010 14:54:13 -0500
+Message-ID: <1264103653-7677-1-git-send-email-andros@netapp.com>
+Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
+To: trond.myklebust@netapp.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:61854 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:45558 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754703Ab0AUTro convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 21 Jan 2010 14:47:44 -0500
-Received: from sacrsexc2-prd.hq.netapp.com (sacrsexc2-prd.hq.netapp.com [10.99.115.28])
-	by smtp2.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id o0LJlfNT029717
-	for <linux-nfs@vger.kernel.org>; Thu, 21 Jan 2010 11:47:44 -0800 (PST)
-In-Reply-To: <1264101557-6619-1-git-send-email-andros@netapp.com>
+	id S1751431Ab0AUTyT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 21 Jan 2010 14:54:19 -0500
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 2010-01-21 at 14:19 -0500, andros@netapp.com wrote: 
-> From: Andy Adamson <andros@netapp.com>
-> 
-> Return NFS4_OK if target high slotid equals enforced high slotid.
-> Fix nfs_client reference leak.
-> 
-> Signed-off-by: Andy Adamson <andros@netapp.com>
-> ---
->  fs/nfs/callback_proc.c |   10 +++++++---
->  1 files changed, 7 insertions(+), 3 deletions(-)
-> 
-> diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
-> index e5155d9..c79e18c 100644
-> --- a/fs/nfs/callback_proc.c
-> +++ b/fs/nfs/callback_proc.c
-> @@ -381,13 +381,17 @@ unsigned nfs4_callback_recallslot(struct cb_recallslotargs *args, void *dummy)
->  	fc_tbl = &clp->cl_session->fc_slot_table;
->  
->  	status = htonl(NFS4ERR_BAD_HIGH_SLOT);
+From: Andy Adamson <andros@netapp.com>
 
-This is not related directly to your patch, but "sparse" is going to
-have a field day with all these scattered around the place. Are there
-any plans to clean all this up, and replace those 'int' and 'unsigned'
-declarations that are being assigned big ended values with the correct
-'__be32' type?
+Signed-off-by: Andy Adamson <andros@netapp.com>
+---
+ fs/nfs/nfs4state.c |   16 ++++++++--------
+ 1 files changed, 8 insertions(+), 8 deletions(-)
 
-> -	if (args->crsa_target_max_slots >= fc_tbl->max_slots ||
-> +	if (args->crsa_target_max_slots > fc_tbl->max_slots ||
->  	    args->crsa_target_max_slots < 1)
-> -		goto out;
-> +		goto out_putclient;
-> +
-> +	status = htonl(NFS4_OK);
-> +	if (args->crsa_target_max_slots == fc_tbl->max_slots)
-> +		goto out_putclient;
->  
->  	fc_tbl->target_max_slots = args->crsa_target_max_slots;
->  	nfs41_handle_recall_slot(clp);
-> -	status = htonl(NFS4_OK);
-> +out_putclient:
->  	nfs_put_client(clp);	/* balance nfs_find_client */
->  out:
->  	dprintk("%s: exit with status = %d\n", __func__, ntohl(status));
-
+diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+index 069dcb3..294827a 100644
+--- a/fs/nfs/nfs4state.c
++++ b/fs/nfs/nfs4state.c
+@@ -1291,17 +1291,17 @@ static int nfs4_reset_session(struct nfs_client *clp)
+ 
+ 	memset(clp->cl_session->sess_id.data, 0, NFS4_MAX_SESSIONID_LEN);
+ 	status = nfs4_proc_create_session(clp);
+-	if (status)
++	if (status) {
+ 		status = nfs4_recovery_handle_error(clp, status);
++		goto out;
++	}
++	/* create_session negotiated new slot table */
++	clear_bit(NFS4CLNT_RECALL_SLOT, &clp->cl_state);
+ 
+-out:
+-	/*
+-	 * Let the state manager reestablish state
+-	 */
+-	if (!test_bit(NFS4CLNT_LEASE_EXPIRED, &clp->cl_state) &&
+-	    status == 0)
++	 /* Let the state manager reestablish state */
++	if (!test_bit(NFS4CLNT_LEASE_EXPIRED, &clp->cl_state))
+ 		nfs41_setup_state_renewal(clp);
+-
++out:
+ 	return status;
+ }
+ 
+-- 
+1.6.6
 
