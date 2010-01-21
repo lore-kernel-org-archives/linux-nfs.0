@@ -1,46 +1,93 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:29608 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752986Ab0ALOYo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 12 Jan 2010 09:24:44 -0500
-From: David Howells <dhowells@redhat.com>
-Subject: [PATCH] NFS: Avoid warnings when CONFIG_NFS_V4=n
-To: torvalds@osdl.org, akpm@linux-foundation.org
-Cc: Trond.Myklebust@netapp.com, linux-nfs@vger.kernel.org
-Date: Tue, 12 Jan 2010 14:23:40 +0000
-Message-ID: <20100112142340.2862.5903.stgit@warthog.procyon.org.uk>
-Content-Type: text/plain; charset="utf-8"
+Received: from rcsinet12.oracle.com ([148.87.113.124]:49498 "EHLO
+	rcsinet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754879Ab0AUU32 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 21 Jan 2010 15:29:28 -0500
+Message-ID: <4B58B8FE.80800@oracle.com>
+Date: Thu, 21 Jan 2010 15:28:46 -0500
+From: Chuck Lever <chuck.lever@oracle.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: Jeff Layton <jlayton@redhat.com>, linux-nfs@vger.kernel.org,
+        steved@redhat.com, trond.myklebust@fys.uio.no
+Subject: Re: [PATCH] mount.nfs: prefer IPv4 addresses over IPv6 (try #2)
+References: <1263907662-19107-1-git-send-email-jlayton@redhat.com> <1667647A-2BB1-478D-8881-CE8EA2191F97@oracle.com> <20100120082905.1825f806@tlielax.poochiereds.net> <8E556CE2-569B-4E6D-BD02-7EF5CA84900D@oracle.com> <20100121191515.GA22021@fieldses.org> <4B58AD16.8040309@oracle.com> <20100121195746.GC22021@fieldses.org>
+In-Reply-To: <20100121195746.GC22021@fieldses.org>
+Content-Type: text/plain; charset=us-ascii; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Avoid the following warnings when CONFIG_NFS_V4=n:
+On 01/21/2010 02:57 PM, J. Bruce Fields wrote:
+> On Thu, Jan 21, 2010 at 02:37:58PM -0500, Chuck Lever wrote:
+>> On 01/21/2010 02:15 PM, J. Bruce Fields wrote:
+>>> On Wed, Jan 20, 2010 at 10:36:36AM -0500, Chuck Lever wrote:
+>>>> For the record, we looked at Solaris behavior yesterday.  With bi-family
+>>>> servers, its mount command tries IPv6 first, but appears smart enough to
+>>>> fall back to IPv4.  One thing we haven't tried is to see how difficult it
+>>>> would be to fix the real problem by adding proper protocol family
+>>>> negotiation to our own mount command.
+>>>
+>>> Sorry, I probably just haven't been following: what's "proper protocol
+>>> family negotiation"?  I thought the only ways to negotiate were either
+>>> rpcbind (v2, v3) or trial and error (v4)?
+>>
+>> In TI-RPC parlance, a "protocol" is the transport protocol (UDP, for
+>> example), and a "protocol family" is the address family ("inet6", for
+>> example).  A netid represents a particular combination of the two:  the
+>> netid "udp6" represents UDP over "inet6".
+>>
+>> The "protocol family" is really the value that is passed to socket(2).
+>> This call generally takes PF_INET or something like that as its first
+>> argument.  All of the PF_FOO thingies have the same integer value as
+>> their AF_FOO counterparts.  For TI-RPC, we have "inet" and "inet6",
+>> which are strings that match up with the AF_FOO and PF_FOO names.
+>>
+>> rpcb_getaddr(3t) is designed to use the rpcbind protocol to determine
+>> the address and transport to use when contacting a remote service.  Our
+>> mount command has its own negotiation mechanism that is a superset of
+>> rpcbind calls, in addition to having a faster timeout than
+>> rpcb_getaddr(3t).
+>
+> What does "is a superset of rpcbind calls" mean?
 
-	fs/nfs/sysctl.c:19: warning: unused variable `nfs_set_port_max'
-	fs/nfs/sysctl.c:18: warning: unused variable `nfs_set_port_min'
+rpcb_getaddr(3t) performs a single specific rpcbind query with a long 
+fixed timeout.  mount.nfs uses several rpcbind queries, in a particular 
+order, to identify which NFS-related services are available.  mount.nfs 
+uses individual queries rather than a single DUMPALL in order to enable 
+firewalls to detect which ports should be opened.
 
-by making those variables contingent on NFSv4 being configured.
+> I still don't
+> understand what the proper protocol family negotiation is: what actually
+> happens on the wire?
 
-Signed-off-by: David Howells <dhowells@redhat.com>
----
+If a particular RPC service (including rpcbind) cannot be contacted via 
+"inet6," and the server has an "inet" address listed in DNS, then 
+mount.nfs should be smart enough to try the mount request via the "inet" 
+address too.  This is in addition to support for rpcbind queries that 
+can return a netid, which would include information about which protocol 
+family to use).
 
- fs/nfs/sysctl.c |    2 ++
- 1 files changed, 2 insertions(+), 0 deletions(-)
+Currently our mount.nfs command fails if the target server has at least 
+one IPv6 address listed in DNS in addition to an IPv4 address, but does 
+not support NFS/IPv6.
 
+For NFSv4, a server that has an IPv6 address but does not support 
+NFS/IPv6 will refuse connection to port 2049 over IPv6.  In that case, 
+mount.nfs should tell the kernel to retry the mount with the server's 
+IPv4 address, if it has one.
 
-diff --git a/fs/nfs/sysctl.c b/fs/nfs/sysctl.c
-index 70e1fbb..ad4d2e7 100644
---- a/fs/nfs/sysctl.c
-+++ b/fs/nfs/sysctl.c
-@@ -15,8 +15,10 @@
- 
- #include "callback.h"
- 
-+#ifdef CONFIG_NFS_V4
- static const int nfs_set_port_min = 0;
- static const int nfs_set_port_max = 65535;
-+#endif
- static struct ctl_table_header *nfs_callback_sysctl_table;
- 
- static ctl_table nfs_cb_sysctls[] = {
+For NFSv3, a server that has an IPv6 address, but does not support 
+NFS/IPv6, will not register any inet6 netids in its rpcbind database. 
+Thus the mount.nfs command has to be smart enough to retry 
+PROGNOTREGISTERED results with the server's IPv4 address, if it has one.
 
+If the server has an IPv6 address, but is running portmap instead of 
+rpcbind, the initial rpcbind query connection will be refused (portmap 
+does not set up an IPv6 listener).  In that case, the mount request 
+should be retried with the server's IPv4 address, if it has one.
+
+Note that in any of these cases, if an NFS server does not have any IPv6 
+addresses listed in DNS, then behavior should be the same as before.
+
+-- 
+chuck[dot]lever[at]oracle[dot]com
