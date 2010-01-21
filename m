@@ -1,52 +1,45 @@
 From: andros@netapp.com
-Subject: [PATCH 1/2] nfs41: fix nfs4_callback_recallslot
-Date: Thu, 21 Jan 2010 14:19:16 -0500
-Message-ID: <1264101557-6619-1-git-send-email-andros@netapp.com>
+Subject: [PATCH 2/2] nfs41: clear NFS4CLNT_RECALL_SLOT bit on session reset
+Date: Thu, 21 Jan 2010 14:19:17 -0500
+Message-ID: <1264101557-6619-2-git-send-email-andros@netapp.com>
+References: <1264101557-6619-1-git-send-email-andros@netapp.com>
 Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
 To: trond.myklebust@netapp.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
 Received: from mx2.netapp.com ([216.240.18.37]:14143 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754566Ab0AUTTY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	id S1754815Ab0AUTTY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
 	Thu, 21 Jan 2010 14:19:24 -0500
+In-Reply-To: <1264101557-6619-1-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 From: Andy Adamson <andros@netapp.com>
 
-Return NFS4_OK if target high slotid equals enforced high slotid.
-Fix nfs_client reference leak.
-
 Signed-off-by: Andy Adamson <andros@netapp.com>
 ---
- fs/nfs/callback_proc.c |   10 +++++++---
- 1 files changed, 7 insertions(+), 3 deletions(-)
+ fs/nfs/nfs4state.c |    7 +++++--
+ 1 files changed, 5 insertions(+), 2 deletions(-)
 
-diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
-index e5155d9..c79e18c 100644
---- a/fs/nfs/callback_proc.c
-+++ b/fs/nfs/callback_proc.c
-@@ -381,13 +381,17 @@ unsigned nfs4_callback_recallslot(struct cb_recallslotargs *args, void *dummy)
- 	fc_tbl = &clp->cl_session->fc_slot_table;
+diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+index 069dcb3..c7f2944 100644
+--- a/fs/nfs/nfs4state.c
++++ b/fs/nfs/nfs4state.c
+@@ -1291,9 +1291,12 @@ static int nfs4_reset_session(struct nfs_client *clp)
  
- 	status = htonl(NFS4ERR_BAD_HIGH_SLOT);
--	if (args->crsa_target_max_slots >= fc_tbl->max_slots ||
-+	if (args->crsa_target_max_slots > fc_tbl->max_slots ||
- 	    args->crsa_target_max_slots < 1)
--		goto out;
-+		goto out_putclient;
-+
-+	status = htonl(NFS4_OK);
-+	if (args->crsa_target_max_slots == fc_tbl->max_slots)
-+		goto out_putclient;
- 
- 	fc_tbl->target_max_slots = args->crsa_target_max_slots;
- 	nfs41_handle_recall_slot(clp);
--	status = htonl(NFS4_OK);
-+out_putclient:
- 	nfs_put_client(clp);	/* balance nfs_find_client */
+ 	memset(clp->cl_session->sess_id.data, 0, NFS4_MAX_SESSIONID_LEN);
+ 	status = nfs4_proc_create_session(clp);
+-	if (status)
++	if (status) {
+ 		status = nfs4_recovery_handle_error(clp, status);
+-
++		goto out;
++	}
++	/* create_session negotiated new slot table */
++	clear_bit(NFS4CLNT_RECALL_SLOT, &clp->cl_state);
  out:
- 	dprintk("%s: exit with status = %d\n", __func__, ntohl(status));
+ 	/*
+ 	 * Let the state manager reestablish state
 -- 
 1.6.6
 
