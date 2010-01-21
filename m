@@ -1,82 +1,109 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:62995 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752102Ab0ARUqz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 18 Jan 2010 15:46:55 -0500
-Date: Mon, 18 Jan 2010 15:46:43 -0500
-From: Jeff Layton <jlayton@redhat.com>
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-Cc: linux-nfs@vger.kernel.org, chuck.lever@oracle.com, steved@redhat.com
-Subject: Re: should mount.nfs prefer IPv4 addresses (was: enabling IPv6)
-Message-ID: <20100118154643.05faa05a@tlielax.poochiereds.net>
-In-Reply-To: <1263846450.4127.71.camel@localhost>
-References: <20100118144746.1e05865e@tlielax.poochiereds.net>
-	<20100118152047.70f9ab80@tlielax.poochiereds.net>
-	<1263846450.4127.71.camel@localhost>
-Content-Type: text/plain; charset=US-ASCII
+Received: from mrout2-b.corp.re1.yahoo.com ([69.147.107.21]:26826 "EHLO
+	mrout2-b.corp.re1.yahoo.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751836Ab0AUBZN (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 20 Jan 2010 20:25:13 -0500
+Date: Wed, 20 Jan 2010 19:22:31 -0600
+From: Quentin Barnes <qbarnes+nfs@yahoo-inc.com>
+To: Peter Staubach <staubach@redhat.com>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: Difference between v2.6.31 and v2.6.32 spikes READs
+Message-ID: <20100121012231.GB30642@yahoo-inc.com>
+References: <20100105232342.GA22969@yahoo-inc.com> <4B44D0A4.2020509@redhat.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4B44D0A4.2020509@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Mon, 18 Jan 2010 15:27:30 -0500
-Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
-
-> On Mon, 2010-01-18 at 15:20 -0500, Jeff Layton wrote: 
-> > On Mon, 18 Jan 2010 14:47:46 -0500
-> > Jeff Layton <jlayton@redhat.com> wrote:
+On Wed, Jan 06, 2010 at 10:04:20AM -0800, Peter Staubach wrote:
+> Quentin Barnes wrote:
+> > I moved from v2.6.31.3 to v2.6.32.2 and noticed a huge spike in the
+> > number of NFSv3 READs issued for the application I'm porting.  The
+> > app has a mixed load of short NFS I/O operations, but about 50% of
+> > the time the app is doing an open(2), append to the file a small
+> > amount of data (~300 bytes), then closes the file.  On v2.6.31.3,
+> > this resulted in a LOOKUP, ACCESS, and a WRITE of 300 bytes.  Now
+> > for the append operations with v2.6.32.2, I see LOOKUP, ACCESS,
+> > READ, and WRITE.
 > > 
-> > > With the commit of the statd patches over the weekend, we're now
-> > > positioned to be able to ship IPv6-enabled nfs-utils in distros. There
-> > > is a potential snag though...
-> > > 
-> > > Consider this situation:
-> > > 
-> > > Admin has a Linux server set up. Server has both IPv4 and IPv6 addrs.
-> > > Both addresses are in DNS.
-> > > 
-> > > Without an IPv6-enabled nfs-utils, he mounts via IPv4 and all works
-> > > fine. Now with an IPv6 enabled nfs-utils, mount.nfs prefers the IPv6
-> > > addr and the mount fails (or hangs for a long time and then fails, if
-> > > it's using NFSv4)...
-> > > 
-> > > While I don't really like it, I think we may need to consider making
-> > > mount.nfs prefer IPv4 addrs when it can resolve a hostname to both v4
-> > > and v6. Otherwise, we run the risk of breaking an awful lot of working
-> > > setups...
-> > > 
+> > Here's the network trace for an append with 2.6.31.3:
+> > ===========
+> > LOOKUP Call, DH:0x0308031e/scr2
+> > LOOKUP Reply, FH:0x29f0b5d0
+> > ACCESS Call, FH:0x29f0b5d0
+> > ACCESS Reply
+> > WRITE Call, FH:0x29f0b5d0 Offset:17284 Len:300 UNSTABLE
+> > WRITE Reply Len:300 UNSTABLE
+> > COMMIT Call, FH:0x29f0b5d0
+> > COMMIT Reply
+> > ===========
 > > 
-> > Apologies for the self reply and non-descript initial title.
+> > And for 2.6.32.2:
+> > ===========
+> > LOOKUP Call, DH:0x0308031e/scr2
+> > LOOKUP Reply, FH:0x29f0b5d0
+> > ACCESS Call, FH:0x29f0b5d0
+> > ACCESS Reply
+> > READ Call, FH:0x29f0b5d0 Offset:16384 Len:900
+> > READ Reply Len:900
+> > WRITE Call, FH:0x29f0b5d0 Offset:16384 Len:1200 UNSTABLE
+> > WRITE Reply Len:1200 UNSTABLE
+> > COMMIT Call, FH:0x29f0b5d0
+> > COMMIT Reply
+> > ===========
 > > 
-> > For discussion purposes, here's a patch to do what I'm thinking of. It
-> > seems to work and do the right thing. You can still force a mount over
-> > ipv6 by using the right proto/mountproto options.
+> > My think the behavior change is due to "read-modify-write page
+> > updating" patch with adding the nfs_want_read_modify_write()
+> > function, but that's just a guess.
+> > 
+> > Even with the additional READs, in some modes of the app performance
+> > has gone up with v2.6.32 by 4.0%.  (Good!)  However, in other modes,
+> > it has dropped 22%.  (Not good!)
+> > 
+> > If my guess is right, I'm wondering if the read-modify-write
+> > updating patch accounted for files opened read-write, but only
+> > written to or appended to before closing.
+> > 
+> > Can the read-modify-write page updating be altered to better handle
+> > opens in read-write (O_RDWR) that only end up writing before
+> > closing?
+> > 
 > 
-> How do other applications deal with this problem? Surely, not every
-> application out there is having to filter away IPv6 addresses?
+> I believe that your analysis is correct.  The additional
+> READ operation is probably coming from the client expecting
+> to do a read-modify-write cycle instead of a modify-write-
+> read cycle.
 > 
-> I thought that glibc was by default set up to prefer IPv4 addresses, and
-> allows you to further configure that using /etc/gai.conf. Why is this
-> failing?
+> I suspect that the heuristic used could be augmented to be
+> more clever, but the cost for normal operations would go
+> up.
 > 
-> Cheers
->   Trond
-> 
+> Instead of doing this, could you modify the application to
+> open the file for writing only when just appending these
+> small amounts of data?
 
-At least on my test box (which has no gai.conf set up), IPv6 addrs seem
-to come first in the list returned by getaddrinfo, and I think that's
-how it'll turn out for most people. There's a bit of discussion on this
-in Ulrich's writeup here:
+I asked the app maintainer.  Luckily, in this case, he is able to go
+ahead and make the change to his Linux port.
 
-http://people.redhat.com/drepper/linux-rfc3484.html
+I brought this up here for two reasons.  1) To let people know that
+if they are only writing/appending to a file that it's a good idea
+to make sure they open the file with O_WRONLY instead of O_RDWR so
+that they might see a performance boost they otherwise might not
+know about on 2.6.32 kernels and later.  2) To let the NFS mailing
+list know that a lot of people won't think to either change their
+app, or can't for some reason and be stuck, so we might think about
+fixing this performance issue at some point making the algorithm
+more clever.
 
-(see "The BIG Problem")
+I haven't yet looked at the algorithm to know how difficult it
+might be to fix.  If someone knows a way to make the tweak to the
+algorithm, I'm willing to test it.
 
-Though that's sort of orthogonal to the issue. I'm not worried about
-unreachable IPv6 addresses. The problem is that there is a large
-installed base of servers that do not support serving NFS over IPv6.
-Many of those may have IPv6 connectivity set up for other reasons. We
-don't want clients to start failing to mount them when they get an
-ipv6-enabled nfs-utils.
+> 		ps
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
--- 
-Jeff Layton <jlayton@redhat.com>
+Quentin
