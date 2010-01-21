@@ -1,85 +1,72 @@
-From: "William A. (Andy) Adamson" <androsadamson@gmail.com>
-Subject: Re: [PATCH 1/2] nfs41: fix nfs4_callback_recallslot
-Date: Thu, 21 Jan 2010 14:58:26 -0500
-Message-ID: <89c397151001211158q790fef68t74753683268c9b54@mail.gmail.com>
-References: <1264101557-6619-1-git-send-email-andros@netapp.com>
-	 <1264103242.3721.12.camel@localhost>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH] mount.nfs: prefer IPv4 addresses over IPv6 (try #2)
+Date: Thu, 21 Jan 2010 16:52:08 -0500
+Message-ID: <20100121215208.GF23322@fieldses.org>
+References: <1263907662-19107-1-git-send-email-jlayton@redhat.com> <1667647A-2BB1-478D-8881-CE8EA2191F97@oracle.com> <20100120082905.1825f806@tlielax.poochiereds.net> <8E556CE2-569B-4E6D-BD02-7EF5CA84900D@oracle.com> <20100121191515.GA22021@fieldses.org> <4B58AD16.8040309@oracle.com> <20100121195746.GC22021@fieldses.org> <4B58B8FE.80800@oracle.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: linux-nfs@vger.kernel.org
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: Jeff Layton <jlayton@redhat.com>, linux-nfs@vger.kernel.org,
+	steved@redhat.com, trond.myklebust@fys.uio.no
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yw0-f198.google.com ([209.85.211.198]:51842 "EHLO
-	mail-yw0-f198.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753256Ab0AUT6g convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 21 Jan 2010 14:58:36 -0500
-Received: by ywh36 with SMTP id 36so112222ywh.15
-        for <linux-nfs@vger.kernel.org>; Thu, 21 Jan 2010 11:58:36 -0800 (PST)
-In-Reply-To: <1264103242.3721.12.camel@localhost>
+Received: from fieldses.org ([174.143.236.118]:42404 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753090Ab0AUVur (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 21 Jan 2010 16:50:47 -0500
+In-Reply-To: <4B58B8FE.80800@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Jan 21, 2010 at 2:47 PM, Trond Myklebust
-<Trond.Myklebust@netapp.com> wrote:
-> On Thu, 2010-01-21 at 14:19 -0500, andros@netapp.com wrote:
->> From: Andy Adamson <andros@netapp.com>
+On Thu, Jan 21, 2010 at 03:28:46PM -0500, Chuck Lever wrote:
+> On 01/21/2010 02:57 PM, J. Bruce Fields wrote:
+>> On Thu, Jan 21, 2010 at 02:37:58PM -0500, Chuck Lever wrote:
+>>> rpcb_getaddr(3t) is designed to use the rpcbind protocol to determine
+>>> the address and transport to use when contacting a remote service.  Our
+>>> mount command has its own negotiation mechanism that is a superset of
+>>> rpcbind calls, in addition to having a faster timeout than
+>>> rpcb_getaddr(3t).
 >>
->> Return NFS4_OK if target high slotid equals enforced high slotid.
->> Fix nfs_client reference leak.
->>
->> Signed-off-by: Andy Adamson <andros@netapp.com>
->> ---
->> =A0fs/nfs/callback_proc.c | =A0 10 +++++++---
->> =A01 files changed, 7 insertions(+), 3 deletions(-)
->>
->> diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
->> index e5155d9..c79e18c 100644
->> --- a/fs/nfs/callback_proc.c
->> +++ b/fs/nfs/callback_proc.c
->> @@ -381,13 +381,17 @@ unsigned nfs4_callback_recallslot(struct cb_re=
-callslotargs *args, void *dummy)
->> =A0 =A0 =A0 fc_tbl =3D &clp->cl_session->fc_slot_table;
->>
->> =A0 =A0 =A0 status =3D htonl(NFS4ERR_BAD_HIGH_SLOT);
+>> What does "is a superset of rpcbind calls" mean?
 >
-> This is not related directly to your patch, but "sparse" is going to
-> have a field day with all these scattered around the place. Are there
-> any plans to clean all this up, and replace those 'int' and 'unsigned=
-'
-> declarations that are being assigned big ended values with the correc=
-t
-> '__be32' type?
+> rpcb_getaddr(3t) performs a single specific rpcbind query with a long  
+> fixed timeout.  mount.nfs uses several rpcbind queries, in a particular  
+> order, to identify which NFS-related services are available.  mount.nfs  
+> uses individual queries rather than a single DUMPALL in order to enable  
+> firewalls to detect which ports should be opened.
+>
+>> I still don't
+>> understand what the proper protocol family negotiation is: what actually
+>> happens on the wire?
+>
+> If a particular RPC service (including rpcbind) cannot be contacted via  
+> "inet6," and the server has an "inet" address listed in DNS, then  
+> mount.nfs should be smart enough to try the mount request via the "inet"  
+> address too.  This is in addition to support for rpcbind queries that  
+> can return a netid, which would include information about which protocol  
+> family to use).
+>
+> Currently our mount.nfs command fails if the target server has at least  
+> one IPv6 address listed in DNS in addition to an IPv4 address, but does  
+> not support NFS/IPv6.
+>
+> For NFSv4, a server that has an IPv6 address but does not support  
+> NFS/IPv6 will refuse connection to port 2049 over IPv6.  In that case,  
+> mount.nfs should tell the kernel to retry the mount with the server's  
+> IPv4 address, if it has one.
+>
+> For NFSv3, a server that has an IPv6 address, but does not support  
+> NFS/IPv6, will not register any inet6 netids in its rpcbind database.  
+> Thus the mount.nfs command has to be smart enough to retry  
+> PROGNOTREGISTERED results with the server's IPv4 address, if it has one.
+>
+> If the server has an IPv6 address, but is running portmap instead of  
+> rpcbind, the initial rpcbind query connection will be refused (portmap  
+> does not set up an IPv6 listener).  In that case, the mount request  
+> should be retried with the server's IPv4 address, if it has one.
+>
+> Note that in any of these cases, if an NFS server does not have any IPv6  
+> addresses listed in DNS, then behavior should be the same as before.
 
-I could do that.
+OK, got it.  (I think.)  Thanks!
 
--->Andy
-
->
->> - =A0 =A0 if (args->crsa_target_max_slots >=3D fc_tbl->max_slots ||
->> + =A0 =A0 if (args->crsa_target_max_slots > fc_tbl->max_slots ||
->> =A0 =A0 =A0 =A0 =A0 args->crsa_target_max_slots < 1)
->> - =A0 =A0 =A0 =A0 =A0 =A0 goto out;
->> + =A0 =A0 =A0 =A0 =A0 =A0 goto out_putclient;
->> +
->> + =A0 =A0 status =3D htonl(NFS4_OK);
->> + =A0 =A0 if (args->crsa_target_max_slots =3D=3D fc_tbl->max_slots)
->> + =A0 =A0 =A0 =A0 =A0 =A0 goto out_putclient;
->>
->> =A0 =A0 =A0 fc_tbl->target_max_slots =3D args->crsa_target_max_slots=
-;
->> =A0 =A0 =A0 nfs41_handle_recall_slot(clp);
->> - =A0 =A0 status =3D htonl(NFS4_OK);
->> +out_putclient:
->> =A0 =A0 =A0 nfs_put_client(clp); =A0 =A0/* balance nfs_find_client *=
-/
->> =A0out:
->> =A0 =A0 =A0 dprintk("%s: exit with status =3D %d\n", __func__, ntohl=
-(status));
->
->
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" =
-in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at =A0http://vger.kernel.org/majordomo-info.html
->
+--b.
