@@ -1,35 +1,40 @@
-From: "Batsakis, Alexandros" <Alexandros.Batsakis@netapp.com>
-Subject: RE: [PATCH 1/1] nfs: fix race between renewd, umount, and the state manager in V4.1
-Date: Fri, 22 Jan 2010 12:24:53 -0800
-Message-ID: <B9364369CA66BF45806C2CD86EAB8BA604F355A6@SACMVEXC3-PRD.hq.netapp.com>
-References: <1264135871-13083-1-git-send-email-batsakis@netapp.com> <1264186039.30757.7.camel@localhost> <B9364369CA66BF45806C2CD86EAB8BA604F35537@SACMVEXC3-PRD.hq.netapp.com> <1264189298.30757.16.camel@localhost> <B9364369CA66BF45806C2CD86EAB8BA604F35581@SACMVEXC3-PRD.hq.netapp.com> <1264191084.30757.28.camel@localhost> <1264191680.30757.33.camel@localhost>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [RFC] [PATCH 0/4] Protocol family negotiation in mount.nfs
+Date: Fri, 22 Jan 2010 16:06:12 -0500
+Message-ID: <20100122210221.10598.84522.stgit@localhost.localdomain>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="UTF-8"
-Cc: <linux-nfs@vger.kernel.org>
-To: "Trond Myklebust" <trond.myklebust@fys.uio.no>
+Content-Type: text/plain; charset="utf-8"
+Cc: linux-nfs@vger.kernel.org
+To: jlayton@redhat.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:62591 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753933Ab0AVUYz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 22 Jan 2010 15:24:55 -0500
-In-Reply-To: <1264191680.30757.33.camel@localhost>
+Received: from rcsinet11.oracle.com ([148.87.113.123]:54191 "EHLO
+	rcsinet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754453Ab0AVVG7 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 22 Jan 2010 16:06:59 -0500
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-DQoNCj4gLS0tLS1PcmlnaW5hbCBNZXNzYWdlLS0tLS0NCj4gRnJvbTogVHJvbmQgTXlrbGVidXN0
-IFttYWlsdG86dHJvbmQubXlrbGVidXN0QGZ5cy51aW8ubm9dDQo+IFNlbnQ6IEZyaWRheSwgSmFu
-dWFyeSAyMiwgMjAxMCAxMjoyMSBQTQ0KPiBUbzogQmF0c2FraXMsIEFsZXhhbmRyb3MNCj4gQ2M6
-IGxpbnV4LW5mc0B2Z2VyLmtlcm5lbC5vcmcNCj4gU3ViamVjdDogUkU6IFtQQVRDSCAxLzFdIG5m
-czogZml4IHJhY2UgYmV0d2VlbiByZW5ld2QsIHVtb3VudCwgYW5kIHRoZQ0KPiBzdGF0ZSBtYW5h
-Z2VyIGluIFY0LjENCj4gDQo+IE9uIEZyaSwgMjAxMC0wMS0yMiBhdCAxNToxMSAtMDUwMCwgVHJv
-bmQgTXlrbGVidXN0IHdyb3RlOg0KPiA+IFRoZW4gdGhlIGNvcnJlY3QgdGhpbmcgdG8gZG8gaXMg
-dG8gZml4IHRoZSByZW5ld2Qga2lsbCBwcm9jZXNzLiBPbmNlDQo+ID4gdGhhdCBpcyBkb25lLCB0
-aGVyZSBzaG91bGQgYmUgbm8gcmVhc29uIGZvciBhbnkgc2VxdWVuY2VfZG9uZSBjYWxscw0KPiB0
-bw0KPiA+IGJlIHBlbmRpbmcgKHNlZSByZWFzb24gYWJvdmUpLg0KPiANCj4gSU9XOiB3ZSBzaG91
-bGQgYWRkIGEgY2FsbCB0byBhdG9taWNfaW5jX25vdF96ZXJvKCZjbHAtPmNsX2NvdW50KSBpbg0K
-PiBuZnM0X3Byb2NfYXN5bmNfcmVuZXcoKS9uZnM0MV9wcm9jX2FzeW5jX3NlcXVlbmNlKCksIGFu
-ZCBoYXZlIHRoZW0gZmFpbA0KPiBpZiB0aGF0IGF0dGVtcHQgdG8gZ3JhYiBhIHJlZmVyZW5jZSBm
-YWlscy4gVGhlbiB3ZSBzaG91bGQgYWRkIGEgY2FsbCB0bw0KPiBuZnNfcHV0X2NsaWVudCgpIGlu
-IHRoZWlyIC5ycGNfcmVsZWFzZSBtZXRob2QuDQo+IA0KPiBUcm9uZA0KDQpHb3QgaXQuLi53aWxs
-IGRvLiBUaGFua3MhDQoNCi1hDQo=
+Hi Jeff-
+
+For the record, here are patches that add support to mount.nfs for
+negotiating the protocol family correctly with servers that have both
+IPv4 and IPv6 addresses.
+
+I've done some basic testing here against Solaris NFS servers, Linux
+with rpcbind (Fedora 12), and Linux with portmap (Ubuntu 9.10).
+
+---
+
+Chuck Lever (4):
+      text-based mount: Support protocol family negotiation
+      text-based mount: Set addr= option in nfs_try_mount_foo()
+      text-based mount: Replace nfs_lookup() with getaddrinfo(3)
+      text-based mount: Retry when server can't be reached
+
+
+ utils/mount/nfs.man   |    6 ++
+ utils/mount/stropts.c |  120 ++++++++++++++++++++++++++++++++++++++++++-------
+ 2 files changed, 107 insertions(+), 19 deletions(-)
+
+-- 
+chuck[dot]lever[at]oracle[dot]com
