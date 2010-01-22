@@ -1,244 +1,42 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-fx0-f220.google.com ([209.85.220.220]:56549 "EHLO
-	mail-fx0-f220.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753806Ab0AYTCQ convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 25 Jan 2010 14:02:16 -0500
-Received: by fxm20 with SMTP id 20so3898422fxm.21
-        for <linux-nfs@vger.kernel.org>; Mon, 25 Jan 2010 11:02:14 -0800 (PST)
-In-Reply-To: <0BA6F612-CE3A-47E9-B436-57E48506D769@oracle.com>
-References: <d7f0b3a81001230745h18dbb14fi42f28adff0c45294@mail.gmail.com>
-	 <1f808b4a1001230757i2027d32dxb48482ea7bf8e4ee@mail.gmail.com>
-	 <d7f0b3a81001230827y52727993nf60210ae610643b7@mail.gmail.com>
-	 <7A24DF798E223B4C9864E8F92E8C93EC0527810C@SACMVEXC1-PRD.hq.netapp.com>
-	 <d7f0b3a81001241609v35e54740yea3fa1a251b4f953@mail.gmail.com>
-	 <0BA6F612-CE3A-47E9-B436-57E48506D769@oracle.com>
-Date: Mon, 25 Jan 2010 20:02:14 +0100
-Message-ID: <d7f0b3a81001251102p5e631706jfd9f147a00487061@mail.gmail.com>
-Subject: Re: nfs client performance while server is down
-From: Whoop Whouzer <tiredandnumb@gmail.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: "Muntz, Daniel" <Dan.Muntz@netapp.com>,
-        Peter Chacko <peterchacko35@gmail.com>, linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from esrismtp2.esri.com ([198.102.62.103]:26369 "EHLO esri3.esri.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754011Ab0AVUQn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 22 Jan 2010 15:16:43 -0500
+Received: from leoray.esri.com (leoray.esri.com [10.27.102.12])
+	by esri3.esri.com (8.11.7p3+Sun/8.11.7) with ESMTP id o0MKGc625506
+	for <linux-nfs@vger.kernel.org>; Fri, 22 Jan 2010 12:16:43 -0800 (PST)
+Received: from leoray.esri.com (leoray.esri.com [127.0.0.1])
+	by leoray.esri.com (8.14.3/8.14.3) with ESMTP id o0MKGc7s026342
+	for <linux-nfs@vger.kernel.org>; Fri, 22 Jan 2010 12:16:38 -0800
+Received: (from ray5147@localhost)
+	by leoray.esri.com (8.14.3/8.14.3/Submit) id o0MKGcxu026341
+	for linux-nfs@vger.kernel.org; Fri, 22 Jan 2010 12:16:38 -0800
+Date: Fri, 22 Jan 2010 12:16:38 -0800
+From: Ray Van Dolson <rvandolson@esri.com>
+To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: Source address in server callbacks fix...
+Message-ID: <20100122201638.GA26316@esri.com>
+References: <20100122200525.GA26072@esri.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20100122200525.GA26072@esri.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Ok, I did that, after shutting down the server and enabling debug
-trace I tried to open the home folder of the current account (totally
-unrelated to the nfsshare), it wouldn't open at all, I got no nautilus
-at all. During the time my cursor was in busy mode I got the following
-messages in kern.log (for ubuntu 10.04 client):
-Jan 25 19:30:13 whoop-desktop kernel: [  160.719262] NFS call  fsstat
-Jan 25 19:30:37 whoop-desktop kernel: [  184.458611] NFS:
-permission(0:16/74386), mask=0x10, res=0
-Jan 25 19:30:37 whoop-desktop kernel: [  184.458647] NFS call  access
-Jan 25 19:30:43 whoop-desktop kernel: [  190.721086] nfs: server
-192.168.1.130 not responding, timed out
-Jan 25 19:30:43 whoop-desktop kernel: [  190.721113] NFS reply statfs: -5
-Jan 25 19:30:43 whoop-desktop kernel: [  190.721116] nfs_statfs:
-statfs error = 5
-These series of traces are repeating over and over again at a set
-interval (there is no flooding of the logs), even if I do nothing.
-It's even worse than I thought because when I tried to shutdown, the
-machine wouldn't shutdown because it claimed
-the "File manager" was still running (although it was not visible on
-screen); so I had to kill that before I could shutdown (properly).
+On Fri, Jan 22, 2010 at 12:05:25PM -0800, Ray Van Dolson wrote:
+> We're being bitten by the source address in server callbacks
+> issue[1][2].
+> 
+> The post above[1], mentions kernel fixes for this.  I'm having a hard
+> time locating this commit so I can determine if it has been backported
+> to the RHEL5 kernel yet.
+> 
+> Can anyone point me in the right direction?
 
-In Fedora 12 I had a similar user experience (nautilus did show up
-without showing any contents and it was hanging). I had enabled
-tracing and it seems to be logged to /var/log/messages. I got this
-output in fedora:
-Jan 25 20:48:38 localhost kernel: NFS reply statfs: -5
-Jan 25 20:48:38 localhost kernel: nfs_statfs: statfs error = 5
-Jan 25 20:48:38 localhost kernel: NFS call  fsstat
-Jan 25 20:49:14 localhost kernel: nfs: server 192.168.1.130 not
-responding, timed out
-Jan 25 20:49:14 localhost kernel: NFS reply getattr: -5
-Jan 25 20:49:14 localhost kernel: nfs_revalidate_inode: (0:14/74386)
-getattr failed, error=-5
-Jan 25 20:49:25 localhost kernel: NFS: revalidating (0:14/74386)
-Jan 25 20:49:25 localhost kernel: NFS call  getattr
-Jan 25 20:50:14 localhost kernel: nfs: server 192.168.1.130 not
-responding, timed out
-Jan 25 20:50:14 localhost kernel: NFS reply access: -5
-Jan 25 20:50:14 localhost kernel: NFS: permission(0:14/74386), mask=0x1, res=-5
-Jan 25 20:50:14 localhost kernel: NFS call  access
-Jan 25 20:51:14 localhost kernel: nfs: server 192.168.1.130 not
-responding, timed out
-Jan 25 20:51:14 localhost kernel: NFS reply statfs: -5
-Jan 25 20:51:14 localhost kernel: nfs_statfs: statfs error = 5
-Jan 25 20:51:14 localhost kernel: NFS call  fsstat
-Most of the trace is repeating in set intervals as well, there is no
-flooding of the logs...
-Fedora would not shutdown normally either
+Spoke too soon.  This[1] appears to be it.  Don't know if there are
+subsequent patches that improve upon this or not...
 
+Ray
 
-On Mon, Jan 25, 2010 at 5:48 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
-> On Jan 24, 2010, at 7:09 PM, Whoop Whouzer wrote:
->>
->> I did some network traces and there is nothing strange happening as
->> far as I can tell. I shut down the server (some network traffic
->> occurred as is to be expected). It got quiet again, I launched
->> nautilus, it got stuck without displaying anything and there was no
->> real network activity except 3 broadcasts using the ARP protocol
->> asking where the server was (could be just coincidence).
->
-> That sounds like the client does want to reconnect with the server.
->
-> You could try enabling debug tracing on your client (sudo rpcdebug -m nfs -s
-> all) after shutting down your server, then try to start nautilus.  The
-> kernel log would then contain NFS-related messages that might indicate where
-> to look next.
->
->> Closing
->> nautilus and launching it again will let it hang again but I see no
->> additional network traffic. After a while nautilus will display the
->> contents of the folder without any network traffic.
->>
->> On Sun, Jan 24, 2010 at 10:34 PM, Muntz, Daniel <Dan.Muntz@netapp.com>
->> wrote:
->>>
->>> Perhaps something in your $PATH is in the NFS mount?  Do a network trace
->>> and maybe you can see if, in fact, there are actually NFS operations being
->>> attempted that you weren't expecting.  Then try to figure out why.
->>>
->>>  -Dan
->>>
->>>> -----Original Message-----
->>>> From: Whoop Whouzer [mailto:tiredandnumb@gmail.com]
->>>> Sent: Saturday, January 23, 2010 8:28 AM
->>>> To: Peter Chacko
->>>> Cc: linux-nfs@vger.kernel.org
->>>> Subject: Re: nfs client performance while server is down
->>>>
->>>> I don't remember all the different set-ups I tried it on, but I just
->>>> confirmed this with the following combinations:
->>>>
->>>> ubuntu server 10.04 (alpha 2) --> ubuntu desktop 9.10, ubuntu desktop
->>>> 10.04 (alpha 2), fedora 12
->>>> ubuntu server 9.10 --> ubuntu desktop 9.10, ubuntu desktop 10.04
->>>> (alpha 2), fedora 12
->>>>
->>>> I'll be happy to test it on another client machine (distro) even
->>>> another server (although it would require a little more time)
->>>>
->>>> Here are some examples on the bugreports I noticed and how they do not
->>>> seem to get solved:
->>>> https://bugzilla.redhat.com/show_bug.cgi?id=175283
->>>> https://bugs.launchpad.net/ubuntu/+source/nfs-utils/+bug/164120
->>>>
->>>> regards,
->>>> Whoop
->>>>
->>>> On Sat, Jan 23, 2010 at 4:57 PM, Peter Chacko
->>>> <peterchacko35@gmail.com> wrote:
->>>>>
->>>>> Which client OS you observed this behavior ?  This has nothing to do
->>>>> NFS design, and its purely stateless...Its upto the client OS
->>>>> implementation about aspects like how to deal with local
->>>>
->>>> IO, when NFS
->>>>>
->>>>> share gets  disconnected..
->>>>>
->>>>> May be a VFS bug on the local OS you found this problem ..
->>>>>
->>>>> thanks
->>>>>
->>>>> On Sat, Jan 23, 2010 at 9:15 PM, Whoop Whouzer
->>>>
->>>> <tiredandnumb@gmail.com> wrote:
->>>>>>
->>>>>> Howdy,
->>>>>>
->>>>>> I was wondering why nfs is designed in such a way that the
->>>>
->>>> performance
->>>>>>
->>>>>> of an nfs client machine gets very bad when the nfs server
->>>>
->>>> is offline?
->>>>>>
->>>>>> This is even the case with a soft mount (either via mount
->>>>
->>>> or fstab).
->>>>>>
->>>>>> Just about every application that requires disk access (not talking
->>>>>> about nfs share acces) gets really slow to unresponsive.
->>>>
->>>> For instance
->>>>>>
->>>>>> nautilus becomes unresponsive when displaying the contents of any
->>>>>> folder on the local disk,
->>>>>> playing movie files (stored on local disk) let totem or
->>>>
->>>> vlc get stuck
->>>>>>
->>>>>> on set intervals, even the terminal becomes unresponsive at times.
->>>>>>
->>>>>> I could understand that these problems would occur while
->>>>
->>>> accessing the
->>>>>>
->>>>>> nfs share directoiourry while the server is offline, but
->>>>
->>>> why for totally
->>>>>>
->>>>>> unrelated directories?
->>>>>>
->>>>>> I have experienced this behaviour on various distro's, and
->>>>
->>>> also found
->>>>>>
->>>>>> various bug reports on this issue, they don't seem to get solved as
->>>>>> this is viewed as nfs design.
->>>>>> I see this as a flaw because clients are totally dependent on the
->>>>>> server. This would be less of a deal if the entire home directory
->>>>>> would be stored on nfs (although I even think some sort of
->>>>>> synchronisation technology could and should be implemented in this
->>>>>> case). It is a bit odd that (technically) one machine serving some
->>>>>> "useless" files to a non-trivial directory on client
->>>>
->>>> machines can take
->>>>>>
->>>>>> down these client machines.
->>>>>>
->>>>>> For me the preferred functionality would be:
->>>>>> *If an nfs server gets offline the client's nfs share becomes
->>>>>> unaccessible, but local directories and applications (that only
->>>>>> require local disk access) stay responsive.
->>>>>> *If an nfs server gets online (after being offline while the client
->>>>>> has not been restarted) the nfs share becomes reconnected.
->>>>>>
->>>>>> regards,
->>>>>> Whoop
->>>>>> --
->>>>>> To unsubscribe from this list: send the line "unsubscribe
->>>>
->>>> linux-nfs" in
->>>>>>
->>>>>> the body of a message to majordomo@vger.kernel.org
->>>>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>>>>>
->>>>>
->>>> --
->>>> To unsubscribe from this list: send the line "unsubscribe
->>>> linux-nfs" in
->>>> the body of a message to majordomo@vger.kernel.org
->>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>>>
->>>
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->
-> --
-> Chuck Lever
-> chuck[dot]lever[at]oracle[dot]com
->
->
->
->
->
+[1] http://git.linux-nfs.org/?p=bfields/linux.git;a=commit;h=16cefa8c3863721fd40445a1b34dea18cd16ccfe
