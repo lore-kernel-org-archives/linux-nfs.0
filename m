@@ -1,46 +1,65 @@
-From: "Batsakis, Alexandros" <Alexandros.Batsakis@netapp.com>
-Subject: RE: [PATCH 1/1] nfs: fix race between renewd, umount, and the state manager in V4.1
-Date: Fri, 22 Jan 2010 11:30:50 -0800
-Message-ID: <B9364369CA66BF45806C2CD86EAB8BA604F35537@SACMVEXC3-PRD.hq.netapp.com>
-References: <1264135871-13083-1-git-send-email-batsakis@netapp.com> <1264186039.30757.7.camel@localhost>
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: RE: [PATCH 1/1] nfs: fix race between renewd, umount, and the
+ state manager in V4.1
+Date: Fri, 22 Jan 2010 14:41:38 -0500
+Message-ID: <1264189298.30757.16.camel@localhost>
+References: <1264135871-13083-1-git-send-email-batsakis@netapp.com>
+	 <1264186039.30757.7.camel@localhost>
+	 <B9364369CA66BF45806C2CD86EAB8BA604F35537@SACMVEXC3-PRD.hq.netapp.com>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="UTF-8"
-Cc: <linux-nfs@vger.kernel.org>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Content-Type: text/plain; charset="UTF-8"
+Cc: linux-nfs@vger.kernel.org
+To: "Batsakis, Alexandros" <Alexandros.Batsakis@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:58950 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:64524 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752757Ab0AVTa7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 22 Jan 2010 14:30:59 -0500
-Received: from sacrsexc2-prd.hq.netapp.com (sacrsexc2-prd.hq.netapp.com [10.99.115.28])
-	by smtp2.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id o0MJUuHk015496
-	for <linux-nfs@vger.kernel.org>; Fri, 22 Jan 2010 11:30:56 -0800 (PST)
-In-Reply-To: <1264186039.30757.7.camel@localhost>
+	id S1752813Ab0AVTlj convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 22 Jan 2010 14:41:39 -0500
+Received: from svlrsexc1-prd.hq.netapp.com (svlrsexc1-prd.hq.netapp.com [10.57.115.30])
+	by smtp2.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id o0MJfdbF019762
+	for <linux-nfs@vger.kernel.org>; Fri, 22 Jan 2010 11:41:39 -0800 (PST)
+In-Reply-To: <B9364369CA66BF45806C2CD86EAB8BA604F35537-hX7t0kiaRRqx3DEm5hsDiAK/GNPrWCqfQQ4Iyu8u01E@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-DQoNCj4gLS0tLS1PcmlnaW5hbCBNZXNzYWdlLS0tLS0NCj4gRnJvbTogTXlrbGVidXN0LCBUcm9u
-ZA0KPiBTZW50OiBGcmlkYXksIEphbnVhcnkgMjIsIDIwMTAgMTA6NDcgQU0NCj4gVG86IEJhdHNh
-a2lzLCBBbGV4YW5kcm9zDQo+IENjOiBsaW51eC1uZnNAdmdlci5rZXJuZWwub3JnOyBNeWtsZWJ1
-c3QsIFRyb25kDQo+IFN1YmplY3Q6IFJlOiBbUEFUQ0ggMS8xXSBuZnM6IGZpeCByYWNlIGJldHdl
-ZW4gcmVuZXdkLCB1bW91bnQsIGFuZCB0aGUNCj4gc3RhdGUgbWFuYWdlciBpbiBWNC4xDQo+IA0K
-PiBPbiBUaHUsIDIwMTAtMDEtMjEgYXQgMjA6NTEgLTA4MDAsIEFsZXhhbmRyb3MgQmF0c2FraXMg
-d3JvdGU6DQo+IA0KPiA+IHN0cnVjdCBycGNfY3JlZCAqbmZzNF9nZXRfc2V0Y2xpZW50aWRfY3Jl
-ZChzdHJ1Y3QgbmZzX2NsaWVudCAqY2xwKQ0KPiA+IEBAIC04NzgsNyArODg4LDExIEBAIHZvaWQg
-bmZzNF9zY2hlZHVsZV9zdGF0ZV9tYW5hZ2VyKHN0cnVjdA0KPiBuZnNfY2xpZW50ICpjbHApDQo+
-ID4gIAlpZiAodGVzdF9hbmRfc2V0X2JpdChORlM0Q0xOVF9NQU5BR0VSX1JVTk5JTkcsICZjbHAt
-PmNsX3N0YXRlKSAhPQ0KPiAwKQ0KPiA+ICAJCXJldHVybjsNCj4gPiAgCV9fbW9kdWxlX2dldChU
-SElTX01PRFVMRSk7DQo+ID4gLQlhdG9taWNfaW5jKCZjbHAtPmNsX2NvdW50KTsNCj4gPiArCWlm
-ICghYXRvbWljX2luY19ub3RfemVybygmY2xwLT5jbF9jb3VudCkpIHsNCj4gPiArCQluZnM0X2Ns
-ZWFyX3N0YXRlX21hbmFnZXJfYml0KGNscCk7DQo+ID4gKwkJbW9kdWxlX3B1dChUSElTX01PRFVM
-RSk7DQo+ID4gKwkJcmV0dXJuOw0KPiA+ICsJfQ0KPiANCj4gVGhlIHVzZSBvZiBhdG9taWNfaW5j
-X25vdF96ZXJvKCkgc2hvdWxkIG5vdCBiZSBuZWNlc3NhcnkgaGVyZS4gQW55Ym9keQ0KPiB3aG8g
-aXMgY2FsbGluZyB0aGlzIGZ1bmN0aW9uIHdpdGhvdXQgaG9sZGluZyBhIHJlZmVyZW5jZSB0byBj
-bHAgaXMNCj4gZG9pbmcNCj4gc29tZXRoaW5nIGZ1bmRhbWVudGFsbHkgd3JvbmcuDQoNCkFncmVl
-ZCwgYnV0IGhvdyBjYW4gd2UgZW5mb3JjZSB0aGlzIChlc3BlY2lhbGx5IHdpdGggYXN5bmNocm9u
-b3VzIFJQQykgPw0KRm9yIGV4YW1wbGUgd2hhdCB3aWxsIGhhcHBlbiBpZiBfZHVyaW5nXyB1bW91
-bnQgKGFmdGVyIG5mc19wdXRfY2xpZW50KCkpLCBhbiBORlMgY2FsbCB0aGF0IHdhcyBzbGVlcGlu
-ZyBlLmcuIHdhaXRpbmcgZm9yIHRoZSBzZXJ2ZXIgdG8gY29tZSB1cCwgcmVhY2hlcyB0aGUgc2Vy
-dmVyIGFuZCB0aGUgcmVzcG9uc2UgY2F1c2VzIHRoZSBzdGF0ZSBtYW5hZ2VyIHRvIHN0YXJ0ID8N
-CkFueSBpZGVhcyA/DQoNCi1hDQoNCj4gDQo+IFRyb25kDQo=
+On Fri, 2010-01-22 at 11:30 -0800, Batsakis, Alexandros wrote: 
+> 
+> > -----Original Message-----
+> > From: Myklebust, Trond
+> > Sent: Friday, January 22, 2010 10:47 AM
+> > To: Batsakis, Alexandros
+> > Cc: linux-nfs@vger.kernel.org; Myklebust, Trond
+> > Subject: Re: [PATCH 1/1] nfs: fix race between renewd, umount, and the
+> > state manager in V4.1
+> > 
+> > On Thu, 2010-01-21 at 20:51 -0800, Alexandros Batsakis wrote:
+> > 
+> > > struct rpc_cred *nfs4_get_setclientid_cred(struct nfs_client *clp)
+> > > @@ -878,7 +888,11 @@ void nfs4_schedule_state_manager(struct
+> > nfs_client *clp)
+> > >  	if (test_and_set_bit(NFS4CLNT_MANAGER_RUNNING, &clp->cl_state) !=
+> > 0)
+> > >  		return;
+> > >  	__module_get(THIS_MODULE);
+> > > -	atomic_inc(&clp->cl_count);
+> > > +	if (!atomic_inc_not_zero(&clp->cl_count)) {
+> > > +		nfs4_clear_state_manager_bit(clp);
+> > > +		module_put(THIS_MODULE);
+> > > +		return;
+> > > +	}
+> > 
+> > The use of atomic_inc_not_zero() should not be necessary here. Anybody
+> > who is calling this function without holding a reference to clp is
+> > doing
+> > something fundamentally wrong.
+> 
+> Agreed, but how can we enforce this (especially with asynchronous RPC) ?
+> For example what will happen if _during_ umount (after nfs_put_client()), an NFS call that was sleeping e.g. waiting for the server to come up, reaches the server and the response causes the state manager to start ?
+> Any ideas ?
+
+What would you expect to see running during umount? Nobody can be
+holding a reference to the vfsmount at that point, so there should be no
+active processes around to make NFS calls.
+
+Trond
+
