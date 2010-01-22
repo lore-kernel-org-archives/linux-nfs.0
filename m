@@ -1,77 +1,134 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 1/4] text-based mount: Retry when server can't be reached
-Date: Fri, 22 Jan 2010 16:06:21 -0500
-Message-ID: <20100122210621.10598.15244.stgit@localhost.localdomain>
+Subject: [PATCH 2/4] text-based mount: Replace nfs_lookup() with getaddrinfo(3)
+Date: Fri, 22 Jan 2010 16:06:29 -0500
+Message-ID: <20100122210629.10598.19990.stgit@localhost.localdomain>
 References: <20100122210221.10598.84522.stgit@localhost.localdomain>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org
 To: jlayton@redhat.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from acsinet11.oracle.com ([141.146.126.233]:27534 "EHLO
+Received: from acsinet11.oracle.com ([141.146.126.233]:27528 "EHLO
 	acsinet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754430Ab0AVVHY (ORCPT
+	with ESMTP id S1754403Ab0AVVHY (ORCPT
 	<rfc822;linux-nfs@vger.kernel.org>); Fri, 22 Jan 2010 16:07:24 -0500
 In-Reply-To: <20100122210221.10598.84522.stgit-bi+AKbBUZKY6gyzm1THtWbp2dZbC/Bob@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-We want new default behavior from mount.nfs when the server refuses a
-connection.  Since connection refusal can be spurious (for example,
-if the server is rebooting), mount.nfs should retry.
+Originally I thought it would be best to share the DNS query code
+between the legacy mount code and the new text-based code, hence
+the introduction of nfs_lookup().  However, it now appears we want
+the text-based code to do a little more than take the first address
+returned by the query.
 
-NFS shares that are automatically mounted by /etc/fstab at boot
-time may be problematic.  The new behavior can be disabled by
-specifying the "retry=0" mount option, or these mounts can be changed
-to background mounts by specifying the "bg" option.
-
-A kernel code change is still required for the mount(2) system call to
-return ECONNREFUSED for NFSv4 mounts (see 2.6.33).  For v2/v3, the
-version and transport negotiation logic in mount.nfs should drive a
-retry if the server's rpcbind can't be reached.
-
-Note that if a v2/v3 mount request encounters an unregistered NFS
-service, it will still fail immediately.  That wouldn't be too hard
-to change as well, but there are many more corner cases there where
-failing immediately is appropriate.
+So, let's invoke getaddrinfo(3) directly in stropts.c, and save
+the returned addrinfo struct until the end of processing.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- utils/mount/nfs.man   |    6 +++++-
- utils/mount/stropts.c |    4 ++++
- 2 files changed, 9 insertions(+), 1 deletions(-)
+ utils/mount/stropts.c |   32 ++++++++++++++++++++++++--------
+ 1 files changed, 24 insertions(+), 8 deletions(-)
 
-diff --git a/utils/mount/nfs.man b/utils/mount/nfs.man
-index 93bd642..c64de5f 100644
---- a/utils/mount/nfs.man
-+++ b/utils/mount/nfs.man
-@@ -363,7 +363,11 @@ The number of minutes that the
- command retries an NFS mount operation
- in the foreground or background before giving up.
- If this option is not specified, the default value for foreground mounts
--is 2 minutes, and the default value for background mounts is 10000 minutes (80 minutes shy of one week).
-+is 2 minutes, and the default value for background mounts is 10000 minutes
-+(80 minutes shy of one week).
-+If a value of zero is specified, the
-+.BR mount (8)
-+command exits immediately after the first failure.
- .TP 1.5i
- .BI sec= mode
- The RPCGSS security flavor to use for accessing files on this mount point.
 diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
-index 57a4b32..74224ff 100644
+index 74224ff..4ffee48 100644
 --- a/utils/mount/stropts.c
 +++ b/utils/mount/stropts.c
-@@ -515,6 +515,10 @@ nfs_rewrite_pmap_mount_options(struct mount_options *options)
- 	if (!nfs_probe_bothports(mnt_saddr, mnt_salen, &mnt_pmap,
- 				 nfs_saddr, nfs_salen, &nfs_pmap)) {
- 		errno = ESPIPE;
-+		if (rpc_createerr.cf_stat == RPC_PROGNOTREGISTERED)
-+			errno = EOPNOTSUPP;
-+		else if (rpc_createerr.cf_error.re_errno != 0)
-+			errno = rpc_createerr.cf_error.re_errno;
+@@ -49,6 +49,10 @@
+ #include "parse_dev.h"
+ #include "conffile.h"
+ 
++#ifndef HAVE_DECL_AI_ADDRCONFIG
++#define AI_ADDRCONFIG	0
++#endif
++
+ #ifndef NFS_PROGRAM
+ #define NFS_PROGRAM	(100003)
+ #endif
+@@ -83,8 +87,7 @@ struct nfsmount_info {
+ 				*node,		/* mounted-on dir */
+ 				*type;		/* "nfs" or "nfs4" */
+ 	char			*hostname;	/* server's hostname */
+-	union nfs_sockaddr	address;
+-	socklen_t		salen;		/* size of server's address */
++	struct addrinfo		*address;	/* server's addresses */
+ 
+ 	struct mount_options	*options;	/* parsed mount options */
+ 	char			**extra_opts;	/* string for /etc/mtab */
+@@ -333,17 +336,27 @@ static int nfs_set_version(struct nfsmount_info *mi)
+  */
+ static int nfs_validate_options(struct nfsmount_info *mi)
+ {
+-	struct sockaddr *sap = &mi->address.sa;
++	struct addrinfo hint = {
++		.ai_protocol	= (int)IPPROTO_UDP,
++		.ai_flags	= AI_ADDRCONFIG,
++	};
+ 	sa_family_t family;
++	int error;
+ 
+ 	if (!nfs_parse_devname(mi->spec, &mi->hostname, NULL))
  		return 0;
+ 
+ 	if (!nfs_nfs_proto_family(mi->options, &family))
+ 		return 0;
+-	mi->salen = sizeof(mi->address);
+-	if (!nfs_lookup(mi->hostname, family, sap, &mi->salen))
++
++	hint.ai_family = (int)family;
++	error = getaddrinfo(mi->hostname, NULL, &hint, &mi->address);
++	if (error != 0) {
++		nfs_error(_("%s: Failed to resolve server %s: %s"),
++			progname, mi->hostname, gai_strerror(error));
++		mi->address = NULL;
+ 		return 0;
++	}
+ 
+ 	if (!nfs_set_version(mi))
+ 		return 0;
+@@ -351,7 +364,8 @@ static int nfs_validate_options(struct nfsmount_info *mi)
+ 	if (!nfs_append_sloppy_option(mi->options))
+ 		return 0;
+ 
+-	if (!nfs_append_addr_option(sap, mi->salen, mi->options))
++	if (!nfs_append_addr_option(mi->address->ai_addr,
++					mi->address->ai_addrlen, mi->options))
+ 		return 0;
+ 
+ 	return 1;
+@@ -614,7 +628,7 @@ out_fail:
+  */
+ static int nfs_try_mount_v4(struct nfsmount_info *mi)
+ {
+-	struct sockaddr *sap = &mi->address.sa;
++	struct addrinfo *ai = mi->address;
+ 	struct mount_options *options = po_dup(mi->options);
+ 	int result = 0;
+ 
+@@ -642,7 +656,7 @@ static int nfs_try_mount_v4(struct nfsmount_info *mi)
+ 		}
  	}
  
+-	if (!nfs_append_clientaddr_option(sap, mi->salen, options)) {
++	if (!nfs_append_clientaddr_option(ai->ai_addr, ai->ai_addrlen, options)) {
+ 		errno = EINVAL;
+ 		goto out_fail;
+ 	}
+@@ -882,6 +896,7 @@ int nfsmount_string(const char *spec, const char *node, const char *type,
+ 	struct nfsmount_info mi = {
+ 		.spec		= spec,
+ 		.node		= node,
++		.address	= NULL,
+ 		.type		= type,
+ 		.extra_opts	= extra_opts,
+ 		.flags		= flags,
+@@ -897,6 +912,7 @@ int nfsmount_string(const char *spec, const char *node, const char *type,
+ 	} else
+ 		nfs_error(_("%s: internal option parsing error"), progname);
+ 
++	freeaddrinfo(mi.address);
+ 	free(mi.hostname);
+ 	return retval;
+ }
 
