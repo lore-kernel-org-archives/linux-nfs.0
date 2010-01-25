@@ -1,7 +1,8 @@
 From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH 08/12] NFS: Simplify nfs_wb_page_cancel()
+Subject: [PATCH 02/12] VM: Don't call bdi_stat(BDI_UNSTABLE) on non-nfs
+ backing-devices
 Date: Mon, 25 Jan 2010 17:15:45 -0500
-Message-ID: <20100125221545.16750.36339.stgit@localhost.localdomain>
+Message-ID: <20100125221545.16750.41973.stgit@localhost.localdomain>
 References: <20100125221544.16750.70574.stgit@localhost.localdomain>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -16,114 +17,106 @@ Cc: Wu Fengguang <fengguang.wu@intel.com>,
 	Al Viro <viro@ZenIV.linux.org.uk>
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:17544 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:17535 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753545Ab0AYWjK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	id S1752260Ab0AYWjK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
 	Mon, 25 Jan 2010 17:39:10 -0500
 In-Reply-To: <20100125221544.16750.70574.stgit-bi+AKbBUZKY6gyzm1THtWbp2dZbC/Bob@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-In all cases we should be able to just remove the request and call
-cancel_dirty_page().
+Speeds up the accounting in balance_dirty_pages() for non-nfs devices.
 
 Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+Acked-by: Jan Kara <jack@suse.cz>
+Acked-by: Peter Zijlstra <peterz@infradead.org>
+Reviewed-by: Wu Fengguang <fengguang.wu@intel.com>
 ---
 
- fs/nfs/write.c         |   39 +--------------------------------------
- include/linux/nfs_fs.h |    2 --
- 2 files changed, 1 insertions(+), 40 deletions(-)
+ fs/nfs/client.c             |    1 +
+ include/linux/backing-dev.h |    6 ++++++
+ mm/page-writeback.c         |   16 +++++++++++-----
+ 3 files changed, 18 insertions(+), 5 deletions(-)
 
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index 2d78f08..53df027 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -539,19 +539,6 @@ static int nfs_wait_on_requests_locked(struct inode *inode, pgoff_t idx_start, u
- 	return res;
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index ee77713..d0b060a 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -890,6 +890,7 @@ static void nfs_server_set_fsinfo(struct nfs_server *server, struct nfs_fsinfo *
+ 
+ 	server->backing_dev_info.name = "nfs";
+ 	server->backing_dev_info.ra_pages = server->rpages * NFS_MAX_READAHEAD;
++	server->backing_dev_info.capabilities |= BDI_CAP_ACCT_UNSTABLE;
+ 
+ 	if (server->wsize > max_rpc_payload)
+ 		server->wsize = max_rpc_payload;
+diff --git a/include/linux/backing-dev.h b/include/linux/backing-dev.h
+index 42c3e2a..8b45166 100644
+--- a/include/linux/backing-dev.h
++++ b/include/linux/backing-dev.h
+@@ -232,6 +232,7 @@ int bdi_set_max_ratio(struct backing_dev_info *bdi, unsigned int max_ratio);
+ #define BDI_CAP_EXEC_MAP	0x00000040
+ #define BDI_CAP_NO_ACCT_WB	0x00000080
+ #define BDI_CAP_SWAP_BACKED	0x00000100
++#define BDI_CAP_ACCT_UNSTABLE	0x00000200
+ 
+ #define BDI_CAP_VMFLAGS \
+ 	(BDI_CAP_READ_MAP | BDI_CAP_WRITE_MAP | BDI_CAP_EXEC_MAP)
+@@ -311,6 +312,11 @@ static inline bool bdi_cap_flush_forker(struct backing_dev_info *bdi)
+ 	return bdi == &default_backing_dev_info;
  }
  
--static void nfs_cancel_commit_list(struct list_head *head)
--{
--	struct nfs_page *req;
--
--	while(!list_empty(head)) {
--		req = nfs_list_entry(head->next);
--		nfs_list_remove_request(req);
--		nfs_clear_request_commit(req);
--		nfs_inode_remove_request(req);
--		nfs_unlock_request(req);
--	}
--}
--
- #if defined(CONFIG_NFS_V3) || defined(CONFIG_NFS_V4)
- static int
- nfs_need_commit(struct nfs_inode *nfsi)
-@@ -1484,13 +1471,6 @@ long nfs_sync_mapping_wait(struct address_space *mapping, struct writeback_contr
- 		pages = nfs_scan_commit(inode, &head, idx_start, npages);
- 		if (pages == 0)
- 			break;
--		if (how & FLUSH_INVALIDATE) {
--			spin_unlock(&inode->i_lock);
--			nfs_cancel_commit_list(&head);
--			ret = pages;
--			spin_lock(&inode->i_lock);
--			continue;
--		}
- 		pages += nfs_scan_commit(inode, &head, 0, 0);
- 		spin_unlock(&inode->i_lock);
- 		ret = nfs_commit_list(inode, &head, how);
-@@ -1547,26 +1527,13 @@ int nfs_wb_nocommit(struct inode *inode)
- int nfs_wb_page_cancel(struct inode *inode, struct page *page)
++static inline bool bdi_cap_account_unstable(struct backing_dev_info *bdi)
++{
++	return bdi->capabilities & BDI_CAP_ACCT_UNSTABLE;
++}
++
+ static inline bool mapping_cap_writeback_dirty(struct address_space *mapping)
  {
- 	struct nfs_page *req;
--	loff_t range_start = page_offset(page);
--	loff_t range_end = range_start + (loff_t)(PAGE_CACHE_SIZE - 1);
--	struct writeback_control wbc = {
--		.bdi = page->mapping->backing_dev_info,
--		.sync_mode = WB_SYNC_ALL,
--		.nr_to_write = LONG_MAX,
--		.range_start = range_start,
--		.range_end = range_end,
--	};
- 	int ret = 0;
+ 	return bdi_cap_writeback_dirty(mapping->backing_dev_info);
+diff --git a/mm/page-writeback.c b/mm/page-writeback.c
+index 23d3fc6..c06739b 100644
+--- a/mm/page-writeback.c
++++ b/mm/page-writeback.c
+@@ -273,8 +273,9 @@ static void clip_bdi_dirty_limit(struct backing_dev_info *bdi,
+ 		avail_dirty = 0;
  
- 	BUG_ON(!PageLocked(page));
- 	for (;;) {
- 		req = nfs_page_find_request(page);
- 		if (req == NULL)
--			goto out;
--		if (test_bit(PG_CLEAN, &req->wb_flags)) {
--			nfs_release_request(req);
- 			break;
--		}
- 		if (nfs_lock_request_dontget(req)) {
- 			nfs_inode_remove_request(req);
- 			/*
-@@ -1579,12 +1546,8 @@ int nfs_wb_page_cancel(struct inode *inode, struct page *page)
- 		}
- 		ret = nfs_wait_on_request(req);
- 		if (ret < 0)
--			goto out;
-+			break;
- 	}
--	if (!PagePrivate(page))
--		return 0;
--	ret = nfs_sync_mapping_wait(page->mapping, &wbc, FLUSH_INVALIDATE);
--out:
- 	return ret;
+ 	avail_dirty += bdi_stat(bdi, BDI_DIRTY) +
+-		bdi_stat(bdi, BDI_UNSTABLE) +
+ 		bdi_stat(bdi, BDI_WRITEBACK);
++	if (bdi_cap_account_unstable(bdi))
++		avail_dirty += bdi_stat(bdi, BDI_UNSTABLE);
+ 
+ 	*pbdi_dirty = min(*pbdi_dirty, avail_dirty);
  }
+@@ -510,8 +511,9 @@ static void balance_dirty_pages(struct address_space *mapping,
+ 					global_page_state(NR_UNSTABLE_NFS);
+ 		nr_writeback = global_page_state(NR_WRITEBACK);
  
-diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
-index 384ea3e..1eec414 100644
---- a/include/linux/nfs_fs.h
-+++ b/include/linux/nfs_fs.h
-@@ -34,8 +34,6 @@
- #define FLUSH_LOWPRI		8	/* low priority background flush */
- #define FLUSH_HIGHPRI		16	/* high priority memory reclaim flush */
- #define FLUSH_NOCOMMIT		32	/* Don't send the NFSv3/v4 COMMIT */
--#define FLUSH_INVALIDATE	64	/* Invalidate the page cache */
--#define FLUSH_NOWRITEPAGE	128	/* Don't call writepage() */
+-		bdi_nr_reclaimable = bdi_stat(bdi, BDI_DIRTY) +
+-				     bdi_stat(bdi, BDI_UNSTABLE);
++		bdi_nr_reclaimable = bdi_stat(bdi, BDI_DIRTY);
++		if (bdi_cap_account_unstable(bdi))
++			bdi_nr_reclaimable += bdi_stat(bdi, BDI_UNSTABLE);
+ 		bdi_nr_writeback = bdi_stat(bdi, BDI_WRITEBACK);
  
- #ifdef __KERNEL__
- 
+ 		if (bdi_nr_reclaimable + bdi_nr_writeback <= bdi_thresh)
+@@ -556,11 +558,15 @@ static void balance_dirty_pages(struct address_space *mapping,
+ 		 * deltas.
+ 		 */
+ 		if (bdi_thresh < 2*bdi_stat_error(bdi)) {
+-			bdi_nr_reclaimable = bdi_stat_sum(bdi, BDI_DIRTY) +
++			bdi_nr_reclaimable = bdi_stat_sum(bdi, BDI_DIRTY);
++			if (bdi_cap_account_unstable(bdi))
++				bdi_nr_reclaimable +=
+ 					     bdi_stat_sum(bdi, BDI_UNSTABLE);
+ 			bdi_nr_writeback = bdi_stat_sum(bdi, BDI_WRITEBACK);
+ 		} else if (bdi_nr_reclaimable) {
+-			bdi_nr_reclaimable = bdi_stat(bdi, BDI_DIRTY) +
++			bdi_nr_reclaimable = bdi_stat(bdi, BDI_DIRTY);
++			if (bdi_cap_account_unstable(bdi))
++				bdi_nr_reclaimable +=
+ 					     bdi_stat(bdi, BDI_UNSTABLE);
+ 			bdi_nr_writeback = bdi_stat(bdi, BDI_WRITEBACK);
+ 		}
 
