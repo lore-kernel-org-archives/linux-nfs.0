@@ -1,8 +1,8 @@
 From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH 7/8] NFSv4.1: Don't call nfs4_schedule_state_recovery()
- unnecessarily
+Subject: [PATCH 6/8] NFSv4: Don't allow posix locking against servers that
+ don't support it
 Date: Mon, 25 Jan 2010 16:57:35 -0500
-Message-ID: <20100125215735.14716.86605.stgit@localhost.localdomain>
+Message-ID: <20100125215735.14716.35281.stgit@localhost.localdomain>
 References: <20100125215734.14716.19614.stgit@localhost.localdomain>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -10,50 +10,59 @@ To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
 Received: from mx2.netapp.com ([216.240.18.37]:8049 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752764Ab0AYWEK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	id S1752248Ab0AYWEK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
 	Mon, 25 Jan 2010 17:04:10 -0500
-Received: from sacrsexc2-prd.hq.netapp.com (sacrsexc2-prd.hq.netapp.com [10.99.115.28])
-	by smtp2.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id o0PM4A0v014296
+Received: from svlrsexc2-prd.hq.netapp.com (svlrsexc2-prd.hq.netapp.com [10.57.115.31])
+	by smtp2.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id o0PM4AM2014291
 	for <linux-nfs@vger.kernel.org>; Mon, 25 Jan 2010 14:04:10 -0800 (PST)
 In-Reply-To: <20100125215734.14716.19614.stgit-bi+AKbBUZKY6gyzm1THtWbp2dZbC/Bob@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Currently, nfs4_handle_exception() will call it twice if called with an
-error of -NFS4ERR_STALE_CLIENTID, -NFS4ERR_STALE_STATEID or
--NFS4ERR_EXPIRED.
-
 Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: stable@kernel.org
 ---
 
- fs/nfs/nfs4proc.c |    8 ++------
- 1 files changed, 2 insertions(+), 6 deletions(-)
+ fs/nfs/nfs4_fs.h  |    1 +
+ fs/nfs/nfs4proc.c |    7 ++++++-
+ 2 files changed, 7 insertions(+), 1 deletions(-)
 
+diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
+index 865265b..ea2f41b 100644
+--- a/fs/nfs/nfs4_fs.h
++++ b/fs/nfs/nfs4_fs.h
+@@ -146,6 +146,7 @@ enum {
+ 	NFS_O_RDWR_STATE,		/* OPEN stateid has read/write state */
+ 	NFS_STATE_RECLAIM_REBOOT,	/* OPEN stateid server rebooted */
+ 	NFS_STATE_RECLAIM_NOGRACE,	/* OPEN stateid needs to recover state */
++	NFS_STATE_POSIX_LOCKS,		/* Posix locks are supported */
+ };
+ 
+ struct nfs4_state {
 diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index be044b5..afbfe67 100644
+index 0b68238..be044b5 100644
 --- a/fs/nfs/nfs4proc.c
 +++ b/fs/nfs/nfs4proc.c
-@@ -256,12 +256,8 @@ static int nfs4_handle_exception(const struct nfs_server *server, int errorcode,
- 			ret = nfs4_wait_clnt_recover(clp);
- 			if (ret == 0)
- 				exception->retry = 1;
--#if !defined(CONFIG_NFS_V4_1)
- 			break;
--#else /* !defined(CONFIG_NFS_V4_1) */
--			if (!nfs4_has_session(server->nfs_client))
--				break;
--			/* FALLTHROUGH */
-+#if defined(CONFIG_NFS_V4_1)
- 		case -NFS4ERR_BADSESSION:
- 		case -NFS4ERR_BADSLOT:
- 		case -NFS4ERR_BAD_HIGH_SLOT:
-@@ -274,7 +270,7 @@ static int nfs4_handle_exception(const struct nfs_server *server, int errorcode,
- 			nfs4_schedule_state_recovery(clp);
- 			exception->retry = 1;
- 			break;
--#endif /* !defined(CONFIG_NFS_V4_1) */
-+#endif /* defined(CONFIG_NFS_V4_1) */
- 		case -NFS4ERR_FILE_OPEN:
- 			if (exception->timeout > HZ) {
- 				/* We have retried a decent amount, time to
+@@ -1658,6 +1658,8 @@ static int _nfs4_do_open(struct inode *dir, struct path *path, fmode_t fmode, in
+ 	status = PTR_ERR(state);
+ 	if (IS_ERR(state))
+ 		goto err_opendata_put;
++	if ((opendata->o_res.rflags & NFS4_OPEN_RESULT_LOCKTYPE_POSIX) != 0)
++		set_bit(NFS_STATE_POSIX_LOCKS, &state->flags);
+ 	nfs4_opendata_put(opendata);
+ 	nfs4_put_state_owner(sp);
+ 	*res = state;
+@@ -4200,8 +4202,11 @@ static int _nfs4_proc_setlk(struct nfs4_state *state, int cmd, struct file_lock
+ {
+ 	struct nfs_inode *nfsi = NFS_I(state->inode);
+ 	unsigned char fl_flags = request->fl_flags;
+-	int status;
++	int status = -ENOLCK;
+ 
++	if ((fl_flags & FL_POSIX) &&
++			!test_bit(NFS_STATE_POSIX_LOCKS, &state->flags))
++		goto out;
+ 	/* Is this a delegated open? */
+ 	status = nfs4_set_lock_state(state, request);
+ 	if (status != 0)
 
