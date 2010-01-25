@@ -1,8 +1,8 @@
 From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH 02/12] VM: Don't call bdi_stat(BDI_UNSTABLE) on non-nfs
- backing-devices
-Date: Mon, 25 Jan 2010 17:15:45 -0500
-Message-ID: <20100125221545.16750.41973.stgit@localhost.localdomain>
+Subject: [PATCH 12/12] NFS: Remove requirement for inode->i_mutex from
+ nfs_invalidate_mapping
+Date: Mon, 25 Jan 2010 17:15:46 -0500
+Message-ID: <20100125221546.16750.3970.stgit@localhost.localdomain>
 References: <20100125221544.16750.70574.stgit@localhost.localdomain>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -19,104 +19,120 @@ To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
 Received: from mx2.netapp.com ([216.240.18.37]:17535 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752260Ab0AYWjK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 25 Jan 2010 17:39:10 -0500
+	id S1754223Ab0AYWjL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 25 Jan 2010 17:39:11 -0500
 In-Reply-To: <20100125221544.16750.70574.stgit-bi+AKbBUZKY6gyzm1THtWbp2dZbC/Bob@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Speeds up the accounting in balance_dirty_pages() for non-nfs devices.
-
 Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-Acked-by: Jan Kara <jack@suse.cz>
-Acked-by: Peter Zijlstra <peterz@infradead.org>
-Reviewed-by: Wu Fengguang <fengguang.wu@intel.com>
 ---
 
- fs/nfs/client.c             |    1 +
- include/linux/backing-dev.h |    6 ++++++
- mm/page-writeback.c         |   16 +++++++++++-----
- 3 files changed, 18 insertions(+), 5 deletions(-)
+ fs/nfs/dir.c           |    2 +-
+ fs/nfs/inode.c         |   41 +----------------------------------------
+ fs/nfs/symlink.c       |    2 +-
+ include/linux/nfs_fs.h |    1 -
+ 4 files changed, 3 insertions(+), 43 deletions(-)
 
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index ee77713..d0b060a 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -890,6 +890,7 @@ static void nfs_server_set_fsinfo(struct nfs_server *server, struct nfs_fsinfo *
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index 3c7f03b..a1f6b44 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -560,7 +560,7 @@ static int nfs_readdir(struct file *filp, void *dirent, filldir_t filldir)
+ 	desc->entry = &my_entry;
  
- 	server->backing_dev_info.name = "nfs";
- 	server->backing_dev_info.ra_pages = server->rpages * NFS_MAX_READAHEAD;
-+	server->backing_dev_info.capabilities |= BDI_CAP_ACCT_UNSTABLE;
+ 	nfs_block_sillyrename(dentry);
+-	res = nfs_revalidate_mapping_nolock(inode, filp->f_mapping);
++	res = nfs_revalidate_mapping(inode, filp->f_mapping);
+ 	if (res < 0)
+ 		goto out;
  
- 	if (server->wsize > max_rpc_payload)
- 		server->wsize = max_rpc_payload;
-diff --git a/include/linux/backing-dev.h b/include/linux/backing-dev.h
-index 42c3e2a..8b45166 100644
---- a/include/linux/backing-dev.h
-+++ b/include/linux/backing-dev.h
-@@ -232,6 +232,7 @@ int bdi_set_max_ratio(struct backing_dev_info *bdi, unsigned int max_ratio);
- #define BDI_CAP_EXEC_MAP	0x00000040
- #define BDI_CAP_NO_ACCT_WB	0x00000080
- #define BDI_CAP_SWAP_BACKED	0x00000100
-+#define BDI_CAP_ACCT_UNSTABLE	0x00000200
- 
- #define BDI_CAP_VMFLAGS \
- 	(BDI_CAP_READ_MAP | BDI_CAP_WRITE_MAP | BDI_CAP_EXEC_MAP)
-@@ -311,6 +312,11 @@ static inline bool bdi_cap_flush_forker(struct backing_dev_info *bdi)
- 	return bdi == &default_backing_dev_info;
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index a867c4c..30988bc 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -759,7 +759,7 @@ int nfs_revalidate_inode(struct nfs_server *server, struct inode *inode)
+ 	return __nfs_revalidate_inode(server, inode);
  }
  
-+static inline bool bdi_cap_account_unstable(struct backing_dev_info *bdi)
-+{
-+	return bdi->capabilities & BDI_CAP_ACCT_UNSTABLE;
-+}
-+
- static inline bool mapping_cap_writeback_dirty(struct address_space *mapping)
+-static int nfs_invalidate_mapping_nolock(struct inode *inode, struct address_space *mapping)
++static int nfs_invalidate_mapping(struct inode *inode, struct address_space *mapping)
  {
- 	return bdi_cap_writeback_dirty(mapping->backing_dev_info);
-diff --git a/mm/page-writeback.c b/mm/page-writeback.c
-index 23d3fc6..c06739b 100644
---- a/mm/page-writeback.c
-+++ b/mm/page-writeback.c
-@@ -273,8 +273,9 @@ static void clip_bdi_dirty_limit(struct backing_dev_info *bdi,
- 		avail_dirty = 0;
- 
- 	avail_dirty += bdi_stat(bdi, BDI_DIRTY) +
--		bdi_stat(bdi, BDI_UNSTABLE) +
- 		bdi_stat(bdi, BDI_WRITEBACK);
-+	if (bdi_cap_account_unstable(bdi))
-+		avail_dirty += bdi_stat(bdi, BDI_UNSTABLE);
- 
- 	*pbdi_dirty = min(*pbdi_dirty, avail_dirty);
+ 	struct nfs_inode *nfsi = NFS_I(inode);
+ 	
+@@ -780,49 +780,10 @@ static int nfs_invalidate_mapping_nolock(struct inode *inode, struct address_spa
+ 	return 0;
  }
-@@ -510,8 +511,9 @@ static void balance_dirty_pages(struct address_space *mapping,
- 					global_page_state(NR_UNSTABLE_NFS);
- 		nr_writeback = global_page_state(NR_WRITEBACK);
  
--		bdi_nr_reclaimable = bdi_stat(bdi, BDI_DIRTY) +
--				     bdi_stat(bdi, BDI_UNSTABLE);
-+		bdi_nr_reclaimable = bdi_stat(bdi, BDI_DIRTY);
-+		if (bdi_cap_account_unstable(bdi))
-+			bdi_nr_reclaimable += bdi_stat(bdi, BDI_UNSTABLE);
- 		bdi_nr_writeback = bdi_stat(bdi, BDI_WRITEBACK);
+-static int nfs_invalidate_mapping(struct inode *inode, struct address_space *mapping)
+-{
+-	int ret = 0;
+-
+-	mutex_lock(&inode->i_mutex);
+-	if (NFS_I(inode)->cache_validity & NFS_INO_INVALID_DATA) {
+-		ret = nfs_sync_mapping(mapping);
+-		if (ret == 0)
+-			ret = nfs_invalidate_mapping_nolock(inode, mapping);
+-	}
+-	mutex_unlock(&inode->i_mutex);
+-	return ret;
+-}
+-
+-/**
+- * nfs_revalidate_mapping_nolock - Revalidate the pagecache
+- * @inode - pointer to host inode
+- * @mapping - pointer to mapping
+- */
+-int nfs_revalidate_mapping_nolock(struct inode *inode, struct address_space *mapping)
+-{
+-	struct nfs_inode *nfsi = NFS_I(inode);
+-	int ret = 0;
+-
+-	if ((nfsi->cache_validity & NFS_INO_REVAL_PAGECACHE)
+-			|| nfs_attribute_timeout(inode) || NFS_STALE(inode)) {
+-		ret = __nfs_revalidate_inode(NFS_SERVER(inode), inode);
+-		if (ret < 0)
+-			goto out;
+-	}
+-	if (nfsi->cache_validity & NFS_INO_INVALID_DATA)
+-		ret = nfs_invalidate_mapping_nolock(inode, mapping);
+-out:
+-	return ret;
+-}
+-
+ /**
+  * nfs_revalidate_mapping - Revalidate the pagecache
+  * @inode - pointer to host inode
+  * @mapping - pointer to mapping
+- *
+- * This version of the function will take the inode->i_mutex and attempt to
+- * flush out all dirty data if it needs to invalidate the page cache.
+  */
+ int nfs_revalidate_mapping(struct inode *inode, struct address_space *mapping)
+ {
+diff --git a/fs/nfs/symlink.c b/fs/nfs/symlink.c
+index 412738d..2ea9e5c 100644
+--- a/fs/nfs/symlink.c
++++ b/fs/nfs/symlink.c
+@@ -50,7 +50,7 @@ static void *nfs_follow_link(struct dentry *dentry, struct nameidata *nd)
+ 	struct page *page;
+ 	void *err;
  
- 		if (bdi_nr_reclaimable + bdi_nr_writeback <= bdi_thresh)
-@@ -556,11 +558,15 @@ static void balance_dirty_pages(struct address_space *mapping,
- 		 * deltas.
- 		 */
- 		if (bdi_thresh < 2*bdi_stat_error(bdi)) {
--			bdi_nr_reclaimable = bdi_stat_sum(bdi, BDI_DIRTY) +
-+			bdi_nr_reclaimable = bdi_stat_sum(bdi, BDI_DIRTY);
-+			if (bdi_cap_account_unstable(bdi))
-+				bdi_nr_reclaimable +=
- 					     bdi_stat_sum(bdi, BDI_UNSTABLE);
- 			bdi_nr_writeback = bdi_stat_sum(bdi, BDI_WRITEBACK);
- 		} else if (bdi_nr_reclaimable) {
--			bdi_nr_reclaimable = bdi_stat(bdi, BDI_DIRTY) +
-+			bdi_nr_reclaimable = bdi_stat(bdi, BDI_DIRTY);
-+			if (bdi_cap_account_unstable(bdi))
-+				bdi_nr_reclaimable +=
- 					     bdi_stat(bdi, BDI_UNSTABLE);
- 			bdi_nr_writeback = bdi_stat(bdi, BDI_WRITEBACK);
- 		}
+-	err = ERR_PTR(nfs_revalidate_mapping_nolock(inode, inode->i_mapping));
++	err = ERR_PTR(nfs_revalidate_mapping(inode, inode->i_mapping));
+ 	if (err)
+ 		goto read_failed;
+ 	page = read_cache_page(&inode->i_data, 0,
+diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
+index 6ee74c5..896a5f3 100644
+--- a/include/linux/nfs_fs.h
++++ b/include/linux/nfs_fs.h
+@@ -346,7 +346,6 @@ extern int nfs_attribute_timeout(struct inode *inode);
+ extern int nfs_revalidate_inode(struct nfs_server *server, struct inode *inode);
+ extern int __nfs_revalidate_inode(struct nfs_server *, struct inode *);
+ extern int nfs_revalidate_mapping(struct inode *inode, struct address_space *mapping);
+-extern int nfs_revalidate_mapping_nolock(struct inode *inode, struct address_space *mapping);
+ extern int nfs_setattr(struct dentry *, struct iattr *);
+ extern void nfs_setattr_update_inode(struct inode *inode, struct iattr *attr);
+ extern struct nfs_open_context *get_nfs_open_context(struct nfs_open_context *ctx);
 
