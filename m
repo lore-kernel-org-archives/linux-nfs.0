@@ -1,151 +1,175 @@
-From: Whoop Whouzer <tiredandnumb@gmail.com>
-Subject: Re: nfs client performance while server is down
-Date: Mon, 25 Jan 2010 01:09:12 +0100
-Message-ID: <d7f0b3a81001241609v35e54740yea3fa1a251b4f953@mail.gmail.com>
-References: <d7f0b3a81001230745h18dbb14fi42f28adff0c45294@mail.gmail.com>
-	 <1f808b4a1001230757i2027d32dxb48482ea7bf8e4ee@mail.gmail.com>
-	 <d7f0b3a81001230827y52727993nf60210ae610643b7@mail.gmail.com>
-	 <7A24DF798E223B4C9864E8F92E8C93EC0527810C@SACMVEXC1-PRD.hq.netapp.com>
+From: Steve Dickson <SteveD@redhat.com>
+Subject: pynfs Server failures
+Date: Mon, 25 Jan 2010 10:30:49 -0500
+Message-ID: <4B5DB929.6020504@RedHat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
-Cc: Peter Chacko <peterchacko35@gmail.com>, linux-nfs@vger.kernel.org
-To: "Muntz, Daniel" <Dan.Muntz@netapp.com>
+Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>,
+	CAI Qian <caiqian@redhat.com>
+To: Bruce Fields <bfields@umich.edu>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ew0-f226.google.com ([209.85.219.226]:40145 "EHLO
-	mail-ew0-f226.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751398Ab0AYAJP convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 24 Jan 2010 19:09:15 -0500
-Received: by ewy26 with SMTP id 26so1711559ewy.28
-        for <linux-nfs@vger.kernel.org>; Sun, 24 Jan 2010 16:09:13 -0800 (PST)
-In-Reply-To: <7A24DF798E223B4C9864E8F92E8C93EC0527810C-hX7t0kiaRRpT+ZUat5FNkAK/GNPrWCqfQQ4Iyu8u01E@public.gmane.org>
+Received: from mx1.redhat.com ([209.132.183.28]:44862 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751319Ab0AYPax (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 25 Jan 2010 10:30:53 -0500
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I did some network traces and there is nothing strange happening as
-far as I can tell. I shut down the server (some network traffic
-occurred as is to be expected). It got quiet again, I launched
-nautilus, it got stuck without displaying anything and there was no
-real network activity except 3 broadcasts using the ARP protocol
-asking where the server was (could be just coincidence). Closing
-nautilus and launching it again will let it hang again but I see no
-additional network traffic. After a while nautilus will display the
-contents of the folder without any network traffic.
+Hey Bruce,
 
-On Sun, Jan 24, 2010 at 10:34 PM, Muntz, Daniel <Dan.Muntz@netapp.com> =
-wrote:
-> Perhaps something in your $PATH is in the NFS mount? =A0Do a network =
-trace and maybe you can see if, in fact, there are actually NFS operati=
-ons being attempted that you weren't expecting. =A0Then try to figure o=
-ut why.
->
-> =A0-Dan
->
->> -----Original Message-----
->> From: Whoop Whouzer [mailto:tiredandnumb@gmail.com]
->> Sent: Saturday, January 23, 2010 8:28 AM
->> To: Peter Chacko
->> Cc: linux-nfs@vger.kernel.org
->> Subject: Re: nfs client performance while server is down
->>
->> I don't remember all the different set-ups I tried it on, but I just
->> confirmed this with the following combinations:
->>
->> ubuntu server 10.04 (alpha 2) --> ubuntu desktop 9.10, ubuntu deskto=
-p
->> 10.04 (alpha 2), fedora 12
->> ubuntu server 9.10 --> ubuntu desktop 9.10, ubuntu desktop 10.04
->> (alpha 2), fedora 12
->>
->> I'll be happy to test it on another client machine (distro) even
->> another server (although it would require a little more time)
->>
->> Here are some examples on the bugreports I noticed and how they do n=
-ot
->> seem to get solved:
->> https://bugzilla.redhat.com/show_bug.cgi?id=3D175283
->> https://bugs.launchpad.net/ubuntu/+source/nfs-utils/+bug/164120
->>
->> regards,
->> Whoop
->>
->> On Sat, Jan 23, 2010 at 4:57 PM, Peter Chacko
->> <peterchacko35@gmail.com> wrote:
->> > Which client OS you observed this behavior ? =A0This has nothing t=
-o do
->> > NFS design, and its purely stateless...Its upto the client OS
->> > implementation about aspects like how to deal with local
->> IO, when NFS
->> > share gets =A0disconnected..
->> >
->> > May be a VFS bug on the local OS you found this problem ..
->> >
->> > thanks
->> >
->> > On Sat, Jan 23, 2010 at 9:15 PM, Whoop Whouzer
->> <tiredandnumb@gmail.com> wrote:
->> >> Howdy,
->> >>
->> >> I was wondering why nfs is designed in such a way that the
->> performance
->> >> of an nfs client machine gets very bad when the nfs server
->> is offline?
->> >> This is even the case with a soft mount (either via mount
->> or fstab).
->> >> Just about every application that requires disk access (not talki=
-ng
->> >> about nfs share acces) gets really slow to unresponsive.
->> For instance
->> >> nautilus becomes unresponsive when displaying the contents of any
->> >> folder on the local disk,
->> >> playing movie files (stored on local disk) let totem or
->> vlc get stuck
->> >> on set intervals, even the terminal becomes unresponsive at times=
-=2E
->> >>
->> >> I could understand that these problems would occur while
->> accessing the
->> >> nfs share directoiourry while the server is offline, but
->> why for totally
->> >> unrelated directories?
->> >>
->> >> I have experienced this behaviour on various distro's, and
->> also found
->> >> various bug reports on this issue, they don't seem to get solved =
-as
->> >> this is viewed as nfs design.
->> >> I see this as a flaw because clients are totally dependent on the
->> >> server. This would be less of a deal if the entire home directory
->> >> would be stored on nfs (although I even think some sort of
->> >> synchronisation technology could and should be implemented in thi=
-s
->> >> case). It is a bit odd that (technically) one machine serving som=
-e
->> >> "useless" files to a non-trivial directory on client
->> machines can take
->> >> down these client machines.
->> >>
->> >> For me the preferred functionality would be:
->> >> *If an nfs server gets offline the client's nfs share becomes
->> >> unaccessible, but local directories and applications (that only
->> >> require local disk access) stay responsive.
->> >> *If an nfs server gets online (after being offline while the clie=
-nt
->> >> has not been restarted) the nfs share becomes reconnected.
->> >>
->> >> regards,
->> >> Whoop
->> >> --
->> >> To unsubscribe from this list: send the line "unsubscribe
->> linux-nfs" in
->> >> the body of a message to majordomo@vger.kernel.org
->> >> More majordomo info at =A0http://vger.kernel.org/majordomo-info.h=
-tml
->> >>
->> >
->> --
->> To unsubscribe from this list: send the line "unsubscribe
->> linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at =A0http://vger.kernel.org/majordomo-info.html
->>
->
+During our Fedora Testing effort we have  identified the following
+pynfs failures when testing with a kernel-2.6.33 and a very current
+nfs-utils...  At one point I thought there was a list of known pynfs 
+failures. If so, how does this list match up? any thing new? 
+Anything jumping out that we really should fix?
+
+steved.
+
+
+[root@ibm-hs21-01 pynfs]# ./testserver.py localhost:/nfs --maketree all
+CID1     st_setclientid.testClientReboot                          : WARNING
+           Trying to use old stateid after SETCLIENTID_CONFIRM
+           purges state should return NFS4ERR_OLD_STATEID,
+           instead got NFS4ERR_BAD_STATEID
+CID6     st_setclientid.testNoConfirm                             : FAILURE
+           OPEN using clientid that was never confirmed should
+           return NFS4ERR_STALE_CLIENTID, instead got
+           NFS4ERR_EXPIRED
+CIDCF2   st_setclientidconfirm.testBadConfirm                     : FAILURE
+           SETCLIENTID_CONFIRM with case not covered in RFC,
+           seems most likely should do nothing and should return
+           NFS4_OK, instead got NFS4ERR_CLID_INUSE
+COMP3    st_compound.testBadTags                                  : FAILURE
+           Compound with invalid utf8 tag '\xc0\xc1' should
+           return NFS4ERR_INVAL, instead got NFS4_OK
+COMP6    st_compound.testLongCompound                             : FAILURE
+           COMPOUND with len=150 argarry got RPCError:
+           MSG_ACCEPTED: GARBAGE_ARGS, expected NFS4ERR_RESOURCE
+CR13     st_create.testDots                                       : FAILURE
+           Trying to CREATE a dir named '.' should return NFS4_OK
+           or NFS4ERR_BADNAME, instead got NFS4ERR_INVAL
+CR14     st_create.testSlash                                      : FAILURE
+           Creation of dir named 'CR14/foo' should return
+           NFS4ERR_BADNAME or NFS4ERR_BADCHAR, instead got
+           NFS4ERR_INVAL
+LINK4a   st_link.testCfhLink                                      : FAILURE
+           LINK with <cfh> not a directory should return
+           NFS4ERR_NOTDIR, instead got NFS4ERR_SYMLINK
+LINK8    st_link.testInvalidUtf8                                  : FAILURE
+           LINK with invalid utf8 name LINK8/\xc0\xc1 should
+           return NFS4ERR_INVAL, instead got NFS4_OK
+LINK9    st_link.testDots                                         : FAILURE
+           Trying to make a hardlink named '.' should return
+           NFS4_OK or NFS4ERR_BADNAME, instead got NFS4ERR_INVAL
+LOCK8c   st_lock.testNonzeroLockSeqid                             : WARNING
+           LOCK with newlockowner's lockseqid=1 should return
+           NFS4ERR_BAD_SEQID, instead got NFS4_OK
+LOCK18   st_lock.testFairness                                     : WARNING
+           Locking is not fair
+LOCK19   st_lock.testBlockPoll                                    : WARNING
+           Locking is not fair
+LOCK21   st_lock.testBlockingQueue                                : WARNING
+           Locking is not fair
+LOCK22   st_lock.testLongPoll                                     : WARNING
+           Locking is not fair
+LOOK6    st_lookup.testNonAccessable                              : FAILURE
+           LOOKUP object in a dir with mode=000 should return
+           NFS4ERR_ACCESS, instead got NFS4_OK
+LOOK7    st_lookup.testInvalidUtf8                                : FAILURE
+           LOOKUP object with invalid utf-8 name \xc0\xc1 should
+           return NFS4ERR_INVAL, instead got NFS4ERR_NOENT
+LOOK9    st_lookup.testUnaccessibleDir                            : FAILURE
+           LOOKUP off of dir with mode=0 should return
+           NFS4ERR_ACCESS, instead got NFS4_OK
+LOOKP2a  st_lookupp.testLink                                      : FAILURE
+           LOOKUPP with non-dir <cfh> should return
+           NFS4ERR_NOTDIR, instead got NFS4ERR_SYMLINK
+OPCF3a   st_openconfirm.testLink                                  : FAILURE
+           OPEN_CONFIRM of a nonfile object should return
+           NFS4ERR_INVAL, instead got NFS4ERR_SYMLINK
+OPDG9a   st_opendowngrade.testLink                                : WARNING
+           OPENDOWNGRADE with nonfile object should return
+           NFS4ERR_INVAL, instead got NFS4ERR_BAD_STATEID
+OPDG9b   st_opendowngrade.testBlock                               : WARNING
+           OPENDOWNGRADE with nonfile object should return
+           NFS4ERR_INVAL, instead got NFS4ERR_BAD_STATEID
+OPDG9c   st_opendowngrade.testChar                                : WARNING
+           OPENDOWNGRADE with nonfile object should return
+           NFS4ERR_INVAL, instead got NFS4ERR_BAD_STATEID
+OPDG9d   st_opendowngrade.testDir                                 : WARNING
+           OPENDOWNGRADE with nonfile object should return
+           NFS4ERR_INVAL, instead got NFS4ERR_BAD_STATEID
+OPDG9f   st_opendowngrade.testFifo                                : WARNING
+           OPENDOWNGRADE with nonfile object should return
+           NFS4ERR_INVAL, instead got NFS4ERR_BAD_STATEID
+OPDG9s   st_opendowngrade.testSocket                              : WARNING
+           OPENDOWNGRADE with nonfile object should return
+           NFS4ERR_INVAL, instead got NFS4ERR_BAD_STATEID
+OPEN13   st_open.testInvalidUtf8                                  : FAILURE
+           Trying to open file with invalid utf8 name
+           OPEN13/\xc0\xc1 should return NFS4ERR_INVAL, instead
+           got NFS4_OK
+OPEN16   st_open.testClaimPrev                                    : WARNING
+           Trying to OPEN with CLAIM_PREVIOUS should return
+           NFS4ERR_RECLAIM_BAD, instead got NFS4ERR_NO_GRACE
+OPEN17   st_open.testModeChange                                   : FAILURE
+           Opening file OPEN17 with mode=000 should return
+           NFS4ERR_ACCESS, instead got NFS4_OK
+OPEN19   st_open.testShareConflict2                               : FAILURE
+           Trying to deny write permissions to others when don't
+           have write permissions should return NFS4ERR_ACCESS,
+           instead got NFS4_OK
+OPEN23b  st_open.testDenyRead3a                                   : FAILURE
+           Read an access_write file should return NFS4_OK,
+           instead got NFS4ERR_IO
+RD4      st_read.testLargeCount                                   : WARNING
+           READ returned 1048576 characters, expected 9000000
+RD12     st_read.testOpenMode                                     : FAILURE
+           READ with file opened in WRITE mode should return
+           NFS4ERR_OPENMODE, instead got NFS4ERR_IO
+RDDR11   st_readdir.testUnaccessibleDir                           : FAILURE
+           READDIR of directory with mode=0 should return
+           NFS4ERR_ACCESS, instead got NFS4_OK
+RDDR12   st_readdir.testUnaccessibleDirAttrs                      : FAILURE
+           READDIR of directory with mode=0 should return
+           NFS4ERR_ACCESS, instead got NFS4_OK
+RM5      st_remove.testNonUTF8                                    : FAILURE
+           Trying to remove file with invalid utf8 name
+           RM5/\xc0\xc1 should return NFS4ERR_INVAL, instead got
+           NFS4ERR_NOENT
+RM7      st_remove.testDots                                       : WARNING
+           REMOVE nonexistant '.' should return NFS4ERR_BADNAME,
+           instead got NFS4ERR_NOENT
+RNM8     st_rename.testBadutf8Oldname                             : FAILURE
+           RENAME with non-UTF8 oldname RNM8/\xc0\xc1 should
+           return NFS4ERR_INVAL, instead got NFS4ERR_NOENT
+RNM9     st_rename.testBadutf8Newname                             : FAILURE
+           RENAME with non-UTF8 newname RNM9/\xc0\xc1 should
+           return NFS4ERR_INVAL, instead got NFS4_OK
+RNM10    st_rename.testDotsOldname                                : WARNING
+           RENAME from nonexistant '.' should return
+           NFS4ERR_BADNAME, instead got NFS4ERR_NOENT
+RNM11    st_rename.testDotsNewname                                : FAILURE
+           RENAME from nonexistant '.' should return
+           NFS4ERR_BADNAME, instead got NFS4ERR_INVAL
+RNM16    st_rename.testDirToFullDir                               : FAILURE
+           RENAME dir1 into existing, nonempty dir2 should return
+           NFS4ERR_EXIST, instead got NFS4ERR_NOTEMPTY
+SATT1a   st_setattr.testLink                                      : FAILURE
+           Set attrs {33: 480} not equal to got attrs {33: 511}
+SATT9    st_setattr.testNonUTF8                                   : UNSUPPORTED
+           FATTR4_MIMETYPE not supported
+SATT12a  st_setattr.testSizeLink                                  : FAILURE
+           SETATTR(FATTR4_SIZE) of a symlink should return
+           NFS4ERR_INVAL, instead got NFS4ERR_SYMLINK
+SEC6     st_secinfo.testInvalidUtf8                               : FAILURE
+           SECINFO of non-existant file with invalid utf8 name
+           '\xc0\xc1' should return NFS4ERR_INVAL, instead got
+           NFS4ERR_NOENT
+SEC7     st_secinfo.testRPCSEC_GSS                                : FAILURE
+           SECINFO returned mechanism list without RPCSEC_GSS
+WRT5     st_write.testLargeData                                   : FAILURE
+           error: [Errno 32] Broken pipe
+**************************************************
+Command line asked for 587 of 637 tests
+Of those: 8 Skipped, 31 Failed, 17 Warned, 531 Passed
