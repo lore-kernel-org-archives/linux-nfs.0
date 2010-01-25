@@ -1,184 +1,195 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from acsinet12.oracle.com ([141.146.126.234]:61269 "EHLO
-	acsinet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752191Ab0ATPh1 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 20 Jan 2010 10:37:27 -0500
-Cc: linux-nfs@vger.kernel.org, steved@redhat.com, trond.myklebust@fys.uio.no
-Message-Id: <8E556CE2-569B-4E6D-BD02-7EF5CA84900D@oracle.com>
-From: Chuck Lever <chuck.lever@oracle.com>
-To: Jeff Layton <jlayton@redhat.com>
-In-Reply-To: <20100120082905.1825f806@tlielax.poochiereds.net>
-Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
-Subject: Re: [PATCH] mount.nfs: prefer IPv4 addresses over IPv6 (try #2)
-Date: Wed, 20 Jan 2010 10:36:36 -0500
-References: <1263907662-19107-1-git-send-email-jlayton@redhat.com> <1667647A-2BB1-478D-8881-CE8EA2191F97@oracle.com> <20100120082905.1825f806@tlielax.poochiereds.net>
+Received: from fieldses.org ([174.143.236.118]:35692 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750926Ab0AYSmF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 25 Jan 2010 13:42:05 -0500
+Date: Mon, 25 Jan 2010 13:43:33 -0500
+From: Bruce Fields <bfields@umich.edu>
+To: Steve Dickson <SteveD@redhat.com>
+Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>,
+        CAI Qian <caiqian@redhat.com>
+Subject: Re: pynfs Server failures
+Message-ID: <20100125184333.GC8244@fieldses.org>
+References: <4B5DB929.6020504@RedHat.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4B5DB929.6020504@RedHat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+On Mon, Jan 25, 2010 at 10:30:49AM -0500, Steve Dickson wrote:
+> Hey Bruce,
+> 
+> During our Fedora Testing effort we have  identified the following
+> pynfs failures when testing with a kernel-2.6.33 and a very current
+> nfs-utils...  At one point I thought there was a list of known pynfs 
+> failures.
 
-On Jan 20, 2010, at 8:29 AM, Jeff Layton wrote:
+Did you see the mail I sent you last week?  Especially:
 
-> On Tue, 19 Jan 2010 10:43:34 -0500
-> Chuck Lever <chuck.lever@oracle.com> wrote:
->
->>
->> On Jan 19, 2010, at 8:27 AM, Jeff Layton wrote:
->>
->>> We're poised to enable IPv6 in nfs-utils in distros. There is a
->>> potential problem however. mount.nfs will prefer IPv6 addrs.
->>>
->>> If someone has a working IPv4 server today that has an IPv6 address,
->>> then clients may start trying to mount over that address. If the
->>> server
->>> doesn't support NFS serving over IPv6 (and virtually no linux  
->>> servers
->>> currently do), then the mount will start failing.
->>>
->>> Avoid this problem by making the mount code prefer IPv4 addresses
->>> when they are available and an address family isn't specified.
->>>
->>> This is the second attempt at this patch. This moves the changes
->>> into nfs_validate_options. Chuck also mentioned parameterizing this
->>> behavior too. This patch doesn't include that, as I wasn't exactly
->>> clear on what he had in mind.
->>>
->
-> After playing around with this some more, I'm coming to the conclusion
-> that my first patch for this (the one that modified nfs_lookup) is
-> really the best one.
->
-> As Chuck pointed out, we need to have the address resolution behave
-> consistently, so I'd need to have other places that currently call
-> nfs_lookup do something similar.
->
-> There are 4 callers of nfs_lookup currently:
->
-> nfs_gethostbyname
-> nfs_umount_do_umnt
-> nfs_fix_mounthost_option
-> nfs_validate_options
->
-> ...all of these with the exception of nfs_gethostbyname will need to  
-> do
-> this "sorting". nfs_gethostbyname passes in AF_INET for the family, so
-> it's guaranteed to return a IPv4 address or nothing anyway.
->
-> I've tried a more-or-less exhaustive combination of proto=/mountproto=
-> options (and lack thereof) and I think with the original patch I  
-> posted
-> it works as expected.
->
-> On IRC, Chuck mentioned replacing nfs_lookup with direct calls to
-> getaddrinfo, but that's a larger change and I don't really think it's
-> necessary.
->
-> Chuck also suggested that we should have mount.nfs never attempt to  
-> use
-> an IPv6 address unless someone explicitly adds proto=tcp6|udp6. I'm  
-> not
-> a fan of that solution. I think if a hostname resolves to only an IPv6
-> address it ought to "just work" and mount via that address without
-> needing extra options.
->
-> For discussion, the original patch follows:
+	http://linux-nfs.org/pipermail/pnfs/2010-January/010008.html
 
-For the record, we looked at Solaris behavior yesterday.  With bi- 
-family servers, its mount command tries IPv6 first, but appears smart  
-enough to fall back to IPv4.  One thing we haven't tried is to see how  
-difficult it would be to fix the real problem by adding proper  
-protocol family negotiation to our own mount command.  This patch is  
-predicated on the idea that would be hard to implement, which hasn't  
-been demonstrated.
+> If so, how does this list match up? any thing new? 
+> Anything jumping out that we really should fix?
 
-I'm worried about putting this preference behavior in released code,  
-and then changing it yet again later.  I don't know how much time we  
-have to fix this, but if we have a few days, I could try implementing  
-real protocol family negotiation.
+Personally I've been ignoring the tests that don't pass and just
+rerunning the rest regularly to spot regressions.  I think that's the
+best use of pynfs for now.
 
-If you go forward with this solution, it should be made clear in the  
-documenting comments (and in the patch description) that this is a  
-temporary workaround.  If we intend to further correct this behavior  
-down the road, we should avoid building on the new behavior, even by  
-accident.
+Some of the failures are unimportant or questionable, so "this patch
+fixes pynfs test XXXYYY" is never enough to justify applying
+anything--we also need to check the spec and/or consider the effect on
+client-side behavior.
 
-> -----------------[snip]-------------------
->
-> mount.nfs: prefer IPv4 addresses over IPv6
->
-> We're poised to enable IPv6 in nfs-utils in distros. There is a  
-> potential
-> problem however. mount.nfs will prefer IPv6 addrs.
->
-> If someone has a working IPv4 server today that has an IPv6 address,
-> then clients may start trying to mount over that address. If the  
-> server
-> doesn't support NFS serving over IPv6 (and virtually no linux servers
-> currently do), then the mount will start failing.
->
-> Avoid this problem by making the mount.nfs code prefer IPv4 addresses
-> when they are available.
->
-> Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> ---
-> utils/mount/network.c |   27 ++++++++++++++++++++++-----
-> 1 files changed, 22 insertions(+), 5 deletions(-)
->
-> diff --git a/utils/mount/network.c b/utils/mount/network.c
-> index 92bba2d..6723f8f 100644
-> --- a/utils/mount/network.c
-> +++ b/utils/mount/network.c
-> @@ -203,7 +203,7 @@ static const unsigned int *nfs_default_proto()
-> int nfs_lookup(const char *hostname, const sa_family_t family,
-> 		struct sockaddr *sap, socklen_t *salen)
-> {
-> -	struct addrinfo *gai_results;
-> +	struct addrinfo *gai_results, *gai_pref;
-> 	struct addrinfo gai_hint = {
-> #ifdef HAVE_DECL_AI_ADDRCONFIG
-> 		.ai_flags	= AI_ADDRCONFIG,
-> @@ -229,12 +229,29 @@ int nfs_lookup(const char *hostname, const  
-> sa_family_t family,
-> 		return ret;
-> 	}
->
-> -	switch (gai_results->ai_addr->sa_family) {
-> +	/*
-> +	 * It will probably be quite a while before we have enough IPv6
-> +	 * capable servers to be able to prefer using IPv6. For now, we
-> +	 * only use IPv6 when there is no IPv4 address available in the
-> +	 * results.
-> +	 */
-> +	gai_pref = gai_results;
-> +	while (gai_pref) {
-> +		if (gai_pref->ai_addr->sa_family == AF_INET)
-> +			break;
-> +		gai_pref = gai_pref->ai_next;
-> +	}
-> +
-> +	/* no IPv4 addr found, just use first on the list */
-> +	if (gai_pref == NULL)
-> +		gai_pref = gai_results;
-> +
-> +	switch (gai_pref->ai_addr->sa_family) {
-> 	case AF_INET:
-> 	case AF_INET6:
-> -		if (len >= gai_results->ai_addrlen) {
-> -			*salen = gai_results->ai_addrlen;
-> -			memcpy(sap, gai_results->ai_addr, *salen);
-> +		if (len >= gai_pref->ai_addrlen) {
-> +			*salen = gai_pref->ai_addrlen;
-> +			memcpy(sap, gai_pref->ai_addr, *salen);
-> 			ret = 1;
-> 		}
-> 		break;
-> -- 
-> 1.6.5.2
->
+Anyway, may still be worth another look at the results, so here goes:
 
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+> [root@ibm-hs21-01 pynfs]# ./testserver.py localhost:/nfs --maketree all
+> CID1     st_setclientid.testClientReboot                          : WARNING
+>            Trying to use old stateid after SETCLIENTID_CONFIRM
+>            purges state should return NFS4ERR_OLD_STATEID,
+>            instead got NFS4ERR_BAD_STATEID
+> CID6     st_setclientid.testNoConfirm                             : FAILURE
+>            OPEN using clientid that was never confirmed should
+>            return NFS4ERR_STALE_CLIENTID, instead got
+>            NFS4ERR_EXPIRED
+> CIDCF2   st_setclientidconfirm.testBadConfirm                     : FAILURE
+>            SETCLIENTID_CONFIRM with case not covered in RFC,
+>            seems most likely should do nothing and should return
+>            NFS4_OK, instead got NFS4ERR_CLID_INUSE
 
+Medium priority to fix.
 
+> COMP3    st_compound.testBadTags                                  : FAILURE
+>            Compound with invalid utf8 tag '\xc0\xc1' should
+>            return NFS4ERR_INVAL, instead got NFS4_OK
 
+UTF8 failures are by design; ignore. Omitting similar results in the
+following.
+
+> COMP6    st_compound.testLongCompound                             : FAILURE
+>            COMPOUND with len=150 argarry got RPCError:
+>            MSG_ACCEPTED: GARBAGE_ARGS, expected NFS4ERR_RESOURCE
+
+Low priority to fix.
+
+> CR13     st_create.testDots                                       : FAILURE
+>            Trying to CREATE a dir named '.' should return NFS4_OK
+>            or NFS4ERR_BADNAME, instead got NFS4ERR_INVAL
+> CR14     st_create.testSlash                                      : FAILURE
+>            Creation of dir named 'CR14/foo' should return
+>            NFS4ERR_BADNAME or NFS4ERR_BADCHAR, instead got
+>            NFS4ERR_INVAL
+
+Medium priority to fix. Omitting similar failures in the following.
+
+> LINK4a   st_link.testCfhLink                                      : FAILURE
+>            LINK with <cfh> not a directory should return
+>            NFS4ERR_NOTDIR, instead got NFS4ERR_SYMLINK
+
+I think current behavior may actually be correct; check the spec and
+behavior on other filesystems.  Low priority.  Omitting similar failures
+in the following.
+
+> LOCK8c   st_lock.testNonzeroLockSeqid                             : WARNING
+>            LOCK with newlockowner's lockseqid=1 should return
+>            NFS4ERR_BAD_SEQID, instead got NFS4_OK
+
+The spec doesn't require this; we should probably remove this test.
+
+> LOCK18   st_lock.testFairness                                     : WARNING
+>            Locking is not fair
+> LOCK19   st_lock.testBlockPoll                                    : WARNING
+>            Locking is not fair
+> LOCK21   st_lock.testBlockingQueue                                : WARNING
+>            Locking is not fair
+> LOCK22   st_lock.testLongPoll                                     : WARNING
+>            Locking is not fair
+
+Medium priority to fix.  I have patches that would need updating.
+
+> LOOK6    st_lookup.testNonAccessable                              : FAILURE
+>            LOOKUP object in a dir with mode=000 should return
+>            NFS4ERR_ACCESS, instead got NFS4_OK
+
+This happens when tests are run with root and root-squashing is
+disabled:
+
+	http://linux-nfs.org/pipermail/nfsv4/2006-January/thread.html#3305
+
+I believe current behavior is correct, but it might be worth another
+look.  Low priority.  Omitting similar results in the following.
+
+> OPDG9a   st_opendowngrade.testLink                                : WARNING
+>            OPENDOWNGRADE with nonfile object should return
+>            NFS4ERR_INVAL, instead got NFS4ERR_BAD_STATEID
+> OPDG9b   st_opendowngrade.testBlock                               : WARNING
+>            OPENDOWNGRADE with nonfile object should return
+>            NFS4ERR_INVAL, instead got NFS4ERR_BAD_STATEID
+> OPDG9c   st_opendowngrade.testChar                                : WARNING
+>            OPENDOWNGRADE with nonfile object should return
+>            NFS4ERR_INVAL, instead got NFS4ERR_BAD_STATEID
+> OPDG9d   st_opendowngrade.testDir                                 : WARNING
+>            OPENDOWNGRADE with nonfile object should return
+>            NFS4ERR_INVAL, instead got NFS4ERR_BAD_STATEID
+> OPDG9f   st_opendowngrade.testFifo                                : WARNING
+>            OPENDOWNGRADE with nonfile object should return
+>            NFS4ERR_INVAL, instead got NFS4ERR_BAD_STATEID
+> OPDG9s   st_opendowngrade.testSocket                              : WARNING
+>            OPENDOWNGRADE with nonfile object should return
+>            NFS4ERR_INVAL, instead got NFS4ERR_BAD_STATEID
+
+Not sure if that's worth fixing.  Very low priority.
+
+> OPEN16   st_open.testClaimPrev                                    : WARNING
+>            Trying to OPEN with CLAIM_PREVIOUS should return
+>            NFS4ERR_RECLAIM_BAD, instead got NFS4ERR_NO_GRACE
+
+Current behavior probably correct.
+
+> OPEN19   st_open.testShareConflict2                               : FAILURE
+>            Trying to deny write permissions to others when don't
+>            have write permissions should return NFS4ERR_ACCESS,
+>            instead got NFS4_OK
+
+Test is wrong; patch submitted to Fred.
+
+> OPEN23b  st_open.testDenyRead3a                                   : FAILURE
+>            Read an access_write file should return NFS4_OK,
+>            instead got NFS4ERR_IO
+
+Might be worth investigating.
+
+> RD4      st_read.testLargeCount                                   : WARNING
+>            READ returned 1048576 characters, expected 9000000
+
+Ignore.
+
+> RD12     st_read.testOpenMode                                     : FAILURE
+>            READ with file opened in WRITE mode should return
+>            NFS4ERR_OPENMODE, instead got NFS4ERR_IO
+
+Eh, maybe should be fixed.  Low priority.
+
+> RNM16    st_rename.testDirToFullDir                               : FAILURE
+>            RENAME dir1 into existing, nonempty dir2 should return
+>            NFS4ERR_EXIST, instead got NFS4ERR_NOTEMPTY
+
+Might be worth checking.  Low priority.
+
+> SATT1a   st_setattr.testLink                                      : FAILURE
+>            Set attrs {33: 480} not equal to got attrs {33: 511}
+
+Probably worth investigating.  Medium priority.
+
+> SEC7     st_secinfo.testRPCSEC_GSS                                : FAILURE
+>            SECINFO returned mechanism list without RPCSEC_GSS
+
+Configure krb5 on your test client and server if you want to run those
+tests.
+
+> WRT5     st_write.testLargeData                                   : FAILURE
+>            error: [Errno 32] Broken pipe
+
+Ignore.
+
+--b.
