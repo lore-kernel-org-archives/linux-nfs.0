@@ -1,92 +1,166 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet12.oracle.com ([148.87.113.124]:41167 "EHLO
-	rcsinet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757229Ab0ANR3H (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 14 Jan 2010 12:29:07 -0500
+Received: from acsinet11.oracle.com ([141.146.126.233]:19518 "EHLO
+	acsinet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754043Ab0AYQt0 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 25 Jan 2010 11:49:26 -0500
+Cc: "Muntz, Daniel" <Dan.Muntz@netapp.com>,
+        Peter Chacko <peterchacko35@gmail.com>, linux-nfs@vger.kernel.org
+Message-Id: <0BA6F612-CE3A-47E9-B436-57E48506D769@oracle.com>
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 00/24] Remaining IPv6 patches for statd
-To: steved@redhat.com
-Cc: chris.mason@oracle.com, linux-nfs@vger.kernel.org
-Date: Thu, 14 Jan 2010 12:28:48 -0500
-Message-ID: <20100114172457.26079.66627.stgit@localhost.localdomain>
-Content-Type: text/plain; charset="utf-8"
+To: Whoop Whouzer <tiredandnumb@gmail.com>
+In-Reply-To: <d7f0b3a81001241609v35e54740yea3fa1a251b4f953@mail.gmail.com>
+Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
+Subject: Re: nfs client performance while server is down
+Date: Mon, 25 Jan 2010 11:48:59 -0500
+References: <d7f0b3a81001230745h18dbb14fi42f28adff0c45294@mail.gmail.com> <1f808b4a1001230757i2027d32dxb48482ea7bf8e4ee@mail.gmail.com> <d7f0b3a81001230827y52727993nf60210ae610643b7@mail.gmail.com> <7A24DF798E223B4C9864E8F92E8C93EC0527810C@SACMVEXC1-PRD.hq.netapp.com> <d7f0b3a81001241609v35e54740yea3fa1a251b4f953@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-The Fedora 13 feature freeze is next week, and RHEL 6 beta is coming
-up in just a month or two.  Because both of these releases should have
-at least client-side NFS/IPv6 support, we've decided to accelerate the
-submission of nfs-utils IPv6 patches.
+On Jan 24, 2010, at 7:09 PM, Whoop Whouzer wrote:
+> I did some network traces and there is nothing strange happening as
+> far as I can tell. I shut down the server (some network traffic
+> occurred as is to be expected). It got quiet again, I launched
+> nautilus, it got stuck without displaying anything and there was no
+> real network activity except 3 broadcasts using the ARP protocol
+> asking where the server was (could be just coincidence).
 
-This patch set introduces basic IPv6 support to statd and sm-notify.
-Functionality when IPv6 and TI-RPC are disabled should be unchanged,
-except that monitor record files can now contain more than one line.
+That sounds like the client does want to reconnect with the server.
 
----
+You could try enabling debug tracing on your client (sudo rpcdebug -m  
+nfs -s all) after shutting down your server, then try to start  
+nautilus.  The kernel log would then contain NFS-related messages that  
+might indicate where to look next.
 
-Chuck Lever (24):
-      statd: update rpc.statd(8) and sm-notify(8) to reflect IPv6 support
-      statd: Support TI-RPC statd listener
-      libnsm.a: retain CAP_NET_BIND when dropping privileges
-      statd: Remove NL_ADDR() macro
-      statd: Support IPv6 in sm_stat_1_svc()
-      statd: Support IPv6 in sm_mon_1_svc()
-      statd: Add API to canonicalize mon_names
-      libnsm.a: Add support for multiple lines in monitor record files
-      libnsm.a: Factor atomic write code out of nsm_get_state()
-      sm-notify: Save mon_name and my_name strings
-      statd: Support IPv6 in sm_simu_crash_1_svc
-      statd: Support IPv6 is caller_is_localhost()
-      statd: add IPv6 support in sm_notify_1_svc()
-      statd: add nsm_present_address() API
-      statd: Introduce statd version of matchhostname()
-      nfs-utils: Collect socket address helpers into one location
-      sm-notify: Support IPv6 DNS lookups in smn_lookup
-      sm-notify: Use getaddrinfo(3) to create bind address in smn_create_socket()
-      sm-notify: IPv6 support in reserved port binding in smn_create_socket()
-      sm-notify: Support creating a PF_INET6 socket in smn_create_socket()
-      sm-notify: factor socket creation out of notify()
-      statd: Update rmtcall.c
-      sm-notify: Replace RPC code
-      libnsm.a: Add RPC construction helper functions
-
-
- aclocal/libcap.m4          |   15 +
- configure.ac               |    3 
- support/include/nfsrpc.h   |   12 -
- support/include/nsm.h      |   31 ++-
- support/include/rpcmisc.h  |    7 -
- support/include/sockaddr.h |  237 ++++++++++++++++++++
- support/nfs/Makefile.am    |    3 
- support/nfs/getport.c      |   21 +-
- support/nfs/rpc_socket.c   |   55 +----
- support/nfs/svc_create.c   |  252 +++++++++++++++++++++
- support/nsm/Makefile.am    |    2 
- support/nsm/file.c         |  336 +++++++++++++++++++++++-----
- support/nsm/rpc.c          |  534 ++++++++++++++++++++++++++++++++++++++++++++
- utils/mount/network.c      |   13 -
- utils/mount/stropts.c      |    7 -
- utils/statd/Makefile.am    |    9 -
- utils/statd/callback.c     |   74 +++++-
- utils/statd/hostname.c     |  284 +++++++++++++++++++++++
- utils/statd/monitor.c      |   68 +++---
- utils/statd/notlist.c      |    5 
- utils/statd/notlist.h      |    6 
- utils/statd/rmtcall.c      |  197 ++++------------
- utils/statd/simu.c         |   35 ++-
- utils/statd/sm-notify.c    |  496 ++++++++++++++++++++++++-----------------
- utils/statd/sm-notify.man  |  407 +++++++++++++++++++++++-----------
- utils/statd/stat.c         |   13 +
- utils/statd/statd.c        |   38 +++
- utils/statd/statd.h        |    7 -
- utils/statd/statd.man      |  508 ++++++++++++++++++++++++++++++------------
- 29 files changed, 2831 insertions(+), 844 deletions(-)
- create mode 100644 aclocal/libcap.m4
- create mode 100644 support/include/sockaddr.h
- create mode 100644 support/nfs/svc_create.c
- create mode 100644 support/nsm/rpc.c
- create mode 100644 utils/statd/hostname.c
+> Closing
+> nautilus and launching it again will let it hang again but I see no
+> additional network traffic. After a while nautilus will display the
+> contents of the folder without any network traffic.
+>
+> On Sun, Jan 24, 2010 at 10:34 PM, Muntz, Daniel  
+> <Dan.Muntz@netapp.com> wrote:
+>> Perhaps something in your $PATH is in the NFS mount?  Do a network  
+>> trace and maybe you can see if, in fact, there are actually NFS  
+>> operations being attempted that you weren't expecting.  Then try to  
+>> figure out why.
+>>
+>>  -Dan
+>>
+>>> -----Original Message-----
+>>> From: Whoop Whouzer [mailto:tiredandnumb@gmail.com]
+>>> Sent: Saturday, January 23, 2010 8:28 AM
+>>> To: Peter Chacko
+>>> Cc: linux-nfs@vger.kernel.org
+>>> Subject: Re: nfs client performance while server is down
+>>>
+>>> I don't remember all the different set-ups I tried it on, but I just
+>>> confirmed this with the following combinations:
+>>>
+>>> ubuntu server 10.04 (alpha 2) --> ubuntu desktop 9.10, ubuntu  
+>>> desktop
+>>> 10.04 (alpha 2), fedora 12
+>>> ubuntu server 9.10 --> ubuntu desktop 9.10, ubuntu desktop 10.04
+>>> (alpha 2), fedora 12
+>>>
+>>> I'll be happy to test it on another client machine (distro) even
+>>> another server (although it would require a little more time)
+>>>
+>>> Here are some examples on the bugreports I noticed and how they do  
+>>> not
+>>> seem to get solved:
+>>> https://bugzilla.redhat.com/show_bug.cgi?id=175283
+>>> https://bugs.launchpad.net/ubuntu/+source/nfs-utils/+bug/164120
+>>>
+>>> regards,
+>>> Whoop
+>>>
+>>> On Sat, Jan 23, 2010 at 4:57 PM, Peter Chacko
+>>> <peterchacko35@gmail.com> wrote:
+>>>> Which client OS you observed this behavior ?  This has nothing to  
+>>>> do
+>>>> NFS design, and its purely stateless...Its upto the client OS
+>>>> implementation about aspects like how to deal with local
+>>> IO, when NFS
+>>>> share gets  disconnected..
+>>>>
+>>>> May be a VFS bug on the local OS you found this problem ..
+>>>>
+>>>> thanks
+>>>>
+>>>> On Sat, Jan 23, 2010 at 9:15 PM, Whoop Whouzer
+>>> <tiredandnumb@gmail.com> wrote:
+>>>>> Howdy,
+>>>>>
+>>>>> I was wondering why nfs is designed in such a way that the
+>>> performance
+>>>>> of an nfs client machine gets very bad when the nfs server
+>>> is offline?
+>>>>> This is even the case with a soft mount (either via mount
+>>> or fstab).
+>>>>> Just about every application that requires disk access (not  
+>>>>> talking
+>>>>> about nfs share acces) gets really slow to unresponsive.
+>>> For instance
+>>>>> nautilus becomes unresponsive when displaying the contents of any
+>>>>> folder on the local disk,
+>>>>> playing movie files (stored on local disk) let totem or
+>>> vlc get stuck
+>>>>> on set intervals, even the terminal becomes unresponsive at times.
+>>>>>
+>>>>> I could understand that these problems would occur while
+>>> accessing the
+>>>>> nfs share directoiourry while the server is offline, but
+>>> why for totally
+>>>>> unrelated directories?
+>>>>>
+>>>>> I have experienced this behaviour on various distro's, and
+>>> also found
+>>>>> various bug reports on this issue, they don't seem to get solved  
+>>>>> as
+>>>>> this is viewed as nfs design.
+>>>>> I see this as a flaw because clients are totally dependent on the
+>>>>> server. This would be less of a deal if the entire home directory
+>>>>> would be stored on nfs (although I even think some sort of
+>>>>> synchronisation technology could and should be implemented in this
+>>>>> case). It is a bit odd that (technically) one machine serving some
+>>>>> "useless" files to a non-trivial directory on client
+>>> machines can take
+>>>>> down these client machines.
+>>>>>
+>>>>> For me the preferred functionality would be:
+>>>>> *If an nfs server gets offline the client's nfs share becomes
+>>>>> unaccessible, but local directories and applications (that only
+>>>>> require local disk access) stay responsive.
+>>>>> *If an nfs server gets online (after being offline while the  
+>>>>> client
+>>>>> has not been restarted) the nfs share becomes reconnected.
+>>>>>
+>>>>> regards,
+>>>>> Whoop
+>>>>> --
+>>>>> To unsubscribe from this list: send the line "unsubscribe
+>>> linux-nfs" in
+>>>>> the body of a message to majordomo@vger.kernel.org
+>>>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>>>>
+>>>>
+>>> --
+>>> To unsubscribe from this list: send the line "unsubscribe
+>>> linux-nfs" in
+>>> the body of a message to majordomo@vger.kernel.org
+>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>>
+>>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs"  
+> in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
 -- 
-Signature
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
+
