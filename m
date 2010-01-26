@@ -1,203 +1,114 @@
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: Re: [PATCH 09/12] NFS: Replace __nfs_write_mapping with
- sync_inode()
-Date: Tue, 26 Jan 2010 18:17:39 -0500
-Message-ID: <1264547859.3788.37.camel@localhost>
-References: <20100125221544.16750.70574.stgit@localhost.localdomain>
-	 <20100125221545.16750.63968.stgit@localhost.localdomain>
-	 <20100126112148.GA25170@infradead.org>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH 5/5] NFSD: Create PF_INET6 listener in write_ports
+Date: Tue, 26 Jan 2010 18:30:19 -0500
+Message-ID: <20100126233019.GB806@fieldses.org>
+References: <20100126190214.3368.89388.stgit@localhost.localdomain> <20100126190422.3368.3981.stgit@localhost.localdomain>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Cc: linux-nfs@vger.kernel.org, Wu Fengguang <fengguang.wu@intel.com>,
-	Peter Zijlstra <peterz@infradead.org>, Jan Kara <jack@suse.cz>,
-	Steve Rago <sar-a+KepyhlMvJWk0Htik3J/w@public.gmane.org>,
-	Jens Axboe <jens.axboe@oracle.com>,
-	Peter Staubach <staubach@redhat.com>,
-	Arjan van de Ven <arjan@infradead.org>,
-	Ingo Molnar <mingo@elte.hu>, linux-fsdevel@vger.kernel.org,
-	Christoph Hellwig <hch@lst.de>,
-	Al Viro <viro@ZenIV.linux.org.uk>
-To: Christoph Hellwig <hch@infradead.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-nfs@vger.kernel.org
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:58831 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:56931 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752153Ab0AZXSB convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 26 Jan 2010 18:18:01 -0500
-In-Reply-To: <20100126112148.GA25170@infradead.org>
+	id S1753668Ab0AZX2q (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 26 Jan 2010 18:28:46 -0500
+In-Reply-To: <20100126190422.3368.3981.stgit-bi+AKbBUZKY6gyzm1THtWbp2dZbC/Bob@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 2010-01-26 at 06:21 -0500, Christoph Hellwig wrote: 
-> On Mon, Jan 25, 2010 at 05:15:45PM -0500, Trond Myklebust wrote:
-> >  int nfs_wb_nocommit(struct inode *inode)
-> >  {
-> > -	return nfs_write_mapping(inode->i_mapping, FLUSH_NOCOMMIT);
-> > +	return filemap_write_and_wait(inode->i_mapping);
+On Tue, Jan 26, 2010 at 02:04:22PM -0500, Chuck Lever wrote:
+> Try to create a PF_INET6 listener for NFSD, if IPv6 is enabled in the
+> kernel.
 > 
-> Any point in keeping this as a wrapper for a single well-documented
-> caller?  Also taking i_mutex around it seems a bit questionable these
-> days given that filemap_write_and_wait avoids lifelocks with writing
-> applications okay and we use it without i_mutex all over the place.
+> Make sure nfsd_serv's reference count is decreased if
+> __write_ports_addxprt() failed to create a listener.  See
+> __write_ports_addfd().
 > 
+> Our current plan is to rely on rpc.nfsd to create appropriate IPv6
+> listeners when server-side NFS/IPv6 support is desired.  Legacy
+> behavior, via the write_threads or write_svc kernel APIs, will remain
+> the same -- only IPv4 listeners are created.
 
-I'm replacing the former patch with the following updated version.
+Looks fine, thanks, but:
+> 
+> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> ---
+> 
+>  fs/nfsd/nfsctl.c |   20 +++++++++++++++++++-
+>  1 files changed, 19 insertions(+), 1 deletions(-)
+> 
+> diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
+> index f43ecd6..f0a614e 100644
+> --- a/fs/nfsd/nfsctl.c
+> +++ b/fs/nfsd/nfsctl.c
+> @@ -1003,8 +1003,26 @@ static ssize_t __write_ports_addxprt(char *buf)
+>  	err = svc_create_xprt(nfsd_serv, transport,
+>  				PF_INET, port, SVC_SOCK_ANONYMOUS);
+>  	if (err < 0)
+> -		return err;
+> +		goto out_err;
+> +
+> +	err = svc_create_xprt(nfsd_serv, transport,
+> +				PF_INET6, port, SVC_SOCK_ANONYMOUS);
+> +	if (err < 0 && err != -EAFNOSUPPORT) {
+> +		struct svc_xprt *xprt;
+> +		xprt = svc_find_xprt(nfsd_serv, transport, PF_INET, port);
+> +		if (xprt != NULL) {
+> +			svc_close_xprt(xprt);
+> +			svc_xprt_put(xprt);
+> +		}
+> +		goto out_err;
+> +	}
+> +
+>  	return 0;
+> +
+> +out_err:
+> +	/* Decrease the count, but don't shut down the service */
+> +	nfsd_serv->sv_nrthreads--;
+> +	return err;
+>  }
 
-Cheers
-  Trond
+Any objection to moving the extra error-handling to the end, as in the
+following?  If there's no objection, I'll fold it into your last patch.
 
---------------------------------------------------------------------------------------------- 
-NFS: Replace __nfs_write_mapping with sync_inode()
+--b.
 
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-
-Now that we have correct COMMIT semantics in writeback_single_inode, we can
-reduce and simplify nfs_wb_all(). Also replace nfs_wb_nocommit() with a
-call to filemap_write_and_wait(), which doesn't need to hold the
-inode->i_mutex.
-
-With that done, we can eliminate nfs_write_mapping() altogether.
-
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
-
- fs/nfs/inode.c         |   15 +++++----------
- fs/nfs/write.c         |   42 +++++-------------------------------------
- include/linux/nfs_fs.h |    2 --
- 3 files changed, 10 insertions(+), 49 deletions(-)
-
-
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index 8341709..733cb27 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -495,17 +495,11 @@ int nfs_getattr(struct vfsmount *mnt, struct dentry *dentry, struct kstat *stat)
- 	int need_atime = NFS_I(inode)->cache_validity & NFS_INO_INVALID_ATIME;
- 	int err;
- 
--	/*
--	 * Flush out writes to the server in order to update c/mtime.
--	 *
--	 * Hold the i_mutex to suspend application writes temporarily;
--	 * this prevents long-running writing applications from blocking
--	 * nfs_wb_nocommit.
--	 */
-+	/* Flush out writes to the server in order to update c/mtime.  */
- 	if (S_ISREG(inode->i_mode)) {
--		mutex_lock(&inode->i_mutex);
--		nfs_wb_nocommit(inode);
--		mutex_unlock(&inode->i_mutex);
-+		err = filemap_write_and_wait(inode->i_mapping);
-+		if (err)
-+			goto out;
- 	}
- 
- 	/*
-@@ -529,6 +523,7 @@ int nfs_getattr(struct vfsmount *mnt, struct dentry *dentry, struct kstat *stat)
- 		generic_fillattr(inode, stat);
- 		stat->ino = nfs_compat_user_ino64(NFS_FILEID(inode));
- 	}
-+out:
- 	return err;
- }
- 
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index 53df027..c28cf57 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -1443,7 +1443,6 @@ long nfs_sync_mapping_wait(struct address_space *mapping, struct writeback_contr
- 	pgoff_t idx_start, idx_end;
- 	unsigned int npages = 0;
- 	LIST_HEAD(head);
--	int nocommit = how & FLUSH_NOCOMMIT;
- 	long pages, ret;
- 
- 	/* FIXME */
-@@ -1460,14 +1459,11 @@ long nfs_sync_mapping_wait(struct address_space *mapping, struct writeback_contr
- 				npages = 0;
- 		}
- 	}
--	how &= ~FLUSH_NOCOMMIT;
- 	spin_lock(&inode->i_lock);
- 	do {
- 		ret = nfs_wait_on_requests_locked(inode, idx_start, npages);
- 		if (ret != 0)
- 			continue;
--		if (nocommit)
--			break;
- 		pages = nfs_scan_commit(inode, &head, idx_start, npages);
- 		if (pages == 0)
- 			break;
-@@ -1481,47 +1477,19 @@ long nfs_sync_mapping_wait(struct address_space *mapping, struct writeback_contr
- 	return ret;
- }
- 
--static int __nfs_write_mapping(struct address_space *mapping, struct writeback_control *wbc, int how)
--{
--	int ret;
--
--	ret = nfs_writepages(mapping, wbc);
--	if (ret < 0)
--		goto out;
--	ret = nfs_sync_mapping_wait(mapping, wbc, how);
--	if (ret < 0)
--		goto out;
--	return 0;
--out:
--	__mark_inode_dirty(mapping->host, I_DIRTY_PAGES);
--	return ret;
--}
--
--/* Two pass sync: first using WB_SYNC_NONE, then WB_SYNC_ALL */
--static int nfs_write_mapping(struct address_space *mapping, int how)
-+/*
-+ * flush the inode to disk.
-+ */
-+int nfs_wb_all(struct inode *inode)
+diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
+index f0a614e..f4474e5 100644
+--- a/fs/nfsd/nfsctl.c
++++ b/fs/nfsd/nfsctl.c
+@@ -988,6 +988,7 @@ static ssize_t __write_ports_delfd(char *buf)
+ static ssize_t __write_ports_addxprt(char *buf)
  {
- 	struct writeback_control wbc = {
--		.bdi = mapping->backing_dev_info,
- 		.sync_mode = WB_SYNC_ALL,
- 		.nr_to_write = LONG_MAX,
- 		.range_start = 0,
- 		.range_end = LLONG_MAX,
- 	};
+ 	char transport[16];
++	struct svc_xprt *xprt;
+ 	int port, err;
  
--	return __nfs_write_mapping(mapping, &wbc, how);
--}
+ 	if (sscanf(buf, "%15s %4u", transport, &port) != 2)
+@@ -1007,18 +1008,15 @@ static ssize_t __write_ports_addxprt(char *buf)
+ 
+ 	err = svc_create_xprt(nfsd_serv, transport,
+ 				PF_INET6, port, SVC_SOCK_ANONYMOUS);
+-	if (err < 0 && err != -EAFNOSUPPORT) {
+-		struct svc_xprt *xprt;
+-		xprt = svc_find_xprt(nfsd_serv, transport, PF_INET, port);
+-		if (xprt != NULL) {
+-			svc_close_xprt(xprt);
+-			svc_xprt_put(xprt);
+-		}
+-		goto out_err;
+-	}
 -
--/*
-- * flush the inode to disk.
-- */
--int nfs_wb_all(struct inode *inode)
--{
--	return nfs_write_mapping(inode->i_mapping, 0);
--}
++	if (err < 0 && err != -EAFNOSUPPORT)
++		goto out_err_cleanup_inet;
+ 	return 0;
 -
--int nfs_wb_nocommit(struct inode *inode)
--{
--	return nfs_write_mapping(inode->i_mapping, FLUSH_NOCOMMIT);
-+	return sync_inode(inode, &wbc);
- }
- 
- int nfs_wb_page_cancel(struct inode *inode, struct page *page)
-diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
-index 1eec414..3383622 100644
---- a/include/linux/nfs_fs.h
-+++ b/include/linux/nfs_fs.h
-@@ -33,7 +33,6 @@
- #define FLUSH_STABLE		4	/* commit to stable storage */
- #define FLUSH_LOWPRI		8	/* low priority background flush */
- #define FLUSH_HIGHPRI		16	/* high priority memory reclaim flush */
--#define FLUSH_NOCOMMIT		32	/* Don't send the NFSv3/v4 COMMIT */
- 
- #ifdef __KERNEL__
- 
-@@ -477,7 +476,6 @@ extern int nfs_writeback_done(struct rpc_task *, struct nfs_write_data *);
-  */
- extern long nfs_sync_mapping_wait(struct address_space *, struct writeback_control *, int);
- extern int nfs_wb_all(struct inode *inode);
--extern int nfs_wb_nocommit(struct inode *inode);
- extern int nfs_wb_page(struct inode *inode, struct page* page);
- extern int nfs_wb_page_cancel(struct inode *inode, struct page* page);
- #if defined(CONFIG_NFS_V3) || defined(CONFIG_NFS_V4)
-
++out_err_cleanup_inet:
++	xprt = svc_find_xprt(nfsd_serv, transport, PF_INET, port);
++	if (xprt != NULL) {
++		svc_close_xprt(xprt);
++		svc_xprt_put(xprt);
++	}
+ out_err:
+ 	/* Decrease the count, but don't shut down the service */
+ 	nfsd_serv->sv_nrthreads--;
