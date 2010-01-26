@@ -1,38 +1,43 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from tundra.namei.org ([65.99.196.166]:41197 "EHLO tundra.namei.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751710Ab0AZXG0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 26 Jan 2010 18:06:26 -0500
-Date: Wed, 27 Jan 2010 10:06:19 +1100 (EST)
-From: James Morris <jmorris@namei.org>
-To: Christoph Hellwig <hch@infradead.org>
-cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 0/4][v2: minor update][RFC] NFSv3: implement extended attribute
- (XATTR)
-Message-ID: <alpine.LRH.2.00.1001270952420.15158@tundra.namei.org>
-Content-Type: TEXT/PLAIN; charset=US-ASCII
+Received: from rcsinet12.oracle.com ([148.87.113.124]:18971 "EHLO
+	rcsinet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754764Ab0AZTDy (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 26 Jan 2010 14:03:54 -0500
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 0/5] Repost of remaining server-side IPv6 patches
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Date: Tue, 26 Jan 2010 14:03:38 -0500
+Message-ID: <20100126190214.3368.89388.stgit@localhost.localdomain>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-This is an updated version of the NFSv3 xattr patchset which I initially 
-posted in Sept 2009:
+Hi Bruce-
 
-http://marc.info/?l=linux-nfs&m=125337309409400&w=2
+Repost of last week's IPv6 patch set.  I've attempted to address your
+comments.
 
-This version of the patchset is a simple rebase to the current devel 
-branch of the upstream NFS tree.  Christoph was interested in seeing the 
-updated NFS xattr handlers (following the flags API change), so I figured 
-I'd post just the rebased patches.  Other than that, this will only be of 
-interest to folk who wish to play with the code using a current kernel.
+---
 
-I'm still in the process of incorporating functional feedback, 
-particularly following a discussion with Trond on using a private 
-namespace on the server to allow simple storage of all kinds of xattrs.  
-An updated patchset with this implemented should follow fairly soon.
+Aime Le Rouzic (1):
+      NFSD: Support AF_INET6 in svc_addsock() function
+
+Chuck Lever (4):
+      NFSD: Create PF_INET6 listener in write_ports
+      SUNRPC: NFS kernel APIs shouldn't return ENOENT for "transport not found"
+      SUNRPC: Bury "#ifdef IPV6" in svc_create_xprt()
+      SUNRPC: Use rpc_pton() in ip_map_parse()
 
 
-- James
+ fs/lockd/svc.c            |    2 --
+ fs/nfs/callback.c         |    2 --
+ fs/nfsd/nfsctl.c          |   24 ++++++++++++++++++-----
+ net/sunrpc/svc_xprt.c     |    9 ++++++++-
+ net/sunrpc/svcauth_unix.c |   47 +++++++++++++++++++++++++--------------------
+ net/sunrpc/svcsock.c      |    2 +-
+ 6 files changed, 54 insertions(+), 32 deletions(-)
+
 -- 
-James Morris
-<jmorris@namei.org>
+Chuck Lever <chuck.lever@oracle.com>
