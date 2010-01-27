@@ -1,139 +1,143 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:21205 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:53844 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754625Ab0ANAMM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 13 Jan 2010 19:12:12 -0500
-From: Alexandros Batsakis <batsakis@netapp.com>
-To: linux-nfs@vger.kernel.org
-Cc: Alexandros Batsakis <batsakis@netapp.com>
-Subject: [PATCH 1/1] nfs: fix race between renewd, umount, and the state manager in V4.1
-Date: Wed, 13 Jan 2010 16:15:31 -0800
-Message-Id: <1263428131-2161-1-git-send-email-batsakis@netapp.com>
+	id S1753596Ab0A0QlQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 27 Jan 2010 11:41:16 -0500
+Received: from int-mx04.intmail.prod.int.phx2.redhat.com (int-mx04.intmail.prod.int.phx2.redhat.com [10.5.11.17])
+	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id o0RGfGTk027090
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Wed, 27 Jan 2010 11:41:16 -0500
+Received: from badhat.bos.devel.redhat.com (badhat.boston.devel.redhat.com [10.16.60.49])
+	by int-mx04.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id o0RGfAom021339
+	for <linux-nfs@vger.kernel.org>; Wed, 27 Jan 2010 11:41:15 -0500
+Message-ID: <4B606CA5.2090607@RedHat.com>
+Date: Wed, 27 Jan 2010 11:41:09 -0500
+From: Steve Dickson <SteveD@redhat.com>
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: [PATCH] mount.nfs: Don't fail mounts when /etc/netconfig is nonexistent
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-Signed-off-by: Alexandros Batsakis <batsakis@netapp.com>
----
- fs/nfs/client.c    |   27 +++++++++++++--------------
- fs/nfs/nfs4_fs.h   |    1 +
- fs/nfs/nfs4proc.c  |    4 ++++
- fs/nfs/nfs4state.c |    8 ++++++--
- 4 files changed, 24 insertions(+), 16 deletions(-)
+During some recent testing, mounts were mysteriously failing to some 
+servers but not to others. The mounts that were failure were in a very sparse 
+environment. Meaning very little in any supporting utilities, like
+/bin/cat, /bin/ls or system-wide configuration files.
 
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index d0b060a..6c7d407 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -164,19 +164,6 @@ error_0:
- 	return ERR_PTR(err);
- }
+The reason the mounts were failing was /etc/netconfig did not exist. 
+Even in the cases when all the information that would have been pulled
+from /etc/netconfig already existed or was easily attainable 
+
+So the patch tries to recover from when system files are inaccessible 
+and the need information already exists or is well known. 
  
--static void nfs4_shutdown_client(struct nfs_client *clp)
--{
--#ifdef CONFIG_NFS_V4
--	if (__test_and_clear_bit(NFS_CS_RENEWD, &clp->cl_res_state))
--		nfs4_kill_renewd(clp);
--	BUG_ON(!RB_EMPTY_ROOT(&clp->cl_state_owners));
--	if (__test_and_clear_bit(NFS_CS_IDMAP, &clp->cl_res_state))
--		nfs_idmap_delete(clp);
--
--	rpc_destroy_wait_queue(&clp->cl_rpcwaitq);
--#endif
--}
--
- /*
-  * Destroy the NFS4 callback service
-  */
-@@ -206,6 +193,19 @@ static void nfs4_clear_client_minor_version(struct nfs_client *clp)
- 	nfs4_destroy_callback(clp);
- }
+steved.
+
+Author: Steve Dickson <steved@redhat.com>
+Date:   Wed Jan 27 11:19:00 2010 -0500
+    
+    In a very sparse environments certain system files (like
+    /etc/netconfig) may not exist. In these environments don't
+    fail mount if all the need information (like network protocols)
+    exist and are well known.
+    
+    Signed-off-by: Steve Dickson <steved@redhat.com>
+
+diff --git a/support/nfs/getport.c b/support/nfs/getport.c
+index c930539..e490dd4 100644
+--- a/support/nfs/getport.c
++++ b/support/nfs/getport.c
+@@ -277,7 +277,7 @@ nfs_get_proto(const char *netid, sa_family_t *family, unsigned long *protocol)
+ #ifdef HAVE_LIBTIRPC
+ char *nfs_get_netid(const sa_family_t family, const unsigned long protocol)
+ {
+-	char *nc_protofmly, *nc_proto, *nc_netid;
++	char *nc_protofmly, *nc_proto, *nc_netid = NULL;
+ 	struct netconfig *nconf;
+ 	struct protoent *proto;
+ 	void *handle;
+@@ -319,6 +319,19 @@ char *nfs_get_netid(const sa_family_t family, const unsigned long protocol)
+ 	endnetconfig(handle);
  
-+static void nfs4_shutdown_client(struct nfs_client *clp)
+ out:
++	/*
++	 * The system configuration files are inaccessible 
++	 * so see if these are well known protocols
++	 */
++	if (protocol == IPPROTO_TCP)
++		nc_netid = (family == AF_INET6 ? 
++			strdup("tcp6") : strdup("tcp"));
++	else if (protocol == IPPROTO_UDP)
++		nc_netid = (family == AF_INET6 ? 
++			strdup("udp6") : strdup("udp"));
++	if (nc_netid != NULL)
++		return nc_netid;
++
+ 	rpc_createerr.cf_stat = RPC_UNKNOWNPROTO;
+ 	return NULL;
+ }
+diff --git a/utils/mount/network.c b/utils/mount/network.c
+index 06cab6a..fa99bc1 100644
+--- a/utils/mount/network.c
++++ b/utils/mount/network.c
+@@ -1270,7 +1270,26 @@ nfs_nfs_version(struct mount_options *options, unsigned long *version)
+ 	*version = 0;
+ 	return 1;
+ }
+-
++/*
++ * Returns TRUE if the option string is a well known protocol
++ */
++int 
++nfs_set_proto(char *option,  unsigned long *protocol)
 +{
-+#ifdef CONFIG_NFS_V4
-+	if (__test_and_clear_bit(NFS_CS_RENEWD, &clp->cl_res_state))
-+		nfs4_kill_renewd(clp);
-+	nfs4_clear_client_minor_version(clp);
-+	if (__test_and_clear_bit(NFS_CS_IDMAP, &clp->cl_res_state))
-+		nfs_idmap_delete(clp);
-+
-+	rpc_destroy_wait_queue(&clp->cl_rpcwaitq);
-+#endif
-+}
-+
- /*
-  * Destroy a shared client record
-  */
-@@ -213,7 +213,6 @@ static void nfs_free_client(struct nfs_client *clp)
- {
- 	dprintk("--> nfs_free_client(%u)\n", clp->rpc_ops->version);
- 
--	nfs4_clear_client_minor_version(clp);
- 	nfs4_shutdown_client(clp);
- 
- 	nfs_fscache_release_client_cookie(clp);
-diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
-index 865265b..783c986 100644
---- a/fs/nfs/nfs4_fs.h
-+++ b/fs/nfs/nfs4_fs.h
-@@ -262,6 +262,7 @@ extern void nfs4_renew_state(struct work_struct *);
- /* nfs4state.c */
- struct rpc_cred *nfs4_get_setclientid_cred(struct nfs_client *clp);
- struct rpc_cred *nfs4_get_renew_cred_locked(struct nfs_client *clp);
-+int nfs4_begin_drain_session(struct nfs_client *clp);
- #if defined(CONFIG_NFS_V4_1)
- struct rpc_cred *nfs4_get_machine_cred_locked(struct nfs_client *clp);
- struct rpc_cred *nfs4_get_exchange_id_cred(struct nfs_client *clp);
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index a4b7d69..f424b1a 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -4728,6 +4728,7 @@ struct nfs4_session *nfs4_alloc_session(struct nfs_client *clp)
- 
- void nfs4_destroy_session(struct nfs4_session *session)
- {
-+	nfs4_begin_drain_session(session->clp);
- 	nfs4_proc_destroy_session(session);
- 	dprintk("%s Destroy backchannel for xprt %p\n",
- 		__func__, session->clp->cl_rpcclient->cl_xprt);
-@@ -4996,6 +4997,9 @@ static int nfs4_proc_sequence(struct nfs_client *clp, struct rpc_cred *cred)
- void nfs41_sequence_call_done(struct rpc_task *task, void *data)
- {
- 	struct nfs_client *clp = (struct nfs_client *)data;
-+
-+	if (!nfs4_has_session(clp))
-+		return;
- 
- 	nfs41_sequence_done(clp, task->tk_msg.rpc_resp, task->tk_status);
- 
-diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-index 6d263ed..09f4402 100644
---- a/fs/nfs/nfs4state.c
-+++ b/fs/nfs/nfs4state.c
-@@ -156,7 +156,7 @@ static void nfs4_end_drain_session(struct nfs_client *clp)
- 	}
- }
- 
--static int nfs4_begin_drain_session(struct nfs_client *clp)
-+int nfs4_begin_drain_session(struct nfs_client *clp)
- {
- 	struct nfs4_session *ses = clp->cl_session;
- 	struct nfs4_slot_table *tbl = &ses->fc_slot_table;
-@@ -878,7 +878,11 @@ void nfs4_schedule_state_manager(struct nfs_client *clp)
- 	if (test_and_set_bit(NFS4CLNT_MANAGER_RUNNING, &clp->cl_state) != 0)
- 		return;
- 	__module_get(THIS_MODULE);
--	atomic_inc(&clp->cl_count);
-+	if (!atomic_inc_not_zero(&clp->cl_count)) {
-+		nfs4_clear_state_manager_bit(clp);
-+		module_put(THIS_MODULE);
-+		return;
++	if (strcmp(option, "tcp") == 0 || 
++			strcmp(option, "tcp6") == 0) {
++		*protocol = IPPROTO_TCP;
++		return 1;
 +	}
- 	task = kthread_run(nfs4_run_state_manager, clp, "%s-manager",
- 				rpc_peeraddr2str(clp->cl_rpcclient,
- 							RPC_DISPLAY_ADDR));
--- 
-1.6.2.5
-
++	if (strcmp(option, "udp") == 0 ||
++			strcmp(option, "udp6") == 0) {
++		*protocol = IPPROTO_UDP;
++		return 1;
++	}
++	if (verbose)
++		nfs_error(_("%s: unkown protocol: '%s'"), progname, option);
++	return 0;
++}
+ /*
+  * Returns TRUE if @protocol contains a valid value for this option,
+  * or FALSE if the option was specified with an invalid value.
+@@ -1290,8 +1309,13 @@ nfs_nfs_protocol(struct mount_options *options, unsigned long *protocol)
+ 		return 1;
+ 	case 2: /* proto */
+ 		option = po_get(options, "proto");
+-		if (option != NULL)
+-			return nfs_get_proto(option, &family, protocol);
++		if (option != NULL) {
++			if (nfs_get_proto(option, &family, protocol))
++				return 1;
++			if (nfs_set_proto(option, protocol))
++				return 1;
++			return 0;
++		}
+ 	}
+ 
+ 	/*
+@@ -1438,8 +1462,13 @@ nfs_mount_protocol(struct mount_options *options, unsigned long *protocol)
+ 	char *option;
+ 
+ 	option = po_get(options, "mountproto");
+-	if (option != NULL)
+-		return nfs_get_proto(option, &family, protocol);
++	if (option != NULL) {
++		if (nfs_get_proto(option, &family, protocol))
++			return 1;
++		if (nfs_set_proto(option, protocol))
++			return 1;
++		return 0;
++	}
+ 
+ 	/*
+ 	 * MNT transport protocol wasn't specified.  If the NFS
