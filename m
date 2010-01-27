@@ -1,38 +1,91 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from esrismtp2.esri.com ([198.102.62.103]:25057 "EHLO Vail.esri.com"
+Received: from mx2.netapp.com ([216.240.18.37]:28703 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752400Ab0AVUF0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 22 Jan 2010 15:05:26 -0500
-Received: from leoray.esri.com (leoray.esri.com [10.27.102.12])
-	by Vail.esri.com (8.13.7+Sun/8.13.7) with ESMTP id o0MK5Pa4002586
-	for <linux-nfs@vger.kernel.org>; Fri, 22 Jan 2010 12:05:25 -0800 (PST)
-Received: from leoray.esri.com (leoray.esri.com [127.0.0.1])
-	by leoray.esri.com (8.14.3/8.14.3) with ESMTP id o0MK5Pmb026111
-	for <linux-nfs@vger.kernel.org>; Fri, 22 Jan 2010 12:05:25 -0800
-Received: (from ray5147@localhost)
-	by leoray.esri.com (8.14.3/8.14.3/Submit) id o0MK5PKf026110
-	for linux-nfs@vger.kernel.org; Fri, 22 Jan 2010 12:05:25 -0800
-Date: Fri, 22 Jan 2010 12:05:25 -0800
-From: Ray Van Dolson <rvandolson@esri.com>
+	id S1753862Ab0A0Cne (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 26 Jan 2010 21:43:34 -0500
+From: Alexandros Batsakis <batsakis@netapp.com>
 To: linux-nfs@vger.kernel.org
-Subject: Source address in server callbacks fix...
-Message-ID: <20100122200525.GA26072@esri.com>
-Content-Type: text/plain; charset=us-ascii
+Cc: trond@netapp.com, Alexandros Batsakis <batsakis@netapp.com>
+Subject: [PATCH 1/4] nfs: kill renewd before clearing the client session
+Date: Tue, 26 Jan 2010 18:43:52 -0800
+Message-Id: <1264560235-2478-1-git-send-email-batsakis@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-We're being bitten by the source address in server callbacks
-issue[1][2].
+Signed-off-by: Alexandros Batsakis <batsakis@netapp.com>
+---
+ fs/nfs/client.c |   47 +++++++++++++++++++++++------------------------
+ 1 files changed, 23 insertions(+), 24 deletions(-)
 
-The post above[1], mentions kernel fixes for this.  I'm having a hard
-time locating this commit so I can determine if it has been backported
-to the RHEL5 kernel yet.
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index d0b060a..07e4b56 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -164,30 +164,6 @@ error_0:
+ 	return ERR_PTR(err);
+ }
+ 
+-static void nfs4_shutdown_client(struct nfs_client *clp)
+-{
+-#ifdef CONFIG_NFS_V4
+-	if (__test_and_clear_bit(NFS_CS_RENEWD, &clp->cl_res_state))
+-		nfs4_kill_renewd(clp);
+-	BUG_ON(!RB_EMPTY_ROOT(&clp->cl_state_owners));
+-	if (__test_and_clear_bit(NFS_CS_IDMAP, &clp->cl_res_state))
+-		nfs_idmap_delete(clp);
+-
+-	rpc_destroy_wait_queue(&clp->cl_rpcwaitq);
+-#endif
+-}
+-
+-/*
+- * Destroy the NFS4 callback service
+- */
+-static void nfs4_destroy_callback(struct nfs_client *clp)
+-{
+-#ifdef CONFIG_NFS_V4
+-	if (__test_and_clear_bit(NFS_CS_CALLBACK, &clp->cl_res_state))
+-		nfs_callback_down(clp->cl_minorversion);
+-#endif /* CONFIG_NFS_V4 */
+-}
+-
+ /*
+  * Clears/puts all minor version specific parts from an nfs_client struct
+  * reverting it to minorversion 0.
+@@ -202,9 +178,31 @@ static void nfs4_clear_client_minor_version(struct nfs_client *clp)
+ 
+ 	clp->cl_call_sync = _nfs4_call_sync;
+ #endif /* CONFIG_NFS_V4_1 */
++}
++
++/*
++ * Destroy the NFS4 callback service
++ */
++static void nfs4_destroy_callback(struct nfs_client *clp)
++{
++#ifdef CONFIG_NFS_V4
++	if (__test_and_clear_bit(NFS_CS_CALLBACK, &clp->cl_res_state))
++		nfs_callback_down(clp->cl_minorversion);
++#endif /* CONFIG_NFS_V4 */
++}
+ 
++static void nfs4_shutdown_client(struct nfs_client *clp)
++{
++#ifdef CONFIG_NFS_V4
++	if (__test_and_clear_bit(NFS_CS_RENEWD, &clp->cl_res_state))
++		nfs4_kill_renewd(clp);
++	nfs4_clear_client_minor_version(clp);
+ 	nfs4_destroy_callback(clp);
++	if (__test_and_clear_bit(NFS_CS_IDMAP, &clp->cl_res_state))
++		nfs_idmap_delete(clp);
++
++	rpc_destroy_wait_queue(&clp->cl_rpcwaitq);
++#endif
+ }
+ 
+ /*
+-- 
+1.6.2.5
 
-Can anyone point me in the right direction?
-
-Thanks,
-Ray
-
-[1] http://markmail.org/message/nd4lvfpiv6gkacio
-[2] https://bugzilla.redhat.com/show_bug.cgi?id=557911
