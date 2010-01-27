@@ -1,38 +1,48 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: splice read byte accounting
-Date: Wed, 27 Jan 2010 18:19:24 -0500
-Message-ID: <1264634364.3788.177.camel@localhost>
-References: <39A11474-A44E-49FE-8135-54B384254311@oracle.com>
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: Re: [PATCH 1/1] nfs41 do not allocate unused back channel pages
+Date: Wed, 27 Jan 2010 18:44:08 -0500
+Message-ID: <1264635848.3788.179.camel@localhost>
+References: <1264528528-4319-1-git-send-email-andros@netapp.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="UTF-8"
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-To: Chuck Lever <chuck.lever@oracle.com>
+Cc: linux-nfs@vger.kernel.org
+To: andros@netapp.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-out1.uio.no ([129.240.10.57]:50219 "EHLO mail-out1.uio.no"
+Received: from mx2.netapp.com ([216.240.18.37]:37191 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755077Ab0A0XT3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 27 Jan 2010 18:19:29 -0500
-In-Reply-To: <39A11474-A44E-49FE-8135-54B384254311@oracle.com>
+	id S1754572Ab0A0XoZ convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 27 Jan 2010 18:44:25 -0500
+Received: from svlrsexc2-prd.hq.netapp.com (svlrsexc2-prd.hq.netapp.com [10.57.115.31])
+	by smtp2.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id o0RNi9jG020776
+	for <linux-nfs@vger.kernel.org>; Wed, 27 Jan 2010 15:44:09 -0800 (PST)
+In-Reply-To: <1264528528-4319-1-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 2010-01-27 at 17:22 -0500, Chuck Lever wrote: 
-> Hi-
+On Tue, 2010-01-26 at 12:55 -0500, andros@netapp.com wrote: 
+> From: Andy Adamson <andros@netapp.com>
 > 
-> nfs_file_splice_write() accounts for the bytes in the request in the  
-> "normal bytes written" counter, but nfs_file_splice_read() does not  
-> account for bytes read.
+> Signed-off-by: Andy Adamson <andros@netapp.com>
+> ---
+>  net/sunrpc/svc.c |    4 ++++
+>  1 files changed, 4 insertions(+), 0 deletions(-)
 > 
-> Should the read path count these as normal bytes as well, or should  
-> the write path not account for these bytes?
-> 
+> diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
+> index 538ca43..984be52 100644
+> --- a/net/sunrpc/svc.c
+> +++ b/net/sunrpc/svc.c
+> @@ -506,6 +506,10 @@ svc_init_buffer(struct svc_rqst *rqstp, unsigned int size)
+>  {
+>  	unsigned int pages, arghi;
+>  
+> +	/* bc_xprt uses fore channel allocated buffers */
+> +	if (rqstp->rq_server->bc_xprt)
+> +		return 1;
+> +
+>  	pages = size / PAGE_SIZE + 1; /* extra page as we hold both request and reply.
+>  				       * We assume one is at most one page
+>  				       */
 
-nfs_file_splice_read() should probably update NFSIOS_NORMALREADBYTES.
-
-That said, why do nfs_file_read(), nfs_file_write() and
-nfs_file_splice_write() update the stats with the requested number of
-bytes, irrespective of the number of bytes that were actually
-read/write?
+Argh! This one too fails completely to compile ifndef CONFIG_NFS_V4_1
 
 Trond
-
