@@ -1,130 +1,161 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ew0-f216.google.com ([209.85.219.216]:54000 "EHLO
-	mail-ew0-f216.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752203Ab0AYRSK (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 25 Jan 2010 12:18:10 -0500
-Received: by ewy8 with SMTP id 8so4416998ewy.29
-        for <linux-nfs@vger.kernel.org>; Mon, 25 Jan 2010 09:18:03 -0800 (PST)
-Date: Mon, 25 Jan 2010 17:10:32 +0000
-Message-ID: <6278d2221001250910i41f43a27y4db92f9ef17439cc@mail.gmail.com>
-Subject: [2.6.32.3] potentially uninitialised field in nfs_atomic_lookup...
-From: Daniel J Blueman <daniel.blueman@gmail.com>
-To: linux-nfs@vger.kernel.org, Trond Myklebust <trond.myklebust@fys.uio.no>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from rcsinet11.oracle.com ([148.87.113.123]:52308 "EHLO
+	rcsinet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755032Ab0A0SKO (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 27 Jan 2010 13:10:14 -0500
+Message-ID: <4B60816E.5070108@oracle.com>
+Date: Wed, 27 Jan 2010 13:09:50 -0500
+From: Chuck Lever <chuck.lever@oracle.com>
+To: Steve Dickson <SteveD@redhat.com>
+CC: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] mount.nfs: Don't fail mounts when /etc/netconfig is nonexistent
+References: <4B606CA5.2090607@RedHat.com>
+In-Reply-To: <4B606CA5.2090607@RedHat.com>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-When booting with 2.6.32.3 x86-64 with a debug configuration including
-kmemcheck activated, I'm seeing bytes reported as uninitialised [1]
-(here with value 0x33).
+On 01/27/2010 11:41 AM, Steve Dickson wrote:
+> During some recent testing, mounts were mysteriously failing to some
+> servers but not to others. The mounts that were failure were in a very sparse
+> environment. Meaning very little in any supporting utilities, like
+> /bin/cat, /bin/ls or system-wide configuration files.
+>
+> The reason the mounts were failing was /etc/netconfig did not exist.
+> Even in the cases when all the information that would have been pulled
+> from /etc/netconfig already existed or was easily attainable
+>
+> So the patch tries to recover from when system files are inaccessible
+> and the need information already exists or is well known.
+>
+> steved.
+>
+> Author: Steve Dickson<steved@redhat.com>
+> Date:   Wed Jan 27 11:19:00 2010 -0500
+>
+>      In a very sparse environments certain system files (like
+>      /etc/netconfig) may not exist. In these environments don't
+>      fail mount if all the need information (like network protocols)
+>      exist and are well known.
+>
+>      Signed-off-by: Steve Dickson<steved@redhat.com>
 
-This is with automount and NFS4 [2] and reproduces consistently; it
-appears to not be structure padding.
+I totally disagree with this.  If HAVE_LIBTIRPC is set, then the runtime 
+TI-RPC package should be installed, in its entirety, on the run-time 
+systems.  If autoconf and RPM can't trust the given dependency 
+information, then all bets are off.
 
-What additional information would help on this?
+The right fix is to either:
 
-Daniel
+a) install a non-TI-RPC version of mount.nfs, or
 
---- [1]
+b) make sure /etc/netconfig is available when RPM, pkgconfig, and 
+autoconf say it should be.
 
-WARNING: kmemcheck: Caught 64-bit read from uninitialized memory
-(ffff88016cc180c8)
+Mount.nfs is not the only program that needs to have this information.
 
-07000000000000003333333333333333808d7e6d0188ffff988d7e6d0188ffff
+I assume since you are not patching other parts of mount.nfs that look 
+for /etc/rpc and /etc/protocols that these files _do_ exist?  Or does 
+glibc also do this hack of filling in well-known values?
 
- i i i i i i i i u u u u u u u u i i i i i i i i i i i i i i i i
+> diff --git a/support/nfs/getport.c b/support/nfs/getport.c
+> index c930539..e490dd4 100644
+> --- a/support/nfs/getport.c
+> +++ b/support/nfs/getport.c
+> @@ -277,7 +277,7 @@ nfs_get_proto(const char *netid, sa_family_t *family, unsigned long *protocol)
+>   #ifdef HAVE_LIBTIRPC
+>   char *nfs_get_netid(const sa_family_t family, const unsigned long protocol)
+>   {
+> -	char *nc_protofmly, *nc_proto, *nc_netid;
+> +	char *nc_protofmly, *nc_proto, *nc_netid = NULL;
+>   	struct netconfig *nconf;
+>   	struct protoent *proto;
+>   	void *handle;
+> @@ -319,6 +319,19 @@ char *nfs_get_netid(const sa_family_t family, const unsigned long protocol)
+>   	endnetconfig(handle);
+>
+>   out:
+> +	/*
+> +	 * The system configuration files are inaccessible
+> +	 * so see if these are well known protocols
+> +	 */
+> +	if (protocol == IPPROTO_TCP)
+> +		nc_netid = (family == AF_INET6 ?
+> +			strdup("tcp6") : strdup("tcp"));
+> +	else if (protocol == IPPROTO_UDP)
+> +		nc_netid = (family == AF_INET6 ?
+> +			strdup("udp6") : strdup("udp"));
+> +	if (nc_netid != NULL)
+> +		return nc_netid;
+> +
+>   	rpc_createerr.cf_stat = RPC_UNKNOWNPROTO;
+>   	return NULL;
+>   }
+> diff --git a/utils/mount/network.c b/utils/mount/network.c
+> index 06cab6a..fa99bc1 100644
+> --- a/utils/mount/network.c
+> +++ b/utils/mount/network.c
+> @@ -1270,7 +1270,26 @@ nfs_nfs_version(struct mount_options *options, unsigned long *version)
+>   	*version = 0;
+>   	return 1;
+>   }
+> -
+> +/*
+> + * Returns TRUE if the option string is a well known protocol
+> + */
+> +int
+> +nfs_set_proto(char *option,  unsigned long *protocol)
+> +{
+> +	if (strcmp(option, "tcp") == 0 ||
+> +			strcmp(option, "tcp6") == 0) {
+> +		*protocol = IPPROTO_TCP;
+> +		return 1;
+> +	}
+> +	if (strcmp(option, "udp") == 0 ||
+> +			strcmp(option, "udp6") == 0) {
+> +		*protocol = IPPROTO_UDP;
+> +		return 1;
+> +	}
+> +	if (verbose)
+> +		nfs_error(_("%s: unkown protocol: '%s'"), progname, option);
+> +	return 0;
+> +}
+>   /*
+>    * Returns TRUE if @protocol contains a valid value for this option,
+>    * or FALSE if the option was specified with an invalid value.
+> @@ -1290,8 +1309,13 @@ nfs_nfs_protocol(struct mount_options *options, unsigned long *protocol)
+>   		return 1;
+>   	case 2: /* proto */
+>   		option = po_get(options, "proto");
+> -		if (option != NULL)
+> -			return nfs_get_proto(option,&family, protocol);
+> +		if (option != NULL) {
+> +			if (nfs_get_proto(option,&family, protocol))
+> +				return 1;
+> +			if (nfs_set_proto(option, protocol))
+> +				return 1;
+> +			return 0;
+> +		}
+>   	}
+>
+>   	/*
+> @@ -1438,8 +1462,13 @@ nfs_mount_protocol(struct mount_options *options, unsigned long *protocol)
+>   	char *option;
+>
+>   	option = po_get(options, "mountproto");
+> -	if (option != NULL)
+> -		return nfs_get_proto(option,&family, protocol);
+> +	if (option != NULL) {
+> +		if (nfs_get_proto(option,&family, protocol))
+> +			return 1;
+> +		if (nfs_set_proto(option, protocol))
+> +			return 1;
+> +		return 0;
+> +	}
+>
+>   	/*
+>   	 * MNT transport protocol wasn't specified.  If the NFS
 
-
-
-Modules linked in: nfs lockd nfs_acl auth_rpcgss netconsole configfs
-autofs4 sunrpc af_packet ipv6 msr binfmt_misc dm_mod nvram evdev
-psmouse rtc_cmos rtc_core rtc_lib e1000e piix pata_acpi
-ide_pci_generic ata_generic rng_core ext3 jbd mbcache uhci_hcd
-ohci_hcd ehci_hcd usbcore [last unloaded: microcode]
-
- [<ffffffffa0236d2e>] nfs_atomic_lookup+0xce/0x110 [nfs]
-
- [<ffffffff8113e13a>] do_lookup+0x1da/0x220
-
- [<ffffffff8113e5c0>] __link_path_walk+0x440/0x760
-
- [<ffffffff8113e937>] path_walk+0x57/0xb0
-
- [<ffffffff8113e9fa>] vfs_path_lookup+0x6a/0xe0
-
- [<ffffffffa023f370>] nfs_follow_remote_path+0x50/0x150 [nfs]
-
- [<ffffffffa023fe97>] nfs4_try_mount+0x77/0xd0 [nfs]
-
- [<ffffffffa024107b>] nfs4_get_sb+0x13b/0x320 [nfs]
-
- [<ffffffff81134e18>] vfs_kern_mount+0x58/0xe0
-
- [<ffffffff81134f0e>] do_kern_mount+0x4e/0x110
-
- [<ffffffff8114dd06>] do_mount+0x546/0x7c0
-
- [<ffffffff8114e00a>] sys_mount+0x8a/0xd0
-
- [<ffffffff8100be2b>] system_call_fastpath+0x16/0x1b
-
- [<ffffffffffffffff>] 0xffffffffffffffff
-
-
---- [2]
-
-auto.direct /net/home autofs
-rw,relatime,fd=5,pgrp=4013,timeout=300,minproto=5,maxproto=5,direct 0
-0
-filer:/home /net/home nfs4
-rw,relatime,vers=4,rsize=1048576,wsize=1048576,namlen=255,hard,proto=tcp,port=65535,timeo=600,retrans=3,sec=sys,clientaddr=172.16.0.130,addr=172.16.0.110
-0 0
-
---- [3]
-
-/net/cluster/daniel/kernel/linux-2.6.32.3/fs/nfs/dir.c:1044
-    3cf1:       48 8b 5d e8             mov    -0x18(%rbp),%rbx
-    3cf5:       4c 8b 65 f0             mov    -0x10(%rbp),%r12
-    3cf9:       48 89 c8                mov    %rcx,%rax
-    3cfc:       4c 8b 6d f8             mov    -0x8(%rbp),%r13
-    3d00:       c9                      leaveq
-    3d01:       c3                      retq
-/net/cluster/daniel/kernel/linux-2.6.32.3/fs/nfs/dir.c:1022
-    3d02:       83 f8 ec                cmp    $0xffffffffffffffec,%eax
-    3d05:       74 19                   je     3d20 <nfs_atomic_lookup+0xc0>
-    3d07:       83 f8 fe                cmp    $0xfffffffffffffffe,%eax
-    3d0a:       74 5e                   je     3d6a <nfs_atomic_lookup+0x10a>
-    3d0c:       83 f8 d8                cmp    $0xffffffffffffffd8,%eax
-    3d0f:       90                      nop
-    3d10:       75 df                   jne    3cf1 <nfs_atomic_lookup+0x91>
-/net/cluster/daniel/kernel/linux-2.6.32.3/fs/nfs/dir.c:1031
-    3d12:       f6 83 8a 00 00 00 02    testb  $0x2,0x8a(%rbx)
-    3d19:       75 d6                   jne    3cf1 <nfs_atomic_lookup+0x91>
-    3d1b:       0f 1f 44 00 00          nopl   0x0(%rax,%rax,1)
-/net/cluster/daniel/kernel/linux-2.6.32.3/fs/nfs/dir.c:1043
-    3d20:       48 89 da                mov    %rbx,%rdx
-    3d23:       4c 89 e6                mov    %r12,%rsi
-    3d26:       4c 89 ef                mov    %r13,%rdi
-    3d29:       e8 22 fd ff ff          callq  3a50 <nfs_lookup>
-    3d2e:       48 89 c1                mov    %rax,%rcx <----
-    3d31:       eb be                   jmp    3cf1 <nfs_atomic_lookup+0x91>
-/net/cluster/daniel/kernel/linux-2.6.32.3/fs/nfs/dir.c:1014
-    3d33:       31 f6                   xor    %esi,%esi
-    3d35:       4c 89 e7                mov    %r12,%rdi
-    3d38:       e8 00 00 00 00          callq  3d3d <nfs_atomic_lookup+0xdd>
-    3d3d:       31 c9                   xor    %ecx,%ecx
-    3d3f:       eb b0                   jmp    3cf1 <nfs_atomic_lookup+0x91>
-
-static struct dentry *nfs_atomic_lookup(struct inode *dir, struct dentry *dentr
-{
-...
-         } else if (res != NULL)
-                dentry = res;
-out:
-        return res;
-no_open:
-        return nfs_lookup(dir, dentry, nd);  <---
-}
 -- 
-Daniel J Blueman
+chuck[dot]lever[at]oracle[dot]com
