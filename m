@@ -1,110 +1,91 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:41320 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754821Ab0AFUJk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 6 Jan 2010 15:09:40 -0500
-Date: Wed, 6 Jan 2010 21:09:28 +0100
-From: Jan Kara <jack@suse.cz>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: Peter Zijlstra <peterz@infradead.org>,
-        Wu Fengguang <fengguang.wu@intel.com>, Jan Kara <jack@suse.cz>,
-        Steve Rago <sar@nec-labs.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "jens.axboe" <jens.axboe@oracle.com>,
-        Peter Staubach <staubach@redhat.com>,
-        Arjan van de Ven <arjan@infradead.org>, Ingo Molnar <mingo@elte.hu>,
-        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
-Subject: Re: [PATCH] improve the performance of large sequential write NFS
- workloads
-Message-ID: <20100106200928.GB22781@quack.suse.cz>
-References: <20091231050441.GB19627@localhost>
- <1262286828.8151.113.camel@localhost>
- <20100106030346.GA15962@localhost>
- <1262796962.4251.91.camel@localhost>
- <1262802387.4251.117.camel@localhost>
- <1262803040.4049.62.camel@laptop>
- <1262803927.4251.133.camel@localhost>
- <1262804876.4049.66.camel@laptop>
- <1262805667.4251.135.camel@localhost>
- <1262807594.4251.155.camel@localhost>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1262807594.4251.155.camel@localhost>
+Received: from mail-ew0-f219.google.com ([209.85.219.219]:41057 "EHLO
+	mail-ew0-f219.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753027Ab0A0TZl convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 27 Jan 2010 14:25:41 -0500
+Received: by ewy19 with SMTP id 19so814364ewy.21
+        for <linux-nfs@vger.kernel.org>; Wed, 27 Jan 2010 11:25:40 -0800 (PST)
+In-Reply-To: <1264619372.3788.96.camel@localhost>
+References: <d7f0b3a81001230745h18dbb14fi42f28adff0c45294@mail.gmail.com>
+	 <d7f0b3a81001241609v35e54740yea3fa1a251b4f953@mail.gmail.com>
+	 <0BA6F612-CE3A-47E9-B436-57E48506D769@oracle.com>
+	 <d7f0b3a81001251102p5e631706jfd9f147a00487061@mail.gmail.com>
+	 <641EC97D-2252-41FB-AEE8-0F1B77B5EA65@oracle.com>
+	 <20100126232148.GA806@fieldses.org> <4B608492.2020702@oracle.com>
+	 <1264617603.3788.77.camel@localhost>
+	 <d7f0b3a81001271047l72adcc14ycf24cceb64a50644@mail.gmail.com>
+	 <1264619372.3788.96.camel@localhost>
+Date: Wed, 27 Jan 2010 20:25:39 +0100
+Message-ID: <d7f0b3a81001271125t6a4bd395mc77d04ef663094da@mail.gmail.com>
+Subject: Re: nfs client performance while server is down
+From: Whoop Whouzer <tiredandnumb@gmail.com>
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+Cc: Chuck Lever <chuck.lever@oracle.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        "Muntz, Daniel" <Dan.Muntz@netapp.com>,
+        Peter Chacko <peterchacko35@gmail.com>, linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed 06-01-10 14:53:14, Trond Myklebust wrote:
-> ...and finally, this should convert the previous NFS patch to use the
-> per-bdi accounting.
-> 
-> Cheers
->   Trond
-> 
-> -------------------------------------------------------------------------------------- 
-> VM: Use per-bdi unstable accounting to improve use of wbc->force_commit
-> 
-> From: Trond Myklebust <Trond.Myklebust@netapp.com>
-> 
-> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-  I like this. You can add
-Acked-by: Jan Kara <jack@suse.cz>
-  to this patch previous patches adding unstable pages accounting.
+I am not stating this is an NFS problem at all. I am not asking anybody to fix
+anything.
+I asked if this issue was by design. I was told it wasn't (as nfs is stateless).
+So, therefore I considered it as a bug (which I don't believe to
+reside in either nfs or nautilus). I am just trying to figure out
+where the problem lies.
 
-								Honza
-> ---
-> 
->  mm/page-writeback.c |   13 +++++++------
->  1 files changed, 7 insertions(+), 6 deletions(-)
-> 
-> 
-> diff --git a/mm/page-writeback.c b/mm/page-writeback.c
-> index d90a0db..c537543 100644
-> --- a/mm/page-writeback.c
-> +++ b/mm/page-writeback.c
-> @@ -487,7 +487,6 @@ static void balance_dirty_pages(struct address_space *mapping,
->  {
->  	long nr_reclaimable, bdi_nr_reclaimable;
->  	long nr_writeback, bdi_nr_writeback;
-> -	long nr_unstable_nfs;
->  	unsigned long background_thresh;
->  	unsigned long dirty_thresh;
->  	unsigned long bdi_thresh;
-> @@ -504,18 +503,20 @@ static void balance_dirty_pages(struct address_space *mapping,
->  			.nr_to_write	= write_chunk,
->  			.range_cyclic	= 1,
->  		};
-> +		long bdi_nr_unstable = 0;
->  
->  		get_dirty_limits(&background_thresh, &dirty_thresh,
->  				&bdi_thresh, bdi);
->  
-> -		nr_unstable_nfs = global_page_state(NR_UNSTABLE_NFS);
->  		nr_reclaimable = global_page_state(NR_FILE_DIRTY) +
-> -					nr_unstable_nfs;
-> +					global_page_state(NR_UNSTABLE_NFS);
->  		nr_writeback = global_page_state(NR_WRITEBACK);
->  
->  		bdi_nr_reclaimable = bdi_stat(bdi, BDI_DIRTY);
-> -		if (bdi_cap_account_unstable(bdi))
-> -			bdi_nr_reclaimable += bdi_stat(bdi, BDI_UNSTABLE);
-> +		if (bdi_cap_account_unstable(bdi)) {
-> +			bdi_nr_unstable = bdi_stat(bdi, BDI_UNSTABLE);
-> +			bdi_nr_reclaimable += bdi_nr_unstable;
-> +		}
->  		bdi_nr_writeback = bdi_stat(bdi, BDI_WRITEBACK);
->  
->  		if (bdi_nr_reclaimable + bdi_nr_writeback <= bdi_thresh)
-> @@ -545,7 +546,7 @@ static void balance_dirty_pages(struct address_space *mapping,
->  		if (bdi_nr_reclaimable > bdi_thresh) {
->  			wbc.force_commit = 0;
->  			/* Force NFS to also free up unstable writes. */
-> -			if (nr_unstable_nfs > nr_reclaimable / 2)
-> +			if (bdi_nr_unstable > bdi_nr_reclaimable / 2)
->  				wbc.force_commit = 1;
->  
->  			writeback_inodes_wbc(&wbc);
-> 
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+I am not talking about implementing "disconnected NFS" mode,
+synchronisation or anything like that. There is not something missing,
+there is something not working properly, somewhere, and I'm trying to
+find out where..
+
+On Wed, Jan 27, 2010 at 8:09 PM, Trond Myklebust
+<trond.myklebust@fys.uio.no> wrote:
+> So? I don't see why that would be an NFS problem.
+>
+> As far as I can see from this thread, you are basically asking us to fix
+> these broken applications by implementing a "disconnected NFS" mode.
+> While that may indeed be a cool thing to support, I haven't seen anybody
+> so far stepping up and saying that they have the time and resources to
+> work on it. Are you volunteering?
+>
+> Trond
+>
+> On Wed, 2010-01-27 at 19:47 +0100, Whoop Whouzer wrote:
+>> ok, but it's not just GNOME/nautilus behaviour. For one, I am
+>> experiencing problems with just about all applications that require
+>> (local) disk access. Furthermore, problems have also been reported
+>> with xfce/thunar and also with KDE.
+>>
+>> A bug for this issue has just been created for xfce/thunar:
+>> http://bugzilla.xfce.org/show_bug.cgi?id=6185
+>>
+>> On Wed, Jan 27, 2010 at 7:40 PM, Trond Myklebust
+>> <trond.myklebust@fys.uio.no> wrote:
+>> > On Wed, 2010-01-27 at 13:23 -0500, Chuck Lever wrote:
+>> >> On 01/26/2010 06:21 PM, J. Bruce Fields wrote:
+>> >> > I wonder if nautilus (or some library it uses) likes to regularly
+>> >> > "statfs" all the filesystems it knows about?
+>> >>
+>> >> The NFS client seems to like to send these periodically, but I've never
+>> >> looked into why.  It's probably triggered by some cache timeout, and
+>> >> gathers recent server file system information.
+>> >
+>> > No. It is entirely application driven. Furthermore, most of the statfs
+>> > data is uncached, since it should not be performance critical in any
+>> > sane application environment.
+>> >
+>> > IOW: I agree with Bruce that this is most likely GNOME or nautilus
+>> > triggering statfs calls. Indeed, when I do actually open a window on
+>> > some directory it also appears to display the free space.
+>> >
+>> > Trond
+>> >
+>> >
+>> >
+>
+>
+>
+>
