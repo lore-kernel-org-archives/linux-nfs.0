@@ -1,82 +1,50 @@
-From: Alexandros Batsakis <batsakis@netapp.com>
-Subject: [PATCH 3/4] nfs41: fix race between umount and renewd sequence operations
-Date: Tue, 26 Jan 2010 18:43:54 -0800
-Message-ID: <1264560235-2478-3-git-send-email-batsakis@netapp.com>
-References: <1264560235-2478-1-git-send-email-batsakis@netapp.com>
- <1264560235-2478-2-git-send-email-batsakis@netapp.com>
-Cc: trond@netapp.com, Alexandros Batsakis <batsakis@netapp.com>
-To: linux-nfs@vger.kernel.org
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: nfs client performance while server is down
+Date: Wed, 27 Jan 2010 13:40:03 -0500
+Message-ID: <1264617603.3788.77.camel@localhost>
+References: <d7f0b3a81001230745h18dbb14fi42f28adff0c45294@mail.gmail.com>
+	 <1f808b4a1001230757i2027d32dxb48482ea7bf8e4ee@mail.gmail.com>
+	 <d7f0b3a81001230827y52727993nf60210ae610643b7@mail.gmail.com>
+	 <7A24DF798E223B4C9864E8F92E8C93EC0527810C@SACMVEXC1-PRD.hq.netapp.com>
+	 <d7f0b3a81001241609v35e54740yea3fa1a251b4f953@mail.gmail.com>
+	 <0BA6F612-CE3A-47E9-B436-57E48506D769@oracle.com>
+	 <d7f0b3a81001251102p5e631706jfd9f147a00487061@mail.gmail.com>
+	 <641EC97D-2252-41FB-AEE8-0F1B77B5EA65@oracle.com>
+	 <20100126232148.GA806@fieldses.org>  <4B608492.2020702@oracle.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="UTF-8"
+Cc: Whoop Whouzer <tiredandnumb@gmail.com>,
+	"J. Bruce Fields" <bfields@fieldses.org>,
+	"Muntz, Daniel" <Dan.Muntz@netapp.com>,
+	Peter Chacko <peterchacko35@gmail.com>,
+	linux-nfs@vger.kernel.org
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:28703 "EHLO mx2.netapp.com"
+Received: from mail-out1.uio.no ([129.240.10.57]:43379 "EHLO mail-out1.uio.no"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754809Ab0A0Cne (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 26 Jan 2010 21:43:34 -0500
-In-Reply-To: <1264560235-2478-2-git-send-email-batsakis@netapp.com>
+	id S932163Ab0A0SkQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 27 Jan 2010 13:40:16 -0500
+In-Reply-To: <4B608492.2020702@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Alexandros Batsakis <batsakis@netapp.com>
----
- fs/nfs/nfs4proc.c |   18 ++++++++++++++++--
- 1 files changed, 16 insertions(+), 2 deletions(-)
+On Wed, 2010-01-27 at 13:23 -0500, Chuck Lever wrote: 
+> On 01/26/2010 06:21 PM, J. Bruce Fields wrote:
+> > I wonder if nautilus (or some library it uses) likes to regularly
+> > "statfs" all the filesystems it knows about?
+> 
+> The NFS client seems to like to send these periodically, but I've never 
+> looked into why.  It's probably triggered by some cache timeout, and 
+> gathers recent server file system information.
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 9fc99e9..cd523df 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -5041,6 +5041,8 @@ void nfs41_sequence_call_done(struct rpc_task *task, void *data)
- 
- 	if (task->tk_status < 0) {
- 		dprintk("%s ERROR %d\n", __func__, task->tk_status);
-+		if (atomic_read(&clp->cl_count) == 1)
-+			return;
- 
- 		if (_nfs4_async_handle_error(task, NULL, clp, NULL)
- 								== -EAGAIN) {
-@@ -5050,7 +5052,8 @@ void nfs41_sequence_call_done(struct rpc_task *task, void *data)
- 	}
- 	dprintk("%s rpc_cred %p\n", __func__, task->tk_msg.rpc_cred);
- 
--	nfs4_schedule_state_renewal(clp);
-+	if (atomic_read(&clp->cl_count) > 1)
-+		nfs4_schedule_state_renewal(clp);
- 
- 	kfree(task->tk_msg.rpc_argp);
- 	kfree(task->tk_msg.rpc_resp);
-@@ -5073,9 +5076,15 @@ static void nfs41_sequence_prepare(struct rpc_task *task, void *data)
- 	rpc_call_start(task);
- }
- 
-+static void nfs41_sequence_release(void *calldata)
-+{
-+	nfs_put_client((struct nfs_client *) calldata);
-+}
-+
- static const struct rpc_call_ops nfs41_sequence_ops = {
- 	.rpc_call_done = nfs41_sequence_call_done,
- 	.rpc_call_prepare = nfs41_sequence_prepare,
-+	.rpc_release = nfs41_sequence_release,
- };
- 
- static int nfs41_proc_async_sequence(struct nfs_client *clp,
-@@ -5088,11 +5097,16 @@ static int nfs41_proc_async_sequence(struct nfs_client *clp,
- 		.rpc_cred = cred,
- 	};
- 
-+	if (!atomic_inc_not_zero(&clp->cl_count))
-+		return -EIO;
- 	args = kzalloc(sizeof(*args), GFP_KERNEL);
--	if (!args)
-+	if (!args) {
-+		nfs_put_client(clp);
- 		return -ENOMEM;
-+	}
- 	res = kzalloc(sizeof(*res), GFP_KERNEL);
- 	if (!res) {
-+		nfs_put_client(clp);
- 		kfree(args);
- 		return -ENOMEM;
- 	}
--- 
-1.6.2.5
+No. It is entirely application driven. Furthermore, most of the statfs
+data is uncached, since it should not be performance critical in any
+sane application environment.
+
+IOW: I agree with Bruce that this is most likely GNOME or nautilus
+triggering statfs calls. Indeed, when I do actually open a window on
+some directory it also appears to display the free space.
+
+Trond
+
 
