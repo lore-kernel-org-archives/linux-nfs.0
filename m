@@ -1,152 +1,151 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mrout1-b.corp.re1.yahoo.com ([69.147.107.20]:29334 "EHLO
-	mrout1-b.corp.re1.yahoo.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752414Ab0A2RBK (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 29 Jan 2010 12:01:10 -0500
-Date: Fri, 29 Jan 2010 10:57:56 -0600
-From: Quentin Barnes <qbarnes+nfs@yahoo-inc.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
-Subject: Re: Random I/O over NFS has horrible performance due to small I/O transfers
-Message-ID: <20100129165756.GA26747@yahoo-inc.com>
-References: <20091226204531.GA3356@yahoo-inc.com> <E7A7B701-B471-4D14-8D45-B0FF691D1CCC@oracle.com> <20100121011238.GA30642@yahoo-inc.com> <B02A2206-CFEB-4FF4-8825-E953CFD7637C@oracle.com> <20100124184634.GA19426@yahoo-inc.com> <A9262578-3560-4EEE-87BC-8AA339F77B10@oracle.com>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <A9262578-3560-4EEE-87BC-8AA339F77B10@oracle.com>
+Received: from fieldses.org ([174.143.236.118]:40729 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932163Ab0A0WYb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 27 Jan 2010 17:24:31 -0500
+From: "J. Bruce Fields" <bfields@citi.umich.edu>
+To: Steve Dickson <steved@redhat.com>
+Cc: linux-nfs@vger.kernel.org, "J. Bruce Fields" <bfields@citi.umich.edu>
+Subject: [PATCH 2/2] nfsd: default to kernel default for minorversion 1
+Date: Wed, 27 Jan 2010 17:26:06 -0500
+Message-Id: <1264631166-21898-2-git-send-email-bfields@citi.umich.edu>
+In-Reply-To: <1264631166-21898-1-git-send-email-bfields@citi.umich.edu>
+References: <1264631166-21898-1-git-send-email-bfields@citi.umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-> > If the flush call has no data to flush, the GETATTR is pointless.
-> > The file's cached attribute information is already as valid as can
-> > ever be hoped for with NFS and its life is limited by the normal
-> > attribute timeout.  On the other hand, if the flush has cached data
-> > to write out, I would expect the WRITE will return the updated
-> > attributes with the post-op attribute status, again making the
-> > GETATTR on close pointless.  Can you explain what I'm not following?
-> 
-> The Linux NFS client does not use the post-op attributes to update the  
-> cached attributes for the file.  Because there is no guarantee that  
-> the WRITE replies will return in the same order the WRITEs were sent,  
-> it's simply not reliable.  If the last reply to be received was for an  
-> older write, then the mtime and ctime (and possibly the size) would be  
-> stale, and would trigger a false data cache invalidation the next time  
-> a full inode validation is done.
+The current kernel code should not be enabled by default, because it
+does not yet attempt to be a conform completely to the rfc; for example,
+some required pieces of protocol are missing.
 
-Ah, yes, the out of order WRITE replies problem.  I knew I was
-forgetting something.
+Therefore the kernel defaults to leaving minorversion1 off.  When the
+code matures sufficiently, that default will change.
 
-This may be a stupid question, but why not use the post-op attribute
-information to update the inode whenever the fattr mtime exceeds the
-inode mtime and just ignore using the post-op update all the other
-times since that would indicate an out of order arrival?  (Of course
-other fields would want to be checked to see if the file suddenly
-changed other state information warranting general invalidation.)
-I would assume that there are other out of order arrivals for other
-op replies that prevent such a trivial algorithm?
+That kernel default becomes meaningless if nfs-utils always explicitly
+turns 4.1 on or off.  So, nfs-utils should by default do nothing.
 
-This out-of-order post-op attribute data invalidating cache sounds
-like a well-known problem that people have been trying to solve for
-a long time or have proved that it can't be solved.  If there's a
-white paper you can point me to that discuss the problem at length,
-I'd like to read it.
+Provide a --enable-experimental-v41-support option to turn it on
+explicitly.  The option is intentionally spelled out (and has no short
+equivalent), to help ensure that users know what they're getting into.
 
-> So, post-op attributes are used to detect the need for an attribute  
-> cache update.  At some later point, the client will perform the update  
-> by sending a GETATTR, and that will update the cached attributes.   
-> That's what NFS_INO_INVALID_ATTR is for.
+Once 4.1 defaults to on, that option will become unnecessary (and can
+probably just be dropped from nfs-utils), and only the -N 4.1 option
+will be necessary.
 
-NFS_INO_INVALID_ATTR is just the tip of the iceberg.  I'm still trying
-to absorb all the NFS inode state information that's tracked, how and
-under what conditions it is updated, and when it is set as invalid.
+Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
+---
+ support/include/nfs/nfs.h |    3 ---
+ utils/nfsd/nfsd.c         |   17 +++++++++++++----
+ utils/nfsd/nfssvc.c       |   10 ++++------
+ 3 files changed, 17 insertions(+), 13 deletions(-)
 
-> The goal is to use a few extra operations on the wire to prevent  
-> spurious data cache invalidations.  For large files, this could mean  
-> significantly fewer READs on the wire.
+diff --git a/support/include/nfs/nfs.h b/support/include/nfs/nfs.h
+index a64eb0a..824f604 100644
+--- a/support/include/nfs/nfs.h
++++ b/support/include/nfs/nfs.h
+@@ -13,9 +13,6 @@
+ #define NFSD_MINVERS 2
+ #define NFSD_MAXVERS 4
+ 
+-#define NFSD_MINMINORVERS4 1
+-#define NFSD_MAXMINORVERS4 1
+-
+ struct nfs_fh_len {
+ 	int		fh_size;
+ 	u_int8_t	fh_handle[NFS3_FHSIZE];
+diff --git a/utils/nfsd/nfsd.c b/utils/nfsd/nfsd.c
+index 1cda1e5..c72f73e 100644
+--- a/utils/nfsd/nfsd.c
++++ b/utils/nfsd/nfsd.c
+@@ -49,6 +49,7 @@ static struct option longopts[] =
+ 	{ "port", 1, 0, 'p' },
+ 	{ "debug", 0, 0, 'd' },
+ 	{ "syslog", 0, 0, 's' },
++	{ "enable-experimental-v41-support", 0, 0, 'X' },
+ 	{ NULL, 0, 0, 0 }
+ };
+ 
+@@ -103,7 +104,7 @@ main(int argc, char **argv)
+ 	char *p, *progname, *port;
+ 	char *haddr = NULL;
+ 	int	socket_up = 0;
+-	int minorvers4 = NFSD_MAXMINORVERS4;	/* nfsv4 minor version */
++	int minorvers41 = 0;	/* nfsv4 minor version */
+ 	unsigned int versbits = NFSCTL_ALLBITS;
+ 	unsigned int protobits = NFSCTL_ALLBITS;
+ 	unsigned int proto4 = 0;
+@@ -163,7 +164,12 @@ main(int argc, char **argv)
+ 			switch((c = strtol(optarg, &p, 0))) {
+ 			case 4:
+ 				if (*p == '.') {
+-					minorvers4 = -atoi(p + 1);
++					int i = atoi(p+1);
++					if (i != 1) {
++						fprintf(stderr, "%s: unsupported minor version\n", optarg);
++						exit(1);
++					}
++					minorvers41 = -1;
+ 					break;
+ 				}
+ 			case 3:
+@@ -185,6 +191,9 @@ main(int argc, char **argv)
+ 		case 'U':
+ 			NFSCTL_UDPUNSET(protobits);
+ 			break;
++		case 'X':
++			minorvers41 = 1;
++			break;
+ 		default:
+ 			fprintf(stderr, "Invalid argument: '%c'\n", c);
+ 		case 'h':
+@@ -257,7 +266,7 @@ main(int argc, char **argv)
+ 	 * registered with rpcbind. Note that on older kernels w/o the right
+ 	 * interfaces, these are a no-op.
+ 	 */
+-	nfssvc_setvers(versbits, minorvers4);
++	nfssvc_setvers(versbits, minorvers41);
+  
+ 	error = nfssvc_set_sockets(AF_INET, proto4, haddr, port);
+ 	if (!error)
+@@ -309,7 +318,7 @@ static void
+ usage(const char *prog)
+ {
+ 	fprintf(stderr, "Usage:\n"
+-		"%s [-d|--debug] [-H hostname] [-p|-P|--port port] [-N|--no-nfs-version version ] [-s|--syslog] [-T|--no-tcp] [-U|--no-udp] nrservs\n", 
++		"%s [-d|--debug] [-H hostname] [-p|-P|--port port] [-N|--no-nfs-version version ] [-s|--syslog] [-T|--no-tcp] [-U|--no-udp] [--enable-experimental-v41-support] nrservs\n", 
+ 		prog);
+ 	exit(2);
+ }
+diff --git a/utils/nfsd/nfssvc.c b/utils/nfsd/nfssvc.c
+index 7bbbaba..ec9446a 100644
+--- a/utils/nfsd/nfssvc.c
++++ b/utils/nfsd/nfssvc.c
+@@ -227,7 +227,7 @@ nfssvc_set_sockets(const int family, const unsigned int protobits,
+ }
+ 
+ void
+-nfssvc_setvers(unsigned int ctlbits, int minorvers4)
++nfssvc_setvers(unsigned int ctlbits, int minorvers41)
+ {
+ 	int fd, n, off;
+ 	char *ptr;
+@@ -238,11 +238,9 @@ nfssvc_setvers(unsigned int ctlbits, int minorvers4)
+ 	if (fd < 0)
+ 		return;
+ 
+-	n = minorvers4 >= 0 ? minorvers4 : -minorvers4;
+-	if (n >= NFSD_MINMINORVERS4 && n <= NFSD_MAXMINORVERS4)
+-		    off += snprintf(ptr+off, sizeof(buf) - off, "%c4.%d",
+-				    minorvers4 > 0 ? '+' : '-',
+-				    n);
++	if (minorvers41)
++		off += snprintf(ptr+off, sizeof(buf) - off, "%c4.1",
++				minorvers41 > 0 ? '+' : '-');
+ 	for (n = NFSD_MINVERS; n <= NFSD_MAXVERS; n++) {
+ 		if (NFSCTL_VERISSET(ctlbits, n))
+ 		    off += snprintf(ptr+off, sizeof(buf) - off, "+%d ", n);
+-- 
+1.6.3.3
 
-Yes, definitely better to reread attribute info when needed than cause
-a data cache flush.
-
-> > However, I tore into the code to better understand what was triggering
-> > the GETATTR on close.  A close(2) does two things, a flush
-> > (nfs_file_flush) and a release (nfs_file_release).  I had thought the
-> > GETATTR was happening as part of the nfs_file_flush().  It's not.  The
-> > GETATTR is triggered by the nfs_file_release().  As part of it doing a
-> > put_nfs_open_context() -> nfs_close_context() ->  
-> > nfs_revalidate_inode(),
-> > that triggers the NFS_PROTO(inode)->getattr()!
-> >
-> > I'm not sure, but I suspect that O_DIRECT files take the
-> > put_nfs_open_context() path that results in the extraneous GETATTR
-> > on close(2) because filp->private_data is non-NULL where for regular
-> > files it's NULL.  Is that right?  If so, can this problem be easily
-> > fixed?
-> 
-> I'm testing a patch to use an asynchronous close for O_DIRECT files.   
-> This will skip the GETATTR for NFSv2/v3 O_DIRECT files, and avoid  
-> waiting for the CLOSE for NFSv4 O_DIRECT files.
-
-When you're ready for external testing, will you be publishing it here
-on the NFS mailing list?  Any guess when it might be ready?
-
-> > Because the app was designed with O_DIRECT in mind, the app does its
-> > own file buffering in user space.
-> >
-> > If for the Linux port we can move away from O_DIRECT, it would be
-> > interesting to see if that extra user space buffering could be
-> > disabled and let the kernel do its job.
-> 
-> You mentioned in an earlier e-mail that the application has its own  
-> high-level data cache coherency protocol, and it appears that your  
-> application is using NFS to do what is more or less real-time data  
-> exchange between MTAs and users, with permanent storage as a side- 
-> effect.  In that case, the application should manage its own cache,  
-> since it can better optimize the number of READs required to keep its  
-> local data caches up to date.  That would address the "too many data  
-> cache invalidations" problem.
-
-True.
-
-But we also have many other internal groups using NFS with many
-different use cases.  Though I'm primarily focused on this one use
-case I recently mentioned, I may jump around at times to other ones
-without being clear that I hopped.  I'll try to watch for that.  :-)
-
-> In terms of maintaining the Linux port of your application, you  
-> probably want to stay as close to the original as possible, yes?    
-> Given all this, we'd be better off getting O_DIRECT to perform better.
-> 
-> You say above that llseek(2), write(2), and close(2) cause excess  
-> GETATTR traffic.
-> 
-> llseek(SEEK_END) on an O_DIRECT file pretty much has to do a GETATTR,  
-> since the client can't trust it's own attribute cache in this case.
-> 
-> I think we can get rid of the GETATTR at close(2) time on O_DIRECT  
-> files.  On open(2), I think the GETATTR is delayed until the first  
-> access that uses the client's data cache.  So we shouldn't have an  
-> extra GETATTR on open(2) of an O_DIRECT file.
-> 
-> You haven't mentioned a specific case where an O_DIRECT write(2)  
-> generates too many GETATTRs before, unless I missed it.
-
-I've been evaluating this NFS use case with kernels from
-2.6.{9,18,21,24,26,30,31,32,33-rc5} builds.  After reading your
-note, I went back and looked at the tcpdumps from the latest 2.6.32
-runs, I didn't see the GETATTRs before write(2)s anymore.  I'm going
-to assume that problem was from an older kernel I was testing and
-jumbled them in my head.  I should have double-checked that on the
-current kernels and not relied on my faulty memory.
-
-> Chuck Lever
-> chuck[dot]lever[at]oracle[dot]com
-> 
-> 
-> 
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-fsdevel" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
-Quentin
