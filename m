@@ -1,140 +1,105 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet11.oracle.com ([148.87.113.123]:40200 "EHLO
-	rcsinet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753801Ab0ASPok (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 19 Jan 2010 10:44:40 -0500
-Cc: linux-nfs@vger.kernel.org, steved@redhat.com, trond.myklebust@fys.uio.no
-Message-Id: <1667647A-2BB1-478D-8881-CE8EA2191F97@oracle.com>
-From: Chuck Lever <chuck.lever@oracle.com>
-To: Jeff Layton <jlayton@redhat.com>
-In-Reply-To: <1263907662-19107-1-git-send-email-jlayton@redhat.com>
-Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
-Subject: Re: [PATCH] mount.nfs: prefer IPv4 addresses over IPv6 (try #2)
-Date: Tue, 19 Jan 2010 10:43:34 -0500
-References: <1263907662-19107-1-git-send-email-jlayton@redhat.com>
+Received: from mx2.netapp.com ([216.240.18.37]:19089 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755981Ab0A0SK7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 27 Jan 2010 13:10:59 -0500
+From: Alexandros Batsakis <batsakis@netapp.com>
+To: trond@netapp.com
+Cc: linux-nfs@vger.kernel.org, Alexandros Batsakis <batsakis@netapp.com>
+Subject: [PATCH 2/4] nfs4: V2 prevent backlogging of renewd requests
+Date: Tue, 26 Jan 2010 19:51:21 -0800
+Message-Id: <1264564281-2314-1-git-send-email-batsakis@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
+Signed-off-by: Alexandros Batsakis <batsakis@netapp.com>
+---
+ fs/nfs/nfs4proc.c   |    3 +++
+ fs/nfs/nfs4renewd.c |   24 +++++++-----------------
+ 2 files changed, 10 insertions(+), 17 deletions(-)
 
-On Jan 19, 2010, at 8:27 AM, Jeff Layton wrote:
-
-> We're poised to enable IPv6 in nfs-utils in distros. There is a
-> potential problem however. mount.nfs will prefer IPv6 addrs.
->
-> If someone has a working IPv4 server today that has an IPv6 address,
-> then clients may start trying to mount over that address. If the  
-> server
-> doesn't support NFS serving over IPv6 (and virtually no linux servers
-> currently do), then the mount will start failing.
->
-> Avoid this problem by making the mount code prefer IPv4 addresses
-> when they are available and an address family isn't specified.
->
-> This is the second attempt at this patch. This moves the changes
-> into nfs_validate_options. Chuck also mentioned parameterizing this
-> behavior too. This patch doesn't include that, as I wasn't exactly
-> clear on what he had in mind.
->
-> Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> ---
-> utils/mount/stropts.c |   32 +++++++++++++++++++++++++-------
-> 1 files changed, 25 insertions(+), 7 deletions(-)
->
-> diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
-> index 57a4b32..f0937a2 100644
-> --- a/utils/mount/stropts.c
-> +++ b/utils/mount/stropts.c
-> @@ -326,6 +326,29 @@ static int nfs_set_version(struct nfsmount_info  
-> *mi)
-> 	return 1;
-> }
->
-> +static int nfs_addr_option_lookup(struct nfsmount_info *mi)
-> +{
-> +	struct sockaddr *sap = &mi->address.sa;
-> +	sa_family_t family;
-> +
-> +	if (!nfs_nfs_proto_family(mi->options, &family))
-> +		return 0;
-
-The real problem is that nfs_nfs_proto_family() returns AF_UNSPEC if  
-"proto=" was not specified.  The negotiation logic here in this file  
-can't handle that return properly.
-
-We could change nfs_nfs_proto_family(), or we could decide that  
-returning AF_UNSPEC is the right thing to do when "proto=" isn't  
-specified.  If the latter, then nfs_nfs_proto_family() (and  
-nfs_mount_proto_family) should get a documenting comment that  
-describes the meaning of the AF_UNSPEC return.
-
-Also, do you need to look at how nfs_mount_proto_family is used in  
-other nearby routines?  It has the same problem.  What do you do when  
-"mountproto=udp6" is specified?
-
-> +
-> +	mi->salen = sizeof(mi->address);
-> +
-> +#ifdef IPV6_SUPPORTED
-> +	/*
-> +	 * A lot of servers don't support NFS over IPv6 yet. For now,
-> +	 * IPv4 addresses are preferred.
-> +	 */
-
-I think that doesn't describe this workaround adequately.  This is a  
-temporary crutch that prevents us from using IPv6 if "proto=" isn't  
-specified.  The underlying problem here is that nfs_lookup() returns  
-just one address.
-
-> +	if (family == AF_UNSPEC &&
-> +	    nfs_lookup(mi->hostname, AF_INET, sap, &mi->salen))
-> +		return 1;
-> +#endif /* IPV6_SUPPORTED */
-> +
-> +	return nfs_lookup(mi->hostname, family, sap, &mi->salen);
-> +}
-> +
-> /*
->  * Set up mandatory non-version specific NFS mount options.
->  *
-> @@ -333,16 +356,11 @@ static int nfs_set_version(struct  
-> nfsmount_info *mi)
->  */
-> static int nfs_validate_options(struct nfsmount_info *mi)
-> {
-> -	struct sockaddr *sap = &mi->address.sa;
-> -	sa_family_t family;
->
-> 	if (!nfs_parse_devname(mi->spec, &mi->hostname, NULL))
-> 		return 0;
->
-> -	if (!nfs_nfs_proto_family(mi->options, &family))
-> -		return 0;
-> -	mi->salen = sizeof(mi->address);
-> -	if (!nfs_lookup(mi->hostname, family, sap, &mi->salen))
-> +	if (!nfs_addr_option_lookup(mi))
-> 		return 0;
->
-> 	if (!nfs_set_version(mi))
-> @@ -351,7 +369,7 @@ static int nfs_validate_options(struct  
-> nfsmount_info *mi)
-> 	if (!nfs_append_sloppy_option(mi->options))
-> 		return 0;
->
-> -	if (!nfs_append_addr_option(sap, mi->salen, mi->options))
-> +	if (!nfs_append_addr_option(&mi->address.sa, mi->salen, mi- 
-> >options))
-> 		return 0;
->
-> 	return 1;
-> -- 
-> 1.6.5.2
->
-
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 3644c35..9fc99e9 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -3162,6 +3162,7 @@ static void nfs4_renew_done(struct rpc_task *task, void *data)
+ 	if (time_before(clp->cl_last_renewal,timestamp))
+ 		clp->cl_last_renewal = timestamp;
+ 	spin_unlock(&clp->cl_lock);
++	nfs4_schedule_state_renewal(clp);
+ }
+ 
+ static const struct rpc_call_ops nfs4_renew_ops = {
+@@ -5049,6 +5050,8 @@ void nfs41_sequence_call_done(struct rpc_task *task, void *data)
+ 	}
+ 	dprintk("%s rpc_cred %p\n", __func__, task->tk_msg.rpc_cred);
+ 
++	nfs4_schedule_state_renewal(clp);
++
+ 	kfree(task->tk_msg.rpc_argp);
+ 	kfree(task->tk_msg.rpc_resp);
+ 
+diff --git a/fs/nfs/nfs4renewd.c b/fs/nfs/nfs4renewd.c
+index 0156c01..d87f103 100644
+--- a/fs/nfs/nfs4renewd.c
++++ b/fs/nfs/nfs4renewd.c
+@@ -36,11 +36,6 @@
+  * as an rpc_task, not a real kernel thread, so it always runs in rpciod's
+  * context.  There is one renewd per nfs_server.
+  *
+- * TODO: If the send queue gets backlogged (e.g., if the server goes down),
+- * we will keep filling the queue with periodic RENEW requests.  We need a
+- * mechanism for ensuring that if renewd successfully sends off a request,
+- * then it only wakes up when the request is finished.  Maybe use the
+- * child task framework of the RPC layer?
+  */
+ 
+ #include <linux/mm.h>
+@@ -63,7 +58,7 @@ nfs4_renew_state(struct work_struct *work)
+ 	struct nfs_client *clp =
+ 		container_of(work, struct nfs_client, cl_renewd.work);
+ 	struct rpc_cred *cred;
+-	long lease, timeout;
++	long lease;
+ 	unsigned long last, now;
+ 
+ 	ops = nfs4_state_renewal_ops[clp->cl_minorversion];
+@@ -75,7 +70,6 @@ nfs4_renew_state(struct work_struct *work)
+ 	lease = clp->cl_lease_time;
+ 	last = clp->cl_last_renewal;
+ 	now = jiffies;
+-	timeout = (2 * lease) / 3 + (long)last - (long)now;
+ 	/* Are we close to a lease timeout? */
+ 	if (time_after(now, last + lease/3)) {
+ 		cred = ops->get_state_renewal_cred_locked(clp);
+@@ -90,19 +84,15 @@ nfs4_renew_state(struct work_struct *work)
+ 			/* Queue an asynchronous RENEW. */
+ 			ops->sched_state_renewal(clp, cred);
+ 			put_rpccred(cred);
++			goto out_exp;
+ 		}
+-		timeout = (2 * lease) / 3;
+-		spin_lock(&clp->cl_lock);
+-	} else
++	} else {
+ 		dprintk("%s: failed to call renewd. Reason: lease not expired \n",
+ 				__func__);
+-	if (timeout < 5 * HZ)    /* safeguard */
+-		timeout = 5 * HZ;
+-	dprintk("%s: requeueing work. Lease period = %ld\n",
+-			__func__, (timeout + HZ - 1) / HZ);
+-	cancel_delayed_work(&clp->cl_renewd);
+-	schedule_delayed_work(&clp->cl_renewd, timeout);
+-	spin_unlock(&clp->cl_lock);
++		spin_unlock(&clp->cl_lock);
++	}
++	nfs4_schedule_state_renewal(clp);
++out_exp:
+ 	nfs_expire_unreferenced_delegations(clp);
+ out:
+ 	dprintk("%s: done\n", __func__);
 -- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
+1.6.2.5
 
