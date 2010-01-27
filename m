@@ -1,66 +1,111 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:60851 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:44353 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755285Ab0A0RJN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 27 Jan 2010 12:09:13 -0500
-Date: Wed, 27 Jan 2010 12:10:45 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
+	id S1751864Ab0A0TcD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 27 Jan 2010 14:32:03 -0500
+Message-ID: <4B6094A5.6000309@redhat.com>
+Date: Wed, 27 Jan 2010 14:31:49 -0500
+From: Peter Staubach <staubach@redhat.com>
 To: Whoop Whouzer <tiredandnumb@gmail.com>
-Cc: Chuck Lever <chuck.lever@oracle.com>,
+CC: Trond Myklebust <trond.myklebust@fys.uio.no>,
+        Chuck Lever <chuck.lever@oracle.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
         "Muntz, Daniel" <Dan.Muntz@netapp.com>,
         Peter Chacko <peterchacko35@gmail.com>, linux-nfs@vger.kernel.org
 Subject: Re: nfs client performance while server is down
-Message-ID: <20100127171045.GC16308@fieldses.org>
-References: <d7f0b3a81001230745h18dbb14fi42f28adff0c45294@mail.gmail.com> <1f808b4a1001230757i2027d32dxb48482ea7bf8e4ee@mail.gmail.com> <d7f0b3a81001230827y52727993nf60210ae610643b7@mail.gmail.com> <7A24DF798E223B4C9864E8F92E8C93EC0527810C@SACMVEXC1-PRD.hq.netapp.com> <d7f0b3a81001241609v35e54740yea3fa1a251b4f953@mail.gmail.com> <0BA6F612-CE3A-47E9-B436-57E48506D769@oracle.com> <d7f0b3a81001251102p5e631706jfd9f147a00487061@mail.gmail.com> <641EC97D-2252-41FB-AEE8-0F1B77B5EA65@oracle.com> <20100126232148.GA806@fieldses.org> <d7f0b3a81001261640w789099fbj3ad5449f81b0cfc7@mail.gmail.com>
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <d7f0b3a81001261640w789099fbj3ad5449f81b0cfc7@mail.gmail.com>
+References: <d7f0b3a81001230745h18dbb14fi42f28adff0c45294@mail.gmail.com>	 <d7f0b3a81001241609v35e54740yea3fa1a251b4f953@mail.gmail.com>	 <0BA6F612-CE3A-47E9-B436-57E48506D769@oracle.com>	 <d7f0b3a81001251102p5e631706jfd9f147a00487061@mail.gmail.com>	 <641EC97D-2252-41FB-AEE8-0F1B77B5EA65@oracle.com>	 <20100126232148.GA806@fieldses.org> <4B608492.2020702@oracle.com>	 <1264617603.3788.77.camel@localhost>	 <d7f0b3a81001271047l72adcc14ycf24cceb64a50644@mail.gmail.com>	 <1264619372.3788.96.camel@localhost> <d7f0b3a81001271125t6a4bd395mc77d04ef663094da@mail.gmail.com>
+In-Reply-To: <d7f0b3a81001271125t6a4bd395mc77d04ef663094da@mail.gmail.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, Jan 27, 2010 at 01:40:07AM +0100, Whoop Whouzer wrote:
-> Could be, although not very likely as it was also reported happening
-> with thunar (although I have not tested this myself).
-> But I am also experiencing similar problems with other applications
-> even gnome-terminal (basically all applications requiring (local) disk
-> access).
-> So this would led me to think it is some sub-process, that is used by
-> all application requiring disk access, that is to blame...
-
-You could patch the kernel to add printk()'s in statfs showing who is
-calling it (and with what path).
-
-But probably there's some tracing infrastructure that would make this
-possible without patching.
-
---b.
-
+Whoop Whouzer wrote:
+> I am not stating this is an NFS problem at all. I am not asking anybody to fix
+> anything.
+> I asked if this issue was by design. I was told it wasn't (as nfs is stateless).
+> So, therefore I considered it as a bug (which I don't believe to
+> reside in either nfs or nautilus). I am just trying to figure out
+> where the problem lies.
 > 
-> On Wed, Jan 27, 2010 at 12:21 AM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> > On Mon, Jan 25, 2010 at 02:08:47PM -0500, Chuck Lever wrote:
-> >> On Jan 25, 2010, at 2:02 PM, Whoop Whouzer wrote:
-> >>> Ok, I did that, after shutting down the server and enabling debug
-> >>> trace I tried to open the home folder of the current account (totally
-> >>> unrelated to the nfsshare), it wouldn't open at all, I got no nautilus
-> >>> at all. During the time my cursor was in busy mode I got the following
-> >>> messages in kern.log (for ubuntu 10.04 client):
-> >>> Jan 25 19:30:13 whoop-desktop kernel: [  160.719262] NFS call  fsstat
-> >>> Jan 25 19:30:37 whoop-desktop kernel: [  184.458611] NFS:
-> >>> permission(0:16/74386), mask=0x10, res=0
-> >>> Jan 25 19:30:37 whoop-desktop kernel: [  184.458647] NFS call  access
-> >>> Jan 25 19:30:43 whoop-desktop kernel: [  190.721086] nfs: server
-> >>> 192.168.1.130 not responding, timed out
-> >>> Jan 25 19:30:43 whoop-desktop kernel: [  190.721113] NFS reply statfs:
-> >>> -5
-> >>> Jan 25 19:30:43 whoop-desktop kernel: [  190.721116] nfs_statfs:
-> >>> statfs error = 5
-> > ...
-> >> This verifies that your client is attempting to access the NFS server,
-> >> but doesn't tell us which file it's attempting to access.  Essentially
-> >> the EIO means "failed to connect".
-> >
-> > I wonder if nautilus (or some library it uses) likes to regularly
-> > "statfs" all the filesystems it knows about?
-> >
-> > --b.
-> >
+
+There is a misconception here.  NFS is not stateless.  To
+be accurate, the NFSv2 and NFSv3 protocols were defined in
+such as to allow the NFS server to be stateless.  The server
+was not supposed to be required to remember anything about
+what a client was doing from operation to the next.  (In
+reality, there are non-idempotent operations, ie. operations
+which can not be done twice and get the same results, so it
+is very helpful if the server remembers some state.)
+
+NFS clients have always been _very_ stateful.  They have to
+know about all mounted file systems, open files, current
+directories, etc.
+
+The problem here is some application which is attempting to
+touch all of the mounted file systems.  When it tries to
+touch one from a non-responsive NFS server, then it hangs.
+This represents an architectural problem with the
+application making an assumption that is okay and acceptable
+to access all file systems which are currently mounted.
+This assumption leads to situations such as you are observing.
+
+This isn't new.
+
+		ps
+
+> I am not talking about implementing "disconnected NFS" mode,
+> synchronisation or anything like that. There is not something missing,
+> there is something not working properly, somewhere, and I'm trying to
+> find out where..
+> 
+> On Wed, Jan 27, 2010 at 8:09 PM, Trond Myklebust
+> <trond.myklebust@fys.uio.no> wrote:
+>> So? I don't see why that would be an NFS problem.
+>>
+>> As far as I can see from this thread, you are basically asking us to fix
+>> these broken applications by implementing a "disconnected NFS" mode.
+>> While that may indeed be a cool thing to support, I haven't seen anybody
+>> so far stepping up and saying that they have the time and resources to
+>> work on it. Are you volunteering?
+>>
+>> Trond
+>>
+>> On Wed, 2010-01-27 at 19:47 +0100, Whoop Whouzer wrote:
+>>> ok, but it's not just GNOME/nautilus behaviour. For one, I am
+>>> experiencing problems with just about all applications that require
+>>> (local) disk access. Furthermore, problems have also been reported
+>>> with xfce/thunar and also with KDE.
+>>>
+>>> A bug for this issue has just been created for xfce/thunar:
+>>> http://bugzilla.xfce.org/show_bug.cgi?id=6185
+>>>
+>>> On Wed, Jan 27, 2010 at 7:40 PM, Trond Myklebust
+>>> <trond.myklebust@fys.uio.no> wrote:
+>>>> On Wed, 2010-01-27 at 13:23 -0500, Chuck Lever wrote:
+>>>>> On 01/26/2010 06:21 PM, J. Bruce Fields wrote:
+>>>>>> I wonder if nautilus (or some library it uses) likes to regularly
+>>>>>> "statfs" all the filesystems it knows about?
+>>>>> The NFS client seems to like to send these periodically, but I've never
+>>>>> looked into why.  It's probably triggered by some cache timeout, and
+>>>>> gathers recent server file system information.
+>>>> No. It is entirely application driven. Furthermore, most of the statfs
+>>>> data is uncached, since it should not be performance critical in any
+>>>> sane application environment.
+>>>>
+>>>> IOW: I agree with Bruce that this is most likely GNOME or nautilus
+>>>> triggering statfs calls. Indeed, when I do actually open a window on
+>>>> some directory it also appears to display the free space.
+>>>>
+>>>> Trond
+>>>>
+>>>>
+>>>>
+>>
+>>
+>>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
