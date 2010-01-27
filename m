@@ -1,91 +1,66 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:16869 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:60851 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751076Ab0AGU0H (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 7 Jan 2010 15:26:07 -0500
-Message-ID: <4B464355.1000405@RedHat.com>
-Date: Thu, 07 Jan 2010 15:25:57 -0500
-From: Steve Dickson <SteveD@redhat.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 0/2] showmount bug fixes
-References: <20100107162421.27102.21422.stgit@localhost.localdomain> <4B461F48.4070906@RedHat.com> <7FEF347F-051D-4B08-A647-27506CFEC12A@oracle.com>
-In-Reply-To: <7FEF347F-051D-4B08-A647-27506CFEC12A@oracle.com>
-Content-Type: text/plain; charset=ISO-8859-1
+	id S1755285Ab0A0RJN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 27 Jan 2010 12:09:13 -0500
+Date: Wed, 27 Jan 2010 12:10:45 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Whoop Whouzer <tiredandnumb@gmail.com>
+Cc: Chuck Lever <chuck.lever@oracle.com>,
+        "Muntz, Daniel" <Dan.Muntz@netapp.com>,
+        Peter Chacko <peterchacko35@gmail.com>, linux-nfs@vger.kernel.org
+Subject: Re: nfs client performance while server is down
+Message-ID: <20100127171045.GC16308@fieldses.org>
+References: <d7f0b3a81001230745h18dbb14fi42f28adff0c45294@mail.gmail.com> <1f808b4a1001230757i2027d32dxb48482ea7bf8e4ee@mail.gmail.com> <d7f0b3a81001230827y52727993nf60210ae610643b7@mail.gmail.com> <7A24DF798E223B4C9864E8F92E8C93EC0527810C@SACMVEXC1-PRD.hq.netapp.com> <d7f0b3a81001241609v35e54740yea3fa1a251b4f953@mail.gmail.com> <0BA6F612-CE3A-47E9-B436-57E48506D769@oracle.com> <d7f0b3a81001251102p5e631706jfd9f147a00487061@mail.gmail.com> <641EC97D-2252-41FB-AEE8-0F1B77B5EA65@oracle.com> <20100126232148.GA806@fieldses.org> <d7f0b3a81001261640w789099fbj3ad5449f81b0cfc7@mail.gmail.com>
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <d7f0b3a81001261640w789099fbj3ad5449f81b0cfc7@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+On Wed, Jan 27, 2010 at 01:40:07AM +0100, Whoop Whouzer wrote:
+> Could be, although not very likely as it was also reported happening
+> with thunar (although I have not tested this myself).
+> But I am also experiencing similar problems with other applications
+> even gnome-terminal (basically all applications requiring (local) disk
+> access).
+> So this would led me to think it is some sub-process, that is used by
+> all application requiring disk access, that is to blame...
 
+You could patch the kernel to add printk()'s in statfs showing who is
+calling it (and with what path).
 
-On 01/07/2010 01:38 PM, Chuck Lever wrote:
-> 
-> On Jan 7, 2010, at 12:52 PM, Steve Dickson wrote:
-> 
->>
->>
->> On 01/07/2010 11:26 AM, Chuck Lever wrote:
->>> Hi Steve-
->>>
->>> As promised, a couple of bug fixes for the recent improvements to the
->>> showmount command.
->>>
->>> ---
->>>
->>> Chuck Lever (2):
->>>      showmount: Use CLNT_CONTROL for version fallback
->> Why is calling CLNT_CONTROL() verses calling clnt_create again
->> so much better?? In between failures the server status could
->> change so why not just ping it again??
->>
-> 
-> The clnt_create(3) library call is quite heavyweight.  It does a DNS
-> lookup via its own transport socket, a GETPORT via its own transport
-> socket, then creates and connects a socket to do the application's RPC
-> work.
-> 
-> Each time showmount calls clnt_create(3), the library will set up a
-> socket for the DNS lookup (usually but not always UDP), set up a socket
-> to do a GETPORT, and then set up a third socket for the MNTPROC_EXPORT
-> request.  That's three sockets, each time through your retry loop.
-> 
-> When contacting a MNTv1-only server over TCP, the showmount command can
-> leave up to six TCP sockets in TIME_WAIT (not counting sockets used for
-> DNS) for 120 seconds after the command exits, if it doesn't use
-> CLNT_CONTROL.
-Now really... who do you know that runs an v2 only server... 
-I would call that badly misconfigured server... and I just
-don't think it happens...because if it did, the bug would have
-become much more prevalent a long time ago...  
+But probably there's some tracing infrastructure that would make this
+possible without patching.
 
-Remember the goal of this patch is to deal with v3 only servers...
-plus I kinda like the idea having applications re-querying the
-server since configuration do indeed change... 
-
-steved.
- 
+--b.
 
 > 
-> In the TCP case, CLNT_CONTROL leaves the application's transport socket
-> connected.  This means showmount doesn't perform any additional DNS or
-> GETPORT requests (it does just one of each), and then one transport
-> socket is used for all the MNTPROC_EXPORT request retries.  Thus, with
-> CLNT_CONTROL, showmount uses one TCP socket for a single GETPORT, and
-> one socket to do the MNTPROC_EXPORT requests.
-> 
-> So in every case, showmount will use just two transport sockets (not
-> counting the DNS query).  It's behavior is no different than your
-> original patch if the server supports MNTv3, but much more efficient for
-> the MNTv1-only case.
-> 
-> Leaving multiple sockets in TIME_WAIT is a regression from the original
-> showmount behavior, hence this bug fix.  If a customer reported this
-> problem, you wouldn't hesitate to apply this fix.  I'm not sure why you
-> find this controversial.
-> 
-> -- 
-> Chuck Lever
-> chuck[dot]lever[at]oracle[dot]com
-> 
-> 
-> 
+> On Wed, Jan 27, 2010 at 12:21 AM, J. Bruce Fields <bfields@fieldses.org> wrote:
+> > On Mon, Jan 25, 2010 at 02:08:47PM -0500, Chuck Lever wrote:
+> >> On Jan 25, 2010, at 2:02 PM, Whoop Whouzer wrote:
+> >>> Ok, I did that, after shutting down the server and enabling debug
+> >>> trace I tried to open the home folder of the current account (totally
+> >>> unrelated to the nfsshare), it wouldn't open at all, I got no nautilus
+> >>> at all. During the time my cursor was in busy mode I got the following
+> >>> messages in kern.log (for ubuntu 10.04 client):
+> >>> Jan 25 19:30:13 whoop-desktop kernel: [  160.719262] NFS call  fsstat
+> >>> Jan 25 19:30:37 whoop-desktop kernel: [  184.458611] NFS:
+> >>> permission(0:16/74386), mask=0x10, res=0
+> >>> Jan 25 19:30:37 whoop-desktop kernel: [  184.458647] NFS call  access
+> >>> Jan 25 19:30:43 whoop-desktop kernel: [  190.721086] nfs: server
+> >>> 192.168.1.130 not responding, timed out
+> >>> Jan 25 19:30:43 whoop-desktop kernel: [  190.721113] NFS reply statfs:
+> >>> -5
+> >>> Jan 25 19:30:43 whoop-desktop kernel: [  190.721116] nfs_statfs:
+> >>> statfs error = 5
+> > ...
+> >> This verifies that your client is attempting to access the NFS server,
+> >> but doesn't tell us which file it's attempting to access.  Essentially
+> >> the EIO means "failed to connect".
+> >
+> > I wonder if nautilus (or some library it uses) likes to regularly
+> > "statfs" all the filesystems it knows about?
+> >
+> > --b.
+> >
