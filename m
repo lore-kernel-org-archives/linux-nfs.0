@@ -1,172 +1,66 @@
-Return-Path: <nfsv4-bounces@linux-nfs.org>
-From: Jeff Layton <jlayton@redhat.com>
-To: steved@redhat.com
-Subject: [PATCH] gssd: on krb5 upcall,
-	have gssd send a more granular error code
-Date: Thu,  7 Jan 2010 09:42:35 -0500
-Message-Id: <1262875355-4522-1-git-send-email-jlayton@redhat.com>
-Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org
-List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/options/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
-List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
-List-Post: <mailto:nfsv4@linux-nfs.org>
-List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
-List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
-Content-Type: text/plain; charset="us-ascii"
-Sender: nfsv4-bounces@linux-nfs.org
-Errors-To: nfsv4-bounces@linux-nfs.org
-MIME-Version: 1.0
+Return-Path: <linux-nfs-owner@vger.kernel.org>
+Received: from mail-ew0-f219.google.com ([209.85.219.219]:59547 "EHLO
+	mail-ew0-f219.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754421Ab0A0AkJ convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 26 Jan 2010 19:40:09 -0500
+Received: by ewy19 with SMTP id 19so1667143ewy.21
+        for <linux-nfs@vger.kernel.org>; Tue, 26 Jan 2010 16:40:07 -0800 (PST)
+In-Reply-To: <20100126232148.GA806@fieldses.org>
+References: <d7f0b3a81001230745h18dbb14fi42f28adff0c45294@mail.gmail.com>
+	 <1f808b4a1001230757i2027d32dxb48482ea7bf8e4ee@mail.gmail.com>
+	 <d7f0b3a81001230827y52727993nf60210ae610643b7@mail.gmail.com>
+	 <7A24DF798E223B4C9864E8F92E8C93EC0527810C@SACMVEXC1-PRD.hq.netapp.com>
+	 <d7f0b3a81001241609v35e54740yea3fa1a251b4f953@mail.gmail.com>
+	 <0BA6F612-CE3A-47E9-B436-57E48506D769@oracle.com>
+	 <d7f0b3a81001251102p5e631706jfd9f147a00487061@mail.gmail.com>
+	 <641EC97D-2252-41FB-AEE8-0F1B77B5EA65@oracle.com>
+	 <20100126232148.GA806@fieldses.org>
+Date: Wed, 27 Jan 2010 01:40:07 +0100
+Message-ID: <d7f0b3a81001261640w789099fbj3ad5449f81b0cfc7@mail.gmail.com>
+Subject: Re: nfs client performance while server is down
+From: Whoop Whouzer <tiredandnumb@gmail.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Chuck Lever <chuck.lever@oracle.com>,
+        "Muntz, Daniel" <Dan.Muntz@netapp.com>,
+        Peter Chacko <peterchacko35@gmail.com>, linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+MIME-Version: 1.0
 
-Currently if a krb5 context expires, GSSAPI authenticated RPC calls
-start returning error (-EACCES in particular). This is bad when someone has
-a long running job that's doing filesystem ops on a krb5 authenticated NFS
-mount and just happens to forget to redo a 'kinit' in time.
+Could be, although not very likely as it was also reported happening
+with thunar (although I have not tested this myself).
+But I am also experiencing similar problems with other applications
+even gnome-terminal (basically all applications requiring (local) disk
+access).
+So this would led me to think it is some sub-process, that is used by
+all application requiring disk access, that is to blame...
 
-The existing gssd always does a downcall with a '-1' error code if there
-are problems, and the kernel always ignores this error code. Begin to
-fix this by having gssd distinguish between someone that has no
-credcache at all, and someone who has an expired one. In the case where
-there is an existing credcache, have gssd downcall with an error code of
--EKEYEXPIRED. If there's not a credcache, then downcall with an error of
--EACCES.
-
-We can then have the kernel use this error code to handle these
-situations differently.
-
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- utils/gssd/gssd_proc.c |    8 ++++++--
- utils/gssd/krb5_util.c |   35 ++++++++++++++++++-----------------
- 2 files changed, 24 insertions(+), 19 deletions(-)
-
-diff --git a/utils/gssd/gssd_proc.c b/utils/gssd/gssd_proc.c
-index 2649236..ae3d2ec 100644
---- a/utils/gssd/gssd_proc.c
-+++ b/utils/gssd/gssd_proc.c
-@@ -901,6 +901,7 @@ process_krb5_upcall(struct clnt_info *clp, uid_t uid, int fd, char *tgtname,
- 	char			**ccname;
- 	char			**dirname;
- 	int			create_resp = -1;
-+	int			err, downcall_err = -EACCES;
- 
- 	printerr(1, "handling krb5 upcall (%s)\n", clp->dirname);
- 
-@@ -941,7 +942,10 @@ process_krb5_upcall(struct clnt_info *clp, uid_t uid, int fd, char *tgtname,
- 				service == NULL)) {
- 		/* Tell krb5 gss which credentials cache to use */
- 		for (dirname = ccachesearch; *dirname != NULL; dirname++) {
--			if (gssd_setup_krb5_user_gss_ccache(uid, clp->servername, *dirname) == 0)
-+			err = gssd_setup_krb5_user_gss_ccache(uid, clp->servername, *dirname);
-+			if (err == -EKEYEXPIRED)
-+				downcall_err = -EKEYEXPIRED;
-+			else if (!err)
- 				create_resp = create_auth_rpc_client(clp, &rpc_clnt, &auth, uid,
- 							     AUTHTYPE_KRB5);
- 			if (create_resp == 0)
-@@ -1031,7 +1035,7 @@ out:
- 	return;
- 
- out_return_error:
--	do_error_downcall(fd, uid, -1);
-+	do_error_downcall(fd, uid, downcall_err);
- 	goto out;
- }
- 
-diff --git a/utils/gssd/krb5_util.c b/utils/gssd/krb5_util.c
-index c3c131b..1295f57 100644
---- a/utils/gssd/krb5_util.c
-+++ b/utils/gssd/krb5_util.c
-@@ -170,9 +170,8 @@ select_krb5_ccache(const struct dirent *d)
-  * what we want. Otherwise, return zero and no dirent pointer.
-  * The caller is responsible for freeing the dirent if one is returned.
-  *
-- * Returns:
-- *	0 => could not find an existing entry
-- *	1 => found an existing entry
-+ * Returns 0 if a valid-looking entry was found and a non-zero error
-+ * code otherwise.
-  */
- static int
- gssd_find_existing_krb5_ccache(uid_t uid, char *dirname, struct dirent **d)
-@@ -186,7 +185,7 @@ gssd_find_existing_krb5_ccache(uid_t uid, char *dirname, struct dirent **d)
- 	char buf[1030];
- 	char *princname = NULL;
- 	char *realm = NULL;
--	int score, best_match_score = 0;
-+	int score, best_match_score = 0, err = -EACCES;
- 
- 	memset(&best_match_stat, 0, sizeof(best_match_stat));
- 	*d = NULL;
-@@ -229,6 +228,7 @@ gssd_find_existing_krb5_ccache(uid_t uid, char *dirname, struct dirent **d)
- 				printerr(3, "CC file '%s' is expired or corrupt\n",
- 					 statname);
- 				free(namelist[i]);
-+				err = -EKEYEXPIRED;
- 				continue;
- 			}
- 
-@@ -284,11 +284,12 @@ gssd_find_existing_krb5_ccache(uid_t uid, char *dirname, struct dirent **d)
- 		}
- 		free(namelist);
- 	}
--	if (found)
--	{
-+	if (found) {
- 		*d = best_match_dir;
-+		return 0;
- 	}
--	return found;
-+
-+	return err;
- }
- 
- 
-@@ -1024,29 +1025,29 @@ err_cache:
-  * given only a UID.  We really need more information, but we
-  * do the best we can.
-  *
-- * Returns:
-- *	0 => a ccache was found
-- *	1 => no ccache was found
-+ * Returns 0 if a ccache was found, and a non-zero error code otherwise.
-  */
- int
- gssd_setup_krb5_user_gss_ccache(uid_t uid, char *servername, char *dirname)
- {
- 	char			buf[MAX_NETOBJ_SZ];
- 	struct dirent		*d;
-+	int			err;
- 
- 	printerr(2, "getting credentials for client with uid %u for "
- 		    "server %s\n", uid, servername);
- 	memset(buf, 0, sizeof(buf));
--	if (gssd_find_existing_krb5_ccache(uid, dirname, &d)) {
--		snprintf(buf, sizeof(buf), "FILE:%s/%s", dirname, d->d_name);
--		free(d);
--	}
--	else
--		return 1;
-+	err = gssd_find_existing_krb5_ccache(uid, dirname, &d);
-+	if (err)
-+		return err;
-+
-+	snprintf(buf, sizeof(buf), "FILE:%s/%s", dirname, d->d_name);
-+	free(d);
-+
- 	printerr(2, "using %s as credentials cache for client with "
- 		    "uid %u for server %s\n", buf, uid, servername);
- 	gssd_set_krb5_ccache_name(buf);
--	return 0;
-+	return err;
- }
- 
- /*
--- 
-1.6.5.2
-
-_______________________________________________
-NFSv4 mailing list
-NFSv4@linux-nfs.org
-http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4
+On Wed, Jan 27, 2010 at 12:21 AM, J. Bruce Fields <bfields@fieldses.org> wrote:
+> On Mon, Jan 25, 2010 at 02:08:47PM -0500, Chuck Lever wrote:
+>> On Jan 25, 2010, at 2:02 PM, Whoop Whouzer wrote:
+>>> Ok, I did that, after shutting down the server and enabling debug
+>>> trace I tried to open the home folder of the current account (totally
+>>> unrelated to the nfsshare), it wouldn't open at all, I got no nautilus
+>>> at all. During the time my cursor was in busy mode I got the following
+>>> messages in kern.log (for ubuntu 10.04 client):
+>>> Jan 25 19:30:13 whoop-desktop kernel: [  160.719262] NFS call  fsstat
+>>> Jan 25 19:30:37 whoop-desktop kernel: [  184.458611] NFS:
+>>> permission(0:16/74386), mask=0x10, res=0
+>>> Jan 25 19:30:37 whoop-desktop kernel: [  184.458647] NFS call  access
+>>> Jan 25 19:30:43 whoop-desktop kernel: [  190.721086] nfs: server
+>>> 192.168.1.130 not responding, timed out
+>>> Jan 25 19:30:43 whoop-desktop kernel: [  190.721113] NFS reply statfs:
+>>> -5
+>>> Jan 25 19:30:43 whoop-desktop kernel: [  190.721116] nfs_statfs:
+>>> statfs error = 5
+> ...
+>> This verifies that your client is attempting to access the NFS server,
+>> but doesn't tell us which file it's attempting to access.  Essentially
+>> the EIO means "failed to connect".
+>
+> I wonder if nautilus (or some library it uses) likes to regularly
+> "statfs" all the filesystems it knows about?
+>
+> --b.
+>
