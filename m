@@ -1,54 +1,129 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet12.oracle.com ([148.87.113.124]:28872 "EHLO
-	rcsinet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754504Ab0AUTjJ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 21 Jan 2010 14:39:09 -0500
-Message-ID: <4B58AD16.8040309@oracle.com>
-Date: Thu, 21 Jan 2010 14:37:58 -0500
-From: Chuck Lever <chuck.lever@oracle.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Jeff Layton <jlayton@redhat.com>, linux-nfs@vger.kernel.org,
-        steved@redhat.com, trond.myklebust@fys.uio.no
-Subject: Re: [PATCH] mount.nfs: prefer IPv4 addresses over IPv6 (try #2)
-References: <1263907662-19107-1-git-send-email-jlayton@redhat.com> <1667647A-2BB1-478D-8881-CE8EA2191F97@oracle.com> <20100120082905.1825f806@tlielax.poochiereds.net> <8E556CE2-569B-4E6D-BD02-7EF5CA84900D@oracle.com> <20100121191515.GA22021@fieldses.org>
-In-Reply-To: <20100121191515.GA22021@fieldses.org>
-Content-Type: text/plain; charset=us-ascii; format=flowed
+Received: from mail-bw0-f219.google.com ([209.85.218.219]:49057 "EHLO
+	mail-bw0-f219.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751589Ab0A1Dsm convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 27 Jan 2010 22:48:42 -0500
+Received: by bwz19 with SMTP id 19so218513bwz.28
+        for <linux-nfs@vger.kernel.org>; Wed, 27 Jan 2010 19:48:40 -0800 (PST)
+In-Reply-To: <294d5daa1001131408o4531e6c8o65d4682d5e5e4c16@mail.gmail.com>
+References: <294d5daa1001131408o4531e6c8o65d4682d5e5e4c16@mail.gmail.com>
+Date: Wed, 27 Jan 2010 19:48:39 -0800
+Message-ID: <294d5daa1001271948h3d14e544i5a42e6d55cda67ed@mail.gmail.com>
+Subject: Re: Is it safe to increase RPC_CREDCACHE_HASHBITS?
+From: Mark Moseley <moseleymark@gmail.com>
+To: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 01/21/2010 02:15 PM, J. Bruce Fields wrote:
-> On Wed, Jan 20, 2010 at 10:36:36AM -0500, Chuck Lever wrote:
->> For the record, we looked at Solaris behavior yesterday.  With bi-family
->> servers, its mount command tries IPv6 first, but appears smart enough to
->> fall back to IPv4.  One thing we haven't tried is to see how difficult it
->> would be to fix the real problem by adding proper protocol family
->> negotiation to our own mount command.
+On Wed, Jan 13, 2010 at 2:08 PM, Mark Moseley <moseleymark@gmail.com> wrote:
+> I'm seeing an issue similar to
+> http://www.spinics.net/lists/linux-nfs/msg09255.html in a heavy NFS
+> environment. The topology is all Debian Etch servers (8-core Dell
+> 1950s) talking to a variety of Netapp filers. In trying to diagnose
+> high loads and esp high 'system' CPU usage in vmstat, using the 'perf'
+> tool from the linux distro, I can see that the
+> "rpcauth_lookup_credcache" call is far and away the top function in
+> 'perf top'. I see similar results across ~80 servers of the same type
+> of service. On servers that have been up for a while,
+> rpcauth_lookup_credcache is usually ~40-50%; looking at a box rebooted
+> about an hour ago, rpcauth_lookup_credcache is around ~15-25%. Here's
+> a box that's been up for a while:
 >
-> Sorry, I probably just haven't been following: what's "proper protocol
-> family negotiation"?  I thought the only ways to negotiate were either
-> rpcbind (v2, v3) or trial and error (v4)?
+> ------------------------------------------------------------------------------
+>   PerfTop:  113265 irqs/sec  kernel:42.7% [100000 cycles],  (all, 8 CPUs)
+> ------------------------------------------------------------------------------
+>
+>             samples    pcnt         RIP          kernel function
+>  ______     _______   _____   ________________   _______________
+>
+>           359151.00 - 44.8% - 00000000003d2081 : rpcauth_lookup_credcache
+>            33414.00 -  4.2% - 000000000001b0ec : native_write_cr0
+>            27852.00 -  3.5% - 00000000003d252c : generic_match
+>            19254.00 -  2.4% - 0000000000092565 : sanitize_highpage
+>            18779.00 -  2.3% - 0000000000004610 : system_call
+>            12047.00 -  1.5% - 00000000000a137f : copy_user_highpage
+>            11736.00 -  1.5% - 00000000003f5137 : _spin_lock
+>            11066.00 -  1.4% - 00000000003f5420 : page_fault
+>             8981.00 -  1.1% - 000000000001b322 : native_flush_tlb_single
+>             8490.00 -  1.1% - 000000000006c98f : audit_filter_syscall
+>             7169.00 -  0.9% - 0000000000208e43 : __copy_to_user_ll
+>             6000.00 -  0.7% - 00000000000219c1 : kunmap_atomic
+>             5262.00 -  0.7% - 00000000001fae02 : glob_match
+>             4687.00 -  0.6% - 0000000000021acc : kmap_atomic_prot
+>             4404.00 -  0.5% - 0000000000008fb2 : read_tsc
+>
+>
+> I took the advice in the above thread and adjusted the
+> RPC_CREDCACHE_HASHBITS #define in include/linux/sunrpc/auth.h to 12 --
+> but didn't modify anything else. After doing so,
+> rpcauth_lookup_credcache drops off the list (even when the top list is
+> widened to 40 lines) and 'system' CPU usage drops by quite a bit,
+> under the same workload. And even after a day of running, it's still
+> performing favourably, despite having the same workload and uptime as
+> RPC_CREDCACHE_HASHBITS=4 boxes that are still struggling. Both patched
+> and unpatched kernels are 2.6.32.3, both with grsec and ipset. Here's
+> 'perf top' of a patched box:
+>
+> ------------------------------------------------------------------------------
+>   PerfTop:  116525 irqs/sec  kernel:27.0% [100000 cycles],  (all, 8 CPUs)
+> ------------------------------------------------------------------------------
+>
+>             samples    pcnt         RIP          kernel function
+>  ______     _______   _____   ________________   _______________
+>
+>            15844.00 -  7.0% - 0000000000019eb2 : native_write_cr0
+>            11479.00 -  5.0% - 00000000000934fd : sanitize_highpage
+>            11328.00 -  5.0% - 0000000000003d10 : system_call
+>             6578.00 -  2.9% - 00000000000a26d2 : copy_user_highpage
+>             6417.00 -  2.8% - 00000000003fdb80 : page_fault
+>             6237.00 -  2.7% - 00000000003fd897 : _spin_lock
+>             4732.00 -  2.1% - 000000000006d3b0 : audit_filter_syscall
+>             4504.00 -  2.0% - 000000000020cf59 : __copy_to_user_ll
+>             4309.00 -  1.9% - 000000000001a370 : native_flush_tlb_single
+>             3293.00 -  1.4% - 00000000001fefba : glob_match
+>             2911.00 -  1.3% - 00000000003fda25 : _spin_lock_irqsave
+>             2753.00 -  1.2% - 00000000000d30f1 : __d_lookup
+>             2500.00 -  1.1% - 00000000000200b8 : kunmap_atomic
+>             2418.00 -  1.1% - 0000000000008483 : read_tsc
+>             2387.00 -  1.0% - 0000000000089a7b : perf_poll
+>
+>
+> My question is, is it safe to make that change to
+> RPC_CREDCACHE_HASHBITS, or will that lead to some overflow somewhere
+> else in the NFS/RPC stack? Looking over the code in net/sunrpc/auth.c,
+> I don't see any big red flags, but I don't flatter myself into
+> thinking I can debug kernel code, so I wanted to pose the question
+> here. Is it pretty safe to change RPC_CREDCACHE_HASHBITS from 4 to 12?
+> Or am I setting myself up for instability and/or security issues? I'd
+> rather be slow than hacked.
+>
+> Thanks!
+>
 
-In TI-RPC parlance, a "protocol" is the transport protocol (UDP, for 
-example), and a "protocol family" is the address family ("inet6", for 
-example).  A netid represents a particular combination of the two:  the 
-netid "udp6" represents UDP over "inet6".
+I've read and reread the pertinent sections of code where
+RPC_CREDCACHE_HASHBITS and RPC_CREDCACHE_NR (derived from
+RPC_CREDCACHE_HASHBITS) and it looks pretty safe.
 
-The "protocol family" is really the value that is passed to socket(2). 
-This call generally takes PF_INET or something like that as its first 
-argument.  All of the PF_FOO thingies have the same integer value as 
-their AF_FOO counterparts.  For TI-RPC, we have "inet" and "inet6", 
-which are strings that match up with the AF_FOO and PF_FOO names.
+In lieu of a full sysctl-controlled setting to change
+RPC_CREDCACHE_HASHBITS, would it make sense to set
+RPC_CREDCACHE_HASHBITS to something bigger than 4 by default? I'd bet
+a lot of other people in high-traffic environments with a large number
+of active unix accounts are likely unknowingly affected by this. I
+only happened to notice by playing with the kernel's perf tool.
 
-rpcb_getaddr(3t) is designed to use the rpcbind protocol to determine 
-the address and transport to use when contacting a remote service.  Our
-mount command has its own negotiation mechanism that is a superset of 
-rpcbind calls, in addition to having a faster timeout than rpcb_getaddr(3t).
+I could be wrong but it doesn't look like it'd tie up an excessive
+amount of memory to have, say, 256 or 1024 or 4096 hash buckets in
+au_credcache (though it wouldn't surprise me if I was way, way off
+about that). It seems (to a non-kernel guy) that the only obvious
+operation that would suffer due to more buckets would be
+rpcauth_prune_expired() in net/sunrpc/auth.c. I haven't tested this
+out with pre-2.6.32.x kernels, but since the default is either 16
+buckets or even 8 way back in 2.6.24.x, I'm guessing that this
+pertains to all recent kernels.
 
-Until now, mount.nfs hasn't needed to negotiate the protocol family in 
-addition to the NFS and mount versions and transports.  It always 
-assumed "inet" (or AF_INET, or PF_INET), and until recently, used only 
-rpcbind protocol version 2.
-
--- 
-chuck[dot]lever[at]oracle[dot]com
+Let me know too if this would be better addressed on the kernel list.
+I'm just assuming since it's nfs-related that this would be the spot
+for it, but I don't know if purely RPC-related things would end up
+here too. Thanks!
