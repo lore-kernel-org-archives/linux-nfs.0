@@ -1,109 +1,130 @@
-Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mrout2-b.corp.re1.yahoo.com ([69.147.107.21]:26826 "EHLO
-	mrout2-b.corp.re1.yahoo.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751836Ab0AUBZN (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 20 Jan 2010 20:25:13 -0500
-Date: Wed, 20 Jan 2010 19:22:31 -0600
-From: Quentin Barnes <qbarnes+nfs@yahoo-inc.com>
-To: Peter Staubach <staubach@redhat.com>
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: Difference between v2.6.31 and v2.6.32 spikes READs
-Message-ID: <20100121012231.GB30642@yahoo-inc.com>
-References: <20100105232342.GA22969@yahoo-inc.com> <4B44D0A4.2020509@redhat.com>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4B44D0A4.2020509@redhat.com>
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: nfsd: Replace nfsd_sync() with vfs_fsync() and vfs_fsync_range()
+Date: Fri, 29 Jan 2010 15:19:13 -0500
+Message-ID: <1264796353.3644.4.camel@localhost>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="UTF-8"
+Cc: linux-nfs@vger.kernel.org
+To: "Dr. J. Bruce Fields" <bfields@fieldses.org>
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from mx2.netapp.com ([216.240.18.37]:5249 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751857Ab0A2UTW convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 29 Jan 2010 15:19:22 -0500
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-MIME-Version: 1.0
 
-On Wed, Jan 06, 2010 at 10:04:20AM -0800, Peter Staubach wrote:
-> Quentin Barnes wrote:
-> > I moved from v2.6.31.3 to v2.6.32.2 and noticed a huge spike in the
-> > number of NFSv3 READs issued for the application I'm porting.  The
-> > app has a mixed load of short NFS I/O operations, but about 50% of
-> > the time the app is doing an open(2), append to the file a small
-> > amount of data (~300 bytes), then closes the file.  On v2.6.31.3,
-> > this resulted in a LOOKUP, ACCESS, and a WRITE of 300 bytes.  Now
-> > for the append operations with v2.6.32.2, I see LOOKUP, ACCESS,
-> > READ, and WRITE.
-> > 
-> > Here's the network trace for an append with 2.6.31.3:
-> > ===========
-> > LOOKUP Call, DH:0x0308031e/scr2
-> > LOOKUP Reply, FH:0x29f0b5d0
-> > ACCESS Call, FH:0x29f0b5d0
-> > ACCESS Reply
-> > WRITE Call, FH:0x29f0b5d0 Offset:17284 Len:300 UNSTABLE
-> > WRITE Reply Len:300 UNSTABLE
-> > COMMIT Call, FH:0x29f0b5d0
-> > COMMIT Reply
-> > ===========
-> > 
-> > And for 2.6.32.2:
-> > ===========
-> > LOOKUP Call, DH:0x0308031e/scr2
-> > LOOKUP Reply, FH:0x29f0b5d0
-> > ACCESS Call, FH:0x29f0b5d0
-> > ACCESS Reply
-> > READ Call, FH:0x29f0b5d0 Offset:16384 Len:900
-> > READ Reply Len:900
-> > WRITE Call, FH:0x29f0b5d0 Offset:16384 Len:1200 UNSTABLE
-> > WRITE Reply Len:1200 UNSTABLE
-> > COMMIT Call, FH:0x29f0b5d0
-> > COMMIT Reply
-> > ===========
-> > 
-> > My think the behavior change is due to "read-modify-write page
-> > updating" patch with adding the nfs_want_read_modify_write()
-> > function, but that's just a guess.
-> > 
-> > Even with the additional READs, in some modes of the app performance
-> > has gone up with v2.6.32 by 4.0%.  (Good!)  However, in other modes,
-> > it has dropped 22%.  (Not good!)
-> > 
-> > If my guess is right, I'm wondering if the read-modify-write
-> > updating patch accounted for files opened read-write, but only
-> > written to or appended to before closing.
-> > 
-> > Can the read-modify-write page updating be altered to better handle
-> > opens in read-write (O_RDWR) that only end up writing before
-> > closing?
-> > 
-> 
-> I believe that your analysis is correct.  The additional
-> READ operation is probably coming from the client expecting
-> to do a read-modify-write cycle instead of a modify-write-
-> read cycle.
-> 
-> I suspect that the heuristic used could be augmented to be
-> more clever, but the cost for normal operations would go
-> up.
-> 
-> Instead of doing this, could you modify the application to
-> open the file for writing only when just appending these
-> small amounts of data?
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
 
-I asked the app maintainer.  Luckily, in this case, he is able to go
-ahead and make the change to his Linux port.
+Currently, the nfs server holds the inode->i_mutex across both the
+filemap_write_and_wait() call and the fsync() call itself. However we know
+that filemap_write_and_wait() is already safe against livelocks, so we only
+need to hold the mutex across the fsync() call.
 
-I brought this up here for two reasons.  1) To let people know that
-if they are only writing/appending to a file that it's a good idea
-to make sure they open the file with O_WRONLY instead of O_RDWR so
-that they might see a performance boost they otherwise might not
-know about on 2.6.32 kernels and later.  2) To let the NFS mailing
-list know that a lot of people won't think to either change their
-app, or can't for some reason and be stuck, so we might think about
-fixing this performance issue at some point making the algorithm
-more clever.
+Fix this by reusing vfs_fsync(), which already does the right thing.
+Also make sure that we use vfs_fsync_range() in the COMMIT operation, to
+improve the efficiency for clients that do specify a range.
 
-I haven't yet looked at the algorithm to know how difficult it
-might be to fix.  If someone knows a way to make the tweak to the
-algorithm, I'm willing to test it.
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
 
-> 		ps
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+ fs/nfsd/vfs.c |   58 +++++++++++++++++++++------------------------------------
+ 1 files changed, 21 insertions(+), 37 deletions(-)
 
-Quentin
+
+diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+index c194793..e4568d6 100644
+--- a/fs/nfsd/vfs.c
++++ b/fs/nfsd/vfs.c
+@@ -769,40 +769,17 @@ nfsd_close(struct file *filp)
+ }
+ 
+ /*
+- * Sync a file
+- * As this calls fsync (not fdatasync) there is no need for a write_inode
+- * after it.
++ * Sync a directory
++ * returns 0 if the directory had no fsync method
+  */
+-static inline int nfsd_dosync(struct file *filp, struct dentry *dp,
+-			      const struct file_operations *fop)
+-{
+-	struct inode *inode = dp->d_inode;
+-	int (*fsync) (struct file *, struct dentry *, int);
+-	int err;
+-
+-	err = filemap_write_and_wait(inode->i_mapping);
+-	if (err == 0 && fop && (fsync = fop->fsync))
+-		err = fsync(filp, dp, 0);
+-	return err;
+-}
+-
+-static int
+-nfsd_sync(struct file *filp)
+-{
+-        int err;
+-	struct inode *inode = filp->f_path.dentry->d_inode;
+-	dprintk("nfsd: sync file %s\n", filp->f_path.dentry->d_name.name);
+-	mutex_lock(&inode->i_mutex);
+-	err=nfsd_dosync(filp, filp->f_path.dentry, filp->f_op);
+-	mutex_unlock(&inode->i_mutex);
+-
+-	return err;
+-}
+-
+ int
+ nfsd_sync_dir(struct dentry *dp)
+ {
+-	return nfsd_dosync(NULL, dp, dp->d_inode->i_fop);
++	int err;
++
++	dprintk("nfsd: sync directory %s\n", dp->d_name.name);
++	err = vfs_fsync(NULL, dp, 0);
++	return (err != -EINVAL) ? err : 0;
+ }
+ 
+ /*
+@@ -1008,7 +985,9 @@ static int wait_for_concurrent_writes(struct file *file)
+ 
+ 	if (inode->i_state & I_DIRTY) {
+ 		dprintk("nfsd: write sync %d\n", task_pid_nr(current));
+-		err = nfsd_sync(file);
++		err = vfs_fsync(file, file->f_path.dentry, 0);
++		if (err == -EINVAL)
++			err = 0;
+ 	}
+ 	last_ino = inode->i_ino;
+ 	last_dev = inode->i_sb->s_dev;
+@@ -1156,8 +1135,6 @@ out:
+ #ifdef CONFIG_NFSD_V3
+ /*
+  * Commit all pending writes to stable storage.
+- * Strictly speaking, we could sync just the indicated file region here,
+- * but there's currently no way we can ask the VFS to do so.
+  *
+  * Unfortunately we cannot lock the file to make sure we return full WCC
+  * data to the client, as locking happens lower down in the filesystem.
+@@ -1176,11 +1153,18 @@ nfsd_commit(struct svc_rqst *rqstp, struct svc_fh *fhp,
+ 	if (err)
+ 		return err;
+ 	if (EX_ISSYNC(fhp->fh_export)) {
+-		if (file->f_op && file->f_op->fsync) {
+-			err = nfserrno(nfsd_sync(file));
+-		} else {
++		loff_t end = LLONG_MAX;
++		int err2;
++		
++		if (count != 0)
++			end = offset + count;
++		err2 = vfs_fsync_range(file, file->f_path.dentry,
++				offset, end, 0);
++
++		if (err2 != -EINVAL)
++			err = nfserrno(err2);
++		else
+ 			err = nfserr_notsupp;
+-		}
+ 	}
+ 
+ 	nfsd_close(file);
+
