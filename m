@@ -1,63 +1,26 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:40728 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:41048 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932164Ab0A0WYb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 27 Jan 2010 17:24:31 -0500
-From: "J. Bruce Fields" <bfields@citi.umich.edu>
-To: Steve Dickson <steved@redhat.com>
-Cc: linux-nfs@vger.kernel.org, "J. Bruce Fields" <bfields@citi.umich.edu>
-Subject: [PATCH 1/2] nfsd: fix version-setting regression on old kernels
-Date: Wed, 27 Jan 2010 17:26:05 -0500
-Message-Id: <1264631166-21898-1-git-send-email-bfields@citi.umich.edu>
+	id S1753050Ab0A2PTP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 29 Jan 2010 10:19:15 -0500
+Date: Fri, 29 Jan 2010 10:19:14 -0500 (EST)
+From: caiqian@redhat.com
+To: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org, pnfs@linux-nfs.org
+Cc: Steve Dickson <steved@redhat.com>, James Laska <jlaska@redhat.com>
+Message-ID: <1666074695.559241264778354166.JavaMail.root@zmail06.collab.prod.int.phx2.redhat.com>
+In-Reply-To: <803354499.556481264778096200.JavaMail.root@zmail06.collab.prod.int.phx2.redhat.com>
+Subject: Fedora NFSv4 Test Day
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-/proc/fs/nfsd/versions was extended to allow turning on/off minor
-versions by echoing "+4.1" or "-4.1" to /proc/fs/nsfd/versions.
+Hi guys,
 
-Unfortunately, pre-2.6.30 kernels just stop parsing at first non-digit,
-so "-4.1" is interpreted as "-4".  If new nfs-utils (on old kernel)
-writes "+2", "+3", "+4", then "-4.1", result therefore is to turn off
-4.1.
+There will be a NFS test event [1] focus on NFSv4 by default feature [2] and secure NFS in upcoming Fedora 13 next Thursday - 4th Feb. While we are still trying to finalize a few details there, your suggestion on other testing areas for NFS are also welcome. We are trying to make the tests as easy to follow, and provide Fedora LiveCD images during the event if possible. We will guide you and answer questions you have during the event on IRC freenode -> #fedora-test-day.
 
-Given that historical behavior, it may have been a mistake to extend the
-interface the way we did; but at this point we're probably stuck with
-it.  So, just reverse the order we write versions in.
+Looking forwards to see you there!
+CAI Qian
 
-Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
----
- utils/nfsd/nfssvc.c |   10 +++++-----
- 1 files changed, 5 insertions(+), 5 deletions(-)
-
-diff --git a/utils/nfsd/nfssvc.c b/utils/nfsd/nfssvc.c
-index b8028bb..7bbbaba 100644
---- a/utils/nfsd/nfssvc.c
-+++ b/utils/nfsd/nfssvc.c
-@@ -238,17 +238,17 @@ nfssvc_setvers(unsigned int ctlbits, int minorvers4)
- 	if (fd < 0)
- 		return;
- 
-+	n = minorvers4 >= 0 ? minorvers4 : -minorvers4;
-+	if (n >= NFSD_MINMINORVERS4 && n <= NFSD_MAXMINORVERS4)
-+		    off += snprintf(ptr+off, sizeof(buf) - off, "%c4.%d",
-+				    minorvers4 > 0 ? '+' : '-',
-+				    n);
- 	for (n = NFSD_MINVERS; n <= NFSD_MAXVERS; n++) {
- 		if (NFSCTL_VERISSET(ctlbits, n))
- 		    off += snprintf(ptr+off, sizeof(buf) - off, "+%d ", n);
- 		else
- 		    off += snprintf(ptr+off, sizeof(buf) - off, "-%d ", n);
- 	}
--	n = minorvers4 >= 0 ? minorvers4 : -minorvers4;
--	if (n >= NFSD_MINMINORVERS4 && n <= NFSD_MAXMINORVERS4)
--		    off += snprintf(ptr+off, sizeof(buf) - off, "%c4.%d",
--				    minorvers4 > 0 ? '+' : '-',
--				    n);
- 	xlog(D_GENERAL, "Writing version string to kernel: %s", buf);
- 	snprintf(ptr+off, sizeof(buf) - off, "\n");
- 	if (write(fd, buf, strlen(buf)) != strlen(buf))
--- 
-1.6.3.3
-
+[1] https://fedoraproject.org/wiki/Test_Day:2010-02-04_NFS
+[2] https://fedoraproject.org/wiki/Features/NFSv4Default
