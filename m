@@ -1,50 +1,39 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-pw0-f42.google.com ([209.85.160.42]:46892 "EHLO
-	mail-pw0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751519Ab0ATPYw (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 20 Jan 2010 10:24:52 -0500
-Date: Wed, 20 Jan 2010 23:26:52 +0800
-From: =?utf-8?Q?Am=C3=A9rico?= Wang <xiyou.wangcong@gmail.com>
-To: jin zhencheng <zhenchengjin@gmail.com>
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
-        zhenchengjin@163.com
-Subject: Re: nfs-error-RPC: multiple fragments per record not supported
-Message-ID: <20100120152652.GA3595@hack>
-References: <de04351e1001200320y2e763680gc7e3b20319c6386e@mail.gmail.com>
+Received: from fieldses.org ([174.143.236.118]:49847 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753738Ab0A2Qm2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 29 Jan 2010 11:42:28 -0500
+Date: Fri, 29 Jan 2010 11:42:29 -0500
+To: caiqian@redhat.com
+Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org, pnfs@linux-nfs.org,
+        James Laska <jlaska@redhat.com>
+Subject: Re: [pnfs] Fedora NFSv4 Test Day
+Message-ID: <20100129164229.GB24042@fieldses.org>
+References: <803354499.556481264778096200.JavaMail.root@zmail06.collab.prod.int.phx2.redhat.com> <1666074695.559241264778354166.JavaMail.root@zmail06.collab.prod.int.phx2.redhat.com>
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <de04351e1001200320y2e763680gc7e3b20319c6386e@mail.gmail.com>
+In-Reply-To: <1666074695.559241264778354166.JavaMail.root@zmail06.collab.prod.int.phx2.redhat.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, Jan 20, 2010 at 07:20:34PM +0800, jin zhencheng wrote:
->I use kernel 2.6.26.2
->
->I use  29 clients,
->
->every client mount parameters as this: mount -t nfs -o
->rw,noatime,v3,rsize=32768,wsize=32768,hard,intr,tcp,nolock
->
->my system have many errors lke these :
->
->RPC: multiple fragments per record not supported
->RPC: multiple fragments per record not supported
->RPC: fragment too large: 0x318c87ee
->RPC: multiple fragments per record not supported
->RPC: fragment too large: 0x78bdeedb
->RPC: multiple fragments per record not supported
->RPC: fragment too large: 0x75cf8a33
->RPC: fragment too large: 0x44764ada
->RPC: multiple fragments per record not supported
->RPC: fragment too large: 0x0a08e7c0
->RPC: multiple fragments per record not supported
->RPC: multiple fragments per record not supported
->RPC: fragment too large: 0x5b4e13a1
->RPC: fragment too large: 0x08351a9f
->
+On Fri, Jan 29, 2010 at 10:19:14AM -0500, caiqian@redhat.com wrote:
+> Hi guys,
+> 
+> There will be a NFS test event [1] focus on NFSv4 by default feature [2] and secure NFS in upcoming Fedora 13 next Thursday - 4th Feb. While we are still trying to finalize a few details there, your suggestion on other testing areas for NFS are also welcome. We are trying to make the tests as easy to follow, and provide Fedora LiveCD images during the event if possible. We will guide you and answer questions you have during the event on IRC freenode -> #fedora-test-day.
 
-Does 'ethtool -K eth0 tso off' help?
+Note on https://fedoraproject.org/wiki/QA:Testcase_nfs_pynfs there seems
+to be a mix-up between pynfs and connectathon instructions.
 
--- 
-Live like a child, think like the god.
- 
+--b.
+
+> 
+> Looking forwards to see you there!
+> CAI Qian
+> 
+> [1] https://fedoraproject.org/wiki/Test_Day:2010-02-04_NFS
+> [2] https://fedoraproject.org/wiki/Features/NFSv4Default
+> _______________________________________________
+> pNFS mailing list
+> pNFS@linux-nfs.org
+> http://linux-nfs.org/cgi-bin/mailman/listinfo/pnfs
