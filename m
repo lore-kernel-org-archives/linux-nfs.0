@@ -1,64 +1,68 @@
-From: Benjamin Herrenschmidt <benh@kernel.crashing.org>
-Subject: Re: [PATCH] nodmask.h: remove macro any_online_node
-Date: Mon, 01 Feb 2010 13:05:58 +1100
-Message-ID: <1264989958.8287.13.camel@pasglop>
-References: <201001061624.59118.hartleys@visionengravers.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH 6/9] sunrpc/cache: retry cache lookups that return
+	-ETIMEDOUT
+Date: Mon, 1 Feb 2010 12:11:48 -0500
+Message-ID: <20100201171148.GE15565@fieldses.org>
+References: <20090909062539.20462.67466.stgit@notabene.brown> <20090909063254.20462.41616.stgit@notabene.brown> <20091202221127.GB18690@fieldses.org> <20091203165729.GB1393@fieldses.org> <20091204153845.1ec83de5@notabene.brown> <20091205011742.GH22497@fieldses.org> <20091215172729.5e1d0190@notabene.brown>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Cc: Linux Kernel <linux-kernel@vger.kernel.org>,
-	linuxppc-dev-mnsaURCQ41sdnm+yROfE0A@public.gmane.org, devicetree-discuss@lists.ozlabs.org,
-	linux-nfs@vger.kernel.org, netdev@vger.kernel.org,
-	akpm@linux-foundation.org, rientjes@google.com,
-	kamezawa.hiroyu-+CUm20s59erQFUHtdCDX3A@public.gmane.org, mel-wPRd99KPJ+uzQB+pC5nmwQ@public.gmane.org,
-	lee.schermerhorn@hp.com, paulus@samba.org, dave@linux.vnet.ibm.com,
-	miltonm-ogEGBHC/i9Y@public.gmane.org, nfont-V7BBcbaFuwjMbYB6QlFGEg@public.gmane.org, geoffrey.levand-mEdOJwZ7QcZBDgjK7y7TUQ@public.gmane.org,
-	grant.likely-s3s/WqlpOiPyB63q8FvJNQ@public.gmane.org, bfields@fieldses.org, neilb@suse.de,
-	Trond.Myklebust@netapp.com, davem@davemloft.net,
-	bhalevy@panasas.com, chuck.lever@oracle.com,
-	Ricardo.Labiaga@netapp.com
-To: H Hartley Sweeten <hartleys-3FF4nKcrg1dE2c76skzGb0EOCMrvLtNR@public.gmane.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-nfs@vger.kernel.org
+To: Neil Brown <neilb@suse.de>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from gate.crashing.org ([63.228.1.57]:55909 "EHLO gate.crashing.org"
+Received: from fieldses.org ([174.143.236.118]:58208 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750940Ab0BACKM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 31 Jan 2010 21:10:12 -0500
-In-Reply-To: <201001061624.59118.hartleys-3FF4nKcrg1dE2c76skzGb0EOCMrvLtNR@public.gmane.org>
+	id S1751054Ab0BARLl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 1 Feb 2010 12:11:41 -0500
+In-Reply-To: <20091215172729.5e1d0190-wvvUuzkyo1EYVZTmpyfIwg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 2010-01-06 at 16:24 -0700, H Hartley Sweeten wrote:
-> nodmask.h: remove macro any_online_node
+On Tue, Dec 15, 2009 at 05:27:29PM +1100, Neil Brown wrote:
+> On Fri, 4 Dec 2009 20:17:42 -0500
+> "J. Bruce Fields" <bfields@fieldses.org> wrote:
 > 
-> The macro any_online_node is prone to producing sparse warnings
-> due to the local symbol 'node'. Since all the in-tree users are really
-> requesting the first online node (the mask argument is either
-> NODE_MASK_ALL or node_online_map) just use the first_online_node
-> macro and remove the any_online_node macro since there are no users.
+> > > 
+> > > How about this as an alternate.  I have only compile tested it, nothing more.
+> > > But if it looks good to you I'll make sure it really works.  
+> > 
+> > Well, without having really thinking about it:
+> > 
+> > 	- If this were two separate patches, I'd have an easier time
+> > 	  sorting out the interesting stuff from the trivial (though
+> > 	  nevertheless good) hash-function reshuffling.
 > 
-> Signed-off-by: H Hartley Sweeten <hsweeten-3FF4nKcrg1dE2c76skzGb0EOCMrvLtNR@public.gmane.org>
-> Cc: Andrew Morton <akpm@linux-foundation.org>
-> Cc: David Rientjes <rientjes@google.com>
-> Cc: KAMEZAWA Hiroyuki <kamezawa.hiroyu-+CUm20s59erQFUHtdCDX3A@public.gmane.org>
-> Cc: Mel Gorman <mel-wPRd99KPJ+uzQB+pC5nmwQ@public.gmane.org>
-> Cc: Lee Schermerhorn <lee.schermerhorn@hp.com>
+> I'll see what I can come up with...
 
-Acked-by: Benjamin Herrenschmidt <benh@kernel.crashing.org>
+Have you had a chance to get back to this?
 
-> Cc: Paul Mackerras <paulus@samba.org>
-> Cc: Dave Hansen <dave@linux.vnet.ibm.com>
-> Cc: Milton Miller <miltonm-ogEGBHC/i9Y@public.gmane.org>
-> Cc: Nathan Fontenot <nfont-V7BBcbaFuwjMbYB6QlFGEg@public.gmane.org>
-> Cc: Geoff Levand <geoffrey.levand-mEdOJwZ7QcZBDgjK7y7TUQ@public.gmane.org>
-> Cc: Grant Likely <grant.likely-s3s/WqlpOiPyB63q8FvJNQ@public.gmane.org>
-> Cc: J. Bruce Fields <bfields@fieldses.org>
-> Cc: Neil Brown <neilb@suse.de>
-> Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
-> Cc: David S. Miller <davem@davemloft.net>
-> Cc: Benny Halevy <bhalevy@panasas.com>
-> Cc: Chuck Lever <chuck.lever@oracle.com>
-> Cc: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
+> 
+> > 	- Adding code to the common lookup_and_check() instead of to
+> > 	  every caller certainly seems better, but too bad about the
+> > 	  special cases that remain.
+> 
+> yeah.... I could possibly add a pass-by-reference to lookup_and_check
+> which points to a possible cached value, but that would have
+> only one user, so the special case would be moved elsewhere...
+> ??
 
-Cheers,
-Ben.
+Yeah, that doesn't sound so great.
 
+> > 	- Something still seems odd here: we shouldn't ever have
+> > 	  duplicate cache entries with the same key, because during
+> > 	  their lifetimes cache entries are always kept in the hash.  So
+> > 	  why do we need extra code to check for that case?  I may just
+> > 	  be forgetting what we're doing here.  Should I go reread the
+> > 	  rest of the series?
+> 
+> When sunrpc_update_cache is called to update and item that is
+> already valid, it unhashes that item and creates a new one.
+> (The unhashed item disappears once all the refcounts go).
+> So if we wait for user-space to update an entry for us, we
+> might find out that it has been unhashed, so we need to find
+> the new one.
 
+But nobody ever waits on a valid entry, right?  So isn't the only case
+we care about the invalid case?  I'll admit I haven't thought this
+through.
+
+--b.
