@@ -1,92 +1,64 @@
-From: Andy Adamson <andros@netapp.com>
-Subject: Re: [pnfs] [PATCH 6/6] pnfsd: fix compile errors when CONFIG_PNFSD is	not set
-Date: Tue, 9 Feb 2010 14:29:41 -0500
-Message-ID: <0A55BEDF-51D6-44F4-9236-7957223E121E@netapp.com>
-References: <1265737357-9405-1-git-send-email-andros@netapp.com>	<1265737357-9405-2-git-send-email-andros@netapp.com>	<1265737357-9405-3-git-send-email-andros@netapp.com>	<1265737357-9405-4-git-send-email-andros@netapp.com>	<1265737357-9405-5-git-send-email-andros@netapp.com>	<1265737357-9405-6-git-send-email-andros@netapp.com> <1265737357-9405-7-git-send-email-andros@netapp.com> <4B71A2BC.5060302@panasas.com>
-Mime-Version: 1.0 (Apple Message framework v936)
-Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
-Cc: pnfs@linux-nfs.org, linux-nfs@vger.kernel.org
-To: Benny Halevy <bhalevy@panasas.com>
+From: Benjamin Herrenschmidt <benh@kernel.crashing.org>
+Subject: Re: [PATCH] nodmask.h: remove macro any_online_node
+Date: Mon, 01 Feb 2010 13:05:58 +1100
+Message-ID: <1264989958.8287.13.camel@pasglop>
+References: <201001061624.59118.hartleys@visionengravers.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="UTF-8"
+Cc: Linux Kernel <linux-kernel@vger.kernel.org>,
+	linuxppc-dev-mnsaURCQ41sdnm+yROfE0A@public.gmane.org, devicetree-discuss@lists.ozlabs.org,
+	linux-nfs@vger.kernel.org, netdev@vger.kernel.org,
+	akpm@linux-foundation.org, rientjes@google.com,
+	kamezawa.hiroyu-+CUm20s59erQFUHtdCDX3A@public.gmane.org, mel-wPRd99KPJ+uzQB+pC5nmwQ@public.gmane.org,
+	lee.schermerhorn@hp.com, paulus@samba.org, dave@linux.vnet.ibm.com,
+	miltonm-ogEGBHC/i9Y@public.gmane.org, nfont-V7BBcbaFuwjMbYB6QlFGEg@public.gmane.org, geoffrey.levand-mEdOJwZ7QcZBDgjK7y7TUQ@public.gmane.org,
+	grant.likely-s3s/WqlpOiPyB63q8FvJNQ@public.gmane.org, bfields@fieldses.org, neilb@suse.de,
+	Trond.Myklebust@netapp.com, davem@davemloft.net,
+	bhalevy@panasas.com, chuck.lever@oracle.com,
+	Ricardo.Labiaga@netapp.com
+To: H Hartley Sweeten <hartleys-3FF4nKcrg1dE2c76skzGb0EOCMrvLtNR@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:58961 "EHLO mx2.netapp.com"
+Received: from gate.crashing.org ([63.228.1.57]:55909 "EHLO gate.crashing.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751436Ab0BIT36 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 9 Feb 2010 14:29:58 -0500
-In-Reply-To: <4B71A2BC.5060302@panasas.com>
+	id S1750940Ab0BACKM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 31 Jan 2010 21:10:12 -0500
+In-Reply-To: <201001061624.59118.hartleys-3FF4nKcrg1dE2c76skzGb0EOCMrvLtNR@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Wed, 2010-01-06 at 16:24 -0700, H Hartley Sweeten wrote:
+> nodmask.h: remove macro any_online_node
+> 
+> The macro any_online_node is prone to producing sparse warnings
+> due to the local symbol 'node'. Since all the in-tree users are really
+> requesting the first online node (the mask argument is either
+> NODE_MASK_ALL or node_online_map) just use the first_online_node
+> macro and remove the any_online_node macro since there are no users.
+> 
+> Signed-off-by: H Hartley Sweeten <hsweeten-3FF4nKcrg1dE2c76skzGb0EOCMrvLtNR@public.gmane.org>
+> Cc: Andrew Morton <akpm@linux-foundation.org>
+> Cc: David Rientjes <rientjes@google.com>
+> Cc: KAMEZAWA Hiroyuki <kamezawa.hiroyu-+CUm20s59erQFUHtdCDX3A@public.gmane.org>
+> Cc: Mel Gorman <mel-wPRd99KPJ+uzQB+pC5nmwQ@public.gmane.org>
+> Cc: Lee Schermerhorn <lee.schermerhorn@hp.com>
 
-On Feb 9, 2010, at 1:00 PM, Benny Halevy wrote:
+Acked-by: Benjamin Herrenschmidt <benh@kernel.crashing.org>
 
-> I don't see any problems with CONFIG_PNFSD=n
-> both fs/nfsd/nfs4pnfsd.c and fs/nfsd/nfs4pnfsdlm.c are built only  
-> conditionally
-> with PNFSD is configured.
+> Cc: Paul Mackerras <paulus@samba.org>
+> Cc: Dave Hansen <dave@linux.vnet.ibm.com>
+> Cc: Milton Miller <miltonm-ogEGBHC/i9Y@public.gmane.org>
+> Cc: Nathan Fontenot <nfont-V7BBcbaFuwjMbYB6QlFGEg@public.gmane.org>
+> Cc: Geoff Levand <geoffrey.levand-mEdOJwZ7QcZBDgjK7y7TUQ@public.gmane.org>
+> Cc: Grant Likely <grant.likely-s3s/WqlpOiPyB63q8FvJNQ@public.gmane.org>
+> Cc: J. Bruce Fields <bfields@fieldses.org>
+> Cc: Neil Brown <neilb@suse.de>
+> Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
+> Cc: David S. Miller <davem@davemloft.net>
+> Cc: Benny Halevy <bhalevy@panasas.com>
+> Cc: Chuck Lever <chuck.lever@oracle.com>
+> Cc: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
 
-Yep - I was building directly e.g.
+Cheers,
+Ben.
 
-% make fs/nfsd/nfs4pnfsd.o
-
-Which of course doesn't happen :)
-
--->Andy
-
->
-> fs/nfsd/Makefile:
-> nfsd-$(CONFIG_PNFSD)	+= nfs4pnfsd.o nfs4pnfsdlm.o nfs4pnfsds.o
->
-> Benny
->
-> On Feb. 09, 2010, 19:42 +0200, andros@netapp.com wrote:
->> From: Andy Adamson <andros@netapp.com>
->>
->> Signed-off-by: Andy Adamson <andros@netapp.com>
->> ---
->> fs/nfsd/nfs4pnfsd.c   |    4 ++++
->> fs/nfsd/nfs4pnfsdlm.c |    4 ++++
->> 2 files changed, 8 insertions(+), 0 deletions(-)
->>
->> diff --git a/fs/nfsd/nfs4pnfsd.c b/fs/nfsd/nfs4pnfsd.c
->> index 75bddd8..44a1edd 100644
->> --- a/fs/nfsd/nfs4pnfsd.c
->> +++ b/fs/nfsd/nfs4pnfsd.c
->> @@ -21,6 +21,8 @@
->>  *
->>   
->> *****************************************************************************/
->>
->> +#if defined(CONFIG_PNFSD)
->> +
->> #include "pnfsd.h"
->>
->> #define NFSDDBG_FACILITY                NFSDDBG_PROC
->> @@ -1676,3 +1678,5 @@ int nfsd_device_notify_cb(struct super_block  
->> *sb,
->> 		__func__, status, notify_num);
->> 	return status;
->> }
->> +
->> +#endif /* CONFIG_PNFSD */
->> diff --git a/fs/nfsd/nfs4pnfsdlm.c b/fs/nfsd/nfs4pnfsdlm.c
->> index 83c4698..8e8a5a8 100644
->> --- a/fs/nfsd/nfs4pnfsdlm.c
->> +++ b/fs/nfsd/nfs4pnfsdlm.c
->> @@ -21,6 +21,8 @@
->>  *
->>   
->> ******************************************************************************/
->>
->> +#if defined(CONFIG_PNFSD)
->> +
->> #include <linux/nfs4.h>
->> #include <linux/nfsd/const.h>
->> #include <linux/nfsd/debug.h>
->> @@ -402,3 +404,5 @@ const struct pnfs_export_operations  
->> pnfs_dlm_export_ops = {
->> 	.layout_get = nfsd4_pnfs_dlm_layoutget,
->> };
->> EXPORT_SYMBOL(pnfs_dlm_export_ops);
->> +
->> +#endif /* CONFIG_PNFSD */
 
