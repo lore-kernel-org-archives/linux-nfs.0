@@ -1,176 +1,157 @@
 From: NeilBrown <neilb@suse.de>
-Subject: [PATCH 4/9] sunrpc/cache: allow threads to block while waiting for
-	cache update.
+Subject: [PATCH 5/9] nfsd/idmap: drop special request deferal in favour of
+	improved default.
 Date: Wed, 03 Feb 2010 17:31:31 +1100
-Message-ID: <20100203063131.12945.23572.stgit@notabene.brown>
+Message-ID: <20100203063131.12945.78848.stgit@notabene.brown>
 References: <20100203060657.12945.27293.stgit@notabene.brown>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org
 To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from cantor.suse.de ([195.135.220.2]:49542 "EHLO mx1.suse.de"
+Received: from cantor.suse.de ([195.135.220.2]:49544 "EHLO mx1.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756091Ab0BCGj1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 3 Feb 2010 01:39:27 -0500
+	id S1756091Ab0BCGjd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 3 Feb 2010 01:39:33 -0500
 In-Reply-To: <20100203060657.12945.27293.stgit-wvvUuzkyo1EYVZTmpyfIwg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The current practice of waiting for cache updates by queueing the
-whole request to be retried has (at least) two problems.
-
-1/ With NFSv4, requests can be quite complex and re-trying a whole
-  request when a latter part fails should only be a last-resort, not a
-  normal practice.
-
-2/ Large requests, and in particular any 'write' request, will not be
-  queued by the current code and doing so would be undesirable.
-
-In many cases only a very sort wait is needed before the cache gets
-valid data.
-
-So, providing the underlying transport permits it by setting
- ->thread_wait,
-arrange to wait briefly for an upcall to be completed (as reflected in
-the clearing of CACHE_PENDING).
-If the short wait was not long enough and CACHE_PENDING is still set,
-fall back on the old approach.
-
-The 'thread_wait' value is set to 5 seconds when there are spare
-threads, and 1 second when there are no spare threads.
-
-These values are probably much higher than needed, but will ensure
-some forward progress.
-
-Note that as we (now) only request an update for a non-valid item,
-and as non-valid items are updated in place it is extremely unlikely
-that cache_check will return -ETIMEDOUT.  Normally cache_defer_req
-will sleep for a short while and then find that the item is_valid.
-
+The idmap code manages request deferal by waiting for a reply from
+userspace rather than putting the NFS request on a queue to be retried
+from the start.
+Now that the common deferal code does this there is no need for the
+special code in idmap.
 
 Signed-off-by: NeilBrown <neilb@suse.de>
 ---
- include/linux/sunrpc/cache.h |    3 +++
- net/sunrpc/cache.c           |   44 +++++++++++++++++++++++++++++++++++++++++-
- net/sunrpc/svc_xprt.c        |   11 +++++++++++
- 3 files changed, 57 insertions(+), 1 deletions(-)
+ fs/nfsd/nfs4idmap.c |  105 +++++----------------------------------------------
+ 1 files changed, 11 insertions(+), 94 deletions(-)
 
-diff --git a/include/linux/sunrpc/cache.h b/include/linux/sunrpc/cache.h
-index 6f52b4d..ef3db11 100644
---- a/include/linux/sunrpc/cache.h
-+++ b/include/linux/sunrpc/cache.h
-@@ -125,6 +125,9 @@ struct cache_detail {
-  */
- struct cache_req {
- 	struct cache_deferred_req *(*defer)(struct cache_req *req);
-+	int thread_wait;  /* How long (jiffies) we can block the
-+			   * current thread to wait for updates.
-+			   */
- };
- /* this must be embedded in a deferred_request that is being
-  * delayed awaiting cache-fill
-diff --git a/net/sunrpc/cache.c b/net/sunrpc/cache.c
-index 3e1ef8b..b23b2e6 100644
---- a/net/sunrpc/cache.c
-+++ b/net/sunrpc/cache.c
-@@ -508,10 +508,22 @@ static LIST_HEAD(cache_defer_list);
- static struct list_head cache_defer_hash[DFR_HASHSIZE];
- static int cache_defer_cnt;
- 
-+struct thread_deferred_req {
-+	struct cache_deferred_req handle;
-+	wait_queue_head_t wait;
-+};
-+static void cache_restart_thread(struct cache_deferred_req *dreq, int too_many)
-+{
-+	struct thread_deferred_req *dr =
-+		container_of(dreq, struct thread_deferred_req, handle);
-+	wake_up(&dr->wait);
-+}
-+
- static int cache_defer_req(struct cache_req *req, struct cache_head *item)
- {
- 	struct cache_deferred_req *dreq, *discard;
- 	int hash = DFR_HASH(item);
-+	struct thread_deferred_req sleeper;
- 
- 	if (cache_defer_cnt >= DFR_MAX) {
- 		/* too much in the cache, randomly drop this one,
-@@ -520,7 +532,14 @@ static int cache_defer_req(struct cache_req *req, struct cache_head *item)
- 		if (net_random()&1)
- 			return -ENOMEM;
- 	}
--	dreq = req->defer(req);
-+	if (req->thread_wait) {
-+		dreq = &sleeper.handle;
-+		init_waitqueue_head(&sleeper.wait);
-+		dreq->revisit = cache_restart_thread;
-+	} else
-+		dreq = req->defer(req);
-+
-+ retry:
- 	if (dreq == NULL)
- 		return -ENOMEM;
- 
-@@ -554,6 +573,29 @@ static int cache_defer_req(struct cache_req *req, struct cache_head *item)
- 		cache_revisit_request(item);
- 		return -EAGAIN;
- 	}
-+
-+	if (dreq == &sleeper.handle) {
-+		wait_event_interruptible_timeout(
-+			sleeper.wait,
-+			!test_bit(CACHE_PENDING, &item->flags)
-+			|| list_empty(&sleeper.handle.hash),
-+			req->thread_wait);
-+		spin_lock(&cache_defer_lock);
-+		if (!list_empty(&sleeper.handle.hash)) {
-+			list_del_init(&sleeper.handle.recent);
-+			list_del_init(&sleeper.handle.hash);
-+			cache_defer_cnt--;
-+		}
-+		spin_unlock(&cache_defer_lock);
-+		if (test_bit(CACHE_PENDING, &item->flags)) {
-+			/* item is still pending, try request
-+			 * deferral
-+			 */
-+			dreq = req->defer(req);
-+			goto retry;
-+		}
-+		return -EEXIST;
-+	}
- 	return 0;
+diff --git a/fs/nfsd/nfs4idmap.c b/fs/nfsd/nfs4idmap.c
+index 6e2983b..f3de309 100644
+--- a/fs/nfsd/nfs4idmap.c
++++ b/fs/nfsd/nfs4idmap.c
+@@ -481,109 +481,26 @@ nfsd_idmap_shutdown(void)
+ 	cache_unregister(&nametoid_cache);
  }
  
-diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-index 7d1f9e9..ae71d51 100644
---- a/net/sunrpc/svc_xprt.c
-+++ b/net/sunrpc/svc_xprt.c
-@@ -643,6 +643,11 @@ int svc_recv(struct svc_rqst *rqstp, long timeout)
- 	if (signalled() || kthread_should_stop())
- 		return -EINTR;
+-/*
+- * Deferred request handling
+- */
+-
+-struct idmap_defer_req {
+-       struct cache_req		req;
+-       struct cache_deferred_req deferred_req;
+-       wait_queue_head_t	waitq;
+-       atomic_t			count;
+-};
+-
+-static inline void
+-put_mdr(struct idmap_defer_req *mdr)
+-{
+-	if (atomic_dec_and_test(&mdr->count))
+-		kfree(mdr);
+-}
+-
+-static inline void
+-get_mdr(struct idmap_defer_req *mdr)
+-{
+-	atomic_inc(&mdr->count);
+-}
+-
+-static void
+-idmap_revisit(struct cache_deferred_req *dreq, int toomany)
+-{
+-	struct idmap_defer_req *mdr =
+-		container_of(dreq, struct idmap_defer_req, deferred_req);
+-
+-	wake_up(&mdr->waitq);
+-	put_mdr(mdr);
+-}
+-
+-static struct cache_deferred_req *
+-idmap_defer(struct cache_req *req)
+-{
+-	struct idmap_defer_req *mdr =
+-		container_of(req, struct idmap_defer_req, req);
+-
+-	mdr->deferred_req.revisit = idmap_revisit;
+-	get_mdr(mdr);
+-	return (&mdr->deferred_req);
+-}
+-
+-static inline int
+-do_idmap_lookup(struct ent *(*lookup_fn)(struct ent *), struct ent *key,
+-		struct cache_detail *detail, struct ent **item,
+-		struct idmap_defer_req *mdr)
+-{
+-	*item = lookup_fn(key);
+-	if (!*item)
+-		return -ENOMEM;
+-	return cache_check(detail, &(*item)->h, &mdr->req);
+-}
+-
+-static inline int
+-do_idmap_lookup_nowait(struct ent *(*lookup_fn)(struct ent *),
+-			struct ent *key, struct cache_detail *detail,
+-			struct ent **item)
+-{
+-	int ret = -ENOMEM;
+-
+-	*item = lookup_fn(key);
+-	if (!*item)
+-		goto out_err;
+-	ret = -ETIMEDOUT;
+-	if (!test_bit(CACHE_VALID, &(*item)->h.flags)
+-			|| (*item)->h.expiry_time < get_seconds()
+-			|| detail->flush_time > (*item)->h.last_refresh)
+-		goto out_put;
+-	ret = -ENOENT;
+-	if (test_bit(CACHE_NEGATIVE, &(*item)->h.flags))
+-		goto out_put;
+-	return 0;
+-out_put:
+-	cache_put(&(*item)->h, detail);
+-out_err:
+-	*item = NULL;
+-	return ret;
+-}
+-
+ static int
+ idmap_lookup(struct svc_rqst *rqstp,
+ 		struct ent *(*lookup_fn)(struct ent *), struct ent *key,
+ 		struct cache_detail *detail, struct ent **item)
+ {
+-	struct idmap_defer_req *mdr;
+ 	int ret;
  
-+	/* Normally we will wait up to 5 seconds for any required
-+	 * cache information to be provided.
-+	 */
-+	rqstp->rq_chandle.thread_wait = 5*HZ;
+-	mdr = kzalloc(sizeof(*mdr), GFP_KERNEL);
+-	if (!mdr)
++	*item = lookup_fn(key);
++	if (!*item)
+ 		return -ENOMEM;
+-	atomic_set(&mdr->count, 1);
+-	init_waitqueue_head(&mdr->waitq);
+-	mdr->req.defer = idmap_defer;
+-	ret = do_idmap_lookup(lookup_fn, key, detail, item, mdr);
+-	if (ret == -EAGAIN) {
+-		wait_event_interruptible_timeout(mdr->waitq,
+-			test_bit(CACHE_VALID, &(*item)->h.flags), 1 * HZ);
+-		ret = do_idmap_lookup_nowait(lookup_fn, key, detail, item);
++ retry:
++	ret = cache_check(detail, &(*item)->h, &rqstp->rq_chandle);
 +
- 	spin_lock_bh(&pool->sp_lock);
- 	xprt = svc_xprt_dequeue(pool);
- 	if (xprt) {
-@@ -650,6 +655,12 @@ int svc_recv(struct svc_rqst *rqstp, long timeout)
- 		svc_xprt_get(xprt);
- 		rqstp->rq_reserved = serv->sv_max_mesg;
- 		atomic_add(rqstp->rq_reserved, &xprt->xpt_reserved);
-+
-+		/* As there is a shortage of threads and this request
-+		 * had to be queue, don't allow the thread to wait so
-+		 * long for cache updates.
-+		 */
-+		rqstp->rq_chandle.thread_wait = 1*HZ;
- 	} else {
- 		/* No data pending. Go to sleep */
- 		svc_thread_enqueue(pool, rqstp);
++	if (ret == -ETIMEDOUT) {
++		struct ent *prev_item = *item;
++		*item = lookup_fn(key);
++		if (*item != prev_item)
++			goto retry;
++		cache_put(&(*item)->h, detail);
+ 	}
+-	put_mdr(mdr);
+ 	return ret;
+ }
+ 
 
 
