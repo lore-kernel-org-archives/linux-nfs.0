@@ -1,211 +1,211 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet12.oracle.com ([148.87.113.124]:19350 "EHLO
-	rcsinet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S933982Ab0BEWrY (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 5 Feb 2010 17:47:24 -0500
-Message-ID: <4B6C9FA7.2010702@oracle.com>
-Date: Fri, 05 Feb 2010 17:45:59 -0500
-From: Chuck Lever <chuck.lever@oracle.com>
-To: "Batsakis, Alexandros" <Alexandros.Batsakis@netapp.com>
-CC: Alexandros Batsakis <batsakis@netapp.com>, linux-nfs@vger.kernel.org,
-        trond@netapp.com
-Subject: Re: [PATCH 6/6] RPC: adjust timeout for connect, bind, restablish
- so that they sensitive to the major time out value
-References: <1265155576-7618-1-git-send-email-batsakis@netapp.com> <1265155576-7618-2-git-send-email-batsakis@netapp.com> <1265155576-7618-3-git-send-email-batsakis@netapp.com> <1265155576-7618-4-git-send-email-batsakis@netapp.com> <1265155576-7618-5-git-send-email-batsakis@netapp.com> <1265155576-7618-6-git-send-email-batsakis@netapp.com> <1265155576-7618-7-git-send-email-batsakis@netapp.com> <4B6C7BCA.2040806@oracle.com> <383F4881-BD88-4155-B605-4D24F5B05BDD@netapp.com>
-In-Reply-To: <383F4881-BD88-4155-B605-4D24F5B05BDD@netapp.com>
-Content-Type: text/plain; charset=us-ascii; format=flowed
+Received: from mail-bw0-f219.google.com ([209.85.218.219]:61393 "EHLO
+	mail-bw0-f219.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932329Ab0BCXxg convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 3 Feb 2010 18:53:36 -0500
+Received: by bwz19 with SMTP id 19so692645bwz.28
+        for <linux-nfs@vger.kernel.org>; Wed, 03 Feb 2010 15:53:34 -0800 (PST)
+In-Reply-To: <465D8B6E-B503-4225-9B3E-37A894D66298@oracle.com>
+References: <294d5daa1001131408o4531e6c8o65d4682d5e5e4c16@mail.gmail.com>
+	 <294d5daa1001271948h3d14e544i5a42e6d55cda67ed@mail.gmail.com>
+	 <4C5D0433-0BAC-4452-A3CB-20E4B72F25E3@oracle.com>
+	 <294d5daa1002011625m707af9ffo665988e6da486121@mail.gmail.com>
+	 <465D8B6E-B503-4225-9B3E-37A894D66298@oracle.com>
+Date: Wed, 3 Feb 2010 15:53:28 -0800
+Message-ID: <294d5daa1002031553l1fd33926rd6559aea922ce8ea@mail.gmail.com>
+Subject: Re: Is it safe to increase RPC_CREDCACHE_HASHBITS?
+From: Mark Moseley <moseleymark@gmail.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 02/05/2010 05:14 PM, Batsakis, Alexandros wrote:
-> Yeah sure,
+On Tue, Feb 2, 2010 at 9:10 AM, Chuck Lever <chuck.lever@oracle.com> wrote:
+> On Feb 1, 2010, at 7:25 PM, Mark Moseley wrote:
+>>
+>> On Mon, Feb 1, 2010 at 12:54 PM, Chuck Lever <chuck.lever@oracle.com>
+>> wrote:
+>>>
+>>> On Jan 27, 2010, at 10:48 PM, Mark Moseley wrote:
+>>>>
+>>>> On Wed, Jan 13, 2010 at 2:08 PM, Mark Moseley <moseleymark@gmail.com>
+>>>> wrote:
+>>>>>
+>>>>> I'm seeing an issue similar to
+>>>>> http://www.spinics.net/lists/linux-nfs/msg09255.html in a heavy NFS
+>>>>> environment. The topology is all Debian Etch servers (8-core Dell
+>>>>> 1950s) talking to a variety of Netapp filers. In trying to diagnose
+>>>>> high loads and esp high 'system' CPU usage in vmstat, using the 'perf'
+>>>>> tool from the linux distro, I can see that the
+>>>>> "rpcauth_lookup_credcache" call is far and away the top function in
+>>>>> 'perf top'. I see similar results across ~80 servers of the same type
+>>>>> of service. On servers that have been up for a while,
+>>>>> rpcauth_lookup_credcache is usually ~40-50%; looking at a box rebooted
+>>>>> about an hour ago, rpcauth_lookup_credcache is around ~15-25%. Here's
+>>>>> a box that's been up for a while:
+>>>>>
+>>>>>
+>>>>>
+>>>>> ------------------------------------------------------------------------------
+>>>>>  PerfTop:  113265 irqs/sec  kernel:42.7% [100000 cycles],  (all, 8
+>>>>> CPUs)
+>>>>>
+>>>>>
+>>>>> ------------------------------------------------------------------------------
+>>>>>
+>>>>>           samples    pcnt         RIP          kernel function
+>>>>>  ______     _______   _____   ________________   _______________
+>>>>>
+>>>>>         359151.00 - 44.8% - 00000000003d2081 : rpcauth_lookup_credcache
+>>>>>          33414.00 -  4.2% - 000000000001b0ec : native_write_cr0
+>>>>>          27852.00 -  3.5% - 00000000003d252c : generic_match
+>>>>>          19254.00 -  2.4% - 0000000000092565 : sanitize_highpage
+>>>>>          18779.00 -  2.3% - 0000000000004610 : system_call
+>>>>>          12047.00 -  1.5% - 00000000000a137f : copy_user_highpage
+>>>>>          11736.00 -  1.5% - 00000000003f5137 : _spin_lock
+>>>>>          11066.00 -  1.4% - 00000000003f5420 : page_fault
+>>>>>           8981.00 -  1.1% - 000000000001b322 : native_flush_tlb_single
+>>>>>           8490.00 -  1.1% - 000000000006c98f : audit_filter_syscall
+>>>>>           7169.00 -  0.9% - 0000000000208e43 : __copy_to_user_ll
+>>>>>           6000.00 -  0.7% - 00000000000219c1 : kunmap_atomic
+>>>>>           5262.00 -  0.7% - 00000000001fae02 : glob_match
+>>>>>           4687.00 -  0.6% - 0000000000021acc : kmap_atomic_prot
+>>>>>           4404.00 -  0.5% - 0000000000008fb2 : read_tsc
+>>>>>
+>>>>>
+>>>>> I took the advice in the above thread and adjusted the
+>>>>> RPC_CREDCACHE_HASHBITS #define in include/linux/sunrpc/auth.h to 12 --
+>>>>> but didn't modify anything else. After doing so,
+>>>>> rpcauth_lookup_credcache drops off the list (even when the top list is
+>>>>> widened to 40 lines) and 'system' CPU usage drops by quite a bit,
+>>>>> under the same workload. And even after a day of running, it's still
+>>>>> performing favourably, despite having the same workload and uptime as
+>>>>> RPC_CREDCACHE_HASHBITS=4 boxes that are still struggling. Both patched
+>>>>> and unpatched kernels are 2.6.32.3, both with grsec and ipset. Here's
+>>>>> 'perf top' of a patched box:
+>>>>>
+>>>>>
+>>>>>
+>>>>> ------------------------------------------------------------------------------
+>>>>>  PerfTop:  116525 irqs/sec  kernel:27.0% [100000 cycles],  (all, 8
+>>>>> CPUs)
+>>>>>
+>>>>>
+>>>>> ------------------------------------------------------------------------------
+>>>>>
+>>>>>           samples    pcnt         RIP          kernel function
+>>>>>  ______     _______   _____   ________________   _______________
+>>>>>
+>>>>>          15844.00 -  7.0% - 0000000000019eb2 : native_write_cr0
+>>>>>          11479.00 -  5.0% - 00000000000934fd : sanitize_highpage
+>>>>>          11328.00 -  5.0% - 0000000000003d10 : system_call
+>>>>>           6578.00 -  2.9% - 00000000000a26d2 : copy_user_highpage
+>>>>>           6417.00 -  2.8% - 00000000003fdb80 : page_fault
+>>>>>           6237.00 -  2.7% - 00000000003fd897 : _spin_lock
+>>>>>           4732.00 -  2.1% - 000000000006d3b0 : audit_filter_syscall
+>>>>>           4504.00 -  2.0% - 000000000020cf59 : __copy_to_user_ll
+>>>>>           4309.00 -  1.9% - 000000000001a370 : native_flush_tlb_single
+>>>>>           3293.00 -  1.4% - 00000000001fefba : glob_match
+>>>>>           2911.00 -  1.3% - 00000000003fda25 : _spin_lock_irqsave
+>>>>>           2753.00 -  1.2% - 00000000000d30f1 : __d_lookup
+>>>>>           2500.00 -  1.1% - 00000000000200b8 : kunmap_atomic
+>>>>>           2418.00 -  1.1% - 0000000000008483 : read_tsc
+>>>>>           2387.00 -  1.0% - 0000000000089a7b : perf_poll
+>>>>>
+>>>>>
+>>>>> My question is, is it safe to make that change to
+>>>>> RPC_CREDCACHE_HASHBITS, or will that lead to some overflow somewhere
+>>>>> else in the NFS/RPC stack? Looking over the code in net/sunrpc/auth.c,
+>>>>> I don't see any big red flags, but I don't flatter myself into
+>>>>> thinking I can debug kernel code, so I wanted to pose the question
+>>>>> here. Is it pretty safe to change RPC_CREDCACHE_HASHBITS from 4 to 12?
+>>>>> Or am I setting myself up for instability and/or security issues? I'd
+>>>>> rather be slow than hacked.
+>>>>>
+>>>>> Thanks!
+>>>>>
+>>>>
+>>>> I've read and reread the pertinent sections of code where
+>>>> RPC_CREDCACHE_HASHBITS and RPC_CREDCACHE_NR (derived from
+>>>> RPC_CREDCACHE_HASHBITS) and it looks pretty safe.
+>>>>
+>>>> In lieu of a full sysctl-controlled setting to change
+>>>> RPC_CREDCACHE_HASHBITS, would it make sense to set
+>>>> RPC_CREDCACHE_HASHBITS to something bigger than 4 by default? I'd bet
+>>>> a lot of other people in high-traffic environments with a large number
+>>>> of active unix accounts are likely unknowingly affected by this. I
+>>>> only happened to notice by playing with the kernel's perf tool.
+>>>>
+>>>> I could be wrong but it doesn't look like it'd tie up an excessive
+>>>> amount of memory to have, say, 256 or 1024 or 4096 hash buckets in
+>>>> au_credcache (though it wouldn't surprise me if I was way, way off
+>>>> about that). It seems (to a non-kernel guy) that the only obvious
+>>>> operation that would suffer due to more buckets would be
+>>>> rpcauth_prune_expired() in net/sunrpc/auth.c. I haven't tested this
+>>>> out with pre-2.6.32.x kernels, but since the default is either 16
+>>>> buckets or even 8 way back in 2.6.24.x, I'm guessing that this
+>>>> pertains to all recent kernels.
+>>>
+>>> I haven't looked at the RPC cred cache in specific, but the usual Linux
+>>> kernel practice is to size hash tables based on the size of the machine's
+>>> physical RAM.  Smaller machines are likely to need fewer entries in the
+>>> cred
+>>> cache, and will probably not want to take up the fixed address space for
+>>> 4096 buckets.
+>>
+>> 4096 might be a bit much. Though since there doesn't seem to be a
+>> ceiling on the number of entries, so at least memory-wise, the only
+>> difference in overhead would just be the rest of the size of struct
+>> "hlist_head" (at least from a non-kernel-guy perspective), since it'd
+>> still have the same sum total of entries across the buckets with 16 or
+>> 256 or 4096.
+>>
+>>> The real test of your hash table size is whether the hash function
+>>> adequately spreads entries across the hash buckets, for most workloads.
+>>>  Helpful hint: you should test using real workloads (eg. a snapshot of
+>>> credentials from a real client or server), not, for instance, synthetic
+>>> workloads you made up.
+>>
+>> In production, it works pretty nicely. Since it looked pretty safe,
+>> I've been running on 1 box in a pool of 9, all with identical
+>> load-balanced workloads. The RPC_BITS-hacked box consistently spends
+>> less time in 'system' time than the other 8. The other boxes in that
+>> pool have 'perf top' stats with rpcauth_lookup_credcache in the area
+>> of 30-50% (except for right after booting up; takes a couple of hours
+>> before rpcauth_lookup_credcache starts monopolizing the output. On the
+>> RPC_Bits-hacked box, rpcauth_lookup_credcache never even shows up in
+>> the perf top 10 or 20. I could also be abusing/misinterpreting 'perf
+>> top' output :)
 >
-> So imagine that for a specific connection the remaining major timeo
-> value is 30secs. Xs_connect has a default timeout before attempting to
-> reconnect of 60secs. The user (NFS) expects to "hear back" from the rpc
-> layer within the timeout as in often cases e.g. lease renewal, it's of
-> no benefit for an operation to reach the server at a later time and miss
-> the critical time because it was sleeping for an arbitrary amount of time.
+> That's evidence that it's working better, but you need to know if there are
+> still any buckets that contain a large number of entries, while the others
+> contain only a few.  I don't recall a mention of how many entries your
+> systems are caching, but even with a large hash table, if most of them end
+> up in just a few buckets, it still isn't working efficiently, even though it
+> might be faster.
+
+I had actually meant (and forgotten) to ask in this thread if there
+was a way to determine the bucket membership counts. I haven't been
+able to find anything in /proc that looks promising, nor does it looks
+like it's updating any sort of counters. As far as numbers in buckets,
+without a counter it's hard to tell, but at least in the hundreds,
+probably into the thousands. Given enough egregious directory walks by
+end-users' scripts could push it even higher.
+
+
+> Another way to look at it is that shows we could get away with a small hash
+> table if the hash function can be improved.  It would help us to know what
+> the specific problem is.
 >
-> My patch ensures that the reconnection attempts happen within the
-> user-specified limits by replacing the 60secs default timeout with a
-> value that is less than the time to expire. If this is not ideal the
-> user should readjust the timeout value.
->
-> Does it make sense?
+> You could hook up a simple printk that shows how many entries are in the
+> fullest and the emptiest bucket (for example, when doing an "echo m >
+> /proc/sysrq-trigger", or you could have the entry counts displayed in a
+> /proc file).  If the ratio of those numbers approaches 1 when there's a
+> large number of entries in the cache, then you know for sure the hash
+> function is working properly for your workload.
 
-That's better, but this explanation needs to accompany the patch, as the 
-long description.  It's hard for reviewers who are not familiar with the 
-constraints on NFSv4 RENEW to understand what you're trying to fix. 
-Same comment applies to the other patches in your series, I think.  (And 
-see further comments in the code below).
-
-You are changing a generic part of the RPC client to fix an issue with 
-one specific NFSv4 procedure, it seems to me.  Did you actually observe 
-a situation where the reconnect delay caused the server to miss a RENEW 
-request?
-
-There are good reasons why there is a timeout before reestablishing a 
-connection.  Have you tested this patch with NFSv3 servers that are 
-going up and down repeatedly, for example?  I think skipping the 
-reconnect delay could have consequences for the cases which the original 
-xs_connect logic is supposed to address, and it's not something we want 
-in many other cases.
-
-Perhaps a better idea would be to mark these particular RPCs with some 
-kind of indication that the RPC client has to connect immediately for 
-this request, if possible.  Similar to RPC_TASK_SOFTCONN.
-
-In general, sunrpc.ko has a problem with this kind of "urgent" RPC 
-request.  If the RPC backlog queue is large for a particular rpc_clnt, 
-it can often take many seconds (like longer than the major timeout) for 
-a request to actually get down to the transport and get sent.  I don't 
-see that these timeout changes necessarily address that at all.
-
-I would suggest that the best solution might be a separate transport for 
-such requests, but that has other consequences.  Maybe our RPC client 
-needs a separate "urgent" request queue that bypasses the normal backlog 
-queue for such time-dependent requests?
-
-> -alexandros
->
-> On Feb 5, 2010, at 12:14, "Chuck Lever" <chuck.lever@oracle.com> wrote:
->
->> Hi Alexandros-
->>
->> I think we need a little more than the short description for these
->> patches. Can you explain why the extra logic in xs_connect is
->> necessary? What exactly happens if the RENEW doesn't reach the server
->> because the transport can't be reconnected?
->>
->> In other words, what problem are you trying to address here?
->>
->> On 02/02/2010 07:06 PM, Alexandros Batsakis wrote:
->>> Signed-off-by: Alexandros Batsakis<batsakis@netapp.com>
->>> ---
->>> net/sunrpc/clnt.c | 2 +-
->>> net/sunrpc/sunrpc.h | 2 ++
->>> net/sunrpc/xprt.c | 18 +++++++++++++++---
->>> net/sunrpc/xprtsock.c | 12 ++++++++++--
->>> 4 files changed, 28 insertions(+), 6 deletions(-)
->>>
->>> diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
->>> index 154034b..8e552cd 100644
->>> --- a/net/sunrpc/clnt.c
->>> +++ b/net/sunrpc/clnt.c
->>> @@ -1019,7 +1019,7 @@ call_bind(struct rpc_task *task)
->>> task->tk_action = call_connect;
->>> if (!xprt_bound(xprt)) {
->>> task->tk_action = call_bind_status;
->>> - task->tk_timeout = xprt->bind_timeout;
->>> + xprt_set_timeout_sane(task, xprt->bind_timeout);
->>> xprt->ops->rpcbind(task);
->>> }
->>> }
->>> diff --git a/net/sunrpc/sunrpc.h b/net/sunrpc/sunrpc.h
->>> index 90c292e..87c7aaa 100644
->>> --- a/net/sunrpc/sunrpc.h
->>> +++ b/net/sunrpc/sunrpc.h
->>> @@ -37,6 +37,8 @@ struct rpc_buffer {
->>> char data[];
->>> };
->>>
->>> +void xprt_set_timeout_sane(struct rpc_task *task, unsigned long
->>> timeout);
->>> +
->>> static inline int rpc_reply_expected(struct rpc_task *task)
->>> {
->>> return (task->tk_msg.rpc_proc != NULL)&&
->>> diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
->>> index 469de29..f6f3988 100644
->>> --- a/net/sunrpc/xprt.c
->>> +++ b/net/sunrpc/xprt.c
->>> @@ -482,7 +482,7 @@ void xprt_wait_for_buffer_space(struct rpc_task
->>> *task, rpc_action action)
->>> struct rpc_rqst *req = task->tk_rqstp;
->>> struct rpc_xprt *xprt = req->rq_xprt;
->>>
->>> - task->tk_timeout = req->rq_timeout;
->>> + xprt_set_timeout_sane(task, req->rq_timeout);
->>> rpc_sleep_on(&xprt->pending, task, action);
->>> }
->>> EXPORT_SYMBOL_GPL(xprt_wait_for_buffer_space);
->>> @@ -518,7 +518,7 @@ EXPORT_SYMBOL_GPL(xprt_write_space);
->>> */
->>> void xprt_set_retrans_timeout_def(struct rpc_task *task)
->>> {
->>> - task->tk_timeout = task->tk_rqstp->rq_timeout;
->>> + xprt_set_timeout_sane(task, task->tk_rqstp->rq_timeout);
->>> }
->>> EXPORT_SYMBOL_GPL(xprt_set_retrans_timeout_def);
->>>
->>> @@ -682,6 +682,18 @@ out_abort:
->>> spin_unlock(&xprt->transport_lock);
->>> }
->>>
->>> +void xprt_set_timeout_sane(struct rpc_task *task, unsigned long
->>> timeout)
->>
->> xprt_set_timeout_sane? That's amusing, but it isn't very descriptive
->> to someone who doesn't know why this extra function is needed.
->>
->>> +{
->>> + unsigned long majorto = task->tk_rqstp->rq_majortimeo;
->>> +
->>> + if (majorto<= jiffies)
->>> + task->tk_timeout = 5 * HZ;
->>> + else if (timeout> majorto - jiffies)
->>> + task->tk_timeout = 2 * (majorto - jiffies) / 3;
->>> + else
->>> + task->tk_timeout = timeout;
->>> +}
->>> +
->>> /**
->>> * xprt_connect - schedule a transport connect operation
->>> * @task: RPC task that is requesting the connect
->>> @@ -710,7 +722,7 @@ void xprt_connect(struct rpc_task *task)
->>> if (task->tk_rqstp)
->>> task->tk_rqstp->rq_bytes_sent = 0;
->>>
->>> - task->tk_timeout = xprt->connect_timeout;
->>> + xprt_set_timeout_sane(task, xprt->connect_timeout);
->>> rpc_sleep_on(&xprt->pending, task, xprt_connect_status);
->>> xprt->stat.connect_start = jiffies;
->>> xprt->ops->connect(task);
->>> diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
->>> index 721bafd..7fcc97f 100644
->>> --- a/net/sunrpc/xprtsock.c
->>> +++ b/net/sunrpc/xprtsock.c
->>> @@ -2020,9 +2020,17 @@ static void xs_connect(struct rpc_task *task)
->>> return;
->>>
->>> if (transport->sock != NULL&& !RPC_IS_SOFTCONN(task)) {
->>> + unsigned long majorto = task->tk_rqstp->rq_majortimeo;
->>> +
->>> + if (majorto<= jiffies)
->>> + xprt->reestablish_timeout = 5 * HZ;
->>> + else if (xprt->reestablish_timeout> majorto - jiffies)
->>> + xprt->reestablish_timeout = 2 * (majorto - jiffies)
->>> + / 3;
->>
->> This looks like the code you added above in _sane. Can you reuse that
->> code here?
->>
->>> +
->>> dprintk("RPC: xs_connect delayed xprt %p for %lu "
->>> - "seconds\n",
->>> - xprt, xprt->reestablish_timeout / HZ);
->>> + "seconds\n",
->>> + xprt, xprt->reestablish_timeout + (HZ - 1) / HZ);
->>> queue_delayed_work(rpciod_workqueue,
->>> &transport->connect_worker,
->>> xprt->reestablish_timeout);
->>
->>
->> --
->> chuck[dot]lever[at]oracle[dot]com
-
-
--- 
-chuck[dot]lever[at]oracle[dot]com
+I don't rate my C remotely good enough to competently modify any
+kernel code (beyond changing a constant) :)  Do you know of any
+examples that I could rip out and plug in here?
