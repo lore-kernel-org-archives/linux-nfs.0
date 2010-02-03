@@ -1,94 +1,176 @@
 From: NeilBrown <neilb@suse.de>
-Subject: [PATCH 3/9] sunrpc: never return expired entries in
-	sunrpc_cache_lookup
+Subject: [PATCH 4/9] sunrpc/cache: allow threads to block while waiting for
+	cache update.
 Date: Wed, 03 Feb 2010 17:31:31 +1100
-Message-ID: <20100203063131.12945.97779.stgit@notabene.brown>
+Message-ID: <20100203063131.12945.23572.stgit@notabene.brown>
 References: <20100203060657.12945.27293.stgit@notabene.brown>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org
 To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:45224 "EHLO mx2.suse.de"
+Received: from cantor.suse.de ([195.135.220.2]:49542 "EHLO mx1.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754362Ab0BCGjW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 3 Feb 2010 01:39:22 -0500
+	id S1756091Ab0BCGj1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 3 Feb 2010 01:39:27 -0500
 In-Reply-To: <20100203060657.12945.27293.stgit-wvvUuzkyo1EYVZTmpyfIwg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-If sunrpc_cache_lookup finds an expired entry, remove it from
-the cache and return a freshly created non-VALID entry instead.
-This ensures that we only ever get a usable entry, or an
-entry that will become usable once an update arrives.
-i.e. we will never need to repeat the lookup.
+The current practice of waiting for cache updates by queueing the
+whole request to be retried has (at least) two problems.
 
-This allows us to remove the 'is_expired' test from cache_check
-(i.e. from cache_is_valid).  cache_check should never get an expired
-entry as 'lookup' will never return one.  If it does happen - due to
-inconvenient timing - then just accept it as still valid, it won't be
-very much past it's use-by date.
+1/ With NFSv4, requests can be quite complex and re-trying a whole
+  request when a latter part fails should only be a last-resort, not a
+  normal practice.
+
+2/ Large requests, and in particular any 'write' request, will not be
+  queued by the current code and doing so would be undesirable.
+
+In many cases only a very sort wait is needed before the cache gets
+valid data.
+
+So, providing the underlying transport permits it by setting
+ ->thread_wait,
+arrange to wait briefly for an upcall to be completed (as reflected in
+the clearing of CACHE_PENDING).
+If the short wait was not long enough and CACHE_PENDING is still set,
+fall back on the old approach.
+
+The 'thread_wait' value is set to 5 seconds when there are spare
+threads, and 1 second when there are no spare threads.
+
+These values are probably much higher than needed, but will ensure
+some forward progress.
+
+Note that as we (now) only request an update for a non-valid item,
+and as non-valid items are updated in place it is extremely unlikely
+that cache_check will return -ETIMEDOUT.  Normally cache_defer_req
+will sleep for a short while and then find that the item is_valid.
+
 
 Signed-off-by: NeilBrown <neilb@suse.de>
 ---
- net/sunrpc/cache.c |   17 ++++++++++++++---
- 1 files changed, 14 insertions(+), 3 deletions(-)
+ include/linux/sunrpc/cache.h |    3 +++
+ net/sunrpc/cache.c           |   44 +++++++++++++++++++++++++++++++++++++++++-
+ net/sunrpc/svc_xprt.c        |   11 +++++++++++
+ 3 files changed, 57 insertions(+), 1 deletions(-)
 
+diff --git a/include/linux/sunrpc/cache.h b/include/linux/sunrpc/cache.h
+index 6f52b4d..ef3db11 100644
+--- a/include/linux/sunrpc/cache.h
++++ b/include/linux/sunrpc/cache.h
+@@ -125,6 +125,9 @@ struct cache_detail {
+  */
+ struct cache_req {
+ 	struct cache_deferred_req *(*defer)(struct cache_req *req);
++	int thread_wait;  /* How long (jiffies) we can block the
++			   * current thread to wait for updates.
++			   */
+ };
+ /* this must be embedded in a deferred_request that is being
+  * delayed awaiting cache-fill
 diff --git a/net/sunrpc/cache.c b/net/sunrpc/cache.c
-index 9826c5c..3e1ef8b 100644
+index 3e1ef8b..b23b2e6 100644
 --- a/net/sunrpc/cache.c
 +++ b/net/sunrpc/cache.c
-@@ -59,7 +59,7 @@ struct cache_head *sunrpc_cache_lookup(struct cache_detail *detail,
- 				       struct cache_head *key, int hash)
+@@ -508,10 +508,22 @@ static LIST_HEAD(cache_defer_list);
+ static struct list_head cache_defer_hash[DFR_HASHSIZE];
+ static int cache_defer_cnt;
+ 
++struct thread_deferred_req {
++	struct cache_deferred_req handle;
++	wait_queue_head_t wait;
++};
++static void cache_restart_thread(struct cache_deferred_req *dreq, int too_many)
++{
++	struct thread_deferred_req *dr =
++		container_of(dreq, struct thread_deferred_req, handle);
++	wake_up(&dr->wait);
++}
++
+ static int cache_defer_req(struct cache_req *req, struct cache_head *item)
  {
- 	struct cache_head **head,  **hp;
--	struct cache_head *new = NULL;
-+	struct cache_head *new = NULL, *freeme = NULL;
+ 	struct cache_deferred_req *dreq, *discard;
+ 	int hash = DFR_HASH(item);
++	struct thread_deferred_req sleeper;
  
- 	head = &detail->hash_table[hash];
+ 	if (cache_defer_cnt >= DFR_MAX) {
+ 		/* too much in the cache, randomly drop this one,
+@@ -520,7 +532,14 @@ static int cache_defer_req(struct cache_req *req, struct cache_head *item)
+ 		if (net_random()&1)
+ 			return -ENOMEM;
+ 	}
+-	dreq = req->defer(req);
++	if (req->thread_wait) {
++		dreq = &sleeper.handle;
++		init_waitqueue_head(&sleeper.wait);
++		dreq->revisit = cache_restart_thread;
++	} else
++		dreq = req->defer(req);
++
++ retry:
+ 	if (dreq == NULL)
+ 		return -ENOMEM;
  
-@@ -68,6 +68,9 @@ struct cache_head *sunrpc_cache_lookup(struct cache_detail *detail,
- 	for (hp=head; *hp != NULL ; hp = &(*hp)->next) {
- 		struct cache_head *tmp = *hp;
- 		if (detail->match(tmp, key)) {
-+			if (cache_is_expired(detail, tmp))
-+				/* This entry is expired, we will discard it. */
-+				break;
- 			cache_get(tmp);
- 			read_unlock(&detail->hash_lock);
- 			return tmp;
-@@ -92,6 +95,13 @@ struct cache_head *sunrpc_cache_lookup(struct cache_detail *detail,
- 	for (hp=head; *hp != NULL ; hp = &(*hp)->next) {
- 		struct cache_head *tmp = *hp;
- 		if (detail->match(tmp, key)) {
-+			if (cache_is_expired(detail, tmp)) {
-+				*hp = tmp->next;
-+				tmp->next = NULL;
-+				detail->entries --;
-+				freeme = tmp;
-+				break;
-+			}
- 			cache_get(tmp);
- 			write_unlock(&detail->hash_lock);
- 			cache_put(new, detail);
-@@ -104,6 +114,8 @@ struct cache_head *sunrpc_cache_lookup(struct cache_detail *detail,
- 	cache_get(new);
- 	write_unlock(&detail->hash_lock);
- 
-+	if (freeme)
-+		cache_put(freeme, detail);
- 	return new;
- }
- EXPORT_SYMBOL_GPL(sunrpc_cache_lookup);
-@@ -189,8 +201,7 @@ static int cache_make_upcall(struct cache_detail *cd, struct cache_head *h)
- 
- static inline int cache_is_valid(struct cache_detail *detail, struct cache_head *h)
- {
--	if (!test_bit(CACHE_VALID, &h->flags) ||
--	    cache_is_expired(detail, h))
-+	if (!test_bit(CACHE_VALID, &h->flags))
+@@ -554,6 +573,29 @@ static int cache_defer_req(struct cache_req *req, struct cache_head *item)
+ 		cache_revisit_request(item);
  		return -EAGAIN;
- 	else {
- 		/* entry is valid */
+ 	}
++
++	if (dreq == &sleeper.handle) {
++		wait_event_interruptible_timeout(
++			sleeper.wait,
++			!test_bit(CACHE_PENDING, &item->flags)
++			|| list_empty(&sleeper.handle.hash),
++			req->thread_wait);
++		spin_lock(&cache_defer_lock);
++		if (!list_empty(&sleeper.handle.hash)) {
++			list_del_init(&sleeper.handle.recent);
++			list_del_init(&sleeper.handle.hash);
++			cache_defer_cnt--;
++		}
++		spin_unlock(&cache_defer_lock);
++		if (test_bit(CACHE_PENDING, &item->flags)) {
++			/* item is still pending, try request
++			 * deferral
++			 */
++			dreq = req->defer(req);
++			goto retry;
++		}
++		return -EEXIST;
++	}
+ 	return 0;
+ }
+ 
+diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
+index 7d1f9e9..ae71d51 100644
+--- a/net/sunrpc/svc_xprt.c
++++ b/net/sunrpc/svc_xprt.c
+@@ -643,6 +643,11 @@ int svc_recv(struct svc_rqst *rqstp, long timeout)
+ 	if (signalled() || kthread_should_stop())
+ 		return -EINTR;
+ 
++	/* Normally we will wait up to 5 seconds for any required
++	 * cache information to be provided.
++	 */
++	rqstp->rq_chandle.thread_wait = 5*HZ;
++
+ 	spin_lock_bh(&pool->sp_lock);
+ 	xprt = svc_xprt_dequeue(pool);
+ 	if (xprt) {
+@@ -650,6 +655,12 @@ int svc_recv(struct svc_rqst *rqstp, long timeout)
+ 		svc_xprt_get(xprt);
+ 		rqstp->rq_reserved = serv->sv_max_mesg;
+ 		atomic_add(rqstp->rq_reserved, &xprt->xpt_reserved);
++
++		/* As there is a shortage of threads and this request
++		 * had to be queue, don't allow the thread to wait so
++		 * long for cache updates.
++		 */
++		rqstp->rq_chandle.thread_wait = 1*HZ;
+ 	} else {
+ 		/* No data pending. Go to sleep */
+ 		svc_thread_enqueue(pool, rqstp);
 
 
