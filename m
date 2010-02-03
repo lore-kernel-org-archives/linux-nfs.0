@@ -1,82 +1,52 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mga09.intel.com ([134.134.136.24]:22259 "EHLO mga09.intel.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752500Ab0BXEdr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 23 Feb 2010 23:33:47 -0500
-Date: Wed, 24 Feb 2010 12:33:24 +0800
-From: Wu Fengguang <fengguang.wu@intel.com>
-To: Dave Chinner <david@fromorbit.com>
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-        Linux Memory Management List <linux-mm@kvack.org>,
-        LKML <linux-kernel@vger.kernel.org>
-Subject: Re: [RFC] nfs: use 2*rsize readahead size
-Message-ID: <20100224043324.GA31913@localhost>
-References: <20100224024100.GA17048@localhost> <20100224032934.GF16175@discord.disaster> <20100224042414.GG16175@discord.disaster>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20100224042414.GG16175@discord.disaster>
+Received: from acsinet12.oracle.com ([141.146.126.234]:16907 "EHLO
+	acsinet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755015Ab0BCWmC (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 3 Feb 2010 17:42:02 -0500
+Message-ID: <4B69FB62.2090908@oracle.com>
+Date: Wed, 03 Feb 2010 17:40:34 -0500
+From: Chuck Lever <chuck.lever@oracle.com>
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+CC: Neil Brown <neilb@suse.de>, "J. Bruce Fields" <bfields@fieldses.org>,
+        linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 6/9] sunrpc: close connection when a request is irretrievably
+ lost.
+References: <20100203060657.12945.27293.stgit@notabene.brown>	 <20100203063131.12945.34978.stgit@notabene.brown>	 <4B699988.9000209@oracle.com>  <20100204082354.0bf3b7e5@notabene.brown> <1265235610.5217.21.camel@localhost>
+In-Reply-To: <1265235610.5217.21.camel@localhost>
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, Feb 24, 2010 at 12:24:14PM +0800, Dave Chinner wrote:
-> On Wed, Feb 24, 2010 at 02:29:34PM +1100, Dave Chinner wrote:
-> > On Wed, Feb 24, 2010 at 10:41:01AM +0800, Wu Fengguang wrote:
-> > > With default rsize=512k and NFS_MAX_READAHEAD=15, the current NFS
-> > > readahead size 512k*15=7680k is too large than necessary for typical
-> > > clients.
-> > > 
-> > > On a e1000e--e1000e connection, I got the following numbers
-> > > 
-> > > 	readahead size		throughput
-> > > 		   16k           35.5 MB/s
-> > > 		   32k           54.3 MB/s
-> > > 		   64k           64.1 MB/s
-> > > 		  128k           70.5 MB/s
-> > > 		  256k           74.6 MB/s
-> > > rsize ==>	  512k           77.4 MB/s
-> > > 		 1024k           85.5 MB/s
-> > > 		 2048k           86.8 MB/s
-> > > 		 4096k           87.9 MB/s
-> > > 		 8192k           89.0 MB/s
-> > > 		16384k           87.7 MB/s
-> > > 
-> > > So it seems that readahead_size=2*rsize (ie. keep two RPC requests in flight)
-> > > can already get near full NFS bandwidth.
-> > > 
-> > > The test script is:
-> > > 
-> > > #!/bin/sh
-> > > 
-> > > file=/mnt/sparse
-> > > BDI=0:15
-> > > 
-> > > for rasize in 16 32 64 128 256 512 1024 2048 4096 8192 16384
-> > > do
-> > > 	echo 3 > /proc/sys/vm/drop_caches
-> > > 	echo $rasize > /sys/devices/virtual/bdi/$BDI/read_ahead_kb
-> > > 	echo readahead_size=${rasize}k
-> > > 	dd if=$file of=/dev/null bs=4k count=1024000
-> > > done
-> > 
-> > That's doing a cached read out of the server cache, right? You
-> > might find the results are different if the server has to read the
-> > file from disk. I would expect reads from the server cache not
-> > to require much readahead as there is no IO latency on the server
-> > side for the readahead to hide....
-> 
-> FWIW, if you mount the client with "-o rsize=32k" or the server only
-> supports rsize <= 32k then this will probably hurt throughput a lot
-> because then readahead will be capped at 64k instead of 480k....
+On 02/03/2010 05:20 PM, Trond Myklebust wrote:
+> On Thu, 2010-02-04 at 08:23 +1100, Neil Brown wrote:
+>> On Wed, 03 Feb 2010 10:43:04 -0500
+>> Chuck Lever<chuck.lever@oracle.com>  wrote:
+>>>
+>>> I don't think dropping the connection will cause the client to
+>>> retransmit sooner.  Clients I have encountered will reconnect and
+>>> retransmit only after their retransmit timeout fires, never sooner.
+>>>
+>>
+>> I thought I had noticed the Linux client resending immediately, but it would
+>> have been a while ago, and I could easily be remembering wrongly.
+>
+> It depends on who closes the connection.
+>
+> The client assumes that if the _server_ closes the connection, then it
+> may be having resource congestion issues. In order to give the server
+> time to recover, the client will delay reconnecting for 3 seconds (with
+> an exponential back off).
+ >
+> If, on the other hand, the client was the one that initiated the
+> connection closure, then it will try to reconnect immediately.
 
-That's why I take the max of 2*rsize and system default readahead size
-(which will be enlarged to 512K):
+That's only if there are RPC requests immediately ready to send, though, 
+right?  A request that is waiting for a reply when the connection is 
+dropped wouldn't be resent until its retransmit timer expired, I thought.
 
--       server->backing_dev_info.ra_pages = server->rpages * NFS_MAX_READAHEAD;
-+       server->backing_dev_info.ra_pages = max_t(unsigned long,
-+                                             default_backing_dev_info.ra_pages,
-+                                             2 * server->rpages);
+And, this behavior is true only for late-model clients... some of the 
+eariler 2.6 clients have some trouble with this scenario, I seem to recall.
 
-Thanks,
-Fengguang
+-- 
+chuck[dot]lever[at]oracle[dot]com
