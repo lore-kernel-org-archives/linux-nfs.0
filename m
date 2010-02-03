@@ -1,81 +1,97 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mga03.intel.com ([143.182.124.21]:62801 "EHLO mga03.intel.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755260Ab0BXES0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 23 Feb 2010 23:18:26 -0500
-Date: Wed, 24 Feb 2010 12:18:22 +0800
-From: Wu Fengguang <fengguang.wu@intel.com>
-To: Dave Chinner <david@fromorbit.com>
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-        Linux Memory Management List <linux-mm@kvack.org>,
-        LKML <linux-kernel@vger.kernel.org>
-Subject: Re: [RFC] nfs: use 2*rsize readahead size
-Message-ID: <20100224041822.GB27459@localhost>
-References: <20100224024100.GA17048@localhost> <20100224032934.GF16175@discord.disaster>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20100224032934.GF16175@discord.disaster>
+Received: from acsinet12.oracle.com ([141.146.126.234]:34891 "EHLO
+	acsinet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756539Ab0BCWfr (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 3 Feb 2010 17:35:47 -0500
+Message-ID: <4B69F9DE.10604@oracle.com>
+Date: Wed, 03 Feb 2010 17:34:06 -0500
+From: Chuck Lever <chuck.lever@oracle.com>
+To: Neil Brown <neilb@suse.de>
+CC: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 6/9] sunrpc: close connection when a request is irretrievably
+ lost.
+References: <20100203060657.12945.27293.stgit@notabene.brown>	<20100203063131.12945.34978.stgit@notabene.brown>	<4B699988.9000209@oracle.com> <20100204082354.0bf3b7e5@notabene.brown>
+In-Reply-To: <20100204082354.0bf3b7e5@notabene.brown>
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, Feb 24, 2010 at 11:29:34AM +0800, Dave Chinner wrote:
-> On Wed, Feb 24, 2010 at 10:41:01AM +0800, Wu Fengguang wrote:
-> > With default rsize=512k and NFS_MAX_READAHEAD=15, the current NFS
-> > readahead size 512k*15=7680k is too large than necessary for typical
-> > clients.
-> > 
-> > On a e1000e--e1000e connection, I got the following numbers
-> > 
-> > 	readahead size		throughput
-> > 		   16k           35.5 MB/s
-> > 		   32k           54.3 MB/s
-> > 		   64k           64.1 MB/s
-> > 		  128k           70.5 MB/s
-> > 		  256k           74.6 MB/s
-> > rsize ==>	  512k           77.4 MB/s
-> > 		 1024k           85.5 MB/s
-> > 		 2048k           86.8 MB/s
-> > 		 4096k           87.9 MB/s
-> > 		 8192k           89.0 MB/s
-> > 		16384k           87.7 MB/s
-> > 
-> > So it seems that readahead_size=2*rsize (ie. keep two RPC requests in flight)
-> > can already get near full NFS bandwidth.
-> > 
-> > The test script is:
-> > 
-> > #!/bin/sh
-> > 
-> > file=/mnt/sparse
-> > BDI=0:15
-> > 
-> > for rasize in 16 32 64 128 256 512 1024 2048 4096 8192 16384
-> > do
-> > 	echo 3 > /proc/sys/vm/drop_caches
-> > 	echo $rasize > /sys/devices/virtual/bdi/$BDI/read_ahead_kb
-> > 	echo readahead_size=${rasize}k
-> > 	dd if=$file of=/dev/null bs=4k count=1024000
-> > done
-> 
-> That's doing a cached read out of the server cache, right? You
+On 02/03/2010 04:23 PM, Neil Brown wrote:
+> On Wed, 03 Feb 2010 10:43:04 -0500
+> Chuck Lever<chuck.lever@oracle.com>  wrote:
+>
+>> On 02/03/2010 01:31 AM, NeilBrown wrote:
+>>> If we drop a request in the sunrpc layer, either due kmalloc failure,
+>>> or due to a cache miss when we could not queue the request for later
+>>> replay, then close the connection to encourage the client to retry sooner.
+>>
+>> I studied connection dropping behavior a few years back, and decided
+>> that dropping the connection on a retransmit is nearly always
+>> counterproductive.  Any other pending requests on a connection that is
+>> dropped must also be retransmitted, which means one retransmit suddenly
+>> turns into many.  And then you get into issues of idempotency and all
+>> the extra traffic and the long delays and the risk of reconnecting on a
+>> different port so that XID replay is undetectable...
+>
+> You make some good points there, thanks.
+>
+>>
+>> I don't think dropping the connection will cause the client to
+>> retransmit sooner.  Clients I have encountered will reconnect and
+>> retransmit only after their retransmit timeout fires, never sooner.
+>>
+>
+> I thought I had noticed the Linux client resending immediately, but it would
+> have been a while ago, and I could easily be remembering wrongly.
+>
+> My reasoning was that if the connection is closed then the client can *know*
+> that they won't get a response to any outstanding requests, rather than
+> having to use the timeout heuristic.  How the client uses that information I
+> don't know, but at least they would have it.
 
-It does not involve disk IO at least. (The sparse file dataset is
-larger than server cache.)
+So, I seem to remember expecting that behavior, and then being 
+disappointed when it didn't work that way :-)
 
-> might find the results are different if the server has to read the
-> file from disk. I would expect reads from the server cache not
-> to require much readahead as there is no IO latency on the server
-> side for the readahead to hide....
+It's also the case that there is some pathological behavior around 
+reconnect in some of the older 2.6 NFS clients.  Trond would probably 
+remember the details there.
 
-Sure the result will be different when disk IO is involved.
-In this case I would expect the server admin to setup the optimal
-readahead size for the disk(s).
+In any event, I think you would do well to make some direct observations 
+with several different vintages of Linux NFS clients, just to be sure 
+this works as you expect it to with reasonable clients.
 
-It sounds silly to have
+I noticed that connection drops are especially onerous when a server is 
+under load, and that's exactly when drops seem to occur most often. It's 
+one of those corner cases that's nearly impossible to test well.
 
-        client_readahead_size > server_readahead_size
+>> Unfortunately NFSv4 requires a connection drop before a retransmit, but
+>> NFSv3 does not.  NFSv4 servers are rather supposed to try very hard not
+>> to drop requests.
+>>
+>> How often do you expect this kind of recovery to be necessary?  Would it
+>> be possible to drop only for NFSv4 connections?
+>>
+>
+> With the improved handling of large requests I would expect this kind of
+> recovery would be very rarely needed.
+>
+> Yes, it would be quite easy to only drop connections on which we have seen an
+> NFSv4 request... and maybe also connections on which we have not successfully
+> handled any request yet(?).
+> What if, instead of closing the connection, we set a flag so that it would be
+> closed as soon as it had been idle for 1 second,  thus flushing any other
+> pending requests???   That probably doesn't help - there would easily be real
+> cases where other threads of activity keep the connection busy, while the
+> thread waiting for the lost request still needs a full time-out.
+>
+> I would be happy with the v4-only version.
 
-Thanks,
-Fengguang
+v4 would almost be required to work this way, I think.  I wouldn't 
+object to a v4-only implementation for now.
+
+I'm sure there are cases where v3 will have to drop the connection... 
+i'd just like to ensure that's it's absolutely a last resort.
+
+-- 
+chuck[dot]lever[at]oracle[dot]com
