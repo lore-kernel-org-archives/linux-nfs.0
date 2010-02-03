@@ -1,73 +1,117 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:4815 "EHLO
-	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1752726Ab0BJKrV (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 10 Feb 2010 05:47:21 -0500
-Message-ID: <4B728EB6.9010703@panasas.com>
-Date: Wed, 10 Feb 2010 12:47:18 +0200
-From: Boaz Harrosh <bharrosh@panasas.com>
-To: andros@netapp.com, Benny Halevy <bhalevy@panasas.com>
-CC: linux-nfs@vger.kernel.org, pnfs@linux-nfs.org
-Subject: [PATCH version2] SQUASHME: pnfsd-exofs: Change layoutget return codes
-References: <1265737357-9405-1-git-send-email-andros@netapp.com> <4B726D4E.1000601@panasas.com>
-In-Reply-To: <4B726D4E.1000601@panasas.com>
-Content-Type: text/plain; charset=UTF-8
+Received: from cantor.suse.de ([195.135.220.2]:49506 "EHLO mx1.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754362Ab0BCGjI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 3 Feb 2010 01:39:08 -0500
+From: NeilBrown <neilb@suse.de>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Date: Wed, 03 Feb 2010 17:31:30 +1100
+Subject: [PATCH 0/9] Cache deferal improvements - try++
+Cc: linux-nfs@vger.kernel.org
+Message-ID: <20100203060657.12945.27293.stgit@notabene.brown>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+Thanks to Bruce challenging me to justify the complexity of my
+previous version of this I have managed to simplify it significantly.
 
-Dependent on patch from Andy:
-	[PATCH 1/6] pnfsd: fix file system API layout_get error codes
+I have changed the rules for sunrpc_caches so that items that have
+expired get removed at the earliest opportunity even if they are still
+referenced, and in particular so that sunrpc_cache_lookup never
+returns an expired item.
+This means that cache_check doesn't need to check for "expired" any
+more and so only initiates an upcall for items that are not VALID.
 
-Change codes to nfs4.1 codes
+This means that when the upcall is responded to, it will always be
+exactly that item that is updated - never a different item with the
+same key.  So there is no longer any need to repeat the lookup.
 
-Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+The last 3 patches in this series are simply "cleanups" that I
+happened across while mucking about in the code.  The should have zero
+change in functionality, and if you don't think they are cleanups
+(second last is now questionable), feel free to ignore them.
+
+I have tested this to ensure that it doesn't completely break things,
+and to ensure that it fixes the problem(*) but I haven't hammered on
+it very hard.
+
+(*)
+The problem is exhibited by sending a stream of writes to the NFS
+server and then occasionally flushing the export cache (exportfs -f).
+The problem manifests by a write not getting a reply and the client 
+having to retransmit.
+It is 'fixed' if there are no retransmit delays.
+The follow generates the required writes and shows the delays.
+
+Without the patch I get delays of 60 seconds with TCP and 5 seconds
+with UDP.
+
+NeilBrown
+
+/*
+ * write to NFS server and report delays exceeding 1 second.
+ */
+
+#define _GNU_SOURCE
+
+#include <sys/time.h>
+#include <stdio.h>
+#include <sys/fcntl.h>
+#include <malloc.h>
+#include <memory.h>
+
+main(int argc, char *argv[])
+{
+	int usec;
+	//int fd = open(argv[1], O_WRONLY|O_DIRECT|O_CREAT, 0666);
+	//int fd = open(argv[1], O_WRONLY|O_SYNC|O_CREAT, 0666);
+	int fd = open(argv[1], O_WRONLY|O_CREAT, 0666);
+	char *buf;
+	struct timeval tv1, tv2;
+
+	posix_memalign(&buf, 4096, 409600);
+	memset(buf, 0x5a, 409600);
+
+	while(1) {
+		gettimeofday(&tv1, NULL);
+		write(fd, buf, 409600);
+		gettimeofday(&tv2, NULL);
+		usec = (tv2.tv_sec*1000000 + tv2.tv_usec) -
+			(tv1.tv_sec*1000000 + tv1.tv_usec);
+		if (usec > 1000000)
+			printf(" %d\n", usec/1000000);
+		else
+			printf(".");
+		fflush(stdout);
+	}
+}
+
+
 ---
- fs/exofs/export.c |   10 ++++++----
- 1 files changed, 6 insertions(+), 4 deletions(-)
 
-diff --git a/fs/exofs/export.c b/fs/exofs/export.c
-index be3d54e..4a4e3a0 100644
---- a/fs/exofs/export.c
-+++ b/fs/exofs/export.c
-@@ -95,13 +95,13 @@ static int exofs_layout_get(
- 	/* skip opaque size, will be filled-in later */
- 	start = exp_xdr_reserve_qwords(xdr, 1);
- 	if (!start) {
--		err = -E2BIG;
-+		err = NFS4ERR_TOOSMALL;
- 		goto err;
- 	}
- 
- 	creds = kcalloc(el->s_numdevs, sizeof(*creds), GFP_KERNEL);
- 	if (!creds) {
--		err = -ENOMEM;
-+		err = NFS4ERR_LAYOUTTRYLATER;
- 		goto err;
- 	}
- 
-@@ -134,8 +134,10 @@ static int exofs_layout_get(
- 	layout.olo_comps = creds;
- 
- 	err = pnfs_osd_xdr_encode_layout(xdr, &layout);
--	if (err)
-+	if (err) {
-+		err = NFS4ERR_TOOSMALL; /*FIXME: Change osd_xdr error codes */
- 		goto err;
-+	}
- 
- 	exp_xdr_encode_opaque_len(start, xdr->p);
- 
-@@ -146,7 +148,7 @@ static int exofs_layout_get(
- 	spin_unlock(&oi->i_layout_lock);
- 
- 	if (in_recall)
--		err = -EAGAIN;
-+		err = NFS4ERR_LAYOUTTRYLATER;
- 
- err:
- 	kfree(creds);
--- 
-1.6.6
+NeilBrown (9):
+      sunrpc: don't keep expired entries in the auth caches.
+      sunrpc/cache: factor out cache_is_expired
+      sunrpc: never return expired entries in sunrpc_cache_lookup
+      sunrpc/cache: allow threads to block while waiting for cache update.
+      nfsd/idmap: drop special request deferal in favour of improved default.
+      sunrpc: close connection when a request is irretrievably lost.
+      nfsd: factor out hash functions for export caches.
+      svcauth_gss: replace a trivial 'switch' with an 'if'
+      sunrpc/cache: change deferred-request hash table to use hlist.
+
+
+ fs/nfsd/export.c                  |   40 ++++++++------
+ fs/nfsd/nfs4idmap.c               |  105 ++++--------------------------------
+ include/linux/sunrpc/cache.h      |    5 +-
+ include/linux/sunrpc/svcauth.h    |   10 ++-
+ net/sunrpc/auth_gss/svcauth_gss.c |   51 ++++++++---------
+ net/sunrpc/cache.c                |  109 ++++++++++++++++++++++++++-----------
+ net/sunrpc/svc.c                  |    3 +
+ net/sunrpc/svc_xprt.c             |   11 ++++
+ net/sunrpc/svcauth_unix.c         |   11 +++-
+ 9 files changed, 169 insertions(+), 176 deletions(-)
+
 
