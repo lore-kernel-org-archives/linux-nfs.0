@@ -1,70 +1,43 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from msux-gh1-uea01.nsa.gov ([63.239.67.1]:35385 "EHLO
-	msux-gh1-uea01.nsa.gov" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S964794Ab0BZOCm (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 26 Feb 2010 09:02:42 -0500
-Subject: Re: [PATCH 5/5] NFSv3: Add server namespace support for XATTR
- protocol implementation
-From: Stephen Smalley <sds@tycho.nsa.gov>
-To: James Morris <jmorris@namei.org>
-Cc: linux-nfs@vger.kernel.org, linux-security-module@vger.kernel.org,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>, Neil Brown <neilb@suse.de>,
-        Dave Quigley <dpquigl@tycho.nsa.gov>,
-        "Serge E. Hallyn" <serue@us.ibm.com>
-In-Reply-To: <alpine.LRH.2.00.1002261537020.25193@tundra.namei.org>
-References: <alpine.LRH.2.00.1002261457420.25193@tundra.namei.org>
-	 <alpine.LRH.2.00.1002261537020.25193@tundra.namei.org>
-Content-Type: text/plain
-Date: Fri, 26 Feb 2010 08:46:30 -0500
-Message-Id: <1267191990.7691.37.camel@moss-pluto.epoch.ncsc.mil>
+Received: from mx2.netapp.com ([216.240.18.37]:10918 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932905Ab0BDUdL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 4 Feb 2010 15:33:11 -0500
+From: Alexandros Batsakis <batsakis@netapp.com>
+To: linux-nfs@vger.kernel.org
+Cc: trond@netapp.com, Alexandros Batsakis <batsakis@netapp.com>
+Subject: [PATCH 0/6] nfs: renewd fixes
+Date: Tue,  2 Feb 2010 16:06:10 -0800
+Message-Id: <1265155576-7618-1-git-send-email-batsakis@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Fri, 2010-02-26 at 15:37 +1100, James Morris wrote:
-> Add support for a server namespace for storing and retrieving
-> client-supplied xattrs.  All xattrs are now stored on the server under
-> the user._nfsd namespace, and are not interpreted by the server at all.
-> This allows clients to utilize arbitrary xattr namespaces and for the
-> server to act only as a storage mechanism for the xattrs.
-> 
-> The user._nfsd namespace was chosen because filesystems generally have
-> a user. xattr handler implemented.  Using something like system. would
-> require implementing a generalized handler for each backing fs on the
-> server, as well as requiring privilege to access.
+This set of patches is yet another attempt to fix a couple of issues with renewd.
+Patch 1/6 makes sure that renewd is synchronously killed before sending a destroy_session to the server.
+Patch 2/6 schedules new renewd request only if a previous one returns (error or success).
+Patch 3-4/6 fix the umount race by forcing renewd to take/put a client reference, so access to nfs_free_client is serialized.
+Patch 5/6 sets a timeout (similar to timeo) for the nfs_client->rpcclient that equals the server advertised lease_time. This ensures that NFS requests fail (so they can be retried) within a lease period.
+Patch 6/6 makes the internal timeouts of the RPC layer sensitive to the major timeout value; IOW there is no point in sleeping waiting for an event for longer than the remaining time before a major timeout.
 
-I'm wondering whether the user. namespace is best for storage on the
-server given that:
-- the user. namespace is restricted to regular files or directories (see
-xattr_permission()), and
-- the user. namespace applies its own set of permission checking logic
-that we don't necessarily want applied in the case of trusted. or
-security. attributes (e.g. special rules on sticky directories and read
-or write access to the file, see xattr_permission()), and
-- storing the attributes in the user. namespace would allow local users
-on the server to manipulate them directly.  I know that you stated an
-assumption that end users do not have local access to the exported
-filesystem, but it would be better if the system itself would restrict
-the ability to set these attributes to privileged processes on the
-server.
 
-Using the security. or trusted. namespace would avoid the restriction on
-file type and require CAP_SYS_ADMIN on setxattr.  That would prevent
-local modification by non-admins and should have no effect on clients
-(since nfsd doesn't drop CAP_SYS_ADMIN).
+Alexandros Batsakis (6):
+  nfs: kill renewd before clearing client minor version
+  nfs: prevent backlogging of renewd requests
+  nfs41: fix race between umount and renewd sequence operations
+  nfs4: fix race between umount and renewd renew operations
+  nfs4: adjust rpc timeout for nfs_client rpc client based on the
+    lease_time
+  RPC: adjust timeout for connect, bind, restablish so that they
+    sensitive to the major time out value
 
-> Currently, only the user and trusted namespaces are supported by
-> the client, as system and security namespaces require further analysis,
-> and some special-case handling will be required (for security.selinux,
-> at least).
-> 
-> NFS ACLs continue to work as expected, because they implement a
-> hard-coded system xattr namespace which is invoked before the
-> NFS layer.  e.g. any access to a system.posix_acl_access xattr
-> is invokes the NFS_ACL protocol.
-
--- 
-Stephen Smalley
-National Security Agency
+ fs/nfs/client.c       |   45 +++++++++++++++++++++----------------------
+ fs/nfs/nfs4proc.c     |   50 +++++++++++++++++++++++++++++++++++++++++++++++-
+ fs/nfs/nfs4renewd.c   |   19 ++++++-----------
+ net/sunrpc/clnt.c     |    2 +-
+ net/sunrpc/sunrpc.h   |    2 +
+ net/sunrpc/xprt.c     |   18 ++++++++++++++--
+ net/sunrpc/xprtsock.c |   12 +++++++++-
+ 7 files changed, 105 insertions(+), 43 deletions(-)
 
