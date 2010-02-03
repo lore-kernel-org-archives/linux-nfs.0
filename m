@@ -1,61 +1,78 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([18.85.46.34]:39490 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757441Ab0BDSjI (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 4 Feb 2010 13:39:08 -0500
-Date: Thu, 4 Feb 2010 13:39:08 -0500
-From: Christoph Hellwig <hch@infradead.org>
-To: bpm@sgi.com
-Cc: linux-nfs@vger.kernel.org, xfs@oss.sgi.com
-Subject: Re: [RFC PATCH 0/4] wsync export option
-Message-ID: <20100204183908.GB9329@infradead.org>
-References: <20100203233755.17677.96582.stgit@case> <20100204153006.GC22014@infradead.org> <20100204181529.GK5702@sgi.com>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20100204181529.GK5702@sgi.com>
+Received: from cantor2.suse.de ([195.135.220.15]:43742 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757042Ab0BCVYF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 3 Feb 2010 16:24:05 -0500
+Date: Thu, 4 Feb 2010 08:23:54 +1100
+From: Neil Brown <neilb@suse.de>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 6/9] sunrpc: close connection when a request is
+ irretrievably lost.
+Message-ID: <20100204082354.0bf3b7e5@notabene.brown>
+In-Reply-To: <4B699988.9000209@oracle.com>
+References: <20100203060657.12945.27293.stgit@notabene.brown>
+	<20100203063131.12945.34978.stgit@notabene.brown>
+	<4B699988.9000209@oracle.com>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Thu, Feb 04, 2010 at 12:15:29PM -0600, bpm@sgi.com wrote:
-> Rather than having X number of synchronous log transactions written
-> separately as with wsync you have X number of log transactions written
-> out together in one go by vfs_fsync (if datasync==0).  That should be
-> faster than wsync.
+On Wed, 03 Feb 2010 10:43:04 -0500
+Chuck Lever <chuck.lever@oracle.com> wrote:
 
-Indeed, except that there aren't a lot of different transactions
-usually.
+> On 02/03/2010 01:31 AM, NeilBrown wrote:
+> > If we drop a request in the sunrpc layer, either due kmalloc failure,
+> > or due to a cache miss when we could not queue the request for later
+> > replay, then close the connection to encourage the client to retry sooner.
+> 
+> I studied connection dropping behavior a few years back, and decided 
+> that dropping the connection on a retransmit is nearly always 
+> counterproductive.  Any other pending requests on a connection that is 
+> dropped must also be retransmitted, which means one retransmit suddenly 
+> turns into many.  And then you get into issues of idempotency and all 
+> the extra traffic and the long delays and the risk of reconnecting on a 
+> different port so that XID replay is undetectable...
 
- - nfsd_setattr is one SETATTR transaction
- - nfsd_create might be multiple transactions, indeed - especially
-   the nfsv3 variant that also adds a setattr transaction
- - nfsd_link should be a single one
+You make some good points there, thanks.
 
-but yes, doing the log force from nfsd should be a benefit for
-the create side at least.  The additional benefit is that we can
-just drive it from NFSD and don't need to force mount options on
-the fs.  So yes, let's do it from nfsd.
+> 
+> I don't think dropping the connection will cause the client to 
+> retransmit sooner.  Clients I have encountered will reconnect and 
+> retransmit only after their retransmit timeout fires, never sooner.
+> 
 
-> Trond also suggested an export_operation and I think it's a good idea.
-> I'll explore that and repost.
+I thought I had noticed the Linux client resending immediately, but it would
+have been a while ago, and I could easily be remembering wrongly.
 
-Indeed.  For XFS that export_operation could probably be a lot
-simpler than xfs_fsync.  I don't think we need to catch the
-non-transactional timestamp and size updates at all, and we're
-guaranteed the transaction has already commited.  So the
-method might be as simple as:
+My reasoning was that if the connection is closed then the client can *know*
+that they won't get a response to any outstanding requests, rather than
+having to use the timeout heuristic.  How the client uses that information I
+don't know, but at least they would have it.
 
-static int xfs_nfs_force_inode(struct inode *inode)
-{
-	struct xfs_inode *ip = XFS_I(inode);
+> Unfortunately NFSv4 requires a connection drop before a retransmit, but 
+> NFSv3 does not.  NFSv4 servers are rather supposed to try very hard not 
+> to drop requests.
+> 
+> How often do you expect this kind of recovery to be necessary?  Would it 
+> be possible to drop only for NFSv4 connections?
+> 
 
-	xfs_ilock(ip, XFS_ILOCK_SHARED);
-	if (xfs_ipincount(ip)) {
-		xfs_lsn_t force_lsn = ip->i_itemp->ili_last_lsn;
+With the improved handling of large requests I would expect this kind of
+recovery would be very rarely needed.
+Yes, it would be quite easy to only drop connections on which we have seen an
+NFSv4 request... and maybe also connections on which we have not successfully
+handled any request yet(?).
+What if, instead of closing the connection, we set a flag so that it would be
+closed as soon as it had been idle for 1 second,  thus flushing any other
+pending requests???   That probably doesn't help - there would easily be real
+cases where other threads of activity keep the connection busy, while the
+thread waiting for the lost request still needs a full time-out.
 
-		ASSERT(force_lsn);
-		xfs_log_force_lsn(ip->i_mount, force_lsn, XFS_LOG_SYNC);
-	}
-	xfs_iunlock(ip, XFS_ILOCK_SHARED);
+I would be happy with the v4-only version.
 
-	return 0;
-}
+Thanks,
+NeilBrown
+
+
