@@ -1,81 +1,49 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:44588 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:58563 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754440Ab0BLVyw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 12 Feb 2010 16:54:52 -0500
-Date: Fri, 12 Feb 2010 16:55:24 -0500
-From: "J. Bruce Fields" <bfields@citi.umich.edu>
-To: Steve Dickson <SteveD@redhat.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] nfsd: default to kernel default for minorversion 1
-Message-ID: <20100212215524.GF24661@fieldses.org>
-References: <1264631166-21898-1-git-send-email-bfields@citi.umich.edu> <1264631166-21898-2-git-send-email-bfields@citi.umich.edu> <20100201195821.GB19418@fieldses.org> <4B6B480C.1050307@RedHat.com> <20100205161001.GB24926@fieldses.org> <20100205192859.GE24926@fieldses.org> <20100205200501.GA28483@fieldses.org> <4B75B2DF.9060005@RedHat.com> <20100212200548.GB23361@fieldses.org> <4B75CBA3.8010001@RedHat.com>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4B75CBA3.8010001@RedHat.com>
+	id S1757450Ab0BDSwa convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 4 Feb 2010 13:52:30 -0500
+Subject: Re: [RFC PATCH 4/4] If 'wsync' pass datasync=1 to vfs_fsync().
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Christoph Hellwig <hch@infradead.org>
+Cc: bpm@sgi.com, linux-nfs@vger.kernel.org
+In-Reply-To: <20100204184040.GA15442@infradead.org>
+References: <20100203233755.17677.96582.stgit@case>
+	 <20100203234444.17677.32390.stgit@case>
+	 <20100204151926.GA22014@infradead.org> <20100204172016.GJ5702@sgi.com>
+	 <20100204183037.GA9329@infradead.org> <1265308680.3317.19.camel@localhost>
+	 <20100204184040.GA15442@infradead.org>
+Content-Type: text/plain; charset="UTF-8"
+Date: Thu, 04 Feb 2010 13:52:07 -0500
+Message-ID: <1265309527.3317.25.camel@localhost>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Fri, Feb 12, 2010 at 04:44:03PM -0500, Steve Dickson wrote:
-> 
-> 
-> On 02/12/2010 03:05 PM, J. Bruce Fields wrote:
-> > On Fri, Feb 12, 2010 at 02:58:23PM -0500, Steve Dickson wrote:
-> >>
-> >>
-> >> On 02/05/2010 03:05 PM, J. Bruce Fields wrote:
-> >>> From: J. Bruce Fields <bfields@citi.umich.edu>
-> >>>
-> >>> The current kernel code should not be enabled by default, because it
-> >>> does not yet attempt to be a conform completely to the rfc; for example,
-> >>> some required pieces of protocol are missing.
-> >>>
-> >>> Therefore the kernel defaults to leaving minorversion1 off.  When the
-> >>> code matures sufficiently, that default will change.
-> >>>
-> >>> That kernel default becomes meaningless if nfs-utils always explicitly
-> >>> turns 4.1 on or off.  So, nfs-utils should by default do nothing.
-> >>>
-> >>> Early adopters that want to turn on NFSv4.1 explicitly can still do so
-> >>> using
-> >>>
-> >>> 	echo "+4.1" >/proc/fs/nfsd/versions
-> >>>
-> >> When I write to /proc/fs/nfsd/versions I'm getting 
-> >>    write error: Device or resource busy
-> >>
-> >> What did you do to make the file writeable?
+On Thu, 2010-02-04 at 13:40 -0500, Christoph Hellwig wrote: 
+> On Thu, Feb 04, 2010 at 01:38:00PM -0500, Trond Myklebust wrote:
+> > > Indeed, both write_inode_now and vfs_fsync will also cause data to
+> > > be written.  But my understanding of nfsd is that we manage the data
+> > > writeout separately anyway and we care about the metadata here, which
+> > > the placement of these calls would suggest:
+> > > 
+> > > 	- nfsd_setattr for attribute updates
+> > > 	- nfsd_create for creating a new file (of any type)
+> > > 	- nfsd_link for adding a new link
 > > 
-> > You just need to do it before starting nfsd.
-> Well before nfsd starts but after the nfsd module is loaded
-> (assuming nfsd is a module)
-
-Right.
-
-> > So if it's just a one-off experiment you could
-> > 
-> > 	/etc/init.d/nfs-server stop
-> > 	echo "+4.1" >/proc/fs/nsfd/versions
-> > 	/etc/init.d/nfs-server start
-> > 
-> > On machines where I was using 4.1 regularly I'd probably at a line to
-> > the init script, or to a local init script that ran before it.
-> Yea.. I'm looking into do something of this nature...
+> > Yes. Most operations in NFS are required to be synchronous (the only
+> > exception being "unstable" write requests), and so those
+> > fsync/write_inode_now calls are there in order to ensure that the
+> > metadata and/or directory contents that were changed hits the disk
+> > before the RPC call completes.
 > 
-> The odd thing about this patch is 4.1 can only be turned off. There
-> is no way to enabled except from doing the above echo... which 
-> seems to beg the question, why have the 4.1 code in nfsd at all?
+> Yeah.  But currently both the fsync and write_inode_now calls will force
+> those unstable writes to disk.  I'm not sure if that is an intentional
+> or unintentional side-effect of those metadata operations.
 
-So people can test it.
+Syncing the unstable writes before the client sends a COMMIT request is
+completely unnecessary. If we can avoid that, then that might indeed
+give a performance boost for some workloads.
 
-We should not recommend it for production use at this point, at least
-not by people who are not fully aware of what they're doing.
-
-If you'd rather we added an option to rpc.nfsd to do the equivalent of
-the echo, that's fine.  But I think for testers/early adopters, adding a
-"echo" to their init script isn't a big deal.
-
-Of course, once it's mature we can flip the kernel default to on, and
-nobody will have to do anything.
-
---b.
+Cheers
+  Trond
