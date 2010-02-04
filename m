@@ -1,45 +1,36 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([18.85.46.34]:55681 "EHLO
+Received: from bombadil.infradead.org ([18.85.46.34]:56160 "EHLO
 	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932346Ab0BDPT1 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 4 Feb 2010 10:19:27 -0500
-Date: Thu, 4 Feb 2010 10:19:26 -0500
+	with ESMTP id S932346Ab0BDPVt (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 4 Feb 2010 10:21:49 -0500
+Date: Thu, 4 Feb 2010 10:21:47 -0500
 From: Christoph Hellwig <hch@infradead.org>
-To: Ben Myers <bpm@sgi.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [RFC PATCH 4/4] If 'wsync' pass datasync=1 to vfs_fsync().
-Message-ID: <20100204151926.GA22014@infradead.org>
-References: <20100203233755.17677.96582.stgit@case> <20100203234444.17677.32390.stgit@case>
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+Cc: Ben Myers <bpm@sgi.com>, linux-nfs@vger.kernel.org
+Subject: Re: [RFC PATCH 0/4] wsync export option
+Message-ID: <20100204152147.GB22014@infradead.org>
+References: <20100203233755.17677.96582.stgit@case> <1265241511.2632.12.camel@localhost>
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20100203234444.17677.32390.stgit@case>
+In-Reply-To: <1265241511.2632.12.camel@localhost>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, Feb 03, 2010 at 05:44:44PM -0600, Ben Myers wrote:
-> 
-> ---
->  fs/nfsd/vfs.c |   39 +++++++++++++++++++++++++--------------
->  1 files changed, 25 insertions(+), 14 deletions(-)
-> 
-> diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-> index 89eb1b2..4b1973b 100644
-> --- a/fs/nfsd/vfs.c
-> +++ b/fs/nfsd/vfs.c
-> @@ -418,7 +418,7 @@ nfsd_setattr(struct svc_rqst *rqstp, struct svc_fh *fhp, struct iattr *iap,
->  	if (!err) {
->  		if (EX_ISSYNC(fhp->fh_export)) {
->  			if (EX_ISWSYNC(fhp->fh_export)) {
-> -				vfs_fsync(NULL, dentry, 0);
-> +				vfs_fsync(NULL, dentry, 1);
+On Wed, Feb 03, 2010 at 06:58:31PM -0500, Trond Myklebust wrote:
+> Why should the administrator have to both change /etc/fstab
+> and /etc/exports? That will be an immediate source of trouble if someone
+> changes one without changing the other.
 
-I think this is incorrect.  datasync = 1 means to only write out
-metadata that is required to access the file data.  The write_inode code
-makes sure all metadata goes out, which AFAIK is what the NFS protocol
-requires from us anyway for all these metadata operations.
+I agree, this should be left to the filesystems.
 
-Note that this does not invalidate your XFS numbers as right now XFS
-doesn't actually implement the datasync == 1 optimization, although I'm
-about to send a patch to do that.  The updsize is that this will
-make your patchset quite a bit simpler :)
+> Why not rather add an optional operation to the export_ops to let the
+> filesystem specify exactly what kind of synchronisation policy is
+> optimal for it?
+
+Maybe.  But I suspect fsync is actually the right thing to do for
+all the filesystems.  The only reason why we'd still might want to make
+it an export operation is that I'd really prefer not to grow more
+instances of fsync without the file pointer.  Then again they're
+already all in nfs and it doesn't matter too much to audit a few
+more places later.
 
