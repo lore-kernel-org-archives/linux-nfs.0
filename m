@@ -1,111 +1,63 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from acsinet11.oracle.com ([141.146.126.233]:17099 "EHLO
-	acsinet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S933152Ab0BPR5H (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 16 Feb 2010 12:57:07 -0500
-Message-ID: <4B7ADBF0.8010903@oracle.com>
-Date: Tue, 16 Feb 2010 12:54:56 -0500
-From: Chuck Lever <chuck.lever@oracle.com>
-To: Daniel Goering <g_daniel@gmx.net>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: background mounts inconsistent and partly not usable
-References: <4B7ADB6B.7090709@localhost>
-In-Reply-To: <4B7ADB6B.7090709@localhost>
-Content-Type: text/plain; charset=ISO-8859-15; format=flowed
+Received: from bombadil.infradead.org ([18.85.46.34]:41181 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932457Ab0BDPaH (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 4 Feb 2010 10:30:07 -0500
+Date: Thu, 4 Feb 2010 10:30:06 -0500
+From: Christoph Hellwig <hch@infradead.org>
+To: Ben Myers <bpm@sgi.com>
+Cc: linux-nfs@vger.kernel.org, xfs@oss.sgi.com
+Subject: Re: [RFC PATCH 0/4] wsync export option
+Message-ID: <20100204153006.GC22014@infradead.org>
+References: <20100203233755.17677.96582.stgit@case>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20100203233755.17677.96582.stgit@case>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Thanks for the report, I'll look into it.
+On Wed, Feb 03, 2010 at 05:44:24PM -0600, Ben Myers wrote:
+> The following series is adds a 'wsync' export option to nfsd.  It is intended
+> to be used on XFS with the wsync mount option.  When you already have a
+> synchronous log there is no need to sync metadata separately.
 
-On 02/16/2010 12:52 PM, Daniel Goering wrote:
-> Hi!
->
-> I'd like to mount an NFS4 share with the option bg as described in man 5
-> nfs. But all mounts are carried out in the foreground and time out after
-> 2 minutes [and the client is blocked e.g. during boot for the entire
-> time] instead of trying in the background for about 1 week until the
-> server is back up.
->
-> When I try to mount a share from an unreachable server I get something like
->
-> # mount.nfs4 10.1.2.3:/ /mnt/ -v -o bg
-> mount.nfs4: text-based options: 'bg,clientaddr=xxx,addr=10.1.2.3'
-> mount.nfs4: mount(2): Input/output error
-> mount.nfs4: mount system call failed
->
-> I tracked this down to utils/mount/stropts.c, where the function
-> nfs_is_permanent_error maps EIO to an permanent error and prevents the
-> mount from backgrounding.
->
-> I changed utils/mount/mount.c to use the old non string mount, in order
-> to compare the results
->
-> --- mount.c.bak	2010-02-16 18:06:09.000000000 +0100
-> +++ mount.c	2010-02-16 18:06:12.000000000 +0100
-> @@ -175,7 +175,7 @@
->   	if (nfs_mount_data_version>  NFS_MOUNT_VERSION)
->   		nfs_mount_data_version = NFS_MOUNT_VERSION;
->   	else
-> -		if (kernel_version>  MAKE_VERSION(2, 6, 22))
-> +		if (kernel_version>  MAKE_VERSION(3, 6, 22))
->   			string++;
->   }
->
->
-> and I get this result, if there is no route to the host
-> # mount.nfs4 10.1.2.3:/ /mnt/ -v -o bg
-> mount.nfs4: pinging: prog 100003 vers 4 prot tcp port 2049
-> mount.nfs4: Unable to connect to 10.1.2.3:2049, errno 113 (No route to host)
->
-> instead of waiting 2 minutes this call immediately returns. If there is
-> just no answer from the host instead of a "no route to host" message, I get
-> # mount.nfs4 10.1.2.3:/ /mnt/ -v -o bg
-> mount.nfs4: pinging: prog 100003 vers 4 prot tcp port 2049
-> mount.nfs4: Unable to connect to 10.1.2.3:2049, errno 110 (Connection
-> timed out)
->
-> mount.nfs4: backgrounding "10.1.2.3:/"
->
-> Both calls to the old non-string mount are significantly faster, and the
-> last one even backgrounds, while the string mount gives EIO in both
-> cases and never backgrounds.
->
-> I'd like to use the bg option to be able to boot the clients
-> simultaneously with the servers and the clients should just mount the
-> share, as soon as it becomes available.
-> Currently this is never possible with any machine running a kernel newer
-> than 2.6.22, as they will all die of the EIO error. Even for an older
-> Kernel this is only possible, if the server is already booting and can
-> answer ARP requests, as otherwise the mount will die from the "no route
-> to host" message.
-> I'd prefer if mount tried to find a route for about one week, to have
-> some time to turn on the servers separately [so they can spin up their
-> RAIDs sequentially instead of burning the fuse by consuming lots of
-> power during simultaneous spin up], but may be there are good reasons to
-> have it differently.
-> Nevertheless I think that it should at least be possible to mount shares
-> in the background after a timeout for systems with recent kernels using
-> string mount.
->
-> I observed the given problems with the following systems:
-> Gentoo	Kernel 2.6.31.4 	nfs-utils	1.1.4
-> Gentoo	Kernel 2.6.31.4 	nfs-utils	1.2.1
-> Fedora 12	Kernel 2.6.31.12	nfs-utils 	1.2.1
->
-> For now I'll probably just patch nfs_is_permanent_error on all my
-> systems to just map everything to temporary, but I hope there is a more
-> robust solution, that will allow fast feedback on problems and still
-> support background mounts.
->
->
-> Cheers
-> 	Daniel
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+You don't need the xfs wsync option, as the existing write_inode
+calls or your new fsync calls are doing the same as the wsync mount
+option, just from a higher layer.  The wsync option causes the log
+to be synchronously forced up to the log sequence number of the commit
+for the metadata operation, that is make all the operations affected
+by it synchronous.  That's exactly what we'll do using fsync (actually
+right now we force the whole log, but I have a patch to optimize it
+to only force nuntil the last commit lsn), and approqimately the
+same as we do using write_inode, just a lot less efficiently.
+
+> This is barely tested, YMMV, I could have this all wrong, etc, etc.  Here are
+> some very unscientific measurements taken over gigabit ethernet.
+> 
+> # time tar -xvf /mnt2/quilt-0.47.tar > /dev/null
+> 
+> No XFS wsync, no NFS wsync:
+> 0m13.177s	0m13.301s	0m13.528s
+> 
+> XFS wsync set, no NFS wsync:
+> 0m13.019s	0m13.232s	0m13.094s
+> 
+> XFS wsync set, NFS wsync set:
+> 0m8.361s	0m8.400s	0m8.301s
+> 
+> Curious to hear if this is a reasonable thing to do.  Suggestions welcome.
+
+I think it's reasonable.  What might be even better it to have an
+export operation call out into the filesystem so that we can force wsync
+and not let nfsd deal with it at all.  There is a fair chance that the
+filesystem can do the sync more efficiently.
+
+And btw, not directly related to your patch, but getting rid of this
+write_inode call defintively makes the usage of ->write_inode more
+regular.  From generic code we mostly use it for full inode writeback
+in writeback_single_inode, and one other special case in
+generic_detach_inode if a filesystem is unmounting.  Only having
+writeback_single_inode and fs code use it will make this call much
+more predictable for the filesystem.
 
 
--- 
-chuck[dot]lever[at]oracle[dot]com
