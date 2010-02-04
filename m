@@ -1,86 +1,38 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:10792 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755838Ab0BORT6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 15 Feb 2010 12:19:58 -0500
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
-        Chuck Lever <chuck.lever@oracle.com>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH] NFS: Too many GETATTR and ACCESS calls after direct I/O
-Date: Mon, 15 Feb 2010 12:19:53 -0500
-Message-Id: <1266254393-14553-1-git-send-email-Trond.Myklebust@netapp.com>
+Received: from bombadil.infradead.org ([18.85.46.34]:39811 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757615Ab0BDSkl (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 4 Feb 2010 13:40:41 -0500
+Date: Thu, 4 Feb 2010 13:40:40 -0500
+From: Christoph Hellwig <hch@infradead.org>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: Christoph Hellwig <hch@infradead.org>, bpm@sgi.com,
+        linux-nfs@vger.kernel.org
+Subject: Re: [RFC PATCH 4/4] If 'wsync' pass datasync=1 to vfs_fsync().
+Message-ID: <20100204184040.GA15442@infradead.org>
+References: <20100203233755.17677.96582.stgit@case> <20100203234444.17677.32390.stgit@case> <20100204151926.GA22014@infradead.org> <20100204172016.GJ5702@sgi.com> <20100204183037.GA9329@infradead.org> <1265308680.3317.19.camel@localhost>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1265308680.3317.19.camel@localhost>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Chuck Lever <chuck.lever@oracle.com>
+On Thu, Feb 04, 2010 at 01:38:00PM -0500, Trond Myklebust wrote:
+> > Indeed, both write_inode_now and vfs_fsync will also cause data to
+> > be written.  But my understanding of nfsd is that we manage the data
+> > writeout separately anyway and we care about the metadata here, which
+> > the placement of these calls would suggest:
+> > 
+> > 	- nfsd_setattr for attribute updates
+> > 	- nfsd_create for creating a new file (of any type)
+> > 	- nfsd_link for adding a new link
+> 
+> Yes. Most operations in NFS are required to be synchronous (the only
+> exception being "unstable" write requests), and so those
+> fsync/write_inode_now calls are there in order to ensure that the
+> metadata and/or directory contents that were changed hits the disk
+> before the RPC call completes.
 
-The cached read and write paths initialize fattr->time_start in their
-setup procedures.  The value of fattr->time_start is propagated to
-read_cache_jiffies by nfs_update_inode().  Subsequent calls to
-nfs_attribute_timeout() will then use a good time stamp when
-computing the attribute cache timeout, and squelch unneeded GETATTR
-calls.
-
-Since the direct I/O paths erroneously leave the inode's
-fattr->time_start field set to zero, read_cache_jiffies for that inode
-is set to zero after any direct read or write operation.  This
-triggers an otw GETATTR or ACCESS call to update the file's attribute
-and access caches properly, even when the NFS READ or WRITE replies
-have usable post-op attributes.
-
-Make sure the direct read and write setup code performs the same fattr
-initialization as the cached I/O paths to prevent unnecessary GETATTR
-calls.
-
-This was likely introduced by commit 0e574af1 in 2.6.15, which appears
-to add new nfs_fattr_init() call sites in the cached read and write
-paths, but not in the equivalent places in fs/nfs/direct.c.  A
-subsequent commit in the same series, 33801147, introduces the
-fattr->time_start field.
-
-Interestingly, the direct write reschedule path already has a call to
-nfs_fattr_init() in the right place.
-
-Reported-by: Quentin Barnes <qbarnes@yahoo-inc.com>
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-Cc: stable@kernel.org
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- fs/nfs/direct.c |    3 +++
- 1 files changed, 3 insertions(+), 0 deletions(-)
-
-diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
-index e1d415e..0d28982 100644
---- a/fs/nfs/direct.c
-+++ b/fs/nfs/direct.c
-@@ -342,6 +342,7 @@ static ssize_t nfs_direct_read_schedule_segment(struct nfs_direct_req *dreq,
- 		data->res.fattr = &data->fattr;
- 		data->res.eof = 0;
- 		data->res.count = bytes;
-+		nfs_fattr_init(&data->fattr);
- 		msg.rpc_argp = &data->args;
- 		msg.rpc_resp = &data->res;
- 
-@@ -575,6 +576,7 @@ static void nfs_direct_commit_schedule(struct nfs_direct_req *dreq)
- 	data->res.count = 0;
- 	data->res.fattr = &data->fattr;
- 	data->res.verf = &data->verf;
-+	nfs_fattr_init(&data->fattr);
- 
- 	NFS_PROTO(data->inode)->commit_setup(data, &msg);
- 
-@@ -766,6 +768,7 @@ static ssize_t nfs_direct_write_schedule_segment(struct nfs_direct_req *dreq,
- 		data->res.fattr = &data->fattr;
- 		data->res.count = bytes;
- 		data->res.verf = &data->verf;
-+		nfs_fattr_init(&data->fattr);
- 
- 		task_setup_data.task = &data->task;
- 		task_setup_data.callback_data = data;
--- 
-1.6.6
-
+Yeah.  But currently both the fsync and write_inode_now calls will force
+those unstable writes to disk.  I'm not sure if that is an intentional
+or unintentional side-effect of those metadata operations.
