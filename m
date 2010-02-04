@@ -1,86 +1,60 @@
-From: Shehjar Tikoo <shehjart-+FkPdpiNhgJBDgjK7y7TUQ@public.gmane.org>
-Subject: Re: Errors during a simple mount storm test
-Date: Fri, 05 Feb 2010 02:12:51 +0530
-Message-ID: <4B6B314B.4050408@gluster.com>
-References: <4B6B2AE5.1070007@gluster.com> <1265315573.3317.50.camel@localhost>
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Re: [PATCH 1/2] nfsd: fix version-setting regression on old kernels
+Date: Thu, 04 Feb 2010 16:37:52 -0500
+Message-ID: <4B6B3E30.8090907@RedHat.com>
+References: <1264631166-21898-1-git-send-email-bfields@citi.umich.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Type: text/plain; charset=ISO-8859-1
 Cc: linux-nfs@vger.kernel.org
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
+To: "J. Bruce Fields" <bfields@citi.umich.edu>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from zp3.zcs.datasyncintra.net ([208.88.241.29]:34959 "EHLO
-	zp3.zcs.datasyncintra.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754673Ab0BDUmu (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 4 Feb 2010 15:42:50 -0500
-In-Reply-To: <1265315573.3317.50.camel@localhost>
+Received: from mx1.redhat.com ([209.132.183.28]:23568 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755835Ab0BDVh4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 4 Feb 2010 16:37:56 -0500
+In-Reply-To: <1264631166-21898-1-git-send-email-bfields@citi.umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Trond Myklebust wrote:
-> On Fri, 2010-02-05 at 01:45 +0530, Shehjar Tikoo wrote: 
->> Hi All
->>
->> The shell command below is probably not applicable to
->> all real world setups but I wanted to check it out nonetheless.
->> The problem is with the following command that is supposed
->> run a mount-umount loop:
->>
->> $ while [ true ]; do echo sending; mount localhost:/test -o 
->> noacl,nolock,tcp,mountproto=tcp /mnt;umount  /mnt; done
->>
->> For the first hundred iterations, it works fine but then starts
->> spewing errors with the mount command failing. For eg.
->> the output looks like below:
->>
->> sending
->> sending
->> sending
->> sending
->> sending
->> sending
->> sending
->> sending
->> sending
->> sending
->> sending
->> sending
->> mount.nfs: mount system call failed
->> umount: /mnt: not mounted
->> sending
->> mount.nfs: mount system call failed
->> umount: /mnt: not mounted
->> sending
->> mount.nfs: mount system call failed
->> umount: /mnt: not mounted
->> sending
->> mount.nfs: mount system call failed
->> umount: /mnt: not mounted
->>
->> Any ideas why the mount sequence stops abruptly?
->> There dont seem to be any relevant messages in the
->> dmesg output either.
->>
->> The client and server are on the same machine:
->> Linux indus 2.6.31-17-generic Ubuntu SMP x86_64 GNU/Linux
->>
->> I have verified through wireshark that the server is not
->> receiving any mount requests once the mount command start
->> failing. Instead there are only successful GETPORT requests
->> for the MOUNTv3 program.
-> 
-> "netstat -t" will probably show you that all your free ports in the
-> range 0-1023 are now in the TIME_WAIT state. This again means that you
-> have to wait a couple of minutes for the TIME_WAITs to expire before you
-> can try again.
-> 
-> So basically, it is a case of your test being flawed.
 
-Thanks!
-I'll to resort to using noresvport in that case.
 
--Shehjar
-
+On 01/27/2010 05:26 PM, J. Bruce Fields wrote:
+> /proc/fs/nfsd/versions was extended to allow turning on/off minor
+> versions by echoing "+4.1" or "-4.1" to /proc/fs/nsfd/versions.
 > 
-> Trond
+> Unfortunately, pre-2.6.30 kernels just stop parsing at first non-digit,
+> so "-4.1" is interpreted as "-4".  If new nfs-utils (on old kernel)
+> writes "+2", "+3", "+4", then "-4.1", result therefore is to turn off
+> 4.1.
 > 
+> Given that historical behavior, it may have been a mistake to extend the
+> interface the way we did; but at this point we're probably stuck with
+> it.  So, just reverse the order we write versions in.
+> 
+> Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
+> ---
+>  utils/nfsd/nfssvc.c |   10 +++++-----
+>  1 files changed, 5 insertions(+), 5 deletions(-)
+> 
+> diff --git a/utils/nfsd/nfssvc.c b/utils/nfsd/nfssvc.c
+> index b8028bb..7bbbaba 100644
+> --- a/utils/nfsd/nfssvc.c
+> +++ b/utils/nfsd/nfssvc.c
+> @@ -238,17 +238,17 @@ nfssvc_setvers(unsigned int ctlbits, int minorvers4)
+>  	if (fd < 0)
+>  		return;
+>  
+> +	n = minorvers4 >= 0 ? minorvers4 : -minorvers4;
+> +	if (n >= NFSD_MINMINORVERS4 && n <= NFSD_MAXMINORVERS4)
+> +		    off += snprintf(ptr+off, sizeof(buf) - off, "%c4.%d",
+There needs to be a space between the %d and ".
 
+But more importantly what problem is the patch fixing?? I've tested this
+on a 2.6.29 and 2.6.31 as well as a 2.6.33 kernel and I see no different
+in how the versions are ordered.
+ 
+Note, as you probably already know, the kernel will always display
+the versions in descending order...
+
+steved.
+ 
