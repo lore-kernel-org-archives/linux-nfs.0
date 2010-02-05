@@ -1,143 +1,112 @@
-From: Jeff Layton <jlayton@redhat.com>
-Subject: Re: [PATCH] mount.nfs: set the default family for lookups based on
- Defaultproto= setting
-Date: Fri, 5 Feb 2010 11:30:52 -0500
-Message-ID: <20100205113052.333f0c05@tlielax.poochiereds.net>
-References: <1265380055-5650-1-git-send-email-jlayton@redhat.com>
-	<4B6C39D0.3030704@oracle.com>
+From: "calculix-BGeptl67XyCzQB+pC5nmwQ@public.gmane.org" <calculix-BGeptl67XyCzQB+pC5nmwQ@public.gmane.org>
+Subject: [NFS] Portmapper problem,
+	no access the server after update to debian squeeze
+Date: Fri, 05 Feb 2010 20:15:49 +0100
+Message-ID: <4B6C6E65.1000706@online.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Cc: steved@redhat.com, linux-nfs@vger.kernel.org
-To: Chuck Lever <chuck.lever@oracle.com>
+Content-Type: text/plain; charset="us-ascii"
+To: nfs@lists.sourceforge.net
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:42103 "EHLO mx1.redhat.com"
+Received: from neil.brown.name ([220.233.11.133]:55556 "EHLO neil.brown.name"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933361Ab0BEQa5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 5 Feb 2010 11:30:57 -0500
-In-Reply-To: <4B6C39D0.3030704@oracle.com>
+	id S1752343Ab0BERAx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 5 Feb 2010 12:00:53 -0500
+Received: from brown by neil.brown.name with local (Exim 4.71)
+	(envelope-from <nfs-bounces@lists.sourceforge.net>)
+	id 1NdRY2-0005Lv-U4
+	for linux-nfs@vger.kernel.org; Sat, 06 Feb 2010 04:00:51 +1100
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 05 Feb 2010 10:31:28 -0500
-Chuck Lever <chuck.lever@oracle.com> wrote:
+Dear NFS-Team,
+Since I updated my server from Debian-Lenny to Squeeze I am not able 
+anymore to mount, ssh, etc to my server.  I have gone through the 
+nfs-howto, followed the troubleshouting process with no success.
+I can reach the server with ping without any problems. Only mount, ssh, 
+sftp etc. does not work. My portmapper seams not to allow the access.
 
-> On 02/05/2010 09:27 AM, Jeff Layton wrote:
-> > When IPv6 is enabled, the Proto= config file option is treated as a
-> > netid, and the address family for lookups is selected based on that
-> > setting. The Defaultproto= option however still only affects the
-> > protocol setting for the sockets (IPPROTO_*) and not the address family.
-> >
-> > This patch makes it so that if someone sets the "Defaultproto=" option
-> > in the nfsmount.conf, it's used to determine the default address family
-> > for lookups as well as the protocol type.
-> >
-> > This gives users a way to force a particular address family to be used
-> > universally for mounts and brings the behavior of the Defaultproto=
-> > option in line with the Proto= option.
-> >
-> > Signed-off-by: Jeff Layton<jlayton@redhat.com>
-> > ---
-> >   utils/mount/configfile.c |    8 ++++++++
-> >   utils/mount/network.c    |   18 ++++++++----------
-> >   2 files changed, 16 insertions(+), 10 deletions(-)
-> >
-> > diff --git a/utils/mount/configfile.c b/utils/mount/configfile.c
-> > index 6843098..71d3627 100644
-> > --- a/utils/mount/configfile.c
-> > +++ b/utils/mount/configfile.c
-> > @@ -221,6 +221,8 @@ int inline check_vers(char *mopt, char *field)
-> >
-> >   unsigned long config_default_vers;
-> >   unsigned long config_default_proto;
-> > +extern sa_family_t config_default_family;
-> > +
-> >   /*
-> >    * Check to see if a default value is being set.
-> >    * If so, set the appropriate global value which will
-> > @@ -242,6 +244,12 @@ int inline default_value(char *mopt)
-> >   				xlog_warn("Unable to set default protocol : %s",
-> >   					strerror(errno));
-> >   			}
-> > +#ifdef IPV6_SUPPORTED
-> > +			if (!nfs_nfs_proto_family(options,&config_default_family)) {
-> > +				xlog_warn("Unable to set default family : %s",
-> > +					strerror(errno));
-> > +			}
-> > +#endif
-> 
-> Maybe you don't need the #ifdef here?
-> 
-> Aside from making the code more readable, removing the #ifdef would also 
-> make it so the same code path is followed whether IPv6 is supported or 
-> not, which makes testing easier.
-> 
-> Just a thought.
-> 
+Please help!
 
-They probably aren't essential. It all comes down to what we want the
-behavior to be in the following situation:
+Thanks
+Peter
 
-If someone had a TIRPC enabled nfs-utils but IPv6 support is disabled,
-and then set Defaultproto=tcp6.
+******** Here is my /etc/exports
+# /etc/exports: the access control list for filesystems which may be 
+exported
+#               to NFS clients.  See exports(5).
+#
+# Example for NFSv2 and NFSv3:
+# /srv/homes       hostname1(rw,sync,no_subtree_check) 
+hostname2(ro,sync,no_subtree_check)
+#
+# Example for NFSv4:
+# /srv/nfs4        gss/krb5i(rw,sync,fsid=0,crossmnt,no_subtree_check)
+# /srv/nfs4/homes  gss/krb5i(rw,sync,no_subtree_check)
+#
+/data/PUBLIC    192.168.178.27(rw,sync,no_subtree_check)
+******** End of /etc/exports
 
-With the ifdef's in place, then the address family part of it would
-just be ignored. Without those in place, IPv6 will be forced for the
-lookup but we won't actually be able to make use of the addresses
-returned.
+******** Here is my /etc/hosts.allow
+# /etc/hosts.allow: list of hosts that are allowed to access the system.
+#                   See the manual pages hosts_access(5) and 
+hosts_options(5).
+#
+# Example:    ALL: LOCAL @some_netgroup
+#             ALL: .foobar.edu EXCEPT terminalserver.foobar.edu
+#
+# If you're going to protect the portmapper use the name "portmap" for the
+# daemon name. Remember that you can only use the keyword "ALL" and IP
+# addresses (NOT host or domain names) for the portmapper, as well as for
+# rpc.mountd (the NFS mount daemon). See portmap(8) and rpc.mountd(8)
+# for further information.
+#
+ALL:192.168.178.0/255.255.255.0(rw,sync)
+******** End of /etc/hosts.allow
 
-Granted, it's a bit of a pathological setup, but I don't think the
-#ifdef's here really take away anything and may help prevent confusion
-with the union of all these different options.
+******** My /etc/hosts.deny is empty
 
-> >   		} else {
-> >   			xlog_warn("Unable to alloc memory for default protocol");
-> >   		}
-> > diff --git a/utils/mount/network.c b/utils/mount/network.c
-> > index 92bba2d..0ab3bb1 100644
-> > --- a/utils/mount/network.c
-> > +++ b/utils/mount/network.c
-> > @@ -1331,6 +1331,12 @@ nfs_nfs_port(struct mount_options *options, unsigned long *port)
-> >   	return 1;
-> >   }
-> >
-> > +#ifdef IPV6_SUPPORTED
-> > +sa_family_t	config_default_family = AF_UNSPEC;
-> > +#else
-> > +sa_family_t	config_default_family = AF_INET;
-> > +#endif
-> > +
-> >   /*
-> >    * Returns TRUE and fills in @family if a valid NFS protocol option
-> >    * is found, or FALSE if the option was specified with an invalid value.
-> > @@ -1341,11 +1347,7 @@ int nfs_nfs_proto_family(struct mount_options *options,
-> >   	unsigned long protocol;
-> >   	char *option;
-> >
-> > -#ifdef IPV6_SUPPORTED
-> > -	*family = AF_UNSPEC;
-> > -#else
-> > -	*family = AF_INET;
-> > -#endif
-> > +	*family = config_default_family;
-> >
-> >   	switch (po_rightmost(options, nfs_transport_opttbl)) {
-> >   	case 0:	/* udp */
-> > @@ -1488,11 +1490,7 @@ int nfs_mount_proto_family(struct mount_options *options,
-> >   	unsigned long protocol;
-> >   	char *option;
-> >
-> > -#ifdef HAVE_LIBTIRPC
-> > -	*family = AF_UNSPEC;
-> > -#else
-> > -	*family = AF_INET;
-> > -#endif
-> > +	*family = config_default_family;
-> >
-> >   	option = po_get(options, "mountproto");
-> >   	if (option != NULL)
-> 
-> 
+******** Here is the output of rpcinfo -p localhost from the server
+   Program Vers Proto   Port
+    100000    2   tcp    111  portmapper
+    100000    2   udp    111  portmapper
+    100024    1   udp  59341  status
+    100024    1   tcp  52100  status
+    100021    1   udp  43350  nlockmgr
+    100021    3   udp  43350  nlockmgr
+    100021    4   udp  43350  nlockmgr
+    100021    1   tcp  56947  nlockmgr
+    100021    3   tcp  56947  nlockmgr
+    100021    4   tcp  56947  nlockmgr
+    100003    2   tcp   2049  nfs
+    100003    3   tcp   2049  nfs
+    100003    4   tcp   2049  nfs
+    100003    2   udp   2049  nfs
+    100003    3   udp   2049  nfs
+    100003    4   udp   2049  nfs
+    100005    1   udp  51709  mountd
+    100005    1   tcp  36097  mountd
+    100005    2   udp  51709  mountd
+    100005    2   tcp  36097  mountd
+    100005    3   udp  51709  mountd
+    100005    3   tcp  36097  mountd
+******* End of rpcinfo -p localhost
 
+******* Here is the output of rpcinfo -p 192.168.178.32 from the client
+rpcinfo: Portmapper kann nicht erreicht werden: RPC: Fehler des 
+entfernten Systems - Verbindungsaufbau abgelehnt
+******* This seams to be my problem, but what to do?
 
--- 
-Jeff Layton <jlayton@redhat.com>
+------------------------------------------------------------------------------
+The Planet: dedicated and managed hosting, cloud storage, colocation
+Stay online with enterprise data centers and the best network in the business
+Choose flexible plans and management services without long-term contracts
+Personal 24x7 support from experience hosting pros just a phone call away.
+http://p.sf.net/sfu/theplanet-com
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
+_______________________________________________
+Please note that nfs@lists.sourceforge.net is being discontinued.
+Please subscribe to linux-nfs@vger.kernel.org instead.
+    http://vger.kernel.org/vger-lists.html#linux-nfs
+
