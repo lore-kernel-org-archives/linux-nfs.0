@@ -1,80 +1,149 @@
-From: Jeff Layton <jlayton@redhat.com>
-Subject: Re: [PATCH] mount.nfs: set the default family for lookups based on
- Defaultproto= setting
-Date: Fri, 5 Feb 2010 15:05:11 -0500
-Message-ID: <20100205150511.5e18538f@tlielax.poochiereds.net>
-References: <1265380055-5650-1-git-send-email-jlayton@redhat.com>
-	<4B6C39D0.3030704@oracle.com>
-	<20100205113052.333f0c05@tlielax.poochiereds.net>
-	<4B6C51A4.3070005@oracle.com>
-	<20100205124340.6b77902c@tlielax.poochiereds.net>
-	<4B6C5F61.9070205@oracle.com>
-	<20100205131757.6fd224d0@tlielax.poochiereds.net>
-	<20100205145530.61634593@tlielax.poochiereds.net>
-	<4B6C78A2.5010703@oracle.com>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: [PATCH 6/6] RPC: adjust timeout for connect, bind, restablish
+ so that they sensitive to the major time out value
+Date: Fri, 05 Feb 2010 15:12:58 -0500
+Message-ID: <4B6C7BCA.2040806@oracle.com>
+References: <1265155576-7618-1-git-send-email-batsakis@netapp.com> <1265155576-7618-2-git-send-email-batsakis@netapp.com> <1265155576-7618-3-git-send-email-batsakis@netapp.com> <1265155576-7618-4-git-send-email-batsakis@netapp.com> <1265155576-7618-5-git-send-email-batsakis@netapp.com> <1265155576-7618-6-git-send-email-batsakis@netapp.com> <1265155576-7618-7-git-send-email-batsakis@netapp.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Cc: steved@redhat.com, linux-nfs@vger.kernel.org
-To: Chuck Lever <chuck.lever@oracle.com>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Cc: linux-nfs@vger.kernel.org, trond@netapp.com
+To: Alexandros Batsakis <batsakis@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:37978 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932158Ab0BEUFR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 5 Feb 2010 15:05:17 -0500
-In-Reply-To: <4B6C78A2.5010703@oracle.com>
+Received: from acsinet12.oracle.com ([141.146.126.234]:49044 "EHLO
+	acsinet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752599Ab0BEUOp (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 5 Feb 2010 15:14:45 -0500
+In-Reply-To: <1265155576-7618-7-git-send-email-batsakis@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 05 Feb 2010 14:59:30 -0500
-Chuck Lever <chuck.lever@oracle.com> wrote:
+Hi Alexandros-
 
-> On 02/05/2010 02:55 PM, Jeff Layton wrote:
-> > On Fri, 5 Feb 2010 13:17:57 -0500
-> > Jeff Layton<jlayton@redhat.com>  wrote:
-> >
-> >>>> I can sort of buy the argument for leaving out the earlier #ifdef
-> >>>> around the default_value() function.
-> >>>>
-> >>>> If you change this one though, then lookups will still return IPv6
-> >>>> addresses by default even when IPV6_SUPPORTED isn't set. IOW, in the
-> >>>> absence of a proto= option, you'll pass AF_UNSPEC to getaddrinfo and
-> >>>> get IPv6 addresses. I don't think that's what we want here for a
-> >>>> non-ipv6 enabled nfs-utils.
-> >>>
-> >>> OK, agreed.  This setting is actually not determining the meaning of any
-> >>> of the netids, but rather it is determining the default address family
-> >>> if _no_ netid is specified.
-> >>>
-> >>
-> >> Correct. Ok, I'll respin and repost with the ifdef's in default_value()
-> >> removed.
-> >
-> > New patch sent. Just for giggles, I tested this by building a
-> > tirpc-enabled/ipv6-disabled nfs-utils and setting Defaultproto=tcp6. It
-> > does indeed set the address family to IPv6:
-> >
-> > # mount -v opensolaris:/export/public /mnt/test
-> > mount: no type was given - I'll assume nfs because of the colon
-> > mount.nfs: timeout set for Fri Feb  5 14:51:01 2010
-> > mount.nfs: trying text-based options 'vers=4,addr=feed::23,clientaddr=feed::22'
-> >
-> > ...and the mount succeeds.
-> >
-> > So in that situation and also when proto=tcp6 is specified, someone can
-> > mount an IPv6-capable server even with a nfs-utils that isn't built for
-> > IPv6 as long as it has tirpc support.
-> >
-> > Is that a good thing? I'm not sure -- statd won't work over IPv6 in
-> > that case, for instance. Would it be better to have mount.nfs fail to
-> > use IPv6 addrs at all when not built with IPv6 support?
-> 
-> If IPv6 support is disabled at build time, mount.nfs shouldn't allow a 
-> mount over IPv6, even if the kernel supports it.
-> 
-> Is that with, or without, my additional protocol family negotiation patches?
-> 
+I think we need a little more than the short description for these 
+patches.  Can you explain why the extra logic in xs_connect is 
+necessary?  What exactly happens if the RENEW doesn't reach the server 
+because the transport can't be reconnected?
 
-With those patches. I haven't tested this without them.
+In other words, what problem are you trying to address here?
+
+On 02/02/2010 07:06 PM, Alexandros Batsakis wrote:
+> Signed-off-by: Alexandros Batsakis<batsakis@netapp.com>
+> ---
+>   net/sunrpc/clnt.c     |    2 +-
+>   net/sunrpc/sunrpc.h   |    2 ++
+>   net/sunrpc/xprt.c     |   18 +++++++++++++++---
+>   net/sunrpc/xprtsock.c |   12 ++++++++++--
+>   4 files changed, 28 insertions(+), 6 deletions(-)
+>
+> diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+> index 154034b..8e552cd 100644
+> --- a/net/sunrpc/clnt.c
+> +++ b/net/sunrpc/clnt.c
+> @@ -1019,7 +1019,7 @@ call_bind(struct rpc_task *task)
+>   	task->tk_action = call_connect;
+>   	if (!xprt_bound(xprt)) {
+>   		task->tk_action = call_bind_status;
+> -		task->tk_timeout = xprt->bind_timeout;
+> +		xprt_set_timeout_sane(task, xprt->bind_timeout);
+>   		xprt->ops->rpcbind(task);
+>   	}
+>   }
+> diff --git a/net/sunrpc/sunrpc.h b/net/sunrpc/sunrpc.h
+> index 90c292e..87c7aaa 100644
+> --- a/net/sunrpc/sunrpc.h
+> +++ b/net/sunrpc/sunrpc.h
+> @@ -37,6 +37,8 @@ struct rpc_buffer {
+>   	char	data[];
+>   };
+>
+> +void xprt_set_timeout_sane(struct rpc_task *task, unsigned long timeout);
+> +
+>   static inline int rpc_reply_expected(struct rpc_task *task)
+>   {
+>   	return (task->tk_msg.rpc_proc != NULL)&&
+> diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
+> index 469de29..f6f3988 100644
+> --- a/net/sunrpc/xprt.c
+> +++ b/net/sunrpc/xprt.c
+> @@ -482,7 +482,7 @@ void xprt_wait_for_buffer_space(struct rpc_task *task, rpc_action action)
+>   	struct rpc_rqst *req = task->tk_rqstp;
+>   	struct rpc_xprt *xprt = req->rq_xprt;
+>
+> -	task->tk_timeout = req->rq_timeout;
+> +	xprt_set_timeout_sane(task, req->rq_timeout);
+>   	rpc_sleep_on(&xprt->pending, task, action);
+>   }
+>   EXPORT_SYMBOL_GPL(xprt_wait_for_buffer_space);
+> @@ -518,7 +518,7 @@ EXPORT_SYMBOL_GPL(xprt_write_space);
+>    */
+>   void xprt_set_retrans_timeout_def(struct rpc_task *task)
+>   {
+> -	task->tk_timeout = task->tk_rqstp->rq_timeout;
+> +	xprt_set_timeout_sane(task, task->tk_rqstp->rq_timeout);
+>   }
+>   EXPORT_SYMBOL_GPL(xprt_set_retrans_timeout_def);
+>
+> @@ -682,6 +682,18 @@ out_abort:
+>   	spin_unlock(&xprt->transport_lock);
+>   }
+>
+> +void xprt_set_timeout_sane(struct rpc_task *task, unsigned long timeout)
+
+xprt_set_timeout_sane?  That's amusing, but it isn't very descriptive to 
+someone who doesn't know why this extra function is needed.
+
+> +{
+> +	unsigned long majorto = task->tk_rqstp->rq_majortimeo;
+> +
+> +	if (majorto<= jiffies)
+> +		task->tk_timeout = 5 * HZ;
+> +	else if (timeout>  majorto - jiffies)
+> +		task->tk_timeout = 2 * (majorto - jiffies) / 3;
+> +	else
+> +		task->tk_timeout = timeout;
+> +}
+> +
+>   /**
+>    * xprt_connect - schedule a transport connect operation
+>    * @task: RPC task that is requesting the connect
+> @@ -710,7 +722,7 @@ void xprt_connect(struct rpc_task *task)
+>   		if (task->tk_rqstp)
+>   			task->tk_rqstp->rq_bytes_sent = 0;
+>
+> -		task->tk_timeout = xprt->connect_timeout;
+> +		xprt_set_timeout_sane(task, xprt->connect_timeout);
+>   		rpc_sleep_on(&xprt->pending, task, xprt_connect_status);
+>   		xprt->stat.connect_start = jiffies;
+>   		xprt->ops->connect(task);
+> diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+> index 721bafd..7fcc97f 100644
+> --- a/net/sunrpc/xprtsock.c
+> +++ b/net/sunrpc/xprtsock.c
+> @@ -2020,9 +2020,17 @@ static void xs_connect(struct rpc_task *task)
+>   		return;
+>
+>   	if (transport->sock != NULL&&  !RPC_IS_SOFTCONN(task)) {
+> +		unsigned long majorto = task->tk_rqstp->rq_majortimeo;
+> +
+> +		if (majorto<= jiffies)
+> +			xprt->reestablish_timeout = 5 * HZ;
+> +		else if (xprt->reestablish_timeout>  majorto - jiffies)
+> +			xprt->reestablish_timeout = 2 * (majorto - jiffies)
+> +			  / 3;
+
+This looks like the code you added above in _sane.  Can you reuse that 
+code here?
+
+> +
+>   		dprintk("RPC:       xs_connect delayed xprt %p for %lu "
+> -				"seconds\n",
+> -				xprt, xprt->reestablish_timeout / HZ);
+> +			"seconds\n",
+> +			xprt, xprt->reestablish_timeout + (HZ - 1) / HZ);
+>   		queue_delayed_work(rpciod_workqueue,
+>   				&transport->connect_worker,
+>   				   xprt->reestablish_timeout);
+
 
 -- 
-Jeff Layton <jlayton@redhat.com>
+chuck[dot]lever[at]oracle[dot]com
