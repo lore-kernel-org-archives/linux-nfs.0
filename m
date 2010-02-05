@@ -1,114 +1,52 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:51178 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:45546 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756314Ab0BUCen convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 20 Feb 2010 21:34:43 -0500
-Subject: [PATCH v2] NFSv4.1: Various fixes to the sequence flag error
- handling
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-In-Reply-To: <1266719454.3507.6.camel@localhost.localdomain>
-References: <1266719139.3507.5.camel@localhost.localdomain>
-	 <1266719454.3507.6.camel@localhost.localdomain>
-Content-Type: text/plain; charset="UTF-8"
-Date: Sat, 20 Feb 2010 18:34:41 -0800
-Message-ID: <1266719681.3507.8.camel@localhost.localdomain>
+	id S1753779Ab0BET2m (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 5 Feb 2010 14:28:42 -0500
+Date: Fri, 5 Feb 2010 14:28:59 -0500
+From: "J. Bruce Fields" <bfields@citi.umich.edu>
+To: Steve Dickson <SteveD@redhat.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 2/2] nfsd: default to kernel default for minorversion 1
+Message-ID: <20100205192859.GE24926@fieldses.org>
+References: <1264631166-21898-1-git-send-email-bfields@citi.umich.edu> <1264631166-21898-2-git-send-email-bfields@citi.umich.edu> <20100201195821.GB19418@fieldses.org> <4B6B480C.1050307@RedHat.com> <20100205161001.GB24926@fieldses.org>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20100205161001.GB24926@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
+On Fri, Feb 05, 2010 at 11:10:02AM -0500, J. Bruce Fields wrote:
+> On Thu, Feb 04, 2010 at 05:19:56PM -0500, Steve Dickson wrote:
+> > On 02/01/2010 02:58 PM, J. Bruce Fields wrote:
+> > > On Wed, Jan 27, 2010 at 05:26:06PM -0500, J. Bruce Fields wrote:
+> > >> The current kernel code should not be enabled by default, because it
+> > >> does not yet attempt to be a conform completely to the rfc; for example,
+> > >> some required pieces of protocol are missing.
+> > >>
+> > >> Therefore the kernel defaults to leaving minorversion1 off.  When the
+> > >> code matures sufficiently, that default will change.
+> > >>
+> > >> That kernel default becomes meaningless if nfs-utils always explicitly
+> > >> turns 4.1 on or off.  So, nfs-utils should by default do nothing.
+> > >>
+> > >> Provide a --enable-experimental-v41-support option to turn it on
+> > >> explicitly.  The option is intentionally spelled out (and has no short
+> > >> equivalent), to help ensure that users know what they're getting into.
+> > Command options like this are so hard to get rid of.... We just can't introduce
+> > an option one release and then have it go away a few releases down the road.
+> > That's sure fire way to breaking existing configurations which something that is, 
+> > has been and will continue to be unacceptable... 
+> 
+> OK, fair enough.  It shouldn't be a problem to keep it indefinitely,
+> though.
 
-Ensure that we change the EXCHANGE_ID verifier (i.e. clp->cl_boot_time)
-when we want to reset all state. This is mainly needed when the server
-tells us that it is revoking our open or lock stateids.
+Actually, an even simpler option: instead of adding a new option, just
+modify the code so that the *absence* of -N4.1 isn't taken to mean
+"please turn on 4.1".  People can always just do their own
 
-Handle revoking of recallable state by expiring the delegations.
+	echo +4.1 >/proc/fs/nfsd/version
 
-Handle callback path issues by expiring the delegations and then resetting
-the session.
+if that's what they want.
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
-
- fs/nfs/nfs4state.c |   57 +++++++++++++++++++++++++++++++++++++++++-----------
- 1 files changed, 45 insertions(+), 12 deletions(-)
-
-
-diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-index c1e2733..073cf6c 100644
---- a/fs/nfs/nfs4state.c
-+++ b/fs/nfs/nfs4state.c
-@@ -1249,26 +1249,59 @@ static int nfs4_reclaim_lease(struct nfs_client *clp)
- }
- 
- #ifdef CONFIG_NFS_V4_1
-+static void nfs4_reset_all_state(struct nfs_client *clp)
-+{
-+	if (test_and_set_bit(NFS4CLNT_LEASE_EXPIRED, &clp->cl_state) == 0) {
-+		clp->cl_boot_time = CURRENT_TIME;
-+		nfs4_state_start_reclaim_nograce(clp);
-+		nfs4_schedule_state_recovery(clp);
-+	}
-+}
-+
-+static void nfs41_handle_server_reboot(struct nfs_client *clp)
-+{
-+	if (test_and_set_bit(NFS4CLNT_LEASE_EXPIRED, &clp->cl_state) == 0) {
-+		nfs4_state_start_reclaim_reboot(clp);
-+		nfs4_schedule_state_recovery(clp);
-+	}
-+}
-+
-+static void nfs41_handle_state_revoked(struct nfs_client *clp)
-+{
-+	/* Temporary */
-+	nfs4_reset_all_state(clp);
-+}
-+
-+static void nfs41_handle_recallable_state_revoked(struct nfs_client *clp)
-+{
-+	/* This will need to handle layouts too */
-+	nfs_expire_all_delegations(clp);
-+}
-+
-+static void nfs41_handle_cb_path_down(struct nfs_client *clp)
-+{
-+	nfs_expire_all_delegations(clp);
-+	if (test_and_set_bit(NFS4CLNT_SESSION_RESET, &clp->cl_state) == 0)
-+		nfs4_schedule_state_recovery(clp);
-+}
-+
- void nfs41_handle_sequence_flag_errors(struct nfs_client *clp, u32 flags)
- {
- 	if (!flags)
- 		return;
--	else if (flags & SEQ4_STATUS_RESTART_RECLAIM_NEEDED) {
--		set_bit(NFS4CLNT_LEASE_EXPIRED, &clp->cl_state);
--		nfs4_state_start_reclaim_reboot(clp);
--		nfs4_schedule_state_recovery(clp);
--	} else if (flags & (SEQ4_STATUS_EXPIRED_ALL_STATE_REVOKED |
-+	else if (flags & SEQ4_STATUS_RESTART_RECLAIM_NEEDED)
-+		nfs41_handle_server_reboot(clp);
-+	else if (flags & (SEQ4_STATUS_EXPIRED_ALL_STATE_REVOKED |
- 			    SEQ4_STATUS_EXPIRED_SOME_STATE_REVOKED |
- 			    SEQ4_STATUS_ADMIN_STATE_REVOKED |
--			    SEQ4_STATUS_RECALLABLE_STATE_REVOKED |
--			    SEQ4_STATUS_LEASE_MOVED)) {
--		set_bit(NFS4CLNT_LEASE_EXPIRED, &clp->cl_state);
--		nfs4_state_start_reclaim_nograce(clp);
--		nfs4_schedule_state_recovery(clp);
--	} else if (flags & (SEQ4_STATUS_CB_PATH_DOWN |
-+			    SEQ4_STATUS_LEASE_MOVED))
-+		nfs41_handle_state_revoked(clp);
-+	else if (flags & SEQ4_STATUS_RECALLABLE_STATE_REVOKED)
-+		nfs41_handle_recallable_state_revoked(clp);
-+	else if (flags & (SEQ4_STATUS_CB_PATH_DOWN |
- 			    SEQ4_STATUS_BACKCHANNEL_FAULT |
- 			    SEQ4_STATUS_CB_PATH_DOWN_SESSION))
--		nfs_expire_all_delegations(clp);
-+		nfs41_handle_cb_path_down(clp);
- }
- 
- static int nfs4_reset_session(struct nfs_client *clp)
-
+--b.
