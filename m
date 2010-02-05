@@ -1,46 +1,211 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:47482 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750780Ab0BHVek (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 8 Feb 2010 16:34:40 -0500
-Date: Mon, 8 Feb 2010 16:34:32 -0500
-From: Jeff Layton <jlayton@redhat.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] lockd: release reference to nsm_handle in
- nlm_host_rebooted
-Message-ID: <20100208163432.583a8153@tlielax.poochiereds.net>
-In-Reply-To: <20100208211908.GB14942@fieldses.org>
-References: <1265400552-8375-1-git-send-email-jlayton@redhat.com>
-	<20100208211908.GB14942@fieldses.org>
-Content-Type: text/plain; charset=US-ASCII
+Received: from rcsinet12.oracle.com ([148.87.113.124]:19350 "EHLO
+	rcsinet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S933982Ab0BEWrY (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 5 Feb 2010 17:47:24 -0500
+Message-ID: <4B6C9FA7.2010702@oracle.com>
+Date: Fri, 05 Feb 2010 17:45:59 -0500
+From: Chuck Lever <chuck.lever@oracle.com>
+To: "Batsakis, Alexandros" <Alexandros.Batsakis@netapp.com>
+CC: Alexandros Batsakis <batsakis@netapp.com>, linux-nfs@vger.kernel.org,
+        trond@netapp.com
+Subject: Re: [PATCH 6/6] RPC: adjust timeout for connect, bind, restablish
+ so that they sensitive to the major time out value
+References: <1265155576-7618-1-git-send-email-batsakis@netapp.com> <1265155576-7618-2-git-send-email-batsakis@netapp.com> <1265155576-7618-3-git-send-email-batsakis@netapp.com> <1265155576-7618-4-git-send-email-batsakis@netapp.com> <1265155576-7618-5-git-send-email-batsakis@netapp.com> <1265155576-7618-6-git-send-email-batsakis@netapp.com> <1265155576-7618-7-git-send-email-batsakis@netapp.com> <4B6C7BCA.2040806@oracle.com> <383F4881-BD88-4155-B605-4D24F5B05BDD@netapp.com>
+In-Reply-To: <383F4881-BD88-4155-B605-4D24F5B05BDD@netapp.com>
+Content-Type: text/plain; charset=us-ascii; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Mon, 8 Feb 2010 16:19:08 -0500
-"J. Bruce Fields" <bfields@fieldses.org> wrote:
+On 02/05/2010 05:14 PM, Batsakis, Alexandros wrote:
+> Yeah sure,
+>
+> So imagine that for a specific connection the remaining major timeo
+> value is 30secs. Xs_connect has a default timeout before attempting to
+> reconnect of 60secs. The user (NFS) expects to "hear back" from the rpc
+> layer within the timeout as in often cases e.g. lease renewal, it's of
+> no benefit for an operation to reach the server at a later time and miss
+> the critical time because it was sleeping for an arbitrary amount of time.
+>
+> My patch ensures that the reconnection attempts happen within the
+> user-specified limits by replacing the 60secs default timeout with a
+> value that is less than the time to expire. If this is not ideal the
+> user should readjust the timeout value.
+>
+> Does it make sense?
 
-> On Fri, Feb 05, 2010 at 03:09:12PM -0500, Jeff Layton wrote:
-> > nsm_reboot_lookup takes a reference to the nsm_handle that it returns,
-> > but nlm_host_rebooted never releases that reference.
-> 
-> Makes sense to me; I'll apply to the nfsd tree.
-> 
-> (How did you run across this?)
-> 
-> --b.
-> 
+That's better, but this explanation needs to accompany the patch, as the 
+long description.  It's hard for reviewers who are not familiar with the 
+constraints on NFSv4 RENEW to understand what you're trying to fix. 
+Same comment applies to the other patches in your series, I think.  (And 
+see further comments in the code below).
 
-Thanks,
+You are changing a generic part of the RPC client to fix an issue with 
+one specific NFSv4 procedure, it seems to me.  Did you actually observe 
+a situation where the reconnect delay caused the server to miss a RENEW 
+request?
 
-When I was testing Chuck's statd patches, I went through some rather
-strange scenarios, mostly with Linux as the client. In some cases, we
-noticed that an SM_UNMON would occur when umounting a NFS filesystem,
-and in others it wouldn't. These two patches are the result of tracking
-down the cause. With them in place, a SM_UNMON gets issued much more
-consistently in the face of server reboots.
+There are good reasons why there is a timeout before reestablishing a 
+connection.  Have you tested this patch with NFSv3 servers that are 
+going up and down repeatedly, for example?  I think skipping the 
+reconnect delay could have consequences for the cases which the original 
+xs_connect logic is supposed to address, and it's not something we want 
+in many other cases.
 
-Cheers,
+Perhaps a better idea would be to mark these particular RPCs with some 
+kind of indication that the RPC client has to connect immediately for 
+this request, if possible.  Similar to RPC_TASK_SOFTCONN.
+
+In general, sunrpc.ko has a problem with this kind of "urgent" RPC 
+request.  If the RPC backlog queue is large for a particular rpc_clnt, 
+it can often take many seconds (like longer than the major timeout) for 
+a request to actually get down to the transport and get sent.  I don't 
+see that these timeout changes necessarily address that at all.
+
+I would suggest that the best solution might be a separate transport for 
+such requests, but that has other consequences.  Maybe our RPC client 
+needs a separate "urgent" request queue that bypasses the normal backlog 
+queue for such time-dependent requests?
+
+> -alexandros
+>
+> On Feb 5, 2010, at 12:14, "Chuck Lever" <chuck.lever@oracle.com> wrote:
+>
+>> Hi Alexandros-
+>>
+>> I think we need a little more than the short description for these
+>> patches. Can you explain why the extra logic in xs_connect is
+>> necessary? What exactly happens if the RENEW doesn't reach the server
+>> because the transport can't be reconnected?
+>>
+>> In other words, what problem are you trying to address here?
+>>
+>> On 02/02/2010 07:06 PM, Alexandros Batsakis wrote:
+>>> Signed-off-by: Alexandros Batsakis<batsakis@netapp.com>
+>>> ---
+>>> net/sunrpc/clnt.c | 2 +-
+>>> net/sunrpc/sunrpc.h | 2 ++
+>>> net/sunrpc/xprt.c | 18 +++++++++++++++---
+>>> net/sunrpc/xprtsock.c | 12 ++++++++++--
+>>> 4 files changed, 28 insertions(+), 6 deletions(-)
+>>>
+>>> diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+>>> index 154034b..8e552cd 100644
+>>> --- a/net/sunrpc/clnt.c
+>>> +++ b/net/sunrpc/clnt.c
+>>> @@ -1019,7 +1019,7 @@ call_bind(struct rpc_task *task)
+>>> task->tk_action = call_connect;
+>>> if (!xprt_bound(xprt)) {
+>>> task->tk_action = call_bind_status;
+>>> - task->tk_timeout = xprt->bind_timeout;
+>>> + xprt_set_timeout_sane(task, xprt->bind_timeout);
+>>> xprt->ops->rpcbind(task);
+>>> }
+>>> }
+>>> diff --git a/net/sunrpc/sunrpc.h b/net/sunrpc/sunrpc.h
+>>> index 90c292e..87c7aaa 100644
+>>> --- a/net/sunrpc/sunrpc.h
+>>> +++ b/net/sunrpc/sunrpc.h
+>>> @@ -37,6 +37,8 @@ struct rpc_buffer {
+>>> char data[];
+>>> };
+>>>
+>>> +void xprt_set_timeout_sane(struct rpc_task *task, unsigned long
+>>> timeout);
+>>> +
+>>> static inline int rpc_reply_expected(struct rpc_task *task)
+>>> {
+>>> return (task->tk_msg.rpc_proc != NULL)&&
+>>> diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
+>>> index 469de29..f6f3988 100644
+>>> --- a/net/sunrpc/xprt.c
+>>> +++ b/net/sunrpc/xprt.c
+>>> @@ -482,7 +482,7 @@ void xprt_wait_for_buffer_space(struct rpc_task
+>>> *task, rpc_action action)
+>>> struct rpc_rqst *req = task->tk_rqstp;
+>>> struct rpc_xprt *xprt = req->rq_xprt;
+>>>
+>>> - task->tk_timeout = req->rq_timeout;
+>>> + xprt_set_timeout_sane(task, req->rq_timeout);
+>>> rpc_sleep_on(&xprt->pending, task, action);
+>>> }
+>>> EXPORT_SYMBOL_GPL(xprt_wait_for_buffer_space);
+>>> @@ -518,7 +518,7 @@ EXPORT_SYMBOL_GPL(xprt_write_space);
+>>> */
+>>> void xprt_set_retrans_timeout_def(struct rpc_task *task)
+>>> {
+>>> - task->tk_timeout = task->tk_rqstp->rq_timeout;
+>>> + xprt_set_timeout_sane(task, task->tk_rqstp->rq_timeout);
+>>> }
+>>> EXPORT_SYMBOL_GPL(xprt_set_retrans_timeout_def);
+>>>
+>>> @@ -682,6 +682,18 @@ out_abort:
+>>> spin_unlock(&xprt->transport_lock);
+>>> }
+>>>
+>>> +void xprt_set_timeout_sane(struct rpc_task *task, unsigned long
+>>> timeout)
+>>
+>> xprt_set_timeout_sane? That's amusing, but it isn't very descriptive
+>> to someone who doesn't know why this extra function is needed.
+>>
+>>> +{
+>>> + unsigned long majorto = task->tk_rqstp->rq_majortimeo;
+>>> +
+>>> + if (majorto<= jiffies)
+>>> + task->tk_timeout = 5 * HZ;
+>>> + else if (timeout> majorto - jiffies)
+>>> + task->tk_timeout = 2 * (majorto - jiffies) / 3;
+>>> + else
+>>> + task->tk_timeout = timeout;
+>>> +}
+>>> +
+>>> /**
+>>> * xprt_connect - schedule a transport connect operation
+>>> * @task: RPC task that is requesting the connect
+>>> @@ -710,7 +722,7 @@ void xprt_connect(struct rpc_task *task)
+>>> if (task->tk_rqstp)
+>>> task->tk_rqstp->rq_bytes_sent = 0;
+>>>
+>>> - task->tk_timeout = xprt->connect_timeout;
+>>> + xprt_set_timeout_sane(task, xprt->connect_timeout);
+>>> rpc_sleep_on(&xprt->pending, task, xprt_connect_status);
+>>> xprt->stat.connect_start = jiffies;
+>>> xprt->ops->connect(task);
+>>> diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+>>> index 721bafd..7fcc97f 100644
+>>> --- a/net/sunrpc/xprtsock.c
+>>> +++ b/net/sunrpc/xprtsock.c
+>>> @@ -2020,9 +2020,17 @@ static void xs_connect(struct rpc_task *task)
+>>> return;
+>>>
+>>> if (transport->sock != NULL&& !RPC_IS_SOFTCONN(task)) {
+>>> + unsigned long majorto = task->tk_rqstp->rq_majortimeo;
+>>> +
+>>> + if (majorto<= jiffies)
+>>> + xprt->reestablish_timeout = 5 * HZ;
+>>> + else if (xprt->reestablish_timeout> majorto - jiffies)
+>>> + xprt->reestablish_timeout = 2 * (majorto - jiffies)
+>>> + / 3;
+>>
+>> This looks like the code you added above in _sane. Can you reuse that
+>> code here?
+>>
+>>> +
+>>> dprintk("RPC: xs_connect delayed xprt %p for %lu "
+>>> - "seconds\n",
+>>> - xprt, xprt->reestablish_timeout / HZ);
+>>> + "seconds\n",
+>>> + xprt, xprt->reestablish_timeout + (HZ - 1) / HZ);
+>>> queue_delayed_work(rpciod_workqueue,
+>>> &transport->connect_worker,
+>>> xprt->reestablish_timeout);
+>>
+>>
+>> --
+>> chuck[dot]lever[at]oracle[dot]com
+
+
 -- 
-Jeff Layton <jlayton@redhat.com>
+chuck[dot]lever[at]oracle[dot]com
