@@ -1,130 +1,67 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: [NFS] Portmapper problem, no access the server after update to
- debian squeeze
-Date: Fri, 05 Feb 2010 14:32:46 -0500
-Message-ID: <1265398366.3201.12.camel@localhost>
-References: <4B6C6E65.1000706@online.de>
+From: Jeff Layton <jlayton@redhat.com>
+Subject: Re: [PATCH] mount.nfs: set the default family for lookups based on
+ Defaultproto= setting
+Date: Fri, 5 Feb 2010 14:55:30 -0500
+Message-ID: <20100205145530.61634593@tlielax.poochiereds.net>
+References: <1265380055-5650-1-git-send-email-jlayton@redhat.com>
+	<4B6C39D0.3030704@oracle.com>
+	<20100205113052.333f0c05@tlielax.poochiereds.net>
+	<4B6C51A4.3070005@oracle.com>
+	<20100205124340.6b77902c@tlielax.poochiereds.net>
+	<4B6C5F61.9070205@oracle.com>
+	<20100205131757.6fd224d0@tlielax.poochiereds.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Cc: linux-nfs@vger.kernel.org
-To: "calculix-BGeptl67XyCzQB+pC5nmwQ@public.gmane.org" <calculix-BGeptl67XyCzQB+pC5nmwQ@public.gmane.org>
+Content-Type: text/plain; charset=US-ASCII
+Cc: Chuck Lever <chuck.lever@oracle.com>, steved@redhat.com,
+	linux-nfs@vger.kernel.org
+To: Jeff Layton <jlayton@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-out2.uio.no ([129.240.10.58]:55991 "EHLO mail-out2.uio.no"
+Received: from mx1.redhat.com ([209.132.183.28]:9038 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753561Ab0BETcv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 5 Feb 2010 14:32:51 -0500
-In-Reply-To: <4B6C6E65.1000706-BGeptl67XyCzQB+pC5nmwQ@public.gmane.org>
+	id S932429Ab0BETzf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 5 Feb 2010 14:55:35 -0500
+In-Reply-To: <20100205131757.6fd224d0-9yPaYZwiELC+kQycOl6kW4xkIHaj4LzF@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Fri, 5 Feb 2010 13:17:57 -0500
+Jeff Layton <jlayton@redhat.com> wrote:
 
-
-On Fri, 2010-02-05 at 20:15 +0100, calculix-BGeptl67XyCzQB+pC5nmwQ@public.gmane.org wrote: 
-> Dear NFS-Team,
-> Since I updated my server from Debian-Lenny to Squeeze I am not able 
-> anymore to mount, ssh, etc to my server.  I have gone through the 
-> nfs-howto, followed the troubleshouting process with no success.
-> I can reach the server with ping without any problems. Only mount, ssh, 
-> sftp etc. does not work. My portmapper seams not to allow the access.
+> > > I can sort of buy the argument for leaving out the earlier #ifdef
+> > > around the default_value() function.
+> > >
+> > > If you change this one though, then lookups will still return IPv6
+> > > addresses by default even when IPV6_SUPPORTED isn't set. IOW, in the
+> > > absence of a proto= option, you'll pass AF_UNSPEC to getaddrinfo and
+> > > get IPv6 addresses. I don't think that's what we want here for a
+> > > non-ipv6 enabled nfs-utils.
+> > 
+> > OK, agreed.  This setting is actually not determining the meaning of any 
+> > of the netids, but rather it is determining the default address family 
+> > if _no_ netid is specified.
+> > 
 > 
-> Please help!
-> 
-> Thanks
-> Peter
+> Correct. Ok, I'll respin and repost with the ifdef's in default_value()
+> removed.
 
-On your server:
+New patch sent. Just for giggles, I tested this by building a
+tirpc-enabled/ipv6-disabled nfs-utils and setting Defaultproto=tcp6. It
+does indeed set the address family to IPv6:
 
-'dpkg-reconfigure portmap'
+# mount -v opensolaris:/export/public /mnt/test
+mount: no type was given - I'll assume nfs because of the colon
+mount.nfs: timeout set for Fri Feb  5 14:51:01 2010
+mount.nfs: trying text-based options 'vers=4,addr=feed::23,clientaddr=feed::22'
 
-and tell it not to restrict the portmapper to the loopback address.
+...and the mount succeeds.
 
-Trond
+So in that situation and also when proto=tcp6 is specified, someone can
+mount an IPv6-capable server even with a nfs-utils that isn't built for
+IPv6 as long as it has tirpc support.
 
+Is that a good thing? I'm not sure -- statd won't work over IPv6 in
+that case, for instance. Would it be better to have mount.nfs fail to
+use IPv6 addrs at all when not built with IPv6 support?
 
-> ******** Here is my /etc/exports
-> # /etc/exports: the access control list for filesystems which may be 
-> exported
-> #               to NFS clients.  See exports(5).
-> #
-> # Example for NFSv2 and NFSv3:
-> # /srv/homes       hostname1(rw,sync,no_subtree_check) 
-> hostname2(ro,sync,no_subtree_check)
-> #
-> # Example for NFSv4:
-> # /srv/nfs4        gss/krb5i(rw,sync,fsid=0,crossmnt,no_subtree_check)
-> # /srv/nfs4/homes  gss/krb5i(rw,sync,no_subtree_check)
-> #
-> /data/PUBLIC    192.168.178.27(rw,sync,no_subtree_check)
-> ******** End of /etc/exports
-> 
-> ******** Here is my /etc/hosts.allow
-> # /etc/hosts.allow: list of hosts that are allowed to access the system.
-> #                   See the manual pages hosts_access(5) and 
-> hosts_options(5).
-> #
-> # Example:    ALL: LOCAL @some_netgroup
-> #             ALL: .foobar.edu EXCEPT terminalserver.foobar.edu
-> #
-> # If you're going to protect the portmapper use the name "portmap" for the
-> # daemon name. Remember that you can only use the keyword "ALL" and IP
-> # addresses (NOT host or domain names) for the portmapper, as well as for
-> # rpc.mountd (the NFS mount daemon). See portmap(8) and rpc.mountd(8)
-> # for further information.
-> #
-> ALL:192.168.178.0/255.255.255.0(rw,sync)
-> ******** End of /etc/hosts.allow
-> 
-> ******** My /etc/hosts.deny is empty
-> 
-> ******** Here is the output of rpcinfo -p localhost from the server
->    Program Vers Proto   Port
->     100000    2   tcp    111  portmapper
->     100000    2   udp    111  portmapper
->     100024    1   udp  59341  status
->     100024    1   tcp  52100  status
->     100021    1   udp  43350  nlockmgr
->     100021    3   udp  43350  nlockmgr
->     100021    4   udp  43350  nlockmgr
->     100021    1   tcp  56947  nlockmgr
->     100021    3   tcp  56947  nlockmgr
->     100021    4   tcp  56947  nlockmgr
->     100003    2   tcp   2049  nfs
->     100003    3   tcp   2049  nfs
->     100003    4   tcp   2049  nfs
->     100003    2   udp   2049  nfs
->     100003    3   udp   2049  nfs
->     100003    4   udp   2049  nfs
->     100005    1   udp  51709  mountd
->     100005    1   tcp  36097  mountd
->     100005    2   udp  51709  mountd
->     100005    2   tcp  36097  mountd
->     100005    3   udp  51709  mountd
->     100005    3   tcp  36097  mountd
-> ******* End of rpcinfo -p localhost
-> 
-> ******* Here is the output of rpcinfo -p 192.168.178.32 from the client
-> rpcinfo: Portmapper kann nicht erreicht werden: RPC: Fehler des 
-> entfernten Systems - Verbindungsaufbau abgelehnt
-> ******* This seams to be my problem, but what to do?
-> 
-> ------------------------------------------------------------------------------
-> The Planet: dedicated and managed hosting, cloud storage, colocation
-> Stay online with enterprise data centers and the best network in the business
-> Choose flexible plans and management services without long-term contracts
-> Personal 24x7 support from experience hosting pros just a phone call away.
-> http://p.sf.net/sfu/theplanet-com
-> _______________________________________________
-> NFS maillist  -  NFS@lists.sourceforge.net
-> https://lists.sourceforge.net/lists/listinfo/nfs
-> _______________________________________________
-> Please note that nfs@lists.sourceforge.net is being discontinued.
-> Please subscribe to linux-nfs@vger.kernel.org instead.
->     http://vger.kernel.org/vger-lists.html#linux-nfs
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
-
-
+-- 
+Jeff Layton <jlayton@redhat.com>
