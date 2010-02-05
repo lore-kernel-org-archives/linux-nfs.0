@@ -1,45 +1,33 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-out2.uio.no ([129.240.10.58]:47153 "EHLO mail-out2.uio.no"
+Received: from mx2.netapp.com ([216.240.18.37]:58310 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752259Ab0BIWoL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 9 Feb 2010 17:44:11 -0500
-Subject: Re: [PATCH pynfs] Allow server to reject maximum commit offsets
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-To: Peter Staubach <staubach@redhat.com>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>, iisaman@citi.umich.edu,
-        linux-nfs@vger.kernel.org
-In-Reply-To: <4B71E1A4.1070604@redhat.com>
-References: <20100209201231.GC30951@fieldses.org>
-	 <4B71E1A4.1070604@redhat.com>
-Content-Type: text/plain; charset="UTF-8"
-Date: Tue, 09 Feb 2010 17:44:03 -0500
-Message-ID: <1265755443.28562.100.camel@localhost>
+	id S1756486Ab0BKUl0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 11 Feb 2010 15:41:26 -0500
+From: Alexandros Batsakis <batsakis@netapp.com>
+To: linux-nfs@vger.kernel.org
+Cc: trond@netapp.com, Alexandros Batsakis <batsakis@netapp.com>
+Subject: [PATCH 0/5] nfs: fix umount - renewd race
+Date: Fri,  5 Feb 2010 03:32:29 -0800
+Message-Id: <1265369554-2105-1-git-send-email-batsakis@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Tue, 2010-02-09 at 17:28 -0500, Peter Staubach wrote: 
-> J. Bruce Fields wrote:
-> > From: J. Bruce Fields <bfields@citi.umich.edu>
-> > 
-> > These two tests insist that a server must accept commits with offset
-> > 2^64-1 and 2^64-2.  I can find no justification in the spec for this
-> > requirement.
-> > 
-> > The linux server was recently changed to reject (with INVAL) offsets
-> > over 2^63-1, which is the maximum that the vfs commit routine can
-> > accept.  That behavior is consistent with the NFSv3 commit
-> > implementation and with the NFSv4 write implementation.
-> > 
-> 
-> I guess that I am missing something.  At least the NFSv3
-> COMMIT operation takes an unsigned 64 bit quantity.  That
-> would seem to make the test correct, would it not?
+This set contains the first 5 patches from my previous attempt (with an updated changelog).
+The RPC patches will follow in a seperate patchset, as we need to further evaluate the proposed
+timeout changes.
 
-The server will not allow you to write to an offset > 2^63-1 (it will
-return NFS3ERR_INVAL), so it makes zero sense for the client to try to
-issue a COMMIT for an offset starting in that range.
+root (5):
+  nfs: kill renewd before clearing client minor version
+  nfs: prevent backlogging of renewd requests
+  nfs41: renewd sequence operations should take/put client reference
+  nfs4: renewd renew operations should take/put a client reference
+  nfs4: adjust rpc timeout for nfs_client->rpcclient based on the
+    lease_time
 
-Cheers
-  Trond
+ fs/nfs/client.c     |   45 ++++++++++++++++++++++-----------------------
+ fs/nfs/nfs4proc.c   |   50 ++++++++++++++++++++++++++++++++++++++++++++++++--
+ fs/nfs/nfs4renewd.c |   24 +++++++-----------------
+ 3 files changed, 77 insertions(+), 42 deletions(-)
 
