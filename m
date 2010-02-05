@@ -1,92 +1,75 @@
 From: andros@netapp.com
-Subject: [PATCH 5/5] pnfs: set failed layout bit per iomode
-Date: Fri,  5 Feb 2010 12:10:13 -0500
-Message-ID: <1265389813-6823-6-git-send-email-andros@netapp.com>
+Subject: [PATCH 3/5] pnfsd: DLM file layout only support read iomode layouts
+Date: Fri,  5 Feb 2010 12:10:11 -0500
+Message-ID: <1265389813-6823-4-git-send-email-andros@netapp.com>
 References: <1265389813-6823-1-git-send-email-andros@netapp.com>
  <1265389813-6823-2-git-send-email-andros@netapp.com>
  <1265389813-6823-3-git-send-email-andros@netapp.com>
- <1265389813-6823-4-git-send-email-andros@netapp.com>
- <1265389813-6823-5-git-send-email-andros@netapp.com>
 Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
 To: pnfs@linux-nfs.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
 Received: from mx2.netapp.com ([216.240.18.37]:16541 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933525Ab0BERJh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 5 Feb 2010 12:09:37 -0500
-In-Reply-To: <1265389813-6823-5-git-send-email-andros@netapp.com>
+	id S932282Ab0BERJg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 5 Feb 2010 12:09:36 -0500
+In-Reply-To: <1265389813-6823-3-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 From: Andy Adamson <andros@netapp.com>
 
+In a DLM cluster, writing to a node other than the node where the open call
+occurred and where meta data is cached will have performance implications when
+the write causes meta data changes that need to be propagated to the open call
+node.
+
+DlM clusters support only LAYOUTIOMODE4_READ layouts. Writes will go through
+the MDS.
+
+Return NFS4ERR_BADIOMODE for LAYOUTGET requests with LAYOUTIOMODE4_RW iomode.
+
 Signed-off-by: Andy Adamson <andros@netapp.com>
 ---
- fs/nfs/pnfs.c          |    6 +++---
- fs/nfs/pnfs.h          |    6 ++++++
- include/linux/nfs_fs.h |    5 +++--
- 3 files changed, 12 insertions(+), 5 deletions(-)
+ fs/nfsd/nfs4pnfsd.c   |    2 ++
+ fs/nfsd/nfs4pnfsdlm.c |    5 +++++
+ 2 files changed, 7 insertions(+), 0 deletions(-)
 
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 3a05422..596cfce 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -1119,11 +1119,11 @@ pnfs_update_layout(struct inode *ino,
- 	}
+diff --git a/fs/nfsd/nfs4pnfsd.c b/fs/nfsd/nfs4pnfsd.c
+index 3951e02..e1ecf81 100644
+--- a/fs/nfsd/nfs4pnfsd.c
++++ b/fs/nfsd/nfs4pnfsd.c
+@@ -881,6 +881,8 @@ nfs4_pnfs_get_layout(struct nfsd4_pnfs_layoutget *lgp,
+ 		case -ENOENT:
+ 			status = nfserr_stale;
+ 			break;
++		case nfserr_badiomode:
++			break;
+ 		default:
+ 			status = nfserr_layoutunavailable;
+ 		}
+diff --git a/fs/nfsd/nfs4pnfsdlm.c b/fs/nfsd/nfs4pnfsdlm.c
+index 293bf95..8cc7c84 100644
+--- a/fs/nfsd/nfs4pnfsdlm.c
++++ b/fs/nfsd/nfs4pnfsdlm.c
+@@ -28,6 +28,7 @@
+ #include <linux/nfsd/nfs4layoutxdr.h>
  
- 	/* if get layout already failed once goto out */
--	if (test_bit(NFS_INO_LAYOUT_FAILED, &nfsi->pnfs_layout_state)) {
-+	if (test_bit(lo_fail_bit(iomode), &nfsi->pnfs_layout_state)) {
- 		if (unlikely(nfsi->pnfs_layout_suspend &&
- 		    get_seconds() >= nfsi->pnfs_layout_suspend)) {
- 			dprintk("%s: layout_get resumed\n", __func__);
--			clear_bit(NFS_INO_LAYOUT_FAILED,
-+			clear_bit(lo_fail_bit(iomode),
- 				  &nfsi->pnfs_layout_state);
- 			nfsi->pnfs_layout_suspend = 0;
- 		} else {
-@@ -1247,7 +1247,7 @@ pnfs_get_layout_done(struct nfs4_pnfs_layoutget *lgp, int rpc_status)
- get_out:
- 	/* remember that get layout failed and suspend trying */
- 	nfsi->pnfs_layout_suspend = suspend;
--	set_bit(NFS_INO_LAYOUT_FAILED, &nfsi->pnfs_layout_state);
-+	set_bit(lo_fail_bit(lgp->args.lseg.iomode), &nfsi->pnfs_layout_state);
- 	dprintk("%s: layout_get suspended until %ld\n",
- 		__func__, suspend);
- out:
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index 379e67d..312c4ef 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -94,6 +94,12 @@ void pnfs_set_layout_stateid(struct pnfs_layout_type *lo,
- 				     (srv)->pnfs_curr_ld->ld_policy_ops && \
- 				     (srv)->pnfs_curr_ld->ld_policy_ops->opname)
+ #include "nfsfh.h"
++#include "nfsd.h"
  
-+static inline int lo_fail_bit(u32 iomode)
-+{
-+	return iomode == IOMODE_RW ?
-+			 NFS_INO_RW_LAYOUT_FAILED : NFS_INO_RO_LAYOUT_FAILED;
-+}
+ #define NFSDDBG_FACILITY                NFSDDBG_PROC
+ 
+@@ -331,6 +332,10 @@ static int nfsd4_pnfs_dlm_layoutget(struct inode *inode,
+ 
+ 	dprintk("%s: LAYOUT_GET\n", __func__);
+ 
++	/* DLM exported file systems only support layouts for READ */
++	if (res->lg_seg.iomode == IOMODE_RW)
++		return nfserr_badiomode;
 +
- /* Return true if a layout driver is being used for this mountpoint */
- static inline int pnfs_enabled_sb(struct nfs_server *nfss)
- {
-diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
-index fc0990a..dd57a6a 100644
---- a/include/linux/nfs_fs.h
-+++ b/include/linux/nfs_fs.h
-@@ -201,8 +201,9 @@ struct nfs_inode {
- 	struct list_head	lo_inodes;
- 
- 	unsigned long pnfs_layout_state;
--#define NFS_INO_LAYOUT_FAILED	0	/* get layout failed, stop trying */
--#define NFS_INO_LAYOUT_ALLOC	1	/* bit lock for layout allocation */
-+#define NFS_INO_RO_LAYOUT_FAILED 0 	/* get ro layout failed stop trying */
-+#define NFS_INO_RW_LAYOUT_FAILED 1 	/* get rw layout failed stop trying */
-+#define NFS_INO_LAYOUT_ALLOC     2	/* bit lock for layout allocation */
- 	time_t pnfs_layout_suspend;
- 	wait_queue_head_t lo_waitq;
- 	spinlock_t lo_lock;
+ 	index = dlm_ino_hash(inode);
+ 	dprintk("%s first stripe index %d i_ino %lu\n", __func__, index,
+ 		inode->i_ino);
 -- 
 1.6.6
 
