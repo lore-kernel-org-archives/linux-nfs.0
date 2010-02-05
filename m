@@ -1,61 +1,80 @@
-From: "J. Bruce Fields" <bfields@citi.umich.edu>
-Subject: [PATCH] nfsd: default to kernel default for minorversion 1
-Date: Fri, 5 Feb 2010 15:05:01 -0500
-Message-ID: <20100205200501.GA28483@fieldses.org>
-References: <1264631166-21898-1-git-send-email-bfields@citi.umich.edu> <1264631166-21898-2-git-send-email-bfields@citi.umich.edu> <20100201195821.GB19418@fieldses.org> <4B6B480C.1050307@RedHat.com> <20100205161001.GB24926@fieldses.org> <20100205192859.GE24926@fieldses.org>
+From: Jeff Layton <jlayton@redhat.com>
+Subject: Re: [PATCH] mount.nfs: set the default family for lookups based on
+ Defaultproto= setting
+Date: Fri, 5 Feb 2010 15:05:11 -0500
+Message-ID: <20100205150511.5e18538f@tlielax.poochiereds.net>
+References: <1265380055-5650-1-git-send-email-jlayton@redhat.com>
+	<4B6C39D0.3030704@oracle.com>
+	<20100205113052.333f0c05@tlielax.poochiereds.net>
+	<4B6C51A4.3070005@oracle.com>
+	<20100205124340.6b77902c@tlielax.poochiereds.net>
+	<4B6C5F61.9070205@oracle.com>
+	<20100205131757.6fd224d0@tlielax.poochiereds.net>
+	<20100205145530.61634593@tlielax.poochiereds.net>
+	<4B6C78A2.5010703@oracle.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs@vger.kernel.org
-To: Steve Dickson <SteveD@redhat.com>
+Content-Type: text/plain; charset=US-ASCII
+Cc: steved@redhat.com, linux-nfs@vger.kernel.org
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:47756 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:37978 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932429Ab0BEUEo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 5 Feb 2010 15:04:44 -0500
-In-Reply-To: <20100205192859.GE24926@fieldses.org>
+	id S932158Ab0BEUFR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 5 Feb 2010 15:05:17 -0500
+In-Reply-To: <4B6C78A2.5010703@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: J. Bruce Fields <bfields@citi.umich.edu>
+On Fri, 05 Feb 2010 14:59:30 -0500
+Chuck Lever <chuck.lever@oracle.com> wrote:
 
-The current kernel code should not be enabled by default, because it
-does not yet attempt to be a conform completely to the rfc; for example,
-some required pieces of protocol are missing.
+> On 02/05/2010 02:55 PM, Jeff Layton wrote:
+> > On Fri, 5 Feb 2010 13:17:57 -0500
+> > Jeff Layton<jlayton@redhat.com>  wrote:
+> >
+> >>>> I can sort of buy the argument for leaving out the earlier #ifdef
+> >>>> around the default_value() function.
+> >>>>
+> >>>> If you change this one though, then lookups will still return IPv6
+> >>>> addresses by default even when IPV6_SUPPORTED isn't set. IOW, in the
+> >>>> absence of a proto= option, you'll pass AF_UNSPEC to getaddrinfo and
+> >>>> get IPv6 addresses. I don't think that's what we want here for a
+> >>>> non-ipv6 enabled nfs-utils.
+> >>>
+> >>> OK, agreed.  This setting is actually not determining the meaning of any
+> >>> of the netids, but rather it is determining the default address family
+> >>> if _no_ netid is specified.
+> >>>
+> >>
+> >> Correct. Ok, I'll respin and repost with the ifdef's in default_value()
+> >> removed.
+> >
+> > New patch sent. Just for giggles, I tested this by building a
+> > tirpc-enabled/ipv6-disabled nfs-utils and setting Defaultproto=tcp6. It
+> > does indeed set the address family to IPv6:
+> >
+> > # mount -v opensolaris:/export/public /mnt/test
+> > mount: no type was given - I'll assume nfs because of the colon
+> > mount.nfs: timeout set for Fri Feb  5 14:51:01 2010
+> > mount.nfs: trying text-based options 'vers=4,addr=feed::23,clientaddr=feed::22'
+> >
+> > ...and the mount succeeds.
+> >
+> > So in that situation and also when proto=tcp6 is specified, someone can
+> > mount an IPv6-capable server even with a nfs-utils that isn't built for
+> > IPv6 as long as it has tirpc support.
+> >
+> > Is that a good thing? I'm not sure -- statd won't work over IPv6 in
+> > that case, for instance. Would it be better to have mount.nfs fail to
+> > use IPv6 addrs at all when not built with IPv6 support?
+> 
+> If IPv6 support is disabled at build time, mount.nfs shouldn't allow a 
+> mount over IPv6, even if the kernel supports it.
+> 
+> Is that with, or without, my additional protocol family negotiation patches?
+> 
 
-Therefore the kernel defaults to leaving minorversion1 off.  When the
-code matures sufficiently, that default will change.
+With those patches. I haven't tested this without them.
 
-That kernel default becomes meaningless if nfs-utils always explicitly
-turns 4.1 on or off.  So, nfs-utils should by default do nothing.
-
-Early adopters that want to turn on NFSv4.1 explicitly can still do so
-using
-
-	echo "+4.1" >/proc/fs/nfsd/versions
-
-Signed-off-by: J.  Bruce Fields <bfields@citi.umich.edu>
----
- utils/nfsd/nfssvc.c |    7 +++----
- 1 files changed, 3 insertions(+), 4 deletions(-)
-
-diff --git a/utils/nfsd/nfssvc.c b/utils/nfsd/nfssvc.c
-index 7bbbaba..1fb420d 100644
---- a/utils/nfsd/nfssvc.c
-+++ b/utils/nfsd/nfssvc.c
-@@ -239,10 +239,9 @@ nfssvc_setvers(unsigned int ctlbits, int minorvers4)
- 		return;
- 
- 	n = minorvers4 >= 0 ? minorvers4 : -minorvers4;
--	if (n >= NFSD_MINMINORVERS4 && n <= NFSD_MAXMINORVERS4)
--		    off += snprintf(ptr+off, sizeof(buf) - off, "%c4.%d",
--				    minorvers4 > 0 ? '+' : '-',
--				    n);
-+	if (minorvers4 < 0 && n >= NFSD_MINMINORVERS4
-+			   && n <= NFSD_MAXMINORVERS4)
-+		    off += snprintf(ptr+off, sizeof(buf) - off, "-4.%d", n);
- 	for (n = NFSD_MINVERS; n <= NFSD_MAXVERS; n++) {
- 		if (NFSCTL_VERISSET(ctlbits, n))
- 		    off += snprintf(ptr+off, sizeof(buf) - off, "+%d ", n);
 -- 
-1.6.3.3
-
+Jeff Layton <jlayton@redhat.com>
