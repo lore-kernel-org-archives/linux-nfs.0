@@ -1,109 +1,95 @@
 From: Jeff Layton <jlayton@redhat.com>
-Subject: [PATCH] mount.nfs: set the default family for lookups based on Defaultproto= setting
-Date: Fri,  5 Feb 2010 09:27:35 -0500
-Message-ID: <1265380055-5650-1-git-send-email-jlayton@redhat.com>
+Subject: Re: [PATCH 1/4] text-based mount: Retry when server can't be
+ reached
+Date: Fri, 5 Feb 2010 09:31:25 -0500
+Message-ID: <20100205093125.01a5d20f@tlielax.poochiereds.net>
+References: <20100122210221.10598.84522.stgit@localhost.localdomain>
+	<20100122210621.10598.15244.stgit@localhost.localdomain>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Cc: linux-nfs@vger.kernel.org
-To: steved@redhat.com
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:35892 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:51581 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756449Ab0BEO1h (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 5 Feb 2010 09:27:37 -0500
-Received: from int-mx08.intmail.prod.int.phx2.redhat.com (int-mx08.intmail.prod.int.phx2.redhat.com [10.5.11.21])
-	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id o15ERakU026025
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Fri, 5 Feb 2010 09:27:37 -0500
+	id S1756567Ab0BEOba (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 5 Feb 2010 09:31:30 -0500
+In-Reply-To: <20100122210621.10598.15244.stgit-bi+AKbBUZKY6gyzm1THtWbp2dZbC/Bob@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-When IPv6 is enabled, the Proto= config file option is treated as a
-netid, and the address family for lookups is selected based on that
-setting. The Defaultproto= option however still only affects the
-protocol setting for the sockets (IPPROTO_*) and not the address family.
+On Fri, 22 Jan 2010 16:06:21 -0500
+Chuck Lever <chuck.lever@oracle.com> wrote:
 
-This patch makes it so that if someone sets the "Defaultproto=" option
-in the nfsmount.conf, it's used to determine the default address family
-for lookups as well as the protocol type.
+> We want new default behavior from mount.nfs when the server refuses a
+> connection.  Since connection refusal can be spurious (for example,
+> if the server is rebooting), mount.nfs should retry.
+> 
+> NFS shares that are automatically mounted by /etc/fstab at boot
+> time may be problematic.  The new behavior can be disabled by
+> specifying the "retry=0" mount option, or these mounts can be changed
+> to background mounts by specifying the "bg" option.
+> 
+> A kernel code change is still required for the mount(2) system call to
+> return ECONNREFUSED for NFSv4 mounts (see 2.6.33).  For v2/v3, the
+> version and transport negotiation logic in mount.nfs should drive a
+> retry if the server's rpcbind can't be reached.
+> 
+> Note that if a v2/v3 mount request encounters an unregistered NFS
+> service, it will still fail immediately.  That wouldn't be too hard
+> to change as well, but there are many more corner cases there where
+> failing immediately is appropriate.
+> 
+> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> ---
+> 
+>  utils/mount/nfs.man   |    6 +++++-
+>  utils/mount/stropts.c |    4 ++++
+>  2 files changed, 9 insertions(+), 1 deletions(-)
+> 
+> diff --git a/utils/mount/nfs.man b/utils/mount/nfs.man
+> index 93bd642..c64de5f 100644
+> --- a/utils/mount/nfs.man
+> +++ b/utils/mount/nfs.man
+> @@ -363,7 +363,11 @@ The number of minutes that the
+>  command retries an NFS mount operation
+>  in the foreground or background before giving up.
+>  If this option is not specified, the default value for foreground mounts
+> -is 2 minutes, and the default value for background mounts is 10000 minutes (80 minutes shy of one week).
+> +is 2 minutes, and the default value for background mounts is 10000 minutes
+> +(80 minutes shy of one week).
+> +If a value of zero is specified, the
+> +.BR mount (8)
+> +command exits immediately after the first failure.
+>  .TP 1.5i
+>  .BI sec= mode
+>  The RPCGSS security flavor to use for accessing files on this mount point.
+> diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
+> index 57a4b32..74224ff 100644
+> --- a/utils/mount/stropts.c
+> +++ b/utils/mount/stropts.c
+> @@ -515,6 +515,10 @@ nfs_rewrite_pmap_mount_options(struct mount_options *options)
+>  	if (!nfs_probe_bothports(mnt_saddr, mnt_salen, &mnt_pmap,
+>  				 nfs_saddr, nfs_salen, &nfs_pmap)) {
+>  		errno = ESPIPE;
+> +		if (rpc_createerr.cf_stat == RPC_PROGNOTREGISTERED)
+> +			errno = EOPNOTSUPP;
+> +		else if (rpc_createerr.cf_error.re_errno != 0)
+> +			errno = rpc_createerr.cf_error.re_errno;
+>  		return 0;
+>  	}
+>  
+> 
 
-This gives users a way to force a particular address family to be used
-universally for mounts and brings the behavior of the Defaultproto=
-option in line with the Proto= option.
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- utils/mount/configfile.c |    8 ++++++++
- utils/mount/network.c    |   18 ++++++++----------
- 2 files changed, 16 insertions(+), 10 deletions(-)
+Apologies for the long delay in testing these. I gave the most recent
+set of these in your git tree some testing this morning and they seem
+to do the right thing.
 
-diff --git a/utils/mount/configfile.c b/utils/mount/configfile.c
-index 6843098..71d3627 100644
---- a/utils/mount/configfile.c
-+++ b/utils/mount/configfile.c
-@@ -221,6 +221,8 @@ int inline check_vers(char *mopt, char *field)
- 
- unsigned long config_default_vers;
- unsigned long config_default_proto;
-+extern sa_family_t config_default_family;
-+
- /*
-  * Check to see if a default value is being set.
-  * If so, set the appropriate global value which will 
-@@ -242,6 +244,12 @@ int inline default_value(char *mopt)
- 				xlog_warn("Unable to set default protocol : %s", 
- 					strerror(errno));
- 			}
-+#ifdef IPV6_SUPPORTED
-+			if (!nfs_nfs_proto_family(options, &config_default_family)) {
-+				xlog_warn("Unable to set default family : %s", 
-+					strerror(errno));
-+			}
-+#endif
- 		} else {
- 			xlog_warn("Unable to alloc memory for default protocol");
- 		}
-diff --git a/utils/mount/network.c b/utils/mount/network.c
-index 92bba2d..0ab3bb1 100644
---- a/utils/mount/network.c
-+++ b/utils/mount/network.c
-@@ -1331,6 +1331,12 @@ nfs_nfs_port(struct mount_options *options, unsigned long *port)
- 	return 1;
- }
- 
-+#ifdef IPV6_SUPPORTED
-+sa_family_t	config_default_family = AF_UNSPEC;
-+#else
-+sa_family_t	config_default_family = AF_INET;
-+#endif
-+
- /*
-  * Returns TRUE and fills in @family if a valid NFS protocol option
-  * is found, or FALSE if the option was specified with an invalid value.
-@@ -1341,11 +1347,7 @@ int nfs_nfs_proto_family(struct mount_options *options,
- 	unsigned long protocol;
- 	char *option;
- 
--#ifdef IPV6_SUPPORTED
--	*family = AF_UNSPEC;
--#else
--	*family = AF_INET;
--#endif
-+	*family = config_default_family;
- 
- 	switch (po_rightmost(options, nfs_transport_opttbl)) {
- 	case 0:	/* udp */
-@@ -1488,11 +1490,7 @@ int nfs_mount_proto_family(struct mount_options *options,
- 	unsigned long protocol;
- 	char *option;
- 
--#ifdef HAVE_LIBTIRPC
--	*family = AF_UNSPEC;
--#else
--	*family = AF_INET;
--#endif
-+	*family = config_default_family;
- 
- 	option = po_get(options, "mountproto");
- 	if (option != NULL)
+I've also posted a patch this morning that's similar to the one
+currently in Fedora to make the Defaultproto= option affect the address
+family selection as well. I see that as complimentary to this set, and
+it seems to work properly in conjunction with it.
+
 -- 
-1.6.6
-
+Jeff Layton <jlayton@redhat.com>
