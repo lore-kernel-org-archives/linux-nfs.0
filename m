@@ -1,102 +1,64 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH 2/2] NFS: Fix the mapping of the NFSERR_SERVERFAULT error
-Date: Fri, 05 Feb 2010 18:12:46 -0500
-Message-ID: <4B6CA5EE.8080104@oracle.com>
-References: <1265409793-18314-1-git-send-email-Trond.Myklebust@netapp.com> <1265409793-18314-2-git-send-email-Trond.Myklebust@netapp.com>
+From: OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>
+Subject: Failure to fallback to nfsd-v3 (?)
+Date: Sun, 07 Feb 2010 12:32:04 +0900
+Message-ID: <87pr4h67rf.fsf@devron.myhome.or.jp>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Cc: linux-nfs@vger.kernel.org
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from acsinet12.oracle.com ([141.146.126.234]:53995 "EHLO
-	acsinet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757666Ab0BEXOY (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 5 Feb 2010 18:14:24 -0500
-In-Reply-To: <1265409793-18314-2-git-send-email-Trond.Myklebust@netapp.com>
-Sender: linux-nfs-owner@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+To: "J. Bruce Fields" <bfields@fieldses.org>,
+	Neil Brown <neilb@suse.de>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 02/05/2010 05:43 PM, Trond Myklebust wrote:
-> It was recently pointed out that the NFSERR_SERVERFAULT error, which is
-> designed to inform the user of a serious internal error on the server, was
-> being mapped to an error value that is internal to the kernel.
->
-> This patch maps it to the error EREMOTEIO, which is exported to userland
-> through errno.h.
->
-> Signed-off-by: Trond Myklebust<Trond.Myklebust@netapp.com>
-> Cc: stable@kernel.org
-> ---
->   fs/nfs/mount_clnt.c |    2 +-
->   fs/nfs/nfs2xdr.c    |    2 +-
->   fs/nfs/nfs4xdr.c    |    6 +++---
->   3 files changed, 5 insertions(+), 5 deletions(-)
->
-> diff --git a/fs/nfs/mount_clnt.c b/fs/nfs/mount_clnt.c
-> index 0adefc4..59047f8 100644
-> --- a/fs/nfs/mount_clnt.c
-> +++ b/fs/nfs/mount_clnt.c
-> @@ -120,7 +120,7 @@ static struct {
->   	{ .status = MNT3ERR_INVAL,		.errno = -EINVAL,	},
->   	{ .status = MNT3ERR_NAMETOOLONG,	.errno = -ENAMETOOLONG,	},
->   	{ .status = MNT3ERR_NOTSUPP,		.errno = -ENOTSUPP,	},
-> -	{ .status = MNT3ERR_SERVERFAULT,	.errno = -ESERVERFAULT,	},
-> +	{ .status = MNT3ERR_SERVERFAULT,	.errno = -EREMOTEIO,	},
->   };
->
->   struct mountres {
+Hi,
 
-The decode_status() and decode_fhs_status() functions return -EACCES if 
-they don't recognize the server's error code.  Should they return 
--EREMOTEIO instead?
+I've recently noticed I couldn't mount nfs on 2.6.33-rc6. The environment is
 
-Otherwise, looks good.
+	server (nfsd-v3, 2.6.33-rc6) <-> client (2.6.32.7, nfs-utils 1.2.1)
 
-> diff --git a/fs/nfs/nfs2xdr.c b/fs/nfs/nfs2xdr.c
-> index 5e078b2..7bc2da8 100644
-> --- a/fs/nfs/nfs2xdr.c
-> +++ b/fs/nfs/nfs2xdr.c
-> @@ -699,7 +699,7 @@ static struct {
->   	{ NFSERR_BAD_COOKIE,	-EBADCOOKIE	},
->   	{ NFSERR_NOTSUPP,	-ENOTSUPP	},
->   	{ NFSERR_TOOSMALL,	-ETOOSMALL	},
-> -	{ NFSERR_SERVERFAULT,	-ESERVERFAULT	},
-> +	{ NFSERR_SERVERFAULT,	-EREMOTEIO	},
->   	{ NFSERR_BADTYPE,	-EBADTYPE	},
->   	{ NFSERR_JUKEBOX,	-EJUKEBOX	},
->   	{ -1,			-EIO		}
-> diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-> index e437fd6..5cd5184 100644
-> --- a/fs/nfs/nfs4xdr.c
-> +++ b/fs/nfs/nfs4xdr.c
-> @@ -4631,7 +4631,7 @@ static int decode_sequence(struct xdr_stream *xdr,
->   	 * If the server returns different values for sessionID, slotID or
->   	 * sequence number, the server is looney tunes.
->   	 */
-> -	status = -ESERVERFAULT;
-> +	status = -EREMOTEIO;
->
->   	if (memcmp(id.data, res->sr_session->sess_id.data,
->   		   NFS4_MAX_SESSIONID_LEN)) {
-> @@ -5774,7 +5774,7 @@ static struct {
->   	{ NFS4ERR_BAD_COOKIE,	-EBADCOOKIE	},
->   	{ NFS4ERR_NOTSUPP,	-ENOTSUPP	},
->   	{ NFS4ERR_TOOSMALL,	-ETOOSMALL	},
-> -	{ NFS4ERR_SERVERFAULT,	-ESERVERFAULT	},
-> +	{ NFS4ERR_SERVERFAULT,	-EREMOTEIO	},
->   	{ NFS4ERR_BADTYPE,	-EBADTYPE	},
->   	{ NFS4ERR_LOCKED,	-EAGAIN		},
->   	{ NFS4ERR_SYMLINK,	-ELOOP		},
-> @@ -5801,7 +5801,7 @@ nfs4_stat_to_errno(int stat)
->   	}
->   	if (stat<= 10000 || stat>  10100) {
->   		/* The server is looney tunes. */
-> -		return -ESERVERFAULT;
-> +		return -EREMOTEIO;
->   	}
->   	/* If we cannot translate the error, the recovery routines should
->   	 * handle it.
+And mount command is
+
+	# mount server:/path /mntpoint
+
+(i.e. without any options. If I specified "vers=3" option, it works).
+
+With some debugging, it seems to change of the error code on nfsd - the
+log of failure is the following.
+
+nfsd_dispatch: vers 4 proc 0
+nfsd_dispatch: vers 4 proc 1
+nfsv4 compound op #1/3: 24 (OP_PUTROOTFH)
+nfsv4 compound op ffff88012d9e10c0 opcnt 3 #1: 24: status 30000
+nfsv4 compound returned 30000
+nfsd: Dropping request; may be revisited later
+found domain *.xxx.xx
+found fsidtype 1
+found fsid length 4
+Path seems to be <>
+nfsd_dispatch: vers 4 proc 1
+nfsv4 compound op #1/3: 24 (OP_PUTROOTFH)
+nfsv4 compound op ffff88012dab6228 opcnt 3 #1: 24: status 10006
+nfsv4 compound returned 10006
+
+On the older kernel (2.6.32.7), it seems to fallback to nfsv3,
+
+nfsd_dispatch: vers 4 proc 0
+nfsd_dispatch: vers 4 proc 1
+nfsv4 compound op #1/3: 24 (OP_PUTROOTFH)
+nfsv4 compound op d9c04850 opcnt 3 #1: 24: status 2
+nfsv4 compound returned 2
+nfsd_dispatch: vers 3 proc 0
+[...]
 
 
+And the following commit seems to change the behavior.
+
+[nfsd4: fix error return when pseudoroot missing]
+f39bde24b275ddc45df1ed835725b609e178c7a0
+
+Well, anyway, is this a expected behavior change, or something bug?
+
+Thanks.
 -- 
-chuck[dot]lever[at]oracle[dot]com
+OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>
