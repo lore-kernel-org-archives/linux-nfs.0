@@ -1,39 +1,63 @@
-From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: Failure to fallback to nfsd-v3 (?)
-Date: Sun, 7 Feb 2010 03:31:03 -0500
-Message-ID: <20100207083103.GA4602@infradead.org>
-References: <87pr4h67rf.fsf@devron.myhome.or.jp> <20100207041016.GA16865@fieldses.org> <8763695u96.fsf@devron.myhome.or.jp>
+From: Benny Halevy <bhalevy@panasas.com>
+Subject: Re: [pnfs] [PATCH 2/5] pnfsd: fix pnfs_export_operations layoutget
+ valid errors
+Date: Sun, 07 Feb 2010 11:05:42 +0200
+Message-ID: <4B6E8266.3020502@panasas.com>
+References: <1265389813-6823-1-git-send-email-andros@netapp.com>	<1265389813-6823-2-git-send-email-andros@netapp.com> <1265389813-6823-3-git-send-email-andros@netapp.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-	Neil Brown <neilb@suse.de>, linux-nfs@vger.kernel.org,
-	linux-kernel@vger.kernel.org
-To: OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: pnfs@linux-nfs.org, linux-nfs@vger.kernel.org
+To: andros@netapp.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([18.85.46.34]:46653 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752335Ab0BGIbI (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 7 Feb 2010 03:31:08 -0500
-In-Reply-To: <8763695u96.fsf-x/W9pkDDSe1TgC2z9Sl/nXf5DAMn2ifp@public.gmane.org>
+Received: from daytona.panasas.com ([67.152.220.89]:23736 "EHLO
+	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1751176Ab0BGJFp (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 7 Feb 2010 04:05:45 -0500
+In-Reply-To: <1265389813-6823-3-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sun, Feb 07, 2010 at 05:23:49PM +0900, OGAWA Hirofumi wrote:
-> "J. Bruce Fields" <bfields@fieldses.org> writes:
+On Feb. 05, 2010, 19:10 +0200, andros@netapp.com wrote:
+> From: Andy Adamson <andros@netapp.com>
 > 
-> >> And the following commit seems to change the behavior.
-> >> 
-> >> [nfsd4: fix error return when pseudoroot missing]
-> >> f39bde24b275ddc45df1ed835725b609e178c7a0
-> >> 
-> >> Well, anyway, is this a expected behavior change, or something bug?
-> >
-> > It's expected.  I'd recommend turning off nfsv4 on the server (add "-N4"
-> > to the rpc.nfsd commandline) for now.
+> Signed-off-by: Andy Adamson <andros@netapp.com>
+> ---
+>  fs/nfsd/nfs4pnfsd.c |    6 ++----
+>  1 files changed, 2 insertions(+), 4 deletions(-)
 > 
-> This looks like the silent user visible change. So, it would be better
-> to add more comment at least in changelog.
+> diff --git a/fs/nfsd/nfs4pnfsd.c b/fs/nfsd/nfs4pnfsd.c
+> index 816e2f0..3951e02 100644
+> --- a/fs/nfsd/nfs4pnfsd.c
+> +++ b/fs/nfsd/nfs4pnfsd.c
+> @@ -870,6 +870,7 @@ nfs4_pnfs_get_layout(struct nfsd4_pnfs_layoutget *lgp,
+>  	if (status) {
+>  		switch (status) {
+>  		case -ETOOSMALL:
+> +		case -E2BIG:
 
-Or rather it should be fixed.  We should not silently break existing
-and probably rather common setups.
+Should we allow the filesystem to return nfs errors?
+Or even require it to do so?
 
+This can be done by adding cases for the
+valid error values for LAYOUTGET in this switch statement.
+
+Benny
+
+>  			status = nfserr_toosmall;
+>  			break;
+>  		case -ENOMEM:
+> @@ -878,10 +879,7 @@ nfs4_pnfs_get_layout(struct nfsd4_pnfs_layoutget *lgp,
+
+		case nfserr_layouttrylater:
+
+>  			status = nfserr_layouttrylater;
+>  			break;
+>  		case -ENOENT:
+> -			status = nfserr_badlayout;
+> -			break;
+> -		case -E2BIG:
+> -			status = nfserr_toosmall;
+> +			status = nfserr_stale;
+>  			break;
+>  		default:
+>  			status = nfserr_layoutunavailable;
