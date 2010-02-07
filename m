@@ -1,73 +1,140 @@
-From: Suresh Jayaraman <sjayaraman@suse.de>
-Subject: Re: [PATCH 1/2] NFS: Fix a bug in nfs_fscache_release_page()
-Date: Sun, 07 Feb 2010 16:56:15 +0530
-Message-ID: <4B6EA357.3000604@suse.de>
-References: <1265409793-18314-1-git-send-email-Trond.Myklebust@netapp.com>
+From: "calculix-BGeptl67XyCzQB+pC5nmwQ@public.gmane.org" <calculix-BGeptl67XyCzQB+pC5nmwQ@public.gmane.org>
+Subject: Re: [NFS] Portmapper problem, no access the server after update to
+ debian squeeze
+Date: Sun, 07 Feb 2010 21:35:48 +0100
+Message-ID: <4B6F2424.4090701@online.de>
+References: <4B6C6E65.1000706@online.de> <1265398366.3201.12.camel@localhost>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Cc: linux-nfs@vger.kernel.org
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:48514 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754640Ab0BGL0Y (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 7 Feb 2010 06:26:24 -0500
-In-Reply-To: <1265409793-18314-1-git-send-email-Trond.Myklebust@netapp.com>
+Received: from moutng.kundenserver.de ([212.227.126.171]:49575 "EHLO
+	moutng.kundenserver.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755912Ab0BGSUF (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 7 Feb 2010 13:20:05 -0500
+In-Reply-To: <1265398366.3201.12.camel@localhost>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 02/06/2010 04:13 AM, Trond Myklebust wrote:
-> Not having an fscache cookie is perfectly valid if the user didn't mount
-> with the fscache option.
-> 
-> This patch fixes http://bugzilla.kernel.org/show_bug.cgi?id=15234
-> 
-> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-> Cc: stable@kernel.org
-> ---
->  fs/nfs/fscache.c |    6 +++---
->  1 files changed, 3 insertions(+), 3 deletions(-)
-> 
-> diff --git a/fs/nfs/fscache.c b/fs/nfs/fscache.c
-> index fa58800..534adb8 100644
-> --- a/fs/nfs/fscache.c
-> +++ b/fs/nfs/fscache.c
-> @@ -355,11 +355,11 @@ void nfs_fscache_reset_inode_cookie(struct inode *inode)
->  int nfs_fscache_release_page(struct page *page, gfp_t gfp)
->  {
->  	struct nfs_inode *nfsi = NFS_I(page->mapping->host);
-> -	struct fscache_cookie *cookie = nfsi->fscache;
-> -
-> -	BUG_ON(!cookie);
->  
->  	if (PageFsCache(page)) {
-> +		struct fscache_cookie *cookie = nfsi->fscache;
-> +
-> +		BUG_ON(!cookie);
->  		dfprintk(FSCACHE, "NFS: fscache releasepage (0x%p/0x%p/0x%p)\n",
->  			 cookie, page, nfsi);
->  
+Trond,
+Thanks you very much! This solved my problem.
+Peter
 
-There are only two callers for nfs_fscache_release_page() -
-nfs_release_page() and nfs_migrate_page(). nfs_migrate_page already does
-this:
+Trond Myklebust wrote:
+> On Fri, 2010-02-05 at 20:15 +0100, calculix-BGeptl67XyCzQB+pC5nmwQ@public.gmane.org wrote: 
+>   
+>> Dear NFS-Team,
+>> Since I updated my server from Debian-Lenny to Squeeze I am not able 
+>> anymore to mount, ssh, etc to my server.  I have gone through the 
+>> nfs-howto, followed the troubleshouting process with no success.
+>> I can reach the server with ping without any problems. Only mount, ssh, 
+>> sftp etc. does not work. My portmapper seams not to allow the access.
+>>
+>> Please help!
+>>
+>> Thanks
+>> Peter
+>>     
+>
+> On your server:
+>
+> 'dpkg-reconfigure portmap'
+>
+> and tell it not to restrict the portmapper to the loopback address.
+>
+> Trond
+>
+>
+>   
+>> ******** Here is my /etc/exports
+>> # /etc/exports: the access control list for filesystems which may be 
+>> exported
+>> #               to NFS clients.  See exports(5).
+>> #
+>> # Example for NFSv2 and NFSv3:
+>> # /srv/homes       hostname1(rw,sync,no_subtree_check) 
+>> hostname2(ro,sync,no_subtree_check)
+>> #
+>> # Example for NFSv4:
+>> # /srv/nfs4        gss/krb5i(rw,sync,fsid=0,crossmnt,no_subtree_check)
+>> # /srv/nfs4/homes  gss/krb5i(rw,sync,no_subtree_check)
+>> #
+>> /data/PUBLIC    192.168.178.27(rw,sync,no_subtree_check)
+>> ******** End of /etc/exports
+>>
+>> ******** Here is my /etc/hosts.allow
+>> # /etc/hosts.allow: list of hosts that are allowed to access the system.
+>> #                   See the manual pages hosts_access(5) and 
+>> hosts_options(5).
+>> #
+>> # Example:    ALL: LOCAL @some_netgroup
+>> #             ALL: .foobar.edu EXCEPT terminalserver.foobar.edu
+>> #
+>> # If you're going to protect the portmapper use the name "portmap" for the
+>> # daemon name. Remember that you can only use the keyword "ALL" and IP
+>> # addresses (NOT host or domain names) for the portmapper, as well as for
+>> # rpc.mountd (the NFS mount daemon). See portmap(8) and rpc.mountd(8)
+>> # for further information.
+>> #
+>> ALL:192.168.178.0/255.255.255.0(rw,sync)
+>> ******** End of /etc/hosts.allow
+>>
+>> ******** My /etc/hosts.deny is empty
+>>
+>> ******** Here is the output of rpcinfo -p localhost from the server
+>>    Program Vers Proto   Port
+>>     100000    2   tcp    111  portmapper
+>>     100000    2   udp    111  portmapper
+>>     100024    1   udp  59341  status
+>>     100024    1   tcp  52100  status
+>>     100021    1   udp  43350  nlockmgr
+>>     100021    3   udp  43350  nlockmgr
+>>     100021    4   udp  43350  nlockmgr
+>>     100021    1   tcp  56947  nlockmgr
+>>     100021    3   tcp  56947  nlockmgr
+>>     100021    4   tcp  56947  nlockmgr
+>>     100003    2   tcp   2049  nfs
+>>     100003    3   tcp   2049  nfs
+>>     100003    4   tcp   2049  nfs
+>>     100003    2   udp   2049  nfs
+>>     100003    3   udp   2049  nfs
+>>     100003    4   udp   2049  nfs
+>>     100005    1   udp  51709  mountd
+>>     100005    1   tcp  36097  mountd
+>>     100005    2   udp  51709  mountd
+>>     100005    2   tcp  36097  mountd
+>>     100005    3   udp  51709  mountd
+>>     100005    3   tcp  36097  mountd
+>> ******* End of rpcinfo -p localhost
+>>
+>> ******* Here is the output of rpcinfo -p 192.168.178.32 from the client
+>> rpcinfo: Portmapper kann nicht erreicht werden: RPC: Fehler des 
+>> entfernten Systems - Verbindungsaufbau abgelehnt
+>> ******* This seams to be my problem, but what to do?
+>>
+>> ------------------------------------------------------------------------------
+>> The Planet: dedicated and managed hosting, cloud storage, colocation
+>> Stay online with enterprise data centers and the best network in the business
+>> Choose flexible plans and management services without long-term contracts
+>> Personal 24x7 support from experience hosting pros just a phone call away.
+>> http://p.sf.net/sfu/theplanet-com
+>> _______________________________________________
+>> NFS maillist  -  NFS@lists.sourceforge.net
+>> https://lists.sourceforge.net/lists/listinfo/nfs
+>> _______________________________________________
+>> Please note that nfs@lists.sourceforge.net is being discontinued.
+>> Please subscribe to linux-nfs@vger.kernel.org instead.
+>>     http://vger.kernel.org/vger-lists.html#linux-nfs
+>>
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>     
+>
+>
+>
+>
+>   
 
-       if (PageFsCache(page))
-                nfs_fscache_release_page(page, GFP_KERNEL);
-
-and the assumption in nfs_release_page() is that the page should have
-either PG_private set or PG_fscache set and nfs_fscache_release_page
-gets called only if PG_private is not set.
-
-I think the idea is that nfs_fscache_release_page should not get called
-if fsc option is not used. So it appears to me this patch is fixing the
-symptom not the actual issue. Perhaps, this the assumption in
-nfs_release_page is wrong or the PageFsCache() check should be moved to
-nfs_release_page?
-
-
-
-Thanks,
-
--- 
-Suresh Jayaraman
