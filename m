@@ -1,94 +1,53 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [pnfs] [PATCH 2/5] pnfsd: fix pnfs_export_operations layoutget
-	valid errors
-Date: Mon, 8 Feb 2010 16:01:22 -0500
-Message-ID: <20100208210122.GI12101@fieldses.org>
-References: <1265389813-6823-1-git-send-email-andros@netapp.com> <1265389813-6823-2-git-send-email-andros@netapp.com> <1265389813-6823-3-git-send-email-andros@netapp.com> <4B6E8266.3020502@panasas.com> <56F28E32-DE24-42C3-BDA1-B305704630FB@netapp.com>
+Subject: Re: [PATCH] lockd: release reference to nsm_handle in
+	nlm_host_rebooted
+Date: Mon, 8 Feb 2010 16:19:08 -0500
+Message-ID: <20100208211908.GB14942@fieldses.org>
+References: <1265400552-8375-1-git-send-email-jlayton@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Benny Halevy <bhalevy@panasas.com>,
-	pnfs mailing list <pnfs@linux-nfs.org>,
-	Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-To: Andy Adamson <andros@netapp.com>
+Cc: linux-nfs@vger.kernel.org
+To: Jeff Layton <jlayton@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:48542 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:53374 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751992Ab0BHVBD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 8 Feb 2010 16:01:03 -0500
-In-Reply-To: <56F28E32-DE24-42C3-BDA1-B305704630FB@netapp.com>
+	id S1751507Ab0BHVSp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 8 Feb 2010 16:18:45 -0500
+In-Reply-To: <1265400552-8375-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Feb 08, 2010 at 03:41:44PM -0500, Andy Adamson wrote:
->
-> On Feb 7, 2010, at 4:05 AM, Benny Halevy wrote:
->
->> On Feb. 05, 2010, 19:10 +0200, andros@netapp.com wrote:
->>> From: Andy Adamson <andros@netapp.com>
->>>
->>> Signed-off-by: Andy Adamson <andros@netapp.com>
->>> ---
->>> fs/nfsd/nfs4pnfsd.c |    6 ++----
->>> 1 files changed, 2 insertions(+), 4 deletions(-)
->>>
->>> diff --git a/fs/nfsd/nfs4pnfsd.c b/fs/nfsd/nfs4pnfsd.c
->>> index 816e2f0..3951e02 100644
->>> --- a/fs/nfsd/nfs4pnfsd.c
->>> +++ b/fs/nfsd/nfs4pnfsd.c
->>> @@ -870,6 +870,7 @@ nfs4_pnfs_get_layout(struct nfsd4_pnfs_layoutget 
->>> *lgp,
->>> 	if (status) {
->>> 		switch (status) {
->>> 		case -ETOOSMALL:
->>> +		case -E2BIG:
->>
->> Should we allow the filesystem to return nfs errors?
->> Or even require it to do so?
->>
->> This can be done by adding cases for the
->> valid error values for LAYOUTGET in this switch statement.
->
-> OK. From re-reading all the past mail and the comments on this latest  
-> patch set:
->
-> 1) We want a limited number of well documented error returns -  
-> documented as part of the filesystem API not just the spec.
->
-> 2) Start with just the errors that we know we need for gfs2 and exofs,  
-> and expand the list later as necessary.
->
-> 3) Allow only nfserr_xxxx errors.
->
->
-> Does this address the comments? Do you want more documentation, if so,  
-> where?
->
->         if (status) {
-> +               /*
-> +                * The allowable error codes for the layout_get pNFS  
-> export
-> +                * operations vector function can be expanded as needed
-> +                * to include other errors defined for the LAYOUTGET  
-> pNFS
-> +                * operation.
-> +                */
+On Fri, Feb 05, 2010 at 03:09:12PM -0500, Jeff Layton wrote:
+> nsm_reboot_lookup takes a reference to the nsm_handle that it returns,
+> but nlm_host_rebooted never releases that reference.
 
-Could you dump some description of the cases into the error numbers, if
-it's not obvious?  E.g.:
+Makes sense to me; I'll apply to the nfsd tree.
 
-> +               case nfserr_badiomode:
-			/*
-			 * filesystem doesn't want to give out a
-			 * writeable layout in this case.
-			 */
-> +               case nfserr_badlayout:
-> +               case nfserr_layouttrylater:
-> +               case nfserr_layoutunavailable:
-> +               case nfserr_toosmall:
-
-just to summarize what the various filesystems are doing.
-
-And don't worry about it being a little messy or verbose; we can clean
-it up later.
+(How did you run across this?)
 
 --b.
+
+> 
+> Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> Reviewed-by: Chuck Lever <chuck.lever@oracle.com>
+> ---
+>  fs/lockd/host.c |    2 +-
+>  1 files changed, 1 insertions(+), 1 deletions(-)
+> 
+> diff --git a/fs/lockd/host.c b/fs/lockd/host.c
+> index 4600c20..bb464d1 100644
+> --- a/fs/lockd/host.c
+> +++ b/fs/lockd/host.c
+> @@ -479,8 +479,8 @@ again:	mutex_lock(&nlm_host_mutex);
+>  			}
+>  		}
+>  	}
+> -
+>  	mutex_unlock(&nlm_host_mutex);
+> +	nsm_release(nsm);
+>  }
+>  
+>  /*
+> -- 
+> 1.6.6
+> 
