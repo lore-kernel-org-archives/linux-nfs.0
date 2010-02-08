@@ -1,124 +1,91 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from bld-mail19.adl2.internode.on.net ([150.101.137.104]:49519 "EHLO
-	mail.internode.on.net" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1751148Ab0BXFWU (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 24 Feb 2010 00:22:20 -0500
-Date: Wed, 24 Feb 2010 16:22:15 +1100
-From: Dave Chinner <david@fromorbit.com>
-To: Wu Fengguang <fengguang.wu@intel.com>
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-        Linux Memory Management List <linux-mm@kvack.org>,
-        LKML <linux-kernel@vger.kernel.org>
-Subject: Re: [RFC] nfs: use 2*rsize readahead size
-Message-ID: <20100224052215.GH16175@discord.disaster>
-References: <20100224024100.GA17048@localhost> <20100224032934.GF16175@discord.disaster> <20100224041822.GB27459@localhost>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20100224041822.GB27459@localhost>
+Received: from acsinet12.oracle.com ([141.146.126.234]:50752 "EHLO
+	acsinet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753963Ab0BHSpw (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 8 Feb 2010 13:45:52 -0500
+Message-ID: <4B705B63.8060604@oracle.com>
+Date: Mon, 08 Feb 2010 13:43:47 -0500
+From: Chuck Lever <chuck.lever@oracle.com>
+To: "Batsakis, Alexandros" <Alexandros.Batsakis@netapp.com>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 6/6] RPC: adjust timeout for connect, bind, restablish
+ so that they sensitive to the major time out value
+References: <1265155576-7618-1-git-send-email-batsakis@netapp.com> <1265155576-7618-2-git-send-email-batsakis@netapp.com> <1265155576-7618-3-git-send-email-batsakis@netapp.com> <1265155576-7618-4-git-send-email-batsakis@netapp.com> <1265155576-7618-5-git-send-email-batsakis@netapp.com> <1265155576-7618-6-git-send-email-batsakis@netapp.com> <1265155576-7618-7-git-send-email-batsakis@netapp.com> <4B6C7BCA.2040806@oracle.com> <383F4881-BD88-4155-B605-4D24F5B05BDD@netapp.com> <4B6C9FA7.2010702@oracle.com> <77EBFB14-A6B6-41DC-90DC-7A00548DFAEA@netapp.com> <4B6CB3C7.8070001@oracle.com> <B9364369CA66BF45806C2CD86EAB8BA60259D23D@SACMVEXC3-PRD.hq.netapp.com> <4B6E0EF5.70307@oracle.com> <2CDC4373-10AD-4F84-BA44-3C2106D590BE@netapp.com>
+In-Reply-To: <2CDC4373-10AD-4F84-BA44-3C2106D590BE@netapp.com>
+Content-Type: text/plain; charset=us-ascii; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, Feb 24, 2010 at 12:18:22PM +0800, Wu Fengguang wrote:
-> On Wed, Feb 24, 2010 at 11:29:34AM +0800, Dave Chinner wrote:
-> > On Wed, Feb 24, 2010 at 10:41:01AM +0800, Wu Fengguang wrote:
-> > > With default rsize=512k and NFS_MAX_READAHEAD=15, the current NFS
-> > > readahead size 512k*15=7680k is too large than necessary for typical
-> > > clients.
-> > > 
-> > > On a e1000e--e1000e connection, I got the following numbers
-> > > 
-> > > 	readahead size		throughput
-> > > 		   16k           35.5 MB/s
-> > > 		   32k           54.3 MB/s
-> > > 		   64k           64.1 MB/s
-> > > 		  128k           70.5 MB/s
-> > > 		  256k           74.6 MB/s
-> > > rsize ==>	  512k           77.4 MB/s
-> > > 		 1024k           85.5 MB/s
-> > > 		 2048k           86.8 MB/s
-> > > 		 4096k           87.9 MB/s
-> > > 		 8192k           89.0 MB/s
-> > > 		16384k           87.7 MB/s
-> > > 
-> > > So it seems that readahead_size=2*rsize (ie. keep two RPC requests in flight)
-> > > can already get near full NFS bandwidth.
-> > > 
-> > > The test script is:
-> > > 
-> > > #!/bin/sh
-> > > 
-> > > file=/mnt/sparse
-> > > BDI=0:15
-> > > 
-> > > for rasize in 16 32 64 128 256 512 1024 2048 4096 8192 16384
-> > > do
-> > > 	echo 3 > /proc/sys/vm/drop_caches
-> > > 	echo $rasize > /sys/devices/virtual/bdi/$BDI/read_ahead_kb
-> > > 	echo readahead_size=${rasize}k
-> > > 	dd if=$file of=/dev/null bs=4k count=1024000
-> > > done
-> > 
-> > That's doing a cached read out of the server cache, right? You
-> 
-> It does not involve disk IO at least. (The sparse file dataset is
-> larger than server cache.)
+On 02/06/2010 11:11 PM, Batsakis, Alexandros wrote:
+>
+>
+> On Feb 6, 2010, at 16:53, "Chuck Lever" <chuck.lever@oracle.com> wrote:
+>
+>> On 02/05/2010 11:05 PM, Batsakis, Alexandros wrote:
+>>>
+>>> My replies marked with the "AB" prefix
+>>>
+>>> -----Original Message-----
+>>> From: Chuck Lever [mailto:chuck.lever@oracle.com]
+>>> Sent: Fri 2/5/2010 4:11 PM
+>>> To: Batsakis, Alexandros
+>>> Cc: Batsakis, Alexandros; linux-nfs@vger.kernel.org; Myklebust, Trond
+>>> Subject: Re: [PATCH 6/6] RPC: adjust timeout for connect, bind,
+>>> restablish so that they sensitive to the major time out value
+>>>
+>>> On 02/05/2010 06:04 PM, Batsakis, Alexandros wrote:
+>>> >
+>>> >
+>>> > On Feb 5, 2010, at 14:47, "Chuck Lever" <chuck.lever@oracle.com>
+>>> wrote:
+>>> >
+>>> >> On 02/05/2010 05:14 PM, Batsakis, Alexandros wrote:
+>>> >>> Yeah sure,
+>>> >>>
+>>> >>> So imagine that for a specific connection the remaining major timeo
+>>> >>> value is 30secs. Xs_connect has a default timeout before
+>>> attempting to
+>>> >>> reconnect of 60secs. The user (NFS) expects to "hear back" from
+>>> the rpc
+>>> >>> layer within the timeout as in often cases e.g. lease renewal,
+>>> it's of
+>>> >>> no benefit for an operation to reach the server at a later time and
+>>> miss
+>>> >>> the critical time because it was sleeping for an arbitrary amount of
+>>> >>> time.
+>>>
+>>> Maybe you want RPC_TASK_SOFTCONN for NFSv4 renewals instead of
+>>> RPC_TASK_SOFT. This would cause the RENEW request to fail immediately
+>>> if the transport can't connect.
+>>>
+>>> AB: is this a new flag ? I am not familiar with it. Or are you proposing
+>>> to add such a flag?
+>>> It's not an unreasonable thing to do
+>>
+>> The flag was added recently (maybe in 2.6.33-rc?). It causes an
+>> individual RPC request to fail immediately if the underlying transport
+>> cannot be connected. It bypasses the reconnect timeout if the
+>> transport is not already connected.
+>>
+>
+> Oh OK. Maybe then it's a reasonable workaround to the reconnection
+> policy changes. I think though that the rest of the changes wrt the
+> major timeout are still valid. Also IMHO the max of 5min seems a lot,
+> especially for operations that are state-oriented like in v4.0 and v4.1.
 
-It still results in effectively the same thing: very low, consistent
-IO latency.
+I'm not averse to reducing the maximum reconnect delay to something like 
+60 seconds.  This might even be an acceptable work around for some of 
+the issues you've raised.  Additional illumination of current reconnect 
+behavior may find that it no longer behaves as expected in the quick 
+server reboot cases, and that also should be addressed.
 
-Effectively all the test results show is that on a clean, low
-latency, uncongested network an unloaded NFS server that has no IO
-latency, a client only requires one 512k readahead block to hide 90%
-of the server read request latency.  I don't think this is a
-particularly good test to base a new default on, though.
+However, the fact that _all_ NFSv4 state-changing operations now have 
+additional delivery constraints makes this an issue larger than RENEWD 
+(which is the subject line of your original postings).  IMO sunrpc.ko is 
+not currently prepared to handle that kind of timing constraint 
+adequately.  Adjusting the retransmit behavior is simply not sufficient 
+to address these problems (and perhaps it is even orthogonal to them).
 
-e.g. What is the result with a smaller rsize? When the server
-actually has to do disk IO?  When multiple clients are reading at
-the same time so the server may not detect accesses as sequential
-and issue readahead? When another client is writing to the server at
-the same time as the read and causing significant read IO latency at
-the server?
-
-What I'm trying to say is that while I agree with your premise that
-a 7.8MB readahead window is probably far larger than was ever
-intended, I disagree with your methodology and environment for
-selecting a better default value.  The default readahead value needs
-to work well in as many situations as possible, not just in perfect
-1:1 client/server environment.
-
-> > might find the results are different if the server has to read the
-> > file from disk. I would expect reads from the server cache not
-> > to require much readahead as there is no IO latency on the server
-> > side for the readahead to hide....
-> 
-> Sure the result will be different when disk IO is involved.
-> In this case I would expect the server admin to setup the optimal
-> readahead size for the disk(s).
-
-The default should do the right thing when disk IO is involved, as
-almost no-one has an NFS server that doesn't do IO.... ;)
-
-> It sounds silly to have
-> 
->         client_readahead_size > server_readahead_size
-
-I don't think it is  - the client readahead has to take into account
-the network latency as well as the server latency. e.g. a network
-with a high bandwidth but high latency is going to need much more
-client side readahead than a high bandwidth, low latency network to
-get the same throughput. Hence it is not uncommon to see larger
-readahead windows on network clients than for local disk access.
-
-Also, the NFS server may not even be able to detect sequential IO
-patterns because of the combined access patterns from the clients,
-and so the only effective readahead might be what the clients
-issue....
-
-Cheers,
-
-Dave.
 -- 
-Dave Chinner
-david@fromorbit.com
+chuck[dot]lever[at]oracle[dot]com
