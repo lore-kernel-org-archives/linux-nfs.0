@@ -1,50 +1,113 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: Failure to fallback to nfsd-v3 (?)
-Date: Mon, 8 Feb 2010 13:33:43 -0500
-Message-ID: <20100208183343.GC10665@fieldses.org>
-References: <87pr4h67rf.fsf@devron.myhome.or.jp> <20100207041016.GA16865@fieldses.org> <8763695u96.fsf@devron.myhome.or.jp>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Neil Brown <neilb@suse.de>, linux-nfs@vger.kernel.org,
-	linux-kernel@vger.kernel.org
-To: OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>
+From: Andy Adamson <andros@netapp.com>
+Subject: Re: [pnfs] [PATCH 2/5] pnfsd: fix pnfs_export_operations layoutget valid errors
+Date: Mon, 8 Feb 2010 15:41:44 -0500
+Message-ID: <56F28E32-DE24-42C3-BDA1-B305704630FB@netapp.com>
+References: <1265389813-6823-1-git-send-email-andros@netapp.com>	<1265389813-6823-2-git-send-email-andros@netapp.com> <1265389813-6823-3-git-send-email-andros@netapp.com> <4B6E8266.3020502@panasas.com>
+Mime-Version: 1.0 (Apple Message framework v936)
+Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
+Cc: pnfs mailing list <pnfs@linux-nfs.org>,
+	Linux NFS Mailing list <linux-nfs@vger.kernel.org>,
+	"J. Bruce Fields" <bfields@fieldses.org>
+To: Benny Halevy <bhalevy@panasas.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:54733 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:36465 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752466Ab0BHSdV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 8 Feb 2010 13:33:21 -0500
-In-Reply-To: <8763695u96.fsf-x/W9pkDDSe1TgC2z9Sl/nXf5DAMn2ifp@public.gmane.org>
+	id S1751391Ab0BHUlq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 8 Feb 2010 15:41:46 -0500
+In-Reply-To: <4B6E8266.3020502@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sun, Feb 07, 2010 at 05:23:49PM +0900, OGAWA Hirofumi wrote:
-> "J. Bruce Fields" <bfields@fieldses.org> writes:
-> 
-> >> And the following commit seems to change the behavior.
-> >> 
-> >> [nfsd4: fix error return when pseudoroot missing]
-> >> f39bde24b275ddc45df1ed835725b609e178c7a0
-> >> 
-> >> Well, anyway, is this a expected behavior change, or something bug?
-> >
-> > It's expected.  I'd recommend turning off nfsv4 on the server (add "-N4"
-> > to the rpc.nfsd commandline) for now.
-> 
-> This looks like the silent user visible change. So, it would be better
-> to add more comment at least in changelog.
-> 
-> Well, anyway, thanks. (BTW, I assumed rpc.nfsd is typo of rpc.mountd)
 
-No, the -N4 tells rpc.mountd to turn off NFSv4 support before starting
-the server.
+On Feb 7, 2010, at 4:05 AM, Benny Halevy wrote:
 
-The problem is that the server is accepting NFSv4 rpc calls even though
-it doesn't actually support v4, so the mount fails a few rpc's later
-with an odd error.
+> On Feb. 05, 2010, 19:10 +0200, andros@netapp.com wrote:
+>> From: Andy Adamson <andros@netapp.com>
+>>
+>> Signed-off-by: Andy Adamson <andros@netapp.com>
+>> ---
+>> fs/nfsd/nfs4pnfsd.c |    6 ++----
+>> 1 files changed, 2 insertions(+), 4 deletions(-)
+>>
+>> diff --git a/fs/nfsd/nfs4pnfsd.c b/fs/nfsd/nfs4pnfsd.c
+>> index 816e2f0..3951e02 100644
+>> --- a/fs/nfsd/nfs4pnfsd.c
+>> +++ b/fs/nfsd/nfs4pnfsd.c
+>> @@ -870,6 +870,7 @@ nfs4_pnfs_get_layout(struct  
+>> nfsd4_pnfs_layoutget *lgp,
+>> 	if (status) {
+>> 		switch (status) {
+>> 		case -ETOOSMALL:
+>> +		case -E2BIG:
+>
+> Should we allow the filesystem to return nfs errors?
+> Or even require it to do so?
+>
+> This can be done by adding cases for the
+> valid error values for LAYOUTGET in this switch statement.
 
-I changed that error around the same time "mount" on the client was
-modified to start trying v4 support first, and the mount code included a
-workaround for the linux server behavior that only handled exactly the
-old errors.
+OK. From re-reading all the past mail and the comments on this latest  
+patch set:
 
---b.
+1) We want a limited number of well documented error returns -  
+documented as part of the filesystem API not just the spec.
+
+2) Start with just the errors that we know we need for gfs2 and exofs,  
+and expand the list later as necessary.
+
+3) Allow only nfserr_xxxx errors.
+
+
+Does this address the comments? Do you want more documentation, if so,  
+where?
+
+         if (status) {
++               /*
++                * The allowable error codes for the layout_get pNFS  
+export
++                * operations vector function can be expanded as needed
++                * to include other errors defined for the LAYOUTGET  
+pNFS
++                * operation.
++                */
++               case nfserr_badiomode:
++               case nfserr_badlayout:
++               case nfserr_layouttrylater:
++               case nfserr_layoutunavailable:
++               case nfserr_toosmall:
+                         break;
+                 default:
++                       BUG();
+                 }
+                 goto out_freelayout;
+
+-->Andy
+
+>
+> Benny
+>
+>> 			status = nfserr_toosmall;
+>> 			break;
+>> 		case -ENOMEM:
+>> @@ -878,10 +879,7 @@ nfs4_pnfs_get_layout(struct  
+>> nfsd4_pnfs_layoutget *lgp,
+>
+> 		case nfserr_layouttrylater:
+>
+>> 			status = nfserr_layouttrylater;
+>> 			break;
+>> 		case -ENOENT:
+>> -			status = nfserr_badlayout;
+>> -			break;
+>> -		case -E2BIG:
+>> -			status = nfserr_toosmall;
+>> +			status = nfserr_stale;
+>> 			break;
+>> 		default:
+>> 			status = nfserr_layoutunavailable;
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs"  
+> in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
