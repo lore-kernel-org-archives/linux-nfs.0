@@ -1,57 +1,76 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: Failure to fallback to nfsd-v3 (?)
-Date: Tue, 9 Feb 2010 11:55:47 -0500
-Message-ID: <20100209165547.GB29091@fieldses.org>
-References: <87pr4h67rf.fsf@devron.myhome.or.jp> <20100207041016.GA16865@fieldses.org> <8763695u96.fsf@devron.myhome.or.jp> <20100208183343.GC10665@fieldses.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Neil Brown <neilb@suse.de>, linux-nfs@vger.kernel.org,
-	linux-kernel@vger.kernel.org
-To: OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>
+From: andros@netapp.com
+Subject: [PATCH 1/6] pnfsd: fix file system API layout_get error codes
+Date: Tue,  9 Feb 2010 12:42:32 -0500
+Message-ID: <1265737357-9405-2-git-send-email-andros@netapp.com>
+References: <1265737357-9405-1-git-send-email-andros@netapp.com>
+Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
+To: pnfs@linux-nfs.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:33434 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:24051 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755030Ab0BIQzY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 9 Feb 2010 11:55:24 -0500
-In-Reply-To: <20100208183343.GC10665@fieldses.org>
+	id S1755345Ab0BIRm7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 9 Feb 2010 12:42:59 -0500
+In-Reply-To: <1265737357-9405-1-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Feb 08, 2010 at 01:33:43PM -0500, J. Bruce Fields wrote:
-> On Sun, Feb 07, 2010 at 05:23:49PM +0900, OGAWA Hirofumi wrote:
-> > "J. Bruce Fields" <bfields@fieldses.org> writes:
-> > 
-> > >> And the following commit seems to change the behavior.
-> > >> 
-> > >> [nfsd4: fix error return when pseudoroot missing]
-> > >> f39bde24b275ddc45df1ed835725b609e178c7a0
-> > >> 
-> > >> Well, anyway, is this a expected behavior change, or something bug?
-> > >
-> > > It's expected.  I'd recommend turning off nfsv4 on the server (add "-N4"
-> > > to the rpc.nfsd commandline) for now.
-> > 
-> > This looks like the silent user visible change. So, it would be better
-> > to add more comment at least in changelog.
-> > 
-> > Well, anyway, thanks. (BTW, I assumed rpc.nfsd is typo of rpc.mountd)
-> 
-> No, the -N4 tells rpc.mountd to turn off NFSv4 support before starting
+From: Andy Adamson <andros@netapp.com>
 
-(Hah!--trying to correct you, I got it wrong myself--I really did mean
-rpc.*nfsd*, not rpc.mountd.)
+Signed-off-by: Andy Adamson <andros@netapp.com>
+---
+ fs/nfsd/nfs4pnfsd.c |   36 ++++++++++++++++++++++--------------
+ 1 files changed, 22 insertions(+), 14 deletions(-)
 
---b.
+diff --git a/fs/nfsd/nfs4pnfsd.c b/fs/nfsd/nfs4pnfsd.c
+index 816e2f0..75bddd8 100644
+--- a/fs/nfsd/nfs4pnfsd.c
++++ b/fs/nfsd/nfs4pnfsd.c
+@@ -868,23 +868,31 @@ nfs4_pnfs_get_layout(struct nfsd4_pnfs_layoutget *lgp,
+ 		res.lg_seg.offset, res.lg_seg.length);
+ 
+ 	if (status) {
++		/*
++		 * The allowable error codes for the layout_get pNFS export
++		 * operations vector function (from the file system) can be
++		 * expanded as needed to include other errors defined for
++		 * the RFC 5561 LAYOUTGET operation.
++		 */
+ 		switch (status) {
+-		case -ETOOSMALL:
+-			status = nfserr_toosmall;
+-			break;
+-		case -ENOMEM:
+-		case -EAGAIN:
+-		case -EINTR:
+-			status = nfserr_layouttrylater;
+-			break;
+-		case -ENOENT:
+-			status = nfserr_badlayout;
+-			break;
+-		case -E2BIG:
+-			status = nfserr_toosmall;
++		case nfserr_acces:
++		case nfserr_badiomode:
++			/* No support for LAYOUTIOMODE4_RW layouts */
++		case nfserr_badlayout:
++			/* No layout matching loga_minlength rules */
++		case nfserr_inval:
++		case nfserr_io:
++		case nfserr_layouttrylater:
++		case nfserr_layoutunavailable:
++		case nfserr_locked:
++		case nfserr_nospc:
++		case nfserr_recallconflict:
++		case nfserr_serverfault:
++		case nfserr_toosmall:
++			/* Requested layout to big for loga_maxcount */
+ 			break;
+ 		default:
+-			status = nfserr_layoutunavailable;
++			BUG();
+ 		}
+ 		goto out_freelayout;
+ 	}
+-- 
+1.6.6
 
-> the server.
-> 
-> The problem is that the server is accepting NFSv4 rpc calls even though
-> it doesn't actually support v4, so the mount fails a few rpc's later
-> with an odd error.
-> 
-> I changed that error around the same time "mount" on the client was
-> modified to start trying v4 support first, and the mount code included a
-> workaround for the linux server behavior that only handled exactly the
-> old errors.
-> 
-> --b.
