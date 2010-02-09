@@ -1,36 +1,39 @@
-From: Suresh Jayaraman <sjayaraman@suse.de>
-Subject: Re: [PATCH 1/2] NFS: Fix a bug in nfs_fscache_release_page()
-Date: Tue, 09 Feb 2010 11:56:14 +0530
-Message-ID: <4B710006.7070704@suse.de>
-References: <1265409793-18314-1-git-send-email-Trond.Myklebust@netapp.com>	 <4B6EA357.3000604@suse.de>  <1265635435.5235.4.camel@localhost>	 <1265640621.5235.23.camel@localhost>  <4B703CF6.3020301@suse.de> <1265647196.5235.35.camel@localhost>
+From: Da Grinch <grinch_01@hotmail.com>
+Subject: [NFS] (no subject)
+Date: Tue, 9 Feb 2010 09:06:51 +0000
+Message-ID: <COL106-W511C0C8747B229764BAD6088500__47232.0965993733$1265706448$gmane$org@phx.gbl>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: linux-nfs@vger.kernel.org
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Content-Type: text/plain; charset="us-ascii"
+To: <axp-list@redhat.com>, <nfs@lists.sourceforge.net>,
+	<port-alpha-S783fYmB3Ccdnm+yROfE0A@public.gmane.org>, <grinch_01@hotmail.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from cantor.suse.de ([195.135.220.2]:35524 "EHLO mx1.suse.de"
+Received: from neil.brown.name ([220.233.11.133]:45767 "EHLO neil.brown.name"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751253Ab0BIG0W (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 9 Feb 2010 01:26:22 -0500
-In-Reply-To: <1265647196.5235.35.camel@localhost>
+	id S1751227Ab0BIJHU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 9 Feb 2010 04:07:20 -0500
+Received: from brown by neil.brown.name with local (Exim 4.71)
+	(envelope-from <nfs-bounces@lists.sourceforge.net>)
+	id 1Nem3y-0000I7-8R
+	for linux-nfs@vger.kernel.org; Tue, 09 Feb 2010 20:07:18 +1100
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 02/08/2010 10:09 PM, Trond Myklebust wrote:
-> On Mon, 2010-02-08 at 22:03 +0530, Suresh Jayaraman wrote: 
->> We seem to ensure that we're holding a page lock in try_to_release_page.
->> Even if the outstanding commit is complete by the time we are in
->> nfs_releage_page, page flags should not have been modified, right?
-> 
-> No. PG_private may be cleared while another process is holding the page
-> lock (just like PG_writeback may).
-> 
-> Once cleared, PG_private cannot be set again without grabbing the page
-> lock.
-> 
 
-Ah, ok. I got stuck there. Thanks for the clarifying.
+http://www.dfi.grandoompa.com/E4bKLdr3BD.html 		 	   		  
+_________________________________________________________________
+Hotmail: Powerful Free email with security by Microsoft.
+http://clk.atdmt.com/GBL/go/201469230/direct/01/
+------------------------------------------------------------------------------
+The Planet: dedicated and managed hosting, cloud storage, colocation
+Stay online with enterprise data centers and the best network in the business
+Choose flexible plans and management services without long-term contracts
+Personal 24x7 support from experience hosting pros just a phone call away.
+http://p.sf.net/sfu/theplanet-com
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
+_______________________________________________
+Please note that nfs@lists.sourceforge.net is being discontinued.
+Please subscribe to linux-nfs@vger.kernel.org instead.
+    http://vger.kernel.org/vger-lists.html#linux-nfs
 
-
--- 
-Suresh Jayaraman
