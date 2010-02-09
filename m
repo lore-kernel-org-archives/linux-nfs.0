@@ -1,141 +1,83 @@
 From: Jeff Layton <jlayton@redhat.com>
-Subject: [PATCH] mount.nfs: return error if proto= option specified IPv6 when IPv6 isn't supported (try #2)
-Date: Tue,  9 Feb 2010 10:04:47 -0500
-Message-ID: <1265727888-4613-1-git-send-email-jlayton@redhat.com>
+Subject: [PATCH] mount.nfs: make nfs_{nfs,mount}_proto set errno on error
+Date: Tue,  9 Feb 2010 10:04:48 -0500
+Message-ID: <1265727888-4613-2-git-send-email-jlayton@redhat.com>
+References: <1265727888-4613-1-git-send-email-jlayton@redhat.com>
 Cc: chuck.lever@oracle.com, linux-nfs@vger.kernel.org
 To: steved@redhat.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:30798 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:18668 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
 	id S1754107Ab0BIPEw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
 	Tue, 9 Feb 2010 10:04:52 -0500
+In-Reply-To: <1265727888-4613-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Right now, there's nothing that expressly forbids someone from
-specifying proto=tcp6 for instance, even when nfs-utils it built without
-IPv6 support. This may not work well if (for instance) they are using
-NFSv3, since statd won't support IPv6. Explicitly return an error if
-someone specifies an IPv6 proto= or mountproto= option and IPv6 isn't
-supported.
+Have nfs_nfs_proto and nfs_mount_proto set errno to EPROTONOSUPPORT on
+error. This helps default_value to display sane warning messages.
 
 Signed-off-by: Jeff Layton <jlayton@redhat.com>
 ---
- utils/mount/network.c |   59 +++++++++++++++++++++++++++++++++++-------------
- 1 files changed, 43 insertions(+), 16 deletions(-)
+ utils/mount/network.c |   24 ++++++++++++++++++------
+ 1 files changed, 18 insertions(+), 6 deletions(-)
 
 diff --git a/utils/mount/network.c b/utils/mount/network.c
-index c400dd8..a12fbe2 100644
+index a12fbe2..f020933 100644
 --- a/utils/mount/network.c
 +++ b/utils/mount/network.c
-@@ -1334,21 +1334,36 @@ nfs_nfs_port(struct mount_options *options, unsigned long *port)
- 
- #ifdef IPV6_SUPPORTED
- sa_family_t	config_default_family = AF_UNSPEC;
--#else
-+
-+static int
-+nfs_verify_family(sa_family_t family)
-+{
-+	return 1;
-+}
-+#else /* IPV6_SUPPORTED */
- sa_family_t	config_default_family = AF_INET;
--#endif
-+
-+static int
-+nfs_verify_family(sa_family_t family)
-+{
-+	if (family != AF_INET)
-+		return 0;
-+
-+	return 1;
-+}
-+#endif /* IPV6_SUPPORTED */
+@@ -1273,7 +1273,8 @@ nfs_nfs_version(struct mount_options *options, unsigned long *version)
  
  /*
-  * Returns TRUE and fills in @family if a valid NFS protocol option
-- * is found, or FALSE if the option was specified with an invalid value.
-+ * is found, or FALSE if the option was specified with an invalid value
-+ * or if the protocol family isn't supported. On error, errno is set.
+  * Returns TRUE if @protocol contains a valid value for this option,
+- * or FALSE if the option was specified with an invalid value.
++ * or FALSE if the option was specified with an invalid value. On
++ * error, errno is set.
   */
- int nfs_nfs_proto_family(struct mount_options *options,
- 				sa_family_t *family)
- {
- 	unsigned long protocol;
- 	char *option;
--
--	*family = config_default_family;
-+	sa_family_t tmp_family = config_default_family;
- 
- 	switch (po_rightmost(options, nfs_transport_opttbl)) {
- 	case 0:	/* udp */
-@@ -1357,15 +1372,18 @@ int nfs_nfs_proto_family(struct mount_options *options,
+ int
+ nfs_nfs_protocol(struct mount_options *options, unsigned long *protocol)
+@@ -1290,8 +1291,13 @@ nfs_nfs_protocol(struct mount_options *options, unsigned long *protocol)
  		return 1;
  	case 2: /* proto */
  		option = po_get(options, "proto");
 -		if (option != NULL)
--			return nfs_get_proto(option, family, &protocol);
-+		if (option != NULL &&
-+		    !nfs_get_proto(option, &tmp_family, &protocol))
-+			goto out_err;
+-			return nfs_get_proto(option, &family, protocol);
++		if (option != NULL) {
++			if (!nfs_get_proto(option, &family, protocol)) {
++				errno = EPROTONOSUPPORT;
++				return 0;
++			}
++			return 1;
++		}
  	}
  
--	/*
--	 * NFS transport protocol wasn't specified.  Return the
--	 * default address family.
--	 */
-+	if (!nfs_verify_family(tmp_family))
-+		goto out_err;
-+	*family = tmp_family;
- 	return 1;
-+out_err:
-+	errno = EAFNOSUPPORT;
-+	return 0;
- }
+ 	/*
+@@ -1449,7 +1455,8 @@ nfs_mount_version(struct mount_options *options, unsigned long *version)
  
  /*
-@@ -1483,19 +1501,25 @@ nfs_mount_port(struct mount_options *options, unsigned long *port)
- 
- /*
-  * Returns TRUE and fills in @family if a valid MNT protocol option
-- * is found, or FALSE if the option was specified with an invalid value.
-+ * is found, or FALSE if the option was specified with an invalid value
-+ * or if the protocol family isn't supported. On error, errno is set.
+  * Returns TRUE if @protocol contains a valid value for this option,
+- * or FALSE if the option was specified with an invalid value.
++ * or FALSE if the option was specified with an invalid value. On
++ * error, errno is set.
   */
- int nfs_mount_proto_family(struct mount_options *options,
- 				sa_family_t *family)
- {
- 	unsigned long protocol;
+ static int
+ nfs_mount_protocol(struct mount_options *options, unsigned long *protocol)
+@@ -1458,8 +1465,13 @@ nfs_mount_protocol(struct mount_options *options, unsigned long *protocol)
  	char *option;
--
--	*family = config_default_family;
-+	sa_family_t tmp_family = config_default_family;
  
  	option = po_get(options, "mountproto");
 -	if (option != NULL)
--		return nfs_get_proto(option, family, &protocol);
+-		return nfs_get_proto(option, &family, protocol);
 +	if (option != NULL) {
-+		if (!nfs_get_proto(option, &tmp_family, &protocol))
-+			goto out_err;
-+		if (!nfs_verify_family(tmp_family))
-+			goto out_err;
-+		*family = tmp_family;
++		if (!nfs_get_proto(option, &family, protocol)) {
++			errno = EPROTONOSUPPORT;
++			return 0;
++		}
 +		return 1;
 +	}
  
  	/*
  	 * MNT transport protocol wasn't specified.  If the NFS
-@@ -1504,6 +1528,9 @@ int nfs_mount_proto_family(struct mount_options *options,
- 	 * NFS.
- 	 */
- 	return nfs_nfs_proto_family(options, family);
-+out_err:
-+	errno = EAFNOSUPPORT;
-+	return 0;
- }
- 
- /**
 -- 
 1.6.6
 
