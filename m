@@ -1,46 +1,60 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:24051 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:42929 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755124Ab0BIRm6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 9 Feb 2010 12:42:58 -0500
-From: andros@netapp.com
-To: pnfs@linux-nfs.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 0/6] pnfs DLM cluster only use read iomode layouts Version 2
-Date: Tue,  9 Feb 2010 12:42:31 -0500
-Message-Id: <1265737357-9405-1-git-send-email-andros@netapp.com>
+	id S1753346Ab0BIWtx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 9 Feb 2010 17:49:53 -0500
+Date: Tue, 9 Feb 2010 17:50:18 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Peter Staubach <staubach@redhat.com>
+Cc: iisaman@citi.umich.edu, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH pynfs] Allow server to reject maximum commit offsets
+Message-ID: <20100209225018.GB1645@fieldses.org>
+References: <20100209201231.GC30951@fieldses.org> <4B71E1A4.1070604@redhat.com> <20100209224228.GA1645@fieldses.org> <4B71E572.3020401@redhat.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4B71E572.3020401@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
+On Tue, Feb 09, 2010 at 05:45:06PM -0500, Peter Staubach wrote:
+> J. Bruce Fields wrote:
+> > On Tue, Feb 09, 2010 at 05:28:52PM -0500, Peter Staubach wrote:
+> >> J. Bruce Fields wrote:
+> >>> From: J. Bruce Fields <bfields@citi.umich.edu>
+> >>>
+> >>> These two tests insist that a server must accept commits with offset
+> >>> 2^64-1 and 2^64-2.  I can find no justification in the spec for this
+> >>> requirement.
+> >>>
+> >>> The linux server was recently changed to reject (with INVAL) offsets
+> >>> over 2^63-1, which is the maximum that the vfs commit routine can
+> >>> accept.  That behavior is consistent with the NFSv3 commit
+> >>> implementation and with the NFSv4 write implementation.
+> >>>
+> >> I guess that I am missing something.  At least the NFSv3
+> >> COMMIT operation takes an unsigned 64 bit quantity.  That
+> >> would seem to make the test correct, would it not?
+> > 
+> > Yes, it's an unsigned 64 bit integer, but so what: there's no rule that
+> > says the server has to return NFS4ERR_OK to any operation for which all
+> > the arguments are valid xdr.
+> > 
+> > And just because the protocol allows 64-bit offsets doesn't mean every
+> > server and filesystem is going to support the full range.
+> > 
+> 
+> No, that's certainly true.  However, you are tailoring the
+> testsuite to a Linux specific implementation, which strikes
+> me as vaguely not so good.  What if you just commented out
+> the tests, with a comment indicating that the Linux server
+> can not handle the full 64 bits of range, instead of
+> deleting them completely?
 
-Responded to comments on error code fixes.
+The tests are primarily meant to test protocol conformance.  So they
+shouldn't be reporting failures on conforming behavior.
 
-Applies against 2.6.33-rc6 pnfs-all branch.
+Perhaps it would also be interesting to run the tests in a mode which
+probes and summarizes server characteristics (maximum supported offset,
+supported features, etc.), but that's a job for another day.
 
-In a DLM cluster, writing to a node other than the node where the open call
-occurred (where meta data is cached) will have performance implications when
-the write causes meta data changes that need to be propagated to the open call
-node.
-
-Return NFS4ERR_BADIOMODE for LAYOUTGET requests with LAYOUTIOMODE4_RW iomode.
-
-0001-pnfsd-fix-file-system-API-layout_get-error-codes.patch
-0002-pnfsd-fix-NFS4ERR_BADIOMODE-in-layoutget.patch
-0003-pnfsd-DLM-file-layout-only-support-read-iomode-layou.patch
-0004-pnfsd-fix-DLM-file-layout-no-device-return.patch
-
-Allow the client to fail a RW iomode layout and still grab a RO iomode layout.
-0005-pnfs-set-failed-layout-bit-per-iomode.patch
-
-fix compile errors
-0006-pnfsd-fix-compile-errors-when-CONFIG_PNFSD-is-not-se.patch
-
-Testing: Connectathon tests pass. Basic test shows RW iomode layout for
-'bigfile' fails with NFS4ERR_BADIOMODE with writes going through the MDS,
-and RO layout for 'bigfile' is obtained with reads going to the DS.
-
-
--->Andy
-
+--b.
