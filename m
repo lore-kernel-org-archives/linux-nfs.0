@@ -1,71 +1,77 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from bld-mail15.adl6.internode.on.net ([150.101.137.100]:45119 "EHLO
-	mail.internode.on.net" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1753541Ab0BXD3j (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 23 Feb 2010 22:29:39 -0500
-Date: Wed, 24 Feb 2010 14:29:34 +1100
-From: Dave Chinner <david@fromorbit.com>
-To: Wu Fengguang <fengguang.wu@intel.com>
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>, linux-nfs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org,
-        Linux Memory Management List <linux-mm@kvack.org>,
-        LKML <linux-kernel@vger.kernel.org>
-Subject: Re: [RFC] nfs: use 2*rsize readahead size
-Message-ID: <20100224032934.GF16175@discord.disaster>
-References: <20100224024100.GA17048@localhost>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20100224024100.GA17048@localhost>
+Received: from mx1.redhat.com ([209.132.183.28]:55872 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754186Ab0BIW3A (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 9 Feb 2010 17:29:00 -0500
+Message-ID: <4B71E1A4.1070604@redhat.com>
+Date: Tue, 09 Feb 2010 17:28:52 -0500
+From: Peter Staubach <staubach@redhat.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: iisaman@citi.umich.edu, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH pynfs] Allow server to reject maximum commit offsets
+References: <20100209201231.GC30951@fieldses.org>
+In-Reply-To: <20100209201231.GC30951@fieldses.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, Feb 24, 2010 at 10:41:01AM +0800, Wu Fengguang wrote:
-> With default rsize=512k and NFS_MAX_READAHEAD=15, the current NFS
-> readahead size 512k*15=7680k is too large than necessary for typical
-> clients.
+J. Bruce Fields wrote:
+> From: J. Bruce Fields <bfields@citi.umich.edu>
 > 
-> On a e1000e--e1000e connection, I got the following numbers
+> These two tests insist that a server must accept commits with offset
+> 2^64-1 and 2^64-2.  I can find no justification in the spec for this
+> requirement.
 > 
-> 	readahead size		throughput
-> 		   16k           35.5 MB/s
-> 		   32k           54.3 MB/s
-> 		   64k           64.1 MB/s
-> 		  128k           70.5 MB/s
-> 		  256k           74.6 MB/s
-> rsize ==>	  512k           77.4 MB/s
-> 		 1024k           85.5 MB/s
-> 		 2048k           86.8 MB/s
-> 		 4096k           87.9 MB/s
-> 		 8192k           89.0 MB/s
-> 		16384k           87.7 MB/s
+> The linux server was recently changed to reject (with INVAL) offsets
+> over 2^63-1, which is the maximum that the vfs commit routine can
+> accept.  That behavior is consistent with the NFSv3 commit
+> implementation and with the NFSv4 write implementation.
 > 
-> So it seems that readahead_size=2*rsize (ie. keep two RPC requests in flight)
-> can already get near full NFS bandwidth.
-> 
-> The test script is:
-> 
-> #!/bin/sh
-> 
-> file=/mnt/sparse
-> BDI=0:15
-> 
-> for rasize in 16 32 64 128 256 512 1024 2048 4096 8192 16384
-> do
-> 	echo 3 > /proc/sys/vm/drop_caches
-> 	echo $rasize > /sys/devices/virtual/bdi/$BDI/read_ahead_kb
-> 	echo readahead_size=${rasize}k
-> 	dd if=$file of=/dev/null bs=4k count=1024000
-> done
 
-That's doing a cached read out of the server cache, right? You
-might find the results are different if the server has to read the
-file from disk. I would expect reads from the server cache not
-to require much readahead as there is no IO latency on the server
-side for the readahead to hide....
+I guess that I am missing something.  At least the NFSv3
+COMMIT operation takes an unsigned 64 bit quantity.  That
+would seem to make the test correct, would it not?
 
-Cheers,
+		ps
 
-Dave.
--- 
-Dave Chinner
-david@fromorbit.com
+> The maximum offset allowed may vary depending on filesystem or server,
+> so I think it's simplest just to delete these tests.  (Alternatively, we
+> could replace the offset by whatever we consider a reasonable least
+> common denominator, e.g. 2^31-1.)
+> 
+> Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
+> ---
+>  lib/nfs4/servertests/st_commit.py |   18 ------------------
+>  1 files changed, 0 insertions(+), 18 deletions(-)
+> 
+> diff --git a/lib/nfs4/servertests/st_commit.py b/lib/nfs4/servertests/st_commit.py
+> index 2955d79..0005e54 100644
+> --- a/lib/nfs4/servertests/st_commit.py
+> +++ b/lib/nfs4/servertests/st_commit.py
+> @@ -35,24 +35,6 @@ def testCommitOffset1(t, env):
+>      """
+>      _commit(t, env.c1, 1)
+>  
+> -def testCommitOffsetMax1(t, env):
+> -    """COMMIT
+> -
+> -    FLAGS: commit all
+> -    DEPEND: MKFILE
+> -    CODE: CMT1c
+> -    """
+> -    _commit(t, env.c1, 0xffffffffffffffffL)
+> -
+> -def testCommitOffsetMax2(t, env):
+> -    """COMMIT
+> -
+> -    FLAGS: commit all
+> -    DEPEND: MKFILE
+> -    CODE: CMT1d
+> -    """
+> -    _commit(t, env.c1, 0xfffffffffffffffeL)
+> -
+>  def testCommitCount1(t, env):
+>      """COMMIT
+>  
+
