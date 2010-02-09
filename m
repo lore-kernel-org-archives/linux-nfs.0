@@ -1,78 +1,45 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:43742 "EHLO mx2.suse.de"
+Received: from mail-out2.uio.no ([129.240.10.58]:47153 "EHLO mail-out2.uio.no"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757042Ab0BCVYF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 3 Feb 2010 16:24:05 -0500
-Date: Thu, 4 Feb 2010 08:23:54 +1100
-From: Neil Brown <neilb@suse.de>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 6/9] sunrpc: close connection when a request is
- irretrievably lost.
-Message-ID: <20100204082354.0bf3b7e5@notabene.brown>
-In-Reply-To: <4B699988.9000209@oracle.com>
-References: <20100203060657.12945.27293.stgit@notabene.brown>
-	<20100203063131.12945.34978.stgit@notabene.brown>
-	<4B699988.9000209@oracle.com>
-Content-Type: text/plain; charset=US-ASCII
+	id S1752259Ab0BIWoL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 9 Feb 2010 17:44:11 -0500
+Subject: Re: [PATCH pynfs] Allow server to reject maximum commit offsets
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+To: Peter Staubach <staubach@redhat.com>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>, iisaman@citi.umich.edu,
+        linux-nfs@vger.kernel.org
+In-Reply-To: <4B71E1A4.1070604@redhat.com>
+References: <20100209201231.GC30951@fieldses.org>
+	 <4B71E1A4.1070604@redhat.com>
+Content-Type: text/plain; charset="UTF-8"
+Date: Tue, 09 Feb 2010 17:44:03 -0500
+Message-ID: <1265755443.28562.100.camel@localhost>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, 03 Feb 2010 10:43:04 -0500
-Chuck Lever <chuck.lever@oracle.com> wrote:
-
-> On 02/03/2010 01:31 AM, NeilBrown wrote:
-> > If we drop a request in the sunrpc layer, either due kmalloc failure,
-> > or due to a cache miss when we could not queue the request for later
-> > replay, then close the connection to encourage the client to retry sooner.
+On Tue, 2010-02-09 at 17:28 -0500, Peter Staubach wrote: 
+> J. Bruce Fields wrote:
+> > From: J. Bruce Fields <bfields@citi.umich.edu>
+> > 
+> > These two tests insist that a server must accept commits with offset
+> > 2^64-1 and 2^64-2.  I can find no justification in the spec for this
+> > requirement.
+> > 
+> > The linux server was recently changed to reject (with INVAL) offsets
+> > over 2^63-1, which is the maximum that the vfs commit routine can
+> > accept.  That behavior is consistent with the NFSv3 commit
+> > implementation and with the NFSv4 write implementation.
+> > 
 > 
-> I studied connection dropping behavior a few years back, and decided 
-> that dropping the connection on a retransmit is nearly always 
-> counterproductive.  Any other pending requests on a connection that is 
-> dropped must also be retransmitted, which means one retransmit suddenly 
-> turns into many.  And then you get into issues of idempotency and all 
-> the extra traffic and the long delays and the risk of reconnecting on a 
-> different port so that XID replay is undetectable...
+> I guess that I am missing something.  At least the NFSv3
+> COMMIT operation takes an unsigned 64 bit quantity.  That
+> would seem to make the test correct, would it not?
 
-You make some good points there, thanks.
+The server will not allow you to write to an offset > 2^63-1 (it will
+return NFS3ERR_INVAL), so it makes zero sense for the client to try to
+issue a COMMIT for an offset starting in that range.
 
-> 
-> I don't think dropping the connection will cause the client to 
-> retransmit sooner.  Clients I have encountered will reconnect and 
-> retransmit only after their retransmit timeout fires, never sooner.
-> 
-
-I thought I had noticed the Linux client resending immediately, but it would
-have been a while ago, and I could easily be remembering wrongly.
-
-My reasoning was that if the connection is closed then the client can *know*
-that they won't get a response to any outstanding requests, rather than
-having to use the timeout heuristic.  How the client uses that information I
-don't know, but at least they would have it.
-
-> Unfortunately NFSv4 requires a connection drop before a retransmit, but 
-> NFSv3 does not.  NFSv4 servers are rather supposed to try very hard not 
-> to drop requests.
-> 
-> How often do you expect this kind of recovery to be necessary?  Would it 
-> be possible to drop only for NFSv4 connections?
-> 
-
-With the improved handling of large requests I would expect this kind of
-recovery would be very rarely needed.
-Yes, it would be quite easy to only drop connections on which we have seen an
-NFSv4 request... and maybe also connections on which we have not successfully
-handled any request yet(?).
-What if, instead of closing the connection, we set a flag so that it would be
-closed as soon as it had been idle for 1 second,  thus flushing any other
-pending requests???   That probably doesn't help - there would easily be real
-cases where other threads of activity keep the connection busy, while the
-thread waiting for the lost request still needs a full time-out.
-
-I would be happy with the v4-only version.
-
-Thanks,
-NeilBrown
-
+Cheers
+  Trond
 
