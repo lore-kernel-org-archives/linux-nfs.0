@@ -1,42 +1,141 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH] statd: Remove SIMU_CRASH warning
-Date: Tue, 09 Feb 2010 09:52:36 -0500
-Message-ID: <20100209145204.2036.29640.stgit@localhost.localdomain>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Cc: linux-nfs@vger.kernel.org
+From: Jeff Layton <jlayton@redhat.com>
+Subject: [PATCH] mount.nfs: return error if proto= option specified IPv6 when IPv6 isn't supported (try #2)
+Date: Tue,  9 Feb 2010 10:04:47 -0500
+Message-ID: <1265727888-4613-1-git-send-email-jlayton@redhat.com>
+Cc: chuck.lever@oracle.com, linux-nfs@vger.kernel.org
 To: steved@redhat.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet11.oracle.com ([148.87.113.123]:29113 "EHLO
-	rcsinet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754551Ab0BIOzn (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 9 Feb 2010 09:55:43 -0500
+Received: from mx1.redhat.com ([209.132.183.28]:30798 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754107Ab0BIPEw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 9 Feb 2010 10:04:52 -0500
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-SM_SIMU_CRASH isn't used, so this warning is never seen today.
-However, if we ever wanted to use SM_SIMU_CRASH, this warning
-is unnecessarily alarming, and serves no real purpose.
+Right now, there's nothing that expressly forbids someone from
+specifying proto=tcp6 for instance, even when nfs-utils it built without
+IPv6 support. This may not work well if (for instance) they are using
+NFSv3, since statd won't support IPv6. Explicitly return an error if
+someone specifies an IPv6 proto= or mountproto= option and IPv6 isn't
+supported.
 
-At some point in the near future I'd like us to consider using
-SM_SIMU_CRASH, so let's get rid of this message now.
-
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
 ---
+ utils/mount/network.c |   59 +++++++++++++++++++++++++++++++++++-------------
+ 1 files changed, 43 insertions(+), 16 deletions(-)
 
- utils/statd/simu.c |    1 -
- 1 files changed, 0 insertions(+), 1 deletions(-)
-
-diff --git a/utils/statd/simu.c b/utils/statd/simu.c
-index 825e428..f1d0bf8 100644
---- a/utils/statd/simu.c
-+++ b/utils/statd/simu.c
-@@ -43,7 +43,6 @@ sm_simu_crash_1_svc (__attribute__ ((unused)) void *argp, struct svc_req *rqstp)
-     goto failure;
-   }
+diff --git a/utils/mount/network.c b/utils/mount/network.c
+index c400dd8..a12fbe2 100644
+--- a/utils/mount/network.c
++++ b/utils/mount/network.c
+@@ -1334,21 +1334,36 @@ nfs_nfs_port(struct mount_options *options, unsigned long *port)
  
--  xlog_warn("*** SIMULATING CRASH! ***");
-   my_svc_exit ();
+ #ifdef IPV6_SUPPORTED
+ sa_family_t	config_default_family = AF_UNSPEC;
+-#else
++
++static int
++nfs_verify_family(sa_family_t family)
++{
++	return 1;
++}
++#else /* IPV6_SUPPORTED */
+ sa_family_t	config_default_family = AF_INET;
+-#endif
++
++static int
++nfs_verify_family(sa_family_t family)
++{
++	if (family != AF_INET)
++		return 0;
++
++	return 1;
++}
++#endif /* IPV6_SUPPORTED */
  
-   if (rtnl)
+ /*
+  * Returns TRUE and fills in @family if a valid NFS protocol option
+- * is found, or FALSE if the option was specified with an invalid value.
++ * is found, or FALSE if the option was specified with an invalid value
++ * or if the protocol family isn't supported. On error, errno is set.
+  */
+ int nfs_nfs_proto_family(struct mount_options *options,
+ 				sa_family_t *family)
+ {
+ 	unsigned long protocol;
+ 	char *option;
+-
+-	*family = config_default_family;
++	sa_family_t tmp_family = config_default_family;
+ 
+ 	switch (po_rightmost(options, nfs_transport_opttbl)) {
+ 	case 0:	/* udp */
+@@ -1357,15 +1372,18 @@ int nfs_nfs_proto_family(struct mount_options *options,
+ 		return 1;
+ 	case 2: /* proto */
+ 		option = po_get(options, "proto");
+-		if (option != NULL)
+-			return nfs_get_proto(option, family, &protocol);
++		if (option != NULL &&
++		    !nfs_get_proto(option, &tmp_family, &protocol))
++			goto out_err;
+ 	}
+ 
+-	/*
+-	 * NFS transport protocol wasn't specified.  Return the
+-	 * default address family.
+-	 */
++	if (!nfs_verify_family(tmp_family))
++		goto out_err;
++	*family = tmp_family;
+ 	return 1;
++out_err:
++	errno = EAFNOSUPPORT;
++	return 0;
+ }
+ 
+ /*
+@@ -1483,19 +1501,25 @@ nfs_mount_port(struct mount_options *options, unsigned long *port)
+ 
+ /*
+  * Returns TRUE and fills in @family if a valid MNT protocol option
+- * is found, or FALSE if the option was specified with an invalid value.
++ * is found, or FALSE if the option was specified with an invalid value
++ * or if the protocol family isn't supported. On error, errno is set.
+  */
+ int nfs_mount_proto_family(struct mount_options *options,
+ 				sa_family_t *family)
+ {
+ 	unsigned long protocol;
+ 	char *option;
+-
+-	*family = config_default_family;
++	sa_family_t tmp_family = config_default_family;
+ 
+ 	option = po_get(options, "mountproto");
+-	if (option != NULL)
+-		return nfs_get_proto(option, family, &protocol);
++	if (option != NULL) {
++		if (!nfs_get_proto(option, &tmp_family, &protocol))
++			goto out_err;
++		if (!nfs_verify_family(tmp_family))
++			goto out_err;
++		*family = tmp_family;
++		return 1;
++	}
+ 
+ 	/*
+ 	 * MNT transport protocol wasn't specified.  If the NFS
+@@ -1504,6 +1528,9 @@ int nfs_mount_proto_family(struct mount_options *options,
+ 	 * NFS.
+ 	 */
+ 	return nfs_nfs_proto_family(options, family);
++out_err:
++	errno = EAFNOSUPPORT;
++	return 0;
+ }
+ 
+ /**
+-- 
+1.6.6
 
