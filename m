@@ -1,50 +1,88 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:14684 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:43709 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751609Ab0CABgt convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 28 Feb 2010 20:36:49 -0500
-Subject: Re: [PATCH 5/5] NFSv3: Add server namespace support for XATTR
- protocol implementation
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Casey Schaufler <casey@schaufler-ca.com>
-Cc: Stephen Smalley <sds@tycho.nsa.gov>, James Morris <jmorris@namei.org>,
-        linux-nfs@vger.kernel.org, linux-security-module@vger.kernel.org,
-        "J. Bruce Fields" <bfields@fieldses.org>, Neil Brown <neilb@suse.de>,
-        Dave Quigley <dpquigl@tycho.nsa.gov>,
-        "Serge E. Hallyn" <serue@us.ibm.com>
-In-Reply-To: <4B8B0F0B.4080603@schaufler-ca.com>
-References: <alpine.LRH.2.00.1002261457420.25193@tundra.namei.org>
-	 <alpine.LRH.2.00.1002261537020.25193@tundra.namei.org>
-	 <1267191990.7691.37.camel@moss-pluto.epoch.ncsc.mil>
-	 <4B8B0F0B.4080603@schaufler-ca.com>
-Content-Type: text/plain; charset="UTF-8"
-Date: Sun, 28 Feb 2010 20:17:43 -0500
-Message-ID: <1267406263.3338.20.camel@localhost.localdomain>
+	id S1752391Ab0BIWmG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 9 Feb 2010 17:42:06 -0500
+Date: Tue, 9 Feb 2010 17:42:28 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Peter Staubach <staubach@redhat.com>
+Cc: iisaman@citi.umich.edu, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH pynfs] Allow server to reject maximum commit offsets
+Message-ID: <20100209224228.GA1645@fieldses.org>
+References: <20100209201231.GC30951@fieldses.org> <4B71E1A4.1070604@redhat.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4B71E1A4.1070604@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Sun, 2010-02-28 at 16:49 -0800, Casey Schaufler wrote:
+On Tue, Feb 09, 2010 at 05:28:52PM -0500, Peter Staubach wrote:
+> J. Bruce Fields wrote:
+> > From: J. Bruce Fields <bfields@citi.umich.edu>
+> > 
+> > These two tests insist that a server must accept commits with offset
+> > 2^64-1 and 2^64-2.  I can find no justification in the spec for this
+> > requirement.
+> > 
+> > The linux server was recently changed to reject (with INVAL) offsets
+> > over 2^63-1, which is the maximum that the vfs commit routine can
+> > accept.  That behavior is consistent with the NFSv3 commit
+> > implementation and with the NFSv4 write implementation.
+> > 
+> 
+> I guess that I am missing something.  At least the NFSv3
+> COMMIT operation takes an unsigned 64 bit quantity.  That
+> would seem to make the test correct, would it not?
 
-> I'm mostly in agreement with Stephen. I wouldn't object to a separate
-> "nfsd." namespace, as opposed to "security." or "trusted." because I
-> think that in reality you're not going to get very far without treating
-> is a special case in any event. May as well acknowledge it up front.
+Yes, it's an unsigned 64 bit integer, but so what: there's no rule that
+says the server has to return NFS4ERR_OK to any operation for which all
+the arguments are valid xdr.
 
-That was indeed what I envisioned when I suggested it to James
-originally, but I may have been a bit unclear on the subject.
+And just because the protocol allows 64-bit offsets doesn't mean every
+server and filesystem is going to support the full range.
 
-I don't think that either 'security' or 'trusted' are a good fit here,
-since they both have special meanings to local applications on the
-server. 'user' is just wrong, since that means that ordinary local users
-may end up with the power to change the security settings for remote
-applications.
+--b.
 
-The intention of the 'nfsd' namespace was to separate the local and
-remote xattr/security realms entirely. That includes allowing the server
-to set up separate policies to determine who is allowed to change those
-in the 'nfsd.*' namespace vs those who can change the ordinary
-'security', 'trusted' and 'user' namespaces.
-
-Cheers
-  Trond
+> 
+> 		ps
+> 
+> > The maximum offset allowed may vary depending on filesystem or server,
+> > so I think it's simplest just to delete these tests.  (Alternatively, we
+> > could replace the offset by whatever we consider a reasonable least
+> > common denominator, e.g. 2^31-1.)
+> > 
+> > Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
+> > ---
+> >  lib/nfs4/servertests/st_commit.py |   18 ------------------
+> >  1 files changed, 0 insertions(+), 18 deletions(-)
+> > 
+> > diff --git a/lib/nfs4/servertests/st_commit.py b/lib/nfs4/servertests/st_commit.py
+> > index 2955d79..0005e54 100644
+> > --- a/lib/nfs4/servertests/st_commit.py
+> > +++ b/lib/nfs4/servertests/st_commit.py
+> > @@ -35,24 +35,6 @@ def testCommitOffset1(t, env):
+> >      """
+> >      _commit(t, env.c1, 1)
+> >  
+> > -def testCommitOffsetMax1(t, env):
+> > -    """COMMIT
+> > -
+> > -    FLAGS: commit all
+> > -    DEPEND: MKFILE
+> > -    CODE: CMT1c
+> > -    """
+> > -    _commit(t, env.c1, 0xffffffffffffffffL)
+> > -
+> > -def testCommitOffsetMax2(t, env):
+> > -    """COMMIT
+> > -
+> > -    FLAGS: commit all
+> > -    DEPEND: MKFILE
+> > -    CODE: CMT1d
+> > -    """
+> > -    _commit(t, env.c1, 0xfffffffffffffffeL)
+> > -
+> >  def testCommitCount1(t, env):
+> >      """COMMIT
+> >  
+> 
