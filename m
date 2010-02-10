@@ -1,40 +1,96 @@
-From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: [RFC PATCH 2/2] xfs_export_operations.commit_metadata
-Date: Wed, 10 Feb 2010 05:11:30 -0500
-Message-ID: <20100210101130.GA7993@infradead.org>
-References: <20100210003220.6021.74943.stgit@case> <20100210003337.6021.10942.stgit@case> <20100210090750.GB21875@infradead.org>
+From: Boaz Harrosh <bharrosh@panasas.com>
+Subject: Re: [pnfs] [PATCH] SQUASHME: pnfsd-exofs: Change layoutget return
+ codes
+Date: Wed, 10 Feb 2010 12:45:12 +0200
+Message-ID: <4B728E38.4060008@panasas.com>
+References: <1265737357-9405-1-git-send-email-andros@netapp.com> <4B726D4E.1000601@panasas.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs@vger.kernel.org, xfs@oss.sgi.com
-To: Ben Myers <bpm@sgi.com>
+Content-Type: text/plain; charset=UTF-8
+Cc: linux-nfs@vger.kernel.org, pnfs@linux-nfs.org,
+	"J. Bruce Fields" <bfields@citi.umich.edu>
+To: andros@netapp.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([18.85.46.34]:42955 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754818Ab0BJKLb (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 10 Feb 2010 05:11:31 -0500
-In-Reply-To: <20100210090750.GB21875@infradead.org>
+Received: from daytona.panasas.com ([67.152.220.89]:19582 "EHLO
+	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1753676Ab0BJKpS (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 10 Feb 2010 05:45:18 -0500
+In-Reply-To: <4B726D4E.1000601@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Feb 10, 2010 at 04:07:50AM -0500, Christoph Hellwig wrote:
-> > +			/*
-> > +			 * AFAICS the child is always modified after the parent
-> > +			 * in nfsd so should always have a larger lsn.
-> > +			 */
-> > +			if (c_xip->i_itemp->ili_last_lsn > force_lsn) {
-> > +				force_lsn = c_xip->i_itemp->ili_last_lsn;
-> > +			} else {
-> > +				force_lsn = 0; /* whole thing */
-> > +			}
+On 02/10/2010 10:24 AM, Boaz Harrosh wrote:
 > 
-> I wouldn't rely on that and always take the larger one.
+> Dependent on patch from Andy:
+> 	[PATCH 1/6] pnfsd: fix file system API layout_get error codes
+> 
+> Change codes to nfs4.1 codes
+> 
+> Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
 
-Or we could use that fact for making the prototype saner:
+Rrrr I spoke to soon.
 
- - the commit_metadata only takes a single inode to force out
- - we make sure to always call in on the child first.  For any
-   log based filesystem that will force the parent update, too.
- - we then call it on the parent, which will be a no-op and thus
-   fast for a log based filesystem, but still provide a fallback
-   if that is not the case.
+Andy, Benny
+This will not work, currently. All the nfserr_xxx constants are defined
+if fs/nfsd/nfsd.h. 
+(Why do they exist at all, why can't we use the client's definitions for these?)
+
+At the minimum they need to move to include/linux/nfsd/export.h. But I say kill them
+and use these from include/linux/nfs4.h. Added bonus these are enums, so prototype
+of .layout_get() can change to return enum nfsstat4 and the compiler fixes all our
+bugs.
+
+I'm posting a second patch that uses "enum nfsstat4" constants in exofs which will
+work just fine, but is really ugly on the documentation aspect of Andy's patch.
+
+Bruce may I submit a patch that globally gets rid of all nfserr_* defines and uses
+NFS4ERR_* in their place?
+
+Cheers
+Boaz
+
+> ---
+>  fs/exofs/export.c |   10 ++++++----
+>  1 files changed, 6 insertions(+), 4 deletions(-)
+> 
+> diff --git a/fs/exofs/export.c b/fs/exofs/export.c
+> index be3d54e..7a59614 100644
+> --- a/fs/exofs/export.c
+> +++ b/fs/exofs/export.c
+> @@ -95,13 +95,13 @@ static int exofs_layout_get(
+>  	/* skip opaque size, will be filled-in later */
+>  	start = exp_xdr_reserve_qwords(xdr, 1);
+>  	if (!start) {
+> -		err = -E2BIG;
+> +		err = nfserr_toosmall;
+>  		goto err;
+>  	}
+>  
+>  	creds = kcalloc(el->s_numdevs, sizeof(*creds), GFP_KERNEL);
+>  	if (!creds) {
+> -		err = -ENOMEM;
+> +		err = nfserr_layouttrylater;
+>  		goto err;
+>  	}
+>  
+> @@ -134,8 +134,10 @@ static int exofs_layout_get(
+>  	layout.olo_comps = creds;
+>  
+>  	err = pnfs_osd_xdr_encode_layout(xdr, &layout);
+> -	if (err)
+> +	if (err) {
+> +		err = nfserr_toosmall; /*FIXME: Change osd_xdr error codes */
+>  		goto err;
+> +	}
+>  
+>  	exp_xdr_encode_opaque_len(start, xdr->p);
+>  
+> @@ -146,7 +148,7 @@ static int exofs_layout_get(
+>  	spin_unlock(&oi->i_layout_lock);
+>  
+>  	if (in_recall)
+> -		err = -EAGAIN;
+> +		err = nfserr_layouttrylater;
+>  
+>  err:
+>  	kfree(creds);
 
