@@ -1,60 +1,60 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:42929 "EHLO fieldses.org"
+Received: from relay1.sgi.com ([192.48.179.29]:57223 "EHLO relay.sgi.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753346Ab0BIWtx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 9 Feb 2010 17:49:53 -0500
-Date: Tue, 9 Feb 2010 17:50:18 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Peter Staubach <staubach@redhat.com>
-Cc: iisaman@citi.umich.edu, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH pynfs] Allow server to reject maximum commit offsets
-Message-ID: <20100209225018.GB1645@fieldses.org>
-References: <20100209201231.GC30951@fieldses.org> <4B71E1A4.1070604@redhat.com> <20100209224228.GA1645@fieldses.org> <4B71E572.3020401@redhat.com>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4B71E572.3020401@redhat.com>
+	id S1751672Ab0BJAd2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 9 Feb 2010 19:33:28 -0500
+Received: from snoot.americas.sgi.com (case.americas.sgi.com [128.162.244.182])
+	by relay1.corp.sgi.com (Postfix) with ESMTP id DC74C8F80CC
+	for <linux-nfs@vger.kernel.org>; Tue,  9 Feb 2010 16:33:27 -0800 (PST)
+Received: from [127.0.0.2] (localhost [127.0.0.1])
+	by snoot.americas.sgi.com (Postfix) with ESMTP id E8A9248F3C1A
+	for <linux-nfs@vger.kernel.org>; Tue,  9 Feb 2010 18:33:26 -0600 (CST)
+Subject: [RFC PATCH 0/2] nfsd sync export_op (was 'wsync export option')
+To: linux-nfs@vger.kernel.org
+From: Ben Myers <bpm@sgi.com>
+Date: Tue, 09 Feb 2010 18:33:26 -0600
+Message-ID: <20100210003220.6021.74943.stgit@case>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Tue, Feb 09, 2010 at 05:45:06PM -0500, Peter Staubach wrote:
-> J. Bruce Fields wrote:
-> > On Tue, Feb 09, 2010 at 05:28:52PM -0500, Peter Staubach wrote:
-> >> J. Bruce Fields wrote:
-> >>> From: J. Bruce Fields <bfields@citi.umich.edu>
-> >>>
-> >>> These two tests insist that a server must accept commits with offset
-> >>> 2^64-1 and 2^64-2.  I can find no justification in the spec for this
-> >>> requirement.
-> >>>
-> >>> The linux server was recently changed to reject (with INVAL) offsets
-> >>> over 2^63-1, which is the maximum that the vfs commit routine can
-> >>> accept.  That behavior is consistent with the NFSv3 commit
-> >>> implementation and with the NFSv4 write implementation.
-> >>>
-> >> I guess that I am missing something.  At least the NFSv3
-> >> COMMIT operation takes an unsigned 64 bit quantity.  That
-> >> would seem to make the test correct, would it not?
-> > 
-> > Yes, it's an unsigned 64 bit integer, but so what: there's no rule that
-> > says the server has to return NFS4ERR_OK to any operation for which all
-> > the arguments are valid xdr.
-> > 
-> > And just because the protocol allows 64-bit offsets doesn't mean every
-> > server and filesystem is going to support the full range.
-> > 
-> 
-> No, that's certainly true.  However, you are tailoring the
-> testsuite to a Linux specific implementation, which strikes
-> me as vaguely not so good.  What if you just commented out
-> the tests, with a comment indicating that the Linux server
-> can not handle the full 64 bits of range, instead of
-> deleting them completely?
+This is another try based upon Christoph and Trond's suggestions in the 'wsync
+export option' thread.  I've added the export operation and combined
+nfsd_sync_dir and write_inode_now usage into nfsd_sync2 which passes the buck
+onto XFS.  It's been very lightly tested.  It's just a little bit faster than
+the previous try:
 
-The tests are primarily meant to test protocol conformance.  So they
-shouldn't be reporting failures on conforming behavior.
+# time tar -xvf /mnt2/quilt-0.47.tar > /dev/null
 
-Perhaps it would also be interesting to run the tests in a mode which
-probes and summarizes server characteristics (maximum supported offset,
-supported features, etc.), but that's a job for another day.
+plain jane:
+0m13.177s       0m13.301s       0m13.528s
 
---b.
+previous try:
+0m8.361s        0m8.400s        0m8.301s
+
+w/ xfs commit_metadata op:
+0m7.426s        0m7.340s        0m7.198s
+
+Thanks!
+-Ben
+
+---
+
+Ben Myers (2):
+      commit_metadata export operation and nfsd_sync2
+      xfs_export_operations.commit_metadata
+
+
+ fs/nfsd/nfs3proc.c            |    2 -
+ fs/nfsd/nfs4proc.c            |    2 -
+ fs/nfsd/nfs4recover.c         |    2 -
+ fs/nfsd/nfs4state.c           |    2 -
+ fs/nfsd/nfsproc.c             |    4 +
+ fs/nfsd/vfs.c                 |  113 ++++++++++++++++++++++++++---------------
+ fs/nfsd/vfs.h                 |    4 +
+ fs/xfs/linux-2.6/xfs_export.c |   64 +++++++++++++++++++++++
+ include/linux/exportfs.h      |    6 ++
+ 9 files changed, 151 insertions(+), 48 deletions(-)
+
+-- 
