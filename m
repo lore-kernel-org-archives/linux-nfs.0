@@ -1,100 +1,57 @@
-From: Dave Chinner <david@fromorbit.com>
-Subject: Re: [RFC PATCH 2/2] xfs_export_operations.commit_metadata
-Date: Thu, 11 Feb 2010 08:29:14 +1100
-Message-ID: <20100210212914.GT11483@discord.disaster>
-References: <20100210003220.6021.74943.stgit@case>
-	<20100210003337.6021.10942.stgit@case>
-	<20100210090750.GB21875@infradead.org>
-	<20100210201527.GJ23654@sgi.com>
+From: Christoph Hellwig <hch@infradead.org>
+Subject: Re: [RFC PATCH 1/2] commit_metadata export operation and nfsd_sync2
+Date: Wed, 10 Feb 2010 16:56:59 -0500
+Message-ID: <20100210215659.GA25004@infradead.org>
+References: <20100210003220.6021.74943.stgit@case> <20100210003331.6021.55867.stgit@case> <20100210085614.GA21875@infradead.org> <20100210195343.GI23654@sgi.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: Christoph Hellwig <hch@infradead.org>, linux-nfs@vger.kernel.org,
-        xfs@oss.sgi.com
+Content-Type: text/plain; charset=us-ascii
+Cc: Christoph Hellwig <hch@infradead.org>, linux-nfs@vger.kernel.org
 To: bpm@sgi.com
-Return-path: <xfs-bounces@oss.sgi.com>
-In-Reply-To: <20100210201527.GJ23654@sgi.com>
-List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
-List-Archive: <http://oss.sgi.com/pipermail/xfs>
-List-Post: <mailto:xfs@oss.sgi.com>
-List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
-List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
-Sender: xfs-bounces@oss.sgi.com
-Errors-To: xfs-bounces@oss.sgi.com
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from bombadil.infradead.org ([18.85.46.34]:51641 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751452Ab0BJV5A (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 10 Feb 2010 16:57:00 -0500
+In-Reply-To: <20100210195343.GI23654@sgi.com>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Feb 10, 2010 at 02:15:27PM -0600, bpm@sgi.com wrote:
-> Howdy,
+On Wed, Feb 10, 2010 at 01:53:43PM -0600, bpm@sgi.com wrote:
+> > I think Trond explained that we do not want force data to disk here.
 > 
-> On Wed, Feb 10, 2010 at 04:07:50AM -0500, Christoph Hellwig wrote:
-> > On Tue, Feb 09, 2010 at 06:33:37PM -0600, Ben Myers wrote:
-> > > hopefully
-> > > the XFS gurus can continue to provide guidance.
+> Thought so.  I was making an effort to punch all the same buttons as
+> before so that behavior wouldn't change for filesystems other than xfs
+> until they're ready.
+
+Well, the data writing really isn't filesystem dependent, but depends
+on the nfs semantics.
+
+> > Btw, as we don't need to write data to disk this should be a
+> > sync_inode calls with the following second argument:
 > > 
-> > Ccing the xfs list would help with that :) 
+> > struct writeback_control wbc = {
+> > 	.sync_mode = WB_SYNC_ALL,
+> > 	.nr_to_write = 0, /* metadata-only */
+> > };
 > 
-> I'll cross-post the next rev.  ;)
-> 
-> > > +		if (xfs_ipincount(c_xip)) {
-> > > +			/*
-> > > +			 * AFAICS the child is always modified after the parent
-> > > +			 * in nfsd so should always have a larger lsn.
-> > > +			 */
-> > > +			if (c_xip->i_itemp->ili_last_lsn > force_lsn) {
-> > > +				force_lsn = c_xip->i_itemp->ili_last_lsn;
-> > > +			} else {
-> > > +				force_lsn = 0; /* whole thing */
-> > > +			}
-> > 
-> > I wouldn't rely on that and always take the larger one.
-> 
-> I am concerned that ili_last_lsn will roll over at some point.  I
-> haven't figured out how to detect that yet.
+> So, uh, are you suggesting that I use file_operations.fsync,
+> write_inode_now, vfs_fsync, write_inode, sync_inode, or
+> super_operations.write_inode?  Would it be good to stay away from the
+> inode_lock?
 
-XFS_LSN_CMP() should be used for LSN comparisons - it handles
-rollover corectly.
+->write_inode is the method that both write_inode_now and sync_inode
+end up calling, in fact write_inode_now could be implemented on top
+of sync_inode.  The difference is that write_inode_now already
+prepares a writeback_control structure that already writes out data,
+and optionally waits for data I/O to complete, while sync_inode
+leaves all that to the caller.  If we dont want to bother with
+writing out data we have to use sync_inode if we want to use
+the ->write_inode path.  Given that we want to make changes that
+happened through the filesystem metadata methods stable and not
+user data using ->write_inode makes more sense to me than ->fsync.
+Especially as ->fsync normally requires a file pointer and only
+allows that to be NULL for nfs, which requires special cases all
+over the place that we could get rid of.
 
-
-> > Now with the simplification of always having a non-zero first argument
-> > suggested in the previous mail this might be simplified down to:
-> > 
-> > STATIC int
-> > xfs_fs_nfs_commit_metadata(
-> > 	struct dentry		*parent,
-> > 	struct dentry		*child)
-> > {
-> > 	struct xfs_inode	*dp = XFS_I(parent->d_inode);
-> > 	struct xfs_inode	*ip = NULL;
-> > 	struct xfs_mount	*mp = dp->i_mount;
-> > 	xfs_lsn_t		force_lsn = 0;
-> > 	int			error = 0;
-> > 
-> > 	if (child) {
-> > 		ip = XFS_I(child->d_inode);
-> > 		xfs_lock_two_inodes(dp, ip, XFS_ILOCK_SHARED);
-> > 	} else {
-> > 		xfs_ilock(dp, XFS_ILOCK_SHARED);
-> > 	}
-> > 
-> > 	if (xfs_ipincount(dp))
-> > 		force_lsn = dp->i_itemp->ili_last_lsn;
-> > 	if (ip && xfs_ipincount(ip))
-> > 		force_lsn = max(force_lsn, ip->i_itemp->ili_last_lsn);
-
-So this should be:
-
-		if (XFS_LSN_CMP(force_lsn, ip->i_itemp->ili_last_lsn) < 0)
-			force_lsn = ip->i_itemp->ili_last_lsn;
-
-Cheers,
-
-Dave.
--- 
-Dave Chinner
-david@fromorbit.com
-
-_______________________________________________
-xfs mailing list
-xfs@oss.sgi.com
-http://oss.sgi.com/mailman/listinfo/xfs
+The global lock in that path is not nice, but Nick Piggin has already
+started splitting it up.
