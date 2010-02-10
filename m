@@ -1,23 +1,37 @@
-From: Boaz Harrosh <bharrosh@panasas.com>
-Subject: Re: [pnfs] [PATCH] SQUASHME: pnfsd-exofs: Change layoutget return
- codes
-Date: Wed, 10 Feb 2010 12:45:12 +0200
-Message-ID: <4B728E38.4060008@panasas.com>
-References: <1265737357-9405-1-git-send-email-andros@netapp.com> <4B726D4E.1000601@panasas.com>
+From: "Halevy, Benny" <bhalevy@panasas.com>
+Subject: RE: [pnfs] [PATCH] SQUASHME: pnfsd-exofs: Change layoutget return codes
+Date: Wed, 10 Feb 2010 08:06:11 -0500
+Message-ID: <7225594ED4A1304C9E43D030A886D221F4C8EC@daytona.int.panasas.com>
+References: <1265737357-9405-1-git-send-email-andros@netapp.com><4B726D4E.1000601@panasas.com> <4B728E38.4060008@panasas.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: linux-nfs@vger.kernel.org, pnfs@linux-nfs.org,
+Content-Type: text/plain; charset=US-ASCII
+Cc: <linux-nfs@vger.kernel.org>, <pnfs@linux-nfs.org>,
 	"J. Bruce Fields" <bfields@citi.umich.edu>
-To: andros@netapp.com
+To: "Boaz Harrosh" <bharrosh@panasas.com>, <andros@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:19582 "EHLO
+Received: from daytona.panasas.com ([67.152.220.89]:38323 "EHLO
 	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1753676Ab0BJKpS (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 10 Feb 2010 05:45:18 -0500
-In-Reply-To: <4B726D4E.1000601@panasas.com>
+	with ESMTP id S1752322Ab0BJNGS convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 10 Feb 2010 08:06:18 -0500
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+The nfserr_xxx constants are already encoded in network order.
+This is the internal convention de-facto in nfsd.
+We can either leave them in the internal header and translate
+the canonical constants to their net-order representation
+or define them in a public header and have the filesystem
+use them.  The former seems cleaner with regards to layering.
+
+Benny
+
+-----Original Message-----
+From: pnfs-bounces@linux-nfs.org on behalf of Boaz Harrosh
+Sent: Wed 2010-02-10 12:45
+To: andros@netapp.com
+Cc: linux-nfs@vger.kernel.org; pnfs@linux-nfs.org; J. Bruce Fields
+Subject: Re: [pnfs] [PATCH] SQUASHME: pnfsd-exofs: Change layoutget return codes
+ 
 On 02/10/2010 10:24 AM, Boaz Harrosh wrote:
 > 
 > Dependent on patch from Andy:
@@ -93,4 +107,9 @@ Boaz
 >  
 >  err:
 >  	kfree(creds);
+
+_______________________________________________
+pNFS mailing list
+pNFS@linux-nfs.org
+http://linux-nfs.org/cgi-bin/mailman/listinfo/pnfs
 
