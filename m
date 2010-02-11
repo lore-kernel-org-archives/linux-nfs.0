@@ -1,54 +1,62 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:61699 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:49168 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753286Ab0BVOJR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 22 Feb 2010 09:09:17 -0500
-From: David Howells <dhowells@redhat.com>
-Subject: [PATCH] Remove EXPERIMENTAL from NFS_FSCACHE
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, linux-cachefs@redhat.com,
-        Christian Kujau <lists@nerdbynature.de>,
-        David Howells <dhowells@redhat.com>
-Date: Mon, 22 Feb 2010 14:09:05 +0000
-Message-ID: <20100222140905.21284.81120.stgit@warthog.procyon.org.uk>
-Content-Type: text/plain; charset="utf-8"
+	id S1755993Ab0BKQiJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 11 Feb 2010 11:38:09 -0500
+Date: Thu, 11 Feb 2010 11:38:35 -0500
+From: "J. Bruce Fields" <bfields@citi.umich.edu>
+To: Boaz Harrosh <bharrosh@panasas.com>
+Cc: andros@netapp.com, linux-nfs@vger.kernel.org, pnfs@linux-nfs.org
+Subject: Re: [pnfs] [PATCH] SQUASHME: pnfsd-exofs: Change layoutget return
+	codes
+Message-ID: <20100211163835.GA320@fieldses.org>
+References: <1265737357-9405-1-git-send-email-andros@netapp.com> <4B726D4E.1000601@panasas.com> <4B728E38.4060008@panasas.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4B728E38.4060008@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-From: Christian Kujau <lists@nerdbynature.de>
+On Wed, Feb 10, 2010 at 12:45:12PM +0200, Boaz Harrosh wrote:
+> On 02/10/2010 10:24 AM, Boaz Harrosh wrote:
+> > 
+> > Dependent on patch from Andy:
+> > 	[PATCH 1/6] pnfsd: fix file system API layout_get error codes
+> > 
+> > Change codes to nfs4.1 codes
+> > 
+> > Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+> 
+> Rrrr I spoke to soon.
+> 
+> Andy, Benny
+> This will not work, currently. All the nfserr_xxx constants are defined
+> if fs/nfsd/nfsd.h. 
+> (Why do they exist at all, why can't we use the client's definitions for these?)
+> 
+> At the minimum they need to move to include/linux/nfsd/export.h. But I say kill them
+> and use these from include/linux/nfs4.h. Added bonus these are enums, so prototype
+> of .layout_get() can change to return enum nfsstat4 and the compiler fixes all our
+> bugs.
+> 
+> I'm posting a second patch that uses "enum nfsstat4" constants in exofs which will
+> work just fine, but is really ugly on the documentation aspect of Andy's patch.
+> 
+> Bruce may I submit a patch that globally gets rid of all nfserr_* defines and uses
+> NFS4ERR_* in their place?
 
-There's currently an open Ubuntu bug[0], with the intent to compile NFS_FSCACHE
-(and possibly AFS_FSCACHE, 9P_FSCACHE) into the standard Ubuntu kernel.
-However, since *_FSCACHE still depends on EXPERIMENTAL, this won't happen.
+And ditto for v2/v3 errors?
 
-As Arjan van de Ven pointed out[1], the EXPERIMENTAL flag doesn't mean that
-much any more, I propose the following patch to fs/nfs/Kconfig.  I'd do the
-same for fs/9p/Kconfig and fs/afs/Kconfig, but as I did not test 9p or AFS, I
-feel it would not be appropriate for me to remove the flag.
+Note you'll also need to track down all the function return types and
+the variables that hold errors, and change them from __be32 to something
+else.  (Hopefully not int, as the distinction between nfs errors and
+-ERRNO errors is useful.)
 
-[0] https://bugs.launchpad.net/ubuntu/+source/linux/+bug/440522/comments/5
-[1] http://lkml.org/lkml/2010/1/23/145
+I agree that it would be better not to have two entirely separate sets
+of errors defines.
 
-Signed-off-by: Christian Kujau <lists@nerdbynature.de>
-Signed-off-by: David Howells <dhowells@redhat.com>
----
+It's a large change that will conflict with everything, but as it's
+currently Benny that will probably have the most fixing-up to do I guess
+I'd defer to him to weigh the pain caused by that.
 
- fs/nfs/Kconfig |    3 +--
- 1 files changed, 1 insertions(+), 2 deletions(-)
-
-diff --git a/fs/nfs/Kconfig b/fs/nfs/Kconfig
-index 59e5673..a43d07e 100644
---- a/fs/nfs/Kconfig
-+++ b/fs/nfs/Kconfig
-@@ -95,8 +95,7 @@ config ROOT_NFS
- 	  Most people say N here.
- 
- config NFS_FSCACHE
--	bool "Provide NFS client caching support (EXPERIMENTAL)"
--	depends on EXPERIMENTAL
-+	bool "Provide NFS client caching support"
- 	depends on NFS_FS=m && FSCACHE || NFS_FS=y && FSCACHE=y
- 	help
- 	  Say Y here if you want NFS data to be cached locally on disc through
-
+--b.
