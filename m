@@ -1,32 +1,41 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH 2/2] NFS: Don't generate a GETATTR when opening an O_DIRECT
- file
-Date: Thu, 11 Feb 2010 14:20:18 -0500
-Message-ID: <4B745872.7020807@oracle.com>
-References: <20100211185757.2666.90001.stgit@localhost.localdomain>	 <20100211190918.2666.82008.stgit@localhost.localdomain> <1265915652.478.22.camel@localhost>
+From: Ben Myers <bpm@sgi.com>
+Subject: [PATCH 0/2] commit_metadata export operation v3
+Date: Thu, 11 Feb 2010 13:26:12 -0600
+Message-ID: <20100211192611.12949.65493.stgit@case>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8; format=flowed
-Cc: linux-nfs@vger.kernel.org
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Content-Type: text/plain; charset="utf-8"
+Cc: xfs@oss.sgi.com
+To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet11.oracle.com ([148.87.113.123]:24201 "EHLO
-	rcsinet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756853Ab0BKTVQ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 11 Feb 2010 14:21:16 -0500
-In-Reply-To: <1265915652.478.22.camel@localhost>
+Received: from relay1.sgi.com ([192.48.179.29]:54709 "EHLO relay.sgi.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756714Ab0BKT0R (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 11 Feb 2010 14:26:17 -0500
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 02/11/2010 02:14 PM, Trond Myklebust wrote:
-> On Thu, 2010-02-11 at 14:09 -0500, Chuck Lever wrote:
->> Close-to-open isn't needed for O_DIRECT files, since their data is
->> never cached.  So if their attribute cache hasn't expired, skip the
->> GETATTR.
->
-> Don't we still want to ensure that the access cache is still valid?
+Here is the latest version of the knfsd sync changes.  I have addressed the
+suggestions provided by Christoph, Trond, and Dave.
 
-Would it be reasonable/feasible to squelch the GETATTR but force an 
-ACCESS call from nfs_permission?
+Thanks,
+	Ben
+
+---
+
+Ben Myers (2):
+      commit_metadata export operation replacing nfsd_sync_dir
+      xfs_export_operations.commit_metadata
+
+
+ fs/nfsd/nfs3proc.c            |    2 -
+ fs/nfsd/nfs4proc.c            |    2 -
+ fs/nfsd/nfs4recover.c         |    4 -
+ fs/nfsd/nfs4state.c           |    2 -
+ fs/nfsd/nfsproc.c             |    4 +
+ fs/nfsd/vfs.c                 |  116 +++++++++++++++++++----------------------
+ fs/nfsd/vfs.h                 |    3 -
+ fs/xfs/linux-2.6/xfs_export.c |   43 +++++++++++++++
+ include/linux/exportfs.h      |    6 ++
+ 9 files changed, 111 insertions(+), 71 deletions(-)
 
 -- 
-chuck[dot]lever[at]oracle[dot]com
