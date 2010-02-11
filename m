@@ -1,91 +1,82 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from acsinet12.oracle.com ([141.146.126.234]:50752 "EHLO
-	acsinet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753963Ab0BHSpw (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 8 Feb 2010 13:45:52 -0500
-Message-ID: <4B705B63.8060604@oracle.com>
-Date: Mon, 08 Feb 2010 13:43:47 -0500
-From: Chuck Lever <chuck.lever@oracle.com>
-To: "Batsakis, Alexandros" <Alexandros.Batsakis@netapp.com>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 6/6] RPC: adjust timeout for connect, bind, restablish
- so that they sensitive to the major time out value
-References: <1265155576-7618-1-git-send-email-batsakis@netapp.com> <1265155576-7618-2-git-send-email-batsakis@netapp.com> <1265155576-7618-3-git-send-email-batsakis@netapp.com> <1265155576-7618-4-git-send-email-batsakis@netapp.com> <1265155576-7618-5-git-send-email-batsakis@netapp.com> <1265155576-7618-6-git-send-email-batsakis@netapp.com> <1265155576-7618-7-git-send-email-batsakis@netapp.com> <4B6C7BCA.2040806@oracle.com> <383F4881-BD88-4155-B605-4D24F5B05BDD@netapp.com> <4B6C9FA7.2010702@oracle.com> <77EBFB14-A6B6-41DC-90DC-7A00548DFAEA@netapp.com> <4B6CB3C7.8070001@oracle.com> <B9364369CA66BF45806C2CD86EAB8BA60259D23D@SACMVEXC3-PRD.hq.netapp.com> <4B6E0EF5.70307@oracle.com> <2CDC4373-10AD-4F84-BA44-3C2106D590BE@netapp.com>
-In-Reply-To: <2CDC4373-10AD-4F84-BA44-3C2106D590BE@netapp.com>
-Content-Type: text/plain; charset=us-ascii; format=flowed
+Received: from daytona.panasas.com ([67.152.220.89]:56987 "EHLO
+	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1755311Ab0BKReI (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 11 Feb 2010 12:34:08 -0500
+Message-ID: <4B743F8C.4070701@panasas.com>
+Date: Thu, 11 Feb 2010 19:34:04 +0200
+From: Benny Halevy <bhalevy@panasas.com>
+To: "J. Bruce Fields" <bfields@citi.umich.edu>
+CC: Boaz Harrosh <bharrosh@panasas.com>, andros@netapp.com,
+        linux-nfs@vger.kernel.org, pnfs@linux-nfs.org
+Subject: Re: [pnfs] [PATCH] SQUASHME: pnfsd-exofs: Change layoutget	return
+ codes
+References: <1265737357-9405-1-git-send-email-andros@netapp.com>	<4B726D4E.1000601@panasas.com> <4B728E38.4060008@panasas.com> <20100211163835.GA320@fieldses.org>
+In-Reply-To: <20100211163835.GA320@fieldses.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 02/06/2010 11:11 PM, Batsakis, Alexandros wrote:
->
->
-> On Feb 6, 2010, at 16:53, "Chuck Lever" <chuck.lever@oracle.com> wrote:
->
->> On 02/05/2010 11:05 PM, Batsakis, Alexandros wrote:
+On Feb. 11, 2010, 18:38 +0200, "J. Bruce Fields" <bfields@citi.umich.edu> wrote:
+> On Wed, Feb 10, 2010 at 12:45:12PM +0200, Boaz Harrosh wrote:
+>> On 02/10/2010 10:24 AM, Boaz Harrosh wrote:
+>>> Dependent on patch from Andy:
+>>> 	[PATCH 1/6] pnfsd: fix file system API layout_get error codes
 >>>
->>> My replies marked with the "AB" prefix
+>>> Change codes to nfs4.1 codes
 >>>
->>> -----Original Message-----
->>> From: Chuck Lever [mailto:chuck.lever@oracle.com]
->>> Sent: Fri 2/5/2010 4:11 PM
->>> To: Batsakis, Alexandros
->>> Cc: Batsakis, Alexandros; linux-nfs@vger.kernel.org; Myklebust, Trond
->>> Subject: Re: [PATCH 6/6] RPC: adjust timeout for connect, bind,
->>> restablish so that they sensitive to the major time out value
->>>
->>> On 02/05/2010 06:04 PM, Batsakis, Alexandros wrote:
->>> >
->>> >
->>> > On Feb 5, 2010, at 14:47, "Chuck Lever" <chuck.lever@oracle.com>
->>> wrote:
->>> >
->>> >> On 02/05/2010 05:14 PM, Batsakis, Alexandros wrote:
->>> >>> Yeah sure,
->>> >>>
->>> >>> So imagine that for a specific connection the remaining major timeo
->>> >>> value is 30secs. Xs_connect has a default timeout before
->>> attempting to
->>> >>> reconnect of 60secs. The user (NFS) expects to "hear back" from
->>> the rpc
->>> >>> layer within the timeout as in often cases e.g. lease renewal,
->>> it's of
->>> >>> no benefit for an operation to reach the server at a later time and
->>> miss
->>> >>> the critical time because it was sleeping for an arbitrary amount of
->>> >>> time.
->>>
->>> Maybe you want RPC_TASK_SOFTCONN for NFSv4 renewals instead of
->>> RPC_TASK_SOFT. This would cause the RENEW request to fail immediately
->>> if the transport can't connect.
->>>
->>> AB: is this a new flag ? I am not familiar with it. Or are you proposing
->>> to add such a flag?
->>> It's not an unreasonable thing to do
+>>> Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+>> Rrrr I spoke to soon.
 >>
->> The flag was added recently (maybe in 2.6.33-rc?). It causes an
->> individual RPC request to fail immediately if the underlying transport
->> cannot be connected. It bypasses the reconnect timeout if the
->> transport is not already connected.
+>> Andy, Benny
+>> This will not work, currently. All the nfserr_xxx constants are defined
+>> if fs/nfsd/nfsd.h. 
+>> (Why do they exist at all, why can't we use the client's definitions for these?)
 >>
->
-> Oh OK. Maybe then it's a reasonable workaround to the reconnection
-> policy changes. I think though that the rest of the changes wrt the
-> major timeout are still valid. Also IMHO the max of 5min seems a lot,
-> especially for operations that are state-oriented like in v4.0 and v4.1.
+>> At the minimum they need to move to include/linux/nfsd/export.h. But I say kill them
+>> and use these from include/linux/nfs4.h. Added bonus these are enums, so prototype
+>> of .layout_get() can change to return enum nfsstat4 and the compiler fixes all our
+>> bugs.
+>>
+>> I'm posting a second patch that uses "enum nfsstat4" constants in exofs which will
+>> work just fine, but is really ugly on the documentation aspect of Andy's patch.
+>>
+>> Bruce may I submit a patch that globally gets rid of all nfserr_* defines and uses
+>> NFS4ERR_* in their place?
+> 
+> And ditto for v2/v3 errors?
+> 
+> Note you'll also need to track down all the function return types and
+> the variables that hold errors, and change them from __be32 to something
+> else.  (Hopefully not int, as the distinction between nfs errors and
+> -ERRNO errors is useful.)
+> 
+> I agree that it would be better not to have two entirely separate sets
+> of errors defines.
+> 
+> It's a large change that will conflict with everything, but as it's
+> currently Benny that will probably have the most fixing-up to do I guess
+> I'd defer to him to weigh the pain caused by that.
 
-I'm not averse to reducing the maximum reconnect delay to something like 
-60 seconds.  This might even be an acceptable work around for some of 
-the issues you've raised.  Additional illumination of current reconnect 
-behavior may find that it no longer behaves as expected in the quick 
-server reboot cases, and that also should be addressed.
+I think that such a clean up internally to the nfsd layer is really
+low priority.  However, new pnfs code, beyond the superblock api,
+should be cleaner and avoid using the internal, encoded constants.
 
-However, the fact that _all_ NFSv4 state-changing operations now have 
-additional delivery constraints makes this an issue larger than RENEWD 
-(which is the subject line of your original postings).  IMO sunrpc.ko is 
-not currently prepared to handle that kind of timing constraint 
-adequately.  Adjusting the retransmit behavior is simply not sufficient 
-to address these problems (and perhaps it is even orthogonal to them).
+We just saw how confusing it is, when the DLM layout could've returned
+a mix of be32 error codes, negative host-order nfs4.1 errors codes, and
+negative system errors. Latter two, erronuously from filelayout_encode_layout.
 
--- 
-chuck[dot]lever[at]oracle[dot]com
+Note that filelayout_encode_layout can be called both from the dlm
+implementation that is technically a part of nfsd, but from spnfs
+and other file systems supporting the file layout so it better
+agree on one simple convention.
+
+Benny
+
+> 
+> --b.
+> _______________________________________________
+> pNFS mailing list
+> pNFS@linux-nfs.org
+> http://linux-nfs.org/cgi-bin/mailman/listinfo/pnfs
