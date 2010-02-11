@@ -1,136 +1,168 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mga11.intel.com ([192.55.52.93]:2727 "EHLO mga11.intel.com"
+Received: from mx2.netapp.com ([216.240.18.37]:59688 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753367Ab0BXGMz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 24 Feb 2010 01:12:55 -0500
-Date: Wed, 24 Feb 2010 14:12:47 +0800
-From: Wu Fengguang <fengguang.wu@intel.com>
-To: Dave Chinner <david@fromorbit.com>
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-        Linux Memory Management List <linux-mm@kvack.org>,
-        LKML <linux-kernel@vger.kernel.org>
-Subject: Re: [RFC] nfs: use 2*rsize readahead size
-Message-ID: <20100224061247.GA8421@localhost>
-References: <20100224024100.GA17048@localhost> <20100224032934.GF16175@discord.disaster> <20100224041822.GB27459@localhost> <20100224052215.GH16175@discord.disaster>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20100224052215.GH16175@discord.disaster>
+	id S1756578Ab0BKRpD convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 11 Feb 2010 12:45:03 -0500
+Subject: [GIT PULL] Please pull NFS client bugfixes for mainline
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Linus Torvalds <torvalds@linux-foundation.org>
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
+Date: Thu, 11 Feb 2010 12:44:44 -0500
+Message-ID: <1265910284.478.5.camel@localhost>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, Feb 24, 2010 at 01:22:15PM +0800, Dave Chinner wrote:
-> On Wed, Feb 24, 2010 at 12:18:22PM +0800, Wu Fengguang wrote:
-> > On Wed, Feb 24, 2010 at 11:29:34AM +0800, Dave Chinner wrote:
-> > > On Wed, Feb 24, 2010 at 10:41:01AM +0800, Wu Fengguang wrote:
-> > > > With default rsize=512k and NFS_MAX_READAHEAD=15, the current NFS
-> > > > readahead size 512k*15=7680k is too large than necessary for typical
-> > > > clients.
-> > > > 
-> > > > On a e1000e--e1000e connection, I got the following numbers
-> > > > 
-> > > > 	readahead size		throughput
-> > > > 		   16k           35.5 MB/s
-> > > > 		   32k           54.3 MB/s
-> > > > 		   64k           64.1 MB/s
-> > > > 		  128k           70.5 MB/s
-> > > > 		  256k           74.6 MB/s
-> > > > rsize ==>	  512k           77.4 MB/s
-> > > > 		 1024k           85.5 MB/s
-> > > > 		 2048k           86.8 MB/s
-> > > > 		 4096k           87.9 MB/s
-> > > > 		 8192k           89.0 MB/s
-> > > > 		16384k           87.7 MB/s
-> > > > 
-> > > > So it seems that readahead_size=2*rsize (ie. keep two RPC requests in flight)
-> > > > can already get near full NFS bandwidth.
-> > > > 
-> > > > The test script is:
-> > > > 
-> > > > #!/bin/sh
-> > > > 
-> > > > file=/mnt/sparse
-> > > > BDI=0:15
-> > > > 
-> > > > for rasize in 16 32 64 128 256 512 1024 2048 4096 8192 16384
-> > > > do
-> > > > 	echo 3 > /proc/sys/vm/drop_caches
-> > > > 	echo $rasize > /sys/devices/virtual/bdi/$BDI/read_ahead_kb
-> > > > 	echo readahead_size=${rasize}k
-> > > > 	dd if=$file of=/dev/null bs=4k count=1024000
-> > > > done
-> > > 
-> > > That's doing a cached read out of the server cache, right? You
-> > 
-> > It does not involve disk IO at least. (The sparse file dataset is
-> > larger than server cache.)
-> 
-> It still results in effectively the same thing: very low, consistent
-> IO latency.
-> 
-> Effectively all the test results show is that on a clean, low
-> latency, uncongested network an unloaded NFS server that has no IO
-> latency, a client only requires one 512k readahead block to hide 90%
-> of the server read request latency.  I don't think this is a
-> particularly good test to base a new default on, though.
-> 
-> e.g. What is the result with a smaller rsize? When the server
-> actually has to do disk IO?  When multiple clients are reading at
-> the same time so the server may not detect accesses as sequential
-> and issue readahead? When another client is writing to the server at
-> the same time as the read and causing significant read IO latency at
-> the server?
-> 
-> What I'm trying to say is that while I agree with your premise that
-> a 7.8MB readahead window is probably far larger than was ever
-> intended, I disagree with your methodology and environment for
-> selecting a better default value.  The default readahead value needs
-> to work well in as many situations as possible, not just in perfect
-> 1:1 client/server environment.
+Hi Linus,
 
-Good points. It's imprudent to change a default value based on one
-single benchmark. Need to collect more data, which may take time..
+Please pull from the "bugfixes" branch of the repository at
 
-> > > might find the results are different if the server has to read the
-> > > file from disk. I would expect reads from the server cache not
-> > > to require much readahead as there is no IO latency on the server
-> > > side for the readahead to hide....
-> > 
-> > Sure the result will be different when disk IO is involved.
-> > In this case I would expect the server admin to setup the optimal
-> > readahead size for the disk(s).
-> 
-> The default should do the right thing when disk IO is involved, as
+   git pull git://git.linux-nfs.org/projects/trondmy/nfs-2.6.git bugfixes
 
-Agreed.
+This will update the following files through the appended changesets.
 
-> almost no-one has an NFS server that doesn't do IO.... ;)
+  Cheers,
+    Trond
 
-Sure.
+----
+ fs/nfs/fscache.c    |    9 ++++-----
+ fs/nfs/mount_clnt.c |    2 +-
+ fs/nfs/nfs2xdr.c    |    2 +-
+ fs/nfs/nfs4xdr.c    |    6 +++---
+ fs/nfs/write.c      |    3 +--
+ 5 files changed, 10 insertions(+), 12 deletions(-)
 
-> > It sounds silly to have
-> > 
-> >         client_readahead_size > server_readahead_size
-> 
-> I don't think it is  - the client readahead has to take into account
-> the network latency as well as the server latency. e.g. a network
-> with a high bandwidth but high latency is going to need much more
-> client side readahead than a high bandwidth, low latency network to
-> get the same throughput. Hence it is not uncommon to see larger
-> readahead windows on network clients than for local disk access.
+commit fdcb45777a3d1689c5541e1f85ee3ebbd197d2c1
+Author: Trond Myklebust <Trond.Myklebust@netapp.com>
+Date:   Mon Feb 8 09:32:40 2010 -0500
 
-Hmm I wonder if I can simulate a high-bandwidth high-latency network
-with e1000's RxIntDelay/TxIntDelay parameters..
+    NFS: Fix the mapping of the NFSERR_SERVERFAULT error
+    
+    It was recently pointed out that the NFSERR_SERVERFAULT error, which is
+    designed to inform the user of a serious internal error on the server, was
+    being mapped to an error value that is internal to the kernel.
+    
+    This patch maps it to the error EREMOTEIO, which is exported to userland
+    through errno.h.
+    
+    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+    Cc: stable@kernel.org
 
-> Also, the NFS server may not even be able to detect sequential IO
-> patterns because of the combined access patterns from the clients,
-> and so the only effective readahead might be what the clients
-> issue....
+commit 7549ad5f9b6eda49bbac4b14c5b8f37bf464f922
+Author: Trond Myklebust <Trond.Myklebust@netapp.com>
+Date:   Mon Feb 8 09:32:34 2010 -0500
 
-Ah yes. Even though the upstream kernel can handle it well, one may
-run a pretty old kernel, or other UNIX systems. If it really happens,
-the default 512K won't behave too bad, but may well be sub-optimal.
+    NFS: Remove a redundant check for PageFsCache in nfs_migrate_page()
+    
+    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+    Acked-by: David Howells <dhowells@redhat.com>
 
-Thanks,
-Fengguang
+commit 2c1740098c708b465e87637b237feb2fd98f129a
+Author: Trond Myklebust <Trond.Myklebust@netapp.com>
+Date:   Mon Feb 8 09:32:27 2010 -0500
+
+    NFS: Fix a bug in nfs_fscache_release_page()
+    
+    Not having an fscache cookie is perfectly valid if the user didn't mount
+    with the fscache option.
+    
+    This patch fixes http://bugzilla.kernel.org/show_bug.cgi?id=15234
+    
+    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+    Acked-by: David Howells <dhowells@redhat.com>
+    Cc: stable@kernel.org
+
+diff --git a/fs/nfs/fscache.c b/fs/nfs/fscache.c
+index fa58800..237874f 100644
+--- a/fs/nfs/fscache.c
++++ b/fs/nfs/fscache.c
+@@ -354,12 +354,11 @@ void nfs_fscache_reset_inode_cookie(struct inode *inode)
+  */
+ int nfs_fscache_release_page(struct page *page, gfp_t gfp)
+ {
+-	struct nfs_inode *nfsi = NFS_I(page->mapping->host);
+-	struct fscache_cookie *cookie = nfsi->fscache;
+-
+-	BUG_ON(!cookie);
+-
+ 	if (PageFsCache(page)) {
++		struct nfs_inode *nfsi = NFS_I(page->mapping->host);
++		struct fscache_cookie *cookie = nfsi->fscache;
++
++		BUG_ON(!cookie);
+ 		dfprintk(FSCACHE, "NFS: fscache releasepage (0x%p/0x%p/0x%p)\n",
+ 			 cookie, page, nfsi);
+ 
+diff --git a/fs/nfs/mount_clnt.c b/fs/nfs/mount_clnt.c
+index 0adefc4..59047f8 100644
+--- a/fs/nfs/mount_clnt.c
++++ b/fs/nfs/mount_clnt.c
+@@ -120,7 +120,7 @@ static struct {
+ 	{ .status = MNT3ERR_INVAL,		.errno = -EINVAL,	},
+ 	{ .status = MNT3ERR_NAMETOOLONG,	.errno = -ENAMETOOLONG,	},
+ 	{ .status = MNT3ERR_NOTSUPP,		.errno = -ENOTSUPP,	},
+-	{ .status = MNT3ERR_SERVERFAULT,	.errno = -ESERVERFAULT,	},
++	{ .status = MNT3ERR_SERVERFAULT,	.errno = -EREMOTEIO,	},
+ };
+ 
+ struct mountres {
+diff --git a/fs/nfs/nfs2xdr.c b/fs/nfs/nfs2xdr.c
+index 5e078b2..7bc2da8 100644
+--- a/fs/nfs/nfs2xdr.c
++++ b/fs/nfs/nfs2xdr.c
+@@ -699,7 +699,7 @@ static struct {
+ 	{ NFSERR_BAD_COOKIE,	-EBADCOOKIE	},
+ 	{ NFSERR_NOTSUPP,	-ENOTSUPP	},
+ 	{ NFSERR_TOOSMALL,	-ETOOSMALL	},
+-	{ NFSERR_SERVERFAULT,	-ESERVERFAULT	},
++	{ NFSERR_SERVERFAULT,	-EREMOTEIO	},
+ 	{ NFSERR_BADTYPE,	-EBADTYPE	},
+ 	{ NFSERR_JUKEBOX,	-EJUKEBOX	},
+ 	{ -1,			-EIO		}
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index e437fd6..5cd5184 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -4631,7 +4631,7 @@ static int decode_sequence(struct xdr_stream *xdr,
+ 	 * If the server returns different values for sessionID, slotID or
+ 	 * sequence number, the server is looney tunes.
+ 	 */
+-	status = -ESERVERFAULT;
++	status = -EREMOTEIO;
+ 
+ 	if (memcmp(id.data, res->sr_session->sess_id.data,
+ 		   NFS4_MAX_SESSIONID_LEN)) {
+@@ -5774,7 +5774,7 @@ static struct {
+ 	{ NFS4ERR_BAD_COOKIE,	-EBADCOOKIE	},
+ 	{ NFS4ERR_NOTSUPP,	-ENOTSUPP	},
+ 	{ NFS4ERR_TOOSMALL,	-ETOOSMALL	},
+-	{ NFS4ERR_SERVERFAULT,	-ESERVERFAULT	},
++	{ NFS4ERR_SERVERFAULT,	-EREMOTEIO	},
+ 	{ NFS4ERR_BADTYPE,	-EBADTYPE	},
+ 	{ NFS4ERR_LOCKED,	-EAGAIN		},
+ 	{ NFS4ERR_SYMLINK,	-ELOOP		},
+@@ -5801,7 +5801,7 @@ nfs4_stat_to_errno(int stat)
+ 	}
+ 	if (stat <= 10000 || stat > 10100) {
+ 		/* The server is looney tunes. */
+-		return -ESERVERFAULT;
++		return -EREMOTEIO;
+ 	}
+ 	/* If we cannot translate the error, the recovery routines should
+ 	 * handle it.
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index 7b54b8b..d63d964 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -1598,8 +1598,7 @@ int nfs_migrate_page(struct address_space *mapping, struct page *newpage,
+ 	struct nfs_page *req;
+ 	int ret;
+ 
+-	if (PageFsCache(page))
+-		nfs_fscache_release_page(page, GFP_KERNEL);
++	nfs_fscache_release_page(page, GFP_KERNEL);
+ 
+ 	req = nfs_find_and_lock_request(page);
+ 	ret = PTR_ERR(req);
+
