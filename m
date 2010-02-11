@@ -1,26 +1,77 @@
-From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: [RFC PATCH 2/2] xfs_export_operations.commit_metadata
-Date: Wed, 10 Feb 2010 16:57:44 -0500
-Message-ID: <20100210215744.GB25004@infradead.org>
-References: <20100210003220.6021.74943.stgit@case> <20100210003337.6021.10942.stgit@case> <20100210090750.GB21875@infradead.org> <20100210201527.GJ23654@sgi.com>
+From: Benny Halevy <bhalevy@panasas.com>
+Subject: Re: [PATCH version2] SQUASHME: pnfsd-exofs: Change layoutget return
+ codes
+Date: Thu, 11 Feb 2010 12:53:15 +0200
+Message-ID: <4B73E19B.2060600@panasas.com>
+References: <1265737357-9405-1-git-send-email-andros@netapp.com> <4B726D4E.1000601@panasas.com> <4B728EB6.9010703@panasas.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs@vger.kernel.org, xfs@oss.sgi.com
-To: bpm@sgi.com
+Content-Type: text/plain; charset=UTF-8
+Cc: andros@netapp.com, linux-nfs@vger.kernel.org, pnfs@linux-nfs.org
+To: Boaz Harrosh <bharrosh@panasas.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([18.85.46.34]:44853 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751452Ab0BJV5p (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 10 Feb 2010 16:57:45 -0500
-In-Reply-To: <20100210201527.GJ23654@sgi.com>
+Received: from daytona.panasas.com ([67.152.220.89]:53614 "EHLO
+	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1752296Ab0BKKxS (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 11 Feb 2010 05:53:18 -0500
+In-Reply-To: <4B728EB6.9010703@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Feb 10, 2010 at 02:15:27PM -0600, bpm@sgi.com wrote:
-> > Note that _xfs_log_force_lsn is new in the XFS tree, mainline still
-> > has _xfs_log_force with an lsn argument.
+On Feb. 10, 2010, 12:47 +0200, Boaz Harrosh <bharrosh@panasas.com> wrote:
+> Dependent on patch from Andy:
+> 	[PATCH 1/6] pnfsd: fix file system API layout_get error codes
 > 
-> I've been working with Bruce's tree.  Not sure how best to handle that.
+> Change codes to nfs4.1 codes
+> 
+> Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+> ---
+>  fs/exofs/export.c |   10 ++++++----
+>  1 files changed, 6 insertions(+), 4 deletions(-)
+> 
+> diff --git a/fs/exofs/export.c b/fs/exofs/export.c
+> index be3d54e..4a4e3a0 100644
+> --- a/fs/exofs/export.c
+> +++ b/fs/exofs/export.c
+> @@ -95,13 +95,13 @@ static int exofs_layout_get(
+>  	/* skip opaque size, will be filled-in later */
+>  	start = exp_xdr_reserve_qwords(xdr, 1);
+>  	if (!start) {
+> -		err = -E2BIG;
+> +		err = NFS4ERR_TOOSMALL;
+>  		goto err;
+>  	}
+>  
+>  	creds = kcalloc(el->s_numdevs, sizeof(*creds), GFP_KERNEL);
+>  	if (!creds) {
+> -		err = -ENOMEM;
+> +		err = NFS4ERR_LAYOUTTRYLATER;
+>  		goto err;
+>  	}
+>  
+> @@ -134,8 +134,10 @@ static int exofs_layout_get(
+>  	layout.olo_comps = creds;
+>  
+>  	err = pnfs_osd_xdr_encode_layout(xdr, &layout);
+> -	if (err)
+> +	if (err) {
+> +		err = NFS4ERR_TOOSMALL; /*FIXME: Change osd_xdr error codes */
+>  		goto err;
+> +	}
+>  
+>  	exp_xdr_encode_opaque_len(start, xdr->p);
+>  
+> @@ -146,7 +148,7 @@ static int exofs_layout_get(
+>  	spin_unlock(&oi->i_layout_lock);
+>  
+>  	if (in_recall)
+> -		err = -EAGAIN;
+> +		err = NFS4ERR_LAYOUTTRYLATER;
 
-Keep working against it for now, the merge fixup will be easy enough.
+That should be NFS4ERR_RECALLCONFLICT...
+I'll fix that in my tree.
 
+Benny
+
+>  
+>  err:
+>  	kfree(creds);
