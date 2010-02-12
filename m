@@ -1,63 +1,81 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([18.85.46.34]:41181 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932457Ab0BDPaH (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 4 Feb 2010 10:30:07 -0500
-Date: Thu, 4 Feb 2010 10:30:06 -0500
-From: Christoph Hellwig <hch@infradead.org>
-To: Ben Myers <bpm@sgi.com>
-Cc: linux-nfs@vger.kernel.org, xfs@oss.sgi.com
-Subject: Re: [RFC PATCH 0/4] wsync export option
-Message-ID: <20100204153006.GC22014@infradead.org>
-References: <20100203233755.17677.96582.stgit@case>
+Received: from fieldses.org ([174.143.236.118]:44588 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754440Ab0BLVyw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 12 Feb 2010 16:54:52 -0500
+Date: Fri, 12 Feb 2010 16:55:24 -0500
+From: "J. Bruce Fields" <bfields@citi.umich.edu>
+To: Steve Dickson <SteveD@redhat.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] nfsd: default to kernel default for minorversion 1
+Message-ID: <20100212215524.GF24661@fieldses.org>
+References: <1264631166-21898-1-git-send-email-bfields@citi.umich.edu> <1264631166-21898-2-git-send-email-bfields@citi.umich.edu> <20100201195821.GB19418@fieldses.org> <4B6B480C.1050307@RedHat.com> <20100205161001.GB24926@fieldses.org> <20100205192859.GE24926@fieldses.org> <20100205200501.GA28483@fieldses.org> <4B75B2DF.9060005@RedHat.com> <20100212200548.GB23361@fieldses.org> <4B75CBA3.8010001@RedHat.com>
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20100203233755.17677.96582.stgit@case>
+In-Reply-To: <4B75CBA3.8010001@RedHat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, Feb 03, 2010 at 05:44:24PM -0600, Ben Myers wrote:
-> The following series is adds a 'wsync' export option to nfsd.  It is intended
-> to be used on XFS with the wsync mount option.  When you already have a
-> synchronous log there is no need to sync metadata separately.
-
-You don't need the xfs wsync option, as the existing write_inode
-calls or your new fsync calls are doing the same as the wsync mount
-option, just from a higher layer.  The wsync option causes the log
-to be synchronously forced up to the log sequence number of the commit
-for the metadata operation, that is make all the operations affected
-by it synchronous.  That's exactly what we'll do using fsync (actually
-right now we force the whole log, but I have a patch to optimize it
-to only force nuntil the last commit lsn), and approqimately the
-same as we do using write_inode, just a lot less efficiently.
-
-> This is barely tested, YMMV, I could have this all wrong, etc, etc.  Here are
-> some very unscientific measurements taken over gigabit ethernet.
+On Fri, Feb 12, 2010 at 04:44:03PM -0500, Steve Dickson wrote:
 > 
-> # time tar -xvf /mnt2/quilt-0.47.tar > /dev/null
 > 
-> No XFS wsync, no NFS wsync:
-> 0m13.177s	0m13.301s	0m13.528s
+> On 02/12/2010 03:05 PM, J. Bruce Fields wrote:
+> > On Fri, Feb 12, 2010 at 02:58:23PM -0500, Steve Dickson wrote:
+> >>
+> >>
+> >> On 02/05/2010 03:05 PM, J. Bruce Fields wrote:
+> >>> From: J. Bruce Fields <bfields@citi.umich.edu>
+> >>>
+> >>> The current kernel code should not be enabled by default, because it
+> >>> does not yet attempt to be a conform completely to the rfc; for example,
+> >>> some required pieces of protocol are missing.
+> >>>
+> >>> Therefore the kernel defaults to leaving minorversion1 off.  When the
+> >>> code matures sufficiently, that default will change.
+> >>>
+> >>> That kernel default becomes meaningless if nfs-utils always explicitly
+> >>> turns 4.1 on or off.  So, nfs-utils should by default do nothing.
+> >>>
+> >>> Early adopters that want to turn on NFSv4.1 explicitly can still do so
+> >>> using
+> >>>
+> >>> 	echo "+4.1" >/proc/fs/nfsd/versions
+> >>>
+> >> When I write to /proc/fs/nfsd/versions I'm getting 
+> >>    write error: Device or resource busy
+> >>
+> >> What did you do to make the file writeable?
+> > 
+> > You just need to do it before starting nfsd.
+> Well before nfsd starts but after the nfsd module is loaded
+> (assuming nfsd is a module)
+
+Right.
+
+> > So if it's just a one-off experiment you could
+> > 
+> > 	/etc/init.d/nfs-server stop
+> > 	echo "+4.1" >/proc/fs/nsfd/versions
+> > 	/etc/init.d/nfs-server start
+> > 
+> > On machines where I was using 4.1 regularly I'd probably at a line to
+> > the init script, or to a local init script that ran before it.
+> Yea.. I'm looking into do something of this nature...
 > 
-> XFS wsync set, no NFS wsync:
-> 0m13.019s	0m13.232s	0m13.094s
-> 
-> XFS wsync set, NFS wsync set:
-> 0m8.361s	0m8.400s	0m8.301s
-> 
-> Curious to hear if this is a reasonable thing to do.  Suggestions welcome.
+> The odd thing about this patch is 4.1 can only be turned off. There
+> is no way to enabled except from doing the above echo... which 
+> seems to beg the question, why have the 4.1 code in nfsd at all?
 
-I think it's reasonable.  What might be even better it to have an
-export operation call out into the filesystem so that we can force wsync
-and not let nfsd deal with it at all.  There is a fair chance that the
-filesystem can do the sync more efficiently.
+So people can test it.
 
-And btw, not directly related to your patch, but getting rid of this
-write_inode call defintively makes the usage of ->write_inode more
-regular.  From generic code we mostly use it for full inode writeback
-in writeback_single_inode, and one other special case in
-generic_detach_inode if a filesystem is unmounting.  Only having
-writeback_single_inode and fs code use it will make this call much
-more predictable for the filesystem.
+We should not recommend it for production use at this point, at least
+not by people who are not fully aware of what they're doing.
 
+If you'd rather we added an option to rpc.nfsd to do the equivalent of
+the echo, that's fine.  But I think for testers/early adopters, adding a
+"echo" to their init script isn't a big deal.
 
+Of course, once it's mature we can flip the kernel default to on, and
+nobody will have to do anything.
+
+--b.
