@@ -1,86 +1,49 @@
-From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: [PATCH 2/2] xfs_export_operations.commit_metadata
-Date: Fri, 12 Feb 2010 12:47:07 -0500
-Message-ID: <20100212174706.GB22633@infradead.org>
-References: <20100211220454.26466.37578.stgit@case> <20100211220505.26466.99037.stgit@case> <1265986006.3201.112.camel@doink1>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Ben Myers <bpm@sgi.com>, bfields@fieldses.org,
-	linux-nfs@vger.kernel.org, xfs@oss.sgi.com
-To: Alex Elder <aelder@sgi.com>
+From: andros@netapp.com
+Subject: [PATCH 1/1] pnfs: use mds pseudoflavor for ds
+Date: Fri, 12 Feb 2010 13:24:48 -0500
+Message-ID: <1265999088-3507-2-git-send-email-andros@netapp.com>
+References: <1265999088-3507-1-git-send-email-andros@netapp.com>
+Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
+To: pnfs@linux-nfs.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([18.85.46.34]:52219 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756992Ab0BLRrK (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 12 Feb 2010 12:47:10 -0500
-In-Reply-To: <1265986006.3201.112.camel@doink1>
+Received: from mx2.netapp.com ([216.240.18.37]:36630 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754766Ab0BLSZy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 12 Feb 2010 13:25:54 -0500
+In-Reply-To: <1265999088-3507-1-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Feb 12, 2010 at 08:46:46AM -0600, Alex Elder wrote:
-> On Thu, 2010-02-11 at 16:05 -0600, Ben Myers wrote:
-> > This is the commit_metadata export operation for XFS, including the changes
-> > suggested by hch and dgc:
-> > 
-> > - Takes two two inodes instead of dentries and can assume the parent is
-> > always set.
-> 
-> I alluded to this in my review of the first patch.
-> This could be changed considered in a more generic
-> sense, "sync one or two inodes' metadata" rather
-> than presupposing the two inodes have a parent/child
-> relationship.
+From: Andy Adamson <andros@netapp.com>
 
-Or just implement my later suggestion to only pass one inode to the
-method and cal in on both inodes.   For the non-create case where
-we have only one transaction to deal with fhr first call will take
-care of it and unpin the second inode by forcing the log buffer out.
-For the create case we need to make sure to call it on the child first
-so that we force out the setattr transaction which also forced out the
-earlier one.   This keeps the calling convention quite a bit simpler,
-and also means we don't have to bother with locking two inodes or lsn
-comparisms.
+Signed-off-by: Andy Adamson <andros@netapp.com>
+---
+ fs/nfs/nfs4filelayoutdev.c |    5 +++--
+ 1 files changed, 3 insertions(+), 2 deletions(-)
 
-> > - Uses xfs_lock_two_inodes for the ilock.
-> > 
-> > - Forces the log up to the larger lsn of parent and child.
-> > 
-> > - Uses XFS_LSN_CMP for lsn comparison.
-> > 
-> > - Doesn't force the log if nobody had a pincount.
-> 
-> So if the log doesn't get forced, what causes the
-> desired metadata sync expected as a result of this
-> call?  (Maybe this is a dumb question.)
-
-Inodes get pinned on transaction commit, and unpinned when the log I/O
-for that transaction completes.  If the inode is not pinned this implies
-it has already been written to disk, e.g. because we're filling the log
-so fast that we need to write out more log buffers in that tiny window
-between the metada operation and the commit_metadata call.
-
-> > +		force_lsn = ip->i_itemp->ili_last_lsn;
-> > +	}
-> > +
-> > +	if (force_lsn != NULLCOMMITLSN) {
-> > +		error = _xfs_log_force(mp, force_lsn,
-> > +				XFS_LOG_FORCE | XFS_LOG_SYNC, NULL);
-> 
-> You want this here:
->  error = xfs_log_force_lsn(mp, force_lsn, XFS_LOG_FORCE | XFS_LOG_SYNC);
-
-In the XFS tree we do want either
-
-	xfs_log_force_lsn(mp, force_lsn, XFS_LOG_SYNC);
-
-or
-	error = _xfs_log_force_lsn(mp, force_lsn, XFS_LOG_SYNC, NULL);
-
-if we care enough about the returned error.  But Ben is working against
-the NFS tree which doesn't have that change yet.
-
-We can deal with that by either commiting the old variant to the nfs
-tree and then leaving sending Stephen a patch to fix it up in -next,
-or just not apply the xfs commit_metadata implementation yet, and wait
-for it until both the xfs and nfs trees have hit mainline.
+diff --git a/fs/nfs/nfs4filelayoutdev.c b/fs/nfs/nfs4filelayoutdev.c
+index e9674a9..b75fe46 100644
+--- a/fs/nfs/nfs4filelayoutdev.c
++++ b/fs/nfs/nfs4filelayoutdev.c
+@@ -222,7 +222,8 @@ nfs4_pnfs_ds_create(struct nfs_server *mds_srv, struct nfs4_pnfs_ds *ds)
+ 	int			addrlen;
+ 	int err = 0;
+ 
+-	dprintk("--> %s ip:port %s\n", __func__, ds->r_addr);
++	dprintk("--> %s ip:port %s au_flavor %d\n", __func__,
++		ds->r_addr, mds_clnt->cl_auth->au_flavor);
+ 
+ 	sin.sin_family = AF_INET;
+ 	sin.sin_addr.s_addr = ds->ds_ip_addr;
+@@ -254,7 +255,7 @@ nfs4_pnfs_ds_create(struct nfs_server *mds_srv, struct nfs4_pnfs_ds *ds)
+ 			      (struct sockaddr *)&sin,
+ 			      sizeof(struct sockaddr),
+ 			      ip_addr,
+-			      RPC_AUTH_UNIX,
++			      mds_clnt->cl_auth->au_flavor,
+ 			      IPPROTO_TCP,
+ 			      mds_clnt->cl_xprt->timeout,
+ 			      1 /* minorversion */);
+-- 
+1.6.6
 
