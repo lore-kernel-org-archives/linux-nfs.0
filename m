@@ -1,33 +1,85 @@
-From: Steve Dickson <SteveD@redhat.com>
-Subject: Re: [PATCH] mount.nfs: return error if proto= option specified IPv6
- when IPv6 isn't supported (try #2)
-Date: Fri, 12 Feb 2010 14:36:23 -0500
-Message-ID: <4B75ADB7.9060201@RedHat.com>
-References: <1265727888-4613-1-git-send-email-jlayton@redhat.com>
+From: bpm@sgi.com
+Subject: Re: [PATCH 2/2] xfs_export_operations.commit_metadata
+Date: Fri, 12 Feb 2010 13:56:47 -0600
+Message-ID: <20100212195647.GQ23654@sgi.com>
+References: <20100211220454.26466.37578.stgit@case> <20100211220505.26466.99037.stgit@case> <1265986006.3201.112.camel@doink1> <20100212174706.GB22633@infradead.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: chuck.lever@oracle.com, linux-nfs@vger.kernel.org
-To: Jeff Layton <jlayton@redhat.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: Alex Elder <aelder@sgi.com>, bfields@fieldses.org,
+	linux-nfs@vger.kernel.org, xfs@oss.sgi.com
+To: Christoph Hellwig <hch@infradead.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:57448 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755174Ab0BLTg2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 12 Feb 2010 14:36:28 -0500
-In-Reply-To: <1265727888-4613-1-git-send-email-jlayton@redhat.com>
+Received: from relay3.sgi.com ([192.48.152.1]:56383 "EHLO relay.sgi.com"
+	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1756869Ab0BLT4L (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 12 Feb 2010 14:56:11 -0500
+In-Reply-To: <20100212174706.GB22633@infradead.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-
-On 02/09/2010 10:04 AM, Jeff Layton wrote:
-> Right now, there's nothing that expressly forbids someone from
-> specifying proto=tcp6 for instance, even when nfs-utils it built without
-> IPv6 support. This may not work well if (for instance) they are using
-> NFSv3, since statd won't support IPv6. Explicitly return an error if
-> someone specifies an IPv6 proto= or mountproto= option and IPv6 isn't
-> supported.
+On Fri, Feb 12, 2010 at 12:47:07PM -0500, Christoph Hellwig wrote:
+> On Fri, Feb 12, 2010 at 08:46:46AM -0600, Alex Elder wrote:
+> > On Thu, 2010-02-11 at 16:05 -0600, Ben Myers wrote:
+> > > This is the commit_metadata export operation for XFS, including the changes
+> > > suggested by hch and dgc:
+> > > 
+> > > - Takes two two inodes instead of dentries and can assume the parent is
+> > > always set.
+> > 
+> > I alluded to this in my review of the first patch.
+> > This could be changed considered in a more generic
+> > sense, "sync one or two inodes' metadata" rather
+> > than presupposing the two inodes have a parent/child
+> > relationship.
 > 
-> Signed-off-by: Jeff Layton <jlayton@redhat.com>
-Committed... 
+> Or just implement my later suggestion to only pass one inode to the
+> method and cal in on both inodes.   For the non-create case where
+> we have only one transaction to deal with fhr first call will take
+> care of it and unpin the second inode by forcing the log buffer out.
+> For the create case we need to make sure to call it on the child first
+> so that we force out the setattr transaction which also forced out the
+> earlier one.
 
-steved.
+I chose not implement that suggestion because I prefer not to rely upon
+the coincidence that the child be modified last and synced first in
+knfsd.  It is better that the intent of the patch be clear, and that
+filesystems other than xfs also have enough information to sort out how
+to sync more efficiently.  knfsd shouldn't be forced to sync in a
+specific order just because that's what works best for xfs.  Or, mebbe
+it should and I'm being thick.  ;)
+
+Alex's suggestion that ->commit_metadata be more generic about the
+relationship of the two inodes seems reasonable, not sure what that
+means for vfs.c:commit_metadata.  This will help with the rename case.
+
+> This keeps the calling convention quite a bit simpler,
+> and also means we don't have to bother with locking two inodes or lsn
+> comparisms.
+
+Don't need the ilock to check pincount?
+
+> > > +		error = _xfs_log_force(mp, force_lsn,
+> > > +				XFS_LOG_FORCE | XFS_LOG_SYNC, NULL);
+> > 
+> > You want this here:
+> >  error = xfs_log_force_lsn(mp, force_lsn, XFS_LOG_FORCE | XFS_LOG_SYNC);
+> 
+> In the XFS tree we do want either
+> 
+> 	xfs_log_force_lsn(mp, force_lsn, XFS_LOG_SYNC);
+> 
+> or
+> 	error = _xfs_log_force_lsn(mp, force_lsn, XFS_LOG_SYNC, NULL);
+> 
+> if we care enough about the returned error.  But Ben is working against
+> the NFS tree which doesn't have that change yet.
+> 
+> We can deal with that by either commiting the old variant to the nfs
+> tree and then leaving sending Stephen a patch to fix it up in -next,
+> or just not apply the xfs commit_metadata implementation yet, and wait
+> for it until both the xfs and nfs trees have hit mainline.
+
+Yeah.  I don't know who Stephen is.
+
+Thanks,
+	Ben
