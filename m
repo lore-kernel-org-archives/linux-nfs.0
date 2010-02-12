@@ -1,85 +1,44 @@
-From: bpm@sgi.com
-Subject: Re: [PATCH 2/2] xfs_export_operations.commit_metadata
-Date: Fri, 12 Feb 2010 13:56:47 -0600
-Message-ID: <20100212195647.GQ23654@sgi.com>
-References: <20100211220454.26466.37578.stgit@case> <20100211220505.26466.99037.stgit@case> <1265986006.3201.112.camel@doink1> <20100212174706.GB22633@infradead.org>
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Re: [PATCH] nfsd: default to kernel default for minorversion 1
+Date: Fri, 12 Feb 2010 14:58:23 -0500
+Message-ID: <4B75B2DF.9060005@RedHat.com>
+References: <1264631166-21898-1-git-send-email-bfields@citi.umich.edu> <1264631166-21898-2-git-send-email-bfields@citi.umich.edu> <20100201195821.GB19418@fieldses.org> <4B6B480C.1050307@RedHat.com> <20100205161001.GB24926@fieldses.org> <20100205192859.GE24926@fieldses.org> <20100205200501.GA28483@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Alex Elder <aelder@sgi.com>, bfields@fieldses.org,
-	linux-nfs@vger.kernel.org, xfs@oss.sgi.com
-To: Christoph Hellwig <hch@infradead.org>
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: linux-nfs@vger.kernel.org
+To: "J. Bruce Fields" <bfields@citi.umich.edu>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from relay3.sgi.com ([192.48.152.1]:56383 "EHLO relay.sgi.com"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1756869Ab0BLT4L (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 12 Feb 2010 14:56:11 -0500
-In-Reply-To: <20100212174706.GB22633@infradead.org>
+Received: from mx1.redhat.com ([209.132.183.28]:32589 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757308Ab0BLT60 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 12 Feb 2010 14:58:26 -0500
+In-Reply-To: <20100205200501.GA28483@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Feb 12, 2010 at 12:47:07PM -0500, Christoph Hellwig wrote:
-> On Fri, Feb 12, 2010 at 08:46:46AM -0600, Alex Elder wrote:
-> > On Thu, 2010-02-11 at 16:05 -0600, Ben Myers wrote:
-> > > This is the commit_metadata export operation for XFS, including the changes
-> > > suggested by hch and dgc:
-> > > 
-> > > - Takes two two inodes instead of dentries and can assume the parent is
-> > > always set.
-> > 
-> > I alluded to this in my review of the first patch.
-> > This could be changed considered in a more generic
-> > sense, "sync one or two inodes' metadata" rather
-> > than presupposing the two inodes have a parent/child
-> > relationship.
+
+
+On 02/05/2010 03:05 PM, J. Bruce Fields wrote:
+> From: J. Bruce Fields <bfields@citi.umich.edu>
 > 
-> Or just implement my later suggestion to only pass one inode to the
-> method and cal in on both inodes.   For the non-create case where
-> we have only one transaction to deal with fhr first call will take
-> care of it and unpin the second inode by forcing the log buffer out.
-> For the create case we need to make sure to call it on the child first
-> so that we force out the setattr transaction which also forced out the
-> earlier one.
-
-I chose not implement that suggestion because I prefer not to rely upon
-the coincidence that the child be modified last and synced first in
-knfsd.  It is better that the intent of the patch be clear, and that
-filesystems other than xfs also have enough information to sort out how
-to sync more efficiently.  knfsd shouldn't be forced to sync in a
-specific order just because that's what works best for xfs.  Or, mebbe
-it should and I'm being thick.  ;)
-
-Alex's suggestion that ->commit_metadata be more generic about the
-relationship of the two inodes seems reasonable, not sure what that
-means for vfs.c:commit_metadata.  This will help with the rename case.
-
-> This keeps the calling convention quite a bit simpler,
-> and also means we don't have to bother with locking two inodes or lsn
-> comparisms.
-
-Don't need the ilock to check pincount?
-
-> > > +		error = _xfs_log_force(mp, force_lsn,
-> > > +				XFS_LOG_FORCE | XFS_LOG_SYNC, NULL);
-> > 
-> > You want this here:
-> >  error = xfs_log_force_lsn(mp, force_lsn, XFS_LOG_FORCE | XFS_LOG_SYNC);
+> The current kernel code should not be enabled by default, because it
+> does not yet attempt to be a conform completely to the rfc; for example,
+> some required pieces of protocol are missing.
 > 
-> In the XFS tree we do want either
+> Therefore the kernel defaults to leaving minorversion1 off.  When the
+> code matures sufficiently, that default will change.
 > 
-> 	xfs_log_force_lsn(mp, force_lsn, XFS_LOG_SYNC);
+> That kernel default becomes meaningless if nfs-utils always explicitly
+> turns 4.1 on or off.  So, nfs-utils should by default do nothing.
 > 
-> or
-> 	error = _xfs_log_force_lsn(mp, force_lsn, XFS_LOG_SYNC, NULL);
+> Early adopters that want to turn on NFSv4.1 explicitly can still do so
+> using
 > 
-> if we care enough about the returned error.  But Ben is working against
-> the NFS tree which doesn't have that change yet.
+> 	echo "+4.1" >/proc/fs/nfsd/versions
 > 
-> We can deal with that by either commiting the old variant to the nfs
-> tree and then leaving sending Stephen a patch to fix it up in -next,
-> or just not apply the xfs commit_metadata implementation yet, and wait
-> for it until both the xfs and nfs trees have hit mainline.
+When I write to /proc/fs/nfsd/versions I'm getting 
+   write error: Device or resource busy
 
-Yeah.  I don't know who Stephen is.
+What did you do to make the file writeable?
 
-Thanks,
-	Ben
+steved.
