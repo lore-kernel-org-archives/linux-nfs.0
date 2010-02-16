@@ -1,124 +1,145 @@
-From: Chuck Lever <chuck.lever-MouhYhfBpPxXrIkS9f7CXA@public.gmane.org>
-Subject: Re: background mounts inconsistent and partly not usable
-Date: Tue, 16 Feb 2010 14:21:00 -0500
-Message-ID: <4B7AF01C.10305@oracle.com>
-References: <4B7ADB6B.7090709@localhost>
+From: Peter Staubach <staubach@redhat.com>
+Subject: Re: [PATCH] libtirpc: handle large numbers of supplemental groups
+ gracefully (try #2)
+Date: Tue, 16 Feb 2010 14:24:09 -0500
+Message-ID: <4B7AF0D9.4030208@redhat.com>
+References: <1266347817-11186-1-git-send-email-jlayton@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-15; format=flowed
-Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org
-To: Daniel Goering <g_daniel@gmx.net>
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: steved@redhat.com, chuck.lever@oracle.com,
+	libtirpc-devel@lists.sourceforge.net, linux-nfs@vger.kernel.org
+To: Jeff Layton <jlayton@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet12.oracle.com ([148.87.113.124]:52116 "EHLO
-	rcsinet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755491Ab0BPTWy (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 16 Feb 2010 14:22:54 -0500
-In-Reply-To: <4B7ADB6B.7090709@localhost>
+Received: from mx1.redhat.com ([209.132.183.28]:64481 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755491Ab0BPTYd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 16 Feb 2010 14:24:33 -0500
+In-Reply-To: <1266347817-11186-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Daniel-
+Jeff Layton wrote:
+> This is the second attempt at this patch. The main changes are that this
+> one doesn't set a floor value for the size of the group list. There are
+> also a few minor cleanups and comments added.
+> 
+> If authunix_create_default() is called by a user with more than 16
+> supplimental groups, it'll abort(), which causes the program to crash
+> and coredump.
+> 
+> Fix it to handle this situation gracefully. Get the number of groups
+> that the user has first, and then allocate a big enough buffer to hold
+> them. Then, just don't let the lower function use more than the NGRPS
+> groups.
+> 
+> Also fix up the error handling in this function so that it just returns
+> a NULL pointer on error and logs a message via warnx() instead of
+> calling abort().
+> 
+> Reported-by: Peter Engel <peter.engel-y6kNeMnOB+c@public.gmane.org>
+> Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> ---
+>  src/auth_unix.c |   62 +++++++++++++++++++++++++++++++++++++++++++++++++-----
+>  1 files changed, 56 insertions(+), 6 deletions(-)
+> 
+> diff --git a/src/auth_unix.c b/src/auth_unix.c
+> index 71ca15d..a295e71 100644
+> --- a/src/auth_unix.c
+> +++ b/src/auth_unix.c
+> @@ -49,6 +49,7 @@
+>  #include <stdlib.h>
+>  #include <unistd.h>
+>  #include <string.h>
+> +#include <errno.h>
+>  
+>  #include <rpc/types.h>
+>  #include <rpc/xdr.h>
+> @@ -175,20 +176,69 @@ AUTH *
+>  authunix_create_default()
+>  {
+>  	int len;
+> +	size_t bufsize = 0;
+>  	char machname[MAXHOSTNAMELEN + 1];
+>  	uid_t uid;
+>  	gid_t gid;
+> -	gid_t gids[NGRPS];
+> +	gid_t *gids = NULL;
+> +	AUTH *auth;
+> +
+> +	if (gethostname(machname, sizeof machname) == -1) {
+> +		warnx("%s: gethostname() failed: %s", __func__,
+> +			strerror(errno));
+> +		return NULL;
+> +	}
+>  
+> -	if (gethostname(machname, sizeof machname) == -1)
+> -		abort();
+>  	machname[sizeof(machname) - 1] = 0;
+>  	uid = geteuid();
+>  	gid = getegid();
+> -	if ((len = getgroups(NGRPS, gids)) < 0)
+> -		abort();
+> +
+> +retry:
+> +	len = getgroups(0, NULL);
+> +	if (len < 0) {
+> +		warnx("%s: failed to get number of groups: %s", __func__,
+> +			strerror(errno));
+> +		return NULL;
+> +	}
+> +
+> +	if (len == 0)
+> +		goto no_groups;
+> +
+> +	bufsize = len * sizeof(gid_t);
+> +	gids = mem_alloc(bufsize);
+> +	if (gids == NULL) {
+> +		warnx("%s: memory allocation failed: %s", __func__,
+> +			strerror(ENOMEM));
+> +		return NULL;
+> +	}
+> +
+> +	len = getgroups(len, gids);
+> +	if (len < 0) {
+> +		mem_free(gids, bufsize);
+> +		/*
+> +		 * glibc equivalent routines mention that it's possible for
+> +		 * the number of groups to change between two getgroups calls.
+> +		 * If that happens, retry the whole thing again.
+> +		 */
+> +		if (len == -EINVAL) {
+> +			gids = NULL;
+> +			bufsize = 0;
+> +			goto retry;
+> +		}
+> +		warnx("%s: failed to get group list: %s", __func__,
+> +			strerror(errno));
+> +		return NULL;
+> +	}
+> +
+> +	/* AUTH_UNIX has a hard limit of NGRPS supplemental groups */
+> +	if (len > NGRPS)
+> +		len = NGRPS;
+> +
+> +no_groups:
+>  	/* XXX: interface problem; those should all have been unsigned */
+> -	return (authunix_create(machname, uid, gid, len, gids));
+> +	auth = authunix_create(machname, uid, gid, len, gids);
+> +	mem_free(gids, bufsize);
+> +	return auth;
+>  }
+>  
+>  /*
 
-On 02/16/2010 12:52 PM, Daniel Goering wrote:
-> Hi!
->
-> I'd like to mount an NFS4 share with the option bg as described in man 5
-> nfs. But all mounts are carried out in the foreground and time out after
-> 2 minutes [and the client is blocked e.g. during boot for the entire
-> time] instead of trying in the background for about 1 week until the
-> server is back up.
->
-> When I try to mount a share from an unreachable server I get something like
->
-> # mount.nfs4 10.1.2.3:/ /mnt/ -v -o bg
-> mount.nfs4: text-based options: 'bg,clientaddr=xxx,addr=10.1.2.3'
-> mount.nfs4: mount(2): Input/output error
-> mount.nfs4: mount system call failed
->
-> I tracked this down to utils/mount/stropts.c, where the function
-> nfs_is_permanent_error maps EIO to an permanent error and prevents the
-> mount from backgrounding.
->
-> I changed utils/mount/mount.c to use the old non string mount, in order
-> to compare the results
->
-> --- mount.c.bak	2010-02-16 18:06:09.000000000 +0100
-> +++ mount.c	2010-02-16 18:06:12.000000000 +0100
-> @@ -175,7 +175,7 @@
->   	if (nfs_mount_data_version>  NFS_MOUNT_VERSION)
->   		nfs_mount_data_version = NFS_MOUNT_VERSION;
->   	else
-> -		if (kernel_version>  MAKE_VERSION(2, 6, 22))
-> +		if (kernel_version>  MAKE_VERSION(3, 6, 22))
->   			string++;
->   }
->
->
-> and I get this result, if there is no route to the host
-> # mount.nfs4 10.1.2.3:/ /mnt/ -v -o bg
-> mount.nfs4: pinging: prog 100003 vers 4 prot tcp port 2049
-> mount.nfs4: Unable to connect to 10.1.2.3:2049, errno 113 (No route to host)
->
-> instead of waiting 2 minutes this call immediately returns. If there is
-> just no answer from the host instead of a "no route to host" message, I get
-> # mount.nfs4 10.1.2.3:/ /mnt/ -v -o bg
-> mount.nfs4: pinging: prog 100003 vers 4 prot tcp port 2049
-> mount.nfs4: Unable to connect to 10.1.2.3:2049, errno 110 (Connection
-> timed out)
->
-> mount.nfs4: backgrounding "10.1.2.3:/"
->
-> Both calls to the old non-string mount are significantly faster, and the
-> last one even backgrounds, while the string mount gives EIO in both
-> cases and never backgrounds.
->
-> I'd like to use the bg option to be able to boot the clients
-> simultaneously with the servers and the clients should just mount the
-> share, as soon as it becomes available.
-> Currently this is never possible with any machine running a kernel newer
-> than 2.6.22, as they will all die of the EIO error. Even for an older
-> Kernel this is only possible, if the server is already booting and can
-> answer ARP requests, as otherwise the mount will die from the "no route
-> to host" message.
+This change to restrict the groups used to the first NGRPS
+groups is one that we have always avoided.  It can be quite
+confusing to the user, to have an operation fail, but then
+to look and notice that the correct group is listed.
 
-FWIW, some of this is addressed in the 2.6.33 kernel.  EIO is the wrong 
-error for the kernel to return in this case.  With 2.6.33, string-based 
-NFSv4 mounts behave like legacy mounts; no route to host causes 
-immediate failure, no answer causes mount to background.
+Having the library abort seems odd and wrong, but this will
+also change semantics.  Is there really a problem here,
+after all of these years, that must be addressed?
 
-There's still a question of whether "no route to host" should fail 
-immediately, or should background.  We can add EHOSTUNREACH to 
-nfs_is_permanent_error(), but that will make foreground mounts hang for 
-2 minutes if the admin misspells the server name.  A minor point, perhaps.
+	Thanx...
 
-Anyone else have opinions about this?
-
-> I'd prefer if mount tried to find a route for about one week, to have
-> some time to turn on the servers separately [so they can spin up their
-> RAIDs sequentially instead of burning the fuse by consuming lots of
-> power during simultaneous spin up], but may be there are good reasons to
-> have it differently.
-> Nevertheless I think that it should at least be possible to mount shares
-> in the background after a timeout for systems with recent kernels using
-> string mount.
->
-> I observed the given problems with the following systems:
-> Gentoo	Kernel 2.6.31.4 	nfs-utils	1.1.4
-> Gentoo	Kernel 2.6.31.4 	nfs-utils	1.2.1
-> Fedora 12	Kernel 2.6.31.12	nfs-utils 	1.2.1
->
-> For now I'll probably just patch nfs_is_permanent_error on all my
-> systems to just map everything to temporary, but I hope there is a more
-> robust solution, that will allow fast feedback on problems and still
-> support background mounts.
->
->
-> Cheers
-> 	Daniel
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
-
--- 
-chuck[dot]lever[at]oracle[dot]com
+		ps
