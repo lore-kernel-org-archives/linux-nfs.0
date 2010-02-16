@@ -1,46 +1,124 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet11.oracle.com ([148.87.113.123]:58641 "EHLO
-	rcsinet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756537Ab0BKTKU (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 11 Feb 2010 14:10:20 -0500
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 0/2] Reduce GETATTRs during direct I/O
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Date: Thu, 11 Feb 2010 14:08:58 -0500
-Message-ID: <20100211185757.2666.90001.stgit@localhost.localdomain>
-Content-Type: text/plain; charset="utf-8"
+Received: from mx1.redhat.com ([209.132.183.28]:51757 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756468Ab0BPQM1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 16 Feb 2010 11:12:27 -0500
+From: Jeff Layton <jlayton@redhat.com>
+To: steved@redhat.com
+Cc: libtirpc-devel@lists.sourceforge.net, linux-nfs@vger.kernel.org
+Subject: [PATCH] libtirpc: handle large numbers of supplimental groups gracefully
+Date: Tue, 16 Feb 2010 11:12:18 -0500
+Message-Id: <1266336738-9611-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-Hi Trond-
+If authunix_create_default() is called by a user with more than 16
+supplimental groups, it'll abort(), which causes the program to
+crash and coredump.
 
-I mentioned this one to you last week.  I found that the NFS direct
-I/O engine appears to be missing calls to nfs_fattr_init().  Please
-take a look at these two patches and let me know if they look
-reasonable for 2.6.34.
+Fix it to handle this situation gracefully. Get the number of
+groups that the user has first, and then allocate a big enough
+buffer to hold them. Then, just don't let the lower function use
+more than the NGRPS groups.
 
-The problem also appears in the enterprise linux kernels.  We're still
-testing this on EL4 and EL5 in specific.  We haven't found evidence so
-far of incorrect behavior after applying the direct.c fix.  A bugzilla
-report is forthcoming.
+Also fix up the error handling in this function so that it just
+returns a NULL pointer on error and logs a message via warnx()
+instead of calling abort().
 
-I haven't convinced myself that the extra GETATTR when opening an
-O_DIRECT file is ever necessary.  But, I coded up a patch to your
-specifications that changes O_DIRECT opens to avoid a GETATTR when
-possible.
-
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
 ---
+ src/auth_unix.c |   61 +++++++++++++++++++++++++++++++++++++++++++++++++-----
+ 1 files changed, 55 insertions(+), 6 deletions(-)
 
-Chuck Lever (2):
-      NFS: Don't generate a GETATTR when opening an O_DIRECT file
-      NFS: Too many GETATTR and ACCESS calls after direct I/O
-
-
- fs/nfs/dir.c    |   20 ++++++++++++++++----
- fs/nfs/direct.c |    3 +++
- 2 files changed, 19 insertions(+), 4 deletions(-)
-
+diff --git a/src/auth_unix.c b/src/auth_unix.c
+index 71ca15d..4ac1263 100644
+--- a/src/auth_unix.c
++++ b/src/auth_unix.c
+@@ -49,6 +49,7 @@
+ #include <stdlib.h>
+ #include <unistd.h>
+ #include <string.h>
++#include <errno.h>
+ 
+ #include <rpc/types.h>
+ #include <rpc/xdr.h>
+@@ -175,20 +176,68 @@ AUTH *
+ authunix_create_default()
+ {
+ 	int len;
++	size_t bufsize = 0;
+ 	char machname[MAXHOSTNAMELEN + 1];
+ 	uid_t uid;
+ 	gid_t gid;
+-	gid_t gids[NGRPS];
++	gid_t *gids = NULL;
++	AUTH *auth;
++
++	if (gethostname(machname, sizeof machname) == -1) {
++		warnx("%s: gethostname() failed: %s", __func__,
++			strerror(errno));
++		return NULL;
++	}
+ 
+-	if (gethostname(machname, sizeof machname) == -1)
+-		abort();
+ 	machname[sizeof(machname) - 1] = 0;
+ 	uid = geteuid();
+ 	gid = getegid();
+-	if ((len = getgroups(NGRPS, gids)) < 0)
+-		abort();
++
++retry:
++	if ((len = getgroups(0, NULL)) < 0) {
++		warnx("%s: failed to get number of groups: %s", __func__,
++			strerror(errno));
++		return NULL;
++	}
++
++	/* paranoia -- never pass a buffer smaller than NGRPS */
++	bufsize = (len < NGRPS ? NGRPS : len) * sizeof(gid_t);
++	gids = mem_alloc(bufsize);
++	if (gids == NULL) {
++		warnx("%s: memory allocation failed: %s", __func__,
++			strerror(ENOMEM));
++		return gids;
++	}
++
++	if (len == 0)
++		goto no_groups;
++
++	len = getgroups(len, gids);
++	if (len < 0) {
++		mem_free(gids, bufsize);
++		/*
++		 * glibc mentions that it's possible for the number of groups
++		 * to change between two getgroups calls. If that happens,
++		 * retry the whole thing again.
++		 */
++		if (len == -EINVAL) {
++			gids = NULL;
++			bufsize = 0;
++			goto retry;
++		}
++		warnx("%s: failed to get group list: %s", __func__,
++			strerror(errno));
++		return NULL;
++	}
++
++	if (len > NGRPS)
++		len = NGRPS;
++
++no_groups:
+ 	/* XXX: interface problem; those should all have been unsigned */
+-	return (authunix_create(machname, uid, gid, len, gids));
++	auth = authunix_create(machname, uid, gid, len, gids);
++	mem_free(gids, bufsize);
++	return auth;
+ }
+ 
+ /*
 -- 
-Chuck Lever
+1.6.6
+
