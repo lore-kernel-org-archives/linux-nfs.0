@@ -1,47 +1,43 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-out2.uio.no ([129.240.10.58]:45943 "EHLO mail-out2.uio.no"
+Received: from relay1.sgi.com ([192.48.179.29]:42504 "EHLO relay.sgi.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932507Ab0BDAYa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 3 Feb 2010 19:24:30 -0500
-Subject: Re: [PATCH 6/9] sunrpc: close connection when a request is
- irretrievably lost.
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: Neil Brown <neilb@suse.de>, "J. Bruce Fields" <bfields@fieldses.org>,
-        linux-nfs@vger.kernel.org
-In-Reply-To: <4B6A0F7A.3090600@oracle.com>
-References: <20100203060657.12945.27293.stgit@notabene.brown>
-	 <20100203063131.12945.34978.stgit@notabene.brown>
-	 <4B699988.9000209@oracle.com>  <20100204082354.0bf3b7e5@notabene.brown>
-	 <1265235610.5217.21.camel@localhost>  <4B69FB62.2090908@oracle.com>
-	 <1265238838.2632.7.camel@localhost>  <4B6A0F7A.3090600@oracle.com>
-Content-Type: text/plain; charset="UTF-8"
-Date: Wed, 03 Feb 2010 19:24:18 -0500
-Message-ID: <1265243058.2632.23.camel@localhost>
+	id S933078Ab0BPVER (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 16 Feb 2010 16:04:17 -0500
+Subject: [PATCH 0/2] commit_metadata export operation v5
+To: bfields@fieldses.org
+From: Ben Myers <bpm@sgi.com>
+Cc: linux-nfs@vger.kernel.org, xfs@oss.sgi.com
+Date: Tue, 16 Feb 2010 15:04:08 -0600
+Message-ID: <20100216210026.5694.14423.stgit@case>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, 2010-02-03 at 19:06 -0500, Chuck Lever wrote: 
-> My only concern would be that we perhaps should not assume that every 
-> 2.6 NFS client does this.  There was an awful lot of churn at one point 
-> as you were getting all of these ducks in a row.  Before you changed the 
-> underlying RPC transports to return only ENOTCONN, for instance, was 
-> this behavior the same?  I wouldn't swear to it in the 2.6.7 - .9 
-> vintage kernels.
+Hey Bruce,
 
-Every change in this area is performance sensitive, and should certainly
-be tested carefully; particularly so with older kernels.
+Here is the latest version of the knfsd sync changes that I've been spamming
+you with.  I have addressed the latest suggestions provided by Christoph,
+Trond, Dave, and Alex.  This version of the commit_metadata export operation
+takes only one inode as suggested by Christoph and it turns out to be much
+cleaner this way.  Now we've gone back to committing all of the time in
+nfsd_create_setattr and don't bother with the added argument.  A couple extra
+comments to explain the commit ordering.
 
-However we shouldn't forget that the changes to the client were
-motivated by poor performance against a variety of servers, in a variety
-of workloads and so it isn't unreasonable to expect that SUSE, Red Hat,
-Debian, Oracle, etc do have an interest in fixing their NFS clients.
+Thanks,
+Ben
 
-My question would rather therefore be: do they already have a fix in
-their latest kernel revisions, and if not, are they able to give us a
-timeframe?
+---
 
-Cheers
-  Trond
+Ben Myers (2):
+      commit_metadata export operation replacing nfsd_sync_dir
+      xfs_export_operations.commit_metadata
 
+
+ fs/nfsd/nfs4recover.c         |    4 --
+ fs/nfsd/vfs.c                 |  109 ++++++++++++++++++++---------------------
+ fs/xfs/linux-2.6/xfs_export.c |   24 +++++++++
+ include/linux/exportfs.h      |    5 ++
+ 4 files changed, 83 insertions(+), 59 deletions(-)
+
+-- 
