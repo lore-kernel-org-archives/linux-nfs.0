@@ -1,76 +1,98 @@
-From: Nikola Ciprich <extmaillist-Jp3n8lUXroTtwjQa/ONI9g@public.gmane.org>
-Subject: Re: 2.6.32.2 - WARNING: at lib/kref.c:43 kref_get+0x,23/0x2b()
-Date: Wed, 17 Feb 2010 16:14:35 +0100
-Message-ID: <20100217151435.GC30897@develbox.linuxbox.cz>
-References: <4B4F5A00.4060604@atmos.washington.edu>
- <20100122150325.6ad12428.akpm@linux-foundation.org>
- <20100127190522.GB18278@fieldses.org>
- <4B60C5D4.6070000@atmos.washington.edu>
- <20100202162228.GD4293@fieldses.org>
- <20100216182248.GA4922@nik-comp.linuxbox.cz>
- <20100216202121.GE26292@fieldses.org>
- <20100216202720.GB4922@nik-comp.linuxbox.cz>
- <20100216202947.GF26292@fieldses.org>
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Re: [PATCH] nfsd: default to kernel default for minorversion 1
+Date: Wed, 17 Feb 2010 14:46:42 -0500
+Message-ID: <4B7C47A2.4010100@RedHat.com>
+References: <1264631166-21898-1-git-send-email-bfields@citi.umich.edu> <1264631166-21898-2-git-send-email-bfields@citi.umich.edu> <20100201195821.GB19418@fieldses.org> <4B6B480C.1050307@RedHat.com> <20100205161001.GB24926@fieldses.org> <20100205192859.GE24926@fieldses.org> <20100205200501.GA28483@fieldses.org> <4B75B2DF.9060005@RedHat.com> <20100212200548.GB23361@fieldses.org> <4B75CBA3.8010001@RedHat.com> <20100212215524.GF24661@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Harry Edmon <harry-qmPYOCrcNLLyFCzt5hm0YvZ8FUJU4vz8@public.gmane.org>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
-	nikola.ciprich-Jp3n8lUXroTtwjQa/ONI9g@public.gmane.org
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: linux-nfs@vger.kernel.org
+To: "J. Bruce Fields" <bfields@citi.umich.edu>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from gwu.lbox.cz ([62.245.111.132]:38654 "EHLO gwu.lbox.cz"
+Received: from mx1.redhat.com ([209.132.183.28]:30834 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757346Ab0BQPPN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 17 Feb 2010 10:15:13 -0500
-In-Reply-To: <20100216202947.GF26292@fieldses.org>
+	id S1750851Ab0BQTqp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 17 Feb 2010 14:46:45 -0500
+In-Reply-To: <20100212215524.GF24661@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Well,
-I did a lot of stress tests, and it seems to be pretty random, and what's
-worse, I think it is more then one problem, oh great...
-Seems that at least one of my NFS problems was in fact caused by ext4 regression
-(what FS are you using?)
-applying this one: http://bugzilla.kernel.org/attachment.cgi?id=24975
-improved things for me a lot (see http://bugzilla.kernel.org/show_bug.cgi?id=15231 for
-full discussion).
-I'll watch the machine for next few days and report...
-regards
-nik
+The fact there needed to be yet another code change to
+re-enabled the 4.1 functionality bother me... So This
+patch basically does the same as your patch, does not
+write "+4.1" to the versions file. But it also introduces
+a configuration variable that will allow us to re-enabled
+the functionality w/out changing any code...
 
-On Tue, Feb 16, 2010 at 03:29:47PM -0500, J. Bruce Fields wrote:
-> On Tue, Feb 16, 2010 at 09:27:20PM +0100, Nikola Ciprich wrote:
-> > > Nothing yet.  I'm taking another look.
-> > > 
-> > > Do you know what the most recent version was where you did *not* see
-> > > these warnings?
-> > well, actually I decided I'll bisect this one no matter what, so hopefully
-> > we'll see soon :)
-> > I'll report
-> 
-> That would be fantastic, thanks.  What test-case are you using?
-> 
-> Any partial information ("xxxx good, xxxx bad") would also be useful.
-> 
-> --b.
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+BTW, there was precedence with adding this type of 
+configuration variable since there has been
+NFS3_SUPPORTED and NFS4_SUPPORTED variables in the 
+past.
 
--- 
--------------------------------------
-Ing. Nikola CIPRICH
-LinuxBox.cz, s.r.o.
-28. rijna 168, 709 01 Ostrava
+steved.
 
-tel.:   +420 596 603 142
-fax:    +420 596 621 273
-mobil:  +420 777 093 799
-www.linuxbox.cz
+commit 6d5ac3fa75024be569b458f4d9b6ce05be47f601
+Author: Steve Dickson <steved@redhat.com>
+Date:   Wed Feb 17 14:38:19 2010 -0500
 
-mobil servis: +420 737 238 656
-email servis: servis-Jp3n8lUXroTtwjQa/ONI9g@public.gmane.org
--------------------------------------
+    nfsd: Disble NFS 4.1 functionality by default
+    
+    Due to the fact the current kernel code do not completely
+    conform to the NFS 4.1 RFC, this patch disable the 4.1 support
+    on the server.
+    
+    To control this 41 functionality, the NFS41_SUPPORTED
+    configuration variable now exist that will allow us to
+    re enable the functionality  without any code changes.
+    
+    Signed-off-by: Steve Dickson <steved@redhat.com>
+
+diff --git a/configure.ac b/configure.ac
+index 1dc4249..f6b1189 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -72,6 +72,20 @@ AC_ARG_ENABLE(nfsv4,
+ 	AC_SUBST(IDMAPD)
+ 	AC_SUBST(enable_nfsv4)
+ 	AM_CONDITIONAL(CONFIG_NFSV4, [test "$enable_nfsv4" = "yes"])
++
++AC_ARG_ENABLE(nfsv41,
++	[AC_HELP_STRING([--enable-nfsv41],
++                        [enable support for NFSv41 @<:@default=no@:>@])],
++	enable_nfsv41=$enableval,
++	enable_nfsv41=no)
++	if test "$enable_nfsv41" = yes; then
++		AC_DEFINE(NFS41_SUPPORTED, 1, [Define this if you want NFSv41 support compiled in])
++	else
++		enable_nfsv4=
++	fi
++	AC_SUBST(enable_nfsv41)
++	AM_CONDITIONAL(CONFIG_NFSV41, [test "$enable_nfsv41" = "yes"])
++
+ AC_ARG_ENABLE(gss,
+ 	[AC_HELP_STRING([--enable-gss],
+                         [enable support for rpcsec_gss @<:@default=yes@:>@])],
+diff --git a/support/include/nfs/nfs.h b/support/include/nfs/nfs.h
+index a64eb0a..c939d78 100644
+--- a/support/include/nfs/nfs.h
++++ b/support/include/nfs/nfs.h
+@@ -1,6 +1,8 @@
+ #ifndef _NFS_NFS_H
+ #define _NFS_NFS_H
+ 
++#include <config.h>
++
+ #include <linux/posix_types.h>
+ #include <sys/types.h>
+ #include <netinet/in.h>
+@@ -14,7 +16,11 @@
+ #define NFSD_MAXVERS 4
+ 
+ #define NFSD_MINMINORVERS4 1
++#ifdef  NFS41_SUPPORTED
+ #define NFSD_MAXMINORVERS4 1
++#else
++#define NFSD_MAXMINORVERS4 0
++#endif
+ 
+ struct nfs_fh_len {
+ 	int		fh_size;
