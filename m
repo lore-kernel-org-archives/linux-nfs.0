@@ -1,265 +1,61 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH 2/2] sunrpc: use monotonic time in expiry cache
-Date: Wed, 17 Feb 2010 17:00:33 -0500
-Message-ID: <4B7C6701.7070408@oracle.com>
-References: <20100217064330.13656.61404.stgit@notabene.brown> <20100217064730.13656.67205.stgit@notabene.brown>
+From: Jesse Brandeburg <jesse.brandeburg@gmail.com>
+Subject: Re: ixgbe_clean_tx_irq: tx hang 1 detected, resetting adapter
+	(2.6.32.8)
+Date: Wed, 17 Feb 2010 14:53:34 -0800
+Message-ID: <4807377b1002171453n277cfea3s6d7f3629bd43f674@mail.gmail.com>
+References: <4B7824F1.6000202@krogh.cc>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8; format=flowed
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-	Trond Myklebust <trond.myklebust@fys.uio.no>,
-	linux-nfs@vger.kernel.org
-To: NeilBrown <neilb@suse.de>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from acsinet12.oracle.com ([141.146.126.234]:57706 "EHLO
-	acsinet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752712Ab0BQWBz (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 17 Feb 2010 17:01:55 -0500
-In-Reply-To: <20100217064730.13656.67205.stgit-wvvUuzkyo1EYVZTmpyfIwg@public.gmane.org>
-Sender: linux-nfs-owner@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: linux-nfs@vger.kernel.org, netdev@vger.kernel.org,
+	Jesse Brandeburg <jesse.brandeburg@intel.com>
+To: Jesper Krogh <jesper@krogh.cc>
+Return-path: <netdev-owner@vger.kernel.org>
+In-Reply-To: <4B7824F1.6000202@krogh.cc>
+Sender: netdev-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Neil-
+On Sun, Feb 14, 2010 at 8:29 AM, Jesper Krogh <jesper@krogh.cc> wrote:
+> Hi List.
+>
+> I have tried to get a dual bond of 2 x 10G NICs using the
+> Intel Corporation 82598EB 10-Gigabit AT2 Server Adapter (rev 01)
+> going. As first it looked like it "just worked" but when tried to fil=
+l
+> the links with data one of the NIC's (eth7) hang and did a reset of
+> itself, so all data was pushed through the other NIC in the bond (eth=
+8)
+>
+> Full dmesg below, but I think the important part is this:
+>
+> [ 2162.745354] ixgbe: eth7: ixgbe_check_tx_hang: Detected Tx Unit Han=
+g
+> [ 2162.745356] =A0 Tx Queue =A0 =A0 =A0 =A0 =A0 =A0 <4>
+> [ 2162.745356] =A0 TDH, TDT =A0 =A0 =A0 =A0 =A0 =A0 <e1>, <cc>
+> [ 2162.745357] =A0 next_to_use =A0 =A0 =A0 =A0 =A0<cc>
+> [ 2162.745358] =A0 next_to_clean =A0 =A0 =A0 =A0<e1>
+> [ 2162.745359] tx_buffer_info[next_to_clean]
+> [ 2162.745359] =A0 time_stamp =A0 =A0 =A0 =A0 =A0 <1000713d3>
+> [ 2162.745360] =A0 jiffies =A0 =A0 =A0 =A0 =A0 =A0 =A0<10007152e>
+> [ 2163.162478] ixgbe: eth7: ixgbe_clean_tx_irq: tx hang 1 detected,
+> resetting adapter
+> [ 2163.357333] bonding: bond0: link status definitely down for interf=
+ace
+> eth7, disabling it
+> [ 2168.670342] ixgbe: eth7 NIC Link is Up 10 Gbps, Flow Control: None
 
-On 02/17/2010 01:47 AM, NeilBrown wrote:
-> this protects us from confusion when the wallclock time changes.
->
-> We convert to and from wallclock when  setting or reading expiry
-> times.
->
-> Signed-off-by: NeilBrown<neilb@suse.de>
-> ---
->   fs/nfs/dns_resolve.c         |    6 +++---
->   fs/nfsd/nfs4idmap.c          |    2 +-
->   include/linux/sunrpc/cache.h |   21 ++++++++++++++++++---
->   net/sunrpc/cache.c           |   33 ++++++++++++++++++---------------
->   4 files changed, 40 insertions(+), 22 deletions(-)
->
-> diff --git a/fs/nfs/dns_resolve.c b/fs/nfs/dns_resolve.c
-> index 95e1ca7..412e6a0 100644
-> --- a/fs/nfs/dns_resolve.c
-> +++ b/fs/nfs/dns_resolve.c
-> @@ -131,7 +131,7 @@ static int nfs_dns_show(struct seq_file *m, struct cache_detail *cd,
->   		return 0;
->   	}
->   	item = container_of(h, struct nfs_dns_ent, h);
-> -	ttl = (long)item->h.expiry_time - (long)get_seconds();
-> +	ttl = (long)item->h.expiry_time - (long)monotonic_seconds();
->   	if (ttl<  0)
->   		ttl = 0;
+Hi Jesper, my first thought was flow control, but I can see you have it=
+ off.
 
-> @@ -203,7 +203,7 @@ static int nfs_dns_parse(struct cache_detail *cd, char *buf, int buflen)
->   	ttl = get_expiry(&buf);
->   	if (ttl == 0)
->   		goto out;
-> -	key.h.expiry_time = ttl + get_seconds();
-> +	key.h.expiry_time = ttl + monotonic_seconds();
->
->   	ret = -ENOMEM;
->   	item = nfs_dns_lookup(cd,&key);
-> @@ -265,7 +265,7 @@ static int do_cache_lookup_nowait(struct cache_detail *cd,
->   		goto out_err;
->   	ret = -ETIMEDOUT;
->   	if (!test_bit(CACHE_VALID,&(*item)->h.flags)
-> -			|| (*item)->h.expiry_time<  get_seconds()
-> +			|| (*item)->h.expiry_time<  monotonic_seconds()
->   			|| cd->flush_time>  (*item)->h.last_refresh)
->   		goto out_put;
->   	ret = -ENOENT;
-> diff --git a/fs/nfsd/nfs4idmap.c b/fs/nfsd/nfs4idmap.c
-> index 6e2983b..8f5cc77 100644
-> --- a/fs/nfsd/nfs4idmap.c
-> +++ b/fs/nfsd/nfs4idmap.c
-> @@ -549,7 +549,7 @@ do_idmap_lookup_nowait(struct ent *(*lookup_fn)(struct ent *),
->   		goto out_err;
->   	ret = -ETIMEDOUT;
->   	if (!test_bit(CACHE_VALID,&(*item)->h.flags)
-> -			|| (*item)->h.expiry_time<  get_seconds()
-> +			|| (*item)->h.expiry_time<  monotonic_seconds()
->   			|| detail->flush_time>  (*item)->h.last_refresh)
->   		goto out_put;
->   	ret = -ENOENT;
-> diff --git a/include/linux/sunrpc/cache.h b/include/linux/sunrpc/cache.h
-> index e41ee6d..153aae8 100644
-> --- a/include/linux/sunrpc/cache.h
-> +++ b/include/linux/sunrpc/cache.h
-> @@ -217,20 +217,35 @@ static inline int get_int(char **bpp, int *anint)
->   	return 0;
->   }
->
-> +/*
-> + * timestamps kept in the cache are expressed in seconds
-> + * since boot.  This is the best for measuring differences in
-> + * real time.
-> + */
-> +static inline unsigned long monotonic_seconds(void)
+Can we get some more details on the hardware and bios version?  What
+about some dmidecode output.  I'm checking here if we have any
+hardware like this.
 
-I find the alternate use of long, unsigned long, and time_t for fields, 
-variables, and return values that represent time in seconds to be 
-confusing.  Would it be nicer if we stuck with one type, say, time_t, 
-for all of these?
+are you running ubuntu 9.10 or something else?
 
-That would at least avoid mixed sign comparisons where the return value 
-of get_seconds or monotonic_seconds is directly compared to fields in 
-the cache_head structure.  It might also simplify the ttl logic above in 
-the DNS lookup cache.
+Wow, thats a monster machine, 8 nodes, 128GB ram.  Can we get a full
+lspci -vvv output, as well as ethtool -e eth7 and eth8
 
-I've always wondered if the expiry math behaves correctly when seconds 
-wrap.  It hurts my head when I try to prove it is correct.
-
-> +{
-> +	struct timespec boot;
-> +	getboottime(&boot);
-> +	return get_seconds() - boot.tv_sec;
-> +}
-> +
->   static inline time_t get_expiry(char **bpp)
->   {
->   	int rv;
-> +	struct timespec boot;
-> +
->   	if (get_int(bpp,&rv))
->   		return 0;
->   	if (rv<  0)
->   		return 0;
-> -	return rv;
-> +	getboottime(&boot);
-> +	return rv - boot.tv_sec;
->   }
->
->   static inline void sunrpc_invalidate(struct cache_head *h,
->   				     struct cache_detail *detail)
->   {
-> -	h->expiry_time = get_seconds() - 1;
-> -	detail->nextcheck = get_seconds();
-> +	h->expiry_time = monotonic_seconds() - 1;
-> +	detail->nextcheck = monotonic_seconds();
->   }
->   #endif /*  _LINUX_SUNRPC_CACHE_H_ */
-> diff --git a/net/sunrpc/cache.c b/net/sunrpc/cache.c
-> index 39bddba..379e2bf 100644
-> --- a/net/sunrpc/cache.c
-> +++ b/net/sunrpc/cache.c
-> @@ -41,7 +41,7 @@ static void cache_revisit_request(struct cache_head *item);
->
->   static void cache_init(struct cache_head *h)
->   {
-> -	time_t now = get_seconds();
-> +	time_t now = monotonic_seconds();
->   	h->next = NULL;
->   	h->flags = 0;
->   	kref_init(&h->ref);
-> @@ -108,7 +108,7 @@ static void cache_dequeue(struct cache_detail *detail, struct cache_head *ch);
->   static void cache_fresh_locked(struct cache_head *head, time_t expiry)
->   {
->   	head->expiry_time = expiry;
-> -	head->last_refresh = get_seconds();
-> +	head->last_refresh = monotonic_seconds();
->   	set_bit(CACHE_VALID,&head->flags);
->   }
->
-> @@ -184,7 +184,7 @@ static int cache_make_upcall(struct cache_detail *cd, struct cache_head *h)
->   static inline int cache_is_valid(struct cache_detail *detail, struct cache_head *h)
->   {
->   	if (!test_bit(CACHE_VALID,&h->flags) ||
-> -	    h->expiry_time<  get_seconds())
-> +	    h->expiry_time<  monotonic_seconds())
->   		return -EAGAIN;
->   	else if (detail->flush_time>  h->last_refresh)
->   		return -EAGAIN;
-> @@ -222,7 +222,7 @@ int cache_check(struct cache_detail *detail,
->
->   	/* now see if we want to start an upcall */
->   	refresh_age = (h->expiry_time - h->last_refresh);
-> -	age = get_seconds() - h->last_refresh;
-> +	age = monotonic_seconds() - h->last_refresh;
->
->   	if (rqstp == NULL) {
->   		if (rv == -EAGAIN)
-> @@ -372,11 +372,11 @@ static int cache_clean(void)
->   			return -1;
->   		}
->   		current_detail = list_entry(next, struct cache_detail, others);
-> -		if (current_detail->nextcheck>  get_seconds())
-> +		if (current_detail->nextcheck>  monotonic_seconds())
->   			current_index = current_detail->hash_size;
->   		else {
->   			current_index = 0;
-> -			current_detail->nextcheck = get_seconds()+30*60;
-> +			current_detail->nextcheck = monotonic_seconds()+30*60;
->   		}
->   	}
->
-> @@ -401,7 +401,7 @@ static int cache_clean(void)
->   		for (; ch; cp=&  ch->next, ch= *cp) {
->   			if (current_detail->nextcheck>  ch->expiry_time)
->   				current_detail->nextcheck = ch->expiry_time+1;
-> -			if (ch->expiry_time>= get_seconds()&&
-> +			if (ch->expiry_time>= monotonic_seconds()&&
->   			ch->last_refresh>= current_detail->flush_time)
->   				continue;
->   			if (test_and_clear_bit(CACHE_PENDING,&ch->flags))
-> @@ -465,7 +465,7 @@ EXPORT_SYMBOL_GPL(cache_flush);
->   void cache_purge(struct cache_detail *detail)
->   {
->   	detail->flush_time = LONG_MAX;
-> -	detail->nextcheck = get_seconds();
-> +	detail->nextcheck = monotonic_seconds();
->   	cache_flush();
->   	detail->flush_time = 1;
->   }
-> @@ -1207,7 +1207,8 @@ static int c_show(struct seq_file *m, void *p)
->
->   	ifdebug(CACHE)
->   		seq_printf(m, "# expiry=%ld refcnt=%d flags=%lx\n",
-> -			   cp->expiry_time, atomic_read(&cp->ref.refcount), cp->flags);
-> +			   cp->expiry_time - monotonic_seconds() + get_seconds(),
-
-I see this calculation in at least one other spot.  Maybe it would be 
-more clear if a helper was used.
-
-> +			   atomic_read(&cp->ref.refcount), cp->flags);
->   	cache_get(cp);
->   	if (cache_check(cd, cp, NULL))
->   		/* cache_check does a cache_put on failure */
-> @@ -1271,7 +1272,8 @@ static ssize_t read_flush(struct file *file, char __user *buf,
->   	unsigned long p = *ppos;
->   	size_t len;
->
-> -	sprintf(tbuf, "%lu\n", cd->flush_time);
-> +	sprintf(tbuf, "%lu\n", (cd->flush_time - monotonic_seconds()
-> +				+ get_seconds()));
->   	len = strlen(tbuf);
->   	if (p>= len)
->   		return 0;
-> @@ -1289,19 +1291,20 @@ static ssize_t write_flush(struct file *file, const char __user *buf,
->   			   struct cache_detail *cd)
->   {
->   	char tbuf[20];
-> -	char *ep;
-> -	long flushtime;
-> +	char *bp, *ep;
-> +
->   	if (*ppos || count>  sizeof(tbuf)-1)
->   		return -EINVAL;
->   	if (copy_from_user(tbuf, buf, count))
->   		return -EFAULT;
->   	tbuf[count] = 0;
-> -	flushtime = simple_strtoul(tbuf,&ep, 0);
-> +	simple_strtoul(tbuf,&ep, 0);
->   	if (*ep&&  *ep != '\n')
->   		return -EINVAL;
->
-> -	cd->flush_time = flushtime;
-> -	cd->nextcheck = get_seconds();
-> +	bp = tbuf;
-> +	cd->flush_time = get_expiry(&bp);
-> +	cd->nextcheck = monotonic_seconds();
->   	cache_flush();
->
->   	*ppos += count;
-
-cache_check() still has a call to get_seconds() at about line 240; maybe 
-that should be monotonic_seconds() instead.
-
--- 
-chuck[dot]lever[at]oracle[dot]com
+32 has ixgbe with a known issue of multiple mappings on transmit
+possibly causing some problems, could it be that you're running into
+this?  can you apply commit e5a43549f7a58509a91b299a51337d386697b92c
+and see if it fixes your issue?
