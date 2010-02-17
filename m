@@ -1,36 +1,42 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([18.85.46.34]:56160 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932346Ab0BDPVt (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 4 Feb 2010 10:21:49 -0500
-Date: Thu, 4 Feb 2010 10:21:47 -0500
-From: Christoph Hellwig <hch@infradead.org>
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-Cc: Ben Myers <bpm@sgi.com>, linux-nfs@vger.kernel.org
-Subject: Re: [RFC PATCH 0/4] wsync export option
-Message-ID: <20100204152147.GB22014@infradead.org>
-References: <20100203233755.17677.96582.stgit@case> <1265241511.2632.12.camel@localhost>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1265241511.2632.12.camel@localhost>
+Received: from relay1.sgi.com ([192.48.179.29]:38097 "EHLO relay.sgi.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754576Ab0BQUFO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 17 Feb 2010 15:05:14 -0500
+Subject: [PATCH 0/2] commit_metadata export operation v6
+To: bfields@fieldses.org
+From: Ben Myers <bpm@sgi.com>
+Cc: linux-nfs@vger.kernel.org, xfs@oss.sgi.com
+Date: Wed, 17 Feb 2010 14:05:05 -0600
+Message-ID: <20100217200426.13409.32688.stgit@case>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, Feb 03, 2010 at 06:58:31PM -0500, Trond Myklebust wrote:
-> Why should the administrator have to both change /etc/fstab
-> and /etc/exports? That will be an immediate source of trouble if someone
-> changes one without changing the other.
+Hey Bruce,
 
-I agree, this should be left to the filesystems.
+Here is the latest version of the knfsd sync changes.  I have addressed the
+suggestions provided by Christoph, Trond, Dave, and Alex.
 
-> Why not rather add an optional operation to the export_ops to let the
-> filesystem specify exactly what kind of synchronisation policy is
-> optimal for it?
+In this latest version I have fixed up the few nits in the nfsd patch that
+Christoph pointed out yesterday.  I also have simplified the xfs patch as
+suggested by Dave.
 
-Maybe.  But I suspect fsync is actually the right thing to do for
-all the filesystems.  The only reason why we'd still might want to make
-it an export operation is that I'd really prefer not to grow more
-instances of fsync without the file pointer.  Then again they're
-already all in nfs and it doesn't matter too much to audit a few
-more places later.
+Thanks,
+	Ben
+---
 
+Ben Myers (2):
+      commit_metadata export operation replacing nfsd_sync_dir
+      xfs_export_operations.commit_metadata
+
+
+ fs/nfsd/nfs4recover.c         |    4 --
+ fs/nfsd/vfs.c                 |  106 ++++++++++++++++++++---------------------
+ fs/xfs/linux-2.6/xfs_export.c |   20 ++++++++
+ include/linux/exportfs.h      |    5 ++
+ 4 files changed, 78 insertions(+), 57 deletions(-)
+
+-- 
+Signature
