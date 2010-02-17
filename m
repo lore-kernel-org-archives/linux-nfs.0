@@ -1,38 +1,56 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([18.85.46.34]:39811 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757615Ab0BDSkl (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 4 Feb 2010 13:40:41 -0500
-Date: Thu, 4 Feb 2010 13:40:40 -0500
-From: Christoph Hellwig <hch@infradead.org>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: Christoph Hellwig <hch@infradead.org>, bpm@sgi.com,
-        linux-nfs@vger.kernel.org
-Subject: Re: [RFC PATCH 4/4] If 'wsync' pass datasync=1 to vfs_fsync().
-Message-ID: <20100204184040.GA15442@infradead.org>
-References: <20100203233755.17677.96582.stgit@case> <20100203234444.17677.32390.stgit@case> <20100204151926.GA22014@infradead.org> <20100204172016.GJ5702@sgi.com> <20100204183037.GA9329@infradead.org> <1265308680.3317.19.camel@localhost>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1265308680.3317.19.camel@localhost>
+Received: from cantor.suse.de ([195.135.220.2]:49825 "EHLO mx1.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752190Ab0BQGsm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 17 Feb 2010 01:48:42 -0500
+From: NeilBrown <neilb@suse.de>
+To: "J. Bruce Fields" <bfields@fieldses.org>,
+        Trond Myklebust <trond.myklebust@fys.uio.no>
+Date: Wed, 17 Feb 2010 17:47:30 +1100
+Subject: [PATCH 0/2] sunrpc: use monotonic time for expiry times
+Cc: linux-nfs@vger.kernel.org
+Message-ID: <20100217064330.13656.61404.stgit@notabene.brown>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Thu, Feb 04, 2010 at 01:38:00PM -0500, Trond Myklebust wrote:
-> > Indeed, both write_inode_now and vfs_fsync will also cause data to
-> > be written.  But my understanding of nfsd is that we manage the data
-> > writeout separately anyway and we care about the metadata here, which
-> > the placement of these calls would suggest:
-> > 
-> > 	- nfsd_setattr for attribute updates
-> > 	- nfsd_create for creating a new file (of any type)
-> > 	- nfsd_link for adding a new link
-> 
-> Yes. Most operations in NFS are required to be synchronous (the only
-> exception being "unstable" write requests), and so those
-> fsync/write_inode_now calls are there in order to ensure that the
-> metadata and/or directory contents that were changed hits the disk
-> before the RPC call completes.
+I've always known I would pay for this some day ....
 
-Yeah.  But currently both the fsync and write_inode_now calls will force
-those unstable writes to disk.  I'm not sure if that is an intentional
-or unintentional side-effect of those metadata operations.
+The authentication cache uses wall-clock time for expiry times and
+related time stamps.
+
+This can cause problems if the wall-clock time changes suddenly.
+e.g. if you set the time forward one hour, the export cache is
+immediately flushed.  This isn't an enormous problem, but it should be
+fixed.
+
+Currently, it can cause clients to have to resend requests which can
+cause a delay of several timeouts.  Once we get the improvements in
+which allow a thread to wait for a while rather than dropping a
+request, this will be less of an issue.  But I think it is worth
+fixing anyway.
+
+So: two patches.  One moves come common code to an inline, the other
+makes the change.
+
+comments?
+
+Thanks,
+NeilBrown
+
+---
+
+NeilBrown (2):
+      sunrpc: extract some common sunrpc_cache code from nfsd
+      sunrpc: use monotonic time in expiry cache
+
+
+ fs/nfs/dns_resolve.c         |    6 +++---
+ fs/nfsd/export.c             |    9 +++------
+ fs/nfsd/nfs4idmap.c          |    2 +-
+ include/linux/sunrpc/cache.h |   23 ++++++++++++++++++++++-
+ net/sunrpc/cache.c           |   33 ++++++++++++++++++---------------
+ 5 files changed, 47 insertions(+), 26 deletions(-)
+
+
