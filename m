@@ -1,37 +1,34 @@
-From: Dave Chinner <david@fromorbit.com>
-Subject: Re: [PATCH 2/2] xfs_export_operations.commit_metadata
-Date: Thu, 18 Feb 2010 10:05:44 +1100
-Message-ID: <20100217230544.GY28392@discord.disaster>
-References: <20100217200426.13409.32688.stgit@case> <20100217200516.13409.97524.stgit@case>
+From: Yinghai Lu <yinghai@kernel.org>
+Subject: Re: ixgbe_clean_tx_irq: tx hang 1 detected, resetting adapter
+	(2.6.32.8)
+Date: Wed, 17 Feb 2010 19:07:50 -0800
+Message-ID: <86802c441002171907m2fc28ccay4dc67ce3c66693e5@mail.gmail.com>
+References: <4B7824F1.6000202@krogh.cc>
+	 <4807377b1002171453n277cfea3s6d7f3629bd43f674@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org, xfs@oss.sgi.com
-To: Ben Myers <bpm@sgi.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: Jesper Krogh <jesper-Q2TZfHgGEy4@public.gmane.org>, linux-nfs@vger.kernel.org,
+	netdev@vger.kernel.org,
+	Jesse Brandeburg <jesse.brandeburg@intel.com>
+To: Jesse Brandeburg <jesse.brandeburg@gmail.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from bld-mail18.adl2.internode.on.net ([150.101.137.103]:41572 "EHLO
-	mail.internode.on.net" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1755520Ab0BQXFv (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 17 Feb 2010 18:05:51 -0500
-In-Reply-To: <20100217200516.13409.97524.stgit@case>
+Received: from mail-pz0-f187.google.com ([209.85.222.187]:57335 "EHLO
+	mail-pz0-f187.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752714Ab0BRDHw convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 17 Feb 2010 22:07:52 -0500
+In-Reply-To: <4807377b1002171453n277cfea3s6d7f3629bd43f674-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Feb 17, 2010 at 02:05:16PM -0600, Ben Myers wrote:
-> This is the commit_metadata export operation for XFS.
-> 
-> - Takes one inode to be committed.
-> 
-> - Forces the log up to the lsn of the inode.
-> 
-> - Doesn't force the log if the inode doesn't have a pincount.
-> 
-> Signed-off-by: Ben Myers <bpm@sgi.com>
-> Reviewed-by: Christoph Hellwig <hch@lst.de>
+On Wed, Feb 17, 2010 at 2:53 PM, Jesse Brandeburg
+<jesse.brandeburg@gmail.com> wrote:
 
-Looks good, Ben.
+> Wow, thats a monster machine, 8 nodes, 128GB ram. =A0Can we get a ful=
+l
+> lspci -vvv output, as well as ethtool -e eth7 and eth8
 
-Reviewed-by: Dave Chinner <david@fromorbit.com>
+SUN    X4600 M2
 
--- 
-Dave Chinner
-david@fromorbit.com
+it could support 512g ram.
+
+Yinghai
