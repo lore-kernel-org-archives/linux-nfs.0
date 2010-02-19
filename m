@@ -1,61 +1,67 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from relay1.sgi.com ([192.48.179.29]:37393 "EHLO relay.sgi.com"
+Received: from mail-out2.uio.no ([129.240.10.58]:51773 "EHLO mail-out2.uio.no"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753431Ab0BVVyi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 22 Feb 2010 16:54:38 -0500
-Received: from snoot.americas.sgi.com (case.americas.sgi.com [128.162.244.182])
-	by relay1.corp.sgi.com (Postfix) with ESMTP id 061BB8F8052
-	for <linux-nfs@vger.kernel.org>; Mon, 22 Feb 2010 13:54:38 -0800 (PST)
-Received: from [127.0.0.2] (localhost [127.0.0.1])
-	by snoot.americas.sgi.com (Postfix) with ESMTP id 8E62749F2093
-	for <linux-nfs@vger.kernel.org>; Mon, 22 Feb 2010 15:54:37 -0600 (CST)
-Subject: [PATCH 0/2] knfsd: support larger numbers of clients
-To: linux-nfs@vger.kernel.org
-From: Ben Myers <bpm@sgi.com>
-Date: Mon, 22 Feb 2010 15:54:37 -0600
-Message-ID: <20100222215349.8481.80700.stgit@case>
-Content-Type: text/plain; charset="utf-8"
+	id S1754631Ab0BSTTU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 19 Feb 2010 14:19:20 -0500
+Subject: Re: NFSv4
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+To: "J.A." =?ISO-8859-1?Q?Magall=F3n?= <jamagallon@ono.com>
+Cc: LKML <linux-kernel@vger.kernel.org>, linux-nfs@vger.kernel.org
+In-Reply-To: <20100219012322.3d323794@werewolf.home>
+References: <20100219012322.3d323794@werewolf.home>
+Content-Type: text/plain; charset="UTF-8"
+Date: Fri, 19 Feb 2010 11:19:14 -0800
+Message-ID: <1266607154.3526.30.camel@localhost>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Several customers that have large numbers of nfs clients have run afoul of the
-existing connection limits ((nr_threads+3) * 20) and have been handling the
-situation by bumping the number of nfsd threads.  There are two problems:
+On Fri, 2010-02-19 at 01:23 +0100, J.A. Magallón wrote: 
+> Hi all...
+> 
+> First of all, kudos for new nfs-utils. Now, nfs4 works automagically and
+> like a charm.
+> 
+> And now the hard part, some questions:
+> 
+> - I have read that nfs4 includes in the server the locking protocol, no
+>   need for separate lockd. But in my servers, it seems it is still running:
+> 
+> root      2198     2  0 Feb18 ?        00:00:00 [nfsiod]
+> root     23501     2  0 01:01 ?        00:00:00 [nfsd4]
+> root     23502     2  0 01:01 ?        00:00:00 [nfsd]
+> root     23503     2  0 01:01 ?        00:00:00 [nfsd]
+> root     23504     2  0 01:01 ?        00:00:00 [nfsd]
+> root     23505     2  0 01:01 ?        00:00:00 [nfsd]
+> root     23506     2  0 01:01 ?        00:00:00 [nfsd]
+> root     23507     2  0 01:01 ?        00:00:00 [nfsd]
+> root     23508     2  0 01:01 ?        00:00:00 [nfsd]
+> root     23509     2  0 01:01 ?        00:00:00 [nfsd]
+> root     23500     2  0 01:01 ?        00:00:00 [lockd]
+> 
+>   Is there any problem with it ? I suppose (correct me if I'm wrong)
+>   that this kernel lockd will only serve for v2 or v3 mounts,
+>   that locking for client nfs4 mounts will go through nfsd4.
+>   Is that right ?
 
-1) The maximum number of connections is tied to the number of nfsd threads.
+No. The client NFSv4 traffic goes through the ordinary 'nfsd' daemons.
+There is no special locking manager for NFSv4, since POSIX locks are
+part of the ordinary protocol.
 
-The first patch decouples the maximum number of connections from the number of
-threads by making it a tuneable.  Note that the default setting still uses the
-existing formula.  Folks who want to handle additional connections without
-bumping the number of threads can do so.
+I don't think that the NFS server will switch off lockd even if you do
+specify that you only want to serve NFSv4.
 
-2) At around 1020 threads the send buffer size wraps negative and things grind
-to a halt.
+> - Why is there only 1 instance of v4 daemon ?
 
-The second patch decouples the size of send and receive buffers from the number
-of threads by making them tuneable.  Buffer sizes were getting absurdly large
-as the number of nfsd threads grew.  Now they remain constant.
+The 'nfsd4' thread above is actually a workqueue that is used for
+garbage-cleaning expired NFSv4 state. It isn't a server thread.
 
+> - Is there any page describing the advantages of v4 ? I will have to
+>   convince the department admin to activate v4 in his solaris boxen...;)
 
-Both patches were originally implmented using sysctls but I have changed them
-over to module parameters to match what Jeff Layton has done with
-nlm_max_connections.
+One place to start is the NFSv4 design considerations. See
+          http://tools.ietf.org/html/rfc2624
 
-Thanks,
-	Ben
+Cheers
+  Trond
 
----
-
-Ben Myers (2):
-      knfsd: nfsd_max_connections module parameter
-      sunrpc: socket buffer size module parameter
-
-
- fs/nfsd/nfsctl.c         |    7 ++++
- fs/nfsd/nfssvc.c         |    3 ++
- net/sunrpc/sunrpc_syms.c |   39 ++++++++++++++++++++++
- net/sunrpc/svcsock.c     |   81 +++++++++++++++++++++++-----------------------
- 4 files changed, 89 insertions(+), 41 deletions(-)
-
--- 
