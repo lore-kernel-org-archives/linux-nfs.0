@@ -1,33 +1,34 @@
-From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: [PATCH 0/2] commit_metadata export operation v6
-Date: Fri, 19 Feb 2010 05:31:11 -0500
-Message-ID: <20100219103111.GB21674@infradead.org>
-References: <20100217200426.13409.32688.stgit@case>
+From: Ray Van Dolson <rvandolson-v48TKWNzwFw@public.gmane.org>
+Subject: pseudo root status?
+Date: Fri, 19 Feb 2010 11:00:49 -0800
+Message-ID: <20100219190049.GA32080@esri.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org, xfs@oss.sgi.com
-To: Ben Myers <bpm@sgi.com>
+To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([18.85.46.34]:54509 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752073Ab0BSKbN (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 19 Feb 2010 05:31:13 -0500
-In-Reply-To: <20100217200426.13409.32688.stgit@case>
+Received: from esrismtp2.esri.com ([198.102.62.103]:46713 "EHLO Vail.esri.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751521Ab0BSTBG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 19 Feb 2010 14:01:06 -0500
+Received: from leoray.esri.com (leoray.esri.com [10.27.102.12])
+	by Vail.esri.com (8.13.7+Sun/8.13.7) with ESMTP id o1JJ0n8R005495
+	for <linux-nfs@vger.kernel.org>; Fri, 19 Feb 2010 11:00:49 -0800 (PST)
+Received: from leoray.esri.com (leoray.esri.com [127.0.0.1])
+	by leoray.esri.com (8.14.3/8.14.3) with ESMTP id o1JJ0nBv032279
+	for <linux-nfs@vger.kernel.org>; Fri, 19 Feb 2010 11:00:49 -0800
+Received: (from ray5147@localhost)
+	by leoray.esri.com (8.14.3/8.14.3/Submit) id o1JJ0nBC032278
+	for linux-nfs@vger.kernel.org; Fri, 19 Feb 2010 11:00:49 -0800
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Feb 17, 2010 at 02:05:05PM -0600, Ben Myers wrote:
-> Hey Bruce,
-> 
-> Here is the latest version of the knfsd sync changes.  I have addressed the
-> suggestions provided by Christoph, Trond, Dave, and Alex.
-> 
-> In this latest version I have fixed up the few nits in the nfsd patch that
-> Christoph pointed out yesterday.  I also have simplified the xfs patch as
-> suggested by Dave.
+What is the status of the dynamic pseudo root support in nfs-utils?  I
+see in commit b25694320f2bdd79de82f2003209b8229eafff36 mention of a way
+to define an export with a pseudo root, but I cloned Steve's latest git
+tree of nfs-utils and am not seeing much about pseudo root support at
+all.
 
-Both patches looks good to me,
+The 1.2.2 announcement message seems to include a blurb about it --
+does this version have what I need?
 
-
-Reviewed-by: Christoph Hellwig <hch@lst.de>
-
+Ray
