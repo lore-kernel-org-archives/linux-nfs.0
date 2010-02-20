@@ -1,33 +1,44 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: pseudo root status?
-Date: Fri, 19 Feb 2010 23:45:08 -0500
-Message-ID: <20100220044508.GA3689@fieldses.org>
-References: <20100219190049.GA32080@esri.com>
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: [PATCH][nfs-utils] configuration: Fix a typo in configure.ac
+Date: Sat, 20 Feb 2010 15:45:10 -0800
+Message-ID: <1266709510.3507.1.camel@localhost.localdomain>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset="UTF-8"
 Cc: linux-nfs@vger.kernel.org
-To: Ray Van Dolson <rvandolson-v48TKWNzwFw@public.gmane.org>
+To: "Mr. Steve Dickson" <SteveD@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:50148 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:34657 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755998Ab0BTEoV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 19 Feb 2010 23:44:21 -0500
-In-Reply-To: <20100219190049.GA32080-v48TKWNzwFw@public.gmane.org>
+	id S1756955Ab0BTXpS convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 20 Feb 2010 18:45:18 -0500
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Feb 19, 2010 at 11:00:49AM -0800, Ray Van Dolson wrote:
-> What is the status of the dynamic pseudo root support in nfs-utils?  I
-> see in commit b25694320f2bdd79de82f2003209b8229eafff36 mention of a way
-> to define an export with a pseudo root, but I cloned Steve's latest git
-> tree of nfs-utils and am not seeing much about pseudo root support at
-> all.
-> 
-> The 1.2.2 announcement message seems to include a blurb about it --
-> does this version have what I need?
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
 
-With a recent kernel and nfs-utils, if you just omit "fsid=0" from your
-export file then NFSv4 clients should see the same paths as v2/v3
-clients.
+Fix a typo in commit 6d5ac3fa (nfsd: Disble NFS 4.1 functionality by default).
 
---b.
+We did not really intend to make NFSv4.0 support conditional on NFSv4.1
+being enabled.
+
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+
+ configure.ac |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
+
+
+diff --git a/configure.ac b/configure.ac
+index b7520d8..518b6d8 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -81,7 +81,7 @@ AC_ARG_ENABLE(nfsv41,
+ 	if test "$enable_nfsv41" = yes; then
+ 		AC_DEFINE(NFS41_SUPPORTED, 1, [Define this if you want NFSv41 support compiled in])
+ 	else
+-		enable_nfsv4=
++		enable_nfsv41=
+ 	fi
+ 	AC_SUBST(enable_nfsv41)
+ 	AM_CONDITIONAL(CONFIG_NFSV41, [test "$enable_nfsv41" = "yes"])
+
