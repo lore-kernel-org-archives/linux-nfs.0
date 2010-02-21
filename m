@@ -1,75 +1,134 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: 2.6.32.2 - WARNING: at lib/kref.c:43 kref_get+0x,23/0x2b()
-Date: Sat, 20 Feb 2010 18:51:05 -0500
-Message-ID: <20100220235105.GB15015@fieldses.org>
-References: <4B4F5A00.4060604@atmos.washington.edu> <20100122150325.6ad12428.akpm@linux-foundation.org> <20100127190522.GB18278@fieldses.org> <4B60C5D4.6070000@atmos.washington.edu> <20100202162228.GD4293@fieldses.org> <20100216182248.GA4922@nik-comp.linuxbox.cz> <20100216202121.GE26292@fieldses.org> <20100216202720.GB4922@nik-comp.linuxbox.cz> <20100216202947.GF26292@fieldses.org> <20100217151435.GC30897@develbox.linuxbox.cz>
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: Re: [PATCH] NFSv4.1: Various fixes to the sequence flag error
+ handling
+Date: Sat, 20 Feb 2010 18:30:54 -0800
+Message-ID: <1266719454.3507.6.camel@localhost.localdomain>
+References: <1266719139.3507.5.camel@localhost.localdomain>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Harry Edmon <harry-qmPYOCrcNLLyFCzt5hm0YvZ8FUJU4vz8@public.gmane.org>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
-	nikola.ciprich-Jp3n8lUXroTtwjQa/ONI9g@public.gmane.org
-To: Nikola Ciprich <extmaillist-Jp3n8lUXroTtwjQa/ONI9g@public.gmane.org>
+Content-Type: text/plain; charset="UTF-8"
+To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:48786 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:32886 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756938Ab0BTXuU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 20 Feb 2010 18:50:20 -0500
-In-Reply-To: <20100217151435.GC30897-K8br+RTdgN68z6Q06MQEFCF40CQGThNF@public.gmane.org>
+	id S1756500Ab0BUCa4 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 20 Feb 2010 21:30:56 -0500
+Received: from svlrsexc2-prd.hq.netapp.com (svlrsexc2-prd.hq.netapp.com [10.57.115.31])
+	by smtp2.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id o1L2Utts003941
+	for <linux-nfs@vger.kernel.org>; Sat, 20 Feb 2010 18:30:55 -0800 (PST)
+In-Reply-To: <1266719139.3507.5.camel-bi+AKbBUZKY6gyzm1THtWbp2dZbC/Bob@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Feb 17, 2010 at 04:14:35PM +0100, Nikola Ciprich wrote:
-> Well,
-> I did a lot of stress tests, and it seems to be pretty random, and what's
-> worse, I think it is more then one problem, oh great...
-> Seems that at least one of my NFS problems was in fact caused by ext4 regression
-> (what FS are you using?)
-> applying this one: http://bugzilla.kernel.org/attachment.cgi?id=24975
-> improved things for me a lot (see http://bugzilla.kernel.org/show_bug.cgi?id=15231 for
-> full discussion).
-> I'll watch the machine for next few days and report...
+On Sat, 2010-02-20 at 18:25 -0800, Trond Myklebust wrote: 
+> From: Trond Myklebust <Trond.Myklebust@netapp.com>
+> 
+> Ensure that we change the EXCHANGE_ID verifier (i.e. clp->cl_boot_time)
+> when we want to reset all state. This is mainly needed when the server
+> tells us that it is revoking our open or lock stateids.
+> 
+> Handle revoking of recallable state by expiring the delegations.
+> 
+> Handle callback path issues by expiring the delegations and then resetting
+> the session.
+> 
+> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+> ---
+> 
+>  fs/nfs/nfs4state.c |   57 +++++++++++++++++++++++++++++++++++++++++-----------
+>  1 files changed, 45 insertions(+), 12 deletions(-)
+> 
+> 
+> diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+> index c1e2733..97a3b60 100644
+> --- a/fs/nfs/nfs4state.c
+> +++ b/fs/nfs/nfs4state.c
+> @@ -1249,26 +1249,59 @@ static int nfs4_reclaim_lease(struct nfs_client *clp)
+>  }
+>  
+>  #ifdef CONFIG_NFS_V4_1
+> +static void nfs4_reset_all_state(struct nfs_client *clp)
+> +{
+> +	if (test_and_set_bit(NFS4CLNT_LEASE_EXPIRED, &clp->cl_state)) {
 
-Is there *any* kernel (however old) on which you are confident you can
-*not* reproduce the kref bug?
+Doh!!! Should be 'if (!test_and_set_bit())....
 
---b.
+Will resend.
 
-> regards
-> nik
+> +		clp->cl_boot_time = CURRENT_TIME;
+> +		nfs4_state_start_reclaim_nograce(clp);
+> +		nfs4_schedule_state_recovery(clp);
+> +	}
+> +}
+> +
+> +static void nfs41_handle_server_reboot(struct nfs_client *clp)
+> +{
+> +	if (test_and_set_bit(NFS4CLNT_LEASE_EXPIRED, &clp->cl_state)) {
+
+Ditto
+
+> +		nfs4_state_start_reclaim_reboot(clp);
+> +		nfs4_schedule_state_recovery(clp);
+> +	}
+> +}
+> +
+> +static void nfs41_handle_state_revoked(struct nfs_client *clp)
+> +{
+> +	/* Temporary */
+> +	nfs4_reset_all_state(clp);
+> +}
+> +
+> +static void nfs41_handle_recallable_state_revoked(struct nfs_client *clp)
+> +{
+> +	/* This will need to handle layouts too */
+> +	nfs_expire_all_delegations(clp);
+> +}
+> +
+> +static void nfs41_handle_cb_path_down(struct nfs_client *clp)
+> +{
+> +	nfs_expire_all_delegations(clp);
+> +	if (test_and_set_bit(NFS4CLNT_SESSION_RESET, &clp->cl_state))
+
+Ditto
+
+> +		nfs4_schedule_state_recovery(clp);
+> +}
+> +
+>  void nfs41_handle_sequence_flag_errors(struct nfs_client *clp, u32 flags)
+>  {
+>  	if (!flags)
+>  		return;
+> -	else if (flags & SEQ4_STATUS_RESTART_RECLAIM_NEEDED) {
+> -		set_bit(NFS4CLNT_LEASE_EXPIRED, &clp->cl_state);
+> -		nfs4_state_start_reclaim_reboot(clp);
+> -		nfs4_schedule_state_recovery(clp);
+> -	} else if (flags & (SEQ4_STATUS_EXPIRED_ALL_STATE_REVOKED |
+> +	else if (flags & SEQ4_STATUS_RESTART_RECLAIM_NEEDED)
+> +		nfs41_handle_server_reboot(clp);
+> +	else if (flags & (SEQ4_STATUS_EXPIRED_ALL_STATE_REVOKED |
+>  			    SEQ4_STATUS_EXPIRED_SOME_STATE_REVOKED |
+>  			    SEQ4_STATUS_ADMIN_STATE_REVOKED |
+> -			    SEQ4_STATUS_RECALLABLE_STATE_REVOKED |
+> -			    SEQ4_STATUS_LEASE_MOVED)) {
+> -		set_bit(NFS4CLNT_LEASE_EXPIRED, &clp->cl_state);
+> -		nfs4_state_start_reclaim_nograce(clp);
+> -		nfs4_schedule_state_recovery(clp);
+> -	} else if (flags & (SEQ4_STATUS_CB_PATH_DOWN |
+> +			    SEQ4_STATUS_LEASE_MOVED))
+> +		nfs41_handle_state_revoked(clp);
+> +	else if (flags & SEQ4_STATUS_RECALLABLE_STATE_REVOKED)
+> +		nfs41_handle_recallable_state_revoked(clp);
+> +	else if (flags & (SEQ4_STATUS_CB_PATH_DOWN |
+>  			    SEQ4_STATUS_BACKCHANNEL_FAULT |
+>  			    SEQ4_STATUS_CB_PATH_DOWN_SESSION))
+> -		nfs_expire_all_delegations(clp);
+> +		nfs41_handle_cb_path_down(clp);
+>  }
+>  
+>  static int nfs4_reset_session(struct nfs_client *clp)
 > 
-> On Tue, Feb 16, 2010 at 03:29:47PM -0500, J. Bruce Fields wrote:
-> > On Tue, Feb 16, 2010 at 09:27:20PM +0100, Nikola Ciprich wrote:
-> > > > Nothing yet.  I'm taking another look.
-> > > > 
-> > > > Do you know what the most recent version was where you did *not* see
-> > > > these warnings?
-> > > well, actually I decided I'll bisect this one no matter what, so hopefully
-> > > we'll see soon :)
-> > > I'll report
-> > 
-> > That would be fantastic, thanks.  What test-case are you using?
-> > 
-> > Any partial information ("xxxx good, xxxx bad") would also be useful.
-> > 
-> > --b.
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> > 
-> 
-> -- 
-> -------------------------------------
-> Ing. Nikola CIPRICH
-> LinuxBox.cz, s.r.o.
-> 28. rijna 168, 709 01 Ostrava
-> 
-> tel.:   +420 596 603 142
-> fax:    +420 596 621 273
-> mobil:  +420 777 093 799
-> www.linuxbox.cz
-> 
-> mobil servis: +420 737 238 656
-> email servis: servis-Jp3n8lUXroTtwjQa/ONI9g@public.gmane.org
-> -------------------------------------
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+
