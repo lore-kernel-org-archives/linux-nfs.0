@@ -1,80 +1,82 @@
-From: Andrew Pollock <apollock@google.com>
-Subject: [PATCH] gssd: By default, don't spam syslog when users' credentials
-	expire (redux)
-Date: Mon, 22 Feb 2010 13:33:32 -0500
-Message-ID: <39d46ab51002221033n78035811y959fdd30b155b174@mail.gmail.com>
+From: Jesper Krogh <jesper-Q2TZfHgGEy4@public.gmane.org>
+Subject: Re: ixgbe_clean_tx_irq: tx hang 1 detected, resetting adapter 	(2.6.32.8)
+Date: Mon, 22 Feb 2010 19:40:20 +0100
+Message-ID: <4B82CF94.5070903@krogh.cc>
+References: <4B7824F1.6000202@krogh.cc> <4807377b1002171453n277cfea3s6d7f3629bd43f674@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
-To: linux-nfs@vger.kernel.org
+Cc: linux-nfs@vger.kernel.org, netdev@vger.kernel.org,
+	Jesse Brandeburg <jesse.brandeburg@intel.com>
+To: Jesse Brandeburg <jesse.brandeburg@gmail.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp-out.google.com ([216.239.44.51]:39706 "EHLO
-	smtp-out.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752029Ab0BVSde convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 22 Feb 2010 13:33:34 -0500
-Received: from kpbe18.cbf.corp.google.com (kpbe18.cbf.corp.google.com [172.25.105.82])
-	by smtp-out.google.com with ESMTP id o1MIXXac023179
-	for <linux-nfs@vger.kernel.org>; Mon, 22 Feb 2010 10:33:33 -0800
-Received: from pzk13 (pzk13.prod.google.com [10.243.19.141])
-	by kpbe18.cbf.corp.google.com with ESMTP id o1MIX8Bw015461
-	for <linux-nfs@vger.kernel.org>; Mon, 22 Feb 2010 10:33:32 -0800
-Received: by pzk13 with SMTP id 13so177827pzk.26
-        for <linux-nfs@vger.kernel.org>; Mon, 22 Feb 2010 10:33:32 -0800 (PST)
+Received: from 2605ds1-ynoe.0.fullrate.dk ([90.184.12.24]:48623 "EHLO
+	shrek.krogh.cc" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754239Ab0BVSkZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 22 Feb 2010 13:40:25 -0500
+In-Reply-To: <4807377b1002171453n277cfea3s6d7f3629bd43f674-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This is a continuation of commit 09c7ad1cd9c5ca2fc46631a0057d47309abc87=
-06,
-adding a couple more cases that can spam syslog
----
-=A0utils/gssd/gss_util.c =A0| =A0 =A02 +-
-=A0utils/gssd/gssd_proc.c | =A0 =A06 +++---
-=A02 files changed, 4 insertions(+), 4 deletions(-)
-diff --git a/utils/gssd/gss_util.c b/utils/gssd/gss_util.c
-index 99aceb3..64dddf1 100644
---- a/utils/gssd/gss_util.c
-+++ b/utils/gssd/gss_util.c
-@@ -126,7 +126,7 @@ display_status_1(char *m, u_int32_t code, int
-type, const gss_OID mech)
-=A0 "gss_display_status called from %s\n", m);
-=A0 break;
-=A0 } else {
-- printerr(0, "ERROR: GSS-API: (%s) error in %s(): %s\n",
-+ printerr(2, "ERROR: GSS-API: (%s) error in %s(): %s\n",
-=A0 =A0 =A0typestr, m, (char *)msg.value);
-=A0 }
+Jesse Brandeburg wrote:
+> On Sun, Feb 14, 2010 at 8:29 AM, Jesper Krogh <jesper-Q2TZfHgGEy4@public.gmane.org> wrote:
+>> Hi List.
+>>
+>> I have tried to get a dual bond of 2 x 10G NICs using the
+>> Intel Corporation 82598EB 10-Gigabit AT2 Server Adapter (rev 01)
+>> going. As first it looked like it "just worked" but when tried to fill
+>> the links with data one of the NIC's (eth7) hang and did a reset of
+>> itself, so all data was pushed through the other NIC in the bond (eth8)
+>>
+>> Full dmesg below, but I think the important part is this:
+>>
+>> [ 2162.745354] ixgbe: eth7: ixgbe_check_tx_hang: Detected Tx Unit Hang
+>> [ 2162.745356]   Tx Queue             <4>
+>> [ 2162.745356]   TDH, TDT             <e1>, <cc>
+>> [ 2162.745357]   next_to_use          <cc>
+>> [ 2162.745358]   next_to_clean        <e1>
+>> [ 2162.745359] tx_buffer_info[next_to_clean]
+>> [ 2162.745359]   time_stamp           <1000713d3>
+>> [ 2162.745360]   jiffies              <10007152e>
+>> [ 2163.162478] ixgbe: eth7: ixgbe_clean_tx_irq: tx hang 1 detected,
+>> resetting adapter
+>> [ 2163.357333] bonding: bond0: link status definitely down for interface
+>> eth7, disabling it
+>> [ 2168.670342] ixgbe: eth7 NIC Link is Up 10 Gbps, Flow Control: None
+> 
+> Hi Jesper, my first thought was flow control, but I can see you have it off.
 
-diff --git a/utils/gssd/gssd_proc.c b/utils/gssd/gssd_proc.c
-index be4fb11..5629d97 100644
---- a/utils/gssd/gssd_proc.c
-+++ b/utils/gssd/gssd_proc.c
-@@ -638,7 +638,7 @@ do_error_downcall(int k5_fd, uid_t uid, int err)
-=A0 unsigned int timeout =3D 0;
-=A0 int zero =3D 0;
+I didnt change it, so its default.
 
-- printerr(1, "doing error downcall\n");
-+ printerr(2, "doing error downcall\n");
+> Can we get some more details on the hardware and bios version?  
 
-=A0 if (WRITE_BYTES(&p, end, uid)) goto out_err;
-=A0 if (WRITE_BYTES(&p, end, timeout)) goto out_err;
-@@ -906,7 +906,7 @@ process_krb5_upcall(struct clnt_info *clp, uid_t
-uid, int fd, char *tgtname,
-=A0 int create_resp =3D -1;
-=A0 int err, downcall_err =3D -EACCES;
+Sun X4600, 128GB, 16 cores..
 
-- printerr(1, "handling krb5 upcall (%s)\n", clp->dirname);
-+ printerr(2, "handling krb5 upcall (%s)\n", clp->dirname);
+> What
+> about some dmidecode output.  I'm checking here if we have any
+> hardware like this.
 
-=A0 if (tgtname) {
-=A0 if (clp->servicename) {
-@@ -1066,7 +1066,7 @@ process_spkm3_upcall(struct clnt_info *clp,
-uid_t uid, int fd)
-=A0 }
+http://shrek.krogh.cc/~jesper/dmidecode.txt
 
-=A0 if (!authgss_get_private_data(auth, &pd)) {
-- printerr(0, "WARNING: Failed to obtain authentication "
-+ printerr(2, "WARNING: Failed to obtain authentication "
-=A0 =A0 =A0"data for user with uid %d for server %s\n",
-=A0 uid, clp->servername);
-=A0 goto out_return_error;
---
-1.5.4.3
+
+> are you running ubuntu 9.10 or something else?
+
+We're on Ubuntu 8.04 but we basically "only" use a filesystem, kernel
+with a well-performing NFS-server and some NIC that work well :-)
+
+> Wow, thats a monster machine, 8 nodes, 128GB ram.  Can we get a full
+> lspci -vvv output, as well as ethtool -e eth7 and eth8
+
+http://shrek.krogh.cc/~jesper/lspci.txt
+
+http://shrek.krogh.cc/~jesper/ethtool-eth7.txt
+http://shrek.krogh.cc/~jesper/ethtool-eth8.txt
+
+> 32 has ixgbe with a known issue of multiple mappings on transmit
+> possibly causing some problems, could it be that you're running into
+> this?  can you apply commit e5a43549f7a58509a91b299a51337d386697b92c
+> and see if it fixes your issue?
+
+I'll do that the next time I can push a reboot through.
+
+-- 
+Jesper
