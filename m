@@ -1,46 +1,62 @@
-From: Dave Chinner <david@fromorbit.com>
-Subject: Re: [RFC] nfs: use 2*rsize readahead size
-Date: Wed, 24 Feb 2010 16:24:09 +1100
-Message-ID: <20100224052409.GI16175@discord.disaster>
-References: <20100224024100.GA17048@localhost> <20100224032934.GF16175@discord.disaster> <20100224042414.GG16175@discord.disaster> <20100224044356.GA2007@localhost>
+From: Jesper Krogh <jesper-Q2TZfHgGEy4@public.gmane.org>
+Subject: Re: 2.6.32.2 - WARNING: at lib/kref.c:43 kref_get+0x,23/0x2b()
+Date: Wed, 24 Feb 2010 08:19:06 +0100
+Message-ID: <4B84D2EA.4090209@krogh.cc>
+References: <4B4F5A00.4060604@atmos.washington.edu> <20100122150325.6ad12428.akpm@linux-foundation.org> <20100127190522.GB18278@fieldses.org> <4B60C5D4.6070000@atmos.washington.edu> <20100202162228.GD4293@fieldses.org> <20100216182248.GA4922@nik-comp.linuxbox.cz> <20100216202121.GE26292@fieldses.org> <20100216202720.GB4922@nik-comp.linuxbox.cz> <20100216202947.GF26292@fieldses.org> <20100217151435.GC30897@develbox.linuxbox.cz> <20100220235105.GB15015@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
-	"linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-	Linux Memory Management List <linux-mm@kvack.org>,
-	LKML <linux-kernel@vger.kernel.org>
-To: Wu Fengguang <fengguang.wu@intel.com>
+Content-Type: text/plain; charset="ISO-8859-1"; format=flowed
+Cc: Nikola Ciprich
+	<public-extmaillist-Jp3n8lUXroTtwjQa/ONI9g-wOFGN7rlS/M9smdsby/KFg@public.gmane.org>,
+	Harry Edmon
+	<public-harry-qmPYOCrcNLLyFCzt5hm0YvZ8FUJU4vz8-wOFGN7rlS/M9smdsby/KFg@public.gmane.org>,
+	Andrew Morton
+	<public-akpm-de/tnXTf+JLsfHDXvbKv3WD2FQJk+8+b-wOFGN7rlS/M9smdsby/KFg@public.gmane.org>,
+	public-linux-kernel-u79uwXL29TY76Z2rM5mHXA-wOFGN7rlS/M9smdsby/KFg@public.gmane.org,
+	public-linux-nfs-u79uwXL29TY76Z2rM5mHXA-wOFGN7rlS/M9smdsby/KFg@public.gmane.org,
+	public-nikola.ciprich-Jp3n8lUXroTtwjQa/ONI9g-wOFGN7rlS/M9smdsby/KFg@public.gmane.org
+To: "J. Bruce Fields"
+	<public-bfields-uC3wQj2KruNg9hUCZPvPmw-wOFGN7rlS/M9smdsby/KFg@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from bld-mail12.adl6.internode.on.net ([150.101.137.97]:43053 "EHLO
-	mail.internode.on.net" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1751148Ab0BXFYN (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 24 Feb 2010 00:24:13 -0500
-In-Reply-To: <20100224044356.GA2007@localhost>
+Received: from plane.gmane.org ([80.91.229.3]:37063 "EHLO plane.gmane.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754944Ab0BXIVl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 24 Feb 2010 03:21:41 -0500
+Received: from public by plane.gmane.org with local (Exim 4.63)
+	(envelope-from <public-wOFGN7rlS/M9smdsby/KFg@public.gmane.org>)
+	id 1NkBko-0007ZL-HB
+	for linux-nfs@vger.kernel.org; Wed, 24 Feb 2010 08:33:54 +0100
+In-Reply-To: <20100220235105.GB15015@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Feb 24, 2010 at 12:43:56PM +0800, Wu Fengguang wrote:
-> On Wed, Feb 24, 2010 at 12:24:14PM +0800, Dave Chinner wrote:
-> > On Wed, Feb 24, 2010 at 02:29:34PM +1100, Dave Chinner wrote:
-> > > That's doing a cached read out of the server cache, right? You
-> > > might find the results are different if the server has to read the
-> > > file from disk. I would expect reads from the server cache not
-> > > to require much readahead as there is no IO latency on the server
-> > > side for the readahead to hide....
-> > 
-> > FWIW, if you mount the client with "-o rsize=32k" or the server only
-> > supports rsize <= 32k then this will probably hurt throughput a lot
-> > because then readahead will be capped at 64k instead of 480k....
+
+
+
+J. Bruce Fields wrote:
+> On Wed, Feb 17, 2010 at 04:14:35PM +0100, Nikola Ciprich wrote:
+>> Well,
+>> I did a lot of stress tests, and it seems to be pretty random, and what's
+>> worse, I think it is more then one problem, oh great...
+>> Seems that at least one of my NFS problems was in fact caused by ext4 regression
+>> (what FS are you using?)
+>> applying this one: http://bugzilla.kernel.org/attachment.cgi?id=24975
+>> improved things for me a lot (see http://bugzilla.kernel.org/show_bug.cgi?id=15231 for
+>> full discussion).
+>> I'll watch the machine for next few days and report...
 > 
-> I should have mentioned that in changelog.. Hope the updated one
-> helps.
+> Is there *any* kernel (however old) on which you are confident you can
+> *not* reproduce the kref bug?
 
-Sorry, my fault for not reading the code correctly.
+I have got a bug that looks a lot like this on 2.6.32.8 yesterday less 
+than 24 hours after booting the first 2.6.32 kernel but we have been 
+running on 2.6.31 for 3 months before, so I'm fairly confident that it 
+is a .31 -> .32 regression.
 
-Cheers,
+http://lkml.org/lkml/2010/2/23/70
 
-Dave.
+Jesper
 -- 
-Dave Chinner
-david@fromorbit.com
+Jesper
+
+
+
