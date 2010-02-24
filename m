@@ -1,67 +1,76 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-out2.uio.no ([129.240.10.58]:51773 "EHLO mail-out2.uio.no"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754631Ab0BSTTU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 19 Feb 2010 14:19:20 -0500
-Subject: Re: NFSv4
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-To: "J.A." =?ISO-8859-1?Q?Magall=F3n?= <jamagallon@ono.com>
-Cc: LKML <linux-kernel@vger.kernel.org>, linux-nfs@vger.kernel.org
-In-Reply-To: <20100219012322.3d323794@werewolf.home>
-References: <20100219012322.3d323794@werewolf.home>
-Content-Type: text/plain; charset="UTF-8"
-Date: Fri, 19 Feb 2010 11:19:14 -0800
-Message-ID: <1266607154.3526.30.camel@localhost>
+Received: from bld-mail17.adl2.internode.on.net ([150.101.137.102]:59032 "EHLO
+	mail.internode.on.net" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1755244Ab0BXEYT (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 23 Feb 2010 23:24:19 -0500
+Date: Wed, 24 Feb 2010 15:24:14 +1100
+From: Dave Chinner <david@fromorbit.com>
+To: Wu Fengguang <fengguang.wu@intel.com>
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>, linux-nfs@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org,
+        Linux Memory Management List <linux-mm@kvack.org>,
+        LKML <linux-kernel@vger.kernel.org>
+Subject: Re: [RFC] nfs: use 2*rsize readahead size
+Message-ID: <20100224042414.GG16175@discord.disaster>
+References: <20100224024100.GA17048@localhost> <20100224032934.GF16175@discord.disaster>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20100224032934.GF16175@discord.disaster>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Fri, 2010-02-19 at 01:23 +0100, J.A. Magallón wrote: 
-> Hi all...
+On Wed, Feb 24, 2010 at 02:29:34PM +1100, Dave Chinner wrote:
+> On Wed, Feb 24, 2010 at 10:41:01AM +0800, Wu Fengguang wrote:
+> > With default rsize=512k and NFS_MAX_READAHEAD=15, the current NFS
+> > readahead size 512k*15=7680k is too large than necessary for typical
+> > clients.
+> > 
+> > On a e1000e--e1000e connection, I got the following numbers
+> > 
+> > 	readahead size		throughput
+> > 		   16k           35.5 MB/s
+> > 		   32k           54.3 MB/s
+> > 		   64k           64.1 MB/s
+> > 		  128k           70.5 MB/s
+> > 		  256k           74.6 MB/s
+> > rsize ==>	  512k           77.4 MB/s
+> > 		 1024k           85.5 MB/s
+> > 		 2048k           86.8 MB/s
+> > 		 4096k           87.9 MB/s
+> > 		 8192k           89.0 MB/s
+> > 		16384k           87.7 MB/s
+> > 
+> > So it seems that readahead_size=2*rsize (ie. keep two RPC requests in flight)
+> > can already get near full NFS bandwidth.
+> > 
+> > The test script is:
+> > 
+> > #!/bin/sh
+> > 
+> > file=/mnt/sparse
+> > BDI=0:15
+> > 
+> > for rasize in 16 32 64 128 256 512 1024 2048 4096 8192 16384
+> > do
+> > 	echo 3 > /proc/sys/vm/drop_caches
+> > 	echo $rasize > /sys/devices/virtual/bdi/$BDI/read_ahead_kb
+> > 	echo readahead_size=${rasize}k
+> > 	dd if=$file of=/dev/null bs=4k count=1024000
+> > done
 > 
-> First of all, kudos for new nfs-utils. Now, nfs4 works automagically and
-> like a charm.
-> 
-> And now the hard part, some questions:
-> 
-> - I have read that nfs4 includes in the server the locking protocol, no
->   need for separate lockd. But in my servers, it seems it is still running:
-> 
-> root      2198     2  0 Feb18 ?        00:00:00 [nfsiod]
-> root     23501     2  0 01:01 ?        00:00:00 [nfsd4]
-> root     23502     2  0 01:01 ?        00:00:00 [nfsd]
-> root     23503     2  0 01:01 ?        00:00:00 [nfsd]
-> root     23504     2  0 01:01 ?        00:00:00 [nfsd]
-> root     23505     2  0 01:01 ?        00:00:00 [nfsd]
-> root     23506     2  0 01:01 ?        00:00:00 [nfsd]
-> root     23507     2  0 01:01 ?        00:00:00 [nfsd]
-> root     23508     2  0 01:01 ?        00:00:00 [nfsd]
-> root     23509     2  0 01:01 ?        00:00:00 [nfsd]
-> root     23500     2  0 01:01 ?        00:00:00 [lockd]
-> 
->   Is there any problem with it ? I suppose (correct me if I'm wrong)
->   that this kernel lockd will only serve for v2 or v3 mounts,
->   that locking for client nfs4 mounts will go through nfsd4.
->   Is that right ?
+> That's doing a cached read out of the server cache, right? You
+> might find the results are different if the server has to read the
+> file from disk. I would expect reads from the server cache not
+> to require much readahead as there is no IO latency on the server
+> side for the readahead to hide....
 
-No. The client NFSv4 traffic goes through the ordinary 'nfsd' daemons.
-There is no special locking manager for NFSv4, since POSIX locks are
-part of the ordinary protocol.
+FWIW, if you mount the client with "-o rsize=32k" or the server only
+supports rsize <= 32k then this will probably hurt throughput a lot
+because then readahead will be capped at 64k instead of 480k....
 
-I don't think that the NFS server will switch off lockd even if you do
-specify that you only want to serve NFSv4.
+Cheers,
 
-> - Why is there only 1 instance of v4 daemon ?
-
-The 'nfsd4' thread above is actually a workqueue that is used for
-garbage-cleaning expired NFSv4 state. It isn't a server thread.
-
-> - Is there any page describing the advantages of v4 ? I will have to
->   convince the department admin to activate v4 in his solaris boxen...;)
-
-One place to start is the NFSv4 design considerations. See
-          http://tools.ietf.org/html/rfc2624
-
-Cheers
-  Trond
-
+Dave.
+-- 
+Dave Chinner
+david@fromorbit.com
