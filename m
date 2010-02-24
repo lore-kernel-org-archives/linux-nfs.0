@@ -1,124 +1,61 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:51757 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756468Ab0BPQM1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 16 Feb 2010 11:12:27 -0500
-From: Jeff Layton <jlayton@redhat.com>
-To: steved@redhat.com
-Cc: libtirpc-devel@lists.sourceforge.net, linux-nfs@vger.kernel.org
-Subject: [PATCH] libtirpc: handle large numbers of supplimental groups gracefully
-Date: Tue, 16 Feb 2010 11:12:18 -0500
-Message-Id: <1266336738-9611-1-git-send-email-jlayton@redhat.com>
+Received: from bld-mail15.adl6.internode.on.net ([150.101.137.100]:53932 "EHLO
+	mail.internode.on.net" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1755573Ab0BXHjp (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 24 Feb 2010 02:39:45 -0500
+Date: Wed, 24 Feb 2010 18:39:40 +1100
+From: Dave Chinner <david@fromorbit.com>
+To: Wu Fengguang <fengguang.wu@intel.com>
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+        Linux Memory Management List <linux-mm@kvack.org>,
+        LKML <linux-kernel@vger.kernel.org>
+Subject: Re: [RFC] nfs: use 2*rsize readahead size
+Message-ID: <20100224073940.GJ16175@discord.disaster>
+References: <20100224024100.GA17048@localhost> <20100224032934.GF16175@discord.disaster> <20100224041822.GB27459@localhost> <20100224052215.GH16175@discord.disaster> <20100224061247.GA8421@localhost>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20100224061247.GA8421@localhost>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-If authunix_create_default() is called by a user with more than 16
-supplimental groups, it'll abort(), which causes the program to
-crash and coredump.
+On Wed, Feb 24, 2010 at 02:12:47PM +0800, Wu Fengguang wrote:
+> On Wed, Feb 24, 2010 at 01:22:15PM +0800, Dave Chinner wrote:
+> > What I'm trying to say is that while I agree with your premise that
+> > a 7.8MB readahead window is probably far larger than was ever
+> > intended, I disagree with your methodology and environment for
+> > selecting a better default value.  The default readahead value needs
+> > to work well in as many situations as possible, not just in perfect
+> > 1:1 client/server environment.
+> 
+> Good points. It's imprudent to change a default value based on one
+> single benchmark. Need to collect more data, which may take time..
 
-Fix it to handle this situation gracefully. Get the number of
-groups that the user has first, and then allocate a big enough
-buffer to hold them. Then, just don't let the lower function use
-more than the NGRPS groups.
+Agreed - better to spend time now to get it right...
 
-Also fix up the error handling in this function so that it just
-returns a NULL pointer on error and logs a message via warnx()
-instead of calling abort().
+> > > It sounds silly to have
+> > > 
+> > >         client_readahead_size > server_readahead_size
+> > 
+> > I don't think it is  - the client readahead has to take into account
+> > the network latency as well as the server latency. e.g. a network
+> > with a high bandwidth but high latency is going to need much more
+> > client side readahead than a high bandwidth, low latency network to
+> > get the same throughput. Hence it is not uncommon to see larger
+> > readahead windows on network clients than for local disk access.
+> 
+> Hmm I wonder if I can simulate a high-bandwidth high-latency network
+> with e1000's RxIntDelay/TxIntDelay parameters..
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- src/auth_unix.c |   61 +++++++++++++++++++++++++++++++++++++++++++++++++-----
- 1 files changed, 55 insertions(+), 6 deletions(-)
+I think netem is the blessed method of emulating different network
+behaviours. There's a howto+faq for setting it up here:
 
-diff --git a/src/auth_unix.c b/src/auth_unix.c
-index 71ca15d..4ac1263 100644
---- a/src/auth_unix.c
-+++ b/src/auth_unix.c
-@@ -49,6 +49,7 @@
- #include <stdlib.h>
- #include <unistd.h>
- #include <string.h>
-+#include <errno.h>
- 
- #include <rpc/types.h>
- #include <rpc/xdr.h>
-@@ -175,20 +176,68 @@ AUTH *
- authunix_create_default()
- {
- 	int len;
-+	size_t bufsize = 0;
- 	char machname[MAXHOSTNAMELEN + 1];
- 	uid_t uid;
- 	gid_t gid;
--	gid_t gids[NGRPS];
-+	gid_t *gids = NULL;
-+	AUTH *auth;
-+
-+	if (gethostname(machname, sizeof machname) == -1) {
-+		warnx("%s: gethostname() failed: %s", __func__,
-+			strerror(errno));
-+		return NULL;
-+	}
- 
--	if (gethostname(machname, sizeof machname) == -1)
--		abort();
- 	machname[sizeof(machname) - 1] = 0;
- 	uid = geteuid();
- 	gid = getegid();
--	if ((len = getgroups(NGRPS, gids)) < 0)
--		abort();
-+
-+retry:
-+	if ((len = getgroups(0, NULL)) < 0) {
-+		warnx("%s: failed to get number of groups: %s", __func__,
-+			strerror(errno));
-+		return NULL;
-+	}
-+
-+	/* paranoia -- never pass a buffer smaller than NGRPS */
-+	bufsize = (len < NGRPS ? NGRPS : len) * sizeof(gid_t);
-+	gids = mem_alloc(bufsize);
-+	if (gids == NULL) {
-+		warnx("%s: memory allocation failed: %s", __func__,
-+			strerror(ENOMEM));
-+		return gids;
-+	}
-+
-+	if (len == 0)
-+		goto no_groups;
-+
-+	len = getgroups(len, gids);
-+	if (len < 0) {
-+		mem_free(gids, bufsize);
-+		/*
-+		 * glibc mentions that it's possible for the number of groups
-+		 * to change between two getgroups calls. If that happens,
-+		 * retry the whole thing again.
-+		 */
-+		if (len == -EINVAL) {
-+			gids = NULL;
-+			bufsize = 0;
-+			goto retry;
-+		}
-+		warnx("%s: failed to get group list: %s", __func__,
-+			strerror(errno));
-+		return NULL;
-+	}
-+
-+	if (len > NGRPS)
-+		len = NGRPS;
-+
-+no_groups:
- 	/* XXX: interface problem; those should all have been unsigned */
--	return (authunix_create(machname, uid, gid, len, gids));
-+	auth = authunix_create(machname, uid, gid, len, gids);
-+	mem_free(gids, bufsize);
-+	return auth;
- }
- 
- /*
+http://www.linuxfoundation.org/collaborate/workgroups/networking/netem
+
+Cheers,
+
+Dave.
 -- 
-1.6.6
-
+Dave Chinner
+david@fromorbit.com
