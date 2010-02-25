@@ -1,47 +1,75 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-out1.uio.no ([129.240.10.57]:36633 "EHLO mail-out1.uio.no"
+Received: from mga01.intel.com ([192.55.52.88]:39130 "EHLO mga01.intel.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756371Ab0BCWUR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 3 Feb 2010 17:20:17 -0500
-Subject: Re: [PATCH 6/9] sunrpc: close connection when a request is
- irretrievably lost.
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-To: Neil Brown <neilb@suse.de>
-Cc: Chuck Lever <chuck.lever@oracle.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
-In-Reply-To: <20100204082354.0bf3b7e5@notabene.brown>
-References: <20100203060657.12945.27293.stgit@notabene.brown>
-	 <20100203063131.12945.34978.stgit@notabene.brown>
-	 <4B699988.9000209@oracle.com>  <20100204082354.0bf3b7e5@notabene.brown>
-Content-Type: text/plain; charset="UTF-8"
-Date: Wed, 03 Feb 2010 17:20:10 -0500
-Message-ID: <1265235610.5217.21.camel@localhost>
+	id S932264Ab0BYMh7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 25 Feb 2010 07:37:59 -0500
+Date: Thu, 25 Feb 2010 20:37:55 +0800
+From: Wu Fengguang <fengguang.wu@intel.com>
+To: Akshat Aranya <aaranya+fsdevel@gmail.com>
+Cc: Dave Chinner <david@fromorbit.com>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+        Linux Memory Management List <linux-mm@kvack.org>,
+        LKML <linux-kernel@vger.kernel.org>
+Subject: Re: [RFC] nfs: use 2*rsize readahead size
+Message-ID: <20100225123755.GB9077@localhost>
+References: <20100224024100.GA17048@localhost> <20100224032934.GF16175@discord.disaster> <20100224041822.GB27459@localhost> <20100224052215.GH16175@discord.disaster> <e48344781002240318u6e6545bdt97712dca4efceb9f@mail.gmail.com>
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <e48344781002240318u6e6545bdt97712dca4efceb9f@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Thu, 2010-02-04 at 08:23 +1100, Neil Brown wrote: 
-> On Wed, 03 Feb 2010 10:43:04 -0500
-> Chuck Lever <chuck.lever@oracle.com> wrote:
-> > 
-> > I don't think dropping the connection will cause the client to 
-> > retransmit sooner.  Clients I have encountered will reconnect and 
-> > retransmit only after their retransmit timeout fires, never sooner.
-> > 
+On Wed, Feb 24, 2010 at 07:18:26PM +0800, Akshat Aranya wrote:
+> On Wed, Feb 24, 2010 at 12:22 AM, Dave Chinner <david@fromorbit.com> wrote:
 > 
-> I thought I had noticed the Linux client resending immediately, but it would
-> have been a while ago, and I could easily be remembering wrongly.
+> >
+> >> It sounds silly to have
+> >>
+> >>         client_readahead_size > server_readahead_size
+> >
+> > I don't think it is  - the client readahead has to take into account
+> > the network latency as well as the server latency. e.g. a network
+> > with a high bandwidth but high latency is going to need much more
+> > client side readahead than a high bandwidth, low latency network to
+> > get the same throughput. Hence it is not uncommon to see larger
+> > readahead windows on network clients than for local disk access.
+> >
+> > Also, the NFS server may not even be able to detect sequential IO
+> > patterns because of the combined access patterns from the clients,
+> > and so the only effective readahead might be what the clients
+> > issue....
+> >
+> 
+> In my experiments, I have observed that the server-side readahead
+> shuts off rather quickly even with a single client because the client
+> readahead causes multiple pending read RPCs on the server which are
+> then serviced in random order and the pattern observed by the
+> underlying file system is non-sequential.  In our file system, we had
+> to override what the VFS thought was a random workload and continue to
+> do readahead anyway.
 
-It depends on who closes the connection.
+What's the server side kernel version, plus client/server side
+readahead size? I'd expect the context readahead to handle it well.
 
-The client assumes that if the _server_ closes the connection, then it
-may be having resource congestion issues. In order to give the server
-time to recover, the client will delay reconnecting for 3 seconds (with
-an exponential back off).
+With the patchset in <http://lkml.org/lkml/2010/2/23/376>, you can
+actually see the readahead details:
 
-If, on the other hand, the client was the one that initiated the
-connection closure, then it will try to reconnect immediately.
+        # echo 1 > /debug/tracing/events/readahead/enable
+        # cp test-file /dev/null
+        # cat /debug/tracing/trace  # trimmed output
+        readahead-initial(dev=0:15, ino=100177, req=0+2, ra=0+4-2, async=0) = 4
+        readahead-subsequent(dev=0:15, ino=100177, req=2+2, ra=4+8-8, async=1) = 8
+        readahead-subsequent(dev=0:15, ino=100177, req=4+2, ra=12+16-16, async=1) = 16
+        readahead-subsequent(dev=0:15, ino=100177, req=12+2, ra=28+32-32, async=1) = 32
+        readahead-subsequent(dev=0:15, ino=100177, req=28+2, ra=60+60-60, async=1) = 24
+        readahead-subsequent(dev=0:15, ino=100177, req=60+2, ra=120+60-60, async=1) = 0
 
-Cheers
-  Trond
+And I've actually verified the NFS case with the help of such traces
+long ago.  When client_readahead_size <= server_readahead_size, the
+readahead requests may look a bit random at first, and then will
+quickly turn into a perfect series of sequential context readaheads.
 
+Thanks,
+Fengguang
