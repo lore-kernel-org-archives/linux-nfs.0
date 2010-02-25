@@ -1,58 +1,101 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH] NFSD: NFSv4 callback client should use
-	RPC_TASK_SOFTCONN
-Date: Wed, 24 Feb 2010 20:51:45 -0500
-Message-ID: <20100225015145.GJ16665@fieldses.org>
-References: <20100224214709.1399.59887.stgit@localhost.localdomain>
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: Re: allocation under spinlock
+Date: Wed, 24 Feb 2010 18:31:49 -0800
+Message-ID: <1267065109.19857.10.camel@netappnfs60-170.Connectathon.ORG>
+References: <20100224212358.GH16665@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset="UTF-8"
 Cc: linux-nfs@vger.kernel.org
-To: Chuck Lever <chuck.lever@oracle.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:59523 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:11132 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753199Ab0BYBus (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 24 Feb 2010 20:50:48 -0500
-In-Reply-To: <20100224214709.1399.59887.stgit-bi+AKbBUZKY6gyzm1THtWbp2dZbC/Bob@public.gmane.org>
+	id S1758782Ab0BYCbv convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 24 Feb 2010 21:31:51 -0500
+In-Reply-To: <20100224212358.GH16665@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Feb 24, 2010 at 01:48:06PM -0800, Chuck Lever wrote:
-> The server's callback client should stop trying to connect to the
-> client's callback server as soon as it gets ECONNREFUSED.
+On Wed, 2010-02-24 at 16:23 -0500, J. Bruce Fields wrote: 
+> nfs_dns_ent_init() is trying to kstrndup() something, but it's called under a
+> spinlock.
 > 
-> The NFS server's callback client does not call rpc_ping(), but appears
-> to have it's own "ping" procedure, so it wasn't covered by commit
-> caabea8a.
+> Could refernce count that string instead, but other code I believe actually
+> just does something like:
 > 
-> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-> ---
+> 	new->hostname = key->hostname;
+> 	key->hostname = NULL;
 > 
-> Hi Bruce-
+> --b.
 > 
-> Noticed at Connectathon.  I think this is appropriate for 2.6.34, which opened
-> today.
+> BUG: sleeping function called from invalid context at mm/slab.c:3034
+> in_atomic(): 1, irqs_disabled(): 0, pid: 3300, name: nfs_cache_geten
+> 2 locks held by nfs_cache_geten/3300:
+>  #0:  (&sb->s_type->i_mutex_key#4){+.+.+.}, at: [<c1795506>] cache_write+0x46/0x100
+>  #1:  (&cd->hash_lock){+++++.}, at: [<c17964a5>] sunrpc_cache_update+0x25/0x170
+> Pid: 3300, comm: nfs_cache_geten Not tainted 2.6.33-rc8-13669-g724e6d3 #156
 
-Thanks, applied for 2.6.34.
+Does the following fix it for you?
 
---b.
+Cheers
+  Trond
+---------------------------------------------------------------------------- 
+NFS: Fix an allocation-under-spinlock bug
 
-> 
->  fs/nfsd/nfs4callback.c |    3 ++-
->  1 files changed, 2 insertions(+), 1 deletions(-)
-> 
-> diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
-> index c6eed2a..5ab598d 100644
-> --- a/fs/nfsd/nfs4callback.c
-> +++ b/fs/nfsd/nfs4callback.c
-> @@ -542,7 +542,8 @@ void do_probe_callback(struct nfs4_client *clp)
->  	};
->  	int status;
->  
-> -	status = rpc_call_async(cb->cb_client, &msg, RPC_TASK_SOFT,
-> +	status = rpc_call_async(cb->cb_client, &msg,
-> +				RPC_TASK_SOFT | RPC_TASK_SOFTCONN,
->  				&nfsd4_cb_probe_ops, (void *)clp);
->  	if (status) {
->  		warn_no_callback_path(clp, status);
-> 
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+
+sunrpc_cache_update() will always call detail->update() from inside the
+detail->hash_lock, so it cannot allocate memory.
+
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: stable@kernel.org
+---
+
+ fs/nfs/dns_resolve.c |   18 +++++++++++++++---
+ 1 files changed, 15 insertions(+), 3 deletions(-)
+
+
+diff --git a/fs/nfs/dns_resolve.c b/fs/nfs/dns_resolve.c
+index 95e1ca7..3f0cd4d 100644
+--- a/fs/nfs/dns_resolve.c
++++ b/fs/nfs/dns_resolve.c
+@@ -36,6 +36,19 @@ struct nfs_dns_ent {
+ };
+ 
+
++static void nfs_dns_ent_update(struct cache_head *cnew,
++		struct cache_head *ckey)
++{
++	struct nfs_dns_ent *new;
++	struct nfs_dns_ent *key;
++
++	new = container_of(cnew, struct nfs_dns_ent, h);
++	key = container_of(ckey, struct nfs_dns_ent, h);
++
++	memcpy(&new->addr, &key->addr, key->addrlen);
++	new->addrlen = key->addrlen;
++}
++
+ static void nfs_dns_ent_init(struct cache_head *cnew,
+ 		struct cache_head *ckey)
+ {
+@@ -49,8 +62,7 @@ static void nfs_dns_ent_init(struct cache_head *cnew,
+ 	new->hostname = kstrndup(key->hostname, key->namelen, GFP_KERNEL);
+ 	if (new->hostname) {
+ 		new->namelen = key->namelen;
+-		memcpy(&new->addr, &key->addr, key->addrlen);
+-		new->addrlen = key->addrlen;
++		nfs_dns_ent_update(cnew, ckey);
+ 	} else {
+ 		new->namelen = 0;
+ 		new->addrlen = 0;
+@@ -234,7 +246,7 @@ static struct cache_detail nfs_dns_resolve = {
+ 	.cache_show = nfs_dns_show,
+ 	.match = nfs_dns_match,
+ 	.init = nfs_dns_ent_init,
+-	.update = nfs_dns_ent_init,
++	.update = nfs_dns_ent_update,
+ 	.alloc = nfs_dns_ent_alloc,
+ };
+ 
+
