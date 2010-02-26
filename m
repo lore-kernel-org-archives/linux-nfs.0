@@ -1,51 +1,58 @@
-From: bpm@sgi.com
-Subject: Re: Problem with nfs server reboot causing exports to jumble
-Date: Fri, 26 Feb 2010 10:38:42 -0600
-Message-ID: <20100226163842.GI20620@sgi.com>
-References: <20100225192911.09CC318839E@wsnyder.org> <20100225200657.GD20620@sgi.com> <20100225203336.9F69118839E@wsnyder.org>
+From: David Howells <dhowells@redhat.com>
+Subject: [PATCH] Remove EXPERIMENTAL from NFS_FSCACHE
+Date: Fri, 26 Feb 2010 17:25:14 +0000
+Message-ID: <20100226172513.12926.81221.stgit@warthog.procyon.org.uk>
+Reply-To: Linux filesystem caching discussion list <linux-cachefs@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs@vger.kernel.org
-To: Wilson Snyder <wsnyder-12vJDDTx9R9AfugRpC6u6w@public.gmane.org>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from relay2.sgi.com ([192.48.179.30]:42249 "EHLO relay.sgi.com"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S965310Ab0BZQhu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 26 Feb 2010 11:37:50 -0500
-In-Reply-To: <20100225203336.9F69118839E-12vJDDTx9R9AfugRpC6u6w@public.gmane.org>
-Sender: linux-nfs-owner@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+Cc: linux-nfs@vger.kernel.org, Christian Kujau <lists@nerdbynature.de>,
+        Trond.Myklebust@netapp.com, linux-kernel@vger.kernel.org,
+        linux-cachefs@redhat.com, akpm@linux-foundation.org
+To: torvalds@osdl.org
+Return-path: <linux-cachefs-bounces@redhat.com>
+List-Unsubscribe: <https://www.redhat.com/mailman/options/linux-cachefs>,
+	<mailto:linux-cachefs-request@redhat.com?subject=unsubscribe>
+List-Archive: <https://www.redhat.com/archives/linux-cachefs>
+List-Post: <mailto:linux-cachefs@redhat.com>
+List-Help: <mailto:linux-cachefs-request@redhat.com?subject=help>
+List-Subscribe: <https://www.redhat.com/mailman/listinfo/linux-cachefs>,
+	<mailto:linux-cachefs-request@redhat.com?subject=subscribe>
+Sender: linux-cachefs-bounces@redhat.com
+Errors-To: linux-cachefs-bounces@redhat.com
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hey Wilson,
+From: Christian Kujau <lists@nerdbynature.de>
 
-On Thu, Feb 25, 2010 at 03:33:36PM -0500, Wilson Snyder wrote:
-> >Use the mp and fsid export options documented in the exports manpage.
-> 
-> Reading between the lines, are you suggesting the mounts
-> weren't ready when the exports started
+There's currently an open Ubuntu bug[0], with the intent to compile NFS_FSCACHE
+(and possibly AFS_FSCACHE, 9P_FSCACHE) into the standard Ubuntu kernel.
+However, since *_FSCACHE still depends on EXPERIMENTAL, this won't happen.
 
-I'm suggesting that it's a good idea to use the mp export option so that
-you don't export your root filesystem in the off chance that the
-filesystems you want to export aren't mounted yet.
+As Arjan van de Ven pointed out[1], the EXPERIMENTAL flag doesn't mean that
+much any more, I propose the following patch to fs/nfs/Kconfig.  I'd do the
+same for fs/9p/Kconfig and fs/afs/Kconfig, but as I did not test 9p or AFS, I
+feel it would not be appropriate for me to remove the flag.
 
-> I presume then that it's enough to just use mp - assuming
-> each mountpoint has a unique UUID?  
+[0] https://bugs.launchpad.net/ubuntu/+source/linux/+bug/440522/comments/5
+[1] http://lkml.org/lkml/2010/1/23/145
 
-Look into how the fsid that identifies each filesystem to the nfs client
-is chosen by the nfs server.  Is it possible that it changed across the
-reboot?  I don't know offhand.  If it did change across a reboot, using
-the fsid export option to explicitly set the fsid for each export might 
-prevent this happening again.
+Signed-off-by: Christian Kujau <lists@nerdbynature.de>
+Signed-off-by: David Howells <dhowells@redhat.com>
+---
 
-> Wouldn't adding fsid now (with the server and clients all up) require
-> me to remount every client?
+ fs/nfs/Kconfig |    3 +--
+ 1 files changed, 1 insertions(+), 2 deletions(-)
 
-Yep, I think so.  Maybe you want to schedule some downtime.
-
-> Finally, is there a way to examine the present
-> (automatically assigned) fsid's so I can confirm this was
-> the problem?
-
-Maybe you can try ethereal or something like that.
-
--Ben
+diff --git a/fs/nfs/Kconfig b/fs/nfs/Kconfig
+index 59e5673..a43d07e 100644
+--- a/fs/nfs/Kconfig
++++ b/fs/nfs/Kconfig
+@@ -95,8 +95,7 @@ config ROOT_NFS
+ 	  Most people say N here.
+ 
+ config NFS_FSCACHE
+-	bool "Provide NFS client caching support (EXPERIMENTAL)"
+-	depends on EXPERIMENTAL
++	bool "Provide NFS client caching support"
+ 	depends on NFS_FS=m && FSCACHE || NFS_FS=y && FSCACHE=y
+ 	help
+ 	  Say Y here if you want NFS data to be cached locally on disc through
