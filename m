@@ -1,58 +1,53 @@
-From: David Howells <dhowells@redhat.com>
-Subject: [PATCH] Remove EXPERIMENTAL from NFS_FSCACHE
-Date: Fri, 26 Feb 2010 17:25:14 +0000
-Message-ID: <20100226172513.12926.81221.stgit@warthog.procyon.org.uk>
-Reply-To: Linux filesystem caching discussion list <linux-cachefs@redhat.com>
+From: Neil Brown <neilb@suse.de>
+Subject: [PATCH] sunrpc: remove unnecessary svc_xprt_put
+Date: Sat, 27 Feb 2010 09:33:40 +1100
+Message-ID: <19336.19524.469529.431210@notabene.brown>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: linux-nfs@vger.kernel.org, Christian Kujau <lists@nerdbynature.de>,
-        Trond.Myklebust@netapp.com, linux-kernel@vger.kernel.org,
-        linux-cachefs@redhat.com, akpm@linux-foundation.org
-To: torvalds@osdl.org
-Return-path: <linux-cachefs-bounces@redhat.com>
-List-Unsubscribe: <https://www.redhat.com/mailman/options/linux-cachefs>,
-	<mailto:linux-cachefs-request@redhat.com?subject=unsubscribe>
-List-Archive: <https://www.redhat.com/archives/linux-cachefs>
-List-Post: <mailto:linux-cachefs@redhat.com>
-List-Help: <mailto:linux-cachefs-request@redhat.com?subject=help>
-List-Subscribe: <https://www.redhat.com/mailman/listinfo/linux-cachefs>,
-	<mailto:linux-cachefs-request@redhat.com?subject=subscribe>
-Sender: linux-cachefs-bounces@redhat.com
-Errors-To: linux-cachefs-bounces@redhat.com
+Content-Type: text/plain; charset=us-ascii
+Cc: Tom Tucker <tom@opengridcomputing.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from cantor.suse.de ([195.135.220.2]:32953 "EHLO mx1.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S966347Ab0BZWdr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 26 Feb 2010 17:33:47 -0500
+Cc: linux-nfs@vger.kernel.org
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Christian Kujau <lists@nerdbynature.de>
 
-There's currently an open Ubuntu bug[0], with the intent to compile NFS_FSCACHE
-(and possibly AFS_FSCACHE, 9P_FSCACHE) into the standard Ubuntu kernel.
-However, since *_FSCACHE still depends on EXPERIMENTAL, this won't happen.
+[I found this while looking for the current refcount problem
+ that triggers a warning in svc_recv.  This isn't that bug
+ but is a different refcount bug - NB]
 
-As Arjan van de Ven pointed out[1], the EXPERIMENTAL flag doesn't mean that
-much any more, I propose the following patch to fs/nfs/Kconfig.  I'd do the
-same for fs/9p/Kconfig and fs/afs/Kconfig, but as I did not test 9p or AFS, I
-feel it would not be appropriate for me to remove the flag.
+The 'struct svc_deferred_req's on the xpt_deferred queue do not
+own a reference to the owning xprt.  This is seen in svc_revisit
+which is where things are added to this queue.  dr->xprt is set to
+NULL and the reference to the xprt it put.
 
-[0] https://bugs.launchpad.net/ubuntu/+source/linux/+bug/440522/comments/5
-[1] http://lkml.org/lkml/2010/1/23/145
+So when this list is cleaned up in svc_delete_xprt, we mustn't
+put the reference.
 
-Signed-off-by: Christian Kujau <lists@nerdbynature.de>
-Signed-off-by: David Howells <dhowells@redhat.com>
----
+Also, replace the 'for' with a 'while' which is arguably
+simpler and more likely to compile efficiently.
 
- fs/nfs/Kconfig |    3 +--
- 1 files changed, 1 insertions(+), 2 deletions(-)
+Cc: Tom Tucker <tom@opengridcomputing.com>
+Signed-off-by: NeilBrown <neilb@suse.de>
 
-diff --git a/fs/nfs/Kconfig b/fs/nfs/Kconfig
-index 59e5673..a43d07e 100644
---- a/fs/nfs/Kconfig
-+++ b/fs/nfs/Kconfig
-@@ -95,8 +95,7 @@ config ROOT_NFS
- 	  Most people say N here.
+diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
+index 7d1f9e9..4f30336 100644
+--- a/net/sunrpc/svc_xprt.c
++++ b/net/sunrpc/svc_xprt.c
+@@ -889,11 +889,8 @@ void svc_delete_xprt(struct svc_xprt *xprt)
+ 	if (test_bit(XPT_TEMP, &xprt->xpt_flags))
+ 		serv->sv_tmpcnt--;
  
- config NFS_FSCACHE
--	bool "Provide NFS client caching support (EXPERIMENTAL)"
--	depends on EXPERIMENTAL
-+	bool "Provide NFS client caching support"
- 	depends on NFS_FS=m && FSCACHE || NFS_FS=y && FSCACHE=y
- 	help
- 	  Say Y here if you want NFS data to be cached locally on disc through
+-	for (dr = svc_deferred_dequeue(xprt); dr;
+-	     dr = svc_deferred_dequeue(xprt)) {
+-		svc_xprt_put(xprt);
++	while ((dr = svc_deferred_dequeue(xprt)) != NULL)
+ 		kfree(dr);
+-	}
+ 
+ 	svc_xprt_put(xprt);
+ 	spin_unlock_bh(&serv->sv_lock);
