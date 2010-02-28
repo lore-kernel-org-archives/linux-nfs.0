@@ -1,17 +1,19 @@
 From: Iustin Pop <iusty-JC6qDa14zzLYtjvyW6yDsg@public.gmane.org>
-Subject: Problems with crossmnt since 1.2.1
-Date: Sun, 28 Feb 2010 11:06:43 +0100
-Message-ID: <20100228100643.GG26178@teal.hq.k1024.org>
+Subject: [NFS] Problems with crossmnt since 1.2.1
+Date: Sun, 28 Feb 2010 10:58:23 +0100
+Message-ID: <20100228095823.GC26178@teal.hq.k1024.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-To: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+To: nfs@lists.sourceforge.net
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fg-out-1718.google.com ([72.14.220.157]:15280 "EHLO
-	fg-out-1718.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1031648Ab0B1KGq (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 28 Feb 2010 05:06:46 -0500
-Received: by fg-out-1718.google.com with SMTP id 16so492676fgg.1
-        for <linux-nfs@vger.kernel.org>; Sun, 28 Feb 2010 02:06:45 -0800 (PST)
+Received: from neil.brown.name ([220.233.11.133]:38266 "EHLO neil.brown.name"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1031766Ab0B1KvZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 28 Feb 2010 05:51:25 -0500
+Received: from brown by neil.brown.name with local (Exim 4.71)
+	(envelope-from <nfs-bounces@lists.sourceforge.net>)
+	id 1Nlgk7-00013z-8p
+	for linux-nfs@vger.kernel.org; Sun, 28 Feb 2010 21:51:23 +1100
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
@@ -42,3 +44,18 @@ enough of this to be able to debug it.
 
 thanks,
 iustin
+
+------------------------------------------------------------------------------
+Download Intel&#174; Parallel Studio Eval
+Try the new software tools for yourself. Speed compiling, find bugs
+proactively, and fine-tune applications for parallel performance.
+See why Intel Parallel Studio got high marks during beta.
+http://p.sf.net/sfu/intel-sw-dev
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
+_______________________________________________
+Please note that nfs@lists.sourceforge.net is being discontinued.
+Please subscribe to linux-nfs@vger.kernel.org instead.
+    http://vger.kernel.org/vger-lists.html#linux-nfs
+
