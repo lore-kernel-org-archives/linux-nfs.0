@@ -1,44 +1,50 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from relay2.sgi.com ([192.48.179.30]:33177 "EHLO relay.sgi.com"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1756599Ab0BKWE7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 11 Feb 2010 17:04:59 -0500
-Subject: [PATCH 0/2] commit_metadata export operation v4
-To: bfields@fieldses.org
-From: Ben Myers <bpm@sgi.com>
-Cc: linux-nfs@vger.kernel.org, xfs@oss.sgi.com
-Date: Thu, 11 Feb 2010 16:04:55 -0600
-Message-ID: <20100211220454.26466.37578.stgit@case>
-Content-Type: text/plain; charset="utf-8"
+Received: from mx2.netapp.com ([216.240.18.37]:14684 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751609Ab0CABgt convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 28 Feb 2010 20:36:49 -0500
+Subject: Re: [PATCH 5/5] NFSv3: Add server namespace support for XATTR
+ protocol implementation
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Casey Schaufler <casey@schaufler-ca.com>
+Cc: Stephen Smalley <sds@tycho.nsa.gov>, James Morris <jmorris@namei.org>,
+        linux-nfs@vger.kernel.org, linux-security-module@vger.kernel.org,
+        "J. Bruce Fields" <bfields@fieldses.org>, Neil Brown <neilb@suse.de>,
+        Dave Quigley <dpquigl@tycho.nsa.gov>,
+        "Serge E. Hallyn" <serue@us.ibm.com>
+In-Reply-To: <4B8B0F0B.4080603@schaufler-ca.com>
+References: <alpine.LRH.2.00.1002261457420.25193@tundra.namei.org>
+	 <alpine.LRH.2.00.1002261537020.25193@tundra.namei.org>
+	 <1267191990.7691.37.camel@moss-pluto.epoch.ncsc.mil>
+	 <4B8B0F0B.4080603@schaufler-ca.com>
+Content-Type: text/plain; charset="UTF-8"
+Date: Sun, 28 Feb 2010 20:17:43 -0500
+Message-ID: <1267406263.3338.20.camel@localhost.localdomain>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Hey Bruce,
+On Sun, 2010-02-28 at 16:49 -0800, Casey Schaufler wrote:
 
-Here is the latest version of the knfsd sync changes.  I have addressed the
-suggestions provided by Christoph, Trond, and Dave.  This time rebased atop
-for-2.6.34 (I hope).  Sorry for the extra noise.
+> I'm mostly in agreement with Stephen. I wouldn't object to a separate
+> "nfsd." namespace, as opposed to "security." or "trusted." because I
+> think that in reality you're not going to get very far without treating
+> is a special case in any event. May as well acknowledge it up front.
 
-Thanks,
-	Ben
+That was indeed what I envisioned when I suggested it to James
+originally, but I may have been a bit unclear on the subject.
 
----
+I don't think that either 'security' or 'trusted' are a good fit here,
+since they both have special meanings to local applications on the
+server. 'user' is just wrong, since that means that ordinary local users
+may end up with the power to change the security settings for remote
+applications.
 
-Ben Myers (2):
-      commit_metadata export operation replacing nfsd_sync_dir
-      xfs_export_operations.commit_metadata
+The intention of the 'nfsd' namespace was to separate the local and
+remote xattr/security realms entirely. That includes allowing the server
+to set up separate policies to determine who is allowed to change those
+in the 'nfsd.*' namespace vs those who can change the ordinary
+'security', 'trusted' and 'user' namespaces.
 
-
- fs/nfsd/nfs3proc.c            |    2 -
- fs/nfsd/nfs4proc.c            |    2 -
- fs/nfsd/nfs4recover.c         |    4 -
- fs/nfsd/nfs4state.c           |    2 -
- fs/nfsd/nfsproc.c             |    4 +
- fs/nfsd/vfs.c                 |  116 +++++++++++++++++++----------------------
- fs/nfsd/vfs.h                 |    3 -
- fs/xfs/linux-2.6/xfs_export.c |   43 +++++++++++++++
- include/linux/exportfs.h      |    6 ++
- 9 files changed, 111 insertions(+), 71 deletions(-)
-
--- 
+Cheers
+  Trond
