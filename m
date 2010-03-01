@@ -1,69 +1,80 @@
-From: Steve Dickson <SteveD@redhat.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Subject: Re: [PATCH][nfs-utils] configuration: Fix a typo in configure.ac
-Date: Mon, 01 Mar 2010 08:48:41 -0500
-Message-ID: <4B8BC5B9.1020304@RedHat.com>
-References: <1266709510.3507.1.camel@localhost.localdomain> <20100222182202.GB11356@fieldses.org> <4B8BB9B8.8040703@RedHat.com> <20100301132554.GA17054@fieldses.org>
+Date: Mon, 1 Mar 2010 08:55:34 -0500
+Message-ID: <20100301135534.GA17660@fieldses.org>
+References: <1266709510.3507.1.camel@localhost.localdomain> <20100222182202.GB11356@fieldses.org> <4B8BB9B8.8040703@RedHat.com> <20100301132554.GA17054@fieldses.org> <4B8BC5B9.1020304@RedHat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=us-ascii
 Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
 	linux-nfs@vger.kernel.org
-To: "J. Bruce Fields" <bfields@fieldses.org>
+To: Steve Dickson <SteveD@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:43670 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:44484 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750717Ab0CANsr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 1 Mar 2010 08:48:47 -0500
-In-Reply-To: <20100301132554.GA17054@fieldses.org>
+	id S1751099Ab0CANy2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 1 Mar 2010 08:54:28 -0500
+In-Reply-To: <4B8BC5B9.1020304-AfCzQyP5zfLQT0dZR+AlfA@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 03/01/2010 08:25 AM, J. Bruce Fields wrote:
-> On Mon, Mar 01, 2010 at 07:57:28AM -0500, Steve Dickson wrote:
->> On 02/22/2010 01:22 PM, J. Bruce Fields wrote:
->>> On Sat, Feb 20, 2010 at 03:45:10PM -0800, Trond Myklebust wrote:
->>>> From: Trond Myklebust <Trond.Myklebust@netapp.com>
->>>>
->>>> Fix a typo in commit 6d5ac3fa (nfsd: Disble NFS 4.1 functionality by default).
->>>
->>> Better: please just rever 6d5ac3fa and apply
->>> http://marc.info/?l=linux-nfs&m=126540028610022&w=2
->> The problem I saw with the this patch was it would take 
->> a code change to re-enable the 4.1 functional,
-> 
-> Enabling 4.1 will require no code changes to nfs-utils, only to the
-> kernel.  (But it will require a lot of code changes to nfs-utils, as we
-> should complete 4.1 support first.)
-> 
->> verses a
->> enabling a configuration flag. Plus, there has been a 
->> precedence set of having these types of configuration flags,
->> note the enable_nfsv3, enable_nfsv4, so adding a enable_nfsv41
->> seem to me made sense...
->>
->>>
->>> 	- distributions shouldn't be turning on 4.1 by default yet.
->> Its not... If the --enable_nfsv41 is not set, the 4.1 functional is
->> off. Having this type of flag enables the distros to enable the
->> functionality on development kernels but disable it on stable 
-> 
-> So you want to enable it (for example) in Fedora, but disable it in
-> RHEL?
-No, its only enabled in Rawhide which is the untested/developmental 
-version of the next fedora release (in this case F14). When F14 is ready,
-the determination will be made (with solicited input) if the 4.1 code
-should continue to be enabled or disabled.
- 
-This is why I like the configuration switch. There is no code
-changes, code is just being disabled. Which, in theory, should have
-no ramification at all..    
+On Mon, Mar 01, 2010 at 08:48:41AM -0500, Steve Dickson wrote:
+> On 03/01/2010 08:25 AM, J. Bruce Fields wrote:
+> > On Mon, Mar 01, 2010 at 07:57:28AM -0500, Steve Dickson wrote:
+> >> On 02/22/2010 01:22 PM, J. Bruce Fields wrote:
+> >>> On Sat, Feb 20, 2010 at 03:45:10PM -0800, Trond Myklebust wrote:
+> >>>> From: Trond Myklebust <Trond.Myklebust@netapp.com>
+> >>>>
+> >>>> Fix a typo in commit 6d5ac3fa (nfsd: Disble NFS 4.1 functionality by default).
+> >>>
+> >>> Better: please just rever 6d5ac3fa and apply
+> >>> http://marc.info/?l=linux-nfs&m=126540028610022&w=2
+> >> The problem I saw with the this patch was it would take 
+> >> a code change to re-enable the 4.1 functional,
+> > 
+> > Enabling 4.1 will require no code changes to nfs-utils, only to the
+> > kernel.  (But it will require a lot of code changes to nfs-utils, as we
+> > should complete 4.1 support first.)
+> > 
+> >> verses a
+> >> enabling a configuration flag. Plus, there has been a 
+> >> precedence set of having these types of configuration flags,
+> >> note the enable_nfsv3, enable_nfsv4, so adding a enable_nfsv41
+> >> seem to me made sense...
+> >>
+> >>>
+> >>> 	- distributions shouldn't be turning on 4.1 by default yet.
+> >> Its not... If the --enable_nfsv41 is not set, the 4.1 functional is
+> >> off. Having this type of flag enables the distros to enable the
+> >> functionality on development kernels but disable it on stable 
+> > 
+> > So you want to enable it (for example) in Fedora, but disable it in
+> > RHEL?
+> No, its only enabled in Rawhide which is the untested/developmental 
+> version of the next fedora release (in this case F14). When F14 is ready,
+> the determination will be made (with solicited input) if the 4.1 code
+> should continue to be enabled or disabled.
 
-> 
-> I don't think that's a good idea.  If servers running current Fedora
-> kernels are still around when the client starts trying 4.1 first, then
-> we'll run into trouble.
-Since people actually have to specify the -o minorversion=1 mount
-option (which is not documented, btw), I'm going to assume those people
-know what they are doing and probably will know how to fix any problems 
-that may arise... 
+That decision should depend on whether the kernel 4.1 support is
+complete or not.  If it is, then the kernel will default 4.1 on, and
+there will be no need for an nfs-utils change.
 
-steved.
+> This is why I like the configuration switch. There is no code
+> changes, code is just being disabled. Which, in theory, should have
+> no ramification at all..    
+> 
+> > 
+> > I don't think that's a good idea.  If servers running current Fedora
+> > kernels are still around when the client starts trying 4.1 first, then
+> > we'll run into trouble.
+> Since people actually have to specify the -o minorversion=1 mount
+> option (which is not documented, btw), I'm going to assume those people
+> know what they are doing and probably will know how to fix any problems 
+> that may arise... 
+
+No, that's not enough.  They may be accessing the server through other
+clients.
+
+We need users to make a conscious decision to turn on the server-side.
+It's not enough to do it only on the client side.
+
+--b.
