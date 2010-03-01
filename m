@@ -1,38 +1,69 @@
-From: Anton Starikov <ant.starikov@gmail.com>
-Subject: NFSv3/NFSv4 problem.
-Date: Mon, 1 Mar 2010 16:01:42 +0100
-Message-ID: <D27EC8DD-AD1C-432D-99FD-E4AB6C26D189@gmail.com>
-Mime-Version: 1.0 (Apple Message framework v1077)
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: Problems with crossmnt since 1.2.1
+Date: Mon, 1 Mar 2010 15:40:10 -0500
+Message-ID: <20100301204010.GE23539@fieldses.org>
+References: <20100228100643.GG26178@teal.hq.k1024.org>
+Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-To: linux-nfs@vger.kernel.org
+Cc: linux-nfs@vger.kernel.org
+To: Iustin Pop <iusty-JC6qDa14zzLYtjvyW6yDsg@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-fx0-f219.google.com ([209.85.220.219]:36363 "EHLO
-	mail-fx0-f219.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751087Ab0CAPBu convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 1 Mar 2010 10:01:50 -0500
-Received: by fxm19 with SMTP id 19so803068fxm.21
-        for <linux-nfs@vger.kernel.org>; Mon, 01 Mar 2010 07:01:48 -0800 (PST)
+Received: from fieldses.org ([174.143.236.118]:55758 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750947Ab0CAUjE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 1 Mar 2010 15:39:04 -0500
+In-Reply-To: <20100228100643.GG26178-kWFYwFCQMdQkLqoNrXjPMti2O/JbrIOy@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi, 
+On Sun, Feb 28, 2010 at 11:06:43AM +0100, Iustin Pop wrote:
+> Since nfs-utils 1.2.1, there are some problems with crossmnt usage. See
+> Debian bug http://bugs.debian.org/567546, but in short the problem seems
+> to be that sub-mounts (/a/b) take the top-level mount (/a) options
+> instead of their own, due to a bug in how mountd generates the crossmnt
+> subexports.
+> 
+> I checked that reverting the write_secinfo changes in commit
+> bc0a6ab03089fc1ea4fea26ed9635c2cc918b01b fix the issue, but that might
+> only be a side effect, not the actual cause.
+> 
+> A short test:
+> - have /a and /a/b exported, with different flags (e.g. ro on /a, rw on
+>   /a/b)
+> - restart the mountd, clear exports, etc.
+> - try a mount on the client of /a/b, it gets readonly
+> - umount & remount, it's now r/w
+> - however, clearing the kernel export table (exportfs -f), makes the
+>   next mount again get read-only 
+> 
+> Disabling crossmnt fixes the issue completely, so I would venture to
+> guess that the subexports creation code has some issue, but I don't know
+> enough of this to be able to debug it.
 
+Thanks for the report.  What's the latest nfs-utils version you've
+tested?
 
-my config is diskless NFSv3 nfsroot (+ some extra NFDSv3 mounts) and NFSv4 /home/* automount.
-Centos 5.4, kernel 2.6.18-164.11.1.el5.
+On a quick skim of the latest code I see one clear bug
+(path[strlen(path)] will never be '/'!), but that should have caused
+crossmnt to never get enforced at all rather than to override anything.
 
-Periodically my nodes hangs, nothing appeared in the logs (remote syslog + netconsole).
-Node is kind of alive, you can ping, some deamons (for example pbs_mom) reports that it's alive etc.
-But anything which require FS access - frozen.
+Could you retest the latest from the upstream git, with this patch
+applied, and see if the problem is still present?
 
-Another symptom, it looks like portmap doesn't answer. At lease if I try "rpcinfo -p node_name", then it ends with
-"rpcinfo: can't contact portmapper: rpcinfo: RPC: Timed out"
+Then if it is I'll try to go reproduce it myself....
 
-In principal, this can have something with locking.
-At least, I had to mount all my NFSv3 mounts with nolock, to reduce frequency of problem (nfsroot was nolock, obviously. but there are couple of extra v3 mounts, like /opt with extra software and RW directory for torque.
+--b.
 
-What can be a problem here?
-
-What kind of information I have to collect from system to figure out what it real problem?
-
-Anton. 
+diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c
+index d63e10a..ff27bbf 100644
+--- a/utils/mountd/cache.c
++++ b/utils/mountd/cache.c
+@@ -619,7 +619,7 @@ static int is_subdirectory(char *subpath, char *path)
+ 	int l = strlen(path);
+ 
+ 	return strcmp(subpath, path) == 0
+-		|| (strncmp(subpath, path, l) == 0 && path[l] == '/');
++		|| (strncmp(subpath, path, l) == 0 && subpath[l] == '/');
+ }
+ 
+ static int path_matches(nfs_export *exp, char *path)
