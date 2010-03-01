@@ -1,57 +1,41 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:33239 "EHLO fieldses.org"
+Received: from tundra.namei.org ([65.99.196.166]:41573 "EHLO tundra.namei.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750964Ab0CIQKD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 9 Mar 2010 11:10:03 -0500
-Date: Tue, 9 Mar 2010 11:11:27 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: "William A. (Andy) Adamson" <androsadamson@gmail.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: reboot recovery
-Message-ID: <20100309161127.GB23013@fieldses.org>
-References: <20100309014624.GF2999@fieldses.org> <ABA6EE88-3584-4DC9-A50B-3B0E06C701FB@netapp.com> <20100309145354.GB21862@fieldses.org> <89c397151003090655h7f3465f2u36c60cfa0b580516@mail.gmail.com> <20100309151053.GC21862@fieldses.org> <89c397151003090717v7b744eb7i8c1c941f169e45e2@mail.gmail.com>
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <89c397151003090717v7b744eb7i8c1c941f169e45e2@mail.gmail.com>
+	id S1750695Ab0CAIJo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 1 Mar 2010 03:09:44 -0500
+Date: Mon, 1 Mar 2010 19:09:30 +1100 (EST)
+From: James Morris <jmorris@namei.org>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+cc: Casey Schaufler <casey@schaufler-ca.com>,
+        Stephen Smalley <sds@tycho.nsa.gov>, linux-nfs@vger.kernel.org,
+        linux-security-module@vger.kernel.org,
+        "J. Bruce Fields" <bfields@fieldses.org>, Neil Brown <neilb@suse.de>,
+        Dave Quigley <dpquigl@tycho.nsa.gov>,
+        "Serge E. Hallyn" <serue@us.ibm.com>
+Subject: Re: [PATCH 5/5] NFSv3: Add server namespace support for XATTR protocol
+ implementation
+In-Reply-To: <1267406263.3338.20.camel@localhost.localdomain>
+Message-ID: <alpine.LRH.2.00.1003011900070.22072@tundra.namei.org>
+References: <alpine.LRH.2.00.1002261457420.25193@tundra.namei.org>  <alpine.LRH.2.00.1002261537020.25193@tundra.namei.org>  <1267191990.7691.37.camel@moss-pluto.epoch.ncsc.mil>  <4B8B0F0B.4080603@schaufler-ca.com>
+ <1267406263.3338.20.camel@localhost.localdomain>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Tue, Mar 09, 2010 at 10:17:04AM -0500, William A. (Andy) Adamson wrote:
-> On Tue, Mar 9, 2010 at 10:10 AM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> > On Tue, Mar 09, 2010 at 09:55:52AM -0500, William A. (Andy) Adamson wrote:
-> >> On Tue, Mar 9, 2010 at 9:53 AM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> >> > On Tue, Mar 09, 2010 at 09:46:04AM -0500, Andy Adamson wrote:
-> >> >>
-> >> >> RFC 5661 in section 18.51.3
-> >> >>
-> >> >>    Whenever a client establishes a new client ID and before it does the
-> >> >>    first non-reclaim operation that obtains a lock, it MUST send a
-> >> >>    RECLAIM_COMPLETE with rca_one_fs set to FALSE, even if there are no
-> >> >>    locks to reclaim.  If non-reclaim locking operations are done before
-> >> >>    the RECLAIM_COMPLETE, an NFS4ERR_GRACE error will be returned.
-> >> >>
-> >> >> So there will never be a 'first OPEN' (except for an OPEN reclaim)
-> >> >> without a RECLAIM_COMPLETE.
-> >> >
-> >> > There will be in the case of an entirely new client, or a client that
-> >> > missed the grace period completely.
-> >>
-> >> No, the MUST above applies to both a new client/client that missed the
-> >> grace period completely. In both cases the client is establishing a
-> >> new client ID.
-> >
-> > Oog, sorry, obviously I can't read--I see what you mean now.
-> >
-> > I haven't seen any client send a RECLAIM_COMPLETE or any server demand
-> > one yet, so do we all have this wrong?
-> 
-> The latest Linux client does send a RECLAIM_COMPLETE after each
-> EXCHANGE_ID. This change was part of the 'A' tasks for NFSv4.1.
+On Sun, 28 Feb 2010, Trond Myklebust wrote:
 
-Got it, corrected.
+> The intention of the 'nfsd' namespace was to separate the local and
+> remote xattr/security realms entirely. That includes allowing the server
+> to set up separate policies to determine who is allowed to change those
+> in the 'nfsd.*' namespace vs those who can change the ordinary
+> 'security', 'trusted' and 'user' namespaces.
 
-In that case I think as a matter of priorities I should implement
-RECLAIM_COMPLETE before fixing the userland interface, etc., rather than
-after.  I'll take a look....
+Ok -- this definitely sounds like a better approach.  I'll post an updated 
+version soon.
 
---b.
+
+- James
+-- 
+James Morris
+<jmorris@namei.org>
