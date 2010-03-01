@@ -1,87 +1,135 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: The recent kref_put warning (was: [PATCH] sunrpc: remove
-	unnecessary svc_xprt_put)
-Date: Sun, 28 Feb 2010 22:48:46 -0500
-Message-ID: <20100301034846.GB8462@fieldses.org>
-References: <19336.19524.469529.431210@notabene.brown> <20100226225416.GF26598@fieldses.org> <4B886A1A.7060106@opengridcomputing.com> <20100227123537.6289e326@notabene.brown> <20100227165913.53718449@notabene.brown> <20100228210553.GA27965@fieldses.org> <20100228220723.GB27965@fieldses.org> <20100301105734.7fe935b0@notabene.brown> <20100301034647.GA8462@fieldses.org>
+From: Neil Brown <neilb@suse.de>
+Subject: Re: [PATCH] sunrpc: remove unnecessary svc_xprt_put
+Date: Mon, 1 Mar 2010 15:23:10 +1100
+Message-ID: <20100301152310.750f3504@notabene.brown>
+References: <19336.19524.469529.431210@notabene.brown>
+	<20100226225416.GF26598@fieldses.org>
+	<4B886A1A.7060106@opengridcomputing.com>
+	<20100227123537.6289e326@notabene.brown>
+	<4B8885A1.500@opengridcomputing.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Tom Tucker <tom@opengridcomputing.com>, linux-nfs@vger.kernel.org,
-	Wei Yongjun <yjwei@cn.fujitsu.com>
-To: Neil Brown <neilb@suse.de>
+Content-Type: text/plain; charset=US-ASCII
+Cc: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
+To: Tom Tucker <tom@opengridcomputing.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:33941 "EHLO fieldses.org"
+Received: from cantor2.suse.de ([195.135.220.15]:34663 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752649Ab0CADrk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 28 Feb 2010 22:47:40 -0500
-In-Reply-To: <20100301034647.GA8462@fieldses.org>
+	id S1752992Ab0CAEXT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 28 Feb 2010 23:23:19 -0500
+In-Reply-To: <4B8885A1.500@opengridcomputing.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-For people that can test, the combined patch is just as follows.
+On Fri, 26 Feb 2010 20:38:25 -0600
+Tom Tucker <tom@opengridcomputing.com> wrote:
 
---b.
+> Neil Brown wrote:
+> > On Fri, 26 Feb 2010 18:40:58 -0600
+> > Tom Tucker <tom@opengridcomputing.com> wrote:
+> >
+> >   
+> >> J. Bruce Fields wrote:
+> >>     
+> >>> On Sat, Feb 27, 2010 at 09:33:40AM +1100, Neil Brown wrote:
+> >>>     
+> >>>       
+> >>>> [I found this while looking for the current refcount problem
+> >>>>  that triggers a warning in svc_recv.  This isn't that bug
+> >>>>  but is a different refcount bug - NB]
+> >>>>       
+> >>>>         
+> >>>     
+> >>>       
+> >> I seem to recall that we added that reference for  a reason. There was 
+> >> an issue with unmount while there were deferrals pending. That's why the 
+> >> reference was added.
+> >>
+> >> Tom
+> >>     
+> >
+> > What reference?
+> > What I (thought I) found was code that was dropping a reference which it
+> > didn't hold.  Are you saying that it is supposed to be holding a reference
+> > here, but isn't, or that it really is holding a reference here and I didn't
+> > see it?
+> >   
+> 
+> Here's the commit that I was thinking of... 
+> 22945e4a1c7454c97f5d8aee1ef526c83fef3223
+> 
+> I think this change adds the bug that you are now fixing. It fixed one 
+> problem, but added another that you have now resolved.
+> 
+> What do you guys think?
 
-diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-index d7ec5ca..8f0f1fb 100644
---- a/net/sunrpc/svc_xprt.c
-+++ b/net/sunrpc/svc_xprt.c
-@@ -706,8 +706,10 @@ int svc_recv(struct svc_rqst *rqstp, long timeout)
- 	spin_unlock_bh(&pool->sp_lock);
- 
- 	len = 0;
--	if (test_bit(XPT_LISTENER, &xprt->xpt_flags) &&
--	    !test_bit(XPT_CLOSE, &xprt->xpt_flags)) {
-+	if (test_bit(XPT_CLOSE, &xprt->xpt_flags)) {
-+		dprintk("svc_recv: found XPT_CLOSE\n");
-+		svc_delete_xprt(xprt);
-+	} else if (test_bit(XPT_LISTENER, &xprt->xpt_flags)) {
- 		struct svc_xprt *newxpt;
- 		newxpt = xprt->xpt_ops->xpo_accept(xprt);
- 		if (newxpt) {
-@@ -733,7 +735,7 @@ int svc_recv(struct svc_rqst *rqstp, long timeout)
- 			svc_xprt_received(newxpt);
- 		}
- 		svc_xprt_received(xprt);
--	} else if (!test_bit(XPT_CLOSE, &xprt->xpt_flags)) {
-+	} else {
- 		dprintk("svc: server %p, pool %u, transport %p, inuse=%d\n",
- 			rqstp, pool->sp_id, xprt,
- 			atomic_read(&xprt->xpt_ref.refcount));
-@@ -746,11 +748,6 @@ int svc_recv(struct svc_rqst *rqstp, long timeout)
- 		dprintk("svc: got len=%d\n", len);
- 	}
- 
--	if (test_bit(XPT_CLOSE, &xprt->xpt_flags)) {
--		dprintk("svc_recv: found XPT_CLOSE\n");
--		svc_delete_xprt(xprt);
--	}
--
- 	/* No data, incomplete (TCP) read, or accept() */
- 	if (len == 0 || len == -EAGAIN) {
- 		rqstp->rq_res.len = 0;
-@@ -896,11 +893,8 @@ void svc_delete_xprt(struct svc_xprt *xprt)
- 	if (test_bit(XPT_TEMP, &xprt->xpt_flags))
- 		serv->sv_tmpcnt--;
- 
--	for (dr = svc_deferred_dequeue(xprt); dr;
--	     dr = svc_deferred_dequeue(xprt)) {
--		svc_xprt_put(xprt);
-+	while ((dr = svc_deferred_dequeue(xprt)) != NULL)
- 		kfree(dr);
--	}
- 
- 	svc_xprt_put(xprt);
- 	spin_unlock_bh(&serv->sv_lock);
-diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index 9e09391..a29f259 100644
---- a/net/sunrpc/svcsock.c
-+++ b/net/sunrpc/svcsock.c
-@@ -968,6 +968,7 @@ static int svc_tcp_recv_record(struct svc_sock *svsk, struct svc_rqst *rqstp)
- 	return len;
-  err_delete:
- 	set_bit(XPT_CLOSE, &svsk->sk_xprt.xpt_flags);
-+	svc_xprt_received(&svsk->sk_xprt);
-  err_again:
- 	return -EAGAIN;
- }
+Yes,  I see what you are saying.
+
+I agree that commit did fix a problem, but inadvertently introduced a new one.
+
+Thanks,
+NeilBrown
+
+
+> 
+> Thanks,
+> Tom
+> > And just for completeness, my understanding of the refcounting here is:
+> >
+> > A counted references is held on an svc_xprt when:
+> >  - a 'struct rqst' refers to it through ->rq_xprt
+> >  - a 'cache_deferred_req' refers to it through ->xprt
+> >     This only happens while the req is waiting to be
+> >     revisited, and is in the hash table and on the lru.
+> >     Once the req gets revisited (svc_revisit) ->xprt
+> >     is set to NULL and the reference is dropped.
+> >  - XPT_DEAD is *not* set.  So the refcount is initialised
+> >    to '1' to reflect this, and this ref is dropped
+> >    when we set XPT_DEAD.
+> >  - there are a few transient references in svc_xprt.c
+> >    which very clearly have matched 'get' and 'put'.
+> >  - svc_find_xprt returns a counted reference.  This is
+> >    called once in lockd and once in nfsd, and both
+> >    calls drop the ref correctly.
+> >
+> > Whenever we drop a counted ref that was stored in a pointer, we set that
+> > pointer to NULL.
+> > So if there was a race where two threads both get a reference from a pointer
+> > and then drop that reference, you would expect that slightly different timing
+> > would cause one of those threads to get a NULL from the pointer, dereference
+> > it, and crash.  There are no important tests-for-NULL on either of the
+> > pointers in question, so that wouldn't be protecting us from a crash.  But
+> > we don't see that crash, so there cannot be a race there.
+> >
+> > So: The refcount cannot possibly be zero in svc_recv :-)
+> >
+> > I just noticed some slightly odd code later in svc_recv:
+> >
+> >  if (XPT_LISTENER && XPT_CLOSE) {
+> >      ...
+> >  } else if (XPT_CLOSE) {
+> >      ...
+> >      ->xpo_recvfrom()
+> >  }
+> >  if (XPT_CLOSE) {
+> >     ...
+> >     svc_delete_xprt()
+> >  }
+> >
+> >  So if XPT_CLOSE is set while xpo_recvfrom is being called, which I think
+> >  is possible, and if ->xpo_recvfrom returns non-zero, then we end up
+> >  processing a request on a dead socket, which doesn't sound like the right
+> >  thing to do.  I don't think it can cause the present problem, but
+> >  it looks wrong.  That last 'if' should just be an 'else'.
+> >  I guess that would effectively reverse b0401d7253, though - not that
+> >  that patch seems entirely right to me - if there is a problem I probably
+> >  would have fixed it differently, though I'm not sure how.
+> >  So maybe change "if (XPT_CLOSE)" to "if (len <= 0 && XPT_CLOSE)" ???
+> >
+> > NeilBrown
+> >   
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
