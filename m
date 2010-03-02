@@ -1,57 +1,39 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: NFSv3/NFSv4 problem.
-Date: Tue, 2 Mar 2010 12:52:57 -0500
-Message-ID: <20100302175257.GI5553@fieldses.org>
-References: <D27EC8DD-AD1C-432D-99FD-E4AB6C26D189@gmail.com> <20100302171614.GH5553@fieldses.org> <0A63A1BA-F749-4CFF-B77D-98AEFC531035@gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs@vger.kernel.org
-To: Anton Starikov <ant.starikov@gmail.com>
+From: andros@netapp.com
+Subject: [PATCH 1/1] nfs41 fix NFS4ERR_CLID_INUSE for exchange id
+Date: Tue,  2 Mar 2010 13:19:36 -0500
+Message-ID: <1267553976-17964-1-git-send-email-andros@netapp.com>
+Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>,
+	Benny Halevy <bhalevy@panasas.com>
+To: trond.myklebust@netapp.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:50810 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:35225 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753102Ab0CBRvs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 2 Mar 2010 12:51:48 -0500
-In-Reply-To: <0A63A1BA-F749-4CFF-B77D-98AEFC531035@gmail.com>
+	id S1753689Ab0CBST4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 2 Mar 2010 13:19:56 -0500
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Mar 02, 2010 at 06:20:43PM +0100, Anton Starikov wrote:
-> 
-> On Mar 2, 2010, at 6:16 PM, J. Bruce Fields wrote:
-> 
-> > On Mon, Mar 01, 2010 at 04:01:42PM +0100, Anton Starikov wrote:
-> >> Hi, 
-> >> 
-> >> 
-> >> my config is diskless NFSv3 nfsroot (+ some extra NFDSv3 mounts) and NFSv4 /home/* automount.
-> >> Centos 5.4, kernel 2.6.18-164.11.1.el5.
-> > 
-> > That's the client?  What's the server?
-> 
-> Server is Opensolaris.
-> 
-> > That's pretty old kernel; I'd file a bug with CentOS.
-> 
-> Unfortunately, with newer kernels this setup is even more problematic. :)
+From: Andy Adamson <andros@netapp.com>
 
-Any details?
+Signed-off-by: Andy Adamson <andros@netapp.com>
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+---
+ fs/nfs/nfs4proc.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
 
-As a rule, this list is probably going to be a better place to handle
-bugs with the latest upstream kernels, and your distributor is more
-likely to be useful for their kernels.
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 84b53d3..287462a 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -4506,7 +4506,7 @@ int nfs4_proc_exchange_id(struct nfs_client *clp, struct rpc_cred *cred)
+ 
+ 		status = rpc_call_sync(clp->cl_rpcclient, &msg, 0);
+ 
+-		if (status != NFS4ERR_CLID_INUSE)
++		if (status != -NFS4ERR_CLID_INUSE)
+ 			break;
+ 
+ 		if (signalled())
+-- 
+1.6.2.5
 
---b.
-
-> 
-> >> 
-> >> What kind of information I have to collect from system to figure out what it real problem?
-> > 
-> > Is there any server-side logging?
-> > Can you see any interesting network traffic after the hang?
-> 
-> It always unfortunate, but last couple of days I can't get a hang :) Although nothing changed in setup, so it will happen anyway.
-> 
-> 
-> Anton.
-> 
