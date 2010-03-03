@@ -1,98 +1,67 @@
-From: Peter Staubach <staubach@redhat.com>
-Subject: Re: [PATCH 5/7] nfsd4: reshuffle lease-setting code to allow reuse
-Date: Wed, 03 Mar 2010 10:47:16 -0500
-Message-ID: <4B8E8484.1090009@redhat.com>
-References: <1267571573-11844-1-git-send-email-bfields@citi.umich.edu> <1267571573-11844-2-git-send-email-bfields@citi.umich.edu> <1267571573-11844-3-git-send-email-bfields@citi.umich.edu> <1267571573-11844-4-git-send-email-bfields@citi.umich.edu> <1267571573-11844-5-git-send-email-bfields@citi.umich.edu> <1267571573-11844-6-git-send-email-bfields@citi.umich.edu>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: [PATCH 2/7] nfsd4: edit comment for concision
+Date: Wed, 03 Mar 2010 13:06:31 -0500
+Message-ID: <4B8EA527.5060502@oracle.com>
+References: <1267571573-11844-1-git-send-email-bfields@citi.umich.edu> <1267571573-11844-2-git-send-email-bfields@citi.umich.edu> <1267571573-11844-3-git-send-email-bfields@citi.umich.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Cc: linux-nfs@vger.kernel.org
 To: "J. Bruce Fields" <bfields@citi.umich.edu>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:63232 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753604Ab0CCPrS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 3 Mar 2010 10:47:18 -0500
-In-Reply-To: <1267571573-11844-6-git-send-email-bfields@citi.umich.edu>
+Received: from rcsinet12.oracle.com ([148.87.113.124]:29117 "EHLO
+	rcsinet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755390Ab0CCSH5 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 3 Mar 2010 13:07:57 -0500
+In-Reply-To: <1267571573-11844-3-git-send-email-bfields@citi.umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-J. Bruce Fields wrote:
-> We'll soon allow setting the grace period, so we'll want to share this
-> code.
-> 
-> Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
+On 03/02/2010 06:12 PM, J. Bruce Fields wrote:
+> Also note units are seconds.
+
+I'd prefer the major edits in this patch be done at the same time you 
+trim the other documenting comments for the /proc/fs/nfsd API.
+
+> Signed-off-by: J. Bruce Fields<bfields@citi.umich.edu>
 > ---
->  fs/nfsd/nfsctl.c |   29 +++++++++++++++++------------
->  1 files changed, 17 insertions(+), 12 deletions(-)
-> 
+>   fs/nfsd/nfsctl.c |   21 ++++++---------------
+>   1 files changed, 6 insertions(+), 15 deletions(-)
+>
 > diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
-> index 7f70704..1db8010 100644
+> index 8bff674..f1ee549 100644
 > --- a/fs/nfsd/nfsctl.c
 > +++ b/fs/nfsd/nfsctl.c
-> @@ -1203,26 +1203,36 @@ static ssize_t write_maxblksize(struct file *file, char *buf, size_t size)
->  }
->  
->  #ifdef CONFIG_NFSD_V4
-> -static ssize_t __write_leasetime(struct file *file, char *buf, size_t size)
-> +static ssize_t __write_time(struct file *file, char *buf, size_t size, time_t *time)
->  {
->  	/* if size > 10 seconds, call
->  	 * nfs4_reset_lease() then write out the new lease (seconds) as reply
->  	 */
->  	char *mesg = buf;
-> -	int rv, lease;
-> +	int rv, i;
->  
->  	if (size > 0) {
->  		if (nfsd_serv)
->  			return -EBUSY;
-> -		rv = get_int(&mesg, &lease);
-> +		rv = get_int(&mesg, &i);
->  		if (rv)
->  			return rv;
-> -		if (lease < 10 || lease > 3600)
-> +		if (i < 10 || i > 3600)
->  			return -EINVAL;
-> -		nfsd4_lease = lease;
-> +		*time = i;
->  	}
->  
-> -	return scnprintf(buf, SIMPLE_TRANSACTION_LIMIT, "%ld\n", nfsd4_lease);
-> +	return scnprintf(buf, SIMPLE_TRANSACTION_LIMIT, "%ld\n", *time);
-> +}
-> +
-> +static ssize_t write_time(struct file *file, char *buf, size_t size, time_t *time)
-> +{
-> +	ssize_t rv;
-> +
-> +	mutex_lock(&nfsd_mutex);
-> +	rv = __write_time(file, buf, size, time);
-> +	mutex_unlock(&nfsd_mutex);
-> +	return rv;
->  }
->  
+> @@ -1228,23 +1228,14 @@ static ssize_t __write_leasetime(struct file *file, char *buf, size_t size)
+>   /**
+>    * write_leasetime - Set or report the current NFSv4 lease time
+>    *
+> - * Input:
+> - *			buf:		ignored
+> - *			size:		zero
+> + * If given a nonzero size, sets the NFSv4 lease time to a number of
+> + * seconds (interpreting buf as a C string containing an ascii
+> + * representation of the number).
+>    *
+> - * OR
+> + * Returns the resulting lease time (as an ascii representation in a
+> + * '\n'-terminated C string) in buf.
+>    *
+> - * Input:
+> - *			buf:		C string containing an unsigned
+> - *					integer value representing the new
+> - *					NFSv4 lease expiry time
+> - *			size:		non-zero length of C string in @buf
+> - * Output:
+> - *	On success:	passed-in buffer filled with '\n'-terminated C
+> - *			string containing unsigned integer value of the
+> - *			current lease expiry time;
+> - *			return code is the size in bytes of the string
+> - *	On error:	return code is zero or a negative errno value
+> + * Given a zero size, just returns the lease time in buf.
+>    */
+>   static ssize_t write_leasetime(struct file *file, char *buf, size_t size)
+>   {
 
-The name, write_time, seems a little generic, doesn't it?  It
-seems to me that it might be lead to easier maintenance to give
-it an NFSv4 related name at least.
 
-	Thanx...
-
-		ps
-
->  /**
-> @@ -1239,12 +1249,7 @@ static ssize_t __write_leasetime(struct file *file, char *buf, size_t size)
->   */
->  static ssize_t write_leasetime(struct file *file, char *buf, size_t size)
->  {
-> -	ssize_t rv;
-> -
-> -	mutex_lock(&nfsd_mutex);
-> -	rv = __write_leasetime(file, buf, size);
-> -	mutex_unlock(&nfsd_mutex);
-> -	return rv;
-> +	return write_time(file, buf, size, &nfsd4_lease);
->  }
->  
->  extern char *nfs4_recoverydir(void);
-
+-- 
+chuck[dot]lever[at]oracle[dot]com
