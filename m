@@ -1,22 +1,54 @@
-From: "Jaramillo hoofmark" <harryhamlin4565@gmail.com>
-Subject: Hotels - 34,815 total records * 1,642 emails
-Date: 3 Mar 2010 06:38:29 +0100
-Message-ID: <ILS-SBS1jJiW9EdZrr300001bca@ils-sbs1.ILS.intra>
-Reply-To: mary462441@gmail.com
-To: pawsfourlife@hotmail.com, centeraa3150-jgEIgUtgKzeHXe+LvDLADg@public.gmane.org,
-	info-IaOz3cqr0XwxWmn6pTwKotBPR1lH4CV8@public.gmane.org
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: NFSv3/NFSv4 problem.
+Date: Wed, 3 Mar 2010 10:45:17 -0500
+Message-ID: <20100303154517.GD24586@fieldses.org>
+References: <D27EC8DD-AD1C-432D-99FD-E4AB6C26D189@gmail.com> <20100302171614.GH5553@fieldses.org> <0A63A1BA-F749-4CFF-B77D-98AEFC531035@gmail.com> <20100302175257.GI5553@fieldses.org> <F4A02563-59B0-4A9B-B773-4FCF5FD2A8D4@gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-nfs@vger.kernel.org
+To: Anton Starikov <ant.starikov@gmail.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from vip1scan.telenor.net ([148.123.15.75]:53503 "EHLO sv02.e.nsc.no"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1752596Ab0CCFxc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 3 Mar 2010 00:53:32 -0500
+Received: from fieldses.org ([174.143.236.118]:40116 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753023Ab0CCPoF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 3 Mar 2010 10:44:05 -0500
+In-Reply-To: <F4A02563-59B0-4A9B-B773-4FCF5FD2A8D4@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I have alot of good quality American Databases at decent prices. Contact me here:  Janine.Maurer-baaLSpaEv+5Dl6iQ4+n+vw@public.gmane.org for a complete catalog of what we have.
+On Tue, Mar 02, 2010 at 07:05:08PM +0100, Anton Starikov wrote:
+> 
+> On Mar 2, 2010, at 6:52 PM, J. Bruce Fields wrote:
+> 
+> >> 
+> >>> That's pretty old kernel; I'd file a bug with CentOS.
+> >> 
+> >> Unfortunately, with newer kernels this setup is even more problematic. :)
+> > 
+> > Any details?
+> > 
+> > As a rule, this list is probably going to be a better place to handle
+> > bugs with the latest upstream kernels, and your distributor is more
+> > likely to be useful for their kernels.
+> 
 
- 
-  
+> I submitted that to this list about year ago. It seems that one of the
+> biggest issues that with NFS3 root, and NFS4 /home idmapd get
+> deadlocked. To resolve NFS4 credentials it need to access NFS3. which
+> is blocked by waiting final of NFS4 operation. I tried to move a lot
+> of stuff to tmpfs, but it didn't resolve situation, if root still
+> NFS3.
 
+Do you have a pointer to the previous discussion?
 
-Send email to rembox-baaLSpaEv+5Dl6iQ4+n+vw@public.gmane.org for deleted status
+--b.
+
+> 
+> My general observation is that there is trend: newer kernel, faster
+> you get deadlock with this setup :)
+> 
+> Anton.
+> 
+> 
+> 
+> 
