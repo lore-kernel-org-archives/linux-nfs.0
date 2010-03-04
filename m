@@ -1,70 +1,63 @@
-Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:56618 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751357Ab0C3PJa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 30 Mar 2010 11:09:30 -0400
-Date: Tue, 30 Mar 2010 11:11:38 -0400
+Return-Path: <nfsv4-bounces@linux-nfs.org>
+Date: Thu, 4 Mar 2010 09:33:18 -0500
 From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Neil Brown <neilb@suse.de>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 3/9] sunrpc: never return expired entries in
-	sunrpc_cache_lookup
-Message-ID: <20100330151138.GG11545@fieldses.org>
-References: <20100203060657.12945.27293.stgit@notabene.brown> <20100203063131.12945.97779.stgit@notabene.brown> <20100317213307.GD2501@fieldses.org> <20100324122200.08f98be7@notabene.brown>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20100324122200.08f98be7@notabene.brown>
-Sender: linux-nfs-owner@vger.kernel.org
-List-ID: <linux-nfs.vger.kernel.org>
+To: Matt Bernstein <+systems.extlists.nfsv4@dcs.qmul.ac.uk>
+Subject: Re: Turning off delegations in NFSv4 server?
+Message-ID: <20100304143317.GA17191@fieldses.org>
+References: <4786788D.6040707@garzik.org> <20080110200034.GI2132@fieldses.org>
+	<alpine.LRH.2.00.1003040915110.23376@frank.dcs.qmul.ac.uk>
+In-Reply-To: <alpine.LRH.2.00.1003040915110.23376@frank.dcs.qmul.ac.uk>
+Cc: NFS list <linux-nfs@vger.kernel.org>, nfsv4@linux-nfs.org
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/options/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@linux-nfs.org>
+List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
+Content-Type: text/plain; charset="us-ascii"
+Sender: nfsv4-bounces@linux-nfs.org
+Errors-To: nfsv4-bounces@linux-nfs.org
 MIME-Version: 1.0
+List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Mar 24, 2010 at 12:22:00PM +1100, Neil Brown wrote:
-> On Wed, 17 Mar 2010 17:33:07 -0400
-> "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> 
-> > On Wed, Feb 03, 2010 at 05:31:31PM +1100, NeilBrown wrote:
-> > > If sunrpc_cache_lookup finds an expired entry, remove it from
-> > > the cache and return a freshly created non-VALID entry instead.
-> > > This ensures that we only ever get a usable entry, or an
-> > > entry that will become usable once an update arrives.
-> > > i.e. we will never need to repeat the lookup.
-> > > 
-> > > This allows us to remove the 'is_expired' test from cache_check
-> > > (i.e. from cache_is_valid).  cache_check should never get an expired
-> > > entry as 'lookup' will never return one.  If it does happen - due to
-> > > inconvenient timing - then just accept it as still valid, it won't be
-> > > very much past it's use-by date.
-> > 
-> > Looks right to me.  Thanks, applied.
-> > 
-> > By the way, if we get sunrpc_cache_update(old, new1) and
-> > sunrpc_cache_update(old, new2) simultaneously, what happens?
-> 
-> Interesting question.
-> I guess you could get two entries for the same key in the cache.
-> However the ->parse routines are protected by i_mutex
+On Thu, Mar 04, 2010 at 09:23:26AM +0000, Matt Bernstein wrote:
+> On Jan 10 2008 J. Bruce Fields wrote:
+>> On Thu, Jan 10, 2008 at 02:57:01PM -0500, Jeff Garzik wrote:
+>>> Besides hacking the code, is there an easy way to turn off NFSv4
+>>> delegations in the kernel v4 server?
+>>>
+>>> I'd like to observe behavior of the Linux v4 client when delegations are
+>>> not available.
+>>
+>> The easiest thing is probably just to turn off leases:
+>> 	echo 0 >/proc/sys/fs/leases-enable
+>
+> I found this from two years ago, and am wondering
+> - is this still the easiest thing to do?
+> - is this on server, client or both?
+> - will it break anything else?
+>
+> We have a CentOS 5.4 NFS3/NFS4/samba server with about 300 clients on its 
+> subnet, and another 100-200 on another subnet, which under high load has  
+> started kernel-panicking (sometimes in nfsd4_cb_recall).
 
-Oh, right, missed that.  Might simplify verification of this sort of
-thing to have that be the responsibility of the core cache code rather
-than the caller, though.
+Have you filed a bug with the backtraces?
 
-> so you would need on
-> update to come through /proc/net/rpc/..../channel, and the other to come
-> through the legacy nfsd syscal.
-> Highly unlikely.
-> 
-> > 
-> > More generally: should we try to ensure that a cache never contains two
-> > entries which match the same key?
-> 
-> I don't think we need to.  The newer will over-ride the older which will
-> eventually expire from the cache or be flushed.
-> So worst-case someone will look in the /content file, see two entries with
-> the same key, and get confused.  I don't think it is a problem that needs
-> fixing.
+> I want to disable delegations to see if that cures our symptoms--but I  
+> worry that turning leases off might cause other problems.
 
-Well, my real fear here is that an rpc call could stall indefinitely if
-it waited on one item while the other one got updated.
-
-I don't see how that's possible, though.
+No, it shouldn't cause problems, at least for NFSv4 clients.  (Samba may
+be more reliant on leases, especially if Samba and NFSv4 clients are
+acting on the same files at the same time--but I don't know.)
 
 --b.
+
+>
+> For now I'll probably do it anyway, given that status quo isn't stable :(
+>
+> Matt
+_______________________________________________
+NFSv4 mailing list
+NFSv4@linux-nfs.org
+http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4
