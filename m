@@ -1,66 +1,65 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet11.oracle.com ([148.87.113.123]:49034 "EHLO
-	rcsinet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751588Ab0C3TBj (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 30 Mar 2010 15:01:39 -0400
-Message-ID: <4BB24A53.1090005@oracle.com>
-Date: Tue, 30 Mar 2010 15:00:35 -0400
+Received: from rcsinet12.oracle.com ([148.87.113.124]:45990 "EHLO
+	rcsinet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756206Ab0CDQ7Y (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 4 Mar 2010 11:59:24 -0500
+Message-ID: <4B8FE6C7.2090207@oracle.com>
+Date: Thu, 04 Mar 2010 11:58:47 -0500
 From: Chuck Lever <chuck.lever@oracle.com>
-To: Anton Starikov <ant.starikov@gmail.com>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: NFS4 in combination with root over NFS3, hangs and dedlocks
-References: <EE102A23-736F-4905-BAAF-1BF03064F529@gmail.com> <EDDF2B79-DBFA-4701-BEFF-0AEACD63A3DC@gmail.com>
-In-Reply-To: <EDDF2B79-DBFA-4701-BEFF-0AEACD63A3DC@gmail.com>
-Content-Type: text/plain; charset=us-ascii; format=flowed
+To: Mi Jinlong <mijinlong@cn.fujitsu.com>
+CC: "Trond.Myklebust" <trond.myklebust@fys.uio.no>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        NFSv3 list <linux-nfs@vger.kernel.org>
+Subject: Re: [RFC] SUNRPC connect timeout case network request delay
+References: <4B8F87A2.5080509@cn.fujitsu.com>
+In-Reply-To: <4B8F87A2.5080509@cn.fujitsu.com>
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 03/30/2010 02:30 PM, Anton Starikov wrote:
-> If it is already resolved problem, can someone point me into direction of particular patch?
+On 03/04/2010 05:12 AM, Mi Jinlong wrote:
+> Hi,
+>
+> When I use the nfs at RHEL with kernel-2.6.31 and nfs-utils-1.2.0,
+> I got a problem, but i don't sure.
+>
+> The process:
+>
+> Step1: [22:40:9] Open file /mnt/nfs/file(OK)
+> Step2: [22:40:9] Lock file
+>         [22:40:9] Lock file success
+> Step3: [22:40:9] Reboot the nfs server
+>         If reboot success, put<enter>  to continue
+> Step4: [22:42:16] Write data to file
+>         [22:42:16] Write data success
+> Step5: [22:42:16] Unlock file
+>         [22:46:30] Unlock file success.
+> Step6: [22:46:30] Close file /mnt/nfs/file
+>         [22:46:30] Close fiel /mnt/nfs/file success
+>
+> The problem is at step5, unlock file takes 4 min, it's a long time than expected.
+> When traceing the kernel, I find SUNRPC call call_connect timeout many times,
+> one timeout is 1min.
 
-As far as I know NFSv4 is known not to work with an NFSv3 root, in any 
-kernel.
+The kernel's TCP reconnect logic will retry until it succeeds, without 
+letting the upper level make progress.  For some reason, it is having 
+difficulty reconnecting with your server.
 
-> Anton.
->
->
-> On Mar 29, 2010, at 5:14 PM, Anton Starikov wrote:
->
->> Hi,
->>
->> Early (year ago and recently) I reported about my faults in getting working NFS4 mounts (primary automounting /home) with system booted with NFSv3-root. It always used to silently hang nodes with zero output in the logs. It was definitely client issue (I tried it with different versions of linux and solaris servers)
->>
->> Although I can't get simple and reproducible test-case, because hangs appears randomly, it can happen in 1hour, it can happen in 5 days, but it always will happen after some time. But this time I got some some improvement.
->>
->> With 2.6.32.9-70.fc12.x86_64 kernel and fresh nfs-utils from Fedora-12, after NFS4 mounts hangs, NFS3 mounts and node itself still continue to work, which gives chance to investigate problem.
->>
->> Can you give me instruction how to collect all necessary information to figure out where the bug is?
->>
->> As starting point I will attach output of echo "t">  sysrq-trigge, list of NFS mounts.
->>
->> Thanks,
->> Anton.
->>
->> # cat /proc/mounts | grep nfs
->> 172.19.8.1:/export/share/cluster/fedora-root / nfs ro,relatime,vers=3,rsize=32768,wsize=32768,namlen=255,hard,nolock,proto=udp,port=65535,timeo=7,retrans=3,sec=sys,mountport=65535,addr=172.19.8.1 0 0
->> none /var/lib/nfs tmpfs rw,relatime 0 0
->> sunrpc /var/lib/nfs/rpc_pipefs rpc_pipefs rw,relatime 0 0
->> 172.19.8.1:/export/share/cluster/admin /root nfs rw,noatime,vers=3,rsize=1048576,wsize=1048576,namlen=255,hard,nolock,noacl,proto=tcp,timeo=600,retrans=2,sec=sys,mountaddr=172.19.8.1,mountvers=3,mountport=44114,mountproto=tcp,addr=172.19.8.1 0 0
->> 172.19.8.1:/export/share/cluster/checkpoint /mnt/checkpoint nfs rw,noatime,vers=3,rsize=1048576,wsize=1048576,namlen=255,hard,noacl,proto=tcp,timeo=600,retrans=2,sec=sys,mountaddr=172.19.8.1,mountvers=3,mountport=52574,mountproto=udp,addr=172.19.8.1 0 0
->> 172.19.8.1:/export/share/software /software nfs rw,noatime,vers=3,rsize=1048576,wsize=1048576,namlen=255,hard,nolock,noacl,proto=tcp,timeo=600,retrans=2,sec=sys,mountaddr=172.19.8.1,mountvers=3,mountport=44114,mountproto=tcp,addr=172.19.8.1 0 0
->> 172.19.8.1:/export/share/cluster/torque /var/torque nfs rw,noatime,vers=3,rsize=1048576,wsize=1048576,namlen=255,hard,nolock,noacl,proto=tcp,timeo=600,retrans=2,sec=sys,mountaddr=172.19.8.1,mountvers=3,mountport=44114,mountproto=tcp,addr=172.19.8.1 0 0
->> 172.19.8.1:/export/share/common/ /common nfs4 rw,noatime,vers=4,rsize=1048576,wsize=1048576,namlen=255,hard,proto=tcp,port=0,timeo=600,retrans=2,sec=sys,clientaddr=172.19.8.133,addr=172.19.8.1 0 0
->> 172.19.8.1:/export/home/alfons/ /home/alfons nfs4 rw,relatime,vers=4,rsize=1048576,wsize=1048576,namlen=255,hard,proto=tcp,port=0,timeo=600,retrans=2,sec=sys,clientaddr=172.19.8.133,addr=172.19.8.1 0 0
->>
->> <log1.txt.gz>
->>
->
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> I think it's a problem of kernel, but i don't know why, can someone help me ?
 
+# sudo rpcdebug -m rpc -s xprt trans
+
+run your test, and then look in your kernel log.  It might tell you what 
+error is occurring.  Another good thing to do is capture a network trace 
+with
+
+# sudo tcpdump -s 1540 -w /tmp/raw
+
+while you run your test.
+
+This is similar to the symptoms of other connect problems I've 
+encountered recently.
 
 -- 
 chuck[dot]lever[at]oracle[dot]com
