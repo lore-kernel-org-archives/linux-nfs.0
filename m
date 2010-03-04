@@ -1,39 +1,52 @@
-Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qy0-f179.google.com ([209.85.221.179]:38405 "EHLO
-	mail-qy0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753407Ab0CVAiA (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 21 Mar 2010 20:38:00 -0400
-Received: by qyk9 with SMTP id 9so2899230qyk.1
-        for <linux-nfs@vger.kernel.org>; Sun, 21 Mar 2010 17:38:00 -0700 (PDT)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 0/4] mountd cleanup
-To: steved@redhat.com
-Cc: linux-nfs@vger.kernel.org
-Date: Sun, 21 Mar 2010 20:37:56 -0400
-Message-ID: <20100322003317.30360.18289.stgit@localhost.localdomain>
-Content-Type: text/plain; charset="utf-8"
-Sender: linux-nfs-owner@vger.kernel.org
-List-ID: <linux-nfs.vger.kernel.org>
+Return-Path: <nfsv4-bounces@linux-nfs.org>
+Date: Thu, 4 Mar 2010 09:23:26 +0000 (GMT)
+From: Matt Bernstein <+systems.extlists.nfsv4@dcs.qmul.ac.uk>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: Turning off delegations in NFSv4 server?
+In-Reply-To: <20080110200034.GI2132@fieldses.org>
+Message-ID: <alpine.LRH.2.00.1003040915110.23376@frank.dcs.qmul.ac.uk>
+References: <4786788D.6040707@garzik.org> <20080110200034.GI2132@fieldses.org>
+Cc: NFS list <linux-nfs@vger.kernel.org>, nfsv4@linux-nfs.org
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/options/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@linux-nfs.org>
+List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
+Content-Type: text/plain; charset="us-ascii"; Format="flowed"
+Sender: nfsv4-bounces@linux-nfs.org
+Errors-To: nfsv4-bounces@linux-nfs.org
 MIME-Version: 1.0
+List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Steve-
+On Jan 10 2008 J. Bruce Fields wrote:
+> On Thu, Jan 10, 2008 at 02:57:01PM -0500, Jeff Garzik wrote:
+>> Besides hacking the code, is there an easy way to turn off NFSv4
+>> delegations in the kernel v4 server?
+>>
+>> I'd like to observe behavior of the Linux v4 client when delegations are
+>> not available.
+>
+> The easiest thing is probably just to turn off leases:
+> 	echo 0 >/proc/sys/fs/leases-enable
 
-These four patches clean up some spots in libexport.a.  They are
-pre-requisites for mountd/exportfs IPv6 support.
+I found this from two years ago, and am wondering
+- is this still the easiest thing to do?
+- is this on server, client or both?
+- will it break anything else?
 
----
+We have a CentOS 5.4 NFS3/NFS4/samba server with about 300 clients on its 
+subnet, and another 100-200 on another subnet, which under high load has 
+started kernel-panicking (sometimes in nfsd4_cb_recall).
 
-Chuck Lever (4):
-      libexport.a: e_fslocdata should be freed with free(3)
-      libexport.a: Fix whitespace damage in support/export/export.c
-      libexport.a: Clean up client_compose() and client_member()
-      libexport.a: Remove dead code
+I want to disable delegations to see if that cures our symptoms--but I 
+worry that turning leases off might cause other problems.
 
+For now I'll probably do it anyway, given that status quo isn't stable :(
 
- support/export/client.c    |   65 ++++++++++++++++++--------------------------
- support/export/export.c    |   13 +++++----
- support/include/exportfs.h |    5 +--
- 3 files changed, 36 insertions(+), 47 deletions(-)
-
--- 
-Chuck Lever
+Matt
+_______________________________________________
+NFSv4 mailing list
+NFSv4@linux-nfs.org
+http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4
