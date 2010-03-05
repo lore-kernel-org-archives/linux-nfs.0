@@ -1,76 +1,28 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:26788 "EHLO mx1.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:28021 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752398Ab0CZOpv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 26 Mar 2010 10:45:51 -0400
-Date: Fri, 26 Mar 2010 10:45:33 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Trond Myklebust <trond.myklebust@fys.uio.no>, linux-nfs@vger.kernel.org,
-        nfsv4@linux-nfs.org, Trond Myklebust <trond@netapp.com>
-Subject: Re: [PATCH] nfsd: don't break lease while servicing a COMMIT call
- (try #2)
-Message-ID: <20100326104533.70ef4e84@corrin.poochiereds.net>
-In-Reply-To: <20100325220748.GF8611@fieldses.org>
-References: <1269000388-5543-1-git-send-email-jlayton@redhat.com>
-	<20100322194710.GO5359@fieldses.org>
-	<20100322163340.4b3b285f@tlielax.poochiereds.net>
-	<20100325174707.GA4033@fieldses.org>
-	<1269540988.3648.46.camel@localhost.localdomain>
-	<20100325220748.GF8611@fieldses.org>
-Content-Type: text/plain; charset=US-ASCII
+	id S1753297Ab0CEP0m convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 5 Mar 2010 10:26:42 -0500
+Subject: Merge of the 'write_inode' branch from the VFS tree
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Alexander Viro <viro@zeniv.linux.org.uk>,
+        Linus Torvalds <torvalds@linux-foundation.org>
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
+Date: Fri, 05 Mar 2010 10:26:40 -0500
+Message-ID: <1267802800.5174.6.camel@localhost.localdomain>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Thu, 25 Mar 2010 18:07:48 -0400
-"J. Bruce Fields" <bfields@fieldses.org> wrote:
+Hi Al,
 
-> On Thu, Mar 25, 2010 at 02:16:28PM -0400, Trond Myklebust wrote:
-> > On Thu, 2010-03-25 at 13:47 -0400, J. Bruce Fields wrote: 
-> > > On Mon, Mar 22, 2010 at 04:33:40PM -0400, Jeff Layton wrote:
-> > > > It looks like nfs_inode_return_delegation always calls nfs_msync_inode
-> > > > on any valid delegation before returning it, regardless of the
-> > > > delegation type.
-> > > > 
-> > > > RFC 3530 says this:
-> > > > 
-> > > >    If the client is granted a read delegation, it is assured that no
-> > > >    other client has the ability to write to the file for the duration of
-> > > >    the delegation.  If the client is granted a write delegation, the
-> > > >    client is assured that no other client has read or write access to
-> > > >    the file.
-> > > > 
-> > > > That doesn't seem to imply that we must flush writes before returning
-> > > > either type of delegation. OTOH, maybe it makes sense to treat those as
-> > > > cache consistency points since a delegreturn sort of implies that
-> > > > another client wants to use the file.
-> > > > 
-> > > > I'm not quite sure how to interpret the spec here...
-> > > 
-> > > If there's that call could cause the client to wait for an actual write
-> > > to succeed before returning the delegation, then something's wrong.
-> > 
-> > We're certainly expected to write back data before returning a write
-> > delegation (see Section 9.4.4 of RFC 3530).
-> > 
-> > For the case of a read delegation, then the spec is silent because it
-> > contains no discussion of the case where a server grants both an open
-> > for write and a read delegation. If you want a normative statement on
-> > what clients should do for that case, then I suggest a discussion on the
-> > IETF list with a view to getting it into RFC3530-bis.
-> 
-> Yeah, that would be a good idea to get nailed down at some point.
-> 
-> (But the current server implementation doesn't allow write opens in this
-> situation.  So I wonder why we're seeing any commit from the client at
-> all?)
-> 
-> --b.
+When you submitted the VFS changes for this merge window, I was hoping
+you would include the 'write_inode' branch. I've been waiting for them
+in order to push the NFS writeback improvements to Linus.
 
-This problem was reported against a RHEL5 client and server. It's
-possible that there's another bug that's allowing that somehow, but
-I'll need to look over the capture file again to see if I can find it.
+Would you be willing to either push the write_inode branch to Linus or
+to Ack my doing so as part of the NFS push?
 
--- 
-Jeff Layton <jlayton@redhat.com>
+Cheers
+  Trond
