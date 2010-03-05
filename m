@@ -1,118 +1,50 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: ANNOUNCE: nfs-utils-1.2.2 released.
-Date: Thu, 04 Mar 2010 17:30:29 -0500
-Message-ID: <4B903485.1030608@oracle.com>
-References: <4B7D4E55.4040002@RedHat.com> <20100304201941.GL19154@ics.muni.cz>
-	<4B9021EF.60309@oracle.com> <20100304212149.GM19154@ics.muni.cz>
+From: Matt Bernstein <+systems.extlists.nfsv4-9gaWkGYbp/DQzY9nttDBhA@public.gmane.org>
+Subject: Re: Turning off delegations in NFSv4 server?
+Date: Fri, 5 Mar 2010 15:12:46 +0000 (GMT)
+Message-ID: <alpine.LRH.2.00.1003051239050.23376@frank.dcs.qmul.ac.uk>
+References: <4786788D.6040707@garzik.org> <20080110200034.GI2132@fieldses.org> <alpine.LRH.2.00.1003040915110.23376@frank.dcs.qmul.ac.uk> <20100304143317.GA17191@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"; Format="flowed"
-Cc: NFSv3 list <linux-nfs@vger.kernel.org>, nfsv4@linux-nfs.org,
-	Jeff Layton <jlayton@redhat.com>
-To: Lukas Hejtmanek <xhejtman@ics.muni.cz>
-Return-path: <nfsv4-bounces@linux-nfs.org>
-In-Reply-To: <20100304212149.GM19154@ics.muni.cz>
-List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/options/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
-List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
-List-Post: <mailto:nfsv4@linux-nfs.org>
-List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
-List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
-Sender: nfsv4-bounces@linux-nfs.org
-Errors-To: nfsv4-bounces@linux-nfs.org
+Content-Type: TEXT/PLAIN; charset=US-ASCII; format=flowed
+Cc: Jeff Garzik <jeff@garzik.org>,
+	NFS list <linux-nfs@vger.kernel.org>, nfsv4@linux-nfs.org,
+	Matt Bernstein <mb/nfs4-/t1RSEU/v7tOXXNyRuEUqw@public.gmane.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from flan.dcs.qmul.ac.uk ([138.37.95.138]:36690 "EHLO
+	mail.dcs.qmul.ac.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753138Ab0CEPMs (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 5 Mar 2010 10:12:48 -0500
+In-Reply-To: <20100304143317.GA17191@fieldses.org>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 03/04/2010 04:21 PM, Lukas Hejtmanek wrote:
-> On Thu, Mar 04, 2010 at 04:11:11PM -0500, Chuck Lever wrote:
->> You may be missing some other package, like libgssglue-devel.  Or
->> there could be a bug.  But, nfs-utils should compile and work using
->> --disable-tirpc.
+On Mar 4 J. Bruce Fields wrote:
+> On Thu, Mar 04, 2010 at 09:23:26AM +0000, Matt Bernstein wrote:
+>> On Jan 10 2008 J. Bruce Fields wrote:
+>>> The easiest thing is probably just to turn off leases:
+>>> 	echo 0 >/proc/sys/fs/leases-enable
 >>
->> What does your configure.ac command line look like?
+>> I found this from two years ago, and am wondering
+>> - is this still the easiest thing to do?
+>> - is this on server, client or both?
+>> - will it break anything else?
+>>
+>> We have a CentOS 5.4 NFS3/NFS4/samba server with about 300 clients on its
+>> subnet, and another 100-200 on another subnet, which under high load has
+>> started kernel-panicking (sometimes in nfsd4_cb_recall).
 >
-> without --disable-tirpc it looks like this:
-> anubis: /tmp/nfs-utils-1.2.2 $ ./configure
-> checking build system type... x86_64-unknown-linux-gnu
-> checking host system type... x86_64-unknown-linux-gnu
-> checking for a BSD-compatible install... /usr/bin/install -c
-> checking whether build environment is sane... yes
-> checking for a thread-safe mkdir -p... /bin/mkdir -p
-> checking for gawk... gawk
-> checking whether make sets $(MAKE)... yes
-> checking whether to enable maintainer-specific portions of Makefiles... no
-> checking for style of include used by make... GNU
-> checking for gcc... gcc
-> checking whether the C compiler works... yes
-> checking for C compiler default output file name... a.out
-> checking for suffix of executables...
-> checking whether we are cross compiling... no
-> checking for suffix of object files... o
-> checking whether we are using the GNU C compiler... yes
-> checking whether gcc accepts -g... yes
-> checking for gcc option to accept ISO C89... none needed
-> checking dependency style of gcc... gcc3
-> checking how to run the C preprocessor... gcc -E
-> checking for grep that handles long lines and -e... /bin/grep
-> checking for egrep... /bin/grep -E
-> checking for ANSI C header files... yes
-> checking for sys/types.h... yes
-> checking for sys/stat.h... yes
-> checking for stdlib.h... yes
-> checking for string.h... yes
-> checking for memory.h... yes
-> checking for strings.h... yes
-> checking for inttypes.h... yes
-> checking for stdint.h... yes
-> checking for unistd.h... yes
-> checking for clnt_tli_create in -ltirpc... no
-> configure: error: libtirpc not found.
+> Have you filed a bug with the backtraces?
 
-That's a bug.  The configure script is supposed to disable TI-RPC 
-automatically if it can't find libtirpc.
+Duly nudged. I've posted the most recent one to 
+<http://bugs.centos.org/view.php?id=4229>.
 
-> So I did a try with --disable-tirpc
-> configure runs fine.
-> Looks like it finds proper libs:
-> checking for gss_krb5_export_lucid_sec_context in -lgssapi_krb5... yes
-> checking for gss_krb5_set_allowable_enctypes in -lgssapi_krb5... yes
-> checking for gss_krb5_ccache_name in -lgssapi_krb5... yes
-> checking for krb5_get_error_message in -lgssapi_krb5... yes
-> checking for krb5_get_init_creds_opt_set_addressless in -lgssapi_krb5... no
-> checking for authgss_create_default in -lrpcsecgss... yes
-> checking for authgss_set_debug_level in -lrpcsecgss... yes
+>> I want to disable delegations to see if that cures our symptoms--but I
+>> worry that turning leases off might cause other problems.
 >
-> I do have libgssglue-dev.
->
-> make finishes like this:
-> gcc -DHAVE_CONFIG_H -I. -I../../support/include   -D_GNU_SOURCE -Wall
-> -Wstrict-prototypes  -pipe -g -O2    -g -O2 -MT gssd-context.o -MD -MP -MF
-> .deps/gssd-context.Tpo -c -o gssd-context.o `test -f 'context.c' || echo
-> './'`context.c
-> context.c:40:26: error: rpc/auth_gss.h: No such file or directory
-> make[2]: *** [gssd-context.o] Error 1
-> make[2]: Leaving directory `/tmp/nfs-utils-1.2.2/utils/gssd'
->
-> dpkg -S rpc/auth_gss.h
-> librpcsecgss-dev: /usr/include/rpcsecgss/rpc/auth_gss.h
+> No, it shouldn't cause problems, at least for NFSv4 clients.  (Samba may
+> be more reliant on leases, especially if Samba and NFSv4 clients are
+> acting on the same files at the same time--but I don't know.)
 
-Likely configure isn't setting up the include path correctly.
+Thanks; no-one's grumbled just yet.
 
-> the configure.ac is the one from nfs-utils-1.2.2 tar ball. It is not
-> autogenerated, right?
-
-F12 (which I'm using) appears to have 3 copies of auth_gss.h; one in 
-/usr/include/gssrpc, one in /usr/include/rpcsecgss, and one in 
-/usr/include/tirpc.
-
-I'm not sure, but I think you will have to go through the full motions 
-of setting up configure on your system so it can find everything it needs.
-
-I use
-
-  $ make distclean
-  $ sh ./autogen.sh
-
-then run ./configure
-
--- 
-chuck[dot]lever[at]oracle[dot]com
+Matt
