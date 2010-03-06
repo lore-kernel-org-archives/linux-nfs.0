@@ -1,72 +1,64 @@
-From: Bian Naimeng <biannm@cn.fujitsu.com>
-Subject: [PATCH]rpc client can not deal with ENOSOCK, so translate it into
- ENOCONN
-Date: Sat, 06 Mar 2010 11:46:34 +0800
-Message-ID: <4B91D01A.5010800@cn.fujitsu.com>
+From: Joe Perches <joe@perches.com>
+Subject: [PATCH resend] net/sunrpc: Remove uses of NIPQUAD, use %pI4
+Date: Fri, 05 Mar 2010 22:46:20 -0800
+Message-ID: <1267857980.849.22.camel@Joe-Laptop.home>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=Shift_JIS
-Cc: linux-nfs@vger.kernel.org, "J. Bruce Fields" <bfields@fieldses.org>
-To: Trond.Myklebust@netapp.com
+Content-Type: text/plain; charset="UTF-8"
+Cc: linux-nfs <linux-nfs@vger.kernel.org>,
+	LKML <linux-kernel@vger.kernel.org>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from cn.fujitsu.com ([222.73.24.84]:50722 "EHLO song.cn.fujitsu.com"
-	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
-	id S1754089Ab0CFDqw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 5 Mar 2010 22:46:52 -0500
+Received: from mail.perches.com ([173.55.12.10]:1450 "EHLO mail.perches.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751272Ab0CFGqV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 6 Mar 2010 01:46:21 -0500
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-If NFSv4 client send a request before connect, or the old connection was broken
-because a ETIMEOUT error catched by call_status, ->send_request will return
-ENOSOCK, but rpc layer can not deal with it, so translate it into ENOCONN.
+Originally submitted Jan 1, 2010
+http://patchwork.kernel.org/patch/71221/
 
-Signed-off-by: Bian Naimeng <biannm@cn.fujitsu.com>
+Convert NIPQUAD to the %pI4 format extension where possible
+Convert %02x%02x%02x%02x/NIPQUAD to %08x/ntohl
 
+Signed-off-by: Joe Perches <joe@perches.com>
 ---
- net/sunrpc/xprtsock.c |   18 ++++++++----------
- 1 files changed, 8 insertions(+), 10 deletions(-)
+ net/sunrpc/xprtrdma/transport.c |    3 +--
+ net/sunrpc/xprtsock.c           |    5 ++---
+ 2 files changed, 3 insertions(+), 5 deletions(-)
 
+diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
+index 7018eef..83d339f 100644
+--- a/net/sunrpc/xprtrdma/transport.c
++++ b/net/sunrpc/xprtrdma/transport.c
+@@ -165,8 +165,7 @@ xprt_rdma_format_addresses(struct rpc_xprt *xprt)
+ 
+ 	xprt->address_strings[RPC_DISPLAY_PROTO] = "rdma";
+ 
+-	(void)snprintf(buf, sizeof(buf), "%02x%02x%02x%02x",
+-				NIPQUAD(sin->sin_addr.s_addr));
++	(void)snprintf(buf, sizeof(buf), "%08x", ntohl(sin->sin_addr.s_addr));
+ 	xprt->address_strings[RPC_DISPLAY_HEX_ADDR] = kstrdup(buf, GFP_KERNEL);
+ 
+ 	(void)snprintf(buf, sizeof(buf), "%4hx", rpc_get_port(sap));
 diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index 3d739e5..45e5fd8 100644
+index 3d739e5..86234bc 100644
 --- a/net/sunrpc/xprtsock.c
 +++ b/net/sunrpc/xprtsock.c
-@@ -549,14 +549,13 @@ static int xs_udp_send_request(struct rpc_task *task)
- 		/* Still some bytes left; set up for a retry later. */
- 		status = -EAGAIN;
- 	}
--	if (!transport->sock)
-+	if (!transport->sock || status == -ENOTSOCK) {
-+		/* Should we call xs_close() here? */
-+		status = -ENOTCONN;
- 		goto out;
-+	}
- 
- 	switch (status) {
--	case -ENOTSOCK:
--		status = -ENOTCONN;
--		/* Should we call xs_close() here? */
--		break;
- 	case -EAGAIN:
- 		status = xs_nospace(task);
+@@ -297,12 +297,11 @@ static void xs_format_common_peer_addresses(struct rpc_xprt *xprt)
+ 	switch (sap->sa_family) {
+ 	case AF_INET:
+ 		sin = xs_addr_in(xprt);
+-		(void)snprintf(buf, sizeof(buf), "%02x%02x%02x%02x",
+-					NIPQUAD(sin->sin_addr.s_addr));
++		snprintf(buf, sizeof(buf), "%08x", ntohl(sin->sin_addr.s_addr));
  		break;
-@@ -652,14 +651,13 @@ static int xs_tcp_send_request(struct rpc_task *task)
- 		status = -EAGAIN;
+ 	case AF_INET6:
+ 		sin6 = xs_addr_in6(xprt);
+-		(void)snprintf(buf, sizeof(buf), "%pi6", &sin6->sin6_addr);
++		snprintf(buf, sizeof(buf), "%pi6", &sin6->sin6_addr);
  		break;
- 	}
--	if (!transport->sock)
-+	if (!transport->sock || status == -ENOTSOCK) {
-+		/* Should we call xs_close() here? */
-+		status = -ENOTCONN;
- 		goto out;
-+	}
- 
- 	switch (status) {
--	case -ENOTSOCK:
--		status = -ENOTCONN;
--		/* Should we call xs_close() here? */
--		break;
- 	case -EAGAIN:
- 		status = xs_nospace(task);
- 		break;
--- 
-1.6.4
+ 	default:
+ 		BUG();
+
 
