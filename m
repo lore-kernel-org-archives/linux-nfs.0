@@ -1,121 +1,89 @@
-From: Jeff Layton <jlayton@redhat.com>
-Subject: Re: [PATCH] nfs-utils: add and use nfs_authsys_create
-Date: Mon, 8 Mar 2010 10:40:32 -0500
-Message-ID: <20100308104032.53593709@tlielax.poochiereds.net>
-References: <1266620728-14574-1-git-send-email-jlayton@redhat.com>
-	<4B951984.9070101@RedHat.com>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: [RFC] SUNRPC connect timeout case network request delay
+Date: Mon, 08 Mar 2010 10:40:32 -0500
+Message-ID: <4B951A70.7080201@oracle.com>
+References: <4B8F87A2.5080509@cn.fujitsu.com> <4B8FE6C7.2090207@oracle.com> <4B94CA73.90600@cn.fujitsu.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Cc: chuck.lever@oracle.com, linux-nfs@vger.kernel.org
-To: Steve Dickson <SteveD@redhat.com>
+Content-Type: text/plain; charset=UTF-8;
+	format=flowed
+Cc: "Trond.Myklebust" <trond.myklebust@fys.uio.no>,
+	"J. Bruce Fields" <bfields@fieldses.org>,
+	NFSv3 list <linux-nfs@vger.kernel.org>
+To: Mi Jinlong <mijinlong@cn.fujitsu.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:30932 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753412Ab0CHPlK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 8 Mar 2010 10:41:10 -0500
-In-Reply-To: <4B951984.9070101-AfCzQyP5zfLQT0dZR+AlfA@public.gmane.org>
+Received: from acsinet11.oracle.com ([141.146.126.233]:58710 "EHLO
+	acsinet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753412Ab0CHPlh (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 8 Mar 2010 10:41:37 -0500
+In-Reply-To: <4B94CA73.90600@cn.fujitsu.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 08 Mar 2010 10:36:36 -0500
-Steve Dickson <SteveD@redhat.com> wrote:
+On 03/08/2010 04:59 AM, Mi Jinlong wrote:
+> Hi chuck,
+>
+>   Thanks for your reply.
+>
+> Chuck Lever =E5=86=99=E9=81=93:
+>> On 03/04/2010 05:12 AM, Mi Jinlong wrote:
+>>> Hi,
+>>> Step4: [22:42:16] Write data to file
+>>>          [22:42:16] Write data success
+>>> Step5: [22:42:16] Unlock file
+>>>          [22:46:30] Unlock file success.
+>>> Step6: [22:46:30] Close file /mnt/nfs/file
+>>>          [22:46:30] Close fiel /mnt/nfs/file success
+>>>
+>>> The problem is at step5, unlock file takes 4 min, it's a long time
+>>> than expected.
+>>> When traceing the kernel, I find SUNRPC call call_connect timeout m=
+any
+>>> times,
+>>> one timeout is 1min.
+>>
+>> The kernel's TCP reconnect logic will retry until it succeeds, witho=
+ut
+>> letting the upper level make progress.  For some reason, it is havin=
+g
+>> difficulty reconnecting with your server.
+>>
+>>> I think it's a problem of kernel, but i don't know why, can someone
+>>> help me ?
+>>
+>> # sudo rpcdebug -m rpc -s xprt trans
+>
+>   After running this command, I got some important messages that I th=
+ink.
+>
+>   RPC:       xs_connect delayed xprt  for 3 seconds
+>   ...
+>   RPC:       xs_connect delayed xprt  for 6 seconds
+>   ...
+>   RPC:       xs_connect delayed xprt  for 12 seconds
+>   ...
+>   RPC:       xs_connect delayed xprt  for 24 seconds
+>   ...
+>   ...
+>   RPC:       xs_connect delayed xprt  for 300 seconds
+>
+> This message is printed at xs_connect, and the delay time is double t=
+here.
+> IMO, when some data translate over through a socket, the socket shoul=
+d be released.
+> But, it seems the socket isn't released through those messages above.
+> Is it wrong, or there are some other reasons ?
 
-> 
-> 
-> On 02/19/2010 06:05 PM, Jeff Layton wrote:
-> > The current mount, umount and showmount code uses
-> > authunix_create_default to get an auth handle. The one provided by glibc
-> > returned a truncated list of groups when there were more than 16 groups.
-> > libtirpc however currently does an abort() in this case, which causes
-> > the program to crash and dump core.
-> > 
-> > nfs-utils just uses these auth handles for the MNT protocol, so the
-> > group list doesn't make a lot of difference here. Add a new function
-> > that creates an auth handle with a supplemental gids list that consists
-> > only of the primary gid. Have nfs-utils use that function anywhere that
-> > it currently uses authunix_create_default. Also, have the caller
-> > properly check for a NULL return from that function.
-> > 
-> > Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> > ---
-> >  support/include/nfsrpc.h    |    3 +++
-> >  support/nfs/rpc_socket.c    |   21 +++++++++++++++++++++
-> >  utils/mount/network.c       |   15 ++++++++++++---
-> >  utils/showmount/showmount.c |    8 +++++++-
-> >  4 files changed, 43 insertions(+), 4 deletions(-)
-> > 
-> > diff --git a/support/include/nfsrpc.h b/support/include/nfsrpc.h
-> > index 4db35ab..6ebefca 100644
-> > --- a/support/include/nfsrpc.h
-> > +++ b/support/include/nfsrpc.h
-> > @@ -160,4 +160,7 @@ extern int		nfs_rpc_ping(const struct sockaddr *sap,
-> >  				const unsigned short protocol,
-> >  				const struct timeval *timeout);
-> >  
-> > +/* create AUTH_SYS handle with no supplemental groups */
-> > +extern AUTH *			 nfs_authsys_create(void);
-> > +
-> >  #endif	/* !__NFS_UTILS_NFSRPC_H */
-> > diff --git a/support/nfs/rpc_socket.c b/support/nfs/rpc_socket.c
-> > index 0e20824..aa6a205 100644
-> > --- a/support/nfs/rpc_socket.c
-> > +++ b/support/nfs/rpc_socket.c
-> > @@ -557,3 +557,24 @@ rpcprog_t nfs_getrpcbyname(const rpcprog_t program, const char *table[])
-> >  
-> >  	return program;
-> >  }
-> > +
-> > +/*
-> > + * AUTH_SYS doesn't allow more than 16 gids in the supplemental group list.
-> > + * If there are more than that, trying to determine which ones to include
-> > + * in the list is problematic. This function creates an auth handle that
-> > + * only has the primary gid in the supplemental gids list. It's intended to
-> > + * be used for protocols where credentials really don't matter much (the MNT
-> > + * protocol, for instance).
-> > + */
-> > +AUTH *
-> > +nfs_authsys_create(void)
-> > +{
-> > +	char machname[MAXHOSTNAMELEN + 1];
-> > +	uid_t	uid = geteuid();
-> > +	gid_t	gid = getegid();
-> > +
-> > +	if (gethostname(machname, sizeof(machname)) == -1)
-> > +		return NULL;
-> > +
-> > +	return authsys_create(machname, uid, gid, 1, &gid);
-> > +}
-> The following patch is needed to fix regression when tirpc is
-> disabled:
-> 
-> steved.
-> 
-> Author: Steve Dickson <steved@redhat.com>
-> Date:   Mon Mar 8 10:24:44 2010 -0500
-> 
->     Use authunix_create() instead of authsys_create() to fix regression.
->     
->     Commit 409b8 introduced a regression when the --disable-tirpc
->     configuration flag is set. The authsys_create() interface, which
->     was introduced, does not exist in the legacy glibc library.
->     
->     Since the authsys_create() interface is a redefined of the
->     authunix_create() interface, which is defined in glibc, using
->     authunix_create() resolves the regression,
->     
->     Signed-off-by: Steve Dickson <steved@redhat.com>
-> 
-> diff --git a/support/nfs/rpc_socket.c b/support/nfs/rpc_socket.c
-> index aa6a205..c14efe8 100644
-> --- a/support/nfs/rpc_socket.c
-> +++ b/support/nfs/rpc_socket.c
-> @@ -576,5 +576,5 @@ nfs_authsys_create(void)
->         if (gethostname(machname, sizeof(machname)) == -1)
->                 return NULL;
->  
-> -       return authsys_create(machname, uid, gid, 1, &gid);
-> +       return authunix_create(machname, uid, gid, 1, &gid);
->  }
-> 
+The code is trying to connect, but the ->connect call isn't working=20
+somehow.  The code backs off by doubling the timeout each time, so that=
+=20
+the connect attempts don't overload the server.
 
-Acked-by: Jeff Layton <jlayton@redhat.com>
+This tells us that the code is attempting to connect, but not why the=20
+connect attempt is failing.
+
+> At the latest kernel, this bug was fix by patch
+>    "NFS/RPC: fix problems with reestablish_timeout and related code."
+> But I don't sure about this.
+
+--=20
+chuck[dot]lever[at]oracle[dot]com
