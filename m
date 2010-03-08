@@ -1,25 +1,30 @@
-From: "J. Bruce Fields" <bfields@citi.umich.edu>
+From: Chuck Lever <chuck.lever@oracle.com>
 Subject: Re: [PATCH 3/3] mountd: fix crossmnt options in v2/v3 case
-Date: Mon, 8 Mar 2010 13:23:29 -0500
-Message-ID: <20100308182329.GC1675@fieldses.org>
+Date: Mon, 08 Mar 2010 13:30:23 -0500
+Message-ID: <4B95423F.6070805@oracle.com>
 References: <20100307200607.GA13006@fieldses.org> <1267992481-13332-1-git-send-email-bfields@citi.umich.edu> <1267992481-13332-2-git-send-email-bfields@citi.umich.edu> <1267992481-13332-3-git-send-email-bfields@citi.umich.edu> <20100308082516.260e5f70@notabene.brown> <20100307215826.GA14104@fieldses.org> <20100308101014.14e635b2@notabene.brown> <20100308182148.GB1675@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Steve Dickson <steved@redhat.com>, linux-nfs@vger.kernel.org
-To: Neil Brown <neilb@suse.de>
+Content-Type: text/plain; charset=us-ascii; format=flowed
+Cc: Neil Brown <neilb@suse.de>, Steve Dickson <steved@redhat.com>,
+	linux-nfs@vger.kernel.org
+To: "J. Bruce Fields" <bfields@citi.umich.edu>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:60791 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754627Ab0CHSWI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 8 Mar 2010 13:22:08 -0500
+Received: from rcsinet12.oracle.com ([148.87.113.124]:56782 "EHLO
+	rcsinet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751136Ab0CHScl (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 8 Mar 2010 13:32:41 -0500
 In-Reply-To: <20100308182148.GB1675@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Mar 08, 2010 at 01:21:48PM -0500, J. Bruce Fields wrote:
-> So, I need to look harder at this, thanks for the review.
+On 03/08/2010 01:21 PM, J. Bruce Fields wrote:
+> Occasionally we seem to hear from a security-conscious administrator
+> who's running v4-only and is irritated that they have to firewall off
+> mountd instead of just being able to kill it entirely.  The latter might
+> reassure them, I suppose.
 
-By the way, Steve, the first two patches should still be fine, if you
-want to apply those.
+I think Jeff had the idea of having mountd simply not set up its RPC 
+listeners in that case.  That looks easy to do.
 
---b.
+-- 
+chuck[dot]lever[at]oracle[dot]com
