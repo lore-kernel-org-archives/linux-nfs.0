@@ -1,50 +1,51 @@
-From: Jeff Layton <jlayton@redhat.com>
-Subject: Re: ANNOUNCE: nfs-utils-1.2.2 released.
-Date: Mon, 8 Mar 2010 14:48:25 -0500
-Message-ID: <20100308144825.0e1afa59@tlielax.poochiereds.net>
-References: <4B9021EF.60309@oracle.com> <20100304212149.GM19154@ics.muni.cz>
-	<4B903485.1030608@oracle.com> <20100304224011.GN19154@ics.muni.cz>
-	<20100308101607.GR19154@ics.muni.cz>
-	<20100308070209.7cabb55f@tlielax.poochiereds.net>
-	<20100308121117.GW19154@ics.muni.cz>
-	<4d569c331003080544n40a12f52x74b39420a697e546@mail.gmail.com>
-	<20100308153042.GB19154@ics.muni.cz>
-	<4d569c331003081121p73fac846g1a1ef32f1ec8132@mail.gmail.com>
-	<20100308194054.GC19154@ics.muni.cz>
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Re: [PATCH 3/3] mountd: fix crossmnt options in v2/v3 case
+Date: Mon, 08 Mar 2010 14:56:02 -0500
+Message-ID: <4B955652.5020603@RedHat.com>
+References: <20100307200607.GA13006@fieldses.org> <1267992481-13332-1-git-send-email-bfields@citi.umich.edu> <1267992481-13332-2-git-send-email-bfields@citi.umich.edu> <1267992481-13332-3-git-send-email-bfields@citi.umich.edu> <20100308082516.260e5f70@notabene.brown> <20100307215826.GA14104@fieldses.org> <20100308101014.14e635b2@notabene.brown> <20100308182148.GB1675@fieldses.org> <4B95423F.6070805@oracle.com> <20100308184117.GE1675@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: NFSv3 list <linux-nfs@vger.kernel.org>, nfsv4@linux-nfs.org
-To: Lukas Hejtmanek <xhejtman@ics.muni.cz>
-Return-path: <nfsv4-bounces@linux-nfs.org>
-In-Reply-To: <20100308194054.GC19154@ics.muni.cz>
-List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/options/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
-List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
-List-Post: <mailto:nfsv4@linux-nfs.org>
-List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
-List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
-Sender: nfsv4-bounces@linux-nfs.org
-Errors-To: nfsv4-bounces@linux-nfs.org
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: Chuck Lever <chuck.lever@oracle.com>, Neil Brown <neilb@suse.de>,
+	linux-nfs@vger.kernel.org
+To: "J. Bruce Fields" <bfields@citi.umich.edu>
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:8666 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754515Ab0CHT4K (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 8 Mar 2010 14:56:10 -0500
+In-Reply-To: <20100308184117.GE1675@fieldses.org>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 8 Mar 2010 20:40:54 +0100
-Lukas Hejtmanek <xhejtman@ics.muni.cz> wrote:
 
-> On Mon, Mar 08, 2010 at 02:21:57PM -0500, Kevin Coffman wrote:
-> > So you probably need to add "allow_weak_crypto = true" to your
-> > /etc/krb5.conf file.  (I believe MIT added an API to allow this
-> > programmatically, but I haven't been following closely enough.)
-> 
-> well, this one fixes problem with nfs-utils-1.2.0.
-> 
-> The 1.2.2 still segfaults. Any other thoughts or should I start to play bisect
-> game?
-> 
 
-What would probably help some is to do a bit more analysis with gdb.
-Maybe see if you can determine where it's falling down in libgssglue
-and why. That may help us to determine what the actual problem is.
+On 03/08/2010 01:41 PM, J. Bruce Fields wrote:
+> On Mon, Mar 08, 2010 at 01:30:23PM -0500, Chuck Lever wrote:
+>> On 03/08/2010 01:21 PM, J. Bruce Fields wrote:
+>>> Occasionally we seem to hear from a security-conscious administrator
+>>> who's running v4-only and is irritated that they have to firewall off
+>>> mountd instead of just being able to kill it entirely.  The latter might
+>>> reassure them, I suppose.
+>>
+>> I think Jeff had the idea of having mountd simply not set up its RPC  
+>> listeners in that case.  That looks easy to do.
+> 
+> Sure, makes sense.
+> 
+> But we might decide we want separate processes for servicing MOUNT
+> requests and export upcalls anyway.
+Yes... separating the upcalls from the network call would make things
+much more similar... IMHO...
 
--- 
-Jeff Layton <jlayton@redhat.com>
+> 
+> In which case, call one rpc.mountd, the other nfsd-cache-helper, don't
+> bother running "rpc.mountd" in the v4-only case, and, yay, we never have
+> to answer the "why do I still have to run rpc.mountd?" question again.
+Who says mountd has to be a longed lived daemon 100% of the time... 
+It could used a start point for both the nfsv4listner process and
+the RPC listener (i.e. mountd itself). Then mountd could realize its
+a nfsv4-only environment and simply die (once the nfsv4lister is started).
+
+Just a thought...
+
+steved.
