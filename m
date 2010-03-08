@@ -1,55 +1,79 @@
-From: Bian Naimeng <biannm@cn.fujitsu.com>
-Subject: [PATCH][V2]rpc client can not deal with ENOSOCK, so translate it
- into ENOCONN
-Date: Mon, 08 Mar 2010 09:13:37 +0800
-Message-ID: <4B944F41.1000503@cn.fujitsu.com>
-References: <4B91D01A.5010800@cn.fujitsu.com> <1267885392.4688.5.camel@localhost.localdomain>
+From: Mi Jinlong <mijinlong@cn.fujitsu.com>
+Subject: Re: [RFC] SUNRPC connect timeout case network request delay
+Date: Mon, 08 Mar 2010 17:59:15 +0800
+Message-ID: <4B94CA73.90600@cn.fujitsu.com>
+References: <4B8F87A2.5080509@cn.fujitsu.com> <4B8FE6C7.2090207@oracle.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=Shift_JIS
-Cc: linux-nfs@vger.kernel.org, "J. Bruce Fields" <bfields@fieldses.org>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Content-Type: text/plain; charset=UTF-8
+Cc: "Trond.Myklebust" <trond.myklebust@fys.uio.no>,
+	"J. Bruce Fields" <bfields@fieldses.org>,
+	NFSv3 list <linux-nfs@vger.kernel.org>
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from cn.fujitsu.com ([222.73.24.84]:53188 "EHLO song.cn.fujitsu.com"
+Received: from cn.fujitsu.com ([222.73.24.84]:54101 "EHLO song.cn.fujitsu.com"
 	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
-	id S1751843Ab0CHBNv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 7 Mar 2010 20:13:51 -0500
-In-Reply-To: <1267885392.4688.5.camel-bi+AKbBUZKY6gyzm1THtWbp2dZbC/Bob@public.gmane.org>
+	id S1753153Ab0CHJ6D convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 8 Mar 2010 04:58:03 -0500
+In-Reply-To: <4B8FE6C7.2090207@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-If NFSv4 client send a request before connect, or the old connection was broken
-because a ETIMEOUT error catched by call_status, ->send_request will return
-ENOSOCK, but rpc layer can not deal with it, so make sure ->send_request can
-translate ENOSOCK into ENOCONN.
+Hi chuck,
 
-Signed-off-by: Bian Naimeng <biannm@cn.fujitsu.com>
+ Thanks for your reply.
 
----
- net/sunrpc/xprtsock.c |    4 ----
- 1 files changed, 0 insertions(+), 4 deletions(-)
+Chuck Lever =E5=86=99=E9=81=93:
+> On 03/04/2010 05:12 AM, Mi Jinlong wrote:
+>> Hi,
+>> Step4: [22:42:16] Write data to file
+>>         [22:42:16] Write data success
+>> Step5: [22:42:16] Unlock file
+>>         [22:46:30] Unlock file success.
+>> Step6: [22:46:30] Close file /mnt/nfs/file
+>>         [22:46:30] Close fiel /mnt/nfs/file success
+>>
+>> The problem is at step5, unlock file takes 4 min, it's a long time
+>> than expected.
+>> When traceing the kernel, I find SUNRPC call call_connect timeout ma=
+ny
+>> times,
+>> one timeout is 1min.
+>=20
+> The kernel's TCP reconnect logic will retry until it succeeds, withou=
+t
+> letting the upper level make progress.  For some reason, it is having
+> difficulty reconnecting with your server.
+>=20
+>> I think it's a problem of kernel, but i don't know why, can someone
+>> help me ?
+>=20
+> # sudo rpcdebug -m rpc -s xprt trans
 
-diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index 3d739e5..9b9e653 100644
---- a/net/sunrpc/xprtsock.c
-+++ b/net/sunrpc/xprtsock.c
-@@ -549,8 +549,6 @@ static int xs_udp_send_request(struct rpc_task *task)
- 		/* Still some bytes left; set up for a retry later. */
- 		status = -EAGAIN;
- 	}
--	if (!transport->sock)
--		goto out;
- 
- 	switch (status) {
- 	case -ENOTSOCK:
-@@ -652,8 +650,6 @@ static int xs_tcp_send_request(struct rpc_task *task)
- 		status = -EAGAIN;
- 		break;
- 	}
--	if (!transport->sock)
--		goto out;
- 
- 	switch (status) {
- 	case -ENOTSOCK:
--- 
-1.6.4
+ After running this command, I got some important messages that I think=
+=2E
+
+ RPC:       xs_connect delayed xprt  for 3 seconds
+ ...
+ RPC:       xs_connect delayed xprt  for 6 seconds
+ ...
+ RPC:       xs_connect delayed xprt  for 12 seconds
+ ...
+ RPC:       xs_connect delayed xprt  for 24 seconds
+ ...
+ ...
+ RPC:       xs_connect delayed xprt  for 300 seconds
+=20
+This message is printed at xs_connect, and the delay time is double the=
+re.
+IMO, when some data translate over through a socket, the socket should =
+be released.
+But, it seems the socket isn't released through those messages above.=20
+Is it wrong, or there are some other reasons ?
+
+At the latest kernel, this bug was fix by patch
+  "NFS/RPC: fix problems with reestablish_timeout and related code."
+But I don't sure about this.
+
+thanks,
+Mi Jinlong
 
