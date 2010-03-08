@@ -1,80 +1,127 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH resend] net/sunrpc: Remove uses of NIPQUAD, use %pI4
-Date: Mon, 08 Mar 2010 10:46:56 -0500
-Message-ID: <4B951BF0.9050403@oracle.com>
-References: <1267857980.849.22.camel@Joe-Laptop.home>
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Re: [PATCH] nfs-utils: add and use nfs_authsys_create
+Date: Mon, 08 Mar 2010 11:12:03 -0500
+Message-ID: <4B9521D3.8080207@RedHat.com>
+References: <1266620728-14574-1-git-send-email-jlayton@redhat.com>	<4B951984.9070101@RedHat.com> <20100308104032.53593709@tlielax.poochiereds.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8; format=flowed
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
-	linux-nfs <linux-nfs@vger.kernel.org>,
-	LKML <linux-kernel@vger.kernel.org>
-To: Joe Perches <joe@perches.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: chuck.lever@oracle.com, linux-nfs@vger.kernel.org
+To: Jeff Layton <jlayton@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet12.oracle.com ([148.87.113.124]:34193 "EHLO
-	rcsinet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753861Ab0CHPsd (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 8 Mar 2010 10:48:33 -0500
-In-Reply-To: <1267857980.849.22.camel-AkRN8/LKpobuYGix6ZUp1Q@public.gmane.org>
+Received: from mx1.redhat.com ([209.132.183.28]:9660 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755363Ab0CHQMH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 8 Mar 2010 11:12:07 -0500
+In-Reply-To: <20100308104032.53593709-9yPaYZwiELC+kQycOl6kW4xkIHaj4LzF@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 03/06/2010 01:46 AM, Joe Perches wrote:
-> Originally submitted Jan 1, 2010
-> http://patchwork.kernel.org/patch/71221/
->
-> Convert NIPQUAD to the %pI4 format extension where possible
-> Convert %02x%02x%02x%02x/NIPQUAD to %08x/ntohl
->
-> Signed-off-by: Joe Perches<joe@perches.com>
-> ---
->   net/sunrpc/xprtrdma/transport.c |    3 +--
->   net/sunrpc/xprtsock.c           |    5 ++---
->   2 files changed, 3 insertions(+), 5 deletions(-)
->
-> diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
-> index 7018eef..83d339f 100644
-> --- a/net/sunrpc/xprtrdma/transport.c
-> +++ b/net/sunrpc/xprtrdma/transport.c
-> @@ -165,8 +165,7 @@ xprt_rdma_format_addresses(struct rpc_xprt *xprt)
->
->   	xprt->address_strings[RPC_DISPLAY_PROTO] = "rdma";
->
-> -	(void)snprintf(buf, sizeof(buf), "%02x%02x%02x%02x",
-> -				NIPQUAD(sin->sin_addr.s_addr));
-> +	(void)snprintf(buf, sizeof(buf), "%08x", ntohl(sin->sin_addr.s_addr));
->   	xprt->address_strings[RPC_DISPLAY_HEX_ADDR] = kstrdup(buf, GFP_KERNEL);
->
->   	(void)snprintf(buf, sizeof(buf), "%4hx", rpc_get_port(sap));
-> diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-> index 3d739e5..86234bc 100644
-> --- a/net/sunrpc/xprtsock.c
-> +++ b/net/sunrpc/xprtsock.c
-> @@ -297,12 +297,11 @@ static void xs_format_common_peer_addresses(struct rpc_xprt *xprt)
->   	switch (sap->sa_family) {
->   	case AF_INET:
->   		sin = xs_addr_in(xprt);
-> -		(void)snprintf(buf, sizeof(buf), "%02x%02x%02x%02x",
-> -					NIPQUAD(sin->sin_addr.s_addr));
-> +		snprintf(buf, sizeof(buf), "%08x", ntohl(sin->sin_addr.s_addr));
->   		break;
->   	case AF_INET6:
->   		sin6 = xs_addr_in6(xprt);
-> -		(void)snprintf(buf, sizeof(buf), "%pi6",&sin6->sin6_addr);
-> +		snprintf(buf, sizeof(buf), "%pi6",&sin6->sin6_addr);
-
-Why remove the (void) here, but not in xprtrdma/transport.c?  IMO the 
-(void) cast should be left in place at all three call sites.
-
->   		break;
->   	default:
->   		BUG();
->
->
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
 
--- 
-chuck[dot]lever[at]oracle[dot]com
+On 03/08/2010 10:40 AM, Jeff Layton wrote:
+> On Mon, 08 Mar 2010 10:36:36 -0500
+> Steve Dickson <SteveD@redhat.com> wrote:
+> 
+>>
+>>
+>> On 02/19/2010 06:05 PM, Jeff Layton wrote:
+>>> The current mount, umount and showmount code uses
+>>> authunix_create_default to get an auth handle. The one provided by glibc
+>>> returned a truncated list of groups when there were more than 16 groups.
+>>> libtirpc however currently does an abort() in this case, which causes
+>>> the program to crash and dump core.
+>>>
+>>> nfs-utils just uses these auth handles for the MNT protocol, so the
+>>> group list doesn't make a lot of difference here. Add a new function
+>>> that creates an auth handle with a supplemental gids list that consists
+>>> only of the primary gid. Have nfs-utils use that function anywhere that
+>>> it currently uses authunix_create_default. Also, have the caller
+>>> properly check for a NULL return from that function.
+>>>
+>>> Signed-off-by: Jeff Layton <jlayton@redhat.com>
+>>> ---
+>>>  support/include/nfsrpc.h    |    3 +++
+>>>  support/nfs/rpc_socket.c    |   21 +++++++++++++++++++++
+>>>  utils/mount/network.c       |   15 ++++++++++++---
+>>>  utils/showmount/showmount.c |    8 +++++++-
+>>>  4 files changed, 43 insertions(+), 4 deletions(-)
+>>>
+>>> diff --git a/support/include/nfsrpc.h b/support/include/nfsrpc.h
+>>> index 4db35ab..6ebefca 100644
+>>> --- a/support/include/nfsrpc.h
+>>> +++ b/support/include/nfsrpc.h
+>>> @@ -160,4 +160,7 @@ extern int		nfs_rpc_ping(const struct sockaddr *sap,
+>>>  				const unsigned short protocol,
+>>>  				const struct timeval *timeout);
+>>>  
+>>> +/* create AUTH_SYS handle with no supplemental groups */
+>>> +extern AUTH *			 nfs_authsys_create(void);
+>>> +
+>>>  #endif	/* !__NFS_UTILS_NFSRPC_H */
+>>> diff --git a/support/nfs/rpc_socket.c b/support/nfs/rpc_socket.c
+>>> index 0e20824..aa6a205 100644
+>>> --- a/support/nfs/rpc_socket.c
+>>> +++ b/support/nfs/rpc_socket.c
+>>> @@ -557,3 +557,24 @@ rpcprog_t nfs_getrpcbyname(const rpcprog_t program, const char *table[])
+>>>  
+>>>  	return program;
+>>>  }
+>>> +
+>>> +/*
+>>> + * AUTH_SYS doesn't allow more than 16 gids in the supplemental group list.
+>>> + * If there are more than that, trying to determine which ones to include
+>>> + * in the list is problematic. This function creates an auth handle that
+>>> + * only has the primary gid in the supplemental gids list. It's intended to
+>>> + * be used for protocols where credentials really don't matter much (the MNT
+>>> + * protocol, for instance).
+>>> + */
+>>> +AUTH *
+>>> +nfs_authsys_create(void)
+>>> +{
+>>> +	char machname[MAXHOSTNAMELEN + 1];
+>>> +	uid_t	uid = geteuid();
+>>> +	gid_t	gid = getegid();
+>>> +
+>>> +	if (gethostname(machname, sizeof(machname)) == -1)
+>>> +		return NULL;
+>>> +
+>>> +	return authsys_create(machname, uid, gid, 1, &gid);
+>>> +}
+>> The following patch is needed to fix regression when tirpc is
+>> disabled:
+>>
+>> steved.
+>>
+>> Author: Steve Dickson <steved@redhat.com>
+>> Date:   Mon Mar 8 10:24:44 2010 -0500
+>>
+>>     Use authunix_create() instead of authsys_create() to fix regression.
+>>     
+>>     Commit 409b8 introduced a regression when the --disable-tirpc
+>>     configuration flag is set. The authsys_create() interface, which
+>>     was introduced, does not exist in the legacy glibc library.
+>>     
+>>     Since the authsys_create() interface is a redefined of the
+>>     authunix_create() interface, which is defined in glibc, using
+>>     authunix_create() resolves the regression,
+>>     
+>>     Signed-off-by: Steve Dickson <steved@redhat.com>
+>>
+>> diff --git a/support/nfs/rpc_socket.c b/support/nfs/rpc_socket.c
+>> index aa6a205..c14efe8 100644
+>> --- a/support/nfs/rpc_socket.c
+>> +++ b/support/nfs/rpc_socket.c
+>> @@ -576,5 +576,5 @@ nfs_authsys_create(void)
+>>         if (gethostname(machname, sizeof(machname)) == -1)
+>>                 return NULL;
+>>  
+>> -       return authsys_create(machname, uid, gid, 1, &gid);
+>> +       return authunix_create(machname, uid, gid, 1, &gid);
+>>  }
+>>
+> 
+> Acked-by: Jeff Layton <jlayton@redhat.com>
+Committed.... 
+
+steved.
+
