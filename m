@@ -1,89 +1,80 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [RFC] SUNRPC connect timeout case network request delay
-Date: Mon, 08 Mar 2010 10:40:32 -0500
-Message-ID: <4B951A70.7080201@oracle.com>
-References: <4B8F87A2.5080509@cn.fujitsu.com> <4B8FE6C7.2090207@oracle.com> <4B94CA73.90600@cn.fujitsu.com>
+Subject: Re: [PATCH resend] net/sunrpc: Remove uses of NIPQUAD, use %pI4
+Date: Mon, 08 Mar 2010 10:46:56 -0500
+Message-ID: <4B951BF0.9050403@oracle.com>
+References: <1267857980.849.22.camel@Joe-Laptop.home>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8;
-	format=flowed
-Cc: "Trond.Myklebust" <trond.myklebust@fys.uio.no>,
-	"J. Bruce Fields" <bfields@fieldses.org>,
-	NFSv3 list <linux-nfs@vger.kernel.org>
-To: Mi Jinlong <mijinlong@cn.fujitsu.com>
+Content-Type: text/plain; charset=UTF-8; format=flowed
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
+	linux-nfs <linux-nfs@vger.kernel.org>,
+	LKML <linux-kernel@vger.kernel.org>
+To: Joe Perches <joe@perches.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from acsinet11.oracle.com ([141.146.126.233]:58710 "EHLO
-	acsinet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753412Ab0CHPlh (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 8 Mar 2010 10:41:37 -0500
-In-Reply-To: <4B94CA73.90600@cn.fujitsu.com>
+Received: from rcsinet12.oracle.com ([148.87.113.124]:34193 "EHLO
+	rcsinet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753861Ab0CHPsd (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 8 Mar 2010 10:48:33 -0500
+In-Reply-To: <1267857980.849.22.camel-AkRN8/LKpobuYGix6ZUp1Q@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 03/08/2010 04:59 AM, Mi Jinlong wrote:
-> Hi chuck,
+On 03/06/2010 01:46 AM, Joe Perches wrote:
+> Originally submitted Jan 1, 2010
+> http://patchwork.kernel.org/patch/71221/
 >
->   Thanks for your reply.
+> Convert NIPQUAD to the %pI4 format extension where possible
+> Convert %02x%02x%02x%02x/NIPQUAD to %08x/ntohl
 >
-> Chuck Lever =E5=86=99=E9=81=93:
->> On 03/04/2010 05:12 AM, Mi Jinlong wrote:
->>> Hi,
->>> Step4: [22:42:16] Write data to file
->>>          [22:42:16] Write data success
->>> Step5: [22:42:16] Unlock file
->>>          [22:46:30] Unlock file success.
->>> Step6: [22:46:30] Close file /mnt/nfs/file
->>>          [22:46:30] Close fiel /mnt/nfs/file success
->>>
->>> The problem is at step5, unlock file takes 4 min, it's a long time
->>> than expected.
->>> When traceing the kernel, I find SUNRPC call call_connect timeout m=
-any
->>> times,
->>> one timeout is 1min.
->>
->> The kernel's TCP reconnect logic will retry until it succeeds, witho=
-ut
->> letting the upper level make progress.  For some reason, it is havin=
-g
->> difficulty reconnecting with your server.
->>
->>> I think it's a problem of kernel, but i don't know why, can someone
->>> help me ?
->>
->> # sudo rpcdebug -m rpc -s xprt trans
+> Signed-off-by: Joe Perches<joe@perches.com>
+> ---
+>   net/sunrpc/xprtrdma/transport.c |    3 +--
+>   net/sunrpc/xprtsock.c           |    5 ++---
+>   2 files changed, 3 insertions(+), 5 deletions(-)
 >
->   After running this command, I got some important messages that I th=
-ink.
+> diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
+> index 7018eef..83d339f 100644
+> --- a/net/sunrpc/xprtrdma/transport.c
+> +++ b/net/sunrpc/xprtrdma/transport.c
+> @@ -165,8 +165,7 @@ xprt_rdma_format_addresses(struct rpc_xprt *xprt)
 >
->   RPC:       xs_connect delayed xprt  for 3 seconds
->   ...
->   RPC:       xs_connect delayed xprt  for 6 seconds
->   ...
->   RPC:       xs_connect delayed xprt  for 12 seconds
->   ...
->   RPC:       xs_connect delayed xprt  for 24 seconds
->   ...
->   ...
->   RPC:       xs_connect delayed xprt  for 300 seconds
+>   	xprt->address_strings[RPC_DISPLAY_PROTO] = "rdma";
 >
-> This message is printed at xs_connect, and the delay time is double t=
-here.
-> IMO, when some data translate over through a socket, the socket shoul=
-d be released.
-> But, it seems the socket isn't released through those messages above.
-> Is it wrong, or there are some other reasons ?
+> -	(void)snprintf(buf, sizeof(buf), "%02x%02x%02x%02x",
+> -				NIPQUAD(sin->sin_addr.s_addr));
+> +	(void)snprintf(buf, sizeof(buf), "%08x", ntohl(sin->sin_addr.s_addr));
+>   	xprt->address_strings[RPC_DISPLAY_HEX_ADDR] = kstrdup(buf, GFP_KERNEL);
+>
+>   	(void)snprintf(buf, sizeof(buf), "%4hx", rpc_get_port(sap));
+> diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+> index 3d739e5..86234bc 100644
+> --- a/net/sunrpc/xprtsock.c
+> +++ b/net/sunrpc/xprtsock.c
+> @@ -297,12 +297,11 @@ static void xs_format_common_peer_addresses(struct rpc_xprt *xprt)
+>   	switch (sap->sa_family) {
+>   	case AF_INET:
+>   		sin = xs_addr_in(xprt);
+> -		(void)snprintf(buf, sizeof(buf), "%02x%02x%02x%02x",
+> -					NIPQUAD(sin->sin_addr.s_addr));
+> +		snprintf(buf, sizeof(buf), "%08x", ntohl(sin->sin_addr.s_addr));
+>   		break;
+>   	case AF_INET6:
+>   		sin6 = xs_addr_in6(xprt);
+> -		(void)snprintf(buf, sizeof(buf), "%pi6",&sin6->sin6_addr);
+> +		snprintf(buf, sizeof(buf), "%pi6",&sin6->sin6_addr);
 
-The code is trying to connect, but the ->connect call isn't working=20
-somehow.  The code backs off by doubling the timeout each time, so that=
-=20
-the connect attempts don't overload the server.
+Why remove the (void) here, but not in xprtrdma/transport.c?  IMO the 
+(void) cast should be left in place at all three call sites.
 
-This tells us that the code is attempting to connect, but not why the=20
-connect attempt is failing.
+>   		break;
+>   	default:
+>   		BUG();
+>
+>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
-> At the latest kernel, this bug was fix by patch
->    "NFS/RPC: fix problems with reestablish_timeout and related code."
-> But I don't sure about this.
 
---=20
+-- 
 chuck[dot]lever[at]oracle[dot]com
