@@ -1,60 +1,156 @@
-From: Lukas Hejtmanek <xhejtman@ics.muni.cz>
-Subject: Re: ANNOUNCE: nfs-utils-1.2.2 released.
-Date: Mon, 8 Mar 2010 11:16:07 +0100
-Message-ID: <20100308101607.GR19154@ics.muni.cz>
-References: <4B7D4E55.4040002@RedHat.com> <20100304201941.GL19154@ics.muni.cz>
-	<4B9021EF.60309@oracle.com> <20100304212149.GM19154@ics.muni.cz>
-	<4B903485.1030608@oracle.com> <20100304224011.GN19154@ics.muni.cz>
+From: James Morris <jmorris@namei.org>
+Subject: [PATCH 2/6] NFSv3: add xattr API config option for client
+Date: Mon, 8 Mar 2010 21:43:46 +1100 (EST)
+Message-ID: <alpine.LRH.2.00.1003082143130.6436@tundra.namei.org>
+References: <alpine.LRH.2.00.1002261457420.25193@tundra.namei.org> <alpine.LRH.2.00.1003082122340.6314@tundra.namei.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="iso-8859-2"
-Cc: NFSv3 list <linux-nfs@vger.kernel.org>, nfsv4@linux-nfs.org,
-	Jeff Layton <jlayton@redhat.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-Return-path: <nfsv4-bounces@linux-nfs.org>
-In-Reply-To: <20100304224011.GN19154@ics.muni.cz>
-List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/options/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
-List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
-List-Post: <mailto:nfsv4@linux-nfs.org>
-List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
-List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
-Sender: nfsv4-bounces@linux-nfs.org
-Errors-To: nfsv4-bounces@linux-nfs.org
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: linux-security-module@vger.kernel.org,
+	Trond Myklebust <Trond.Myklebust@netapp.com>,
+	"J. Bruce Fields" <bfields@fieldses.org>,
+	Neil Brown <neilb@suse.de>, linux-fsdevel@vger.kernel.org
+To: linux-nfs@vger.kernel.org
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from tundra.namei.org ([65.99.196.166]:36144 "EHLO tundra.namei.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753626Ab0CHKny (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 8 Mar 2010 05:43:54 -0500
+In-Reply-To: <alpine.LRH.2.00.1003082122340.6314-CK9fWmtY32x9JUWOpEiw7w@public.gmane.org>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hello,
+Add a separate configuration option for xattr API use by NFSv3 client
+code, and make it independent of ACLs, so other NFSv3 client code (e.g.
+the subsequent XATTR side-protocol) can use it.
 
-it appears that gssd fails to run with nfs-utils-1.2.2.
+Move the ACL handlers into the new xattr API file, where all such
+handlers in the NFSv3 client code will live.
 
-It is terminated by signal SIGSEGV.
+Signed-off-by: James Morris <jmorris@namei.org>
+---
+ fs/nfs/Kconfig     |    4 ++++
+ fs/nfs/Makefile    |    1 +
+ fs/nfs/internal.h  |    6 +++++-
+ fs/nfs/nfs3acl.c   |   10 ++--------
+ fs/nfs/nfs3xattr.c |   25 +++++++++++++++++++++++++
+ 5 files changed, 37 insertions(+), 9 deletions(-)
+ create mode 100644 fs/nfs/nfs3xattr.c
 
-Program received signal SIGSEGV, Segmentation fault.
-0x00007ffff70a3ace in ?? () from /usr/lib/libgssglue.so.1
-(gdb) where
-#0  0x00007ffff70a3ace in ?? () from /usr/lib/libgssglue.so.1
-#1  0x00007ffff70a6781 in gss_set_allowable_enctypes ()
-   from /usr/lib/libgssglue.so.1
-#2  0x0000000000408793 in limit_krb5_enctypes (sec=3D0x7fffffffddf0, uid=3D=
-0)
-    at krb5_util.c:336
-#3  0x0000000000407215 in create_auth_rpc_client (clp=3D0x617c10, =
+diff --git a/fs/nfs/Kconfig b/fs/nfs/Kconfig
+index 59e5673..d27a88e 100644
+--- a/fs/nfs/Kconfig
++++ b/fs/nfs/Kconfig
+@@ -38,9 +38,13 @@ config NFS_V3
+ 
+ 	  If unsure, say Y.
+ 
++config NFS_V3_XATTR_API
++	def_bool n
++
+ config NFS_V3_ACL
+ 	bool "NFS client support for the NFSv3 ACL protocol extension"
+ 	depends on NFS_V3
++	select NFS_V3_XATTR_API
+ 	help
+ 	  Some NFS servers support an auxiliary NFSv3 ACL protocol that
+ 	  Sun added to Solaris but never became an official part of the
+diff --git a/fs/nfs/Makefile b/fs/nfs/Makefile
+index da7fda6..1e2743e 100644
+--- a/fs/nfs/Makefile
++++ b/fs/nfs/Makefile
+@@ -11,6 +11,7 @@ nfs-y 			:= client.o dir.o file.o getroot.o inode.o super.o nfs2xdr.o \
+ nfs-$(CONFIG_ROOT_NFS)	+= nfsroot.o
+ nfs-$(CONFIG_NFS_V3)	+= nfs3proc.o nfs3xdr.o
+ nfs-$(CONFIG_NFS_V3_ACL)	+= nfs3acl.o
++nfs-$(CONFIG_NFS_V3_XATTR_API)	+= nfs3xattr.o
+ nfs-$(CONFIG_NFS_V4)	+= nfs4proc.o nfs4xdr.o nfs4state.o nfs4renewd.o \
+ 			   delegation.o idmap.o \
+ 			   callback.o callback_xdr.o callback_proc.o \
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index 9bb918a..48fcac9 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -285,9 +285,13 @@ static inline char *nfs_devname(const struct vfsmount *mnt_parent,
+ 			dentry, buffer, buflen);
+ }
+ 
+-/* nfs3acl.c */
++/* nfs3xattr.c */
+ extern struct xattr_handler *nfs3_xattr_handlers[];
+ 
++/* nfs3acl.c */
++extern struct xattr_handler nfs3_xattr_acl_access_handler;
++extern struct xattr_handler nfs3_xattr_acl_default_handler;
++
+ /*
+  * Determine the actual block size (and log2 thereof)
+  */
+diff --git a/fs/nfs/nfs3acl.c b/fs/nfs/nfs3acl.c
+index 6a6127b..9b1a3f5 100644
+--- a/fs/nfs/nfs3acl.c
++++ b/fs/nfs/nfs3acl.c
+@@ -75,7 +75,7 @@ static int nfs3_acl_xattr_set(struct dentry *dentry, const char *name,
+ 	return error;
+ }
+ 
+-static struct xattr_handler nfs3_xattr_acl_access_handler = {
++struct xattr_handler nfs3_xattr_acl_access_handler = {
+ 	.prefix = POSIX_ACL_XATTR_ACCESS,
+ 	.flags	= ACL_TYPE_ACCESS,
+ 	.list   = nfs3_acl_xattr_list,
+@@ -83,7 +83,7 @@ static struct xattr_handler nfs3_xattr_acl_access_handler = {
+ 	.set    = nfs3_acl_xattr_set,
+ };
+ 
+-static struct xattr_handler nfs3_xattr_acl_default_handler = {
++struct xattr_handler nfs3_xattr_acl_default_handler = {
+ 	.prefix = POSIX_ACL_XATTR_DEFAULT,
+ 	.flags	= ACL_TYPE_DEFAULT,
+ 	.list   = nfs3_acl_xattr_list,
+@@ -91,12 +91,6 @@ static struct xattr_handler nfs3_xattr_acl_default_handler = {
+ 	.set    = nfs3_acl_xattr_set,
+ };
+ 
+-struct xattr_handler *nfs3_xattr_handlers[] = {
+-	&nfs3_xattr_acl_access_handler,
+-	&nfs3_xattr_acl_default_handler,
+-	NULL
+-};
+-
+ static void __nfs3_forget_cached_acls(struct nfs_inode *nfsi)
+ {
+ 	if (!IS_ERR(nfsi->acl_access)) {
+diff --git a/fs/nfs/nfs3xattr.c b/fs/nfs/nfs3xattr.c
+new file mode 100644
+index 0000000..de69f1e
+--- /dev/null
++++ b/fs/nfs/nfs3xattr.c
+@@ -0,0 +1,25 @@
++/*
++ * Extended attribute (xattr) API and protocol for NFSv3.
++ *
++ * Copyright (C) 2009 Red Hat, Inc., James Morris <jmorris@redhat.com>
++ *
++ * This program is free software; you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License version 2,
++ * as published by the Free Software Foundation.
++ */
++#include <linux/fs.h>
++#include <linux/nfs.h>
++#include <linux/nfs3.h>
++#include <linux/nfs_fs.h>
++
++#include "internal.h"
++
++#define NFSDBG_FACILITY	NFSDBG_PROC
++
++struct xattr_handler *nfs3_xattr_handlers[] = {
++#ifdef CONFIG_NFS_V3_ACL
++	&nfs3_xattr_acl_access_handler,
++	&nfs3_xattr_acl_default_handler,
++#endif
++	NULL
++};
+-- 
+1.6.3.3
 
-    clnt_return=3D0x7fffffffe2f0, auth_return=3D0x7fffffffe2e8, uid=3D0, au=
-thtype=3D0)
-    at gssd_proc.c:801
-#4  0x0000000000407896 in process_krb5_upcall (clp=3D0x617c10, uid=3D0, fd=
-=3D13, =
-
-    tgtname=3D0x0, service=3D0x0) at gssd_proc.c:978
-#5  0x0000000000408052 in handle_gssd_upcall (clp=3D0x617c10) at
-gssd_proc.c:1215
-#6  0x0000000000404e21 in scan_poll_results (ret=3D1) at gssd_main_loop.c:82
-#7  0x0000000000405442 in gssd_run () at gssd_main_loop.c:230
-#8  0x0000000000404d47 in main (argc=3D2, argv=3D0x7fffffffe638) at gssd.c:=
-187
-
-
--- =
-
-Luk=E1=B9 Hejtm=E1nek
