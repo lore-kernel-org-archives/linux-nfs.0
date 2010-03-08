@@ -1,8 +1,8 @@
 From: James Morris <jmorris@namei.org>
-Subject: [PATCH 5/6] xattr: add new top level nfsd namespace and implement
- ext3 support
-Date: Mon, 8 Mar 2010 21:46:31 +1100 (EST)
-Message-ID: <alpine.LRH.2.00.1003082145440.6436@tundra.namei.org>
+Subject: [PATCH 6/6] NFSv3: Add server namespace support for XATTR protocol
+ implementation
+Date: Mon, 8 Mar 2010 21:47:16 +1100 (EST)
+Message-ID: <alpine.LRH.2.00.1003082146350.6436@tundra.namei.org>
 References: <alpine.LRH.2.00.1002261457420.25193@tundra.namei.org> <alpine.LRH.2.00.1003082122340.6314@tundra.namei.org>
 Mime-Version: 1.0
 Content-Type: TEXT/PLAIN; charset=US-ASCII
@@ -11,177 +11,343 @@ Cc: linux-security-module@vger.kernel.org,
 	"J. Bruce Fields" <bfields@fieldses.org>,
 	Neil Brown <neilb@suse.de>, linux-fsdevel@vger.kernel.org
 To: linux-nfs@vger.kernel.org
-Return-path: <linux-security-module-owner@vger.kernel.org>
-In-Reply-To: <alpine.LRH.2.00.1003082122340.6314@tundra.namei.org>
-Sender: linux-security-module-owner@vger.kernel.org
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from tundra.namei.org ([65.99.196.166]:38430 "EHLO tundra.namei.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753802Ab0CHKrY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 8 Mar 2010 05:47:24 -0500
+In-Reply-To: <alpine.LRH.2.00.1003082122340.6314-CK9fWmtY32x9JUWOpEiw7w@public.gmane.org>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Add a new top-level 'nfsd' xattr namespace for use by the NFSv3 server
-when storing xattrs provided by clients using the XATTR
-protocol.
+Add support for a server namespace for storing and retrieving
+client-supplied xattrs.  All xattrs are now stored on the server under
+the 'nfsd' namespace, and are not interpreted by the server at all.
+This allows clients to utilize arbitrary xattr namespaces and for the
+server to act only as a storage mechanism for the xattrs.
 
-Also implement filesystem-level support for the new namespace for the
-ext3 filesystem for testing.
+Currently, only the user and trusted namespaces are supported by
+the client, as system and security namespaces require further analysis,
+and some special-case handling will be required (for security.selinux,
+at least).
+
+NFS ACLs continue to work as expected, because they implement a
+hard-coded system xattr namespace which is invoked before the
+NFS layer.  e.g. any access to a system.posix_acl_access xattr
+is invokes the NFS_ACL protocol.
 
 Signed-off-by: James Morris <jmorris@namei.org>
 ---
- fs/ext3/Makefile      |    2 +-
- fs/ext3/xattr.c       |    2 +
- fs/ext3/xattr.h       |    2 +
- fs/ext3/xattr_nfsd.c  |   58 +++++++++++++++++++++++++++++++++++++++++++++++++
- fs/xattr.c            |    6 +++-
- include/linux/xattr.h |    3 ++
- 6 files changed, 70 insertions(+), 3 deletions(-)
- create mode 100644 fs/ext3/xattr_nfsd.c
+ fs/nfs/Kconfig          |   10 ------
+ fs/nfs/Makefile         |    2 +-
+ fs/nfs/internal.h       |    3 +-
+ fs/nfs/nfs3xattr.c      |    3 +-
+ fs/nfs/nfs3xattr_user.c |   53 ------------------------------
+ fs/nfsd/nfs3xattr.c     |   83 +++++++++++++++++++++++++++++++---------------
+ fs/nfsd/vfs.h           |   10 ++++++
+ 7 files changed, 71 insertions(+), 93 deletions(-)
+ delete mode 100644 fs/nfs/nfs3xattr_user.c
 
-diff --git a/fs/ext3/Makefile b/fs/ext3/Makefile
-index e77766a..216ca8a 100644
---- a/fs/ext3/Makefile
-+++ b/fs/ext3/Makefile
-@@ -7,6 +7,6 @@ obj-$(CONFIG_EXT3_FS) += ext3.o
- ext3-y	:= balloc.o bitmap.o dir.o file.o fsync.o ialloc.o inode.o \
- 	   ioctl.o namei.o super.o symlink.o hash.o resize.o ext3_jbd.o
+diff --git a/fs/nfs/Kconfig b/fs/nfs/Kconfig
+index e0e2535..317259e 100644
+--- a/fs/nfs/Kconfig
++++ b/fs/nfs/Kconfig
+@@ -86,16 +86,6 @@ config NFS_V3_XATTR
  
--ext3-$(CONFIG_EXT3_FS_XATTR)	 += xattr.o xattr_user.o xattr_trusted.o
-+ext3-$(CONFIG_EXT3_FS_XATTR)	 += xattr.o xattr_user.o xattr_trusted.o xattr_nfsd.o
- ext3-$(CONFIG_EXT3_FS_POSIX_ACL) += acl.o
- ext3-$(CONFIG_EXT3_FS_SECURITY)	 += xattr_security.o
-diff --git a/fs/ext3/xattr.c b/fs/ext3/xattr.c
-index 66895cc..e05ae22 100644
---- a/fs/ext3/xattr.c
-+++ b/fs/ext3/xattr.c
-@@ -114,6 +114,7 @@ static struct xattr_handler *ext3_xattr_handler_map[] = {
- #ifdef CONFIG_EXT3_FS_SECURITY
- 	[EXT3_XATTR_INDEX_SECURITY]	     = &ext3_xattr_security_handler,
+ 	  If unsure, say N.
+ 
+-config NFS_V3_XATTR_USER
+-	bool "Extended attributes in the user namespace (EXPERIMENTAL)"
+-	depends on NFS_V3_XATTR
+-	help
+-	  This option selects extended attributes in the user.* namespace,
+-	  which are arbitrarily named and managed by users, and conveyed
+-	  via the XATTR protocol extension for NFS version 3.
+-
+-	  If unsure, say N.
+-
+ config NFS_V4
+ 	bool "NFS client support for NFS version 4 (EXPERIMENTAL)"
+ 	depends on NFS_FS && EXPERIMENTAL
+diff --git a/fs/nfs/Makefile b/fs/nfs/Makefile
+index 54018ee..b289d7e 100644
+--- a/fs/nfs/Makefile
++++ b/fs/nfs/Makefile
+@@ -12,7 +12,7 @@ nfs-$(CONFIG_ROOT_NFS)	+= nfsroot.o
+ nfs-$(CONFIG_NFS_V3)	+= nfs3proc.o nfs3xdr.o
+ nfs-$(CONFIG_NFS_V3_ACL)	+= nfs3acl.o
+ nfs-$(CONFIG_NFS_V3_XATTR_API)	+= nfs3xattr.o
+-nfs-$(CONFIG_NFS_V3_XATTR_USER)	+= nfs3xattr_user.o
++nfs-$(CONFIG_NFS_V3_XATTR)	+= nfs3xattr_handlers.o
+ nfs-$(CONFIG_NFS_V4)	+= nfs4proc.o nfs4xdr.o nfs4state.o nfs4renewd.o \
+ 			   delegation.o idmap.o \
+ 			   callback.o callback_xdr.o callback_proc.o \
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index 3661a64..a631daf 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -296,8 +296,9 @@ extern int nfs3_proc_setxattr(struct inode *inode, const char *namespace,
+ extern int nfs3_proc_listxattr(struct inode *inode, char *list,
+ 			       size_t list_len);
+ 
+-/* nfs3xattr_user.c */
++/* nfs3xattr_handers.c */
+ extern struct xattr_handler nfs3_xattr_user_handler;
++extern struct xattr_handler nfs3_xattr_trusted_handler;
+ 
+ /* nfs3acl.c */
+ extern struct xattr_handler nfs3_xattr_acl_access_handler;
+diff --git a/fs/nfs/nfs3xattr.c b/fs/nfs/nfs3xattr.c
+index 7ff651b..a1e054f 100644
+--- a/fs/nfs/nfs3xattr.c
++++ b/fs/nfs/nfs3xattr.c
+@@ -19,8 +19,9 @@
+ #define NFSDBG_FACILITY	NFSDBG_PROC
+ 
+ struct xattr_handler *nfs3_xattr_handlers[] = {
+-#ifdef CONFIG_NFS_V3_XATTR_USER
++#ifdef CONFIG_NFS_V3_XATTR
+ 	&nfs3_xattr_user_handler,
++	&nfs3_xattr_trusted_handler,
  #endif
-+	[EXT3_XATTR_INDEX_NFSD]		     = &ext3_xattr_nfsd_handler,
- };
+ #ifdef CONFIG_NFS_V3_ACL
+ 	&nfs3_xattr_acl_access_handler,
+diff --git a/fs/nfs/nfs3xattr_user.c b/fs/nfs/nfs3xattr_user.c
+deleted file mode 100644
+index c544fcb..0000000
+--- a/fs/nfs/nfs3xattr_user.c
++++ /dev/null
+@@ -1,53 +0,0 @@
+-/*
+- * Support for extended attributes in the the user.* namespace, which are
+- * arbitrarily named and managed by users and conveyed via the XATTR
+- * protocol extension.
+- *
+- * Copyright (C) 2009 Red Hat, Inc., James Morris <jmorris@redhat.com>
+- *
+- * This program is free software; you can redistribute it and/or modify
+- * it under the terms of the GNU General Public License version 2,
+- * as published by the Free Software Foundation.
+- */
+-#include <linux/fs.h>
+-#include <linux/nfs.h>
+-#include <linux/nfs3.h>
+-#include <linux/nfs_fs.h>
+-
+-#include "internal.h"
+-
+-#define NFSDBG_FACILITY	NFSDBG_PROC
+-
+-/*
+- * The generic xattr code will call this for each helper, which is ok for
+- * now, because we only support this single namespace.  If support is
+- * expanded to more namespaces, we we'll need a custom listxattr operation.
+- */
+-static size_t nfs3_user_xattr_list(struct dentry *dentry, char *list,
+-				   size_t list_len, const char *name,
+-				   size_t name_len, int hflags)
+-{
+-	return nfs3_proc_listxattr(dentry->d_inode, list, list_len);
+-}
+-
+-static int nfs3_user_xattr_get(struct dentry *dentry, const char *name,
+-			       void *buffer, size_t size, int hflags)
+-{
+-	return nfs3_proc_getxattr(dentry->d_inode, XATTR_USER_PREFIX,
+-				  name, buffer, size);
+-}
+-
+-static int nfs3_user_xattr_set(struct dentry *dentry, const char *name,
+-			       const void *value, size_t size,
+-			       int flags, int hflags)
+-{
+-	return nfs3_proc_setxattr(dentry->d_inode, XATTR_USER_PREFIX,
+-				  name, value, size, flags);
+-}
+-
+-struct xattr_handler nfs3_xattr_user_handler = {
+-	.prefix = XATTR_USER_PREFIX,
+-	.list   = nfs3_user_xattr_list,
+-	.get    = nfs3_user_xattr_get,
+-	.set    = nfs3_user_xattr_set,
+-};
+diff --git a/fs/nfsd/nfs3xattr.c b/fs/nfsd/nfs3xattr.c
+index b5a5faa..41e0aef 100644
+--- a/fs/nfsd/nfs3xattr.c
++++ b/fs/nfsd/nfs3xattr.c
+@@ -47,11 +47,12 @@ static __be32 nfsd3_proc_getxattr(struct svc_rqst * rqstp,
+ 	char *name, *xattr_name = argp->xattr_name;
+ 	unsigned int size_max = argp->xattr_size_max;
+ 	unsigned int name_len = argp->xattr_name_len;
++	unsigned int name_tot_len = name_len + NFSD_XATTR_PREFIX_LEN;
  
- struct xattr_handler *ext3_xattr_handlers[] = {
-@@ -126,6 +127,7 @@ struct xattr_handler *ext3_xattr_handlers[] = {
- #ifdef CONFIG_EXT3_FS_SECURITY
- 	&ext3_xattr_security_handler,
- #endif
-+	&ext3_xattr_nfsd_handler,
- 	NULL
- };
+ 	dprintk("nfsd: GETXATTR(3)  %s %.*s %u\n", SVCFH_fmt(&argp->fh),
+ 	        name_len, xattr_name, size_max);
  
-diff --git a/fs/ext3/xattr.h b/fs/ext3/xattr.h
-index 148a4df..e06e90f 100644
---- a/fs/ext3/xattr.h
-+++ b/fs/ext3/xattr.h
-@@ -21,6 +21,7 @@
- #define EXT3_XATTR_INDEX_TRUSTED		4
- #define	EXT3_XATTR_INDEX_LUSTRE			5
- #define EXT3_XATTR_INDEX_SECURITY	        6
-+#define EXT3_XATTR_INDEX_NFSD			7
+-	if (name_len > XATTR_NAME_MAX)
++	if (name_tot_len > XATTR_NAME_MAX)
+ 		RETURN_STATUS(nfserr);
  
- struct ext3_xattr_header {
- 	__le32	h_magic;	/* magic number for identification */
-@@ -63,6 +64,7 @@ extern struct xattr_handler ext3_xattr_trusted_handler;
- extern struct xattr_handler ext3_xattr_acl_access_handler;
- extern struct xattr_handler ext3_xattr_acl_default_handler;
- extern struct xattr_handler ext3_xattr_security_handler;
-+extern struct xattr_handler ext3_xattr_nfsd_handler;
+ 	if (size_max > XATTR_SIZE_MAX)
+@@ -66,19 +67,14 @@ static __be32 nfsd3_proc_getxattr(struct svc_rqst * rqstp,
+ 	if (nfserr)
+ 		RETURN_STATUS(nfserr);
  
- extern ssize_t ext3_listxattr(struct dentry *, char *, size_t);
+-	/* Convert xdr string to real string */
+-	name = kmalloc(name_len + 1, GFP_KERNEL);
++	/* Convert xattr name to real string and add local prefix */
++	name = kmalloc(name_tot_len + 1, GFP_KERNEL);
+ 	if (name == NULL)
+ 		RETURN_STATUS(nfserrno(-ENOMEM));
  
-diff --git a/fs/ext3/xattr_nfsd.c b/fs/ext3/xattr_nfsd.c
-new file mode 100644
-index 0000000..890ccd9
---- /dev/null
-+++ b/fs/ext3/xattr_nfsd.c
-@@ -0,0 +1,58 @@
-+/*
-+ * linux/fs/ext3/xattr_nfsd.c
-+ * Handler for nfsd extended attributes.
-+ *
-+ * Copyright (C) 2003 by Andreas Gruenbacher, <a.gruenbacher@computer.org>
-+ * Copyright (C) 2010 Red Hat, Inc., James Morris <jmorris@redhat.com>
+-	ret = snprintf(name, name_len + 1, "%.*s", name_len, xattr_name);
+-	if (ret > name_len) {
+-		nfserr = nfserrno(-EINVAL);
+-		goto cleanup;
+-	}
+-
+-	/* Only the user namespace is currently supported by the server */
+-	if (strncmp(name, XATTR_USER_PREFIX, XATTR_USER_PREFIX_LEN)) {
++	ret = snprintf(name, name_tot_len + 1, "%s%.*s",
++		       NFSD_XATTR_PREFIX, name_len, xattr_name);
++	if (ret > name_tot_len) {
+ 		nfserr = nfserrno(-EINVAL);
+ 		goto cleanup;
+ 	}
+@@ -159,11 +155,12 @@ static __be32 nfsd3_proc_setxattr(struct svc_rqst * rqstp,
+ 	unsigned int name_len = argp->xattr_name_len;
+ 	unsigned int val_len = argp->xattr_val_len;
+ 	unsigned int flags = argp->xattr_flags;
++	unsigned int name_tot_len = name_len + NFSD_XATTR_PREFIX_LEN;
+ 
+ 	dprintk("nfsd: SETXATTR(3)  %s %.*s %u %#x\n", SVCFH_fmt(&argp->fh),
+ 		name_len, xattr_name, val_len, flags);
+ 
+-	if (name_len > XATTR_NAME_MAX)
++	if (name_tot_len > XATTR_NAME_MAX)
+ 		RETURN_STATUS(nfserr);
+ 
+ 	if (val_len > XATTR_SIZE_MAX)
+@@ -177,19 +174,15 @@ static __be32 nfsd3_proc_setxattr(struct svc_rqst * rqstp,
+ 	if (nfserr)
+ 		RETURN_STATUS(nfserr);
+ 
+-	/* Convert xdr string to real string */
+-	name = kmalloc(name_len + 1, GFP_KERNEL);
++	/* Convert xattr name to real string and add prefix */
++	name = kmalloc(name_tot_len + 1, GFP_KERNEL);
+ 	if (name == NULL)
+ 		RETURN_STATUS(nfserrno(-ENOMEM));
+ 
+-	ret = snprintf(name, name_len + 1, "%.*s", name_len, xattr_name);
+-	if (ret > name_len) {
+-		nfserr = nfserrno(-EINVAL);
+-		goto cleanup;
+-	}
++	ret = snprintf(name, name_tot_len + 1, "%s%.*s",
++		       NFSD_XATTR_PREFIX, name_len, xattr_name);
+ 
+-	/* Only the user namespace is currently supported by the server */
+-	if (strncmp(name, XATTR_USER_PREFIX, XATTR_USER_PREFIX_LEN)) {
++	if (ret > name_tot_len) {
+ 		nfserr = nfserrno(-EINVAL);
+ 		goto cleanup;
+ 	}
+@@ -240,9 +233,30 @@ static int nfs3svc_release_setxattr(struct svc_rqst *rqstp, __be32 *p,
+ }
+ 
+ /*
++ * Search the xattr list for those which match the local NFSD prefix. For
++ * each, strip the prefix and copy out the rest of the xattr.
 + */
-+#include <linux/module.h>
-+#include <linux/string.h>
-+#include <linux/capability.h>
-+#include <linux/fs.h>
-+#include <linux/ext3_jbd.h>
-+#include <linux/ext3_fs.h>
-+#include "xattr.h"
-+
-+static size_t ext3_xattr_nfsd_list(struct dentry *dentry, char *list,
-+				   size_t list_size, const char *name,
-+				   size_t name_len, int type)
++static int nfsd3_filter_xattrs(const char *in, char *out, int i_len)
 +{
-+	const size_t prefix_len = XATTR_NFSD_PREFIX_LEN;
-+	const size_t total_len = prefix_len + name_len + 1;
++	int i_idx = 0, o_idx = 0;
 +
-+	if (!capable(CAP_SYS_ADMIN))
-+		return 0;
++	while (i_idx < i_len) {
++		const char *curr = in + i_idx;
++		int c_len = strlen(curr);
 +
-+	if (list && total_len <= list_size) {
-+		memcpy(list, XATTR_NFSD_PREFIX, prefix_len);
-+		memcpy(list+prefix_len, name, name_len);
-+		list[prefix_len + name_len] = '\0';
++		if (!strncmp(NFSD_XATTR_PREFIX, curr, NFSD_XATTR_PREFIX_LEN)) {
++			strcpy(out + o_idx, curr + NFSD_XATTR_PREFIX_LEN);
++			o_idx += c_len - NFSD_XATTR_PREFIX_LEN + 1;
++		}
++
++		i_idx += c_len + 1;
 +	}
-+	return total_len;
++
++	return o_idx;
 +}
 +
-+static int ext3_xattr_nfsd_get(struct dentry *dentry, const char *name,
-+			       void *buffer, size_t size, int type)
-+{
-+	if (strcmp(name, "") == 0)
-+		return -EINVAL;
-+	return ext3_xattr_get(dentry->d_inode, EXT3_XATTR_INDEX_NFSD,
-+			      name, buffer, size);
-+}
++/*
+  * LISTXATTR
+- *
+- * TODO: namespace filtering?
+  */
+ static __be32 nfsd3_proc_listxattr(struct svc_rqst * rqstp,
+ 				   struct nfsd3_listxattrargs *argp,
+@@ -250,8 +264,8 @@ static __be32 nfsd3_proc_listxattr(struct svc_rqst * rqstp,
+ {
+ 	__be32 nfserr = nfserrno(-EINVAL);
+ 	svc_fh *fh;
+-	char *list;
+-	int ret;
++	char *list, *f_list;
++	int ret, f_len;
+ 	unsigned int list_max = argp->xattr_list_max;
+ 
+ 	dprintk("nfsd: LISTXATTR(3)  %s %u\n", SVCFH_fmt(&argp->fh), list_max);
+@@ -276,12 +290,27 @@ static __be32 nfsd3_proc_listxattr(struct svc_rqst * rqstp,
+ 	if (ret <= 0) {
+ 		if (ret == 0)
+ 			ret = -ENODATA;
++		kfree(list);
+ 		RETURN_STATUS(nfserrno(ret));
+ 	}
+ 
++	/*
++	 * Filter the xattr list: translate and return only those stored
++	 * with the correct prefix.  The list is a series of nul-terminated
++	 * strings.
++	 */
++	f_list = kmalloc(ret, GFP_ATOMIC);
++	if (f_list == NULL) {
++		kfree(list);
++		RETURN_STATUS(nfserrno(-ENOMEM));
++	}
 +
-+static int ext3_xattr_nfsd_set(struct dentry *dentry, const char *name,
-+			       const void *value, size_t size, int flags,
-+			       int type)
-+{
-+	if (strcmp(name, "") == 0)
-+		return -EINVAL;
-+	return ext3_xattr_set(dentry->d_inode, EXT3_XATTR_INDEX_NFSD, name,
-+			      value, size, flags);
-+}
++	f_len = nfsd3_filter_xattrs(list, f_list, ret);
++	kfree(list);
 +
-+struct xattr_handler ext3_xattr_nfsd_handler = {
-+	.prefix	= XATTR_NFSD_PREFIX,
-+	.list	= ext3_xattr_nfsd_list,
-+	.get	= ext3_xattr_nfsd_get,
-+	.set	= ext3_xattr_nfsd_set,
-+};
-diff --git a/fs/xattr.c b/fs/xattr.c
-index 46f87e8..87b8c8c 100644
---- a/fs/xattr.c
-+++ b/fs/xattr.c
-@@ -46,9 +46,11 @@ xattr_permission(struct inode *inode, const char *name, int mask)
- 		return 0;
+ 	nfserr = 0;
+-	resp->xattr_list = list;
+-	resp->xattr_list_len = ret;
++	resp->xattr_list = f_list;
++	resp->xattr_list_len = f_len;
  
- 	/*
--	 * The trusted.* namespace can only be accessed by a privileged user.
-+	 * The trusted.* and nfsd.* namespaces can only be accessed by a
-+	 * privileged user.
- 	 */
--	if (!strncmp(name, XATTR_TRUSTED_PREFIX, XATTR_TRUSTED_PREFIX_LEN))
-+	if (!strncmp(name, XATTR_TRUSTED_PREFIX, XATTR_TRUSTED_PREFIX_LEN) ||
-+	    !strncmp(name, XATTR_NFSD_PREFIX, XATTR_NFSD_PREFIX_LEN))
- 		return (capable(CAP_SYS_ADMIN) ? 0 : -EPERM);
+ 	RETURN_STATUS(nfserr);
+ }
+diff --git a/fs/nfsd/vfs.h b/fs/nfsd/vfs.h
+index f8132f3..23028ee 100644
+--- a/fs/nfsd/vfs.h
++++ b/fs/nfsd/vfs.h
+@@ -107,6 +107,16 @@ ssize_t nfsd_getxattr(struct dentry *dentry, char *key, void **buf);
  
- 	/* In user.* namespace, only regular files and directories can have
-diff --git a/include/linux/xattr.h b/include/linux/xattr.h
-index fb9b7e6..5b954a2 100644
---- a/include/linux/xattr.h
-+++ b/include/linux/xattr.h
-@@ -33,6 +33,9 @@
- #define XATTR_USER_PREFIX "user."
- #define XATTR_USER_PREFIX_LEN (sizeof (XATTR_USER_PREFIX) - 1)
- 
-+#define XATTR_NFSD_PREFIX "nfsd."
-+#define XATTR_NFSD_PREFIX_LEN (sizeof (XATTR_NFSD_PREFIX) - 1)
+ #ifdef CONFIG_NFSD_V3_XATTR
+ extern struct svc_version nfsd_xattr_version3;
 +
- struct inode;
- struct dentry;
- 
++/*
++ * Translation prefix for local storage of remote xattrs.  This is currently
++ * hard-coded, but could be made a configurable per-export option.  We're
++ * using the user namespace, which is widely supported by filesystems, and
++ * allows arbitrary manipulation.
++ */
++#define NFSD_XATTR_PREFIX "nfsd."
++#define NFSD_XATTR_PREFIX_LEN (strlen(NFSD_XATTR_PREFIX))
++
+ #else
+ #define nfsd_xattr_version3 NULL
+ #endif
 -- 
 1.6.3.3
 
