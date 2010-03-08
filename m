@@ -1,43 +1,36 @@
-From: Joe Perches <joe@perches.com>
-Subject: Re: [PATCH resend] net/sunrpc: Remove uses of NIPQUAD, use %pI4
-Date: Mon, 08 Mar 2010 08:14:55 -0800
-Message-ID: <1268064895.1925.18.camel@Joe-Laptop.home>
-References: <1267857980.849.22.camel@Joe-Laptop.home>
-	 <4B951BF0.9050403@oracle.com>
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Re: [PATCH] mountd: fix --manage-gids hang due to int/uint bug
+Date: Mon, 08 Mar 2010 11:23:56 -0500
+Message-ID: <4B95249C.9020306@RedHat.com>
+References: <20100302204930.GA8609@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
-	linux-nfs <linux-nfs@vger.kernel.org>,
-	LKML <linux-kernel@vger.kernel.org>
-To: Chuck Lever <chuck.lever@oracle.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: linux-nfs@vger.kernel.org
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.perches.com ([173.55.12.10]:1504 "EHLO mail.perches.com"
+Received: from mx1.redhat.com ([209.132.183.28]:38696 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755333Ab0CHQO5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 8 Mar 2010 11:14:57 -0500
-In-Reply-To: <4B951BF0.9050403@oracle.com>
+	id S1753265Ab0CHQX6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 8 Mar 2010 11:23:58 -0500
+In-Reply-To: <20100302204930.GA8609@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 2010-03-08 at 10:46 -0500, Chuck Lever wrote:
-> Why remove the (void) here, but not in xprtrdma/transport.c?  IMO the 
-> (void) cast should be left in place at all three call sites.
 
-I didn't notice it in xprtrdma/transport.c, otherwise I'd've
-removed it there too.
 
-When the result is not used, snprintf is most commonly not
-cast at all.
+On 03/02/2010 03:49 PM, J. Bruce Fields wrote:
+> From: J. Bruce Fields <bfields@citi.umich.edu>
+> 
+> A uid or gid should be represented as unsigned, not signed.
+> 
+> The conversion to signed here could cause a hang on access by an unknown
+> user to a server running mountd with --manage-gids; such a user is
+> likely to be mapped to 232-1, which may be converted to 231-1 when
+> represented as an int, resulting in a downcall for uid 231-1, hence the
+> original rpc hanging forever waiting for a cache downcall for 232-1.
+> 
+> Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
+Committed... 
 
-(There's a space and a tab in the brackets of the grep string)
-
-$ grep -rP --include=*.[ch] "^[ 	]+snprintf\s*\(" * | wc -l
-1301
-
-$ grep -rP --include=*.[ch] "^[ 	]+\(\s*void\s*\)\s*snprintf\s*\(" * | wc -l
-9
-
-net/sunrpc/ has 7 of those.
-
-I'll get around to submitting patches for all of them.
+steved.
 
