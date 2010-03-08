@@ -1,79 +1,60 @@
-From: Mi Jinlong <mijinlong@cn.fujitsu.com>
-Subject: Re: [RFC] SUNRPC connect timeout case network request delay
-Date: Mon, 08 Mar 2010 17:59:15 +0800
-Message-ID: <4B94CA73.90600@cn.fujitsu.com>
-References: <4B8F87A2.5080509@cn.fujitsu.com> <4B8FE6C7.2090207@oracle.com>
+From: Lukas Hejtmanek <xhejtman@ics.muni.cz>
+Subject: Re: ANNOUNCE: nfs-utils-1.2.2 released.
+Date: Mon, 8 Mar 2010 11:16:07 +0100
+Message-ID: <20100308101607.GR19154@ics.muni.cz>
+References: <4B7D4E55.4040002@RedHat.com> <20100304201941.GL19154@ics.muni.cz>
+	<4B9021EF.60309@oracle.com> <20100304212149.GM19154@ics.muni.cz>
+	<4B903485.1030608@oracle.com> <20100304224011.GN19154@ics.muni.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: "Trond.Myklebust" <trond.myklebust@fys.uio.no>,
-	"J. Bruce Fields" <bfields@fieldses.org>,
-	NFSv3 list <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset="iso-8859-2"
+Cc: NFSv3 list <linux-nfs@vger.kernel.org>, nfsv4@linux-nfs.org,
+	Jeff Layton <jlayton@redhat.com>
 To: Chuck Lever <chuck.lever@oracle.com>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from cn.fujitsu.com ([222.73.24.84]:54101 "EHLO song.cn.fujitsu.com"
-	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
-	id S1753153Ab0CHJ6D convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 8 Mar 2010 04:58:03 -0500
-In-Reply-To: <4B8FE6C7.2090207@oracle.com>
-Sender: linux-nfs-owner@vger.kernel.org
+Return-path: <nfsv4-bounces@linux-nfs.org>
+In-Reply-To: <20100304224011.GN19154@ics.muni.cz>
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/options/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@linux-nfs.org>
+List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
+Sender: nfsv4-bounces@linux-nfs.org
+Errors-To: nfsv4-bounces@linux-nfs.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi chuck,
+Hello,
 
- Thanks for your reply.
+it appears that gssd fails to run with nfs-utils-1.2.2.
 
-Chuck Lever =E5=86=99=E9=81=93:
-> On 03/04/2010 05:12 AM, Mi Jinlong wrote:
->> Hi,
->> Step4: [22:42:16] Write data to file
->>         [22:42:16] Write data success
->> Step5: [22:42:16] Unlock file
->>         [22:46:30] Unlock file success.
->> Step6: [22:46:30] Close file /mnt/nfs/file
->>         [22:46:30] Close fiel /mnt/nfs/file success
->>
->> The problem is at step5, unlock file takes 4 min, it's a long time
->> than expected.
->> When traceing the kernel, I find SUNRPC call call_connect timeout ma=
-ny
->> times,
->> one timeout is 1min.
->=20
-> The kernel's TCP reconnect logic will retry until it succeeds, withou=
-t
-> letting the upper level make progress.  For some reason, it is having
-> difficulty reconnecting with your server.
->=20
->> I think it's a problem of kernel, but i don't know why, can someone
->> help me ?
->=20
-> # sudo rpcdebug -m rpc -s xprt trans
+It is terminated by signal SIGSEGV.
 
- After running this command, I got some important messages that I think=
-=2E
+Program received signal SIGSEGV, Segmentation fault.
+0x00007ffff70a3ace in ?? () from /usr/lib/libgssglue.so.1
+(gdb) where
+#0  0x00007ffff70a3ace in ?? () from /usr/lib/libgssglue.so.1
+#1  0x00007ffff70a6781 in gss_set_allowable_enctypes ()
+   from /usr/lib/libgssglue.so.1
+#2  0x0000000000408793 in limit_krb5_enctypes (sec=3D0x7fffffffddf0, uid=3D=
+0)
+    at krb5_util.c:336
+#3  0x0000000000407215 in create_auth_rpc_client (clp=3D0x617c10, =
 
- RPC:       xs_connect delayed xprt  for 3 seconds
- ...
- RPC:       xs_connect delayed xprt  for 6 seconds
- ...
- RPC:       xs_connect delayed xprt  for 12 seconds
- ...
- RPC:       xs_connect delayed xprt  for 24 seconds
- ...
- ...
- RPC:       xs_connect delayed xprt  for 300 seconds
-=20
-This message is printed at xs_connect, and the delay time is double the=
-re.
-IMO, when some data translate over through a socket, the socket should =
-be released.
-But, it seems the socket isn't released through those messages above.=20
-Is it wrong, or there are some other reasons ?
+    clnt_return=3D0x7fffffffe2f0, auth_return=3D0x7fffffffe2e8, uid=3D0, au=
+thtype=3D0)
+    at gssd_proc.c:801
+#4  0x0000000000407896 in process_krb5_upcall (clp=3D0x617c10, uid=3D0, fd=
+=3D13, =
 
-At the latest kernel, this bug was fix by patch
-  "NFS/RPC: fix problems with reestablish_timeout and related code."
-But I don't sure about this.
+    tgtname=3D0x0, service=3D0x0) at gssd_proc.c:978
+#5  0x0000000000408052 in handle_gssd_upcall (clp=3D0x617c10) at
+gssd_proc.c:1215
+#6  0x0000000000404e21 in scan_poll_results (ret=3D1) at gssd_main_loop.c:82
+#7  0x0000000000405442 in gssd_run () at gssd_main_loop.c:230
+#8  0x0000000000404d47 in main (argc=3D2, argv=3D0x7fffffffe638) at gssd.c:=
+187
 
-thanks,
-Mi Jinlong
 
+-- =
+
+Luk=E1=B9 Hejtm=E1nek
