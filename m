@@ -1,123 +1,69 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH 2/7] nfsd4: edit comment for concision
-Date: Mon, 08 Mar 2010 13:16:29 -0500
-Message-ID: <4B953EFD.8090704@oracle.com>
-References: <1267571573-11844-1-git-send-email-bfields@citi.umich.edu> <1267571573-11844-2-git-send-email-bfields@citi.umich.edu> <1267571573-11844-3-git-send-email-bfields@citi.umich.edu> <4B8EA527.5060502@oracle.com> <20100306185028.GE22650@fieldses.org> <4B951864.1040903@oracle.com> <20100308181005.GA1675@fieldses.org>
+From: "J. Bruce Fields" <bfields@citi.umich.edu>
+Subject: Re: [PATCH 3/3] mountd: fix crossmnt options in v2/v3 case
+Date: Mon, 8 Mar 2010 13:21:48 -0500
+Message-ID: <20100308182148.GB1675@fieldses.org>
+References: <20100307200607.GA13006@fieldses.org> <1267992481-13332-1-git-send-email-bfields@citi.umich.edu> <1267992481-13332-2-git-send-email-bfields@citi.umich.edu> <1267992481-13332-3-git-send-email-bfields@citi.umich.edu> <20100308082516.260e5f70@notabene.brown> <20100307215826.GA14104@fieldses.org> <20100308101014.14e635b2@notabene.brown>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii; format=flowed
-Cc: linux-nfs@vger.kernel.org
-To: "J. Bruce Fields" <bfields@citi.umich.edu>
+Content-Type: text/plain; charset=us-ascii
+Cc: Steve Dickson <steved@redhat.com>, linux-nfs@vger.kernel.org
+To: Neil Brown <neilb@suse.de>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet11.oracle.com ([148.87.113.123]:38060 "EHLO
-	rcsinet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754245Ab0CHSRw (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 8 Mar 2010 13:17:52 -0500
-In-Reply-To: <20100308181005.GA1675@fieldses.org>
+Received: from fieldses.org ([174.143.236.118]:60788 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754627Ab0CHSU2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 8 Mar 2010 13:20:28 -0500
+In-Reply-To: <20100308101014.14e635b2-wvvUuzkyo1EYVZTmpyfIwg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 03/08/2010 01:10 PM, J. Bruce Fields wrote:
-> On Mon, Mar 08, 2010 at 10:31:48AM -0500, Chuck Lever wrote:
->> On 03/06/2010 01:50 PM, J. Bruce Fields wrote:
->>> On Wed, Mar 03, 2010 at 01:06:31PM -0500, Chuck Lever wrote:
->>>> On 03/02/2010 06:12 PM, J. Bruce Fields wrote:
->>>>> Also note units are seconds.
->>>>
->>>> I'd prefer the major edits in this patch be done at the same time you
->>>> trim the other documenting comments for the /proc/fs/nfsd API.
->>>
->>> Not sure when I'll have the time to do that, but, OK: dropped for now.
->>>
->>> Do you think there's any loss of information or readability from the
->>> shorter format?
->>
->> The reason I spelled it all out carefully is because this code can
->> sometimes change in subtle ways, and the whole API implementation is
->> spread out over several source files.
->
-> Understood.  I should have been more specific: in the particular example
-> below, do you think there was any loss?
+On Mon, Mar 08, 2010 at 10:10:14AM +1100, Neil Brown wrote:
+> On Sun, 7 Mar 2010 16:58:26 -0500
+> "J. Bruce Fields" <bfields@citi.umich.edu> wrote:
+> > Don't we have this problem already, then?  The export cache really is
+> > just a cache, and we should be prepared for a given entry to be purged
+> > at any time.
+> > 
+> 
+> Yes, it is a cache, but things don't get pushed out when it is 'full', so you
+> can expect items to stay out their expiry time.
 
-Yes.
+At least for some caches we may want some sort of pruning when they get
+to full.
 
-Your version of the specification allows negative timeouts to be passed 
-in, and it doesn't describe the return value of the write(2) call.
+If we do that, then we may want to vary the behavior from cache to
+cache, hence keeping the export cache protected from this deadlock.
+Though I'd rather avoid that kind of special case if we could.
 
-Mine, on the other hand, neglects to state that the passed time-out 
-values are in units of seconds.
+> So if you add something
+> with  an expiry 30 minutes in the future, you can usually expect it to still
+> be there in 30 seconds.
+> 
+> If someone ran "exportfs -f"
 
->> IMO, we need to have a reference
->> specification that describes how this API _should_ work, despite what
->> the code says.
->>
->> (In other words, it's one of those cases where the code documents how
->> the API _does_ work, not how it _should_ work, and the latter is pretty
->> important.  So comments are rather necessary I think).
->>
->> You could successfully put the block comments on a diet, but going too
->> far would reduce the value of having the comments in the first place.
->>
->> My main objection to this patch was that we need to have a more extended
->> discussion of how to reduce the size of the comments for all the proc
->> files implemented here.  That seemed to me was outside the scope of this
->> patch set, but still worth doing at some point.
->>
->>> --b.
->>>
->>>>
->>>>> Signed-off-by: J. Bruce Fields<bfields@citi.umich.edu>
->>>>> ---
->>>>>     fs/nfsd/nfsctl.c |   21 ++++++---------------
->>>>>     1 files changed, 6 insertions(+), 15 deletions(-)
->>>>>
->>>>> diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
->>>>> index 8bff674..f1ee549 100644
->>>>> --- a/fs/nfsd/nfsctl.c
->>>>> +++ b/fs/nfsd/nfsctl.c
->>>>> @@ -1228,23 +1228,14 @@ static ssize_t __write_leasetime(struct file *file, char *buf, size_t size)
->>>>>     /**
->>>>>      * write_leasetime - Set or report the current NFSv4 lease time
->>>>>      *
->>>>> - * Input:
->>>>> - *			buf:		ignored
->>>>> - *			size:		zero
->>>>> + * If given a nonzero size, sets the NFSv4 lease time to a number of
->>>>> + * seconds (interpreting buf as a C string containing an ascii
->>>>> + * representation of the number).
->>>>>      *
->>>>> - * OR
->>>>> + * Returns the resulting lease time (as an ascii representation in a
->>>>> + * '\n'-terminated C string) in buf.
->>>>>      *
->>>>> - * Input:
->>>>> - *			buf:		C string containing an unsigned
->>>>> - *					integer value representing the new
->>>>> - *					NFSv4 lease expiry time
->>>>> - *			size:		non-zero length of C string in @buf
->>>>> - * Output:
->>>>> - *	On success:	passed-in buffer filled with '\n'-terminated C
->>>>> - *			string containing unsigned integer value of the
->>>>> - *			current lease expiry time;
->>>>> - *			return code is the size in bytes of the string
->>>>> - *	On error:	return code is zero or a negative errno value
->>>>> + * Given a zero size, just returns the lease time in buf.
->>>>>      */
->>>>>     static ssize_t write_leasetime(struct file *file, char *buf, size_t size)
->>>>>     {
->>>>
->>>>
->>>> --
->>>> chuck[dot]lever[at]oracle[dot]com
->>>>
->>
->>
->> --
->> chuck[dot]lever[at]oracle[dot]com
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+or "exportfs -r"?
 
+> at exactly the wrong time you might be able to deadlock mountd (I'd
+> have to double-check to be sure), but that is very different from
+> mountd acting in a way which leads directly to a deadlock.
 
--- 
-chuck[dot]lever[at]oracle[dot]com
+Yeah, agreed.  It's still a bug--people are supposed to be able to do
+that without deadlock--but, sure, it may be unbelievably hard to hit.
+
+So, I need to look harder at this, thanks for the review.  (May take a
+few days, though, so if someone else wants to volunteer, feel free.)
+
+I wonder how best to eliminate the deadlock:
+
+	- Allow fh downcall to return -EAGAIN, let mountd change that to
+	  a JUKEBOX or dropped rpc?
+	- Require mountd run two processes, with one dedicated to
+	  upcalls?
+	- Separate mountd entirely into an upcall-handling daemon and an
+	  rpc daemon?
+
+Occasionally we seem to hear from a security-conscious administrator
+who's running v4-only and is irritated that they have to firewall off
+mountd instead of just being able to kill it entirely.  The latter might
+reassure them, I suppose.
+
+--b.
