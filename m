@@ -1,51 +1,59 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH 3/3] mountd: fix crossmnt options in v2/v3 case
-Date: Mon, 08 Mar 2010 13:45:01 -0500
-Message-ID: <4B9545AD.9020601@oracle.com>
-References: <20100307200607.GA13006@fieldses.org> <1267992481-13332-1-git-send-email-bfields@citi.umich.edu> <1267992481-13332-2-git-send-email-bfields@citi.umich.edu> <1267992481-13332-3-git-send-email-bfields@citi.umich.edu> <20100308082516.260e5f70@notabene.brown> <20100307215826.GA14104@fieldses.org> <20100308101014.14e635b2@notabene.brown> <20100308182148.GB1675@fieldses.org> <4B95423F.6070805@oracle.com> <20100308184117.GE1675@fieldses.org>
+From: Kevin Coffman <kwc@citi.umich.edu>
+Subject: Re: ANNOUNCE: nfs-utils-1.2.2 released.
+Date: Mon, 8 Mar 2010 14:21:57 -0500
+Message-ID: <4d569c331003081121p73fac846g1a1ef32f1ec8132@mail.gmail.com>
+References: <4B7D4E55.4040002@RedHat.com> <4B9021EF.60309@oracle.com>
+	 <20100304212149.GM19154@ics.muni.cz> <4B903485.1030608@oracle.com>
+	 <20100304224011.GN19154@ics.muni.cz>
+	 <20100308101607.GR19154@ics.muni.cz>
+	 <20100308070209.7cabb55f@tlielax.poochiereds.net>
+	 <20100308121117.GW19154@ics.muni.cz>
+	 <4d569c331003080544n40a12f52x74b39420a697e546@mail.gmail.com>
+	 <20100308153042.GB19154@ics.muni.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii; format=flowed
-Cc: Neil Brown <neilb@suse.de>, Steve Dickson <steved@redhat.com>,
-	linux-nfs@vger.kernel.org
-To: "J. Bruce Fields" <bfields@citi.umich.edu>
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: Jeff Layton <jlayton@redhat.com>,
+	NFSv3 list <linux-nfs@vger.kernel.org>, nfsv4@linux-nfs.org
+To: Lukas Hejtmanek <xhejtman@ics.muni.cz>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet12.oracle.com ([148.87.113.124]:40690 "EHLO
-	rcsinet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755321Ab0CHSrF (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 8 Mar 2010 13:47:05 -0500
-In-Reply-To: <20100308184117.GE1675@fieldses.org>
+Received: from mail-bw0-f209.google.com ([209.85.218.209]:38209 "EHLO
+	mail-bw0-f209.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753576Ab0CHTV7 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 8 Mar 2010 14:21:59 -0500
+Received: by bwz1 with SMTP id 1so3144458bwz.21
+        for <linux-nfs@vger.kernel.org>; Mon, 08 Mar 2010 11:21:58 -0800 (PST)
+In-Reply-To: <20100308153042.GB19154@ics.muni.cz>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 03/08/2010 01:41 PM, J. Bruce Fields wrote:
-> On Mon, Mar 08, 2010 at 01:30:23PM -0500, Chuck Lever wrote:
->> On 03/08/2010 01:21 PM, J. Bruce Fields wrote:
->>> Occasionally we seem to hear from a security-conscious administrator
->>> who's running v4-only and is irritated that they have to firewall off
->>> mountd instead of just being able to kill it entirely.  The latter might
->>> reassure them, I suppose.
->>
->> I think Jeff had the idea of having mountd simply not set up its RPC
->> listeners in that case.  That looks easy to do.
+2010/3/8 Lukas Hejtmanek <xhejtman@ics.muni.cz>:
+> On Mon, Mar 08, 2010 at 08:44:07AM -0500, Kevin Coffman wrote:
+>> I don't know how much testing has been done with nfs-utils and krb5
+>> 1.8. =A0Debian is usually the first to hit (and correct) any problem=
+s.
+>> Is there a later kerberos release you could try? =A0The final versio=
+n of
+>> krb5 1.8 was released last week.
 >
-> Sure, makes sense.
+> looks like some error check has been removed since nfs-utils 1.2.0. r=
+pc.gssd
+> from nfs-utils 1.2.0 complains with:
 >
-> But we might decide we want separate processes for servicing MOUNT
-> requests and export upcalls anyway.
+> Mar =A08 16:28:20 anubis rpc.gssd[1982]: rpcsec_gss: gss_init_sec_con=
+text:
+> (major) Unspecified GSS failure. =A0Minor code may provide more infor=
+mation
+> - (minor) No supported encryption types (config file error?)
 >
-> In which case, call one rpc.mountd, the other nfsd-cache-helper, don't
-> bother running "rpc.mountd" in the v4-only case, and, yay, we never have
-> to answer the "why do I still have to run rpc.mountd?" question again.
+> rpc.gssd from 1.2.2 segfaults.
 
-Heh.
+Are you aware that DES is disabled by default with krb5 1.8?  See
+http://www.mit.edu/~kerberos/krb5-1.8/
 
-Separating these facilities would make mountd's RPC service 
-implementation more standard.  Right now, it has to select() over the 
-RPC listeners _and_ the cache upcall fds.  That means it has it's own 
-"svc_run()" function, and thus doesn't use the RPC library's.
+So you probably need to add "allow_weak_crypto =3D true" to your
+/etc/krb5.conf file.  (I believe MIT added an API to allow this
+programmatically, but I haven't been following closely enough.)
 
-But it might get complicated if we want to retain functionality in 
-mountd for kernels that don't have the new export cache...
+That doesn't excuse the segfault in 1.2.2 though.
 
--- 
-chuck[dot]lever[at]oracle[dot]com
+K.C.
