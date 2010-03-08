@@ -1,45 +1,48 @@
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: Re: [PATCH resend] net/sunrpc: Remove uses of NIPQUAD, use %pI4
-Date: Mon, 08 Mar 2010 08:58:27 -0500
-Message-ID: <1268056707.3097.4.camel@localhost.localdomain>
-References: <1267857980.849.22.camel@Joe-Laptop.home>
-	 <20100307.152830.191688665.davem@davemloft.net>
+From: Lukas Hejtmanek <xhejtman@ics.muni.cz>
+Subject: Re: ANNOUNCE: nfs-utils-1.2.2 released.
+Date: Mon, 8 Mar 2010 16:30:42 +0100
+Message-ID: <20100308153042.GB19154@ics.muni.cz>
+References: <4B7D4E55.4040002@RedHat.com> <20100304201941.GL19154@ics.muni.cz>
+	<4B9021EF.60309@oracle.com> <20100304212149.GM19154@ics.muni.cz>
+	<4B903485.1030608@oracle.com> <20100304224011.GN19154@ics.muni.cz>
+	<20100308101607.GR19154@ics.muni.cz>
+	<20100308070209.7cabb55f@tlielax.poochiereds.net>
+	<20100308121117.GW19154@ics.muni.cz>
+	<4d569c331003080544n40a12f52x74b39420a697e546@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Cc: joe@perches.com, linux-nfs@vger.kernel.org,
-	linux-kernel@vger.kernel.org
-To: David Miller <davem@davemloft.net>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:24862 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754383Ab0CHN7R convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 8 Mar 2010 08:59:17 -0500
-In-Reply-To: <20100307.152830.191688665.davem@davemloft.net>
-Sender: linux-nfs-owner@vger.kernel.org
+Content-Type: text/plain; charset="iso-8859-2"
+Cc: NFSv3 list <linux-nfs@vger.kernel.org>, nfsv4@linux-nfs.org,
+	Jeff Layton <jlayton@redhat.com>
+To: Kevin Coffman <kwc@citi.umich.edu>
+Return-path: <nfsv4-bounces@linux-nfs.org>
+In-Reply-To: <4d569c331003080544n40a12f52x74b39420a697e546@mail.gmail.com>
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/options/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@linux-nfs.org>
+List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
+Sender: nfsv4-bounces@linux-nfs.org
+Errors-To: nfsv4-bounces@linux-nfs.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sun, 2010-03-07 at 15:28 -0800, David Miller wrote: 
-> From: Joe Perches <joe@perches.com>
-> Date: Fri, 05 Mar 2010 22:46:20 -0800
-> 
-> > Originally submitted Jan 1, 2010
-> > http://patchwork.kernel.org/patch/71221/
-> > 
-> > Convert NIPQUAD to the %pI4 format extension where possible
-> > Convert %02x%02x%02x%02x/NIPQUAD to %08x/ntohl
-> > 
-> > Signed-off-by: Joe Perches <joe@perches.com>
-> 
-> Trond, are you going to integrate this?
-> 
-> Otherwise I'm going to.
+On Mon, Mar 08, 2010 at 08:44:07AM -0500, Kevin Coffman wrote:
+> I don't know how much testing has been done with nfs-utils and krb5
+> 1.8.  Debian is usually the first to hit (and correct) any problems.
+> Is there a later kerberos release you could try?  The final version of
+> krb5 1.8 was released last week.
 
-If you're planning another push to Linus then feel free to push this
-too.
+looks like some error check has been removed since nfs-utils 1.2.0. rpc.gssd
+from nfs-utils 1.2.0 complains with:
 
-If not, then I do have a couple of small cleanups and fixes that I want
-to push before the merge window closes, so I could send Joe's patch
-together with those...
+Mar  8 16:28:20 anubis rpc.gssd[1982]: rpcsec_gss: gss_init_sec_context:
+(major) Unspecified GSS failure.  Minor code may provide more information
+- (minor) No supported encryption types (config file error?) =
 
-Cheers
-  Trond
+
+rpc.gssd from 1.2.2 segfaults.
+
+-- =
+
+Luk=E1=B9 Hejtm=E1nek
