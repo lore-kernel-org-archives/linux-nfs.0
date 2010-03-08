@@ -1,29 +1,67 @@
-From: David Miller <davem@davemloft.net>
-Subject: Re: [PATCH resend] net/sunrpc: Remove uses of NIPQUAD, use %pI4
-Date: Sun, 07 Mar 2010 15:28:30 -0800 (PST)
-Message-ID: <20100307.152830.191688665.davem@davemloft.net>
-References: <1267857980.849.22.camel@Joe-Laptop.home>
+From: Bian Naimeng <biannm@cn.fujitsu.com>
+Subject: Re: [PATCH]rpc client can not deal with ENOSOCK, so translate it
+ into ENOCONN
+Date: Mon, 08 Mar 2010 09:13:04 +0800
+Message-ID: <4B944F20.9080205@cn.fujitsu.com>
+References: <4B91D01A.5010800@cn.fujitsu.com> <1267885392.4688.5.camel@localhost.localdomain>
 Mime-Version: 1.0
-Content-Type: Text/Plain; charset=us-ascii
-Cc: Trond.Myklebust@netapp.com, linux-nfs@vger.kernel.org,
-	linux-kernel@vger.kernel.org
-To: joe@perches.com
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <1267857980.849.22.camel@Joe-Laptop.home>
-Sender: linux-kernel-owner@vger.kernel.org
+Content-Type: text/plain; charset=Shift_JIS
+Cc: linux-nfs@vger.kernel.org, "J. Bruce Fields" <bfields@fieldses.org>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from cn.fujitsu.com ([222.73.24.84]:58546 "EHLO song.cn.fujitsu.com"
+	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
+	id S1751843Ab0CHBNW convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 7 Mar 2010 20:13:22 -0500
+In-Reply-To: <1267885392.4688.5.camel-bi+AKbBUZKY6gyzm1THtWbp2dZbC/Bob@public.gmane.org>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Joe Perches <joe@perches.com>
-Date: Fri, 05 Mar 2010 22:46:20 -0800
 
-> Originally submitted Jan 1, 2010
-> http://patchwork.kernel.org/patch/71221/
-> 
-> Convert NIPQUAD to the %pI4 format extension where possible
-> Convert %02x%02x%02x%02x/NIPQUAD to %08x/ntohl
-> 
-> Signed-off-by: Joe Perches <joe@perches.com>
 
-Trond, are you going to integrate this?
+Trond Myklebust =8E=CA=93=B9:
+> On Sat, 2010-03-06 at 11:46 +0800, Bian Naimeng wrote:=20
+>> If NFSv4 client send a request before connect, or the old connection=
+ was broken
+>> because a ETIMEOUT error catched by call_status, ->send_request will=
+ return
+>> ENOSOCK, but rpc layer can not deal with it, so translate it into EN=
+OCONN.
+>>
+>> Signed-off-by: Bian Naimeng <biannm@cn.fujitsu.com>
+>>
+>> ---
 
-Otherwise I'm going to.
+=2E.. snip...
+
+>> -	if (!transport->sock)
+>> +	if (!transport->sock || status =3D=3D -ENOTSOCK) {
+>> +		/* Should we call xs_close() here? */
+>> +		status =3D -ENOTCONN;
+>>  		goto out;
+>> +	}
+>> =20
+>>  	switch (status) {
+>> -	case -ENOTSOCK:
+>> -		status =3D -ENOTCONN;
+>> -		/* Should we call xs_close() here? */
+>> -		break;
+>>  	case -EAGAIN:
+>>  		status =3D xs_nospace(task);
+>>  		break;
+>=20
+> The only case where xs_sendpages() will return ENOTSOCK is if
+> transport->sock =3D=3D NULL, so the correct fix here is to just remov=
+e that
+> redundant test. There is no need to move the test for ENOTSOCK out of
+> the switch statement.
+
+  Yes. Thanks for your suggestion.
+
+  Best Regards
+   Bian
+
+>=20
+> Cheers
+>   Trond
+
