@@ -1,48 +1,100 @@
-From: Lukas Hejtmanek <xhejtman@ics.muni.cz>
-Subject: Re: ANNOUNCE: nfs-utils-1.2.2 released.
-Date: Mon, 8 Mar 2010 16:30:42 +0100
-Message-ID: <20100308153042.GB19154@ics.muni.cz>
-References: <4B7D4E55.4040002@RedHat.com> <20100304201941.GL19154@ics.muni.cz>
-	<4B9021EF.60309@oracle.com> <20100304212149.GM19154@ics.muni.cz>
-	<4B903485.1030608@oracle.com> <20100304224011.GN19154@ics.muni.cz>
-	<20100308101607.GR19154@ics.muni.cz>
-	<20100308070209.7cabb55f@tlielax.poochiereds.net>
-	<20100308121117.GW19154@ics.muni.cz>
-	<4d569c331003080544n40a12f52x74b39420a697e546@mail.gmail.com>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: [PATCH 2/7] nfsd4: edit comment for concision
+Date: Mon, 08 Mar 2010 10:31:48 -0500
+Message-ID: <4B951864.1040903@oracle.com>
+References: <1267571573-11844-1-git-send-email-bfields@citi.umich.edu> <1267571573-11844-2-git-send-email-bfields@citi.umich.edu> <1267571573-11844-3-git-send-email-bfields@citi.umich.edu> <4B8EA527.5060502@oracle.com> <20100306185028.GE22650@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="iso-8859-2"
-Cc: NFSv3 list <linux-nfs@vger.kernel.org>, nfsv4@linux-nfs.org,
-	Jeff Layton <jlayton@redhat.com>
-To: Kevin Coffman <kwc@citi.umich.edu>
-Return-path: <nfsv4-bounces@linux-nfs.org>
-In-Reply-To: <4d569c331003080544n40a12f52x74b39420a697e546@mail.gmail.com>
-List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/options/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
-List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
-List-Post: <mailto:nfsv4@linux-nfs.org>
-List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
-List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
-Sender: nfsv4-bounces@linux-nfs.org
-Errors-To: nfsv4-bounces@linux-nfs.org
+Content-Type: text/plain; charset=us-ascii; format=flowed
+Cc: linux-nfs@vger.kernel.org
+To: "J. Bruce Fields" <bfields@citi.umich.edu>
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from rcsinet11.oracle.com ([148.87.113.123]:24048 "EHLO
+	rcsinet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751351Ab0CHPcz (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 8 Mar 2010 10:32:55 -0500
+In-Reply-To: <20100306185028.GE22650@fieldses.org>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Mar 08, 2010 at 08:44:07AM -0500, Kevin Coffman wrote:
-> I don't know how much testing has been done with nfs-utils and krb5
-> 1.8.  Debian is usually the first to hit (and correct) any problems.
-> Is there a later kerberos release you could try?  The final version of
-> krb5 1.8 was released last week.
+On 03/06/2010 01:50 PM, J. Bruce Fields wrote:
+> On Wed, Mar 03, 2010 at 01:06:31PM -0500, Chuck Lever wrote:
+>> On 03/02/2010 06:12 PM, J. Bruce Fields wrote:
+>>> Also note units are seconds.
+>>
+>> I'd prefer the major edits in this patch be done at the same time you
+>> trim the other documenting comments for the /proc/fs/nfsd API.
+>
+> Not sure when I'll have the time to do that, but, OK: dropped for now.
+>
+> Do you think there's any loss of information or readability from the
+> shorter format?
 
-looks like some error check has been removed since nfs-utils 1.2.0. rpc.gssd
-from nfs-utils 1.2.0 complains with:
+The reason I spelled it all out carefully is because this code can 
+sometimes change in subtle ways, and the whole API implementation is 
+spread out over several source files.  IMO, we need to have a reference 
+specification that describes how this API _should_ work, despite what 
+the code says.
 
-Mar  8 16:28:20 anubis rpc.gssd[1982]: rpcsec_gss: gss_init_sec_context:
-(major) Unspecified GSS failure.  Minor code may provide more information
-- (minor) No supported encryption types (config file error?) =
+(In other words, it's one of those cases where the code documents how 
+the API _does_ work, not how it _should_ work, and the latter is pretty 
+important.  So comments are rather necessary I think).
+
+You could successfully put the block comments on a diet, but going too 
+far would reduce the value of having the comments in the first place.
+
+My main objection to this patch was that we need to have a more extended 
+discussion of how to reduce the size of the comments for all the proc 
+files implemented here.  That seemed to me was outside the scope of this 
+patch set, but still worth doing at some point.
+
+> --b.
+>
+>>
+>>> Signed-off-by: J. Bruce Fields<bfields@citi.umich.edu>
+>>> ---
+>>>    fs/nfsd/nfsctl.c |   21 ++++++---------------
+>>>    1 files changed, 6 insertions(+), 15 deletions(-)
+>>>
+>>> diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
+>>> index 8bff674..f1ee549 100644
+>>> --- a/fs/nfsd/nfsctl.c
+>>> +++ b/fs/nfsd/nfsctl.c
+>>> @@ -1228,23 +1228,14 @@ static ssize_t __write_leasetime(struct file *file, char *buf, size_t size)
+>>>    /**
+>>>     * write_leasetime - Set or report the current NFSv4 lease time
+>>>     *
+>>> - * Input:
+>>> - *			buf:		ignored
+>>> - *			size:		zero
+>>> + * If given a nonzero size, sets the NFSv4 lease time to a number of
+>>> + * seconds (interpreting buf as a C string containing an ascii
+>>> + * representation of the number).
+>>>     *
+>>> - * OR
+>>> + * Returns the resulting lease time (as an ascii representation in a
+>>> + * '\n'-terminated C string) in buf.
+>>>     *
+>>> - * Input:
+>>> - *			buf:		C string containing an unsigned
+>>> - *					integer value representing the new
+>>> - *					NFSv4 lease expiry time
+>>> - *			size:		non-zero length of C string in @buf
+>>> - * Output:
+>>> - *	On success:	passed-in buffer filled with '\n'-terminated C
+>>> - *			string containing unsigned integer value of the
+>>> - *			current lease expiry time;
+>>> - *			return code is the size in bytes of the string
+>>> - *	On error:	return code is zero or a negative errno value
+>>> + * Given a zero size, just returns the lease time in buf.
+>>>     */
+>>>    static ssize_t write_leasetime(struct file *file, char *buf, size_t size)
+>>>    {
+>>
+>>
+>> --
+>> chuck[dot]lever[at]oracle[dot]com
+>>
 
 
-rpc.gssd from 1.2.2 segfaults.
-
--- =
-
-Luk=E1=B9 Hejtm=E1nek
+-- 
+chuck[dot]lever[at]oracle[dot]com
