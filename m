@@ -1,51 +1,45 @@
 From: Steve Dickson <SteveD@redhat.com>
-Subject: Re: [PATCH 3/3] mountd: fix crossmnt options in v2/v3 case
-Date: Mon, 08 Mar 2010 14:56:02 -0500
-Message-ID: <4B955652.5020603@RedHat.com>
-References: <20100307200607.GA13006@fieldses.org> <1267992481-13332-1-git-send-email-bfields@citi.umich.edu> <1267992481-13332-2-git-send-email-bfields@citi.umich.edu> <1267992481-13332-3-git-send-email-bfields@citi.umich.edu> <20100308082516.260e5f70@notabene.brown> <20100307215826.GA14104@fieldses.org> <20100308101014.14e635b2@notabene.brown> <20100308182148.GB1675@fieldses.org> <4B95423F.6070805@oracle.com> <20100308184117.GE1675@fieldses.org>
+Subject: Re: [PATCH 1/3] mountd: fix path comparison for v4 crossmnt
+Date: Mon, 08 Mar 2010 15:04:35 -0500
+Message-ID: <4B955853.1030103@RedHat.com>
+References: <20100307200607.GA13006@fieldses.org> <1267992481-13332-1-git-send-email-bfields@citi.umich.edu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
-Cc: Chuck Lever <chuck.lever@oracle.com>, Neil Brown <neilb@suse.de>,
-	linux-nfs@vger.kernel.org
+Cc: linux-nfs@vger.kernel.org
 To: "J. Bruce Fields" <bfields@citi.umich.edu>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:8666 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:2404 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754515Ab0CHT4K (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 8 Mar 2010 14:56:10 -0500
-In-Reply-To: <20100308184117.GE1675@fieldses.org>
+	id S1755523Ab0CHUEh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 8 Mar 2010 15:04:37 -0500
+In-Reply-To: <1267992481-13332-1-git-send-email-bfields@citi.umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
 
-On 03/08/2010 01:41 PM, J. Bruce Fields wrote:
-> On Mon, Mar 08, 2010 at 01:30:23PM -0500, Chuck Lever wrote:
->> On 03/08/2010 01:21 PM, J. Bruce Fields wrote:
->>> Occasionally we seem to hear from a security-conscious administrator
->>> who's running v4-only and is irritated that they have to firewall off
->>> mountd instead of just being able to kill it entirely.  The latter might
->>> reassure them, I suppose.
->>
->> I think Jeff had the idea of having mountd simply not set up its RPC  
->> listeners in that case.  That looks easy to do.
+On 03/07/2010 03:07 PM, J. Bruce Fields wrote:
+> This was obviously wrong, since path[strlen(path)] == '\0' should always
+> be true.
 > 
-> Sure, makes sense.
+> Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
+> ---
+>  utils/mountd/cache.c |    2 +-
+>  1 files changed, 1 insertions(+), 1 deletions(-)
 > 
-> But we might decide we want separate processes for servicing MOUNT
-> requests and export upcalls anyway.
-Yes... separating the upcalls from the network call would make things
-much more similar... IMHO...
-
-> 
-> In which case, call one rpc.mountd, the other nfsd-cache-helper, don't
-> bother running "rpc.mountd" in the v4-only case, and, yay, we never have
-> to answer the "why do I still have to run rpc.mountd?" question again.
-Who says mountd has to be a longed lived daemon 100% of the time... 
-It could used a start point for both the nfsv4listner process and
-the RPC listener (i.e. mountd itself). Then mountd could realize its
-a nfsv4-only environment and simply die (once the nfsv4lister is started).
-
-Just a thought...
+> diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c
+> index d63e10a..ff27bbf 100644
+> --- a/utils/mountd/cache.c
+> +++ b/utils/mountd/cache.c
+> @@ -619,7 +619,7 @@ static int is_subdirectory(char *subpath, char *path)
+>  	int l = strlen(path);
+>  
+>  	return strcmp(subpath, path) == 0
+> -		|| (strncmp(subpath, path, l) == 0 && path[l] == '/');
+> +		|| (strncmp(subpath, path, l) == 0 && subpath[l] == '/');
+>  }
+>  
+>  static int path_matches(nfs_export *exp, char *path)
+Committed...
 
 steved.
