@@ -1,75 +1,75 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:27941 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932814Ab0CJXI1 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 10 Mar 2010 18:08:27 -0500
-Subject: Re: [git pull] vfs part 3 (write_inode mess)
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Steve Dickson <SteveD@redhat.com>
-Cc: Al Viro <viro@ZenIV.linux.org.uk>,
-        Linus Torvalds <torvalds@linux-foundation.org>,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-In-Reply-To: <4B955C8D.6030907@RedHat.com>
-References: <1267802800.5174.6.camel@localhost.localdomain>
-	 <20100305154823.GV30031@ZenIV.linux.org.uk>
-	 <20100305174017.GX30031@ZenIV.linux.org.uk>  <4B955C8D.6030907@RedHat.com>
-Content-Type: text/plain; charset="UTF-8"
-Date: Wed, 10 Mar 2010 18:07:29 -0500
-Message-ID: <1268262449.3096.214.camel@localhost.localdomain>
+Received: from smtp107.prem.mail.sp1.yahoo.com ([98.136.44.62]:43890 "HELO
+	smtp107.prem.mail.sp1.yahoo.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with SMTP id S1751243Ab0CIFt3 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 9 Mar 2010 00:49:29 -0500
+Message-ID: <4B95E167.40306@schaufler-ca.com>
+Date: Mon, 08 Mar 2010 21:49:27 -0800
+From: Casey Schaufler <casey@schaufler-ca.com>
+To: Brad Boyer <flar@allandria.com>
+CC: James Morris <jmorris@namei.org>, linux-nfs@vger.kernel.org,
+        linux-security-module@vger.kernel.org,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>, Neil Brown <neilb@suse.de>,
+        linux-fsdevel@vger.kernel.org,
+        Casey Schaufler <casey@schaufler-ca.com>
+Subject: Re: [PATCH 0/6][v4][RFC] NFSv3: implement extended attribute protocol
+ (XATTR)
+References: <alpine.LRH.2.00.1002261457420.25193@tundra.namei.org> <alpine.LRH.2.00.1003082122340.6314@tundra.namei.org> <20100309035932.GA14237@cynthia.pants.nu>
+In-Reply-To: <20100309035932.GA14237@cynthia.pants.nu>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Mon, 2010-03-08 at 15:22 -0500, Steve Dickson wrote: 
-> On 03/05/2010 12:40 PM, Al Viro wrote:
-> > On Fri, Mar 05, 2010 at 03:48:23PM +0000, Al Viro wrote:
-> >> I'm going to push the next VFS pile in about half an hour and get to the
-> >> write_inode situation.  I'm not sure what's the best course here.  Note
-> >> that since you've pulled it, you also have conflicts with what's in the
-> >> mainline.  I can do *another* backmerge (already had one due to gfs2 trivial
-> >> conflicts) and push the result.  Which will suck, since XFS conflicts
-> >> are not entirely trivial and we'll get a really ugly merge node, with
-> >> conflict resolution both hidden and not quite obvious.
-> > 
-> > OK, a backmerge it is.  Linus, could you please pull
-> > git.kernel.org/pub/scm/linux/kernel/git/viro/vfs-2.6.git/ write_inode
-> > or suggest a saner way to do that?
-> > 
-> > I've done backmerges of two points in mainline (trees that got merged
-> > into mainline, actually) that created conflicts.  So at that point it's
-> > (a) descendent of what's been pulled into NFS tree and (b) merges clean
-> > with mainline.  All for two patches (at commit 716c28c..) ;-/
-> > 
-> > It's independent from the previous VFS pull; there's more stuff, hopefully
-> > for later today, but the worst of the mess should be gone with that one.
-> Has there been any kind of testing that show this approach does indeed
-> improve performance? Any hardcore number? 
-> 
-> Just curious....
+Brad Boyer wrote:
+> On Mon, Mar 08, 2010 at 09:42:06PM +1100, James Morris wrote:
+>   
+>> Since the last version, I've incorporated feedback to add a new top-level 
+>> xattr namespace "nfsd", for storing client-origin xattrs on the server.  
+>> Support for the new namespace has been implemented on ext3 for testing 
+>> purposes.
+>>
+>> Access to this namespace locally requires CAP_SYS_ADMIN, and it is not 
+>> accessible over the wire.  Note that there is still potential for 
+>> confusion between local and remote users, e.g.
+>>
+>> $ setfattr -n user.foo -v bar file.txt
+>>
+>> on an NFS mounted fs will create an xattr on the server called 
+>> nfsd.user.foo, and then if the user logs in locally, they will not see the 
+>> xattr at all.  Similarly, if they create xattrs locally, they will not be 
+>> exported via XATTR.
+>>
+>> Comments welcome.
+>>     
+>
+> I personally think it's a bad idea to not map regular user xattr values
+> directly to what is local to the server. One common thing I've seen in
+> many places is to have local disks on various servers exported over
+> NFS to other servers, but the intent is that the user shouldn't care
+> which server physically hosts the storage. In this case, you want the
+> data to appear the same regardless of the use or non-use of NFS. In
+> this sort of situation, one system will see different data than the
+> others for the same files with the same access level. One possible
+> option would be to make it configurable, kind of like root_squash.
+>   
 
-The main improvement I'm seeing is in number of over the wire COMMIT
-operations. With a standard 2.6.32/33 kernel without these changes, if I
-do something like
+Another is to NFS mount the filesystem back on to the server,
+in which case James' scheme works just dandy. It's a trick that
+I've used more than once in the Unix world for this exact purpose.
+Of course you have to arrange your mount points in advance with
+malice aforethought, but that's likely something you're used to
+by now.
 
-   iozone -t 8 -s 512m -r 128k -i0 -i1
+> 	Brad Boyer
+> 	flar@allandria.com
+>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-security-module" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
+>
+>   
 
-on my old 2GB test machines then I end up seeing 1 COMMIT going on the
-wire for every 4 WRITE requests. IOW: I force the server to fsync for
-every 4x256K I send it.
-
-With the new code, I'm seeing 1 COMMIT being sent for every 50 WRITE
-requests.
-
-Writeback throughput is slightly, but not hugely improved on my test
-rig. Furthermore, the maximum number of unstable writes recorded
-in /proc/meminfo doesn't appear to change much. All this points to the
-fact that most of those extra COMMIT calls were going out for just 1 or
-2 writes, probably as a result of looping in balance_dirty_pages() while
-the server was busy dealing with the first COMMIT.
-
-It is definitely worth getting rid of that extra spam to the server,
-though. Furthermore, I believe that others reported larger performance
-improvements when the number of commits went down.
-
-Cheers
-  Trond
