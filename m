@@ -1,96 +1,207 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-bw0-f209.google.com ([209.85.218.209]:61551 "EHLO
-	mail-bw0-f209.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750747Ab0CANy0 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 1 Mar 2010 08:54:26 -0500
-Received: by bwz1 with SMTP id 1so73081bwz.21
-        for <linux-nfs@vger.kernel.org>; Mon, 01 Mar 2010 05:54:24 -0800 (PST)
-In-Reply-To: <4B8BC02A.5020702@RedHat.com>
-References: <39d46ab51002221033n78035811y959fdd30b155b174@mail.gmail.com>
-	 <4B8BC02A.5020702@RedHat.com>
-Date: Mon, 1 Mar 2010 08:54:24 -0500
-Message-ID: <4d569c331003010554r7ed5e51p135669522bf16b81@mail.gmail.com>
-Subject: Re: [PATCH] gssd: By default, don't spam syslog when users'
-	credentials expire (redux)
-From: Kevin Coffman <kwc@citi.umich.edu>
-To: Andrew Pollock <apollock@google.com>
-Cc: Steve Dickson <SteveD@redhat.com>, linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mx2.netapp.com ([216.240.18.37]:39607 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754561Ab0CIOqG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 9 Mar 2010 09:46:06 -0500
+Cc: linux-nfs@vger.kernel.org
+Message-Id: <ABA6EE88-3584-4DC9-A50B-3B0E06C701FB@netapp.com>
+From: Andy Adamson <andros@netapp.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+In-Reply-To: <20100309014624.GF2999@fieldses.org>
+Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
+Subject: Re: reboot recovery
+Date: Tue, 9 Mar 2010 09:46:04 -0500
+References: <20100309014624.GF2999@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Mon, Mar 1, 2010 at 8:24 AM, Steve Dickson <SteveD@redhat.com> wrote:
-> On 02/22/2010 01:33 PM, Andrew Pollock wrote:
->> This is a continuation of commit 09c7ad1cd9c5ca2fc46631a0057d47309abc8706,
->> adding a couple more cases that can spam syslog
->> ---
->>  utils/gssd/gss_util.c  |    2 +-
->>  utils/gssd/gssd_proc.c |    6 +++---
->>  2 files changed, 4 insertions(+), 4 deletions(-)
->> diff --git a/utils/gssd/gss_util.c b/utils/gssd/gss_util.c
->> index 99aceb3..64dddf1 100644
->> --- a/utils/gssd/gss_util.c
->> +++ b/utils/gssd/gss_util.c
->> @@ -126,7 +126,7 @@ display_status_1(char *m, u_int32_t code, int
->> type, const gss_OID mech)
->>   "gss_display_status called from %s\n", m);
->>   break;
->>   } else {
->> - printerr(0, "ERROR: GSS-API: (%s) error in %s(): %s\n",
->> + printerr(2, "ERROR: GSS-API: (%s) error in %s(): %s\n",
->>      typestr, m, (char *)msg.value);
->>   }
->>
->> diff --git a/utils/gssd/gssd_proc.c b/utils/gssd/gssd_proc.c
->> index be4fb11..5629d97 100644
->> --- a/utils/gssd/gssd_proc.c
->> +++ b/utils/gssd/gssd_proc.c
->> @@ -638,7 +638,7 @@ do_error_downcall(int k5_fd, uid_t uid, int err)
->>   unsigned int timeout = 0;
->>   int zero = 0;
->>
->> - printerr(1, "doing error downcall\n");
->> + printerr(2, "doing error downcall\n");
->>
->>   if (WRITE_BYTES(&p, end, uid)) goto out_err;
->>   if (WRITE_BYTES(&p, end, timeout)) goto out_err;
->> @@ -906,7 +906,7 @@ process_krb5_upcall(struct clnt_info *clp, uid_t
->> uid, int fd, char *tgtname,
->>   int create_resp = -1;
->>   int err, downcall_err = -EACCES;
->>
->> - printerr(1, "handling krb5 upcall (%s)\n", clp->dirname);
->> + printerr(2, "handling krb5 upcall (%s)\n", clp->dirname);
->>
->>   if (tgtname) {
->>   if (clp->servicename) {
->> @@ -1066,7 +1066,7 @@ process_spkm3_upcall(struct clnt_info *clp,
->> uid_t uid, int fd)
->>   }
->>
->>   if (!authgss_get_private_data(auth, &pd)) {
->> - printerr(0, "WARNING: Failed to obtain authentication "
->> + printerr(2, "WARNING: Failed to obtain authentication "
->>      "data for user with uid %d for server %s\n",
->>   uid, clp->servername);
->>   goto out_return_error;
-> The only one I'm concern with is this one. How offend does this pop
-> and how are people going know (without a restart) the reason the
-> are getting deined access is because of obscure error like the
-> gss private data can't be accessed?
+
+On Mar 8, 2010, at 8:46 PM, J. Bruce Fields wrote:
+
+> The Linux server's reboot recovery code has long-standing  
+> architectural
+> problems, fails to adhere to the specifications in some cases, and  
+> does
+> not yet handle NFSv4.1 reboot recovery.  An overhaul has been a
+> long-standing todo.
 >
-> steved.
+> This is my attempt to state the problem and a rough solution.
 >
+> Requirements
+> ^^^^^^^^^^^^
 >
+> Requirements, as compared to current code:
+>
+> 	- Correctly implements the algorithm described in section 8.6.3
+> 	  of rfc 3530, and eliminates known race conditions on recovery.
+> 	- Does not attempt to manage files and directories directly from
+> 	  inside the kernel.
+> 	- Supports RECLAIM_COMPLETE.
+>
+> Requirements, in more detail:
+>
+> A "server instance" is the lifetime from start to shutdown of a  
+> server;
+> a reboot ends one server instance and starts another.  Normally a  
+> server
+> instance consists of a grace period followed by a period of normal
+> operation.  However, a server could go down before the grace period
+> completes.  Call a server instance that completes the grace period
+> "full", and one that does not "partial".
+>
+> Call a client "active" if it holds unexpired state on the server.   
+> Then:
+>
+> 	- An NFSv4.0 client becomes active as soon as it succesfully
+> 	  performs its first OPEN_CONFIRM, or its first reclaim OPEN.
+> 	- An NFSv4.1 client becomes active when it succesfully performs
+> 	  its first OPEN, or a RECLAIM_COMPLETE.
+
+RFC 5661 in section 18.51.3
+
+    Whenever a client establishes a new client ID and before it does the
+    first non-reclaim operation that obtains a lock, it MUST send a
+    RECLAIM_COMPLETE with rca_one_fs set to FALSE, even if there are no
+    locks to reclaim.  If non-reclaim locking operations are done before
+    the RECLAIM_COMPLETE, an NFS4ERR_GRACE error will be returned.
+
+So there will never be a 'first OPEN' (except for an OPEN reclaim)  
+without a RECLAIM_COMPLETE.
+
+
+> 	- Active clients become inactive when they expire.  (Or when
+> 	  they are revoked--but the Linux server does not currently
+> 	  support revocation.)
+> 	- On startup all clients are initially inactive.
+>
+> On startup the server needs access to the list of clients which are
+> permitted to reclaim state.  That list is exactly the list of clients
+> that were active at the end of the most recent full server instance.
+>
+> To maintain such a list, we need records to be stored in stable  
+> storage.
+> Whenever a client changes from inactive to active, or active to
+> inactive, stable storage must be updated, and until the update has
+> completed the server must do nothing that acknowledges the new state.
+> So:
+>
+> 	- When a new client becomes active, a record for that client
+> 	  must be created in stable storage before responding to the rpc
+> 	  in question (OPEN, OPEN_CONFIRM, or RECLAIM_COMPLETE).
+> 	- When a client expires, the record must be removed (or
+> 	  otherwise marked expired) before responding to any requests
+> 	  for locks or other state which would conflict with state held
+> 	  by the expiring client.
+>
+> Updates must be made by upcalls to userspace; the kernel will not be
+> directly involved in managing stable storage.  The upcall interface
+> should be extensible.
+>
+> The records must include the client owner name, to allow identifying
+> clients on restart.  The protocol allows client owner names to consist
+> of up to 1024 bytes of binary data.  (This is the client-supplied
+> long form, not the server-generated shorthand clientid; co_ownerid for
+> 4.1).
+>
+> Also desireable, but not absolutely required in the first
+> implementation:
+>
+> 	- We should not take the state lock while waiting for records to
+> 	  be stored.  (Doing so blocks all other stateful operations
+> 	  while we wait for disk.)
+> 	- The server should be able to end the grace period early when
+> 	  the list of clients allowed to reclaim is empty, or when they
+> 	  are all 4.1 clients, after all have sent RECLAIM_COMPLETE.
+> 	- Will allow pluggable methods for storage of reboot recovery
+> 	  records, as the NFSv2 and NFSv3 code currently does (in order
+> 	  to support high-availability).
+>
+> Possibly also desireable:
+>
+> 	- Record the principal that originally created the client, and
+> 	  whether it had EXCHGID4_FLAG_BIND_PRINC_STATEID (see rfc 5661
+> 	  section 8.4.2.1).
+>
+> Draft design
+> ^^^^^^^^^^^^
+>
+> We will modify rpc.statd to handle to manage state in userspace.
+>
+> Previous prototype code from CITI will be considered as a starting
+> point.
+>
+> Kernel<->user communication will use four files in the "nfsd"
+> filesystem.  All of them will use the encoding used for rpc cache
+> upcalls and downcalls, which consist of whitespace-separated fields
+> escaped as necessary to allow binary data.
+>
+> Three of them will be used for upcalls; statd reads request from them,
+> and writes responses back:
+>
+> create_client:
+> 	- given a client owner, returns an error.  Does not return until
+> 	  a new record has safely been recorded on disk.
+>
+> grace_done:
+> 	- request and reply are both empty; rpc.statd returns only after
+> 	  it has recorded to disk the fact that the grace period
+> 	  completed.
+>
+> expire_client:
+> 	- given a client owner, replies with an empty reply.  Replies
+> 	  only after it has recorded to disk the fact that the client
+> 	  has expired.
+>
+> One additional file will be used for a downcall:
+>
+> allow_client:
+> 	- before starting the server, statd will open this file, write a
+> 	  newline-separated list of client owners permitted to recover,
+> 	  then close the file.  If no clients are allowed to recover, it
+> 	  will still open and close the file.
+>
+> Statd will use the presence of these upcalls to determine whether the
+> server supports the new recovery mechanism.  nfsd may use rpc.statd's
+> open of allow_client to decide whether userspace supports the new
+> mechanism.  Thus allows a mismatched kernel and userspace to still
+> maintain reboot recovery records.
+>
+> In addition, we could support seamless reboot recovery across the
+> transition to the new system by making statd convert between on-disk
+> formats.  However, for simplicity's sake we plan for the server to be
+> refuse all reclaims on the first boot after the transition.
+>
+> By default, statd will store records as files in the directory
+> /var/lib/nfs/v4clients.  The file name will be a hash of the
+> client_owner, and the contents will consist of two newline-separated
+> fields:
+> 	- The client owner, encoded as in the upcall.
+> 	- A timestamp.
+>
+> More fields may be added in the future.
+>
+> Before starting the server, and writing to allow_client, statd will
+> manage boot times and old clients using files in /var/lib/nfs:
+>
+> 	If boot_time exists:
+> 		- It will be read, and the contents interpreted as an
+> 		  ascii-encoded unix time in seconds.
+> 		- All client records older than that time will be removed.
+> 		- The current boot_time will be recorded to
+> 		  new_boot_time (replacing any existing such file).
+> 		- All remaining clients will be written to allow_client.
+> 	If boot_time does not exist, an empty /var/lib/nfs/v4clients/ is
+> 		created if necessary, but nothing else is done.
+>
+> Statd will then wait for create_client, expire_client, and grace_done
+> calls.  On grace_done, it will rename boot_time to old_boot_time, and
+> new_boot_time to boot_time.
+>
+> --b.
 > --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs"  
+> in
 > the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
-I asked this question before, but don't recall an answer.  Unless you
-want to run with "-v" by default, or are depending on a part of the
-original patch that decreases the message level, I don't see why these
-changes from level 1 to leve2 are required??
-
-K.C.
