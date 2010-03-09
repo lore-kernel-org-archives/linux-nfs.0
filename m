@@ -1,52 +1,57 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cdptpa-omtalb.mail.rr.com ([75.180.132.123]:64968 "EHLO
-	cdptpa-omtalb.mail.rr.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751248Ab0CULRl (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 21 Mar 2010 07:17:41 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: trond.myklebust@fys.uio.no
-Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org
-Subject: [PATCH] NFS: don't try to decode GETATTR if DELEGRETURN returned error
-Date: Sun, 21 Mar 2010 07:17:38 -0400
-Message-Id: <1269170258-31596-1-git-send-email-jlayton@redhat.com>
+Received: from fieldses.org ([174.143.236.118]:33239 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750964Ab0CIQKD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 9 Mar 2010 11:10:03 -0500
+Date: Tue, 9 Mar 2010 11:11:27 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: "William A. (Andy) Adamson" <androsadamson@gmail.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: reboot recovery
+Message-ID: <20100309161127.GB23013@fieldses.org>
+References: <20100309014624.GF2999@fieldses.org> <ABA6EE88-3584-4DC9-A50B-3B0E06C701FB@netapp.com> <20100309145354.GB21862@fieldses.org> <89c397151003090655h7f3465f2u36c60cfa0b580516@mail.gmail.com> <20100309151053.GC21862@fieldses.org> <89c397151003090717v7b744eb7i8c1c941f169e45e2@mail.gmail.com>
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <89c397151003090717v7b744eb7i8c1c941f169e45e2@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-The reply parsing code attempts to decode the GETATTR response even if
-the DELEGRETURN portion of the compound returned an error. The GETATTR
-response won't actually exist if that's the case and we're asking the
-parser to read past the end of the response.
+On Tue, Mar 09, 2010 at 10:17:04AM -0500, William A. (Andy) Adamson wrote:
+> On Tue, Mar 9, 2010 at 10:10 AM, J. Bruce Fields <bfields@fieldses.org> wrote:
+> > On Tue, Mar 09, 2010 at 09:55:52AM -0500, William A. (Andy) Adamson wrote:
+> >> On Tue, Mar 9, 2010 at 9:53 AM, J. Bruce Fields <bfields@fieldses.org> wrote:
+> >> > On Tue, Mar 09, 2010 at 09:46:04AM -0500, Andy Adamson wrote:
+> >> >>
+> >> >> RFC 5661 in section 18.51.3
+> >> >>
+> >> >>    Whenever a client establishes a new client ID and before it does the
+> >> >>    first non-reclaim operation that obtains a lock, it MUST send a
+> >> >>    RECLAIM_COMPLETE with rca_one_fs set to FALSE, even if there are no
+> >> >>    locks to reclaim.  If non-reclaim locking operations are done before
+> >> >>    the RECLAIM_COMPLETE, an NFS4ERR_GRACE error will be returned.
+> >> >>
+> >> >> So there will never be a 'first OPEN' (except for an OPEN reclaim)
+> >> >> without a RECLAIM_COMPLETE.
+> >> >
+> >> > There will be in the case of an entirely new client, or a client that
+> >> > missed the grace period completely.
+> >>
+> >> No, the MUST above applies to both a new client/client that missed the
+> >> grace period completely. In both cases the client is establishing a
+> >> new client ID.
+> >
+> > Oog, sorry, obviously I can't read--I see what you mean now.
+> >
+> > I haven't seen any client send a RECLAIM_COMPLETE or any server demand
+> > one yet, so do we all have this wrong?
+> 
+> The latest Linux client does send a RECLAIM_COMPLETE after each
+> EXCHANGE_ID. This change was part of the 'A' tasks for NFSv4.1.
 
-This bug is fairly benign. The parser catches this without reading past
-the end of the response and decode_getfattr returns -EIO. Earlier
-kernels however had decode_op_hdr using the READ_BUF macro, and this
-bug would make this printk pop any time the client got an error from
-a delegreturn:
+Got it, corrected.
 
-kernel: decode_op_hdr: reply buffer overflowed in line XXXX
+In that case I think as a matter of priorities I should implement
+RECLAIM_COMPLETE before fixing the userland interface, etc., rather than
+after.  I'll take a look....
 
-More recent kernels seem to have replaced this printk with a dprintk.
-
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- fs/nfs/nfs4xdr.c |    2 ++
- 1 files changed, 2 insertions(+), 0 deletions(-)
-
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index 4d338be..dd17713 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -5552,6 +5552,8 @@ static int nfs4_xdr_dec_delegreturn(struct rpc_rqst *rqstp, __be32 *p, struct nf
- 	if (status != 0)
- 		goto out;
- 	status = decode_delegreturn(&xdr);
-+	if (status != 0)
-+		goto out;
- 	decode_getfattr(&xdr, res->fattr, res->server,
- 			!RPC_IS_ASYNC(rqstp->rq_task));
- out:
--- 
-1.6.6.1
-
+--b.
