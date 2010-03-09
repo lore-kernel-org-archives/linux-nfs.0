@@ -1,78 +1,51 @@
-From: Eric Veith1 <eric.veith-tA70FqPdS9bQT0dZR+AlfA@public.gmane.org>
-Subject: Using xdr_string(..) causes segmentation fault
-Date: Tue, 9 Mar 2010 18:31:20 +0100
-Message-ID: <OF9AF9E11F.A0757E1F-ONC12576E1.005FC262-C12576E1.00604111@de.ibm.com>
+From: Lukas Hejtmanek <xhejtman@ics.muni.cz>
+Subject: Re: ANNOUNCE: nfs-utils-1.2.2 released.
+Date: Tue, 9 Mar 2010 18:41:59 +0100
+Message-ID: <20100309174159.GW19154@ics.muni.cz>
+References: <4d569c331003080544n40a12f52x74b39420a697e546@mail.gmail.com>
+	<20100308153042.GB19154@ics.muni.cz>
+	<4d569c331003081121p73fac846g1a1ef32f1ec8132@mail.gmail.com>
+	<20100308194054.GC19154@ics.muni.cz>
+	<20100308144825.0e1afa59@tlielax.poochiereds.net>
+	<20100309103548.GJ19154@ics.muni.cz>
+	<4d569c331003090718j6cde9853o6142b2fd2900248e@mail.gmail.com>
+	<20100309155310.GR19154@ics.muni.cz>
+	<4d569c331003090904i3eca4b93h1bce760e72bac370@mail.gmail.com>
+	<20100309172908.GU19154@ics.muni.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-To: NFS list <linux-nfs@vger.kernel.org>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mtagate3.de.ibm.com ([195.212.17.163]:33846 "EHLO
-	mtagate3.de.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752376Ab0CIRbX convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 9 Mar 2010 12:31:23 -0500
-Received: from d12nrmr1607.megacenter.de.ibm.com (d12nrmr1607.megacenter.de.ibm.com [9.149.167.49])
-	by mtagate3.de.ibm.com (8.13.1/8.13.1) with ESMTP id o29HVLY7019440
-	for <linux-nfs@vger.kernel.org>; Tue, 9 Mar 2010 17:31:21 GMT
-Received: from d12av02.megacenter.de.ibm.com (d12av02.megacenter.de.ibm.com [9.149.165.228])
-	by d12nrmr1607.megacenter.de.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id o29HVM6f1577200
-	for <linux-nfs@vger.kernel.org>; Tue, 9 Mar 2010 18:31:22 +0100
-Received: from d12av02.megacenter.de.ibm.com (loopback [127.0.0.1])
-	by d12av02.megacenter.de.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id o29HVMAl002214
-	for <linux-nfs@vger.kernel.org>; Tue, 9 Mar 2010 18:31:22 +0100
-Received: from d12ml072.megacenter.de.ibm.com (d12ml072.megacenter.de.ibm.com [9.149.166.115])
-	by d12av02.megacenter.de.ibm.com (8.12.11.20060308/8.12.11) with ESMTP id o29HVMeX002211
-	for <linux-nfs@vger.kernel.org>; Tue, 9 Mar 2010 18:31:22 +0100
-Sender: linux-nfs-owner@vger.kernel.org
+Content-Type: text/plain; charset="iso-8859-2"
+Cc: NFSv3 list <linux-nfs@vger.kernel.org>, nfsv4@linux-nfs.org,
+	Jeff Layton <jlayton@redhat.com>
+To: Kevin Coffman <kwc@citi.umich.edu>
+Return-path: <nfsv4-bounces@linux-nfs.org>
+In-Reply-To: <20100309172908.GU19154@ics.muni.cz>
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/options/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@linux-nfs.org>
+List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
+Sender: nfsv4-bounces@linux-nfs.org
+Errors-To: nfsv4-bounces@linux-nfs.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hello list,
+On Tue, Mar 09, 2010 at 06:29:08PM +0100, Lukas Hejtmanek wrote:
+> But I found the problem. They are still autotools which are failing. Some=
+thing
+> adds -lgssapi_krb5 into KRBLIBS. If I remove -lgssapi_krb5 and use -lgssg=
+lue
+> instead, it runs fine.
 
-this post is not strictly NFS but RPC related; I post it here for a lac=
-k=20
-of knowing about a better place. If it was totally wrong to post it her=
-e,=20
-would somebody please point me to a better place? Thanks!
+this seems to be caused by configure, which contains:
+KRBLIBS=3D`$K5CONFIG --libs gssapi`
 
-I'm trying to do some very basic RPC calls both for testing stuff and o=
-ut=20
-of interest. I'd like to, in this example, issue a RPC mount call.=20
-However, I'm getting a segmentation fault which I traced back to=20
-xdr_string of <rpc/rpc.h>:
+$ krb5-config --libs gssapi
+-Wl,-Bsymbolic-functions -lgssapi_krb5 -lkrb5 -lk5crypto -lcom_err
 
----%<---
-char *mountpoint;
-asprintf(&mountpoint, "%s\0", argv[2]);
+./aclocal/kerberos5.m4 contains as well:
+KRBLIBS=3D`$K5CONFIG --libs gssapi`
 
-mountres3 *mnt3res =3D malloc(sizeof(mountres3));
-struct timeval timeout =3D {
-    .tv_sec =3D 60,
-    .tv_usec =3D 0
-};
-enum clnt_stat stat =3D clnt_call(mount_clnt, MOUNTPROC3_MNT,=20
-        (xdrproc_t) xdr_dirpath, (caddr_t) mountpoint,
-        (xdrproc_t) xdr_mountres3, (caddr_t) mnt3res,=20
-        timeout);
---->%---
+-- =
 
-I've used the mount.x file with rpcgen to get xdr_dirpath and the likes=
-=2E=20
-
-Could somebody please point out the mistake I'm obviously doing here?
-
-Thanks alot in advance,
-                Eric
-
---
-Eric MSP Veith <eric.veith-tA70FqPdS9bQT0dZR+AlfA@public.gmane.org>
-Hechtsheimer Str. 2
-DE-55131 Mainz
-Germany
-
-IBM Deutschland GmbH
-Vorsitzender des Aufsichtsrats: Erich Clementi
-Gesch=E4ftsf=FChrung: Martin Jetter (Vorsitzender), Reinhard Reschke,=20
-Christoph Grandpierre, Matthias Hartmann, Michael Diemer, Martina=20
-Koederitz
-Sitz der Gesellschaft: Stuttgart
-Registergericht: Amtsgericht Stuttgart, HRB 14562
-WEEE-Reg.-Nr. DE 99369940
+Luk=E1=B9 Hejtm=E1nek
