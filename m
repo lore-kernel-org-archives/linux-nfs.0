@@ -1,54 +1,217 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail2.shareable.org ([80.68.89.115]:56035 "EHLO
-	mail2.shareable.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751774Ab0CITf7 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 9 Mar 2010 14:35:59 -0500
-Date: Tue, 9 Mar 2010 19:35:45 +0000
-From: Jamie Lokier <jamie@shareable.org>
-To: Brad Boyer <flar@allandria.com>
-Cc: Casey Schaufler <casey@schaufler-ca.com>, James Morris <jmorris@namei.org>,
-        linux-nfs@vger.kernel.org, linux-security-module@vger.kernel.org,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>, Neil Brown <neilb@suse.de>,
-        linux-fsdevel@vger.kernel.org
-Subject: Re: [PATCH 0/6][v4][RFC] NFSv3: implement extended attribute protocol (XATTR)
-Message-ID: <20100309193545.GE11042@shareable.org>
-References: <alpine.LRH.2.00.1002261457420.25193@tundra.namei.org> <alpine.LRH.2.00.1003082122340.6314@tundra.namei.org> <20100309035932.GA14237@cynthia.pants.nu> <4B95E167.40306@schaufler-ca.com> <20100309070444.GA18216@cynthia.pants.nu>
+Received: from fieldses.org ([174.143.236.118]:41182 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753786Ab0CIOwa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 9 Mar 2010 09:52:30 -0500
+Date: Tue, 9 Mar 2010 09:53:54 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Andy Adamson <andros@netapp.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: reboot recovery
+Message-ID: <20100309145354.GB21862@fieldses.org>
+References: <20100309014624.GF2999@fieldses.org> <ABA6EE88-3584-4DC9-A50B-3B0E06C701FB@netapp.com>
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20100309070444.GA18216@cynthia.pants.nu>
+In-Reply-To: <ABA6EE88-3584-4DC9-A50B-3B0E06C701FB@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Brad Boyer wrote:
-> On Mon, Mar 08, 2010 at 09:49:27PM -0800, Casey Schaufler wrote:
-> > Another is to NFS mount the filesystem back on to the server,
-> > in which case James' scheme works just dandy. It's a trick that
-> > I've used more than once in the Unix world for this exact purpose.
-> > Of course you have to arrange your mount points in advance with
-> > malice aforethought, but that's likely something you're used to
-> > by now.
-> 
-> That would definitely work, but it's not ideal. Obviously if it's
-> being accessed over NFS in one place it probably good enough
-> everywhere, but it's overhead that could be eliminated.
+On Tue, Mar 09, 2010 at 09:46:04AM -0500, Andy Adamson wrote:
+>
+> On Mar 8, 2010, at 8:46 PM, J. Bruce Fields wrote:
+>
+>> The Linux server's reboot recovery code has long-standing  
+>> architectural
+>> problems, fails to adhere to the specifications in some cases, and  
+>> does
+>> not yet handle NFSv4.1 reboot recovery.  An overhaul has been a
+>> long-standing todo.
+>>
+>> This is my attempt to state the problem and a rough solution.
+>>
+>> Requirements
+>> ^^^^^^^^^^^^
+>>
+>> Requirements, as compared to current code:
+>>
+>> 	- Correctly implements the algorithm described in section 8.6.3
+>> 	  of rfc 3530, and eliminates known race conditions on recovery.
+>> 	- Does not attempt to manage files and directories directly from
+>> 	  inside the kernel.
+>> 	- Supports RECLAIM_COMPLETE.
+>>
+>> Requirements, in more detail:
+>>
+>> A "server instance" is the lifetime from start to shutdown of a  
+>> server;
+>> a reboot ends one server instance and starts another.  Normally a  
+>> server
+>> instance consists of a grace period followed by a period of normal
+>> operation.  However, a server could go down before the grace period
+>> completes.  Call a server instance that completes the grace period
+>> "full", and one that does not "partial".
+>>
+>> Call a client "active" if it holds unexpired state on the server.   
+>> Then:
+>>
+>> 	- An NFSv4.0 client becomes active as soon as it succesfully
+>> 	  performs its first OPEN_CONFIRM, or its first reclaim OPEN.
+>> 	- An NFSv4.1 client becomes active when it succesfully performs
+>> 	  its first OPEN, or a RECLAIM_COMPLETE.
+>
+> RFC 5661 in section 18.51.3
+>
+>    Whenever a client establishes a new client ID and before it does the
+>    first non-reclaim operation that obtains a lock, it MUST send a
+>    RECLAIM_COMPLETE with rca_one_fs set to FALSE, even if there are no
+>    locks to reclaim.  If non-reclaim locking operations are done before
+>    the RECLAIM_COMPLETE, an NFS4ERR_GRACE error will be returned.
+>
+> So there will never be a 'first OPEN' (except for an OPEN reclaim)  
+> without a RECLAIM_COMPLETE.
 
-As a real example:
+There will be in the case of an entirely new client, or a client that
+missed the grace period completely.
 
-Each user has a PC with their own home directory being local, fast
-storage, but /home is filled with NFS auto-mounts to everyone else's
-home directories, on their individual PCs.  The auto-mount map has an
-exception, so the local user's home directory is a symlink to the
-local storage, instead of an NFS mount.
+(But I should have specified "first non-reclaim OPEN" in the 4.1 case,
+not just "first OPEN".)
 
-A scheme like that works very well for occasional access to other
-peoples files, and for logging to each other's machines transparently,
-yet having fast performance for their own files when using their local
-machine.
+--b.
 
-In an environment where I've used that, forcing local access to go
-over local NFS would have destroyed performance for things like big
-compiles, running find, git, grep etc. that people do on their own
-directories.
-
--- Jamie
+>
+>
+>> 	- Active clients become inactive when they expire.  (Or when
+>> 	  they are revoked--but the Linux server does not currently
+>> 	  support revocation.)
+>> 	- On startup all clients are initially inactive.
+>>
+>> On startup the server needs access to the list of clients which are
+>> permitted to reclaim state.  That list is exactly the list of clients
+>> that were active at the end of the most recent full server instance.
+>>
+>> To maintain such a list, we need records to be stored in stable  
+>> storage.
+>> Whenever a client changes from inactive to active, or active to
+>> inactive, stable storage must be updated, and until the update has
+>> completed the server must do nothing that acknowledges the new state.
+>> So:
+>>
+>> 	- When a new client becomes active, a record for that client
+>> 	  must be created in stable storage before responding to the rpc
+>> 	  in question (OPEN, OPEN_CONFIRM, or RECLAIM_COMPLETE).
+>> 	- When a client expires, the record must be removed (or
+>> 	  otherwise marked expired) before responding to any requests
+>> 	  for locks or other state which would conflict with state held
+>> 	  by the expiring client.
+>>
+>> Updates must be made by upcalls to userspace; the kernel will not be
+>> directly involved in managing stable storage.  The upcall interface
+>> should be extensible.
+>>
+>> The records must include the client owner name, to allow identifying
+>> clients on restart.  The protocol allows client owner names to consist
+>> of up to 1024 bytes of binary data.  (This is the client-supplied
+>> long form, not the server-generated shorthand clientid; co_ownerid for
+>> 4.1).
+>>
+>> Also desireable, but not absolutely required in the first
+>> implementation:
+>>
+>> 	- We should not take the state lock while waiting for records to
+>> 	  be stored.  (Doing so blocks all other stateful operations
+>> 	  while we wait for disk.)
+>> 	- The server should be able to end the grace period early when
+>> 	  the list of clients allowed to reclaim is empty, or when they
+>> 	  are all 4.1 clients, after all have sent RECLAIM_COMPLETE.
+>> 	- Will allow pluggable methods for storage of reboot recovery
+>> 	  records, as the NFSv2 and NFSv3 code currently does (in order
+>> 	  to support high-availability).
+>>
+>> Possibly also desireable:
+>>
+>> 	- Record the principal that originally created the client, and
+>> 	  whether it had EXCHGID4_FLAG_BIND_PRINC_STATEID (see rfc 5661
+>> 	  section 8.4.2.1).
+>>
+>> Draft design
+>> ^^^^^^^^^^^^
+>>
+>> We will modify rpc.statd to handle to manage state in userspace.
+>>
+>> Previous prototype code from CITI will be considered as a starting
+>> point.
+>>
+>> Kernel<->user communication will use four files in the "nfsd"
+>> filesystem.  All of them will use the encoding used for rpc cache
+>> upcalls and downcalls, which consist of whitespace-separated fields
+>> escaped as necessary to allow binary data.
+>>
+>> Three of them will be used for upcalls; statd reads request from them,
+>> and writes responses back:
+>>
+>> create_client:
+>> 	- given a client owner, returns an error.  Does not return until
+>> 	  a new record has safely been recorded on disk.
+>>
+>> grace_done:
+>> 	- request and reply are both empty; rpc.statd returns only after
+>> 	  it has recorded to disk the fact that the grace period
+>> 	  completed.
+>>
+>> expire_client:
+>> 	- given a client owner, replies with an empty reply.  Replies
+>> 	  only after it has recorded to disk the fact that the client
+>> 	  has expired.
+>>
+>> One additional file will be used for a downcall:
+>>
+>> allow_client:
+>> 	- before starting the server, statd will open this file, write a
+>> 	  newline-separated list of client owners permitted to recover,
+>> 	  then close the file.  If no clients are allowed to recover, it
+>> 	  will still open and close the file.
+>>
+>> Statd will use the presence of these upcalls to determine whether the
+>> server supports the new recovery mechanism.  nfsd may use rpc.statd's
+>> open of allow_client to decide whether userspace supports the new
+>> mechanism.  Thus allows a mismatched kernel and userspace to still
+>> maintain reboot recovery records.
+>>
+>> In addition, we could support seamless reboot recovery across the
+>> transition to the new system by making statd convert between on-disk
+>> formats.  However, for simplicity's sake we plan for the server to be
+>> refuse all reclaims on the first boot after the transition.
+>>
+>> By default, statd will store records as files in the directory
+>> /var/lib/nfs/v4clients.  The file name will be a hash of the
+>> client_owner, and the contents will consist of two newline-separated
+>> fields:
+>> 	- The client owner, encoded as in the upcall.
+>> 	- A timestamp.
+>>
+>> More fields may be added in the future.
+>>
+>> Before starting the server, and writing to allow_client, statd will
+>> manage boot times and old clients using files in /var/lib/nfs:
+>>
+>> 	If boot_time exists:
+>> 		- It will be read, and the contents interpreted as an
+>> 		  ascii-encoded unix time in seconds.
+>> 		- All client records older than that time will be removed.
+>> 		- The current boot_time will be recorded to
+>> 		  new_boot_time (replacing any existing such file).
+>> 		- All remaining clients will be written to allow_client.
+>> 	If boot_time does not exist, an empty /var/lib/nfs/v4clients/ is
+>> 		created if necessary, but nothing else is done.
+>>
+>> Statd will then wait for create_client, expire_client, and grace_done
+>> calls.  On grace_done, it will rename boot_time to old_boot_time, and
+>> new_boot_time to boot_time.
+>>
+>> --b.
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs"  
+>> in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
