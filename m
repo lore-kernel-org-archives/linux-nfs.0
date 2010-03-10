@@ -1,78 +1,134 @@
-From: "J. Bruce Fields" <bfields@citi.umich.edu>
-Subject: Re: [PATCH 02/11] sunrpc: take reference to bc_xprt in sunrpc layer
-Date: Wed, 10 Mar 2010 14:05:45 -0500
-Message-ID: <20100310190545.GC23974@fieldses.org>
-References: <1268180896-30921-1-git-send-email-bfields@citi.umich.edu> <1268180896-30921-2-git-send-email-bfields@citi.umich.edu> <1268180896-30921-3-git-send-email-bfields@citi.umich.edu> <1268182980.9419.40.camel@localhost.localdomain>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs@vger.kernel.org
+From: "J. R. Okajima" <hooanon05-/E1597aS9LR3+QwDJ9on6Q@public.gmane.org>
+Subject: Re: [PATCH 10/12] NFS: Simplify nfs_wb_page()
+Date: Thu, 11 Mar 2010 03:51:49 +0900
+Message-ID: <16839.1268247109@jrobl>
+References: <20100125221544.16750.70574.stgit@localhost.localdomain> <20100125221545.16750.19154.stgit@localhost.localdomain>
+Cc: linux-nfs@vger.kernel.org, Wu Fengguang <fengguang.wu@intel.com>,
+	Peter Zijlstra <peterz@infradead.org>, Jan Kara <jack@suse.cz>,
+	Steve Rago <sar-a+KepyhlMvJWk0Htik3J/w@public.gmane.org>,
+	Jens Axboe <jens.axboe@oracle.com>,
+	Peter Staubach <staubach@redhat.com>,
+	Arjan van de Ven <arjan@infradead.org>,
+	Ingo Molnar <mingo@elte.hu>, linux-fsdevel@vger.kernel.org,
+	Christoph Hellwig <hch@lst.de>,
+	Al Viro <viro@ZenIV.linux.org.uk>
 To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:57946 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932759Ab0CJTES (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 10 Mar 2010 14:04:18 -0500
-In-Reply-To: <1268182980.9419.40.camel-bi+AKbBUZKY6gyzm1THtWbp2dZbC/Bob@public.gmane.org>
+Received: from mfbichi11.ns.itscom.net ([219.110.2.189]:49601 "EHLO
+	mfbichi11.ns.itscom.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932739Ab0CJTJz (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 10 Mar 2010 14:09:55 -0500
+In-Reply-To: <20100125221545.16750.19154.stgit-bi+AKbBUZKY6gyzm1THtWbp2dZbC/Bob@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Mar 09, 2010 at 08:03:00PM -0500, Trond Myklebust wrote:
-> On Tue, 2010-03-09 at 19:28 -0500, J. Bruce Fields wrote: 
-> > Currently we're requiring whoever holds the reference to a client set up
-> > the on the backchannel to also hold a reference to the forechannel
-> > transport; but this should be the responsibility of the lower level
-> > code.
-> > 
-> > Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
-> > Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
-> > ---
-> >  net/sunrpc/xprtsock.c |    4 ++++
-> >  1 files changed, 4 insertions(+), 0 deletions(-)
-> > 
-> > diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-> > index a91f0a4..5adc000 100644
-> > --- a/net/sunrpc/xprtsock.c
-> > +++ b/net/sunrpc/xprtsock.c
-> > @@ -792,6 +792,8 @@ static void xs_destroy(struct rpc_xprt *xprt)
-> >  
-> >  	xs_close(xprt);
-> >  	xs_free_peer_addresses(xprt);
-> > +	if (xprt->bc_xprt)
-> > +		svc_xprt_put(xprt->bc_xprt);
-> >  	kfree(xprt->slot);
-> >  	kfree(xprt);
-> >  	module_put(THIS_MODULE);
-> > @@ -2510,6 +2512,7 @@ static struct rpc_xprt *xs_setup_bc_tcp(struct xprt_create *args)
-> >  	 * forechannel
-> >  	 */
-> >  	xprt->bc_xprt = args->bc_xprt;
-> > +	svc_xprt_get(xprt->bc_xprt);
-> >  	bc_sock = container_of(args->bc_xprt, struct svc_sock, sk_xprt);
-> >  	bc_sock->sk_bc_xprt = xprt;
-> >  	transport->sock = bc_sock->sk_sock;
-> > @@ -2552,6 +2555,7 @@ static struct rpc_xprt *xs_setup_bc_tcp(struct xprt_create *args)
-> >  		return xprt;
-> >  	ret = ERR_PTR(-EINVAL);
-> >  out_err:
-> > +	svc_xprt_put(xprt->bc_xprt);
-> >  	kfree(xprt->slot);
-> >  	kfree(xprt);
-> >  	return ret;
-> 
-> OK... This makes my head spin.
-> 
-> Why should the back channel socket hold a reference to the svc_sock? The
-> process that owns both of these things is an RPC server process. It
-> already holds a reference to the svc_sock and presumably also to the
-> back channel socket.
 
-Only while it's actually processing an rpc, I assume.  
+Trond Myklebust:
+> -static int nfs_wb_page_priority(struct inode *inode, struct page *page,
+> -				int how)
+> +/*
+> + * Write back all requests on one page - we do this before reading it.
+> + */
+> +int nfs_wb_page(struct inode *inode, struct page *page)
+>  {
+	:::
+> -	do {
+> +	while(PagePrivate(page)) {
+>  		if (clear_page_dirty_for_io(page)) {
+>  			ret = nfs_writepage_locked(page, &wbc);
+>  			if (ret < 0)
+>  				goto out_error;
+> -		} else if (!PagePrivate(page))
+> +		}
+> +		req = nfs_find_and_lock_request(page);
+> +		if (!req)
+>  			break;
+> -		ret = nfs_sync_mapping_wait(page->mapping, &wbc, how);
+> -		if (ret < 0)
+> +		if (IS_ERR(req)) {
+> +			ret = PTR_ERR(req);
+>  			goto out_error;
+	:::
 
-I'll take a harder look at what should be the lifetime of the server
-socket that the backchannel requests use.
+Hello Trond,
 
-By the way, we also need to make sure the nfs server code gets some kind
-of call when the client closes the connection, so we can set
-callback-down session flags appropriately.
+I am unsure whether this nfs_find_and_lock_request() call is correct or
+not, but it brings me a problem.
+This call trace in "kswapd blocked for more than brabra" message shows
+that generic_delete_inode() blocked.
+Is this put_nfs_open_context() -- iput() call in shrink_page_list()
+context intended?
+If not, I'd suggest a patch like this.
 
---b.
+
+INFO: task kswapd0:305 blocked for more than 120 seconds.
+"echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables this message.
+kswapd0       D 0000000000000001     0   305      2 0x00000000
+ ffff88001f21d4f0 0000000000000046 ffff88001fdea680 ffff88001f21c000
+ ffff88001f21dfd8 ffff88001f21c000 ffff88001f21dfd8 ffff88001f21dfd8
+ ffff88001fdea040 0000000000014c00 0000000000000001 ffff88001fdea040
+Call Trace:
+ [<ffffffff8146155d>] io_schedule+0x4d/0x70
+ [<ffffffff810d2be5>] sync_page+0x65/0xa0
+ [<ffffffff81461b12>] __wait_on_bit_lock+0x52/0xb0
+ [<ffffffff810d2b80>] ? sync_page+0x0/0xa0
+ [<ffffffff810d2b64>] __lock_page+0x64/0x70
+ [<ffffffff81070ce0>] ? wake_bit_function+0x0/0x40
+ [<ffffffff810df1d4>] truncate_inode_pages_range+0x344/0x4a0
+ [<ffffffff810df340>] truncate_inode_pages+0x10/0x20
+ [<ffffffff8112cbfe>] generic_delete_inode+0x15e/0x190
+ [<ffffffff8112cc8d>] generic_drop_inode+0x5d/0x80
+ [<ffffffff8112bb88>] iput+0x78/0x80
+ [<ffffffff811bc908>] nfs_dentry_iput+0x38/0x50
+ [<ffffffff811285f4>] dentry_iput+0x84/0x110
+ [<ffffffff811286ae>] d_kill+0x2e/0x60
+ [<ffffffff8112912a>] dput+0x7a/0x170
+ [<ffffffff8111e925>] path_put+0x15/0x40
+ [<ffffffff811c3a44>] __put_nfs_open_context+0xa4/0xb0
+ [<ffffffff811cb5d0>] ? nfs_free_request+0x0/0x50
+ [<ffffffff811c3b0b>] put_nfs_open_context+0xb/0x10
+ [<ffffffff811cb5f9>] nfs_free_request+0x29/0x50
+ [<ffffffff81234b7e>] kref_put+0x8e/0xe0
+ [<ffffffff811cb594>] nfs_release_request+0x14/0x20
+ [<ffffffff811cf769>] nfs_find_and_lock_request+0x89/0xa0
+ [<ffffffff811d1180>] nfs_wb_page+0x80/0x110
+ [<ffffffff811c0770>] nfs_release_page+0x70/0x90
+ [<ffffffff810d18ee>] try_to_release_page+0x5e/0x80
+ [<ffffffff810e1178>] shrink_page_list+0x638/0x860
+ [<ffffffff810e19de>] shrink_zone+0x63e/0xc40
+ [<ffffffff81464437>] ? _raw_spin_unlock+0x57/0x70
+ [<ffffffff8107641e>] ? up_read+0x1e/0x40
+ [<ffffffff810e26a9>] kswapd+0x6c9/0xa20
+ [<ffffffff810df700>] ? isolate_pages_global+0x0/0x280
+ [<ffffffff81070ca0>] ? autoremove_wake_function+0x0/0x40
+ [<ffffffff810e1fe0>] ? kswapd+0x0/0xa20
+ [<ffffffff810706d6>] kthread+0x96/0xb0
+ [<ffffffff8100b5a4>] kernel_thread_helper+0x4/0x10
+ [<ffffffff81464f14>] ? restore_args+0x0/0x30
+ [<ffffffff81070640>] ? kthread+0x0/0xb0
+ [<ffffffff8100b5a0>] ? kernel_thread_helper+0x0/0x10
+no locks held by kswapd0/305.
+
+
+diff --git a/fs/nfs/file.c b/fs/nfs/file.c
+index ae8d022..ffa5463 100644
+--- a/fs/nfs/file.c
++++ b/fs/nfs/file.c
+@@ -491,8 +491,13 @@ static int nfs_release_page(struct page *page, gfp_t gfp)
+ {
+ 	dfprintk(PAGECACHE, "NFS: release_page(%p)\n", page);
+ 
+-	if (gfp & __GFP_WAIT)
++	if (gfp & __GFP_WAIT) {
++		struct inode *inode;
++
++		inode = igrab(page->mapping->host);
+ 		nfs_wb_page(page->mapping->host, page);
++		iput(inode);
++	}
+ 	/* If PagePrivate() is set, then the page is not freeable */
+ 	if (PagePrivate(page))
+ 		return 0;
+
+
+J. R. Okajima
