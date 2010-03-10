@@ -1,48 +1,52 @@
-From: Lukas Hejtmanek <xhejtman@ics.muni.cz>
-Subject: Re: ANNOUNCE: nfs-utils-1.2.2 released.
-Date: Tue, 9 Mar 2010 19:52:31 +0100
-Message-ID: <20100309185230.GX19154@ics.muni.cz>
-References: <4d569c331003081121p73fac846g1a1ef32f1ec8132@mail.gmail.com>
-	<20100308194054.GC19154@ics.muni.cz>
-	<20100308144825.0e1afa59@tlielax.poochiereds.net>
-	<20100309103548.GJ19154@ics.muni.cz>
-	<4d569c331003090718j6cde9853o6142b2fd2900248e@mail.gmail.com>
-	<20100309155310.GR19154@ics.muni.cz>
-	<4d569c331003090904i3eca4b93h1bce760e72bac370@mail.gmail.com>
-	<20100309172908.GU19154@ics.muni.cz>
-	<20100309174159.GW19154@ics.muni.cz>
-	<4d569c331003091026r7e83523bwb8c448edf90441ed@mail.gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="iso-8859-2"
-Cc: NFSv3 list <linux-nfs@vger.kernel.org>, nfsv4@linux-nfs.org,
-	Jeff Layton <jlayton@redhat.com>
-To: Kevin Coffman <kwc@citi.umich.edu>
-Return-path: <nfsv4-bounces@linux-nfs.org>
-In-Reply-To: <4d569c331003091026r7e83523bwb8c448edf90441ed@mail.gmail.com>
-List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/options/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
-List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
-List-Post: <mailto:nfsv4@linux-nfs.org>
-List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
-List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
-Sender: nfsv4-bounces@linux-nfs.org
-Errors-To: nfsv4-bounces@linux-nfs.org
+From: "J. Bruce Fields" <bfields@citi.umich.edu>
+Subject: [PATCH 05/11] nfsd4: shutdown callbacks on expiry
+Date: Tue,  9 Mar 2010 19:28:10 -0500
+Message-ID: <1268180896-30921-6-git-send-email-bfields@citi.umich.edu>
+References: <1268180896-30921-1-git-send-email-bfields@citi.umich.edu>
+ <1268180896-30921-2-git-send-email-bfields@citi.umich.edu>
+ <1268180896-30921-3-git-send-email-bfields@citi.umich.edu>
+ <1268180896-30921-4-git-send-email-bfields@citi.umich.edu>
+ <1268180896-30921-5-git-send-email-bfields@citi.umich.edu>
+Cc: "J. Bruce Fields" <bfields@citi.umich.edu>
+To: linux-nfs@vger.kernel.org
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from fieldses.org ([174.143.236.118]:42165 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755495Ab0CJA0v (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 9 Mar 2010 19:26:51 -0500
+In-Reply-To: <1268180896-30921-5-git-send-email-bfields@citi.umich.edu>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Mar 09, 2010 at 01:26:14PM -0500, Kevin Coffman wrote:
-> Yes, but the utils/gssd/Makefile should link librpcsecgss and
-> libgssglue before the Kerberos libs.
+Once we've expired the client, there's no further purpose to the
+callbacks; go ahead and shut down the callback client rather than
+waiting for the last reference to go.
 
-The Makefile does not link librpcsecgss and glue at all. So I put pkg-config
---libs librpcsecgss to the end.
+Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
+---
+ fs/nfsd/nfs4state.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
 
-So it seems to be the only bug, why my autotools do not set RPCSECLIBS and
-RPCSECCFLAGS. (They are set empty.)
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 2d1ee98..9762fc0 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -697,7 +697,6 @@ shutdown_callback_client(struct nfs4_client *clp)
+ static inline void
+ free_client(struct nfs4_client *clp)
+ {
+-	shutdown_callback_client(clp);
+ 	if (clp->cl_cred.cr_group_info)
+ 		put_group_info(clp->cl_cred.cr_group_info);
+ 	kfree(clp->cl_principal);
+@@ -750,6 +749,7 @@ expire_client(struct nfs4_client *clp)
+ 				 se_perclnt);
+ 		release_session(ses);
+ 	}
++	shutdown_callback_client(clp);
+ 	put_nfs4_client(clp);
+ }
+ 
+-- 
+1.6.3.3
 
-(I don't see any checking for RPCSECGSS or GSSGLUE messages as output of
-./configure)
-
--- =
-
-Luk=E1=B9 Hejtm=E1nek
