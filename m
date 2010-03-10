@@ -1,130 +1,61 @@
 From: "J. Bruce Fields" <bfields@citi.umich.edu>
-Subject: [PATCH 09/11] nfsd: cl_count is unused
-Date: Tue,  9 Mar 2010 19:28:14 -0500
-Message-ID: <1268180896-30921-10-git-send-email-bfields@citi.umich.edu>
+Subject: [PATCH 02/11] sunrpc: take reference to bc_xprt in sunrpc layer
+Date: Tue,  9 Mar 2010 19:28:07 -0500
+Message-ID: <1268180896-30921-3-git-send-email-bfields@citi.umich.edu>
 References: <1268180896-30921-1-git-send-email-bfields@citi.umich.edu>
  <1268180896-30921-2-git-send-email-bfields@citi.umich.edu>
- <1268180896-30921-3-git-send-email-bfields@citi.umich.edu>
- <1268180896-30921-4-git-send-email-bfields@citi.umich.edu>
- <1268180896-30921-5-git-send-email-bfields@citi.umich.edu>
- <1268180896-30921-6-git-send-email-bfields@citi.umich.edu>
- <1268180896-30921-7-git-send-email-bfields@citi.umich.edu>
- <1268180896-30921-8-git-send-email-bfields@citi.umich.edu>
- <1268180896-30921-9-git-send-email-bfields@citi.umich.edu>
-Cc: "J. Bruce Fields" <bfields@citi.umich.edu>
+Cc: "J. Bruce Fields" <bfields@citi.umich.edu>,
+	Trond Myklebust <Trond.Myklebust@netapp.com>
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:42177 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:42171 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755716Ab0CJA0v (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	id S1755569Ab0CJA0v (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
 	Tue, 9 Mar 2010 19:26:51 -0500
-In-Reply-To: <1268180896-30921-9-git-send-email-bfields@citi.umich.edu>
+In-Reply-To: <1268180896-30921-2-git-send-email-bfields@citi.umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Now that the shutdown sequence guarantees callbacks are shut down before
-the client is destroyed, we no longer have a use for cl_count.
-
-We'll probably reinstate a reference count on the client some day, but
-it will be held by users other than callbacks.
+Currently we're requiring whoever holds the reference to a client set up
+the on the backchannel to also hold a reference to the forechannel
+transport; but this should be the responsibility of the lower level
+code.
 
 Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
- fs/nfsd/nfs4callback.c |    6 +-----
- fs/nfsd/nfs4state.c    |   11 +----------
- fs/nfsd/state.h        |    2 --
- 3 files changed, 2 insertions(+), 17 deletions(-)
+ net/sunrpc/xprtsock.c |    4 ++++
+ 1 files changed, 4 insertions(+), 0 deletions(-)
 
-diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
-index a8592be..15e2f60 100644
---- a/fs/nfsd/nfs4callback.c
-+++ b/fs/nfsd/nfs4callback.c
-@@ -681,10 +681,8 @@ static void nfsd4_cb_recall_done(struct rpc_task *task, void *calldata)
- static void nfsd4_cb_recall_release(void *calldata)
- {
- 	struct nfs4_delegation *dp = calldata;
--	struct nfs4_client *clp = dp->dl_client;
+diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+index a91f0a4..5adc000 100644
+--- a/net/sunrpc/xprtsock.c
++++ b/net/sunrpc/xprtsock.c
+@@ -792,6 +792,8 @@ static void xs_destroy(struct rpc_xprt *xprt)
  
- 	nfs4_put_delegation(dp);
--	put_nfs4_client(clp);
- }
- 
- static const struct rpc_call_ops nfsd4_cb_recall_ops = {
-@@ -746,10 +744,8 @@ static void _nfsd4_cb_recall(struct nfs4_delegation *dp)
- 	dp->dl_retries = 1;
- 	status = rpc_call_async(clnt, &msg, RPC_TASK_SOFT,
- 				&nfsd4_cb_recall_ops, dp);
--	if (status) {
--		put_nfs4_client(clp);
-+	if (status)
- 		nfs4_put_delegation(dp);
--	}
- }
- 
- void nfsd4_do_callback_rpc(struct work_struct *w)
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 239a90c..7c74af6 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -690,13 +690,6 @@ free_client(struct nfs4_client *clp)
- 	kfree(clp);
- }
- 
--void
--put_nfs4_client(struct nfs4_client *clp)
--{
--	if (atomic_dec_and_test(&clp->cl_count))
--		free_client(clp);
--}
--
- static void
- expire_client(struct nfs4_client *clp)
- {
-@@ -733,7 +726,7 @@ expire_client(struct nfs4_client *clp)
- 		release_session(ses);
- 	}
- 	nfsd4_set_callback_client(clp, NULL);
--	put_nfs4_client(clp);
-+	free_client(clp);
- }
- 
- static void copy_verf(struct nfs4_client *target, nfs4_verifier *source)
-@@ -819,7 +812,6 @@ static struct nfs4_client *create_client(struct xdr_netobj name, char *recdir,
- 	}
- 
- 	memcpy(clp->cl_recdir, recdir, HEXDIR_LEN);
--	atomic_set(&clp->cl_count, 1);
- 	atomic_set(&clp->cl_cb_conn.cb_set, 0);
- 	INIT_LIST_HEAD(&clp->cl_idhash);
- 	INIT_LIST_HEAD(&clp->cl_strhash);
-@@ -2006,7 +1998,6 @@ void nfsd_break_deleg_cb(struct file_lock *fl)
- 	 * lock) we know the server hasn't removed the lease yet, we know
- 	 * it's safe to take a reference: */
- 	atomic_inc(&dp->dl_count);
--	atomic_inc(&dp->dl_client->cl_count);
- 
- 	spin_lock(&recall_lock);
- 	list_add_tail(&dp->dl_recall_lru, &del_recall_lru);
-diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index 92b0bf0..284bcf9 100644
---- a/fs/nfsd/state.h
-+++ b/fs/nfsd/state.h
-@@ -224,7 +224,6 @@ struct nfs4_client {
- 	clientid_t		cl_clientid;	/* generated by server */
- 	nfs4_verifier		cl_confirm;	/* generated by server */
- 	struct nfs4_cb_conn	cl_cb_conn;     /* callback info */
--	atomic_t		cl_count;	/* ref count */
- 	u32			cl_firststate;	/* recovery dir creation */
- 
- 	/* for nfs41 */
-@@ -387,7 +386,6 @@ extern void nfs4_lock_state(void);
- extern void nfs4_unlock_state(void);
- extern int nfs4_in_grace(void);
- extern __be32 nfs4_check_open_reclaim(clientid_t *clid);
--extern void put_nfs4_client(struct nfs4_client *clp);
- extern void nfs4_free_stateowner(struct kref *kref);
- extern int set_callback_cred(void);
- extern void nfsd4_probe_callback(struct nfs4_client *clp, struct svc_xprt *);
+ 	xs_close(xprt);
+ 	xs_free_peer_addresses(xprt);
++	if (xprt->bc_xprt)
++		svc_xprt_put(xprt->bc_xprt);
+ 	kfree(xprt->slot);
+ 	kfree(xprt);
+ 	module_put(THIS_MODULE);
+@@ -2510,6 +2512,7 @@ static struct rpc_xprt *xs_setup_bc_tcp(struct xprt_create *args)
+ 	 * forechannel
+ 	 */
+ 	xprt->bc_xprt = args->bc_xprt;
++	svc_xprt_get(xprt->bc_xprt);
+ 	bc_sock = container_of(args->bc_xprt, struct svc_sock, sk_xprt);
+ 	bc_sock->sk_bc_xprt = xprt;
+ 	transport->sock = bc_sock->sk_sock;
+@@ -2552,6 +2555,7 @@ static struct rpc_xprt *xs_setup_bc_tcp(struct xprt_create *args)
+ 		return xprt;
+ 	ret = ERR_PTR(-EINVAL);
+ out_err:
++	svc_xprt_put(xprt->bc_xprt);
+ 	kfree(xprt->slot);
+ 	kfree(xprt);
+ 	return ret;
 -- 
 1.6.3.3
 
