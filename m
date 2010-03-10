@@ -1,74 +1,72 @@
-From: Casey Schaufler <casey@schaufler-ca.com>
-Subject: Re: [PATCH 0/6][v4][RFC] NFSv3: implement extended attribute protocol
- (XATTR)
-Date: Tue, 09 Mar 2010 19:46:25 -0800
-Message-ID: <4B971611.8030801@schaufler-ca.com>
-References: <alpine.LRH.2.00.1002261457420.25193@tundra.namei.org> <alpine.LRH.2.00.1003082122340.6314@tundra.namei.org> <20100309035932.GA14237@cynthia.pants.nu> <4B95E167.40306@schaufler-ca.com> <20100309070444.GA18216@cynthia.pants.nu> <20100309193545.GE11042@shareable.org>
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: Re: [PATCH 02/11] sunrpc: take reference to bc_xprt in sunrpc layer
+Date: Tue, 09 Mar 2010 20:03:00 -0500
+Message-ID: <1268182980.9419.40.camel@localhost.localdomain>
+References: <1268180896-30921-1-git-send-email-bfields@citi.umich.edu>
+	 <1268180896-30921-2-git-send-email-bfields@citi.umich.edu>
+	 <1268180896-30921-3-git-send-email-bfields@citi.umich.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: Brad Boyer <flar-POGeQm5F+FGB+jHODAdFcQ@public.gmane.org>, James Morris <jmorris@namei.org>,
-	linux-nfs@vger.kernel.org, linux-security-module@vger.kernel.org,
-	Trond Myklebust <Trond.Myklebust@netapp.com>,
-	"J. Bruce Fields" <bfields@fieldses.org>,
-	Neil Brown <neilb@suse.de>, linux-fsdevel@vger.kernel.org,
-	Casey Schaufler <casey@schaufler-ca.com>
-To: Jamie Lokier <jamie@shareable.org>
+Content-Type: text/plain; charset="UTF-8"
+Cc: linux-nfs@vger.kernel.org
+To: "J. Bruce Fields" <bfields@citi.umich.edu>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp106.prem.mail.sp1.yahoo.com ([98.136.44.61]:29640 "HELO
-	smtp106.prem.mail.sp1.yahoo.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with SMTP id S1756143Ab0CJDq0 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 9 Mar 2010 22:46:26 -0500
-In-Reply-To: <20100309193545.GE11042@shareable.org>
+Received: from mx2.netapp.com ([216.240.18.37]:9970 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751491Ab0CJBDW convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 9 Mar 2010 20:03:22 -0500
+In-Reply-To: <1268180896-30921-3-git-send-email-bfields@citi.umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Jamie Lokier wrote:
-> Brad Boyer wrote:
->   
->> On Mon, Mar 08, 2010 at 09:49:27PM -0800, Casey Schaufler wrote:
->>     
->>> Another is to NFS mount the filesystem back on to the server,
->>> in which case James' scheme works just dandy. It's a trick that
->>> I've used more than once in the Unix world for this exact purpose.
->>> Of course you have to arrange your mount points in advance with
->>> malice aforethought, but that's likely something you're used to
->>> by now.
->>>       
->> That would definitely work, but it's not ideal. Obviously if it's
->> being accessed over NFS in one place it probably good enough
->> everywhere, but it's overhead that could be eliminated.
->>     
->
-> As a real example:
->
-> Each user has a PC with their own home directory being local, fast
-> storage, but /home is filled with NFS auto-mounts to everyone else's
-> home directories, on their individual PCs.  The auto-mount map has an
-> exception, so the local user's home directory is a symlink to the
-> local storage, instead of an NFS mount.
->
-> A scheme like that works very well for occasional access to other
-> peoples files, and for logging to each other's machines transparently,
-> yet having fast performance for their own files when using their local
-> machine.
->
-> In an environment where I've used that, forcing local access to go
-> over local NFS would have destroyed performance for things like big
-> compiles, running find, git, grep etc. that people do on their own
-> directories.
->
->   
+On Tue, 2010-03-09 at 19:28 -0500, J. Bruce Fields wrote: 
+> Currently we're requiring whoever holds the reference to a client set up
+> the on the backchannel to also hold a reference to the forechannel
+> transport; but this should be the responsibility of the lower level
+> code.
+> 
+> Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
+> Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
+> ---
+>  net/sunrpc/xprtsock.c |    4 ++++
+>  1 files changed, 4 insertions(+), 0 deletions(-)
+> 
+> diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+> index a91f0a4..5adc000 100644
+> --- a/net/sunrpc/xprtsock.c
+> +++ b/net/sunrpc/xprtsock.c
+> @@ -792,6 +792,8 @@ static void xs_destroy(struct rpc_xprt *xprt)
+>  
+>  	xs_close(xprt);
+>  	xs_free_peer_addresses(xprt);
+> +	if (xprt->bc_xprt)
+> +		svc_xprt_put(xprt->bc_xprt);
+>  	kfree(xprt->slot);
+>  	kfree(xprt);
+>  	module_put(THIS_MODULE);
+> @@ -2510,6 +2512,7 @@ static struct rpc_xprt *xs_setup_bc_tcp(struct xprt_create *args)
+>  	 * forechannel
+>  	 */
+>  	xprt->bc_xprt = args->bc_xprt;
+> +	svc_xprt_get(xprt->bc_xprt);
+>  	bc_sock = container_of(args->bc_xprt, struct svc_sock, sk_xprt);
+>  	bc_sock->sk_bc_xprt = xprt;
+>  	transport->sock = bc_sock->sk_sock;
+> @@ -2552,6 +2555,7 @@ static struct rpc_xprt *xs_setup_bc_tcp(struct xprt_create *args)
+>  		return xprt;
+>  	ret = ERR_PTR(-EINVAL);
+>  out_err:
+> +	svc_xprt_put(xprt->bc_xprt);
+>  	kfree(xprt->slot);
+>  	kfree(xprt);
+>  	return ret;
 
+OK... This makes my head spin.
 
-Sure. The original objection can be readily addressed. There are
-performance implications. Just like you'd have if the home directories
-resided on a storage appliance. Some people pick security for the
-masses over performance for the few. Some the other way round.
-It's not an issue for people who want labeled NFS3 badly enough
-to install it.
+Why should the back channel socket hold a reference to the svc_sock? The
+process that owns both of these things is an RPC server process. It
+already holds a reference to the svc_sock and presumably also to the
+back channel socket.
 
+No?
 
-> -- Jamie
->
->   
-
+Trond
