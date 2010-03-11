@@ -1,8 +1,13 @@
-From: "J. R. Okajima" <hooanon05-/E1597aS9LR3+QwDJ9on6Q@public.gmane.org>
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
 Subject: Re: [PATCH 10/12] NFS: Simplify nfs_wb_page()
-Date: Thu, 11 Mar 2010 13:45:56 +0900
-Message-ID: <22120.1268282756@jrobl>
-References: <20100125221544.16750.70574.stgit@localhost.localdomain> <20100125221545.16750.19154.stgit@localhost.localdomain> <16839.1268247109@jrobl> <1268249482.3096.76.camel@localhost.localdomain> <1268252300.3096.81.camel@localhost.localdomain>
+Date: Thu, 11 Mar 2010 09:26:22 -0500
+Message-ID: <1268317582.3354.9.camel@localhost.localdomain>
+References: <20100125221544.16750.70574.stgit@localhost.localdomain>
+	 <20100125221545.16750.19154.stgit@localhost.localdomain>
+	 <16839.1268247109@jrobl> <1268249482.3096.76.camel@localhost.localdomain>
+	 <1268252300.3096.81.camel@localhost.localdomain>  <22120.1268282756@jrobl>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="UTF-8"
 Cc: linux-nfs@vger.kernel.org, Wu Fengguang <fengguang.wu@intel.com>,
 	Peter Zijlstra <peterz@infradead.org>, Jan Kara <jack@suse.cz>,
 	Steve Rago <sar-a+KepyhlMvJWk0Htik3J/w@public.gmane.org>,
@@ -12,68 +17,154 @@ Cc: linux-nfs@vger.kernel.org, Wu Fengguang <fengguang.wu@intel.com>,
 	Ingo Molnar <mingo@elte.hu>, linux-fsdevel@vger.kernel.org,
 	Christoph Hellwig <hch@lst.de>,
 	Al Viro <viro@ZenIV.linux.org.uk>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: "J. R. Okajima" <hooanon05-/E1597aS9LR3+QwDJ9on6Q@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mtoichi11.ns.itscom.net ([219.110.2.181]:43277 "EHLO
-	mtoichi11.ns.itscom.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756075Ab0CKErG (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 10 Mar 2010 23:47:06 -0500
-In-Reply-To: <1268252300.3096.81.camel-bi+AKbBUZKY6gyzm1THtWbp2dZbC/Bob@public.gmane.org>
+Received: from mx2.netapp.com ([216.240.18.37]:9436 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752934Ab0CKO1L convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 11 Mar 2010 09:27:11 -0500
+In-Reply-To: <22120.1268282756@jrobl>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Thu, 2010-03-11 at 13:45 +0900, J. R. Okajima wrote: 
+> Trond Myklebust:
+> > OK. Does the following patch fix the deadlock for you?
+> 
+> Thanx for the patch, but it didn't work.
+> 
+> BUG: unable to handle kernel NULL pointer dereference at 0000000000000010
+> IP: [<ffffffff811cb860>] nfs_clear_page_tag_locked+0x20/0x80
 
-Trond Myklebust:
-> OK. Does the following patch fix the deadlock for you?
+Oops... Yes, that needs to be fixed, and we should probably make
+nfs_set_page_tag_locked() safe too.
 
-Thanx for the patch, but it didn't work.
+How about the following? I can't seem to find any further dereferences
+of req->wb_context after the nfs_clear_request().
 
-BUG: unable to handle kernel NULL pointer dereference at 0000000000000010
-IP: [<ffffffff811cb860>] nfs_clear_page_tag_locked+0x20/0x80
-PGD 1e641067 PUD 135a3067 PMD 0 
-Oops: 0000 [#1] PREEMPT SMP 
-last sysfs file: /sys/fs/aufs/si_fa7907d8bbb32280/br1
-CPU 0 
-Modules linked in: aufs configs nfsd exportfs nls_iso8859_1 nls_cp437 [last unloaded: aufs]
+Cheers
+  Trond
+------------------------------------------------------------------------------------------------------- 
+NFS: Avoid a deadlock in nfs_release_page
 
-Pid: 308, comm: nfsiod Not tainted 2.6.33aufsD #730 IPM41/Pegatron
-RIP: 0010:[<ffffffff811cb860>]  [<ffffffff811cb860>] nfs_clear_page_tag_locked+0x20/0x80
-RSP: 0018:ffff88001f26bd10  EFLAGS: 00010246
-RAX: 0000000000000000 RBX: 0000000000000000 RCX: ffffffff86b47850
-RDX: 0000000000000000 RSI: 0000000000000000 RDI: ffff88001b87e7c0
-RBP: ffff88001f26bd30 R08: fdb3fbf8f8168244 R09: 0000000000000000
-R10: 0000000000000001 R11: 0000000000000000 R12: ffff88001b87e7c0
-R13: ffff88001f277110 R14: 0000000000000000 R15: ffff88001f2772f8
-FS:  0000000000000000(0000) GS:ffff88000bc00000(0000) knlGS:0000000000000000
-CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
-CR2: 0000000000000010 CR3: 000000001de5a000 CR4: 00000000000406f0
-DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
-DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
-Process nfsiod (pid: 308, threadinfo ffff88001f26a000, task ffff88001fe92040)
-Stack:
- ffff88001b87e7c0 0000000000000000 ffff88001b87e7c0 ffff88001f277110
-<0> ffff88001f26bd70 ffffffff811d1464 ffff88001f2772ec 0000000000000000
-<0> ffff88001f277118 ffff88001f277110 ffffffff8162b980 ffffffff81435e20
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+
+J.R. Okajima reports the following deadlock:
+
+INFO: task kswapd0:305 blocked for more than 120 seconds.
+"echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables this message.
+kswapd0       D 0000000000000001     0   305      2 0x00000000
+ ffff88001f21d4f0 0000000000000046 ffff88001fdea680 ffff88001f21c000
+ ffff88001f21dfd8 ffff88001f21c000 ffff88001f21dfd8 ffff88001f21dfd8
+ ffff88001fdea040 0000000000014c00 0000000000000001 ffff88001fdea040
 Call Trace:
- [<ffffffff811d1464>] nfs_commit_release+0x74/0x210
- [<ffffffff81435e20>] ? rpc_async_release+0x0/0x20
- [<ffffffff81435c82>] rpc_release_calldata+0x12/0x20
- [<ffffffff81435cea>] rpc_free_task+0x3a/0xa0
- [<ffffffff81435e30>] rpc_async_release+0x10/0x20
- [<ffffffff8106bd84>] worker_thread+0x2d4/0x420
- [<ffffffff8106bd31>] ? worker_thread+0x281/0x420
- [<ffffffff81070ca0>] ? autoremove_wake_function+0x0/0x40
- [<ffffffff8106bab0>] ? worker_thread+0x0/0x420
- [<ffffffff810706d6>] kthread+0x96/0xb0
- [<ffffffff8100b5a4>] kernel_thread_helper+0x4/0x10
- [<ffffffff81464f14>] ? restore_args+0x0/0x30
- [<ffffffff81070640>] ? kthread+0x0/0xb0
- [<ffffffff8100b5a0>] ? kernel_thread_helper+0x0/0x10
-Code: 29 00 0f 0b eb fe 0f 1f 44 00 00 55 48 89 e5 48 83 ec 20 4c 89 65 f0 48 89 5d e8 4c 89 6d f8 49 89 fc 48 8b 47 18 48 83 7f 10 00 <48> 8b 40 10 4c 8b 68 40 74 46 49 8d 9d b0 00 00 00 48 89 df e8 
-RIP  [<ffffffff811cb860>] nfs_clear_page_tag_locked+0x20/0x80
- RSP <ffff88001f26bd10>
-CR2: 0000000000000010
----[ end trace 1265485acdc49b9d ]---
+ [<ffffffff8146155d>] io_schedule+0x4d/0x70
+ [<ffffffff810d2be5>] sync_page+0x65/0xa0
+ [<ffffffff81461b12>] __wait_on_bit_lock+0x52/0xb0
+ [<ffffffff810d2b80>] ? sync_page+0x0/0xa0
+ [<ffffffff810d2b64>] __lock_page+0x64/0x70
+ [<ffffffff81070ce0>] ? wake_bit_function+0x0/0x40
+ [<ffffffff810df1d4>] truncate_inode_pages_range+0x344/0x4a0
+ [<ffffffff810df340>] truncate_inode_pages+0x10/0x20
+ [<ffffffff8112cbfe>] generic_delete_inode+0x15e/0x190
+ [<ffffffff8112cc8d>] generic_drop_inode+0x5d/0x80
+ [<ffffffff8112bb88>] iput+0x78/0x80
+ [<ffffffff811bc908>] nfs_dentry_iput+0x38/0x50
+ [<ffffffff811285f4>] dentry_iput+0x84/0x110
+ [<ffffffff811286ae>] d_kill+0x2e/0x60
+ [<ffffffff8112912a>] dput+0x7a/0x170
+ [<ffffffff8111e925>] path_put+0x15/0x40
+ [<ffffffff811c3a44>] __put_nfs_open_context+0xa4/0xb0
+ [<ffffffff811cb5d0>] ? nfs_free_request+0x0/0x50
+ [<ffffffff811c3b0b>] put_nfs_open_context+0xb/0x10
+ [<ffffffff811cb5f9>] nfs_free_request+0x29/0x50
+ [<ffffffff81234b7e>] kref_put+0x8e/0xe0
+ [<ffffffff811cb594>] nfs_release_request+0x14/0x20
+ [<ffffffff811cf769>] nfs_find_and_lock_request+0x89/0xa0
+ [<ffffffff811d1180>] nfs_wb_page+0x80/0x110
+ [<ffffffff811c0770>] nfs_release_page+0x70/0x90
+ [<ffffffff810d18ee>] try_to_release_page+0x5e/0x80
+ [<ffffffff810e1178>] shrink_page_list+0x638/0x860
+ [<ffffffff810e19de>] shrink_zone+0x63e/0xc40
+
+We can fix this by making the call to put_nfs_open_context() happen when we
+actually remove the write request from the inode (which is done by the
+nfsiod thread in this case).
+
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: stable@kernel.org
+---
+
+ fs/nfs/pagelist.c |   23 +++++++++++++----------
+ 1 files changed, 13 insertions(+), 10 deletions(-)
 
 
-J. R. Okajima
+diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
+index a12c45b..29d9d36 100644
+--- a/fs/nfs/pagelist.c
++++ b/fs/nfs/pagelist.c
+@@ -112,12 +112,10 @@ void nfs_unlock_request(struct nfs_page *req)
+  */
+ int nfs_set_page_tag_locked(struct nfs_page *req)
+ {
+-	struct nfs_inode *nfsi = NFS_I(req->wb_context->path.dentry->d_inode);
+-
+ 	if (!nfs_lock_request_dontget(req))
+ 		return 0;
+ 	if (req->wb_page != NULL)
+-		radix_tree_tag_set(&nfsi->nfs_page_tree, req->wb_index, NFS_PAGE_TAG_LOCKED);
++		radix_tree_tag_set(&NFS_I(req->wb_context->path.dentry->d_inode)->nfs_page_tree, req->wb_index, NFS_PAGE_TAG_LOCKED);
+ 	return 1;
+ }
+ 
+@@ -126,10 +124,10 @@ int nfs_set_page_tag_locked(struct nfs_page *req)
+  */
+ void nfs_clear_page_tag_locked(struct nfs_page *req)
+ {
+-	struct inode *inode = req->wb_context->path.dentry->d_inode;
+-	struct nfs_inode *nfsi = NFS_I(inode);
+-
+ 	if (req->wb_page != NULL) {
++		struct inode *inode = req->wb_context->path.dentry->d_inode;
++		struct nfs_inode *nfsi = NFS_I(inode);
++
+ 		spin_lock(&inode->i_lock);
+ 		radix_tree_tag_clear(&nfsi->nfs_page_tree, req->wb_index, NFS_PAGE_TAG_LOCKED);
+ 		nfs_unlock_request(req);
+@@ -142,16 +140,22 @@ void nfs_clear_page_tag_locked(struct nfs_page *req)
+  * nfs_clear_request - Free up all resources allocated to the request
+  * @req:
+  *
+- * Release page resources associated with a write request after it
+- * has completed.
++ * Release page and open context resources associated with a read/write
++ * request after it has completed.
+  */
+ void nfs_clear_request(struct nfs_page *req)
+ {
+ 	struct page *page = req->wb_page;
++	struct nfs_open_context *ctx = req->wb_context;
++
+ 	if (page != NULL) {
+ 		page_cache_release(page);
+ 		req->wb_page = NULL;
+ 	}
++	if (ctx != NULL) {
++		put_nfs_open_context(ctx);
++		req->wb_context = NULL;
++	}
+ }
+ 
+
+@@ -165,9 +169,8 @@ static void nfs_free_request(struct kref *kref)
+ {
+ 	struct nfs_page *req = container_of(kref, struct nfs_page, wb_kref);
+ 
+-	/* Release struct file or cached credential */
++	/* Release struct file and open context */
+ 	nfs_clear_request(req);
+-	put_nfs_open_context(req->wb_context);
+ 	nfs_page_free(req);
+ }
+ 
+
