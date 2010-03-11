@@ -1,170 +1,68 @@
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: Re: [PATCH 10/12] NFS: Simplify nfs_wb_page()
-Date: Thu, 11 Mar 2010 09:26:22 -0500
-Message-ID: <1268317582.3354.9.camel@localhost.localdomain>
-References: <20100125221544.16750.70574.stgit@localhost.localdomain>
-	 <20100125221545.16750.19154.stgit@localhost.localdomain>
-	 <16839.1268247109@jrobl> <1268249482.3096.76.camel@localhost.localdomain>
-	 <1268252300.3096.81.camel@localhost.localdomain>  <22120.1268282756@jrobl>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [RFC] Should lockd get into grace_period when statd start but
+	not stop?
+Date: Thu, 11 Mar 2010 10:58:57 -0500
+Message-ID: <20100311155857.GC22587@fieldses.org>
+References: <4B9772EB.9010909@cn.fujitsu.com> <20100310182401.GA23340@fieldses.org> <4B98413F.1080609@cn.fujitsu.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Cc: linux-nfs@vger.kernel.org, Wu Fengguang <fengguang.wu@intel.com>,
-	Peter Zijlstra <peterz@infradead.org>, Jan Kara <jack@suse.cz>,
-	Steve Rago <sar-a+KepyhlMvJWk0Htik3J/w@public.gmane.org>,
-	Jens Axboe <jens.axboe@oracle.com>,
-	Peter Staubach <staubach@redhat.com>,
-	Arjan van de Ven <arjan@infradead.org>,
-	Ingo Molnar <mingo@elte.hu>, linux-fsdevel@vger.kernel.org,
-	Christoph Hellwig <hch@lst.de>,
-	Al Viro <viro@ZenIV.linux.org.uk>
-To: "J. R. Okajima" <hooanon05-/E1597aS9LR3+QwDJ9on6Q@public.gmane.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: "Trond.Myklebust" <trond.myklebust@fys.uio.no>,
+	Chuck Lever <chuck.lever@oracle.com>,
+	NFSv3 list <linux-nfs@vger.kernel.org>
+To: Mi Jinlong <mijinlong@cn.fujitsu.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:9436 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:55168 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752934Ab0CKO1L convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 11 Mar 2010 09:27:11 -0500
-In-Reply-To: <22120.1268282756@jrobl>
+	id S1751931Ab0CKP5e (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 11 Mar 2010 10:57:34 -0500
+In-Reply-To: <4B98413F.1080609@cn.fujitsu.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 2010-03-11 at 13:45 +0900, J. R. Okajima wrote: 
-> Trond Myklebust:
-> > OK. Does the following patch fix the deadlock for you?
+On Thu, Mar 11, 2010 at 09:02:55AM +0800, Mi Jinlong wrote:
 > 
-> Thanx for the patch, but it didn't work.
+> J. Bruce Fields :
+> > On Wed, Mar 10, 2010 at 06:22:35PM +0800, Mi Jinlong wrote:
+> >> Hi,
+> >>
+> >>    When using command "service nfslock stop" and "service nfsklock start"
+> >> to restart the nfslock service at RHEL with kernel 2.6.31, if start the service
+> >> after stop it more than the grace_period time, lock which lockd get before
+> >> cann't be reclaimed for the grace_period is timeout.
+> >>
+> >> So, IMO, the lockd should get into grace_period when statd start not stop?
+> > 
+> > Sorry, I'm not sure I understand.
+> > 
+> > Are you saying that lockd's grace period starts when the last lock is
+> > shut down, instead of when the new lockd is started?  That would be a
+> > bug, I agree.
 > 
-> BUG: unable to handle kernel NULL pointer dereference at 0000000000000010
-> IP: [<ffffffff811cb860>] nfs_clear_page_tag_locked+0x20/0x80
+>   I means that using command "service nfslock stop" to stop the nfslock service
+>   at RHEL, it only case statd stop, but lockd is still running. 
+> 
+>   When statd stop, it send a KILL signal to lockd, lockd will release all locks
+>   and get into grace_period state to wait reclaimed lock request. It means lockd
+>   get into grace_period state when statd stop.
+> 
+>   But the reclaimed lock request only be caused when client receive a SM_NOTIFY 
+>   which is send by server's statd at start. If statd start when lockd isn't at 
+>   grace_period state, the reclaimed lock cann't be reclaimed.
+> 
+>   So, I think, lockd should get into grace_period state when statd start, not stop.
+> 
+> > 
+> > But are you really shutting down lockd completely?
+> 
+>   Lockd don't shut down when nfslock service stop, the service stop only case lockd stop
+>   at RHEL.
 
-Oops... Yes, that needs to be fixed, and we should probably make
-nfs_set_page_tag_locked() safe too.
+OK, so that's the problem.  Lockd doesn't shut down completely, if I
+remember correctly, until nfsd server and all clients do.
 
-How about the following? I can't seem to find any further dereferences
-of req->wb_context after the nfs_clear_request().
+Our current NFS implementation just isn't designed to be able to shut
+down some components while leaving others running.
 
-Cheers
-  Trond
-------------------------------------------------------------------------------------------------------- 
-NFS: Avoid a deadlock in nfs_release_page
+Is there some reason you *need* to do what you're doing?
 
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-
-J.R. Okajima reports the following deadlock:
-
-INFO: task kswapd0:305 blocked for more than 120 seconds.
-"echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables this message.
-kswapd0       D 0000000000000001     0   305      2 0x00000000
- ffff88001f21d4f0 0000000000000046 ffff88001fdea680 ffff88001f21c000
- ffff88001f21dfd8 ffff88001f21c000 ffff88001f21dfd8 ffff88001f21dfd8
- ffff88001fdea040 0000000000014c00 0000000000000001 ffff88001fdea040
-Call Trace:
- [<ffffffff8146155d>] io_schedule+0x4d/0x70
- [<ffffffff810d2be5>] sync_page+0x65/0xa0
- [<ffffffff81461b12>] __wait_on_bit_lock+0x52/0xb0
- [<ffffffff810d2b80>] ? sync_page+0x0/0xa0
- [<ffffffff810d2b64>] __lock_page+0x64/0x70
- [<ffffffff81070ce0>] ? wake_bit_function+0x0/0x40
- [<ffffffff810df1d4>] truncate_inode_pages_range+0x344/0x4a0
- [<ffffffff810df340>] truncate_inode_pages+0x10/0x20
- [<ffffffff8112cbfe>] generic_delete_inode+0x15e/0x190
- [<ffffffff8112cc8d>] generic_drop_inode+0x5d/0x80
- [<ffffffff8112bb88>] iput+0x78/0x80
- [<ffffffff811bc908>] nfs_dentry_iput+0x38/0x50
- [<ffffffff811285f4>] dentry_iput+0x84/0x110
- [<ffffffff811286ae>] d_kill+0x2e/0x60
- [<ffffffff8112912a>] dput+0x7a/0x170
- [<ffffffff8111e925>] path_put+0x15/0x40
- [<ffffffff811c3a44>] __put_nfs_open_context+0xa4/0xb0
- [<ffffffff811cb5d0>] ? nfs_free_request+0x0/0x50
- [<ffffffff811c3b0b>] put_nfs_open_context+0xb/0x10
- [<ffffffff811cb5f9>] nfs_free_request+0x29/0x50
- [<ffffffff81234b7e>] kref_put+0x8e/0xe0
- [<ffffffff811cb594>] nfs_release_request+0x14/0x20
- [<ffffffff811cf769>] nfs_find_and_lock_request+0x89/0xa0
- [<ffffffff811d1180>] nfs_wb_page+0x80/0x110
- [<ffffffff811c0770>] nfs_release_page+0x70/0x90
- [<ffffffff810d18ee>] try_to_release_page+0x5e/0x80
- [<ffffffff810e1178>] shrink_page_list+0x638/0x860
- [<ffffffff810e19de>] shrink_zone+0x63e/0xc40
-
-We can fix this by making the call to put_nfs_open_context() happen when we
-actually remove the write request from the inode (which is done by the
-nfsiod thread in this case).
-
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: stable@kernel.org
----
-
- fs/nfs/pagelist.c |   23 +++++++++++++----------
- 1 files changed, 13 insertions(+), 10 deletions(-)
-
-
-diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
-index a12c45b..29d9d36 100644
---- a/fs/nfs/pagelist.c
-+++ b/fs/nfs/pagelist.c
-@@ -112,12 +112,10 @@ void nfs_unlock_request(struct nfs_page *req)
-  */
- int nfs_set_page_tag_locked(struct nfs_page *req)
- {
--	struct nfs_inode *nfsi = NFS_I(req->wb_context->path.dentry->d_inode);
--
- 	if (!nfs_lock_request_dontget(req))
- 		return 0;
- 	if (req->wb_page != NULL)
--		radix_tree_tag_set(&nfsi->nfs_page_tree, req->wb_index, NFS_PAGE_TAG_LOCKED);
-+		radix_tree_tag_set(&NFS_I(req->wb_context->path.dentry->d_inode)->nfs_page_tree, req->wb_index, NFS_PAGE_TAG_LOCKED);
- 	return 1;
- }
- 
-@@ -126,10 +124,10 @@ int nfs_set_page_tag_locked(struct nfs_page *req)
-  */
- void nfs_clear_page_tag_locked(struct nfs_page *req)
- {
--	struct inode *inode = req->wb_context->path.dentry->d_inode;
--	struct nfs_inode *nfsi = NFS_I(inode);
--
- 	if (req->wb_page != NULL) {
-+		struct inode *inode = req->wb_context->path.dentry->d_inode;
-+		struct nfs_inode *nfsi = NFS_I(inode);
-+
- 		spin_lock(&inode->i_lock);
- 		radix_tree_tag_clear(&nfsi->nfs_page_tree, req->wb_index, NFS_PAGE_TAG_LOCKED);
- 		nfs_unlock_request(req);
-@@ -142,16 +140,22 @@ void nfs_clear_page_tag_locked(struct nfs_page *req)
-  * nfs_clear_request - Free up all resources allocated to the request
-  * @req:
-  *
-- * Release page resources associated with a write request after it
-- * has completed.
-+ * Release page and open context resources associated with a read/write
-+ * request after it has completed.
-  */
- void nfs_clear_request(struct nfs_page *req)
- {
- 	struct page *page = req->wb_page;
-+	struct nfs_open_context *ctx = req->wb_context;
-+
- 	if (page != NULL) {
- 		page_cache_release(page);
- 		req->wb_page = NULL;
- 	}
-+	if (ctx != NULL) {
-+		put_nfs_open_context(ctx);
-+		req->wb_context = NULL;
-+	}
- }
- 
-
-@@ -165,9 +169,8 @@ static void nfs_free_request(struct kref *kref)
- {
- 	struct nfs_page *req = container_of(kref, struct nfs_page, wb_kref);
- 
--	/* Release struct file or cached credential */
-+	/* Release struct file and open context */
- 	nfs_clear_request(req);
--	put_nfs_open_context(req->wb_context);
- 	nfs_page_free(req);
- }
- 
-
+--b.
