@@ -1,84 +1,116 @@
 From: Mi Jinlong <mijinlong@cn.fujitsu.com>
-Subject: Re: [RFC] Should lockd get into grace_period when statd start but
- not stop?
-Date: Fri, 12 Mar 2010 17:42:18 +0800
-Message-ID: <4B9A0C7A.1000001@cn.fujitsu.com>
-References: <4B9772EB.9010909@cn.fujitsu.com> <20100310182401.GA23340@fieldses.org> <4B98413F.1080609@cn.fujitsu.com> <20100311155857.GC22587@fieldses.org>
+Subject: Re: [RFC] SUNRPC connect timeout case network request delay
+Date: Fri, 12 Mar 2010 17:55:24 +0800
+Message-ID: <4B9A0F8C.5030900@cn.fujitsu.com>
+References: <4B8F87A2.5080509@cn.fujitsu.com> <4B8FE6C7.2090207@oracle.com> <4B94CA73.90600@cn.fujitsu.com> <4B951A70.7080201@oracle.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=UTF-8
 Cc: "Trond.Myklebust" <trond.myklebust@fys.uio.no>,
-	Chuck Lever <chuck.lever@oracle.com>,
+	"J. Bruce Fields" <bfields@fieldses.org>,
 	NFSv3 list <linux-nfs@vger.kernel.org>
-To: "J. Bruce Fields" <bfields@fieldses.org>
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from cn.fujitsu.com ([222.73.24.84]:65244 "EHLO song.cn.fujitsu.com"
+Received: from cn.fujitsu.com ([222.73.24.84]:51846 "EHLO song.cn.fujitsu.com"
 	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
-	id S1756326Ab0CLJlI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 12 Mar 2010 04:41:08 -0500
-In-Reply-To: <20100311155857.GC22587@fieldses.org>
+	id S1752233Ab0CLJyH convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 12 Mar 2010 04:54:07 -0500
+In-Reply-To: <4B951A70.7080201@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Hi,
 
+  Thanks for your reply.
 
-J. Bruce Fields:
-> On Thu, Mar 11, 2010 at 09:02:55AM +0800, Mi Jinlong wrote:
->> J. Bruce Fields :
->>> On Wed, Mar 10, 2010 at 06:22:35PM +0800, Mi Jinlong wrote:
+Chuck Lever =E5=86=99=E9=81=93:
+> On 03/08/2010 04:59 AM, Mi Jinlong wrote:
+>> Hi chuck,
+>>
+>>   Thanks for your reply.
+>>
+>> Chuck Lever =E5=86=99=E9=81=93:
+>>> On 03/04/2010 05:12 AM, Mi Jinlong wrote:
 >>>> Hi,
+>>>> Step4: [22:42:16] Write data to file
+>>>>          [22:42:16] Write data success
+>>>> Step5: [22:42:16] Unlock file
+>>>>          [22:46:30] Unlock file success.
+>>>> Step6: [22:46:30] Close file /mnt/nfs/file
+>>>>          [22:46:30] Close fiel /mnt/nfs/file success
 >>>>
->>>>    When using command "service nfslock stop" and "service nfsklock start"
->>>> to restart the nfslock service at RHEL with kernel 2.6.31, if start the service
->>>> after stop it more than the grace_period time, lock which lockd get before
->>>> cann't be reclaimed for the grace_period is timeout.
->>>>
->>>> So, IMO, the lockd should get into grace_period when statd start not stop?
->>> Sorry, I'm not sure I understand.
+>>>> The problem is at step5, unlock file takes 4 min, it's a long time
+>>>> than expected.
+>>>> When traceing the kernel, I find SUNRPC call call_connect timeout =
+many
+>>>> times,
+>>>> one timeout is 1min.
 >>>
->>> Are you saying that lockd's grace period starts when the last lock is
->>> shut down, instead of when the new lockd is started?  That would be a
->>> bug, I agree.
->>   I means that using command "service nfslock stop" to stop the nfslock service
->>   at RHEL, it only case statd stop, but lockd is still running. 
+>>> The kernel's TCP reconnect logic will retry until it succeeds, with=
+out
+>>> letting the upper level make progress.  For some reason, it is havi=
+ng
+>>> difficulty reconnecting with your server.
+>>>
+>>>> I think it's a problem of kernel, but i don't know why, can someon=
+e
+>>>> help me ?
+>>>
+>>> # sudo rpcdebug -m rpc -s xprt trans
 >>
->>   When statd stop, it send a KILL signal to lockd, lockd will release all locks
->>   and get into grace_period state to wait reclaimed lock request. It means lockd
->>   get into grace_period state when statd stop.
+>>   After running this command, I got some important messages that I t=
+hink.
 >>
->>   But the reclaimed lock request only be caused when client receive a SM_NOTIFY 
->>   which is send by server's statd at start. If statd start when lockd isn't at 
->>   grace_period state, the reclaimed lock cann't be reclaimed.
+>>   RPC:       xs_connect delayed xprt  for 3 seconds
+>>   ...
+>>   RPC:       xs_connect delayed xprt  for 6 seconds
+>>   ...
+>>   RPC:       xs_connect delayed xprt  for 12 seconds
+>>   ...
+>>   RPC:       xs_connect delayed xprt  for 24 seconds
+>>   ...
+>>   ...
+>>   RPC:       xs_connect delayed xprt  for 300 seconds
 >>
->>   So, I think, lockd should get into grace_period state when statd start, not stop.
->>
->>> But are you really shutting down lockd completely?
->>   Lockd don't shut down when nfslock service stop, the service stop only case lockd stop
->>   at RHEL.
-> 
-> OK, so that's the problem.  Lockd doesn't shut down completely, if I
-> remember correctly, until nfsd server and all clients do.
-> 
-> Our current NFS implementation just isn't designed to be able to shut
-> down some components while leaving others running.
+>> This message is printed at xs_connect, and the delay time is double
+>> there.
+>> IMO, when some data translate over through a socket, the socket shou=
+ld
+>> be released.
+>> But, it seems the socket isn't released through those messages above=
+=2E
+>> Is it wrong, or there are some other reasons ?
+>=20
+> The code is trying to connect, but the ->connect call isn't working
+> somehow.  The code backs off by doubling the timeout each time, so th=
+at
+> the connect attempts don't overload the server.
+>=20
+> This tells us that the code is attempting to connect, but not why the
+> connect attempt is failing.
 
-  Really? But the lockd started with nfs service start, but not nfslock service.
-  And, lockd can't stop with statd at the same time. 
-  Sometimes, the lockd will not synchronous with statd. Maybe this problem is a good example.
-
-> 
-> Is there some reason you *need* to do what you're doing?
-
-  When using the NFSv3 at RHEL, I restart the nfslock service with intermediate wait 90s,
-  those lock that lockd get before can't be reclaimed.
-  I think it's a bug of the kernel, so I want geting some opinion.
-
-  If you think it's a bug too, I will try to make a patch as below to fix it.
-
-   1) When statd stop, it send a KILL signal to lockd,
-      and lockd only release the lock, but don't get into grace_period.
-   2) When statd start, it send one some other signal to lockd,
-      and lockd only get into grace_period. The lock will be reclaimed.
-
+  When reading the kernel codes, I find a problem at function xs_tcp_cl=
+ose.
+    ....
+    772 static void xs_tcp_close(struct rpc_xprt *xprt)
+    773 {
+    774         if (test_and_clear_bit(XPRT_CONNECTION_CLOSE, &xprt->st=
+ate))
+    775                 xs_close(xprt);
+    776         else
+    777                 xs_tcp_shutdown(xprt);
+    778 }
+     ...
+  If a task call xs_tcp_close to close the xprt's sock, many times it o=
+nly call=20
+  xs_tcp_shutdown to using the next layer's close function to close the=
+ socket
+  connection.
+  But after close the socket connection, the socket also exist, so the =
+socket may
+  be reused. Is it a problem ? I think after xs_tcp_shutdown, the socke=
+t should
+  be released.
+ =20
 thanks,
 Mi Jinlong
 
