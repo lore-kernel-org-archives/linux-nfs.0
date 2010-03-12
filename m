@@ -1,95 +1,52 @@
-From: Ric Wheeler <ricwheeler@gmail.com>
-Subject: Re: Very Slow Sequential Reads over NFS from an XFS disk in Amazon
- EC2
-Date: Fri, 12 Mar 2010 14:19:20 -0500
-Message-ID: <4B9A93B8.30800@gmail.com>
-References: <e2c9b7261003111340i4aeff44dye0c5e9928ca13dc6@mail.gmail.com> 	<e2c9b7261003121022p40a5c382r3b0ca65e91d02622@mail.gmail.com> 	<4B9A8859.6060503@gmail.com> <e2c9b7261003121109p62b6587eh18cabd101511763b@mail.gmail.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH] sunrpc: fix error path - actually return ERR_PTR() on
+	error
+Date: Fri, 12 Mar 2010 15:35:46 -0500
+Message-ID: <20100312203546.GB13941@fieldses.org>
+References: <1268401704-9034-1-git-send-email-ext-jani.1.nikula@nokia.com> <201003122314.IAD17160.OtJLHVMFOOSFFQ@I-love.SAKURA.ne.jp> <1268406591.3156.18.camel@localhost.localdomain>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Cc: linux-nfs@vger.kernel.org, Jeff Darcy <jdarcy@redhat.com>
-To: Brandon Simmons <brandon.m.simmons@gmail.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: Tetsuo Handa <penguin-kernel@I-love.SAKURA.ne.jp>,
+	ext-jani.1.nikula@nokia.com, neilb@suse.de, davem@davemloft.net,
+	batsakis@netapp.com, bhalevy@panasas.com,
+	linux-nfs@vger.kernel.org, netdev@vger.kernel.org,
+	akpm@linux-foundation.org
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ww0-f46.google.com ([74.125.82.46]:33454 "EHLO
-	mail-ww0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S934458Ab0CLTT3 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 12 Mar 2010 14:19:29 -0500
-Received: by wwb39 with SMTP id 39so1030612wwb.19
-        for <linux-nfs@vger.kernel.org>; Fri, 12 Mar 2010 11:19:27 -0800 (PST)
-In-Reply-To: <e2c9b7261003121109p62b6587eh18cabd101511763b-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
+Received: from fieldses.org ([174.143.236.118]:37116 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S934556Ab0CLUeX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 12 Mar 2010 15:34:23 -0500
+In-Reply-To: <1268406591.3156.18.camel-bi+AKbBUZKY6gyzm1THtWbp2dZbC/Bob@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 03/12/2010 02:09 PM, Brandon Simmons wrote:
-> On Fri, Mar 12, 2010 at 1:30 PM, Ric Wheeler<ricwheeler@gmail.com>  wrote:
->    
->> On 03/12/2010 01:22 PM, Brandon Simmons wrote:
->>      
->>> I am using tiobench to test performance of an NFS mounted volume, and
->>> notice that Sequential Reads are much slower than Random Reads. This
->>> isn't the behavior when I run the same test on the disk mounted
->>> locally.
->>>
->>> For random reads I'm getting:
->>>
->>>     50 MB/s  over NFS
->>>
->>> v.s
->>>
->>>     384 MB/s  when mounted locally
->>>
->>> This is in comparison to the benchmark for _Random Reads_, in which I get:
->>>
->>>     288 MB/s both over NFS _and_ when directly mounted
->>>
->>> The other benchmarks seem to be in line with what I would expect, but
->>> I'm fairly new to NFS. Why would sequential reads over NFS be sooo
->>> much slower than random reads over NFS?
->>>
->>> I am exporting the volume on the server like this
->>>
->>> /export *.internal(no_subtree_check,rw,no_root_squash)
->>>
->>> and mounting with this:
->>>
->>> mount -o hard,intr,async,noatime,nodiratime,noacl $NFS_SERVER:/export /nfs
->>>
->>> Additionally I am doing all this in amazon EC2, exporting an EBS
->>> volume with the XFS file system (redundant, I know).
->>>
->>> I have tried using jumbo frames and various other mount options, but
->>> none seem to have much effect.
->>>
->>> Thanks for any clues.
->>>
->>>        
->> Not sure what kind of network you are running the NFS test over so it is
->> quite hard to figure out why your performance varies so wildly.
->>
->> Normal NFS testing with a gigabit network between the client and server
->> would be much closer to 50MB/sec than your 288MB/sec.
->>
->> Can you try to reproduce this locally with known client and server hardware?
->>
->> ric
->>
->>
->>      
-> I'm not sure. My servers are EC2 instances in Amazon's cloud computing
-> service.I am doing the test from an EBS which is a virtual disk
-> mounted locally on an instance and exported via NFS.
->
-> So I don't think I can do any relevant tests locally.
->
-> Thanks,
-> Brandon
->    
+On Fri, Mar 12, 2010 at 10:09:51AM -0500, Trond Myklebust wrote:
+> On Fri, 2010-03-12 at 23:14 +0900, Tetsuo Handa wrote: 
+> > Jani Nikula wrote:
+> > > Signed-off-by: Jani Nikula <ext-jani.1.nikula@nokia.com>
+> > > 
+> > > ---
+> > > 
+> > > NOTE: I'm afraid I'm unable to test this; please consider this more a
+> > > bug report than a complete patch.
+> > > ---
+> > Indeed, it has to be "return ERR_PTR(-EINVAL);".
+> > Otherwise, it will trigger NULL pointer dereference some lines later.
+> > 
+> >     bc_sock = container_of(args->bc_xprt, struct svc_sock, sk_xprt);
+> >     bc_sock->sk_bc_xprt = xprt;
+> > 
+> > This bug was introduced by f300baba5a1536070d6d77bf0c8c4ca999bb4f0f
+> > "nfsd41: sunrpc: add new xprt class for nfsv4.1 backchannel" and
+> > exists in 2.6.32 and later.
+> 
+> Or it should just be dropped. I don't see any reason why nfsd should be
+> trying to set up a callback channel if it doesn't already know that it
+> has a socket. Returning an error value in that case would just be
+> papering over a design bug.
 
-The joys of working in the cloud :-)
+Yup.  At most it could be a BUG_ON, but it's probably better just to
+delete the check.
 
-One possible reason could be that one test is actually going to an NFS 
-server that is remote, one might be going to one locally (not leaving 
-the box). I think that you will have to escalate with the Amazon 
-support/technical people to try and peek under the covers a bit.
-
-ric
-
+--b.
