@@ -1,52 +1,33 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH] sunrpc: fix error path - actually return ERR_PTR() on
-	error
-Date: Fri, 12 Mar 2010 15:35:46 -0500
-Message-ID: <20100312203546.GB13941@fieldses.org>
-References: <1268401704-9034-1-git-send-email-ext-jani.1.nikula@nokia.com> <201003122314.IAD17160.OtJLHVMFOOSFFQ@I-love.SAKURA.ne.jp> <1268406591.3156.18.camel@localhost.localdomain>
+From: "FONDAZIONE Di VITTORIO & ECOWAS" <donation-L8fCaSJ2lk0@public.gmane.org>
+Subject: Financial aid from FDV,Contact Dr.Razaq Immediately.
+Date: Fri, 12 Mar 2010 15:35:00 -0500 (EST)
+Message-ID: <3030.41.138.177.181.1268426100.squirrel@webmail.crcam.org.br>
+Reply-To: seunrazaq-HzS2SGvssRM@public.gmane.org
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Tetsuo Handa <penguin-kernel@I-love.SAKURA.ne.jp>,
-	ext-jani.1.nikula@nokia.com, neilb@suse.de, davem@davemloft.net,
-	batsakis@netapp.com, bhalevy@panasas.com,
-	linux-nfs@vger.kernel.org, netdev@vger.kernel.org,
-	akpm@linux-foundation.org
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Content-Type: text/plain; charset=US-ASCII
+To: unlisted-recipients:; (no To-header on input)
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:37116 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S934556Ab0CLUeX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 12 Mar 2010 15:34:23 -0500
-In-Reply-To: <1268406591.3156.18.camel-bi+AKbBUZKY6gyzm1THtWbp2dZbC/Bob@public.gmane.org>
+Received: from mailer-1.internext.com.br ([72.55.191.59]:44632 "EHLO
+	mailer-1.internext.com.br" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757236Ab0CLUlo (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 12 Mar 2010 15:41:44 -0500
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Mar 12, 2010 at 10:09:51AM -0500, Trond Myklebust wrote:
-> On Fri, 2010-03-12 at 23:14 +0900, Tetsuo Handa wrote: 
-> > Jani Nikula wrote:
-> > > Signed-off-by: Jani Nikula <ext-jani.1.nikula@nokia.com>
-> > > 
-> > > ---
-> > > 
-> > > NOTE: I'm afraid I'm unable to test this; please consider this more a
-> > > bug report than a complete patch.
-> > > ---
-> > Indeed, it has to be "return ERR_PTR(-EINVAL);".
-> > Otherwise, it will trigger NULL pointer dereference some lines later.
-> > 
-> >     bc_sock = container_of(args->bc_xprt, struct svc_sock, sk_xprt);
-> >     bc_sock->sk_bc_xprt = xprt;
-> > 
-> > This bug was introduced by f300baba5a1536070d6d77bf0c8c4ca999bb4f0f
-> > "nfsd41: sunrpc: add new xprt class for nfsv4.1 backchannel" and
-> > exists in 2.6.32 and later.
-> 
-> Or it should just be dropped. I don't see any reason why nfsd should be
-> trying to set up a callback channel if it doesn't already know that it
-> has a socket. Returning an error value in that case would just be
-> papering over a design bug.
+FONDAZIONE Di VITTORIO & ECOWAS
+http://www.fondazionedivittorio.it
+Worldwide Donation Program "helping one to help others...."
+==========================================
+I have been directed to inform you that you have been chosen for a cash
+grant of 1,000,000.00usd (1million) by the board of trustees of the above
+stated non-governmental aid organisation.
+Your grant number is B01-0147. Contact Rev.dr seun razaq via
+telephone+2348051809752 email revrazaq-HzS2SGvssRM@public.gmane.org, and provide these
+details: 1).Full name. 2).Address 3).Telephone number. [Cell preferably]
+(4).Occupation.
 
-Yup.  At most it could be a BUG_ON, but it's probably better just to
-delete the check.
+Regards.
+Adolfo Pepe
 
---b.
+
+
