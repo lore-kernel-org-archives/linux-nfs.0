@@ -1,54 +1,42 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: [PATCH] Fix bug nfslock request sending fail will be process
- as blocked
-Date: Fri, 12 Mar 2010 08:42:09 -0500
-Message-ID: <1268401329.3156.12.camel@localhost.localdomain>
-References: <4B9A14A1.3000008@cn.fujitsu.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-	Chuck Lever <chuck.lever@oracle.com>,
-	NFSv3 list <linux-nfs@vger.kernel.org>
-To: Mi Jinlong <mijinlong@cn.fujitsu.com>
+From: Jani Nikula <ext-jani.1.nikula@nokia.com>
+Subject: [PATCH] sunrpc: fix error path - actually return ERR_PTR() on error
+Date: Fri, 12 Mar 2010 15:48:24 +0200
+Message-ID: <1268401704-9034-1-git-send-email-ext-jani.1.nikula@nokia.com>
+Cc: linux-nfs@vger.kernel.org, netdev@vger.kernel.org,
+	akpm@linux-foundation.org, ext-jani.1.nikula@nokia.com
+To: Trond.Myklebust@netapp.com, bfields@fieldses.org, neilb@suse.de,
+	davem@davemloft.net
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-out2.uio.no ([129.240.10.58]:46330 "EHLO mail-out2.uio.no"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756646Ab0CLNmS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 12 Mar 2010 08:42:18 -0500
-In-Reply-To: <4B9A14A1.3000008@cn.fujitsu.com>
+Received: from smtp.nokia.com ([192.100.122.230]:42932 "EHLO
+	mgw-mx03.nokia.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757495Ab0CLNtC (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 12 Mar 2010 08:49:02 -0500
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 2010-03-12 at 18:17 +0800, Mi Jinlong wrote: 
-> If local reason cause nfslock request send fail(means status < 0,
-> resp->status not be reset), the request will be process as blocked 
-> at first now.
-> 
-> This patch initialize resp->status to nlm_lck_denied_nolocks, it 
-> can make the following process correctly.
-> 
-> Signed-off-by: Mi Jinlong <mijinlong@cn.fujitsu.com>
-> ---
->  fs/lockd/clntproc.c |    2 +-
->  1 files changed, 1 insertions(+), 1 deletions(-)
-> 
-> diff --git a/fs/lockd/clntproc.c b/fs/lockd/clntproc.c
-> index c81249f..a631582 100644
-> --- a/fs/lockd/clntproc.c
-> +++ b/fs/lockd/clntproc.c
-> @@ -535,7 +535,7 @@ again:
->  	 * Initialise resp->status to a valid non-zero value,
->  	 * since 0 == nlm_lck_granted
->  	 */
-> -	resp->status = nlm_lck_blocked;
-> +	resp->status = nlm_lck_denied_nolocks;
->  	for(;;) {
->  		/* Reboot protection */
->  		fl->fl_u.nfs_fl.state = host->h_state;
+Signed-off-by: Jani Nikula <ext-jani.1.nikula@nokia.com>
 
-We _want_ to process it as being blocked if the RPC call was
-interrupted. The above patch will cause the client to just abandon the
-interrupted lock request without sending the CANCEL request...
+---
 
-Trond
+NOTE: I'm afraid I'm unable to test this; please consider this more a
+bug report than a complete patch.
+---
+ net/sunrpc/xprtsock.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
+
+diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+index 7124129..5b83ff9 100644
+--- a/net/sunrpc/xprtsock.c
++++ b/net/sunrpc/xprtsock.c
+@@ -2481,7 +2481,7 @@ static struct rpc_xprt *xs_setup_bc_tcp(struct xprt_create *args)
+ 	struct svc_sock *bc_sock;
+ 
+ 	if (!args->bc_xprt)
+-		ERR_PTR(-EINVAL);
++		return ERR_PTR(-EINVAL);
+ 
+ 	xprt = xs_setup_xprt(args, xprt_tcp_slot_table_entries);
+ 	if (IS_ERR(xprt))
+-- 
+1.6.5.2
 
