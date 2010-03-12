@@ -1,61 +1,111 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:45247 "EHLO fieldses.org"
+Received: from mail-out1.uio.no ([129.240.10.57]:38841 "EHLO mail-out1.uio.no"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751082Ab0CYWF4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 25 Mar 2010 18:05:56 -0400
-Date: Thu, 25 Mar 2010 18:07:48 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-Cc: Jeff Layton <jlayton@redhat.com>, linux-nfs@vger.kernel.org,
-        nfsv4@linux-nfs.org, Trond Myklebust <trond@netapp.com>
-Subject: Re: [PATCH] nfsd: don't break lease while servicing a COMMIT call
-	(try #2)
-Message-ID: <20100325220748.GF8611@fieldses.org>
-References: <1269000388-5543-1-git-send-email-jlayton@redhat.com> <20100322194710.GO5359@fieldses.org> <20100322163340.4b3b285f@tlielax.poochiereds.net> <20100325174707.GA4033@fieldses.org> <1269540988.3648.46.camel@localhost.localdomain>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1269540988.3648.46.camel@localhost.localdomain>
+	id S1753990Ab0CLNfX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 12 Mar 2010 08:35:23 -0500
+Subject: Re: [RFC] SUNRPC connect timeout case network request delay
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+To: Mi Jinlong <mijinlong@cn.fujitsu.com>
+Cc: Chuck Lever <chuck.lever@oracle.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        NFSv3 list <linux-nfs@vger.kernel.org>
+In-Reply-To: <4B9A0F8C.5030900@cn.fujitsu.com>
+References: <4B8F87A2.5080509@cn.fujitsu.com> <4B8FE6C7.2090207@oracle.com>
+	 <4B94CA73.90600@cn.fujitsu.com> <4B951A70.7080201@oracle.com>
+	 <4B9A0F8C.5030900@cn.fujitsu.com>
+Content-Type: text/plain; charset="UTF-8"
+Date: Fri, 12 Mar 2010 08:35:10 -0500
+Message-ID: <1268400910.3156.6.camel@localhost.localdomain>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Thu, Mar 25, 2010 at 02:16:28PM -0400, Trond Myklebust wrote:
-> On Thu, 2010-03-25 at 13:47 -0400, J. Bruce Fields wrote: 
-> > On Mon, Mar 22, 2010 at 04:33:40PM -0400, Jeff Layton wrote:
-> > > It looks like nfs_inode_return_delegation always calls nfs_msync_inode
-> > > on any valid delegation before returning it, regardless of the
-> > > delegation type.
-> > > 
-> > > RFC 3530 says this:
-> > > 
-> > >    If the client is granted a read delegation, it is assured that no
-> > >    other client has the ability to write to the file for the duration of
-> > >    the delegation.  If the client is granted a write delegation, the
-> > >    client is assured that no other client has read or write access to
-> > >    the file.
-> > > 
-> > > That doesn't seem to imply that we must flush writes before returning
-> > > either type of delegation. OTOH, maybe it makes sense to treat those as
-> > > cache consistency points since a delegreturn sort of implies that
-> > > another client wants to use the file.
-> > > 
-> > > I'm not quite sure how to interpret the spec here...
+On Fri, 2010-03-12 at 17:55 +0800, Mi Jinlong wrote: 
+> Hi,
+> 
+>   Thanks for your reply.
+> 
+> Chuck Lever 写道:
+> > On 03/08/2010 04:59 AM, Mi Jinlong wrote:
+> >> Hi chuck,
+> >>
+> >>   Thanks for your reply.
+> >>
+> >> Chuck Lever 写道:
+> >>> On 03/04/2010 05:12 AM, Mi Jinlong wrote:
+> >>>> Hi,
+> >>>> Step4: [22:42:16] Write data to file
+> >>>>          [22:42:16] Write data success
+> >>>> Step5: [22:42:16] Unlock file
+> >>>>          [22:46:30] Unlock file success.
+> >>>> Step6: [22:46:30] Close file /mnt/nfs/file
+> >>>>          [22:46:30] Close fiel /mnt/nfs/file success
+> >>>>
+> >>>> The problem is at step5, unlock file takes 4 min, it's a long time
+> >>>> than expected.
+> >>>> When traceing the kernel, I find SUNRPC call call_connect timeout many
+> >>>> times,
+> >>>> one timeout is 1min.
+> >>>
+> >>> The kernel's TCP reconnect logic will retry until it succeeds, without
+> >>> letting the upper level make progress.  For some reason, it is having
+> >>> difficulty reconnecting with your server.
+> >>>
+> >>>> I think it's a problem of kernel, but i don't know why, can someone
+> >>>> help me ?
+> >>>
+> >>> # sudo rpcdebug -m rpc -s xprt trans
+> >>
+> >>   After running this command, I got some important messages that I think.
+> >>
+> >>   RPC:       xs_connect delayed xprt  for 3 seconds
+> >>   ...
+> >>   RPC:       xs_connect delayed xprt  for 6 seconds
+> >>   ...
+> >>   RPC:       xs_connect delayed xprt  for 12 seconds
+> >>   ...
+> >>   RPC:       xs_connect delayed xprt  for 24 seconds
+> >>   ...
+> >>   ...
+> >>   RPC:       xs_connect delayed xprt  for 300 seconds
+> >>
+> >> This message is printed at xs_connect, and the delay time is double
+> >> there.
+> >> IMO, when some data translate over through a socket, the socket should
+> >> be released.
+> >> But, it seems the socket isn't released through those messages above.
+> >> Is it wrong, or there are some other reasons ?
 > > 
-> > If there's that call could cause the client to wait for an actual write
-> > to succeed before returning the delegation, then something's wrong.
+> > The code is trying to connect, but the ->connect call isn't working
+> > somehow.  The code backs off by doubling the timeout each time, so that
+> > the connect attempts don't overload the server.
+> > 
+> > This tells us that the code is attempting to connect, but not why the
+> > connect attempt is failing.
 > 
-> We're certainly expected to write back data before returning a write
-> delegation (see Section 9.4.4 of RFC 3530).
-> 
-> For the case of a read delegation, then the spec is silent because it
-> contains no discussion of the case where a server grants both an open
-> for write and a read delegation. If you want a normative statement on
-> what clients should do for that case, then I suggest a discussion on the
-> IETF list with a view to getting it into RFC3530-bis.
+>   When reading the kernel codes, I find a problem at function xs_tcp_close.
+>     ....
+>     772 static void xs_tcp_close(struct rpc_xprt *xprt)
+>     773 {
+>     774         if (test_and_clear_bit(XPRT_CONNECTION_CLOSE, &xprt->state))
+>     775                 xs_close(xprt);
+>     776         else
+>     777                 xs_tcp_shutdown(xprt);
+>     778 }
+>      ...
+>   If a task call xs_tcp_close to close the xprt's sock, many times it only call 
+>   xs_tcp_shutdown to using the next layer's close function to close the socket
+>   connection.
+>   But after close the socket connection, the socket also exist, so the socket may
+>   be reused. Is it a problem ? I think after xs_tcp_shutdown, the socket should
+>   be released.
 
-Yeah, that would be a good idea to get nailed down at some point.
+No it shouldn't. The whole point of the current code is to allow the RPC
+client to _reuse_ the same port without having to wait for a TIME_WAIT.
 
-(But the current server implementation doesn't allow write opens in this
-situation.  So I wonder why we're seeing any commit from the client at
-all?)
+The reason why we want to do that is because a lot of servers key their
+duplicate reply caches on the port number. See
+    http://www.connectathon.org/talks96/werme1.html
 
---b.
+Trond
+
