@@ -1,48 +1,70 @@
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: Re: [PATCH] sunrpc: fix error path - actually return ERR_PTR() on
- error
-Date: Fri, 12 Mar 2010 10:09:51 -0500
-Message-ID: <1268406591.3156.18.camel@localhost.localdomain>
-References: <1268401704-9034-1-git-send-email-ext-jani.1.nikula@nokia.com>
-	 <201003122314.IAD17160.OtJLHVMFOOSFFQ@I-love.SAKURA.ne.jp>
+From: Ric Wheeler <ricwheeler@gmail.com>
+Subject: Re: Very Slow Sequential Reads over NFS from an XFS disk in Amazon
+ EC2
+Date: Fri, 12 Mar 2010 13:30:49 -0500
+Message-ID: <4B9A8859.6060503@gmail.com>
+References: <e2c9b7261003111340i4aeff44dye0c5e9928ca13dc6@mail.gmail.com> <e2c9b7261003121022p40a5c382r3b0ca65e91d02622@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Cc: ext-jani.1.nikula@nokia.com, bfields@fieldses.org, neilb@suse.de,
-	davem@davemloft.net, batsakis@netapp.com, bhalevy@panasas.com,
-	linux-nfs@vger.kernel.org, netdev@vger.kernel.org,
-	akpm@linux-foundation.org
-To: Tetsuo Handa <penguin-kernel@I-love.SAKURA.ne.jp>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Cc: linux-nfs@vger.kernel.org
+To: Brandon Simmons <brandon.m.simmons@gmail.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:17635 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S934020Ab0CLPKe convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 12 Mar 2010 10:10:34 -0500
-In-Reply-To: <201003122314.IAD17160.OtJLHVMFOOSFFQ@I-love.SAKURA.ne.jp>
+Received: from qw-out-2122.google.com ([74.125.92.27]:49059 "EHLO
+	qw-out-2122.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S934119Ab0CLSa7 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 12 Mar 2010 13:30:59 -0500
+Received: by qw-out-2122.google.com with SMTP id 9so307749qwb.37
+        for <linux-nfs@vger.kernel.org>; Fri, 12 Mar 2010 10:30:59 -0800 (PST)
+In-Reply-To: <e2c9b7261003121022p40a5c382r3b0ca65e91d02622-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 2010-03-12 at 23:14 +0900, Tetsuo Handa wrote: 
-> Jani Nikula wrote:
-> > Signed-off-by: Jani Nikula <ext-jani.1.nikula@nokia.com>
-> > 
-> > ---
-> > 
-> > NOTE: I'm afraid I'm unable to test this; please consider this more a
-> > bug report than a complete patch.
-> > ---
-> Indeed, it has to be "return ERR_PTR(-EINVAL);".
-> Otherwise, it will trigger NULL pointer dereference some lines later.
-> 
->     bc_sock = container_of(args->bc_xprt, struct svc_sock, sk_xprt);
->     bc_sock->sk_bc_xprt = xprt;
-> 
-> This bug was introduced by f300baba5a1536070d6d77bf0c8c4ca999bb4f0f
-> "nfsd41: sunrpc: add new xprt class for nfsv4.1 backchannel" and
-> exists in 2.6.32 and later.
+On 03/12/2010 01:22 PM, Brandon Simmons wrote:
+> I am using tiobench to test performance of an NFS mounted volume, and
+> notice that Sequential Reads are much slower than Random Reads. This
+> isn't the behavior when I run the same test on the disk mounted
+> locally.
+>
+> For random reads I'm getting:
+>
+>     50 MB/s  over NFS
+>
+> v.s
+>
+>     384 MB/s  when mounted locally
+>
+> This is in comparison to the benchmark for _Random Reads_, in which I get:
+>
+>     288 MB/s both over NFS _and_ when directly mounted
+>
+> The other benchmarks seem to be in line with what I would expect, but
+> I'm fairly new to NFS. Why would sequential reads over NFS be sooo
+> much slower than random reads over NFS?
+>
+> I am exporting the volume on the server like this
+>
+> /export *.internal(no_subtree_check,rw,no_root_squash)
+>
+> and mounting with this:
+>
+> mount -o hard,intr,async,noatime,nodiratime,noacl $NFS_SERVER:/export /nfs
+>
+> Additionally I am doing all this in amazon EC2, exporting an EBS
+> volume with the XFS file system (redundant, I know).
+>
+> I have tried using jumbo frames and various other mount options, but
+> none seem to have much effect.
+>
+> Thanks for any clues.
+>    
 
-Or it should just be dropped. I don't see any reason why nfsd should be
-trying to set up a callback channel if it doesn't already know that it
-has a socket. Returning an error value in that case would just be
-papering over a design bug.
+Not sure what kind of network you are running the NFS test over so it is 
+quite hard to figure out why your performance varies so wildly.
 
-   Trond
+Normal NFS testing with a gigabit network between the client and server 
+would be much closer to 50MB/sec than your 288MB/sec.
+
+Can you try to reproduce this locally with known client and server hardware?
+
+ric
+
