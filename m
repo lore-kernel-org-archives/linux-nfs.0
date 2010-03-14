@@ -1,42 +1,49 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Ann Arbor Bakeathon, June 14-18 2010
-Date: Sat, 13 Mar 2010 16:42:31 -0500
-Message-ID: <20100313214231.GB6764@fieldses.org>
+From: Guillaume Rousse <Guillaume.Rousse@inria.fr>
+Subject: Re: unmount -l does not send unmount request to the server
+Date: Sun, 14 Mar 2010 21:40:44 +0100
+Message-ID: <4B9D49CC.8080603@inria.fr>
+References: <4B530EFF.9000205@inria.fr>
+	<7123090D-5BB9-4CF5-A024-56345DD8136F@oracle.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-To: linux-nfs@vger.kernel.org, pnfs@linux-nfs.org
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:37295 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755523Ab0CMVk6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 13 Mar 2010 16:40:58 -0500
-Sender: linux-nfs-owner@vger.kernel.org
+Content-Type: text/plain; charset="iso-8859-1"
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+	Linux NFSv4 mailing list <nfsv4@linux-nfs.org>
+To: Chuck Lever <chuck.lever@oracle.com>
+Return-path: <nfsv4-bounces@linux-nfs.org>
+In-Reply-To: <7123090D-5BB9-4CF5-A024-56345DD8136F@oracle.com>
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/options/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@linux-nfs.org>
+List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
+Sender: nfsv4-bounces@linux-nfs.org
+Errors-To: nfsv4-bounces@linux-nfs.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The next Bakeathon will be held June 14th - 18th, 2010, at the
-University of Michigan's Computer Science and Engineering building in
-Ann Arbor, Michigan.
+Le 19/01/2010 17:37, Chuck Lever a =E9crit :
+> As far as I understand it, "-l" means the kernel will do the local
+> detach from the system's file name space whenever there are no more
+> users (ie entirely asynchronously).  I don't think umount2(MNT_DETACH)
+> indicates whether the kernel was able to completely unmount that file
+> system by the time the call returns, so there's perhaps no way for
+> umount.nfs to know whether it should send the UMNT request.  If the
+> server is slow or unresponsive, that file system won't be unmounted
+> until long after the umount.nfs command has exited.
+> =
 
-Details will be posted at http://citi.umich.edu/bakeathon.html as we have
-them.
+> This shouldn't be much of a big deal, since the server's rmtab is
+> "ornamental" according to the man page.  No one should rely on it being
+> accurate.
+> =
 
-The primary focus of testing will be NFSv4.1 and pNFS.  NFSv4.0 testing
-will also be possible.
+> A possible way to fix this is to have the kernel send the UMNT.
+It makes sense, but it doesn't seem to trigger much interest :)
 
-Registration is by email to bakeathon-vtMw8L3fJ9vO8rHGr+FQ/A@public.gmane.org  (Earlier
-estimates of attendance would also be appreciated.)  Please let us know:
+Should I open a bug somewhere, to ensure the issue won't be forgotten ?
+-- =
 
-	- How many people are coming from your group.
-	- How many machines you are bringing, and how many IP addresses
-	  you will need.
-	- What equipment you will be bringing if it's more than two
-	  laptops, or a laptop and a desktop, per person.
-	- A list of usernames (with UID's and GID's, if you have a
-	  preference) to use for ID mapping.
-	- Also: will you be able to stay through Friday night?
+BOFH excuse #196:
 
-On the last point: we'd like to make the final Friday a full testing
-day, and Andy and Lesli have offered to host a wrap-up party Friday
-evening.
-
---b.
+Me no internet, only janitor, me just wax floors.
