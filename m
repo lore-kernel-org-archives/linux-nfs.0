@@ -1,241 +1,51 @@
 From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: [PATCH 01/22] gss_krb5: introduce encryption type framework
-Date: Mon, 15 Mar 2010 11:58:53 -0400
-Message-ID: <1268668733.2993.90.camel@localhost.localdomain>
+Subject: Re: [PATCH 02/22] Don't expect blocksize to always be 8 when
+ calculating padding
+Date: Mon, 15 Mar 2010 12:02:10 -0400
+Message-ID: <1268668930.2993.91.camel@localhost.localdomain>
 References: <1268655627-18712-1-git-send-email-steved@redhat.com>
-	 <1268655627-18712-2-git-send-email-steved@redhat.com>
+	 <1268655627-18712-3-git-send-email-steved@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="UTF-8"
 Cc: linux-nfs@vger.kernel.org
 To: steved@redhat.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-out2.uio.no ([129.240.10.58]:47061 "EHLO mail-out2.uio.no"
+Received: from mail-out1.uio.no ([129.240.10.57]:54272 "EHLO mail-out1.uio.no"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S964860Ab0COP66 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 15 Mar 2010 11:58:58 -0400
-In-Reply-To: <1268655627-18712-2-git-send-email-steved@redhat.com>
+	id S965216Ab0COQCP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 15 Mar 2010 12:02:15 -0400
+In-Reply-To: <1268655627-18712-3-git-send-email-steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 On Mon, 2010-03-15 at 08:20 -0400, steved@redhat.com wrote: 
 > From: Kevin Coffman <kwc@citi.umich.edu>
 > 
-> Make the client and server code consistent regarding the extra buffer
-> space made available for the auth code when wrapping data.
-> 
-> Add some comments/documentation about the available buffer space
-> in the xdr_buf head and tail when gss_wrap is called.
-> 
-> Add a compile-time check to make sure we are not exceeding the available
-> buffer space.
-> 
-> Add a central function to shift head data.
+> Allow blocksizes other than 8 when calculating padding
 > 
 > Signed-off-by: Kevin Coffman <kwc@citi.umich.edu>
 > Signed-off-by: Steve Dickson <steved@redhat.com>
 > ---
->  include/linux/sunrpc/gss_krb5.h       |   25 ++++++++++++++
->  net/sunrpc/auth_gss/auth_gss.c        |   14 ++++++--
->  net/sunrpc/auth_gss/gss_krb5_crypto.c |   56 +++++++++++++++++++++++++++++++++
->  net/sunrpc/auth_gss/gss_krb5_wrap.c   |    7 ++--
->  net/sunrpc/auth_gss/gss_mech_switch.c |   14 ++++++++
->  net/sunrpc/auth_gss/svcauth_gss.c     |   15 +++++++++
->  6 files changed, 123 insertions(+), 8 deletions(-)
+>  net/sunrpc/auth_gss/gss_krb5_wrap.c |    5 +----
+>  1 files changed, 1 insertions(+), 4 deletions(-)
 > 
-> diff --git a/include/linux/sunrpc/gss_krb5.h b/include/linux/sunrpc/gss_krb5.h
-> index e7bbdba..5bb227e 100644
-> --- a/include/linux/sunrpc/gss_krb5.h
-> +++ b/include/linux/sunrpc/gss_krb5.h
-> @@ -40,6 +40,12 @@
->  #include <linux/sunrpc/gss_err.h>
->  #include <linux/sunrpc/gss_asn1.h>
->  
-> +/* Maximum checksum function output for the supported crypto algorithms */
-> +#define GSS_KRB5_MAX_CKSUM_LEN  (20)
-> +
-> +/* Maximum blocksize for the supported crypto algorithms */
-> +#define GSS_KRB5_MAX_BLOCKSIZE  (16)
-> +
->  struct krb5_ctx {
->  	int			initiate; /* 1 = initiating, 0 = accepting */
->  	struct crypto_blkcipher	*enc;
-> @@ -113,6 +119,22 @@ enum seal_alg {
->  #define ENCTYPE_DES3_CBC_SHA1   0x0010
->  #define ENCTYPE_UNKNOWN         0x01ff
->  
-> +/*
-> + * This compile-time check verifies that we will not exceed the
-> + * slack space allotted by the client and server auth_gss code
-> + * before they call gss_wrap().
-> + */
-> +#define GSS_KRB5_SLACK_CHECK \
-> +	BUILD_BUG_ON(GSS_KRB5_TOK_HDR_LEN      /* gss token header */         \
-> +		     + GSS_KRB5_MAX_CKSUM_LEN  /* gss token checksum */       \
-> +		     + GSS_KRB5_MAX_BLOCKSIZE  /* confounder */               \
-> +		     + GSS_KRB5_MAX_BLOCKSIZE  /* possible padding */         \
-> +		     + GSS_KRB5_TOK_HDR_LEN    /* encrypted hdr in v2 token */\
-> +		     + GSS_KRB5_MAX_CKSUM_LEN  /* encryption hmac */          \
-> +		     + 4 + 4                   /* RPC verifier */             \
-> +		     + GSS_KRB5_TOK_HDR_LEN                                   \
-> +		     + GSS_KRB5_MAX_CKSUM_LEN > RPC_MAX_AUTH_SIZE)
-> +
->  s32
->  make_checksum(char *, char *header, int hdrlen, struct xdr_buf *body,
->  		   int body_offset, struct xdr_netobj *cksum);
-> @@ -157,3 +179,6 @@ s32
->  krb5_get_seq_num(struct crypto_blkcipher *key,
->  	       unsigned char *cksum,
->  	       unsigned char *buf, int *direction, u32 *seqnum);
-> +
-> +int
-> +shift_head_data(struct xdr_buf *buf, unsigned int base, unsigned int shiftlen);
-> diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
-> index 0cfccc2..a268368 100644
-> --- a/net/sunrpc/auth_gss/auth_gss.c
-> +++ b/net/sunrpc/auth_gss/auth_gss.c
-> @@ -61,7 +61,7 @@ static const struct rpc_credops gss_nullops;
->  # define RPCDBG_FACILITY	RPCDBG_AUTH
->  #endif
->  
-> -#define GSS_CRED_SLACK		1024
-> +#define GSS_CRED_SLACK		(RPC_MAX_AUTH_SIZE * 2)
->  /* length of a krb5 verifier (48), plus data added before arguments when
->   * using integrity (two 4-byte integers): */
->  #define GSS_VERF_SLACK		100
-> @@ -1317,15 +1317,21 @@ gss_wrap_req_priv(struct rpc_cred *cred, struct gss_cl_ctx *ctx,
->  	inpages = snd_buf->pages + first;
->  	snd_buf->pages = rqstp->rq_enc_pages;
->  	snd_buf->page_base -= first << PAGE_CACHE_SHIFT;
-> -	/* Give the tail its own page, in case we need extra space in the
-> -	 * head when wrapping: */
-> +	/*
-> +	 * Give the tail its own page, in case we need extra space in the
-> +	 * head when wrapping:
-> +	 *
-> +	 * call_allocate() allocates twice the slack space required
-> +	 * by the authentication flavor to rq_callsize.
-> +	 * For GSS, slack is GSS_CRED_SLACK.
-> +	 */
-
-I'm all for improving the comments in the code, but could we please make
-that a separate patch.
-
-> 	if (snd_buf->page_len || snd_buf->tail[0].iov_len) {
->  		tmp = page_address(rqstp->rq_enc_pages[rqstp->rq_enc_pages_num - 1]);
->  		memcpy(tmp, snd_buf->tail[0].iov_base, snd_buf->tail[0].iov_len);
->  		snd_buf->tail[0].iov_base = tmp;
->  	}
->  	maj_stat = gss_wrap(ctx->gc_gss_ctx, offset, snd_buf, inpages);
-> -	/* RPC_SLACK_SPACE should prevent this ever happening: */
-> +	/* slack space should prevent this ever happening: */
->  	BUG_ON(snd_buf->len > snd_buf->buflen);
->  	status = -EIO;
->  	/* We're assuming that when GSS_S_CONTEXT_EXPIRED, the encryption was
-> diff --git a/net/sunrpc/auth_gss/gss_krb5_crypto.c b/net/sunrpc/auth_gss/gss_krb5_crypto.c
-> index c93fca2..d0f3371 100644
-> --- a/net/sunrpc/auth_gss/gss_krb5_crypto.c
-> +++ b/net/sunrpc/auth_gss/gss_krb5_crypto.c
-> @@ -326,3 +326,59 @@ gss_decrypt_xdr_buf(struct crypto_blkcipher *tfm, struct xdr_buf *buf,
->  
->  	return xdr_process_buf(buf, offset, buf->len - offset, decryptor, &desc);
->  }
-> +
-> +/*
-> + * This function makes the assumption that it was ultimately called
-> + * from gss_wrap().
-> + *
-> + * The client auth_gss code moves any existing tail data into a
-> + * separate page before calling gss_wrap.
-> + * The server svcauth_gss code ensures that both the head and the
-> + * tail have slack space of RPC_MAX_AUTH_SIZE before calling gss_wrap.
-> + *
-> + * Even with that guarantee, this function may be called more than
-> + * once in the processing of gss_wrap().  The best we can do is
-> + * verify at compile-time (see GSS_KRB5_SLACK_CHECK) that the
-> + * largest expected shift will fit within RPC_MAX_AUTH_SIZE.
-> + * At run-time we can verify that a single invocation of this
-> + * function doesn't attempt to use more the RPC_MAX_AUTH_SIZE.
-> + */
-> +
-> +int
-> +shift_head_data(struct xdr_buf *buf, unsigned int base, unsigned int shiftlen)
-   ^^^^^^^^^^^^^^^
-This needs a better name in order to avoid polluting the global
-namespace. xdr_extend_head(), perhaps?
-
-> +{
-> +	u8 *p;
-> +
-> +	if (shiftlen == 0)
-> +		return 0;
-> +
-> +	GSS_KRB5_SLACK_CHECK;
-          ^^^^^^^^^^^^^^^^^^^^^
-              Why is this a macro?
-
-> +	BUG_ON(shiftlen > RPC_MAX_AUTH_SIZE);
-> +
-> +	/*
-> +	 * If there is a tail, and it shares a page with the head,
-> +	 * make sure we don't clobber the tail.  This is a just a
-> +	 * defensive check.
-> +	 */
-> +	if (buf->tail[0].iov_base != NULL) {
-> +		if ((((long)buf->tail[0].iov_base >> PAGE_CACHE_SHIFT) ==
-> +		     ((long)buf->head[0].iov_base >> PAGE_CACHE_SHIFT)) &&
-                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-This is just too ugly to live, and is wrong to boot. If
-buf->tail[0].iov_len == 0, then buf->tail[0].iov_base isn't even
-defined...
-
-> +		    buf->tail[0].iov_base - buf->head[0].iov_base < shiftlen) {
-> +			dprintk("%s: collision: head %p:%zu, tail %p:%zu, "
-> +				"shiftlen %u\n",
-> +				__func__, buf->head[0].iov_base,
-> +				buf->head[0].iov_len, buf->tail[0].iov_base,
-> +				buf->tail[0].iov_len, shiftlen);
-> +			return 1;
-> +		}
-> +	}
-> +
-> +	p = buf->head[0].iov_base + base;
-> +
-> +	memmove(p + shiftlen, p, buf->head[0].iov_len - base);
-> +
-> +	buf->head[0].iov_len += shiftlen;
-> +	buf->len += shiftlen;
-> +
-> +	return 0;
-> +}
 > diff --git a/net/sunrpc/auth_gss/gss_krb5_wrap.c b/net/sunrpc/auth_gss/gss_krb5_wrap.c
-> index ae8e69b..a0660f5 100644
+> index a0660f5..4c14b0a 100644
 > --- a/net/sunrpc/auth_gss/gss_krb5_wrap.c
 > +++ b/net/sunrpc/auth_gss/gss_krb5_wrap.c
-> @@ -144,6 +144,7 @@ gss_wrap_kerberos(struct gss_ctx *ctx, int offset,
+> @@ -13,10 +13,7 @@
+>  static inline int
+>  gss_krb5_padding(int blocksize, int length)
+>  {
+> -	/* Most of the code is block-size independent but currently we
+> -	 * use only 8: */
+> -	BUG_ON(blocksize != 8);
+> -	return 8 - (length & 7);
+> +	return blocksize - (length & (blocksize - 1));
+>  }
 >  
->  	dprintk("RPC:       gss_wrap_kerberos\n");
->  
-> +	GSS_KRB5_SLACK_CHECK;
 
-....and why do we have a second one here? Since this is a BUILD_BUG,
-then surely we can check this just once.
+What happens if blocksize is not a power of 2?
 
-> 	now = get_seconds();
->  
->  	blocksize = crypto_blkcipher_blocksize(kctx->enc);
-> @@ -156,11 +157,9 @@ gss_wrap_kerberos(struct gss_ctx *ctx, int offset,
->  
->  	ptr = buf->head[0].iov_base + offset;
->  	/* shift data to make room for header. */
-> +	shift_head_data(buf, offset, headlen);
-> +
->  	/* XXX Would be cleverer to encrypt while copying. */
-> -	/* XXX bounds checking, slack, etc. */
-> -	memmove(ptr + headlen, ptr, buf->head[0].iov_len - offset);
-> -	buf->head[0].iov_len += headlen;
-> -	buf->len += headlen;
->  	BUG_ON((buf->len - offset - headlen) % blocksize);
->  
->  	g_make_token_header(&kctx->mech_used,
 
 
