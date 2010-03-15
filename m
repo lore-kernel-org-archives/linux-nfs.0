@@ -1,77 +1,46 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-bw0-f209.google.com ([209.85.218.209]:43125 "EHLO
-	mail-bw0-f209.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753379Ab0C3TLY convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 30 Mar 2010 15:11:24 -0400
-Received: by bwz1 with SMTP id 1so4648521bwz.21
-        for <linux-nfs@vger.kernel.org>; Tue, 30 Mar 2010 12:11:22 -0700 (PDT)
-Subject: Re: NFS4 in combination with root over NFS3, hangs and deadlocks
-Content-Type: text/plain; charset=us-ascii
-From: Anton Starikov <ant.starikov@gmail.com>
-In-Reply-To: <4BB24A53.1090005@oracle.com>
-Date: Tue, 30 Mar 2010 21:11:19 +0200
-Cc: linux-nfs@vger.kernel.org
-Message-Id: <844AD38F-D46D-4641-8250-33377CFECFCB@gmail.com>
-References: <EE102A23-736F-4905-BAAF-1BF03064F529@gmail.com> <EDDF2B79-DBFA-4701-BEFF-0AEACD63A3DC@gmail.com> <4BB24A53.1090005@oracle.com>
-To: Chuck Lever <chuck.lever@oracle.com>
+Received: from mx2.netapp.com ([216.240.18.37]:49312 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S965819Ab0COXt7 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 15 Mar 2010 19:49:59 -0400
+Subject: Re: [PATCH 0/6][v4][RFC] NFSv3: implement extended attribute
+ protocol (XATTR)
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Casey Schaufler <casey@schaufler-ca.com>
+Cc: Jamie Lokier <jamie@shareable.org>, Brad Boyer <flar@allandria.com>,
+        James Morris <jmorris@namei.org>, linux-nfs@vger.kernel.org,
+        linux-security-module@vger.kernel.org,
+        "J. Bruce Fields" <bfields@fieldses.org>, Neil Brown <neilb@suse.de>,
+        linux-fsdevel@vger.kernel.org
+In-Reply-To: <4B9EC2B9.3030800@schaufler-ca.com>
+References: <alpine.LRH.2.00.1002261457420.25193@tundra.namei.org>
+	 <alpine.LRH.2.00.1003082122340.6314@tundra.namei.org>
+	 <20100309035932.GA14237@cynthia.pants.nu> <4B95E167.40306@schaufler-ca.com>
+	 <20100309070444.GA18216@cynthia.pants.nu>
+	 <20100309193545.GE11042@shareable.org> <4B971611.8030801@schaufler-ca.com>
+	 <20100315031951.GU6491@shareable.org> <4B9DBAB0.5060500@schaufler-ca.com>
+	 <20100315142803.GC15133@shareable.org>  <4B9EC2B9.3030800@schaufler-ca.com>
+Content-Type: text/plain; charset="UTF-8"
+Date: Mon, 15 Mar 2010 19:49:07 -0400
+Message-ID: <1268696947.3155.6.camel@localhost.localdomain>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Mar 30, 2010, at 9:00 PM, Chuck Lever wrote:
+On Mon, 2010-03-15 at 16:28 -0700, Casey Schaufler wrote:
 
-> On 03/30/2010 02:30 PM, Anton Starikov wrote:
->> If it is already resolved problem, can someone point me into direction of particular patch?
-> 
-> As far as I know NFSv4 is known not to work with an NFSv3 root, in any kernel.
+> You're missing something. Privilege semantics are different. The
+> behavior of unlinked files is different. Locking is different. You
+> are correct that in most cases it does not matter. We're not talking
+> about the common case, we're talking about using xattrs to store
+> information that is used to make security decisions. It is quite
+> difficult to make security claims when an object can be accessed
+> under two different sets of semantics.
 
+I'm sorry. Exactly _how_ are you going to prevent files from being
+accessed under more than one set of semantics under NFS? You have _no_
+idea what kind of security mechanisms are implemented on the client.
 
-But NFS4-root (does it work finally?) isn't always desirable solution. Especially if different OSes used for client/server.
+All you can do is export a given set of security labels and hope...
 
-And it seems that generally it works, just some deadlock occurs, probably related to caching of some credentials.
-
-Anton,
-
->> Anton.
->> 
->> 
->> On Mar 29, 2010, at 5:14 PM, Anton Starikov wrote:
->> 
->>> Hi,
->>> 
->>> Early (year ago and recently) I reported about my faults in getting working NFS4 mounts (primary automounting /home) with system booted with NFSv3-root. It always used to silently hang nodes with zero output in the logs. It was definitely client issue (I tried it with different versions of linux and solaris servers)
->>> 
->>> Although I can't get simple and reproducible test-case, because hangs appears randomly, it can happen in 1hour, it can happen in 5 days, but it always will happen after some time. But this time I got some some improvement.
->>> 
->>> With 2.6.32.9-70.fc12.x86_64 kernel and fresh nfs-utils from Fedora-12, after NFS4 mounts hangs, NFS3 mounts and node itself still continue to work, which gives chance to investigate problem.
->>> 
->>> Can you give me instruction how to collect all necessary information to figure out where the bug is?
->>> 
->>> As starting point I will attach output of echo "t">  sysrq-trigge, list of NFS mounts.
->>> 
->>> Thanks,
->>> Anton.
->>> 
->>> # cat /proc/mounts | grep nfs
->>> 172.19.8.1:/export/share/cluster/fedora-root / nfs ro,relatime,vers=3,rsize=32768,wsize=32768,namlen=255,hard,nolock,proto=udp,port=65535,timeo=7,retrans=3,sec=sys,mountport=65535,addr=172.19.8.1 0 0
->>> none /var/lib/nfs tmpfs rw,relatime 0 0
->>> sunrpc /var/lib/nfs/rpc_pipefs rpc_pipefs rw,relatime 0 0
->>> 172.19.8.1:/export/share/cluster/admin /root nfs rw,noatime,vers=3,rsize=1048576,wsize=1048576,namlen=255,hard,nolock,noacl,proto=tcp,timeo=600,retrans=2,sec=sys,mountaddr=172.19.8.1,mountvers=3,mountport=44114,mountproto=tcp,addr=172.19.8.1 0 0
->>> 172.19.8.1:/export/share/cluster/checkpoint /mnt/checkpoint nfs rw,noatime,vers=3,rsize=1048576,wsize=1048576,namlen=255,hard,noacl,proto=tcp,timeo=600,retrans=2,sec=sys,mountaddr=172.19.8.1,mountvers=3,mountport=52574,mountproto=udp,addr=172.19.8.1 0 0
->>> 172.19.8.1:/export/share/software /software nfs rw,noatime,vers=3,rsize=1048576,wsize=1048576,namlen=255,hard,nolock,noacl,proto=tcp,timeo=600,retrans=2,sec=sys,mountaddr=172.19.8.1,mountvers=3,mountport=44114,mountproto=tcp,addr=172.19.8.1 0 0
->>> 172.19.8.1:/export/share/cluster/torque /var/torque nfs rw,noatime,vers=3,rsize=1048576,wsize=1048576,namlen=255,hard,nolock,noacl,proto=tcp,timeo=600,retrans=2,sec=sys,mountaddr=172.19.8.1,mountvers=3,mountport=44114,mountproto=tcp,addr=172.19.8.1 0 0
->>> 172.19.8.1:/export/share/common/ /common nfs4 rw,noatime,vers=4,rsize=1048576,wsize=1048576,namlen=255,hard,proto=tcp,port=0,timeo=600,retrans=2,sec=sys,clientaddr=172.19.8.133,addr=172.19.8.1 0 0
->>> 172.19.8.1:/export/home/alfons/ /home/alfons nfs4 rw,relatime,vers=4,rsize=1048576,wsize=1048576,namlen=255,hard,proto=tcp,port=0,timeo=600,retrans=2,sec=sys,clientaddr=172.19.8.133,addr=172.19.8.1 0 0
->>> 
->>> <log1.txt.gz>
->>> 
->> 
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-> 
-> -- 
-> chuck[dot]lever[at]oracle[dot]com
-
+Trond
