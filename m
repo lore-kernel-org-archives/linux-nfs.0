@@ -1,68 +1,97 @@
-From: Jamie Lokier <jamie@shareable.org>
-Subject: Re: [PATCH 0/6][v4][RFC] NFSv3: implement extended attribute protocol (XATTR)
-Date: Mon, 15 Mar 2010 03:19:51 +0000
-Message-ID: <20100315031951.GU6491@shareable.org>
-References: <alpine.LRH.2.00.1002261457420.25193@tundra.namei.org> <alpine.LRH.2.00.1003082122340.6314@tundra.namei.org> <20100309035932.GA14237@cynthia.pants.nu> <4B95E167.40306@schaufler-ca.com> <20100309070444.GA18216@cynthia.pants.nu> <20100309193545.GE11042@shareable.org> <4B971611.8030801@schaufler-ca.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Brad Boyer <flar@allandria.com>, James Morris <jmorris@namei.org>,
-	linux-nfs@vger.kernel.org, linux-security-module@vger.kernel.org,
-	Trond Myklebust <Trond.Myklebust@netapp.com>,
-	"J. Bruce Fields" <bfields@fieldses.org>,
-	Neil Brown <neilb@suse.de>, linux-fsdevel@vger.kernel.org
-To: Casey Schaufler <casey@schaufler-ca.com>
-Return-path: <linux-security-module-owner@vger.kernel.org>
-In-Reply-To: <4B971611.8030801@schaufler-ca.com>
-Sender: linux-security-module-owner@vger.kernel.org
+From: steved@redhat.com
+Subject: [PATCH 10/22] Add new pipefs file indicating which Kerberos enctypes the kernel supports
+Date: Mon, 15 Mar 2010 08:20:15 -0400
+Message-ID: <1268655627-18712-11-git-send-email-steved@redhat.com>
+References: <1268655627-18712-1-git-send-email-steved@redhat.com>
+To: linux-nfs@vger.kernel.org
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from 4dicksons.org ([207.22.49.45]:41129 "EHLO
+	Dobby.Home.4dicksons.org" rhost-flags-OK-OK-OK-FAIL)
+	by vger.kernel.org with ESMTP id S964876Ab0CONZ4 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 15 Mar 2010 09:25:56 -0400
+Received: from [192.168.62.20] (helo=localhost.localdomain)
+	by Dobby.Home.4dicksons.org with esmtp (Exim 4.63)
+	(envelope-from <steved@redhat.com>)
+	id 1Nr9Hb-00009j-0p
+	for linux-nfs@vger.kernel.org; Mon, 15 Mar 2010 08:20:31 -0400
+In-Reply-To: <1268655627-18712-1-git-send-email-steved@redhat.com>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Casey Schaufler wrote:
-> Jamie Lokier wrote:
-> > Brad Boyer wrote:
-> >   
-> >> On Mon, Mar 08, 2010 at 09:49:27PM -0800, Casey Schaufler wrote:
-> >>     
-> >>> Another is to NFS mount the filesystem back on to the server,
-> >>> in which case James' scheme works just dandy. It's a trick that
-> >>> I've used more than once in the Unix world for this exact purpose.
-> >>> Of course you have to arrange your mount points in advance with
-> >>> malice aforethought, but that's likely something you're used to
-> >>> by now.
-> >>>       
-> >> That would definitely work, but it's not ideal. Obviously if it's
-> >> being accessed over NFS in one place it probably good enough
-> >> everywhere, but it's overhead that could be eliminated.
-> >>     
-> >
-> > As a real example:
-> >
-> > Each user has a PC with their own home directory being local, fast
-> > storage, but /home is filled with NFS auto-mounts to everyone else's
-> > home directories, on their individual PCs.  The auto-mount map has an
-> > exception, so the local user's home directory is a symlink to the
-> > local storage, instead of an NFS mount.
-> >
-> > A scheme like that works very well for occasional access to other
-> > peoples files, and for logging to each other's machines transparently,
-> > yet having fast performance for their own files when using their local
-> > machine.
-> >
-> > In an environment where I've used that, forcing local access to go
-> > over local NFS would have destroyed performance for things like big
-> > compiles, running find, git, grep etc. that people do on their own
-> > directories.
-> >
-> >   
-> 
-> Sure. The original objection can be readily addressed. There are
-> performance implications. Just like you'd have if the home directories
-> resided on a storage appliance. Some people pick security for the
-> masses over performance for the few. Some the other way round.
-> It's not an issue for people who want labeled NFS3 badly enough
-> to install it.
+From: Kevin Coffman <kwc@citi.umich.edu>
 
-It seems in this case, the performance implications are totally unnecassary.
+New file, krb5_info, indicates which Kerberos encryption types are
+supported by the kernel rpcsecgss code.  This is used by gssd to
+determine which encryption types it should attempt to negotiate
+when creating a context with a server.
 
-Why not a mount option for the xattr name translation?
+The server principal's database and keytab encryption types are
+what limits what it should negotiate.  Therefore, its keytab
+should be created with only the enctypes listed by this file.
 
--- Jamie
+From: J. Bruce Fields <bfields@citi.umich.edu>
+Signed-off-by: Kevin Coffman <kwc@citi.umich.edu>
+Signed-off-by: Steve Dickson <steved@redhat.com>
+---
+ net/sunrpc/rpc_pipe.c |   31 +++++++++++++++++++++++++++++++
+ 1 files changed, 31 insertions(+), 0 deletions(-)
+
+diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
+index 8d63f8f..2230b52 100644
+--- a/net/sunrpc/rpc_pipe.c
++++ b/net/sunrpc/rpc_pipe.c
+@@ -397,6 +397,31 @@ static const struct file_operations rpc_info_operations = {
+ 	.release	= rpc_info_release,
+ };
+ 
++/*
++ * This really belongs in the gss_krb5 code,
++ * but the info file logically belongs here
++ */
++static int
++rpc_show_krb5_info(struct seq_file *m, void *v)
++{
++	seq_printf(m, "enctypes: 3,1,2\n");
++	return 0;
++}
++
++static int
++rpc_krb5_info_open(struct inode *inode, struct file *file)
++{
++	return single_open(file, rpc_show_krb5_info, NULL);
++}
++
++static struct file_operations krb5_info_operations = {
++	.owner		= THIS_MODULE,
++	.open		= rpc_krb5_info_open,
++	.read		= seq_read,
++	.llseek		= seq_lseek,
++	.release	= single_release,
++};
++
+ 
+ /*
+  * Description of fs contents.
+@@ -949,6 +974,7 @@ enum {
+ 	RPCAUTH_portmap,
+ 	RPCAUTH_statd,
+ 	RPCAUTH_nfsd4_cb,
++	RPCAUTH_krb5_info,
+ 	RPCAUTH_cache,
+ 	RPCAUTH_RootEOF
+ };
+@@ -982,6 +1008,11 @@ static const struct rpc_filelist files[] = {
+ 		.name = "cache",
+ 		.mode = S_IFDIR | S_IRUGO | S_IXUGO,
+ 	},
++	[RPCAUTH_krb5_info] = {
++		.name = "krb5_info",
++		.i_fop = &krb5_info_operations,
++		.mode = S_IFREG | S_IRUSR,
++	},
+ };
+ 
+ static int
+-- 
+1.6.6.1
+
