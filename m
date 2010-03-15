@@ -1,212 +1,81 @@
 From: steved@redhat.com
-Subject: [PATCH 09/22] gss_krb5: add support for triple-des encryption
-Date: Mon, 15 Mar 2010 08:20:14 -0400
-Message-ID: <1268655627-18712-10-git-send-email-steved@redhat.com>
-References: <1268655627-18712-1-git-send-email-steved@redhat.com>
+Subject: [PATCH 00/22] Add new enctypes for gss_krb5 (Round 4)
+Date: Mon, 15 Mar 2010 08:20:05 -0400
+Message-ID: <1268655627-18712-1-git-send-email-steved@redhat.com>
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from 4dicksons.org ([207.22.49.45]:41132 "EHLO
+Received: from 4dicksons.org ([207.22.49.45]:41134 "EHLO
 	Dobby.Home.4dicksons.org" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S964876Ab0CON0A (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 15 Mar 2010 09:26:00 -0400
+	by vger.kernel.org with ESMTP id S964876Ab0CON0B (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 15 Mar 2010 09:26:01 -0400
 Received: from [192.168.62.20] (helo=localhost.localdomain)
 	by Dobby.Home.4dicksons.org with esmtp (Exim 4.63)
 	(envelope-from <steved@redhat.com>)
-	id 1Nr9Ha-00009j-NU
-	for linux-nfs@vger.kernel.org; Mon, 15 Mar 2010 08:20:30 -0400
-In-Reply-To: <1268655627-18712-1-git-send-email-steved@redhat.com>
+	id 1Nr9HX-00009j-RX
+	for linux-nfs@vger.kernel.org; Mon, 15 Mar 2010 08:20:28 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Kevin Coffman <kwc@citi.umich.edu>
+From: Steve Dickson <steved@redhat.com>
 
-Add the final pieces to support the triple-des encryption type.
+This is round 4 of the Kevin Coffman's patches that added three
+additional encryption types to the rpcsec_gss kernel code.
+Here is a pointer to Kevin's last posting
+    http://marc.info/?l=linux-nfs&m=121010783625159&w=2
 
-Signed-off-by: Kevin Coffman <kwc@citi.umich.edu>
-Signed-off-by: Steve Dickson <steved@redhat.com>
----
- include/linux/sunrpc/gss_krb5.h       |    5 +++
- net/sunrpc/auth_gss/gss_krb5_crypto.c |    3 ++
- net/sunrpc/auth_gss/gss_krb5_keys.c   |   53 +++++++++++++++++++++++++++++++++
- net/sunrpc/auth_gss/gss_krb5_mech.c   |   23 ++++++++++++++
- net/sunrpc/auth_gss/gss_krb5_seal.c   |    1 +
- net/sunrpc/auth_gss/gss_krb5_unseal.c |    1 +
- net/sunrpc/auth_gss/gss_krb5_wrap.c   |    2 +
- 7 files changed, 88 insertions(+), 0 deletions(-)
+These patches were tested a this year's connectathon in which
+not issues were found. 
 
-diff --git a/include/linux/sunrpc/gss_krb5.h b/include/linux/sunrpc/gss_krb5.h
-index 81d6fc2..c686fa9 100644
---- a/include/linux/sunrpc/gss_krb5.h
-+++ b/include/linux/sunrpc/gss_krb5.h
-@@ -261,3 +261,8 @@ krb5_derive_key(struct gss_krb5_enctype *gk5e,
- 		const struct xdr_netobj *inkey,
- 		struct xdr_netobj *outkey,
- 		const struct xdr_netobj *in_constant);
-+
-+u32
-+gss_krb5_des3_make_key(struct gss_krb5_enctype *gk5e,
-+		       struct xdr_netobj *randombits,
-+		       struct xdr_netobj *key);
-diff --git a/net/sunrpc/auth_gss/gss_krb5_crypto.c b/net/sunrpc/auth_gss/gss_krb5_crypto.c
-index 389f366..0c91186 100644
---- a/net/sunrpc/auth_gss/gss_krb5_crypto.c
-+++ b/net/sunrpc/auth_gss/gss_krb5_crypto.c
-@@ -185,6 +185,9 @@ make_checksum(struct krb5_ctx *kctx, char *header, int hdrlen,
- 		       checksumdata + checksumlen - kctx->gk5e->cksumlength,
- 		       kctx->gk5e->cksumlength);
- 		break;
-+	case CKSUMTYPE_HMAC_SHA1_DES3:
-+		memcpy(cksumout->data, checksumdata, kctx->gk5e->cksumlength);
-+		break;
- 	default:
- 		BUG();
- 		break;
-diff --git a/net/sunrpc/auth_gss/gss_krb5_keys.c b/net/sunrpc/auth_gss/gss_krb5_keys.c
-index 832ce90..29c4bc5 100644
---- a/net/sunrpc/auth_gss/gss_krb5_keys.c
-+++ b/net/sunrpc/auth_gss/gss_krb5_keys.c
-@@ -250,3 +250,56 @@ err_free_cipher:
- err_return:
- 	return ret;
- }
-+
-+#define smask(step) ((1<<step)-1)
-+#define pstep(x, step) (((x)&smask(step))^(((x)>>step)&smask(step)))
-+#define parity_char(x) pstep(pstep(pstep((x), 4), 2), 1)
-+
-+static void mit_des_fixup_key_parity(u8 key[8])
-+{
-+	int i;
-+	for (i = 0; i < 8; i++) {
-+		key[i] &= 0xfe;
-+		key[i] |= 1^parity_char(key[i]);
-+	}
-+}
-+
-+/*
-+ * This is the des3 key derivation postprocess function
-+ */
-+u32 gss_krb5_des3_make_key(struct gss_krb5_enctype *gk5e,
-+			   struct xdr_netobj *randombits,
-+			   struct xdr_netobj *key)
-+{
-+	int i;
-+	u32 ret = EINVAL;
-+
-+	if (key->len != 24) {
-+		dprintk("%s: key->len is %d\n", __func__, key->len);
-+		goto err_out;
-+	}
-+	if (randombits->len != 21) {
-+		dprintk("%s: randombits->len is %d\n",
-+			__func__, randombits->len);
-+		goto err_out;
-+	}
-+
-+	/* take the seven bytes, move them around into the top 7 bits of the
-+	   8 key bytes, then compute the parity bits.  Do this three times. */
-+
-+	for (i = 0; i < 3; i++) {
-+		memcpy(key->data + i*8, randombits->data + i*7, 7);
-+		key->data[i*8+7] = (((key->data[i*8]&1)<<1) |
-+				    ((key->data[i*8+1]&1)<<2) |
-+				    ((key->data[i*8+2]&1)<<3) |
-+				    ((key->data[i*8+3]&1)<<4) |
-+				    ((key->data[i*8+4]&1)<<5) |
-+				    ((key->data[i*8+5]&1)<<6) |
-+				    ((key->data[i*8+6]&1)<<7));
-+
-+		mit_des_fixup_key_parity(key->data + i*8);
-+	}
-+	ret = 0;
-+err_out:
-+	return(ret);
-+}
-diff --git a/net/sunrpc/auth_gss/gss_krb5_mech.c b/net/sunrpc/auth_gss/gss_krb5_mech.c
-index 838b1dd..b486719 100644
---- a/net/sunrpc/auth_gss/gss_krb5_mech.c
-+++ b/net/sunrpc/auth_gss/gss_krb5_mech.c
-@@ -71,6 +71,26 @@ static struct gss_krb5_enctype supported_gss_krb5_enctypes[] = {
- 	  .cksumlength = 8,
- 	  .keyed_cksum = 0,
- 	},
-+	/*
-+	 * 3DES
-+	 */
-+	{
-+	  .etype = ENCTYPE_DES3_CBC_RAW,
-+	  .ctype = CKSUMTYPE_HMAC_SHA1_DES3,
-+	  .name = "des3-hmac-sha1",
-+	  .encrypt_name = "cbc(des3_ede)",
-+	  .cksum_name = "hmac(sha1)",
-+	  .encrypt = krb5_encrypt,
-+	  .decrypt = krb5_decrypt,
-+	  .mk_key = gss_krb5_des3_make_key,
-+	  .signalg = SGN_ALG_HMAC_SHA1_DES3_KD,
-+	  .sealalg = SEAL_ALG_DES3KD,
-+	  .keybytes = 21,
-+	  .keylength = 24,
-+	  .blocksize = 8,
-+	  .cksumlength = 20,
-+	  .keyed_cksum = 1,
-+	},
- };
- 
- static int num_supported_enctypes = ARRAY_SIZE(supported_gss_krb5_enctypes);
-@@ -446,6 +466,9 @@ gss_import_v2_context(const void *p, const void *end, struct krb5_ctx *ctx)
- 	p = simple_get_bytes(p, end, &ctx->enctype, sizeof(ctx->enctype));
- 	if (IS_ERR(p))
- 		goto out_err;
-+	/* Map ENCTYPE_DES3_CBC_SHA1 to ENCTYPE_DES3_CBC_RAW */
-+	if (ctx->enctype == ENCTYPE_DES3_CBC_SHA1)
-+		ctx->enctype = ENCTYPE_DES3_CBC_RAW;
- 	ctx->gk5e = get_gss_krb5_enctype(ctx->enctype);
- 	if (ctx->gk5e == NULL) {
- 		printk("gss_kerberos_mech: unsupported krb5 enctype %u\n",
-diff --git a/net/sunrpc/auth_gss/gss_krb5_seal.c b/net/sunrpc/auth_gss/gss_krb5_seal.c
-index c4df7af..ba86910 100644
---- a/net/sunrpc/auth_gss/gss_krb5_seal.c
-+++ b/net/sunrpc/auth_gss/gss_krb5_seal.c
-@@ -143,6 +143,7 @@ gss_get_mic_kerberos(struct gss_ctx *gss_ctx, struct xdr_buf *text,
- 	default:
- 		BUG();
- 	case ENCTYPE_DES_CBC_RAW:
-+	case ENCTYPE_DES3_CBC_RAW:
- 		return gss_get_mic_v1(ctx, text, token);
- 	}
- }
-diff --git a/net/sunrpc/auth_gss/gss_krb5_unseal.c b/net/sunrpc/auth_gss/gss_krb5_unseal.c
-index aff3fce..becd212 100644
---- a/net/sunrpc/auth_gss/gss_krb5_unseal.c
-+++ b/net/sunrpc/auth_gss/gss_krb5_unseal.c
-@@ -153,6 +153,7 @@ gss_verify_mic_kerberos(struct gss_ctx *gss_ctx,
- 	default:
- 		BUG();
- 	case ENCTYPE_DES_CBC_RAW:
-+	case ENCTYPE_DES3_CBC_RAW:
- 		return gss_verify_mic_v1(ctx, message_buffer, read_token);
- 	}
- }
-diff --git a/net/sunrpc/auth_gss/gss_krb5_wrap.c b/net/sunrpc/auth_gss/gss_krb5_wrap.c
-index f034af3..c541d20 100644
---- a/net/sunrpc/auth_gss/gss_krb5_wrap.c
-+++ b/net/sunrpc/auth_gss/gss_krb5_wrap.c
-@@ -352,6 +352,7 @@ gss_wrap_kerberos(struct gss_ctx *gctx, int offset,
- 	default:
- 		BUG();
- 	case ENCTYPE_DES_CBC_RAW:
-+	case ENCTYPE_DES3_CBC_RAW:
- 		return gss_wrap_kerberos_v1(kctx, offset, buf, pages);
- 	}
- }
-@@ -365,6 +366,7 @@ gss_unwrap_kerberos(struct gss_ctx *gctx, int offset, struct xdr_buf *buf)
- 	default:
- 		BUG();
- 	case ENCTYPE_DES_CBC_RAW:
-+	case ENCTYPE_DES3_CBC_RAW:
- 		return gss_unwrap_kerberos_v1(kctx, offset, buf);
- 	}
- }
--- 
-1.6.6.1
+There are also a three nfs-utils patches that needed to be applied
+to the gssd daemons to complete this. Those will be posted asap...
+
+Please consider including these in the next kernel release...
+
+steved.
+
+Kevin Coffman (21):
+  gss_krb5: introduce encryption type framework
+  Don't expect blocksize to always be 8 when calculating padding
+  gss_krb5: gss_krb5: split up functions in preparation of adding new
+    enctypes
+  gss_krb5: prepare for new context format
+  gss_krb5: introduce encryption type framework
+  gss_krb5: add ability to have a keyed checksum (hmac)
+  gss_krb5: import functionality to derive keys into the kernel
+  gss_krb5: handle new context format from gssd
+  gss_krb5: add support for triple-des encryption
+  Add new pipefs file indicating which Kerberos enctypes the kernel
+    supports
+  Update pipefs file indicating which Kerberos enctypes the kernel
+    supports
+  xdr: Add an export for the helper function write_bytes_to_xdr_buf()
+  gss_krb5: add support for new token formats in rfc4121
+  gss_krb5: add remaining pieces to enable AES encryption support
+  gss_krb5: Update pipefs file
+  arcfour-hmac support
+  Save the raw session key in the context
+  More arcfour-hmac support
+  Use confounder length in wrap code
+  Add support for rc4-hmac encryption
+  Update the pipefs file
+
+Peter Staubach (1):
+  Fixed memory leak in gss_import_v1_context()
+
+ include/linux/sunrpc/gss_krb5.h       |  184 ++++++++-
+ net/sunrpc/auth_gss/Makefile          |    2 +-
+ net/sunrpc/auth_gss/auth_gss.c        |   14 +-
+ net/sunrpc/auth_gss/gss_krb5_crypto.c |  715 ++++++++++++++++++++++++++++++++-
+ net/sunrpc/auth_gss/gss_krb5_keys.c   |  335 +++++++++++++++
+ net/sunrpc/auth_gss/gss_krb5_mech.c   |  581 +++++++++++++++++++++++++--
+ net/sunrpc/auth_gss/gss_krb5_seal.c   |  156 ++++++--
+ net/sunrpc/auth_gss/gss_krb5_seqnum.c |   83 ++++-
+ net/sunrpc/auth_gss/gss_krb5_unseal.c |  113 +++++-
+ net/sunrpc/auth_gss/gss_krb5_wrap.c   |  476 +++++++++++++++++++---
+ net/sunrpc/auth_gss/gss_mech_switch.c |   14 +
+ net/sunrpc/auth_gss/svcauth_gss.c     |   15 +
+ net/sunrpc/rpc_pipe.c                 |   31 ++
+ net/sunrpc/xdr.c                      |    1 +
+ 14 files changed, 2553 insertions(+), 167 deletions(-)
+ create mode 100644 net/sunrpc/auth_gss/gss_krb5_keys.c
 
