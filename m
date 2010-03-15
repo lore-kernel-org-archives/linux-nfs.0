@@ -1,104 +1,241 @@
-From: Jamie Lokier <jamie@shareable.org>
-Subject: Re: [PATCH 0/6][v4][RFC] NFSv3: implement extended attribute protocol (XATTR)
-Date: Mon, 15 Mar 2010 14:28:03 +0000
-Message-ID: <20100315142803.GC15133@shareable.org>
-References: <alpine.LRH.2.00.1002261457420.25193@tundra.namei.org> <alpine.LRH.2.00.1003082122340.6314@tundra.namei.org> <20100309035932.GA14237@cynthia.pants.nu> <4B95E167.40306@schaufler-ca.com> <20100309070444.GA18216@cynthia.pants.nu> <20100309193545.GE11042@shareable.org> <4B971611.8030801@schaufler-ca.com> <20100315031951.GU6491@shareable.org> <4B9DBAB0.5060500@schaufler-ca.com>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: [PATCH 01/22] gss_krb5: introduce encryption type framework
+Date: Mon, 15 Mar 2010 11:58:53 -0400
+Message-ID: <1268668733.2993.90.camel@localhost.localdomain>
+References: <1268655627-18712-1-git-send-email-steved@redhat.com>
+	 <1268655627-18712-2-git-send-email-steved@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Brad Boyer <flar-POGeQm5F+FGB+jHODAdFcQ@public.gmane.org>, James Morris <jmorris@namei.org>,
-	linux-nfs@vger.kernel.org, linux-security-module@vger.kernel.org,
-	Trond Myklebust <Trond.Myklebust@netapp.com>,
-	"J. Bruce Fields" <bfields@fieldses.org>,
-	Neil Brown <neilb@suse.de>, linux-fsdevel@vger.kernel.org
-To: Casey Schaufler <casey@schaufler-ca.com>
+Content-Type: text/plain; charset="UTF-8"
+Cc: linux-nfs@vger.kernel.org
+To: steved@redhat.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail2.shareable.org ([80.68.89.115]:44149 "EHLO
-	mail2.shareable.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S936529Ab0COO2R (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 15 Mar 2010 10:28:17 -0400
-In-Reply-To: <4B9DBAB0.5060500@schaufler-ca.com>
+Received: from mail-out2.uio.no ([129.240.10.58]:47061 "EHLO mail-out2.uio.no"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S964860Ab0COP66 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 15 Mar 2010 11:58:58 -0400
+In-Reply-To: <1268655627-18712-2-git-send-email-steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Casey Schaufler wrote:
-> Jamie Lokier wrote:
-> > Casey Schaufler wrote:
-> >   
-> >> Jamie Lokier wrote:
-> >>     
-> >>> Brad Boyer wrote:
-> >>>   
-> >>>       
-> >>>> On Mon, Mar 08, 2010 at 09:49:27PM -0800, Casey Schaufler wrote:
-> >>>>     
-> >>>>         
-> >>>>> Another is to NFS mount the filesystem back on to the server,
-> >>>>> in which case James' scheme works just dandy. It's a trick that
-> >>>>> I've used more than once in the Unix world for this exact purpose.
-> >>>>> Of course you have to arrange your mount points in advance with
-> >>>>> malice aforethought, but that's likely something you're used to
-> >>>>> by now.
-> >>>>>       
-> >>>>>           
-> >>>> That would definitely work, but it's not ideal. Obviously if it's
-> >>>> being accessed over NFS in one place it probably good enough
-> >>>> everywhere, but it's overhead that could be eliminated.
-> >>>>     
-> >>>>         
-> >>> As a real example:
-> >>>
-> >>> Each user has a PC with their own home directory being local, fast
-> >>> storage, but /home is filled with NFS auto-mounts to everyone else's
-> >>> home directories, on their individual PCs.  The auto-mount map has an
-> >>> exception, so the local user's home directory is a symlink to the
-> >>> local storage, instead of an NFS mount.
-> >>>
-> >>> A scheme like that works very well for occasional access to other
-> >>> peoples files, and for logging to each other's machines transparently,
-> >>> yet having fast performance for their own files when using their local
-> >>> machine.
-> >>>
-> >>> In an environment where I've used that, forcing local access to go
-> >>> over local NFS would have destroyed performance for things like big
-> >>> compiles, running find, git, grep etc. that people do on their own
-> >>> directories.
-> >>>
-> >>>   
-> >>>       
-> >> Sure. The original objection can be readily addressed. There are
-> >> performance implications. Just like you'd have if the home directories
-> >> resided on a storage appliance. Some people pick security for the
-> >> masses over performance for the few. Some the other way round.
-> >> It's not an issue for people who want labeled NFS3 badly enough
-> >> to install it.
-> >>     
-> >
-> > It seems in this case, the performance implications are totally unnecassary.
-> >
-> > Why not a mount option for the xattr name translation?
-> >
-> >   
+On Mon, 2010-03-15 at 08:20 -0400, steved@redhat.com wrote: 
+> From: Kevin Coffman <kwc@citi.umich.edu>
 > 
-> As much as we might like it to be otherwise, an NFS mounted
-> filesystem behaves differently from an ext3 local filesystem.
-> To get consistent behavior the same mechanism needs to be used
-> for all of the machines on which the data is accessed. That
-> means using NFS everywhere because you can't use the local
-> filesystem in multiple places. Usually the variations can be
-> ignored, but there are cases where it matters.
+> Make the client and server code consistent regarding the extra buffer
+> space made available for the auth code when wrapping data.
+> 
+> Add some comments/documentation about the available buffer space
+> in the xdr_buf head and tail when gss_wrap is called.
+> 
+> Add a compile-time check to make sure we are not exceeding the available
+> buffer space.
+> 
+> Add a central function to shift head data.
+> 
+> Signed-off-by: Kevin Coffman <kwc@citi.umich.edu>
+> Signed-off-by: Steve Dickson <steved@redhat.com>
+> ---
+>  include/linux/sunrpc/gss_krb5.h       |   25 ++++++++++++++
+>  net/sunrpc/auth_gss/auth_gss.c        |   14 ++++++--
+>  net/sunrpc/auth_gss/gss_krb5_crypto.c |   56 +++++++++++++++++++++++++++++++++
+>  net/sunrpc/auth_gss/gss_krb5_wrap.c   |    7 ++--
+>  net/sunrpc/auth_gss/gss_mech_switch.c |   14 ++++++++
+>  net/sunrpc/auth_gss/svcauth_gss.c     |   15 +++++++++
+>  6 files changed, 123 insertions(+), 8 deletions(-)
+> 
+> diff --git a/include/linux/sunrpc/gss_krb5.h b/include/linux/sunrpc/gss_krb5.h
+> index e7bbdba..5bb227e 100644
+> --- a/include/linux/sunrpc/gss_krb5.h
+> +++ b/include/linux/sunrpc/gss_krb5.h
+> @@ -40,6 +40,12 @@
+>  #include <linux/sunrpc/gss_err.h>
+>  #include <linux/sunrpc/gss_asn1.h>
+>  
+> +/* Maximum checksum function output for the supported crypto algorithms */
+> +#define GSS_KRB5_MAX_CKSUM_LEN  (20)
+> +
+> +/* Maximum blocksize for the supported crypto algorithms */
+> +#define GSS_KRB5_MAX_BLOCKSIZE  (16)
+> +
+>  struct krb5_ctx {
+>  	int			initiate; /* 1 = initiating, 0 = accepting */
+>  	struct crypto_blkcipher	*enc;
+> @@ -113,6 +119,22 @@ enum seal_alg {
+>  #define ENCTYPE_DES3_CBC_SHA1   0x0010
+>  #define ENCTYPE_UNKNOWN         0x01ff
+>  
+> +/*
+> + * This compile-time check verifies that we will not exceed the
+> + * slack space allotted by the client and server auth_gss code
+> + * before they call gss_wrap().
+> + */
+> +#define GSS_KRB5_SLACK_CHECK \
+> +	BUILD_BUG_ON(GSS_KRB5_TOK_HDR_LEN      /* gss token header */         \
+> +		     + GSS_KRB5_MAX_CKSUM_LEN  /* gss token checksum */       \
+> +		     + GSS_KRB5_MAX_BLOCKSIZE  /* confounder */               \
+> +		     + GSS_KRB5_MAX_BLOCKSIZE  /* possible padding */         \
+> +		     + GSS_KRB5_TOK_HDR_LEN    /* encrypted hdr in v2 token */\
+> +		     + GSS_KRB5_MAX_CKSUM_LEN  /* encryption hmac */          \
+> +		     + 4 + 4                   /* RPC verifier */             \
+> +		     + GSS_KRB5_TOK_HDR_LEN                                   \
+> +		     + GSS_KRB5_MAX_CKSUM_LEN > RPC_MAX_AUTH_SIZE)
+> +
+>  s32
+>  make_checksum(char *, char *header, int hdrlen, struct xdr_buf *body,
+>  		   int body_offset, struct xdr_netobj *cksum);
+> @@ -157,3 +179,6 @@ s32
+>  krb5_get_seq_num(struct crypto_blkcipher *key,
+>  	       unsigned char *cksum,
+>  	       unsigned char *buf, int *direction, u32 *seqnum);
+> +
+> +int
+> +shift_head_data(struct xdr_buf *buf, unsigned int base, unsigned int shiftlen);
+> diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
+> index 0cfccc2..a268368 100644
+> --- a/net/sunrpc/auth_gss/auth_gss.c
+> +++ b/net/sunrpc/auth_gss/auth_gss.c
+> @@ -61,7 +61,7 @@ static const struct rpc_credops gss_nullops;
+>  # define RPCDBG_FACILITY	RPCDBG_AUTH
+>  #endif
+>  
+> -#define GSS_CRED_SLACK		1024
+> +#define GSS_CRED_SLACK		(RPC_MAX_AUTH_SIZE * 2)
+>  /* length of a krb5 verifier (48), plus data added before arguments when
+>   * using integrity (two 4-byte integers): */
+>  #define GSS_VERF_SLACK		100
+> @@ -1317,15 +1317,21 @@ gss_wrap_req_priv(struct rpc_cred *cred, struct gss_cl_ctx *ctx,
+>  	inpages = snd_buf->pages + first;
+>  	snd_buf->pages = rqstp->rq_enc_pages;
+>  	snd_buf->page_base -= first << PAGE_CACHE_SHIFT;
+> -	/* Give the tail its own page, in case we need extra space in the
+> -	 * head when wrapping: */
+> +	/*
+> +	 * Give the tail its own page, in case we need extra space in the
+> +	 * head when wrapping:
+> +	 *
+> +	 * call_allocate() allocates twice the slack space required
+> +	 * by the authentication flavor to rq_callsize.
+> +	 * For GSS, slack is GSS_CRED_SLACK.
+> +	 */
 
-Sure - but is this case one of them?  If so, what's the difference?
+I'm all for improving the comments in the code, but could we please make
+that a separate patch.
 
-Sometimes a 10x performance improvement(*) is preferred over rigidly
-consistent behaviour, if the differences don't matter.  Besides, if
-something is working over NFS, it almost certainly works locally.
-Problems only tend to occur the other way around.
+> 	if (snd_buf->page_len || snd_buf->tail[0].iov_len) {
+>  		tmp = page_address(rqstp->rq_enc_pages[rqstp->rq_enc_pages_num - 1]);
+>  		memcpy(tmp, snd_buf->tail[0].iov_base, snd_buf->tail[0].iov_len);
+>  		snd_buf->tail[0].iov_base = tmp;
+>  	}
+>  	maj_stat = gss_wrap(ctx->gc_gss_ctx, offset, snd_buf, inpages);
+> -	/* RPC_SLACK_SPACE should prevent this ever happening: */
+> +	/* slack space should prevent this ever happening: */
+>  	BUG_ON(snd_buf->len > snd_buf->buflen);
+>  	status = -EIO;
+>  	/* We're assuming that when GSS_S_CONTEXT_EXPIRED, the encryption was
+> diff --git a/net/sunrpc/auth_gss/gss_krb5_crypto.c b/net/sunrpc/auth_gss/gss_krb5_crypto.c
+> index c93fca2..d0f3371 100644
+> --- a/net/sunrpc/auth_gss/gss_krb5_crypto.c
+> +++ b/net/sunrpc/auth_gss/gss_krb5_crypto.c
+> @@ -326,3 +326,59 @@ gss_decrypt_xdr_buf(struct crypto_blkcipher *tfm, struct xdr_buf *buf,
+>  
+>  	return xdr_process_buf(buf, offset, buf->len - offset, decryptor, &desc);
+>  }
+> +
+> +/*
+> + * This function makes the assumption that it was ultimately called
+> + * from gss_wrap().
+> + *
+> + * The client auth_gss code moves any existing tail data into a
+> + * separate page before calling gss_wrap.
+> + * The server svcauth_gss code ensures that both the head and the
+> + * tail have slack space of RPC_MAX_AUTH_SIZE before calling gss_wrap.
+> + *
+> + * Even with that guarantee, this function may be called more than
+> + * once in the processing of gss_wrap().  The best we can do is
+> + * verify at compile-time (see GSS_KRB5_SLACK_CHECK) that the
+> + * largest expected shift will fit within RPC_MAX_AUTH_SIZE.
+> + * At run-time we can verify that a single invocation of this
+> + * function doesn't attempt to use more the RPC_MAX_AUTH_SIZE.
+> + */
+> +
+> +int
+> +shift_head_data(struct xdr_buf *buf, unsigned int base, unsigned int shiftlen)
+   ^^^^^^^^^^^^^^^
+This needs a better name in order to avoid polluting the global
+namespace. xdr_extend_head(), perhaps?
 
-I've never yet had a problem running the combination of local mount
-locally and NFS mount remotely on the same filesystem.  This change
-seems to be creating a problem where there wasn't one before - unless
-I'm missing something.
+> +{
+> +	u8 *p;
+> +
+> +	if (shiftlen == 0)
+> +		return 0;
+> +
+> +	GSS_KRB5_SLACK_CHECK;
+          ^^^^^^^^^^^^^^^^^^^^^
+              Why is this a macro?
 
-(*) Measured during big "makes".
+> +	BUG_ON(shiftlen > RPC_MAX_AUTH_SIZE);
+> +
+> +	/*
+> +	 * If there is a tail, and it shares a page with the head,
+> +	 * make sure we don't clobber the tail.  This is a just a
+> +	 * defensive check.
+> +	 */
+> +	if (buf->tail[0].iov_base != NULL) {
+> +		if ((((long)buf->tail[0].iov_base >> PAGE_CACHE_SHIFT) ==
+> +		     ((long)buf->head[0].iov_base >> PAGE_CACHE_SHIFT)) &&
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+This is just too ugly to live, and is wrong to boot. If
+buf->tail[0].iov_len == 0, then buf->tail[0].iov_base isn't even
+defined...
 
--- Jamie
+> +		    buf->tail[0].iov_base - buf->head[0].iov_base < shiftlen) {
+> +			dprintk("%s: collision: head %p:%zu, tail %p:%zu, "
+> +				"shiftlen %u\n",
+> +				__func__, buf->head[0].iov_base,
+> +				buf->head[0].iov_len, buf->tail[0].iov_base,
+> +				buf->tail[0].iov_len, shiftlen);
+> +			return 1;
+> +		}
+> +	}
+> +
+> +	p = buf->head[0].iov_base + base;
+> +
+> +	memmove(p + shiftlen, p, buf->head[0].iov_len - base);
+> +
+> +	buf->head[0].iov_len += shiftlen;
+> +	buf->len += shiftlen;
+> +
+> +	return 0;
+> +}
+> diff --git a/net/sunrpc/auth_gss/gss_krb5_wrap.c b/net/sunrpc/auth_gss/gss_krb5_wrap.c
+> index ae8e69b..a0660f5 100644
+> --- a/net/sunrpc/auth_gss/gss_krb5_wrap.c
+> +++ b/net/sunrpc/auth_gss/gss_krb5_wrap.c
+> @@ -144,6 +144,7 @@ gss_wrap_kerberos(struct gss_ctx *ctx, int offset,
+>  
+>  	dprintk("RPC:       gss_wrap_kerberos\n");
+>  
+> +	GSS_KRB5_SLACK_CHECK;
+
+....and why do we have a second one here? Since this is a BUILD_BUG,
+then surely we can check this just once.
+
+> 	now = get_seconds();
+>  
+>  	blocksize = crypto_blkcipher_blocksize(kctx->enc);
+> @@ -156,11 +157,9 @@ gss_wrap_kerberos(struct gss_ctx *ctx, int offset,
+>  
+>  	ptr = buf->head[0].iov_base + offset;
+>  	/* shift data to make room for header. */
+> +	shift_head_data(buf, offset, headlen);
+> +
+>  	/* XXX Would be cleverer to encrypt while copying. */
+> -	/* XXX bounds checking, slack, etc. */
+> -	memmove(ptr + headlen, ptr, buf->head[0].iov_len - offset);
+> -	buf->head[0].iov_len += headlen;
+> -	buf->len += headlen;
+>  	BUG_ON((buf->len - offset - headlen) % blocksize);
+>  
+>  	g_make_token_header(&kctx->mech_used,
+
+
