@@ -1,49 +1,136 @@
 From: steved@redhat.com
-Subject: [PATCH 02/22] Don't expect blocksize to always be 8 when calculating padding
-Date: Mon, 15 Mar 2010 08:20:07 -0400
-Message-ID: <1268655627-18712-3-git-send-email-steved@redhat.com>
+Subject: [PATCH 17/22] Save the raw session key in the context
+Date: Mon, 15 Mar 2010 08:20:22 -0400
+Message-ID: <1268655627-18712-18-git-send-email-steved@redhat.com>
 References: <1268655627-18712-1-git-send-email-steved@redhat.com>
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from 4dicksons.org ([207.22.49.45]:41141 "EHLO
+Received: from 4dicksons.org ([207.22.49.45]:41140 "EHLO
 	Dobby.Home.4dicksons.org" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S964912Ab0CON0J (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 15 Mar 2010 09:26:09 -0400
+	by vger.kernel.org with ESMTP id S964904Ab0CON0H (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 15 Mar 2010 09:26:07 -0400
 Received: from [192.168.62.20] (helo=localhost.localdomain)
 	by Dobby.Home.4dicksons.org with esmtp (Exim 4.63)
 	(envelope-from <steved@redhat.com>)
-	id 1Nr9HY-00009j-IK
-	for linux-nfs@vger.kernel.org; Mon, 15 Mar 2010 08:20:28 -0400
+	id 1Nr9Hd-00009j-Ql
+	for linux-nfs@vger.kernel.org; Mon, 15 Mar 2010 08:20:33 -0400
 In-Reply-To: <1268655627-18712-1-git-send-email-steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 From: Kevin Coffman <kwc@citi.umich.edu>
 
-Allow blocksizes other than 8 when calculating padding
+This is needed for deriving arcfour-hmac keys "on the fly"
+using the sequence number or checksu
 
 Signed-off-by: Kevin Coffman <kwc@citi.umich.edu>
 Signed-off-by: Steve Dickson <steved@redhat.com>
 ---
- net/sunrpc/auth_gss/gss_krb5_wrap.c |    5 +----
- 1 files changed, 1 insertions(+), 4 deletions(-)
+ include/linux/sunrpc/gss_krb5.h     |    1 +
+ net/sunrpc/auth_gss/gss_krb5_mech.c |   27 +++++++++++++--------------
+ 2 files changed, 14 insertions(+), 14 deletions(-)
 
-diff --git a/net/sunrpc/auth_gss/gss_krb5_wrap.c b/net/sunrpc/auth_gss/gss_krb5_wrap.c
-index a0660f5..4c14b0a 100644
---- a/net/sunrpc/auth_gss/gss_krb5_wrap.c
-+++ b/net/sunrpc/auth_gss/gss_krb5_wrap.c
-@@ -13,10 +13,7 @@
- static inline int
- gss_krb5_padding(int blocksize, int length)
- {
--	/* Most of the code is block-size independent but currently we
--	 * use only 8: */
--	BUG_ON(blocksize != 8);
--	return 8 - (length & 7);
-+	return blocksize - (length & (blocksize - 1));
+diff --git a/include/linux/sunrpc/gss_krb5.h b/include/linux/sunrpc/gss_krb5.h
+index ddadc3a..9753485 100644
+--- a/include/linux/sunrpc/gss_krb5.h
++++ b/include/linux/sunrpc/gss_krb5.h
+@@ -101,6 +101,7 @@ struct krb5_ctx {
+ 	struct crypto_blkcipher *initiator_enc;
+ 	struct crypto_blkcipher *acceptor_enc_aux;
+ 	struct crypto_blkcipher *initiator_enc_aux;
++	u8			Ksess[GSS_KRB5_MAX_KEYLEN]; /* session key */
+ 	u8			cksum[GSS_KRB5_MAX_KEYLEN];
+ 	s32			endtime;
+ 	u32			seq_send;
+diff --git a/net/sunrpc/auth_gss/gss_krb5_mech.c b/net/sunrpc/auth_gss/gss_krb5_mech.c
+index 07daf5f..4423227 100644
+--- a/net/sunrpc/auth_gss/gss_krb5_mech.c
++++ b/net/sunrpc/auth_gss/gss_krb5_mech.c
+@@ -350,7 +350,7 @@ set_cdata(u8 cdata[GSS_KRB5_K5CLENGTH], u32 usage, u8 seed)
  }
  
- static inline void
+ static int
+-context_derive_keys_des3(struct krb5_ctx *ctx, u8 *rawkey, u32 keylen)
++context_derive_keys_des3(struct krb5_ctx *ctx)
+ {
+ 	struct xdr_netobj c, keyin, keyout;
+ 	u8 cdata[GSS_KRB5_K5CLENGTH];
+@@ -359,18 +359,18 @@ context_derive_keys_des3(struct krb5_ctx *ctx, u8 *rawkey, u32 keylen)
+ 	c.len = GSS_KRB5_K5CLENGTH;
+ 	c.data = cdata;
+ 
+-	keyin.data = rawkey;
+-	keyin.len = keylen;
+-	keyout.len = keylen;
++	keyin.data = ctx->Ksess;
++	keyin.len = ctx->gk5e->keylength;
++	keyout.len = ctx->gk5e->keylength;
+ 
+ 	/* seq uses the raw key */
+ 	ctx->seq = context_v2_alloc_cipher(ctx, ctx->gk5e->encrypt_name,
+-					   rawkey);
++					   ctx->Ksess);
+ 	if (ctx->seq == NULL)
+ 		goto out_err;
+ 
+ 	ctx->enc = context_v2_alloc_cipher(ctx, ctx->gk5e->encrypt_name,
+-					   rawkey);
++					   ctx->Ksess);
+ 	if (ctx->enc == NULL)
+ 		goto out_free_seq;
+ 
+@@ -395,7 +395,7 @@ out_err:
+ }
+ 
+ static int
+-context_derive_keys_new(struct krb5_ctx *ctx, u8 *rawkey, u32 keylen)
++context_derive_keys_new(struct krb5_ctx *ctx)
+ {
+ 	struct xdr_netobj c, keyin, keyout;
+ 	u8 cdata[GSS_KRB5_K5CLENGTH];
+@@ -404,9 +404,9 @@ context_derive_keys_new(struct krb5_ctx *ctx, u8 *rawkey, u32 keylen)
+ 	c.len = GSS_KRB5_K5CLENGTH;
+ 	c.data = cdata;
+ 
+-	keyin.data = rawkey;
+-	keyin.len = keylen;
+-	keyout.len = keylen;
++	keyin.data = ctx->Ksess;
++	keyin.len = ctx->gk5e->keylength;
++	keyout.len = ctx->gk5e->keylength;
+ 
+ 	/* initiator seal encryption */
+ 	set_cdata(cdata, KG_USAGE_INITIATOR_SEAL, KEY_USAGE_SEED_ENCRYPTION);
+@@ -508,7 +508,6 @@ out_err:
+ static int
+ gss_import_v2_context(const void *p, const void *end, struct krb5_ctx *ctx)
+ {
+-	u8 rawkey[GSS_KRB5_MAX_KEYLEN];
+ 	int keylen;
+ 
+ 	p = simple_get_bytes(p, end, &ctx->flags, sizeof(ctx->flags));
+@@ -544,7 +543,7 @@ gss_import_v2_context(const void *p, const void *end, struct krb5_ctx *ctx)
+ 	}
+ 	keylen = ctx->gk5e->keylength;
+ 
+-	p = simple_get_bytes(p, end, rawkey, keylen);
++	p = simple_get_bytes(p, end, ctx->Ksess, keylen);
+ 	if (IS_ERR(p))
+ 		goto out_err;
+ 
+@@ -563,10 +562,10 @@ gss_import_v2_context(const void *p, const void *end, struct krb5_ctx *ctx)
+ 
+ 	switch (ctx->enctype) {
+ 	case ENCTYPE_DES3_CBC_RAW:
+-		return context_derive_keys_des3(ctx, rawkey, keylen);
++		return context_derive_keys_des3(ctx);
+ 	case ENCTYPE_AES128_CTS_HMAC_SHA1_96:
+ 	case ENCTYPE_AES256_CTS_HMAC_SHA1_96:
+-		return context_derive_keys_new(ctx, rawkey, keylen);
++		return context_derive_keys_new(ctx);
+ 	default:
+ 		return -EINVAL;
+ 	}
 -- 
 1.6.6.1
 
