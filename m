@@ -1,83 +1,100 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from acsinet11.oracle.com ([141.146.126.233]:54078 "EHLO
-	acsinet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754562Ab0C3T3J (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 30 Mar 2010 15:29:09 -0400
-Message-ID: <4BB25091.2070201@oracle.com>
-Date: Tue, 30 Mar 2010 15:27:13 -0400
-From: Chuck Lever <chuck.lever@oracle.com>
-To: Anton Starikov <ant.starikov@gmail.com>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: NFS4 in combination with root over NFS3, hangs and deadlocks
-References: <EE102A23-736F-4905-BAAF-1BF03064F529@gmail.com> <EDDF2B79-DBFA-4701-BEFF-0AEACD63A3DC@gmail.com> <4BB24A53.1090005@oracle.com> <844AD38F-D46D-4641-8250-33377CFECFCB@gmail.com>
-In-Reply-To: <844AD38F-D46D-4641-8250-33377CFECFCB@gmail.com>
-Content-Type: text/plain; charset=us-ascii; format=flowed
+Received: from smtp108.prem.mail.sp1.yahoo.com ([98.136.44.63]:20038 "HELO
+	smtp108.prem.mail.sp1.yahoo.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with SMTP id S1753569Ab0COEm0 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 15 Mar 2010 00:42:26 -0400
+Message-ID: <4B9DBAB0.5060500@schaufler-ca.com>
+Date: Sun, 14 Mar 2010 21:42:24 -0700
+From: Casey Schaufler <casey@schaufler-ca.com>
+To: Jamie Lokier <jamie@shareable.org>
+CC: Brad Boyer <flar@allandria.com>, James Morris <jmorris@namei.org>,
+        linux-nfs@vger.kernel.org, linux-security-module@vger.kernel.org,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>, Neil Brown <neilb@suse.de>,
+        linux-fsdevel@vger.kernel.org,
+        Casey Schaufler <casey@schaufler-ca.com>
+Subject: Re: [PATCH 0/6][v4][RFC] NFSv3: implement extended attribute protocol
+ (XATTR)
+References: <alpine.LRH.2.00.1002261457420.25193@tundra.namei.org> <alpine.LRH.2.00.1003082122340.6314@tundra.namei.org> <20100309035932.GA14237@cynthia.pants.nu> <4B95E167.40306@schaufler-ca.com> <20100309070444.GA18216@cynthia.pants.nu> <20100309193545.GE11042@shareable.org> <4B971611.8030801@schaufler-ca.com> <20100315031951.GU6491@shareable.org>
+In-Reply-To: <20100315031951.GU6491@shareable.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 03/30/2010 03:11 PM, Anton Starikov wrote:
-> On Mar 30, 2010, at 9:00 PM, Chuck Lever wrote:
->
->> On 03/30/2010 02:30 PM, Anton Starikov wrote:
->>> If it is already resolved problem, can someone point me into direction of particular patch?
->>
->> As far as I know NFSv4 is known not to work with an NFSv3 root, in any kernel.
->
->
-> But NFS4-root (does it work finally?) isn't always desirable solution. Especially if different OSes used for client/server.
->
-> And it seems that generally it works, just some deadlock occurs, probably related to caching of some credentials.
-
-No, NFSv4 root is known to have problems, and is unsupported, as far as 
-I know.
-
-> Anton,
->
->>> Anton.
+Jamie Lokier wrote:
+> Casey Schaufler wrote:
+>   
+>> Jamie Lokier wrote:
+>>     
+>>> Brad Boyer wrote:
+>>>   
+>>>       
+>>>> On Mon, Mar 08, 2010 at 09:49:27PM -0800, Casey Schaufler wrote:
+>>>>     
+>>>>         
+>>>>> Another is to NFS mount the filesystem back on to the server,
+>>>>> in which case James' scheme works just dandy. It's a trick that
+>>>>> I've used more than once in the Unix world for this exact purpose.
+>>>>> Of course you have to arrange your mount points in advance with
+>>>>> malice aforethought, but that's likely something you're used to
+>>>>> by now.
+>>>>>       
+>>>>>           
+>>>> That would definitely work, but it's not ideal. Obviously if it's
+>>>> being accessed over NFS in one place it probably good enough
+>>>> everywhere, but it's overhead that could be eliminated.
+>>>>     
+>>>>         
+>>> As a real example:
 >>>
+>>> Each user has a PC with their own home directory being local, fast
+>>> storage, but /home is filled with NFS auto-mounts to everyone else's
+>>> home directories, on their individual PCs.  The auto-mount map has an
+>>> exception, so the local user's home directory is a symlink to the
+>>> local storage, instead of an NFS mount.
 >>>
->>> On Mar 29, 2010, at 5:14 PM, Anton Starikov wrote:
+>>> A scheme like that works very well for occasional access to other
+>>> peoples files, and for logging to each other's machines transparently,
+>>> yet having fast performance for their own files when using their local
+>>> machine.
 >>>
->>>> Hi,
->>>>
->>>> Early (year ago and recently) I reported about my faults in getting working NFS4 mounts (primary automounting /home) with system booted with NFSv3-root. It always used to silently hang nodes with zero output in the logs. It was definitely client issue (I tried it with different versions of linux and solaris servers)
->>>>
->>>> Although I can't get simple and reproducible test-case, because hangs appears randomly, it can happen in 1hour, it can happen in 5 days, but it always will happen after some time. But this time I got some some improvement.
->>>>
->>>> With 2.6.32.9-70.fc12.x86_64 kernel and fresh nfs-utils from Fedora-12, after NFS4 mounts hangs, NFS3 mounts and node itself still continue to work, which gives chance to investigate problem.
->>>>
->>>> Can you give me instruction how to collect all necessary information to figure out where the bug is?
->>>>
->>>> As starting point I will attach output of echo "t">   sysrq-trigge, list of NFS mounts.
->>>>
->>>> Thanks,
->>>> Anton.
->>>>
->>>> # cat /proc/mounts | grep nfs
->>>> 172.19.8.1:/export/share/cluster/fedora-root / nfs ro,relatime,vers=3,rsize=32768,wsize=32768,namlen=255,hard,nolock,proto=udp,port=65535,timeo=7,retrans=3,sec=sys,mountport=65535,addr=172.19.8.1 0 0
->>>> none /var/lib/nfs tmpfs rw,relatime 0 0
->>>> sunrpc /var/lib/nfs/rpc_pipefs rpc_pipefs rw,relatime 0 0
->>>> 172.19.8.1:/export/share/cluster/admin /root nfs rw,noatime,vers=3,rsize=1048576,wsize=1048576,namlen=255,hard,nolock,noacl,proto=tcp,timeo=600,retrans=2,sec=sys,mountaddr=172.19.8.1,mountvers=3,mountport=44114,mountproto=tcp,addr=172.19.8.1 0 0
->>>> 172.19.8.1:/export/share/cluster/checkpoint /mnt/checkpoint nfs rw,noatime,vers=3,rsize=1048576,wsize=1048576,namlen=255,hard,noacl,proto=tcp,timeo=600,retrans=2,sec=sys,mountaddr=172.19.8.1,mountvers=3,mountport=52574,mountproto=udp,addr=172.19.8.1 0 0
->>>> 172.19.8.1:/export/share/software /software nfs rw,noatime,vers=3,rsize=1048576,wsize=1048576,namlen=255,hard,nolock,noacl,proto=tcp,timeo=600,retrans=2,sec=sys,mountaddr=172.19.8.1,mountvers=3,mountport=44114,mountproto=tcp,addr=172.19.8.1 0 0
->>>> 172.19.8.1:/export/share/cluster/torque /var/torque nfs rw,noatime,vers=3,rsize=1048576,wsize=1048576,namlen=255,hard,nolock,noacl,proto=tcp,timeo=600,retrans=2,sec=sys,mountaddr=172.19.8.1,mountvers=3,mountport=44114,mountproto=tcp,addr=172.19.8.1 0 0
->>>> 172.19.8.1:/export/share/common/ /common nfs4 rw,noatime,vers=4,rsize=1048576,wsize=1048576,namlen=255,hard,proto=tcp,port=0,timeo=600,retrans=2,sec=sys,clientaddr=172.19.8.133,addr=172.19.8.1 0 0
->>>> 172.19.8.1:/export/home/alfons/ /home/alfons nfs4 rw,relatime,vers=4,rsize=1048576,wsize=1048576,namlen=255,hard,proto=tcp,port=0,timeo=600,retrans=2,sec=sys,clientaddr=172.19.8.133,addr=172.19.8.1 0 0
->>>>
->>>> <log1.txt.gz>
->>>>
+>>> In an environment where I've used that, forcing local access to go
+>>> over local NFS would have destroyed performance for things like big
+>>> compiles, running find, git, grep etc. that people do on their own
+>>> directories.
 >>>
->>> --
->>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->>> the body of a message to majordomo@vger.kernel.org
->>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>
->>
->> --
->> chuck[dot]lever[at]oracle[dot]com
+>>>   
+>>>       
+>> Sure. The original objection can be readily addressed. There are
+>> performance implications. Just like you'd have if the home directories
+>> resided on a storage appliance. Some people pick security for the
+>> masses over performance for the few. Some the other way round.
+>> It's not an issue for people who want labeled NFS3 badly enough
+>> to install it.
+>>     
 >
+> It seems in this case, the performance implications are totally unnecassary.
+>
+> Why not a mount option for the xattr name translation?
+>
+>   
+
+As much as we might like it to be otherwise, an NFS mounted
+filesystem behaves differently from an ext3 local filesystem.
+To get consistent behavior the same mechanism needs to be used
+for all of the machines on which the data is accessed. That
+means using NFS everywhere because you can't use the local
+filesystem in multiple places. Usually the variations can be
+ignored, but there are cases where it matters.
 
 
--- 
-chuck[dot]lever[at]oracle[dot]com
+> -- Jamie
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-security-module" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
+>
+>   
+
