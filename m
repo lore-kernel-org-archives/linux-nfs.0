@@ -1,58 +1,63 @@
-From: David Howells <dhowells@redhat.com>
-Subject: Re: [PATCH] NFS: Fix RCU warnings in nfs_inode_return_delegation_noreclaim()
-Date: Tue, 16 Mar 2010 16:37:05 +0000
-Message-ID: <16115.1268757425@redhat.com>
-References: <1268744823.3155.15.camel@localhost.localdomain> <20100316115130.25642.17789.stgit@warthog.procyon.org.uk>
-Cc: dhowells@redhat.com, linux-nfs@vger.kernel.org,
-	linux-kernel@vger.kernel.org
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [RFC] Should lockd get into grace_period when statd start but
+	not stop?
+Date: Tue, 16 Mar 2010 12:56:21 -0400
+Message-ID: <20100316165621.GE4411@fieldses.org>
+References: <4B9772EB.9010909@cn.fujitsu.com> <20100310182401.GA23340@fieldses.org> <4B98413F.1080609@cn.fujitsu.com> <20100311155857.GC22587@fieldses.org> <4B9A0C7A.1000001@cn.fujitsu.com> <20100312230804.GN13941@fieldses.org> <4B9F57ED.4090100@cn.fujitsu.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: "Trond.Myklebust" <trond.myklebust@fys.uio.no>,
+	Chuck Lever <chuck.lever@oracle.com>,
+	NFSv3 list <linux-nfs@vger.kernel.org>
+To: Mi Jinlong <mijinlong@cn.fujitsu.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:26466 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:51179 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759115Ab0CPQhd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 16 Mar 2010 12:37:33 -0400
-In-Reply-To: <1268744823.3155.15.camel-bi+AKbBUZKY6gyzm1THtWbp2dZbC/Bob@public.gmane.org>
+	id S1756656Ab0CPQyr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 16 Mar 2010 12:54:47 -0400
+In-Reply-To: <4B9F57ED.4090100@cn.fujitsu.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
-
-> > +	rcu_read_lock();
-> >  	cred = rcu_dereference(delegation->cred);
-> >  	rcu_assign_pointer(delegation->cred, NULL);
-> > +	rcu_read_unlock();
-> >  	call_rcu(&delegation->rcu, nfs_free_delegation_callback);
-> >  	if (cred)
-> >  		put_rpccred(cred);
+On Tue, Mar 16, 2010 at 06:05:33PM +0800, Mi Jinlong wrote:
 > 
-> That's bogus. We're in the process of freeing the delegation, so we
-> don't need to rely on rcu to read delegation->cred.
 > 
-> Better to just convert that rcu_dereference() into an ordinary pointer
-> dereference.
+> J. Bruce Fields :
+> > On Fri, Mar 12, 2010 at 05:42:18PM +0800, Mi Jinlong wrote:
+> >>
+> >> J. Bruce Fields:
+> >>> Our current NFS implementation just isn't designed to be able to shut
+> >>> down some components while leaving others running.
+> >>   Really? But the lockd started with nfs service start, but not nfslock service.
+> >>   And, lockd can't stop with statd at the same time. 
+> >>   Sometimes, the lockd will not synchronous with statd. Maybe this problem is a good example.
+> > 
+> > I'm sorry, I still don't understand.
+> > 
+> > Please take a look at section 3.1, 3.2, and 3.3 of the nfs-utils README
+> > file.  That describes the order in which servers should be started and
+> > stopped.
+> 
+>   Maybe that's my problem. 
+>   The status of lockd and statd, when testing.
+> 
+>          lockd                statd
+>            |                    |   <== service nfslock stop
+>        get KILL signal        stopd   ^
+>    and get into grace_period    |     |
 
-Now that I take a second look at this code, it looks wrong.  You shouldn't
-really start dissassembling the delegation record until the RCU callback
-triggers as it may be in use by someone up to that point.  If you know it
-isn't in use at this point, why use call_rcu()?
 
-> The spinlock already provides protection. Again we can just convert the
-> rcu_dereference() into a pointer dereference.
+I believe you also need to shut down nfsd here.
 
-That seems reasonable.
+--b.
 
-> We cannot hold the rcu read lock across the entire RPC call in
-> nfs_do_return_delegation(). All we want to do above is to check that
-> nfsi->delegation != NULL.
+>            |                    |     | more than grace_period time
+>            |                    |     v
+>            |                    |   <== service nfslock start
+>       normal state              |
+>            |                  start   Client receive SM_NOTIFY and reclaime lock,
+>            |                    |     but out of grace_period time.
+>            v                    v
+> 
+>   As above, after nfslock service start, client cannot reclaime lock success.
 
-Good point.
-
-However, that leads me to note that nfs_detach_delegation_locked() then must
-be using rcu_dereference() unnecessarily.  Also nfs_do_return_delegation()
-must be too.
-
-I think if all you're doing is checking the state of the pointer, you don't
-need the interpolated memory barrier, since you've no need to synchronise what
-the pointer points to.
-
-David
