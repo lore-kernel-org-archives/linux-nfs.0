@@ -1,114 +1,42 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:53149 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:37157 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752764Ab0CBUsU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 2 Mar 2010 15:48:20 -0500
-Date: Tue, 2 Mar 2010 15:49:30 -0500
-To: Steve Dickson <steved@redhat.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH] mountd: fix --manage-gids hang due to int/uint bug
-Message-ID: <20100302204930.GA8609@fieldses.org>
+	id S938126Ab0CPRr1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 16 Mar 2010 13:47:27 -0400
+Date: Tue, 16 Mar 2010 13:47:19 -0400
+From: Valerie Aurora <vaurora@redhat.com>
+To: Al Viro <viro@ZenIV.linux.org.uk>
+Cc: Jeff Layton <jlayton@redhat.com>,
+        Trond Myklebust <trond.myklebust@fys.uio.no>,
+        linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] vfs: pass struct file to do_truncate on O_TRUNC opens
+Message-ID: <20100316174719.GA24819@shell>
+References: <1268689152-19168-1-git-send-email-jlayton@redhat.com> <1268692288.3040.2.camel@localhost.localdomain> <20100315184702.35c4d140@tlielax.poochiereds.net> <20100315225037.GX30031@ZenIV.linux.org.uk>
 Content-Type: text/plain; charset=us-ascii
-From: "J. Bruce Fields" <bfields@fieldses.org>
+In-Reply-To: <20100315225037.GX30031@ZenIV.linux.org.uk>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-From: J. Bruce Fields <bfields@citi.umich.edu>
+On Mon, Mar 15, 2010 at 10:50:37PM +0000, Al Viro wrote:
+> On Mon, Mar 15, 2010 at 06:47:02PM -0400, Jeff Layton wrote:
+> 
+> > Yeah that would be cleaner on the wire for the create case. It's not
+> > clear to me how to implement that though. There doesn't appear to be
+> > a straightforward way to tell the VFS to skip the truncate.
+> 
+> The plan is to turn most of the guts of do_last() into fs method...
 
-A uid or gid should be represented as unsigned, not signed.
+For union mounts, we will want to skip the truncate too (or else
+insinuate ourselves into do_truncate() - less attractive).  This is
+because we want to only copy up the bytes that are not being
+truncated, instead of copying up the file contents and then throwing
+them away.
 
-The conversion to signed here could cause a hang on access by an unknown
-user to a server running mountd with --manage-gids; such a user is
-likely to be mapped to 2^32-1, which may be converted to 2^31-1 when
-represented as an int, resulting in a downcall for uid 2^31-1, hence the
-original rpc hanging forever waiting for a cache downcall for 2^32-1.
+What's the timing on the do_last() change?  Do you know what branch it
+will be in?
 
-Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
----
- support/nfs/cacheio.c |   19 +++++++++++++++++++
- utils/mountd/cache.c  |   14 +++++++-------
- 2 files changed, 26 insertions(+), 7 deletions(-)
+Thanks,
 
-diff --git a/support/nfs/cacheio.c b/support/nfs/cacheio.c
-index bdf5d84..0587ecb 100644
---- a/support/nfs/cacheio.c
-+++ b/support/nfs/cacheio.c
-@@ -148,6 +148,11 @@ void qword_printint(FILE *f, int num)
- 	fprintf(f, "%d ", num);
- }
- 
-+void qword_printuint(FILE *f, unsigned int num)
-+{
-+	fprintf(f, "%u ", num);
-+}
-+
- int qword_eol(FILE *f)
- {
- 	int err;
-@@ -236,6 +241,20 @@ int qword_get_int(char **bpp, int *anint)
- 	return 0;
- }
- 
-+int qword_get_uint(char *bpp, unsigned int *anint)
-+{
-+	char buf[50];
-+	char *ep;
-+	unsigned int rv;
-+	int len = qword_get(bpp, buf, 50);
-+	if (len < 0) return -1;
-+	if (len ==0) return -1;
-+	rv = strtoul(buf, &ep, 0);
-+	if (*ep) return -1;
-+	*anint = rv;
-+	return 0;
-+}
-+
- #define READLINE_BUFFER_INCREMENT 2048
- 
- int readline(int fd, char **buf, int *lenp)
-diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c
-index 200e179..a6e0832 100644
---- a/utils/mountd/cache.c
-+++ b/utils/mountd/cache.c
-@@ -125,7 +125,7 @@ void auth_unix_gid(FILE *f)
- 	 * reply is
- 	 *  uid expiry count list of group ids
- 	 */
--	int uid;
-+	uid_t uid;
- 	struct passwd *pw;
- 	gid_t glist[100], *groups = glist;
- 	int ngroups = 100;
-@@ -136,7 +136,7 @@ void auth_unix_gid(FILE *f)
- 		return;
- 
- 	cp = lbuf;
--	if (qword_get_int(&cp, &uid) != 0)
-+	if (qword_get_uint(&cp, &uid) != 0)
- 		return;
- 
- 	pw = getpwuid(uid);
-@@ -153,14 +153,14 @@ void auth_unix_gid(FILE *f)
- 						  groups, &ngroups);
- 		}
- 	}
--	qword_printint(f, uid);
--	qword_printint(f, time(0)+30*60);
-+	qword_printuint(f, uid);
-+	qword_printuint(f, time(0)+30*60);
- 	if (rv >= 0) {
--		qword_printint(f, ngroups);
-+		qword_printuint(f, ngroups);
- 		for (i=0; i<ngroups; i++)
--			qword_printint(f, groups[i]);
-+			qword_printuint(f, groups[i]);
- 	} else
--		qword_printint(f, 0);
-+		qword_printuint(f, 0);
- 	qword_eol(f);
- 
- 	if (groups != glist)
--- 
-1.6.3.3
-
+-VAL
