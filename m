@@ -1,83 +1,35 @@
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: Re: [PATCH] NFS: Fix RCU warnings in
- nfs_inode_return_delegation_noreclaim()
-Date: Tue, 16 Mar 2010 13:35:54 -0400
-Message-ID: <1268760954.3098.17.camel@localhost.localdomain>
-References: <20100316115130.25642.17789.stgit@warthog.procyon.org.uk>
-	 <20100316171738.GN6709@linux.vnet.ibm.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Cc: David Howells <dhowells@redhat.com>, linux-nfs@vger.kernel.org,
-	linux-kernel@vger.kernel.org
-To: paulmck@linux.vnet.ibm.com
+From: David Howells <dhowells@redhat.com>
+Subject: Re: [PATCH] NFS: Fix RCU warnings in nfs_inode_return_delegation_noreclaim()
+Date: Tue, 16 Mar 2010 17:40:04 +0000
+Message-ID: <19197.1268761204@redhat.com>
+References: <1268760954.3098.17.camel@localhost.localdomain> <20100316115130.25642.17789.stgit@warthog.procyon.org.uk> <20100316171738.GN6709@linux.vnet.ibm.com>
+Cc: dhowells@redhat.com, paulmck@linux.vnet.ibm.com,
+	linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:63928 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:8007 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S938034Ab0CPRgQ convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 16 Mar 2010 13:36:16 -0400
-In-Reply-To: <20100316171738.GN6709@linux.vnet.ibm.com>
+	id S933221Ab0CPRka (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 16 Mar 2010 13:40:30 -0400
+In-Reply-To: <1268760954.3098.17.camel-bi+AKbBUZKY6gyzm1THtWbp2dZbC/Bob@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 2010-03-16 at 10:17 -0700, Paul E. McKenney wrote: 
-> On Tue, Mar 16, 2010 at 11:51:30AM +0000, David Howells wrote:
-> > diff --git a/fs/nfs/delegation.c b/fs/nfs/delegation.c
-> > index 2563beb..a77c735 100644
-> > --- a/fs/nfs/delegation.c
-> > +++ b/fs/nfs/delegation.c
-> > @@ -37,8 +37,10 @@ static void nfs_free_delegation(struct nfs_delegation *delegation)
-> >  {
-> >  	struct rpc_cred *cred;
-> > 
-> > +	rcu_read_lock();
-> >  	cred = rcu_dereference(delegation->cred);
-> >  	rcu_assign_pointer(delegation->cred, NULL);
+Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
+
+> > The lock is probably held here, in which case something like the
+> > following would work well without needing the artificial rcu_read_lock()
+> > and rcu_read_unlock():
 > 
-> The lock is probably held here, in which case something like the
-> following would work well without needing the artificial rcu_read_lock()
-> and rcu_read_unlock():
-
-No. The lock is not held here. At this point, the delegation has been
-detached from the inode that pointed to it, and so we can free up its
-contents.
-
-We still need the call_rcu() to free up the allocated memory in order to
-ensure that some process doing lockless traversal of the
-clp->cl_delegations list doesn't crash.
-
-> 	cred = rcu_dereference_check(delegation->cred,
-> 				     lockdep_is_held(&delegation->lock));
+> No. The lock is not held here. At this point, the delegation has been
+> detached from the inode that pointed to it, and so we can free up its
+> contents.
 > 
-> > +	rcu_read_unlock();
-> >  	call_rcu(&delegation->rcu, nfs_free_delegation_callback);
-> >  	if (cred)
-> >  		put_rpccred(cred);
-> > @@ -212,10 +214,12 @@ int nfs_inode_set_delegation(struct inode *inode, struct rpc_cred *cred, struct
-> >  	spin_lock_init(&delegation->lock);
-> > 
-> >  	spin_lock(&clp->cl_lock);
-> > +	rcu_read_lock();
-> >  	if (rcu_dereference(nfsi->delegation) != NULL) {
-> 
-> Same here, though I am not sure whether clp->cl_lock or something in
-> nfs_inode should be used.
+> We still need the call_rcu() to free up the allocated memory in order to
+> ensure that some process doing lockless traversal of the
+> clp->cl_delegations list doesn't crash.
 
-Yes. As I indicated to David in another email, the clp->cl_lock protects
-us here, so it looks as if your suggestion above would be perfect.
+In that case, surely you can't detach the credentials pointer until the
+callback is invoked?
 
-> >  		if (memcmp(&delegation->stateid, &nfsi->delegation->stateid,
-> >  					sizeof(delegation->stateid)) == 0 &&
-> >  				delegation->type == nfsi->delegation->type) {
-> > +			rcu_read_unlock();
-> >  			goto out;
-> >  		}
-> >  		/*
-> > @@ -228,6 +232,7 @@ int nfs_inode_set_delegation(struct inode *inode, struct rpc_cred *cred, struct
-> >  		if (delegation->type <= nfsi->delegation->type) {
-> >  			freeme = delegation;
-> >  			delegation = NULL;
-> > +			rcu_read_lock();
-> >  			goto out;
-> >  		}
-> >  		freeme = nfs_detach_delegation_locked(nfsi, NULL);
-
+David
