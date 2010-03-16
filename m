@@ -1,189 +1,77 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mga14.intel.com ([143.182.124.37]:34116 "EHLO mga14.intel.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751472Ab0CBDKY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 1 Mar 2010 22:10:24 -0500
-Date: Tue, 2 Mar 2010 11:10:21 +0800
-From: Wu Fengguang <fengguang.wu@intel.com>
-To: Dave Chinner <david@fromorbit.com>
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-        Linux Memory Management List <linux-mm@kvack.org>,
-        LKML <linux-kernel@vger.kernel.org>
-Subject: Re: [RFC] nfs: use 4*rsize readahead size
-Message-ID: <20100302031021.GA14267@localhost>
-References: <20100224024100.GA17048@localhost> <20100224032934.GF16175@discord.disaster> <20100224041822.GB27459@localhost> <20100224052215.GH16175@discord.disaster> <20100224061247.GA8421@localhost> <20100224073940.GJ16175@discord.disaster> <20100226074916.GA8545@localhost>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20100226074916.GA8545@localhost>
+Received: from smtp106.prem.mail.sp1.yahoo.com ([98.136.44.61]:31749 "HELO
+	smtp106.prem.mail.sp1.yahoo.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with SMTP id S937358Ab0CPCbf (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 15 Mar 2010 22:31:35 -0400
+Message-ID: <4B9EED86.2060003@schaufler-ca.com>
+Date: Mon, 15 Mar 2010 19:31:34 -0700
+From: Casey Schaufler <casey@schaufler-ca.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+CC: Jamie Lokier <jamie@shareable.org>, Brad Boyer <flar@allandria.com>,
+        James Morris <jmorris@namei.org>, linux-nfs@vger.kernel.org,
+        linux-security-module@vger.kernel.org,
+        "J. Bruce Fields" <bfields@fieldses.org>, Neil Brown <neilb@suse.de>,
+        linux-fsdevel@vger.kernel.org,
+        Casey Schaufler <casey@schaufler-ca.com>
+Subject: Re: [PATCH 0/6][v4][RFC] NFSv3: implement extended attribute protocol
+ (XATTR)
+References: <alpine.LRH.2.00.1002261457420.25193@tundra.namei.org>	 <alpine.LRH.2.00.1003082122340.6314@tundra.namei.org>	 <20100309035932.GA14237@cynthia.pants.nu> <4B95E167.40306@schaufler-ca.com>	 <20100309070444.GA18216@cynthia.pants.nu>	 <20100309193545.GE11042@shareable.org> <4B971611.8030801@schaufler-ca.com>	 <20100315031951.GU6491@shareable.org> <4B9DBAB0.5060500@schaufler-ca.com>	 <20100315142803.GC15133@shareable.org>  <4B9EC2B9.3030800@schaufler-ca.com> <1268696947.3155.6.camel@localhost.localdomain>
+In-Reply-To: <1268696947.3155.6.camel@localhost.localdomain>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Dave,
+Trond Myklebust wrote:
+> On Mon, 2010-03-15 at 16:28 -0700, Casey Schaufler wrote:
+>
+>   
+>> You're missing something. Privilege semantics are different. The
+>> behavior of unlinked files is different. Locking is different. You
+>> are correct that in most cases it does not matter. We're not talking
+>> about the common case, we're talking about using xattrs to store
+>> information that is used to make security decisions. It is quite
+>> difficult to make security claims when an object can be accessed
+>> under two different sets of semantics.
+>>     
+>
+> I'm sorry. Exactly _how_ are you going to prevent files from being
+> accessed under more than one set of semantics under NFS? You have _no_
+> idea what kind of security mechanisms are implemented on the client.
+>
+> All you can do is export a given set of security labels and hope...
+>
+>   
 
-Here is one more test on a big ext4 disk file:
+Not going to. That's not the point of the discussion, even though
+you have a very valid point. The question was about how you might
+deal with the differences between access on the NFS server and the
+NFS client. I made a proposal that has performance implications,
+and I acknowledge those implications. The proposal that I made
+also assumes that the policy being enforced on the clients (one
+of which is the server, NFS mounting the file system locally) is
+sufficiently uniform to meet the needs of the site. I realize that
+the probability that your average deployment could achieve this
+state is painfully small. Security at the level where this is
+useful remains quite rare but is taken very seriously in the cases
+where it is useful. Without James' implementation the capability
+to deploy something correctly does not exist. With the implementation
+it only requires heroic and draconian effort. It's not convenient,
+but it is possible.
 
-	   16k	39.7 MB/s
-	   32k	54.3 MB/s
-	   64k	63.6 MB/s
-	  128k	72.6 MB/s
-	  256k	71.7 MB/s
-rsize ==> 512k  71.7 MB/s
-	 1024k	72.2 MB/s
-	 2048k	71.0 MB/s
-	 4096k	73.0 MB/s
-	 8192k	74.3 MB/s
-	16384k	74.5 MB/s
+And before someone starts arguing that no one would ever use
+this, I will point out that this mechanism has been deployed
+on Unix systems for many years. I realize that by itself the
+fact that other systems do it is not a compelling argument.
+I will point out the those who deploy such systems do so with
+a level of discipline that would shock most software developers.
+Generally there lives at stake. Sometimes it's just large
+amounts of money. In any case these people can deal with a
+performance issue and can ensure that all the systems they are
+dealing with treat data the same way.
 
-It shows that >=128k client side readahead is enough for single disk
-case :) As for RAID configurations, I guess big server side readahead
-should be enough.
+> Trond
+>
+>
+>   
 
-#!/bin/sh
-
-file=/mnt/ext4_test/zero
-BDI=0:24
-
-for rasize in 16 32 64 128 256 512 1024 2048 4096 8192 16384
-do
-        echo $rasize > /sys/devices/virtual/bdi/$BDI/read_ahead_kb
-        echo readahead_size=${rasize}k
-        fadvise $file 0 0 dontneed
-        ssh p9 "fadvise $file 0 0 dontneed"
-        dd if=$file of=/dev/null bs=4k count=402400
-done
-
-Thanks,
-Fengguang
-
-On Fri, Feb 26, 2010 at 03:49:16PM +0800, Wu Fengguang wrote:
-> On Wed, Feb 24, 2010 at 03:39:40PM +0800, Dave Chinner wrote:
-> > On Wed, Feb 24, 2010 at 02:12:47PM +0800, Wu Fengguang wrote:
-> > > On Wed, Feb 24, 2010 at 01:22:15PM +0800, Dave Chinner wrote:
-> > > > What I'm trying to say is that while I agree with your premise that
-> > > > a 7.8MB readahead window is probably far larger than was ever
-> > > > intended, I disagree with your methodology and environment for
-> > > > selecting a better default value.  The default readahead value needs
-> > > > to work well in as many situations as possible, not just in perfect
-> > > > 1:1 client/server environment.
-> > > 
-> > > Good points. It's imprudent to change a default value based on one
-> > > single benchmark. Need to collect more data, which may take time..
-> > 
-> > Agreed - better to spend time now to get it right...
-> 
-> I collected more data with large network latency as well as rsize=32k,
-> and updates the readahead size accordingly to 4*rsize.
-> 
-> ===
-> nfs: use 2*rsize readahead size
-> 
-> With default rsize=512k and NFS_MAX_READAHEAD=15, the current NFS
-> readahead size 512k*15=7680k is too large than necessary for typical
-> clients.
-> 
-> On a e1000e--e1000e connection, I got the following numbers
-> (this reads sparse file from server and involves no disk IO)
-> 
-> readahead size	normal		1ms+1ms		5ms+5ms		10ms+10ms(*)
-> 	   16k	35.5 MB/s	 4.8 MB/s 	 2.1 MB/s 	1.2 MB/s
-> 	   32k	54.3 MB/s	 6.7 MB/s 	 3.6 MB/s       2.3 MB/s
-> 	   64k	64.1 MB/s	12.6 MB/s	 6.5 MB/s       4.7 MB/s
-> 	  128k	70.5 MB/s	20.1 MB/s	11.9 MB/s       8.7 MB/s
-> 	  256k	74.6 MB/s	38.6 MB/s	21.3 MB/s      15.0 MB/s
-> rsize ==> 512k	77.4 MB/s	59.4 MB/s	39.8 MB/s      25.5 MB/s
-> 	 1024k	85.5 MB/s	77.9 MB/s	65.7 MB/s      43.0 MB/s
-> 	 2048k	86.8 MB/s	81.5 MB/s	84.1 MB/s      59.7 MB/s
-> 	 4096k	87.9 MB/s	77.4 MB/s	56.2 MB/s      59.2 MB/s
-> 	 8192k	89.0 MB/s	81.2 MB/s	78.0 MB/s      41.2 MB/s
-> 	16384k	87.7 MB/s	85.8 MB/s	62.0 MB/s      56.5 MB/s
-> 
-> readahead size	normal		1ms+1ms		5ms+5ms		10ms+10ms(*)
-> 	   16k	37.2 MB/s	 6.4 MB/s	 2.1 MB/s	 1.2 MB/s
-> rsize ==>  32k	56.6 MB/s        6.8 MB/s        3.6 MB/s        2.3 MB/s
-> 	   64k	66.1 MB/s       12.7 MB/s        6.6 MB/s        4.7 MB/s
-> 	  128k	69.3 MB/s       22.0 MB/s       12.2 MB/s        8.9 MB/s
-> 	  256k	69.6 MB/s       41.8 MB/s       20.7 MB/s       14.7 MB/s
-> 	  512k	71.3 MB/s       54.1 MB/s       25.0 MB/s       16.9 MB/s
-> ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-> 	 1024k	71.5 MB/s       48.4 MB/s       26.0 MB/s       16.7 MB/s
-> 	 2048k	71.7 MB/s       53.2 MB/s       25.3 MB/s       17.6 MB/s
-> 	 4096k	71.5 MB/s       50.4 MB/s       25.7 MB/s       17.1 MB/s
-> 	 8192k	71.1 MB/s       52.3 MB/s       26.3 MB/s       16.9 MB/s
-> 	16384k	70.2 MB/s       56.6 MB/s       27.0 MB/s       16.8 MB/s
-> 
-> (*) 10ms+10ms means to add delay on both client & server sides with
->     # /sbin/tc qdisc change dev eth0 root netem delay 10ms 
->     The total >=20ms delay is so large for NFS, that a simple `vi some.sh`
->     command takes a dozen seconds. Note that the actual delay reported
->     by ping is larger, eg. for the 1ms+1ms case:
->         rtt min/avg/max/mdev = 7.361/8.325/9.710/0.837 ms
->     
-> 
-> So it seems that readahead_size=4*rsize (ie. keep 4 RPC requests in
-> flight) is able to get near full NFS bandwidth. Reducing the mulriple
-> from 15 to 4 not only makes the client side readahead size more sane
-> (2MB by default), but also reduces the disorderness of the server side
-> RPC read requests, which yeilds better server side readahead behavior.
-> 
-> To avoid small readahead when the client mount with "-o rsize=32k" or
-> the server only supports rsize <= 32k, we take the max of 2*rsize and
-> default_backing_dev_info.ra_pages. The latter defaults to 512K, and can
-> be explicitly changed by user with kernel parameter "readahead=" and
-> runtime tunable "/sys/devices/virtual/bdi/default/read_ahead_kb" (which
-> takes effective for future NFS mounts).
-> 
-> The test script is:
-> 
-> #!/bin/sh
-> 
-> file=/mnt/sparse
-> BDI=0:15
-> 
-> for rasize in 16 32 64 128 256 512 1024 2048 4096 8192 16384
-> do
-> 	echo 3 > /proc/sys/vm/drop_caches
-> 	echo $rasize > /sys/devices/virtual/bdi/$BDI/read_ahead_kb
-> 	echo readahead_size=${rasize}k
-> 	dd if=$file of=/dev/null bs=4k count=1024000
-> done
-> 
-> CC: Dave Chinner <david@fromorbit.com> 
-> CC: Trond Myklebust <Trond.Myklebust@netapp.com>
-> Signed-off-by: Wu Fengguang <fengguang.wu@intel.com>
-> ---
->  fs/nfs/client.c   |    4 +++-
->  fs/nfs/internal.h |    8 --------
->  2 files changed, 3 insertions(+), 9 deletions(-)
-> 
-> --- linux.orig/fs/nfs/client.c	2010-02-26 10:10:46.000000000 +0800
-> +++ linux/fs/nfs/client.c	2010-02-26 11:07:22.000000000 +0800
-> @@ -889,7 +889,9 @@ static void nfs_server_set_fsinfo(struct
->  	server->rpages = (server->rsize + PAGE_CACHE_SIZE - 1) >> PAGE_CACHE_SHIFT;
->  
->  	server->backing_dev_info.name = "nfs";
-> -	server->backing_dev_info.ra_pages = server->rpages * NFS_MAX_READAHEAD;
-> +	server->backing_dev_info.ra_pages = max_t(unsigned long,
-> +					      default_backing_dev_info.ra_pages,
-> +					      4 * server->rpages);
->  	server->backing_dev_info.capabilities |= BDI_CAP_ACCT_UNSTABLE;
->  
->  	if (server->wsize > max_rpc_payload)
-> --- linux.orig/fs/nfs/internal.h	2010-02-26 10:10:46.000000000 +0800
-> +++ linux/fs/nfs/internal.h	2010-02-26 11:07:07.000000000 +0800
-> @@ -10,14 +10,6 @@
->  
->  struct nfs_string;
->  
-> -/* Maximum number of readahead requests
-> - * FIXME: this should really be a sysctl so that users may tune it to suit
-> - *        their needs. People that do NFS over a slow network, might for
-> - *        instance want to reduce it to something closer to 1 for improved
-> - *        interactive response.
-> - */
-> -#define NFS_MAX_READAHEAD	(RPC_DEF_SLOT_TABLE - 1)
-> -
->  /*
->   * Determine if sessions are in use.
->   */
