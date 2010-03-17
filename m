@@ -1,136 +1,143 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: [PATCH] nfsd4: don't try to map gid's in generic rpc code
-Date: Wed, 31 Mar 2010 15:47:41 -0400
-Message-ID: <20100331194741.GA5355@fieldses.org>
-References: <20100306175212.GB22650@fieldses.org> <20100324142414.GE12057@fieldses.org> <20100329182443.GC3778@kroah.com> <20100330144054.GD11545@fieldses.org> <20100330200320.GB1693@kroah.com> <20100331193029.GC4937@fieldses.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: stable@kernel.org, linux-nfs@vger.kernel.org,
-	Linus Torvalds <torvalds@linux-foundation.org>,
-	linux-kernel@vger.kernel.org
-To: Greg KH <greg@kroah.com>
+From: steved@redhat.com
+Subject: [PATCH 19/23] gssd_krb5: More arcfour-hmac support
+Date: Wed, 17 Mar 2010 13:03:04 -0400
+Message-ID: <1268845388-9516-20-git-send-email-steved@redhat.com>
+References: <1268845388-9516-1-git-send-email-steved@redhat.com>
+To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:38073 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756585Ab0CaTpd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 31 Mar 2010 15:45:33 -0400
-In-Reply-To: <20100331193029.GC4937@fieldses.org>
+Received: from 4dicksons.org ([207.22.49.45]:43414 "EHLO
+	Dobby.Home.4dicksons.org" rhost-flags-OK-OK-OK-FAIL)
+	by vger.kernel.org with ESMTP id S1753688Ab0CQR0A (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 17 Mar 2010 13:26:00 -0400
+Received: from [192.168.62.20] (helo=localhost.localdomain)
+	by Dobby.Home.4dicksons.org with esmtp (Exim 4.63)
+	(envelope-from <steved@redhat.com>)
+	id 1NrweJ-0003fC-AT
+	for linux-nfs@vger.kernel.org; Wed, 17 Mar 2010 13:03:15 -0400
+In-Reply-To: <1268845388-9516-1-git-send-email-steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: J. Bruce Fields <bfields@citi.umich.edu>
+From: Kevin Coffman <kwc@citi.umich.edu>
 
-For nfsd we provide users the option of mapping uid's to server-side
-supplementary group lists.  That makes sense for nfsd, but not
-necessarily for other rpc users (such as the callback client).
+For the arcfour-hmac support, the make_seq_num and get_seq_num
+functions need access to the kerberos context structure.
+This will be used in a later patch.
 
-So move that lookup to svcauth_unix_set_client, which is a
-program-specific method.
-
-Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
+Signed-off-by: Kevin Coffman <kwc@citi.umich.edu>
+Signed-off-by: Steve Dickson <steved@redhat.com>
 ---
- net/sunrpc/svcauth_unix.c |   53 +++++++++++++++++++++++++-------------------
- 1 files changed, 30 insertions(+), 23 deletions(-)
+ include/linux/sunrpc/gss_krb5.h       |    5 +++--
+ net/sunrpc/auth_gss/gss_krb5_seal.c   |    5 ++---
+ net/sunrpc/auth_gss/gss_krb5_seqnum.c |    6 ++++--
+ net/sunrpc/auth_gss/gss_krb5_unseal.c |    3 ++-
+ net/sunrpc/auth_gss/gss_krb5_wrap.c   |    6 +++---
+ 5 files changed, 14 insertions(+), 11 deletions(-)
 
-On Wed, Mar 31, 2010 at 03:30:29PM -0400, J. Bruce Fields wrote:
-> In any case, I'll follow up with patches generated against 2.6.32.10.
-
-Also, while testing those patches on 2.6.32, I noticed that 2.6.32.y
-doesn't include the following (unrelated) patch.  Could you apply it as
-well?  Thanks!
-
-diff --git a/net/sunrpc/svcauth_unix.c b/net/sunrpc/svcauth_unix.c
-index 117f68a..97cc3de 100644
---- a/net/sunrpc/svcauth_unix.c
-+++ b/net/sunrpc/svcauth_unix.c
-@@ -655,23 +655,25 @@ static struct unix_gid *unix_gid_lookup(uid_t uid)
- 		return NULL;
+diff --git a/include/linux/sunrpc/gss_krb5.h b/include/linux/sunrpc/gss_krb5.h
+index 14c9b0c..9cc39fe 100644
+--- a/include/linux/sunrpc/gss_krb5.h
++++ b/include/linux/sunrpc/gss_krb5.h
+@@ -275,12 +275,13 @@ gss_decrypt_xdr_buf(struct crypto_blkcipher *tfm, struct xdr_buf *inbuf,
+ 		    int offset);
+ 
+ s32
+-krb5_make_seq_num(struct crypto_blkcipher *key,
++krb5_make_seq_num(struct krb5_ctx *kctx,
++		struct crypto_blkcipher *key,
+ 		int direction,
+ 		u32 seqnum, unsigned char *cksum, unsigned char *buf);
+ 
+ s32
+-krb5_get_seq_num(struct crypto_blkcipher *key,
++krb5_get_seq_num(struct krb5_ctx *kctx,
+ 	       unsigned char *cksum,
+ 	       unsigned char *buf, int *direction, u32 *seqnum);
+ 
+diff --git a/net/sunrpc/auth_gss/gss_krb5_seal.c b/net/sunrpc/auth_gss/gss_krb5_seal.c
+index eb18930..b6bc20f 100644
+--- a/net/sunrpc/auth_gss/gss_krb5_seal.c
++++ b/net/sunrpc/auth_gss/gss_krb5_seal.c
+@@ -153,9 +153,8 @@ gss_get_mic_v1(struct krb5_ctx *ctx, struct xdr_buf *text,
+ 	seq_send = ctx->seq_send++;
+ 	spin_unlock(&krb5_seq_lock);
+ 
+-	if (krb5_make_seq_num(ctx->seq, ctx->initiate ? 0 : 0xff,
+-			      seq_send, ptr + GSS_KRB5_TOK_HDR_LEN,
+-			      ptr + 8))
++	if (krb5_make_seq_num(ctx, ctx->seq, ctx->initiate ? 0 : 0xff,
++			      seq_send, ptr + GSS_KRB5_TOK_HDR_LEN, ptr + 8))
+ 		return GSS_S_FAILURE;
+ 
+ 	return (ctx->endtime < now) ? GSS_S_CONTEXT_EXPIRED : GSS_S_COMPLETE;
+diff --git a/net/sunrpc/auth_gss/gss_krb5_seqnum.c b/net/sunrpc/auth_gss/gss_krb5_seqnum.c
+index 17562b4..46d900e 100644
+--- a/net/sunrpc/auth_gss/gss_krb5_seqnum.c
++++ b/net/sunrpc/auth_gss/gss_krb5_seqnum.c
+@@ -41,7 +41,8 @@
+ #endif
+ 
+ s32
+-krb5_make_seq_num(struct crypto_blkcipher *key,
++krb5_make_seq_num(struct krb5_ctx *kctx,
++		struct crypto_blkcipher *key,
+ 		int direction,
+ 		u32 seqnum,
+ 		unsigned char *cksum, unsigned char *buf)
+@@ -62,13 +63,14 @@ krb5_make_seq_num(struct crypto_blkcipher *key,
  }
  
--static int unix_gid_find(uid_t uid, struct group_info **gip,
--			 struct svc_rqst *rqstp)
-+static struct group_info *unix_gid_find(uid_t uid, struct svc_rqst *rqstp)
+ s32
+-krb5_get_seq_num(struct crypto_blkcipher *key,
++krb5_get_seq_num(struct krb5_ctx *kctx,
+ 	       unsigned char *cksum,
+ 	       unsigned char *buf,
+ 	       int *direction, u32 *seqnum)
  {
--	struct unix_gid *ug = unix_gid_lookup(uid);
-+	struct unix_gid *ug;
-+	struct group_info *gi;
-+	int ret;
-+
-+	ug = unix_gid_lookup(uid);
- 	if (!ug)
--		return -EAGAIN;
--	switch (cache_check(&unix_gid_cache, &ug->h, &rqstp->rq_chandle)) {
-+		return ERR_PTR(-EAGAIN);
-+	ret = cache_check(&unix_gid_cache, &ug->h, &rqstp->rq_chandle);
-+	switch (ret) {
- 	case -ENOENT:
--		*gip = NULL;
--		return 0;
-+		return ERR_PTR(-ENOENT);
- 	case 0:
--		*gip = ug->gi;
--		get_group_info(*gip);
-+		gi = get_group_info(ug->gi);
- 		cache_put(&ug->h, &unix_gid_cache);
--		return 0;
-+		return gi;
- 	default:
--		return -EAGAIN;
-+		return ERR_PTR(-EAGAIN);
- 	}
- }
+ 	s32 code;
+ 	unsigned char plain[8];
++	struct crypto_blkcipher *key = kctx->seq;
  
-@@ -681,6 +683,8 @@ svcauth_unix_set_client(struct svc_rqst *rqstp)
- 	struct sockaddr_in *sin;
- 	struct sockaddr_in6 *sin6, sin6_storage;
- 	struct ip_map *ipm;
-+	struct group_info *gi;
-+	struct svc_cred *cred = &rqstp->rq_cred;
+ 	dprintk("RPC:       krb5_get_seq_num:\n");
  
- 	switch (rqstp->rq_addr.ss_family) {
- 	case AF_INET:
-@@ -722,6 +726,17 @@ svcauth_unix_set_client(struct svc_rqst *rqstp)
- 			ip_map_cached_put(rqstp, ipm);
- 			break;
- 	}
-+
-+	gi = unix_gid_find(cred->cr_uid, rqstp);
-+	switch (PTR_ERR(gi)) {
-+	case -EAGAIN:
-+		return SVC_DROP;
-+	case -ENOENT:
-+		break;
-+	default:
-+		put_group_info(cred->cr_group_info);
-+		cred->cr_group_info = gi;
-+	}
- 	return SVC_OK;
- }
+diff --git a/net/sunrpc/auth_gss/gss_krb5_unseal.c b/net/sunrpc/auth_gss/gss_krb5_unseal.c
+index 5491886..b4416e6 100644
+--- a/net/sunrpc/auth_gss/gss_krb5_unseal.c
++++ b/net/sunrpc/auth_gss/gss_krb5_unseal.c
+@@ -132,7 +132,8 @@ gss_verify_mic_v1(struct krb5_ctx *ctx,
  
-@@ -818,19 +833,11 @@ svcauth_unix_accept(struct svc_rqst *rqstp, __be32 *authp)
- 	slen = svc_getnl(argv);			/* gids length */
- 	if (slen > 16 || (len -= (slen + 2)*4) < 0)
- 		goto badcred;
--	if (unix_gid_find(cred->cr_uid, &cred->cr_group_info, rqstp)
--	    == -EAGAIN)
-+	cred->cr_group_info = groups_alloc(slen);
-+	if (cred->cr_group_info == NULL)
- 		return SVC_DROP;
--	if (cred->cr_group_info == NULL) {
--		cred->cr_group_info = groups_alloc(slen);
--		if (cred->cr_group_info == NULL)
--			return SVC_DROP;
--		for (i = 0; i < slen; i++)
--			GROUP_AT(cred->cr_group_info, i) = svc_getnl(argv);
--	} else {
--		for (i = 0; i < slen ; i++)
--			svc_getnl(argv);
--	}
-+	for (i = 0; i < slen; i++)
-+		GROUP_AT(cred->cr_group_info, i) = svc_getnl(argv);
- 	if (svc_getu32(argv) != htonl(RPC_AUTH_NULL) || svc_getu32(argv) != 0) {
- 		*authp = rpc_autherr_badverf;
- 		return SVC_DENIED;
+ 	/* do sequencing checks */
+ 
+-	if (krb5_get_seq_num(ctx->seq, ptr + GSS_KRB5_TOK_HDR_LEN, ptr + 8, &direction, &seqnum))
++	if (krb5_get_seq_num(ctx, ptr + GSS_KRB5_TOK_HDR_LEN, ptr + 8,
++			     &direction, &seqnum))
+ 		return GSS_S_FAILURE;
+ 
+ 	if ((ctx->initiate && direction != 0xff) ||
+diff --git a/net/sunrpc/auth_gss/gss_krb5_wrap.c b/net/sunrpc/auth_gss/gss_krb5_wrap.c
+index c8c402b..82014cc 100644
+--- a/net/sunrpc/auth_gss/gss_krb5_wrap.c
++++ b/net/sunrpc/auth_gss/gss_krb5_wrap.c
+@@ -228,7 +228,7 @@ gss_wrap_kerberos_v1(struct krb5_ctx *kctx, int offset,
+ 
+ 	/* XXX would probably be more efficient to compute checksum
+ 	 * and encrypt at the same time: */
+-	if ((krb5_make_seq_num(kctx->seq, kctx->initiate ? 0 : 0xff,
++	if ((krb5_make_seq_num(kctx, kctx->seq, kctx->initiate ? 0 : 0xff,
+ 			       seq_send, ptr + GSS_KRB5_TOK_HDR_LEN, ptr + 8)))
+ 		return GSS_S_FAILURE;
+ 
+@@ -315,8 +315,8 @@ gss_unwrap_kerberos_v1(struct krb5_ctx *kctx, int offset, struct xdr_buf *buf)
+ 
+ 	/* do sequencing checks */
+ 
+-	if (krb5_get_seq_num(kctx->seq, ptr + GSS_KRB5_TOK_HDR_LEN, ptr + 8,
+-				    &direction, &seqnum))
++	if (krb5_get_seq_num(kctx, ptr + GSS_KRB5_TOK_HDR_LEN,
++				    ptr + 8, &direction, &seqnum))
+ 		return GSS_S_BAD_SIG;
+ 
+ 	if ((kctx->initiate && direction != 0xff) ||
 -- 
-1.6.3.3
+1.6.6.1
 
