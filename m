@@ -1,63 +1,46 @@
-From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: [PATCH 10/12] NFS: Simplify nfs_wb_page()
-Date: Wed, 17 Mar 2010 12:49:38 -0400
-Message-ID: <20100317164938.GA31415@infradead.org>
-References: <20100125221544.16750.70574.stgit@localhost.localdomain> <20100125221545.16750.19154.stgit@localhost.localdomain> <16839.1268247109@jrobl> <1268249482.3096.76.camel@localhost.localdomain> <1268252300.3096.81.camel@localhost.localdomain> <22120.1268282756@jrobl> <1268317582.3354.9.camel@localhost.localdomain>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: "J. R. Okajima" <hooanon05-/E1597aS9LR3+QwDJ9on6Q@public.gmane.org>, linux-nfs@vger.kernel.org,
-	Wu Fengguang <fengguang.wu@intel.com>,
-	Peter Zijlstra <peterz@infradead.org>, Jan Kara <jack@suse.cz>,
-	Steve Rago <sar-a+KepyhlMvJWk0Htik3J/w@public.gmane.org>,
-	Jens Axboe <jens.axboe@oracle.com>,
-	Peter Staubach <staubach@redhat.com>,
-	Arjan van de Ven <arjan@infradead.org>,
-	Ingo Molnar <mingo@elte.hu>, linux-fsdevel@vger.kernel.org,
-	Christoph Hellwig <hch@lst.de>,
-	Al Viro <viro@ZenIV.linux.org.uk>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
+From: steved@redhat.com
+Subject: [PATCH 03/23] gss_krb5: Don't expect blocksize to always be 8 when calculating padding
+Date: Wed, 17 Mar 2010 13:02:48 -0400
+Message-ID: <1268845388-9516-4-git-send-email-steved@redhat.com>
+References: <1268845388-9516-1-git-send-email-steved@redhat.com>
+To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([18.85.46.34]:58242 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750794Ab0CQQts (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 17 Mar 2010 12:49:48 -0400
-In-Reply-To: <1268317582.3354.9.camel-bi+AKbBUZKY6gyzm1THtWbp2dZbC/Bob@public.gmane.org>
+Received: from 4dicksons.org ([207.22.49.45]:55125 "EHLO
+	Dobby.Home.4dicksons.org" rhost-flags-OK-OK-OK-FAIL)
+	by vger.kernel.org with ESMTP id S1753146Ab0CQRDL (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 17 Mar 2010 13:03:11 -0400
+Received: from [192.168.62.20] (helo=localhost.localdomain)
+	by Dobby.Home.4dicksons.org with esmtp (Exim 4.63)
+	(envelope-from <steved@redhat.com>)
+	id 1NrweD-0003fC-Kc
+	for linux-nfs@vger.kernel.org; Wed, 17 Mar 2010 13:03:09 -0400
+In-Reply-To: <1268845388-9516-1-git-send-email-steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Mar 11, 2010 at 09:26:22AM -0500, Trond Myklebust wrote:
-> @@ -112,12 +112,10 @@ void nfs_unlock_request(struct nfs_page *req)
->   */
->  int nfs_set_page_tag_locked(struct nfs_page *req)
->  {
-> -	struct nfs_inode *nfsi = NFS_I(req->wb_context->path.dentry->d_inode);
-> -
->  	if (!nfs_lock_request_dontget(req))
->  		return 0;
->  	if (req->wb_page != NULL)
-> -		radix_tree_tag_set(&nfsi->nfs_page_tree, req->wb_index, NFS_PAGE_TAG_LOCKED);
-> +		radix_tree_tag_set(&NFS_I(req->wb_context->path.dentry->d_inode)->nfs_page_tree, req->wb_index, NFS_PAGE_TAG_LOCKED);
->  	return 1;
->  }
->  
+From: J. Bruce Fields <bfields@citi.umich.edu>
 
-This hunk is not only entirely unrealted to the fix, but also osbfucates
-the code.
+Signed-off-by: Steve Dickson <steved@redhat.com>
+---
+ net/sunrpc/auth_gss/gss_krb5_wrap.c |    5 +----
+ 1 files changed, 1 insertions(+), 4 deletions(-)
 
-> @@ -126,10 +124,10 @@ int nfs_set_page_tag_locked(struct nfs_page *req)
->   */
->  void nfs_clear_page_tag_locked(struct nfs_page *req)
->  {
-> -	struct inode *inode = req->wb_context->path.dentry->d_inode;
-> -	struct nfs_inode *nfsi = NFS_I(inode);
-> -
->  	if (req->wb_page != NULL) {
-> +		struct inode *inode = req->wb_context->path.dentry->d_inode;
-> +		struct nfs_inode *nfsi = NFS_I(inode);
-> +
->  		spin_lock(&inode->i_lock);
->  		radix_tree_tag_clear(&nfsi->nfs_page_tree, req->wb_index, NFS_PAGE_TAG_LOCKED);
->  		nfs_unlock_request(req);
-
-Another one unrelated to the fix.
+diff --git a/net/sunrpc/auth_gss/gss_krb5_wrap.c b/net/sunrpc/auth_gss/gss_krb5_wrap.c
+index 8bc3701..27d744c 100644
+--- a/net/sunrpc/auth_gss/gss_krb5_wrap.c
++++ b/net/sunrpc/auth_gss/gss_krb5_wrap.c
+@@ -13,10 +13,7 @@
+ static inline int
+ gss_krb5_padding(int blocksize, int length)
+ {
+-	/* Most of the code is block-size independent but currently we
+-	 * use only 8: */
+-	BUG_ON(blocksize != 8);
+-	return 8 - (length & 7);
++	return blocksize - (length % blocksize);
+ }
+ 
+ static inline void
+-- 
+1.6.6.1
 
