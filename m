@@ -1,118 +1,51 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH 7/9] nfsd: factor out hash functions for export caches.
-Date: Wed, 17 Mar 2010 15:35:52 -0400
-Message-ID: <20100317193552.GC2501@fieldses.org>
-References: <20100203060657.12945.27293.stgit@notabene.brown> <20100203063131.12945.38791.stgit@notabene.brown>
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: Re: nfsd: Use vfs_fsync_range() in nfsd_commit
+Date: Wed, 17 Mar 2010 15:35:10 -0400
+Message-ID: <1268854510.8335.19.camel@localhost.localdomain>
+References: <1264796353.3644.4.camel@localhost>
+	 <20100129205022.GA14449@infradead.org> <1264798623.3644.18.camel@localhost>
+	 <1264799906.3644.21.camel@localhost> <20100129212706.GA28361@infradead.org>
+	 <1264801151.3644.27.camel@localhost> <20100129235852.GC30852@fieldses.org>
+	 <20100317150813.43815b5a@tlielax.poochiereds.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs@vger.kernel.org
-To: NeilBrown <neilb@suse.de>
+Content-Type: text/plain; charset="UTF-8"
+Cc: "Dr. J. Bruce Fields" <bfields@fieldses.org>,
+	Christoph Hellwig <hch@infradead.org>,
+	linux-nfs@vger.kernel.org
+To: Jeff Layton <jlayton@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:49152 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:55345 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755632Ab0CQTeL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 17 Mar 2010 15:34:11 -0400
-In-Reply-To: <20100203063131.12945.38791.stgit-wvvUuzkyo1EYVZTmpyfIwg@public.gmane.org>
+	id S1755633Ab0CQTgL convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 17 Mar 2010 15:36:11 -0400
+In-Reply-To: <20100317150813.43815b5a-9yPaYZwiELC+kQycOl6kW4xkIHaj4LzF@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Feb 03, 2010 at 05:31:31PM +1100, NeilBrown wrote:
-> Both the _lookup and the _update functions for these two caches
-> independently calculate the hash of the key.
-> So factor out that code for improved reuse.
+On Wed, 2010-03-17 at 15:08 -0400, Jeff Layton wrote: 
+> Is there any reason that we need to revoke the delegation on a commit?
+> 
+> The only real effect is that writes would be flushed to stable storage.
+> The VM on the server could just decide the flush the data to stable
+> storage whenever it feels like it without revoking the lease. I don't
+> see why we'd need to revoke the lease just because a client asked for
+> the flush.
+> 
+> Bruce has already chimed in on it, but a deadlock of sorts has popped
+> up relating to this:
+> 
+>     https://bugzilla.redhat.com/show_bug.cgi?id=551028#c10
+> 
+> ...and it seems like not recalling the delegation on a COMMIT might
+> help resolve it.
 
-Applied.--b.
+I agree. A commit doesn't change the inode in any way, so it shouldn't
+require you to revoke the delegation.
 
-> 
-> Signed-off-by: NeilBrown <neilb@suse.de>
-> ---
->  fs/nfsd/export.c |   40 +++++++++++++++++++++++-----------------
->  1 files changed, 23 insertions(+), 17 deletions(-)
-> 
-> diff --git a/fs/nfsd/export.c b/fs/nfsd/export.c
-> index c487810..cb8766c 100644
-> --- a/fs/nfsd/export.c
-> +++ b/fs/nfsd/export.c
-> @@ -258,10 +258,9 @@ static struct cache_detail svc_expkey_cache = {
->  	.alloc		= expkey_alloc,
->  };
->  
-> -static struct svc_expkey *
-> -svc_expkey_lookup(struct svc_expkey *item)
-> +static int
-> +svc_expkey_hash(struct svc_expkey *item)
->  {
-> -	struct cache_head *ch;
->  	int hash = item->ek_fsidtype;
->  	char * cp = (char*)item->ek_fsid;
->  	int len = key_len(item->ek_fsidtype);
-> @@ -269,6 +268,14 @@ svc_expkey_lookup(struct svc_expkey *item)
->  	hash ^= hash_mem(cp, len, EXPKEY_HASHBITS);
->  	hash ^= hash_ptr(item->ek_client, EXPKEY_HASHBITS);
->  	hash &= EXPKEY_HASHMASK;
-> +	return hash;
-> +}
-> +
-> +static struct svc_expkey *
-> +svc_expkey_lookup(struct svc_expkey *item)
-> +{
-> +	struct cache_head *ch;
-> +	int hash = svc_expkey_hash(item);
->  
->  	ch = sunrpc_cache_lookup(&svc_expkey_cache, &item->h,
->  				 hash);
-> @@ -282,13 +289,7 @@ static struct svc_expkey *
->  svc_expkey_update(struct svc_expkey *new, struct svc_expkey *old)
->  {
->  	struct cache_head *ch;
-> -	int hash = new->ek_fsidtype;
-> -	char * cp = (char*)new->ek_fsid;
-> -	int len = key_len(new->ek_fsidtype);
-> -
-> -	hash ^= hash_mem(cp, len, EXPKEY_HASHBITS);
-> -	hash ^= hash_ptr(new->ek_client, EXPKEY_HASHBITS);
-> -	hash &= EXPKEY_HASHMASK;
-> +	int hash = svc_expkey_hash(new);
->  
->  	ch = sunrpc_cache_update(&svc_expkey_cache, &new->h,
->  				 &old->h, hash);
-> @@ -737,14 +738,22 @@ struct cache_detail svc_export_cache = {
->  	.alloc		= svc_export_alloc,
->  };
->  
-> -static struct svc_export *
-> -svc_export_lookup(struct svc_export *exp)
-> +static int
-> +svc_export_hash(struct svc_export *exp)
->  {
-> -	struct cache_head *ch;
->  	int hash;
-> +
->  	hash = hash_ptr(exp->ex_client, EXPORT_HASHBITS);
->  	hash ^= hash_ptr(exp->ex_path.dentry, EXPORT_HASHBITS);
->  	hash ^= hash_ptr(exp->ex_path.mnt, EXPORT_HASHBITS);
-> +	return hash;
-> +}
-> +
-> +static struct svc_export *
-> +svc_export_lookup(struct svc_export *exp)
-> +{
-> +	struct cache_head *ch;
-> +	int hash = svc_export_hash(exp);
->  
->  	ch = sunrpc_cache_lookup(&svc_export_cache, &exp->h,
->  				 hash);
-> @@ -758,10 +767,7 @@ static struct svc_export *
->  svc_export_update(struct svc_export *new, struct svc_export *old)
->  {
->  	struct cache_head *ch;
-> -	int hash;
-> -	hash = hash_ptr(old->ex_client, EXPORT_HASHBITS);
-> -	hash ^= hash_ptr(old->ex_path.dentry, EXPORT_HASHBITS);
-> -	hash ^= hash_ptr(old->ex_path.mnt, EXPORT_HASHBITS);
-> +	int hash = svc_export_hash(old);
->  
->  	ch = sunrpc_cache_update(&svc_export_cache, &new->h,
->  				 &old->h,
-> 
-> 
+Furthermore, I think that the write access check there is incorrect too.
+The posix definition of fsync() doesn't specify that the file descriptor
+has be writeable, and since COMMIT semantics are supposed to be modelled
+on fsync...
+
+Cheers
+   Trond
