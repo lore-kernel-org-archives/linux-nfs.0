@@ -1,51 +1,87 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from zeniv.linux.org.uk ([195.92.253.2]:59763 "EHLO
-	ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754103Ab0CEPs1 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 5 Mar 2010 10:48:27 -0500
-Date: Fri, 5 Mar 2010 15:48:23 +0000
-From: Al Viro <viro@ZenIV.linux.org.uk>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: Linus Torvalds <torvalds@linux-foundation.org>, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Subject: Re: Merge of the 'write_inode' branch from the VFS tree
-Message-ID: <20100305154823.GV30031@ZenIV.linux.org.uk>
-References: <1267802800.5174.6.camel@localhost.localdomain>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1267802800.5174.6.camel@localhost.localdomain>
+Received: from 4dicksons.org ([207.22.49.45]:55121 "EHLO
+	Dobby.Home.4dicksons.org" rhost-flags-OK-OK-OK-FAIL)
+	by vger.kernel.org with ESMTP id S1753206Ab0CQRDL (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 17 Mar 2010 13:03:11 -0400
+Received: from [192.168.62.20] (helo=localhost.localdomain)
+	by Dobby.Home.4dicksons.org with esmtp (Exim 4.63)
+	(envelope-from <steved@redhat.com>)
+	id 1NrweC-0003fC-If
+	for linux-nfs@vger.kernel.org; Wed, 17 Mar 2010 13:03:09 -0400
+From: steved@redhat.com
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 00/23] Add new enctypes for gss_krb5 (Round 5)
+Date: Wed, 17 Mar 2010 13:02:45 -0400
+Message-Id: <1268845388-9516-1-git-send-email-steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Fri, Mar 05, 2010 at 10:26:40AM -0500, Trond Myklebust wrote:
-> Hi Al,
-> 
-> When you submitted the VFS changes for this merge window, I was hoping
-> you would include the 'write_inode' branch. I've been waiting for them
-> in order to push the NFS writeback improvements to Linus.
-> 
-> Would you be willing to either push the write_inode branch to Linus or
-> to Ack my doing so as part of the NFS push?
+From: Steve Dickson <steved@redhat.com>
 
-Said branch has managed to grow conflicts with XFS commits already in
-the mainline ;-/  With commits postdating the write_inode ones by a week
-or so and having the same author.
+Here is the next round of Kevin Coffman's encryption patches.
+This series includes all of the review comments from the 
+previous posting except for one. 
 
-I'm going to push the next VFS pile in about half an hour and get to the
-write_inode situation.  I'm not sure what's the best course here.  Note
-that since you've pulled it, you also have conflicts with what's in the
-mainline.  I can do *another* backmerge (already had one due to gfs2 trivial
-conflicts) and push the result.  Which will suck, since XFS conflicts
-are not entirely trivial and we'll get a really ugly merge node, with
-conflict resolution both hidden and not quite obvious.
+Its the question as to why there were two occurrences of
+GSS_KRB5_TOK_HDR_LEN define in the GSS_KRB5_MAX_SLACK_NEEDED
+macro. Since Kevin is traveling and the reason didn't seem 
+obvious plus I didn't see it as being a showstopper (due to
+all the recent testing), I decided to proceed as. If later 
+its deemed a supplemental patch is needed, I'll post the patch
 
-Or I can do a new branch, put updated pair of patches there (hch has sent
-the updated variants my way) and ask you to rebuild NFS tree.  Which will
-also suck, since it adds PITA for you and you are completely innocent in
-that clusterfuck.
+Again, the details of the original patches are at:
+ http://marc.info/?l=linux-nfs&m=121010783625159&w=2
 
-Suggestions?  I'd love to get out of that mess with minimal PITA for
-everyone involved and minimally messed tree...
+steved.
 
-One thing for sure - I'm not going to do that kind of "guaranteed to be
-unchanged" shared branches again, TYVM.
+J. Bruce Fields (1):
+  gss_krb5: Don't expect blocksize to always be 8 when calculating
+    padding
+
+Kevin Coffman (21):
+  gss_krb5: Introduce encryption type framework
+  gss_krb5: Added and improved code comments
+  gss_krb5: split up functions in preparation of adding new enctypes
+  gss_krb5: prepare for new context format
+  gss_krb5: introduce encryption type framework
+  gss_krb5: add ability to have a keyed checksum (hmac)
+  gss_krb5: import functionality to derive keys into the kernel
+  gss_krb5: handle new context format from gssd
+  gss_krb5: add support for triple-des encryption
+  Add new pipefs file indicating which Kerberos enctypes the kernel
+    supports
+  Update pipefs file indicating which Kerberos enctypes the kernel
+    supports
+  xdr: Add an export for the helper function write_bytes_to_xdr_buf()
+  gss_krb5: add support for new token formats in rfc4121
+  gss_krb5: add remaining pieces to enable AES encryption support
+  gss_krb5: Update pipefs file
+  gssd_krb5: arcfour-hmac support
+  gss_krb5: Save the raw session key in the context
+  gssd_krb5: More arcfour-hmac support
+  gss_krb5: Use confounder length in wrap code
+  gss_krb5: Add support for rc4-hmac encryption
+  Update the pipefs file
+
+Peter Staubach (1):
+  Fixed a typo in gss_verify_mic_v2()
+
+ include/linux/sunrpc/gss_krb5.h       |  183 +++++++++-
+ net/sunrpc/auth_gss/Makefile          |    2 +-
+ net/sunrpc/auth_gss/auth_gss.c        |   14 +-
+ net/sunrpc/auth_gss/gss_krb5_crypto.c |  697 ++++++++++++++++++++++++++++++++-
+ net/sunrpc/auth_gss/gss_krb5_keys.c   |  335 ++++++++++++++++
+ net/sunrpc/auth_gss/gss_krb5_mech.c   |  582 +++++++++++++++++++++++++--
+ net/sunrpc/auth_gss/gss_krb5_seal.c   |  155 ++++++--
+ net/sunrpc/auth_gss/gss_krb5_seqnum.c |   83 ++++-
+ net/sunrpc/auth_gss/gss_krb5_unseal.c |  113 +++++-
+ net/sunrpc/auth_gss/gss_krb5_wrap.c   |  473 ++++++++++++++++++++---
+ net/sunrpc/auth_gss/gss_mech_switch.c |   14 +
+ net/sunrpc/auth_gss/svcauth_gss.c     |   15 +
+ net/sunrpc/rpc_pipe.c                 |   27 ++
+ net/sunrpc/xdr.c                      |    1 +
+ 14 files changed, 2527 insertions(+), 167 deletions(-)
+ create mode 100644 net/sunrpc/auth_gss/gss_krb5_keys.c
+
