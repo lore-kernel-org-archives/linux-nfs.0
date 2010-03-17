@@ -1,217 +1,73 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:41182 "EHLO fieldses.org"
+Received: from cantor.suse.de ([195.135.220.2]:59075 "EHLO mx1.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753786Ab0CIOwa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 9 Mar 2010 09:52:30 -0500
-Date: Tue, 9 Mar 2010 09:53:54 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Andy Adamson <andros@netapp.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: reboot recovery
-Message-ID: <20100309145354.GB21862@fieldses.org>
-References: <20100309014624.GF2999@fieldses.org> <ABA6EE88-3584-4DC9-A50B-3B0E06C701FB@netapp.com>
+	id S1753264Ab0CQG0X (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 17 Mar 2010 02:26:23 -0400
+Date: Wed, 17 Mar 2010 17:26:08 +1100
+From: Nick Piggin <npiggin@suse.de>
+To: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: [patch] nfs: use add_to_page_cache_lru, use __page_cache_alloc
+Message-ID: <20100317062608.GD2869@laptop>
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <ABA6EE88-3584-4DC9-A50B-3B0E06C701FB@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Tue, Mar 09, 2010 at 09:46:04AM -0500, Andy Adamson wrote:
->
-> On Mar 8, 2010, at 8:46 PM, J. Bruce Fields wrote:
->
->> The Linux server's reboot recovery code has long-standing  
->> architectural
->> problems, fails to adhere to the specifications in some cases, and  
->> does
->> not yet handle NFSv4.1 reboot recovery.  An overhaul has been a
->> long-standing todo.
->>
->> This is my attempt to state the problem and a rough solution.
->>
->> Requirements
->> ^^^^^^^^^^^^
->>
->> Requirements, as compared to current code:
->>
->> 	- Correctly implements the algorithm described in section 8.6.3
->> 	  of rfc 3530, and eliminates known race conditions on recovery.
->> 	- Does not attempt to manage files and directories directly from
->> 	  inside the kernel.
->> 	- Supports RECLAIM_COMPLETE.
->>
->> Requirements, in more detail:
->>
->> A "server instance" is the lifetime from start to shutdown of a  
->> server;
->> a reboot ends one server instance and starts another.  Normally a  
->> server
->> instance consists of a grace period followed by a period of normal
->> operation.  However, a server could go down before the grace period
->> completes.  Call a server instance that completes the grace period
->> "full", and one that does not "partial".
->>
->> Call a client "active" if it holds unexpired state on the server.   
->> Then:
->>
->> 	- An NFSv4.0 client becomes active as soon as it succesfully
->> 	  performs its first OPEN_CONFIRM, or its first reclaim OPEN.
->> 	- An NFSv4.1 client becomes active when it succesfully performs
->> 	  its first OPEN, or a RECLAIM_COMPLETE.
->
-> RFC 5661 in section 18.51.3
->
->    Whenever a client establishes a new client ID and before it does the
->    first non-reclaim operation that obtains a lock, it MUST send a
->    RECLAIM_COMPLETE with rca_one_fs set to FALSE, even if there are no
->    locks to reclaim.  If non-reclaim locking operations are done before
->    the RECLAIM_COMPLETE, an NFS4ERR_GRACE error will be returned.
->
-> So there will never be a 'first OPEN' (except for an OPEN reclaim)  
-> without a RECLAIM_COMPLETE.
+nfs: use add_to_page_cache_lru, use __page_cache_alloc
 
-There will be in the case of an entirely new client, or a client that
-missed the grace period completely.
+Pagecache pages should be allocated with __page_cache_alloc, so they
+obey pagecache memory policies.
 
-(But I should have specified "first non-reclaim OPEN" in the 4.1 case,
-not just "first OPEN".)
+add_to_page_cache_lru is exported, so it should be used. Benefits over
+using a private pagevec: neater code, 128 bytes fewer stack used, percpu
+lru ordering is preserved, and finally don't need to flush pagevec
+before returning so batching may be shared with other LRU insertions.
 
---b.
+Signed-off-by: Nick Piggin <npiggin@suse.de>:
+---
+ fs/nfs/dir.c |    9 ++-------
+ 1 file changed, 2 insertions(+), 7 deletions(-)
 
->
->
->> 	- Active clients become inactive when they expire.  (Or when
->> 	  they are revoked--but the Linux server does not currently
->> 	  support revocation.)
->> 	- On startup all clients are initially inactive.
->>
->> On startup the server needs access to the list of clients which are
->> permitted to reclaim state.  That list is exactly the list of clients
->> that were active at the end of the most recent full server instance.
->>
->> To maintain such a list, we need records to be stored in stable  
->> storage.
->> Whenever a client changes from inactive to active, or active to
->> inactive, stable storage must be updated, and until the update has
->> completed the server must do nothing that acknowledges the new state.
->> So:
->>
->> 	- When a new client becomes active, a record for that client
->> 	  must be created in stable storage before responding to the rpc
->> 	  in question (OPEN, OPEN_CONFIRM, or RECLAIM_COMPLETE).
->> 	- When a client expires, the record must be removed (or
->> 	  otherwise marked expired) before responding to any requests
->> 	  for locks or other state which would conflict with state held
->> 	  by the expiring client.
->>
->> Updates must be made by upcalls to userspace; the kernel will not be
->> directly involved in managing stable storage.  The upcall interface
->> should be extensible.
->>
->> The records must include the client owner name, to allow identifying
->> clients on restart.  The protocol allows client owner names to consist
->> of up to 1024 bytes of binary data.  (This is the client-supplied
->> long form, not the server-generated shorthand clientid; co_ownerid for
->> 4.1).
->>
->> Also desireable, but not absolutely required in the first
->> implementation:
->>
->> 	- We should not take the state lock while waiting for records to
->> 	  be stored.  (Doing so blocks all other stateful operations
->> 	  while we wait for disk.)
->> 	- The server should be able to end the grace period early when
->> 	  the list of clients allowed to reclaim is empty, or when they
->> 	  are all 4.1 clients, after all have sent RECLAIM_COMPLETE.
->> 	- Will allow pluggable methods for storage of reboot recovery
->> 	  records, as the NFSv2 and NFSv3 code currently does (in order
->> 	  to support high-availability).
->>
->> Possibly also desireable:
->>
->> 	- Record the principal that originally created the client, and
->> 	  whether it had EXCHGID4_FLAG_BIND_PRINC_STATEID (see rfc 5661
->> 	  section 8.4.2.1).
->>
->> Draft design
->> ^^^^^^^^^^^^
->>
->> We will modify rpc.statd to handle to manage state in userspace.
->>
->> Previous prototype code from CITI will be considered as a starting
->> point.
->>
->> Kernel<->user communication will use four files in the "nfsd"
->> filesystem.  All of them will use the encoding used for rpc cache
->> upcalls and downcalls, which consist of whitespace-separated fields
->> escaped as necessary to allow binary data.
->>
->> Three of them will be used for upcalls; statd reads request from them,
->> and writes responses back:
->>
->> create_client:
->> 	- given a client owner, returns an error.  Does not return until
->> 	  a new record has safely been recorded on disk.
->>
->> grace_done:
->> 	- request and reply are both empty; rpc.statd returns only after
->> 	  it has recorded to disk the fact that the grace period
->> 	  completed.
->>
->> expire_client:
->> 	- given a client owner, replies with an empty reply.  Replies
->> 	  only after it has recorded to disk the fact that the client
->> 	  has expired.
->>
->> One additional file will be used for a downcall:
->>
->> allow_client:
->> 	- before starting the server, statd will open this file, write a
->> 	  newline-separated list of client owners permitted to recover,
->> 	  then close the file.  If no clients are allowed to recover, it
->> 	  will still open and close the file.
->>
->> Statd will use the presence of these upcalls to determine whether the
->> server supports the new recovery mechanism.  nfsd may use rpc.statd's
->> open of allow_client to decide whether userspace supports the new
->> mechanism.  Thus allows a mismatched kernel and userspace to still
->> maintain reboot recovery records.
->>
->> In addition, we could support seamless reboot recovery across the
->> transition to the new system by making statd convert between on-disk
->> formats.  However, for simplicity's sake we plan for the server to be
->> refuse all reclaims on the first boot after the transition.
->>
->> By default, statd will store records as files in the directory
->> /var/lib/nfs/v4clients.  The file name will be a hash of the
->> client_owner, and the contents will consist of two newline-separated
->> fields:
->> 	- The client owner, encoded as in the upcall.
->> 	- A timestamp.
->>
->> More fields may be added in the future.
->>
->> Before starting the server, and writing to allow_client, statd will
->> manage boot times and old clients using files in /var/lib/nfs:
->>
->> 	If boot_time exists:
->> 		- It will be read, and the contents interpreted as an
->> 		  ascii-encoded unix time in seconds.
->> 		- All client records older than that time will be removed.
->> 		- The current boot_time will be recorded to
->> 		  new_boot_time (replacing any existing such file).
->> 		- All remaining clients will be written to allow_client.
->> 	If boot_time does not exist, an empty /var/lib/nfs/v4clients/ is
->> 		created if necessary, but nothing else is done.
->>
->> Statd will then wait for create_client, expire_client, and grace_done
->> calls.  On grace_done, it will rename boot_time to old_boot_time, and
->> new_boot_time to boot_time.
->>
->> --b.
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs"  
->> in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->
+Index: linux-2.6/fs/nfs/dir.c
+===================================================================
+--- linux-2.6.orig/fs/nfs/dir.c
++++ linux-2.6/fs/nfs/dir.c
+@@ -29,7 +29,6 @@
+ #include <linux/nfs_fs.h>
+ #include <linux/nfs_mount.h>
+ #include <linux/pagemap.h>
+-#include <linux/pagevec.h>
+ #include <linux/namei.h>
+ #include <linux/mount.h>
+ #include <linux/sched.h>
+@@ -1473,7 +1472,6 @@ static int nfs_unlink(struct inode *dir,
+  */
+ static int nfs_symlink(struct inode *dir, struct dentry *dentry, const char *symname)
+ {
+-	struct pagevec lru_pvec;
+ 	struct page *page;
+ 	char *kaddr;
+ 	struct iattr attr;
+@@ -1489,7 +1487,7 @@ static int nfs_symlink(struct inode *dir
+ 	attr.ia_mode = S_IFLNK | S_IRWXUGO;
+ 	attr.ia_valid = ATTR_MODE;
+ 
+-	page = alloc_page(GFP_HIGHUSER);
++	page = __page_cache_alloc(GFP_HIGHUSER);
+ 	if (!page)
+ 		return -ENOMEM;
+ 
+@@ -1513,11 +1511,8 @@ static int nfs_symlink(struct inode *dir
+ 	 * No big deal if we can't add this page to the page cache here.
+ 	 * READLINK will get the missing page from the server if needed.
+ 	 */
+-	pagevec_init(&lru_pvec, 0);
+-	if (!add_to_page_cache(page, dentry->d_inode->i_mapping, 0,
++	if (!add_to_page_cache_lru(page, dentry->d_inode->i_mapping, 0,
+ 							GFP_KERNEL)) {
+-		pagevec_add(&lru_pvec, page);
+-		pagevec_lru_add_file(&lru_pvec);
+ 		SetPageUptodate(page);
+ 		unlock_page(page);
+ 	} else
