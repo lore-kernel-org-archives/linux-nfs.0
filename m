@@ -1,212 +1,47 @@
 From: steved@redhat.com
-Subject: [PATCH 10/23] gss_krb5: add support for triple-des encryption
-Date: Wed, 17 Mar 2010 13:02:55 -0400
-Message-ID: <1268845388-9516-11-git-send-email-steved@redhat.com>
+Subject: [PATCH 22/23] Update the pipefs file
+Date: Wed, 17 Mar 2010 13:03:07 -0400
+Message-ID: <1268845388-9516-23-git-send-email-steved@redhat.com>
 References: <1268845388-9516-1-git-send-email-steved@redhat.com>
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from 4dicksons.org ([207.22.49.45]:43424 "EHLO
+Received: from 4dicksons.org ([207.22.49.45]:43421 "EHLO
 	Dobby.Home.4dicksons.org" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1755284Ab0CQR0M (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 17 Mar 2010 13:26:12 -0400
+	by vger.kernel.org with ESMTP id S1754657Ab0CQR0I (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 17 Mar 2010 13:26:08 -0400
 Received: from [192.168.62.20] (helo=localhost.localdomain)
 	by Dobby.Home.4dicksons.org with esmtp (Exim 4.63)
 	(envelope-from <steved@redhat.com>)
-	id 1NrweF-0003fC-UL
-	for linux-nfs@vger.kernel.org; Wed, 17 Mar 2010 13:03:12 -0400
+	id 1NrweK-0003fC-7x
+	for linux-nfs@vger.kernel.org; Wed, 17 Mar 2010 13:03:16 -0400
 In-Reply-To: <1268845388-9516-1-git-send-email-steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 From: Kevin Coffman <kwc@citi.umich.edu>
 
-Add the final pieces to support the triple-des encryption type.
+Update the pipefs file indicating which Kerberos enctypes
+the kernel supports
 
 Signed-off-by: Kevin Coffman <kwc@citi.umich.edu>
 Signed-off-by: Steve Dickson <steved@redhat.com>
 ---
- include/linux/sunrpc/gss_krb5.h       |    5 +++
- net/sunrpc/auth_gss/gss_krb5_crypto.c |    3 ++
- net/sunrpc/auth_gss/gss_krb5_keys.c   |   53 +++++++++++++++++++++++++++++++++
- net/sunrpc/auth_gss/gss_krb5_mech.c   |   23 ++++++++++++++
- net/sunrpc/auth_gss/gss_krb5_seal.c   |    1 +
- net/sunrpc/auth_gss/gss_krb5_unseal.c |    1 +
- net/sunrpc/auth_gss/gss_krb5_wrap.c   |    2 +
- 7 files changed, 88 insertions(+), 0 deletions(-)
+ net/sunrpc/rpc_pipe.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
 
-diff --git a/include/linux/sunrpc/gss_krb5.h b/include/linux/sunrpc/gss_krb5.h
-index 78cbed9..9bf6720 100644
---- a/include/linux/sunrpc/gss_krb5.h
-+++ b/include/linux/sunrpc/gss_krb5.h
-@@ -261,3 +261,8 @@ krb5_derive_key(const struct gss_krb5_enctype *gk5e,
- 		const struct xdr_netobj *inkey,
- 		struct xdr_netobj *outkey,
- 		const struct xdr_netobj *in_constant);
-+
-+u32
-+gss_krb5_des3_make_key(const struct gss_krb5_enctype *gk5e,
-+		       struct xdr_netobj *randombits,
-+		       struct xdr_netobj *key);
-diff --git a/net/sunrpc/auth_gss/gss_krb5_crypto.c b/net/sunrpc/auth_gss/gss_krb5_crypto.c
-index fda8e37..fd70d12 100644
---- a/net/sunrpc/auth_gss/gss_krb5_crypto.c
-+++ b/net/sunrpc/auth_gss/gss_krb5_crypto.c
-@@ -185,6 +185,9 @@ make_checksum(struct krb5_ctx *kctx, char *header, int hdrlen,
- 		       checksumdata + checksumlen - kctx->gk5e->cksumlength,
- 		       kctx->gk5e->cksumlength);
- 		break;
-+	case CKSUMTYPE_HMAC_SHA1_DES3:
-+		memcpy(cksumout->data, checksumdata, kctx->gk5e->cksumlength);
-+		break;
- 	default:
- 		BUG();
- 		break;
-diff --git a/net/sunrpc/auth_gss/gss_krb5_keys.c b/net/sunrpc/auth_gss/gss_krb5_keys.c
-index 253b414..901d85a 100644
---- a/net/sunrpc/auth_gss/gss_krb5_keys.c
-+++ b/net/sunrpc/auth_gss/gss_krb5_keys.c
-@@ -250,3 +250,56 @@ err_free_cipher:
- err_return:
- 	return ret;
+diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
+index 780a2db..1b416c7 100644
+--- a/net/sunrpc/rpc_pipe.c
++++ b/net/sunrpc/rpc_pipe.c
+@@ -400,7 +400,7 @@ static const struct file_operations rpc_info_operations = {
+ static int
+ rpc_show_krb5_info(struct seq_file *m, void *v)
+ {
+-	seq_printf(m, "enctypes: 18,17,16,3,1,2\n");
++	seq_printf(m, "enctypes: 18,17,16,23,3,1,2\n");
+ 	return 0;
  }
-+
-+#define smask(step) ((1<<step)-1)
-+#define pstep(x, step) (((x)&smask(step))^(((x)>>step)&smask(step)))
-+#define parity_char(x) pstep(pstep(pstep((x), 4), 2), 1)
-+
-+static void mit_des_fixup_key_parity(u8 key[8])
-+{
-+	int i;
-+	for (i = 0; i < 8; i++) {
-+		key[i] &= 0xfe;
-+		key[i] |= 1^parity_char(key[i]);
-+	}
-+}
-+
-+/*
-+ * This is the des3 key derivation postprocess function
-+ */
-+u32 gss_krb5_des3_make_key(const struct gss_krb5_enctype *gk5e,
-+			   struct xdr_netobj *randombits,
-+			   struct xdr_netobj *key)
-+{
-+	int i;
-+	u32 ret = EINVAL;
-+
-+	if (key->len != 24) {
-+		dprintk("%s: key->len is %d\n", __func__, key->len);
-+		goto err_out;
-+	}
-+	if (randombits->len != 21) {
-+		dprintk("%s: randombits->len is %d\n",
-+			__func__, randombits->len);
-+		goto err_out;
-+	}
-+
-+	/* take the seven bytes, move them around into the top 7 bits of the
-+	   8 key bytes, then compute the parity bits.  Do this three times. */
-+
-+	for (i = 0; i < 3; i++) {
-+		memcpy(key->data + i*8, randombits->data + i*7, 7);
-+		key->data[i*8+7] = (((key->data[i*8]&1)<<1) |
-+				    ((key->data[i*8+1]&1)<<2) |
-+				    ((key->data[i*8+2]&1)<<3) |
-+				    ((key->data[i*8+3]&1)<<4) |
-+				    ((key->data[i*8+4]&1)<<5) |
-+				    ((key->data[i*8+5]&1)<<6) |
-+				    ((key->data[i*8+6]&1)<<7));
-+
-+		mit_des_fixup_key_parity(key->data + i*8);
-+	}
-+	ret = 0;
-+err_out:
-+	return(ret);
-+}
-diff --git a/net/sunrpc/auth_gss/gss_krb5_mech.c b/net/sunrpc/auth_gss/gss_krb5_mech.c
-index 2978ef7..f1d641e 100644
---- a/net/sunrpc/auth_gss/gss_krb5_mech.c
-+++ b/net/sunrpc/auth_gss/gss_krb5_mech.c
-@@ -71,6 +71,26 @@ static const struct gss_krb5_enctype supported_gss_krb5_enctypes[] = {
- 	  .cksumlength = 8,
- 	  .keyed_cksum = 0,
- 	},
-+	/*
-+	 * 3DES
-+	 */
-+	{
-+	  .etype = ENCTYPE_DES3_CBC_RAW,
-+	  .ctype = CKSUMTYPE_HMAC_SHA1_DES3,
-+	  .name = "des3-hmac-sha1",
-+	  .encrypt_name = "cbc(des3_ede)",
-+	  .cksum_name = "hmac(sha1)",
-+	  .encrypt = krb5_encrypt,
-+	  .decrypt = krb5_decrypt,
-+	  .mk_key = gss_krb5_des3_make_key,
-+	  .signalg = SGN_ALG_HMAC_SHA1_DES3_KD,
-+	  .sealalg = SEAL_ALG_DES3KD,
-+	  .keybytes = 21,
-+	  .keylength = 24,
-+	  .blocksize = 8,
-+	  .cksumlength = 20,
-+	  .keyed_cksum = 1,
-+	},
- };
  
- static const int num_supported_enctypes = 
-@@ -440,6 +460,9 @@ gss_import_v2_context(const void *p, const void *end, struct krb5_ctx *ctx)
- 	p = simple_get_bytes(p, end, &ctx->enctype, sizeof(ctx->enctype));
- 	if (IS_ERR(p))
- 		goto out_err;
-+	/* Map ENCTYPE_DES3_CBC_SHA1 to ENCTYPE_DES3_CBC_RAW */
-+	if (ctx->enctype == ENCTYPE_DES3_CBC_SHA1)
-+		ctx->enctype = ENCTYPE_DES3_CBC_RAW;
- 	ctx->gk5e = get_gss_krb5_enctype(ctx->enctype);
- 	if (ctx->gk5e == NULL) {
- 		printk("gss_kerberos_mech: unsupported krb5 enctype %u\n",
-diff --git a/net/sunrpc/auth_gss/gss_krb5_seal.c b/net/sunrpc/auth_gss/gss_krb5_seal.c
-index c4df7af..ba86910 100644
---- a/net/sunrpc/auth_gss/gss_krb5_seal.c
-+++ b/net/sunrpc/auth_gss/gss_krb5_seal.c
-@@ -143,6 +143,7 @@ gss_get_mic_kerberos(struct gss_ctx *gss_ctx, struct xdr_buf *text,
- 	default:
- 		BUG();
- 	case ENCTYPE_DES_CBC_RAW:
-+	case ENCTYPE_DES3_CBC_RAW:
- 		return gss_get_mic_v1(ctx, text, token);
- 	}
- }
-diff --git a/net/sunrpc/auth_gss/gss_krb5_unseal.c b/net/sunrpc/auth_gss/gss_krb5_unseal.c
-index aff3fce..becd212 100644
---- a/net/sunrpc/auth_gss/gss_krb5_unseal.c
-+++ b/net/sunrpc/auth_gss/gss_krb5_unseal.c
-@@ -153,6 +153,7 @@ gss_verify_mic_kerberos(struct gss_ctx *gss_ctx,
- 	default:
- 		BUG();
- 	case ENCTYPE_DES_CBC_RAW:
-+	case ENCTYPE_DES3_CBC_RAW:
- 		return gss_verify_mic_v1(ctx, message_buffer, read_token);
- 	}
- }
-diff --git a/net/sunrpc/auth_gss/gss_krb5_wrap.c b/net/sunrpc/auth_gss/gss_krb5_wrap.c
-index ff4edcd..d6b0a41 100644
---- a/net/sunrpc/auth_gss/gss_krb5_wrap.c
-+++ b/net/sunrpc/auth_gss/gss_krb5_wrap.c
-@@ -351,6 +351,7 @@ gss_wrap_kerberos(struct gss_ctx *gctx, int offset,
- 	default:
- 		BUG();
- 	case ENCTYPE_DES_CBC_RAW:
-+	case ENCTYPE_DES3_CBC_RAW:
- 		return gss_wrap_kerberos_v1(kctx, offset, buf, pages);
- 	}
- }
-@@ -364,6 +365,7 @@ gss_unwrap_kerberos(struct gss_ctx *gctx, int offset, struct xdr_buf *buf)
- 	default:
- 		BUG();
- 	case ENCTYPE_DES_CBC_RAW:
-+	case ENCTYPE_DES3_CBC_RAW:
- 		return gss_unwrap_kerberos_v1(kctx, offset, buf);
- 	}
- }
 -- 
 1.6.6.1
 
