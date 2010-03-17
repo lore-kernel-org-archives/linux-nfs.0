@@ -1,97 +1,93 @@
-From: Mi Jinlong <mijinlong@cn.fujitsu.com>
-Subject: Re: [PATCH] Fix bug nfslock request sending fail will be process
- as blocked
-Date: Wed, 17 Mar 2010 18:03:53 +0800
-Message-ID: <4BA0A909.4030004@cn.fujitsu.com>
-References: <4B9A14A1.3000008@cn.fujitsu.com>	 <1268401329.3156.12.camel@localhost.localdomain>	 <4B9F5B55.2020902@cn.fujitsu.com> <1268745162.3155.17.camel@localhost.localdomain>
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Re: [PATCH 2/2] sm-notify: Send fully-qualified and unqualified mon_names
+Date: Wed, 17 Mar 2010 06:36:20 -0400
+Message-ID: <4BA0B0A4.6020705@RedHat.com>
+References: <20100315174453.2586.40876.stgit@localhost.localdomain> <20100315175145.2586.1215.stgit@localhost.localdomain>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-	Chuck Lever <chuck.lever@oracle.com>,
-	NFSv3 list <linux-nfs@vger.kernel.org>
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
+Cc: linux-nfs@vger.kernel.org
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from cn.fujitsu.com ([222.73.24.84]:54898 "EHLO song.cn.fujitsu.com"
-	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
-	id S1752473Ab0CQKCo convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 17 Mar 2010 06:02:44 -0400
-In-Reply-To: <1268745162.3155.17.camel-bi+AKbBUZKY6gyzm1THtWbp2dZbC/Bob@public.gmane.org>
+Received: from mx1.redhat.com ([209.132.183.28]:1028 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754298Ab0CQKgX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 17 Mar 2010 06:36:23 -0400
+In-Reply-To: <20100315175145.2586.1215.stgit-bi+AKbBUZKY6gyzm1THtWbp2dZbC/Bob@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On 03/15/2010 01:51 PM, Chuck Lever wrote:
+> During any file locking interaction between an NFS client and server,
+> the client tells the server what hostname it will use as the mon_name
+> argument of the SM_NOTIFY request sent by the client when it reboots.
+> This is the "caller_name" argument of an NLMPROC_LOCK request.
+> 
+> The server, however, never tells the client what mon_name argument
+> it will use when sending an SM_NOTIFY request.  In order to recognize
+> the server, clients usually guess what mon_name the server might
+> send, by using the server hostname provided by the user on the mount
+> command line.
+> 
+> Frequently, the user provides an unqualified server name on the mount
+> command.  The server might then call the client back with a fully
+> qualified domain name, which might not match in some cases.
+> 
+> Solaris, and perhaps other implementations, attempt to mitigate this
+> problem by sending two SM_NOTIFY requests to each peer: one with an
+> unqualified mon_name argument, and one with a fully qualified mon_name.
+> 
+> Implement such a scheme for sm-notify.
+> 
+> Since my_name is almost always the fully-qualified hostname associated
+> with the local system, just wiping the left-most '.' in the my_name
+> argument and sending another SM_NOTIFY is nearly always sufficient.
+> 
+> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> ---
+> 
+>  utils/statd/sm-notify.c |   21 +++++++++++++++++----
+>  1 files changed, 17 insertions(+), 4 deletions(-)
+> 
+> diff --git a/utils/statd/sm-notify.c b/utils/statd/sm-notify.c
+> index 2d14668..437e37a 100644
+> --- a/utils/statd/sm-notify.c
+> +++ b/utils/statd/sm-notify.c
+> @@ -634,15 +634,28 @@ recv_rpcbind_reply(struct sockaddr *sap, struct nsm_host *host, XDR *xdr)
+>  }
+>  
+>  /*
+> - * Successful NOTIFY call. Server returns void, so nothing
+> - * we need to do here.
+> + * Successful NOTIFY call. Server returns void.
+> + *
+> + * Try sending another SM_NOTIFY with an unqualified "my_name"
+> + * argument.  Reuse the port number.  If "my_name" is already
+> + * unqualified, we're done.
+>   */
+>  static void
+>  recv_notify_reply(struct nsm_host *host)
+>  {
+> -	xlog(D_GENERAL, "Host %s notified successfully", host->name);
+> +	char *dot = strchr(host->my_name, '.');
+>  
+> -	smn_forget_host(host);
+> +	if (dot != NULL) {
+> +		*dot = '\0';
+> +		host->send_next = time(NULL);
+> +		host->xid = 0;
+> +		if (host->timeout >= NSM_MAX_TIMEOUT / 4)
+> +			host->timeout = NSM_MAX_TIMEOUT / 4;
+> +		insert_host(host);
+What happens when host->my_name now resolves to host in a
+different domain? Will this mean we now will be sending SM_NOTIFYs
+to random hosts? 
 
+Also, what happens when host->my_name does not resolve to anything?
+Looking at notify(), it appears the unqualified my_name will stay 
+on the hosts list, because notify_host() will fail since the 
+smn_lookup() fails and will always set host->ai = NULL. Unless
+I am missing something, this will cause notify() to increment
+hp->retries and insert the hp pointer back on the host list.
+I don't see how that cycle will broken....
 
-Trond Myklebust =E5=86=99=E9=81=93:
-> On Tue, 2010-03-16 at 18:20 +0800, Mi Jinlong wrote:=20
->> Trond Myklebust =E5=86=99=E9=81=93:
->>> On Fri, 2010-03-12 at 18:17 +0800, Mi Jinlong wrote:=20
->>>> If local reason cause nfslock request send fail(means status < 0,
->>>> resp->status not be reset), the request will be process as blocked=
-=20
->>>> at first now.
->>>>
->>>> This patch initialize resp->status to nlm_lck_denied_nolocks, it=20
->>>> can make the following process correctly.
->>>>
->>>> Signed-off-by: Mi Jinlong <mijinlong@cn.fujitsu.com>
->>>> ---
->>>>  fs/lockd/clntproc.c |    2 +-
->>>>  1 files changed, 1 insertions(+), 1 deletions(-)
->>>>
->>>> diff --git a/fs/lockd/clntproc.c b/fs/lockd/clntproc.c
->>>> index c81249f..a631582 100644
->>>> --- a/fs/lockd/clntproc.c
->>>> +++ b/fs/lockd/clntproc.c
->>>> @@ -535,7 +535,7 @@ again:
->>>>  	 * Initialise resp->status to a valid non-zero value,
->>>>  	 * since 0 =3D=3D nlm_lck_granted
->>>>  	 */
->>>> -	resp->status =3D nlm_lck_blocked;
->>>> +	resp->status =3D nlm_lck_denied_nolocks;
->>>>  	for(;;) {
->>>>  		/* Reboot protection */
->>>>  		fl->fl_u.nfs_fl.state =3D host->h_state;
->>> We _want_ to process it as being blocked if the RPC call was
->>> interrupted. The above patch will cause the client to just abandon =
-the
->>> interrupted lock request without sending the CANCEL request...
->>   No, the above patch don't just abandon the interrupted lock reques=
-t,
->>   when the RPC call was interrupted, client will send an UNLOCK requ=
-est for status < 0.
->>    ...
->>    583         if (status < 0)
->>    584                 goto out_unlock;
->>    ...
->>
->>   And, I think an UNLOCK request is more advisable than a CANCEL req=
-uest.
->>   If a LOCK request was succeed when CANCEL request coming, it's use=
-less;
->>   the lock should be unlocked.
->=20
-> An unlock does not guarantee that the server will cancel the blocked
-> lock request.
-
-  When server receive an UNLOCK request, it will try to cancel the lock=
- at first,
-  codes as follows:
-    ...
-    567 nlmsvc_unlock(struct nlm_file *file, struct nlm_lock *lock)
-    568 {
-    ....
-    578         /* First, cancel any lock that might be there */
-    579         nlmsvc_cancel_blocked(file, lock);
-    ...
-
-  Server don't process the nlmsvc_cancel_blocked's return value, is it =
-the problem=20
-  that you said above ? or some other reason?
-
-  Server cannot cancel the blocked lock request, it's acceptable someti=
-mes, IMO,
-  but client should work strongly itself.
-
-thanks,
-Mi Jinlong
-
+steved.
