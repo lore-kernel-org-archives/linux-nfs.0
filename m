@@ -1,76 +1,97 @@
-From: Kevin Coffman <kwc@citi.umich.edu>
-Subject: Re: [PATCH 01/22] gss_krb5: introduce encryption type framework
-Date: Tue, 16 Mar 2010 16:45:36 -0500
-Message-ID: <4d569c331003161445v675f8d51v3f588d2f9f0d7e75@mail.gmail.com>
-References: <1268655627-18712-1-git-send-email-steved@redhat.com>
-	 <1268655627-18712-2-git-send-email-steved@redhat.com>
-	 <1268668733.2993.90.camel@localhost.localdomain>
-	 <4B9FEEE0.8040306@RedHat.com>
-	 <1268774075.3098.56.camel@localhost.localdomain>
+From: Mi Jinlong <mijinlong@cn.fujitsu.com>
+Subject: Re: [PATCH] Fix bug nfslock request sending fail will be process
+ as blocked
+Date: Wed, 17 Mar 2010 18:03:53 +0800
+Message-ID: <4BA0A909.4030004@cn.fujitsu.com>
+References: <4B9A14A1.3000008@cn.fujitsu.com>	 <1268401329.3156.12.camel@localhost.localdomain>	 <4B9F5B55.2020902@cn.fujitsu.com> <1268745162.3155.17.camel@localhost.localdomain>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: Steve Dickson <SteveD@redhat.com>, linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+	Chuck Lever <chuck.lever@oracle.com>,
+	NFSv3 list <linux-nfs@vger.kernel.org>
 To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-bw0-f211.google.com ([209.85.218.211]:63587 "EHLO
-	mail-bw0-f211.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751102Ab0CPVvJ convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 16 Mar 2010 17:51:09 -0400
-Received: by bwz3 with SMTP id 3so503447bwz.29
-        for <linux-nfs@vger.kernel.org>; Tue, 16 Mar 2010 14:51:07 -0700 (PDT)
-In-Reply-To: <1268774075.3098.56.camel-bi+AKbBUZKY6gyzm1THtWbp2dZbC/Bob@public.gmane.org>
+Received: from cn.fujitsu.com ([222.73.24.84]:54898 "EHLO song.cn.fujitsu.com"
+	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
+	id S1752473Ab0CQKCo convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 17 Mar 2010 06:02:44 -0400
+In-Reply-To: <1268745162.3155.17.camel-bi+AKbBUZKY6gyzm1THtWbp2dZbC/Bob@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Mar 16, 2010 at 4:14 PM, Trond Myklebust
-<trond.myklebust@fys.uio.no> wrote:
-> On Tue, 2010-03-16 at 16:49 -0400, Steve Dickson wrote:
+
+
+Trond Myklebust =E5=86=99=E9=81=93:
+> On Tue, 2010-03-16 at 18:20 +0800, Mi Jinlong wrote:=20
+>> Trond Myklebust =E5=86=99=E9=81=93:
+>>> On Fri, 2010-03-12 at 18:17 +0800, Mi Jinlong wrote:=20
+>>>> If local reason cause nfslock request send fail(means status < 0,
+>>>> resp->status not be reset), the request will be process as blocked=
+=20
+>>>> at first now.
+>>>>
+>>>> This patch initialize resp->status to nlm_lck_denied_nolocks, it=20
+>>>> can make the following process correctly.
+>>>>
+>>>> Signed-off-by: Mi Jinlong <mijinlong@cn.fujitsu.com>
+>>>> ---
+>>>>  fs/lockd/clntproc.c |    2 +-
+>>>>  1 files changed, 1 insertions(+), 1 deletions(-)
+>>>>
+>>>> diff --git a/fs/lockd/clntproc.c b/fs/lockd/clntproc.c
+>>>> index c81249f..a631582 100644
+>>>> --- a/fs/lockd/clntproc.c
+>>>> +++ b/fs/lockd/clntproc.c
+>>>> @@ -535,7 +535,7 @@ again:
+>>>>  	 * Initialise resp->status to a valid non-zero value,
+>>>>  	 * since 0 =3D=3D nlm_lck_granted
+>>>>  	 */
+>>>> -	resp->status =3D nlm_lck_blocked;
+>>>> +	resp->status =3D nlm_lck_denied_nolocks;
+>>>>  	for(;;) {
+>>>>  		/* Reboot protection */
+>>>>  		fl->fl_u.nfs_fl.state =3D host->h_state;
+>>> We _want_ to process it as being blocked if the RPC call was
+>>> interrupted. The above patch will cause the client to just abandon =
+the
+>>> interrupted lock request without sending the CANCEL request...
+>>   No, the above patch don't just abandon the interrupted lock reques=
+t,
+>>   when the RPC call was interrupted, client will send an UNLOCK requ=
+est for status < 0.
+>>    ...
+>>    583         if (status < 0)
+>>    584                 goto out_unlock;
+>>    ...
 >>
->> On 03/15/2010 11:58 AM, Trond Myklebust wrote:
->> > On Mon, 2010-03-15 at 08:20 -0400, steved@redhat.com wrote:
+>>   And, I think an UNLOCK request is more advisable than a CANCEL req=
+uest.
+>>   If a LOCK request was succeed when CANCEL request coming, it's use=
+less;
+>>   the lock should be unlocked.
+>=20
+> An unlock does not guarantee that the server will cancel the blocked
+> lock request.
 
->> >> +
->> >> + =A0GSS_KRB5_SLACK_CHECK;
->> > =A0 =A0 =A0 =A0 =A0 ^^^^^^^^^^^^^^^^^^^^^
->> > =A0 =A0 =A0 =A0 =A0 =A0 =A0 Why is this a macro?
->> To hide the ugliness of the BUILD_BUG_ON() macro which I think
->> is a good thing... I would rather see that one line verse the 10
->> or so lines it hiding...
->
-> I wouldn't.
->
-> I can accept putting that _sum_ into a macro, but expanding the
-> BUILD_BUG_ON.
->
-> IOW:
->
-> #define GSS_KRB5_MAX_SLACK_NEEDED \
-> =A0 =A0 =A0 =A0GSS_KRB5_TOK_HDR_LEN =A0 =A0 =A0/* gss token header */=
- =A0 =A0 =A0 =A0 \
-> =A0 =A0 =A0 =A0+ GSS_KRB5_MAX_CKSUM_LEN =A0/* gss token checksum */ =A0=
- =A0 =A0 \
-> =A0 =A0 =A0 =A0+ GSS_KRB5_MAX_BLOCKSIZE =A0/* confounder */ =A0 =A0 =A0=
- =A0 =A0 =A0 =A0 \
-> =A0 =A0 =A0 =A0.... \
-> =A0 =A0 =A0 =A0)
->
-> and then inserting the following line above
->
-> BUILD_BUG_ON(GSS_KRB5_MAX_SLACK_NEEDED > RPC_MAX_AUTH_SIZE);
->
-> That makes it obvious what is being checked and why.
+  When server receive an UNLOCK request, it will try to cancel the lock=
+ at first,
+  codes as follows:
+    ...
+    567 nlmsvc_unlock(struct nlm_file *file, struct nlm_lock *lock)
+    568 {
+    ....
+    578         /* First, cancel any lock that might be there */
+    579         nlmsvc_cancel_blocked(file, lock);
+    ...
 
-fwiw, I agree!
+  Server don't process the nlmsvc_cancel_blocked's return value, is it =
+the problem=20
+  that you said above ? or some other reason?
 
-> Speaking of obvious. Exactly why is GSS_KRB5_TOK_HDR_LEN and
-> GSS_KRB5_MAX_CKSUM_LEN being included twice in that calculation? The
-> second two instances have no comments explaining their presence...
+  Server cannot cancel the blocked lock request, it's acceptable someti=
+mes, IMO,
+  but client should work strongly itself.
 
-I'll look back and see if there is a reason, or if this is just wrong.
- I believe there is another checksum, so I think it is correct.  But
-supporting comments do seem necessary.
+thanks,
+Mi Jinlong
 
-I'll be travelling with limited network access until Monday, so I
-might not give a prompt reply.
-
-K.C.
