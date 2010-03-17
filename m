@@ -1,119 +1,200 @@
 From: steved@redhat.com
-Subject: [PATCH 02/23] gss_krb5: Added and improved code comments
-Date: Wed, 17 Mar 2010 13:02:47 -0400
-Message-ID: <1268845388-9516-3-git-send-email-steved@redhat.com>
+Subject: [PATCH 04/23] gss_krb5: split up functions in preparation of adding new enctypes
+Date: Wed, 17 Mar 2010 13:02:49 -0400
+Message-ID: <1268845388-9516-5-git-send-email-steved@redhat.com>
 References: <1268845388-9516-1-git-send-email-steved@redhat.com>
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from 4dicksons.org ([207.22.49.45]:55123 "EHLO
+Received: from 4dicksons.org ([207.22.49.45]:55127 "EHLO
 	Dobby.Home.4dicksons.org" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1753189Ab0CQRDL (ORCPT
+	by vger.kernel.org with ESMTP id S1753368Ab0CQRDL (ORCPT
 	<rfc822;linux-nfs@vger.kernel.org>); Wed, 17 Mar 2010 13:03:11 -0400
 Received: from [192.168.62.20] (helo=localhost.localdomain)
 	by Dobby.Home.4dicksons.org with esmtp (Exim 4.63)
 	(envelope-from <steved@redhat.com>)
-	id 1NrweD-0003fC-Dk
-	for linux-nfs@vger.kernel.org; Wed, 17 Mar 2010 13:03:09 -0400
+	id 1NrweD-0003fC-R1
+	for linux-nfs@vger.kernel.org; Wed, 17 Mar 2010 13:03:10 -0400
 In-Reply-To: <1268845388-9516-1-git-send-email-steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 From: Kevin Coffman <kwc@citi.umich.edu>
 
+Add encryption type to the krb5 context structure and use it to switch
+to the correct functions depending on the encryption type.
+
+Signed-off-by: Kevin Coffman <kwc@citi.umich.edu>
 Signed-off-by: Steve Dickson <steved@redhat.com>
 ---
- net/sunrpc/auth_gss/auth_gss.c        |   12 +++++++++---
- net/sunrpc/auth_gss/gss_mech_switch.c |   14 ++++++++++++++
- net/sunrpc/auth_gss/svcauth_gss.c     |   15 +++++++++++++++
- 3 files changed, 38 insertions(+), 3 deletions(-)
+ include/linux/sunrpc/gss_krb5.h       |    1 +
+ net/sunrpc/auth_gss/gss_krb5_mech.c   |    1 +
+ net/sunrpc/auth_gss/gss_krb5_seal.c   |   20 ++++++++++++++--
+ net/sunrpc/auth_gss/gss_krb5_unseal.c |   21 +++++++++++++++--
+ net/sunrpc/auth_gss/gss_krb5_wrap.c   |   38 +++++++++++++++++++++++++++-----
+ 5 files changed, 69 insertions(+), 12 deletions(-)
 
-diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
-index 7c50ea6..a268368 100644
---- a/net/sunrpc/auth_gss/auth_gss.c
-+++ b/net/sunrpc/auth_gss/auth_gss.c
-@@ -1317,15 +1317,21 @@ gss_wrap_req_priv(struct rpc_cred *cred, struct gss_cl_ctx *ctx,
- 	inpages = snd_buf->pages + first;
- 	snd_buf->pages = rqstp->rq_enc_pages;
- 	snd_buf->page_base -= first << PAGE_CACHE_SHIFT;
--	/* Give the tail its own page, in case we need extra space in the
--	 * head when wrapping: */
-+	/*
-+	 * Give the tail its own page, in case we need extra space in the
-+	 * head when wrapping:
-+	 *
-+	 * call_allocate() allocates twice the slack space required
-+	 * by the authentication flavor to rq_callsize.
-+	 * For GSS, slack is GSS_CRED_SLACK.
-+	 */
- 	if (snd_buf->page_len || snd_buf->tail[0].iov_len) {
- 		tmp = page_address(rqstp->rq_enc_pages[rqstp->rq_enc_pages_num - 1]);
- 		memcpy(tmp, snd_buf->tail[0].iov_base, snd_buf->tail[0].iov_len);
- 		snd_buf->tail[0].iov_base = tmp;
- 	}
- 	maj_stat = gss_wrap(ctx->gc_gss_ctx, offset, snd_buf, inpages);
--	/* RPC_SLACK_SPACE should prevent this ever happening: */
-+	/* slack space should prevent this ever happening: */
- 	BUG_ON(snd_buf->len > snd_buf->buflen);
- 	status = -EIO;
- 	/* We're assuming that when GSS_S_CONTEXT_EXPIRED, the encryption was
-diff --git a/net/sunrpc/auth_gss/gss_mech_switch.c b/net/sunrpc/auth_gss/gss_mech_switch.c
-index 76e4c6f..28a84ef 100644
---- a/net/sunrpc/auth_gss/gss_mech_switch.c
-+++ b/net/sunrpc/auth_gss/gss_mech_switch.c
-@@ -285,6 +285,20 @@ gss_verify_mic(struct gss_ctx		*context_handle,
- 				 mic_token);
+diff --git a/include/linux/sunrpc/gss_krb5.h b/include/linux/sunrpc/gss_krb5.h
+index 00dc5cf..83b7279 100644
+--- a/include/linux/sunrpc/gss_krb5.h
++++ b/include/linux/sunrpc/gss_krb5.h
+@@ -48,6 +48,7 @@
+ 
+ struct krb5_ctx {
+ 	int			initiate; /* 1 = initiating, 0 = accepting */
++	u32			enctype;
+ 	struct crypto_blkcipher	*enc;
+ 	struct crypto_blkcipher	*seq;
+ 	s32			endtime;
+diff --git a/net/sunrpc/auth_gss/gss_krb5_mech.c b/net/sunrpc/auth_gss/gss_krb5_mech.c
+index 2deb0ed..0cd940e 100644
+--- a/net/sunrpc/auth_gss/gss_krb5_mech.c
++++ b/net/sunrpc/auth_gss/gss_krb5_mech.c
+@@ -139,6 +139,7 @@ gss_import_sec_context_kerberos(const void *p,
+ 	p = simple_get_bytes(p, end, &ctx->initiate, sizeof(ctx->initiate));
+ 	if (IS_ERR(p))
+ 		goto out_err_free_ctx;
++	ctx->enctype = ENCTYPE_DES_CBC_RAW;
+ 	/* The downcall format was designed before we completely understood
+ 	 * the uses of the context fields; so it includes some stuff we
+ 	 * just give some minimal sanity-checking, and some we ignore
+diff --git a/net/sunrpc/auth_gss/gss_krb5_seal.c b/net/sunrpc/auth_gss/gss_krb5_seal.c
+index b8f42ef..6319b33 100644
+--- a/net/sunrpc/auth_gss/gss_krb5_seal.c
++++ b/net/sunrpc/auth_gss/gss_krb5_seal.c
+@@ -71,11 +71,10 @@
+ 
+ DEFINE_SPINLOCK(krb5_seq_lock);
+ 
+-u32
+-gss_get_mic_kerberos(struct gss_ctx *gss_ctx, struct xdr_buf *text,
++static u32
++gss_get_mic_v1(struct krb5_ctx *ctx, struct xdr_buf *text,
+ 		struct xdr_netobj *token)
+ {
+-	struct krb5_ctx		*ctx = gss_ctx->internal_ctx_id;
+ 	char			cksumdata[16];
+ 	struct xdr_netobj	md5cksum = {.len = 0, .data = cksumdata};
+ 	unsigned char		*ptr, *msg_start;
+@@ -121,3 +120,18 @@ gss_get_mic_kerberos(struct gss_ctx *gss_ctx, struct xdr_buf *text,
+ 
+ 	return (ctx->endtime < now) ? GSS_S_CONTEXT_EXPIRED : GSS_S_COMPLETE;
+ }
++
++u32
++gss_get_mic_kerberos(struct gss_ctx *gss_ctx, struct xdr_buf *text,
++		     struct xdr_netobj *token)
++{
++	struct krb5_ctx		*ctx = gss_ctx->internal_ctx_id;
++
++	switch (ctx->enctype) {
++	default:
++		BUG();
++	case ENCTYPE_DES_CBC_RAW:
++		return gss_get_mic_v1(ctx, text, token);
++	}
++}
++
+diff --git a/net/sunrpc/auth_gss/gss_krb5_unseal.c b/net/sunrpc/auth_gss/gss_krb5_unseal.c
+index 066ec73..945609a 100644
+--- a/net/sunrpc/auth_gss/gss_krb5_unseal.c
++++ b/net/sunrpc/auth_gss/gss_krb5_unseal.c
+@@ -71,11 +71,10 @@
+ /* read_token is a mic token, and message_buffer is the data that the mic was
+  * supposedly taken over. */
+ 
+-u32
+-gss_verify_mic_kerberos(struct gss_ctx *gss_ctx,
++static u32
++gss_verify_mic_v1(struct krb5_ctx *ctx,
+ 		struct xdr_buf *message_buffer, struct xdr_netobj *read_token)
+ {
+-	struct krb5_ctx		*ctx = gss_ctx->internal_ctx_id;
+ 	int			signalg;
+ 	int			sealalg;
+ 	char			cksumdata[16];
+@@ -136,3 +135,19 @@ gss_verify_mic_kerberos(struct gss_ctx *gss_ctx,
+ 
+ 	return GSS_S_COMPLETE;
+ }
++
++u32
++gss_verify_mic_kerberos(struct gss_ctx *gss_ctx,
++			struct xdr_buf *message_buffer,
++			struct xdr_netobj *read_token)
++{
++	struct krb5_ctx *ctx = gss_ctx->internal_ctx_id;
++
++	switch (ctx->enctype) {
++	default:
++		BUG();
++	case ENCTYPE_DES_CBC_RAW:
++		return gss_verify_mic_v1(ctx, message_buffer, read_token);
++	}
++}
++
+diff --git a/net/sunrpc/auth_gss/gss_krb5_wrap.c b/net/sunrpc/auth_gss/gss_krb5_wrap.c
+index 27d744c..e452bce 100644
+--- a/net/sunrpc/auth_gss/gss_krb5_wrap.c
++++ b/net/sunrpc/auth_gss/gss_krb5_wrap.c
+@@ -125,11 +125,10 @@ make_confounder(char *p, u32 conflen)
+ 
+ /* XXX factor out common code with seal/unseal. */
+ 
+-u32
+-gss_wrap_kerberos(struct gss_ctx *ctx, int offset,
++static u32
++gss_wrap_kerberos_v1(struct krb5_ctx *kctx, int offset,
+ 		struct xdr_buf *buf, struct page **pages)
+ {
+-	struct krb5_ctx		*kctx = ctx->internal_ctx_id;
+ 	char			cksumdata[16];
+ 	struct xdr_netobj	md5cksum = {.len = 0, .data = cksumdata};
+ 	int			blocksize = 0, plainlen;
+@@ -204,10 +203,9 @@ gss_wrap_kerberos(struct gss_ctx *ctx, int offset,
+ 	return (kctx->endtime < now) ? GSS_S_CONTEXT_EXPIRED : GSS_S_COMPLETE;
  }
  
-+/*
-+ * This function is called from both the client and server code.
-+ * Each makes guarantees about how much "slack" space is available
-+ * for the underlying function in "buf"'s head and tail while
-+ * performing the wrap.
-+ *
-+ * The client and server code allocate RPC_MAX_AUTH_SIZE extra
-+ * space in both the head and tail which is available for use by
-+ * the wrap function.
-+ *
-+ * Underlying functions should verify they do not use more than
-+ * RPC_MAX_AUTH_SIZE of extra space in either the head or tail
-+ * when performing the wrap.
-+ */
- u32
- gss_wrap(struct gss_ctx	*ctx_id,
- 	 int		offset,
-diff --git a/net/sunrpc/auth_gss/svcauth_gss.c b/net/sunrpc/auth_gss/svcauth_gss.c
-index e34bc53..4eec8ba 100644
---- a/net/sunrpc/auth_gss/svcauth_gss.c
-+++ b/net/sunrpc/auth_gss/svcauth_gss.c
-@@ -1314,6 +1314,14 @@ svcauth_gss_wrap_resp_priv(struct svc_rqst *rqstp)
- 	inpages = resbuf->pages;
- 	/* XXX: Would be better to write some xdr helper functions for
- 	 * nfs{2,3,4}xdr.c that place the data right, instead of copying: */
+-u32
+-gss_unwrap_kerberos(struct gss_ctx *ctx, int offset, struct xdr_buf *buf)
++static u32
++gss_unwrap_kerberos_v1(struct krb5_ctx *kctx, int offset, struct xdr_buf *buf)
+ {
+-	struct krb5_ctx		*kctx = ctx->internal_ctx_id;
+ 	int			signalg;
+ 	int			sealalg;
+ 	char			cksumdata[16];
+@@ -295,3 +293,31 @@ gss_unwrap_kerberos(struct gss_ctx *ctx, int offset, struct xdr_buf *buf)
+ 
+ 	return GSS_S_COMPLETE;
+ }
 +
-+	/*
-+	 * If there is currently tail data, make sure there is
-+	 * room for the head, tail, and 2 * RPC_MAX_AUTH_SIZE in
-+	 * the page, and move the current tail data such that
-+	 * there is RPC_MAX_AUTH_SIZE slack space available in
-+	 * both the head and tail.
-+	 */
- 	if (resbuf->tail[0].iov_base) {
- 		BUG_ON(resbuf->tail[0].iov_base >= resbuf->head[0].iov_base
- 							+ PAGE_SIZE);
-@@ -1326,6 +1334,13 @@ svcauth_gss_wrap_resp_priv(struct svc_rqst *rqstp)
- 			resbuf->tail[0].iov_len);
- 		resbuf->tail[0].iov_base += RPC_MAX_AUTH_SIZE;
- 	}
-+	/*
-+	 * If there is no current tail data, make sure there is
-+	 * room for the head data, and 2 * RPC_MAX_AUTH_SIZE in the
-+	 * allotted page, and set up tail information such that there
-+	 * is RPC_MAX_AUTH_SIZE slack space available in both the
-+	 * head and tail.
-+	 */
- 	if (resbuf->tail[0].iov_base == NULL) {
- 		if (resbuf->head[0].iov_len + 2*RPC_MAX_AUTH_SIZE > PAGE_SIZE)
- 			return -ENOMEM;
++u32
++gss_wrap_kerberos(struct gss_ctx *gctx, int offset,
++		  struct xdr_buf *buf, struct page **pages)
++{
++	struct krb5_ctx	*kctx = gctx->internal_ctx_id;
++
++	switch (kctx->enctype) {
++	default:
++		BUG();
++	case ENCTYPE_DES_CBC_RAW:
++		return gss_wrap_kerberos_v1(kctx, offset, buf, pages);
++	}
++}
++
++u32
++gss_unwrap_kerberos(struct gss_ctx *gctx, int offset, struct xdr_buf *buf)
++{
++	struct krb5_ctx	*kctx = gctx->internal_ctx_id;
++
++	switch (kctx->enctype) {
++	default:
++		BUG();
++	case ENCTYPE_DES_CBC_RAW:
++		return gss_unwrap_kerberos_v1(kctx, offset, buf);
++	}
++}
++
 -- 
 1.6.6.1
 
