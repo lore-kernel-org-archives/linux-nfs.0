@@ -1,41 +1,85 @@
-Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from tundra.namei.org ([65.99.196.166]:41573 "EHLO tundra.namei.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750695Ab0CAIJo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 1 Mar 2010 03:09:44 -0500
-Date: Mon, 1 Mar 2010 19:09:30 +1100 (EST)
-From: James Morris <jmorris@namei.org>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-cc: Casey Schaufler <casey@schaufler-ca.com>,
-        Stephen Smalley <sds@tycho.nsa.gov>, linux-nfs@vger.kernel.org,
-        linux-security-module@vger.kernel.org,
-        "J. Bruce Fields" <bfields@fieldses.org>, Neil Brown <neilb@suse.de>,
-        Dave Quigley <dpquigl@tycho.nsa.gov>,
-        "Serge E. Hallyn" <serue@us.ibm.com>
-Subject: Re: [PATCH 5/5] NFSv3: Add server namespace support for XATTR protocol
- implementation
-In-Reply-To: <1267406263.3338.20.camel@localhost.localdomain>
-Message-ID: <alpine.LRH.2.00.1003011900070.22072@tundra.namei.org>
-References: <alpine.LRH.2.00.1002261457420.25193@tundra.namei.org>  <alpine.LRH.2.00.1002261537020.25193@tundra.namei.org>  <1267191990.7691.37.camel@moss-pluto.epoch.ncsc.mil>  <4B8B0F0B.4080603@schaufler-ca.com>
- <1267406263.3338.20.camel@localhost.localdomain>
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Sender: linux-nfs-owner@vger.kernel.org
-List-ID: <linux-nfs.vger.kernel.org>
+Return-Path: <nfsv4-bounces@linux-nfs.org>
+From: Jeff Layton <jlayton@redhat.com>
+To: bfields@fieldses.org
+Subject: [PATCH] nfsd: no need to open the file on a COMMIT call
+Date: Thu, 18 Mar 2010 15:34:47 -0400
+Message-Id: <1268940887-8556-1-git-send-email-jlayton@redhat.com>
+Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/options/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@linux-nfs.org>
+List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
+Content-Type: text/plain; charset="us-ascii"
+Sender: nfsv4-bounces@linux-nfs.org
+Errors-To: nfsv4-bounces@linux-nfs.org
 MIME-Version: 1.0
+List-ID: <linux-nfs.vger.kernel.org>
 
-On Sun, 28 Feb 2010, Trond Myklebust wrote:
+There's no need to call nfsd_open when a COMMIT call comes in over the
+wire. It doesn't really buy us anything to pass a filp into
+vfs_fsync_range. Trond also pointed out that the write access check
+for the open is wrong as well.
 
-> The intention of the 'nfsd' namespace was to separate the local and
-> remote xattr/security realms entirely. That includes allowing the server
-> to set up separate policies to determine who is allowed to change those
-> in the 'nfsd.*' namespace vs those who can change the ordinary
-> 'security', 'trusted' and 'user' namespaces.
+It's also problematic to do so. If the client doing the COMMIT call is
+holding a delegation on the file, then that causes the server to recall
+the delegation before it will proceed. The client (correctly) won't
+return the delegation until the COMMIT succeeds. This leads to a
+deadlock of sorts that can cause the client and server to stall out
+and end up in state renewal.
 
-Ok -- this definitely sounds like a better approach.  I'll post an updated 
-version soon.
+The gory details of this situation are written up here:
 
+    https://bugzilla.redhat.com/show_bug.cgi?id=551028#c10
 
-- James
+Fix this by not opening the file on a COMMIT call and simply pass
+a NULL file pointer to vfs_fsync_range.
+
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/nfsd/vfs.c |    8 +-------
+ 1 files changed, 1 insertions(+), 7 deletions(-)
+
+diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+index a11b0e8..2cdd9c0 100644
+--- a/fs/nfsd/vfs.c
++++ b/fs/nfsd/vfs.c
+@@ -1156,7 +1156,6 @@ __be32
+ nfsd_commit(struct svc_rqst *rqstp, struct svc_fh *fhp,
+                loff_t offset, unsigned long count)
+ {
+-	struct file	*file;
+ 	loff_t		end = LLONG_MAX;
+ 	__be32		err = nfserr_inval;
+ 
+@@ -1168,11 +1167,8 @@ nfsd_commit(struct svc_rqst *rqstp, struct svc_fh *fhp,
+ 			goto out;
+ 	}
+ 
+-	err = nfsd_open(rqstp, fhp, S_IFREG, NFSD_MAY_WRITE, &file);
+-	if (err)
+-		goto out;
+ 	if (EX_ISSYNC(fhp->fh_export)) {
+-		int err2 = vfs_fsync_range(file, file->f_path.dentry,
++		int err2 = vfs_fsync_range(NULL, fhp->fh_dentry,
+ 				offset, end, 0);
+ 
+ 		if (err2 != -EINVAL)
+@@ -1180,8 +1176,6 @@ nfsd_commit(struct svc_rqst *rqstp, struct svc_fh *fhp,
+ 		else
+ 			err = nfserr_notsupp;
+ 	}
+-
+-	nfsd_close(file);
+ out:
+ 	return err;
+ }
 -- 
-James Morris
-<jmorris@namei.org>
+1.6.6.1
+
+_______________________________________________
+NFSv4 mailing list
+NFSv4@linux-nfs.org
+http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4
