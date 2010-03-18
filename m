@@ -1,106 +1,87 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH 3/9] sunrpc: never return expired entries in
-	sunrpc_cache_lookup
-Date: Wed, 17 Mar 2010 17:33:07 -0400
-Message-ID: <20100317213307.GD2501@fieldses.org>
-References: <20100203060657.12945.27293.stgit@notabene.brown> <20100203063131.12945.97779.stgit@notabene.brown>
+From: Jesse Brandeburg <jesse.brandeburg@intel.com>
+Subject: Re: ixgbe_clean_tx_irq: tx hang 1 detected, resetting adapter
+ (2.6.32.8)
+Date: Wed, 17 Mar 2010 17:44:44 -0700
+Message-ID: <1268873084.16811.4.camel@jbrandeb-mobl3.amr.corp.intel.com>
+References: <4B7824F1.6000202@krogh.cc>
+	 <4807377b1002171453n277cfea3s6d7f3629bd43f674@mail.gmail.com>
+	 <4B82CF94.5070903@krogh.cc>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs@vger.kernel.org
-To: NeilBrown <neilb@suse.de>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:50186 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752166Ab0CQVb0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 17 Mar 2010 17:31:26 -0400
-In-Reply-To: <20100203063131.12945.97779.stgit-wvvUuzkyo1EYVZTmpyfIwg@public.gmane.org>
-Sender: linux-nfs-owner@vger.kernel.org
+Content-Type: text/plain; charset="ISO-8859-1"
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+	"netdev@vger.kernel.org" <netdev@vger.kernel.org>
+To: Jesper Krogh <jesper@krogh.cc>
+Return-path: <netdev-owner@vger.kernel.org>
+In-Reply-To: <4B82CF94.5070903@krogh.cc>
+Sender: netdev-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Feb 03, 2010 at 05:31:31PM +1100, NeilBrown wrote:
-> If sunrpc_cache_lookup finds an expired entry, remove it from
-> the cache and return a freshly created non-VALID entry instead.
-> This ensures that we only ever get a usable entry, or an
-> entry that will become usable once an update arrives.
-> i.e. we will never need to repeat the lookup.
+On Mon, 2010-02-22 at 10:40 -0800, Jesper Krogh wrote:
+> Jesse Brandeburg wrote:
+> > On Sun, Feb 14, 2010 at 8:29 AM, Jesper Krogh <jesper@krogh.cc> wrote:
+> >> Hi List.
+> >>
+> >> I have tried to get a dual bond of 2 x 10G NICs using the
+> >> Intel Corporation 82598EB 10-Gigabit AT2 Server Adapter (rev 01)
+> >> going. As first it looked like it "just worked" but when tried to fill
+> >> the links with data one of the NIC's (eth7) hang and did a reset of
+> >> itself, so all data was pushed through the other NIC in the bond (eth8)
+> >>
+> >> Full dmesg below, but I think the important part is this:
+> >>
+> >> [ 2162.745354] ixgbe: eth7: ixgbe_check_tx_hang: Detected Tx Unit Hang
+> >> [ 2162.745356]   Tx Queue             <4>
+> >> [ 2162.745356]   TDH, TDT             <e1>, <cc>
+> >> [ 2162.745357]   next_to_use          <cc>
+> >> [ 2162.745358]   next_to_clean        <e1>
+> >> [ 2162.745359] tx_buffer_info[next_to_clean]
+> >> [ 2162.745359]   time_stamp           <1000713d3>
+> >> [ 2162.745360]   jiffies              <10007152e>
+> >> [ 2163.162478] ixgbe: eth7: ixgbe_clean_tx_irq: tx hang 1 detected,
+> >> resetting adapter
+> >> [ 2163.357333] bonding: bond0: link status definitely down for interface
+> >> eth7, disabling it
+> >> [ 2168.670342] ixgbe: eth7 NIC Link is Up 10 Gbps, Flow Control: None
+> > 
+> > Hi Jesper, my first thought was flow control, but I can see you have it off.
 > 
-> This allows us to remove the 'is_expired' test from cache_check
-> (i.e. from cache_is_valid).  cache_check should never get an expired
-> entry as 'lookup' will never return one.  If it does happen - due to
-> inconvenient timing - then just accept it as still valid, it won't be
-> very much past it's use-by date.
-
-Looks right to me.  Thanks, applied.
-
-By the way, if we get sunrpc_cache_update(old, new1) and
-sunrpc_cache_update(old, new2) simultaneously, what happens?
-
-More generally: should we try to ensure that a cache never contains two
-entries which match the same key?
-
---b.
-
+> I didnt change it, so its default.
 > 
-> Signed-off-by: NeilBrown <neilb@suse.de>
-> ---
->  net/sunrpc/cache.c |   17 ++++++++++++++---
->  1 files changed, 14 insertions(+), 3 deletions(-)
+> > Can we get some more details on the hardware and bios version?  
 > 
-> diff --git a/net/sunrpc/cache.c b/net/sunrpc/cache.c
-> index 9826c5c..3e1ef8b 100644
-> --- a/net/sunrpc/cache.c
-> +++ b/net/sunrpc/cache.c
-> @@ -59,7 +59,7 @@ struct cache_head *sunrpc_cache_lookup(struct cache_detail *detail,
->  				       struct cache_head *key, int hash)
->  {
->  	struct cache_head **head,  **hp;
-> -	struct cache_head *new = NULL;
-> +	struct cache_head *new = NULL, *freeme = NULL;
->  
->  	head = &detail->hash_table[hash];
->  
-> @@ -68,6 +68,9 @@ struct cache_head *sunrpc_cache_lookup(struct cache_detail *detail,
->  	for (hp=head; *hp != NULL ; hp = &(*hp)->next) {
->  		struct cache_head *tmp = *hp;
->  		if (detail->match(tmp, key)) {
-> +			if (cache_is_expired(detail, tmp))
-> +				/* This entry is expired, we will discard it. */
-> +				break;
->  			cache_get(tmp);
->  			read_unlock(&detail->hash_lock);
->  			return tmp;
-> @@ -92,6 +95,13 @@ struct cache_head *sunrpc_cache_lookup(struct cache_detail *detail,
->  	for (hp=head; *hp != NULL ; hp = &(*hp)->next) {
->  		struct cache_head *tmp = *hp;
->  		if (detail->match(tmp, key)) {
-> +			if (cache_is_expired(detail, tmp)) {
-> +				*hp = tmp->next;
-> +				tmp->next = NULL;
-> +				detail->entries --;
-> +				freeme = tmp;
-> +				break;
-> +			}
->  			cache_get(tmp);
->  			write_unlock(&detail->hash_lock);
->  			cache_put(new, detail);
-> @@ -104,6 +114,8 @@ struct cache_head *sunrpc_cache_lookup(struct cache_detail *detail,
->  	cache_get(new);
->  	write_unlock(&detail->hash_lock);
->  
-> +	if (freeme)
-> +		cache_put(freeme, detail);
->  	return new;
->  }
->  EXPORT_SYMBOL_GPL(sunrpc_cache_lookup);
-> @@ -189,8 +201,7 @@ static int cache_make_upcall(struct cache_detail *cd, struct cache_head *h)
->  
->  static inline int cache_is_valid(struct cache_detail *detail, struct cache_head *h)
->  {
-> -	if (!test_bit(CACHE_VALID, &h->flags) ||
-> -	    cache_is_expired(detail, h))
-> +	if (!test_bit(CACHE_VALID, &h->flags))
->  		return -EAGAIN;
->  	else {
->  		/* entry is valid */
+> Sun X4600, 128GB, 16 cores..
+> 
+> > What
+> > about some dmidecode output.  I'm checking here if we have any
+> > hardware like this.
+> 
+> http://shrek.krogh.cc/~jesper/dmidecode.txt
 > 
 > 
+> > are you running ubuntu 9.10 or something else?
+> 
+> We're on Ubuntu 8.04 but we basically "only" use a filesystem, kernel
+> with a well-performing NFS-server and some NIC that work well :-)
+> 
+> > Wow, thats a monster machine, 8 nodes, 128GB ram.  Can we get a full
+> > lspci -vvv output, as well as ethtool -e eth7 and eth8
+> 
+> http://shrek.krogh.cc/~jesper/lspci.txt
+> 
+> http://shrek.krogh.cc/~jesper/ethtool-eth7.txt
+> http://shrek.krogh.cc/~jesper/ethtool-eth8.txt
+> 
+> > 32 has ixgbe with a known issue of multiple mappings on transmit
+> > possibly causing some problems, could it be that you're running into
+> > this?  can you apply commit e5a43549f7a58509a91b299a51337d386697b92c
+> > and see if it fixes your issue?
+> 
+> I'll do that the next time I can push a reboot through.
+> 
+
+including full email for context, did this solve your issue?
+
+-- 
+Jesse Brandeburg
+This email sent via Evolution, powered by Linux
+
