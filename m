@@ -1,42 +1,42 @@
 From: Steve Dickson <SteveD@redhat.com>
-Subject: Re: [PATCH 0/2] Two short fixes for sm-notify
-Date: Fri, 19 Mar 2010 16:05:18 -0400
-Message-ID: <4BA3D8FE.7040903@RedHat.com>
-References: <20100315174453.2586.40876.stgit@localhost.localdomain>
+Subject: Re: [PATCH] mount: Mount should retry unreachable hosts
+Date: Fri, 19 Mar 2010 16:15:04 -0400
+Message-ID: <4BA3DB48.8010506@RedHat.com>
+References: <20100310214136.3002.78499.stgit@localhost.localdomain>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
 Cc: linux-nfs@vger.kernel.org
 To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:37575 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:51614 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751077Ab0CSUFZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 19 Mar 2010 16:05:25 -0400
-In-Reply-To: <20100315174453.2586.40876.stgit-bi+AKbBUZKY6gyzm1THtWbp2dZbC/Bob@public.gmane.org>
+	id S1751013Ab0CSUPL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 19 Mar 2010 16:15:11 -0400
+In-Reply-To: <20100310214136.3002.78499.stgit-bi+AKbBUZKY6gyzm1THtWbp2dZbC/Bob@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
 
-On 03/15/2010 01:51 PM, Chuck Lever wrote:
-> Hi Steve-
+On 03/10/2010 04:42 PM, Chuck Lever wrote:
+> Currently if a server is up but not responding (ie, it answers ARP
+> requests, but not NFS or RPC requests), mount retries or backgrounds
+> itself waiting for the server.
 > 
-> These address two minor shortcomings when sending SM_NOTIFY requests
-> during reboot recovery.  Please consider these for the next nfs-utils
-> release.
+> If the server is not responding on the network at all, mount fails
+> the mount request immediately.
 > 
+> Users might find it more useful if mount retried in both cases.
+> 
+> Note that this change means attempting to mount using a misspelled
+> server name will "hang" for the retry amount.  I suppose the error
+> message isn't very helpful whether it fails immediately or waits
+> a couple of minutes, though I imagine that an unreachable server is a
+> much more common occurrence than a misspelling.
+> 
+> Reported-by: Daniel Goering <g_daniel@gmx.net>
+> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 > ---
-> 
-> Chuck Lever (2):
->       sm-notify: Send fully-qualified and unqualified mon_names
->       sm-notify: Use my_name when sending SM_NOTIFY requests
-> 
-> 
->  utils/statd/sm-notify.c   |   62 ++++++++++++++++++++++++++++++++++++---------
->  utils/statd/sm-notify.man |   28 +++++++++-----------
->  utils/statd/statd.man     |   14 +---------
->  3 files changed, 64 insertions(+), 40 deletions(-)
-> 
-Both patches committed... 
+Committed... 
 
 steved.
