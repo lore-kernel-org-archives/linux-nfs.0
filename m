@@ -1,42 +1,43 @@
-From: Steve Dickson <SteveD@redhat.com>
-Subject: Re: [PATCH] mount: Mount should retry unreachable hosts
-Date: Fri, 19 Mar 2010 16:15:04 -0400
-Message-ID: <4BA3DB48.8010506@RedHat.com>
-References: <20100310214136.3002.78499.stgit@localhost.localdomain>
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: [PATCH] SUNRPC: Fix the return value of rpc_run_bc_task()
+Date: Fri, 19 Mar 2010 16:16:37 -0400
+Message-ID: <1269029797.10771.10.camel@localhost.localdomain>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: linux-nfs@vger.kernel.org
-To: Chuck Lever <chuck.lever@oracle.com>
+Content-Type: text/plain; charset="UTF-8"
+Cc: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>,
+	Benny Halevy <bhalevy@panasas.com>
+To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:51614 "EHLO mx1.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:30837 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751013Ab0CSUPL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 19 Mar 2010 16:15:11 -0400
-In-Reply-To: <20100310214136.3002.78499.stgit-bi+AKbBUZKY6gyzm1THtWbp2dZbC/Bob@public.gmane.org>
+	id S1751219Ab0CSURd convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 19 Mar 2010 16:17:33 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+
+Currently rpc_run_bc_task() will return NULL if the task allocation failed.
+However the only caller is bc_send, which assumes that the return value
+will be an ERR_PTR.
+
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+
+ net/sunrpc/clnt.c |    1 +
+ 1 files changed, 1 insertions(+), 0 deletions(-)
 
 
-On 03/10/2010 04:42 PM, Chuck Lever wrote:
-> Currently if a server is up but not responding (ie, it answers ARP
-> requests, but not NFS or RPC requests), mount retries or backgrounds
-> itself waiting for the server.
-> 
-> If the server is not responding on the network at all, mount fails
-> the mount request immediately.
-> 
-> Users might find it more useful if mount retried in both cases.
-> 
-> Note that this change means attempting to mount using a misspelled
-> server name will "hang" for the retry amount.  I suppose the error
-> message isn't very helpful whether it fails immediately or waits
-> a couple of minutes, though I imagine that an unreachable server is a
-> much more common occurrence than a misspelling.
-> 
-> Reported-by: Daniel Goering <g_daniel@gmx.net>
-> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-> ---
-Committed... 
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index 154034b..19c9983 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -659,6 +659,7 @@ struct rpc_task *rpc_run_bc_task(struct rpc_rqst *req,
+ 	task = rpc_new_task(&task_setup_data);
+ 	if (!task) {
+ 		xprt_free_bc_request(req);
++		task = ERR_PTR(-ENOMEM);
+ 		goto out;
+ 	}
+ 	task->tk_rqstp = req;
 
-steved.
