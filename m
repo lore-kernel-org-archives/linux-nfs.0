@@ -1,128 +1,104 @@
-Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:61095 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752912Ab0CWRB2 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 23 Mar 2010 13:01:28 -0400
-Subject: [GIT PULL] Please pull NFS client bugfixes
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Content-Type: text/plain; charset="UTF-8"
-Date: Tue, 23 Mar 2010 13:00:33 -0400
-Message-ID: <1269363633.3065.7.camel@localhost.localdomain>
-Sender: linux-nfs-owner@vger.kernel.org
-List-ID: <linux-nfs.vger.kernel.org>
+Return-Path: <nfsv4-bounces@linux-nfs.org>
+From: Jeff Layton <jlayton@redhat.com>
+To: bfields@fieldses.org
+Subject: [PATCH] nfsd: don't break lease while servicing a COMMIT call (try #2)
+Date: Fri, 19 Mar 2010 08:06:28 -0400
+Message-Id: <1269000388-5543-1-git-send-email-jlayton@redhat.com>
+Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/options/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@linux-nfs.org>
+List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
+Content-Type: text/plain; charset="us-ascii"
+Sender: nfsv4-bounces@linux-nfs.org
+Errors-To: nfsv4-bounces@linux-nfs.org
 MIME-Version: 1.0
+List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Linus,
+This is the second attempt to fix the problem whereby a COMMIT call
+causes a lease break and triggers a possible deadlock.
 
-Please pull from the "bugfixes" branch of the repository at
+The problem is that nfsd attempts to break a lease on a COMMIT call.
+This triggers a delegation recall if the lease is held for a delegation.
+If the client is the one holding the delegation and it's the same one on
+which it's issuing the COMMIT, then it can't return that delegation
+until the COMMIT is complete. But, nfsd won't complete the COMMIT until
+the delegation is returned. The client and server are essentially
+deadlocked until the state is marked bad (due to the client not
+responding on the callback channel).
 
-   git pull git://git.linux-nfs.org/projects/trondmy/nfs-2.6.git bugfixes
+The first patch attempted to deal with this by eliminating the open of
+the file altogether and simply had nfsd_commit pass a NULL file pointer
+to the vfs_fsync_range. That would conflict with some work in progress
+by Christoph Hellwig to clean up the fsync interface, so this patch
+takes a different approach.
 
-This will update the following files through the appended changesets.
+This declares a new NFSD_MAY_NOT_BREAK_LEASE access flag that indicates
+to nfsd_open that it should not break any leases when opening the file,
+and has nfsd_commit set that flag on the nfsd_open call.
 
-  Cheers,
-    Trond
+For now, this patch leaves nfsd_commit opening the file with write
+access since I'm not clear on what sort of access would be more
+appropriate.
 
-----
- fs/nfs/file.c                  |    3 ++-
- fs/nfs/nfs4xdr.c               |    2 ++
- include/linux/sunrpc/bc_xprt.h |    5 ++++-
- net/sunrpc/auth_gss/auth_gss.c |    5 ++---
- net/sunrpc/bc_svc.c            |   15 ---------------
- net/sunrpc/clnt.c              |    1 +
- net/sunrpc/rpc_pipe.c          |    2 ++
- net/sunrpc/xprt.c              |   22 +++++++++-------------
- net/sunrpc/xprtsock.c          |    3 ---
- 9 files changed, 22 insertions(+), 36 deletions(-)
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/nfsd/vfs.c |    8 +++++---
+ fs/nfsd/vfs.h |    1 +
+ 2 files changed, 6 insertions(+), 3 deletions(-)
 
-commit 556ae3bb32cabe483375b857dda1322384c57b65
-Author: Jeff Layton <jlayton@redhat.com>
-Date:   Sun Mar 21 12:10:36 2010 -0400
+diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+index a11b0e8..c2dcb4c 100644
+--- a/fs/nfsd/vfs.c
++++ b/fs/nfsd/vfs.c
+@@ -723,7 +723,7 @@ nfsd_open(struct svc_rqst *rqstp, struct svc_fh *fhp, int type,
+ 	struct inode	*inode;
+ 	int		flags = O_RDONLY|O_LARGEFILE;
+ 	__be32		err;
+-	int		host_err;
++	int		host_err = 0;
+ 
+ 	validate_process_creds();
+ 
+@@ -760,7 +760,8 @@ nfsd_open(struct svc_rqst *rqstp, struct svc_fh *fhp, int type,
+ 	 * Check to see if there are any leases on this file.
+ 	 * This may block while leases are broken.
+ 	 */
+-	host_err = break_lease(inode, O_NONBLOCK | ((access & NFSD_MAY_WRITE) ? O_WRONLY : 0));
++	if (!(access & NFSD_MAY_NOT_BREAK_LEASE))
++		host_err = break_lease(inode, O_NONBLOCK | ((access & NFSD_MAY_WRITE) ? O_WRONLY : 0));
+ 	if (host_err == -EWOULDBLOCK)
+ 		host_err = -ETIMEDOUT;
+ 	if (host_err) /* NOMEM or WOULDBLOCK */
+@@ -1168,7 +1169,8 @@ nfsd_commit(struct svc_rqst *rqstp, struct svc_fh *fhp,
+ 			goto out;
+ 	}
+ 
+-	err = nfsd_open(rqstp, fhp, S_IFREG, NFSD_MAY_WRITE, &file);
++	err = nfsd_open(rqstp, fhp, S_IFREG,
++			NFSD_MAY_WRITE|NFSD_MAY_NOT_BREAK_LEASE, &file);
+ 	if (err)
+ 		goto out;
+ 	if (EX_ISSYNC(fhp->fh_export)) {
+diff --git a/fs/nfsd/vfs.h b/fs/nfsd/vfs.h
+index 4b1de0a..217a62c 100644
+--- a/fs/nfsd/vfs.h
++++ b/fs/nfsd/vfs.h
+@@ -20,6 +20,7 @@
+ #define NFSD_MAY_OWNER_OVERRIDE	64
+ #define NFSD_MAY_LOCAL_ACCESS	128 /* IRIX doing local access check on device special file*/
+ #define NFSD_MAY_BYPASS_GSS_ON_ROOT 256
++#define NFSD_MAY_NOT_BREAK_LEASE 512
+ 
+ #define NFSD_MAY_CREATE		(NFSD_MAY_EXEC|NFSD_MAY_WRITE)
+ #define NFSD_MAY_REMOVE		(NFSD_MAY_EXEC|NFSD_MAY_WRITE|NFSD_MAY_TRUNC)
+-- 
+1.6.6.1
 
-    NFS: don't try to decode GETATTR if DELEGRETURN returned error
-    
-    The reply parsing code attempts to decode the GETATTR response even if
-    the DELEGRETURN portion of the compound returned an error. The GETATTR
-    response won't actually exist if that's the case and we're asking the
-    parser to read past the end of the response.
-    
-    This bug is fairly benign. The parser catches this without reading past
-    the end of the response and decode_getfattr returns -EIO. Earlier
-    kernels however had decode_op_hdr using the READ_BUF macro, and this
-    bug would make this printk pop any time the client got an error from
-    a delegreturn:
-    
-    kernel: decode_op_hdr: reply buffer overflowed in line XXXX
-    
-    More recent kernels seem to have replaced this printk with a dprintk.
-    
-    Signed-off-by: Jeff Layton <jlayton@redhat.com>
-    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-
-commit f1f0abe192a72e75d7c59972e30784d043fd8d73
-Author: Dan Carpenter <error27@gmail.com>
-Date:   Sun Mar 21 12:10:34 2010 -0400
-
-    sunrpc: handle allocation errors from __rpc_lookup_create()
-    
-    __rpc_lookup_create() can return ERR_PTR(-ENOMEM).
-    
-    Signed-off-by: Dan Carpenter <error27@gmail.com>
-    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-    Cc: stable@kernel.org
-
-commit ff0901f8036a1586037c30a365c9666e946af0f1
-Author: Trond Myklebust <Trond.Myklebust@netapp.com>
-Date:   Fri Mar 19 16:17:45 2010 -0400
-
-    SUNRPC: Fix the return value of rpc_run_bc_task()
-    
-    Currently rpc_run_bc_task() will return NULL if the task allocation failed.
-    However the only caller is bc_send, which assumes that the return value
-    will be an ERR_PTR.
-    
-    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-
-commit c9acb42ef1904d15d0fb315061cefbe638f67f3a
-Author: Trond Myklebust <Trond.Myklebust@netapp.com>
-Date:   Fri Mar 19 15:36:22 2010 -0400
-
-    SUNRPC: Fix a use after free bug with the NFSv4.1 backchannel
-    
-    The ->release_request() callback was designed to allow the transport layer
-    to do housekeeping after the RPC call is done. It cannot be used to free
-    the request itself, and doing so leads to a use-after-free bug in
-    xprt_release().
-    
-    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-
-commit cdead7cf12896c0e50a8be2e52de52c364603095
-Author: Trond Myklebust <Trond.Myklebust@netapp.com>
-Date:   Fri Mar 19 15:36:22 2010 -0400
-
-    SUNRPC: Fix a potential memory leak in auth_gss
-    
-    The function alloc_enc_pages() currently fails to release the pointer
-    rqstp->rq_enc_pages in the error path.
-    
-    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-    Acked-by: J. Bruce Fields <bfields@citi.umich.edu>
-    Cc: stable@kernel.org
-
-commit d812e575822a2b7ab1a7cadae2571505ec6ec2bd
-Author: Trond Myklebust <Trond.Myklebust@netapp.com>
-Date:   Fri Mar 19 13:55:17 2010 -0400
-
-    NFS: Prevent another deadlock in nfs_release_page()
-    
-    We should not attempt to free the page if __GFP_FS is not set. Otherwise we
-    can deadlock as per
-    
-      http://bugzilla.kernel.org/show_bug.cgi?id=15578
-    
-    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-    Cc: stable@kernel.org
-
-
+_______________________________________________
+NFSv4 mailing list
+NFSv4@linux-nfs.org
+http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4
