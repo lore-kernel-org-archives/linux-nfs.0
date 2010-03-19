@@ -1,48 +1,61 @@
-From: Chuck Lever <chuck.lever@oracle.com>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
 Subject: Re: unmount -l does not send unmount request to the server
-Date: Fri, 19 Mar 2010 16:22:32 -0400
-Message-ID: <4BA3DD08.20209@oracle.com>
-References: <4B530EFF.9000205@inria.fr> <7123090D-5BB9-4CF5-A024-56345DD8136F@oracle.com> <4B9D49CC.8080603@inria.fr>
+Date: Fri, 19 Mar 2010 16:57:04 -0400
+Message-ID: <1269032224.10771.24.camel@localhost.localdomain>
+References: <4B530EFF.9000205@inria.fr>
+	<7123090D-5BB9-4CF5-A024-56345DD8136F@oracle.com>
+	<4B9D49CC.8080603@inria.fr>  <4BA3DD08.20209@oracle.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1;
-	format=flowed
+Content-Type: text/plain; charset="utf-8"
 Cc: Linux NFSv4 mailing list <nfsv4@linux-nfs.org>,
 	Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-To: Guillaume Rousse <Guillaume.Rousse-MZpvjPyXg2s@public.gmane.org>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from acsinet11.oracle.com ([141.146.126.233]:18569 "EHLO
-	acsinet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751092Ab0CSUYg (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 19 Mar 2010 16:24:36 -0400
-In-Reply-To: <4B9D49CC.8080603-MZpvjPyXg2s@public.gmane.org>
-Sender: linux-nfs-owner@vger.kernel.org
+To: Chuck Lever <chuck.lever@oracle.com>
+Return-path: <nfsv4-bounces@linux-nfs.org>
+In-Reply-To: <4BA3DD08.20209@oracle.com>
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/options/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@linux-nfs.org>
+List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
+Sender: nfsv4-bounces@linux-nfs.org
+Errors-To: nfsv4-bounces@linux-nfs.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 03/14/2010 04:40 PM, Guillaume Rousse wrote:
-> Le 19/01/2010 17:37, Chuck Lever a =E9crit :
->> As far as I understand it, "-l" means the kernel will do the local
->> detach from the system's file name space whenever there are no more
->> users (ie entirely asynchronously).  I don't think umount2(MNT_DETAC=
-H)
->> indicates whether the kernel was able to completely unmount that fil=
-e
->> system by the time the call returns, so there's perhaps no way for
->> umount.nfs to know whether it should send the UMNT request.  If the
->> server is slow or unresponsive, that file system won't be unmounted
->> until long after the umount.nfs command has exited.
->>
->> This shouldn't be much of a big deal, since the server's rmtab is
->> "ornamental" according to the man page.  No one should rely on it be=
-ing
->> accurate.
->>
->> A possible way to fix this is to have the kernel send the UMNT.
-> It makes sense, but it doesn't seem to trigger much interest :)
->
-> Should I open a bug somewhere, to ensure the issue won't be forgotten=
- ?
-
-You might consider filing a bug in the NFSv4 bugzilla on linux-nfs.org.
-
---=20
-chuck[dot]lever[at]oracle[dot]com
+T24gRnJpLCAyMDEwLTAzLTE5IGF0IDE2OjIyIC0wNDAwLCBDaHVjayBMZXZlciB3cm90ZTogCj4g
+T24gMDMvMTQvMjAxMCAwNDo0MCBQTSwgR3VpbGxhdW1lIFJvdXNzZSB3cm90ZToKPiA+IExlIDE5
+LzAxLzIwMTAgMTc6MzcsIENodWNrIExldmVyIGEgw6ljcml0IDoKPiA+PiBBcyBmYXIgYXMgSSB1
+bmRlcnN0YW5kIGl0LCAiLWwiIG1lYW5zIHRoZSBrZXJuZWwgd2lsbCBkbyB0aGUgbG9jYWwKPiA+
+PiBkZXRhY2ggZnJvbSB0aGUgc3lzdGVtJ3MgZmlsZSBuYW1lIHNwYWNlIHdoZW5ldmVyIHRoZXJl
+IGFyZSBubyBtb3JlCj4gPj4gdXNlcnMgKGllIGVudGlyZWx5IGFzeW5jaHJvbm91c2x5KS4gIEkg
+ZG9uJ3QgdGhpbmsgdW1vdW50MihNTlRfREVUQUNIKQo+ID4+IGluZGljYXRlcyB3aGV0aGVyIHRo
+ZSBrZXJuZWwgd2FzIGFibGUgdG8gY29tcGxldGVseSB1bm1vdW50IHRoYXQgZmlsZQo+ID4+IHN5
+c3RlbSBieSB0aGUgdGltZSB0aGUgY2FsbCByZXR1cm5zLCBzbyB0aGVyZSdzIHBlcmhhcHMgbm8g
+d2F5IGZvcgo+ID4+IHVtb3VudC5uZnMgdG8ga25vdyB3aGV0aGVyIGl0IHNob3VsZCBzZW5kIHRo
+ZSBVTU5UIHJlcXVlc3QuICBJZiB0aGUKPiA+PiBzZXJ2ZXIgaXMgc2xvdyBvciB1bnJlc3BvbnNp
+dmUsIHRoYXQgZmlsZSBzeXN0ZW0gd29uJ3QgYmUgdW5tb3VudGVkCj4gPj4gdW50aWwgbG9uZyBh
+ZnRlciB0aGUgdW1vdW50Lm5mcyBjb21tYW5kIGhhcyBleGl0ZWQuCj4gPj4KPiA+PiBUaGlzIHNo
+b3VsZG4ndCBiZSBtdWNoIG9mIGEgYmlnIGRlYWwsIHNpbmNlIHRoZSBzZXJ2ZXIncyBybXRhYiBp
+cwo+ID4+ICJvcm5hbWVudGFsIiBhY2NvcmRpbmcgdG8gdGhlIG1hbiBwYWdlLiAgTm8gb25lIHNo
+b3VsZCByZWx5IG9uIGl0IGJlaW5nCj4gPj4gYWNjdXJhdGUuCj4gPj4KPiA+PiBBIHBvc3NpYmxl
+IHdheSB0byBmaXggdGhpcyBpcyB0byBoYXZlIHRoZSBrZXJuZWwgc2VuZCB0aGUgVU1OVC4KPiA+
+IEl0IG1ha2VzIHNlbnNlLCBidXQgaXQgZG9lc24ndCBzZWVtIHRvIHRyaWdnZXIgbXVjaCBpbnRl
+cmVzdCA6KQo+ID4KPiA+IFNob3VsZCBJIG9wZW4gYSBidWcgc29tZXdoZXJlLCB0byBlbnN1cmUg
+dGhlIGlzc3VlIHdvbid0IGJlIGZvcmdvdHRlbiA/Cj4gCj4gWW91IG1pZ2h0IGNvbnNpZGVyIGZp
+bGluZyBhIGJ1ZyBpbiB0aGUgTkZTdjQgYnVnemlsbGEgb24gbGludXgtbmZzLm9yZy4KPiAKCjEp
+IFdoYXQgZG9lcyB0aGlzIGhhdmUgdG8gZG8gd2l0aCBORlN2ND8KCjIpIEkgZG9uJ3QgaGF2ZSB0
+byBkbyBsYXp5IHVtb3VudHMgaW4gb3JkZXIgdG8gY29uZnVzZSB1bW91bnQubmZzLgpDb25zaWRl
+cgoKbW91bnQgLXQgbmZzIGZvbzovYmFyIC9tbnQxCm1vdW50IC0tYmluZCAvbW50MSAvbW50Mgp1
+bW91bnQgL21udDEKdW1vdW50IC9tbnQyCgozKSBFdmVuIHRoZSBrZXJuZWwgZG9lc24ndCBrbm93
+IHdoYXQgdG8gZG8gaW4gYWxsIGNhc2VzLCBiZWNhdXNlIGl0CmRvZXNuJ3Qga25vdyB3aGV0aGVy
+IG9yIG5vdCBhIG1vdW50IHJwYyBjYWxsIHdhcyBzZW50IG9yIG5vdCBmb3IgZWFjaAptb3VudHBv
+aW50IHRoYXQgeW91IGRvIGEgJ3Vtb3VudCAvbW50JyBvbi4gQ29uc2lkZXIgdGhlIGNhc2Ugd2hl
+cmUgeW91CmRvIGEgY2xvbmUoQ0xPTkVfTkVXTlMpLCBhbmQgdGhlbiB0aGUgdXNlciBkb2VzICd1
+bW91bnQgL21udCcgaW4gX29uZV8Kb2YgdGhvc2UgbmFtZXNwYWNlcy4KCklPVzogUGxlYXNlIGp1
+c3QgYWNjZXB0IHRoYXQgdGhpcyBpcyBhIGZlYXR1cmUsIG5vdCBhIGJ1Zy4gTm9ib2R5CnByb21p
+c2VkIHlvdSB0aGF0IHRoZSBtb3VudGQgc3RhdGlzdGljcyB3b3VsZCBiZSAxMDAlIGFjY3VyYXRl
+LCBhbmQKd2UncmUgY2VydGFpbmx5IG5vdCBnb2luZyB0byB3YXN0ZSB0aW1lIHRyeWluZyB0byBt
+YWtlIGl0IHNvLgoKVHJvbmQKCl9fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19f
+X19fX19fX19fCk5GU3Y0IG1haWxpbmcgbGlzdApORlN2NEBsaW51eC1uZnMub3JnCmh0dHA6Ly9s
+aW51eC1uZnMub3JnL2NnaS1iaW4vbWFpbG1hbi9saXN0aW5mby9uZnN2NA==
