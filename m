@@ -1,55 +1,180 @@
-From: Bian Naimeng <biannm@cn.fujitsu.com>
-Subject: Re: nfs: server not responding, timed out
-Date: Fri, 19 Mar 2010 10:21:57 +0800
-Message-ID: <4BA2DFC5.1010400@cn.fujitsu.com>
-References: <20100318170603.f6a7f188.dennisn@dennisn.dyndns.org>
+From: "Paul E. McKenney" <paulmck@linux.vnet.ibm.com>
+Subject: Re: [PATCH] NFS: Fix RCU warnings in
+ nfs_inode_return_delegation_noreclaim() [ver #2]
+Date: Thu, 18 Mar 2010 19:25:27 -0700
+Message-ID: <20100319022527.GC2894@linux.vnet.ibm.com>
+References: <20100318133302.29754.1584.stgit@warthog.procyon.org.uk>
+Reply-To: paulmck@linux.vnet.ibm.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset=Shift_JIS
-Cc: linux-nfs@vger.kernel.org
-To: Dennis Nezic <dennisn-YN8wfZw00oOZ9vWoFJJngh2eb7JE58TQ@public.gmane.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Trond.Myklebust@netapp.com, linux-nfs@vger.kernel.org,
+	linux-kernel@vger.kernel.org
+To: David Howells <dhowells@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from cn.fujitsu.com ([222.73.24.84]:60884 "EHLO song.cn.fujitsu.com"
-	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
-	id S1751957Ab0CSCW1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 18 Mar 2010 22:22:27 -0400
-In-Reply-To: <20100318170603.f6a7f188.dennisn-YN8wfZw00oOZ9vWoFJJngh2eb7JE58TQ@public.gmane.org>
+Received: from e2.ny.us.ibm.com ([32.97.182.142]:39814 "EHLO e2.ny.us.ibm.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751441Ab0CSCZa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 18 Mar 2010 22:25:30 -0400
+In-Reply-To: <20100318133302.29754.1584.stgit-S6HVgzuS8uM4Awkfq6JHfwNdhmdF6hFW@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-> After upgrading my server (kernel 2.6.19 to 2.6.33, nfs-utils 1.1.0 to
-> 1.2.1/1.1.4/1.1.6), and probably other stuff too), and possibly my
-> client laptop's kernel, I have suddenly started to get these "server X
-> not responding, timed out" errors (on my client), especially (only?)
-> when doing large file transfers. This would lead to input/output
-> errors, and the transfers would fail.
+On Thu, Mar 18, 2010 at 01:33:02PM +0000, David Howells wrote:
+> Fix a number of RCU warnings in nfs_inode_return_delegation_noreclaim().
+> nfs_inode_return_delegation_noreclaim() and nfs_inode_return_delegation() don't
+> need to use rcu_dereference() outside the spinlocked region as they merely
+> examin the pointer and don't follow it, thus rendering unnecessary the need to
+> impose a partial ordering over the one item of interest.
 > 
-> I never noticed any such problems for over two years, using the older
-> versions. The networking (wifi link) hasn't changed.
+> nfs_detach_delegation_locked() doesn't need rcu_derefence() because it can only
+> be called if nfs_client::cl_lock is held, and that guards against anyone
+> changing nfsi->delegation under it.  Furthermore, the barrier in
+> rcu_derefence() is superfluous, given that the spin_lock() is also a barrier.
 > 
-> Usually the file transfer trips and falls over itself near the end --
-> Ie. it will do 600MB out of 800MB just fine, and then suddently start
-> giving these "timed out" errors, and then crash and burn. At this
-> point, I am forced to "umount -fl" the mount. If I then try to remount
-> it, the server acnowledges my "authenticated mount requests" perfectly
-> fine, but my client (laptop) still appears "hung". After a few minutes,
-> I am able to remount it.
-> 
-> I tried playing with the rsize/wsize/timeo/retrans variables, but none
-> of it seemed to fix the problem.
-> 
-> Any ideas about what has changed? Maybe this is/was a well-known
-> problem? :P
-> 
+> nfs_free_delegation() should be using rcu_dereference_check() to validate the
+> state that the data is in (the delegation inode must have been cleared).  By
+> this point, the delegation is being released, so no one else should be
+> attempting to use the saved credentials, and they can be cleared.  However,
+> rcu_assign_pointer() should be used to clear them, and the delegation itself
+> must still use call_rcu() as the list of delegations could be being traversed.
 
-  I do not know the what's the reason. And I am not sure the followed discussion
-  can fix this problem, but maybe it can help you.
-  http://marc.info/?l=linux-nfs&m=123478426412524&w=2
+Thank you for fixing these up!
 
-Best Regards
- Bian
+This looks good at the moment, however, the sparse changes that Arnd
+Bergmann is working on will invalidate a couple of the changes below.
+Of course, better a future problem than a here-and-now problem, but
+is there an easy way to fix both?
 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+							Thanx, Paul
 
+> [ INFO: suspicious rcu_dereference_check() usage. ]
+> ---------------------------------------------------
+> fs/nfs/delegation.c:332 invoked rcu_dereference_check() without protection!
+> 
+> other info that might help us debug this:
+> 
+> 
+> rcu_scheduler_active = 1, debug_locks = 0
+> 2 locks held by mount.nfs4/2281:
+>  #0:  (&type->s_umount_key#34){+.+...}, at: [<ffffffff810b25b4>] deactivate_super+0x60/0x80
+>  #1:  (iprune_sem){+.+...}, at: [<ffffffff810c332a>] invalidate_inodes+0x39/0x13a
+> 
+> stack backtrace:
+> Pid: 2281, comm: mount.nfs4 Not tainted 2.6.34-rc1-cachefs #110
+> Call Trace:
+>  [<ffffffff8105149f>] lockdep_rcu_dereference+0xaa/0xb2
+>  [<ffffffffa00b4591>] nfs_inode_return_delegation_noreclaim+0x5b/0xa0 [nfs]
+>  [<ffffffffa0095d63>] nfs4_clear_inode+0x11/0x1e [nfs]
+>  [<ffffffff810c2d92>] clear_inode+0x9e/0xf8
+>  [<ffffffff810c3028>] dispose_list+0x67/0x10e
+>  [<ffffffff810c340d>] invalidate_inodes+0x11c/0x13a
+>  [<ffffffff810b1dc1>] generic_shutdown_super+0x42/0xf4
+>  [<ffffffff810b1ebe>] kill_anon_super+0x11/0x4f
+>  [<ffffffffa009893c>] nfs4_kill_super+0x3f/0x72 [nfs]
+>  [<ffffffff810b25bc>] deactivate_super+0x68/0x80
+>  [<ffffffff810c6744>] mntput_no_expire+0xbb/0xf8
+>  [<ffffffff810c681b>] release_mounts+0x9a/0xb0
+>  [<ffffffff810c689b>] put_mnt_ns+0x6a/0x79
+>  [<ffffffffa00983a1>] nfs_follow_remote_path+0x5a/0x146 [nfs]
+>  [<ffffffffa0098334>] ? nfs_do_root_mount+0x82/0x95 [nfs]
+>  [<ffffffffa00985a9>] nfs4_try_mount+0x75/0xaf [nfs]
+>  [<ffffffffa0098874>] nfs4_get_sb+0x291/0x31a [nfs]
+>  [<ffffffff810b2059>] vfs_kern_mount+0xb8/0x177
+>  [<ffffffff810b2176>] do_kern_mount+0x48/0xe8
+>  [<ffffffff810c810b>] do_mount+0x782/0x7f9
+>  [<ffffffff810c8205>] sys_mount+0x83/0xbe
+>  [<ffffffff81001eeb>] system_call_fastpath+0x16/0x1b
+> 
+> Also on:
+> 
+> fs/nfs/delegation.c:215 invoked rcu_dereference_check() without protection!
+>  [<ffffffff8105149f>] lockdep_rcu_dereference+0xaa/0xb2
+>  [<ffffffffa00b4223>] nfs_inode_set_delegation+0xfe/0x219 [nfs]
+>  [<ffffffffa00a9c6f>] nfs4_opendata_to_nfs4_state+0x2c2/0x30d [nfs]
+>  [<ffffffffa00aa15d>] nfs4_do_open+0x2a6/0x3a6 [nfs]
+>  ...
+> 
+> And:
+> 
+> fs/nfs/delegation.c:40 invoked rcu_dereference_check() without protection!
+>  [<ffffffff8105149f>] lockdep_rcu_dereference+0xaa/0xb2
+>  [<ffffffffa00b3bef>] nfs_free_delegation+0x3d/0x6e [nfs]
+>  [<ffffffffa00b3e71>] nfs_do_return_delegation+0x26/0x30 [nfs]
+>  [<ffffffffa00b406a>] __nfs_inode_return_delegation+0x1ef/0x1fe [nfs]
+>  [<ffffffffa00b448a>] nfs_client_return_marked_delegations+0xc9/0x124 [nfs]
+>  ...
+> 
+> 
+> Signed-off-by: David Howells <dhowells@redhat.com>
+> ---
+> 
+>  fs/nfs/delegation.c |   11 ++++++-----
+>  1 files changed, 6 insertions(+), 5 deletions(-)
+> 
+> diff --git a/fs/nfs/delegation.c b/fs/nfs/delegation.c
+> index 2563beb..fa9b7c5 100644
+> --- a/fs/nfs/delegation.c
+> +++ b/fs/nfs/delegation.c
+> @@ -37,7 +37,8 @@ static void nfs_free_delegation(struct nfs_delegation *delegation)
+>  {
+>  	struct rpc_cred *cred;
+> 
+> -	cred = rcu_dereference(delegation->cred);
+> +	cred = rcu_dereference_check(delegation->cred,
+> +				     delegation->inode == NULL);
+>  	rcu_assign_pointer(delegation->cred, NULL);
+>  	call_rcu(&delegation->rcu, nfs_free_delegation_callback);
+>  	if (cred)
+> @@ -167,7 +168,7 @@ static struct inode *nfs_delegation_grab_inode(struct nfs_delegation *delegation
+> 
+>  static struct nfs_delegation *nfs_detach_delegation_locked(struct nfs_inode *nfsi, const nfs4_stateid *stateid)
+>  {
+> -	struct nfs_delegation *delegation = rcu_dereference(nfsi->delegation);
+> +	struct nfs_delegation *delegation = nfsi->delegation;
+
+Arnd's work will flag this one.
+
+> 
+>  	if (delegation == NULL)
+>  		goto nomatch;
+> @@ -212,7 +213,7 @@ int nfs_inode_set_delegation(struct inode *inode, struct rpc_cred *cred, struct
+>  	spin_lock_init(&delegation->lock);
+> 
+>  	spin_lock(&clp->cl_lock);
+> -	if (rcu_dereference(nfsi->delegation) != NULL) {
+> +	if (nfsi->delegation != NULL) {
+
+And this one.  I thought that Trond said that clp->cl_lock protects
+this one, in which case this should work:
+
+	if (rcu_dereference_check(nfsi->delegation,
+				  lockdep_is_held(&clp->cl_lock)) != NULL) {
+
+>  		if (memcmp(&delegation->stateid, &nfsi->delegation->stateid,
+>  					sizeof(delegation->stateid)) == 0 &&
+>  				delegation->type == nfsi->delegation->type) {
+> @@ -329,7 +330,7 @@ void nfs_inode_return_delegation_noreclaim(struct inode *inode)
+>  	struct nfs_inode *nfsi = NFS_I(inode);
+>  	struct nfs_delegation *delegation;
+> 
+> -	if (rcu_dereference(nfsi->delegation) != NULL) {
+> +	if (nfsi->delegation != NULL) {
+
+And this one, although the check for cp->cl_lock obviously won't work here.
+
+>  		spin_lock(&clp->cl_lock);
+>  		delegation = nfs_detach_delegation_locked(nfsi, NULL);
+>  		spin_unlock(&clp->cl_lock);
+> @@ -345,7 +346,7 @@ int nfs_inode_return_delegation(struct inode *inode)
+>  	struct nfs_delegation *delegation;
+>  	int err = 0;
+> 
+> -	if (rcu_dereference(nfsi->delegation) != NULL) {
+> +	if (nfsi->delegation != NULL) {
+
+Ditto...
+
+>  		spin_lock(&clp->cl_lock);
+>  		delegation = nfs_detach_delegation_locked(nfsi, NULL);
+>  		spin_unlock(&clp->cl_lock);
+> 
