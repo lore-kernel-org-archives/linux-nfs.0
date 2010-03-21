@@ -1,36 +1,40 @@
-From: Dan Carpenter <error27@gmail.com>
-Subject: [patch] sunrpc: handle allocation errors from __rpc_lookup_create()
-Date: Sun, 21 Mar 2010 12:28:18 +0300
-Message-ID: <20100321092818.GI5331@bicker>
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: Re: [PATCH] NFS: don't try to decode GETATTR if DELEGRETURN
+ returned error
+Date: Sun, 21 Mar 2010 12:15:33 -0400
+Message-ID: <1269188133.3215.1.camel@localhost.localdomain>
+References: <1269170258-31596-1-git-send-email-jlayton@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-	Neil Brown <neilb@suse.de>,
-	"David S. Miller" <davem@davemloft.net>, linux-nfs@vger.kernel.org,
-	netdev@vger.kernel.org, kernel-janitors@vger.kernel.org
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Content-Type: text/plain; charset="UTF-8"
+Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org
+To: Jeff Layton <jlayton@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-bw0-f211.google.com ([209.85.218.211]:53744 "EHLO
-	mail-bw0-f211.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751883Ab0CUJ2a (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 21 Mar 2010 05:28:30 -0400
+Received: from mx2.netapp.com ([216.240.18.37]:44061 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752034Ab0CUQQn convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 21 Mar 2010 12:16:43 -0400
+In-Reply-To: <1269170258-31596-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-__rpc_lookup_create() can return ERR_PTR(-ENOMEM).
+On Sun, 2010-03-21 at 07:17 -0400, Jeff Layton wrote: 
+> The reply parsing code attempts to decode the GETATTR response even if
+> the DELEGRETURN portion of the compound returned an error. The GETATTR
+> response won't actually exist if that's the case and we're asking the
+> parser to read past the end of the response.
+> 
+> This bug is fairly benign. The parser catches this without reading past
+> the end of the response and decode_getfattr returns -EIO. Earlier
+> kernels however had decode_op_hdr using the READ_BUF macro, and this
+> bug would make this printk pop any time the client got an error from
+> a delegreturn:
+> 
+> kernel: decode_op_hdr: reply buffer overflowed in line XXXX
+> 
+> More recent kernels seem to have replaced this printk with a dprintk.
+> 
+> Signed-off-by: Jeff Layton <jlayton@redhat.com>
 
-Signed-off-by: Dan Carpenter <error27@gmail.com>
+Applied. Thanks!
 
-diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
-index 8d63f8f..20e30c6 100644
---- a/net/sunrpc/rpc_pipe.c
-+++ b/net/sunrpc/rpc_pipe.c
-@@ -587,6 +587,8 @@ static struct dentry *__rpc_lookup_create_exclusive(struct dentry *parent,
- 	struct dentry *dentry;
- 
- 	dentry = __rpc_lookup_create(parent, name);
-+	if (IS_ERR(dentry))
-+		return dentry;
- 	if (dentry->d_inode == NULL)
- 		return dentry;
- 	dput(dentry);
+Trond
