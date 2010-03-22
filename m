@@ -1,46 +1,43 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 4/4] libexport.a: e_fslocdata should be freed with free(3)
-Date: Sun, 21 Mar 2010 20:38:32 -0400
-Message-ID: <20100322003832.30360.25119.stgit@localhost.localdomain>
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Re: [PATCH 0/4] mountd cleanup
+Date: Mon, 22 Mar 2010 10:19:04 -0400
+Message-ID: <4BA77C58.9020607@RedHat.com>
 References: <20100322003317.30360.18289.stgit@localhost.localdomain>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=UTF-8
 Cc: linux-nfs@vger.kernel.org
-To: steved@redhat.com
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qy0-f179.google.com ([209.85.221.179]:40049 "EHLO
-	mail-qy0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753492Ab0CVAif (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 21 Mar 2010 20:38:35 -0400
-Received: by qyk9 with SMTP id 9so2899439qyk.1
-        for <linux-nfs@vger.kernel.org>; Sun, 21 Mar 2010 17:38:34 -0700 (PDT)
+Received: from mx1.redhat.com ([209.132.183.28]:45104 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754693Ab0CVOTq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 22 Mar 2010 10:19:46 -0400
 In-Reply-To: <20100322003317.30360.18289.stgit-bi+AKbBUZKY6gyzm1THtWbp2dZbC/Bob@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Clean up: Since e_fslocdata is allocated with strdup(3), and not
-xstrdup(), it should be freed with free(3), and not xfree().
 
-It looks like we could get rid of the "if (thing I'm freeing isn't
-NULL)" checks too, but that's for another day.
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
+On 03/21/2010 08:37 PM, Chuck Lever wrote:
+> Hi Steve-
+> 
+> These four patches clean up some spots in libexport.a.  They are
+> pre-requisites for mountd/exportfs IPv6 support.
+> 
+> ---
+> 
+> Chuck Lever (4):
+>       libexport.a: e_fslocdata should be freed with free(3)
+>       libexport.a: Fix whitespace damage in support/export/export.c
+>       libexport.a: Clean up client_compose() and client_member()
+>       libexport.a: Remove dead code
+> 
+> 
+>  support/export/client.c    |   65 ++++++++++++++++++--------------------------
+>  support/export/export.c    |   13 +++++----
+>  support/include/exportfs.h |    5 +--
+>  3 files changed, 36 insertions(+), 47 deletions(-)
+> 
+Committed... 
 
- support/export/export.c |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
-
-diff --git a/support/export/export.c b/support/export/export.c
-index ba643b2..42e78f6 100644
---- a/support/export/export.c
-+++ b/support/export/export.c
-@@ -277,7 +277,7 @@ export_freeall(void)
- 			if (exp->m_export.e_mountpoint)
- 				free(exp->m_export.e_mountpoint);
- 			if (exp->m_export.e_fslocdata)
--				xfree(exp->m_export.e_fslocdata);
-+				free(exp->m_export.e_fslocdata);
- 			xfree(exp->m_export.e_hostname);
- 			xfree(exp);
- 		}
-
+steved.
