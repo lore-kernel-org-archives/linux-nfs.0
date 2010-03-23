@@ -1,87 +1,128 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from 4dicksons.org ([207.22.49.45]:55121 "EHLO
-	Dobby.Home.4dicksons.org" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1753206Ab0CQRDL (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 17 Mar 2010 13:03:11 -0400
-Received: from [192.168.62.20] (helo=localhost.localdomain)
-	by Dobby.Home.4dicksons.org with esmtp (Exim 4.63)
-	(envelope-from <steved@redhat.com>)
-	id 1NrweC-0003fC-If
-	for linux-nfs@vger.kernel.org; Wed, 17 Mar 2010 13:03:09 -0400
-From: steved@redhat.com
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 00/23] Add new enctypes for gss_krb5 (Round 5)
-Date: Wed, 17 Mar 2010 13:02:45 -0400
-Message-Id: <1268845388-9516-1-git-send-email-steved@redhat.com>
+Received: from mx2.netapp.com ([216.240.18.37]:61095 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752912Ab0CWRB2 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 23 Mar 2010 13:01:28 -0400
+Subject: [GIT PULL] Please pull NFS client bugfixes
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Linus Torvalds <torvalds@linux-foundation.org>
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
+Date: Tue, 23 Mar 2010 13:00:33 -0400
+Message-ID: <1269363633.3065.7.camel@localhost.localdomain>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Steve Dickson <steved@redhat.com>
+Hi Linus,
 
-Here is the next round of Kevin Coffman's encryption patches.
-This series includes all of the review comments from the 
-previous posting except for one. 
+Please pull from the "bugfixes" branch of the repository at
 
-Its the question as to why there were two occurrences of
-GSS_KRB5_TOK_HDR_LEN define in the GSS_KRB5_MAX_SLACK_NEEDED
-macro. Since Kevin is traveling and the reason didn't seem 
-obvious plus I didn't see it as being a showstopper (due to
-all the recent testing), I decided to proceed as. If later 
-its deemed a supplemental patch is needed, I'll post the patch
+   git pull git://git.linux-nfs.org/projects/trondmy/nfs-2.6.git bugfixes
 
-Again, the details of the original patches are at:
- http://marc.info/?l=linux-nfs&m=121010783625159&w=2
+This will update the following files through the appended changesets.
 
-steved.
+  Cheers,
+    Trond
 
-J. Bruce Fields (1):
-  gss_krb5: Don't expect blocksize to always be 8 when calculating
-    padding
+----
+ fs/nfs/file.c                  |    3 ++-
+ fs/nfs/nfs4xdr.c               |    2 ++
+ include/linux/sunrpc/bc_xprt.h |    5 ++++-
+ net/sunrpc/auth_gss/auth_gss.c |    5 ++---
+ net/sunrpc/bc_svc.c            |   15 ---------------
+ net/sunrpc/clnt.c              |    1 +
+ net/sunrpc/rpc_pipe.c          |    2 ++
+ net/sunrpc/xprt.c              |   22 +++++++++-------------
+ net/sunrpc/xprtsock.c          |    3 ---
+ 9 files changed, 22 insertions(+), 36 deletions(-)
 
-Kevin Coffman (21):
-  gss_krb5: Introduce encryption type framework
-  gss_krb5: Added and improved code comments
-  gss_krb5: split up functions in preparation of adding new enctypes
-  gss_krb5: prepare for new context format
-  gss_krb5: introduce encryption type framework
-  gss_krb5: add ability to have a keyed checksum (hmac)
-  gss_krb5: import functionality to derive keys into the kernel
-  gss_krb5: handle new context format from gssd
-  gss_krb5: add support for triple-des encryption
-  Add new pipefs file indicating which Kerberos enctypes the kernel
-    supports
-  Update pipefs file indicating which Kerberos enctypes the kernel
-    supports
-  xdr: Add an export for the helper function write_bytes_to_xdr_buf()
-  gss_krb5: add support for new token formats in rfc4121
-  gss_krb5: add remaining pieces to enable AES encryption support
-  gss_krb5: Update pipefs file
-  gssd_krb5: arcfour-hmac support
-  gss_krb5: Save the raw session key in the context
-  gssd_krb5: More arcfour-hmac support
-  gss_krb5: Use confounder length in wrap code
-  gss_krb5: Add support for rc4-hmac encryption
-  Update the pipefs file
+commit 556ae3bb32cabe483375b857dda1322384c57b65
+Author: Jeff Layton <jlayton@redhat.com>
+Date:   Sun Mar 21 12:10:36 2010 -0400
 
-Peter Staubach (1):
-  Fixed a typo in gss_verify_mic_v2()
+    NFS: don't try to decode GETATTR if DELEGRETURN returned error
+    
+    The reply parsing code attempts to decode the GETATTR response even if
+    the DELEGRETURN portion of the compound returned an error. The GETATTR
+    response won't actually exist if that's the case and we're asking the
+    parser to read past the end of the response.
+    
+    This bug is fairly benign. The parser catches this without reading past
+    the end of the response and decode_getfattr returns -EIO. Earlier
+    kernels however had decode_op_hdr using the READ_BUF macro, and this
+    bug would make this printk pop any time the client got an error from
+    a delegreturn:
+    
+    kernel: decode_op_hdr: reply buffer overflowed in line XXXX
+    
+    More recent kernels seem to have replaced this printk with a dprintk.
+    
+    Signed-off-by: Jeff Layton <jlayton@redhat.com>
+    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 
- include/linux/sunrpc/gss_krb5.h       |  183 +++++++++-
- net/sunrpc/auth_gss/Makefile          |    2 +-
- net/sunrpc/auth_gss/auth_gss.c        |   14 +-
- net/sunrpc/auth_gss/gss_krb5_crypto.c |  697 ++++++++++++++++++++++++++++++++-
- net/sunrpc/auth_gss/gss_krb5_keys.c   |  335 ++++++++++++++++
- net/sunrpc/auth_gss/gss_krb5_mech.c   |  582 +++++++++++++++++++++++++--
- net/sunrpc/auth_gss/gss_krb5_seal.c   |  155 ++++++--
- net/sunrpc/auth_gss/gss_krb5_seqnum.c |   83 ++++-
- net/sunrpc/auth_gss/gss_krb5_unseal.c |  113 +++++-
- net/sunrpc/auth_gss/gss_krb5_wrap.c   |  473 ++++++++++++++++++++---
- net/sunrpc/auth_gss/gss_mech_switch.c |   14 +
- net/sunrpc/auth_gss/svcauth_gss.c     |   15 +
- net/sunrpc/rpc_pipe.c                 |   27 ++
- net/sunrpc/xdr.c                      |    1 +
- 14 files changed, 2527 insertions(+), 167 deletions(-)
- create mode 100644 net/sunrpc/auth_gss/gss_krb5_keys.c
+commit f1f0abe192a72e75d7c59972e30784d043fd8d73
+Author: Dan Carpenter <error27@gmail.com>
+Date:   Sun Mar 21 12:10:34 2010 -0400
+
+    sunrpc: handle allocation errors from __rpc_lookup_create()
+    
+    __rpc_lookup_create() can return ERR_PTR(-ENOMEM).
+    
+    Signed-off-by: Dan Carpenter <error27@gmail.com>
+    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+    Cc: stable@kernel.org
+
+commit ff0901f8036a1586037c30a365c9666e946af0f1
+Author: Trond Myklebust <Trond.Myklebust@netapp.com>
+Date:   Fri Mar 19 16:17:45 2010 -0400
+
+    SUNRPC: Fix the return value of rpc_run_bc_task()
+    
+    Currently rpc_run_bc_task() will return NULL if the task allocation failed.
+    However the only caller is bc_send, which assumes that the return value
+    will be an ERR_PTR.
+    
+    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+
+commit c9acb42ef1904d15d0fb315061cefbe638f67f3a
+Author: Trond Myklebust <Trond.Myklebust@netapp.com>
+Date:   Fri Mar 19 15:36:22 2010 -0400
+
+    SUNRPC: Fix a use after free bug with the NFSv4.1 backchannel
+    
+    The ->release_request() callback was designed to allow the transport layer
+    to do housekeeping after the RPC call is done. It cannot be used to free
+    the request itself, and doing so leads to a use-after-free bug in
+    xprt_release().
+    
+    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+
+commit cdead7cf12896c0e50a8be2e52de52c364603095
+Author: Trond Myklebust <Trond.Myklebust@netapp.com>
+Date:   Fri Mar 19 15:36:22 2010 -0400
+
+    SUNRPC: Fix a potential memory leak in auth_gss
+    
+    The function alloc_enc_pages() currently fails to release the pointer
+    rqstp->rq_enc_pages in the error path.
+    
+    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+    Acked-by: J. Bruce Fields <bfields@citi.umich.edu>
+    Cc: stable@kernel.org
+
+commit d812e575822a2b7ab1a7cadae2571505ec6ec2bd
+Author: Trond Myklebust <Trond.Myklebust@netapp.com>
+Date:   Fri Mar 19 13:55:17 2010 -0400
+
+    NFS: Prevent another deadlock in nfs_release_page()
+    
+    We should not attempt to free the page if __GFP_FS is not set. Otherwise we
+    can deadlock as per
+    
+      http://bugzilla.kernel.org/show_bug.cgi?id=15578
+    
+    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+    Cc: stable@kernel.org
+
 
