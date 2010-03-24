@@ -1,64 +1,63 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 6/6] libexport.a: replace xlog(L_FATAL) in client_check()
-Date: Tue, 23 Mar 2010 12:53:57 -0400
-Message-ID: <20100323165357.4368.65171.stgit@localhost.localdomain>
-References: <20100323165122.4368.43659.stgit@localhost.localdomain>
+From: Neil Brown <neilb@suse.de>
+Subject: Re: [PATCH 3/9] sunrpc: never return expired entries in
+ sunrpc_cache_lookup
+Date: Wed, 24 Mar 2010 12:22:00 +1100
+Message-ID: <20100324122200.08f98be7@notabene.brown>
+References: <20100203060657.12945.27293.stgit@notabene.brown>
+	<20100203063131.12945.97779.stgit@notabene.brown>
+	<20100317213307.GD2501@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=US-ASCII
 Cc: linux-nfs@vger.kernel.org
-To: steved@redhat.com
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qy0-f179.google.com ([209.85.221.179]:51663 "EHLO
-	mail-qy0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751774Ab0CWQyA (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 23 Mar 2010 12:54:00 -0400
-Received: by mail-qy0-f179.google.com with SMTP id 9so952529qyk.1
-        for <linux-nfs@vger.kernel.org>; Tue, 23 Mar 2010 09:53:59 -0700 (PDT)
-In-Reply-To: <20100323165122.4368.43659.stgit-bi+AKbBUZKY6gyzm1THtWbp2dZbC/Bob@public.gmane.org>
+Received: from cantor.suse.de ([195.135.220.2]:59397 "EHLO mx1.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752588Ab0CXBWJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 23 Mar 2010 21:22:09 -0400
+In-Reply-To: <20100317213307.GD2501@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Clean up: Prevent the process from exiting in client_check().  Report
-bad m_type values, but return 0.
+On Wed, 17 Mar 2010 17:33:07 -0400
+"J. Bruce Fields" <bfields@fieldses.org> wrote:
 
-This removes another site where a mountd or exportfs process can exit
-sideways.
+> On Wed, Feb 03, 2010 at 05:31:31PM +1100, NeilBrown wrote:
+> > If sunrpc_cache_lookup finds an expired entry, remove it from
+> > the cache and return a freshly created non-VALID entry instead.
+> > This ensures that we only ever get a usable entry, or an
+> > entry that will become usable once an update arrives.
+> > i.e. we will never need to repeat the lookup.
+> > 
+> > This allows us to remove the 'is_expired' test from cache_check
+> > (i.e. from cache_is_valid).  cache_check should never get an expired
+> > entry as 'lookup' will never return one.  If it does happen - due to
+> > inconvenient timing - then just accept it as still valid, it won't be
+> > very much past it's use-by date.
+> 
+> Looks right to me.  Thanks, applied.
+> 
+> By the way, if we get sunrpc_cache_update(old, new1) and
+> sunrpc_cache_update(old, new2) simultaneously, what happens?
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
+Interesting question.
+I guess you could get two entries for the same key in the cache.
+However the ->parse routines are protected by i_mutex so you would need on
+update to come through /proc/net/rpc/..../channel, and the other to come
+through the legacy nfsd syscal.
+Highly unlikely.
 
- support/export/client.c |   13 +++++++++----
- 1 files changed, 9 insertions(+), 4 deletions(-)
+> 
+> More generally: should we try to ensure that a cache never contains two
+> entries which match the same key?
 
-diff --git a/support/export/client.c b/support/export/client.c
-index bf2a359..aa28fcf 100644
---- a/support/export/client.c
-+++ b/support/export/client.c
-@@ -451,9 +451,13 @@ check_netgroup(__attribute__((unused)) const nfs_client *clp,
- }
- #endif	/* !HAVE_INNETGR */
- 
--/*
-- * Match a host (given its hostent record) to a client record. This
-- * is usually called from mountd.
-+/**
-+ * client_check - check if IP address information matches a cached nfs_client
-+ * @clp: pointer to a cached nfs_client record
-+ * @hp: pointer to hostent containing host IP information
-+ *
-+ * Returns 1 if the address information matches the cached nfs_client,
-+ * otherwise zero.
-  */
- int
- client_check(nfs_client *clp, struct hostent *hp)
-@@ -472,7 +476,8 @@ client_check(nfs_client *clp, struct hostent *hp)
- 	case MCL_GSS:
- 		return 0;
- 	default:
--		xlog(L_FATAL, "internal: bad client type %d", clp->m_type);
-+		xlog(D_GENERAL, "%s: unrecognized client type: %d",
-+				__func__, clp->m_type);
- 	}
- 
- 	return 0;
+I don't think we need to.  The newer will over-ride the older which will
+eventually expire from the cache or be flushed.
+So worst-case someone will look in the /content file, see two entries with
+the same key, and get confused.  I don't think it is a problem that needs
+fixing.
+
+Thanks,
+NeilBrown
+
 
