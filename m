@@ -1,77 +1,58 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:30781 "EHLO mx2.netapp.com"
+Received: from mail-out1.uio.no ([129.240.10.57]:48530 "EHLO mail-out1.uio.no"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752007Ab0CBSmY convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 2 Mar 2010 13:42:24 -0500
-Subject: Re: [RFC] nfs: use 4*rsize readahead size
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: John Stoffel <john@stoffel.org>
-Cc: Wu Fengguang <fengguang.wu@intel.com>, Dave Chinner <david@fromorbit.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-        Linux Memory Management List <linux-mm@kvack.org>,
-        LKML <linux-kernel@vger.kernel.org>
-In-Reply-To: <19341.19446.356359.99958@stoffel.org>
-References: <20100224024100.GA17048@localhost>
-	 <20100224032934.GF16175@discord.disaster>
-	 <20100224041822.GB27459@localhost>
-	 <20100224052215.GH16175@discord.disaster> <20100224061247.GA8421@localhost>
-	 <20100224073940.GJ16175@discord.disaster> <20100226074916.GA8545@localhost>
-	 <20100302031021.GA14267@localhost>
-	 <1267539563.3099.43.camel@localhost.localdomain>
-	 <19341.19446.356359.99958@stoffel.org>
+	id S1751604Ab0CYSQh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 25 Mar 2010 14:16:37 -0400
+Subject: Re: [PATCH] nfsd: don't break lease while servicing a COMMIT call
+ (try #2)
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Jeff Layton <jlayton@redhat.com>, linux-nfs@vger.kernel.org,
+        nfsv4@linux-nfs.org, Trond Myklebust <trond@netapp.com>
+In-Reply-To: <20100325174707.GA4033@fieldses.org>
+References: <1269000388-5543-1-git-send-email-jlayton@redhat.com>
+	 <20100322194710.GO5359@fieldses.org>
+	 <20100322163340.4b3b285f@tlielax.poochiereds.net>
+	 <20100325174707.GA4033@fieldses.org>
 Content-Type: text/plain; charset="UTF-8"
-Date: Tue, 02 Mar 2010 13:42:19 -0500
-Message-ID: <1267555339.3099.127.camel@localhost.localdomain>
+Date: Thu, 25 Mar 2010 14:16:28 -0400
+Message-ID: <1269540988.3648.46.camel@localhost.localdomain>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Tue, 2010-03-02 at 12:33 -0500, John Stoffel wrote: 
-> >>>>> "Trond" == Trond Myklebust <Trond.Myklebust@netapp.com> writes:
+On Thu, 2010-03-25 at 13:47 -0400, J. Bruce Fields wrote: 
+> On Mon, Mar 22, 2010 at 04:33:40PM -0400, Jeff Layton wrote:
+> > It looks like nfs_inode_return_delegation always calls nfs_msync_inode
+> > on any valid delegation before returning it, regardless of the
+> > delegation type.
+> > 
+> > RFC 3530 says this:
+> > 
+> >    If the client is granted a read delegation, it is assured that no
+> >    other client has the ability to write to the file for the duration of
+> >    the delegation.  If the client is granted a write delegation, the
+> >    client is assured that no other client has read or write access to
+> >    the file.
+> > 
+> > That doesn't seem to imply that we must flush writes before returning
+> > either type of delegation. OTOH, maybe it makes sense to treat those as
+> > cache consistency points since a delegreturn sort of implies that
+> > another client wants to use the file.
+> > 
+> > I'm not quite sure how to interpret the spec here...
 > 
-> Trond> On Tue, 2010-03-02 at 11:10 +0800, Wu Fengguang wrote: 
-> >> Dave,
-> >> 
-> >> Here is one more test on a big ext4 disk file:
-> >> 
-> >> 16k	39.7 MB/s
-> >> 32k	54.3 MB/s
-> >> 64k	63.6 MB/s
-> >> 128k	72.6 MB/s
-> >> 256k	71.7 MB/s
-> >> rsize ==> 512k  71.7 MB/s
-> >> 1024k	72.2 MB/s
-> >> 2048k	71.0 MB/s
-> >> 4096k	73.0 MB/s
-> >> 8192k	74.3 MB/s
-> >> 16384k	74.5 MB/s
-> >> 
-> >> It shows that >=128k client side readahead is enough for single disk
-> >> case :) As for RAID configurations, I guess big server side readahead
-> >> should be enough.
-> 
-> Trond> There are lots of people who would like to use NFS on their
-> Trond> company WAN, where you typically have high bandwidths (up to
-> Trond> 10GigE), but often a high latency too (due to geographical
-> Trond> dispersion).  My ping latency from here to a typical server in
-> Trond> NetApp's Bangalore office is ~ 312ms. I read your test results
-> Trond> with 10ms delays, but have you tested with higher than that?
-> 
-> If you have that high a latency, the low level TCP protocol is going
-> to kill your performance before you get to the NFS level.  You really
-> need to open up the TCP window size at that point.  And it only gets
-> worse as the bandwidth goes up too.  
+> If there's that call could cause the client to wait for an actual write
+> to succeed before returning the delegation, then something's wrong.
 
-Yes. You need to open the TCP window in addition to reading ahead
-aggressively.
+We're certainly expected to write back data before returning a write
+delegation (see Section 9.4.4 of RFC 3530).
 
-> There's no good solution, because while you can get good throughput at
-> points, latency is going to suffer no matter what.
+For the case of a read delegation, then the spec is silent because it
+contains no discussion of the case where a server grants both an open
+for write and a read delegation. If you want a normative statement on
+what clients should do for that case, then I suggest a discussion on the
+IETF list with a view to getting it into RFC3530-bis.
 
-It depends upon your workload. Sequential read and write should still be
-doable if you have aggressive readahead and open up for lots of parallel
-write RPCs.
+Trond
 
-Cheers
-  Trond
