@@ -1,54 +1,56 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [patch 2/2] sunrpc/cache: fix module refcnt leak in a failure
-	path
-Date: Wed, 24 Mar 2010 10:43:41 -0400
-Message-ID: <20100324144341.GH12057@fieldses.org>
-References: <201003112208.o2BM8Bng013520@imap1.linux-foundation.org>
+From: Zdenek Kabelac <zdenek.kabelac@gmail.com>
+Subject: INFO: suspicious rcu_dereference_check()
+Date: Thu, 25 Mar 2010 11:48:49 +0100
+Message-ID: <c4e36d111003250348q678eb2e6w4f3e8133e7fd6e58@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: trond.myklebust@fys.uio.no, linux-nfs@vger.kernel.org,
-	lizf@cn.fujitsu.com, Trond.Myklebust@netapp.com, neilb@suse.de
-To: akpm@linux-foundation.org
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: linux-nfs@vger.kernel.org
+To: Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:37616 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755479Ab0CXOlt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 24 Mar 2010 10:41:49 -0400
-In-Reply-To: <201003112208.o2BM8Bng013520-AB4EexQrvXRQetFLy7KEm3xJsTq8ys+cHZ5vskTnxNA@public.gmane.org>
+Received: from mail-fx0-f223.google.com ([209.85.220.223]:54190 "EHLO
+	mail-fx0-f223.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750906Ab0CYKsv (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 25 Mar 2010 06:48:51 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Mar 11, 2010 at 02:08:10PM -0800, akpm@linux-foundation.org wrote:
-> From: Li Zefan <lizf@cn.fujitsu.com>
-> 
-> Don't forget to release the module refcnt if seq_open() returns failure.
+Hi
 
-Thanks, applied for 2.6.35.--b.
+I've enabled rcu correctness for my  todays 2.6.34-rc2 kernel.
 
-> 
-> Signed-off-by: Li Zefan <lizf@cn.fujitsu.com>
-> Cc: J. Bruce Fields <bfields@fieldses.org>
-> Cc: Neil Brown <neilb@suse.de>
-> Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
-> Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
-> ---
-> 
->  net/sunrpc/cache.c |    4 +++-
->  1 file changed, 3 insertions(+), 1 deletion(-)
-> 
-> diff -puN net/sunrpc/cache.c~sunrpc-cache-fix-module-refcnt-leak-in-a-failure-path net/sunrpc/cache.c
-> --- a/net/sunrpc/cache.c~sunrpc-cache-fix-module-refcnt-leak-in-a-failure-path
-> +++ a/net/sunrpc/cache.c
-> @@ -1233,8 +1233,10 @@ static int content_open(struct inode *in
->  	if (!cd || !try_module_get(cd->owner))
->  		return -EACCES;
->  	han = __seq_open_private(file, &cache_content_op, sizeof(*han));
-> -	if (han == NULL)
-> +	if (han == NULL) {
-> +		module_put(cd->owner);
->  		return -ENOMEM;
-> +	}
->  
->  	han->cd = cd;
->  	return 0;
-> _
+I'm getting this INFO: from my kvm guest (which uses host's nfs
+exported directory.)
+This
+
+===================================================
+[ INFO: suspicious rcu_dereference_check() usage. ]
+---------------------------------------------------
+fs/nfs/delegation.c:348 invoked rcu_dereference_check() without protection!
+
+other info that might help us debug this:
+
+
+rcu_scheduler_active = 1, debug_locks = 0
+2 locks held by rm/1820:
+ #0:  (&sb->s_type->i_mutex_key#13/1){+.+.+.}, at:
+[<ffffffff81138e1b>] do_unlinkat+0x9b/0x1c0
+ #1:  (&sb->s_type->i_mutex_key#13){+.+.+.}, at: [<ffffffff81136a76>]
+vfs_unlink+0x56/0xf0
+
+stack backtrace:
+Pid: 1820, comm: rm Not tainted 2.6.34-rc2-00186-ge79a302 #60
+Call Trace:
+ [<ffffffff810819fb>] lockdep_rcu_dereference+0xbb/0xc0
+ [<ffffffffa0228351>] nfs_inode_return_delegation+0x101/0x110 [nfs]
+ [<ffffffffa01fd58d>] nfs_unlink+0xad/0x2a0 [nfs]
+ [<ffffffff81136aba>] vfs_unlink+0x9a/0xf0
+ [<ffffffff81148365>] ? mnt_want_write+0x65/0xb0
+ [<ffffffff81138f03>] do_unlinkat+0x183/0x1c0
+ [<ffffffff8142b66d>] ? retint_swapgs+0xe/0x13
+ [<ffffffff81083985>] ? trace_hardirqs_on_caller+0x155/0x1a0
+ [<ffffffff8142a232>] ? trace_hardirqs_on_thunk+0x3a/0x3f
+ [<ffffffff811390a2>] sys_unlinkat+0x22/0x40
+ [<ffffffff81031dc8>] sysenter_dispatch+0x7/0x2c
+
+
+Zdenek
