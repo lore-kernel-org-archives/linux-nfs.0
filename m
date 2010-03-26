@@ -1,75 +1,76 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp107.prem.mail.sp1.yahoo.com ([98.136.44.62]:43890 "HELO
-	smtp107.prem.mail.sp1.yahoo.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with SMTP id S1751243Ab0CIFt3 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 9 Mar 2010 00:49:29 -0500
-Message-ID: <4B95E167.40306@schaufler-ca.com>
-Date: Mon, 08 Mar 2010 21:49:27 -0800
-From: Casey Schaufler <casey@schaufler-ca.com>
-To: Brad Boyer <flar@allandria.com>
-CC: James Morris <jmorris@namei.org>, linux-nfs@vger.kernel.org,
-        linux-security-module@vger.kernel.org,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>, Neil Brown <neilb@suse.de>,
-        linux-fsdevel@vger.kernel.org,
-        Casey Schaufler <casey@schaufler-ca.com>
-Subject: Re: [PATCH 0/6][v4][RFC] NFSv3: implement extended attribute protocol
- (XATTR)
-References: <alpine.LRH.2.00.1002261457420.25193@tundra.namei.org> <alpine.LRH.2.00.1003082122340.6314@tundra.namei.org> <20100309035932.GA14237@cynthia.pants.nu>
-In-Reply-To: <20100309035932.GA14237@cynthia.pants.nu>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mx1.redhat.com ([209.132.183.28]:26788 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752398Ab0CZOpv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 26 Mar 2010 10:45:51 -0400
+Date: Fri, 26 Mar 2010 10:45:33 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Trond Myklebust <trond.myklebust@fys.uio.no>, linux-nfs@vger.kernel.org,
+        nfsv4@linux-nfs.org, Trond Myklebust <trond@netapp.com>
+Subject: Re: [PATCH] nfsd: don't break lease while servicing a COMMIT call
+ (try #2)
+Message-ID: <20100326104533.70ef4e84@corrin.poochiereds.net>
+In-Reply-To: <20100325220748.GF8611@fieldses.org>
+References: <1269000388-5543-1-git-send-email-jlayton@redhat.com>
+	<20100322194710.GO5359@fieldses.org>
+	<20100322163340.4b3b285f@tlielax.poochiereds.net>
+	<20100325174707.GA4033@fieldses.org>
+	<1269540988.3648.46.camel@localhost.localdomain>
+	<20100325220748.GF8611@fieldses.org>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Brad Boyer wrote:
-> On Mon, Mar 08, 2010 at 09:42:06PM +1100, James Morris wrote:
->   
->> Since the last version, I've incorporated feedback to add a new top-level 
->> xattr namespace "nfsd", for storing client-origin xattrs on the server.  
->> Support for the new namespace has been implemented on ext3 for testing 
->> purposes.
->>
->> Access to this namespace locally requires CAP_SYS_ADMIN, and it is not 
->> accessible over the wire.  Note that there is still potential for 
->> confusion between local and remote users, e.g.
->>
->> $ setfattr -n user.foo -v bar file.txt
->>
->> on an NFS mounted fs will create an xattr on the server called 
->> nfsd.user.foo, and then if the user logs in locally, they will not see the 
->> xattr at all.  Similarly, if they create xattrs locally, they will not be 
->> exported via XATTR.
->>
->> Comments welcome.
->>     
->
-> I personally think it's a bad idea to not map regular user xattr values
-> directly to what is local to the server. One common thing I've seen in
-> many places is to have local disks on various servers exported over
-> NFS to other servers, but the intent is that the user shouldn't care
-> which server physically hosts the storage. In this case, you want the
-> data to appear the same regardless of the use or non-use of NFS. In
-> this sort of situation, one system will see different data than the
-> others for the same files with the same access level. One possible
-> option would be to make it configurable, kind of like root_squash.
->   
+On Thu, 25 Mar 2010 18:07:48 -0400
+"J. Bruce Fields" <bfields@fieldses.org> wrote:
 
-Another is to NFS mount the filesystem back on to the server,
-in which case James' scheme works just dandy. It's a trick that
-I've used more than once in the Unix world for this exact purpose.
-Of course you have to arrange your mount points in advance with
-malice aforethought, but that's likely something you're used to
-by now.
+> On Thu, Mar 25, 2010 at 02:16:28PM -0400, Trond Myklebust wrote:
+> > On Thu, 2010-03-25 at 13:47 -0400, J. Bruce Fields wrote: 
+> > > On Mon, Mar 22, 2010 at 04:33:40PM -0400, Jeff Layton wrote:
+> > > > It looks like nfs_inode_return_delegation always calls nfs_msync_inode
+> > > > on any valid delegation before returning it, regardless of the
+> > > > delegation type.
+> > > > 
+> > > > RFC 3530 says this:
+> > > > 
+> > > >    If the client is granted a read delegation, it is assured that no
+> > > >    other client has the ability to write to the file for the duration of
+> > > >    the delegation.  If the client is granted a write delegation, the
+> > > >    client is assured that no other client has read or write access to
+> > > >    the file.
+> > > > 
+> > > > That doesn't seem to imply that we must flush writes before returning
+> > > > either type of delegation. OTOH, maybe it makes sense to treat those as
+> > > > cache consistency points since a delegreturn sort of implies that
+> > > > another client wants to use the file.
+> > > > 
+> > > > I'm not quite sure how to interpret the spec here...
+> > > 
+> > > If there's that call could cause the client to wait for an actual write
+> > > to succeed before returning the delegation, then something's wrong.
+> > 
+> > We're certainly expected to write back data before returning a write
+> > delegation (see Section 9.4.4 of RFC 3530).
+> > 
+> > For the case of a read delegation, then the spec is silent because it
+> > contains no discussion of the case where a server grants both an open
+> > for write and a read delegation. If you want a normative statement on
+> > what clients should do for that case, then I suggest a discussion on the
+> > IETF list with a view to getting it into RFC3530-bis.
+> 
+> Yeah, that would be a good idea to get nailed down at some point.
+> 
+> (But the current server implementation doesn't allow write opens in this
+> situation.  So I wonder why we're seeing any commit from the client at
+> all?)
+> 
+> --b.
 
-> 	Brad Boyer
-> 	flar@allandria.com
->
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-security-module" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->
->
->   
+This problem was reported against a RHEL5 client and server. It's
+possible that there's another bug that's allowing that somehow, but
+I'll need to look over the capture file again to see if I can find it.
 
+-- 
+Jeff Layton <jlayton@redhat.com>
