@@ -1,37 +1,25 @@
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: Sunrpc transport reconnection...
-Date: Mon, 29 Mar 2010 17:43:07 -0400
-Message-ID: <1269898987.15895.95.camel@localhost.localdomain>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Cc: linux-nfs@vger.kernel.org
-To: "Mr. Charles Edward Lever" <Chuck.Lever@oracle.com>
+From: David Howells <dhowells@redhat.com>
+Subject: Re: [PATCH] NFS: Fix RCU warnings in nfs_inode_return_delegation_noreclaim() [ver #2]
+Date: Mon, 29 Mar 2010 23:22:30 +0100
+Message-ID: <25276.1269901350@redhat.com>
+References: <20100329210520.GN2569@linux.vnet.ibm.com> <20100329192159.GM2569@linux.vnet.ibm.com> <20100319022527.GC2894@linux.vnet.ibm.com> <20100318133302.29754.1584.stgit@warthog.procyon.org.uk> <19192.1269889348@redhat.com> <23274.1269893706@redhat.com>
+Cc: dhowells@redhat.com, Trond.Myklebust@netapp.com,
+	linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+To: paulmck@linux.vnet.ibm.com, Eric Dumazet <eric.dumazet@gmail.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:51695 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:39783 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752209Ab0C2VoL convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 29 Mar 2010 17:44:11 -0400
+	id S1752985Ab0C2WX4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 29 Mar 2010 18:23:56 -0400
+In-Reply-To: <20100329210520.GN2569@linux.vnet.ibm.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Having looked more carefully at the code...
+Paul E. McKenney <paulmck@linux.vnet.ibm.com> wrote:
 
-Is there any reason to keep the xprt->connect_timeout? As far as I can
-see, it would appear to be completely redundant.
+> And rcu_dereference_raw() is the same as the old rcu_dereference().
 
-For UDP there is no disconnect/reconnect. The socket is set up once and
-for all, so no need for connect_timeout.
+Exactly.  That's the other half of the issue - that interpolates a redundant
+memory barrier.
 
-In the case of a TCP reconnection, the xprt->reestablish_timeout will do
-exponential back-off to prevent reconnecting unnecessarily. The
-XPRT_CONNECTING lock then prevents anyone from trying to interfere with
-that connect request until it gets a reply, or the TCP layer decides
-that the socket has timed out. Again, it appears that
-xprt->connect_timeout is redundant.
-
-RDMA reconnection appears to follow the TCP model. Once again, there is
-exponential back-off, enforced by XPRT_CONNECTING.
-
-So why do we have xprt->connect_timeout? What is it enforcing?
-
-Trond
+David
