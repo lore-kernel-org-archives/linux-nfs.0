@@ -1,57 +1,37 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: [2.6.34-rc2 NFS4 oops] open error path failure...
-Date: Mon, 29 Mar 2010 17:22:20 -0400
-Message-ID: <1269897740.15895.82.camel@localhost.localdomain>
-References: <6278d2221003291136p6481fe8emfb039403343c082@mail.gmail.com>
-	 <20100329190307.GJ30031@ZenIV.linux.org.uk>
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: Sunrpc transport reconnection...
+Date: Mon, 29 Mar 2010 17:43:07 -0400
+Message-ID: <1269898987.15895.95.camel@localhost.localdomain>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="UTF-8"
-Cc: Daniel J Blueman <daniel.blueman@gmail.com>,
-	linux-nfs@vger.kernel.org,
-	Linux Kernel <linux-kernel@vger.kernel.org>
-To: Al Viro <viro@ZenIV.linux.org.uk>
+Cc: linux-nfs@vger.kernel.org
+To: "Mr. Charles Edward Lever" <Chuck.Lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-out2.uio.no ([129.240.10.58]:53143 "EHLO mail-out2.uio.no"
+Received: from mx2.netapp.com ([216.240.18.37]:51695 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751772Ab0C2VW0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 29 Mar 2010 17:22:26 -0400
-In-Reply-To: <20100329190307.GJ30031@ZenIV.linux.org.uk>
+	id S1752209Ab0C2VoL convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 29 Mar 2010 17:44:11 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 2010-03-29 at 20:03 +0100, Al Viro wrote: 
-> On Mon, Mar 29, 2010 at 07:36:45PM +0100, Daniel J Blueman wrote:
-> > Hi Trond,
-> > 
-> > When open fails and should return EPERM [1], instead we see an oops
-> > [2]. I see this on 2.6.34-rc1 and -rc2 mainline; NFS4 server is
-> > mainline 2.6.33.1.
-> > 
-> > Let me know if you can't reproduce it and I'll provide some analysis
-> > from this end.
-> 
-> Joy...  ERR_PTR(-EPERM) in nd.intent.file, and whoever had called
-> lookup_instantiate_filp() hadn't bothered to check the return value.
-> 
-> OK, I think I see what's going on.  Replace
->                                 lookup_instantiate_filp(nd, (struct dentry *)state, NULL);
->                                 return 1;
-> with
->                                 lookup_instantiate_filp(nd, (struct dentry *)state, NULL);
->                                 return state;
-> in fs/nfs/nfs4proc.c:nfs4_open_revalidate() and see if everything works
-> properly (or just lose the lookup_instantiate_filp() in there and simply
-> return state).
-> 
+Having looked more carefully at the code...
 
-So this raises a point. Originally, the d_revalidate() call was required
-to return a boolean 0 or 1. Nowadays it allows the filesystem to return
-an error value instead.
+Is there any reason to keep the xprt->connect_timeout? As far as I can
+see, it would appear to be completely redundant.
 
-Should we therefore rewrite the NFS implementation to propagate errors
-like ESTALE (when it means the parent directory is gone), EACCES, EPERM
-and EIO instead of the current behaviour of just dropping the dentry and
-hence forcing a lookup?
+For UDP there is no disconnect/reconnect. The socket is set up once and
+for all, so no need for connect_timeout.
+
+In the case of a TCP reconnection, the xprt->reestablish_timeout will do
+exponential back-off to prevent reconnecting unnecessarily. The
+XPRT_CONNECTING lock then prevents anyone from trying to interfere with
+that connect request until it gets a reply, or the TCP layer decides
+that the socket has timed out. Again, it appears that
+xprt->connect_timeout is redundant.
+
+RDMA reconnection appears to follow the TCP model. Once again, there is
+exponential back-off, enforced by XPRT_CONNECTING.
+
+So why do we have xprt->connect_timeout? What is it enforcing?
 
 Trond
-
