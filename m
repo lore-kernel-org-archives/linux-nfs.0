@@ -1,52 +1,66 @@
-Return-Path: <nfsv4-bounces@linux-nfs.org>
-Date: Thu, 4 Mar 2010 09:23:26 +0000 (GMT)
-From: Matt Bernstein <+systems.extlists.nfsv4@dcs.qmul.ac.uk>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: Turning off delegations in NFSv4 server?
-In-Reply-To: <20080110200034.GI2132@fieldses.org>
-Message-ID: <alpine.LRH.2.00.1003040915110.23376@frank.dcs.qmul.ac.uk>
-References: <4786788D.6040707@garzik.org> <20080110200034.GI2132@fieldses.org>
-Cc: NFS list <linux-nfs@vger.kernel.org>, nfsv4@linux-nfs.org
-List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/options/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
-List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
-List-Post: <mailto:nfsv4@linux-nfs.org>
-List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
-List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
-Content-Type: text/plain; charset="us-ascii"; Format="flowed"
-Sender: nfsv4-bounces@linux-nfs.org
-Errors-To: nfsv4-bounces@linux-nfs.org
-MIME-Version: 1.0
+From: "Paul E. McKenney" <paulmck@linux.vnet.ibm.com>
+Subject: Re: [PATCH] NFS: Fix RCU warnings in
+ nfs_inode_return_delegation_noreclaim() [ver #2]
+Date: Mon, 29 Mar 2010 12:21:59 -0700
+Message-ID: <20100329192159.GM2569@linux.vnet.ibm.com>
+References: <20100319022527.GC2894@linux.vnet.ibm.com>
+ <20100318133302.29754.1584.stgit@warthog.procyon.org.uk>
+ <19192.1269889348@redhat.com>
+Reply-To: paulmck@linux.vnet.ibm.com
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Trond.Myklebust@netapp.com, linux-nfs@vger.kernel.org,
+	linux-kernel@vger.kernel.org
+To: David Howells <dhowells@redhat.com>
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from e7.ny.us.ibm.com ([32.97.182.137]:60966 "EHLO e7.ny.us.ibm.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753328Ab0C2TWC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 29 Mar 2010 15:22:02 -0400
+In-Reply-To: <19192.1269889348@redhat.com>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Jan 10 2008 J. Bruce Fields wrote:
-> On Thu, Jan 10, 2008 at 02:57:01PM -0500, Jeff Garzik wrote:
->> Besides hacking the code, is there an easy way to turn off NFSv4
->> delegations in the kernel v4 server?
->>
->> I'd like to observe behavior of the Linux v4 client when delegations are
->> not available.
->
-> The easiest thing is probably just to turn off leases:
-> 	echo 0 >/proc/sys/fs/leases-enable
+On Mon, Mar 29, 2010 at 08:02:28PM +0100, David Howells wrote:
+> Paul E. McKenney <paulmck@linux.vnet.ibm.com> wrote:
+> 
+> > >  	spin_lock(&clp->cl_lock);
+> > > -	if (rcu_dereference(nfsi->delegation) != NULL) {
+> > > +	if (nfsi->delegation != NULL) {
+> > 
+> > And this one.  I thought that Trond said that clp->cl_lock protects
+> > this one, in which case this should work:
+> > 
+> > 	if (rcu_dereference_check(nfsi->delegation,
+> > 				  lockdep_is_held(&clp->cl_lock)) != NULL) {
+> 
+> If clp->cl_lock protects this pointer, why the need for rcu_dereference_check()
+> at all?  The check is redundant since the line above gets the very lock we're
+> checking for.
 
-I found this from two years ago, and am wondering
-- is this still the easiest thing to do?
-- is this on server, client or both?
-- will it break anything else?
+Because Arnd Bergmann is working on a set of patches that makes sparse
+complain if you access an RCU-protected pointer directly, without using
+some flavor of rcu_dereference().
 
-We have a CentOS 5.4 NFS3/NFS4/samba server with about 300 clients on its 
-subnet, and another 100-200 on another subnet, which under high load has 
-started kernel-panicking (sometimes in nfsd4_cb_recall).
+So your approach would work for the moment, but would need another
+change, probably in the 2.6.35 timeframe.
 
-I want to disable delegations to see if that cures our symptoms--but I 
-worry that turning leases off might cause other problems.
+> > > -	if (rcu_dereference(nfsi->delegation) != NULL) {
+> > > +	if (nfsi->delegation != NULL) {
+> > 
+> > And this one, although the check for cp->cl_lock obviously won't work here.
+> > 
+> > >  		spin_lock(&clp->cl_lock);
+> > >  		delegation = nfs_detach_delegation_locked(nfsi, NULL);
+> > >  		spin_unlock(&clp->cl_lock);
+> 
+> On this one, why does nfsi->delegation need a memory barrier interpolating
+> afterwards?  It has an implicit one in the form of the spin_lock() immediately
+> after, if the value of the pointer wasn't NULL.  What two memory accesses is
+> the memory barrier ordering?
+> 
+> Ditto on the next one.
 
-For now I'll probably do it anyway, given that status quo isn't stable :(
+I must defer to Trond on this one.
 
-Matt
-_______________________________________________
-NFSv4 mailing list
-NFSv4@linux-nfs.org
-http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4
+							Thanx, Paul
