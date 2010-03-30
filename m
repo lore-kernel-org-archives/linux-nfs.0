@@ -1,65 +1,52 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [RFC] kernel panic at svc_xprt_release
-Date: Mon, 29 Mar 2010 21:07:53 -0400
-Message-ID: <20100330010753.GH24251@fieldses.org>
-References: <4BA9DDC1.3020202@cn.fujitsu.com> <20100330005748.GG24251@fieldses.org>
+Subject: Re: [stable] nfsd changes for 2.6.34
+Date: Tue, 30 Mar 2010 10:40:54 -0400
+Message-ID: <20100330144054.GD11545@fieldses.org>
+References: <20100306175212.GB22650@fieldses.org> <20100324142414.GE12057@fieldses.org> <20100329182443.GC3778@kroah.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: NFSv3 list <linux-nfs@vger.kernel.org>,
-	"Trond.Myklebust" <trond.myklebust@fys.uio.no>,
-	Chuck Lever <chuck.lever@oracle.com>
-To: Mi Jinlong <mijinlong@cn.fujitsu.com>
+Cc: stable@kernel.org, linux-nfs@vger.kernel.org,
+	Linus Torvalds <torvalds@linux-foundation.org>,
+	linux-kernel@vger.kernel.org
+To: Greg KH <greg@kroah.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:51976 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:55409 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754589Ab0C3BFp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 29 Mar 2010 21:05:45 -0400
-In-Reply-To: <20100330005748.GG24251@fieldses.org>
+	id S1751531Ab0C3Ois (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 30 Mar 2010 10:38:48 -0400
+In-Reply-To: <20100329182443.GC3778@kroah.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Mar 29, 2010 at 08:57:48PM -0400, J. Bruce Fields wrote:
-> Hm, OK, so it does look like tcp_close() can sleep, so we are wrong to
-> be calling svc_xprt_put() while holding sv_lock.
+On Mon, Mar 29, 2010 at 11:24:43AM -0700, Greg KH wrote:
+> On Wed, Mar 24, 2010 at 10:24:14AM -0400, J. Bruce Fields wrote:
+> > On Sat, Mar 06, 2010 at 12:52:12PM -0500, bfields wrote:
+> > > Please pull the following nfsd changes from the 'nfsd' branch at:
+> > > 
+> > >   git://linux-nfs.org/~bfields/linux.git for-2.6.34 nfsd
+> > > 
+> > > This is an unusually quiet cycle for the NFS server--bugfixes, some IPv6
+> > > progress, and one new export operation to improve sync performance.
+> > > 
+> > > One exception to the 'mostly quiet' statement was a regression in the
+> > > rpc code which hit a lot of people: enormous thanks to Neil for tracking
+> > > that down.
+> > 
+> > However, I forgot to Cc stable on all of those.  Stable people, could
+> > you also take the following three commits?:
+> > 
+> > 	f5822754ea006563e1bf0a1f43faaad49c0d8bb2 Revert "sunrpc: fix
+> > 	peername failed on closed listener"
+> > 	1b644b6e6f6160ae35ce4b52c2ca89ed3e356e18 Revert "sunrpc: move
+> > 	the close processing after do recvfrom method"
+> > 	301e99ce4a2f42a317129230fd42e6cd874c64b0 nfsd: ensure sockets
+> > 	are closed on error
+> > 
+> > Let me know if you need more information.
 > 
-> The commit ab1b18f "sunrpc: remove unnecessary svc_xprt_put" gets rid of
-> one svc_xprt_put(), and the remaining final svc_xprt_put() could easily
-> be delayed till after we drop the lock.
+> I've queued all of these up for the .33 -stable tree.  If any of them
+> need to go into .32 (maybe that last one?), please let me know.
 
-So, perhaps we want the following.
+Thanks; .32 needs all three of those.
 
 --b.
-
-commit 788e69e548cc8d127b90f0de1f7b7e983d1d587a
-Author: J. Bruce Fields <bfields@citi.umich.edu>
-Date:   Mon Mar 29 21:02:31 2010 -0400
-
-    svcrpc: don't hold sv_lock over svc_xprt_put()
-    
-    svc_xprt_put() can call tcp_close(), which can sleep, so we shouldn't be
-    holding this lock.
-    
-    In fact, only the xpt_list removal and the sv_tmpcnt decrement should
-    need the sv_lock here.
-    
-    Reported-by: Mi Jinlong <mijinlong@cn.fujitsu.com>
-    Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
-
-diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-index 8f0f1fb..c334f54 100644
---- a/net/sunrpc/svc_xprt.c
-+++ b/net/sunrpc/svc_xprt.c
-@@ -892,12 +892,12 @@ void svc_delete_xprt(struct svc_xprt *xprt)
- 	 */
- 	if (test_bit(XPT_TEMP, &xprt->xpt_flags))
- 		serv->sv_tmpcnt--;
-+	spin_unlock_bh(&serv->sv_lock);
- 
- 	while ((dr = svc_deferred_dequeue(xprt)) != NULL)
- 		kfree(dr);
- 
- 	svc_xprt_put(xprt);
--	spin_unlock_bh(&serv->sv_lock);
- }
- 
- void svc_close_xprt(struct svc_xprt *xprt)
