@@ -1,58 +1,103 @@
-From: Greg KH <greg@kroah.com>
-Subject: Re: [stable] nfsd changes for 2.6.34
-Date: Tue, 30 Mar 2010 13:03:20 -0700
-Message-ID: <20100330200320.GB1693@kroah.com>
-References: <20100306175212.GB22650@fieldses.org> <20100324142414.GE12057@fieldses.org> <20100329182443.GC3778@kroah.com> <20100330144054.GD11545@fieldses.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: stable@kernel.org, linux-nfs@vger.kernel.org,
-	Linus Torvalds <torvalds@linux-foundation.org>,
+From: David Howells <dhowells@redhat.com>
+Subject: Re: [PATCH] NFS: Fix RCU warnings in nfs_inode_return_delegation_noreclaim() [ver #2]
+Date: Wed, 31 Mar 2010 00:51:04 +0100
+Message-ID: <21972.1269993064@redhat.com>
+References: <20100330164912.GG2513@linux.vnet.ibm.com> <20100329210520.GN2569@linux.vnet.ibm.com> <20100329192159.GM2569@linux.vnet.ibm.com> <20100319022527.GC2894@linux.vnet.ibm.com> <20100318133302.29754.1584.stgit@warthog.procyon.org.uk> <19192.1269889348@redhat.com> <23274.1269893706@redhat.com> <25276.1269901350@redhat.com> <26760.1269903543@redhat.com> <20100329232636.GT2569@linux.vnet.ibm.com> <2440.1269967151@redhat.com>
+Cc: dhowells@redhat.com, Eric Dumazet <eric.dumazet@gmail.com>,
+	Trond.Myklebust@netapp.com, linux-nfs@vger.kernel.org,
 	linux-kernel@vger.kernel.org
-To: "J. Bruce Fields" <bfields@fieldses.org>
+To: paulmck@linux.vnet.ibm.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from kroah.org ([198.145.64.141]:50775 "EHLO coco.kroah.org"
+Received: from mx1.redhat.com ([209.132.183.28]:16720 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751643Ab0C3UcW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 30 Mar 2010 16:32:22 -0400
-In-Reply-To: <20100330144054.GD11545@fieldses.org>
+	id S1756808Ab0C3XwE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 30 Mar 2010 19:52:04 -0400
+In-Reply-To: <20100330164912.GG2513@linux.vnet.ibm.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Mar 30, 2010 at 10:40:54AM -0400, J. Bruce Fields wrote:
-> On Mon, Mar 29, 2010 at 11:24:43AM -0700, Greg KH wrote:
-> > On Wed, Mar 24, 2010 at 10:24:14AM -0400, J. Bruce Fields wrote:
-> > > On Sat, Mar 06, 2010 at 12:52:12PM -0500, bfields wrote:
-> > > > Please pull the following nfsd changes from the 'nfsd' branch at:
-> > > > 
-> > > >   git://linux-nfs.org/~bfields/linux.git for-2.6.34 nfsd
-> > > > 
-> > > > This is an unusually quiet cycle for the NFS server--bugfixes, some IPv6
-> > > > progress, and one new export operation to improve sync performance.
-> > > > 
-> > > > One exception to the 'mostly quiet' statement was a regression in the
-> > > > rpc code which hit a lot of people: enormous thanks to Neil for tracking
-> > > > that down.
-> > > 
-> > > However, I forgot to Cc stable on all of those.  Stable people, could
-> > > you also take the following three commits?:
-> > > 
-> > > 	f5822754ea006563e1bf0a1f43faaad49c0d8bb2 Revert "sunrpc: fix
-> > > 	peername failed on closed listener"
-> > > 	1b644b6e6f6160ae35ce4b52c2ca89ed3e356e18 Revert "sunrpc: move
-> > > 	the close processing after do recvfrom method"
-> > > 	301e99ce4a2f42a317129230fd42e6cd874c64b0 nfsd: ensure sockets
-> > > 	are closed on error
-> > > 
-> > > Let me know if you need more information.
-> > 
-> > I've queued all of these up for the .33 -stable tree.  If any of them
-> > need to go into .32 (maybe that last one?), please let me know.
-> 
-> Thanks; .32 needs all three of those.
+Paul E. McKenney <paulmck@linux.vnet.ibm.com> wrote:
 
-Ok, care to backport them and send them to stable@kernel.org?  They
-don't all apply cleanly from what I can see.
+> Which it is, as long as the lock is held.
 
-thanks,
+However, in one of the situations I'm thinking of, no lock is held.  All that
+is being tested is whether the pointer to some RCU-protected data is either
+NULL or non-NULL.  For example:
 
-greg k-h
+	@@ -345,7 +346,7 @@ int nfs_inode_return_delegation(struct inode *inode)
+		struct nfs_delegation *delegation;
+		int err = 0;
+
+	-	if (rcu_dereference(nfsi->delegation) != NULL) {
+	+	if (nfsi->delegation != NULL) {
+			spin_lock(&clp->cl_lock);
+			delegation = nfs_detach_delegation_locked(nfsi, NULL);
+			spin_unlock(&clp->cl_lock);
+
+No lock - RCU or spinlock - is held over the check of nfsi->delegation - which
+causes lockdep to complain about an unguarded rcu_dereference().
+
+However, the use of rcu_dereference() here is unnecessary with respect to the
+interpolation (where appropriate) of a memory barrier because there is no
+second memory access against which to order.
+
+That said, the memory access is repeated inside nfs_detach_delegation_locked(),
+which again was wrapped in an rcu_dereference():
+
+	 static struct nfs_delegation *nfs_detach_delegation_locked(struct nfs_inode *nfsi, const nfs4_stateid *stateid)
+	 {
+	-	struct nfs_delegation *delegation = rcu_dereference(nfsi->delegation);
+	+	struct nfs_delegation *delegation = nfsi->delegation;
+
+		if (delegation == NULL)
+			goto nomatch;
+
+which was not necessary for its memory barrier interpolation properties in this
+case because of the spin_lock() the caller now holds.
+
+
+Your suggestion of using rcu_dereference_check() in both these places would
+result in two unnecessary memory barriers on something like an Alpha CPU.
+
+
+How about:
+
+	static struct nfs_delegation *nfs_detach_delegation_locked(struct nfs_inode *nfsi, const nfs4_stateid *stateid)
+	{
+		struct nfs_delegation *delegation =
+			rcu_locked_dereference(nfsi->delegation);
+		...
+	}
+
+where rcu_locked_dereference() only does the lockdep magic and the dereference,
+and does not include a memory barrier.  The documentation of such a function
+would note this may only be used when the pointer is guarded by an exclusive
+lock to prevent it from changing.
+
+And then:
+
+	int nfs_inode_return_delegation(struct inode *inode)
+	{
+		struct nfs_client *clp = NFS_SERVER(inode)->nfs_client;
+		struct nfs_inode *nfsi = NFS_I(inode);
+		struct nfs_delegation *delegation;
+		int err = 0;
+
+		if (rcu_pointer_not_null(nfsi->delegation)) {
+			spin_lock(&clp->cl_lock);
+			delegation = nfs_detach_delegation_locked(nfsi, NULL);
+			spin_unlock(&clp->cl_lock);
+			if (delegation != NULL) {
+				nfs_msync_inode(inode);
+				err = __nfs_inode_return_delegation(inode, delegation, 1);
+			}
+		}
+		return err;
+	}
+
+where rcu_pointer_not_null() simply tests the value of the pointer, casting
+away the sparse RCU annotation and not doing the lockdep check and not
+including a barrier.  It would not return the value of the pointer, thus
+preventing you from needing the barrier as a result.
+
+David
