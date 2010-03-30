@@ -1,38 +1,110 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: nfs: server not responding, timed out
-Date: Tue, 30 Mar 2010 10:44:38 -0400
-Message-ID: <20100330144438.GE11545@fieldses.org>
-References: <20100318170603.f6a7f188.dennisn@dennisn.dyndns.org> <4BA2DFC5.1010400@cn.fujitsu.com> <20100319002720.0e93411e.dennisn@dennisn.dyndns.org> <20100319181038.c94fa3c4.dennisn@dennisn.dyndns.org>
+From: "Paul E. McKenney" <paulmck@linux.vnet.ibm.com>
+Subject: Re: [PATCH] NFS: Fix RCU warnings in
+ nfs_inode_return_delegation_noreclaim() [ver #2]
+Date: Tue, 30 Mar 2010 08:40:15 -0700
+Message-ID: <20100330154015.GA8183@linux.vnet.ibm.com>
+References: <20100329223609.GR2569@linux.vnet.ibm.com>
+ <20100329210520.GN2569@linux.vnet.ibm.com>
+ <20100329192159.GM2569@linux.vnet.ibm.com>
+ <20100319022527.GC2894@linux.vnet.ibm.com>
+ <20100318133302.29754.1584.stgit@warthog.procyon.org.uk>
+ <19192.1269889348@redhat.com>
+ <23274.1269893706@redhat.com>
+ <25276.1269901350@redhat.com>
+ <26760.1269903543@redhat.com>
+ <20100329232636.GT2569@linux.vnet.ibm.com>
+Reply-To: paulmck@linux.vnet.ibm.com
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs@vger.kernel.org
-To: Dennis Nezic <dennisn-YN8wfZw00oOZ9vWoFJJngh2eb7JE58TQ@public.gmane.org>
+Cc: Eric Dumazet <eric.dumazet@gmail.com>, Trond.Myklebust@netapp.com,
+	linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+To: David Howells <dhowells@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:44738 "EHLO fieldses.org"
+Received: from e1.ny.us.ibm.com ([32.97.182.141]:53535 "EHLO e1.ny.us.ibm.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756427Ab0C3Oma (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 30 Mar 2010 10:42:30 -0400
-In-Reply-To: <20100319181038.c94fa3c4.dennisn-YN8wfZw00oOZ9vWoFJJngh2eb7JE58TQ@public.gmane.org>
+	id S1752144Ab0C3PkS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 30 Mar 2010 11:40:18 -0400
+In-Reply-To: <20100329232636.GT2569@linux.vnet.ibm.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Mar 19, 2010 at 06:10:38PM -0400, Dennis Nezic wrote:
-> On Fri, 19 Mar 2010 00:27:20 -0400, Dennis Nezic wrote:
+On Mon, Mar 29, 2010 at 04:26:36PM -0700, Paul E. McKenney wrote:
+> On Mon, Mar 29, 2010 at 11:59:03PM +0100, David Howells wrote:
+> > Paul E. McKenney <paulmck@linux.vnet.ibm.com> wrote:
 > > 
-> > Both the patches mentioned in that thread already seem to have been
-> > applied to my kernels. So, although the problem seems related, it
-> > wasn't that bug in particular. The person in that thread was talking
-> > about mounts dying after 5-15minutes, which doesn't happen with me --
-> > my problem only seems to occur under intense activity.
+> > > Only on Alpha.  Otherwise only a volatile access.
+> > 
+> > Whilst that is true, it's the principle of the thing.  The extra barrier
+> > shouldn't be emitted on Alpha.  If Alpha's no longer important, then can we
+> > scrap smp_read_barrier_depends()?
+> > 
+> > My point is that some of these rcu_dereference*()'s are unnecessary.  If
+> > there're required for correctness tracking purposes, fine; but can we have a
+> > macro that is just a dummy for the purpose of stripping the pointer Sparse
+> > annotation?  One that doesn't invoke rcu_dereference_raw() and interpolate a
+> > barrier, pretend or otherwise, when there's no second reference to order
+> > against.
 > 
-> Hrm. I just noticed that my scp transfers are stalling -- which also
-> didn't used to happen before with my old kernel. No error messages. Ftp
-> transfers work fine. Eek. :S. (Despite the freezing/stalling, my
-> *actual* network connection works perfectly.)
+> Interesting point.  Perhaps an rcu_dereference_update(p, c) for the
+> cases where the data structure cannot change.  Also, such a name makes
+> it more clear that this is an update-side access, and it further documents
+> the update-side lock.
+> 
+> Something like the following, then?  Untested, probably does not even
+> compile.
 
-That also suggests some network problem....  Is the scp problem
-reproduceable?  Are packets getting dropped?
+Scrap this one -- Arnd has it covered, under the much better name
+of rcu_dereference_const().
 
-Also: is the kernel dumping any backtraces into the server's logs?
+							Thanx, Paul
 
---b.
+> ------------------------------------------------------------------------
+> 
+> rcu: Add update-side variant of rcu_dereference()
+> 
+> Upcoming consistency-checking features are requiring that even update-side
+> accesses to RCU-protected pointers use some variant of rcu_dereference().
+> Even though rcu_dereference() is quite lightweight, it does constrain the
+> compiler, thus producing code that is worse than required.  This patch
+> therefore adds rcu_dereference_update(), which allows lockdep-style
+> checks for holding the correct update-side lock, but which does not
+> constrain the compiler.
+> 
+> Suggested-by: David Howells <dhowells@redhat.com>
+> Signed-off-by: Paul E. McKenney <paulmck@linux.vnet.ibm.com>
+> ---
+> 
+>  rcupdate.h |   17 +++++++++++++++++
+>  1 file changed, 17 insertions(+)
+> 
+> diff --git a/include/linux/rcupdate.h b/include/linux/rcupdate.h
+> index 872a98e..0a6047f 100644
+> --- a/include/linux/rcupdate.h
+> +++ b/include/linux/rcupdate.h
+> @@ -209,9 +209,26 @@ static inline int rcu_read_lock_sched_held(void)
+>  		rcu_dereference_raw(p); \
+>  	})
+>  
+> +/**
+> + * rcu_dereference_update - rcu_dereference on structure that cannot change
+> + *
+> + * Do rcu_dereference() checking, but just pick up the pointer without
+> + * the normal RCU read-side precautions.  These precautions are only
+> + * needed if the data structure can change.  The caller is responsible
+> + * for doing whatever is necessary (such as holding locks) to prevent
+> + * such changes from occurring.
+> + */
+> +#define rcu_dereference_update(p, c) \
+> +	({ \
+> +		if (debug_lockdep_rcu_enabled() && !(c)) \
+> +			lockdep_rcu_dereference(__FILE__, __LINE__); \
+> +		(p); \
+> +	})
+> +
+>  #else /* #ifdef CONFIG_PROVE_RCU */
+>  
+>  #define rcu_dereference_check(p, c)	rcu_dereference_raw(p)
+> +#define rcu_dereference_update(p, c)	(p)
+>  
+>  #endif /* #else #ifdef CONFIG_PROVE_RCU */
+>  
