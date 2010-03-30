@@ -1,60 +1,56 @@
-From: "Paul E. McKenney" <paulmck@linux.vnet.ibm.com>
-Subject: Re: [PATCH] NFS: Fix RCU warnings in
- nfs_inode_return_delegation_noreclaim() [ver #2]
-Date: Tue, 30 Mar 2010 10:25:42 -0700
-Message-ID: <20100330172542.GI2513@linux.vnet.ibm.com>
-References: <20100319022527.GC2894@linux.vnet.ibm.com>
- <20100318133302.29754.1584.stgit@warthog.procyon.org.uk>
- <19192.1269889348@redhat.com>
- <23274.1269893706@redhat.com>
- <25276.1269901350@redhat.com>
- <26760.1269903543@redhat.com>
- <20100329232636.GT2569@linux.vnet.ibm.com>
- <2440.1269967151@redhat.com>
- <20100330164912.GG2513@linux.vnet.ibm.com>
- <1269968671.10116.17.camel@edumazet-laptop>
-Reply-To: paulmck@linux.vnet.ibm.com
-Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Cc: David Howells <dhowells@redhat.com>, Trond.Myklebust@netapp.com,
-	linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Eric Dumazet <eric.dumazet@gmail.com>
+From: Anton Starikov <ant.starikov@gmail.com>
+Subject: Re: NFS4 in combination with root over NFS3, hangs and dedlocks
+Date: Tue, 30 Mar 2010 20:30:46 +0200
+Message-ID: <EDDF2B79-DBFA-4701-BEFF-0AEACD63A3DC@gmail.com>
+References: <EE102A23-736F-4905-BAAF-1BF03064F529@gmail.com>
+Mime-Version: 1.0 (Apple Message framework v1077)
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-nfs@vger.kernel.org
+To: Anton Starikov <ant.starikov@gmail.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from e9.ny.us.ibm.com ([32.97.182.139]:46417 "EHLO e9.ny.us.ibm.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752673Ab0C3RZo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 30 Mar 2010 13:25:44 -0400
-In-Reply-To: <1269968671.10116.17.camel@edumazet-laptop>
+Received: from mail-ew0-f220.google.com ([209.85.219.220]:36326 "EHLO
+	mail-ew0-f220.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755626Ab0C3Sav convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 30 Mar 2010 14:30:51 -0400
+Received: by ewy20 with SMTP id 20so1551295ewy.1
+        for <linux-nfs@vger.kernel.org>; Tue, 30 Mar 2010 11:30:49 -0700 (PDT)
+In-Reply-To: <EE102A23-736F-4905-BAAF-1BF03064F529@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Mar 30, 2010 at 07:04:31PM +0200, Eric Dumazet wrote:
-> Le mardi 30 mars 2010 =E0 09:49 -0700, Paul E. McKenney a =E9crit :
-> > On Tue, Mar 30, 2010 at 05:39:11PM +0100, David Howells wrote:
-> > > Paul E. McKenney <paulmck@linux.vnet.ibm.com> wrote:
-> > >=20
-> > > > Scrap this one -- Arnd has it covered, under the much better na=
-me
-> > > > of rcu_dereference_const().
-> > >=20
-> > > Not convinced of that name either.  That sounds like the RCU dere=
-ference of
-> > > constant (R/O) data.
-> >=20
-> > Which it is, as long as the lock is held.
-> >=20
-> > But what name would you suggest?
-> >=20
->=20
-> Maybe use 'protected' word or something like that, or 'owned', ...
->=20
-> rcu_dereference_protected() or rcu_dereference_owned()
+If it is already resolved problem, can someone point me into direction of particular patch?
 
-I do like rcu_dereference_protected() -- a bit longer than
-rcu_dereference_locked(), but covers the initialization and cleanup
-accesses that might be protected by privatization rather than by lockin=
-g.
+Anton.
 
-Other thoughts?
 
-							Thanx, Paul
+On Mar 29, 2010, at 5:14 PM, Anton Starikov wrote:
+
+> Hi,
+> 
+> Early (year ago and recently) I reported about my faults in getting working NFS4 mounts (primary automounting /home) with system booted with NFSv3-root. It always used to silently hang nodes with zero output in the logs. It was definitely client issue (I tried it with different versions of linux and solaris servers)
+> 
+> Although I can't get simple and reproducible test-case, because hangs appears randomly, it can happen in 1hour, it can happen in 5 days, but it always will happen after some time. But this time I got some some improvement.
+> 
+> With 2.6.32.9-70.fc12.x86_64 kernel and fresh nfs-utils from Fedora-12, after NFS4 mounts hangs, NFS3 mounts and node itself still continue to work, which gives chance to investigate problem. 
+> 
+> Can you give me instruction how to collect all necessary information to figure out where the bug is?
+> 
+> As starting point I will attach output of echo "t" > sysrq-trigge, list of NFS mounts.
+> 
+> Thanks,
+> Anton.
+> 
+> # cat /proc/mounts | grep nfs
+> 172.19.8.1:/export/share/cluster/fedora-root / nfs ro,relatime,vers=3,rsize=32768,wsize=32768,namlen=255,hard,nolock,proto=udp,port=65535,timeo=7,retrans=3,sec=sys,mountport=65535,addr=172.19.8.1 0 0
+> none /var/lib/nfs tmpfs rw,relatime 0 0
+> sunrpc /var/lib/nfs/rpc_pipefs rpc_pipefs rw,relatime 0 0
+> 172.19.8.1:/export/share/cluster/admin /root nfs rw,noatime,vers=3,rsize=1048576,wsize=1048576,namlen=255,hard,nolock,noacl,proto=tcp,timeo=600,retrans=2,sec=sys,mountaddr=172.19.8.1,mountvers=3,mountport=44114,mountproto=tcp,addr=172.19.8.1 0 0
+> 172.19.8.1:/export/share/cluster/checkpoint /mnt/checkpoint nfs rw,noatime,vers=3,rsize=1048576,wsize=1048576,namlen=255,hard,noacl,proto=tcp,timeo=600,retrans=2,sec=sys,mountaddr=172.19.8.1,mountvers=3,mountport=52574,mountproto=udp,addr=172.19.8.1 0 0
+> 172.19.8.1:/export/share/software /software nfs rw,noatime,vers=3,rsize=1048576,wsize=1048576,namlen=255,hard,nolock,noacl,proto=tcp,timeo=600,retrans=2,sec=sys,mountaddr=172.19.8.1,mountvers=3,mountport=44114,mountproto=tcp,addr=172.19.8.1 0 0
+> 172.19.8.1:/export/share/cluster/torque /var/torque nfs rw,noatime,vers=3,rsize=1048576,wsize=1048576,namlen=255,hard,nolock,noacl,proto=tcp,timeo=600,retrans=2,sec=sys,mountaddr=172.19.8.1,mountvers=3,mountport=44114,mountproto=tcp,addr=172.19.8.1 0 0
+> 172.19.8.1:/export/share/common/ /common nfs4 rw,noatime,vers=4,rsize=1048576,wsize=1048576,namlen=255,hard,proto=tcp,port=0,timeo=600,retrans=2,sec=sys,clientaddr=172.19.8.133,addr=172.19.8.1 0 0
+> 172.19.8.1:/export/home/alfons/ /home/alfons nfs4 rw,relatime,vers=4,rsize=1048576,wsize=1048576,namlen=255,hard,proto=tcp,port=0,timeo=600,retrans=2,sec=sys,clientaddr=172.19.8.133,addr=172.19.8.1 0 0
+> 
+> <log1.txt.gz>
+> 
+
