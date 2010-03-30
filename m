@@ -1,52 +1,38 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [stable] nfsd changes for 2.6.34
-Date: Tue, 30 Mar 2010 10:40:54 -0400
-Message-ID: <20100330144054.GD11545@fieldses.org>
-References: <20100306175212.GB22650@fieldses.org> <20100324142414.GE12057@fieldses.org> <20100329182443.GC3778@kroah.com>
+Subject: Re: nfs: server not responding, timed out
+Date: Tue, 30 Mar 2010 10:44:38 -0400
+Message-ID: <20100330144438.GE11545@fieldses.org>
+References: <20100318170603.f6a7f188.dennisn@dennisn.dyndns.org> <4BA2DFC5.1010400@cn.fujitsu.com> <20100319002720.0e93411e.dennisn@dennisn.dyndns.org> <20100319181038.c94fa3c4.dennisn@dennisn.dyndns.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: stable@kernel.org, linux-nfs@vger.kernel.org,
-	Linus Torvalds <torvalds@linux-foundation.org>,
-	linux-kernel@vger.kernel.org
-To: Greg KH <greg@kroah.com>
+Cc: linux-nfs@vger.kernel.org
+To: Dennis Nezic <dennisn-YN8wfZw00oOZ9vWoFJJngh2eb7JE58TQ@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:55409 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:44738 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751531Ab0C3Ois (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 30 Mar 2010 10:38:48 -0400
-In-Reply-To: <20100329182443.GC3778@kroah.com>
+	id S1756427Ab0C3Oma (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 30 Mar 2010 10:42:30 -0400
+In-Reply-To: <20100319181038.c94fa3c4.dennisn-YN8wfZw00oOZ9vWoFJJngh2eb7JE58TQ@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Mar 29, 2010 at 11:24:43AM -0700, Greg KH wrote:
-> On Wed, Mar 24, 2010 at 10:24:14AM -0400, J. Bruce Fields wrote:
-> > On Sat, Mar 06, 2010 at 12:52:12PM -0500, bfields wrote:
-> > > Please pull the following nfsd changes from the 'nfsd' branch at:
-> > > 
-> > >   git://linux-nfs.org/~bfields/linux.git for-2.6.34 nfsd
-> > > 
-> > > This is an unusually quiet cycle for the NFS server--bugfixes, some IPv6
-> > > progress, and one new export operation to improve sync performance.
-> > > 
-> > > One exception to the 'mostly quiet' statement was a regression in the
-> > > rpc code which hit a lot of people: enormous thanks to Neil for tracking
-> > > that down.
+On Fri, Mar 19, 2010 at 06:10:38PM -0400, Dennis Nezic wrote:
+> On Fri, 19 Mar 2010 00:27:20 -0400, Dennis Nezic wrote:
 > > 
-> > However, I forgot to Cc stable on all of those.  Stable people, could
-> > you also take the following three commits?:
-> > 
-> > 	f5822754ea006563e1bf0a1f43faaad49c0d8bb2 Revert "sunrpc: fix
-> > 	peername failed on closed listener"
-> > 	1b644b6e6f6160ae35ce4b52c2ca89ed3e356e18 Revert "sunrpc: move
-> > 	the close processing after do recvfrom method"
-> > 	301e99ce4a2f42a317129230fd42e6cd874c64b0 nfsd: ensure sockets
-> > 	are closed on error
-> > 
-> > Let me know if you need more information.
+> > Both the patches mentioned in that thread already seem to have been
+> > applied to my kernels. So, although the problem seems related, it
+> > wasn't that bug in particular. The person in that thread was talking
+> > about mounts dying after 5-15minutes, which doesn't happen with me --
+> > my problem only seems to occur under intense activity.
 > 
-> I've queued all of these up for the .33 -stable tree.  If any of them
-> need to go into .32 (maybe that last one?), please let me know.
+> Hrm. I just noticed that my scp transfers are stalling -- which also
+> didn't used to happen before with my old kernel. No error messages. Ftp
+> transfers work fine. Eek. :S. (Despite the freezing/stalling, my
+> *actual* network connection works perfectly.)
 
-Thanks; .32 needs all three of those.
+That also suggests some network problem....  Is the scp problem
+reproduceable?  Are packets getting dropped?
+
+Also: is the kernel dumping any backtraces into the server's logs?
 
 --b.
