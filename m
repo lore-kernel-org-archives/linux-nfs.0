@@ -1,63 +1,77 @@
-Return-Path: <nfsv4-bounces@linux-nfs.org>
-Date: Thu, 4 Mar 2010 09:33:18 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Matt Bernstein <+systems.extlists.nfsv4@dcs.qmul.ac.uk>
-Subject: Re: Turning off delegations in NFSv4 server?
-Message-ID: <20100304143317.GA17191@fieldses.org>
-References: <4786788D.6040707@garzik.org> <20080110200034.GI2132@fieldses.org>
-	<alpine.LRH.2.00.1003040915110.23376@frank.dcs.qmul.ac.uk>
-In-Reply-To: <alpine.LRH.2.00.1003040915110.23376@frank.dcs.qmul.ac.uk>
-Cc: NFS list <linux-nfs@vger.kernel.org>, nfsv4@linux-nfs.org
-List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/options/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
-List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
-List-Post: <mailto:nfsv4@linux-nfs.org>
-List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
-List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
-Content-Type: text/plain; charset="us-ascii"
-Sender: nfsv4-bounces@linux-nfs.org
-Errors-To: nfsv4-bounces@linux-nfs.org
-MIME-Version: 1.0
+Return-Path: <linux-nfs-owner@vger.kernel.org>
+Received: from mail-bw0-f209.google.com ([209.85.218.209]:43125 "EHLO
+	mail-bw0-f209.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753379Ab0C3TLY convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 30 Mar 2010 15:11:24 -0400
+Received: by bwz1 with SMTP id 1so4648521bwz.21
+        for <linux-nfs@vger.kernel.org>; Tue, 30 Mar 2010 12:11:22 -0700 (PDT)
+Subject: Re: NFS4 in combination with root over NFS3, hangs and deadlocks
+Content-Type: text/plain; charset=us-ascii
+From: Anton Starikov <ant.starikov@gmail.com>
+In-Reply-To: <4BB24A53.1090005@oracle.com>
+Date: Tue, 30 Mar 2010 21:11:19 +0200
+Cc: linux-nfs@vger.kernel.org
+Message-Id: <844AD38F-D46D-4641-8250-33377CFECFCB@gmail.com>
+References: <EE102A23-736F-4905-BAAF-1BF03064F529@gmail.com> <EDDF2B79-DBFA-4701-BEFF-0AEACD63A3DC@gmail.com> <4BB24A53.1090005@oracle.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+MIME-Version: 1.0
 
-On Thu, Mar 04, 2010 at 09:23:26AM +0000, Matt Bernstein wrote:
-> On Jan 10 2008 J. Bruce Fields wrote:
->> On Thu, Jan 10, 2008 at 02:57:01PM -0500, Jeff Garzik wrote:
->>> Besides hacking the code, is there an easy way to turn off NFSv4
->>> delegations in the kernel v4 server?
->>>
->>> I'd like to observe behavior of the Linux v4 client when delegations are
->>> not available.
->>
->> The easiest thing is probably just to turn off leases:
->> 	echo 0 >/proc/sys/fs/leases-enable
->
-> I found this from two years ago, and am wondering
-> - is this still the easiest thing to do?
-> - is this on server, client or both?
-> - will it break anything else?
->
-> We have a CentOS 5.4 NFS3/NFS4/samba server with about 300 clients on its 
-> subnet, and another 100-200 on another subnet, which under high load has  
-> started kernel-panicking (sometimes in nfsd4_cb_recall).
+On Mar 30, 2010, at 9:00 PM, Chuck Lever wrote:
 
-Have you filed a bug with the backtraces?
+> On 03/30/2010 02:30 PM, Anton Starikov wrote:
+>> If it is already resolved problem, can someone point me into direction of particular patch?
+> 
+> As far as I know NFSv4 is known not to work with an NFSv3 root, in any kernel.
 
-> I want to disable delegations to see if that cures our symptoms--but I  
-> worry that turning leases off might cause other problems.
 
-No, it shouldn't cause problems, at least for NFSv4 clients.  (Samba may
-be more reliant on leases, especially if Samba and NFSv4 clients are
-acting on the same files at the same time--but I don't know.)
+But NFS4-root (does it work finally?) isn't always desirable solution. Especially if different OSes used for client/server.
 
---b.
+And it seems that generally it works, just some deadlock occurs, probably related to caching of some credentials.
 
->
-> For now I'll probably do it anyway, given that status quo isn't stable :(
->
-> Matt
-_______________________________________________
-NFSv4 mailing list
-NFSv4@linux-nfs.org
-http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4
+Anton,
+
+>> Anton.
+>> 
+>> 
+>> On Mar 29, 2010, at 5:14 PM, Anton Starikov wrote:
+>> 
+>>> Hi,
+>>> 
+>>> Early (year ago and recently) I reported about my faults in getting working NFS4 mounts (primary automounting /home) with system booted with NFSv3-root. It always used to silently hang nodes with zero output in the logs. It was definitely client issue (I tried it with different versions of linux and solaris servers)
+>>> 
+>>> Although I can't get simple and reproducible test-case, because hangs appears randomly, it can happen in 1hour, it can happen in 5 days, but it always will happen after some time. But this time I got some some improvement.
+>>> 
+>>> With 2.6.32.9-70.fc12.x86_64 kernel and fresh nfs-utils from Fedora-12, after NFS4 mounts hangs, NFS3 mounts and node itself still continue to work, which gives chance to investigate problem.
+>>> 
+>>> Can you give me instruction how to collect all necessary information to figure out where the bug is?
+>>> 
+>>> As starting point I will attach output of echo "t">  sysrq-trigge, list of NFS mounts.
+>>> 
+>>> Thanks,
+>>> Anton.
+>>> 
+>>> # cat /proc/mounts | grep nfs
+>>> 172.19.8.1:/export/share/cluster/fedora-root / nfs ro,relatime,vers=3,rsize=32768,wsize=32768,namlen=255,hard,nolock,proto=udp,port=65535,timeo=7,retrans=3,sec=sys,mountport=65535,addr=172.19.8.1 0 0
+>>> none /var/lib/nfs tmpfs rw,relatime 0 0
+>>> sunrpc /var/lib/nfs/rpc_pipefs rpc_pipefs rw,relatime 0 0
+>>> 172.19.8.1:/export/share/cluster/admin /root nfs rw,noatime,vers=3,rsize=1048576,wsize=1048576,namlen=255,hard,nolock,noacl,proto=tcp,timeo=600,retrans=2,sec=sys,mountaddr=172.19.8.1,mountvers=3,mountport=44114,mountproto=tcp,addr=172.19.8.1 0 0
+>>> 172.19.8.1:/export/share/cluster/checkpoint /mnt/checkpoint nfs rw,noatime,vers=3,rsize=1048576,wsize=1048576,namlen=255,hard,noacl,proto=tcp,timeo=600,retrans=2,sec=sys,mountaddr=172.19.8.1,mountvers=3,mountport=52574,mountproto=udp,addr=172.19.8.1 0 0
+>>> 172.19.8.1:/export/share/software /software nfs rw,noatime,vers=3,rsize=1048576,wsize=1048576,namlen=255,hard,nolock,noacl,proto=tcp,timeo=600,retrans=2,sec=sys,mountaddr=172.19.8.1,mountvers=3,mountport=44114,mountproto=tcp,addr=172.19.8.1 0 0
+>>> 172.19.8.1:/export/share/cluster/torque /var/torque nfs rw,noatime,vers=3,rsize=1048576,wsize=1048576,namlen=255,hard,nolock,noacl,proto=tcp,timeo=600,retrans=2,sec=sys,mountaddr=172.19.8.1,mountvers=3,mountport=44114,mountproto=tcp,addr=172.19.8.1 0 0
+>>> 172.19.8.1:/export/share/common/ /common nfs4 rw,noatime,vers=4,rsize=1048576,wsize=1048576,namlen=255,hard,proto=tcp,port=0,timeo=600,retrans=2,sec=sys,clientaddr=172.19.8.133,addr=172.19.8.1 0 0
+>>> 172.19.8.1:/export/home/alfons/ /home/alfons nfs4 rw,relatime,vers=4,rsize=1048576,wsize=1048576,namlen=255,hard,proto=tcp,port=0,timeo=600,retrans=2,sec=sys,clientaddr=172.19.8.133,addr=172.19.8.1 0 0
+>>> 
+>>> <log1.txt.gz>
+>>> 
+>> 
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+> 
+> -- 
+> chuck[dot]lever[at]oracle[dot]com
+
