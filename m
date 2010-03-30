@@ -1,56 +1,58 @@
-From: Anton Starikov <ant.starikov@gmail.com>
-Subject: Re: NFS4 in combination with root over NFS3, hangs and dedlocks
-Date: Tue, 30 Mar 2010 20:30:46 +0200
-Message-ID: <EDDF2B79-DBFA-4701-BEFF-0AEACD63A3DC@gmail.com>
-References: <EE102A23-736F-4905-BAAF-1BF03064F529@gmail.com>
-Mime-Version: 1.0 (Apple Message framework v1077)
+From: Greg KH <greg@kroah.com>
+Subject: Re: [stable] nfsd changes for 2.6.34
+Date: Tue, 30 Mar 2010 13:03:20 -0700
+Message-ID: <20100330200320.GB1693@kroah.com>
+References: <20100306175212.GB22650@fieldses.org> <20100324142414.GE12057@fieldses.org> <20100329182443.GC3778@kroah.com> <20100330144054.GD11545@fieldses.org>
+Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs@vger.kernel.org
-To: Anton Starikov <ant.starikov@gmail.com>
+Cc: stable@kernel.org, linux-nfs@vger.kernel.org,
+	Linus Torvalds <torvalds@linux-foundation.org>,
+	linux-kernel@vger.kernel.org
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ew0-f220.google.com ([209.85.219.220]:36326 "EHLO
-	mail-ew0-f220.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755626Ab0C3Sav convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 30 Mar 2010 14:30:51 -0400
-Received: by ewy20 with SMTP id 20so1551295ewy.1
-        for <linux-nfs@vger.kernel.org>; Tue, 30 Mar 2010 11:30:49 -0700 (PDT)
-In-Reply-To: <EE102A23-736F-4905-BAAF-1BF03064F529@gmail.com>
+Received: from kroah.org ([198.145.64.141]:50775 "EHLO coco.kroah.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751643Ab0C3UcW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 30 Mar 2010 16:32:22 -0400
+In-Reply-To: <20100330144054.GD11545@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-If it is already resolved problem, can someone point me into direction of particular patch?
+On Tue, Mar 30, 2010 at 10:40:54AM -0400, J. Bruce Fields wrote:
+> On Mon, Mar 29, 2010 at 11:24:43AM -0700, Greg KH wrote:
+> > On Wed, Mar 24, 2010 at 10:24:14AM -0400, J. Bruce Fields wrote:
+> > > On Sat, Mar 06, 2010 at 12:52:12PM -0500, bfields wrote:
+> > > > Please pull the following nfsd changes from the 'nfsd' branch at:
+> > > > 
+> > > >   git://linux-nfs.org/~bfields/linux.git for-2.6.34 nfsd
+> > > > 
+> > > > This is an unusually quiet cycle for the NFS server--bugfixes, some IPv6
+> > > > progress, and one new export operation to improve sync performance.
+> > > > 
+> > > > One exception to the 'mostly quiet' statement was a regression in the
+> > > > rpc code which hit a lot of people: enormous thanks to Neil for tracking
+> > > > that down.
+> > > 
+> > > However, I forgot to Cc stable on all of those.  Stable people, could
+> > > you also take the following three commits?:
+> > > 
+> > > 	f5822754ea006563e1bf0a1f43faaad49c0d8bb2 Revert "sunrpc: fix
+> > > 	peername failed on closed listener"
+> > > 	1b644b6e6f6160ae35ce4b52c2ca89ed3e356e18 Revert "sunrpc: move
+> > > 	the close processing after do recvfrom method"
+> > > 	301e99ce4a2f42a317129230fd42e6cd874c64b0 nfsd: ensure sockets
+> > > 	are closed on error
+> > > 
+> > > Let me know if you need more information.
+> > 
+> > I've queued all of these up for the .33 -stable tree.  If any of them
+> > need to go into .32 (maybe that last one?), please let me know.
+> 
+> Thanks; .32 needs all three of those.
 
-Anton.
+Ok, care to backport them and send them to stable@kernel.org?  They
+don't all apply cleanly from what I can see.
 
+thanks,
 
-On Mar 29, 2010, at 5:14 PM, Anton Starikov wrote:
-
-> Hi,
-> 
-> Early (year ago and recently) I reported about my faults in getting working NFS4 mounts (primary automounting /home) with system booted with NFSv3-root. It always used to silently hang nodes with zero output in the logs. It was definitely client issue (I tried it with different versions of linux and solaris servers)
-> 
-> Although I can't get simple and reproducible test-case, because hangs appears randomly, it can happen in 1hour, it can happen in 5 days, but it always will happen after some time. But this time I got some some improvement.
-> 
-> With 2.6.32.9-70.fc12.x86_64 kernel and fresh nfs-utils from Fedora-12, after NFS4 mounts hangs, NFS3 mounts and node itself still continue to work, which gives chance to investigate problem. 
-> 
-> Can you give me instruction how to collect all necessary information to figure out where the bug is?
-> 
-> As starting point I will attach output of echo "t" > sysrq-trigge, list of NFS mounts.
-> 
-> Thanks,
-> Anton.
-> 
-> # cat /proc/mounts | grep nfs
-> 172.19.8.1:/export/share/cluster/fedora-root / nfs ro,relatime,vers=3,rsize=32768,wsize=32768,namlen=255,hard,nolock,proto=udp,port=65535,timeo=7,retrans=3,sec=sys,mountport=65535,addr=172.19.8.1 0 0
-> none /var/lib/nfs tmpfs rw,relatime 0 0
-> sunrpc /var/lib/nfs/rpc_pipefs rpc_pipefs rw,relatime 0 0
-> 172.19.8.1:/export/share/cluster/admin /root nfs rw,noatime,vers=3,rsize=1048576,wsize=1048576,namlen=255,hard,nolock,noacl,proto=tcp,timeo=600,retrans=2,sec=sys,mountaddr=172.19.8.1,mountvers=3,mountport=44114,mountproto=tcp,addr=172.19.8.1 0 0
-> 172.19.8.1:/export/share/cluster/checkpoint /mnt/checkpoint nfs rw,noatime,vers=3,rsize=1048576,wsize=1048576,namlen=255,hard,noacl,proto=tcp,timeo=600,retrans=2,sec=sys,mountaddr=172.19.8.1,mountvers=3,mountport=52574,mountproto=udp,addr=172.19.8.1 0 0
-> 172.19.8.1:/export/share/software /software nfs rw,noatime,vers=3,rsize=1048576,wsize=1048576,namlen=255,hard,nolock,noacl,proto=tcp,timeo=600,retrans=2,sec=sys,mountaddr=172.19.8.1,mountvers=3,mountport=44114,mountproto=tcp,addr=172.19.8.1 0 0
-> 172.19.8.1:/export/share/cluster/torque /var/torque nfs rw,noatime,vers=3,rsize=1048576,wsize=1048576,namlen=255,hard,nolock,noacl,proto=tcp,timeo=600,retrans=2,sec=sys,mountaddr=172.19.8.1,mountvers=3,mountport=44114,mountproto=tcp,addr=172.19.8.1 0 0
-> 172.19.8.1:/export/share/common/ /common nfs4 rw,noatime,vers=4,rsize=1048576,wsize=1048576,namlen=255,hard,proto=tcp,port=0,timeo=600,retrans=2,sec=sys,clientaddr=172.19.8.133,addr=172.19.8.1 0 0
-> 172.19.8.1:/export/home/alfons/ /home/alfons nfs4 rw,relatime,vers=4,rsize=1048576,wsize=1048576,namlen=255,hard,proto=tcp,port=0,timeo=600,retrans=2,sec=sys,clientaddr=172.19.8.133,addr=172.19.8.1 0 0
-> 
-> <log1.txt.gz>
-> 
-
+greg k-h
