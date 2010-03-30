@@ -1,39 +1,66 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:54066 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753581Ab0CESC5 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 5 Mar 2010 13:02:57 -0500
-Subject: Re: Merge of the 'write_inode' branch from the VFS tree
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Al Viro <viro@ZenIV.linux.org.uk>
-Cc: Linus Torvalds <torvalds@linux-foundation.org>, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-In-Reply-To: <20100305154823.GV30031@ZenIV.linux.org.uk>
-References: <1267802800.5174.6.camel@localhost.localdomain>
-	 <20100305154823.GV30031@ZenIV.linux.org.uk>
-Content-Type: text/plain; charset="UTF-8"
-Date: Fri, 05 Mar 2010 13:02:35 -0500
-Message-ID: <1267812155.5174.9.camel@localhost.localdomain>
+Received: from rcsinet11.oracle.com ([148.87.113.123]:49034 "EHLO
+	rcsinet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751588Ab0C3TBj (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 30 Mar 2010 15:01:39 -0400
+Message-ID: <4BB24A53.1090005@oracle.com>
+Date: Tue, 30 Mar 2010 15:00:35 -0400
+From: Chuck Lever <chuck.lever@oracle.com>
+To: Anton Starikov <ant.starikov@gmail.com>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: NFS4 in combination with root over NFS3, hangs and dedlocks
+References: <EE102A23-736F-4905-BAAF-1BF03064F529@gmail.com> <EDDF2B79-DBFA-4701-BEFF-0AEACD63A3DC@gmail.com>
+In-Reply-To: <EDDF2B79-DBFA-4701-BEFF-0AEACD63A3DC@gmail.com>
+Content-Type: text/plain; charset=us-ascii; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Fri, 2010-03-05 at 15:48 +0000, Al Viro wrote:
+On 03/30/2010 02:30 PM, Anton Starikov wrote:
+> If it is already resolved problem, can someone point me into direction of particular patch?
 
-> Or I can do a new branch, put updated pair of patches there (hch has sent
-> the updated variants my way) and ask you to rebuild NFS tree.  Which will
-> also suck, since it adds PITA for you and you are completely innocent in
-> that clusterfuck.
-> 
-> Suggestions?  I'd love to get out of that mess with minimal PITA for
-> everyone involved and minimally messed tree...
+As far as I know NFSv4 is known not to work with an NFSv3 root, in any 
+kernel.
 
-Hi Al,
+> Anton.
+>
+>
+> On Mar 29, 2010, at 5:14 PM, Anton Starikov wrote:
+>
+>> Hi,
+>>
+>> Early (year ago and recently) I reported about my faults in getting working NFS4 mounts (primary automounting /home) with system booted with NFSv3-root. It always used to silently hang nodes with zero output in the logs. It was definitely client issue (I tried it with different versions of linux and solaris servers)
+>>
+>> Although I can't get simple and reproducible test-case, because hangs appears randomly, it can happen in 1hour, it can happen in 5 days, but it always will happen after some time. But this time I got some some improvement.
+>>
+>> With 2.6.32.9-70.fc12.x86_64 kernel and fresh nfs-utils from Fedora-12, after NFS4 mounts hangs, NFS3 mounts and node itself still continue to work, which gives chance to investigate problem.
+>>
+>> Can you give me instruction how to collect all necessary information to figure out where the bug is?
+>>
+>> As starting point I will attach output of echo "t">  sysrq-trigge, list of NFS mounts.
+>>
+>> Thanks,
+>> Anton.
+>>
+>> # cat /proc/mounts | grep nfs
+>> 172.19.8.1:/export/share/cluster/fedora-root / nfs ro,relatime,vers=3,rsize=32768,wsize=32768,namlen=255,hard,nolock,proto=udp,port=65535,timeo=7,retrans=3,sec=sys,mountport=65535,addr=172.19.8.1 0 0
+>> none /var/lib/nfs tmpfs rw,relatime 0 0
+>> sunrpc /var/lib/nfs/rpc_pipefs rpc_pipefs rw,relatime 0 0
+>> 172.19.8.1:/export/share/cluster/admin /root nfs rw,noatime,vers=3,rsize=1048576,wsize=1048576,namlen=255,hard,nolock,noacl,proto=tcp,timeo=600,retrans=2,sec=sys,mountaddr=172.19.8.1,mountvers=3,mountport=44114,mountproto=tcp,addr=172.19.8.1 0 0
+>> 172.19.8.1:/export/share/cluster/checkpoint /mnt/checkpoint nfs rw,noatime,vers=3,rsize=1048576,wsize=1048576,namlen=255,hard,noacl,proto=tcp,timeo=600,retrans=2,sec=sys,mountaddr=172.19.8.1,mountvers=3,mountport=52574,mountproto=udp,addr=172.19.8.1 0 0
+>> 172.19.8.1:/export/share/software /software nfs rw,noatime,vers=3,rsize=1048576,wsize=1048576,namlen=255,hard,nolock,noacl,proto=tcp,timeo=600,retrans=2,sec=sys,mountaddr=172.19.8.1,mountvers=3,mountport=44114,mountproto=tcp,addr=172.19.8.1 0 0
+>> 172.19.8.1:/export/share/cluster/torque /var/torque nfs rw,noatime,vers=3,rsize=1048576,wsize=1048576,namlen=255,hard,nolock,noacl,proto=tcp,timeo=600,retrans=2,sec=sys,mountaddr=172.19.8.1,mountvers=3,mountport=44114,mountproto=tcp,addr=172.19.8.1 0 0
+>> 172.19.8.1:/export/share/common/ /common nfs4 rw,noatime,vers=4,rsize=1048576,wsize=1048576,namlen=255,hard,proto=tcp,port=0,timeo=600,retrans=2,sec=sys,clientaddr=172.19.8.133,addr=172.19.8.1 0 0
+>> 172.19.8.1:/export/home/alfons/ /home/alfons nfs4 rw,relatime,vers=4,rsize=1048576,wsize=1048576,namlen=255,hard,proto=tcp,port=0,timeo=600,retrans=2,sec=sys,clientaddr=172.19.8.133,addr=172.19.8.1 0 0
+>>
+>> <log1.txt.gz>
+>>
+>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
-I'd be fine with rebuilding the NFS tree. I have all the patches which
-depend on write_inode in their own separate branch anyway, so I'd only
-have to rebase that branch and then merge it with the main NFS client
-tree...
 
-Cheers
-  Trond
+-- 
+chuck[dot]lever[at]oracle[dot]com
