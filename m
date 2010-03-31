@@ -1,67 +1,44 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [stable] nfsd changes for 2.6.34
-Date: Wed, 31 Mar 2010 15:30:29 -0400
-Message-ID: <20100331193029.GC4937@fieldses.org>
-References: <20100306175212.GB22650@fieldses.org> <20100324142414.GE12057@fieldses.org> <20100329182443.GC3778@kroah.com> <20100330144054.GD11545@fieldses.org> <20100330200320.GB1693@kroah.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: stable@kernel.org, linux-nfs@vger.kernel.org,
-	Linus Torvalds <torvalds@linux-foundation.org>,
-	linux-kernel@vger.kernel.org
-To: Greg KH <greg@kroah.com>
+From: "J. Bruce Fields" <bfields@citi.umich.edu>
+Subject: [PATCH 1/3] Revert "sunrpc: fix peername failed on closed listener"
+Date: Wed, 31 Mar 2010 15:34:08 -0400
+Message-ID: <1270064050-5239-1-git-send-email-bfields@citi.umich.edu>
+References: <20100331193029.GC4937@fieldses.org>
+Cc: linux-nfs@vger.kernel.org,
+	"J. Bruce Fields" <bfields@citi.umich.edu>
+To: stable@kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:44612 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:33504 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756599Ab0CaT2W (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 31 Mar 2010 15:28:22 -0400
-In-Reply-To: <20100330200320.GB1693@kroah.com>
+	id S1756631Ab0CaTb7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 31 Mar 2010 15:31:59 -0400
+In-Reply-To: <20100331193029.GC4937@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Mar 30, 2010 at 01:03:20PM -0700, Greg KH wrote:
-> On Tue, Mar 30, 2010 at 10:40:54AM -0400, J. Bruce Fields wrote:
-> > On Mon, Mar 29, 2010 at 11:24:43AM -0700, Greg KH wrote:
-> > > On Wed, Mar 24, 2010 at 10:24:14AM -0400, J. Bruce Fields wrote:
-> > > > On Sat, Mar 06, 2010 at 12:52:12PM -0500, bfields wrote:
-> > > > > Please pull the following nfsd changes from the 'nfsd' branch at:
-> > > > > 
-> > > > >   git://linux-nfs.org/~bfields/linux.git for-2.6.34 nfsd
-> > > > > 
-> > > > > This is an unusually quiet cycle for the NFS server--bugfixes, some IPv6
-> > > > > progress, and one new export operation to improve sync performance.
-> > > > > 
-> > > > > One exception to the 'mostly quiet' statement was a regression in the
-> > > > > rpc code which hit a lot of people: enormous thanks to Neil for tracking
-> > > > > that down.
-> > > > 
-> > > > However, I forgot to Cc stable on all of those.  Stable people, could
-> > > > you also take the following three commits?:
-> > > > 
-> > > > 	f5822754ea006563e1bf0a1f43faaad49c0d8bb2 Revert "sunrpc: fix
-> > > > 	peername failed on closed listener"
-> > > > 	1b644b6e6f6160ae35ce4b52c2ca89ed3e356e18 Revert "sunrpc: move
-> > > > 	the close processing after do recvfrom method"
-> > > > 	301e99ce4a2f42a317129230fd42e6cd874c64b0 nfsd: ensure sockets
-> > > > 	are closed on error
-> > > > 
-> > > > Let me know if you need more information.
-> > > 
-> > > I've queued all of these up for the .33 -stable tree.  If any of them
-> > > need to go into .32 (maybe that last one?), please let me know.
-> > 
-> > Thanks; .32 needs all three of those.
-> 
-> Ok, care to backport them and send them to stable@kernel.org?  They
-> don't all apply cleanly from what I can see.
+This reverts commit b292cf9ce70d221c3f04ff62db5ab13d9a249ca8.  The
+commit that it attempted to patch up,
+b0401d725334a94d57335790b8ac2404144748ee, was fundamentally wrong, and
+will also be reverted.
 
-Huh.  I just checked out 2.6.32.10 and tried applying the patches a
-couple different ways, and the worst I got was stuff like:
+Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
+---
+ net/sunrpc/svc_xprt.c |    3 +--
+ 1 files changed, 1 insertions(+), 2 deletions(-)
 
-	patching file net/sunrpc/svc_xprt.c
-	Hunk #1 succeeded at 711 (offset 5 lines).
+diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
+index dafd341..929f6db 100644
+--- a/net/sunrpc/svc_xprt.c
++++ b/net/sunrpc/svc_xprt.c
+@@ -711,8 +711,7 @@ int svc_recv(struct svc_rqst *rqstp, long timeout)
+ 	spin_unlock_bh(&pool->sp_lock);
+ 
+ 	len = 0;
+-	if (test_bit(XPT_LISTENER, &xprt->xpt_flags) &&
+-	    !test_bit(XPT_CLOSE, &xprt->xpt_flags)) {
++	if (test_bit(XPT_LISTENER, &xprt->xpt_flags)) {
+ 		struct svc_xprt *newxpt;
+ 		newxpt = xprt->xpt_ops->xpo_accept(xprt);
+ 		if (newxpt) {
+-- 
+1.6.3.3
 
-Is that enough that you don't consider them clean?
-
-In any case, I'll follow up with patches generated against 2.6.32.10.
-
---b.
