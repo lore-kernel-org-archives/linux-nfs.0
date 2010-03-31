@@ -1,168 +1,102 @@
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH 01/22] gss_krb5: Introduce encryption type framework
-Date: Wed, 14 Apr 2010 13:36:37 -0400
-Message-ID: <1271266618-26016-2-git-send-email-Trond.Myklebust@netapp.com>
-References: <1271266618-26016-1-git-send-email-Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
+From: David Howells <dhowells@redhat.com>
+Subject: Re: [PATCH] NFS: Fix RCU warnings in nfs_inode_return_delegation_noreclaim() [ver #2]
+Date: Wed, 31 Mar 2010 23:53:28 +0100
+Message-ID: <19556.1270076008@redhat.com>
+References: <1270060366.1931.19.camel@edumazet-laptop> <20100331151604.GC2461@linux.vnet.ibm.com> <20100319022527.GC2894@linux.vnet.ibm.com> <20100318133302.29754.1584.stgit@warthog.procyon.org.uk> <19192.1269889348@redhat.com> <23274.1269893706@redhat.com> <25276.1269901350@redhat.com> <26760.1269903543@redhat.com> <20100329232636.GT2569@linux.vnet.ibm.com> <2440.1269967151@redhat.com> <21972.1269993064@redhat.com> <10818.1270044273@redhat.com> <15371.1270057054@redhat.com>
+Cc: dhowells@redhat.com, paulmck@linux.vnet.ibm.com,
+	Trond.Myklebust@netapp.com, linux-nfs@vger.kernel.org,
+	linux-kernel@vger.kernel.org
+To: Eric Dumazet <eric.dumazet@gmail.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:48907 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:22191 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756458Ab0DNRhR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 14 Apr 2010 13:37:17 -0400
-Received: from localhost.localdomain (pd07336a.hq.netapp.com [10.58.61.110] (may be forged))
-	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id o3EHawJv021574
-	for <linux-nfs@vger.kernel.org>; Wed, 14 Apr 2010 10:36:59 -0700 (PDT)
-In-Reply-To: <1271266618-26016-1-git-send-email-Trond.Myklebust@netapp.com>
+	id S1758340Ab0CaWx5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 31 Mar 2010 18:53:57 -0400
+In-Reply-To: <1270060366.1931.19.camel@edumazet-laptop>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Kevin Coffman <kwc@citi.umich.edu>
+Eric Dumazet <eric.dumazet@gmail.com> wrote:
 
-Make the client and server code consistent regarding the extra buffer
-space made available for the auth code when wrapping data.
+> If you dont own a lock, and test a pointer, what guarantee do you have
+> this pointer doesnt change right after you tested it ?
 
-Add some comments/documentation about the available buffer space
-in the xdr_buf head and tail when gss_wrap is called.
+There are five possibilities:
 
-Add a compile-time check to make sure we are not exceeding the available
-buffer space.
+ (1) A pointer points to something when you check, and still points to the
+     same thing after you've gained the lock.
 
-Add a central function to shift head data.
+ (2) A pointer points to something when you check, and points to something
+     else after you've gained the lock.
 
-Signed-off-by: Kevin Coffman <kwc@citi.umich.edu>
-Signed-off-by: Steve Dickson <steved@redhat.com>
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- include/linux/sunrpc/gss_krb5.h       |   25 +++++++++++++++++++++
- net/sunrpc/auth_gss/auth_gss.c        |    2 +-
- net/sunrpc/auth_gss/gss_krb5_crypto.c |   38 +++++++++++++++++++++++++++++++++
- net/sunrpc/auth_gss/gss_krb5_wrap.c   |    6 +---
- 4 files changed, 66 insertions(+), 5 deletions(-)
+ (3) A pointer points to something when you check, and is NULL after you've
+     gained the lock.
 
-diff --git a/include/linux/sunrpc/gss_krb5.h b/include/linux/sunrpc/gss_krb5.h
-index e7bbdba..31bb8a5 100644
---- a/include/linux/sunrpc/gss_krb5.h
-+++ b/include/linux/sunrpc/gss_krb5.h
-@@ -40,6 +40,12 @@
- #include <linux/sunrpc/gss_err.h>
- #include <linux/sunrpc/gss_asn1.h>
- 
-+/* Maximum checksum function output for the supported crypto algorithms */
-+#define GSS_KRB5_MAX_CKSUM_LEN  (20)
-+
-+/* Maximum blocksize for the supported crypto algorithms */
-+#define GSS_KRB5_MAX_BLOCKSIZE  (16)
-+
- struct krb5_ctx {
- 	int			initiate; /* 1 = initiating, 0 = accepting */
- 	struct crypto_blkcipher	*enc;
-@@ -113,6 +119,22 @@ enum seal_alg {
- #define ENCTYPE_DES3_CBC_SHA1   0x0010
- #define ENCTYPE_UNKNOWN         0x01ff
- 
-+/*
-+ * This compile-time check verifies that we will not exceed the
-+ * slack space allotted by the client and server auth_gss code
-+ * before they call gss_wrap().
-+ */
-+#define GSS_KRB5_MAX_SLACK_NEEDED \
-+	(GSS_KRB5_TOK_HDR_LEN     /* gss token header */         \
-+	+ GSS_KRB5_MAX_CKSUM_LEN  /* gss token checksum */       \
-+	+ GSS_KRB5_MAX_BLOCKSIZE  /* confounder */               \
-+	+ GSS_KRB5_MAX_BLOCKSIZE  /* possible padding */         \
-+	+ GSS_KRB5_TOK_HDR_LEN    /* encrypted hdr in v2 token */\
-+	+ GSS_KRB5_MAX_CKSUM_LEN  /* encryption hmac */          \
-+	+ 4 + 4                   /* RPC verifier */             \
-+	+ GSS_KRB5_TOK_HDR_LEN                                   \
-+	+ GSS_KRB5_MAX_CKSUM_LEN)
-+
- s32
- make_checksum(char *, char *header, int hdrlen, struct xdr_buf *body,
- 		   int body_offset, struct xdr_netobj *cksum);
-@@ -157,3 +179,6 @@ s32
- krb5_get_seq_num(struct crypto_blkcipher *key,
- 	       unsigned char *cksum,
- 	       unsigned char *buf, int *direction, u32 *seqnum);
-+
-+int
-+xdr_extend_head(struct xdr_buf *buf, unsigned int base, unsigned int shiftlen);
-diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
-index c389ccf..75602ec 100644
---- a/net/sunrpc/auth_gss/auth_gss.c
-+++ b/net/sunrpc/auth_gss/auth_gss.c
-@@ -61,7 +61,7 @@ static const struct rpc_credops gss_nullops;
- # define RPCDBG_FACILITY	RPCDBG_AUTH
- #endif
- 
--#define GSS_CRED_SLACK		1024
-+#define GSS_CRED_SLACK		(RPC_MAX_AUTH_SIZE * 2)
- /* length of a krb5 verifier (48), plus data added before arguments when
-  * using integrity (two 4-byte integers): */
- #define GSS_VERF_SLACK		100
-diff --git a/net/sunrpc/auth_gss/gss_krb5_crypto.c b/net/sunrpc/auth_gss/gss_krb5_crypto.c
-index e9b6361..746b3e1 100644
---- a/net/sunrpc/auth_gss/gss_krb5_crypto.c
-+++ b/net/sunrpc/auth_gss/gss_krb5_crypto.c
-@@ -325,3 +325,41 @@ gss_decrypt_xdr_buf(struct crypto_blkcipher *tfm, struct xdr_buf *buf,
- 
- 	return xdr_process_buf(buf, offset, buf->len - offset, decryptor, &desc);
- }
-+
-+/*
-+ * This function makes the assumption that it was ultimately called
-+ * from gss_wrap().
-+ *
-+ * The client auth_gss code moves any existing tail data into a
-+ * separate page before calling gss_wrap.
-+ * The server svcauth_gss code ensures that both the head and the
-+ * tail have slack space of RPC_MAX_AUTH_SIZE before calling gss_wrap.
-+ *
-+ * Even with that guarantee, this function may be called more than
-+ * once in the processing of gss_wrap().  The best we can do is
-+ * verify at compile-time (see GSS_KRB5_SLACK_CHECK) that the
-+ * largest expected shift will fit within RPC_MAX_AUTH_SIZE.
-+ * At run-time we can verify that a single invocation of this
-+ * function doesn't attempt to use more the RPC_MAX_AUTH_SIZE.
-+ */
-+
-+int
-+xdr_extend_head(struct xdr_buf *buf, unsigned int base, unsigned int shiftlen)
-+{
-+	u8 *p;
-+
-+	if (shiftlen == 0)
-+		return 0;
-+
-+	BUILD_BUG_ON(GSS_KRB5_MAX_SLACK_NEEDED > RPC_MAX_AUTH_SIZE);
-+	BUG_ON(shiftlen > RPC_MAX_AUTH_SIZE);
-+
-+	p = buf->head[0].iov_base + base;
-+
-+	memmove(p + shiftlen, p, buf->head[0].iov_len - base);
-+
-+	buf->head[0].iov_len += shiftlen;
-+	buf->len += shiftlen;
-+
-+	return 0;
-+}
-diff --git a/net/sunrpc/auth_gss/gss_krb5_wrap.c b/net/sunrpc/auth_gss/gss_krb5_wrap.c
-index a6e9056..496281f 100644
---- a/net/sunrpc/auth_gss/gss_krb5_wrap.c
-+++ b/net/sunrpc/auth_gss/gss_krb5_wrap.c
-@@ -155,11 +155,9 @@ gss_wrap_kerberos(struct gss_ctx *ctx, int offset,
- 
- 	ptr = buf->head[0].iov_base + offset;
- 	/* shift data to make room for header. */
-+	xdr_extend_head(buf, offset, headlen);
-+
- 	/* XXX Would be cleverer to encrypt while copying. */
--	/* XXX bounds checking, slack, etc. */
--	memmove(ptr + headlen, ptr, buf->head[0].iov_len - offset);
--	buf->head[0].iov_len += headlen;
--	buf->len += headlen;
- 	BUG_ON((buf->len - offset - headlen) % blocksize);
- 
- 	g_make_token_header(&kctx->mech_used,
--- 
-1.6.6.1
+ (4) A pointer points to NULL when you check, and points to something after
+     you've gained the lock.
 
+ (5) A pointer points to NULL when you check, and points to NULL after you've
+     gained the lock.
+
+However, what if you _know_ that the pointer can only ever be made non-NULL
+during initialisation, and may even be left unset?  That means possibility (4)
+can never happen, and that possibility (5) can be detected by testing before
+taking the lock.  Now, what if (5) is a common occurrence?  It might make
+sense to make the test.
+
+And what matter if the pointer _does_ change after you test it.  If it was
+NULL before, it can only be NULL now - by the semantics defined for that
+particular pointer.
+
+> If *something* protects the pointer from being changed, then how can be
+> expressed this fact ?
+> 
+> If nothing protects the pointer, why test it then, as result of test is
+> unreliable ?
+
+I think you may be misunderstanding the purpose of rcu_dereference().  It is
+to make sure the reading and dereferencing of the pointer are correctly
+ordered with respect to the setting up of the pointed to record and the
+changing of the pointer.
+
+There must be two memory accesses for the barrier implied to be of use.  In
+nfs_inode_return_delegation() there aren't two memory accesses to order,
+therefore the barrier is pointless.
+
+> If NFS was using rcu_dereference(), it probably was for a reason, but if
+> nobody can recall it, it was a wrong reason ?
+
+I think it is incorrectly used.  Given that the rcu_dereference() in:
+
+	if (rcu_dereference(nfsi->delegation) != NULL) {
+		spin_lock(&clp->cl_lock);
+		delegation = nfs_detach_delegation_locked(nfsi, NULL);
+		spin_unlock(&clp->cl_lock);
+		if (delegation != NULL)
+			nfs_do_return_delegation(inode, delegation, 0);
+	}
+
+resolves to:
+
+	_________p1 = nfsi->delegation;
+	smp_read_barrier_depends();
+	if (_________p1) {
+		spin_lock(&clp->cl_lock); // implicit LOCK-class barrier
+		==>nfs_detach_delegation_locked(nfsi, NULL);
+		  [dereference nfsi->delegation]
+		...
+	}
+
+do you actually need the smp_read_barrier_depends()?  You _have_ a barrier in
+the form of the spin_lock().  In fact, the spin_lock() is avowedly sufficient
+to protect accesses to and dereferences of nfsi->delegation, which means that:
+
+	static struct nfs_delegation *nfs_detach_delegation_locked(struct nfs_inode *nfsi, const nfs4_stateid *stateid)
+	{
+		struct nfs_delegation *delegation = rcu_dereference(nfsi->delegation);
+		...
+	}
+
+has no need of the internal barrier provided by rcu_dereference() either.
+
+David
