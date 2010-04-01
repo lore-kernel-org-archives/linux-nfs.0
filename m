@@ -1,58 +1,59 @@
-Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.gmx.net ([213.165.64.20]:59042 "HELO mail.gmx.net"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with SMTP
-	id S1757474Ab0DOVtF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 15 Apr 2010 17:49:05 -0400
-Date: Thu, 15 Apr 2010 23:49:01 +0200
-From: Stefan =?iso-8859-1?Q?Kr=FCger?= <stadtkind2@gmx.de>
-To: linux-nfs@vger.kernel.org
-Subject: strange performance issues with OS X 10.6 client
-Message-ID: <20100415214900.GA4143@web.de>
-Content-Type: text/plain; charset=us-ascii
-Sender: linux-nfs-owner@vger.kernel.org
-List-ID: <linux-nfs.vger.kernel.org>
+Return-Path: <nfsv4-bounces@linux-nfs.org>
+Date: Thu, 1 Apr 2010 08:46:20 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org
+Subject: why does each NFS mount have (at least) 2 rpc_clnt's ?
+Message-ID: <20100401084620.3475d4c0@barsoom.rdu.redhat.com>
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/options/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@linux-nfs.org>
+List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
+Content-Type: text/plain; charset="us-ascii"
+Sender: nfsv4-bounces@linux-nfs.org
+Errors-To: nfsv4-bounces@linux-nfs.org
 MIME-Version: 1.0
+List-ID: <linux-nfs.vger.kernel.org>
 
-Hello list,
+I'm working on an issue in an older kernel where we see occasional
+panics when trying to refresh credentials. Here's the bug in case
+anyone is interested:
 
-I have some really strange nfs performance issues
+    https://bugzilla.redhat.com/show_bug.cgi?id=572870
 
-NFS server is Fedora 12, running
-* kernel-2.6.32.11-99.fc12.x86_64 and
-* nfs-utils-1.2.1-4.fc12.x86_64
-* nfs shared /home is ext4 with default mount options
+...I think I understand the problem well enough now. The problem is
+pretty complex, but the issue is that some operations are done using
+credentials from a stateowner associated with a nfs_client, but using
+the rpc_clnt in nfs_server->client. The two can have different
+authtypes if there are a mix of mounts with different authtypes to the
+same server. This problem seems to have been fixed in mainline with the
+introduction of the auth_generic code.
 
-/etc/exports:
-/home   192.168.1.0/255.255.255.0(rw,sync)
+It leaves me wondering though...what exactly is the reason for having
+two rpc_clients per NFS mount? To clarify, I'm talking about these two,
+which seem to be somewhat redundant:
 
-nfs and nfslock are up and running
+nfs_server->client
+nfs_server->nfs_client->cl_rpcclient
 
-Nothing else touched on the server nfs-wise.
+On mount, the nfs4_set_client calls nfs_get_client to search the list
+of nfs_client structs until it finds one that matches the address, port,
+etc of the NFS server. If one isn't found, the kernel creates one using
+whatever authtype was requested for the mount.
 
-NFS client is Mac OS X, version 10.6.3
+Later, nfs_init_server_rpcclient looks at the rpc_clnt in the
+nfs_client and copies it. If the auth pseudoflavor doesn't match
+however, it creates a new rpc_auth for it.
 
-My /home dir is automounted on the Mac with the following mount options:
-* nosuid,nodev,resvport,rdirplus,rwsize=1048576
-(nfsv3 and tcp are default, I have also tried udp, and with and without
-rdirplus, with different read/write sizes (started with 32k, less for udp,
-and then cranked it up to 1m to make the beachball appear less often), but I
-still have issues no matter which options I chose)
+What exactly is the point of having two rpc_clnt's? Why not just get
+always use nfs_client->cl_rpcclient instead of nfs_server->client and
+simply have nfs_get_client filter by authtype?
 
-Anyway, I'm stuck now, surfing the web with Safari is a very unpleasant
-experience on nfs, beachball every now and then together with a huge amount
-of network traffic (RX with 20MB/s+ peaks), not unusual to see several
-gigabytes received after some minutes browsing, XCode shows a ''The
-document "SomeFile.m" could not be saved.''-error after some edits, Opera
-hangs for minutes when closing, etc etc.
-
-It's horrible :(
-
-Another example, extracting
-http://www.bignerdranch.com/solutions/Cocoa-3rd.tgz took over 3min!
-
-$ time tar xzf Cocoa-3rd.tgz
-0.169u 3.198s 5:51.10 0.9%	0+0k 1+6972io 0pf+0w
-$ time rm -rf Solutions-Cocoa-3rd/
-0.014u 0.477s 0:45.59 1.0%	0+0k 1+1io 0pf+0w
-
-So any help or hints really appreciated
+-- 
+Jeff Layton <jlayton@redhat.com>
+_______________________________________________
+NFSv4 mailing list
+NFSv4@linux-nfs.org
+http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4
