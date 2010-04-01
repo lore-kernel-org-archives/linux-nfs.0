@@ -1,67 +1,61 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:58073 "EHLO mx1.redhat.com"
+Received: from mail-out1.uio.no ([129.240.10.57]:58409 "EHLO mail-out1.uio.no"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753872Ab0DWW0r (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 23 Apr 2010 18:26:47 -0400
-Message-ID: <4BD21EA2.9040502@RedHat.com>
-Date: Fri, 23 Apr 2010 18:26:42 -0400
-From: Steve Dickson <SteveD@redhat.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-CC: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: NFS client send out of order offsets....
-References: <4BD21777.1060305@RedHat.com> <1272060583.3019.11.camel@localhost.localdomain>
-In-Reply-To: <1272060583.3019.11.camel@localhost.localdomain>
-Content-Type: text/plain; charset=UTF-8
+	id S1756696Ab0DAOHp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 1 Apr 2010 10:07:45 -0400
+Subject: Re: why does each NFS mount have (at least) 2 rpc_clnt's ?
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+To: Ondrej Valousek <webserv@s3group.cz>
+Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org
+In-Reply-To: <4BB49F0D.80009@s3group.cz>
+References: <20100401084620.3475d4c0@barsoom.rdu.redhat.com>
+	 <1270127869.3533.12.camel@localhost.localdomain>
+	 <4BB49F0D.80009@s3group.cz>
+Content-Type: text/plain; charset="UTF-8"
+Date: Thu, 01 Apr 2010 10:07:40 -0400
+Message-ID: <1270130860.3533.19.camel@localhost.localdomain>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-
-
-On 04/23/2010 06:09 PM, Trond Myklebust wrote:
-> On Fri, 2010-04-23 at 17:56 -0400, Steve Dickson wrote: 
->> Hey Trond (and all),
->>
->> It been brought to my attention that Linux NFS clients, with big-ish 
->> writes (8GB and above), quickly started sending out writes with
->> out-of-order offsets... Meaning in the start of an 8GB write a 7GB offset 
->> will be send and then smaller offsets, closer to the the beginning 
->> of the file, will follow.
->>
->> Now I realize this is perfectly fine from a protocol standpoint and (w/out 
->> any on hands investigation) pretty sure it has to do with how pages are
->> being kicked out of the cache (i.e. memory pressure), meaning is 
->> not an NFS issue at all...  but... 
->>
->> It was also point out to me that this type of out of order-ness does 
->> not happen with Solaris clients and with an AIX clients there is some 
->> mount option fix out of order-ness... 
->>
->> So my question is there some way to tweak the client to ensure
->> offset are send sequential order... 
->>
->> Note this happening on a older kernel, so before I go off  and 
->> "re-invent the wheel", I was wonder if other people have seen this
->> issue and has it been addressed... 
->>
->> tia,
->>
->> steved.
+On Thu, 2010-04-01 at 15:26 +0200, Ondrej Valousek wrote: 
+> Hi Trond,
 > 
-> The NFS layer will always write out pages in order whenever it initiates
-> a flush.
-> 
-> The problem here is the VM's use of the 'range_cyclic' writeback control
-> option in functions like 'balance_dirty_pages()' and in the kflush
-> daemons.
-> That neither can nor should be fixed in the NFS layer. It really needs
-> to be addressed in the VM.
-> 
-Understood... completely.... 
+> Does it have anything to do with the situation when we want an the same 
+> filesystem to be mounted twice somewhere else with a different flags? 
+> (i.e. RO/RW for example)
+> If yes, I remember some discussion about it in the past (the above was 
+> not possible).
+> Thanks,
 
-But I wonder if there some vm tweak (via sysctl) that would
-give a better chance of having things go out in order...
+Yes. That's exactly what it is supposed to allow (and btw, mounting
+filesystems both ro and rw should be possible now).
 
-steved.
+Cheers
+  Trond
+
+> Ondrej
+> > Look again at nfs_init_server_rpcclient(). The pseudoflavour is not the
+> > only thing that is changed. We also change the soft flag and the timeout
+> > properties of the server->client.
+> >
+> > The point is that users sometimes want to specify per-mountpoint
+> > transport properties, and so we try to give them that possibility, while
+> > at the same time sharing sockets/rdma connections.
+> >
+> > Cheers
+> >   Trond
+> >
+> > _______________________________________________
+> > NFSv4 mailing list
+> > NFSv4@linux-nfs.org
+> > http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4
+> >   
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
 
 
