@@ -1,7 +1,7 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 02/11] lockd: Add /sys/fs/lockd/hosts/
-Date: Thu, 01 Apr 2010 15:02:38 -0400
-Message-ID: <20100401190238.6395.13353.stgit@localhost.localdomain>
+Subject: [PATCH 08/11] lockd: Add "reboot" attribute to nsm_handles
+Date: Thu, 01 Apr 2010 15:03:33 -0400
+Message-ID: <20100401190333.6395.58790.stgit@localhost.localdomain>
 References: <20100401183724.6395.60353.stgit@localhost.localdomain>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -9,125 +9,84 @@ To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
 Received: from mail-qy0-f173.google.com ([209.85.221.173]:62450 "EHLO
 	mail-qy0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758670Ab0DATCl (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 1 Apr 2010 15:02:41 -0400
+	with ESMTP id S1756044Ab0DATDg (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 1 Apr 2010 15:03:36 -0400
 Received: by mail-qy0-f173.google.com with SMTP id 4so1698690qyk.24
-        for <linux-nfs@vger.kernel.org>; Thu, 01 Apr 2010 12:02:40 -0700 (PDT)
+        for <linux-nfs@vger.kernel.org>; Thu, 01 Apr 2010 12:03:35 -0700 (PDT)
 In-Reply-To: <20100401183724.6395.60353.stgit-bi+AKbBUZKY6gyzm1THtWbp2dZbC/Bob@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Add parent directory to contain directories representing entries in
-lockd's host cache.
+There can be multiple nlm_host cache entries associated with one
+remote peer, but there is only one nsm_handle per peer.  So the
+right place to add an API to trigger lock recovery for a particular
+remote peer is with the nsm_handle cache entry for that remote.
+
+Add a "reboot" attribute to each subdirectory in nsm_handles/.
+
+Writing the new NSM state into the peer's nsm_handles "reboot"
+attribute invokes the kernel's lock recovery for that peer.  A user
+space tool, for example, could be constructed so an administrator
+can remove stale locks on an NFS server.
+
+Note that this new API can replace statd's NLM downcalls as well.
+Instead of calling a specified RPC program/version/procedure with
+the new state number and the priv cookie, statd can walk through
+/sys/fs/lockd looking for a directory named after the priv cookie,
+and write the new state number into its "reboot" attribute.
+
+Using this API instead of an RPC downcall would eliminate one lockd
+dependency on IPv4 loopback.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- fs/lockd/host.c             |   46 +++++++++++++++++++++++++++++++++++++++++++
- fs/lockd/svc.c              |    7 +++++++
- include/linux/lockd/lockd.h |    2 ++
- 3 files changed, 55 insertions(+), 0 deletions(-)
+ fs/lockd/mon.c |   20 ++++++++++++++++++++
+ 1 files changed, 20 insertions(+), 0 deletions(-)
 
-diff --git a/fs/lockd/host.c b/fs/lockd/host.c
-index 4600c20..3fbb0a5 100644
---- a/fs/lockd/host.c
-+++ b/fs/lockd/host.c
-@@ -45,6 +45,10 @@ struct nlm_lookup_host_info {
- 	const int		noresvport;	/* use non-priv port */
- };
- 
-+static struct kobject		*nlm_hosts_kobj;
-+static struct kobject		*nlm_hosts_client_kobj;
-+static struct kobject		*nlm_hosts_server_kobj;
-+
- /*
-  * Hash function must work well on big- and little-endian platforms
-  */
-@@ -567,3 +571,45 @@ nlm_gc_hosts(void)
- 
- 	next_gc = jiffies + NLM_HOST_COLLECT;
+diff --git a/fs/lockd/mon.c b/fs/lockd/mon.c
+index dc185e1..690c236 100644
+--- a/fs/lockd/mon.c
++++ b/fs/lockd/mon.c
+@@ -147,6 +147,23 @@ static ssize_t refcount_show(struct nsm_handle *nsm, char *buf)
+ 			atomic_read(&nsm->sm_count));
  }
-+
-+/**
-+ * nlm_host_init - Called when lockd module is loaded
-+ *
-+ */
-+int nlm_host_init(void)
+ 
++static ssize_t reboot_show(struct nsm_handle *nsm, char *buf)
 +{
-+	nlm_hosts_kobj = kobject_create_and_add("hosts", nlm_kobj);
-+	if (nlm_hosts_kobj == NULL)
-+		return -ENOMEM;
-+
-+	nlm_hosts_server_kobj = kobject_create_and_add("server", nlm_hosts_kobj);
-+	if (nlm_hosts_server_kobj == NULL) {
-+		kobject_put(nlm_hosts_kobj);
-+		return -ENOMEM;
-+	}
-+
-+	nlm_hosts_client_kobj = kobject_create_and_add("client", nlm_hosts_kobj);
-+	if (nlm_hosts_client_kobj == NULL) {
-+		kobject_put(nlm_hosts_server_kobj);
-+		kobject_put(nlm_hosts_kobj);
-+		return -ENOMEM;
-+	}
-+
 +	return 0;
 +}
 +
-+/**
-+ * nlm_host_shutdown - Called when lockd module is about to be unloaded
-+ *
-+ */
-+void nlm_host_shutdown(void)
++static ssize_t reboot_store(struct nsm_handle *nsm, 
++				const char *buf, size_t count)
 +{
-+	if (nrhosts != 0) {
-+		printk(KERN_WARNING "NLM hosts remain at shutdown");
-+		return;
-+ 	}
++	int state;
 +
-+	kobject_put(nlm_hosts_client_kobj);
-+	kobject_put(nlm_hosts_server_kobj);
-+	kobject_put(nlm_hosts_kobj);
++	if (sscanf(buf, "%d", &state) != 1)
++		return -EINVAL;
++
++	nlm_host_rebooted_nsm(nsm, state);
++	return count;
 +}
-diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
-index 94e0d4b..acfb6d7 100644
---- a/fs/lockd/svc.c
-+++ b/fs/lockd/svc.c
-@@ -521,9 +521,15 @@ static int __init init_nlm(void)
- 	if (!nlm_kobj)
- 		return -ENOMEM;
- 
-+	if (nlm_host_init()) {
-+		kobject_put(nlm_kobj);
-+		return -ENOMEM;
-+	}
 +
- #ifdef CONFIG_SYSCTL
- 	nlm_sysctl_table = register_sysctl_table(nlm_sysctl_root);
- 	if (!nlm_sysctl_table) {
-+		nlm_host_shutdown();
- 		kobject_put(nlm_kobj);
- 		return -ENOMEM;
- 	}
-@@ -539,6 +545,7 @@ static void __exit exit_nlm(void)
- #ifdef CONFIG_SYSCTL
- 	unregister_sysctl_table(nlm_sysctl_table);
+ #ifdef __ATTR_RO
+ #undef __ATTR_RO
  #endif
-+	nlm_host_shutdown();
- 	kobject_put(nlm_kobj);
- }
+@@ -163,6 +180,8 @@ static struct nsm_handle_attr rpcparms_attr	= __ATTR_RO(rpcparms);
+ static struct nsm_handle_attr status_attr	= __ATTR_RO(status);
+ static struct nsm_handle_attr sticky_attr	= __ATTR_RO(sticky);
+ static struct nsm_handle_attr refcount_attr	= __ATTR_RO(refcount);
++static struct nsm_handle_attr reboot_attr	= __ATTR(reboot,
++			S_IWUSR | S_IRUSR, reboot_show, reboot_store);
  
-diff --git a/include/linux/lockd/lockd.h b/include/linux/lockd/lockd.h
-index 56c749e..2d89cdb 100644
---- a/include/linux/lockd/lockd.h
-+++ b/include/linux/lockd/lockd.h
-@@ -217,6 +217,8 @@ void		  nlmclnt_next_cookie(struct nlm_cookie *);
- /*
-  * Host cache
-  */
-+int		  nlm_host_init(void);
-+void		  nlm_host_shutdown(void);
- struct nlm_host  *nlmclnt_lookup_host(const struct sockaddr *sap,
- 					const size_t salen,
- 					const unsigned short protocol,
+ static struct attribute *nsm_kobj_attrs[] = {
+ 	&mon_name_attr.attr,
+@@ -172,6 +191,7 @@ static struct attribute *nsm_kobj_attrs[] = {
+ 	&status_attr.attr,
+ 	&sticky_attr.attr,
+ 	&refcount_attr.attr,
++	&reboot_attr.attr,
+ 	NULL,
+ };
+ 
 
