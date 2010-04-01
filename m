@@ -1,100 +1,109 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from linear.rut.org ([199.125.85.39]:56780 "EHLO linear.rut.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757286Ab0D1WXk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 28 Apr 2010 18:23:40 -0400
-Date: Wed, 28 Apr 2010 18:23:39 -0400
-From: Robert Henney <robh@rut.org>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: NULL pointer dereference in 2.6.32.12 on mount attempt
-Message-ID: <20100428222339.GA3490@rut.org>
-References: <20100428191758.GA16717@rut.org> <1272486263.2864.57.camel@localhost.localdomain>
-Content-Type: multipart/mixed; boundary="sdtB3X0nJg68CQEu"
-In-Reply-To: <1272486263.2864.57.camel@localhost.localdomain>
+Received: from acsinet11.oracle.com ([141.146.126.233]:52308 "EHLO
+	acsinet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752562Ab0DAVKD (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 1 Apr 2010 17:10:03 -0400
+Message-ID: <4BB50B60.2080009@oracle.com>
+Date: Thu, 01 Apr 2010 17:08:48 -0400
+From: Chuck Lever <chuck.lever@oracle.com>
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 11/11] lockd: Allow mount option to specify caller_name
+References: <20100401183724.6395.60353.stgit@localhost.localdomain>	 <20100401190400.6395.52787.stgit@localhost.localdomain>	 <1270151136.13329.8.camel@localhost.localdomain> <1270152061.13329.15.camel@localhost.localdomain>
+In-Reply-To: <1270152061.13329.15.camel@localhost.localdomain>
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
---sdtB3X0nJg68CQEu
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
+On 04/01/2010 04:01 PM, Trond Myklebust wrote:
+> On Thu, 2010-04-01 at 15:45 -0400, Trond Myklebust wrote:
+>> On Thu, 2010-04-01 at 15:04 -0400, Chuck Lever wrote:
+>>> NLMPROC_LOCK requests have a "caller_name" argument which is supposed
+>>> to contain the hostname the server uses to call the client back.
+>>> Linux simply stuffs the system's utsname in this field, but this is
+>>> not always the correct choice.  For example:
+>>>
+>>>    o  If an unqualified hostname is used for the client's utsname,
+>>>       it could be ambiguous when the server tries to resolve it
+>>>    o  If the client's actual hostname is determined by DHCP, it may
+>>>       not match its utsname
+>>>    o  If the NFS mount was done in a network namespace, the namespace
+>>>       name won't match the client's utsname
+>>>    o  If the client has multiple network interfaces, it should provide
+>>>       a hostname that matches the source address used to contact the
+>>>       server
+>>>
+>>> In all of these cases, user space can determine the correct value of
+>>> the caller_name argument at mount time.
+>>>
+>>> So, add a mount option that allows user space to specify the value of
+>>> the caller_name argument of NLMPROC_LOCK requests.  If not specified,
+>>> the kernel continues to use the init utsname, as before.
+>>
+>> This argument makes no sense. Mount points do _not_ follow network
+>> namespace boundaries, so making this hostname of yours a mount option
+>> will make matters worse, not better.
 
-On Wed, Apr 28, 2010 at 04:24:23PM -0400, Trond Myklebust wrote:
-> On Wed, 2010-04-28 at 15:17 -0400, Robert Henney wrote: 
+Um, "this hostname of yours" is snide and unnecessary.  It's the 
+caller_name string, and it's been an argument of NLMPROC_LOCK and used 
+for lock recovery ever since NFSv2 was invented.  Let's keep it civil, 
+please.
 
-> > /etc/exports on the server, possibly bogus although the server never
-> > complains and still probably shouldn't trigger a NULL dereference in 
-> > the client:
-> >   /stow *(ro,fsid=0,crossmnt,no_subtree_check)
-> >   /stow -mp,ro,all_squash,async,no_subtree_check \
-> >     199.125.85.51  \
-> >     199.125.85.134 \
-> >     66.55.209.223
-> 
-> You probably want to add at least a 'fsid=0' option to that second line.
->
-> > /etc/fstab on the client:
-> >   199.125.85.39:/stow /stow nfs4 noatime
-> 
-> Should be
-> 
-> 199.125.85.39:/ /stow nfs4
+So, ignore the network namespace example, then, and consider the 
+majority of the examples above.
 
-if I correct both of the above as you say, then it works.  :)
+The server's statd stores the client's caller_name string on the monitor 
+list, and uses it as part of a heuristic to match incoming SM_NOTIFY 
+requests.  If we send an accurate caller_name string in our NLMPROC_LOCK 
+requests, there's a better chance that the remote statd will recognize 
+us when we reboot.  Refer to Talpey's Cthon slides or _NFS_Illustrated_ 
+for visual aids.
 
-I should mention though that occasionally when reproducing the bug on 
-the client it caused the server kernel (debian lenny
-linux-image-2.6.26-2-686) to report its own kernel bug and nfsd on the
-server became hosed and unusable for all clients until the server was
-rebooted.  kern.log output attached.
+This applies to three of the four examples I provided above:
 
-since I can only reproduce the kernel bugs using a "wrong" exports
-file, I'm not sure how critical they are anymore.
+1)  It's been a best practice for a long time to ensure that your Linux 
+client's nodename (ie its utsname) matches it's fully-qualified domain 
+name, and for exactly this purpose (see NetApp TR-3183).  With this 
+mount option, the correct caller_name can be determined automatically.
 
-> > the mount command never outputs but has a return code of 2 and the mount
-> > is not successful.
-> 
-> That looks like a stack overflow to me, but it's hard to tell.
-> 
-> What happens if you do
-> 
-> echo 1025 > /proc/sys/sunrpc/nfs_debug
-> 
-> prior to trying the mount?
+What happens if the client's utsname is unqualified, and then it 
+contacts a server that is already talking to a client with the same 
+unqualified hostname in a different domain?  The result is that the 
+server will have to choose between these two clients when one of them 
+reboots.
 
-the client becomes slow enough to be unusable after the value of nfs_debug
-is changed to 1025, which is probably due to it being a diskless client.  
-although the root filesystem is not the mount causing the issue, I can
-try and get a dedicated test machine set up soon to aid further testing.
+2)  If a client's address is assigned automatically, it won't 
+necessarily match its utsname.  That's true of my laptops on wireless, 
+for example.  In that case, my Dell laptop would send "SM_NOTIFY 
+ellison.1015granger.net" from, say, anon-dhcp-108.1015granger.net. 
+statd's DNS monname matching heuristic might fail.
 
---sdtB3X0nJg68CQEu
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: attachment; filename="server_kern.log"
+Note that most contemporary Linux servers store the client's address 
+rather than the caller_name string, but that just means our server won't 
+recognize a client's reboot if the client is assigned a different 
+address after it reboots, and that DNS configuration is especially 
+critical to get lock recovery right.
 
-Apr 28 16:28:56 linear kernel: ------------[ cut here ]------------
-Apr 28 16:28:56 linear kernel: kernel BUG at include/linux/module.h:386!
-Apr 28 16:28:56 linear kernel: invalid opcode: 0000 [#1] SMP 
-Apr 28 16:28:56 linear kernel: Modules linked in: nbd nfsd auth_rpcgss exportfs nfs lockd nfs_acl sunrpc ipt_REJECT nf_conntrack_ipv4 xt_connlimit nf_conntrack xt_tcpudp iptable_filter ip_tables x_tables ipv6 jfs nls_base w83781d hwmon_vid loop snd_pcm snd_timer snd soundcore snd_page_alloc serio_raw psmouse pcspkr i2c_viapro button i2c_core via686a shpchp pci_hotplug parport_pc parport via_agp agpgart evdev ext3 jbd mbcache raid1 md_mod ide_disk sd_mod floppy pdc202xx_old sata_sil24 8139too mii uhci_hcd usbcore ata_generic libata scsi_mod dock ide_pci_generic via82cxxx ide_core thermal processor fan thermal_sys [last unloaded: nbd]
-Apr 28 16:28:56 linear kernel:
-Apr 28 16:28:56 linear kernel: Pid: 1372, comm: nfsd Not tainted (2.6.26-2-686 #1)
-Apr 28 16:28:56 linear kernel: EIP: 0060:[<e0d4c49f>] EFLAGS: 00010246 CPU: 0
-Apr 28 16:28:56 linear kernel: EIP is at svc_recv+0x38d/0x64a [sunrpc]
-Apr 28 16:28:56 linear kernel: EAX: 00000000 EBX: e0d5fd40 ECX: e0d5fd40 EDX: 00000100
-Apr 28 16:28:56 linear kernel: ESI: de4c6200 EDI: c1879f9c EBP: de40d000 ESP: c1879f8c
-Apr 28 16:28:56 linear kernel: DS: 007b ES: 007b FS: 00d8 GS: 0000 SS: 0068
-Apr 28 16:28:56 linear kernel: Process nfsd (pid: 1372, ti=c1878000 task=ded095e0 task.ti=c1878000)
-Apr 28 16:28:56 linear kernel: Stack: 000dbba0 d49d6800 de7e2de0 d9cd8960 00000000 ded095e0 c011b6fc 00100100 
-Apr 28 16:28:56 linear kernel:       00200200 00000000 204b7b32 00000000 de40d000 e0d9b696 fffffeff ffffffff 
-Apr 28 16:28:56 linear kernel:       fffffef8 ffffffff e0d9b5c0 00000000 00000000 00000000 c01044f7 de40d000 
-Apr 28 16:28:56 linear kernel: Call Trace:
-Apr 28 16:28:56 linear kernel: [<c011b6fc>] default_wake_function+0x0/0x8
-Apr 28 16:28:56 linear kernel: [<e0d9b696>] nfsd+0xd6/0x268 [nfsd]
-Apr 28 16:28:56 linear kernel: [<e0d9b5c0>] nfsd+0x0/0x268 [nfsd]
-Apr 28 16:28:56 linear kernel: [<c01044f7>] kernel_thread_helper+0x7/0x10
-Apr 28 16:28:56 linear kernel: =======================
-Apr 28 16:28:56 linear kernel: Code: 01 00 00 8b 44 24 04 8b 50 04 ff 52 04 85 c0 89 c6 0f 84 25 01 00 00 8b 00 8b 58 04 85 db 74 1f 89 d8 e8 78 0a 3f df 85 c0 75 04 <0f> 0b eb fe 64 a1 04 40 3b c0 c1 e0 05 ff 84 18 00 01 00 00 8b 
-Apr 28 16:28:56 linear kernel: EIP: [<e0d4c49f>] svc_recv+0x38d/0x64a [sunrpc] SS:ESP 0068:c1879f8c
-Apr 28 16:28:56 linear kernel: ---[ end trace 9ac34e4b66bab117 ]---
+If our client is operating with an automatically assigned IPv6 address, 
+where a router gives an IPv6 address prefix, and the rest of the address 
+is constructed from the NIC's MAC address, or, if our IPv4 address is 
+DHCP-assigned by MAC address, what happens if we shut down the client, 
+and then replace the NIC?  What if our client switches from wireless to 
+wired?
 
---sdtB3X0nJg68CQEu--
+In other words, we can't rely solely on source IP address to identify 
+rebooting hosts.
+
+3)  If the client is talking to a server on a private area network, 
+there's no guarantee the server will recognize the client's caller_name 
+string if it's the hostname of the client on the public side network. 
+It may even attempt to contact the client via it's public side name, 
+which might fail, depending on how the network is set up.
+
+Therefore, I assert that this feature is needed to support multi-homed 
+locking adequately, and to provide better lock recovery in the face of 
+dynamically assigned IP addresses.
+
+-- 
+chuck[dot]lever[at]oracle[dot]com
