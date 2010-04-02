@@ -1,87 +1,131 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-gy0-f174.google.com ([209.85.160.174]:59451 "EHLO
-	mail-gy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753669Ab0DONRN convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 15 Apr 2010 09:17:13 -0400
-Received: by gyg13 with SMTP id 13so733689gyg.19
-        for <linux-nfs@vger.kernel.org>; Thu, 15 Apr 2010 06:17:12 -0700 (PDT)
-In-Reply-To: <4BC6F9AF.6070509@RedHat.com>
-References: <1271266618-26016-1-git-send-email-Trond.Myklebust@netapp.com>
-	 <1271266618-26016-5-git-send-email-Trond.Myklebust@netapp.com>
-	 <1271266618-26016-6-git-send-email-Trond.Myklebust@netapp.com>
-	 <1271266618-26016-7-git-send-email-Trond.Myklebust@netapp.com>
-	 <1271266618-26016-8-git-send-email-Trond.Myklebust@netapp.com>
-	 <1271266618-26016-9-git-send-email-Trond.Myklebust@netapp.com>
-	 <1271266618-26016-10-git-send-email-Trond.Myklebust@netapp.com>
-	 <1271266618-26016-11-git-send-email-Trond.Myklebust@netapp.com>
-	 <y2t4d569c331004141130z7525d001gcdb81db5b1ede42e@mail.gmail.com>
-	 <4BC6F9AF.6070509@RedHat.com>
-Date: Thu, 15 Apr 2010 09:17:04 -0400
-Message-ID: <r2x4d569c331004150617t9e26953x13e3097f76d6f209@mail.gmail.com>
-Subject: Re: [PATCH 10/22] gss_krb5: Add upcall info indicating supported
-	kerberos enctypes
-From: Kevin Coffman <kwc@citi.umich.edu>
-To: Steve Dickson <SteveD@redhat.com>
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>, linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from acsinet11.oracle.com ([141.146.126.233]:61066 "EHLO
+	acsinet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754918Ab0DBRXv (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 2 Apr 2010 13:23:51 -0400
+Message-ID: <4BB627F0.8080909@oracle.com>
+Date: Fri, 02 Apr 2010 13:22:56 -0400
+From: Chuck Lever <chuck.lever@oracle.com>
+To: Anton Starikov <ant.starikov@gmail.com>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: NFS4 random hangs
+References: <EE102A23-736F-4905-BAAF-1BF03064F529@gmail.com> <EDDF2B79-DBFA-4701-BEFF-0AEACD63A3DC@gmail.com> <4BB24A53.1090005@oracle.com> <844AD38F-D46D-4641-8250-33377CFECFCB@gmail.com> <4BB25091.2070201@oracle.com> <A9779025-52FA-4EB1-9587-F85D3BFF6AA7@gmail.com> <98915939-48DA-4FB9-A2C3-DE323C165FA0@gmail.com> <63916BB5-B0DE-4B13-9B26-BC4B984EA23F@gmail.com> <5777526B-A92F-44C1-B5BA-EBA3EE2D037B@gmail.com>
+In-Reply-To: <5777526B-A92F-44C1-B5BA-EBA3EE2D037B@gmail.com>
+Content-Type: text/plain; charset=us-ascii; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Thu, Apr 15, 2010 at 7:34 AM, Steve Dickson <SteveD@redhat.com> wrote:
-> On 04/14/2010 02:30 PM, Kevin Coffman wrote:
->>> diff --git a/net/sunrpc/auth_gss/gss_krb5_mech.c b/net/sunrpc/auth_gss/gss_krb5_mech.c
->>> index 8b612e7..d96d824 100644
->>> --- a/net/sunrpc/auth_gss/gss_krb5_mech.c
->>> +++ b/net/sunrpc/auth_gss/gss_krb5_mech.c
->>> @@ -552,6 +552,7 @@ static struct gss_api_mech gss_kerberos_mech = {
->>>        .gm_ops         = &gss_kerberos_ops,
->>>        .gm_pf_num      = ARRAY_SIZE(gss_kerberos_pfs),
->>>        .gm_pfs         = gss_kerberos_pfs,
->>> +       .gm_upcall_enctypes = "enctypes=1,2,3 ",
->>>  };
->>
->> Hi Trond,
->> This list should be in preference order.  It doesn't matter much with
->> this one, but the preferred order for DES is usually "3,1,2".
->>
->> When adding 3DES, the list should be "16,3,1,2"
->> When adding AES, it should be "18,17,16,3,1,2"
->> When adding RC4, it should be "18,17,16,23,3,1,2"
-> Ok... I went back and took a second look at this... The first
-> thing I did was put the gm_upcall_enctypes list back in
-> preference order. I had no idea there was actually a theory
-> behind the order...
+On 04/02/2010 08:48 AM, Anton Starikov wrote:
+> Any chance that someone will look at this case and try to help with pinpointing problem?
 >
-> Side Note: It appears the ordering really does not matter
-> because the KDC is the one that decides (via the TGS-REP) which
-> enctype will be used and (I've been told) the KDC will always
-> pick the highest enctype possible.
->
-> Now the reason root was not getting its context was
-> basically because of the following error (which I missed)
->    ERROR: prepare_krb5_rfc_cfx_buffer: not implemented
->
-> Which was introduced by the third nfs-utils patch
-> (Add support for non-DES encryption types)
-> I'm currently investigating what that means...
->
-> So, Trond its up to you if you want to put that
-> list back in preference order, it will not matter
-> to the user space code...
->
-> steved.
->
->
+> It's not that I expect something, but in case someone might be interesting and want to step in, I'm keeping mounting over NFS4 and experiencing hangs. But if now it is not the best time, then I will switch to NFS3.
 
-I still contend that the order we send matters.  This is from MIT
-1.6.3 KDC code:
+I suspect no-one will get to this soon.
 
-/*
- * This function returns the keytype which should be selected for the
- * session key.  It is based on the ordered list which the user
- * requested, and what the KDC and the application server can support.
- */
-krb5_enctype
-select_session_keytype(krb5_context context, krb5_db_entry *server,
-                       int nktypes, krb5_enctype *ktype)
+> Anton.
+>
+> On Mar 31, 2010, at 2:35 AM, Anton Starikov wrote:
+>
+>> Ok, I can be wrong in my guess,
+>>
+>> But I found another report earlier in mailing list archive.
+>>
+>> Subject was "NFS regression? Odd delays and lockups accessing an NFS export." with last message from 2008-09-27 10:16:26
+>>
+>> There were a lot of traffic with attempts to investigate problem. But I didn't find information was it resolved or not.
+>>
+>>
+>>
+>>
+>>
+>> On Mar 31, 2010, at 2:09 AM, Anton Starikov wrote:
+>>
+>>> I'm not an expert in kernel debugging, but I think hang happens in rpcauth_lookup_credcache
+>>>
+>>>
+>>> On Mar 30, 2010, at 10:59 PM, Anton Starikov wrote:
+>>>
+>>>> Then it isn't normal.
+>>>> Diskless setup is limited by old NFS3 for non-root partition, which isn't nice.
+>>>> no proper ACL, no delegations.
+>>>>
+>>>>
+>>>> On Mar 30, 2010, at 9:27 PM, Chuck Lever wrote:
+>>>>
+>>>>> On 03/30/2010 03:11 PM, Anton Starikov wrote:
+>>>>>> On Mar 30, 2010, at 9:00 PM, Chuck Lever wrote:
+>>>>>>
+>>>>>>> On 03/30/2010 02:30 PM, Anton Starikov wrote:
+>>>>>>>> If it is already resolved problem, can someone point me into direction of particular patch?
+>>>>>>>
+>>>>>>> As far as I know NFSv4 is known not to work with an NFSv3 root, in any kernel.
+>>>>>>
+>>>>>>
+>>>>>> But NFS4-root (does it work finally?) isn't always desirable solution. Especially if different OSes used for client/server.
+>>>>>>
+>>>>>> And it seems that generally it works, just some deadlock occurs, probably related to caching of some credentials.
+>>>>>
+>>>>> No, NFSv4 root is known to have problems, and is unsupported, as far as I know.
+>>>>>
+>>>>>> Anton,
+>>>>>>
+>>>>>>>> Anton.
+>>>>>>>>
+>>>>>>>>
+>>>>>>>> On Mar 29, 2010, at 5:14 PM, Anton Starikov wrote:
+>>>>>>>>
+>>>>>>>>> Hi,
+>>>>>>>>>
+>>>>>>>>> Early (year ago and recently) I reported about my faults in getting working NFS4 mounts (primary automounting /home) with system booted with NFSv3-root. It always used to silently hang nodes with zero output in the logs. It was definitely client issue (I tried it with different versions of linux and solaris servers)
+>>>>>>>>>
+>>>>>>>>> Although I can't get simple and reproducible test-case, because hangs appears randomly, it can happen in 1hour, it can happen in 5 days, but it always will happen after some time. But this time I got some some improvement.
+>>>>>>>>>
+>>>>>>>>> With 2.6.32.9-70.fc12.x86_64 kernel and fresh nfs-utils from Fedora-12, after NFS4 mounts hangs, NFS3 mounts and node itself still continue to work, which gives chance to investigate problem.
+>>>>>>>>>
+>>>>>>>>> Can you give me instruction how to collect all necessary information to figure out where the bug is?
+>>>>>>>>>
+>>>>>>>>> As starting point I will attach output of echo "t">    sysrq-trigge, list of NFS mounts.
+>>>>>>>>>
+>>>>>>>>> Thanks,
+>>>>>>>>> Anton.
+>>>>>>>>>
+>>>>>>>>> # cat /proc/mounts | grep nfs
+>>>>>>>>> 172.19.8.1:/export/share/cluster/fedora-root / nfs ro,relatime,vers=3,rsize=32768,wsize=32768,namlen=255,hard,nolock,proto=udp,port=65535,timeo=7,retrans=3,sec=sys,mountport=65535,addr=172.19.8.1 0 0
+>>>>>>>>> none /var/lib/nfs tmpfs rw,relatime 0 0
+>>>>>>>>> sunrpc /var/lib/nfs/rpc_pipefs rpc_pipefs rw,relatime 0 0
+>>>>>>>>> 172.19.8.1:/export/share/cluster/admin /root nfs rw,noatime,vers=3,rsize=1048576,wsize=1048576,namlen=255,hard,nolock,noacl,proto=tcp,timeo=600,retrans=2,sec=sys,mountaddr=172.19.8.1,mountvers=3,mountport=44114,mountproto=tcp,addr=172.19.8.1 0 0
+>>>>>>>>> 172.19.8.1:/export/share/cluster/checkpoint /mnt/checkpoint nfs rw,noatime,vers=3,rsize=1048576,wsize=1048576,namlen=255,hard,noacl,proto=tcp,timeo=600,retrans=2,sec=sys,mountaddr=172.19.8.1,mountvers=3,mountport=52574,mountproto=udp,addr=172.19.8.1 0 0
+>>>>>>>>> 172.19.8.1:/export/share/software /software nfs rw,noatime,vers=3,rsize=1048576,wsize=1048576,namlen=255,hard,nolock,noacl,proto=tcp,timeo=600,retrans=2,sec=sys,mountaddr=172.19.8.1,mountvers=3,mountport=44114,mountproto=tcp,addr=172.19.8.1 0 0
+>>>>>>>>> 172.19.8.1:/export/share/cluster/torque /var/torque nfs rw,noatime,vers=3,rsize=1048576,wsize=1048576,namlen=255,hard,nolock,noacl,proto=tcp,timeo=600,retrans=2,sec=sys,mountaddr=172.19.8.1,mountvers=3,mountport=44114,mountproto=tcp,addr=172.19.8.1 0 0
+>>>>>>>>> 172.19.8.1:/export/share/common/ /common nfs4 rw,noatime,vers=4,rsize=1048576,wsize=1048576,namlen=255,hard,proto=tcp,port=0,timeo=600,retrans=2,sec=sys,clientaddr=172.19.8.133,addr=172.19.8.1 0 0
+>>>>>>>>> 172.19.8.1:/export/home/alfons/ /home/alfons nfs4 rw,relatime,vers=4,rsize=1048576,wsize=1048576,namlen=255,hard,proto=tcp,port=0,timeo=600,retrans=2,sec=sys,clientaddr=172.19.8.133,addr=172.19.8.1 0 0
+>>>>>>>>>
+>>>>>>>>> <log1.txt.gz>
+>>>>>>>>>
+>>>>>>>>
+>>>>>>>> --
+>>>>>>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>>>>>>>> the body of a message to majordomo@vger.kernel.org
+>>>>>>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>>>>>>
+>>>>>>>
+>>>>>>> --
+>>>>>>> chuck[dot]lever[at]oracle[dot]com
+>>>>>>
+>>>>>
+>>>>>
+>>>>> --
+>>>>> chuck[dot]lever[at]oracle[dot]com
+>>>>
+>>>
+>>
+>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+
+-- 
+chuck[dot]lever[at]oracle[dot]com
