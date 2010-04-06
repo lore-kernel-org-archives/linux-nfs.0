@@ -1,71 +1,59 @@
-From: "Paul E. McKenney" <paulmck@linux.vnet.ibm.com>
-Subject: Re: [PATCH] NFS: Fix RCU warnings in
- nfs_inode_return_delegation_noreclaim() [ver #2]
-Date: Tue, 6 Apr 2010 10:29:44 -0700
-Message-ID: <20100406172944.GB2553@linux.vnet.ibm.com>
-References: <26760.1269903543@redhat.com>
- <20100329232636.GT2569@linux.vnet.ibm.com>
- <2440.1269967151@redhat.com>
- <21972.1269993064@redhat.com>
- <10818.1270044273@redhat.com>
- <15371.1270057054@redhat.com>
- <19556.1270076008@redhat.com>
- <14003.1270122314@redhat.com>
- <4161.1270133211@redhat.com>
- <23331.1270570443@redhat.com>
-Reply-To: paulmck@linux.vnet.ibm.com
+From: gg-B3jsHfKwJfLR7s880joybQ@public.gmane.org
+Subject: nfs + Reiser4
+Date: Tue, 06 Apr 2010 19:52:21 +0200
+Message-ID: <op.vaq49joctxpshh@localhost.localdomain>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Eric Dumazet <eric.dumazet@gmail.com>, Trond.Myklebust@netapp.com,
-	linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-To: David Howells <dhowells@redhat.com>
+Content-Type: text/plain; charset="us-ascii"
+To: nfs@lists.sourceforge.net
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from e6.ny.us.ibm.com ([32.97.182.146]:37099 "EHLO e6.ny.us.ibm.com"
+Received: from neil.brown.name ([220.233.11.133]:58621 "EHLO neil.brown.name"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756620Ab0DFR3r (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 6 Apr 2010 13:29:47 -0400
-In-Reply-To: <23331.1270570443@redhat.com>
+	id S1757309Ab0DFSTs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 6 Apr 2010 14:19:48 -0400
+Received: from brown by neil.brown.name with local (Exim 4.71)
+	(envelope-from <nfs-bounces@lists.sourceforge.net>)
+	id 1NzDNJ-0007pa-KI
+	for linux-nfs@vger.kernel.org; Wed, 07 Apr 2010 04:19:45 +1000
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Apr 06, 2010 at 05:14:03PM +0100, David Howells wrote:
-> Paul E. McKenney <paulmck@linux.vnet.ibm.com> wrote:
-> 
-> > > > So you have objected to needless memory barriers.  How do you feel
-> > > > about possibly needless ACCESS_ONCE() calls?
-> > > 
-> > > That would work here since it shouldn't emit any excess instructions.
-> > 
-> > And here is the corresponding patch.  Seem reasonable?
-> 
-> Actually, now I've thought about it some more.  No, it's not reasonable.
-> You've written:
-> 
->     This patch adds a variant of rcu_dereference() that handles situations
->     where the RCU-protected data structure cannot change, perhaps due to
->     our holding the update-side lock, or where the RCU-protected pointer is
->     only to be tested, not dereferenced.
-> 
-> But if we hold the update-side lock, then why should we be forced to use
-> ACCESS_ONCE()?
-> 
-> In fact, if we don't hold the lock, but we want to test the pointer twice in
-> succession, why should we be required to use ACCESS_LOCK()?
+Hi,
 
-OK, just to make sure I understand you...  You are asking for two additional
-RCU API members:
+I am having serious headaches using nfs between a reiser4 server and arm  
+client.
+Both on 2.6.29 vintage kernels.
 
-1.	rcu_access_pointer() or some such that includes ACCESS_ONCE(),
-	but not smp_read_barrier_depends(), which may be used when
-	we are simply examining the value of the RCU-protected pointer
-	(as in the NFS case).  It could also be used when the
-	appropriate update-side lock is held, but for that we have:
+Files are constantly getting out of sync.
 
-2.	rcu_dereference_protected() or some such that includes neither
-	ACCESS_ONCE() nor smp_read_barrier_depends(), and that may
-	only be used if updates are prevented, for example, by holding
-	the appropriate update-side lock.
+Example :
 
-Does this fit?
+boot ARM via nfs
+edit lighttpd.conf on ARM
+check edit is visible on server. OK
 
-							Thanx, Paul
+reboot ARM
+check file : reverted to an earlier state.
+check server: edited version still showing.
+
+
+This is just one example of serious userablity issues. I have also seen a  
+revert 10s later reopening the same file on the ARM.
+
+Is this possibly related to R4 + nfs ?
+
+TIA.
+
+------------------------------------------------------------------------------
+Download Intel&#174; Parallel Studio Eval
+Try the new software tools for yourself. Speed compiling, find bugs
+proactively, and fine-tune applications for parallel performance.
+See why Intel Parallel Studio got high marks during beta.
+http://p.sf.net/sfu/intel-sw-dev
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
+_______________________________________________
+Please note that nfs@lists.sourceforge.net is being discontinued.
+Please subscribe to linux-nfs@vger.kernel.org instead.
+    http://vger.kernel.org/vger-lists.html#linux-nfs
+
