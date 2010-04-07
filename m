@@ -1,70 +1,70 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: nfs + Reiser4
-Date: Wed, 07 Apr 2010 18:49:02 -0400
-Message-ID: <1270680542.6995.21.camel@localhost.localdomain>
-References: <op.vaq49joctxpshh@localhost.localdomain>
-	 <20100407173438.GA25614@fieldses.org> <4BBCD271.5040100@oracle.com>
-	 <20100407185157.GF26072@fieldses.org> <4BBCD618.50301@oracle.com>
-	 <20100407192025.GH26072@fieldses.org>
-	 <1270674567.3177.2.camel@localhost.localdomain>
-	 <4BBCFA28.2030101@catking.net>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: DELEG9
+Date: Wed, 7 Apr 2010 19:01:19 -0400
+Message-ID: <20100407230119.GK26072@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-	Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org
-To: gg-B3jsHfKwJfLR7s880joybQ@public.gmane.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-nfs@vger.kernel.org
+To: iisaman@umich.edu
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-out1.uio.no ([129.240.10.57]:34760 "EHLO mail-out1.uio.no"
+Received: from fieldses.org ([174.143.236.118]:51189 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753435Ab0DGWtL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 7 Apr 2010 18:49:11 -0400
-In-Reply-To: <4BBCFA28.2030101-B3jsHfKwJfLR7s880joybQ@public.gmane.org>
+	id S1752003Ab0DGW6x (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 7 Apr 2010 18:58:53 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 2010-04-07 at 23:33 +0200, gg-B3jsHfKwJfLR7s880joybQ@public.gmane.org wrote: 
-> Some more info on the machines in question.
-> 
-> server: gentoo linux 2.6.29 kernel patched for R4 
-> .net-fs/nfs-utils-1.2.1  Recently added nfs4 to existing nfs3 in kernel. 
-> This did not seem to improve/deteriorate the problem. This has been an 
-> issue ever since I used nfs to remote boot the client.
-> 
-> Client. ARM SBC also running 2.6.29 nfs3. Similar issues seen when 
-> running manufacturer's 2.4 kernel. Suggests problem is on server.
-> 
-> Redboot bootstrap loads kernel via http then boots with nfsroot supplied 
-> by server.
-> 
-> All specific issues related here are as seen yesterday with both running 
-> 2.6.29.
-> 
-> The set up is damn near unusable as it is behaving now . Files are 
-> constantly out of sync. Changes seem to stay or disappear in a more or 
-> less arbitrary fashion (ie no percievable repeatable pattern or cause). 
-> Files often get some kind of merge state which is neither the state on 
-> the server , nor the last saved state on the client.
-> 
-> /dev/root on / type nfs
-> (rw,vers=2,rsize=4096,wsize=4096,namlen=255,hard,nointr,nolock,\proto=udp,timeo=\
-> 11,retrans=3,sec=sys,addr=192.168.1.3)
-> 
-> I note vers=2 here, does this maybe indicate some trouble with the 
-> initial negotiation and fallback to nfs2 ?
-> 
-> I don't have one clear , reproducible problem because the results are so 
-> erratic. But just editting a file with vi on the client and reopening it 
-> will give incorrect results 8 time out of 10.
-> 
-> The reboot issue killed me. I thought is desperation that that would at 
-> least mean I got a clean copy.
+DELEG9 has a few problems:
 
-OK, so clearly not a userspace NFS issue then.
+A callback is never detected, even when one is sent, because
+_verify_cb_occurred looks at the old callback server, not the new one.
 
-Just out of interest, are you able to reproduce this problem with other
-underlying filesystems? Reiser4 has never been merged into the mainline
-kernel, so I doubt that any one of us has a test setup.
+DELEGRETURN is never sent--probably the existing client doesn't know how
+to handle recalls on the new callback server?  The code attempts to make
+up for this with an explicit DELEGRETURN after _cause_recall(), but by
+then it's too late.
 
-Cheers
-  Trond
+After the following patch, the test works, in the sense that it succeeds
+if and only if the server makes a recall over the new callback
+connection.
 
+I don't claim this is right, though.  I'm just sending a single open to
+trigger the recall, and ignoring the results.  Maybe what's needed is a
+method that modifies the callback server instead of attempting to
+replace it outright?  I don't know.
+
+--b.
+
+diff --git a/lib/nfs4/servertests/st_delegation.py b/lib/nfs4/servertests/st_delegation.py
+index f5056f0..26b19d6 100644
+--- a/lib/nfs4/servertests/st_delegation.py
++++ b/lib/nfs4/servertests/st_delegation.py
+@@ -399,6 +399,7 @@ def testChangeDeleg(t, env, funct=_recall):
+     deleg_info, fh, stateid = _get_deleg(t, c, c.homedir + [t.code], funct, NFS4_OK)
+     # Create new callback server
+     new_server = CBServer(c)
++    c.cb_server = new_server
+     cb_thread = threading.Thread(target=new_server.run)
+     cb_thread.setDaemon(1)
+     cb_thread.start()
+@@ -416,11 +417,16 @@ def testChangeDeleg(t, env, funct=_recall):
+         res = c.compound([confirmop])
+         check(res)
+     count = new_server.opcounts[OP_CB_RECALL]
+-    fh2, stateid2 = _cause_recall(t, env)
++    # need lock around this to prevent _recall from
++    # calling c.unpacker.reset while open is still unpacking
++    _lock.acquire()
++    res = c.open_file('newowner', c.homedir + [t.code],
++                      access=OPEN4_SHARE_ACCESS_WRITE,
++                      deny=OPEN4_SHARE_DENY_NONE)
++    _lock.release()
++    env.sleep(1, 'wait for recall')
+     _verify_cb_occurred(t, c, count)
+-    ops = c.use_obj(fh) + [c.delegreturn_op(deleg_info.read.stateid)]
+-    res = c.compound(ops)
+-    check(res)
++
+ 
+ 
+    
