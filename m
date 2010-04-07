@@ -1,65 +1,70 @@
-From: Bernd Schubert <bernd.schubert@fastmail.fm>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
 Subject: Re: nfs + Reiser4
-Date: Thu, 8 Apr 2010 00:44:38 +0200
-Message-ID: <201004080044.38451.bernd.schubert@fastmail.fm>
+Date: Wed, 07 Apr 2010 18:49:02 -0400
+Message-ID: <1270680542.6995.21.camel@localhost.localdomain>
 References: <op.vaq49joctxpshh@localhost.localdomain>
+	 <20100407173438.GA25614@fieldses.org> <4BBCD271.5040100@oracle.com>
+	 <20100407185157.GF26072@fieldses.org> <4BBCD618.50301@oracle.com>
+	 <20100407192025.GH26072@fieldses.org>
+	 <1270674567.3177.2.camel@localhost.localdomain>
+	 <4BBCFA28.2030101@catking.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-To: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset="UTF-8"
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+	Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org
+To: gg-B3jsHfKwJfLR7s880joybQ@public.gmane.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from neil.brown.name ([220.233.11.133]:45805 "EHLO neil.brown.name"
+Received: from mail-out1.uio.no ([129.240.10.57]:34760 "EHLO mail-out1.uio.no"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752003Ab0DGWpG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 7 Apr 2010 18:45:06 -0400
-Received: from brown by neil.brown.name with local (Exim 4.71)
-	(envelope-from <nfs-bounces@lists.sourceforge.net>)
-	id 1Nzdzc-0002uO-8o
-	for linux-nfs@vger.kernel.org; Thu, 08 Apr 2010 08:45:04 +1000
-In-Reply-To: <op.vaq49joctxpshh-bi+AKbBUZKY6gyzm1THtWbp2dZbC/Bob@public.gmane.org>
+	id S1753435Ab0DGWtL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 7 Apr 2010 18:49:11 -0400
+In-Reply-To: <4BBCFA28.2030101-B3jsHfKwJfLR7s880joybQ@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tuesday 06 April 2010, gg-B3jsHfKwJfLR7s880joybQ@public.gmane.org wrote:
-> Hi,
+On Wed, 2010-04-07 at 23:33 +0200, gg-B3jsHfKwJfLR7s880joybQ@public.gmane.org wrote: 
+> Some more info on the machines in question.
 > 
-> I am having serious headaches using nfs between a reiser4 server and arm
-> client.
-> Both on 2.6.29 vintage kernels.
+> server: gentoo linux 2.6.29 kernel patched for R4 
+> .net-fs/nfs-utils-1.2.1  Recently added nfs4 to existing nfs3 in kernel. 
+> This did not seem to improve/deteriorate the problem. This has been an 
+> issue ever since I used nfs to remote boot the client.
 > 
-> Files are constantly getting out of sync.
+> Client. ARM SBC also running 2.6.29 nfs3. Similar issues seen when 
+> running manufacturer's 2.4 kernel. Suggests problem is on server.
 > 
-> Example :
+> Redboot bootstrap loads kernel via http then boots with nfsroot supplied 
+> by server.
 > 
-> boot ARM via nfs
-> edit lighttpd.conf on ARM
-> check edit is visible on server. OK
+> All specific issues related here are as seen yesterday with both running 
+> 2.6.29.
 > 
-> reboot ARM
-> check file : reverted to an earlier state.
-> check server: edited version still showing.
+> The set up is damn near unusable as it is behaving now . Files are 
+> constantly out of sync. Changes seem to stay or disappear in a more or 
+> less arbitrary fashion (ie no percievable repeatable pattern or cause). 
+> Files often get some kind of merge state which is neither the state on 
+> the server , nor the last saved state on the client.
 > 
+> /dev/root on / type nfs
+> (rw,vers=2,rsize=4096,wsize=4096,namlen=255,hard,nointr,nolock,\proto=udp,timeo=\
+> 11,retrans=3,sec=sys,addr=192.168.1.3)
 > 
-> This is just one example of serious userablity issues. I have also seen a
-> revert 10s later reopening the same file on the ARM.
+> I note vers=2 here, does this maybe indicate some trouble with the 
+> initial negotiation and fallback to nfs2 ?
 > 
-> Is this possibly related to R4 + nfs ?
+> I don't have one clear , reproducible problem because the results are so 
+> erratic. But just editting a file with vi on the client and reopening it 
+> will give incorrect results 8 time out of 10.
+> 
+> The reboot issue killed me. I thought is desperation that that would at 
+> least mean I got a clean copy.
 
-Reminds me about an old bug report I wrote and which nobody ever cared about:
+OK, so clearly not a userspace NFS issue then.
 
-http://article.gmane.org/gmane.linux.nfs/9867/match=
+Just out of interest, are you able to reproduce this problem with other
+underlying filesystems? Reiser4 has never been merged into the mainline
+kernel, so I doubt that any one of us has a test setup.
 
-
-------------------------------------------------------------------------------
-Download Intel&#174; Parallel Studio Eval
-Try the new software tools for yourself. Speed compiling, find bugs
-proactively, and fine-tune applications for parallel performance.
-See why Intel Parallel Studio got high marks during beta.
-http://p.sf.net/sfu/intel-sw-dev
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
-_______________________________________________
-Please note that nfs@lists.sourceforge.net is being discontinued.
-Please subscribe to linux-nfs@vger.kernel.org instead.
-    http://vger.kernel.org/vger-lists.html#linux-nfs
+Cheers
+  Trond
 
