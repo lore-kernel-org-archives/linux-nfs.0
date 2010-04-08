@@ -1,7 +1,7 @@
 From: andros@netapp.com
-Subject: [PATCH 07/14] SQUASHME pnfs_submit: change get_device_info parameter
-Date: Thu,  8 Apr 2010 15:54:03 -0400
-Message-ID: <1270756450-5570-8-git-send-email-andros@netapp.com>
+Subject: [PATCH 09/14] SQUASHME pnfs_submit: change decode_device parameter
+Date: Thu,  8 Apr 2010 15:54:05 -0400
+Message-ID: <1270756450-5570-10-git-send-email-andros@netapp.com>
 References: <1270756450-5570-1-git-send-email-andros@netapp.com>
  <1270756450-5570-2-git-send-email-andros@netapp.com>
  <1270756450-5570-3-git-send-email-andros@netapp.com>
@@ -9,94 +9,69 @@ References: <1270756450-5570-1-git-send-email-andros@netapp.com>
  <1270756450-5570-5-git-send-email-andros@netapp.com>
  <1270756450-5570-6-git-send-email-andros@netapp.com>
  <1270756450-5570-7-git-send-email-andros@netapp.com>
+ <1270756450-5570-8-git-send-email-andros@netapp.com>
+ <1270756450-5570-9-git-send-email-andros@netapp.com>
 Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
 To: pnfs@linux-nfs.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:39333 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:59475 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933316Ab0DHTy5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 8 Apr 2010 15:54:57 -0400
-In-Reply-To: <1270756450-5570-7-git-send-email-andros@netapp.com>
+	id S933340Ab0DHTy6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 8 Apr 2010 15:54:58 -0400
+In-Reply-To: <1270756450-5570-9-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 From: Andy Adamson <andros@netapp.com>
 
-In preparation to use the generic deviceid cache.
+In preparation to use the generic deviceid cache
 
 Signed-off-by: Andy Adamson <andros@netapp.com>
 ---
- fs/nfs/nfs4filelayout.c    |    2 +-
- fs/nfs/nfs4filelayout.h    |    2 +-
- fs/nfs/nfs4filelayoutdev.c |    9 ++++-----
- 3 files changed, 6 insertions(+), 7 deletions(-)
+ fs/nfs/nfs4filelayoutdev.c |    9 +++++----
+ 1 files changed, 5 insertions(+), 4 deletions(-)
 
-diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
-index 20b3ae2..f222c3b 100644
---- a/fs/nfs/nfs4filelayout.c
-+++ b/fs/nfs/nfs4filelayout.c
-@@ -399,7 +399,7 @@ filelayout_check_layout(struct pnfs_layout_type *lo,
- 	dsaddr = nfs4_pnfs_device_item_find(FILE_MT(PNFS_INODE(lo))->hlist,
- 					     &fl->dev_id);
- 	if (dsaddr == NULL) {
--		dsaddr = get_device_info(FILE_MT(PNFS_INODE(lo)), &fl->dev_id);
-+		dsaddr = get_device_info(PNFS_INODE(lo), &fl->dev_id);
- 		if (dsaddr == NULL) {
- 			dprintk("%s NO device for dev_id %s\n",
- 				__func__, deviceid_fmt(&fl->dev_id));
-diff --git a/fs/nfs/nfs4filelayout.h b/fs/nfs/nfs4filelayout.h
-index 04cca7e..560f7f6 100644
---- a/fs/nfs/nfs4filelayout.h
-+++ b/fs/nfs/nfs4filelayout.h
-@@ -109,6 +109,6 @@ struct nfs4_file_layout_dsaddr *
- nfs4_pnfs_device_item_find(struct nfs4_pnfs_dev_hlist *hlist,
- 			   struct pnfs_deviceid *dev_id);
- struct nfs4_file_layout_dsaddr *
--get_device_info(struct filelayout_mount_type *mt, struct pnfs_deviceid *dev_id);
-+get_device_info(struct inode *inode, struct pnfs_deviceid *dev_id);
- 
- #endif /* FS_NFS_NFS4FILELAYOUT_H */
 diff --git a/fs/nfs/nfs4filelayoutdev.c b/fs/nfs/nfs4filelayoutdev.c
-index db6817d..9844a9c 100644
+index bb8a84a..506ede1 100644
 --- a/fs/nfs/nfs4filelayoutdev.c
 +++ b/fs/nfs/nfs4filelayoutdev.c
-@@ -623,8 +623,7 @@ decode_and_add_device(struct filelayout_mount_type *mt, struct pnfs_device *dev)
-  * of available devices, and return it.
+@@ -505,7 +505,7 @@ out_err:
+ /* Decode opaque device data and return the result
   */
- struct nfs4_file_layout_dsaddr *
--get_device_info(struct filelayout_mount_type *mt,
--		struct pnfs_deviceid *dev_id)
-+get_device_info(struct inode *inode, struct pnfs_deviceid *dev_id)
+ static struct nfs4_file_layout_dsaddr*
+-decode_device(struct filelayout_mount_type *mt, struct pnfs_device *pdev)
++decode_device(struct inode *ino, struct pnfs_device *pdev)
  {
- 	struct pnfs_device *pdev = NULL;
- 	int maxpages = NFS4_GETDEVINFO_MAXSIZE >> PAGE_SHIFT;
-@@ -632,7 +631,7 @@ get_device_info(struct filelayout_mount_type *mt,
- 	struct nfs4_file_layout_dsaddr *dsaddr = NULL;
- 	int rc, i, j, minpages = 1;
+ 	int i, dummy;
+ 	u32 cnt, num;
+@@ -572,7 +572,8 @@ decode_device(struct filelayout_mount_type *mt, struct pnfs_device *pdev)
+ 		}
+ 		for (j = 0; j < dummy; j++) {
+ 			if (j == 0) {
+-				dsaddr->ds_list[i] = decode_and_add_ds(&p, mt);
++				dsaddr->ds_list[i] = decode_and_add_ds(&p,
++								FILE_MT(ino));
+ 				if (dsaddr->ds_list[i] == NULL)
+ 					goto out_err_free;
+ 			} else {
+@@ -589,7 +590,7 @@ decode_device(struct filelayout_mount_type *mt, struct pnfs_device *pdev)
+ 	return dsaddr;
  
--	dprintk("%s mt %p\n", __func__, mt);
-+	dprintk("%s \n", __func__);
- 	pdev = kzalloc(sizeof(struct pnfs_device), GFP_KERNEL);
- 	if (pdev == NULL)
- 		return NULL;
-@@ -664,7 +663,7 @@ retry_once:
- 	/* TODO: Update types when CB_NOTIFY_DEVICEID is available */
- 	pdev->dev_notify_types = 0;
+ out_err_free:
+-	nfs4_pnfs_device_destroy(dsaddr, mt->hlist);
++	nfs4_pnfs_device_destroy(dsaddr, FILE_MT(ino)->hlist);
+ out_err:
+ 	dprintk("%s ERROR: returning NULL\n", __func__);
+ 	return NULL;
+@@ -605,7 +606,7 @@ decode_and_add_device(struct inode *inode, struct pnfs_device *dev)
+ {
+ 	struct nfs4_file_layout_dsaddr *dsaddr;
  
--	rc = pnfs_callback_ops->nfs_getdeviceinfo(mt->fl_sb, pdev);
-+	rc = pnfs_callback_ops->nfs_getdeviceinfo(inode->i_sb, pdev);
- 	/* Retry once with the returned mincount if a page was too small */
- 	dprintk("%s getdevice info returns %d minpages %d\n", __func__, rc,
- 		minpages);
-@@ -682,7 +681,7 @@ retry_once:
- 	/* Found new device, need to decode it and then add it to the
- 	 * list of known devices for this mountpoint.
- 	 */
--	dsaddr = decode_and_add_device(mt, pdev);
-+	dsaddr = decode_and_add_device(FILE_MT(inode), pdev);
- out_free:
- 	if (minpages > 1 && pdev->area != NULL)
- 		vunmap(pdev->area);
+-	dsaddr = decode_device(FILE_MT(inode), dev);
++	dsaddr = decode_device(inode, dev);
+ 	if (!dsaddr) {
+ 		printk(KERN_WARNING "%s: Could not decode device\n",
+ 			__func__);
 -- 
 1.6.6
 
