@@ -1,70 +1,43 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: DELEG9
-Date: Wed, 7 Apr 2010 19:01:19 -0400
-Message-ID: <20100407230119.GK26072@fieldses.org>
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Re: [PATCH 0/6] Refactor client_check()
+Date: Thu, 08 Apr 2010 11:21:28 -0400
+Message-ID: <4BBDF478.1020302@RedHat.com>
+References: <20100323165122.4368.43659.stgit@localhost.localdomain>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=UTF-8
 Cc: linux-nfs@vger.kernel.org
-To: iisaman@umich.edu
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:51189 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:38558 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752003Ab0DGW6x (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 7 Apr 2010 18:58:53 -0400
+	id S1758732Ab0DHPVd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 8 Apr 2010 11:21:33 -0400
+In-Reply-To: <20100323165122.4368.43659.stgit-bi+AKbBUZKY6gyzm1THtWbp2dZbC/Bob@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-DELEG9 has a few problems:
 
-A callback is never detected, even when one is sent, because
-_verify_cb_occurred looks at the old callback server, not the new one.
 
-DELEGRETURN is never sent--probably the existing client doesn't know how
-to handle recalls on the new callback server?  The code attempts to make
-up for this with an explicit DELEGRETURN after _cause_recall(), but by
-then it's too late.
+On 03/23/2010 12:52 PM, Chuck Lever wrote:
+> Hi Steve-
+> 
+> These patches refactor client_check() so that IPv6 support can be
+> added down the road.  They should introduce no change in behavior.
+> 
+> ---
+> 
+> Chuck Lever (6):
+>       libexport.a: replace xlog(L_FATAL) in client_check()
+>       libexport.a: Refactor wildcard checking in client_check()
+>       libexport.a: Refactor netgroup checking in client_check()
+>       libexport.a: Remove unused function client_checkaddr()
+>       libexport.a: Factor SUBNETWORK checking out of check_client()
+>       libexport.a: Factor FQDN checking out of check_client()
+> 
+> 
+>  support/export/client.c |  204 ++++++++++++++++++++++++++++++-----------------
+>  1 files changed, 130 insertions(+), 74 deletions(-)
+> 
+Committed... 
 
-After the following patch, the test works, in the sense that it succeeds
-if and only if the server makes a recall over the new callback
-connection.
-
-I don't claim this is right, though.  I'm just sending a single open to
-trigger the recall, and ignoring the results.  Maybe what's needed is a
-method that modifies the callback server instead of attempting to
-replace it outright?  I don't know.
-
---b.
-
-diff --git a/lib/nfs4/servertests/st_delegation.py b/lib/nfs4/servertests/st_delegation.py
-index f5056f0..26b19d6 100644
---- a/lib/nfs4/servertests/st_delegation.py
-+++ b/lib/nfs4/servertests/st_delegation.py
-@@ -399,6 +399,7 @@ def testChangeDeleg(t, env, funct=_recall):
-     deleg_info, fh, stateid = _get_deleg(t, c, c.homedir + [t.code], funct, NFS4_OK)
-     # Create new callback server
-     new_server = CBServer(c)
-+    c.cb_server = new_server
-     cb_thread = threading.Thread(target=new_server.run)
-     cb_thread.setDaemon(1)
-     cb_thread.start()
-@@ -416,11 +417,16 @@ def testChangeDeleg(t, env, funct=_recall):
-         res = c.compound([confirmop])
-         check(res)
-     count = new_server.opcounts[OP_CB_RECALL]
--    fh2, stateid2 = _cause_recall(t, env)
-+    # need lock around this to prevent _recall from
-+    # calling c.unpacker.reset while open is still unpacking
-+    _lock.acquire()
-+    res = c.open_file('newowner', c.homedir + [t.code],
-+                      access=OPEN4_SHARE_ACCESS_WRITE,
-+                      deny=OPEN4_SHARE_DENY_NONE)
-+    _lock.release()
-+    env.sleep(1, 'wait for recall')
-     _verify_cb_occurred(t, c, count)
--    ops = c.use_obj(fh) + [c.delegreturn_op(deleg_info.read.stateid)]
--    res = c.compound(ops)
--    check(res)
-+
- 
- 
-    
+steved.
