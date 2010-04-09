@@ -1,77 +1,50 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from lo.gmane.org ([80.91.229.12]:39306 "EHLO lo.gmane.org"
+Received: from mx1.redhat.com ([209.132.183.28]:46089 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753431Ab0DGPPK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 7 Apr 2010 11:15:10 -0400
-Received: from list by lo.gmane.org with local (Exim 4.69)
-	(envelope-from <glN-linux-nfs@m.gmane.org>)
-	id 1NzWy7-0006lr-RB
-	for linux-nfs@vger.kernel.org; Wed, 07 Apr 2010 17:15:03 +0200
-Received: from 141.13.106.69 ([141.13.106.69])
-        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-nfs@vger.kernel.org>; Wed, 07 Apr 2010 17:15:03 +0200
-Received: from thomas.wunder by 141.13.106.69 with local (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-nfs@vger.kernel.org>; Wed, 07 Apr 2010 17:15:03 +0200
-To: linux-nfs@vger.kernel.org
-From: Tom <thomas.wunder@swt-bamberg.de>
-Subject: NFS-Mount with MIT-Kerberos5 doesn't use user tickets...
-Date: Wed, 7 Apr 2010 14:37:24 +0000 (UTC)
-Message-ID: <loom.20100407T160936-119@post.gmane.org>
+	id S1752757Ab0DIUuI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 9 Apr 2010 16:50:08 -0400
+Date: Fri, 9 Apr 2010 15:50:05 -0500
+From: David Teigland <teigland@redhat.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: lockd and lock cancellation
+Message-ID: <20100409205005.GB11823@redhat.com>
+References: <20100409194018.GA11823@redhat.com>
+ <4BBF8D25.7050506@oracle.com>
 Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4BBF8D25.7050506@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-I'm trying to set up a kerberized NFSv4 client to mount a share using a local
-ticket (obtained by PAM when the user logged into the shell) instead of a
-machine specific ticket (i.e. I'd like to do user-based authorization). I
-already managed to get machine based authentification/authorization working for
-a test but i can't (and i don't want to) use local keytab files for storing the
-machine keys on the client machines in my production environment.
+On Fri, Apr 09, 2010 at 04:25:09PM -0400, Chuck Lever wrote:
+> >But, for all the kernel work on these nfs/gfs/dlm hooks, there's a larger
+> >issue that no one is working on AFAIK:  the mechanisms for recovering
+> >client locks on remaining gfs nodes when one gfs node fails.  That would
+> >take a lot of work, and until it's done all the kernel apis will be a moot
+> >point since clustered nfs locks on gfs will be unusable.
+> 
+> To support IPv6, I've studied and modified the NFSv2/v3 lock
+> recovery mechanisms quite a bit recently.  What kernel APIs do you
+> think would be needed to manage cluster lock recovery?  Just
+> something to release stale locks on a single node?
 
-I'm running the rpc.gssd with the "-n -vvv -rrr" to make it consider user
-tickets too. 
-Now, when I try to mount the share to "/mnt/net" (the according fstab-line
-looks like "dnsdhcp:/ /mnt/net  nfs4  sec=krb5p,user 0 0") the credentials
-cache of the user which is doing the mount is not being used. The second
-log message  reads 
-"rpc.gssd[888]: getting credentials for client with uid 0 for server <srvname>"
-Googling around a bit i found out that some other people managed to make mount
-use the uid of the initiating user rather than 'root'(uid=0) (though they seem
-to have other problems...).
+I only have a general idea of what needs to be done; I think Wendy Cheng
+may have written a more detailed TODO list a few years ago.  The main
+problem is that when a gfs node fails, the other gfs nodes purge all
+the posix locks that it held.  In the case of nfs that's a problem, of
+course, because the plocks being purged didn't finally belong to that
+node/server but to the clients connected to it.  The clients are still
+alive and either failing over to an alternate gfs/nfs server or waiting
+for the failed server to return.
 
-I'm not quite sure what is wrong with my setup and therefore i tried to dig
-into the code of gssd. The only thing i found is that the uid (0 in my case)
-is read from a file "clntXX/krb5" (within a pipefs) which is obviously
-written by the kernel.
+So, when a gfs/nfs node/server fails, the remaining gfs servers need to
+reclaim locks from the nfs clients that were connected to it, and insert
+these locks into the gfs/dlm posix lock table.  That recovery of client
+locks needs to happen more or less during the grace period, after the
+purging of locks from the failed node and before any locks are granted.
 
-A kernel update to 2.6.32-19 (i'm using ubuntu karmic on an amd64 machine)
-didn't make it any better. 
+Basically, nfs lock recovery needs to be integrated with gfs/dlm lock
+recovery.
 
-Complete Log (client): http://pastebin.com/s7B2W7ie
-The user ticket (i'm running the mount-command from an account of a user which
-is authenticated via kerberos (MIT Kerberos5)) resided in
-/tmp/krb5cc_10002_H6OYu0
-Here's what klist said http://pastebin.com/Lrrs3AwM
-And this is the client's krb5.conf: http://pastebin.com/JChsVNJQ
-
-I'm really desperate now because i've been working on this problem for nearly
-two weeks now and i couldn't get by...
-
-Can you suggest me how to specify which user should be utilized to carry out
-the mount? (Did I misconfigure something?)
-
-
-By the way i've already downloaded the source-code of the nfs-utils
-(ver. 1.2.0) and modified
-void handle_krb5_upcall(struct clnt_info *clp)
-from 
-gssd/gssd_proc.c
-to statically set uid to 10002 (just for testing what will happen) and it's
-pretty interesting what comes out:
-http://pastebin.com/Qi1rWMLC
-
-Thanks in advance!
-
+Dave
