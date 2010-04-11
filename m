@@ -1,30 +1,49 @@
-From: Thomas Wunder <thomas.wunder@swt-bamberg.de>
-Subject: Re: NFS-Mount with MIT-Kerberos5 doesn't use user tickets...
-Date: Sat, 10 Apr 2010 18:13:10 +0200
-Message-ID: <201004101813.10319.thomas.wunder@swt-bamberg.de>
-References: <loom.20100407T160936-119@post.gmane.org> <y2o4d569c331004090750zeb56bf58udb7bbfb3277832c@mail.gmail.com> <4BBF57D4.80301@oracle.com>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: BUG: cannot acquire lock twice with NFSv4
+Date: Sun, 11 Apr 2010 11:24:53 -0400
+Message-ID: <1270999493.4663.1.camel@localhost.localdomain>
+References: <wwer5mo3hf9.fsf@powwow.iut-bm.univ-fcomte.fr>
+	 <wwed3y73da5.fsf@powwow.iut-bm.univ-fcomte.fr>
 Mime-Version: 1.0
-Content-Type: Text/Plain;
-  charset="iso-8859-1"
-Cc: Kevin Coffman <kwc@citi.umich.edu>, linux-nfs@vger.kernel.org,
-	"William A. \(Andy\) Adamson" <androsadamson@gmail.com>
-To: Chuck Lever <chuck.lever@oracle.com>
+Content-Type: text/plain; charset=UTF-8
+Cc: linux-nfs@vger.kernel.org
+To: Arnaud Giersch <arnaud.giersch-T9cNH8bv7N6Vy8wrSkPSsihWMY4UYrEW@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from ldap.uni-bamberg.de ([141.13.240.32]:3396 "EHLO
-	urz32.UNI-BAMBERG.DE" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751428Ab0DJQNP (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 10 Apr 2010 12:13:15 -0400
-In-Reply-To: <4BBF57D4.80301@oracle.com>
+Received: from mail-out1.uio.no ([129.240.10.57]:37428 "EHLO mail-out1.uio.no"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752106Ab0DKPY7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 11 Apr 2010 11:24:59 -0400
+In-Reply-To: <wwed3y73da5.fsf-RvotKtm/pmVc2QSU14wbDhqUABtTHcxU/fObgANad5s@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-> I don't know anything about these upcalls, sorry.
-But maybe you know which piece of code puts the uid into
-/var/lib/nfs/rpc_pipefs/clntXX/krb5
+On Sat, 2010-04-10 at 10:46 +0200, Arnaud Giersch wrote:=20
+> Vendredi 09 avril 2010, vers 15:05:14 (+0200), j'ai =C3=A9crit :
+>=20
+> >   1. opens a first file, and acquires read lock on it ;
+> >   2. opens a second file, and acquires read lock on it ;
+> >   3. releases locks, and closes files.
+> >
+> > Both opened files are of course on the NFS mount.  On the first run=
+, all
+> > seems to be fine.  On the second (and subsequent) runs, the lock is
+> > refused at step 2 with errno=3D37 (ENOLCK, No locks available).
+>=20
+> I noticed that things appear to work as expected if commit
+> 8e469ebd6dc32cbaf620e134d79f740bf0ebab79 (NFSv4: Don't allow posix
+> locking against servers that don't support it) is reverted.
+>=20
+> From what I can see, the client is granted a read delegation for the
+> second file.  On the second run, the client fetches some cached state
+> for this file.
+>=20
+> On this second run, state->flags (as in _nfs4_do_open, or in
+> nfs4_proc_lock) only contains NFS_DELEGATED_STATE, while on the first
+> run, it also contained NFS_O_RDONLY_STATE and NFS_STATE_POSIX_LOCKS.
 
-It's hard for me to find an entry point to dig into the nfs kernel code on my 
-own as i haven't got any experience with linux "filesystem drivers" yet...
+Ah. Nice catch! That does indeed need to be fixed... I'll draft up a
+patch tomorrow, and send you a copy.
 
-We just need to find out why it always puts "0" there instead of the real uid 
-of the user which invoked the mound command...
+Cheers
+  Trond
 
