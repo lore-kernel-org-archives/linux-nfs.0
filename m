@@ -1,70 +1,58 @@
-From: Benny Halevy <bhalevy@panasas.com>
-Subject: Re: [pnfs] [PATCH 0/14] pnfs_submit file layout client device management
-Date: Mon, 12 Apr 2010 22:03:21 +0300
-Message-ID: <4BC36E79.5000500@panasas.com>
-References: <1270756450-5570-1-git-send-email-andros@netapp.com>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 1/2] libexport.a: Reduce code duplication in client_init()
+Date: Mon, 12 Apr 2010 15:57:16 -0400
+Message-ID: <20100412195715.9839.87962.stgit@localhost.localdomain>
+References: <20100412195538.9839.76495.stgit@localhost.localdomain>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: pnfs@linux-nfs.org, linux-nfs@vger.kernel.org
-To: andros@netapp.com
+Content-Type: text/plain; charset="utf-8"
+Cc: linux-nfs@vger.kernel.org
+To: steved@redhat.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:18674 "EHLO
-	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1752862Ab0DLTDY (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 12 Apr 2010 15:03:24 -0400
-In-Reply-To: <1270756450-5570-1-git-send-email-andros@netapp.com>
+Received: from mail-qy0-f179.google.com ([209.85.221.179]:33204 "EHLO
+	mail-qy0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752744Ab0DLT5S (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 12 Apr 2010 15:57:18 -0400
+Received: by qyk9 with SMTP id 9so642107qyk.1
+        for <linux-nfs@vger.kernel.org>; Mon, 12 Apr 2010 12:57:17 -0700 (PDT)
+In-Reply-To: <20100412195538.9839.76495.stgit-bi+AKbBUZKY6gyzm1THtWbp2dZbC/Bob@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Committed to a new branch in the 2.6.34-rc3 stream: pnfs-submit
+Clean up:  Most cases in client_init() set clp->m_naddr to zero.  Move
+it to the common part of the function, and simplify the logic.  This
+will make adding IPv6 support here more straightforward.
 
-Thanks!
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
 
-Benny
+ support/export/client.c |    9 +++++----
+ 1 files changed, 5 insertions(+), 4 deletions(-)
 
-On Apr. 08, 2010, 22:53 +0300, andros@netapp.com wrote:
-> 
-> Apply against 2.6.34-rc3 pnfs branch. For pNFS client submission. Only touches
-> the file layout driver.
-> 
-> This set of patches implements several design changes enmerated at
-> http://wiki.linux-nfs.org/wiki/index.php/Porposed_Device_ Manangement_Design.
-> 
-> - Only call GETDEVICEINFO from one place
-> - Only cache the first data server in the multipath_list4 array.
-> - Wait to connect to data server when needed for I/O
-> - Move data server cache to stand alone cache
-> 
-> Also some cleanup, and function interfaces are changed in 
-> preparation for the soon to come generic deviceid cache.
-> 
-> 0001-SQUASHME-pnfs_submit-remove-unused-getdevicelist-fun.patch
-> 0002-SQUASHME-pnfs-submit-call-get_device_info-from-filel.patch
-> 0003-SQUASHME-pnfs_submit-remove-multilist4-caching.patch
-> 0004-SQUASHME-pnfs_submit-wait-for-I-O-for-data-server-co.patch
-> 0005-SQUASHME-pnfs_submit-remove-xdr-macros.patch
-> 0006-SQUASHME-pnfs_submit-remove-unused-nfs4_pnfs_device_.patch
-> 0007-SQUASHME-pnfs_submit-change-get_device_info-paramete.patch
-> 0008-SQUASHME-pnfs_submit-change-decode_and_add_device-pa.patch
-> 0009-SQUASHME-pnfs_submit-change-decode_device-parameter.patch
-> 0010-SQUASHME-pnfs_submit-change-decode_and_add_ds-parame.patch
-> 0011-SQUASHME-pnfs_submit-change-nfs4_pnfs_ds_add-paramet.patch
-> 0012-SQUASHME-pnfs_submit-remove-filelayout-CB_NOTIFY_DEV.patch
-> 0013-SQUASHME-pnfs_submit-stand-alone-data-server-cache.patch
-> 0014-SQUASHME-pnfs_submit-remove-kfree-from-under-spinloc.patch
-> 
-> Testing:
-> CONFIG_NFS_V4_1 set:
-> pNFS mount, NFSv4.1 mount, NFSv4.0 mount:
-> Connecatathon tests pass. pyNFS testclient tests pass.
-> 
-> CONFIG_NFS_V4_1 not set:
-> Connecatahon tests pass.
-> 
-> 
-> -->Andy
-> 
-> _______________________________________________
-> pNFS mailing list
-> pNFS@linux-nfs.org
-> http://linux-nfs.org/cgi-bin/mailman/listinfo/pnfs
+diff --git a/support/export/client.c b/support/export/client.c
+index aa28fcf..e06c874 100644
+--- a/support/export/client.c
++++ b/support/export/client.c
+@@ -137,6 +137,7 @@ client_init(nfs_client *clp, const char *hname, struct hostent *hp)
+ 
+ 	clp->m_exported = 0;
+ 	clp->m_count = 0;
++	clp->m_naddr = 0;
+ 
+ 	if (clp->m_type == MCL_SUBNETWORK) {
+ 		char	*cp = strchr(clp->m_hostname, '/');
+@@ -160,10 +161,10 @@ client_init(nfs_client *clp, const char *hname, struct hostent *hp)
+ 			}
+ 		}
+ 		*cp = '/';
+-		clp->m_naddr = 0;
+-	} else if (!hp) {
+-		clp->m_naddr = 0;
+-	} else {
++		return;
++	}
++
++	if (hp) {
+ 		char	**ap = hp->h_addr_list;
+ 		int	i;
+ 
+
