@@ -1,63 +1,35 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:23677 "EHLO
-	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752884Ab0DSXgz (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 19 Apr 2010 19:36:55 -0400
-Message-ID: <4BCCE8CC.3050102@oracle.com>
-Date: Mon, 19 Apr 2010 19:35:40 -0400
-From: Chuck Lever <chuck.lever@oracle.com>
+Received: from messager.iut-bm.univ-fcomte.fr ([194.57.86.195]:57798 "EHLO
+	messager.iut-bm.univ-fcomte.fr" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1753445Ab0DLKcm convert rfc822-to-8bit
+	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 12 Apr 2010 06:32:42 -0400
+From: Arnaud Giersch <arnaud.giersch@iut-bm.univ-fcomte.fr>
 To: Trond Myklebust <Trond.Myklebust@netapp.com>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] SUNRPC: Fail over more quickly on connect errors
-References: <1271450871-10777-1-git-send-email-Trond.Myklebust@netapp.com>	 <1271450871-10777-2-git-send-email-Trond.Myklebust@netapp.com>	 <1271450871-10777-3-git-send-email-Trond.Myklebust@netapp.com>	 <1271450871-10777-4-git-send-email-Trond.Myklebust@netapp.com> <1271456992.3098.20.camel@localhost.localdomain>
-In-Reply-To: <1271456992.3098.20.camel@localhost.localdomain>
-Content-Type: text/plain; charset=UTF-8; format=flowed
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: BUG: cannot acquire lock twice with NFSv4
+References: <wwer5mo3hf9.fsf@powwow.iut-bm.univ-fcomte.fr>
+	<wwed3y73da5.fsf@powwow.iut-bm.univ-fcomte.fr>
+	<1270999493.4663.1.camel@localhost.localdomain>
+	<1271019030.2898.1.camel@localhost.localdomain>
+Date: Mon, 12 Apr 2010 12:32:34 +0200
+In-Reply-To: <1271019030.2898.1.camel@localhost.localdomain> (Trond
+	Myklebust's message of "Sun, 11 Apr 2010 16:50:30 -0400")
+Message-ID: <wwe633x2c71.fsf@powwow.iut-bm.univ-fcomte.fr>
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 04/16/2010 06:29 PM, Trond Myklebust wrote:
-> On Fri, 2010-04-16 at 16:47 -0400, Trond Myklebust wrote:
->> We should not allow soft tasks to wait for longer than the major timeout
->> period when waiting for a reconnect to occur.
->>
->> Signed-off-by: Trond Myklebust<Trond.Myklebust@netapp.com>
->> ---
->>   net/sunrpc/xprt.c |    2 +-
->>   1 files changed, 1 insertions(+), 1 deletions(-)
->>
->> diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
->> index c71d835..01449a3 100644
->> --- a/net/sunrpc/xprt.c
->> +++ b/net/sunrpc/xprt.c
->> @@ -710,7 +710,7 @@ void xprt_connect(struct rpc_task *task)
->>   		if (task->tk_rqstp)
->>   			task->tk_rqstp->rq_bytes_sent = 0;
->>
->> -		task->tk_timeout = xprt->connect_timeout;
->> +		task->tk_timeout = min(req->rq_timeout, xprt->connect_timeout);
->                                           ^^^ task->tk_rqstp->rq_timeout
->
-> Apologies. I though I had tested that...
->
->> 		rpc_sleep_on(&xprt->pending, task, xprt_connect_status);
->>
->>   		if (test_bit(XPRT_CLOSING,&xprt->state))
+Dimanche 11 avril 2010, vers 22:50:30 (+0200), Trond Myklebust a écrit :
 
-I tested this series of patches with soft mounts, and RPC requests now 
-fail, after the timeout period, if the client can't reconnect.
+> How about the following?
+> ----------------------------------------------------------------------------------------------- 
+> NFSv4: fix delegated locking
+[...]
 
-I also observed appropriate exponential back-off behavior as the client 
-attempts to reconnect.  I would suggest one more patch to reduce the 
-reestablish timeout maximum to 30 seconds.
+It looks fine to me, and the locking now appears to work as expected.
 
-For the series:
+Thank you!
 
-Reviewed-by: Chuck Lever <chuck.lever@oracle.com>
-
-   and/or
-
-Tested-by: Chuck Lever <chuck.lever@oracle.com>
-
--- 
-chuck[dot]lever[at]oracle[dot]com
+        Arnaud
