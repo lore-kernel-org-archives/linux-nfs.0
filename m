@@ -1,155 +1,107 @@
 From: Benny Halevy <bhalevy@panasas.com>
-Subject: Re: [pnfs] [PATCH 02/14] SQUASHME pnfs-submit: call get_device_info
- from filelayout_check
-Date: Mon, 12 Apr 2010 16:13:58 +0300
-Message-ID: <4BC31C96.9070002@panasas.com>
-References: <1270756450-5570-1-git-send-email-andros@netapp.com>	<1270756450-5570-2-git-send-email-andros@netapp.com> <1270756450-5570-3-git-send-email-andros@netapp.com>
+Subject: Re: [pnfs] [PATCH 07/14] SQUASHME pnfs_submit: change get_device_info
+ parameter
+Date: Mon, 12 Apr 2010 16:17:16 +0300
+Message-ID: <4BC31D5C.5000903@panasas.com>
+References: <1270756450-5570-1-git-send-email-andros@netapp.com>	<1270756450-5570-2-git-send-email-andros@netapp.com>	<1270756450-5570-3-git-send-email-andros@netapp.com>	<1270756450-5570-4-git-send-email-andros@netapp.com>	<1270756450-5570-5-git-send-email-andros@netapp.com>	<1270756450-5570-6-git-send-email-andros@netapp.com>	<1270756450-5570-7-git-send-email-andros@netapp.com> <1270756450-5570-8-git-send-email-andros@netapp.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Cc: pnfs@linux-nfs.org, linux-nfs@vger.kernel.org
 To: andros@netapp.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-bw0-f219.google.com ([209.85.218.219]:39107 "EHLO
+Received: from mail-bw0-f219.google.com ([209.85.218.219]:59355 "EHLO
 	mail-bw0-f219.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752280Ab0DLNOg (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 12 Apr 2010 09:14:36 -0400
-Received: by bwz19 with SMTP id 19so137bwz.21
-        for <linux-nfs@vger.kernel.org>; Mon, 12 Apr 2010 06:14:34 -0700 (PDT)
-In-Reply-To: <1270756450-5570-3-git-send-email-andros@netapp.com>
+	with ESMTP id S1750740Ab0DLNRW (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 12 Apr 2010 09:17:22 -0400
+Received: by bwz19 with SMTP id 19so3634bwz.21
+        for <linux-nfs@vger.kernel.org>; Mon, 12 Apr 2010 06:17:20 -0700 (PDT)
+In-Reply-To: <1270756450-5570-8-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Apr. 08, 2010, 22:53 +0300, andros@netapp.com wrote:
+On Apr. 08, 2010, 22:54 +0300, andros@netapp.com wrote:
 > From: Andy Adamson <andros@netapp.com>
 > 
-> filelayout_check() validates a LAYOUTGET return including the deviceid.
-> If the deviceid is not cached, GETDEVICEINFO is called.
-> 
-> Once cached, the deviceid will only be uncached upon umount or a return of all
-> refering layouts. So, there is no need for a get_device_info call in the I/O
-> paths.
-> 
-> Remove nfs4_file_layout_dsaddr_get.
+> In preparation to use the generic deviceid cache.
 > 
 > Signed-off-by: Andy Adamson <andros@netapp.com>
 > ---
->  fs/nfs/nfs4filelayout.c    |   11 +++++++----
->  fs/nfs/nfs4filelayout.h    |    6 ++++--
->  fs/nfs/nfs4filelayoutdev.c |   27 +++------------------------
->  3 files changed, 14 insertions(+), 30 deletions(-)
+>  fs/nfs/nfs4filelayout.c    |    2 +-
+>  fs/nfs/nfs4filelayout.h    |    2 +-
+>  fs/nfs/nfs4filelayoutdev.c |    9 ++++-----
+>  3 files changed, 6 insertions(+), 7 deletions(-)
 > 
 > diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
-> index df6c1d0..ffc3ef2 100644
+> index 20b3ae2..f222c3b 100644
 > --- a/fs/nfs/nfs4filelayout.c
 > +++ b/fs/nfs/nfs4filelayout.c
-> @@ -413,12 +413,15 @@ filelayout_check_layout(struct pnfs_layout_type *lo,
->  	struct nfs_server *nfss = NFS_SERVER(PNFS_INODE(lo));
->  
->  	dprintk("--> %s\n", __func__);
-> -	dsaddr = nfs4_file_layout_dsaddr_get(FILE_MT(PNFS_INODE(lo)),
-> +	dsaddr = nfs4_pnfs_device_item_find(FILE_MT(PNFS_INODE(lo))->hlist,
+> @@ -399,7 +399,7 @@ filelayout_check_layout(struct pnfs_layout_type *lo,
+>  	dsaddr = nfs4_pnfs_device_item_find(FILE_MT(PNFS_INODE(lo))->hlist,
 >  					     &fl->dev_id);
 >  	if (dsaddr == NULL) {
-> -		dprintk("%s NO device for dev_id %s\n",
-> +		dsaddr = get_device_info(FILE_MT(PNFS_INODE(lo)), &fl->dev_id);
-> +		if (dsaddr == NULL) {
-> +			dprintk("%s NO device for dev_id %s\n",
+> -		dsaddr = get_device_info(FILE_MT(PNFS_INODE(lo)), &fl->dev_id);
+> +		dsaddr = get_device_info(PNFS_INODE(lo), &fl->dev_id);
+>  		if (dsaddr == NULL) {
+>  			dprintk("%s NO device for dev_id %s\n",
 >  				__func__, deviceid_fmt(&fl->dev_id));
-> -		goto out;
-> +			goto out;
-> +		}
->  	}
->  	if (fl->first_stripe_index < 0 ||
->  	    fl->first_stripe_index > dsaddr->stripe_count) {
-> @@ -645,7 +648,7 @@ filelayout_commit(struct pnfs_layout_type *layoutid, int sync,
->  	stripesz = filelayout_get_stripesize(layoutid);
->  	dprintk("%s stripesize %Zd\n", __func__, stripesz);
->  
-> -	dsaddr = nfs4_file_layout_dsaddr_get(FILE_MT(data->inode),
-> +	dsaddr = nfs4_pnfs_device_item_find(FILE_MT(data->inode)->hlist,
->  					     &nfslay->dev_id);
->  	if (dsaddr == NULL) {
->  		data->pdata.pnfs_error = -EIO;
 > diff --git a/fs/nfs/nfs4filelayout.h b/fs/nfs/nfs4filelayout.h
-> index d003809..3821989 100644
+> index 04cca7e..560f7f6 100644
 > --- a/fs/nfs/nfs4filelayout.h
 > +++ b/fs/nfs/nfs4filelayout.h
-> @@ -121,7 +121,9 @@ u32 filelayout_dserver_get_index(loff_t offset,
->  } while (0)
->  
+> @@ -109,6 +109,6 @@ struct nfs4_file_layout_dsaddr *
+>  nfs4_pnfs_device_item_find(struct nfs4_pnfs_dev_hlist *hlist,
+>  			   struct pnfs_deviceid *dev_id);
 >  struct nfs4_file_layout_dsaddr *
-> -nfs4_file_layout_dsaddr_get(struct filelayout_mount_type *,
-> -			  struct pnfs_deviceid *);
-> +nfs4_pnfs_device_item_find(struct nfs4_pnfs_dev_hlist *hlist,
-> +			   struct pnfs_deviceid *dev_id);
-> +struct nfs4_file_layout_dsaddr *
-> +get_device_info(struct filelayout_mount_type *mt, struct pnfs_deviceid *dev_id);
+> -get_device_info(struct filelayout_mount_type *mt, struct pnfs_deviceid *dev_id);
+> +get_device_info(struct inode *inode, struct pnfs_deviceid *dev_id);
 >  
+>  #endif /* FS_NFS_NFS4FILELAYOUT_H */
+> diff --git a/fs/nfs/nfs4filelayoutdev.c b/fs/nfs/nfs4filelayoutdev.c
+> index db6817d..9844a9c 100644
+> --- a/fs/nfs/nfs4filelayoutdev.c
+> +++ b/fs/nfs/nfs4filelayoutdev.c
+> @@ -623,8 +623,7 @@ decode_and_add_device(struct filelayout_mount_type *mt, struct pnfs_device *dev)
+>   * of available devices, and return it.
+>   */
+>  struct nfs4_file_layout_dsaddr *
+> -get_device_info(struct filelayout_mount_type *mt,
+> -		struct pnfs_deviceid *dev_id)
+> +get_device_info(struct inode *inode, struct pnfs_deviceid *dev_id)
+>  {
+>  	struct pnfs_device *pdev = NULL;
+>  	int maxpages = NFS4_GETDEVINFO_MAXSIZE >> PAGE_SHIFT;
+> @@ -632,7 +631,7 @@ get_device_info(struct filelayout_mount_type *mt,
+>  	struct nfs4_file_layout_dsaddr *dsaddr = NULL;
+>  	int rc, i, j, minpages = 1;
+>  
+> -	dprintk("%s mt %p\n", __func__, mt);
+> +	dprintk("%s \n", __func__);
 
-Andy, this function name is too generic IMO.
-better be something more specific to pnfs and file layout.
-(I'm committing this patchset as is so we can fix that later)
+nit: checkpatch rightfully complains about the stray space character before the newline.
+I'll just remove that upon committing, but there are other places
+like that we need to clean up before submitting the final version...
 
 Benny
 
->  #endif /* FS_NFS_NFS4FILELAYOUT_H */
-> diff --git a/fs/nfs/nfs4filelayoutdev.c b/fs/nfs/nfs4filelayoutdev.c
-> index e557679..ebb9845 100644
-> --- a/fs/nfs/nfs4filelayoutdev.c
-> +++ b/fs/nfs/nfs4filelayoutdev.c
-> @@ -52,13 +52,6 @@
+>  	pdev = kzalloc(sizeof(struct pnfs_device), GFP_KERNEL);
+>  	if (pdev == NULL)
+>  		return NULL;
+> @@ -664,7 +663,7 @@ retry_once:
+>  	/* TODO: Update types when CB_NOTIFY_DEVICEID is available */
+>  	pdev->dev_notify_types = 0;
 >  
->  #define NFSDBG_FACILITY		NFSDBG_PNFS_LD
->  
-> -struct nfs4_file_layout_dsaddr *nfs4_file_layout_dsaddr_get(
-> -					struct filelayout_mount_type *mt,
-> -					struct pnfs_deviceid *dev_id);
-> -struct nfs4_file_layout_dsaddr *nfs4_pnfs_device_item_find(
-> -					struct nfs4_pnfs_dev_hlist *hlist,
-> -					struct pnfs_deviceid *dev_id);
-> -
->  void
->  print_ds_list(struct nfs4_multipath *multipath)
->  {
-> @@ -665,7 +658,7 @@ decode_and_add_device(struct filelayout_mount_type *mt, struct pnfs_device *dev)
->  /* Retrieve the information for dev_id, add it to the list
->   * of available devices, and return it.
->   */
-> -static struct nfs4_file_layout_dsaddr *
-> +struct nfs4_file_layout_dsaddr *
->  get_device_info(struct filelayout_mount_type *mt,
->  		struct pnfs_deviceid *dev_id)
->  {
-> @@ -737,21 +730,6 @@ out_free:
->  }
->  
->  struct nfs4_file_layout_dsaddr *
-> -nfs4_file_layout_dsaddr_get(struct filelayout_mount_type *mt,
-> -			    struct pnfs_deviceid *dev_id)
-> -{
-> -	struct nfs4_file_layout_dsaddr *dsaddr;
-> -
-> -	read_lock(&mt->hlist->dev_lock);
-> -	dsaddr = _device_lookup(mt->hlist, dev_id);
-> -	read_unlock(&mt->hlist->dev_lock);
-> -
-> -	if (dsaddr == NULL)
-> -		dsaddr = get_device_info(mt, dev_id);
-> -	return dsaddr;
-> -}
-> -
-> -struct nfs4_file_layout_dsaddr *
->  nfs4_pnfs_device_item_find(struct nfs4_pnfs_dev_hlist *hlist,
->  			   struct pnfs_deviceid *dev_id)
->  {
-> @@ -798,7 +776,8 @@ nfs4_pnfs_dserver_get(struct pnfs_layout_segment *lseg,
->  	if (!layout)
->  		return 1;
->  
-> -	dsaddr = nfs4_file_layout_dsaddr_get(FILE_MT(inode), &layout->dev_id);
-> +	dsaddr = nfs4_pnfs_device_item_find(FILE_MT(inode)->hlist,
-> +					    &layout->dev_id);
->  	if (dsaddr == NULL)
->  		return 1;
->  
+> -	rc = pnfs_callback_ops->nfs_getdeviceinfo(mt->fl_sb, pdev);
+> +	rc = pnfs_callback_ops->nfs_getdeviceinfo(inode->i_sb, pdev);
+>  	/* Retry once with the returned mincount if a page was too small */
+>  	dprintk("%s getdevice info returns %d minpages %d\n", __func__, rc,
+>  		minpages);
+> @@ -682,7 +681,7 @@ retry_once:
+>  	/* Found new device, need to decode it and then add it to the
+>  	 * list of known devices for this mountpoint.
+>  	 */
+> -	dsaddr = decode_and_add_device(mt, pdev);
+> +	dsaddr = decode_and_add_device(FILE_MT(inode), pdev);
+>  out_free:
+>  	if (minpages > 1 && pdev->area != NULL)
+>  		vunmap(pdev->area);
 
