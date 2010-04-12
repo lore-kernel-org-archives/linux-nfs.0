@@ -1,189 +1,70 @@
-From: "Paul E. McKenney" <paulmck@linux.vnet.ibm.com>
-Subject: Re: RCU condition checks
-Date: Mon, 12 Apr 2010 09:47:53 -0700
-Message-ID: <20100412164753.GA2525@linux.vnet.ibm.com>
-References: <15371.1270057054@redhat.com>
- <19556.1270076008@redhat.com>
- <14003.1270122314@redhat.com>
- <4161.1270133211@redhat.com>
- <23331.1270570443@redhat.com>
- <26510.1270582446@redhat.com>
- <24225.1270646561@redhat.com>
- <26884.1270658130@redhat.com>
- <20100407171048.GE2481@linux.vnet.ibm.com>
- <1271026643.6620.37.camel@localhost.localdomain>
-Reply-To: paulmck@linux.vnet.ibm.com
+From: Benny Halevy <bhalevy@panasas.com>
+Subject: Re: [pnfs] [PATCH 0/14] pnfs_submit file layout client device management
+Date: Mon, 12 Apr 2010 22:03:21 +0300
+Message-ID: <4BC36E79.5000500@panasas.com>
+References: <1270756450-5570-1-git-send-email-andros@netapp.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: David Howells <dhowells@redhat.com>,
-	Eric Dumazet <eric.dumazet@gmail.com>,
-	linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: pnfs@linux-nfs.org, linux-nfs@vger.kernel.org
+To: andros@netapp.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from e6.ny.us.ibm.com ([32.97.182.146]:52517 "EHLO e6.ny.us.ibm.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752609Ab0DLQsF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 12 Apr 2010 12:48:05 -0400
-In-Reply-To: <1271026643.6620.37.camel-bi+AKbBUZKY6gyzm1THtWbp2dZbC/Bob@public.gmane.org>
+Received: from daytona.panasas.com ([67.152.220.89]:18674 "EHLO
+	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1752862Ab0DLTDY (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 12 Apr 2010 15:03:24 -0400
+In-Reply-To: <1270756450-5570-1-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sun, Apr 11, 2010 at 06:57:23PM -0400, Trond Myklebust wrote:
-> On Wed, 2010-04-07 at 10:10 -0700, Paul E. McKenney wrote: 
-> > On Wed, Apr 07, 2010 at 05:35:30PM +0100, David Howells wrote:
-> > > Paul E. McKenney <paulmck@linux.vnet.ibm.com> wrote:
-> > > 
-> > > > > Why is there a need for 'c'?
-> > > > 
-> > > > An example use is where rcu_access_pointer() is legal because we are
-> > > > either initializing or cleaning up, so that no other CPU has access
-> > > > to the pointer.  In these cases, you might do something like:
-> > > > 
-> > > > 	q = rcu_access_pointer(p->a, p->refcnt == 0);
-> > > 
-> > > I think the main problem I have with this is that the fact that p->refcnt
-> > > should be 0 here is unrelated to the fact that we're wanting to look at the
-> > > value of p->a.  I'd say that this should be two separate statements, for
-> > > example:
-> > > 
-> > > 	ASSERT(p->refcnt == 0);
-> > > 	q = rcu_access_pointer(p->a);
-> > > 
-> > > I could see using a lockdep-managed ASSERT here would work, though.
-> > > 
-> > > The other problem I have with this is that I'm assuming rcu_access_pointer()
-> > > is simply for looking at the value of the pointer without dereferencing it -
-> > > in which case, is there any need for the lock-describing condition?
-> > 
-> > I agree that in many cases there won't be a reasonable condition.
-> > In which case, using "1" and an explanatory comment makes sense.
-> > In other cases, the fact that the value is zero can mean that no one
-> > else can possibly have a reference.
-> > 
-> > All that aside, I fully expect that uses of rcu_access_pointer() will
-> > require more than the usual code-review effort, as these sorts of
-> > unprotected accesses are notoriously error-prone.
-> > 
-> > > I agree, though, that:
-> > > 
-> > > 	q = rcu_dereference_check(p->a,
-> > > 				  rcu_read_lock_held() || (
-> > > 				   lockdep_is_held(p->lock) &&
-> > > 				   lockdep_is_held(q->lock)));
-> > > 
-> > > is a reasonable way of keeping the dereference and the lock checks together,
-> > > though that could equally well be written, say:
-> > > 
-> > > 	LOCKDEP_ASSERT(rcu_read_lock_held() || (
-> > > 		        lockdep_is_held(p->lock) &&
-> > > 			lockdep_is_held(q->lock)));
-> > > 	q = rcu_dereference_protected(p->a);
-> > > 
-> > > but combining those makes it easier to ensure people to write lock checking.
-> > 
-> > Glad you like it!
-> > 
-> > 							Thanx, Paul
-> 
-> What say we just list the conditions in the comments. I'm happy with
-> something like the following:
+Committed to a new branch in the 2.6.34-rc3 stream: pnfs-submit
 
-This does work at present, but the sparse-based checks that Arnd is
-working on will generate warnings anywhere an RCU-protected pointer is
-used as a normal pointer.  So I believe that it would be good to get
-these taken care of now, rather than having them break again in a very
-short time.
+Thanks!
 
-							Thanx, Paul
+Benny
 
-> Trond
-> --------------------------------------------------------------------------------------------- 
-> NFSv4: Kill the bogus RCU dereferencing warnings in fs/nfs/delegation.c
+On Apr. 08, 2010, 22:53 +0300, andros@netapp.com wrote:
 > 
-> From: Trond Myklebust <Trond.Myklebust@netapp.com>
+> Apply against 2.6.34-rc3 pnfs branch. For pNFS client submission. Only touches
+> the file layout driver.
 > 
-> Kill all the bogus warnings about RCU dereferencing, and document which
-> locks are protecting the pointer derefs.
+> This set of patches implements several design changes enmerated at
+> http://wiki.linux-nfs.org/wiki/index.php/Porposed_Device_ Manangement_Design.
 > 
-> Reported-by: David Howells <dhowells@redhat.com>
-> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-> ---
+> - Only call GETDEVICEINFO from one place
+> - Only cache the first data server in the multipath_list4 array.
+> - Wait to connect to data server when needed for I/O
+> - Move data server cache to stand alone cache
 > 
->  fs/nfs/delegation.c |   24 ++++++++++++++++++------
->  1 files changed, 18 insertions(+), 6 deletions(-)
+> Also some cleanup, and function interfaces are changed in 
+> preparation for the soon to come generic deviceid cache.
+> 
+> 0001-SQUASHME-pnfs_submit-remove-unused-getdevicelist-fun.patch
+> 0002-SQUASHME-pnfs-submit-call-get_device_info-from-filel.patch
+> 0003-SQUASHME-pnfs_submit-remove-multilist4-caching.patch
+> 0004-SQUASHME-pnfs_submit-wait-for-I-O-for-data-server-co.patch
+> 0005-SQUASHME-pnfs_submit-remove-xdr-macros.patch
+> 0006-SQUASHME-pnfs_submit-remove-unused-nfs4_pnfs_device_.patch
+> 0007-SQUASHME-pnfs_submit-change-get_device_info-paramete.patch
+> 0008-SQUASHME-pnfs_submit-change-decode_and_add_device-pa.patch
+> 0009-SQUASHME-pnfs_submit-change-decode_device-parameter.patch
+> 0010-SQUASHME-pnfs_submit-change-decode_and_add_ds-parame.patch
+> 0011-SQUASHME-pnfs_submit-change-nfs4_pnfs_ds_add-paramet.patch
+> 0012-SQUASHME-pnfs_submit-remove-filelayout-CB_NOTIFY_DEV.patch
+> 0013-SQUASHME-pnfs_submit-stand-alone-data-server-cache.patch
+> 0014-SQUASHME-pnfs_submit-remove-kfree-from-under-spinloc.patch
+> 
+> Testing:
+> CONFIG_NFS_V4_1 set:
+> pNFS mount, NFSv4.1 mount, NFSv4.0 mount:
+> Connecatathon tests pass. pyNFS testclient tests pass.
+> 
+> CONFIG_NFS_V4_1 not set:
+> Connecatahon tests pass.
 > 
 > 
-> diff --git a/fs/nfs/delegation.c b/fs/nfs/delegation.c
-> index 1567124..5a1a379 100644
-> --- a/fs/nfs/delegation.c
-> +++ b/fs/nfs/delegation.c
-> @@ -34,12 +34,17 @@ static void nfs_free_delegation_callback(struct rcu_head *head)
->  	nfs_do_free_delegation(delegation);
->  }
->  
-> +/*
-> + * At this point, we know that the nfsi->rwsem protects us against read
-> + * access by the state recovery thread, so it is safe to assume nobody
-> + * else is accessing delegation->cred.
-> + */
->  static void nfs_free_delegation(struct nfs_delegation *delegation)
->  {
->  	struct rpc_cred *cred;
->  
-> -	cred = rcu_dereference(delegation->cred);
-> -	rcu_assign_pointer(delegation->cred, NULL);
-> +	cred = delegation->cred;
-> +	delegation->cred = NULL;
->  	call_rcu(&delegation->rcu, nfs_free_delegation_callback);
->  	if (cred)
->  		put_rpccred(cred);
-> @@ -166,12 +171,18 @@ static struct inode *nfs_delegation_grab_inode(struct nfs_delegation *delegation
->  	return inode;
->  }
->  
-> +/*
-> + * This function must be called with the nfs_client->cl_lock held to
-> + * ensure that the value of nfsi->delegation is protected against
-> + * modification by other threads.
-> + */
->  static struct nfs_delegation *nfs_detach_delegation_locked(struct nfs_inode *nfsi, const nfs4_stateid *stateid)
->  {
-> -	struct nfs_delegation *delegation = rcu_dereference(nfsi->delegation);
-> +	struct nfs_delegation *delegation = nfsi->delegation;
->  
->  	if (delegation == NULL)
->  		goto nomatch;
-> +	/* Lock out RCU-protected lookups. */
->  	spin_lock(&delegation->lock);
->  	if (stateid != NULL && memcmp(delegation->stateid.data, stateid->data,
->  				sizeof(delegation->stateid.data)) != 0)
-> @@ -212,8 +223,9 @@ int nfs_inode_set_delegation(struct inode *inode, struct rpc_cred *cred, struct
->  	delegation->flags = 1<<NFS_DELEGATION_REFERENCED;
->  	spin_lock_init(&delegation->lock);
->  
-> +	/* Protect nfsi->delegation against modification */
->  	spin_lock(&clp->cl_lock);
-> -	if (rcu_dereference(nfsi->delegation) != NULL) {
-> +	if (nfsi->delegation != NULL) {
->  		if (memcmp(&delegation->stateid, &nfsi->delegation->stateid,
->  					sizeof(delegation->stateid)) == 0 &&
->  				delegation->type == nfsi->delegation->type) {
-> @@ -330,7 +342,7 @@ void nfs_inode_return_delegation_noreclaim(struct inode *inode)
->  	struct nfs_inode *nfsi = NFS_I(inode);
->  	struct nfs_delegation *delegation;
->  
-> -	if (rcu_dereference(nfsi->delegation) != NULL) {
-> +	if (nfsi->delegation != NULL) {
->  		spin_lock(&clp->cl_lock);
->  		delegation = nfs_detach_delegation_locked(nfsi, NULL);
->  		spin_unlock(&clp->cl_lock);
-> @@ -346,7 +358,7 @@ int nfs_inode_return_delegation(struct inode *inode)
->  	struct nfs_delegation *delegation;
->  	int err = 0;
->  
-> -	if (rcu_dereference(nfsi->delegation) != NULL) {
-> +	if (nfsi->delegation != NULL) {
->  		spin_lock(&clp->cl_lock);
->  		delegation = nfs_detach_delegation_locked(nfsi, NULL);
->  		spin_unlock(&clp->cl_lock);
+> -->Andy
 > 
+> _______________________________________________
+> pNFS mailing list
+> pNFS@linux-nfs.org
+> http://linux-nfs.org/cgi-bin/mailman/listinfo/pnfs
