@@ -1,424 +1,197 @@
-From: steved@redhat.com
-Subject: [PATCH 3/3] Add support for non-DES encryption types.
-Date: Wed, 14 Apr 2010 15:18:49 -0400
-Message-ID: <1271272729-24422-4-git-send-email-steved@redhat.com>
-References: <1271272729-24422-1-git-send-email-steved@redhat.com>
-To: linux-nfs@vger.kernel.org
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Re: [PATCH 2/3] Try to use kernel function to determine supported
+ 	Kerberos enctypes.
+Date: Wed, 14 Apr 2010 16:05:30 -0400
+Message-ID: <4BC6200A.6060504@RedHat.com>
+References: <1271272729-24422-1-git-send-email-steved@redhat.com>	 <1271272729-24422-3-git-send-email-steved@redhat.com> <z2j4d569c331004141258y2f16a82ga1aa7826d665b3a9@mail.gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: linux-nfs@vger.kernel.org
+To: Kevin Coffman <kwc@citi.umich.edu>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from 4dicksons.org ([207.22.49.45]:49712 "EHLO
-	Dobby.Home.4dicksons.org" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1751504Ab0DNTSw (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 14 Apr 2010 15:18:52 -0400
-Received: from [192.168.62.20] (helo=localhost.localdomain)
-	by Dobby.Home.4dicksons.org with esmtp (Exim 4.63)
-	(envelope-from <steved@redhat.com>)
-	id 1O286s-0006m9-K6
-	for linux-nfs@vger.kernel.org; Wed, 14 Apr 2010 15:18:50 -0400
-In-Reply-To: <1271272729-24422-1-git-send-email-steved@redhat.com>
+Received: from mx1.redhat.com ([209.132.183.28]:1375 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755842Ab0DNUFc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 14 Apr 2010 16:05:32 -0400
+In-Reply-To: <z2j4d569c331004141258y2f16a82ga1aa7826d665b3a9-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Kevin Coffman <kwc@citi.umich.edu>
 
-Sends a new format of context information to the kernel.
-(Requires kernel support to do anything useful.)
 
-Signed-off-by: Steve Dickson <steved@redhat.com>
----
- utils/gssd/context.h       |    6 ++-
- utils/gssd/context_lucid.c |  128 ++++++++++++++++++++++++++++++++++++-----
- utils/gssd/context_mit.c   |  136 +++++++++++++++++++++++++++++++++-----------
- 3 files changed, 222 insertions(+), 48 deletions(-)
+On 04/14/2010 03:58 PM, Kevin Coffman wrote:
+> On Wed, Apr 14, 2010 at 3:18 PM,  <steved@redhat.com> wrote:
+>> From: Kevin Coffman <kwc@citi.umich.edu>
+>>
+>> This patch replaces a hard-coded list with a function to obtain
+>> the Kerberos encryption types that the kernel's rpcsec_gss code
+>> can support.  Defaults to old behavior if kernel does not supply
+>> information.
+>>
+>> Signed-off-by: Steve Dickson <steved@redhat.com>
+>> ---
+>>  utils/gssd/gssd_proc.c |   81 +++++++++++++++++++++++++++++++++++++++++++++++-
+>>  utils/gssd/krb5_util.c |   16 ++++++++-
+>>  2 files changed, 94 insertions(+), 3 deletions(-)
+>>
+>> diff --git a/utils/gssd/gssd_proc.c b/utils/gssd/gssd_proc.c
+>> index be4fb11..12e11d5 100644
+>> --- a/utils/gssd/gssd_proc.c
+>> +++ b/utils/gssd/gssd_proc.c
+>> @@ -600,6 +600,67 @@ update_client_list(void)
+>>        return retval;
+>>  }
+>>
+>> +/* Encryption types supported by the kernel rpcsec_gss code */
+>> +int num_krb5_enctypes = 0;
+>> +krb5_enctype *krb5_enctypes = NULL;
+>> +
+>> +/*
+>> + * Parse the supported encryption type information
+>> + */
+>> +static int
+>> +parse_enctypes(char *enctypes)
+>> +{
+>> +       int n = 0;
+>> +       char *curr, *comma;
+>> +       int i;
+>> +       static char *cached_types;
+>> +
+>> +       if (cached_types && strcmp(cached_types, enctypes) == 0)
+>> +               return 0;
+>> +       free(cached_types);
+>> +
+>> +       if (krb5_enctypes != NULL) {
+>> +               free(krb5_enctypes);
+>> +               krb5_enctypes = NULL;
+>> +               num_krb5_enctypes = 0;
+>> +       }
+>> +
+>> +       /* count the number of commas */
+>> +       for (curr = enctypes; curr && *curr != '\0'; curr = ++comma) {
+>> +               comma = strchr(curr, ',');
+>> +               if (comma != NULL)
+>> +                       n++;
+>> +               else
+>> +                       break;
+>> +       }
+>> +       /* If no more commas and we're not at the end, there's one more value */
+>> +       if (*curr != '\0')
+>> +               n++;
+>> +
+>> +       /* Empty string, return an error */
+>> +       if (n == 0)
+>> +               return ENOENT;
+>> +
+>> +       /* Allocate space for enctypes array */
+>> +       if ((krb5_enctypes = (int *) calloc(n, sizeof(int))) == NULL) {
+>> +               return ENOMEM;
+>> +       }
+>> +
+>> +       /* Now parse each value into the array */
+>> +       for (curr = enctypes, i = 0; curr && *curr != '\0'; curr = ++comma) {
+>> +               krb5_enctypes[i++] = atoi(curr);
+>> +               comma = strchr(curr, ',');
+>> +               if (comma == NULL)
+>> +                       break;
+>> +       }
+>> +
+>> +       num_krb5_enctypes = n;
+>> +       if (cached_types = malloc(strlen(enctypes)+1))
+>> +               strcpy(cached_types, enctypes);
+>> +
+>> +       return 0;
+>> +}
+>> +
+>>  static int
+>>  do_downcall(int k5_fd, uid_t uid, struct authgss_private_data *pd,
+>>            gss_buffer_desc *context_token)
+>> @@ -1128,11 +1189,12 @@ handle_gssd_upcall(struct clnt_info *clp)
+>>  {
+>>        uid_t                   uid;
+>>        char                    *lbuf = NULL;
+>> -       int                     lbuflen = 0;
+>> +       int                     lbuflen = 0, code;
+>>        char                    *p;
+>>        char                    *mech = NULL;
+>>        char                    *target = NULL;
+>>        char                    *service = NULL;
+>> +       char                    *enctypes = NULL;
+>>
+>>        printerr(1, "handling gssd upcall (%s)\n", clp->dirname);
+>>
+>> @@ -1176,6 +1238,23 @@ handle_gssd_upcall(struct clnt_info *clp)
+>>                goto out;
+>>        }
+>>
+>> +       /* read supported encryption types if supplied */
+>> +       if ((p = strstr(lbuf, "enctypes=")) != NULL) {
+>> +               enctypes = malloc(lbuflen);
+>> +               if (!enctypes)
+>> +                       goto out;
+>> +               if (sscanf(p, "enctypes=%s", enctypes) != 1) {
+>> +                       printerr(0, "WARNING: handle_gssd_upcall: "
+>> +                                   "failed to parse target name "
+>> +                                   "in upcall string '%s'\n", lbuf);
+>> +                       goto out;
+>> +               }
+>> +               if (parse_enctypes(enctypes) != 0) {
+>> +                       printerr(0, "WARNING: handle_gssd_upcall: "
+>> +                               "parsing encryption types failed: errno %d\n", code);
+>> +               }
+>> +       }
+>> +
+>>        /* read target name */
+>>        if ((p = strstr(lbuf, "target=")) != NULL) {
+>>                target = malloc(lbuflen);
+>> diff --git a/utils/gssd/krb5_util.c b/utils/gssd/krb5_util.c
+>> index 1c10bd4..0f56b1d 100644
+>> --- a/utils/gssd/krb5_util.c
+>> +++ b/utils/gssd/krb5_util.c
+>> @@ -1274,6 +1274,8 @@ limit_krb5_enctypes(struct rpc_gss_sec *sec, uid_t uid)
+>>                                    ENCTYPE_DES_CBC_MD5,
+>>                                    ENCTYPE_DES_CBC_MD4 };
+>>        int num_enctypes = sizeof(enctypes) / sizeof(enctypes[0]);
+>> +       extern int num_krb5_enctypes;
+>> +       extern krb5_enctype *krb5_enctypes;
+>>
+>>        /* We only care about getting a krb5 cred */
+>>        desired_mechs.count = 1;
+>> @@ -1290,8 +1292,18 @@ limit_krb5_enctypes(struct rpc_gss_sec *sec, uid_t uid)
+>>                return -1;
+>>        }
+>>
+>> -       maj_stat = gss_set_allowable_enctypes(&min_stat, credh, &krb5oid,
+>> -                                            num_enctypes, &enctypes);
+>> +       /*
+>> +        * If we failed for any reason to produce global
+>> +        * list of supported enctypes, use local default here.
+>> +        */
+>> +       if (krb5_enctypes == NULL)
+>> +               maj_stat = gss_set_allowable_enctypes(&min_stat, credh,
+>> +                                       &krb5oid, num_enctypes, &enctypes);
+>> +       else
+>> +               maj_stat = gss_set_allowable_enctypes(&min_stat, credh,
+>> +                                       &krb5oid, num_krb5_enctypes,
+>> +                                       krb5_enctypes);
+>> +
+>>        if (maj_stat != GSS_S_COMPLETE) {
+>>                pgsserr("gss_set_allowable_enctypes",
+>>                        maj_stat, min_stat, &krb5oid);
+>> --
+> 
+> Hi Steve,
+> 
+> The global krb5_enctypes array was used when the list was being read
+> once from a file.  With the list now coming up with each request in
+> the updated upcall, I think the list obtained in the upcall should be
+> added to the clnt_info structure and then passed to the
+> limit_krb5_enctypes function as a parameter.
+Six of one.... half a dozen of another... ;-)
 
-diff --git a/utils/gssd/context.h b/utils/gssd/context.h
-index be47f9c..c9cb0bd 100644
---- a/utils/gssd/context.h
-+++ b/utils/gssd/context.h
-@@ -1,5 +1,5 @@
- /*
--  Copyright (c) 2004 The Regents of the University of Michigan.
-+  Copyright (c) 2004,2008 The Regents of the University of Michigan.
-   All rights reserved.
- 
-   Redistribution and use in source and binary forms, with or without
-@@ -36,6 +36,10 @@
- /* Hopefully big enough to hold any serialized context */
- #define MAX_CTX_LEN 4096
- 
-+/* New context format flag values */
-+#define KRB5_CTX_FLAG_INITIATOR         0x00000001
-+#define KRB5_CTX_FLAG_CFX               0x00000002
-+#define KRB5_CTX_FLAG_ACCEPTOR_SUBKEY   0x00000004
- 
- int serialize_context_for_kernel(gss_ctx_id_t ctx, gss_buffer_desc *buf,
- 				 gss_OID mech, int32_t *endtime);
-diff --git a/utils/gssd/context_lucid.c b/utils/gssd/context_lucid.c
-index 4a682ae..b87bf76 100644
---- a/utils/gssd/context_lucid.c
-+++ b/utils/gssd/context_lucid.c
-@@ -42,6 +42,7 @@
- #include <stdio.h>
- #include <syslog.h>
- #include <string.h>
-+#include <errno.h>
- 
- #include <gssapi/gssapi_krb5.h>
- 
-@@ -119,15 +120,13 @@ prepare_krb5_rfc1964_buffer(gss_krb5_lucid_context_v1_t *lctx,
- 	 * Note that the rfc1964 version only supports DES enctypes.
- 	 */
- 	if (lctx->rfc1964_kd.ctx_key.type != 4) {
--		printerr(1, "prepare_krb5_rfc1964_buffer: "
--			    "overriding heimdal keytype (%d => %d)\n",
--			    lctx->rfc1964_kd.ctx_key.type, 4);
-+		printerr(2, "%s: overriding heimdal keytype (%d => %d)\n",
-+			 __FUNCTION__, lctx->rfc1964_kd.ctx_key.type, 4);
- 		lctx->rfc1964_kd.ctx_key.type = 4;
- 	}
- #endif
--	printerr(2, "prepare_krb5_rfc1964_buffer: serializing keys with "
--		 "enctype %d and length %d\n",
--		 lctx->rfc1964_kd.ctx_key.type,
-+	printerr(2, "%s: serializing keys with enctype %d and length %d\n",
-+		 __FUNCTION__, lctx->rfc1964_kd.ctx_key.type,
- 		 lctx->rfc1964_kd.ctx_key.length);
- 
- 	/* derive the encryption key and copy it into buffer */
-@@ -158,11 +157,100 @@ out_err:
- 	return -1;
- }
- 
-+/* Flags for version 2 context flags */
-+#define KRB5_CTX_FLAG_INITIATOR		0x00000001
-+#define KRB5_CTX_FLAG_CFX		0x00000002
-+#define KRB5_CTX_FLAG_ACCEPTOR_SUBKEY	0x00000004
-+
-+/*
-+ * Prepare a new-style buffer, as defined in rfc4121 (a.k.a. cfx),
-+ * to send to the kernel for newer encryption types -- or for DES3.
-+ *
-+ * The new format is:
-+ *
-+ *	u32 flags;
-+ *	#define KRB5_CTX_FLAG_INITIATOR		0x00000001
-+ *	#define KRB5_CTX_FLAG_CFX		0x00000002
-+ *	#define KRB5_CTX_FLAG_ACCEPTOR_SUBKEY	0x00000004
-+ *	s32 endtime;
-+ *	u64 seq_send;
-+ *	u32  enctype;			( encrption type of key )
-+ *	raw key;			( raw key bytes (kernel will derive))
-+ *
-+ */
- static int
--prepare_krb5_rfc_cfx_buffer(gss_krb5_lucid_context_v1_t *lctx,
-+prepare_krb5_rfc4121_buffer(gss_krb5_lucid_context_v1_t *lctx,
- 	gss_buffer_desc *buf, int32_t *endtime)
- {
--	printerr(0, "ERROR: prepare_krb5_rfc_cfx_buffer: not implemented\n");
-+	char *p, *end;
-+	uint32_t v2_flags = 0;
-+	uint32_t enctype;
-+	uint32_t keysize;
-+
-+	if (!(buf->value = calloc(1, MAX_CTX_LEN)))
-+		goto out_err;
-+	p = buf->value;
-+	end = buf->value + MAX_CTX_LEN;
-+
-+	/* Version 2 */
-+	if (lctx->initiate)
-+		v2_flags |= KRB5_CTX_FLAG_INITIATOR;
-+	if (lctx->protocol != 0)
-+		v2_flags |= KRB5_CTX_FLAG_CFX;
-+	if (lctx->protocol != 0 && lctx->cfx_kd.have_acceptor_subkey == 1)
-+		v2_flags |= KRB5_CTX_FLAG_ACCEPTOR_SUBKEY;
-+
-+	if (WRITE_BYTES(&p, end, v2_flags)) goto out_err;
-+	if (WRITE_BYTES(&p, end, lctx->endtime)) goto out_err;
-+	if (WRITE_BYTES(&p, end, lctx->send_seq)) goto out_err;
-+
-+	/* Protocol 0 here implies DES3 or RC4 */
-+	printerr(2, "%s: protocol %d\n", __FUNCTION__, lctx->protocol);
-+	if (lctx->protocol == 0) {
-+		enctype = lctx->rfc1964_kd.ctx_key.type;
-+		keysize = lctx->rfc1964_kd.ctx_key.length;
-+	} else {
-+		if (lctx->cfx_kd.have_acceptor_subkey) {
-+			enctype = lctx->cfx_kd.acceptor_subkey.type;
-+			keysize = lctx->cfx_kd.acceptor_subkey.length;
-+		} else {
-+			enctype = lctx->cfx_kd.ctx_key.type;
-+			keysize = lctx->cfx_kd.ctx_key.length;
-+		}
-+	}
-+	printerr(2, "%s: serializing key with enctype %d and size %d\n",
-+		 __FUNCTION__, enctype, keysize);
-+
-+	if (WRITE_BYTES(&p, end, enctype)) goto out_err;
-+
-+	if (lctx->protocol == 0) {
-+		if (write_bytes(&p, end, lctx->rfc1964_kd.ctx_key.data,
-+				lctx->rfc1964_kd.ctx_key.length))
-+			goto out_err;
-+	} else {
-+		if (lctx->cfx_kd.have_acceptor_subkey) {
-+			if (write_bytes(&p, end,
-+					lctx->cfx_kd.acceptor_subkey.data,
-+					lctx->cfx_kd.acceptor_subkey.length))
-+				goto out_err;
-+		} else {
-+			if (write_bytes(&p, end, lctx->cfx_kd.ctx_key.data,
-+					lctx->cfx_kd.ctx_key.length))
-+				goto out_err;
-+		}
-+	}
-+
-+	buf->length = p - (char *)buf->value;
-+	return 0;
-+
-+out_err:
-+	printerr(0, "ERROR: %s: failed serializing krb5 context for kernel\n",
-+		 __FUNCTION__);
-+	if (buf->value) {
-+		free(buf->value);
-+		buf->value = NULL;
-+	}
-+	buf->length = 0;
- 	return -1;
- }
- 
-@@ -176,7 +264,7 @@ serialize_krb5_ctx(gss_ctx_id_t ctx, gss_buffer_desc *buf, int32_t *endtime)
- 	gss_krb5_lucid_context_v1_t *lctx = 0;
- 	int retcode = 0;
- 
--	printerr(2, "DEBUG: serialize_krb5_ctx: lucid version!\n");
-+	printerr(2, "DEBUG: %s: lucid version!\n", __FUNCTION__);
- 	maj_stat = gss_export_lucid_sec_context(&min_stat, &ctx,
- 						1, &return_ctx);
- 	if (maj_stat != GSS_S_COMPLETE) {
-@@ -198,11 +286,20 @@ serialize_krb5_ctx(gss_ctx_id_t ctx, gss_buffer_desc *buf, int32_t *endtime)
- 		break;
- 	}
- 
--	/* Now lctx points to a lucid context that we can send down to kernel */
--	if (lctx->protocol == 0)
-+	/*
-+	 * Now lctx points to a lucid context that we can send down to kernel
-+	 *
-+	 * Note: we send down different information to the kernel depending
-+	 * on the protocol version and the enctyption type.
-+	 * For protocol version 0 with all enctypes besides DES3, we use
-+	 * the original format.  For protocol version != 0 or DES3, we
-+	 * send down the new style information.
-+	 */
-+
-+	if (lctx->protocol == 0 && lctx->rfc1964_kd.ctx_key.type <= 4)
- 		retcode = prepare_krb5_rfc1964_buffer(lctx, buf, endtime);
- 	else
--		retcode = prepare_krb5_rfc_cfx_buffer(lctx, buf, endtime);
-+		retcode = prepare_krb5_rfc4121_buffer(lctx, buf, endtime);
- 
- 	maj_stat = gss_free_lucid_sec_context(&min_stat, ctx, return_ctx);
- 	if (maj_stat != GSS_S_COMPLETE) {
-@@ -212,8 +309,8 @@ serialize_krb5_ctx(gss_ctx_id_t ctx, gss_buffer_desc *buf, int32_t *endtime)
- 	}
- 
- 	if (retcode) {
--		printerr(1, "serialize_krb5_ctx: prepare_krb5_*_buffer "
--			 "failed (retcode = %d)\n", retcode);
-+		printerr(1, "%s: prepare_krb5_*_buffer failed (retcode = %d)\n",
-+			 __FUNCTION__, retcode);
- 		goto out_err;
- 	}
- 
-@@ -223,4 +320,7 @@ out_err:
- 	printerr(0, "ERROR: failed serializing krb5 context for kernel\n");
- 	return -1;
- }
-+
-+
-+
- #endif /* HAVE_LUCID_CONTEXT_SUPPORT */
-diff --git a/utils/gssd/context_mit.c b/utils/gssd/context_mit.c
-index 709a903..f9cbb02 100644
---- a/utils/gssd/context_mit.c
-+++ b/utils/gssd/context_mit.c
-@@ -1,5 +1,5 @@
- /*
--  Copyright (c) 2004 The Regents of the University of Michigan.
-+  Copyright (c) 2004-2006 The Regents of the University of Michigan.
-   All rights reserved.
- 
-   Redistribution and use in source and binary forms, with or without
-@@ -38,6 +38,7 @@
- #include <stdio.h>
- #include <syslog.h>
- #include <string.h>
-+#include <errno.h>
- #include <gssapi/gssapi.h>
- #include <rpc/rpc.h>
- #include <rpc/auth_gss.h>
-@@ -52,8 +53,7 @@
- /* XXX argggg, there's gotta be a better way than just duplicating this
-  * whole struct.  Unfortunately, this is in a "private" header file,
-  * so this is our best choice at this point :-/
-- *
-- * XXX Does this match the Heimdal definition?  */
-+ */
- 
- typedef struct _krb5_gss_ctx_id_rec {
-    unsigned int initiate : 1;   /* nonzero if initiating, zero if accepting */
-@@ -156,50 +156,120 @@ serialize_krb5_ctx(gss_ctx_id_t ctx, gss_buffer_desc *buf, int32_t *endtime)
- {
- 	krb5_gss_ctx_id_t kctx = ((gss_union_ctx_id_t)ctx)->internal_ctx_id;
- 	char *p, *end;
--	static int constant_one = 1;
- 	static int constant_zero = 0;
-+	static int constant_one = 1;
-+	static int constant_two = 2;
- 	uint32_t word_seq_send;
-+	u_int64_t seq_send_64bit;
-+	uint32_t v2_flags = 0;
- 
- 	if (!(buf->value = calloc(1, MAX_CTX_LEN)))
- 		goto out_err;
- 	p = buf->value;
- 	end = buf->value + MAX_CTX_LEN;
- 
--	if (kctx->initiate) {
--		if (WRITE_BYTES(&p, end, constant_one)) goto out_err;
--	}
--	else {
--		if (WRITE_BYTES(&p, end, constant_zero)) goto out_err;
--	}
--	if (kctx->seed_init) {
--		if (WRITE_BYTES(&p, end, constant_one)) goto out_err;
--	}
--	else {
--		if (WRITE_BYTES(&p, end, constant_zero)) goto out_err;
--	}
--	if (write_bytes(&p, end, &kctx->seed, sizeof(kctx->seed)))
-+	switch (kctx->enc->enctype) {
-+	case ENCTYPE_DES_CBC_CRC:
-+	case ENCTYPE_DES_CBC_MD4:
-+	case ENCTYPE_DES_CBC_MD5:
-+	case ENCTYPE_DES_CBC_RAW:
-+		/* Old format of context to the kernel */
-+		if (kctx->initiate) {
-+			if (WRITE_BYTES(&p, end, constant_one)) goto out_err;
-+		}
-+		else {
-+			if (WRITE_BYTES(&p, end, constant_zero)) goto out_err;
-+		}
-+		if (kctx->seed_init) {
-+			if (WRITE_BYTES(&p, end, constant_one)) goto out_err;
-+		}
-+		else {
-+			if (WRITE_BYTES(&p, end, constant_zero)) goto out_err;
-+		}
-+		if (write_bytes(&p, end, &kctx->seed, sizeof(kctx->seed)))
-+			goto out_err;
-+		if (WRITE_BYTES(&p, end, kctx->signalg)) goto out_err;
-+		if (WRITE_BYTES(&p, end, kctx->sealalg)) goto out_err;
-+		if (WRITE_BYTES(&p, end, kctx->endtime)) goto out_err;
-+		word_seq_send = kctx->seq_send;
-+		if (WRITE_BYTES(&p, end, word_seq_send)) goto out_err;
-+		if (write_oid(&p, end, kctx->mech_used)) goto out_err;
-+
-+		printerr(2, "serialize_krb5_ctx: serializing keys with "
-+			 "enctype %d and length %d\n",
-+			 kctx->enc->enctype, kctx->enc->length);
-+
-+		if (write_keyblock(&p, end, kctx->enc)) goto out_err;
-+		if (write_keyblock(&p, end, kctx->seq)) goto out_err;
-+		break;
-+	case ENCTYPE_DES3_CBC_RAW:
-+	case ENCTYPE_DES3_CBC_SHA1:
-+	case ENCTYPE_ARCFOUR_HMAC:
-+	case ENCTYPE_ARCFOUR_HMAC_EXP:
-+	case ENCTYPE_AES128_CTS_HMAC_SHA1_96:
-+	case ENCTYPE_AES256_CTS_HMAC_SHA1_96:
-+		/* New format of context to the kernel */
-+		/* u32 flags;
-+		 * #define KRB5_CTX_FLAG_INITIATOR        0x00000001
-+		 * #define KRB5_CTX_FLAG_CFX              0x00000002
-+		 * #define KRB5_CTX_FLAG_ACCEPTOR_SUBKEY  0x00000004
-+		 * s32 endtime;
-+		 * u64 seq_send;
-+		 * u32  enctype;
-+		 * rawkey data
-+		 */
-+
-+		if (kctx->initiate)
-+			v2_flags |= KRB5_CTX_FLAG_INITIATOR;
-+		if (kctx->proto == 1)
-+			v2_flags |= KRB5_CTX_FLAG_CFX;
-+		if (kctx->have_acceptor_subkey)
-+			v2_flags |= KRB5_CTX_FLAG_ACCEPTOR_SUBKEY;
-+		if (WRITE_BYTES(&p, end, v2_flags)) goto out_err;
-+		if (WRITE_BYTES(&p, end, kctx->endtime)) goto out_err;
-+
-+		seq_send_64bit = kctx->seq_send;
-+		if (WRITE_BYTES(&p, end, seq_send_64bit)) goto out_err;
-+
-+		if (kctx->have_acceptor_subkey) {
-+			if (WRITE_BYTES(&p, end, kctx->acceptor_subkey->enctype))
-+				goto out_err;
-+			printerr(2, "serialize_krb5_ctx: serializing subkey "
-+				 "with enctype %d and size %d\n",
-+				 kctx->acceptor_subkey->enctype,
-+				 kctx->acceptor_subkey->length);
-+
-+			if (write_bytes(&p, end,
-+					kctx->acceptor_subkey->contents,
-+					kctx->acceptor_subkey->length))
-+				goto out_err;
-+		} else {
-+			if (WRITE_BYTES(&p, end, kctx->enc->enctype))
-+				goto out_err;
-+			printerr(2, "serialize_krb5_ctx: serializing key "
-+				 "with enctype %d and size %d\n",
-+				 kctx->enc->enctype, kctx->enc->length);
-+
-+			if (write_bytes(&p, end, kctx->enc->contents,
-+					kctx->enc->length))
-+				goto out_err;
-+		}
-+		break;
-+	default:
-+		printerr(0, "ERROR: serialize_krb5_ctx: unsupported encryption "
-+			 "algorithm %d\n", kctx->enc->enctype);
- 		goto out_err;
--	if (WRITE_BYTES(&p, end, kctx->signalg)) goto out_err;
--	if (WRITE_BYTES(&p, end, kctx->sealalg)) goto out_err;
--	if (WRITE_BYTES(&p, end, kctx->endtime)) goto out_err;
--	if (endtime)
--		*endtime = kctx->endtime;
--	word_seq_send = kctx->seq_send;
--	if (WRITE_BYTES(&p, end, word_seq_send)) goto out_err;
--	if (write_oid(&p, end, kctx->mech_used)) goto out_err;
--
--	printerr(2, "serialize_krb5_ctx: serializing keys with "
--		 "enctype %d and length %d\n",
--		 kctx->enc->enctype, kctx->enc->length);
--
--	if (write_keyblock(&p, end, kctx->enc)) goto out_err;
--	if (write_keyblock(&p, end, kctx->seq)) goto out_err;
-+	}
- 
- 	buf->length = p - (char *)buf->value;
- 	return 0;
-+
- out_err:
- 	printerr(0, "ERROR: failed serializing krb5 context for kernel\n");
--	if (buf->value) free(buf->value);
-+	if (buf->value) {
-+		free(buf->value);
-+	}
-+	buf->value = NULL;
- 	buf->length = 0;
- 	return -1;
- }
--- 
-1.6.6.1
+But I do see there is a memory leak... I don't free the  enctypes
+buffer in handle_gssd_upcall() :-\
 
+I'll repost in a bit... 
+
+steved.
