@@ -1,42 +1,39 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:14296 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755505Ab0DNTgD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 14 Apr 2010 15:36:03 -0400
-Message-ID: <4BC61921.9060808@RedHat.com>
-Date: Wed, 14 Apr 2010 15:36:01 -0400
-From: Steve Dickson <SteveD@redhat.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-CC: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 00/22] Add support for more RPCSEC_GSS/krb5 enctypes
-References: <1271266618-26016-1-git-send-email-Trond.Myklebust@netapp.com>	 <20100414174703.GA26724@fieldses.org> <1271267687.22566.16.camel@localhost.localdomain>
-In-Reply-To: <1271267687.22566.16.camel@localhost.localdomain>
-Content-Type: text/plain; charset=UTF-8
+Received: from 4dicksons.org ([207.22.49.45]:49709 "EHLO
+	Dobby.Home.4dicksons.org" rhost-flags-OK-OK-OK-FAIL)
+	by vger.kernel.org with ESMTP id S1752983Ab0DNTSw (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 14 Apr 2010 15:18:52 -0400
+Received: from [192.168.62.20] (helo=localhost.localdomain)
+	by Dobby.Home.4dicksons.org with esmtp (Exim 4.63)
+	(envelope-from <steved@redhat.com>)
+	id 1O286r-0006m9-Tq
+	for linux-nfs@vger.kernel.org; Wed, 14 Apr 2010 15:18:50 -0400
+From: steved@redhat.com
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 0/3] nfs-utils: Adds support for more encryption types.
+Date: Wed, 14 Apr 2010 15:18:46 -0400
+Message-Id: <1271272729-24422-1-git-send-email-steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
+From: Steve Dickson <steved@redhat.com>
+
+These three gssd patches added support for more DES and non-DES
+encryption types. They were authored by Kevin Coffman and tested
+by me on several recent kernels. 
+
+Kevin Coffman (3):
+  gssd: move function limit_krb5_enctypes into the exported functions area
+  Try to use kernel function to determine supported Kerberos enctypes.
+  Add support for non-DES encryption types.
 
 
-On 04/14/2010 01:54 PM, Trond Myklebust wrote:
-> On Wed, 2010-04-14 at 13:47 -0400, J. Bruce Fields wrote: 
->> On Wed, Apr 14, 2010 at 01:36:36PM -0400, Trond Myklebust wrote:
->>> The following patches have been queued up in the nfs-for-2.6.35 branch
->>> on git://git.linux-nfs.org/projects/trondmy/nfs-2.6.git.
->>
->> How are you testing this?  (Is there code for the userspace side?)
-> 
-> SteveD has promised to release the nfs-utils patches soon.
-Just posted them...
+ utils/gssd/context.h       |    6 ++-
+ utils/gssd/context_lucid.c |  128 ++++++++++++++++++++++++++++++++++++-----
+ utils/gssd/context_mit.c   |  136 +++++++++++++++++++++++++++++++++-----------
+ utils/gssd/gssd_proc.c     |   81 ++++++++++++++++++++++++++-
+ utils/gssd/krb5_util.c     |  121 +++++++++++++++++++++------------------
+ 5 files changed, 368 insertions(+), 104 deletions(-)
 
-> 
-> He is also the one responsible for testing these patches. All I did was
-> clean them up, and change the enctype advertising so that we pass that
-> information directly in the upcall instead of adding another pseudofile
-> in rpc_pipefs.
-I used the cthon tests to test both the user space and kernel patches 
-on a 2.6.32, 2.6.33 and 2.6.34 kernels. Plus, other than Trond's minor 
-tweaks, these were the same patches Peter Staubach brought to 
-Connectathon this year... 
-
-steved.
