@@ -1,169 +1,168 @@
-From: Mi Jinlong <mijinlong@cn.fujitsu.com>
-Subject: Re: [PATCH] NFS: add a sysctl for disable the reconnect delay
-Date: Wed, 14 Apr 2010 18:30:23 +0800
-Message-ID: <4BC5993F.2040401@cn.fujitsu.com>
-References: <4BA1FC54.9020209@cn.fujitsu.com> <4BA249BA.7000900@oracle.com> <4BC4469C.8000607@cn.fujitsu.com> <4BC48150.6020405@oracle.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: NFSv3 list <linux-nfs@vger.kernel.org>,
-	"J. Bruce Fields" <bfields@fieldses.org>,
-	"Trond.Myklebust" <trond.myklebust@fys.uio.no>,
-	"Batsakis, Alexandros" <Alexandros.Batsakis@netapp.com>
-To: Chuck Lever <chuck.lever@oracle.com>
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: [PATCH 01/22] gss_krb5: Introduce encryption type framework
+Date: Wed, 14 Apr 2010 13:36:37 -0400
+Message-ID: <1271266618-26016-2-git-send-email-Trond.Myklebust@netapp.com>
+References: <1271266618-26016-1-git-send-email-Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from cn.fujitsu.com ([222.73.24.84]:50687 "EHLO song.cn.fujitsu.com"
-	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
-	id S1754328Ab0DNK2W convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 14 Apr 2010 06:28:22 -0400
-In-Reply-To: <4BC48150.6020405@oracle.com>
+Received: from mx2.netapp.com ([216.240.18.37]:48907 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756458Ab0DNRhR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 14 Apr 2010 13:37:17 -0400
+Received: from localhost.localdomain (pd07336a.hq.netapp.com [10.58.61.110] (may be forged))
+	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id o3EHawJv021574
+	for <linux-nfs@vger.kernel.org>; Wed, 14 Apr 2010 10:36:59 -0700 (PDT)
+In-Reply-To: <1271266618-26016-1-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+From: Kevin Coffman <kwc@citi.umich.edu>
 
+Make the client and server code consistent regarding the extra buffer
+space made available for the auth code when wrapping data.
 
-Chuck Lever =E5=86=99=E9=81=93:
-> On 04/13/2010 06:25 AM, Mi Jinlong wrote:
->> Hi Chuck,
->>
->>    Sorry for replying your message so later.
->>
->> Chuck Lever =E5=86=99=E9=81=93:
->>> Hi Mi-
->>>
->>> On 03/18/2010 06:11 AM, Mi Jinlong wrote:
->>>> If network partition or some other reason cause a reconnect, it ca=
-nnot
->>>> succeed immediately when environment recover, but client want to
->>>> connect
->>>> timely sometimes.
->>>>
->>>> This patch can provide a proc
->>>> file(/proc/sys/fs/nfs/nfs_disable_reconnect_delay)
->>>> to allow client disable the reconnect delay(reestablish_timeout) w=
-hen
->>>> using NFS.
->>>>
->>>> It's only useful for NFS.
->>>
->>> There's a good reason for the connection re-establishment delay, an=
-d
->>> only very few instances where you'd want to disable it.  A sysctl i=
-s the
->>> wrong place for this, as it would disable the reconnect delay acros=
-s the
->>> board, instead of for just those occasions when it is actually nece=
-ssary
->>> to connect immediately.
->>
->>    Yes, I agree with you.
->>
->>>
->>> I assume that because the grace period has a time limit, you would =
-want
->>> the client to reconnect at all costs?  I think that this is actuall=
-y
->>> when a client should take care not to spuriously reconnect: during =
-a
->>> server reboot, a server may be sluggish or not completely ready to
->>> accept client requests.  It's not a time when a client should be
->>> showering a server with connection attempts.
->>>
->>> The reconnect delay is an exponential backoff that starts at 3 seco=
-nds,
->>> so if the server is really ready to accept connections, the actual
->>> connection delay ought to be quick.
->>>
->>> We're already considering shortening the maximum amount of time the
->>> client can wait before trying a reconnect.  And, it might possibly =
-be
->>> that the network layer itself is interfering with the backoff logic=
- that
->>> is already built into the RPC client.  (If true, that would be the =
-real
->>> bug in this case).  I'm not interested in a workaround when we real=
-ly
->>> should fix any underlying issues to make this work correctly.
->>>
->>> Perhaps the RPC client needs to distinguish between connection refu=
-sal
->>> (where a lengthening exponential backoff between connection attempt=
-s
->>> makes sense) and no server response (where we want the client's net=
-work
->>> layer to keep sending SYN requests so that it can reconnect as soon=
- as
->>> possible).
->>
->>    When reading the kernel's code and testing, I find there are thre=
-e
->> case:
->>
->>    A. network partition:
->>       Becasue the client can't communicate with server's rpcbind,
->>       so there is no influence.
->>
->>    B. server's nfs service stop:
->>       The client call xprt_connect to conncet, but get err(111:
->> Connection refused).
->>
->>    C. server's nfs service sotp, and ifdown the NIC after about 60s:
->>       At first, when the NIC is up, xprt_connect get err(111:
->> Connection refused) as 2.
->>
->>       After NIC is down, xprt_connect get err(113: No route to host)=
-=2E
->>
->>   When connecting fail, the sunrpc level only get a ETIMEDOUT or
->> EAGAIN err, it will also
->>   call xprt_connect to reconnect.
->>   If we make the network layer to keep sending SYN requests, but the=
-re
->> will be more request
->>   be delayed at the request queue, and the reestablish_timeout also =
-be
->> increased.
->>
->>   Can we distinguish those refusal at sunrpc level, but not at xprt
->> level ?
+Add some comments/documentation about the available buffer space
+in the xdr_buf head and tail when gss_wrap is called.
 
-   What do you think that I show yesterday?
+Add a compile-time check to make sure we are not exceeding the available
+buffer space.
 
->>   If we can do that, the problem will solved easily.
->>
->>   [NOTE]
->>     the testing process:
->>           client                    server
->>     1.   mount nfs (OK)
->>     2.     df (OK)
->>     3.                             nfs stop
->>     4.     df (hang)
->>
->>    I get message through rpcdebug.
->=20
-> We have a matrix of cases.  "soft" v. "hard" RPCs, ECONNREFUSED v. no
-> response, connection previously closed by server disconnect v. client
-> idle timeout.
+Add a central function to shift head data.
 
-  connection previously closed by server disconnect v. client idle time=
-out?
-  Can you explain to me in some sort? Maybe it's useful for me. Thanks.
+Signed-off-by: Kevin Coffman <kwc@citi.umich.edu>
+Signed-off-by: Steve Dickson <steved@redhat.com>
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ include/linux/sunrpc/gss_krb5.h       |   25 +++++++++++++++++++++
+ net/sunrpc/auth_gss/auth_gss.c        |    2 +-
+ net/sunrpc/auth_gss/gss_krb5_crypto.c |   38 +++++++++++++++++++++++++++++++++
+ net/sunrpc/auth_gss/gss_krb5_wrap.c   |    6 +---
+ 4 files changed, 66 insertions(+), 5 deletions(-)
 
->=20
-> I've found at least one major bug in this logic, and that is that the=
- 60
-> second transport connect timer is clobbered in the ECONNREFUSED case,=
- so
-> soft RPCs never time out if the server refuses a connection, for
-> example.  I handed all of this off to Trond.
-
-  Really?=20
-  I mount the nfs file through soft(-o soft), and then I using "df" com=
-mand
-  to see the mount information after server's nfs stop.
-  The "df" will return with error -5(Input/output error), maybe it's RP=
-Cs=20
-  timeout cause the df return?
-
-thanks,
-Mi Jinlong
+diff --git a/include/linux/sunrpc/gss_krb5.h b/include/linux/sunrpc/gss_krb5.h
+index e7bbdba..31bb8a5 100644
+--- a/include/linux/sunrpc/gss_krb5.h
++++ b/include/linux/sunrpc/gss_krb5.h
+@@ -40,6 +40,12 @@
+ #include <linux/sunrpc/gss_err.h>
+ #include <linux/sunrpc/gss_asn1.h>
+ 
++/* Maximum checksum function output for the supported crypto algorithms */
++#define GSS_KRB5_MAX_CKSUM_LEN  (20)
++
++/* Maximum blocksize for the supported crypto algorithms */
++#define GSS_KRB5_MAX_BLOCKSIZE  (16)
++
+ struct krb5_ctx {
+ 	int			initiate; /* 1 = initiating, 0 = accepting */
+ 	struct crypto_blkcipher	*enc;
+@@ -113,6 +119,22 @@ enum seal_alg {
+ #define ENCTYPE_DES3_CBC_SHA1   0x0010
+ #define ENCTYPE_UNKNOWN         0x01ff
+ 
++/*
++ * This compile-time check verifies that we will not exceed the
++ * slack space allotted by the client and server auth_gss code
++ * before they call gss_wrap().
++ */
++#define GSS_KRB5_MAX_SLACK_NEEDED \
++	(GSS_KRB5_TOK_HDR_LEN     /* gss token header */         \
++	+ GSS_KRB5_MAX_CKSUM_LEN  /* gss token checksum */       \
++	+ GSS_KRB5_MAX_BLOCKSIZE  /* confounder */               \
++	+ GSS_KRB5_MAX_BLOCKSIZE  /* possible padding */         \
++	+ GSS_KRB5_TOK_HDR_LEN    /* encrypted hdr in v2 token */\
++	+ GSS_KRB5_MAX_CKSUM_LEN  /* encryption hmac */          \
++	+ 4 + 4                   /* RPC verifier */             \
++	+ GSS_KRB5_TOK_HDR_LEN                                   \
++	+ GSS_KRB5_MAX_CKSUM_LEN)
++
+ s32
+ make_checksum(char *, char *header, int hdrlen, struct xdr_buf *body,
+ 		   int body_offset, struct xdr_netobj *cksum);
+@@ -157,3 +179,6 @@ s32
+ krb5_get_seq_num(struct crypto_blkcipher *key,
+ 	       unsigned char *cksum,
+ 	       unsigned char *buf, int *direction, u32 *seqnum);
++
++int
++xdr_extend_head(struct xdr_buf *buf, unsigned int base, unsigned int shiftlen);
+diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
+index c389ccf..75602ec 100644
+--- a/net/sunrpc/auth_gss/auth_gss.c
++++ b/net/sunrpc/auth_gss/auth_gss.c
+@@ -61,7 +61,7 @@ static const struct rpc_credops gss_nullops;
+ # define RPCDBG_FACILITY	RPCDBG_AUTH
+ #endif
+ 
+-#define GSS_CRED_SLACK		1024
++#define GSS_CRED_SLACK		(RPC_MAX_AUTH_SIZE * 2)
+ /* length of a krb5 verifier (48), plus data added before arguments when
+  * using integrity (two 4-byte integers): */
+ #define GSS_VERF_SLACK		100
+diff --git a/net/sunrpc/auth_gss/gss_krb5_crypto.c b/net/sunrpc/auth_gss/gss_krb5_crypto.c
+index e9b6361..746b3e1 100644
+--- a/net/sunrpc/auth_gss/gss_krb5_crypto.c
++++ b/net/sunrpc/auth_gss/gss_krb5_crypto.c
+@@ -325,3 +325,41 @@ gss_decrypt_xdr_buf(struct crypto_blkcipher *tfm, struct xdr_buf *buf,
+ 
+ 	return xdr_process_buf(buf, offset, buf->len - offset, decryptor, &desc);
+ }
++
++/*
++ * This function makes the assumption that it was ultimately called
++ * from gss_wrap().
++ *
++ * The client auth_gss code moves any existing tail data into a
++ * separate page before calling gss_wrap.
++ * The server svcauth_gss code ensures that both the head and the
++ * tail have slack space of RPC_MAX_AUTH_SIZE before calling gss_wrap.
++ *
++ * Even with that guarantee, this function may be called more than
++ * once in the processing of gss_wrap().  The best we can do is
++ * verify at compile-time (see GSS_KRB5_SLACK_CHECK) that the
++ * largest expected shift will fit within RPC_MAX_AUTH_SIZE.
++ * At run-time we can verify that a single invocation of this
++ * function doesn't attempt to use more the RPC_MAX_AUTH_SIZE.
++ */
++
++int
++xdr_extend_head(struct xdr_buf *buf, unsigned int base, unsigned int shiftlen)
++{
++	u8 *p;
++
++	if (shiftlen == 0)
++		return 0;
++
++	BUILD_BUG_ON(GSS_KRB5_MAX_SLACK_NEEDED > RPC_MAX_AUTH_SIZE);
++	BUG_ON(shiftlen > RPC_MAX_AUTH_SIZE);
++
++	p = buf->head[0].iov_base + base;
++
++	memmove(p + shiftlen, p, buf->head[0].iov_len - base);
++
++	buf->head[0].iov_len += shiftlen;
++	buf->len += shiftlen;
++
++	return 0;
++}
+diff --git a/net/sunrpc/auth_gss/gss_krb5_wrap.c b/net/sunrpc/auth_gss/gss_krb5_wrap.c
+index a6e9056..496281f 100644
+--- a/net/sunrpc/auth_gss/gss_krb5_wrap.c
++++ b/net/sunrpc/auth_gss/gss_krb5_wrap.c
+@@ -155,11 +155,9 @@ gss_wrap_kerberos(struct gss_ctx *ctx, int offset,
+ 
+ 	ptr = buf->head[0].iov_base + offset;
+ 	/* shift data to make room for header. */
++	xdr_extend_head(buf, offset, headlen);
++
+ 	/* XXX Would be cleverer to encrypt while copying. */
+-	/* XXX bounds checking, slack, etc. */
+-	memmove(ptr + headlen, ptr, buf->head[0].iov_len - offset);
+-	buf->head[0].iov_len += headlen;
+-	buf->len += headlen;
+ 	BUG_ON((buf->len - offset - headlen) % blocksize);
+ 
+ 	g_make_token_header(&kctx->mech_used,
+-- 
+1.6.6.1
 
