@@ -1,190 +1,182 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH] NFS: add a sysctl for disable the reconnect delay
-Date: Wed, 14 Apr 2010 16:43:33 -0400
-Message-ID: <C36646A2-70A4-4EF6-B34B-98F60D845BDE@oracle.com>
-References: <4BA1FC54.9020209@cn.fujitsu.com> <4BA249BA.7000900@oracle.com> <4BC4469C.8000607@cn.fujitsu.com> <4BC48150.6020405@oracle.com> <4BC5993F.2040401@cn.fujitsu.com>
-Mime-Version: 1.0 (Apple Message framework v1078)
-Content-Type: text/plain; charset=utf-8
-Cc: NFSv3 list <linux-nfs@vger.kernel.org>,
-	"J. Bruce Fields" <bfields@fieldses.org>,
-	"Trond.Myklebust" <trond.myklebust@fys.uio.no>,
-	"Batsakis, Alexandros" <Alexandros.Batsakis@netapp.com>
-To: Mi Jinlong <mijinlong@cn.fujitsu.com>
+From: Michael O'Donnell <modonnell-kx56TfycDUc@public.gmane.org>
+Subject: NFS stops responding
+Date: Wed, 14 Apr 2010 17:06:00 -0400
+Message-ID: <4BC62E38.3010704@wsi.com>
+Reply-To: Michael O'Donnell <modonnell-kx56TfycDUc@public.gmane.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from acsinet11.oracle.com ([141.146.126.233]:54038 "EHLO
-	acsinet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756740Ab0DNUoO convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 14 Apr 2010 16:44:14 -0400
-In-Reply-To: <4BC5993F.2040401@cn.fujitsu.com>
+Received: from wsi-135-27.wsi.com ([8.8.135.27]:28171 "EHLO
+	EXCHANGE.wsicorp.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756853Ab0DNVVM (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 14 Apr 2010 17:21:12 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Apr 14, 2010, at 6:30 AM, Mi Jinlong wrote:
-> Chuck Lever =E5=86=99=E9=81=93:
->> On 04/13/2010 06:25 AM, Mi Jinlong wrote:
->>> Hi Chuck,
->>>=20
->>>   Sorry for replying your message so later.
->>>=20
->>> Chuck Lever =E5=86=99=E9=81=93:
->>>> Hi Mi-
->>>>=20
->>>> On 03/18/2010 06:11 AM, Mi Jinlong wrote:
->>>>> If network partition or some other reason cause a reconnect, it c=
-annot
->>>>> succeed immediately when environment recover, but client want to
->>>>> connect
->>>>> timely sometimes.
->>>>>=20
->>>>> This patch can provide a proc
->>>>> file(/proc/sys/fs/nfs/nfs_disable_reconnect_delay)
->>>>> to allow client disable the reconnect delay(reestablish_timeout) =
-when
->>>>> using NFS.
->>>>>=20
->>>>> It's only useful for NFS.
->>>>=20
->>>> There's a good reason for the connection re-establishment delay, a=
-nd
->>>> only very few instances where you'd want to disable it.  A sysctl =
-is the
->>>> wrong place for this, as it would disable the reconnect delay acro=
-ss the
->>>> board, instead of for just those occasions when it is actually nec=
-essary
->>>> to connect immediately.
->>>=20
->>>   Yes, I agree with you.
->>>=20
->>>>=20
->>>> I assume that because the grace period has a time limit, you would=
- want
->>>> the client to reconnect at all costs?  I think that this is actual=
-ly
->>>> when a client should take care not to spuriously reconnect: during=
- a
->>>> server reboot, a server may be sluggish or not completely ready to
->>>> accept client requests.  It's not a time when a client should be
->>>> showering a server with connection attempts.
->>>>=20
->>>> The reconnect delay is an exponential backoff that starts at 3 sec=
-onds,
->>>> so if the server is really ready to accept connections, the actual
->>>> connection delay ought to be quick.
->>>>=20
->>>> We're already considering shortening the maximum amount of time th=
-e
->>>> client can wait before trying a reconnect.  And, it might possibly=
- be
->>>> that the network layer itself is interfering with the backoff logi=
-c that
->>>> is already built into the RPC client.  (If true, that would be the=
- real
->>>> bug in this case).  I'm not interested in a workaround when we rea=
-lly
->>>> should fix any underlying issues to make this work correctly.
->>>>=20
->>>> Perhaps the RPC client needs to distinguish between connection ref=
-usal
->>>> (where a lengthening exponential backoff between connection attemp=
-ts
->>>> makes sense) and no server response (where we want the client's ne=
-twork
->>>> layer to keep sending SYN requests so that it can reconnect as soo=
-n as
->>>> possible).
->>>=20
->>>   When reading the kernel's code and testing, I find there are thre=
-e
->>> case:
->>>=20
->>>   A. network partition:
->>>      Becasue the client can't communicate with server's rpcbind,
->>>      so there is no influence.
->>>=20
->>>   B. server's nfs service stop:
->>>      The client call xprt_connect to conncet, but get err(111:
->>> Connection refused).
->>>=20
->>>   C. server's nfs service sotp, and ifdown the NIC after about 60s:
->>>      At first, when the NIC is up, xprt_connect get err(111:
->>> Connection refused) as 2.
->>>=20
->>>      After NIC is down, xprt_connect get err(113: No route to host)=
-=2E
->>>=20
->>>  When connecting fail, the sunrpc level only get a ETIMEDOUT or
->>> EAGAIN err, it will also
->>>  call xprt_connect to reconnect.
->>>  If we make the network layer to keep sending SYN requests, but the=
-re
->>> will be more request
->>>  be delayed at the request queue, and the reestablish_timeout also =
-be
->>> increased.
->>>=20
->>>  Can we distinguish those refusal at sunrpc level, but not at xprt
->>> level ?
->=20
->   What do you think that I show yesterday?
+I've run out of clues (EBRAINTOOSMALL) trying to solve an NFS puzzle
+at a remote customer site and I'm hoping to get unstuck.
 
-In xprtsock.c, these reconnection errors are distinguished.  In the gen=
-eric sunrpc client (xprt.c) they are not -- when an RPC transmission is=
- sent, xprtsock.c returns ENOTCONN for any connection error.  Trond mad=
-e this change after 2.6.18.  The differences matter in how the client r=
-e-establishes the connection, and that logic is all in xprtsock.c.  So,=
- the RPC client already makes this distinction, but the logic may have =
-bugs.
+Symptoms: after approx 1 hour of apparently normal behavior, operations
+like 'df -k' or 'ls -l' hang for minutes at a time and then fail with
+I/O errors on any of three machines when such operations refer to NFS
+mounted directories.
 
->>>  If we can do that, the problem will solved easily.
->>>=20
->>>  [NOTE]
->>>    the testing process:
->>>          client                    server
->>>    1.   mount nfs (OK)
->>>    2.     df (OK)
->>>    3.                             nfs stop
->>>    4.     df (hang)
->>>=20
->>>   I get message through rpcdebug.
->>=20
->> We have a matrix of cases.  "soft" v. "hard" RPCs, ECONNREFUSED v. n=
-o
->> response, connection previously closed by server disconnect v. clien=
-t
->> idle timeout.
->=20
->  connection previously closed by server disconnect v. client idle tim=
-eout?
->  Can you explain to me in some sort? Maybe it's useful for me. Thanks=
-=2E
+The 3 machines have NFS relationships thus:
 
-If the server closed the connection, the client should use the re-estab=
-lish timeout to delay the reconnection in order to prevent a hard loop =
-of client connection retries.  If the client idled the connection out, =
-then the client should reconnect immediately.
+   A mounts approx 6             directories from B (A->B)
+   B mounts approx 6 (different) directories from A (B->A)
+   C mounts approx 6 directories from A (C->A) (same dirs as in B->A)
+   C mounts approx 6 directories from B (C->B) (same dirs as in A->B)
 
->> I've found at least one major bug in this logic, and that is that th=
-e 60
->> second transport connect timer is clobbered in the ECONNREFUSED case=
-, so
->> soft RPCs never time out if the server refuses a connection, for
->> example.  I handed all of this off to Trond.
->=20
->  Really?=20
->  I mount the nfs file through soft(-o soft), and then I using "df" co=
-mmand
->  to see the mount information after server's nfs stop.
->  The "df" will return with error -5(Input/output error), maybe it's R=
-PCs=20
->  timeout cause the df return?
+Weirdly, when the failure occurs, doing this on all 3 machines:
 
-RPC timeouts generally cause an EIO.  However, if the server continues =
-to refuse a connection, the timeout never occurs.
+    umount -f -l -a -t nfs
 
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+...followed by this:
+
+    mount -a -t nfs
+
+...on all 3 gets things unstuck for another hour.  (?!?!)
+
+All three systems (HP xw8600 workstations) started life running
+bit-for-bit identical system images (based on x86_64 CentOS5.4)
+and only differ in which of our apps and configs are loaded.
+
+Kernel is 2.6.18-92.1.17.el5.centos.plus
+
+All 3 systems were previously running an old RHEL3 distribution on the
+same hardware with no problems.
+
+Each machine has only two interfaces defined: 'lo' and 'eth0' with the
+latter being a wired gigE.
+
+All MTUs are the standard 1500; nothing like jumbo packets in use.
+
+Each machine has a statically assigned address - no DHCP in play.
+
+All systems are connected via a common Dell 2608 PowerConnect switch
+that's believed (but not conclusively proven) to be functioning properly.
+
+I've tried specifying both UDP and TCP in the fstab lines.
+
+We're using the default NFSv3.
+
+I've disabled selinux.
+
+The output of 'iptables -L' for all rules in all (filter,nat,mangle,raw)
+chains on all machines shows as '(policy ACCEPT)'.
+
+Each machine always shows the same 3 routes when queried via 'route -n'.
+
+The ARP caches show nothing unexpected on any machine.
+
+These commands:
+
+    service nfs status ; service portmap status
+
+...indicate nominal conditions (all expected daemons reported running)
+when things are working but also when things are b0rken.
+
+There wasn't anything very informative in /var/log/messages with the
+default debug levels but messages are now accumulating there at firehose
+rates because I enabled debug for everything, thus:
+
+    for m in rpc nfs nfsd nlm; do rpcdebug -m $m -s all; done
+
+After machine A exhibited the problem I *think* I see evidence in the
+/var/log/messages that the NFS client code believes it never got a
+response from the server (B) to some NFS request, so it retransmits the
+request and (I think) it then concludes that the retransmitted request
+also went unanswered so the operation is errored out.
+
+I'm capturing dumps of Enet traffic on the client and server boxes at
+the remote customer site thus:
+
+    dumpcap -i eth0 -w /tmp/`hostname`.pcap
+
+...and then copying the dumps back to HQ where I feed them to Wireshark.
+I am not (yet?) rigged up so I can sniff traffic from an objective
+third party.
+
+When I display the client traffic log file with Wireshark, it (apparently)
+confirms that the client did indeed wait a while and then (apparently)
+retransmitted the NFS request.  The weird thing is that Wireshark analysis
+of corresponding traffic on the server shows the first request coming in
+and being replied to immediately, then we later see the retransmitted
+request arrive and it, too, is promptly processed and the response goes
+out immediately.  So, if I'm reading these tea leaves properly it's as if
+that client lost the ability to recognize the reply to that request.  [?!]
+
+But, then, how could it be that all 3 machines seem to get into this state
+at more or less the same time?  and why would unmounting and remounting
+all NFS filesystems then "fix" it?   Aaaiiieeee!!!
+
+  [ Unfortunately, this problem is only occuring at the one
+    customer site and can't be reproduced in-house, so unless
+    I can find a way to first sanitize the logs I may not be
+    permitted (lucky you!) to publish them here...       >-/  ]
+
+A Wireshark rendering of relevant traffic while observing as
+'ls -l mountPoint' on the client hangs and then return with 'I/O Error' :
+
+   On CLIENT A:
+   #     Time       SRC DST PROT INFO
+   1031  1.989127   A   B   NFS  V3   GETATTR Call, FH:0x70ab15aa
+   4565  10.121595  B   A   NFS  V3   GETATTR Call, FH:0x00091508
+   4567  10.124981  A   B   NFS  V3   FSSTAT  Call, FH:0x17a976a8
+   4587  10.205087  A   B   NFS  V3   GETATTR Call, FH:0xf2c997c8
+   29395 61.989380  A   B   NFS  V3   GETATTR Call, FH:0x70ab15aa [retransmission of #1031]
+   66805 130.119722 B   A   NFS  V3   GETATTR Call, FH:0x0089db89
+   66814 130.124815 A   B   NFS  V3   FSSTAT  Call, FH:0x18a979a8
+   97138 181.989898 A   B   NFS  V3   GETATTR Call, FH:0x70ab15aa
+
+   On SERVER B:
+   #     Time       SRC DST PROT INFO
+   677   1.342486   A   B   NFS  V3   GETATTR Call, FH:0x70ab15aa
+   4045  9.474848   B   A   NFS  V3   GETATTR Call, FH:0x00091508
+   4047  9.478325   A   B   NFS  V3   FSSTAT  Call, FH:0x17a976a8
+   4076  9.558433   A   B   NFS  V3   GETATTR Call, FH:0xf2c997c8
+   28625 61.342630  A   B   NFS  V3   GETATTR Call, FH:0x70ab15aa [retransmission of #677]
+   61257 129.472779 B   A   NFS  V3   GETATTR Call, FH:0x0089db89
+   61268 129.477965 A   B   NFS  V3   FSSTAT  Call, FH:0x18a979a8
+   87631 181.342989 A   B   NFS  V3   GETATTR Call, FH:0x70ab15aa
+
+I don't really trust my interpretation of what Wireshark is showing
+me but, if I'm correct, the problem is not that we stop seeing return
+traffic from the server, it's more that the client stops making sane
+decisions in response when it arrives.  Maybe the packets aren't getting
+all the way back up the stack to be processed by the client code?
+
+All other network plumbing appears to be in working order while the
+problem is occurring - I can connect from one system to another at will
+via SSH, rsync, HTTP, ping, etc.
+
+I'd love to blame the switch, and I just acquired a brand new one to
+use as an experimental replacement for the one currently deployed.
+I'll be ecstatic if that fixes thing, though I'm not optimistic.
+
+I'm assuming this mess is somehow due either to a site-specific botch
+in something like a config file or else maybe that switch.  We have
+a number of other customers with identical rigs (same software on the
+same workstations) that work fine, so (hoping!)  it seems unlikely that
+there's an inherent flaw in the SW or HW...
+
+Analysis is awkward because the customers in question are trying to make
+what use they can of the machines even as these problems are ocurring
+around them, so reboots and other dramatic acts have to be scheduled
+well in advance.
+
+I know of no reasons in principle why two machines can't simultaneously
+act as NFS clients and NFS servers - are there any?  AFAIK the two
+subsystems are separate and have no direct dependencies or interactions;
+does anybody know otherwise?  Yes, I'm aware that some systems can be
+misconfigured such that cross-mounting causes problems at boot-time as
+they each wait for the other's NFS server to start, but this ain't that...
+
+Any help or clues gratefully accepted...
+
+   --M
 
 
 
