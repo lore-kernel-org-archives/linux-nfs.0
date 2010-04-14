@@ -1,65 +1,35 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-pw0-f46.google.com ([209.85.160.46]:60335 "EHLO
-	mail-pw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756038Ab0DURm5 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 21 Apr 2010 13:42:57 -0400
-Received: by pwj9 with SMTP id 9so5322309pwj.19
-        for <linux-nfs@vger.kernel.org>; Wed, 21 Apr 2010 10:42:56 -0700 (PDT)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 0/9] For 2.6.35
-To: linux-nfs@vger.kernel.org
-Date: Wed, 21 Apr 2010 13:42:54 -0400
-Message-ID: <20100421173628.2037.54635.stgit@localhost.localdomain>
-Content-Type: text/plain; charset="utf-8"
+Received: from mx1.redhat.com ([209.132.183.28]:14880 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753023Ab0DNTcx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 14 Apr 2010 15:32:53 -0400
+Message-ID: <4BC61839.6000200@RedHat.com>
+Date: Wed, 14 Apr 2010 15:32:09 -0400
+From: Steve Dickson <SteveD@redhat.com>
+To: Kevin Coffman <kwc@citi.umich.edu>
+CC: Trond Myklebust <Trond.Myklebust@netapp.com>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 10/22] gss_krb5: Add upcall info indicating supported
+ 	kerberos enctypes
+References: <1271266618-26016-1-git-send-email-Trond.Myklebust@netapp.com>	 <1271266618-26016-5-git-send-email-Trond.Myklebust@netapp.com>	 <1271266618-26016-6-git-send-email-Trond.Myklebust@netapp.com>	 <1271266618-26016-7-git-send-email-Trond.Myklebust@netapp.com>	 <1271266618-26016-8-git-send-email-Trond.Myklebust@netapp.com>	 <1271266618-26016-9-git-send-email-Trond.Myklebust@netapp.com>	 <1271266618-26016-10-git-send-email-Trond.Myklebust@netapp.com>	 <1271266618-26016-11-git-send-email-Trond.Myklebust@netapp.com>	 <y2t4d569c331004141130z7525d001gcdb81db5b1ede42e@mail.gmail.com>	 <1271270279.22566.22.camel@localhost.localdomain> <y2q4d569c331004141151n9042470aqe3f51e804b3abea9@mail.gmail.com>
+In-Reply-To: <y2q4d569c331004141151n9042470aqe3f51e804b3abea9@mail.gmail.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-I'd like these patches to be considered for 2.6.35.
+On 04/14/2010 02:51 PM, Kevin Coffman wrote:
+> 
+> Hi Steve,
+> This surprises me.  I believe this would result in DES being used
+> rather than the stronger enctypes.  Can you give me more details of
+> the problems you saw?
 
-The patches posted last week that add kobjects for the NLM host and
-NSM handle caches are also candidates for 2.6.35.  However, I'd like
-to have a clear plan for how statd will use this new API before they
-are committed upstream, to avoid kernel-user space API churn down
-the road.
+In limit_krb5_enctypes(), if I did not give gss_set_allowable_enctypes()
+the list of enctypes in an increasing order, creating the krb5 context for  
+root would fail. When gave them in order root got its context... 
 
-The first patch in the present series is the previously posted fix for
-NFSv4 rsize and wsize.  If this patch hasn't already been accepted for
-2.6.34 and prior kernels, please consider it for 2.6.35.
+I figured it was some type of krb5 lib quirk, since the default enctypes 
+are also in increasing order... 
 
-The final four patches in this series are meant to improve the
-precision of RPC RTTs used for RTT estimation and reported via
-/proc/mountstats.
-
----
-
-Chuck Lever (9):
-      SUNRPC: Replace jiffies-based metrics with ktime-based metrics
-      ktime: introduce ktime_to_ms()
-      SUNRPC: RPC metrics and RTT estimator should use same RTT value
-      NFS: Calldata for nfs4_renew_done()
-      NFS: Squelch compiler warning in nfs_add_server_stats()
-      NFS: Clean up fscache_uniq mount option
-      NFS: Squelch compiler warning
-      SUNRPC: Trivial cleanups in include/linux/sunrpc/xdr.h
-      NFS: rsize and wsize settings ignored on v4 mounts
-
-
- fs/nfs/client.c                |    2 ++
- fs/nfs/fscache.c               |    3 ++-
- fs/nfs/iostat.h                |    6 +++---
- fs/nfs/nfs4proc.c              |   26 ++++++++++++++++++++------
- fs/nfs/super.c                 |   18 +++++++++---------
- include/linux/ktime.h          |   10 ++++++++--
- include/linux/sunrpc/metrics.h |    7 ++++---
- include/linux/sunrpc/sched.h   |    5 +++--
- include/linux/sunrpc/xdr.h     |    8 +++++---
- include/linux/sunrpc/xprt.h    |    4 ++--
- net/sunrpc/sched.c             |    2 +-
- net/sunrpc/stats.c             |   27 +++++++++------------------
- net/sunrpc/xprt.c              |   19 ++++++++-----------
- net/sunrpc/xprtsock.c          |    1 -
- 14 files changed, 76 insertions(+), 62 deletions(-)
-
--- 
-Chuck Lever
+steved.
+ 
