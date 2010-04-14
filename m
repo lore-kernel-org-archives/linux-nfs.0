@@ -1,197 +1,190 @@
-From: Steve Dickson <SteveD@redhat.com>
-Subject: Re: [PATCH 2/3] Try to use kernel function to determine supported
- 	Kerberos enctypes.
-Date: Wed, 14 Apr 2010 16:05:30 -0400
-Message-ID: <4BC6200A.6060504@RedHat.com>
-References: <1271272729-24422-1-git-send-email-steved@redhat.com>	 <1271272729-24422-3-git-send-email-steved@redhat.com> <z2j4d569c331004141258y2f16a82ga1aa7826d665b3a9@mail.gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: linux-nfs@vger.kernel.org
-To: Kevin Coffman <kwc@citi.umich.edu>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: [PATCH] NFS: add a sysctl for disable the reconnect delay
+Date: Wed, 14 Apr 2010 16:43:33 -0400
+Message-ID: <C36646A2-70A4-4EF6-B34B-98F60D845BDE@oracle.com>
+References: <4BA1FC54.9020209@cn.fujitsu.com> <4BA249BA.7000900@oracle.com> <4BC4469C.8000607@cn.fujitsu.com> <4BC48150.6020405@oracle.com> <4BC5993F.2040401@cn.fujitsu.com>
+Mime-Version: 1.0 (Apple Message framework v1078)
+Content-Type: text/plain; charset=utf-8
+Cc: NFSv3 list <linux-nfs@vger.kernel.org>,
+	"J. Bruce Fields" <bfields@fieldses.org>,
+	"Trond.Myklebust" <trond.myklebust@fys.uio.no>,
+	"Batsakis, Alexandros" <Alexandros.Batsakis@netapp.com>
+To: Mi Jinlong <mijinlong@cn.fujitsu.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:1375 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755842Ab0DNUFc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 14 Apr 2010 16:05:32 -0400
-In-Reply-To: <z2j4d569c331004141258y2f16a82ga1aa7826d665b3a9-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
+Received: from acsinet11.oracle.com ([141.146.126.233]:54038 "EHLO
+	acsinet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756740Ab0DNUoO convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 14 Apr 2010 16:44:14 -0400
+In-Reply-To: <4BC5993F.2040401@cn.fujitsu.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Apr 14, 2010, at 6:30 AM, Mi Jinlong wrote:
+> Chuck Lever =E5=86=99=E9=81=93:
+>> On 04/13/2010 06:25 AM, Mi Jinlong wrote:
+>>> Hi Chuck,
+>>>=20
+>>>   Sorry for replying your message so later.
+>>>=20
+>>> Chuck Lever =E5=86=99=E9=81=93:
+>>>> Hi Mi-
+>>>>=20
+>>>> On 03/18/2010 06:11 AM, Mi Jinlong wrote:
+>>>>> If network partition or some other reason cause a reconnect, it c=
+annot
+>>>>> succeed immediately when environment recover, but client want to
+>>>>> connect
+>>>>> timely sometimes.
+>>>>>=20
+>>>>> This patch can provide a proc
+>>>>> file(/proc/sys/fs/nfs/nfs_disable_reconnect_delay)
+>>>>> to allow client disable the reconnect delay(reestablish_timeout) =
+when
+>>>>> using NFS.
+>>>>>=20
+>>>>> It's only useful for NFS.
+>>>>=20
+>>>> There's a good reason for the connection re-establishment delay, a=
+nd
+>>>> only very few instances where you'd want to disable it.  A sysctl =
+is the
+>>>> wrong place for this, as it would disable the reconnect delay acro=
+ss the
+>>>> board, instead of for just those occasions when it is actually nec=
+essary
+>>>> to connect immediately.
+>>>=20
+>>>   Yes, I agree with you.
+>>>=20
+>>>>=20
+>>>> I assume that because the grace period has a time limit, you would=
+ want
+>>>> the client to reconnect at all costs?  I think that this is actual=
+ly
+>>>> when a client should take care not to spuriously reconnect: during=
+ a
+>>>> server reboot, a server may be sluggish or not completely ready to
+>>>> accept client requests.  It's not a time when a client should be
+>>>> showering a server with connection attempts.
+>>>>=20
+>>>> The reconnect delay is an exponential backoff that starts at 3 sec=
+onds,
+>>>> so if the server is really ready to accept connections, the actual
+>>>> connection delay ought to be quick.
+>>>>=20
+>>>> We're already considering shortening the maximum amount of time th=
+e
+>>>> client can wait before trying a reconnect.  And, it might possibly=
+ be
+>>>> that the network layer itself is interfering with the backoff logi=
+c that
+>>>> is already built into the RPC client.  (If true, that would be the=
+ real
+>>>> bug in this case).  I'm not interested in a workaround when we rea=
+lly
+>>>> should fix any underlying issues to make this work correctly.
+>>>>=20
+>>>> Perhaps the RPC client needs to distinguish between connection ref=
+usal
+>>>> (where a lengthening exponential backoff between connection attemp=
+ts
+>>>> makes sense) and no server response (where we want the client's ne=
+twork
+>>>> layer to keep sending SYN requests so that it can reconnect as soo=
+n as
+>>>> possible).
+>>>=20
+>>>   When reading the kernel's code and testing, I find there are thre=
+e
+>>> case:
+>>>=20
+>>>   A. network partition:
+>>>      Becasue the client can't communicate with server's rpcbind,
+>>>      so there is no influence.
+>>>=20
+>>>   B. server's nfs service stop:
+>>>      The client call xprt_connect to conncet, but get err(111:
+>>> Connection refused).
+>>>=20
+>>>   C. server's nfs service sotp, and ifdown the NIC after about 60s:
+>>>      At first, when the NIC is up, xprt_connect get err(111:
+>>> Connection refused) as 2.
+>>>=20
+>>>      After NIC is down, xprt_connect get err(113: No route to host)=
+=2E
+>>>=20
+>>>  When connecting fail, the sunrpc level only get a ETIMEDOUT or
+>>> EAGAIN err, it will also
+>>>  call xprt_connect to reconnect.
+>>>  If we make the network layer to keep sending SYN requests, but the=
+re
+>>> will be more request
+>>>  be delayed at the request queue, and the reestablish_timeout also =
+be
+>>> increased.
+>>>=20
+>>>  Can we distinguish those refusal at sunrpc level, but not at xprt
+>>> level ?
+>=20
+>   What do you think that I show yesterday?
+
+In xprtsock.c, these reconnection errors are distinguished.  In the gen=
+eric sunrpc client (xprt.c) they are not -- when an RPC transmission is=
+ sent, xprtsock.c returns ENOTCONN for any connection error.  Trond mad=
+e this change after 2.6.18.  The differences matter in how the client r=
+e-establishes the connection, and that logic is all in xprtsock.c.  So,=
+ the RPC client already makes this distinction, but the logic may have =
+bugs.
+
+>>>  If we can do that, the problem will solved easily.
+>>>=20
+>>>  [NOTE]
+>>>    the testing process:
+>>>          client                    server
+>>>    1.   mount nfs (OK)
+>>>    2.     df (OK)
+>>>    3.                             nfs stop
+>>>    4.     df (hang)
+>>>=20
+>>>   I get message through rpcdebug.
+>>=20
+>> We have a matrix of cases.  "soft" v. "hard" RPCs, ECONNREFUSED v. n=
+o
+>> response, connection previously closed by server disconnect v. clien=
+t
+>> idle timeout.
+>=20
+>  connection previously closed by server disconnect v. client idle tim=
+eout?
+>  Can you explain to me in some sort? Maybe it's useful for me. Thanks=
+=2E
+
+If the server closed the connection, the client should use the re-estab=
+lish timeout to delay the reconnection in order to prevent a hard loop =
+of client connection retries.  If the client idled the connection out, =
+then the client should reconnect immediately.
+
+>> I've found at least one major bug in this logic, and that is that th=
+e 60
+>> second transport connect timer is clobbered in the ECONNREFUSED case=
+, so
+>> soft RPCs never time out if the server refuses a connection, for
+>> example.  I handed all of this off to Trond.
+>=20
+>  Really?=20
+>  I mount the nfs file through soft(-o soft), and then I using "df" co=
+mmand
+>  to see the mount information after server's nfs stop.
+>  The "df" will return with error -5(Input/output error), maybe it's R=
+PCs=20
+>  timeout cause the df return?
+
+RPC timeouts generally cause an EIO.  However, if the server continues =
+to refuse a connection, the timeout never occurs.
+
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
 
 
-On 04/14/2010 03:58 PM, Kevin Coffman wrote:
-> On Wed, Apr 14, 2010 at 3:18 PM,  <steved@redhat.com> wrote:
->> From: Kevin Coffman <kwc@citi.umich.edu>
->>
->> This patch replaces a hard-coded list with a function to obtain
->> the Kerberos encryption types that the kernel's rpcsec_gss code
->> can support.  Defaults to old behavior if kernel does not supply
->> information.
->>
->> Signed-off-by: Steve Dickson <steved@redhat.com>
->> ---
->>  utils/gssd/gssd_proc.c |   81 +++++++++++++++++++++++++++++++++++++++++++++++-
->>  utils/gssd/krb5_util.c |   16 ++++++++-
->>  2 files changed, 94 insertions(+), 3 deletions(-)
->>
->> diff --git a/utils/gssd/gssd_proc.c b/utils/gssd/gssd_proc.c
->> index be4fb11..12e11d5 100644
->> --- a/utils/gssd/gssd_proc.c
->> +++ b/utils/gssd/gssd_proc.c
->> @@ -600,6 +600,67 @@ update_client_list(void)
->>        return retval;
->>  }
->>
->> +/* Encryption types supported by the kernel rpcsec_gss code */
->> +int num_krb5_enctypes = 0;
->> +krb5_enctype *krb5_enctypes = NULL;
->> +
->> +/*
->> + * Parse the supported encryption type information
->> + */
->> +static int
->> +parse_enctypes(char *enctypes)
->> +{
->> +       int n = 0;
->> +       char *curr, *comma;
->> +       int i;
->> +       static char *cached_types;
->> +
->> +       if (cached_types && strcmp(cached_types, enctypes) == 0)
->> +               return 0;
->> +       free(cached_types);
->> +
->> +       if (krb5_enctypes != NULL) {
->> +               free(krb5_enctypes);
->> +               krb5_enctypes = NULL;
->> +               num_krb5_enctypes = 0;
->> +       }
->> +
->> +       /* count the number of commas */
->> +       for (curr = enctypes; curr && *curr != '\0'; curr = ++comma) {
->> +               comma = strchr(curr, ',');
->> +               if (comma != NULL)
->> +                       n++;
->> +               else
->> +                       break;
->> +       }
->> +       /* If no more commas and we're not at the end, there's one more value */
->> +       if (*curr != '\0')
->> +               n++;
->> +
->> +       /* Empty string, return an error */
->> +       if (n == 0)
->> +               return ENOENT;
->> +
->> +       /* Allocate space for enctypes array */
->> +       if ((krb5_enctypes = (int *) calloc(n, sizeof(int))) == NULL) {
->> +               return ENOMEM;
->> +       }
->> +
->> +       /* Now parse each value into the array */
->> +       for (curr = enctypes, i = 0; curr && *curr != '\0'; curr = ++comma) {
->> +               krb5_enctypes[i++] = atoi(curr);
->> +               comma = strchr(curr, ',');
->> +               if (comma == NULL)
->> +                       break;
->> +       }
->> +
->> +       num_krb5_enctypes = n;
->> +       if (cached_types = malloc(strlen(enctypes)+1))
->> +               strcpy(cached_types, enctypes);
->> +
->> +       return 0;
->> +}
->> +
->>  static int
->>  do_downcall(int k5_fd, uid_t uid, struct authgss_private_data *pd,
->>            gss_buffer_desc *context_token)
->> @@ -1128,11 +1189,12 @@ handle_gssd_upcall(struct clnt_info *clp)
->>  {
->>        uid_t                   uid;
->>        char                    *lbuf = NULL;
->> -       int                     lbuflen = 0;
->> +       int                     lbuflen = 0, code;
->>        char                    *p;
->>        char                    *mech = NULL;
->>        char                    *target = NULL;
->>        char                    *service = NULL;
->> +       char                    *enctypes = NULL;
->>
->>        printerr(1, "handling gssd upcall (%s)\n", clp->dirname);
->>
->> @@ -1176,6 +1238,23 @@ handle_gssd_upcall(struct clnt_info *clp)
->>                goto out;
->>        }
->>
->> +       /* read supported encryption types if supplied */
->> +       if ((p = strstr(lbuf, "enctypes=")) != NULL) {
->> +               enctypes = malloc(lbuflen);
->> +               if (!enctypes)
->> +                       goto out;
->> +               if (sscanf(p, "enctypes=%s", enctypes) != 1) {
->> +                       printerr(0, "WARNING: handle_gssd_upcall: "
->> +                                   "failed to parse target name "
->> +                                   "in upcall string '%s'\n", lbuf);
->> +                       goto out;
->> +               }
->> +               if (parse_enctypes(enctypes) != 0) {
->> +                       printerr(0, "WARNING: handle_gssd_upcall: "
->> +                               "parsing encryption types failed: errno %d\n", code);
->> +               }
->> +       }
->> +
->>        /* read target name */
->>        if ((p = strstr(lbuf, "target=")) != NULL) {
->>                target = malloc(lbuflen);
->> diff --git a/utils/gssd/krb5_util.c b/utils/gssd/krb5_util.c
->> index 1c10bd4..0f56b1d 100644
->> --- a/utils/gssd/krb5_util.c
->> +++ b/utils/gssd/krb5_util.c
->> @@ -1274,6 +1274,8 @@ limit_krb5_enctypes(struct rpc_gss_sec *sec, uid_t uid)
->>                                    ENCTYPE_DES_CBC_MD5,
->>                                    ENCTYPE_DES_CBC_MD4 };
->>        int num_enctypes = sizeof(enctypes) / sizeof(enctypes[0]);
->> +       extern int num_krb5_enctypes;
->> +       extern krb5_enctype *krb5_enctypes;
->>
->>        /* We only care about getting a krb5 cred */
->>        desired_mechs.count = 1;
->> @@ -1290,8 +1292,18 @@ limit_krb5_enctypes(struct rpc_gss_sec *sec, uid_t uid)
->>                return -1;
->>        }
->>
->> -       maj_stat = gss_set_allowable_enctypes(&min_stat, credh, &krb5oid,
->> -                                            num_enctypes, &enctypes);
->> +       /*
->> +        * If we failed for any reason to produce global
->> +        * list of supported enctypes, use local default here.
->> +        */
->> +       if (krb5_enctypes == NULL)
->> +               maj_stat = gss_set_allowable_enctypes(&min_stat, credh,
->> +                                       &krb5oid, num_enctypes, &enctypes);
->> +       else
->> +               maj_stat = gss_set_allowable_enctypes(&min_stat, credh,
->> +                                       &krb5oid, num_krb5_enctypes,
->> +                                       krb5_enctypes);
->> +
->>        if (maj_stat != GSS_S_COMPLETE) {
->>                pgsserr("gss_set_allowable_enctypes",
->>                        maj_stat, min_stat, &krb5oid);
->> --
-> 
-> Hi Steve,
-> 
-> The global krb5_enctypes array was used when the list was being read
-> once from a file.  With the list now coming up with each request in
-> the updated upcall, I think the list obtained in the upcall should be
-> added to the clnt_info structure and then passed to the
-> limit_krb5_enctypes function as a parameter.
-Six of one.... half a dozen of another... ;-)
 
-But I do see there is a memory leak... I don't free the  enctypes
-buffer in handle_gssd_upcall() :-\
-
-I'll repost in a bit... 
-
-steved.
