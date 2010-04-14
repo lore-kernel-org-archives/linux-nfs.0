@@ -1,7 +1,7 @@
 From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH 20/22] gss_krb5: Use confounder length in wrap code
-Date: Wed, 14 Apr 2010 13:36:56 -0400
-Message-ID: <1271266618-26016-21-git-send-email-Trond.Myklebust@netapp.com>
+Subject: [PATCH 17/22] gssd_krb5: arcfour-hmac support
+Date: Wed, 14 Apr 2010 13:36:53 -0400
+Message-ID: <1271266618-26016-18-git-send-email-Trond.Myklebust@netapp.com>
 References: <1271266618-26016-1-git-send-email-Trond.Myklebust@netapp.com>
  <1271266618-26016-2-git-send-email-Trond.Myklebust@netapp.com>
  <1271266618-26016-3-git-send-email-Trond.Myklebust@netapp.com>
@@ -19,184 +19,239 @@ References: <1271266618-26016-1-git-send-email-Trond.Myklebust@netapp.com>
  <1271266618-26016-15-git-send-email-Trond.Myklebust@netapp.com>
  <1271266618-26016-16-git-send-email-Trond.Myklebust@netapp.com>
  <1271266618-26016-17-git-send-email-Trond.Myklebust@netapp.com>
- <1271266618-26016-18-git-send-email-Trond.Myklebust@netapp.com>
- <1271266618-26016-19-git-send-email-Trond.Myklebust@netapp.com>
- <1271266618-26016-20-git-send-email-Trond.Myklebust@netapp.com>
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
 Received: from mx2.netapp.com ([216.240.18.37]:57513 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756554Ab0DNRhW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 14 Apr 2010 13:37:22 -0400
+	id S1756566Ab0DNRhV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 14 Apr 2010 13:37:21 -0400
 Received: from localhost.localdomain (pd07336a.hq.netapp.com [10.58.61.110] (may be forged))
-	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id o3EHawKG021574
-	for <linux-nfs@vger.kernel.org>; Wed, 14 Apr 2010 10:37:10 -0700 (PDT)
-In-Reply-To: <1271266618-26016-20-git-send-email-Trond.Myklebust@netapp.com>
+	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id o3EHawKD021574
+	for <linux-nfs@vger.kernel.org>; Wed, 14 Apr 2010 10:37:08 -0700 (PDT)
+In-Reply-To: <1271266618-26016-17-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 From: Kevin Coffman <kwc@citi.umich.edu>
 
-All encryption types use a confounder at the beginning of the
-wrap token.  In all encryption types except arcfour-hmac, the
-confounder is the same as the blocksize.  arcfour-hmac has a
-blocksize of one, but uses an eight byte confounder.
-
-Add an entry to the crypto framework definitions for the
-confounder length and change the wrap/unwrap code to use
-the confounder length rather than assuming it is always
-the blocksize.
+For arcfour-hmac support, the make_checksum function needs a usage
+field to correctly calculate the checksum differently for MIC and
+WRAP tokens.
 
 Signed-off-by: Kevin Coffman <kwc@citi.umich.edu>
 Signed-off-by: Steve Dickson <steved@redhat.com>
 Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
- include/linux/sunrpc/gss_krb5.h       |    3 +++
- net/sunrpc/auth_gss/gss_krb5_crypto.c |    6 +++---
- net/sunrpc/auth_gss/gss_krb5_mech.c   |    4 ++++
- net/sunrpc/auth_gss/gss_krb5_wrap.c   |   12 +++++++-----
- 4 files changed, 17 insertions(+), 8 deletions(-)
+ include/linux/sunrpc/gss_krb5.h       |    4 ++--
+ net/sunrpc/auth_gss/gss_krb5_crypto.c |   15 +++++++++++----
+ net/sunrpc/auth_gss/gss_krb5_seal.c   |   13 +++++++++----
+ net/sunrpc/auth_gss/gss_krb5_unseal.c |   12 ++++++++----
+ net/sunrpc/auth_gss/gss_krb5_wrap.c   |    4 ++--
+ 5 files changed, 32 insertions(+), 16 deletions(-)
 
 diff --git a/include/linux/sunrpc/gss_krb5.h b/include/linux/sunrpc/gss_krb5.h
-index d840856..79f6ac2 100644
+index 43148ec..633f41f 100644
 --- a/include/linux/sunrpc/gss_krb5.h
 +++ b/include/linux/sunrpc/gss_krb5.h
-@@ -64,6 +64,9 @@ struct gss_krb5_enctype {
- 	const u16		signalg;	/* signing algorithm */
- 	const u16		sealalg;	/* sealing algorithm */
- 	const u32		blocksize;	/* encryption blocksize */
-+	const u32		conflen;	/* confounder length
-+						   (normally the same as
-+						   the blocksize) */
- 	const u32		cksumlength;	/* checksum length */
- 	const u32		keyed_cksum;	/* is it a keyed cksum? */
- 	const u32		keybytes;	/* raw key len, in bytes */
+@@ -235,12 +235,12 @@ enum seal_alg {
+ u32
+ make_checksum(struct krb5_ctx *kctx, char *header, int hdrlen,
+ 		struct xdr_buf *body, int body_offset, u8 *cksumkey,
+-		struct xdr_netobj *cksumout);
++		unsigned int usage, struct xdr_netobj *cksumout);
+ 
+ u32
+ make_checksum_v2(struct krb5_ctx *, char *header, int hdrlen,
+ 		 struct xdr_buf *body, int body_offset, u8 *key,
+-		 struct xdr_netobj *cksum);
++		 unsigned int usage, struct xdr_netobj *cksum);
+ 
+ u32 gss_get_mic_kerberos(struct gss_ctx *, struct xdr_buf *,
+ 		struct xdr_netobj *);
 diff --git a/net/sunrpc/auth_gss/gss_krb5_crypto.c b/net/sunrpc/auth_gss/gss_krb5_crypto.c
-index 33ae702..ed4106a 100644
+index 967484a..33ae702 100644
 --- a/net/sunrpc/auth_gss/gss_krb5_crypto.c
 +++ b/net/sunrpc/auth_gss/gss_krb5_crypto.c
-@@ -554,9 +554,9 @@ gss_krb5_aes_encrypt(struct krb5_ctx *kctx, u32 offset,
+@@ -132,7 +132,7 @@ checksummer(struct scatterlist *sg, void *data)
+ u32
+ make_checksum(struct krb5_ctx *kctx, char *header, int hdrlen,
+ 	      struct xdr_buf *body, int body_offset, u8 *cksumkey,
+-	      struct xdr_netobj *cksumout)
++	      unsigned int usage, struct xdr_netobj *cksumout)
+ {
+ 	struct hash_desc                desc;
+ 	struct scatterlist              sg[1];
+@@ -208,7 +208,7 @@ out:
+ u32
+ make_checksum_v2(struct krb5_ctx *kctx, char *header, int hdrlen,
+ 		 struct xdr_buf *body, int body_offset, u8 *cksumkey,
+-		 struct xdr_netobj *cksumout)
++		 unsigned int usage, struct xdr_netobj *cksumout)
+ {
+ 	struct hash_desc desc;
+ 	struct scatterlist sg[1];
+@@ -537,15 +537,18 @@ gss_krb5_aes_encrypt(struct krb5_ctx *kctx, u32 offset,
+ 	int nblocks, nbytes;
+ 	struct encryptor_desc desc;
+ 	u32 cbcbytes;
++	unsigned int usage;
  
- 	/* hide the gss token header and insert the confounder */
- 	offset += GSS_KRB5_TOK_HDR_LEN;
--	if (xdr_extend_head(buf, offset, blocksize))
-+	if (xdr_extend_head(buf, offset, kctx->gk5e->conflen))
- 		return GSS_S_FAILURE;
--	gss_krb5_make_confounder(buf->head[0].iov_base + offset, blocksize);
-+	gss_krb5_make_confounder(buf->head[0].iov_base + offset, kctx->gk5e->conflen);
- 	offset -= GSS_KRB5_TOK_HDR_LEN;
- 
- 	if (buf->tail[0].iov_base != NULL) {
-@@ -726,7 +726,7 @@ gss_krb5_aes_decrypt(struct krb5_ctx *kctx, u32 offset, struct xdr_buf *buf,
- 		ret = GSS_S_BAD_SIG;
- 		goto out_err;
+ 	if (kctx->initiate) {
+ 		cipher = kctx->initiator_enc;
+ 		aux_cipher = kctx->initiator_enc_aux;
+ 		cksumkey = kctx->initiator_integ;
++		usage = KG_USAGE_INITIATOR_SEAL;
+ 	} else {
+ 		cipher = kctx->acceptor_enc;
+ 		aux_cipher = kctx->acceptor_enc_aux;
+ 		cksumkey = kctx->acceptor_integ;
++		usage = KG_USAGE_ACCEPTOR_SEAL;
  	}
--	*headskip = crypto_blkcipher_blocksize(cipher);
-+	*headskip = kctx->gk5e->conflen;
- 	*tailskip = kctx->gk5e->cksumlength;
- out_err:
- 	if (ret && ret != GSS_S_BAD_SIG)
-diff --git a/net/sunrpc/auth_gss/gss_krb5_mech.c b/net/sunrpc/auth_gss/gss_krb5_mech.c
-index 6908d38..1135056 100644
---- a/net/sunrpc/auth_gss/gss_krb5_mech.c
-+++ b/net/sunrpc/auth_gss/gss_krb5_mech.c
-@@ -68,6 +68,7 @@ static const struct gss_krb5_enctype supported_gss_krb5_enctypes[] = {
- 	  .keybytes = 7,
- 	  .keylength = 8,
- 	  .blocksize = 8,
-+	  .conflen = 8,
- 	  .cksumlength = 8,
- 	  .keyed_cksum = 0,
- 	},
-@@ -88,6 +89,7 @@ static const struct gss_krb5_enctype supported_gss_krb5_enctypes[] = {
- 	  .keybytes = 21,
- 	  .keylength = 24,
- 	  .blocksize = 8,
-+	  .conflen = 8,
- 	  .cksumlength = 20,
- 	  .keyed_cksum = 1,
- 	},
-@@ -110,6 +112,7 @@ static const struct gss_krb5_enctype supported_gss_krb5_enctypes[] = {
- 	  .keybytes = 16,
- 	  .keylength = 16,
- 	  .blocksize = 16,
-+	  .conflen = 16,
- 	  .cksumlength = 12,
- 	  .keyed_cksum = 1,
- 	},
-@@ -132,6 +135,7 @@ static const struct gss_krb5_enctype supported_gss_krb5_enctypes[] = {
- 	  .keybytes = 32,
- 	  .keylength = 32,
- 	  .blocksize = 16,
-+	  .conflen = 16,
- 	  .cksumlength = 12,
- 	  .keyed_cksum = 1,
- 	},
-diff --git a/net/sunrpc/auth_gss/gss_krb5_wrap.c b/net/sunrpc/auth_gss/gss_krb5_wrap.c
-index a95e7e0..383db89 100644
---- a/net/sunrpc/auth_gss/gss_krb5_wrap.c
-+++ b/net/sunrpc/auth_gss/gss_krb5_wrap.c
-@@ -168,6 +168,7 @@ gss_wrap_kerberos_v1(struct krb5_ctx *kctx, int offset,
- 	struct page		**tmp_pages;
- 	u32			seq_send;
- 	u8			*cksumkey;
-+	u32			conflen = kctx->gk5e->conflen;
+ 	blocksize = crypto_blkcipher_blocksize(cipher);
+ 
+@@ -590,7 +593,8 @@ gss_krb5_aes_encrypt(struct krb5_ctx *kctx, u32 offset,
+ 	buf->pages = pages;
+ 
+ 	err = make_checksum_v2(kctx, NULL, 0, buf,
+-			       offset + GSS_KRB5_TOK_HDR_LEN, cksumkey, &hmac);
++			       offset + GSS_KRB5_TOK_HDR_LEN,
++			       cksumkey, usage, &hmac);
+ 	buf->pages = save_pages;
+ 	if (err)
+ 		return GSS_S_FAILURE;
+@@ -654,15 +658,18 @@ gss_krb5_aes_decrypt(struct krb5_ctx *kctx, u32 offset, struct xdr_buf *buf,
+ 	u8 pkt_hmac[GSS_KRB5_MAX_CKSUM_LEN];
+ 	int nblocks, blocksize, cbcbytes;
+ 	struct decryptor_desc desc;
++	unsigned int usage;
+ 
+ 	if (kctx->initiate) {
+ 		cipher = kctx->acceptor_enc;
+ 		aux_cipher = kctx->acceptor_enc_aux;
+ 		cksum_key = kctx->acceptor_integ;
++		usage = KG_USAGE_ACCEPTOR_SEAL;
+ 	} else {
+ 		cipher = kctx->initiator_enc;
+ 		aux_cipher = kctx->initiator_enc_aux;
+ 		cksum_key = kctx->initiator_integ;
++		usage = KG_USAGE_INITIATOR_SEAL;
+ 	}
+ 	blocksize = crypto_blkcipher_blocksize(cipher);
+ 
+@@ -705,7 +712,7 @@ gss_krb5_aes_decrypt(struct krb5_ctx *kctx, u32 offset, struct xdr_buf *buf,
+ 	our_hmac_obj.data = our_hmac;
+ 
+ 	ret = make_checksum_v2(kctx, NULL, 0, &subbuf, 0,
+-			       cksum_key, &our_hmac_obj);
++			       cksum_key, usage, &our_hmac_obj);
+ 	if (ret)
+ 		goto out_err;
+ 
+diff --git a/net/sunrpc/auth_gss/gss_krb5_seal.c b/net/sunrpc/auth_gss/gss_krb5_seal.c
+index 477a546..e22fed3 100644
+--- a/net/sunrpc/auth_gss/gss_krb5_seal.c
++++ b/net/sunrpc/auth_gss/gss_krb5_seal.c
+@@ -142,7 +142,8 @@ gss_get_mic_v1(struct krb5_ctx *ctx, struct xdr_buf *text,
+ 	else
+ 		cksumkey = NULL;
+ 
+-	if (make_checksum(ctx, ptr, 8, text, 0, cksumkey, &md5cksum))
++	if (make_checksum(ctx, ptr, 8, text, 0, cksumkey,
++			  KG_USAGE_SIGN, &md5cksum))
+ 		return GSS_S_FAILURE;
+ 
+ 	memcpy(ptr + GSS_KRB5_TOK_HDR_LEN, md5cksum.data, md5cksum.len);
+@@ -170,6 +171,7 @@ gss_get_mic_v2(struct krb5_ctx *ctx, struct xdr_buf *text,
+ 	s32 now;
+ 	u64 seq_send;
+ 	u8 *cksumkey;
++	unsigned int cksum_usage;
  
  	dprintk("RPC:       %s\n", __func__);
  
-@@ -176,7 +177,7 @@ gss_wrap_kerberos_v1(struct krb5_ctx *kctx, int offset,
- 	blocksize = crypto_blkcipher_blocksize(kctx->enc);
- 	gss_krb5_add_padding(buf, offset, blocksize);
- 	BUG_ON((buf->len - offset) % blocksize);
--	plainlen = blocksize + buf->len - offset;
-+	plainlen = conflen + buf->len - offset;
+@@ -182,13 +184,16 @@ gss_get_mic_v2(struct krb5_ctx *ctx, struct xdr_buf *text,
+ 	spin_unlock(&krb5_seq_lock);
+ 	*((u64 *)(krb5_hdr + 8)) = cpu_to_be64(seq_send);
  
- 	headlen = g_token_size(&kctx->mech_used,
- 		GSS_KRB5_TOK_HDR_LEN + kctx->gk5e->cksumlength + plainlen) -
-@@ -204,7 +205,7 @@ gss_wrap_kerberos_v1(struct krb5_ctx *kctx, int offset,
- 	memset(ptr + 4, 0xff, 4);
- 	*(__be16 *)(ptr + 4) = cpu_to_le16(kctx->gk5e->sealalg);
+-	if (ctx->initiate)
++	if (ctx->initiate) {
+ 		cksumkey = ctx->initiator_sign;
+-	else
++		cksum_usage = KG_USAGE_INITIATOR_SIGN;
++	} else {
+ 		cksumkey = ctx->acceptor_sign;
++		cksum_usage = KG_USAGE_ACCEPTOR_SIGN;
++	}
  
--	gss_krb5_make_confounder(msg_start, blocksize);
-+	gss_krb5_make_confounder(msg_start, conflen);
+ 	if (make_checksum_v2(ctx, krb5_hdr, GSS_KRB5_TOK_HDR_LEN,
+-			     text, 0, cksumkey, &cksumobj))
++			     text, 0, cksumkey, cksum_usage, &cksumobj))
+ 		return GSS_S_FAILURE;
  
- 	if (kctx->gk5e->keyed_cksum)
- 		cksumkey = kctx->cksum;
-@@ -214,7 +215,7 @@ gss_wrap_kerberos_v1(struct krb5_ctx *kctx, int offset,
- 	/* XXXJBF: UGH!: */
+ 	memcpy(krb5_hdr + GSS_KRB5_TOK_HDR_LEN, cksumobj.data, cksumobj.len);
+diff --git a/net/sunrpc/auth_gss/gss_krb5_unseal.c b/net/sunrpc/auth_gss/gss_krb5_unseal.c
+index 4ede4cc..ef91366 100644
+--- a/net/sunrpc/auth_gss/gss_krb5_unseal.c
++++ b/net/sunrpc/auth_gss/gss_krb5_unseal.c
+@@ -115,7 +115,7 @@ gss_verify_mic_v1(struct krb5_ctx *ctx,
+ 		cksumkey = NULL;
+ 
+ 	if (make_checksum(ctx, ptr, 8, message_buffer, 0,
+-			  cksumkey, &md5cksum))
++			  cksumkey, KG_USAGE_SIGN, &md5cksum))
+ 		return GSS_S_FAILURE;
+ 
+ 	if (memcmp(md5cksum.data, ptr + GSS_KRB5_TOK_HDR_LEN,
+@@ -154,6 +154,7 @@ gss_verify_mic_v2(struct krb5_ctx *ctx,
+ 	u8 *cksumkey;
+ 	u8 flags;
+ 	int i;
++	unsigned int cksum_usage;
+ 
+ 	dprintk("RPC:       %s\n", __func__);
+ 
+@@ -174,13 +175,16 @@ gss_verify_mic_v2(struct krb5_ctx *ctx,
+ 		if (ptr[i] != 0xff)
+ 			return GSS_S_DEFECTIVE_TOKEN;
+ 
+-	if (ctx->initiate)
++	if (ctx->initiate) {
+ 		cksumkey = ctx->acceptor_sign;
+-	else
++		cksum_usage = KG_USAGE_ACCEPTOR_SIGN;
++	} else {
+ 		cksumkey = ctx->initiator_sign;
++		cksum_usage = KG_USAGE_INITIATOR_SIGN;
++	}
+ 
+ 	if (make_checksum_v2(ctx, ptr, GSS_KRB5_TOK_HDR_LEN, message_buffer, 0,
+-			     cksumkey, &cksumobj))
++			     cksumkey, cksum_usage, &cksumobj))
+ 		return GSS_S_FAILURE;
+ 
+ 	if (memcmp(cksumobj.data, ptr + GSS_KRB5_TOK_HDR_LEN,
+diff --git a/net/sunrpc/auth_gss/gss_krb5_wrap.c b/net/sunrpc/auth_gss/gss_krb5_wrap.c
+index a1a3585..097cc27 100644
+--- a/net/sunrpc/auth_gss/gss_krb5_wrap.c
++++ b/net/sunrpc/auth_gss/gss_krb5_wrap.c
+@@ -215,7 +215,7 @@ gss_wrap_kerberos_v1(struct krb5_ctx *kctx, int offset,
  	tmp_pages = buf->pages;
  	buf->pages = pages;
--	if (make_checksum(kctx, ptr, 8, buf, offset + headlen - blocksize,
-+	if (make_checksum(kctx, ptr, 8, buf, offset + headlen - conflen,
- 					cksumkey, KG_USAGE_SEAL, &md5cksum))
+ 	if (make_checksum(kctx, ptr, 8, buf, offset + headlen - blocksize,
+-					cksumkey, &md5cksum))
++					cksumkey, KG_USAGE_SEAL, &md5cksum))
  		return GSS_S_FAILURE;
  	buf->pages = tmp_pages;
-@@ -231,7 +232,7 @@ gss_wrap_kerberos_v1(struct krb5_ctx *kctx, int offset,
- 			       seq_send, ptr + GSS_KRB5_TOK_HDR_LEN, ptr + 8)))
+ 
+@@ -298,7 +298,7 @@ gss_unwrap_kerberos_v1(struct krb5_ctx *kctx, int offset, struct xdr_buf *buf)
+ 		cksumkey = NULL;
+ 
+ 	if (make_checksum(kctx, ptr, 8, buf, crypt_offset,
+-						cksumkey, &md5cksum))
++					cksumkey, KG_USAGE_SEAL, &md5cksum))
  		return GSS_S_FAILURE;
  
--	if (gss_encrypt_xdr_buf(kctx->enc, buf, offset + headlen - blocksize,
-+	if (gss_encrypt_xdr_buf(kctx->enc, buf, offset + headlen - conflen,
- 									pages))
- 		return GSS_S_FAILURE;
- 
-@@ -254,6 +255,7 @@ gss_unwrap_kerberos_v1(struct krb5_ctx *kctx, int offset, struct xdr_buf *buf)
- 	void			*data_start, *orig_start;
- 	int			data_len;
- 	int			blocksize;
-+	u32			conflen = kctx->gk5e->conflen;
- 	int			crypt_offset;
- 	u8			*cksumkey;
- 
-@@ -327,7 +329,7 @@ gss_unwrap_kerberos_v1(struct krb5_ctx *kctx, int offset, struct xdr_buf *buf)
- 
- 	blocksize = crypto_blkcipher_blocksize(kctx->enc);
- 	data_start = ptr + (GSS_KRB5_TOK_HDR_LEN + kctx->gk5e->cksumlength) +
--					blocksize;
-+					conflen;
- 	orig_start = buf->head[0].iov_base + offset;
- 	data_len = (buf->head[0].iov_base + buf->head[0].iov_len) - data_start;
- 	memmove(orig_start, data_start, data_len);
+ 	if (memcmp(md5cksum.data, ptr + GSS_KRB5_TOK_HDR_LEN,
 -- 
 1.6.6.1
 
