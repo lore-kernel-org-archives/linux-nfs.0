@@ -1,31 +1,112 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-gx0-f217.google.com ([209.85.217.217]:58382 "EHLO
-	mail-gx0-f217.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932684Ab0DGPcP (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 7 Apr 2010 11:32:15 -0400
-Received: by gxk9 with SMTP id 9so705064gxk.8
-        for <linux-nfs@vger.kernel.org>; Wed, 07 Apr 2010 08:32:14 -0700 (PDT)
-Date: Wed, 7 Apr 2010 12:32:14 -0300
-Message-ID: <t2z84250c9c1004070832uedd208dfp3292e8a155a8c975@mail.gmail.com>
-Subject: nfs file access audit
-From: Norberto Bensa <nbensa@flacso.org.ar>
-To: linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mail-bw0-f209.google.com ([209.85.218.209]:41255 "EHLO
+	mail-bw0-f209.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756862Ab0DNVW2 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 14 Apr 2010 17:22:28 -0400
+Message-ID: <4BC63223.8050604@gmail.com>
+Date: Wed, 14 Apr 2010 14:22:43 -0700
+From: Dean Hildebrand <seattleplus@gmail.com>
+To: Wu Fengguang <fengguang.wu@intel.com>
+CC: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        John Stoffel <john@stoffel.org>, Dave Chinner <david@fromorbit.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+        Linux Memory Management List <linux-mm@kvack.org>,
+        LKML <linux-kernel@vger.kernel.org>
+Subject: Re: [RFC] nfs: use 4*rsize readahead size
+References: <20100224032934.GF16175@discord.disaster> <20100224041822.GB27459@localhost> <20100224052215.GH16175@discord.disaster> <20100224061247.GA8421@localhost> <20100224073940.GJ16175@discord.disaster> <20100226074916.GA8545@localhost> <20100302031021.GA14267@localhost> <1267539563.3099.43.camel@localhost.localdomain> <19341.19446.356359.99958@stoffel.org> <1267555339.3099.127.camel@localhost.localdomain> <20100303032724.GA9979@localhost>
+In-Reply-To: <20100303032724.GA9979@localhost>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Hello,
+You cannot simply update linux system tcp parameters and expect nfs to 
+work well performance-wise over the wan.  The NFS server does not use 
+system tcp parameters.  This is a long standing issue.  A patch was 
+originally added in 2.6.30 that enabled NFS to use linux tcp buffer 
+autotuning, which would resolve the issue, but a regression was reported 
+(http://thread.gmane.org/gmane.linux.kernel/826598 ) and so they removed 
+the patch.
 
-at work, we are moving our workstations from Windows to Linux.
+Maybe its time to rethink allowing users to manually set linux nfs 
+server tcp buffer sizes?  Years have passed on this subject and people 
+are still waiting.  Good performance over the wan will require manually 
+setting tcp buffer sizes.  As mentioned in the regression thread, 
+autotuning can reduce performance by up to 10%.  Here is a patch 
+(slightly outdated) that creates 2 sysctls that allow users to manually 
+to set NFS TCP buffer sizes.  The first link also has a fair amount of 
+background information on the subject.
+http://www.spinics.net/lists/linux-nfs/msg01338.html
+http://www.spinics.net/lists/linux-nfs/msg01339.html
 
-With samba we have file access audit (open, write, unlink, etc)
-
-Is there something similar for nfs?
+Dean
 
 
-I'm not subscribed, so please CC me.
-
-
-Many thanks in advance,
-Norberto
+Wu Fengguang wrote:
+> On Wed, Mar 03, 2010 at 02:42:19AM +0800, Trond Myklebust wrote:
+>   
+>> On Tue, 2010-03-02 at 12:33 -0500, John Stoffel wrote: 
+>>     
+>>>>>>>> "Trond" == Trond Myklebust <Trond.Myklebust@netapp.com> writes:
+>>>>>>>>                 
+>>> Trond> On Tue, 2010-03-02 at 11:10 +0800, Wu Fengguang wrote: 
+>>>       
+>>>>> Dave,
+>>>>>
+>>>>> Here is one more test on a big ext4 disk file:
+>>>>>
+>>>>> 16k	39.7 MB/s
+>>>>> 32k	54.3 MB/s
+>>>>> 64k	63.6 MB/s
+>>>>> 128k	72.6 MB/s
+>>>>> 256k	71.7 MB/s
+>>>>> rsize ==> 512k  71.7 MB/s
+>>>>> 1024k	72.2 MB/s
+>>>>> 2048k	71.0 MB/s
+>>>>> 4096k	73.0 MB/s
+>>>>> 8192k	74.3 MB/s
+>>>>> 16384k	74.5 MB/s
+>>>>>
+>>>>> It shows that >=128k client side readahead is enough for single disk
+>>>>> case :) As for RAID configurations, I guess big server side readahead
+>>>>> should be enough.
+>>>>>           
+>>> Trond> There are lots of people who would like to use NFS on their
+>>> Trond> company WAN, where you typically have high bandwidths (up to
+>>> Trond> 10GigE), but often a high latency too (due to geographical
+>>> Trond> dispersion).  My ping latency from here to a typical server in
+>>> Trond> NetApp's Bangalore office is ~ 312ms. I read your test results
+>>> Trond> with 10ms delays, but have you tested with higher than that?
+>>>
+>>> If you have that high a latency, the low level TCP protocol is going
+>>> to kill your performance before you get to the NFS level.  You really
+>>> need to open up the TCP window size at that point.  And it only gets
+>>> worse as the bandwidth goes up too.  
+>>>       
+>> Yes. You need to open the TCP window in addition to reading ahead
+>> aggressively.
+>>     
+>
+> I only get ~10MB/s throughput with following settings.
+>
+> # huge NFS ra size
+> echo 89512 > /sys/devices/virtual/bdi/0:15/read_ahead_kb        
+>
+> # on both sides
+> /sbin/tc qdisc add dev eth0 root netem delay 200ms              
+>
+> net.core.rmem_max = 873800000
+> net.core.wmem_max = 655360000
+> net.ipv4.tcp_rmem = 8192 87380000 873800000
+> net.ipv4.tcp_wmem = 4096 65536000 655360000
+>
+> Did I miss something?
+>
+> Thanks,
+> Fengguang
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>   
