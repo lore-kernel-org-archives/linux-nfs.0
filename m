@@ -1,78 +1,113 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:53297 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757159Ab0D0Vcc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 27 Apr 2010 17:32:32 -0400
-Date: Tue, 27 Apr 2010 17:32:30 -0400
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Cc: linux-nfs@vger.kernel.org, neilb@suse.de
-Subject: nfsd bugfix for 2.6.34
-Message-ID: <20100427213230.GD3831@fieldses.org>
-Content-Type: text/plain; charset=us-ascii
-From: "J. Bruce Fields" <bfields@fieldses.org>
+Received: from mail-gw0-f46.google.com ([74.125.83.46]:52969 "EHLO
+	mail-gw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756292Ab0DNSaD convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 14 Apr 2010 14:30:03 -0400
+Received: by gwaa18 with SMTP id a18so189296gwa.19
+        for <linux-nfs@vger.kernel.org>; Wed, 14 Apr 2010 11:30:02 -0700 (PDT)
+In-Reply-To: <1271266618-26016-11-git-send-email-Trond.Myklebust@netapp.com>
+References: <1271266618-26016-1-git-send-email-Trond.Myklebust@netapp.com>
+	 <1271266618-26016-3-git-send-email-Trond.Myklebust@netapp.com>
+	 <1271266618-26016-4-git-send-email-Trond.Myklebust@netapp.com>
+	 <1271266618-26016-5-git-send-email-Trond.Myklebust@netapp.com>
+	 <1271266618-26016-6-git-send-email-Trond.Myklebust@netapp.com>
+	 <1271266618-26016-7-git-send-email-Trond.Myklebust@netapp.com>
+	 <1271266618-26016-8-git-send-email-Trond.Myklebust@netapp.com>
+	 <1271266618-26016-9-git-send-email-Trond.Myklebust@netapp.com>
+	 <1271266618-26016-10-git-send-email-Trond.Myklebust@netapp.com>
+	 <1271266618-26016-11-git-send-email-Trond.Myklebust@netapp.com>
+Date: Wed, 14 Apr 2010 14:30:00 -0400
+Message-ID: <y2t4d569c331004141130z7525d001gcdb81db5b1ede42e@mail.gmail.com>
+Subject: Re: [PATCH 10/22] gss_krb5: Add upcall info indicating supported
+	kerberos enctypes
+From: Kevin Coffman <kwc@citi.umich.edu>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+On Wed, Apr 14, 2010 at 1:36 PM, Trond Myklebust
+<Trond.Myklebust@netapp.com> wrote:
+> The text based upcall now indicates which Kerberos encryption types are
+> supported by the kernel rpcsecgss code.  This is used by gssd to
+> determine which encryption types it should attempt to negotiate
+> when creating a context with a server.
+>
+> The server principal's database and keytab encryption types are
+> what limits what it should negotiate.  Therefore, its keytab
+> should be created with only the enctypes listed by this file.
+>
+> Currently we support des-cbc-crc, des-cbc-md4 and des-cbc-md5
+>
+> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+> ---
+>  include/linux/sunrpc/gss_api.h      |    2 ++
+>  net/sunrpc/auth_gss/auth_gss.c      |    8 +++++++-
+>  net/sunrpc/auth_gss/gss_krb5_mech.c |    1 +
+>  3 files changed, 10 insertions(+), 1 deletions(-)
+>
+> diff --git a/include/linux/sunrpc/gss_api.h b/include/linux/sunrpc/gss_api.h
+> index 03f3333..b22d7f1 100644
+> --- a/include/linux/sunrpc/gss_api.h
+> +++ b/include/linux/sunrpc/gss_api.h
+> @@ -80,6 +80,8 @@ struct gss_api_mech {
+>        /* pseudoflavors supported by this mechanism: */
+>        int                     gm_pf_num;
+>        struct pf_desc *        gm_pfs;
+> +       /* Should the following be a callback operation instead? */
+> +       const char              *gm_upcall_enctypes;
+>  };
+>
+>  /* and must provide the following operations: */
+> diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
+> index d64a58b..6654c85 100644
+> --- a/net/sunrpc/auth_gss/auth_gss.c
+> +++ b/net/sunrpc/auth_gss/auth_gss.c
+> @@ -377,11 +377,12 @@ static void gss_encode_v0_msg(struct gss_upcall_msg *gss_msg)
+>  static void gss_encode_v1_msg(struct gss_upcall_msg *gss_msg,
+>                                struct rpc_clnt *clnt, int machine_cred)
+>  {
+> +       struct gss_api_mech *mech = gss_msg->auth->mech;
+>        char *p = gss_msg->databuf;
+>        int len = 0;
+>
+>        gss_msg->msg.len = sprintf(gss_msg->databuf, "mech=%s uid=%d ",
+> -                                  gss_msg->auth->mech->gm_name,
+> +                                  mech->gm_name,
+>                                   gss_msg->uid);
+>        p += gss_msg->msg.len;
+>        if (clnt->cl_principal) {
+> @@ -398,6 +399,11 @@ static void gss_encode_v1_msg(struct gss_upcall_msg *gss_msg,
+>                p += len;
+>                gss_msg->msg.len += len;
+>        }
+> +       if (mech->gm_upcall_enctypes) {
+> +               len = sprintf(p, mech->gm_upcall_enctypes);
+> +               p += len;
+> +               gss_msg->msg.len += len;
+> +       }
+>        len = sprintf(p, "\n");
+>        gss_msg->msg.len += len;
+>
+> diff --git a/net/sunrpc/auth_gss/gss_krb5_mech.c b/net/sunrpc/auth_gss/gss_krb5_mech.c
+> index 8b612e7..d96d824 100644
+> --- a/net/sunrpc/auth_gss/gss_krb5_mech.c
+> +++ b/net/sunrpc/auth_gss/gss_krb5_mech.c
+> @@ -552,6 +552,7 @@ static struct gss_api_mech gss_kerberos_mech = {
+>        .gm_ops         = &gss_kerberos_ops,
+>        .gm_pf_num      = ARRAY_SIZE(gss_kerberos_pfs),
+>        .gm_pfs         = gss_kerberos_pfs,
+> +       .gm_upcall_enctypes = "enctypes=1,2,3 ",
+>  };
 
-The following nfsd bugfix is available from
+Hi Trond,
+This list should be in preference order.  It doesn't matter much with
+this one, but the preferred order for DES is usually "3,1,2".
 
-  git://linux-nfs.org/~bfields/linux.git for-2.6.34
+When adding 3DES, the list should be "16,3,1,2"
+When adding AES, it should be "18,17,16,3,1,2"
+When adding RC4, it should be "18,17,16,23,3,1,2"
 
-Please pull for 2.6.34.  Thanks!
-
---b.
-
-commit 2bc3c1179c781b359d4f2f3439cb3df72afc17fc
-Author: Neil Brown <neilb@suse.de>
-Date:   Tue Apr 20 12:16:52 2010 +1000
-
-    nfsd4: bug in read_buf
-    
-    When read_buf is called to move over to the next page in the pagelist
-    of an NFSv4 request, it sets argp->end to essentially a random
-    number, certainly not an address within the page which argp->p now
-    points to.  So subsequent calls to READ_BUF will think there is much
-    more than a page of spare space (the cast to u32 ensures an unsigned
-    comparison) so we can expect to fall off the end of the second
-    page.
-    
-    We never encountered thsi in testing because typically the only
-    operations which use more than two pages are write-like operations,
-    which have their own decoding logic.  Something like a getattr after a
-    write may cross a page boundary, but it would be very unusual for it to
-    cross another boundary after that.
-    
-    Cc: stable@kernel.org
-    Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
-
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index e170317..34ccf81 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -161,10 +161,10 @@ static __be32 *read_buf(struct nfsd4_compoundargs *argp, u32 nbytes)
- 	argp->p = page_address(argp->pagelist[0]);
- 	argp->pagelist++;
- 	if (argp->pagelen < PAGE_SIZE) {
--		argp->end = p + (argp->pagelen>>2);
-+		argp->end = argp->p + (argp->pagelen>>2);
- 		argp->pagelen = 0;
- 	} else {
--		argp->end = p + (PAGE_SIZE>>2);
-+		argp->end = argp->p + (PAGE_SIZE>>2);
- 		argp->pagelen -= PAGE_SIZE;
- 	}
- 	memcpy(((char*)p)+avail, argp->p, (nbytes - avail));
-@@ -1426,10 +1426,10 @@ nfsd4_decode_compound(struct nfsd4_compoundargs *argp)
- 			argp->p = page_address(argp->pagelist[0]);
- 			argp->pagelist++;
- 			if (argp->pagelen < PAGE_SIZE) {
--				argp->end = p + (argp->pagelen>>2);
-+				argp->end = argp->p + (argp->pagelen>>2);
- 				argp->pagelen = 0;
- 			} else {
--				argp->end = p + (PAGE_SIZE>>2);
-+				argp->end = argp->p + (PAGE_SIZE>>2);
- 				argp->pagelen -= PAGE_SIZE;
- 			}
- 		}
+K.C.
