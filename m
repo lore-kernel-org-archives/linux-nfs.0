@@ -1,77 +1,73 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:51300 "EHLO mx2.suse.de"
+Received: from mx2.netapp.com ([216.240.18.37]:48907 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753649Ab0DTHWr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 20 Apr 2010 03:22:47 -0400
-Date: Tue, 20 Apr 2010 17:22:38 +1000
-From: Neil Brown <neilb@suse.de>
-To: Trond Myklebust <trond.myklebust@fys.uio.no>, linux-nfs@vger.kernel.org
-Subject: [PATCH] Should we expect close-to-open consistency on directories?
-Message-ID: <20100420172238.520eaa89@notabene.brown>
-Content-Type: text/plain; charset=US-ASCII
+	id S1756527Ab0DNRhR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 14 Apr 2010 13:37:17 -0400
+Received: from localhost.localdomain (pd07336a.hq.netapp.com [10.58.61.110] (may be forged))
+	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id o3EHawJu021574
+	for <linux-nfs@vger.kernel.org>; Wed, 14 Apr 2010 10:36:58 -0700 (PDT)
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 00/22] Add support for more RPCSEC_GSS/krb5 enctypes
+Date: Wed, 14 Apr 2010 13:36:36 -0400
+Message-Id: <1271266618-26016-1-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
+The following patches have been queued up in the nfs-for-2.6.35 branch
+on git://git.linux-nfs.org/projects/trondmy/nfs-2.6.git.
 
-Hi Trond et al,
-
-It has come to my attention that NFS directories don't behave consistently
-in terms of cache consistency.
-
-If, on the client, you have a loop like:
-
- while true; do sleep 1; ls -l $dirname ; done
-
-and then on the server you make changes to the named directory, there are
-some cases where you will see changes promptly and some where you wont.
-
-In particular, if $dirname is '.' or the name of an NFS mountpoint, then
-changes can be delayed by up to acdirmax.  If it is any other path, i.e. with
-a non-trivial path component that is in the NFS filesystem, then changes
-are seen promptly.
-
-This seems to me to relate to "close to open" consistency.  Of course with
-directories the 'close' side isn't relevant, but I still think it should be
-that when you open a directory it validates the 'change' attribute on that
-directory over the wire.
-
-However the Linux VFS never tells NFS when a directory is opened.  The
-current correct behaviour for most directories is achieved through
-d_revalidate == nfs_lookup_revalidate.
-
-For '.' and mountpoints we need a different approach.  Possibly the VFS could
-be changed to tell the filesystem when such a directory is opened.  However I
-don't feel up to that at the moment.
-
-An alternative is to do a revalidation in nfs_readdir as below.  i.e. when
-readdir see f_pos == 0, it requests a revalidation of the page cache.
-This has two problems:
-1/ a seek before the first read would cause the revalidation to be skipped.
-   This can be fixed by putting a similar test in nfs_llseek_dir, or maybe
-   triggering off 'dir_cookie == NULL' rather than 'f_pos == 0'.
-2/ A normal open/readdir sequence will validate a directory twice, once in the
-   lookup and once in the readdir.  This is probably undesirable, but it is
-   not clear to me how to fix it.
+Cheers
+  Trond
 
 
-So: is it reasonable to view the current behaviour as 'wrong'?
-    any suggestions on how to craft a less problematic fix?
+J. Bruce Fields (1):
+  gss_krb5: Don't expect blocksize to always be 8 when calculating
+    padding
 
-Thanks,
-NeilBrown
+Kevin Coffman (17):
+  gss_krb5: Introduce encryption type framework
+  gss_krb5: Added and improved code comments
+  gss_krb5: split up functions in preparation of adding new enctypes
+  gss_krb5: prepare for new context format
+  gss_krb5: introduce encryption type framework
+  gss_krb5: add ability to have a keyed checksum (hmac)
+  gss_krb5: import functionality to derive keys into the kernel
+  gss_krb5: handle new context format from gssd
+  gss_krb5: add support for triple-des encryption
+  xdr: Add an export for the helper function write_bytes_to_xdr_buf()
+  gss_krb5: add support for new token formats in rfc4121
+  gss_krb5: add remaining pieces to enable AES encryption support
+  gssd_krb5: arcfour-hmac support
+  gss_krb5: Save the raw session key in the context
+  gssd_krb5: More arcfour-hmac support
+  gss_krb5: Use confounder length in wrap code
+  gss_krb5: Add support for rc4-hmac encryption
 
-diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index a1f6b44..df4f0a6 100644
---- a/fs/nfs/dir.c
-+++ b/fs/nfs/dir.c
-@@ -560,6 +560,9 @@ static int nfs_readdir(struct file *filp, void *dirent, filldir_t filldir)
- 	desc->entry = &my_entry;
- 
- 	nfs_block_sillyrename(dentry);
-+	if (filp->f_pos == 0)
-+		/* Force attribute validity at open */
-+		NFS_I(inode)->cache_validity |= NFS_INO_REVAL_PAGECACHE;
- 	res = nfs_revalidate_mapping(inode, filp->f_mapping);
- 	if (res < 0)
- 		goto out;
+Trond Myklebust (4):
+  gss_krb5: Add upcall info indicating supported kerberos enctypes
+  gss_krb5: Advertise triple-des enctype support in the rpcsec_gss/krb5
+    upcall
+  gss_krb5: Advertise AES enctype support in the rpcsec_gss/krb5 upcall
+  gss_krb5: Advertise rc4-hmac enctype support in the rpcsec_gss/krb5
+    upcall
+
+ include/linux/sunrpc/gss_api.h        |    2 +
+ include/linux/sunrpc/gss_krb5.h       |  183 +++++++++-
+ net/sunrpc/auth_gss/Makefile          |    2 +-
+ net/sunrpc/auth_gss/auth_gss.c        |   22 +-
+ net/sunrpc/auth_gss/gss_krb5_crypto.c |  697 ++++++++++++++++++++++++++++++++-
+ net/sunrpc/auth_gss/gss_krb5_keys.c   |  335 ++++++++++++++++
+ net/sunrpc/auth_gss/gss_krb5_mech.c   |  582 +++++++++++++++++++++++++--
+ net/sunrpc/auth_gss/gss_krb5_seal.c   |  155 ++++++--
+ net/sunrpc/auth_gss/gss_krb5_seqnum.c |   83 ++++-
+ net/sunrpc/auth_gss/gss_krb5_unseal.c |  113 +++++-
+ net/sunrpc/auth_gss/gss_krb5_wrap.c   |  404 ++++++++++++++++---
+ net/sunrpc/auth_gss/gss_mech_switch.c |   14 +
+ net/sunrpc/auth_gss/svcauth_gss.c     |   15 +
+ net/sunrpc/xdr.c                      |    1 +
+ 14 files changed, 2439 insertions(+), 169 deletions(-)
+ create mode 100644 net/sunrpc/auth_gss/gss_krb5_keys.c
+
