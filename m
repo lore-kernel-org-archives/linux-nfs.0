@@ -1,73 +1,55 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from neil.brown.name ([220.233.11.133]:40217 "EHLO neil.brown.name"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752398Ab0DLTog (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 12 Apr 2010 15:44:36 -0400
-Received: from brown by neil.brown.name with local (Exim 4.71)
-	(envelope-from <nfs-bounces@lists.sourceforge.net>)
-	id 1O1PYg-0004MO-9r
-	for linux-nfs@vger.kernel.org; Tue, 13 Apr 2010 05:44:34 +1000
-Date: Mon, 12 Apr 2010 15:44:00 -0400
-To: Bernd Schubert <bernd.schubert@fastmail.fm>
-Subject: Re: nfs + Reiser4
-Message-ID: <20100412194400.GE22542@fieldses.org>
-References: <op.vaq49joctxpshh@localhost.localdomain>
-	<201004080044.38451.bernd.schubert@fastmail.fm>
-In-Reply-To: <201004080044.38451.bernd.schubert@fastmail.fm>
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: nfs@lists.sourceforge.net
-Content-Type: text/plain; charset="us-ascii"
+Received: from mail-yx0-f199.google.com ([209.85.210.199]:55959 "EHLO
+	mail-yx0-f199.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756502Ab0DNTux convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 14 Apr 2010 15:50:53 -0400
+Received: by yxe37 with SMTP id 37so240645yxe.21
+        for <linux-nfs@vger.kernel.org>; Wed, 14 Apr 2010 12:50:51 -0700 (PDT)
+In-Reply-To: <4BC61839.6000200@RedHat.com>
+References: <1271266618-26016-1-git-send-email-Trond.Myklebust@netapp.com>
+	 <1271266618-26016-7-git-send-email-Trond.Myklebust@netapp.com>
+	 <1271266618-26016-8-git-send-email-Trond.Myklebust@netapp.com>
+	 <1271266618-26016-9-git-send-email-Trond.Myklebust@netapp.com>
+	 <1271266618-26016-10-git-send-email-Trond.Myklebust@netapp.com>
+	 <1271266618-26016-11-git-send-email-Trond.Myklebust@netapp.com>
+	 <y2t4d569c331004141130z7525d001gcdb81db5b1ede42e@mail.gmail.com>
+	 <1271270279.22566.22.camel@localhost.localdomain>
+	 <y2q4d569c331004141151n9042470aqe3f51e804b3abea9@mail.gmail.com>
+	 <4BC61839.6000200@RedHat.com>
+Date: Wed, 14 Apr 2010 15:50:42 -0400
+Message-ID: <z2g4d569c331004141250v44e3b011l6e9c953185b04625@mail.gmail.com>
+Subject: Re: [PATCH 10/22] gss_krb5: Add upcall info indicating supported
+	kerberos enctypes
+From: Kevin Coffman <kwc@citi.umich.edu>
+To: Steve Dickson <SteveD@redhat.com>
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>, linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Thu, Apr 08, 2010 at 12:44:38AM +0200, Bernd Schubert wrote:
-> On Tuesday 06 April 2010, gg@catking.net wrote:
-> > Hi,
-> > 
-> > I am having serious headaches using nfs between a reiser4 server and arm
-> > client.
-> > Both on 2.6.29 vintage kernels.
-> > 
-> > Files are constantly getting out of sync.
-> > 
-> > Example :
-> > 
-> > boot ARM via nfs
-> > edit lighttpd.conf on ARM
-> > check edit is visible on server. OK
-> > 
-> > reboot ARM
-> > check file : reverted to an earlier state.
-> > check server: edited version still showing.
-> > 
-> > 
-> > This is just one example of serious userablity issues. I have also seen a
-> > revert 10s later reopening the same file on the ARM.
-> > 
-> > Is this possibly related to R4 + nfs ?
-> 
-> Reminds me about an old bug report I wrote and which nobody ever cared about:
-> 
-> http://article.gmane.org/gmane.linux.nfs/9867/match=
+On Wed, Apr 14, 2010 at 3:32 PM, Steve Dickson <SteveD@redhat.com> wrote:
+> On 04/14/2010 02:51 PM, Kevin Coffman wrote:
+>>
+>> Hi Steve,
+>> This surprises me.  I believe this would result in DES being used
+>> rather than the stronger enctypes.  Can you give me more details of
+>> the problems you saw?
+>
+> In limit_krb5_enctypes(), if I did not give gss_set_allowable_enctypes()
+> the list of enctypes in an increasing order, creating the krb5 context for
+> root would fail. When gave them in order root got its context...
+>
+> I figured it was some type of krb5 lib quirk, since the default enctypes
+> are also in increasing order...
+>
+> steved.
 
-On a possibly-too-quick skim, I think this could be explained by just
-stale cache data, possibly the result of poor ext3 time resolution.
-(Still a bug of some kind, but not as bizarre as the bug reported here.)
+Note that I have seen the DES preferences listed as both 3,1,2 and 1,3,2.
 
---b.
+The default list in limit_krb5_enctypes() is [ENCTYPE_DES_CBC_CRC,
+ENCTYPE_DES_CBC_MD5, ENCTYPE_DES_CBC_MD4], or 1,3,2
 
-------------------------------------------------------------------------------
-Download Intel&#174; Parallel Studio Eval
-Try the new software tools for yourself. Speed compiling, find bugs
-proactively, and fine-tune applications for parallel performance.
-See why Intel Parallel Studio got high marks during beta.
-http://p.sf.net/sfu/intel-sw-dev
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
-_______________________________________________
-Please note that nfs@lists.sourceforge.net is being discontinued.
-Please subscribe to linux-nfs@vger.kernel.org instead.
-    http://vger.kernel.org/vger-lists.html#linux-nfs
+I suspect there must have been some other issue when you tested?
 
+K.C.
