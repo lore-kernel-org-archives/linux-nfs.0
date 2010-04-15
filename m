@@ -1,53 +1,156 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 2/2] libexport.a: export_find() should handle address parsing
-	errors
-Date: Thu, 15 Apr 2010 11:25:25 -0400
-Message-ID: <20100415152524.4716.57643.stgit@localhost.localdomain>
-References: <20100415152401.4716.83632.stgit@localhost.localdomain>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Cc: linux-nfs@vger.kernel.org
-To: steved@redhat.com
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from qw-out-2122.google.com ([74.125.92.25]:56373 "EHLO
-	qw-out-2122.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754444Ab0DOPZ2 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 15 Apr 2010 11:25:28 -0400
-Received: by qw-out-2122.google.com with SMTP id 8so478820qwh.37
-        for <linux-nfs@vger.kernel.org>; Thu, 15 Apr 2010 08:25:27 -0700 (PDT)
-In-Reply-To: <20100415152401.4716.83632.stgit-bi+AKbBUZKY6gyzm1THtWbp2dZbC/Bob@public.gmane.org>
-Sender: linux-nfs-owner@vger.kernel.org
+From: Valerie Aurora <vaurora@redhat.com>
+Subject: [PATCH 04/35] whiteout/NFSD: Don't return information about whiteouts to userspace
+Date: Thu, 15 Apr 2010 16:04:11 -0700
+Message-ID: <1271372682-21225-5-git-send-email-vaurora@redhat.com>
+References: <1271372682-21225-1-git-send-email-vaurora@redhat.com>
+ <1271372682-21225-2-git-send-email-vaurora@redhat.com>
+ <1271372682-21225-3-git-send-email-vaurora@redhat.com>
+ <1271372682-21225-4-git-send-email-vaurora@redhat.com>
+Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	Jan Blunck <jblunck@suse.de>,
+	David Woodhouse <dwmw2@infradead.org>,
+	Valerie Aurora <vaurora@redhat.com>, linux-nfs@vger.kernel.org,
+	"J. Bruce Fields" <bfields@fieldses.org>,
+	Neil Brown <neilb@suse.de>
+To: Alexander Viro <viro@zeniv.linux.org.uk>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <1271372682-21225-4-git-send-email-vaurora@redhat.com>
+Sender: linux-kernel-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-An address mask parsing error can cause client_init(), and therefore
-client_dup(), to make our process exit suddenly.  Soon we want to add
-more complex address parsing in client_init(), so we need this
-interface to be a little more robust.
+From: Jan Blunck <jblunck@suse.de>
 
-Since export_find() can return NULL in some cases, it can handle NULL
-returns from its subroutines if an address parsing error occurs, or if
-memory is exhausted.  Allow for client_dup() to return NULL instead of
-exiting sideways.
+Userspace isn't ready for handling another file type, so silently drop
+whiteout directory entries before they leave the kernel.
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Signed-off-by: Jan Blunck <jblunck@suse.de>
+Signed-off-by: David Woodhouse <dwmw2@infradead.org>
+Signed-off-by: Valerie Aurora <vaurora@redhat.com>
+Cc: linux-nfs@vger.kernel.org
+Cc: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Neil Brown <neilb@suse.de>
 ---
+ fs/compat.c       |    9 +++++++++
+ fs/nfsd/nfs3xdr.c |    5 +++++
+ fs/nfsd/nfs4xdr.c |    5 +++++
+ fs/nfsd/nfsxdr.c  |    4 ++++
+ fs/readdir.c      |    9 +++++++++
+ 5 files changed, 32 insertions(+), 0 deletions(-)
 
- support/export/export.c |    4 ++++
- 1 files changed, 4 insertions(+), 0 deletions(-)
-
-diff --git a/support/export/export.c b/support/export/export.c
-index ddc8a84..3e4da69 100644
---- a/support/export/export.c
-+++ b/support/export/export.c
-@@ -129,6 +129,10 @@ export_dup(nfs_export *exp, struct hostent *hp)
- 	if (exp->m_export.e_hostname)
- 		new->m_export.e_hostname = xstrdup(exp->m_export.e_hostname);
- 	clp = client_dup(exp->m_client, hp);
-+	if (clp == NULL) {
-+		export_free(new);
-+		return NULL;
+diff --git a/fs/compat.c b/fs/compat.c
+index 00d90c2..624e1a5 100644
+--- a/fs/compat.c
++++ b/fs/compat.c
+@@ -838,6 +838,9 @@ static int compat_fillonedir(void *__buf, const char *name, int namlen,
+ 	struct compat_old_linux_dirent __user *dirent;
+ 	compat_ulong_t d_ino;
+ 
++	if (d_type == DT_WHT)
++		return 0;
++
+ 	if (buf->result)
+ 		return -EINVAL;
+ 	d_ino = ino;
+@@ -909,6 +912,9 @@ static int compat_filldir(void *__buf, const char *name, int namlen,
+ 	compat_ulong_t d_ino;
+ 	int reclen = ALIGN(NAME_OFFSET(dirent) + namlen + 2, sizeof(compat_long_t));
+ 
++	if (d_type == DT_WHT)
++		return 0;
++
+ 	buf->error = -EINVAL;	/* only used if we fail.. */
+ 	if (reclen > buf->count)
+ 		return -EINVAL;
+@@ -998,6 +1004,9 @@ static int compat_filldir64(void * __buf, const char * name, int namlen, loff_t
+ 	int reclen = ALIGN(jj + namlen + 1, sizeof(u64));
+ 	u64 off;
+ 
++	if (d_type == DT_WHT)
++		return 0;
++
+ 	buf->error = -EINVAL;	/* only used if we fail.. */
+ 	if (reclen > buf->count)
+ 		return -EINVAL;
+diff --git a/fs/nfsd/nfs3xdr.c b/fs/nfsd/nfs3xdr.c
+index 2a533a0..9b96f5a 100644
+--- a/fs/nfsd/nfs3xdr.c
++++ b/fs/nfsd/nfs3xdr.c
+@@ -885,6 +885,11 @@ encode_entry(struct readdir_cd *ccd, const char *name, int namlen,
+ 	int		elen;		/* estimated entry length in words */
+ 	int		num_entry_words = 0;	/* actual number of words */
+ 
++	if (d_type == DT_WHT) {
++		cd->common.err = nfs_ok;
++		return 0;
 +	}
- 	clp->m_count++;
- 	new->m_client = clp;
- 	new->m_mayexport = exp->m_mayexport;
-
++
+ 	if (cd->offset) {
+ 		u64 offset64 = offset;
+ 
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index 78c7e24..8839ba8 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -2268,6 +2268,11 @@ nfsd4_encode_dirent(void *ccdv, const char *name, int namlen,
+ 		return 0;
+ 	}
+ 
++	if (d_type == DT_WHT) {
++		cd->common.err = nfs_ok;
++		return 0;
++	}
++
+ 	if (cd->offset)
+ 		xdr_encode_hyper(cd->offset, (u64) offset);
+ 
+diff --git a/fs/nfsd/nfsxdr.c b/fs/nfsd/nfsxdr.c
+index 4ce005d..0e57d4b 100644
+--- a/fs/nfsd/nfsxdr.c
++++ b/fs/nfsd/nfsxdr.c
+@@ -503,6 +503,10 @@ nfssvc_encode_entry(void *ccdv, const char *name,
+ 			namlen, name, offset, ino);
+ 	 */
+ 
++	if (d_type == DT_WHT) {
++		cd->common.err = nfs_ok;
++		return 0;
++	}
+ 	if (offset > ~((u32) 0)) {
+ 		cd->common.err = nfserr_fbig;
+ 		return -EINVAL;
+diff --git a/fs/readdir.c b/fs/readdir.c
+index 7723401..3a48491 100644
+--- a/fs/readdir.c
++++ b/fs/readdir.c
+@@ -77,6 +77,9 @@ static int fillonedir(void * __buf, const char * name, int namlen, loff_t offset
+ 	struct old_linux_dirent __user * dirent;
+ 	unsigned long d_ino;
+ 
++	if (d_type == DT_WHT)
++		return 0;
++
+ 	if (buf->result)
+ 		return -EINVAL;
+ 	d_ino = ino;
+@@ -154,6 +157,9 @@ static int filldir(void * __buf, const char * name, int namlen, loff_t offset,
+ 	unsigned long d_ino;
+ 	int reclen = ALIGN(NAME_OFFSET(dirent) + namlen + 2, sizeof(long));
+ 
++	if (d_type == DT_WHT)
++		return 0;
++
+ 	buf->error = -EINVAL;	/* only used if we fail.. */
+ 	if (reclen > buf->count)
+ 		return -EINVAL;
+@@ -239,6 +245,9 @@ static int filldir64(void * __buf, const char * name, int namlen, loff_t offset,
+ 	struct getdents_callback64 * buf = (struct getdents_callback64 *) __buf;
+ 	int reclen = ALIGN(NAME_OFFSET(dirent) + namlen + 1, sizeof(u64));
+ 
++	if (d_type == DT_WHT)
++		return 0;
++
+ 	buf->error = -EINVAL;	/* only used if we fail.. */
+ 	if (reclen > buf->count)
+ 		return -EINVAL;
+-- 
+1.6.3.3
