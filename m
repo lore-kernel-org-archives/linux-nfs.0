@@ -1,55 +1,58 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yx0-f199.google.com ([209.85.210.199]:55959 "EHLO
-	mail-yx0-f199.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756502Ab0DNTux convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 14 Apr 2010 15:50:53 -0400
-Received: by yxe37 with SMTP id 37so240645yxe.21
-        for <linux-nfs@vger.kernel.org>; Wed, 14 Apr 2010 12:50:51 -0700 (PDT)
-In-Reply-To: <4BC61839.6000200@RedHat.com>
-References: <1271266618-26016-1-git-send-email-Trond.Myklebust@netapp.com>
-	 <1271266618-26016-7-git-send-email-Trond.Myklebust@netapp.com>
-	 <1271266618-26016-8-git-send-email-Trond.Myklebust@netapp.com>
-	 <1271266618-26016-9-git-send-email-Trond.Myklebust@netapp.com>
-	 <1271266618-26016-10-git-send-email-Trond.Myklebust@netapp.com>
-	 <1271266618-26016-11-git-send-email-Trond.Myklebust@netapp.com>
-	 <y2t4d569c331004141130z7525d001gcdb81db5b1ede42e@mail.gmail.com>
-	 <1271270279.22566.22.camel@localhost.localdomain>
-	 <y2q4d569c331004141151n9042470aqe3f51e804b3abea9@mail.gmail.com>
-	 <4BC61839.6000200@RedHat.com>
-Date: Wed, 14 Apr 2010 15:50:42 -0400
-Message-ID: <z2g4d569c331004141250v44e3b011l6e9c953185b04625@mail.gmail.com>
-Subject: Re: [PATCH 10/22] gss_krb5: Add upcall info indicating supported
-	kerberos enctypes
-From: Kevin Coffman <kwc@citi.umich.edu>
-To: Steve Dickson <SteveD@redhat.com>
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>, linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mail.gmx.net ([213.165.64.20]:59042 "HELO mail.gmx.net"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with SMTP
+	id S1757474Ab0DOVtF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 15 Apr 2010 17:49:05 -0400
+Date: Thu, 15 Apr 2010 23:49:01 +0200
+From: Stefan =?iso-8859-1?Q?Kr=FCger?= <stadtkind2@gmx.de>
+To: linux-nfs@vger.kernel.org
+Subject: strange performance issues with OS X 10.6 client
+Message-ID: <20100415214900.GA4143@web.de>
+Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, Apr 14, 2010 at 3:32 PM, Steve Dickson <SteveD@redhat.com> wrote:
-> On 04/14/2010 02:51 PM, Kevin Coffman wrote:
->>
->> Hi Steve,
->> This surprises me.  I believe this would result in DES being used
->> rather than the stronger enctypes.  Can you give me more details of
->> the problems you saw?
->
-> In limit_krb5_enctypes(), if I did not give gss_set_allowable_enctypes()
-> the list of enctypes in an increasing order, creating the krb5 context for
-> root would fail. When gave them in order root got its context...
->
-> I figured it was some type of krb5 lib quirk, since the default enctypes
-> are also in increasing order...
->
-> steved.
+Hello list,
 
-Note that I have seen the DES preferences listed as both 3,1,2 and 1,3,2.
+I have some really strange nfs performance issues
 
-The default list in limit_krb5_enctypes() is [ENCTYPE_DES_CBC_CRC,
-ENCTYPE_DES_CBC_MD5, ENCTYPE_DES_CBC_MD4], or 1,3,2
+NFS server is Fedora 12, running
+* kernel-2.6.32.11-99.fc12.x86_64 and
+* nfs-utils-1.2.1-4.fc12.x86_64
+* nfs shared /home is ext4 with default mount options
 
-I suspect there must have been some other issue when you tested?
+/etc/exports:
+/home   192.168.1.0/255.255.255.0(rw,sync)
 
-K.C.
+nfs and nfslock are up and running
+
+Nothing else touched on the server nfs-wise.
+
+NFS client is Mac OS X, version 10.6.3
+
+My /home dir is automounted on the Mac with the following mount options:
+* nosuid,nodev,resvport,rdirplus,rwsize=1048576
+(nfsv3 and tcp are default, I have also tried udp, and with and without
+rdirplus, with different read/write sizes (started with 32k, less for udp,
+and then cranked it up to 1m to make the beachball appear less often), but I
+still have issues no matter which options I chose)
+
+Anyway, I'm stuck now, surfing the web with Safari is a very unpleasant
+experience on nfs, beachball every now and then together with a huge amount
+of network traffic (RX with 20MB/s+ peaks), not unusual to see several
+gigabytes received after some minutes browsing, XCode shows a ''The
+document "SomeFile.m" could not be saved.''-error after some edits, Opera
+hangs for minutes when closing, etc etc.
+
+It's horrible :(
+
+Another example, extracting
+http://www.bignerdranch.com/solutions/Cocoa-3rd.tgz took over 3min!
+
+$ time tar xzf Cocoa-3rd.tgz
+0.169u 3.198s 5:51.10 0.9%	0+0k 1+6972io 0pf+0w
+$ time rm -rf Solutions-Cocoa-3rd/
+0.014u 0.477s 0:45.59 1.0%	0+0k 1+1io 0pf+0w
+
+So any help or hints really appreciated
