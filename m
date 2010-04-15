@@ -1,135 +1,87 @@
-From: Neil Brown <neilb@suse.de>
-Subject: Re: [PATCH] sunrpc: remove unnecessary svc_xprt_put
-Date: Mon, 1 Mar 2010 15:23:10 +1100
-Message-ID: <20100301152310.750f3504@notabene.brown>
-References: <19336.19524.469529.431210@notabene.brown>
-	<20100226225416.GF26598@fieldses.org>
-	<4B886A1A.7060106@opengridcomputing.com>
-	<20100227123537.6289e326@notabene.brown>
-	<4B8885A1.500@opengridcomputing.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Cc: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
-To: Tom Tucker <tom@opengridcomputing.com>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:34663 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752992Ab0CAEXT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 28 Feb 2010 23:23:19 -0500
-In-Reply-To: <4B8885A1.500@opengridcomputing.com>
+Return-Path: <linux-nfs-owner@vger.kernel.org>
+Received: from mail-gy0-f174.google.com ([209.85.160.174]:59451 "EHLO
+	mail-gy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753669Ab0DONRN convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 15 Apr 2010 09:17:13 -0400
+Received: by gyg13 with SMTP id 13so733689gyg.19
+        for <linux-nfs@vger.kernel.org>; Thu, 15 Apr 2010 06:17:12 -0700 (PDT)
+In-Reply-To: <4BC6F9AF.6070509@RedHat.com>
+References: <1271266618-26016-1-git-send-email-Trond.Myklebust@netapp.com>
+	 <1271266618-26016-5-git-send-email-Trond.Myklebust@netapp.com>
+	 <1271266618-26016-6-git-send-email-Trond.Myklebust@netapp.com>
+	 <1271266618-26016-7-git-send-email-Trond.Myklebust@netapp.com>
+	 <1271266618-26016-8-git-send-email-Trond.Myklebust@netapp.com>
+	 <1271266618-26016-9-git-send-email-Trond.Myklebust@netapp.com>
+	 <1271266618-26016-10-git-send-email-Trond.Myklebust@netapp.com>
+	 <1271266618-26016-11-git-send-email-Trond.Myklebust@netapp.com>
+	 <y2t4d569c331004141130z7525d001gcdb81db5b1ede42e@mail.gmail.com>
+	 <4BC6F9AF.6070509@RedHat.com>
+Date: Thu, 15 Apr 2010 09:17:04 -0400
+Message-ID: <r2x4d569c331004150617t9e26953x13e3097f76d6f209@mail.gmail.com>
+Subject: Re: [PATCH 10/22] gss_krb5: Add upcall info indicating supported
+	kerberos enctypes
+From: Kevin Coffman <kwc@citi.umich.edu>
+To: Steve Dickson <SteveD@redhat.com>
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>, linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+MIME-Version: 1.0
 
-On Fri, 26 Feb 2010 20:38:25 -0600
-Tom Tucker <tom@opengridcomputing.com> wrote:
+On Thu, Apr 15, 2010 at 7:34 AM, Steve Dickson <SteveD@redhat.com> wrote:
+> On 04/14/2010 02:30 PM, Kevin Coffman wrote:
+>>> diff --git a/net/sunrpc/auth_gss/gss_krb5_mech.c b/net/sunrpc/auth_gss/gss_krb5_mech.c
+>>> index 8b612e7..d96d824 100644
+>>> --- a/net/sunrpc/auth_gss/gss_krb5_mech.c
+>>> +++ b/net/sunrpc/auth_gss/gss_krb5_mech.c
+>>> @@ -552,6 +552,7 @@ static struct gss_api_mech gss_kerberos_mech = {
+>>>        .gm_ops         = &gss_kerberos_ops,
+>>>        .gm_pf_num      = ARRAY_SIZE(gss_kerberos_pfs),
+>>>        .gm_pfs         = gss_kerberos_pfs,
+>>> +       .gm_upcall_enctypes = "enctypes=1,2,3 ",
+>>>  };
+>>
+>> Hi Trond,
+>> This list should be in preference order.  It doesn't matter much with
+>> this one, but the preferred order for DES is usually "3,1,2".
+>>
+>> When adding 3DES, the list should be "16,3,1,2"
+>> When adding AES, it should be "18,17,16,3,1,2"
+>> When adding RC4, it should be "18,17,16,23,3,1,2"
+> Ok... I went back and took a second look at this... The first
+> thing I did was put the gm_upcall_enctypes list back in
+> preference order. I had no idea there was actually a theory
+> behind the order...
+>
+> Side Note: It appears the ordering really does not matter
+> because the KDC is the one that decides (via the TGS-REP) which
+> enctype will be used and (I've been told) the KDC will always
+> pick the highest enctype possible.
+>
+> Now the reason root was not getting its context was
+> basically because of the following error (which I missed)
+>    ERROR: prepare_krb5_rfc_cfx_buffer: not implemented
+>
+> Which was introduced by the third nfs-utils patch
+> (Add support for non-DES encryption types)
+> I'm currently investigating what that means...
+>
+> So, Trond its up to you if you want to put that
+> list back in preference order, it will not matter
+> to the user space code...
+>
+> steved.
+>
+>
 
-> Neil Brown wrote:
-> > On Fri, 26 Feb 2010 18:40:58 -0600
-> > Tom Tucker <tom@opengridcomputing.com> wrote:
-> >
-> >   
-> >> J. Bruce Fields wrote:
-> >>     
-> >>> On Sat, Feb 27, 2010 at 09:33:40AM +1100, Neil Brown wrote:
-> >>>     
-> >>>       
-> >>>> [I found this while looking for the current refcount problem
-> >>>>  that triggers a warning in svc_recv.  This isn't that bug
-> >>>>  but is a different refcount bug - NB]
-> >>>>       
-> >>>>         
-> >>>     
-> >>>       
-> >> I seem to recall that we added that reference for  a reason. There was 
-> >> an issue with unmount while there were deferrals pending. That's why the 
-> >> reference was added.
-> >>
-> >> Tom
-> >>     
-> >
-> > What reference?
-> > What I (thought I) found was code that was dropping a reference which it
-> > didn't hold.  Are you saying that it is supposed to be holding a reference
-> > here, but isn't, or that it really is holding a reference here and I didn't
-> > see it?
-> >   
-> 
-> Here's the commit that I was thinking of... 
-> 22945e4a1c7454c97f5d8aee1ef526c83fef3223
-> 
-> I think this change adds the bug that you are now fixing. It fixed one 
-> problem, but added another that you have now resolved.
-> 
-> What do you guys think?
+I still contend that the order we send matters.  This is from MIT
+1.6.3 KDC code:
 
-Yes,  I see what you are saying.
-
-I agree that commit did fix a problem, but inadvertently introduced a new one.
-
-Thanks,
-NeilBrown
-
-
-> 
-> Thanks,
-> Tom
-> > And just for completeness, my understanding of the refcounting here is:
-> >
-> > A counted references is held on an svc_xprt when:
-> >  - a 'struct rqst' refers to it through ->rq_xprt
-> >  - a 'cache_deferred_req' refers to it through ->xprt
-> >     This only happens while the req is waiting to be
-> >     revisited, and is in the hash table and on the lru.
-> >     Once the req gets revisited (svc_revisit) ->xprt
-> >     is set to NULL and the reference is dropped.
-> >  - XPT_DEAD is *not* set.  So the refcount is initialised
-> >    to '1' to reflect this, and this ref is dropped
-> >    when we set XPT_DEAD.
-> >  - there are a few transient references in svc_xprt.c
-> >    which very clearly have matched 'get' and 'put'.
-> >  - svc_find_xprt returns a counted reference.  This is
-> >    called once in lockd and once in nfsd, and both
-> >    calls drop the ref correctly.
-> >
-> > Whenever we drop a counted ref that was stored in a pointer, we set that
-> > pointer to NULL.
-> > So if there was a race where two threads both get a reference from a pointer
-> > and then drop that reference, you would expect that slightly different timing
-> > would cause one of those threads to get a NULL from the pointer, dereference
-> > it, and crash.  There are no important tests-for-NULL on either of the
-> > pointers in question, so that wouldn't be protecting us from a crash.  But
-> > we don't see that crash, so there cannot be a race there.
-> >
-> > So: The refcount cannot possibly be zero in svc_recv :-)
-> >
-> > I just noticed some slightly odd code later in svc_recv:
-> >
-> >  if (XPT_LISTENER && XPT_CLOSE) {
-> >      ...
-> >  } else if (XPT_CLOSE) {
-> >      ...
-> >      ->xpo_recvfrom()
-> >  }
-> >  if (XPT_CLOSE) {
-> >     ...
-> >     svc_delete_xprt()
-> >  }
-> >
-> >  So if XPT_CLOSE is set while xpo_recvfrom is being called, which I think
-> >  is possible, and if ->xpo_recvfrom returns non-zero, then we end up
-> >  processing a request on a dead socket, which doesn't sound like the right
-> >  thing to do.  I don't think it can cause the present problem, but
-> >  it looks wrong.  That last 'if' should just be an 'else'.
-> >  I guess that would effectively reverse b0401d7253, though - not that
-> >  that patch seems entirely right to me - if there is a problem I probably
-> >  would have fixed it differently, though I'm not sure how.
-> >  So maybe change "if (XPT_CLOSE)" to "if (len <= 0 && XPT_CLOSE)" ???
-> >
-> > NeilBrown
-> >   
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
+/*
+ * This function returns the keytype which should be selected for the
+ * session key.  It is based on the ordered list which the user
+ * requested, and what the KDC and the application server can support.
+ */
+krb5_enctype
+select_session_keytype(krb5_context context, krb5_db_entry *server,
+                       int nktypes, krb5_enctype *ktype)
