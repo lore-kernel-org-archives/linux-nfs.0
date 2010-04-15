@@ -1,124 +1,93 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp151.dfw.emailsrvr.com ([67.192.241.151]:56504 "EHLO
-	smtp151.dfw.emailsrvr.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753960Ab0DVTOp convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 22 Apr 2010 15:14:45 -0400
-From: "Brandon Shandelson" <brandon@myshape.com>
-To: "'Trond Myklebust'" <trond.myklebust@fys.uio.no>
-Cc: "'J. Bruce Fields'" <bfields@fieldses.org>, <linux-nfs@vger.kernel.org>
-References: <01c701cae247$e8e50900$baaf1b00$@com>	 <20100422182213.GA8858@fieldses.org> <01c801cae249$d17ab3d0$74701b70$@com>	 <20100422183428.GD8858@fieldses.org>  <01c901cae24c$7bdd1a00$73974e00$@com> <1271963251.593.8.camel@localhost.localdomain>
-In-Reply-To: <1271963251.593.8.camel@localhost.localdomain>
-Subject: RE: NFSV4 Replica Support?
-Date: Thu, 22 Apr 2010 12:16:04 -0700
-Message-ID: <01d801cae250$40e32710$c2a97530$@com>
-Content-Type: text/plain;
-	charset="utf-8"
+Received: from mx2.netapp.com ([216.240.18.37]:51599 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753567Ab0DONbO convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 15 Apr 2010 09:31:14 -0400
+Subject: Re: [PATCH 10/22] gss_krb5: Add upcall info indicating supported
+ kerberos enctypes
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Kevin Coffman <kwc@citi.umich.edu>
+Cc: Steve Dickson <SteveD@redhat.com>, linux-nfs@vger.kernel.org
+In-Reply-To: <1271337734.5792.9.camel@localhost.localdomain>
+References: <1271266618-26016-1-git-send-email-Trond.Myklebust@netapp.com>
+	 <1271266618-26016-5-git-send-email-Trond.Myklebust@netapp.com>
+	 <1271266618-26016-6-git-send-email-Trond.Myklebust@netapp.com>
+	 <1271266618-26016-7-git-send-email-Trond.Myklebust@netapp.com>
+	 <1271266618-26016-8-git-send-email-Trond.Myklebust@netapp.com>
+	 <1271266618-26016-9-git-send-email-Trond.Myklebust@netapp.com>
+	 <1271266618-26016-10-git-send-email-Trond.Myklebust@netapp.com>
+	 <1271266618-26016-11-git-send-email-Trond.Myklebust@netapp.com>
+	 <y2t4d569c331004141130z7525d001gcdb81db5b1ede42e@mail.gmail.com>
+	 <4BC6F9AF.6070509@RedHat.com>
+	 <r2x4d569c331004150617t9e26953x13e3097f76d6f209@mail.gmail.com>
+	 <1271337734.5792.9.camel@localhost.localdomain>
+Content-Type: text/plain; charset="UTF-8"
+Date: Thu, 15 Apr 2010 09:31:11 -0400
+Message-ID: <1271338271.5792.10.camel@localhost.localdomain>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-By allowing the client to use a new/different handle for the same file.
-
-
------Original Message-----
-From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-owner@vger.kernel.org] On Behalf Of Trond Myklebust
-Sent: Thursday, April 22, 2010 12:08 PM
-To: Brandon Shandelson
-Cc: 'J. Bruce Fields'; linux-nfs@vger.kernel.org
-Subject: RE: NFSV4 Replica Support?
-
-On Thu, 2010-04-22 at 11:49 -0700, Brandon Shandelson wrote: 
-> I thought all of that was handled by NFSV4's "Volatile File Handles" feature.  Seems like "replicas=" is vaporware for all practical uses at this point, although I've read an IBM doc that shows how it works on AIX.
-
-Handled? How???? All the volatile file handles "feature" does is tell
-you that you can't rely on being able to access your files. If they get
-renamed on the server you are SOL...
-
-Trond
-
-> https://publib.boulder.ibm.com/infocenter/pseries/v5r3/index.jsp?topic=/com.ibm.aix.commadmn/doc/commadmndita/nfs_replicas_softmount.htm
-> 
-> Are the NFS server and NFS client code kept functionally in sync?  Would be nice, since I've been hunting this snipe for days now :(
-> 
-> 
-> -Brandon
-> 
-> 
-> -----Original Message-----
-> From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-owner@vger.kernel.org] On Behalf Of 'J. Bruce Fields'
-> Sent: Thursday, April 22, 2010 11:34 AM
-> To: Brandon Shandelson
-> Cc: linux-nfs@vger.kernel.org
-> Subject: Re: NFSV4 Replica Support?
-> 
-> On Thu, Apr 22, 2010 at 11:30:00AM -0700, Brandon Shandelson wrote:
-> > I have two NFS servers with NFSV4 exports whose data are synced via Unison.  I want one server to be a hot standby for clients to use in case something happens to the primary NFS server.
-> 
-> That won't work, sorry; even if the file contents are the same, the
-> filehandles are different (unless you copy the actual underlying
-> filesystem images instead of running unison on the two filesystems).
-> And even with that problem fixed, the client probably wouldn't know how
-> to use the replica information.
-> 
-> --b.
-> 
+On Thu, 2010-04-15 at 09:22 -0400, Trond Myklebust wrote: 
+> On Thu, 2010-04-15 at 09:17 -0400, Kevin Coffman wrote: 
+> > On Thu, Apr 15, 2010 at 7:34 AM, Steve Dickson <SteveD@redhat.com> wrote:
+> > > On 04/14/2010 02:30 PM, Kevin Coffman wrote:
+> > >>> diff --git a/net/sunrpc/auth_gss/gss_krb5_mech.c b/net/sunrpc/auth_gss/gss_krb5_mech.c
+> > >>> index 8b612e7..d96d824 100644
+> > >>> --- a/net/sunrpc/auth_gss/gss_krb5_mech.c
+> > >>> +++ b/net/sunrpc/auth_gss/gss_krb5_mech.c
+> > >>> @@ -552,6 +552,7 @@ static struct gss_api_mech gss_kerberos_mech = {
+> > >>>        .gm_ops         = &gss_kerberos_ops,
+> > >>>        .gm_pf_num      = ARRAY_SIZE(gss_kerberos_pfs),
+> > >>>        .gm_pfs         = gss_kerberos_pfs,
+> > >>> +       .gm_upcall_enctypes = "enctypes=1,2,3 ",
+> > >>>  };
+> > >>
+> > >> Hi Trond,
+> > >> This list should be in preference order.  It doesn't matter much with
+> > >> this one, but the preferred order for DES is usually "3,1,2".
+> > >>
+> > >> When adding 3DES, the list should be "16,3,1,2"
+> > >> When adding AES, it should be "18,17,16,3,1,2"
+> > >> When adding RC4, it should be "18,17,16,23,3,1,2"
+> > > Ok... I went back and took a second look at this... The first
+> > > thing I did was put the gm_upcall_enctypes list back in
+> > > preference order. I had no idea there was actually a theory
+> > > behind the order...
+> > >
+> > > Side Note: It appears the ordering really does not matter
+> > > because the KDC is the one that decides (via the TGS-REP) which
+> > > enctype will be used and (I've been told) the KDC will always
+> > > pick the highest enctype possible.
+> > >
+> > > Now the reason root was not getting its context was
+> > > basically because of the following error (which I missed)
+> > >    ERROR: prepare_krb5_rfc_cfx_buffer: not implemented
+> > >
+> > > Which was introduced by the third nfs-utils patch
+> > > (Add support for non-DES encryption types)
+> > > I'm currently investigating what that means...
+> > >
+> > > So, Trond its up to you if you want to put that
+> > > list back in preference order, it will not matter
+> > > to the user space code...
+> > >
+> > > steved.
+> > >
+> > >
 > > 
-> > The NFS exports look like this:
-> > /home 192.168.0.0/24(rw,fsid=0,insecure,no_subtree_check,async,repli cas=/home@msdevnfs1:/home@msdevnfs2)
+> > I still contend that the order we send matters.  This is from MIT
+> > 1.6.3 KDC code:
 > > 
-> > The mount in fstab looks like this:
-> > msdevnfs1:/ /home nfs4 _netdev,auto 0 0
-> > 
-> > 
-> > -Brandon
-> > 
-> > -----Original Message-----
-> > From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-owner@vger.kernel.org] On Behalf Of J. Bruce Fields
-> > Sent: Thursday, April 22, 2010 11:22 AM
-> > To: Brandon Shandelson
-> > Cc: linux-nfs@vger.kernel.org
-> > Subject: Re: NFSV4 Replica Support?
-> > 
-> > On Thu, Apr 22, 2010 at 11:16:20AM -0700, Brandon Shandelson wrote:
-> > > I want to use NFSV4 replicas on Ubuntu 9.10 64-bit servers.  It doesn’t seem
-> > > to work.  It *looks* like the server kernel module supports it, but the NFS
-> > > client does not.  Is this the case, or should I be able to make replicas
-> > > work on Linux?
-> > 
-> > What are you actually trying to do?
-> > 
-> > There's a little support for replication in that the NFSv4 server can be
-> > told to report certain locations as having the same data, but it's not
-> > really supported yet: you need smoething to create the replicas for you
-> > (probably doable with GFS2 as the exported filesystem, or by sharing the
-> > filesystem image if it's read-only).  I don't think the Linux NFSv4
-> > client knows how to use that information yet.
-> > 
-> > --b.
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> > 
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> > /*
+> >  * This function returns the keytype which should be selected for the
+> >  * session key.  It is based on the ordered list which the user
+> >  * requested, and what the KDC and the application server can support.
+> >  */
+> > krb5_enctype
+> > select_session_keytype(krb5_context context, krb5_db_entry *server,
+> >                        int nktypes, krb5_enctype *ktype)
 > 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+> OK. I will revert the ordering changes.
 
-
-
---
-To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
+Done and pushed out
