@@ -1,56 +1,61 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-gw0-f46.google.com ([74.125.83.46]:46307 "EHLO
-	mail-gw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758722Ab0DHOSQ convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 8 Apr 2010 10:18:16 -0400
-Received: by gwb19 with SMTP id 19so1192660gwb.19
-        for <linux-nfs@vger.kernel.org>; Thu, 08 Apr 2010 07:18:14 -0700 (PDT)
-In-Reply-To: <201004080111.29452.thomas.wunder@swt-bamberg.de>
-References: <loom.20100407T160936-119@post.gmane.org>
-	 <p2l4d569c331004070829q7c6148d7kec7d0f93b1a5d2ba@mail.gmail.com>
-	 <201004080111.29452.thomas.wunder@swt-bamberg.de>
-Date: Thu, 8 Apr 2010 10:18:11 -0400
-Message-ID: <j2u4d569c331004080718xd96444d3z532fcd92af5755b2@mail.gmail.com>
-Subject: Re: NFS-Mount with MIT-Kerberos5 doesn't use user tickets...
-From: Kevin Coffman <kwc@citi.umich.edu>
-To: thomas.wunder@swt-bamberg.de
-Cc: linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mx1.redhat.com ([209.132.183.28]:29802 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752471Ab0DOLeK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 15 Apr 2010 07:34:10 -0400
+Message-ID: <4BC6F9AF.6070509@RedHat.com>
+Date: Thu, 15 Apr 2010 07:34:07 -0400
+From: Steve Dickson <SteveD@redhat.com>
+To: Kevin Coffman <kwc@citi.umich.edu>
+CC: Trond Myklebust <Trond.Myklebust@netapp.com>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 10/22] gss_krb5: Add upcall info indicating supported
+ 	kerberos enctypes
+References: <1271266618-26016-1-git-send-email-Trond.Myklebust@netapp.com>	 <1271266618-26016-3-git-send-email-Trond.Myklebust@netapp.com>	 <1271266618-26016-4-git-send-email-Trond.Myklebust@netapp.com>	 <1271266618-26016-5-git-send-email-Trond.Myklebust@netapp.com>	 <1271266618-26016-6-git-send-email-Trond.Myklebust@netapp.com>	 <1271266618-26016-7-git-send-email-Trond.Myklebust@netapp.com>	 <1271266618-26016-8-git-send-email-Trond.Myklebust@netapp.com>	 <1271266618-26016-9-git-send-email-Trond.Myklebust@netapp.com>	 <1271266618-26016-10-git-send-email-Trond.Myklebust@netapp.com>	 <1271266618-26016-11-git-send-email-Trond.Myklebust@netapp.com> <y2t4d569c331004141130z7525d001gcdb81db5b1ede42e@mail.gmail.com>
+In-Reply-To: <y2t4d569c331004141130z7525d001gcdb81db5b1ede42e@mail.gmail.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, Apr 7, 2010 at 7:11 PM,  <thomas.wunder@swt-bamberg.de> wrote:
->> By the looks of your /etc/fstab entry, the system (root) will try to
->> mount /mnt/net automatically.  You could try adding the "noauto"
->> option and then manually issuing the mount command as the user.  (Or
->> use automount?)
->> K.C.
-> I'm pretty sure that it doesn't try to automatically mount the share on
-> startup since there is no log entry that would indicate such an attempt.
-> I already tried to do the mount as a user (which is authenticated via kerberos
-> such that there is a valid ticket for that user) the logs (that i have posted)
-> are showing what comes out of it. If I try to do the mount without the fstab-
-> entry (i.e. mount -t nfs4 -o sec=krb5p dnsdhcp:/ /mnt/net) it is being
-> rejected on the grounds that only root can perform a mount. 'sudo' doesn't
-> work currently (i've got some problems with my PAM config for sudo) so I
-> haven't had any chance to try it out...
->
-> I've already set up automount but it actually does exactly the same as if I
-> ran mount manually as described above.
->
-> I'm totally confused because I don't understand what people like
-> http://thread.gmane.org/gmane.linux.nfsv4/5893
-> might have done to perform a mount with normal user privileges. If it was
-> really mandatory to be root (as stated by Andy Adamson in the other message)
-> then I wouldn't really understand why they should have implemented the uid
-> passing using that pipefs file....
+On 04/14/2010 02:30 PM, Kevin Coffman wrote:
+>> diff --git a/net/sunrpc/auth_gss/gss_krb5_mech.c b/net/sunrpc/auth_gss/gss_krb5_mech.c
+>> index 8b612e7..d96d824 100644
+>> --- a/net/sunrpc/auth_gss/gss_krb5_mech.c
+>> +++ b/net/sunrpc/auth_gss/gss_krb5_mech.c
+>> @@ -552,6 +552,7 @@ static struct gss_api_mech gss_kerberos_mech = {
+>>        .gm_ops         = &gss_kerberos_ops,
+>>        .gm_pf_num      = ARRAY_SIZE(gss_kerberos_pfs),
+>>        .gm_pfs         = gss_kerberos_pfs,
+>> +       .gm_upcall_enctypes = "enctypes=1,2,3 ",
+>>  };
+> 
+> Hi Trond,
+> This list should be in preference order.  It doesn't matter much with
+> this one, but the preferred order for DES is usually "3,1,2".
+> 
+> When adding 3DES, the list should be "16,3,1,2"
+> When adding AES, it should be "18,17,16,3,1,2"
+> When adding RC4, it should be "18,17,16,23,3,1,2"
+Ok... I went back and took a second look at this... The first
+thing I did was put the gm_upcall_enctypes list back in
+preference order. I had no idea there was actually a theory 
+behind the order... 
 
-Hello Tom,
+Side Note: It appears the ordering really does not matter 
+because the KDC is the one that decides (via the TGS-REP) which 
+enctype will be used and (I've been told) the KDC will always 
+pick the highest enctype possible. 
 
-To allow non-root users to do the mount, add the "user" option to the
-entry in /etc/fstab.  Then the user with uid 10002 should be able to
-kinit and then mount.  (Note that in this case, there is no need for
-the "-n" option to rpc.gssd.)
+Now the reason root was not getting its context was
+basically because of the following error (which I missed)
+    ERROR: prepare_krb5_rfc_cfx_buffer: not implemented
 
-K.C.
+Which was introduced by the third nfs-utils patch 
+(Add support for non-DES encryption types) 
+I'm currently investigating what that means...
+
+So, Trond its up to you if you want to put that
+list back in preference order, it will not matter
+to the user space code...
+
+steved.
