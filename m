@@ -1,76 +1,74 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:43732 "EHLO mx2.suse.de"
+Received: from fieldses.org ([174.143.236.118]:51444 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752421Ab0DTCQ7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 19 Apr 2010 22:16:59 -0400
-From: Neil Brown <neilb@suse.de>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Date: Tue, 20 Apr 2010 12:16:52 +1000
-Content-Type: text/plain; charset=us-ascii
-Message-ID: <19405.3732.562014.510508@notabene.brown>
+	id S1753628Ab0DOPzx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 15 Apr 2010 11:55:53 -0400
+Date: Thu, 15 Apr 2010 11:55:52 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: NeilBrown <neilb@suse.de>
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH] bug in read_buf
+Subject: Re: [PATCH 4/9] sunrpc/cache: allow threads to block while waiting
+	for cache update.
+Message-ID: <20100415155552.GC10961@fieldses.org>
+References: <20100203060657.12945.27293.stgit@notabene.brown> <20100203063131.12945.23572.stgit@notabene.brown>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20100203063131.12945.23572.stgit@notabene.brown>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+On Wed, Feb 03, 2010 at 05:31:31PM +1100, NeilBrown wrote:
+> The current practice of waiting for cache updates by queueing the
+> whole request to be retried has (at least) two problems.
+> 
+> 1/ With NFSv4, requests can be quite complex and re-trying a whole
+>   request when a latter part fails should only be a last-resort, not a
+>   normal practice.
 
-Surely this can never have worked... which implies that the code has
-never been used?
+I want to avoid it completely, actually.  It's not so much that the
+retry is expensive, as that it's actually incorrect in the case of
+nonidempotent operations.  (Chief among them, SEQUENCE--see
+rq_usedeferral).
 
-When read_buf is called to move over to the next page in the pagelist
-of an NFSv4 request, it sets argp->end to essentially a random
-number, certainly not an address within the page which argp->p now
-points to.  So subsequent calls to READ_BUF will think there is much
-more than a page of spare space (the cast to u32 ensures an unsigned
-comparison) so we can expect to fall off the end of the second
-page.
+How about just letting the fallback be making the client retry?
 
-I guess we never ever receive requests with any operation starting
-beyond the first page!
+We could do that just in the v4 case (returning DELAY to v4 clients, but
+doing the existing deferral for others).  Or we could handle them all
+similarly (returning JUKEBOX in the v3 case, and dropping in the v2
+case?)
 
-[[
-I found this while looking at why fsstress over NFS over RDMA caused
-a bad memory dereference in READ32, suggesting that 'p' had a bad
-value.  However it was ffff8801299188f0, which is not an "I've fallen
-off the end of the page" sort of value.  So I think it must be a
-different bug :-(  It is as if the page is being unmapped underneath
-us...
-]]
-NeilBrown
+Making the client retry is not as nice, but this should be an unusual
+case.  I'm not sure how to think about what the best behavior in such a
+case.
 
+> @@ -554,6 +573,29 @@ static int cache_defer_req(struct cache_req *req, struct cache_head *item)
+>  		cache_revisit_request(item);
+>  		return -EAGAIN;
+>  	}
+> +
+> +	if (dreq == &sleeper.handle) {
+> +		wait_event_interruptible_timeout(
+> +			sleeper.wait,
+> +			!test_bit(CACHE_PENDING, &item->flags)
+> +			|| list_empty(&sleeper.handle.hash),
+> +			req->thread_wait);
+> +		spin_lock(&cache_defer_lock);
+> +		if (!list_empty(&sleeper.handle.hash)) {
+> +			list_del_init(&sleeper.handle.recent);
+> +			list_del_init(&sleeper.handle.hash);
+> +			cache_defer_cnt--;
+> +		}
+> +		spin_unlock(&cache_defer_lock);
+> +		if (test_bit(CACHE_PENDING, &item->flags)) {
+> +			/* item is still pending, try request
+> +			 * deferral
+> +			 */
+> +			dreq = req->defer(req);
+> +			goto retry;
+> +		}
+> +		return -EEXIST;
 
+Can this be right?  If we wake up from sleep with CACHE_PENDING cleared,
+that's the succesful case.
 
-
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index e170317..34ccf81 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -161,10 +161,10 @@ static __be32 *read_buf(struct nfsd4_compoundargs *argp, u32 nbytes)
- 	argp->p = page_address(argp->pagelist[0]);
- 	argp->pagelist++;
- 	if (argp->pagelen < PAGE_SIZE) {
--		argp->end = p + (argp->pagelen>>2);
-+		argp->end = argp->p + (argp->pagelen>>2);
- 		argp->pagelen = 0;
- 	} else {
--		argp->end = p + (PAGE_SIZE>>2);
-+		argp->end = argp->p + (PAGE_SIZE>>2);
- 		argp->pagelen -= PAGE_SIZE;
- 	}
- 	memcpy(((char*)p)+avail, argp->p, (nbytes - avail));
-@@ -1426,10 +1426,10 @@ nfsd4_decode_compound(struct nfsd4_compoundargs *argp)
- 			argp->p = page_address(argp->pagelist[0]);
- 			argp->pagelist++;
- 			if (argp->pagelen < PAGE_SIZE) {
--				argp->end = p + (argp->pagelen>>2);
-+				argp->end = argp->p + (argp->pagelen>>2);
- 				argp->pagelen = 0;
- 			} else {
--				argp->end = p + (PAGE_SIZE>>2);
-+				argp->end = argp->p + (PAGE_SIZE>>2);
- 				argp->pagelen -= PAGE_SIZE;
- 			}
- 		}
-
-
+--b.
