@@ -1,59 +1,34 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:35493 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754978Ab0DEQSA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 5 Apr 2010 12:18:00 -0400
-Date: Mon, 5 Apr 2010 12:20:20 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Tom Tucker <tom@opengridcomputing.com>
-Cc: Chuck Lever <chuck.lever@oracle.com>, Tom Tucker <tom@ogc.us>,
-        Steve Wise <swise@opengridcomputing.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        linux-rdma@vger.kernel.org
-Subject: Re: [PATCH] svcrdma: RDMA support not yet compatible with RPC6
-Message-ID: <20100405162020.GJ16370@fieldses.org>
-References: <4BB74241.4060308@ogc.us> <4BB9F9D0.1040203@oracle.com> <20100405154850.GG16370@fieldses.org> <4BBA06B8.3090201@opengridcomputing.com> <20100405161618.GI16370@fieldses.org>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20100405161618.GI16370@fieldses.org>
+Received: from mail-qy0-f189.google.com ([209.85.221.189]:33051 "EHLO
+	mail-qy0-f189.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754444Ab0DOPZJ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 15 Apr 2010 11:25:09 -0400
+Received: by qyk27 with SMTP id 27so1787265qyk.23
+        for <linux-nfs@vger.kernel.org>; Thu, 15 Apr 2010 08:25:08 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 0/2] Handle address parsing errors in export_find()
+To: steved@redhat.com
+Cc: linux-nfs@vger.kernel.org
+Date: Thu, 15 Apr 2010 11:25:00 -0400
+Message-ID: <20100415152401.4716.83632.stgit@localhost.localdomain>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Mon, Apr 05, 2010 at 12:16:18PM -0400, J. Bruce Fields wrote:
-> On Mon, Apr 05, 2010 at 10:50:16AM -0500, Tom Tucker wrote:
-> > J. Bruce Fields wrote:
-> >> On Mon, Apr 05, 2010 at 10:55:12AM -0400, Chuck Lever wrote:
-> >>   
-> >>> On 04/03/2010 09:27 AM, Tom Tucker wrote:
-> >>>     
-> >>>> RPC6 requires that it be possible to create endpoints that listen
-> >>>> exclusively for IPv4 or IPv6 connection requests. This is not currently
-> >>>> supported by the RDMA API.
-> >>>>
-> >>>> Signed-off-by: Tom Tucker<tom@opengridcomputing.com>
-> >>>> Tested-by: Steve Wise<swise@opengridcomputing.com>
-> >>>>       
-> >>> Reviewed-by: Chuck Lever <chuck.lever@oracle.com>
-> >>>     
-> >>
-> >> Thanks to all.  I take it the problem began with 37498292a "NFSD: Create
-> >> PF_INET6 listener in write_ports"?
-> >>
-> >>   
-> >
-> > Yes.
-> 
-> Thanks.  I'll pass along
-> 
-> 	git://linux-nfs.org/~bfields/linux.git for-2.6.34
-> 
-> soon.
+Steve-
 
-And: sorry we didn't catch this when it happened.  I have some of the
-equipment I'd need to do basic regression tests, but haven't set it up.
+Two more short subjects in the mountd IPv6 series.
 
-I hope I get to it at some point....  For now I depend on others to
-catch even basic rdma regressions--let me know if there's some way I
-could make your testing easier.
+---
 
---b.
+Chuck Lever (2):
+      libexport.a: export_find() should handle address parsing errors
+      libexport.a: Add export_free()
+
+
+ support/export/export.c |   31 +++++++++++++++++++++----------
+ 1 files changed, 21 insertions(+), 10 deletions(-)
+
+-- 
+Chuck Lever
