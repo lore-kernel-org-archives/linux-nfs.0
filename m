@@ -1,43 +1,58 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:52860 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:6548 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755403Ab0DVUuY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 22 Apr 2010 16:50:24 -0400
-Received: from localhost.localdomain (kmanoj02-lxp.hq.netapp.com [10.58.60.82] (may be forged))
-	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id o3MKoMJ5026155
-	for <linux-nfs@vger.kernel.org>; Thu, 22 Apr 2010 13:50:22 -0700 (PDT)
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 0/5] Please review bugfixes for mainline
-Date: Thu, 22 Apr 2010 16:50:16 -0400
-Message-Id: <1271969421-7443-1-git-send-email-Trond.Myklebust@netapp.com>
+	id S1753355Ab0DOL67 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 15 Apr 2010 07:58:59 -0400
+Message-ID: <4BC6FF80.80506@RedHat.com>
+Date: Thu, 15 Apr 2010 07:58:56 -0400
+From: Steve Dickson <SteveD@redhat.com>
+To: Kevin Coffman <kwc@citi.umich.edu>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 2/3] Try to use kernel function to determine supported
+ 	Kerberos enctypes.
+References: <1271272729-24422-1-git-send-email-steved@redhat.com>	 <1271272729-24422-3-git-send-email-steved@redhat.com> <z2j4d569c331004141258y2f16a82ga1aa7826d665b3a9@mail.gmail.com>
+In-Reply-To: <z2j4d569c331004141258y2f16a82ga1aa7826d665b3a9@mail.gmail.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-The following patches have been queued up in the 'bugfixes' branch on
-git://git.linux-nfs.org/projects/trondmy/nfs-2.6.git
+Hey Kevin,
 
-Cheers
-  Trond
+On 04/14/2010 03:58 PM, Kevin Coffman wrote:
+> 
+> The global krb5_enctypes array was used when the list was being read
+> once from a file.  With the list now coming up with each request in
+> the updated upcall, I think the list obtained in the upcall should be
+> added to the clnt_info structure and then passed to the
+> limit_krb5_enctypes function as a parameter.
+I took a look at move the krb5_enctypes array in to the clnt_info structure
+and I'm thinking it might be better to keep it as global variable. 
+Here is my reasoning... 
 
-Chuck Lever (1):
-  NFS: rsize and wsize settings ignored on v4 mounts
+The "enctypes=" string that comes up in the upcall is basically a 
+static string. Yeah I know it could change but that's highly unlikely
+any time soon. So if we put the krb5_enctypes array in the clnt_info
+structure we would have to parse that (static) string on *every* upcall,
+since the clnt_info structures are dynamically allocated. So
+parsing a static string on every upcall does not make sense to me.
 
-Dan Carpenter (1):
-  nfs: testing for null instead of ERR_PTR()
+Keeping the supported enctypes in a global variable allow us to
+parse the string once and when it changes (which will never happen
+dynamically). So if the first enctypes values are cached, all that
+parsing become a simple strcmp()... ala:
+ 
++parse_enctypes(char *enctypes)
++{
++	int n = 0;
++	char *curr, *comma;
++	int i;
++	static char *cached_types;
++
++	if (cached_types && strcmp(cached_types, enctypes) == 0)
++		return 0;
 
-Trond Myklebust (3):
-  SUNRPC: Fix a bug in rpcauth_prune_expired
-  NFSv4: Don't attempt an atomic open if the file is a mountpoint
-  NFS: Fix an unstable write data integrity race
 
- fs/nfs/client.c        |    2 ++
- fs/nfs/dir.c           |    2 +-
- fs/nfs/super.c         |    2 +-
- fs/nfs/write.c         |   36 ++++++++++++++++++++++++++++++++----
- include/linux/nfs_fs.h |    1 +
- net/sunrpc/auth.c      |    2 +-
- 6 files changed, 38 insertions(+), 7 deletions(-)
+Makes sense? Am I missing something??
 
+steved.
