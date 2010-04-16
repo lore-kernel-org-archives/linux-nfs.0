@@ -1,156 +1,79 @@
-From: Valerie Aurora <vaurora@redhat.com>
-Subject: [PATCH 04/35] whiteout/NFSD: Don't return information about whiteouts to userspace
-Date: Thu, 15 Apr 2010 16:04:11 -0700
-Message-ID: <1271372682-21225-5-git-send-email-vaurora@redhat.com>
-References: <1271372682-21225-1-git-send-email-vaurora@redhat.com>
- <1271372682-21225-2-git-send-email-vaurora@redhat.com>
- <1271372682-21225-3-git-send-email-vaurora@redhat.com>
- <1271372682-21225-4-git-send-email-vaurora@redhat.com>
-Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	Jan Blunck <jblunck@suse.de>,
-	David Woodhouse <dwmw2@infradead.org>,
-	Valerie Aurora <vaurora@redhat.com>, linux-nfs@vger.kernel.org,
-	"J. Bruce Fields" <bfields@fieldses.org>,
-	Neil Brown <neilb@suse.de>
-To: Alexander Viro <viro@zeniv.linux.org.uk>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <1271372682-21225-4-git-send-email-vaurora@redhat.com>
-Sender: linux-kernel-owner@vger.kernel.org
+From: Michael Tokarev <mjt@tls.msk.ru>
+Subject: Why is remount necessary after rebooting server?
+Date: Fri, 16 Apr 2010 10:12:31 +0400
+Message-ID: <4BC7FFCF.8030003@msgid.tls.msk.ru>
+Reply-To: linux-nfs@vger.kernel.org, Michael Tokarev <mjt@tls.msk.ru>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+To: linux-nfs@vger.kernel.org
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from isrv.corpit.ru ([81.13.33.159]:43014 "EHLO isrv.corpit.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753695Ab0DPGOm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 16 Apr 2010 02:14:42 -0400
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Jan Blunck <jblunck@suse.de>
+Hello.
 
-Userspace isn't ready for handling another file type, so silently drop
-whiteout directory entries before they leave the kernel.
+It has been a while since I've seen.. issues with nfs for the
+last time.  Now I hit a limitation of number of groups in nfs3,
+and had to switch to nfs4.  And immediately hit another problem,
+which makes the whole thing almost unusable for us.
 
-Signed-off-by: Jan Blunck <jblunck@suse.de>
-Signed-off-by: David Woodhouse <dwmw2@infradead.org>
-Signed-off-by: Valerie Aurora <vaurora@redhat.com>
-Cc: linux-nfs@vger.kernel.org
-Cc: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Neil Brown <neilb@suse.de>
----
- fs/compat.c       |    9 +++++++++
- fs/nfsd/nfs3xdr.c |    5 +++++
- fs/nfsd/nfs4xdr.c |    5 +++++
- fs/nfsd/nfsxdr.c  |    4 ++++
- fs/readdir.c      |    9 +++++++++
- 5 files changed, 32 insertions(+), 0 deletions(-)
+The problem is that each time the nfs server is rebooted, I have
+to - it boils down to - forcibly REBOOT each client which has
+some mounts from the said server.  Because, well, remount - in
+theory - should be sufficient, but I can't perform remount because
+the filesystem(s) in question are busy.
 
-diff --git a/fs/compat.c b/fs/compat.c
-index 00d90c2..624e1a5 100644
---- a/fs/compat.c
-+++ b/fs/compat.c
-@@ -838,6 +838,9 @@ static int compat_fillonedir(void *__buf, const char *name, int namlen,
- 	struct compat_old_linux_dirent __user *dirent;
- 	compat_ulong_t d_ino;
- 
-+	if (d_type == DT_WHT)
-+		return 0;
-+
- 	if (buf->result)
- 		return -EINVAL;
- 	d_ino = ino;
-@@ -909,6 +912,9 @@ static int compat_filldir(void *__buf, const char *name, int namlen,
- 	compat_ulong_t d_ino;
- 	int reclen = ALIGN(NAME_OFFSET(dirent) + namlen + 2, sizeof(compat_long_t));
- 
-+	if (d_type == DT_WHT)
-+		return 0;
-+
- 	buf->error = -EINVAL;	/* only used if we fail.. */
- 	if (reclen > buf->count)
- 		return -EINVAL;
-@@ -998,6 +1004,9 @@ static int compat_filldir64(void * __buf, const char * name, int namlen, loff_t
- 	int reclen = ALIGN(jj + namlen + 1, sizeof(u64));
- 	u64 off;
- 
-+	if (d_type == DT_WHT)
-+		return 0;
-+
- 	buf->error = -EINVAL;	/* only used if we fail.. */
- 	if (reclen > buf->count)
- 		return -EINVAL;
-diff --git a/fs/nfsd/nfs3xdr.c b/fs/nfsd/nfs3xdr.c
-index 2a533a0..9b96f5a 100644
---- a/fs/nfsd/nfs3xdr.c
-+++ b/fs/nfsd/nfs3xdr.c
-@@ -885,6 +885,11 @@ encode_entry(struct readdir_cd *ccd, const char *name, int namlen,
- 	int		elen;		/* estimated entry length in words */
- 	int		num_entry_words = 0;	/* actual number of words */
- 
-+	if (d_type == DT_WHT) {
-+		cd->common.err = nfs_ok;
-+		return 0;
-+	}
-+
- 	if (cd->offset) {
- 		u64 offset64 = offset;
- 
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 78c7e24..8839ba8 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -2268,6 +2268,11 @@ nfsd4_encode_dirent(void *ccdv, const char *name, int namlen,
- 		return 0;
- 	}
- 
-+	if (d_type == DT_WHT) {
-+		cd->common.err = nfs_ok;
-+		return 0;
-+	}
-+
- 	if (cd->offset)
- 		xdr_encode_hyper(cd->offset, (u64) offset);
- 
-diff --git a/fs/nfsd/nfsxdr.c b/fs/nfsd/nfsxdr.c
-index 4ce005d..0e57d4b 100644
---- a/fs/nfsd/nfsxdr.c
-+++ b/fs/nfsd/nfsxdr.c
-@@ -503,6 +503,10 @@ nfssvc_encode_entry(void *ccdv, const char *name,
- 			namlen, name, offset, ino);
- 	 */
- 
-+	if (d_type == DT_WHT) {
-+		cd->common.err = nfs_ok;
-+		return 0;
-+	}
- 	if (offset > ~((u32) 0)) {
- 		cd->common.err = nfserr_fbig;
- 		return -EINVAL;
-diff --git a/fs/readdir.c b/fs/readdir.c
-index 7723401..3a48491 100644
---- a/fs/readdir.c
-+++ b/fs/readdir.c
-@@ -77,6 +77,9 @@ static int fillonedir(void * __buf, const char * name, int namlen, loff_t offset
- 	struct old_linux_dirent __user * dirent;
- 	unsigned long d_ino;
- 
-+	if (d_type == DT_WHT)
-+		return 0;
-+
- 	if (buf->result)
- 		return -EINVAL;
- 	d_ino = ino;
-@@ -154,6 +157,9 @@ static int filldir(void * __buf, const char * name, int namlen, loff_t offset,
- 	unsigned long d_ino;
- 	int reclen = ALIGN(NAME_OFFSET(dirent) + namlen + 2, sizeof(long));
- 
-+	if (d_type == DT_WHT)
-+		return 0;
-+
- 	buf->error = -EINVAL;	/* only used if we fail.. */
- 	if (reclen > buf->count)
- 		return -EINVAL;
-@@ -239,6 +245,9 @@ static int filldir64(void * __buf, const char * name, int namlen, loff_t offset,
- 	struct getdents_callback64 * buf = (struct getdents_callback64 *) __buf;
- 	int reclen = ALIGN(NAME_OFFSET(dirent) + namlen + 1, sizeof(u64));
- 
-+	if (d_type == DT_WHT)
-+		return 0;
-+
- 	buf->error = -EINVAL;	/* only used if we fail.. */
- 	if (reclen > buf->count)
- 		return -EINVAL;
--- 
-1.6.3.3
+Here's a typical situation (after reboot):
+
+# ls /net/gnome/home
+ls: cannot access /net/gnome/home: Stale NFS file handle
+
+# mount | tail -n2
+gnome:/ on /net/gnome type nfs4 (rw,nosuid,nodev,relatime,vers=4,rsize=262144,wsize=262144,namlen=255,soft,proto=tcp,timeo=600,retrans=2,sec=sys,clientaddr=192.168.88.2,addr=192.168.88.4)
+gnome:/home on /net/gnome/home type nfs4 (rw,nosuid,nodev,relatime,vers=4,rsize=262144,wsize=262144,namlen=255,soft,proto=tcp,port=0,timeo=600,retrans=2,sec=sys,clientaddr=192.168.88.2,addr=192.168.88.4)
+
+# umount /net/gnome/home
+umount.nfs4: /net/gnome/home: device is busy
+umount.nfs4: /net/gnome/home: device is busy
+
+# umount -f /net/gnome/home
+umount2: Device or resource busy
+umount.nfs4: /net/gnome/home: device is busy
+umount2: Device or resource busy
+umount.nfs4: /net/gnome/home: device is busy
+
+# umount -f /net/gnome
+umount2: Device or resource busy
+umount.nfs4: /net/gnome: device is busy
+umount2: Device or resource busy
+umount.nfs4: /net/gnome: device is busy
+
+
+At this point, there are two ways:
+
+  1.  try to find and kill all processes which are using
+    the mountpoint.  But in almost all cases it is not
+    possible since there is at least one process which is
+    in D state and unkillable, so we proceed to variant 2:
+
+  2. echo b > /proc/sysrq-trigger
+    or something of this sort, since it will not be able
+    umount / anyway.
+
+Note that even if 1. succeed, the system is unusable anyway,
+since it is here to service users.  So it is simpler and
+faster to proceed to 2. stright away.
+
+What can be done to stop the "Stale NFS handle" situation
+from happening -- except of stopping rebooting the server?
+At least with nfs3 it has been almost solved (almost, because
+from time to time it still happens even with nfs3, leading
+to the same issue).
+
+Thanks!
+
+/mjt
