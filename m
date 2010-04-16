@@ -1,103 +1,110 @@
 From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH] SUNRPC: Cleanup - make rpc_new_task() call rpc_release_calldata on failure
-Date: Fri, 16 Apr 2010 16:47:47 -0400
-Message-ID: <1271450871-10777-2-git-send-email-Trond.Myklebust@netapp.com>
-References: <1271450871-10777-1-git-send-email-Trond.Myklebust@netapp.com>
+Subject: [PATCH] SUNRPC: Clean up xprt_release()
+Date: Fri, 16 Apr 2010 16:47:46 -0400
+Message-ID: <1271450871-10777-1-git-send-email-Trond.Myklebust@netapp.com>
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
 Received: from mx2.netapp.com ([216.240.18.37]:54877 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932522Ab0DPUrw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	id S932521Ab0DPUrw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
 	Fri, 16 Apr 2010 16:47:52 -0400
 Received: from localhost.localdomain (marilynd-lxp.hq.netapp.com [10.58.50.136] (may be forged))
-	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id o3GKlp8w008034
-	for <linux-nfs@vger.kernel.org>; Fri, 16 Apr 2010 13:47:52 -0700 (PDT)
-In-Reply-To: <1271450871-10777-1-git-send-email-Trond.Myklebust@netapp.com>
+	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id o3GKlp8v008034
+	for <linux-nfs@vger.kernel.org>; Fri, 16 Apr 2010 13:47:51 -0700 (PDT)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Also have it return an ERR_PTR(-ENOMEM) instead of a null pointer.
-
 Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
- net/sunrpc/clnt.c  |   19 ++++---------------
- net/sunrpc/sched.c |   13 ++++++++++---
- 2 files changed, 14 insertions(+), 18 deletions(-)
+ net/sunrpc/xprt.c |   32 ++++++++++++++++----------------
+ 1 files changed, 16 insertions(+), 16 deletions(-)
 
-diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index 19c9983..8c7b543 100644
---- a/net/sunrpc/clnt.c
-+++ b/net/sunrpc/clnt.c
-@@ -556,26 +556,16 @@ static const struct rpc_call_ops rpc_default_ops = {
+diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
+index 42f09ad..18415cc 100644
+--- a/net/sunrpc/xprt.c
++++ b/net/sunrpc/xprt.c
+@@ -62,7 +62,6 @@
+  * Local functions
   */
- struct rpc_task *rpc_run_task(const struct rpc_task_setup *task_setup_data)
- {
--	struct rpc_task *task, *ret;
-+	struct rpc_task *task;
+ static void	xprt_request_init(struct rpc_task *, struct rpc_xprt *);
+-static inline void	do_xprt_reserve(struct rpc_task *);
+ static void	xprt_connect_status(struct rpc_task *task);
+ static int      __xprt_get_cong(struct rpc_xprt *, struct rpc_task *);
  
- 	task = rpc_new_task(task_setup_data);
--	if (task == NULL) {
--		rpc_release_calldata(task_setup_data->callback_ops,
--				task_setup_data->callback_data);
--		ret = ERR_PTR(-ENOMEM);
-+	if (IS_ERR(task))
- 		goto out;
--	}
- 
--	if (task->tk_status != 0) {
--		ret = ERR_PTR(task->tk_status);
--		rpc_put_task(task);
--		goto out;
--	}
- 	atomic_inc(&task->tk_count);
- 	rpc_execute(task);
--	ret = task;
- out:
--	return ret;
-+	return task;
+@@ -935,7 +934,7 @@ void xprt_transmit(struct rpc_task *task)
+ 	spin_unlock_bh(&xprt->transport_lock);
  }
- EXPORT_SYMBOL_GPL(rpc_run_task);
  
-@@ -657,9 +647,8 @@ struct rpc_task *rpc_run_bc_task(struct rpc_rqst *req,
- 	 * Create an rpc_task to send the data
- 	 */
- 	task = rpc_new_task(&task_setup_data);
--	if (!task) {
-+	if (IS_ERR(task)) {
+-static inline void do_xprt_reserve(struct rpc_task *task)
++static void xprt_alloc_slot(struct rpc_task *task)
+ {
+ 	struct rpc_xprt	*xprt = task->tk_xprt;
+ 
+@@ -955,6 +954,16 @@ static inline void do_xprt_reserve(struct rpc_task *task)
+ 	rpc_sleep_on(&xprt->backlog, task, NULL);
+ }
+ 
++static void xprt_free_slot(struct rpc_xprt *xprt, struct rpc_rqst *req)
++{
++	memset(req, 0, sizeof(*req));	/* mark unused */
++
++	spin_lock(&xprt->reserve_lock);
++	list_add(&req->rq_list, &xprt->free);
++	rpc_wake_up_next(&xprt->backlog);
++	spin_unlock(&xprt->reserve_lock);
++}
++
+ /**
+  * xprt_reserve - allocate an RPC request slot
+  * @task: RPC task requesting a slot allocation
+@@ -968,7 +977,7 @@ void xprt_reserve(struct rpc_task *task)
+ 
+ 	task->tk_status = -EIO;
+ 	spin_lock(&xprt->reserve_lock);
+-	do_xprt_reserve(task);
++	xprt_alloc_slot(task);
+ 	spin_unlock(&xprt->reserve_lock);
+ }
+ 
+@@ -1006,14 +1015,10 @@ void xprt_release(struct rpc_task *task)
+ {
+ 	struct rpc_xprt	*xprt;
+ 	struct rpc_rqst	*req;
+-	int is_bc_request;
+ 
+ 	if (!(req = task->tk_rqstp))
+ 		return;
+ 
+-	/* Preallocated backchannel request? */
+-	is_bc_request = bc_prealloc(req);
+-
+ 	xprt = req->rq_xprt;
+ 	rpc_count_iostats(task);
+ 	spin_lock_bh(&xprt->transport_lock);
+@@ -1027,21 +1032,16 @@ void xprt_release(struct rpc_task *task)
+ 		mod_timer(&xprt->timer,
+ 				xprt->last_used + xprt->idle_timeout);
+ 	spin_unlock_bh(&xprt->transport_lock);
+-	if (!bc_prealloc(req))
++	if (req->rq_buffer)
+ 		xprt->ops->buf_free(req->rq_buffer);
+ 	task->tk_rqstp = NULL;
+ 	if (req->rq_release_snd_buf)
+ 		req->rq_release_snd_buf(req);
+ 
+ 	dprintk("RPC: %5u release request %p\n", task->tk_pid, req);
+-	if (likely(!is_bc_request)) {
+-		memset(req, 0, sizeof(*req));	/* mark unused */
+-
+-		spin_lock(&xprt->reserve_lock);
+-		list_add(&req->rq_list, &xprt->free);
+-		rpc_wake_up_next(&xprt->backlog);
+-		spin_unlock(&xprt->reserve_lock);
+-	} else
++	if (likely(!bc_prealloc(req)))
++		xprt_free_slot(xprt, req);
++	else
  		xprt_free_bc_request(req);
--		task = ERR_PTR(-ENOMEM);
- 		goto out;
- 	}
- 	task->tk_rqstp = req;
-diff --git a/net/sunrpc/sched.c b/net/sunrpc/sched.c
-index aae6907..c8979ce 100644
---- a/net/sunrpc/sched.c
-+++ b/net/sunrpc/sched.c
-@@ -856,16 +856,23 @@ struct rpc_task *rpc_new_task(const struct rpc_task_setup *setup_data)
- 
- 	if (task == NULL) {
- 		task = rpc_alloc_task();
--		if (task == NULL)
--			goto out;
-+		if (task == NULL) {
-+			rpc_release_calldata(setup_data->callback_ops,
-+					setup_data->callback_data);
-+			return ERR_PTR(-ENOMEM);
-+		}
- 		flags = RPC_TASK_DYNAMIC;
- 	}
- 
- 	rpc_init_task(task, setup_data);
-+	if (task->tk_status < 0) {
-+		int err = task->tk_status;
-+		rpc_put_task(task);
-+		return ERR_PTR(err);
-+	}
- 
- 	task->tk_flags |= flags;
- 	dprintk("RPC:       allocated task %p\n", task);
--out:
- 	return task;
  }
  
 -- 
