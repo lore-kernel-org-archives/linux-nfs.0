@@ -1,68 +1,100 @@
-From: "J. Bruce Fields" <bfields@citi.umich.edu>
-Subject: Re: [PATCH 1/2] nfsd4: complete enforcement of 4.1 op ordering
-Date: Tue, 27 Apr 2010 12:34:04 -0400
-Message-ID: <20100427163404.GH30729@fieldses.org>
-References: <1271946744-5877-1-git-send-email-bfields@citi.umich.edu> <20100422144831.GA5926@fieldses.org> <20100423212411.GC1964@fieldses.org> <4BD6F775.2050801@panasas.com> <20100427150103.GC30729@fieldses.org> <4BD706E3.4070608@panasas.com> <20100427161244.GG30729@fieldses.org> <4BD70F5F.7080409@panasas.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs@vger.kernel.org, postmaster@vger.kernel.org
-To: Benny Halevy <bhalevy@panasas.com>
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: [PATCH] NFSv4: Allow attribute caching with 'noac' mounts if client holds a delegation
+Date: Fri, 16 Apr 2010 16:47:50 -0400
+Message-ID: <1271450871-10777-5-git-send-email-Trond.Myklebust@netapp.com>
+References: <1271450871-10777-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1271450871-10777-2-git-send-email-Trond.Myklebust@netapp.com>
+ <1271450871-10777-3-git-send-email-Trond.Myklebust@netapp.com>
+ <1271450871-10777-4-git-send-email-Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:48487 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:54877 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756305Ab0D0QeE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 27 Apr 2010 12:34:04 -0400
-In-Reply-To: <4BD70F5F.7080409@panasas.com>
+	id S932524Ab0DPUry (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 16 Apr 2010 16:47:54 -0400
+Received: from localhost.localdomain (marilynd-lxp.hq.netapp.com [10.58.50.136] (may be forged))
+	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id o3GKlp91008034
+	for <linux-nfs@vger.kernel.org>; Fri, 16 Apr 2010 13:47:54 -0700 (PDT)
+In-Reply-To: <1271450871-10777-4-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Apr 27, 2010 at 07:22:55PM +0300, Benny Halevy wrote:
-> On Apr. 27, 2010, 19:12 +0300, "J. Bruce Fields" <bfields@citi.umich.edu> wrote:
-> > On Tue, Apr 27, 2010 at 06:46:43PM +0300, Benny Halevy wrote:
-> >> On Apr. 27, 2010, 18:01 +0300, "J. Bruce Fields" <bfields@citi.umich.edu> wrote:
-> >>> On Tue, Apr 27, 2010 at 05:40:53PM +0300, Benny Halevy wrote:
-> >>>> Bruce, Oddly enough I didn't receive the patch you're commenting on into
-> >>>> my inbox.  It already happened before on this list and I've no idea what
-> >>>> could have went wrong. (I also have a gmail account subscribed on this list
-> >>>> and I can't find it there, even in the spam folder :-/)
-> >>>
-> >>> Huh.  I see it in various archives, so I'll assume the problem's on your
-> >>> end.
-> >>>
-> >>
-> >> I see it on the archives too, but since I don't ever erase anything out
-> >> of my gmail lists account the fact that it's not there AND not
-> >> on my panasas account as well is really suspicious.  I wonder if
-> >> vger had some sort of outage or glitch that could explain that.
-> > 
-> > For what it's worth I've found postmaster at vger.kernel.org can
-> > sometimes help troubleshoot problems.
-> > 
-> > --b.
-> 
-> Oddly enough, it seems like I'm subscribed this list (called "linux-nfsv4"):
-> http://marc.info/?l=linux-nfsv4&r=1&b=201004&w=2
-> rather than
-> http://marc.info/?l=linux-nfs&r=1&b=201004&w=2
-> 
-> Although my subscription messages from majordomo@vger.kernel.org
-> say "linux-nfs"
-> 
-> The former is essentially nfsv4@linux-nfs.org, right?
-> Maybe I got bounced off of linux-nfs.org for some reason...
+If the server has given us a delegation on a file, we _know_ that we can
+cache the attribute information even when the user has specified 'noac'.
 
-The main lists we've been using are:
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ fs/nfs/file.c  |   15 +++++++++------
+ fs/nfs/inode.c |   12 +++++++++---
+ 2 files changed, 18 insertions(+), 9 deletions(-)
 
-	linux-nfs@vger.kernel.org
-	    nfsv4@linux-nfs.org
-	     pnfs@linux-nfs.org
+diff --git a/fs/nfs/file.c b/fs/nfs/file.c
+index 8d965bd..cac96bc 100644
+--- a/fs/nfs/file.c
++++ b/fs/nfs/file.c
+@@ -161,14 +161,17 @@ static int nfs_revalidate_file_size(struct inode *inode, struct file *filp)
+ 	struct nfs_server *server = NFS_SERVER(inode);
+ 	struct nfs_inode *nfsi = NFS_I(inode);
+ 
+-	if (server->flags & NFS_MOUNT_NOAC)
+-		goto force_reval;
++	if (nfs_have_delegated_attributes(inode))
++		goto out_noreval;
++
+ 	if (filp->f_flags & O_DIRECT)
+ 		goto force_reval;
+-	if (nfsi->npages != 0)
+-		return 0;
+-	if (!(nfsi->cache_validity & NFS_INO_REVAL_PAGECACHE) && !nfs_attribute_timeout(inode))
+-		return 0;
++	if (nfsi->cache_validity & NFS_INO_REVAL_PAGECACHE)
++		goto force_reval;
++	if (nfs_attribute_timeout(inode))
++		goto force_reval;
++out_noreval:
++	return 0;
+ force_reval:
+ 	return __nfs_revalidate_inode(server, inode);
+ }
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index 50a56ed..69da585 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -730,9 +730,14 @@ int nfs_attribute_timeout(struct inode *inode)
+ {
+ 	struct nfs_inode *nfsi = NFS_I(inode);
+ 
++	return !time_in_range_open(jiffies, nfsi->read_cache_jiffies, nfsi->read_cache_jiffies + nfsi->attrtimeo);
++}
++
++static int nfs_attribute_cache_expired(struct inode *inode)
++{
+ 	if (nfs_have_delegated_attributes(inode))
+ 		return 0;
+-	return !time_in_range_open(jiffies, nfsi->read_cache_jiffies, nfsi->read_cache_jiffies + nfsi->attrtimeo);
++	return nfs_attribute_timeout(inode);
+ }
+ 
+ /**
+@@ -745,7 +750,7 @@ int nfs_attribute_timeout(struct inode *inode)
+ int nfs_revalidate_inode(struct nfs_server *server, struct inode *inode)
+ {
+ 	if (!(NFS_I(inode)->cache_validity & NFS_INO_INVALID_ATTR)
+-			&& !nfs_attribute_timeout(inode))
++			&& !nfs_attribute_cache_expired(inode))
+ 		return NFS_STALE(inode) ? -ESTALE : 0;
+ 	return __nfs_revalidate_inode(server, inode);
+ }
+@@ -782,7 +787,8 @@ int nfs_revalidate_mapping(struct inode *inode, struct address_space *mapping)
+ 	int ret = 0;
+ 
+ 	if ((nfsi->cache_validity & NFS_INO_REVAL_PAGECACHE)
+-			|| nfs_attribute_timeout(inode) || NFS_STALE(inode)) {
++			|| nfs_attribute_cache_expired(inode)
++			|| NFS_STALE(inode)) {
+ 		ret = __nfs_revalidate_inode(NFS_SERVER(inode), inode);
+ 		if (ret < 0)
+ 			goto out;
+-- 
+1.6.6.1
 
-This seems to be confusing.  We've talked before about transitioning
-away from one (probably nfsv4@linux-nfs.org).  Maybe now's the time to
-start.
-
-(Oh, and there's also an older sourceforge list; I think mail still gets
-forwarded from the vger list to there?  Or is it the other way around?
-May be time to turn that one off completely.)
-
---b.
