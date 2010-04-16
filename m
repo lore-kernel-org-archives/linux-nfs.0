@@ -1,76 +1,105 @@
 From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH 22/24] NFS: Reduce stack footprint of nfs_statfs()
-Date: Fri, 16 Apr 2010 16:31:20 -0400
-Message-ID: <1271449882-8580-23-git-send-email-Trond.Myklebust@netapp.com>
-References: <1271449882-8580-1-git-send-email-Trond.Myklebust@netapp.com>
- <1271449882-8580-2-git-send-email-Trond.Myklebust@netapp.com>
- <1271449882-8580-3-git-send-email-Trond.Myklebust@netapp.com>
- <1271449882-8580-4-git-send-email-Trond.Myklebust@netapp.com>
- <1271449882-8580-5-git-send-email-Trond.Myklebust@netapp.com>
- <1271449882-8580-6-git-send-email-Trond.Myklebust@netapp.com>
- <1271449882-8580-7-git-send-email-Trond.Myklebust@netapp.com>
- <1271449882-8580-8-git-send-email-Trond.Myklebust@netapp.com>
- <1271449882-8580-9-git-send-email-Trond.Myklebust@netapp.com>
- <1271449882-8580-10-git-send-email-Trond.Myklebust@netapp.com>
- <1271449882-8580-11-git-send-email-Trond.Myklebust@netapp.com>
- <1271449882-8580-12-git-send-email-Trond.Myklebust@netapp.com>
- <1271449882-8580-13-git-send-email-Trond.Myklebust@netapp.com>
- <1271449882-8580-14-git-send-email-Trond.Myklebust@netapp.com>
- <1271449882-8580-15-git-send-email-Trond.Myklebust@netapp.com>
- <1271449882-8580-16-git-send-email-Trond.Myklebust@netapp.com>
- <1271449882-8580-17-git-send-email-Trond.Myklebust@netapp.com>
- <1271449882-8580-18-git-send-email-Trond.Myklebust@netapp.com>
- <1271449882-8580-19-git-send-email-Trond.Myklebust@netapp.com>
- <1271449882-8580-20-git-send-email-Trond.Myklebust@netapp.com>
- <1271449882-8580-21-git-send-email-Trond.Myklebust@netapp.com>
- <1271449882-8580-22-git-send-email-Trond.Myklebust@netapp.com>
+Subject: [PATCH] SUNRPC: Cleanup - make rpc_new_task() call rpc_release_calldata on failure
+Date: Fri, 16 Apr 2010 16:47:47 -0400
+Message-ID: <1271450871-10777-2-git-send-email-Trond.Myklebust@netapp.com>
+References: <1271450871-10777-1-git-send-email-Trond.Myklebust@netapp.com>
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:16405 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:54877 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932478Ab0DPUbh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 16 Apr 2010 16:31:37 -0400
+	id S932522Ab0DPUrw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 16 Apr 2010 16:47:52 -0400
 Received: from localhost.localdomain (marilynd-lxp.hq.netapp.com [10.58.50.136] (may be forged))
-	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id o3GKVMlH026251
-	for <linux-nfs@vger.kernel.org>; Fri, 16 Apr 2010 13:31:36 -0700 (PDT)
-In-Reply-To: <1271449882-8580-22-git-send-email-Trond.Myklebust@netapp.com>
+	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id o3GKlp8w008034
+	for <linux-nfs@vger.kernel.org>; Fri, 16 Apr 2010 13:47:52 -0700 (PDT)
+In-Reply-To: <1271450871-10777-1-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Also have it return an ERR_PTR(-ENOMEM) instead of a null pointer.
+
 Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
- fs/nfs/super.c |   14 +++++++++-----
- 1 files changed, 9 insertions(+), 5 deletions(-)
+ net/sunrpc/clnt.c  |   19 ++++---------------
+ net/sunrpc/sched.c |   13 ++++++++++---
+ 2 files changed, 14 insertions(+), 18 deletions(-)
 
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index 3e9047f..cb196eb 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -423,15 +423,19 @@ static int nfs_statfs(struct dentry *dentry, struct kstatfs *buf)
- 	unsigned char blockbits;
- 	unsigned long blockres;
- 	struct nfs_fh *fh = NFS_FH(dentry->d_inode);
--	struct nfs_fattr fattr;
--	struct nfs_fsstat res = {
--			.fattr = &fattr,
--	};
--	int error;
-+	struct nfs_fsstat res;
-+	int error = -ENOMEM;
-+
-+	res.fattr = nfs_alloc_fattr();
-+	if (res.fattr == NULL)
-+		goto out_err;
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index 19c9983..8c7b543 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -556,26 +556,16 @@ static const struct rpc_call_ops rpc_default_ops = {
+  */
+ struct rpc_task *rpc_run_task(const struct rpc_task_setup *task_setup_data)
+ {
+-	struct rpc_task *task, *ret;
++	struct rpc_task *task;
  
- 	error = server->nfs_client->rpc_ops->statfs(server, fh, &res);
-+
-+	nfs_free_fattr(res.fattr);
- 	if (error < 0)
- 		goto out_err;
-+
- 	buf->f_type = NFS_SUPER_MAGIC;
+ 	task = rpc_new_task(task_setup_data);
+-	if (task == NULL) {
+-		rpc_release_calldata(task_setup_data->callback_ops,
+-				task_setup_data->callback_data);
+-		ret = ERR_PTR(-ENOMEM);
++	if (IS_ERR(task))
+ 		goto out;
+-	}
  
- 	/*
+-	if (task->tk_status != 0) {
+-		ret = ERR_PTR(task->tk_status);
+-		rpc_put_task(task);
+-		goto out;
+-	}
+ 	atomic_inc(&task->tk_count);
+ 	rpc_execute(task);
+-	ret = task;
+ out:
+-	return ret;
++	return task;
+ }
+ EXPORT_SYMBOL_GPL(rpc_run_task);
+ 
+@@ -657,9 +647,8 @@ struct rpc_task *rpc_run_bc_task(struct rpc_rqst *req,
+ 	 * Create an rpc_task to send the data
+ 	 */
+ 	task = rpc_new_task(&task_setup_data);
+-	if (!task) {
++	if (IS_ERR(task)) {
+ 		xprt_free_bc_request(req);
+-		task = ERR_PTR(-ENOMEM);
+ 		goto out;
+ 	}
+ 	task->tk_rqstp = req;
+diff --git a/net/sunrpc/sched.c b/net/sunrpc/sched.c
+index aae6907..c8979ce 100644
+--- a/net/sunrpc/sched.c
++++ b/net/sunrpc/sched.c
+@@ -856,16 +856,23 @@ struct rpc_task *rpc_new_task(const struct rpc_task_setup *setup_data)
+ 
+ 	if (task == NULL) {
+ 		task = rpc_alloc_task();
+-		if (task == NULL)
+-			goto out;
++		if (task == NULL) {
++			rpc_release_calldata(setup_data->callback_ops,
++					setup_data->callback_data);
++			return ERR_PTR(-ENOMEM);
++		}
+ 		flags = RPC_TASK_DYNAMIC;
+ 	}
+ 
+ 	rpc_init_task(task, setup_data);
++	if (task->tk_status < 0) {
++		int err = task->tk_status;
++		rpc_put_task(task);
++		return ERR_PTR(err);
++	}
+ 
+ 	task->tk_flags |= flags;
+ 	dprintk("RPC:       allocated task %p\n", task);
+-out:
+ 	return task;
+ }
+ 
 -- 
 1.6.6.1
 
