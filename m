@@ -1,56 +1,74 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from tauceti.net ([62.245.250.166]:55094 "EHLO www.tauceti.net"
+Received: from mx2.netapp.com ([216.240.18.37]:43811 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751787Ab0DZWSs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 26 Apr 2010 18:18:48 -0400
-Message-ID: <4BD61147.40709@tauceti.net>
-Date: Tue, 27 Apr 2010 00:18:47 +0200
-From: Robert Wimmer <kernel@tauceti.net>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-CC: "Michael S. Tsirkin" <mst@redhat.com>, Avi Kivity <avi@redhat.com>,
-        Andrew Morton <akpm@linux-foundation.org>, linux-mm@kvack.org,
-        bugzilla-daemon@bugzilla.kernel.org,
-        Rusty Russell <rusty@rustcorp.com.au>, Mel Gorman <mel@csn.ul.ie>,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: Re: [Bugme-new] [Bug 15709] New: swapper page allocation failure
-References: <4BC43097.3060000@tauceti.net> <4BCC52B9.8070200@tauceti.net> <20100419131718.GB16918@redhat.com> <dbf86fc1c370496138b3a74a3c74ec18@tauceti.net> <20100421094249.GC30855@redhat.com> <c638ec9fdee2954ec5a7a2bd405aa2ba@tauceti.net> <20100422100304.GC30532@redhat.com> <4BD12F9C.30802@tauceti.net> <20100425091759.GA9993@redhat.com> <4BD4A917.70702@tauceti.net> <20100425204916.GA12686@redhat.com> <1272284154.4252.34.camel@localhost.localdomain> <4BD5F6C5.8080605@tauceti.net> <1272315854.8984.125.camel@localhost.localdomain>
-In-Reply-To: <1272315854.8984.125.camel@localhost.localdomain>
-Content-Type: text/plain; charset=UTF-8
+	id S932414Ab0DPUbY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 16 Apr 2010 16:31:24 -0400
+Received: from localhost.localdomain (marilynd-lxp.hq.netapp.com [10.58.50.136] (may be forged))
+	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id o3GKVMkt026251
+	for <linux-nfs@vger.kernel.org>; Fri, 16 Apr 2010 13:31:22 -0700 (PDT)
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 00/24] Reduce the stack foot print of the NFS client
+Date: Fri, 16 Apr 2010 16:30:58 -0400
+Message-Id: <1271449882-8580-1-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
+The following patch series aims to significantly reduce the stack foot
+print of the NFS client by dynamically allocating the struct nfs_fattr
+and struct nfs_fh.
 
-> Sure. In addition to what you did above, please do
->
-> mount -t debugfs none /sys/kernel/debug
->
-> and then cat the contents of the pseudofile at
->
-> /sys/kernel/debug/tracing/stack_trace
->
-> Please do this more or less immediately after you've finished mounting
-> the NFSv4 client.
->   
+Cheers
+  Trond
 
-I've uploaded the stack trace. It was generated
-directly after mounting. Here are the stacks:
+Trond Myklebust (24):
+  NFS: Add helper functions for allocating filehandles and fattr
+    structs
+  NFSv4: Eliminate nfs4_path_walk()
+  NFS: Reduce the stack footprint of nfs_follow_mountpoint()
+  NFS: Reduce the stack footprint of nfs_create_server
+  NFSv4: Reduce the stack footprint of try_location()
+  NFS: Reduce the stack footprint of nfs_lookup
+  NFS: Reduce the stack footprint of nfs_follow_remote_path()
+  NFSv4: Reduce stack footprint of nfs4_get_root()
+  NFSv4: Reduce the stack footprint of nfs4_remote_referral_get_sb
+  NFSv4: Reduce stack footprint of nfs4_proc_access() and
+    nfs3_proc_access()
+  NFS: Reduce stack footprint of nfs_revalidate_inode()
+  NFS: Reduce stack footprint of nfs3_proc_rename() and
+    nfs4_proc_rename()
+  NFS: Reduce stack footprint of nfs_readdir()
+  NFS: Reduce the stack footprint of nfs_link()
+  NFS: Reduce stack footprint of nfs3_proc_readlink()
+  NFS: Reduce stack footprint of nfs_proc_remove()
+  NFS: Reduce the stack footprint of nfs_rmdir
+  NFS: Reduce the stack footprint of nfs_proc_create
+  NFS: Reduce the stack footprint of nfs_proc_symlink()
+  NFS: Reduce stack footprint of nfs4_proc_create()
+  NFS: Reduce stack footprint of nfs_setattr()
+  NFS: Reduce stack footprint of nfs_statfs()
+  NFS: Reduce stack footprint of nfs3_proc_getacl() and
+    nfs3_proc_setacl()
+  NFS: Prevent the mount code from looping forever on broken exports
 
-After mounting:
-https://bugzilla.kernel.org/attachment.cgi?id=26153
-After the soft lockup:
-https://bugzilla.kernel.org/attachment.cgi?id=26154
-The dmesg output of the soft lockup:
-https://bugzilla.kernel.org/attachment.cgi?id=26155
-
-> Does your server have the 'crossmnt' or 'nohide' flags set, or does it
-> use the 'refer' export option anywhere? If so, then we might have to
-> test further, since those may trigger the NFSv4 submount feature.
->   
-The server has the following settings:
-rw,nohide,insecure,async,no_subtree_check,no_root_squash
-
-Thanks!
-Robert
-
+ fs/nfs/client.c         |   54 ++++++++++---
+ fs/nfs/dir.c            |   62 +++++++++++----
+ fs/nfs/getroot.c        |  191 +++++++++++++++++------------------------------
+ fs/nfs/inode.c          |   46 ++++++++++--
+ fs/nfs/internal.h       |    4 +-
+ fs/nfs/namespace.c      |   20 ++++--
+ fs/nfs/nfs3acl.c        |   23 ++++--
+ fs/nfs/nfs3proc.c       |  128 +++++++++++++++++++------------
+ fs/nfs/nfs3xdr.c        |    2 +-
+ fs/nfs/nfs4namespace.c  |   10 ++-
+ fs/nfs/nfs4proc.c       |   81 ++++++++++++--------
+ fs/nfs/nfs4xdr.c        |    2 +-
+ fs/nfs/proc.c           |  144 ++++++++++++++++++++---------------
+ fs/nfs/super.c          |  121 ++++++++++++++++++++++++++----
+ fs/nfs/unlink.c         |    4 +-
+ include/linux/nfs_fs.h  |   14 ++++
+ include/linux/nfs_xdr.h |    2 +-
+ 17 files changed, 566 insertions(+), 342 deletions(-)
 
