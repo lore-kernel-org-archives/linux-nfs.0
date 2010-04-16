@@ -1,7 +1,7 @@
 From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH 20/24] NFS: Reduce stack footprint of nfs4_proc_create()
-Date: Fri, 16 Apr 2010 16:31:18 -0400
-Message-ID: <1271449882-8580-21-git-send-email-Trond.Myklebust@netapp.com>
+Subject: [PATCH 22/24] NFS: Reduce stack footprint of nfs_statfs()
+Date: Fri, 16 Apr 2010 16:31:20 -0400
+Message-ID: <1271449882-8580-23-git-send-email-Trond.Myklebust@netapp.com>
 References: <1271449882-8580-1-git-send-email-Trond.Myklebust@netapp.com>
  <1271449882-8580-2-git-send-email-Trond.Myklebust@netapp.com>
  <1271449882-8580-3-git-send-email-Trond.Myklebust@netapp.com>
@@ -22,83 +22,55 @@ References: <1271449882-8580-1-git-send-email-Trond.Myklebust@netapp.com>
  <1271449882-8580-18-git-send-email-Trond.Myklebust@netapp.com>
  <1271449882-8580-19-git-send-email-Trond.Myklebust@netapp.com>
  <1271449882-8580-20-git-send-email-Trond.Myklebust@netapp.com>
+ <1271449882-8580-21-git-send-email-Trond.Myklebust@netapp.com>
+ <1271449882-8580-22-git-send-email-Trond.Myklebust@netapp.com>
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
 Received: from mx2.netapp.com ([216.240.18.37]:16405 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932475Ab0DPUbg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 16 Apr 2010 16:31:36 -0400
+	id S932478Ab0DPUbh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 16 Apr 2010 16:31:37 -0400
 Received: from localhost.localdomain (marilynd-lxp.hq.netapp.com [10.58.50.136] (may be forged))
-	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id o3GKVMlF026251
-	for <linux-nfs@vger.kernel.org>; Fri, 16 Apr 2010 13:31:35 -0700 (PDT)
-In-Reply-To: <1271449882-8580-20-git-send-email-Trond.Myklebust@netapp.com>
+	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id o3GKVMlH026251
+	for <linux-nfs@vger.kernel.org>; Fri, 16 Apr 2010 13:31:36 -0700 (PDT)
+In-Reply-To: <1271449882-8580-22-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Move the O_EXCL open handling into _nfs4_do_open() where it belongs. Doing
-so also allows us to reuse the struct fattr from the opendata.
-
 Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
- fs/nfs/nfs4proc.c |   25 +++++++++++++++----------
- 1 files changed, 15 insertions(+), 10 deletions(-)
+ fs/nfs/super.c |   14 +++++++++-----
+ 1 files changed, 9 insertions(+), 5 deletions(-)
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index f09a7b9..d46305a 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -70,6 +70,9 @@ static int nfs4_do_fsinfo(struct nfs_server *, struct nfs_fh *, struct nfs_fsinf
- static int nfs4_async_handle_error(struct rpc_task *, const struct nfs_server *, struct nfs4_state *);
- static int _nfs4_proc_lookup(struct inode *dir, const struct qstr *name, struct nfs_fh *fhandle, struct nfs_fattr *fattr);
- static int _nfs4_proc_getattr(struct nfs_server *server, struct nfs_fh *fhandle, struct nfs_fattr *fattr);
-+static int nfs4_do_setattr(struct inode *inode, struct rpc_cred *cred,
-+			    struct nfs_fattr *fattr, struct iattr *sattr,
-+			    struct nfs4_state *state);
- 
- /* Prevent leaks of NFSv4 errors into userland */
- static int nfs4_map_errors(int err)
-@@ -1659,15 +1662,24 @@ static int _nfs4_do_open(struct inode *dir, struct path *path, fmode_t fmode, in
- 	if (status != 0)
- 		goto err_opendata_put;
- 
--	if (opendata->o_arg.open_flags & O_EXCL)
--		nfs4_exclusive_attrset(opendata, sattr);
--
- 	state = nfs4_opendata_to_nfs4_state(opendata);
- 	status = PTR_ERR(state);
- 	if (IS_ERR(state))
- 		goto err_opendata_put;
- 	if (server->caps & NFS_CAP_POSIX_LOCK)
- 		set_bit(NFS_STATE_POSIX_LOCKS, &state->flags);
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index 3e9047f..cb196eb 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -423,15 +423,19 @@ static int nfs_statfs(struct dentry *dentry, struct kstatfs *buf)
+ 	unsigned char blockbits;
+ 	unsigned long blockres;
+ 	struct nfs_fh *fh = NFS_FH(dentry->d_inode);
+-	struct nfs_fattr fattr;
+-	struct nfs_fsstat res = {
+-			.fattr = &fattr,
+-	};
+-	int error;
++	struct nfs_fsstat res;
++	int error = -ENOMEM;
 +
-+	if (opendata->o_arg.open_flags & O_EXCL) {
-+		nfs4_exclusive_attrset(opendata, sattr);
++	res.fattr = nfs_alloc_fattr();
++	if (res.fattr == NULL)
++		goto out_err;
+ 
+ 	error = server->nfs_client->rpc_ops->statfs(server, fh, &res);
 +
-+		nfs_fattr_init(opendata->o_res.f_attr);
-+		status = nfs4_do_setattr(state->inode, cred,
-+				opendata->o_res.f_attr, sattr,
-+				state);
-+		if (status == 0)
-+			nfs_setattr_update_inode(state->inode, sattr);
-+		nfs_post_op_update_inode(state->inode, opendata->o_res.f_attr);
-+	}
- 	nfs4_opendata_put(opendata);
- 	nfs4_put_state_owner(sp);
- 	*res = state;
-@@ -2565,13 +2577,6 @@ nfs4_proc_create(struct inode *dir, struct dentry *dentry, struct iattr *sattr,
- 	}
- 	d_add(dentry, igrab(state->inode));
- 	nfs_set_verifier(dentry, nfs_save_change_attribute(dir));
--	if (flags & O_EXCL) {
--		struct nfs_fattr fattr;
--		status = nfs4_do_setattr(state->inode, cred, &fattr, sattr, state);
--		if (status == 0)
--			nfs_setattr_update_inode(state->inode, sattr);
--		nfs_post_op_update_inode(state->inode, &fattr);
--	}
- 	if (status == 0 && (nd->flags & LOOKUP_OPEN) != 0)
- 		status = nfs4_intent_set_file(nd, &path, state, fmode);
- 	else
++	nfs_free_fattr(res.fattr);
+ 	if (error < 0)
+ 		goto out_err;
++
+ 	buf->f_type = NFS_SUPER_MAGIC;
+ 
+ 	/*
 -- 
 1.6.6.1
 
