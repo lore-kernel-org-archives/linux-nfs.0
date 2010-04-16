@@ -1,7 +1,7 @@
 From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH 24/24] NFS: Prevent the mount code from looping forever on broken exports
-Date: Fri, 16 Apr 2010 16:31:22 -0400
-Message-ID: <1271449882-8580-25-git-send-email-Trond.Myklebust@netapp.com>
+Subject: [PATCH 23/24] NFS: Reduce stack footprint of nfs3_proc_getacl() and nfs3_proc_setacl()
+Date: Fri, 16 Apr 2010 16:31:21 -0400
+Message-ID: <1271449882-8580-24-git-send-email-Trond.Myklebust@netapp.com>
 References: <1271449882-8580-1-git-send-email-Trond.Myklebust@netapp.com>
  <1271449882-8580-2-git-send-email-Trond.Myklebust@netapp.com>
  <1271449882-8580-3-git-send-email-Trond.Myklebust@netapp.com>
@@ -25,130 +25,115 @@ References: <1271449882-8580-1-git-send-email-Trond.Myklebust@netapp.com>
  <1271449882-8580-21-git-send-email-Trond.Myklebust@netapp.com>
  <1271449882-8580-22-git-send-email-Trond.Myklebust@netapp.com>
  <1271449882-8580-23-git-send-email-Trond.Myklebust@netapp.com>
- <1271449882-8580-24-git-send-email-Trond.Myklebust@netapp.com>
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
 Received: from mx2.netapp.com ([216.240.18.37]:16405 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932488Ab0DPUbn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 16 Apr 2010 16:31:43 -0400
+	id S932487Ab0DPUbj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 16 Apr 2010 16:31:39 -0400
 Received: from localhost.localdomain (marilynd-lxp.hq.netapp.com [10.58.50.136] (may be forged))
-	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id o3GKVMlJ026251
-	for <linux-nfs@vger.kernel.org>; Fri, 16 Apr 2010 13:31:39 -0700 (PDT)
-In-Reply-To: <1271449882-8580-24-git-send-email-Trond.Myklebust@netapp.com>
+	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id o3GKVMlI026251
+	for <linux-nfs@vger.kernel.org>; Fri, 16 Apr 2010 13:31:38 -0700 (PDT)
+In-Reply-To: <1271449882-8580-23-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Keep a global count of how many referrals that the current task has
-traversed on a path lookup. Return ELOOP if the count exceeds
-MAX_NESTED_LINKS.
-
 Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
- fs/nfs/super.c |   73 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- 1 files changed, 73 insertions(+), 0 deletions(-)
+ fs/nfs/nfs3acl.c |   23 ++++++++++++++++-------
+ 1 files changed, 16 insertions(+), 7 deletions(-)
 
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index cb196eb..33f355f 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -2672,6 +2672,72 @@ out_freepage:
- 	free_page((unsigned long)page);
- }
- 
-+struct nfs_referral_count {
-+	struct list_head list;
-+	const struct task_struct *task;
-+	unsigned int referral_count;
-+};
-+
-+static LIST_HEAD(nfs_referral_count_list);
-+static DEFINE_SPINLOCK(nfs_referral_count_list_lock);
-+
-+static struct nfs_referral_count *nfs_find_referral_count(void)
-+{
-+	struct nfs_referral_count *p;
-+
-+	list_for_each_entry(p, &nfs_referral_count_list, list) {
-+		if (p->task == current)
-+			return p;
-+	}
-+	return NULL;
-+}
-+
-+#define NFS_MAX_NESTED_REFERRALS 2
-+
-+static int nfs_referral_loop_protect(void)
-+{
-+	struct nfs_referral_count *p, *new;
-+	int ret = -ENOMEM;
-+
-+	new = kmalloc(sizeof(*new), GFP_KERNEL);
-+	if (!new)
-+		goto out;
-+	new->task = current;
-+	new->referral_count = 1;
-+
-+	ret = 0;
-+	spin_lock(&nfs_referral_count_list_lock);
-+	p = nfs_find_referral_count();
-+	if (p != NULL) {
-+		if (p->referral_count >= NFS_MAX_NESTED_REFERRALS)
-+			ret = -ELOOP;
-+		else
-+			p->referral_count++;
-+	} else {
-+		list_add(&new->list, &nfs_referral_count_list);
-+		new = NULL;
-+	}
-+	spin_unlock(&nfs_referral_count_list_lock);
-+	kfree(new);
-+out:
-+	return ret;
-+}
-+
-+static void nfs_referral_loop_unprotect(void)
-+{
-+	struct nfs_referral_count *p;
-+
-+	spin_lock(&nfs_referral_count_list_lock);
-+	p = nfs_find_referral_count();
-+	p->referral_count--;
-+	if (p->referral_count == 0)
-+		list_del(&p->list);
-+	else
-+		p = NULL;
-+	spin_unlock(&nfs_referral_count_list_lock);
-+	kfree(p);
-+}
-+
- static int nfs_follow_remote_path(struct vfsmount *root_mnt,
- 		const char *export_path, struct vfsmount *mnt_target)
+diff --git a/fs/nfs/nfs3acl.c b/fs/nfs/nfs3acl.c
+index d150ae0..9f88c5f 100644
+--- a/fs/nfs/nfs3acl.c
++++ b/fs/nfs/nfs3acl.c
+@@ -185,7 +185,6 @@ static void nfs3_cache_acls(struct inode *inode, struct posix_acl *acl,
+ struct posix_acl *nfs3_proc_getacl(struct inode *inode, int type)
  {
-@@ -2689,9 +2755,14 @@ static int nfs_follow_remote_path(struct vfsmount *root_mnt,
- 	if (IS_ERR(ns_private))
- 		goto out_mntput;
+ 	struct nfs_server *server = NFS_SERVER(inode);
+-	struct nfs_fattr fattr;
+ 	struct page *pages[NFSACL_MAXPAGES] = { };
+ 	struct nfs3_getaclargs args = {
+ 		.fh = NFS_FH(inode),
+@@ -193,7 +192,7 @@ struct posix_acl *nfs3_proc_getacl(struct inode *inode, int type)
+ 		.pages = pages,
+ 	};
+ 	struct nfs3_getaclres res = {
+-		.fattr =	&fattr,
++		0
+ 	};
+ 	struct rpc_message msg = {
+ 		.rpc_argp	= &args,
+@@ -228,7 +227,10 @@ struct posix_acl *nfs3_proc_getacl(struct inode *inode, int type)
  
-+	ret = nfs_referral_loop_protect();
-+	if (ret != 0)
-+		goto out_put_mnt_ns;
+ 	dprintk("NFS call getacl\n");
+ 	msg.rpc_proc = &server->client_acl->cl_procinfo[ACLPROC3_GETACL];
+-	nfs_fattr_init(&fattr);
++	res.fattr = nfs_alloc_fattr();
++	if (res.fattr == NULL)
++		return ERR_PTR(-ENOMEM);
 +
- 	ret = vfs_path_lookup(root_mnt->mnt_root, root_mnt,
- 			export_path, LOOKUP_FOLLOW, nd);
+ 	status = rpc_call_sync(server->client_acl, &msg, 0);
+ 	dprintk("NFS reply getacl: %d\n", status);
  
-+	nfs_referral_loop_unprotect();
- 	put_mnt_ns(ns_private);
+@@ -238,7 +240,7 @@ struct posix_acl *nfs3_proc_getacl(struct inode *inode, int type)
  
- 	if (ret != 0)
-@@ -2709,6 +2780,8 @@ static int nfs_follow_remote_path(struct vfsmount *root_mnt,
- 	kfree(nd);
- 	down_write(&s->s_umount);
- 	return 0;
-+out_put_mnt_ns:
-+	put_mnt_ns(ns_private);
- out_mntput:
- 	mntput(root_mnt);
- out_err:
+ 	switch (status) {
+ 		case 0:
+-			status = nfs_refresh_inode(inode, &fattr);
++			status = nfs_refresh_inode(inode, res.fattr);
+ 			break;
+ 		case -EPFNOSUPPORT:
+ 		case -EPROTONOSUPPORT:
+@@ -278,6 +280,7 @@ struct posix_acl *nfs3_proc_getacl(struct inode *inode, int type)
+ getout:
+ 	posix_acl_release(res.acl_access);
+ 	posix_acl_release(res.acl_default);
++	nfs_free_fattr(res.fattr);
+ 
+ 	if (status != 0) {
+ 		posix_acl_release(acl);
+@@ -290,7 +293,7 @@ static int nfs3_proc_setacls(struct inode *inode, struct posix_acl *acl,
+ 		  struct posix_acl *dfacl)
+ {
+ 	struct nfs_server *server = NFS_SERVER(inode);
+-	struct nfs_fattr fattr;
++	struct nfs_fattr *fattr;
+ 	struct page *pages[NFSACL_MAXPAGES];
+ 	struct nfs3_setaclargs args = {
+ 		.inode = inode,
+@@ -335,8 +338,13 @@ static int nfs3_proc_setacls(struct inode *inode, struct posix_acl *acl,
+ 	}
+ 
+ 	dprintk("NFS call setacl\n");
++	status = -ENOMEM;
++	fattr = nfs_alloc_fattr();
++	if (fattr == NULL)
++		goto out_freepages;
++
+ 	msg.rpc_proc = &server->client_acl->cl_procinfo[ACLPROC3_SETACL];
+-	nfs_fattr_init(&fattr);
++	msg.rpc_resp = fattr;
+ 	status = rpc_call_sync(server->client_acl, &msg, 0);
+ 	nfs_access_zap_cache(inode);
+ 	nfs_zap_acl_cache(inode);
+@@ -344,7 +352,7 @@ static int nfs3_proc_setacls(struct inode *inode, struct posix_acl *acl,
+ 
+ 	switch (status) {
+ 		case 0:
+-			status = nfs_refresh_inode(inode, &fattr);
++			status = nfs_refresh_inode(inode, fattr);
+ 			nfs3_cache_acls(inode, acl, dfacl);
+ 			break;
+ 		case -EPFNOSUPPORT:
+@@ -355,6 +363,7 @@ static int nfs3_proc_setacls(struct inode *inode, struct posix_acl *acl,
+ 		case -ENOTSUPP:
+ 			status = -EOPNOTSUPP;
+ 	}
++	nfs_free_fattr(fattr);
+ out_freepages:
+ 	while (args.npages != 0) {
+ 		args.npages--;
 -- 
 1.6.6.1
 
