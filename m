@@ -1,178 +1,64 @@
-From: Vlad Glagolev <stealth-L+UJwxqiw56VyaH7bEyXVA@public.gmane.org>
-Subject: NFS and /dev/mdXpY
-Date: Sat, 17 Apr 2010 19:57:47 +0400
-Message-ID: <20100417195747.5fae8834.stealth@sourcemage.org>
+From: Nix <nix@esperi.org.uk>
+Subject: 2.6.34rc4 NFS writeback regression (bisected): client often fails to delete things it just created
+Date: Sat, 17 Apr 2010 20:43:16 +0100
+Message-ID: <87tyr9dfvv.fsf@spindle.srvr.nix>
 Mime-Version: 1.0
-Content-Type: multipart/signed; protocol="application/pgp-signature";
- micalg="PGP-SHA1";
- boundary="Signature=_Sat__17_Apr_2010_19_57_47_+0400_XTMSWfUWGO99GZIR"
-Cc: linux-raid@vger.kernel.org
-To: linux-nfs@vger.kernel.org
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-bw0-f225.google.com ([209.85.218.225]:54544 "EHLO
-	mail-bw0-f225.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751458Ab0DQP5z (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 17 Apr 2010 11:57:55 -0400
-Sender: linux-nfs-owner@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-nfs@vger.kernel.org, Trond Myklebust <trond@netapp.com>
+To: linux-kernel@vger.kernel.org
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---Signature=_Sat__17_Apr_2010_19_57_47_+0400_XTMSWfUWGO99GZIR
-Content-Type: text/plain; charset=US-ASCII
-Content-Disposition: inline
-Content-Transfer-Encoding: quoted-printable
+[Trond Cc:ed as this seems to be a bug in one of your
+ writeback-for-2.6.34 commits.]
 
-Well, hello there,
+In 2.6.34rcX (tip of tree) I've started seeing this sort of thing when
+building over NFS (v3):
 
-Posted it on linux-kernel ML also, and post it here, for more specific anal=
-ysis.
+[...]
+-- Found LibXslt: /usr/lib64/libxslt.so
+--   found libxml-2.0, version 2.7.6
+-- Found LibXml2: /usr/lib64/libxml2.so
+-- Found shared-mime-info version: 0.71
+-- Looking for __progname
+CMake Error: Remove failed on file: /usr/src/kde/x86_64-mutilate/build/CMakeFiles/CMakeTmp/CMakeFiles/cmTryCompileExec.dir/.nfs000000000031fc510000082f: System Error: Device or resource busy
+[... eventually, cmake fails because of this error.]
 
-I faced this problem today while trying to mount some NFS share on OpenBSD =
-box.
-I mounted it successfully without any visible errors, but I wasn't able to =
-cd there, the printed error was:
+The silly-renamed files are invariably no longer in use (they tend to be
+GCC output, ELF executables run as part of testsuites) but haven't been
+removed, and they -EBUSY when removal is attempted.
 
-ksh: cd: /storage - Stale NFS file handle
+A complete strace log of running cmake against current HEAD (with lots
+of these errors) is at
+<http://www.esperi.org.uk/~nix/temporary/strace-kdelibs-nfs-EBUSY.log.lzma>.
+I can do a packet capture too if you like.
 
-Apropos, the partition is 5.5 TB. I tried another one on my box and it was =
-mounted successfully. It was possible to manage files there too. Its size i=
-s ~3GB.
-That's why the first time I thought about some size limitations of OpenBSD/=
-Linux/NFS.
+I also see it after doing 'make install's followed by an 'rm -rf' of the
+build tree: the rm -rf fails because half the files are 'in use' (they
+aren't). Repeating the rm -rf a few seconds later works. fuser, even as
+root, shows no processes holding these files open.
 
-While talking on #openbsd @ freenode, I discovered this via tcpdump on both=
- sides:
+This bisects down to
 
-http://pastebin.ca/1864713
+commit acdc53b2146c7ee67feb1f02f7bc3020126514b8
+Author: Trond Myklebust <Trond.Myklebust@netapp.com>
+Date:   Fri Feb 19 17:03:26 2010 -0800
 
-Googling for 3 hours didn't help at all, some posts had similiar issue but =
-either with no answer at all or without any full description.
+    NFS: Replace __nfs_write_mapping with sync_inode()
+    
+    Now that we have correct COMMIT semantics in writeback_single_inode, we can
+    reduce and simplify nfs_wb_all(). Also replace nfs_wb_nocommit() with a
+    call to filemap_write_and_wait(), which doesn't need to hold the
+    inode->i_mutex.
+    
+    With that done, we can eliminate nfs_write_mapping() altogether.
+    
+    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 
-Then I started to experiment with another Linux box to kill the possible di=
-fferent variants.
-
-On another box I also have nfs-utils 1.1.6 and kernel 2.6.32. Mounting that=
- big partition was unsuccessful, it got just stuck. On tcpdump I've seen th=
-is:
-
---
-    172.17.2.5.884 > 172.17.2.2.2049: Flags [.], cksum 0x25e4 (correct), se=
-q 1, ack 1, win 92, options [nop,nop,TS val 1808029984 ecr 1618999], length=
- 0
-    172.17.2.5.3565791363 > 172.17.2.2.2049: 40 null
-    172.17.2.2.2049 > 172.17.2.5.884: Flags [.], cksum 0x25e6 (correct), se=
-q 1, ack 45, win 46, options [nop,nop,TS val 1618999 ecr 1808029984], lengt=
-h 0
-    172.17.2.2.2049 > 172.17.2.5.3565791363: reply ok 24 null
-    172.17.2.5.884 > 172.17.2.2.2049: Flags [.], cksum 0x259b (correct), se=
-q 45, ack 29, win 92, options [nop,nop,TS val 1808029985 ecr 1618999], leng=
-th 0
-    172.17.2.5.3582568579 > 172.17.2.2.2049: 40 null
-    172.17.2.2.2049 > 172.17.2.5.3582568579: reply ok 24 null
-    172.17.2.5.3599345795 > 172.17.2.2.2049: 92 fsinfo fh Unknown/010003000=
-5030100000800000000000000000000000000000000000000000000
-    172.17.2.2.2049 > 172.17.2.5.3599345795: reply ok 32 fsinfo ERROR: Stal=
-e NFS file handle POST:
-    172.17.2.5.3616123011 > 172.17.2.2.2049: 92 fsinfo fh Unknown/010003000=
-5030100000800000000000000000000000000000000000000000000
-    172.17.2.2.2049 > 172.17.2.5.3616123011: reply ok 32 fsinfo ERROR: Stal=
-e NFS file handle POST:
-    172.17.2.5.884 > 172.17.2.2.2049: Flags [F.], cksum 0x2449 (correct), s=
-eq 281, ack 129, win 92, options [nop,nop,TS val 1808029986 ecr 1618999], l=
-ength 0
-    172.17.2.2.2049 > 172.17.2.5.884: Flags [F.], cksum 0x2476 (correct), s=
-eq 129, ack 282, win 46, options [nop,nop,TS val 1618999 ecr 1808029986], l=
-ength 0
-    172.17.2.5.884 > 172.17.2.2.2049: Flags [.], cksum 0x2448 (correct), se=
-q 282, ack 130, win 92, options [nop,nop,TS val 1808029986 ecr 1618999], le=
-ngth 0
---
-
-familiar messages, eh?
-
-Since that time I've solved that's not OpenBSD problem. So only NFS and Lin=
-ux left as the reasons of this.
-It was possible to mount that small partition on Linux box too, the same as=
- on OpenBSD.
-
-But afterthat I recongnized an interesting issue: I have different sw raid =
-setups on my storage server.
-I tried to mount a small partition on the same md device where 5.5TB partit=
-ion is located, and got the same
-error message! Now I'm sure it's about NFS <-> MDADM setup, that's why I ca=
-lled the topic like this.
-
-A bit about my setup:
-
-# cat /proc/mdstat=20
-Personalities : [linear] [raid0] [raid1] [raid6] [raid5] [raid4] [multipath=
-]=20
-md3 : active raid1 sdc1[0] sdd1[1]
-      61376 blocks [2/2] [UU]
-     =20
-md1 : active raid5 sdc2[2] sdd2[3] sdb2[1] sda2[0]
-      3153408 blocks level 5, 512k chunk, algorithm 2 [4/4] [UUUU]
-     =20
-md2 : active raid5 sdc3[2] sdd3[3] sdb3[1] sda3[0]
-      5857199616 blocks level 5, 512k chunk, algorithm 2 [4/4] [UUUU]
-     =20
-md0 : active raid1 sdb1[1] sda1[0]
-      61376 blocks [2/2] [UU]
-     =20
-unused devices: <none>
-
-md0, md1, and md3 aren't so interesting, since fs is created directly on th=
-em, and that's a _problem device_:
-
-# parted /dev/md2
-GNU Parted 2.2
-Using /dev/md2
-Welcome to GNU Parted! Type 'help' to view a list of commands.
-(parted) p free                                                          =20
-p free
-Model: Unknown (unknown)
-Disk /dev/md2: 5998GB
-Sector size (logical/physical): 512B/512B
-Partition Table: gpt
-
-Number  Start   End     Size    File system     Name   Flags
-        17.4kB  1049kB  1031kB  Free Space
- 1      1049kB  2147MB  2146MB  linux-swap(v1)  swap
- 2      2147MB  23.6GB  21.5GB  xfs             home
- 3      23.6GB  24.7GB  1074MB  xfs             temp
- 4      24.7GB  35.4GB  10.7GB  xfs             user
- 5      35.4GB  51.5GB  16.1GB  xfs             var
- 6      51.5GB  5998GB  5946GB  xfs             vault
-        5998GB  5998GB  507kB   Free Space
-
-# ls /dev/md?*
-/dev/md0  /dev/md1  /dev/md2  /dev/md2p1  /dev/md2p2  /dev/md2p3  /dev/md2p=
-4  /dev/md2p5  /dev/md2p6  /dev/md3
-
-It's very handy partitioning scheme where I can extend (grow 5th raid) with=
- more hdds only /vault partition while "loosing" (a.k.a. not using for this=
- partition) only ~1gb of space from every 2TB drive.
-
-System boots ok and xfs_check passes with no problems, etc.
-The only problem: it's not possible to use NFS shares on any partition of /=
-dev/md2 device.
-
-Finally, my question to NFS and MDADM developers: any idea?
-
---=20
-Dont wait to die to find paradise...
---
-Cheerz,
-Vlad "Stealth" Glagolev
-
---Signature=_Sat__17_Apr_2010_19_57_47_+0400_XTMSWfUWGO99GZIR
-Content-Type: application/pgp-signature
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.10 (GNU/Linux)
-
-iEYEARECAAYFAkvJ2nsACgkQ8Hg3cBKtRUkdQwCglsgfEP11qexuKudeLqbkUGzi
-bzIAoK6wmJcaEoNFkLsA7jhbkOUz4YrU
-=OIiM
------END PGP SIGNATURE-----
-
---Signature=_Sat__17_Apr_2010_19_57_47_+0400_XTMSWfUWGO99GZIR--
+I suspect that unlink()ing a not otherwise open file for which writeback
+is still underway is causing the files to be sillyrenamed because
+writeback is holding them open. If writeback is the only user, they
+should surely not be held open: nobody cares what their contents are,
+and a lot of code depends on rm -r of directories containing recently-
+written-but-still-closed files succeeding.
