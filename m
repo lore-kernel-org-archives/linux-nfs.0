@@ -1,83 +1,183 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 4/4] libexport.a: Allow malloc(3) failures in client_lookup()
-	and friends
-Date: Mon, 19 Apr 2010 16:21:42 -0400
-Message-ID: <20100419202141.3567.87262.stgit@matisse.1015granger.net>
-References: <20100419201855.3567.9644.stgit@matisse.1015granger.net>
+Subject: Re: [PATCH 08/24] NFSv4: Reduce stack footprint of nfs4_get_root()
+Date: Mon, 19 Apr 2010 17:03:25 -0400
+Message-ID: <4BCCC51D.2010003@oracle.com>
+References: <1271449882-8580-1-git-send-email-Trond.Myklebust@netapp.com> <1271449882-8580-2-git-send-email-Trond.Myklebust@netapp.com> <1271449882-8580-3-git-send-email-Trond.Myklebust@netapp.com> <1271449882-8580-4-git-send-email-Trond.Myklebust@netapp.com> <1271449882-8580-5-git-send-email-Trond.Myklebust@netapp.com> <1271449882-8580-6-git-send-email-Trond.Myklebust@netapp.com> <1271449882-8580-7-git-send-email-Trond.Myklebust@netapp.com> <1271449882-8580-8-git-send-email-Trond.Myklebust@netapp.com> <1271449882-8580-9-git-send-email-Trond.Myklebust@netapp.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Cc: linux-nfs@vger.kernel.org
-To: steved@redhat.com
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-vw0-f46.google.com ([209.85.212.46]:64741 "EHLO
-	mail-vw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751178Ab0DSUVp (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 19 Apr 2010 16:21:45 -0400
-Received: by mail-vw0-f46.google.com with SMTP id 5so2418494vws.19
-        for <linux-nfs@vger.kernel.org>; Mon, 19 Apr 2010 13:21:44 -0700 (PDT)
-In-Reply-To: <20100419201855.3567.9644.stgit-RytpoXr2tKZ9HhUboXbp9zCvJB+x5qRC@public.gmane.org>
+Received: from rcsinet10.oracle.com ([148.87.113.121]:24318 "EHLO
+	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751632Ab0DSVD4 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 19 Apr 2010 17:03:56 -0400
+In-Reply-To: <1271449882-8580-9-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Clean up: Use malloc(3) instead of xmalloc() in client_lookup() and
-client_dup(), ensuring that a failed memory allocation here doesn't
-cause our process to exit suddenly.
+On 04/16/2010 04:31 PM, Trond Myklebust wrote:
+> Signed-off-by: Trond Myklebust<Trond.Myklebust@netapp.com>
+> ---
+>   fs/nfs/getroot.c |   76 ++++++++++++++++++++++++++++++++---------------------
+>   1 files changed, 46 insertions(+), 30 deletions(-)
+>
+> diff --git a/fs/nfs/getroot.c b/fs/nfs/getroot.c
+> index ada369a..7428f7d 100644
+> --- a/fs/nfs/getroot.c
+> +++ b/fs/nfs/getroot.c
+> @@ -78,46 +78,52 @@ struct dentry *nfs_get_root(struct super_block *sb, struct nfs_fh *mntfh)
+>   {
+>   	struct nfs_server *server = NFS_SB(sb);
+>   	struct nfs_fsinfo fsinfo;
 
-Allocation of nfs_client records and the m_hostname string are now
-consistently handled with malloc(3), calloc(3), strdup(3), and
-free(3).
+fsinfo is 48 bytes on 64-bit systems.  Perhaps it's also a candidate for 
+dynamic allocation?
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
+> -	struct nfs_fattr fattr;
+> -	struct dentry *mntroot;
+> +	struct dentry *ret;
+>   	struct inode *inode;
+>   	int error;
+>
+>   	/* get the actual root for this mount */
 
- support/export/client.c |   15 +++++++++------
- 1 files changed, 9 insertions(+), 6 deletions(-)
+NIT: this comment actually goes with the next paragraph, as it does in 
+nfs4_get_root().
 
-diff --git a/support/export/client.c b/support/export/client.c
-index fc1ade9..3b3a898 100644
---- a/support/export/client.c
-+++ b/support/export/client.c
-@@ -17,7 +17,7 @@
- #include <string.h>
- #include <ctype.h>
- #include <netdb.h>
--#include "xmalloc.h"
-+
- #include "misc.h"
- #include "nfslib.h"
- #include "exportfs.h"
-@@ -56,7 +56,7 @@ static void
- client_free(nfs_client *clp)
- {
- 	free(clp->m_hostname);
--	xfree(clp);
-+	free(clp);
- }
- 
- /* if canonical is set, then we *know* this is already a canonical name
-@@ -111,9 +111,10 @@ client_lookup(char *hname, int canonical)
- 		}
- 	}
- 
--	if (!clp) {
--		clp = (nfs_client *) xmalloc(sizeof(*clp));
--		memset(clp, 0, sizeof(*clp));
-+	if (clp == NULL) {
-+		clp = calloc(1, sizeof(*clp));
-+		if (clp == NULL)
-+			goto out;
- 		clp->m_type = htype;
- 		if (!client_init(clp, hname, NULL)) {
- 			client_free(clp);
-@@ -138,7 +139,9 @@ client_dup(nfs_client *clp, struct hostent *hp)
- {
- 	nfs_client		*new;
- 
--	new = (nfs_client *) xmalloc(sizeof(*new));
-+	new = (nfs_client *)malloc(sizeof(*new));
-+	if (new == NULL)
-+		return NULL;
- 	memcpy(new, clp, sizeof(*new));
- 	new->m_type = MCL_FQDN;
- 	new->m_hostname = NULL;
+> -	fsinfo.fattr =&fattr;
+> +	fsinfo.fattr = nfs_alloc_fattr();
+> +	if (fsinfo.fattr == NULL)
+> +		return ERR_PTR(-ENOMEM);
+>
+>   	error = server->nfs_client->rpc_ops->getroot(server, mntfh,&fsinfo);
+>   	if (error<  0) {
+>   		dprintk("nfs_get_root: getattr error = %d\n", -error);
+> -		return ERR_PTR(error);
+> +		ret = ERR_PTR(error);
+> +		goto out;
+>   	}
+>
+>   	inode = nfs_fhget(sb, mntfh, fsinfo.fattr);
+>   	if (IS_ERR(inode)) {
+>   		dprintk("nfs_get_root: get root inode failed\n");
+> -		return ERR_CAST(inode);
+> +		ret = ERR_CAST(inode);
+> +		goto out;
+>   	}
+>
+>   	error = nfs_superblock_set_dummy_root(sb, inode);
+> -	if (error != 0)
+> -		return ERR_PTR(error);
+> +	if (error != 0) {
+> +		ret = ERR_PTR(error);
+> +		goto out;
+> +	}
+>
+>   	/* root dentries normally start off anonymous and get spliced in later
+>   	 * if the dentry tree reaches them; however if the dentry already
+>   	 * exists, we'll pick it up at this point and use it as the root
+>   	 */
+> -	mntroot = d_obtain_alias(inode);
+> -	if (IS_ERR(mntroot)) {
+> +	ret = d_obtain_alias(inode);
+> +	if (IS_ERR(ret)) {
+>   		dprintk("nfs_get_root: get root dentry failed\n");
+> -		return mntroot;
+> +		goto out;
+>   	}
+>
+> -	security_d_instantiate(mntroot, inode);
+> +	security_d_instantiate(ret, inode);
+>
+> -	if (!mntroot->d_op)
+> -		mntroot->d_op = server->nfs_client->rpc_ops->dentry_ops;
+> -
+> -	return mntroot;
+> +	if (ret->d_op == NULL)
+> +		ret->d_op = server->nfs_client->rpc_ops->dentry_ops;
+> +out:
+> +	nfs_free_fattr(fsinfo.fattr);
+> +	return ret;
+>   }
+>
+>   #ifdef CONFIG_NFS_V4
+> @@ -168,8 +174,8 @@ out:
+>   struct dentry *nfs4_get_root(struct super_block *sb, struct nfs_fh *mntfh)
+>   {
+>   	struct nfs_server *server = NFS_SB(sb);
+> -	struct nfs_fattr fattr;
+> -	struct dentry *mntroot;
+> +	struct nfs_fattr *fattr = NULL;
+> +	struct dentry *ret;
+>   	struct inode *inode;
+>   	int error;
+>
+> @@ -183,40 +189,50 @@ struct dentry *nfs4_get_root(struct super_block *sb, struct nfs_fh *mntfh)
+>   		return ERR_PTR(error);
+>   	}
+>
+> +	fattr = nfs_alloc_fattr();
+> +	if (fattr == NULL)
+> +		return ERR_PTR(-ENOMEM);;
+> +
+>   	/* get the actual root for this mount */
+> -	error = server->nfs_client->rpc_ops->getattr(server, mntfh,&fattr);
+> +	error = server->nfs_client->rpc_ops->getattr(server, mntfh, fattr);
+>   	if (error<  0) {
+>   		dprintk("nfs_get_root: getattr error = %d\n", -error);
+> -		return ERR_PTR(error);
+> +		ret = ERR_PTR(error);
+> +		goto out;
+>   	}
+>
+> -	inode = nfs_fhget(sb, mntfh,&fattr);
+> +	inode = nfs_fhget(sb, mntfh, fattr);
+>   	if (IS_ERR(inode)) {
+>   		dprintk("nfs_get_root: get root inode failed\n");
+> -		return ERR_CAST(inode);
+> +		ret = ERR_CAST(inode);
+> +		goto out;
+>   	}
+>
+>   	error = nfs_superblock_set_dummy_root(sb, inode);
+> -	if (error != 0)
+> -		return ERR_PTR(error);
+> +	if (error != 0) {
+> +		ret = ERR_PTR(error);
+> +		goto out;
+> +	}
+>
+>   	/* root dentries normally start off anonymous and get spliced in later
+>   	 * if the dentry tree reaches them; however if the dentry already
+>   	 * exists, we'll pick it up at this point and use it as the root
+>   	 */
+> -	mntroot = d_obtain_alias(inode);
+> -	if (IS_ERR(mntroot)) {
+> +	ret = d_obtain_alias(inode);
+> +	if (IS_ERR(ret)) {
+>   		dprintk("nfs_get_root: get root dentry failed\n");
+> -		return mntroot;
+> +		goto out;
+>   	}
+>
+> -	security_d_instantiate(mntroot, inode);
+> +	security_d_instantiate(ret, inode);
+>
+> -	if (!mntroot->d_op)
+> -		mntroot->d_op = server->nfs_client->rpc_ops->dentry_ops;
+> +	if (ret->d_op == NULL)
+> +		ret->d_op = server->nfs_client->rpc_ops->dentry_ops;
+>
+> +out:
+> +	nfs_free_fattr(fattr);
+>   	dprintk("<-- nfs4_get_root()\n");
+> -	return mntroot;
+> +	return ret;
+>   }
+>
+>   #endif /* CONFIG_NFS_V4 */
 
+
+-- 
+chuck[dot]lever[at]oracle[dot]com
