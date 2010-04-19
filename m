@@ -1,59 +1,63 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.gmx.net ([213.165.64.20]:58879 "HELO mail.gmx.net"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with SMTP
-	id S1753836Ab0DSQKc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 19 Apr 2010 12:10:32 -0400
-Date: Mon, 19 Apr 2010 18:10:29 +0200
-From: Stefan =?iso-8859-1?Q?Kr=FCger?= <stadtkind2@gmx.de>
-To: linux-nfs@vger.kernel.org
-Subject: Re: strange performance issues with OS X 10.6 client
-Message-ID: <20100419161029.GB3716@gmx.de>
-References: <20100415214900.GA4143@web.de>
- <20100419122120.GA3716@gmx.de>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20100419122120.GA3716@gmx.de>
+Received: from rcsinet10.oracle.com ([148.87.113.121]:23677 "EHLO
+	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752884Ab0DSXgz (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 19 Apr 2010 19:36:55 -0400
+Message-ID: <4BCCE8CC.3050102@oracle.com>
+Date: Mon, 19 Apr 2010 19:35:40 -0400
+From: Chuck Lever <chuck.lever@oracle.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] SUNRPC: Fail over more quickly on connect errors
+References: <1271450871-10777-1-git-send-email-Trond.Myklebust@netapp.com>	 <1271450871-10777-2-git-send-email-Trond.Myklebust@netapp.com>	 <1271450871-10777-3-git-send-email-Trond.Myklebust@netapp.com>	 <1271450871-10777-4-git-send-email-Trond.Myklebust@netapp.com> <1271456992.3098.20.camel@localhost.localdomain>
+In-Reply-To: <1271456992.3098.20.camel@localhost.localdomain>
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Ok, how about this one..
+On 04/16/2010 06:29 PM, Trond Myklebust wrote:
+> On Fri, 2010-04-16 at 16:47 -0400, Trond Myklebust wrote:
+>> We should not allow soft tasks to wait for longer than the major timeout
+>> period when waiting for a reconnect to occur.
+>>
+>> Signed-off-by: Trond Myklebust<Trond.Myklebust@netapp.com>
+>> ---
+>>   net/sunrpc/xprt.c |    2 +-
+>>   1 files changed, 1 insertions(+), 1 deletions(-)
+>>
+>> diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
+>> index c71d835..01449a3 100644
+>> --- a/net/sunrpc/xprt.c
+>> +++ b/net/sunrpc/xprt.c
+>> @@ -710,7 +710,7 @@ void xprt_connect(struct rpc_task *task)
+>>   		if (task->tk_rqstp)
+>>   			task->tk_rqstp->rq_bytes_sent = 0;
+>>
+>> -		task->tk_timeout = xprt->connect_timeout;
+>> +		task->tk_timeout = min(req->rq_timeout, xprt->connect_timeout);
+>                                           ^^^ task->tk_rqstp->rq_timeout
+>
+> Apologies. I though I had tested that...
+>
+>> 		rpc_sleep_on(&xprt->pending, task, xprt_connect_status);
+>>
+>>   		if (test_bit(XPRT_CLOSING,&xprt->state))
 
-FreeBSD nfsstat -s (statistics zeroed before running tar) after extracting
-Cocoa-3rd.tgz ->
+I tested this series of patches with soft mounts, and RPC requests now 
+fail, after the timeout period, if the client can't reconnect.
 
-Server Info:
-Getattr   Setattr    Lookup  Readlink      Read     Write    Create Remove
-    628      6419      5871         0       627      2488      1989 627
-Rename      Link   Symlink     Mkdir     Rmdir   Readdir  RdirPlus Access
-     0         0         0       227         0         0         0 5529
-    Mknod    Fsstat    Fsinfo  PathConf    Commit
-        0         2         1         1      2318
-Server Ret-Failed
-             5871
-Server Faults
-            0
-Server Cache Stats:
-   Inprog      Idem  Non-idem    Misses
-        0         0         0         0
-Server Write Gathering:
- WriteOps  WriteRPC   Opsaved
-     2488      2488         0
+I also observed appropriate exponential back-off behavior as the client 
+attempts to reconnect.  I would suggest one more patch to reduce the 
+reestablish timeout maximum to 30 seconds.
 
+For the series:
 
-Fedora 12 nfsstat -s ->
+Reviewed-by: Chuck Lever <chuck.lever@oracle.com>
 
-Server rpc stats:
-calls      badcalls   badauth    badclnt    xdrcall
-33275      0          0          0          0       
+   and/or
 
-Server nfs v3:
-null         getattr      setattr      lookup       access       readlink     
-0         0% 627       1% 6426     19% 8523     25% 9111     27% 0         0% 
-read         write        create       mkdir        symlink      mknod        
-994       2% 2362      7% 1996      5% 221       0% 0         0% 0         0% 
-remove       rmdir        rename       link         readdir      readdirplus  
-660       1% 0         0% 0         0% 0         0% 0         0% 1         0% 
-fsstat       fsinfo       pathconf     commit       
-1         0% 0         0% 0         0% 2353      7% 
+Tested-by: Chuck Lever <chuck.lever@oracle.com>
 
-So... 33275 RPC calls for 1589 directories/files?
+-- 
+chuck[dot]lever[at]oracle[dot]com
