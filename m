@@ -1,28 +1,51 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp151.dfw.emailsrvr.com ([67.192.241.151]:49870 "EHLO
-	smtp151.dfw.emailsrvr.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753434Ab0DVSPB convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 22 Apr 2010 14:15:01 -0400
-Received: from relay15.relay.dfw.mlsrvr.com (localhost [127.0.0.1])
-	by relay15.relay.dfw.mlsrvr.com (SMTP Server) with ESMTP id 517C530B02A1
-	for <linux-nfs@vger.kernel.org>; Thu, 22 Apr 2010 14:14:59 -0400 (EDT)
-Received: by relay15.relay.dfw.mlsrvr.com (Authenticated sender: brandon-AT-myshape.com) with ESMTPA id 208B930B10AC
-	for <linux-nfs@vger.kernel.org>; Thu, 22 Apr 2010 14:14:59 -0400 (EDT)
-From: "Brandon Shandelson" <brandon@myshape.com>
-To: <linux-nfs@vger.kernel.org>
-References: 
-In-Reply-To: 
-Subject: RE: NFSV4 Replica Support?
-Date: Thu, 22 Apr 2010 11:16:20 -0700
-Message-ID: <01c701cae247$e8e50900$baaf1b00$@com>
-Content-Type: text/plain;
-	charset="iso-8859-1"
+Received: from mx1.redhat.com ([209.132.183.28]:32372 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754751Ab0DTONB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 20 Apr 2010 10:13:01 -0400
+Date: Tue, 20 Apr 2010 10:13:40 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: Di Pe <dipeit@gmail.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: cannot mount nfsv4/krb5 with krb51.7, 1.8 and 1.8.1
+Message-ID: <20100420101340.6a0652a3@corrin.poochiereds.net>
+In-Reply-To: <x2l3b6787961004191737p1fb222uc6a5b03d77414826@mail.gmail.com>
+References: <y2n3b6787961004170051qfce975c0tdbc14b7ea237504d@mail.gmail.com>
+	<j2m3b6787961004170054o64f3cb47l38864ca402eb231b@mail.gmail.com>
+	<20100417111001.255ad1f4@tlielax.poochiereds.net>
+	<x2l3b6787961004191737p1fb222uc6a5b03d77414826@mail.gmail.com>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-I want to use NFSV4 replicas on Ubuntu 9.10 64-bit servers.  It doesn't seem
-to work.  It *looks* like the server kernel module supports it, but the NFS
-client does not.  Is this the case, or should I be able to make replicas
-work on Linux?
+On Mon, 19 Apr 2010 17:37:45 -0700
+Di Pe <dipeit@gmail.com> wrote:
 
+> 
+> On another Note: This PAC size issue is interesting. It seems to be an
+> ongoing problem over the last couple of years. I suspect most
+> krb5/gssd developers do not have an Active Directory infrastructure at
+> hand they can test against?
+> Going forward it may be make sense to "fix" this issue on the
+> Microsoft end of things : http://support.microsoft.com/kb/832572 ?
+> However, this would result in a pretty unique environment because many
+> AD Admins would not bother with this setting nor would they know how
+> to apply it.
+> 
+
+In order to hit this problem you need a fairly large AD infrastructure.
+You need to have the principal in a lot of groups so that the PAC is
+big enough to cause the issue.
+
+Also, it's only really a problem if you're using libraries that aren't
+able to deal with large ticket sizes like this. Current libtirpc and
+librpcsecgss should deal with this just fine.
+
+Certainly if you have the freedom to have the server not store PAC info
+for certain tickets, then that's one way to work around the problem.
+Many people don't have that freedom, or it's just too much trouble to
+do so.
+
+-- 
+Jeff Layton <jlayton@redhat.com>
