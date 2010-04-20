@@ -1,71 +1,76 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:58091 "EHLO fieldses.org"
+Received: from cantor2.suse.de ([195.135.220.15]:43732 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753811Ab0DVSe3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 22 Apr 2010 14:34:29 -0400
-Date: Thu, 22 Apr 2010 14:34:28 -0400
-From: "'J. Bruce Fields'" <bfields@fieldses.org>
-To: Brandon Shandelson <brandon@myshape.com>
+	id S1752421Ab0DTCQ7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 19 Apr 2010 22:16:59 -0400
+From: Neil Brown <neilb@suse.de>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Date: Tue, 20 Apr 2010 12:16:52 +1000
+Content-Type: text/plain; charset=us-ascii
+Message-ID: <19405.3732.562014.510508@notabene.brown>
 Cc: linux-nfs@vger.kernel.org
-Subject: Re: NFSV4 Replica Support?
-Message-ID: <20100422183428.GD8858@fieldses.org>
-References: <01c701cae247$e8e50900$baaf1b00$@com> <20100422182213.GA8858@fieldses.org> <01c801cae249$d17ab3d0$74701b70$@com>
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <01c801cae249$d17ab3d0$74701b70$@com>
+Subject: [PATCH] bug in read_buf
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Thu, Apr 22, 2010 at 11:30:00AM -0700, Brandon Shandelson wrote:
-> I have two NFS servers with NFSV4 exports whose data are synced via Unison.  I want one server to be a hot standby for clients to use in case something happens to the primary NFS server.
 
-That won't work, sorry; even if the file contents are the same, the
-filehandles are different (unless you copy the actual underlying
-filesystem images instead of running unison on the two filesystems).
-And even with that problem fixed, the client probably wouldn't know how
-to use the replica information.
+Surely this can never have worked... which implies that the code has
+never been used?
 
---b.
+When read_buf is called to move over to the next page in the pagelist
+of an NFSv4 request, it sets argp->end to essentially a random
+number, certainly not an address within the page which argp->p now
+points to.  So subsequent calls to READ_BUF will think there is much
+more than a page of spare space (the cast to u32 ensures an unsigned
+comparison) so we can expect to fall off the end of the second
+page.
 
-> 
-> The NFS exports look like this:
-> /home 192.168.0.0/24(rw,fsid=0,insecure,no_subtree_check,async,repli cas=/home@msdevnfs1:/home@msdevnfs2)
-> 
-> The mount in fstab looks like this:
-> msdevnfs1:/ /home nfs4 _netdev,auto 0 0
-> 
-> 
-> -Brandon
-> 
-> -----Original Message-----
-> From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-owner@vger.kernel.org] On Behalf Of J. Bruce Fields
-> Sent: Thursday, April 22, 2010 11:22 AM
-> To: Brandon Shandelson
-> Cc: linux-nfs@vger.kernel.org
-> Subject: Re: NFSV4 Replica Support?
-> 
-> On Thu, Apr 22, 2010 at 11:16:20AM -0700, Brandon Shandelson wrote:
-> > I want to use NFSV4 replicas on Ubuntu 9.10 64-bit servers.  It doesn’t seem
-> > to work.  It *looks* like the server kernel module supports it, but the NFS
-> > client does not.  Is this the case, or should I be able to make replicas
-> > work on Linux?
-> 
-> What are you actually trying to do?
-> 
-> There's a little support for replication in that the NFSv4 server can be
-> told to report certain locations as having the same data, but it's not
-> really supported yet: you need smoething to create the replicas for you
-> (probably doable with GFS2 as the exported filesystem, or by sharing the
-> filesystem image if it's read-only).  I don't think the Linux NFSv4
-> client knows how to use that information yet.
-> 
-> --b.
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+I guess we never ever receive requests with any operation starting
+beyond the first page!
+
+[[
+I found this while looking at why fsstress over NFS over RDMA caused
+a bad memory dereference in READ32, suggesting that 'p' had a bad
+value.  However it was ffff8801299188f0, which is not an "I've fallen
+off the end of the page" sort of value.  So I think it must be a
+different bug :-(  It is as if the page is being unmapped underneath
+us...
+]]
+NeilBrown
+
+
+
+
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index e170317..34ccf81 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -161,10 +161,10 @@ static __be32 *read_buf(struct nfsd4_compoundargs *argp, u32 nbytes)
+ 	argp->p = page_address(argp->pagelist[0]);
+ 	argp->pagelist++;
+ 	if (argp->pagelen < PAGE_SIZE) {
+-		argp->end = p + (argp->pagelen>>2);
++		argp->end = argp->p + (argp->pagelen>>2);
+ 		argp->pagelen = 0;
+ 	} else {
+-		argp->end = p + (PAGE_SIZE>>2);
++		argp->end = argp->p + (PAGE_SIZE>>2);
+ 		argp->pagelen -= PAGE_SIZE;
+ 	}
+ 	memcpy(((char*)p)+avail, argp->p, (nbytes - avail));
+@@ -1426,10 +1426,10 @@ nfsd4_decode_compound(struct nfsd4_compoundargs *argp)
+ 			argp->p = page_address(argp->pagelist[0]);
+ 			argp->pagelist++;
+ 			if (argp->pagelen < PAGE_SIZE) {
+-				argp->end = p + (argp->pagelen>>2);
++				argp->end = argp->p + (argp->pagelen>>2);
+ 				argp->pagelen = 0;
+ 			} else {
+-				argp->end = p + (PAGE_SIZE>>2);
++				argp->end = argp->p + (PAGE_SIZE>>2);
+ 				argp->pagelen -= PAGE_SIZE;
+ 			}
+ 		}
+
+
