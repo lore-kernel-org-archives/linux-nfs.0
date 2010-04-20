@@ -1,49 +1,77 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from borg.medozas.de ([188.40.89.202]:45103 "EHLO borg.medozas.de"
+Received: from mail-out2.uio.no ([129.240.10.58]:59317 "EHLO mail-out2.uio.no"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752005Ab0DZNE2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 26 Apr 2010 09:04:28 -0400
-Date: Mon, 26 Apr 2010 15:04:26 +0200 (CEST)
-From: Jan Engelhardt <jengelh@medozas.de>
-To: Manio <manio@skyboo.net>
-cc: linux-btrfs@vger.kernel.org, linux-nfs@vger.kernel.org
-Subject: Re: NFS mount attempts hangs with btrfs on server side
-In-Reply-To: <4BCED584.5000305@skyboo.net>
-Message-ID: <alpine.LSU.2.01.1004261500210.9302@obet.zrqbmnf.qr>
-References: <4BCA15A7.9000502@skyboo.net> <4BCED28B.5040806@skyboo.net> <alpine.LSU.2.01.1004211227280.28393@obet.zrqbmnf.qr> <4BCED584.5000305@skyboo.net>
-Content-Type: TEXT/PLAIN; charset=US-ASCII
+	id S1754444Ab0DTNCH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 20 Apr 2010 09:02:07 -0400
+Subject: Re: [PATCH] Should we expect close-to-open consistency on
+ directories?
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+To: Neil Brown <neilb@suse.de>
+Cc: linux-nfs@vger.kernel.org
+In-Reply-To: <20100420172238.520eaa89@notabene.brown>
+References: <20100420172238.520eaa89@notabene.brown>
+Content-Type: text/plain; charset="UTF-8"
+Date: Tue, 20 Apr 2010 09:02:01 -0400
+Message-ID: <1271768521.25129.94.camel@localhost.localdomain>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+On Tue, 2010-04-20 at 17:22 +1000, Neil Brown wrote: 
+> Hi Trond et al,
+> 
+> It has come to my attention that NFS directories don't behave consistently
+> in terms of cache consistency.
+> 
+> If, on the client, you have a loop like:
+> 
+>  while true; do sleep 1; ls -l $dirname ; done
+> 
+> and then on the server you make changes to the named directory, there are
+> some cases where you will see changes promptly and some where you wont.
+> 
+> In particular, if $dirname is '.' or the name of an NFS mountpoint, then
+> changes can be delayed by up to acdirmax.  If it is any other path, i.e. with
+> a non-trivial path component that is in the NFS filesystem, then changes
+> are seen promptly.
+> 
+> This seems to me to relate to "close to open" consistency.  Of course with
+> directories the 'close' side isn't relevant, but I still think it should be
+> that when you open a directory it validates the 'change' attribute on that
+> directory over the wire.
+> 
+> However the Linux VFS never tells NFS when a directory is opened.  The
+> current correct behaviour for most directories is achieved through
+> d_revalidate == nfs_lookup_revalidate.
+> 
+> For '.' and mountpoints we need a different approach.  Possibly the VFS could
+> be changed to tell the filesystem when such a directory is opened.  However I
+> don't feel up to that at the moment.
 
-On Wednesday 2010-04-21 12:37, Manio wrote:
-> On 2010-04-21 12:29, Jan Engelhardt wrote:
->> I'd rather have a real description rather than "stuff like that".
->> Since I am not on debian, "old nfs-utils" would not happen -
->> rpcbind-0.1.6+git20080930 and nfs-kernel-server-1.1.3
->> should be very much recent enough.
->> Especially since exportability of filesystems is usually not
->> so much a userspace thing.
->
-> Unfortunatelly i can't tell you which package exactly was causing the problem.
+I agree that mountpoints are problematic in this case, however why isn't
+'.' working correctly? Is the FS_REVAL_DOT mechanism broken?
 
-So I bisected it then.
+The other thing is that we should definitely expect the VFS to call
+nfs_opendir() once it has opened the file.
 
-commit 3a340251597a5b0c579c31d8caf9aa3b53a77016
-Author: David Woodhouse <David.Woodhouse@intel.com>
-Date:   Thu Aug 28 11:05:17 2008 -0400
+> An alternative is to do a revalidation in nfs_readdir as below.  i.e. when
+> readdir see f_pos == 0, it requests a revalidation of the page cache.
+> This has two problems:
+> 1/ a seek before the first read would cause the revalidation to be skipped.
+>    This can be fixed by putting a similar test in nfs_llseek_dir, or maybe
+>    triggering off 'dir_cookie == NULL' rather than 'f_pos == 0'.
+> 2/ A normal open/readdir sequence will validate a directory twice, once in the
+>    lookup and once in the readdir.  This is probably undesirable, but it is
+>    not clear to me how to fix it.
+> 
+> 
+> So: is it reasonable to view the current behaviour as 'wrong'?
+>     any suggestions on how to craft a less problematic fix?
 
-    Use fsid from statfs for UUID if blkid can't cope (or not used)
-    
-    Signed-off-by: David Woodhouse <David.Woodhouse@intel.com>
-    Signed-off-by: Steve Dickson <steved@redhat.com>
+nfs_opendir() should fix case 1/, but still has the issue with case 2/.
+How about just having it force a revalidation if we see that this is a
+mountpoint?
 
-It is the commit enabling btrfs mounts. The message hints to blkid
-being unable to get the uuid or something, however, the standalone
-/sbin/blkid tool does get a uuid:
+Cheers
+  Trond
 
-/dev/loop2: UUID="e19fe89b-cde3-4ccc-bc70-b759a57bd1c9"
-UUID_SUB="f29c6218-d040-4546-a227-4dd2d2142817" TYPE="btrfs" 
-
-So what went wrong here?
