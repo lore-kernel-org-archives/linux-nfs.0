@@ -1,103 +1,244 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 6/9] NFS: Calldata for nfs4_renew_done()
-Date: Wed, 21 Apr 2010 13:43:52 -0400
-Message-ID: <20100421174351.2037.67388.stgit@localhost.localdomain>
+Subject: [PATCH 9/9] SUNRPC: Replace jiffies-based metrics with ktime-based
+	metrics
+Date: Wed, 21 Apr 2010 13:44:21 -0400
+Message-ID: <20100421174420.2037.28000.stgit@localhost.localdomain>
 References: <20100421173628.2037.54635.stgit@localhost.localdomain>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-pw0-f46.google.com ([209.85.160.46]:57134 "EHLO
+Received: from mail-pw0-f46.google.com ([209.85.160.46]:33992 "EHLO
 	mail-pw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756049Ab0DURte (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 21 Apr 2010 13:49:34 -0400
-Received: by pwj9 with SMTP id 9so5328595pwj.19
-        for <linux-nfs@vger.kernel.org>; Wed, 21 Apr 2010 10:49:33 -0700 (PDT)
+	with ESMTP id S1756049Ab0DURuF (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 21 Apr 2010 13:50:05 -0400
+Received: by pwj9 with SMTP id 9so5329073pwj.19
+        for <linux-nfs@vger.kernel.org>; Wed, 21 Apr 2010 10:50:05 -0700 (PDT)
 In-Reply-To: <20100421173628.2037.54635.stgit-bi+AKbBUZKY6gyzm1THtWbp2dZbC/Bob@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I'm about to change task->tk_start from a jiffies value to a ktime_t
-value in order to make RPC RTT reporting more precise.
+Currently RPC performance metrics that tabulate elapsed time use
+jiffies time values.  This is problematic on systems that use slow
+jiffies (for instance 100HZ systems built for paravirtualized
+environments).  It is also a problem for computing precise latency
+statistics for advanced network transports, such as InfiniBand,
+that can have round-trip latencies significanly faster than a single
+clock tick.
 
-Recently (commit dc96aef9) nfs4_renew_done() started to reference
-task->tk_start so that a jiffies value no longer had to be passed
-from nfs4_proc_async_renew().  This allowed the calldata to point to
-an nfs_client instead.
+For the RPC client, adopt the high resolution time stamp mechanism
+already used by the network layer and blktrace: ktime.
 
-Changing task->tk_start to a ktime_t value makes it effectively
-useless for renew timestamps, so we need to restore the pre-dc96aef9
-logic that provided a jiffies "start" timestamp to nfs4_renew_done().
+We use ktime format time stamps for all internal computations, and
+convert to milliseconds for presentation.  As a result, we need only
+addition operations in the performance critical paths; multiply/divide
+is required only for presentation.
 
-Both an nfs_client pointer and a timestamp need to be passed to
-nfs4_renew_done(), so create a new nfs_renewdata structure that
-contains both, resembling what is already done for delegreturn,
-lock, and unlock.
+We could report RTT metrics in microseconds.  In fact the mountstats
+format is versioned to accomodate exactly this kind of interface
+improvement.
+
+For now, however, we'll stay with millisecond precision for
+presentation to maintain backwards compatibility with the handful of
+currently deployed user space tools.  At a later point, we'll move to
+an API such as BDI_STATS where a finer timestamp precision can be
+reported.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- fs/nfs/nfs4proc.c |   26 ++++++++++++++++++++------
- 1 files changed, 20 insertions(+), 6 deletions(-)
+ include/linux/sunrpc/metrics.h |    7 ++++---
+ include/linux/sunrpc/sched.h   |    5 +++--
+ include/linux/sunrpc/xprt.h    |    3 ++-
+ net/sunrpc/sched.c             |    2 +-
+ net/sunrpc/stats.c             |   27 +++++++++------------------
+ net/sunrpc/xprt.c              |    8 +++++---
+ 6 files changed, 24 insertions(+), 28 deletions(-)
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 6380670..9a16431 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -3146,23 +3146,31 @@ static void nfs4_proc_commit_setup(struct nfs_write_data *data, struct rpc_messa
- 	msg->rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_COMMIT];
+diff --git a/include/linux/sunrpc/metrics.h b/include/linux/sunrpc/metrics.h
+index 77f78e5..b6edbc0 100644
+--- a/include/linux/sunrpc/metrics.h
++++ b/include/linux/sunrpc/metrics.h
+@@ -26,6 +26,7 @@
+ #define _LINUX_SUNRPC_METRICS_H
+ 
+ #include <linux/seq_file.h>
++#include <linux/ktime.h>
+ 
+ #define RPC_IOSTATS_VERS	"1.0"
+ 
+@@ -58,9 +59,9 @@ struct rpc_iostats {
+ 	 * and the total time the request spent from init to release
+ 	 * are measured.
+ 	 */
+-	unsigned long long	om_queue,	/* jiffies queued for xmit */
+-				om_rtt,		/* jiffies for RPC RTT */
+-				om_execute;	/* jiffies for RPC execution */
++	ktime_t			om_queue,	/* queued for xmit */
++				om_rtt,		/* RPC RTT */
++				om_execute;	/* RPC execution */
+ } ____cacheline_aligned;
+ 
+ struct rpc_task;
+diff --git a/include/linux/sunrpc/sched.h b/include/linux/sunrpc/sched.h
+index 7bc7fd5..76720d2 100644
+--- a/include/linux/sunrpc/sched.h
++++ b/include/linux/sunrpc/sched.h
+@@ -10,6 +10,7 @@
+ #define _LINUX_SUNRPC_SCHED_H_
+ 
+ #include <linux/timer.h>
++#include <linux/ktime.h>
+ #include <linux/sunrpc/types.h>
+ #include <linux/spinlock.h>
+ #include <linux/wait.h>
+@@ -80,8 +81,8 @@ struct rpc_task {
+ 
+ 	unsigned short		tk_timeouts;	/* maj timeouts */
+ 	size_t			tk_bytes_sent;	/* total bytes sent */
+-	unsigned long		tk_start;	/* RPC task init timestamp */
+-	long			tk_rtt;		/* round-trip time (jiffies) */
++	ktime_t			tk_start,	/* RPC task init timestamp */
++				tk_rtt;		/* round-trip time */
+ 
+ 	pid_t			tk_owner;	/* Process id for batching tasks */
+ 	unsigned char		tk_priority : 2;/* Task priority */
+diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
+index 94bfee0..f54aee0 100644
+--- a/include/linux/sunrpc/xprt.h
++++ b/include/linux/sunrpc/xprt.h
+@@ -13,6 +13,7 @@
+ #include <linux/socket.h>
+ #include <linux/in.h>
+ #include <linux/kref.h>
++#include <linux/ktime.h>
+ #include <linux/sunrpc/sched.h>
+ #include <linux/sunrpc/xdr.h>
+ #include <linux/sunrpc/msg_prot.h>
+@@ -94,7 +95,7 @@ struct rpc_rqst {
+ 	 */
+ 	u32			rq_bytes_sent;	/* Bytes we have sent */
+ 
+-	unsigned long		rq_xtime;	/* when transmitted */
++	ktime_t			rq_xtime;	/* transmit time stamp */
+ 	int			rq_ntrans;
+ 
+ #if defined(CONFIG_NFS_V4_1)
+diff --git a/net/sunrpc/sched.c b/net/sunrpc/sched.c
+index aae6907..4a36a57 100644
+--- a/net/sunrpc/sched.c
++++ b/net/sunrpc/sched.c
+@@ -834,7 +834,7 @@ static void rpc_init_task(struct rpc_task *task, const struct rpc_task_setup *ta
+ 	}
+ 
+ 	/* starting timestamp */
+-	task->tk_start = jiffies;
++	task->tk_start = ktime_get();
+ 
+ 	dprintk("RPC:       new task initialized, procpid %u\n",
+ 				task_pid_nr(current));
+diff --git a/net/sunrpc/stats.c b/net/sunrpc/stats.c
+index 5785d20..aacd95f 100644
+--- a/net/sunrpc/stats.c
++++ b/net/sunrpc/stats.c
+@@ -144,7 +144,7 @@ void rpc_count_iostats(struct rpc_task *task)
+ 	struct rpc_rqst *req = task->tk_rqstp;
+ 	struct rpc_iostats *stats;
+ 	struct rpc_iostats *op_metrics;
+-	long rtt, execute, queue;
++	ktime_t delta;
+ 
+ 	if (!task->tk_client || !task->tk_client->cl_metrics || !req)
+ 		return;
+@@ -159,20 +159,13 @@ void rpc_count_iostats(struct rpc_task *task)
+ 	op_metrics->om_bytes_sent += task->tk_bytes_sent;
+ 	op_metrics->om_bytes_recv += req->rq_reply_bytes_recvd;
+ 
+-	queue = (long)req->rq_xtime - task->tk_start;
+-	if (queue < 0)
+-		queue = -queue;
+-	op_metrics->om_queue += queue;
++	delta = ktime_sub(req->rq_xtime, task->tk_start);
++	op_metrics->om_queue = ktime_add(op_metrics->om_queue, delta);
+ 
+-	rtt = task->tk_rtt;
+-	if (rtt < 0)
+-		rtt = -rtt;
+-	op_metrics->om_rtt += rtt;
++	op_metrics->om_rtt = ktime_add(op_metrics->om_rtt, task->tk_rtt);
+ 
+-	execute = (long)jiffies - task->tk_start;
+-	if (execute < 0)
+-		execute = -execute;
+-	op_metrics->om_execute += execute;
++	delta = ktime_sub(ktime_get(), task->tk_start);
++	op_metrics->om_execute = ktime_add(op_metrics->om_execute, delta);
  }
  
-+struct nfs4_renewdata {
-+	struct nfs_client	*client;
-+	unsigned long		timestamp;
-+};
-+
- /*
-  * nfs4_proc_async_renew(): This is not one of the nfs_rpc_ops; it is a special
-  * standalone procedure for queueing an asynchronous RENEW.
-  */
--static void nfs4_renew_release(void *data)
-+static void nfs4_renew_release(void *calldata)
+ static void _print_name(struct seq_file *seq, unsigned int op,
+@@ -186,8 +179,6 @@ static void _print_name(struct seq_file *seq, unsigned int op,
+ 		seq_printf(seq, "\t%12u: ", op);
+ }
+ 
+-#define MILLISECS_PER_JIFFY	(1000 / HZ)
+-
+ void rpc_print_iostats(struct seq_file *seq, struct rpc_clnt *clnt)
  {
--	struct nfs_client *clp = data;
-+	struct nfs4_renewdata *data = calldata;
-+	struct nfs_client *clp = data->client;
- 
- 	if (atomic_read(&clp->cl_count) > 1)
- 		nfs4_schedule_state_renewal(clp);
- 	nfs_put_client(clp);
-+	kfree(data);
+ 	struct rpc_iostats *stats = clnt->cl_metrics;
+@@ -214,9 +205,9 @@ void rpc_print_iostats(struct seq_file *seq, struct rpc_clnt *clnt)
+ 				metrics->om_timeouts,
+ 				metrics->om_bytes_sent,
+ 				metrics->om_bytes_recv,
+-				metrics->om_queue * MILLISECS_PER_JIFFY,
+-				metrics->om_rtt * MILLISECS_PER_JIFFY,
+-				metrics->om_execute * MILLISECS_PER_JIFFY);
++				ktime_to_ms(metrics->om_queue),
++				ktime_to_ms(metrics->om_rtt),
++				ktime_to_ms(metrics->om_execute));
+ 	}
  }
+ EXPORT_SYMBOL_GPL(rpc_print_iostats);
+diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
+index 5559ec4..444ca36 100644
+--- a/net/sunrpc/xprt.c
++++ b/net/sunrpc/xprt.c
+@@ -43,6 +43,7 @@
+ #include <linux/interrupt.h>
+ #include <linux/workqueue.h>
+ #include <linux/net.h>
++#include <linux/ktime.h>
  
--static void nfs4_renew_done(struct rpc_task *task, void *data)
-+static void nfs4_renew_done(struct rpc_task *task, void *calldata)
- {
--	struct nfs_client *clp = data;
--	unsigned long timestamp = task->tk_start;
-+	struct nfs4_renewdata *data = calldata;
-+	struct nfs_client *clp = data->client;
-+	unsigned long timestamp = data->timestamp;
+ #include <linux/sunrpc/clnt.h>
+ #include <linux/sunrpc/metrics.h>
+@@ -776,10 +777,11 @@ static void xprt_update_rtt(struct rpc_task *task)
+ 	struct rpc_rqst *req = task->tk_rqstp;
+ 	struct rpc_rtt *rtt = task->tk_client->cl_rtt;
+ 	unsigned timer = task->tk_msg.rpc_proc->p_timer;
++	long m = usecs_to_jiffies(ktime_to_us(task->tk_rtt));
  
- 	if (task->tk_status < 0) {
- 		/* Unless we're shutting down, schedule state recovery! */
-@@ -3188,11 +3196,17 @@ int nfs4_proc_async_renew(struct nfs_client *clp, struct rpc_cred *cred)
- 		.rpc_argp	= clp,
- 		.rpc_cred	= cred,
- 	};
-+	struct nfs4_renewdata *data;
- 
- 	if (!atomic_inc_not_zero(&clp->cl_count))
- 		return -EIO;
-+	data = kmalloc(sizeof(*data), GFP_KERNEL);
-+	if (data == NULL)
-+		return -ENOMEM;
-+	data->client = clp;
-+	data->timestamp = jiffies;
- 	return rpc_call_async(clp->cl_rpcclient, &msg, RPC_TASK_SOFT,
--			&nfs4_renew_ops, clp);
-+			&nfs4_renew_ops, (void *)data);
+ 	if (timer) {
+ 		if (req->rq_ntrans == 1)
+-			rpc_update_rtt(rtt, timer, task->tk_rtt);
++			rpc_update_rtt(rtt, timer, m);
+ 		rpc_set_timeo(rtt, timer, req->rq_ntrans - 1);
+ 	}
  }
+@@ -800,7 +802,7 @@ void xprt_complete_rqst(struct rpc_task *task, int copied)
+ 			task->tk_pid, ntohl(req->rq_xid), copied);
  
- int nfs4_proc_renew(struct nfs_client *clp, struct rpc_cred *cred)
+ 	xprt->stat.recvs++;
+-	task->tk_rtt = (long)jiffies - req->rq_xtime;
++	task->tk_rtt = ktime_sub(ktime_get(), req->rq_xtime);
+ 	if (xprt->ops->timer != NULL)
+ 		xprt_update_rtt(task);
+ 
+@@ -901,7 +903,7 @@ void xprt_transmit(struct rpc_task *task)
+ 		return;
+ 
+ 	req->rq_connect_cookie = xprt->connect_cookie;
+-	req->rq_xtime = jiffies;
++	req->rq_xtime = ktime_get();
+ 	status = xprt->ops->send_request(task);
+ 	if (status != 0) {
+ 		task->tk_status = status;
 
