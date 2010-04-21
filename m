@@ -1,47 +1,59 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:21435 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756401Ab0DNTzY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 14 Apr 2010 15:55:24 -0400
-Message-ID: <4BC61D86.3040805@RedHat.com>
-Date: Wed, 14 Apr 2010 15:54:46 -0400
-From: Steve Dickson <SteveD@redhat.com>
-To: Kevin Coffman <kwc@citi.umich.edu>
-CC: Trond Myklebust <Trond.Myklebust@netapp.com>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 10/22] gss_krb5: Add upcall info indicating supported
- 	kerberos enctypes
-References: <1271266618-26016-1-git-send-email-Trond.Myklebust@netapp.com>	 <1271266618-26016-7-git-send-email-Trond.Myklebust@netapp.com>	 <1271266618-26016-8-git-send-email-Trond.Myklebust@netapp.com>	 <1271266618-26016-9-git-send-email-Trond.Myklebust@netapp.com>	 <1271266618-26016-10-git-send-email-Trond.Myklebust@netapp.com>	 <1271266618-26016-11-git-send-email-Trond.Myklebust@netapp.com>	 <y2t4d569c331004141130z7525d001gcdb81db5b1ede42e@mail.gmail.com>	 <1271270279.22566.22.camel@localhost.localdomain>	 <y2q4d569c331004141151n9042470aqe3f51e804b3abea9@mail.gmail.com>	 <4BC61839.6000200@RedHat.com> <z2g4d569c331004141250v44e3b011l6e9c953185b04625@mail.gmail.com>
-In-Reply-To: <z2g4d569c331004141250v44e3b011l6e9c953185b04625@mail.gmail.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mail-gy0-f174.google.com ([209.85.160.174]:64972 "EHLO
+	mail-gy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753930Ab0DURJV (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 21 Apr 2010 13:09:21 -0400
+In-Reply-To: <20100421204819.b86ee3f7.stealth@sourcemage.org>
+References: <20100417195747.5fae8834.stealth@sourcemage.org>
+	 <4BCF2A2C.7070407@maine.edu>
+	 <20100421204819.b86ee3f7.stealth@sourcemage.org>
+Date: Wed, 21 Apr 2010 12:09:20 -0500
+Message-ID: <q2zd3da20d01004211009jccd81479v83e2ef4b6d5db7bf@mail.gmail.com>
+Subject: Re: NFS and /dev/mdXpY
+From: Roger Heflin <rogerheflin@gmail.com>
+To: Vlad Glagolev <stealth@sourcemage.org>
+Cc: Steve Cousins <steve.cousins@maine.edu>, linux-nfs@vger.kernel.org,
+        linux-raid@vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 04/14/2010 03:50 PM, Kevin Coffman wrote:
-> On Wed, Apr 14, 2010 at 3:32 PM, Steve Dickson <SteveD@redhat.com> wrote:
->> On 04/14/2010 02:51 PM, Kevin Coffman wrote:
->>>
->>> Hi Steve,
->>> This surprises me.  I believe this would result in DES being used
->>> rather than the stronger enctypes.  Can you give me more details of
->>> the problems you saw?
->>
->> In limit_krb5_enctypes(), if I did not give gss_set_allowable_enctypes()
->> the list of enctypes in an increasing order, creating the krb5 context for
->> root would fail. When gave them in order root got its context...
->>
->> I figured it was some type of krb5 lib quirk, since the default enctypes
->> are also in increasing order...
->>
->> steved.
-> 
-> Note that I have seen the DES preferences listed as both 3,1,2 and 1,3,2.
-> 
-> The default list in limit_krb5_enctypes() is [ENCTYPE_DES_CBC_CRC,
-> ENCTYPE_DES_CBC_MD5, ENCTYPE_DES_CBC_MD4], or 1,3,2
-> 
-> I suspect there must have been some other issue when you tested?
-Not that I saw... when I made that kernel change, rebooted, restarted
-everything, I never saw the problem again... 
+On Wed, Apr 21, 2010 at 11:48 AM, Vlad Glagolev <stealth@sourcemage.org> wrote:
+> Thanks for reply, Steve!
+>
+> parameters are pretty trivial, (rw,insecure) for exports, and defaults while mounting via ``mount host:/path /path'' command.
+>
+> Yes. That sounds interesting, since XFS works fine with there partitions.
+> Also, I must say it's WD20EARS drives (with 4kb sector size, though parted says it's 512b).
+>
+> I also tried another NFS daemon implementation (cvs version, not .22) -- unfsd (unfs3).
+> It mounts ok, but when I try to write any file to the server -- I get the same error (Stale NFS file handle).
+>
+> And on the server side in dmesg I see this:
+>
+> --
+> NFS: server 172.17.2.2 error: fileid changed
+> fsid 0:f: expected fileid 0x2033, got 0xb6d1e05fa150ce09
+> NFS: server 172.17.2.2 error: fileid changed
+> fsid 0:f: expected fileid 0x2033, got 0x26550b0132c0b1
+> NFS: server 172.17.2.2 error: fileid changed
+> fsid 0:f: expected fileid 0x2033, got 0x8202a60053000020
+> NFS: server 172.17.2.2 error: fileid changed
+> fsid 0:f: expected fileid 0x2033, got 0xe542f93ebc8fe157
+> NFS: server 172.17.2.2 error: fileid changed
+> fsid 0:f: expected fileid 0x2033, got 0xc00cd74ea904301
+> --
+>
+> looks like NFS protocol doesn't like something in partitioned software RAID.
+>
 
-steved.
+
+Try manually setting the fsid=something in the exports file and
+reexport and remount on the target system, if there was a fsid
+collision of some sort then nfs would be hitting the wrong fs...
+
+NFS generates the fsid automatically based on the devices major minor,
+and it is possible there is something odd about the major minor
+numbers that make them not unique...and collide with someone else
+major minor.
