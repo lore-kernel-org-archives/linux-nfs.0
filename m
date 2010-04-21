@@ -1,182 +1,64 @@
-From: Stefan =?iso-8859-1?Q?Kr=FCger?= <stadtkind2@gmx.de>
-Subject: Re: strange performance issues with OS X 10.6 client
-Date: Wed, 21 Apr 2010 00:44:08 +0200
-Message-ID: <20100420224408.GB161@gmx.de>
-References: <20100415214900.GA4143@web.de>
- <20100419122120.GA3716@gmx.de>
- <4BCC8C06.1080106@oracle.com>
- <20100420212116.GA161@gmx.de>
- <4BCE1F6A.6000902@oracle.com>
+From: Kevin Coffman <kwc@citi.umich.edu>
+Subject: Re: cannot mount nfsv4/krb5 with krb51.7, 1.8 and 1.8.1
+Date: Tue, 20 Apr 2010 23:02:23 -0400
+Message-ID: <t2v4d569c331004202002jb25ef307va23f55beb16c2989@mail.gmail.com>
+References: <y2n3b6787961004170051qfce975c0tdbc14b7ea237504d@mail.gmail.com>
+	 <j2m3b6787961004170054o64f3cb47l38864ca402eb231b@mail.gmail.com>
+	 <20100417111001.255ad1f4@tlielax.poochiereds.net>
+	 <x2l3b6787961004191737p1fb222uc6a5b03d77414826@mail.gmail.com>
+	 <t2q4d569c331004200619le2dc3a2em52f27a830d4e7d95@mail.gmail.com>
+	 <j2y3b6787961004201719h6d3a7a6nea8f9d6e664a1cbc@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Cc: linux-nfs@vger.kernel.org
-To: Chuck Lever <chuck.lever@oracle.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: Jeff Layton <jlayton@redhat.com>, linux-nfs@vger.kernel.org
+To: Di Pe <dipeit@gmail.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.gmx.net ([213.165.64.20]:34894 "HELO mail.gmx.net"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with SMTP
-	id S1751702Ab0DTWoN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 20 Apr 2010 18:44:13 -0400
-In-Reply-To: <4BCE1F6A.6000902@oracle.com>
+Received: from mail-gx0-f227.google.com ([209.85.217.227]:54564 "EHLO
+	mail-gx0-f227.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751018Ab0DUDC1 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 20 Apr 2010 23:02:27 -0400
+Received: by gxk27 with SMTP id 27so6466627gxk.1
+        for <linux-nfs@vger.kernel.org>; Tue, 20 Apr 2010 20:02:26 -0700 (PDT)
+In-Reply-To: <j2y3b6787961004201719h6d3a7a6nea8f9d6e664a1cbc-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 20 Apr 2010, Chuck Lever wrote:
+On Tue, Apr 20, 2010 at 8:19 PM, Di Pe <dipeit@gmail.com> wrote:
+> On Tue, Apr 20, 2010 at 6:19 AM, Kevin Coffman <kwc@citi.umich.edu> w=
+rote:
+>> Hi,
+>>
+>> If I read this right, you replaced krb5-1.8.1 with krb5-1.6.3 and it
+>> fixed the problem?
+>>
+>> As I noted in your original message, you had "allow_weak_crypto =3D
+>> true" in your krb5.conf. =A0For NFS, this is required with krb5-1.8
+>> where DES is disabled by default. =A0Are you certain you have this
+>> specified in your krb5-1.8.1 /etc/krb5.conf?
+>
+>
+> Yes, I'm positive. 1.8.1 does not work 1.6.3 does! =A0This is my curr=
+ent setting
+>
+> [libdefaults]
+> =A0 =A0 =A0 =A0default_realm =3D FHCRC.ORG
+> =A0 =A0 =A0 =A0clockskew =3D 300
+> =A0 =A0 =A0 =A0default_tkt_enctypes =3D des-cbc-crc
+> =A0 =A0 =A0 =A0default_tgs_enctypes =3D des-cbc-crc
+> =A0 =A0 =A0 =A0permitted_enctypes =3D des-cbc-crc
+> =A0 =A0 =A0 =A0allow_weak_crypto =3D true
+> =A0 =A0 =A0 =A0forwardable =3D true
+>
+> I should add one more thing: I was using 2 different NFS servers, a
+> NetApp 7.3.1.1 and Opentext NFS Maestro Server 2008 (formerly
+> Hummingbird) on Windows 2008 R2 (AD is still 2003 R2). I found out
+> today that the NetApp had a corrupted keytab and after repairing that
+> it works fine with 1.8.1. NFS Maestro still only works with 1.6.3.
+> Since I can use the 1.6.3 rpm package onto newer distros I can live
+> with it for the moment if i block the rpm from getting updated but
+> it's still kind of a hack.
 
-> On 04/20/2010 05:21 PM, Stefan Kr=FCger wrote:
-> > On Mon, 19 Apr 2010, Chuck Lever wrote:
-> >
-> >> On 04/19/2010 08:21 AM, Stefan Kr=FCger wrote:
-> >>> On Thu, 15 Apr 2010, Stefan Kr=FCger wrote:
-> >>>
-> >>>> Hello list,
-> >>>>
-> >>>> I have some really strange nfs performance issues
-> >>>>
-> >>>> NFS server is Fedora 12, running
-> >>>> * kernel-2.6.32.11-99.fc12.x86_64 and
-> >>>> * nfs-utils-1.2.1-4.fc12.x86_64
-> >>>> * nfs shared /home is ext4 with default mount options
-> >>>>
-> >>>> /etc/exports:
-> >>>> /home   192.168.1.0/255.255.255.0(rw,sync)
-> >>>>
-> >>>> nfs and nfslock are up and running
-> >>>>
-> >>>> Nothing else touched on the server nfs-wise.
-> >>>>
-> >>>> NFS client is Mac OS X, version 10.6.3
-> >>>>
-> >>>> My /home dir is automounted on the Mac with the following mount =
-options:
-> >>>> * nosuid,nodev,resvport,rdirplus,rwsize=3D1048576
-> >>>> (nfsv3 and tcp are default, I have also tried udp, and with and =
-without
-> >>>> rdirplus, with different read/write sizes (started with 32k, les=
-s for udp,
-> >>>> and then cranked it up to 1m to make the beachball appear less o=
-ften),
-> >>>> but I still have issues no matter which options I chose)
-> >>>>
-> >>>> Anyway, I'm stuck now, surfing the web with Safari is a very unp=
-leasant
-> >>>> experience on nfs, beachball every now and then together with a =
-huge
-> >>>> amount of network traffic (RX with 20MB/s+ peaks), not unusual t=
-o see
-> >>>> several gigabytes received after some minutes browsing, XCode sh=
-ows a
-> >>>> ''The document "SomeFile.m" could not be saved.''-error after so=
-me
-> >>>> edits, Opera hangs for minutes when closing, etc etc.
-> >>>>
-> >>>> It's horrible :(
-> >>>>
-> >>>> Another example, extracting
-> >>>> http://www.bignerdranch.com/solutions/Cocoa-3rd.tgz took over 3m=
-in!
-> >>>>
-> >>>> $ time tar xzf Cocoa-3rd.tgz
-> >>>> 0.169u 3.198s 5:51.10 0.9%	0+0k 1+6972io 0pf+0w
-> >>>> $ time rm -rf Solutions-Cocoa-3rd/
-> >>>> 0.014u 0.477s 0:45.59 1.0%	0+0k 1+1io 0pf+0w
-> >>>>
-> >>>> So any help or hints really appreciated
-> >>>
-> >>> So, no answers yet, but I did some more tests, i.e. I tried extra=
-cting
-> >>> the Cocoa-3rd.tgz (2.2MB, 12MB untar'ed) on FreeBSD 8.0-REL (runn=
-ing
-> >>> inside VMWare though), and still it was much faster (5:51.10 vs
-> >>> 0:09.35) than extracting on bare metal fedora12:
-> >>>
-> >>> $ time tar xfz Cocoa-3rd.tgz
-> >>> 0.104u 1.474s 0:09.35 16.7%	0+0k 0+4896io 0pf+0w
-> >>> $ time rm -rf Solutions-Cocoa-3rd
-> >>> 0.006u 0.160s 0:01.24 12.9%	0+0k 0+0io 0pf+0w
-> >>>
-> >>> I captured the nfs traffic with tcpdump (tcpdump -i eth1 -s 0 -w
-> >>> nfs.out host nfssrv and port 2049) on both freebsd8 (interface fo=
-r
-> >>> freebsd is a bit different ofc) and fedora12 while running
-> >>>
-> >>> tar xfz Cocoa-3rd.tgz Solutions-Cocoa-3rd/02_GetStarted
-> >>>
-> >>> (which extracts just a couple of files) , you can find them here:
-> >>>
-> >>> Fedora 12 tcpdump ->   http://www.dpaste.org/5cvp/
-> >>> FreeBSD 8 tcpdump ->   http://www.dpaste.org/uCGX/
-> >>
-> >> The number of packets is around 1800 for the FreeBSD server and ar=
-ound
-> >> 1940 for the Linux server.  The RPC counts you posted in a later e=
-mail
-> >> show that Linux does more LOOKUP and ACCESS requests.  But general=
-ly, it
-> >> looks like your client is doing roughly the same amount of work in=
- both
-> >> cases.
-> >>
-> >> But what catches my eye in the F12 tcpdump is that there are pause=
-s
-> >> where the server reply is delayed by a few milliseconds after a SE=
-TATTR
-> >> or COMMIT.  This looks normal, since disk writes can take a few
-> >> milliseconds.
-> >>
-> >> FreeBSD doesn't appear to have these pauses, so I suspect FreeBSD =
-is
-> >> doing something illegal.  No NFS server can turn a SETATTR around =
-in
-> >> just a few microseconds and claim that it is on permanent storage,
-> >> unless it has some kind of NVRAM.
-> >
-> > First of all, thanks for your answer Chuck :)
-> >
-> > there are some additional packets because the .tgz was on the same
-> > (nfs-mounted) dir and on a local dir during the freebsd test (so so=
-me
-> > extra reads etc. sneaked in the linux tcpdump/nfsstat -s)
-> >
-> > Just for the record, Solaris 10u8 (UFS) extraction time is almost t=
-he
-> > same as FreeBSDs:
-> >
-> > $ time tar xfz Cocoa-3rd.tgz
-> > 0.111u 1.621s 0:09.03 19.1%	0+0k 8+4966io 0pf+0w
-> >
-> > So I guess they're both cheating ;-)
->=20
-> Is Solaris running in a guest too?
+Do you have access to logs on the server that still doesn't work with
+1.8.1?  It seems odd that only this combination would fail.
 
-Yes, this test was also done using VMWare
-I also installed Fedora12/ext4 in VMWare and got ->
-
-$ time tar xfz Cocoa-3rd.tgz
-0.135u 2.151s 0:36.50 6.2%      0+0k 3+4770io 0pf+0w
-
-Well, 36 seconds, still 3x longer than Solaris/FreeBSD but way better t=
-han
-5min on bare metal
-
-Anyway, to get some real data I splitted my raid1 mirror on the nfs ser=
-ver
-yesterday and installed FreeBSD 8 on the (now) free disk
-I don't know why but NFS performance is stunning, extracting the tgz on=
-ly
-takes seconds, Opera doesn't hang for minutes when closing, no strange =
-rx
-spikes and a lot less total bytes received on the same hardware with th=
-e same
-files (no special tweaks done, only change on freebsd was to start 8 nf=
-sd
-servers [default is 4], fs is UFS with softdeps)
-
-I can't explain it...
-
-> What physical file system are you using on the Linux NFS server?
-
-See my first mail ("nfs shared /home is ext4 with default mount options=
-"),
-so it's ext4 (I did some tests with xfs/ext3 using fedora12/VMWare, too=
-, same
-bad results though)
+K.C.
