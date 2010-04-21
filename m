@@ -1,53 +1,79 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 3/9] NFS: Squelch compiler warning
-Date: Wed, 21 Apr 2010 13:43:23 -0400
-Message-ID: <20100421174323.2037.58308.stgit@localhost.localdomain>
+Subject: [PATCH 4/9] NFS: Clean up fscache_uniq mount option
+Date: Wed, 21 Apr 2010 13:43:33 -0400
+Message-ID: <20100421174332.2037.91471.stgit@localhost.localdomain>
 References: <20100421173628.2037.54635.stgit@localhost.localdomain>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain; charset="utf-8"
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-pw0-f46.google.com ([209.85.160.46]:60335 "EHLO
-	mail-pw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756032Ab0DURnZ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 21 Apr 2010 13:43:25 -0400
-Received: by mail-pw0-f46.google.com with SMTP id 9so5322309pwj.19
-        for <linux-nfs@vger.kernel.org>; Wed, 21 Apr 2010 10:43:25 -0700 (PDT)
+Received: from mail-pv0-f174.google.com ([74.125.83.174]:36444 "EHLO
+	mail-pv0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753978Ab0DURne (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 21 Apr 2010 13:43:34 -0400
+Received: by mail-pv0-f174.google.com with SMTP id 13so1004163pvg.19
+        for <linux-nfs@vger.kernel.org>; Wed, 21 Apr 2010 10:43:34 -0700 (PDT)
 In-Reply-To: <20100421173628.2037.54635.stgit-bi+AKbBUZKY6gyzm1THtWbp2dZbC/Bob@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Seen with -Wextra:
-
-/home/cel/linux/fs/nfs/fscache.c: In function =E2=80=98__nfs_readpages_=
-from_fscache=E2=80=99:
-/home/cel/linux/fs/nfs/fscache.c:479: warning: comparison between signe=
-d and unsigned integer expressions
-
-The comparison implicitly converts "int" to "unsigned", making it
-safe.  But there's no need for the implicit type conversions here, and
-the dfprintk() already uses a "%u" formatter for "npages."  Better to
-reduce confusion.
+Clean up: fscache_uniq takes a string, so it should be included
+with the other string mount option definitions, by convention.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- fs/nfs/fscache.c |    3 ++-
- 1 files changed, 2 insertions(+), 1 deletions(-)
+ fs/nfs/super.c |   18 +++++++++---------
+ 1 files changed, 9 insertions(+), 9 deletions(-)
 
-diff --git a/fs/nfs/fscache.c b/fs/nfs/fscache.c
-index a6b16ed..ce153a6 100644
---- a/fs/nfs/fscache.c
-+++ b/fs/nfs/fscache.c
-@@ -467,7 +467,8 @@ int __nfs_readpages_from_fscache(struct nfs_open_co=
-ntext *ctx,
- 				 struct list_head *pages,
- 				 unsigned *nr_pages)
- {
--	int ret, npages =3D *nr_pages;
-+	unsigned npages =3D *nr_pages;
-+	int ret;
-=20
- 	dfprintk(FSCACHE, "NFS: nfs_getpages_from_fscache (0x%p/%u/0x%p)\n",
- 		 NFS_I(inode)->fscache, npages, inode);
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index e016372..67a4f09 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -141,7 +141,6 @@ static const match_table_t nfs_mount_option_tokens = {
+ 	{ Opt_resvport, "resvport" },
+ 	{ Opt_noresvport, "noresvport" },
+ 	{ Opt_fscache, "fsc" },
+-	{ Opt_fscache_uniq, "fsc=%s" },
+ 	{ Opt_nofscache, "nofsc" },
+ 
+ 	{ Opt_port, "port=%s" },
+@@ -171,6 +170,7 @@ static const match_table_t nfs_mount_option_tokens = {
+ 	{ Opt_mountaddr, "mountaddr=%s" },
+ 
+ 	{ Opt_lookupcache, "lookupcache=%s" },
++	{ Opt_fscache_uniq, "fsc=%s" },
+ 
+ 	{ Opt_err, NULL }
+ };
+@@ -1046,14 +1046,6 @@ static int nfs_parse_mount_options(char *raw,
+ 			kfree(mnt->fscache_uniq);
+ 			mnt->fscache_uniq = NULL;
+ 			break;
+-		case Opt_fscache_uniq:
+-			string = match_strdup(args);
+-			if (!string)
+-				goto out_nomem;
+-			kfree(mnt->fscache_uniq);
+-			mnt->fscache_uniq = string;
+-			mnt->options |= NFS_OPTION_FSCACHE;
+-			break;
+ 
+ 		/*
+ 		 * options that take numeric values
+@@ -1384,6 +1376,14 @@ static int nfs_parse_mount_options(char *raw,
+ 					return 0;
+ 			};
+ 			break;
++		case Opt_fscache_uniq:
++			string = match_strdup(args);
++			if (string == NULL)
++				goto out_nomem;
++			kfree(mnt->fscache_uniq);
++			mnt->fscache_uniq = string;
++			mnt->options |= NFS_OPTION_FSCACHE;
++			break;
+ 
+ 		/*
+ 		 * Special options
 
