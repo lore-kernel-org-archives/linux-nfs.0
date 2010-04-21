@@ -1,62 +1,53 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 2/9] SUNRPC: Trivial cleanups in include/linux/sunrpc/xdr.h
-Date: Wed, 21 Apr 2010 13:43:14 -0400
-Message-ID: <20100421174313.2037.98789.stgit@localhost.localdomain>
+Subject: [PATCH 3/9] NFS: Squelch compiler warning
+Date: Wed, 21 Apr 2010 13:43:23 -0400
+Message-ID: <20100421174323.2037.58308.stgit@localhost.localdomain>
 References: <20100421173628.2037.54635.stgit@localhost.localdomain>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=utf-8
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-pv0-f174.google.com ([74.125.83.174]:36444 "EHLO
-	mail-pv0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753978Ab0DURnQ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 21 Apr 2010 13:43:16 -0400
-Received: by pvg13 with SMTP id 13so1004163pvg.19
-        for <linux-nfs@vger.kernel.org>; Wed, 21 Apr 2010 10:43:16 -0700 (PDT)
+Received: from mail-pw0-f46.google.com ([209.85.160.46]:60335 "EHLO
+	mail-pw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756032Ab0DURnZ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 21 Apr 2010 13:43:25 -0400
+Received: by mail-pw0-f46.google.com with SMTP id 9so5322309pwj.19
+        for <linux-nfs@vger.kernel.org>; Wed, 21 Apr 2010 10:43:25 -0700 (PDT)
 In-Reply-To: <20100421173628.2037.54635.stgit-bi+AKbBUZKY6gyzm1THtWbp2dZbC/Bob@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Clean up: Update the documenting comment, and fix some minor white
-space issues.
+Seen with -Wextra:
+
+/home/cel/linux/fs/nfs/fscache.c: In function =E2=80=98__nfs_readpages_=
+from_fscache=E2=80=99:
+/home/cel/linux/fs/nfs/fscache.c:479: warning: comparison between signe=
+d and unsigned integer expressions
+
+The comparison implicitly converts "int" to "unsigned", making it
+safe.  But there's no need for the implicit type conversions here, and
+the dfprintk() already uses a "%u" formatter for "npages."  Better to
+reduce confusion.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- include/linux/sunrpc/xdr.h |    8 +++++---
- 1 files changed, 5 insertions(+), 3 deletions(-)
+ fs/nfs/fscache.c |    3 ++-
+ 1 files changed, 2 insertions(+), 1 deletions(-)
 
-diff --git a/include/linux/sunrpc/xdr.h b/include/linux/sunrpc/xdr.h
-index f5cc089..35cf2e8 100644
---- a/include/linux/sunrpc/xdr.h
-+++ b/include/linux/sunrpc/xdr.h
-@@ -1,7 +1,10 @@
- /*
-- * include/linux/sunrpc/xdr.h
-+ * XDR standard data types and function declarations
-  *
-  * Copyright (C) 1995-1997 Olaf Kirch <okir-pn4DOG8n3UYbFoVRYvo4fw@public.gmane.org>
-+ *
-+ * Based on:
-+ *   RFC 4506 "XDR: External Data Representation Standard", May 2006
-  */
- 
- #ifndef _SUNRPC_XDR_H_
-@@ -62,7 +65,6 @@ struct xdr_buf {
- 
- 	unsigned int	buflen,		/* Total length of storage buffer */
- 			len;		/* Length of XDR encoded message */
--
- };
- 
- /*
-@@ -178,7 +180,7 @@ struct xdr_array2_desc {
- };
- 
- extern int xdr_decode_array2(struct xdr_buf *buf, unsigned int base,
--                             struct xdr_array2_desc *desc);
-+			     struct xdr_array2_desc *desc);
- extern int xdr_encode_array2(struct xdr_buf *buf, unsigned int base,
- 			     struct xdr_array2_desc *desc);
- 
+diff --git a/fs/nfs/fscache.c b/fs/nfs/fscache.c
+index a6b16ed..ce153a6 100644
+--- a/fs/nfs/fscache.c
++++ b/fs/nfs/fscache.c
+@@ -467,7 +467,8 @@ int __nfs_readpages_from_fscache(struct nfs_open_co=
+ntext *ctx,
+ 				 struct list_head *pages,
+ 				 unsigned *nr_pages)
+ {
+-	int ret, npages =3D *nr_pages;
++	unsigned npages =3D *nr_pages;
++	int ret;
+=20
+ 	dfprintk(FSCACHE, "NFS: nfs_getpages_from_fscache (0x%p/%u/0x%p)\n",
+ 		 NFS_I(inode)->fscache, npages, inode);
 
