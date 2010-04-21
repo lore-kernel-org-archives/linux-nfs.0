@@ -1,244 +1,49 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 9/9] SUNRPC: Replace jiffies-based metrics with ktime-based
-	metrics
-Date: Wed, 21 Apr 2010 13:44:21 -0400
-Message-ID: <20100421174420.2037.28000.stgit@localhost.localdomain>
+Subject: [PATCH 1/9] NFS: rsize and wsize settings ignored on v4 mounts
+Date: Wed, 21 Apr 2010 13:43:04 -0400
+Message-ID: <20100421174303.2037.86673.stgit@localhost.localdomain>
 References: <20100421173628.2037.54635.stgit@localhost.localdomain>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-pw0-f46.google.com ([209.85.160.46]:33992 "EHLO
-	mail-pw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756049Ab0DURuF (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 21 Apr 2010 13:50:05 -0400
-Received: by pwj9 with SMTP id 9so5329073pwj.19
+Received: from mail-px0-f174.google.com ([209.85.212.174]:41046 "EHLO
+	mail-px0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756056Ab0DURuG (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 21 Apr 2010 13:50:06 -0400
+Received: by pxi17 with SMTP id 17so406996pxi.19
         for <linux-nfs@vger.kernel.org>; Wed, 21 Apr 2010 10:50:05 -0700 (PDT)
 In-Reply-To: <20100421173628.2037.54635.stgit-bi+AKbBUZKY6gyzm1THtWbp2dZbC/Bob@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Currently RPC performance metrics that tabulate elapsed time use
-jiffies time values.  This is problematic on systems that use slow
-jiffies (for instance 100HZ systems built for paravirtualized
-environments).  It is also a problem for computing precise latency
-statistics for advanced network transports, such as InfiniBand,
-that can have round-trip latencies significanly faster than a single
-clock tick.
+NFSv4 mounts ignore the rsize and wsize mount options, and always use
+the default transfer size for both.  This seems to be because all
+NFSv4 mounts are now cloned, and the cloning logic doesn't copy the
+rsize and wsize settings from the parent nfs_server.
 
-For the RPC client, adopt the high resolution time stamp mechanism
-already used by the network layer and blktrace: ktime.
-
-We use ktime format time stamps for all internal computations, and
-convert to milliseconds for presentation.  As a result, we need only
-addition operations in the performance critical paths; multiply/divide
-is required only for presentation.
-
-We could report RTT metrics in microseconds.  In fact the mountstats
-format is versioned to accomodate exactly this kind of interface
-improvement.
-
-For now, however, we'll stay with millisecond precision for
-presentation to maintain backwards compatibility with the handful of
-currently deployed user space tools.  At a later point, we'll move to
-an API such as BDI_STATS where a finer timestamp precision can be
-reported.
+I tested Fedora's 2.6.32.11-99 and it seems to have this problem as
+well, so I'm guessing that .33, .32, and perhaps older kernels have
+this issue as well.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Cc: Stable <stable@kernel.org>
 ---
 
- include/linux/sunrpc/metrics.h |    7 ++++---
- include/linux/sunrpc/sched.h   |    5 +++--
- include/linux/sunrpc/xprt.h    |    3 ++-
- net/sunrpc/sched.c             |    2 +-
- net/sunrpc/stats.c             |   27 +++++++++------------------
- net/sunrpc/xprt.c              |    8 +++++---
- 6 files changed, 24 insertions(+), 28 deletions(-)
+ fs/nfs/client.c |    2 ++
+ 1 files changed, 2 insertions(+), 0 deletions(-)
 
-diff --git a/include/linux/sunrpc/metrics.h b/include/linux/sunrpc/metrics.h
-index 77f78e5..b6edbc0 100644
---- a/include/linux/sunrpc/metrics.h
-+++ b/include/linux/sunrpc/metrics.h
-@@ -26,6 +26,7 @@
- #define _LINUX_SUNRPC_METRICS_H
- 
- #include <linux/seq_file.h>
-+#include <linux/ktime.h>
- 
- #define RPC_IOSTATS_VERS	"1.0"
- 
-@@ -58,9 +59,9 @@ struct rpc_iostats {
- 	 * and the total time the request spent from init to release
- 	 * are measured.
- 	 */
--	unsigned long long	om_queue,	/* jiffies queued for xmit */
--				om_rtt,		/* jiffies for RPC RTT */
--				om_execute;	/* jiffies for RPC execution */
-+	ktime_t			om_queue,	/* queued for xmit */
-+				om_rtt,		/* RPC RTT */
-+				om_execute;	/* RPC execution */
- } ____cacheline_aligned;
- 
- struct rpc_task;
-diff --git a/include/linux/sunrpc/sched.h b/include/linux/sunrpc/sched.h
-index 7bc7fd5..76720d2 100644
---- a/include/linux/sunrpc/sched.h
-+++ b/include/linux/sunrpc/sched.h
-@@ -10,6 +10,7 @@
- #define _LINUX_SUNRPC_SCHED_H_
- 
- #include <linux/timer.h>
-+#include <linux/ktime.h>
- #include <linux/sunrpc/types.h>
- #include <linux/spinlock.h>
- #include <linux/wait.h>
-@@ -80,8 +81,8 @@ struct rpc_task {
- 
- 	unsigned short		tk_timeouts;	/* maj timeouts */
- 	size_t			tk_bytes_sent;	/* total bytes sent */
--	unsigned long		tk_start;	/* RPC task init timestamp */
--	long			tk_rtt;		/* round-trip time (jiffies) */
-+	ktime_t			tk_start,	/* RPC task init timestamp */
-+				tk_rtt;		/* round-trip time */
- 
- 	pid_t			tk_owner;	/* Process id for batching tasks */
- 	unsigned char		tk_priority : 2;/* Task priority */
-diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
-index 94bfee0..f54aee0 100644
---- a/include/linux/sunrpc/xprt.h
-+++ b/include/linux/sunrpc/xprt.h
-@@ -13,6 +13,7 @@
- #include <linux/socket.h>
- #include <linux/in.h>
- #include <linux/kref.h>
-+#include <linux/ktime.h>
- #include <linux/sunrpc/sched.h>
- #include <linux/sunrpc/xdr.h>
- #include <linux/sunrpc/msg_prot.h>
-@@ -94,7 +95,7 @@ struct rpc_rqst {
- 	 */
- 	u32			rq_bytes_sent;	/* Bytes we have sent */
- 
--	unsigned long		rq_xtime;	/* when transmitted */
-+	ktime_t			rq_xtime;	/* transmit time stamp */
- 	int			rq_ntrans;
- 
- #if defined(CONFIG_NFS_V4_1)
-diff --git a/net/sunrpc/sched.c b/net/sunrpc/sched.c
-index aae6907..4a36a57 100644
---- a/net/sunrpc/sched.c
-+++ b/net/sunrpc/sched.c
-@@ -834,7 +834,7 @@ static void rpc_init_task(struct rpc_task *task, const struct rpc_task_setup *ta
- 	}
- 
- 	/* starting timestamp */
--	task->tk_start = jiffies;
-+	task->tk_start = ktime_get();
- 
- 	dprintk("RPC:       new task initialized, procpid %u\n",
- 				task_pid_nr(current));
-diff --git a/net/sunrpc/stats.c b/net/sunrpc/stats.c
-index 5785d20..aacd95f 100644
---- a/net/sunrpc/stats.c
-+++ b/net/sunrpc/stats.c
-@@ -144,7 +144,7 @@ void rpc_count_iostats(struct rpc_task *task)
- 	struct rpc_rqst *req = task->tk_rqstp;
- 	struct rpc_iostats *stats;
- 	struct rpc_iostats *op_metrics;
--	long rtt, execute, queue;
-+	ktime_t delta;
- 
- 	if (!task->tk_client || !task->tk_client->cl_metrics || !req)
- 		return;
-@@ -159,20 +159,13 @@ void rpc_count_iostats(struct rpc_task *task)
- 	op_metrics->om_bytes_sent += task->tk_bytes_sent;
- 	op_metrics->om_bytes_recv += req->rq_reply_bytes_recvd;
- 
--	queue = (long)req->rq_xtime - task->tk_start;
--	if (queue < 0)
--		queue = -queue;
--	op_metrics->om_queue += queue;
-+	delta = ktime_sub(req->rq_xtime, task->tk_start);
-+	op_metrics->om_queue = ktime_add(op_metrics->om_queue, delta);
- 
--	rtt = task->tk_rtt;
--	if (rtt < 0)
--		rtt = -rtt;
--	op_metrics->om_rtt += rtt;
-+	op_metrics->om_rtt = ktime_add(op_metrics->om_rtt, task->tk_rtt);
- 
--	execute = (long)jiffies - task->tk_start;
--	if (execute < 0)
--		execute = -execute;
--	op_metrics->om_execute += execute;
-+	delta = ktime_sub(ktime_get(), task->tk_start);
-+	op_metrics->om_execute = ktime_add(op_metrics->om_execute, delta);
- }
- 
- static void _print_name(struct seq_file *seq, unsigned int op,
-@@ -186,8 +179,6 @@ static void _print_name(struct seq_file *seq, unsigned int op,
- 		seq_printf(seq, "\t%12u: ", op);
- }
- 
--#define MILLISECS_PER_JIFFY	(1000 / HZ)
--
- void rpc_print_iostats(struct seq_file *seq, struct rpc_clnt *clnt)
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index a8766c4..acc9c49 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -966,6 +966,8 @@ out_error:
+ static void nfs_server_copy_userdata(struct nfs_server *target, struct nfs_server *source)
  {
- 	struct rpc_iostats *stats = clnt->cl_metrics;
-@@ -214,9 +205,9 @@ void rpc_print_iostats(struct seq_file *seq, struct rpc_clnt *clnt)
- 				metrics->om_timeouts,
- 				metrics->om_bytes_sent,
- 				metrics->om_bytes_recv,
--				metrics->om_queue * MILLISECS_PER_JIFFY,
--				metrics->om_rtt * MILLISECS_PER_JIFFY,
--				metrics->om_execute * MILLISECS_PER_JIFFY);
-+				ktime_to_ms(metrics->om_queue),
-+				ktime_to_ms(metrics->om_rtt),
-+				ktime_to_ms(metrics->om_execute));
- 	}
- }
- EXPORT_SYMBOL_GPL(rpc_print_iostats);
-diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
-index 5559ec4..444ca36 100644
---- a/net/sunrpc/xprt.c
-+++ b/net/sunrpc/xprt.c
-@@ -43,6 +43,7 @@
- #include <linux/interrupt.h>
- #include <linux/workqueue.h>
- #include <linux/net.h>
-+#include <linux/ktime.h>
- 
- #include <linux/sunrpc/clnt.h>
- #include <linux/sunrpc/metrics.h>
-@@ -776,10 +777,11 @@ static void xprt_update_rtt(struct rpc_task *task)
- 	struct rpc_rqst *req = task->tk_rqstp;
- 	struct rpc_rtt *rtt = task->tk_client->cl_rtt;
- 	unsigned timer = task->tk_msg.rpc_proc->p_timer;
-+	long m = usecs_to_jiffies(ktime_to_us(task->tk_rtt));
- 
- 	if (timer) {
- 		if (req->rq_ntrans == 1)
--			rpc_update_rtt(rtt, timer, task->tk_rtt);
-+			rpc_update_rtt(rtt, timer, m);
- 		rpc_set_timeo(rtt, timer, req->rq_ntrans - 1);
- 	}
- }
-@@ -800,7 +802,7 @@ void xprt_complete_rqst(struct rpc_task *task, int copied)
- 			task->tk_pid, ntohl(req->rq_xid), copied);
- 
- 	xprt->stat.recvs++;
--	task->tk_rtt = (long)jiffies - req->rq_xtime;
-+	task->tk_rtt = ktime_sub(ktime_get(), req->rq_xtime);
- 	if (xprt->ops->timer != NULL)
- 		xprt_update_rtt(task);
- 
-@@ -901,7 +903,7 @@ void xprt_transmit(struct rpc_task *task)
- 		return;
- 
- 	req->rq_connect_cookie = xprt->connect_cookie;
--	req->rq_xtime = jiffies;
-+	req->rq_xtime = ktime_get();
- 	status = xprt->ops->send_request(task);
- 	if (status != 0) {
- 		task->tk_status = status;
+ 	target->flags = source->flags;
++	target->rsize = source->rsize;
++	target->wsize = source->wsize;
+ 	target->acregmin = source->acregmin;
+ 	target->acregmax = source->acregmax;
+ 	target->acdirmin = source->acdirmin;
 
