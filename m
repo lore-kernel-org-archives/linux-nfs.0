@@ -1,130 +1,110 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fg-out-1718.google.com ([72.14.220.159]:61137 "EHLO
-	fg-out-1718.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756117Ab0DUS3O (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 21 Apr 2010 14:29:14 -0400
-Date: Wed, 21 Apr 2010 22:26:12 +0400
-From: Vlad Glagolev <stealth@sourcemage.org>
-To: Roger Heflin <rogerheflin@gmail.com>
-Cc: Steve Cousins <steve.cousins@maine.edu>, linux-nfs@vger.kernel.org,
-        linux-raid@vger.kernel.org
-Subject: Re: NFS and /dev/mdXpY
-Message-Id: <20100421222612.7aa4f21a.stealth@sourcemage.org>
-In-Reply-To: <20100421213201.67a4a7a2.stealth@sourcemage.org>
-References: <20100417195747.5fae8834.stealth@sourcemage.org>
-	<4BCF2A2C.7070407@maine.edu>
-	<20100421204819.b86ee3f7.stealth@sourcemage.org>
-	<q2zd3da20d01004211009jccd81479v83e2ef4b6d5db7bf@mail.gmail.com>
-	<20100421213201.67a4a7a2.stealth@sourcemage.org>
-Content-Type: multipart/signed; protocol="application/pgp-signature";
- micalg="PGP-SHA1";
- boundary="Signature=_Wed__21_Apr_2010_22_26_12_+0400_NaI_gJQi+QuVsp8q"
+Received: from mail-out2.uio.no ([129.240.10.58]:41670 "EHLO mail-out2.uio.no"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754651Ab0DVTHi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 22 Apr 2010 15:07:38 -0400
+Subject: RE: NFSV4 Replica Support?
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+To: Brandon Shandelson <brandon@myshape.com>
+Cc: "'J. Bruce Fields'" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
+In-Reply-To: <01c901cae24c$7bdd1a00$73974e00$@com>
+References: <01c701cae247$e8e50900$baaf1b00$@com>
+	 <20100422182213.GA8858@fieldses.org> <01c801cae249$d17ab3d0$74701b70$@com>
+	 <20100422183428.GD8858@fieldses.org>  <01c901cae24c$7bdd1a00$73974e00$@com>
+Content-Type: text/plain; charset="UTF-8"
+Date: Thu, 22 Apr 2010 15:07:31 -0400
+Message-ID: <1271963251.593.8.camel@localhost.localdomain>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
---Signature=_Wed__21_Apr_2010_22_26_12_+0400_NaI_gJQi+QuVsp8q
-Content-Type: text/plain; charset=US-ASCII
-Content-Disposition: inline
-Content-Transfer-Encoding: quoted-printable
+On Thu, 2010-04-22 at 11:49 -0700, Brandon Shandelson wrote: 
+> I thought all of that was handled by NFSV4's "Volatile File Handles" feature.  Seems like "replicas=" is vaporware for all practical uses at this point, although I've read an IBM doc that shows how it works on AIX.
 
-Hmm, more testing.. It works only with tiny files flawlessly on OpenBSD (cl=
-ient).
+Handled? How???? All the volatile file handles "feature" does is tell
+you that you can't rely on being able to access your files. If they get
+renamed on the server you are SOL...
 
-If a filesize is around 50 mibs, then it just freezes and eats cpu with nfs=
-rcvl call.
+Trond
 
-On Linux I don't see such problem. Even big files are transfered with good =
-enough speed.
-
-On Wed, 21 Apr 2010 21:32:01 +0400
-Vlad Glagolev <stealth@sourcemage.org> wrote:
-
-> On Wed, 21 Apr 2010 12:09:20 -0500
-> Roger Heflin <rogerheflin@gmail.com> wrote:
->=20
-> > On Wed, Apr 21, 2010 at 11:48 AM, Vlad Glagolev <stealth@sourcemage.org=
-> wrote:
-> > > Thanks for reply, Steve!
-> > >
-> > > parameters are pretty trivial, (rw,insecure) for exports, and default=
-s while mounting via ``mount host:/path /path'' command.
-> > >
-> > > Yes. That sounds interesting, since XFS works fine with there partiti=
-ons.
-> > > Also, I must say it's WD20EARS drives (with 4kb sector size, though p=
-arted says it's 512b).
-> > >
-> > > I also tried another NFS daemon implementation (cvs version, not .22)=
- -- unfsd (unfs3).
-> > > It mounts ok, but when I try to write any file to the server -- I get=
- the same error (Stale NFS file handle).
-> > >
-> > > And on the server side in dmesg I see this:
-> > >
-> > > --
-> > > NFS: server 172.17.2.2 error: fileid changed
-> > > fsid 0:f: expected fileid 0x2033, got 0xb6d1e05fa150ce09
-> > > NFS: server 172.17.2.2 error: fileid changed
-> > > fsid 0:f: expected fileid 0x2033, got 0x26550b0132c0b1
-> > > NFS: server 172.17.2.2 error: fileid changed
-> > > fsid 0:f: expected fileid 0x2033, got 0x8202a60053000020
-> > > NFS: server 172.17.2.2 error: fileid changed
-> > > fsid 0:f: expected fileid 0x2033, got 0xe542f93ebc8fe157
-> > > NFS: server 172.17.2.2 error: fileid changed
-> > > fsid 0:f: expected fileid 0x2033, got 0xc00cd74ea904301
-> > > --
-> > >
-> > > looks like NFS protocol doesn't like something in partitioned softwar=
-e RAID.
-> > >
-> >=20
-> >=20
-> > Try manually setting the fsid=3Dsomething in the exports file and
-> > reexport and remount on the target system, if there was a fsid
-> > collision of some sort then nfs would be hitting the wrong fs...
-> >=20
-> > NFS generates the fsid automatically based on the devices major minor,
-> > and it is possible there is something odd about the major minor
-> > numbers that make them not unique...and collide with someone else
-> > major minor.
->=20
-> BAH! How simple!
->=20
-> Thank you very much, Roger!
->=20
-> I've just added fsid=3D1 (yes, only these few chars) to exports, and it w=
-orked! Unbelievable, really :)
-> Of course I've checked it on OpenBSD and Linux under both nfsd and unfsd.=
- Works flawlessly.
->=20
-> Thanks a lot again.
->=20
-> But it seems to be a bug, right? If so, patches welcome.. I'll test it wi=
-th great pleasure.
->=20
-> --=20
-> Dont wait to die to find paradise...
+> https://publib.boulder.ibm.com/infocenter/pseries/v5r3/index.jsp?topic=/com.ibm.aix.commadmn/doc/commadmndita/nfs_replicas_softmount.htm
+> 
+> Are the NFS server and NFS client code kept functionally in sync?  Would be nice, since I've been hunting this snipe for days now :(
+> 
+> 
+> -Brandon
+> 
+> 
+> -----Original Message-----
+> From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-owner@vger.kernel.org] On Behalf Of 'J. Bruce Fields'
+> Sent: Thursday, April 22, 2010 11:34 AM
+> To: Brandon Shandelson
+> Cc: linux-nfs@vger.kernel.org
+> Subject: Re: NFSV4 Replica Support?
+> 
+> On Thu, Apr 22, 2010 at 11:30:00AM -0700, Brandon Shandelson wrote:
+> > I have two NFS servers with NFSV4 exports whose data are synced via Unison.  I want one server to be a hot standby for clients to use in case something happens to the primary NFS server.
+> 
+> That won't work, sorry; even if the file contents are the same, the
+> filehandles are different (unless you copy the actual underlying
+> filesystem images instead of running unison on the two filesystems).
+> And even with that problem fixed, the client probably wouldn't know how
+> to use the replica information.
+> 
+> --b.
+> 
+> > 
+> > The NFS exports look like this:
+> > /home 192.168.0.0/24(rw,fsid=0,insecure,no_subtree_check,async,repli cas=/home@msdevnfs1:/home@msdevnfs2)
+> > 
+> > The mount in fstab looks like this:
+> > msdevnfs1:/ /home nfs4 _netdev,auto 0 0
+> > 
+> > 
+> > -Brandon
+> > 
+> > -----Original Message-----
+> > From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-owner@vger.kernel.org] On Behalf Of J. Bruce Fields
+> > Sent: Thursday, April 22, 2010 11:22 AM
+> > To: Brandon Shandelson
+> > Cc: linux-nfs@vger.kernel.org
+> > Subject: Re: NFSV4 Replica Support?
+> > 
+> > On Thu, Apr 22, 2010 at 11:16:20AM -0700, Brandon Shandelson wrote:
+> > > I want to use NFSV4 replicas on Ubuntu 9.10 64-bit servers.  It doesn’t seem
+> > > to work.  It *looks* like the server kernel module supports it, but the NFS
+> > > client does not.  Is this the case, or should I be able to make replicas
+> > > work on Linux?
+> > 
+> > What are you actually trying to do?
+> > 
+> > There's a little support for replication in that the NFSv4 server can be
+> > told to report certain locations as having the same data, but it's not
+> > really supported yet: you need smoething to create the replicas for you
+> > (probably doable with GFS2 as the exported filesystem, or by sharing the
+> > filesystem image if it's read-only).  I don't think the Linux NFSv4
+> > client knows how to use that information yet.
+> > 
+> > --b.
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> > 
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
 > --
-> Cheerz,
-> Vlad "Stealth" Glagolev
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
 
 
---=20
-Dont wait to die to find paradise...
---
-Cheerz,
-Vlad "Stealth" Glagolev
 
---Signature=_Wed__21_Apr_2010_22_26_12_+0400_NaI_gJQi+QuVsp8q
-Content-Type: application/pgp-signature
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.10 (GNU/Linux)
-
-iEYEARECAAYFAkvPQ0QACgkQ8Hg3cBKtRUlu0ACeLfOhs4Idi954pi7Rl8XkBnDv
-aeEAn2hdZnLoK5+n6D2bDSc6PiYTUEB/
-=NTrm
------END PGP SIGNATURE-----
-
---Signature=_Wed__21_Apr_2010_22_26_12_+0400_NaI_gJQi+QuVsp8q--
