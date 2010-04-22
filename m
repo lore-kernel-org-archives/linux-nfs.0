@@ -1,43 +1,58 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:38194 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757425Ab0DWV5Q (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 23 Apr 2010 17:57:16 -0400
-Message-ID: <4BD21777.1060305@RedHat.com>
-Date: Fri, 23 Apr 2010 17:56:07 -0400
-From: Steve Dickson <SteveD@redhat.com>
-To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: NFS client send out of order offsets....
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from smtp151.dfw.emailsrvr.com ([67.192.241.151]:49635 "EHLO
+	smtp151.dfw.emailsrvr.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752742Ab0DVS2j convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 22 Apr 2010 14:28:39 -0400
+From: "Brandon Shandelson" <brandon@myshape.com>
+To: "'J. Bruce Fields'" <bfields@fieldses.org>
+Cc: <linux-nfs@vger.kernel.org>
+References: <01c701cae247$e8e50900$baaf1b00$@com> <20100422182213.GA8858@fieldses.org>
+In-Reply-To: <20100422182213.GA8858@fieldses.org>
+Subject: RE: NFSV4 Replica Support?
+Date: Thu, 22 Apr 2010 11:30:00 -0700
+Message-ID: <01c801cae249$d17ab3d0$74701b70$@com>
+Content-Type: text/plain;
+	charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Hey Trond (and all),
+I have two NFS servers with NFSV4 exports whose data are synced via Unison.  I want one server to be a hot standby for clients to use in case something happens to the primary NFS server.
 
-It been brought to my attention that Linux NFS clients, with big-ish 
-writes (8GB and above), quickly started sending out writes with
-out-of-order offsets... Meaning in the start of an 8GB write a 7GB offset 
-will be send and then smaller offsets, closer to the the beginning 
-of the file, will follow.
+The NFS exports look like this:
+/home 192.168.0.0/24(rw,fsid=0,insecure,no_subtree_check,async,repli cas=/home@msdevnfs1:/home@msdevnfs2)
 
-Now I realize this is perfectly fine from a protocol standpoint and (w/out 
-any on hands investigation) pretty sure it has to do with how pages are
-being kicked out of the cache (i.e. memory pressure), meaning is 
-not an NFS issue at all...  but... 
+The mount in fstab looks like this:
+msdevnfs1:/ /home nfs4 _netdev,auto 0 0
 
-It was also point out to me that this type of out of order-ness does 
-not happen with Solaris clients and with an AIX clients there is some 
-mount option fix out of order-ness... 
 
-So my question is there some way to tweak the client to ensure
-offset are send sequential order... 
+-Brandon
 
-Note this happening on a older kernel, so before I go off  and 
-"re-invent the wheel", I was wonder if other people have seen this
-issue and has it been addressed... 
+-----Original Message-----
+From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-owner@vger.kernel.org] On Behalf Of J. Bruce Fields
+Sent: Thursday, April 22, 2010 11:22 AM
+To: Brandon Shandelson
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: NFSV4 Replica Support?
 
-tia,
+On Thu, Apr 22, 2010 at 11:16:20AM -0700, Brandon Shandelson wrote:
+> I want to use NFSV4 replicas on Ubuntu 9.10 64-bit servers.  It doesn’t seem
+> to work.  It *looks* like the server kernel module supports it, but the NFS
+> client does not.  Is this the case, or should I be able to make replicas
+> work on Linux?
 
-steved.
+What are you actually trying to do?
+
+There's a little support for replication in that the NFSv4 server can be
+told to report certain locations as having the same data, but it's not
+really supported yet: you need smoething to create the replicas for you
+(probably doable with GFS2 as the exported filesystem, or by sharing the
+filesystem image if it's read-only).  I don't think the Linux NFSv4
+client knows how to use that information yet.
+
+--b.
+--
+To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
