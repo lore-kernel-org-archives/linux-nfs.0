@@ -1,120 +1,143 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:25448 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753548Ab0D1BWQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 27 Apr 2010 21:22:16 -0400
-Date: Tue, 27 Apr 2010 20:04:23 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: linux-nfs@vger.kernel.org, branto@redhat.com
-Subject: Re: should unstable pages be committed on close() ?
-Message-ID: <20100427200423.4e9b041c@corrin.poochiereds.net>
-In-Reply-To: <1272403086.3067.35.camel@localhost.localdomain>
-References: <20100427162133.227cc6dd@tlielax.poochiereds.net>
-	<1272403086.3067.35.camel@localhost.localdomain>
-Content-Type: text/plain; charset=US-ASCII
+Received: from mail.gmx.net ([213.165.64.20]:58406 "HELO mail.gmx.net"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with SMTP
+	id S1753304Ab0DVBRc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 21 Apr 2010 21:17:32 -0400
+Date: Thu, 22 Apr 2010 03:17:27 +0200
+From: Stefan =?iso-8859-1?Q?Kr=FCger?= <stadtkind2@gmx.de>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: strange performance issues with OS X 10.6 client
+Message-ID: <20100422011727.GA1147@gmx.de>
+References: <20100415214900.GA4143@web.de>
+ <20100419122120.GA3716@gmx.de>
+ <4BCC8C06.1080106@oracle.com>
+ <20100420212116.GA161@gmx.de>
+ <4BCE1F6A.6000902@oracle.com>
+ <20100420224408.GB161@gmx.de>
+ <E44BE585-6051-470A-900A-7B4520782A0D@oracle.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <E44BE585-6051-470A-900A-7B4520782A0D@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Tue, 27 Apr 2010 17:18:06 -0400
-Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
+On Wed, 21 Apr 2010, Chuck Lever wrote:
 
-> On Tue, 2010-04-27 at 16:21 -0400, Jeff Layton wrote: 
-> > I've got a bug report about a possible regression from one of our QA
-> > people. They were testing some of the recent write_inode/COMMIT changes
-> > with this script:
-> > 
-> > ----------------[snip]-----------------
-> > #! /usr/bin/env bash
-> > servers="server:/export"
-> > nfsstat -c -3
-> > 
-> > for SRV in $servers
-> > do
-> >  mount $SRV /media -o nfsvers=3
-> >  rm -f /media/tmp.file
-> >  time dd if=/dev/zero bs=1024k count=2000 of=/media/tmp.file
-> >  umount /media
-> >  nfsstat -c -3
-> > done
-> > ----------------[snip]-----------------
-> > 
-> > The changes have definitely reduced the number of commit calls, but
-> > frequently we see these errors pop and the filesystem isn't unmounted.
-> > 
-> > umount.nfs: /media: device is busy
-> > umount.nfs: /media: device is busy
-> > 
-> > ...if I call /bin/sync just before the umount, then it works fine. I
-> > added a cat /proc/meminfo just before the umount and see this:
-> > 
-> > MemTotal:         980376 kB
-> > MemFree:           12364 kB
-> > Buffers:            3804 kB
-> > Cached:           803584 kB
-> > SwapCached:            0 kB
-> > Active:           172376 kB
-> > Inactive:         650252 kB
-> > Active(anon):       5592 kB
-> > Inactive(anon):     9808 kB
-> > Active(file):     166784 kB
-> > Inactive(file):   640444 kB
-> > Unevictable:           0 kB
-> > Mlocked:               0 kB
-> > SwapTotal:       2064376 kB
-> > SwapFree:        2064376 kB
-> > Dirty:                 0 kB
-> > Writeback:             0 kB
-> > AnonPages:         15240 kB
-> > Mapped:             9008 kB
-> > Shmem:               160 kB
-> > Slab:             123572 kB
-> > SReclaimable:      28096 kB
-> > SUnreclaim:        95476 kB
-> > KernelStack:        1016 kB
-> > PageTables:         2428 kB
-> > NFS_Unstable:      90384 kB
-> > Bounce:                0 kB
-> > WritebackTmp:          0 kB
-> > CommitLimit:     2554564 kB
-> > Committed_AS:      80836 kB
-> > VmallocTotal:   34359738367 kB
-> > VmallocUsed:       41980 kB
-> > VmallocChunk:   34359685244 kB
-> > HardwareCorrupted:     0 kB
-> > AnonHugePages:         0 kB
-> > HugePages_Total:       0
-> > HugePages_Free:        0
-> > HugePages_Rsvd:        0
-> > HugePages_Surp:        0
-> > Hugepagesize:       2048 kB
-> > DirectMap4k:        8128 kB
-> > DirectMap2M:     1040384 kB
-> > 
-> > ...note that Dirty and Writeback are 0, but NFS_Unstable is still at
-> > 90M or so. So, I think the problem is likely that the unstable pages
-> > are preventing the umount.
-> > 
-> > I've not done much investigation beyond this yet, but figured I'd toss
-> > the bug report out here in case anyone has thoughts on the cause and
-> > how it should be fixed. I can reproduce this fairly easily on my
-> > virtualized test rig in case anyone has patches that they want me to
-> > test.
-> 
-> I'm aware of at least one race in mainline that can result in the above
-> behaviour. There is a proposed fix in the 'bugfixes' branch on
-> linux-nfs.org. See
-> 
->   http://git.linux-nfs.org/?p=trondmy/nfs-2.6.git;a=commit;h=71d0a6112a363e703e383ae5b12c492485c39701
-> 
+> So, VMware is probably not waiting for disk writes to complete, since NFS
+> servers in VMware guests run faster than native.  Note to self: never put
+> mission critical data on NFS servers running as VMware guests.
 
-Thanks Trond, that patch does seem to fix it.
+yeah I only did this for testing...
 
-FWIW, the kernel I saw this on did not have commit
-2c61be0a9478258f77b66208a0c4b1f5f8161c3c, so apparently the race can
-manifest itself without that commit.
+> Still, the Linux NFS server has some kind of problem here when comparing
+> apples to apples.  Does increasing the number of nfsd threads on the server
+> help?
 
-Cheers,
--- 
-Jeff Layton <jlayton@redhat.com>
+Increasing the number of nfsd threads did not help (I raised them from 8 to
+32 but Fedora is still crawling when extracting the tgz file, nfsstat numbers
+below are with 8 nfsd threads on both Fedora and FreeBSD)
+
+So speaking of nfsstat, I've got some new statistics, this time I extracted
+the whole tgz and not just a single directory (+ files) inside it (statistics
+zeroed before ofc, both tests run on bare metal and on same hardware,
+network, etc.)
+
+Fedora 12:
+
+Server rpc stats:
+calls      badcalls   badauth    badclnt    xdrcall
+45960      0          0          0          0       
+
+Server nfs v3:
+null         getattr      setattr      lookup       access       readlink     
+1         0% 641       1% 6885     14% 10373    22% 18336    39% 0         0% 
+read         write        create       mkdir        symlink      mknod        
+1917      4% 2552      5% 1999      4% 228       0% 0         0% 0         0% 
+remove       rmdir        rename       link         readdir      readdirplus  
+633       1% 0         0% 3         0% 0         0% 0         0% 3         0% 
+fsstat       fsinfo       pathconf     commit       
+21        0% 1         0% 1         0% 2366      5% 
+
+FreeBSD 8:
+
+Server Info:
+  Getattr   Setattr    Lookup  Readlink      Read     Write    Create Remove
+      628      6421      5287         3       703      2490      1991 629
+   Rename      Link   Symlink     Mkdir     Rmdir   Readdir  RdirPlus Access
+        3         0         0       229         2         0         2 6526
+    Mknod    Fsstat    Fsinfo  PathConf    Commit
+        0         5         1         1      2402
+Server Ret-Failed
+             5267
+Server Faults
+            0
+Server Cache Stats:
+   Inprog      Idem  Non-idem    Misses
+        0         0         0         0
+Server Write Gathering:
+ WriteOps  WriteRPC   Opsaved
+     2490      2490         0
+
+First thing that catches my eyes is Access, it's 3x higher on Fedora, next
+would be Lookup and Read, both 2x higher
+
+MacOS 10.6 nfsstat client statistics after extracting on Fedora 12:
+
+Client Info:
+RPC Counts:
+  Getattr   Setattr    Lookup  Readlink      Read     Write    Create Remove
+      640      6885     10380         0      1919      2553      1999 634
+   Rename      Link   Symlink     Mkdir     Rmdir   Readdir  RdirPlus Access
+        3         0         0       228         1         0         3 18353
+    Mknod    Fsstat    Fsinfo  PathConf    Commit
+        0        21         1         1      2367
+RPC Info:
+ TimedOut   Invalid X Replies   Retries  Requests
+        0         0         0         0     45989
+Cache Info:
+Attr Hits    Misses Lkup Hits    Misses BioR Hits    Misses BioW Hits Misses
+    84529      5034      9021      9408      5235      1701       766 2553
+BioRLHits    Misses BioD Hits    Misses DirE Hits    Misses
+        0         0         1         3         4         0
+
+
+... after extracting on FreeBSD 8:
+
+Client Info:
+RPC Counts:
+  Getattr   Setattr    Lookup  Readlink      Read     Write    Create Remove
+      628      6421      5290         3       704      2490      1991 630
+   Rename      Link   Symlink     Mkdir     Rmdir   Readdir  RdirPlus Access
+        3         0         0       229         3         0         2 6538
+    Mknod    Fsstat    Fsinfo  PathConf    Commit
+        0         5         1         1      2402
+RPC Info:
+ TimedOut   Invalid X Replies   Retries  Requests
+        0         0         0         0     27342
+Cache Info:
+Attr Hits    Misses Lkup Hits    Misses BioR Hits    Misses BioW Hits Misses
+    36508      1529      1817      4317       958       704       767 2490
+BioRLHits    Misses BioD Hits    Misses DirE Hits    Misses
+        1         3         1         7         3         0
+
+Well this mostly matches what we've seen in the nfs server statistics,
+even though a lot more caching was done when using the Fedora nfs server
+
+nfsstat manpage on OSX explains them as:
+Attr Hits/Misses - Performance of the NFS file attribute cache.
+Lkup Hits/Misses - Performance of the directory name lookup cache.
+BioR Hits/Misses - Performance of block cache for reads.
+BioW Hits/Misses - Performance of block cache for writes.
+BioRL Hits/Misses - Performance of symbolic link cache.
+BioD Hits/Misses - Performance of directory cache.
+DirE Hits/Misses - Performance of directory offset cache.
+
+I've also captured the traffic from both sessions with tcpdump, it's quite
+huge though, 42MB for Fedora and 10MB for FreeBSD... let me know if you want
+to take a look
+
+TIA
+
+PS: Please let me say again that extraction time using FreeBSD nfs is 10
+*seconds* while on Fedora it's over 5 *minutes*...
