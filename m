@@ -1,29 +1,28 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from e1.ny.us.ibm.com ([32.97.182.141]:36208 "EHLO e1.ny.us.ibm.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758141Ab0EAAbz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 30 Apr 2010 20:31:55 -0400
-Date: Fri, 30 Apr 2010 17:31:53 -0700
-From: "Paul E. McKenney" <paulmck@linux.vnet.ibm.com>
-To: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org
-Cc: mingo@elte.hu, peterz@infradead.org, Trond.Myklebust@netapp.com
-Subject: [PATCH] fix RCU-lockdep splats in NFS
-Message-ID: <20100501003153.GA27982@linux.vnet.ibm.com>
-Reply-To: paulmck@linux.vnet.ibm.com
-Content-Type: text/plain; charset=us-ascii
+Received: from smtp151.dfw.emailsrvr.com ([67.192.241.151]:49870 "EHLO
+	smtp151.dfw.emailsrvr.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753434Ab0DVSPB convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 22 Apr 2010 14:15:01 -0400
+Received: from relay15.relay.dfw.mlsrvr.com (localhost [127.0.0.1])
+	by relay15.relay.dfw.mlsrvr.com (SMTP Server) with ESMTP id 517C530B02A1
+	for <linux-nfs@vger.kernel.org>; Thu, 22 Apr 2010 14:14:59 -0400 (EDT)
+Received: by relay15.relay.dfw.mlsrvr.com (Authenticated sender: brandon-AT-myshape.com) with ESMTPA id 208B930B10AC
+	for <linux-nfs@vger.kernel.org>; Thu, 22 Apr 2010 14:14:59 -0400 (EDT)
+From: "Brandon Shandelson" <brandon@myshape.com>
+To: <linux-nfs@vger.kernel.org>
+References: 
+In-Reply-To: 
+Subject: RE: NFSV4 Replica Support?
+Date: Thu, 22 Apr 2010 11:16:20 -0700
+Message-ID: <01c701cae247$e8e50900$baaf1b00$@com>
+Content-Type: text/plain;
+	charset="iso-8859-1"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Hello!
+I want to use NFSV4 replicas on Ubuntu 9.10 64-bit servers.  It doesn't seem
+to work.  It *looks* like the server kernel module supports it, but the NFS
+client does not.  Is this the case, or should I be able to make replicas
+work on Linux?
 
-The following pair of fixes for RCU-lockdep splats have passed testing,
-so are ready for inclusion.  Ingo suggests the NFS tree, so here they are!
-
-							Thanx, Paul
-
-------------------------------------------------------------------------
-
- b/fs/nfs/delegation.c |   42 ++++++++++++++++++++++++++++--------------
- fs/nfs/delegation.c   |   44 +++++++++++++++++++++++---------------------
- 2 files changed, 51 insertions(+), 35 deletions(-)
