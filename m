@@ -1,72 +1,71 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH] nfs: fix memory leak in nfs_get_sb with CONFIG_NFS_V4
-Date: Thu, 22 Apr 2010 12:09:54 -0400
-Message-ID: <4BD074D2.8070300@oracle.com>
-References: <1271933777-26244-1-git-send-email-dfeng@redhat.com>
+From: "J.Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH] - avoid permission checks on EXCLUSIVE_CREATE replay
+Date: Thu, 22 Apr 2010 12:25:33 -0400
+Message-ID: <20100422162533.GH5926@fieldses.org>
+References: <20100422101042.226f71d6@notabene.brown>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
-	Trond Myklebust <Trond.Myklebust@netapp.com>,
-	Benny Halevy <bhalevy@panasas.com>,
-	Al Viro <viro@ZenIV.linux.org.uk>,
-	Andy Adamson <andros@netapp.com>
-To: Xiaotian Feng <dfeng@redhat.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <1271933777-26244-1-git-send-email-dfeng@redhat.com>
-Sender: linux-kernel-owner@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-nfs@vger.kernel.org
+To: Neil Brown <neilb@suse.de>
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from fieldses.org ([174.143.236.118]:52646 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754326Ab0DVQZe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 22 Apr 2010 12:25:34 -0400
+In-Reply-To: <20100422101042.226f71d6-wvvUuzkyo1EYVZTmpyfIwg@public.gmane.org>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 04/22/2010 06:56 AM, Xiaotian Feng wrote:
-> With CONFIG_NFS_V4 and data version 4, nfs_get_sb will allocate memory for
-> export_path in nfs4_validate_text_mount_data, so we need to free it then.
-> This is addressed in following kmemleak report:
->
-> unreferenced object 0xffff88016bf48a50 (size 16):
->    comm "mount.nfs", pid 22567, jiffies 4651574704 (age 175471.200s)
->    hex dump (first 16 bytes):
->      2f 6f 70 74 2f 77 6f 72 6b 00 6b 6b 6b 6b 6b a5  /opt/work.kkkkk.
->    backtrace:
->      [<ffffffff814b34f9>] kmemleak_alloc+0x60/0xa7
->      [<ffffffff81102c76>] kmemleak_alloc_recursive.clone.5+0x1b/0x1d
->      [<ffffffff811046b3>] __kmalloc_track_caller+0x18f/0x1b7
->      [<ffffffff810e1b08>] kstrndup+0x37/0x54
->      [<ffffffffa0336971>] nfs_parse_devname+0x152/0x204 [nfs]
->      [<ffffffffa0336af3>] nfs4_validate_text_mount_data+0xd0/0xdc [nfs]
->      [<ffffffffa0338deb>] nfs_get_sb+0x325/0x736 [nfs]
->      [<ffffffff81113671>] vfs_kern_mount+0xbd/0x17c
->      [<ffffffff81113798>] do_kern_mount+0x4d/0xed
->      [<ffffffff81129a87>] do_mount+0x787/0x7fe
->      [<ffffffff81129b86>] sys_mount+0x88/0xc2
->      [<ffffffff81009b42>] system_call_fastpath+0x16/0x1b
->
-> Signed-off-by: Xiaotian Feng<dfeng@redhat.com>
-> Cc: Trond Myklebust<Trond.Myklebust@netapp.com>
-> Cc: Chuck Lever<chuck.lever@oracle.com>
-> Cc: Benny Halevy<bhalevy@panasas.com>
-> Cc: Al Viro<viro@ZenIV.linux.org.uk>
-> Cc: Andy Adamson<andros@netapp.com>
-> ---
->   fs/nfs/super.c |    1 +
->   1 files changed, 1 insertions(+), 0 deletions(-)
->
-> diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-> index e016372..44e6567 100644
-> --- a/fs/nfs/super.c
-> +++ b/fs/nfs/super.c
-> @@ -2187,6 +2187,7 @@ static int nfs_get_sb(struct file_system_type *fs_type,
->   	if (data->version == 4) {
->   		error = nfs4_try_mount(flags, dev_name, data, mnt);
->   		kfree(data->client_address);
-> +		kfree(data->nfs_server.export_path);
+On Thu, Apr 22, 2010 at 10:10:42AM +1000, Neil Brown wrote:
+> 
+> With NFSv4, if we create a file then open it we explicit avoid checking the
+> permissions on the file during the open because the fact that we created it
+> ensures we should be allow to open it (the create and the open should appear
+> to be a single operation).
+> 
+> However if the reply to an EXCLUSIVE create gets lots and the client resends
+> the create, the current code will perform the permission check - because it
+> doesn't realise that it did the open already..
+> 
+> This patch should fix this.
 
-nfs4_try_mount's other call site in fs/nfs/super.c also frees 
-data->nfs_server.hostname and data->fscache_uniq.  Does that need to 
-happen here too?
+Thanks, but: hm, does this leave a loophole for a clever attacker?
+They'll still have to get past the initial
 
->   		goto out;
->   	}
->   #endif	/* CONFIG_NFS_V4 */
+	fh_verify(rqstp, fhp, S_IFDIR, NFSD_MAY_CREATE)
 
+but that just checks the parent directory; if the existing file is
+actually owned by someone else, do we allow an open that we shouldn't?
 
--- 
-chuck[dot]lever[at]oracle[dot]com
+Maybe when "created" is set we should keep the permission check but add
+NFSD_ALLOW_OWNER_OVERRIDE?
+
+--b.
+
+> 
+> Note that I haven't actually seen this cause a problem.  I was just looking
+> at the code trying to figure out a different EXCLUSIVE open related issue,
+> and this looked wrong.
+> 
+> NeilBrown
+> 
+> 
+> Signed-off-by: NeilBrown <neilb@suse.de>
+> 
+> diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+> index 6dd5f19..ec40b36 100644
+> --- a/fs/nfsd/vfs.c
+> +++ b/fs/nfsd/vfs.c
+> @@ -1451,8 +1451,11 @@ nfsd_create_v3(struct svc_rqst *rqstp, struct svc_fh *fhp,
+>  		case NFS3_CREATE_EXCLUSIVE:
+>  			if (   dchild->d_inode->i_mtime.tv_sec == v_mtime
+>  			    && dchild->d_inode->i_atime.tv_sec == v_atime
+> -			    && dchild->d_inode->i_size  == 0 )
+> +			    && dchild->d_inode->i_size  == 0 ) {
+> +				if (created)
+> +					*created = 1;
+>  				break;
+> +			}
+>  			 /* fallthru */
+>  		case NFS3_CREATE_GUARDED:
+>  			err = nfserr_exist;
