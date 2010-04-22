@@ -1,162 +1,156 @@
 From: "J. Bruce Fields" <bfields@citi.umich.edu>
-Subject: [PATCH 2/2] nfsd4: implement reclaim_complete
-Date: Thu, 22 Apr 2010 10:32:24 -0400
-Message-ID: <1271946744-5877-2-git-send-email-bfields@citi.umich.edu>
+Subject: Re: [PATCH 1/2] nfsd4: complete enforcement of 4.1 op ordering
+Date: Thu, 22 Apr 2010 10:48:31 -0400
+Message-ID: <20100422144831.GA5926@fieldses.org>
 References: <1271946744-5877-1-git-send-email-bfields@citi.umich.edu>
-Cc: "J. Bruce Fields" <bfields@citi.umich.edu>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:48713 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:47321 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754964Ab0DVOcY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 22 Apr 2010 10:32:24 -0400
+	id S1755212Ab0DVOsc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 22 Apr 2010 10:48:32 -0400
+Received: from bfields by fieldses.org with local (Exim 4.69)
+	(envelope-from <bfields@fieldses.org>)
+	id 1O4xhf-0001az-M8
+	for linux-nfs@vger.kernel.org; Thu, 22 Apr 2010 10:48:31 -0400
 In-Reply-To: <1271946744-5877-1-git-send-email-bfields@citi.umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This is a mandatory operation.  Also, here (not in open) is where we
-should be committing the reboot recovery information.
+On Thu, Apr 22, 2010 at 10:32:23AM -0400, J. Bruce Fields wrote:
+> Enforce the rules about compound op ordering.
+> 
+> Motivated by implementing RECLAIM_COMPLETE, for which the client is
+> implicit in the current session, so it is important to ensure a
+> succesful SEQUENCE proceeds the RECLAIM_COMPLETE.
 
-Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
----
- Documentation/filesystems/nfs/nfs41-server.txt |    2 +-
- fs/nfsd/nfs4proc.c                             |    5 +++++
- fs/nfsd/nfs4state.c                            |   22 +++++++++++++++++++---
- fs/nfsd/nfs4xdr.c                              |   12 +++++++++++-
- fs/nfsd/xdr4.h                                 |    6 ++++++
- 5 files changed, 42 insertions(+), 5 deletions(-)
+The other problem here is that while we have a reference count on the
+session itself preventing it from going away till the compound is done,
+I don't see what prevents the associated clientid from going away.
 
-diff --git a/Documentation/filesystems/nfs/nfs41-server.txt b/Documentation/filesystems/nfs/nfs41-server.txt
-index 6a53a84..0488491 100644
---- a/Documentation/filesystems/nfs/nfs41-server.txt
-+++ b/Documentation/filesystems/nfs/nfs41-server.txt
-@@ -137,7 +137,7 @@ NS*| OPENATTR             | OPT        |              | Section 18.17  |
-    | READ                 | REQ        |              | Section 18.22  |
-    | READDIR              | REQ        |              | Section 18.23  |
-    | READLINK             | OPT        |              | Section 18.24  |
--NS | RECLAIM_COMPLETE     | REQ        |              | Section 18.51  |
-+   | RECLAIM_COMPLETE     | REQ        |              | Section 18.51  |
-    | RELEASE_LOCKOWNER    | MNI        |              | N/A            |
-    | REMOVE               | REQ        |              | Section 18.25  |
-    | RENAME               | REQ        |              | Section 18.26  |
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index e147dbc..fd01b33 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -1310,6 +1310,11 @@ static struct nfsd4_operation nfsd4_ops[] = {
- 		.op_flags = ALLOWED_WITHOUT_FH | ALLOWED_AS_FIRST_OP,
- 		.op_name = "OP_SEQUENCE",
- 	},
-+	[OP_RECLAIM_COMPLETE] = {
-+		.op_func = (nfsd4op_func)nfsd4_reclaim_complete,
-+		.op_flags = ALLOWED_WITHOUT_FH,
-+		.op_name = "OP_RECLAIM_COMPLETE",
-+	},
- };
- 
- static const char *nfsd4_op_name(unsigned opnum)
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index e444829..b9d9c04 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -1482,6 +1482,24 @@ out:
- }
- 
- __be32
-+nfsd4_reclaim_complete(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate, struct nfsd4_reclaim_complete *rc)
-+{
-+	if (rc->rca_one_fs) {
-+		if (!cstate->current_fh.fh_dentry)
-+			return nfserr_nofilehandle;
-+		/*
-+		 * We don't take advantage of the rca_one_fs case.
-+		 * That's OK, it's optional, we can safely ignore it.
-+		 */
-+		 return nfs_ok;
-+	}
-+	nfs4_lock_state();
-+	nfsd4_create_clid_dir(cstate->session->se_client);
-+	nfs4_unlock_state();
-+	return nfs_ok;
-+}
-+
-+__be32
- nfsd4_setclientid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 		  struct nfsd4_setclientid *setclid)
- {
-@@ -2492,10 +2510,8 @@ nfsd4_process_open2(struct svc_rqst *rqstp, struct svc_fh *current_fh, struct nf
- 	}
- 	memcpy(&open->op_stateid, &stp->st_stateid, sizeof(stateid_t));
- 
--	if (nfsd4_has_session(&resp->cstate)) {
-+	if (nfsd4_has_session(&resp->cstate))
- 		open->op_stateowner->so_confirmed = 1;
--		nfsd4_create_clid_dir(open->op_stateowner->so_client);
--	}
- 
- 	/*
- 	* Attempt to hand out a delegation. No error return, because the
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index fb27b1d..bc4b86d 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -1233,6 +1233,16 @@ nfsd4_decode_sequence(struct nfsd4_compoundargs *argp,
- 	DECODE_TAIL;
- }
- 
-+static __be32 nfsd4_decode_reclaim_complete(struct nfsd4_compoundargs *argp, struct nfsd4_reclaim_complete *rc)
-+{
-+	DECODE_HEAD;
-+
-+	READ_BUF(4);
-+	READ32(rc->rca_one_fs);
-+
-+	DECODE_TAIL;
-+}
-+
- static __be32
- nfsd4_decode_noop(struct nfsd4_compoundargs *argp, void *p)
- {
-@@ -1345,7 +1355,7 @@ static nfsd4_dec nfsd41_dec_ops[] = {
- 	[OP_TEST_STATEID]	= (nfsd4_dec)nfsd4_decode_notsupp,
- 	[OP_WANT_DELEGATION]	= (nfsd4_dec)nfsd4_decode_notsupp,
- 	[OP_DESTROY_CLIENTID]	= (nfsd4_dec)nfsd4_decode_notsupp,
--	[OP_RECLAIM_COMPLETE]	= (nfsd4_dec)nfsd4_decode_notsupp,
-+	[OP_RECLAIM_COMPLETE]	= (nfsd4_dec)nfsd4_decode_reclaim_complete,
- };
- 
- struct nfsd4_minorversion_ops {
-diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
-index c28958e..4d476ff 100644
---- a/fs/nfsd/xdr4.h
-+++ b/fs/nfsd/xdr4.h
-@@ -381,6 +381,10 @@ struct nfsd4_destroy_session {
- 	struct nfs4_sessionid	sessionid;
- };
- 
-+struct nfsd4_reclaim_complete {
-+	u32 rca_one_fs;
-+};
-+
- struct nfsd4_op {
- 	int					opnum;
- 	__be32					status;
-@@ -421,6 +425,7 @@ struct nfsd4_op {
- 		struct nfsd4_create_session	create_session;
- 		struct nfsd4_destroy_session	destroy_session;
- 		struct nfsd4_sequence		sequence;
-+		struct nfsd4_reclaim_complete	reclaim_complete;
- 	} u;
- 	struct nfs4_replay *			replay;
- };
-@@ -523,6 +528,7 @@ extern __be32 nfsd4_sequence(struct svc_rqst *,
- extern __be32 nfsd4_destroy_session(struct svc_rqst *,
- 		struct nfsd4_compound_state *,
- 		struct nfsd4_destroy_session *);
-+__be32 nfsd4_reclaim_complete(struct svc_rqst *, struct nfsd4_compound_state *, struct nfsd4_reclaim_complete *);
- extern __be32 nfsd4_process_open1(struct nfsd4_compound_state *,
- 		struct nfsd4_open *open);
- extern __be32 nfsd4_process_open2(struct svc_rqst *rqstp,
--- 
-1.6.3.3
+To fix that, and to be more polite to 4.0 clients, I think we want to
+also add a client pointer to the compound_state structure, keep count of
+the number of compounds in progress which reference that client, and not
+start the client's expiry timer until we've encoded the reply to the
+compound.
 
+One question there is whether it's really correct to assume that a
+single compound can reference only one client.  (I don't think rfc 3530
+explicitly forbids a single compound referring to multiple clients.  rfc
+5661 explicitly allows it in the case of DESTROY_CLIENTID, though that's
+a special case.)
+
+--b.
+
+> 
+> Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
+> ---
+>  fs/nfsd/nfs4proc.c  |   44 ++++++++++++++++++++++++++++++--------------
+>  fs/nfsd/nfs4state.c |   13 +++++++++++++
+>  2 files changed, 43 insertions(+), 14 deletions(-)
+> 
+> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+> index 37514c4..e147dbc 100644
+> --- a/fs/nfsd/nfs4proc.c
+> +++ b/fs/nfsd/nfs4proc.c
+> @@ -968,20 +968,36 @@ static struct nfsd4_operation nfsd4_ops[];
+>  static const char *nfsd4_op_name(unsigned opnum);
+>  
+>  /*
+> - * Enforce NFSv4.1 COMPOUND ordering rules.
+> + * Enforce NFSv4.1 COMPOUND ordering rules:
+>   *
+> - * TODO:
+> - * - enforce NFS4ERR_NOT_ONLY_OP,
+> - * - DESTROY_SESSION MUST be the final operation in the COMPOUND request.
+> + * Also note, enforced elsewhere:
+> + *	- SEQUENCE other than as first op results in
+> + *	  NFS4ERR_SEQUENCE_POS. (Enforced in nfsd4_sequence().)
+> + *	- BIND_CONN_TO_SESSION must be the only op in its compound
+> + *	  (Will be enforced in nfsd4_bind_conn_to_session().)
+> + *	- DESTROY_SESSION must be the final operation in a compound, if
+> + *	  sessionid's in SEQUENCE and DESTROY_SESSION are the same.
+> + *	  (Enforced in nfsd4_destroy_session().)
+>   */
+> -static bool nfs41_op_ordering_ok(struct nfsd4_compoundargs *args)
+> +static __be32 nfs41_check_op_ordering(struct nfsd4_compoundargs *args)
+>  {
+> -	if (args->minorversion && args->opcnt > 0) {
+> -		struct nfsd4_op *op = &args->ops[0];
+> -		return (op->status == nfserr_op_illegal) ||
+> -		       (nfsd4_ops[op->opnum].op_flags & ALLOWED_AS_FIRST_OP);
+> -	}
+> -	return true;
+> +	struct nfsd4_op *op = &args->ops[0];
+> +
+> +	/* These ordering requirements don't apply to NFSv4.0: */
+> +	if (args->minorversion == 0)
+> +		return nfs_ok;
+> +	/* This is weird, but OK, not our problem: */
+> +	if (args->opcnt == 0)
+> +		return nfs_ok;
+> +	if (op->status == nfserr_op_illegal)
+> +		return nfs_ok;
+> +	if (!(nfsd4_ops[op->opnum].op_flags & ALLOWED_AS_FIRST_OP))
+> +		return nfserr_op_not_in_session;
+> +	if (op->opnum == OP_SEQUENCE)
+> +		return nfs_ok;
+> +	if (args->opcnt != 1)
+> +		return nfserr_not_only_op;
+> +	return nfs_ok;
+>  }
+>  
+>  /*
+> @@ -1023,13 +1039,13 @@ nfsd4_proc_compound(struct svc_rqst *rqstp,
+>  	if (args->minorversion > nfsd_supported_minorversion)
+>  		goto out;
+>  
+> -	if (!nfs41_op_ordering_ok(args)) {
+> +	status = nfs41_check_op_ordering(args);
+> +	if (status) {
+>  		op = &args->ops[0];
+> -		op->status = nfserr_sequence_pos;
+> +		op->status = status;
+>  		goto encode_op;
+>  	}
+>  
+> -	status = nfs_ok;
+>  	while (!status && resp->opcnt < args->opcnt) {
+>  		op = &args->ops[resp->opcnt++];
+>  
+> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> index 5051ade..e444829 100644
+> --- a/fs/nfsd/nfs4state.c
+> +++ b/fs/nfsd/nfs4state.c
+> @@ -1365,6 +1365,14 @@ out:
+>  	return status;
+>  }
+>  
+> +static bool nfsd4_last_compound_op(struct svc_rqst *rqstp)
+> +{
+> +	struct nfsd4_compoundres *resp = rqstp->rq_resp;
+> +	struct nfsd4_compoundargs *argp = rqstp->rq_argp;
+> +
+> +	return argp->opcnt == resp->opcnt;
+> +}
+> +
+>  __be32
+>  nfsd4_destroy_session(struct svc_rqst *r,
+>  		      struct nfsd4_compound_state *cstate,
+> @@ -1380,6 +1388,11 @@ nfsd4_destroy_session(struct svc_rqst *r,
+>  	 * - Do we need to clear any callback info from previous session?
+>  	 */
+>  
+> +	if (!memcmp(&sessionid->sessionid, &cstate->session->se_sessionid,
+> +					sizeof(struct nfs4_sessionid))) {
+> +		if (!nfsd4_last_compound_op(r))
+> +			return nfserr_not_only_op;
+> +	}
+>  	dump_sessionid(__func__, &sessionid->sessionid);
+>  	spin_lock(&sessionid_lock);
+>  	ses = find_in_sessionid_hashtbl(&sessionid->sessionid);
+> -- 
+> 1.6.3.3
+> 
