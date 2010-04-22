@@ -1,76 +1,71 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp.opengridcomputing.com ([209.198.142.2]:38339 "EHLO
-	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1755228Ab0DEQTk (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 5 Apr 2010 12:19:40 -0400
-Message-ID: <4BBA0D9C.8080504@opengridcomputing.com>
-Date: Mon, 05 Apr 2010 11:19:40 -0500
-From: Tom Tucker <tom@opengridcomputing.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Chuck Lever <chuck.lever@oracle.com>, Tom Tucker <tom@ogc.us>,
-        Steve Wise <swise@opengridcomputing.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        linux-rdma@vger.kernel.org
-Subject: Re: [PATCH] svcrdma: RDMA support not yet compatible with RPC6
-References: <4BB74241.4060308@ogc.us> <4BB9F9D0.1040203@oracle.com> <20100405154850.GG16370@fieldses.org> <4BBA06B8.3090201@opengridcomputing.com> <20100405161618.GI16370@fieldses.org> <20100405162020.GJ16370@fieldses.org>
-In-Reply-To: <20100405162020.GJ16370@fieldses.org>
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Received: from fieldses.org ([174.143.236.118]:58091 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753811Ab0DVSe3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 22 Apr 2010 14:34:29 -0400
+Date: Thu, 22 Apr 2010 14:34:28 -0400
+From: "'J. Bruce Fields'" <bfields@fieldses.org>
+To: Brandon Shandelson <brandon@myshape.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: NFSV4 Replica Support?
+Message-ID: <20100422183428.GD8858@fieldses.org>
+References: <01c701cae247$e8e50900$baaf1b00$@com> <20100422182213.GA8858@fieldses.org> <01c801cae249$d17ab3d0$74701b70$@com>
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <01c801cae249$d17ab3d0$74701b70$@com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-J. Bruce Fields wrote:
-> On Mon, Apr 05, 2010 at 12:16:18PM -0400, J. Bruce Fields wrote:
->   
->> On Mon, Apr 05, 2010 at 10:50:16AM -0500, Tom Tucker wrote:
->>     
->>> J. Bruce Fields wrote:
->>>       
->>>> On Mon, Apr 05, 2010 at 10:55:12AM -0400, Chuck Lever wrote:
->>>>   
->>>>         
->>>>> On 04/03/2010 09:27 AM, Tom Tucker wrote:
->>>>>     
->>>>>           
->>>>>> RPC6 requires that it be possible to create endpoints that listen
->>>>>> exclusively for IPv4 or IPv6 connection requests. This is not currently
->>>>>> supported by the RDMA API.
->>>>>>
->>>>>> Signed-off-by: Tom Tucker<tom@opengridcomputing.com>
->>>>>> Tested-by: Steve Wise<swise@opengridcomputing.com>
->>>>>>       
->>>>>>             
->>>>> Reviewed-by: Chuck Lever <chuck.lever@oracle.com>
->>>>>     
->>>>>           
->>>> Thanks to all.  I take it the problem began with 37498292a "NFSD: Create
->>>> PF_INET6 listener in write_ports"?
->>>>
->>>>   
->>>>         
->>> Yes.
->>>       
->> Thanks.  I'll pass along
->>
->> 	git://linux-nfs.org/~bfields/linux.git for-2.6.34
->>
->> soon.
->>     
->
-> And: sorry we didn't catch this when it happened.  I have some of the
-> equipment I'd need to do basic regression tests, but haven't set it up.
->
-> I hope I get to it at some point....  For now I depend on others to
-> catch even basic rdma regressions--let me know if there's some way I
-> could make your testing easier.
->
->   
+On Thu, Apr 22, 2010 at 11:30:00AM -0700, Brandon Shandelson wrote:
+> I have two NFS servers with NFSV4 exports whose data are synced via Unison.  I want one server to be a hot standby for clients to use in case something happens to the primary NFS server.
 
-We were focused on older kernels..and probably should have caught it 
-quicker. No worries. Thanks,
+That won't work, sorry; even if the file contents are the same, the
+filehandles are different (unless you copy the actual underlying
+filesystem images instead of running unison on the two filesystems).
+And even with that problem fixed, the client probably wouldn't know how
+to use the replica information.
 
-Tom
+--b.
 
+> 
+> The NFS exports look like this:
+> /home 192.168.0.0/24(rw,fsid=0,insecure,no_subtree_check,async,repli cas=/home@msdevnfs1:/home@msdevnfs2)
+> 
+> The mount in fstab looks like this:
+> msdevnfs1:/ /home nfs4 _netdev,auto 0 0
+> 
+> 
+> -Brandon
+> 
+> -----Original Message-----
+> From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-owner@vger.kernel.org] On Behalf Of J. Bruce Fields
+> Sent: Thursday, April 22, 2010 11:22 AM
+> To: Brandon Shandelson
+> Cc: linux-nfs@vger.kernel.org
+> Subject: Re: NFSV4 Replica Support?
+> 
+> On Thu, Apr 22, 2010 at 11:16:20AM -0700, Brandon Shandelson wrote:
+> > I want to use NFSV4 replicas on Ubuntu 9.10 64-bit servers.  It doesn’t seem
+> > to work.  It *looks* like the server kernel module supports it, but the NFS
+> > client does not.  Is this the case, or should I be able to make replicas
+> > work on Linux?
+> 
+> What are you actually trying to do?
+> 
+> There's a little support for replication in that the NFSv4 server can be
+> told to report certain locations as having the same data, but it's not
+> really supported yet: you need smoething to create the replicas for you
+> (probably doable with GFS2 as the exported filesystem, or by sharing the
+> filesystem image if it's read-only).  I don't think the Linux NFSv4
+> client knows how to use that information yet.
+> 
 > --b.
->   
-
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
