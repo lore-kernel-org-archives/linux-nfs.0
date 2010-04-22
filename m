@@ -1,43 +1,135 @@
 From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH 1/5] SUNRPC: Fix a bug in rpcauth_prune_expired
-Date: Thu, 22 Apr 2010 16:50:17 -0400
-Message-ID: <1271969421-7443-2-git-send-email-Trond.Myklebust@netapp.com>
+Subject: [PATCH 5/5] NFS: Fix an unstable write data integrity race
+Date: Thu, 22 Apr 2010 16:50:21 -0400
+Message-ID: <1271969421-7443-6-git-send-email-Trond.Myklebust@netapp.com>
 References: <1271969421-7443-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1271969421-7443-2-git-send-email-Trond.Myklebust@netapp.com>
+ <1271969421-7443-3-git-send-email-Trond.Myklebust@netapp.com>
+ <1271969421-7443-4-git-send-email-Trond.Myklebust@netapp.com>
+ <1271969421-7443-5-git-send-email-Trond.Myklebust@netapp.com>
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:56493 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:52860 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754019Ab0DVUuY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 22 Apr 2010 16:50:24 -0400
+	id S1755217Ab0DVUu1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 22 Apr 2010 16:50:27 -0400
 Received: from localhost.localdomain (kmanoj02-lxp.hq.netapp.com [10.58.60.82] (may be forged))
-	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id o3MKoMJ6026155
-	for <linux-nfs@vger.kernel.org>; Thu, 22 Apr 2010 13:50:23 -0700 (PDT)
-In-Reply-To: <1271969421-7443-1-git-send-email-Trond.Myklebust@netapp.com>
+	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id o3MKoMJA026155
+	for <linux-nfs@vger.kernel.org>; Thu, 22 Apr 2010 13:50:25 -0700 (PDT)
+In-Reply-To: <1271969421-7443-5-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Don't want to evict a credential if cred->cr_expire == jiffies, since that
-means that it was just placed on the cred_unused list. We therefore need to
-use time_in_range() rather than time_in_range_open().
+Commit 2c61be0a9478258f77b66208a0c4b1f5f8161c3c (NFS: Ensure that the WRITE
+and COMMIT RPC calls are always uninterruptible) exposed a race on file
+close. In order to ensure correct close-to-open behaviour, we want to wait
+for all outstanding background commit operations to complete.
+
+This patch adds an inode flag that indicates if a commit operation is under
+way, and provides a mechanism to allow ->write_inode() to wait for its
+completion if this is a data integrity flush.
 
 Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
- net/sunrpc/auth.c |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
+ fs/nfs/write.c         |   36 ++++++++++++++++++++++++++++++++----
+ include/linux/nfs_fs.h |    1 +
+ 2 files changed, 33 insertions(+), 4 deletions(-)
 
-diff --git a/net/sunrpc/auth.c b/net/sunrpc/auth.c
-index f394fc1..95afe79 100644
---- a/net/sunrpc/auth.c
-+++ b/net/sunrpc/auth.c
-@@ -237,7 +237,7 @@ rpcauth_prune_expired(struct list_head *free, int nr_to_scan)
- 	list_for_each_entry_safe(cred, next, &cred_unused, cr_lru) {
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index de38d63..ccde2ae 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -1201,6 +1201,25 @@ int nfs_writeback_done(struct rpc_task *task, struct nfs_write_data *data)
  
- 		/* Enforce a 60 second garbage collection moratorium */
--		if (time_in_range_open(cred->cr_expire, expired, jiffies) &&
-+		if (time_in_range(cred->cr_expire, expired, jiffies) &&
- 		    test_bit(RPCAUTH_CRED_HASHED, &cred->cr_flags) != 0)
- 			continue;
  
+ #if defined(CONFIG_NFS_V3) || defined(CONFIG_NFS_V4)
++static int nfs_commit_set_lock(struct nfs_inode *nfsi, int may_wait)
++{
++	if (!test_and_set_bit(NFS_INO_COMMIT, &nfsi->flags))
++		return 1;
++	if (may_wait && !out_of_line_wait_on_bit_lock(&nfsi->flags,
++				NFS_INO_COMMIT, nfs_wait_bit_killable,
++				TASK_KILLABLE))
++		return 1;
++	return 0;
++}
++
++static void nfs_commit_clear_lock(struct nfs_inode *nfsi)
++{
++	clear_bit(NFS_INO_COMMIT, &nfsi->flags);
++	smp_mb__after_clear_bit();
++	wake_up_bit(&nfsi->flags, NFS_INO_COMMIT);
++}
++
++
+ static void nfs_commitdata_release(void *data)
+ {
+ 	struct nfs_write_data *wdata = data;
+@@ -1262,8 +1281,6 @@ static int nfs_commit_rpcsetup(struct list_head *head,
+ 	task = rpc_run_task(&task_setup_data);
+ 	if (IS_ERR(task))
+ 		return PTR_ERR(task);
+-	if (how & FLUSH_SYNC)
+-		rpc_wait_for_completion_task(task);
+ 	rpc_put_task(task);
+ 	return 0;
+ }
+@@ -1294,6 +1311,7 @@ nfs_commit_list(struct inode *inode, struct list_head *head, int how)
+ 				BDI_RECLAIMABLE);
+ 		nfs_clear_page_tag_locked(req);
+ 	}
++	nfs_commit_clear_lock(NFS_I(inode));
+ 	return -ENOMEM;
+ }
+ 
+@@ -1349,6 +1367,7 @@ static void nfs_commit_release(void *calldata)
+ 	next:
+ 		nfs_clear_page_tag_locked(req);
+ 	}
++	nfs_commit_clear_lock(NFS_I(data->inode));
+ 	nfs_commitdata_release(calldata);
+ }
+ 
+@@ -1363,8 +1382,11 @@ static const struct rpc_call_ops nfs_commit_ops = {
+ static int nfs_commit_inode(struct inode *inode, int how)
+ {
+ 	LIST_HEAD(head);
+-	int res;
++	int may_wait = how & FLUSH_SYNC;
++	int res = 0;
+ 
++	if (!nfs_commit_set_lock(NFS_I(inode), may_wait))
++		goto out;
+ 	spin_lock(&inode->i_lock);
+ 	res = nfs_scan_commit(inode, &head, 0, 0);
+ 	spin_unlock(&inode->i_lock);
+@@ -1372,7 +1394,13 @@ static int nfs_commit_inode(struct inode *inode, int how)
+ 		int error = nfs_commit_list(inode, &head, how);
+ 		if (error < 0)
+ 			return error;
+-	}
++		if (may_wait)
++			wait_on_bit(&NFS_I(inode)->flags, NFS_INO_COMMIT,
++					nfs_wait_bit_killable,
++					TASK_KILLABLE);
++	} else
++		nfs_commit_clear_lock(NFS_I(inode));
++out:
+ 	return res;
+ }
+ 
+diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
+index 1a0b85a..07ce460 100644
+--- a/include/linux/nfs_fs.h
++++ b/include/linux/nfs_fs.h
+@@ -209,6 +209,7 @@ struct nfs_inode {
+ #define NFS_INO_FLUSHING	(4)		/* inode is flushing out data */
+ #define NFS_INO_FSCACHE		(5)		/* inode can be cached by FS-Cache */
+ #define NFS_INO_FSCACHE_LOCK	(6)		/* FS-Cache cookie management lock */
++#define NFS_INO_COMMIT		(7)		/* inode is committing unstable writes */
+ 
+ static inline struct nfs_inode *NFS_I(const struct inode *inode)
+ {
 -- 
 1.6.6.1
 
