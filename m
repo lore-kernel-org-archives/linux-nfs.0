@@ -1,59 +1,67 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-gy0-f174.google.com ([209.85.160.174]:64972 "EHLO
-	mail-gy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753930Ab0DURJV (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 21 Apr 2010 13:09:21 -0400
-In-Reply-To: <20100421204819.b86ee3f7.stealth@sourcemage.org>
-References: <20100417195747.5fae8834.stealth@sourcemage.org>
-	 <4BCF2A2C.7070407@maine.edu>
-	 <20100421204819.b86ee3f7.stealth@sourcemage.org>
-Date: Wed, 21 Apr 2010 12:09:20 -0500
-Message-ID: <q2zd3da20d01004211009jccd81479v83e2ef4b6d5db7bf@mail.gmail.com>
-Subject: Re: NFS and /dev/mdXpY
-From: Roger Heflin <rogerheflin@gmail.com>
-To: Vlad Glagolev <stealth@sourcemage.org>
-Cc: Steve Cousins <steve.cousins@maine.edu>, linux-nfs@vger.kernel.org,
-        linux-raid@vger.kernel.org
-Content-Type: text/plain; charset=UTF-8
+Received: from cantor.suse.de ([195.135.220.2]:32854 "EHLO mx1.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1758816Ab0DVVQj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 22 Apr 2010 17:16:39 -0400
+Date: Fri, 23 Apr 2010 07:16:31 +1000
+From: Neil Brown <neilb@suse.de>
+To: "J.Bruce Fields" <bfields@fieldses.org>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] - avoid permission checks on EXCLUSIVE_CREATE replay
+Message-ID: <20100423071631.27ff3a5a@notabene.brown>
+In-Reply-To: <20100422162533.GH5926@fieldses.org>
+References: <20100422101042.226f71d6@notabene.brown>
+	<20100422162533.GH5926@fieldses.org>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, Apr 21, 2010 at 11:48 AM, Vlad Glagolev <stealth@sourcemage.org> wrote:
-> Thanks for reply, Steve!
->
-> parameters are pretty trivial, (rw,insecure) for exports, and defaults while mounting via ``mount host:/path /path'' command.
->
-> Yes. That sounds interesting, since XFS works fine with there partitions.
-> Also, I must say it's WD20EARS drives (with 4kb sector size, though parted says it's 512b).
->
-> I also tried another NFS daemon implementation (cvs version, not .22) -- unfsd (unfs3).
-> It mounts ok, but when I try to write any file to the server -- I get the same error (Stale NFS file handle).
->
-> And on the server side in dmesg I see this:
->
-> --
-> NFS: server 172.17.2.2 error: fileid changed
-> fsid 0:f: expected fileid 0x2033, got 0xb6d1e05fa150ce09
-> NFS: server 172.17.2.2 error: fileid changed
-> fsid 0:f: expected fileid 0x2033, got 0x26550b0132c0b1
-> NFS: server 172.17.2.2 error: fileid changed
-> fsid 0:f: expected fileid 0x2033, got 0x8202a60053000020
-> NFS: server 172.17.2.2 error: fileid changed
-> fsid 0:f: expected fileid 0x2033, got 0xe542f93ebc8fe157
-> NFS: server 172.17.2.2 error: fileid changed
-> fsid 0:f: expected fileid 0x2033, got 0xc00cd74ea904301
-> --
->
-> looks like NFS protocol doesn't like something in partitioned software RAID.
->
+On Thu, 22 Apr 2010 12:25:33 -0400
+"J.Bruce Fields" <bfields@fieldses.org> wrote:
 
+> On Thu, Apr 22, 2010 at 10:10:42AM +1000, Neil Brown wrote:
+> > 
+> > With NFSv4, if we create a file then open it we explicit avoid checking the
+> > permissions on the file during the open because the fact that we created it
+> > ensures we should be allow to open it (the create and the open should appear
+> > to be a single operation).
+> > 
+> > However if the reply to an EXCLUSIVE create gets lots and the client resends
+> > the create, the current code will perform the permission check - because it
+> > doesn't realise that it did the open already..
+> > 
+> > This patch should fix this.
+> 
+> Thanks, but: hm, does this leave a loophole for a clever attacker?
+> They'll still have to get past the initial
+> 
+> 	fh_verify(rqstp, fhp, S_IFDIR, NFSD_MAY_CREATE)
+> 
+> but that just checks the parent directory; if the existing file is
+> actually owned by someone else, do we allow an open that we shouldn't?
+> 
+> Maybe when "created" is set we should keep the permission check but add
+> NFSD_ALLOW_OWNER_OVERRIDE?
+> 
 
-Try manually setting the fsid=something in the exports file and
-reexport and remount on the target system, if there was a fsid
-collision of some sort then nfs would be hitting the wrong fs...
+I think that is possibly a good idea.  However......
 
-NFS generates the fsid automatically based on the devices major minor,
-and it is possible there is something odd about the major minor
-numbers that make them not unique...and collide with someone else
-major minor.
+commit 81ac95c5569d7a60ab5db6c1ccec56c12b3ebcb5
+Author: J. Bruce Fields <bfields@fieldses.org>
+Date:   Wed Nov 8 17:44:40 2006 -0800
+
+    [PATCH] nfsd4: fix open-create permissions
+    
+    In the case where an open creates the file, we shouldn't be rechecking
+    permissions to open the file; the open succeeds regardless of what the new
+    file's mode bits say.
+    
+    This patch fixes the problem, but only by introducing yet another parameter
+    to nfsd_create_v3.  This is ugly.  This will be fixed by later patches.
+    
+
+I wouldn't want to get in the way of these 'later patches' that might be
+going to remove the 'created' flag from nfsd_create_v3 :-)
+
+NeilBrown
