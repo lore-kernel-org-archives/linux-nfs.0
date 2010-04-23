@@ -1,96 +1,74 @@
-From: Chuck Lever <chuck.lever@oracle.com>
+From: Mike Frysinger <vapier@gentoo.org>
 Subject: Re: [PATCH] make capabilities support optional
-Date: Fri, 23 Apr 2010 15:12:33 -0400
-Message-ID: <4BD1F121.1060001@oracle.com>
-References: <1271753213-17374-1-git-send-email-vapier@gentoo.org> <4BD1CADD.4050200@RedHat.com> <4BD1D8AA.4030708@oracle.com> <4BD1E55B.2090703@RedHat.com>
+Date: Fri, 23 Apr 2010 15:29:41 -0400
+Message-ID: <201004231529.42370.vapier@gentoo.org>
+References: <1271753213-17374-1-git-send-email-vapier@gentoo.org> <4BD1E55B.2090703@RedHat.com> <4BD1F121.1060001@oracle.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Cc: Mike Frysinger <vapier@gentoo.org>, linux-nfs@vger.kernel.org
-To: Steve Dickson <SteveD@redhat.com>
+Content-Type: multipart/signed;
+  boundary="nextPart2711601.59qovGvnsZ";
+  protocol="application/pgp-signature";
+  micalg=pgp-sha1
+Cc: Steve Dickson <SteveD@redhat.com>, linux-nfs@vger.kernel.org
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:51395 "EHLO
-	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755171Ab0DWTNH (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 23 Apr 2010 15:13:07 -0400
-In-Reply-To: <4BD1E55B.2090703-AfCzQyP5zfLQT0dZR+AlfA@public.gmane.org>
+Received: from smtp.gentoo.org ([140.211.166.183]:33878 "EHLO smtp.gentoo.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750818Ab0DWT2k (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 23 Apr 2010 15:28:40 -0400
+In-Reply-To: <4BD1F121.1060001@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Steve-
+--nextPart2711601.59qovGvnsZ
+Content-Type: Text/Plain;
+  charset="iso-8859-1"
+Content-Transfer-Encoding: quoted-printable
 
-On 04/23/2010 02:22 PM, Steve Dickson wrote:
-> On 04/23/2010 01:28 PM, Chuck Lever wrote:
->> On 04/23/2010 12:29 PM, Steve Dickson wrote:
->>> On 04/20/2010 04:46 AM, Mike Frysinger wrote:
->>>> The new code using libcap is quite minor, so rather than always reqiure
->>>> libcap support, make it a normal --enable type flag.  Current default
->>>> behavior is retained -- if libcap is found, it is enabled, else it is
->>>> disabled like every nfs-utils version in the past.
->>>>
->>>> Signed-off-by: Mike Frysinger<vapier@gentoo.org>
->>>>
->>> Committed...
->>
->> I somehow missed this one.  Why are we disabling libcap?  And why are we
->> adding another --enable flag when everyone has agreed that we should
->> avoid that if at all possible?
-> The justification I was used was it made nfs-utils more portable on
-> systems/distros that may not have the libcap support.
+On Friday 23 April 2010 15:12:33 Chuck Lever wrote:
+> If we really do need to drop libcap for some configurations, then such a
+> change should be thoroughly tested in those environments.  Some features
+> won't always work without libcap, and appropriate warnings should be
+> added to man pages and/or should be displayed by statd.
 
-As an aside, the patch description is where we should be documenting the 
-thinking behind these decisions in an audit-able and transparent manner. 
-  The description for this patch doesn't have a strong justification 
-IMHO.  It would be hard for any of us to come back to this patch a year 
-from now and figure out exactly why this change was made.  (I say this 
-having spent the last year doing just that for a long history of patches 
-to statd and mount).
+there should be appropriate documentation regardless.  current nfs-utils li=
+sts=20
+no information at all in ChangeLog/NEWS/README/INSTALL or any other documen=
+t=20
+explaining why/what/how libcap is needed/used.  you cant do documentless du=
+mps=20
+on distro maintainers and expect them to "just know" what is going on.  thi=
+s=20
+isnt the first time the nfs related packages suddenly started requiring new=
+=20
+libraries out of the blue when in reality things could be done optionally, =
+nor=20
+is this the first patch ive sent to try and address what appears to be=20
+unnecessarily hard deps.  kerberos readily comes to mind.
 
-Back on topic: I get it that, in general, we want to allow older distros 
-to build the latest nfs-utils.  However I don't think we can blithely 
-rip this libcap support out, even just for old configurations.
+i'd point out that from a distro POV, the DAEMON section of the top level=20
+README is single handily the best thing added in a long time.
+=2Dmike
 
-If we really do need to drop libcap for some configurations, then such a 
-change should be thoroughly tested in those environments.  Some features 
-won't always work without libcap, and appropriate warnings should be 
-added to man pages and/or should be displayed by statd.
+--nextPart2711601.59qovGvnsZ
+Content-Type: application/pgp-signature; name=signature.asc 
+Content-Description: This is a digitally signed message part.
 
->> It is especially on older systems that nfs-utils will break without
->> libcap support.  Without CAP_NET_BIND, pmap_unregister() will fail when
->> statd is shut down, leaving NSM registered with the portmapper, but with
->> no active listeners.  When statd is started up again, it won't be able
->> to register the new NSM listener ports.
-> Hmm... I agree the unregister() would fail on exit, but that's the reason
-> an unregister() (and then an register) is done on start up before the
-> privileges are drop... Actually this how it worked for a very long time,
-> well before the capabilities support added...
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.14 (GNU/Linux)
 
-When I was working on it, subsequent attempts to register would always 
-fail if an NSM service was already registered.  In other words, this was 
-broken when I found it.
+iQIcBAABAgAGBQJL0fUmAAoJEEFjO5/oN/WBy1IQAKwCYJ13WJRbKN8SNFfjDKgI
+baPUO+0DrygGnsJontL5JMeOeBsajvjrId+U8aMLAkfUZYT7vCE1Fe2sz6hsvPWk
+sa/EIUeRZR1fbWHQlvnr7PQziXxy9cNK/Gg2rWzMOWL4cY1twZRYqXozMPmGjVkC
+xLJRYLb7OtnP+oS34fV9ZuuvGYz2eGcyo9G0NhkYGu3npzSovY8h1ogSvK1Ja7VW
+dVP9q8xS7gKEOmfOLt9IRrfUYBUsT5jGeo4j+Zy69Uza8CHk/jmKl5brHEWp+jUr
+Tzyu7Pp6b1lqAsFGUHnAaQowPoiWvgy8zD7UpKGxeWYv+6sUr3ZRTOmcwf3EAE6q
+fxGL6pA38VZct1vG/IDc7bpIo5GsWrCb1AvflRBqdkCRDt9ZX26w3loP8WBpteR9
+WdEJ5meSWRGb4le1blu7q7RFjVc9n1+YwB2PurVCYhKx9n68vyga7p6yT0FM74Ab
++9iKEaIQlHIn5eobfJ4RPN5g91ts+oGlUDXFs9D7Fpr6ZXImdjSMnA9ArVpFazll
+wH6Qk7Xmvx7ATlhbBjznxyDwbaJTTj7no7x7MkUUO7WNDNJnfwIAH72D0WcqRMqQ
+F/3iJbdsUiAnLcQOX4lsO8lmvK9uS0iiJwZdX2WFbxaPFiStMM3Po0BmoBjytFkq
+97+Z9PECtvmbSCBTWaBn
+=kfGP
+-----END PGP SIGNATURE-----
 
-Commits e2446fda and 7dd13420 explain why CAP_NET_BIND was introduced, 
-and what bugs are addressed.  Without CAP_NET_BIND, we can't guarantee 
-that the NSM service can be unregistered, and neither can we guarantee 
-that a privileged port, when requested, can be used for listening.
-
-The problem is that statd drops its root privileges, so any subsequent 
-attempts to acquire a privileged port (such as to do a 
-pmap_unregister()) will fail, and leave the NSM service registered.
-
-Since rpcbind registration is done via AF_UNIX, it can work without 
-CAP_NET_BIND.  But it requires that the registering UID be the same as 
-the UID used to unregister it.  Thus both registration and 
-unregistration must be root, or both must be done as "rpcuser."  Since 
-statd drops its privileges just after start-up, I chose the latter.
-
-However, using lower privileges means a pmap_unregister() will always 
-fail in common cases.  So CAP_NET_BIND is retained for this purpose.
-
-We also have to worry about mount.nfs these days, as it pings the statd 
-service when mounting with "lock".  If NSM is registered, but no statd 
-is listening (as would be the case if statd couldn't unregister itself 
-on its way down), then most subsequent NFSv2/v3 mounts would hang.  This 
-is why even "unregister/register" at start-up isn't always adequate.
-
--- 
-chuck[dot]lever[at]oracle[dot]com
+--nextPart2711601.59qovGvnsZ--
