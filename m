@@ -1,101 +1,162 @@
-From: Andrew Morton <akpm@linux-foundation.org>
-Subject: Re: A share can be mounted multiple times on the same mountpoint
- when using the option 'noac'
-Date: Fri, 23 Apr 2010 13:25:15 -0400
-Message-ID: <20100423132515.5c592904.akpm@linux-foundation.org>
-References: <21099631.1471272040654142.JavaMail.sprabhu@sprabhu.fab.redhat.com>
-	<12694330.1491272040714232.JavaMail.sprabhu@sprabhu.fab.redhat.com>
+From: "J. Bruce Fields" <bfields@citi.umich.edu>
+Subject: Re: [PATCH 1/2] nfsd4: complete enforcement of 4.1 op ordering
+Date: Fri, 23 Apr 2010 17:24:11 -0400
+Message-ID: <20100423212411.GC1964@fieldses.org>
+References: <1271946744-5877-1-git-send-email-bfields@citi.umich.edu> <20100422144831.GA5926@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Cc: linux-kernel <linux-kernel@vger.kernel.org>,
-	linux-nfs@vger.kernel.org
-To: Sachin Prabhu <sprabhu@redhat.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <12694330.1491272040714232.JavaMail.sprabhu@sprabhu.fab.redhat.com>
-Sender: linux-kernel-owner@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-nfs@vger.kernel.org
+To: Benny Halevy <bhalevy@panasas.com>
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from fieldses.org ([174.143.236.118]:43568 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751895Ab0DWVYM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 23 Apr 2010 17:24:12 -0400
+In-Reply-To: <20100422144831.GA5926@fieldses.org>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-(cc linux-nfs)
+On Thu, Apr 22, 2010 at 10:48:31AM -0400, J. Bruce Fields wrote:
+> On Thu, Apr 22, 2010 at 10:32:23AM -0400, J. Bruce Fields wrote:
+> > Enforce the rules about compound op ordering.
+> > 
+> > Motivated by implementing RECLAIM_COMPLETE, for which the client is
+> > implicit in the current session, so it is important to ensure a
+> > succesful SEQUENCE proceeds the RECLAIM_COMPLETE.
+> 
+> The other problem here is that while we have a reference count on the
+> session itself preventing it from going away till the compound is done,
+> I don't see what prevents the associated clientid from going away.
+> 
+> To fix that, and to be more polite to 4.0 clients, I think we want to
+> also add a client pointer to the compound_state structure, keep count of
+> the number of compounds in progress which reference that client, and not
+> start the client's expiry timer until we've encoded the reply to the
+> compound.
 
-On Fri, 23 Apr 2010 12:38:38 -0400 (EDT) Sachin Prabhu <sprabhu@redhat.com> wrote:
+Benny--I coded up a simple (possibly incorrect) implementation of this,
+and then remembered that this was more or less what your
+state-lock-reduction-prep patch series did.  Do you have a more recent
+version of those patches?
 
-> When you normally attempt to mount a share twice on the same mountpoint, a check in do_add_mount causes it to return an error
+--b.
+
 > 
-> # mount localhost:/nfsv3 /mnt
-> # mount localhost:/nfsv3 /mnt
-> mount.nfs: /mnt is already mounted or busy
+> One question there is whether it's really correct to assume that a
+> single compound can reference only one client.  (I don't think rfc 3530
+> explicitly forbids a single compound referring to multiple clients.  rfc
+> 5661 explicitly allows it in the case of DESTROY_CLIENTID, though that's
+> a special case.)
 > 
-> However when using the option 'noac', the user is able to mount the same share on the same mountpoint multiple times. This happens because a share mounted with the noac option is automatically assigned the 'sync' flag MS_SYNCHRONOUS in nfs_initialise_sb(). This flag is set after the check for already existing superblocks is done in sget(). The check for the mount flags in nfs_compare_mount_options() does not take into account the 'sync' flag applied later on in the code path. This means that when using 'noac', a new superblock structure is assigned for every new mount of the same share and multiple shares on the same mountpoint are allowed.
+> --b.
 > 
-> ie. 
-> # mount -onoac localhost:/nfsv3 /mnt
-> can be run multiple times.
-> 
-> Could the existing behavior be considered to be a bug? If yes, one possible fix for this issue is to move the 'sync' flag assignment before the sget() is called to obtain an already existing superblock structure.
-> 
-> Signed-off-by: Sachin Prabhu <sprabhu@redhat.com>
-> 
-> diff -up linux-2.6/fs/nfs/super.c.noac_multiple_mount linux-2.6/fs/nfs/super.c
-> --- linux-2.6/fs/nfs/super.c.noac_multiple_mount	2010-04-22 17:08:25.000000000 +0100
-> +++ linux-2.6/fs/nfs/super.c	2010-04-22 17:27:48.000000000 +0100
-> @@ -1992,9 +1992,6 @@ static inline void nfs_initialise_sb(str
->  		sb->s_blocksize = nfs_block_bits(server->wsize,
->  						 &sb->s_blocksize_bits);
->  
-> -	if (server->flags & NFS_MOUNT_NOAC)
-> -		sb->s_flags |= MS_SYNCHRONOUS;
-> -
->  	sb->s_bdi = &server->backing_dev_info;
->  
->  	nfs_super_set_maxbytes(sb, server->maxfilesize);
-> @@ -2202,6 +2199,9 @@ static int nfs_get_sb(struct file_system
->  	if (server->flags & NFS_MOUNT_UNSHARED)
->  		compare_super = NULL;
->  
-> +	if (server->flags & NFS_MOUNT_NOAC)
-> +		sb_mntdata.mntflags |= MS_SYNCHRONOUS;
-> +
->  	/* Get a superblock - note that we may end up sharing one that already exists */
->  	s = sget(fs_type, compare_super, nfs_set_super, &sb_mntdata);
->  	if (IS_ERR(s)) {
-> @@ -2317,6 +2317,9 @@ static int nfs_xdev_get_sb(struct file_s
->  	if (server->flags & NFS_MOUNT_UNSHARED)
->  		compare_super = NULL;
->  
-> +	if (server->flags & NFS_MOUNT_NOAC)
-> +		sb_mntdata.mntflags |= MS_SYNCHRONOUS;
-> +
->  	/* Get a superblock - note that we may end up sharing one that already exists */
->  	s = sget(&nfs_fs_type, compare_super, nfs_set_super, &sb_mntdata);
->  	if (IS_ERR(s)) {
-> @@ -2572,6 +2575,9 @@ static int nfs4_remote_get_sb(struct fil
->  	if (server->flags & NFS4_MOUNT_UNSHARED)
->  		compare_super = NULL;
->  
-> +	if (server->flags & NFS_MOUNT_NOAC)
-> +		sb_mntdata.mntflags |= MS_SYNCHRONOUS;
-> +
->  	/* Get a superblock - note that we may end up sharing one that already exists */
->  	s = sget(&nfs4_fs_type, compare_super, nfs_set_super, &sb_mntdata);
->  	if (IS_ERR(s)) {
-> @@ -2808,6 +2814,9 @@ static int nfs4_xdev_get_sb(struct file_
->  	if (server->flags & NFS4_MOUNT_UNSHARED)
->  		compare_super = NULL;
->  
-> +	if (server->flags & NFS_MOUNT_NOAC)
-> +		sb_mntdata.mntflags |= MS_SYNCHRONOUS;
-> +
->  	/* Get a superblock - note that we may end up sharing one that already exists */
->  	s = sget(&nfs4_fs_type, compare_super, nfs_set_super, &sb_mntdata);
->  	if (IS_ERR(s)) {
-> @@ -2893,6 +2902,9 @@ static int nfs4_remote_referral_get_sb(s
->  	if (server->flags & NFS4_MOUNT_UNSHARED)
->  		compare_super = NULL;
->  
-> +	if (server->flags & NFS_MOUNT_NOAC)
-> +		sb_mntdata.mntflags |= MS_SYNCHRONOUS;
-> +
->  	/* Get a superblock - note that we may end up sharing one that already exists */
->  	s = sget(&nfs4_fs_type, compare_super, nfs_set_super, &sb_mntdata);
->  	if (IS_ERR(s)) {
-> --
+> > 
+> > Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
+> > ---
+> >  fs/nfsd/nfs4proc.c  |   44 ++++++++++++++++++++++++++++++--------------
+> >  fs/nfsd/nfs4state.c |   13 +++++++++++++
+> >  2 files changed, 43 insertions(+), 14 deletions(-)
+> > 
+> > diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+> > index 37514c4..e147dbc 100644
+> > --- a/fs/nfsd/nfs4proc.c
+> > +++ b/fs/nfsd/nfs4proc.c
+> > @@ -968,20 +968,36 @@ static struct nfsd4_operation nfsd4_ops[];
+> >  static const char *nfsd4_op_name(unsigned opnum);
+> >  
+> >  /*
+> > - * Enforce NFSv4.1 COMPOUND ordering rules.
+> > + * Enforce NFSv4.1 COMPOUND ordering rules:
+> >   *
+> > - * TODO:
+> > - * - enforce NFS4ERR_NOT_ONLY_OP,
+> > - * - DESTROY_SESSION MUST be the final operation in the COMPOUND request.
+> > + * Also note, enforced elsewhere:
+> > + *	- SEQUENCE other than as first op results in
+> > + *	  NFS4ERR_SEQUENCE_POS. (Enforced in nfsd4_sequence().)
+> > + *	- BIND_CONN_TO_SESSION must be the only op in its compound
+> > + *	  (Will be enforced in nfsd4_bind_conn_to_session().)
+> > + *	- DESTROY_SESSION must be the final operation in a compound, if
+> > + *	  sessionid's in SEQUENCE and DESTROY_SESSION are the same.
+> > + *	  (Enforced in nfsd4_destroy_session().)
+> >   */
+> > -static bool nfs41_op_ordering_ok(struct nfsd4_compoundargs *args)
+> > +static __be32 nfs41_check_op_ordering(struct nfsd4_compoundargs *args)
+> >  {
+> > -	if (args->minorversion && args->opcnt > 0) {
+> > -		struct nfsd4_op *op = &args->ops[0];
+> > -		return (op->status == nfserr_op_illegal) ||
+> > -		       (nfsd4_ops[op->opnum].op_flags & ALLOWED_AS_FIRST_OP);
+> > -	}
+> > -	return true;
+> > +	struct nfsd4_op *op = &args->ops[0];
+> > +
+> > +	/* These ordering requirements don't apply to NFSv4.0: */
+> > +	if (args->minorversion == 0)
+> > +		return nfs_ok;
+> > +	/* This is weird, but OK, not our problem: */
+> > +	if (args->opcnt == 0)
+> > +		return nfs_ok;
+> > +	if (op->status == nfserr_op_illegal)
+> > +		return nfs_ok;
+> > +	if (!(nfsd4_ops[op->opnum].op_flags & ALLOWED_AS_FIRST_OP))
+> > +		return nfserr_op_not_in_session;
+> > +	if (op->opnum == OP_SEQUENCE)
+> > +		return nfs_ok;
+> > +	if (args->opcnt != 1)
+> > +		return nfserr_not_only_op;
+> > +	return nfs_ok;
+> >  }
+> >  
+> >  /*
+> > @@ -1023,13 +1039,13 @@ nfsd4_proc_compound(struct svc_rqst *rqstp,
+> >  	if (args->minorversion > nfsd_supported_minorversion)
+> >  		goto out;
+> >  
+> > -	if (!nfs41_op_ordering_ok(args)) {
+> > +	status = nfs41_check_op_ordering(args);
+> > +	if (status) {
+> >  		op = &args->ops[0];
+> > -		op->status = nfserr_sequence_pos;
+> > +		op->status = status;
+> >  		goto encode_op;
+> >  	}
+> >  
+> > -	status = nfs_ok;
+> >  	while (!status && resp->opcnt < args->opcnt) {
+> >  		op = &args->ops[resp->opcnt++];
+> >  
+> > diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> > index 5051ade..e444829 100644
+> > --- a/fs/nfsd/nfs4state.c
+> > +++ b/fs/nfsd/nfs4state.c
+> > @@ -1365,6 +1365,14 @@ out:
+> >  	return status;
+> >  }
+> >  
+> > +static bool nfsd4_last_compound_op(struct svc_rqst *rqstp)
+> > +{
+> > +	struct nfsd4_compoundres *resp = rqstp->rq_resp;
+> > +	struct nfsd4_compoundargs *argp = rqstp->rq_argp;
+> > +
+> > +	return argp->opcnt == resp->opcnt;
+> > +}
+> > +
+> >  __be32
+> >  nfsd4_destroy_session(struct svc_rqst *r,
+> >  		      struct nfsd4_compound_state *cstate,
+> > @@ -1380,6 +1388,11 @@ nfsd4_destroy_session(struct svc_rqst *r,
+> >  	 * - Do we need to clear any callback info from previous session?
+> >  	 */
+> >  
+> > +	if (!memcmp(&sessionid->sessionid, &cstate->session->se_sessionid,
+> > +					sizeof(struct nfs4_sessionid))) {
+> > +		if (!nfsd4_last_compound_op(r))
+> > +			return nfserr_not_only_op;
+> > +	}
+> >  	dump_sessionid(__func__, &sessionid->sessionid);
+> >  	spin_lock(&sessionid_lock);
+> >  	ses = find_in_sessionid_hashtbl(&sessionid->sessionid);
+> > -- 
+> > 1.6.3.3
+> > 
