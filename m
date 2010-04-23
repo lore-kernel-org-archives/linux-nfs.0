@@ -1,74 +1,101 @@
-From: Mike Frysinger <vapier@gentoo.org>
-Subject: Re: [PATCH] make capabilities support optional
-Date: Fri, 23 Apr 2010 15:29:41 -0400
-Message-ID: <201004231529.42370.vapier@gentoo.org>
-References: <1271753213-17374-1-git-send-email-vapier@gentoo.org> <4BD1E55B.2090703@RedHat.com> <4BD1F121.1060001@oracle.com>
+From: Andrew Morton <akpm@linux-foundation.org>
+Subject: Re: A share can be mounted multiple times on the same mountpoint
+ when using the option 'noac'
+Date: Fri, 23 Apr 2010 13:25:15 -0400
+Message-ID: <20100423132515.5c592904.akpm@linux-foundation.org>
+References: <21099631.1471272040654142.JavaMail.sprabhu@sprabhu.fab.redhat.com>
+	<12694330.1491272040714232.JavaMail.sprabhu@sprabhu.fab.redhat.com>
 Mime-Version: 1.0
-Content-Type: multipart/signed;
-  boundary="nextPart2711601.59qovGvnsZ";
-  protocol="application/pgp-signature";
-  micalg=pgp-sha1
-Cc: Steve Dickson <SteveD@redhat.com>, linux-nfs@vger.kernel.org
-To: Chuck Lever <chuck.lever@oracle.com>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp.gentoo.org ([140.211.166.183]:33878 "EHLO smtp.gentoo.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750818Ab0DWT2k (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 23 Apr 2010 15:28:40 -0400
-In-Reply-To: <4BD1F121.1060001@oracle.com>
-Sender: linux-nfs-owner@vger.kernel.org
+Content-Type: text/plain; charset=US-ASCII
+Cc: linux-kernel <linux-kernel@vger.kernel.org>,
+	linux-nfs@vger.kernel.org
+To: Sachin Prabhu <sprabhu@redhat.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <12694330.1491272040714232.JavaMail.sprabhu@sprabhu.fab.redhat.com>
+Sender: linux-kernel-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---nextPart2711601.59qovGvnsZ
-Content-Type: Text/Plain;
-  charset="iso-8859-1"
-Content-Transfer-Encoding: quoted-printable
+(cc linux-nfs)
 
-On Friday 23 April 2010 15:12:33 Chuck Lever wrote:
-> If we really do need to drop libcap for some configurations, then such a
-> change should be thoroughly tested in those environments.  Some features
-> won't always work without libcap, and appropriate warnings should be
-> added to man pages and/or should be displayed by statd.
+On Fri, 23 Apr 2010 12:38:38 -0400 (EDT) Sachin Prabhu <sprabhu@redhat.com> wrote:
 
-there should be appropriate documentation regardless.  current nfs-utils li=
-sts=20
-no information at all in ChangeLog/NEWS/README/INSTALL or any other documen=
-t=20
-explaining why/what/how libcap is needed/used.  you cant do documentless du=
-mps=20
-on distro maintainers and expect them to "just know" what is going on.  thi=
-s=20
-isnt the first time the nfs related packages suddenly started requiring new=
-=20
-libraries out of the blue when in reality things could be done optionally, =
-nor=20
-is this the first patch ive sent to try and address what appears to be=20
-unnecessarily hard deps.  kerberos readily comes to mind.
-
-i'd point out that from a distro POV, the DAEMON section of the top level=20
-README is single handily the best thing added in a long time.
-=2Dmike
-
---nextPart2711601.59qovGvnsZ
-Content-Type: application/pgp-signature; name=signature.asc 
-Content-Description: This is a digitally signed message part.
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2.0.14 (GNU/Linux)
-
-iQIcBAABAgAGBQJL0fUmAAoJEEFjO5/oN/WBy1IQAKwCYJ13WJRbKN8SNFfjDKgI
-baPUO+0DrygGnsJontL5JMeOeBsajvjrId+U8aMLAkfUZYT7vCE1Fe2sz6hsvPWk
-sa/EIUeRZR1fbWHQlvnr7PQziXxy9cNK/Gg2rWzMOWL4cY1twZRYqXozMPmGjVkC
-xLJRYLb7OtnP+oS34fV9ZuuvGYz2eGcyo9G0NhkYGu3npzSovY8h1ogSvK1Ja7VW
-dVP9q8xS7gKEOmfOLt9IRrfUYBUsT5jGeo4j+Zy69Uza8CHk/jmKl5brHEWp+jUr
-Tzyu7Pp6b1lqAsFGUHnAaQowPoiWvgy8zD7UpKGxeWYv+6sUr3ZRTOmcwf3EAE6q
-fxGL6pA38VZct1vG/IDc7bpIo5GsWrCb1AvflRBqdkCRDt9ZX26w3loP8WBpteR9
-WdEJ5meSWRGb4le1blu7q7RFjVc9n1+YwB2PurVCYhKx9n68vyga7p6yT0FM74Ab
-+9iKEaIQlHIn5eobfJ4RPN5g91ts+oGlUDXFs9D7Fpr6ZXImdjSMnA9ArVpFazll
-wH6Qk7Xmvx7ATlhbBjznxyDwbaJTTj7no7x7MkUUO7WNDNJnfwIAH72D0WcqRMqQ
-F/3iJbdsUiAnLcQOX4lsO8lmvK9uS0iiJwZdX2WFbxaPFiStMM3Po0BmoBjytFkq
-97+Z9PECtvmbSCBTWaBn
-=kfGP
------END PGP SIGNATURE-----
-
---nextPart2711601.59qovGvnsZ--
+> When you normally attempt to mount a share twice on the same mountpoint, a check in do_add_mount causes it to return an error
+> 
+> # mount localhost:/nfsv3 /mnt
+> # mount localhost:/nfsv3 /mnt
+> mount.nfs: /mnt is already mounted or busy
+> 
+> However when using the option 'noac', the user is able to mount the same share on the same mountpoint multiple times. This happens because a share mounted with the noac option is automatically assigned the 'sync' flag MS_SYNCHRONOUS in nfs_initialise_sb(). This flag is set after the check for already existing superblocks is done in sget(). The check for the mount flags in nfs_compare_mount_options() does not take into account the 'sync' flag applied later on in the code path. This means that when using 'noac', a new superblock structure is assigned for every new mount of the same share and multiple shares on the same mountpoint are allowed.
+> 
+> ie. 
+> # mount -onoac localhost:/nfsv3 /mnt
+> can be run multiple times.
+> 
+> Could the existing behavior be considered to be a bug? If yes, one possible fix for this issue is to move the 'sync' flag assignment before the sget() is called to obtain an already existing superblock structure.
+> 
+> Signed-off-by: Sachin Prabhu <sprabhu@redhat.com>
+> 
+> diff -up linux-2.6/fs/nfs/super.c.noac_multiple_mount linux-2.6/fs/nfs/super.c
+> --- linux-2.6/fs/nfs/super.c.noac_multiple_mount	2010-04-22 17:08:25.000000000 +0100
+> +++ linux-2.6/fs/nfs/super.c	2010-04-22 17:27:48.000000000 +0100
+> @@ -1992,9 +1992,6 @@ static inline void nfs_initialise_sb(str
+>  		sb->s_blocksize = nfs_block_bits(server->wsize,
+>  						 &sb->s_blocksize_bits);
+>  
+> -	if (server->flags & NFS_MOUNT_NOAC)
+> -		sb->s_flags |= MS_SYNCHRONOUS;
+> -
+>  	sb->s_bdi = &server->backing_dev_info;
+>  
+>  	nfs_super_set_maxbytes(sb, server->maxfilesize);
+> @@ -2202,6 +2199,9 @@ static int nfs_get_sb(struct file_system
+>  	if (server->flags & NFS_MOUNT_UNSHARED)
+>  		compare_super = NULL;
+>  
+> +	if (server->flags & NFS_MOUNT_NOAC)
+> +		sb_mntdata.mntflags |= MS_SYNCHRONOUS;
+> +
+>  	/* Get a superblock - note that we may end up sharing one that already exists */
+>  	s = sget(fs_type, compare_super, nfs_set_super, &sb_mntdata);
+>  	if (IS_ERR(s)) {
+> @@ -2317,6 +2317,9 @@ static int nfs_xdev_get_sb(struct file_s
+>  	if (server->flags & NFS_MOUNT_UNSHARED)
+>  		compare_super = NULL;
+>  
+> +	if (server->flags & NFS_MOUNT_NOAC)
+> +		sb_mntdata.mntflags |= MS_SYNCHRONOUS;
+> +
+>  	/* Get a superblock - note that we may end up sharing one that already exists */
+>  	s = sget(&nfs_fs_type, compare_super, nfs_set_super, &sb_mntdata);
+>  	if (IS_ERR(s)) {
+> @@ -2572,6 +2575,9 @@ static int nfs4_remote_get_sb(struct fil
+>  	if (server->flags & NFS4_MOUNT_UNSHARED)
+>  		compare_super = NULL;
+>  
+> +	if (server->flags & NFS_MOUNT_NOAC)
+> +		sb_mntdata.mntflags |= MS_SYNCHRONOUS;
+> +
+>  	/* Get a superblock - note that we may end up sharing one that already exists */
+>  	s = sget(&nfs4_fs_type, compare_super, nfs_set_super, &sb_mntdata);
+>  	if (IS_ERR(s)) {
+> @@ -2808,6 +2814,9 @@ static int nfs4_xdev_get_sb(struct file_
+>  	if (server->flags & NFS4_MOUNT_UNSHARED)
+>  		compare_super = NULL;
+>  
+> +	if (server->flags & NFS_MOUNT_NOAC)
+> +		sb_mntdata.mntflags |= MS_SYNCHRONOUS;
+> +
+>  	/* Get a superblock - note that we may end up sharing one that already exists */
+>  	s = sget(&nfs4_fs_type, compare_super, nfs_set_super, &sb_mntdata);
+>  	if (IS_ERR(s)) {
+> @@ -2893,6 +2902,9 @@ static int nfs4_remote_referral_get_sb(s
+>  	if (server->flags & NFS4_MOUNT_UNSHARED)
+>  		compare_super = NULL;
+>  
+> +	if (server->flags & NFS_MOUNT_NOAC)
+> +		sb_mntdata.mntflags |= MS_SYNCHRONOUS;
+> +
+>  	/* Get a superblock - note that we may end up sharing one that already exists */
+>  	s = sget(&nfs4_fs_type, compare_super, nfs_set_super, &sb_mntdata);
+>  	if (IS_ERR(s)) {
+> --
