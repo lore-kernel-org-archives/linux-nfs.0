@@ -1,59 +1,58 @@
-Return-Path: <nfsv4-bounces@linux-nfs.org>
-Message-ID: <4BB4A9CF.3000809@s3group.cz>
-Date: Thu, 01 Apr 2010 16:12:31 +0200
-From: Ondrej Valousek <webserv@s3group.cz>
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: why does each NFS mount have (at least) 2 rpc_clnt's ?
-References: <20100401084620.3475d4c0@barsoom.rdu.redhat.com>	
-	<1270127869.3533.12.camel@localhost.localdomain>	
-	<4BB49F0D.80009@s3group.cz>
-	<1270130860.3533.19.camel@localhost.localdomain>
-In-Reply-To: <1270130860.3533.19.camel@localhost.localdomain>
-Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org
-List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/options/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
-List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
-List-Post: <mailto:nfsv4@linux-nfs.org>
-List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
-List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
-Content-Type: multipart/mixed; boundary="===============0318646023=="
-Sender: nfsv4-bounces@linux-nfs.org
-Errors-To: nfsv4-bounces@linux-nfs.org
-MIME-Version: 1.0
+Return-Path: <linux-nfs-owner@vger.kernel.org>
+Received: from mx2.netapp.com ([216.240.18.37]:54551 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755371Ab0DWWJp convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 23 Apr 2010 18:09:45 -0400
+Subject: Re: NFS client send out of order offsets....
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Steve Dickson <SteveD@redhat.com>
+Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+In-Reply-To: <4BD21777.1060305@RedHat.com>
+References: <4BD21777.1060305@RedHat.com>
+Content-Type: text/plain; charset="UTF-8"
+Date: Fri, 23 Apr 2010 18:09:43 -0400
+Message-ID: <1272060583.3019.11.camel@localhost.localdomain>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+MIME-Version: 1.0
 
---===============0318646023==
-Content-Type: text/html; charset=UTF-8
-Content-Transfer-Encoding: 7bit
+On Fri, 2010-04-23 at 17:56 -0400, Steve Dickson wrote: 
+> Hey Trond (and all),
+> 
+> It been brought to my attention that Linux NFS clients, with big-ish 
+> writes (8GB and above), quickly started sending out writes with
+> out-of-order offsets... Meaning in the start of an 8GB write a 7GB offset 
+> will be send and then smaller offsets, closer to the the beginning 
+> of the file, will follow.
+> 
+> Now I realize this is perfectly fine from a protocol standpoint and (w/out 
+> any on hands investigation) pretty sure it has to do with how pages are
+> being kicked out of the cache (i.e. memory pressure), meaning is 
+> not an NFS issue at all...  but... 
+> 
+> It was also point out to me that this type of out of order-ness does 
+> not happen with Solaris clients and with an AIX clients there is some 
+> mount option fix out of order-ness... 
+> 
+> So my question is there some way to tweak the client to ensure
+> offset are send sequential order... 
+> 
+> Note this happening on a older kernel, so before I go off  and 
+> "re-invent the wheel", I was wonder if other people have seen this
+> issue and has it been addressed... 
+> 
+> tia,
+> 
+> steved.
 
-<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"><html><head>
-<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-</head>
-<body bgcolor="#ffffff" text="#000066">
-Ok, I see, thanks. It is possible but it unfortunately also causes my
-server to panic <span class="moz-smiley-s1"><span> :-) </span></span><br>
-Different story anyway...<br>
-O.<br>
-<blockquote cite="mid:1270130860.3533.19.camel@localhost.localdomain" type="cite">
-  <pre wrap="">Yes. That's exactly what it is supposed to allow (and btw, mounting
-filesystems both ro and rw should be possible now).
+The NFS layer will always write out pages in order whenever it initiates
+a flush.
+
+The problem here is the VM's use of the 'range_cyclic' writeback control
+option in functions like 'balance_dirty_pages()' and in the kflush
+daemons.
+That neither can nor should be fixed in the NFS layer. It really needs
+to be addressed in the VM.
 
 Cheers
   Trond
-  </pre>
-</blockquote>
-<br>
-</body>
-</html>
-
---===============0318646023==
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
-_______________________________________________
-NFSv4 mailing list
-NFSv4@linux-nfs.org
-http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4
---===============0318646023==--
