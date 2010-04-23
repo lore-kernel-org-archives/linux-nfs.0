@@ -1,162 +1,116 @@
-From: "J. Bruce Fields" <bfields@citi.umich.edu>
-Subject: Re: [PATCH 1/2] nfsd4: complete enforcement of 4.1 op ordering
-Date: Fri, 23 Apr 2010 17:24:11 -0400
-Message-ID: <20100423212411.GC1964@fieldses.org>
-References: <1271946744-5877-1-git-send-email-bfields@citi.umich.edu> <20100422144831.GA5926@fieldses.org>
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Re: [PATCH] make capabilities support optional
+Date: Fri, 23 Apr 2010 18:22:25 -0400
+Message-ID: <4BD21DA1.4000001@RedHat.com>
+References: <1271753213-17374-1-git-send-email-vapier@gentoo.org> <4BD1CADD.4050200@RedHat.com> <4BD1D8AA.4030708@oracle.com> <4BD1E55B.2090703@RedHat.com> <4BD1F121.1060001@oracle.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs@vger.kernel.org
-To: Benny Halevy <bhalevy@panasas.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: Mike Frysinger <vapier@gentoo.org>, linux-nfs@vger.kernel.org
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:43568 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:46724 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751895Ab0DWVYM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 23 Apr 2010 17:24:12 -0400
-In-Reply-To: <20100422144831.GA5926@fieldses.org>
+	id S1751494Ab0DWWWe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 23 Apr 2010 18:22:34 -0400
+In-Reply-To: <4BD1F121.1060001@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Apr 22, 2010 at 10:48:31AM -0400, J. Bruce Fields wrote:
-> On Thu, Apr 22, 2010 at 10:32:23AM -0400, J. Bruce Fields wrote:
-> > Enforce the rules about compound op ordering.
-> > 
-> > Motivated by implementing RECLAIM_COMPLETE, for which the client is
-> > implicit in the current session, so it is important to ensure a
-> > succesful SEQUENCE proceeds the RECLAIM_COMPLETE.
-> 
-> The other problem here is that while we have a reference count on the
-> session itself preventing it from going away till the compound is done,
-> I don't see what prevents the associated clientid from going away.
-> 
-> To fix that, and to be more polite to 4.0 clients, I think we want to
-> also add a client pointer to the compound_state structure, keep count of
-> the number of compounds in progress which reference that client, and not
-> start the client's expiry timer until we've encoded the reply to the
-> compound.
 
-Benny--I coded up a simple (possibly incorrect) implementation of this,
-and then remembered that this was more or less what your
-state-lock-reduction-prep patch series did.  Do you have a more recent
-version of those patches?
 
---b.
+On 04/23/2010 03:12 PM, Chuck Lever wrote:
+> Hi Steve-
+> 
+> On 04/23/2010 02:22 PM, Steve Dickson wrote:
+>> On 04/23/2010 01:28 PM, Chuck Lever wrote:
+>>> On 04/23/2010 12:29 PM, Steve Dickson wrote:
+>>>> On 04/20/2010 04:46 AM, Mike Frysinger wrote:
+>>>>> The new code using libcap is quite minor, so rather than always
+>>>>> reqiure
+>>>>> libcap support, make it a normal --enable type flag.  Current default
+>>>>> behavior is retained -- if libcap is found, it is enabled, else it is
+>>>>> disabled like every nfs-utils version in the past.
+>>>>>
+>>>>> Signed-off-by: Mike Frysinger<vapier@gentoo.org>
+>>>>>
+>>>> Committed...
+>>>
+>>> I somehow missed this one.  Why are we disabling libcap?  And why are we
+>>> adding another --enable flag when everyone has agreed that we should
+>>> avoid that if at all possible?
+>> The justification I was used was it made nfs-utils more portable on
+>> systems/distros that may not have the libcap support.
+> 
+> As an aside, the patch description is where we should be documenting the
+> thinking behind these decisions in an audit-able and transparent manner.
+>  The description for this patch doesn't have a strong justification
+> IMHO.  It would be hard for any of us to come back to this patch a year
+> from now and figure out exactly why this change was made.  (I say this
+> having spent the last year doing just that for a long history of patches
+> to statd and mount).
+True, the patch description could have been a bit more verbose, but I 
+feel I understood the reason for the patch and that reason the made
+sense to me... I feel backwards compatibility is important..  
 
 > 
-> One question there is whether it's really correct to assume that a
-> single compound can reference only one client.  (I don't think rfc 3530
-> explicitly forbids a single compound referring to multiple clients.  rfc
-> 5661 explicitly allows it in the case of DESTROY_CLIENTID, though that's
-> a special case.)
+> Back on topic: I get it that, in general, we want to allow older distros
+> to build the latest nfs-utils.  However I don't think we can blithely
+> rip this libcap support out, even just for old configurations.
 > 
-> --b.
+> If we really do need to drop libcap for some configurations, then such a
+> change should be thoroughly tested in those environments.  Some features
+> won't always work without libcap, and appropriate warnings should be
+> added to man pages and/or should be displayed by statd.
+Well dropping libcap is not the default and I don't see us (i.e. upstream) 
+ever making it the default... If people want set that config flag, its up to 
+them to document the ramifications, IMHO...
+
 > 
-> > 
-> > Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
-> > ---
-> >  fs/nfsd/nfs4proc.c  |   44 ++++++++++++++++++++++++++++++--------------
-> >  fs/nfsd/nfs4state.c |   13 +++++++++++++
-> >  2 files changed, 43 insertions(+), 14 deletions(-)
-> > 
-> > diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-> > index 37514c4..e147dbc 100644
-> > --- a/fs/nfsd/nfs4proc.c
-> > +++ b/fs/nfsd/nfs4proc.c
-> > @@ -968,20 +968,36 @@ static struct nfsd4_operation nfsd4_ops[];
-> >  static const char *nfsd4_op_name(unsigned opnum);
-> >  
-> >  /*
-> > - * Enforce NFSv4.1 COMPOUND ordering rules.
-> > + * Enforce NFSv4.1 COMPOUND ordering rules:
-> >   *
-> > - * TODO:
-> > - * - enforce NFS4ERR_NOT_ONLY_OP,
-> > - * - DESTROY_SESSION MUST be the final operation in the COMPOUND request.
-> > + * Also note, enforced elsewhere:
-> > + *	- SEQUENCE other than as first op results in
-> > + *	  NFS4ERR_SEQUENCE_POS. (Enforced in nfsd4_sequence().)
-> > + *	- BIND_CONN_TO_SESSION must be the only op in its compound
-> > + *	  (Will be enforced in nfsd4_bind_conn_to_session().)
-> > + *	- DESTROY_SESSION must be the final operation in a compound, if
-> > + *	  sessionid's in SEQUENCE and DESTROY_SESSION are the same.
-> > + *	  (Enforced in nfsd4_destroy_session().)
-> >   */
-> > -static bool nfs41_op_ordering_ok(struct nfsd4_compoundargs *args)
-> > +static __be32 nfs41_check_op_ordering(struct nfsd4_compoundargs *args)
-> >  {
-> > -	if (args->minorversion && args->opcnt > 0) {
-> > -		struct nfsd4_op *op = &args->ops[0];
-> > -		return (op->status == nfserr_op_illegal) ||
-> > -		       (nfsd4_ops[op->opnum].op_flags & ALLOWED_AS_FIRST_OP);
-> > -	}
-> > -	return true;
-> > +	struct nfsd4_op *op = &args->ops[0];
-> > +
-> > +	/* These ordering requirements don't apply to NFSv4.0: */
-> > +	if (args->minorversion == 0)
-> > +		return nfs_ok;
-> > +	/* This is weird, but OK, not our problem: */
-> > +	if (args->opcnt == 0)
-> > +		return nfs_ok;
-> > +	if (op->status == nfserr_op_illegal)
-> > +		return nfs_ok;
-> > +	if (!(nfsd4_ops[op->opnum].op_flags & ALLOWED_AS_FIRST_OP))
-> > +		return nfserr_op_not_in_session;
-> > +	if (op->opnum == OP_SEQUENCE)
-> > +		return nfs_ok;
-> > +	if (args->opcnt != 1)
-> > +		return nfserr_not_only_op;
-> > +	return nfs_ok;
-> >  }
-> >  
-> >  /*
-> > @@ -1023,13 +1039,13 @@ nfsd4_proc_compound(struct svc_rqst *rqstp,
-> >  	if (args->minorversion > nfsd_supported_minorversion)
-> >  		goto out;
-> >  
-> > -	if (!nfs41_op_ordering_ok(args)) {
-> > +	status = nfs41_check_op_ordering(args);
-> > +	if (status) {
-> >  		op = &args->ops[0];
-> > -		op->status = nfserr_sequence_pos;
-> > +		op->status = status;
-> >  		goto encode_op;
-> >  	}
-> >  
-> > -	status = nfs_ok;
-> >  	while (!status && resp->opcnt < args->opcnt) {
-> >  		op = &args->ops[resp->opcnt++];
-> >  
-> > diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> > index 5051ade..e444829 100644
-> > --- a/fs/nfsd/nfs4state.c
-> > +++ b/fs/nfsd/nfs4state.c
-> > @@ -1365,6 +1365,14 @@ out:
-> >  	return status;
-> >  }
-> >  
-> > +static bool nfsd4_last_compound_op(struct svc_rqst *rqstp)
-> > +{
-> > +	struct nfsd4_compoundres *resp = rqstp->rq_resp;
-> > +	struct nfsd4_compoundargs *argp = rqstp->rq_argp;
-> > +
-> > +	return argp->opcnt == resp->opcnt;
-> > +}
-> > +
-> >  __be32
-> >  nfsd4_destroy_session(struct svc_rqst *r,
-> >  		      struct nfsd4_compound_state *cstate,
-> > @@ -1380,6 +1388,11 @@ nfsd4_destroy_session(struct svc_rqst *r,
-> >  	 * - Do we need to clear any callback info from previous session?
-> >  	 */
-> >  
-> > +	if (!memcmp(&sessionid->sessionid, &cstate->session->se_sessionid,
-> > +					sizeof(struct nfs4_sessionid))) {
-> > +		if (!nfsd4_last_compound_op(r))
-> > +			return nfserr_not_only_op;
-> > +	}
-> >  	dump_sessionid(__func__, &sessionid->sessionid);
-> >  	spin_lock(&sessionid_lock);
-> >  	ses = find_in_sessionid_hashtbl(&sessionid->sessionid);
-> > -- 
-> > 1.6.3.3
-> > 
+>>> It is especially on older systems that nfs-utils will break without
+>>> libcap support.  Without CAP_NET_BIND, pmap_unregister() will fail when
+>>> statd is shut down, leaving NSM registered with the portmapper, but with
+>>> no active listeners.  When statd is started up again, it won't be able
+>>> to register the new NSM listener ports.
+>> Hmm... I agree the unregister() would fail on exit, but that's the reason
+>> an unregister() (and then an register) is done on start up before the
+>> privileges are drop... Actually this how it worked for a very long time,
+>> well before the capabilities support added...
+> 
+> When I was working on it, subsequent attempts to register would always
+> fail if an NSM service was already registered.  In other words, this was
+> broken when I found it.
+> 
+> Commits e2446fda and 7dd13420 explain why CAP_NET_BIND was introduced,
+> and what bugs are addressed.  Without CAP_NET_BIND, we can't guarantee
+> that the NSM service can be unregistered, and neither can we guarantee
+> that a privileged port, when requested, can be used for listening.
+> 
+> The problem is that statd drops its root privileges, so any subsequent
+> attempts to acquire a privileged port (such as to do a
+> pmap_unregister()) will fail, and leave the NSM service registered.
+> 
+> Since rpcbind registration is done via AF_UNIX, it can work without
+> CAP_NET_BIND.  But it requires that the registering UID be the same as
+> the UID used to unregister it.  Thus both registration and
+> unregistration must be root, or both must be done as "rpcuser."  Since
+> statd drops its privileges just after start-up, I chose the latter.
+> 
+> However, using lower privileges means a pmap_unregister() will always
+> fail in common cases.  So CAP_NET_BIND is retained for this purpose.
+> 
+> We also have to worry about mount.nfs these days, as it pings the statd
+> service when mounting with "lock".  If NSM is registered, but no statd
+> is listening (as would be the case if statd couldn't unregister itself
+> on its way down), then most subsequent NFSv2/v3 mounts would hang.  This
+> is why even "unregister/register" at start-up isn't always adequate.
+> 
+I can't disagree with any of the above... but the above assumes that
+the --disable libcap will some how become the default... that is 
+not the case... 
+
+All that config flag allows is backwards compatibility,  which I know 
+we both think is a good thing... 
+
+steved.
+
+
