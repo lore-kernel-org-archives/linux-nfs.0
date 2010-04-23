@@ -1,58 +1,67 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:40966 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:58073 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752058Ab0DLQLp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 12 Apr 2010 12:11:45 -0400
-Date: Mon, 12 Apr 2010 12:11:39 -0400
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Cc: linux-nfs@vger.kernel.org, Tom Tucker <tom@ogc.us>
-Subject: bugfix for 2.6.34
-Message-ID: <20100412161139.GN17992@fieldses.org>
-Content-Type: text/plain; charset=us-ascii
-From: "J. Bruce Fields" <bfields@fieldses.org>
+	id S1753872Ab0DWW0r (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 23 Apr 2010 18:26:47 -0400
+Message-ID: <4BD21EA2.9040502@RedHat.com>
+Date: Fri, 23 Apr 2010 18:26:42 -0400
+From: Steve Dickson <SteveD@redhat.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+CC: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: NFS client send out of order offsets....
+References: <4BD21777.1060305@RedHat.com> <1272060583.3019.11.camel@localhost.localdomain>
+In-Reply-To: <1272060583.3019.11.camel@localhost.localdomain>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Could you pull the following bugfix for 2.6.34?
 
-  git://linux-nfs.org/~bfields/linux.git for-2.6.34
 
-This fixes an rdma regression.  Thanks!
+On 04/23/2010 06:09 PM, Trond Myklebust wrote:
+> On Fri, 2010-04-23 at 17:56 -0400, Steve Dickson wrote: 
+>> Hey Trond (and all),
+>>
+>> It been brought to my attention that Linux NFS clients, with big-ish 
+>> writes (8GB and above), quickly started sending out writes with
+>> out-of-order offsets... Meaning in the start of an 8GB write a 7GB offset 
+>> will be send and then smaller offsets, closer to the the beginning 
+>> of the file, will follow.
+>>
+>> Now I realize this is perfectly fine from a protocol standpoint and (w/out 
+>> any on hands investigation) pretty sure it has to do with how pages are
+>> being kicked out of the cache (i.e. memory pressure), meaning is 
+>> not an NFS issue at all...  but... 
+>>
+>> It was also point out to me that this type of out of order-ness does 
+>> not happen with Solaris clients and with an AIX clients there is some 
+>> mount option fix out of order-ness... 
+>>
+>> So my question is there some way to tweak the client to ensure
+>> offset are send sequential order... 
+>>
+>> Note this happening on a older kernel, so before I go off  and 
+>> "re-invent the wheel", I was wonder if other people have seen this
+>> issue and has it been addressed... 
+>>
+>> tia,
+>>
+>> steved.
+> 
+> The NFS layer will always write out pages in order whenever it initiates
+> a flush.
+> 
+> The problem here is the VM's use of the 'range_cyclic' writeback control
+> option in functions like 'balance_dirty_pages()' and in the kflush
+> daemons.
+> That neither can nor should be fixed in the NFS layer. It really needs
+> to be addressed in the VM.
+> 
+Understood... completely.... 
 
---b.
+But I wonder if there some vm tweak (via sysctl) that would
+give a better chance of having things go out in order...
 
-commit bade732a2848e640482c1e99629a90e085d574dd
-Author: Tom Tucker <tom@ogc.us>
-Date:   Sat Apr 3 08:27:29 2010 -0500
+steved.
 
-    svcrdma: RDMA support not yet compatible with RPC6
-    
-    RPC6 requires that it be possible to create endpoints that listen
-    exclusively for IPv4 or IPv6 connection requests. This is not currently
-    supported by the RDMA API.
-    
-    This fixes a server RDMA regression introduced by 37498292a "NFSD:
-    Create PF_INET6 listener in write_ports".
-    
-    Signed-off-by: Tom Tucker<tom@opengridcomputing.com>
-    Tested-by: Steve Wise <swise@opengridcomputing.com>
-    Reviewed-by: Chuck Lever <chuck.lever@oracle.com>
-    Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
 
-diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c b/net/sunrpc/xprtrdma/svc_rdma_transport.c
-index 3fa5751..4e6bbf9 100644
---- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
-+++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
-@@ -678,7 +678,10 @@ static struct svc_xprt *svc_rdma_create(struct svc_serv *serv,
- 	int ret;
- 
- 	dprintk("svcrdma: Creating RDMA socket\n");
--
-+	if (sa->sa_family != AF_INET) {
-+		dprintk("svcrdma: Address family %d is not supported.\n", sa->sa_family);
-+		return ERR_PTR(-EAFNOSUPPORT);
-+	}
- 	cma_xprt = rdma_create_xprt(serv, 1);
- 	if (!cma_xprt)
- 		return ERR_PTR(-ENOMEM);
