@@ -1,146 +1,80 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cantor.suse.de ([195.135.220.2]:47020 "EHLO mx1.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750912Ab0DUHDa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 21 Apr 2010 03:03:30 -0400
-Date: Wed, 21 Apr 2010 17:03:21 +1000
-From: Neil Brown <neilb@suse.de>
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-Cc: linux-nfs@vger.kernel.org, Alexander Viro <viro@zeniv.linux.org.uk>
-Subject: Re: [PATCH] Should we expect close-to-open consistency on
- directories?
-Message-ID: <20100421170321.41592c77@notabene.brown>
-In-Reply-To: <1271768521.25129.94.camel@localhost.localdomain>
-References: <20100420172238.520eaa89@notabene.brown>
-	<1271768521.25129.94.camel@localhost.localdomain>
-Content-Type: text/plain; charset=US-ASCII
+Received: from rcsinet10.oracle.com ([148.87.113.121]:54354 "EHLO
+	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756517Ab0DWULS (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 23 Apr 2010 16:11:18 -0400
+Message-ID: <4BD1FE77.1050000@oracle.com>
+Date: Fri, 23 Apr 2010 16:09:27 -0400
+From: Chuck Lever <chuck.lever@oracle.com>
+To: Mike Frysinger <vapier@gentoo.org>
+CC: Steve Dickson <SteveD@redhat.com>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] make capabilities support optional
+References: <1271753213-17374-1-git-send-email-vapier@gentoo.org> <4BD1E55B.2090703@RedHat.com> <4BD1F121.1060001@oracle.com> <201004231529.42370.vapier@gentoo.org>
+In-Reply-To: <201004231529.42370.vapier@gentoo.org>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Tue, 20 Apr 2010 09:02:01 -0400
-Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
+On 04/23/2010 03:29 PM, Mike Frysinger wrote:
+> On Friday 23 April 2010 15:12:33 Chuck Lever wrote:
+>> If we really do need to drop libcap for some configurations, then such a
+>> change should be thoroughly tested in those environments.  Some features
+>> won't always work without libcap, and appropriate warnings should be
+>> added to man pages and/or should be displayed by statd.
+>
+> there should be appropriate documentation regardless.  current nfs-utils lists
+> no information at all in ChangeLog/NEWS/README/INSTALL or any other document
+> explaining why/what/how libcap is needed/used.  you cant do documentless dumps
+> on distro maintainers and expect them to "just know" what is going on.
 
-> On Tue, 2010-04-20 at 17:22 +1000, Neil Brown wrote: 
-> > Hi Trond et al,
-> > 
-> > It has come to my attention that NFS directories don't behave consistently
-> > in terms of cache consistency.
-> > 
-> > If, on the client, you have a loop like:
-> > 
-> >  while true; do sleep 1; ls -l $dirname ; done
-> > 
-> > and then on the server you make changes to the named directory, there are
-> > some cases where you will see changes promptly and some where you wont.
-> > 
-> > In particular, if $dirname is '.' or the name of an NFS mountpoint, then
-> > changes can be delayed by up to acdirmax.  If it is any other path, i.e. with
-> > a non-trivial path component that is in the NFS filesystem, then changes
-> > are seen promptly.
-> > 
-> > This seems to me to relate to "close to open" consistency.  Of course with
-> > directories the 'close' side isn't relevant, but I still think it should be
-> > that when you open a directory it validates the 'change' attribute on that
-> > directory over the wire.
-> > 
-> > However the Linux VFS never tells NFS when a directory is opened.  The
-> > current correct behaviour for most directories is achieved through
-> > d_revalidate == nfs_lookup_revalidate.
-> > 
-> > For '.' and mountpoints we need a different approach.  Possibly the VFS could
-> > be changed to tell the filesystem when such a directory is opened.  However I
-> > don't feel up to that at the moment.
-> 
-> I agree that mountpoints are problematic in this case, however why isn't
-> '.' working correctly? Is the FS_REVAL_DOT mechanism broken?
+"git log" has served as the ChangeLog for some time now.  The commits I 
+referenced in my last e-mail explain exactly why libcap was introduced.
 
-Yes, the FS_REVAL_DOT mechanism is broken.
-Specifically, when you open ".",  ->d_revalidate is called by link_path_walk,
-but LOOKUP_PARENT is set, and LOOKUP_OPEN is not set, so
-nfs_lookup_verify_inode doesn't force a revalidate.
+You can also use "git annotate <some file>" to see exactly when 
+particular lines of code were introduced or change, who changed them, 
+and what git commit you can look at for more information.
 
-Then in do_last(), LOOKUP_PARENT is no longer set, and LOOKUP_OPEN is, but
-do_last doesn't bother calling ->d_revalidate for LAST_DOT.
+The nfs-utils git repo is available on linux-nfs.org, and gitweb can 
+guide you through all of this information with a nice GUI.
 
-I verified this understanding with the following patch which causes 
-"ls ." to reliably get current (rather than cached) contents of the directory.
+If all of that fails, you can still post a question here on this mailing 
+list.
 
+> this
+> isnt the first time the nfs related packages suddenly started requiring new
+> libraries out of the blue when in reality things could be done optionally, nor
+> is this the first patch ive sent to try and address what appears to be
+> unnecessarily hard deps.  kerberos readily comes to mind.
 
-diff --git a/fs/namei.c b/fs/namei.c
-index 48e60a1..f9204af 100644
---- a/fs/namei.c
-+++ b/fs/namei.c
-@@ -1620,6 +1620,8 @@ static struct file *do_last(struct nameidata *nd, struct path *path,
- 	switch (nd->last_type) {
- 	case LAST_DOTDOT:
- 		follow_dotdot(nd);
-+		/* fallthrough */
-+	case LAST_DOT:
- 		dir = nd->path.dentry;
- 		if (nd->path.mnt->mnt_sb->s_type->fs_flags & FS_REVAL_DOT) {
- 			if (!dir->d_op->d_revalidate(dir, nd)) {
-@@ -1627,8 +1629,6 @@ static struct file *do_last(struct nameidata *nd, struct path *path,
- 				goto exit;
- 			}
- 		}
--		/* fallthrough */
--	case LAST_DOT:
- 	case LAST_ROOT:
- 		if (open_flag & O_CREAT)
- 			goto exit;
+Patches are posted on this mailing list for review before they are 
+committed.  Anyone has a chance to object, comment, or suggest a simpler 
+way to do things.
 
-> 
-> The other thing is that we should definitely expect the VFS to call
-> nfs_opendir() once it has opened the file.
+Of course, that only works if you post to this list too.  I don't see 
+this patch in the mailing list archives, but I may have missed something.
 
-Oh yes, I see that now.  So we could force a cache revalidation there.
-But I'm not sure how to test if this is a mountpoint as you suggest below.
+It's important to realize that it's much harder to make things optional 
+than to insist that they be built in.  Adding build options means 
+there's more work for distributors to configure the build, and it 
+exponentially increases our test matrix (which is already out of 
+control).  Every change now has to be tested with each combination of 
+build options.  Add one more --enable option, and that doubles the 
+number of combinations.
 
-Maybe something like the following.  I'm pretty sure this is wrong as it
-ignores the return value of d_revalidate, but I didn't know what to do with
-the value.
-Al ??
+I don't have a problem with making new features optional, when it's 
+necessary.  What I'm objecting to here is that it's easy to add 
+autotools machinery, but it's a lot more difficult to check that all of 
+nfs-utils still works in all cases after such a change, and that the new 
+option doesn't introduce a regression (which it does in this case).
 
+I didn't see a clear explanation of why your proposed change was 
+necessary, nor was it clear from the patch description that you 
+understood why libcap was added in the first place, nor does it seem 
+that the regressions caused by disabling libcap are adequately addressed.
 
---- a/fs/namei.c
-+++ b/fs/namei.c
-@@ -720,6 +720,11 @@ done:
- 	path->mnt = mnt;
- 	path->dentry = dentry;
- 	__follow_mount(path);
-+	if (path->dentry != dentry)
-+		if (path->dentry && path->dentry->d_sb &&
-+		    (path->dentry->d_sb->s_type->fs_flags & FS_REVAL_DOT))
-+			path->dentry->d_op->d_revalidate(
-+				path->dentry, nd);
- 	return 0;
- 
- need_lookup:
+So, why do you want to make libcap optional?  And why is yet another 
+build option needed (rather than just using AC_FUNCTIONS and HAVE_LIBCAP) ?
 
-Thanks,
-NeilBrown
-
-
-> 
-> > An alternative is to do a revalidation in nfs_readdir as below.  i.e. when
-> > readdir see f_pos == 0, it requests a revalidation of the page cache.
-> > This has two problems:
-> > 1/ a seek before the first read would cause the revalidation to be skipped.
-> >    This can be fixed by putting a similar test in nfs_llseek_dir, or maybe
-> >    triggering off 'dir_cookie == NULL' rather than 'f_pos == 0'.
-> > 2/ A normal open/readdir sequence will validate a directory twice, once in the
-> >    lookup and once in the readdir.  This is probably undesirable, but it is
-> >    not clear to me how to fix it.
-> > 
-> > 
-> > So: is it reasonable to view the current behaviour as 'wrong'?
-> >     any suggestions on how to craft a less problematic fix?
-> 
-> nfs_opendir() should fix case 1/, but still has the issue with case 2/.
-> How about just having it force a revalidation if we see that this is a
-> mountpoint?
-> 
-> Cheers
->   Trond
-
+-- 
+chuck[dot]lever[at]oracle[dot]com
