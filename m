@@ -1,61 +1,116 @@
-From: "J. Bruce Fields" <bfields@citi.umich.edu>
-Subject: Re: [PATCH 1/2] nfsd4: complete enforcement of 4.1 op ordering
-Date: Fri, 23 Apr 2010 20:10:34 -0400
-Message-ID: <20100424001034.GA7176@fieldses.org>
-References: <1271946744-5877-1-git-send-email-bfields@citi.umich.edu> <20100422144831.GA5926@fieldses.org> <20100423212411.GC1964@fieldses.org> <20100423231344.GA6425@fieldses.org>
+From: Mike Frysinger <vapier@gentoo.org>
+Subject: Re: [PATCH] make capabilities support optional
+Date: Sat, 24 Apr 2010 00:42:26 -0400
+Message-ID: <201004240042.27705.vapier@gentoo.org>
+References: <1271753213-17374-1-git-send-email-vapier@gentoo.org> <201004231529.42370.vapier@gentoo.org> <4BD1FE77.1050000@oracle.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs@vger.kernel.org
-To: Benny Halevy <bhalevy@panasas.com>
+Content-Type: multipart/signed;
+  boundary="nextPart1573647.x3AmUj6LEG";
+  protocol="application/pgp-signature";
+  micalg=pgp-sha1
+Cc: Steve Dickson <SteveD@redhat.com>, linux-nfs@vger.kernel.org
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:33396 "EHLO fieldses.org"
+Received: from smtp.gentoo.org ([140.211.166.183]:50246 "EHLO smtp.gentoo.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755843Ab0DXAKe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 23 Apr 2010 20:10:34 -0400
-In-Reply-To: <20100423231344.GA6425@fieldses.org>
+	id S1750993Ab0DXElS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 24 Apr 2010 00:41:18 -0400
+In-Reply-To: <4BD1FE77.1050000@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Apr 23, 2010 at 07:13:44PM -0400, J. Bruce Fields wrote:
-> On Fri, Apr 23, 2010 at 05:24:11PM -0400, J. Bruce Fields wrote:
-> > On Thu, Apr 22, 2010 at 10:48:31AM -0400, J. Bruce Fields wrote:
-> > > On Thu, Apr 22, 2010 at 10:32:23AM -0400, J. Bruce Fields wrote:
-> > > > Enforce the rules about compound op ordering.
-> > > > 
-> > > > Motivated by implementing RECLAIM_COMPLETE, for which the client is
-> > > > implicit in the current session, so it is important to ensure a
-> > > > succesful SEQUENCE proceeds the RECLAIM_COMPLETE.
-> > > 
-> > > The other problem here is that while we have a reference count on the
-> > > session itself preventing it from going away till the compound is done,
-> > > I don't see what prevents the associated clientid from going away.
-> > > 
-> > > To fix that, and to be more polite to 4.0 clients, I think we want to
-> > > also add a client pointer to the compound_state structure, keep count of
-> > > the number of compounds in progress which reference that client, and not
-> > > start the client's expiry timer until we've encoded the reply to the
-> > > compound.
-> > 
-> > Benny--I coded up a simple (possibly incorrect) implementation of this,
-> > and then remembered that this was more or less what your
-> > state-lock-reduction-prep patch series did.  Do you have a more recent
-> > version of those patches?
-> 
-> One possible problem with that approach: mark_for_renew() can fail (if
-> the client is already expired), without telling the caller.
-> 
-> You then end up with an odd situation, continuing to process the rest of
-> the compound normally, while your session belongs to a client that's
-> already expired.
-> 
-> Perhaps it would be better to mark the client for possible renewal the
-> moment it (or some stateid, sessionid, or other object that refers to
-> it) is looked up?
+--nextPart1573647.x3AmUj6LEG
+Content-Type: Text/Plain;
+  charset="iso-8859-1"
+Content-Transfer-Encoding: quoted-printable
 
-Also: a single "RENEW" state won't suffice when multiple outstanding
-compounds reference the same client, in which case you want only the
-last (not the first) to complete to do the renewal.  So I think we want
-a count of outstanding compounds referencing the client, so that we can
-do the renewal when the count goes to zero.
+On Friday 23 April 2010 16:09:27 Chuck Lever wrote:
+> On 04/23/2010 03:29 PM, Mike Frysinger wrote:
+> > On Friday 23 April 2010 15:12:33 Chuck Lever wrote:
+> >> If we really do need to drop libcap for some configurations, then such=
+ a
+> >> change should be thoroughly tested in those environments.  Some featur=
+es
+> >> won't always work without libcap, and appropriate warnings should be
+> >> added to man pages and/or should be displayed by statd.
+> >=20
+> > there should be appropriate documentation regardless.  current nfs-utils
+> > lists no information at all in ChangeLog/NEWS/README/INSTALL or any
+> > other document explaining why/what/how libcap is needed/used.  you cant
+> > do documentless dumps on distro maintainers and expect them to "just
+> > know" what is going on.
+>=20
+> "git log" has served as the ChangeLog for some time now.  The commits I
+> referenced in my last e-mail explain exactly why libcap was introduced.
 
---b.
+none of the scm metadata is relevant to distro maintainers.  that info is f=
+ine=20
+for developers of nfs-utils, but that's it.  people attempting to package n=
+fs-
+utils shouldnt need to crawl these backends to try and glean info themselve=
+s.
+
+> Patches are posted on this mailing list for review before they are
+> committed.  Anyone has a chance to object, comment, or suggest a simpler
+> way to do things.
+
+again, this isnt relevant to distro maintainers.
+
+> It's important to realize that it's much harder to make things optional
+> than to insist that they be built in.  Adding build options means
+> there's more work for distributors to configure the build, and it
+> exponentially increases our test matrix (which is already out of
+> control).  Every change now has to be tested with each combination of
+> build options.  Add one more --enable option, and that doubles the
+> number of combinations.
+
+hardcoding optional features in autotools is worse for distro maintainers t=
+han=20
+proper optional configure flags.  dont kid yourself in this regard.
+
+> I didn't see a clear explanation of why your proposed change was
+> necessary, nor was it clear from the patch description that you
+> understood why libcap was added in the first place, nor does it seem
+> that the regressions caused by disabling libcap are adequately addressed.
+
+things worked before libcap was introduced, so clearly it's possible.  it m=
+ay=20
+be reduced security footprint, but plenty of people are fine with it.
+
+> So, why do you want to make libcap optional?
+
+there are plenty of systems where privileges are meaningless (like embedded=
+)=20
+and so libcap is pure cruft.
+
+> And why is yet another build option needed (rather than just using
+> AC_FUNCTIONS and HAVE_LIBCAP) ?
+
+magic detections are terrible for distro maintainers and one of the things =
+we=20
+spend a lot of time fixing.
+=2Dmike
+
+--nextPart1573647.x3AmUj6LEG
+Content-Type: application/pgp-signature; name=signature.asc 
+Content-Description: This is a digitally signed message part.
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.14 (GNU/Linux)
+
+iQIcBAABAgAGBQJL0nazAAoJEEFjO5/oN/WBeX4P/RR19evG6tOSu4f4gAZrmnln
+MuesOAEwvre5mDqXlSyA1nVaUSrFFoZSRiq7aQWYm4c9T8dh/ovu5rr5nKUzZ2IM
+XSzo0NSOrH4ghhMUWa+322VpGWeXVEa0KfifqEVdGnJwxJY814oPq1s4UAs5gusm
+ySEzrJoDtf1vs06L3NkOmZU2M9YQXM3M3NUI0LeVIMO+80osA9OChDIQpKaWYveW
+pfoBngWMVg9h5BE3AsAsVv2gX+/jukjUcR+4nyRXYvUaixtDBy2UXFv0xyCXirhQ
+CsIBFwu76V62DiNWpG1FxMu4jl2wSEdGiOJYZU9PEb4iHWuFOuPclKNNsjxl8BrI
+CTkDMDVC6v/gotQwgYctCEje75yI5FJTWIDTnw2+OjTi5bJTLJQznaCXlNjKGcs2
+mhbLUvJfvNZgBxIRY+EM8lzkX3EZpn/yRQ9oWG6KMfwFvEagBGolBQqjImENphFN
+AggnyLtRQE+6cTgEtccfTspyLAyFHJfahyaaQBAOhhoNOPxABD66ELC8bUCidLzi
+Rob50Pa7cAkYKXYGFzfeIIywBYKworaNPCNihhTCiQ5G1uCe8diwm69SW/KZjHoP
+HQiVyYIreV+P7r6fnJOcdYZVqsmR96pSL5vmQRXjdl7CQPvFtjbAk3ltueE1HSwS
+tUD7SVFMmsg52sD/PRj+
+=LauP
+-----END PGP SIGNATURE-----
+
+--nextPart1573647.x3AmUj6LEG--
