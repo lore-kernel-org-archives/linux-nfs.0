@@ -1,59 +1,140 @@
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: Re: [Bugme-new] [Bug 15709] New: swapper page allocation failure
-Date: Mon, 26 Apr 2010 08:15:54 -0400
-Message-ID: <1272284154.4252.34.camel@localhost.localdomain>
-References: <4BC43097.3060000@tauceti.net> <4BCC52B9.8070200@tauceti.net>
-	 <20100419131718.GB16918@redhat.com>
-	 <dbf86fc1c370496138b3a74a3c74ec18@tauceti.net>
-	 <20100421094249.GC30855@redhat.com>
-	 <c638ec9fdee2954ec5a7a2bd405aa2ba@tauceti.net>
-	 <20100422100304.GC30532@redhat.com> <4BD12F9C.30802@tauceti.net>
-	 <20100425091759.GA9993@redhat.com> <4BD4A917.70702@tauceti.net>
-	 <20100425204916.GA12686@redhat.com>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: [PATCH] make capabilities support optional
+Date: Mon, 26 Apr 2010 11:24:03 -0400
+Message-ID: <4BD5B013.9060705@oracle.com>
+References: <1271753213-17374-1-git-send-email-vapier@gentoo.org> <4BD1CADD.4050200@RedHat.com> <4BD1D8AA.4030708@oracle.com> <4BD1E55B.2090703@RedHat.com> <4BD1F121.1060001@oracle.com> <4BD21DA1.4000001@RedHat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Cc: Robert Wimmer <kernel-PAwl83ecUlHR7s880joybQ@public.gmane.org>, Avi Kivity <avi@redhat.com>,
-	Andrew Morton <akpm@linux-foundation.org>, linux-mm@kvack.org,
-	bugzilla-daemon-590EEB7GvNiWaY/ihj7yzEB+6BGkLq7r@public.gmane.org,
-	Rusty Russell <rusty@rustcorp.com.au>,
-	Mel Gorman <mel-wPRd99KPJ+uzQB+pC5nmwQ@public.gmane.org>, linux-nfs@vger.kernel.org,
-	linux-kernel@vger.kernel.org
-To: "Michael S. Tsirkin" <mst@redhat.com>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Cc: Mike Frysinger <vapier@gentoo.org>, linux-nfs@vger.kernel.org
+To: Steve Dickson <SteveD@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:25166 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752429Ab0DZMP6 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 26 Apr 2010 08:15:58 -0400
-In-Reply-To: <20100425204916.GA12686@redhat.com>
+Received: from rcsinet12.oracle.com ([148.87.113.124]:41449 "EHLO
+	rcsinet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752676Ab0DZPYc (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 26 Apr 2010 11:24:32 -0400
+In-Reply-To: <4BD21DA1.4000001-AfCzQyP5zfLQT0dZR+AlfA@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sun, 2010-04-25 at 23:49 +0300, Michael S. Tsirkin wrote: 
-> So, it's an NFS-related regression, which is consistent with the bisect
-> results. I guess someone who knows about NFS will have to look at it...
-> BTW, you probably want to label the bug as regression.
-> 
-> On Sun, Apr 25, 2010 at 10:41:59PM +0200, Robert Wimmer wrote:
-> > I've added CONFIG_KALLSYMS and CONFIG_KALLSYMS_ALL
-> > to my .config. I've uploaded the dmesg output. Maybe it
-> > helps a little bit:
-> > 
-> > https://bugzilla.kernel.org/attachment.cgi?id=26138
-> > 
-> > - Robert
-> > 
+On 04/23/2010 06:22 PM, Steve Dickson wrote:
+>
+>
+> On 04/23/2010 03:12 PM, Chuck Lever wrote:
+>> Hi Steve-
+>>
+>> On 04/23/2010 02:22 PM, Steve Dickson wrote:
+>>> On 04/23/2010 01:28 PM, Chuck Lever wrote:
+>>>> On 04/23/2010 12:29 PM, Steve Dickson wrote:
+>>>>> On 04/20/2010 04:46 AM, Mike Frysinger wrote:
+>>>>>> The new code using libcap is quite minor, so rather than always
+>>>>>> reqiure
+>>>>>> libcap support, make it a normal --enable type flag.  Current default
+>>>>>> behavior is retained -- if libcap is found, it is enabled, else it is
+>>>>>> disabled like every nfs-utils version in the past.
+>>>>>>
+>>>>>> Signed-off-by: Mike Frysinger<vapier@gentoo.org>
+>>>>>>
+>>>>> Committed...
+>>>>
+>>>> I somehow missed this one.  Why are we disabling libcap?  And why are we
+>>>> adding another --enable flag when everyone has agreed that we should
+>>>> avoid that if at all possible?
+>>> The justification I was used was it made nfs-utils more portable on
+>>> systems/distros that may not have the libcap support.
+>>
+>> As an aside, the patch description is where we should be documenting the
+>> thinking behind these decisions in an audit-able and transparent manner.
+>>   The description for this patch doesn't have a strong justification
+>> IMHO.  It would be hard for any of us to come back to this patch a year
+>> from now and figure out exactly why this change was made.  (I say this
+>> having spent the last year doing just that for a long history of patches
+>> to statd and mount).
+> True, the patch description could have been a bit more verbose, but I
+> feel I understood the reason for the patch and that reason the made
+> sense to me...
 
-That last trace is just saying that the NFSv4 reboot recovery code is
-crashing (which is hardly surprising if the memory management is hosed).
+The problem is that this patch was never posted publicly, so you were 
+the only reviewer.  The rest of us have no idea what this is about.
 
-The initial bisection makes little sense to me: it is basically blaming
-a page allocation problem on a change to the NFSv4 mount code. The only
-way I can see that possibly happen is if you are hitting a stack
-overflow.
-So 2 questions:
+> I feel backwards compatibility is important..
 
-  - Are you able to reproduce the bug when using NFSv3 instead?
-  - Have you tried running with stack tracing enabled?
+Sure, but this isn't necessarily the way to go about it, in this case. 
+It's hard to know though, since the patch description was vague, and the 
+patch itself was never publicly posted.
 
-Cheers
-  Trond
+I'm all for choice, but let's make sure it's _informed_ choice where 
+ever possible.
+
+>> Back on topic: I get it that, in general, we want to allow older distros
+>> to build the latest nfs-utils.  However I don't think we can blithely
+>> rip this libcap support out, even just for old configurations.
+>>
+>> If we really do need to drop libcap for some configurations, then such a
+>> change should be thoroughly tested in those environments.  Some features
+>> won't always work without libcap, and appropriate warnings should be
+>> added to man pages and/or should be displayed by statd.
+> Well dropping libcap is not the default and I don't see us (i.e. upstream)
+> ever making it the default... If people want set that config flag, its up to
+> them to document the ramifications, IMHO...
+
+Er, I think it _is_ up to us chickens to document the ramifications.  If 
+some new --enable flag just shows up on ./configure, how am I going to 
+know whether I should set it or not?  I certainly couldn't tell why 
+another --enable flag was needed just for libcap until Mike spelled it out.
+
+>>>> It is especially on older systems that nfs-utils will break without
+>>>> libcap support.  Without CAP_NET_BIND, pmap_unregister() will fail when
+>>>> statd is shut down, leaving NSM registered with the portmapper, but with
+>>>> no active listeners.  When statd is started up again, it won't be able
+>>>> to register the new NSM listener ports.
+>>> Hmm... I agree the unregister() would fail on exit, but that's the reason
+>>> an unregister() (and then an register) is done on start up before the
+>>> privileges are drop... Actually this how it worked for a very long time,
+>>> well before the capabilities support added...
+>>
+>> When I was working on it, subsequent attempts to register would always
+>> fail if an NSM service was already registered.  In other words, this was
+>> broken when I found it.
+>>
+>> Commits e2446fda and 7dd13420 explain why CAP_NET_BIND was introduced,
+>> and what bugs are addressed.  Without CAP_NET_BIND, we can't guarantee
+>> that the NSM service can be unregistered, and neither can we guarantee
+>> that a privileged port, when requested, can be used for listening.
+>>
+>> The problem is that statd drops its root privileges, so any subsequent
+>> attempts to acquire a privileged port (such as to do a
+>> pmap_unregister()) will fail, and leave the NSM service registered.
+>>
+>> Since rpcbind registration is done via AF_UNIX, it can work without
+>> CAP_NET_BIND.  But it requires that the registering UID be the same as
+>> the UID used to unregister it.  Thus both registration and
+>> unregistration must be root, or both must be done as "rpcuser."  Since
+>> statd drops its privileges just after start-up, I chose the latter.
+>>
+>> However, using lower privileges means a pmap_unregister() will always
+>> fail in common cases.  So CAP_NET_BIND is retained for this purpose.
+>>
+>> We also have to worry about mount.nfs these days, as it pings the statd
+>> service when mounting with "lock".  If NSM is registered, but no statd
+>> is listening (as would be the case if statd couldn't unregister itself
+>> on its way down), then most subsequent NFSv2/v3 mounts would hang.  This
+>> is why even "unregister/register" at start-up isn't always adequate.
+>>
+> I can't disagree with any of the above... but the above assumes that
+> the --disable libcap will some how become the default... that is
+> not the case...
+>
+> All that config flag allows is backwards compatibility,  which I know
+> we both think is a good thing...
+
+Now that we've answered the question of "why are we doing this," the 
+question in my mind is how we want statd to behave if libcap isn't 
+available.
+
+At the very least, I think the man page should mention this bug somehow, 
+and maybe a warning should be generated during the build.  Since this is 
+mostly for embedded systems, according to Mike, I doubt an actual 
+generated run-time warning would be visible to anyone.
+
+-- 
+chuck[dot]lever[at]oracle[dot]com
