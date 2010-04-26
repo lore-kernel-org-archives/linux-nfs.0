@@ -1,81 +1,56 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from urz32.uni-bamberg.de ([141.13.240.32]:3470 "EHLO
-	urz32.UNI-BAMBERG.DE" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758823Ab0DHPjH convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 8 Apr 2010 11:39:07 -0400
-From: Thomas Wunder <thomas.wunder@swt-bamberg.de>
-To: Kevin Coffman <kwc@citi.umich.edu>, linux-nfs@vger.kernel.org
-Subject: Re: NFS-Mount with MIT-Kerberos5 doesn't use user tickets...
-Date: Thu, 8 Apr 2010 17:39:21 +0200
-References: <loom.20100407T160936-119@post.gmane.org> <201004080111.29452.thomas.wunder@swt-bamberg.de> <j2u4d569c331004080718xd96444d3z532fcd92af5755b2@mail.gmail.com>
-In-Reply-To: <j2u4d569c331004080718xd96444d3z532fcd92af5755b2@mail.gmail.com>
-Message-Id: <201004081739.21853.thomas.wunder@swt-bamberg.de>
-Content-Type: Text/Plain;
-  charset="iso-8859-1"
+Received: from mx2.netapp.com ([216.240.18.37]:14524 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752790Ab0DZQSQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 26 Apr 2010 12:18:16 -0400
+From: andros@netapp.com
+To: pnfs@linux-nfs.org
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH 0/3] pNFS generic device ID cache version 3
+Date: Mon, 26 Apr 2010 12:18:16 -0400
+Message-Id: <1272298699-11411-1-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Thursday 08 April 2010 16:18:11 you wrote:
-> On Wed, Apr 7, 2010 at 7:11 PM,  <thomas.wunder@swt-bamberg.de> wrote:
-> >> By the looks of your /etc/fstab entry, the system (root) will try to
-> >> mount /mnt/net automatically.  You could try adding the "noauto"
-> >> option and then manually issuing the mount command as the user.  (Or
-> >> use automount?)
-> >> K.C.
-> >
-> > I'm pretty sure that it doesn't try to automatically mount the share on
-> > startup since there is no log entry that would indicate such an attempt.
-> > I already tried to do the mount as a user (which is authenticated via
-> > kerberos such that there is a valid ticket for that user) the logs (that
-> > i have posted) are showing what comes out of it. If I try to do the mount
-> > without the fstab- entry (i.e. mount -t nfs4 -o sec=krb5p dnsdhcp:/
-> > /mnt/net) it is being rejected on the grounds that only root can perform
-> > a mount. 'sudo' doesn't work currently (i've got some problems with my
-> > PAM config for sudo) so I haven't had any chance to try it out...
-> >
-> > I've already set up automount but it actually does exactly the same as if
-> > I ran mount manually as described above.
-> >
-> > I'm totally confused because I don't understand what people like
-> > http://thread.gmane.org/gmane.linux.nfsv4/5893
-> > might have done to perform a mount with normal user privileges. If it was
-> > really mandatory to be root (as stated by Andy Adamson in the other
-> > message) then I wouldn't really understand why they should have
-> > implemented the uid passing using that pipefs file....
-> 
-> Hello Tom,
-> 
-> To allow non-root users to do the mount, add the "user" option to the
-> entry in /etc/fstab.  Then the user with uid 10002 should be able to
-> kinit and then mount.  (Note that in this case, there is no need for
-> the "-n" option to rpc.gssd.)
-> 
-> K.C.
-> 
-I've already added have the "user"-option in my fstab (I also reported that in 
-my very first message) such that the entry looks like:
-dnsdhcp:/  /mnt/net nfs4   sec=krb5p,user          0       0
 
-To express it more clearly:
-The user with uid=10002 (username = tomkrb) can do a kinit but i guess it 
-doesn't need to if it is already logged into a bash-console using pam_krb5-
-authentication-module. A ticket already exists for that session in the /tmp 
-directory and if i modify the "void handle_krb5_upcall(struct clnt_info 
-*clp)"-function in gssd_proc.c to not use the uid which is passed by the 
-kernel but rather use 10002 (statically) that ticket is also accepted.
+This patch set implements a shared RCU device ID cache servicing multiple
+mounts of a single layout type per meta data server (struct nfs_client).
 
-Meanwhile i succeeded in getting sudo working. Performing
-sudo mount -t nfs4 -o sec=krb5p dnsdhcp:/ /mnt/net
-from a (physical) console where tomkrb (uid=10002) is logged in also results 
-in uid=0 being passed instead of uid=10002.
+Device id's are referenced by layout segments which hold a pointer to the
+nfs4_deviceid struct.
 
-Is it possible to understand what i'd like to do at all?
+An hlist is used for the cache due to the large number of devices used by
+the object and block layout drivers.
 
--- 
-Lehrstuhl für Softwaretechnik und Programmiersprachen
-Fakultät WIAI, Universität Bamberg, 96045 Bamberg
+Note that nfs4_deviceid_hash() is the same as the NFSD opaque_hash function.
+Perhaps they should be shared.
 
-Email: thomas.wunder@swt-bamberg.de
-Web: http://www.swt-bamberg.de/
-Tel.: 0951 863-3852 / Fax: 0951 863-3855
+0001-SQUASHME-pnfs_submit-generic-device-ID-cache.patch
+0002-SQUASHME-pnfs_submit-fix-multiple-mount-set_pnfs_lay.patch
+0003-SQUASHME-pnfs-submit-file-layout-driver-generic-devi.patch
+
+These patches apply to the 2.6.34-rc3 pnfs-submit branch.
+
+Testing:
+-------
+CONFIG_NFS_V4_1 set:
+
+NFSv4.1/pNFS mounts:
+Connectathon tests pass against GFS2/pNFS with a single AUTH_SYS mount, a double
+AUTH_SYS mount, and an AUTH_SYS and AUTH_GSS/KRB5 mount (which creates
+two superblocks under a struct nfs_client and both share the device id cache).
+
+NFSv4.0 mount;
+Connectathon tests pass
+
+Did not test with multiple device ID's. I will create a mulitple device ID
+test with the pynfs file layout server.
+
+CONFIG_NFS_V4_1 not set:
+
+NFSv4.0 mount: Connectathon tests pass.
+
+-->Andy
+
