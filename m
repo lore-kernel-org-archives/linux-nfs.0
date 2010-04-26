@@ -1,124 +1,90 @@
-From: Chuck Lever <chuck.lever-veTT2BtV2gDQT0dZR+AlfA@public.gmane.org>
-Subject: Re: [PATCH] make capabilities support optional
-Date: Mon, 26 Apr 2010 14:03:04 -0400
-Message-ID: <4BD5D558.80509@oracle.com>
-References: <1271753213-17374-1-git-send-email-vapier@gentoo.org> <201004240042.27705.vapier@gentoo.org> <4BD5AD68.6010200@oracle.com> <201004261246.59497.vapier@gentoo.org>
+From: Robert Wimmer <kernel@tauceti.net>
+Subject: Re: [Bugme-new] [Bug 15709] New: swapper page allocation failure
+Date: Mon, 26 Apr 2010 22:25:41 +0200
+Message-ID: <4BD5F6C5.8080605@tauceti.net>
+References: <4BC43097.3060000@tauceti.net> <4BCC52B9.8070200@tauceti.net> <20100419131718.GB16918@redhat.com> <dbf86fc1c370496138b3a74a3c74ec18@tauceti.net> <20100421094249.GC30855@redhat.com> <c638ec9fdee2954ec5a7a2bd405aa2ba@tauceti.net> <20100422100304.GC30532@redhat.com> <4BD12F9C.30802@tauceti.net> <20100425091759.GA9993@redhat.com> <4BD4A917.70702@tauceti.net> <20100425204916.GA12686@redhat.com> <1272284154.4252.34.camel@localhost.localdomain>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Cc: Steve Dickson <SteveD@redhat.com>, linux-nfs@vger.kernel.org
-To: Mike Frysinger <vapier@gentoo.org>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:57087 "EHLO
-	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751118Ab0DZSET (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 26 Apr 2010 14:04:19 -0400
-In-Reply-To: <201004261246.59497.vapier@gentoo.org>
-Sender: linux-nfs-owner@vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
+Cc: "Michael S. Tsirkin" <mst@redhat.com>, Avi Kivity <avi@redhat.com>,
+ Andrew Morton <akpm@linux-foundation.org>,
+ linux-mm@kvack.org, bugzilla-daemon@bugzilla.kernel.org,
+ Rusty Russell <rusty@rustcorp.com.au>,
+ Mel Gorman <mel@csn.ul.ie>, linux-nfs@vger.kernel.org,
+ linux-kernel@vger.kernel.org
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Return-path: <owner-linux-mm@kvack.org>
+In-Reply-To: <1272284154.4252.34.camel@localhost.localdomain>
+Sender: owner-linux-mm@kvack.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 04/26/2010 12:46 PM, Mike Frysinger wrote:
-> On Monday 26 April 2010 11:12:40 Chuck Lever wrote:
 
->> However, as soon as a distributor sends patches (rather than, say,
->> > simply posting a bug report), you become a developer, and are thus
->> > obligated to act like one by reviewing the content of the local source
->> > management system before making changes, and by posting your patches to
->> > this list for us to review.
-> expecting anyone who sends a patch to be fully versed in NFS internals and the
-> full history is completely unreasonable.
-
-I didn't say "anyone."  We were specifically discussing distributors, 
-and specifically distributors that regularly send patches.
-
-> i'm not saying people shouldnt do a
-> little research here, but your position appears to be poor: if you want nfs-
-> utils info, regardless of who you are, you must go to the scm source and dive
-> through mounds of history and divine the answer yourself.
-
-That's not my position at all.  After you claimed the ChangeLog is not 
-kept updated, I merely observed that ChangeLog information is available 
-in the git log, and on the web.  Asking the maintainer to copy the git 
-log into the ChangeLog during every release for tarball users is 
-perfectly reasonable.
-
->>> > > people attempting to package nfs-
->>> > > utils shouldnt need to crawl these backends to try and glean info
->>> > > themselves.
->> >
->> > As I pointed out, you don't need git on your local system to look at
->> > this metadata: it's already available on linux-nfs.org if you have a web
->> > browser.
-> the interface is irrelevant -- you're still saying people have to dig through
-> piles of information that is not relevant to packaging.
-
-Have you looked at the output of git log?  It's basically the same 
-content as the ChangeLog file, up to 2006.  It's exactly the information 
-you were asking for.
-
->>>> > >> Patches are posted on this mailing list for review before they are
->>>> > >> committed.  Anyone has a chance to object, comment, or suggest a simpler
->>>> > >> way to do things.
->>> > >
->>> > > again, this isnt relevant to distro maintainers.
->> >
->> > How are nfs-utils developers supposed to know of a problem if distro
->> > maintainers don't tell us?
-> you're saying distro maintainers are expected to subscribe to the development
-> list and review patches ?  that's bunk.
-
-Anyone who is a regular contributor should subscribe to the mailing list 
-and review patches they care about to stay up to date.  If you happen to 
-choose not to do that, then you really shouldn't be surprised when asked 
-to provide more detail on a patch, or to follow the normal patch 
-submission rules.
-
-If you are a distro maintainer, you can either report problems to us, 
-ask for new features, or post patches.  As a maintainer, if you want to 
-post a lot of patches, you should follow the patch submission rules the 
-rest of us are beholden to.  That's only fair to the rest of us, and it 
-means we can do a better job reviewing everyone's changes.  How is that 
-unreasonable?
-
->> I claim that "things" did not work.  When statd was shut down, it left a
->> dangling rpcbind registration, and that's a bug in all environments.
->
-> perhaps, but some people are ok with that.  considering that has always been
-> the behavior then, ive never seen one complaint about this via Gentoo.  clear
-> documentation explaining the tradeoffs would be sufficient and there are
-> plenty of systems where this bug is meaningless.  on my nfs servers, either
-> everything is up, or everything is down.  there is no "in between" where some
-> services are left running while others are not.
-
-My point is that explanation should have been included in the patch 
-description at the very beginning, because you should realize that not 
-everyone else is served by your changes, either, and many of us don't 
-run Gentoo and would not have known the details of your server 
-configuration.
-
->>>> So, why do you want to make libcap optional?
+>>> I've added CONFIG_KALLSYMS and CONFIG_KALLSYMS_ALL
+>>> to my .config. I've uploaded the dmesg output. Maybe it
+>>> helps a little bit:
 >>>
->>> there are plenty of systems where privileges are meaningless (like
->>> embedded) and so libcap is pure cruft.
->>
->> In that case, your patch description should explain that so we can
->> understand why you've added another --enable switch.  These switches are
->> overused, so a clear rationalization is needed when adding yet another.
->>
->> By and large, those who participate on this list felt that "--enable"
->> flags are less desirable than automatic feature checking.  Your view is
->> novel, I think.
+>>> https://bugzilla.kernel.org/attachment.cgi?id=26138
+>>>
+>>> - Robert
+>>>
+>>>       
+> That last trace is just saying that the NFSv4 reboot recovery code is
+> crashing (which is hardly surprising if the memory management is hosed).
 >
-> the view of distro maintainers in this regard matters more than that of
-> developers.  the configure script is designed for the end packagers to use,
-> not developers.  my position here is not unique to me or something i pulled
-> out of nowhere.
+> The initial bisection makes little sense to me: it is basically blaming
+> a page allocation problem on a change to the NFSv4 mount code. The only
+> way I can see that possibly happen is if you are hitting a stack
+> overflow.
+> So 2 questions:
+>
+>   - Are you able to reproduce the bug when using NFSv3 instead?
+>   
 
-It may be true that maintainers care more about the configure script 
-than developers, but none of those maintainers were here to express that 
-opinion or comment on any patches that changed the configure script.
+I've tried with NFSv3 now. With v4 the error normally occur
+within 5 minutes. The VM is now running for one hour and no
+soft lockup so far. So I would say it can't be reproduced with
+v3.
 
-Basically, how are we supposed to know your opinions if you refuse to 
-participate?
+>   - Have you tried running with stack tracing enabled?
+>   
 
--- 
-chuck[dot]lever[at]oracle[dot]com
+Can you explain this a little bit more please? CONFIG_STACKTRACE=y
+was already enabled. I've now enabled
+
+CONFIG_USER_STACKTRACE_SUPPORT=y
+CONFIG_NOP_TRACER=y
+CONFIG_HAVE_FTRACE_NMI_ENTER=y
+CONFIG_HAVE_FUNCTION_TRACER=y
+CONFIG_HAVE_FUNCTION_GRAPH_TRACER=y
+CONFIG_HAVE_FUNCTION_TRACE_MCOUNT_TEST=y
+CONFIG_HAVE_DYNAMIC_FTRACE=y
+CONFIG_HAVE_FTRACE_MCOUNT_RECORD=y
+CONFIG_HAVE_FTRACE_SYSCALLS=y
+CONFIG_FTRACE_NMI_ENTER=y
+CONFIG_CONTEXT_SWITCH_TRACER=y
+CONFIG_GENERIC_TRACER=y
+CONFIG_FTRACE=y
+CONFIG_FUNCTION_TRACER=y
+CONFIG_FUNCTION_GRAPH_TRACER=y
+CONFIG_FTRACE_SYSCALLS=y
+CONFIG_STACK_TRACER=y
+CONFIG_KMEMTRACE=y
+CONFIG_DYNAMIC_FTRACE=y
+CONFIG_FTRACE_MCOUNT_RECORD=y
+CONFIG_HAVE_MMIOTRACE_SUPPORT=y
+
+and run
+
+echo 1 > /proc/sys/kernel/stack_tracer_enabled
+
+But the output is mostly the same in dmesg/
+var/log/messages. Can you please guide me how I can
+enable the stack tracing you need?
+
+Thanks!
+Robert
+
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
