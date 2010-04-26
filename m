@@ -1,61 +1,107 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp.opengridcomputing.com ([209.198.142.2]:60367 "EHLO
-	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1755012Ab0DAWss (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 1 Apr 2010 18:48:48 -0400
-Message-ID: <4BB522CF.60503@opengridcomputing.com>
-Date: Thu, 01 Apr 2010 17:48:47 -0500
-From: Tom Tucker <tom@opengridcomputing.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>,
-        Chuck Lever <chuck.lever@oracle.com>
-CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        "linux-rdma@vger.kernel.org" <linux-rdma@vger.kernel.org>
-Subject: [PATCH,RFC] nfsd: Make INET6 transport creation failure an informational
- message
-Content-Type: text/plain; charset=utf-8; format=flowed
+Received: from mx2.netapp.com ([216.240.18.37]:43275 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753431Ab0DZX3E (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 26 Apr 2010 19:29:04 -0400
+Subject: Re: [Bugme-new] [Bug 15709] New: swapper page allocation failure
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Robert Wimmer <kernel@tauceti.net>
+Cc: "Michael S. Tsirkin" <mst@redhat.com>, Avi Kivity <avi@redhat.com>,
+        Andrew Morton <akpm@linux-foundation.org>, linux-mm@kvack.org,
+        bugzilla-daemon@bugzilla.kernel.org,
+        Rusty Russell <rusty@rustcorp.com.au>, Mel Gorman <mel@csn.ul.ie>,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+In-Reply-To: <4BD61147.40709@tauceti.net>
+References: <4BC43097.3060000@tauceti.net> <4BCC52B9.8070200@tauceti.net>
+	 <20100419131718.GB16918@redhat.com>
+	 <dbf86fc1c370496138b3a74a3c74ec18@tauceti.net>
+	 <20100421094249.GC30855@redhat.com>
+	 <c638ec9fdee2954ec5a7a2bd405aa2ba@tauceti.net>
+	 <20100422100304.GC30532@redhat.com> <4BD12F9C.30802@tauceti.net>
+	 <20100425091759.GA9993@redhat.com> <4BD4A917.70702@tauceti.net>
+	 <20100425204916.GA12686@redhat.com>
+	 <1272284154.4252.34.camel@localhost.localdomain>
+	 <4BD5F6C5.8080605@tauceti.net>
+	 <1272315854.8984.125.camel@localhost.localdomain>
+	 <4BD61147.40709@tauceti.net>
+Content-Type: multipart/mixed; boundary="=-VJUQJgQ37UgEeLWr5kvS"
+Date: Mon, 26 Apr 2010 19:28:56 -0400
+Message-ID: <1272324536.16814.45.camel@localhost.localdomain>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Hi Bruce/Chuck,
+--=-VJUQJgQ37UgEeLWr5kvS
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
 
-RDMA Transports are currently broken in 2.6.34 because they don't have a 
-V4ONLY setsockopt. So what happens is that when write_ports attempts to 
-create the PF_INET6 transport it fails because the port is already in 
-use. There is discussion on linux-rdma about how to fix this, but in the 
-interim and perhaps indefinitely, I propose the following:
+On Tue, 2010-04-27 at 00:18 +0200, Robert Wimmer wrote:=20
+> > Sure. In addition to what you did above, please do
+> >
+> > mount -t debugfs none /sys/kernel/debug
+> >
+> > and then cat the contents of the pseudofile at
+> >
+> > /sys/kernel/debug/tracing/stack_trace
+> >
+> > Please do this more or less immediately after you've finished mounting
+> > the NFSv4 client.
+> >  =20
+>=20
+> I've uploaded the stack trace. It was generated
+> directly after mounting. Here are the stacks:
+>=20
+> After mounting:
+> https://bugzilla.kernel.org/attachment.cgi?id=3D26153
+> After the soft lockup:
+> https://bugzilla.kernel.org/attachment.cgi?id=3D26154
+> The dmesg output of the soft lockup:
+> https://bugzilla.kernel.org/attachment.cgi?id=3D26155
+>=20
+> > Does your server have the 'crossmnt' or 'nohide' flags set, or does it
+> > use the 'refer' export option anywhere? If so, then we might have to
+> > test further, since those may trigger the NFSv4 submount feature.
+> >  =20
+> The server has the following settings:
+> rw,nohide,insecure,async,no_subtree_check,no_root_squash
+>=20
+> Thanks!
+> Robert
+>=20
+>=20
 
-Tom
+That second trace is more than 5.5K deep, more than half of which is
+socket overhead :-(((.
 
-nfsd: Make INET6 transport creation failure an informational message
+The process stack does not appear to have overflowed, however that trace
+doesn't include any IRQ stack overhead.
 
-The write_ports code will fail both the INET4 and INET6 transport creation if
-the transport returns an error when PF_INET6 is specified. Some transports
-that do not support INET6 return an error other than EAFNOSUPPORT. We should
-allow communication on INET4 even if INET6 is not yet supported or fails
-for some reason.
+OK... So what happens if we get rid of half of that trace by forcing
+asynchronous tasks such as this to run entirely in rpciod instead of
+first trying to run in the process context?
 
-Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
----
+See the attachment...
 
- fs/nfsd/nfsctl.c |    6 ++++--
- 1 files changed, 4 insertions(+), 2 deletions(-)
+--=-VJUQJgQ37UgEeLWr5kvS
+Content-Disposition: attachment; filename="linux-2.6.34-000-reduce_async_rpc_stack_usage.dif"
+Content-Type: text/plain; name="linux-2.6.34-000-reduce_async_rpc_stack_usage.dif"; charset="UTF-8"
+Content-Transfer-Encoding: base64
 
-diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
-index 0f0e77f..934b624 100644
---- a/fs/nfsd/nfsctl.c
-+++ b/fs/nfsd/nfsctl.c
-@@ -1008,8 +1008,10 @@ static ssize_t __write_ports_addxprt(char *buf)
- 
- 	err = svc_create_xprt(nfsd_serv, transport,
- 				PF_INET6, port, SVC_SOCK_ANONYMOUS);
--	if (err < 0 && err != -EAFNOSUPPORT)
--		goto out_close;
-+	if (err < 0)
-+		printk(KERN_INFO "nfsd: Error creating PF_INET6 listener "
-+		       "for transport '%s'\n", transport);
-+
- 	return 0;
- out_close:
- 	xprt = svc_find_xprt(nfsd_serv, transport, PF_INET, port);
+U1VOUlBDOiBSZWR1Y2UgYXN5bmNocm9ub3VzIFJQQyB0YXNrIHN0YWNrIHVzYWdlDQoNCkZyb206
+IFRyb25kIE15a2xlYnVzdCA8VHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20+DQoNCldlIHNob3Vs
+ZCBqdXN0IGZhcm0gb3V0IGFzeW5jaHJvbm91cyBSUEMgdGFza3MgaW1tZWRpYXRlbHkgdG8gcnBj
+aW9kLi4uDQoNClNpZ25lZC1vZmYtYnk6IFRyb25kIE15a2xlYnVzdCA8VHJvbmQuTXlrbGVidXN0
+QG5ldGFwcC5jb20+DQotLS0NCg0KIG5ldC9zdW5ycGMvc2NoZWQuYyB8ICAgIDcgKysrKysrLQ0K
+IDEgZmlsZXMgY2hhbmdlZCwgNiBpbnNlcnRpb25zKCspLCAxIGRlbGV0aW9ucygtKQ0KDQoNCmRp
+ZmYgLS1naXQgYS9uZXQvc3VucnBjL3NjaGVkLmMgYi9uZXQvc3VucnBjL3NjaGVkLmMNCmluZGV4
+IGM4OTc5Y2UuLjIyYTA5N2YgMTAwNjQ0DQotLS0gYS9uZXQvc3VucnBjL3NjaGVkLmMNCisrKyBi
+L25ldC9zdW5ycGMvc2NoZWQuYw0KQEAgLTcyMCw3ICs3MjAsMTIgQEAgdm9pZCBycGNfZXhlY3V0
+ZShzdHJ1Y3QgcnBjX3Rhc2sgKnRhc2spDQogew0KIAlycGNfc2V0X2FjdGl2ZSh0YXNrKTsNCiAJ
+cnBjX3NldF9ydW5uaW5nKHRhc2spOw0KLQlfX3JwY19leGVjdXRlKHRhc2spOw0KKwlpZiAoUlBD
+X0lTX0FTWU5DKHRhc2spKSB7DQorCQlJTklUX1dPUksoJnRhc2stPnUudGtfd29yaywgcnBjX2Fz
+eW5jX3NjaGVkdWxlKTsNCisJCXF1ZXVlX3dvcmsocnBjaW9kX3dvcmtxdWV1ZSwgJnRhc2stPnUu
+dGtfd29yayk7DQorDQorCX0gZWxzZQ0KKwkJX19ycGNfZXhlY3V0ZSh0YXNrKTsNCiB9DQogDQog
+c3RhdGljIHZvaWQgcnBjX2FzeW5jX3NjaGVkdWxlKHN0cnVjdCB3b3JrX3N0cnVjdCAqd29yaykN
+Cg==
 
+--=-VJUQJgQ37UgEeLWr5kvS--
