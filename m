@@ -1,75 +1,317 @@
-From: Steve Dickson <SteveD@redhat.com>
-Subject: Re: [PATCH] make capabilities support optional
-Date: Mon, 26 Apr 2010 12:10:00 -0400
-Message-ID: <4BD5BAD8.5040209@RedHat.com>
-References: <1271753213-17374-1-git-send-email-vapier@gentoo.org> <4BD1CADD.4050200@RedHat.com> <4BD1D8AA.4030708@oracle.com> <4BD1E55B.2090703@RedHat.com> <4BD1F121.1060001@oracle.com> <4BD21DA1.4000001@RedHat.com> <4BD5B013.9060705@oracle.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: Mike Frysinger <vapier@gentoo.org>, linux-nfs@vger.kernel.org
-To: Chuck Lever <chuck.lever@oracle.com>
+From: andros@netapp.com
+Subject: [PATCH 1/3] SQUASHME pnfs_submit: generic device ID cache
+Date: Mon, 26 Apr 2010 12:18:17 -0400
+Message-ID: <1272298699-11411-2-git-send-email-andros@netapp.com>
+References: <1272298699-11411-1-git-send-email-andros@netapp.com>
+Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
+To: pnfs@linux-nfs.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:40330 "EHLO mx1.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:14524 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753458Ab0DZQKN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 26 Apr 2010 12:10:13 -0400
-In-Reply-To: <4BD5B013.9060705@oracle.com>
+	id S1752918Ab0DZQSR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 26 Apr 2010 12:18:17 -0400
+In-Reply-To: <1272298699-11411-1-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 04/26/2010 11:24 AM, Chuck Lever wrote:
-> On 04/23/2010 06:22 PM, Steve Dickson wrote:
->>> As an aside, the patch description is where we should be documenting the
->>> thinking behind these decisions in an audit-able and transparent manner.
->>>   The description for this patch doesn't have a strong justification
->>> IMHO.  It would be hard for any of us to come back to this patch a year
->>> from now and figure out exactly why this change was made.  (I say this
->>> having spent the last year doing just that for a long history of patches
->>> to statd and mount).
->> True, the patch description could have been a bit more verbose, but I
->> feel I understood the reason for the patch and that reason the made
->> sense to me...
-> 
-> The problem is that this patch was never posted publicly, so you were
-> the only reviewer.  The rest of us have no idea what this is about.
-Well here is where I got the patch: 
-    http://marc.info/?l=linux-nfs&m=127175324400983&w=2
-off the mailing list.
+From: Andy Adamson <andros@netapp.com>
 
-> 
->> I feel backwards compatibility is important..
-> 
-> Sure, but this isn't necessarily the way to go about it, in this case.
-> It's hard to know though, since the patch description was vague, and the
-> patch itself was never publicly posted.
-I agree the description was a bit vague, but the patch was posted 
-publicly... 
+A shared RCU device ID cache servicing multiple mounts of a single layout type
+per meta data server (struct nfs_client).
 
->> Well dropping libcap is not the default and I don't see us (i.e.
->> upstream)
->> ever making it the default... If people want set that config flag, its
->> up to
->> them to document the ramifications, IMHO...
-> 
-> Er, I think it _is_ up to us chickens to document the ramifications.  If
-> some new --enable flag just shows up on ./configure, how am I going to
-> know whether I should set it or not?  
-Hopefully the setting of an configure flag would come out in the 
-discussion about the problem... Any changing of default values,
-especially ones that will cause a recompile needed to be 
-relayed early in any bug discussion... 
+Device IDs of type deviceid4 are required by all layout types, long lived and
+read at each I/O.  They are added to the deviceid cache at first reference by
+a layout via GETDEVICEINFO and (currently) are only removed at umount.
 
-> 
-> Now that we've answered the question of "why are we doing this," the
-> question in my mind is how we want statd to behave if libcap isn't
-> available.
-> 
-> At the very least, I think the man page should mention this bug somehow,
-> and maybe a warning should be generated during the build.  Since this is
-> mostly for embedded systems, according to Mike, I doubt an actual
-> generated run-time warning would be visible to anyone.
-> 
-Mike would you be willing to test this out and document any
-differences in statd behaviour with and without that config
-flag set?
+Reference count the device ID cache for each mounted file system
+in the initialize_mountpoint layoutdriver_io_operation.
 
-steved.
+Dereference the device id cache on file system in the uninitialize_mountpoint
+layoutdriver_io_operation called at umount
+
+Each layoutsegment assigns a pointer and takes a reference to the
+nfs4_deviceid structure identified by the layout deviceid.
+This is so that there are no deviceid lookups for the normal I/O path.
+
+Even thought required by all layouttypes, the deviceid is not exposed in the
+LAYOUTGET4res but is instead hidden in the opaque layouttype4.
+
+Therefore, each layout type alloc_lseg calls nfs4_set_layout_deviceid,
+and free_lseg calls nfs4_unset_layout_deviceid.
+
+While the file layout driver will not cache very many deviceid's, the object
+and block layout drivers could cache 100's for a large installation.
+Use an hlist.
+
+Signed-off-by: Andy Adamson <andros@netapp.com>
+---
+ fs/nfs/pnfs.c             |  167 +++++++++++++++++++++++++++++++++++++++++++++
+ include/linux/nfs4_pnfs.h |   50 +++++++++++++
+ include/linux/nfs_fs_sb.h |    1 +
+ 3 files changed, 218 insertions(+), 0 deletions(-)
+
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 91572aa..bf906cc 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -45,6 +45,7 @@
+ #include <linux/nfs4.h>
+ #include <linux/pnfs_xdr.h>
+ #include <linux/nfs4_pnfs.h>
++#include <linux/rculist.h>
+ 
+ #include "internal.h"
+ #include "nfs4_fs.h"
+@@ -2296,3 +2297,169 @@ struct pnfs_client_operations pnfs_ops = {
+ 
+ EXPORT_SYMBOL(pnfs_unregister_layoutdriver);
+ EXPORT_SYMBOL(pnfs_register_layoutdriver);
++
++
++/* Device ID cache. Supports one layout type per struct nfs_client */
++int
++nfs4_alloc_init_deviceid_cache(struct nfs_client *clp,
++			 void (*free_callback)(struct kref *))
++{
++	struct nfs4_deviceid_cache *c;
++
++	c = kzalloc(sizeof(struct nfs4_deviceid_cache), GFP_KERNEL);
++	if (!c)
++		return -ENOMEM;
++	spin_lock(&clp->cl_lock);
++	if (clp->cl_devid_cache != NULL) {
++		kref_get(&clp->cl_devid_cache->dc_kref);
++		spin_unlock(&clp->cl_lock);
++		dprintk("%s [kref [%d]]\n", __func__,
++			atomic_read(&clp->cl_devid_cache->dc_kref.refcount));
++		kfree(c);
++	} else {
++		int i;
++
++		spin_lock_init(&c->dc_lock);
++		for (i = 0; i < NFS4_DEVICE_ID_HASH_SIZE ; i++)
++			INIT_HLIST_HEAD(&c->dc_deviceids[i]);
++		kref_init(&c->dc_kref);
++		c->dc_free_callback = free_callback;
++		clp->cl_devid_cache = c;
++		spin_unlock(&clp->cl_lock);
++		dprintk("%s [new]\n", __func__);
++	}
++	return 0;
++}
++EXPORT_SYMBOL(nfs4_alloc_init_deviceid_cache);
++
++void
++nfs4_init_deviceid_node(struct nfs4_deviceid *d)
++{
++	INIT_HLIST_NODE(&d->de_node);
++	kref_init(&d->de_kref);
++}
++EXPORT_SYMBOL(nfs4_init_deviceid_node);
++
++/* Called from layoutdriver_io_operations->alloc_lseg */
++void
++nfs4_set_layout_deviceid(struct pnfs_layout_segment *l, struct nfs4_deviceid *d)
++{
++	dprintk("%s [%d]\n", __func__, atomic_read(&d->de_kref.refcount));
++	l->deviceid = d;
++	kref_get(&d->de_kref);
++}
++EXPORT_SYMBOL(nfs4_set_layout_deviceid);
++
++/* Called from layoutdriver_io_operations->free_lseg */
++void
++nfs4_unset_layout_deviceid(struct pnfs_layout_segment *l,
++			   struct nfs4_deviceid *d,
++			   void (*free_callback)(struct kref *))
++{
++	dprintk("%s [%d]\n", __func__, atomic_read(&d->de_kref.refcount));
++	l->deviceid = NULL;
++	kref_put(&d->de_kref, free_callback);
++}
++EXPORT_SYMBOL(nfs4_unset_layout_deviceid);
++
++struct nfs4_deviceid *
++nfs4_find_deviceid(struct nfs4_deviceid_cache *c, struct pnfs_deviceid *id)
++{
++	struct nfs4_deviceid *d;
++	struct hlist_node *n;
++	long hash = nfs4_deviceid_hash(id);
++
++	dprintk("--> %s hash %ld\n", __func__, hash);
++	rcu_read_lock();
++	hlist_for_each_entry_rcu(d, n, &c->dc_deviceids[hash], de_node) {
++		if (!memcmp(&d->de_id, id, NFS4_PNFS_DEVICEID4_SIZE)) {
++			rcu_read_unlock();
++			return d;
++		}
++	}
++	rcu_read_unlock();
++	return NULL;
++}
++EXPORT_SYMBOL(nfs4_find_deviceid);
++
++/*
++ * Add or kref_get a deviceid.
++ * GETDEVICEINFOs for same deviceid can race. If deviceid is found, discard new
++ */
++struct nfs4_deviceid *
++nfs4_add_deviceid(struct nfs4_deviceid_cache *c, struct nfs4_deviceid *new)
++{
++	struct nfs4_deviceid *d;
++	struct hlist_node *n;
++	long hash = nfs4_deviceid_hash(&new->de_id);
++
++	dprintk("--> %s hash %ld\n", __func__, hash);
++	spin_lock(&c->dc_lock);
++	hlist_for_each_entry_rcu(d, n, &c->dc_deviceids[hash], de_node) {
++		if (!memcmp(&d->de_id, &new->de_id, NFS4_PNFS_DEVICEID4_SIZE)) {
++			spin_unlock(&c->dc_lock);
++			dprintk("%s [discard]\n", __func__);
++			c->dc_free_callback(&new->de_kref);
++			return d;
++		}
++	}
++	hlist_add_head_rcu(&new->de_node, &c->dc_deviceids[hash]);
++	spin_unlock(&c->dc_lock);
++	dprintk("%s [new]\n", __func__);
++	return new;
++}
++EXPORT_SYMBOL(nfs4_add_deviceid);
++
++static int
++nfs4_remove_deviceid(struct nfs4_deviceid_cache *c, long hash)
++{
++	struct nfs4_deviceid *d;
++	struct hlist_node *n;
++
++	dprintk("--> %s hash %ld\n", __func__, hash);
++	spin_lock(&c->dc_lock);
++	hlist_for_each_entry_rcu(d, n, &c->dc_deviceids[hash], de_node) {
++		hlist_del_rcu(&d->de_node);
++		spin_unlock(&c->dc_lock);
++		synchronize_rcu();
++		dprintk("%s [%d]\n", __func__,
++			atomic_read(&d->de_kref.refcount));
++		kref_put(&d->de_kref, c->dc_free_callback);
++		return 1;
++	}
++	spin_unlock(&c->dc_lock);
++	return 0;
++}
++
++static void
++nfs4_free_deviceid_cache(struct kref *kref)
++{
++	struct nfs4_deviceid_cache *cache =
++		container_of(kref, struct nfs4_deviceid_cache, dc_kref);
++	int more;
++	long i;
++
++	for (i = 0; i < NFS4_DEVICE_ID_HASH_SIZE; i++) {
++		more = 1;
++		while (more)
++			more = nfs4_remove_deviceid(cache, i);
++	}
++	kfree(cache);
++}
++
++void
++nfs4_put_deviceid_cache(struct nfs_client *clp)
++{
++	struct nfs4_deviceid_cache *tmp = clp->cl_devid_cache;
++	int refcount;
++
++	dprintk("--> %s cl_devid_cache %p\n", __func__, clp->cl_devid_cache);
++	spin_lock(&clp->cl_lock);
++	refcount = atomic_read(&clp->cl_devid_cache->dc_kref.refcount);
++	if (refcount == 1)
++		clp->cl_devid_cache = NULL;
++	spin_unlock(&clp->cl_lock);
++	dprintk("%s [%d]\n", __func__, refcount);
++	kref_put(&tmp->dc_kref, nfs4_free_deviceid_cache);
++}
++EXPORT_SYMBOL(nfs4_put_deviceid_cache);
+diff --git a/include/linux/nfs4_pnfs.h b/include/linux/nfs4_pnfs.h
+index 3caac60..3b7aeb7 100644
+--- a/include/linux/nfs4_pnfs.h
++++ b/include/linux/nfs4_pnfs.h
+@@ -106,6 +106,7 @@ struct pnfs_layout_segment {
+ 	struct kref kref;
+ 	bool valid;
+ 	struct pnfs_layout_type *layout;
++	struct nfs4_deviceid *deviceid;
+ 	u8 ld_data[];			/* layout driver private data */
+ };
+ 
+@@ -275,6 +276,55 @@ struct pnfs_devicelist {
+ 	struct pnfs_deviceid	dev_id[NFS4_PNFS_GETDEVLIST_MAXNUM];
+ };
+ 
++/*
++ * Device ID RCU cache. A device ID is unique per client ID and layout type.
++ */
++#define NFS4_DEVICE_ID_HASH_BITS	5
++#define NFS4_DEVICE_ID_HASH_SIZE	(1 << NFS4_DEVICE_ID_HASH_BITS)
++#define NFS4_DEVICE_ID_HASH_MASK	(NFS4_DEVICE_ID_HASH_SIZE - 1)
++
++static inline u32
++nfs4_deviceid_hash(struct pnfs_deviceid *id)
++{
++	unsigned char *cptr = (unsigned char *)id->data;
++	unsigned int nbytes = NFS4_PNFS_DEVICEID4_SIZE;
++	u32 x = 0;
++
++	while (nbytes--) {
++		x *= 37;
++		x += *cptr++;
++	}
++	return x & NFS4_DEVICE_ID_HASH_MASK;
++}
++
++struct nfs4_deviceid_cache {
++	spinlock_t		dc_lock;
++	struct kref		dc_kref;
++	void			(*dc_free_callback)(struct kref *);
++	struct hlist_head	dc_deviceids[NFS4_DEVICE_ID_HASH_SIZE];
++};
++
++/* Device ID cache node */
++struct nfs4_deviceid {
++	struct hlist_node	de_node;
++	struct pnfs_deviceid	de_id;
++	struct kref		de_kref;
++};
++
++extern int nfs4_alloc_init_deviceid_cache(struct nfs_client *,
++				void (*free_callback)(struct kref *));
++extern void nfs4_put_deviceid_cache(struct nfs_client *);
++extern void nfs4_init_deviceid_node(struct nfs4_deviceid *);
++extern struct nfs4_deviceid *nfs4_find_deviceid(struct nfs4_deviceid_cache *,
++				struct pnfs_deviceid *);
++extern struct nfs4_deviceid *nfs4_add_deviceid(struct nfs4_deviceid_cache *,
++				struct nfs4_deviceid *);
++extern void nfs4_set_layout_deviceid(struct pnfs_layout_segment *,
++				struct nfs4_deviceid *);
++extern void nfs4_unset_layout_deviceid(struct pnfs_layout_segment *,
++				struct nfs4_deviceid *,
++				void (*free_callback)(struct kref *));
++
+ /* pNFS client callback functions.
+  * These operations allow the layout driver to access pNFS client
+  * specific information or call pNFS client->server operations.
+diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
+index 8522461..ef2e18e 100644
+--- a/include/linux/nfs_fs_sb.h
++++ b/include/linux/nfs_fs_sb.h
+@@ -87,6 +87,7 @@ struct nfs_client {
+ 	u32			cl_exchange_flags;
+ 	struct nfs4_session	*cl_session; 	/* sharred session */
+ 	struct list_head	cl_lo_inodes;	/* Inodes having layouts */
++	struct nfs4_deviceid_cache *cl_devid_cache; /* pNFS deviceid cache */
+ #endif /* CONFIG_NFS_V4_1 */
+ 
+ #ifdef CONFIG_NFS_FSCACHE
+-- 
+1.6.6
+
