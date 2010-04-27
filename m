@@ -1,126 +1,103 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:30401 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:6207 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756540Ab0DNSiQ convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 14 Apr 2010 14:38:16 -0400
-Subject: Re: [PATCH 10/22] gss_krb5: Add upcall info indicating supported
- kerberos enctypes
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Kevin Coffman <kwc@citi.umich.edu>
-Cc: linux-nfs@vger.kernel.org
-In-Reply-To: <y2t4d569c331004141130z7525d001gcdb81db5b1ede42e@mail.gmail.com>
-References: <1271266618-26016-1-git-send-email-Trond.Myklebust@netapp.com>
-	 <1271266618-26016-3-git-send-email-Trond.Myklebust@netapp.com>
-	 <1271266618-26016-4-git-send-email-Trond.Myklebust@netapp.com>
-	 <1271266618-26016-5-git-send-email-Trond.Myklebust@netapp.com>
-	 <1271266618-26016-6-git-send-email-Trond.Myklebust@netapp.com>
-	 <1271266618-26016-7-git-send-email-Trond.Myklebust@netapp.com>
-	 <1271266618-26016-8-git-send-email-Trond.Myklebust@netapp.com>
-	 <1271266618-26016-9-git-send-email-Trond.Myklebust@netapp.com>
-	 <1271266618-26016-10-git-send-email-Trond.Myklebust@netapp.com>
-	 <1271266618-26016-11-git-send-email-Trond.Myklebust@netapp.com>
-	 <y2t4d569c331004141130z7525d001gcdb81db5b1ede42e@mail.gmail.com>
-Content-Type: text/plain; charset="UTF-8"
-Date: Wed, 14 Apr 2010 14:37:59 -0400
-Message-ID: <1271270279.22566.22.camel@localhost.localdomain>
+	id S1753537Ab0D0UVf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 27 Apr 2010 16:21:35 -0400
+Received: from int-mx02.intmail.prod.int.phx2.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
+	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id o3RKLZAS008161
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Tue, 27 Apr 2010 16:21:35 -0400
+Date: Tue, 27 Apr 2010 16:21:33 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: branto@redhat.com
+Subject: should unstable pages be committed on close() ?
+Message-ID: <20100427162133.227cc6dd@tlielax.poochiereds.net>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, 2010-04-14 at 14:30 -0400, Kevin Coffman wrote: 
-> On Wed, Apr 14, 2010 at 1:36 PM, Trond Myklebust
-> <Trond.Myklebust@netapp.com> wrote:
-> > The text based upcall now indicates which Kerberos encryption types are
-> > supported by the kernel rpcsecgss code.  This is used by gssd to
-> > determine which encryption types it should attempt to negotiate
-> > when creating a context with a server.
-> >
-> > The server principal's database and keytab encryption types are
-> > what limits what it should negotiate.  Therefore, its keytab
-> > should be created with only the enctypes listed by this file.
-> >
-> > Currently we support des-cbc-crc, des-cbc-md4 and des-cbc-md5
-> >
-> > Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-> > ---
-> >  include/linux/sunrpc/gss_api.h      |    2 ++
-> >  net/sunrpc/auth_gss/auth_gss.c      |    8 +++++++-
-> >  net/sunrpc/auth_gss/gss_krb5_mech.c |    1 +
-> >  3 files changed, 10 insertions(+), 1 deletions(-)
-> >
-> > diff --git a/include/linux/sunrpc/gss_api.h b/include/linux/sunrpc/gss_api.h
-> > index 03f3333..b22d7f1 100644
-> > --- a/include/linux/sunrpc/gss_api.h
-> > +++ b/include/linux/sunrpc/gss_api.h
-> > @@ -80,6 +80,8 @@ struct gss_api_mech {
-> >        /* pseudoflavors supported by this mechanism: */
-> >        int                     gm_pf_num;
-> >        struct pf_desc *        gm_pfs;
-> > +       /* Should the following be a callback operation instead? */
-> > +       const char              *gm_upcall_enctypes;
-> >  };
-> >
-> >  /* and must provide the following operations: */
-> > diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
-> > index d64a58b..6654c85 100644
-> > --- a/net/sunrpc/auth_gss/auth_gss.c
-> > +++ b/net/sunrpc/auth_gss/auth_gss.c
-> > @@ -377,11 +377,12 @@ static void gss_encode_v0_msg(struct gss_upcall_msg *gss_msg)
-> >  static void gss_encode_v1_msg(struct gss_upcall_msg *gss_msg,
-> >                                struct rpc_clnt *clnt, int machine_cred)
-> >  {
-> > +       struct gss_api_mech *mech = gss_msg->auth->mech;
-> >        char *p = gss_msg->databuf;
-> >        int len = 0;
-> >
-> >        gss_msg->msg.len = sprintf(gss_msg->databuf, "mech=%s uid=%d ",
-> > -                                  gss_msg->auth->mech->gm_name,
-> > +                                  mech->gm_name,
-> >                                   gss_msg->uid);
-> >        p += gss_msg->msg.len;
-> >        if (clnt->cl_principal) {
-> > @@ -398,6 +399,11 @@ static void gss_encode_v1_msg(struct gss_upcall_msg *gss_msg,
-> >                p += len;
-> >                gss_msg->msg.len += len;
-> >        }
-> > +       if (mech->gm_upcall_enctypes) {
-> > +               len = sprintf(p, mech->gm_upcall_enctypes);
-> > +               p += len;
-> > +               gss_msg->msg.len += len;
-> > +       }
-> >        len = sprintf(p, "\n");
-> >        gss_msg->msg.len += len;
-> >
-> > diff --git a/net/sunrpc/auth_gss/gss_krb5_mech.c b/net/sunrpc/auth_gss/gss_krb5_mech.c
-> > index 8b612e7..d96d824 100644
-> > --- a/net/sunrpc/auth_gss/gss_krb5_mech.c
-> > +++ b/net/sunrpc/auth_gss/gss_krb5_mech.c
-> > @@ -552,6 +552,7 @@ static struct gss_api_mech gss_kerberos_mech = {
-> >        .gm_ops         = &gss_kerberos_ops,
-> >        .gm_pf_num      = ARRAY_SIZE(gss_kerberos_pfs),
-> >        .gm_pfs         = gss_kerberos_pfs,
-> > +       .gm_upcall_enctypes = "enctypes=1,2,3 ",
-> >  };
-> 
-> Hi Trond,
-> This list should be in preference order.  It doesn't matter much with
-> this one, but the preferred order for DES is usually "3,1,2".
-> 
-> When adding 3DES, the list should be "16,3,1,2"
-> When adding AES, it should be "18,17,16,3,1,2"
-> When adding RC4, it should be "18,17,16,23,3,1,2"
-> 
-> K.C.
+I've got a bug report about a possible regression from one of our QA
+people. They were testing some of the recent write_inode/COMMIT changes
+with this script:
 
-Hi Kevin,
+----------------[snip]-----------------
+#! /usr/bin/env bash
+servers="server:/export"
+nfsstat -c -3
 
-The decision to change the order was not mine. My first version of these
-patches did indeed preserve your ordering as above. However, apparently
-Steve's testing showed that the gss library routines prefer increasing
-order.
+for SRV in $servers
+do
+ mount $SRV /media -o nfsvers=3
+ rm -f /media/tmp.file
+ time dd if=/dev/zero bs=1024k count=2000 of=/media/tmp.file
+ umount /media
+ nfsstat -c -3
+done
+----------------[snip]-----------------
 
-More specifically, Steve identified that gss_set_allowable_enctypes()
-apparently requires ordering by increasing value.
+The changes have definitely reduced the number of commit calls, but
+frequently we see these errors pop and the filesystem isn't unmounted.
 
-Cheers
-  Trond
+umount.nfs: /media: device is busy
+umount.nfs: /media: device is busy
+
+...if I call /bin/sync just before the umount, then it works fine. I
+added a cat /proc/meminfo just before the umount and see this:
+
+MemTotal:         980376 kB
+MemFree:           12364 kB
+Buffers:            3804 kB
+Cached:           803584 kB
+SwapCached:            0 kB
+Active:           172376 kB
+Inactive:         650252 kB
+Active(anon):       5592 kB
+Inactive(anon):     9808 kB
+Active(file):     166784 kB
+Inactive(file):   640444 kB
+Unevictable:           0 kB
+Mlocked:               0 kB
+SwapTotal:       2064376 kB
+SwapFree:        2064376 kB
+Dirty:                 0 kB
+Writeback:             0 kB
+AnonPages:         15240 kB
+Mapped:             9008 kB
+Shmem:               160 kB
+Slab:             123572 kB
+SReclaimable:      28096 kB
+SUnreclaim:        95476 kB
+KernelStack:        1016 kB
+PageTables:         2428 kB
+NFS_Unstable:      90384 kB
+Bounce:                0 kB
+WritebackTmp:          0 kB
+CommitLimit:     2554564 kB
+Committed_AS:      80836 kB
+VmallocTotal:   34359738367 kB
+VmallocUsed:       41980 kB
+VmallocChunk:   34359685244 kB
+HardwareCorrupted:     0 kB
+AnonHugePages:         0 kB
+HugePages_Total:       0
+HugePages_Free:        0
+HugePages_Rsvd:        0
+HugePages_Surp:        0
+Hugepagesize:       2048 kB
+DirectMap4k:        8128 kB
+DirectMap2M:     1040384 kB
+
+...note that Dirty and Writeback are 0, but NFS_Unstable is still at
+90M or so. So, I think the problem is likely that the unstable pages
+are preventing the umount.
+
+I've not done much investigation beyond this yet, but figured I'd toss
+the bug report out here in case anyone has thoughts on the cause and
+how it should be fixed. I can reproduce this fairly easily on my
+virtualized test rig in case anyone has patches that they want me to
+test.
+
+-- 
+Jeff Layton <jlayton@redhat.com>
