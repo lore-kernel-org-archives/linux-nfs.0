@@ -1,9 +1,10 @@
 From: Trond Myklebust <Trond.Myklebust@netapp.com>
 Subject: Re: Merge {nfsv4,pnfs}@linux-nfs.org with
  linux-nfs@vger.kernel.org?
-Date: Tue, 27 Apr 2010 14:33:04 -0400
-Message-ID: <1272393184.3067.27.camel@localhost.localdomain>
+Date: Tue, 27 Apr 2010 14:36:57 -0400
+Message-ID: <1272393417.3067.30.camel@localhost.localdomain>
 References: <4BD729A2.3000805@panasas.com>
+	 <1272393184.3067.27.camel@localhost.localdomain>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="UTF-8"
 Cc: pNFS Mailing List <pnfs@linux-nfs.org>,
@@ -12,29 +13,34 @@ Cc: pNFS Mailing List <pnfs@linux-nfs.org>,
 	NFS list <linux-nfs@vger.kernel.org>
 To: Benny Halevy <bhalevy@panasas.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:6918 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:62901 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752355Ab0D0SdI convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 27 Apr 2010 14:33:08 -0400
-In-Reply-To: <4BD729A2.3000805@panasas.com>
+	id S1753711Ab0D0Sg7 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 27 Apr 2010 14:36:59 -0400
+In-Reply-To: <1272393184.3067.27.camel-bi+AKbBUZKY6gyzm1THtWbp2dZbC/Bob@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-> On Apr. 27, 2010, 21:10 +0300, "J. Bruce Fields" <bfields@citi.umich.edu> wrote:
-> So, looking back at what we did for the sourceforge list:
+On Tue, 2010-04-27 at 14:33 -0400, Trond Myklebust wrote: 
+> > On Apr. 27, 2010, 21:10 +0300, "J. Bruce Fields" <bfields@citi.umich.edu> wrote:
+> > So, looking back at what we did for the sourceforge list:
+> > 
+> > 	- We added something to the footer saying the list is
+> > 	  deprecated.  (But if we wanted to be more obnoxious, we could
+> > 	  add it to the top of each message.)
+> > 
+> > 	- We subscribed the new list (linux-nfs@vger.kernel.org) to the
+> > 	  old list, I guess so newbie bug reports sent to the old list
+> > 	  wouldn't get lost.
+> > 
+> > Anyone want to object to starting that process for nfsv4@linux-nfs.org?
+> > What about pnfs@linux-nfs.org?
 > 
-> 	- We added something to the footer saying the list is
-> 	  deprecated.  (But if we wanted to be more obnoxious, we could
-> 	  add it to the top of each message.)
+> ACK to both...
 > 
-> 	- We subscribed the new list (linux-nfs@vger.kernel.org) to the
-> 	  old list, I guess so newbie bug reports sent to the old list
-> 	  wouldn't get lost.
 > 
-> Anyone want to object to starting that process for nfsv4@linux-nfs.org?
-> What about pnfs@linux-nfs.org?
 
-ACK to both...
-
+Oh... The other thing to do is to turn off moderation. I'm sure that
+Bruce and I have better things to do than to act as spam filters on
+legacy mailing lists...
 
