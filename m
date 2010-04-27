@@ -1,92 +1,57 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 9/9] lockd: Add "reboot" attribute to nsm_handles
-Date: Tue, 27 Apr 2010 14:59:42 -0400
-Message-ID: <20100427185941.29074.85779.stgit@matisse.1015granger.net>
-References: <20100427185411.29074.8889.stgit@matisse.1015granger.net>
+From: akpm@linux-foundation.org
+Subject: [patch 1/1] sunrpc: use formatting of module name in SUNRPC
+Date: Tue, 27 Apr 2010 14:15:49 -0700
+Message-ID: <201004272115.o3RLFnKj020353@imap1.linux-foundation.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-To: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=ANSI_X3.4-1968
+Cc: linux-nfs@vger.kernel.org, akpm@linux-foundation.org,
+	raa.lkml@gmail.com, Trond.Myklebust@netapp.com, cel@citi.umich.edu,
+	davem@davemloft.net, tmtalpey@gmail.com
+To: trond.myklebust@fys.uio.no
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-pw0-f46.google.com ([209.85.160.46]:65293 "EHLO
-	mail-pw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756157Ab0D0S7s (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 27 Apr 2010 14:59:48 -0400
-Received: by pwj9 with SMTP id 9so9705055pwj.19
-        for <linux-nfs@vger.kernel.org>; Tue, 27 Apr 2010 11:59:47 -0700 (PDT)
-In-Reply-To: <20100427185411.29074.8889.stgit-RytpoXr2tKZ9HhUboXbp9zCvJB+x5qRC@public.gmane.org>
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:41824 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1756126Ab0D0VRh (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 27 Apr 2010 17:17:37 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-There can be multiple nlm_host cache entries associated with one
-remote peer, but there is only one nsm_handle per peer.  So the
-right place to add an API to trigger lock recovery for a particular
-remote peer is with the nsm_handle cache entry for that remote.
+From: Alex Riesen <raa.lkml@gmail.com>
 
-Add a "reboot" attribute to each subdirectory in nsm_handles/.
+gcc-4.3.3 produces the warning:
+  "format not a string literal and no format arguments"
 
-Writing the new NSM state into the peer's nsm_handles "reboot"
-attribute invokes the kernel's lock recovery for that peer.  A user
-space tool, for example, could be constructed so an administrator
-can remove stale locks on an NFS server.
-
-Note that this new API can replace statd's NLM downcalls as well.
-Instead of calling a specified RPC program/version/procedure with
-the new state number and the priv cookie, statd can walk through
-/sys/fs/lockd looking for a directory named after the priv cookie,
-and write the new state number into its "reboot" attribute.
-
-Using this API instead of an RPC downcall would eliminate one lockd
-dependency on IPv4 loopback.
-
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Signed-off-by: Alex Riesen <raa.lkml@gmail.com>
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: Chuck Lever <cel@citi.umich.edu>
+Cc: David S. Miller <davem@davemloft.net>
+Acked-by: Tom Talpey <tmtalpey@gmail.com>
+Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
 ---
 
- fs/lockd/mon.c |   20 ++++++++++++++++++++
- 1 files changed, 20 insertions(+), 0 deletions(-)
+ net/sunrpc/xprt.c |    5 +----
+ 1 file changed, 1 insertion(+), 4 deletions(-)
 
-diff --git a/fs/lockd/mon.c b/fs/lockd/mon.c
-index 851ad59..80dccb6 100644
---- a/fs/lockd/mon.c
-+++ b/fs/lockd/mon.c
-@@ -148,6 +148,23 @@ static ssize_t refcount_show(struct nsm_handle *nsm, char *buf)
- 			atomic_read(&nsm->sm_count));
+diff -puN net/sunrpc/xprt.c~sunrpc-use-formatting-of-module-name-in-sunrpc net/sunrpc/xprt.c
+--- a/net/sunrpc/xprt.c~sunrpc-use-formatting-of-module-name-in-sunrpc
++++ a/net/sunrpc/xprt.c
+@@ -165,7 +165,6 @@ EXPORT_SYMBOL_GPL(xprt_unregister_transp
+ int xprt_load_transport(const char *transport_name)
+ {
+ 	struct xprt_class *t;
+-	char module_name[sizeof t->name + 5];
+ 	int result;
+ 
+ 	result = 0;
+@@ -177,9 +176,7 @@ int xprt_load_transport(const char *tran
+ 		}
+ 	}
+ 	spin_unlock(&xprt_list_lock);
+-	strcpy(module_name, "xprt");
+-	strncat(module_name, transport_name, sizeof t->name);
+-	result = request_module(module_name);
++	result = request_module("xprt%s", transport_name);
+ out:
+ 	return result;
  }
- 
-+static ssize_t reboot_show(struct nsm_handle *nsm, char *buf)
-+{
-+	return 0;
-+}
-+
-+static ssize_t reboot_store(struct nsm_handle *nsm, 
-+				const char *buf, size_t count)
-+{
-+	int state;
-+
-+	if (sscanf(buf, "%d", &state) != 1)
-+		return -EINVAL;
-+
-+	nlm_host_rebooted_nsm(nsm, state);
-+	return count;
-+}
-+
- #ifdef __ATTR_RO
- #undef __ATTR_RO
- #endif
-@@ -164,6 +181,8 @@ static struct nsm_handle_attr rpcparms_attr	= __ATTR_RO(rpcparms);
- static struct nsm_handle_attr status_attr	= __ATTR_RO(status);
- static struct nsm_handle_attr sticky_attr	= __ATTR_RO(sticky);
- static struct nsm_handle_attr refcount_attr	= __ATTR_RO(refcount);
-+static struct nsm_handle_attr reboot_attr	= __ATTR(reboot,
-+			S_IWUSR | S_IRUSR, reboot_show, reboot_store);
- 
- static struct attribute *nsm_kobj_attrs[] = {
- 	&mon_name_attr.attr,
-@@ -173,6 +192,7 @@ static struct attribute *nsm_kobj_attrs[] = {
- 	&status_attr.attr,
- 	&sticky_attr.attr,
- 	&refcount_attr.attr,
-+	&reboot_attr.attr,
- 	NULL,
- };
- 
-
+_
