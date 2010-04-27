@@ -1,57 +1,108 @@
-From: akpm@linux-foundation.org
-Subject: [patch 1/1] sunrpc: use formatting of module name in SUNRPC
-Date: Tue, 27 Apr 2010 14:15:49 -0700
-Message-ID: <201004272115.o3RLFnKj020353@imap1.linux-foundation.org>
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: Re: should unstable pages be committed on close() ?
+Date: Tue, 27 Apr 2010 17:18:06 -0400
+Message-ID: <1272403086.3067.35.camel@localhost.localdomain>
+References: <20100427162133.227cc6dd@tlielax.poochiereds.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ANSI_X3.4-1968
-Cc: linux-nfs@vger.kernel.org, akpm@linux-foundation.org,
-	raa.lkml@gmail.com, Trond.Myklebust@netapp.com, cel@citi.umich.edu,
-	davem@davemloft.net, tmtalpey@gmail.com
-To: trond.myklebust@fys.uio.no
+Content-Type: text/plain; charset="UTF-8"
+Cc: linux-nfs@vger.kernel.org, branto@redhat.com
+To: Jeff Layton <jlayton@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:41824 "EHLO
-	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1756126Ab0D0VRh (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 27 Apr 2010 17:17:37 -0400
+Received: from mx2.netapp.com ([216.240.18.37]:26679 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756126Ab0D0VSX convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 27 Apr 2010 17:18:23 -0400
+In-Reply-To: <20100427162133.227cc6dd-9yPaYZwiELC+kQycOl6kW4xkIHaj4LzF@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Alex Riesen <raa.lkml@gmail.com>
+On Tue, 2010-04-27 at 16:21 -0400, Jeff Layton wrote: 
+> I've got a bug report about a possible regression from one of our QA
+> people. They were testing some of the recent write_inode/COMMIT changes
+> with this script:
+> 
+> ----------------[snip]-----------------
+> #! /usr/bin/env bash
+> servers="server:/export"
+> nfsstat -c -3
+> 
+> for SRV in $servers
+> do
+>  mount $SRV /media -o nfsvers=3
+>  rm -f /media/tmp.file
+>  time dd if=/dev/zero bs=1024k count=2000 of=/media/tmp.file
+>  umount /media
+>  nfsstat -c -3
+> done
+> ----------------[snip]-----------------
+> 
+> The changes have definitely reduced the number of commit calls, but
+> frequently we see these errors pop and the filesystem isn't unmounted.
+> 
+> umount.nfs: /media: device is busy
+> umount.nfs: /media: device is busy
+> 
+> ...if I call /bin/sync just before the umount, then it works fine. I
+> added a cat /proc/meminfo just before the umount and see this:
+> 
+> MemTotal:         980376 kB
+> MemFree:           12364 kB
+> Buffers:            3804 kB
+> Cached:           803584 kB
+> SwapCached:            0 kB
+> Active:           172376 kB
+> Inactive:         650252 kB
+> Active(anon):       5592 kB
+> Inactive(anon):     9808 kB
+> Active(file):     166784 kB
+> Inactive(file):   640444 kB
+> Unevictable:           0 kB
+> Mlocked:               0 kB
+> SwapTotal:       2064376 kB
+> SwapFree:        2064376 kB
+> Dirty:                 0 kB
+> Writeback:             0 kB
+> AnonPages:         15240 kB
+> Mapped:             9008 kB
+> Shmem:               160 kB
+> Slab:             123572 kB
+> SReclaimable:      28096 kB
+> SUnreclaim:        95476 kB
+> KernelStack:        1016 kB
+> PageTables:         2428 kB
+> NFS_Unstable:      90384 kB
+> Bounce:                0 kB
+> WritebackTmp:          0 kB
+> CommitLimit:     2554564 kB
+> Committed_AS:      80836 kB
+> VmallocTotal:   34359738367 kB
+> VmallocUsed:       41980 kB
+> VmallocChunk:   34359685244 kB
+> HardwareCorrupted:     0 kB
+> AnonHugePages:         0 kB
+> HugePages_Total:       0
+> HugePages_Free:        0
+> HugePages_Rsvd:        0
+> HugePages_Surp:        0
+> Hugepagesize:       2048 kB
+> DirectMap4k:        8128 kB
+> DirectMap2M:     1040384 kB
+> 
+> ...note that Dirty and Writeback are 0, but NFS_Unstable is still at
+> 90M or so. So, I think the problem is likely that the unstable pages
+> are preventing the umount.
+> 
+> I've not done much investigation beyond this yet, but figured I'd toss
+> the bug report out here in case anyone has thoughts on the cause and
+> how it should be fixed. I can reproduce this fairly easily on my
+> virtualized test rig in case anyone has patches that they want me to
+> test.
 
-gcc-4.3.3 produces the warning:
-  "format not a string literal and no format arguments"
+I'm aware of at least one race in mainline that can result in the above
+behaviour. There is a proposed fix in the 'bugfixes' branch on
+linux-nfs.org. See
 
-Signed-off-by: Alex Riesen <raa.lkml@gmail.com>
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: Chuck Lever <cel@citi.umich.edu>
-Cc: David S. Miller <davem@davemloft.net>
-Acked-by: Tom Talpey <tmtalpey@gmail.com>
-Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
----
+  http://git.linux-nfs.org/?p=trondmy/nfs-2.6.git;a=commit;h=71d0a6112a363e703e383ae5b12c492485c39701
 
- net/sunrpc/xprt.c |    5 +----
- 1 file changed, 1 insertion(+), 4 deletions(-)
-
-diff -puN net/sunrpc/xprt.c~sunrpc-use-formatting-of-module-name-in-sunrpc net/sunrpc/xprt.c
---- a/net/sunrpc/xprt.c~sunrpc-use-formatting-of-module-name-in-sunrpc
-+++ a/net/sunrpc/xprt.c
-@@ -165,7 +165,6 @@ EXPORT_SYMBOL_GPL(xprt_unregister_transp
- int xprt_load_transport(const char *transport_name)
- {
- 	struct xprt_class *t;
--	char module_name[sizeof t->name + 5];
- 	int result;
- 
- 	result = 0;
-@@ -177,9 +176,7 @@ int xprt_load_transport(const char *tran
- 		}
- 	}
- 	spin_unlock(&xprt_list_lock);
--	strcpy(module_name, "xprt");
--	strncat(module_name, transport_name, sizeof t->name);
--	result = request_module(module_name);
-+	result = request_module("xprt%s", transport_name);
- out:
- 	return result;
- }
-_
+Cheers
+  Trond
