@@ -1,50 +1,40 @@
-From: Benny Halevy <bhalevy@panasas.com>
-Subject: Merge {nfsv4,pnfs}@linux-nfs.org with linux-nfs@vger.kernel.org?
-Date: Tue, 27 Apr 2010 21:14:58 +0300
-Message-ID: <4BD729A2.3000805@panasas.com>
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: Re: Merge {nfsv4,pnfs}@linux-nfs.org with
+ linux-nfs@vger.kernel.org?
+Date: Tue, 27 Apr 2010 14:33:04 -0400
+Message-ID: <1272393184.3067.27.camel@localhost.localdomain>
+References: <4BD729A2.3000805@panasas.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: "J. Bruce Fields" <bfields@citi.umich.edu>,
+Content-Type: text/plain; charset="UTF-8"
+Cc: pNFS Mailing List <pnfs@linux-nfs.org>,
+	nfsv4 <nfsv4@linux-nfs.org>,
+	"J. Bruce Fields" <bfields@citi.umich.edu>,
 	NFS list <linux-nfs@vger.kernel.org>
-To: pNFS Mailing List <pnfs@linux-nfs.org>, nfsv4 <nfsv4@linux-nfs.org>
+To: Benny Halevy <bhalevy@panasas.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:3011 "EHLO
-	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1754548Ab0D0SPH (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 27 Apr 2010 14:15:07 -0400
+Received: from mx2.netapp.com ([216.240.18.37]:6918 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752355Ab0D0SdI convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 27 Apr 2010 14:33:08 -0400
+In-Reply-To: <4BD729A2.3000805@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Forwarding to the linux-nfs.org lists.
 
-On Apr. 27, 2010, 21:10 +0300, "J. Bruce Fields" <bfields@citi.umich.edu> wrote:
-
-On Tue, Apr 27, 2010 at 07:44:51PM +0300, Benny Halevy wrote:
-> On Apr. 27, 2010, 19:34 +0300, "J. Bruce Fields" <bfields@citi.umich.edu> wrote:
-> > The main lists we've been using are:
-> > 
-> > 	linux-nfs@vger.kernel.org
-> > 	    nfsv4@linux-nfs.org
-> > 	     pnfs@linux-nfs.org
-> > 
-> > This seems to be confusing.  We've talked before about transitioning
-> > away from one (probably nfsv4@linux-nfs.org).  Maybe now's the time to
-> > start.
+> On Apr. 27, 2010, 21:10 +0300, "J. Bruce Fields" <bfields@citi.umich.edu> wrote:
+> So, looking back at what we did for the sourceforge list:
 > 
-> I'm all for it.
-> Maybe it's time to fold the pnfs list into linux-nfs too.
+> 	- We added something to the footer saying the list is
+> 	  deprecated.  (But if we wanted to be more obnoxious, we could
+> 	  add it to the top of each message.)
+> 
+> 	- We subscribed the new list (linux-nfs@vger.kernel.org) to the
+> 	  old list, I guess so newbie bug reports sent to the old list
+> 	  wouldn't get lost.
+> 
+> Anyone want to object to starting that process for nfsv4@linux-nfs.org?
+> What about pnfs@linux-nfs.org?
 
-So, looking back at what we did for the sourceforge list:
+ACK to both...
 
-	- We added something to the footer saying the list is
-	  deprecated.  (But if we wanted to be more obnoxious, we could
-	  add it to the top of each message.)
 
-	- We subscribed the new list (linux-nfs@vger.kernel.org) to the
-	  old list, I guess so newbie bug reports sent to the old list
-	  wouldn't get lost.
-
-Anyone want to object to starting that process for nfsv4@linux-nfs.org?
-What about pnfs@linux-nfs.org?
-
---b.
