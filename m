@@ -1,108 +1,78 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:49585 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:53297 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932685Ab0DGPdO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 7 Apr 2010 11:33:14 -0400
-Cc: linux-nfs@vger.kernel.org
-Message-Id: <5B84BED8-DE8D-45D9-8193-095D280371E1@netapp.com>
-From: Andy Adamson <andros@netapp.com>
-To: Tom <thomas.wunder@swt-bamberg.de>
-In-Reply-To: <loom.20100407T160936-119@post.gmane.org>
-Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
-Subject: Re: NFS-Mount with MIT-Kerberos5 doesn't use user tickets...
-Date: Wed, 7 Apr 2010 11:32:58 -0400
-References: <loom.20100407T160936-119@post.gmane.org>
+	id S1757159Ab0D0Vcc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 27 Apr 2010 17:32:32 -0400
+Date: Tue, 27 Apr 2010 17:32:30 -0400
+To: Linus Torvalds <torvalds@linux-foundation.org>
+Cc: linux-nfs@vger.kernel.org, neilb@suse.de
+Subject: nfsd bugfix for 2.6.34
+Message-ID: <20100427213230.GD3831@fieldses.org>
+Content-Type: text/plain; charset=us-ascii
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
 
-On Apr 7, 2010, at 10:37 AM, Tom wrote:
+The following nfsd bugfix is available from
 
-> I'm trying to set up a kerberized NFSv4 client to mount a share  
-> using a local
-> ticket (obtained by PAM when the user logged into the shell) instead  
-> of a
-> machine specific ticket (i.e. I'd like to do user-based  
-> authorization). I
-> already managed to get machine based authentification/authorization  
-> working for
-> a test but i can't (and i don't want to) use local keytab files for  
-> storing the
-> machine keys on the client machines in my production environment.
->
-> I'm running the rpc.gssd with the "-n -vvv -rrr" to make it consider  
-> user
-> tickets too.
-> Now, when I try to mount the share to "/mnt/net" (the according  
-> fstab-line
-> looks like "dnsdhcp:/ /mnt/net  nfs4  sec=krb5p,user 0 0") the  
-> credentials
-> cache of the user which is doing the mount is not being used. The  
-> second
-> log message  reads
-> "rpc.gssd[888]: getting credentials for client with uid 0 for server  
-> <srvname>"
-> Googling around a bit i found out that some other people managed to  
-> make mount
-> use the uid of the initiating user rather than 'root'(uid=0) (though  
-> they seem
-> to have other problems...).
->
-> I'm not quite sure what is wrong with my setup and therefore i tried  
-> to dig
-> into the code of gssd. The only thing i found is that the uid (0 in  
-> my case)
-> is read from a file "clntXX/krb5" (within a pipefs) which is obviously
-> written by the kernel.
+  git://linux-nfs.org/~bfields/linux.git for-2.6.34
 
-This means that you are performing the mount from a process whose uid  
-= 0, e.g, your local linux user is root.
+Please pull for 2.6.34.  Thanks!
 
-Don't you need to be local linux user root to perform any mount?
+--b.
 
-So, you need to associate the Kerberos principal of the PAM ticket  
-with the UID=0.
+commit 2bc3c1179c781b359d4f2f3439cb3df72afc17fc
+Author: Neil Brown <neilb@suse.de>
+Date:   Tue Apr 20 12:16:52 2010 +1000
 
--->Andy
+    nfsd4: bug in read_buf
+    
+    When read_buf is called to move over to the next page in the pagelist
+    of an NFSv4 request, it sets argp->end to essentially a random
+    number, certainly not an address within the page which argp->p now
+    points to.  So subsequent calls to READ_BUF will think there is much
+    more than a page of spare space (the cast to u32 ensures an unsigned
+    comparison) so we can expect to fall off the end of the second
+    page.
+    
+    We never encountered thsi in testing because typically the only
+    operations which use more than two pages are write-like operations,
+    which have their own decoding logic.  Something like a getattr after a
+    write may cross a page boundary, but it would be very unusual for it to
+    cross another boundary after that.
+    
+    Cc: stable@kernel.org
+    Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
 
->
-> A kernel update to 2.6.32-19 (i'm using ubuntu karmic on an amd64  
-> machine)
-> didn't make it any better.
->
-> Complete Log (client): http://pastebin.com/s7B2W7ie
-> The user ticket (i'm running the mount-command from an account of a  
-> user which
-> is authenticated via kerberos (MIT Kerberos5)) resided in
-> /tmp/krb5cc_10002_H6OYu0
-> Here's what klist said http://pastebin.com/Lrrs3AwM
-> And this is the client's krb5.conf: http://pastebin.com/JChsVNJQ
->
-> I'm really desperate now because i've been working on this problem  
-> for nearly
-> two weeks now and i couldn't get by...
->
-> Can you suggest me how to specify which user should be utilized to  
-> carry out
-> the mount? (Did I misconfigure something?)
->
->
-> By the way i've already downloaded the source-code of the nfs-utils
-> (ver. 1.2.0) and modified
-> void handle_krb5_upcall(struct clnt_info *clp)
-> from
-> gssd/gssd_proc.c
-> to statically set uid to 10002 (just for testing what will happen)  
-> and it's
-> pretty interesting what comes out:
-> http://pastebin.com/Qi1rWMLC
->
-> Thanks in advance!
->
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs"  
-> in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index e170317..34ccf81 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -161,10 +161,10 @@ static __be32 *read_buf(struct nfsd4_compoundargs *argp, u32 nbytes)
+ 	argp->p = page_address(argp->pagelist[0]);
+ 	argp->pagelist++;
+ 	if (argp->pagelen < PAGE_SIZE) {
+-		argp->end = p + (argp->pagelen>>2);
++		argp->end = argp->p + (argp->pagelen>>2);
+ 		argp->pagelen = 0;
+ 	} else {
+-		argp->end = p + (PAGE_SIZE>>2);
++		argp->end = argp->p + (PAGE_SIZE>>2);
+ 		argp->pagelen -= PAGE_SIZE;
+ 	}
+ 	memcpy(((char*)p)+avail, argp->p, (nbytes - avail));
+@@ -1426,10 +1426,10 @@ nfsd4_decode_compound(struct nfsd4_compoundargs *argp)
+ 			argp->p = page_address(argp->pagelist[0]);
+ 			argp->pagelist++;
+ 			if (argp->pagelen < PAGE_SIZE) {
+-				argp->end = p + (argp->pagelen>>2);
++				argp->end = argp->p + (argp->pagelen>>2);
+ 				argp->pagelen = 0;
+ 			} else {
+-				argp->end = p + (PAGE_SIZE>>2);
++				argp->end = argp->p + (PAGE_SIZE>>2);
+ 				argp->pagelen -= PAGE_SIZE;
+ 			}
+ 		}
