@@ -1,27 +1,55 @@
-From: "Gonzalo mess" <jenifferknowles-JE8hqn47KVKAZ589Dryr40B+6BGkLq7r@public.gmane.org>
-Subject: Veterinarians - 78,986 total records with 1,438  emails and 1,050  fax numbers
-Date: Tue, 27 Apr 2010 04:35:06 +0200 (CEST)
-Message-ID: <20100427023506.04D213852D3@barracuda.sipri.org>
-Reply-To: jenifferknowles-JE8hqn47KVKAZ589Dryr40B+6BGkLq7r@public.gmane.org
-To: lprescot-xWzl4mvPpRVeoWH0uzbU5w@public.gmane.org, qcampbell-GP6hE12Ewz+WbvRemg0rlA@public.gmane.org,
-	sjgb-karmic-I9zZbV8EZxI/l7f41bdqkQ@public.gmane.org
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: Possible problem with commit a6305ddb080 : NFS: Fix a race
+ with the new commit code
+Date: Tue, 27 Apr 2010 08:00:34 -0400
+Message-ID: <1272369635.16814.52.camel@localhost.localdomain>
+References: <20100427143542.001f8dbe@notabene.brown>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="UTF-8"
+Cc: linux-nfs@vger.kernel.org
+To: Neil Brown <neilb@suse.de>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from barracuda.sipri.org ([193.10.14.85]:36595 "EHLO
-	barracuda.sipri.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753826Ab0D0Cqv (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 26 Apr 2010 22:46:51 -0400
+Received: from mail-out1.uio.no ([129.240.10.57]:36443 "EHLO mail-out1.uio.no"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752690Ab0D0MAj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 27 Apr 2010 08:00:39 -0400
+In-Reply-To: <20100427143542.001f8dbe-wvvUuzkyo1EYVZTmpyfIwg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-To get additional details, samples and counts for our USA contact data please
-email me at this address successtools@gmx.com
+On Tue, 2010-04-27 at 14:35 +1000, Neil Brown wrote: 
+> Hi Trond,
+>  I think the above mentioned commit might have added a new race to replace
+> the old ....
+> 
+>  I have report of a BUG in nfs_page_async_flush.
+> 
+> It isn't a vanilla upstream kernel - there are a bunch of SUSE patches
+> in there - so quoting the line-number won't help you, but it is the
+>     BUG_ON(ret != 0);
+> after the call to nfs_set_page_writeback.
+> (https://bugzilla.novell.com/show_bug.cgi?id=599628)
+> 
+> This implies that nfs_find_and_lock_request got a new lock on the page,
+> and then we found that it was already flagged for writeback.
 
-we have lots of different lists in many fields and this week is the time to buy with lowered list prices.
-  
+That's odd. Callers such as write_cache_pages() should normally be doing
+a wait_on_page_writeback() after taking the page lock but prior to
+calling the filesystem.
 
+> The commit mentioned create just such an opportunity.  It reorders things
+> so that a page is unlocked before writeback is cleared, thus creating a window
+> for that BUG to fire.
+> 
+> What is the race that you were trying to fix?
 
+I want to ensure that the call to write_inode() immediately after
+filemap_fdatawait() in the function writeback_single_inode() works
+correctly. Prior to this fix, there was a race whereby the Pg_writeback
+flag could be cleared, but the nfs_page structure would still be locked.
+This again would result in the page being skipped by nfs_scan_list() and
+so it wouldn't be registered as COMMITed.
 
+Cheers
+  Trond
 
-To invoke no further correspondence status please send an email to 
-
-configured. These fields are set to zero by default.
