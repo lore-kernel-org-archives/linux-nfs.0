@@ -1,7 +1,7 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 5/9] lockd: Add attributes to /sys/fs/lockd/hosts/*/
-Date: Tue, 27 Apr 2010 14:59:00 -0400
-Message-ID: <20100427185859.29074.39823.stgit@matisse.1015granger.net>
+Subject: [PATCH 6/9] lockd: Add /sys/fs/lockd/mon
+Date: Tue, 27 Apr 2010 14:59:10 -0400
+Message-ID: <20100427185909.29074.64031.stgit@matisse.1015granger.net>
 References: <20100427185411.29074.8889.stgit@matisse.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -9,170 +9,110 @@ To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
 Received: from mail-pz0-f204.google.com ([209.85.222.204]:55014 "EHLO
 	mail-pz0-f204.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756498Ab0D0S7D (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 27 Apr 2010 14:59:03 -0400
+	with ESMTP id S1756169Ab0D0S7P (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 27 Apr 2010 14:59:15 -0400
 Received: by mail-pz0-f204.google.com with SMTP id 42so9187550pzk.4
-        for <linux-nfs@vger.kernel.org>; Tue, 27 Apr 2010 11:59:02 -0700 (PDT)
+        for <linux-nfs@vger.kernel.org>; Tue, 27 Apr 2010 11:59:15 -0700 (PDT)
 In-Reply-To: <20100427185411.29074.8889.stgit-RytpoXr2tKZ9HhUboXbp9zCvJB+x5qRC@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Expose fields in each nlm_host cache entry via files under
-/sys/fs/lockd/hosts/{client,server}/*/.
+Add parent directory to contain entries representing each entry in
+lockd's nsm_handles cache.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- fs/lockd/host.c |  137 +++++++++++++++++++++++++++++++++++++++++++++++++++++++
- 1 files changed, 137 insertions(+), 0 deletions(-)
+ fs/lockd/mon.c              |   27 +++++++++++++++++++++++++++
+ fs/lockd/svc.c              |    8 ++++++++
+ include/linux/lockd/lockd.h |    2 ++
+ 3 files changed, 37 insertions(+), 0 deletions(-)
 
-diff --git a/fs/lockd/host.c b/fs/lockd/host.c
-index 2dce492..d6f3141 100644
---- a/fs/lockd/host.c
-+++ b/fs/lockd/host.c
-@@ -83,7 +83,144 @@ static struct sysfs_ops nlm_kobj_sysfs_ops = {
- 	.store		= nlm_kobj_store,
- };
+diff --git a/fs/lockd/mon.c b/fs/lockd/mon.c
+index e301546..6e16a28 100644
+--- a/fs/lockd/mon.c
++++ b/fs/lockd/mon.c
+@@ -57,6 +57,8 @@ static				DEFINE_SPINLOCK(nsm_lock);
+ u32	__read_mostly		nsm_local_state;
+ int	__read_mostly		nsm_use_hostnames;
  
-+static ssize_t address_show(struct nlm_host *host, char *buf)
-+{
-+	return snprintf(buf, PAGE_SIZE, "%s\n", host->h_addrbuf);
-+}
++static struct kobject		*nsm_handles_kobj;
 +
-+static ssize_t source_address_show(struct nlm_host *host, char *buf)
-+{
-+	struct sockaddr *sap = (struct sockaddr *)(char *)&host->h_srcaddr;
-+	switch (sap->sa_family) {
-+	case AF_UNSPEC:
-+		return snprintf(buf, PAGE_SIZE, "unspecified address\n");
-+	case AF_INET:
-+		return snprintf(buf, PAGE_SIZE, "%pI4\n", sap);
-+	case AF_INET6:
-+		return snprintf(buf, PAGE_SIZE, "%pI6c\n", sap);
-+	}
-+	return snprintf(buf, PAGE_SIZE, "unrecognized address\n");
-+}
-+
-+static ssize_t name_show(struct nlm_host *host, char *buf)
-+{
-+	return snprintf(buf, PAGE_SIZE, "%s\n", host->h_name);
-+}
-+
-+static ssize_t nlm_version_show(struct nlm_host *host, char *buf)
-+{
-+	return snprintf(buf, PAGE_SIZE, "%u\n", host->h_version);
-+}
-+
-+static ssize_t transport_show(struct nlm_host *host, char *buf)
-+{
-+	switch (host->h_proto) {
-+	case IPPROTO_UDP:
-+		return snprintf(buf, PAGE_SIZE, "udp\n");
-+	case IPPROTO_TCP:
-+		return snprintf(buf, PAGE_SIZE, "tcp\n");
-+	}
-+	return snprintf(buf, PAGE_SIZE, "unknown\n");
-+}
-+
-+static ssize_t reclaiming_show(struct nlm_host *host, char *buf)
-+{
-+	return snprintf(buf, PAGE_SIZE, "%s\n",
-+				host->h_reclaiming ? "in progress" : "no");
-+}
-+
-+static ssize_t peer_show(struct nlm_host *host, char *buf)
-+{
-+	return snprintf(buf, PAGE_SIZE, "%s\n",
-+				host->h_server ? "client" : "server");
-+}
-+
-+static ssize_t resvport_show(struct nlm_host *host, char *buf)
-+{
-+	return snprintf(buf, PAGE_SIZE, "%s\n",
-+				host->h_noresvport ? "no" : "yes");
-+}
-+
-+static ssize_t in_use_show(struct nlm_host *host, char *buf)
-+{
-+	return snprintf(buf, PAGE_SIZE, "%s\n",
-+				host->h_inuse ? "yes" : "no");
-+}
-+
-+static ssize_t pseudo_state_show(struct nlm_host *host, char *buf)
-+{
-+	return snprintf(buf, PAGE_SIZE, "%u\n", host->h_state);
-+}
-+
-+static ssize_t nsm_state_show(struct nlm_host *host, char *buf)
-+{
-+	return snprintf(buf, PAGE_SIZE, "%u\n", host->h_nsmstate);
-+}
-+
-+static ssize_t pidcount_show(struct nlm_host *host, char *buf)
-+{
-+	return snprintf(buf, PAGE_SIZE, "%u\n", host->h_pidcount);
-+}
-+
-+static ssize_t refcount_show(struct nlm_host *host, char *buf)
-+{
-+	return snprintf(buf, PAGE_SIZE, "%d\n", atomic_read(&host->h_count));
-+}
-+
-+static ssize_t nextrebind_show(struct nlm_host *host, char *buf)
-+{
-+	return snprintf(buf, PAGE_SIZE, "%lu seconds \n",
-+				(host->h_nextrebind - jiffies) / HZ);
-+}
-+
-+static ssize_t expires_show(struct nlm_host *host, char *buf)
-+{
-+	return snprintf(buf, PAGE_SIZE, "%lu seconds\n",
-+				(host->h_expires - jiffies) / HZ);
-+}
-+
-+#ifdef __ATTR_RO
-+#undef __ATTR_RO
-+#endif
-+
-+#define __ATTR_RO(_name) { \
-+	.attr	= { .name = __stringify(_name), .mode = S_IRUSR, }, \
-+ 	.show	= _name##_show,                                 \
-+}
-+
-+static struct nlm_host_attr address_attr	= __ATTR_RO(address);
-+static struct nlm_host_attr source_address_attr	= __ATTR_RO(source_address);
-+static struct nlm_host_attr name_attr		= __ATTR_RO(name);
-+static struct nlm_host_attr nlm_version_attr	= __ATTR_RO(nlm_version);
-+static struct nlm_host_attr transport_attr	= __ATTR_RO(transport);
-+static struct nlm_host_attr reclaiming_attr	= __ATTR_RO(reclaiming);
-+static struct nlm_host_attr peer_attr		= __ATTR_RO(peer);
-+static struct nlm_host_attr resvport_attr	= __ATTR_RO(resvport);
-+static struct nlm_host_attr in_use_attr		= __ATTR_RO(in_use);
-+static struct nlm_host_attr pseudo_state_attr	= __ATTR_RO(pseudo_state);
-+static struct nlm_host_attr nsm_state_attr	= __ATTR_RO(nsm_state);
-+static struct nlm_host_attr pidcount_attr	= __ATTR_RO(pidcount);
-+static struct nlm_host_attr refcount_attr	= __ATTR_RO(refcount);
-+static struct nlm_host_attr nextrebind_attr	= __ATTR_RO(nextrebind);
-+static struct nlm_host_attr expires_attr	= __ATTR_RO(expires);
-+
- static struct attribute *nlm_kobj_attrs[] = {
-+	&address_attr.attr,
-+	&source_address_attr.attr,
-+	&name_attr.attr,
-+	&nlm_version_attr.attr,
-+	&transport_attr.attr,
-+	&reclaiming_attr.attr,
-+	&peer_attr.attr,
-+	&resvport_attr.attr,
-+	&in_use_attr.attr,
-+	&pseudo_state_attr.attr,
-+	&nsm_state_attr.attr,
-+	&pidcount_attr.attr,
-+	&refcount_attr.attr,
-+	&nextrebind_attr.attr,
-+	&expires_attr.attr,
-+	NULL,
- };
+ static inline struct sockaddr *nsm_addr(const struct nsm_handle *nsm)
+ {
+ 	return (struct sockaddr *)&nsm->sm_addr;
+@@ -393,6 +395,31 @@ void nsm_release(struct nsm_handle *nsm)
+ 	}
+ }
  
- static struct kobj_type nlm_host_ktype = {
++/**
++ * nsm_init - Called when lockd module is loaded
++ *
++ */
++int nsm_init(void)
++{
++	nsm_handles_kobj = kobject_create_and_add("monitor", nlm_kobj);
++	if (nsm_handles_kobj == NULL)
++		return -ENOMEM;
++	return 0;
++}
++
++/**
++ * nsm_shutdown - Called when lockd module is about to be unloaded
++ *
++ */
++void nsm_shutdown(void)
++{
++	if (!list_empty(&nsm_handles)) {
++		printk(KERN_WARNING "NSM handles remain at shutdown");
++		return;
++	}
++	kobject_put(nsm_handles_kobj);
++}
++
+ /*
+  * XDR functions for NSM.
+  *
+diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
+index 148623d..1b484bf 100644
+--- a/fs/lockd/svc.c
++++ b/fs/lockd/svc.c
+@@ -525,9 +525,16 @@ static int __init init_nlm(void)
+ 		return -ENOMEM;
+ 	}
+ 
++	if (nsm_init()) {
++		nlm_host_shutdown();
++		kobject_put(nlm_kobj);
++		return -ENOMEM;
++	}
++
+ #ifdef CONFIG_SYSCTL
+ 	nlm_sysctl_table = register_sysctl_table(nlm_sysctl_root);
+ 	if (!nlm_sysctl_table) {
++		nsm_shutdown();
+ 		nlm_host_shutdown();
+ 		kobject_put(nlm_kobj);
+ 		return -ENOMEM;
+@@ -544,6 +551,7 @@ static void __exit exit_nlm(void)
+ #ifdef CONFIG_SYSCTL
+ 	unregister_sysctl_table(nlm_sysctl_table);
+ #endif
++	nsm_shutdown();
+ 	nlm_host_shutdown();
+ 	kobject_put(nlm_kobj);
+ }
+diff --git a/include/linux/lockd/lockd.h b/include/linux/lockd/lockd.h
+index bdb87a6..8622a28 100644
+--- a/include/linux/lockd/lockd.h
++++ b/include/linux/lockd/lockd.h
+@@ -239,6 +239,8 @@ void		  nlm_host_rebooted(const struct nlm_reboot *);
+ /*
+  * Host monitoring
+  */
++int		  nsm_init(void);
++void		  nsm_shutdown(void);
+ int		  nsm_monitor(const struct nlm_host *host);
+ void		  nsm_unmonitor(const struct nlm_host *host);
+ 
 
