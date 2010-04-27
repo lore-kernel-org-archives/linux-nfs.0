@@ -1,120 +1,89 @@
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: Re: Possible problem with commit a6305ddb080 : NFS: Fix a race
- with the new commit code
-Date: Tue, 27 Apr 2010 18:35:56 -0400
-Message-ID: <1272407756.14667.17.camel@localhost.localdomain>
-References: <20100427143542.001f8dbe@notabene.brown>
-	 <1272369635.16814.52.camel@localhost.localdomain>
-	 <1272406873.14667.6.camel@localhost.localdomain>
+From: Robert Wimmer <kernel@tauceti.net>
+Subject: Re: [Bugme-new] [Bug 15709] New: swapper page allocation failure
+Date: Wed, 28 Apr 2010 00:56:01 +0200
+Message-ID: <4BD76B81.2070606@tauceti.net>
+References: <4BC43097.3060000@tauceti.net> <4BCC52B9.8070200@tauceti.net> <20100419131718.GB16918@redhat.com> <dbf86fc1c370496138b3a74a3c74ec18@tauceti.net> <20100421094249.GC30855@redhat.com> <c638ec9fdee2954ec5a7a2bd405aa2ba@tauceti.net> <20100422100304.GC30532@redhat.com> <4BD12F9C.30802@tauceti.net> <20100425091759.GA9993@redhat.com> <4BD4A917.70702@tauceti.net> <20100425204916.GA12686@redhat.com> <1272284154.4252.34.camel@localhost.localdomain> <4BD5F6C5.8080605@tauceti.net> <1272315854.8984.125.camel@localhost.localdomain> <4BD61147.40709@tauceti.net> <1272324536.16814.45.camel@localhost.localdomain>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Cc: linux-nfs@vger.kernel.org
-To: Neil Brown <neilb@suse.de>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:49474 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753879Ab0D0Wf6 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 27 Apr 2010 18:35:58 -0400
-In-Reply-To: <1272406873.14667.6.camel-bi+AKbBUZKY6gyzm1THtWbp2dZbC/Bob@public.gmane.org>
-Sender: linux-nfs-owner@vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
+Cc: "Michael S. Tsirkin" <mst@redhat.com>, Avi Kivity <avi@redhat.com>,
+ Andrew Morton <akpm@linux-foundation.org>,
+ linux-mm@kvack.org, bugzilla-daemon@bugzilla.kernel.org,
+ Rusty Russell <rusty@rustcorp.com.au>,
+ Mel Gorman <mel@csn.ul.ie>, linux-nfs@vger.kernel.org,
+ linux-kernel@vger.kernel.org
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Return-path: <owner-linux-mm@kvack.org>
+In-Reply-To: <1272324536.16814.45.camel@localhost.localdomain>
+Sender: owner-linux-mm@kvack.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 2010-04-27 at 18:21 -0400, Trond Myklebust wrote: 
-> On Tue, 2010-04-27 at 08:00 -0400, Trond Myklebust wrote: 
-> > On Tue, 2010-04-27 at 14:35 +1000, Neil Brown wrote: 
-> > > Hi Trond,
-> > >  I think the above mentioned commit might have added a new race to replace
-> > > the old ....
-> > > 
-> > >  I have report of a BUG in nfs_page_async_flush.
-> > > 
-> > > It isn't a vanilla upstream kernel - there are a bunch of SUSE patches
-> > > in there - so quoting the line-number won't help you, but it is the
-> > >     BUG_ON(ret != 0);
-> > > after the call to nfs_set_page_writeback.
-> > > (https://bugzilla.novell.com/show_bug.cgi?id=599628)
-> > > 
-> > > This implies that nfs_find_and_lock_request got a new lock on the page,
-> > > and then we found that it was already flagged for writeback.
-> > 
-> > That's odd. Callers such as write_cache_pages() should normally be doing
-> > a wait_on_page_writeback() after taking the page lock but prior to
-> > calling the filesystem.
-> 
-> The following patch ought to fix it. I suspect the same race exists in
-> the ->readpage() path, so it makes sense to fix nfs_wb_page() rather
-> than putting the wait_on_page_writeback call in
-> nfs_try_to_update_request().
+I've applied the patch against the kernel which I got
+from "git clone ...." resulted in a kernel 2.6.34-rc5.
 
-Actually, this patch is even better since it cleans up nfs_wb_page()
-too.
+The stack trace after mounting NFS is here:
+https://bugzilla.kernel.org/attachment.cgi?id=26166
+/var/log/messages after soft lockup:
+https://bugzilla.kernel.org/attachment.cgi?id=26167
 
-Cheers
-  Trond
------------------------------------------------------------------------------------------- 
-NFS: Ensure that nfs_wb_page() waits for Pg_writeback to clear
+I hope that there is any usefull information in there.
 
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
+Thanks!
+Robert
 
-Neil Brown reports that he is seeing the BUG_ON(ret == 0) trigger in
-nfs_page_async_flush. According to the trace in
-     https://bugzilla.novell.com/show_bug.cgi?id=599628
-the problem appears to be due to nfs_wb_page() not waiting for the
-PG_writeback flag to clear.
+On 04/27/10 01:28, Trond Myklebust wrote:
+> On Tue, 2010-04-27 at 00:18 +0200, Robert Wimmer wrote: 
+>   
+>>> Sure. In addition to what you did above, please do
+>>>
+>>> mount -t debugfs none /sys/kernel/debug
+>>>
+>>> and then cat the contents of the pseudofile at
+>>>
+>>> /sys/kernel/debug/tracing/stack_trace
+>>>
+>>> Please do this more or less immediately after you've finished mounting
+>>> the NFSv4 client.
+>>>   
+>>>       
+>> I've uploaded the stack trace. It was generated
+>> directly after mounting. Here are the stacks:
+>>
+>> After mounting:
+>> https://bugzilla.kernel.org/attachment.cgi?id=26153
+>> After the soft lockup:
+>> https://bugzilla.kernel.org/attachment.cgi?id=26154
+>> The dmesg output of the soft lockup:
+>> https://bugzilla.kernel.org/attachment.cgi?id=26155
+>>
+>>     
+>>> Does your server have the 'crossmnt' or 'nohide' flags set, or does it
+>>> use the 'refer' export option anywhere? If so, then we might have to
+>>> test further, since those may trigger the NFSv4 submount feature.
+>>>   
+>>>       
+>> The server has the following settings:
+>> rw,nohide,insecure,async,no_subtree_check,no_root_squash
+>>
+>> Thanks!
+>> Robert
+>>
+>>
+>>     
+> That second trace is more than 5.5K deep, more than half of which is
+> socket overhead :-(((.
+>
+> The process stack does not appear to have overflowed, however that trace
+> doesn't include any IRQ stack overhead.
+>
+> OK... So what happens if we get rid of half of that trace by forcing
+> asynchronous tasks such as this to run entirely in rpciod instead of
+> first trying to run in the process context?
+>
+> See the attachment...
+>   
 
-There is a ditto problem in nfs_wb_page_cancel()
-
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
-
- fs/nfs/write.c |   19 ++++---------------
- 1 files changed, 4 insertions(+), 15 deletions(-)
-
-
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index ccde2ae..3aea3ca 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -1472,6 +1472,7 @@ int nfs_wb_page_cancel(struct inode *inode, struct page *page)
- 
- 	BUG_ON(!PageLocked(page));
- 	for (;;) {
-+		wait_on_page_writeback(page);
- 		req = nfs_page_find_request(page);
- 		if (req == NULL)
- 			break;
-@@ -1506,30 +1507,18 @@ int nfs_wb_page(struct inode *inode, struct page *page)
- 		.range_start = range_start,
- 		.range_end = range_end,
- 	};
--	struct nfs_page *req;
--	int need_commit;
- 	int ret;
- 
- 	while(PagePrivate(page)) {
-+		wait_on_page_writeback(page);
- 		if (clear_page_dirty_for_io(page)) {
- 			ret = nfs_writepage_locked(page, &wbc);
- 			if (ret < 0)
- 				goto out_error;
- 		}
--		req = nfs_find_and_lock_request(page);
--		if (!req)
--			break;
--		if (IS_ERR(req)) {
--			ret = PTR_ERR(req);
-+		ret = sync_inode(inode, &wbc);
-+		if (ret < 0)
- 			goto out_error;
--		}
--		need_commit = test_bit(PG_CLEAN, &req->wb_flags);
--		nfs_clear_page_tag_locked(req);
--		if (need_commit) {
--			ret = nfs_commit_inode(inode, FLUSH_SYNC);
--			if (ret < 0)
--				goto out_error;
--		}
- 	}
- 	return 0;
- out_error:
-
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
