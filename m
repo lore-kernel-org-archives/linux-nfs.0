@@ -1,56 +1,63 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:14524 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:44758 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752790Ab0DZQSQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 26 Apr 2010 12:18:16 -0400
-From: andros@netapp.com
-To: pnfs@linux-nfs.org
+	id S1754835Ab0D1UYk convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 28 Apr 2010 16:24:40 -0400
+Subject: Re: NULL pointer dereference in 2.6.32.12 on mount attempt
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Robert Henney <robh@rut.org>
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 0/3] pNFS generic device ID cache version 3
-Date: Mon, 26 Apr 2010 12:18:16 -0400
-Message-Id: <1272298699-11411-1-git-send-email-andros@netapp.com>
+In-Reply-To: <20100428191758.GA16717@rut.org>
+References: <20100428191758.GA16717@rut.org>
+Content-Type: text/plain; charset="UTF-8"
+Date: Wed, 28 Apr 2010 16:24:23 -0400
+Message-ID: <1272486263.2864.57.camel@localhost.localdomain>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
+On Wed, 2010-04-28 at 15:17 -0400, Robert Henney wrote: 
+> this bug has so far been reproducible.
+> 
+> I have an nfs server running Debian lenny with the stock 2.6.26-2-686
+> kernel, and a client machine also running Debian lenny but with a
+> 2.6.32.12 kernel (kernel config attached).
+> 
+> /etc/exports on the server, possibly bogus although the server never
+> complains and still probably shouldn't trigger a NULL dereference in 
+> the client:
+>   /stow *(ro,fsid=0,crossmnt,no_subtree_check)
+>   /stow -mp,ro,all_squash,async,no_subtree_check \
+>     199.125.85.51  \
+>     199.125.85.134 \
+>     66.55.209.223
 
-This patch set implements a shared RCU device ID cache servicing multiple
-mounts of a single layout type per meta data server (struct nfs_client).
+You probably want to add at least a 'fsid=0' option to that second line.
 
-Device id's are referenced by layout segments which hold a pointer to the
-nfs4_deviceid struct.
+> /etc/fstab on the client:
+>   199.125.85.39:/stow /stow nfs4 noatime
 
-An hlist is used for the cache due to the large number of devices used by
-the object and block layout drivers.
+Should be
 
-Note that nfs4_deviceid_hash() is the same as the NFSD opaque_hash function.
-Perhaps they should be shared.
+199.125.85.39:/ /stow nfs4
 
-0001-SQUASHME-pnfs_submit-generic-device-ID-cache.patch
-0002-SQUASHME-pnfs_submit-fix-multiple-mount-set_pnfs_lay.patch
-0003-SQUASHME-pnfs-submit-file-layout-driver-generic-devi.patch
 
-These patches apply to the 2.6.34-rc3 pnfs-submit branch.
+> the OOPS (attached below) occurs when attempting a mount from the client
+> 
+>   # mount /stow
+>   # echo $?
+>   2
+> 
+> the mount command never outputs but has a return code of 2 and the mount
+> is not successful.
 
-Testing:
--------
-CONFIG_NFS_V4_1 set:
+That looks like a stack overflow to me, but it's hard to tell.
 
-NFSv4.1/pNFS mounts:
-Connectathon tests pass against GFS2/pNFS with a single AUTH_SYS mount, a double
-AUTH_SYS mount, and an AUTH_SYS and AUTH_GSS/KRB5 mount (which creates
-two superblocks under a struct nfs_client and both share the device id cache).
+What happens if you do
 
-NFSv4.0 mount;
-Connectathon tests pass
+echo 1025 > /proc/sys/sunrpc/nfs_debug
 
-Did not test with multiple device ID's. I will create a mulitple device ID
-test with the pynfs file layout server.
+prior to trying the mount?
 
-CONFIG_NFS_V4_1 not set:
-
-NFSv4.0 mount: Connectathon tests pass.
-
--->Andy
-
+Cheers
+   Trond
