@@ -1,57 +1,104 @@
 From: andros@netapp.com
-Subject: [PATCH 0/13] Remove non-file layout code from submit tree
-Date: Wed, 28 Apr 2010 18:24:12 -0400
-Message-ID: <1272493465-3398-1-git-send-email-andros@netapp.com>
-Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH 04/13] SQUASHME pnfs_submit: remove get_blocksize policy operation
+Date: Wed, 28 Apr 2010 18:24:16 -0400
+Message-ID: <1272493465-3398-5-git-send-email-andros@netapp.com>
+References: <1272493465-3398-1-git-send-email-andros@netapp.com>
+ <1272493465-3398-2-git-send-email-andros@netapp.com>
+ <1272493465-3398-3-git-send-email-andros@netapp.com>
+ <1272493465-3398-4-git-send-email-andros@netapp.com>
+Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
 To: bhalevy@panasas.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:14209 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:24626 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932230Ab0D1VYc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 28 Apr 2010 17:24:32 -0400
+	id S932238Ab0D1VYd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 28 Apr 2010 17:24:33 -0400
+In-Reply-To: <1272493465-3398-4-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+From: Andy Adamson <andros@netapp.com>
 
-Applies to 2.6.34-rc3 pnfs-submit branch on top of the "pNFS generic devce ID
-cache version 3" patches sent April 26 which includes these patches:
-0001-SQUASHME-pnfs_submit-generic-device-ID-cache.patch
-0002-SQUASHME-pnfs_submit-fix-multiple-mount-set_pnfs_lay.patch
-0003-SQUASHME-pnfs-submit-file-layout-driver-generic-devi.patch
+Not used by the file layout driver
 
-This patch set begins separating non-file layout code from file layout code.
+Signed-off-by: Andy Adamson <andros@netapp.com>
+---
+ fs/nfs/pnfs.c             |   41 ++++-------------------------------------
+ include/linux/nfs4_pnfs.h |    6 ------
+ 2 files changed, 4 insertions(+), 43 deletions(-)
 
-Adjust to using the generic device id cache.
-Permanetly remove structure fields and function parameters not used by any
-layout driver.
-The next patch set will restore object and block layout code removed by these
-patches.
-
-0001-SQUASHME-pnfs_submit-remove-GETDEVICELIST.patch
-0002-SQUASHME-pnfs_submit-remove-CB_NOTIFY_DEVICEID.patch
-0003-SQUASHME-pnfs_submit-remove-pnfs_mount_type-from-all.patch
-0004-SQUASHME-pnfs_submit-remove-get_blocksize-policy-ope.patch
-0005-SQUASHME-pnfs_submit-remove-ds_wsize-ds_rsize-ds_wpa.patch
-0006-SQUASHME-pnfs_submit-remove-uninitialize_mountpoint.patch
-0007-SQUASHME-pnfs_submit-remove-struct-pnfs_mount_type.patch
-0008-SQUASHME-pnfs_submit-change-initialize_mountpoint-pa.patch
-0009-SQUASHME-pnfs_submit-change-nfs_fsino-layoutclass-na.patch
-0010-SQUASHME-pnfs_submit-remove-pnfs_fs_ltype.patch
-0011-SQUASHME-pnfs_submit-remove-layout_name.patch
-
-File layout code bug fix and cleanup.
-0012-SQUASHME-pnfs_submit-fall-back-to-MDS-on-filelayout_.patch
-0013-SQUASHME-pnfs_submit-cleanup-nfs4_pnfs_ds_add.patch
-
-Tested:
-CONFIG_NFS_V4_1 set
-
-V4.0, V4.1, and pNFS mounts:
-Connectathon tests pass.
-
-CONFIG_NFS_V4_1 not set:
-
-Connectathon tests pass.
-
--->Andy
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index e704dcf..32bb852 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -1607,46 +1607,13 @@ pnfs_use_write(struct inode *inode, ssize_t count)
+ 	return 1; /* use pNFS I/O */
+ }
+ 
+-/* Return I/O buffer size for a layout driver
+- * This value will determine what size reads and writes
+- * will be gathered into and sent to the data servers.
+- * blocksize must be a multiple of the page cache size.
+- */
+-unsigned int
+-pnfs_getiosize(struct nfs_server *server)
+-{
+-	struct pnfs_mount_type *mounttype;
+-	struct pnfs_layoutdriver_type *ld;
+-
+-	mounttype = server->pnfs_mountid;
+-	ld = server->pnfs_curr_ld;
+-	if (!pnfs_enabled_sb(server) ||
+-	    !mounttype ||
+-	    !ld->ld_policy_ops ||
+-	    !ld->ld_policy_ops->get_blocksize)
+-		return 0;
+-
+-	return ld->ld_policy_ops->get_blocksize(mounttype);
+-}
+-
+ void
+ pnfs_set_ds_iosize(struct nfs_server *server)
+ {
+-	unsigned dssize = pnfs_getiosize(server);
+-
+-	/* Set buffer size for data servers */
+-	if (dssize > 0) {
+-		server->ds_rsize = server->ds_wsize =
+-			nfs_block_size(dssize, NULL);
+-		server->ds_rpages = server->ds_wpages =
+-			(server->ds_rsize + PAGE_CACHE_SIZE - 1) >>
+-			PAGE_CACHE_SHIFT;
+-	} else {
+-		server->ds_wsize = server->wsize;
+-		server->ds_rsize = server->rsize;
+-		server->ds_rpages = server->rpages;
+-		server->ds_wpages = server->wpages;
+-	}
++	server->ds_wsize = server->wsize;
++	server->ds_rsize = server->rsize;
++	server->ds_rpages = server->rpages;
++	server->ds_wpages = server->wpages;
+ }
+ 
+ static int
+diff --git a/include/linux/nfs4_pnfs.h b/include/linux/nfs4_pnfs.h
+index be42370..f0eddbd 100644
+--- a/include/linux/nfs4_pnfs.h
++++ b/include/linux/nfs4_pnfs.h
+@@ -214,12 +214,6 @@ struct layoutdriver_policy_operations {
+ 	int (*do_flush)(struct pnfs_layout_segment *lseg, struct nfs_page *req,
+ 			struct pnfs_fsdata *fsdata);
+ 
+-	/* Retreive the block size of the file system.  If gather_across_stripes == 1,
+-	 * then the file system will gather requests into the block size.
+-	 * TODO: Where will the layout driver get this info?  It is hard coded in PVFS2.
+-	 */
+-	ssize_t (*get_blocksize) (struct pnfs_mount_type *);
+-
+ 	/* Read requests under this value are sent to the NFSv4 server */
+ 	ssize_t (*get_read_threshold) (struct pnfs_layout_type *, struct inode *);
+ 
+-- 
+1.6.6
 
