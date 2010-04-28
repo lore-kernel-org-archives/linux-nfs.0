@@ -1,45 +1,43 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: Directory Delegations and Negative Caching Status
-Date: Wed, 28 Apr 2010 13:45:47 -0400
-Message-ID: <20100428174547.GO17491@fieldses.org>
-References: <4BD86CC1.7050405@disney.com> <4BD86FA1.6010108@disney.com>
+From: Alex Riesen <raa.lkml@gmail.com>
+Subject: Re: [patch 1/1] sunrpc: use formatting of module name in SUNRPC
+Date: Wed, 28 Apr 2010 21:49:10 +0200
+Message-ID: <q2i81b0412b1004281249u69337d01le6d66c20e6eefceb@mail.gmail.com>
+References: <201004272115.o3RLFnKj020353@imap1.linux-foundation.org>
+	 <l2l81b0412b1004280040t415657c7qe7de59f152cd49aa@mail.gmail.com>
+	 <20100428073912.f15206fa.akpm@linux-foundation.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs@vger.kernel.org
-To: Kevin Constantine <Kevin.Constantine-FfNkGbSheRGpB8w63BLUukEOCMrvLtNR@public.gmane.org>
+Content-Type: text/plain; charset=UTF-8
+Cc: Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+	trond.myklebust@fys.uio.no, linux-nfs@vger.kernel.org,
+	Trond.Myklebust@netapp.com, cel@citi.umich.edu,
+	davem@davemloft.net, tmtalpey@gmail.com
+To: Andrew Morton <akpm@linux-foundation.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:55518 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755614Ab0D1Rps (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 28 Apr 2010 13:45:48 -0400
-In-Reply-To: <4BD86FA1.6010108-P5ys19MLBK/QT0dZR+AlfA@public.gmane.org>
+Received: from mail-yw0-f194.google.com ([209.85.211.194]:55070 "EHLO
+	mail-yw0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932099Ab0D1TtL convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 28 Apr 2010 15:49:11 -0400
+In-Reply-To: <20100428073912.f15206fa.akpm@linux-foundation.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Apr 28, 2010 at 10:25:53AM -0700, Kevin Constantine wrote:
-> Re-sending to the non-deprecated list...
-
-Hm, the forwarding from it to here doesn't seem to be working.
-
-Anyway, no, as far as I know, nobody is working on directory
-delegations.
-
---b.
-
+On Wed, Apr 28, 2010 at 13:39, Andrew Morton <akpm@linux-foundation.org=
+> wrote:
+> On Wed, 28 Apr 2010 09:40:36 +0200 Alex Riesen <raa.lkml@gmail.com> w=
+rote:
+>> > __net/sunrpc/xprt.c | __ __5 +----
+>> > __1 file changed, 1 insertion(+), 4 deletions(-)
+>> >
+>>
+>> This is one tough little patch... 2 years and counting...
 >
-> On 04/28/2010 10:13 AM, Kevin Constantine wrote:
->> Hey Everyone-
->> I was hoping that someone might provide an update on the status of
->> Directory Delegations and specifically the Negative Caching pieces that
->> are talked about here:
->>
->> http://wiki.linux-nfs.org/wiki/index.php/CITI_Experience_with_Directory_Delegations
->>
->>
->> Thanks so much
->>
->> -kevin
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> heh. =C2=A0I've only had it since June '09.
+>
+> I'll merge it into 2.6.35-rc1.
+>
+
+That's because I was overly pessimistic. gcc-4.3.3 only exists since
+24 Jan, 2009.
+I just have the change (and other request_module name formatting patche=
+s)
+in my trees already for quite some time...
