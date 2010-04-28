@@ -1,7 +1,7 @@
 From: andros@netapp.com
-Subject: [PATCH 10/13] SQUASHME pnfs_submit: remove pnfs_fs_ltype
-Date: Wed, 28 Apr 2010 18:24:22 -0400
-Message-ID: <1272493465-3398-11-git-send-email-andros@netapp.com>
+Subject: [PATCH 13/13] SQUASHME pnfs_submit: cleanup nfs4_pnfs_ds_add
+Date: Wed, 28 Apr 2010 18:24:25 -0400
+Message-ID: <1272493465-3398-14-git-send-email-andros@netapp.com>
 References: <1272493465-3398-1-git-send-email-andros@netapp.com>
  <1272493465-3398-2-git-send-email-andros@netapp.com>
  <1272493465-3398-3-git-send-email-andros@netapp.com>
@@ -12,187 +12,77 @@ References: <1272493465-3398-1-git-send-email-andros@netapp.com>
  <1272493465-3398-8-git-send-email-andros@netapp.com>
  <1272493465-3398-9-git-send-email-andros@netapp.com>
  <1272493465-3398-10-git-send-email-andros@netapp.com>
+ <1272493465-3398-11-git-send-email-andros@netapp.com>
+ <1272493465-3398-12-git-send-email-andros@netapp.com>
+ <1272493465-3398-13-git-send-email-andros@netapp.com>
 Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
 To: bhalevy@panasas.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
 Received: from mx2.netapp.com ([216.240.18.37]:30259 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932236Ab0D1VYg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 28 Apr 2010 17:24:36 -0400
-In-Reply-To: <1272493465-3398-10-git-send-email-andros@netapp.com>
+	id S932248Ab0D1VYj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 28 Apr 2010 17:24:39 -0400
+In-Reply-To: <1272493465-3398-13-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 From: Andy Adamson <andros@netapp.com>
 
-Set the pnfs_curr_ld pointer in nfs_probe_fsinfo. Use the pnfs_curr_ld
-layout type.
+Only initialize struct nfs4_pnfs_ds_add when using it.
 
 Signed-off-by: Andy Adamson <andros@netapp.com>
 ---
- fs/nfs/client.c           |   20 ++++++++++++++++----
- fs/nfs/pnfs.c             |    3 +--
- fs/nfs/pnfs.h             |    2 +-
- fs/nfs/super.c            |   26 ++------------------------
- include/linux/nfs_fs_sb.h |    1 -
- 5 files changed, 20 insertions(+), 32 deletions(-)
+ fs/nfs/nfs4filelayoutdev.c |   26 ++++++++++++--------------
+ 1 files changed, 12 insertions(+), 14 deletions(-)
 
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index 004c5d3..87003e7 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -48,6 +48,7 @@
- #include "iostat.h"
- #include "internal.h"
- #include "fscache.h"
-+#include "pnfs.h"
- 
- #define NFSDBG_FACILITY		NFSDBG_CLIENT
- 
-@@ -869,6 +870,20 @@ error:
- }
- 
- /*
-+ * Initialize the pNFS layout driver and setup pNFS related parameters
-+ */
-+static void nfs4_init_pnfs(struct nfs_server *server, struct nfs_fsinfo *fsinfo)
-+{
-+#if defined(CONFIG_NFS_V4_1)
-+	struct nfs_client *clp = server->nfs_client;
-+
-+	if (nfs4_has_session(clp) &&
-+	    (clp->cl_exchange_flags & EXCHGID4_FLAG_USE_PNFS_MDS))
-+		set_pnfs_layoutdriver(server, fsinfo->layouttype);
-+#endif /* CONFIG_NFS_V4_1 */
-+}
-+
-+/*
-  * Load up the server record from information gained in an fsinfo record
-  */
- static void nfs_server_set_fsinfo(struct nfs_server *server, struct nfs_fsinfo *fsinfo)
-@@ -901,10 +916,7 @@ static void nfs_server_set_fsinfo(struct nfs_server *server, struct nfs_fsinfo *
- 	if (server->wsize > NFS_MAX_FILE_IO_SIZE)
- 		server->wsize = NFS_MAX_FILE_IO_SIZE;
- 	server->wpages = (server->wsize + PAGE_CACHE_SIZE - 1) >> PAGE_CACHE_SHIFT;
--#ifdef CONFIG_NFS_V4_1
--	/* Save the layout type for use during init of layout driver */
--	server->pnfs_fs_ltype = fsinfo->layouttype;
--#endif /* CONFIG_NFS_V4_1 */
-+	nfs4_init_pnfs(server, fsinfo);
- 
- 	server->wtmult = nfs_block_bits(fsinfo->wtmult, NULL);
- 
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 5cf1aa7..aab546f 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -204,10 +204,9 @@ unmount_pnfs_layoutdriver(struct super_block *sb)
-  * Only one pNFS layout driver is supported.
-  */
- void
--set_pnfs_layoutdriver(struct super_block *sb, struct nfs_fh *fh, u32 id)
-+set_pnfs_layoutdriver(struct nfs_server *server, u32 id)
- {
- 	struct pnfs_module *mod;
--	struct nfs_server *server = NFS_SB(sb);
- 
- 	if (server->pnfs_curr_ld)
+diff --git a/fs/nfs/nfs4filelayoutdev.c b/fs/nfs/nfs4filelayoutdev.c
+index 61a3381..8bd2544 100644
+--- a/fs/nfs/nfs4filelayoutdev.c
++++ b/fs/nfs/nfs4filelayoutdev.c
+@@ -273,31 +273,29 @@ nfs4_pnfs_ds_add(struct inode *inode, struct nfs4_pnfs_ds **dsp,
+ 	if (!ds)
  		return;
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index b95886c..308308f 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -38,7 +38,7 @@ int pnfs_update_layout(struct inode *ino, struct nfs_open_context *ctx,
- int _pnfs_return_layout(struct inode *, struct nfs4_pnfs_layout_segment *,
- 			const nfs4_stateid *stateid, /* optional */
- 			enum pnfs_layoutreturn_type);
--void set_pnfs_layoutdriver(struct super_block *, struct nfs_fh *, u32 id);
-+void set_pnfs_layoutdriver(struct nfs_server *, u32 id);
- void unmount_pnfs_layoutdriver(struct super_block *sb);
- int pnfs_use_read(struct inode *inode, ssize_t count);
- int pnfs_use_ds_io(struct list_head *, struct inode *, int);
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index a742846..7cec8e5 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -678,13 +678,13 @@ char *layout_name(u32 layouttype)
  
- void show_pnfs(struct seq_file *m, struct nfs_server *server)
- {
--	char *name = layout_name(server->pnfs_fs_ltype);
-+	char *name = layout_name(server->pnfs_curr_ld->id);
- 
- 	seq_printf(m, ",pnfs=");
- 	if (name)
- 		seq_printf(m, "%s", name);
- 	else
--		seq_printf(m, "unknown(%d)", server->pnfs_fs_ltype);
-+		seq_printf(m, "unknown(%d)", server->pnfs_curr_ld->id);
+-	/* Initialize ds */
+-	ds->ds_ip_addr = ip_addr;
+-	ds->ds_port = port;
+-	strncpy(ds->r_addr, r_addr, len);
+-	atomic_set(&ds->ds_count, 1);
+-	INIT_LIST_HEAD(&ds->ds_node);
+-	ds->ds_clp = NULL;
+-
+ 	spin_lock(&nfs4_ds_cache_lock);
+ 	tmp_ds = _data_server_lookup(ip_addr, port);
+ 	if (tmp_ds == NULL) {
+-		dprintk("%s add new data server ip 0x%x\n", __func__,
+-				ds->ds_ip_addr);
++		ds->ds_ip_addr = ip_addr;
++		ds->ds_port = port;
++		strncpy(ds->r_addr, r_addr, len);
++		atomic_set(&ds->ds_count, 1);
++		INIT_LIST_HEAD(&ds->ds_node);
++		ds->ds_clp = NULL;
+ 		list_add(&ds->ds_node, &nfs4_data_server_cache);
+ 		*dsp = ds;
++		dprintk("%s add new data server ip 0x%x\n", __func__,
++				ds->ds_ip_addr);
++		spin_unlock(&nfs4_ds_cache_lock);
+ 	} else {
+ 		atomic_inc(&tmp_ds->ds_count);
++		*dsp = tmp_ds;
+ 		dprintk("%s data server found ip 0x%x, inc'ed ds_count to %d\n",
+ 				__func__, tmp_ds->ds_ip_addr,
+ 				atomic_read(&tmp_ds->ds_count));
+-		*dsp = tmp_ds;
++		spin_unlock(&nfs4_ds_cache_lock);
++		kfree(ds);
+ 	}
+-	spin_unlock(&nfs4_ds_cache_lock);
+-	if (tmp_ds != NULL)
+-		destroy_ds(ds);
  }
- #else  /* CONFIG_NFS_V4_1 */
- void show_pnfs(struct seq_file *m, struct nfs_server *server) {}
-@@ -2579,22 +2579,6 @@ out_no_address:
- }
  
- /*
-- * Initialize the pNFS layout driver and setup pNFS related parameters
-- */
--static void nfs4_init_pnfs(struct super_block *sb, struct nfs_fh *fh)
--{
--#if defined(CONFIG_NFS_V4_1)
--	struct nfs_server *server = NFS_SB(sb);
--	struct nfs_client *clp = server->nfs_client;
--
--	if (nfs4_has_session(clp) &&
--	    (clp->cl_exchange_flags & EXCHGID4_FLAG_USE_PNFS_MDS)) {
--		set_pnfs_layoutdriver(sb, fh, server->pnfs_fs_ltype);
--	}
--#endif /* CONFIG_NFS_V4_1 */
--}
--
--/*
-  * Get the superblock for the NFS4 root partition
-  */
- static int nfs4_remote_get_sb(struct file_system_type *fs_type,
-@@ -2661,8 +2645,6 @@ static int nfs4_remote_get_sb(struct file_system_type *fs_type,
- 	if (error)
- 		goto error_splat_root;
- 
--	nfs4_init_pnfs(s, mntfh);
--
- 	s->s_flags |= MS_ACTIVE;
- 	mnt->mnt_sb = s;
- 	mnt->mnt_root = mntroot;
-@@ -2908,8 +2890,6 @@ static int nfs4_xdev_get_sb(struct file_system_type *fs_type, int flags,
- 
- 	security_sb_clone_mnt_opts(data->sb, s);
- 
--	nfs4_init_pnfs(s, data->fh);
--
- 	dprintk("<-- nfs4_xdev_get_sb() = 0\n");
- 	return 0;
- 
-@@ -2995,8 +2975,6 @@ static int nfs4_remote_referral_get_sb(struct file_system_type *fs_type,
- 
- 	security_sb_clone_mnt_opts(data->sb, s);
- 
--	nfs4_init_pnfs(s, &mntfh);
--
- 	dprintk("<-- nfs4_referral_get_sb() = 0\n");
- 	return 0;
- 
-diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
-index 9b160d4..740aed1 100644
---- a/include/linux/nfs_fs_sb.h
-+++ b/include/linux/nfs_fs_sb.h
-@@ -163,7 +163,6 @@ struct nfs_server {
- #endif
- 
- #ifdef CONFIG_NFS_V4_1
--	u32				pnfs_fs_ltype;/* fs_layouttype attr */
- 	struct pnfs_layoutdriver_type  *pnfs_curr_ld; /* Active layout driver */
- #endif /* CONFIG_NFS_V4_1 */
- 
+ static struct nfs4_pnfs_ds *
 -- 
 1.6.6
 
