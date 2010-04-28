@@ -1,75 +1,72 @@
 From: andros@netapp.com
-Subject: [PATCH 09/13] SQUASHME pnfs_submit: change nfs_fsino layoutclass name
-Date: Wed, 28 Apr 2010 18:24:21 -0400
-Message-ID: <1272493465-3398-10-git-send-email-andros@netapp.com>
+Subject: [PATCH 03/13] SQUASHME pnfs_submit: remove pnfs_mount_type from alloc_layout
+Date: Wed, 28 Apr 2010 18:24:15 -0400
+Message-ID: <1272493465-3398-4-git-send-email-andros@netapp.com>
 References: <1272493465-3398-1-git-send-email-andros@netapp.com>
  <1272493465-3398-2-git-send-email-andros@netapp.com>
  <1272493465-3398-3-git-send-email-andros@netapp.com>
- <1272493465-3398-4-git-send-email-andros@netapp.com>
- <1272493465-3398-5-git-send-email-andros@netapp.com>
- <1272493465-3398-6-git-send-email-andros@netapp.com>
- <1272493465-3398-7-git-send-email-andros@netapp.com>
- <1272493465-3398-8-git-send-email-andros@netapp.com>
- <1272493465-3398-9-git-send-email-andros@netapp.com>
 Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
 To: bhalevy@panasas.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:30259 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:40918 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932244Ab0D1VYg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 28 Apr 2010 17:24:36 -0400
-In-Reply-To: <1272493465-3398-9-git-send-email-andros@netapp.com>
+	id S932237Ab0D1VYc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 28 Apr 2010 17:24:32 -0400
+In-Reply-To: <1272493465-3398-3-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 From: Andy Adamson <andros@netapp.com>
 
+The pnfs_mount_type parameter is not used by any layout driver alloc_layout
+function.
+
 Signed-off-by: Andy Adamson <andros@netapp.com>
 ---
- fs/nfs/client.c         |    2 +-
- fs/nfs/nfs4xdr.c        |    2 +-
- include/linux/nfs_xdr.h |    2 +-
+ fs/nfs/nfs4filelayout.c   |    2 +-
+ fs/nfs/pnfs.c             |    2 +-
+ include/linux/nfs4_pnfs.h |    2 +-
  3 files changed, 3 insertions(+), 3 deletions(-)
 
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index 887d71e..004c5d3 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -903,7 +903,7 @@ static void nfs_server_set_fsinfo(struct nfs_server *server, struct nfs_fsinfo *
- 	server->wpages = (server->wsize + PAGE_CACHE_SIZE - 1) >> PAGE_CACHE_SHIFT;
- #ifdef CONFIG_NFS_V4_1
- 	/* Save the layout type for use during init of layout driver */
--	server->pnfs_fs_ltype = fsinfo->layoutclass;
-+	server->pnfs_fs_ltype = fsinfo->layouttype;
- #endif /* CONFIG_NFS_V4_1 */
+diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+index 79b9df2..4a3f58a 100644
+--- a/fs/nfs/nfs4filelayout.c
++++ b/fs/nfs/nfs4filelayout.c
+@@ -334,7 +334,7 @@ filelayout_write_pagelist(struct pnfs_layout_type *layoutid,
+  * inode from now on.
+  */
+ static void *
+-filelayout_alloc_layout(struct pnfs_mount_type *mountid, struct inode *inode)
++filelayout_alloc_layout(struct inode *inode)
+ {
+ 	dprintk("NFS_FILELAYOUT: allocating layout\n");
+ 	return kzalloc(sizeof(struct nfs4_filelayout), GFP_KERNEL);
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index fbc04c3..e704dcf 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -864,7 +864,7 @@ alloc_init_layout(struct inode *ino)
  
- 	server->wtmult = nfs_block_bits(fsinfo->wtmult, NULL);
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index 7089284..e191488 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -4277,7 +4277,7 @@ static int decode_fsinfo(struct xdr_stream *xdr, struct nfs_fsinfo *fsinfo)
- 		goto xdr_error;
- 	fsinfo->wtpref = fsinfo->wtmax;
- #if defined(CONFIG_NFS_V4_1)
--	status = decode_attr_pnfstype(xdr, bitmap, &fsinfo->layoutclass);
-+	status = decode_attr_pnfstype(xdr, bitmap, &fsinfo->layouttype);
- 	if (status)
- 		goto xdr_error;
- #endif /* CONFIG_NFS_V4_1 */
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index ea1b2f0..dee1c8c 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -114,7 +114,7 @@ struct nfs_fsinfo {
- 	__u64			maxfilesize;
- 	__u32			lease_time; /* in seconds */
- #if defined(CONFIG_NFS_V4_1)
--	__u32			layoutclass; /* supported pnfs layout driver */
-+	__u32			layouttype; /* supported pnfs layout driver */
- #endif
- };
- 
+ 	io_ops = NFS_SERVER(ino)->pnfs_curr_ld->ld_io_ops;
+ 	lo = &NFS_I(ino)->layout;
+-	ld_data = io_ops->alloc_layout(NFS_SERVER(ino)->pnfs_mountid, ino);
++	ld_data = io_ops->alloc_layout(ino);
+ 	if (!ld_data) {
+ 		printk(KERN_ERR
+ 			"%s: out of memory: io_ops->alloc_layout failed\n",
+diff --git a/include/linux/nfs4_pnfs.h b/include/linux/nfs4_pnfs.h
+index b2bec02..be42370 100644
+--- a/include/linux/nfs4_pnfs.h
++++ b/include/linux/nfs4_pnfs.h
+@@ -162,7 +162,7 @@ struct layoutdriver_io_operations {
+ 	/* Layout information. For each inode, alloc_layout is executed once to retrieve an
+ 	 * inode specific layout structure.  Each subsequent layoutget operation results in
+ 	 * a set_layout call to set the opaque layout in the layout driver.*/
+-	void * (*alloc_layout) (struct pnfs_mount_type *mountid, struct inode *inode);
++	void * (*alloc_layout) (struct inode *inode);
+ 	void (*free_layout) (void *layoutid);
+ 	struct pnfs_layout_segment * (*alloc_lseg) (struct pnfs_layout_type *layoutid, struct nfs4_pnfs_layoutget_res *lgr);
+ 	void (*free_lseg) (struct pnfs_layout_segment *lseg);
 -- 
 1.6.6
 
