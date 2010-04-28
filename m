@@ -1,251 +1,95 @@
 From: andros@netapp.com
-Subject: [PATCH 02/13] SQUASHME pnfs_submit: remove CB_NOTIFY_DEVICEID
-Date: Wed, 28 Apr 2010 18:24:14 -0400
-Message-ID: <1272493465-3398-3-git-send-email-andros@netapp.com>
+Subject: [PATCH 08/13] SQUASHME pnfs_submit: change initialize_mountpoint parameters
+Date: Wed, 28 Apr 2010 18:24:20 -0400
+Message-ID: <1272493465-3398-9-git-send-email-andros@netapp.com>
 References: <1272493465-3398-1-git-send-email-andros@netapp.com>
  <1272493465-3398-2-git-send-email-andros@netapp.com>
+ <1272493465-3398-3-git-send-email-andros@netapp.com>
+ <1272493465-3398-4-git-send-email-andros@netapp.com>
+ <1272493465-3398-5-git-send-email-andros@netapp.com>
+ <1272493465-3398-6-git-send-email-andros@netapp.com>
+ <1272493465-3398-7-git-send-email-andros@netapp.com>
+ <1272493465-3398-8-git-send-email-andros@netapp.com>
 Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
 To: bhalevy@panasas.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:14209 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:30259 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932236Ab0D1VYc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 28 Apr 2010 17:24:32 -0400
-In-Reply-To: <1272493465-3398-2-git-send-email-andros@netapp.com>
+	id S932238Ab0D1VYf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 28 Apr 2010 17:24:35 -0400
+In-Reply-To: <1272493465-3398-8-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 From: Andy Adamson <andros@netapp.com>
 
-The file layoutdriver submission will not support CB_NOTIFY_DEVICEID
+The layoutdriver_io_operation initalize_mountpoint is used to set up the
+generic device id cache.
+The super block and file handle parameters are unused except by the block
+layout driver which uses them to call GETDEVICELIST.
+A getdevicelist call will be added for the block layout driver.
 
 Signed-off-by: Andy Adamson <andros@netapp.com>
 ---
- fs/nfs/callback_proc.c    |   68 --------------------------------
- fs/nfs/callback_xdr.c     |   96 +--------------------------------------------
- include/linux/nfs4_pnfs.h |    1 -
- 3 files changed, 1 insertions(+), 164 deletions(-)
+ fs/nfs/nfs4filelayout.c   |    4 ++--
+ fs/nfs/pnfs.c             |    2 +-
+ fs/nfs/pnfs.h             |    2 +-
+ include/linux/nfs4_pnfs.h |    2 +-
+ 4 files changed, 5 insertions(+), 5 deletions(-)
 
-diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
-index efdea62..4d315f7 100644
---- a/fs/nfs/callback_proc.c
-+++ b/fs/nfs/callback_proc.c
-@@ -324,74 +324,6 @@ out:
- 	return res;
- }
+diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+index 36a8fe1..80eb481 100644
+--- a/fs/nfs/nfs4filelayout.c
++++ b/fs/nfs/nfs4filelayout.c
+@@ -69,10 +69,10 @@ ssize_t filelayout_get_stripesize(struct pnfs_layout_type *);
+ struct layoutdriver_io_operations filelayout_io_operations;
  
--/* Remove all devices for each superblock for nfs_client.  This may try
-- * to remove the same device multple times if they are
-- * shared across superblocks in the layout driver, but the
-- * layout drive should be able to handle this */
--static __be32 pnfs_devicenotify_client(struct nfs_client *clp,
--				       struct cb_pnfs_devicenotifyargs *args)
--{
--	struct nfs_server *server;
--	__be32 res = 0, res2 = 0;
--	int i, num_sb = 0;
--	struct layoutdriver_io_operations *ops;
--	uint32_t type;
--
--	dprintk("%s: --> clp %p\n", __func__, clp);
--
--	list_for_each_entry(server, &clp->cl_superblocks, client_link) {
--		ops = server->pnfs_curr_ld->ld_io_ops;
--		num_sb++;
--		for (i = 0; i < args->ndevs; i++) {
--			struct cb_pnfs_devicenotifyitem *dev = &args->devs[i];
--			type = dev->cbd_notify_type;
--			if (type == NOTIFY_DEVICEID4_DELETE &&
--			    PNFS_EXISTS_LDIO_OP(server, device_delete))
--				res = ops->device_delete(server->pnfs_mountid,
--							 &dev->cbd_dev_id);
--			else if (type == NOTIFY_DEVICEID4_CHANGE)
--				printk(KERN_ERR "%s: NOTIFY_DEVICEID4_CHANGE "
--					"not supported\n", __func__);
--			if (res)
--				res2 = res;
--		}
--	}
--	dprintk("%s: exit with status = %d numsb %u\n",
--		__func__, ntohl(res2), num_sb);
--	return res2;
--}
--
--__be32 pnfs_cb_devicenotify(struct cb_pnfs_devicenotifyargs *args,
--			    void *dummy)
--{
--	struct nfs_client *clp;
--	__be32 res = 0;
--	unsigned int num_client = 0;
--
--	dprintk("%s: -->\n", __func__);
--
--	res = __constant_htonl(NFS4ERR_INVAL);
--	clp = nfs_find_client(args->addr, 4);
--	if (clp == NULL) {
--		dprintk("%s: no client for addr %u.%u.%u.%u\n",
--			__func__, NIPQUAD(args->addr));
--		goto out;
--	}
--
--	do {
--		struct nfs_client *prev = clp;
--		num_client++;
--		res = pnfs_devicenotify_client(clp, args);
--		clp = nfs_find_client_next(prev);
--		nfs_put_client(prev);
--	} while (clp != NULL);
--
--out:
--	dprintk("%s: exit with status = %d numclient %u\n",
--		__func__, ntohl(res), num_client);
--	return res;
--}
--
- int nfs41_validate_delegation_stateid(struct nfs_delegation *delegation, const nfs4_stateid *stateid)
+ int
+-filelayout_initialize_mountpoint(struct super_block *sb, struct nfs_fh *fh)
++filelayout_initialize_mountpoint(struct nfs_client *clp)
  {
- 	if (delegation == NULL)
-diff --git a/fs/nfs/callback_xdr.c b/fs/nfs/callback_xdr.c
-index d03a122..4a69882 100644
---- a/fs/nfs/callback_xdr.c
-+++ b/fs/nfs/callback_xdr.c
-@@ -22,7 +22,6 @@
  
- #if defined(CONFIG_NFS_V4_1)
- #define CB_OP_LAYOUTRECALL_RES_MAXSZ	(CB_OP_HDR_RES_MAXSZ)
--#define CB_OP_DEVICENOTIFY_RES_MAXSZ	(CB_OP_HDR_RES_MAXSZ)
- #define CB_OP_SEQUENCE_RES_MAXSZ	(CB_OP_HDR_RES_MAXSZ + \
- 					4 + 1 + 3)
- #define CB_OP_RECALLANY_RES_MAXSZ	(CB_OP_HDR_RES_MAXSZ)
-@@ -267,93 +266,6 @@ out:
- 	return status;
- }
+-	if (nfs4_alloc_init_deviceid_cache(NFS_SB(sb)->nfs_client,
++	if (nfs4_alloc_init_deviceid_cache(clp,
+ 					   nfs4_fl_free_deviceid_callback)) {
+ 		printk(KERN_WARNING "%s: deviceid cache could not be "
+ 			"initialized\n", __func__);
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 3362ef5..5cf1aa7 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -214,7 +214,7 @@ set_pnfs_layoutdriver(struct super_block *sb, struct nfs_fh *fh, u32 id)
  
--static __be32 decode_pnfs_devicenotify_args(struct svc_rqst *rqstp,
--					    struct xdr_stream *xdr,
--					    struct cb_pnfs_devicenotifyargs *args)
--{
--	__be32 *p;
--	__be32 status = 0;
--	u32 tmp;
--	int n, i;
--	args->ndevs = 0;
--
--	args->addr = svc_addr(rqstp);
--
--	/* Num of device notifications */
--	p = read_buf(xdr, sizeof(uint32_t));
--	if (unlikely(p == NULL)) {
--		status = htonl(NFS4ERR_RESOURCE);
--		goto out;
--	}
--	n = ntohl(*p++);
--	if (n <= 0)
--		goto out;
--
--	/* XXX: need to possibly return error in this case */
--	if (n > NFS4_DEV_NOTIFY_MAXENTRIES) {
--		dprintk("%s: Processing (%d) notifications out of (%d)\n",
--			__func__, NFS4_DEV_NOTIFY_MAXENTRIES, n);
--		n = NFS4_DEV_NOTIFY_MAXENTRIES;
--	}
--
--	/* Decode each dev notification */
--	for (i = 0; i < n; i++) {
--		struct cb_pnfs_devicenotifyitem *dev = &args->devs[i];
--
--		p = read_buf(xdr, (4 * sizeof(uint32_t))
--			     + NFS4_PNFS_DEVICEID4_SIZE);
--		if (unlikely(p == NULL)) {
--			status = htonl(NFS4ERR_RESOURCE);
--			goto out;
--		}
--
--		tmp = ntohl(*p++);	/* bitmap size */
--		if (tmp != 1) {
--			status = htonl(NFS4ERR_INVAL);
--			goto out;
--		}
--		dev->cbd_notify_type = ntohl(*p++);
--		if (dev->cbd_notify_type != NOTIFY_DEVICEID4_CHANGE &&
--		    dev->cbd_notify_type != NOTIFY_DEVICEID4_DELETE) {
--			status = htonl(NFS4ERR_INVAL);
--			goto out;
--		}
--
--		tmp = ntohl(*p++);	/* opaque size */
--		if (((dev->cbd_notify_type == NOTIFY_DEVICEID4_CHANGE) &&
--		     (tmp != NFS4_PNFS_DEVICEID4_SIZE + 8)) ||
--		    ((dev->cbd_notify_type == NOTIFY_DEVICEID4_DELETE) &&
--		     (tmp != NFS4_PNFS_DEVICEID4_SIZE + 4))) {
--			status = htonl(NFS4ERR_INVAL);
--			goto out;
--		}
--		dev->cbd_layout_type = ntohl(*p++);
--		memcpy(dev->cbd_dev_id.data, p, NFS4_PNFS_DEVICEID4_SIZE);
--		p += XDR_QUADLEN(NFS4_PNFS_DEVICEID4_SIZE);
--
--		if (dev->cbd_layout_type == NOTIFY_DEVICEID4_CHANGE) {
--			p = read_buf(xdr, sizeof(uint32_t));
--			if (unlikely(p == NULL)) {
--				status = htonl(NFS4ERR_DELAY);
--				goto out;
--			}
--			dev->cbd_immediate = ntohl(*p++);
--		} else {
--			dev->cbd_immediate = 0;
--		}
--
--		args->ndevs++;
--
--		dprintk("%s: type %d layout 0x%x immediate %d\n",
--			__func__, dev->cbd_notify_type, dev->cbd_layout_type,
--			dev->cbd_immediate);
--	}
--out:
--	dprintk("%s: status %d ndevs %d\n",
--		__func__, ntohl(status), args->ndevs);
--	return status;
--}
--
- static __be32 decode_sessionid(struct xdr_stream *xdr,
- 				 struct nfs4_sessionid *sid)
- {
-@@ -709,11 +621,11 @@ preprocess_nfs41_op(int nop, unsigned int op_nr, struct callback_op **op)
- 	case OP_CB_RECALL_ANY:
- 	case OP_CB_RECALL_SLOT:
- 	case OP_CB_LAYOUTRECALL:
--	case OP_CB_NOTIFY_DEVICEID:
- 		*op = &callback_ops[op_nr];
- 		break;
- 
- 	case OP_CB_NOTIFY:
-+	case OP_CB_NOTIFY_DEVICEID:
- 	case OP_CB_PUSH_DELEG:
- 	case OP_CB_RECALLABLE_OBJ_AVAIL:
- 	case OP_CB_WANTS_CANCELLED:
-@@ -879,12 +791,6 @@ static struct callback_op callback_ops[] = {
- 			(callback_decode_arg_t)decode_pnfs_layoutrecall_args,
- 		.res_maxsize = CB_OP_LAYOUTRECALL_RES_MAXSZ,
- 	},
--	[OP_CB_NOTIFY_DEVICEID] = {
--		.process_op = (callback_process_op_t)pnfs_cb_devicenotify,
--		.decode_args =
--			(callback_decode_arg_t)decode_pnfs_devicenotify_args,
--		.res_maxsize = CB_OP_DEVICENOTIFY_RES_MAXSZ,
--	},
- 	[OP_CB_SEQUENCE] = {
- 		.process_op = (callback_process_op_t)nfs4_callback_sequence,
- 		.decode_args = (callback_decode_arg_t)decode_cb_sequence_args,
+ 	if (id > 0 && find_pnfs(id, &mod)) {
+ 		if (!mod->pnfs_ld_type->ld_io_ops->initialize_mountpoint(
+-			sb, fh)) {
++			server->nfs_client)) {
+ 			printk(KERN_ERR "%s: Error initializing mount point "
+ 			       "for layout driver %u. ", __func__, id);
+ 			goto out_err;
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index 5745ee1..b95886c 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -38,7 +38,7 @@ int pnfs_update_layout(struct inode *ino, struct nfs_open_context *ctx,
+ int _pnfs_return_layout(struct inode *, struct nfs4_pnfs_layout_segment *,
+ 			const nfs4_stateid *stateid, /* optional */
+ 			enum pnfs_layoutreturn_type);
+-void set_pnfs_layoutdriver(struct super_block *sb, struct nfs_fh *fh, u32 id);
++void set_pnfs_layoutdriver(struct super_block *, struct nfs_fh *, u32 id);
+ void unmount_pnfs_layoutdriver(struct super_block *sb);
+ int pnfs_use_read(struct inode *inode, ssize_t count);
+ int pnfs_use_ds_io(struct list_head *, struct inode *, int);
 diff --git a/include/linux/nfs4_pnfs.h b/include/linux/nfs4_pnfs.h
-index ae2f7ed..b2bec02 100644
+index 7ca8f85..46fec95 100644
 --- a/include/linux/nfs4_pnfs.h
 +++ b/include/linux/nfs4_pnfs.h
-@@ -183,7 +183,6 @@ struct layoutdriver_io_operations {
+@@ -168,7 +168,7 @@ struct layoutdriver_io_operations {
+ 
+ 	/* Registration information for a new mounted file system
  	 */
- 	struct pnfs_mount_type * (*initialize_mountpoint) (struct super_block *, struct nfs_fh *fh);
- 	int (*uninitialize_mountpoint) (struct pnfs_mount_type *mountid);
--	int (*device_delete) (struct pnfs_mount_type *mountid, struct pnfs_deviceid *dev_id);
+-	int (*initialize_mountpoint) (struct super_block *, struct nfs_fh *fh);
++	int (*initialize_mountpoint) (struct nfs_client *);
  };
  
  enum layoutdriver_policy_flags {
