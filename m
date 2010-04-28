@@ -1,104 +1,108 @@
 From: andros@netapp.com
-Subject: [PATCH 04/13] SQUASHME pnfs_submit: remove get_blocksize policy operation
-Date: Wed, 28 Apr 2010 18:24:16 -0400
-Message-ID: <1272493465-3398-5-git-send-email-andros@netapp.com>
+Subject: [PATCH 06/13] SQUASHME pnfs_submit: remove uninitialize_mountpoint
+Date: Wed, 28 Apr 2010 18:24:18 -0400
+Message-ID: <1272493465-3398-7-git-send-email-andros@netapp.com>
 References: <1272493465-3398-1-git-send-email-andros@netapp.com>
  <1272493465-3398-2-git-send-email-andros@netapp.com>
  <1272493465-3398-3-git-send-email-andros@netapp.com>
  <1272493465-3398-4-git-send-email-andros@netapp.com>
+ <1272493465-3398-5-git-send-email-andros@netapp.com>
+ <1272493465-3398-6-git-send-email-andros@netapp.com>
 Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
 To: bhalevy@panasas.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:24626 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:14209 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932238Ab0D1VYd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 28 Apr 2010 17:24:33 -0400
-In-Reply-To: <1272493465-3398-4-git-send-email-andros@netapp.com>
+	id S932230Ab0D1VYe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 28 Apr 2010 17:24:34 -0400
+In-Reply-To: <1272493465-3398-6-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 From: Andy Adamson <andros@netapp.com>
 
-Not used by the file layout driver
+The layoutdriver_io_operations uninitialize_mountpoint function is used
+to free a layout driver specific device id cache.
+The device id cache is now shared and moved to struct nfs_client and can be
+removed in the generic unmount_pnfs_layoutdriver routine.
 
 Signed-off-by: Andy Adamson <andros@netapp.com>
 ---
- fs/nfs/pnfs.c             |   41 ++++-------------------------------------
- include/linux/nfs4_pnfs.h |    6 ------
- 2 files changed, 4 insertions(+), 43 deletions(-)
+ fs/nfs/nfs4filelayout.c   |   18 ------------------
+ fs/nfs/pnfs.c             |   11 +++--------
+ include/linux/nfs4_pnfs.h |    1 -
+ 3 files changed, 3 insertions(+), 27 deletions(-)
 
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index e704dcf..32bb852 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -1607,46 +1607,13 @@ pnfs_use_write(struct inode *inode, ssize_t count)
- 	return 1; /* use pNFS I/O */
+diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+index 9e81195..8d6f685 100644
+--- a/fs/nfs/nfs4filelayout.c
++++ b/fs/nfs/nfs4filelayout.c
+@@ -109,23 +109,6 @@ error_ret: ;
+ 	return NULL;
  }
  
--/* Return I/O buffer size for a layout driver
-- * This value will determine what size reads and writes
-- * will be gathered into and sent to the data servers.
-- * blocksize must be a multiple of the page cache size.
+-/* Uninitialize a mountpoint by destroying its device list.
 - */
--unsigned int
--pnfs_getiosize(struct nfs_server *server)
+-int
+-filelayout_uninitialize_mountpoint(struct pnfs_mount_type *mountid)
 -{
--	struct pnfs_mount_type *mounttype;
--	struct pnfs_layoutdriver_type *ld;
+-	struct filelayout_mount_type *fl_mt = NULL;
 -
--	mounttype = server->pnfs_mountid;
--	ld = server->pnfs_curr_ld;
--	if (!pnfs_enabled_sb(server) ||
--	    !mounttype ||
--	    !ld->ld_policy_ops ||
--	    !ld->ld_policy_ops->get_blocksize)
--		return 0;
--
--	return ld->ld_policy_ops->get_blocksize(mounttype);
+-	dprintk("--> %s\n", __func__);
+-	if (mountid) {
+-		fl_mt = (struct filelayout_mount_type *)mountid->mountid;
+-		nfs4_put_deviceid_cache(NFS_SB(fl_mt->fl_sb)->nfs_client);
+-		kfree(fl_mt);
+-		kfree(mountid);
+-	}
+-	return 0;
 -}
 -
+ /* This function is used by the layout driver to calculate the
+  * offset of the file on the dserver based on whether the
+  * layout type is STRIPE_DENSE or STRIPE_SPARSE
+@@ -782,7 +765,6 @@ struct layoutdriver_io_operations filelayout_io_operations = {
+ 	.alloc_lseg              = filelayout_alloc_lseg,
+ 	.free_lseg               = filelayout_free_lseg,
+ 	.initialize_mountpoint   = filelayout_initialize_mountpoint,
+-	.uninitialize_mountpoint = filelayout_uninitialize_mountpoint,
+ };
+ 
+ struct layoutdriver_policy_operations filelayout_policy_operations = {
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 83e8448..0e03259 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -194,14 +194,9 @@ pnfs_update_last_write(struct nfs_inode *nfsi, loff_t offset, size_t extent)
  void
- pnfs_set_ds_iosize(struct nfs_server *server)
+ unmount_pnfs_layoutdriver(struct super_block *sb)
  {
--	unsigned dssize = pnfs_getiosize(server);
--
--	/* Set buffer size for data servers */
--	if (dssize > 0) {
--		server->ds_rsize = server->ds_wsize =
--			nfs_block_size(dssize, NULL);
--		server->ds_rpages = server->ds_wpages =
--			(server->ds_rsize + PAGE_CACHE_SIZE - 1) >>
--			PAGE_CACHE_SHIFT;
--	} else {
--		server->ds_wsize = server->wsize;
--		server->ds_rsize = server->rsize;
--		server->ds_rpages = server->rpages;
--		server->ds_wpages = server->wpages;
--	}
-+	server->ds_wsize = server->wsize;
-+	server->ds_rsize = server->rsize;
-+	server->ds_rpages = server->rpages;
-+	server->ds_wpages = server->wpages;
+-	struct nfs_server *server = NFS_SB(sb);
+-	if (server->pnfs_curr_ld &&
+-	    server->pnfs_curr_ld->ld_io_ops &&
+-	    server->pnfs_curr_ld->ld_io_ops->uninitialize_mountpoint) {
+-		server->pnfs_curr_ld->ld_io_ops->uninitialize_mountpoint(
+-			server->pnfs_mountid);
+-		server->pnfs_mountid = NULL;
+-	    }
++	if (NFS_SB(sb)->pnfs_curr_ld && NFS_SB(sb)->nfs_client->cl_devid_cache)
++		nfs4_put_deviceid_cache(NFS_SB(sb)->nfs_client);
++	NFS_SB(sb)->pnfs_curr_ld = NULL;
  }
  
- static int
+ /*
 diff --git a/include/linux/nfs4_pnfs.h b/include/linux/nfs4_pnfs.h
-index be42370..f0eddbd 100644
+index f0eddbd..4fdf87e 100644
 --- a/include/linux/nfs4_pnfs.h
 +++ b/include/linux/nfs4_pnfs.h
-@@ -214,12 +214,6 @@ struct layoutdriver_policy_operations {
- 	int (*do_flush)(struct pnfs_layout_segment *lseg, struct nfs_page *req,
- 			struct pnfs_fsdata *fsdata);
+@@ -182,7 +182,6 @@ struct layoutdriver_io_operations {
+ 	/* Registration information for a new mounted file system
+ 	 */
+ 	struct pnfs_mount_type * (*initialize_mountpoint) (struct super_block *, struct nfs_fh *fh);
+-	int (*uninitialize_mountpoint) (struct pnfs_mount_type *mountid);
+ };
  
--	/* Retreive the block size of the file system.  If gather_across_stripes == 1,
--	 * then the file system will gather requests into the block size.
--	 * TODO: Where will the layout driver get this info?  It is hard coded in PVFS2.
--	 */
--	ssize_t (*get_blocksize) (struct pnfs_mount_type *);
--
- 	/* Read requests under this value are sent to the NFSv4 server */
- 	ssize_t (*get_read_threshold) (struct pnfs_layout_type *, struct inode *);
- 
+ enum layoutdriver_policy_flags {
 -- 
 1.6.6
 
