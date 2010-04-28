@@ -1,58 +1,120 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:6548 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:25448 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753355Ab0DOL67 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 15 Apr 2010 07:58:59 -0400
-Message-ID: <4BC6FF80.80506@RedHat.com>
-Date: Thu, 15 Apr 2010 07:58:56 -0400
-From: Steve Dickson <SteveD@redhat.com>
-To: Kevin Coffman <kwc@citi.umich.edu>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 2/3] Try to use kernel function to determine supported
- 	Kerberos enctypes.
-References: <1271272729-24422-1-git-send-email-steved@redhat.com>	 <1271272729-24422-3-git-send-email-steved@redhat.com> <z2j4d569c331004141258y2f16a82ga1aa7826d665b3a9@mail.gmail.com>
-In-Reply-To: <z2j4d569c331004141258y2f16a82ga1aa7826d665b3a9@mail.gmail.com>
-Content-Type: text/plain; charset=ISO-8859-1
+	id S1753548Ab0D1BWQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 27 Apr 2010 21:22:16 -0400
+Date: Tue, 27 Apr 2010 20:04:23 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: linux-nfs@vger.kernel.org, branto@redhat.com
+Subject: Re: should unstable pages be committed on close() ?
+Message-ID: <20100427200423.4e9b041c@corrin.poochiereds.net>
+In-Reply-To: <1272403086.3067.35.camel@localhost.localdomain>
+References: <20100427162133.227cc6dd@tlielax.poochiereds.net>
+	<1272403086.3067.35.camel@localhost.localdomain>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Hey Kevin,
+On Tue, 27 Apr 2010 17:18:06 -0400
+Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
 
-On 04/14/2010 03:58 PM, Kevin Coffman wrote:
+> On Tue, 2010-04-27 at 16:21 -0400, Jeff Layton wrote: 
+> > I've got a bug report about a possible regression from one of our QA
+> > people. They were testing some of the recent write_inode/COMMIT changes
+> > with this script:
+> > 
+> > ----------------[snip]-----------------
+> > #! /usr/bin/env bash
+> > servers="server:/export"
+> > nfsstat -c -3
+> > 
+> > for SRV in $servers
+> > do
+> >  mount $SRV /media -o nfsvers=3
+> >  rm -f /media/tmp.file
+> >  time dd if=/dev/zero bs=1024k count=2000 of=/media/tmp.file
+> >  umount /media
+> >  nfsstat -c -3
+> > done
+> > ----------------[snip]-----------------
+> > 
+> > The changes have definitely reduced the number of commit calls, but
+> > frequently we see these errors pop and the filesystem isn't unmounted.
+> > 
+> > umount.nfs: /media: device is busy
+> > umount.nfs: /media: device is busy
+> > 
+> > ...if I call /bin/sync just before the umount, then it works fine. I
+> > added a cat /proc/meminfo just before the umount and see this:
+> > 
+> > MemTotal:         980376 kB
+> > MemFree:           12364 kB
+> > Buffers:            3804 kB
+> > Cached:           803584 kB
+> > SwapCached:            0 kB
+> > Active:           172376 kB
+> > Inactive:         650252 kB
+> > Active(anon):       5592 kB
+> > Inactive(anon):     9808 kB
+> > Active(file):     166784 kB
+> > Inactive(file):   640444 kB
+> > Unevictable:           0 kB
+> > Mlocked:               0 kB
+> > SwapTotal:       2064376 kB
+> > SwapFree:        2064376 kB
+> > Dirty:                 0 kB
+> > Writeback:             0 kB
+> > AnonPages:         15240 kB
+> > Mapped:             9008 kB
+> > Shmem:               160 kB
+> > Slab:             123572 kB
+> > SReclaimable:      28096 kB
+> > SUnreclaim:        95476 kB
+> > KernelStack:        1016 kB
+> > PageTables:         2428 kB
+> > NFS_Unstable:      90384 kB
+> > Bounce:                0 kB
+> > WritebackTmp:          0 kB
+> > CommitLimit:     2554564 kB
+> > Committed_AS:      80836 kB
+> > VmallocTotal:   34359738367 kB
+> > VmallocUsed:       41980 kB
+> > VmallocChunk:   34359685244 kB
+> > HardwareCorrupted:     0 kB
+> > AnonHugePages:         0 kB
+> > HugePages_Total:       0
+> > HugePages_Free:        0
+> > HugePages_Rsvd:        0
+> > HugePages_Surp:        0
+> > Hugepagesize:       2048 kB
+> > DirectMap4k:        8128 kB
+> > DirectMap2M:     1040384 kB
+> > 
+> > ...note that Dirty and Writeback are 0, but NFS_Unstable is still at
+> > 90M or so. So, I think the problem is likely that the unstable pages
+> > are preventing the umount.
+> > 
+> > I've not done much investigation beyond this yet, but figured I'd toss
+> > the bug report out here in case anyone has thoughts on the cause and
+> > how it should be fixed. I can reproduce this fairly easily on my
+> > virtualized test rig in case anyone has patches that they want me to
+> > test.
 > 
-> The global krb5_enctypes array was used when the list was being read
-> once from a file.  With the list now coming up with each request in
-> the updated upcall, I think the list obtained in the upcall should be
-> added to the clnt_info structure and then passed to the
-> limit_krb5_enctypes function as a parameter.
-I took a look at move the krb5_enctypes array in to the clnt_info structure
-and I'm thinking it might be better to keep it as global variable. 
-Here is my reasoning... 
+> I'm aware of at least one race in mainline that can result in the above
+> behaviour. There is a proposed fix in the 'bugfixes' branch on
+> linux-nfs.org. See
+> 
+>   http://git.linux-nfs.org/?p=trondmy/nfs-2.6.git;a=commit;h=71d0a6112a363e703e383ae5b12c492485c39701
+> 
 
-The "enctypes=" string that comes up in the upcall is basically a 
-static string. Yeah I know it could change but that's highly unlikely
-any time soon. So if we put the krb5_enctypes array in the clnt_info
-structure we would have to parse that (static) string on *every* upcall,
-since the clnt_info structures are dynamically allocated. So
-parsing a static string on every upcall does not make sense to me.
+Thanks Trond, that patch does seem to fix it.
 
-Keeping the supported enctypes in a global variable allow us to
-parse the string once and when it changes (which will never happen
-dynamically). So if the first enctypes values are cached, all that
-parsing become a simple strcmp()... ala:
- 
-+parse_enctypes(char *enctypes)
-+{
-+	int n = 0;
-+	char *curr, *comma;
-+	int i;
-+	static char *cached_types;
-+
-+	if (cached_types && strcmp(cached_types, enctypes) == 0)
-+		return 0;
+FWIW, the kernel I saw this on did not have commit
+2c61be0a9478258f77b66208a0c4b1f5f8161c3c, so apparently the race can
+manifest itself without that commit.
 
-
-Makes sense? Am I missing something??
-
-steved.
+Cheers,
+-- 
+Jeff Layton <jlayton@redhat.com>
