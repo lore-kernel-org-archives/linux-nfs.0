@@ -1,88 +1,46 @@
-From: andros@netapp.com
-Subject: [PATCH 13/13] SQUASHME pnfs_submit: cleanup nfs4_pnfs_ds_add
-Date: Wed, 28 Apr 2010 18:24:25 -0400
-Message-ID: <1272493465-3398-14-git-send-email-andros@netapp.com>
-References: <1272493465-3398-1-git-send-email-andros@netapp.com>
- <1272493465-3398-2-git-send-email-andros@netapp.com>
- <1272493465-3398-3-git-send-email-andros@netapp.com>
- <1272493465-3398-4-git-send-email-andros@netapp.com>
- <1272493465-3398-5-git-send-email-andros@netapp.com>
- <1272493465-3398-6-git-send-email-andros@netapp.com>
- <1272493465-3398-7-git-send-email-andros@netapp.com>
- <1272493465-3398-8-git-send-email-andros@netapp.com>
- <1272493465-3398-9-git-send-email-andros@netapp.com>
- <1272493465-3398-10-git-send-email-andros@netapp.com>
- <1272493465-3398-11-git-send-email-andros@netapp.com>
- <1272493465-3398-12-git-send-email-andros@netapp.com>
- <1272493465-3398-13-git-send-email-andros@netapp.com>
-Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
-To: bhalevy@panasas.com
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: [PATCH] nfsd4: fix filehandle comment
+Date: Wed, 28 Apr 2010 17:31:07 -0400
+Message-ID: <20100428213107.GA23474@fieldses.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:30259 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:44741 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932248Ab0D1VYj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 28 Apr 2010 17:24:39 -0400
-In-Reply-To: <1272493465-3398-13-git-send-email-andros@netapp.com>
+	id S932188Ab0D1VbH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 28 Apr 2010 17:31:07 -0400
+Received: from bfields by fieldses.org with local (Exim 4.69)
+	(envelope-from <bfields@fieldses.org>)
+	id 1O7EqZ-0006Dr-Ce
+	for linux-nfs@vger.kernel.org; Wed, 28 Apr 2010 17:31:07 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Andy Adamson <andros@netapp.com>
+From: J. Bruce Fields <bfields@citi.umich.edu>
 
-Only initialize struct nfs4_pnfs_ds_add when using it.
+Minor typos.
 
-Signed-off-by: Andy Adamson <andros@netapp.com>
+Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
 ---
- fs/nfs/nfs4filelayoutdev.c |   26 ++++++++++++--------------
- 1 files changed, 12 insertions(+), 14 deletions(-)
+ include/linux/nfsd/nfsfh.h |    4 ++--
+ 1 files changed, 2 insertions(+), 2 deletions(-)
 
-diff --git a/fs/nfs/nfs4filelayoutdev.c b/fs/nfs/nfs4filelayoutdev.c
-index 61a3381..8bd2544 100644
---- a/fs/nfs/nfs4filelayoutdev.c
-+++ b/fs/nfs/nfs4filelayoutdev.c
-@@ -273,31 +273,29 @@ nfs4_pnfs_ds_add(struct inode *inode, struct nfs4_pnfs_ds **dsp,
- 	if (!ds)
- 		return;
- 
--	/* Initialize ds */
--	ds->ds_ip_addr = ip_addr;
--	ds->ds_port = port;
--	strncpy(ds->r_addr, r_addr, len);
--	atomic_set(&ds->ds_count, 1);
--	INIT_LIST_HEAD(&ds->ds_node);
--	ds->ds_clp = NULL;
--
- 	spin_lock(&nfs4_ds_cache_lock);
- 	tmp_ds = _data_server_lookup(ip_addr, port);
- 	if (tmp_ds == NULL) {
--		dprintk("%s add new data server ip 0x%x\n", __func__,
--				ds->ds_ip_addr);
-+		ds->ds_ip_addr = ip_addr;
-+		ds->ds_port = port;
-+		strncpy(ds->r_addr, r_addr, len);
-+		atomic_set(&ds->ds_count, 1);
-+		INIT_LIST_HEAD(&ds->ds_node);
-+		ds->ds_clp = NULL;
- 		list_add(&ds->ds_node, &nfs4_data_server_cache);
- 		*dsp = ds;
-+		dprintk("%s add new data server ip 0x%x\n", __func__,
-+				ds->ds_ip_addr);
-+		spin_unlock(&nfs4_ds_cache_lock);
- 	} else {
- 		atomic_inc(&tmp_ds->ds_count);
-+		*dsp = tmp_ds;
- 		dprintk("%s data server found ip 0x%x, inc'ed ds_count to %d\n",
- 				__func__, tmp_ds->ds_ip_addr,
- 				atomic_read(&tmp_ds->ds_count));
--		*dsp = tmp_ds;
-+		spin_unlock(&nfs4_ds_cache_lock);
-+		kfree(ds);
- 	}
--	spin_unlock(&nfs4_ds_cache_lock);
--	if (tmp_ds != NULL)
--		destroy_ds(ds);
- }
- 
- static struct nfs4_pnfs_ds *
+diff --git a/include/linux/nfsd/nfsfh.h b/include/linux/nfsd/nfsfh.h
+index 65e333a..45bb5a8 100644
+--- a/include/linux/nfsd/nfsfh.h
++++ b/include/linux/nfsd/nfsfh.h
+@@ -40,8 +40,8 @@ struct nfs_fhbase_old {
+  * This is the new flexible, extensible style NFSv2/v3 file handle.
+  * by Neil Brown <neilb-YbfuJp6tym7X/JP9YwkgDA@public.gmane.org> - March 2000
+  *
+- * The file handle is seens as a list of 4byte words.
+- * The first word contains a version number (1) and four descriptor bytes
++ * The file handle is seens as a list of four-byte words.
++ * The first word contains a version number (1) and three descriptor bytes
+  * that tell how the remaining 3 variable length fields should be handled.
+  * These three bytes are auth_type, fsid_type and fileid_type.
+  *
 -- 
-1.6.6
+1.6.3.3
 
