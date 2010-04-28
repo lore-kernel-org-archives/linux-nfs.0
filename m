@@ -1,43 +1,57 @@
-From: Alex Riesen <raa.lkml@gmail.com>
-Subject: Re: [patch 1/1] sunrpc: use formatting of module name in SUNRPC
-Date: Wed, 28 Apr 2010 21:49:10 +0200
-Message-ID: <q2i81b0412b1004281249u69337d01le6d66c20e6eefceb@mail.gmail.com>
-References: <201004272115.o3RLFnKj020353@imap1.linux-foundation.org>
-	 <l2l81b0412b1004280040t415657c7qe7de59f152cd49aa@mail.gmail.com>
-	 <20100428073912.f15206fa.akpm@linux-foundation.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-	trond.myklebust@fys.uio.no, linux-nfs@vger.kernel.org,
-	Trond.Myklebust@netapp.com, cel@citi.umich.edu,
-	davem@davemloft.net, tmtalpey@gmail.com
-To: Andrew Morton <akpm@linux-foundation.org>
+From: andros@netapp.com
+Subject: [PATCH 0/13] Remove non-file layout code from submit tree
+Date: Wed, 28 Apr 2010 18:24:12 -0400
+Message-ID: <1272493465-3398-1-git-send-email-andros@netapp.com>
+Cc: linux-nfs@vger.kernel.org
+To: bhalevy@panasas.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yw0-f194.google.com ([209.85.211.194]:55070 "EHLO
-	mail-yw0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932099Ab0D1TtL convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 28 Apr 2010 15:49:11 -0400
-In-Reply-To: <20100428073912.f15206fa.akpm@linux-foundation.org>
+Received: from mx2.netapp.com ([216.240.18.37]:14209 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932230Ab0D1VYc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 28 Apr 2010 17:24:32 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Apr 28, 2010 at 13:39, Andrew Morton <akpm@linux-foundation.org=
-> wrote:
-> On Wed, 28 Apr 2010 09:40:36 +0200 Alex Riesen <raa.lkml@gmail.com> w=
-rote:
->> > __net/sunrpc/xprt.c | __ __5 +----
->> > __1 file changed, 1 insertion(+), 4 deletions(-)
->> >
->>
->> This is one tough little patch... 2 years and counting...
->
-> heh. =C2=A0I've only had it since June '09.
->
-> I'll merge it into 2.6.35-rc1.
->
 
-That's because I was overly pessimistic. gcc-4.3.3 only exists since
-24 Jan, 2009.
-I just have the change (and other request_module name formatting patche=
-s)
-in my trees already for quite some time...
+Applies to 2.6.34-rc3 pnfs-submit branch on top of the "pNFS generic devce ID
+cache version 3" patches sent April 26 which includes these patches:
+0001-SQUASHME-pnfs_submit-generic-device-ID-cache.patch
+0002-SQUASHME-pnfs_submit-fix-multiple-mount-set_pnfs_lay.patch
+0003-SQUASHME-pnfs-submit-file-layout-driver-generic-devi.patch
+
+This patch set begins separating non-file layout code from file layout code.
+
+Adjust to using the generic device id cache.
+Permanetly remove structure fields and function parameters not used by any
+layout driver.
+The next patch set will restore object and block layout code removed by these
+patches.
+
+0001-SQUASHME-pnfs_submit-remove-GETDEVICELIST.patch
+0002-SQUASHME-pnfs_submit-remove-CB_NOTIFY_DEVICEID.patch
+0003-SQUASHME-pnfs_submit-remove-pnfs_mount_type-from-all.patch
+0004-SQUASHME-pnfs_submit-remove-get_blocksize-policy-ope.patch
+0005-SQUASHME-pnfs_submit-remove-ds_wsize-ds_rsize-ds_wpa.patch
+0006-SQUASHME-pnfs_submit-remove-uninitialize_mountpoint.patch
+0007-SQUASHME-pnfs_submit-remove-struct-pnfs_mount_type.patch
+0008-SQUASHME-pnfs_submit-change-initialize_mountpoint-pa.patch
+0009-SQUASHME-pnfs_submit-change-nfs_fsino-layoutclass-na.patch
+0010-SQUASHME-pnfs_submit-remove-pnfs_fs_ltype.patch
+0011-SQUASHME-pnfs_submit-remove-layout_name.patch
+
+File layout code bug fix and cleanup.
+0012-SQUASHME-pnfs_submit-fall-back-to-MDS-on-filelayout_.patch
+0013-SQUASHME-pnfs_submit-cleanup-nfs4_pnfs_ds_add.patch
+
+Tested:
+CONFIG_NFS_V4_1 set
+
+V4.0, V4.1, and pNFS mounts:
+Connectathon tests pass.
+
+CONFIG_NFS_V4_1 not set:
+
+Connectathon tests pass.
+
+-->Andy
+
