@@ -1,89 +1,39 @@
-From: Robert Wimmer <kernel@tauceti.net>
-Subject: Re: [Bugme-new] [Bug 15709] New: swapper page allocation failure
-Date: Wed, 28 Apr 2010 00:56:01 +0200
-Message-ID: <4BD76B81.2070606@tauceti.net>
-References: <4BC43097.3060000@tauceti.net> <4BCC52B9.8070200@tauceti.net> <20100419131718.GB16918@redhat.com> <dbf86fc1c370496138b3a74a3c74ec18@tauceti.net> <20100421094249.GC30855@redhat.com> <c638ec9fdee2954ec5a7a2bd405aa2ba@tauceti.net> <20100422100304.GC30532@redhat.com> <4BD12F9C.30802@tauceti.net> <20100425091759.GA9993@redhat.com> <4BD4A917.70702@tauceti.net> <20100425204916.GA12686@redhat.com> <1272284154.4252.34.camel@localhost.localdomain> <4BD5F6C5.8080605@tauceti.net> <1272315854.8984.125.camel@localhost.localdomain> <4BD61147.40709@tauceti.net> <1272324536.16814.45.camel@localhost.localdomain>
+From: Alex Riesen <raa.lkml@gmail.com>
+Subject: Re: [patch 1/1] sunrpc: use formatting of module name in SUNRPC
+Date: Wed, 28 Apr 2010 09:40:36 +0200
+Message-ID: <l2l81b0412b1004280040t415657c7qe7de59f152cd49aa@mail.gmail.com>
+References: <201004272115.o3RLFnKj020353@imap1.linux-foundation.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
-Cc: "Michael S. Tsirkin" <mst@redhat.com>, Avi Kivity <avi@redhat.com>,
- Andrew Morton <akpm@linux-foundation.org>,
- linux-mm@kvack.org, bugzilla-daemon@bugzilla.kernel.org,
- Rusty Russell <rusty@rustcorp.com.au>,
- Mel Gorman <mel@csn.ul.ie>, linux-nfs@vger.kernel.org,
- linux-kernel@vger.kernel.org
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Return-path: <owner-linux-mm@kvack.org>
-In-Reply-To: <1272324536.16814.45.camel@localhost.localdomain>
-Sender: owner-linux-mm@kvack.org
+Cc: trond.myklebust@fys.uio.no, linux-nfs@vger.kernel.org,
+	Trond.Myklebust@netapp.com, cel@citi.umich.edu,
+	davem@davemloft.net, tmtalpey@gmail.com, akpm@linux-foundation.org
+To: Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from mail-gy0-f174.google.com ([209.85.160.174]:52819 "EHLO
+	mail-gy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751284Ab0D1Hki convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 28 Apr 2010 03:40:38 -0400
+In-Reply-To: <201004272115.o3RLFnKj020353-AB4EexQrvXRQetFLy7KEm3xJsTq8ys+cHZ5vskTnxNA@public.gmane.org>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I've applied the patch against the kernel which I got
-from "git clone ...." resulted in a kernel 2.6.34-rc5.
-
-The stack trace after mounting NFS is here:
-https://bugzilla.kernel.org/attachment.cgi?id=26166
-/var/log/messages after soft lockup:
-https://bugzilla.kernel.org/attachment.cgi?id=26167
-
-I hope that there is any usefull information in there.
-
-Thanks!
-Robert
-
-On 04/27/10 01:28, Trond Myklebust wrote:
-> On Tue, 2010-04-27 at 00:18 +0200, Robert Wimmer wrote: 
->   
->>> Sure. In addition to what you did above, please do
->>>
->>> mount -t debugfs none /sys/kernel/debug
->>>
->>> and then cat the contents of the pseudofile at
->>>
->>> /sys/kernel/debug/tracing/stack_trace
->>>
->>> Please do this more or less immediately after you've finished mounting
->>> the NFSv4 client.
->>>   
->>>       
->> I've uploaded the stack trace. It was generated
->> directly after mounting. Here are the stacks:
->>
->> After mounting:
->> https://bugzilla.kernel.org/attachment.cgi?id=26153
->> After the soft lockup:
->> https://bugzilla.kernel.org/attachment.cgi?id=26154
->> The dmesg output of the soft lockup:
->> https://bugzilla.kernel.org/attachment.cgi?id=26155
->>
->>     
->>> Does your server have the 'crossmnt' or 'nohide' flags set, or does it
->>> use the 'refer' export option anywhere? If so, then we might have to
->>> test further, since those may trigger the NFSv4 submount feature.
->>>   
->>>       
->> The server has the following settings:
->> rw,nohide,insecure,async,no_subtree_check,no_root_squash
->>
->> Thanks!
->> Robert
->>
->>
->>     
-> That second trace is more than 5.5K deep, more than half of which is
-> socket overhead :-(((.
+On Tue, Apr 27, 2010 at 23:15,  <akpm@linux-foundation.org> wrote:
+> From: Alex Riesen <raa.lkml@gmail.com>
 >
-> The process stack does not appear to have overflowed, however that trace
-> doesn't include any IRQ stack overhead.
+> gcc-4.3.3 produces the warning:
+> =C2=A0"format not a string literal and no format arguments"
 >
-> OK... So what happens if we get rid of half of that trace by forcing
-> asynchronous tasks such as this to run entirely in rpciod instead of
-> first trying to run in the process context?
+> Signed-off-by: Alex Riesen <raa.lkml@gmail.com>
+> Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
+> Cc: Chuck Lever <cel@citi.umich.edu>
+> Cc: David S. Miller <davem@davemloft.net>
+> Acked-by: Tom Talpey <tmtalpey@gmail.com>
+> Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
+> ---
 >
-> See the attachment...
->   
+> =C2=A0net/sunrpc/xprt.c | =C2=A0 =C2=A05 +----
+> =C2=A01 file changed, 1 insertion(+), 4 deletions(-)
+>
 
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+This is one tough little patch... 2 years and counting...
