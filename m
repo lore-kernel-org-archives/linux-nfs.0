@@ -1,184 +1,344 @@
 From: andros@netapp.com
-Subject: [PATCH 4/5] pnfs_post_submit: restore ds_wsize and ds_rsize
-Date: Fri, 30 Apr 2010 14:27:11 -0400
-Message-ID: <1272652032-2496-5-git-send-email-andros@netapp.com>
-References: <1272652032-2496-1-git-send-email-andros@netapp.com>
- <1272652032-2496-2-git-send-email-andros@netapp.com>
- <1272652032-2496-3-git-send-email-andros@netapp.com>
- <1272652032-2496-4-git-send-email-andros@netapp.com>
+Subject: [PATCH 01/13] SQUASHME pnfs_submit: remove GETDEVICELIST
+Date: Thu, 29 Apr 2010 16:34:39 -0400
+Message-ID: <1272573291-8986-2-git-send-email-andros@netapp.com>
+References: <1272573291-8986-1-git-send-email-andros@netapp.com>
 Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
 To: bhalevy@panasas.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:22740 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:52310 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933866Ab0D3S1s (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 30 Apr 2010 14:27:48 -0400
-In-Reply-To: <1272652032-2496-4-git-send-email-andros@netapp.com>
+	id S1757554Ab0D3Qsp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 30 Apr 2010 12:48:45 -0400
+In-Reply-To: <1272573291-8986-1-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 From: Andy Adamson <andros@netapp.com>
 
-The object layout driver uses ds_wsize and ds_rsize
+The file layout driver does not use GETDEVICELIST
 
 Signed-off-by: Andy Adamson <andros@netapp.com>
 ---
- fs/nfs/client.c           |    4 +++-
- fs/nfs/pnfs.c             |   22 +++++++++++++++++-----
- fs/nfs/pnfs.h             |    7 +++++--
- fs/nfs/read.c             |    2 +-
- fs/nfs/write.c            |    2 +-
- include/linux/nfs_fs_sb.h |    2 ++
- 6 files changed, 29 insertions(+), 10 deletions(-)
+ fs/nfs/nfs4proc.c         |   47 -----------------
+ fs/nfs/nfs4xdr.c          |  126 ---------------------------------------------
+ fs/nfs/pnfs.c             |    1 -
+ fs/nfs/pnfs.h             |    3 -
+ include/linux/nfs4.h      |    1 -
+ include/linux/nfs4_pnfs.h |    2 -
+ include/linux/pnfs_xdr.h  |   11 ----
+ 7 files changed, 0 insertions(+), 191 deletions(-)
 
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index 8f3bf8a..b8c459d 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -879,8 +879,10 @@ static void nfs4_init_pnfs(struct nfs_server *server, struct nfs_fsinfo *fsinfo)
- 	struct nfs_client *clp = server->nfs_client;
- 
- 	if (nfs4_has_session(clp) &&
--	    (clp->cl_exchange_flags & EXCHGID4_FLAG_USE_PNFS_MDS))
-+	    (clp->cl_exchange_flags & EXCHGID4_FLAG_USE_PNFS_MDS)) {
- 		set_pnfs_layoutdriver(server, fsinfo->layouttype);
-+		pnfs_set_ds_iosize(server);
-+	}
- #endif /* CONFIG_NFS_V4_1 */
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 72c2274..4b3bd81 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -5766,53 +5766,6 @@ out:
+ 	return status;
  }
  
+-/*
+- * Retrieve the list of Data Server devices from the MDS.
+- */
+-static int _nfs4_pnfs_getdevicelist(struct nfs_fh *fh,
+-				    struct nfs_server *server,
+-				    struct pnfs_devicelist *devlist)
+-{
+-	struct nfs4_pnfs_getdevicelist_arg arg = {
+-		.fh = fh,
+-		.layoutclass = server->pnfs_curr_ld->id,
+-	};
+-	struct nfs4_pnfs_getdevicelist_res res = {
+-		.devlist = devlist,
+-	};
+-	struct rpc_message msg = {
+-		.rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_PNFS_GETDEVICELIST],
+-		.rpc_argp = &arg,
+-		.rpc_resp = &res,
+-	};
+-	int status;
+-
+-	dprintk("--> %s\n", __func__);
+-	status = nfs4_call_sync(server, &msg, &arg, &res, 0);
+-	dprintk("<-- %s status=%d\n", __func__, status);
+-	return status;
+-}
+-
+-int nfs4_pnfs_getdevicelist(struct super_block *sb,
+-			    struct nfs_fh *fh,
+-			    struct pnfs_devicelist *devlist)
+-{
+-	struct nfs4_exception exception = { };
+-	struct nfs_server *server = NFS_SB(sb);
+-	int err;
+-
+-	do {
+-		err = nfs4_handle_exception(server,
+-				_nfs4_pnfs_getdevicelist(fh, server, devlist),
+-				&exception);
+-	} while (exception.retry);
+-
+-	dprintk("nfs4_pnfs_getdevlist: err=%d, num_devs=%u\n",
+-		err, devlist->num_devs);
+-
+-	return err;
+-}
+-
+ int nfs4_pnfs_getdeviceinfo(struct super_block *sb, struct pnfs_device *pdev)
+ {
+ 	struct nfs_server *server = NFS_SB(sb);
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index dd8f323..a3b6350 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -304,12 +304,6 @@ static int nfs4_stat_to_errno(int);
+ 				XDR_QUADLEN(NFS4_MAX_SESSIONID_LEN) + 5)
+ #define encode_reclaim_complete_maxsz	(op_encode_hdr_maxsz + 4)
+ #define decode_reclaim_complete_maxsz	(op_decode_hdr_maxsz + 4)
+-#define encode_getdevicelist_maxsz (op_encode_hdr_maxsz + 4 + \
+-				encode_verifier_maxsz)
+-#define decode_getdevicelist_maxsz (op_decode_hdr_maxsz + 2 + 1 + 1 +  \
+-				decode_verifier_maxsz +             \
+-				XDR_QUADLEN(NFS4_PNFS_GETDEVLIST_MAXNUM *  \
+-				NFS4_PNFS_DEVICEID4_SIZE))
+ #define encode_getdeviceinfo_maxsz (op_encode_hdr_maxsz + 4 + \
+ 				XDR_QUADLEN(NFS4_PNFS_DEVICEID4_SIZE))
+ #define decode_getdeviceinfo_maxsz (op_decode_hdr_maxsz + \
+@@ -716,14 +710,6 @@ static int nfs4_stat_to_errno(int);
+ #define NFS4_dec_reclaim_complete_sz	(compound_decode_hdr_maxsz + \
+ 					 decode_sequence_maxsz + \
+ 					 decode_reclaim_complete_maxsz)
+-#define NFS4_enc_getdevicelist_sz (compound_encode_hdr_maxsz + \
+-				encode_sequence_maxsz + \
+-				encode_putfh_maxsz + \
+-				encode_getdevicelist_maxsz)
+-#define NFS4_dec_getdevicelist_sz (compound_decode_hdr_maxsz + \
+-				decode_sequence_maxsz + \
+-				decode_putfh_maxsz + \
+-				decode_getdevicelist_maxsz)
+ #define NFS4_enc_getdeviceinfo_sz (compound_encode_hdr_maxsz +    \
+ 				encode_sequence_maxsz +\
+ 				encode_getdeviceinfo_maxsz)
+@@ -1812,25 +1798,6 @@ static void encode_sequence(struct xdr_stream *xdr,
+ 
+ #ifdef CONFIG_NFS_V4_1
+ static void
+-encode_getdevicelist(struct xdr_stream *xdr,
+-		     const struct nfs4_pnfs_getdevicelist_arg *args,
+-		     struct compound_hdr *hdr)
+-{
+-	__be32 *p;
+-	nfs4_verifier dummy = {
+-		.data = "dummmmmy",
+-	};
+-
+-	p = reserve_space(xdr, 20);
+-	*p++ = cpu_to_be32(OP_GETDEVICELIST);
+-	*p++ = cpu_to_be32(args->layoutclass);
+-	*p++ = cpu_to_be32(NFS4_PNFS_GETDEVLIST_MAXNUM);
+-	xdr_encode_hyper(p, 0ULL);                          /* cookie */
+-	encode_nfs4_verifier(xdr, &dummy);
+-	hdr->nops++;
+-}
+-
+-static void
+ encode_getdeviceinfo(struct xdr_stream *xdr,
+ 		     const struct nfs4_pnfs_getdeviceinfo_arg *args,
+ 		     struct compound_hdr *hdr)
+@@ -2767,27 +2734,6 @@ static int nfs4_xdr_enc_reclaim_complete(struct rpc_rqst *req, uint32_t *p,
+ }
+ 
+ /*
+- * Encode GETDEVICELIST request
+- */
+-static int
+-nfs4_xdr_enc_getdevicelist(struct rpc_rqst *req, uint32_t *p,
+-			   struct nfs4_pnfs_getdevicelist_arg *args)
+-{
+-	struct xdr_stream xdr;
+-	struct compound_hdr hdr = {
+-		.minorversion = nfs4_xdr_minorversion(&args->seq_args),
+-	};
+-
+-	xdr_init_encode(&xdr, &req->rq_snd_buf, p);
+-	encode_compound_hdr(&xdr, req, &hdr);
+-	encode_sequence(&xdr, &args->seq_args, &hdr);
+-	encode_putfh(&xdr, args->fh, &hdr);
+-	encode_getdevicelist(&xdr, args, &hdr);
+-	encode_nops(&hdr);
+-	return 0;
+-}
+-
+-/*
+  * Encode GETDEVICEINFO request
+  */
+ static int nfs4_xdr_enc_getdeviceinfo(struct rpc_rqst *req, uint32_t *p,
+@@ -5167,50 +5113,6 @@ out_overflow:
+ }
+ 
+ #if defined(CONFIG_NFS_V4_1)
+-/*
+- * TODO: Need to handle case when EOF != true;
+- */
+-static int decode_getdevicelist(struct xdr_stream *xdr,
+-				struct pnfs_devicelist *res)
+-{
+-	__be32 *p;
+-	int status, i;
+-	struct nfs_writeverf verftemp;
+-
+-	status = decode_op_hdr(xdr, OP_GETDEVICELIST);
+-	if (status)
+-		return status;
+-
+-	p = xdr_inline_decode(xdr, 8 + 8 + 4);
+-	if (unlikely(!p))
+-		goto out_overflow;
+-
+-	/* TODO: Skip cookie for now */
+-	p += 2;
+-
+-	/* Read verifier */
+-	p = xdr_decode_opaque_fixed(p, verftemp.verifier, 8);
+-
+-	res->num_devs = be32_to_cpup(p);
+-
+-	dprintk("%s: num_dev %d \n", __func__, res->num_devs);
+-
+-	if (res->num_devs > NFS4_PNFS_GETDEVLIST_MAXNUM)
+-		return -NFS4ERR_REP_TOO_BIG;
+-
+-	p = xdr_inline_decode(xdr,
+-			      res->num_devs * NFS4_PNFS_DEVICEID4_SIZE + 4);
+-	if (unlikely(!p))
+-		goto out_overflow;
+-	for (i = 0; i < res->num_devs; i++)
+-		p = xdr_decode_opaque_fixed(p, res->dev_id[i].data,
+-					    NFS4_PNFS_DEVICEID4_SIZE);
+-	res->eof = be32_to_cpup(p);
+-	return 0;
+-out_overflow:
+-	print_overflow_msg(__func__, xdr);
+-	return -EIO;
+-}
+ 
+ static int decode_getdeviceinfo(struct xdr_stream *xdr,
+ 				struct pnfs_device *pdev)
+@@ -6402,33 +6304,6 @@ static int nfs4_xdr_dec_reclaim_complete(struct rpc_rqst *rqstp, uint32_t *p,
+ }
+ 
+ /*
+- * Decode GETDEVICELIST response
+- */
+-static int nfs4_xdr_dec_getdevicelist(struct rpc_rqst *rqstp, uint32_t *p,
+-				      struct nfs4_pnfs_getdevicelist_res *res)
+-{
+-	struct xdr_stream xdr;
+-	struct compound_hdr hdr;
+-	int status;
+-
+-	dprintk("encoding getdevicelist!\n");
+-
+-	xdr_init_decode(&xdr, &rqstp->rq_rcv_buf, p);
+-	status = decode_compound_hdr(&xdr, &hdr);
+-	if (status != 0)
+-		goto out;
+-	status = decode_sequence(&xdr, &res->seq_res, rqstp);
+-		if (status != 0)
+-goto out;
+-	status = decode_putfh(&xdr);
+-	if (status != 0)
+-		goto out;
+-	status = decode_getdevicelist(&xdr, res->devlist);
+-out:
+-	return status;
+-}
+-
+-/*
+  * Decode GETDEVINFO response
+  */
+ static int nfs4_xdr_dec_getdeviceinfo(struct rpc_rqst *rqstp, uint32_t *p,
+@@ -6757,7 +6632,6 @@ struct rpc_procinfo	nfs4_procedures[] = {
+   PROC(SEQUENCE,	enc_sequence,	dec_sequence),
+   PROC(GET_LEASE_TIME,	enc_get_lease_time,	dec_get_lease_time),
+   PROC(RECLAIM_COMPLETE, enc_reclaim_complete,  dec_reclaim_complete),
+-  PROC(PNFS_GETDEVICELIST, enc_getdevicelist, dec_getdevicelist),
+   PROC(PNFS_GETDEVICEINFO, enc_getdeviceinfo, dec_getdeviceinfo),
+   PROC(PNFS_LAYOUTGET,  enc_layoutget,     dec_layoutget),
+   PROC(PNFS_LAYOUTCOMMIT, enc_layoutcommit,  dec_layoutcommit),
 diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 40b09bf..fadfd7c 100644
+index a718ada..50858c8 100644
 --- a/fs/nfs/pnfs.c
 +++ b/fs/nfs/pnfs.c
-@@ -1419,7 +1419,8 @@ void
- pnfs_pageio_init_read(struct nfs_pageio_descriptor *pgio,
- 		  struct inode *inode,
- 		  struct nfs_open_context *ctx,
--		  struct list_head *pages)
-+		  struct list_head *pages,
-+		  size_t *rsize)
- {
- 	struct nfs_server *nfss = NFS_SERVER(inode);
- 	size_t count = 0;
-@@ -1440,10 +1441,12 @@ pnfs_pageio_init_read(struct nfs_pageio_descriptor *pgio,
- 	if (count > 0 && !below_threshold(inode, count, 0)) {
- 		status = pnfs_update_layout(inode, ctx, count,
- 						loff, IOMODE_READ, NULL);
--		dprintk("%s virt update returned %d\n", __func__, status);
-+		dprintk("%s *rsize %Zd virt update returned %d\n",
-+			__func__, *rsize, status);
- 		if (status != 0)
- 			return;
- 
-+		*rsize = NFS_SERVER(inode)->ds_rsize;
- 		pgio->pg_boundary = pnfs_getboundary(inode);
- 		if (pgio->pg_boundary)
- 			pnfs_set_pg_test(inode, pgio);
-@@ -1451,7 +1454,8 @@ pnfs_pageio_init_read(struct nfs_pageio_descriptor *pgio,
- }
- 
- void
--pnfs_pageio_init_write(struct nfs_pageio_descriptor *pgio, struct inode *inode)
-+pnfs_pageio_init_write(struct nfs_pageio_descriptor *pgio, struct inode *inode,
-+		       size_t *wsize)
- {
- 	struct nfs_server *server = NFS_SERVER(inode);
- 
-@@ -1465,6 +1469,7 @@ pnfs_pageio_init_write(struct nfs_pageio_descriptor *pgio, struct inode *inode)
- 	pgio->pg_threshold = pnfs_getthreshold(inode, 1);
- 	pgio->pg_boundary = pnfs_getboundary(inode);
- 	pnfs_set_pg_test(inode, pgio);
-+	*wsize = server->ds_wsize;
- }
- 
- /* Retrieve I/O parameters for O_DIRECT.
-@@ -1487,9 +1492,9 @@ _pnfs_direct_init_io(struct inode *inode, struct nfs_open_context *ctx,
- 		return;
- 
- 	if (iswrite)
--		rwsize = nfss->wsize;
-+		rwsize = nfss->ds_wsize;
- 	else
--		rwsize = nfss->rsize;
-+		rwsize = nfss->ds_rsize;
- 
- 	boundary = pnfs_getboundary(inode);
- 
-@@ -1593,6 +1598,13 @@ pnfs_use_write(struct inode *inode, ssize_t count)
- 	return 1; /* use pNFS I/O */
- }
- 
-+void
-+pnfs_set_ds_iosize(struct nfs_server *server)
-+{
-+	server->ds_wsize = server->wsize;
-+	server->ds_rsize = server->rsize;
-+}
-+
- static int
- pnfs_call_done(struct pnfs_call_data *pdata, struct rpc_task *task, void *data)
- {
+@@ -2295,7 +2295,6 @@ void pnfs_free_fsdata(struct pnfs_fsdata *fsdata)
+ /* Callback operations for layout drivers.
+  */
+ struct pnfs_client_operations pnfs_ops = {
+-	.nfs_getdevicelist = nfs4_pnfs_getdevicelist,
+ 	.nfs_getdeviceinfo = nfs4_pnfs_getdeviceinfo,
+ 	.nfs_readlist_complete = pnfs_read_done,
+ 	.nfs_writelist_complete = pnfs_writeback_done,
 diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index 08b2af7..338ba4b 100644
+index 7dc3ecc..868c1ac 100644
 --- a/fs/nfs/pnfs.h
 +++ b/fs/nfs/pnfs.h
-@@ -58,11 +58,14 @@ int pnfs_layoutcommit_inode(struct inode *inode, int sync);
- void pnfs_update_last_write(struct nfs_inode *nfsi, loff_t offset, size_t extent);
- void pnfs_need_layoutcommit(struct nfs_inode *nfsi, struct nfs_open_context *ctx);
- unsigned int pnfs_getiosize(struct nfs_server *server);
-+void pnfs_set_ds_iosize(struct nfs_server *server);
- enum pnfs_try_status _pnfs_try_to_commit(struct nfs_write_data *,
- 					 const struct rpc_call_ops *, int);
- void pnfs_pageio_init_read(struct nfs_pageio_descriptor *, struct inode *,
--			   struct nfs_open_context *, struct list_head *);
--void pnfs_pageio_init_write(struct nfs_pageio_descriptor *, struct inode *);
-+			   struct nfs_open_context *, struct list_head *,
-+			   size_t *);
-+void pnfs_pageio_init_write(struct nfs_pageio_descriptor *, struct inode *,
-+			    size_t *);
- void pnfs_update_layout_commit(struct inode *, struct list_head *, pgoff_t, unsigned int);
- void pnfs_free_fsdata(struct pnfs_fsdata *fsdata);
- ssize_t pnfs_file_write(struct file *, const char __user *, size_t, loff_t *);
-diff --git a/fs/nfs/read.c b/fs/nfs/read.c
-index 1d30336..fd8bac7 100644
---- a/fs/nfs/read.c
-+++ b/fs/nfs/read.c
-@@ -663,7 +663,7 @@ int nfs_readpages(struct file *filp, struct address_space *mapping,
- 		goto read_complete; /* all pages were read */
+@@ -22,9 +22,6 @@
+ #include "iostat.h"
  
- #ifdef CONFIG_NFS_V4_1
--	pnfs_pageio_init_read(&pgio, inode, desc.ctx, pages);
-+	pnfs_pageio_init_read(&pgio, inode, desc.ctx, pages, &rsize);
- #endif /* CONFIG_NFS_V4_1 */
- 	if (rsize < PAGE_CACHE_SIZE)
- 		nfs_pageio_init(&pgio, inode, nfs_pagein_multi, rsize, 0);
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index 0faf909..38e542a 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -1009,7 +1009,7 @@ static void nfs_pageio_init_write(struct nfs_pageio_descriptor *pgio,
- 	size_t wsize = NFS_SERVER(inode)->wsize;
+ /* nfs4proc.c */
+-extern int nfs4_pnfs_getdevicelist(struct super_block *sb,
+-				   struct nfs_fh *fh,
+-				   struct pnfs_devicelist *devlist);
+ extern int nfs4_pnfs_getdeviceinfo(struct super_block *sb,
+ 				   struct pnfs_device *dev);
+ extern int pnfs4_proc_layoutget(struct nfs4_pnfs_layoutget *lgp);
+diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
+index 2bb8eeb..1730e86 100644
+--- a/include/linux/nfs4.h
++++ b/include/linux/nfs4.h
+@@ -543,7 +543,6 @@ enum {
+ 	NFSPROC4_CLNT_PNFS_LAYOUTGET,
+ 	NFSPROC4_CLNT_PNFS_LAYOUTCOMMIT,
+ 	NFSPROC4_CLNT_PNFS_LAYOUTRETURN,
+-	NFSPROC4_CLNT_PNFS_GETDEVICELIST,
+ 	NFSPROC4_CLNT_PNFS_GETDEVICEINFO,
+ 	NFSPROC4_CLNT_PNFS_WRITE,
+ 	NFSPROC4_CLNT_PNFS_COMMIT,
+diff --git a/include/linux/nfs4_pnfs.h b/include/linux/nfs4_pnfs.h
+index 3b7aeb7..ae2f7ed 100644
+--- a/include/linux/nfs4_pnfs.h
++++ b/include/linux/nfs4_pnfs.h
+@@ -331,8 +331,6 @@ extern void nfs4_unset_layout_deviceid(struct pnfs_layout_segment *,
+  * E.g., getdeviceinfo, I/O callbacks, etc
+  */
+ struct pnfs_client_operations {
+-	int (*nfs_getdevicelist) (struct super_block *sb, struct nfs_fh *fh,
+-				  struct pnfs_devicelist *devlist);
+ 	int (*nfs_getdeviceinfo) (struct super_block *sb,
+ 				  struct pnfs_device *dev);
  
- #ifdef CONFIG_NFS_V4_1
--	pnfs_pageio_init_write(pgio, inode);
-+	pnfs_pageio_init_write(pgio, inode, &wsize);
- #endif /* CONFIG_NFS_V4_1 */
+diff --git a/include/linux/pnfs_xdr.h b/include/linux/pnfs_xdr.h
+index 4f34aa8..a0bf341 100644
+--- a/include/linux/pnfs_xdr.h
++++ b/include/linux/pnfs_xdr.h
+@@ -116,17 +116,6 @@ struct nfs4_pnfs_layoutreturn {
+ 	int rpc_status;
+ };
  
- 	if (wsize < PAGE_CACHE_SIZE)
-diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
-index 276735f..cad56a7 100644
---- a/include/linux/nfs_fs_sb.h
-+++ b/include/linux/nfs_fs_sb.h
-@@ -164,6 +164,8 @@ struct nfs_server {
- 
- #ifdef CONFIG_NFS_V4_1
- 	struct pnfs_layoutdriver_type  *pnfs_curr_ld; /* Active layout driver */
-+	unsigned int			ds_rsize;  /* Data server read size */
-+	unsigned int			ds_wsize;  /* Data server write size */
- #endif /* CONFIG_NFS_V4_1 */
- 
- 	void (*destroy)(struct nfs_server *);
+-struct nfs4_pnfs_getdevicelist_arg {
+-	const struct nfs_fh *fh;
+-	u32 layoutclass;
+-	struct nfs4_sequence_args seq_args;
+-};
+-
+-struct nfs4_pnfs_getdevicelist_res {
+-	struct pnfs_devicelist *devlist;
+-	struct nfs4_sequence_res seq_res;
+-};
+-
+ struct nfs4_pnfs_getdeviceinfo_arg {
+ 	struct pnfs_device *pdev;
+ 	struct nfs4_sequence_args seq_args;
 -- 
 1.6.6
 
