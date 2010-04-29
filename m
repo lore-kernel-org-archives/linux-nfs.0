@@ -1,104 +1,72 @@
 From: andros@netapp.com
-Subject: [PATCH 04/13] SQUASHME pnfs_submit: remove get_blocksize policy operation
-Date: Thu, 29 Apr 2010 16:34:42 -0400
-Message-ID: <1272573291-8986-5-git-send-email-andros@netapp.com>
+Subject: [PATCH 03/13] SQUASHME pnfs_submit: remove pnfs_mount_type from alloc_layout
+Date: Thu, 29 Apr 2010 16:34:41 -0400
+Message-ID: <1272573291-8986-4-git-send-email-andros@netapp.com>
 References: <1272573291-8986-1-git-send-email-andros@netapp.com>
  <1272573291-8986-2-git-send-email-andros@netapp.com>
  <1272573291-8986-3-git-send-email-andros@netapp.com>
- <1272573291-8986-4-git-send-email-andros@netapp.com>
 Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
 To: bhalevy@panasas.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:52310 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:46364 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757563Ab0D3Qst (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	id S1757115Ab0D3Qst (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
 	Fri, 30 Apr 2010 12:48:49 -0400
-In-Reply-To: <1272573291-8986-4-git-send-email-andros@netapp.com>
+In-Reply-To: <1272573291-8986-3-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 From: Andy Adamson <andros@netapp.com>
 
-Not used by the file layout driver
+The pnfs_mount_type parameter is not used by any layout driver alloc_layout
+function.
 
 Signed-off-by: Andy Adamson <andros@netapp.com>
 ---
- fs/nfs/pnfs.c             |   41 ++++-------------------------------------
- include/linux/nfs4_pnfs.h |    6 ------
- 2 files changed, 4 insertions(+), 43 deletions(-)
+ fs/nfs/nfs4filelayout.c   |    2 +-
+ fs/nfs/pnfs.c             |    2 +-
+ include/linux/nfs4_pnfs.h |    2 +-
+ 3 files changed, 3 insertions(+), 3 deletions(-)
 
+diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+index 79b9df2..4a3f58a 100644
+--- a/fs/nfs/nfs4filelayout.c
++++ b/fs/nfs/nfs4filelayout.c
+@@ -334,7 +334,7 @@ filelayout_write_pagelist(struct pnfs_layout_type *layoutid,
+  * inode from now on.
+  */
+ static void *
+-filelayout_alloc_layout(struct pnfs_mount_type *mountid, struct inode *inode)
++filelayout_alloc_layout(struct inode *inode)
+ {
+ 	dprintk("NFS_FILELAYOUT: allocating layout\n");
+ 	return kzalloc(sizeof(struct nfs4_filelayout), GFP_KERNEL);
 diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index f6181bd..de3f15a 100644
+index 50858c8..f6181bd 100644
 --- a/fs/nfs/pnfs.c
 +++ b/fs/nfs/pnfs.c
-@@ -1609,46 +1609,13 @@ pnfs_use_write(struct inode *inode, ssize_t count)
- 	return 1; /* use pNFS I/O */
- }
+@@ -864,7 +864,7 @@ alloc_init_layout(struct inode *ino)
  
--/* Return I/O buffer size for a layout driver
-- * This value will determine what size reads and writes
-- * will be gathered into and sent to the data servers.
-- * blocksize must be a multiple of the page cache size.
-- */
--unsigned int
--pnfs_getiosize(struct nfs_server *server)
--{
--	struct pnfs_mount_type *mounttype;
--	struct pnfs_layoutdriver_type *ld;
--
--	mounttype = server->pnfs_mountid;
--	ld = server->pnfs_curr_ld;
--	if (!pnfs_enabled_sb(server) ||
--	    !mounttype ||
--	    !ld->ld_policy_ops ||
--	    !ld->ld_policy_ops->get_blocksize)
--		return 0;
--
--	return ld->ld_policy_ops->get_blocksize(mounttype);
--}
--
- void
- pnfs_set_ds_iosize(struct nfs_server *server)
- {
--	unsigned dssize = pnfs_getiosize(server);
--
--	/* Set buffer size for data servers */
--	if (dssize > 0) {
--		server->ds_rsize = server->ds_wsize =
--			nfs_block_size(dssize, NULL);
--		server->ds_rpages = server->ds_wpages =
--			(server->ds_rsize + PAGE_CACHE_SIZE - 1) >>
--			PAGE_CACHE_SHIFT;
--	} else {
--		server->ds_wsize = server->wsize;
--		server->ds_rsize = server->rsize;
--		server->ds_rpages = server->rpages;
--		server->ds_wpages = server->wpages;
--	}
-+	server->ds_wsize = server->wsize;
-+	server->ds_rsize = server->rsize;
-+	server->ds_rpages = server->rpages;
-+	server->ds_wpages = server->wpages;
- }
- 
- static int
+ 	io_ops = NFS_SERVER(ino)->pnfs_curr_ld->ld_io_ops;
+ 	lo = &NFS_I(ino)->layout;
+-	ld_data = io_ops->alloc_layout(NFS_SERVER(ino)->pnfs_mountid, ino);
++	ld_data = io_ops->alloc_layout(ino);
+ 	if (!ld_data) {
+ 		printk(KERN_ERR
+ 			"%s: out of memory: io_ops->alloc_layout failed\n",
 diff --git a/include/linux/nfs4_pnfs.h b/include/linux/nfs4_pnfs.h
-index be42370..f0eddbd 100644
+index b2bec02..be42370 100644
 --- a/include/linux/nfs4_pnfs.h
 +++ b/include/linux/nfs4_pnfs.h
-@@ -214,12 +214,6 @@ struct layoutdriver_policy_operations {
- 	int (*do_flush)(struct pnfs_layout_segment *lseg, struct nfs_page *req,
- 			struct pnfs_fsdata *fsdata);
- 
--	/* Retreive the block size of the file system.  If gather_across_stripes == 1,
--	 * then the file system will gather requests into the block size.
--	 * TODO: Where will the layout driver get this info?  It is hard coded in PVFS2.
--	 */
--	ssize_t (*get_blocksize) (struct pnfs_mount_type *);
--
- 	/* Read requests under this value are sent to the NFSv4 server */
- 	ssize_t (*get_read_threshold) (struct pnfs_layout_type *, struct inode *);
- 
+@@ -162,7 +162,7 @@ struct layoutdriver_io_operations {
+ 	/* Layout information. For each inode, alloc_layout is executed once to retrieve an
+ 	 * inode specific layout structure.  Each subsequent layoutget operation results in
+ 	 * a set_layout call to set the opaque layout in the layout driver.*/
+-	void * (*alloc_layout) (struct pnfs_mount_type *mountid, struct inode *inode);
++	void * (*alloc_layout) (struct inode *inode);
+ 	void (*free_layout) (void *layoutid);
+ 	struct pnfs_layout_segment * (*alloc_lseg) (struct pnfs_layout_type *layoutid, struct nfs4_pnfs_layoutget_res *lgr);
+ 	void (*free_lseg) (struct pnfs_layout_segment *lseg);
 -- 
 1.6.6
 
