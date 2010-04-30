@@ -1,93 +1,109 @@
 From: andros@netapp.com
-Subject: [PATCH 5/5] pnfs_post_submit: restore get_blocksize policy operation
-Date: Fri, 30 Apr 2010 14:27:12 -0400
-Message-ID: <1272652032-2496-6-git-send-email-andros@netapp.com>
+Subject: [PATCH 3/5] pnfs_post_submit: add getdevicelist io operation
+Date: Fri, 30 Apr 2010 14:27:10 -0400
+Message-ID: <1272652032-2496-4-git-send-email-andros@netapp.com>
 References: <1272652032-2496-1-git-send-email-andros@netapp.com>
  <1272652032-2496-2-git-send-email-andros@netapp.com>
  <1272652032-2496-3-git-send-email-andros@netapp.com>
- <1272652032-2496-4-git-send-email-andros@netapp.com>
- <1272652032-2496-5-git-send-email-andros@netapp.com>
 Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
 To: bhalevy@panasas.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
 Received: from mx2.netapp.com ([216.240.18.37]:31670 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933895Ab0D3S1u (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 30 Apr 2010 14:27:50 -0400
-In-Reply-To: <1272652032-2496-5-git-send-email-andros@netapp.com>
+	id S933885Ab0D3S1q (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 30 Apr 2010 14:27:46 -0400
+In-Reply-To: <1272652032-2496-3-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 From: Andy Adamson <andros@netapp.com>
 
-The object layout driver is the only consumer of the get_blocksize policy
-operation.
-Note: struct pnfs_mount_type has been removed.
+The block layout driver called getdevicelist in it's
+initialize_mountpoint layoutdriver_io_operation. Since initialize_mountpoint
+has been moved to nfs_probe_fsinfo where the required super block and file
+handle are not available, provide a getdevicelist call in nfs4_get_root.
+
+There is no error returned because the layout driver will handle errors
+internally, and there is no reason to fail the mount.
+If GETDEVICELIST fails, the layout driver can
+either fall back to NFSv4.1 by calling nfs4_put_deviceid_cache and removing
+the nfs_server->pnfs_curr_ld pointer, or ignore the error and call
+GETDEVICEINFO on unresolved device id's presented by LAYOUTGET.
+
+nfs4_pnfs_getdevicelist does call nfs4_handle_exception which handles
+session level and other errors.
 
 Signed-off-by: Andy Adamson <andros@netapp.com>
 ---
- fs/nfs/pnfs.c             |   25 +++++++++++++++++++++++--
- include/linux/nfs4_pnfs.h |    8 ++++++++
- 2 files changed, 31 insertions(+), 2 deletions(-)
+ fs/nfs/getroot.c          |    3 +++
+ fs/nfs/pnfs.h             |   13 +++++++++++++
+ include/linux/nfs4_pnfs.h |    1 +
+ 3 files changed, 17 insertions(+), 0 deletions(-)
 
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index fadfd7c..c7918e1 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -1598,11 +1598,32 @@ pnfs_use_write(struct inode *inode, ssize_t count)
- 	return 1; /* use pNFS I/O */
+diff --git a/fs/nfs/getroot.c b/fs/nfs/getroot.c
+index b35d2a6..fe61767 100644
+--- a/fs/nfs/getroot.c
++++ b/fs/nfs/getroot.c
+@@ -38,6 +38,7 @@
+ #include "nfs4_fs.h"
+ #include "delegation.h"
+ #include "internal.h"
++#include "pnfs.h"
+ 
+ #define NFSDBG_FACILITY		NFSDBG_CLIENT
+ 
+@@ -286,6 +287,8 @@ struct dentry *nfs4_get_root(struct super_block *sb, struct nfs_fh *mntfh)
+ 	if (!mntroot->d_op)
+ 		mntroot->d_op = server->nfs_client->rpc_ops->dentry_ops;
+ 
++	nfs4_getdevicelist(sb, mntfh);
++
+ 	dprintk("<-- nfs4_get_root()\n");
+ 	return mntroot;
+ }
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index a44cde8..08b2af7 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -106,6 +106,13 @@ static inline int pnfs_enabled_sb(struct nfs_server *nfss)
+ 	return nfss->pnfs_curr_ld != NULL;
  }
  
-+/* Return I/O buffer size for a layout driver
-+ * This value will determine what size reads and writes
-+ * will be gathered into and sent to the data servers.
-+ * blocksize must be a multiple of the page cache size.
-+ */
-+unsigned int
-+pnfs_getiosize(struct nfs_server *server)
++static inline void
++nfs4_getdevicelist(struct super_block *sb, struct nfs_fh *fh)
 +{
-+	if (!PNFS_EXISTS_LDPOLICY_OP(server, get_blocksize))
-+		return 0;
-+	return server->pnfs_curr_ld->ld_policy_ops->get_blocksize();
++	if (PNFS_EXISTS_LDIO_OP(NFS_SB(sb), getdevicelist))
++		NFS_SB(sb)->pnfs_curr_ld->ld_io_ops->getdevicelist(sb, fh);
 +}
 +
- void
- pnfs_set_ds_iosize(struct nfs_server *server)
- {
--	server->ds_wsize = server->wsize;
--	server->ds_rsize = server->rsize;
-+	unsigned dssize = pnfs_getiosize(server);
-+
-+	/* Set buffer size for data servers */
-+	if (dssize > 0) {
-+		server->ds_rsize = server->ds_wsize =
-+			nfs_block_size(dssize, NULL);
-+	} else {
-+		server->ds_wsize = server->wsize;
-+		server->ds_rsize = server->rsize;
-+	}
- }
+ static inline enum pnfs_try_status
+ pnfs_try_to_read_data(struct nfs_read_data *data,
+ 		      const struct rpc_call_ops *call_ops)
+@@ -280,6 +287,12 @@ static inline int pnfs_use_rpc(struct nfs_server *nfss)
  
- static int
+ #else  /* CONFIG_NFS_V4_1 */
+ 
++static inline void
++nfs4_getdevicelist(struct super_block *sb, struct nfs_fh *fh)
++{
++	return;
++}
++
+ static inline enum pnfs_try_status
+ pnfs_try_to_read_data(struct nfs_read_data *data,
+ 		      const struct rpc_call_ops *call_ops)
 diff --git a/include/linux/nfs4_pnfs.h b/include/linux/nfs4_pnfs.h
-index b99843b..e3d5568 100644
+index 6b37319..b99843b 100644
 --- a/include/linux/nfs4_pnfs.h
 +++ b/include/linux/nfs4_pnfs.h
-@@ -202,6 +202,14 @@ struct layoutdriver_policy_operations {
- 	int (*do_flush)(struct pnfs_layout_segment *lseg, struct nfs_page *req,
- 			struct pnfs_fsdata *fsdata);
+@@ -170,6 +170,7 @@ struct layoutdriver_io_operations {
+ 	 */
+ 	int (*initialize_mountpoint) (struct nfs_client *);
+ 	int (*uninitialize_mountpoint) (struct nfs_server *server);
++	int (*getdevicelist) (struct super_block *, struct nfs_fh *);
+ };
  
-+	/* Retreive the block size of the file system.
-+	 * If gather_across_stripes == 1, then the file system will gather
-+	 * requests into the block size.
-+	 * TODO: Where will the layout driver get this info?  It is hard
-+	 * coded in PVFS2.
-+	 */
-+	ssize_t (*get_blocksize) (void);
-+
- 	/* Read requests under this value are sent to the NFSv4 server */
- 	ssize_t (*get_read_threshold) (struct pnfs_layout_type *, struct inode *);
- 
+ enum layoutdriver_policy_flags {
 -- 
 1.6.6
 
