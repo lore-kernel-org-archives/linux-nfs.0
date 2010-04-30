@@ -1,345 +1,296 @@
 From: andros@netapp.com
-Subject: [PATCH 2/5] pnfs_post_submit: restore GETDEVICELIST
-Date: Fri, 30 Apr 2010 14:27:09 -0400
-Message-ID: <1272652032-2496-3-git-send-email-andros@netapp.com>
+Subject: [PATCH 1/5] pnfs_post_submit: restore CB_NOTIFY_DEVICEID
+Date: Fri, 30 Apr 2010 14:27:08 -0400
+Message-ID: <1272652032-2496-2-git-send-email-andros@netapp.com>
 References: <1272652032-2496-1-git-send-email-andros@netapp.com>
- <1272652032-2496-2-git-send-email-andros@netapp.com>
 Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
 To: bhalevy@panasas.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:22124 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:31670 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933879Ab0D3S1q (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 30 Apr 2010 14:27:46 -0400
-In-Reply-To: <1272652032-2496-2-git-send-email-andros@netapp.com>
+	id S933867Ab0D3S1o (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 30 Apr 2010 14:27:44 -0400
+In-Reply-To: <1272652032-2496-1-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 From: Andy Adamson <andros@netapp.com>
 
-The block driver uses GETDEVICELIST
+Reverts "pnfs_submit: remove CB_NOTIFY_DEVICEID"
+and replaces "pnfs_submit: remove filelayout CB_NOTIFY_DEVICE support"
+
+With the generic device id cache, there is no need for a per layout driver
+delete_deviceid function.
+
+Note: This functionlaity is incomplete as all layout segments referring to
+the 'to be removed device id' need to be reaped, and all in flight I/O drained.
 
 Signed-off-by: Andy Adamson <andros@netapp.com>
 ---
- fs/nfs/nfs4proc.c         |   47 +++++++++++++++++
- fs/nfs/nfs4xdr.c          |  126 +++++++++++++++++++++++++++++++++++++++++++++
- fs/nfs/pnfs.c             |    1 +
- fs/nfs/pnfs.h             |    3 +
- include/linux/nfs4.h      |    1 +
+ fs/nfs/callback_proc.c    |   53 ++++++++++++++++++++++++
+ fs/nfs/callback_xdr.c     |   97 ++++++++++++++++++++++++++++++++++++++++++++-
+ fs/nfs/pnfs.c             |   16 ++++++-
  include/linux/nfs4_pnfs.h |    2 +
- include/linux/pnfs_xdr.h  |   11 ++++
- 7 files changed, 191 insertions(+), 0 deletions(-)
+ 4 files changed, 165 insertions(+), 3 deletions(-)
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 4b3bd81..72c2274 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -5766,6 +5766,53 @@ out:
+diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
+index 025f31d..ebf86df 100644
+--- a/fs/nfs/callback_proc.c
++++ b/fs/nfs/callback_proc.c
+@@ -325,6 +325,59 @@ out:
+ 	return res;
+ }
+ 
++/* Remove the deviceid(s) from the nfs_client deviceid cache */
++static __be32 pnfs_devicenotify_client(struct nfs_client *clp,
++				       struct cb_pnfs_devicenotifyargs *args)
++{
++	uint32_t type;
++	int i;
++
++	dprintk("%s: --> clp %p\n", __func__, clp);
++
++	for (i = 0; i < args->ndevs; i++) {
++		struct cb_pnfs_devicenotifyitem *dev = &args->devs[i];
++		type = dev->cbd_notify_type;
++		if (type == NOTIFY_DEVICEID4_DELETE && clp->cl_devid_cache)
++			nfs4_delete_device(clp->cl_devid_cache,
++					   &dev->cbd_dev_id);
++		else if (type == NOTIFY_DEVICEID4_CHANGE)
++			printk(KERN_ERR "%s: NOTIFY_DEVICEID4_CHANGE "
++					"not supported\n", __func__);
++	}
++	return 0;
++}
++
++__be32 pnfs_cb_devicenotify(struct cb_pnfs_devicenotifyargs *args,
++			    void *dummy)
++{
++	struct nfs_client *clp;
++	__be32 res = 0;
++	unsigned int num_client = 0;
++
++	dprintk("%s: -->\n", __func__);
++
++	res = __constant_htonl(NFS4ERR_INVAL);
++	clp = nfs_find_client(args->addr, 4);
++	if (clp == NULL) {
++		dprintk("%s: no client for addr %u.%u.%u.%u\n",
++			__func__, NIPQUAD(args->addr));
++		goto out;
++	}
++
++	do {
++		struct nfs_client *prev = clp;
++		num_client++;
++		res = pnfs_devicenotify_client(clp, args);
++		clp = nfs_find_client_next(prev);
++		nfs_put_client(prev);
++	} while (clp != NULL);
++
++out:
++	dprintk("%s: exit with status = %d numclient %u\n",
++		__func__, ntohl(res), num_client);
++	return res;
++}
++
+ int nfs41_validate_delegation_stateid(struct nfs_delegation *delegation, const nfs4_stateid *stateid)
+ {
+ 	if (delegation == NULL)
+diff --git a/fs/nfs/callback_xdr.c b/fs/nfs/callback_xdr.c
+index 1856181..69a026d 100644
+--- a/fs/nfs/callback_xdr.c
++++ b/fs/nfs/callback_xdr.c
+@@ -23,6 +23,7 @@
+ 
+ #if defined(CONFIG_NFS_V4_1)
+ #define CB_OP_LAYOUTRECALL_RES_MAXSZ	(CB_OP_HDR_RES_MAXSZ)
++#define CB_OP_DEVICENOTIFY_RES_MAXSZ	(CB_OP_HDR_RES_MAXSZ)
+ #define CB_OP_SEQUENCE_RES_MAXSZ	(CB_OP_HDR_RES_MAXSZ + \
+ 					4 + 1 + 3)
+ #define CB_OP_RECALLANY_RES_MAXSZ	(CB_OP_HDR_RES_MAXSZ)
+@@ -267,6 +268,94 @@ out:
  	return status;
  }
  
-+/*
-+ * Retrieve the list of Data Server devices from the MDS.
-+ */
-+static int _nfs4_pnfs_getdevicelist(struct nfs_fh *fh,
-+				    struct nfs_server *server,
-+				    struct pnfs_devicelist *devlist)
-+{
-+	struct nfs4_pnfs_getdevicelist_arg arg = {
-+		.fh = fh,
-+		.layoutclass = server->pnfs_curr_ld->id,
-+	};
-+	struct nfs4_pnfs_getdevicelist_res res = {
-+		.devlist = devlist,
-+	};
-+	struct rpc_message msg = {
-+		.rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_PNFS_GETDEVICELIST],
-+		.rpc_argp = &arg,
-+		.rpc_resp = &res,
-+	};
-+	int status;
-+
-+	dprintk("--> %s\n", __func__);
-+	status = nfs4_call_sync(server, &msg, &arg, &res, 0);
-+	dprintk("<-- %s status=%d\n", __func__, status);
-+	return status;
-+}
-+
-+int nfs4_pnfs_getdevicelist(struct super_block *sb,
-+			    struct nfs_fh *fh,
-+			    struct pnfs_devicelist *devlist)
-+{
-+	struct nfs4_exception exception = { };
-+	struct nfs_server *server = NFS_SB(sb);
-+	int err;
-+
-+	do {
-+		err = nfs4_handle_exception(server,
-+				_nfs4_pnfs_getdevicelist(fh, server, devlist),
-+				&exception);
-+	} while (exception.retry);
-+
-+	dprintk("nfs4_pnfs_getdevlist: err=%d, num_devs=%u\n",
-+		err, devlist->num_devs);
-+
-+	return err;
-+}
-+
- int nfs4_pnfs_getdeviceinfo(struct super_block *sb, struct pnfs_device *pdev)
- {
- 	struct nfs_server *server = NFS_SB(sb);
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index d7d41e9..718824c 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -304,6 +304,12 @@ static int nfs4_stat_to_errno(int);
- 				XDR_QUADLEN(NFS4_MAX_SESSIONID_LEN) + 5)
- #define encode_reclaim_complete_maxsz	(op_encode_hdr_maxsz + 4)
- #define decode_reclaim_complete_maxsz	(op_decode_hdr_maxsz + 4)
-+#define encode_getdevicelist_maxsz (op_encode_hdr_maxsz + 4 + \
-+				encode_verifier_maxsz)
-+#define decode_getdevicelist_maxsz (op_decode_hdr_maxsz + 2 + 1 + 1 +  \
-+				decode_verifier_maxsz +             \
-+				XDR_QUADLEN(NFS4_PNFS_GETDEVLIST_MAXNUM *  \
-+				NFS4_PNFS_DEVICEID4_SIZE))
- #define encode_getdeviceinfo_maxsz (op_encode_hdr_maxsz + 4 + \
- 				XDR_QUADLEN(NFS4_PNFS_DEVICEID4_SIZE))
- #define decode_getdeviceinfo_maxsz (op_decode_hdr_maxsz + \
-@@ -710,6 +716,14 @@ static int nfs4_stat_to_errno(int);
- #define NFS4_dec_reclaim_complete_sz	(compound_decode_hdr_maxsz + \
- 					 decode_sequence_maxsz + \
- 					 decode_reclaim_complete_maxsz)
-+#define NFS4_enc_getdevicelist_sz (compound_encode_hdr_maxsz + \
-+				encode_sequence_maxsz + \
-+				encode_putfh_maxsz + \
-+				encode_getdevicelist_maxsz)
-+#define NFS4_dec_getdevicelist_sz (compound_decode_hdr_maxsz + \
-+				decode_sequence_maxsz + \
-+				decode_putfh_maxsz + \
-+				decode_getdevicelist_maxsz)
- #define NFS4_enc_getdeviceinfo_sz (compound_encode_hdr_maxsz +    \
- 				encode_sequence_maxsz +\
- 				encode_getdeviceinfo_maxsz)
-@@ -1798,6 +1812,25 @@ static void encode_sequence(struct xdr_stream *xdr,
- 
- #ifdef CONFIG_NFS_V4_1
- static void
-+encode_getdevicelist(struct xdr_stream *xdr,
-+		     const struct nfs4_pnfs_getdevicelist_arg *args,
-+		     struct compound_hdr *hdr)
++static
++__be32 decode_pnfs_devicenotify_args(struct svc_rqst *rqstp,
++				     struct xdr_stream *xdr,
++				     struct cb_pnfs_devicenotifyargs *args)
 +{
 +	__be32 *p;
-+	nfs4_verifier dummy = {
-+		.data = "dummmmmy",
-+	};
++	__be32 status = 0;
++	u32 tmp;
++	int n, i;
++	args->ndevs = 0;
 +
-+	p = reserve_space(xdr, 20);
-+	*p++ = cpu_to_be32(OP_GETDEVICELIST);
-+	*p++ = cpu_to_be32(args->layoutclass);
-+	*p++ = cpu_to_be32(NFS4_PNFS_GETDEVLIST_MAXNUM);
-+	xdr_encode_hyper(p, 0ULL);                          /* cookie */
-+	encode_nfs4_verifier(xdr, &dummy);
-+	hdr->nops++;
-+}
++	args->addr = svc_addr(rqstp);
 +
-+static void
- encode_getdeviceinfo(struct xdr_stream *xdr,
- 		     const struct nfs4_pnfs_getdeviceinfo_arg *args,
- 		     struct compound_hdr *hdr)
-@@ -2734,6 +2767,27 @@ static int nfs4_xdr_enc_reclaim_complete(struct rpc_rqst *req, uint32_t *p,
- }
- 
- /*
-+ * Encode GETDEVICELIST request
-+ */
-+static int
-+nfs4_xdr_enc_getdevicelist(struct rpc_rqst *req, uint32_t *p,
-+			   struct nfs4_pnfs_getdevicelist_arg *args)
-+{
-+	struct xdr_stream xdr;
-+	struct compound_hdr hdr = {
-+		.minorversion = nfs4_xdr_minorversion(&args->seq_args),
-+	};
-+
-+	xdr_init_encode(&xdr, &req->rq_snd_buf, p);
-+	encode_compound_hdr(&xdr, req, &hdr);
-+	encode_sequence(&xdr, &args->seq_args, &hdr);
-+	encode_putfh(&xdr, args->fh, &hdr);
-+	encode_getdevicelist(&xdr, args, &hdr);
-+	encode_nops(&hdr);
-+	return 0;
-+}
-+
-+/*
-  * Encode GETDEVICEINFO request
-  */
- static int nfs4_xdr_enc_getdeviceinfo(struct rpc_rqst *req, uint32_t *p,
-@@ -5113,6 +5167,50 @@ out_overflow:
- }
- 
- #if defined(CONFIG_NFS_V4_1)
-+/*
-+ * TODO: Need to handle case when EOF != true;
-+ */
-+static int decode_getdevicelist(struct xdr_stream *xdr,
-+				struct pnfs_devicelist *res)
-+{
-+	__be32 *p;
-+	int status, i;
-+	struct nfs_writeverf verftemp;
-+
-+	status = decode_op_hdr(xdr, OP_GETDEVICELIST);
-+	if (status)
-+		return status;
-+
-+	p = xdr_inline_decode(xdr, 8 + 8 + 4);
-+	if (unlikely(!p))
-+		goto out_overflow;
-+
-+	/* TODO: Skip cookie for now */
-+	p += 2;
-+
-+	/* Read verifier */
-+	p = xdr_decode_opaque_fixed(p, verftemp.verifier, 8);
-+
-+	res->num_devs = be32_to_cpup(p);
-+
-+	dprintk("%s: num_dev %d\n", __func__, res->num_devs);
-+
-+	if (res->num_devs > NFS4_PNFS_GETDEVLIST_MAXNUM)
-+		return -NFS4ERR_REP_TOO_BIG;
-+
-+	p = xdr_inline_decode(xdr,
-+			      res->num_devs * NFS4_PNFS_DEVICEID4_SIZE + 4);
-+	if (unlikely(!p))
-+		goto out_overflow;
-+	for (i = 0; i < res->num_devs; i++)
-+		p = xdr_decode_opaque_fixed(p, res->dev_id[i].data,
-+					    NFS4_PNFS_DEVICEID4_SIZE);
-+	res->eof = be32_to_cpup(p);
-+	return 0;
-+out_overflow:
-+	print_overflow_msg(__func__, xdr);
-+	return -EIO;
-+}
- 
- static int decode_getdeviceinfo(struct xdr_stream *xdr,
- 				struct pnfs_device *pdev)
-@@ -6304,6 +6402,33 @@ static int nfs4_xdr_dec_reclaim_complete(struct rpc_rqst *rqstp, uint32_t *p,
- }
- 
- /*
-+ * Decode GETDEVICELIST response
-+ */
-+static int nfs4_xdr_dec_getdevicelist(struct rpc_rqst *rqstp, uint32_t *p,
-+				      struct nfs4_pnfs_getdevicelist_res *res)
-+{
-+	struct xdr_stream xdr;
-+	struct compound_hdr hdr;
-+	int status;
-+
-+	dprintk("encoding getdevicelist!\n");
-+
-+	xdr_init_decode(&xdr, &rqstp->rq_rcv_buf, p);
-+	status = decode_compound_hdr(&xdr, &hdr);
-+	if (status != 0)
++	/* Num of device notifications */
++	p = read_buf(xdr, sizeof(uint32_t));
++	if (unlikely(p == NULL)) {
++		status = htonl(NFS4ERR_RESOURCE);
 +		goto out;
-+	status = decode_sequence(&xdr, &res->seq_res, rqstp);
-+	if (status != 0)
++	}
++	n = ntohl(*p++);
++	if (n <= 0)
 +		goto out;
-+	status = decode_putfh(&xdr);
-+	if (status != 0)
-+		goto out;
-+	status = decode_getdevicelist(&xdr, res->devlist);
++
++	/* XXX: need to possibly return error in this case */
++	if (n > NFS4_DEV_NOTIFY_MAXENTRIES) {
++		dprintk("%s: Processing (%d) notifications out of (%d)\n",
++			__func__, NFS4_DEV_NOTIFY_MAXENTRIES, n);
++		n = NFS4_DEV_NOTIFY_MAXENTRIES;
++	}
++
++	/* Decode each dev notification */
++	for (i = 0; i < n; i++) {
++		struct cb_pnfs_devicenotifyitem *dev = &args->devs[i];
++
++		p = read_buf(xdr, (4 * sizeof(uint32_t))
++			     + NFS4_PNFS_DEVICEID4_SIZE);
++		if (unlikely(p == NULL)) {
++			status = htonl(NFS4ERR_RESOURCE);
++			goto out;
++		}
++
++		tmp = ntohl(*p++);	/* bitmap size */
++		if (tmp != 1) {
++			status = htonl(NFS4ERR_INVAL);
++			goto out;
++		}
++		dev->cbd_notify_type = ntohl(*p++);
++		if (dev->cbd_notify_type != NOTIFY_DEVICEID4_CHANGE &&
++		    dev->cbd_notify_type != NOTIFY_DEVICEID4_DELETE) {
++			status = htonl(NFS4ERR_INVAL);
++			goto out;
++		}
++
++		tmp = ntohl(*p++);	/* opaque size */
++		if (((dev->cbd_notify_type == NOTIFY_DEVICEID4_CHANGE) &&
++		     (tmp != NFS4_PNFS_DEVICEID4_SIZE + 8)) ||
++		    ((dev->cbd_notify_type == NOTIFY_DEVICEID4_DELETE) &&
++		     (tmp != NFS4_PNFS_DEVICEID4_SIZE + 4))) {
++			status = htonl(NFS4ERR_INVAL);
++			goto out;
++		}
++		dev->cbd_layout_type = ntohl(*p++);
++		memcpy(dev->cbd_dev_id.data, p, NFS4_PNFS_DEVICEID4_SIZE);
++		p += XDR_QUADLEN(NFS4_PNFS_DEVICEID4_SIZE);
++
++		if (dev->cbd_layout_type == NOTIFY_DEVICEID4_CHANGE) {
++			p = read_buf(xdr, sizeof(uint32_t));
++			if (unlikely(p == NULL)) {
++				status = htonl(NFS4ERR_DELAY);
++				goto out;
++			}
++			dev->cbd_immediate = ntohl(*p++);
++		} else {
++			dev->cbd_immediate = 0;
++		}
++
++		args->ndevs++;
++
++		dprintk("%s: type %d layout 0x%x immediate %d\n",
++			__func__, dev->cbd_notify_type, dev->cbd_layout_type,
++			dev->cbd_immediate);
++	}
 +out:
++	dprintk("%s: status %d ndevs %d\n",
++		__func__, ntohl(status), args->ndevs);
 +	return status;
 +}
 +
-+/*
-  * Decode GETDEVINFO response
-  */
- static int nfs4_xdr_dec_getdeviceinfo(struct rpc_rqst *rqstp, uint32_t *p,
-@@ -6632,6 +6757,7 @@ struct rpc_procinfo	nfs4_procedures[] = {
-   PROC(SEQUENCE,	enc_sequence,	dec_sequence),
-   PROC(GET_LEASE_TIME,	enc_get_lease_time,	dec_get_lease_time),
-   PROC(RECLAIM_COMPLETE, enc_reclaim_complete,  dec_reclaim_complete),
-+  PROC(PNFS_GETDEVICELIST, enc_getdevicelist, dec_getdevicelist),
-   PROC(PNFS_GETDEVICEINFO, enc_getdeviceinfo, dec_getdeviceinfo),
-   PROC(PNFS_LAYOUTGET,  enc_layoutget,     dec_layoutget),
-   PROC(PNFS_LAYOUTCOMMIT, enc_layoutcommit,  dec_layoutcommit),
+ static __be32 decode_sessionid(struct xdr_stream *xdr,
+ 				 struct nfs4_sessionid *sid)
+ {
+@@ -622,11 +711,11 @@ preprocess_nfs41_op(int nop, unsigned int op_nr, struct callback_op **op)
+ 	case OP_CB_RECALL_ANY:
+ 	case OP_CB_RECALL_SLOT:
+ 	case OP_CB_LAYOUTRECALL:
++	case OP_CB_NOTIFY_DEVICEID:
+ 		*op = &callback_ops[op_nr];
+ 		break;
+ 
+ 	case OP_CB_NOTIFY:
+-	case OP_CB_NOTIFY_DEVICEID:
+ 	case OP_CB_PUSH_DELEG:
+ 	case OP_CB_RECALLABLE_OBJ_AVAIL:
+ 	case OP_CB_WANTS_CANCELLED:
+@@ -792,6 +881,12 @@ static struct callback_op callback_ops[] = {
+ 			(callback_decode_arg_t)decode_pnfs_layoutrecall_args,
+ 		.res_maxsize = CB_OP_LAYOUTRECALL_RES_MAXSZ,
+ 	},
++	[OP_CB_NOTIFY_DEVICEID] = {
++		.process_op = (callback_process_op_t)pnfs_cb_devicenotify,
++		.decode_args =
++			(callback_decode_arg_t)decode_pnfs_devicenotify_args,
++		.res_maxsize = CB_OP_DEVICENOTIFY_RES_MAXSZ,
++	},
+ 	[OP_CB_SEQUENCE] = {
+ 		.process_op = (callback_process_op_t)nfs4_callback_sequence,
+ 		.decode_args = (callback_decode_arg_t)decode_cb_sequence_args,
 diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index af6424a..40b09bf 100644
+index 1560b4d..af6424a 100644
 --- a/fs/nfs/pnfs.c
 +++ b/fs/nfs/pnfs.c
-@@ -2237,6 +2237,7 @@ void pnfs_free_fsdata(struct pnfs_fsdata *fsdata)
- /* Callback operations for layout drivers.
-  */
- struct pnfs_client_operations pnfs_ops = {
-+	.nfs_getdevicelist = nfs4_pnfs_getdevicelist,
- 	.nfs_getdeviceinfo = nfs4_pnfs_getdeviceinfo,
- 	.nfs_readlist_complete = pnfs_read_done,
- 	.nfs_writelist_complete = pnfs_writeback_done,
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index 29e63d9..a44cde8 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -22,6 +22,9 @@
- #include "iostat.h"
+@@ -2359,7 +2359,8 @@ nfs4_add_deviceid(struct nfs4_deviceid_cache *c, struct nfs4_deviceid *new)
+ EXPORT_SYMBOL(nfs4_add_deviceid);
  
- /* nfs4proc.c */
-+extern int nfs4_pnfs_getdevicelist(struct super_block *sb,
-+				   struct nfs_fh *fh,
-+				   struct pnfs_devicelist *devlist);
- extern int nfs4_pnfs_getdeviceinfo(struct super_block *sb,
- 				   struct pnfs_device *dev);
- extern int pnfs4_proc_layoutget(struct nfs4_pnfs_layoutget *lgp);
-diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
-index 1730e86..2bb8eeb 100644
---- a/include/linux/nfs4.h
-+++ b/include/linux/nfs4.h
-@@ -543,6 +543,7 @@ enum {
- 	NFSPROC4_CLNT_PNFS_LAYOUTGET,
- 	NFSPROC4_CLNT_PNFS_LAYOUTCOMMIT,
- 	NFSPROC4_CLNT_PNFS_LAYOUTRETURN,
-+	NFSPROC4_CLNT_PNFS_GETDEVICELIST,
- 	NFSPROC4_CLNT_PNFS_GETDEVICEINFO,
- 	NFSPROC4_CLNT_PNFS_WRITE,
- 	NFSPROC4_CLNT_PNFS_COMMIT,
+ static int
+-nfs4_remove_deviceid(struct nfs4_deviceid_cache *c, long hash)
++nfs4_remove_deviceid(struct nfs4_deviceid_cache *c, long hash,
++		     struct pnfs_deviceid *id)
+ {
+ 	struct nfs4_deviceid *d;
+ 	struct hlist_node *n;
+@@ -2367,6 +2368,8 @@ nfs4_remove_deviceid(struct nfs4_deviceid_cache *c, long hash)
+ 	dprintk("--> %s hash %ld\n", __func__, hash);
+ 	spin_lock(&c->dc_lock);
+ 	hlist_for_each_entry_rcu(d, n, &c->dc_deviceids[hash], de_node) {
++		if (id && memcmp(id, &d->de_id, NFS4_PNFS_DEVICEID4_SIZE))
++			continue;
+ 		hlist_del_rcu(&d->de_node);
+ 		spin_unlock(&c->dc_lock);
+ 		synchronize_rcu();
+@@ -2379,6 +2382,15 @@ nfs4_remove_deviceid(struct nfs4_deviceid_cache *c, long hash)
+ 	return 0;
+ }
+ 
++void
++nfs4_delete_device(struct nfs4_deviceid_cache *c, struct pnfs_deviceid *id)
++{
++	long hash = nfs4_deviceid_hash(id);
++
++	nfs4_remove_deviceid(c, hash, id);
++}
++EXPORT_SYMBOL(nfs4_delete_device);
++
+ static void
+ nfs4_free_deviceid_cache(struct kref *kref)
+ {
+@@ -2390,7 +2402,7 @@ nfs4_free_deviceid_cache(struct kref *kref)
+ 	for (i = 0; i < NFS4_DEVICE_ID_HASH_SIZE; i++) {
+ 		more = 1;
+ 		while (more)
+-			more = nfs4_remove_deviceid(cache, i);
++			more = nfs4_remove_deviceid(cache, i, NULL);
+ 	}
+ 	kfree(cache);
+ }
 diff --git a/include/linux/nfs4_pnfs.h b/include/linux/nfs4_pnfs.h
-index 1efea2a..6b37319 100644
+index 81701a3..1efea2a 100644
 --- a/include/linux/nfs4_pnfs.h
 +++ b/include/linux/nfs4_pnfs.h
-@@ -313,6 +313,8 @@ extern void nfs4_delete_device(struct nfs4_deviceid_cache *,
-  * E.g., getdeviceinfo, I/O callbacks, etc
-  */
- struct pnfs_client_operations {
-+	int (*nfs_getdevicelist) (struct super_block *sb, struct nfs_fh *fh,
-+				  struct pnfs_devicelist *devlist);
- 	int (*nfs_getdeviceinfo) (struct super_block *sb,
- 				  struct pnfs_device *dev);
+@@ -304,6 +304,8 @@ extern void nfs4_set_layout_deviceid(struct pnfs_layout_segment *,
+ extern void nfs4_unset_layout_deviceid(struct pnfs_layout_segment *,
+ 				struct nfs4_deviceid *,
+ 				void (*free_callback)(struct kref *));
++extern void nfs4_delete_device(struct nfs4_deviceid_cache *,
++				struct pnfs_deviceid *);
  
-diff --git a/include/linux/pnfs_xdr.h b/include/linux/pnfs_xdr.h
-index a0bf341..4f34aa8 100644
---- a/include/linux/pnfs_xdr.h
-+++ b/include/linux/pnfs_xdr.h
-@@ -116,6 +116,17 @@ struct nfs4_pnfs_layoutreturn {
- 	int rpc_status;
- };
- 
-+struct nfs4_pnfs_getdevicelist_arg {
-+	const struct nfs_fh *fh;
-+	u32 layoutclass;
-+	struct nfs4_sequence_args seq_args;
-+};
-+
-+struct nfs4_pnfs_getdevicelist_res {
-+	struct pnfs_devicelist *devlist;
-+	struct nfs4_sequence_res seq_res;
-+};
-+
- struct nfs4_pnfs_getdeviceinfo_arg {
- 	struct pnfs_device *pdev;
- 	struct nfs4_sequence_args seq_args;
+ /* pNFS client callback functions.
+  * These operations allow the layout driver to access pNFS client
 -- 
 1.6.6
 
