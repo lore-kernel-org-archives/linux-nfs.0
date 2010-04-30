@@ -1,73 +1,56 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:48907 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:33372 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756527Ab0DNRhR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 14 Apr 2010 13:37:17 -0400
-Received: from localhost.localdomain (pd07336a.hq.netapp.com [10.58.61.110] (may be forged))
-	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id o3EHawJu021574
-	for <linux-nfs@vger.kernel.org>; Wed, 14 Apr 2010 10:36:58 -0700 (PDT)
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 00/22] Add support for more RPCSEC_GSS/krb5 enctypes
-Date: Wed, 14 Apr 2010 13:36:36 -0400
-Message-Id: <1271266618-26016-1-git-send-email-Trond.Myklebust@netapp.com>
+	id S1759682Ab0D3WDI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 30 Apr 2010 18:03:08 -0400
+Date: Fri, 30 Apr 2010 18:03:05 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Marc Eshel <eshel@almaden.ibm.com>
+Cc: pnfs@linux-nfs.org, linux-nfs@vger.kernel.org
+Subject: Re: [pnfs] Linux pNFS status meeting 04/29
+Message-ID: <20100430220305.GF20732@fieldses.org>
+References: <OF9FD7A126.8253DE0C-ON88257714.00106772-88257714.00108527@us.ibm.com> <20100429144600.GA1654@fieldses.org> <20100429173902.GE1654@fieldses.org> <20100429184311.GB4194@fieldses.org>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20100429184311.GB4194@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-The following patches have been queued up in the nfs-for-2.6.35 branch
-on git://git.linux-nfs.org/projects/trondmy/nfs-2.6.git.
+On Thu, Apr 29, 2010 at 02:43:11PM -0400, J. Bruce Fields wrote:
+> On Thu, Apr 29, 2010 at 01:39:03PM -0400, J. Bruce Fields wrote:
+> > 1. upstream status/merge plans (trond, bfields)
+> > 	- 2.6.34-rc5
+> > 	- server: merged one 2.6.34 bugfix, some more bugfixes/cleanup for
+> > 	  2.6.35, no new features merged.
+> > 	- client: bunch of bugfixes:
+> > 		- writeback code fixes:	
+> > 			- race with commit
+> > 			- nfs_setup_writeback BUG_ON()
+> > 		- other than that, misc. NULL/ERR-mixups.
+> > 		- Andy notes he's been seeing bigfile blocked for >= 30
+> > 		  seconds; Trond says that's probably due to the commit
+> > 		  race above.
+> > 
+> > 2. State of pNFS tree (bhalevy)
+> > 	- forwarded-ported to -rc5, released a few minutes ago.  Passes
+> > 	  cthon cleanly (thanks to commit race fix).
+> > 	- merged some other patches.
+> > 
+> > 3. Mailing list change
+> > 	- consolidated pnfs and nfsv4 lists to linux-nfs@vger.kernel.org
+> > 	- kernel.org appears to be having trouble; bfields will
+> > 	  investigate.
+> 
+> As far as I can tell, from my mail and from public archives, the
+> kernel.org mailing lists just aren't working right now.
 
-Cheers
-  Trond
+vger seems to be back, but mail to neither the pnfs nor the nfsv4 lists
+is getting forwarded to this list.
 
+All I did was add linux-nfs@vger.kernel.org as a member of each of the
+two lists.
 
-J. Bruce Fields (1):
-  gss_krb5: Don't expect blocksize to always be 8 when calculating
-    padding
+I can't find anything useful in linux-nfs logs, but maybe I don't know
+what to look for....
 
-Kevin Coffman (17):
-  gss_krb5: Introduce encryption type framework
-  gss_krb5: Added and improved code comments
-  gss_krb5: split up functions in preparation of adding new enctypes
-  gss_krb5: prepare for new context format
-  gss_krb5: introduce encryption type framework
-  gss_krb5: add ability to have a keyed checksum (hmac)
-  gss_krb5: import functionality to derive keys into the kernel
-  gss_krb5: handle new context format from gssd
-  gss_krb5: add support for triple-des encryption
-  xdr: Add an export for the helper function write_bytes_to_xdr_buf()
-  gss_krb5: add support for new token formats in rfc4121
-  gss_krb5: add remaining pieces to enable AES encryption support
-  gssd_krb5: arcfour-hmac support
-  gss_krb5: Save the raw session key in the context
-  gssd_krb5: More arcfour-hmac support
-  gss_krb5: Use confounder length in wrap code
-  gss_krb5: Add support for rc4-hmac encryption
-
-Trond Myklebust (4):
-  gss_krb5: Add upcall info indicating supported kerberos enctypes
-  gss_krb5: Advertise triple-des enctype support in the rpcsec_gss/krb5
-    upcall
-  gss_krb5: Advertise AES enctype support in the rpcsec_gss/krb5 upcall
-  gss_krb5: Advertise rc4-hmac enctype support in the rpcsec_gss/krb5
-    upcall
-
- include/linux/sunrpc/gss_api.h        |    2 +
- include/linux/sunrpc/gss_krb5.h       |  183 +++++++++-
- net/sunrpc/auth_gss/Makefile          |    2 +-
- net/sunrpc/auth_gss/auth_gss.c        |   22 +-
- net/sunrpc/auth_gss/gss_krb5_crypto.c |  697 ++++++++++++++++++++++++++++++++-
- net/sunrpc/auth_gss/gss_krb5_keys.c   |  335 ++++++++++++++++
- net/sunrpc/auth_gss/gss_krb5_mech.c   |  582 +++++++++++++++++++++++++--
- net/sunrpc/auth_gss/gss_krb5_seal.c   |  155 ++++++--
- net/sunrpc/auth_gss/gss_krb5_seqnum.c |   83 ++++-
- net/sunrpc/auth_gss/gss_krb5_unseal.c |  113 +++++-
- net/sunrpc/auth_gss/gss_krb5_wrap.c   |  404 ++++++++++++++++---
- net/sunrpc/auth_gss/gss_mech_switch.c |   14 +
- net/sunrpc/auth_gss/svcauth_gss.c     |   15 +
- net/sunrpc/xdr.c                      |    1 +
- 14 files changed, 2439 insertions(+), 169 deletions(-)
- create mode 100644 net/sunrpc/auth_gss/gss_krb5_keys.c
-
+--b.
