@@ -1,61 +1,24 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-out2.uio.no ([129.240.10.58]:55839 "EHLO mail-out2.uio.no"
+Received: from mx2.netapp.com ([216.240.18.37]:31966 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754315Ab0E0Mew (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 27 May 2010 08:34:52 -0400
-Subject: Re: Debugging fcntl() file locks
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-To: Bernd Petrovitsch <bernd@sysprog.at>
-Cc: linux-nfs@vger.kernel.org
-In-Reply-To: <1274955060.14002.40.camel@thorin>
-References: <1274955060.14002.40.camel@thorin>
-Content-Type: text/plain; charset="UTF-8"
-Date: Thu, 27 May 2010 08:34:46 -0400
-Message-ID: <1274963686.2895.7.camel@heimdal.trondhjem.org>
+	id S1755048Ab0EEDH5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 4 May 2010 23:07:57 -0400
+Received: from localhost.localdomain (makada1-lxp.hq.netapp.com [10.58.60.192] (may be forged))
+	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id o4537cgW024006
+	for <linux-nfs@vger.kernel.org>; Tue, 4 May 2010 20:07:39 -0700 (PDT)
+From: Fred Isaman <iisaman@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 0/8]: pnfs_submit: removal of fsdata manipulation 
+Date: Sun,  2 May 2010 21:00:41 -0400
+Message-Id: <1272848449-19170-1-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Thu, 2010-05-27 at 12:11 +0200, Bernd Petrovitsch wrote:
-> Hi all!
-> 
-> How can I debug fcntl() file locks on a NFSv3-client?
-> The server side is a NetApp-Box (no details at hand but I can ask).
-> The client side are stock-RHEL5.3/CentOS-5.3 kernels - 2.6.18-92.el5.
-> 
-> The file system in question is mounted on 2 clients. flock() on a file
-> succeeds but fcntl() fails with EAGAIN. From what I found in the
-> Internet and manual pages, this means that someone else already locked
-> that file (- the file is successfully open()ed read/write so it can't be
-> "your are not allowed to write-lock the file").
-> But how do I find out on which host and which process?
-> 
-> strace shows:
-> ----  snip  ----
-> open("/... secret ...", O_RDWR) = 3
-> ioctl(3, SNDCTL_TMR_TIMEBASE or TCGETS, 0x7fff7925b400) = -1 ENOTTY (Inappropriate ioctl for device)
-> lseek(3, 0, SEEK_CUR)                   = 0
-> fstat(3, {st_mode=S_IFREG|0600, st_size=935, ...}) = 0
-> fcntl(3, F_SETFD, FD_CLOEXEC)           = 0
-> flock(3, LOCK_EX|LOCK_NB)               = 0
-> fcntl(3, F_SETLK, {type=F_WRLCK, whence=SEEK_SET, start=0, len=0}) = -1 EAGAIN (Resource temporarily unavailable)
-> ----  snip  ---- 
-> [ This is a perl script using CPAN modules at the top. ]
-> 
-> /proc/mounts shows 
-> ----  snip  ---- 
-> rw,nodiratime,vers=3,rsize=32768,wsize=32768,hard,proto=tcp,timeo=600,retrans=2,sec=sys,addr=<ip-address>
-> ----  snip  ---- 
-> as options for the filesystem.
-> 
-> Thanks in advance,
-> 	Bernd
+These revert patches in the submit branch in order to remove the fsdata manipulation needed by the block driver, followed immediately by the post-submit "un-reverts".
 
-The Linux NFS client does not allow you to lock a file using both
-flock() and POSIX locks. You should choose one or the other locking
-scheme. If you remove the flock() line above, then the POSIX lock will
-likely succeed.
+They apply on top of the 13 patches Andy previously sent.
 
-Cheers
-  Trond
+Fred
 
