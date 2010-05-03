@@ -1,82 +1,56 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:12033 "EHLO
-	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1755987Ab0EXTE2 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 24 May 2010 15:04:28 -0400
-Message-ID: <4BFACDB9.7030008@panasas.com>
-Date: Mon, 24 May 2010 22:04:25 +0300
-From: Boaz Harrosh <bharrosh@panasas.com>
-To: Tao Guo <glorioustao@gmail.com>, Andy Adamson <andros@netapp.com>,
-        Benny Halevy <bhalevy@panasas.com>,
-        NFS list <linux-nfs@vger.kernel.org>
-Subject: [PATCH] pnfs: call layoutcommit after flushing inode's data to disk.
-Content-Type: text/plain; charset=UTF-8
+Received: from mail-out2.uio.no ([129.240.10.58]:51938 "EHLO mail-out2.uio.no"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756184Ab0ECTZK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 3 May 2010 15:25:10 -0400
+Subject: Re: Proxy
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: maillists0@gmail.com, linux-nfs@vger.kernel.org
+In-Reply-To: <20100503185650.GA9864@fieldses.org>
+References: <l2wdc64e7231005030953xb72ad73az3f883167a1a637c8@mail.gmail.com>
+	 <20100503185650.GA9864@fieldses.org>
+Content-Type: text/plain; charset="UTF-8"
+Date: Mon, 03 May 2010 15:25:01 -0400
+Message-ID: <1272914702.7559.13.camel@localhost.localdomain>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-From: Tao Guo <guotao@nrchpc.ac.cn>
+On Mon, 2010-05-03 at 14:56 -0400, J. Bruce Fields wrote: 
+> On Mon, May 03, 2010 at 12:53:15PM -0400, maillists0@gmail.com wrote:
+> > With NFS4's support for referrals and Kerberos, it seems like the
+> > original reasons to prevent re-exporting of an NFS share might no
+> > longer exist. With fs-proxy making its way into the mainline kernel
+> > and things like cachefilesd, there are also very good reasons to allow
+> > it. A proxy server with a persistent cache could give the ability to
+> > robustly use shares across a WAN or do failover pairs with no need for
+> > more complex replication. Speaking as an end-user, this would be very
+> > desirable.
+> > 
+> > I see that others have implemented proxies with user-space NFS, which
+> > seems reasonable but not optimal. What is the obstacle to allowing
+> > re-exports with the standard nfs implentation? Is it possible at the
+> > moment to patch a kernel to make this work? Anyone have experience
+> > with it? Any input is appreciated.
+> 
+> It's probably possible, but some kernel hacking would be required.
+> 
+> Off the top of my head:
+> 
+> 	- filehandles: you probably can't pass your server's filehandles
+> 	  unchanged back to your client.  At a minimum you'd want to add
+> 	  a header allowing you to distinguish filehandles for the
+> 	  different filesystems you export.  What if you get a
+> 	  filehandle from the server that's already at the protocol's
+> 	  maximum size?  Are you going to try to maintain your own
+> 	  persistent mapping of filehandles, and if so, is it possible
+> 	  to do that with reasonable performance?
+> 	- what do you do if your server takes a really long time to
+> 	  answer a request?  Or stops responding completely?
 
-This is for a bug introduced to 2.6.34. In 2.6.32 and 2.6.33 we call
-layoutcommit in nfs_sync_mapping_wait(), but in 2.6.34 we use
-sync_inode() to sync inode's data, so the layoutcommit code is gone.
-
-BTW: In current code, layoutcommit_ctx will increase refcount of
-nfs_inode's ctx, so if layoutcommit_ctx is not NULL, we could not
-reach nfs4_close_context ... --> __nfs_close().
-So pnfs_layoutcommit_inode() in __nfs_close() will not be called in
-whatever situation.
-Why we have to use nfs_inode's ctx as layoutcommit_ctx, since we
-only need its rpc_creds actually?
-
-Boaz:
-  Without this patch none-files layouts which return NFS_FILE_SYNC
-  from writes, will eventually hang on uncommitted inodes.
-
-  This patch reveals a bad design pattern from the pnfs-client. On
-  none-files layouts nfs_post_op_update_inode_force_wcc or friends
-  are never called and i_size_write() is never preformed on client.
-  What happens is that the layoutcommit eventually updates the server.
-  In Linux the sever would update i_size_attr and mtime. It would then
-  be detected by the client and i_size is fetched from server. This is
-  not nice client behaviour, and is not done so for files and none-pnfs
-  IO. Sigh! 
-  I think also files-lo might suffer from this in some cases, which means
-  if commit is not preformed (It's just an hint) then writeout will have
-  i_size  corruption.
-
-Signed-off-by: Tao Guo <guotao@nrchpc.ac.cn>
-Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
----
- fs/nfs/write.c |    8 +++++++-
- 1 files changed, 7 insertions(+), 1 deletions(-)
-
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index dad8da3..9424203 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -1558,6 +1558,7 @@ int nfs_write_inode(struct inode *inode, struct writeback_control *wbc)
-  */
- int nfs_wb_all(struct inode *inode)
- {
-+	int ret;
- 	struct writeback_control wbc = {
- 		.sync_mode = WB_SYNC_ALL,
- 		.nr_to_write = LONG_MAX,
-@@ -1565,7 +1566,12 @@ int nfs_wb_all(struct inode *inode)
- 		.range_end = LLONG_MAX,
- 	};
- 
--	return sync_inode(inode, &wbc);
-+	ret = sync_inode(inode, &wbc);
-+#ifdef CONFIG_NFS_V4_1
-+	if (!ret && do_layoutcommit(NFS_I(inode)))
-+		ret = pnfs_layoutcommit_inode(inode, 1);
-+#endif
-+	return ret;
- }
- 
- int nfs_wb_page_cancel(struct inode *inode, struct page *page)
--- 
-1.6.6.1
+      * If you want to use Kerberos, then how do you proxy an RPCSEC_GSS
+        session? 
+      * How does the proxy server figure out the real server's export
+        rules so that it can re-export them?
 
