@@ -1,142 +1,73 @@
-From: Neil Brown <neilb@suse.de>
-Subject: Re: Possible problem with commit a6305ddb080 : NFS: Fix a race with
- the new commit code
-Date: Mon, 3 May 2010 11:34:53 +1000
-Message-ID: <20100503113453.1e110656@notabene.brown>
-References: <20100427143542.001f8dbe@notabene.brown>
-	<1272369635.16814.52.camel@localhost.localdomain>
-	<1272406873.14667.6.camel@localhost.localdomain>
-	<1272407756.14667.17.camel@localhost.localdomain>
+From: Benny Halevy <bhalevy@panasas.com>
+Subject: Re: [nfsv4] Fall 2010 Bakeathon
+Date: Mon, 03 May 2010 09:32:46 +0300
+Message-ID: <4BDE6E0E.4090308@panasas.com>
+References: <OFC5693BF5.897C5510-ON8825770D.000EBA5F-8825770D.000F1030@us.ibm.com>	<20100422154432.GD5926@fieldses.org>	<op.vbk1l0p2unckof@usensfaibisl2e.eng.emc.com>	<1272462129.19046.458.camel@moss-terrapins.epoch.ncsc.mil>	<op.vbvll1vzunckof@usensfaibisl2e.eng.emc.com>	<4BD94700.60608@panasas.com> <4BD9CC1D.2090005@oracle.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Cc: linux-nfs@vger.kernel.org
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: NFS list <linux-nfs@vger.kernel.org>, nfsv4 list <nfsv4@ietf.org>,
+	pNFS Mailing List <pnfs@linux-nfs.org>
+To: Tom Haynes <tom.haynes@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:38476 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751828Ab0ECBfE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 2 May 2010 21:35:04 -0400
-In-Reply-To: <1272407756.14667.17.camel-bi+AKbBUZKY6gyzm1THtWbp2dZbC/Bob@public.gmane.org>
+Received: from daytona.panasas.com ([67.152.220.89]:50979 "EHLO
+	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1751079Ab0ECGct (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 3 May 2010 02:32:49 -0400
+In-Reply-To: <4BD9CC1D.2090005@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 27 Apr 2010 18:35:56 -0400
-Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
-
-> On Tue, 2010-04-27 at 18:21 -0400, Trond Myklebust wrote: 
-> > On Tue, 2010-04-27 at 08:00 -0400, Trond Myklebust wrote: 
-> > > On Tue, 2010-04-27 at 14:35 +1000, Neil Brown wrote: 
-> > > > Hi Trond,
-> > > >  I think the above mentioned commit might have added a new race to replace
-> > > > the old ....
-> > > > 
-> > > >  I have report of a BUG in nfs_page_async_flush.
-> > > > 
-> > > > It isn't a vanilla upstream kernel - there are a bunch of SUSE patches
-> > > > in there - so quoting the line-number won't help you, but it is the
-> > > >     BUG_ON(ret != 0);
-> > > > after the call to nfs_set_page_writeback.
-> > > > (https://bugzilla.novell.com/show_bug.cgi?id=599628)
-> > > > 
-> > > > This implies that nfs_find_and_lock_request got a new lock on the page,
-> > > > and then we found that it was already flagged for writeback.
-> > > 
-> > > That's odd. Callers such as write_cache_pages() should normally be doing
-> > > a wait_on_page_writeback() after taking the page lock but prior to
-> > > calling the filesystem.
-> > 
-> > The following patch ought to fix it. I suspect the same race exists in
-> > the ->readpage() path, so it makes sense to fix nfs_wb_page() rather
-> > than putting the wait_on_page_writeback call in
-> > nfs_try_to_update_request().
+On Apr. 29, 2010, 21:12 +0300, Tom Haynes <tom.haynes@oracle.com> wrote:
+> On 04/29/10 03:44 AM, Benny Halevy wrote:
+>> Sorin, regarding possible dates, if possible let's try to avoid a conflict
+>> with the SNIA Storage Developer Conference 2010 that's scheduled for
+>> September 20 - 23, 2010 in Santa Clara (http://www.snia.org/events/storage-developer2010/)
+>>
+>> I suggest we schedule within one of two windows: Sept 7-19 or Sept 24-Oct 7.
+>> The week before the SNIA conference (week of 9/13) or right after
+>> (9/27) would work best as far as travelling goes.
+>>
+>> Thanks!
+>>
+>> Benny
+>>
+>>    
 > 
-> Actually, this patch is even better since it cleans up nfs_wb_page()
-> too.
+> Benny,
+> 
+> How many people from outside the US will be going to both
+> SNIA and the BAT?
 
-Thanks Trond!
-I won't pretend to completely understand it, but it certainly looks credible
-and removes some code, which is always nice!
-
-I don't think the problem was easily reproducible so I cannot easily test
-if this fixes it, so I'll just assume it does and let you know if I
-hear otherwise.
-
-Thanks,
-NeilBrown
-
+Two form Panasas
 
 > 
-> Cheers
->   Trond
-> ------------------------------------------------------------------------------------------ 
-> NFS: Ensure that nfs_wb_page() waits for Pg_writeback to clear
+> We haven't had this overlap hit us in the past and I would
+> prefer we not be so afraid of it now.
 > 
-> From: Trond Myklebust <Trond.Myklebust@netapp.com>
+> I also would prefer that we not meet in Sept and try to
+> keep the dates in October.
 > 
-> Neil Brown reports that he is seeing the BUG_ON(ret == 0) trigger in
-> nfs_page_async_flush. According to the trace in
->      https://bugzilla.novell.com/show_bug.cgi?id=599628
-> the problem appears to be due to nfs_wb_page() not waiting for the
-> PG_writeback flag to clear.
-> 
-> There is a ditto problem in nfs_wb_page_cancel()
-> 
-> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-> ---
-> 
->  fs/nfs/write.c |   19 ++++---------------
->  1 files changed, 4 insertions(+), 15 deletions(-)
-> 
-> 
-> diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-> index ccde2ae..3aea3ca 100644
-> --- a/fs/nfs/write.c
-> +++ b/fs/nfs/write.c
-> @@ -1472,6 +1472,7 @@ int nfs_wb_page_cancel(struct inode *inode, struct page *page)
->  
->  	BUG_ON(!PageLocked(page));
->  	for (;;) {
-> +		wait_on_page_writeback(page);
->  		req = nfs_page_find_request(page);
->  		if (req == NULL)
->  			break;
-> @@ -1506,30 +1507,18 @@ int nfs_wb_page(struct inode *inode, struct page *page)
->  		.range_start = range_start,
->  		.range_end = range_end,
->  	};
-> -	struct nfs_page *req;
-> -	int need_commit;
->  	int ret;
->  
->  	while(PagePrivate(page)) {
-> +		wait_on_page_writeback(page);
->  		if (clear_page_dirty_for_io(page)) {
->  			ret = nfs_writepage_locked(page, &wbc);
->  			if (ret < 0)
->  				goto out_error;
->  		}
-> -		req = nfs_find_and_lock_request(page);
-> -		if (!req)
-> -			break;
-> -		if (IS_ERR(req)) {
-> -			ret = PTR_ERR(req);
-> +		ret = sync_inode(inode, &wbc);
-> +		if (ret < 0)
->  			goto out_error;
-> -		}
-> -		need_commit = test_bit(PG_CLEAN, &req->wb_flags);
-> -		nfs_clear_page_tag_locked(req);
-> -		if (need_commit) {
-> -			ret = nfs_commit_inode(inode, FLUSH_SYNC);
-> -			if (ret < 0)
-> -				goto out_error;
-> -		}
->  	}
->  	return 0;
->  out_error:
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> My reasoning on that is we want to keep a 4 month gap
+> between this event and both the prior and the cthon.
+> With just a 3 month gap from Ann Arbor, there may not
+> be much of anything significantly different.
 
+Makes sense.
+
+> 
+> And if there is not much new to test or if we don't find
+> new issues, then the different management chains might
+> start to question why we are spending so much travel
+> budget.
+
+Absolutely, and 4 months of development should provide us with
+some substantial changes to (re)test.
+
+Benny
+
+> 
+> Tom
+> _______________________________________________
+> nfsv4 mailing list
+> nfsv4@ietf.org
+> https://www.ietf.org/mailman/listinfo/nfsv4
