@@ -1,124 +1,330 @@
 From: Benny Halevy <bhalevy@panasas.com>
-Subject: Re: [PATCH] nfsd4: fix unlikely race in session replay case
-Date: Mon, 03 May 2010 14:20:12 +0300
-Message-ID: <4BDEB16C.2070003@panasas.com>
-References: <20100428213151.GB23474@fieldses.org>
+Subject: Re: [pnfs] [PATCH 1/3] SQUASHME pnfs_submit: generic device ID cache
+Date: Mon, 03 May 2010 14:48:37 +0300
+Message-ID: <4BDEB815.6030200@panasas.com>
+References: <1272298699-11411-1-git-send-email-andros@netapp.com> <1272298699-11411-2-git-send-email-andros@netapp.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Cc: linux-nfs@vger.kernel.org
-To: "J. Bruce Fields" <bfields@fieldses.org>
+To: andros@netapp.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-bw0-f219.google.com ([209.85.218.219]:33011 "EHLO
+Received: from mail-bw0-f219.google.com ([209.85.218.219]:50220 "EHLO
 	mail-bw0-f219.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757824Ab0ECLUU (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 3 May 2010 07:20:20 -0400
-Received: by bwz19 with SMTP id 19so1221456bwz.21
-        for <linux-nfs@vger.kernel.org>; Mon, 03 May 2010 04:20:18 -0700 (PDT)
-In-Reply-To: <20100428213151.GB23474@fieldses.org>
+	with ESMTP id S1757824Ab0ECLsn (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 3 May 2010 07:48:43 -0400
+Received: by bwz19 with SMTP id 19so1234685bwz.21
+        for <linux-nfs@vger.kernel.org>; Mon, 03 May 2010 04:48:41 -0700 (PDT)
+In-Reply-To: <1272298699-11411-2-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Apr. 29, 2010, 0:31 +0300, "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> From: J. Bruce Fields <bfields@citi.umich.edu>
+On Apr. 26, 2010, 19:18 +0300, andros@netapp.com wrote:
+> From: Andy Adamson <andros@netapp.com>
 > 
-> In the replay case, the
+> A shared RCU device ID cache servicing multiple mounts of a single layout type
+> per meta data server (struct nfs_client).
 > 
-> 	renew_client(session->se_client);
+> Device IDs of type deviceid4 are required by all layout types, long lived and
+> read at each I/O.  They are added to the deviceid cache at first reference by
+> a layout via GETDEVICEINFO and (currently) are only removed at umount.
 > 
-> happens after we've droppped the sessionid_lock, and without holding a
-> reference on the session; so there's nothing preventing the session
-> being freed before we get here.
+> Reference count the device ID cache for each mounted file system
+> in the initialize_mountpoint layoutdriver_io_operation.
 > 
-> Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
+> Dereference the device id cache on file system in the uninitialize_mountpoint
+> layoutdriver_io_operation called at umount
+> 
+> Each layoutsegment assigns a pointer and takes a reference to the
+> nfs4_deviceid structure identified by the layout deviceid.
+> This is so that there are no deviceid lookups for the normal I/O path.
+> 
+> Even thought required by all layouttypes, the deviceid is not exposed in the
+> LAYOUTGET4res but is instead hidden in the opaque layouttype4.
+> 
+> Therefore, each layout type alloc_lseg calls nfs4_set_layout_deviceid,
+> and free_lseg calls nfs4_unset_layout_deviceid.
+> 
+> While the file layout driver will not cache very many deviceid's, the object
+> and block layout drivers could cache 100's for a large installation.
+> Use an hlist.
+> 
+> Signed-off-by: Andy Adamson <andros@netapp.com>
 > ---
->  fs/nfsd/nfs4proc.c  |    3 +++
->  fs/nfsd/nfs4state.c |    7 +++----
->  fs/nfsd/nfs4xdr.c   |    1 -
->  3 files changed, 6 insertions(+), 5 deletions(-)
+>  fs/nfs/pnfs.c             |  167 +++++++++++++++++++++++++++++++++++++++++++++
+>  include/linux/nfs4_pnfs.h |   50 +++++++++++++
+>  include/linux/nfs_fs_sb.h |    1 +
+>  3 files changed, 218 insertions(+), 0 deletions(-)
 > 
-> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-> index e147dbc..e4a4a3e 100644
-> --- a/fs/nfsd/nfs4proc.c
-> +++ b/fs/nfsd/nfs4proc.c
-> @@ -1027,6 +1027,7 @@ nfsd4_proc_compound(struct svc_rqst *rqstp,
->  	resp->rqstp = rqstp;
->  	resp->cstate.minorversion = args->minorversion;
->  	resp->cstate.replay_owner = NULL;
-> +	resp->cstate.session = NULL;
->  	fh_init(&resp->cstate.current_fh, NFS4_FHSIZE);
->  	fh_init(&resp->cstate.save_fh, NFS4_FHSIZE);
->  	/* Use the deferral mechanism only for NFSv4.0 compounds */
-> @@ -1131,6 +1132,8 @@ encode_op:
->  	fh_put(&resp->cstate.save_fh);
->  	BUG_ON(resp->cstate.replay_owner);
->  out:
-> +	if (resp->cstate.session)
-> +		nfsd4_put_session(resp->cstate.session);
-
-Bruce, I see what you wanted to do but unfortunately putting the session
-here won't work since resp->cstate.slot is referred to later on in
-nfs4svc_encode_compoundres and it points into the slot table
-which is a member of the same session, therefore the current place
-in which it gets dereferenced should be maintained.
-
-Please see below for another suggestion
-
->  	nfsd4_release_compoundargs(args);
->  	/* Reset deferral mechanism for RPC deferrals */
->  	rqstp->rq_usedeferral = 1;
-> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> index bba9fff..737315c 100644
-> --- a/fs/nfsd/nfs4state.c
-> +++ b/fs/nfsd/nfs4state.c
-> @@ -1443,11 +1443,10 @@ nfsd4_sequence(struct svc_rqst *rqstp,
->  	cstate->slot = slot;
->  	cstate->session = session;
+> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+> index 91572aa..bf906cc 100644
+> --- a/fs/nfs/pnfs.c
+> +++ b/fs/nfs/pnfs.c
+> @@ -45,6 +45,7 @@
+>  #include <linux/nfs4.h>
+>  #include <linux/pnfs_xdr.h>
+>  #include <linux/nfs4_pnfs.h>
+> +#include <linux/rculist.h>
 >  
-> -	/* Hold a session reference until done processing the compound:
-> -	 * nfsd4_put_session called only if the cstate slot is set.
-> -	 */
-> -	nfsd4_get_session(session);
->  out:
-> +	/* Hold a session reference until done processing the compound. */
-> +	if (cstate->session)
-> +		nfsd4_get_session(cstate->session);
->  	spin_unlock(&sessionid_lock);
->  	/* Renew the clientid on success and on replay */
->  	if (cstate->session) {
-> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-> index fb27b1d..903c5a6 100644
-> --- a/fs/nfsd/nfs4xdr.c
-> +++ b/fs/nfsd/nfs4xdr.c
-> @@ -3310,7 +3310,6 @@ nfs4svc_encode_compoundres(struct svc_rqst *rqstp, __be32 *p, struct nfsd4_compo
->  		nfsd4_store_cache_entry(resp);
->  		dprintk("%s: SET SLOT STATE TO AVAILABLE\n", __func__);
->  		resp->cstate.slot->sl_inuse = false;
-> -		nfsd4_put_session(resp->cstate.session);
->  	}
->  	return 1;
->  }
+>  #include "internal.h"
+>  #include "nfs4_fs.h"
+> @@ -2296,3 +2297,169 @@ struct pnfs_client_operations pnfs_ops = {
+>  
+>  EXPORT_SYMBOL(pnfs_unregister_layoutdriver);
+>  EXPORT_SYMBOL(pnfs_register_layoutdriver);
+> +
+> +
+> +/* Device ID cache. Supports one layout type per struct nfs_client */
+> +int
+> +nfs4_alloc_init_deviceid_cache(struct nfs_client *clp,
+> +			 void (*free_callback)(struct kref *))
+> +{
+> +	struct nfs4_deviceid_cache *c;
+> +
+> +	c = kzalloc(sizeof(struct nfs4_deviceid_cache), GFP_KERNEL);
+> +	if (!c)
+> +		return -ENOMEM;
+> +	spin_lock(&clp->cl_lock);
+> +	if (clp->cl_devid_cache != NULL) {
+> +		kref_get(&clp->cl_devid_cache->dc_kref);
+> +		spin_unlock(&clp->cl_lock);
+> +		dprintk("%s [kref [%d]]\n", __func__,
+> +			atomic_read(&clp->cl_devid_cache->dc_kref.refcount));
+> +		kfree(c);
+> +	} else {
+> +		int i;
+> +
+> +		spin_lock_init(&c->dc_lock);
+> +		for (i = 0; i < NFS4_DEVICE_ID_HASH_SIZE ; i++)
+> +			INIT_HLIST_HEAD(&c->dc_deviceids[i]);
+> +		kref_init(&c->dc_kref);
+> +		c->dc_free_callback = free_callback;
+> +		clp->cl_devid_cache = c;
+> +		spin_unlock(&clp->cl_lock);
+> +		dprintk("%s [new]\n", __func__);
+> +	}
+> +	return 0;
+> +}
+> +EXPORT_SYMBOL(nfs4_alloc_init_deviceid_cache);
+> +
+> +void
+> +nfs4_init_deviceid_node(struct nfs4_deviceid *d)
+> +{
+> +	INIT_HLIST_NODE(&d->de_node);
+> +	kref_init(&d->de_kref);
+> +}
+> +EXPORT_SYMBOL(nfs4_init_deviceid_node);
+> +
+> +/* Called from layoutdriver_io_operations->alloc_lseg */
+> +void
+> +nfs4_set_layout_deviceid(struct pnfs_layout_segment *l, struct nfs4_deviceid *d)
+> +{
+> +	dprintk("%s [%d]\n", __func__, atomic_read(&d->de_kref.refcount));
+> +	l->deviceid = d;
+> +	kref_get(&d->de_kref);
+> +}
+> +EXPORT_SYMBOL(nfs4_set_layout_deviceid);
+> +
+> +/* Called from layoutdriver_io_operations->free_lseg */
+> +void
+> +nfs4_unset_layout_deviceid(struct pnfs_layout_segment *l,
+> +			   struct nfs4_deviceid *d,
+> +			   void (*free_callback)(struct kref *))
+> +{
+> +	dprintk("%s [%d]\n", __func__, atomic_read(&d->de_kref.refcount));
+> +	l->deviceid = NULL;
+> +	kref_put(&d->de_kref, free_callback);
+> +}
+> +EXPORT_SYMBOL(nfs4_unset_layout_deviceid);
+> +
+> +struct nfs4_deviceid *
+> +nfs4_find_deviceid(struct nfs4_deviceid_cache *c, struct pnfs_deviceid *id)
+> +{
+> +	struct nfs4_deviceid *d;
+> +	struct hlist_node *n;
+> +	long hash = nfs4_deviceid_hash(id);
+> +
+> +	dprintk("--> %s hash %ld\n", __func__, hash);
+> +	rcu_read_lock();
+> +	hlist_for_each_entry_rcu(d, n, &c->dc_deviceids[hash], de_node) {
+> +		if (!memcmp(&d->de_id, id, NFS4_PNFS_DEVICEID4_SIZE)) {
+> +			rcu_read_unlock();
+> +			return d;
+> +		}
+> +	}
+> +	rcu_read_unlock();
+> +	return NULL;
+> +}
+> +EXPORT_SYMBOL(nfs4_find_deviceid);
+> +
+> +/*
+> + * Add or kref_get a deviceid.
+> + * GETDEVICEINFOs for same deviceid can race. If deviceid is found, discard new
+> + */
+> +struct nfs4_deviceid *
+> +nfs4_add_deviceid(struct nfs4_deviceid_cache *c, struct nfs4_deviceid *new)
+> +{
+> +	struct nfs4_deviceid *d;
+> +	struct hlist_node *n;
+> +	long hash = nfs4_deviceid_hash(&new->de_id);
+> +
+> +	dprintk("--> %s hash %ld\n", __func__, hash);
+> +	spin_lock(&c->dc_lock);
+> +	hlist_for_each_entry_rcu(d, n, &c->dc_deviceids[hash], de_node) {
+> +		if (!memcmp(&d->de_id, &new->de_id, NFS4_PNFS_DEVICEID4_SIZE)) {
+> +			spin_unlock(&c->dc_lock);
+> +			dprintk("%s [discard]\n", __func__);
+> +			c->dc_free_callback(&new->de_kref);
+> +			return d;
+> +		}
+> +	}
+> +	hlist_add_head_rcu(&new->de_node, &c->dc_deviceids[hash]);
+> +	spin_unlock(&c->dc_lock);
+> +	dprintk("%s [new]\n", __func__);
+> +	return new;
+> +}
+> +EXPORT_SYMBOL(nfs4_add_deviceid);
+> +
+> +static int
+> +nfs4_remove_deviceid(struct nfs4_deviceid_cache *c, long hash)
+> +{
+> +	struct nfs4_deviceid *d;
+> +	struct hlist_node *n;
+> +
+> +	dprintk("--> %s hash %ld\n", __func__, hash);
+> +	spin_lock(&c->dc_lock);
+> +	hlist_for_each_entry_rcu(d, n, &c->dc_deviceids[hash], de_node) {
+> +		hlist_del_rcu(&d->de_node);
+> +		spin_unlock(&c->dc_lock);
+> +		synchronize_rcu();
+> +		dprintk("%s [%d]\n", __func__,
+> +			atomic_read(&d->de_kref.refcount));
+> +		kref_put(&d->de_kref, c->dc_free_callback);
+> +		return 1;
+> +	}
+> +	spin_unlock(&c->dc_lock);
+> +	return 0;
+> +}
+> +
+> +static void
+> +nfs4_free_deviceid_cache(struct kref *kref)
+> +{
+> +	struct nfs4_deviceid_cache *cache =
+> +		container_of(kref, struct nfs4_deviceid_cache, dc_kref);
+> +	int more;
+> +	long i;
+> +
+> +	for (i = 0; i < NFS4_DEVICE_ID_HASH_SIZE; i++) {
+> +		more = 1;
+> +		while (more)
+> +			more = nfs4_remove_deviceid(cache, i);
 
+Andy, this can be simplified to
 
-How about this instead:
+		while (nfs4_remove_deviceid(cache, i))
+			;
 
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 34ccf81..b04583c 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -3307,10 +3307,12 @@ nfs4svc_encode_compoundres(struct svc_rqst *rqstp, __be32 *p, struct nfsd4_compo
- 		iov = &rqstp->rq_res.head[0];
- 	iov->iov_len = ((char*)resp->p) - (char*)iov->iov_base;
- 	BUG_ON(iov->iov_len > PAGE_SIZE);
--	if (nfsd4_has_session(cs) && cs->status != nfserr_replay_cache) {
--		nfsd4_store_cache_entry(resp);
--		dprintk("%s: SET SLOT STATE TO AVAILABLE\n", __func__);
--		resp->cstate.slot->sl_inuse = false;
-+	if (nfsd4_has_session(cs)) {
-+		if (cs->status != nfserr_replay_cache) {
-+			nfsd4_store_cache_entry(resp);
-+			dprintk("%s: SET SLOT STATE TO AVAILABLE\n", __func__);
-+			resp->cstate.slot->sl_inuse = false;
-+		}
- 		nfsd4_put_session(resp->cstate.session);
- 	}
- 	return 1;
+If ok with you, I'll make this change upon merging.
+
+Benny
+
+> +	}
+> +	kfree(cache);
+> +}
+> +
+> +void
+> +nfs4_put_deviceid_cache(struct nfs_client *clp)
+> +{
+> +	struct nfs4_deviceid_cache *tmp = clp->cl_devid_cache;
+> +	int refcount;
+> +
+> +	dprintk("--> %s cl_devid_cache %p\n", __func__, clp->cl_devid_cache);
+> +	spin_lock(&clp->cl_lock);
+> +	refcount = atomic_read(&clp->cl_devid_cache->dc_kref.refcount);
+> +	if (refcount == 1)
+> +		clp->cl_devid_cache = NULL;
+> +	spin_unlock(&clp->cl_lock);
+> +	dprintk("%s [%d]\n", __func__, refcount);
+> +	kref_put(&tmp->dc_kref, nfs4_free_deviceid_cache);
+> +}
+> +EXPORT_SYMBOL(nfs4_put_deviceid_cache);
+> diff --git a/include/linux/nfs4_pnfs.h b/include/linux/nfs4_pnfs.h
+> index 3caac60..3b7aeb7 100644
+> --- a/include/linux/nfs4_pnfs.h
+> +++ b/include/linux/nfs4_pnfs.h
+> @@ -106,6 +106,7 @@ struct pnfs_layout_segment {
+>  	struct kref kref;
+>  	bool valid;
+>  	struct pnfs_layout_type *layout;
+> +	struct nfs4_deviceid *deviceid;
+>  	u8 ld_data[];			/* layout driver private data */
+>  };
+>  
+> @@ -275,6 +276,55 @@ struct pnfs_devicelist {
+>  	struct pnfs_deviceid	dev_id[NFS4_PNFS_GETDEVLIST_MAXNUM];
+>  };
+>  
+> +/*
+> + * Device ID RCU cache. A device ID is unique per client ID and layout type.
+> + */
+> +#define NFS4_DEVICE_ID_HASH_BITS	5
+> +#define NFS4_DEVICE_ID_HASH_SIZE	(1 << NFS4_DEVICE_ID_HASH_BITS)
+> +#define NFS4_DEVICE_ID_HASH_MASK	(NFS4_DEVICE_ID_HASH_SIZE - 1)
+> +
+> +static inline u32
+> +nfs4_deviceid_hash(struct pnfs_deviceid *id)
+> +{
+> +	unsigned char *cptr = (unsigned char *)id->data;
+> +	unsigned int nbytes = NFS4_PNFS_DEVICEID4_SIZE;
+> +	u32 x = 0;
+> +
+> +	while (nbytes--) {
+> +		x *= 37;
+> +		x += *cptr++;
+> +	}
+> +	return x & NFS4_DEVICE_ID_HASH_MASK;
+> +}
+> +
+> +struct nfs4_deviceid_cache {
+> +	spinlock_t		dc_lock;
+> +	struct kref		dc_kref;
+> +	void			(*dc_free_callback)(struct kref *);
+> +	struct hlist_head	dc_deviceids[NFS4_DEVICE_ID_HASH_SIZE];
+> +};
+> +
+> +/* Device ID cache node */
+> +struct nfs4_deviceid {
+> +	struct hlist_node	de_node;
+> +	struct pnfs_deviceid	de_id;
+> +	struct kref		de_kref;
+> +};
+> +
+> +extern int nfs4_alloc_init_deviceid_cache(struct nfs_client *,
+> +				void (*free_callback)(struct kref *));
+> +extern void nfs4_put_deviceid_cache(struct nfs_client *);
+> +extern void nfs4_init_deviceid_node(struct nfs4_deviceid *);
+> +extern struct nfs4_deviceid *nfs4_find_deviceid(struct nfs4_deviceid_cache *,
+> +				struct pnfs_deviceid *);
+> +extern struct nfs4_deviceid *nfs4_add_deviceid(struct nfs4_deviceid_cache *,
+> +				struct nfs4_deviceid *);
+> +extern void nfs4_set_layout_deviceid(struct pnfs_layout_segment *,
+> +				struct nfs4_deviceid *);
+> +extern void nfs4_unset_layout_deviceid(struct pnfs_layout_segment *,
+> +				struct nfs4_deviceid *,
+> +				void (*free_callback)(struct kref *));
+> +
+>  /* pNFS client callback functions.
+>   * These operations allow the layout driver to access pNFS client
+>   * specific information or call pNFS client->server operations.
+> diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
+> index 8522461..ef2e18e 100644
+> --- a/include/linux/nfs_fs_sb.h
+> +++ b/include/linux/nfs_fs_sb.h
+> @@ -87,6 +87,7 @@ struct nfs_client {
+>  	u32			cl_exchange_flags;
+>  	struct nfs4_session	*cl_session; 	/* sharred session */
+>  	struct list_head	cl_lo_inodes;	/* Inodes having layouts */
+> +	struct nfs4_deviceid_cache *cl_devid_cache; /* pNFS deviceid cache */
+>  #endif /* CONFIG_NFS_V4_1 */
+>  
+>  #ifdef CONFIG_NFS_FSCACHE
+
