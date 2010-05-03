@@ -1,107 +1,124 @@
-From: Andy Adamson <andros@netapp.com>
-Subject: Re: NFS client stall
-Date: Wed, 12 May 2010 16:36:20 -0400
-Message-ID: <9792431B-305B-4267-A5EC-59EE926D5950@netapp.com>
-References: <DF18387A-0E5C-493B-B4F9-774D2068E4CD@netapp.com> <1273682595.2810.86.camel@localhost.localdomain>
-Mime-Version: 1.0 (Apple Message framework v936)
-Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
-Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
+From: Benny Halevy <bhalevy@panasas.com>
+Subject: Re: [PATCH] nfsd4: fix unlikely race in session replay case
+Date: Mon, 03 May 2010 14:20:12 +0300
+Message-ID: <4BDEB16C.2070003@panasas.com>
+References: <20100428213151.GB23474@fieldses.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: linux-nfs@vger.kernel.org
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:39701 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755211Ab0ELUgi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 12 May 2010 16:36:38 -0400
-In-Reply-To: <1273682595.2810.86.camel-bi+AKbBUZKY6gyzm1THtWbp2dZbC/Bob@public.gmane.org>
+Received: from mail-bw0-f219.google.com ([209.85.218.219]:33011 "EHLO
+	mail-bw0-f219.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757824Ab0ECLUU (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 3 May 2010 07:20:20 -0400
+Received: by bwz19 with SMTP id 19so1221456bwz.21
+        for <linux-nfs@vger.kernel.org>; Mon, 03 May 2010 04:20:18 -0700 (PDT)
+In-Reply-To: <20100428213151.GB23474@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Apr. 29, 2010, 0:31 +0300, "J. Bruce Fields" <bfields@fieldses.org> wrote:
+> From: J. Bruce Fields <bfields@citi.umich.edu>
+> 
+> In the replay case, the
+> 
+> 	renew_client(session->se_client);
+> 
+> happens after we've droppped the sessionid_lock, and without holding a
+> reference on the session; so there's nothing preventing the session
+> being freed before we get here.
+> 
+> Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
+> ---
+>  fs/nfsd/nfs4proc.c  |    3 +++
+>  fs/nfsd/nfs4state.c |    7 +++----
+>  fs/nfsd/nfs4xdr.c   |    1 -
+>  3 files changed, 6 insertions(+), 5 deletions(-)
+> 
+> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+> index e147dbc..e4a4a3e 100644
+> --- a/fs/nfsd/nfs4proc.c
+> +++ b/fs/nfsd/nfs4proc.c
+> @@ -1027,6 +1027,7 @@ nfsd4_proc_compound(struct svc_rqst *rqstp,
+>  	resp->rqstp = rqstp;
+>  	resp->cstate.minorversion = args->minorversion;
+>  	resp->cstate.replay_owner = NULL;
+> +	resp->cstate.session = NULL;
+>  	fh_init(&resp->cstate.current_fh, NFS4_FHSIZE);
+>  	fh_init(&resp->cstate.save_fh, NFS4_FHSIZE);
+>  	/* Use the deferral mechanism only for NFSv4.0 compounds */
+> @@ -1131,6 +1132,8 @@ encode_op:
+>  	fh_put(&resp->cstate.save_fh);
+>  	BUG_ON(resp->cstate.replay_owner);
+>  out:
+> +	if (resp->cstate.session)
+> +		nfsd4_put_session(resp->cstate.session);
 
-On May 12, 2010, at 12:43 PM, Trond Myklebust wrote:
+Bruce, I see what you wanted to do but unfortunately putting the session
+here won't work since resp->cstate.slot is referred to later on in
+nfs4svc_encode_compoundres and it points into the slot table
+which is a member of the same session, therefore the current place
+in which it gets dereferenced should be maintained.
 
-> On Wed, 2010-05-12 at 11:17 -0400, Andy Adamson wrote:
->> I've seen the following intermittently while running the  
->> Connecatathon
->> special 'write/read 30MB file' test.  It's always been with the pNFS
->> client, either running with the pNFS file module installed, or  
->> running
->> without it installed (NFSv4.1 only). But given the intermittent
->> behavior, that could just be because I run a lot more tests on the
->> pNFS kernel.
->>
->> I've seen this with 2.6.34-rc3 and up.
->>
->> Any ideas?
->>
->> -->Andy
->>
->> May 11 19:35:41 fedora-64 kernel: INFO: task bigfile:2174 blocked for
->> more than
->> 120 seconds.
->> May 11 19:35:41 fedora-64 kernel: "echo 0 > /proc/sys/kernel/
->> hung_task_timeout_s
->> ecs" disables this message.
->> May 11 19:35:41 fedora-64 kernel: bigfile       D ffff88005b10d380
->> 0  2174
->>  2137 0x00000084
->> May 11 19:35:41 fedora-64 kernel: ffff88005ac83c28 0000000000000082
->> 000000000000
->> 0000 0010000000000000
->> May 11 19:35:41 fedora-64 kernel: ffff88005ac83fd8 ffff8800520d0000
->> 000000000001
->> 3780 ffff88005ac83fd8
->> May 11 19:35:41 fedora-64 kernel: 0000000000013780 0000000000013780
->> 000000000001
->> 3780 0000000000013780
->> May 11 19:35:41 fedora-64 kernel: Call Trace:
->> May 11 19:35:41 fedora-64 kernel: [<ffffffff810aae7a>] ? sync_page
->> +0x0/0x4a
->> May 11 19:35:41 fedora-64 kernel: [<ffffffff813b1b26>] io_schedule
->> +0x3d/0x52
->> May 11 19:35:41 fedora-64 kernel: [<ffffffff810aaec0>] sync_page
->> +0x46/0x4a
->> May 11 19:35:41 fedora-64 kernel: [<ffffffff813b1f61>]
->> __wait_on_bit_lock+0x46/0
->> x8f
->> May 11 19:35:41 fedora-64 kernel: [<ffffffff8103cee6>] ?
->> release_console_sem+0x1
->> bd/0x1ee
->> May 11 19:35:41 fedora-64 kernel: [<ffffffff810aae20>] __lock_page
->> +0x66/0x6d
->> May 11 19:35:41 fedora-64 kernel: [<ffffffff81055ad5>] ?
->> wake_bit_function+0x0/0
->> x33
->> May 11 19:35:41 fedora-64 kernel: [<ffffffff810aae63>] lock_page 
->> +0x3c/
->> 0x41
->> May 11 19:35:41 fedora-64 kernel: [<ffffffff810ab533>] filemap_fault
->> +0xc3/0x30b
->> May 11 19:35:41 fedora-64 kernel: [<ffffffff810c3202>] __do_fault
->> +0x54/0x416
->> May 11 19:35:41 fedora-64 kernel: [<ffffffff810c39fa>]  
->> handle_mm_fault
->> +0x436/0x82b
->> May 11 19:35:41 fedora-64 kernel: [<ffffffff810c7f49>] ?  
->> do_mmap_pgoff
->> +0x290/0x2f3
->> May 11 19:35:41 fedora-64 kernel: [<ffffffff813b64e8>] do_page_fault
->> +0x25e/0x273
->> May 11 19:35:41 fedora-64 kernel: [<ffffffff813b3bb5>] page_fault
->> +0x25/0x30
->>
->>
->
-> The above is just an ordinary page fault. Something else is apparently
-> holding a lock on the page and so you are waiting for it to be  
-> released.
->
-> Is there a page lock leak somewhere in the pNFS client perhaps?
+Please see below for another suggestion
 
-I'll look. Thanks
+>  	nfsd4_release_compoundargs(args);
+>  	/* Reset deferral mechanism for RPC deferrals */
+>  	rqstp->rq_usedeferral = 1;
+> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> index bba9fff..737315c 100644
+> --- a/fs/nfsd/nfs4state.c
+> +++ b/fs/nfsd/nfs4state.c
+> @@ -1443,11 +1443,10 @@ nfsd4_sequence(struct svc_rqst *rqstp,
+>  	cstate->slot = slot;
+>  	cstate->session = session;
+>  
+> -	/* Hold a session reference until done processing the compound:
+> -	 * nfsd4_put_session called only if the cstate slot is set.
+> -	 */
+> -	nfsd4_get_session(session);
+>  out:
+> +	/* Hold a session reference until done processing the compound. */
+> +	if (cstate->session)
+> +		nfsd4_get_session(cstate->session);
+>  	spin_unlock(&sessionid_lock);
+>  	/* Renew the clientid on success and on replay */
+>  	if (cstate->session) {
+> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+> index fb27b1d..903c5a6 100644
+> --- a/fs/nfsd/nfs4xdr.c
+> +++ b/fs/nfsd/nfs4xdr.c
+> @@ -3310,7 +3310,6 @@ nfs4svc_encode_compoundres(struct svc_rqst *rqstp, __be32 *p, struct nfsd4_compo
+>  		nfsd4_store_cache_entry(resp);
+>  		dprintk("%s: SET SLOT STATE TO AVAILABLE\n", __func__);
+>  		resp->cstate.slot->sl_inuse = false;
+> -		nfsd4_put_session(resp->cstate.session);
+>  	}
+>  	return 1;
+>  }
 
--->Andy
 
->
-> Cheers
->  Trond
+How about this instead:
 
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index 34ccf81..b04583c 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -3307,10 +3307,12 @@ nfs4svc_encode_compoundres(struct svc_rqst *rqstp, __be32 *p, struct nfsd4_compo
+ 		iov = &rqstp->rq_res.head[0];
+ 	iov->iov_len = ((char*)resp->p) - (char*)iov->iov_base;
+ 	BUG_ON(iov->iov_len > PAGE_SIZE);
+-	if (nfsd4_has_session(cs) && cs->status != nfserr_replay_cache) {
+-		nfsd4_store_cache_entry(resp);
+-		dprintk("%s: SET SLOT STATE TO AVAILABLE\n", __func__);
+-		resp->cstate.slot->sl_inuse = false;
++	if (nfsd4_has_session(cs)) {
++		if (cs->status != nfserr_replay_cache) {
++			nfsd4_store_cache_entry(resp);
++			dprintk("%s: SET SLOT STATE TO AVAILABLE\n", __func__);
++			resp->cstate.slot->sl_inuse = false;
++		}
+ 		nfsd4_put_session(resp->cstate.session);
+ 	}
+ 	return 1;
