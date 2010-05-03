@@ -1,173 +1,156 @@
-From: Benny Halevy <bhalevy@panasas.com>
-Subject: [RFC 3/3] nfsd4: do not expire nfs41 clients while in use
-Date: Mon,  3 May 2010 19:31:53 +0300
-Message-ID: <1272904313-27145-1-git-send-email-bhalevy@panasas.com>
-References: <4BDEF641.4020507@panasas.com>
-Cc: linux-nfs@vger.kernel.org, Benny Halevy <bhalevy@panasas.com>
-To: " J. Bruce Fields" <bfields@citi.umich.edu>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 1/3] libexport.a: Refactor client_init()
+Date: Mon, 03 May 2010 15:24:03 -0400
+Message-ID: <20100503192403.29316.59111.stgit@localhost.localdomain>
+References: <20100503192041.29316.35846.stgit@localhost.localdomain>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
+Cc: linux-nfs@vger.kernel.org
+To: steved@redhat.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:4493 "EHLO
-	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S932917Ab0ECQbz (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 3 May 2010 12:31:55 -0400
-In-Reply-To: <4BDEF641.4020507@panasas.com>
+Received: from mail-iw0-f202.google.com ([209.85.223.202]:59001 "EHLO
+	mail-iw0-f202.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756192Ab0ECTYH (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 3 May 2010 15:24:07 -0400
+Received: by iwn40 with SMTP id 40so3674098iwn.1
+        for <linux-nfs@vger.kernel.org>; Mon, 03 May 2010 12:24:07 -0700 (PDT)
+In-Reply-To: <20100503192041.29316.35846.stgit-bi+AKbBUZKY6gyzm1THtWbp2dZbC/Bob@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Add a cl_use_count atomic counter to struct nfs4_client.
-Hold a use count while the client is in use by a compound that begins
-with SEQUENCE.
-Renew the client when the comound completes.
-The laundromat skips clients that have a positive use count.
-Otherwise, the laundromat marks the client as expired by setting
-cl_use_count to -1.
+Clean up:  Move subnet hostname parsing logic out of client_init() to
+make it simpler to introduce IPv6 support.
 
-Note that we don't want to use the state lock to synchronize with nfsd4_sequence
-as we want to diminish the state lock scope.
-An alternative to using atomic_cmpxchg is to grab the sessionid_lock spin lock
-while accessing cl_use_count, but that would cause some contention in the
-laundromat if it needs to lock and unlock it for every client.
+Make client_init() a helper, since it's already static.
 
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- fs/nfsd/nfs4state.c |   40 ++++++++++++++++++++++++++++++++++------
- fs/nfsd/nfs4xdr.c   |    2 ++
- fs/nfsd/state.h     |    9 +++++++++
- 3 files changed, 45 insertions(+), 6 deletions(-)
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 50b75af..c95ddca 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -647,6 +647,14 @@ renew_client(struct nfs4_client *clp)
- 	clp->cl_time = get_seconds();
+ support/export/client.c |   99 +++++++++++++++++++++++++++--------------------
+ 1 files changed, 56 insertions(+), 43 deletions(-)
+
+diff --git a/support/export/client.c b/support/export/client.c
+index eafc2bf..9259180 100644
+--- a/support/export/client.c
++++ b/support/export/client.c
+@@ -30,8 +30,6 @@ extern int	innetgr(char *netgr, char *host, char *, char *);
+ #endif
+ 
+ static char	*add_name(char *old, const char *add);
+-static int	client_init(nfs_client *clp, const char *hname,
+-					struct hostent *hp);
+ 
+ nfs_client	*clientlist[MCL_MAXTYPES] = { NULL, };
+ 
+@@ -59,6 +57,62 @@ client_free(nfs_client *clp)
+ 	free(clp);
  }
  
-+void
-+renew_nfs4_client(struct nfs4_client *clp)
++static int
++init_netmask(nfs_client *clp, const char *slash)
 +{
-+	nfs4_lock_state();
-+	renew_client(clp);
-+	nfs4_unlock_state();
-+}
++	if (strchr(slash + 1, '.') != NULL)
++		clp->m_addrlist[1].s_addr = inet_addr(slash + 1);
++	else {
++		int prefixlen = atoi(slash + 1);
++		if (0 < prefixlen && prefixlen <= 32)
++			clp->m_addrlist[1].s_addr =
++					htonl((uint32_t)~0 << (32 - prefixlen));
++		else
++			goto out_badprefix;
++	}
 +
- /* SETCLIENTID and SETCLIENTID_CONFIRM Helper functions */
- static int
- STALE_CLIENTID(clientid_t *clid)
-@@ -715,6 +723,24 @@ put_nfs4_client(struct nfs4_client *clp)
- 		free_client(clp);
- }
- 
-+/*
-+ * atomically mark client as used, as long as it's not already expired.
-+ * return 0 on success, or a negative value if client already expired.
-+ */
-+int
-+use_nfs4_client(struct nfs4_client *clp)
-+{
-+	int orig;
++	return 1;
 +
-+	do {
-+		orig = atomic_read(&clp->cl_use_count);
-+		if (orig < 0)
-+			return orig;
-+	} while (atomic_cmpxchg(&clp->cl_use_count, orig, orig + 1) != orig);
-+
++out_badprefix:
++	xlog(L_ERROR, "Invalid prefix `%s' for %s", slash + 1, clp->m_hostname);
 +	return 0;
 +}
 +
- static void
- expire_client(struct nfs4_client *clp)
- {
-@@ -840,6 +866,7 @@ static struct nfs4_client *create_client(struct xdr_netobj name, char *recdir,
- 
- 	memcpy(clp->cl_recdir, recdir, HEXDIR_LEN);
- 	atomic_set(&clp->cl_count, 1);
-+	atomic_set(&clp->cl_use_count, 0);
- 	atomic_set(&clp->cl_cb_conn.cb_set, 0);
- 	INIT_LIST_HEAD(&clp->cl_idhash);
- 	INIT_LIST_HEAD(&clp->cl_strhash);
-@@ -1423,6 +1450,10 @@ nfsd4_sequence(struct svc_rqst *rqstp,
- 	if (!session)
- 		goto out;
- 
-+	/* keep the client from expiring */
-+	if (use_nfs4_client(cstate->session->se_client) < 0)
-+		goto out;
-+
- 	status = nfserr_badslot;
- 	if (seq->slotid >= session->se_fchannel.maxreqs)
- 		goto out;
-@@ -1463,12 +1494,6 @@ out:
- 		get_nfs4_client(cstate->session->se_client);
- 	}
- 	spin_unlock(&sessionid_lock);
--	/* Renew the clientid on success and on replay */
--	if (cstate->session) {
--		nfs4_lock_state();
--		renew_client(session->se_client);
--		nfs4_unlock_state();
--	}
- 	dprintk("%s: return %d\n", __func__, ntohl(status));
- 	return status;
- }
-@@ -2575,6 +2600,9 @@ nfs4_laundromat(void)
- 		nfsd4_end_grace();
- 	list_for_each_safe(pos, next, &client_lru) {
- 		clp = list_entry(pos, struct nfs4_client, cl_lru);
-+		/* skip client if in use (cl_use_count is greater than zero) */
-+		if (atomic_cmpxchg(&clp->cl_use_count, 0, -1) > 0)
-+			continue;
- 		if (time_after((unsigned long)clp->cl_time, (unsigned long)cutoff)) {
- 			t = clp->cl_time - cutoff;
- 			if (clientid_val > t)
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index aed733c..0f0b857 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -3313,6 +3313,8 @@ nfs4svc_encode_compoundres(struct svc_rqst *rqstp, __be32 *p, struct nfsd4_compo
- 			dprintk("%s: SET SLOT STATE TO AVAILABLE\n", __func__);
- 			cs->slot->sl_inuse = false;
- 		}
-+		renew_nfs4_client(cs->session->se_client);
-+		unuse_nfs4_client(cs->session->se_client);
- 		put_nfs4_client(cs->session->se_client);
- 		nfsd4_put_session(cs->session);
- 	}
-diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index e3c002e..806d9b8 100644
---- a/fs/nfsd/state.h
-+++ b/fs/nfsd/state.h
-@@ -214,6 +214,7 @@ struct nfs4_client {
- 	nfs4_verifier		cl_confirm;	/* generated by server */
- 	struct nfs4_cb_conn	cl_cb_conn;     /* callback info */
- 	atomic_t		cl_count;	/* ref count */
-+	atomic_t		cl_use_count;	/* session use count */
- 	u32			cl_firststate;	/* recovery dir creation */
- 
- 	/* for nfs41 */
-@@ -237,6 +238,12 @@ get_nfs4_client(struct nfs4_client *clp)
- 	atomic_inc(&clp->cl_count);
- }
- 
-+static inline void
-+unuse_nfs4_client(struct nfs4_client *clp)
++static int
++init_subnetwork(nfs_client *clp)
 +{
-+	atomic_dec(&clp->cl_use_count);
++	static char slash32[] = "/32";
++	char *cp;
++
++	cp = strchr(clp->m_hostname, '/');
++	if (cp == NULL)
++		cp = slash32;
++
++	*cp = '\0';
++	clp->m_addrlist[0].s_addr = inet_addr(clp->m_hostname);
++	*cp = '/';
++
++	return init_netmask(clp, cp);
 +}
 +
- /* struct nfs4_client_reset
-  * one per old client. Populates reset_str_hashtbl. Filled from conf_id_hashtbl
-  * upon lease reset, or from upcall to state_daemon (to read in state
-@@ -384,6 +391,8 @@ extern void nfs4_unlock_state(void);
- extern int nfs4_in_grace(void);
- extern __be32 nfs4_check_open_reclaim(clientid_t *clid);
- extern void put_nfs4_client(struct nfs4_client *clp);
-+extern int use_nfs4_client(struct nfs4_client *clp);
-+extern void renew_nfs4_client(struct nfs4_client *clp);
- extern void nfs4_free_stateowner(struct kref *kref);
- extern int set_callback_cred(void);
- extern void nfsd4_probe_callback(struct nfs4_client *clp);
--- 
-1.6.3.3
++static int
++client_init(nfs_client *clp, const char *hname, const struct hostent *hp)
++{
++	clp->m_hostname = strdup(hname);
++	if (clp->m_hostname == NULL)
++		return 0;
++
++	clp->m_exported = 0;
++	clp->m_count = 0;
++	clp->m_naddr = 0;
++
++	if (clp->m_type == MCL_SUBNETWORK)
++		return init_subnetwork(clp);
++
++	init_addrlist(clp, hp);
++	return 1;
++}
++
+ /* if canonical is set, then we *know* this is already a canonical name
+  * so hostname lookup is avoided.
+  * This is used when reading /proc/fs/nfs/exports
+@@ -154,47 +208,6 @@ client_dup(nfs_client *clp, struct hostent *hp)
+ 	return new;
+ }
+ 
+-static int
+-client_init(nfs_client *clp, const char *hname, struct hostent *hp)
+-{
+-	clp->m_hostname = strdup(hname);
+-	if (clp->m_hostname == NULL)
+-		return 0;
+-
+-	clp->m_exported = 0;
+-	clp->m_count = 0;
+-	clp->m_naddr = 0;
+-
+-	if (clp->m_type == MCL_SUBNETWORK) {
+-		char	*cp = strchr(clp->m_hostname, '/');
+-		static char slash32[] = "/32";
+-
+-		if(!cp) cp = slash32;
+-		*cp = '\0';
+-		clp->m_addrlist[0].s_addr = inet_addr(clp->m_hostname);
+-		if (strchr(cp + 1, '.')) {
+-			clp->m_addrlist[1].s_addr = inet_addr(cp+1);
+-		}
+-		else {
+-			int netmask = atoi(cp + 1);
+-			if (0 < netmask && netmask <= 32) {
+-				clp->m_addrlist[1].s_addr =
+-					htonl ((uint32_t) ~0 << (32 - netmask));
+-			}
+-			else {
+-				xlog(L_ERROR, "invalid netmask `%s' for %s",
+-					     cp + 1, clp->m_hostname);
+-				return 0;
+-			}
+-		}
+-		*cp = '/';
+-		return 1;
+-	}
+-	
+-	init_addrlist(clp, hp);
+-	return 1;
+-}
+-
+ void
+ client_add(nfs_client *clp)
+ {
 
