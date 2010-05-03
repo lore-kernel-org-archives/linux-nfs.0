@@ -1,61 +1,31 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from esgaroth.petrovitsch.at ([78.47.184.11]:3654 "EHLO
-	esgaroth.petrovitsch.priv.at" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1754094Ab0E0OLD (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 27 May 2010 10:11:03 -0400
-Subject: Re: Debugging fcntl() file locks
-From: Bernd Petrovitsch <bernd@petrovitsch.priv.at>
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-Cc: linux-nfs@vger.kernel.org
-In-Reply-To: <1274963686.2895.7.camel@heimdal.trondhjem.org>
-References: <1274955060.14002.40.camel@thorin>
-	 <1274963686.2895.7.camel@heimdal.trondhjem.org>
-Content-Type: text/plain; charset="UTF-8"
-Date: Thu, 27 May 2010 15:46:37 +0200
-Message-ID: <1274967997.14002.42.camel@thorin>
+Received: from cmsout01.mbox.net ([165.212.64.31]:41990 "EHLO
+	cmsout01.mbox.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1759026Ab0ECO6B convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 3 May 2010 10:58:01 -0400
+Received: from cmsout01.mbox.net (cmsout01-lo [127.0.0.1])
+	by cmsout01.mbox.net (Postfix) with ESMTP id 7EEFF2AC566
+	for <linux-nfs@vger.kernel.org>; Mon,  3 May 2010 14:45:54 +0000 (GMT)
+Date: Mon, 03 May 2010 09:45:53 -0500
+From: "Jack Byer" <ojbyer@usa.net>
+Reply-To: ftn768@gmail.com
+To: <linux-nfs@vger.kernel.org>
+Subject: IPv6 and NFS4
+Message-ID: <544oecoS23680S01.1272897953@web01.cms.usa.net>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Hi!
+If I have an NFS4 server successfully sharing a directory with a client and
+both machines have valid IPv4 and IPv6 addresses should it be possible to
+mount the directory using either IPv4 or IPv6?
 
-On Don, 2010-05-27 at 08:34 -0400, Trond Myklebust wrote:
-> On Thu, 2010-05-27 at 12:11 +0200, Bernd Petrovitsch wrote:
-[...]
-> > How can I debug fcntl() file locks on a NFSv3-client?
-> > The server side is a NetApp-Box (no details at hand but I can ask).
-> > The client side are stock-RHEL5.3/CentOS-5.3 kernels - 2.6.18-92.el5.
-> > 
-> > The file system in question is mounted on 2 clients. flock() on a file
-> > succeeds but fcntl() fails with EAGAIN. From what I found in the
-> > Internet and manual pages, this means that someone else already locked
-> > that file (- the file is successfully open()ed read/write so it can't be
-> > "your are not allowed to write-lock the file").
-> > But how do I find out on which host and which process?
-> > 
-> > strace shows:
-> > ----  snip  ----
-> > open("/... secret ...", O_RDWR) = 3
-> > ioctl(3, SNDCTL_TMR_TIMEBASE or TCGETS, 0x7fff7925b400) = -1 ENOTTY (Inappropriate ioctl for device)
-> > lseek(3, 0, SEEK_CUR)                   = 0
-> > fstat(3, {st_mode=S_IFREG|0600, st_size=935, ...}) = 0
-> > fcntl(3, F_SETFD, FD_CLOEXEC)           = 0
-> > flock(3, LOCK_EX|LOCK_NB)               = 0
-> > fcntl(3, F_SETLK, {type=F_WRLCK, whence=SEEK_SET, start=0, len=0}) = -1 EAGAIN (Resource temporarily unavailable)
-> > ----  snip  ---- 
-> > [ This is a perl script using CPAN modules at the top. ]
-[...]
-> The Linux NFS client does not allow you to lock a file using both
-> flock() and POSIX locks. You should choose one or the other locking
-> scheme. If you remove the flock() line above, then the POSIX lock will
-> likely succeed.
+Both machines are running 2.6.34-rc6 kernels, nfs-utils-1.2.2,
+libtirpc-0.2.0 and rpcbind-0.2.0. Mounting over IPv4 works perfectly, but
+IPv6 just times out while trying to mount the share. Using tcpdump I see
+that the two machines exchange 40 packets before the client finally gives
+up. There are no messages generated in the system log or dmesg of either
+machine.
 
-Thanks.
-Does flock() work on NFS these days on NFS?
-Historically that was not the case IIRC.
-
-	Bernd
--- 
-Bernd Petrovitsch                  Email : bernd@petrovitsch.priv.at
-                     LUGA : http://www.luga.at
 
