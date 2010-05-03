@@ -1,54 +1,42 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:23133 "EHLO
-	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1756320Ab0EZInL (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 26 May 2010 04:43:11 -0400
-Message-ID: <4BFCDF1B.60608@panasas.com>
-Date: Wed, 26 May 2010 11:43:07 +0300
-From: Boaz Harrosh <bharrosh@panasas.com>
-To: Dean Hildebrand <seattleplus@gmail.com>
-CC: Fred Isaman <iisaman@netapp.com>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 00/22] LAYOUTGET invocation
-References: <1273972993-15369-1-git-send-email-iisaman@netapp.com> <4BFC1686.4000509@gmail.com> <51AD8F7D-D172-4DE6-8F7A-CDFA292CBF8B@netapp.com> <4BFC2FA2.2050506@gmail.com>
-In-Reply-To: <4BFC2FA2.2050506@gmail.com>
-Content-Type: text/plain; charset=UTF-8
+Received: from rcsinet10.oracle.com ([148.87.113.121]:21132 "EHLO
+	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932711Ab0ECPOC (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 3 May 2010 11:14:02 -0400
+Message-ID: <4BDEE809.8060501@oracle.com>
+Date: Mon, 03 May 2010 11:13:13 -0400
+From: Chuck Lever <chuck.lever@oracle.com>
+To: ftn768@gmail.com
+CC: Jack Byer <ojbyer@usa.net>, linux-nfs@vger.kernel.org
+Subject: Re: IPv6 and NFS4
+References: <544oecoS23680S01.1272897953@web01.cms.usa.net>
+In-Reply-To: <544oecoS23680S01.1272897953@web01.cms.usa.net>
+Content-Type: text/plain; charset=US-ASCII; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 05/25/2010 11:14 PM, Dean Hildebrand wrote:
-> 
-> 
->>
->> I can send some post_submit patches with the code ifdef'ed out if people would be content with that.
->>   
-> 
-> Thanks for the background.  I would be much happier if you sent patches 
-> with the code ifdef'd out, added with the comment in the code regarding 
-> which patches you believe introduced the problem.
-> 
-> Dean
->> Fred
+On 05/03/2010 10:45 AM, Jack Byer wrote:
+> If I have an NFS4 server successfully sharing a directory with a client and
+> both machines have valid IPv4 and IPv6 addresses should it be possible to
+> mount the directory using either IPv4 or IPv6?
 
-I disagree. Source code is not a version management system. We have git
-for that. The code is never lost it is there for eternity in the git
-tree. We could ask Benny to tag the last branch that had broken directIO
-as LAST_directIO_VERSION for easy random access at future time.
+Yes, that should work if nfs-utils-1.2.2 is built with --enable-tirpc 
+and --enable-ipv6.
 
-If in the future someone smart wants to forward port the code and fix it
-then the *right* way to do it is by manual octopus merge at the point of
-branch.
-Never, Never uncomment out code that was sitting collecting dust.
-Manual octopus merge I mean using the two diffs from the two sides of the
-branch, and replaying one on the other. For instance if at one patch
-a function was moved, then redo the move of the current function again, not
-leave the old code as it was before. Let the merge point out the points of
-friction. Because you see, with commented code, there is never a merge
-conflict it will always uncomment.
+> Both machines are running 2.6.34-rc6 kernels, nfs-utils-1.2.2,
+> libtirpc-0.2.0 and rpcbind-0.2.0. Mounting over IPv4 works perfectly, but
+> IPv6 just times out while trying to mount the share. Using tcpdump I see
+> that the two machines exchange 40 packets before the client finally gives
+> up. There are no messages generated in the system log or dmesg of either
+> machine.
 
-And anyway the Kernel people will never accept code in comments. There
-are out-of-tree gits to do that. So I don't even think it is an option.
-The pnfs branches are patches that should eventually go upstream. Or
-are currently the only option for the testing of upstream code.
+Are the IPv6 addresses correctly registered with DNS?  Have you tried 
+"mount.nfs4 ... -v" ?  Or:
 
-Boaz
+$ sudo rpcdebug -m nfs -s mount
+
+will produce more syslogging.
+
+-- 
+chuck[dot]lever[at]oracle[dot]com
