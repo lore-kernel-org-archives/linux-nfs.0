@@ -1,60 +1,110 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-gy0-f174.google.com ([209.85.160.174]:52498 "EHLO
-	mail-gy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753269Ab0EZMDQ convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 26 May 2010 08:03:16 -0400
-Received: by gyg13 with SMTP id 13so2773001gyg.19
-        for <linux-nfs@vger.kernel.org>; Wed, 26 May 2010 05:03:15 -0700 (PDT)
-In-Reply-To: <20100524081155.03046681@notabene.brown>
-References: <AANLkTikZfdnCMm0TkEaVnN2kqVzMZ7CYmbe1YengmRMY@mail.gmail.com>
-	<AANLkTilYaqsm-Yp-LKaB2H0lTxm6_YjKwEJ2AVEn4wJt@mail.gmail.com>
-	<20100524081155.03046681@notabene.brown>
-Date: Wed, 26 May 2010 22:03:14 +1000
-Message-ID: <AANLkTikl4BoDojxAYe-knRhOvST7mgLfUOkaIsn1L2Kf@mail.gmail.com>
-Subject: Re: NFS cache
-From: hce <webmail.hce@gmail.com>
-To: Neil Brown <neilb@suse.de>
-Cc: linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from minas.ics.muni.cz ([147.251.4.40]:37682 "EHLO minas.ics.muni.cz"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754605Ab0ECNx2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 3 May 2010 09:53:28 -0400
+Date: Mon, 3 May 2010 15:47:36 +0200
+From: Lukas Hejtmanek <xhejtman@ics.muni.cz>
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+Cc: nfsv4@linux-nfs.org, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 1/2] use negative cache for Kerberos credentials
+Message-ID: <20100503134736.GA18765@ics.muni.cz>
+References: <20100316115439.GX19154@ics.muni.cz>
+ <1268745962.3155.25.camel@localhost.localdomain>
+ <20100316162738.GD19154@ics.muni.cz>
+ <1268758702.3098.8.camel@localhost.localdomain>
+ <20100322094731.GO18907@ics.muni.cz>
+ <1269271124.3496.4.camel@localhost.localdomain>
+Content-Type: text/plain; charset=iso-8859-2
+In-Reply-To: <1269271124.3496.4.camel@localhost.localdomain>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Mon, May 24, 2010 at 8:11 AM, Neil Brown <neilb@suse.de> wrote:
-> On Mon, 17 May 2010 09:54:12 +1000
-> hce <webmail.hce@gmail.com> wrote:
->
->> On Sun, May 16, 2010 at 6:26 PM, hce <webmail.hce@gmail.com> wrote:
->> > Hi,
->> >
->> > I posted following message on list, but did not see it on list, sorry
->> > if it is duplicated.
->> >
->> > I have an application to use NFS over FUSE, if I keep typing "ls" in
->> > the same directory, the client NFS only sent GETATT, no more READDIR,
->> > all directory contents displayed on screen came from NFS cache. That
->> > caused many problems and I'd like to disable NFS client cache. But it
->> > did not work when I add "-o noac" option to mount.
->>
->> I've just realised that the noac is only for NFS attribute cache, so
->> add "-o noac" only generates more getatt for up paths, the "readdir"
->> was still not called if I keep typing "ls" in the same directory.
->>
->> Does NFS has another cache for directory structure as well? It seems
->> it displayed directory contents on the screen from cache as it did not
->> call readdir to FUSe.
->
-> (almost) all linux filesystems use the 'page cache' for storing parts or all
-> of files and directories.
-> Linux/NFS uses the page cache to store the contents of a directory.  It will
-> normally only refresh the cached directory when the 'mtime' or the 'ctime' of
-> the directory (as reported by GETATTR) changes.
+Hi,
 
-I guess you were talking about NFS client uses the page cache to store
-contents of a directory. Is any way I can disable NFS to use page
-cache to store contents of a directory? I have an application which
-has its own cache, There are various problems as the NFS / FUSE does
-not work well together expecially it took excessive large time when to
-list large number files (100 K).
+On Mon, Mar 22, 2010 at 11:18:44AM -0400, Trond Myklebust wrote:
+> We already have code in nfs4proc.c for handling EKEYEXPIRED, and that
+> delays the request before allowing it to retry. What I was proposing was
+> negative caching, so that if some other process comes along and tries to
+> do an upcall, the RPC code just immediately returns EKEYEXPIRED instead
+> of asking gssd again.
+> 
+> Something like the following (still untested) patch.
 
-Thanks NeilBrown.
+we tested the patch and found the following.
+
+Assume, we mounted NFS volume somewhere, we are non root user and we have
+valid kerberos ticket. We access the volume. 
+
+The following sequence of procedures is called:
+
+gss_lookup_cred - search, whether we have the ticket
+gss_cred_init - create a new ticket into cache (according to
+gss_pipe_downcall)
+gss_pip_downcall - calls rpc.gssd
+gss_marchal
+gss_wrap_req
+gss_validate
+gss_unwrap_resp
+nfs4_handle_exception: 0 - OK, we got the ticket
+
+If the ticket is valid and has been found in cache:
+gss_lookup_cred
+gss_match
+gss_wrap_req
+gss_validate
+gss_unwrap_resp
+nfs4_handle_exception: 0 - OK, we got the ticket
+
+Now, the ticket expired.
+
+gss_lookup_cred
+gss_match
+gss_marshal
+gss_wrap_req
+gss_refresh
+gss_renew_cred
+gss_lookup_cred
+gss_match
+gss_match
+gss_destroy_cred
+gss_pipe_downcall
+gss_destroy_cred
+nfs4_handle_exeption: ticket expired
+
+second try to access NFS with an expired ticket
+
+gss_lookup_cred
+gss_cred_init
+gss-pipe_downcall
+gss_destroy_cred
+nfs4_handle_exception: ticket expired
+
+another try, no gss_refresh is called until a new ticket is available.
+
+Your patch seems the gss_refresh to be called to work properly.
+
+So, the first process accessing the NFS volume without ticket gets stopped.
+But the others are not. 
+
+And there is no difference how many times the application tried to access the
+NFS4 volume.
+
+I think, it is useful if you do:
+ls /mnt/nfs4
+return immediately if you don't have a ticket or the ticked is expired.
+
+But if the application spin fast, stop it. 
+
+What is your opinion how to solve this?
+
+We are thinking about to move the negative cache into another function, i.e.,
+the function that gets called. Or create different negative cache for this
+purpose. Or fill fake tickets into cache and catch them.
+
+What's your idea? We can develop it but we are not about to develop something
+that would be refused as our previous work.
+
+-- 
+Luká¹ Hejtmánek
