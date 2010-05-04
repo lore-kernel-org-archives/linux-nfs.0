@@ -1,45 +1,141 @@
-From: Tetsuo Handa <penguin-kernel@I-love.SAKURA.ne.jp>
-Subject: Re: [patch] sunrpc: add missing return statement
-Date: Tue, 4 May 2010 23:02:26 +0900
-Message-ID: <201005042302.BGH82397.FJVOFSOLQOMFHt@I-love.SAKURA.ne.jp>
-References: <20100504115759.266396633@emlix.com>
-	<1272976042.7559.24.camel@localhost.localdomain>
-	<201005042203.DAJ09881.tFQOJFHSOLVOMF@I-love.SAKURA.ne.jp>
-	<1272978815.7559.27.camel@localhost.localdomain>
+From: "J. Bruce Fields" <bfields@citi.umich.edu>
+Subject: Re: [RFC 2/3] nfsd4: hold a reference on nfs4_client when it is
+	used by a session
+Date: Tue, 4 May 2010 11:40:14 -0400
+Message-ID: <20100504154014.GE24218@fieldses.org>
+References: <4BDEF641.4020507@panasas.com> <1272904308-27113-1-git-send-email-bhalevy@panasas.com> <20100503223620.GE11904@fieldses.org> <20100504011200.GA15763@fieldses.org> <4BDFC8AC.5060400@panasas.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: jw-QdrG9jWwCLEAvxtiuMwx3w@public.gmane.org, davem@davemloft.net, batsakis@netapp.com,
-	linux-nfs@vger.kernel.org, netdev@vger.kernel.org,
-	linux-kernel@vger.kernel.org
-To: trond.myklebust@fys.uio.no
+Cc: linux-nfs@vger.kernel.org
+To: Benny Halevy <bhalevy@panasas.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from wine.ocn.ne.jp ([122.1.235.145]:61760 "EHLO smtp.wine.ocn.ne.jp"
+Received: from fieldses.org ([174.143.236.118]:33108 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932078Ab0EDOC2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 4 May 2010 10:02:28 -0400
-In-Reply-To: <1272978815.7559.27.camel-bi+AKbBUZKY6gyzm1THtWbp2dZbC/Bob@public.gmane.org>
+	id S933068Ab0EDPkP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 4 May 2010 11:40:15 -0400
+In-Reply-To: <4BDFC8AC.5060400@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Trond Myklebust wrote:
-> > > No. It should either be a BUG_ON(), or else be removed entirely.
-> > > Returning an error value for something that is clearly a programming bug
-> > > is not a particularly useful exercise...
-> > > 
-> > Removing NULL check is wrong because it will NULL pointer dereference later.
+On Tue, May 04, 2010 at 10:11:40AM +0300, Benny Halevy wrote:
+> On May. 04, 2010, 4:12 +0300, " J. Bruce Fields" <bfields@citi.umich.edu> wrote:
+> > On Mon, May 03, 2010 at 06:36:20PM -0400,  J. Bruce Fields wrote:
+> >> On Mon, May 03, 2010 at 07:31:48PM +0300, Benny Halevy wrote:
+> >>> Although expire_client unhashes the session form the session table
+> >>> so no new compounds can find it, there's no refcount to keep the
+> >>> nfs4_client structure around while it's in use and referenced
+> >>> in the compound state via the session structure.
+> >> The code in my for-2.6.35 branch already has the cl_count removed (and
+> >> doesn't use it for callbacks any more, instead destroying callbacks
+> >> before the client is destroyed).
+> >>
+> >> So we need to add a new usage count.
+> > 
+> > (Which you do in the next patch, OK!)
 > 
-> Wrong. Removing NULL check is _right_ because calling this function
-> without setting up a back channel first is a major BUG. Returning an
-> error value to the user is pointless, since the user has no control over
-> this. It is entirely under control of the sunrpc developers...
+> Right :)
 > 
-For security people, removing
+> This patch fixes another race in which a client can be expired using
+> expire_client(), not from the laundromat path, while it's being referenced
+> by the session since we look up the session while holding just the sessionid
+> lock and not the state lock.  Therefore we must take a refcount on the
+> client while inside the sessionid lock.
+> 
+> Looks like the new usage count in your for-2.6.35 world (that I _think_
+> could just be a kref now) is needed for delegations as well, right?
 
-	if (!args->bc_xprt)
-		ERR_PTR(-EINVAL);
+We should be able to destroy any delegations, recalls, or other
+callbacks before we destroy the client, so I don't think we need a
+reference count for those.
 
-is worse and changing to
+--b.
 
-	BUG_ON(!args->bc_xprt);
-
-is better.
+> 
+> Benny
+> 
+> > 
+> > --b.
+> > 
+> >> I'd prefer to call it something
+> >> different, since it's being used for something different (cl_users?)
+> >> since it's being used for something different, and I'd rather avoid
+> >> confusion with the previous one.
+> >>
+> >> --b.
+> >>
+> >>
+> >>
+> >>> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+> >>> ---
+> >>>  fs/nfsd/nfs4callback.c |    2 +-
+> >>>  fs/nfsd/nfs4state.c    |    4 +++-
+> >>>  fs/nfsd/nfs4xdr.c      |    1 +
+> >>>  fs/nfsd/state.h        |    6 ++++++
+> >>>  4 files changed, 11 insertions(+), 2 deletions(-)
+> >>>
+> >>> diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
+> >>> index 7e32bd3..fef1dbe 100644
+> >>> --- a/fs/nfsd/nfs4callback.c
+> >>> +++ b/fs/nfsd/nfs4callback.c
+> >>> @@ -571,7 +571,7 @@ nfsd4_probe_callback(struct nfs4_client *clp)
+> >>>  	}
+> >>>  
+> >>>  	/* the task holds a reference to the nfs4_client struct */
+> >>> -	atomic_inc(&clp->cl_count);
+> >>> +	get_nfs4_client(clp);
+> >>>  
+> >>>  	do_probe_callback(clp);
+> >>>  }
+> >>> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> >>> index 6dbcaf1..50b75af 100644
+> >>> --- a/fs/nfsd/nfs4state.c
+> >>> +++ b/fs/nfsd/nfs4state.c
+> >>> @@ -1458,8 +1458,10 @@ nfsd4_sequence(struct svc_rqst *rqstp,
+> >>>  
+> >>>  out:
+> >>>  	/* Hold a session reference until done processing the compound. */
+> >>> -	if (cstate->session)
+> >>> +	if (cstate->session) {
+> >>>  		nfsd4_get_session(cstate->session);
+> >>> +		get_nfs4_client(cstate->session->se_client);
+> >>> +	}
+> >>>  	spin_unlock(&sessionid_lock);
+> >>>  	/* Renew the clientid on success and on replay */
+> >>>  	if (cstate->session) {
+> >>> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+> >>> index 19ff5a3..aed733c 100644
+> >>> --- a/fs/nfsd/nfs4xdr.c
+> >>> +++ b/fs/nfsd/nfs4xdr.c
+> >>> @@ -3313,6 +3313,7 @@ nfs4svc_encode_compoundres(struct svc_rqst *rqstp, __be32 *p, struct nfsd4_compo
+> >>>  			dprintk("%s: SET SLOT STATE TO AVAILABLE\n", __func__);
+> >>>  			cs->slot->sl_inuse = false;
+> >>>  		}
+> >>> +		put_nfs4_client(cs->session->se_client);
+> >>>  		nfsd4_put_session(cs->session);
+> >>>  	}
+> >>>  	return 1;
+> >>> diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+> >>> index fefeae2..e3c002e 100644
+> >>> --- a/fs/nfsd/state.h
+> >>> +++ b/fs/nfsd/state.h
+> >>> @@ -231,6 +231,12 @@ struct nfs4_client {
+> >>>  						/* wait here for slots */
+> >>>  };
+> >>>  
+> >>> +static inline void
+> >>> +get_nfs4_client(struct nfs4_client *clp)
+> >>> +{
+> >>> +	atomic_inc(&clp->cl_count);
+> >>> +}
+> >>> +
+> >>>  /* struct nfs4_client_reset
+> >>>   * one per old client. Populates reset_str_hashtbl. Filled from conf_id_hashtbl
+> >>>   * upon lease reset, or from upcall to state_daemon (to read in state
+> >>> -- 
+> >>> 1.6.3.3
+> >>>
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
