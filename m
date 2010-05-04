@@ -1,18 +1,18 @@
 From: "J. Bruce Fields" <bfields@citi.umich.edu>
 Subject: Re: [RFC 2/3] nfsd4: hold a reference on nfs4_client when it is
 	used by a session
-Date: Tue, 4 May 2010 11:40:14 -0400
-Message-ID: <20100504154014.GE24218@fieldses.org>
+Date: Tue, 4 May 2010 13:45:41 -0400
+Message-ID: <20100504174541.GA27457@fieldses.org>
 References: <4BDEF641.4020507@panasas.com> <1272904308-27113-1-git-send-email-bhalevy@panasas.com> <20100503223620.GE11904@fieldses.org> <20100504011200.GA15763@fieldses.org> <4BDFC8AC.5060400@panasas.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-nfs@vger.kernel.org
 To: Benny Halevy <bhalevy@panasas.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:33108 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:55906 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933068Ab0EDPkP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 4 May 2010 11:40:15 -0400
+	id S1752189Ab0EDRpn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 4 May 2010 13:45:43 -0400
 In-Reply-To: <4BDFC8AC.5060400@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
@@ -36,20 +36,19 @@ On Tue, May 04, 2010 at 10:11:40AM +0300, Benny Halevy wrote:
 > Right :)
 > 
 > This patch fixes another race in which a client can be expired using
-> expire_client(), not from the laundromat path, while it's being referenced
+> expire_client(), not from the laundromat path,
+
+Ouch, OK, I'd forgotten that case.
+
+--b.
+
+> while it's being referenced
 > by the session since we look up the session while holding just the sessionid
 > lock and not the state lock.  Therefore we must take a refcount on the
 > client while inside the sessionid lock.
 > 
 > Looks like the new usage count in your for-2.6.35 world (that I _think_
 > could just be a kref now) is needed for delegations as well, right?
-
-We should be able to destroy any delegations, recalls, or other
-callbacks before we destroy the client, so I don't think we need a
-reference count for those.
-
---b.
-
 > 
 > Benny
 > 
