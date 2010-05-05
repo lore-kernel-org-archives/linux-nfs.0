@@ -1,22 +1,28 @@
-From: Timo Aaltonen <timo.aaltonen-uOixanVlb7U@public.gmane.org>
-Subject: Re: [PATCH] Check for AD style machine principal name
-Date: Thu, 6 May 2010 01:15:48 +0300 (EEST)
-Message-ID: <alpine.DEB.2.00.1005052347130.3282@deckard.hut.fi>
-References: <1272290459-11335-1-git-send-email-timo.aaltonen@aalto.fi>  <560_1272392934_4BD72CE6_560_482_1_20100427182806.GP30729@fieldses.org>  <alpine.DEB.2.00.1005051934040.3282@deckard.hut.fi>
- <n2s4d569c331005051046t28cd5dch1e5dfe4a73b987bf@mail.gmail.com>
+From: <Staubach_Peter@emc.com>
+Subject: RE: [PATCH] Check for AD style machine principal name
+Date: Wed, 5 May 2010 18:25:19 -0400
+Message-ID: <BF3BB6D12298F54B89C8DCC1E4073D80A24712@CORPUSMX50A.corp.emc.com>
+References: <1272290459-11335-1-git-send-email-timo.aaltonen@aalto.fi>  <560_1272392934_4BD72CE6_560_482_1_20100427182806.GP30729@fieldses.org>  <alpine.DEB.2.00.1005051934040.3282@deckard.hut.fi> <n2s4d569c331005051046t28cd5dch1e5dfe4a73b987bf@mail.gmail.com> <alpine.DEB.2.00.1005052347130.3282@deckard.hut.fi>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=ISO-8859-15;
-	format=flowed
-Cc: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
-To: Kevin Coffman <kwc@citi.umich.edu>
+Content-Type: text/plain; charset=iso-8859-1
+Cc: <bfields@fieldses.org>, <linux-nfs@vger.kernel.org>
+To: <timo.aaltonen-uOixanVlb7U@public.gmane.org>, <kwc@citi.umich.edu>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp-2.hut.fi ([130.233.228.92]:49347 "EHLO smtp-2.hut.fi"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752109Ab0EEWQK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 5 May 2010 18:16:10 -0400
-In-Reply-To: <n2s4d569c331005051046t28cd5dch1e5dfe4a73b987bf-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
+Received: from mexforward.lss.emc.com ([128.222.32.20]:10165 "EHLO
+	mexforward.lss.emc.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751613Ab0EEWZk convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 5 May 2010 18:25:40 -0400
+In-Reply-To: <alpine.DEB.2.00.1005052347130.3282-9o+TK994UVukEuhtYYxXtw@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+
+-----Original Message-----
+=46rom: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-owner-fy+rA21nqHI@public.gmane.org=
+rnel.org] On Behalf Of Timo Aaltonen
+Sent: Wednesday, May 05, 2010 6:16 PM
+To: Kevin Coffman
+Cc: J. Bruce Fields; linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] Check for AD style machine principal name
 
 On Wed, 5 May 2010, Kevin Coffman wrote:
 
@@ -65,11 +71,20 @@ hostname_to_adprinc(char *name)
          int len =3D strlen(name);
          char *buf;
          if ((buf =3D malloc(len+1))) {
+
+> Doesn't this need to be "+2" since you are adding a '$' and a '\0' to=
+ the end of the string, neither of which is included in the strlen() ca=
+lculation?
+
                  strcpy(buf, name);
                  while(i < len) {
                          buf[i] =3D toupper(buf[i]);
                          i++;
                  }
+
+> Instead of copying name to buf and then converting the characters in =
+buf to uppercase, why not copy and convert in one loop?
+
                  buf[i++] =3D '$';
                  buf[i] =3D 0;
                  return buf;
@@ -131,3 +146,8 @@ Ok, so 'continue' was extra, whoops..
 Timo Aaltonen
 Systems Specialist
 IT Services, Aalto University
+--
+To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
