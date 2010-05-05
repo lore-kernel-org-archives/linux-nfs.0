@@ -1,75 +1,56 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-iw0-f174.google.com ([209.85.214.174]:36670 "EHLO
-	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751491Ab0GABE0 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 30 Jun 2010 21:04:26 -0400
-Received: by iwn7 with SMTP id 7so1456420iwn.19
-        for <linux-nfs@vger.kernel.org>; Wed, 30 Jun 2010 18:04:26 -0700 (PDT)
-Message-ID: <4C2BE997.8090808@gmail.com>
-Date: Wed, 30 Jun 2010 21:04:23 -0400
-From: Doug Nazar <nazard.michi@gmail.com>
+Received: from mx2.netapp.com ([216.240.18.37]:24594 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751983Ab0FGF10 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 7 Jun 2010 01:27:26 -0400
+From: Alexandros Batsakis <batsakis@netapp.com>
 To: linux-nfs@vger.kernel.org
-Subject: Fix endtime issue
-Content-Type: multipart/mixed;
- boundary="------------040403000103010309080206"
+Cc: bhalevy@panasas.com, Alexandros Batsakis <batsakis@netapp.com>
+Subject: [PATCH 0/8] pnfs-submit: forgetful client v2
+Date: Wed,  5 May 2010 10:00:50 -0700
+Message-Id: <1273078858-1923-1-git-send-email-batsakis@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
---------------040403000103010309080206
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
+This set of patches (2.6.35-rc1) includes a first attempt to implement 
+the forgetful client model for the pNFS client. The model 
+is explained is patch 7.
+It also includes some minor cleanups in the layout management code 
+that help to improve the maintanability of the current code.
 
-  After finally tracking down an issue with rpc.gssd crashing which had 
-been bugging me on and off for months, ran into another issue.
+Passed cthon tests against the pyNFS server, and against a modified 
+version of  pyNFS server that randomly issues layout recalls after opens.
 
-Commit 4c5ff6d4 removed the setting of endtime for a few contexts by 
-accident.
+Alexandros Batsakis (8):
+  pnfs-submit: clean struct nfs_inode
+  pnfs-submit: clean locking infrastructure
+  pnfs-submit: remove lgetcount, lretcount (outstanding
+    LAYOUTGETs/LAYOUTRETUNs)
+  pnfs-submit: change stateid to be a union
+  pnfs-submit: request whole file layouts only
+  pnfs-submit: change layouts list to be similar to the other state
+    list management
+  pnfs-submit: forgetful client model
+  pnfs-submit: support for cb_recall_any (layouts)
 
-Now to figure out why I get stale handles on submounts.
+ fs/nfs/callback.h         |    7 +
+ fs/nfs/callback_proc.c    |  231 +++++++++++++++++++++++++++++---------
+ fs/nfs/callback_xdr.c     |    2 +-
+ fs/nfs/client.c           |    2 +-
+ fs/nfs/delegation.c       |   19 ++--
+ fs/nfs/inode.c            |   16 ++-
+ fs/nfs/nfs4_fs.h          |    1 +
+ fs/nfs/nfs4proc.c         |   46 +++++---
+ fs/nfs/nfs4state.c        |    4 +-
+ fs/nfs/nfs4xdr.c          |   38 ++++---
+ fs/nfs/pnfs.c             |  276 +++++++++++++++++++++------------------------
+ fs/nfs/pnfs.h             |    3 +-
+ fs/nfsd/nfs4callback.c    |    1 -
+ include/linux/nfs4.h      |   16 +++-
+ include/linux/nfs4_pnfs.h |    2 +-
+ include/linux/nfs_fs.h    |   28 ++---
+ include/linux/nfs_fs_sb.h |    2 +-
+ 17 files changed, 417 insertions(+), 277 deletions(-)
 
-Doug
-
-
-
---------------040403000103010309080206
-Content-Type: text/plain;
- name="nfs-utils-endtime.diff"
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
- filename="nfs-utils-endtime.diff"
-
-commit 3e4355dd4a31ee8577620b8b93cd5a811cdcaa7c
-Author: Doug Nazar <nazard.michi@gmail.com>
-Date:   Wed Jun 30 15:49:39 2010 -0400
-
-    Return correct context endtime for lucid rfc4121 and mit.
-
-diff --git a/utils/gssd/context_lucid.c b/utils/gssd/context_lucid.c
-index b87bf76..2108487 100644
---- a/utils/gssd/context_lucid.c
-+++ b/utils/gssd/context_lucid.c
-@@ -202,6 +202,8 @@ prepare_krb5_rfc4121_buffer(gss_krb5_lucid_context_v1_t *lctx,
- 
- 	if (WRITE_BYTES(&p, end, v2_flags)) goto out_err;
- 	if (WRITE_BYTES(&p, end, lctx->endtime)) goto out_err;
-+	if (endtime)
-+		*endtime = lctx->endtime;
- 	if (WRITE_BYTES(&p, end, lctx->send_seq)) goto out_err;
- 
- 	/* Protocol 0 here implies DES3 or RC4 */
-diff --git a/utils/gssd/context_mit.c b/utils/gssd/context_mit.c
-index f9cbb02..e6db9cb 100644
---- a/utils/gssd/context_mit.c
-+++ b/utils/gssd/context_mit.c
-@@ -191,6 +191,8 @@ serialize_krb5_ctx(gss_ctx_id_t ctx, gss_buffer_desc *buf, int32_t *endtime)
- 		if (WRITE_BYTES(&p, end, kctx->signalg)) goto out_err;
- 		if (WRITE_BYTES(&p, end, kctx->sealalg)) goto out_err;
- 		if (WRITE_BYTES(&p, end, kctx->endtime)) goto out_err;
-+		if (endtime)
-+			*endtime = kctx->endtime;
- 		word_seq_send = kctx->seq_send;
- 		if (WRITE_BYTES(&p, end, word_seq_send)) goto out_err;
- 		if (write_oid(&p, end, kctx->mech_used)) goto out_err;
-
---------------040403000103010309080206--
