@@ -1,116 +1,281 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: Linux pNFS status meeting 06/03
-Date: Sun, 6 Jun 2010 10:34:39 -0400
-Message-ID: <20100606143439.GB6912@fieldses.org>
-References: <OFD9CC398A.6555CB30-ON88257736.006D4B55-88257736.006D71E6@us.ibm.com> <20100603172210.GG24994@fieldses.org> <4C0B8259.6090500@panasas.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: NFS list <linux-nfs@vger.kernel.org>
-To: Benny Halevy <bhalevy@panasas.com>
+From: Alexandros Batsakis <batsakis@netapp.com>
+Subject: [PATCH 2/8] pnfs-submit: clean locking infrastructure
+Date: Wed,  5 May 2010 10:00:52 -0700
+Message-ID: <1273078858-1923-3-git-send-email-batsakis@netapp.com>
+References: <1273078858-1923-1-git-send-email-batsakis@netapp.com>
+ <1273078858-1923-2-git-send-email-batsakis@netapp.com>
+Cc: bhalevy@panasas.com, Alexandros Batsakis <batsakis@netapp.com>
+To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:41234 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:33063 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756570Ab0FFOek (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 6 Jun 2010 10:34:40 -0400
-In-Reply-To: <4C0B8259.6090500@panasas.com>
+	id S1752543Ab0FGF10 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 7 Jun 2010 01:27:26 -0400
+In-Reply-To: <1273078858-1923-2-git-send-email-batsakis@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sun, Jun 06, 2010 at 02:11:21PM +0300, Benny Halevy wrote:
-> On Jun. 03, 2010, 20:22 +0300, "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> > On Wed, Jun 02, 2010 at 12:55:33PM -0700, Marc Eshel wrote:
-> >> Meeting on Thursday 06/03/10 at 9:30 AM pacific time (12:30 PM UMICH time)
-> > 
-> > Rough notes (more distracted than usual, apologies):
-> > 
-> > 
-> > Rough agenda.  Note Benny and Boaz will miss this one:
-> 
-> Actually, not this one (prob. cut'n'pase typo?)
-> [And correcting mailing list on the Cc]
+(also minor cleanup of pnfs_free_layout())
 
-Yes.  Thanks for the corrections!
+Signed-off-by: Alexandros Batsakis <batsakis@netapp.com>
+---
+ fs/nfs/pnfs.c |   73 ++++++++++++++++++++++++++++++++++++--------------------
+ 1 files changed, 47 insertions(+), 26 deletions(-)
 
---b.
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index f32dbbb..a4031b4 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -60,6 +60,8 @@ static int pnfs_initialized;
+ static void pnfs_free_layout(struct pnfs_layout_type *lo,
+ 			     struct nfs4_pnfs_layout_segment *range);
+ static enum pnfs_try_status pnfs_commit(struct nfs_write_data *data, int sync);
++static inline void lock_current_layout(struct nfs_inode *nfsi);
++static inline void unlock_current_layout(struct nfs_inode *nfsi);
+ 
+ /* Locking:
+  *
+@@ -152,15 +154,15 @@ void
+ pnfs_need_layoutcommit(struct nfs_inode *nfsi, struct nfs_open_context *ctx)
+ {
+ 	dprintk("%s: has_layout=%d ctx=%p\n", __func__, has_layout(nfsi), ctx);
+-	spin_lock(&nfsi->lo_lock);
++	lock_current_layout(nfsi);
+ 	if (has_layout(nfsi) && !layoutcommit_needed(nfsi)) {
+ 		nfsi->layout.lo_cred = get_rpccred(ctx->state->owner->so_cred);
+ 		nfsi->change_attr++;
+-		spin_unlock(&nfsi->lo_lock);
++		unlock_current_layout(nfsi);
+ 		dprintk("%s: Set layoutcommit\n", __func__);
+ 		return;
+ 	}
+-	spin_unlock(&nfsi->lo_lock);
++	unlock_current_layout(nfsi);
+ }
+ 
+ /* Update last_write_offset for layoutcommit.
+@@ -173,7 +175,7 @@ pnfs_update_last_write(struct nfs_inode *nfsi, loff_t offset, size_t extent)
+ {
+ 	loff_t end_pos;
+ 
+-	spin_lock(&nfsi->lo_lock);
++	lock_current_layout(nfsi);
+ 	if (offset < nfsi->layout.pnfs_write_begin_pos)
+ 		nfsi->layout.pnfs_write_begin_pos = offset;
+ 	end_pos = offset + extent - 1; /* I'm being inclusive */
+@@ -185,7 +187,7 @@ pnfs_update_last_write(struct nfs_inode *nfsi, loff_t offset, size_t extent)
+ 		(unsigned long) offset ,
+ 		(unsigned long) nfsi->layout.pnfs_write_begin_pos,
+ 		(unsigned long) nfsi->layout.pnfs_write_end_pos);
+-	spin_unlock(&nfsi->lo_lock);
++	unlock_current_layout(nfsi);
+ }
+ 
+ /* Unitialize a mountpoint in a layout driver */
+@@ -313,6 +315,17 @@ pnfs_unregister_layoutdriver(struct pnfs_layoutdriver_type *ld_type)
+ #define BUG_ON_UNLOCKED_LO(lo) do {} while (0)
+ #endif /* CONFIG_SMP */
+ 
++static inline void lock_current_layout(struct nfs_inode *nfsi)
++{
++	spin_lock(&nfsi->lo_lock);
++}
++
++static inline void unlock_current_layout(struct nfs_inode *nfsi)
++{
++	BUG_ON_UNLOCKED_LO((&nfsi->layout));
++	spin_unlock(&nfsi->lo_lock);
++}
++
+ /*
+  * get and lock nfsi->layout
+  */
+@@ -321,10 +334,10 @@ get_lock_current_layout(struct nfs_inode *nfsi)
+ {
+ 	struct pnfs_layout_type *lo;
+ 
++	lock_current_layout(nfsi);
+ 	lo = &nfsi->layout;
+-	spin_lock(&nfsi->lo_lock);
+ 	if (!lo->ld_data) {
+-		spin_unlock(&nfsi->lo_lock);
++		unlock_current_layout(nfsi);
+ 		return NULL;
+ 	}
+ 
+@@ -344,7 +357,12 @@ put_unlock_current_layout(struct pnfs_layout_type *lo)
+ 	BUG_ON_UNLOCKED_LO(lo);
+ 	BUG_ON(lo->refcount <= 0);
+ 
+-	if (--lo->refcount == 0 && list_empty(&lo->segs)) {
++	lo->refcount--;
++
++	if (lo->refcount > 0)
++		goto out;
++
++	if (list_empty(&lo->segs)) {
+ 		struct layoutdriver_io_operations *io_ops =
+ 			PNFS_LD_IO_OPS(lo);
+ 
+@@ -358,7 +376,8 @@ put_unlock_current_layout(struct pnfs_layout_type *lo)
+ 		list_del_init(&nfsi->lo_inodes);
+ 		spin_unlock(&clp->cl_lock);
+ 	}
+-	spin_unlock(&nfsi->lo_lock);
++out:
++	unlock_current_layout(nfsi);
+ }
+ 
+ void
+@@ -367,7 +386,7 @@ pnfs_layout_release(struct pnfs_layout_type *lo, atomic_t *count,
+ {
+ 	struct nfs_inode *nfsi = PNFS_NFS_INODE(lo);
+ 
+-	spin_lock(&nfsi->lo_lock);
++	lock_current_layout(nfsi);
+ 	if (range)
+ 		pnfs_free_layout(lo, range);
+ 	atomic_dec(count);
+@@ -386,6 +405,8 @@ pnfs_destroy_layout(struct nfs_inode *nfsi)
+ 	};
+ 
+ 	lo = get_lock_current_layout(nfsi);
++	if (!lo)
++		return;
+ 	pnfs_free_layout(lo, &range);
+ 	put_unlock_current_layout(lo);
+ }
+@@ -663,7 +684,7 @@ pnfs_return_layout_barrier(struct nfs_inode *nfsi,
+ 	struct pnfs_layout_segment *lseg;
+ 	bool ret = false;
+ 
+-	spin_lock(&nfsi->lo_lock);
++	lock_current_layout(nfsi);
+ 	list_for_each_entry (lseg, &nfsi->layout.segs, fi_list) {
+ 		if (!should_free_lseg(lseg, range))
+ 			continue;
+@@ -677,7 +698,7 @@ pnfs_return_layout_barrier(struct nfs_inode *nfsi,
+ 	}
+ 	if (atomic_read(&nfsi->layout.lgetcount))
+ 		ret = true;
+-	spin_unlock(&nfsi->lo_lock);
++	unlock_current_layout(nfsi);
+ 
+ 	dprintk("%s:Return %d\n", __func__, ret);
+ 	return ret;
+@@ -759,7 +780,7 @@ _pnfs_return_layout(struct inode *ino, struct nfs4_pnfs_layout_segment *range,
+ 		/* unlock w/o put rebalanced by eventual call to
+ 		 * pnfs_layout_release
+ 		 */
+-		spin_unlock(&nfsi->lo_lock);
++		unlock_current_layout(nfsi);
+ 
+ 		if (pnfs_return_layout_barrier(nfsi, &arg)) {
+ 			dprintk("%s: waiting\n", __func__);
+@@ -900,7 +921,7 @@ static int pnfs_wait_schedule(void *word)
+  *
+  * Note: If successful, nfsi->lo_lock is taken and the caller
+  * must put and unlock current_layout by using put_unlock_current_layout()
+- * when the returned layout is released.
++ * directly or pnfs_layout_release() when the returned layout is released.
+  */
+ static struct pnfs_layout_type *
+ get_lock_alloc_layout(struct inode *ino)
+@@ -935,7 +956,7 @@ get_lock_alloc_layout(struct inode *ino)
+ 			struct nfs_client *clp = NFS_SERVER(ino)->nfs_client;
+ 
+ 			/* must grab the layout lock before the client lock */
+-			spin_lock(&nfsi->lo_lock);
++			lock_current_layout(nfsi);
+ 
+ 			spin_lock(&clp->cl_lock);
+ 			if (list_empty(&nfsi->lo_inodes))
+@@ -1051,10 +1072,10 @@ void drain_layoutreturns(struct pnfs_layout_type *lo)
+ 	while (atomic_read(&lo->lretcount)) {
+ 		struct nfs_inode *nfsi = PNFS_NFS_INODE(lo);
+ 
+-		spin_unlock(&nfsi->lo_lock);
++		unlock_current_layout(nfsi);
+ 		dprintk("%s: waiting\n", __func__);
+ 		wait_event(nfsi->lo_waitq, (atomic_read(&lo->lretcount) == 0));
+-		spin_lock(&nfsi->lo_lock);
++		lock_current_layout(nfsi);
+ 	}
+ }
+ 
+@@ -1093,13 +1114,13 @@ pnfs_update_layout(struct inode *ino,
+ 	/* Check to see if the layout for the given range already exists */
+ 	lseg = pnfs_has_layout(lo, &arg, take_ref, !take_ref);
+ 	if (lseg && !lseg->valid) {
+-		spin_unlock(&nfsi->lo_lock);
++		unlock_current_layout(nfsi);
+ 		if (take_ref)
+ 			put_lseg(lseg);
+ 		for (;;) {
+ 			prepare_to_wait(&nfsi->lo_waitq, &__wait,
+ 					TASK_KILLABLE);
+-			spin_lock(&nfsi->lo_lock);
++			lock_current_layout(nfsi);
+ 			lseg = pnfs_has_layout(lo, &arg, take_ref, !take_ref);
+ 			if (!lseg || lseg->valid)
+ 				break;
+@@ -1112,7 +1133,7 @@ pnfs_update_layout(struct inode *ino,
+ 				result = -ERESTARTSYS;
+ 				break;
+ 			}
+-			spin_unlock(&nfsi->lo_lock);
++			unlock_current_layout(nfsi);
+ 			schedule();
+ 		}
+ 		finish_wait(&nfsi->lo_waitq, &__wait);
+@@ -1149,7 +1170,7 @@ pnfs_update_layout(struct inode *ino,
+ 	/* Matching dec is done in .rpc_release (on non-error paths) */
+ 	atomic_inc(&lo->lgetcount);
+ 	/* Lose lock, but not reference, match this with pnfs_layout_release */
+-	spin_unlock(&nfsi->lo_lock);
++	unlock_current_layout(nfsi);
+ 
+ 	result = get_layout(ino, ctx, &arg, lsegpp, lo);
+ out:
+@@ -1299,7 +1320,7 @@ pnfs_layout_process(struct nfs4_pnfs_layoutget *lgp)
+ 		*lgp->lsegpp = lseg;
+ 	}
+ 
+-	spin_lock(&nfsi->lo_lock);
++	lock_current_layout(nfsi);
+ 	pnfs_insert_layout(lo, lseg);
+ 
+ 	if (res->return_on_close) {
+@@ -1310,7 +1331,7 @@ pnfs_layout_process(struct nfs4_pnfs_layoutget *lgp)
+ 
+ 	/* Done processing layoutget. Set the layout stateid */
+ 	pnfs_set_layout_stateid(lo, &res->stateid);
+-	spin_unlock(&nfsi->lo_lock);
++	unlock_current_layout(nfsi);
+ out:
+ 	return status;
+ }
+@@ -2140,9 +2161,9 @@ pnfs_layoutcommit_inode(struct inode *inode, int sync)
+ 	if (!data)
+ 		return -ENOMEM;
+ 
+-	spin_lock(&nfsi->lo_lock);
++	lock_current_layout(nfsi);
+ 	if (!layoutcommit_needed(nfsi)) {
+-		spin_unlock(&nfsi->lo_lock);
++		lock_current_layout(nfsi);
+ 		goto out_free;
+ 	}
+ 
+@@ -2157,7 +2178,7 @@ pnfs_layoutcommit_inode(struct inode *inode, int sync)
+ 	nfsi->layout.lo_cred = NULL;
+ 	pnfs_get_layout_stateid(&data->args.stateid, &nfsi->layout);
+ 
+-	spin_unlock(&nfsi->lo_lock);
++	unlock_current_layout(nfsi);
+ 
+ 	/* Set up layout commit args */
+ 	status = pnfs_layoutcommit_setup(inode, data, write_begin_pos,
+-- 
+1.6.2.5
 
-> 
-> Benny
-> 
-> > 
-> > 1. upstream status/merge plans (trond, bfields)
-> > 	- 2.6.34 released, 2.6.35 merge window come and gone, 
-> > 	- That means 2.6.35 is now for (certain) bug fixes only, new
-> > 	  development will be queued for 2.6.36.
-> > 	- I've started a for-2.6.36 branch for the server, just small
-> > 	  bugfixes so far.
-> > 	- (Trond absent).
-> > 
-> > 2. State of pNFS tree (bhalevy)
-> > 	- new 2.6.34 and 2.6.33 versions released.  Hoping to leave
-> > 	  2.6.33 only now.
-> > 
-> > 3. Client
-> > 	3.1. Client pNFS status
-> > 		- (missed some.)
-> > 		- Andy working on reboot recovery?
-> > 		- Boaz: what testing at bthon?
-> > 			- Andy: forgetful model
-> > 			- Boaz: Note that would require changes to object
-> > 			  (and block?) server implementations. (Changes to
-> > 			  generic server may be required, e.g. to handle
-> > 			  DELAY on layout recall callback?)
-> > 	3.2. Client state management design documentation (trond)
-> > 		- (Trond absent)
-> > 4. Server
-> > 	4.1. Todo's for minimal 4.1 server (bfields)
-> > 		- have 4.1 pynfs running against linux server, ironing
-> > 		  out some problems; our local pynfs changes here:
-> > 		  git://linux-nfs.org/~bfields/pynfs41.git
-> > 		  (Main problem now is a SERVERFAULT error that prevents
-> > 		  running all tests at once.  Another resource
-> > 		  accounting bug, maybe?)
-> > 		- contemplating porting pynfs server reboot recovery
-> > 		  tests from 4.0 pynfs to 4.1 pynfs.
-> > 		- hoping to start writing new server 4.1 tests over
-> > 		  the next couple weeks.
-> > 	4.2. pnfs
-> > 		pnfs/gfs2:
-> > 		- running basic pnfs/gfs2 performance tests.  Results
-> > 		  don't show expected scaling.  Backend appears OK
-> > 		  (tested by reading 3 different files from each of 3
-> > 		  different gfs2 nodes).  Perhaps gfs2 isn't scaling
-> > 		  reads to shared files as expected; test that
-> > 		  hypothesis by
-> > 		  	a) simultaneous reads from shared files over
-> > 			gfs2 (without pnfs in the way)
-> > 			b) modifying pnfs/gfs2 to work around the
-> > 			problem by handing out single-DS layouts
-> > 			(instead of striping).
-> > 		- sent in a couple gfs2 patches.  Note one was an
-> > 		  "obvious" fix, but may have broken stuff (e.g.
-> > 		  getdeviceinfo) that depended on previous buggy
-> > 		  behavior?  Will test.
-> > 		exofs:
-> > 		- Boaz working on results; plans to report in next week
-> > 		  or so.
-> > 
-> > 5. redhat status (steved)
-> > 	- continuing to backport client and server code 
-> > 	- should have result at bakeathon.
-> > 6. bakeathon plans
-> > 	- ann arbor: Heard from everyone I expect but EMC.  I'll try to get
-> > 	  out some logistical information next week.
-> > 	- boston (Sorin working on hotel information?)
-> > 		- (Sorin absent?)
-> > 7. new business
-> > 8. next meeting
-> > 	- next thursday as usual.  (Probably skip thursday after next.)
-> > 
-> > --b.
-> > _______________________________________________
-> > NOTE: THIS LIST IS DEPRECATED.  Please use linux-nfs@vger.kernel.org instead.
-> > (To subscribe to linux-nfs@vger.kernel.org: send "subscribe linux-nfs" in the body of a message to majordomo-u79uwXL29TaiAVqoAR/hOA@public.gmane.org)
-> > 
-> > NFSv4 mailing list
-> > NFSv4@linux-nfs.org
-> > http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4
