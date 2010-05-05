@@ -1,45 +1,59 @@
-From: Steve Dickson <SteveD@redhat.com>
-Subject: Re: [PATCH 0/3] Three more IPv6-related mountd patches
-Date: Wed, 05 May 2010 15:39:43 -0400
-Message-ID: <4BE1C97F.6030108@RedHat.com>
-References: <20100503192041.29316.35846.stgit@localhost.localdomain>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: Linux pNFS status meeting  5/06/10
+Date: Wed, 5 May 2010 16:05:25 -0400
+Message-ID: <20100505200524.GF14703@fieldses.org>
+References: <4BE1A15E.5030907@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: linux-nfs@vger.kernel.org
-To: Chuck Lever <chuck.lever@oracle.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: pnfs mailing list <pnfs@linux-nfs.org>,
+	"linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+To: Dean Hildebrand <seattleplus@gmail.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:1947 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:36448 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754731Ab0EETjt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 5 May 2010 15:39:49 -0400
-In-Reply-To: <20100503192041.29316.35846.stgit-bi+AKbBUZKY6gyzm1THtWbp2dZbC/Bob@public.gmane.org>
+	id S1755693Ab0EEUF0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 5 May 2010 16:05:26 -0400
+In-Reply-To: <4BE1A15E.5030907@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Wed, May 05, 2010 at 09:48:30AM -0700, Dean Hildebrand wrote:
+> Meeting on Thursday 5/06/2010 at 9:30 AM PDT (12:30 PM EST).
 
+Rough agenda:
 
-On 05/03/2010 03:23 PM, Chuck Lever wrote:
-> Hi Steve-
-> 
-> Here are two clean-up patches, and one patch that modifies the
-> nfs_client struct so it can store both IPv4 and IPv6 addresses
-> concurrently.
-> 
-> ---
-> 
-> Chuck Lever (3):
->       mountd/exportfs: Make m_addrlist field a nfs_sockaddr
->       libexport.a: Clean up client_add()
->       libexport.a: Refactor client_init()
-> 
-> 
->  support/export/client.c    |  158 ++++++++++++++++++++++++++------------------
->  support/export/nfsctl.c    |   17 ++++-
->  support/include/exportfs.h |   50 +++++++++++++-
->  utils/mountd/auth.c        |    2 -
->  utils/mountd/cache.c       |    3 +
->  5 files changed, 158 insertions(+), 72 deletions(-)
-> 
-All three committed and pushed...
+1. upstream status/merge plans (trond, bfields)
 
-steved.
+2. State of pNFS tree (bhalevy)
+
+3. Mailing list change
+
+4. Client
+	4.1. Client pNFS status
+	4.2. Client state management design documentation (trond)
+
+5. Server
+	5.1. Todo's for minimal 4.1 server (bfields)
+		http://wiki.linux-nfs.org/wiki/index.php/Server_4.0_and_4.1_issues
+		- pynfs testing
+			- ERR_DELAY handling (iisaman)
+			- deferral fixes (bfields)
+	5.2. pnfs
+		- Jiri Kortus's testing?
+
+6. documentation
+	- wiki organization, collect pnfs setup howto's (steved)
+
+7. redhat status (steved)
+	- update to latest tag
+	- steved will help boaz get started on rpm-building, for exofs.
+
+8. bakeathon plans
+	- Summer in Ann Arbor
+	- Fall in Boston
+
+9. new business
+
+10. next meeting
+
+--b.
