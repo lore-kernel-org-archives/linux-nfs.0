@@ -1,112 +1,144 @@
-From: Neil Brown <neilb@suse.de>
-Subject: Re: [PATCH 05/39] whiteout/NFSD: Don't return information about
- whiteouts to userspace
-Date: Fri, 7 May 2010 07:18:08 +1000
-Message-ID: <20100507071808.20028458@notabene.brown>
-References: <1272928358-20854-1-git-send-email-vaurora@redhat.com>
-	<1272928358-20854-6-git-send-email-vaurora@redhat.com>
-	<20100504093731.3a45ff5f@notabene.brown>
-	<20100506180151.GA21062@shell>
+From: Robert Wimmer <kernel-PAwl83ecUlHR7s880joybQ@public.gmane.org>
+Subject: Re: [Bugme-new] [Bug 15709] New: swapper page allocation failure
+Date: Thu, 06 May 2010 23:19:21 +0200
+Message-ID: <4BE33259.3000609@tauceti.net>
+References: <4BC43097.3060000@tauceti.net> <4BCC52B9.8070200@tauceti.net> <20100419131718.GB16918@redhat.com> <dbf86fc1c370496138b3a74a3c74ec18@tauceti.net> <20100421094249.GC30855@redhat.com> <c638ec9fdee2954ec5a7a2bd405aa2ba@tauceti.net> <20100422100304.GC30532@redhat.com> <4BD12F9C.30802@tauceti.net> <20100425091759.GA9993@redhat.com> <4BD4A917.70702@tauceti.net> <20100425204916.GA12686@redhat.com> <1272284154.4252.34.camel@localhost.localdomain> <4BD5F6C5.8080605@tauceti.net> <1272315854.8984.125.camel@localhost.localdomain> <4BD61147.40709@tauceti.net> <1272324536.16814.45.camel@localhost.localdomain> <4BD76B81.2070606@tauceti.net> <be8a0f012ebb2ae02522998591e6f1a5@tauceti.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Cc: Alexander Viro <viro@zeniv.linux.org.uk>,
-	linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-	Christoph Hellwig <hch@infradead.org>,
-	Jan Blunck <jblunck@suse.de>,
-	David Woodhouse <dwmw2@infradead.org>,
-	linux-nfs@vger.kernel.org, "J. Bruce Fields" <bfields@fieldses.org>
-To: Valerie Aurora <vaurora@redhat.com>
+Content-Type: text/plain; charset=UTF-8
+Cc: Avi Kivity <avi@redhat.com>,
+	Andrew Morton <akpm@linux-foundation.org>, linux-mm@kvack.org,
+	bugzilla-daemon-590EEB7GvNiWaY/ihj7yzEB+6BGkLq7r@public.gmane.org,
+	Rusty Russell <rusty@rustcorp.com.au>,
+	Mel Gorman <mel-wPRd99KPJ+uzQB+pC5nmwQ@public.gmane.org>, linux-nfs@vger.kernel.org,
+	linux-kernel@vger.kernel.org
+To: Trond Myklebust <Trond.Myklebust@netapp.com>, "" <mst@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from cantor.suse.de ([195.135.220.2]:50249 "EHLO mx1.suse.de"
+Received: from tauceti.net ([62.245.250.166]:38625 "EHLO www.tauceti.net"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751026Ab0EFVSU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 6 May 2010 17:18:20 -0400
-In-Reply-To: <20100506180151.GA21062@shell>
+	id S1751188Ab0EFVTW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 6 May 2010 17:19:22 -0400
+In-Reply-To: <be8a0f012ebb2ae02522998591e6f1a5-PAwl83ecUlHR7s880joybQ@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 6 May 2010 14:01:51 -0400
-Valerie Aurora <vaurora@redhat.com> wrote:
+I don't know if someone is still interested in this
+but I think Trond isn't further interested because
+the last error was of cource a "page allocation
+failure" and not a "soft lookup" which Trond was
+trying to solve. But the patch was for 2.6.34 and
+the "soft lookup" comes up only with some 2.6.30 and
+maybe some 2.6.31 kernel versions. But the first error
+I reported was a "page allocation failure" which
+all kernels >= 2.6.32 produces with this configuration
+I use (NFSv4).
 
-> On Tue, May 04, 2010 at 09:37:31AM +1000, Neil Brown wrote:
-> > On Mon,  3 May 2010 16:12:04 -0700
-> > Valerie Aurora <vaurora@redhat.com> wrote:
-> > 
-> > > From: Jan Blunck <jblunck@suse.de>
-> > > 
-> > > Userspace isn't ready for handling another file type, so silently drop
-> > > whiteout directory entries before they leave the kernel.
-> > 
-> > Feels very intrusive doesn't it....
-> > 
-> > Have you considered something like the following?
-> 
-> Hrm, I see how that could be more elegant, but I'd rather avoid yet
-> another layer of function pointer passing around.  This code is
-> already hard enough to review...
+Michael suggested to first solve the "soft lookup"
+before further investigating the "page allocation
+failure". We know that the "soft lookup" only
+pop's up with NFSv4 and not v3. I really want to
+use v4 but since I'm not a kernel hacker someone
+must guide me what to try next.
 
- Yes, the extra indirection is a bit of a negative, but I don't think this
- patch is harder to review than the alternate.
- From a numerical perspective, with this patch you only need to look at the
- various places that ->readdir is called to be sure it is always correct.
- There are about 3.  With the original you need to look at ever filldir
- function.  Jan has found 9.  
+I know that you're all have a lot of other work to
+do but if there're no ideas left what to do next
+it's maybe best to close the bug for now and I stay with
+kernel 2.6.30 for now or go back to NFS v3 if I
+upgrade to a newer kernel. Maybe the error will
+be fixed "by accident" in >= 2.6.35 ;-) 
 
- And from a maintainability perspective, I think my approach is safer.  Given
- that there are 9 filldir functions already, the chance that a need will be
- found for another seems good, and the chance that the coder will know to
- check for DT_WHT is a best even.  Conversely if another call to ->readdir
- were added it is likely that nothing would need to be done.
-
- Of course just counting things doesn't give a completely picture but I think
- it can be indicative.
-
-NeilBrown
+Thanks!
+Robert
 
 
-> 
-> -VAL
-> 
-> > NeilBrown
-> > 
-> > diff --git a/fs/readdir.c b/fs/readdir.c
-> > index 7723401..4c5b347 100644
-> > --- a/fs/readdir.c
-> > +++ b/fs/readdir.c
-> > @@ -19,10 +19,26 @@
-> >  
-> >  #include <asm/uaccess.h>
-> >  
-> > +struct readdir_info {
-> > +	filldir_t filler;
-> > +	void *data;
-> > +};
-> > +
-> > +static int white_out(void *vrdi, const char *name, int namlen,
-> > +		     loff_t offset, u64 ino, unsigned int d_type)
-> > +{
-> > +	struct readdir_info *rdi = vrdi;
-> > +	if (d_type == DT_WHT)
-> > +		return 0;
-> > +	return rdi->filler(rdi->data, name, namlen, offset, info, d_type);
-> > +}
-> > +
-> >  int vfs_readdir(struct file *file, filldir_t filler, void *buf)
-> >  {
-> >  	struct inode *inode = file->f_path.dentry->d_inode;
-> >  	int res = -ENOTDIR;
-> > +	struct readir_info rdi = { filler, buf };
-> > +
-> >  	if (!file->f_op || !file->f_op->readdir)
-> >  		goto out;
-> >  
-> > @@ -36,7 +52,7 @@ int vfs_readdir(struct file *file, filldir_t filler, void *buf)
-> >  
-> >  	res = -ENOENT;
-> >  	if (!IS_DEADDIR(inode)) {
-> > -		res = file->f_op->readdir(file, buf, filler);
-> > +		res = file->f_op->readdir(file, &rdi, white_out);
-> >  		file_accessed(file);
-> >  	}
-> >  	mutex_unlock(&inode->i_mutex);
+
+On 05/03/10 10:11, kernel-PAwl83ecUlHR7s880joybQ@public.gmane.org wrote:
+> Anything we can do to investigate this further?
+>
+> Thanks!
+> Robert
+>
+>
+> On Wed, 28 Apr 2010 00:56:01 +0200, Robert Wimmer <kernel-PAwl83ecUlHR7s880joybQ@public.gmane.org>
+> wrote:
+>   
+>> I've applied the patch against the kernel which I got
+>> from "git clone ...." resulted in a kernel 2.6.34-rc5.
+>>
+>> The stack trace after mounting NFS is here:
+>> https://bugzilla.kernel.org/attachment.cgi?id=26166
+>> /var/log/messages after soft lockup:
+>> https://bugzilla.kernel.org/attachment.cgi?id=26167
+>>
+>> I hope that there is any usefull information in there.
+>>
+>> Thanks!
+>> Robert
+>>
+>> On 04/27/10 01:28, Trond Myklebust wrote:
+>>     
+>>> On Tue, 2010-04-27 at 00:18 +0200, Robert Wimmer wrote: 
+>>>   
+>>>       
+>>>>> Sure. In addition to what you did above, please do
+>>>>>
+>>>>> mount -t debugfs none /sys/kernel/debug
+>>>>>
+>>>>> and then cat the contents of the pseudofile at
+>>>>>
+>>>>> /sys/kernel/debug/tracing/stack_trace
+>>>>>
+>>>>> Please do this more or less immediately after you've finished
+>>>>>           
+> mounting
+>   
+>>>>> the NFSv4 client.
+>>>>>   
+>>>>>       
+>>>>>           
+>>>> I've uploaded the stack trace. It was generated
+>>>> directly after mounting. Here are the stacks:
+>>>>
+>>>> After mounting:
+>>>> https://bugzilla.kernel.org/attachment.cgi?id=26153
+>>>> After the soft lockup:
+>>>> https://bugzilla.kernel.org/attachment.cgi?id=26154
+>>>> The dmesg output of the soft lockup:
+>>>> https://bugzilla.kernel.org/attachment.cgi?id=26155
+>>>>
+>>>>     
+>>>>         
+>>>>> Does your server have the 'crossmnt' or 'nohide' flags set, or does
+>>>>>           
+> it
+>   
+>>>>> use the 'refer' export option anywhere? If so, then we might have to
+>>>>> test further, since those may trigger the NFSv4 submount feature.
+>>>>>   
+>>>>>       
+>>>>>           
+>>>> The server has the following settings:
+>>>> rw,nohide,insecure,async,no_subtree_check,no_root_squash
+>>>>
+>>>> Thanks!
+>>>> Robert
+>>>>
+>>>>
+>>>>     
+>>>>         
+>>> That second trace is more than 5.5K deep, more than half of which is
+>>> socket overhead :-(((.
+>>>
+>>> The process stack does not appear to have overflowed, however that
+>>>       
+> trace
+>   
+>>> doesn't include any IRQ stack overhead.
+>>>
+>>> OK... So what happens if we get rid of half of that trace by forcing
+>>> asynchronous tasks such as this to run entirely in rpciod instead of
+>>> first trying to run in the process context?
+>>>
+>>> See the attachment...
+>>>
+>>>       
 
