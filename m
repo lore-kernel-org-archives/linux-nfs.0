@@ -1,80 +1,28 @@
-From: Valerie Aurora <vaurora@redhat.com>
-Subject: Re: [PATCH 05/39] whiteout/NFSD: Don't return information about whiteouts to userspace
-Date: Thu, 6 May 2010 14:01:51 -0400
-Message-ID: <20100506180151.GA21062@shell>
-References: <1272928358-20854-1-git-send-email-vaurora@redhat.com> <1272928358-20854-6-git-send-email-vaurora@redhat.com> <20100504093731.3a45ff5f@notabene.brown>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Alexander Viro <viro@zeniv.linux.org.uk>,
-	linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-	Christoph Hellwig <hch@infradead.org>,
-	Jan Blunck <jblunck@suse.de>,
-	David Woodhouse <dwmw2@infradead.org>,
-	linux-nfs@vger.kernel.org, "J. Bruce Fields" <bfields@fieldses.org>
-To: Neil Brown <neilb@suse.de>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <20100504093731.3a45ff5f@notabene.brown>
-Sender: linux-fsdevel-owner@vger.kernel.org
+From: "Kerns V Nelda"
+	<kathyjones-quF8JPlQXtE0kQlujcg9ut3BXFI6xapvSARnzRdyXyxc5OlM8h868bNAH6kLmebB@public.gmane.org>
+Subject: Spam:Spam:Visiting Nurses & RN's marketing email list
+Date: Thu, 6 May 2010 21:22:26 +0200
+Message-ID: <201005061922.o46JMQZQ003288@rtv.be>
+Reply-To: kathyjones-quF8JPlQXtE0kQlujcg9ut3BXFI6xapvSARnzRdyXyxc5OlM8h868bNAH6kLmebB@public.gmane.org
+To: linux-nfs@vger.kernel.org, ashleymj-1Nr7WPQ8y0Go86N//NjWYw@public.gmane.org,
+	ryland-duHMqhP68fR70QZNP6ojd75dPsmED6B0@public.gmane.org, info-6OIGArLe9f/FSQzfVfQ1uR2eb7JE58TQ@public.gmane.org
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from mailrelay006.isp.belgacom.be ([195.238.6.172]:44361 "EHLO
+	mailrelay006.isp.belgacom.be" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751228Ab0EFTWb (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 6 May 2010 15:22:31 -0400
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, May 04, 2010 at 09:37:31AM +1000, Neil Brown wrote:
-> On Mon,  3 May 2010 16:12:04 -0700
-> Valerie Aurora <vaurora@redhat.com> wrote:
-> 
-> > From: Jan Blunck <jblunck@suse.de>
-> > 
-> > Userspace isn't ready for handling another file type, so silently drop
-> > whiteout directory entries before they leave the kernel.
-> 
-> Feels very intrusive doesn't it....
-> 
-> Have you considered something like the following?
+Here's some of the healthcare lists we have:
 
-Hrm, I see how that could be more elegant, but I'd rather avoid yet
-another layer of function pointer passing around.  This code is
-already hard enough to review...
+Mental Health Counselors - 283,184 records 7,206 emails
+Psychologists - 272,188 records and 9,874 emails
+Physicians (34 specialties) - 788k records, 17k emails, 200k fax numbers
 
--VAL
+Theres many more too, just send me an email here for additional info/samples: Mauricio.Saenz-k2xzaFxgLweHQwpFp6j/jMXXUOn6P5/W@public.gmane.org
 
-> NeilBrown
-> 
-> diff --git a/fs/readdir.c b/fs/readdir.c
-> index 7723401..4c5b347 100644
-> --- a/fs/readdir.c
-> +++ b/fs/readdir.c
-> @@ -19,10 +19,26 @@
->  
->  #include <asm/uaccess.h>
->  
-> +struct readdir_info {
-> +	filldir_t filler;
-> +	void *data;
-> +};
-> +
-> +static int white_out(void *vrdi, const char *name, int namlen,
-> +		     loff_t offset, u64 ino, unsigned int d_type)
-> +{
-> +	struct readdir_info *rdi = vrdi;
-> +	if (d_type == DT_WHT)
-> +		return 0;
-> +	return rdi->filler(rdi->data, name, namlen, offset, info, d_type);
-> +}
-> +
->  int vfs_readdir(struct file *file, filldir_t filler, void *buf)
->  {
->  	struct inode *inode = file->f_path.dentry->d_inode;
->  	int res = -ENOTDIR;
-> +	struct readir_info rdi = { filler, buf };
-> +
->  	if (!file->f_op || !file->f_op->readdir)
->  		goto out;
->  
-> @@ -36,7 +52,7 @@ int vfs_readdir(struct file *file, filldir_t filler, void *buf)
->  
->  	res = -ENOENT;
->  	if (!IS_DEADDIR(inode)) {
-> -		res = file->f_op->readdir(file, buf, filler);
-> +		res = file->f_op->readdir(file, &rdi, white_out);
->  		file_accessed(file);
->  	}
->  	mutex_unlock(&inode->i_mutex);
+  
+
+
+this is the link which will purge you from any futures please send an email to disappear-k2xzaFxgLweHQwpFp6j/jMXXUOn6P5/W@public.gmane.org
