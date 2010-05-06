@@ -1,120 +1,80 @@
-From: <Staubach_Peter@emc.com>
-Subject: RE: [PATCH] Check for AD style machine principal name
-Date: Wed, 5 May 2010 18:43:25 -0400
-Message-ID: <BF3BB6D12298F54B89C8DCC1E4073D80A24726@CORPUSMX50A.corp.emc.com>
-References: <1272290459-11335-1-git-send-email-timo.aaltonen@aalto.fi>  <560_1272392934_4BD72CE6_560_482_1_20100427182806.GP30729@fieldses.org>  <alpine.DEB.2.00.1005051934040.3282@deckard.hut.fi> <n2s4d569c331005051046t28cd5dch1e5dfe4a73b987bf@mail.gmail <alpine.DEB.2.00.1005052347130.3282@deckard.hut.fi> <BF3BB6D12298F54B89C8DCC1E4073D80A24712@CORPUSMX50A.corp.emc.com> <alpine.DEB.2.00.1005060131080.3282@deckard.hut.fi>
+From: Neil Brown <neilb@suse.de>
+Subject: [PATCH nfs-utils] Allow mountd to not listen for RPC calls when
+ v2/v3 disabled
+Date: Thu, 6 May 2010 17:11:44 +1000
+Message-ID: <20100506171144.4d7bec37@notabene.brown>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Cc: <kwc@citi.umich.edu>, <bfields@fieldses.org>,
-	<linux-nfs@vger.kernel.org>
-To: <timo.aaltonen-uOixanVlb7U@public.gmane.org>
+Content-Type: text/plain; charset=US-ASCII
+To: Steve Dickson <SteveD@redhat.com>, linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mexforward.lss.emc.com ([128.222.32.20]:12642 "EHLO
-	mexforward.lss.emc.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756064Ab0EEWnv convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 5 May 2010 18:43:51 -0400
-In-Reply-To: <alpine.DEB.2.00.1005060131080.3282-9o+TK994UVukEuhtYYxXtw@public.gmane.org>
+Received: from cantor.suse.de ([195.135.220.2]:48264 "EHLO mx1.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753988Ab0EFHLw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 6 May 2010 03:11:52 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
+Mountd listens on 2 different versions for NFSv2 (MOUNTv1 and MOUNTv2)
+and one for NFSv3 (MOUNTv3)
 
------Original Message-----
-=46rom: Timo Aaltonen [mailto:timo.aaltonen-uOixanVlb7U@public.gmane.org]=20
-Sent: Wednesday, May 05, 2010 6:34 PM
-To: Staubach, Peter
-Cc: timo.aaltonen-uOixanVlb7U@public.gmane.org; kwc@citi.umich.edu; bfields@fieldses.org; l=
-inux-nfs@vger.kernel.org
-Subject: RE: [PATCH] Check for AD style machine principal name
+When --no-nfs-version requests an NFS version to be disabled, the
+code actually disabled the MOUNT version. This works is several cases,
+but requires --no-nfs-version 1 to completely disable NFSv2, which
+is wrong.
 
-On Thu, 6 May 2010, Staubach_Peter@emc.com wrote:
+So if we do disable 1, 2, and 3. mountd complain and won't run, it
+is not possible to run just v4 - i.e. not listening for MOUNT requests
+at all (as v4 doesn't need them).
 
-> -----Original Message-----
-> From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-owner-fy+rA21nqHI@public.gmane.org=
-rnel.org] On Behalf Of Timo Aaltonen
-> Sent: Wednesday, May 05, 2010 6:16 PM
-> To: Kevin Coffman
-> Cc: J. Bruce Fields; linux-nfs@vger.kernel.org
-> Subject: Re: [PATCH] Check for AD style machine principal name
->
-> On Wed, 5 May 2010, Kevin Coffman wrote:
->
->> On Wed, May 5, 2010 at 12:53 PM, Timo Aaltonen <timo.aaltonen@aalto.=
-fi> wrote:
->>>
->>> CC:ing the "new" list.
->>>
->>> On Tue, 27 Apr 2010, J. Bruce Fields wrote:
->>>
->>>> On Mon, Apr 26, 2010 at 05:00:59PM +0300, timo.aaltonen-uOixanVlb7U@public.gmane.org w=
-rote:
->>>>>
->>>>> @@ -737,6 +737,26 @@ gssd_search_krb5_keytab(krb5_context context=
-,
->>>>> krb5_keytab kt,
->>>>> =A0}
->>>>>
->>>>> =A0/*
->>>>> + * Convert the hostname to machine principal name as created
->>>>> + * by MS Active Directory.
->>>>> +*/
->>>>> +
->>>>> +static char *
->>>>> +hostname_to_adprinc(char *name)
->>>>> +{
->>>>> + =A0 =A0 =A0 int i =3D 0;
->>>>> + =A0 =A0 =A0 char *buf =3D strdup(name);
->>>>
->>>> We should handle the possible NULL return.
->>>
->>> How about not calling hostname_to_adprinc from find_keytab_entry un=
-less
->>> myhostname is !=3D NULL?
->>
->> I think he meant that strdup() may fail, and return NULL.  That has =
-to
->> be handled here, and a possible resulting NULL return from
->> host_to_adprinc() should also be handled below.
->
-> Ahh.. ok so how about this:
->
-> static char *
-> hostname_to_adprinc(char *name)
-> {
->         int i =3D 0;
->         int len =3D strlen(name);
->         char *buf;
->         if ((buf =3D malloc(len+1))) {
->
->> Doesn't this need to be "+2" since you are adding a '$' and a '\0' t=
-o the end of the string, neither of which is included in the strlen() c=
-alculation?
+So change the handling of "--no-nfs-version 2" it disable MOUNTv1 as well as
+MOUNTv2, and allow mountd to continue running as long as one of
+NFSv2 NFSv3 NFSv4 is enabled.
 
-Yep, you're right. Shouldn't adding to the buffer fail then, when the=20
-malloc leaves the string short?
+Signed-off-by: NeilBrown <neilb@suse.de>
 
->> Nope, you just step on memory that potentially belongs to something =
-else, causing corruption.
-
-		ps
-
-
->                 strcpy(buf, name);
->                 while(i < len) {
->                         buf[i] =3D toupper(buf[i]);
->                         i++;
->                 }
->
->> Instead of copying name to buf and then converting the characters in=
- buf to uppercase, why not copy and convert in one loop?
-
-This
-                          buf[i] =3D toupper(name[i]);
-
-works fine, thanks :)
-
---=20
-Timo Aaltonen
-Systems Specialist
-IT Services, Aalto University
-
+diff --git a/utils/mountd/mountd.c b/utils/mountd/mountd.c
+index a0a1f2d..5373d81 100644
+--- a/utils/mountd/mountd.c
++++ b/utils/mountd/mountd.c
+@@ -80,10 +80,10 @@ static int nfs_version = -1;
+ static void
+ unregister_services (void)
+ {
+-	if (nfs_version & 0x1)
++	if (nfs_version & (0x1 << 1)) {
+ 		pmap_unset (MOUNTPROG, MOUNTVERS);
+-	if (nfs_version & (0x1 << 1))
+ 		pmap_unset (MOUNTPROG, MOUNTVERS_POSIX);
++	}
+ 	if (nfs_version & (0x1 << 2))
+ 		pmap_unset (MOUNTPROG, MOUNTVERS_NFSV3);
+ }
+@@ -712,8 +712,10 @@ main(int argc, char **argv)
+ 			usage(argv [0], 1);
+ 		}
+ 
+-	/* No more arguments allowed. */
+-	if (optind != argc || !(nfs_version & 0x7))
++	/* No more arguments allowed.
++	 * Require at least one valid version (2, 3, or 4)
++	 */
++	if (optind != argc || !(nfs_version & 0xE))
+ 		usage(argv [0], 1);
+ 
+ 	if (chdir(state_dir)) {
+@@ -761,12 +763,12 @@ main(int argc, char **argv)
+ 	if (new_cache)
+ 		cache_open();
+ 
+-	if (nfs_version & 0x1)
++	if (nfs_version & (0x1 << 1)) {
+ 		rpc_init("mountd", MOUNTPROG, MOUNTVERS,
+ 			 mount_dispatch, port);
+-	if (nfs_version & (0x1 << 1))
+ 		rpc_init("mountd", MOUNTPROG, MOUNTVERS_POSIX,
+ 			 mount_dispatch, port);
++	}
+ 	if (nfs_version & (0x1 << 2))
+ 		rpc_init("mountd", MOUNTPROG, MOUNTVERS_NFSV3,
+ 			 mount_dispatch, port);
