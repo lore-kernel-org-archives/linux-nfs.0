@@ -1,142 +1,121 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: [PATCH] Should we expect close-to-open consistency on
- directories?
-Date: Thu, 06 May 2010 09:58:31 -0400
-Message-ID: <1273154311.7699.33.camel@localhost.localdomain>
-References: <20100420172238.520eaa89@notabene.brown>
-	 <1271768521.25129.94.camel@localhost.localdomain>
-	 <20100421170321.41592c77@notabene.brown>
-	 <20100506141347.06451f56@notabene.brown>
+From: Timo Aaltonen <timo.aaltonen-uOixanVlb7U@public.gmane.org>
+Subject: Re: session hangs with 2.6.33rc7 & nfs-utils 1.2.2rc9
+Date: Thu, 6 May 2010 18:40:33 +0300 (EEST)
+Message-ID: <alpine.DEB.2.00.1005061730460.3282@deckard.hut.fi>
+References: <alpine.DEB.2.00.1002111604420.18032@kosh.hut.fi> <1265897747.478.1.camel@localhost> <alpine.DEB.2.00.1002111616470.18032@kosh.hut.fi> <1265898673.478.3.camel@localhost> <20100211102322.1581a385@barsoom.rdu.redhat.com> <alpine.DEB.2.00.1002112017550.18032@kosh.hut.fi>
+ <alpine.DEB.2.00.1002112114190.18032@kosh.hut.fi> <20100211152822.622dcc70@barsoom.rdu.redhat.com> <alpine.DEB.2.00.1002121410090.18032@kosh.hut.fi> <alpine.DEB.2.00.1002121615290.18032@kosh.hut.fi> <20100212143249.GA17928@fieldses.org>
+ <alpine.DEB.2.00.1002121705390.18032@kosh.hut.fi> <20100212111343.101fd0ce@tlielax.poochiereds.net> <1265998794.2832.23.camel@localhost>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Cc: linux-nfs@vger.kernel.org, Alexander Viro <viro@zeniv.linux.org.uk>
-To: Neil Brown <neilb@suse.de>
+Content-Type: TEXT/PLAIN; format=flowed; charset=US-ASCII
+Cc: Jeff Layton <jlayton@redhat.com>,
+	Trond Myklebust <trond.myklebust@fys.uio.no>
+To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-out2.uio.no ([129.240.10.58]:43752 "EHLO mail-out2.uio.no"
+Received: from smtp-3.hut.fi ([130.233.228.93]:38417 "EHLO smtp-3.hut.fi"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752728Ab0EFN6h (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 6 May 2010 09:58:37 -0400
-In-Reply-To: <20100506141347.06451f56-wvvUuzkyo1EYVZTmpyfIwg@public.gmane.org>
+	id S1758977Ab0EFPlI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 6 May 2010 11:41:08 -0400
+In-Reply-To: <1265998794.2832.23.camel@localhost>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 2010-05-06 at 14:13 +1000, Neil Brown wrote: 
-> On Wed, 21 Apr 2010 17:03:21 +1000
-> Neil Brown <neilb@suse.de> wrote:
-> 
-> > On Tue, 20 Apr 2010 09:02:01 -0400
-> > Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
-> > 
-> > > On Tue, 2010-04-20 at 17:22 +1000, Neil Brown wrote: 
-> > > > Hi Trond et al,
-> > > > 
-> > > > It has come to my attention that NFS directories don't behave consistently
-> > > > in terms of cache consistency.
-> > > > 
-> > > > If, on the client, you have a loop like:
-> > > > 
-> > > >  while true; do sleep 1; ls -l $dirname ; done
-> > > > 
-> > > > and then on the server you make changes to the named directory, there are
-> > > > some cases where you will see changes promptly and some where you wont.
-> > > > 
-> > > > In particular, if $dirname is '.' or the name of an NFS mountpoint, then
-> > > > changes can be delayed by up to acdirmax.  If it is any other path, i.e. with
-> > > > a non-trivial path component that is in the NFS filesystem, then changes
-> > > > are seen promptly.
-> > > > 
-> > > > This seems to me to relate to "close to open" consistency.  Of course with
-> > > > directories the 'close' side isn't relevant, but I still think it should be
-> > > > that when you open a directory it validates the 'change' attribute on that
-> > > > directory over the wire.
-> > > > 
-> > > > However the Linux VFS never tells NFS when a directory is opened.  The
-> > > > current correct behaviour for most directories is achieved through
-> > > > d_revalidate == nfs_lookup_revalidate.
-> > > > 
-> > > > For '.' and mountpoints we need a different approach.  Possibly the VFS could
-> > > > be changed to tell the filesystem when such a directory is opened.  However I
-> > > > don't feel up to that at the moment.
-> > > 
-> > > I agree that mountpoints are problematic in this case, however why isn't
-> > > '.' working correctly? Is the FS_REVAL_DOT mechanism broken?
-> > 
-> > Yes, the FS_REVAL_DOT mechanism is broken.
-> > Specifically, when you open ".",  ->d_revalidate is called by link_path_walk,
-> > but LOOKUP_PARENT is set, and LOOKUP_OPEN is not set, so
-> > nfs_lookup_verify_inode doesn't force a revalidate.
-> > 
-> > Then in do_last(), LOOKUP_PARENT is no longer set, and LOOKUP_OPEN is, but
-> > do_last doesn't bother calling ->d_revalidate for LAST_DOT.
-> > 
-> > I verified this understanding with the following patch which causes 
-> > "ls ." to reliably get current (rather than cached) contents of the directory.
-> 
-> 
-> No replies ... Maybe Al is busy.
-> 
-> I looked at this again, created a patch that I thought looked good and tested
-> it to ensure it addressed both sides of the problem.
-> 
-> Does it look OK to you Trond?
-> Thanks.
-> 
-> NFS - ensure directory at end of path is always revalidated.
-> 
-> The FS_REVAL_DOT fs_type flag is meant to ensure that the final component of
-> a path is always revalidated, even if it isn't a normal (LAST_NORM) path
-> component (which is always revalidated).
-> There are two cases where this doesn't happen for NFS
-> One is where the last component is '.' as the revalidation happens while
->  LOOKUP_PARENT is set, so NFS ignores it (see nfs_lookup_check_intent).
-> The other  is where the directory is a mountpoint, so it is LAST_NORM,
-> but that directory is different from the mounted directory.
-> 
-> This patches fixes these two issues by 
->  1/ extending do_last() to revalidate DOT as well as DOTDOT and
->  2/ extending do_lookup() to revalidate after a successful __follow_mount
->     if FS_REVAL_DOT is set.
-> 
-> Signed-off-by: NeilBrown <neilb@suse.de>
-> 
-> 
-> diff --git a/fs/namei.c b/fs/namei.c
-> index a7dce91..256ae13 100644
-> --- a/fs/namei.c
-> +++ b/fs/namei.c
-> @@ -719,7 +719,11 @@ static int do_lookup(struct nameidata *nd, struct qstr *name,
->  done:
->  	path->mnt = mnt;
->  	path->dentry = dentry;
-> -	__follow_mount(path);
-> +	if (__follow_mount(path) &&
-> +	    (path->mnt->mnt_sb->s_type->fs_flags & FS_REVAL_DOT)) {
-> +		if (!path->dentry->d_op->d_revalidate(path->dentry, nd))
-> +			return -ESTALE;
 
-Won't this prevent you from ever being able to unmount the stale
-filesystem?
+Reviving the old thread, since it's still happening. Maybe I should file a 
+proper bug about this?
 
-> +	}
->  	return 0;
->  
->  need_lookup:
-> @@ -1619,6 +1623,7 @@ static struct file *do_last(struct nameidata *nd, struct path *path,
->  	switch (nd->last_type) {
->  	case LAST_DOTDOT:
->  		follow_dotdot(nd);
-> +	case LAST_DOT:
->  		dir = nd->path.dentry;
->  		if (nd->path.mnt->mnt_sb->s_type->fs_flags & FS_REVAL_DOT) {
->  			if (!dir->d_op->d_revalidate(dir, nd)) {
-> @@ -1627,7 +1632,6 @@ static struct file *do_last(struct nameidata *nd, struct path *path,
->  			}
->  		}
->  		/* fallthrough */
-> -	case LAST_DOT:
->  	case LAST_ROOT:
->  		if (open_flag & O_CREAT)
->  			goto exit;
-> 
+On Fri, 12 Feb 2010, Trond Myklebust wrote:
 
+> On Fri, 2010-02-12 at 11:13 -0500, Jeff Layton wrote:
+>> Feb 12 16:11:38 nexus6 kernel: [10629.733513] 130.233.227.1 D 00000000ffffffff     0 29902      2 0x00000080
+>> Feb 12 16:11:38 nexus6 kernel: [10629.733513]  ffff8800c158dc50 0000000000000046 0000000000015ac0 0000000000015ac0
+>> Feb 12 16:11:38 nexus6 kernel: [10629.733513]  ffff880116251ab0 ffff8800c158dfd8 0000000000015ac0 ffff8801162516f0
+>> Feb 12 16:11:38 nexus6 kernel: [10629.733513]  0000000000015ac0 ffff8800c158dfd8 0000000000015ac0 ffff880116251ab0
+>> Feb 12 16:11:38 nexus6 kernel: [10629.733513] Call Trace:
+>> Feb 12 16:11:38 nexus6 kernel: [10629.733513]  [<ffffffffa09fec20>] ? rpc_wait_bit_killable+0x0/0x40 [sunrpc]
+>> Feb 12 16:11:38 nexus6 kernel: [10629.733513]  [<ffffffffa09fec44>] rpc_wait_bit_killable+0x24/0x40 [sunrpc]
+>> Feb 12 16:11:38 nexus6 kernel: [10629.733513]  [<ffffffff8155f05f>] __wait_on_bit+0x5f/0x90
+>> Feb 12 16:11:38 nexus6 kernel: [10629.733513]  [<ffffffffa09fec20>] ? rpc_wait_bit_killable+0x0/0x40 [sunrpc]
+>> Feb 12 16:11:38 nexus6 kernel: [10629.733513]  [<ffffffff8155f108>] out_of_line_wait_on_bit+0x78/0x90
+>> Feb 12 16:11:38 nexus6 kernel: [10629.733513]  [<ffffffff81083640>] ? wake_bit_function+0x0/0x40
+>> Feb 12 16:11:38 nexus6 kernel: [10629.733513]  [<ffffffffa09ff555>] __rpc_execute+0x105/0x220 [sunrpc]
+>> Feb 12 16:11:38 nexus6 kernel: [10629.733513]  [<ffffffffa09ff696>] rpc_execute+0x26/0x30 [sunrpc]
+>> Feb 12 16:11:38 nexus6 kernel: [10629.733513]  [<ffffffffa09f7b8a>] rpc_run_task+0x3a/0x90 [sunrpc]
+>> Feb 12 16:11:38 nexus6 kernel: [10629.733513]  [<ffffffffa09f7ce2>] rpc_call_sync+0x42/0x70 [sunrpc]
+>> Feb 12 16:11:38 nexus6 kernel: [10629.733513]  [<ffffffff81055080>] ? finish_task_switch+0x50/0xd0
+>> Feb 12 16:11:38 nexus6 kernel: [10629.733513]  [<ffffffffa0baa0ed>] nfs4_proc_renew+0x4d/0xa0 [nfs]
+>> Feb 12 16:11:38 nexus6 kernel: [10629.733513]  [<ffffffffa0bb61fc>] nfs4_check_lease+0x8c/0xc0 [nfs]
+>> Feb 12 16:11:38 nexus6 kernel: [10629.733513]  [<ffffffffa0bb6fa0>] ? nfs4_run_state_manager+0x0/0x40 [nfs]
+>> Feb 12 16:11:38 nexus6 kernel: [10629.733513]  [<ffffffffa0bb6e98>] nfs4_state_manager+0xf8/0x200 [nfs]
+>> Feb 12 16:11:38 nexus6 kernel: [10629.733513]  [<ffffffff810672ed>] ? allow_signal+0x9d/0xb0
+>> Feb 12 16:11:38 nexus6 kernel: [10629.733513]  [<ffffffffa0bb6fc3>] nfs4_run_state_manager+0x23/0x40 [nfs]
+>> Feb 12 16:11:38 nexus6 kernel: [10629.733513]  [<ffffffff81083286>] kthread+0x96/0xa0
+>> Feb 12 16:11:38 nexus6 kernel: [10629.733513]  [<ffffffff8101422a>] child_rip+0xa/0x20
+>> Feb 12 16:11:38 nexus6 kernel: [10629.733513]  [<ffffffff810831f0>] ? kthread+0x0/0xa0
+>> Feb 12 16:11:38 nexus6 kernel: [10629.733513]  [<ffffffff81014220>] ? child_rip+0x0/0x20
+>>
+>> Here, the mount appears to be attempting to renew the state.
+>>
+>> <wild ass speculation>
+>> Another thread (not shown in the sysrq-t) is attempting to do writeback
+>> (maybe the bdev flush thread?) and that's in turn blocked by the state
+>> recovery code?
+>> </wild ass speculation>
+>>
+>> Looking back over the capture that you sent originally, I see that the
+>> client is attempting a WRITE, getting a NFS4ERR_BAD_STATEID back from
+>> the server, issuing a RENEW which succeeds and then reattempting the
+>> WRITE.
+>>
+>> Trond, shouldn't it be trying to recover the state before reissuing the
+>> write?
+>>
+>
+> Yes. Both nfs4_read_done() and nfs4_write_done() will call
+> nfs4_async_handle_error(), which again should call
+> nfs4_state_mark_reclaim_nograce() on the stateid. The state manager
+> should then end up recovering that stateid before the write is
+> reattempted.
+>
+> We did previously have an issue if the server were to return
+> NFS4ERR_STALE_STATEID, followed by NFS4ERR_OK to our RENEW probe
+> (==seriously buggy server), but 2.6.33-rc7 has a fix for that.
 
+The offending app seems to be the new "indicator-applet" on the Ubuntu 
+GNOME desktop, so maybe that's why others haven't seen this bug yet? 
+Here's the trace from dmesg:
+
+[482400.730245] INFO: task indicator-apple:28782 blocked for more than 120 seconds.
+[482400.730247] "echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables this message.
+[482400.730249] indicator-app D 0000000000000000     0 28782      1 0x00000080
+[482400.730253]  ffff880010579ac8 0000000000000082 0000000000015bc0 0000000000015bc0
+[482400.730257]  ffff880109bb1ab0 ffff880010579fd8 0000000000015bc0 ffff880109bb16f0
+[482400.730261]  0000000000015bc0 ffff880010579fd8 0000000000015bc0 ffff880109bb1ab0
+[482400.730265] Call Trace:
+[482400.730275]  [<ffffffffa0b6b2b0>] ? nfs_wait_bit_uninterruptible+0x0/0x20 [nfs]
+[482400.730279]  [<ffffffff8153eb57>] io_schedule+0x47/0x70
+[482400.730288]  [<ffffffffa0b6b2be>] nfs_wait_bit_uninterruptible+0xe/0x20 [nfs]
+[482400.730292]  [<ffffffff8153f3af>] __wait_on_bit+0x5f/0x90
+[482400.730302]  [<ffffffffa0b6b2b0>] ? nfs_wait_bit_uninterruptible+0x0/0x20 [nfs]
+[482400.730305]  [<ffffffff8153f458>] out_of_line_wait_on_bit+0x78/0x90
+[482400.730309]  [<ffffffff81085360>] ? wake_bit_function+0x0/0x40
+[482400.730318]  [<ffffffffa0b6b29f>] nfs_wait_on_request+0x2f/0x40 [nfs]
+[482400.730329]  [<ffffffffa0b6f6af>] nfs_wait_on_requests_locked+0x7f/0xd0 [nfs]
+[482400.730340]  [<ffffffffa0b70aee>] nfs_sync_mapping_wait+0x9e/0x1a0 [nfs]
+[482400.730350]  [<ffffffffa0b70ed9>] nfs_write_mapping+0x79/0xb0 [nfs]
+[482400.730361]  [<ffffffffa0b70f47>] nfs_wb_all+0x17/0x20 [nfs]
+[482400.730369]  [<ffffffffa0b5feba>] nfs_do_fsync+0x2a/0x60 [nfs]
+[482400.730378]  [<ffffffffa0b608b6>] nfs_file_write+0x106/0x1e0 [nfs]
+[482400.730381]  [<ffffffff8114270a>] do_sync_write+0xfa/0x140
+[482400.730385]  [<ffffffff81085320>] ? autoremove_wake_function+0x0/0x40
+[482400.730389]  [<ffffffff81250b96>] ? security_file_permission+0x16/0x20
+[482400.730392]  [<ffffffff81142a08>] vfs_write+0xb8/0x1a0
+[482400.730396]  [<ffffffff810c03e2>] ? audit_syscall_entry+0x242/0x270
+[482400.730399]  [<ffffffff811432a1>] sys_write+0x51/0x80
+[482400.730403]  [<ffffffff810131b2>] system_call_fastpath+0x16/0x1b
+
+I haven't tried the 2.6.34-series yet..
+
+-- 
+Timo Aaltonen
+Systems Specialist
+IT Services, Aalto University
