@@ -1,75 +1,49 @@
 From: Benny Halevy <bhalevy@panasas.com>
-Subject: Re: [pnfs] Updated pNFS Developmental kernel rpms
-Date: Thu, 06 May 2010 22:37:53 +0300
-Message-ID: <4BE31A91.3080200@panasas.com>
-References: <4BDB417C.2090505@RedHat.com> <4BE31538.7010604@RedHat.com>
+Subject: Re: [PATCH 1/1] SQUASHME pnfs: restore state recovery in async handler
+Date: Thu, 06 May 2010 22:44:58 +0300
+Message-ID: <4BE31C3A.4060904@panasas.com>
+References: <1273010046-9015-1-git-send-email-andros@netapp.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
-Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-To: Steve Dickson <SteveD@redhat.com>
+Cc: linux-nfs@vger.kernel.org
+To: andros@netapp.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ww0-f46.google.com ([74.125.82.46]:56712 "EHLO
-	mail-ww0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755053Ab0EFTiF (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 6 May 2010 15:38:05 -0400
-Received: by wwb39 with SMTP id 39so278145wwb.19
-        for <linux-nfs@vger.kernel.org>; Thu, 06 May 2010 12:38:02 -0700 (PDT)
-In-Reply-To: <4BE31538.7010604-AfCzQyP5zfLQT0dZR+AlfA@public.gmane.org>
+Received: from mail-wy0-f174.google.com ([74.125.82.174]:45395 "EHLO
+	mail-wy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754224Ab0EFTpG (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 6 May 2010 15:45:06 -0400
+Received: by wyg36 with SMTP id 36so285287wyg.19
+        for <linux-nfs@vger.kernel.org>; Thu, 06 May 2010 12:45:04 -0700 (PDT)
+In-Reply-To: <1273010046-9015-1-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On May. 06, 2010, 22:15 +0300, Steve Dickson <SteveD@redhat.com> wrote:
-> Please Note, I just added an pNFS enabled nfs-utils to these 
-> repositories... This nfs-utils rpm should be usable on 
-> all three Fedora versions... Please let me know
-> if this is not the case...
+On May. 05, 2010, 0:54 +0300, andros@netapp.com wrote:
+> From: Andy Adamson <andros@netapp.com>
+> 
+> For some reason, the call to nfs4_schedule_state_recovery was removed from
+> the pNFS git trees, but is present in the straight 2.6.34-rcX kernels.
 
-Awesome. Thanks!
+Committed to pnfs-submit. Thanks!
 
 Benny
 
 > 
-> steved.
+> Signed-off-by: Andy Adamson <andros@netapp.com>
+> ---
+>  fs/nfs/nfs4proc.c |    1 +
+>  1 files changed, 1 insertions(+), 0 deletions(-)
 > 
-> On 04/30/2010 04:45 PM, Steve Dickson wrote:
->> Hello,
->>
->> I've updated the Fedora pNFS development kernels to include 
->> the latest pNFS tag release and added new kernel repository. 
->>
->> The Fedora 13 kernels (kernel-2.6.33) were updated to
->> the pnfs-all-2.6.33-2010-04-29 git tag. I realize that F-13
->> distro is not yet fully released, but its close and with a little
->> a bit of persuasion ;-) and F-13 kernel can be used on a F-12 box. 
->>
->> I also added a Fedora devel (or rawhide) repository. This repository
->> will contain the Fedora Rawhide kernel (kernel-2.6.34) which
->> closely mirrors the mainstream kernel. This kernel was updated
->> to the pnfs-all-2.6.34-rc5-2010-04-29 git tag.
->>
->> There were no changes to the Fedora 12 (kernel-2.6.32) repository.
->>
->> Instructions on how to install and use these kernels are at:
->>
->> http://wiki.linux-nfs.org/wiki/index.php/Fedora_pNFS_Client_Setup
->> (Thank you Mark Uddin, from EMC, for your initial input on this,
->> the input was very helpful!)
->>  
->> If/when bugs are found with these rpms please enter them
->> in to the NFS Bugzilla Main Page at:
->>     https://bugzilla.linux-nfs.org/index.cgi
->>
->> Please use the "pNFS" keyword.. 
->>
->> Any question or issues please feel free to contact me... 
->>
->> steved.
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+> index 4b3bd81..43dab3c 100644
+> --- a/fs/nfs/nfs4proc.c
+> +++ b/fs/nfs/nfs4proc.c
+> @@ -3694,6 +3694,7 @@ _nfs4_async_handle_error(struct rpc_task *task, const struct nfs_server *server,
+>  			dprintk("%s ERROR %d, Reset session. Exchangeid "
+>  				"flags 0x%x\n", __func__, task->tk_status,
+>  				clp->cl_exchange_flags);
+> +			nfs4_schedule_state_recovery(clp);
+>  			task->tk_status = 0;
+>  			return -EAGAIN;
+>  #endif /* CONFIG_NFS_V4_1 */
 
