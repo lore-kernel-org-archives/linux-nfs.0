@@ -1,72 +1,70 @@
 From: Benny Halevy <bhalevy@panasas.com>
-Subject: Re: [PATCH 0/5] Restore non-file layout code version 2
-Date: Thu, 06 May 2010 22:47:22 +0300
-Message-ID: <4BE31CCA.1020004@panasas.com>
-References: <1272652032-2496-1-git-send-email-andros@netapp.com>
+Subject: Re: [PATCH 0/13] Remove non-file layout code from submit tree version
+ 2
+Date: Thu, 06 May 2010 22:48:05 +0300
+Message-ID: <4BE31CF5.4000901@panasas.com>
+References: <1272573291-8986-1-git-send-email-andros@netapp.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Cc: linux-nfs@vger.kernel.org
 To: andros@netapp.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-wy0-f174.google.com ([74.125.82.174]:63464 "EHLO
+Received: from mail-wy0-f174.google.com ([74.125.82.174]:60599 "EHLO
 	mail-wy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756047Ab0EFTra (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 6 May 2010 15:47:30 -0400
-Received: by wyg36 with SMTP id 36so287145wyg.19
-        for <linux-nfs@vger.kernel.org>; Thu, 06 May 2010 12:47:29 -0700 (PDT)
-In-Reply-To: <1272652032-2496-1-git-send-email-andros@netapp.com>
+	with ESMTP id S1757122Ab0EFTsO (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 6 May 2010 15:48:14 -0400
+Received: by wyg36 with SMTP id 36so287733wyg.19
+        for <linux-nfs@vger.kernel.org>; Thu, 06 May 2010 12:48:13 -0700 (PDT)
+In-Reply-To: <1272573291-8986-1-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Apr. 30, 2010, 21:27 +0300, andros@netapp.com wrote:
+On Apr. 29, 2010, 23:34 +0300, andros@netapp.com wrote:
 > Applies to 2.6.34-rc5 pnfs-submit branch on top of the "pNFS generic devce ID
-> cache version 3" and " Remove non-file layout code from submit tree version 2"
+> cache version 3" patches sent April 26 which includes these patches:
+> 0001-SQUASHME-pnfs_submit-generic-device-ID-cache.patch
+> 0002-SQUASHME-pnfs_submit-fix-multiple-mount-set_pnfs_lay.patch
+> 0003-SQUASHME-pnfs-submit-file-layout-driver-generic-devi.patch
 > 
-> This patch set restores object and block functionality removed in the
-> pnfs-submit tree.
+> This patch set begins separating non-file layout code from file layout code.
 > 
+> Responded to version 1 comments and kept uninitialize_mountpoint.
 > Adjust to using the generic device id cache.
 > Permanetly remove structure fields and function parameters not used by any
 > layout driver.
+> The next patch set will restore object and block layout code removed by these
+> patches.
 > 
-> Note: struct nfs_server pnfs_mount_type pointer was removed as it was unused
-> due to the generic deviceid cache. The file layout driver does not need a
-> private data pointer in struct nfs_server, and currently, neither does the
-> object nor block layout driver. Once code is submitted that needs a private
-> data pointer, (as I'm told is on the way) we can add one.
+> 0001-SQUASHME-pnfs_submit-remove-GETDEVICELIST.patch
+> 0002-SQUASHME-pnfs_submit-remove-CB_NOTIFY_DEVICEID.patch
+> 0003-SQUASHME-pnfs_submit-remove-pnfs_mount_type-from-all.patch
+> 0004-SQUASHME-pnfs_submit-remove-get_blocksize-policy-ope.patch
+> 0005-SQUASHME-pnfs_submit-remove-ds_wsize-ds_rsize-ds_wpa.patch
+> 0006-SQUASHME-pnfs_submit-update-uninitialize_mountpoint.patch
+> 0007-SQUASHME-pnfs_submit-remove-struct-pnfs_mount_type.patch
+> 0008-SQUASHME-pnfs_submit-change-initialize_mountpoint-pa.patch
+> 0009-SQUASHME-pnfs_submit-change-nfs_fsino-layoutclass-na.patch
+> 0010-SQUASHME-pnfs_submit-remove-pnfs_fs_ltype.patch
+> 0011-SQUASHME-pnfs_submit-remove-layout_name.patch
 > 
-> Note: The CB_NOTIFY_DEVICEID code is incomplete in that all layout segments
-> referring to the 'to be removed device id' need to be reaped, and all in-flight
-> I/O drained prior to device id removal.
-> Note: The generic device id cache means that there is no longer any need for
-> a per layout driver delete_deviceid call.
-> 0001-pnfs_post_submit-restore-CB_NOTIFY_DEVICEID.patch
-> 
-> For the block layout driver: Please review and test.
-> Note: new getdevicelist layoutdriver_io_operation.
-> 0002-pnfs_post_submit-restore-GETDEVICELIST.patch
-> 0003-pnfs_post_submit-add-getdevicelist-io-operation.patch
+> File layout code bug fix and cleanup.
+> 0012-SQUASHME-pnfs_submit-fall-back-to-MDS-on-filelayout_.patch
+> 0013-SQUASHME-pnfs_submit-cleanup-nfs4_pnfs_ds_add.patch
 
-Patches 1,2, 4,5 committed to the pnfs branch. Thanks!
+All committed to pnfs-submit. Thanks!
 
 Benny
 
 > 
-> For the object layout driver. Please review and test.
-> Note: Just removed the unused ds_wpages and ds_rpages.
-> 0004-pnfs_post_submit-restore-ds_wsize-and-ds_rsize.patch
-> 0005-pnfs_post_submit-restore-get_blocksize-policy-operat.patch
+> Tested:
+> CONFIG_NFS_V4_1 set
 > 
+> V4.0, V4.1, and pNFS mounts:
+> Connectathon tests pass.
 > 
-> Testing:
-> -------
+> CONFIG_NFS_V4_1 not set:
 > 
-> The file layout driver does not use this code, so I could not test, and the
-> code has changed due to the generic device id cache.
-> 
-> I did run Connectathon to smoke test that the file layout functionality has not
-> changed.
-> 
+> Connectathon tests pass.
 > 
 > -->Andy
 > 
@@ -74,3 +72,4 @@ Benny
 > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
 > the body of a message to majordomo@vger.kernel.org
 > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
