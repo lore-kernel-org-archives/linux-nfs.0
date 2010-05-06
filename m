@@ -1,73 +1,50 @@
 From: Benny Halevy <bhalevy@panasas.com>
-Subject: Re: [PATCH 0/13] Remove non-file layout code from submit tree version
- 2
-Date: Thu, 06 May 2010 22:48:05 +0300
-Message-ID: <4BE31CF5.4000901@panasas.com>
-References: <1272573291-8986-1-git-send-email-andros@netapp.com>
+Subject: Re: [PATCH 0/7] pnfs-submit api touch ups
+Date: Thu, 06 May 2010 23:24:01 +0300
+Message-ID: <4BE32561.9070607@panasas.com>
+References: <4BE3166F.7060800@panasas.com> <o2o89c397151005061233vcaefdd27s4513be2b641348a2@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
-Cc: linux-nfs@vger.kernel.org
-To: andros@netapp.com
+Cc: NFS list <linux-nfs@vger.kernel.org>
+To: "William A. (Andy) Adamson" <androsadamson@gmail.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-wy0-f174.google.com ([74.125.82.174]:60599 "EHLO
-	mail-wy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757122Ab0EFTsO (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 6 May 2010 15:48:14 -0400
-Received: by wyg36 with SMTP id 36so287733wyg.19
-        for <linux-nfs@vger.kernel.org>; Thu, 06 May 2010 12:48:13 -0700 (PDT)
-In-Reply-To: <1272573291-8986-1-git-send-email-andros@netapp.com>
+Received: from mail-ww0-f46.google.com ([74.125.82.46]:50947 "EHLO
+	mail-ww0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756035Ab0EFUYM (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 6 May 2010 16:24:12 -0400
+Received: by wwb39 with SMTP id 39so314455wwb.19
+        for <linux-nfs@vger.kernel.org>; Thu, 06 May 2010 13:24:10 -0700 (PDT)
+In-Reply-To: <o2o89c397151005061233vcaefdd27s4513be2b641348a2-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Apr. 29, 2010, 23:34 +0300, andros@netapp.com wrote:
-> Applies to 2.6.34-rc5 pnfs-submit branch on top of the "pNFS generic devce ID
-> cache version 3" patches sent April 26 which includes these patches:
-> 0001-SQUASHME-pnfs_submit-generic-device-ID-cache.patch
-> 0002-SQUASHME-pnfs_submit-fix-multiple-mount-set_pnfs_lay.patch
-> 0003-SQUASHME-pnfs-submit-file-layout-driver-generic-devi.patch
-> 
-> This patch set begins separating non-file layout code from file layout code.
-> 
-> Responded to version 1 comments and kept uninitialize_mountpoint.
-> Adjust to using the generic device id cache.
-> Permanetly remove structure fields and function parameters not used by any
-> layout driver.
-> The next patch set will restore object and block layout code removed by these
-> patches.
-> 
-> 0001-SQUASHME-pnfs_submit-remove-GETDEVICELIST.patch
-> 0002-SQUASHME-pnfs_submit-remove-CB_NOTIFY_DEVICEID.patch
-> 0003-SQUASHME-pnfs_submit-remove-pnfs_mount_type-from-all.patch
-> 0004-SQUASHME-pnfs_submit-remove-get_blocksize-policy-ope.patch
-> 0005-SQUASHME-pnfs_submit-remove-ds_wsize-ds_rsize-ds_wpa.patch
-> 0006-SQUASHME-pnfs_submit-update-uninitialize_mountpoint.patch
-> 0007-SQUASHME-pnfs_submit-remove-struct-pnfs_mount_type.patch
-> 0008-SQUASHME-pnfs_submit-change-initialize_mountpoint-pa.patch
-> 0009-SQUASHME-pnfs_submit-change-nfs_fsino-layoutclass-na.patch
-> 0010-SQUASHME-pnfs_submit-remove-pnfs_fs_ltype.patch
-> 0011-SQUASHME-pnfs_submit-remove-layout_name.patch
-> 
-> File layout code bug fix and cleanup.
-> 0012-SQUASHME-pnfs_submit-fall-back-to-MDS-on-filelayout_.patch
-> 0013-SQUASHME-pnfs_submit-cleanup-nfs4_pnfs_ds_add.patch
+On 2010-05-06 22:33, William A. (Andy) Adamson wrote:
+> Looks good to me
 
-All committed to pnfs-submit. Thanks!
+Great.  I've release a 2.6.34-rc5 based version
+and I'm currently rebasing and retesting over 2.6.34-rc6 (also w/ Zhang's fix)
+and will release hopefully tomorrow.
 
 Benny
 
 > 
-> Tested:
-> CONFIG_NFS_V4_1 set
+> --->Andy
 > 
-> V4.0, V4.1, and pNFS mounts:
-> Connectathon tests pass.
-> 
-> CONFIG_NFS_V4_1 not set:
-> 
-> Connectathon tests pass.
-> 
-> -->Andy
-> 
+> On Thu, May 6, 2010 at 3:20 PM, Benny Halevy <bhalevy@panasas.com> wrote:
+>> After rebasing everything on top of Andy and Fred patchsets I propose the following:
+>>
+>> [PATCH 1/2] SQUASHME: pnfs-submit: have initialize_mountpoint return status
+>> [PATCH 2/2] SQUASHME: pnfs-submit: pass struct nfs_server * to getdeviceinfo
+>> [PATCH 3/5] pnfs-post-submit: pass struct nfs_server * to getdevicelist
+>> [PATCH 4/5] pnfs-post-submit: pass mntfh down the init_pnfs path
+>> [PATCH 5/5] FIXME: pnfs-post-submit: per mount layout driver private data
+>> [PATCH 6/6] SQUASHME: pnfs-block: convert APIs pnfs-post-submit
+>> [PATCH 7/7] SQUASHME: pnfs-obj: convert APIs pnfs-post-submit
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>
 > --
 > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
 > the body of a message to majordomo@vger.kernel.org
