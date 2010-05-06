@@ -1,65 +1,68 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:52135 "EHLO mx2.suse.de"
+Received: from mx1.redhat.com ([209.132.183.28]:54213 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754368Ab0EWWMG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 23 May 2010 18:12:06 -0400
-Date: Mon, 24 May 2010 08:11:55 +1000
-From: Neil Brown <neilb@suse.de>
-To: hce <webmail.hce@gmail.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: NFS cache
-Message-ID: <20100524081155.03046681@notabene.brown>
-In-Reply-To: <AANLkTilYaqsm-Yp-LKaB2H0lTxm6_YjKwEJ2AVEn4wJt@mail.gmail.com>
-References: <AANLkTikZfdnCMm0TkEaVnN2kqVzMZ7CYmbe1YengmRMY@mail.gmail.com>
-	<AANLkTilYaqsm-Yp-LKaB2H0lTxm6_YjKwEJ2AVEn4wJt@mail.gmail.com>
-Content-Type: text/plain; charset=US-ASCII
+	id S1754224Ab0EFTPG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 6 May 2010 15:15:06 -0400
+Received: from int-mx01.intmail.prod.int.phx2.redhat.com (int-mx01.intmail.prod.int.phx2.redhat.com [10.5.11.11])
+	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id o46JF68N009923
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Thu, 6 May 2010 15:15:06 -0400
+Received: from badhat.bos.devel.redhat.com (badhat.boston.devel.redhat.com [10.16.60.49])
+	by int-mx01.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id o46JF6io011512
+	for <linux-nfs@vger.kernel.org>; Thu, 6 May 2010 15:15:06 -0400
+Message-ID: <4BE31538.7010604@RedHat.com>
+Date: Thu, 06 May 2010 15:15:04 -0400
+From: Steve Dickson <SteveD@redhat.com>
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: [pnfs] Updated pNFS Developmental kernel rpms
+References: <4BDB417C.2090505@RedHat.com>
+In-Reply-To: <4BDB417C.2090505@RedHat.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Mon, 17 May 2010 09:54:12 +1000
-hce <webmail.hce@gmail.com> wrote:
+Please Note, I just added an pNFS enabled nfs-utils to these 
+repositories... This nfs-utils rpm should be usable on 
+all three Fedora versions... Please let me know
+if this is not the case...
 
-> On Sun, May 16, 2010 at 6:26 PM, hce <webmail.hce@gmail.com> wrote:
-> > Hi,
-> >
-> > I posted following message on list, but did not see it on list, sorry
-> > if it is duplicated.
-> >
-> > I have an application to use NFS over FUSE, if I keep typing "ls" in
-> > the same directory, the client NFS only sent GETATT, no more READDIR,
-> > all directory contents displayed on screen came from NFS cache. That
-> > caused many problems and I'd like to disable NFS client cache. But it
-> > did not work when I add "-o noac" option to mount.
+steved.
+
+On 04/30/2010 04:45 PM, Steve Dickson wrote:
+> Hello,
 > 
-> I've just realised that the noac is only for NFS attribute cache, so
-> add "-o noac" only generates more getatt for up paths, the "readdir"
-> was still not called if I keep typing "ls" in the same directory.
+> I've updated the Fedora pNFS development kernels to include 
+> the latest pNFS tag release and added new kernel repository. 
 > 
-> Does NFS has another cache for directory structure as well? It seems
-> it displayed directory contents on the screen from cache as it did not
-> call readdir to FUSe.
-
-(almost) all linux filesystems use the 'page cache' for storing parts or all
-of files and directories.
-Linux/NFS uses the page cache to store the contents of a directory.  It will
-normally only refresh the cached directory when the 'mtime' or the 'ctime' of
-the directory (as reported by GETATTR) changes.
-
-If FUSE ensures that the mtime changes whenever the directory content changes
-you should get the same cache behaviour as with regular nfs filesystems.
-If FUSE does not update the mtime, then it will not work reliably with NFS.
-
-NeilBrown
-
-
+> The Fedora 13 kernels (kernel-2.6.33) were updated to
+> the pnfs-all-2.6.33-2010-04-29 git tag. I realize that F-13
+> distro is not yet fully released, but its close and with a little
+> a bit of persuasion ;-) and F-13 kernel can be used on a F-12 box. 
 > 
-> > Also I don't want
-> > NFS GETATT retransmission during file copy. Appreciate your advice and
-> > sample examples for how to mount nfs to disable client cache and
-> > retransmission.
+> I also added a Fedora devel (or rawhide) repository. This repository
+> will contain the Fedora Rawhide kernel (kernel-2.6.34) which
+> closely mirrors the mainstream kernel. This kernel was updated
+> to the pnfs-all-2.6.34-rc5-2010-04-29 git tag.
+> 
+> There were no changes to the Fedora 12 (kernel-2.6.32) repository.
+> 
+> Instructions on how to install and use these kernels are at:
+> 
+> http://wiki.linux-nfs.org/wiki/index.php/Fedora_pNFS_Client_Setup
+> (Thank you Mark Uddin, from EMC, for your initial input on this,
+> the input was very helpful!)
+>  
+> If/when bugs are found with these rpms please enter them
+> in to the NFS Bugzilla Main Page at:
+>     https://bugzilla.linux-nfs.org/index.cgi
+> 
+> Please use the "pNFS" keyword.. 
+> 
+> Any question or issues please feel free to contact me... 
+> 
+> steved.
 > --
 > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
 > the body of a message to majordomo@vger.kernel.org
 > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
