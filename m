@@ -1,65 +1,80 @@
 From: Benny Halevy <bhalevy@panasas.com>
-Subject: [PATCH 1/2] SQUASHME: pnfs-submit: have initialize_mountpoint return status
-Date: Thu,  6 May 2010 22:22:52 +0300
-Message-ID: <1273173772-27641-1-git-send-email-bhalevy@panasas.com>
+Subject: [PATCH 2/2] SQUASHME: pnfs-submit: pass struct nfs_server * to getdeviceinfo
+Date: Thu,  6 May 2010 22:23:06 +0300
+Message-ID: <1273173786-27677-1-git-send-email-bhalevy@panasas.com>
 References: <4BE3166F.7060800@panasas.com>
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:61079 "EHLO
+Received: from daytona.panasas.com ([67.152.220.89]:13969 "EHLO
 	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1754739Ab0EFTW4 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 6 May 2010 15:22:56 -0400
+	with ESMTP id S1755077Ab0EFTXK (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 6 May 2010 15:23:10 -0400
 In-Reply-To: <4BE3166F.7060800@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-use status convention rather than boolean true for success.
-
 Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 ---
- fs/nfs/nfs4filelayout.c |   10 +++++-----
- fs/nfs/pnfs.c           |    2 +-
- 2 files changed, 6 insertions(+), 6 deletions(-)
+ fs/nfs/nfs4filelayoutdev.c |    2 +-
+ fs/nfs/nfs4proc.c          |    3 +--
+ fs/nfs/pnfs.h              |    2 +-
+ include/linux/nfs4_pnfs.h  |    2 +-
+ 4 files changed, 4 insertions(+), 5 deletions(-)
 
-diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
-index 021c853..9d1274d 100644
---- a/fs/nfs/nfs4filelayout.c
-+++ b/fs/nfs/nfs4filelayout.c
-@@ -71,16 +71,16 @@ struct layoutdriver_io_operations filelayout_io_operations;
- int
- filelayout_initialize_mountpoint(struct nfs_client *clp)
- {
--
--	if (nfs4_alloc_init_deviceid_cache(clp,
--					   nfs4_fl_free_deviceid_callback)) {
-+	int status = nfs4_alloc_init_deviceid_cache(clp,
-+						nfs4_fl_free_deviceid_callback);
-+	if (status) {
- 		printk(KERN_WARNING "%s: deviceid cache could not be "
- 			"initialized\n", __func__);
--		return 0;
-+		return status;
- 	}
- 	dprintk("%s: deviceid cache has been initialized successfully\n",
- 		__func__);
--	return 1;
-+	return 0;
+diff --git a/fs/nfs/nfs4filelayoutdev.c b/fs/nfs/nfs4filelayoutdev.c
+index 4b2b8ac..462f6de 100644
+--- a/fs/nfs/nfs4filelayoutdev.c
++++ b/fs/nfs/nfs4filelayoutdev.c
+@@ -518,7 +518,7 @@ get_device_info(struct inode *inode, struct pnfs_deviceid *dev_id)
+ 	/* TODO: Update types when CB_NOTIFY_DEVICEID is available */
+ 	pdev->dev_notify_types = 0;
+ 
+-	rc = pnfs_callback_ops->nfs_getdeviceinfo(inode->i_sb, pdev);
++	rc = pnfs_callback_ops->nfs_getdeviceinfo(server, pdev);
+ 	dprintk("%s getdevice info returns %d\n", __func__, rc);
+ 	if (rc)
+ 		goto out_free;
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 43dab3c..dd2e6cf 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -5767,9 +5767,8 @@ out:
+ 	return status;
  }
  
- /* Uninitialize a mountpoint by destroying its device list.
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index ec543d2..3a09b91 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -211,7 +211,7 @@ set_pnfs_layoutdriver(struct nfs_server *server, u32 id)
- 		return;
+-int nfs4_pnfs_getdeviceinfo(struct super_block *sb, struct pnfs_device *pdev)
++int nfs4_pnfs_getdeviceinfo(struct nfs_server *server, struct pnfs_device *pdev)
+ {
+-	struct nfs_server *server = NFS_SB(sb);
+ 	struct nfs4_pnfs_getdeviceinfo_arg args = {
+ 		.pdev = pdev,
+ 	};
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index c5e042b..b80157b 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -22,7 +22,7 @@
+ #include "iostat.h"
  
- 	if (id > 0 && find_pnfs(id, &mod)) {
--		if (!mod->pnfs_ld_type->ld_io_ops->initialize_mountpoint(
-+		if (mod->pnfs_ld_type->ld_io_ops->initialize_mountpoint(
- 			server->nfs_client)) {
- 			printk(KERN_ERR "%s: Error initializing mount point "
- 			       "for layout driver %u. ", __func__, id);
+ /* nfs4proc.c */
+-extern int nfs4_pnfs_getdeviceinfo(struct super_block *sb,
++extern int nfs4_pnfs_getdeviceinfo(struct nfs_server *server,
+ 				   struct pnfs_device *dev);
+ extern int pnfs4_proc_layoutget(struct nfs4_pnfs_layoutget *lgp);
+ extern int pnfs4_proc_layoutcommit(struct pnfs_layoutcommit_data *data);
+diff --git a/include/linux/nfs4_pnfs.h b/include/linux/nfs4_pnfs.h
+index 723706c..d9631de 100644
+--- a/include/linux/nfs4_pnfs.h
++++ b/include/linux/nfs4_pnfs.h
+@@ -293,7 +293,7 @@ extern void nfs4_unset_layout_deviceid(struct pnfs_layout_segment *,
+  * E.g., getdeviceinfo, I/O callbacks, etc
+  */
+ struct pnfs_client_operations {
+-	int (*nfs_getdeviceinfo) (struct super_block *sb,
++	int (*nfs_getdeviceinfo) (struct nfs_server *,
+ 				  struct pnfs_device *dev);
+ 
+ 	/* Post read callback. */
 -- 
 1.6.5.1
 
