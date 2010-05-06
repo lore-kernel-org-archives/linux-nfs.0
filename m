@@ -1,46 +1,75 @@
-From: "William A. (Andy) Adamson" <androsadamson@gmail.com>
-Subject: Re: [PATCH 0/7] pnfs-submit api touch ups
-Date: Thu, 6 May 2010 15:33:03 -0400
-Message-ID: <o2o89c397151005061233vcaefdd27s4513be2b641348a2@mail.gmail.com>
-References: <4BE3166F.7060800@panasas.com>
+From: Benny Halevy <bhalevy@panasas.com>
+Subject: Re: [pnfs] Updated pNFS Developmental kernel rpms
+Date: Thu, 06 May 2010 22:37:53 +0300
+Message-ID: <4BE31A91.3080200@panasas.com>
+References: <4BDB417C.2090505@RedHat.com> <4BE31538.7010604@RedHat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
-Cc: NFS list <linux-nfs@vger.kernel.org>
-To: Benny Halevy <bhalevy@panasas.com>
+Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+To: Steve Dickson <SteveD@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-gy0-f174.google.com ([209.85.160.174]:39398 "EHLO
-	mail-gy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752676Ab0EFTdG convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 6 May 2010 15:33:06 -0400
-Received: by gyg13 with SMTP id 13so217812gyg.19
-        for <linux-nfs@vger.kernel.org>; Thu, 06 May 2010 12:33:04 -0700 (PDT)
-In-Reply-To: <4BE3166F.7060800@panasas.com>
+Received: from mail-ww0-f46.google.com ([74.125.82.46]:56712 "EHLO
+	mail-ww0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755053Ab0EFTiF (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 6 May 2010 15:38:05 -0400
+Received: by wwb39 with SMTP id 39so278145wwb.19
+        for <linux-nfs@vger.kernel.org>; Thu, 06 May 2010 12:38:02 -0700 (PDT)
+In-Reply-To: <4BE31538.7010604-AfCzQyP5zfLQT0dZR+AlfA@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Looks good to me
+On May. 06, 2010, 22:15 +0300, Steve Dickson <SteveD@redhat.com> wrote:
+> Please Note, I just added an pNFS enabled nfs-utils to these 
+> repositories... This nfs-utils rpm should be usable on 
+> all three Fedora versions... Please let me know
+> if this is not the case...
 
---->Andy
+Awesome. Thanks!
 
-On Thu, May 6, 2010 at 3:20 PM, Benny Halevy <bhalevy@panasas.com> wrot=
-e:
-> After rebasing everything on top of Andy and Fred patchsets I propose=
- the following:
->
-> [PATCH 1/2] SQUASHME: pnfs-submit: have initialize_mountpoint return =
-status
-> [PATCH 2/2] SQUASHME: pnfs-submit: pass struct nfs_server * to getdev=
-iceinfo
-> [PATCH 3/5] pnfs-post-submit: pass struct nfs_server * to getdeviceli=
-st
-> [PATCH 4/5] pnfs-post-submit: pass mntfh down the init_pnfs path
-> [PATCH 5/5] FIXME: pnfs-post-submit: per mount layout driver private =
-data
-> [PATCH 6/6] SQUASHME: pnfs-block: convert APIs pnfs-post-submit
-> [PATCH 7/7] SQUASHME: pnfs-obj: convert APIs pnfs-post-submit
+Benny
+
+> 
+> steved.
+> 
+> On 04/30/2010 04:45 PM, Steve Dickson wrote:
+>> Hello,
+>>
+>> I've updated the Fedora pNFS development kernels to include 
+>> the latest pNFS tag release and added new kernel repository. 
+>>
+>> The Fedora 13 kernels (kernel-2.6.33) were updated to
+>> the pnfs-all-2.6.33-2010-04-29 git tag. I realize that F-13
+>> distro is not yet fully released, but its close and with a little
+>> a bit of persuasion ;-) and F-13 kernel can be used on a F-12 box. 
+>>
+>> I also added a Fedora devel (or rawhide) repository. This repository
+>> will contain the Fedora Rawhide kernel (kernel-2.6.34) which
+>> closely mirrors the mainstream kernel. This kernel was updated
+>> to the pnfs-all-2.6.34-rc5-2010-04-29 git tag.
+>>
+>> There were no changes to the Fedora 12 (kernel-2.6.32) repository.
+>>
+>> Instructions on how to install and use these kernels are at:
+>>
+>> http://wiki.linux-nfs.org/wiki/index.php/Fedora_pNFS_Client_Setup
+>> (Thank you Mark Uddin, from EMC, for your initial input on this,
+>> the input was very helpful!)
+>>  
+>> If/when bugs are found with these rpms please enter them
+>> in to the NFS Bugzilla Main Page at:
+>>     https://bugzilla.linux-nfs.org/index.cgi
+>>
+>> Please use the "pNFS" keyword.. 
+>>
+>> Any question or issues please feel free to contact me... 
+>>
+>> steved.
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 > --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" =
-in
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
 > the body of a message to majordomo@vger.kernel.org
-> More majordomo info at =A0http://vger.kernel.org/majordomo-info.html
->
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
