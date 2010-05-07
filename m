@@ -1,7 +1,8 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 1/2] libexport.a: Refactor rmtab_read()
-Date: Fri, 07 May 2010 13:45:29 -0400
-Message-ID: <20100507174529.4221.80221.stgit@localhost.localdomain>
+Subject: [PATCH 2/2] mountd: Convert colons in IPv6 presentation addresses to
+	semicolons
+Date: Fri, 07 May 2010 13:45:40 -0400
+Message-ID: <20100507174540.4221.46279.stgit@localhost.localdomain>
 References: <20100507174128.4221.36914.stgit@localhost.localdomain>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -10,106 +11,107 @@ To: steved@redhat.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
 Received: from mail-qy0-f183.google.com ([209.85.221.183]:44423 "EHLO
 	mail-qy0-f183.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756347Ab0EGRpd (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 7 May 2010 13:45:33 -0400
+	with ESMTP id S1756347Ab0EGRpo (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 7 May 2010 13:45:44 -0400
 Received: by mail-qy0-f183.google.com with SMTP id 13so1957785qyk.1
-        for <linux-nfs@vger.kernel.org>; Fri, 07 May 2010 10:45:33 -0700 (PDT)
+        for <linux-nfs@vger.kernel.org>; Fri, 07 May 2010 10:45:44 -0700 (PDT)
 In-Reply-To: <20100507174128.4221.36914.stgit-bi+AKbBUZKY6gyzm1THtWbp2dZbC/Bob@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Clean up: Make it easier to add IPv6 support by refactoring part of
-rmtab_read() into a helper function.
+The /var/lib/nfs/rmtab file delineates fields in each of its lines
+with a ":".  The first field contains the IP address of a client, in
+presentation format.  IPv6 presentation format addresses contain
+colons, which screws up the field delineation of rmtab.
+
+Use a simple simple scheme to convert the colons in incoming client
+names to some other character, and then convert them back when the
+rmtab file is read.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- support/export/rmtab.c |   64 +++++++++++++++++++++++++++++++-----------------
- 1 files changed, 41 insertions(+), 23 deletions(-)
+ support/nfs/rmtab.c |   42 +++++++++++++++++++++++++++++++++++++++---
+ 1 files changed, 39 insertions(+), 3 deletions(-)
 
-diff --git a/support/export/rmtab.c b/support/export/rmtab.c
-index b49e1aa..0ec495c 100644
---- a/support/export/rmtab.c
-+++ b/support/export/rmtab.c
-@@ -19,39 +19,57 @@
- #include "xio.h"
- #include "xlog.h"
+diff --git a/support/nfs/rmtab.c b/support/nfs/rmtab.c
+index a28abf3..ca789a3 100644
+--- a/support/nfs/rmtab.c
++++ b/support/nfs/rmtab.c
+@@ -19,6 +19,18 @@
+ #include <signal.h>
+ #include "nfslib.h"
  
 +/*
-+ * See if the entry already exists.  If not,
-+ * this was an instantiated wild card, and we
-+ * must add it.
++ * Colons in incoming IPv6 presentation addresses have to
++ * replaced with another character, since rmtab already
++ * uses colons to delineate fields.
++ *
++ * Use a printable character, but one that would never be
++ * found in a presentation address or domain name
 + */
-+static void
-+rmtab_read_wildcard(struct rmtabent *rep)
-+{
-+	nfs_export *exp, *exp2;
-+	struct hostent *hp;
++#define IPV6_COLON	';'
 +
-+	hp = gethostbyname(rep->r_client);
-+	if (hp == NULL)
-+		return;
-+	hp = hostent_dup(hp);
-+	if (hp == NULL)
-+		return;
++#define LINELEN		(2048)
 +
-+	exp = export_allowed(hp, rep->r_path);
-+	free(hp);
-+	if (exp == NULL)
-+		return;
-+
-+	exp2 = export_lookup(rep->r_client, exp->m_export.e_path, 0);
-+	if (exp2 == NULL) {
-+		struct exportent ee;
-+
-+		memset(&ee, 0, sizeof(ee));
-+		dupexportent(&ee, &exp->m_export);
-+
-+		ee.e_hostname = rep->r_client;
-+		exp2 = export_create(&ee, 0);
-+		exp2->m_changed = exp->m_changed;
-+	}
-+	exp2->m_mayexport = 1;
-+}
-+
- int
- rmtab_read(void)
- {
- 	struct rmtabent		*rep;
--	nfs_export		*exp = NULL;
+ static FILE	*rmfp = NULL;
  
- 	setrmtabent("r");
- 	while ((rep = getrmtabent(1, NULL)) != NULL) {
--		struct hostent		*hp = NULL;
- 		int			htype;
--		
+ int
+@@ -56,7 +68,8 @@ struct rmtabent *
+ fgetrmtabent(FILE *fp, int log, long *pos)
+ {
+ 	static struct rmtabent	re;
+-	char	buf[2048], *count, *host, *path;
++	char		*count, *host, *path, *c;
++	static char	buf[LINELEN];
+ 
+ 	errno = 0;
+ 	if (!fp)
+@@ -84,10 +97,16 @@ fgetrmtabent(FILE *fp, int log, long *pos)
+ 		else
+ 			re.r_count = 1;
+ 	} while (0);
 +
- 		htype = client_gettype(rep->r_client);
--		if ((htype == MCL_FQDN || htype == MCL_SUBNETWORK)
--		    && (hp = gethostbyname (rep->r_client))
--		    && (hp = hostent_dup (hp),
--			exp = export_allowed (hp, rep->r_path))) {
--			/* see if the entry already exists, otherwise this was an instantiated
--			 * wild card, and we must add it
--			 */
--			nfs_export *exp2 = export_lookup(rep->r_client,
--							exp->m_export.e_path, 0);
--			if (!exp2) {
--				struct exportent ee;
--				dupexportent(&ee, &exp->m_export);
--				ee.e_hostname = rep->r_client;
--				exp2 = export_create(&ee, 0);
--				exp2->m_changed = exp->m_changed;
--			}
--			free (hp);
--			exp2->m_mayexport = 1;
--		} else if (hp) /* export_allowed failed */
--			free(hp);
-+		if (htype == MCL_FQDN || htype == MCL_SUBNETWORK)
-+			rmtab_read_wildcard(rep);
- 	}
+ 	strncpy(re.r_client, host, sizeof (re.r_client) - 1);
+ 	re.r_client[sizeof (re.r_client) - 1] = '\0';
++	for (c = re.r_client; *c != '\0'; c++)
++		if (*c == IPV6_COLON)
++			*c = ':';
 +
- 	if (errno == EINVAL) {
- 		/* Something goes wrong. We need to fix the rmtab
- 		   file. */
+ 	strncpy(re.r_path, path, sizeof (re.r_path) - 1);
+ 	re.r_path[sizeof (re.r_path) - 1] = '\0';
++
+ 	return &re;
+ }
+ 
+@@ -100,10 +119,27 @@ putrmtabent(struct rmtabent *rep, long *pos)
+ void
+ fputrmtabent(FILE *fp, struct rmtabent *rep, long *pos)
+ {
++	static char	buf[LINELEN];
++	char		*c;
++
+ 	if (!fp || (pos && fseek (fp, *pos, SEEK_SET) != 0))
+ 		return;
+-	fprintf(fp, "%s:%s:0x%.8x\n", rep->r_client, rep->r_path,
+-		rep->r_count);
++
++	/*
++	 * To avoid confusing the token parser in fgetrmtabent(),
++	 * convert colons in incoming IPv6 presentation addresses
++	 * to semicolons.
++	 */
++	if (strlen(rep->r_client) > sizeof(buf)) {
++		xlog(L_ERROR, "client name too large");
++		return;
++	}
++	strncpy(buf, rep->r_client, sizeof(buf));
++	for (c = buf; *c != '\0'; c++)
++		if (*c == ':')
++			*c = IPV6_COLON;
++
++	(void)fprintf(fp, "%s:%s:0x%.8x\n", buf, rep->r_path, rep->r_count);
+ }
+ 
+ void
 
