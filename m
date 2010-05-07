@@ -1,183 +1,84 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:37828 "EHLO fieldses.org"
+Received: from minas.ics.muni.cz ([147.251.4.40]:32906 "EHLO minas.ics.muni.cz"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758342Ab0ELWeC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 12 May 2010 18:34:02 -0400
-Date: Wed, 12 May 2010 18:34:01 -0400
-From: "J. Bruce Fields" <bfields@citi.umich.edu>
-To: Benny Halevy <bhalevy@panasas.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v2 8/9] nfsd4: keep a reference count on client while
-	in use
-Message-ID: <20100512223401.GF11389@fieldses.org>
-References: <4BE9C7A2.8030801@panasas.com> <1273612434-13726-1-git-send-email-bhalevy@panasas.com> <20100512024030.GA27184@fieldses.org> <4BEA2E06.7070902@panasas.com> <4BEA4876.3030802@panasas.com> <20100512222946.GE11389@fieldses.org>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20100512222946.GE11389@fieldses.org>
+	id S1755039Ab0EGPim (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 7 May 2010 11:38:42 -0400
+Date: Fri, 7 May 2010 17:39:20 +0200
+From: Lukas Hejtmanek <xhejtman@ics.muni.cz>
+To: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org
+Cc: salvet@ics.muni.cz
+Subject: Deadlock in NFSv4 in all kernels
+Message-ID: <20100507153920.GP28167@ics.muni.cz>
+Content-Type: text/plain; charset=iso-8859-2
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, May 12, 2010 at 06:29:46PM -0400, J. Bruce Fields wrote:
-> The following works for me. If you don't see any objection, I'll squash
-> this in and push out the result.
+Hi,
 
-And then this will also go on top.
+I encountered the following problem. We use short expiration time for
+kerberos contexts created by rpc.gssd (some patches were included in mainline
+nfs-utils). In particular, we use 120secs expiration time.
 
-(With the nfsd4_reclaim_complete() code being the one part mildly
-relevant to your patch series.)
+Now, I run application that eats 80% of available RAM. Then I run 10 parallel
+dd processes that write data into NFS4 volume with sec=krb5.
 
---b.
+As soon as the kerberos context expires (i.e., up to 120 secs), the whole
+system gets stuck in do_page_fault and succesive functions. It is because
+there is no free memory in kernel, all free memory is used as cache for NFS4
+(due to dd traffic), kernel ask NFS to write back its pages but NFS cannot do
+anything as it is missing valid context. NFS contacts rpc.gssd to provide
+a renewed context, the rpc.gssd does not provide the context as it needs some memory
+to scan /tmp for a ticket. I.e., it deadlocks.
 
-commit 3746094a09914b8e380bf6273f7ceb478de79157
-Author: J. Bruce Fields <bfields@citi.umich.edu>
-Date:   Mon Apr 19 15:11:28 2010 -0400
+Longer context expiration time is no real solution as it only makes the
+deadlock less often. 
 
-    nfsd4: implement reclaim_complete
-    
-    This is a mandatory operation.  Also, here (not in open) is where we
-    should be committing the reboot recovery information.
-    
-    Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
+Any ideas what can be done here? (Please cc me.) We could preallocate some
+memory in rpc.gssd and use mlockall but not sure whether this proctects also
+kernel malloc for things related to rpc.gssd and context creation (new file
+descriptors and so on). 
 
-diff --git a/Documentation/filesystems/nfs/nfs41-server.txt b/Documentation/filesystems/nfs/nfs41-server.txt
-index 6a53a84..0488491 100644
---- a/Documentation/filesystems/nfs/nfs41-server.txt
-+++ b/Documentation/filesystems/nfs/nfs41-server.txt
-@@ -137,7 +137,7 @@ NS*| OPENATTR             | OPT        |              | Section 18.17  |
-    | READ                 | REQ        |              | Section 18.22  |
-    | READDIR              | REQ        |              | Section 18.23  |
-    | READLINK             | OPT        |              | Section 18.24  |
--NS | RECLAIM_COMPLETE     | REQ        |              | Section 18.51  |
-+   | RECLAIM_COMPLETE     | REQ        |              | Section 18.51  |
-    | RELEASE_LOCKOWNER    | MNI        |              | N/A            |
-    | REMOVE               | REQ        |              | Section 18.25  |
-    | RENAME               | REQ        |              | Section 18.26  |
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index e2dc960..59ec449 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -1312,6 +1312,11 @@ static struct nfsd4_operation nfsd4_ops[] = {
- 		.op_flags = ALLOWED_WITHOUT_FH | ALLOWED_AS_FIRST_OP,
- 		.op_name = "OP_SEQUENCE",
- 	},
-+	[OP_RECLAIM_COMPLETE] = {
-+		.op_func = (nfsd4op_func)nfsd4_reclaim_complete,
-+		.op_flags = ALLOWED_WITHOUT_FH,
-+		.op_name = "OP_RECLAIM_COMPLETE",
-+	},
- };
- 
- static const char *nfsd4_op_name(unsigned opnum)
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index e563597..89b77fe 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -1503,6 +1503,35 @@ out:
- }
- 
- __be32
-+nfsd4_reclaim_complete(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate, struct nfsd4_reclaim_complete *rc)
-+{
-+	if (rc->rca_one_fs) {
-+		if (!cstate->current_fh.fh_dentry)
-+			return nfserr_nofilehandle;
-+		/*
-+		 * We don't take advantage of the rca_one_fs case.
-+		 * That's OK, it's optional, we can safely ignore it.
-+		 */
-+		 return nfs_ok;
-+	}
-+	nfs4_lock_state();
-+	if (is_client_expired(cstate->session->se_client)) {
-+		nfs4_unlock_state();
-+		/*
-+		 * The following error isn't really legal.
-+		 * But we only get here if the client just explicitly
-+		 * destroyed the client.  Surely it no longer cares what
-+		 * error it gets back on an operation for the dead
-+		 * client.
-+		 */
-+		return nfserr_stale_clientid;
-+	}
-+	nfsd4_create_clid_dir(cstate->session->se_client);
-+	nfs4_unlock_state();
-+	return nfs_ok;
-+}
-+
-+__be32
- nfsd4_setclientid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 		  struct nfsd4_setclientid *setclid)
- {
-@@ -2511,10 +2540,8 @@ nfsd4_process_open2(struct svc_rqst *rqstp, struct svc_fh *current_fh, struct nf
- 	}
- 	memcpy(&open->op_stateid, &stp->st_stateid, sizeof(stateid_t));
- 
--	if (nfsd4_has_session(&resp->cstate)) {
-+	if (nfsd4_has_session(&resp->cstate))
- 		open->op_stateowner->so_confirmed = 1;
--		nfsd4_create_clid_dir(open->op_stateowner->so_client);
--	}
- 
- 	/*
- 	* Attempt to hand out a delegation. No error return, because the
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 126d0ca..ac17a70 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -1234,6 +1234,16 @@ nfsd4_decode_sequence(struct nfsd4_compoundargs *argp,
- 	DECODE_TAIL;
- }
- 
-+static __be32 nfsd4_decode_reclaim_complete(struct nfsd4_compoundargs *argp, struct nfsd4_reclaim_complete *rc)
-+{
-+	DECODE_HEAD;
-+
-+	READ_BUF(4);
-+	READ32(rc->rca_one_fs);
-+
-+	DECODE_TAIL;
-+}
-+
- static __be32
- nfsd4_decode_noop(struct nfsd4_compoundargs *argp, void *p)
- {
-@@ -1346,7 +1356,7 @@ static nfsd4_dec nfsd41_dec_ops[] = {
- 	[OP_TEST_STATEID]	= (nfsd4_dec)nfsd4_decode_notsupp,
- 	[OP_WANT_DELEGATION]	= (nfsd4_dec)nfsd4_decode_notsupp,
- 	[OP_DESTROY_CLIENTID]	= (nfsd4_dec)nfsd4_decode_notsupp,
--	[OP_RECLAIM_COMPLETE]	= (nfsd4_dec)nfsd4_decode_notsupp,
-+	[OP_RECLAIM_COMPLETE]	= (nfsd4_dec)nfsd4_decode_reclaim_complete,
- };
- 
- struct nfsd4_minorversion_ops {
-diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
-index c28958e..4d476ff 100644
---- a/fs/nfsd/xdr4.h
-+++ b/fs/nfsd/xdr4.h
-@@ -381,6 +381,10 @@ struct nfsd4_destroy_session {
- 	struct nfs4_sessionid	sessionid;
- };
- 
-+struct nfsd4_reclaim_complete {
-+	u32 rca_one_fs;
-+};
-+
- struct nfsd4_op {
- 	int					opnum;
- 	__be32					status;
-@@ -421,6 +425,7 @@ struct nfsd4_op {
- 		struct nfsd4_create_session	create_session;
- 		struct nfsd4_destroy_session	destroy_session;
- 		struct nfsd4_sequence		sequence;
-+		struct nfsd4_reclaim_complete	reclaim_complete;
- 	} u;
- 	struct nfs4_replay *			replay;
- };
-@@ -523,6 +528,7 @@ extern __be32 nfsd4_sequence(struct svc_rqst *,
- extern __be32 nfsd4_destroy_session(struct svc_rqst *,
- 		struct nfsd4_compound_state *,
- 		struct nfsd4_destroy_session *);
-+__be32 nfsd4_reclaim_complete(struct svc_rqst *, struct nfsd4_compound_state *, struct nfsd4_reclaim_complete *);
- extern __be32 nfsd4_process_open1(struct nfsd4_compound_state *,
- 		struct nfsd4_open *open);
- extern __be32 nfsd4_process_open2(struct svc_rqst *rqstp,
+This is seen in 2.6.32 kernel but most probably this is related to all kernel
+versions.
+
+rpc.gssd and all dd processes are stuck in:
+
+May  6 15:33:10 skirit20 kernel: [84087.788019] rpc.gssd      D 6758d881     0 26864      1 0x00000000
+May  6 15:33:10 skirit20 kernel: [84087.788019]  c280594c 00000086 f94c3d6c 6758d881 00004c5a 0f3e1c27 c1d868c0 c1c068dc
+May  6 15:33:10 skirit20 kernel: [84087.788019]  c07d8880 c07d8880 f6752130 f67523d4 c1c06880 00000000 c1c06880 00000000
+May  6 15:33:10 skirit20 kernel: [84087.788019]  f6d7c8f0 f67523d4 f6752130 c1c06cd4 c1c06880 c2805960 c052101f 00000000
+May  6 15:33:10 skirit20 kernel: [84087.788019] Call Trace:
+May  6 15:33:10 skirit20 kernel: [84087.788019]  [<c052101f>] io_schedule+0x6f/0xc0
+May  6 15:33:10 skirit20 kernel: [84087.788019]  [<f88d8af5>] nfs_wait_bit_uninterruptible+0x5/0x10 [nfs]
+May  6 15:33:10 skirit20 kernel: [84087.788019]  [<c05215a7>] __wait_on_bit+0x47/0x70
+May  6 15:33:10 skirit20 kernel: [84087.788019]  [<c0521683>] out_of_line_wait_on_bit+0xb3/0xd0
+May  6 15:33:10 skirit20 kernel: [84087.788019]  [<f88d8ae3>] nfs_wait_on_request+0x23/0x30 [nfs]
+May  6 15:33:10 skirit20 kernel: [84087.788019]  [<f88ddb4a>] nfs_sync_mapping_wait+0xea/0x200 [nfs]
+May  6 15:33:10 skirit20 kernel: [84087.788019]  [<f88ddd0e>] nfs_wb_page_priority+0xae/0x170 [nfs]
+May  6 15:33:10 skirit20 kernel: [84087.788019]  [<f88cdfec>] nfs_release_page+0x5c/0x70 [nfs]
+May  6 15:33:10 skirit20 kernel: [84087.788019]  [<c029620b>] try_to_release_page+0x2b/0x40
+May  6 15:33:10 skirit20 kernel: [84087.788019]  [<c02a25af>] shrink_page_list+0x37f/0x4b0
+May  6 15:33:10 skirit20 kernel: [84087.788019]  [<c02a29ae>] shrink_inactive_list+0x2ce/0x6c0
+May  6 15:33:10 skirit20 kernel: [84087.788019]  [<c02a34c8>] shrink_zone+0x1c8/0x260
+May  6 15:33:10 skirit20 kernel: [84087.788019]  [<c02a35ae>] shrink_zones+0x4e/0xe0
+May  6 15:33:10 skirit20 kernel: [84087.788019]  [<c02a43b5>] do_try_to_free_pages+0x75/0x2e0
+May  6 15:33:10 skirit20 kernel: [84087.788019]  [<c02a4756>] try_to_free_pages+0x86/0xa0
+May  6 15:33:10 skirit20 kernel: [84087.788019]  [<c029cda4>] __alloc_pages_slowpath+0x164/0x470
+May  6 15:33:10 skirit20 kernel: [84087.788019]  [<c029d1c8>] __alloc_pages_nodemask+0x118/0x120
+May  6 15:33:10 skirit20 kernel: [84087.788019]  [<c02acce0>] do_anonymous_page+0x100/0x240
+May  6 15:33:10 skirit20 kernel: [84087.788019]  [<c02b072a>] handle_mm_fault+0x34a/0x3d0
+May  6 15:33:10 skirit20 kernel: [84087.788019]  [<c0524c54>] do_page_fault+0x174/0x370
+May  6 15:33:10 skirit20 kernel: [84087.788019]  [<c0522cb6>] error_code+0x66/0x70
+May  6 15:33:10 skirit20 kernel: [84087.788019]  [<c0296ac2>] file_read_actor+0x32/0xf0
+May  6 15:33:10 skirit20 kernel: [84087.788019]  [<c029815f>] do_generic_file_read+0x3af/0x4c0
+May  6 15:33:10 skirit20 kernel: [84087.788019]  [<c0298a01>] generic_file_aio_read+0xb1/0x210
+May  6 15:33:10 skirit20 kernel: [84087.788019]  [<c02cdc05>] do_sync_read+0xd5/0x120
+May  6 15:33:10 skirit20 kernel: [84087.788019]  [<c02ce3bb>] vfs_read+0x9b/0x110
+May  6 15:33:10 skirit20 kernel: [84087.788019]  [<c02ce501>] sys_read+0x41/0x80
+May  6 15:33:10 skirit20 kernel: [84087.788019]  [<c0203150>] sysenter_do_call+0x12/0x22
+May  6 15:33:10 skirit20 kernel: [84087.788019]  [<ffffe430>] 0xffffe430
+
+-- 
+Luká¹ Hejtmánek
