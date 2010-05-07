@@ -1,61 +1,115 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 19/24] NFS: Decode NFSv2 readlink reply using an xdr_stream
-Date: Sun, 16 May 2010 22:48:25 -0400
-Message-ID: <20100517024825.20258.99905.stgit@localhost.localdomain>
-References: <20100517023905.20258.86631.stgit@localhost.localdomain>
+Subject: [PATCH 1/2] libexport.a: Refactor rmtab_read()
+Date: Fri, 07 May 2010 13:45:29 -0400
+Message-ID: <20100507174529.4221.80221.stgit@localhost.localdomain>
+References: <20100507174128.4221.36914.stgit@localhost.localdomain>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-To: linux-nfs@vger.kernel.org
+Cc: linux-nfs@vger.kernel.org
+To: steved@redhat.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qy0-f171.google.com ([209.85.221.171]:63658 "EHLO
-	mail-qy0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752444Ab0EQCs1 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 16 May 2010 22:48:27 -0400
-Received: by mail-qy0-f171.google.com with SMTP id 1so6350026qyk.5
-        for <linux-nfs@vger.kernel.org>; Sun, 16 May 2010 19:48:27 -0700 (PDT)
-In-Reply-To: <20100517023905.20258.86631.stgit-bi+AKbBUZKY6gyzm1THtWbp2dZbC/Bob@public.gmane.org>
+Received: from mail-qy0-f183.google.com ([209.85.221.183]:44423 "EHLO
+	mail-qy0-f183.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756347Ab0EGRpd (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 7 May 2010 13:45:33 -0400
+Received: by mail-qy0-f183.google.com with SMTP id 13so1957785qyk.1
+        for <linux-nfs@vger.kernel.org>; Fri, 07 May 2010 10:45:33 -0700 (PDT)
+In-Reply-To: <20100507174128.4221.36914.stgit-bi+AKbBUZKY6gyzm1THtWbp2dZbC/Bob@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+
+Clean up: Make it easier to add IPv6 support by refactoring part of
+rmtab_read() into a helper function.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- fs/nfs/nfs2xdr.c |   24 ++++++++++++++++++++++++
- 1 files changed, 24 insertions(+), 0 deletions(-)
+ support/export/rmtab.c |   64 +++++++++++++++++++++++++++++++-----------------
+ 1 files changed, 41 insertions(+), 23 deletions(-)
 
-diff --git a/fs/nfs/nfs2xdr.c b/fs/nfs/nfs2xdr.c
-index b464c0b..164c06d 100644
---- a/fs/nfs/nfs2xdr.c
-+++ b/fs/nfs/nfs2xdr.c
-@@ -1008,6 +1008,30 @@ nfs_xdr_readlinkres(struct rpc_rqst *req, __be32 *p, void *dummy)
- }
+diff --git a/support/export/rmtab.c b/support/export/rmtab.c
+index b49e1aa..0ec495c 100644
+--- a/support/export/rmtab.c
++++ b/support/export/rmtab.c
+@@ -19,39 +19,57 @@
+ #include "xio.h"
+ #include "xlog.h"
  
- /*
-+ * 2.2.6.  readlinkres
-+ *
-+ *	union readlinkres switch (stat status) {
-+ *	case NFS_OK:
-+ *		path data;
-+ *	default:
-+ *		void;
-+ *	};
++/*
++ * See if the entry already exists.  If not,
++ * this was an instantiated wild card, and we
++ * must add it.
 + */
-+static int nfs2_xdr_dec_readlinkres(struct rpc_rqst *req, __be32 *p,
-+				    void *__unused)
++static void
++rmtab_read_wildcard(struct rmtabent *rep)
 +{
-+	struct xdr_stream xdr;
-+	enum nfs_stat status;
++	nfs_export *exp, *exp2;
++	struct hostent *hp;
 +
-+	xdr_init_decode(&xdr, &req->rq_rcv_buf, p);
-+	if (decode_stat(&xdr, &status) != 0)
-+		return -EIO;
-+	if (status != NFS_OK)
-+		return nfs_stat_to_errno(status);
-+	return decode_path(&xdr);
++	hp = gethostbyname(rep->r_client);
++	if (hp == NULL)
++		return;
++	hp = hostent_dup(hp);
++	if (hp == NULL)
++		return;
++
++	exp = export_allowed(hp, rep->r_path);
++	free(hp);
++	if (exp == NULL)
++		return;
++
++	exp2 = export_lookup(rep->r_client, exp->m_export.e_path, 0);
++	if (exp2 == NULL) {
++		struct exportent ee;
++
++		memset(&ee, 0, sizeof(ee));
++		dupexportent(&ee, &exp->m_export);
++
++		ee.e_hostname = rep->r_client;
++		exp2 = export_create(&ee, 0);
++		exp2->m_changed = exp->m_changed;
++	}
++	exp2->m_mayexport = 1;
 +}
 +
-+/*
-  * Decode WRITE reply
-  */
- static int
+ int
+ rmtab_read(void)
+ {
+ 	struct rmtabent		*rep;
+-	nfs_export		*exp = NULL;
+ 
+ 	setrmtabent("r");
+ 	while ((rep = getrmtabent(1, NULL)) != NULL) {
+-		struct hostent		*hp = NULL;
+ 		int			htype;
+-		
++
+ 		htype = client_gettype(rep->r_client);
+-		if ((htype == MCL_FQDN || htype == MCL_SUBNETWORK)
+-		    && (hp = gethostbyname (rep->r_client))
+-		    && (hp = hostent_dup (hp),
+-			exp = export_allowed (hp, rep->r_path))) {
+-			/* see if the entry already exists, otherwise this was an instantiated
+-			 * wild card, and we must add it
+-			 */
+-			nfs_export *exp2 = export_lookup(rep->r_client,
+-							exp->m_export.e_path, 0);
+-			if (!exp2) {
+-				struct exportent ee;
+-				dupexportent(&ee, &exp->m_export);
+-				ee.e_hostname = rep->r_client;
+-				exp2 = export_create(&ee, 0);
+-				exp2->m_changed = exp->m_changed;
+-			}
+-			free (hp);
+-			exp2->m_mayexport = 1;
+-		} else if (hp) /* export_allowed failed */
+-			free(hp);
++		if (htype == MCL_FQDN || htype == MCL_SUBNETWORK)
++			rmtab_read_wildcard(rep);
+ 	}
++
+ 	if (errno == EINVAL) {
+ 		/* Something goes wrong. We need to fix the rmtab
+ 		   file. */
 
