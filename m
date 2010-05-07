@@ -1,130 +1,45 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ww0-f46.google.com ([74.125.82.46]:45735 "EHLO
-	mail-ww0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750882Ab0EFVNT (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 6 May 2010 17:13:19 -0400
-Received: by wwb39 with SMTP id 39so349443wwb.19
-        for <linux-nfs@vger.kernel.org>; Thu, 06 May 2010 14:13:17 -0700 (PDT)
-Message-ID: <4BE330E6.70707@panasas.com>
-Date: Fri, 07 May 2010 00:13:10 +0300
-From: Benny Halevy <bhalevy@panasas.com>
-To: NFS list <linux-nfs@vger.kernel.org>
-CC: Steve Dickson <steved@redhat.com>
-Subject: Re: pnfs git tree status pnfs-all-2.6.34-rc6-2010-05-06 pnfs-all-2.6.33-2010-05-06
-References: <4BD9BF01.2000508@panasas.com>
-In-Reply-To: <4BD9BF01.2000508@panasas.com>
+Received: from mx1.redhat.com ([209.132.183.28]:8498 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756532Ab0EGQMK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 7 May 2010 12:12:10 -0400
+Received: from int-mx08.intmail.prod.int.phx2.redhat.com (int-mx08.intmail.prod.int.phx2.redhat.com [10.5.11.21])
+	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id o47GC9wM019010
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Fri, 7 May 2010 12:12:09 -0400
+Received: from badhat.bos.devel.redhat.com (vpn-225-76.phx2.redhat.com [10.3.225.76])
+	by int-mx08.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id o47GC8St030843
+	for <linux-nfs@vger.kernel.org>; Fri, 7 May 2010 12:12:09 -0400
+Message-ID: <4BE43BD8.5000201@RedHat.com>
+Date: Fri, 07 May 2010 12:12:08 -0400
+From: Steve Dickson <SteveD@redhat.com>
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: [pnfs] Updated pNFS Developmental kernel repository
 Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-I released the following today:
+Hello,
 
-pnfs-all-2.6.33-2010-05-06
-pnfs-all-2.6.34-rc6-2010-05-06
+I've updated the Fedora pNFS development kernels to include 
+the latest pNFS tag release: 
+    pnfs-all-2.6.33-2010-05-06     (Fedora 13)
+    pnfs-all-2.6.34-rc6-2010-05-06 (Fedora devel)
 
-As usual, cumulative patches can be generated from
-git://linux-nfs.org/~bhalevy/linux-pnfs.git
-using
-git diff v2.6.33 pnfs-all-2.6.33-2010-05-06
-git diff v2.6.34-rc6 pnfs-all-2.6.34-rc6-2010-05-06
+There were no changes to the Fedora 12 kernels or the
+pNFS-aware nfs-utils rpms. 
 
-Or, they can be downloaded from the wiki at:
-http://wiki.linux-nfs.org/wiki/index.php/PNFS_Development_Git_tree
+Instructions on how to install and use these kernels are at:
+http://wiki.linux-nfs.org/wiki/index.php/Fedora_pNFS_Client_Setup
 
-Latest patches (since 2010-04-29):
+ 
+If/when bugs are found with these rpms please enter them
+in to the NFS Bugzilla Main Page at:
+    https://bugzilla.linux-nfs.org/index.cgi
 
-pnfs-submit:
-Andy Adamson (1):
-      SQUASHME pnfs: restore state recovery in async handler
+Please use the "pNFS" keyword.. 
 
-Benny Halevy (2):
-      SQUASHME: pnfs-submit: have initialize_mountpoint return status
-      SQUASHME: pnfs-submit: pass struct nfs_server * to getdeviceinfo
+Any question or issues please feel free to contact me... 
 
-Fred Isaman (4):
-      SQUASHME: pnfs_submit: Revert the pnfs_write_end part of "pnfs: commit and pnfs_write_end"
-      SQUASHME: pnfs_submit: Revert "pnfs: pnfs_modify_new_request"
-      SQUASHME: pnfs_submit: Revert "pnfs: propagate fsdata into nfs_create_request"
-      SQUASHME: pnfs_submit: Revert "pnfs: pnfs_do_flush"
-
-Zhang Jingwang (1):
-      SQUASHME: pnfs-submit: Free layoutcommit_data when error occurs in setup
-
-pnfs:
-Andy Adamson (4):
-      pnfs_post_submit: restore CB_NOTIFY_DEVICEID
-      pnfs_post_submit: restore GETDEVICELIST
-      pnfs_post_submit: restore ds_wsize and ds_rsize
-      pnfs_post_submit: restore get_blocksize policy operation
-
-Benny Halevy (3):
-      pnfs-post-submit: pass struct nfs_server * to getdevicelist
-      pnfs-post-submit: pass mntfh down the init_pnfs path
-      FIXME: pnfs-post-submit: per mount layout driver private data
-
-Fred Isaman (4):
-      pnfs_post_submit: Restore "pnfs: pnfs_do_flush"
-      pnfs_post_submit: Restore "pnfs: propagate fsdata into nfs_create_request"
-      pnfs_post_submit: Restore "pnfs: pnfs_modify_new_request"
-      pnfs_post_submit: Revert the pnfs_write_end part of "pnfs: commit and pnfs_write_end"
-
-pnfs-block:
-Benny Halevy (1):
-      SQUASHME: pnfs-block: convert APIs pnfs-post-submit
-
-Zhang Jingwang (1):
-      SQAUSHME: blocklayoutdriver: NULL pointer reference when committing too many extents
-
-pnfs-obj-all:
-Benny Halevy (1):
-      SQUASHME: pnfs-obj: convert APIs pnfs-post-submit
-
-
-> 
-> pnfs-all-2.6.33:
-> Benny Halevy (1):
->       pnfs-block: revert workaround for NFS4_GETDEVINFO_MAXSIZE
-> 
-> J. Bruce Fields (1):
->       pnfs-block: fix compile breakage
-> 
-> Mike Sager (1):
->       pnfsblock: use the session max response size for getdeviceinfo's maxcount
-> 
-> Zhang Jingwang (1):
->       SQAUSHME: blocklayoutdriver: NULL pointer reference when committing too many extents
-> 
-> Zhengju Sha (1):
->       pnfsd: using sbid instead of fsid while returning device list to client
-> 
-> nfs-upstream:
-> Trond Myklebust (1):
->       NFS: Fix an unstable write data integrity race
-> 
-> pnfs-submit:
-> Tao Guo (1):
->       pnfs: Reduce layout lookup times with sorted lseg list.
-> 
-> pnfs-block:
-> J. Bruce Fields (1):
->       SQUASHME: pnfs-block: fix compile breakage
-> 
-> Mike Sager (1):
->       pnfsblock: use the session max response size for getdeviceinfo's maxcount
-> 
-> Zhang Jingwang (1):
->       SQAUSHME: blocklayoutdriver: NULL pointer reference when committing too many extents
-> 
-> pnfsd-files:
-> Benny Halevy (1):
->       pnfsd: define layout_lock
-> 
-> Zhengju Sha (1):
->       SQUASHME: pnfsd: using sbid instead of fsid while returning device list to client
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
+steved.
