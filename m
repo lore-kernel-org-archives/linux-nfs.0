@@ -1,81 +1,104 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mailgw1.uni-kl.de ([131.246.120.220]:40369 "EHLO
-	mailgw1.uni-kl.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751585Ab0ENJ4X (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 14 May 2010 05:56:23 -0400
-Received: from itwm2.itwm.fhg.de (itwm2.itwm.fhg.de [131.246.191.3])
-	by mailgw1.uni-kl.de (8.14.3/8.14.3/Debian-5+lenny1) with ESMTP id o4E9uLBr025933
-	(version=TLSv1/SSLv3 cipher=EDH-RSA-DES-CBC3-SHA bits=168 verify=NOT)
-	for <linux-nfs@vger.kernel.org>; Fri, 14 May 2010 11:56:21 +0200
-Received: from mail2.itwm.fhg.de ([131.246.191.79]:56106)
-	by itwm2.itwm.fhg.de with esmtps (TLSv1:DES-CBC3-SHA:168)
-	(/C=DE/ST=Rheinland-Pfalz/L=Kaiserslautern/O=Fraunhofer ITWM/OU=SLG/CN=mail2.itwm.fhg.de)(verified=1)
-	 (Exim 4.66 #1)
-	id 1OCrcz-0007NT-5z
-	for linux-nfs@vger.kernel.org; Fri, 14 May 2010 11:56:21 +0200
-Message-ID: <4BED1E44.4020708@itwm.fraunhofer.de>
-Date: Fri, 14 May 2010 11:56:20 +0200
-From: Martin Vogt <martin.vogt@itwm.fraunhofer.de>
-To: linux-nfs@vger.kernel.org
-Subject: Re: permission denied with >= ~2.6.25
-References: <4BE7ED5D.90801@itwm.fraunhofer.de> <4BE93940.5070804@itwm.fraunhofer.de>
-In-Reply-To: <4BE93940.5070804@itwm.fraunhofer.de>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mail-bw0-f219.google.com ([209.85.218.219]:45536 "EHLO
+	mail-bw0-f219.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751702Ab0EIQZN (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 9 May 2010 12:25:13 -0400
+Received: by bwz19 with SMTP id 19so1349538bwz.21
+        for <linux-nfs@vger.kernel.org>; Sun, 09 May 2010 09:25:11 -0700 (PDT)
+Message-ID: <4BE6E1E0.8020706@panasas.com>
+Date: Sun, 09 May 2010 19:25:04 +0300
+From: Boaz Harrosh <bharrosh@panasas.com>
+To: Benny Halevy <bhalevy@panasas.com>, Andy Adamson <andros@netapp.com>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 5/5] FIXME: pnfs-post-submit: per mount layout driver
+ private data
+References: <4BE3166F.7060800@panasas.com> <1273173832-27786-1-git-send-email-bhalevy@panasas.com>
+In-Reply-To: <1273173832-27786-1-git-send-email-bhalevy@panasas.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+On 05/06/2010 10:23 PM, Benny Halevy wrote:
+> Temporary relief until we convert to use generic device cache.
+> 
 
-> Hello,
->
-> I tested 2.6.34-rc7 now and it has the problem too.
-> Then I checked 2.6.24.7 which has the problem,
-> but 2.6.23.1 looks fine.
+[In short]
+Rrrr, No! This is a complete crash. The private data is per-server but
+is called per super-block. In the case of two mounts of same "server",
+the user of this will:
+- Leak a device cache on second mount
+- Crash after close of first super block.
 
-Hello,
+[The long story]
+I'm commenting here for the complete series Andy's and Benny included.
 
-I searched a bit more in the git tree, when the "Permission denied"
-problems does occur first(for me).
-I'm no expert in git. I used git bisect visualize to find a commit
-which should build and then tested if it works/works not.
+What Andy tried to do was move the per super-block device cache to a
+per "server" device cache. (This is the per server struct at the NFS
+client side not to be confused with an NFS-server what so ever). This
+is because as mandated by the Protocol each device id uniqueness is
+governed by a per-server-per-client-per-layoput_type, so multiple
+mounts can share the device-cache and save resources. The old code
+of per-mount-point was correct only not optimal.
 
-The first commit which introduced the "Permission denied" problem,
-was:
+But he did not finish his job. Because he still calls the device
+cache initialization at per-mount-point init. ->initialize_mountpoint is
+called from set_pnfs_layoutdriver() which is called with a super-block
+per mount-point. He went to grate length (I hope, I did not check) to
+make sure only the first mount, allocates the cache, and the last mount
+destroys it.
 
-1-run:
->commit 77a55a1fe8f26f7d022986a599b68002e21d968a
->NFS: Eliminate nfs_renew_times()
->svn: Can't change perms of file
->'Kernel-pxe3-1.h2cuuZBQlF/arch/h8300/platform/h8
->s/.svn/log.1': Permission denied
+But otherwise he noticed (and Benny tried to help) that now
+initialize_mountpoint is per-server, and not per-sb. Hence the pointer
+to struct server. 
 
-When I go back one commit, the "Permission denied" disappears, but
-now I get an "Input/output error".
+So the old code is now a layering violation and hence the mix-up and the bug:
 
-5-run:
->commit 92f6c178250170222f6d80c8ae725400765aa7a4
->"Don't call nfs_renew_times() in nfs_dentry_iput()"
->svn: Can't read file
->'Kernel-pxe3-5.HQikkhUNHk/drivers/usb/storage/.svn/log': Input/output error
+- If it is a per-server? name it ->initialize_server() receiving server
+  pointer, No?
 
-Thus it looks that the problem is now "I/O Error" instead of
-permission denied. And that I have to search when the I/O Error
-disappears?
+- If it is a per-server then shift the all set_pnfs_layoutdriver() to
+  be called once per-server construction (At the server constructor code)
+  then you don't need to sync in multiple places the initialization/destruction
+  of sb(s) vs. servers vs device-caches. Server struct life-cycle will govern that.
 
-Maybe someone has an idea what went wrong here?
+Accommodating future needs:
+- In objects layout (In code not yet released) I have a per-super-block: pages-
+  cache-pool, raid-engine governing struct, and some other raid related information.
+  I use per-super-block because this is the most natural In the Linux VFS API. So
+  global stuff per super-block directly pointed by every inode for easy (random)
+  access at every API level. I could shift this to be per-server in NFS-client. I surly
+  don't want it global, (Rrrrr) and per-inode is two small. I will need to work harder
+  to optimize for the extra contention (or maybe not).
 
-All I can say that I have reproduced a similar svn problem with
-2.6.33 as server/client and with 2.6.34-rc7 as client.
-And that on my system does not go away with sync, tcp, udp, noac,
-nosharecache.
+  So the per-server model is fine, I guess, but don't let me slave over a broken API that
+  forces me to duplicate lifetime rules of things that are already taken care of, only
+  not seen by the layout driver.
 
-But I cannot say that the problem in the 2.6.33 (server/client)
-combination is the same.
-Because with this the svn error is "No such file or directory".
-The problem never existed on my 2.6.16 kernel from SLES10, but now
-every kernel >= 2.6.24 seems to be affected.
+  If moving to a per-server model then some current structures referencing and pointing
+  could change to remove the SB from the picture and directly point to server.
 
+I know this is lots of work and who's going to do it, but I was not the one who suggested
+the optimization in the first place. A per-SB is some much easier because of the Linux
+environment we live in, but if we do it, it must be done right.
 
-regards,
+Boaz
 
-Martin
+> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+> ---
+>  include/linux/nfs_fs_sb.h |    1 +
+>  1 files changed, 1 insertions(+), 0 deletions(-)
+> 
+> diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
+> index cad56a7..00a4e7e 100644
+> --- a/include/linux/nfs_fs_sb.h
+> +++ b/include/linux/nfs_fs_sb.h
+> @@ -164,6 +164,7 @@ struct nfs_server {
+>  
+>  #ifdef CONFIG_NFS_V4_1
+>  	struct pnfs_layoutdriver_type  *pnfs_curr_ld; /* Active layout driver */
+> +	void			       *pnfs_ld_data; /* Per-mount data */
+>  	unsigned int			ds_rsize;  /* Data server read size */
+>  	unsigned int			ds_wsize;  /* Data server write size */
+>  #endif /* CONFIG_NFS_V4_1 */
+
