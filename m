@@ -1,75 +1,68 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:25078 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:45987 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933356Ab0EYTDe convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 25 May 2010 15:03:34 -0400
-Subject: Re: [PATCH 00/22] LAYOUTGET invocation
+	id S1755779Ab0EJTBN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 10 May 2010 15:01:13 -0400
+Date: Mon, 10 May 2010 15:01:11 -0400
+From: "J. Bruce Fields" <bfields@citi.umich.edu>
+To: Benny Halevy <bhalevy@panasas.com>
+Cc: NFS list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 0/8] nfsd4: keep the client from expiring while in use
+	by nfs41 compounds
+Message-ID: <20100510190111.GA1361@fieldses.org>
+References: <4BE0A1AE.4040905@panasas.com> <20100507223836.GO19142@fieldses.org> <4BE65687.8050806@panasas.com> <20100509165551.GA15429@fieldses.org> <4BE8150F.2050706@panasas.com>
 Content-Type: text/plain; charset=us-ascii
-From: Fred Isaman <iisaman@netapp.com>
-In-Reply-To: <4BFC1686.4000509@gmail.com>
-Date: Tue, 25 May 2010 15:03:26 -0400
-Cc: linux-nfs@vger.kernel.org
-Message-Id: <51AD8F7D-D172-4DE6-8F7A-CDFA292CBF8B@netapp.com>
-References: <1273972993-15369-1-git-send-email-iisaman@netapp.com> <4BFC1686.4000509@gmail.com>
-To: Dean Hildebrand <seattleplus@gmail.com>
+In-Reply-To: <4BE8150F.2050706@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-
-On May 25, 2010, at 2:27 PM, Dean Hildebrand wrote:
-
+On Mon, May 10, 2010 at 05:15:43PM +0300, Benny Halevy wrote:
+> On May. 09, 2010, 19:55 +0300, "J. Bruce Fields" <bfields@citi.umich.edu> wrote:
+> > On Sun, May 09, 2010 at 09:30:31AM +0300, Benny Halevy wrote:
+> >> Correct.  The intentions are:
+> >> 1. Make the laundromat process ignore clients that are in
+> >> use by a 4.1 session.
+> >> 2. Renew the client when the compound ends, rather than when it begins.
+> >> 3. Unhash the client when it's expired explicitly but don't destroy it
+> >> until there's no reference to it.
+> > 
+> > OK.  My one slight worry there is to make sure that code getting a
+> > pointer to a client through a sessionid won't inadvertently assume it's
+> > still hashed.
 > 
-> 
-> Fred Isaman wrote:
->> (My apologies for the 4 patches that went out about 1/2 hour ago.  Please ignore those.)
->> 
->> This patch series limits LAYOUTGET invocation to the beginning of the IO paths.
->> 
->> It is intended for the pnfs_submit branch, without reversion in a post_submit branch.
->> 
->> Patches 1-4 revert direct IO.  Commit is already broken, and this series breaks them further.  The problem is that the direct IO redefines data->wb_req and data->pages, so that it can only work with the pnfs code if we don't look at those fields.
->>  
-> 
-> Can you give some history on this?  Is it crashing?  Has this problem been around for a long time or is a new set of patches causing the problem?  Does this affect pNFS O_DIRECT or all O_DIRECT code?
-> 
+> That's a good point.
+> In fact, the client should not be renewed when the compound is done
+> if it was already explicitly expired.
 
-Any use of pnfs_commit from the directIO code will cause a crash.
+Hm, and we've still got a lot of renew_client()'s sprinkled around that
+will try to add the expired client back to client_lru.
 
-In my current tree, the breakage is introduced by with pnfs_commit in patch 3ca1c1136, (use of variables first and last), but because of all the rewriting I can't tell how long it has been around, though I suspect since the beginning given the reliance in filelayout_commit (patch a43d8107) on wb_pages.  If the directIO avoided commit, then it is not obviously broken.
+> Another way to deal with this which may be safer but is less optimal
+> is to keep only the sessionid and look it up on each use. Then, using
+> it while holding the state lock will make sure it's valid when used.
 
+That seems overkill.  Instead of making ops look up the sessionid from
+state each time I guess we could have a revalidate_sessionid() that
+checked the associated client to see if it was still good.
 
-> I don't think revert is the right way to go about this.  Removing support for O_DIRECT because changes to the non-O_DIRECT path break it would not fly in the mainline, and so I don't see why it would fly here.  At the minimum, since O_DIRECT is a B-list feature, I could see it being commented/ifdef'd out for the time being, but completely removing the patches is extremely invasive considering this is a b-list development branch.
-> 
+If we continue to reduce the scope of the state lock, isn't that going
+to be a pain, though?  Will we end up having to do that sort of
+revalidation every time we drop the state lock and reacquire it?
 
-The problem is the redefinition of the data->wb_req and wb_pages fields.  For directIO to work, these either have to be marked as completely off limits to the pnfs code and the filelayout commit code in particular rewritten, or the directIO (not just the pnfs directIO) needs to be substantially rewritten. 
+Perhaps the simplest would be to make the clientid-destroyer wait; it
+could set some sort of CLIENTID_DEAD flag on the client, wait for a
+reference count to go to zero, then destroy the client.
 
-I can send some post_submit patches with the code ifdef'ed out if people would be content with that.
+Then other code would be guaranteed that nothing will change underneath
+them as long as they hold either the state lock or a reference to a
+session.
 
-Fred
+So hopefully we'd only need worry about client shutdown in well-defined
+places:
+	- when put()'ing a session, to check whether the client
+	  is ready to be destroyed now.
+	- when looking up a session, in which case we should check
+	  whether the client is dead and fail the lookup?
 
-
-> Dean
-> 
->> Patches 5-8 do some code cleanup in preperation for the real work.
->> 
->> Patches 9-19 implement the change.  NOTE that patch 19 changes the calling convention of the layout drivers commit calls.  There is no longer a universal lseg for the commit, instead each nfs_page has an lseg attached, with NULL meaning to go through the MDS.
->> 
->> Patches 20-22 rework the filelayout commit function, and then do some code cleanup this enables.
->> 
->> 
->> 
->> The basic idea of these patches is as follows:
->> 
->> We attempt to grab a lseg (possibly invoking LAYOUTGET) early in the IO.  If we succeed, we refcount and stash it, using it through the rest of the io.  If we fail, we revert to straight nfs, even if the area becomes covered by a layout due to other io.
->> 
->> The tricky, though hopefully anomalous, case is when we start without the layout, but have it at this particular stage of the IO.  We ignore this for the moment at write_pages, which will cause block and object to issue CB_LAYOUTRECALL.  At commit, it is tricky to handle, but since block doesn't use commit, and file needs to handle complicated splitting anyway, I just push all complicated decisions of splitting commit between nfs (for IO started without layout) and pnfs to the driver.
->> 
->> Fred
->> 
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>  
-
+--b.
