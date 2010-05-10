@@ -1,55 +1,138 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from zeniv.linux.org.uk ([195.92.253.2]:57524 "EHLO
-	ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758689Ab0EXXoH (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 24 May 2010 19:44:07 -0400
-Date: Tue, 25 May 2010 00:44:04 +0100
-From: Al Viro <viro@ZenIV.linux.org.uk>
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-Cc: Neil Brown <neilb@suse.de>, "Dr. J. Bruce Fields" <bfields@fieldses.org>,
-        Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Subject: Re: [PATCH] VFS: fix recent breakage of FS_REVAL_DOT
-Message-ID: <20100524234404.GU31073@ZenIV.linux.org.uk>
-References: <20100524165756.2cfa54c4@notabene.brown>
- <20100524115903.GP31073@ZenIV.linux.org.uk>
- <20100524155031.GQ31073@ZenIV.linux.org.uk>
- <1274718082.10795.31.camel@heimdal.trondhjem.org>
- <20100524164736.GR31073@ZenIV.linux.org.uk>
- <1274720791.10795.50.camel@heimdal.trondhjem.org>
- <20100524190828.GS31073@ZenIV.linux.org.uk>
- <1274735612.4030.16.camel@heimdal.trondhjem.org>
- <20100524230109.GT31073@ZenIV.linux.org.uk>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20100524230109.GT31073@ZenIV.linux.org.uk>
+Received: from mx2.netapp.com ([216.240.18.37]:27975 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751260Ab0EJOZE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 10 May 2010 10:25:04 -0400
+Cc: Benny Halevy <bhalevy@panasas.com>, linux-nfs@vger.kernel.org
+Message-Id: <CC482AF1-FEF0-4D01-A307-4CE5751F7689@netapp.com>
+From: Andy Adamson <andros@netapp.com>
+To: Boaz Harrosh <bharrosh@panasas.com>
+In-Reply-To: <4BE6E1E0.8020706@panasas.com>
+Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
+Subject: Re: [PATCH 5/5] FIXME: pnfs-post-submit: per mount layout driver private data
+Date: Mon, 10 May 2010 10:24:47 -0400
+References: <4BE3166F.7060800@panasas.com> <1273173832-27786-1-git-send-email-bhalevy@panasas.com> <4BE6E1E0.8020706@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Tue, May 25, 2010 at 12:01:09AM +0100, Al Viro wrote:
-> Client question: what stops you from stack overflows in that area?  Call
-> chains you've got are *deep*, and I really wonder what happens if you
-> hit a referral point while traversing nested symlink, get pathname
-> resolution (already several levels into recursion) call ->follow_link(),
-> bounce down through nfs_do_refmount/nfs_follow_referral/try_location/
-> vfs_kern_mount/nfs4_referral_get_sb/nfs_follow_remote_path into
-> vfs_path_lookup, which will cheerfully add a few more loops like that.
-> 
-> Sure, the *total* nesting depth through symlinks is still limited by 8, but
-> that pile of stack frames is _MUCH_ fatter than what we normally have in
-> pathname resolution.  You've suddenly added ~60 extra stack frames to the
-> worst-case stack footprint of the pathname resolution.  Don't try that
-> on sparc64, boys and girls, it won't be happy with attempt to carve ~12Kb
-> extra out of its kernel stack...  In fact, it's worse than just ~60 stack
-> frames - several will contain (on-stack) struct nameidata in them, which
-> very definitely will _not_ fit into the minimal stack frame.  It's about
-> 160 bytes extra, for each of those (up to 7).
 
-Actually, just what will happen if you have a referral that would eventually
-resolve to a directory you have no permissions to access?  AFAICS, you'll
-end up trying it on all alternates, since nfs_follow_referral() will cheerfully
-keep trying one variant after another, getting -EACCES from each.  Worse,
-if there are nested referrals in it, you'll get all sequences of alternates
-tried before you give up.
+On May 9, 2010, at 12:25 PM, Boaz Harrosh wrote:
 
-..o*O(at least it's merely exponential; Ackermann would be even more fun)
+> On 05/06/2010 10:23 PM, Benny Halevy wrote:
+>> Temporary relief until we convert to use generic device cache.
+>>
+>
+> [In short]
+> Rrrr, No! This is a complete crash. The private data is per-server but
+> is called per super-block. In the case of two mounts of same "server",
+> the user of this will:
+> - Leak a device cache on second mount
+> - Crash after close of first super block.
+>
+> [The long story]
+> I'm commenting here for the complete series Andy's and Benny included.
+>
+> What Andy tried to do was move the per super-block device cache to a
+> per "server" device cache. (This is the per server struct at the NFS
+> client side not to be confused with an NFS-server what so ever). This
+> is because as mandated by the Protocol each device id uniqueness is
+> governed by a per-server-per-client-per-layoput_type, so multiple
+> mounts can share the device-cache and save resources. The old code
+> of per-mount-point was correct only not optimal.
+>
+> But he did not finish his job. Because he still calls the device
+> cache initialization at per-mount-point init. - 
+> >initialize_mountpoint is
+> called from set_pnfs_layoutdriver() which is called with a super-block
+> per mount-point. He went to grate length (I hope, I did not check) to
+> make sure only the first mount, allocates the cache, and the last  
+> mount
+> destroys it.
+>
+> But otherwise he noticed (and Benny tried to help) that now
+> initialize_mountpoint is per-server, and not per-sb. Hence the pointer
+> to struct server.
+>
+> So the old code is now a layering violation and hence the mix-up and  
+> the bug
+
+>
+> - If it is a per-server? name it ->initialize_server() receiving  
+> server
+>  pointer, No?
+>
+> - If it is a per-server then shift the all set_pnfs_layoutdriver() to
+>  be called once per-server construction (At the server constructor  
+> code)
+
+set_pnfs_layoutdriver checks to see if nfs_server->pnfs_curr_ld is set.
+Put the private pointer into struct pnfs_layoutdriver_type and your  
+problem will be solved.
+
+-->Andy
+
+>  then you don't need to sync in multiple places the initialization/ 
+> destruction
+>  of sb(s) vs. servers vs device-caches. Server struct life-cycle  
+> will govern that.
+>
+> Accommodating future needs:
+> - In objects layout (In code not yet released) I have a per-super- 
+> block: pages-
+>  cache-pool, raid-engine governing struct, and some other raid  
+> related information.
+>  I use per-super-block because this is the most natural In the Linux  
+> VFS API. So
+>  global stuff per super-block directly pointed by every inode for  
+> easy (random)
+>  access at every API level. I could shift this to be per-server in  
+> NFS-client. I surly
+>  don't want it global, (Rrrrr) and per-inode is two small. I will  
+> need to work harder
+>  to optimize for the extra contention (or maybe not).
+>
+>  So the per-server model is fine, I guess, but don't let me slave  
+> over a broken API that
+>  forces me to duplicate lifetime rules of things that are already  
+> taken care of, only
+>  not seen by the layout driver.
+>
+>  If moving to a per-server model then some current structures  
+> referencing and pointing
+>  could change to remove the SB from the picture and directly point  
+> to server.
+>
+> I know this is lots of work and who's going to do it, but I was not  
+> the one who suggested
+> the optimization in the first place. A per-SB is some much easier  
+> because of the Linux
+> environment we live in, but if we do it, it must be done right.
+>
+> Boaz
+>
+>> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+>> ---
+>> include/linux/nfs_fs_sb.h |    1 +
+>> 1 files changed, 1 insertions(+), 0 deletions(-)
+>>
+>> diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
+>> index cad56a7..00a4e7e 100644
+>> --- a/include/linux/nfs_fs_sb.h
+>> +++ b/include/linux/nfs_fs_sb.h
+>> @@ -164,6 +164,7 @@ struct nfs_server {
+>>
+>> #ifdef CONFIG_NFS_V4_1
+>> 	struct pnfs_layoutdriver_type  *pnfs_curr_ld; /* Active layout  
+>> driver */
+>> +	void			       *pnfs_ld_data; /* Per-mount data */
+>> 	unsigned int			ds_rsize;  /* Data server read size */
+>> 	unsigned int			ds_wsize;  /* Data server write size */
+>> #endif /* CONFIG_NFS_V4_1 */
+>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs"  
+> in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
