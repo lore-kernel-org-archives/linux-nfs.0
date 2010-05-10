@@ -1,54 +1,58 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:57378 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S934480Ab0EURIG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 21 May 2010 13:08:06 -0400
-Date: Fri, 21 May 2010 13:08:04 -0400
-To: Christopher Hawkins <chawkins@bplinux.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: nfs4 hang
-Message-ID: <20100521170804.GA9639@fieldses.org>
-References: <3726796.301274385081605.JavaMail.javamailuser@localhost> <25273515.321274385268620.JavaMail.javamailuser@localhost>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <25273515.321274385268620.JavaMail.javamailuser@localhost>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+Received: from rcsinet10.oracle.com ([148.87.113.121]:60581 "EHLO
+	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751754Ab0EJRgk (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 10 May 2010 13:36:40 -0400
+Message-ID: <4BE84419.6010306@oracle.com>
+Date: Mon, 10 May 2010 13:36:25 -0400
+From: Chuck Lever <chuck.lever@oracle.com>
+To: Beast in Black <beast.in.black@gmail.com>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: NFS hang when writing to loopback file from VMWare ESX (kernel
+  2.6.30)
+References: <AANLkTinyu2l0ykkWfqjHQV2HW9g5rPvWIj-DX6dnDBbI@mail.gmail.com>
+In-Reply-To: <AANLkTinyu2l0ykkWfqjHQV2HW9g5rPvWIj-DX6dnDBbI@mail.gmail.com>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Thu, May 20, 2010 at 03:54:28PM -0400, Christopher Hawkins wrote:
-> Hello, 
-> 
-> I have a bash script that sets up a root filesystem over NFS. The method works fine over NFS3 but hangs when using NFS4 as a transport. Hoping someone can help me figure out why?
-> 
-> In a nutshell:
-> 
-> 1. The node boots into a ramdisk that has a few thousand files in it already
-> 2. connects to an NFS server exporting / and mounts that in a tmp dir
-> 3. bash (on the booting node) loops through the local and remote filesystem and creates a local symlink to anything in the nfs root that it doesn't already have.
+On 05/10/2010 05:20 AM, Beast in Black wrote:
+> Greetings.
+>
+> Every so often, when i'm writing via NFS to a loopback-mounted file, i
+> find that about 10-15 nfsd threads (out of a total of 64) go into D
+> state, along with the loop file, and never recover from the D state.
+> My setup is as follows:
+>
+> 1. sparse file is created via dd and loopback-mounted onto a
+> /dev/loopX device (where 0<= X<= 100)
+> 2. sparse file is mke2fs'd and mounted on mount point "/volumes/localvol"
+> 3. "/volumes/localvol" is exported with options
+> *(rw,no_root_squash,no_subtree_check,async,insecure,nohide,no_wdelay).
+> 4. /volumes/localvol is set as a network datastore (NFS mount) in ESX
+> 5. Virtual machine files for an ESX VM are copied into the NFS mount on ESX
+> 6. Virtual machine is powered on and I do some activity in it...write files etc.
+>
+> At this point, the VM is running fine in ESX. After a while, however,
+> I notice that the VM freezes and that ESX reports the NFS mounted
+> datastore as unreachable. When I check the NFS server machine, I find
+> that 10-15 NFS threads are in D state, along with the associated
+> loopback-mounted file. The D states are never recovered from, and the
+> only way out is to reboot the NFS server machine.
+>
+> I have also tried with specifying the export as "sync" instead of
+> "async" (and removing no_wdelay) but I still see the same behavior.
+>
+> The NFS server is running the vanilla 2.6.30 kernel on Ubuntu 8.10.
+> The NFS exports are all NFSv3.
+>
+> Does anyone have an idea of why this may be occurring? I would be glad
+> to provide any additional info required.
 
-Wild.
+There may be a deadlock due to memory pressure on the server.  You might 
+get some information by doing a "sudo echo 't' > /proc/sysrq_trigger", 
+then looking in your syslog, when the server gets into the hung state.
 
-> Export options are: / 192.168.1.0/24(rw,no_root_squash,no_subtree_check,fsid=0)
-> Mount options are: rw,sync,noatime,rsize=1024,wsize=1024
-> 
-> rpcidmapd, portmap, statd are running on server and client, and rpc_pipefs is mounted on both as well. The script currently makes about 6200 links, total. Nfs4 hangs about 90% of the way through. I removed the directory it was hanging on (a simple, empty dir) and then it just hung on the next one.
-
-Is it possible there's some idmap deadlock?  (If say an upcall to idmapd
-is hanging because the mapping requires access to some file that isn't
-there yet?)
-
-A sysrq-T trace might help.
-
---b.
-
-> Really appreciate any help or pointers on where to look for more info. Thanks!
-> 
-> Chris
-> 
-> 
->    
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+-- 
+chuck[dot]lever[at]oracle[dot]com
