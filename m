@@ -1,65 +1,67 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-out2.uio.no ([129.240.10.58]:59345 "EHLO mail-out2.uio.no"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759469Ab0E0OSv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 27 May 2010 10:18:51 -0400
-Subject: Re: Debugging fcntl() file locks
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-To: Bernd Petrovitsch <bernd@petrovitsch.priv.at>
-Cc: linux-nfs@vger.kernel.org
-In-Reply-To: <1274967997.14002.42.camel@thorin>
-References: <1274955060.14002.40.camel@thorin>
-	 <1274963686.2895.7.camel@heimdal.trondhjem.org>
-	 <1274967997.14002.42.camel@thorin>
-Content-Type: text/plain; charset="UTF-8"
-Date: Thu, 27 May 2010 10:18:47 -0400
-Message-ID: <1274969927.2895.19.camel@heimdal.trondhjem.org>
+Received: from [221.122.61.232] ([221.122.61.232]:43739 "EHLO mx.bwstor.com.cn"
+	rhost-flags-FAIL-FAIL-OK-FAIL) by vger.kernel.org with ESMTP
+	id S932068Ab0EKJBP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 11 May 2010 05:01:15 -0400
+Date: Tue, 11 May 2010 16:59:44 +0800
+From: Zhang Jingwang <zhangjingwang@nrchpc.ac.cn>
+To: linux-nfs@vger.kernel.org
+Cc: bhalevy@panasas.com, iisaman@citi.umich.edu
+Subject: [PATCH] pnfs: send layoutcommit until IO completed when return
+	layout
+Message-ID: <20100511085943.GA6822@MDS-78.localdomain>
+Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Thu, 2010-05-27 at 15:46 +0200, Bernd Petrovitsch wrote:
-> Hi!
-> 
-> On Don, 2010-05-27 at 08:34 -0400, Trond Myklebust wrote:
-> > On Thu, 2010-05-27 at 12:11 +0200, Bernd Petrovitsch wrote:
-> [...]
-> > > How can I debug fcntl() file locks on a NFSv3-client?
-> > > The server side is a NetApp-Box (no details at hand but I can ask).
-> > > The client side are stock-RHEL5.3/CentOS-5.3 kernels - 2.6.18-92.el5.
-> > > 
-> > > The file system in question is mounted on 2 clients. flock() on a file
-> > > succeeds but fcntl() fails with EAGAIN. From what I found in the
-> > > Internet and manual pages, this means that someone else already locked
-> > > that file (- the file is successfully open()ed read/write so it can't be
-> > > "your are not allowed to write-lock the file").
-> > > But how do I find out on which host and which process?
-> > > 
-> > > strace shows:
-> > > ----  snip  ----
-> > > open("/... secret ...", O_RDWR) = 3
-> > > ioctl(3, SNDCTL_TMR_TIMEBASE or TCGETS, 0x7fff7925b400) = -1 ENOTTY (Inappropriate ioctl for device)
-> > > lseek(3, 0, SEEK_CUR)                   = 0
-> > > fstat(3, {st_mode=S_IFREG|0600, st_size=935, ...}) = 0
-> > > fcntl(3, F_SETFD, FD_CLOEXEC)           = 0
-> > > flock(3, LOCK_EX|LOCK_NB)               = 0
-> > > fcntl(3, F_SETLK, {type=F_WRLCK, whence=SEEK_SET, start=0, len=0}) = -1 EAGAIN (Resource temporarily unavailable)
-> > > ----  snip  ---- 
-> > > [ This is a perl script using CPAN modules at the top. ]
-> [...]
-> > The Linux NFS client does not allow you to lock a file using both
-> > flock() and POSIX locks. You should choose one or the other locking
-> > scheme. If you remove the flock() line above, then the POSIX lock will
-> > likely succeed.
-> 
-> Thanks.
-> Does flock() work on NFS these days on NFS?
-> Historically that was not the case IIRC.
+If we call layoutcommit before IO completed, then some extents we are
+writing may not be in the commit list. When we return layout, they
+may not get a chance to be committed to server.
 
-Yes. flock() has worked since the early 2.6.x series, however it uses
-the same NFS byte range lock protocol as POSIX locks, so there is no way
-to avoid conflicts.
+Signed-off-by: Zhang Jingwang <zhangjingwang@nrchpc.ac.cn>
+---
+ fs/nfs/pnfs.c |   20 ++++++++++----------
+ 1 files changed, 10 insertions(+), 10 deletions(-)
 
-Cheers
-  Trond
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 3739c38..6fa295b 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -726,16 +726,6 @@ _pnfs_return_layout(struct inode *ino, struct nfs4_pnfs_layout_segment *range,
+ 		arg.length = ~0;
+ 	}
+ 	if (type == RETURN_FILE) {
+-		if (nfsi->layoutcommit_ctx) {
+-			status = pnfs_layoutcommit_inode(ino, 1);
+-			if (status) {
+-				dprintk("%s: layoutcommit failed, status=%d. "
+-					"Returning layout anyway\n",
+-					__func__, status);
+-				status = 0;
+-			}
+-		}
+-
+ 		lo = get_lock_current_layout(nfsi);
+ 		if (lo && !has_layout_to_return(lo, &arg)) {
+ 			put_unlock_current_layout(lo);
+@@ -763,6 +753,16 @@ _pnfs_return_layout(struct inode *ino, struct nfs4_pnfs_layout_segment *range,
+ 			wait_event(nfsi->lo_waitq,
+ 				!pnfs_return_layout_barrier(nfsi, &arg));
+ 		}
++
++		if (nfsi->layoutcommit_ctx) {
++			status = pnfs_layoutcommit_inode(ino, 1);
++			if (status) {
++				dprintk("%s: layoutcommit failed, status=%d. "
++					"Returning layout anyway\n",
++					__func__, status);
++				status = 0;
++			}
++		}
+ 	}
+ send_return:
+ 	status = return_layout(ino, &arg, stateid, type, lo);
+-- 
+1.6.2.5
 
