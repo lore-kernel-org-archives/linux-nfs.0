@@ -1,114 +1,55 @@
 From: Benny Halevy <bhalevy@panasas.com>
-Subject: [PATCH v2 8/9] nfsd4: keep a reference count on client while in use
-Date: Wed, 12 May 2010 00:13:54 +0300
-Message-ID: <1273612434-13726-1-git-send-email-bhalevy@panasas.com>
+Subject: [PATCH v2 9/9] nfsd4: nfsd4_destroy_session must set callback client under the state lock
+Date: Wed, 12 May 2010 00:14:06 +0300
+Message-ID: <1273612446-13763-1-git-send-email-bhalevy@panasas.com>
 References: <4BE9C7A2.8030801@panasas.com>
 Cc: linux-nfs@vger.kernel.org
 To: " J. Bruce Fields" <bfields@citi.umich.edu>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:49273 "EHLO
+Received: from daytona.panasas.com ([67.152.220.89]:43293 "EHLO
 	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1751621Ab0EKVN4 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 11 May 2010 17:13:56 -0400
+	with ESMTP id S1751621Ab0EKVOJ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 11 May 2010 17:14:09 -0400
 In-Reply-To: <4BE9C7A2.8030801@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Get a refcount on the client on SEQUENCE,
-Release the refcount and renew the client when all respective compounds completed.
-Do not expire the client by the laundromat while in use.
-If the client was expired via another path, free it when the compounds
-complete and the refcount reaches 0.
-
-Note that unhash_client_locked must call list_del_init on cl_lru as
-it may be called twice for the same client (once from nfs4_laundromat
-and then from expire_client)
+nfsd4_set_callback_client must be called under the state lock to atomically
+set or unset the callback client and shutting down the previous one.
 
 Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 ---
- fs/nfsd/nfs4state.c |   27 ++++++++++++++++++++++++---
- fs/nfsd/nfs4xdr.c   |    3 ++-
- fs/nfsd/state.h     |    1 +
- 3 files changed, 27 insertions(+), 4 deletions(-)
+ fs/nfsd/nfs4callback.c |    1 +
+ fs/nfsd/nfs4state.c    |    2 ++
+ 2 files changed, 3 insertions(+), 0 deletions(-)
 
+diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
+index 1d5051d..77bc9d3 100644
+--- a/fs/nfsd/nfs4callback.c
++++ b/fs/nfsd/nfs4callback.c
+@@ -718,6 +718,7 @@ void nfsd4_destroy_callback_queue(void)
+ 	destroy_workqueue(callback_wq);
+ }
+ 
++/* must be called under the state lock */
+ void nfsd4_set_callback_client(struct nfs4_client *clp, struct rpc_clnt *new)
+ {
+ 	struct rpc_clnt *old = clp->cl_cb_client;
 diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 378ee86..1a8fb39 100644
+index 1a8fb39..e563597 100644
 --- a/fs/nfsd/nfs4state.c
 +++ b/fs/nfsd/nfs4state.c
-@@ -701,6 +701,22 @@ free_client(struct nfs4_client *clp)
- 	kfree(clp);
- }
- 
-+void
-+release_session_client(struct nfsd4_session *session)
-+{
-+	struct nfs4_client *clp = session->se_client;
-+
-+	spin_lock(&client_lock);
-+	BUG_ON(clp->cl_refcount <= 0);
-+	if (--clp->cl_refcount <= 0) {
-+		free_client(clp);
-+		session->se_client = NULL;
-+	} else if (clp->cl_refcount == 1)
-+		renew_client_locked(clp);
-+	spin_unlock(&client_lock);
-+	nfsd4_put_session(session);
-+}
-+
- /* must be called under the client_lock */
- static inline void
- unhash_client_locked(struct nfs4_client *clp)
-@@ -1477,8 +1493,7 @@ out:
- 	/* Hold a session reference until done processing the compound. */
- 	if (cstate->session) {
- 		nfsd4_get_session(cstate->session);
--		/* Renew the clientid on success and on replay */
--		renew_client_locked(session->se_client);
-+		session->se_client->cl_refcount++;
- 	}
+@@ -1428,8 +1428,10 @@ nfsd4_destroy_session(struct svc_rqst *r,
+ 	unhash_session(ses);
  	spin_unlock(&client_lock);
- 	dprintk("%s: return %d\n", __func__, ntohl(status));
-@@ -2599,7 +2614,13 @@ nfs4_laundromat(void)
- 				clientid_val = t;
- 			break;
- 		}
--		list_move(&clp->cl_lru, &reaplist);
-+		if (clp->cl_refcount > 1) {
-+			dprintk("NFSD: client in use (clientid %08x)\n",
-+				clp->cl_clientid.cl_id);
-+			continue;
-+		}
-+		unhash_client_locked(clp);
-+		list_add(&clp->cl_lru, &reaplist);
- 	}
- 	spin_unlock(&client_lock);
- 	list_for_each_safe(pos, next, &reaplist) {
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 5c2de47..126d0ca 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -3313,7 +3313,8 @@ nfs4svc_encode_compoundres(struct svc_rqst *rqstp, __be32 *p, struct nfsd4_compo
- 			dprintk("%s: SET SLOT STATE TO AVAILABLE\n", __func__);
- 			cs->slot->sl_inuse = false;
- 		}
--		nfsd4_put_session(cs->session);
-+		/* Renew the clientid on success and on replay */
-+		release_session_client(cs->session);
- 	}
- 	return 1;
- }
-diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index 37e1dff..f263174 100644
---- a/fs/nfsd/state.h
-+++ b/fs/nfsd/state.h
-@@ -419,6 +419,7 @@ extern int nfs4_has_reclaimed_state(const char *name, bool use_exchange_id);
- extern void nfsd4_recdir_purge_old(void);
- extern int nfsd4_create_clid_dir(struct nfs4_client *clp);
- extern void nfsd4_remove_clid_dir(struct nfs4_client *clp);
-+extern void release_session_client(struct nfsd4_session *);
  
- static inline void
- nfs4_put_stateowner(struct nfs4_stateowner *so)
++	nfs4_lock_state();
+ 	/* wait for callbacks */
+ 	nfsd4_set_callback_client(ses->se_client, NULL);
++	nfs4_unlock_state();
+ 	nfsd4_put_session(ses);
+ 	status = nfs_ok;
+ out:
 -- 
 1.6.5.1
 
