@@ -1,42 +1,59 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:23029 "EHLO
-	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1754838Ab0EDWhg (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 4 May 2010 18:37:36 -0400
-Message-ID: <4BE0A1AE.4040905@panasas.com>
-Date: Wed, 05 May 2010 01:37:34 +0300
-From: Benny Halevy <bhalevy@panasas.com>
-To: "J. Bruce Fields" <bfields@citi.umich.edu>
-CC: NFS list <linux-nfs@vger.kernel.org>
-Subject: [PATCH 0/8] nfsd4: keep the client from expiring while in use by
- nfs41 compounds
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mail-vw0-f46.google.com ([209.85.212.46]:57849 "EHLO
+	mail-vw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752834Ab0EKRXE (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 11 May 2010 13:23:04 -0400
+Received: by vws17 with SMTP id 17so1282844vws.19
+        for <linux-nfs@vger.kernel.org>; Tue, 11 May 2010 10:23:03 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 0/6] Update NFSROOT to use text-based mounts
+To: linux-nfs@vger.kernel.org
+Date: Tue, 11 May 2010 13:15:44 -0400
+Message-ID: <20100511170754.2167.72681.stgit@matisse.1015granger.net>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Bruce,
+Here is a small patch set proposed for 2.6.35.
 
-The following patchset changes the scope of the sessionid spin lock
-to cover both sessions and the client lru list and it introduces a
-new reference count on the client that's manipulated under that new
-client lock (not requiring the state mutex).
+Now that the kernel NFS client does text-based mount option pro-
+cessing and has its own MNT client, much of the code in nfsroot.c is
+redundant.  This series converts nfsroot.c to use mainline NFS client
+mount option processing, and removes the redundant code.
 
-It's tested to pass connectathon tests as well as explicit session destroy
-and implicit client expiry when the client is blown away.
-However, I haven't tested the gist of this patchset which is to get
-the client to perform a long enough compound during which it might time out...
+Note that the default mount option settings for NFSROOT change with
+this series.  The defaults are now vers=3 and tcp.  There is no
+longer a default mntport setting of 627 (used if the server does not
+have a running portmapper).
 
-[PATCH 1/8] nfsd4: rename sessionid_lock to client_lock
-[PATCH 2/8] nfsd4: fold release_session into expire_client
-[PATCH 3/8] nfsd4: use list_move in move_to_confirmed
-[PATCH 4/8] nfsd4: extend the client_lock to cover cl_lru
-[PATCH 5/8] nfsd4: refactor expire_client
-[PATCH 6/8] nfsd4: introduce nfs4_client.cl_refcount
-[PATCH 7/8] nfsd4: keep a reference count on client while in use
+Some additional clean-ups are included, such as updating the in-kernel
+documentation for NFSROOT, and adding a new kernel command-line
+parameter that enables debugging messages during NFSROOT processing.
 
-[PATCH 8/8] nfsd41: cstate->session can NULL in nfsd4_destroy_session
-I think this was introduced in: 26c0c75 nfsd4: fix unlikely race in session replay case
-though I'm not sure how it ever worked correctly...
+It would be good if others who use NFSROOT on a regular basis could
+review and test these changes.
 
-Benny
+---
+
+Chuck Lever (6):
+      SUNRPC: Remove rpcb_getport_sync()
+      NFS: Allow NFSROOT debugging messages to be enabled dynamically
+      NFS: Clean up nfsroot.c
+      NFS: Use super.c for NFSROOT mount option parsing
+      NFS: Clean up NFSROOT command line parsing
+      NFS: Remove \t from mount debugging message
+
+
+ Documentation/filesystems/nfs/nfsroot.txt |   22 +
+ Documentation/kernel-parameters.txt       |    5 
+ fs/nfs/mount_clnt.c                       |    2 
+ fs/nfs/nfsroot.c                          |  566 +++++++++--------------------
+ include/linux/nfs_fs.h                    |   10 -
+ include/linux/sunrpc/clnt.h               |    1 
+ init/do_mounts.c                          |   12 -
+ net/sunrpc/rpcb_clnt.c                    |   51 ---
+ 8 files changed, 209 insertions(+), 460 deletions(-)
+
+-- 
+Chuck Lever
