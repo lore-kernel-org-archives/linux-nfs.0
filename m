@@ -1,126 +1,116 @@
-From: Kevin Coffman <kwc@citi.umich.edu>
-Subject: Re: libnfsidmap: Virtual domains/users handling with at sign in idmap
-Date: Tue, 11 May 2010 10:07:27 -0400
-Message-ID: <AANLkTinWVImhX2OpHT4Z75l_m1D1ED7YJkj4iuP3SyWn@mail.gmail.com>
-References: <4BE956AC.3070303@nomado.eu>
+From: "J. Bruce Fields" <bfields@citi.umich.edu>
+Subject: Re: [PATCH 0/8] nfsd4: keep the client from expiring while in use
+	by nfs41 compounds
+Date: Tue, 11 May 2010 12:05:46 -0400
+Message-ID: <20100511160546.GE18466@fieldses.org>
+References: <4BE0A1AE.4040905@panasas.com> <20100507223836.GO19142@fieldses.org> <4BE65687.8050806@panasas.com> <20100509165551.GA15429@fieldses.org> <4BE8150F.2050706@panasas.com> <20100510190111.GA1361@fieldses.org> <4BE906DF.7090606@panasas.com> <20100511143925.GB16924@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: linux-nfs@vger.kernel.org
-To: ramzi-nj/97Yry1BOHXe+LvDLADg@public.gmane.org
+Content-Type: text/plain; charset=us-ascii
+Cc: NFS list <linux-nfs@vger.kernel.org>
+To: Benny Halevy <bhalevy@panasas.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-gy0-f174.google.com ([209.85.160.174]:48007 "EHLO
-	mail-gy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757191Ab0EKOH2 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 11 May 2010 10:07:28 -0400
-Received: by gyg13 with SMTP id 13so2698851gyg.19
-        for <linux-nfs@vger.kernel.org>; Tue, 11 May 2010 07:07:28 -0700 (PDT)
-In-Reply-To: <4BE956AC.3070303-nj/97Yry1BOHXe+LvDLADg@public.gmane.org>
+Received: from fieldses.org ([174.143.236.118]:56087 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751304Ab0EKQFq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 11 May 2010 12:05:46 -0400
+In-Reply-To: <20100511143925.GB16924@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Thanks.  Unless someone else sees a problem with this, I'll apply it.
+On Tue, May 11, 2010 at 10:39:25AM -0400, J. Bruce Fields wrote:
+> On Tue, May 11, 2010 at 10:27:27AM +0300, Benny Halevy wrote:
+> > On May. 10, 2010, 22:01 +0300, "J. Bruce Fields" <bfields@citi.umich.edu> wrote:
+> > > On Mon, May 10, 2010 at 05:15:43PM +0300, Benny Halevy wrote:
+> > >> On May. 09, 2010, 19:55 +0300, "J. Bruce Fields" <bfields@citi.umich.edu> wrote:
+> > >>> On Sun, May 09, 2010 at 09:30:31AM +0300, Benny Halevy wrote:
+> > >>>> Correct.  The intentions are:
+> > >>>> 1. Make the laundromat process ignore clients that are in
+> > >>>> use by a 4.1 session.
+> > >>>> 2. Renew the client when the compound ends, rather than when it begins.
+> > >>>> 3. Unhash the client when it's expired explicitly but don't destroy it
+> > >>>> until there's no reference to it.
+> > >>> OK.  My one slight worry there is to make sure that code getting a
+> > >>> pointer to a client through a sessionid won't inadvertently assume it's
+> > >>> still hashed.
+> > >> That's a good point.
+> > >> In fact, the client should not be renewed when the compound is done
+> > >> if it was already explicitly expired.
+> > > 
+> > > Hm, and we've still got a lot of renew_client()'s sprinkled around that
+> > > will try to add the expired client back to client_lru.
+> > > 
+> > 
+> > For that I've already have a fix in my branch to not renew the client
+> > if it's marked as expired (cl_time == 0).
+> 
+> OK.
+> 
+> > >> Another way to deal with this which may be safer but is less optimal
+> > >> is to keep only the sessionid and look it up on each use. Then, using
+> > >> it while holding the state lock will make sure it's valid when used.
+> > > 
+> > > That seems overkill.  Instead of making ops look up the sessionid from
+> > > state each time I guess we could have a revalidate_sessionid() that
+> > > checked the associated client to see if it was still good.
+> > 
+> > Yeah.  Let me see if this is a quick fix and if so I'll send it as part
+> > of version 2 of this patchset, otherwise I'll send it as is.
+> > 
+> > > If we continue to reduce the scope of the state lock, isn't that going
+> > > to be a pain, though?  Will we end up having to do that sort of
+> > > revalidation every time we drop the state lock and reacquire it?
+> > 
+> > It's very little pain, just verifying that cl_time != 0.
+> 
+> It's not the trouble of the revalidation I worry about, so much as a)
+> remembering to do it every time, and b) always being in a position to
+> return an error if it fails.
+> 
+> For now it doesn't seem like a problem, so OK.  We can always reconsider
+> if it turns out to be.
+> 
+> > > Perhaps the simplest would be to make the clientid-destroyer wait; it
+> > > could set some sort of CLIENTID_DEAD flag on the client, wait for a
+> > > reference count to go to zero, then destroy the client.
+> > > 
+> > 
+> > I'm not sure about this.  Setting this flag is equivalent
+> > to what I propose to do today (with marking the client as expired AND
+> > unhashing it) as you want to prevent any more references to it.
+> > 
+> > The question is more about the semantics of the operation that explicitly
+> > destroys the old client, e.g. EXCHANGE_ID or DESTROY_SESSION.
+> > Can the client tolerate responses for the old clientid/sessionid
+> > after the client-destroying operation has succeeded?
+> 
+> I can't see what would give the client to expect any defined behavior
 
-On Tue, May 11, 2010 at 9:07 AM, HABIB Ramzi <ramzi-nj/97Yry1BOHXe+LvDLADg@public.gmane.org> wrote:
-> Subject: libnfsidmap: Virtual domains/users handling with at sign in =
-idmap
-> Package: libnfsidmap
-> Version: 0.23
-> Severity: normal
-> Tags: patch
->
-> *** Please type your report below this line ***
->
-> Idmap fails to map uid to localname or vice versa in case an 'at' ( @=
- ) sign
-> is included in the localname.
-> This is particularly the case of virtual domains username where
-> a user@virtual_domain is in fact the username and its @ sign conflict=
-s with
-> username@idmap_domain format used by idmap to handle uid/localname
-> conversions.
-> Where username =3D user@virtual_domain.
-> Idmap is still able to map uid/localname correctly when the username =
-does
-> not
-> include an @ sign.
-> Both NFS Server and Client are PAM/NSS clients of an OpenLDAP Server =
-that
-> handles users & groups. NFSv4 is used and without kerberos and "nsswi=
-tch"
-> Translation method is used rather than umich_ldap.
-> Idmap looks for the first occurrence of and @ sign in the name string
-> and assumes that the @ sign is the one of user@virtual_domain rather =
-than
-> using the one of username@idmap_domain (user@virtual_domain@idmap_dom=
-ain).
-> The function "strip_domain" is defined in nss.c file and uses "strchr=
-"
-> function on line 138 to find the first occurrence of an @ sign from t=
-he name
-> string.
-> As the name string includes 2 occurrences, the domain resulting from =
-that
-> (virtual_domain@idmap_domain) fails to match with the configured idma=
-p
-> domain
-> (idmap_domain) and this causes idmap returning a null value.
-> Switching from "strchr" to "strrchr" simply fix the problem as it wou=
-ld look
-> for the last occurrence rather than the first one and therefore has a
-> resulting
-> domain that matched the idmap one.
-> This obviously makes sense as a URI should be read from right to left=
- and
-> not
-> from left to right when handling domains.
-> The idmap domain is this way the root domain and all virtual domains
-> included
-> in the username it handles will not conflicts with it.
->
-> A patch is included here below :
->
-> libnfsidmap_0.23_fix_at_sign_user_with_domain.diff
->
-> //////////////////////////////////////////////////////////////////
->
-> --- libnfsidmap-0.23.orig/nss.c =A0 =A02009-07-29 22:19:06.000000000 =
-+0200
-> +++ libnfsidmap-0.23/nss.c =A0 =A02010-05-11 15:02:13.000000000 +0200
-> @@ -135,7 +135,7 @@
-> =A0 =A0 char *l =3D NULL;
-> =A0 =A0 int len;
->
-> - =A0 =A0c =3D strchr(name, '@');
-> + =A0 =A0c =3D strrchr(name, '@');
-> =A0 =A0 if (c =3D=3D NULL && domain !=3D NULL)
-> =A0 =A0 =A0 =A0 goto out;
-> =A0 =A0 if (c =3D=3D NULL && domain =3D=3D NULL) {
->
-> //////////////////////////////////////////////////////////////////
->
-> The patch applies to all archs.
-> Versions checked :
-> Debian :
-> libnfsidmap2 0.18-0 (oldstable)
-> libnfsidmap2 0.20-1 (stable)
-> libnfsidmap2 0.23-2 (testing,unstable)
->
-> -- System Information:
-> Debian Release: 5.0.4
-> =A0APT prefers stable
-> =A0APT policy: (500, 'stable')
-> Architecture: amd64 (x86_64)
->
-> Kernel: Linux 2.6.26-2-amd64 (SMP w/1 CPU core)
-> Locale: LANG=3Dfr_FR.UTF-8, LC_CTYPE=3Dfr_FR.UTF-8 (charmap=3DUTF-8)
-> Shell: /bin/sh linked to /bin/bash
->
-> Versions of packages libnfsidmap2 depends on:
-> ii =A0libc6 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 2.7-18lenny2 =
-GNU C Library: Shared libraries
-> ii =A0libldap-2.4-2 =A0 =A0 =A0 =A0 =A0 =A0 =A0 2.4.11-1+lenny1 =A0 O=
-penLDAP libraries
->
-> Ramzi HABIB
-> ramzi <at> nomado.eu
->
+(Sorry, I meant to say "would give the client the right to expect...",
+or words to that effect.)
+
+--b.
+
+> for a compound executed concurrently with an explicit destruction of the
+> associated clientid.
+> 
+> > > Then other code would be guaranteed that nothing will change underneath
+> > > them as long as they hold either the state lock or a reference to a
+> > > session.
+> > > 
+> > > So hopefully we'd only need worry about client shutdown in well-defined
+> > > places:
+> > > 	- when put()'ing a session, to check whether the client
+> > > 	  is ready to be destroyed now.
+> > 
+> > That's in v2.
+> > 
+> > > 	- when looking up a session, in which case we should check
+> > > 	  whether the client is dead and fail the lookup?
+> > 
+> > If the client is dead we won't find the sessionid as we unhash the session
+> > structure atomically with the client so that isn't an issue so that's also
+> > dealt with in v2.
+> 
+> OK, thanks.
+> 
+> --b.
