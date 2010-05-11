@@ -1,42 +1,73 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-out1.uio.no ([129.240.10.57]:55062 "EHLO mail-out1.uio.no"
+Received: from mx2.netapp.com ([216.240.18.37]:23572 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932483Ab0E0RzI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 27 May 2010 13:55:08 -0400
-Subject: Re: nfs4 hang
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Christopher Hawkins <chawkins@bplinux.com>,
-        linux-nfs <linux-nfs@vger.kernel.org>
-In-Reply-To: <20100527170829.GA11559@fieldses.org>
-References: <2212784.91274721147769.JavaMail.javamailuser@localhost>
-	 <18251062.111274721421458.JavaMail.javamailuser@localhost>
-	 <20100527170829.GA11559@fieldses.org>
-Content-Type: text/plain; charset="UTF-8"
-Date: Thu, 27 May 2010 13:55:01 -0400
-Message-ID: <1274982901.20557.1.camel@heimdal.trondhjem.org>
+	id S1753506Ab0EKWZS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 11 May 2010 18:25:18 -0400
+From: andros@netapp.com
+To: bhalevy@panasas.com
+Cc: bharrosh@panasas.com, linux-nfs@vger.kernel.org,
+        Andy Adamson <andros@netapp.com>
+Subject: [PATCH 1/1] SQUASHME pnfs_submit: move unmount_pnfs_layoutdriver call
+Date: Tue, 11 May 2010 18:24:51 -0400
+Message-Id: <1273616691-4299-1-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Thu, 2010-05-27 at 13:08 -0400, J. Bruce Fields wrote:
-> On Mon, May 24, 2010 at 01:17:01PM -0400, Christopher Hawkins wrote:
-> > Thanks Bruce, it does appear that idmapd is somehow related to this
-> > issue. However, I'm stumped because it does exist on the client, along
-> > with all the libraries it requires (according to ldd, anyway).
-> 
-> And /etc/passwd, and whatever other files it might decide it needs to
-> open to do its work?
-> 
-> > Is
-> > there an easy way to disable idmapd while still running nfs4 to
-> > determine if it is causing the hang?
-> 
-> Not that I know of.
+From: Andy Adamson <andros@netapp.com>
 
-Why would you need to? 'Magic sysrq-trigger t' will show you if the
-idmapper is deadlocked inside the NFS filesystem (as will the equivalent
-'echo t >/proc/sysrq-trigger').
+from nfs4_kill_super to nfs_free_server. Fixes a bug reported by Boaz Harrosh
+where the deviceid cache is not defererenced on super block creation error or
+for two mounts that share a super block.
 
-  Trond
+Signed-off-by: Andy Adamson <andros@netapp.com>
+---
+ fs/nfs/client.c |    9 +++++++++
+ fs/nfs/super.c  |    3 ---
+ 2 files changed, 9 insertions(+), 3 deletions(-)
+
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index 56f3d50..0337330 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -884,6 +884,14 @@ static void nfs4_init_pnfs(struct nfs_server *server, struct nfs_fsinfo *fsinfo)
+ #endif /* CONFIG_NFS_V4_1 */
+ }
+ 
++static void nfs4_uninit_pnfs(struct nfs_server *server)
++{
++#if defined(CONFIG_NFS_V4_1)
++	if (nfs4_has_session(server->nfs_client))
++		unmount_pnfs_layoutdriver(server);
++#endif /* CONFIG_NFS_V4_1 */
++}
++
+ /*
+  * Load up the server record from information gained in an fsinfo record
+  */
+@@ -1039,6 +1047,7 @@ void nfs_free_server(struct nfs_server *server)
+ {
+ 	dprintk("--> nfs_free_server()\n");
+ 
++	nfs4_uninit_pnfs(server);
+ 	spin_lock(&nfs_client_lock);
+ 	list_del(&server->client_link);
+ 	list_del(&server->master_link);
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index 5fc60cf..7822187 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -2799,9 +2799,6 @@ static void nfs4_kill_super(struct super_block *sb)
+ 	dprintk("--> %s\n", __func__);
+ 	nfs_super_return_all_delegations(sb);
+ 	kill_anon_super(sb);
+-#ifdef CONFIG_NFS_V4_1
+-	unmount_pnfs_layoutdriver(server);
+-#endif
+ 	nfs_fscache_release_super_cookie(sb);
+ 	nfs_free_server(server);
+ 	dprintk("<-- %s\n", __func__);
+-- 
+1.6.6
 
