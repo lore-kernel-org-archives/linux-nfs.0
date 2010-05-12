@@ -1,115 +1,247 @@
-From: Neil Brown <neilb@suse.de>
-Subject: Re: [PATCH 2/9] lockd: Add /sys/fs/lockd
-Date: Wed, 12 May 2010 13:54:31 +1000
-Message-ID: <20100512135431.1f26e421@notabene.brown>
-References: <20100427185411.29074.8889.stgit@matisse.1015granger.net>
-	<20100427185829.29074.77530.stgit@matisse.1015granger.net>
+From: Benny Halevy <bhalevy@panasas.com>
+Subject: Re: [PATCH] pnfsblock: Lookup list entry of layouts and tags in reverse
+ order
+Date: Wed, 12 May 2010 09:46:43 +0300
+Message-ID: <4BEA4ED3.3010702@panasas.com>
+References: <20100510033610.GA5443@MDS-78.localdomain>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Cc: linux-nfs@vger.kernel.org
-To: Chuck Lever <chuck.lever@oracle.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: linux-nfs@vger.kernel.org, iisaman@netapp.com
+To: Zhang Jingwang <zhangjingwang-U4AKAne5IzAR5TUyvShJeg@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:56773 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753571Ab0ELDyn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 11 May 2010 23:54:43 -0400
-In-Reply-To: <20100427185829.29074.77530.stgit-RytpoXr2tKZ9HhUboXbp9zCvJB+x5qRC@public.gmane.org>
+Received: from mail-fx0-f46.google.com ([209.85.161.46]:52382 "EHLO
+	mail-fx0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753175Ab0ELGqs (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 12 May 2010 02:46:48 -0400
+Received: by fxm4 with SMTP id 4so214296fxm.19
+        for <linux-nfs@vger.kernel.org>; Tue, 11 May 2010 23:46:46 -0700 (PDT)
+In-Reply-To: <20100510033610.GA5443-nK6E9TRyOkVSq9BJjBFyUp/QNRX+jHPU@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 27 Apr 2010 14:58:30 -0400
-Chuck Lever <chuck.lever@oracle.com> wrote:
+On May. 10, 2010, 6:36 +0300, Zhang Jingwang <zhangjingwang-U4AKAne5IzAR5TUyvShJeg@public.gmane.org> wrote:
+> Optimize for sequencial write. Layout infos and tags are organized by
+> file offset. When appending data to a file whole list will be examined,
+> which introduce notable performance decrease.
 
-> Create the parent directory for all lockd-related sysfs entries.  The
-> directory is created when lockd.ko is loaded, and removed when it is
-> unloaded.
+Looks good to me.
 
-Can I argue about the colour of the bike shed please?
+Fred, can you please double check?
 
-lockd is not a filesystem, so I would not put it in /sys/fs.
+Benny
 
-I think lockd has more in common with 'fscache' than with
-'fuse' and 'ext4', so I think it should go in /sys/kernel
-rather than /sys/fs.
-
-Mind you, this comment is based on the assumption that /sys is different
-to /proc in that it is better organised.  But I am beginning to wonder.
-
-
-I know you would much rather a review of the rest of the series that this one
-point and I apologise for not providing one.... maybe I'll motivate myself
-sometime.
-
-NeilBrown
-
+P.S.: Zhang, please note Fred's new email address
 
 > 
-> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> Signed-off-by: Zhang Jingwang <zhangjingwang-U4AKAne5IzAR5TUyvShJeg@public.gmane.org>
 > ---
+>  fs/nfs/blocklayout/extents.c |  126 +++++++++++++++++++++---------------------
+>  1 files changed, 64 insertions(+), 62 deletions(-)
 > 
->  fs/lockd/svc.c              |   16 +++++++++++++---
->  include/linux/lockd/lockd.h |    1 +
->  2 files changed, 14 insertions(+), 3 deletions(-)
-> 
-> diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
-> index f1bacf1..c84a7d5 100644
-> --- a/fs/lockd/svc.c
-> +++ b/fs/lockd/svc.c
-> @@ -75,6 +75,8 @@ static const int		nlm_port_min = 0, nlm_port_max = 65535;
->  static struct ctl_table_header * nlm_sysctl_table;
->  #endif
+> diff --git a/fs/nfs/blocklayout/extents.c b/fs/nfs/blocklayout/extents.c
+> index 3c311f2..514f2cc 100644
+> --- a/fs/nfs/blocklayout/extents.c
+> +++ b/fs/nfs/blocklayout/extents.c
+> @@ -66,8 +66,8 @@ static int32_t _find_entry(struct my_tree_t *tree, u64 s)
+>  	struct pnfs_inval_tracking *pos;
 >  
-> +struct kobject			*nlm_kobj;
-> +
->  static unsigned long get_lockd_grace_period(void)
->  {
->  	/* Note: nlm_timeout should always be nonzero */
-> @@ -514,12 +516,19 @@ module_param(nlm_max_connections, uint, 0644);
+>  	dprintk("%s(%llu) enter\n", __func__, s);
+> -	list_for_each_entry(pos, &tree->mtt_stub, it_link) {
+> -		if (pos->it_sector < s)
+> +	list_for_each_entry_reverse(pos, &tree->mtt_stub, it_link) {
+> +		if (pos->it_sector > s)
+>  			continue;
+>  		else if (pos->it_sector == s)
+>  			return pos->it_tags & INTERNAL_MASK;
+> @@ -102,8 +102,8 @@ static int _add_entry(struct my_tree_t *tree, u64 s, int32_t tag,
+>  	struct pnfs_inval_tracking *pos;
 >  
->  static int __init init_nlm(void)
->  {
-> +	nlm_kobj = kobject_create_and_add("lockd", fs_kobj);
-> +	if (!nlm_kobj)
-> +		return -ENOMEM;
-> +
->  #ifdef CONFIG_SYSCTL
->  	nlm_sysctl_table = register_sysctl_table(nlm_sysctl_root);
-> -	return nlm_sysctl_table ? 0 : -ENOMEM;
-> -#else
-> -	return 0;
-> +	if (!nlm_sysctl_table) {
-> +		kobject_put(nlm_kobj);
-> +		return -ENOMEM;
-> +	}
->  #endif
-> +
-> +	return 0;
+>  	dprintk("%s(%llu, %i, %p) enter\n", __func__, s, tag, storage);
+> -	list_for_each_entry(pos, &tree->mtt_stub, it_link) {
+> -		if (pos->it_sector < s)
+> +	list_for_each_entry_reverse(pos, &tree->mtt_stub, it_link) {
+> +		if (pos->it_sector > s)
+>  			continue;
+>  		else if (pos->it_sector == s) {
+>  			found = 1;
+> @@ -125,7 +125,7 @@ static int _add_entry(struct my_tree_t *tree, u64 s, int32_t tag,
+>  		}
+>  		new->it_sector = s;
+>  		new->it_tags = (1 << tag);
+> -		list_add_tail(&new->it_link, &pos->it_link);
+> +		list_add(&new->it_link, &pos->it_link);
+>  		return 1;
+>  	}
 >  }
+> @@ -230,14 +230,14 @@ _range_has_tag(struct my_tree_t *tree, u64 start, u64 end, int32_t tag)
+>  	u64 expect = 0;
 >  
->  static void __exit exit_nlm(void)
-> @@ -529,6 +538,7 @@ static void __exit exit_nlm(void)
->  #ifdef CONFIG_SYSCTL
->  	unregister_sysctl_table(nlm_sysctl_table);
->  #endif
-> +	kobject_put(nlm_kobj);
->  }
->  
->  module_init(init_nlm);
-> diff --git a/include/linux/lockd/lockd.h b/include/linux/lockd/lockd.h
-> index a34dea4..56c749e 100644
-> --- a/include/linux/lockd/lockd.h
-> +++ b/include/linux/lockd/lockd.h
-> @@ -196,6 +196,7 @@ extern int			nlmsvc_grace_period;
->  extern unsigned long		nlmsvc_timeout;
->  extern int			nsm_use_hostnames;
->  extern u32			nsm_local_state;
-> +extern struct kobject		*nlm_kobj;
->  
->  /*
->   * Lockd client functions
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>  	dprintk("%s(%llu, %llu, %i) enter\n", __func__, start, end, tag);
+> -	list_for_each_entry(pos, &tree->mtt_stub, it_link) {
+> -		if (pos->it_sector < start)
+> +	list_for_each_entry_reverse(pos, &tree->mtt_stub, it_link) {
+> +		if (pos->it_sector >= end)
+>  			continue;
+>  		if (!expect) {
+> -			if ((pos->it_sector == start) &&
+> +			if ((pos->it_sector == end - tree->mtt_step_size) &&
+>  			    (pos->it_tags & (1 << tag))) {
+> -				expect = start + tree->mtt_step_size;
+> -				if (expect == end)
+> +				expect = pos->it_sector - tree->mtt_step_size;
+> +				if (expect < start)
+>  					return 1;
+>  				continue;
+>  			} else {
+> @@ -246,8 +246,8 @@ _range_has_tag(struct my_tree_t *tree, u64 start, u64 end, int32_t tag)
+>  		}
+>  		if (pos->it_sector != expect || !(pos->it_tags & (1 << tag)))
+>  			return 0;
+> -		expect += tree->mtt_step_size;
+> -		if (expect == end)
+> +		expect -= tree->mtt_step_size;
+> +		if (expect < start)
+>  			return 1;
+>  	}
+>  	return 0;
+> @@ -594,65 +594,67 @@ add_and_merge_extent(struct pnfs_block_layout *bl,
+>  	/* Scan for proper place to insert, extending new to the left
+>  	 * as much as possible.
+>  	 */
+> -	list_for_each_entry_safe(be, tmp, list, be_node) {
+> -		if (new->be_f_offset < be->be_f_offset)
+> +	list_for_each_entry_safe_reverse(be, tmp, list, be_node) {
+> +		if (new->be_f_offset >= be->be_f_offset + be->be_length)
+>  			break;
+> -		if (end <= be->be_f_offset + be->be_length) {
+> -			/* new is a subset of existing be*/
+> +		if (new->be_f_offset >= be->be_f_offset) {
+> +			if (end <= be->be_f_offset + be->be_length) {
+> +				/* new is a subset of existing be*/
+> +				if (extents_consistent(be, new)) {
+> +					dprintk("%s: new is subset, ignoring\n",
+> +						__func__);
+> +					put_extent(new);
+> +					return 0;
+> +				} else {
+> +					goto out_err;
+> +				}
+> +			} else {
+> +				/* |<--   be   -->|
+> +				 *          |<--   new   -->| */
+> +				if (extents_consistent(be, new)) {
+> +					/* extend new to fully replace be */
+> +					new->be_length += new->be_f_offset -
+> +						be->be_f_offset;
+> +					new->be_f_offset = be->be_f_offset;
+> +					new->be_v_offset = be->be_v_offset;
+> +					dprintk("%s: removing %p\n", __func__, be);
+> +					list_del(&be->be_node);
+> +					put_extent(be);
+> +				} else {
+> +					goto out_err;
+> +				}
+> +			}
+> +		} else if (end >= be->be_f_offset + be->be_length) {
+> +			/* new extent overlap existing be */
+>  			if (extents_consistent(be, new)) {
+> -				dprintk("%s: new is subset, ignoring\n",
+> -					__func__);
+> -				put_extent(new);
+> -				return 0;
+> -			} else
+> +				/* extend new to fully replace be */
+> +				dprintk("%s: removing %p\n", __func__, be);
+> +				list_del(&be->be_node);
+> +				put_extent(be);
+> +			} else {
+>  				goto out_err;
+> -		} else if (new->be_f_offset <=
+> -				be->be_f_offset + be->be_length) {
+> -			/* new overlaps or abuts existing be */
+> -			if (extents_consistent(be, new)) {
+> +			}
+> +		} else if (end > be->be_f_offset) {
+> +			/*           |<--   be   -->|
+> +			 *|<--   new   -->| */
+> +			if (extents_consistent(new, be)) {
+>  				/* extend new to fully replace be */
+> -				new->be_length += new->be_f_offset -
+> -						  be->be_f_offset;
+> -				new->be_f_offset = be->be_f_offset;
+> -				new->be_v_offset = be->be_v_offset;
+> +				new->be_length += be->be_f_offset + be->be_length -
+> +					new->be_f_offset - new->be_length;
+>  				dprintk("%s: removing %p\n", __func__, be);
+>  				list_del(&be->be_node);
+>  				put_extent(be);
+> -			} else if (new->be_f_offset !=
+> -				   be->be_f_offset + be->be_length)
+> +			} else {
+>  				goto out_err;
+> +			}
+>  		}
+>  	}
+>  	/* Note that if we never hit the above break, be will not point to a
+>  	 * valid extent.  However, in that case &be->be_node==list.
+>  	 */
+> -	list_add_tail(&new->be_node, &be->be_node);
+> +	list_add(&new->be_node, &be->be_node);
+>  	dprintk("%s: inserting new\n", __func__);
+>  	print_elist(list);
+> -	/* Scan forward for overlaps.  If we find any, extend new and
+> -	 * remove the overlapped extent.
+> -	 */
+> -	be = list_prepare_entry(new, list, be_node);
+> -	list_for_each_entry_safe_continue(be, tmp, list, be_node) {
+> -		if (end < be->be_f_offset)
+> -			break;
+> -		/* new overlaps or abuts existing be */
+> -		if (extents_consistent(be, new)) {
+> -			if (end < be->be_f_offset + be->be_length) {
+> -				/* extend new to fully cover be */
+> -				end = be->be_f_offset + be->be_length;
+> -				new->be_length = end - new->be_f_offset;
+> -			}
+> -			dprintk("%s: removing %p\n", __func__, be);
+> -			list_del(&be->be_node);
+> -			put_extent(be);
+> -		} else if (end != be->be_f_offset) {
+> -			list_del(&new->be_node);
+> -			goto out_err;
+> -		}
+> -	}
+> -	dprintk("%s: after merging\n", __func__);
+> -	print_elist(list);
+>  	/* STUB - The per-list consistency checks have all been done,
+>  	 * should now check cross-list consistency.
+>  	 */
+> @@ -685,10 +687,10 @@ find_get_extent(struct pnfs_block_layout *bl, sector_t isect,
+>  		if (ret &&
+>  		    (!cow_read || ret->be_state != PNFS_BLOCK_INVALID_DATA))
+>  			break;
+> -		list_for_each_entry(be, &bl->bl_extents[i], be_node) {
+> -			if (isect < be->be_f_offset)
+> +		list_for_each_entry_reverse(be, &bl->bl_extents[i], be_node) {
+> +			if (isect >= be->be_f_offset + be->be_length)
+>  				break;
+> -			if (isect < be->be_f_offset + be->be_length) {
+> +			if (isect >= be->be_f_offset) {
+>  				/* We have found an extent */
+>  				dprintk("%s Get %p (%i)\n", __func__, be,
+>  					atomic_read(&be->be_refcnt.refcount));
+> @@ -721,10 +723,10 @@ find_get_extent_locked(struct pnfs_block_layout *bl, sector_t isect)
+>  	for (i = 0; i < EXTENT_LISTS; i++) {
+>  		if (ret)
+>  			break;
+> -		list_for_each_entry(be, &bl->bl_extents[i], be_node) {
+> -			if (isect < be->be_f_offset)
+> +		list_for_each_entry_reverse(be, &bl->bl_extents[i], be_node) {
+> +			if (isect >= be->be_f_offset + be->be_length)
+>  				break;
+> -			if (isect < be->be_f_offset + be->be_length) {
+> +			if (isect >= be->be_f_offset) {
+>  				/* We have found an extent */
+>  				dprintk("%s Get %p (%i)\n", __func__, be,
+>  					atomic_read(&be->be_refcnt.refcount));
 
