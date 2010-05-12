@@ -1,266 +1,107 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH] pnfsblock: Lookup list entry of layouts and tags in
-	reverse order
-Date: Wed, 12 May 2010 16:28:12 -0400
-Message-ID: <20100512202811.GA9296@fieldses.org>
-References: <20100510033610.GA5443@MDS-78.localdomain> <4BEA4ED3.3010702@panasas.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Zhang Jingwang <zhangjingwang-U4AKAne5IzAR5TUyvShJeg@public.gmane.org>,
-	linux-nfs@vger.kernel.org, iisaman@netapp.com
-To: Benny Halevy <bhalevy@panasas.com>
+From: Andy Adamson <andros@netapp.com>
+Subject: Re: NFS client stall
+Date: Wed, 12 May 2010 16:36:20 -0400
+Message-ID: <9792431B-305B-4267-A5EC-59EE926D5950@netapp.com>
+References: <DF18387A-0E5C-493B-B4F9-774D2068E4CD@netapp.com> <1273682595.2810.86.camel@localhost.localdomain>
+Mime-Version: 1.0 (Apple Message framework v936)
+Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
+Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:35215 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:39701 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757051Ab0ELU2Q (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 12 May 2010 16:28:16 -0400
-In-Reply-To: <4BEA4ED3.3010702@panasas.com>
+	id S1755211Ab0ELUgi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 12 May 2010 16:36:38 -0400
+In-Reply-To: <1273682595.2810.86.camel-bi+AKbBUZKY6gyzm1THtWbp2dZbC/Bob@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, May 12, 2010 at 09:46:43AM +0300, Benny Halevy wrote:
-> On May. 10, 2010, 6:36 +0300, Zhang Jingwang <zhangjingwang-U4AKAne5IzAR5TUyvShJeg@public.gmane.org> wrote:
-> > Optimize for sequencial write. Layout infos and tags are organized by
-> > file offset. When appending data to a file whole list will be examined,
-> > which introduce notable performance decrease.
-> 
-> Looks good to me.
-> 
-> Fred, can you please double check?
 
-I don't know if Fred's still up for reviewing block stuff?
+On May 12, 2010, at 12:43 PM, Trond Myklebust wrote:
 
-I've been trying to keep up with at least some minimal testing, but not
-as well as I'd like.
+> On Wed, 2010-05-12 at 11:17 -0400, Andy Adamson wrote:
+>> I've seen the following intermittently while running the  
+>> Connecatathon
+>> special 'write/read 30MB file' test.  It's always been with the pNFS
+>> client, either running with the pNFS file module installed, or  
+>> running
+>> without it installed (NFSv4.1 only). But given the intermittent
+>> behavior, that could just be because I run a lot more tests on the
+>> pNFS kernel.
+>>
+>> I've seen this with 2.6.34-rc3 and up.
+>>
+>> Any ideas?
+>>
+>> -->Andy
+>>
+>> May 11 19:35:41 fedora-64 kernel: INFO: task bigfile:2174 blocked for
+>> more than
+>> 120 seconds.
+>> May 11 19:35:41 fedora-64 kernel: "echo 0 > /proc/sys/kernel/
+>> hung_task_timeout_s
+>> ecs" disables this message.
+>> May 11 19:35:41 fedora-64 kernel: bigfile       D ffff88005b10d380
+>> 0  2174
+>>  2137 0x00000084
+>> May 11 19:35:41 fedora-64 kernel: ffff88005ac83c28 0000000000000082
+>> 000000000000
+>> 0000 0010000000000000
+>> May 11 19:35:41 fedora-64 kernel: ffff88005ac83fd8 ffff8800520d0000
+>> 000000000001
+>> 3780 ffff88005ac83fd8
+>> May 11 19:35:41 fedora-64 kernel: 0000000000013780 0000000000013780
+>> 000000000001
+>> 3780 0000000000013780
+>> May 11 19:35:41 fedora-64 kernel: Call Trace:
+>> May 11 19:35:41 fedora-64 kernel: [<ffffffff810aae7a>] ? sync_page
+>> +0x0/0x4a
+>> May 11 19:35:41 fedora-64 kernel: [<ffffffff813b1b26>] io_schedule
+>> +0x3d/0x52
+>> May 11 19:35:41 fedora-64 kernel: [<ffffffff810aaec0>] sync_page
+>> +0x46/0x4a
+>> May 11 19:35:41 fedora-64 kernel: [<ffffffff813b1f61>]
+>> __wait_on_bit_lock+0x46/0
+>> x8f
+>> May 11 19:35:41 fedora-64 kernel: [<ffffffff8103cee6>] ?
+>> release_console_sem+0x1
+>> bd/0x1ee
+>> May 11 19:35:41 fedora-64 kernel: [<ffffffff810aae20>] __lock_page
+>> +0x66/0x6d
+>> May 11 19:35:41 fedora-64 kernel: [<ffffffff81055ad5>] ?
+>> wake_bit_function+0x0/0
+>> x33
+>> May 11 19:35:41 fedora-64 kernel: [<ffffffff810aae63>] lock_page 
+>> +0x3c/
+>> 0x41
+>> May 11 19:35:41 fedora-64 kernel: [<ffffffff810ab533>] filemap_fault
+>> +0xc3/0x30b
+>> May 11 19:35:41 fedora-64 kernel: [<ffffffff810c3202>] __do_fault
+>> +0x54/0x416
+>> May 11 19:35:41 fedora-64 kernel: [<ffffffff810c39fa>]  
+>> handle_mm_fault
+>> +0x436/0x82b
+>> May 11 19:35:41 fedora-64 kernel: [<ffffffff810c7f49>] ?  
+>> do_mmap_pgoff
+>> +0x290/0x2f3
+>> May 11 19:35:41 fedora-64 kernel: [<ffffffff813b64e8>] do_page_fault
+>> +0x25e/0x273
+>> May 11 19:35:41 fedora-64 kernel: [<ffffffff813b3bb5>] page_fault
+>> +0x25/0x30
+>>
+>>
+>
+> The above is just an ordinary page fault. Something else is apparently
+> holding a lock on the page and so you are waiting for it to be  
+> released.
+>
+> Is there a page lock leak somewhere in the pNFS client perhaps?
 
-The one thing I've noticed is that the connectathon general test has
-started failing right at the start with an IO error.  The last good
-version I tested was b5c09c21, which was based on 33-rc6.  The earliest
-bad version I tested was 419312ada, based on 34-rc2.  A quick look at
-network traces from the two traces didn't turn up anything obvious.  I
-haven't had the chance yet to look closer.
+I'll look. Thanks
 
---b.
+-->Andy
 
-> 
-> Benny
-> 
-> P.S.: Zhang, please note Fred's new email address
-> 
-> > 
-> > Signed-off-by: Zhang Jingwang <zhangjingwang-U4AKAne5IzAR5TUyvShJeg@public.gmane.org>
-> > ---
-> >  fs/nfs/blocklayout/extents.c |  126 +++++++++++++++++++++---------------------
-> >  1 files changed, 64 insertions(+), 62 deletions(-)
-> > 
-> > diff --git a/fs/nfs/blocklayout/extents.c b/fs/nfs/blocklayout/extents.c
-> > index 3c311f2..514f2cc 100644
-> > --- a/fs/nfs/blocklayout/extents.c
-> > +++ b/fs/nfs/blocklayout/extents.c
-> > @@ -66,8 +66,8 @@ static int32_t _find_entry(struct my_tree_t *tree, u64 s)
-> >  	struct pnfs_inval_tracking *pos;
-> >  
-> >  	dprintk("%s(%llu) enter\n", __func__, s);
-> > -	list_for_each_entry(pos, &tree->mtt_stub, it_link) {
-> > -		if (pos->it_sector < s)
-> > +	list_for_each_entry_reverse(pos, &tree->mtt_stub, it_link) {
-> > +		if (pos->it_sector > s)
-> >  			continue;
-> >  		else if (pos->it_sector == s)
-> >  			return pos->it_tags & INTERNAL_MASK;
-> > @@ -102,8 +102,8 @@ static int _add_entry(struct my_tree_t *tree, u64 s, int32_t tag,
-> >  	struct pnfs_inval_tracking *pos;
-> >  
-> >  	dprintk("%s(%llu, %i, %p) enter\n", __func__, s, tag, storage);
-> > -	list_for_each_entry(pos, &tree->mtt_stub, it_link) {
-> > -		if (pos->it_sector < s)
-> > +	list_for_each_entry_reverse(pos, &tree->mtt_stub, it_link) {
-> > +		if (pos->it_sector > s)
-> >  			continue;
-> >  		else if (pos->it_sector == s) {
-> >  			found = 1;
-> > @@ -125,7 +125,7 @@ static int _add_entry(struct my_tree_t *tree, u64 s, int32_t tag,
-> >  		}
-> >  		new->it_sector = s;
-> >  		new->it_tags = (1 << tag);
-> > -		list_add_tail(&new->it_link, &pos->it_link);
-> > +		list_add(&new->it_link, &pos->it_link);
-> >  		return 1;
-> >  	}
-> >  }
-> > @@ -230,14 +230,14 @@ _range_has_tag(struct my_tree_t *tree, u64 start, u64 end, int32_t tag)
-> >  	u64 expect = 0;
-> >  
-> >  	dprintk("%s(%llu, %llu, %i) enter\n", __func__, start, end, tag);
-> > -	list_for_each_entry(pos, &tree->mtt_stub, it_link) {
-> > -		if (pos->it_sector < start)
-> > +	list_for_each_entry_reverse(pos, &tree->mtt_stub, it_link) {
-> > +		if (pos->it_sector >= end)
-> >  			continue;
-> >  		if (!expect) {
-> > -			if ((pos->it_sector == start) &&
-> > +			if ((pos->it_sector == end - tree->mtt_step_size) &&
-> >  			    (pos->it_tags & (1 << tag))) {
-> > -				expect = start + tree->mtt_step_size;
-> > -				if (expect == end)
-> > +				expect = pos->it_sector - tree->mtt_step_size;
-> > +				if (expect < start)
-> >  					return 1;
-> >  				continue;
-> >  			} else {
-> > @@ -246,8 +246,8 @@ _range_has_tag(struct my_tree_t *tree, u64 start, u64 end, int32_t tag)
-> >  		}
-> >  		if (pos->it_sector != expect || !(pos->it_tags & (1 << tag)))
-> >  			return 0;
-> > -		expect += tree->mtt_step_size;
-> > -		if (expect == end)
-> > +		expect -= tree->mtt_step_size;
-> > +		if (expect < start)
-> >  			return 1;
-> >  	}
-> >  	return 0;
-> > @@ -594,65 +594,67 @@ add_and_merge_extent(struct pnfs_block_layout *bl,
-> >  	/* Scan for proper place to insert, extending new to the left
-> >  	 * as much as possible.
-> >  	 */
-> > -	list_for_each_entry_safe(be, tmp, list, be_node) {
-> > -		if (new->be_f_offset < be->be_f_offset)
-> > +	list_for_each_entry_safe_reverse(be, tmp, list, be_node) {
-> > +		if (new->be_f_offset >= be->be_f_offset + be->be_length)
-> >  			break;
-> > -		if (end <= be->be_f_offset + be->be_length) {
-> > -			/* new is a subset of existing be*/
-> > +		if (new->be_f_offset >= be->be_f_offset) {
-> > +			if (end <= be->be_f_offset + be->be_length) {
-> > +				/* new is a subset of existing be*/
-> > +				if (extents_consistent(be, new)) {
-> > +					dprintk("%s: new is subset, ignoring\n",
-> > +						__func__);
-> > +					put_extent(new);
-> > +					return 0;
-> > +				} else {
-> > +					goto out_err;
-> > +				}
-> > +			} else {
-> > +				/* |<--   be   -->|
-> > +				 *          |<--   new   -->| */
-> > +				if (extents_consistent(be, new)) {
-> > +					/* extend new to fully replace be */
-> > +					new->be_length += new->be_f_offset -
-> > +						be->be_f_offset;
-> > +					new->be_f_offset = be->be_f_offset;
-> > +					new->be_v_offset = be->be_v_offset;
-> > +					dprintk("%s: removing %p\n", __func__, be);
-> > +					list_del(&be->be_node);
-> > +					put_extent(be);
-> > +				} else {
-> > +					goto out_err;
-> > +				}
-> > +			}
-> > +		} else if (end >= be->be_f_offset + be->be_length) {
-> > +			/* new extent overlap existing be */
-> >  			if (extents_consistent(be, new)) {
-> > -				dprintk("%s: new is subset, ignoring\n",
-> > -					__func__);
-> > -				put_extent(new);
-> > -				return 0;
-> > -			} else
-> > +				/* extend new to fully replace be */
-> > +				dprintk("%s: removing %p\n", __func__, be);
-> > +				list_del(&be->be_node);
-> > +				put_extent(be);
-> > +			} else {
-> >  				goto out_err;
-> > -		} else if (new->be_f_offset <=
-> > -				be->be_f_offset + be->be_length) {
-> > -			/* new overlaps or abuts existing be */
-> > -			if (extents_consistent(be, new)) {
-> > +			}
-> > +		} else if (end > be->be_f_offset) {
-> > +			/*           |<--   be   -->|
-> > +			 *|<--   new   -->| */
-> > +			if (extents_consistent(new, be)) {
-> >  				/* extend new to fully replace be */
-> > -				new->be_length += new->be_f_offset -
-> > -						  be->be_f_offset;
-> > -				new->be_f_offset = be->be_f_offset;
-> > -				new->be_v_offset = be->be_v_offset;
-> > +				new->be_length += be->be_f_offset + be->be_length -
-> > +					new->be_f_offset - new->be_length;
-> >  				dprintk("%s: removing %p\n", __func__, be);
-> >  				list_del(&be->be_node);
-> >  				put_extent(be);
-> > -			} else if (new->be_f_offset !=
-> > -				   be->be_f_offset + be->be_length)
-> > +			} else {
-> >  				goto out_err;
-> > +			}
-> >  		}
-> >  	}
-> >  	/* Note that if we never hit the above break, be will not point to a
-> >  	 * valid extent.  However, in that case &be->be_node==list.
-> >  	 */
-> > -	list_add_tail(&new->be_node, &be->be_node);
-> > +	list_add(&new->be_node, &be->be_node);
-> >  	dprintk("%s: inserting new\n", __func__);
-> >  	print_elist(list);
-> > -	/* Scan forward for overlaps.  If we find any, extend new and
-> > -	 * remove the overlapped extent.
-> > -	 */
-> > -	be = list_prepare_entry(new, list, be_node);
-> > -	list_for_each_entry_safe_continue(be, tmp, list, be_node) {
-> > -		if (end < be->be_f_offset)
-> > -			break;
-> > -		/* new overlaps or abuts existing be */
-> > -		if (extents_consistent(be, new)) {
-> > -			if (end < be->be_f_offset + be->be_length) {
-> > -				/* extend new to fully cover be */
-> > -				end = be->be_f_offset + be->be_length;
-> > -				new->be_length = end - new->be_f_offset;
-> > -			}
-> > -			dprintk("%s: removing %p\n", __func__, be);
-> > -			list_del(&be->be_node);
-> > -			put_extent(be);
-> > -		} else if (end != be->be_f_offset) {
-> > -			list_del(&new->be_node);
-> > -			goto out_err;
-> > -		}
-> > -	}
-> > -	dprintk("%s: after merging\n", __func__);
-> > -	print_elist(list);
-> >  	/* STUB - The per-list consistency checks have all been done,
-> >  	 * should now check cross-list consistency.
-> >  	 */
-> > @@ -685,10 +687,10 @@ find_get_extent(struct pnfs_block_layout *bl, sector_t isect,
-> >  		if (ret &&
-> >  		    (!cow_read || ret->be_state != PNFS_BLOCK_INVALID_DATA))
-> >  			break;
-> > -		list_for_each_entry(be, &bl->bl_extents[i], be_node) {
-> > -			if (isect < be->be_f_offset)
-> > +		list_for_each_entry_reverse(be, &bl->bl_extents[i], be_node) {
-> > +			if (isect >= be->be_f_offset + be->be_length)
-> >  				break;
-> > -			if (isect < be->be_f_offset + be->be_length) {
-> > +			if (isect >= be->be_f_offset) {
-> >  				/* We have found an extent */
-> >  				dprintk("%s Get %p (%i)\n", __func__, be,
-> >  					atomic_read(&be->be_refcnt.refcount));
-> > @@ -721,10 +723,10 @@ find_get_extent_locked(struct pnfs_block_layout *bl, sector_t isect)
-> >  	for (i = 0; i < EXTENT_LISTS; i++) {
-> >  		if (ret)
-> >  			break;
-> > -		list_for_each_entry(be, &bl->bl_extents[i], be_node) {
-> > -			if (isect < be->be_f_offset)
-> > +		list_for_each_entry_reverse(be, &bl->bl_extents[i], be_node) {
-> > +			if (isect >= be->be_f_offset + be->be_length)
-> >  				break;
-> > -			if (isect < be->be_f_offset + be->be_length) {
-> > +			if (isect >= be->be_f_offset) {
-> >  				/* We have found an extent */
-> >  				dprintk("%s Get %p (%i)\n", __func__, be,
-> >  					atomic_read(&be->be_refcnt.refcount));
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
+> Cheers
+>  Trond
+
