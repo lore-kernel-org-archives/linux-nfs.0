@@ -1,95 +1,106 @@
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: Re: NFS client stall
-Date: Wed, 12 May 2010 12:43:15 -0400
-Message-ID: <1273682595.2810.86.camel@localhost.localdomain>
-References: <DF18387A-0E5C-493B-B4F9-774D2068E4CD@netapp.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-To: Andy Adamson <andros@netapp.com>
+From: andros@netapp.com
+Subject: [PATCH 1/3] SQUASHME pnfs_submit: use MDS session for dual MDS/DS
+Date: Wed, 12 May 2010 13:39:38 -0400
+Message-ID: <1273685980-3340-2-git-send-email-andros@netapp.com>
+References: <1273685980-3340-1-git-send-email-andros@netapp.com>
+Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
+To: bhalevy@panasas.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:28297 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:54551 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756528Ab0ELQnc convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 12 May 2010 12:43:32 -0400
-Received: from svlrsexc2-prd.hq.netapp.com (svlrsexc2-prd.hq.netapp.com [10.57.115.31])
-	by smtp2.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id o4CGhG2U016465
-	for <linux-nfs@vger.kernel.org>; Wed, 12 May 2010 09:43:16 -0700 (PDT)
-In-Reply-To: <DF18387A-0E5C-493B-B4F9-774D2068E4CD@netapp.com>
+	id S1756415Ab0ELRkK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 12 May 2010 13:40:10 -0400
+In-Reply-To: <1273685980-3340-1-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 2010-05-12 at 11:17 -0400, Andy Adamson wrote: 
-> I've seen the following intermittently while running the Connecatathon  
-> special 'write/read 30MB file' test.  It's always been with the pNFS  
-> client, either running with the pNFS file module installed, or running  
-> without it installed (NFSv4.1 only). But given the intermittent  
-> behavior, that could just be because I run a lot more tests on the  
-> pNFS kernel.
-> 
-> I've seen this with 2.6.34-rc3 and up.
-> 
-> Any ideas?
-> 
-> -->Andy
-> 
-> May 11 19:35:41 fedora-64 kernel: INFO: task bigfile:2174 blocked for  
-> more than
-> 120 seconds.
-> May 11 19:35:41 fedora-64 kernel: "echo 0 > /proc/sys/kernel/ 
-> hung_task_timeout_s
-> ecs" disables this message.
-> May 11 19:35:41 fedora-64 kernel: bigfile       D ffff88005b10d380      
-> 0  2174
->   2137 0x00000084
-> May 11 19:35:41 fedora-64 kernel: ffff88005ac83c28 0000000000000082  
-> 000000000000
-> 0000 0010000000000000
-> May 11 19:35:41 fedora-64 kernel: ffff88005ac83fd8 ffff8800520d0000  
-> 000000000001
-> 3780 ffff88005ac83fd8
-> May 11 19:35:41 fedora-64 kernel: 0000000000013780 0000000000013780  
-> 000000000001
-> 3780 0000000000013780
-> May 11 19:35:41 fedora-64 kernel: Call Trace:
-> May 11 19:35:41 fedora-64 kernel: [<ffffffff810aae7a>] ? sync_page 
-> +0x0/0x4a
-> May 11 19:35:41 fedora-64 kernel: [<ffffffff813b1b26>] io_schedule 
-> +0x3d/0x52
-> May 11 19:35:41 fedora-64 kernel: [<ffffffff810aaec0>] sync_page 
-> +0x46/0x4a
-> May 11 19:35:41 fedora-64 kernel: [<ffffffff813b1f61>]  
-> __wait_on_bit_lock+0x46/0
-> x8f
-> May 11 19:35:41 fedora-64 kernel: [<ffffffff8103cee6>] ?  
-> release_console_sem+0x1
-> bd/0x1ee
-> May 11 19:35:41 fedora-64 kernel: [<ffffffff810aae20>] __lock_page 
-> +0x66/0x6d
-> May 11 19:35:41 fedora-64 kernel: [<ffffffff81055ad5>] ?  
-> wake_bit_function+0x0/0
-> x33
-> May 11 19:35:41 fedora-64 kernel: [<ffffffff810aae63>] lock_page+0x3c/ 
-> 0x41
-> May 11 19:35:41 fedora-64 kernel: [<ffffffff810ab533>] filemap_fault 
-> +0xc3/0x30b
-> May 11 19:35:41 fedora-64 kernel: [<ffffffff810c3202>] __do_fault 
-> +0x54/0x416
-> May 11 19:35:41 fedora-64 kernel: [<ffffffff810c39fa>] handle_mm_fault 
-> +0x436/0x82b
-> May 11 19:35:41 fedora-64 kernel: [<ffffffff810c7f49>] ? do_mmap_pgoff 
-> +0x290/0x2f3
-> May 11 19:35:41 fedora-64 kernel: [<ffffffff813b64e8>] do_page_fault 
-> +0x25e/0x273
-> May 11 19:35:41 fedora-64 kernel: [<ffffffff813b3bb5>] page_fault 
-> +0x25/0x30
-> 
-> 
+From: Andy Adamson <andros@netapp.com>
 
-The above is just an ordinary page fault. Something else is apparently
-holding a lock on the page and so you are waiting for it to be released.
+We currently only have one session per clientid. If the deviceid maps the MDS
+server as a data server, use the MDS session for the data server traffic only
+if EXCHGID4_FLAG_USE_PNFS_DS is set as an MDS clientid pNFS role.
 
-Is there a page lock leak somewhere in the pNFS client perhaps?
+Squash into "pnfs: filelayout: device ops"
 
-Cheers
-  Trond
+Signed-off-by: Andy Adamson <andros@netapp.com>
+---
+ fs/nfs/client.c            |    3 ++-
+ fs/nfs/internal.h          |    2 ++
+ fs/nfs/nfs4filelayoutdev.c |   20 +++++++++++++++++++-
+ 3 files changed, 23 insertions(+), 2 deletions(-)
+
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index 0337330..1979831 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -348,7 +348,7 @@ static int nfs_sockaddr_match_ipaddr(const struct sockaddr *sa1,
+  * Test if two socket addresses represent the same actual socket,
+  * by comparing (only) relevant fields, including the port number.
+  */
+-static int nfs_sockaddr_cmp(const struct sockaddr *sa1,
++int nfs_sockaddr_cmp(const struct sockaddr *sa1,
+ 			    const struct sockaddr *sa2)
+ {
+ 	if (sa1->sa_family != sa2->sa_family)
+@@ -362,6 +362,7 @@ static int nfs_sockaddr_cmp(const struct sockaddr *sa1,
+ 	}
+ 	return 0;
+ }
++EXPORT_SYMBOL(nfs_sockaddr_cmp);
+ 
+ /*
+  * Find a client by IP address and protocol version
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index 83f2953..92f3231 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -139,6 +139,8 @@ extern struct nfs_server *nfs_clone_server(struct nfs_server *,
+ 					   struct nfs_fattr *);
+ extern void nfs_mark_client_ready(struct nfs_client *clp, int state);
+ extern int nfs4_check_client_ready(struct nfs_client *clp);
++extern int nfs_sockaddr_cmp(const struct sockaddr *sa1,
++		const struct sockaddr *sa2);
+ extern int nfs4_set_client(struct nfs_server *server,
+ 		const char *hostname,
+ 		const struct sockaddr *addr,
+diff --git a/fs/nfs/nfs4filelayoutdev.c b/fs/nfs/nfs4filelayoutdev.c
+index 462f6de..891c31d 100644
+--- a/fs/nfs/nfs4filelayoutdev.c
++++ b/fs/nfs/nfs4filelayoutdev.c
+@@ -126,7 +126,8 @@ nfs4_pnfs_ds_create(struct nfs_server *mds_srv, struct nfs4_pnfs_ds *ds)
+ 	};
+ 	struct sockaddr_in	sin;
+ 	struct rpc_clnt 	*mds_clnt = mds_srv->client;
+-	struct nfs_client 	*clp;
++	struct nfs_client	*clp = mds_srv->nfs_client;
++	struct sockaddr		*mds_addr;
+ 	char			ip_addr[16];
+ 	int			addrlen;
+ 	int err = 0;
+@@ -138,6 +139,23 @@ nfs4_pnfs_ds_create(struct nfs_server *mds_srv, struct nfs4_pnfs_ds *ds)
+ 	sin.sin_addr.s_addr = ds->ds_ip_addr;
+ 	sin.sin_port = ds->ds_port;
+ 
++	/*
++	 * If this DS is also the MDS, use the MDS session only if the
++	 * MDS exchangeid flags show the EXCHGID4_FLAG_USE_PNFS_DS pNFS role.
++	 */
++	mds_addr = (struct sockaddr *)&clp->cl_addr;
++	if (nfs_sockaddr_cmp((struct sockaddr *)&sin, mds_addr)) {
++		if (!(clp->cl_exchange_flags & EXCHGID4_FLAG_USE_PNFS_DS)) {
++			printk(KERN_INFO "ip:port %s is not a pNFS Data "
++				"Server\n", ds->r_addr);
++			err = -ENODEV;
++		} else {
++			atomic_inc(&clp->cl_count);
++			ds->ds_clp = clp;
++			dprintk("%s Using MDS Session for DS\n", __func__);
++		}
++		goto out;
++	}
+ 	/* Set timeout to the mds rpc clnt value.
+ 	 * XXX - find the correct authflavor....
+ 	 *
+-- 
+1.6.6
+
