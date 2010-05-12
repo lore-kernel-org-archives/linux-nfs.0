@@ -1,84 +1,128 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from zeniv.linux.org.uk ([195.92.253.2]:34231 "EHLO
-	ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754449Ab0EXXBN (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 24 May 2010 19:01:13 -0400
-Date: Tue, 25 May 2010 00:01:09 +0100
-From: Al Viro <viro@ZenIV.linux.org.uk>
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-Cc: Neil Brown <neilb@suse.de>, "Dr. J. Bruce Fields" <bfields@fieldses.org>,
-        Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Subject: Re: [PATCH] VFS: fix recent breakage of FS_REVAL_DOT
-Message-ID: <20100524230109.GT31073@ZenIV.linux.org.uk>
-References: <20100524165756.2cfa54c4@notabene.brown>
- <20100524115903.GP31073@ZenIV.linux.org.uk>
- <20100524155031.GQ31073@ZenIV.linux.org.uk>
- <1274718082.10795.31.camel@heimdal.trondhjem.org>
- <20100524164736.GR31073@ZenIV.linux.org.uk>
- <1274720791.10795.50.camel@heimdal.trondhjem.org>
- <20100524190828.GS31073@ZenIV.linux.org.uk>
- <1274735612.4030.16.camel@heimdal.trondhjem.org>
+Received: from fieldses.org ([174.143.236.118]:54935 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752005Ab0ELCkb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 11 May 2010 22:40:31 -0400
+Date: Tue, 11 May 2010 22:40:30 -0400
+From: " J. Bruce Fields" <bfields@citi.umich.edu>
+To: Benny Halevy <bhalevy@panasas.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v2 8/9] nfsd4: keep a reference count on client while
+	in use
+Message-ID: <20100512024030.GA27184@fieldses.org>
+References: <4BE9C7A2.8030801@panasas.com> <1273612434-13726-1-git-send-email-bhalevy@panasas.com>
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1274735612.4030.16.camel@heimdal.trondhjem.org>
+In-Reply-To: <1273612434-13726-1-git-send-email-bhalevy@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Mon, May 24, 2010 at 05:13:32PM -0400, Trond Myklebust wrote:
+Something still doesn't look quite right: a sequence operation
+increments cl_count from 1 to 2; then, say, an exchangeid in another
+thread expires the client, dropping cl_count from 2 to 1; then the
+laundromat runs, sees cl_count 1, and decides it can expire the
+client.  Meanwhile, the original compound is still running.
 
-> Sorry... I misunderstood you.
+Am I missing something?
+
+--b.
+
+On Wed, May 12, 2010 at 12:13:54AM +0300, Benny Halevy wrote:
+> Get a refcount on the client on SEQUENCE,
+> Release the refcount and renew the client when all respective compounds completed.
+> Do not expire the client by the laundromat while in use.
+> If the client was expired via another path, free it when the compounds
+> complete and the refcount reaches 0.
 > 
-> In cases like the above, then the default behaviour of the server would
-> be to assign the same filehandles to those mount points. The
-> administrator can, however, make them different by choosing to use the
-> 'fsid' mount option to manually assign different fsids to the different
-> export points.
+> Note that unhash_client_locked must call list_del_init on cl_lru as
+> it may be called twice for the same client (once from nfs4_laundromat
+> and then from expire_client)
 > 
-> If not, then the client will automatically group these things in the
-> same superblock, so like the server, it too is supposed to share the
-> same inode for these different objects. It will then use
-> d_obtain_alias() to get a root dentry for that inode (see
-> nfs4_get_root()).
-
-Yes, it will.  So what will happen in nfs_follow_referral()?  Note that
-we check the rootpath returned by the server (whatever it will end up
-being) against the mnt_devname + relative path from mnt_root to referral
-point.  In this case it'll be /a/z or /b/z (depending on which export
-will server select when it sees the fsid) vs /a/z/x or /b/z/x (depending
-on which one does client walk into).  And the calls of nfs4_proc_fs_locations()
-will get identical arguments whether client walks into a/z/x or b/z/x.
-So will the actual RPC requests seen by the server, so it looks like in
-at least one of those cases we will get the rootpath that is _not_ a prefix
-we are expecting, stepping into
-        if (strncmp(path, fs_path, strlen(fs_path)) != 0) {
-                dprintk("%s: path %s does not begin with fsroot %s\n",
-                        __func__, path, fs_path);
-                return -ENOENT;
-        }
-in nfs4_validate_fspath().
-
-Question regarding RFC3530: is it actually allowed to have the same fhandle
-show up in two different locations in server's namespace?  If so, what
-should GETATTR with FS_LOCATIONS return for it?
-
-Client question: what stops you from stack overflows in that area?  Call
-chains you've got are *deep*, and I really wonder what happens if you
-hit a referral point while traversing nested symlink, get pathname
-resolution (already several levels into recursion) call ->follow_link(),
-bounce down through nfs_do_refmount/nfs_follow_referral/try_location/
-vfs_kern_mount/nfs4_referral_get_sb/nfs_follow_remote_path into
-vfs_path_lookup, which will cheerfully add a few more loops like that.
-
-Sure, the *total* nesting depth through symlinks is still limited by 8, but
-that pile of stack frames is _MUCH_ fatter than what we normally have in
-pathname resolution.  You've suddenly added ~60 extra stack frames to the
-worst-case stack footprint of the pathname resolution.  Don't try that
-on sparc64, boys and girls, it won't be happy with attempt to carve ~12Kb
-extra out of its kernel stack...  In fact, it's worse than just ~60 stack
-frames - several will contain (on-stack) struct nameidata in them, which
-very definitely will _not_ fit into the minimal stack frame.  It's about
-160 bytes extra, for each of those (up to 7).
-
-Come to think of that, x86 variants might get rather upset about that kind
-of treatment as well.  Minimal stack frames are smaller, but so's the stack...
+> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+> ---
+>  fs/nfsd/nfs4state.c |   27 ++++++++++++++++++++++++---
+>  fs/nfsd/nfs4xdr.c   |    3 ++-
+>  fs/nfsd/state.h     |    1 +
+>  3 files changed, 27 insertions(+), 4 deletions(-)
+> 
+> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> index 378ee86..1a8fb39 100644
+> --- a/fs/nfsd/nfs4state.c
+> +++ b/fs/nfsd/nfs4state.c
+> @@ -701,6 +701,22 @@ free_client(struct nfs4_client *clp)
+>  	kfree(clp);
+>  }
+>  
+> +void
+> +release_session_client(struct nfsd4_session *session)
+> +{
+> +	struct nfs4_client *clp = session->se_client;
+> +
+> +	spin_lock(&client_lock);
+> +	BUG_ON(clp->cl_refcount <= 0);
+> +	if (--clp->cl_refcount <= 0) {
+> +		free_client(clp);
+> +		session->se_client = NULL;
+> +	} else if (clp->cl_refcount == 1)
+> +		renew_client_locked(clp);
+> +	spin_unlock(&client_lock);
+> +	nfsd4_put_session(session);
+> +}
+> +
+>  /* must be called under the client_lock */
+>  static inline void
+>  unhash_client_locked(struct nfs4_client *clp)
+> @@ -1477,8 +1493,7 @@ out:
+>  	/* Hold a session reference until done processing the compound. */
+>  	if (cstate->session) {
+>  		nfsd4_get_session(cstate->session);
+> -		/* Renew the clientid on success and on replay */
+> -		renew_client_locked(session->se_client);
+> +		session->se_client->cl_refcount++;
+>  	}
+>  	spin_unlock(&client_lock);
+>  	dprintk("%s: return %d\n", __func__, ntohl(status));
+> @@ -2599,7 +2614,13 @@ nfs4_laundromat(void)
+>  				clientid_val = t;
+>  			break;
+>  		}
+> -		list_move(&clp->cl_lru, &reaplist);
+> +		if (clp->cl_refcount > 1) {
+> +			dprintk("NFSD: client in use (clientid %08x)\n",
+> +				clp->cl_clientid.cl_id);
+> +			continue;
+> +		}
+> +		unhash_client_locked(clp);
+> +		list_add(&clp->cl_lru, &reaplist);
+>  	}
+>  	spin_unlock(&client_lock);
+>  	list_for_each_safe(pos, next, &reaplist) {
+> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+> index 5c2de47..126d0ca 100644
+> --- a/fs/nfsd/nfs4xdr.c
+> +++ b/fs/nfsd/nfs4xdr.c
+> @@ -3313,7 +3313,8 @@ nfs4svc_encode_compoundres(struct svc_rqst *rqstp, __be32 *p, struct nfsd4_compo
+>  			dprintk("%s: SET SLOT STATE TO AVAILABLE\n", __func__);
+>  			cs->slot->sl_inuse = false;
+>  		}
+> -		nfsd4_put_session(cs->session);
+> +		/* Renew the clientid on success and on replay */
+> +		release_session_client(cs->session);
+>  	}
+>  	return 1;
+>  }
+> diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+> index 37e1dff..f263174 100644
+> --- a/fs/nfsd/state.h
+> +++ b/fs/nfsd/state.h
+> @@ -419,6 +419,7 @@ extern int nfs4_has_reclaimed_state(const char *name, bool use_exchange_id);
+>  extern void nfsd4_recdir_purge_old(void);
+>  extern int nfsd4_create_clid_dir(struct nfs4_client *clp);
+>  extern void nfsd4_remove_clid_dir(struct nfs4_client *clp);
+> +extern void release_session_client(struct nfsd4_session *);
+>  
+>  static inline void
+>  nfs4_put_stateowner(struct nfs4_stateowner *so)
+> -- 
+> 1.6.5.1
+> 
