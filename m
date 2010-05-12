@@ -1,73 +1,67 @@
 From: andros@netapp.com
-Subject: [PATCH 06/10] SQUASHME pnfs_submit: remove pg_threshold
-Date: Wed, 12 May 2010 10:44:18 -0400
-Message-ID: <1273675462-15758-7-git-send-email-andros@netapp.com>
+Subject: [PATCH 10/10] SQUASHME pnfs_submit: cleanup filelayout pg_test
+Date: Wed, 12 May 2010 10:44:22 -0400
+Message-ID: <1273675462-15758-11-git-send-email-andros@netapp.com>
 References: <1273675462-15758-1-git-send-email-andros@netapp.com>
  <1273675462-15758-2-git-send-email-andros@netapp.com>
  <1273675462-15758-3-git-send-email-andros@netapp.com>
  <1273675462-15758-4-git-send-email-andros@netapp.com>
  <1273675462-15758-5-git-send-email-andros@netapp.com>
  <1273675462-15758-6-git-send-email-andros@netapp.com>
+ <1273675462-15758-7-git-send-email-andros@netapp.com>
+ <1273675462-15758-8-git-send-email-andros@netapp.com>
+ <1273675462-15758-9-git-send-email-andros@netapp.com>
+ <1273675462-15758-10-git-send-email-andros@netapp.com>
 Cc: iisaman@netapp.com, linux-nfs@vger.kernel.org,
 	Andy Adamson <andros@netapp.com>
 To: bhalevy@panasas.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:3866 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:57403 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755237Ab0ELOpD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 12 May 2010 10:45:03 -0400
-In-Reply-To: <1273675462-15758-6-git-send-email-andros@netapp.com>
+	id S1755414Ab0ELOpE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 12 May 2010 10:45:04 -0400
+In-Reply-To: <1273675462-15758-10-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 From: Andy Adamson <andros@netapp.com>
 
-Prepare to remove unused threshold calculations
-Squash into: "pnfs:initialize pnfs_pageio for write"
+pg_bsize is set in nfs_pageio_init.
+Squash into: "pnfs:filelayout:pg_test"
 
 Signed-off-by: Andy Adamson <andros@netapp.com>
 ---
- fs/nfs/pnfs.c            |    3 ---
- include/linux/nfs_page.h |    1 -
- 2 files changed, 0 insertions(+), 4 deletions(-)
+ fs/nfs/nfs4filelayout.c |   10 ----------
+ 1 files changed, 0 insertions(+), 10 deletions(-)
 
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index c48bcd7..226ab4f 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -1402,7 +1402,6 @@ pnfs_pageio_init_read(struct nfs_pageio_descriptor *pgio,
- 	loff_t loff;
- 	int status = 0;
+diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+index dfc5149..200bbc2 100644
+--- a/fs/nfs/nfs4filelayout.c
++++ b/fs/nfs/nfs4filelayout.c
+@@ -697,9 +697,6 @@ filelayout_get_stripesize(struct pnfs_layout_type *layoutid)
+ /*
+  * filelayout_pg_test(). Called by nfs_can_coalesce_requests()
+  *
+- * For writes which come from the flush daemon, set the bsize on the fly.
+- * reads set the bsize in pnfs_pageio_init_read.
+- *
+  * return 1 :  coalesce page
+  * return 0 :  don't coalesce page
+  */
+@@ -709,13 +706,6 @@ filelayout_pg_test(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev,
+ {
+ 	u64 p_stripe, r_stripe;
  
--	pgio->pg_threshold = 0;
- 	pgio->pg_iswrite = 0;
- 	pgio->pg_boundary = 0;
- 	pgio->pg_test = NULL;
-@@ -1433,12 +1432,10 @@ pnfs_pageio_init_write(struct nfs_pageio_descriptor *pgio, struct inode *inode)
- 
- 	pgio->pg_iswrite = 1;
- 	if (!pnfs_enabled_sb(server)) {
--		pgio->pg_threshold = 0;
- 		pgio->pg_boundary = 0;
- 		pgio->pg_test = NULL;
- 		return;
- 	}
--	pgio->pg_threshold = pnfs_getthreshold(inode, 1);
- 	pgio->pg_boundary = pnfs_getboundary(inode);
- 	pnfs_set_pg_test(inode, pgio);
- }
-diff --git a/include/linux/nfs_page.h b/include/linux/nfs_page.h
-index df93480..d04ebb2 100644
---- a/include/linux/nfs_page.h
-+++ b/include/linux/nfs_page.h
-@@ -62,7 +62,6 @@ struct nfs_pageio_descriptor {
- 	int 			pg_ioflags;
- 	int			pg_error;
- #ifdef CONFIG_NFS_V4_1
--	size_t			pg_threshold;
- 	int			pg_iswrite;
- 	int			pg_boundary;
- 	int			(*pg_test)(struct nfs_pageio_descriptor *, struct nfs_page *, struct nfs_page *);
+-	if (!pgio->pg_iswrite)
+-		goto boundary;
+-
+-	if (pgio->pg_bsize != NFS_SERVER(pgio->pg_inode)->wsize)
+-		pgio->pg_bsize = NFS_SERVER(pgio->pg_inode)->wsize;
+-
+-boundary:
+ 	if (pgio->pg_boundary == 0)
+ 		return 1;
+ 	p_stripe = (u64)prev->wb_index << PAGE_CACHE_SHIFT;
 -- 
 1.6.6
 
