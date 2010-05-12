@@ -1,60 +1,95 @@
-From: Steven Whitehouse <swhiteho@redhat.com>
-Subject: Re: gfs2/pnfs stall
-Date: Wed, 12 May 2010 16:48:24 +0100
-Message-ID: <1273679304.7196.401.camel@localhost.localdomain>
-References: <20100511201541.GA23321@fieldses.org>
-	 <1273662210.2884.29.camel@localhost>  <20100512154509.GA5226@fieldses.org>
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: Re: NFS client stall
+Date: Wed, 12 May 2010 12:43:15 -0400
+Message-ID: <1273682595.2810.86.camel@localhost.localdomain>
+References: <DF18387A-0E5C-493B-B4F9-774D2068E4CD@netapp.com>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: linux-nfs@vger.kernel.org, Olga Kornievskaia <aglo@citi.umich.edu>
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Content-Type: text/plain; charset="UTF-8"
+Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+To: Andy Adamson <andros@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:52260 "EHLO mx1.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:28297 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754123Ab0ELPse (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 12 May 2010 11:48:34 -0400
-In-Reply-To: <20100512154509.GA5226@fieldses.org>
+	id S1756528Ab0ELQnc convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 12 May 2010 12:43:32 -0400
+Received: from svlrsexc2-prd.hq.netapp.com (svlrsexc2-prd.hq.netapp.com [10.57.115.31])
+	by smtp2.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id o4CGhG2U016465
+	for <linux-nfs@vger.kernel.org>; Wed, 12 May 2010 09:43:16 -0700 (PDT)
+In-Reply-To: <DF18387A-0E5C-493B-B4F9-774D2068E4CD@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi,
-
-On Wed, 2010-05-12 at 11:45 -0400, J. Bruce Fields wrote:
-> On Wed, May 12, 2010 at 12:03:30PM +0100, Steven Whitehouse wrote:
-> > Hi,
-> > 
-> > On Tue, 2010-05-11 at 16:15 -0400, J. Bruce Fields wrote:
-> > > Olga ran across the following while running an iozone test (from the
-> > > Windows pnfs client) to a pnfs/gfs2 server built from 2.6.34-rc5-pnfs
-> > > commit 1ea22c6e65028535ecb62a4e00cf706fc6446b77.
-> > > 
-> > > Any ideas?
-> > > 
-> > It might well be the issue which we've been chasing down recently. Bob
-> > has proposed some patches which I've just pushed into the GFS2 -nmw tree
-> > this morning (and there is one that was pushed in a little while back
-> > too).
-> > 
-> > We'd need a set of glock dumps to be certain, but it does look as if it
-> > might be that,
+On Wed, 2010-05-12 at 11:17 -0400, Andy Adamson wrote: 
+> I've seen the following intermittently while running the Connecatathon  
+> special 'write/read 30MB file' test.  It's always been with the pNFS  
+> client, either running with the pNFS file module installed, or running  
+> without it installed (NFSv4.1 only). But given the intermittent  
+> behavior, that could just be because I run a lot more tests on the  
+> pNFS kernel.
 > 
-> OK.  Would it be useful for us to get you a glock dump or to test the
-> -nmw tree?  (Looks like the latter is available from:
+> I've seen this with 2.6.34-rc3 and up.
 > 
-> 	  git://git.kernel.org/pub/scm/linux/kernel/git/steve/gfs2-2.6-nmw.git
+> Any ideas?
 > 
-> .  I didn't find instructions for the former....)
+> -->Andy
 > 
-> --b.
+> May 11 19:35:41 fedora-64 kernel: INFO: task bigfile:2174 blocked for  
+> more than
+> 120 seconds.
+> May 11 19:35:41 fedora-64 kernel: "echo 0 > /proc/sys/kernel/ 
+> hung_task_timeout_s
+> ecs" disables this message.
+> May 11 19:35:41 fedora-64 kernel: bigfile       D ffff88005b10d380      
+> 0  2174
+>   2137 0x00000084
+> May 11 19:35:41 fedora-64 kernel: ffff88005ac83c28 0000000000000082  
+> 000000000000
+> 0000 0010000000000000
+> May 11 19:35:41 fedora-64 kernel: ffff88005ac83fd8 ffff8800520d0000  
+> 000000000001
+> 3780 ffff88005ac83fd8
+> May 11 19:35:41 fedora-64 kernel: 0000000000013780 0000000000013780  
+> 000000000001
+> 3780 0000000000013780
+> May 11 19:35:41 fedora-64 kernel: Call Trace:
+> May 11 19:35:41 fedora-64 kernel: [<ffffffff810aae7a>] ? sync_page 
+> +0x0/0x4a
+> May 11 19:35:41 fedora-64 kernel: [<ffffffff813b1b26>] io_schedule 
+> +0x3d/0x52
+> May 11 19:35:41 fedora-64 kernel: [<ffffffff810aaec0>] sync_page 
+> +0x46/0x4a
+> May 11 19:35:41 fedora-64 kernel: [<ffffffff813b1f61>]  
+> __wait_on_bit_lock+0x46/0
+> x8f
+> May 11 19:35:41 fedora-64 kernel: [<ffffffff8103cee6>] ?  
+> release_console_sem+0x1
+> bd/0x1ee
+> May 11 19:35:41 fedora-64 kernel: [<ffffffff810aae20>] __lock_page 
+> +0x66/0x6d
+> May 11 19:35:41 fedora-64 kernel: [<ffffffff81055ad5>] ?  
+> wake_bit_function+0x0/0
+> x33
+> May 11 19:35:41 fedora-64 kernel: [<ffffffff810aae63>] lock_page+0x3c/ 
+> 0x41
+> May 11 19:35:41 fedora-64 kernel: [<ffffffff810ab533>] filemap_fault 
+> +0xc3/0x30b
+> May 11 19:35:41 fedora-64 kernel: [<ffffffff810c3202>] __do_fault 
+> +0x54/0x416
+> May 11 19:35:41 fedora-64 kernel: [<ffffffff810c39fa>] handle_mm_fault 
+> +0x436/0x82b
+> May 11 19:35:41 fedora-64 kernel: [<ffffffff810c7f49>] ? do_mmap_pgoff 
+> +0x290/0x2f3
+> May 11 19:35:41 fedora-64 kernel: [<ffffffff813b64e8>] do_page_fault 
+> +0x25e/0x273
+> May 11 19:35:41 fedora-64 kernel: [<ffffffff813b3bb5>] page_fault 
+> +0x25/0x30
+> 
+> 
 
-Potentially either or both :-) To get the glock dump you just need
-debugfs mounted and then grab a copy of the only file (called glocks) in
-the gfs2 subdirectory.
+The above is just an ordinary page fault. Something else is apparently
+holding a lock on the page and so you are waiting for it to be released.
 
-If you discover that the issue has gone away with the -nmw tree, then
-that pretty much confirms that it was that parciular issue that Bob has
-just fixed,
+Is there a page lock leak somewhere in the pNFS client perhaps?
 
-Steve.
-
-
+Cheers
+  Trond
