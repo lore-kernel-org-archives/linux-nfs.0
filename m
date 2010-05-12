@@ -1,67 +1,65 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from [221.122.61.232] ([221.122.61.232]:43739 "EHLO mx.bwstor.com.cn"
-	rhost-flags-FAIL-FAIL-OK-FAIL) by vger.kernel.org with ESMTP
-	id S932068Ab0EKJBP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 11 May 2010 05:01:15 -0400
-Date: Tue, 11 May 2010 16:59:44 +0800
-From: Zhang Jingwang <zhangjingwang@nrchpc.ac.cn>
-To: linux-nfs@vger.kernel.org
-Cc: bhalevy@panasas.com, iisaman@citi.umich.edu
-Subject: [PATCH] pnfs: send layoutcommit until IO completed when return
-	layout
-Message-ID: <20100511085943.GA6822@MDS-78.localdomain>
-Content-Type: text/plain; charset=us-ascii
+Received: from mail-gy0-f174.google.com ([209.85.160.174]:42395 "EHLO
+	mail-gy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751113Ab0ELOMB convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 12 May 2010 10:12:01 -0400
+Received: by gyg13 with SMTP id 13so3373323gyg.19
+        for <linux-nfs@vger.kernel.org>; Wed, 12 May 2010 07:12:01 -0700 (PDT)
+In-Reply-To: <20100512074204.GA7643@MDS-78.localdomain>
+References: <20100512074204.GA7643@MDS-78.localdomain>
+Date: Wed, 12 May 2010 10:11:54 -0400
+Message-ID: <AANLkTilCfQl5zM9cap4vJSbFfJQ8OvoPNoydif_4DN6T@mail.gmail.com>
+Subject: Re: [PATCH] pnfs: set pnfs_curr_ld before calling
+	initialize_mountpoint
+From: "William A. (Andy) Adamson" <androsadamson@gmail.com>
+To: Zhang Jingwang <zhangjingwang@nrchpc.ac.cn>
+Cc: linux-nfs@vger.kernel.org, bhalevy@panasas.com
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-If we call layoutcommit before IO completed, then some extents we are
-writing may not be in the commit list. When we return layout, they
-may not get a chance to be committed to server.
+On Wed, May 12, 2010 at 3:42 AM, Zhang Jingwang
+<zhangjingwang@nrchpc.ac.cn> wrote:
+> initialize_mountpoint will call _nfs4_pnfs_getdevicelist and then
+> pnfs_curr_ld->id is accessed.
 
-Signed-off-by: Zhang Jingwang <zhangjingwang@nrchpc.ac.cn>
----
- fs/nfs/pnfs.c |   20 ++++++++++----------
- 1 files changed, 10 insertions(+), 10 deletions(-)
+Where is pnfs_curr_ld->ld_policy_ops accessed?
 
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 3739c38..6fa295b 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -726,16 +726,6 @@ _pnfs_return_layout(struct inode *ino, struct nfs4_pnfs_layout_segment *range,
- 		arg.length = ~0;
- 	}
- 	if (type == RETURN_FILE) {
--		if (nfsi->layoutcommit_ctx) {
--			status = pnfs_layoutcommit_inode(ino, 1);
--			if (status) {
--				dprintk("%s: layoutcommit failed, status=%d. "
--					"Returning layout anyway\n",
--					__func__, status);
--				status = 0;
--			}
--		}
--
- 		lo = get_lock_current_layout(nfsi);
- 		if (lo && !has_layout_to_return(lo, &arg)) {
- 			put_unlock_current_layout(lo);
-@@ -763,6 +753,16 @@ _pnfs_return_layout(struct inode *ino, struct nfs4_pnfs_layout_segment *range,
- 			wait_event(nfsi->lo_waitq,
- 				!pnfs_return_layout_barrier(nfsi, &arg));
- 		}
-+
-+		if (nfsi->layoutcommit_ctx) {
-+			status = pnfs_layoutcommit_inode(ino, 1);
-+			if (status) {
-+				dprintk("%s: layoutcommit failed, status=%d. "
-+					"Returning layout anyway\n",
-+					__func__, status);
-+				status = 0;
-+			}
-+		}
- 	}
- send_return:
- 	status = return_layout(ino, &arg, stateid, type, lo);
--- 
-1.6.2.5
+-->Andy
 
+> This introduce a NULL pointer reference.
+>
+> Signed-off-by: Zhang Jingwang <zhangjingwang@nrchpc.ac.cn>
+> ---
+>  fs/nfs/pnfs.c |    2 +-
+>  1 files changed, 1 insertions(+), 1 deletions(-)
+>
+> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+> index 3739c38..5ad7fc6 100644
+> --- a/fs/nfs/pnfs.c
+> +++ b/fs/nfs/pnfs.c
+> @@ -212,6 +212,7 @@ set_pnfs_layoutdriver(struct nfs_server *server, const struct nfs_fh *mntfh,
+>                return;
+>
+>        if (id > 0 && find_pnfs(id, &mod)) {
+> +               server->pnfs_curr_ld = mod->pnfs_ld_type;
+>                if (mod->pnfs_ld_type->ld_io_ops->initialize_mountpoint(
+>                                                        server, mntfh)) {
+>                        printk(KERN_ERR "%s: Error initializing mount point "
+> @@ -222,7 +223,6 @@ set_pnfs_layoutdriver(struct nfs_server *server, const struct nfs_fh *mntfh,
+>                 * Layout driver succeeded in initializing mountpoint
+>                 * and has taken a reference on the nfs_client cl_devid_cache
+>                 */
+> -               server->pnfs_curr_ld = mod->pnfs_ld_type;
+>                server->nfs_client->rpc_ops = &pnfs_v4_clientops;
+>                dprintk("%s: pNFS module for %u set\n", __func__, id);
+>                return;
+> --
+> 1.6.2.5
+>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
