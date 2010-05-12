@@ -1,85 +1,40 @@
-From: andros@netapp.com
-Subject: [PATCH 2/3] SQUASHME pnfs_submit: update DS nfs4_set_client
-Date: Wed, 12 May 2010 13:39:39 -0400
-Message-ID: <1273685980-3340-3-git-send-email-andros@netapp.com>
-References: <1273685980-3340-1-git-send-email-andros@netapp.com>
- <1273685980-3340-2-git-send-email-andros@netapp.com>
-Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
-To: bhalevy@panasas.com
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [pnfs] Linux pNFS status meeting 05/13
+Date: Wed, 12 May 2010 16:08:01 -0400
+Message-ID: <20100512200801.GN6135@fieldses.org>
+References: <OF0E51ED85.C973CB93-ON88257721.006B7902-88257721.006B9A2F@us.ibm.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-nfs@vger.kernel.org
+To: Marc Eshel <eshel@almaden.ibm.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:56045 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:60621 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756463Ab0ELRkL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 12 May 2010 13:40:11 -0400
-In-Reply-To: <1273685980-3340-2-git-send-email-andros@netapp.com>
+	id S1752194Ab0ELUID (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 12 May 2010 16:08:03 -0400
+In-Reply-To: <OF0E51ED85.C973CB93-ON88257721.006B7902-88257721.006B9A2F@us.ibm.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Andy Adamson <andros@netapp.com>
+On Wed, May 12, 2010 at 12:35:18PM -0700, Marc Eshel wrote:
+> Meeting on Thursday 05/13/10 at 9:30 AM pacific time (12:30 PM UMICH time)
 
-Dont bother using the hostname, use the client ipaddr field from the MDS
-nfs_client for construction of the co_ownrid field the DS EXCHANGE_ID.
+Rough agenda:
 
-Clean up the comments.
+1. upstream status/merge plans (trond, bfields)
+2. State of pNFS tree (bhalevy)
+3. Mailing list change
+4. Client
+	4.1. Client pNFS status
+	4.2. Client state management design documentation (trond)
+5. Server
+	5.1. Todo's for minimal 4.1 server (bfields)
+		- Benny's patches
+		- pynfs testing
+	5.2. pnfs
+6. redhat status (steved)
+7. bakeathon plans
+8. new business
+9. next meeting
 
-Squash into "pnfs: filelayout: device ops"
-
-Signed-off-by: Andy Adamson <andros@netapp.com>
----
- fs/nfs/nfs4filelayoutdev.c |   28 +++++-----------------------
- 1 files changed, 5 insertions(+), 23 deletions(-)
-
-diff --git a/fs/nfs/nfs4filelayoutdev.c b/fs/nfs/nfs4filelayoutdev.c
-index 891c31d..b41f437 100644
---- a/fs/nfs/nfs4filelayoutdev.c
-+++ b/fs/nfs/nfs4filelayoutdev.c
-@@ -128,8 +128,6 @@ nfs4_pnfs_ds_create(struct nfs_server *mds_srv, struct nfs4_pnfs_ds *ds)
- 	struct rpc_clnt 	*mds_clnt = mds_srv->client;
- 	struct nfs_client	*clp = mds_srv->nfs_client;
- 	struct sockaddr		*mds_addr;
--	char			ip_addr[16];
--	int			addrlen;
- 	int err = 0;
- 
- 	dprintk("--> %s ip:port %s au_flavor %d\n", __func__,
-@@ -156,32 +154,16 @@ nfs4_pnfs_ds_create(struct nfs_server *mds_srv, struct nfs4_pnfs_ds *ds)
- 		}
- 		goto out;
- 	}
--	/* Set timeout to the mds rpc clnt value.
--	 * XXX - find the correct authflavor....
--	 *
--	 * Fake a client ipaddr (used for sessionid) with hostname
--	 * Use hostname since it might be more unique than ipaddr (which
--	 * could be set to the loopback 127.0.0/1.1
--	 *
--	 * XXX: Should sessions continue to use the cl_ipaddr field?
--	 */
--	addrlen = strnlen(utsname()->nodename, sizeof(utsname()->nodename));
--	if (addrlen > sizeof(ip_addr))
--		addrlen = sizeof(ip_addr);
--	memcpy(ip_addr, utsname()->nodename, addrlen);
--
--	/* XXX need a non-nfs_client struct interface to set up
--	 * data server sessions
--	 *
--	 * tmp: nfs4_set_client sets the nfs_server->nfs_client.
--	 *
--	 * We specify a retrans and timeout interval equual to MDS. ??
-+	/*
-+	 * Set a retrans, timeout interval, and authflavor equual to the MDS
-+	 * values. Use the MDS nfs_client cl_ipaddr field so as to use the
-+	 * same co_ownerid as the MDS.
- 	 */
- 	err = nfs4_set_client(&tmp,
- 			      mds_srv->nfs_client->cl_hostname,
- 			      (struct sockaddr *)&sin,
- 			      sizeof(struct sockaddr),
--			      ip_addr,
-+			      mds_srv->nfs_client->cl_ipaddr,
- 			      mds_clnt->cl_auth->au_flavor,
- 			      IPPROTO_TCP,
- 			      mds_clnt->cl_xprt->timeout,
--- 
-1.6.6
-
+--b.
