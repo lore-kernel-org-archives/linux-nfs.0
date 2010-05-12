@@ -1,40 +1,266 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [pnfs] Linux pNFS status meeting 05/13
-Date: Wed, 12 May 2010 16:08:01 -0400
-Message-ID: <20100512200801.GN6135@fieldses.org>
-References: <OF0E51ED85.C973CB93-ON88257721.006B7902-88257721.006B9A2F@us.ibm.com>
+Subject: Re: [PATCH] pnfsblock: Lookup list entry of layouts and tags in
+	reverse order
+Date: Wed, 12 May 2010 16:28:12 -0400
+Message-ID: <20100512202811.GA9296@fieldses.org>
+References: <20100510033610.GA5443@MDS-78.localdomain> <4BEA4ED3.3010702@panasas.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs@vger.kernel.org
-To: Marc Eshel <eshel@almaden.ibm.com>
+Cc: Zhang Jingwang <zhangjingwang-U4AKAne5IzAR5TUyvShJeg@public.gmane.org>,
+	linux-nfs@vger.kernel.org, iisaman@netapp.com
+To: Benny Halevy <bhalevy@panasas.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:60621 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:35215 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752194Ab0ELUID (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 12 May 2010 16:08:03 -0400
-In-Reply-To: <OF0E51ED85.C973CB93-ON88257721.006B7902-88257721.006B9A2F@us.ibm.com>
+	id S1757051Ab0ELU2Q (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 12 May 2010 16:28:16 -0400
+In-Reply-To: <4BEA4ED3.3010702@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, May 12, 2010 at 12:35:18PM -0700, Marc Eshel wrote:
-> Meeting on Thursday 05/13/10 at 9:30 AM pacific time (12:30 PM UMICH time)
+On Wed, May 12, 2010 at 09:46:43AM +0300, Benny Halevy wrote:
+> On May. 10, 2010, 6:36 +0300, Zhang Jingwang <zhangjingwang-U4AKAne5IzAR5TUyvShJeg@public.gmane.org> wrote:
+> > Optimize for sequencial write. Layout infos and tags are organized by
+> > file offset. When appending data to a file whole list will be examined,
+> > which introduce notable performance decrease.
+> 
+> Looks good to me.
+> 
+> Fred, can you please double check?
 
-Rough agenda:
+I don't know if Fred's still up for reviewing block stuff?
 
-1. upstream status/merge plans (trond, bfields)
-2. State of pNFS tree (bhalevy)
-3. Mailing list change
-4. Client
-	4.1. Client pNFS status
-	4.2. Client state management design documentation (trond)
-5. Server
-	5.1. Todo's for minimal 4.1 server (bfields)
-		- Benny's patches
-		- pynfs testing
-	5.2. pnfs
-6. redhat status (steved)
-7. bakeathon plans
-8. new business
-9. next meeting
+I've been trying to keep up with at least some minimal testing, but not
+as well as I'd like.
+
+The one thing I've noticed is that the connectathon general test has
+started failing right at the start with an IO error.  The last good
+version I tested was b5c09c21, which was based on 33-rc6.  The earliest
+bad version I tested was 419312ada, based on 34-rc2.  A quick look at
+network traces from the two traces didn't turn up anything obvious.  I
+haven't had the chance yet to look closer.
 
 --b.
+
+> 
+> Benny
+> 
+> P.S.: Zhang, please note Fred's new email address
+> 
+> > 
+> > Signed-off-by: Zhang Jingwang <zhangjingwang-U4AKAne5IzAR5TUyvShJeg@public.gmane.org>
+> > ---
+> >  fs/nfs/blocklayout/extents.c |  126 +++++++++++++++++++++---------------------
+> >  1 files changed, 64 insertions(+), 62 deletions(-)
+> > 
+> > diff --git a/fs/nfs/blocklayout/extents.c b/fs/nfs/blocklayout/extents.c
+> > index 3c311f2..514f2cc 100644
+> > --- a/fs/nfs/blocklayout/extents.c
+> > +++ b/fs/nfs/blocklayout/extents.c
+> > @@ -66,8 +66,8 @@ static int32_t _find_entry(struct my_tree_t *tree, u64 s)
+> >  	struct pnfs_inval_tracking *pos;
+> >  
+> >  	dprintk("%s(%llu) enter\n", __func__, s);
+> > -	list_for_each_entry(pos, &tree->mtt_stub, it_link) {
+> > -		if (pos->it_sector < s)
+> > +	list_for_each_entry_reverse(pos, &tree->mtt_stub, it_link) {
+> > +		if (pos->it_sector > s)
+> >  			continue;
+> >  		else if (pos->it_sector == s)
+> >  			return pos->it_tags & INTERNAL_MASK;
+> > @@ -102,8 +102,8 @@ static int _add_entry(struct my_tree_t *tree, u64 s, int32_t tag,
+> >  	struct pnfs_inval_tracking *pos;
+> >  
+> >  	dprintk("%s(%llu, %i, %p) enter\n", __func__, s, tag, storage);
+> > -	list_for_each_entry(pos, &tree->mtt_stub, it_link) {
+> > -		if (pos->it_sector < s)
+> > +	list_for_each_entry_reverse(pos, &tree->mtt_stub, it_link) {
+> > +		if (pos->it_sector > s)
+> >  			continue;
+> >  		else if (pos->it_sector == s) {
+> >  			found = 1;
+> > @@ -125,7 +125,7 @@ static int _add_entry(struct my_tree_t *tree, u64 s, int32_t tag,
+> >  		}
+> >  		new->it_sector = s;
+> >  		new->it_tags = (1 << tag);
+> > -		list_add_tail(&new->it_link, &pos->it_link);
+> > +		list_add(&new->it_link, &pos->it_link);
+> >  		return 1;
+> >  	}
+> >  }
+> > @@ -230,14 +230,14 @@ _range_has_tag(struct my_tree_t *tree, u64 start, u64 end, int32_t tag)
+> >  	u64 expect = 0;
+> >  
+> >  	dprintk("%s(%llu, %llu, %i) enter\n", __func__, start, end, tag);
+> > -	list_for_each_entry(pos, &tree->mtt_stub, it_link) {
+> > -		if (pos->it_sector < start)
+> > +	list_for_each_entry_reverse(pos, &tree->mtt_stub, it_link) {
+> > +		if (pos->it_sector >= end)
+> >  			continue;
+> >  		if (!expect) {
+> > -			if ((pos->it_sector == start) &&
+> > +			if ((pos->it_sector == end - tree->mtt_step_size) &&
+> >  			    (pos->it_tags & (1 << tag))) {
+> > -				expect = start + tree->mtt_step_size;
+> > -				if (expect == end)
+> > +				expect = pos->it_sector - tree->mtt_step_size;
+> > +				if (expect < start)
+> >  					return 1;
+> >  				continue;
+> >  			} else {
+> > @@ -246,8 +246,8 @@ _range_has_tag(struct my_tree_t *tree, u64 start, u64 end, int32_t tag)
+> >  		}
+> >  		if (pos->it_sector != expect || !(pos->it_tags & (1 << tag)))
+> >  			return 0;
+> > -		expect += tree->mtt_step_size;
+> > -		if (expect == end)
+> > +		expect -= tree->mtt_step_size;
+> > +		if (expect < start)
+> >  			return 1;
+> >  	}
+> >  	return 0;
+> > @@ -594,65 +594,67 @@ add_and_merge_extent(struct pnfs_block_layout *bl,
+> >  	/* Scan for proper place to insert, extending new to the left
+> >  	 * as much as possible.
+> >  	 */
+> > -	list_for_each_entry_safe(be, tmp, list, be_node) {
+> > -		if (new->be_f_offset < be->be_f_offset)
+> > +	list_for_each_entry_safe_reverse(be, tmp, list, be_node) {
+> > +		if (new->be_f_offset >= be->be_f_offset + be->be_length)
+> >  			break;
+> > -		if (end <= be->be_f_offset + be->be_length) {
+> > -			/* new is a subset of existing be*/
+> > +		if (new->be_f_offset >= be->be_f_offset) {
+> > +			if (end <= be->be_f_offset + be->be_length) {
+> > +				/* new is a subset of existing be*/
+> > +				if (extents_consistent(be, new)) {
+> > +					dprintk("%s: new is subset, ignoring\n",
+> > +						__func__);
+> > +					put_extent(new);
+> > +					return 0;
+> > +				} else {
+> > +					goto out_err;
+> > +				}
+> > +			} else {
+> > +				/* |<--   be   -->|
+> > +				 *          |<--   new   -->| */
+> > +				if (extents_consistent(be, new)) {
+> > +					/* extend new to fully replace be */
+> > +					new->be_length += new->be_f_offset -
+> > +						be->be_f_offset;
+> > +					new->be_f_offset = be->be_f_offset;
+> > +					new->be_v_offset = be->be_v_offset;
+> > +					dprintk("%s: removing %p\n", __func__, be);
+> > +					list_del(&be->be_node);
+> > +					put_extent(be);
+> > +				} else {
+> > +					goto out_err;
+> > +				}
+> > +			}
+> > +		} else if (end >= be->be_f_offset + be->be_length) {
+> > +			/* new extent overlap existing be */
+> >  			if (extents_consistent(be, new)) {
+> > -				dprintk("%s: new is subset, ignoring\n",
+> > -					__func__);
+> > -				put_extent(new);
+> > -				return 0;
+> > -			} else
+> > +				/* extend new to fully replace be */
+> > +				dprintk("%s: removing %p\n", __func__, be);
+> > +				list_del(&be->be_node);
+> > +				put_extent(be);
+> > +			} else {
+> >  				goto out_err;
+> > -		} else if (new->be_f_offset <=
+> > -				be->be_f_offset + be->be_length) {
+> > -			/* new overlaps or abuts existing be */
+> > -			if (extents_consistent(be, new)) {
+> > +			}
+> > +		} else if (end > be->be_f_offset) {
+> > +			/*           |<--   be   -->|
+> > +			 *|<--   new   -->| */
+> > +			if (extents_consistent(new, be)) {
+> >  				/* extend new to fully replace be */
+> > -				new->be_length += new->be_f_offset -
+> > -						  be->be_f_offset;
+> > -				new->be_f_offset = be->be_f_offset;
+> > -				new->be_v_offset = be->be_v_offset;
+> > +				new->be_length += be->be_f_offset + be->be_length -
+> > +					new->be_f_offset - new->be_length;
+> >  				dprintk("%s: removing %p\n", __func__, be);
+> >  				list_del(&be->be_node);
+> >  				put_extent(be);
+> > -			} else if (new->be_f_offset !=
+> > -				   be->be_f_offset + be->be_length)
+> > +			} else {
+> >  				goto out_err;
+> > +			}
+> >  		}
+> >  	}
+> >  	/* Note that if we never hit the above break, be will not point to a
+> >  	 * valid extent.  However, in that case &be->be_node==list.
+> >  	 */
+> > -	list_add_tail(&new->be_node, &be->be_node);
+> > +	list_add(&new->be_node, &be->be_node);
+> >  	dprintk("%s: inserting new\n", __func__);
+> >  	print_elist(list);
+> > -	/* Scan forward for overlaps.  If we find any, extend new and
+> > -	 * remove the overlapped extent.
+> > -	 */
+> > -	be = list_prepare_entry(new, list, be_node);
+> > -	list_for_each_entry_safe_continue(be, tmp, list, be_node) {
+> > -		if (end < be->be_f_offset)
+> > -			break;
+> > -		/* new overlaps or abuts existing be */
+> > -		if (extents_consistent(be, new)) {
+> > -			if (end < be->be_f_offset + be->be_length) {
+> > -				/* extend new to fully cover be */
+> > -				end = be->be_f_offset + be->be_length;
+> > -				new->be_length = end - new->be_f_offset;
+> > -			}
+> > -			dprintk("%s: removing %p\n", __func__, be);
+> > -			list_del(&be->be_node);
+> > -			put_extent(be);
+> > -		} else if (end != be->be_f_offset) {
+> > -			list_del(&new->be_node);
+> > -			goto out_err;
+> > -		}
+> > -	}
+> > -	dprintk("%s: after merging\n", __func__);
+> > -	print_elist(list);
+> >  	/* STUB - The per-list consistency checks have all been done,
+> >  	 * should now check cross-list consistency.
+> >  	 */
+> > @@ -685,10 +687,10 @@ find_get_extent(struct pnfs_block_layout *bl, sector_t isect,
+> >  		if (ret &&
+> >  		    (!cow_read || ret->be_state != PNFS_BLOCK_INVALID_DATA))
+> >  			break;
+> > -		list_for_each_entry(be, &bl->bl_extents[i], be_node) {
+> > -			if (isect < be->be_f_offset)
+> > +		list_for_each_entry_reverse(be, &bl->bl_extents[i], be_node) {
+> > +			if (isect >= be->be_f_offset + be->be_length)
+> >  				break;
+> > -			if (isect < be->be_f_offset + be->be_length) {
+> > +			if (isect >= be->be_f_offset) {
+> >  				/* We have found an extent */
+> >  				dprintk("%s Get %p (%i)\n", __func__, be,
+> >  					atomic_read(&be->be_refcnt.refcount));
+> > @@ -721,10 +723,10 @@ find_get_extent_locked(struct pnfs_block_layout *bl, sector_t isect)
+> >  	for (i = 0; i < EXTENT_LISTS; i++) {
+> >  		if (ret)
+> >  			break;
+> > -		list_for_each_entry(be, &bl->bl_extents[i], be_node) {
+> > -			if (isect < be->be_f_offset)
+> > +		list_for_each_entry_reverse(be, &bl->bl_extents[i], be_node) {
+> > +			if (isect >= be->be_f_offset + be->be_length)
+> >  				break;
+> > -			if (isect < be->be_f_offset + be->be_length) {
+> > +			if (isect >= be->be_f_offset) {
+> >  				/* We have found an extent */
+> >  				dprintk("%s Get %p (%i)\n", __func__, be,
+> >  					atomic_read(&be->be_refcnt.refcount));
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
