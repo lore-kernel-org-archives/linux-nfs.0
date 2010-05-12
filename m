@@ -1,154 +1,145 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:30279 "EHLO
-	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1753126Ab0EZODy (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 26 May 2010 10:03:54 -0400
-Message-ID: <4BFD2A46.8010307@panasas.com>
-Date: Wed, 26 May 2010 17:03:50 +0300
-From: Boaz Harrosh <bharrosh@panasas.com>
-To: Benny Halevy <bhalevy@panasas.com>
-CC: steved@redhat.com, NFS list <linux-nfs@vger.kernel.org>,
-        "Chen, Helen Y" <hycsw@sandia.gov>
-Subject: Re: Fwd: Re: [pnfs] problem building pnfs-nfs-utils under Fedora
- 13
-References: <4BFD1595.1070502@panasas.com>
-In-Reply-To: <4BFD1595.1070502@panasas.com>
-Content-Type: text/plain; charset=UTF-8
+Received: from mail-wy0-f174.google.com ([74.125.82.174]:36274 "EHLO
+	mail-wy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750732Ab0ELE0w (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 12 May 2010 00:26:52 -0400
+Received: by wyb32 with SMTP id 32so481626wyb.19
+        for <linux-nfs@vger.kernel.org>; Tue, 11 May 2010 21:26:50 -0700 (PDT)
+Message-ID: <4BEA2E06.7070902@panasas.com>
+Date: Wed, 12 May 2010 07:26:46 +0300
+From: Benny Halevy <bhalevy@panasas.com>
+To: "J. Bruce Fields" <bfields@citi.umich.edu>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v2 8/9] nfsd4: keep a reference count on client while
+ in use
+References: <4BE9C7A2.8030801@panasas.com> <1273612434-13726-1-git-send-email-bhalevy@panasas.com> <20100512024030.GA27184@fieldses.org>
+In-Reply-To: <20100512024030.GA27184@fieldses.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 05/26/2010 03:35 PM, Benny Halevy wrote:
-> Helen, please note that the pnfs@linux-nfs.org mailing list was deprecated.
-> Forwarding to linux-nfs@vger.kernel.org.
+On May. 12, 2010, 5:40 +0300, " J. Bruce Fields" <bfields@citi.umich.edu> wrote:
+> Something still doesn't look quite right: a sequence operation
+> increments cl_count from 1 to 2; then, say, an exchangeid in another
+> thread expires the client, dropping cl_count from 2 to 1; then the
+> laundromat runs, sees cl_count 1, and decides it can expire the
+> client.  Meanwhile, the original compound is still running.
 > 
->>From a quick glance I'm not sure what went wrong with your build,
-> Steve should know better :-)
+> Am I missing something?
+
+Yeah.  exchange_id doesn't touch cl_refcount.  It may call expire_client
+explicitly which will unhash the client but will not destroy it if cl_refcount > 0
+the laundromat won't the client either after that since it's not on the lru list
+any more (and even if it would, it's refcount is still great than zero so it would
+have been ignored)
+
+Benny
+
 > 
-> Benny
+> --b.
 > 
-> On May. 19, 2010, 20:32 +0300, "Chen, Helen Y" <hycsw@sandia.gov> wrote:
-> 
-> 
-> 
->  
-> Has anyone successfully build pnfs enabled nfs utils under Fedora 13? 
-> I am running the kernel from:
-> http://steved.fedorapeople.org/repos/pnfs/13/x86_64/
->  
-> I installed libtirpc{,-devel}, tcp_wrappers{,-devel}, libevent{,-devel},
-> nfs-utils-lib{,-devel},
-> libgssglue{,-devel}, libblkid{,-devel}, and libcap{,-devel}
->  
-> per instructions from:
-> _http://wiki.linux-nfs.org/wiki/index.php/Configuring_pNFS/spnfsd#Kernel_and_nfs-utils_compilati__on_
-> <http://wiki.linux-nfs.org/wiki/index.php/Configuring_pNFS/spnfsd#Kernel_and_nfs-utils_compilation>
->  
-> I used libnfsidmap{,-devel} bundled in:
-> Nfs-utils-lib-devel-1.1.5-1.fc13.X86_64.rpm
->  
-> Finally, I downloaded _nfs-utils-1.2.2-4.1.pnfs.src.rpm_
-> <http://steved.fedorapeople.org/repos/pnfs/13/source/nfs-utils-1.2.2-4.1.pnfs.src.rpm>
-> from _http://steved.fedorapeople.org/repos/pnfs/13/source/_
->  
-> I am having trouble building these utils. I failed to generate
-> ‘configure’ when I ran autogen.sh:
->  
-> /c//leaning up ............. done
-> //lobotomize//: putting auxiliary files in `.'.
-> libtoolize: copying file `./ltmain.sh'
-> libtoolize: putting macros in AC_CONFIG_MACRO_DIR, `aclocal'.
-> libtoolize: copying file `aclocal/libtool.m4'
-> libtoolize: copying file `aclocal/ltoptions.m4'
-> libtoolize: copying file `aclocal/ltsugar.m4'
-> libtoolize: copying file `aclocal/ltversion.m4'
-> libtoolize: copying file `aclocal/lt~obsolete.m4'
-> configure.ac:5: installing `./config.guess'
-> configure.ac:5: installing `./config.sub'
-> configure.ac:421: required file `tools/mountstats/Makefile.in' not found
-> configure.ac:421: required file `tools/nfs-iostat/Makefile.in' not found/
->  
-> I deleted the two Makefile.in requirements from line 421 in configure.ac
-> because there were only python scripts inside those directories.
->  
-> When I ran the ‘configure’ generated after the modification, it failed
-> with the following output:
->  
-> /checking build system type... x86_64-unknown-linux-gnu
-> checking host system type... x86_64-unknown-linux-gnu
-> checking for a BSD-compatible install... /usr/bin/install -c
-> checking whether build environment is sane... yes
-> checking for gawk... gawk
-> checking whether make sets $(MAKE)... yes
-> checking whether to enable maintainer-specific portions of Makefiles... no
-> checking for style of include used by make... GNU
-> checking for gcc... gcc
-> checking whether the C compiler works... yes
-> checking for C compiler default output file name... a.out
-> checking for suffix of executables...
-> checking whether we are cross compiling... no
-> checking for suffix of object files... o
-> checking whether we are using the GNU C compiler... yes
-> checking whether gcc accepts -g... yes
-> checking for gcc option to accept ISO C89... none needed
-> checking dependency style of gcc... gcc3
-> checking how to run the C preprocessor... gcc -E
-> checking for grep that handles long lines and -e... /bin/grep
-> checking for egrep... /bin/grep -E
-> checking for ANSI C header files... no
-> checking for sys/types.h... yes
-> checking for sys/stat.h... yes
-> checking for stdlib.h... no
-> checking for string.h... yes
-> checking for memory.h... yes
-> checking for strings.h... yes
-> checking for inttypes.h... yes
-> checking for stdint.h... yes
-> checking for unistd.h... yes
-> checking for clnt_tli_create in -ltirpc... yes
-> checking /usr/include/tirpc/netconfig.h usability... yes
-> checking /usr/include/tirpc/netconfig.h presence... yes
-> checking for /usr/include/tirpc/netconfig.h... yes
-> checking for prctl... yes
-> checking for cap_get_proc in -lcap... yes
-> checking sys/capability.h usability... yes
-> checking sys/capability.h presence... yes
-> checking for sys/capability.h... yes
-> checking for libwrap... /
->  
-> But libwrap is obviously installed based on the locate command:
-> #locate libwrap
-> /usr/lib/libwrap.so
-> /usr/lib/libwrap.so.0
-> /usr/lib/libwrap.so.0.7.6
-> /usr/lib64/libwrap.so
-> /usr/lib64/libwrap.so.0
-> /usr/lib64/libwrap.so.0.7.6
->  
+> On Wed, May 12, 2010 at 12:13:54AM +0300, Benny Halevy wrote:
+>> Get a refcount on the client on SEQUENCE,
+>> Release the refcount and renew the client when all respective compounds completed.
+>> Do not expire the client by the laundromat while in use.
+>> If the client was expired via another path, free it when the compounds
+>> complete and the refcount reaches 0.
+>>
+>> Note that unhash_client_locked must call list_del_init on cl_lru as
+>> it may be called twice for the same client (once from nfs4_laundromat
+>> and then from expire_client)
+>>
+>> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+>> ---
+>>  fs/nfsd/nfs4state.c |   27 ++++++++++++++++++++++++---
+>>  fs/nfsd/nfs4xdr.c   |    3 ++-
+>>  fs/nfsd/state.h     |    1 +
+>>  3 files changed, 27 insertions(+), 4 deletions(-)
+>>
+>> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+>> index 378ee86..1a8fb39 100644
+>> --- a/fs/nfsd/nfs4state.c
+>> +++ b/fs/nfsd/nfs4state.c
+>> @@ -701,6 +701,22 @@ free_client(struct nfs4_client *clp)
+>>  	kfree(clp);
+>>  }
+>>  
+>> +void
+>> +release_session_client(struct nfsd4_session *session)
+>> +{
+>> +	struct nfs4_client *clp = session->se_client;
+>> +
+>> +	spin_lock(&client_lock);
+>> +	BUG_ON(clp->cl_refcount <= 0);
+>> +	if (--clp->cl_refcount <= 0) {
+>> +		free_client(clp);
+>> +		session->se_client = NULL;
+>> +	} else if (clp->cl_refcount == 1)
+>> +		renew_client_locked(clp);
+>> +	spin_unlock(&client_lock);
+>> +	nfsd4_put_session(session);
+>> +}
+>> +
+>>  /* must be called under the client_lock */
+>>  static inline void
+>>  unhash_client_locked(struct nfs4_client *clp)
+>> @@ -1477,8 +1493,7 @@ out:
+>>  	/* Hold a session reference until done processing the compound. */
+>>  	if (cstate->session) {
+>>  		nfsd4_get_session(cstate->session);
+>> -		/* Renew the clientid on success and on replay */
+>> -		renew_client_locked(session->se_client);
+>> +		session->se_client->cl_refcount++;
+>>  	}
+>>  	spin_unlock(&client_lock);
+>>  	dprintk("%s: return %d\n", __func__, ntohl(status));
+>> @@ -2599,7 +2614,13 @@ nfs4_laundromat(void)
+>>  				clientid_val = t;
+>>  			break;
+>>  		}
+>> -		list_move(&clp->cl_lru, &reaplist);
+>> +		if (clp->cl_refcount > 1) {
+>> +			dprintk("NFSD: client in use (clientid %08x)\n",
+>> +				clp->cl_clientid.cl_id);
+>> +			continue;
+>> +		}
+>> +		unhash_client_locked(clp);
+>> +		list_add(&clp->cl_lru, &reaplist);
+>>  	}
+>>  	spin_unlock(&client_lock);
+>>  	list_for_each_safe(pos, next, &reaplist) {
+>> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+>> index 5c2de47..126d0ca 100644
+>> --- a/fs/nfsd/nfs4xdr.c
+>> +++ b/fs/nfsd/nfs4xdr.c
+>> @@ -3313,7 +3313,8 @@ nfs4svc_encode_compoundres(struct svc_rqst *rqstp, __be32 *p, struct nfsd4_compo
+>>  			dprintk("%s: SET SLOT STATE TO AVAILABLE\n", __func__);
+>>  			cs->slot->sl_inuse = false;
+>>  		}
+>> -		nfsd4_put_session(cs->session);
+>> +		/* Renew the clientid on success and on replay */
+>> +		release_session_client(cs->session);
+>>  	}
+>>  	return 1;
+>>  }
+>> diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+>> index 37e1dff..f263174 100644
+>> --- a/fs/nfsd/state.h
+>> +++ b/fs/nfsd/state.h
+>> @@ -419,6 +419,7 @@ extern int nfs4_has_reclaimed_state(const char *name, bool use_exchange_id);
+>>  extern void nfsd4_recdir_purge_old(void);
+>>  extern int nfsd4_create_clid_dir(struct nfs4_client *clp);
+>>  extern void nfsd4_remove_clid_dir(struct nfs4_client *clp);
+>> +extern void release_session_client(struct nfsd4_session *);
+>>  
+>>  static inline void
+>>  nfs4_put_stateowner(struct nfs4_stateowner *so)
+>> -- 
+>> 1.6.5.1
+>>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
-Yes I think I had that to, on FC12 did you also install tcp_wrappers-devel
-
-[What configure does is look for the tcpd.h file.
- So basically you:
- - Look in configure what failed, and analyse what was missing here it was
-   "#include <tcpd.h>".
- - yum provides "*/tcpd.h" - will show the tcp_wrappers-devel
-
- Imagine that stupid me, I attempted to configure without reading the wiki first
- and had about 10 of these, by the time I gut to libwrap it was becoming routine
-
- RANT: I wish configure would leave the failing code on disk and specify the commands
-       I need to do to run the failing test. Or at least save and print the gcc output
-       of the failing test, rrrr ...
-]
-
-> I am new at this and would appreciate any help you can provide.
->  
-
-So there you have it
-
-> Thanks,
-> Helen
->  
-
-Boaz
