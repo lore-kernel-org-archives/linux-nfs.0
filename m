@@ -1,82 +1,52 @@
 From: Benny Halevy <bhalevy@panasas.com>
-Subject: Re: [PATCH 1/1] SQUASHME pnfs_submit: move unmount_pnfs_layoutdriver
- call
-Date: Wed, 12 May 2010 09:52:17 +0300
-Message-ID: <4BEA5021.1080406@panasas.com>
-References: <1273616691-4299-1-git-send-email-andros@netapp.com>
+Subject: Re: [PATCH] pnfs: set pnfs_blksize before calling set_pnfs_layoutdriver
+Date: Wed, 12 May 2010 09:55:19 +0300
+Message-ID: <4BEA50D7.5060509@panasas.com>
+References: <20100512053021.GA7476@MDS-78.localdomain>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
-Cc: bharrosh@panasas.com, linux-nfs@vger.kernel.org
-To: andros@netapp.com
+Cc: linux-nfs@vger.kernel.org, Fred Isaman <iisaman@netapp.com>
+To: Zhang Jingwang <zhangjingwang-U4AKAne5IzAR5TUyvShJeg@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fg-out-1718.google.com ([72.14.220.155]:31413 "EHLO
-	fg-out-1718.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751698Ab0ELGwW (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 12 May 2010 02:52:22 -0400
-Received: by fg-out-1718.google.com with SMTP id d23so365176fga.1
-        for <linux-nfs@vger.kernel.org>; Tue, 11 May 2010 23:52:21 -0700 (PDT)
-In-Reply-To: <1273616691-4299-1-git-send-email-andros@netapp.com>
+Received: from mail-fx0-f46.google.com ([209.85.161.46]:59873 "EHLO
+	mail-fx0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753596Ab0ELGzY (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 12 May 2010 02:55:24 -0400
+Received: by fxm4 with SMTP id 4so220575fxm.19
+        for <linux-nfs@vger.kernel.org>; Tue, 11 May 2010 23:55:23 -0700 (PDT)
+In-Reply-To: <20100512053021.GA7476-nK6E9TRyOkVSq9BJjBFyUp/QNRX+jHPU@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 2010-05-12 01:24, andros@netapp.com wrote:
-> From: Andy Adamson <andros@netapp.com>
-> 
-> from nfs4_kill_super to nfs_free_server. Fixes a bug reported by Boaz Harrosh
-> where the deviceid cache is not defererenced on super block creation error or
-> for two mounts that share a super block.
+On 2010-05-12 08:30, Zhang Jingwang wrote:
+> For block/volume layout driver, set_pnfs_layoutdriver will call
+> initialize_mountpoint() which will check the value of pnfs_blksize.
 
-Looks good to me.
+Looks good.
+
 Thanks!
 
 Benny
 
 > 
-> Signed-off-by: Andy Adamson <andros@netapp.com>
+> Signed-off-by: Zhang Jingwang <zhangjingwang-U4AKAne5IzAR5TUyvShJeg@public.gmane.org>
 > ---
->  fs/nfs/client.c |    9 +++++++++
->  fs/nfs/super.c  |    3 ---
->  2 files changed, 9 insertions(+), 3 deletions(-)
+>  fs/nfs/client.c |    2 +-
+>  1 files changed, 1 insertions(+), 1 deletions(-)
 > 
 > diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-> index 56f3d50..0337330 100644
+> index dddc75c..94a9be9 100644
 > --- a/fs/nfs/client.c
 > +++ b/fs/nfs/client.c
-> @@ -884,6 +884,14 @@ static void nfs4_init_pnfs(struct nfs_server *server, struct nfs_fsinfo *fsinfo)
+> @@ -880,9 +880,9 @@ static void nfs4_init_pnfs(struct nfs_server *server, struct nfs_fh *mntfh, stru
+>  
+>  	if (nfs4_has_session(clp) &&
+>  	    (clp->cl_exchange_flags & EXCHGID4_FLAG_USE_PNFS_MDS)) {
+> +		server->pnfs_blksize = fsinfo->blksize;
+>  		set_pnfs_layoutdriver(server, mntfh, fsinfo->layouttype);
+>  		pnfs_set_ds_iosize(server);
+> -		server->pnfs_blksize = fsinfo->blksize;
+>  	}
 >  #endif /* CONFIG_NFS_V4_1 */
 >  }
->  
-> +static void nfs4_uninit_pnfs(struct nfs_server *server)
-> +{
-> +#if defined(CONFIG_NFS_V4_1)
-> +	if (nfs4_has_session(server->nfs_client))
-> +		unmount_pnfs_layoutdriver(server);
-> +#endif /* CONFIG_NFS_V4_1 */
-> +}
-> +
->  /*
->   * Load up the server record from information gained in an fsinfo record
->   */
-> @@ -1039,6 +1047,7 @@ void nfs_free_server(struct nfs_server *server)
->  {
->  	dprintk("--> nfs_free_server()\n");
->  
-> +	nfs4_uninit_pnfs(server);
->  	spin_lock(&nfs_client_lock);
->  	list_del(&server->client_link);
->  	list_del(&server->master_link);
-> diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-> index 5fc60cf..7822187 100644
-> --- a/fs/nfs/super.c
-> +++ b/fs/nfs/super.c
-> @@ -2799,9 +2799,6 @@ static void nfs4_kill_super(struct super_block *sb)
->  	dprintk("--> %s\n", __func__);
->  	nfs_super_return_all_delegations(sb);
->  	kill_anon_super(sb);
-> -#ifdef CONFIG_NFS_V4_1
-> -	unmount_pnfs_layoutdriver(server);
-> -#endif
->  	nfs_fscache_release_super_cookie(sb);
->  	nfs_free_server(server);
->  	dprintk("<-- %s\n", __func__);
 
