@@ -1,48 +1,45 @@
 From: andros@netapp.com
-Subject: [PATCH 05/10] SQUASHME pnfs_submit: don't use pg_threshold
-Date: Wed, 12 May 2010 10:44:17 -0400
-Message-ID: <1273675462-15758-6-git-send-email-andros@netapp.com>
+Subject: [PATCH 03/10] SQUASHME pnfs_submit: don't use pnfs_use_write
+Date: Wed, 12 May 2010 10:44:15 -0400
+Message-ID: <1273675462-15758-4-git-send-email-andros@netapp.com>
 References: <1273675462-15758-1-git-send-email-andros@netapp.com>
  <1273675462-15758-2-git-send-email-andros@netapp.com>
  <1273675462-15758-3-git-send-email-andros@netapp.com>
- <1273675462-15758-4-git-send-email-andros@netapp.com>
- <1273675462-15758-5-git-send-email-andros@netapp.com>
 Cc: iisaman@netapp.com, linux-nfs@vger.kernel.org,
 	Andy Adamson <andros@netapp.com>
 To: bhalevy@panasas.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
 Received: from mx2.netapp.com ([216.240.18.37]:57403 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754989Ab0ELOpB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	id S1751461Ab0ELOpB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
 	Wed, 12 May 2010 10:45:01 -0400
-In-Reply-To: <1273675462-15758-5-git-send-email-andros@netapp.com>
+In-Reply-To: <1273675462-15758-3-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 From: Andy Adamson <andros@netapp.com>
 
-Prepare to remove unused get_read_threshold io operation.
-Squash into: "pnfs:filelayout:pg_test"
+Prepare to remove unused threshold calculations
+Squash into: "pnfs:write"
 
 Signed-off-by: Andy Adamson <andros@netapp.com>
 ---
- fs/nfs/nfs4filelayout.c |    3 +--
- 1 files changed, 1 insertions(+), 2 deletions(-)
+ fs/nfs/pnfs.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
 
-diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
-index c2dda25..dfc5149 100644
---- a/fs/nfs/nfs4filelayout.c
-+++ b/fs/nfs/nfs4filelayout.c
-@@ -712,8 +712,7 @@ filelayout_pg_test(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev,
- 	if (!pgio->pg_iswrite)
- 		goto boundary;
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 618bb08..316275d 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -1855,7 +1855,7 @@ _pnfs_try_to_write_data(struct nfs_write_data *data,
  
--	if (pgio->pg_bsize != NFS_SERVER(pgio->pg_inode)->wsize &&
--	    pgio->pg_count > pgio->pg_threshold)
-+	if (pgio->pg_bsize != NFS_SERVER(pgio->pg_inode)->wsize)
- 		pgio->pg_bsize = NFS_SERVER(pgio->pg_inode)->wsize;
- 
- boundary:
+ 	dprintk("--> %s\n", __func__);
+ 	/* Only create an rpc request if utilizing NFSv4 I/O */
+-	if (!pnfs_use_write(ino, data->args.count) ||
++	if (!pnfs_enabled_sb(nfss) ||
+ 	    !nfss->pnfs_curr_ld->ld_io_ops->write_pagelist) {
+ 		dprintk("<-- %s: not using pnfs\n", __func__);
+ 		return PNFS_NOT_ATTEMPTED;
 -- 
 1.6.6
 
