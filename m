@@ -1,81 +1,122 @@
-From: Andy Adamson <andros@netapp.com>
-Subject: NFS client stall
-Date: Wed, 12 May 2010 11:17:56 -0400
-Message-ID: <DF18387A-0E5C-493B-B4F9-774D2068E4CD@netapp.com>
-Mime-Version: 1.0 (Apple Message framework v936)
-Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: [PATCH 2/9] lockd: Add /sys/fs/lockd
+Date: Wed, 12 May 2010 11:37:13 -0400
+Message-ID: <4BEACB29.6000306@oracle.com>
+References: <20100427185411.29074.8889.stgit@matisse.1015granger.net>	<20100427185829.29074.77530.stgit@matisse.1015granger.net> <20100512135431.1f26e421@notabene.brown>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII; format=flowed
+Cc: linux-nfs@vger.kernel.org
+To: Neil Brown <neilb@suse.de>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:52853 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752190Ab0ELPR5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 12 May 2010 11:17:57 -0400
+Received: from rcsinet10.oracle.com ([148.87.113.121]:42946 "EHLO
+	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755521Ab0ELPh2 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 12 May 2010 11:37:28 -0400
+In-Reply-To: <20100512135431.1f26e421-wvvUuzkyo1EYVZTmpyfIwg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I've seen the following intermittently while running the Connecatathon  
-special 'write/read 30MB file' test.  It's always been with the pNFS  
-client, either running with the pNFS file module installed, or running  
-without it installed (NFSv4.1 only). But given the intermittent  
-behavior, that could just be because I run a lot more tests on the  
-pNFS kernel.
+On 05/11/2010 11:54 PM, Neil Brown wrote:
+> On Tue, 27 Apr 2010 14:58:30 -0400
+> Chuck Lever<chuck.lever@oracle.com>  wrote:
+>
+>> Create the parent directory for all lockd-related sysfs entries.  The
+>> directory is created when lockd.ko is loaded, and removed when it is
+>> unloaded.
+>
+> Can I argue about the colour of the bike shed please?
+>
+> lockd is not a filesystem, so I would not put it in /sys/fs.
+>
+> I think lockd has more in common with 'fscache' than with
+> 'fuse' and 'ext4', so I think it should go in /sys/kernel
+> rather than /sys/fs.
+>
+> Mind you, this comment is based on the assumption that /sys is different
+> to /proc in that it is better organised.  But I am beginning to wonder.
+>
+>
+> I know you would much rather a review of the rest of the series that this one
+> point and I apologise for not providing one.... maybe I'll motivate myself
+> sometime.
 
-I've seen this with 2.6.34-rc3 and up.
+I think it's a legitimate comment.  I actually had this under 
+/sys/kernel at an earlier point.  I'm somewhat agnostic about it.
 
-Any ideas?
+> NeilBrown
+>
+>
+>>
+>> Signed-off-by: Chuck Lever<chuck.lever@oracle.com>
+>> ---
+>>
+>>   fs/lockd/svc.c              |   16 +++++++++++++---
+>>   include/linux/lockd/lockd.h |    1 +
+>>   2 files changed, 14 insertions(+), 3 deletions(-)
+>>
+>> diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
+>> index f1bacf1..c84a7d5 100644
+>> --- a/fs/lockd/svc.c
+>> +++ b/fs/lockd/svc.c
+>> @@ -75,6 +75,8 @@ static const int		nlm_port_min = 0, nlm_port_max = 65535;
+>>   static struct ctl_table_header * nlm_sysctl_table;
+>>   #endif
+>>
+>> +struct kobject			*nlm_kobj;
+>> +
+>>   static unsigned long get_lockd_grace_period(void)
+>>   {
+>>   	/* Note: nlm_timeout should always be nonzero */
+>> @@ -514,12 +516,19 @@ module_param(nlm_max_connections, uint, 0644);
+>>
+>>   static int __init init_nlm(void)
+>>   {
+>> +	nlm_kobj = kobject_create_and_add("lockd", fs_kobj);
+>> +	if (!nlm_kobj)
+>> +		return -ENOMEM;
+>> +
+>>   #ifdef CONFIG_SYSCTL
+>>   	nlm_sysctl_table = register_sysctl_table(nlm_sysctl_root);
+>> -	return nlm_sysctl_table ? 0 : -ENOMEM;
+>> -#else
+>> -	return 0;
+>> +	if (!nlm_sysctl_table) {
+>> +		kobject_put(nlm_kobj);
+>> +		return -ENOMEM;
+>> +	}
+>>   #endif
+>> +
+>> +	return 0;
+>>   }
+>>
+>>   static void __exit exit_nlm(void)
+>> @@ -529,6 +538,7 @@ static void __exit exit_nlm(void)
+>>   #ifdef CONFIG_SYSCTL
+>>   	unregister_sysctl_table(nlm_sysctl_table);
+>>   #endif
+>> +	kobject_put(nlm_kobj);
+>>   }
+>>
+>>   module_init(init_nlm);
+>> diff --git a/include/linux/lockd/lockd.h b/include/linux/lockd/lockd.h
+>> index a34dea4..56c749e 100644
+>> --- a/include/linux/lockd/lockd.h
+>> +++ b/include/linux/lockd/lockd.h
+>> @@ -196,6 +196,7 @@ extern int			nlmsvc_grace_period;
+>>   extern unsigned long		nlmsvc_timeout;
+>>   extern int			nsm_use_hostnames;
+>>   extern u32			nsm_local_state;
+>> +extern struct kobject		*nlm_kobj;
+>>
+>>   /*
+>>    * Lockd client functions
+>>
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
 
--->Andy
 
-May 11 19:35:41 fedora-64 kernel: INFO: task bigfile:2174 blocked for  
-more than
-120 seconds.
-May 11 19:35:41 fedora-64 kernel: "echo 0 > /proc/sys/kernel/ 
-hung_task_timeout_s
-ecs" disables this message.
-May 11 19:35:41 fedora-64 kernel: bigfile       D ffff88005b10d380      
-0  2174
-  2137 0x00000084
-May 11 19:35:41 fedora-64 kernel: ffff88005ac83c28 0000000000000082  
-000000000000
-0000 0010000000000000
-May 11 19:35:41 fedora-64 kernel: ffff88005ac83fd8 ffff8800520d0000  
-000000000001
-3780 ffff88005ac83fd8
-May 11 19:35:41 fedora-64 kernel: 0000000000013780 0000000000013780  
-000000000001
-3780 0000000000013780
-May 11 19:35:41 fedora-64 kernel: Call Trace:
-May 11 19:35:41 fedora-64 kernel: [<ffffffff810aae7a>] ? sync_page 
-+0x0/0x4a
-May 11 19:35:41 fedora-64 kernel: [<ffffffff813b1b26>] io_schedule 
-+0x3d/0x52
-May 11 19:35:41 fedora-64 kernel: [<ffffffff810aaec0>] sync_page 
-+0x46/0x4a
-May 11 19:35:41 fedora-64 kernel: [<ffffffff813b1f61>]  
-__wait_on_bit_lock+0x46/0
-x8f
-May 11 19:35:41 fedora-64 kernel: [<ffffffff8103cee6>] ?  
-release_console_sem+0x1
-bd/0x1ee
-May 11 19:35:41 fedora-64 kernel: [<ffffffff810aae20>] __lock_page 
-+0x66/0x6d
-May 11 19:35:41 fedora-64 kernel: [<ffffffff81055ad5>] ?  
-wake_bit_function+0x0/0
-x33
-May 11 19:35:41 fedora-64 kernel: [<ffffffff810aae63>] lock_page+0x3c/ 
-0x41
-May 11 19:35:41 fedora-64 kernel: [<ffffffff810ab533>] filemap_fault 
-+0xc3/0x30b
-May 11 19:35:41 fedora-64 kernel: [<ffffffff810c3202>] __do_fault 
-+0x54/0x416
-May 11 19:35:41 fedora-64 kernel: [<ffffffff810c39fa>] handle_mm_fault 
-+0x436/0x82b
-May 11 19:35:41 fedora-64 kernel: [<ffffffff810c7f49>] ? do_mmap_pgoff 
-+0x290/0x2f3
-May 11 19:35:41 fedora-64 kernel: [<ffffffff813b64e8>] do_page_fault 
-+0x25e/0x273
-May 11 19:35:41 fedora-64 kernel: [<ffffffff813b3bb5>] page_fault 
-+0x25/0x30
-
-
+-- 
+chuck[dot]lever[at]oracle[dot]com
