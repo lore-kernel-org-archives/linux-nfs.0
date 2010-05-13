@@ -1,66 +1,106 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qy0-f171.google.com ([209.85.221.171]:63658 "EHLO
-	mail-qy0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752101Ab0EQCpk (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 16 May 2010 22:45:40 -0400
-Received: by qyk1 with SMTP id 1so6350026qyk.5
-        for <linux-nfs@vger.kernel.org>; Sun, 16 May 2010 19:45:39 -0700 (PDT)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 00/24] Modernize NFSv2 XDR encoder/decoders
+Received: from mx2.netapp.com ([216.240.18.37]:3250 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753631Ab0EMVIa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 13 May 2010 17:08:30 -0400
+Received: from localhost.localdomain (heimdal.trondhjem.org [10.58.49.73] (may be forged))
+	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id o4DL8MCW021257
+	for <linux-nfs@vger.kernel.org>; Thu, 13 May 2010 14:08:29 -0700 (PDT)
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
 To: linux-nfs@vger.kernel.org
-Date: Sun, 16 May 2010 22:45:36 -0400
-Message-ID: <20100517023905.20258.86631.stgit@localhost.localdomain>
-Content-Type: text/plain; charset="utf-8"
+Subject: [PATCH 13/15] SUNRPC: Remove the 'tk_magic' debugging field
+Date: Thu, 13 May 2010 17:08:19 -0400
+Message-Id: <1273784901-25599-13-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1273784901-25599-12-git-send-email-Trond.Myklebust@netapp.com>
+References: <1273784901-25599-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1273784901-25599-2-git-send-email-Trond.Myklebust@netapp.com>
+ <1273784901-25599-3-git-send-email-Trond.Myklebust@netapp.com>
+ <1273784901-25599-4-git-send-email-Trond.Myklebust@netapp.com>
+ <1273784901-25599-5-git-send-email-Trond.Myklebust@netapp.com>
+ <1273784901-25599-6-git-send-email-Trond.Myklebust@netapp.com>
+ <1273784901-25599-7-git-send-email-Trond.Myklebust@netapp.com>
+ <1273784901-25599-8-git-send-email-Trond.Myklebust@netapp.com>
+ <1273784901-25599-9-git-send-email-Trond.Myklebust@netapp.com>
+ <1273784901-25599-10-git-send-email-Trond.Myklebust@netapp.com>
+ <1273784901-25599-11-git-send-email-Trond.Myklebust@netapp.com>
+ <1273784901-25599-12-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-This series backports patches I did 3 years ago that update the NFS
-client's NFSv2 XDR encoders and decoders to use xdr_stream style
-marshalling, similar to NFSv4.  The immediate advantage is better
-bounds checking during marshalling and unmarshalling.
+It has not triggered in almost a decade. Time to get rid of it...
 
-I've already done the kernel's MNT client, lockd's NSM client, and
-the kernel's rpcbind client.  Eventually, we should convert NFSv3 and
-NLM to use this style of marshalling XDR so that we can streamline
-call_encode() and call_decode().
-
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
+ include/linux/sunrpc/sched.h |    3 ---
+ net/sunrpc/sched.c           |   11 -----------
+ 2 files changed, 0 insertions(+), 14 deletions(-)
 
-Chuck Lever (24):
-      NFS: Replace old NFSv2 decoder functions with xdr_stream-based ones
-      NFS: Decode NFSv2 statfs reply using an xdr_stream
-      NFS: Decode NFSv2 readdir reply using an xdr_stream
-      NFS: Decode NFSv2 write reply using an xdr_stream
-      NFS: Decode NFSv2 read reply using an xdr_stream
-      NFS: Decode NFSv2 readlink reply using an xdr_stream
-      NFS: Decode NFSv2 dirop reply using an xdr_stream
-      NFS: Decode NFSv2 attrstat reply using an xdr_stream
-      NFS: Decode NFSv2 stat reply using an xdr_stream
-      NFS: Use the "nfs_stat" enum for nfs_stat_to_errno()
-      NFS: Replace old NFSv2 encoder functions with xdr_stream-based ones
-      NFS: Encode NFSv2 readdir argument using an xdr_stream
-      NFS: Encode NFSv2 symlink argument using an xdr_stream
-      NFS: Encode NFSv2 link argument using an xdr_stream
-      NFS: Encode NFSv2 rename argument using an xdr_stream
-      NFS: Encode NFSv2 create argument using an xdr_stream
-      NFS: Encode NFSv2 write argument using an xdr_stream
-      NFS: Encode NFSv2 read argument using an xdr_stream
-      NFS: Encode NFSv2 readlink argument using an xdr_stream
-      NFS: Encode dirop argument using an xdr_stream
-      NFS: Encode v2 setattr argument using an xdr_stream
-      NFS: Encode NFSv2 fhandle argument using an xdr_stream
-      NFS: Introduce XDR helpers for basic NFSv2 data types
-      SUNRPC: Refactor logic to NUL-terminate strings in pages
-
-
- fs/nfs/internal.h          |    2 
- fs/nfs/nfs2xdr.c           | 1169 +++++++++++++++++++++++++++++---------------
- fs/nfs/nfs3xdr.c           |    6 
- fs/nfs/nfs4xdr.c           |    5 
- include/linux/sunrpc/xdr.h |    1 
- net/sunrpc/xdr.c           |   17 +
- 6 files changed, 779 insertions(+), 421 deletions(-)
-
+diff --git a/include/linux/sunrpc/sched.h b/include/linux/sunrpc/sched.h
+index 46ebef1..41b9f97 100644
+--- a/include/linux/sunrpc/sched.h
++++ b/include/linux/sunrpc/sched.h
+@@ -41,9 +41,6 @@ struct rpc_wait {
+  * This is the RPC task struct
+  */
+ struct rpc_task {
+-#ifdef RPC_DEBUG
+-	unsigned long		tk_magic;	/* 0xf00baa */
+-#endif
+ 	atomic_t		tk_count;	/* Reference count */
+ 	struct list_head	tk_task;	/* global list of tasks */
+ 	struct rpc_clnt *	tk_client;	/* RPC client */
+diff --git a/net/sunrpc/sched.c b/net/sunrpc/sched.c
+index aa7b07e..4a843b8 100644
+--- a/net/sunrpc/sched.c
++++ b/net/sunrpc/sched.c
+@@ -25,7 +25,6 @@
+ 
+ #ifdef RPC_DEBUG
+ #define RPCDBG_FACILITY		RPCDBG_SCHED
+-#define RPC_TASK_MAGIC_ID	0xf00baa
+ #endif
+ 
+ /*
+@@ -237,7 +236,6 @@ static void rpc_task_set_debuginfo(struct rpc_task *task)
+ {
+ 	static atomic_t rpc_pid;
+ 
+-	task->tk_magic = RPC_TASK_MAGIC_ID;
+ 	task->tk_pid = atomic_inc_return(&rpc_pid);
+ }
+ #else
+@@ -360,9 +358,6 @@ static void __rpc_do_wake_up_task(struct rpc_wait_queue *queue, struct rpc_task
+ 	dprintk("RPC: %5u __rpc_wake_up_task (now %lu)\n",
+ 			task->tk_pid, jiffies);
+ 
+-#ifdef RPC_DEBUG
+-	BUG_ON(task->tk_magic != RPC_TASK_MAGIC_ID);
+-#endif
+ 	/* Has the task been executed yet? If not, we cannot wake it up! */
+ 	if (!RPC_IS_ACTIVATED(task)) {
+ 		printk(KERN_ERR "RPC: Inactive task (%p) being woken up!\n", task);
+@@ -916,9 +911,6 @@ EXPORT_SYMBOL_GPL(rpc_put_task);
+ 
+ static void rpc_release_task(struct rpc_task *task)
+ {
+-#ifdef RPC_DEBUG
+-	BUG_ON(task->tk_magic != RPC_TASK_MAGIC_ID);
+-#endif
+ 	dprintk("RPC: %5u release task\n", task->tk_pid);
+ 
+ 	if (!list_empty(&task->tk_task)) {
+@@ -930,9 +922,6 @@ static void rpc_release_task(struct rpc_task *task)
+ 	}
+ 	BUG_ON (RPC_IS_QUEUED(task));
+ 
+-#ifdef RPC_DEBUG
+-	task->tk_magic = 0;
+-#endif
+ 	/* Wake up anyone who is waiting for task completion */
+ 	rpc_mark_complete_task(task);
+ 
 -- 
-Chuck Lever
+1.6.6.1
+
