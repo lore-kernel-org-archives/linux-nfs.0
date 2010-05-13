@@ -1,49 +1,166 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:43477 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757198Ab0ERRde convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 18 May 2010 13:33:34 -0400
-Subject: Re: [PATCH 7/8] pnfs-submit: forgetful client model
-Content-Type: text/plain; charset=us-ascii
-From: Alexandros Batsakis <batsakis@netapp.com>
-In-Reply-To: <20100518141633.GA17823@fieldses.org>
-Date: Tue, 18 May 2010 10:33:32 -0700
-Cc: bhalevy@panasas.com, linux-nfs@vger.kernel.org
-Message-Id: <10CFDED7-10CA-4657-9CC1-F4E2DD32BB71@netapp.com>
-References: <1274119004-30213-1-git-send-email-batsakis@netapp.com> <1274119004-30213-2-git-send-email-batsakis@netapp.com> <1274119004-30213-3-git-send-email-batsakis@netapp.com> <1274119004-30213-4-git-send-email-batsakis@netapp.com> <1274119004-30213-5-git-send-email-batsakis@netapp.com> <1274119004-30213-6-git-send-email-batsakis@netapp.com> <1274119004-30213-7-git-send-email-batsakis@netapp.com> <1274119004-30213-8-git-send-email-batsakis@netapp.com> <20100517203851.GB5232@fieldses.org> <297C26EA-E5A1-411F-BC2B-76228887EE90@netapp.com> <20100518141633.GA17823@fieldses.org>
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Received: from daytona.panasas.com ([67.152.220.89]:36665 "EHLO
+	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1755027Ab0EMOgS (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 13 May 2010 10:36:18 -0400
+Message-ID: <4BEC0E5F.2030608@panasas.com>
+Date: Thu, 13 May 2010 17:36:15 +0300
+From: Benny Halevy <bhalevy@panasas.com>
+To: "J. Bruce Fields" <bfields@citi.umich.edu>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v2 8/9] nfsd4: keep a reference count on client while
+ in use
+References: <4BE9C7A2.8030801@panasas.com> <1273612434-13726-1-git-send-email-bhalevy@panasas.com> <20100512024030.GA27184@fieldses.org> <4BEA2E06.7070902@panasas.com> <4BEA4876.3030802@panasas.com> <20100512222946.GE11389@fieldses.org>
+In-Reply-To: <20100512222946.GE11389@fieldses.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+On May. 13, 2010, 1:29 +0300, "J. Bruce Fields" <bfields@citi.umich.edu> wrote:
+> On Wed, May 12, 2010 at 09:19:34AM +0300, Benny Halevy wrote:
+>> On May. 12, 2010, 7:26 +0300, Benny Halevy <bhalevy@panasas.com> wrote:
+>>> On May. 12, 2010, 5:40 +0300, " J. Bruce Fields" <bfields@citi.umich.edu> wrote:
+>>>> Something still doesn't look quite right: a sequence operation
+>>>> increments cl_count from 1 to 2; then, say, an exchangeid in another
+>>>> thread expires the client, dropping cl_count from 2 to 1; then the
+>>>> laundromat runs, sees cl_count 1, and decides it can expire the
+>>>> client.  Meanwhile, the original compound is still running.
+>>>>
+>>>> Am I missing something?
+>>>
+>>> Yeah.  exchange_id doesn't touch cl_refcount.  It may call expire_client
+>>> explicitly which will unhash the client but will not destroy it if cl_refcount > 0
+>>> the laundromat won't the client either after that since it's not on the lru list
+>>> any more (and even if it would, it's refcount is still great than zero so it would
+>>> have been ignored)
+>>
+>> Sorry, I misspoken.  exchange_id may decrement cl_refcount via expire_client()
+>> but still the laundromat won't see it as expire_client will have already removed the
+>> client from client_lru.
+> 
+> Yep, sorry for my confusion!
+> 
+> The special treatment of refcount == 1 still seems odd to me; with
+> expiry==0 trick it no longer seems necessary.
+> 
+> Another case:
+> 
+> 	- Two 4.1 compounds arrive, both their sequence operations are
+> 	  processed.
+> 	- Independently, an exchange_id expires the client.
+> 	- At this point, the reference count is 2.
+> 	- One of the original compounds completes.  It renews the client
+> 	  (because it hits reference count 1).
 
-On May 18, 2010, at 7:16 AM, J. Bruce Fields wrote:
+and that will be a no-op as the client is marked as expired.
 
-> On Mon, May 17, 2010 at 05:06:09PM -0700, Alexandros Batsakis wrote:
->> Sure, I ll add the stuff below to the wiki and to the Documention folder.
-> 
-> Thanks!  Looks good.
-> 
->> a) if stateid.seqid is not the expected one return NFS4ERR_DELAY.
->> b) we set the specific segments as not valid (no more I/O to them)
->> c) if there is pending I/O we return NFS4ERR_DELAY.
-> 
-> Up to you whether it's worth documenting, but: I remember there being
-> some disagreement about this, but don't remember the resolution.
-> 
->> d) we return NFS4ERR_NOMATCHING_LAYOUT
->> 
->> Here you can find a simple flowchart that highlights the description above.
->> https://docs.google.com/leaf?id=0B9egH40ld0WsMjg0ZmYzMTQtNDY5NC00ZjRjLTkwNzktNjFhZDFhYjJjYmFj&hl=en
-> 
-> That URL doesn't work for me.
-> 
+> 	- The second of the two original compounds completes.  It frees
+> 	  the client.
 
-Apologies
-This should work (it's a .pdf file)
-https://docs.google.com/fileview?id=0B9egH40ld0WsNWQzM2RhMTQtM2E5ZS00YTk3LThmNDItMDU0YWMzZDczNDli&hl=en
+right
 
--a
+> 
+> I guess there's nothing fundamentally wrong with that, but it's a little
+> odd.
+> 
+> Wouldn't it be more straightforward to let cl_refcount be a count of the
+> number of outstanding compounds, and make release_session_client do:
+> 
+> 	if cl_refcount >= 0
+> 		return;
+> 	if (client_is_expired(clp))
+> 		free client;
+> 	else
+> 		renew client;
+> 
+> ?
+> 
+> The following works for me. If you don't see any objection, I'll squash
+> this in and push out the result.
 
+No objection, looks good. Thanks!
+
+Benny
+
+> 
 > --b.
-
+> 
+> commit 9d1b08f5cd9f2367f76f8350595c2bc00876d57f
+> Author: J. Bruce Fields <bfields@citi.umich.edu>
+> Date:   Wed May 12 18:17:58 2010 -0400
+> 
+>     tmp-squashme: count only session users in cl_refcount
+> 
+> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> index 89b77fe..05ad0ae 100644
+> --- a/fs/nfsd/nfs4state.c
+> +++ b/fs/nfsd/nfs4state.c
+> @@ -706,12 +706,12 @@ release_session_client(struct nfsd4_session *session)
+>  {
+>  	struct nfs4_client *clp = session->se_client;
+>  
+> -	spin_lock(&client_lock);
+> -	BUG_ON(clp->cl_refcount <= 0);
+> -	if (--clp->cl_refcount <= 0) {
+> +	if (!atomic_dec_and_lock(&clp->cl_refcount, &client_lock))
+> +		return;
+> +	if (is_client_expired(clp)) {
+>  		free_client(clp);
+>  		session->se_client = NULL;
+> -	} else if (clp->cl_refcount == 1)
+> +	} else
+>  		renew_client_locked(clp);
+>  	spin_unlock(&client_lock);
+>  	nfsd4_put_session(session);
+> @@ -765,8 +765,7 @@ expire_client(struct nfs4_client *clp)
+>  	list_del(&clp->cl_strhash);
+>  	spin_lock(&client_lock);
+>  	unhash_client_locked(clp);
+> -	BUG_ON(clp->cl_refcount <= 0);
+> -	if (--clp->cl_refcount <= 0)
+> +	if (atomic_dec_and_test(&clp->cl_refcount))
+>  		free_client(clp);
+>  	spin_unlock(&client_lock);
+>  }
+> @@ -854,7 +853,7 @@ static struct nfs4_client *create_client(struct xdr_netobj name, char *recdir,
+>  	}
+>  
+>  	memcpy(clp->cl_recdir, recdir, HEXDIR_LEN);
+> -	clp->cl_refcount = 1;
+> +	atomic_set(&clp->cl_refcount, 1);
+>  	atomic_set(&clp->cl_cb_set, 0);
+>  	INIT_LIST_HEAD(&clp->cl_idhash);
+>  	INIT_LIST_HEAD(&clp->cl_strhash);
+> @@ -1495,7 +1494,7 @@ out:
+>  	/* Hold a session reference until done processing the compound. */
+>  	if (cstate->session) {
+>  		nfsd4_get_session(cstate->session);
+> -		session->se_client->cl_refcount++;
+> +		atomic_inc(&session->se_client->cl_refcount);
+>  	}
+>  	spin_unlock(&client_lock);
+>  	dprintk("%s: return %d\n", __func__, ntohl(status));
+> @@ -2643,7 +2642,7 @@ nfs4_laundromat(void)
+>  				clientid_val = t;
+>  			break;
+>  		}
+> -		if (clp->cl_refcount > 1) {
+> +		if (atomic_read(&clp->cl_refcount)) {
+>  			dprintk("NFSD: client in use (clientid %08x)\n",
+>  				clp->cl_clientid.cl_id);
+>  			continue;
+> diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+> index f263174..006c842 100644
+> --- a/fs/nfsd/state.h
+> +++ b/fs/nfsd/state.h
+> @@ -233,7 +233,8 @@ struct nfs4_client {
+>  	struct nfsd4_clid_slot	cl_cs_slot;	/* create_session slot */
+>  	u32			cl_exchange_flags;
+>  	struct nfs4_sessionid	cl_sessionid;
+> -	int			cl_refcount;	/* use under client_lock */
+> +	/* number of rpc's in progress over an associated session: */
+> +	atomic_t		cl_refcount;
+>  
+>  	/* for nfs41 callbacks */
+>  	/* We currently support a single back channel with a single slot */
