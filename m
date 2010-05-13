@@ -1,7 +1,7 @@
 From: "William A. (Andy) Adamson" <androsadamson@gmail.com>
 Subject: Re: SQUASHME: missing from FIXME: async layout return
-Date: Thu, 13 May 2010 10:07:23 -0400
-Message-ID: <AANLkTilE4ao7UadJD58EzbExdfwE4zU5DF-6Nit29Yjq@mail.gmail.com>
+Date: Thu, 13 May 2010 10:19:40 -0400
+Message-ID: <AANLkTind3eXmuPw5HrKqB6bHJSSXFL3g2cDSEyyYc1n8@mail.gmail.com>
 References: <4BEBBAE9.8090605@panasas.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
@@ -9,25 +9,15 @@ Cc: Benny Halevy <bhalevy@panasas.com>,
 	NFS list <linux-nfs@vger.kernel.org>
 To: Boaz Harrosh <bharrosh@panasas.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yx0-f191.google.com ([209.85.210.191]:64835 "EHLO
-	mail-yx0-f191.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752501Ab0EMOHY convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 13 May 2010 10:07:24 -0400
-Received: by yxe29 with SMTP id 29so343684yxe.4
-        for <linux-nfs@vger.kernel.org>; Thu, 13 May 2010 07:07:23 -0700 (PDT)
+Received: from mail-gy0-f174.google.com ([209.85.160.174]:43614 "EHLO
+	mail-gy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756570Ab0EMOTn convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 13 May 2010 10:19:43 -0400
+Received: by gyg13 with SMTP id 13so575808gyg.19
+        for <linux-nfs@vger.kernel.org>; Thu, 13 May 2010 07:19:42 -0700 (PDT)
 In-Reply-To: <4BEBBAE9.8090605@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-
-Hi Boaz
-
-I've been chasing this bug. Where is the rest of the FIXME: async
-layout return patch?
-I can't find it.
-
-Thanks
-
--->Andy
 
 On Thu, May 13, 2010 at 4:40 AM, Boaz Harrosh <bharrosh@panasas.com> wr=
 ote:
@@ -39,6 +29,11 @@ ote:
 > I have tested with this patch and it is a very good patch
 > that should also go into 2.6.33. It is necessary in the rare
 > case when one inode have more then one open_context.
+
+Do you mean more than one open context per open owner?
+
+-->Andy
+
 >
 > (For some reason I see that happening much more in 2.6.34
 > =A0I don't understand why)
