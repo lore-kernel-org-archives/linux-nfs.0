@@ -1,147 +1,342 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:12849 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:25852 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751719Ab0EGCWs convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 6 May 2010 22:22:48 -0400
-Subject: [GIT PULL] Please pull NFS client bugfixes...
+	id S1753067Ab0EMVIY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 13 May 2010 17:08:24 -0400
+Received: from localhost.localdomain (heimdal.trondhjem.org [10.58.49.73] (may be forged))
+	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id o4DL8MCL021257
+	for <linux-nfs@vger.kernel.org>; Thu, 13 May 2010 14:08:23 -0700 (PDT)
 From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
-        David Howells <dhowells@redhat.com>,
-        "Paul E. McKenney" <paulmck@linux.vnet.ibm.com>
-Content-Type: text/plain; charset="UTF-8"
-Date: Thu, 06 May 2010 22:22:43 -0400
-Message-ID: <1273198963.2661.12.camel@localhost.localdomain>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 02/15] NFSv4: Don't use GFP_KERNEL allocations in state recovery
+Date: Thu, 13 May 2010 17:08:08 -0400
+Message-Id: <1273784901-25599-2-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1273784901-25599-1-git-send-email-Trond.Myklebust@netapp.com>
+References: <1273784901-25599-1-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-Hi Linus,
+We do not want to have the state recovery thread kick off and wait for a
+memory reclaim, since that may deadlock when the writebacks end up
+waiting for the state recovery thread to complete.
 
-Please pull from the "bugfixes" branch of the repository at
+The safe thing is therefore to use GFP_NOFS in all open, close,
+delegation return, lock, etc. operations that may be called by the
+state recovery thread.
 
-   git pull git://git.linux-nfs.org/projects/trondmy/nfs-2.6.git bugfixes
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ fs/nfs/delegation.c |    2 +-
+ fs/nfs/nfs4_fs.h    |    4 ++--
+ fs/nfs/nfs4proc.c   |   47 +++++++++++++++++++++++++----------------------
+ fs/nfs/nfs4state.c  |   21 +++++++++++----------
+ 4 files changed, 39 insertions(+), 35 deletions(-)
 
-This will update the following files through the appended changesets.
-
-  Cheers,
-    Trond
-
-----
- fs/nfs/delegation.c |   86 ++++++++++++++++++++++++++++++---------------------
- 1 files changed, 51 insertions(+), 35 deletions(-)
-
-commit 17d2c0a0c4d4e074f0a2a5c0090ff6d88f5e1d44
-Author: David Howells <dhowells@redhat.com>
-Date:   Sat May 1 12:37:18 2010 -0400
-
-    NFS: Fix RCU issues in the NFSv4 delegation code
-    
-    Fix a number of RCU issues in the NFSv4 delegation code.
-    
-     (1) delegation->cred doesn't need to be RCU protected as it's essentially an
-         invariant refcounted structure.
-    
-         By the time we get to nfs_free_delegation(), the delegation is being
-         released, so no one else should be attempting to use the saved
-         credentials, and they can be cleared.
-    
-         However, since the list of delegations could still be under traversal at
-         this point by such as nfs_client_return_marked_delegations(), the cred
-         should be released in nfs_do_free_delegation() rather than in
-         nfs_free_delegation().  Simply using rcu_assign_pointer() to clear it is
-         insufficient as that doesn't stop the cred from being destroyed, and nor
-         does calling put_rpccred() after call_rcu(), given that the latter is
-         asynchronous.
-    
-     (2) nfs_detach_delegation_locked() and nfs_inode_set_delegation() should use
-         rcu_derefence_protected() because they can only be called if
-         nfs_client::cl_lock is held, and that guards against anyone changing
-         nfsi->delegation under it.  Furthermore, the barrier imposed by
-         rcu_dereference() is superfluous, given that the spin_lock() is also a
-         barrier.
-    
-     (3) nfs_detach_delegation_locked() is now passed a pointer to the nfs_client
-         struct so that it can issue lockdep advice based on clp->cl_lock for (2).
-    
-     (4) nfs_inode_return_delegation_noreclaim() and nfs_inode_return_delegation()
-         should use rcu_access_pointer() outside the spinlocked region as they
-         merely examine the pointer and don't follow it, thus rendering unnecessary
-         the need to impose a partial ordering over the one item of interest.
-    
-         These result in an RCU warning like the following:
-    
-    [ INFO: suspicious rcu_dereference_check() usage. ]
-    ---------------------------------------------------
-    fs/nfs/delegation.c:332 invoked rcu_dereference_check() without protection!
-    
-    other info that might help us debug this:
-    
-    rcu_scheduler_active = 1, debug_locks = 0
-    2 locks held by mount.nfs4/2281:
-     #0:  (&type->s_umount_key#34){+.+...}, at: [<ffffffff810b25b4>] deactivate_super+0x60/0x80
-     #1:  (iprune_sem){+.+...}, at: [<ffffffff810c332a>] invalidate_inodes+0x39/0x13a
-    
-    stack backtrace:
-    Pid: 2281, comm: mount.nfs4 Not tainted 2.6.34-rc1-cachefs #110
-    Call Trace:
-     [<ffffffff8105149f>] lockdep_rcu_dereference+0xaa/0xb2
-     [<ffffffffa00b4591>] nfs_inode_return_delegation_noreclaim+0x5b/0xa0 [nfs]
-     [<ffffffffa0095d63>] nfs4_clear_inode+0x11/0x1e [nfs]
-     [<ffffffff810c2d92>] clear_inode+0x9e/0xf8
-     [<ffffffff810c3028>] dispose_list+0x67/0x10e
-     [<ffffffff810c340d>] invalidate_inodes+0x11c/0x13a
-     [<ffffffff810b1dc1>] generic_shutdown_super+0x42/0xf4
-     [<ffffffff810b1ebe>] kill_anon_super+0x11/0x4f
-     [<ffffffffa009893c>] nfs4_kill_super+0x3f/0x72 [nfs]
-     [<ffffffff810b25bc>] deactivate_super+0x68/0x80
-     [<ffffffff810c6744>] mntput_no_expire+0xbb/0xf8
-     [<ffffffff810c681b>] release_mounts+0x9a/0xb0
-     [<ffffffff810c689b>] put_mnt_ns+0x6a/0x79
-     [<ffffffffa00983a1>] nfs_follow_remote_path+0x5a/0x146 [nfs]
-     [<ffffffffa0098334>] ? nfs_do_root_mount+0x82/0x95 [nfs]
-     [<ffffffffa00985a9>] nfs4_try_mount+0x75/0xaf [nfs]
-     [<ffffffffa0098874>] nfs4_get_sb+0x291/0x31a [nfs]
-     [<ffffffff810b2059>] vfs_kern_mount+0xb8/0x177
-     [<ffffffff810b2176>] do_kern_mount+0x48/0xe8
-     [<ffffffff810c810b>] do_mount+0x782/0x7f9
-     [<ffffffff810c8205>] sys_mount+0x83/0xbe
-     [<ffffffff81001eeb>] system_call_fastpath+0x16/0x1b
-    
-    Also on:
-    
-    fs/nfs/delegation.c:215 invoked rcu_dereference_check() without protection!
-     [<ffffffff8105149f>] lockdep_rcu_dereference+0xaa/0xb2
-     [<ffffffffa00b4223>] nfs_inode_set_delegation+0xfe/0x219 [nfs]
-     [<ffffffffa00a9c6f>] nfs4_opendata_to_nfs4_state+0x2c2/0x30d [nfs]
-     [<ffffffffa00aa15d>] nfs4_do_open+0x2a6/0x3a6 [nfs]
-     ...
-    
-    And:
-    
-    fs/nfs/delegation.c:40 invoked rcu_dereference_check() without protection!
-     [<ffffffff8105149f>] lockdep_rcu_dereference+0xaa/0xb2
-     [<ffffffffa00b3bef>] nfs_free_delegation+0x3d/0x6e [nfs]
-     [<ffffffffa00b3e71>] nfs_do_return_delegation+0x26/0x30 [nfs]
-     [<ffffffffa00b406a>] __nfs_inode_return_delegation+0x1ef/0x1fe [nfs]
-     [<ffffffffa00b448a>] nfs_client_return_marked_delegations+0xc9/0x124 [nfs]
-     ...
-    
-    Signed-off-by: David Howells <dhowells@redhat.com>
-    Signed-off-by: Paul E. McKenney <paulmck@linux.vnet.ibm.com>
-    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-
-commit 8f649c376254755f2261a693b3d48d09126218dc
-Author: Trond Myklebust <Trond.Myklebust@netapp.com>
-Date:   Sat May 1 12:36:18 2010 -0400
-
-    NFSv4: Fix the locking in nfs_inode_reclaim_delegation()
-    
-    Ensure that we correctly rcu-dereference the delegation itself, and that we
-    protect against removal while we're changing the contents.
-    
-    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-    Signed-off-by: David Howells <dhowells@redhat.com>
-    Signed-off-by: Paul E. McKenney <paulmck@linux.vnet.ibm.com>
-
+diff --git a/fs/nfs/delegation.c b/fs/nfs/delegation.c
+index ea61d26..3016345 100644
+--- a/fs/nfs/delegation.c
++++ b/fs/nfs/delegation.c
+@@ -213,7 +213,7 @@ int nfs_inode_set_delegation(struct inode *inode, struct rpc_cred *cred, struct
+ 	struct nfs_delegation *freeme = NULL;
+ 	int status = 0;
+ 
+-	delegation = kmalloc(sizeof(*delegation), GFP_KERNEL);
++	delegation = kmalloc(sizeof(*delegation), GFP_NOFS);
+ 	if (delegation == NULL)
+ 		return -ENOMEM;
+ 	memcpy(delegation->stateid.data, res->delegation.data,
+diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
+index 5099306..c538c61 100644
+--- a/fs/nfs/nfs4_fs.h
++++ b/fs/nfs/nfs4_fs.h
+@@ -213,7 +213,7 @@ extern int nfs4_proc_async_renew(struct nfs_client *, struct rpc_cred *);
+ extern int nfs4_proc_renew(struct nfs_client *, struct rpc_cred *);
+ extern int nfs4_init_clientid(struct nfs_client *, struct rpc_cred *);
+ extern int nfs41_init_clientid(struct nfs_client *, struct rpc_cred *);
+-extern int nfs4_do_close(struct path *path, struct nfs4_state *state, int wait);
++extern int nfs4_do_close(struct path *path, struct nfs4_state *state, gfp_t gfp_mask, int wait);
+ extern struct dentry *nfs4_atomic_open(struct inode *, struct dentry *, struct nameidata *);
+ extern int nfs4_open_revalidate(struct inode *, struct dentry *, int, struct nameidata *);
+ extern int nfs4_server_capabilities(struct nfs_server *server, struct nfs_fh *fhandle);
+@@ -286,7 +286,7 @@ extern void nfs4_put_lock_state(struct nfs4_lock_state *lsp);
+ extern int nfs4_set_lock_state(struct nfs4_state *state, struct file_lock *fl);
+ extern void nfs4_copy_stateid(nfs4_stateid *, struct nfs4_state *, fl_owner_t);
+ 
+-extern struct nfs_seqid *nfs_alloc_seqid(struct nfs_seqid_counter *counter);
++extern struct nfs_seqid *nfs_alloc_seqid(struct nfs_seqid_counter *counter, gfp_t gfp_mask);
+ extern int nfs_wait_on_sequence(struct nfs_seqid *seqid, struct rpc_task *task);
+ extern void nfs_increment_open_seqid(int status, struct nfs_seqid *seqid);
+ extern void nfs_increment_lock_seqid(int status, struct nfs_seqid *seqid);
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 9998c29..70015dd 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -717,17 +717,18 @@ static void nfs4_init_opendata_res(struct nfs4_opendata *p)
+ 
+ static struct nfs4_opendata *nfs4_opendata_alloc(struct path *path,
+ 		struct nfs4_state_owner *sp, fmode_t fmode, int flags,
+-		const struct iattr *attrs)
++		const struct iattr *attrs,
++		gfp_t gfp_mask)
+ {
+ 	struct dentry *parent = dget_parent(path->dentry);
+ 	struct inode *dir = parent->d_inode;
+ 	struct nfs_server *server = NFS_SERVER(dir);
+ 	struct nfs4_opendata *p;
+ 
+-	p = kzalloc(sizeof(*p), GFP_KERNEL);
++	p = kzalloc(sizeof(*p), gfp_mask);
+ 	if (p == NULL)
+ 		goto err;
+-	p->o_arg.seqid = nfs_alloc_seqid(&sp->so_seqid);
++	p->o_arg.seqid = nfs_alloc_seqid(&sp->so_seqid, gfp_mask);
+ 	if (p->o_arg.seqid == NULL)
+ 		goto err_free;
+ 	path_get(path);
+@@ -1063,7 +1064,7 @@ static struct nfs4_opendata *nfs4_open_recoverdata_alloc(struct nfs_open_context
+ {
+ 	struct nfs4_opendata *opendata;
+ 
+-	opendata = nfs4_opendata_alloc(&ctx->path, state->owner, 0, 0, NULL);
++	opendata = nfs4_opendata_alloc(&ctx->path, state->owner, 0, 0, NULL, GFP_NOFS);
+ 	if (opendata == NULL)
+ 		return ERR_PTR(-ENOMEM);
+ 	opendata->state = state;
+@@ -1651,7 +1652,7 @@ static int _nfs4_do_open(struct inode *dir, struct path *path, fmode_t fmode, in
+ 	if (path->dentry->d_inode != NULL)
+ 		nfs4_return_incompatible_delegation(path->dentry->d_inode, fmode);
+ 	status = -ENOMEM;
+-	opendata = nfs4_opendata_alloc(path, sp, fmode, flags, sattr);
++	opendata = nfs4_opendata_alloc(path, sp, fmode, flags, sattr, GFP_KERNEL);
+ 	if (opendata == NULL)
+ 		goto err_put_state_owner;
+ 
+@@ -1926,7 +1927,7 @@ static const struct rpc_call_ops nfs4_close_ops = {
+  *
+  * NOTE: Caller must be holding the sp->so_owner semaphore!
+  */
+-int nfs4_do_close(struct path *path, struct nfs4_state *state, int wait)
++int nfs4_do_close(struct path *path, struct nfs4_state *state, gfp_t gfp_mask, int wait)
+ {
+ 	struct nfs_server *server = NFS_SERVER(state->inode);
+ 	struct nfs4_closedata *calldata;
+@@ -1945,7 +1946,7 @@ int nfs4_do_close(struct path *path, struct nfs4_state *state, int wait)
+ 	};
+ 	int status = -ENOMEM;
+ 
+-	calldata = kzalloc(sizeof(*calldata), GFP_KERNEL);
++	calldata = kzalloc(sizeof(*calldata), gfp_mask);
+ 	if (calldata == NULL)
+ 		goto out;
+ 	calldata->inode = state->inode;
+@@ -1953,7 +1954,7 @@ int nfs4_do_close(struct path *path, struct nfs4_state *state, int wait)
+ 	calldata->arg.fh = NFS_FH(state->inode);
+ 	calldata->arg.stateid = &state->open_stateid;
+ 	/* Serialization for the sequence id */
+-	calldata->arg.seqid = nfs_alloc_seqid(&state->owner->so_seqid);
++	calldata->arg.seqid = nfs_alloc_seqid(&state->owner->so_seqid, gfp_mask);
+ 	if (calldata->arg.seqid == NULL)
+ 		goto out_free_calldata;
+ 	calldata->arg.fmode = 0;
+@@ -3704,7 +3705,7 @@ static int _nfs4_proc_delegreturn(struct inode *inode, struct rpc_cred *cred, co
+ 	};
+ 	int status = 0;
+ 
+-	data = kzalloc(sizeof(*data), GFP_KERNEL);
++	data = kzalloc(sizeof(*data), GFP_NOFS);
+ 	if (data == NULL)
+ 		return -ENOMEM;
+ 	data->args.fhandle = &data->fh;
+@@ -3860,7 +3861,7 @@ static struct nfs4_unlockdata *nfs4_alloc_unlockdata(struct file_lock *fl,
+ 	struct nfs4_unlockdata *p;
+ 	struct inode *inode = lsp->ls_state->inode;
+ 
+-	p = kzalloc(sizeof(*p), GFP_KERNEL);
++	p = kzalloc(sizeof(*p), GFP_NOFS);
+ 	if (p == NULL)
+ 		return NULL;
+ 	p->arg.fh = NFS_FH(inode);
+@@ -3998,7 +3999,7 @@ static int nfs4_proc_unlck(struct nfs4_state *state, int cmd, struct file_lock *
+ 	if (test_bit(NFS_DELEGATED_STATE, &state->flags))
+ 		goto out;
+ 	lsp = request->fl_u.nfs4_fl.owner;
+-	seqid = nfs_alloc_seqid(&lsp->ls_seqid);
++	seqid = nfs_alloc_seqid(&lsp->ls_seqid, GFP_KERNEL);
+ 	status = -ENOMEM;
+ 	if (seqid == NULL)
+ 		goto out;
+@@ -4026,22 +4027,23 @@ struct nfs4_lockdata {
+ };
+ 
+ static struct nfs4_lockdata *nfs4_alloc_lockdata(struct file_lock *fl,
+-		struct nfs_open_context *ctx, struct nfs4_lock_state *lsp)
++		struct nfs_open_context *ctx, struct nfs4_lock_state *lsp,
++		gfp_t gfp_mask)
+ {
+ 	struct nfs4_lockdata *p;
+ 	struct inode *inode = lsp->ls_state->inode;
+ 	struct nfs_server *server = NFS_SERVER(inode);
+ 
+-	p = kzalloc(sizeof(*p), GFP_KERNEL);
++	p = kzalloc(sizeof(*p), gfp_mask);
+ 	if (p == NULL)
+ 		return NULL;
+ 
+ 	p->arg.fh = NFS_FH(inode);
+ 	p->arg.fl = &p->fl;
+-	p->arg.open_seqid = nfs_alloc_seqid(&lsp->ls_state->owner->so_seqid);
++	p->arg.open_seqid = nfs_alloc_seqid(&lsp->ls_state->owner->so_seqid, gfp_mask);
+ 	if (p->arg.open_seqid == NULL)
+ 		goto out_free;
+-	p->arg.lock_seqid = nfs_alloc_seqid(&lsp->ls_seqid);
++	p->arg.lock_seqid = nfs_alloc_seqid(&lsp->ls_seqid, gfp_mask);
+ 	if (p->arg.lock_seqid == NULL)
+ 		goto out_free_seqid;
+ 	p->arg.lock_stateid = &lsp->ls_stateid;
+@@ -4195,7 +4197,8 @@ static int _nfs4_do_setlk(struct nfs4_state *state, int cmd, struct file_lock *f
+ 
+ 	dprintk("%s: begin!\n", __func__);
+ 	data = nfs4_alloc_lockdata(fl, nfs_file_open_context(fl->fl_file),
+-			fl->fl_u.nfs4_fl.owner);
++			fl->fl_u.nfs4_fl.owner,
++			recovery_type == NFS_LOCK_NEW ? GFP_KERNEL : GFP_NOFS);
+ 	if (data == NULL)
+ 		return -ENOMEM;
+ 	if (IS_SETLKW(cmd))
+@@ -4684,7 +4687,7 @@ static int nfs4_reset_slot_table(struct nfs4_slot_table *tbl, u32 max_reqs,
+ 	if (max_reqs != tbl->max_slots) {
+ 		ret = -ENOMEM;
+ 		new = kmalloc(max_reqs * sizeof(struct nfs4_slot),
+-			      GFP_KERNEL);
++			      GFP_NOFS);
+ 		if (!new)
+ 			goto out;
+ 		ret = 0;
+@@ -4749,7 +4752,7 @@ static int nfs4_init_slot_table(struct nfs4_slot_table *tbl,
+ 
+ 	dprintk("--> %s: max_reqs=%u\n", __func__, max_slots);
+ 
+-	slot = kcalloc(max_slots, sizeof(struct nfs4_slot), GFP_KERNEL);
++	slot = kcalloc(max_slots, sizeof(struct nfs4_slot), GFP_NOFS);
+ 	if (!slot)
+ 		goto out;
+ 	ret = 0;
+@@ -4798,7 +4801,7 @@ struct nfs4_session *nfs4_alloc_session(struct nfs_client *clp)
+ 	struct nfs4_session *session;
+ 	struct nfs4_slot_table *tbl;
+ 
+-	session = kzalloc(sizeof(struct nfs4_session), GFP_KERNEL);
++	session = kzalloc(sizeof(struct nfs4_session), GFP_NOFS);
+ 	if (!session)
+ 		return NULL;
+ 
+@@ -5142,8 +5145,8 @@ static int nfs41_proc_async_sequence(struct nfs_client *clp,
+ 
+ 	if (!atomic_inc_not_zero(&clp->cl_count))
+ 		return -EIO;
+-	args = kzalloc(sizeof(*args), GFP_KERNEL);
+-	res = kzalloc(sizeof(*res), GFP_KERNEL);
++	args = kzalloc(sizeof(*args), GFP_NOFS);
++	res = kzalloc(sizeof(*res), GFP_NOFS);
+ 	if (!args || !res) {
+ 		kfree(args);
+ 		kfree(res);
+@@ -5244,7 +5247,7 @@ static int nfs41_proc_reclaim_complete(struct nfs_client *clp)
+ 	int status = -ENOMEM;
+ 
+ 	dprintk("--> %s\n", __func__);
+-	calldata = kzalloc(sizeof(*calldata), GFP_KERNEL);
++	calldata = kzalloc(sizeof(*calldata), GFP_NOFS);
+ 	if (calldata == NULL)
+ 		goto out;
+ 	calldata->clp = clp;
+diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+index cd2d904..34acf59 100644
+--- a/fs/nfs/nfs4state.c
++++ b/fs/nfs/nfs4state.c
+@@ -366,7 +366,7 @@ nfs4_alloc_state_owner(void)
+ {
+ 	struct nfs4_state_owner *sp;
+ 
+-	sp = kzalloc(sizeof(*sp),GFP_KERNEL);
++	sp = kzalloc(sizeof(*sp),GFP_NOFS);
+ 	if (!sp)
+ 		return NULL;
+ 	spin_lock_init(&sp->so_lock);
+@@ -440,7 +440,7 @@ nfs4_alloc_open_state(void)
+ {
+ 	struct nfs4_state *state;
+ 
+-	state = kzalloc(sizeof(*state), GFP_KERNEL);
++	state = kzalloc(sizeof(*state), GFP_NOFS);
+ 	if (!state)
+ 		return NULL;
+ 	atomic_set(&state->count, 1);
+@@ -542,7 +542,8 @@ void nfs4_put_open_state(struct nfs4_state *state)
+ /*
+  * Close the current file.
+  */
+-static void __nfs4_close(struct path *path, struct nfs4_state *state, fmode_t fmode, int wait)
++static void __nfs4_close(struct path *path, struct nfs4_state *state,
++		fmode_t fmode, gfp_t gfp_mask, int wait)
+ {
+ 	struct nfs4_state_owner *owner = state->owner;
+ 	int call_close = 0;
+@@ -583,17 +584,17 @@ static void __nfs4_close(struct path *path, struct nfs4_state *state, fmode_t fm
+ 		nfs4_put_open_state(state);
+ 		nfs4_put_state_owner(owner);
+ 	} else
+-		nfs4_do_close(path, state, wait);
++		nfs4_do_close(path, state, gfp_mask, wait);
+ }
+ 
+ void nfs4_close_state(struct path *path, struct nfs4_state *state, fmode_t fmode)
+ {
+-	__nfs4_close(path, state, fmode, 0);
++	__nfs4_close(path, state, fmode, GFP_NOFS, 0);
+ }
+ 
+ void nfs4_close_sync(struct path *path, struct nfs4_state *state, fmode_t fmode)
+ {
+-	__nfs4_close(path, state, fmode, 1);
++	__nfs4_close(path, state, fmode, GFP_KERNEL, 1);
+ }
+ 
+ /*
+@@ -623,7 +624,7 @@ static struct nfs4_lock_state *nfs4_alloc_lock_state(struct nfs4_state *state, f
+ 	struct nfs4_lock_state *lsp;
+ 	struct nfs_client *clp = state->owner->so_client;
+ 
+-	lsp = kzalloc(sizeof(*lsp), GFP_KERNEL);
++	lsp = kzalloc(sizeof(*lsp), GFP_NOFS);
+ 	if (lsp == NULL)
+ 		return NULL;
+ 	rpc_init_wait_queue(&lsp->ls_sequence.wait, "lock_seqid_waitqueue");
+@@ -759,11 +760,11 @@ void nfs4_copy_stateid(nfs4_stateid *dst, struct nfs4_state *state, fl_owner_t f
+ 	nfs4_put_lock_state(lsp);
+ }
+ 
+-struct nfs_seqid *nfs_alloc_seqid(struct nfs_seqid_counter *counter)
++struct nfs_seqid *nfs_alloc_seqid(struct nfs_seqid_counter *counter, gfp_t gfp_mask)
+ {
+ 	struct nfs_seqid *new;
+ 
+-	new = kmalloc(sizeof(*new), GFP_KERNEL);
++	new = kmalloc(sizeof(*new), gfp_mask);
+ 	if (new != NULL) {
+ 		new->sequence = counter;
+ 		INIT_LIST_HEAD(&new->list);
+@@ -1352,7 +1353,7 @@ static int nfs4_recall_slot(struct nfs_client *clp)
+ 
+ 	nfs4_begin_drain_session(clp);
+ 	new = kmalloc(fc_tbl->target_max_slots * sizeof(struct nfs4_slot),
+-		      GFP_KERNEL);
++		      GFP_NOFS);
+         if (!new)
+ 		return -ENOMEM;
+ 
+-- 
+1.6.6.1
 
