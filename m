@@ -1,95 +1,45 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-fx0-f46.google.com ([209.85.161.46]:58839 "EHLO
-	mail-fx0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753981Ab0EZUtA (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 26 May 2010 16:49:00 -0400
-Subject: RE: NULL Pointer Deference: NFS & Telnet
-From: Eric Dumazet <eric.dumazet@gmail.com>
-To: "Arce, Abraham" <x0066660@ti.com>
-Cc: David Miller <davem@davemloft.net>,
-        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-omap@vger.kernel.org" <linux-omap@vger.kernel.org>,
-        "tony@atomide.com" <tony@atomide.com>,
-        "Shilimkar, Santosh" <santosh.shilimkar@ti.com>,
-        "Ha, Tristram" <Tristram.Ha@micrel.com>
-In-Reply-To: <27F9C60D11D683428E133F85D2BB4A53043E3EE6A3@dlee03.ent.ti.com>
-References: <27F9C60D11D683428E133F85D2BB4A53043E33A997@dlee03.ent.ti.com>
-	 <27F9C60D11D683428E133F85D2BB4A53043E3EDFE6@dlee03.ent.ti.com>
-	 <20100525.185236.193707791.davem@davemloft.net>
-	 <27F9C60D11D683428E133F85D2BB4A53043E3EDFF1@dlee03.ent.ti.com>
-	 <1274851741.25136.16.camel@edumazet-laptop>
-	 <27F9C60D11D683428E133F85D2BB4A53043E3EE6A3@dlee03.ent.ti.com>
-Content-Type: text/plain; charset="UTF-8"
-Date: Wed, 26 May 2010 22:48:53 +0200
-Message-ID: <1274906933.2542.17.camel@edumazet-laptop>
+Received: from mail-gy0-f174.google.com ([209.85.160.174]:33609 "EHLO
+	mail-gy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753979Ab0EMMzw convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 13 May 2010 08:55:52 -0400
+Received: by gyg13 with SMTP id 13so528439gyg.19
+        for <linux-nfs@vger.kernel.org>; Thu, 13 May 2010 05:55:51 -0700 (PDT)
+In-Reply-To: <4BEBC1B0.8030502@inria.fr>
+References: <4BCFE979.2000406@inria.fr> <4BE1E099.9050902@inria.fr>
+	 <4BEB1FA2.1060001@inria.fr>
+	 <AANLkTinNTYrEe9G6urXBxv-hogZPatOe9zWbbjnVTbWz@mail.gmail.com>
+	 <4BEBC1B0.8030502@inria.fr>
+Date: Thu, 13 May 2010 08:55:50 -0400
+Message-ID: <AANLkTinPfbYgqFxcIuT3975TAtk0e1D84bMAeez5Z06T@mail.gmail.com>
+Subject: Re: trouble using kerberos between linux client and server
+From: Kevin Coffman <kwc@citi.umich.edu>
+To: Guillaume Rousse <Guillaume.Rousse@inria.fr>
+Cc: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Le mercredi 26 mai 2010 Ã  15:19 -0500, Arce, Abraham a Ã©crit :
+On Thu, May 13, 2010 at 5:09 AM, Guillaume Rousse
+<Guillaume.Rousse@inria.fr> wrote:
+> Le 13/05/2010 01:21, Kevin Coffman a écrit :
+>> On Wed, May 12, 2010 at 5:37 PM, Guillaume Rousse
+>> <Guillaume.Rousse@inria.fr> wrote:
+>>> Le 05/05/2010 23:18, Guillaume Rousse a écrit :
+>>>> I'm attaching network capture, even I can't figure additional
+>>>> information from it by myself.
+>>> Reading https://bugzilla.redhat.com/show_bug.cgi?id=562807, I rebuild
+>>> libtirpc with patch applied and -DDEBUG. Unfortunatly, it doesn't bring
+>>> additional information about the server-side failure :(
+>>
+>> It looks to me like fflush(), called in qword_eol(), may be returning
+>> the number of bytes flushed (95) rather than zero for success?  I
+>> don't immediately see any changes that would cause this.  But I
+>> haven't looked extensively...
+> Not necessarily a change: I never used a kerberized server sofar, only
+> clients.
 
-> By increasing the allocation length of our rx skbuff the corruption issue is fixed... I have increased it by 2... Were we writing outside our boundaries of skb data?
-> 
-> Please let me know about this approach...
-> 
-> diff --git a/drivers/net/ks8851.c b/drivers/net/ks8851.c
-> index b4fb07a..6da81e1 100644
-> --- a/drivers/net/ks8851.c
-> +++ b/drivers/net/ks8851.c
-> @@ -504,7 +504,7 @@ static void ks8851_rx_pkts(struct ks8851_net *ks)
->                                ks->rc_rxqcr | RXQCR_SDA | RXQCR_ADRFE);
-> 
->                 if (rxlen > 0) {
-> -                       skb = netdev_alloc_skb(ks->netdev, rxlen + 2 + 8);
-> +                       skb = netdev_alloc_skb(ks->netdev, rxlen + 4 + 8);
->                         if (!skb) {
-> 
-> Best Regards
-> Abraham
-> 
-
-Yes that makes sense, nr_frag is right after the packet (padded to L1
-cache size)
-
-But please do the correct allocation ?
-
-Also, we dont need FCS ?
-
-diff --git a/drivers/net/ks8851.c b/drivers/net/ks8851.c
-index b4fb07a..05bd312 100644
---- a/drivers/net/ks8851.c
-+++ b/drivers/net/ks8851.c
-@@ -503,8 +503,9 @@ static void ks8851_rx_pkts(struct ks8851_net *ks)
- 		ks8851_wrreg16(ks, KS_RXQCR,
- 			       ks->rc_rxqcr | RXQCR_SDA | RXQCR_ADRFE);
- 
--		if (rxlen > 0) {
--			skb = netdev_alloc_skb(ks->netdev, rxlen + 2 + 8);
-+		if (rxlen > 4) {
-+			rxlen -= 4;
-+			skb = netdev_alloc_skb(ks->netdev, 2 + 8 + ALIGN(rxlen, 4));
- 			if (!skb) {
- 				/* todo - dump frame and move on */
- 			}
-@@ -513,7 +514,7 @@ static void ks8851_rx_pkts(struct ks8851_net *ks)
- 			 * for the status header and 4 bytes of garbage */
- 			skb_reserve(skb, 2 + 4 + 4);
- 
--			rxpkt = skb_put(skb, rxlen - 4) - 8;
-+			rxpkt = skb_put(skb, rxlen) - 8;
- 
- 			/* align the packet length to 4 bytes, and add 4 bytes
- 			 * as we're getting the rx status header as well */
-@@ -526,7 +527,7 @@ static void ks8851_rx_pkts(struct ks8851_net *ks)
- 			netif_rx(skb);
- 
- 			ks->netdev->stats.rx_packets++;
--			ks->netdev->stats.rx_bytes += rxlen - 4;
-+			ks->netdev->stats.rx_bytes += rxlen;
- 		}
- 
- 		ks8851_wrreg16(ks, KS_RXQCR, ks->rc_rxqcr);
-
-
+Well, I've not seen that issue before, so I assumed it was a change.
+I looked back a bit, but didn't see: what versions of nfs-utils and
+kernel are on the server?
