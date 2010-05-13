@@ -1,87 +1,194 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:5913 "EHLO
-	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1755525Ab0EZSNN (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 26 May 2010 14:13:13 -0400
-Message-ID: <4BFD64B6.5070109@panasas.com>
-Date: Wed, 26 May 2010 21:13:10 +0300
-From: Boaz Harrosh <bharrosh@panasas.com>
-To: Dean Hildebrand <seattleplus@gmail.com>
-CC: Fred Isaman <iisaman@netapp.com>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 00/22] LAYOUTGET invocation
-References: <1273972993-15369-1-git-send-email-iisaman@netapp.com> <4BFC1686.4000509@gmail.com> <51AD8F7D-D172-4DE6-8F7A-CDFA292CBF8B@netapp.com> <4BFC2FA2.2050506@gmail.com> <4BFCDF1B.60608@panasas.com> <4BFD5CEF.8030703@gmail.com>
-In-Reply-To: <4BFD5CEF.8030703@gmail.com>
-Content-Type: text/plain; charset=UTF-8
+Received: from mx2.netapp.com ([216.240.18.37]:63543 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753067Ab0EMVIc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 13 May 2010 17:08:32 -0400
+Received: from localhost.localdomain (heimdal.trondhjem.org [10.58.49.73] (may be forged))
+	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id o4DL8MCY021257
+	for <linux-nfs@vger.kernel.org>; Thu, 13 May 2010 14:08:31 -0700 (PDT)
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 15/15] SUNRPC: Don't spam gssd with upcall requests when the kerberos key expired
+Date: Thu, 13 May 2010 17:08:21 -0400
+Message-Id: <1273784901-25599-15-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1273784901-25599-14-git-send-email-Trond.Myklebust@netapp.com>
+References: <1273784901-25599-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1273784901-25599-2-git-send-email-Trond.Myklebust@netapp.com>
+ <1273784901-25599-3-git-send-email-Trond.Myklebust@netapp.com>
+ <1273784901-25599-4-git-send-email-Trond.Myklebust@netapp.com>
+ <1273784901-25599-5-git-send-email-Trond.Myklebust@netapp.com>
+ <1273784901-25599-6-git-send-email-Trond.Myklebust@netapp.com>
+ <1273784901-25599-7-git-send-email-Trond.Myklebust@netapp.com>
+ <1273784901-25599-8-git-send-email-Trond.Myklebust@netapp.com>
+ <1273784901-25599-9-git-send-email-Trond.Myklebust@netapp.com>
+ <1273784901-25599-10-git-send-email-Trond.Myklebust@netapp.com>
+ <1273784901-25599-11-git-send-email-Trond.Myklebust@netapp.com>
+ <1273784901-25599-12-git-send-email-Trond.Myklebust@netapp.com>
+ <1273784901-25599-13-git-send-email-Trond.Myklebust@netapp.com>
+ <1273784901-25599-14-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On 05/26/2010 08:39 PM, Dean Hildebrand wrote:
-> Try to remember that this isn't some new feature that we are disabling, 
-> or a new way of doing things, this is a primary I/O path. We MUST fix 
-> this with the B-list code submission, so why go through the hassle of 
-> searching through old patches and tags to find it.
+Now that the rpc.gssd daemon can explicitly tell us that the key expired,
+we should cache that information to avoid spamming gssd.
 
-No, this is no hassle. uncommenting old code and hopping for the best
-is the hassle. (insert here the explanation from previous mail)
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ include/linux/sunrpc/auth.h     |    1 +
+ include/linux/sunrpc/auth_gss.h |    1 +
+ net/sunrpc/auth_gss/auth_gss.c  |   65 +++++++++++++++++++++++++++++++-------
+ 3 files changed, 55 insertions(+), 12 deletions(-)
 
-> 
-> If you want to talk about a *REAL* solution, then we need to figure out 
-> who broke O_DIRECT and reject their patches until they fix it.  You 
-> can't submit patches that break a primary I/O path.  But again, since we 
-> are focused on A-list items, ifdef'ing the code out for now in the 
-> B-list branch seems like a reasonable compromise.
-> 
-
-No "ifdef'ing the code out" is never a "reasonable compromise" if you want
-then keep it in a separate clean patch, with "BROKEN:" at subject line and
-committed in a branch that is above the pnfs-all-latest. So it can be rebased
-from time to time, but not included in the regular test scenario, until fixed.
-
-(Which is BTW what it means the keep it out-of-tree, these git games are done
- routinely, every day)
-
-Boaz
-
-> Dean
-> 
-> Boaz Harrosh wrote:
->> On 05/25/2010 11:14 PM, Dean Hildebrand wrote:
->>   
->>>     
->>>> I can send some post_submit patches with the code ifdef'ed out if people would be content with that.
->>>>   
->>>>       
->>> Thanks for the background.  I would be much happier if you sent patches 
->>> with the code ifdef'd out, added with the comment in the code regarding 
->>> which patches you believe introduced the problem.
->>>
->>> Dean
->>>     
->>>> Fred
->>>>       
->>
->> I disagree. Source code is not a version management system. We have git
->> for that. The code is never lost it is there for eternity in the git
->> tree. We could ask Benny to tag the last branch that had broken directIO
->> as LAST_directIO_VERSION for easy random access at future time.
->>
->> If in the future someone smart wants to forward port the code and fix it
->> then the *right* way to do it is by manual octopus merge at the point of
->> branch.
->> Never, Never uncomment out code that was sitting collecting dust.
->> Manual octopus merge I mean using the two diffs from the two sides of the
->> branch, and replaying one on the other. For instance if at one patch
->> a function was moved, then redo the move of the current function again, not
->> leave the old code as it was before. Let the merge point out the points of
->> friction. Because you see, with commented code, there is never a merge
->> conflict it will always uncomment.
->>
->> And anyway the Kernel people will never accept code in comments. There
->> are out-of-tree gits to do that. So I don't even think it is an option.
->> The pnfs branches are patches that should eventually go upstream. Or
->> are currently the only option for the testing of upstream code.
->>
->> Boaz
->>   
+diff --git a/include/linux/sunrpc/auth.h b/include/linux/sunrpc/auth.h
+index 996df4d..87d7ec0 100644
+--- a/include/linux/sunrpc/auth.h
++++ b/include/linux/sunrpc/auth.h
+@@ -54,6 +54,7 @@ struct rpc_cred {
+ #define RPCAUTH_CRED_NEW	0
+ #define RPCAUTH_CRED_UPTODATE	1
+ #define RPCAUTH_CRED_HASHED	2
++#define RPCAUTH_CRED_NEGATIVE	3
+ 
+ #define RPCAUTH_CRED_MAGIC	0x0f4aa4f0
+ 
+diff --git a/include/linux/sunrpc/auth_gss.h b/include/linux/sunrpc/auth_gss.h
+index d48d4e6..671538d 100644
+--- a/include/linux/sunrpc/auth_gss.h
++++ b/include/linux/sunrpc/auth_gss.h
+@@ -82,6 +82,7 @@ struct gss_cred {
+ 	enum rpc_gss_svc	gc_service;
+ 	struct gss_cl_ctx	*gc_ctx;
+ 	struct gss_upcall_msg	*gc_upcall;
++	unsigned long		gc_upcall_timestamp;
+ 	unsigned char		gc_machine_cred : 1;
+ };
+ 
+diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
+index 48a7939..8da2a0e 100644
+--- a/net/sunrpc/auth_gss/auth_gss.c
++++ b/net/sunrpc/auth_gss/auth_gss.c
+@@ -57,6 +57,9 @@ static const struct rpc_authops authgss_ops;
+ static const struct rpc_credops gss_credops;
+ static const struct rpc_credops gss_nullops;
+ 
++#define GSS_RETRY_EXPIRED 5
++static unsigned int gss_expired_cred_retry_delay = GSS_RETRY_EXPIRED;
++
+ #ifdef RPC_DEBUG
+ # define RPCDBG_FACILITY	RPCDBG_AUTH
+ #endif
+@@ -350,6 +353,24 @@ gss_unhash_msg(struct gss_upcall_msg *gss_msg)
+ }
+ 
+ static void
++gss_handle_downcall_result(struct gss_cred *gss_cred, struct gss_upcall_msg *gss_msg)
++{
++	switch (gss_msg->msg.errno) {
++	case 0:
++		if (gss_msg->ctx == NULL)
++			break;
++		clear_bit(RPCAUTH_CRED_NEGATIVE, &gss_cred->gc_base.cr_flags);
++		gss_cred_set_ctx(&gss_cred->gc_base, gss_msg->ctx);
++		break;
++	case -EKEYEXPIRED:
++		set_bit(RPCAUTH_CRED_NEGATIVE, &gss_cred->gc_base.cr_flags);
++	}
++	gss_cred->gc_upcall_timestamp = jiffies;
++	gss_cred->gc_upcall = NULL;
++	rpc_wake_up_status(&gss_msg->rpc_waitqueue, gss_msg->msg.errno);
++}
++
++static void
+ gss_upcall_callback(struct rpc_task *task)
+ {
+ 	struct gss_cred *gss_cred = container_of(task->tk_msg.rpc_cred,
+@@ -358,13 +379,9 @@ gss_upcall_callback(struct rpc_task *task)
+ 	struct inode *inode = &gss_msg->inode->vfs_inode;
+ 
+ 	spin_lock(&inode->i_lock);
+-	if (gss_msg->ctx)
+-		gss_cred_set_ctx(task->tk_msg.rpc_cred, gss_msg->ctx);
+-	else
+-		task->tk_status = gss_msg->msg.errno;
+-	gss_cred->gc_upcall = NULL;
+-	rpc_wake_up_status(&gss_msg->rpc_waitqueue, gss_msg->msg.errno);
++	gss_handle_downcall_result(gss_cred, gss_msg);
+ 	spin_unlock(&inode->i_lock);
++	task->tk_status = gss_msg->msg.errno;
+ 	gss_release_msg(gss_msg);
+ }
+ 
+@@ -513,18 +530,16 @@ gss_refresh_upcall(struct rpc_task *task)
+ 	spin_lock(&inode->i_lock);
+ 	if (gss_cred->gc_upcall != NULL)
+ 		rpc_sleep_on(&gss_cred->gc_upcall->rpc_waitqueue, task, NULL);
+-	else if (gss_msg->ctx != NULL) {
+-		gss_cred_set_ctx(task->tk_msg.rpc_cred, gss_msg->ctx);
+-		gss_cred->gc_upcall = NULL;
+-		rpc_wake_up_status(&gss_msg->rpc_waitqueue, gss_msg->msg.errno);
+-	} else if (gss_msg->msg.errno >= 0) {
++	else if (gss_msg->ctx == NULL && gss_msg->msg.errno >= 0) {
+ 		task->tk_timeout = 0;
+ 		gss_cred->gc_upcall = gss_msg;
+ 		/* gss_upcall_callback will release the reference to gss_upcall_msg */
+ 		atomic_inc(&gss_msg->count);
+ 		rpc_sleep_on(&gss_msg->rpc_waitqueue, task, gss_upcall_callback);
+-	} else
++	} else {
++		gss_handle_downcall_result(gss_cred, gss_msg);
+ 		err = gss_msg->msg.errno;
++	}
+ 	spin_unlock(&inode->i_lock);
+ 	gss_release_msg(gss_msg);
+ out:
+@@ -1123,6 +1138,23 @@ static int gss_renew_cred(struct rpc_task *task)
+ 	return 0;
+ }
+ 
++static int gss_cred_is_negative_entry(struct rpc_cred *cred)
++{
++	if (test_bit(RPCAUTH_CRED_NEGATIVE, &cred->cr_flags)) {
++		unsigned long now = jiffies;
++		unsigned long begin, expire;
++		struct gss_cred *gss_cred; 
++
++		gss_cred = container_of(cred, struct gss_cred, gc_base);
++		begin = gss_cred->gc_upcall_timestamp;
++		expire = begin + gss_expired_cred_retry_delay * HZ;
++
++		if (time_in_range_open(now, begin, expire))
++			return 1;
++	}
++	return 0;
++}
++
+ /*
+ * Refresh credentials. XXX - finish
+ */
+@@ -1132,6 +1164,9 @@ gss_refresh(struct rpc_task *task)
+ 	struct rpc_cred *cred = task->tk_msg.rpc_cred;
+ 	int ret = 0;
+ 
++	if (gss_cred_is_negative_entry(cred))
++		return -EKEYEXPIRED;
++
+ 	if (!test_bit(RPCAUTH_CRED_NEW, &cred->cr_flags) &&
+ 			!test_bit(RPCAUTH_CRED_UPTODATE, &cred->cr_flags)) {
+ 		ret = gss_renew_cred(task);
+@@ -1585,5 +1620,11 @@ static void __exit exit_rpcsec_gss(void)
+ }
+ 
+ MODULE_LICENSE("GPL");
++module_param_named(expired_cred_retry_delay,
++		   gss_expired_cred_retry_delay,
++		   uint, 0644);
++MODULE_PARM_DESC(expired_cred_retry_delay, "Timeout (in seconds) until "
++		"the RPC engine retries an expired credential");
++
+ module_init(init_rpcsec_gss)
+ module_exit(exit_rpcsec_gss)
+-- 
+1.6.6.1
 
