@@ -1,109 +1,93 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:54293 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:54024 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751074Ab0EKOj0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 11 May 2010 10:39:26 -0400
-Date: Tue, 11 May 2010 10:39:25 -0400
+	id S1759266Ab0EMQLu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 13 May 2010 12:11:50 -0400
+Date: Thu, 13 May 2010 12:11:49 -0400
 From: "J. Bruce Fields" <bfields@citi.umich.edu>
 To: Benny Halevy <bhalevy@panasas.com>
-Cc: NFS list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 0/8] nfsd4: keep the client from expiring while in use
-	by nfs41 compounds
-Message-ID: <20100511143925.GB16924@fieldses.org>
-References: <4BE0A1AE.4040905@panasas.com> <20100507223836.GO19142@fieldses.org> <4BE65687.8050806@panasas.com> <20100509165551.GA15429@fieldses.org> <4BE8150F.2050706@panasas.com> <20100510190111.GA1361@fieldses.org> <4BE906DF.7090606@panasas.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v2 8/9] nfsd4: keep a reference count on client while
+	in use
+Message-ID: <20100513161149.GA25327@fieldses.org>
+References: <4BE9C7A2.8030801@panasas.com> <1273612434-13726-1-git-send-email-bhalevy@panasas.com> <20100512024030.GA27184@fieldses.org> <4BEA2E06.7070902@panasas.com> <4BEA4876.3030802@panasas.com> <20100512222946.GE11389@fieldses.org> <4BEC0E5F.2030608@panasas.com>
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4BE906DF.7090606@panasas.com>
+In-Reply-To: <4BEC0E5F.2030608@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Tue, May 11, 2010 at 10:27:27AM +0300, Benny Halevy wrote:
-> On May. 10, 2010, 22:01 +0300, "J. Bruce Fields" <bfields@citi.umich.edu> wrote:
-> > On Mon, May 10, 2010 at 05:15:43PM +0300, Benny Halevy wrote:
-> >> On May. 09, 2010, 19:55 +0300, "J. Bruce Fields" <bfields@citi.umich.edu> wrote:
-> >>> On Sun, May 09, 2010 at 09:30:31AM +0300, Benny Halevy wrote:
-> >>>> Correct.  The intentions are:
-> >>>> 1. Make the laundromat process ignore clients that are in
-> >>>> use by a 4.1 session.
-> >>>> 2. Renew the client when the compound ends, rather than when it begins.
-> >>>> 3. Unhash the client when it's expired explicitly but don't destroy it
-> >>>> until there's no reference to it.
-> >>> OK.  My one slight worry there is to make sure that code getting a
-> >>> pointer to a client through a sessionid won't inadvertently assume it's
-> >>> still hashed.
-> >> That's a good point.
-> >> In fact, the client should not be renewed when the compound is done
-> >> if it was already explicitly expired.
+On Thu, May 13, 2010 at 05:36:15PM +0300, Benny Halevy wrote:
+> On May. 13, 2010, 1:29 +0300, "J. Bruce Fields" <bfields@citi.umich.edu> wrote:
+> > Another case:
 > > 
-> > Hm, and we've still got a lot of renew_client()'s sprinkled around that
-> > will try to add the expired client back to client_lru.
+> > 	- Two 4.1 compounds arrive, both their sequence operations are
+> > 	  processed.
+> > 	- Independently, an exchange_id expires the client.
+> > 	- At this point, the reference count is 2.
+> > 	- One of the original compounds completes.  It renews the client
+> > 	  (because it hits reference count 1).
+> 
+> and that will be a no-op as the client is marked as expired.
+
+Pfft, apologies, and thanks for setting me straight again.  Still, the
+existing scheme seems slightly more complicated than necessary.
+
+> 
+> > 	- The second of the two original compounds completes.  It frees
+> > 	  the client.
+> 
+> right
+> 
 > > 
-> 
-> For that I've already have a fix in my branch to not renew the client
-> if it's marked as expired (cl_time == 0).
-
-OK.
-
-> >> Another way to deal with this which may be safer but is less optimal
-> >> is to keep only the sessionid and look it up on each use. Then, using
-> >> it while holding the state lock will make sure it's valid when used.
+> > I guess there's nothing fundamentally wrong with that, but it's a little
+> > odd.
 > > 
-> > That seems overkill.  Instead of making ops look up the sessionid from
-> > state each time I guess we could have a revalidate_sessionid() that
-> > checked the associated client to see if it was still good.
-> 
-> Yeah.  Let me see if this is a quick fix and if so I'll send it as part
-> of version 2 of this patchset, otherwise I'll send it as is.
-> 
-> > If we continue to reduce the scope of the state lock, isn't that going
-> > to be a pain, though?  Will we end up having to do that sort of
-> > revalidation every time we drop the state lock and reacquire it?
-> 
-> It's very little pain, just verifying that cl_time != 0.
-
-It's not the trouble of the revalidation I worry about, so much as a)
-remembering to do it every time, and b) always being in a position to
-return an error if it fails.
-
-For now it doesn't seem like a problem, so OK.  We can always reconsider
-if it turns out to be.
-
-> > Perhaps the simplest would be to make the clientid-destroyer wait; it
-> > could set some sort of CLIENTID_DEAD flag on the client, wait for a
-> > reference count to go to zero, then destroy the client.
+> > Wouldn't it be more straightforward to let cl_refcount be a count of the
+> > number of outstanding compounds, and make release_session_client do:
 > > 
-> 
-> I'm not sure about this.  Setting this flag is equivalent
-> to what I propose to do today (with marking the client as expired AND
-> unhashing it) as you want to prevent any more references to it.
-> 
-> The question is more about the semantics of the operation that explicitly
-> destroys the old client, e.g. EXCHANGE_ID or DESTROY_SESSION.
-> Can the client tolerate responses for the old clientid/sessionid
-> after the client-destroying operation has succeeded?
-
-I can't see what would give the client to expect any defined behavior
-for a compound executed concurrently with an explicit destruction of the
-associated clientid.
-
-> > Then other code would be guaranteed that nothing will change underneath
-> > them as long as they hold either the state lock or a reference to a
-> > session.
+> > 	if cl_refcount >= 0
+> > 		return;
+> > 	if (client_is_expired(clp))
+> > 		free client;
+> > 	else
+> > 		renew client;
 > > 
-> > So hopefully we'd only need worry about client shutdown in well-defined
-> > places:
-> > 	- when put()'ing a session, to check whether the client
-> > 	  is ready to be destroyed now.
+> > ?
+> > 
+> > The following works for me. If you don't see any objection, I'll squash
+> > this in and push out the result.
 > 
-> That's in v2.
-> 
-> > 	- when looking up a session, in which case we should check
-> > 	  whether the client is dead and fail the lookup?
-> 
-> If the client is dead we won't find the sessionid as we unhash the session
-> structure atomically with the client so that isn't an issue so that's also
-> dealt with in v2.
+> No objection, looks good. Thanks!
 
-OK, thanks.
+OK, thanks!
+
+I notice I didn't do exactly what I said I would, though; with the
+following change on top I think it's right.
+
+I'll test that and then push out the result.
 
 --b.
+
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 05ad0ae..84b0fe9 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -765,7 +765,7 @@ expire_client(struct nfs4_client *clp)
+ 	list_del(&clp->cl_strhash);
+ 	spin_lock(&client_lock);
+ 	unhash_client_locked(clp);
+-	if (atomic_dec_and_test(&clp->cl_refcount))
++	if (atomic_read(&clp->cl_refcount) == 0)
+ 		free_client(clp);
+ 	spin_unlock(&client_lock);
+ }
+@@ -853,7 +853,7 @@ static struct nfs4_client *create_client(struct xdr_netobj name, char *recdir,
+ 	}
+ 
+ 	memcpy(clp->cl_recdir, recdir, HEXDIR_LEN);
+-	atomic_set(&clp->cl_refcount, 1);
++	atomic_set(&clp->cl_refcount, 0);
+ 	atomic_set(&clp->cl_cb_set, 0);
+ 	INIT_LIST_HEAD(&clp->cl_idhash);
+ 	INIT_LIST_HEAD(&clp->cl_strhash);
