@@ -1,155 +1,40 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fg-out-1718.google.com ([72.14.220.152]:36376 "EHLO
-	fg-out-1718.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751044Ab0ELGTp (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 12 May 2010 02:19:45 -0400
-Received: by fg-out-1718.google.com with SMTP id d23so353467fga.1
-        for <linux-nfs@vger.kernel.org>; Tue, 11 May 2010 23:19:43 -0700 (PDT)
-Message-ID: <4BEA4876.3030802@panasas.com>
-Date: Wed, 12 May 2010 09:19:34 +0300
-From: Benny Halevy <bhalevy@panasas.com>
-To: "J. Bruce Fields" <bfields@citi.umich.edu>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v2 8/9] nfsd4: keep a reference count on client while
- in use
-References: <4BE9C7A2.8030801@panasas.com> <1273612434-13726-1-git-send-email-bhalevy@panasas.com> <20100512024030.GA27184@fieldses.org> <4BEA2E06.7070902@panasas.com>
-In-Reply-To: <4BEA2E06.7070902@panasas.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from smtp-3.hut.fi ([130.233.228.93]:45738 "EHLO smtp-3.hut.fi"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755359Ab0ENGnp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 14 May 2010 02:43:45 -0400
+Date: Fri, 14 May 2010 09:43:22 +0300 (EEST)
+From: Timo Aaltonen <timo.aaltonen@aalto.fi>
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+cc: linux-nfs@vger.kernel.org, Jeff Layton <jlayton@redhat.com>
+Subject: Re: session hangs with 2.6.33rc7 & nfs-utils 1.2.2rc9
+In-Reply-To: <1273165061.7699.39.camel@localhost.localdomain>
+Message-ID: <alpine.DEB.2.00.1005140942440.13223@deckard.hut.fi>
+References: <alpine.DEB.2.00.1002111604420.18032@kosh.hut.fi>  <1265897747.478.1.camel@localhost>  <alpine.DEB.2.00.1002111616470.18032@kosh.hut.fi>  <1265898673.478.3.camel@localhost>  <20100211102322.1581a385@barsoom.rdu.redhat.com>
+ <alpine.DEB.2.00.1002112017550.18032@kosh.hut.fi>  <alpine.DEB.2.00.1002112114190.18032@kosh.hut.fi>  <20100211152822.622dcc70@barsoom.rdu.redhat.com>  <alpine.DEB.2.00.1002121410090.18032@kosh.hut.fi>  <alpine.DEB.2.00.1002121615290.18032@kosh.hut.fi>
+ <20100212143249.GA17928@fieldses.org>  <alpine.DEB.2.00.1002121705390.18032@kosh.hut.fi>  <20100212111343.101fd0ce@tlielax.poochiereds.net>  <1265998794.2832.23.camel@localhost>  <alpine.DEB.2.00.1005061730460.3282@deckard.hut.fi>
+ <1273165061.7699.39.camel@localhost.localdomain>
+Content-Type: TEXT/PLAIN; charset=US-ASCII; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On May. 12, 2010, 7:26 +0300, Benny Halevy <bhalevy@panasas.com> wrote:
-> On May. 12, 2010, 5:40 +0300, " J. Bruce Fields" <bfields@citi.umich.edu> wrote:
->> Something still doesn't look quite right: a sequence operation
->> increments cl_count from 1 to 2; then, say, an exchangeid in another
->> thread expires the client, dropping cl_count from 2 to 1; then the
->> laundromat runs, sees cl_count 1, and decides it can expire the
->> client.  Meanwhile, the original compound is still running.
->>
->> Am I missing something?
-> 
-> Yeah.  exchange_id doesn't touch cl_refcount.  It may call expire_client
-> explicitly which will unhash the client but will not destroy it if cl_refcount > 0
-> the laundromat won't the client either after that since it's not on the lru list
-> any more (and even if it would, it's refcount is still great than zero so it would
-> have been ignored)
+On Thu, 6 May 2010, Trond Myklebust wrote:
 
-Sorry, I misspoken.  exchange_id may decrement cl_refcount via expire_client()
-but still the laundromat won't see it as expire_client will have already removed the
-client from client_lru.
+> On Thu, 2010-05-06 at 18:40 +0300, Timo Aaltonen wrote:
+>> Reviving the old thread, since it's still happening. Maybe I should file a
+>> proper bug about this?
+>
+> Please do. Can you see if you can get a trace of the recovery thread?
+> Also, please check your dmesg log for any 'unhandled error' messages. If
+> there is nothing there, then we may have to get a 'wireshark' trace
+> too...
 
-Benny
+Alright, here we go:
 
+https://bugzilla.kernel.org/show_bug.cgi?id=15973
 
-> 
-> Benny
-> 
->>
->> --b.
->>
->> On Wed, May 12, 2010 at 12:13:54AM +0300, Benny Halevy wrote:
->>> Get a refcount on the client on SEQUENCE,
->>> Release the refcount and renew the client when all respective compounds completed.
->>> Do not expire the client by the laundromat while in use.
->>> If the client was expired via another path, free it when the compounds
->>> complete and the refcount reaches 0.
->>>
->>> Note that unhash_client_locked must call list_del_init on cl_lru as
->>> it may be called twice for the same client (once from nfs4_laundromat
->>> and then from expire_client)
->>>
->>> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
->>> ---
->>>  fs/nfsd/nfs4state.c |   27 ++++++++++++++++++++++++---
->>>  fs/nfsd/nfs4xdr.c   |    3 ++-
->>>  fs/nfsd/state.h     |    1 +
->>>  3 files changed, 27 insertions(+), 4 deletions(-)
->>>
->>> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
->>> index 378ee86..1a8fb39 100644
->>> --- a/fs/nfsd/nfs4state.c
->>> +++ b/fs/nfsd/nfs4state.c
->>> @@ -701,6 +701,22 @@ free_client(struct nfs4_client *clp)
->>>  	kfree(clp);
->>>  }
->>>  
->>> +void
->>> +release_session_client(struct nfsd4_session *session)
->>> +{
->>> +	struct nfs4_client *clp = session->se_client;
->>> +
->>> +	spin_lock(&client_lock);
->>> +	BUG_ON(clp->cl_refcount <= 0);
->>> +	if (--clp->cl_refcount <= 0) {
->>> +		free_client(clp);
->>> +		session->se_client = NULL;
->>> +	} else if (clp->cl_refcount == 1)
->>> +		renew_client_locked(clp);
->>> +	spin_unlock(&client_lock);
->>> +	nfsd4_put_session(session);
->>> +}
->>> +
->>>  /* must be called under the client_lock */
->>>  static inline void
->>>  unhash_client_locked(struct nfs4_client *clp)
->>> @@ -1477,8 +1493,7 @@ out:
->>>  	/* Hold a session reference until done processing the compound. */
->>>  	if (cstate->session) {
->>>  		nfsd4_get_session(cstate->session);
->>> -		/* Renew the clientid on success and on replay */
->>> -		renew_client_locked(session->se_client);
->>> +		session->se_client->cl_refcount++;
->>>  	}
->>>  	spin_unlock(&client_lock);
->>>  	dprintk("%s: return %d\n", __func__, ntohl(status));
->>> @@ -2599,7 +2614,13 @@ nfs4_laundromat(void)
->>>  				clientid_val = t;
->>>  			break;
->>>  		}
->>> -		list_move(&clp->cl_lru, &reaplist);
->>> +		if (clp->cl_refcount > 1) {
->>> +			dprintk("NFSD: client in use (clientid %08x)\n",
->>> +				clp->cl_clientid.cl_id);
->>> +			continue;
->>> +		}
->>> +		unhash_client_locked(clp);
->>> +		list_add(&clp->cl_lru, &reaplist);
->>>  	}
->>>  	spin_unlock(&client_lock);
->>>  	list_for_each_safe(pos, next, &reaplist) {
->>> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
->>> index 5c2de47..126d0ca 100644
->>> --- a/fs/nfsd/nfs4xdr.c
->>> +++ b/fs/nfsd/nfs4xdr.c
->>> @@ -3313,7 +3313,8 @@ nfs4svc_encode_compoundres(struct svc_rqst *rqstp, __be32 *p, struct nfsd4_compo
->>>  			dprintk("%s: SET SLOT STATE TO AVAILABLE\n", __func__);
->>>  			cs->slot->sl_inuse = false;
->>>  		}
->>> -		nfsd4_put_session(cs->session);
->>> +		/* Renew the clientid on success and on replay */
->>> +		release_session_client(cs->session);
->>>  	}
->>>  	return 1;
->>>  }
->>> diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
->>> index 37e1dff..f263174 100644
->>> --- a/fs/nfsd/state.h
->>> +++ b/fs/nfsd/state.h
->>> @@ -419,6 +419,7 @@ extern int nfs4_has_reclaimed_state(const char *name, bool use_exchange_id);
->>>  extern void nfsd4_recdir_purge_old(void);
->>>  extern int nfsd4_create_clid_dir(struct nfs4_client *clp);
->>>  extern void nfsd4_remove_clid_dir(struct nfs4_client *clp);
->>> +extern void release_session_client(struct nfsd4_session *);
->>>  
->>>  static inline void
->>>  nfs4_put_stateowner(struct nfs4_stateowner *so)
->>> -- 
->>> 1.6.5.1
->>>
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-
+-- 
+Timo Aaltonen
+Systems Specialist
+IT Services, Aalto University
