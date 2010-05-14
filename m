@@ -1,78 +1,77 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cantor.suse.de ([195.135.220.2]:52725 "EHLO mx1.suse.de"
+Received: from mx1.redhat.com ([209.132.183.28]:13427 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932105Ab0EZCwj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 25 May 2010 22:52:39 -0400
-Date: Wed, 26 May 2010 12:52:27 +1000
-From: Neil Brown <neilb@suse.de>
-To: Al Viro <viro@ZenIV.linux.org.uk>
-Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
-        Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Subject: Re: [PATCH] VFS: fix recent breakage of FS_REVAL_DOT
-Message-ID: <20100526125227.51b34f4f@notabene.brown>
-In-Reply-To: <20100525015822.GV31073@ZenIV.linux.org.uk>
-References: <20100524165756.2cfa54c4@notabene.brown>
-	<20100524115903.GP31073@ZenIV.linux.org.uk>
-	<20100525111405.04eaf924@notabene.brown>
-	<20100525015822.GV31073@ZenIV.linux.org.uk>
+	id S1757682Ab0ENRig (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 14 May 2010 13:38:36 -0400
+Date: Fri, 14 May 2010 13:38:19 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+Cc: Mi Jinlong <mijinlong@cn.fujitsu.com>,
+        NFSv3 list <linux-nfs@vger.kernel.org>, linux-fsdevel@vger.kernel.org,
+        ebiederm@xmission.com, adobriyan@gmail.com, viro@ZenIV.linux.org.uk,
+        jamie@shareable.org
+Subject: Re: [PATCH] VFS: Unlink should revoke all outstanding leases on
+ file
+Message-ID: <20100514133819.5e383485@tlielax.poochiereds.net>
+In-Reply-To: <1273857471.4732.7.camel@localhost.localdomain>
+References: <4BED195F.3070504@cn.fujitsu.com>
+	<20100514055844.109d2fdc@tlielax.poochiereds.net>
+	<1273857471.4732.7.camel@localhost.localdomain>
 Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Tue, 25 May 2010 02:58:22 +0100
-Al Viro <viro@ZenIV.linux.org.uk> wrote:
+On Fri, 14 May 2010 13:17:51 -0400
+Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
 
-> On Tue, May 25, 2010 at 11:14:05AM +1000, Neil Brown wrote:
+> On Fri, 2010-05-14 at 05:58 -0400, Jeff Layton wrote: 
+> > On Fri, 14 May 2010 17:35:27 +0800
+> > Mi Jinlong <mijinlong@cn.fujitsu.com> wrote:
+> > 
+> > > After client get one file's READ delegation through NFSv4,
+> > > server delete this file but don't reclaim the delegation.
+> > > 
+> > > This patch add break_lease at may_delete, which can reclaim delegations.
+> > > 
+> > > ---
+> > >  fs/namei.c |    2 +-
+> > >  1 files changed, 1 insertions(+), 1 deletions(-)
+> > > 
+> > > diff --git a/fs/namei.c b/fs/namei.c
+> > > index 16df727..17bafc1 100644
+> > > --- a/fs/namei.c
+> > > +++ b/fs/namei.c
+> > > @@ -1338,7 +1338,7 @@ static int may_delete(struct inode *dir,struct dentry *victim,int isdir)
+> > >  		return -ENOENT;
+> > >  	if (victim->d_flags & DCACHE_NFSFS_RENAMED)
+> > >  		return -EBUSY;
+> > > -	return 0;
+> > > +	return break_lease(victim->d_inode, FMODE_WRITE);
+> > >  }
+> > >  
+> > >  /*	Check whether we can create an object with dentry child in directory
+> > 
+> > This doesn't look right to me.
+> > 
+> > The fcntl(2) manpage basically says that leases should be broken if the
+> > file is opened for read or write, or is truncated. unlinks don't seem
+> > to fall into either category...
+> > 
 > 
-> > I must confess though that I don't feel I understand VFS name lookup properly
-> > any more.  Since intents were added it seems to have become much more obscure
-> > and complex.  I cannot help thinking that there must be a better way:
-> > distinguish between the various cases at a higher level so we don't need as
-> > many flags being passed around and interpreted by widely separate pieces of
-> > code.  I don't have a concrete proposal but I would certainly be interested
-> > to work on one if there were any hope of real change.
-> > Thoughts?
+> Breaking the lease in this case is certainly a requirement for NFSv4
+> delegations. I've no idea what the CIFS oplock requirements are...
 > 
-> Intents are vile crap that has been introduced by the nfs folks to start
-> with...  I've been trying to localize the mess and it's got a _lot_ better
-> than it used to be a year ago, but they are still not gone.  And yes, I
-> plan to kill that crap.  Basically, most of the do_last() guts will become
-> a method that would get struct file *explicitly* and ask the fs to do
-> (possibly atomic) open.  With normal filesystems defaulting to what's there
-> right now.
 
-That sounds like the sort of direction I was imagining.  
-I note however that vfat uses intents in a way that would not be addressed by
-a '->do_last' method.  It wants to invalidate negative dentries in
-d_revalidate if they are the target of a rename (or another create), and
-presumably rename wouldn't use ->do_last?  Or maybe it would, but with a NULL
-file ??
+Heh, probably "undefined". Windows generally doesn't allow you to
+delete open files at all. I don't think samba will really care too
+much either way. I suppose it could hurt performance in situations
+where you had a file that was hardlinked and deleted a hardlink that
+was "unrelated" to the dentry being held open...but that's pretty
+clearly a corner case at best.
 
-> 
-> The main obstacle at the moment is in ->d_revalidate() abuses.  NFS, CIFS
-> *and* autofs, the last one in a way that isn't really compatible with what
-> NFS et.al. are trying to do.  Overloading of ->d_revalidate() and ->lookup()
-> to do the work of open() doesn't help, and the horrors nfs4 piles on top
-> of that are even scarier.
-> 
-> _Another_ fine piece of something is ->follow_link() abuses, including
-> referrals' treatment.  Also tied to the previous messes.
-> 
-> We definitely will need to get VFS-to-fs APIs in that area changed; most of
-> the mess has been created by the deeply misguided efforts to keep the API
-> changes minimal.
-> 
-> As for the flags, quite a few will be gone once we split "opening the final
-> component" from the normal cases.  Google for lookup_instantiate_filp+shit
-> for details of these plans...
+At the risk of being lazy and not checking for myself...what in the
+NFSv4 spec mandates this?
 
-I tried cloning
-   git://git.kernel.org/pub/scm/linux/kernel/git/viro/vfs-2.6.git
-and couldn't find anything in the 'untested' branch.  Did I look in the wrong
-place? Is there some work-in-progress I can explore?
-
-Thanks,
-NeilBrown
-
+-- 
+Jeff Layton <jlayton@redhat.com>
