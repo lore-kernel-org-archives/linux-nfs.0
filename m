@@ -1,67 +1,80 @@
-From: Neil Brown <neilb@suse.de>
-Subject: Re: [PATCH] NFSD: don't report compiled-out versions as present
-Date: Sat, 15 May 2010 08:14:05 +1000
-Message-ID: <20100515081405.02b61113@notabene.brown>
-References: <4BED3510.80403@openvz.org>
-	<20100514190340.GC17467@fieldses.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Cc: Pavel Emelyanov <xemul@openvz.org>, linux-nfs@vger.kernel.org
-To: "J. Bruce Fields" <bfields@citi.umich.edu>
+From: "J. Bruce Fields" <bfields@citi.umich.edu>
+Subject: [PATCH 2/2] nfsd4: fix callback program version
+Date: Fri, 14 May 2010 18:45:23 -0400
+Message-ID: <1273877123-23617-2-git-send-email-bfields@citi.umich.edu>
+References: <1273877123-23617-1-git-send-email-bfields@citi.umich.edu>
+Cc: "J. Bruce Fields" <bfields@citi.umich.edu>
+To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from cantor.suse.de ([195.135.220.2]:40805 "EHLO mx1.suse.de"
+Received: from fieldses.org ([174.143.236.118]:34185 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751614Ab0ENWOO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 14 May 2010 18:14:14 -0400
-In-Reply-To: <20100514190340.GC17467@fieldses.org>
+	id S1753697Ab0ENWpX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 14 May 2010 18:45:23 -0400
+In-Reply-To: <1273877123-23617-1-git-send-email-bfields@citi.umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 14 May 2010 15:03:40 -0400
-"J. Bruce Fields" <bfields@citi.umich.edu> wrote:
+The 4.1 rfc actually specifices that the callback program must have
+version 4.
 
-> On Fri, May 14, 2010 at 03:33:36PM +0400, Pavel Emelyanov wrote:
-> > The /proc/fs/nfsd/versions file calls nfsd_vers() to check whether
-> > the particular nfsd version is present/available. The problem is
-> > that once I turn off e.g. NFSD-V4 this call returns -1 which is
-> > true from the callers POV which is wrong.
-> > 
-> > The proposal is to report false in that case.
-> > 
-> > Patch is against git://linux-nfs.org/~bfields/linux:master
-> 
-> Thanks, applying for 2.6.35 and -stable; looks like this exists since
-> 6658d3a7bbfd1768a7b599def47939417f0ee8ef?
+As far as I can tell, this was unspecified in rfc 3530.  But it looks to
+me like the NFSv4 client only ever accepted version 1!
 
-Ouch-yes :-(
-Acked-by: NeilBrown <neilb@suse.de>
+Newer linux clients allow either 1 or 4, for either minor version.
 
-NeilBrown
+So, the safest approach seems to be to use version 1 for 4.0 clients,
+and version 4 for 4.1 clients.
 
-> 
-> --b.
-> 
-> > 
-> > Signed-off-by: Pavel Emelyanov <xemul@openvz.org>
-> > 
-> > ---
-> > 
-> > diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
-> > index 171699e..06b2a26 100644
-> > --- a/fs/nfsd/nfssvc.c
-> > +++ b/fs/nfsd/nfssvc.c
-> > @@ -120,7 +120,7 @@ u32 nfsd_supported_minorversion;
-> >  int nfsd_vers(int vers, enum vers_op change)
-> >  {
-> >  	if (vers < NFSD_MINVERS || vers >= NFSD_NRVERS)
-> > -		return -1;
-> > +		return 0;
-> >  	switch(change) {
-> >  	case NFSD_SET:
-> >  		nfsd_versions[vers] = nfsd_version[vers];
-> > 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
+---
+ fs/nfsd/nfs4callback.c |   21 +++++++++++++++++++--
+ 1 files changed, 19 insertions(+), 2 deletions(-)
+
+diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
+index b91bdee..bf79031 100644
+--- a/fs/nfsd/nfs4callback.c
++++ b/fs/nfsd/nfs4callback.c
+@@ -423,13 +423,29 @@ static struct rpc_procinfo     nfs4_cb_procedures[] = {
+     PROC(CB_RECALL,    COMPOUND,   enc_cb_recall,      dec_cb_recall),
+ };
+ 
+-static struct rpc_version       nfs_cb_version4 = {
++/*
++ * RFC 5661 section 18.36.3 (in the description of csa_cb_program),
++ * requires the callback rpc program version number to be 4.  RFC 3530
++ * leaves this unspecified, however, pre-2.6.33 Linux NFSv4 clients
++ * required the version number to be 1.
++ * Therefore, the safest seems to be use version 1 for 4.0 clients and
++ * version 4 for 4.1 clients.  Therefore, we define both versions:
++ */
++
++static struct rpc_version       nfs_cb_version1 = {
+         .number                 = 1,
+         .nrprocs                = ARRAY_SIZE(nfs4_cb_procedures),
+         .procs                  = nfs4_cb_procedures
+ };
+ 
++static struct rpc_version       nfs_cb_version4 = {
++        .number                 = 4,
++        .nrprocs                = ARRAY_SIZE(nfs4_cb_procedures),
++        .procs                  = nfs4_cb_procedures
++};
++
+ static struct rpc_version *	nfs_cb_version[] = {
++	&nfs_cb_version1,
+ 	&nfs_cb_version4,
+ };
+ 
+@@ -470,7 +486,8 @@ int setup_callback_client(struct nfs4_client *clp, struct nfs4_cb_conn *cb)
+ 		.timeout	= &timeparms,
+ 		.program	= &cb_program,
+ 		.prognumber	= cb->cb_prog,
+-		.version	= 1,
++		/* See the comment before the nfs_cb_version1 definition: */
++		.version	= cb->cb_minorversion ? 1 : 0,
+ 		.authflavor	= clp->cl_flavor,
+ 		.flags		= (RPC_CLNT_CREATE_NOPING | RPC_CLNT_CREATE_QUIET),
+ 		.client_name    = clp->cl_principal,
+-- 
+1.7.0.4
 
