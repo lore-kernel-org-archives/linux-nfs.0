@@ -1,35 +1,86 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: IPv6 support in pNFS
-Date: Fri, 14 May 2010 13:49:35 -0400
-Message-ID: <4BED8D2F.30205@oracle.com>
-References: <4BED89E2.8070903@atlas.cz>
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: Re: [PATCH 08/15] SUNRPC: Ensure rpcauth_prune_expired() respects
+ the nr_to_scan parameter
+Date: Fri, 14 May 2010 14:07:12 -0400
+Message-ID: <1273860432.4732.30.camel@localhost.localdomain>
+References: <1273784901-25599-1-git-send-email-Trond.Myklebust@netapp.com>
+	 <1273784901-25599-2-git-send-email-Trond.Myklebust@netapp.com>
+	 <1273784901-25599-3-git-send-email-Trond.Myklebust@netapp.com>
+	 <1273784901-25599-4-git-send-email-Trond.Myklebust@netapp.com>
+	 <1273784901-25599-5-git-send-email-Trond.Myklebust@netapp.com>
+	 <1273784901-25599-6-git-send-email-Trond.Myklebust@netapp.com>
+	 <1273784901-25599-7-git-send-email-Trond.Myklebust@netapp.com>
+	 <1273784901-25599-8-git-send-email-Trond.Myklebust@netapp.com>
+	 <4BED7BAD.20509@oracle.com> <1273857200.4732.2.camel@localhost.localdomain>
+	 <4BED894A.6090507@oracle.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-2; format=flowed
+Content-Type: text/plain; charset="UTF-8"
 Cc: linux-nfs@vger.kernel.org
-To: Jiri Kortus <sumix-a4qEbw8STSk@public.gmane.org>
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:60029 "EHLO
-	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758605Ab0ENRuj (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 14 May 2010 13:50:39 -0400
-In-Reply-To: <4BED89E2.8070903-a4qEbw8STSk@public.gmane.org>
+Received: from mx2.netapp.com ([216.240.18.37]:27469 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753442Ab0ENSHO convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 14 May 2010 14:07:14 -0400
+In-Reply-To: <4BED894A.6090507@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 05/14/10 01:35 PM, Jiri Kortus wrote:
-> Hi,
->
-> I'm sorry to flood the mailing list by repeating my question several
-> times - I've already asked whether someone would be so kind as to tell
-> me something about the situation of IPv6 support in pNFS. Just anything
-> related to it would be appreciated very much since nobody gave me an
-> answer (except Boaz Harrosh who wrote me about the IPv6 absence in OSD
-> target). I'd like to know whether there's any support for IPv6
-> (concerning all of the layouts available), if yes what are the issues
-> with that, if not when the implementation is planned to start etc. I did
-> google that a lot before asking but haven't found anything. Thanks very
-> much in advance.
+On Fri, 2010-05-14 at 13:32 -0400, Chuck Lever wrote: 
+> On 05/14/10 01:13 PM, Trond Myklebust wrote:
+> > On Fri, 2010-05-14 at 12:34 -0400, Chuck Lever wrote:
+> >> On 05/13/10 05:08 PM, Trond Myklebust wrote:
+> >>> Signed-off-by: Trond Myklebust<Trond.Myklebust@netapp.com>
+> >>> ---
+> >>>    net/sunrpc/auth.c |    5 ++---
+> >>>    1 files changed, 2 insertions(+), 3 deletions(-)
+> >>>
+> >>> diff --git a/net/sunrpc/auth.c b/net/sunrpc/auth.c
+> >>> index 2213dc5..5fb02ac 100644
+> >>> --- a/net/sunrpc/auth.c
+> >>> +++ b/net/sunrpc/auth.c
+> >>> @@ -236,6 +236,8 @@ rpcauth_prune_expired(struct list_head *free, int nr_to_scan)
+> >>>
+> >>>    	list_for_each_entry_safe(cred, next,&cred_unused, cr_lru) {
+> >>>
+> >>> +		if (nr_to_scan-- == 0)
+> >>> +			break;
+> >>>    		/*
+> >>>    		 * Enforce a 60 second garbage collection moratorium
+> >>>    		 * Note that the cred_unused list must be time-ordered.
+> >>> @@ -255,11 +257,8 @@ rpcauth_prune_expired(struct list_head *free, int nr_to_scan)
+> >>>    			get_rpccred(cred);
+> >>>    			list_add_tail(&cred->cr_lru, free);
+> >>>    			rpcauth_unhash_cred_locked(cred);
+> >>> -			nr_to_scan--;
+> >>>    		}
+> >>>    		spin_unlock(cache_lock);
+> >>> -		if (nr_to_scan == 0)
+> >>> -			break;
+> >>>    	}
+> >>>    	return (number_cred_unused / 100) * sysctl_vfs_cache_pressure;
+> >>>    }
+> >>
+> >> It looks to me like the mm calls our cache shrinker with nr_to_scan set
+> >> to zero when it just wants this return value, and nothing more.  But the
+> >> logic here seems to assume that nr_to_scan == 0 means shrink as much as
+> >> you can.  Am I reading this correctly?
+> >
+> > Look more carefully: the comparison contains a post-decrement operation,
+> > so if the nr_to_scan == 0, then we immediately exit the loop (after
+> > decrementing nr_to_scan, but who cares about that)...
+> 
+> When mm calls with nr_to_scan set to zero, it doesn't expect a -1 
+> return, it just uses the returned value.  mm checks for a -1 return only 
+> when a non-zero scan count argument is passed.
+> 
+> So the check you added here (and in the access cache shrinker) to return 
+> -1 when the gfp_mask doesn't contain GFP_KERNEL could cause some 
+> trouble.  It would be safer if we return -1 _after_ checking for 
+> nr_to_scan == 0.
 
-I implemented IPv6 support in the rest of Linux NFS, but since the Linux 
-pNFS implementation  is still under development, I haven't looked at 
-supporting IPv6 in pNFS.
+Oh... You're referring to the change that was added in Patch 6/15
+SUNRPC: Dont run rpcauth_cache_shrinker() when gfp_mask is GFP_NOFS? I
+got confused...
+
+I can perhaps rather add a check for nr_to_scan != 0 in that patch...
