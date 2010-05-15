@@ -1,46 +1,55 @@
-From: "J. Bruce Fields" <bfields@citi.umich.edu>
-Subject: [PATCH 1/2] nfs4: minor callback code simplification
-Date: Fri, 14 May 2010 18:45:22 -0400
-Message-ID: <1273877123-23617-1-git-send-email-bfields@citi.umich.edu>
-Cc: "J. Bruce Fields" <bfields@citi.umich.edu>
+From: Pierre Ossman <pierre-list-vCPtPcF4ZGuHXe+LvDLADg@public.gmane.org>
+Subject: Different options for subdir? Possible?
+Date: Sat, 15 May 2010 15:31:04 +0200
+Message-ID: <20100515153104.51f5e4ab@mjolnir.ossman.eu>
+Mime-Version: 1.0
+Content-Type: multipart/signed; micalg=PGP-SHA1; protocol="application/pgp-signature"; boundary="=_freyr.ossman.eu-3653-1273930266-0001-2"
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:34183 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753331Ab0ENWpX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 14 May 2010 18:45:23 -0400
+Received: from 82-117-125-11.tcdsl.calypso.net ([82.117.125.11]:36460 "EHLO
+	smtp.ossman.eu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752682Ab0EONgL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 15 May 2010 09:36:11 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Note the position in the version array doesn't have to match the actual
-rpc version number.
+This is a MIME-formatted message.  If you see this text it means that your
+E-mail software does not support MIME-formatted messages.
 
-Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
----
- fs/nfsd/nfs4callback.c |    3 +--
- 1 files changed, 1 insertions(+), 2 deletions(-)
+--=_freyr.ossman.eu-3653-1273930266-0001-2
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: quoted-printable
 
-diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
-index 77bc9d3..b91bdee 100644
---- a/fs/nfsd/nfs4callback.c
-+++ b/fs/nfsd/nfs4callback.c
-@@ -430,7 +430,6 @@ static struct rpc_version       nfs_cb_version4 = {
- };
- 
- static struct rpc_version *	nfs_cb_version[] = {
--	NULL,
- 	&nfs_cb_version4,
- };
- 
-@@ -471,7 +470,7 @@ int setup_callback_client(struct nfs4_client *clp, struct nfs4_cb_conn *cb)
- 		.timeout	= &timeparms,
- 		.program	= &cb_program,
- 		.prognumber	= cb->cb_prog,
--		.version	= nfs_cb_version[1]->number,
-+		.version	= 1,
- 		.authflavor	= clp->cl_flavor,
- 		.flags		= (RPC_CLNT_CREATE_NOPING | RPC_CLNT_CREATE_QUIET),
- 		.client_name    = clp->cl_principal,
--- 
-1.7.0.4
+I'd like to export the filesystem /exports as ro, but the
+subdir /exports/dump as rw. I can't seem to get it to work though, so
+before I start digging deeper I figured I might ask if this is even
+possible? :)
 
+I tried this in /etc/exports:
+
+/exports/dump	1.2.3.4(rw)
+/exports	1.2.3.4(ro)
+
+Rgds
+--=20
+     -- Pierre Ossman
+
+  WARNING: This correspondence is being monitored by FRA, a
+  Swedish intelligence agency. Make sure your server uses
+  encryption for SMTP traffic and consider using PGP for
+  end-to-end encryption.
+
+--=_freyr.ossman.eu-3653-1273930266-0001-2
+Content-Type: application/pgp-signature; name="signature.asc"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment; filename=signature.asc
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.13 (GNU/Linux)
+
+iEYEARECAAYFAkvuohoACgkQ7b8eESbyJLg/HQCeI65ADcwfc9tkFMGpWNVuMewG
+2gYAnRQhrgMw0SI0SYPGHDQPQO85gIsT
+=8m4p
+-----END PGP SIGNATURE-----
+
+--=_freyr.ossman.eu-3653-1273930266-0001-2--
