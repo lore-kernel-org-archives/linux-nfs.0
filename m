@@ -1,7 +1,7 @@
 From: Fred Isaman <iisaman@netapp.com>
-Subject: [PATCH 12/22] pnfs_submit: read path changeover
-Date: Sat, 15 May 2010 21:23:03 -0400
-Message-ID: <1273972993-15369-13-git-send-email-iisaman@netapp.com>
+Subject: [PATCH 15/22] pnfs_submit: remove pnfs_file_operations
+Date: Sat, 15 May 2010 21:23:06 -0400
+Message-ID: <1273972993-15369-16-git-send-email-iisaman@netapp.com>
 References: <1273972993-15369-1-git-send-email-iisaman@netapp.com>
  <1273972993-15369-2-git-send-email-iisaman@netapp.com>
  <1273972993-15369-3-git-send-email-iisaman@netapp.com>
@@ -14,153 +14,156 @@ References: <1273972993-15369-1-git-send-email-iisaman@netapp.com>
  <1273972993-15369-10-git-send-email-iisaman@netapp.com>
  <1273972993-15369-11-git-send-email-iisaman@netapp.com>
  <1273972993-15369-12-git-send-email-iisaman@netapp.com>
+ <1273972993-15369-13-git-send-email-iisaman@netapp.com>
+ <1273972993-15369-14-git-send-email-iisaman@netapp.com>
+ <1273972993-15369-15-git-send-email-iisaman@netapp.com>
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
 Received: from mx2.netapp.com ([216.240.18.37]:47588 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754780Ab0ETKak (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 20 May 2010 06:30:40 -0400
+	id S1754829Ab0ETKan (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 20 May 2010 06:30:43 -0400
 Received: from localhost.localdomain (vpn2ntap-176975.hq.netapp.com [10.58.56.200])
-	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id o4KAUQc2022655
-	for <linux-nfs@vger.kernel.org>; Thu, 20 May 2010 03:30:39 -0700 (PDT)
-In-Reply-To: <1273972993-15369-12-git-send-email-iisaman@netapp.com>
+	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id o4KAUQc5022655
+	for <linux-nfs@vger.kernel.org>; Thu, 20 May 2010 03:30:42 -0700 (PDT)
+In-Reply-To: <1273972993-15369-15-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Change readpages path to only call LAYOUTGET once.
+pnfs_writepages is useful, but not necessary, for determining size
+parameters for LAYUTGET.
+
+Also, the pnfs_file_operations were getting out of sync with
+nfs_file_operations (see commits e1ebfd33be068 and bf40d3435caf49369).
 
 Signed-off-by: Fred Isaman <iisaman@netapp.com>
 ---
- fs/nfs/pagelist.c |    2 ++
- fs/nfs/pnfs.c     |   37 +++++++------------------------------
- fs/nfs/pnfs.h     |   25 ++++++++++++++++---------
- 3 files changed, 25 insertions(+), 39 deletions(-)
+ fs/nfs/file.c          |   24 ------------------------
+ fs/nfs/nfs4proc.c      |    1 -
+ fs/nfs/pnfs.c          |   35 -----------------------------------
+ fs/nfs/pnfs.h          |    1 -
+ include/linux/nfs_fs.h |    3 ---
+ 5 files changed, 0 insertions(+), 64 deletions(-)
 
-diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
-index 92fedbb..19ffdc5 100644
---- a/fs/nfs/pagelist.c
-+++ b/fs/nfs/pagelist.c
-@@ -259,6 +259,8 @@ static int nfs_can_coalesce_requests(struct nfs_page *prev,
- 		return 0;
- 	if (prev->wb_pgbase + prev->wb_bytes != PAGE_CACHE_SIZE)
- 		return 0;
-+	if (req->wb_lseg != prev->wb_lseg)
-+		return 0;
- #ifdef CONFIG_NFS_V4_1
- 	if (pgio->pg_test && !pgio->pg_test(pgio, prev, req))
- 		return 0;
+diff --git a/fs/nfs/file.c b/fs/nfs/file.c
+index 1479289..80e7dc2 100644
+--- a/fs/nfs/file.c
++++ b/fs/nfs/file.c
+@@ -82,30 +82,6 @@ const struct file_operations nfs_file_operations = {
+ 	.setlease	= nfs_setlease,
+ };
+ 
+-#ifdef CONFIG_NFS_V4_1
+-const struct file_operations pnfs_file_operations = {
+-	.llseek		= nfs_file_llseek,
+-	.read		= do_sync_read,
+-	.write		= pnfs_file_write,
+-	.aio_read	= nfs_file_read,
+-	.aio_write	= nfs_file_write,
+-#ifdef CONFIG_MMU
+-	.mmap		= nfs_file_mmap,
+-#else
+-	.mmap		= generic_file_mmap,
+-#endif
+-	.open		= nfs_file_open,
+-	.flush		= nfs_file_flush,
+-	.release	= nfs_file_release,
+-	.fsync		= nfs_file_fsync,
+-	.lock		= nfs_lock,
+-	.flock		= nfs_flock,
+-	.splice_read	= nfs_file_splice_read,
+-	.check_flags	= nfs_check_flags,
+-	.setlease	= nfs_setlease,
+-};
+-#endif /* CONFIG_NFS_V4_1 */
+-
+ const struct inode_operations nfs_file_inode_operations = {
+ 	.permission	= nfs_permission,
+ 	.getattr	= nfs_getattr,
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 8b375a7..9786391 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -5935,7 +5935,6 @@ pnfs_v4_clientops_init(void)
+ 	struct nfs_rpc_ops *p = (struct nfs_rpc_ops *)&pnfs_v4_clientops;
+ 
+ 	memcpy(p, &nfs_v4_clientops, sizeof(*p));
+-	p->file_ops		= &pnfs_file_operations;
+ 	p->setattr		= pnfs4_proc_setattr;
+ 	p->read_done		= pnfs4_read_done;
+ 	p->write_setup		= pnfs4_proc_write_setup;
 diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index ddc4578..07a8c33 100644
+index 07a8c33..a542601 100644
 --- a/fs/nfs/pnfs.c
 +++ b/fs/nfs/pnfs.c
-@@ -1690,7 +1690,7 @@ pnfs_readpages(struct nfs_read_data *rdata)
- {
- 	struct nfs_readargs *args = &rdata->args;
- 	struct inode *inode = rdata->inode;
--	int numpages, status, pgcount, temp;
-+	int numpages, pgcount, temp;
- 	struct nfs_server *nfss = NFS_SERVER(inode);
- 	struct nfs_inode *nfsi = NFS_I(inode);
- 	struct pnfs_layout_segment *lseg;
-@@ -1702,19 +1702,8 @@ pnfs_readpages(struct nfs_read_data *rdata)
- 		args->count,
- 		args->offset);
+@@ -1539,41 +1539,6 @@ pnfs_writeback_done(struct nfs_write_data *data)
+ }
  
+ /*
+- * Obtain a layout for the the write range, and call do_sync_write.
+- *
+- * Unlike the read path which can wait until page coalescing
+- * (pnfs_pageio_init_read) to get a layout, the write path discards the
+- * request range to form the address_mapping - so we get a layout in
+- * the file operations write method.
+- *
+- * If pnfs_update_layout fails, pages will be coalesced for MDS I/O.
+- */
+-ssize_t
+-pnfs_file_write(struct file *filp, const char __user *buf, size_t count,
+-		loff_t *pos)
+-{
+-	struct inode *inode = filp->f_dentry->d_inode;
+-	struct nfs_open_context *context = filp->private_data;
+-	int status;
+-
+-	if (!pnfs_enabled_sb(NFS_SERVER(inode)))
+-		goto out;
+-
 -	/* Retrieve and set layout if not allready cached */
 -	status = _pnfs_update_layout(inode,
--				    args->context,
--				    args->count,
--				    args->offset,
--				    IOMODE_READ,
--				    &lseg);
--	if (status) {
--		dprintk("%s: Updating layout failed (%d), retry with NFS \n",
--			__func__, status);
--		trypnfs = PNFS_NOT_ATTEMPTED;
--		goto out;
--	}
-+	lseg = rdata->req->wb_lseg;
-+	get_lseg(lseg);
- 
- 	/* Determine number of pages. */
- 	pgcount = args->pgbase + args->count;
-@@ -1741,7 +1730,6 @@ pnfs_readpages(struct nfs_read_data *rdata)
- 		rdata->pdata.lseg = NULL;
- 		put_lseg(lseg);
- 	}
-- out:
- 	dprintk("%s End (trypnfs:%d)\n", __func__, trypnfs);
- 	return trypnfs;
- }
-@@ -1750,21 +1738,10 @@ enum pnfs_try_status
- _pnfs_try_to_read_data(struct nfs_read_data *data,
- 		       const struct rpc_call_ops *call_ops)
- {
--	struct inode *ino = data->inode;
--	struct nfs_server *nfss = NFS_SERVER(ino);
+-				    context,
+-				    count,
+-				    *pos,
+-				    IOMODE_RW,
+-				    NULL);
+-	if (status)
+-		dprintk("%s: Unable to get a layout for %Zu@%llu iomode %d)\n",
+-			__func__, count, *pos, IOMODE_RW);
+-out:
+-	return do_sync_write(filp, buf, count, pos);
+-}
 -
--	dprintk("--> %s\n", __func__);
--	/* Only create an rpc request if utilizing NFSv4 I/O */
--	if (!pnfs_enabled_sb(nfss) ||
--	    !nfss->pnfs_curr_ld->ld_io_ops->read_pagelist) {
--		dprintk("<-- %s: not using pnfs\n", __func__);
--		return PNFS_NOT_ATTEMPTED;
--	} else {
--		dprintk("%s: Utilizing pNFS I/O\n", __func__);
--		data->pdata.call_ops = call_ops;
--		data->pdata.pnfs_error = 0;
--		return pnfs_readpages(data);
--	}
-+	dprintk("%s: Utilizing pNFS I/O\n", __func__);
-+	data->pdata.call_ops = call_ops;
-+	data->pdata.pnfs_error = 0;
-+	return pnfs_readpages(data);
- }
- 
- enum pnfs_try_status
+-/*
+  * Call the appropriate parallel I/O subsystem write function.
+  * If no I/O device driver exists, or one does match the returned
+  * fstype, then return a positive status for regular NFS processing.
 diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index 242abf5..5201973 100644
+index 5201973..bec3c49 100644
 --- a/fs/nfs/pnfs.h
 +++ b/fs/nfs/pnfs.h
-@@ -93,22 +93,29 @@ static inline int pnfs_enabled_sb(struct nfs_server *nfss)
- 	return nfss->pnfs_curr_ld != NULL;
- }
+@@ -59,7 +59,6 @@ void pnfs_pageio_init_read(struct nfs_pageio_descriptor *, struct inode *,
+ 			   struct nfs_open_context *, struct list_head *);
+ void pnfs_pageio_init_write(struct nfs_pageio_descriptor *, struct inode *);
+ void pnfs_update_layout_commit(struct inode *, struct list_head *, pgoff_t, unsigned int);
+-ssize_t pnfs_file_write(struct file *, const char __user *, size_t, loff_t *);
+ void pnfs_get_layout_done(struct nfs4_pnfs_layoutget *, int rpc_status);
+ int pnfs_layout_process(struct nfs4_pnfs_layoutget *lgp);
+ void pnfs_layout_release(struct pnfs_layout_type *, atomic_t *,
+diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
+index 9d41821..16acf96 100644
+--- a/include/linux/nfs_fs.h
++++ b/include/linux/nfs_fs.h
+@@ -402,9 +402,6 @@ extern const struct inode_operations nfs3_file_inode_operations;
+ #endif /* CONFIG_NFS_V3 */
+ extern const struct file_operations nfs_file_operations;
+ extern const struct address_space_operations nfs_file_aops;
+-#ifdef CONFIG_NFS_V4_1
+-extern const struct file_operations pnfs_file_operations;
+-#endif /* CONFIG_NFS_V4_1 */
  
-+static inline void _pnfs_clear_lseg_from_pages(struct list_head *head)
-+{
-+	struct nfs_page *req;
-+
-+	list_for_each_entry(req, head, wb_list) {
-+		put_lseg(req->wb_lseg);
-+		req->wb_lseg = NULL;
-+	}
-+}
-+
- static inline enum pnfs_try_status
- pnfs_try_to_read_data(struct nfs_read_data *data,
- 		      const struct rpc_call_ops *call_ops)
+ static inline struct nfs_open_context *nfs_file_open_context(struct file *filp)
  {
--	struct inode *inode = data->inode;
--	struct nfs_server *nfss = NFS_SERVER(inode);
- 	enum pnfs_try_status ret;
- 
--	/* FIXME: read_pagelist should probably be mandated */
--	if (PNFS_EXISTS_LDIO_OP(nfss, read_pagelist))
--		ret = _pnfs_try_to_read_data(data, call_ops);
--	else
--		ret = PNFS_NOT_ATTEMPTED;
--
-+	if (!data->req->wb_lseg)
-+		return PNFS_NOT_ATTEMPTED;
-+	ret = _pnfs_try_to_read_data(data, call_ops);
- 	if (ret == PNFS_ATTEMPTED)
--		nfs_inc_stats(inode, NFSIOS_PNFS_READ);
-+		nfs_inc_stats(data->inode, NFSIOS_PNFS_READ);
-+	else
-+		_pnfs_clear_lseg_from_pages(&data->pages);
- 	return ret;
- }
- 
 -- 
 1.6.6.1
 
