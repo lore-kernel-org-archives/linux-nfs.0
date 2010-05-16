@@ -1,127 +1,89 @@
-From: Tao Guo <guotao-U4AKAne5IzAR5TUyvShJeg@public.gmane.org>
-Subject: [RFC][PATCH] pnfs: unlock lo_lock spinlock before calling specific
- layoutdriver's setup_layoutcommit() operation.
-Date: Thu, 20 May 2010 18:25:19 +0800
-Message-ID: <20100520102507.GA31886@vmware>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+From: Fred Isaman <iisaman@netapp.com>
+Subject: [PATCH 03/22] Revert "pnfs: Enable O_DIRECT read path."
+Date: Sat, 15 May 2010 21:22:54 -0400
+Message-ID: <1273972993-15369-4-git-send-email-iisaman@netapp.com>
+References: <1273972993-15369-1-git-send-email-iisaman@netapp.com>
+ <1273972993-15369-2-git-send-email-iisaman@netapp.com>
+ <1273972993-15369-3-git-send-email-iisaman@netapp.com>
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from [221.122.61.232] ([221.122.61.232]:33113 "EHLO mx.bwstor.com.cn"
-	rhost-flags-FAIL-FAIL-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1751614Ab0ETKZe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 20 May 2010 06:25:34 -0400
-Received: from vmware ([221.122.61.226])
-	(authenticated bits=0)
-	by mx.bwstor.com.cn (8.13.8/8.13.8) with ESMTP id o4KAPP91006829
-	for <linux-nfs@vger.kernel.org>; Thu, 20 May 2010 18:25:31 +0800
+Received: from mx2.netapp.com ([216.240.18.37]:47588 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754668Ab0ETKaa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 20 May 2010 06:30:30 -0400
+Received: from localhost.localdomain (vpn2ntap-176975.hq.netapp.com [10.58.56.200])
+	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id o4KAUQbr022655
+	for <linux-nfs@vger.kernel.org>; Thu, 20 May 2010 03:30:29 -0700 (PDT)
+In-Reply-To: <1273972993-15369-3-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-So in blocklayoutdriver, we can use GFP_KERNEL to do memory
-allocation in bl_setup_layoutcommit().
+This reverts commit fe1dbd120b6a94bbacec205d0a4ae40d36e314b5.
 
-Signed-off-by: Tao Guo <guotao-U4AKAne5IzAR5TUyvShJeg@public.gmane.org>
+Signed-off-by: Fred Isaman <iisaman@netapp.com>
 ---
- fs/nfs/pnfs.c |   42 +++++++++++++++++++++---------------------
- 1 files changed, 21 insertions(+), 21 deletions(-)
+ fs/nfs/direct.c |   26 +-------------------------
+ 1 files changed, 1 insertions(+), 25 deletions(-)
 
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index aedda1e..8474731 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -2073,15 +2073,23 @@ pnfs_layoutcommit_done(struct pnfs_layoutcommit_data *data)
-  * Set up the argument/result storage required for the RPC call.
-  */
- static int
--pnfs_layoutcommit_setup(struct pnfs_layoutcommit_data *data, int sync)
-+pnfs_layoutcommit_setup(struct inode *inode,
-+			struct pnfs_layoutcommit_data *data, int sync)
- {
--	struct nfs_inode *nfsi = NFS_I(data->args.inode);
--	struct nfs_server *nfss = NFS_SERVER(data->args.inode);
-+	struct nfs_inode *nfsi = NFS_I(inode);
-+	struct nfs_server *nfss = NFS_SERVER(inode);
- 	int result = 0;
+diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
+index 1148214..3ef9b0c 100644
+--- a/fs/nfs/direct.c
++++ b/fs/nfs/direct.c
+@@ -56,7 +56,6 @@
  
- 	dprintk("%s Begin (sync:%d)\n", __func__, sync);
-+	data->is_sync = sync;
-+	data->cred  = nfsi->layoutcommit_ctx->cred;
-+	data->ctx = nfsi->layoutcommit_ctx;
-+	data->args.inode = inode;
- 	data->args.fh = NFS_FH(data->args.inode);
- 	data->args.layout_type = nfss->pnfs_curr_ld->id;
-+	pnfs_get_layout_stateid(&data->args.stateid, &nfsi->layout);
-+	data->res.fattr = &data->fattr;
-+	nfs_fattr_init(&data->fattr);
+ #include "internal.h"
+ #include "iostat.h"
+-#include "pnfs.h"
  
- 	/* TODO: Need to determine the correct values */
- 	data->args.time_modify_changed = 0;
-@@ -2095,6 +2103,7 @@ pnfs_layoutcommit_setup(struct pnfs_layoutcommit_data *data, int sync)
- 					i_size_read(&nfsi->vfs_inode) - 1);
- 	data->args.bitmask = nfss->attr_bitmask;
- 	data->res.server = nfss;
-+	spin_unlock(&nfsi->lo_lock);
+ #define NFSDBG_FACILITY		NFSDBG_VFS
  
- 	/* Call layout driver to set the arguments.
- 	 */
-@@ -2104,10 +2113,6 @@ pnfs_layoutcommit_setup(struct pnfs_layoutcommit_data *data, int sync)
- 		if (result)
- 			goto out;
- 	}
--	pnfs_get_layout_stateid(&data->args.stateid, &nfsi->layout);
--	data->res.fattr = &data->fattr;
--	nfs_fattr_init(&data->fattr);
+@@ -329,17 +328,6 @@ static ssize_t nfs_direct_read_schedule_segment(struct nfs_direct_req *dreq,
+ 	unsigned int pgbase;
+ 	int result;
+ 	ssize_t started = 0;
+-	size_t pnfs_stripe_rem = count;
+-	enum pnfs_try_status trypnfs;
 -
- out:
- 	dprintk("%s End Status %d\n", __func__, result);
- 	return result;
-@@ -2131,36 +2136,31 @@ pnfs_layoutcommit_inode(struct inode *inode, int sync)
- 		return -ENOMEM;
- 
- 	spin_lock(&nfsi->lo_lock);
--	if (!nfsi->layoutcommit_ctx)
--		goto out_unlock;
+-	/* pnfs_stripe_rem will be set to the remaining bytes in
+-	 * the first stripe_unit (which for standard nfs is count)
+-	 */
+-	pnfs_direct_init_io(inode, ctx, count, pos, 0, &rsize,
+-			    &pnfs_stripe_rem);
 -
--	data->args.inode = inode;
--	data->cred  = nfsi->layoutcommit_ctx->cred;
--	data->ctx = nfsi->layoutcommit_ctx;
-+	if (!nfsi->layoutcommit_ctx) {
-+		spin_unlock(&nfsi->lo_lock);
-+		goto out_free;
-+	}
+-	dprintk("%s: pos %llu count %Zu wsize %Zu\n",
+-		__func__, pos, count, rsize);
  
--	/* Set up layout commit args*/
--	status = pnfs_layoutcommit_setup(data, sync);
-+	/* Set up layout commit args */
-+	status = pnfs_layoutcommit_setup(inode, data, sync);
- 	if (status)
--		goto out_unlock;
-+		goto out_free;
+ 	do {
+ 		struct nfs_read_data *data;
+@@ -347,12 +335,6 @@ static ssize_t nfs_direct_read_schedule_segment(struct nfs_direct_req *dreq,
  
- 	/* Clear layoutcommit properties in the inode so
- 	 * new lc info can be generated
- 	 */
-+	spin_lock(&nfsi->lo_lock);
- 	nfsi->pnfs_write_begin_pos = 0;
- 	nfsi->pnfs_write_end_pos = 0;
- 	nfsi->layoutcommit_ctx = NULL;
--
--	/* release lock on pnfs layoutcommit attrs */
- 	spin_unlock(&nfsi->lo_lock);
+ 		pgbase = user_addr & ~PAGE_MASK;
+ 		bytes = min(rsize,count);
+-#if defined(CONFIG_NFS_V4_1)
+-		if (pnfs_enabled_sb(NFS_SERVER(inode))) {
+-			bytes = min(bytes, pnfs_stripe_rem);
+-			pnfs_stripe_rem = rsize;
+-		}
+-#endif /* CONFIG_NFS_V4_1 */
  
--	data->is_sync = sync;
- 	status = pnfs4_proc_layoutcommit(data);
- out:
- 	dprintk("%s end (err:%d)\n", __func__, status);
- 	return status;
--out_unlock:
-+out_free:
- 	pnfs_layoutcommit_free(data);
--	spin_unlock(&nfsi->lo_lock);
- 	goto out;
- }
+ 		result = -ENOMEM;
+ 		data = nfs_readdata_alloc(nfs_page_array_len(pgbase, bytes));
+@@ -393,14 +375,8 @@ static ssize_t nfs_direct_read_schedule_segment(struct nfs_direct_req *dreq,
+ 		data->res.eof = 0;
+ 		data->res.count = bytes;
  
+-		trypnfs = pnfs_try_to_read_data(data, &nfs_read_direct_ops);
+-		if (trypnfs == PNFS_ATTEMPTED) {
+-			result = pnfs_get_read_status(data);
+-			if (result)
+-				break;
+-		} else if (nfs_direct_read_execute(data, &task_setup_data, &msg)) {
++		if (nfs_direct_read_execute(data, &task_setup_data, &msg))
+ 			break;
+-		}
+ 
+ 		started += bytes;
+ 		user_addr += bytes;
 -- 
-1.6.3.3
+1.6.6.1
 
