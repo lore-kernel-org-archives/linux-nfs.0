@@ -1,131 +1,129 @@
 From: Fred Isaman <iisaman@netapp.com>
-Subject: [PATCH 02/22] Revert "pnfs: Enable O_DIRECT write path."
-Date: Sat, 15 May 2010 21:22:53 -0400
-Message-ID: <1273972993-15369-3-git-send-email-iisaman@netapp.com>
+Subject: [PATCH 04/22] Revert "pnfs: Add function to set up O_DIRECT I/O"
+Date: Sat, 15 May 2010 21:22:55 -0400
+Message-ID: <1273972993-15369-5-git-send-email-iisaman@netapp.com>
 References: <1273972993-15369-1-git-send-email-iisaman@netapp.com>
  <1273972993-15369-2-git-send-email-iisaman@netapp.com>
+ <1273972993-15369-3-git-send-email-iisaman@netapp.com>
+ <1273972993-15369-4-git-send-email-iisaman@netapp.com>
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
 Received: from mx2.netapp.com ([216.240.18.37]:47588 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754527Ab0ETKa3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 20 May 2010 06:30:29 -0400
+	id S1754668Ab0ETKaa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 20 May 2010 06:30:30 -0400
 Received: from localhost.localdomain (vpn2ntap-176975.hq.netapp.com [10.58.56.200])
-	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id o4KAUQbq022655
-	for <linux-nfs@vger.kernel.org>; Thu, 20 May 2010 03:30:28 -0700 (PDT)
-In-Reply-To: <1273972993-15369-2-git-send-email-iisaman@netapp.com>
+	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id o4KAUQbs022655
+	for <linux-nfs@vger.kernel.org>; Thu, 20 May 2010 03:30:30 -0700 (PDT)
+In-Reply-To: <1273972993-15369-4-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This reverts commit 2faf680af973895bdfe19f2254b59dc1a153dd82.
+This reverts commit 4bc73cd4118b5d5b710c28c83a750bf4e02e8269.
+
+Conflicts:
+
+	fs/nfs/pnfs.c
+	fs/nfs/pnfs.h
 
 Signed-off-by: Fred Isaman <iisaman@netapp.com>
 ---
- fs/nfs/direct.c |   41 +----------------------------------------
- 1 files changed, 1 insertions(+), 40 deletions(-)
+ fs/nfs/pnfs.c |   31 -------------------------------
+ fs/nfs/pnfs.h |   25 -------------------------
+ 2 files changed, 0 insertions(+), 56 deletions(-)
 
-diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
-index 02e5918..1148214 100644
---- a/fs/nfs/direct.c
-+++ b/fs/nfs/direct.c
-@@ -505,7 +505,6 @@ static void nfs_direct_write_reschedule(struct nfs_direct_req *dreq)
- 		.workqueue = nfsiod_workqueue,
- 		.flags = RPC_TASK_ASYNC,
- 	};
--	enum pnfs_try_status trypnfs;
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 20285bc..8dbf740 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -1399,37 +1399,6 @@ pnfs_pageio_init_write(struct nfs_pageio_descriptor *pgio, struct inode *inode)
+ 	pnfs_set_pg_test(inode, pgio);
+ }
  
- 	dreq->count = 0;
- 	get_dreq(dreq);
-@@ -529,11 +528,6 @@ static void nfs_direct_write_reschedule(struct nfs_direct_req *dreq)
- 		 * Reuse data->task; data->args should not have changed
- 		 * since the original request was sent.
- 		 */
--		trypnfs = pnfs_try_to_write_data(data, &nfs_write_direct_ops,
--						 NFS_FILE_SYNC);
--		if (trypnfs == PNFS_ATTEMPTED)
--			continue;
+-/* Retrieve I/O parameters for O_DIRECT.
+- * Out Args:
+- * iosize    - min of boundary and (rsize or wsize)
+- * remaining - # bytes remaining in the current stripe unit
+- */
+-void
+-_pnfs_direct_init_io(struct inode *inode, struct nfs_open_context *ctx,
+-		     size_t count, loff_t loff, int iswrite, size_t *iosize,
+-		     size_t *remaining)
+-{
+-	struct nfs_server *nfss = NFS_SERVER(inode);
+-	u32 boundary;
+-	unsigned int rwsize;
 -
- 		nfs_direct_write_execute(data, &task_setup_data, &msg);
- 	}
- 
-@@ -616,7 +610,6 @@ static void nfs_direct_commit_schedule(struct nfs_direct_req *dreq)
- 		.workqueue = nfsiod_workqueue,
- 		.flags = RPC_TASK_ASYNC,
- 	};
--	enum pnfs_try_status trypnfs;
- 
- 	data->inode = dreq->inode;
- 	data->cred = msg.rpc_cred;
-@@ -630,11 +623,6 @@ static void nfs_direct_commit_schedule(struct nfs_direct_req *dreq)
- 	data->res.verf = &data->verf;
- 	nfs_fattr_init(&data->fattr);
- 
--	trypnfs = pnfs_try_to_commit(data, &nfs_commit_direct_ops,
--				     RPC_TASK_ASYNC);
--	if (trypnfs == PNFS_ATTEMPTED)
+-	if (count <= 0 ||
+-	    pnfs_update_layout(inode, ctx, count, loff, IOMODE_READ, NULL))
 -		return;
 -
- 	nfs_direct_commit_execute(dreq, data, &task_setup_data, &msg);
+-	if (iswrite)
+-		rwsize = nfss->wsize;
+-	else
+-		rwsize = nfss->rsize;
+-
+-	boundary = pnfs_getboundary(inode);
+-
+-	*iosize = min(rwsize, boundary);
+-	*remaining = boundary - (do_div(loff, boundary));
+-
+-	dprintk("%s Rem %Zu iosize %Zu\n", __func__, *remaining, *iosize);
+-}
+-
+ /*
+  * Get a layoutout for COMMIT
+  */
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index 8edca30..5e9b06b 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -66,9 +66,6 @@ void pnfs_layout_release(struct pnfs_layout_type *, atomic_t *,
+ void pnfs_set_layout_stateid(struct pnfs_layout_type *lo,
+ 			     const nfs4_stateid *stateid);
+ void pnfs_destroy_layout(struct nfs_inode *);
+-void _pnfs_direct_init_io(struct inode *inode, struct nfs_open_context *ctx,
+-			  size_t count, loff_t loff, int iswrite,
+-			  size_t *rwsize, size_t *remaining);
+ 
+ #define PNFS_EXISTS_LDIO_OP(srv, opname) ((srv)->pnfs_curr_ld &&	\
+ 				     (srv)->pnfs_curr_ld->ld_io_ops &&	\
+@@ -182,20 +179,6 @@ static inline int pnfs_get_read_status(struct nfs_read_data *data)
+ 	return data->pdata.pnfs_error;
  }
  
-@@ -683,9 +671,6 @@ static void nfs_direct_write_result(struct rpc_task *task, void *calldata)
+-static inline void pnfs_direct_init_io(struct inode *inode,
+-				       struct nfs_open_context *ctx,
+-				       size_t count, loff_t loff, int iswrite,
+-				       size_t *iosize, size_t *remaining)
+-{
+-	struct nfs_server *nfss = NFS_SERVER(inode);
+-
+-	if (pnfs_enabled_sb(nfss))
+-		return _pnfs_direct_init_io(inode, ctx, count, loff, iswrite,
+-					    iosize, remaining);
+-
+-	return;
+-}
+-
+ static inline int pnfs_use_rpc(struct nfs_server *nfss)
  {
- 	struct nfs_write_data *data = calldata;
- 
--	dprintk("%s: verf: %d stable %d\n", __func__,
--		data->res.verf->committed, data->args.stable);
--
- 	if (nfs_writeback_done(task, data) != 0)
- 		return;
+ 	if (pnfs_enabled_sb(nfss))
+@@ -241,14 +224,6 @@ static inline int pnfs_get_read_status(struct nfs_read_data *data)
+ 	return 0;
  }
-@@ -799,17 +784,6 @@ static ssize_t nfs_direct_write_schedule_segment(struct nfs_direct_req *dreq,
- 	unsigned int pgbase;
- 	int result;
- 	ssize_t started = 0;
--	size_t pnfs_stripe_rem = count;
--	enum pnfs_try_status trypnfs;
+ 
+-/* Set num of remaining bytes, which is everything */
+-static inline void pnfs_direct_init_io(struct inode *inode,
+-				       struct nfs_open_context *ctx,
+-				       size_t count, loff_t loff, int iswrite,
+-				       size_t *iosize, size_t *remaining)
+-{
+-}
 -
--	/* pnfs_stripe_rem will be set to the remaining bytes in
--	 * the first stripe_unit (which for standard nfs is count)
--	 */
--	pnfs_direct_init_io(inode, ctx, count, pos, 1,
--			    &wsize, &pnfs_stripe_rem);
--
--	dprintk("%s: pos %llu count %Zu wsize %Zu\n",
--		__func__, pos, count, wsize);
- 
- 	do {
- 		struct nfs_write_data *data;
-@@ -818,12 +792,6 @@ static ssize_t nfs_direct_write_schedule_segment(struct nfs_direct_req *dreq,
- 		pgbase = user_addr & ~PAGE_MASK;
- 		bytes = min(wsize,count);
- 
--#if defined(CONFIG_NFS_V4_1)
--		if (pnfs_enabled_sb(NFS_SERVER(inode))) {
--			bytes = min(bytes, pnfs_stripe_rem);
--			pnfs_stripe_rem = wsize;
--		}
--#endif /* CONFIG_NFS_V4_1 */
- 		result = -ENOMEM;
- 		data = nfs_writedata_alloc(nfs_page_array_len(pgbase, bytes));
- 		if (unlikely(!data))
-@@ -867,15 +835,8 @@ static ssize_t nfs_direct_write_schedule_segment(struct nfs_direct_req *dreq,
- 		data->res.verf = &data->verf;
- 		nfs_fattr_init(&data->fattr);
- 
--		trypnfs = pnfs_try_to_write_data(data, &nfs_write_direct_ops,
--						 sync);
--		if (trypnfs == PNFS_ATTEMPTED) {
--			result = pnfs_get_write_status(data);
--			if (result)
--				break;
--		} else if (nfs_direct_write_execute(data, &task_setup_data, &msg)) {
-+		if (nfs_direct_write_execute(data, &task_setup_data, &msg))
- 			break;
--		}
- 
- 		started += bytes;
- 		user_addr += bytes;
+ static inline int pnfs_use_rpc(struct nfs_server *nfss)
+ {
+ 	return 1;
 -- 
 1.6.6.1
 
