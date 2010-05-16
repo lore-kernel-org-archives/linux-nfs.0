@@ -1,129 +1,80 @@
 From: Fred Isaman <iisaman@netapp.com>
-Subject: [PATCH 04/22] Revert "pnfs: Add function to set up O_DIRECT I/O"
-Date: Sat, 15 May 2010 21:22:55 -0400
-Message-ID: <1273972993-15369-5-git-send-email-iisaman@netapp.com>
+Subject: [PATCH 06/22] pnfs: filelayout: remove some dead code from filelayout_commit
+Date: Sat, 15 May 2010 21:22:57 -0400
+Message-ID: <1273972993-15369-7-git-send-email-iisaman@netapp.com>
 References: <1273972993-15369-1-git-send-email-iisaman@netapp.com>
  <1273972993-15369-2-git-send-email-iisaman@netapp.com>
  <1273972993-15369-3-git-send-email-iisaman@netapp.com>
  <1273972993-15369-4-git-send-email-iisaman@netapp.com>
+ <1273972993-15369-5-git-send-email-iisaman@netapp.com>
+ <1273972993-15369-6-git-send-email-iisaman@netapp.com>
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
 Received: from mx2.netapp.com ([216.240.18.37]:47588 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754668Ab0ETKaa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 20 May 2010 06:30:30 -0400
+	id S1754735Ab0ETKac (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 20 May 2010 06:30:32 -0400
 Received: from localhost.localdomain (vpn2ntap-176975.hq.netapp.com [10.58.56.200])
-	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id o4KAUQbs022655
-	for <linux-nfs@vger.kernel.org>; Thu, 20 May 2010 03:30:30 -0700 (PDT)
-In-Reply-To: <1273972993-15369-4-git-send-email-iisaman@netapp.com>
+	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id o4KAUQbu022655
+	for <linux-nfs@vger.kernel.org>; Thu, 20 May 2010 03:30:32 -0700 (PDT)
+In-Reply-To: <1273972993-15369-6-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This reverts commit 4bc73cd4118b5d5b710c28c83a750bf4e02e8269.
-
-Conflicts:
-
-	fs/nfs/pnfs.c
-	fs/nfs/pnfs.h
-
 Signed-off-by: Fred Isaman <iisaman@netapp.com>
 ---
- fs/nfs/pnfs.c |   31 -------------------------------
- fs/nfs/pnfs.h |   25 -------------------------
- 2 files changed, 0 insertions(+), 56 deletions(-)
+ fs/nfs/nfs4filelayout.c |   10 ++--------
+ 1 files changed, 2 insertions(+), 8 deletions(-)
 
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 20285bc..8dbf740 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -1399,37 +1399,6 @@ pnfs_pageio_init_write(struct nfs_pageio_descriptor *pgio, struct inode *inode)
- 	pnfs_set_pg_test(inode, pgio);
- }
+diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+index 2d7f634..3f31c32 100644
+--- a/fs/nfs/nfs4filelayout.c
++++ b/fs/nfs/nfs4filelayout.c
+@@ -562,7 +562,6 @@ filelayout_commit(struct pnfs_layout_type *layoutid, int sync,
+ 	struct nfs_page *req, *reqt;
+ 	struct list_head *pos, *tmp, head, head2;
+ 	loff_t file_offset, comp_offset;
+-	size_t stripesz, cbytes;
+ 	enum pnfs_try_status trypnfs = PNFS_ATTEMPTED;
+ 	u32 idx1, idx2;
  
--/* Retrieve I/O parameters for O_DIRECT.
-- * Out Args:
-- * iosize    - min of boundary and (rsize or wsize)
-- * remaining - # bytes remaining in the current stripe unit
-- */
--void
--_pnfs_direct_init_io(struct inode *inode, struct nfs_open_context *ctx,
--		     size_t count, loff_t loff, int iswrite, size_t *iosize,
--		     size_t *remaining)
--{
--	struct nfs_server *nfss = NFS_SERVER(inode);
--	u32 boundary;
--	unsigned int rwsize;
--
--	if (count <= 0 ||
--	    pnfs_update_layout(inode, ctx, count, loff, IOMODE_READ, NULL))
--		return;
--
--	if (iswrite)
--		rwsize = nfss->wsize;
--	else
--		rwsize = nfss->rsize;
--
--	boundary = pnfs_getboundary(inode);
--
--	*iosize = min(rwsize, boundary);
--	*remaining = boundary - (do_div(loff, boundary));
--
--	dprintk("%s Rem %Zu iosize %Zu\n", __func__, *remaining, *iosize);
--}
--
- /*
-  * Get a layoutout for COMMIT
-  */
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index 8edca30..5e9b06b 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -66,9 +66,6 @@ void pnfs_layout_release(struct pnfs_layout_type *, atomic_t *,
- void pnfs_set_layout_stateid(struct pnfs_layout_type *lo,
- 			     const nfs4_stateid *stateid);
- void pnfs_destroy_layout(struct nfs_inode *);
--void _pnfs_direct_init_io(struct inode *inode, struct nfs_open_context *ctx,
--			  size_t count, loff_t loff, int iswrite,
--			  size_t *rwsize, size_t *remaining);
+@@ -577,9 +576,6 @@ filelayout_commit(struct pnfs_layout_type *layoutid, int sync,
+ 		return PNFS_NOT_ATTEMPTED;
+ 	}
  
- #define PNFS_EXISTS_LDIO_OP(srv, opname) ((srv)->pnfs_curr_ld &&	\
- 				     (srv)->pnfs_curr_ld->ld_io_ops &&	\
-@@ -182,20 +179,6 @@ static inline int pnfs_get_read_status(struct nfs_read_data *data)
- 	return data->pdata.pnfs_error;
- }
+-	stripesz = filelayout_get_stripesize(layoutid);
+-	dprintk("%s stripesize %Zd\n", __func__, stripesz);
+-
+ 	INIT_LIST_HEAD(&head);
+ 	INIT_LIST_HEAD(&head2);
+ 	list_add(&head, &data->pages);
+@@ -587,7 +583,6 @@ filelayout_commit(struct pnfs_layout_type *layoutid, int sync,
  
--static inline void pnfs_direct_init_io(struct inode *inode,
--				       struct nfs_open_context *ctx,
--				       size_t count, loff_t loff, int iswrite,
--				       size_t *iosize, size_t *remaining)
--{
--	struct nfs_server *nfss = NFS_SERVER(inode);
--
--	if (pnfs_enabled_sb(nfss))
--		return _pnfs_direct_init_io(inode, ctx, count, loff, iswrite,
--					    iosize, remaining);
--
--	return;
--}
--
- static inline int pnfs_use_rpc(struct nfs_server *nfss)
- {
- 	if (pnfs_enabled_sb(nfss))
-@@ -241,14 +224,6 @@ static inline int pnfs_get_read_status(struct nfs_read_data *data)
- 	return 0;
- }
+ 	/* COMMIT to each Data Server */
+ 	while (!list_empty(&head)) {
+-		cbytes = 0;
+ 		req = nfs_list_entry(head.next);
  
--/* Set num of remaining bytes, which is everything */
--static inline void pnfs_direct_init_io(struct inode *inode,
--				       struct nfs_open_context *ctx,
--				       size_t count, loff_t loff, int iswrite,
--				       size_t *iosize, size_t *remaining)
--{
--}
--
- static inline int pnfs_use_rpc(struct nfs_server *nfss)
- {
- 	return 1;
+ 		file_offset = (loff_t)req->wb_index << PAGE_CACHE_SHIFT;
+@@ -613,7 +608,6 @@ filelayout_commit(struct pnfs_layout_type *layoutid, int sync,
+ 			if (idx1 == idx2) {
+ 				nfs_list_remove_request(reqt);
+ 				nfs_list_add_request(reqt, &head2);
+-				cbytes += reqt->wb_bytes;
+ 			}
+ 		}
+ 
+@@ -637,8 +631,8 @@ filelayout_commit(struct pnfs_layout_type *layoutid, int sync,
+ 		dsdata->fldata.ds_nfs_client = ds->ds_clp;
+ 		dsdata->args.fh = nfs4_fl_select_ds_fh(nfslay, idx1);
+ 
+-		dprintk("%s: Initiating commit: %Zu@%llu USE DS:\n",
+-			__func__, cbytes, file_offset);
++		dprintk("%s: Initiating commit: %llu USE DS:\n",
++			__func__, file_offset);
+ 		print_ds(ds);
+ 
+ 		/* Send COMMIT to data server */
 -- 
 1.6.6.1
 
