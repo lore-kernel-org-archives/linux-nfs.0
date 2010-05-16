@@ -1,7 +1,7 @@
 From: Fred Isaman <iisaman@netapp.com>
-Subject: [PATCH 17/22] pnfs_submit: remove pnfs_writepages LAYOUTGET invocation
-Date: Sat, 15 May 2010 21:23:08 -0400
-Message-ID: <1273972993-15369-18-git-send-email-iisaman@netapp.com>
+Subject: [PATCH 14/22] pnfs_submit: stash and refcount lseg in write path
+Date: Sat, 15 May 2010 21:23:05 -0400
+Message-ID: <1273972993-15369-15-git-send-email-iisaman@netapp.com>
 References: <1273972993-15369-1-git-send-email-iisaman@netapp.com>
  <1273972993-15369-2-git-send-email-iisaman@netapp.com>
  <1273972993-15369-3-git-send-email-iisaman@netapp.com>
@@ -16,127 +16,204 @@ References: <1273972993-15369-1-git-send-email-iisaman@netapp.com>
  <1273972993-15369-12-git-send-email-iisaman@netapp.com>
  <1273972993-15369-13-git-send-email-iisaman@netapp.com>
  <1273972993-15369-14-git-send-email-iisaman@netapp.com>
- <1273972993-15369-15-git-send-email-iisaman@netapp.com>
- <1273972993-15369-16-git-send-email-iisaman@netapp.com>
- <1273972993-15369-17-git-send-email-iisaman@netapp.com>
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
 Received: from mx2.netapp.com ([216.240.18.37]:47588 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754831Ab0ETKao (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 20 May 2010 06:30:44 -0400
+	id S1754780Ab0ETKam (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 20 May 2010 06:30:42 -0400
 Received: from localhost.localdomain (vpn2ntap-176975.hq.netapp.com [10.58.56.200])
-	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id o4KAUQc7022655
-	for <linux-nfs@vger.kernel.org>; Thu, 20 May 2010 03:30:44 -0700 (PDT)
-In-Reply-To: <1273972993-15369-17-git-send-email-iisaman@netapp.com>
+	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id o4KAUQc4022655
+	for <linux-nfs@vger.kernel.org>; Thu, 20 May 2010 03:30:41 -0700 (PDT)
+In-Reply-To: <1273972993-15369-14-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Store the lseg in each nfs_page.  Note this necessitates adding checks
+for compatibility with pre-existing nfs_pages lsegs.
+
 Signed-off-by: Fred Isaman <iisaman@netapp.com>
 ---
- fs/nfs/pnfs.c |   37 +++++++------------------------------
- fs/nfs/pnfs.h |   15 ++++++---------
- 2 files changed, 13 insertions(+), 39 deletions(-)
+ fs/nfs/file.c          |   14 +++++++++-----
+ fs/nfs/write.c         |   30 ++++++++++++++++++------------
+ include/linux/nfs_fs.h |    8 ++++++--
+ 3 files changed, 33 insertions(+), 19 deletions(-)
 
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 5e2dad8..5ccd406 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -1515,7 +1515,7 @@ pnfs_writepages(struct nfs_write_data *wdata, int how)
- {
- 	struct nfs_writeargs *args = &wdata->args;
- 	struct inode *inode = wdata->inode;
--	int numpages, status;
-+	int numpages;
- 	enum pnfs_try_status trypnfs;
- 	struct nfs_server *nfss = NFS_SERVER(inode);
- 	struct nfs_inode *nfsi = NFS_I(inode);
-@@ -1527,19 +1527,8 @@ pnfs_writepages(struct nfs_write_data *wdata, int how)
- 		args->count,
- 		args->offset);
+diff --git a/fs/nfs/file.c b/fs/nfs/file.c
+index 03a1b3b..1479289 100644
+--- a/fs/nfs/file.c
++++ b/fs/nfs/file.c
+@@ -416,7 +416,9 @@ static int nfs_write_begin(struct file *file, struct address_space *mapping,
+ 		file->f_path.dentry->d_name.name,
+ 		mapping->host->i_ino, len, (long long) pos);
  
--	/* Retrieve and set layout if not allready cached */
--	status = _pnfs_update_layout(inode,
--				    args->context,
--				    args->count,
--				    args->offset,
--				    IOMODE_RW,
--				    &lseg);
--	if (status) {
--		dprintk("%s: Updating layout failed (%d), retry with NFS \n",
--			__func__, status);
--		trypnfs = PNFS_NOT_ATTEMPTED;	/* retry with nfs I/O */
--		goto out;
--	}
-+	lseg = wdata->req->wb_lseg;
-+	get_lseg(lseg);
- 
- 	/* Determine number of pages
- 	 */
-@@ -1567,7 +1556,6 @@ pnfs_writepages(struct nfs_write_data *wdata, int how)
- 		wdata->pdata.lseg = NULL;
- 		put_lseg(lseg);
+-	pnfs_update_layout(mapping->host, NULL, NFS4_MAX_UINT64, 0, IOMODE_RW,
++	pnfs_update_layout(mapping->host,
++			   nfs_file_open_context(file),
++			   NFS4_MAX_UINT64, 0, IOMODE_RW,
+ 			   (struct pnfs_layout_segment **) fsdata);
+ start:
+ 	/*
+@@ -435,7 +437,7 @@ start:
  	}
--out:
- 	dprintk("%s End (trypnfs:%d)\n", __func__, trypnfs);
- 	return trypnfs;
- }
-@@ -1674,22 +1662,11 @@ enum pnfs_try_status
- _pnfs_try_to_write_data(struct nfs_write_data *data,
- 			const struct rpc_call_ops *call_ops, int how)
+ 	*pagep = page;
+ 
+-	ret = nfs_flush_incompatible(file, page);
++	ret = nfs_flush_incompatible(file, page, *fsdata);
+ 	if (ret) {
+ 		unlock_page(page);
+ 		page_cache_release(page);
+@@ -487,7 +489,7 @@ static int nfs_write_end(struct file *file, struct address_space *mapping,
+ 			zero_user_segment(page, pglen, PAGE_CACHE_SIZE);
+ 	}
+ 
+-	status = nfs_updatepage(file, page, offset, copied);
++	status = nfs_updatepage(file, page, offset, copied, fsdata);
+ 
+ 	unlock_page(page);
+ 	page_cache_release(page);
+@@ -594,6 +596,8 @@ static int nfs_vm_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf)
+ 	/* make sure the cache has finished storing the page */
+ 	nfs_fscache_wait_on_page_write(NFS_I(dentry->d_inode), page);
+ 
++	/* XXX Do we want to call pnfs_update_layout here? */
++
+ 	lock_page(page);
+ 	mapping = page->mapping;
+ 	if (mapping != dentry->d_inode->i_mapping)
+@@ -604,11 +608,11 @@ static int nfs_vm_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf)
+ 	if (pagelen == 0)
+ 		goto out_unlock;
+ 
+-	ret = nfs_flush_incompatible(filp, page);
++	ret = nfs_flush_incompatible(filp, page, NULL);
+ 	if (ret != 0)
+ 		goto out_unlock;
+ 
+-	ret = nfs_updatepage(filp, page, 0, pagelen);
++	ret = nfs_updatepage(filp, page, 0, pagelen, NULL);
+ out_unlock:
+ 	if (!ret)
+ 		return VM_FAULT_LOCKED;
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index 523ceb4..34a571b 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -570,7 +570,8 @@ static inline int nfs_scan_commit(struct inode *inode, struct list_head *dst, pg
+ static struct nfs_page *nfs_try_to_update_request(struct inode *inode,
+ 		struct page *page,
+ 		unsigned int offset,
+-		unsigned int bytes)
++		unsigned int bytes,
++		struct pnfs_layout_segment *lseg)
  {
--	struct inode *ino = data->inode;
--	struct nfs_server *nfss = NFS_SERVER(ino);
--
- 	dprintk("--> %s\n", __func__);
--	/* Only create an rpc request if utilizing NFSv4 I/O */
--	if (!pnfs_enabled_sb(nfss) ||
--	    !nfss->pnfs_curr_ld->ld_io_ops->write_pagelist) {
--		dprintk("<-- %s: not using pnfs\n", __func__);
--		return PNFS_NOT_ATTEMPTED;
--	} else {
--		dprintk("%s: Utilizing pNFS I/O\n", __func__);
--		data->pdata.call_ops = call_ops;
--		data->pdata.pnfs_error = 0;
--		data->pdata.how = how;
--		return pnfs_writepages(data, how);
--	}
-+	data->pdata.call_ops = call_ops;
-+	data->pdata.pnfs_error = 0;
-+	data->pdata.how = how;
-+	return pnfs_writepages(data, how);
- }
+ 	struct nfs_page *req;
+ 	unsigned int rqend;
+@@ -595,8 +596,8 @@ static struct nfs_page *nfs_try_to_update_request(struct inode *inode,
+ 		 * Note: nfs_flush_incompatible() will already
+ 		 * have flushed out requests having wrong owners.
+ 		 */
+-		if (offset > rqend
+-		    || end < req->wb_offset)
++		if (offset > rqend || end < req->wb_offset ||
++		    req->wb_lseg != lseg)
+ 			goto out_flushme;
  
- enum pnfs_try_status
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index 2b01dc7..d1a4f42 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -122,18 +122,15 @@ pnfs_try_to_write_data(struct nfs_write_data *data,
- 		       const struct rpc_call_ops *call_ops,
- 		       int how)
+ 		if (nfs_set_page_tag_locked(req))
+@@ -644,16 +645,17 @@ out_err:
+  * already called nfs_flush_incompatible() if necessary.
+  */
+ static struct nfs_page * nfs_setup_write_request(struct nfs_open_context* ctx,
+-		struct page *page, unsigned int offset, unsigned int bytes)
++		struct page *page, unsigned int offset, unsigned int bytes,
++		struct pnfs_layout_segment *lseg)
  {
--	struct inode *inode = data->inode;
--	struct nfs_server *nfss = NFS_SERVER(inode);
- 	enum pnfs_try_status ret;
+ 	struct inode *inode = page->mapping->host;
+ 	struct nfs_page	*req;
+ 	int error;
  
--	/* FIXME: write_pagelist should probably be mandated */
--	if (PNFS_EXISTS_LDIO_OP(nfss, write_pagelist))
--		ret = _pnfs_try_to_write_data(data, call_ops, how);
--	else
--		ret = PNFS_NOT_ATTEMPTED;
--
-+	if (!data->req->wb_lseg)
-+		return PNFS_NOT_ATTEMPTED;
-+	ret = _pnfs_try_to_write_data(data, call_ops, how);
- 	if (ret == PNFS_ATTEMPTED)
--		nfs_inc_stats(inode, NFSIOS_PNFS_WRITE);
-+		nfs_inc_stats(data->inode, NFSIOS_PNFS_WRITE);
-+	else
-+		_pnfs_clear_lseg_from_pages(&data->pages);
- 	return ret;
+-	req = nfs_try_to_update_request(inode, page, offset, bytes);
++	req = nfs_try_to_update_request(inode, page, offset, bytes, lseg);
+ 	if (req != NULL)
+ 		goto out;
+-	req = nfs_create_request(ctx, inode, page, offset, bytes, NULL);
++	req = nfs_create_request(ctx, inode, page, offset, bytes, lseg);
+ 	if (IS_ERR(req))
+ 		goto out;
+ 	error = nfs_inode_add_request(inode, req);
+@@ -666,11 +668,12 @@ out:
  }
  
+ static int nfs_writepage_setup(struct nfs_open_context *ctx, struct page *page,
+-		unsigned int offset, unsigned int count)
++			       unsigned int offset, unsigned int count,
++			       struct pnfs_layout_segment *lseg)
+ {
+ 	struct nfs_page	*req;
+ 
+-	req = nfs_setup_write_request(ctx, page, offset, count);
++	req = nfs_setup_write_request(ctx, page, offset, count, lseg);
+ 	if (IS_ERR(req))
+ 		return PTR_ERR(req);
+ 	nfs_mark_request_dirty(req);
+@@ -682,7 +685,8 @@ static int nfs_writepage_setup(struct nfs_open_context *ctx, struct page *page,
+ 	return 0;
+ }
+ 
+-int nfs_flush_incompatible(struct file *file, struct page *page)
++int nfs_flush_incompatible(struct file *file, struct page *page,
++			   struct pnfs_layout_segment *lseg)
+ {
+ 	struct nfs_open_context *ctx = nfs_file_open_context(file);
+ 	struct nfs_page	*req;
+@@ -699,7 +703,8 @@ int nfs_flush_incompatible(struct file *file, struct page *page)
+ 		req = nfs_page_find_request(page);
+ 		if (req == NULL)
+ 			return 0;
+-		do_flush = req->wb_page != page || req->wb_context != ctx;
++		do_flush = req->wb_page != page || req->wb_context != ctx ||
++			req->wb_lseg != lseg;
+ 		nfs_release_request(req);
+ 		if (!do_flush)
+ 			return 0;
+@@ -726,7 +731,8 @@ static int nfs_write_pageuptodate(struct page *page, struct inode *inode)
+  * things with a page scheduled for an RPC call (e.g. invalidate it).
+  */
+ int nfs_updatepage(struct file *file, struct page *page,
+-		unsigned int offset, unsigned int count)
++		   unsigned int offset, unsigned int count,
++		   struct pnfs_layout_segment *lseg)
+ {
+ 	struct nfs_open_context *ctx = nfs_file_open_context(file);
+ 	struct inode	*inode = page->mapping->host;
+@@ -751,7 +757,7 @@ int nfs_updatepage(struct file *file, struct page *page,
+ 		offset = 0;
+ 	}
+ 
+-	status = nfs_writepage_setup(ctx, page, offset, count);
++	status = nfs_writepage_setup(ctx, page, offset, count, lseg);
+ 	if (status < 0)
+ 		nfs_set_pageerror(page);
+ 
+diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
+index 98a8dc0..9d41821 100644
+--- a/include/linux/nfs_fs.h
++++ b/include/linux/nfs_fs.h
+@@ -503,8 +503,12 @@ extern void nfs_unblock_sillyrename(struct dentry *dentry);
+ extern int  nfs_congestion_kb;
+ extern int  nfs_writepage(struct page *page, struct writeback_control *wbc);
+ extern int  nfs_writepages(struct address_space *, struct writeback_control *);
+-extern int  nfs_flush_incompatible(struct file *file, struct page *page);
+-extern int  nfs_updatepage(struct file *, struct page *, unsigned int, unsigned int);
++struct pnfs_layout_segment;
++extern int  nfs_flush_incompatible(struct file *file, struct page *page,
++				   struct pnfs_layout_segment *lseg);
++extern int  nfs_updatepage(struct file *, struct page *,
++			   unsigned int offset, unsigned int count,
++			   struct pnfs_layout_segment *lseg);
+ extern int nfs_writeback_done(struct rpc_task *, struct nfs_write_data *);
+ 
+ /*
 -- 
 1.6.6.1
 
