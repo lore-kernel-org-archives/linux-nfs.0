@@ -1,44 +1,90 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:1263 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:38971 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754183Ab0EMVCs convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 13 May 2010 17:02:48 -0400
-Received: from sacrsexc2-prd.hq.netapp.com (sacrsexc2-prd.hq.netapp.com [10.99.115.28])
-	by smtp2.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id o4DL2Uq9018790
-	for <linux-nfs@vger.kernel.org>; Thu, 13 May 2010 14:02:30 -0700 (PDT)
-Subject: What NFS client code is queued up for the 2.6.35 merge window?
+	id S1756425Ab0EQW2E convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 17 May 2010 18:28:04 -0400
+Subject: [GIT PULL] Please pull NFS client changes
 From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
+To: Linus Torvalds <torvalds@linux-foundation.org>
+Cc: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org
 Content-Type: text/plain; charset="UTF-8"
-Date: Thu, 13 May 2010 17:02:28 -0400
-Message-ID: <1273784548.22932.12.camel@localhost.localdomain>
+Date: Mon, 17 May 2010 18:28:01 -0400
+Message-ID: <1274135281.18654.2.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Hi,
+Hi Linus,
 
-Today I've updated the nfs-for-2.6.35 branch on
-git://git.linux-nfs.org/projects/trondmy/nfs-2.6.git with a bunch of new
-patches. Among the stuff that has been added are the stack usage
-reduction patches (that have previously been posted to the list) as well
-as Chuck's proposal to use ktime_t to improve the resolution of the RPC
-round-trip time measurement.
+Please pull from the "nfs-for-2.6.35" branch of the repository at
 
-I've also merged in a bunch of bugfixes to the access and auth cache
-shrinkers which should hopefully improve their performance. There are
-also fixes to ensure that the NFSv4 state management thread does not
-deadlock by allocating memory using GFP_KERNEL.
-Finally there are a couple of patches to shrink the size of the rpc_task
-structure on 64-bit platforms by re-ordering some of the fields and
-getting rid of some of the debugging stuff that has never triggered...
+   git pull git://git.linux-nfs.org/projects/trondmy/nfs-2.6.git nfs-for-2.6.35
 
-The full list of patches is included below.
+This will update the following files through the appended changesets.
 
-Cheers
-  Trond 
+  Cheers,
+    Trond
 
-commit b87d8fb96b8dd6ef4bb4909971d1cd2592f40e16
+----
+ fs/nfs/client.c                       |   55 ++-
+ fs/nfs/delegation.c                   |    2 +-
+ fs/nfs/dir.c                          |  143 ++++---
+ fs/nfs/file.c                         |   15 +-
+ fs/nfs/fscache.c                      |    3 +-
+ fs/nfs/getroot.c                      |  191 ++++------
+ fs/nfs/inode.c                        |   58 +++-
+ fs/nfs/internal.h                     |    4 +-
+ fs/nfs/iostat.h                       |    6 +-
+ fs/nfs/namespace.c                    |   20 +-
+ fs/nfs/nfs3acl.c                      |   23 +-
+ fs/nfs/nfs3proc.c                     |  128 ++++---
+ fs/nfs/nfs3xdr.c                      |    2 +-
+ fs/nfs/nfs4_fs.h                      |    8 +-
+ fs/nfs/nfs4namespace.c                |   12 +-
+ fs/nfs/nfs4proc.c                     |  172 +++++---
+ fs/nfs/nfs4state.c                    |   36 +-
+ fs/nfs/nfs4xdr.c                      |   22 +-
+ fs/nfs/nfsroot.c                      |   14 +-
+ fs/nfs/pagelist.c                     |   14 +-
+ fs/nfs/proc.c                         |  144 ++++---
+ fs/nfs/read.c                         |    4 +-
+ fs/nfs/super.c                        |  147 ++++++--
+ fs/nfs/unlink.c                       |    4 +-
+ include/linux/ktime.h                 |   10 +-
+ include/linux/nfs_fs.h                |   14 +
+ include/linux/nfs_fs_sb.h             |    1 -
+ include/linux/nfs_xdr.h               |    7 +-
+ include/linux/sunrpc/auth.h           |    1 +
+ include/linux/sunrpc/auth_gss.h       |    1 +
+ include/linux/sunrpc/gss_api.h        |    8 +-
+ include/linux/sunrpc/gss_krb5.h       |  184 +++++++++-
+ include/linux/sunrpc/metrics.h        |    7 +-
+ include/linux/sunrpc/sched.h          |   20 +-
+ include/linux/sunrpc/xdr.h            |    8 +-
+ include/linux/sunrpc/xprt.h           |   13 +-
+ net/sunrpc/auth.c                     |   19 +-
+ net/sunrpc/auth_gss/Makefile          |    2 +-
+ net/sunrpc/auth_gss/auth_gss.c        |   89 ++++-
+ net/sunrpc/auth_gss/gss_krb5_crypto.c |  697 ++++++++++++++++++++++++++++++++-
+ net/sunrpc/auth_gss/gss_krb5_keys.c   |  336 ++++++++++++++++
+ net/sunrpc/auth_gss/gss_krb5_mech.c   |  584 +++++++++++++++++++++++++--
+ net/sunrpc/auth_gss/gss_krb5_seal.c   |  155 ++++++--
+ net/sunrpc/auth_gss/gss_krb5_seqnum.c |   83 ++++-
+ net/sunrpc/auth_gss/gss_krb5_unseal.c |  113 +++++-
+ net/sunrpc/auth_gss/gss_krb5_wrap.c   |  404 ++++++++++++++++---
+ net/sunrpc/auth_gss/gss_mech_switch.c |   21 +-
+ net/sunrpc/auth_gss/gss_spkm3_mech.c  |    5 +-
+ net/sunrpc/auth_gss/svcauth_gss.c     |   17 +-
+ net/sunrpc/clnt.c                     |   19 +-
+ net/sunrpc/sched.c                    |   26 +-
+ net/sunrpc/stats.c                    |   29 +-
+ net/sunrpc/xdr.c                      |    1 +
+ net/sunrpc/xprt.c                     |   59 ++--
+ net/sunrpc/xprtrdma/transport.c       |   31 +-
+ net/sunrpc/xprtsock.c                 |   40 +--
+ 56 files changed, 3378 insertions(+), 853 deletions(-)
+
+commit 126e216a8730532dfb685205309275f87e3d133e
 Author: Trond Myklebust <Trond.Myklebust@netapp.com>
 Date:   Thu May 13 12:55:38 2010 -0400
 
@@ -49,7 +95,7 @@ Date:   Thu May 13 12:55:38 2010 -0400
     
     Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 
-commit efc09441c1ce01247f7b444e47a548eb04578b2b
+commit 9bb0b8136a7d5b50c5807af3bf12b758fb257814
 Author: Trond Myklebust <Trond.Myklebust@netapp.com>
 Date:   Thu May 13 12:51:50 2010 -0400
 
@@ -60,7 +106,7 @@ Date:   Thu May 13 12:51:50 2010 -0400
     
     Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 
-commit bd9b4566b7138f0b017cfc339fb9e85ea5591df0
+commit d72b6cec8d42eb7c2a249b613abf2c2b7a6eeb47
 Author: Trond Myklebust <Trond.Myklebust@netapp.com>
 Date:   Thu May 13 12:51:50 2010 -0400
 
@@ -70,7 +116,7 @@ Date:   Thu May 13 12:51:50 2010 -0400
     
     Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 
-commit e72de905102eebab7c33850207d87b788d2f1872
+commit d60dbb20a74c2cfa142be0a34dac3c6547ea086c
 Author: Trond Myklebust <Trond.Myklebust@netapp.com>
 Date:   Thu May 13 12:51:49 2010 -0400
 
@@ -82,7 +128,7 @@ Date:   Thu May 13 12:51:49 2010 -0400
     
     Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 
-commit 155097cfd47a0c0b35ab9bce11da3d89f8f72c80
+commit 9c7e7e23371e629dbb3b341610a418cdf1c19d91
 Author: Trond Myklebust <Trond.Myklebust@netapp.com>
 Date:   Thu May 13 12:51:06 2010 -0400
 
@@ -94,7 +140,7 @@ Date:   Thu May 13 12:51:06 2010 -0400
     
     Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 
-commit 7712714697dde10e8e36c083cb5ff7cbbc28953b
+commit 1a81bb8a1fa62ccb9b2411ac10ce702ca4ed302a
 Author: Trond Myklebust <Trond.Myklebust@netapp.com>
 Date:   Thu May 13 12:51:06 2010 -0400
 
@@ -102,7 +148,7 @@ Date:   Thu May 13 12:51:06 2010 -0400
     
     Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 
-commit ee79d4a89a486e7f11fa480eea6d8088aa7c852c
+commit 61d5eb2985b3b1d69fd53d7dc9789037c27f8d91
 Author: Trond Myklebust <Trond.Myklebust@netapp.com>
 Date:   Thu May 13 12:51:06 2010 -0400
 
@@ -113,7 +159,7 @@ Date:   Thu May 13 12:51:06 2010 -0400
     
     Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 
-commit eb4e6f09297cacae523a748b9237835e91692a8a
+commit 20673406534176ead9b984a84b662928110f77b1
 Author: Trond Myklebust <Trond.Myklebust@netapp.com>
 Date:   Thu May 13 12:51:06 2010 -0400
 
@@ -121,7 +167,7 @@ Date:   Thu May 13 12:51:06 2010 -0400
     
     Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 
-commit 83e57dd4238a5526f808ade2a1dde92da9a93e76
+commit 93a05e65c090dda9cbd79d0cf57b65c4dbd8da55
 Author: Trond Myklebust <Trond.Myklebust@netapp.com>
 Date:   Thu May 13 12:51:06 2010 -0400
 
@@ -134,7 +180,7 @@ Date:   Thu May 13 12:51:06 2010 -0400
     
     Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 
-commit 195a92779b6c39c76c2add821344162e869c05b3
+commit d300a41ef1c39cc5e6b90fd8834ea7ab16b5c48f
 Author: Trond Myklebust <Trond.Myklebust@netapp.com>
 Date:   Thu May 13 12:51:03 2010 -0400
 
@@ -145,7 +191,7 @@ Date:   Thu May 13 12:51:03 2010 -0400
     
     Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 
-commit 53c21fecff181c07b9899ca17c2d2f857c199bbd
+commit 93870d76fee22e887aa6e7e1fc904dbeca976928
 Author: Trond Myklebust <Trond.Myklebust@netapp.com>
 Date:   Thu May 13 12:51:03 2010 -0400
 
@@ -156,7 +202,7 @@ Date:   Thu May 13 12:51:03 2010 -0400
     
     Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 
-commit 6b78aa773becb7099afacc507f75c9c616d829fa
+commit 18eb884282bbaf99700ba5b60ded782807d52408
 Author: Trond Myklebust <Trond.Myklebust@netapp.com>
 Date:   Thu May 13 12:51:02 2010 -0400
 
@@ -166,7 +212,7 @@ Date:   Thu May 13 12:51:02 2010 -0400
     
     Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 
-commit fcb57eba7fc3807f51f5f29e97f7a9aa5ca7f996
+commit 1f4c86c0be9064ab4eebd9e67c84606c1cfeec4b
 Author: Trond Myklebust <Trond.Myklebust@netapp.com>
 Date:   Thu May 13 12:51:02 2010 -0400
 
@@ -177,7 +223,7 @@ Date:   Thu May 13 12:51:02 2010 -0400
     
     Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 
-commit fbfba3569248684eb1bedc1b9edec1e509dd406a
+commit 8535b2be5181fc3019e4150567ef53210fe3b04f
 Author: Trond Myklebust <Trond.Myklebust@netapp.com>
 Date:   Thu May 13 12:51:01 2010 -0400
 
@@ -193,7 +239,7 @@ Date:   Thu May 13 12:51:01 2010 -0400
     
     Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 
-commit 7536fbbb675e700f9cf0c83c3433128a3585ccf9
+commit 712a4338669d7d57f952244abb608e6ac07e39da
 Author: Trond Myklebust <Trond.Myklebust@netapp.com>
 Date:   Wed May 12 17:50:23 2010 -0400
 
@@ -205,7 +251,7 @@ Date:   Wed May 12 17:50:23 2010 -0400
     
     Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 
-commit f048039337b4f154e20691efa81d81c2945cc13e
+commit ff8399709e41bf72b4cb145612a0f9a9f7283c83
 Author: Chuck Lever <chuck.lever@oracle.com>
 Date:   Fri May 7 13:34:47 2010 -0400
 
@@ -240,7 +286,7 @@ Date:   Fri May 7 13:34:47 2010 -0400
     Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
     Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 
-commit 96a20bf7c56cf64e99ef754cf0efa0758ac17750
+commit f56916b97fe2031761ca611f0a342efd913afb33
 Author: Chuck Lever <chuck.lever@oracle.com>
 Date:   Fri May 7 13:34:37 2010 -0400
 
@@ -256,7 +302,7 @@ Date:   Fri May 7 13:34:37 2010 -0400
     Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
     Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 
-commit 24ee073801b9aa79b4445c9c463d574bd9d3ee5b
+commit bbc72cea58f671665b6362be0d4e391813ac0eee
 Author: Chuck Lever <chuck.lever@oracle.com>
 Date:   Fri May 7 13:34:27 2010 -0400
 
@@ -269,7 +315,7 @@ Date:   Fri May 7 13:34:27 2010 -0400
     Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
     Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 
-commit c426d0e89a7d50c419e5bc9b1718186ce372cd7b
+commit 9bc4e3ca46e4eb9cb434de4175c6041d00bbdca3
 Author: Chuck Lever <chuck.lever@oracle.com>
 Date:   Fri May 7 13:34:17 2010 -0400
 
@@ -295,7 +341,7 @@ Date:   Fri May 7 13:34:17 2010 -0400
     Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
     Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 
-commit ab7058420b71234c829d3729d7505bdca06652e2
+commit dfe52c0419b8324bacd69bd28aae77e2d6ee0379
 Author: Chuck Lever <chuck.lever@oracle.com>
 Date:   Fri May 7 13:34:08 2010 -0400
 
@@ -317,7 +363,7 @@ Date:   Fri May 7 13:34:08 2010 -0400
     Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
     Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 
-commit ac0aea1b7d4cb3023f64f6c78bbc11204acd75ab
+commit a6d5ff64bae02438d914f088672cab1916153954
 Author: Chuck Lever <chuck.lever@oracle.com>
 Date:   Fri May 7 13:33:58 2010 -0400
 
@@ -329,7 +375,7 @@ Date:   Fri May 7 13:33:58 2010 -0400
     Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
     Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 
-commit 2710f8d4e3e2eb5685f009ecaf99656792ac57b3
+commit 0f15c53d5b1829c10dd901f37b8263aa25ecf864
 Author: Chuck Lever <chuck.lever@oracle.com>
 Date:   Fri May 7 13:33:48 2010 -0400
 
@@ -348,7 +394,7 @@ Date:   Fri May 7 13:33:48 2010 -0400
     Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
     Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 
-commit f1e359edc4b741144b29c362a3d49d1965b951b3
+commit 9605a069f83d999e60cd57dc8010708fe08291c0
 Author: Chuck Lever <chuck.lever@oracle.com>
 Date:   Fri May 7 13:33:30 2010 -0400
 
@@ -360,7 +406,7 @@ Date:   Fri May 7 13:33:30 2010 -0400
     Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
     Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 
-commit fd01fe01507c9110542ccb268f49a3e19e3d9bf6
+commit bb8b27e504c0f0463535fea31b42bcaa393c3fb0
 Author: Trond Myklebust <Trond.Myklebust@netapp.com>
 Date:   Fri Apr 16 16:43:06 2010 -0400
 
@@ -369,7 +415,7 @@ Date:   Fri Apr 16 16:43:06 2010 -0400
     Reviewed-by: Chuck Lever <chuck.lever@oracle.com>
     Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 
-commit 45bc71a9559c59fad8184bff95e02a826c6b17ef
+commit d7cf8dd01289b3c64057e38d34c2857f6633d52c
 Author: Trond Myklebust <Trond.Myklebust@netapp.com>
 Date:   Fri Apr 16 16:42:46 2010 -0400
 
@@ -381,7 +427,7 @@ Date:   Fri Apr 16 16:42:46 2010 -0400
     Reviewed-by: Chuck Lever <chuck.lever@oracle.com>
     Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 
-commit b9d5ca0c200731167465db8bf84b4f72c3f91b5c
+commit a8ce4a8f37fef0a09a1e920c2e09f67a80426c7e
 Author: Trond Myklebust <Trond.Myklebust@netapp.com>
 Date:   Fri Apr 16 16:42:12 2010 -0400
 
@@ -395,7 +441,7 @@ Date:   Fri Apr 16 16:42:12 2010 -0400
     
     Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 
-commit 03fffdff3dc6f63e141e8ea1686cb8cf3aff3082
+commit 0b9e79431377df452348e78262dd5a3dc359eeef
 Author: Trond Myklebust <Trond.Myklebust@netapp.com>
 Date:   Fri Apr 16 16:41:57 2010 -0400
 
@@ -406,7 +452,7 @@ Date:   Fri Apr 16 16:41:57 2010 -0400
     Reviewed-by: Chuck Lever <chuck.lever@oracle.com>
     Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 
-commit 54d14891a9cd37e9ff280a72ed8e1d3442fd038b
+commit 19445b99b6d66af661c586c052de23110731a502
 Author: Trond Myklebust <Trond.Myklebust@netapp.com>
 Date:   Fri Apr 16 16:41:10 2010 -0400
 
@@ -417,7 +463,7 @@ Date:   Fri Apr 16 16:41:10 2010 -0400
     Reviewed-by: Chuck Lever <chuck.lever@oracle.com>
     Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 
-commit 800d7f501504edb0f7069286e46ad8f1ef81208e
+commit ee5ebe851ed60206f150d3f189416f9c63245b66
 Author: Trond Myklebust <Trond.Myklebust@netapp.com>
 Date:   Fri Apr 16 16:37:01 2010 -0400
 
@@ -426,7 +472,7 @@ Date:   Fri Apr 16 16:37:01 2010 -0400
     Reviewed-by: Chuck Lever <chuck.lever@oracle.com>
     Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 
-commit 494512705b977bcb58165cc3173ae97cda96c375
+commit fd86dfd2637db1aef9ebf96ba41aeedb87521e78
 Author: Trond Myklebust <Trond.Myklebust@netapp.com>
 Date:   Mon Apr 19 19:26:23 2010 -0400
 
@@ -434,7 +480,7 @@ Date:   Mon Apr 19 19:26:23 2010 -0400
     
     Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 
-commit ab313a0eb01b3075fb2d4c1dbf88ffb11177b8b2
+commit 1b4c6065b903390067c1b49bd616db5994c0d51c
 Author: Trond Myklebust <Trond.Myklebust@netapp.com>
 Date:   Mon Apr 19 19:14:28 2010 -0400
 
@@ -442,7 +488,7 @@ Date:   Mon Apr 19 19:14:28 2010 -0400
     
     Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 
-commit 75af462624e97d9adc4e2fe95e64eded02f95f6c
+commit b157b06ca24514ef4b766cabb8e852c950040923
 Author: Trond Myklebust <Trond.Myklebust@netapp.com>
 Date:   Mon Apr 19 19:05:48 2010 -0400
 
@@ -452,7 +498,7 @@ Date:   Mon Apr 19 19:05:48 2010 -0400
     
     Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 
-commit a3a45adbfbcc35b4ed408d38663088dbed9a512b
+commit ce587e07ba2e25b5c9d286849885b82676661f3e
 Author: Trond Myklebust <Trond.Myklebust@netapp.com>
 Date:   Fri Apr 16 16:22:52 2010 -0400
 
@@ -464,7 +510,7 @@ Date:   Fri Apr 16 16:22:52 2010 -0400
     
     Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 
-commit f1520a1b0a3596c96a53a22ea37b63b5b8ca8c67
+commit 6e94d62993cb79397856f3330577917ca79cffa2
 Author: Trond Myklebust <Trond.Myklebust@netapp.com>
 Date:   Fri Apr 16 16:22:52 2010 -0400
 
@@ -472,7 +518,7 @@ Date:   Fri Apr 16 16:22:52 2010 -0400
     
     Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 
-commit 51b25ed0807d8ad4cdaf951e6b4d85ce9e14c108
+commit ca7e9a0df263493bbdf76f47fd9e9ac48ad6f331
 Author: Trond Myklebust <Trond.Myklebust@netapp.com>
 Date:   Fri Apr 16 16:22:52 2010 -0400
 
@@ -480,7 +526,7 @@ Date:   Fri Apr 16 16:22:52 2010 -0400
     
     Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 
-commit 8839ed8e719c3507ee963067589dddfb90191696
+commit 987f8dfc9862f2c7b59594089793dedeebf0cf5e
 Author: Trond Myklebust <Trond.Myklebust@netapp.com>
 Date:   Fri Apr 16 16:22:52 2010 -0400
 
@@ -488,7 +534,7 @@ Date:   Fri Apr 16 16:22:52 2010 -0400
     
     Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 
-commit fe5ff3a04ae6f5abd776ddadd4b6e820b0b9dce2
+commit 0ab64e0e147e45c07e33d344401cf898a6c181c0
 Author: Trond Myklebust <Trond.Myklebust@netapp.com>
 Date:   Fri Apr 16 16:22:51 2010 -0400
 
@@ -499,7 +545,7 @@ Date:   Fri Apr 16 16:22:51 2010 -0400
     
     Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 
-commit ef6ef18e9ea8895be25165c436de0d30322c469f
+commit 23a306120fcb2879ed2b814716c1cb2a8eb74f72
 Author: Trond Myklebust <Trond.Myklebust@netapp.com>
 Date:   Fri Apr 16 16:22:51 2010 -0400
 
@@ -507,7 +553,7 @@ Date:   Fri Apr 16 16:22:51 2010 -0400
     
     Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 
-commit 6e0ac61eb7c61c6e7a6285bd4feaedbd7041614e
+commit eb872f0c8e5c9801da05d5c2a6e402af8e27160e
 Author: Trond Myklebust <Trond.Myklebust@netapp.com>
 Date:   Fri Apr 16 16:22:51 2010 -0400
 
@@ -515,7 +561,7 @@ Date:   Fri Apr 16 16:22:51 2010 -0400
     
     Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 
-commit c7dd79ed382051c93772e7110c08a94d89d3d501
+commit 39967ddf19ff98b6e0d7b43fe60bcbf2c254c478
 Author: Trond Myklebust <Trond.Myklebust@netapp.com>
 Date:   Fri Apr 16 16:22:50 2010 -0400
 
@@ -523,7 +569,7 @@ Date:   Fri Apr 16 16:22:50 2010 -0400
     
     Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 
-commit f95c81470501c171e2bc9e2bbd81ad4f36e1668b
+commit d346890bea062d697e24fb4e34591428021ad011
 Author: Trond Myklebust <Trond.Myklebust@netapp.com>
 Date:   Fri Apr 16 16:22:50 2010 -0400
 
@@ -531,7 +577,7 @@ Date:   Fri Apr 16 16:22:50 2010 -0400
     
     Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 
-commit f3c83d762e9329af0fad075c449af552d84cc3d6
+commit 3b14d6542d7efbec614277d1cd7d6f5b5a2be9ca
 Author: Trond Myklebust <Trond.Myklebust@netapp.com>
 Date:   Fri Apr 16 16:22:50 2010 -0400
 
@@ -539,7 +585,7 @@ Date:   Fri Apr 16 16:22:50 2010 -0400
     
     Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 
-commit 7f9d724bfc6b774186df614613896274cd57fbb4
+commit 136f2627c932da5835e67e464e191d8c43c3f3fd
 Author: Trond Myklebust <Trond.Myklebust@netapp.com>
 Date:   Fri Apr 16 16:22:49 2010 -0400
 
@@ -547,7 +593,7 @@ Date:   Fri Apr 16 16:22:49 2010 -0400
     
     Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 
-commit fe677f885967b79e46f2ee6d2bd5e950dc4d099c
+commit aa49b4cf7dbf45438563f0ff6a2d23a68b70a7b9
 Author: Trond Myklebust <Trond.Myklebust@netapp.com>
 Date:   Fri Apr 16 16:22:49 2010 -0400
 
@@ -555,7 +601,7 @@ Date:   Fri Apr 16 16:22:49 2010 -0400
     
     Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 
-commit 3c066c03da3e8fa2f9a91b9cd6c914a56604fbe0
+commit 011fff7239eb90e33e7bebba48bf596fced06eb9
 Author: Trond Myklebust <Trond.Myklebust@netapp.com>
 Date:   Fri Apr 16 16:22:49 2010 -0400
 
@@ -563,7 +609,7 @@ Date:   Fri Apr 16 16:22:49 2010 -0400
     
     Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 
-commit fa8875e97e5f7ec5d72857705790bd51c3f83095
+commit a3cba2aad9c0a63279716d377efbf37c176ed400
 Author: Trond Myklebust <Trond.Myklebust@netapp.com>
 Date:   Fri Apr 16 16:22:49 2010 -0400
 
@@ -571,7 +617,7 @@ Date:   Fri Apr 16 16:22:49 2010 -0400
     
     Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 
-commit 7fa0a015f4d3c7290e33b724bab38bb715a1ab65
+commit c407d41a1612aa487f5a9cb5338ed7dc60fe1da2
 Author: Trond Myklebust <Trond.Myklebust@netapp.com>
 Date:   Fri Apr 16 16:22:48 2010 -0400
 
@@ -579,7 +625,7 @@ Date:   Fri Apr 16 16:22:48 2010 -0400
     
     Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 
-commit 80b2072b847aadcd860e4bbaaf9082b674b1aead
+commit 4f727296d2428b60138793a0a1207a4085eacf99
 Author: Trond Myklebust <Trond.Myklebust@netapp.com>
 Date:   Fri Apr 16 16:22:48 2010 -0400
 
@@ -587,7 +633,7 @@ Date:   Fri Apr 16 16:22:48 2010 -0400
     
     Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 
-commit 810f81559fcb1fe15f3bd81ca04b0ea6c7e230fa
+commit 8bac9db9cf85f2518cb523bb1d69c481975c1f9a
 Author: Trond Myklebust <Trond.Myklebust@netapp.com>
 Date:   Fri Apr 16 16:22:48 2010 -0400
 
@@ -595,7 +641,7 @@ Date:   Fri Apr 16 16:22:48 2010 -0400
     
     Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 
-commit 2f2bfa9ecb445f21650a06159cdcaaf588b563e6
+commit 04ffdbe2e69beb0f1745f921871fbe0f97dc4697
 Author: Trond Myklebust <Trond.Myklebust@netapp.com>
 Date:   Fri Apr 16 16:22:48 2010 -0400
 
@@ -603,7 +649,7 @@ Date:   Fri Apr 16 16:22:48 2010 -0400
     
     Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 
-commit f7c87846ed8c32ba734a303dcbc44a0ede8552db
+commit e1fb4d05d5a3265f1f6769bee034175f91ecc2dd
 Author: Trond Myklebust <Trond.Myklebust@netapp.com>
 Date:   Fri Apr 16 16:22:47 2010 -0400
 
@@ -611,7 +657,7 @@ Date:   Fri Apr 16 16:22:47 2010 -0400
     
     Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 
-commit e9cb62d914a1c9e6854e6cc826157470ede6cf73
+commit 364d015e5208e4669a4ae9fab2ab104ff26bc159
 Author: Trond Myklebust <Trond.Myklebust@netapp.com>
 Date:   Fri Apr 16 16:22:46 2010 -0400
 
@@ -619,7 +665,7 @@ Date:   Fri Apr 16 16:22:46 2010 -0400
     
     Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 
-commit e227dbc83479ca4633886244f628738d12f57544
+commit fbca779a8d240d82ef1439247033fd491f81547c
 Author: Trond Myklebust <Trond.Myklebust@netapp.com>
 Date:   Fri Apr 16 16:22:46 2010 -0400
 
@@ -627,7 +673,7 @@ Date:   Fri Apr 16 16:22:46 2010 -0400
     
     Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 
-commit 36c7e9460e3d5faabad40ba5a2ca5b123b922494
+commit a4d7f16806e98cee752006d3a8c10067a7c2aa6b
 Author: Trond Myklebust <Trond.Myklebust@netapp.com>
 Date:   Fri Apr 16 16:22:46 2010 -0400
 
@@ -635,7 +681,7 @@ Date:   Fri Apr 16 16:22:46 2010 -0400
     
     Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 
-commit 0c97dfe9dbd151dcdd89c6b1d73cecfe360f9935
+commit 815409d22df870ea0b0d86f2a3bf33c35bcef55c
 Author: Trond Myklebust <Trond.Myklebust@netapp.com>
 Date:   Fri Apr 16 16:22:46 2010 -0400
 
@@ -647,7 +693,7 @@ Date:   Fri Apr 16 16:22:46 2010 -0400
     
     Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 
-commit 87ec468d18208404148344966bb6e589ff3b69cc
+commit 2d36bfde8565b315e624302d12da5a7c9d195522
 Author: Trond Myklebust <Trond.Myklebust@netapp.com>
 Date:   Fri Apr 16 16:22:45 2010 -0400
 
@@ -659,7 +705,7 @@ Date:   Fri Apr 16 16:22:45 2010 -0400
     
     Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 
-commit 4b98fb47f8e5d8f864a5281503ae37a9aa208874
+commit fc54a0c65fc8cae6b0355512f0b619c1515e7d7f
 Author: Trond Myklebust <Trond.Myklebust@netapp.com>
 Date:   Thu Apr 8 14:25:20 2010 -0400
 
@@ -670,7 +716,7 @@ Date:   Thu Apr 8 14:25:20 2010 -0400
     
     Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 
-commit 274e11e7c1431f9a924edccbb1bbfc546354cc13
+commit fffdaef2eb4a7333952e55cf97f1fc0fcc35f981
 Author: Kevin Coffman <kwc@citi.umich.edu>
 Date:   Wed Mar 17 13:03:06 2010 -0400
 
@@ -683,7 +729,7 @@ Date:   Wed Mar 17 13:03:06 2010 -0400
     Signed-off-by: Steve Dickson <steved@redhat.com>
     Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 
-commit fa1e39dc99488f3b74d5f2a0307e4a54dd65a437
+commit 5af46547ec451918f3ba51efe59b317d33adf701
 Author: Kevin Coffman <kwc@citi.umich.edu>
 Date:   Wed Mar 17 13:03:05 2010 -0400
 
@@ -703,7 +749,7 @@ Date:   Wed Mar 17 13:03:05 2010 -0400
     Signed-off-by: Steve Dickson <steved@redhat.com>
     Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 
-commit bd9dc4b0e3b9889b49bc887a6bf62c7a5b6b4c2b
+commit 1dbd9029f3024d058da1cf6c6658c28aac2e4e1c
 Author: Kevin Coffman <kwc@citi.umich.edu>
 Date:   Wed Mar 17 13:03:04 2010 -0400
 
@@ -717,7 +763,7 @@ Date:   Wed Mar 17 13:03:04 2010 -0400
     Signed-off-by: Steve Dickson <steved@redhat.com>
     Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 
-commit 190a2e1c7615cd1e68fb5994ab935e137874ee79
+commit fc263a917afad3bda7b823a6edc803a40e7f6015
 Author: Kevin Coffman <kwc@citi.umich.edu>
 Date:   Wed Mar 17 13:03:03 2010 -0400
 
@@ -730,7 +776,7 @@ Date:   Wed Mar 17 13:03:03 2010 -0400
     Signed-off-by: Steve Dickson <steved@redhat.com>
     Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 
-commit f2fec69662022e12e0593cee91a64ee94424e152
+commit 8b23707612cffdba694dcd18aa8a018918aa86dc
 Author: Kevin Coffman <kwc@citi.umich.edu>
 Date:   Wed Mar 17 13:03:02 2010 -0400
 
@@ -744,7 +790,7 @@ Date:   Wed Mar 17 13:03:02 2010 -0400
     Signed-off-by: Steve Dickson <steved@redhat.com>
     Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 
-commit 8cb614fd40227ed936ca28cd75e0c917aa7d09d8
+commit bf6d359c508cf83401c942262a9749752598394d
 Author: Trond Myklebust <Trond.Myklebust@netapp.com>
 Date:   Thu Apr 8 14:23:06 2010 -0400
 
@@ -755,7 +801,7 @@ Date:   Thu Apr 8 14:23:06 2010 -0400
     
     Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 
-commit a2c07a23d3ba8bea7a7a90ce75d13c9a84b00b22
+commit 934a95aa1c9c6ad77838800b79c306e982437605
 Author: Kevin Coffman <kwc@citi.umich.edu>
 Date:   Wed Mar 17 13:03:00 2010 -0400
 
@@ -768,7 +814,7 @@ Date:   Wed Mar 17 13:03:00 2010 -0400
     Signed-off-by: Steve Dickson <steved@redhat.com>
     Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 
-commit 8e415a3fa9b00bc19a682f40674d42e9345cba04
+commit de9c17eb4a912c9028f7b470eb80815144883b26
 Author: Kevin Coffman <kwc@citi.umich.edu>
 Date:   Wed Mar 17 13:02:59 2010 -0400
 
@@ -783,7 +829,7 @@ Date:   Wed Mar 17 13:02:59 2010 -0400
     [Trond: Got rid of the TEST_ROTATE/TEST_EXTRA_COUNT crap]
     Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 
-commit 22e80c88526482a2ccf173db9547fb07ade3620b
+commit c43abaedaff92a7bcbfe04b593164bb5faba3078
 Author: Kevin Coffman <kwc@citi.umich.edu>
 Date:   Wed Mar 17 13:02:58 2010 -0400
 
@@ -793,7 +839,7 @@ Date:   Wed Mar 17 13:02:58 2010 -0400
     Signed-off-by: Steve Dickson <steved@redhat.com>
     Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 
-commit dd49450037591da3bb9332fd46ea4d3e2f34eaef
+commit 4018bf3eec5ff6bf1234a602a4e72518757a7f55
 Author: Trond Myklebust <Trond.Myklebust@netapp.com>
 Date:   Thu Apr 8 14:21:12 2010 -0400
 
@@ -804,7 +850,7 @@ Date:   Thu Apr 8 14:21:12 2010 -0400
     
     Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 
-commit 2feaa421212cd75b2422156469e8adcc6f4d0745
+commit 958142e97e04d6c266ae093739bbbbd03afcd497
 Author: Kevin Coffman <kwc@citi.umich.edu>
 Date:   Wed Mar 17 13:02:55 2010 -0400
 
@@ -816,7 +862,7 @@ Date:   Wed Mar 17 13:02:55 2010 -0400
     Signed-off-by: Steve Dickson <steved@redhat.com>
     Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 
-commit 19a636d3b22c368a58e83653ab950812a54d6957
+commit 683ac6656cb05b6e83593770ffc049eee4a4d119
 Author: Trond Myklebust <Trond.Myklebust@netapp.com>
 Date:   Thu Apr 8 14:09:58 2010 -0400
 
@@ -835,7 +881,7 @@ Date:   Thu Apr 8 14:09:58 2010 -0400
     
     Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 
-commit caf723a64d4d8d9e414803e11f487b64d0796a50
+commit 47d84807762966c3611c38adecec6ea703ddda7a
 Author: Kevin Coffman <kwc@citi.umich.edu>
 Date:   Wed Mar 17 13:02:54 2010 -0400
 
@@ -849,7 +895,7 @@ Date:   Wed Mar 17 13:02:54 2010 -0400
     Signed-off-by: Steve Dickson <steved@redhat.com>
     Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 
-commit 2633d39f516e5680014216cfc014312630cacbde
+commit 4891f2d008e4343eedea39ba1fe74864f1d32be0
 Author: Kevin Coffman <kwc@citi.umich.edu>
 Date:   Wed Mar 17 13:02:53 2010 -0400
 
@@ -863,7 +909,7 @@ Date:   Wed Mar 17 13:02:53 2010 -0400
     Signed-off-by: Steve Dickson <steved@redhat.com>
     Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 
-commit 92d53af26e9cf0b0b88d0d5373018ee3ee94759d
+commit e1f6c07b1160ef28e8754d12e6c03288dd9d5ca8
 Author: Kevin Coffman <kwc@citi.umich.edu>
 Date:   Wed Mar 17 13:02:52 2010 -0400
 
@@ -878,7 +924,7 @@ Date:   Wed Mar 17 13:02:52 2010 -0400
     Signed-off-by: Steve Dickson <steved@redhat.com>
     Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 
-commit 2aa5fd093c120f1d3947027d353430c1f45cb92c
+commit 81d4a4333a1dfd6070f046265d928bb4c79aff88
 Author: Kevin Coffman <kwc@citi.umich.edu>
 Date:   Wed Mar 17 13:02:51 2010 -0400
 
@@ -891,7 +937,7 @@ Date:   Wed Mar 17 13:02:51 2010 -0400
     Signed-off-by: Steve Dickson <steved@redhat.com>
     Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 
-commit 5d6a2a4f6639808fbb0130ea95736153c4ddd47b
+commit a8cc1cb7d7a12b0e2855832d10cfbfaffebfad6c
 Author: Kevin Coffman <kwc@citi.umich.edu>
 Date:   Wed Mar 17 13:02:50 2010 -0400
 
@@ -904,7 +950,7 @@ Date:   Wed Mar 17 13:02:50 2010 -0400
     Signed-off-by: Steve Dickson <steved@redhat.com>
     Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 
-commit 0be035054507be39eee0b56dc6b68e7dff79ad0a
+commit 1ac3719a2214c545c7e19d34e272a148ca9a24f1
 Author: Kevin Coffman <kwc@citi.umich.edu>
 Date:   Wed Mar 17 13:02:49 2010 -0400
 
@@ -917,7 +963,7 @@ Date:   Wed Mar 17 13:02:49 2010 -0400
     Signed-off-by: Steve Dickson <steved@redhat.com>
     Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 
-commit 562c87b6b962ab075afd8f4f5246fde12b8e39c1
+commit 54ec3d462f3c2a3fe48a7bd592160bee31360087
 Author: J. Bruce Fields <bfields@citi.umich.edu>
 Date:   Wed Mar 17 13:02:48 2010 -0400
 
@@ -926,7 +972,7 @@ Date:   Wed Mar 17 13:02:48 2010 -0400
     Signed-off-by: Steve Dickson <steved@redhat.com>
     Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 
-commit 2989a61707503ef668fab678cd3a0db7ae7f8fb0
+commit 7561042fb7870be0b4ee57efddce68bda8968abf
 Author: Kevin Coffman <kwc@citi.umich.edu>
 Date:   Wed Mar 17 13:02:47 2010 -0400
 
@@ -935,7 +981,7 @@ Date:   Wed Mar 17 13:02:47 2010 -0400
     Signed-off-by: Steve Dickson <steved@redhat.com>
     Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 
-commit d9b5a8f050e3ee49be730eb327f5cdc836bc35b5
+commit 725f2865d4df31ac0768b13ae763beadc4bb8ce9
 Author: Kevin Coffman <kwc@citi.umich.edu>
 Date:   Wed Mar 17 13:02:46 2010 -0400
 
@@ -955,4 +1001,5 @@ Date:   Wed Mar 17 13:02:46 2010 -0400
     Signed-off-by: Kevin Coffman <kwc@citi.umich.edu>
     Signed-off-by: Steve Dickson <steved@redhat.com>
     Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+
 
