@@ -1,52 +1,120 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from vms173015pub.verizon.net ([206.46.173.15]:47495 "EHLO
-	vms173015pub.verizon.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753378Ab0ETUB1 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 20 May 2010 16:01:27 -0400
-Received: from backoffice.bplinux.com ([unknown] [98.118.141.73])
- by vms173015.mailsrvcs.net
- (Sun Java(tm) System Messaging Server 7u2-7.02 32bit (built Apr 16 2009))
- with ESMTPA id <0L2Q00LESI9NSKPA@vms173015.mailsrvcs.net> for
- linux-nfs@vger.kernel.org; Thu, 20 May 2010 15:01:03 -0500 (CDT)
-Received: from localhost (localhost.localdomain [127.0.0.1])
-	by backoffice.bplinux.com (Postfix) with ESMTP id AD2693E8002	for
- <linux-nfs@vger.kernel.org>; Thu, 20 May 2010 15:54:29 -0400 (EDT)
-Received: from backoffice.bplinux.com ([127.0.0.1])
-	by localhost (backoffice.bplinux.com [127.0.0.1]) (amavisd-new, port 10024)
-	with ESMTP id gBro3btDFtYd for <linux-nfs@vger.kernel.org>; Thu,
- 20 May 2010 15:54:28 -0400 (EDT)
-Received: from backoffice.bplinux.com (backoffice.bplinux.com [192.168.1.4])
-	by backoffice.bplinux.com (Postfix) with ESMTP id DC13F3E8001	for
- <linux-nfs@vger.kernel.org>; Thu, 20 May 2010 15:54:28 -0400 (EDT)
-Date: Thu, 20 May 2010 15:54:28 -0400 (EDT)
-From: Christopher Hawkins <chawkins@bplinux.com>
+Received: from [221.122.61.232] ([221.122.61.232]:33045 "EHLO mx.bwstor.com.cn"
+	rhost-flags-FAIL-FAIL-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1751734Ab0EQKBE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 17 May 2010 06:01:04 -0400
+Date: Mon, 17 May 2010 17:59:41 +0800
+From: Zhang Jingwang <zhangjingwang@nrchpc.ac.cn>
 To: linux-nfs@vger.kernel.org
-Message-id: <25273515.321274385268620.JavaMail.javamailuser@localhost>
-In-reply-to: <3726796.301274385081605.JavaMail.javamailuser@localhost>
-Subject: nfs4 hang
-Content-type: text/plain; charset=utf-8
+Cc: bhalevy@panasas.com
+Subject: [PATCH] pnfs: devide put_lseg and return_layout_barrier into
+	different workqueue
+Message-ID: <20100517095941.GA10823@MDS-78.localdomain>
+Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Hello, 
+These two functions mustn't be called from the same workqueue. Otherwise
+deadlock may occur. So we schedule the return_layout_barrier to nfsiod.
+nfsiod may not be a good choice, maybe we should setup a new workqueue
+to do the job.
 
-I have a bash script that sets up a root filesystem over NFS. The method works fine over NFS3 but hangs when using NFS4 as a transport. Hoping someone can help me figure out why?
+Signed-off-by: Zhang Jingwang <zhangjingwang@nrchpc.ac.cn>
+---
+ fs/nfs/pnfs.c |   58 +++++++++++++++++++++++++++++++++++++++-----------------
+ 1 files changed, 40 insertions(+), 18 deletions(-)
 
-In a nutshell:
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 5ad7fc6..d2b72be 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -1655,6 +1655,24 @@ pnfs_call_done(struct pnfs_call_data *pdata, struct rpc_task *task, void *data)
+  * cleanup.
+  */
+ static void
++pnfs_write_retry(struct work_struct *work)
++{
++	struct rpc_task *task;
++	struct nfs_write_data *wdata;
++	struct nfs4_pnfs_layout_segment range;
++
++	dprintk("%s enter\n", __func__);
++	task = container_of(work, struct rpc_task, u.tk_work);
++	wdata = container_of(task, struct nfs_write_data, task);
++	range.iomode = IOMODE_RW;
++	range.offset = wdata->args.offset;
++	range.length = wdata->args.count;
++	_pnfs_return_layout(wdata->inode, &range, NULL, RETURN_FILE);
++	pnfs_initiate_write(wdata, NFS_CLIENT(wdata->inode),
++			    wdata->pdata.call_ops, wdata->pdata.how);
++}
++
++static void
+ pnfs_writeback_done(struct nfs_write_data *data)
+ {
+ 	struct pnfs_call_data *pdata = &data->pdata;
+@@ -1674,15 +1692,8 @@ pnfs_writeback_done(struct nfs_write_data *data)
+ 	}
+ 
+ 	if (pnfs_call_done(pdata, &data->task, data) == -EAGAIN) {
+-		struct nfs4_pnfs_layout_segment range = {
+-			.iomode = IOMODE_RW,
+-			.offset = data->args.offset,
+-			.length = data->args.count,
+-		};
+-		dprintk("%s: retrying\n", __func__);
+-		_pnfs_return_layout(data->inode, &range, NULL, RETURN_FILE);
+-		pnfs_initiate_write(data, NFS_CLIENT(data->inode),
+-				    pdata->call_ops, pdata->how);
++		INIT_WORK(&data->task.u.tk_work, pnfs_write_retry);
++		queue_work(nfsiod_workqueue, &data->task.u.tk_work);
+ 	}
+ }
+ 
+@@ -1798,6 +1809,24 @@ out:
+  * read_pagelist is done
+  */
+ static void
++pnfs_read_retry(struct work_struct *work)
++{
++	struct rpc_task *task;
++	struct nfs_read_data *rdata;
++	struct nfs4_pnfs_layout_segment range;
++
++	dprintk("%s enter\n", __func__);
++	task = container_of(work, struct rpc_task, u.tk_work);
++	rdata = container_of(task, struct nfs_read_data, task);
++	range.iomode = IOMODE_RW;
++	range.offset = rdata->args.offset;
++	range.length = rdata->args.count;
++	_pnfs_return_layout(rdata->inode, &range, NULL, RETURN_FILE);
++	pnfs_initiate_read(rdata, NFS_CLIENT(rdata->inode),
++			   rdata->pdata.call_ops);
++}
++
++static void
+ pnfs_read_done(struct nfs_read_data *data)
+ {
+ 	struct pnfs_call_data *pdata = &data->pdata;
+@@ -1805,15 +1834,8 @@ pnfs_read_done(struct nfs_read_data *data)
+ 	dprintk("%s: Begin (status %d)\n", __func__, data->task.tk_status);
+ 
+ 	if (pnfs_call_done(pdata, &data->task, data) == -EAGAIN) {
+-		struct nfs4_pnfs_layout_segment range = {
+-			.iomode = IOMODE_ANY,
+-			.offset = data->args.offset,
+-			.length = data->args.count,
+-		};
+-		dprintk("%s: retrying\n", __func__);
+-		_pnfs_return_layout(data->inode, &range, NULL, RETURN_FILE);
+-		pnfs_initiate_read(data, NFS_CLIENT(data->inode),
+-				   pdata->call_ops);
++		INIT_WORK(&data->task.u.tk_work, pnfs_read_retry);
++		queue_work(nfsiod_workqueue, &data->task.u.tk_work);
+ 	}
+ }
+ 
+-- 
+1.6.2.5
 
-1. The node boots into a ramdisk that has a few thousand files in it already
-2. connects to an NFS server exporting / and mounts that in a tmp dir
-3. bash (on the booting node) loops through the local and remote filesystem and creates a local symlink to anything in the nfs root that it doesn't already have.
-
-Export options are: / 192.168.1.0/24(rw,no_root_squash,no_subtree_check,fsid=0)
-Mount options are: rw,sync,noatime,rsize=1024,wsize=1024
-
-rpcidmapd, portmap, statd are running on server and client, and rpc_pipefs is mounted on both as well. The script currently makes about 6200 links, total. Nfs4 hangs about 90% of the way through. I removed the directory it was hanging on (a simple, empty dir) and then it just hung on the next one.
-
-Really appreciate any help or pointers on where to look for more info. Thanks!
-
-Chris
-
-
-   
