@@ -1,70 +1,87 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mtagate5.de.ibm.com ([195.212.17.165]:40937 "EHLO
-	mtagate5.de.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757178Ab0EYNg5 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 25 May 2010 09:36:57 -0400
-Received: from d12nrmr1507.megacenter.de.ibm.com (d12nrmr1507.megacenter.de.ibm.com [9.149.167.1])
-	by mtagate5.de.ibm.com (8.13.1/8.13.1) with ESMTP id o4PDauTm013908
-	for <linux-nfs@vger.kernel.org>; Tue, 25 May 2010 13:36:56 GMT
-Received: from d12av06.megacenter.de.ibm.com (d12av06.megacenter.de.ibm.com [9.149.165.230])
-	by d12nrmr1507.megacenter.de.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id o4PDauBM1286276
-	for <linux-nfs@vger.kernel.org>; Tue, 25 May 2010 15:36:56 +0200
-Received: from d12av06.megacenter.de.ibm.com (loopback [127.0.0.1])
-	by d12av06.megacenter.de.ibm.com (8.14.3/8.13.1/NCO v10.0 AVout) with ESMTP id o4PDatKT030351
-	for <linux-nfs@vger.kernel.org>; Tue, 25 May 2010 15:36:55 +0200
-Received: from d12ml072.megacenter.de.ibm.com (d12ml072.megacenter.de.ibm.com [9.149.166.115])
-	by d12av06.megacenter.de.ibm.com (8.14.3/8.13.1/NCO v10.0 AVin) with ESMTP id o4PDatg0030348
-	for <linux-nfs@vger.kernel.org>; Tue, 25 May 2010 15:36:55 +0200
-Subject: Profiling knfsd
-To: linux-nfs@vger.kernel.org
-Message-ID: <OF356BDCDD.AFFB6E1B-ONC125772E.004AC232-C125772E.004AC9B8@de.ibm.com>
-From: Eric Veith1 <eric.veith@de.ibm.com>
-Date: Tue, 25 May 2010 15:36:53 +0200
-Content-type: text/plain; charset=ISO-8859-1
+Received: from fieldses.org ([174.143.236.118]:55070 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757867Ab0ERPMk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 18 May 2010 11:12:40 -0400
+Date: Tue, 18 May 2010 11:12:39 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Marc Eshel <eshel@almaden.ibm.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [pnfs] Linux pNFS status meeting 05/13
+Message-ID: <20100518151239.GE17823@fieldses.org>
+References: <OF0E51ED85.C973CB93-ON88257721.006B7902-88257721.006B9A2F@us.ibm.com> <20100512200801.GN6135@fieldses.org>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20100512200801.GN6135@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+On Wed, May 12, 2010 at 04:08:01PM -0400, bfields wrote:
+> On Wed, May 12, 2010 at 12:35:18PM -0700, Marc Eshel wrote:
+> > Meeting on Thursday 05/13/10 at 9:30 AM pacific time (12:30 PM UMICH time)
+> 
+> Rough agenda:
 
-Hello everybody,
+Apologies, I've been busier than usual and forgot to send out my notes:
 
-I'm facing the somewhat difficult task of looking under the hood of the
-knfsd and profiling its behaviour on WRITE/COMMIT calls. Basically, I'd
-like to answer the following questions:
+1. upstream status/merge plans (trond, bfields)
+	- rc7 released
+	- bfields: reclaim complete, benny's patches
+	- Trond: cleaning up branches, merged 2.6.35 stuff in (stack
+	  reduction, Chuck's rtc-resolution patches).  Haven't merged in
+	  access & auth cache -shrinker changes.  Also: state-recovery
+	  thread deadlock still being worked.  Rearranged rpc-task
+	  structure fields to shrink struct size.  That done, will send
+	  changelog to list.
 
-- What amount of payload is comming in?
-- What WRITE flags are set (UNSTABLE/DATA_SYNC/FILE_SYNC)?
-- What happens to the incoming RPCs (are they stored in a queue, or cached
-if UNSTABLE is set? If yes, what is the queue/cache size)?
-- What does the nfsd write out to disk?
-- How many NFS I/O operations are a kernel VFS (?) operation, and how many
-FS IOPs does this make?
+2. State of pNFS tree (bhalevy)
+	- [distracted, missed some notes]
+	- note also cleaned up gfs2 branch
 
-Regarding the last question, I already have a way of finding out what I/O
-operations containing what payload are done with what delay.
+3. Mailing list change
+	- no problems reported, except Benny getting repeatedly bounced
+	  off?  He'll investigate farther.  No response from postmaster.
 
-I'm a little at loss here because I have only a very vague idea of where to
-look. I though using systemtap and tapping some functions would give me
-answers to the questions above. Could somebody give me please some
-pointers, be it function names, header files, or a general idea of the call
-flow a NFS WRITE packet creates from being received over a socket until it
-is written out to disk?
+4. Client
+	4.1. Client pNFS status
+		- stable/unstable write-discussion.
+		- Andy notes: usually tests with writes to gfs2 turned
+		  on, even though not really optimal (and will stay turned
+		  off in mainstream).
+		- Benny: working on some io path bugs; will discuss on
+		  mailing list bugs.  Ricardo: note Fred may be working
+		  on same area.  (E.g.: on "done" path, two closes (one
+		  of layout_commit context, one layout return on close
+		  path?) were racing with each other?  Looks like there
+		  may be patches that fix that.  Also saw stable
+		  object-layout write problems.)
+		- Alexandros doing some work on layout-management, close
+		  to sending.
+		- what about ipv6?: reports are that it's work; not sure
+		  anyone's been thinking about it hard, though.
+		  (What about device cache?  Andy should take a look.
+		  What about gfs2 data server references?  Ricardo says
+		  this was all "priority B" on client.)
+	4.2. Client state management design documentation (trond)
+		- some progress last week, none this.
+5. Server
+	5.1. Todo's for minimal 4.1 server (bfields)
+		- Benny's patches
+		- pynfs testing
+	5.2. pnfs
+		- question about exports.
+		- exofs; did some testing, no report yet (distracted by
+		  some bugs)
 
-Thank you very much in advance.
+6. redhat status (steved)
+	- nothing to report
+7. bakeathon plans
+	- ann arbor: going fine
+	- boston: still waiting on hotel details.
+8. new business
+	- none
+9. next meeting
+	- same time (note Benny and Boaz expect to miss it).
 
-                  Eric
-
---
-Eric MSP Veith <eric.veith@de.ibm.com>
-Hechtsheimer Str. 2
-DE-55131 Mainz
-Germany
-
-IBM Deutschland GmbH
-Vorsitzender des Aufsichtsrats: Erich Clementi
-Geschäftsführung: Martin Jetter (Vorsitzender), Reinhard Reschke, Christoph
-Grandpierre, Matthias Hartmann, Michael Diemer, Martina Koederitz
-Sitz der Gesellschaft: Stuttgart
-Registergericht: Amtsgericht Stuttgart, HRB 14562
-WEEE-Reg.-Nr. DE 99369940
+--b.
 
