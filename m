@@ -1,73 +1,49 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:34961 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:43477 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753872Ab0ESP5H (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 19 May 2010 11:57:07 -0400
-Date: Wed, 19 May 2010 11:57:00 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Mi Jinlong <mijinlong@cn.fujitsu.com>
-Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
-        Jeff Layton <jlayton@redhat.com>,
-        NFSv3 list <linux-nfs@vger.kernel.org>, linux-fsdevel@vger.kernel.org,
-        ebiederm@xmission.com, adobriyan@gmail.com, viro@ZenIV.linux.org.uk,
-        jamie@shareable.org
-Subject: Re: [PATCH] VFS: Unlink should revoke all outstanding leases on
-	file
-Message-ID: <20100519155700.GE4581@fieldses.org>
-References: <4BED195F.3070504@cn.fujitsu.com> <20100514055844.109d2fdc@tlielax.poochiereds.net> <1273857471.4732.7.camel@localhost.localdomain> <20100514133819.5e383485@tlielax.poochiereds.net> <1273859968.4732.22.camel@localhost.localdomain> <1273861872.4732.34.camel@localhost.localdomain> <20100514192327.GA20192@fieldses.org> <4BF3B36F.80209@cn.fujitsu.com>
+	id S1757198Ab0ERRde convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 18 May 2010 13:33:34 -0400
+Subject: Re: [PATCH 7/8] pnfs-submit: forgetful client model
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4BF3B36F.80209@cn.fujitsu.com>
+From: Alexandros Batsakis <batsakis@netapp.com>
+In-Reply-To: <20100518141633.GA17823@fieldses.org>
+Date: Tue, 18 May 2010 10:33:32 -0700
+Cc: bhalevy@panasas.com, linux-nfs@vger.kernel.org
+Message-Id: <10CFDED7-10CA-4657-9CC1-F4E2DD32BB71@netapp.com>
+References: <1274119004-30213-1-git-send-email-batsakis@netapp.com> <1274119004-30213-2-git-send-email-batsakis@netapp.com> <1274119004-30213-3-git-send-email-batsakis@netapp.com> <1274119004-30213-4-git-send-email-batsakis@netapp.com> <1274119004-30213-5-git-send-email-batsakis@netapp.com> <1274119004-30213-6-git-send-email-batsakis@netapp.com> <1274119004-30213-7-git-send-email-batsakis@netapp.com> <1274119004-30213-8-git-send-email-batsakis@netapp.com> <20100517203851.GB5232@fieldses.org> <297C26EA-E5A1-411F-BC2B-76228887EE90@netapp.com> <20100518141633.GA17823@fieldses.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, May 19, 2010 at 05:46:23PM +0800, Mi Jinlong wrote:
-> 
-> 
-> J. Bruce Fields :
-> > On Fri, May 14, 2010 at 02:31:12PM -0400, Trond Myklebust wrote:
-> >> On Fri, 2010-05-14 at 13:59 -0400, Trond Myklebust wrote: 
-> >>> Note that the server should also recall the delegation if someone
-> >>> attempts to violate the guarantees that are listed in section 9.4: Open
-> >>> Delegation
-> >>>
-> >>>    When a client has a read open delegation, it may not make any changes
-> >>>    to the contents or attributes of the file but it is assured that no
-> >>>    other client may do so.  When a client has a write open delegation,
-> >>>    it may modify the file data since no other client will be accessing
-> >>>    the file's data.  The client holding a write delegation may only
-> >>>    affect file attributes which are intimately connected with the file
-> >>>    data:  size, time_modify, change.
-> >>>
-> >>> IOW: even if you hold a write delegation you are not allowed to change
-> >>> the file mode bits, owner, group or acls...
-> >> ...or the nlink value. So technically, we should also recall the
-> >> delegation when someone creates or deletes a hard link. I think I need
-> >> to remind Tom that he should add that to the RFC3530bis draft...
-> > 
-> > Yep.  And fixing all these cases is required before our the server's
-> > NFSv4 server is ready for much of anything.
-> > 
-> > I'm not sure ading break_lease() to may_delete() is right, but maybe
-> > it's better than nothing.
-> 
->   Agree with you.
-> 
-> > 
-> > One problem is that there's a race: nothing I can see stops anyone from
-> > getting another lease after may_delete() but before the delete happens.
-> 
->   Yes. 
->   The problem will exist, but there isn't some better methods to avoid it.
->   Is there a lease lock exist in kernel? 
->   If that's true, the problem will be fixed simply.
 
-I don't know of any existing lock that does exactly what we want.
+On May 18, 2010, at 7:16 AM, J. Bruce Fields wrote:
 
-Somebody at citi worked on a better lease implementation for a while,
-but I don't think we ever really got it right; the last version I can
-find is here:
+> On Mon, May 17, 2010 at 05:06:09PM -0700, Alexandros Batsakis wrote:
+>> Sure, I ll add the stuff below to the wiki and to the Documention folder.
+> 
+> Thanks!  Looks good.
+> 
+>> a) if stateid.seqid is not the expected one return NFS4ERR_DELAY.
+>> b) we set the specific segments as not valid (no more I/O to them)
+>> c) if there is pending I/O we return NFS4ERR_DELAY.
+> 
+> Up to you whether it's worth documenting, but: I remember there being
+> some disagreement about this, but don't remember the resolution.
+> 
+>> d) we return NFS4ERR_NOMATCHING_LAYOUT
+>> 
+>> Here you can find a simple flowchart that highlights the description above.
+>> https://docs.google.com/leaf?id=0B9egH40ld0WsMjg0ZmYzMTQtNDY5NC00ZjRjLTkwNzktNjFhZDFhYjJjYmFj&hl=en
+> 
+> That URL doesn't work for me.
+> 
 
-	git://linux-nfs.org/~bfields/linux-topics.git leases
+Apologies
+This should work (it's a .pdf file)
+https://docs.google.com/fileview?id=0B9egH40ld0WsNWQzM2RhMTQtM2E5ZS00YTk3LThmNDItMDU0YWMzZDczNDli&hl=en
 
---b.
+-a
+
+> --b.
+
