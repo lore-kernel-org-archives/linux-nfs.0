@@ -1,64 +1,49 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: Different options for subdir? Possible?
-Date: Tue, 18 May 2010 14:24:28 -0400
-Message-ID: <20100518182428.GE20706@fieldses.org>
-References: <20100515153104.51f5e4ab@mjolnir.ossman.eu> <20100517204947.GC5232@fieldses.org> <20100518193445.0c8dbc17@mjolnir.ossman.eu>
+Subject: Re: [pnfs] Linux pNFS status meeting 05/20
+Date: Tue, 18 May 2010 18:40:17 -0400
+Message-ID: <20100518224016.GZ20706@fieldses.org>
+References: <20100518223720.GY20706@fieldses.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-nfs@vger.kernel.org
-To: Pierre Ossman <pierre-list-vCPtPcF4ZGuHXe+LvDLADg@public.gmane.org>
+To: Marc Eshel <eshel@almaden.ibm.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:32969 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:46453 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752521Ab0ERSY3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 18 May 2010 14:24:29 -0400
-In-Reply-To: <20100518193445.0c8dbc17-OhHrUh4vRMS8I+09wXhka4dd74u8MsAO@public.gmane.org>
+	id S1755760Ab0ERWkS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 18 May 2010 18:40:18 -0400
+In-Reply-To: <20100518223720.GY20706@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, May 18, 2010 at 07:34:45PM +0200, Pierre Ossman wrote:
-> On Mon, 17 May 2010 16:49:47 -0400
-> "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> 
-> > On Sat, May 15, 2010 at 03:31:04PM +0200, Pierre Ossman wrote:
-> > > I'd like to export the filesystem /exports as ro, but the
-> > > subdir /exports/dump as rw. I can't seem to get it to work though, so
-> > > before I start digging deeper I figured I might ask if this is even
-> > > possible? :)
-> > 
-> > If the "dump" subdirectory is a subdirectory of the same filesystem (not
-> > a mountpoint), and if you're using NFSv4 (or v2/v3 with crossmnt), the
-> > client will continue to use the export options on the parent directory.
-> > 
-> 
-> Hmm... client? Can't say I'm intimate with the NFS protocol, but access
-> permissions like this seems like a server decision.
-
-Yes, apologies for the imprecise language.
-
-> > Also, note that it's relatively easy for someone with access to the
-> > network to treat all of /exports as rw.
-> 
-> Even with subtree check?
-
-If you turn on subtree_check, you're safe.  (That can cause other
-problems, though, due to filehandles changing on cross-directory
-rename.)
+Just noticed this got sent to the wrong list.  (Marc, these should go to
+linux-nfs@vger.kernel.org, probably not nfsv4-EgrivxUAwEbhvxM+mQhndA@public.gmane.org)
 
 --b.
 
-> > In general, export points that aren't mountpoints are not usually a good
-> > idea.
+On Tue, May 18, 2010 at 06:37:20PM -0400, J. Bruce Fields wrote:
+> Rough agenda.  Note Benny and Boaz will miss this one:
 > 
-> Fair enough. I'll have to figure something else out.
+> 1. upstream status/merge plans (trond, bfields)
 > 
-> Thanks
-> -- 
->      -- Pierre Ossman
+> 2. State of pNFS tree (bhalevy--skip?)
 > 
->   WARNING: This correspondence is being monitored by FRA, a
->   Swedish intelligence agency. Make sure your server uses
->   encryption for SMTP traffic and consider using PGP for
->   end-to-end encryption.
-
-
+> 3. Client
+> 	3.1. Client pNFS status
+> 		- Benny was working on some io path bugs which he
+> 		  intended to discuss on mailing list.
+> 		- Alexandros was doing some work on layout-management, close
+> 		  to sending out.
+> 	3.2. Client state management design documentation (trond)
+> 4. Server
+> 	4.1. Todo's for minimal 4.1 server (bfields)
+> 	4.2. pnfs
+> 
+> 5. redhat status (steved)
+> 6. bakeathon plans
+> 	- ann arbor
+> 	- boston (Sorin working on hotel information?)
+> 8. new business
+> 9. next meeting
+> 
+> --b.
