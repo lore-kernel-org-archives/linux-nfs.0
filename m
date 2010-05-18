@@ -1,49 +1,32 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [pnfs] Linux pNFS status meeting 05/20
-Date: Tue, 18 May 2010 18:40:17 -0400
-Message-ID: <20100518224016.GZ20706@fieldses.org>
-References: <20100518223720.GY20706@fieldses.org>
+From: Marc Eshel <eshel@almaden.ibm.com>
+Subject: Linux pNFS status meeting 05/20
+Date: Tue, 18 May 2010 15:47:22 -0700
+Message-ID: <OF970CCAE4.FD82E089-ON88257727.007D09C6-88257727.007D2D8D@us.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs@vger.kernel.org
-To: Marc Eshel <eshel@almaden.ibm.com>
+Content-Type: text/plain; charset="US-ASCII"
+To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:46453 "EHLO fieldses.org"
+Received: from e3.ny.us.ibm.com ([32.97.182.143]:40088 "EHLO e3.ny.us.ibm.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755760Ab0ERWkS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 18 May 2010 18:40:18 -0400
-In-Reply-To: <20100518223720.GY20706@fieldses.org>
+	id S1752432Ab0ERWrZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 18 May 2010 18:47:25 -0400
+Received: from d01relay01.pok.ibm.com (d01relay01.pok.ibm.com [9.56.227.233])
+	by e3.ny.us.ibm.com (8.14.3/8.13.1) with ESMTP id o4IMYTGT025915
+	for <linux-nfs@vger.kernel.org>; Tue, 18 May 2010 18:34:29 -0400
+Received: from d01av04.pok.ibm.com (d01av04.pok.ibm.com [9.56.224.64])
+	by d01relay01.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id o4IMlNBD166198
+	for <linux-nfs@vger.kernel.org>; Tue, 18 May 2010 18:47:24 -0400
+Received: from d01av04.pok.ibm.com (loopback [127.0.0.1])
+	by d01av04.pok.ibm.com (8.14.3/8.13.1/NCO v10.0 AVout) with ESMTP id o4IMlNqv005110
+	for <linux-nfs@vger.kernel.org>; Tue, 18 May 2010 18:47:23 -0400
+Received: from d01ml604.pok.ibm.com (d01ml604.pok.ibm.com [9.56.227.90])
+	by d01av04.pok.ibm.com (8.14.3/8.13.1/NCO v10.0 AVin) with ESMTP id o4IMlNfi005105
+	for <linux-nfs@vger.kernel.org>; Tue, 18 May 2010 18:47:23 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Just noticed this got sent to the wrong list.  (Marc, these should go to
-linux-nfs@vger.kernel.org, probably not nfsv4-EgrivxUAwEbhvxM+mQhndA@public.gmane.org)
+Meeting on Thursday 05/20/10 at 9:30 AM pacific time (12:30 PM UMICH time)
 
---b.
+Marc. 
 
-On Tue, May 18, 2010 at 06:37:20PM -0400, J. Bruce Fields wrote:
-> Rough agenda.  Note Benny and Boaz will miss this one:
-> 
-> 1. upstream status/merge plans (trond, bfields)
-> 
-> 2. State of pNFS tree (bhalevy--skip?)
-> 
-> 3. Client
-> 	3.1. Client pNFS status
-> 		- Benny was working on some io path bugs which he
-> 		  intended to discuss on mailing list.
-> 		- Alexandros was doing some work on layout-management, close
-> 		  to sending out.
-> 	3.2. Client state management design documentation (trond)
-> 4. Server
-> 	4.1. Todo's for minimal 4.1 server (bfields)
-> 	4.2. pnfs
-> 
-> 5. redhat status (steved)
-> 6. bakeathon plans
-> 	- ann arbor
-> 	- boston (Sorin working on hotel information?)
-> 8. new business
-> 9. next meeting
-> 
-> --b.
+
