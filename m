@@ -1,76 +1,46 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH 00/24] Modernize NFSv2 XDR encoder/decoders
-Date: Mon, 17 May 2010 16:57:14 -0400
-Message-ID: <4BF1ADAA.8030908@oracle.com>
-References: <20100517023905.20258.86631.stgit@localhost.localdomain>
+From: Martin Vogt <martin.vogt@itwm.fraunhofer.de>
+Subject: Re: permission denied with >= ~2.6.25
+Date: Tue, 18 May 2010 10:34:17 +0200
+Message-ID: <4BF25109.40300@itwm.fraunhofer.de>
+References: <4BE7ED5D.90801@itwm.fraunhofer.de> <4BE93940.5070804@itwm.fraunhofer.de> <4BED1E44.4020708@itwm.fraunhofer.de> <20100516175213.GA9225@lts032.itwm.fhg.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8; format=flowed
+Content-Type: text/plain; charset=ISO-8859-1
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:48101 "EHLO
-	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752656Ab0EQU6v (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 17 May 2010 16:58:51 -0400
-Received: from acsinet15.oracle.com (acsinet15.oracle.com [141.146.126.227])
-	by rcsinet10.oracle.com (Switch-3.4.2/Switch-3.4.1) with ESMTP id o4HKwlZO026581
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Mon, 17 May 2010 20:58:49 GMT
-Received: from acsmt355.oracle.com (acsmt355.oracle.com [141.146.40.155])
-	by acsinet15.oracle.com (Switch-3.4.2/Switch-3.4.1) with ESMTP id o4HKdoho016284
-	for <linux-nfs@vger.kernel.org>; Mon, 17 May 2010 20:58:46 GMT
-In-Reply-To: <20100517023905.20258.86631.stgit-bi+AKbBUZKY6gyzm1THtWbp2dZbC/Bob@public.gmane.org>
+Received: from mailgw1.uni-kl.de ([131.246.120.220]:51708 "EHLO
+	mailgw1.uni-kl.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754101Ab0ERIeX (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 18 May 2010 04:34:23 -0400
+Received: from itwm2.itwm.fhg.de (itwm2.itwm.fhg.de [131.246.191.3])
+	by mailgw1.uni-kl.de (8.14.3/8.14.3/Debian-5+lenny1) with ESMTP id o4I8YIFr010835
+	(version=TLSv1/SSLv3 cipher=EDH-RSA-DES-CBC3-SHA bits=168 verify=NOT)
+	for <linux-nfs@vger.kernel.org>; Tue, 18 May 2010 10:34:18 +0200
+Received: from mail2.itwm.fhg.de ([131.246.191.79]:56861)
+	by itwm2.itwm.fhg.de with esmtps (TLSv1:DES-CBC3-SHA:168)
+	(/C=DE/ST=Rheinland-Pfalz/L=Kaiserslautern/O=Fraunhofer ITWM/OU=SLG/CN=mail2.itwm.fhg.de)(verified=1)
+	 (Exim 4.66 #1)
+	id 1OEIFm-0004XA-Cv
+	for linux-nfs@vger.kernel.org; Tue, 18 May 2010 10:34:18 +0200
+In-Reply-To: <20100516175213.GA9225-DA0fgfH9LvLH7LAFlePENYQuADTiUCJX@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Note: I now have some minor clean ups for this series.  I can post again 
-after a few days, after any review comments.
+Hello,
 
-On 05/16/10 10:45 PM, Chuck Lever wrote:
-> This series backports patches I did 3 years ago that update the NFS
-> client's NFSv2 XDR encoders and decoders to use xdr_stream style
-> marshalling, similar to NFSv4.  The immediate advantage is better
-> bounds checking during marshalling and unmarshalling.
->
-> I've already done the kernel's MNT client, lockd's NSM client, and
-> the kernel's rpcbind client.  Eventually, we should convert NFSv3 and
-> NLM to use this style of marshalling XDR so that we can streamline
-> call_encode() and call_decode().
->
-> ---
->
-> Chuck Lever (24):
->        NFS: Replace old NFSv2 decoder functions with xdr_stream-based ones
->        NFS: Decode NFSv2 statfs reply using an xdr_stream
->        NFS: Decode NFSv2 readdir reply using an xdr_stream
->        NFS: Decode NFSv2 write reply using an xdr_stream
->        NFS: Decode NFSv2 read reply using an xdr_stream
->        NFS: Decode NFSv2 readlink reply using an xdr_stream
->        NFS: Decode NFSv2 dirop reply using an xdr_stream
->        NFS: Decode NFSv2 attrstat reply using an xdr_stream
->        NFS: Decode NFSv2 stat reply using an xdr_stream
->        NFS: Use the "nfs_stat" enum for nfs_stat_to_errno()
->        NFS: Replace old NFSv2 encoder functions with xdr_stream-based ones
->        NFS: Encode NFSv2 readdir argument using an xdr_stream
->        NFS: Encode NFSv2 symlink argument using an xdr_stream
->        NFS: Encode NFSv2 link argument using an xdr_stream
->        NFS: Encode NFSv2 rename argument using an xdr_stream
->        NFS: Encode NFSv2 create argument using an xdr_stream
->        NFS: Encode NFSv2 write argument using an xdr_stream
->        NFS: Encode NFSv2 read argument using an xdr_stream
->        NFS: Encode NFSv2 readlink argument using an xdr_stream
->        NFS: Encode dirop argument using an xdr_stream
->        NFS: Encode v2 setattr argument using an xdr_stream
->        NFS: Encode NFSv2 fhandle argument using an xdr_stream
->        NFS: Introduce XDR helpers for basic NFSv2 data types
->        SUNRPC: Refactor logic to NUL-terminate strings in pages
->
->
->   fs/nfs/internal.h          |    2
->   fs/nfs/nfs2xdr.c           | 1169 +++++++++++++++++++++++++++++---------------
->   fs/nfs/nfs3xdr.c           |    6
->   fs/nfs/nfs4xdr.c           |    5
->   include/linux/sunrpc/xdr.h |    1
->   net/sunrpc/xdr.c           |   17 +
->   6 files changed, 779 insertions(+), 421 deletions(-)
->
 
+today I tried 2.6.34 on server/client with standard
+hardware. After around the 69th checkout I had an
+"Invalid cross-device link" Error.
+(Before that it was EIO/EPERM)
+
+Test ran for around 9 hours before it failed.
+
+>svn: In directory 'Kernel-pxe3-69.EZvgHTmbzv/include/asm-sparc'
+>svn: Can't move
+'Kernel-pxe3-69.EZvgHTmbzv/include/asm-sparc/resource.h.tmp'
+>to 'Kernel-pxe3-69.EZvgHTmbzv/include/asm-sparc/resource.h': Invalid
+>cross-device link
+>Mon May 17 23:46:32 CEST 2010,1
+>runcounter: 69
+
+Martin
