@@ -1,303 +1,84 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from ns201214.ovh.net ([91.121.117.65]:57328 "EHLO ns201214.ovh.net"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932151Ab0EKQ6j (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 11 May 2010 12:58:39 -0400
-Message-ID: <4BE98CAA.3050702@nomado.eu>
-Date: Tue, 11 May 2010 17:58:18 +0100
-From: HABIB Ramzi <ramzi@nomado.eu>
-Reply-To: ramzi@nomado.eu
-To: Kevin Coffman <kwc@citi.umich.edu>
-CC: linux-nfs@vger.kernel.org, 581199@bugs.debian.org
-Subject: Re: libnfsidmap: Virtual domains/users handling with at sign in idmap
-References: <4BE956AC.3070303@nomado.eu> <AANLkTinWVImhX2OpHT4Z75l_m1D1ED7YJkj4iuP3SyWn@mail.gmail.com> <4BE96A0B.8070000@nomado.eu>
-In-Reply-To: <4BE96A0B.8070000@nomado.eu>
-Content-Type: multipart/mixed;
- boundary="------------030101050004040200020500"
+Received: from mail2.shareable.org ([80.68.89.115]:58268 "EHLO
+	mail2.shareable.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752978Ab0ESQO3 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 19 May 2010 12:14:29 -0400
+Date: Wed, 19 May 2010 17:14:19 +0100
+From: Jamie Lokier <jamie@shareable.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
+        Jeff Layton <jlayton@redhat.com>,
+        Mi Jinlong <mijinlong@cn.fujitsu.com>,
+        NFSv3 list <linux-nfs@vger.kernel.org>, linux-fsdevel@vger.kernel.org,
+        ebiederm@xmission.com, adobriyan@gmail.com, viro@ZenIV.linux.org.uk
+Subject: Re: [PATCH] VFS: Unlink should revoke all outstanding leases on file
+Message-ID: <20100519161419.GB1693@shareable.org>
+References: <4BED195F.3070504@cn.fujitsu.com> <20100514055844.109d2fdc@tlielax.poochiereds.net> <1273857471.4732.7.camel@localhost.localdomain> <20100514133819.5e383485@tlielax.poochiereds.net> <1273859968.4732.22.camel@localhost.localdomain> <1273861872.4732.34.camel@localhost.localdomain> <20100514192327.GA20192@fieldses.org>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20100514192327.GA20192@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
---------------030101050004040200020500
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: quoted-printable
+J. Bruce Fields wrote:
+> On Fri, May 14, 2010 at 02:31:12PM -0400, Trond Myklebust wrote:
+> > On Fri, 2010-05-14 at 13:59 -0400, Trond Myklebust wrote: 
+> > > Note that the server should also recall the delegation if someone
+> > > attempts to violate the guarantees that are listed in section 9.4: Open
+> > > Delegation
+> > > 
+> > >    When a client has a read open delegation, it may not make any changes
+> > >    to the contents or attributes of the file but it is assured that no
+> > >    other client may do so.  When a client has a write open delegation,
+> > >    it may modify the file data since no other client will be accessing
+> > >    the file's data.  The client holding a write delegation may only
+> > >    affect file attributes which are intimately connected with the file
+> > >    data:  size, time_modify, change.
+> > > 
+> > > IOW: even if you hold a write delegation you are not allowed to change
+> > > the file mode bits, owner, group or acls...
+> > 
+> > ...or the nlink value. So technically, we should also recall the
+> > delegation when someone creates or deletes a hard link. I think I need
+> > to remind Tom that he should add that to the RFC3530bis draft...
+> 
+> Yep.  And fixing all these cases is required before our the server's
+> NFSv4 server is ready for much of anything.
+> 
+> I'm not sure ading break_lease() to may_delete() is right, but maybe
+> it's better than nothing.
+> 
+> One problem is that there's a race: nothing I can see stops anyone from
+> getting another lease after may_delete() but before the delete happens.
 
-Hi again,
+Presumably the intent is that the NFSv4 REMOVE request _acquires_ the
+lease, and releases it after the delete is done.
 
-Here is a second patch that applies to 0.21 and up only ( up to testing=20
-and unstable 0.23-2 for debian libnfsidmap2 packages and 0.23=20
-libnfsidmap source ) where dealing with local realms and principal realm=20
-was introduced first in. libnfsidmap
-strstr has been switched to strrchr  ( to avoid using strrstr as it's=20
-not a standard function ) .
+Same pattern with renames, attribute changes, etc.
 
-Patch to fix principal realm in addition to previous domain patch in=20
-#1st post
+Imho it would all be much tidier if leases had the same set of flag
+bits as inotify/dnotify, to say what changes they block.  (Maybe the
+flags would be slightly different - a detail).
 
-libnfsidmap_0.21_up_fix_at_sign_user_realm_fix.diff
+All operations (read, write, open, link, rename, etc.) would follow a
+pattern like this pseudo-code:
 
-///////////////////////////////////////////////////////////////////////////=
-////////////////////////////////////////////
+   do_write(file)
+   {
+       err = lease_acquire(file, IN_MODIFY);
+       if (err < 0)
+           return err;
 
---- libnfsidmap-0.23.orig/nss.c 2009-07-29 22:19:06.000000000 +0200
-+++ libnfsidmap-0.23/nss.c      2010-05-11 17:34:03.000000000 +0200
-@@ -135,7 +135,7 @@
-         char *l =3D NULL;
-         int len;
+       /* Do the modifying. */
 
--       c =3D strchr(name, '@');
-+       c =3D strrchr(name, '@');
-         if (c =3D=3D NULL && domain !=3D NULL)
-                 goto out;
-         if (c =3D=3D NULL && domain =3D=3D NULL) {
-@@ -276,7 +276,7 @@
-                 return -EINVAL;
+       lease_release_and_inotify_event(file, IN_MODIFY);
+   }
 
-         /* get princ's realm */
--       princ_realm =3D strstr(princ, "@");
-+       princ_realm =3D strrchr(princ, '@');
-         if (princ_realm =3D=3D NULL)
-                 return -EINVAL;
-         princ_realm++;
+I think that would provide the semantics needed by NFS, Samba, also
+fanotify for free, and more or less any kind of userspace caching,
+coherent or not.  It's clean and orthogonal.  (Good value for money isn't it?)
 
-///////////////////////////////////////////////////////////////////////////=
-////////////////////////////////////////////
+The nlink value is missing from inotify (or "linked from" if you look
+at it differently), but that's a problem needing to be fixed anyway.
 
-Patch to fix both domain & principal realm
-
-libnfsidmap_0.21_up_fix_at_sign_user_with_domain_plus_realm_fix.diff
-
-///////////////////////////////////////////////////////////////////////////=
-////////////////////////////////////////////
-
---- libnfsidmap-0.23.orig/nss.c 2009-07-29 22:19:06.000000000 +0200
-+++ libnfsidmap-0.23/nss.c      2010-05-11 17:34:03.000000000 +0200
-@@ -135,7 +135,7 @@
-         char *l =3D NULL;
-         int len;
-
--       c =3D strchr(name, '@');
-+       c =3D strrchr(name, '@');
-         if (c =3D=3D NULL && domain !=3D NULL)
-                 goto out;
-         if (c =3D=3D NULL && domain =3D=3D NULL) {
-@@ -276,7 +276,7 @@
-                 return -EINVAL;
-
-         /* get princ's realm */
--       princ_realm =3D strstr(princ, "@");
-+       princ_realm =3D strrchr(princ, '@');
-         if (princ_realm =3D=3D NULL)
-                 return -EINVAL;
-         princ_realm++;
-
-///////////////////////////////////////////////////////////////////////////=
-////////////////////////////////////////////
-
-
-Le 11/05/2010 15:30, HABIB Ramzi a =E9crit :
-> You're welcome.
-> The patch fixes the problem if not using kerberos.
-> I checked the latest version (0.23, in testing and unstable packages.=20
-> Doesn't apply for oldstable and stable ones) from citi's website and=20
-> it seems there's an additional fix to make for function=20
-> "nss_gss_princ_to_ids" in nss.c file on line 279 :
->
-> /////////////////////////////////////////////////
->
->     /* get princ's realm */
->     princ_realm =3D strstr(princ, "@");
->     if (princ_realm =3D=3D NULL)
->         return -EINVAL;
->     princ_realm++;
->
-> ////////////////////////////////////////////////
->
-> I'll check that soon and get back to you with the results.
->
-> Ramzi
->
-> Le 11/05/2010 15:07, Kevin Coffman a =E9crit :
->> Thanks.  Unless someone else sees a problem with this, I'll apply it.
->>
->> On Tue, May 11, 2010 at 9:07 AM, HABIB Ramzi<ramzi@nomado.eu>  wrote:
->>> Subject: libnfsidmap: Virtual domains/users handling with at sign in=20
->>> idmap
->>> Package: libnfsidmap
->>> Version: 0.23
->>> Severity: normal
->>> Tags: patch
->>>
->>> *** Please type your report below this line ***
->>>
->>> Idmap fails to map uid to localname or vice versa in case an 'at' (=20
->>> @ ) sign
->>> is included in the localname.
->>> This is particularly the case of virtual domains username where
->>> a user@virtual_domain is in fact the username and its @ sign=20
->>> conflicts with
->>> username@idmap_domain format used by idmap to handle uid/localname
->>> conversions.
->>> Where username =3D user@virtual_domain.
->>> Idmap is still able to map uid/localname correctly when the username=20
->>> does
->>> not
->>> include an @ sign.
->>> Both NFS Server and Client are PAM/NSS clients of an OpenLDAP Server=20
->>> that
->>> handles users&  groups. NFSv4 is used and without kerberos and=20
->>> "nsswitch"
->>> Translation method is used rather than umich_ldap.
->>> Idmap looks for the first occurrence of and @ sign in the name string
->>> and assumes that the @ sign is the one of user@virtual_domain rather=20
->>> than
->>> using the one of username@idmap_domain=20
->>> (user@virtual_domain@idmap_domain).
->>> The function "strip_domain" is defined in nss.c file and uses "strchr"
->>> function on line 138 to find the first occurrence of an @ sign from=20
->>> the name
->>> string.
->>> As the name string includes 2 occurrences, the domain resulting from=20
->>> that
->>> (virtual_domain@idmap_domain) fails to match with the configured idmap
->>> domain
->>> (idmap_domain) and this causes idmap returning a null value.
->>> Switching from "strchr" to "strrchr" simply fix the problem as it=20
->>> would look
->>> for the last occurrence rather than the first one and therefore has a
->>> resulting
->>> domain that matched the idmap one.
->>> This obviously makes sense as a URI should be read from right to=20
->>> left and
->>> not
->>> from left to right when handling domains.
->>> The idmap domain is this way the root domain and all virtual domains
->>> included
->>> in the username it handles will not conflicts with it.
->>>
->>> A patch is included here below :
->>>
->>> libnfsidmap_0.23_fix_at_sign_user_with_domain.diff
->>>
->>> //////////////////////////////////////////////////////////////////
->>>
->>> --- libnfsidmap-0.23.orig/nss.c    2009-07-29 22:19:06.000000000 +0200
->>> +++ libnfsidmap-0.23/nss.c    2010-05-11 15:02:13.000000000 +0200
->>> @@ -135,7 +135,7 @@
->>>      char *l =3D NULL;
->>>      int len;
->>>
->>> -    c =3D strchr(name, '@');
->>> +    c =3D strrchr(name, '@');
->>>      if (c =3D=3D NULL&&  domain !=3D NULL)
->>>          goto out;
->>>      if (c =3D=3D NULL&&  domain =3D=3D NULL) {
->>>
->>> //////////////////////////////////////////////////////////////////
->>>
->>> The patch applies to all archs.
->>> Versions checked :
->>> Debian :
->>> libnfsidmap2 0.18-0 (oldstable)
->>> libnfsidmap2 0.20-1 (stable)
->>> libnfsidmap2 0.23-2 (testing,unstable)
->>>
->>> -- System Information:
->>> Debian Release: 5.0.4
->>>   APT prefers stable
->>>   APT policy: (500, 'stable')
->>> Architecture: amd64 (x86_64)
->>>
->>> Kernel: Linux 2.6.26-2-amd64 (SMP w/1 CPU core)
->>> Locale: LANG=3Dfr_FR.UTF-8, LC_CTYPE=3Dfr_FR.UTF-8 (charmap=3DUTF-8)
->>> Shell: /bin/sh linked to /bin/bash
->>>
->>> Versions of packages libnfsidmap2 depends on:
->>> ii  libc6                       2.7-18lenny2 GNU C Library: Shared=20
->>> libraries
->>> ii  libldap-2.4-2               2.4.11-1+lenny1   OpenLDAP libraries
->>>
->>> Ramzi HABIB
->>> ramzi<at>  nomado.eu
->>>
->> __________ Information provenant d'ESET Smart Security, version de la=20
->> base des signatures de virus 5105 (20100511) __________
->>
->> Le message a =E9t=E9 v=E9rifi=E9 par ESET Smart Security.
->>
->> http://www.eset.com
->>
->>
->>
->>
->
-
-
---------------030101050004040200020500
-Content-Type: text/plain;
- name="libnfsidmap_0.20-1_fix_at_sign_user_with_domain.diff"
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
- filename*0="libnfsidmap_0.20-1_fix_at_sign_user_with_domain.diff"
-
---- libnfsidmap-0.20.orig/nss.c	2007-02-05 17:13:05.000000000 +0100
-+++ libnfsidmap-0.20/nss.c	2010-05-11 14:35:55.000000000 +0200
-@@ -135,7 +135,7 @@
- 	char *l = NULL;
- 	int len;
- 
--	c = strchr(name, '@');
-+	c = strrchr(name, '@');
- 	if (c == NULL && domain != NULL)
- 		goto out;
- 	if (c == NULL && domain == NULL) {
-
---------------030101050004040200020500
-Content-Type: text/plain;
- name="libnfsidmap_0.21_up_fix_at_sign_user_with_domain_plus_realm_fix.diff"
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
- filename*0="libnfsidmap_0.21_up_fix_at_sign_user_with_domain_plus_realm_";
- filename*1="fix.diff"
-
---- libnfsidmap-0.23.orig/nss.c	2009-07-29 22:19:06.000000000 +0200
-+++ libnfsidmap-0.23/nss.c	2010-05-11 17:34:03.000000000 +0200
-@@ -135,7 +135,7 @@
- 	char *l = NULL;
- 	int len;
- 
--	c = strchr(name, '@');
-+	c = strrchr(name, '@');
- 	if (c == NULL && domain != NULL)
- 		goto out;
- 	if (c == NULL && domain == NULL) {
-@@ -276,7 +276,7 @@
- 		return -EINVAL;
- 
- 	/* get princ's realm */
--	princ_realm = strstr(princ, "@");
-+	princ_realm = strrchr(princ, '@');
- 	if (princ_realm == NULL)
- 		return -EINVAL;
- 	princ_realm++;
-
---------------030101050004040200020500
-Content-Type: text/plain;
- name="libnfsidmap_0.21_up_fix_at_sign_user_realm_fix.diff"
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
- filename="libnfsidmap_0.21_up_fix_at_sign_user_realm_fix.diff"
-
---- libnfsidmap-0.23.orig/nss.c	2009-07-29 22:19:06.000000000 +0200
-+++ libnfsidmap-0.23/nss.c	2010-05-11 17:34:03.000000000 +0200
-@@ -276,7 +276,7 @@
- 		return -EINVAL;
- 
- 	/* get princ's realm */
--	princ_realm = strstr(princ, "@");
-+	princ_realm = strrchr(princ, '@');
- 	if (princ_realm == NULL)
- 		return -EINVAL;
- 	princ_realm++;
-
---------------030101050004040200020500--
+-- Jamie
