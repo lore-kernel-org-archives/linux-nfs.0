@@ -1,80 +1,128 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:34539 "EHLO mx2.suse.de"
+Received: from fieldses.org ([174.143.236.118]:38590 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758306Ab0EYBOP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 24 May 2010 21:14:15 -0400
-Date: Tue, 25 May 2010 11:14:05 +1000
-From: Neil Brown <neilb@suse.de>
-To: Al Viro <viro@ZenIV.linux.org.uk>
-Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
-        Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Subject: Re: [PATCH] VFS: fix recent breakage of FS_REVAL_DOT
-Message-ID: <20100525111405.04eaf924@notabene.brown>
-In-Reply-To: <20100524115903.GP31073@ZenIV.linux.org.uk>
-References: <20100524165756.2cfa54c4@notabene.brown>
-	<20100524115903.GP31073@ZenIV.linux.org.uk>
-Content-Type: text/plain; charset=US-ASCII
+	id S1751383Ab0ESU5x (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 19 May 2010 16:57:53 -0400
+Date: Wed, 19 May 2010 16:57:52 -0400
+To: Linus Torvalds <torvalds@linux-foundation.org>
+Cc: linux-nfs@vger.kernel.org
+Subject: nfsd changes for 2.6.35
+Message-ID: <20100519205752.GO9720@fieldses.org>
+Content-Type: text/plain; charset=us-ascii
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Mon, 24 May 2010 12:59:03 +0100
-Al Viro <viro@ZenIV.linux.org.uk> wrote:
+Please pull the following nfsd changes from the for-2.6.35 branch at:
 
-> On Mon, May 24, 2010 at 04:57:56PM +1000, Neil Brown wrote:
-> > 
-> > Commit 1f36f774b22a0ceb7dd33eca626746c81a97b6a5 broke FS_REVAL_DOT semantics.
-> > 
-> > In particular, before this patch, the command
-> >    ls -l
-> > in an NFS mounted directory would always check if the directory on the server
-> > had changed and if so would flush and refill the pagecache for the dir.
-> > After this patch, the same "ls -l" will repeatedly return stale date until
-> > the cached attributes for the directory time out.
-> > 
-> > The following patch fixes this by ensuring the d_revalidate is called by
-> > do_last when "." is being looked-up.
-> > link_path_walk has already called d_revalidate, but in that case LOOKUP_OPEN
-> > is not set so nfs_lookup_verify_inode chooses not to do any validation.
-> > 
-> > The following patch restores the original behaviour.
-> > 
-> > Cc: stable@kernel.org
-> > Signed-off-by: NeilBrown <neilb@suse.de>
-> 
-> Applied, but I really don't like the way you do it; note that e.g. foo/bar/.
-> gets that revalidation as well, for no good reason.  If anything, shouldn't
-> we handle that thing in the _beginning_ of pathname resolution, not in
-> the end?  For now it'd do, and it's a genuine regression, but...
-> 
+  git://linux-nfs.org/~bfields/linux.git for-2.6.35
 
-Thanks.
+Changes include implementation of RECLAIM_COMPLETE.  That depended on
+improvements to the nfsv4 state code from Benny Halevy, which a) allow
+us to safely deference a client from an associated session as long as
+we're processing a compound associated with that session, b) keep down
+the scope of the state lock, and c) prevent us from rudely expiring a
+client while we're still processing a compound from that client.
 
-I think I see what you mean by "at the beginning" - the problem path is
-simply ".", and both the start and end of that are "." so we can handle at
-either end...  But I don't think there is any other special handling of the
-'start' of a path, so I imagine it would be a fairly ugly special case.
+The grace and lease-time setting interfaces have been fixed.  (For
+developers, one improvement is that it's easier to set shorter grace and
+lease periods if necessary to reduce testing time.)
 
-We could avoid the extra GETATTR in "foo/bar/." by allowing NFS to keep some
-state in the namei_data to record that it has valid attributes for a given
-dentry so if it sees the same dentry again it doesn't need to revalidate.
+We now support a long-neglected NFSv4.0 SETCLIENTID feature which allows
+a client to change its callback path.  It's little-used in 4.0, though
+mandatory.  More importantly, it sets the groundwork for some callback
+improvements which will be needed to bring the 4.1 session
+implementation up to spec.
 
-I must confess though that I don't feel I understand VFS name lookup properly
-any more.  Since intents were added it seems to have become much more obscure
-and complex.  I cannot help thinking that there must be a better way:
-distinguish between the various cases at a higher level so we don't need as
-many flags being passed around and interpreted by widely separate pieces of
-code.  I don't have a concrete proposal but I would certainly be interested
-to work on one if there were any hope of real change.
-Thoughts?
+Neil Brown did some cleanup of the cache code in preparation for some
+improvements to the deferral behavior, which unfortunately haven't
+themselves been merged yet.
 
-Thanks,
-NeilBrown
+And there are miscellaneous fixes and cleanup from a number of people.
+Thanks to all contributors!
 
-> BTW, here's a question for nfs client folks: is it true that for any two
-> pathnames on _client_ resolving to pairs (mnt1, dentry) and (mnt2, dentry)
-> resp., nfs_devname(mnt1, dentry, ...) and nfs_devname(mnt2, dentry, ...)
-> should yield the strings that do not differ past the ':' (i.e. that the
-> only possible difference is going to be in spelling the server name)?
+--b.
 
+Benny Halevy (10):
+      nfsd4: use local variable in nfs4svc_encode_compoundres
+      nfsd4: rename sessionid_lock to client_lock
+      nfsd4: fold release_session into expire_client
+      nfsd4: use list_move in move_to_confirmed
+      nfsd4: extend the client_lock to cover cl_lru
+      nfsd4: refactor expire_client
+      nfsd4: introduce nfs4_client.cl_refcount
+      nfsd4: mark_client_expired
+      nfsd4: keep a reference count on client while in use
+      nfsd4: nfsd4_destroy_session must set callback client under the state lock
+
+Dan Carpenter (1):
+      nfsd: potential ERR_PTR dereference on exp_export() error paths.
+
+J. Bruce Fields (27):
+      nfsd4: simplify references to nfsd4 lease time
+      nfsd4: simplify lease/grace interaction
+      nfsd4: remove unnecessary lease-setting function
+      nfsd4: reshuffle lease-setting code to allow reuse
+      nfsd4: allow setting grace period time
+      nfsd4: document lease/grace-period limits
+      Merge commit 'v2.6.34-rc1' into for-2.6.35-incoming
+      svcrpc: don't hold sv_lock over svc_xprt_put()
+      nfsd4: preallocate nfs4_rpc_args
+      nfsd4: shutdown callbacks on expiry
+      nfsd4: remove dprintk
+      nfsd4: remove probe task's reference on client
+      nfsd4: consistent session flag setting
+      nfsd4: indentation cleanup
+      nfsd4: don't sleep in lease-break callback
+      nfsd4: cl_count is unused
+      nfsd4: rearrange cb data structures
+      nfsd4: allow 4.0 clients to change callback path
+      nfsd4: complete enforcement of 4.1 op ordering
+      nfsd4: fix filehandle comment
+      nfsd4: fix unlikely race in session replay case
+      nfsd: further comment typos
+      Merge commit 'v2.6.34-rc6'
+      nfsd4: fix bare destroy_session null dereference
+      nfsd4: implement reclaim_complete
+      nfs4: minor callback code simplification, comment
+      Revert "nfsd4: distinguish expired from stale stateids"
+
+Jeff Layton (1):
+      nfsd: don't break lease while servicing a COMMIT
+
+Li Zefan (1):
+      sunrpc/cache: fix module refcnt leak in a failure path
+
+Neil Brown (1):
+      sunrpc: centralise most calls to svc_xprt_received
+
+NeilBrown (4):
+      sunrpc: don't keep expired entries in the auth caches.
+      sunrpc/cache: factor out cache_is_expired
+      sunrpc: never return expired entries in sunrpc_cache_lookup
+      nfsd: factor out hash functions for export caches.
+
+Pavel Emelyanov (2):
+      NFSD: don't report compiled-out versions as present
+      nfsd: safer initialization order in find_file()
+
+ Documentation/filesystems/nfs/nfs41-server.txt |    2 +-
+ fs/nfsd/export.c                               |   44 ++--
+ fs/nfsd/nfs4callback.c                         |  140 ++++++---
+ fs/nfsd/nfs4proc.c                             |   50 +++-
+ fs/nfsd/nfs4state.c                            |  376 ++++++++++++-----------
+ fs/nfsd/nfs4xdr.c                              |   27 ++-
+ fs/nfsd/nfsctl.c                               |   64 +++-
+ fs/nfsd/nfsd.h                                 |    6 +-
+ fs/nfsd/nfssvc.c                               |    2 +-
+ fs/nfsd/state.h                                |   47 +++-
+ fs/nfsd/vfs.c                                  |    8 +-
+ fs/nfsd/vfs.h                                  |    1 +
+ fs/nfsd/xdr4.h                                 |   11 +-
+ include/linux/nfsd/nfsfh.h                     |    6 +-
+ net/sunrpc/cache.c                             |   45 ++-
+ net/sunrpc/svc_xprt.c                          |    6 +-
+ net/sunrpc/svcsock.c                           |   15 +-
+ net/sunrpc/xprtrdma/svc_rdma_recvfrom.c        |    3 -
+ 18 files changed, 510 insertions(+), 343 deletions(-)
