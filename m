@@ -1,267 +1,65 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yx0-f191.google.com ([209.85.210.191]:35924 "EHLO
-	mail-yx0-f191.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752705Ab0EKPCR convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 11 May 2010 11:02:17 -0400
-Received: by yxe29 with SMTP id 29so2454073yxe.4
-        for <linux-nfs@vger.kernel.org>; Tue, 11 May 2010 08:02:16 -0700 (PDT)
-In-Reply-To: <4BE91973.60505@panasas.com>
-References: <4BE3166F.7060800@panasas.com>
-	 <1273173832-27786-1-git-send-email-bhalevy@panasas.com>
-	 <4BE6E1E0.8020706@panasas.com>
-	 <CC482AF1-FEF0-4D01-A307-4CE5751F7689@netapp.com>
-	 <4BE91973.60505@panasas.com>
-Date: Tue, 11 May 2010 11:02:16 -0400
-Message-ID: <AANLkTikZn6LfO071MPRmqpSiJ-RpFlHZUGt71d-oe034@mail.gmail.com>
-Subject: Re: [PATCH 5/5] FIXME: pnfs-post-submit: per mount layout driver
-	private data
-From: "William A. (Andy) Adamson" <androsadamson@gmail.com>
-To: Boaz Harrosh <bharrosh@panasas.com>
-Cc: Benny Halevy <bhalevy@panasas.com>, linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mail2.shareable.org ([80.68.89.115]:54342 "EHLO
+	mail2.shareable.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750943Ab0ESQVb (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 19 May 2010 12:21:31 -0400
+Date: Wed, 19 May 2010 17:21:15 +0100
+From: Jamie Lokier <jamie@shareable.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Jeremy Allison <jra@samba.org>, Jeff Layton <jlayton@redhat.com>,
+        Trond Myklebust <trond.myklebust@fys.uio.no>,
+        Mi Jinlong <mijinlong@cn.fujitsu.com>,
+        NFSv3 list <linux-nfs@vger.kernel.org>, linux-fsdevel@vger.kernel.org,
+        ebiederm@xmission.com, adobriyan@gmail.com, viro@ZenIV.linux.org.uk
+Subject: Re: [PATCH] VFS: Unlink should revoke all outstanding leases on file
+Message-ID: <20100519162115.GC1693@shareable.org>
+References: <4BED195F.3070504@cn.fujitsu.com> <20100514055844.109d2fdc@tlielax.poochiereds.net> <1273857471.4732.7.camel@localhost.localdomain> <20100514133819.5e383485@tlielax.poochiereds.net> <20100514174653.GC10133@shareable.org> <20100514181643.GC9217@samba1> <20100519140639.GB4581@fieldses.org>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20100519140639.GB4581@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Tue, May 11, 2010 at 4:46 AM, Boaz Harrosh <bharrosh@panasas.com> wrote:
-> On 05/10/2010 05:24 PM, Andy Adamson wrote:
->>
->> On May 9, 2010, at 12:25 PM, Boaz Harrosh wrote:
->>
->>> On 05/06/2010 10:23 PM, Benny Halevy wrote:
->>>> Temporary relief until we convert to use generic device cache.
->>>>
->>>
->>> [In short]
->>> Rrrr, No! This is a complete crash. The private data is per-server but
->>> is called per super-block. In the case of two mounts of same "server",
->>> the user of this will:
->>> - Leak a device cache on second mount
->>> - Crash after close of first super block.
->>>
->>> [The long story]
->>> I'm commenting here for the complete series Andy's and Benny included.
->>>
->>> What Andy tried to do was move the per super-block device cache to a
->>> per "server" device cache. (This is the per server struct at the NFS
->>> client side not to be confused with an NFS-server what so ever). This
->>> is because as mandated by the Protocol each device id uniqueness is
->>> governed by a per-server-per-client-per-layoput_type, so multiple
->>> mounts can share the device-cache and save resources. The old code
->>> of per-mount-point was correct only not optimal.
->>>
->>> But he did not finish his job. Because he still calls the device
->>> cache initialization at per-mount-point init. -
->>>> initialize_mountpoint is
->>> called from set_pnfs_layoutdriver() which is called with a super-block
->>> per mount-point. He went to grate length (I hope, I did not check) to
->>> make sure only the first mount, allocates the cache, and the last
->>> mount
->>> destroys it.
->>>
->>> But otherwise he noticed (and Benny tried to help) that now
->>> initialize_mountpoint is per-server, and not per-sb. Hence the pointer
->>> to struct server.
->>>
->>> So the old code is now a layering violation and hence the mix-up and
->>> the bug
->>
->>>
->>> - If it is a per-server? name it ->initialize_server() receiving
->>> server
->>>  pointer, No?
->>>
->
-> What about the name ?
->
->>> - If it is a per-server then shift the all set_pnfs_layoutdriver() to
->>>  be called once per-server construction (At the server constructor
->>> code)
->>
->> set_pnfs_layoutdriver checks to see if nfs_server->pnfs_curr_ld is set.
->
-> Yes set_pnfs_layoutdriver does, again a layering violation in my opinion.
-> However ->uninitialize_mountpoint() is still called for every sb-unmount
-> how useful is that? (at super.c nfs4_kill_super)
->
-> It is very simple really.
->
-> - ->initialize_server() is called from nfs_server_set_fsinfo() for every
->  mount the check should be there. If you need it that late? Perhaps it could
->  be called earlier at nfs_init_server()?
->
-> - Call ->uninitialize_server() from nfs_free_server(). And all is well.
->
->
-> - Give me a void* at server to keep my stuff.
->
->> Put the private pointer into struct pnfs_layoutdriver_type and your
->> problem will be solved.
->>
->
-> No pnfs_layoutdriver_type is global. I might as well just put it at
-> the data_segment. I wanted a per mount. Willing to compromise on per server
->
->> -->Andy
->>
->
-> OK I finally read the code. and forget everything I said!
+J. Bruce Fields wrote:
+> On Fri, May 14, 2010 at 11:16:43AM -0700, Jeremy Allison wrote:
+> > On Fri, May 14, 2010 at 06:46:53PM +0100, Jamie Lokier wrote:
+> > 
+> > > I think you can delete open files on Windows nowadays, if they are
+> > > opened with a particular flag.
+> > 
+> > You can only mark them as "to be deleted" once the last opener
+> > closes. They still exist in the namespace.
+> 
+> So, I'm a little lost: in your opinion, would leases be more useful to
+> Samba if they were broken on delete, or if they weren't, or does it not
+> matter because you'll never do that?
 
-:)
+Samba might not delete open files (I'm not sure), but the Linux user
+on the server can still unlink the files, or rename over them.
 
->
-> So current code is one big bug in regard to filelayout_uninitialize_mountpoint
-> called for every nfs4_kill_super and the destruction of the cache.
+What should happen then, I'm not sure.  Maybe Samba should be able to
+delay the delete (like reads/writes can be delayed), or maybe it
+should be able to refuse the delete altogether (similar to the way
+the fanotify framework can block operations).
 
-Each layout driver initialize_mountpoint function is required to call
-nfs4_alloc_init_deviceid_cache() with it's layout driver specific
-free_deviceid_callback routine which either allocates the deviceid
-cache or bumps the reference count.
+> I see three options:
+> 	1. modify the existing file lease behavior to match what NFSv4
+> 	   (and Samba?) needs; or
+> 	2. leave the existing leases alone and create some new lock type
+> 	   (or otherwise flag some leases somehow) that does what we
+> 	   want; and, if we do that, either:
+> 		2a. leave the new leases in-kernel-only, or
+> 		2b. expose the new leases to userspace somehow so Samba
+> 		   (or whever) can use them.
+> 
+> I don't think any of 1, 2a, or 2b is likely to be harder than any other,
+> so it's just a question of what we want.
 
-The cache is not necessarily destroyed by the uninitialize_mountpoint
-call which is required to call nfs4_put_deviceid_cache().
+I think changing the userspace contract for long-standing F_SETLEASE
+is rude at least.  Samba and NFS aren't the only lease users, and
+anyway people will still run old Samba on new kernels; changing its
+behaviour is a bit risky.
 
-See fs/nfs/nfs4filelayout.c.
+Imho, new lease semantics should use new userspace API.
 
-The idea is for the deviceid cache to be referenced once per struct
-nfs_server in nfs_server_set_fsinfo (which calls nfs4_init_pnfs)  and
-dereferenced once per struct nfs_server in nfs4_kill_super (which
-calls unmount_pnfs_layoutdriver).
-
-But you are right - I now see that I ignored error paths in creating
-the super block and associating it with a struct nfs_server, so that
-the current code could bump the reference and then not dereference on
-error, or if the super block is shared in which case the struct
-nfs_server is freed.
-
-This is fixed by moving the unmount_pnfs_layoutdriver call from
-nfs4_kill_super into nfs_free_server which is called on all error
-paths as well as by nfs4_kill_super.
-
-I'll test a patch today.
-
->
-> Struct server has nothing to do with it. it is just on the way to receive
-> the struct *client* pointer. (My god the server/client relationships in
-> Linux-nfs-client I still don't understand it).
-
-It is also a way for you to receive a per struct nfs_server private
-data pointer which initialize/uninitialize_mount can manage
-independently of the nfs4_alloc_init_deviceid_cache and
-nfs4_put_deviceid_cache calls used to manage the
-generic deviceid cache.
-
->
-> So everything I said above but exchange the name "server" with *"client"*
->
-> And most importantly. YOU DO NOT NEED THE REFERENCE COUNTS. (right, there
-> are two)
->
-> if you stick the device-cache on the lifetime of the client structure
-> then:
-
-The nfs_client structure can support nfs_server structs that represent
-multiple pNFS and non-pNFS mounts, and eventually multiple pNFS mounts
-with multiple layout types. The cache lives only for multiple pNFS
-mounts (currently of one layout type).
-
-At the allocation of struct nfs_client, you don't  know if pNFS will
-be used, nor which layout type(s) will be supported. This is only
-known after nfs_probe_fsinfo returns with the fs_layout_type attribute
-(or not) which occurs after the nfs_client struct is created (or found
-and referenced). So, it is impossible to create a layout type specific
-generic deviceid cache before we know which layout type the cache is
-for which may occur well after the struct nfs_client is created if
-non-pNFS mounts occur before pNFS mounts.
-
-I therefore 'stick the device-cache' on the lifetime of the nfs_server
-structures representing pNFS mounts, using ref counts to remove the
-cache on last reference.
-
--->Andy
-
-> - There will not be any super-blocks alive before/after a particular client
->  dies. (right? sb->ref->server->ref->client)
-> - There will not be any inodes alive after a super-blocks dies, hence any
->  IOs nor any layouts.
->
-> So a device cache is what you said it is per client structure no more no
-> less. No?
->
-> (I can't find the last version of patches you sent to the mailing list
->  I wanted to comment on them (Sorry for the delay was busy). I'll look
->  in Benny's git I hope he did not squash them yet. And will comment
->  on that)
->
-> Boaz
->
->>>  then you don't need to sync in multiple places the initialization/
->>> destruction
->>>  of sb(s) vs. servers vs device-caches. Server struct life-cycle
->>> will govern that.
->>>
->>> Accommodating future needs:
->>> - In objects layout (In code not yet released) I have a per-super-
->>> block: pages-
->>>  cache-pool, raid-engine governing struct, and some other raid
->>> related information.
->>>  I use per-super-block because this is the most natural In the Linux
->>> VFS API. So
->>>  global stuff per super-block directly pointed by every inode for
->>> easy (random)
->>>  access at every API level. I could shift this to be per-server in
->>> NFS-client. I surly
->>>  don't want it global, (Rrrrr) and per-inode is two small. I will
->>> need to work harder
->>>  to optimize for the extra contention (or maybe not).
->>>
->>>  So the per-server model is fine, I guess, but don't let me slave
->>> over a broken API that
->>>  forces me to duplicate lifetime rules of things that are already
->>> taken care of, only
->>>  not seen by the layout driver.
->>>
->>>  If moving to a per-server model then some current structures
->>> referencing and pointing
->>>  could change to remove the SB from the picture and directly point
->>> to server.
->>>
->>> I know this is lots of work and who's going to do it, but I was not
->>> the one who suggested
->>> the optimization in the first place. A per-SB is some much easier
->>> because of the Linux
->>> environment we live in, but if we do it, it must be done right.
->>>
->>> Boaz
->>>
->>>> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
->>>> ---
->>>> include/linux/nfs_fs_sb.h |    1 +
->>>> 1 files changed, 1 insertions(+), 0 deletions(-)
->>>>
->>>> diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
->>>> index cad56a7..00a4e7e 100644
->>>> --- a/include/linux/nfs_fs_sb.h
->>>> +++ b/include/linux/nfs_fs_sb.h
->>>> @@ -164,6 +164,7 @@ struct nfs_server {
->>>>
->>>> #ifdef CONFIG_NFS_V4_1
->>>>     struct pnfs_layoutdriver_type  *pnfs_curr_ld; /* Active layout
->>>> driver */
->>>> +   void                           *pnfs_ld_data; /* Per-mount data */
->>>>     unsigned int                    ds_rsize;  /* Data server read size */
->>>>     unsigned int                    ds_wsize;  /* Data server write size */
->>>> #endif /* CONFIG_NFS_V4_1 */
->>>
->>> --
->>> To unsubscribe from this list: send the line "unsubscribe linux-nfs"
->>> in
->>> the body of a message to majordomo@vger.kernel.org
->>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>
->
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->
+-- Jamie
