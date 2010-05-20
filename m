@@ -1,111 +1,82 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from lo.gmane.org ([80.91.229.12]:43312 "EHLO lo.gmane.org"
+Received: from fieldses.org ([174.143.236.118]:52466 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757057Ab0EYAkG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 24 May 2010 20:40:06 -0400
-Received: from list by lo.gmane.org with local (Exim 4.69)
-	(envelope-from <glN-linux-nfs@m.gmane.org>)
-	id 1OGiBf-0001t8-Lx
-	for linux-nfs@vger.kernel.org; Tue, 25 May 2010 02:40:04 +0200
-Received: from softbank221086052216.bbtec.net ([221.86.52.216])
-        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-nfs@vger.kernel.org>; Tue, 25 May 2010 02:40:03 +0200
-Received: from redshield88888 by softbank221086052216.bbtec.net with local (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-nfs@vger.kernel.org>; Tue, 25 May 2010 02:40:03 +0200
-To: linux-nfs@vger.kernel.org
-From: redshield88888 <redshield88888@gmail.com>
-Subject: Data has not been wrote to DSs
-Date: Tue, 25 May 2010 00:23:41 +0000 (UTC)
-Message-ID: <loom.20100525T014937-518@post.gmane.org>
-Content-Type: text/plain; charset=utf-8
+	id S1752034Ab0ETCV1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 19 May 2010 22:21:27 -0400
+Date: Wed, 19 May 2010 22:21:08 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Jamie Lokier <jamie@shareable.org>
+Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
+        Jeff Layton <jlayton@redhat.com>,
+        Mi Jinlong <mijinlong@cn.fujitsu.com>,
+        NFSv3 list <linux-nfs@vger.kernel.org>, linux-fsdevel@vger.kernel.org,
+        ebiederm@xmission.com, adobriyan@gmail.com, viro@ZenIV.linux.org.uk
+Subject: Re: [PATCH] VFS: Unlink should revoke all outstanding leases on
+	file
+Message-ID: <20100520022108.GC14940@fieldses.org>
+References: <4BED195F.3070504@cn.fujitsu.com> <20100514055844.109d2fdc@tlielax.poochiereds.net> <1273857471.4732.7.camel@localhost.localdomain> <20100514133819.5e383485@tlielax.poochiereds.net> <1273859968.4732.22.camel@localhost.localdomain> <1273861872.4732.34.camel@localhost.localdomain> <20100514192327.GA20192@fieldses.org> <20100519161419.GB1693@shareable.org>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20100519161419.GB1693@shareable.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-■Reference
-http://wiki.linux-nfs.org/wiki/index.php/Configuring_pNFS/spnfsd
-http://osdir.com/ml/general/2010-05/msg10129.html
+On Wed, May 19, 2010 at 05:14:19PM +0100, Jamie Lokier wrote:
+> J. Bruce Fields wrote:
+> > I'm not sure ading break_lease() to may_delete() is right, but maybe
+> > it's better than nothing.
+> > 
+> > One problem is that there's a race: nothing I can see stops anyone from
+> > getting another lease after may_delete() but before the delete happens.
+> 
+> Presumably the intent is that the NFSv4 REMOVE request _acquires_ the
+> lease, and releases it after the delete is done.
 
-■My environment
-kernel-2.6.32.11-107.2.3.pnfs.fc12.x86_64.rpm
-kernel-devel-2.6.32.11-107.2.3.pnfs.fc12.x86_64.rpm
-kernel-firmware-2.6.32.11-107.2.3.pnfs.fc12.noarch.rpm
-kernel-headers-2.6.32.11-107.2.3.pnfs.fc12.x86_64.rpm
-nfs-utils-1.2.2-4.1.pnfs.x86_64.rpm
+It acquires something that prevents conflicting leases from being
+granted, yes.  (Dunno if I'd call the thing that prevents conflicting
+leases a "lease".)
 
-MDS: 192.168.1.60
-DS: 192.168.1.45
-Client: 192.168.1.62 ( created on the KVM's virtual machine on the MDS )
+> Same pattern with renames, attribute changes, etc.
+> 
+> Imho it would all be much tidier if leases had the same set of flag
+> bits as inotify/dnotify, to say what changes they block.  (Maybe the
+> flags would be slightly different - a detail).
+> 
+> All operations (read, write, open, link, rename, etc.) would follow a
+> pattern like this pseudo-code:
+> 
+>    do_write(file)
+>    {
+>        err = lease_acquire(file, IN_MODIFY);
 
-■/etc/exports
-- MDS's
+So I might call that "lease_deny" (or continue to call it
+"lease_break").
 
-/ *(rw,sync,pnfs,fsid=0,insecure,no_subtree_check,no_root_squash)
+>        if (err < 0)
+>            return err;
+> 
+>        /* Do the modifying. */
+> 
+>        lease_release_and_inotify_event(file, IN_MODIFY);
 
-- DS's
+Also, note the holder of the conflicting lease needs to be notified at
+the start, not here.  (And the notification is synchronous--the
+lease-holder gets to block the operation until it returns the lease.)
 
-/ *(rw,sync,fsid=0,insecure,no_subtree_check,pnfs,no_root_squash)
+>    }
+> 
+> I think that would provide the semantics needed by NFS, Samba, also
+> fanotify for free, and more or less any kind of userspace caching,
+> coherent or not.  It's clean and orthogonal.  (Good value for money isn't it?)
+> 
+> The nlink value is missing from inotify (or "linked from" if you look
+> at it differently), but that's a problem needing to be fixed anyway.
 
-■/etc/fstab
-- MDS's
+The interface sounds neat, sure.
 
-UUID=52ab88e8-5d93-440c-af45-0a85923898ec /                       ext4   
-defaults        1 1
-UUID=90d25a9c-54b4-4db4-979a-26ea0d67fe60 swap                    swap   
-defaults        0 0
-tmpfs                   /dev/shm                tmpfs   defaults        0 0
-devpts                  /dev/pts                devpts  gid=5,mode=620  0 0
-sysfs                   /sys                    sysfs   defaults        0 0
-proc                    /proc                   proc    defaults        0 0
-192.168.1.45:/pnfs /spnfs/192.168.1.45 nfs4 minorversion=1 0 0
+I worry if it requires us to implement all of those mask bits at once.
+Some might turn out to be more difficult to implement than others, and
+we really only care about some of them for now.  I suppose there could
+be a "supported_lease_mask_bits" value advertised to userspace.
 
-■/etc/spnfsd.conf of the MDS
-[General]
-Verbosity = 1
-Stripe-size = 8192
-Dense-striping = 0
-Pipefs-Directory = /var/lib/nfs/rpc_pipefs
-DS-Mount-Directory = /spnfs
-
-[DataServers]
-NumDS = 1
-DS1_IP = 192.168.1.45
-DS1_PORT = 2049
-DS1_ROOT = /pnfs
-DS1_ID = 1
-
-■Preparation nad Assumption
--The NFS related ports has opened and has confirmed
-
-- on the DS
-$mkdir /pnfs
-
-- on the MDS
-$mkdir /spnfs
-$mkdir /spnfs/192.168.1.45
-$reboot
-$touch /spnfs/192.168.1.45/test <- write succeeded to the DS's /spnfs
-
-The MDS has mounted the exported directory of DS and able to read and write.
-The MDS's /proc/self/mountstats includes lines that means the PNFS has turned on
-like below
-
-        PNFS_LAYOUTGET: 0 0 0 0 0 0 0 0
-        PNFS_LAYOUTCOMMIT: 0 0 0 0 0 0 0 0
-        PNFS_LAYOUTRETURN: 0 0 0 0 0 0 0 0
-        PNFS_GETDEVICELIST: 0 0 0 0 0 0 0 0
-        PNFS_GETDEVICEINFO: 0 0 0 0 0 0 0 0
-          PNFS_WRITE: 0 0 0 0 0 0 0 0
-         PNFS_COMMIT: 0 0 0 0 0 0 0 0
-
-■issue
-- on the client
-$mkdir /mnt/pnfs
-$modprobe nfslayoutdriver;modprobe blocklayoutdriver
-$mount -t nfs4 -o minorversion=1 192.168.1.60:/ /mnt/pnfs  <- SUCCEEDED
-$echo "heeeeeeeeeeeeeeeey" >> /mnt/pnfs/hello.txt  <- has not been wrote to the
-DS but has been worte under / of the MDS.
-
-
+--b.
