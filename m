@@ -1,90 +1,61 @@
-From: Tao Guo <glorioustao@gmail.com>
-Subject: Re: [PATCH] pnfs: call layoutcommit after flushing inode's data to
-	disk.
-Date: Thu, 20 May 2010 12:42:35 +0800
-Message-ID: <AANLkTikc6JXz1ubKJHxs0UJq-x80Mafsz4SKgkBPZgnf@mail.gmail.com>
-References: <20100520032759.GA26892@vmware>
+From: kernel <kernel-PAwl83ecUlHR7s880joybQ@public.gmane.org>
+Subject: Re: [Bugme-new] [Bug 15709] New: swapper page allocation failure
+Date: Thu, 20 May 2010 09:39:07 +0200
+Message-ID: <a133ef4ed022a00afd40b505719ae3d2@tauceti.net>
+References: <4BC43097.3060000@tauceti.net> <4BCC52B9.8070200@tauceti.net> <20100419131718.GB16918@redhat.com> <dbf86fc1c370496138b3a74a3c74ec18@tauceti.net> <20100421094249.GC30855@redhat.com> <c638ec9fdee2954ec5a7a2bd405aa2ba@tauceti.net> <20100422100304.GC30532@redhat.com> <4BD12F9C.30802@tauceti.net> <20100425091759.GA9993@redhat.com> <4BD4A917.70702@tauceti.net> <20100425204916.GA12686@redhat.com> <1272284154.4252.34.camel@localhost.localdomain> <4BD5F6C5.8080605@tauceti.net> <1272315854.8984.125.camel@localhost.localdomain> <4BD61147.40709@tauceti.net> <1272324536.16814.45.camel@localhost.localdomain> <4BD76B81.2070606@tauceti.net> <be8a0f012ebb2ae02522998591e6f1a5@tauceti.net> <4BE33259.3000609@tauceti.net> <1273181438.22155.26.camel@localhost.localdomain> <4BEC6A5D.5070304@tauceti.n
+ et> <1273785234.22932.14.camel@localhost.localdomain>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
-Cc: Benny Halevy <bhalevy@panasas.com>,
-	"J. Bruce Fields" <bfields@fieldses.org>
-To: linux-nfs@vger.kernel.org
+Cc: <mst@redhat.com>, Avi Kivity <avi@redhat.com>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	<linux-mm@kvack.org>, <bugzilla-daemon-590EEB7GvNiWaY/ihj7yzEB+6BGkLq7r@public.gmane.org>,
+	Rusty Russell <rusty@rustcorp.com.au>,
+	Mel Gorman <mel-wPRd99KPJ+uzQB+pC5nmwQ@public.gmane.org>, <linux-nfs@vger.kernel.org>,
+	<linux-kernel@vger.kernel.org>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-vw0-f46.google.com ([209.85.212.46]:52876 "EHLO
-	mail-vw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752414Ab0ETEmh convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 20 May 2010 00:42:37 -0400
-Received: by vws9 with SMTP id 9so4452241vws.19
-        for <linux-nfs@vger.kernel.org>; Wed, 19 May 2010 21:42:36 -0700 (PDT)
-In-Reply-To: <20100520032759.GA26892@vmware>
+Received: from tauceti.net ([62.245.250.166]:59159 "EHLO www.tauceti.net"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752652Ab0ETFjK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 20 May 2010 01:39:10 -0400
+In-Reply-To: <1273785234.22932.14.camel-bi+AKbBUZKY6gyzm1THtWbp2dZbC/Bob@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This is for a bug introduced to 2.6.34. In 2.6.32 and 2.6.33 we call
-layoutcommit in
-nfs_sync_mapping_wait(), but in 2.6.34 we use sync_inode() to sync
-inode's data, so
-the layoutcommit code is gone.
+Hi Trond,
 
-BTW: In current code, layoutcommit_ctx will increase refcount of
-nfs_inode's ctx, so if
-layoutcommit_ctx is not NULL, we could not reach nfs4_close_context
-=2E.. --> __nfs_close().
-So pnfs_layoutcommit_inode() in __nfs_close() will not be called in
-whatever situation.
-Why we have to use nfs_inode's ctx as layoutcommit_ctx, since we only
-need its rpc_creds
-actually?
+have you had some time to download the wireshark dump?
 
-On Thu, May 20, 2010 at 11:28 AM, Tao Guo <guotao-U4AKAne5IzAR5TUyvShJeg@public.gmane.org> wrote:
-> Signed-off-by: Tao Guo <guotao-U4AKAne5IzAR5TUyvShJeg@public.gmane.org>
-> ---
-> =C2=A0fs/nfs/write.c | =C2=A0 =C2=A08 +++++++-
-> =C2=A01 files changed, 7 insertions(+), 1 deletions(-)
->
-> diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-> index d3e1645..b4f48b2 100644
-> --- a/fs/nfs/write.c
-> +++ b/fs/nfs/write.c
-> @@ -1558,6 +1558,7 @@ int nfs_write_inode(struct inode *inode, struct=
- writeback_control *wbc)
-> =C2=A0*/
-> =C2=A0int nfs_wb_all(struct inode *inode)
-> =C2=A0{
-> + =C2=A0 =C2=A0 =C2=A0 int ret;
-> =C2=A0 =C2=A0 =C2=A0 =C2=A0struct writeback_control wbc =3D {
-> =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0.sync_mode =3D=
- WB_SYNC_ALL,
-> =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0.nr_to_write =3D=
- LONG_MAX,
-> @@ -1565,7 +1566,12 @@ int nfs_wb_all(struct inode *inode)
-> =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0.range_end =3D=
- LLONG_MAX,
-> =C2=A0 =C2=A0 =C2=A0 =C2=A0};
->
-> - =C2=A0 =C2=A0 =C2=A0 return sync_inode(inode, &wbc);
-> + =C2=A0 =C2=A0 =C2=A0 ret =3D sync_inode(inode, &wbc);
-> +#ifdef CONFIG_NFS_V4_1
-> + =C2=A0 =C2=A0 =C2=A0 if (!ret && NFS_I(inode)->layoutcommit_ctx)
-> + =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 ret =3D pnfs_layou=
-tcommit_inode(inode, 1);
-> +#endif
-> + =C2=A0 =C2=A0 =C2=A0 return ret;
-> =C2=A0}
->
-> =C2=A0int nfs_wb_page_cancel(struct inode *inode, struct page *page)
-> --
-> 1.6.3.3
->
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" =
-in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at =C2=A0http://vger.kernel.org/majordomo-info.ht=
-ml
->
+Thanks!
+Robert
 
-
-
---=20
-tao.
+On Thu, 13 May 2010 17:13:54 -0400, Trond Myklebust
+<Trond.Myklebust@netapp.com> wrote:
+> On Thu, 2010-05-13 at 23:08 +0200, Robert Wimmer wrote: 
+>> Finally I've had some time to do the next test.
+>> Here is a wireshark dump (~750 MByte):
+>> http://213.252.12.93/2.6.34-rc5.cap.gz
+>> 
+>> dmesg output after page allocation failure:
+>> https://bugzilla.kernel.org/attachment.cgi?id=26371
+>> 
+>> stack trace before page allocation failure:
+>> https://bugzilla.kernel.org/attachment.cgi?id=26369
+>> 
+>> stack trace after page allocation failure:
+>> https://bugzilla.kernel.org/attachment.cgi?id=26370
+>> 
+>> I hope the wireshark dump is not to big to download.
+>> It was created with
+>> tshark -f "tcp port 2049" -i eth0 -w 2.6.34-rc5.cap
+>> 
+>> Thanks!
+>> Robert
+> 
+> Hi Robert,
+> 
+> I tried the above wireshark dump URL, but it appears to point to an
+> empty file.
+> 
+> Cheers
+>   Trond
