@@ -1,107 +1,81 @@
-From: Tao Guo <glorioustao@gmail.com>
-Subject: Re: [PATCH] pnfsblock: Lookup list entry of layouts and tags in
-	reverse order
-Date: Thu, 20 May 2010 13:44:13 +0800
-Message-ID: <AANLkTikEOhpGbCEAkxvDC93B1lM6d_htL_TOfjFOpAsD@mail.gmail.com>
-References: <4BEA4ED3.3010702@panasas.com>
-	 <20100517135341.GA30737@fieldses.org> <4BF151A7.1070003@panasas.com>
-	 <20100517145311.GJ30737@fieldses.org>
-	 <20100517165302.GL30737@fieldses.org>
-	 <AANLkTilUpAHrtHH8pauvYrAuD3rWgj7aDmrTOzrmU-h5@mail.gmail.com>
-	 <20100518162005.GI17823@fieldses.org>
-	 <AANLkTik9L15tqpSboBpb9cSTy3hVPLEK487w94pEbLrS@mail.gmail.com>
-	 <20100519163632.GL4581@fieldses.org>
-	 <20100519213849.GR9720@fieldses.org>
+From: Mi Jinlong <mijinlong@cn.fujitsu.com>
+Subject: Re: [PATCH] VFS: Unlink should revoke all outstanding leases on	file
+Date: Thu, 20 May 2010 17:23:52 +0800
+Message-ID: <4BF4FFA8.9060408@cn.fujitsu.com>
+References: <4BED195F.3070504@cn.fujitsu.com> <20100514055844.109d2fdc@tlielax.poochiereds.net> <4BF3B432.3040802@cn.fujitsu.com> <20100519160321.GF4581@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: Jeff Layton <jlayton@redhat.com>,
+	NFSv3 list <linux-nfs@vger.kernel.org>,
+	linux-fsdevel@vger.kernel.org, ebiederm@xmission.com,
+	adobriyan@gmail.com, viro@ZenIV.linux.org.uk, jamie@shareable.org,
+	"Trond.Myklebust" <trond.myklebust@fys.uio.no>
 To: "J. Bruce Fields" <bfields@fieldses.org>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-vw0-f46.google.com ([209.85.212.46]:51148 "EHLO
-	mail-vw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752652Ab0ETFoP convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 20 May 2010 01:44:15 -0400
-Received: by vws9 with SMTP id 9so4474376vws.19
-        for <linux-nfs@vger.kernel.org>; Wed, 19 May 2010 22:44:14 -0700 (PDT)
-In-Reply-To: <20100519213849.GR9720@fieldses.org>
-Sender: linux-nfs-owner@vger.kernel.org
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <20100519160321.GF4581@fieldses.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi, Fields
-I used the connectathon general test with my latest code, and it
-passed the tests.
-Can you just try the two patches I have sent in the mailing list to
-see if it helps?
 
-On Thu, May 20, 2010 at 5:38 AM, J. Bruce Fields <bfields@fieldses.org>=
- wrote:
-> On Wed, May 19, 2010 at 12:36:32PM -0400, J. Bruce Fields wrote:
->> On Wed, May 19, 2010 at 12:56:42PM +0800, Tao Guo wrote:
->> > I think the warning just indicate a possible bug:
->> > nfs_inode_set_delegation():
->> > =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=
-=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0=
- clp->cl_lock
->> > =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=
-=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0=
- =C2=A0 =C2=A0 --> inode->i_lock
->> > get_lock_alloc_layout():
->> > =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=
-=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0nfsi->lo_loc=
-k
->> > =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=
-=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 --> =
-clp->cl_lock
->> > nfs_try_to_update_request()->pnfs_do_flush()->_pnfs_do_flush()->
->> > pnfs_find_get_lseg()->get_lock_current_layout():
->> >
->> > inode->i_lock
->> >
->> > -->nfsi->lo_lock
->> > In nfs_inode_set_delegation(), maybe we should unlock clp->cl_lock=
- before
->> > taking inode->i_lock spinlock?
->> >
->> > PS: I just use the latest pnfsblock code(pnfs-all-2.6.34-2010-05-1=
-7) doing some
->> > basic r/w tests and it works fine.
+
+J. Bruce Fields :
+> On Wed, May 19, 2010 at 05:49:38PM +0800, Mi Jinlong wrote:
 >>
->> Could you try running the connectathon general test?
->>
->> > Can you find out which code path
->> > lead to IO errror?
->>
->> I'll try to narrow down the test case.
->
-> I haven't gotten the chance to narrow it down any more. =C2=A0So all =
-I can
-> say is that:
->
-> =C2=A0 =C2=A0 =C2=A0 =C2=A0~/cthon04# NFSTESTDIR=3D/mnt/TMP ./runtest=
-s -g
->
-> =C2=A0 =C2=A0 =C2=A0 =C2=A0GENERAL TESTS: directory /mnt/TMP
-> =C2=A0 =C2=A0 =C2=A0 =C2=A0if test ! -x runtests; then chmod a+x runt=
-ests; fi
-> =C2=A0 =C2=A0 =C2=A0 =C2=A0cd /mnt/TMP; rm -f Makefile runtests runte=
-sts.wrk *.sh *.c
-> =C2=A0 =C2=A0 =C2=A0 =C2=A0mkdummy rmdummy nroff.in makefile.tst
-> =C2=A0 =C2=A0 =C2=A0 =C2=A0cp Makefile runtests runtests.wrk *.sh *.c=
- mkdummy rmdummy
-> =C2=A0 =C2=A0 =C2=A0 =C2=A0nroff.in makefile.tst /mnt/TMP
->
-> =C2=A0 =C2=A0 =C2=A0 =C2=A0Small Compile
-> =C2=A0 =C2=A0 =C2=A0 =C2=A0runtests.wrk: 63: ./stat: Input/output err=
-or
-> =C2=A0 =C2=A0 =C2=A0 =C2=A0general tests failed
->
-> is a consistent result for me. =C2=A0(Using the tests from
-> http://www.connectathon.org/nfstests.html.)
->
+>> Jeff Layton :
+>>>>  /*	Check whether we can create an object with dentry child in directory
+>>> This doesn't look right to me.
+>>>
+>>> The fcntl(2) manpage basically says that leases should be broken if the
+>>> file is opened for read or write, or is truncated. unlinks don't seem
+>>> to fall into either category...
+>> Maybe the new one is better than before.
+> 
+> On a quick glance, break_lease() (with O_NONBLOCK unset, as here) should
+> only return ENOMEM or ERSTARTSYS, either of which I suspect is OK.
+
+  That's right, it's my neglect, but i'm not sure.
+
+  As you said before, it's not sure ading break_lease() at there is right.
+  I think it's necessary to find a better solution to fix the problem.
+
+  Waiting for the best solution.
+
+thanks,
+Mi Jinlong
+
+
+> 
 > --b.
->
+> 
+>> --------------------------------------------------------------
+>>
+>> After client get one file's READ delegation through NFSv4,
+>> server delete this file but don't reclaim the delegation.
+>>
+>> This patch add break_lease at may_delete, which can reclaim delegations.
+>>
+>> Signed-off-by: Mi Jinlong <mijinlong@cn.fujitsu.com>
+>>
+>> ---
+>>  fs/namei.c |    4 ++++
+>>  1 files changed, 4 insertions(+), 0 deletions(-)
+>>
+>> diff --git a/fs/namei.c b/fs/namei.c
+>> index b86b96f..0423e19 100644
+>> --- a/fs/namei.c
+>> +++ b/fs/namei.c
+>> @@ -1338,6 +1338,10 @@ static int may_delete(struct inode *dir,struct dentry *victim,int isdir)
+>>  		return -ENOENT;
+>>  	if (victim->d_flags & DCACHE_NFSFS_RENAMED)
+>>  		return -EBUSY;
+>> +
+>> +	/* try to break leases, but no effect to delete. */
+>> +	break_lease(victim->d_inode, FMODE_WRITE);
+>> +
+>>  	return 0;
+>>  }
+>>  
+>> -- 
+>> 1.7.0
+>>
 
-
-
---=20
-tao.
