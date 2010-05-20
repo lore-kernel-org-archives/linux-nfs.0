@@ -1,61 +1,65 @@
-From: kernel <kernel-PAwl83ecUlHR7s880joybQ@public.gmane.org>
-Subject: Re: [Bugme-new] [Bug 15709] New: swapper page allocation failure
-Date: Thu, 20 May 2010 09:39:07 +0200
-Message-ID: <a133ef4ed022a00afd40b505719ae3d2@tauceti.net>
-References: <4BC43097.3060000@tauceti.net> <4BCC52B9.8070200@tauceti.net> <20100419131718.GB16918@redhat.com> <dbf86fc1c370496138b3a74a3c74ec18@tauceti.net> <20100421094249.GC30855@redhat.com> <c638ec9fdee2954ec5a7a2bd405aa2ba@tauceti.net> <20100422100304.GC30532@redhat.com> <4BD12F9C.30802@tauceti.net> <20100425091759.GA9993@redhat.com> <4BD4A917.70702@tauceti.net> <20100425204916.GA12686@redhat.com> <1272284154.4252.34.camel@localhost.localdomain> <4BD5F6C5.8080605@tauceti.net> <1272315854.8984.125.camel@localhost.localdomain> <4BD61147.40709@tauceti.net> <1272324536.16814.45.camel@localhost.localdomain> <4BD76B81.2070606@tauceti.net> <be8a0f012ebb2ae02522998591e6f1a5@tauceti.net> <4BE33259.3000609@tauceti.net> <1273181438.22155.26.camel@localhost.localdomain> <4BEC6A5D.5070304@tauceti.n
- et> <1273785234.22932.14.camel@localhost.localdomain>
+From: Tao Guo <guotao-U4AKAne5IzAR5TUyvShJeg@public.gmane.org>
+Subject: [PATCH] nfs: avoid possible deadlock bug when setting up
+ delegation.
+Date: Thu, 20 May 2010 13:42:24 +0800
+Message-ID: <20100520054216.GA27457@vmware>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: <mst@redhat.com>, Avi Kivity <avi@redhat.com>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	<linux-mm@kvack.org>, <bugzilla-daemon-590EEB7GvNiWaY/ihj7yzEB+6BGkLq7r@public.gmane.org>,
-	Rusty Russell <rusty@rustcorp.com.au>,
-	Mel Gorman <mel-wPRd99KPJ+uzQB+pC5nmwQ@public.gmane.org>, <linux-nfs@vger.kernel.org>,
-	<linux-kernel@vger.kernel.org>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+	Benny Halevy <bhalevy@panasas.com>
+To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from tauceti.net ([62.245.250.166]:59159 "EHLO www.tauceti.net"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752652Ab0ETFjK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 20 May 2010 01:39:10 -0400
-In-Reply-To: <1273785234.22932.14.camel-bi+AKbBUZKY6gyzm1THtWbp2dZbC/Bob@public.gmane.org>
+Received: from [221.122.61.232] ([221.122.61.232]:48633 "EHLO mx.bwstor.com.cn"
+	rhost-flags-FAIL-FAIL-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1751498Ab0ETFnG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 20 May 2010 01:43:06 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Trond,
+Unlock clp->cl_lock before taking inode->i_lock when setting up
+delegation to avoid possible deadlock bug.
 
-have you had some time to download the wireshark dump?
+Signed-off-by: Tao Guo <guotao-U4AKAne5IzAR5TUyvShJeg@public.gmane.org>
+---
+ fs/nfs/delegation.c |    4 +++-
+ 1 files changed, 3 insertions(+), 1 deletions(-)
 
-Thanks!
-Robert
+diff --git a/fs/nfs/delegation.c b/fs/nfs/delegation.c
+index ea61d26..0983930 100644
+--- a/fs/nfs/delegation.c
++++ b/fs/nfs/delegation.c
+@@ -233,6 +233,7 @@ int nfs_inode_set_delegation(struct inode *inode, struct rpc_cred *cred, struct
+ 		if (memcmp(&delegation->stateid, &old_delegation->stateid,
+ 					sizeof(old_delegation->stateid)) == 0 &&
+ 				delegation->type == old_delegation->type) {
++			spin_unlock(&clp->cl_lock);
+ 			goto out;
+ 		}
+ 		/*
+@@ -245,6 +246,7 @@ int nfs_inode_set_delegation(struct inode *inode, struct rpc_cred *cred, struct
+ 		if (delegation->type <= old_delegation->type) {
+ 			freeme = delegation;
+ 			delegation = NULL;
++			spin_unlock(&clp->cl_lock);
+ 			goto out;
+ 		}
+ 		freeme = nfs_detach_delegation_locked(nfsi, NULL, clp);
+@@ -253,6 +255,7 @@ int nfs_inode_set_delegation(struct inode *inode, struct rpc_cred *cred, struct
+ 	nfsi->delegation_state = delegation->type;
+ 	rcu_assign_pointer(nfsi->delegation, delegation);
+ 	delegation = NULL;
++	spin_unlock(&clp->cl_lock);
+ 
+ 	/* Ensure we revalidate the attributes and page cache! */
+ 	spin_lock(&inode->i_lock);
+@@ -260,7 +263,6 @@ int nfs_inode_set_delegation(struct inode *inode, struct rpc_cred *cred, struct
+ 	spin_unlock(&inode->i_lock);
+ 
+ out:
+-	spin_unlock(&clp->cl_lock);
+ 	if (delegation != NULL)
+ 		nfs_free_delegation(delegation);
+ 	if (freeme != NULL)
+-- 
+1.6.3.3
 
-On Thu, 13 May 2010 17:13:54 -0400, Trond Myklebust
-<Trond.Myklebust@netapp.com> wrote:
-> On Thu, 2010-05-13 at 23:08 +0200, Robert Wimmer wrote: 
->> Finally I've had some time to do the next test.
->> Here is a wireshark dump (~750 MByte):
->> http://213.252.12.93/2.6.34-rc5.cap.gz
->> 
->> dmesg output after page allocation failure:
->> https://bugzilla.kernel.org/attachment.cgi?id=26371
->> 
->> stack trace before page allocation failure:
->> https://bugzilla.kernel.org/attachment.cgi?id=26369
->> 
->> stack trace after page allocation failure:
->> https://bugzilla.kernel.org/attachment.cgi?id=26370
->> 
->> I hope the wireshark dump is not to big to download.
->> It was created with
->> tshark -f "tcp port 2049" -i eth0 -w 2.6.34-rc5.cap
->> 
->> Thanks!
->> Robert
-> 
-> Hi Robert,
-> 
-> I tried the above wireshark dump URL, but it appears to point to an
-> empty file.
-> 
-> Cheers
->   Trond
