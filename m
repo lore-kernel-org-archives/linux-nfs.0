@@ -1,56 +1,79 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-out2.uio.no ([129.240.10.58]:51938 "EHLO mail-out2.uio.no"
+Received: from fieldses.org ([174.143.236.118]:41980 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756184Ab0ECTZK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 3 May 2010 15:25:10 -0400
-Subject: Re: Proxy
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: maillists0@gmail.com, linux-nfs@vger.kernel.org
-In-Reply-To: <20100503185650.GA9864@fieldses.org>
-References: <l2wdc64e7231005030953xb72ad73az3f883167a1a637c8@mail.gmail.com>
-	 <20100503185650.GA9864@fieldses.org>
-Content-Type: text/plain; charset="UTF-8"
-Date: Mon, 03 May 2010 15:25:01 -0400
-Message-ID: <1272914702.7559.13.camel@localhost.localdomain>
+	id S1753064Ab0ETUY0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 20 May 2010 16:24:26 -0400
+Date: Thu, 20 May 2010 16:24:25 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Marc Eshel <eshel@almaden.ibm.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [pnfs] Linux pNFS status meeting 05/20
+Message-ID: <20100520202425.GB27395@fieldses.org>
+References: <20100518223720.GY20706@fieldses.org> <20100518224016.GZ20706@fieldses.org>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20100518224016.GZ20706@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Mon, 2010-05-03 at 14:56 -0400, J. Bruce Fields wrote: 
-> On Mon, May 03, 2010 at 12:53:15PM -0400, maillists0@gmail.com wrote:
-> > With NFS4's support for referrals and Kerberos, it seems like the
-> > original reasons to prevent re-exporting of an NFS share might no
-> > longer exist. With fs-proxy making its way into the mainline kernel
-> > and things like cachefilesd, there are also very good reasons to allow
-> > it. A proxy server with a persistent cache could give the ability to
-> > robustly use shares across a WAN or do failover pairs with no need for
-> > more complex replication. Speaking as an end-user, this would be very
-> > desirable.
+On Tue, May 18, 2010 at 06:40:17PM -0400, J. Bruce Fields wrote:
+> Just noticed this got sent to the wrong list.  (Marc, these should go to
+> linux-nfs@vger.kernel.org, probably not nfsv4@ietf.org.)
+> 
+> --b.
+> 
+
+With several core developers missing, this was extremely short.
+
+> On Tue, May 18, 2010 at 06:37:20PM -0400, J. Bruce Fields wrote:
+> > Rough agenda.  Note Benny and Boaz will miss this one:
 > > 
-> > I see that others have implemented proxies with user-space NFS, which
-> > seems reasonable but not optimal. What is the obstacle to allowing
-> > re-exports with the standard nfs implentation? Is it possible at the
-> > moment to patch a kernel to make this work? Anyone have experience
-> > with it? Any input is appreciated.
-> 
-> It's probably possible, but some kernel hacking would be required.
-> 
-> Off the top of my head:
-> 
-> 	- filehandles: you probably can't pass your server's filehandles
-> 	  unchanged back to your client.  At a minimum you'd want to add
-> 	  a header allowing you to distinguish filehandles for the
-> 	  different filesystems you export.  What if you get a
-> 	  filehandle from the server that's already at the protocol's
-> 	  maximum size?  Are you going to try to maintain your own
-> 	  persistent mapping of filehandles, and if so, is it possible
-> 	  to do that with reasonable performance?
-> 	- what do you do if your server takes a really long time to
-> 	  answer a request?  Or stops responding completely?
+> > 1. upstream status/merge plans (trond, bfields)
 
-      * If you want to use Kerberos, then how do you proxy an RPCSEC_GSS
-        session? 
-      * How does the proxy server figure out the real server's export
-        rules so that it can re-export them?
+2.6.34 is released, the merge window for 2.6.35 is open, Linus has
+merged both my changes and Trond's.
 
+> > 2. State of pNFS tree (bhalevy--skip?)
+> > 
+> > 3. Client
+> > 	3.1. Client pNFS status
+> > 		- Benny was working on some io path bugs which he
+> > 		  intended to discuss on mailing list.
+> > 		- Alexandros was doing some work on layout-management, close
+> > 		  to sending out.
+
+Alexandros mailed out his work.
+
+Fred also sent some patches this morning.
+
+Andy has been working on layout-commit lockups using a gfs2 server
+modified to allow writes and to claim all writes are stable.
+
+> > 	3.2. Client state management design documentation (trond)
+> > 4. Server
+> > 	4.1. Todo's for minimal 4.1 server (bfields)
+
+Have added some items to:
+	http://wiki.linux-nfs.org/wiki/index.php/Server_4.0_and_4.1_issues
+
+and moved some to "Done, needs testing" category.
+
+Some citi students are debugging pynfs problems; initial patches sent to
+Fred.  He'll take a look.
+
+> > 	4.2. pnfs
+> > 
+> > 5. redhat status (steved)
+> > 6. bakeathon plans
+> > 	- ann arbor
+
+CITI, Sun, Netapp, EMC, RedHat expected.  Attendance looks similar to
+recent bakeathons so far.
+
+> > 	- boston (Sorin working on hotel information?)
+> > 8. new business
+> > 9. next meeting
+
+Same time next week.
+
+--b.
