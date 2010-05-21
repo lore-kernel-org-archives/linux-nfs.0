@@ -1,53 +1,48 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:59296 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:51598 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759034Ab0ENTXf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 14 May 2010 15:23:35 -0400
-Date: Fri, 14 May 2010 15:23:27 -0400
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-Cc: Jeff Layton <jlayton@redhat.com>, Mi Jinlong <mijinlong@cn.fujitsu.com>,
-        NFSv3 list <linux-nfs@vger.kernel.org>, linux-fsdevel@vger.kernel.org,
-        ebiederm@xmission.com, adobriyan@gmail.com, viro@ZenIV.linux.org.uk,
-        jamie@shareable.org
-Subject: Re: [PATCH] VFS: Unlink should revoke all outstanding leases on
-	file
-Message-ID: <20100514192327.GA20192@fieldses.org>
-References: <4BED195F.3070504@cn.fujitsu.com> <20100514055844.109d2fdc@tlielax.poochiereds.net> <1273857471.4732.7.camel@localhost.localdomain> <20100514133819.5e383485@tlielax.poochiereds.net> <1273859968.4732.22.camel@localhost.localdomain> <1273861872.4732.34.camel@localhost.localdomain>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1273861872.4732.34.camel@localhost.localdomain>
+	id S1758721Ab0EUXAN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 21 May 2010 19:00:13 -0400
+Date: Fri, 21 May 2010 19:00:11 -0400
 From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Tao Guo <glorioustao@gmail.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] pnfsblock: Lookup list entry of layouts and tags in
+	reverse order
+Message-ID: <20100521230011.GI13227@fieldses.org>
+References: <20100517135341.GA30737@fieldses.org> <4BF151A7.1070003@panasas.com> <20100517145311.GJ30737@fieldses.org> <20100517165302.GL30737@fieldses.org> <AANLkTilUpAHrtHH8pauvYrAuD3rWgj7aDmrTOzrmU-h5@mail.gmail.com> <20100518162005.GI17823@fieldses.org> <AANLkTik9L15tqpSboBpb9cSTy3hVPLEK487w94pEbLrS@mail.gmail.com> <20100519163632.GL4581@fieldses.org> <20100519213849.GR9720@fieldses.org> <AANLkTikEOhpGbCEAkxvDC93B1lM6d_htL_TOfjFOpAsD@mail.gmail.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <AANLkTikEOhpGbCEAkxvDC93B1lM6d_htL_TOfjFOpAsD@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Fri, May 14, 2010 at 02:31:12PM -0400, Trond Myklebust wrote:
-> On Fri, 2010-05-14 at 13:59 -0400, Trond Myklebust wrote: 
-> > Note that the server should also recall the delegation if someone
-> > attempts to violate the guarantees that are listed in section 9.4: Open
-> > Delegation
-> > 
-> >    When a client has a read open delegation, it may not make any changes
-> >    to the contents or attributes of the file but it is assured that no
-> >    other client may do so.  When a client has a write open delegation,
-> >    it may modify the file data since no other client will be accessing
-> >    the file's data.  The client holding a write delegation may only
-> >    affect file attributes which are intimately connected with the file
-> >    data:  size, time_modify, change.
-> > 
-> > IOW: even if you hold a write delegation you are not allowed to change
-> > the file mode bits, owner, group or acls...
-> 
-> ...or the nlink value. So technically, we should also recall the
-> delegation when someone creates or deletes a hard link. I think I need
-> to remind Tom that he should add that to the RFC3530bis draft...
+On Thu, May 20, 2010 at 01:44:13PM +0800, Tao Guo wrote:
+> Hi, Fields
+> I used the connectathon general test with my latest code, and it
+> passed the tests.
+> Can you just try the two patches I have sent in the mailing list to
+> see if it helps?
 
-Yep.  And fixing all these cases is required before our the server's
-NFSv4 server is ready for much of anything.
+GENERAL TESTS: directory /mnt/TMP
+if test ! -x runtests; then chmod a+x runtests; fi
+cd /mnt/TMP; rm -f Makefile runtests runtests.wrk *.sh *.c mkdummy
+rmdummy nroff.in makefile.tst
+cp Makefile runtests runtests.wrk *.sh *.c mkdummy rmdummy nroff.in
+makefile.tst /mnt/TMP
 
-I'm not sure ading break_lease() to may_delete() is right, but maybe
-it's better than nothing.
+Small Compile
+/usr/lib/gcc/x86_64-linux-gnu/4.4.1/../../../../lib/crt1.o: In function
+`_start':
+/build/buildd/eglibc-2.10.1/csu/../sysdeps/x86_64/elf/start.S:109:
+undefined reference to `main'
+collect2: ld returned 1 exit status
+Command exited with non-zero status 1
+0.02user 0.05system 0:00.12elapsed 66%CPU (0avgtext+0avgdata
+22464maxresident)k
+0inputs+0outputs (0major+4946minor)pagefaults 0swaps
+general tests failed
 
-One problem is that there's a race: nothing I can see stops anyone from
-getting another lease after may_delete() but before the delete happens.
+I don't know what's going on there; sounds like data corruption?
 
 --b.
