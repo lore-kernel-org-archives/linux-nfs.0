@@ -1,194 +1,135 @@
-From: "William A. (Andy) Adamson" <androsadamson@gmail.com>
-Subject: Re: [RFC][PATCH] pnfs: unlock lo_lock spinlock before calling
-	specific layoutdriver's setup_layoutcommit() operation.
-Date: Thu, 20 May 2010 13:48:07 -0400
-Message-ID: <AANLkTin_r8pqUDK9IAhSn73KI2y2eSItXeut1vtI-3qb@mail.gmail.com>
-References: <20100520102507.GA31886@vmware>
-	 <EF83AA1C-3AC6-4E78-BC5F-A3075E04E07D@netapp.com>
-	 <AANLkTinXG7If279YbhZr9ZDFiwz6cL2YriEtxztCGILW@mail.gmail.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: [PATCH] sunrpc: fix leak on error on socket xprt setup
+Date: Thu, 20 May 2010 20:25:08 -0400
+Message-ID: <20100521002508.GA30928@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=us-ascii
 Cc: linux-nfs@vger.kernel.org
-To: Tao Guo <guotao-U4AKAne5IzAR5TUyvShJeg@public.gmane.org>
+To: Trond Myklebust <trond@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-gx0-f227.google.com ([209.85.217.227]:59694 "EHLO
-	mail-gx0-f227.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752203Ab0ETRsI convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 20 May 2010 13:48:08 -0400
-Received: by gxk27 with SMTP id 27so58377gxk.1
-        for <linux-nfs@vger.kernel.org>; Thu, 20 May 2010 10:48:07 -0700 (PDT)
-In-Reply-To: <AANLkTinXG7If279YbhZr9ZDFiwz6cL2YriEtxztCGILW-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
+Received: from fieldses.org ([174.143.236.118]:48546 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753510Ab0EUAZK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 20 May 2010 20:25:10 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, May 20, 2010 at 1:13 PM, Tao Guo <guotao-U4AKAne5IzAR5TUyvShJeg@public.gmane.org> wrote:
-> On Fri, May 21, 2010 at 12:13 AM, Andy Adamson <andros@netapp.com> wr=
-ote:
->>
->> On May 20, 2010, at 6:25 AM, Tao Guo wrote:
->>
->>> So in blocklayoutdriver, we can use GFP_KERNEL to do memory
->>> allocation in bl_setup_layoutcommit().
->>>
->>> Signed-off-by: Tao Guo <guotao-U4AKAne5IzAR5TUyvShJeg@public.gmane.org>
->>> ---
->>> fs/nfs/pnfs.c | =A0 42 +++++++++++++++++++++---------------------
->>> 1 files changed, 21 insertions(+), 21 deletions(-)
->>>
->>> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
->>> index aedda1e..8474731 100644
->>> --- a/fs/nfs/pnfs.c
->>> +++ b/fs/nfs/pnfs.c
->>> @@ -2073,15 +2073,23 @@ pnfs_layoutcommit_done(struct
->>> pnfs_layoutcommit_data *data)
->>> =A0* Set up the argument/result storage required for the RPC call.
->>> =A0*/
->>> static int
->>> -pnfs_layoutcommit_setup(struct pnfs_layoutcommit_data *data, int s=
-ync)
->>> +pnfs_layoutcommit_setup(struct inode *inode,
->>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 struct pnfs_layoutcom=
-mit_data *data, int sync)
->>> {
->>> - =A0 =A0 =A0 struct nfs_inode *nfsi =3D NFS_I(data->args.inode);
->>> - =A0 =A0 =A0 struct nfs_server *nfss =3D NFS_SERVER(data->args.ino=
-de);
->>> + =A0 =A0 =A0 struct nfs_inode *nfsi =3D NFS_I(inode);
->>> + =A0 =A0 =A0 struct nfs_server *nfss =3D NFS_SERVER(inode);
->>> =A0 =A0 =A0 =A0int result =3D 0;
->>>
->>> =A0 =A0 =A0 =A0dprintk("%s Begin (sync:%d)\n", __func__, sync);
->>> + =A0 =A0 =A0 data->is_sync =3D sync;
->>> + =A0 =A0 =A0 data->cred =A0=3D nfsi->layoutcommit_ctx->cred;
->>> + =A0 =A0 =A0 data->ctx =3D nfsi->layoutcommit_ctx;
->>> + =A0 =A0 =A0 data->args.inode =3D inode;
->>> =A0 =A0 =A0 =A0data->args.fh =3D NFS_FH(data->args.inode);
->>> =A0 =A0 =A0 =A0data->args.layout_type =3D nfss->pnfs_curr_ld->id;
->>> + =A0 =A0 =A0 pnfs_get_layout_stateid(&data->args.stateid, &nfsi->l=
-ayout);
->>> + =A0 =A0 =A0 data->res.fattr =3D &data->fattr;
->>> + =A0 =A0 =A0 nfs_fattr_init(&data->fattr);
->>>
->>> =A0 =A0 =A0 =A0/* TODO: Need to determine the correct values */
->>> =A0 =A0 =A0 =A0data->args.time_modify_changed =3D 0;
->>> @@ -2095,6 +2103,7 @@ pnfs_layoutcommit_setup(struct
->>> pnfs_layoutcommit_data *data, int sync)
->>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
- =A0 =A0 =A0i_size_read(&nfsi->vfs_inode) - 1);
->>> =A0 =A0 =A0 =A0data->args.bitmask =3D nfss->attr_bitmask;
->>> =A0 =A0 =A0 =A0data->res.server =3D nfss;
->>> + =A0 =A0 =A0 spin_unlock(&nfsi->lo_lock);
->>>
->>> =A0 =A0 =A0 =A0/* Call layout driver to set the arguments.
->>> =A0 =A0 =A0 =A0 */
->>> @@ -2104,10 +2113,6 @@ pnfs_layoutcommit_setup(struct
->>> pnfs_layoutcommit_data *data, int sync)
->>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0if (result)
->>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0goto out;
->>> =A0 =A0 =A0 =A0}
->>> - =A0 =A0 =A0 pnfs_get_layout_stateid(&data->args.stateid, &nfsi->l=
-ayout);
->>> - =A0 =A0 =A0 data->res.fattr =3D &data->fattr;
->>> - =A0 =A0 =A0 nfs_fattr_init(&data->fattr);
->>> -
->>> out:
->>> =A0 =A0 =A0 =A0dprintk("%s End Status %d\n", __func__, result);
->>> =A0 =A0 =A0 =A0return result;
->>> @@ -2131,36 +2136,31 @@ pnfs_layoutcommit_inode(struct inode *inode=
-, int
->>> sync)
->>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0return -ENOMEM;
->>>
->>> =A0 =A0 =A0 =A0spin_lock(&nfsi->lo_lock);
->>> - =A0 =A0 =A0 if (!nfsi->layoutcommit_ctx)
->>> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 goto out_unlock;
->>> -
->>> - =A0 =A0 =A0 data->args.inode =3D inode;
->>> - =A0 =A0 =A0 data->cred =A0=3D nfsi->layoutcommit_ctx->cred;
->>> - =A0 =A0 =A0 data->ctx =3D nfsi->layoutcommit_ctx;
->>> + =A0 =A0 =A0 if (!nfsi->layoutcommit_ctx) {
->>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 spin_unlock(&nfsi->lo_lock);
->>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 goto out_free;
->>> + =A0 =A0 =A0 }
->>>
->>> - =A0 =A0 =A0 /* Set up layout commit args*/
->>> - =A0 =A0 =A0 status =3D pnfs_layoutcommit_setup(data, sync);
->>> + =A0 =A0 =A0 /* Set up layout commit args */
->>> + =A0 =A0 =A0 status =3D pnfs_layoutcommit_setup(inode, data, sync)=
-;
->>> =A0 =A0 =A0 =A0if (status)
->>> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 goto out_unlock;
->>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 goto out_free;
->>>
->>> =A0 =A0 =A0 =A0/* Clear layoutcommit properties in the inode so
->>> =A0 =A0 =A0 =A0 * new lc info can be generated
->>> =A0 =A0 =A0 =A0 */
->>> + =A0 =A0 =A0 spin_lock(&nfsi->lo_lock);
->>> =A0 =A0 =A0 =A0nfsi->pnfs_write_begin_pos =3D 0;
->>> =A0 =A0 =A0 =A0nfsi->pnfs_write_end_pos =3D 0;
->>> =A0 =A0 =A0 =A0nfsi->layoutcommit_ctx =3D NULL;
->>
->> These should be cleared before the spin_lock is released in
->> pnfs_layoutcommit_setup.
->> They should be cleared (and the layoutcommit_cxt put) upon a layoutd=
-river
->> setup_layoutcommit failure.
->>
->> -->Andy
-> I just followed the old code's logic: if a layoutdriver's
-> setup_layoutcommit call failed(like return -ENOMEM), we just keep
-> nfs_inode's everything unchanged, so maybe next time we can try again
-> later.
+From: J. Bruce Fields <bfields@citi.umich.edu>
 
-With a chance of another call immediately which will probably fail and =
-so on
+Also collect exit code together while we're at it.
 
-> However, this will lead to lock lo_lock two times as in the
-> above code.
+Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ net/sunrpc/xprtsock.c |   29 ++++++++++++++++++-----------
+ 1 files changed, 18 insertions(+), 11 deletions(-)
 
-Note that when the setup_layoutcommit call succeeds, this code changes
-the logic in that the old code did not give up the spin lock before
-resetting the layout properties.
+I think I sent this before, but it must have fallen through the cracks.
 
-> Maybe I should break the code's logic...
+--b.
 
-I think so. If the layoutdriver has an error that it can recover from,
-it should do so before returning. An ENOMEM error means that things
-are really bad, and that the layoutdriver won't be able to do much of
-anything.
+diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+index 02fc7f0..8bfb386 100644
+--- a/net/sunrpc/xprtsock.c
++++ b/net/sunrpc/xprtsock.c
+@@ -2297,6 +2297,7 @@ static struct rpc_xprt *xs_setup_udp(struct xprt_create *args)
+ 	struct sockaddr *addr = args->dstaddr;
+ 	struct rpc_xprt *xprt;
+ 	struct sock_xprt *transport;
++	struct rpc_xprt *ret;
+ 
+ 	xprt = xs_setup_xprt(args, xprt_udp_slot_table_entries);
+ 	if (IS_ERR(xprt))
+@@ -2334,8 +2335,8 @@ static struct rpc_xprt *xs_setup_udp(struct xprt_create *args)
+ 		xs_format_peer_addresses(xprt, "udp", RPCBIND_NETID_UDP6);
+ 		break;
+ 	default:
+-		kfree(xprt);
+-		return ERR_PTR(-EAFNOSUPPORT);
++		ret = ERR_PTR(-EAFNOSUPPORT);
++		goto out_err;
+ 	}
+ 
+ 	if (xprt_bound(xprt))
+@@ -2350,10 +2351,11 @@ static struct rpc_xprt *xs_setup_udp(struct xprt_create *args)
+ 
+ 	if (try_module_get(THIS_MODULE))
+ 		return xprt;
+-
++	ret = ERR_PTR(-EINVAL);
++out_err:
+ 	kfree(xprt->slot);
+ 	kfree(xprt);
+-	return ERR_PTR(-EINVAL);
++	return ret;
+ }
+ 
+ static const struct rpc_timeout xs_tcp_default_timeout = {
+@@ -2372,6 +2374,7 @@ static struct rpc_xprt *xs_setup_tcp(struct xprt_create *args)
+ 	struct sockaddr *addr = args->dstaddr;
+ 	struct rpc_xprt *xprt;
+ 	struct sock_xprt *transport;
++	struct rpc_xprt *ret;
+ 
+ 	xprt = xs_setup_xprt(args, xprt_tcp_slot_table_entries);
+ 	if (IS_ERR(xprt))
+@@ -2407,8 +2410,8 @@ static struct rpc_xprt *xs_setup_tcp(struct xprt_create *args)
+ 		xs_format_peer_addresses(xprt, "tcp", RPCBIND_NETID_TCP6);
+ 		break;
+ 	default:
+-		kfree(xprt);
+-		return ERR_PTR(-EAFNOSUPPORT);
++		ret = ERR_PTR(-EAFNOSUPPORT);
++		goto out_err;
+ 	}
+ 
+ 	if (xprt_bound(xprt))
+@@ -2424,10 +2427,11 @@ static struct rpc_xprt *xs_setup_tcp(struct xprt_create *args)
+ 
+ 	if (try_module_get(THIS_MODULE))
+ 		return xprt;
+-
++	ret = ERR_PTR(-EINVAL);
++out_err:
+ 	kfree(xprt->slot);
+ 	kfree(xprt);
+-	return ERR_PTR(-EINVAL);
++	return ret;
+ }
+ 
+ /**
+@@ -2441,6 +2445,7 @@ static struct rpc_xprt *xs_setup_bc_tcp(struct xprt_create *args)
+ 	struct rpc_xprt *xprt;
+ 	struct sock_xprt *transport;
+ 	struct svc_sock *bc_sock;
++	struct rpc_xprt *ret;
+ 
+ 	xprt = xs_setup_xprt(args, xprt_tcp_slot_table_entries);
+ 	if (IS_ERR(xprt))
+@@ -2480,8 +2485,8 @@ static struct rpc_xprt *xs_setup_bc_tcp(struct xprt_create *args)
+ 				   RPCBIND_NETID_TCP6);
+ 		break;
+ 	default:
+-		kfree(xprt);
+-		return ERR_PTR(-EAFNOSUPPORT);
++		ret = ERR_PTR(-EAFNOSUPPORT);
++		goto out_err;
+ 	}
+ 
+ 	if (xprt_bound(xprt))
+@@ -2503,9 +2508,11 @@ static struct rpc_xprt *xs_setup_bc_tcp(struct xprt_create *args)
+ 
+ 	if (try_module_get(THIS_MODULE))
+ 		return xprt;
++	ret = ERR_PTR(-EINVAL);
++out_err:
+ 	kfree(xprt->slot);
+ 	kfree(xprt);
+-	return ERR_PTR(-EINVAL);
++	return ret;
+ }
+ 
+ static struct xprt_class	xs_udp_transport = {
+-- 
+1.7.0.4
 
-Generally, we need to review the response to layoutcommit errors.
-
--->Andy
-
-
->>>
->>> -
->>> - =A0 =A0 =A0 /* release lock on pnfs layoutcommit attrs */
->>> =A0 =A0 =A0 =A0spin_unlock(&nfsi->lo_lock);
->>>
->>> - =A0 =A0 =A0 data->is_sync =3D sync;
->>> =A0 =A0 =A0 =A0status =3D pnfs4_proc_layoutcommit(data);
->>> out:
->>> =A0 =A0 =A0 =A0dprintk("%s end (err:%d)\n", __func__, status);
->>> =A0 =A0 =A0 =A0return status;
->>> -out_unlock:
->>> +out_free:
->>> =A0 =A0 =A0 =A0pnfs_layoutcommit_free(data);
->>> - =A0 =A0 =A0 spin_unlock(&nfsi->lo_lock);
->>> =A0 =A0 =A0 =A0goto out;
->>> }
->>>
->>> --
->>> 1.6.3.3
->
->
->
-> --
-> tao.
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" =
-in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at =A0http://vger.kernel.org/majordomo-info.html
->
