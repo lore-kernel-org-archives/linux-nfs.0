@@ -1,100 +1,108 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-out2.uio.no ([129.240.10.58]:45518 "EHLO mail-out2.uio.no"
+Received: from fieldses.org ([174.143.236.118]:53373 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754145Ab0EYM5W (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 25 May 2010 08:57:22 -0400
-Subject: Re: [PATCH] VFS: fix recent breakage of FS_REVAL_DOT
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-To: Al Viro <viro@ZenIV.linux.org.uk>
-Cc: Neil Brown <neilb@suse.de>, "Dr. J. Bruce Fields" <bfields@fieldses.org>,
-        Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-In-Reply-To: <20100524230109.GT31073@ZenIV.linux.org.uk>
-References: <20100524165756.2cfa54c4@notabene.brown>
-	 <20100524115903.GP31073@ZenIV.linux.org.uk>
-	 <20100524155031.GQ31073@ZenIV.linux.org.uk>
-	 <1274718082.10795.31.camel@heimdal.trondhjem.org>
-	 <20100524164736.GR31073@ZenIV.linux.org.uk>
-	 <1274720791.10795.50.camel@heimdal.trondhjem.org>
-	 <20100524190828.GS31073@ZenIV.linux.org.uk>
-	 <1274735612.4030.16.camel@heimdal.trondhjem.org>
-	 <20100524230109.GT31073@ZenIV.linux.org.uk>
-Content-Type: text/plain; charset="UTF-8"
-Date: Tue, 25 May 2010 08:57:13 -0400
-Message-ID: <1274792233.5377.13.camel@heimdal.trondhjem.org>
+	id S1756223Ab0EURjL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 21 May 2010 13:39:11 -0400
+Date: Fri, 21 May 2010 13:39:08 -0400
+To: Martin Vogt <martin.vogt@itwm.fraunhofer.de>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: permission denied with >= ~2.6.25
+Message-ID: <20100521173908.GD9639@fieldses.org>
+References: <4BE7ED5D.90801@itwm.fraunhofer.de> <4BE93940.5070804@itwm.fraunhofer.de> <4BED1E44.4020708@itwm.fraunhofer.de> <20100516175213.GA9225@lts032.itwm.fhg.de> <4BF25109.40300@itwm.fraunhofer.de> <4BF3C7A4.8030906@itwm.fraunhofer.de> <20100519171347.GB8137@fieldses.org> <4BF500C9.2010904@itwm.fraunhofer.de>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4BF500C9.2010904@itwm.fraunhofer.de>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Tue, 2010-05-25 at 00:01 +0100, Al Viro wrote: 
-> On Mon, May 24, 2010 at 05:13:32PM -0400, Trond Myklebust wrote:
-> 
-> > Sorry... I misunderstood you.
+On Thu, May 20, 2010 at 11:28:41AM +0200, Martin Vogt wrote:
+> J. Bruce Fields wrote:
+> > On Wed, May 19, 2010 at 01:12:36PM +0200, Martin Vogt wrote:
+> >> Martin Vogt wrote:
+> >>> Hello,
+> >>>
+> >>>
+> >>> today I tried 2.6.34 on server/client with standard
+> >>> hardware. After around the 69th checkout I had an
+> >>> "Invalid cross-device link" Error.
+> >>> (Before that it was EIO/EPERM)
+> >>>
+> >>> Test ran for around 9 hours before it failed.
+> >>>
+> >>>> svn: In directory 'Kernel-pxe3-69.EZvgHTmbzv/include/asm-sparc'
+> >>>> svn: Can't move
+> >>> 'Kernel-pxe3-69.EZvgHTmbzv/include/asm-sparc/resource.h.tmp'
+> >>>> to 'Kernel-pxe3-69.EZvgHTmbzv/include/asm-sparc/resource.h': Invalid
+> >>>> cross-device link
+> >>>> Mon May 17 23:46:32 CEST 2010,1
+> >>>> runcounter: 69
+> >> Ok.
+> >> RTFM: no_subtree_check :-(
+> >>
+> >> This option made the checkouts reliable.
 > > 
-> > In cases like the above, then the default behaviour of the server would
-> > be to assign the same filehandles to those mount points. The
-> > administrator can, however, make them different by choosing to use the
-> > 'fsid' mount option to manually assign different fsids to the different
-> > export points.
+> > Erp.  Should have thought of that.  It's no longer the default in recent
+> > nfs-utils, for this sort of reason.
 > > 
-> > If not, then the client will automatically group these things in the
-> > same superblock, so like the server, it too is supposed to share the
-> > same inode for these different objects. It will then use
-> > d_obtain_alias() to get a root dentry for that inode (see
-> > nfs4_get_root()).
+> > (But, note: for anyone exporting directories that aren't mountpoints,
+> > that may expose more of their filesystem than intended.)
+> > 
 > 
-> Yes, it will.  So what will happen in nfs_follow_referral()?  Note that
-> we check the rootpath returned by the server (whatever it will end up
-> being) against the mnt_devname + relative path from mnt_root to referral
-> point.  In this case it'll be /a/z or /b/z (depending on which export
-> will server select when it sees the fsid) vs /a/z/x or /b/z/x (depending
-> on which one does client walk into).  And the calls of nfs4_proc_fs_locations()
-> will get identical arguments whether client walks into a/z/x or b/z/x.
-> So will the actual RPC requests seen by the server, so it looks like in
-> at least one of those cases we will get the rootpath that is _not_ a prefix
-> we are expecting, stepping into
->         if (strncmp(path, fs_path, strlen(fs_path)) != 0) {
->                 dprintk("%s: path %s does not begin with fsroot %s\n",
->                         __func__, path, fs_path);
->                 return -ENOENT;
->         }
-> in nfs4_validate_fspath().
+> Hello,
 > 
-> Question regarding RFC3530: is it actually allowed to have the same fhandle
-> show up in two different locations in server's namespace?  If so, what
-> should GETATTR with FS_LOCATIONS return for it?
+> the report for the latest kernel was done with "no_subtree_check"
 
-I think the general expectation in the protocol is that there are no
-hard linked directories. This assumption is reflected in the fact that
-we have operations such as LOOKUPP (the NFSv4 equivalent of
-lookup("..")) which only take a filehandle argument.
+OK, sorry, I don't know.
 
-> Client question: what stops you from stack overflows in that area?  Call
-> chains you've got are *deep*, and I really wonder what happens if you
-> hit a referral point while traversing nested symlink, get pathname
-> resolution (already several levels into recursion) call ->follow_link(),
-> bounce down through nfs_do_refmount/nfs_follow_referral/try_location/
-> vfs_kern_mount/nfs4_referral_get_sb/nfs_follow_remote_path into
-> vfs_path_lookup, which will cheerfully add a few more loops like that.
+You've been varying both client and server, but from your initial
+reports it sounded like this was something that first started happening
+on a client upgrade?
+
+Have you been able to keep the server fixed while doing a binary search
+through the client version for the first non-working client?
+
+--b.
+
 > 
-> Sure, the *total* nesting depth through symlinks is still limited by 8, but
-> that pile of stack frames is _MUCH_ fatter than what we normally have in
-> pathname resolution.  You've suddenly added ~60 extra stack frames to the
-> worst-case stack footprint of the pathname resolution.  Don't try that
-> on sparc64, boys and girls, it won't be happy with attempt to carve ~12Kb
-> extra out of its kernel stack...  In fact, it's worse than just ~60 stack
-> frames - several will contain (on-stack) struct nameidata in them, which
-> very definitely will _not_ fit into the minimal stack frame.  It's about
-> 160 bytes extra, for each of those (up to 7).
+> -9 hours client/server both 2.6.34 before "Invalid cross-device link"
 > 
-> Come to think of that, x86 variants might get rather upset about that kind
-> of treatment as well.  Minimal stack frames are smaller, but so's the stack...
+> 2.6.34 still shows some svn problem with "no_subtree_check" on.
+> But only after 9 hours (vs 10 minutes, with subtree_check)
+> 
+> It was done with:
+> 
+> >log:Assuming default behaviour ('no_subtree_check').
+> exports:
+> >/var/tmp/nfs_export
+> >192.168.9.0/255.255.255.0(rw,async,wdelay,acl,no_root_squash,fsid=6666)
+> 
+> Using "no_subtree_check" made it only "much more" stable
+> than before, but not "stable".
+> 
+> Server was 4 core (2 sockets) Xeon 5148@2.33GHz,
+> 8GB mem.
+> Exported fs was ext3 from a Standard Sata drive,
+> and the client was a dual core E8400.
+> 
+> Mount client:
+> mount -o rw,nosuid,nodev,rsize=8192,wsize=8192,vers=3 -t nfs
+> pxe2:/var/tmp/nfs_export  /home/local
+> 
+> 
+> I'm attaching my test script. The script needs to be run two times
+> in parallel on the machine. (In screen for example).
+> If someone wants to reproduce this.A single checkout on
+> the machine would even takes longer to reproduce the problem.
+> 
+> I imported a normal kernel tree into a svn repository
+> on a dedicated server only for this and started svnserve -d
+> as normal user.
+> 
+> 
+> regards,
+> 
+> Martin
+> 
 
-See commit ce587e07ba2e25b5c9d286849885b82676661f3e (NFS: Prevent the
-mount code from looping forever on broken exports) which was just
-merged. It prevents nesting > 2 levels deep (ignore the changelog
-comment about MAX_NESTED_LINKS - that is a typo).
-
-Cheers
-  Trond
 
