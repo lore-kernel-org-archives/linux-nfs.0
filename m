@@ -1,105 +1,211 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fg-out-1718.google.com ([72.14.220.156]:14015 "EHLO
-	fg-out-1718.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932173Ab0EKH1b (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 11 May 2010 03:27:31 -0400
-Received: by fg-out-1718.google.com with SMTP id d23so1967031fga.1
-        for <linux-nfs@vger.kernel.org>; Tue, 11 May 2010 00:27:30 -0700 (PDT)
-Message-ID: <4BE906DF.7090606@panasas.com>
-Date: Tue, 11 May 2010 10:27:27 +0300
-From: Benny Halevy <bhalevy@panasas.com>
-To: "J. Bruce Fields" <bfields@citi.umich.edu>
-CC: NFS list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 0/8] nfsd4: keep the client from expiring while in use
- by nfs41 compounds
-References: <4BE0A1AE.4040905@panasas.com> <20100507223836.GO19142@fieldses.org> <4BE65687.8050806@panasas.com> <20100509165551.GA15429@fieldses.org> <4BE8150F.2050706@panasas.com> <20100510190111.GA1361@fieldses.org>
-In-Reply-To: <20100510190111.GA1361@fieldses.org>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from smtp-out.google.com ([74.125.121.35]:34658 "EHLO
+	smtp-out.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751643Ab0EUU4H (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 21 May 2010 16:56:07 -0400
+Received: from hpaq3.eem.corp.google.com (hpaq3.eem.corp.google.com [172.25.149.3])
+	by smtp-out.google.com with ESMTP id o4LKu3ac019138
+	for <linux-nfs@vger.kernel.org>; Fri, 21 May 2010 13:56:03 -0700
+Received: from pvg16 (pvg16.prod.google.com [10.241.210.144])
+	by hpaq3.eem.corp.google.com with ESMTP id o4LKu1V6019078
+	for <linux-nfs@vger.kernel.org>; Fri, 21 May 2010 13:56:02 -0700
+Received: by pvg16 with SMTP id 16so559872pvg.6
+        for <linux-nfs@vger.kernel.org>; Fri, 21 May 2010 13:56:01 -0700 (PDT)
+Date: Fri, 21 May 2010 13:55:51 -0700 (PDT)
+From: Hugh Dickins <hughd@google.com>
+To: Tharindu Rukshan Bamunuarachchi <btharindu@gmail.com>
+cc: linux-mm@kvack.org, linux-nfs@vger.kernel.org,
+        Alan Cox <alan@lxorguk.ukuu.org.uk>
+Subject: Re: TMPFS over NFSv4
+In-Reply-To: <AANLkTik47c6l3y8CdJ-hUCd2h3SRSb3qAtRovWryb8_p@mail.gmail.com>
+Message-ID: <alpine.LSU.2.00.1005211344440.7369@sister.anvils>
+References: <AANLkTik47c6l3y8CdJ-hUCd2h3SRSb3qAtRovWryb8_p@mail.gmail.com>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On May. 10, 2010, 22:01 +0300, "J. Bruce Fields" <bfields@citi.umich.edu> wrote:
-> On Mon, May 10, 2010 at 05:15:43PM +0300, Benny Halevy wrote:
->> On May. 09, 2010, 19:55 +0300, "J. Bruce Fields" <bfields@citi.umich.edu> wrote:
->>> On Sun, May 09, 2010 at 09:30:31AM +0300, Benny Halevy wrote:
->>>> Correct.  The intentions are:
->>>> 1. Make the laundromat process ignore clients that are in
->>>> use by a 4.1 session.
->>>> 2. Renew the client when the compound ends, rather than when it begins.
->>>> 3. Unhash the client when it's expired explicitly but don't destroy it
->>>> until there's no reference to it.
->>> OK.  My one slight worry there is to make sure that code getting a
->>> pointer to a client through a sessionid won't inadvertently assume it's
->>> still hashed.
->> That's a good point.
->> In fact, the client should not be renewed when the compound is done
->> if it was already explicitly expired.
+On Fri, 21 May 2010, Tharindu Rukshan Bamunuarachchi wrote:
 > 
-> Hm, and we've still got a lot of renew_client()'s sprinkled around that
-> will try to add the expired client back to client_lru.
+> I tried to export tmpfs file system over NFS and got followin oops ....
+> this kernel is provided with SLES 11 and tainted due to OFED installation.
 > 
-
-For that I've already have a fix in my branch to not renew the client
-if it's marked as expired (cl_time == 0).
-
->> Another way to deal with this which may be safer but is less optimal
->> is to keep only the sessionid and look it up on each use. Then, using
->> it while holding the state lock will make sure it's valid when used.
+> I am using NFSv4. Please help me to find the root cause if you feel free ....
 > 
-> That seems overkill.  Instead of making ops look up the sessionid from
-> state each time I guess we could have a revalidate_sessionid() that
-> checked the associated client to see if it was still good.
 > 
+> BUG: unable to handle kernel NULL pointer dereference at 00000000000000b0
+> IP: __vm_enough_memory+0xf9/0x14e
+> PGD 0
+> Oops: 0000 [1] SMP
+> last sysfs file:
+> /sys/devices/pci0000:00/0000:00:09.0/0000:24:00.0/infiniband/mlx4_1/node_desc
+> CPU 0
+> Modules linked in: blah blah blah
+> Supported: No, Unsupported modules are loaded
+> Pid: 8855, comm: nfsd Tainted: G 2.6.27.45-0.1-default #1
+> RIP: 0010: __vm_enough_memory+0xf9/0x14e
+...
+> Process nfsd (pid: 8855, threadinfo ffff8803642cc000, task ffff88036f140380)
+> Stack: ffff88037b93b668 ffff88037009de40 ffff88037b93b668 0000000000000000
+> ffff88037b93b601 ffffffff802a8573 ffffffff80a33680 ffffffff80a30730
+> 0000000000000000 0000000300000002 ffff8803642cd930 0000000000000000
+> Call Trace:
+> shmem_getpage+0x4d8/0x764
+> generic_perform_write+0xae/0x1b5
+> generic_file_buffered_write+0x80/0x130
+> __generic_file_aio_write_nolock+0x349/0x37d
+> generic_file_aio_write+0x64/0xc4
+> do_sync_readv_writev+0xc0/0x107
+> do_readv_writev+0xb2/0x18b
+> nfsd_vfs_write+0x10a/0x328 [nfsd]
+> nfsd_write+0x79/0xe2 [nfsd]
+> nfsd4_write+0xd9/0x10d [nfsd]
+> nfsd4_proc_compound+0x1bd/0x2c7 [nfsd]
+> nfsd_dispatch+0xdd/0x1b9 [nfsd]
+> svc_process+0x3d8/0x700 [sunrpc]
+> nfsd+0x1b1/0x27e [nfsd]
+> kthread+0x47/0x73
+> child_rip+0xa/0x11
 
-Yeah.  Let me see if this is a quick fix and if so I'll send it as part
-of version 2 of this patchset, otherwise I'll send it as is.
+I believe that was fixed in 2.6.28 by the patch below:
+please would you try it, and if it works for you, then
+I'll ask for it to be included in the next 2.6.27-stable,
+which I expect SLES 11 will include in an update later.
+Strange that more people haven't suffered from it...
 
-> If we continue to reduce the scope of the state lock, isn't that going
-> to be a pain, though?  Will we end up having to do that sort of
-> revalidation every time we drop the state lock and reacquire it?
+Hugh
 
-It's very little pain, just verifying that cl_time != 0.
+commit 731572d39fcd3498702eda4600db4c43d51e0b26
+Author: Alan Cox <alan@redhat.com>
+Date:   Wed Oct 29 14:01:20 2008 -0700
 
-> 
-> Perhaps the simplest would be to make the clientid-destroyer wait; it
-> could set some sort of CLIENTID_DEAD flag on the client, wait for a
-> reference count to go to zero, then destroy the client.
-> 
+    nfsd: fix vm overcommit crash
+    
+    Junjiro R.  Okajima reported a problem where knfsd crashes if you are
+    using it to export shmemfs objects and run strict overcommit.  In this
+    situation the current->mm based modifier to the overcommit goes through a
+    NULL pointer.
+    
+    We could simply check for NULL and skip the modifier but we've caught
+    other real bugs in the past from mm being NULL here - cases where we did
+    need a valid mm set up (eg the exec bug about a year ago).
+    
+    To preserve the checks and get the logic we want shuffle the checking
+    around and add a new helper to the vm_ security wrappers
+    
+    Also fix a current->mm reference in nommu that should use the passed mm
+    
+    [akpm@linux-foundation.org: coding-style fixes]
+    [akpm@linux-foundation.org: fix build]
+    Reported-by: Junjiro R. Okajima <hooanon05@yahoo.co.jp>
+    Acked-by: James Morris <jmorris@namei.org>
+    Signed-off-by: Alan Cox <alan@redhat.com>
+    Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
+    Signed-off-by: Linus Torvalds <torvalds@linux-foundation.org>
 
-I'm not sure about this.  Setting this flag is equivalent
-to what I propose to do today (with marking the client as expired AND
-unhashing it) as you want to prevent any more references to it.
-
-The question is more about the semantics of the operation that explicitly
-destroys the old client, e.g. EXCHANGE_ID or DESTROY_SESSION.
-Can the client tolerate responses for the old clientid/sessionid
-after the client-destroying operation has succeeded?
-
-> Then other code would be guaranteed that nothing will change underneath
-> them as long as they hold either the state lock or a reference to a
-> session.
-> 
-> So hopefully we'd only need worry about client shutdown in well-defined
-> places:
-> 	- when put()'ing a session, to check whether the client
-> 	  is ready to be destroyed now.
-
-That's in v2.
-
-> 	- when looking up a session, in which case we should check
-> 	  whether the client is dead and fail the lookup?
-
-If the client is dead we won't find the sessionid as we unhash the session
-structure atomically with the client so that isn't an issue so that's also
-dealt with in v2.
-
-Benny
-
-> 
-> --b.
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
+diff --git a/include/linux/security.h b/include/linux/security.h
+index f5c4a51..c13f1ce 100644
+--- a/include/linux/security.h
++++ b/include/linux/security.h
+@@ -1585,6 +1585,7 @@ int security_syslog(int type);
+ int security_settime(struct timespec *ts, struct timezone *tz);
+ int security_vm_enough_memory(long pages);
+ int security_vm_enough_memory_mm(struct mm_struct *mm, long pages);
++int security_vm_enough_memory_kern(long pages);
+ int security_bprm_alloc(struct linux_binprm *bprm);
+ void security_bprm_free(struct linux_binprm *bprm);
+ void security_bprm_apply_creds(struct linux_binprm *bprm, int unsafe);
+@@ -1820,6 +1821,11 @@ static inline int security_vm_enough_memory(long pages)
+ 	return cap_vm_enough_memory(current->mm, pages);
+ }
+ 
++static inline int security_vm_enough_memory_kern(long pages)
++{
++	return cap_vm_enough_memory(current->mm, pages);
++}
++
+ static inline int security_vm_enough_memory_mm(struct mm_struct *mm, long pages)
+ {
+ 	return cap_vm_enough_memory(mm, pages);
+diff --git a/mm/mmap.c b/mm/mmap.c
+index 74f4d15..de14ac2 100644
+--- a/mm/mmap.c
++++ b/mm/mmap.c
+@@ -175,7 +175,8 @@ int __vm_enough_memory(struct mm_struct *mm, long pages, int cap_sys_admin)
+ 
+ 	/* Don't let a single process grow too big:
+ 	   leave 3% of the size of this process for other processes */
+-	allowed -= mm->total_vm / 32;
++	if (mm)
++		allowed -= mm->total_vm / 32;
+ 
+ 	/*
+ 	 * cast `allowed' as a signed long because vm_committed_space
+diff --git a/mm/nommu.c b/mm/nommu.c
+index 2696b24..7695dc8 100644
+--- a/mm/nommu.c
++++ b/mm/nommu.c
+@@ -1454,7 +1454,8 @@ int __vm_enough_memory(struct mm_struct *mm, long pages, int cap_sys_admin)
+ 
+ 	/* Don't let a single process grow too big:
+ 	   leave 3% of the size of this process for other processes */
+-	allowed -= current->mm->total_vm / 32;
++	if (mm)
++		allowed -= mm->total_vm / 32;
+ 
+ 	/*
+ 	 * cast `allowed' as a signed long because vm_committed_space
+diff --git a/mm/shmem.c b/mm/shmem.c
+index d38d7e6..0ed0752 100644
+--- a/mm/shmem.c
++++ b/mm/shmem.c
+@@ -161,8 +161,8 @@ static inline struct shmem_sb_info *SHMEM_SB(struct super_block *sb)
+  */
+ static inline int shmem_acct_size(unsigned long flags, loff_t size)
+ {
+-	return (flags & VM_ACCOUNT)?
+-		security_vm_enough_memory(VM_ACCT(size)): 0;
++	return (flags & VM_ACCOUNT) ?
++		security_vm_enough_memory_kern(VM_ACCT(size)) : 0;
+ }
+ 
+ static inline void shmem_unacct_size(unsigned long flags, loff_t size)
+@@ -179,8 +179,8 @@ static inline void shmem_unacct_size(unsigned long flags, loff_t size)
+  */
+ static inline int shmem_acct_block(unsigned long flags)
+ {
+-	return (flags & VM_ACCOUNT)?
+-		0: security_vm_enough_memory(VM_ACCT(PAGE_CACHE_SIZE));
++	return (flags & VM_ACCOUNT) ?
++		0 : security_vm_enough_memory_kern(VM_ACCT(PAGE_CACHE_SIZE));
+ }
+ 
+ static inline void shmem_unacct_blocks(unsigned long flags, long pages)
+diff --git a/security/security.c b/security/security.c
+index 255b085..c0acfa7 100644
+--- a/security/security.c
++++ b/security/security.c
+@@ -198,14 +198,23 @@ int security_settime(struct timespec *ts, struct timezone *tz)
+ 
+ int security_vm_enough_memory(long pages)
+ {
++	WARN_ON(current->mm == NULL);
+ 	return security_ops->vm_enough_memory(current->mm, pages);
+ }
+ 
+ int security_vm_enough_memory_mm(struct mm_struct *mm, long pages)
+ {
++	WARN_ON(mm == NULL);
+ 	return security_ops->vm_enough_memory(mm, pages);
+ }
+ 
++int security_vm_enough_memory_kern(long pages)
++{
++	/* If current->mm is a kernel thread then we will pass NULL,
++	   for this specific case that is fine */
++	return security_ops->vm_enough_memory(current->mm, pages);
++}
++
+ int security_bprm_alloc(struct linux_binprm *bprm)
+ {
+ 	return security_ops->bprm_alloc_security(bprm);
