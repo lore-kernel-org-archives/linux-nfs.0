@@ -1,284 +1,159 @@
-From: Christopher Hawkins <chawkins-eCVT+wl/HiBBDgjK7y7TUQ@public.gmane.org>
-Subject: Re: nfs4 hang
-Date: Sat, 22 May 2010 11:11:31 -0400 (EDT)
-Message-ID: <5203636.911274541091415.JavaMail.javamailuser@localhost>
-References: <29552358.871274477090274.JavaMail.javamailuser@localhost>
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: Re: Possible NFS bug in 2.6.34...
+Date: Sat, 22 May 2010 12:09:40 -0400
+Message-ID: <1274544580.4860.73.camel@heimdal.trondhjem.org>
+References: <4BF72D34.60701@actusa.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-To: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
+Cc: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org
+To: Stuart Sheldon <stu-7mM24aH7KjCsTnJN9+BGXg@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from vms173005pub.verizon.net ([206.46.173.5]:40168 "EHLO
-	vms173005pub.verizon.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754277Ab0EVPST (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 22 May 2010 11:18:19 -0400
-Received: from backoffice.bplinux.com ([unknown] [98.118.141.73])
- by vms173005.mailsrvcs.net
- (Sun Java(tm) System Messaging Server 7u2-7.02 32bit (built Apr 16 2009))
- with ESMTPA id <0L2T00BLKUI1CWJ8-q7IJPNDOu5k+2AnmrIGM23L67TkHkek2@public.gmane.org> for
- linux-nfs@vger.kernel.org; Sat, 22 May 2010 10:18:04 -0500 (CDT)
-Received: from localhost (localhost.localdomain [127.0.0.1])
-	by backoffice.bplinux.com (Postfix) with ESMTP id 8F3B83E8002	for
- <linux-nfs@vger.kernel.org>; Sat, 22 May 2010 11:11:33 -0400 (EDT)
-Received: from backoffice.bplinux.com ([127.0.0.1])
-	by localhost (backoffice.bplinux.com [127.0.0.1]) (amavisd-new, port 10024)
-	with ESMTP id e3ZpxLshiHJn for <linux-nfs@vger.kernel.org>; Sat,
- 22 May 2010 11:11:31 -0400 (EDT)
-Received: from backoffice.bplinux.com (backoffice.bplinux.com [192.168.1.4])
-	by backoffice.bplinux.com (Postfix) with ESMTP id A19643E8001	for
- <linux-nfs@vger.kernel.org>; Sat, 22 May 2010 11:11:31 -0400 (EDT)
-In-reply-to: <29552358.871274477090274.JavaMail.javamailuser@localhost>
+Received: from mx2.netapp.com ([216.240.18.37]:39944 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753508Ab0EVQJp convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 22 May 2010 12:09:45 -0400
+In-Reply-To: <4BF72D34.60701-7mM24aH7KjCsTnJN9+BGXg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Actually this issue seems to be on the server side. I changed the export to read only so the clients couldn't accidentally overwrite anything... and the issue persists! Will keep testing.
+On Fri, 2010-05-21 at 18:02 -0700, Stuart Sheldon wrote: 
+> -----BEGIN PGP SIGNED MESSAGE-----
+> Hash: SHA256
+> 
+> Hi all,
+> 
+> Got the following on a 64bit intel NFS client while a process was
+> running heavy read and writes to a large (40G) file on a 64bit Intel NFS
+> server. Both client and server were running 2.6.34 from kernel.org.
+> 
+> Basically, the client never recovered, and had to be power cycled to
+> correct the issue.
+> 
+> Here is the mount info:
+> 
+> drbd:/data/export on /home type nfs
+> (rw,rsize=32768,wsize=32768,nfsvers=3,bg,intr,addr=xxx.xx.xx.xxx)
+> 
+> Here's the log:
+> 
+> May 21 16:50:55 tovirtcore1 kernel: BUG: soft lockup - CPU#3 stuck for
+> 61s! [qemu-system-x86:6340]
+> May 21 16:50:55 tovirtcore1 kernel: Modules linked in: tun nfs lockd
+> nfs_acl auth_rpcgss sunrpc 8021q bridge stp kvm_intel kvm parport_pc
+> i2c_i801 rtc_cmos rtc_core rtc_lib parport psmouse i2c_core evdev
+> serio_raw button processor intel_agp pcspkr ext3 jbd mbcache dm_mirror
+> dm_region_hash dm_log dm_snapshot dm_mod raid1 md_mod sd_mod
+> ide_pci_generic ide_core ata_generic pata_marvell ata_piix ohci1394
+> ieee1394 uhci_hcd ehci_hcd pata_acpi firewire_ohci firewire_core
+> crc_itu_t libata e1000 scsi_mod e1000e usbcore thermal [last unloaded:
+> scsi_wait_scan]
+> May 21 16:50:55 tovirtcore1 kernel: CPU 3
+> May 21 16:50:55 tovirtcore1 kernel: Modules linked in: tun nfs lockd
+> nfs_acl auth_rpcgss sunrpc 8021q bridge stp kvm_intel kvm parport_pc
+> i2c_i801 rtc_cmos rtc_core rtc_lib parport psmouse i2c_core evdev
+> serio_raw button processor intel_agp pcspkr ext3 jbd mbcache dm_mirror
+> dm_region_hash dm_log dm_snapshot dm_mod raid1 md_mod sd_mod
+> ide_pci_generic ide_core ata_generic pata_marvell ata_piix ohci1394
+> ieee1394 uhci_hcd ehci_hcd pata_acpi firewire_ohci firewire_core
+> crc_itu_t libata e1000 scsi_mod e1000e usbcore thermal [last unloaded:
+> scsi_wait_scan]
+> May 21 16:50:55 tovirtcore1 kernel:
+> May 21 16:50:55 tovirtcore1 kernel: Pid: 6340, comm: qemu-system-x86 Not
+> tainted 2.6.34-0-xeon-actusa #1 DQ965GF/
+> May 21 16:50:55 tovirtcore1 kernel: RIP: 0010:[<ffffffff8107005a>]
+> [<ffffffff8107005a>] clear_page_dirty_for_io+0xb2/0xb8
+> May 21 16:50:55 tovirtcore1 kernel: RSP: 0000:ffff8801ecf0fc38  EFLAGS:
+> 00000246
+> May 21 16:50:55 tovirtcore1 kernel: RAX: 0000000000000000 RBX:
+> ffff880227586eb0 RCX: 0000000000000000
+> May 21 16:50:55 tovirtcore1 kernel: RDX: 0000000000000000 RSI:
+> ffff880227586fa8 RDI: ffffea00059c5700
+> May 21 16:50:55 tovirtcore1 kernel: RBP: ffffffff8100314e R08:
+> 8000000000000000 R09: 0000000000000000
+> May 21 16:50:55 tovirtcore1 kernel: R10: ffff8801ecf0fb48 R11:
+> ffff8801ecf0fbc0 R12: 0000000000000010
+> May 21 16:50:55 tovirtcore1 kernel: R13: ffffffff81041afb R14:
+> ffffffffffffff10 R15: 0e00000000000000
+> May 21 16:50:55 tovirtcore1 kernel: FS:  000000004469f950(0063)
+> GS:ffff880001780000(0000) knlGS:0000000000000000
+> May 21 16:50:55 tovirtcore1 kernel: CS:  0010 DS: 002b ES: 002b CR0:
+> 000000008005003b
+> May 21 16:50:55 tovirtcore1 kernel: CR2: 00000000006cd3d8 CR3:
+> 000000022aff3000 CR4: 00000000000026e0
+> May 21 16:50:55 tovirtcore1 kernel: DR0: 0000000000000000 DR1:
+> 0000000000000000 DR2: 0000000000000000
+> May 21 16:50:55 tovirtcore1 kernel: DR3: 0000000000000000 DR6:
+> 00000000ffff0ff0 DR7: 0000000000000400
+> May 21 16:50:55 tovirtcore1 kernel: Process qemu-system-x86 (pid: 6340,
+> threadinfo ffff8801ecf0e000, task ffff88022bddc090)
+> May 21 16:50:55 tovirtcore1 kernel: Stack:
+> May 21 16:50:55 tovirtcore1 kernel: 0000000000000000 ffffea00059c5700
+> ffffea00059c5700 ffffffffa02e7bcd
+> May 21 16:50:55 tovirtcore1 kernel: <0> 0000000000000000
+> 0000000000000000 0000000000000001 0000000000000000
+> May 21 16:50:55 tovirtcore1 kernel: <0> 0000000000000000
+> 0000000000000000 0000000000000000 00000002cfb52000
+> May 21 16:50:55 tovirtcore1 kernel: Call Trace:
+> May 21 16:50:55 tovirtcore1 kernel: [<ffffffffa02e7bcd>] ?
+> nfs_wb_page+0x57/0x8c [nfs]
+> May 21 16:50:55 tovirtcore1 kernel: [<ffffffff81072025>] ?
+> invalidate_inode_pages2_range+0x140/0x25c
+> May 21 16:50:55 tovirtcore1 kernel: [<ffffffff8102b4c7>] ?
+> default_wake_function+0x0/0x9
+> May 21 16:50:55 tovirtcore1 kernel: [<ffffffffa02ddbc6>] ?
+> nfs_revalidate_mapping+0x66/0xf3 [nfs]
+> May 21 16:50:55 tovirtcore1 kernel: [<ffffffffa02dc40f>] ?
+> nfs_file_read+0x92/0xd5 [nfs]
+> May 21 16:50:55 tovirtcore1 kernel: [<ffffffff8109203b>] ?
+> do_sync_read+0xb0/0xf2
+> May 21 16:50:55 tovirtcore1 kernel: [<ffffffff8103aa24>] ?
+> __send_signal+0x1cd/0x1ea
+> May 21 16:50:55 tovirtcore1 kernel: [<ffffffff8103acf2>] ?
+> kill_pid_info+0x31/0x3b
+> May 21 16:50:55 tovirtcore1 kernel: [<ffffffff8103ae9a>] ?
+> sys_kill+0x72/0x140
+> May 21 16:50:55 tovirtcore1 kernel: [<ffffffff81092a38>] ?
+> vfs_read+0xaa/0x146
+> May 21 16:50:55 tovirtcore1 kernel: [<ffffffff81092b2b>] ?
+> sys_pread64+0x57/0x77
+> May 21 16:50:55 tovirtcore1 kernel: [<ffffffff8100286b>] ?
+> system_call_fastpath+0x16/0x1b
+> May 21 16:50:55 tovirtcore1 kernel: Code: 60 48 83 ce ff 0f bd 15 c5 e8
+> 2f 00 0f 44 d0 8d 14 d5 08 00 00 00 e8 56 be 0b 00 53 9d ba 01 00 00 00
+> eb 07 f0 0f ba 33 04 19 d2 <5e> 89 d0 5b 5d c3 55 48 89 fd 53 48 83 ec
+> 08 f0 0f ba 2f 00 19
+> May 21 16:50:55 tovirtcore1 kernel: Call Trace:
+> May 21 16:50:55 tovirtcore1 kernel: [<ffffffffa02e7bcd>] ?
+> nfs_wb_page+0x57/0x8c [nfs]
+> May 21 16:50:55 tovirtcore1 kernel: [<ffffffff81072025>] ?
+> invalidate_inode_pages2_range+0x140/0x25c
+> May 21 16:50:55 tovirtcore1 kernel: [<ffffffff8102b4c7>] ?
+> default_wake_function+0x0/0x9
+> May 21 16:50:55 tovirtcore1 kernel: [<ffffffffa02ddbc6>] ?
+> nfs_revalidate_mapping+0x66/0xf3 [nfs]
+> May 21 16:50:55 tovirtcore1 kernel: [<ffffffffa02dc40f>] ?
+> nfs_file_read+0x92/0xd5 [nfs]
+> May 21 16:50:55 tovirtcore1 kernel: [<ffffffff8109203b>] ?
+> do_sync_read+0xb0/0xf2
+> May 21 16:50:55 tovirtcore1 kernel: [<ffffffff8103aa24>] ?
+> __send_signal+0x1cd/0x1ea
+> May 21 16:50:55 tovirtcore1 kernel: [<ffffffff8103acf2>] ?
+> kill_pid_info+0x31/0x3b
+> May 21 16:50:55 tovirtcore1 kernel: [<ffffffff8103ae9a>] ?
+> sys_kill+0x72/0x140
+> May 21 16:50:55 tovirtcore1 kernel: [<ffffffff81092a38>] ?
+> vfs_read+0xaa/0x146
+> May 21 16:50:55 tovirtcore1 kernel: [<ffffffff81092b2b>] ?
+> sys_pread64+0x57/0x77
+> May 21 16:50:55 tovirtcore1 kernel: [<ffffffff8100286b>] ?
+> system_call_fastpath+0x16/0x1b
+> 
+> If you need any additional info, let me know
 
------ "Christopher Hawkins" <chawkins-eCVT+wl/HiBBDgjK7y7TUQ@public.gmane.org> wrote:
+Do you see any more NFS traffic to the server when the above hang
+occurs? I'm wondering if we don't need something like the following
+patch.
 
-> I managed to make it go a little further and now the nodes will finish
-> booting, though they hang when I start other nodes and start using
-> files. And this was captured in the syslog from one of the nodes where
-> nfs4 goes unresponsive. Not familiar enough with nfs4 to read it,
-> however. Does this point to a culprit?
-> 
-> It's as if the nodes are writing all over each others connections,
-> like maybe I have a shared directory where each node must have its own
-> private directory. They each have their own /var/lib and
-> /var/lib/nfs/rpc_pipefs mounted. Anything else that nfs clients write
-> to (aside from proc and dev)?
-> 
-> May 21 17:13:45 192.168.1.243 kernel: INFO: task rpciod/0:1297 blocked
-> for more than 120 seconds.
-> May 21 17:13:45 192.168.1.243 kernel: "echo 0 >
-> /proc/sys/kernel/hung_task_timeout_secs" disables this message.
-> May 21 17:13:45 192.168.1.243 kernel: rpciod/0      D 00000097  2580 
-> 1297      7          1306   340 (L-TLB)
-> May 21 17:13:45 192.168.1.243 kernel:        de89de40 00000046
-> 1dfa3ac0 00000097 de8ca3b4 c1984c78 00000001 0000000a
-> May 21 17:13:45 192.168.1.243 kernel:        de8ce000 1dfa3ac0
-> 00000097 00000000 00000000 de8ce10c c1787100 f54ebac0
-> May 21 17:13:45 192.168.1.243 kernel:        c041ebcc 00000000
-> 00000000 00000003 00000296 c1984b00 c17875bc de89de68
-> May 21 17:13:45 192.168.1.243 kernel: Call Trace:
-> May 21 17:13:45 192.168.1.243 kernel:  [<c041ebcc>]
-> __wake_up+0x2a/0x3d
-> May 21 17:13:45 192.168.1.243 kernel:  [<f8916155>]
-> rpc_queue_upcall+0x92/0x99 [sunrpc]
-> May 21 17:13:45 192.168.1.243 kernel:  [<f8992b04>]
-> nfs_idmap_id+0x18b/0x1f6 [nfs]
-> May 21 17:13:45 192.168.1.243 kernel:  [<c041f7a7>]
-> default_wake_function+0x0/0xc
-> May 21 17:13:45 192.168.1.243 kernel:  [<f8992ba9>]
-> nfs_map_name_to_uid+0x1b/0x1f [nfs]
-> May 21 17:13:45 192.168.1.243 kernel:  [<f898d719>]
-> decode_getfattr+0x611/0xbbd [nfs]
-> May 21 17:13:45 192.168.1.243 kernel:  [<f898c0bd>]
-> decode_open+0xf3/0x25e [nfs]
-> May 21 17:13:45 192.168.1.243 kernel:  [<f898e47c>]
-> decode_getfh+0x61/0xa3 [nfs]
-> May 21 17:13:45 192.168.1.243 kernel:  [<f898e4be>]
-> nfs4_xdr_dec_open+0x0/0xa2 [nfs]
-> May 21 17:13:45 192.168.1.243 kernel:  [<f898e533>]
-> nfs4_xdr_dec_open+0x75/0xa2 [nfs]
-> May 21 17:13:45 192.168.1.243 kernel:  [<f890e755>]
-> rpcauth_unwrap_resp+0x5b/0x60 [sunrpc]
-> May 21 17:13:45 192.168.1.243 kernel:  [<f89097e9>]
-> call_decode+0x437/0x47d [sunrpc]
-> May 21 17:13:45 192.168.1.243 kernel:  [<f898e4be>]
-> nfs4_xdr_dec_open+0x0/0xa2 [nfs]
-> May 21 17:13:45 192.168.1.243 kernel:  [<f890df54>]
-> __rpc_execute+0x7a/0x1f8 [sunrpc]
-> May 21 17:13:45 192.168.1.243 kernel:  [<c0433276>]
-> run_workqueue+0x78/0xb5
-> May 21 17:13:45 192.168.1.243 kernel:  [<f890e0d2>]
-> rpc_async_schedule+0x0/0x5 [sunrpc]
-> May 21 17:13:45 192.168.1.243 kernel:  [<c0433b2a>]
-> worker_thread+0xd9/0x10b
-> May 21 17:13:45 192.168.1.243 kernel:  [<c041f7a7>]
-> default_wake_function+0x0/0xc
-> May 21 17:13:45 192.168.1.243 kernel:  [<c0433a51>]
-> worker_thread+0x0/0x10b
-> May 21 17:13:45 192.168.1.243 kernel:  [<c0435f43>] kthread+0xc0/0xed
-> May 21 17:13:45 192.168.1.243 kernel:  [<c0435e83>] kthread+0x0/0xed
-> May 21 17:13:45 192.168.1.243 kernel:  [<c0405c53>]
-> kernel_thread_helper+0x7/0x10
-> May 21 17:13:45 192.168.1.243 kernel:  =======================
-> May 21 17:13:45 192.168.1.243 kernel: INFO: task java:13420 blocked
-> for more than 120 seconds.
-> May 21 17:13:45 192.168.1.243 kernel: "echo 0 >
-> /proc/sys/kernel/hung_task_timeout_secs" disables this message.
-> May 21 17:13:45 192.168.1.243 kernel: java          D 00000098  2068
-> 13420      1         13421 13386 (NOTLB)
-> May 21 17:13:45 192.168.1.243 kernel:        f6bbfab0 00000086
-> ada06900 00000098 00000000 c06ba340 dfc6d280 0000000a
-> May 21 17:13:45 192.168.1.243 kernel:        f5781000 ada06900
-> 00000098 00000000 00000000 f578110c c1787100 f649d3c0
-> May 21 17:13:45 192.168.1.243 kernel:        00000098 00000000
-> de7c6804 c1787100 de7c6800 f6bbfb1c c04ec500 ffffffff
-> May 21 17:13:45 192.168.1.243 kernel: Call Trace:
-> May 21 17:13:45 192.168.1.243 kernel:  [<c04ec500>]
-> __next_cpu+0x12/0x21
-> May 21 17:13:45 192.168.1.243 kernel:  [<c061cf25>]
-> __mutex_lock_slowpath+0x4d/0x7c
-> May 21 17:13:45 192.168.1.243 kernel:  [<c061cf63>]
-> .text.lock.mutex+0xf/0x14
-> May 21 17:13:45 192.168.1.243 kernel:  [<f89929f2>]
-> nfs_idmap_id+0x79/0x1f6 [nfs]
-> May 21 17:13:45 192.168.1.243 kernel:  [<c041f7a7>]
-> default_wake_function+0x0/0xc
-> May 21 17:13:45 192.168.1.243 kernel:  [<f8992ba9>]
-> nfs_map_name_to_uid+0x1b/0x1f [nfs]
-> May 21 17:13:45 192.168.1.243 kernel:  [<f898d719>]
-> decode_getfattr+0x611/0xbbd [nfs]
-> May 21 17:13:45 192.168.1.243 kernel:  [<c042d5f5>]
-> lock_timer_base+0x15/0x2f
-> May 21 17:13:45 192.168.1.243 kernel:  [<f898e025>]
-> nfs4_xdr_dec_getattr+0x0/0x45 [nfs]
-> May 21 17:13:45 192.168.1.243 kernel:  [<f898e063>]
-> nfs4_xdr_dec_getattr+0x3e/0x45 [nfs]
-> May 21 17:13:45 192.168.1.243 kernel:  [<f890e755>]
-> rpcauth_unwrap_resp+0x5b/0x60 [sunrpc]
-> May 21 17:13:45 192.168.1.243 kernel:  [<f89097e9>]
-> call_decode+0x437/0x47d [sunrpc]
-> May 21 17:13:45 192.168.1.243 kernel:  [<f898e025>]
-> nfs4_xdr_dec_getattr+0x0/0x45 [nfs]
-> May 21 17:13:45 192.168.1.243 kernel:  [<f890df54>]
-> __rpc_execute+0x7a/0x1f8 [sunrpc]
-> May 21 17:13:45 192.168.1.243 kernel:  [<f8909951>]
-> rpc_call_sync+0x6b/0x91 [sunrpc]
-> May 21 17:13:45 192.168.1.243 kernel:  [<f89879f9>]
-> nfs4_proc_getattr+0x6f/0x8b [nfs]
-> May 21 17:13:45 192.168.1.243 kernel:  [<f897a157>]
-> __nfs_revalidate_inode+0x120/0x249 [nfs]
-> May 21 17:13:45 192.168.1.243 kernel:  [<c061c526>]
-> schedule+0xa22/0xa55
-> May 21 17:13:45 192.168.1.243 kernel:  [<f8975dbe>]
-> nfs_lookup_revalidate+0x1e8/0x3d7 [nfs]
-> May 21 17:13:45 192.168.1.243 kernel:  [<c042d5f5>]
-> lock_timer_base+0x15/0x2f
-> May 21 17:13:45 192.168.1.243 kernel:  [<f898baea>]
-> decode_compound_hdr+0x35/0x72 [nfs]
-> May 21 17:13:45 192.168.1.243 kernel:  [<f898b9da>]
-> decode_op_hdr+0xd/0x58 [nfs]
-> May 21 17:13:45 192.168.1.243 kernel:  [<f898bf3c>]
-> nfs4_xdr_dec_access+0x54/0x8d [nfs]
-> May 21 17:13:45 192.168.1.243 kernel:  [<c042d5f5>]
-> lock_timer_base+0x15/0x2f
-> May 21 17:13:45 192.168.1.243 kernel:  [<c042d769>]
-> __mod_timer+0xda/0xe4
-> May 21 17:13:45 192.168.1.243 kernel:  [<f890e4f8>]
-> rpc_wake_up_next+0x11f/0x126 [sunrpc]
-> May 21 17:13:45 192.168.1.243 kernel:  [<c042e0d2>]
-> recalc_sigpending+0xe/0x20
-> May 21 17:13:45 192.168.1.243 kernel:  [<c042e194>]
-> sigprocmask+0xb0/0xce
-> May 21 17:13:45 192.168.1.243 kernel:  [<f890996f>]
-> rpc_call_sync+0x89/0x91 [sunrpc]
-> May 21 17:13:45 192.168.1.243 kernel:  [<f8986c9d>]
-> _nfs4_proc_access+0xa7/0xdb [nfs]
-> May 21 17:13:45 192.168.1.243 kernel:  [<f8976912>]
-> nfs_access_add_cache+0xad/0x135 [nfs]
-> May 21 17:13:45 192.168.1.243 kernel:  [<c048b233>] dput+0x22/0xed
-> May 21 17:13:45 192.168.1.243 kernel:  [<f897816c>]
-> nfs_open_revalidate+0x186/0x1da [nfs]
-> May 21 17:13:45 192.168.1.243 kernel:  [<c0481e46>]
-> do_lookup+0x135/0x174
-> May 21 17:13:45 192.168.1.243 kernel:  [<c0483652>]
-> __link_path_walk+0x314/0xd33
-> May 21 17:13:45 192.168.1.243 kernel:  [<c04840a9>]
-> link_path_walk+0x38/0x95
-> May 21 17:13:45 192.168.1.243 kernel:  [<c048446a>]
-> do_path_lookup+0x219/0x27f
-> May 21 17:13:45 192.168.1.243 kernel:  [<c0483652>]
-> __link_path_walk+0x314/0xd33
-> May 21 17:13:45 192.168.1.243 kernel:  [<c04840a9>]
-> link_path_walk+0x38/0x95
-> May 21 17:13:45 192.168.1.243 kernel:  [<c048446a>]
-> do_path_lookup+0x219/0x27f
-> May 21 17:13:45 192.168.1.243 kernel:  [<c0484bc4>]
-> __user_walk_fd+0x29/0x3a
-> May 21 17:13:45 192.168.1.243 kernel:  [<c047e380>]
-> vfs_stat_fd+0x15/0x3c
-> May 21 17:13:45 192.168.1.243 kernel:  [<c041f7a7>]
-> default_wake_function+0x0/0xc
-> May 21 17:13:45 192.168.1.243 kernel:  [<c047e434>]
-> sys_stat64+0xf/0x23
-> May 21 17:13:45 192.168.1.243 kernel:  [<c042c7a5>]
-> getnstimeofday+0x30/0xb6
-> May 21 17:13:45 192.168.1.243 kernel:  [<c04f0b41>]
-> copy_to_user+0x31/0x48
-> May 21 17:13:45 192.168.1.243 kernel:  [<c04356e7>]
-> sys_clock_gettime+0x58/0x7e
-> May 21 17:13:45 192.168.1.243 kernel:  [<c0404f17>]
-> syscall_call+0x7/0xb
-> May 21 17:13:45 192.168.1.243 kernel:  =======================
-> 
-> 
-> Christopher Hawkins
-> 
-> Cell: 315-882-2551
-> Fax:   716-662-0788
-> 
-> ----- "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> 
-> > On Thu, May 20, 2010 at 03:54:28PM -0400, Christopher Hawkins
-> wrote:
-> > > Hello, 
-> > > 
-> > > I have a bash script that sets up a root filesystem over NFS. The
-> > method works fine over NFS3 but hangs when using NFS4 as a
-> transport.
-> > Hoping someone can help me figure out why?
-> > > 
-> > > In a nutshell:
-> > > 
-> > > 1. The node boots into a ramdisk that has a few thousand files in
-> it
-> > already
-> > > 2. connects to an NFS server exporting / and mounts that in a tmp
-> > dir
-> > > 3. bash (on the booting node) loops through the local and remote
-> > filesystem and creates a local symlink to anything in the nfs root
-> > that it doesn't already have.
-> > 
-> > Wild.
-> > 
-> > > Export options are: /
-> > 192.168.1.0/24(rw,no_root_squash,no_subtree_check,fsid=0)
-> > > Mount options are: rw,sync,noatime,rsize=1024,wsize=1024
-> > > 
-> > > rpcidmapd, portmap, statd are running on server and client, and
-> > rpc_pipefs is mounted on both as well. The script currently makes
-> > about 6200 links, total. Nfs4 hangs about 90% of the way through. I
-> > removed the directory it was hanging on (a simple, empty dir) and
-> then
-> > it just hung on the next one.
-> > 
-> > Is it possible there's some idmap deadlock?  (If say an upcall to
-> > idmapd
-> > is hanging because the mapping requires access to some file that
-> > isn't
-> > there yet?)
-> > 
-> > A sysrq-T trace might help.
-> > 
-> > --b.
-> > 
-> > > Really appreciate any help or pointers on where to look for more
-> > info. Thanks!
-> > > 
-> > > Chris
-> > > 
-> > > 
-> > >    
-> > > --
-> > > To unsubscribe from this list: send the line "unsubscribe
-> linux-nfs"
-> > in
-> > > the body of a message to majordomo@vger.kernel.org
-> > > More majordomo info at 
-> http://vger.kernel.org/majordomo-info.html
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs"
-> in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Cheers
+  Trond 
+--------------------------------------------------------------------------------
