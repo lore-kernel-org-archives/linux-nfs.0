@@ -1,75 +1,284 @@
-From: "J. Bruce Fields" <bfields@citi.umich.edu>
-Subject: [PATCH 1/2] nfsd4: fix use of op_share_access
-Date: Fri, 21 May 2010 19:33:06 -0400
-Message-ID: <1274484787-15176-1-git-send-email-bfields@citi.umich.edu>
-Cc: "J. Bruce Fields" <bfields@citi.umich.edu>
+From: Christopher Hawkins <chawkins-eCVT+wl/HiBBDgjK7y7TUQ@public.gmane.org>
+Subject: Re: nfs4 hang
+Date: Sat, 22 May 2010 11:11:31 -0400 (EDT)
+Message-ID: <5203636.911274541091415.JavaMail.javamailuser@localhost>
+References: <29552358.871274477090274.JavaMail.javamailuser@localhost>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=utf-8
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:35361 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758780Ab0EUXdI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 21 May 2010 19:33:08 -0400
+Received: from vms173005pub.verizon.net ([206.46.173.5]:40168 "EHLO
+	vms173005pub.verizon.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754277Ab0EVPST (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 22 May 2010 11:18:19 -0400
+Received: from backoffice.bplinux.com ([unknown] [98.118.141.73])
+ by vms173005.mailsrvcs.net
+ (Sun Java(tm) System Messaging Server 7u2-7.02 32bit (built Apr 16 2009))
+ with ESMTPA id <0L2T00BLKUI1CWJ8-q7IJPNDOu5k+2AnmrIGM23L67TkHkek2@public.gmane.org> for
+ linux-nfs@vger.kernel.org; Sat, 22 May 2010 10:18:04 -0500 (CDT)
+Received: from localhost (localhost.localdomain [127.0.0.1])
+	by backoffice.bplinux.com (Postfix) with ESMTP id 8F3B83E8002	for
+ <linux-nfs@vger.kernel.org>; Sat, 22 May 2010 11:11:33 -0400 (EDT)
+Received: from backoffice.bplinux.com ([127.0.0.1])
+	by localhost (backoffice.bplinux.com [127.0.0.1]) (amavisd-new, port 10024)
+	with ESMTP id e3ZpxLshiHJn for <linux-nfs@vger.kernel.org>; Sat,
+ 22 May 2010 11:11:31 -0400 (EDT)
+Received: from backoffice.bplinux.com (backoffice.bplinux.com [192.168.1.4])
+	by backoffice.bplinux.com (Postfix) with ESMTP id A19643E8001	for
+ <linux-nfs@vger.kernel.org>; Sat, 22 May 2010 11:11:31 -0400 (EDT)
+In-reply-to: <29552358.871274477090274.JavaMail.javamailuser@localhost>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-NFSv4.1 adds additional flags to the share_access argument of the open
-call.  These flags need to be masked out in some of the existing code,
-but current code does that inconsistently.
+Actually this issue seems to be on the server side. I changed the export to read only so the clients couldn't accidentally overwrite anything... and the issue persists! Will keep testing.
 
-Tested-by: Michael Groshans <groshans@citi.umich.edu>
-Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
----
- fs/nfsd/nfs4state.c |   16 ++++++++++++----
- 1 files changed, 12 insertions(+), 4 deletions(-)
+----- "Christopher Hawkins" <chawkins-eCVT+wl/HiBBDgjK7y7TUQ@public.gmane.org> wrote:
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 12f7109..1176708 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -2255,6 +2255,13 @@ find_delegation_file(struct nfs4_file *fp, stateid_t *stid)
- 	return NULL;
- }
- 
-+int share_access_to_flags(u32 share_access)
-+{
-+	share_access &= ~NFS4_SHARE_WANT_MASK;
-+
-+	return share_access == NFS4_SHARE_ACCESS_READ ? RD_STATE : WR_STATE;
-+}
-+
- static __be32
- nfs4_check_deleg(struct nfs4_file *fp, struct nfsd4_open *open,
- 		struct nfs4_delegation **dp)
-@@ -2265,8 +2272,7 @@ nfs4_check_deleg(struct nfs4_file *fp, struct nfsd4_open *open,
- 	*dp = find_delegation_file(fp, &open->op_delegate_stateid);
- 	if (*dp == NULL)
- 		goto out;
--	flags = open->op_share_access == NFS4_SHARE_ACCESS_READ ?
--						RD_STATE : WR_STATE;
-+	flags = share_access_to_flags(open->op_share_access);
- 	status = nfs4_check_delegmode(*dp, flags);
- 	if (status)
- 		*dp = NULL;
-@@ -2358,6 +2364,7 @@ nfs4_upgrade_open(struct svc_rqst *rqstp, struct svc_fh *cur_fh, struct nfs4_sta
- 	struct file *filp = stp->st_vfs_file;
- 	struct inode *inode = filp->f_path.dentry->d_inode;
- 	unsigned int share_access, new_writer;
-+	u32 op_share_access;
- 	__be32 status;
- 
- 	set_access(&share_access, stp->st_access_bmap);
-@@ -2380,8 +2387,9 @@ nfs4_upgrade_open(struct svc_rqst *rqstp, struct svc_fh *cur_fh, struct nfs4_sta
- 		return status;
- 	}
- 	/* remember the open */
--	filp->f_mode |= open->op_share_access;
--	__set_bit(open->op_share_access, &stp->st_access_bmap);
-+	op_share_access = open->op_share_access & ~NFS4_SHARE_WANT_MASK;
-+	filp->f_mode |= op_share_access;
-+	__set_bit(op_share_access, &stp->st_access_bmap);
- 	__set_bit(open->op_share_deny, &stp->st_deny_bmap);
- 
- 	return nfs_ok;
--- 
-1.7.0.4
-
+> I managed to make it go a little further and now the nodes will finish
+> booting, though they hang when I start other nodes and start using
+> files. And this was captured in the syslog from one of the nodes where
+> nfs4 goes unresponsive. Not familiar enough with nfs4 to read it,
+> however. Does this point to a culprit?
+> 
+> It's as if the nodes are writing all over each others connections,
+> like maybe I have a shared directory where each node must have its own
+> private directory. They each have their own /var/lib and
+> /var/lib/nfs/rpc_pipefs mounted. Anything else that nfs clients write
+> to (aside from proc and dev)?
+> 
+> May 21 17:13:45 192.168.1.243 kernel: INFO: task rpciod/0:1297 blocked
+> for more than 120 seconds.
+> May 21 17:13:45 192.168.1.243 kernel: "echo 0 >
+> /proc/sys/kernel/hung_task_timeout_secs" disables this message.
+> May 21 17:13:45 192.168.1.243 kernel: rpciod/0      D 00000097  2580 
+> 1297      7          1306   340 (L-TLB)
+> May 21 17:13:45 192.168.1.243 kernel:        de89de40 00000046
+> 1dfa3ac0 00000097 de8ca3b4 c1984c78 00000001 0000000a
+> May 21 17:13:45 192.168.1.243 kernel:        de8ce000 1dfa3ac0
+> 00000097 00000000 00000000 de8ce10c c1787100 f54ebac0
+> May 21 17:13:45 192.168.1.243 kernel:        c041ebcc 00000000
+> 00000000 00000003 00000296 c1984b00 c17875bc de89de68
+> May 21 17:13:45 192.168.1.243 kernel: Call Trace:
+> May 21 17:13:45 192.168.1.243 kernel:  [<c041ebcc>]
+> __wake_up+0x2a/0x3d
+> May 21 17:13:45 192.168.1.243 kernel:  [<f8916155>]
+> rpc_queue_upcall+0x92/0x99 [sunrpc]
+> May 21 17:13:45 192.168.1.243 kernel:  [<f8992b04>]
+> nfs_idmap_id+0x18b/0x1f6 [nfs]
+> May 21 17:13:45 192.168.1.243 kernel:  [<c041f7a7>]
+> default_wake_function+0x0/0xc
+> May 21 17:13:45 192.168.1.243 kernel:  [<f8992ba9>]
+> nfs_map_name_to_uid+0x1b/0x1f [nfs]
+> May 21 17:13:45 192.168.1.243 kernel:  [<f898d719>]
+> decode_getfattr+0x611/0xbbd [nfs]
+> May 21 17:13:45 192.168.1.243 kernel:  [<f898c0bd>]
+> decode_open+0xf3/0x25e [nfs]
+> May 21 17:13:45 192.168.1.243 kernel:  [<f898e47c>]
+> decode_getfh+0x61/0xa3 [nfs]
+> May 21 17:13:45 192.168.1.243 kernel:  [<f898e4be>]
+> nfs4_xdr_dec_open+0x0/0xa2 [nfs]
+> May 21 17:13:45 192.168.1.243 kernel:  [<f898e533>]
+> nfs4_xdr_dec_open+0x75/0xa2 [nfs]
+> May 21 17:13:45 192.168.1.243 kernel:  [<f890e755>]
+> rpcauth_unwrap_resp+0x5b/0x60 [sunrpc]
+> May 21 17:13:45 192.168.1.243 kernel:  [<f89097e9>]
+> call_decode+0x437/0x47d [sunrpc]
+> May 21 17:13:45 192.168.1.243 kernel:  [<f898e4be>]
+> nfs4_xdr_dec_open+0x0/0xa2 [nfs]
+> May 21 17:13:45 192.168.1.243 kernel:  [<f890df54>]
+> __rpc_execute+0x7a/0x1f8 [sunrpc]
+> May 21 17:13:45 192.168.1.243 kernel:  [<c0433276>]
+> run_workqueue+0x78/0xb5
+> May 21 17:13:45 192.168.1.243 kernel:  [<f890e0d2>]
+> rpc_async_schedule+0x0/0x5 [sunrpc]
+> May 21 17:13:45 192.168.1.243 kernel:  [<c0433b2a>]
+> worker_thread+0xd9/0x10b
+> May 21 17:13:45 192.168.1.243 kernel:  [<c041f7a7>]
+> default_wake_function+0x0/0xc
+> May 21 17:13:45 192.168.1.243 kernel:  [<c0433a51>]
+> worker_thread+0x0/0x10b
+> May 21 17:13:45 192.168.1.243 kernel:  [<c0435f43>] kthread+0xc0/0xed
+> May 21 17:13:45 192.168.1.243 kernel:  [<c0435e83>] kthread+0x0/0xed
+> May 21 17:13:45 192.168.1.243 kernel:  [<c0405c53>]
+> kernel_thread_helper+0x7/0x10
+> May 21 17:13:45 192.168.1.243 kernel:  =======================
+> May 21 17:13:45 192.168.1.243 kernel: INFO: task java:13420 blocked
+> for more than 120 seconds.
+> May 21 17:13:45 192.168.1.243 kernel: "echo 0 >
+> /proc/sys/kernel/hung_task_timeout_secs" disables this message.
+> May 21 17:13:45 192.168.1.243 kernel: java          D 00000098  2068
+> 13420      1         13421 13386 (NOTLB)
+> May 21 17:13:45 192.168.1.243 kernel:        f6bbfab0 00000086
+> ada06900 00000098 00000000 c06ba340 dfc6d280 0000000a
+> May 21 17:13:45 192.168.1.243 kernel:        f5781000 ada06900
+> 00000098 00000000 00000000 f578110c c1787100 f649d3c0
+> May 21 17:13:45 192.168.1.243 kernel:        00000098 00000000
+> de7c6804 c1787100 de7c6800 f6bbfb1c c04ec500 ffffffff
+> May 21 17:13:45 192.168.1.243 kernel: Call Trace:
+> May 21 17:13:45 192.168.1.243 kernel:  [<c04ec500>]
+> __next_cpu+0x12/0x21
+> May 21 17:13:45 192.168.1.243 kernel:  [<c061cf25>]
+> __mutex_lock_slowpath+0x4d/0x7c
+> May 21 17:13:45 192.168.1.243 kernel:  [<c061cf63>]
+> .text.lock.mutex+0xf/0x14
+> May 21 17:13:45 192.168.1.243 kernel:  [<f89929f2>]
+> nfs_idmap_id+0x79/0x1f6 [nfs]
+> May 21 17:13:45 192.168.1.243 kernel:  [<c041f7a7>]
+> default_wake_function+0x0/0xc
+> May 21 17:13:45 192.168.1.243 kernel:  [<f8992ba9>]
+> nfs_map_name_to_uid+0x1b/0x1f [nfs]
+> May 21 17:13:45 192.168.1.243 kernel:  [<f898d719>]
+> decode_getfattr+0x611/0xbbd [nfs]
+> May 21 17:13:45 192.168.1.243 kernel:  [<c042d5f5>]
+> lock_timer_base+0x15/0x2f
+> May 21 17:13:45 192.168.1.243 kernel:  [<f898e025>]
+> nfs4_xdr_dec_getattr+0x0/0x45 [nfs]
+> May 21 17:13:45 192.168.1.243 kernel:  [<f898e063>]
+> nfs4_xdr_dec_getattr+0x3e/0x45 [nfs]
+> May 21 17:13:45 192.168.1.243 kernel:  [<f890e755>]
+> rpcauth_unwrap_resp+0x5b/0x60 [sunrpc]
+> May 21 17:13:45 192.168.1.243 kernel:  [<f89097e9>]
+> call_decode+0x437/0x47d [sunrpc]
+> May 21 17:13:45 192.168.1.243 kernel:  [<f898e025>]
+> nfs4_xdr_dec_getattr+0x0/0x45 [nfs]
+> May 21 17:13:45 192.168.1.243 kernel:  [<f890df54>]
+> __rpc_execute+0x7a/0x1f8 [sunrpc]
+> May 21 17:13:45 192.168.1.243 kernel:  [<f8909951>]
+> rpc_call_sync+0x6b/0x91 [sunrpc]
+> May 21 17:13:45 192.168.1.243 kernel:  [<f89879f9>]
+> nfs4_proc_getattr+0x6f/0x8b [nfs]
+> May 21 17:13:45 192.168.1.243 kernel:  [<f897a157>]
+> __nfs_revalidate_inode+0x120/0x249 [nfs]
+> May 21 17:13:45 192.168.1.243 kernel:  [<c061c526>]
+> schedule+0xa22/0xa55
+> May 21 17:13:45 192.168.1.243 kernel:  [<f8975dbe>]
+> nfs_lookup_revalidate+0x1e8/0x3d7 [nfs]
+> May 21 17:13:45 192.168.1.243 kernel:  [<c042d5f5>]
+> lock_timer_base+0x15/0x2f
+> May 21 17:13:45 192.168.1.243 kernel:  [<f898baea>]
+> decode_compound_hdr+0x35/0x72 [nfs]
+> May 21 17:13:45 192.168.1.243 kernel:  [<f898b9da>]
+> decode_op_hdr+0xd/0x58 [nfs]
+> May 21 17:13:45 192.168.1.243 kernel:  [<f898bf3c>]
+> nfs4_xdr_dec_access+0x54/0x8d [nfs]
+> May 21 17:13:45 192.168.1.243 kernel:  [<c042d5f5>]
+> lock_timer_base+0x15/0x2f
+> May 21 17:13:45 192.168.1.243 kernel:  [<c042d769>]
+> __mod_timer+0xda/0xe4
+> May 21 17:13:45 192.168.1.243 kernel:  [<f890e4f8>]
+> rpc_wake_up_next+0x11f/0x126 [sunrpc]
+> May 21 17:13:45 192.168.1.243 kernel:  [<c042e0d2>]
+> recalc_sigpending+0xe/0x20
+> May 21 17:13:45 192.168.1.243 kernel:  [<c042e194>]
+> sigprocmask+0xb0/0xce
+> May 21 17:13:45 192.168.1.243 kernel:  [<f890996f>]
+> rpc_call_sync+0x89/0x91 [sunrpc]
+> May 21 17:13:45 192.168.1.243 kernel:  [<f8986c9d>]
+> _nfs4_proc_access+0xa7/0xdb [nfs]
+> May 21 17:13:45 192.168.1.243 kernel:  [<f8976912>]
+> nfs_access_add_cache+0xad/0x135 [nfs]
+> May 21 17:13:45 192.168.1.243 kernel:  [<c048b233>] dput+0x22/0xed
+> May 21 17:13:45 192.168.1.243 kernel:  [<f897816c>]
+> nfs_open_revalidate+0x186/0x1da [nfs]
+> May 21 17:13:45 192.168.1.243 kernel:  [<c0481e46>]
+> do_lookup+0x135/0x174
+> May 21 17:13:45 192.168.1.243 kernel:  [<c0483652>]
+> __link_path_walk+0x314/0xd33
+> May 21 17:13:45 192.168.1.243 kernel:  [<c04840a9>]
+> link_path_walk+0x38/0x95
+> May 21 17:13:45 192.168.1.243 kernel:  [<c048446a>]
+> do_path_lookup+0x219/0x27f
+> May 21 17:13:45 192.168.1.243 kernel:  [<c0483652>]
+> __link_path_walk+0x314/0xd33
+> May 21 17:13:45 192.168.1.243 kernel:  [<c04840a9>]
+> link_path_walk+0x38/0x95
+> May 21 17:13:45 192.168.1.243 kernel:  [<c048446a>]
+> do_path_lookup+0x219/0x27f
+> May 21 17:13:45 192.168.1.243 kernel:  [<c0484bc4>]
+> __user_walk_fd+0x29/0x3a
+> May 21 17:13:45 192.168.1.243 kernel:  [<c047e380>]
+> vfs_stat_fd+0x15/0x3c
+> May 21 17:13:45 192.168.1.243 kernel:  [<c041f7a7>]
+> default_wake_function+0x0/0xc
+> May 21 17:13:45 192.168.1.243 kernel:  [<c047e434>]
+> sys_stat64+0xf/0x23
+> May 21 17:13:45 192.168.1.243 kernel:  [<c042c7a5>]
+> getnstimeofday+0x30/0xb6
+> May 21 17:13:45 192.168.1.243 kernel:  [<c04f0b41>]
+> copy_to_user+0x31/0x48
+> May 21 17:13:45 192.168.1.243 kernel:  [<c04356e7>]
+> sys_clock_gettime+0x58/0x7e
+> May 21 17:13:45 192.168.1.243 kernel:  [<c0404f17>]
+> syscall_call+0x7/0xb
+> May 21 17:13:45 192.168.1.243 kernel:  =======================
+> 
+> 
+> Christopher Hawkins
+> 
+> Cell: 315-882-2551
+> Fax:   716-662-0788
+> 
+> ----- "J. Bruce Fields" <bfields@fieldses.org> wrote:
+> 
+> > On Thu, May 20, 2010 at 03:54:28PM -0400, Christopher Hawkins
+> wrote:
+> > > Hello, 
+> > > 
+> > > I have a bash script that sets up a root filesystem over NFS. The
+> > method works fine over NFS3 but hangs when using NFS4 as a
+> transport.
+> > Hoping someone can help me figure out why?
+> > > 
+> > > In a nutshell:
+> > > 
+> > > 1. The node boots into a ramdisk that has a few thousand files in
+> it
+> > already
+> > > 2. connects to an NFS server exporting / and mounts that in a tmp
+> > dir
+> > > 3. bash (on the booting node) loops through the local and remote
+> > filesystem and creates a local symlink to anything in the nfs root
+> > that it doesn't already have.
+> > 
+> > Wild.
+> > 
+> > > Export options are: /
+> > 192.168.1.0/24(rw,no_root_squash,no_subtree_check,fsid=0)
+> > > Mount options are: rw,sync,noatime,rsize=1024,wsize=1024
+> > > 
+> > > rpcidmapd, portmap, statd are running on server and client, and
+> > rpc_pipefs is mounted on both as well. The script currently makes
+> > about 6200 links, total. Nfs4 hangs about 90% of the way through. I
+> > removed the directory it was hanging on (a simple, empty dir) and
+> then
+> > it just hung on the next one.
+> > 
+> > Is it possible there's some idmap deadlock?  (If say an upcall to
+> > idmapd
+> > is hanging because the mapping requires access to some file that
+> > isn't
+> > there yet?)
+> > 
+> > A sysrq-T trace might help.
+> > 
+> > --b.
+> > 
+> > > Really appreciate any help or pointers on where to look for more
+> > info. Thanks!
+> > > 
+> > > Chris
+> > > 
+> > > 
+> > >    
+> > > --
+> > > To unsubscribe from this list: send the line "unsubscribe
+> linux-nfs"
+> > in
+> > > the body of a message to majordomo@vger.kernel.org
+> > > More majordomo info at 
+> http://vger.kernel.org/majordomo-info.html
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs"
+> in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
