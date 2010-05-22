@@ -1,49 +1,31 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-out1.uio.no ([129.240.10.57]:57055 "EHLO mail-out1.uio.no"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752091Ab0ENSbV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 14 May 2010 14:31:21 -0400
-Subject: Re: [PATCH] VFS: Unlink should revoke all outstanding leases on
- file
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: Mi Jinlong <mijinlong@cn.fujitsu.com>,
-        NFSv3 list <linux-nfs@vger.kernel.org>, linux-fsdevel@vger.kernel.org,
-        ebiederm@xmission.com, adobriyan@gmail.com, viro@ZenIV.linux.org.uk,
-        jamie@shareable.org
-In-Reply-To: <1273859968.4732.22.camel@localhost.localdomain>
-References: <4BED195F.3070504@cn.fujitsu.com>
-	 <20100514055844.109d2fdc@tlielax.poochiereds.net>
-	 <1273857471.4732.7.camel@localhost.localdomain>
-	 <20100514133819.5e383485@tlielax.poochiereds.net>
-	 <1273859968.4732.22.camel@localhost.localdomain>
-Content-Type: text/plain; charset="UTF-8"
-Date: Fri, 14 May 2010 14:31:12 -0400
-Message-ID: <1273861872.4732.34.camel@localhost.localdomain>
+Received: from mail-pv0-f174.google.com ([74.125.83.174]:59924 "EHLO
+	mail-pv0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758808Ab0EVWEI (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 22 May 2010 18:04:08 -0400
+Received: by pvg4 with SMTP id 4so281591pvg.19
+        for <linux-nfs@vger.kernel.org>; Sat, 22 May 2010 15:04:06 -0700 (PDT)
+Message-ID: <4BF854D4.5090500@gmail.com>
+Date: Sun, 23 May 2010 07:04:04 +0900
+From: redshield88888 <redshield88888@gmail.com>
+To: linux-nfs@vger.kernel.org
+Subject: How does the metadata-server synchronizes with data-servers ?
+Content-Type: text/plain; charset=ISO-2022-JP
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Fri, 2010-05-14 at 13:59 -0400, Trond Myklebust wrote: 
-> Note that the server should also recall the delegation if someone
-> attempts to violate the guarantees that are listed in section 9.4: Open
-> Delegation
-> 
->    When a client has a read open delegation, it may not make any changes
->    to the contents or attributes of the file but it is assured that no
->    other client may do so.  When a client has a write open delegation,
->    it may modify the file data since no other client will be accessing
->    the file's data.  The client holding a write delegation may only
->    affect file attributes which are intimately connected with the file
->    data:  size, time_modify, change.
-> 
-> IOW: even if you hold a write delegation you are not allowed to change
-> the file mode bits, owner, group or acls...
+Hi, all.
 
-...or the nlink value. So technically, we should also recall the
-delegation when someone creates or deletes a hard link. I think I need
-to remind Tom that he should add that to the RFC3530bis draft...
+I've succeeded to install pNFS-enabled kernel. But I wonder that how
+does pNFS behaviour.
+Especially, about synchronizations between the MetaDataServer and
+DataServers.
+I'd read a paper of the Calsoft's. This paper said like "There is
+heartbeats betweenthe MetaDataServer and DataServers".
+http://www.calsoftinc.com/download_pdf/White%20Papers%20-%20pnfs.pdf
 
-Cheers
-   Trond
+When will this heartbeat be started ? The instruction below is not describe
+about this, but the heartbeat will works, w'not this ?
+http://wiki.linux-nfs.org/wiki/index.php/PNFS_Setup_Instructions
 
