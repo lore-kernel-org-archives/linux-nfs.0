@@ -1,52 +1,71 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:35140 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:12468 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751634Ab0ESOGz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 19 May 2010 10:06:55 -0400
-Date: Wed, 19 May 2010 10:06:39 -0400
-To: Jeremy Allison <jra@samba.org>
-Cc: Jamie Lokier <jamie@shareable.org>, Jeff Layton <jlayton@redhat.com>,
-        Trond Myklebust <trond.myklebust@fys.uio.no>,
-        Mi Jinlong <mijinlong@cn.fujitsu.com>,
-        NFSv3 list <linux-nfs@vger.kernel.org>, linux-fsdevel@vger.kernel.org,
-        ebiederm@xmission.com, adobriyan@gmail.com, viro@ZenIV.linux.org.uk
-Subject: Re: [PATCH] VFS: Unlink should revoke all outstanding leases on
-	file
-Message-ID: <20100519140639.GB4581@fieldses.org>
-References: <4BED195F.3070504@cn.fujitsu.com> <20100514055844.109d2fdc@tlielax.poochiereds.net> <1273857471.4732.7.camel@localhost.localdomain> <20100514133819.5e383485@tlielax.poochiereds.net> <20100514174653.GC10133@shareable.org> <20100514181643.GC9217@samba1>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20100514181643.GC9217@samba1>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+	id S1757279Ab0EXRhE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 24 May 2010 13:37:04 -0400
+From: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
+To: linux-nfs@vger.kernel.org
+Cc: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
+Subject: [PATCH 1/2] SQUASHME: pnfs-submit: Use LAYOUT_NFSV4_1_FILES instead of LAYOUT_NFSV4_FILES
+Date: Mon, 24 May 2010 10:37:02 -0700
+Message-Id: <1274722623-11078-1-git-send-email-Ricardo.Labiaga@netapp.com>
+In-Reply-To: <>
+References: <>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Fri, May 14, 2010 at 11:16:43AM -0700, Jeremy Allison wrote:
-> On Fri, May 14, 2010 at 06:46:53PM +0100, Jamie Lokier wrote:
-> 
-> > I think you can delete open files on Windows nowadays, if they are
-> > opened with a particular flag.
-> 
-> You can only mark them as "to be deleted" once the last opener
-> closes. They still exist in the namespace.
+So that we can be consistent with the spec definitions.
 
-So, I'm a little lost: in your opinion, would leases be more useful to
-Samba if they were broken on delete, or if they weren't, or does it not
-matter because you'll never do that?
+Signed-off-by: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
+---
+ fs/nfs/nfs4filelayout.c    |    4 ++--
+ fs/nfs/nfs4filelayoutdev.c |    2 +-
+ include/linux/nfs4.h       |    2 +-
+ 3 files changed, 4 insertions(+), 4 deletions(-)
 
-(And, what about the same question for rename, link, chmod, chown, ...?)
+diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+index 9d1274d..d39315a 100644
+--- a/fs/nfs/nfs4filelayout.c
++++ b/fs/nfs/nfs4filelayout.c
+@@ -766,8 +766,8 @@ struct layoutdriver_policy_operations filelayout_policy_operations = {
+ };
+ 
+ struct pnfs_layoutdriver_type filelayout_type = {
+-	.id = LAYOUT_NFSV4_FILES,
+-	.name = "LAYOUT_NFSV4_FILES",
++	.id = LAYOUT_NFSV4_1_FILES,
++	.name = "LAYOUT_NFSV4_1_FILES",
+ 	.ld_io_ops = &filelayout_io_operations,
+ 	.ld_policy_ops = &filelayout_policy_operations,
+ };
+diff --git a/fs/nfs/nfs4filelayoutdev.c b/fs/nfs/nfs4filelayoutdev.c
+index 462f6de..b540679 100644
+--- a/fs/nfs/nfs4filelayoutdev.c
++++ b/fs/nfs/nfs4filelayoutdev.c
+@@ -510,7 +510,7 @@ get_device_info(struct inode *inode, struct pnfs_deviceid *dev_id)
+ 		goto out_free;
+ 
+ 	memcpy(&pdev->dev_id, dev_id, NFS4_PNFS_DEVICEID4_SIZE);
+-	pdev->layout_type = LAYOUT_NFSV4_FILES;
++	pdev->layout_type = LAYOUT_NFSV4_1_FILES;
+ 	pdev->pages = pages;
+ 	pdev->pgbase = 0;
+ 	pdev->pglen = PAGE_SIZE * max_pages;
+diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
+index 1730e86..219e6b4 100644
+--- a/include/linux/nfs4.h
++++ b/include/linux/nfs4.h
+@@ -565,7 +565,7 @@ enum state_protect_how4 {
+ };
+ 
+ enum pnfs_layouttype {
+-	LAYOUT_NFSV4_FILES  = 1,
++	LAYOUT_NFSV4_1_FILES  = 1,
+ 	LAYOUT_OSD2_OBJECTS = 2,
+ 	LAYOUT_BLOCK_VOLUME = 3,
+ };
+-- 
+1.5.4.3
 
-I see three options:
-	1. modify the existing file lease behavior to match what NFSv4
-	   (and Samba?) needs; or
-	2. leave the existing leases alone and create some new lock type
-	   (or otherwise flag some leases somehow) that does what we
-	   want; and, if we do that, either:
-		2a. leave the new leases in-kernel-only, or
-		2b. expose the new leases to userspace somehow so Samba
-		   (or whever) can use them.
-
-I don't think any of 1, 2a, or 2b is likely to be harder than any other,
-so it's just a question of what we want.
-
---b.
