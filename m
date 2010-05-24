@@ -1,24 +1,82 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:19082 "EHLO
+Received: from daytona.panasas.com ([67.152.220.89]:12033 "EHLO
 	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1756899Ab0EFTUT (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 6 May 2010 15:20:19 -0400
-Message-ID: <4BE3166F.7060800@panasas.com>
-Date: Thu, 06 May 2010 22:20:15 +0300
-From: Benny Halevy <bhalevy@panasas.com>
-To: NFS list <linux-nfs@vger.kernel.org>
-Subject: [PATCH 0/7] pnfs-submit api touch ups
-Content-Type: text/plain; charset=ISO-8859-1
+	with ESMTP id S1755987Ab0EXTE2 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 24 May 2010 15:04:28 -0400
+Message-ID: <4BFACDB9.7030008@panasas.com>
+Date: Mon, 24 May 2010 22:04:25 +0300
+From: Boaz Harrosh <bharrosh@panasas.com>
+To: Tao Guo <glorioustao@gmail.com>, Andy Adamson <andros@netapp.com>,
+        Benny Halevy <bhalevy@panasas.com>,
+        NFS list <linux-nfs@vger.kernel.org>
+Subject: [PATCH] pnfs: call layoutcommit after flushing inode's data to disk.
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-After rebasing everything on top of Andy and Fred patchsets I propose the following:
+From: Tao Guo <guotao@nrchpc.ac.cn>
 
-[PATCH 1/2] SQUASHME: pnfs-submit: have initialize_mountpoint return status
-[PATCH 2/2] SQUASHME: pnfs-submit: pass struct nfs_server * to getdeviceinfo
-[PATCH 3/5] pnfs-post-submit: pass struct nfs_server * to getdevicelist
-[PATCH 4/5] pnfs-post-submit: pass mntfh down the init_pnfs path
-[PATCH 5/5] FIXME: pnfs-post-submit: per mount layout driver private data
-[PATCH 6/6] SQUASHME: pnfs-block: convert APIs pnfs-post-submit
-[PATCH 7/7] SQUASHME: pnfs-obj: convert APIs pnfs-post-submit
+This is for a bug introduced to 2.6.34. In 2.6.32 and 2.6.33 we call
+layoutcommit in nfs_sync_mapping_wait(), but in 2.6.34 we use
+sync_inode() to sync inode's data, so the layoutcommit code is gone.
+
+BTW: In current code, layoutcommit_ctx will increase refcount of
+nfs_inode's ctx, so if layoutcommit_ctx is not NULL, we could not
+reach nfs4_close_context ... --> __nfs_close().
+So pnfs_layoutcommit_inode() in __nfs_close() will not be called in
+whatever situation.
+Why we have to use nfs_inode's ctx as layoutcommit_ctx, since we
+only need its rpc_creds actually?
+
+Boaz:
+  Without this patch none-files layouts which return NFS_FILE_SYNC
+  from writes, will eventually hang on uncommitted inodes.
+
+  This patch reveals a bad design pattern from the pnfs-client. On
+  none-files layouts nfs_post_op_update_inode_force_wcc or friends
+  are never called and i_size_write() is never preformed on client.
+  What happens is that the layoutcommit eventually updates the server.
+  In Linux the sever would update i_size_attr and mtime. It would then
+  be detected by the client and i_size is fetched from server. This is
+  not nice client behaviour, and is not done so for files and none-pnfs
+  IO. Sigh! 
+  I think also files-lo might suffer from this in some cases, which means
+  if commit is not preformed (It's just an hint) then writeout will have
+  i_size  corruption.
+
+Signed-off-by: Tao Guo <guotao@nrchpc.ac.cn>
+Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+---
+ fs/nfs/write.c |    8 +++++++-
+ 1 files changed, 7 insertions(+), 1 deletions(-)
+
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index dad8da3..9424203 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -1558,6 +1558,7 @@ int nfs_write_inode(struct inode *inode, struct writeback_control *wbc)
+  */
+ int nfs_wb_all(struct inode *inode)
+ {
++	int ret;
+ 	struct writeback_control wbc = {
+ 		.sync_mode = WB_SYNC_ALL,
+ 		.nr_to_write = LONG_MAX,
+@@ -1565,7 +1566,12 @@ int nfs_wb_all(struct inode *inode)
+ 		.range_end = LLONG_MAX,
+ 	};
+ 
+-	return sync_inode(inode, &wbc);
++	ret = sync_inode(inode, &wbc);
++#ifdef CONFIG_NFS_V4_1
++	if (!ret && do_layoutcommit(NFS_I(inode)))
++		ret = pnfs_layoutcommit_inode(inode, 1);
++#endif
++	return ret;
+ }
+ 
+ int nfs_wb_page_cancel(struct inode *inode, struct page *page)
+-- 
+1.6.6.1
+
