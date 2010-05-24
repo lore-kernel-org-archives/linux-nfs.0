@@ -1,52 +1,58 @@
-From: "William A. (Andy) Adamson" <androsadamson@gmail.com>
-Subject: Re: Am I still the one to fix the NFS_FILE_SYNC problem
-Date: Mon, 24 May 2010 09:14:18 -0400
-Message-ID: <AANLkTilR7cJu1uCv60GrpFimqDWb0ogyvKVh1q0iW_6a@mail.gmail.com>
-References: <4BF975A3.7090509@panasas.com>
+From: Tharindu Rukshan Bamunuarachchi <btharindu@gmail.com>
+Subject: Re: TMPFS over NFSv4
+Date: Mon, 24 May 2010 15:16:47 +0100
+Message-ID: <AANLkTikjyi1XUzO2VySrXL1evPCRx8YepOAs0I9HCvtp@mail.gmail.com>
+References: <AANLkTik47c6l3y8CdJ-hUCd2h3SRSb3qAtRovWryb8_p@mail.gmail.com>
+	<alpine.LSU.2.00.1005211344440.7369@sister.anvils> <AANLkTil7I6q4wdLgmwZdRN6hb9LVVagN_7oGTIVNDhUk@mail.gmail.com>
+	<AANLkTilMQjZaUom2h_aFgU6WB83IGH-VVKTg-CJD-_ZZ@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
-Cc: Benny Halevy <bhalevy@panasas.com>,
-	NFS list <linux-nfs@vger.kernel.org>
-To: Boaz Harrosh <bharrosh@panasas.com>
+Cc: linux-mm@kvack.org, linux-nfs@vger.kernel.org,
+	Alan Cox <alan@lxorguk.ukuu.org.uk>
+To: Hugh Dickins <hughd@google.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-gx0-f227.google.com ([209.85.217.227]:38951 "EHLO
-	mail-gx0-f227.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754316Ab0EXNOT convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 24 May 2010 09:14:19 -0400
-Received: by gxk27 with SMTP id 27so620242gxk.1
-        for <linux-nfs@vger.kernel.org>; Mon, 24 May 2010 06:14:18 -0700 (PDT)
-In-Reply-To: <4BF975A3.7090509@panasas.com>
+Received: from mail-gw0-f46.google.com ([74.125.83.46]:49753 "EHLO
+	mail-gw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757006Ab0EXORT (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 24 May 2010 10:17:19 -0400
+Received: by gwaa20 with SMTP id a20so1499859gwa.19
+        for <linux-nfs@vger.kernel.org>; Mon, 24 May 2010 07:17:17 -0700 (PDT)
+In-Reply-To: <AANLkTilMQjZaUom2h_aFgU6WB83IGH-VVKTg-CJD-_ZZ-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Boaz
+hi Hugh.
 
-The last patch I sent in [PATCH 1/1] SQUASHME pnfs-submit: replace
-layoutcommit_ctx with rpc_cred fixes the NFS_FILE_SYNC problem for
-files. It replaces taking a reference on the open context with taking
-a reference on the rpc_cred.
+On Mon, May 24, 2010 at 10:57 AM, Hugh Dickins <hughd@google.com> wrote:
+> On Mon, May 24, 2010 at 2:26 AM, Tharindu Rukshan Bamunuarachchi
+>
+> If patch conflicts are a problem, you really only need to put in the
+> two-liner patch to mm/mmap.c: Alan was seeking perfection in
+> the rest of the patch, but you can get away without it.
+>
 
--->Andy
-			=09
+I will just add it by hand.
 
-On Sun, May 23, 2010 at 2:36 PM, Boaz Harrosh <bharrosh@panasas.com> wr=
-ote:
 >
-> Andy, Benny are you waiting on me to fix the NFS_FILE_SYNC problem?
 >
-> I've been on a long holiday, but I can attempt a fix tomorrow if stil=
-l
-> needed?
+> So what you see fits with what Alan was fixing.
 >
-> I was hoping someone else need that more urgently then me, since I al=
-ready
-> have a work around, for my testing ;-)
+
+Yes, of courese.
+
+BTW, that was typo and it should be overcommit_memory.
+I have done testing in our test severs and "2 > overcommit_memory"
+triggers the issue.
+
+OTOH, I have reported the issue Novell.
+Hope they will apply necessary patch in next release.
+
+
+> Hugh
 >
-> Boaz
->
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" =
-in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at =A0http://vger.kernel.org/majordomo-info.html
->
+
+
+Thankx a lot/
+
+__
+tharindu
