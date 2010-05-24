@@ -1,324 +1,228 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:63543 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751326Ab0EMVIY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 13 May 2010 17:08:24 -0400
-Received: from localhost.localdomain (heimdal.trondhjem.org [10.58.49.73] (may be forged))
-	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id o4DL8MCM021257
-	for <linux-nfs@vger.kernel.org>; Thu, 13 May 2010 14:08:23 -0700 (PDT)
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 03/15] NFS: Don't use GFP_KERNEL in rpcsec_gss downcalls
-Date: Thu, 13 May 2010 17:08:09 -0400
-Message-Id: <1273784901-25599-3-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1273784901-25599-2-git-send-email-Trond.Myklebust@netapp.com>
-References: <1273784901-25599-1-git-send-email-Trond.Myklebust@netapp.com>
- <1273784901-25599-2-git-send-email-Trond.Myklebust@netapp.com>
+Received: from mail-iw0-f174.google.com ([209.85.214.174]:55712 "EHLO
+	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753758Ab0EXJ1K convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 24 May 2010 05:27:10 -0400
+Received: by iwn6 with SMTP id 6so3351672iwn.19
+        for <linux-nfs@vger.kernel.org>; Mon, 24 May 2010 02:27:10 -0700 (PDT)
+In-Reply-To: <alpine.LSU.2.00.1005211344440.7369@sister.anvils>
+References: <AANLkTik47c6l3y8CdJ-hUCd2h3SRSb3qAtRovWryb8_p@mail.gmail.com>
+	<alpine.LSU.2.00.1005211344440.7369@sister.anvils>
+From: Tharindu Rukshan Bamunuarachchi <btharindu@gmail.com>
+Date: Mon, 24 May 2010 10:26:39 +0100
+Message-ID: <AANLkTil7I6q4wdLgmwZdRN6hb9LVVagN_7oGTIVNDhUk@mail.gmail.com>
+Subject: Re: TMPFS over NFSv4
+To: Hugh Dickins <hughd@google.com>
+Cc: linux-mm@kvack.org, linux-nfs@vger.kernel.org,
+        Alan Cox <alan@lxorguk.ukuu.org.uk>
+Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-Again, we can deadlock if the memory reclaim triggers a writeback that
-requires a rpcsec_gss credential lookup.
+thankx a lot Hugh ... I will try this out ... (bit harder patch
+already patched SLES kernel :-p ) ....
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- include/linux/sunrpc/gss_api.h        |    6 +++-
- include/linux/sunrpc/gss_krb5.h       |    3 +-
- net/sunrpc/auth_gss/auth_gss.c        |    2 +-
- net/sunrpc/auth_gss/gss_krb5_keys.c   |    9 ++++---
- net/sunrpc/auth_gss/gss_krb5_mech.c   |   34 +++++++++++++++++---------------
- net/sunrpc/auth_gss/gss_mech_switch.c |    7 +++--
- net/sunrpc/auth_gss/gss_spkm3_mech.c  |    5 ++-
- net/sunrpc/auth_gss/svcauth_gss.c     |    2 +-
- 8 files changed, 38 insertions(+), 30 deletions(-)
+BTW, what does Alan means by "strict overcommit" ?
 
-diff --git a/include/linux/sunrpc/gss_api.h b/include/linux/sunrpc/gss_api.h
-index b22d7f1..5d8048b 100644
---- a/include/linux/sunrpc/gss_api.h
-+++ b/include/linux/sunrpc/gss_api.h
-@@ -35,7 +35,8 @@ int gss_import_sec_context(
- 		const void*		input_token,
- 		size_t			bufsize,
- 		struct gss_api_mech	*mech,
--		struct gss_ctx		**ctx_id);
-+		struct gss_ctx		**ctx_id,
-+		gfp_t			gfp_mask);
- u32 gss_get_mic(
- 		struct gss_ctx		*ctx_id,
- 		struct xdr_buf		*message,
-@@ -89,7 +90,8 @@ struct gss_api_ops {
- 	int (*gss_import_sec_context)(
- 			const void		*input_token,
- 			size_t			bufsize,
--			struct gss_ctx		*ctx_id);
-+			struct gss_ctx		*ctx_id,
-+			gfp_t			gfp_mask);
- 	u32 (*gss_get_mic)(
- 			struct gss_ctx		*ctx_id,
- 			struct xdr_buf		*message,
-diff --git a/include/linux/sunrpc/gss_krb5.h b/include/linux/sunrpc/gss_krb5.h
-index 5e774a5..5af2931 100644
---- a/include/linux/sunrpc/gss_krb5.h
-+++ b/include/linux/sunrpc/gss_krb5.h
-@@ -295,7 +295,8 @@ u32
- krb5_derive_key(const struct gss_krb5_enctype *gk5e,
- 		const struct xdr_netobj *inkey,
- 		struct xdr_netobj *outkey,
--		const struct xdr_netobj *in_constant);
-+		const struct xdr_netobj *in_constant,
-+		gfp_t gfp_mask);
- 
- u32
- gss_krb5_des3_make_key(const struct gss_krb5_enctype *gk5e,
-diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
-index 6654c85..48a7939 100644
---- a/net/sunrpc/auth_gss/auth_gss.c
-+++ b/net/sunrpc/auth_gss/auth_gss.c
-@@ -229,7 +229,7 @@ gss_fill_context(const void *p, const void *end, struct gss_cl_ctx *ctx, struct
- 		p = ERR_PTR(-EFAULT);
- 		goto err;
- 	}
--	ret = gss_import_sec_context(p, seclen, gm, &ctx->gc_gss_ctx);
-+	ret = gss_import_sec_context(p, seclen, gm, &ctx->gc_gss_ctx, GFP_NOFS);
- 	if (ret < 0) {
- 		p = ERR_PTR(ret);
- 		goto err;
-diff --git a/net/sunrpc/auth_gss/gss_krb5_keys.c b/net/sunrpc/auth_gss/gss_krb5_keys.c
-index 33b87f0..76e42e6 100644
---- a/net/sunrpc/auth_gss/gss_krb5_keys.c
-+++ b/net/sunrpc/auth_gss/gss_krb5_keys.c
-@@ -150,7 +150,8 @@ static void krb5_nfold(u32 inbits, const u8 *in,
- u32 krb5_derive_key(const struct gss_krb5_enctype *gk5e,
- 		    const struct xdr_netobj *inkey,
- 		    struct xdr_netobj *outkey,
--		    const struct xdr_netobj *in_constant)
-+		    const struct xdr_netobj *in_constant,
-+		    gfp_t gfp_mask)
- {
- 	size_t blocksize, keybytes, keylength, n;
- 	unsigned char *inblockdata, *outblockdata, *rawkey;
-@@ -175,15 +176,15 @@ u32 krb5_derive_key(const struct gss_krb5_enctype *gk5e,
- 	/* allocate and set up buffers */
- 
- 	ret = ENOMEM;
--	inblockdata = kmalloc(blocksize, GFP_KERNEL);
-+	inblockdata = kmalloc(blocksize, gfp_mask);
- 	if (inblockdata == NULL)
- 		goto err_free_cipher;
- 
--	outblockdata = kmalloc(blocksize, GFP_KERNEL);
-+	outblockdata = kmalloc(blocksize, gfp_mask);
- 	if (outblockdata == NULL)
- 		goto err_free_in;
- 
--	rawkey = kmalloc(keybytes, GFP_KERNEL);
-+	rawkey = kmalloc(keybytes, gfp_mask);
- 	if (rawkey == NULL)
- 		goto err_free_out;
- 
-diff --git a/net/sunrpc/auth_gss/gss_krb5_mech.c b/net/sunrpc/auth_gss/gss_krb5_mech.c
-index 7c249a3..0326446 100644
---- a/net/sunrpc/auth_gss/gss_krb5_mech.c
-+++ b/net/sunrpc/auth_gss/gss_krb5_mech.c
-@@ -369,7 +369,7 @@ set_cdata(u8 cdata[GSS_KRB5_K5CLENGTH], u32 usage, u8 seed)
- }
- 
- static int
--context_derive_keys_des3(struct krb5_ctx *ctx)
-+context_derive_keys_des3(struct krb5_ctx *ctx, gfp_t gfp_mask)
- {
- 	struct xdr_netobj c, keyin, keyout;
- 	u8 cdata[GSS_KRB5_K5CLENGTH];
-@@ -396,7 +396,7 @@ context_derive_keys_des3(struct krb5_ctx *ctx)
- 	/* derive cksum */
- 	set_cdata(cdata, KG_USAGE_SIGN, KEY_USAGE_SEED_CHECKSUM);
- 	keyout.data = ctx->cksum;
--	err = krb5_derive_key(ctx->gk5e, &keyin, &keyout, &c);
-+	err = krb5_derive_key(ctx->gk5e, &keyin, &keyout, &c, gfp_mask);
- 	if (err) {
- 		dprintk("%s: Error %d deriving cksum key\n",
- 			__func__, err);
-@@ -487,7 +487,7 @@ out_err:
- }
- 
- static int
--context_derive_keys_new(struct krb5_ctx *ctx)
-+context_derive_keys_new(struct krb5_ctx *ctx, gfp_t gfp_mask)
- {
- 	struct xdr_netobj c, keyin, keyout;
- 	u8 cdata[GSS_KRB5_K5CLENGTH];
-@@ -503,7 +503,7 @@ context_derive_keys_new(struct krb5_ctx *ctx)
- 	/* initiator seal encryption */
- 	set_cdata(cdata, KG_USAGE_INITIATOR_SEAL, KEY_USAGE_SEED_ENCRYPTION);
- 	keyout.data = ctx->initiator_seal;
--	err = krb5_derive_key(ctx->gk5e, &keyin, &keyout, &c);
-+	err = krb5_derive_key(ctx->gk5e, &keyin, &keyout, &c, gfp_mask);
- 	if (err) {
- 		dprintk("%s: Error %d deriving initiator_seal key\n",
- 			__func__, err);
-@@ -518,7 +518,7 @@ context_derive_keys_new(struct krb5_ctx *ctx)
- 	/* acceptor seal encryption */
- 	set_cdata(cdata, KG_USAGE_ACCEPTOR_SEAL, KEY_USAGE_SEED_ENCRYPTION);
- 	keyout.data = ctx->acceptor_seal;
--	err = krb5_derive_key(ctx->gk5e, &keyin, &keyout, &c);
-+	err = krb5_derive_key(ctx->gk5e, &keyin, &keyout, &c, gfp_mask);
- 	if (err) {
- 		dprintk("%s: Error %d deriving acceptor_seal key\n",
- 			__func__, err);
-@@ -533,7 +533,7 @@ context_derive_keys_new(struct krb5_ctx *ctx)
- 	/* initiator sign checksum */
- 	set_cdata(cdata, KG_USAGE_INITIATOR_SIGN, KEY_USAGE_SEED_CHECKSUM);
- 	keyout.data = ctx->initiator_sign;
--	err = krb5_derive_key(ctx->gk5e, &keyin, &keyout, &c);
-+	err = krb5_derive_key(ctx->gk5e, &keyin, &keyout, &c, gfp_mask);
- 	if (err) {
- 		dprintk("%s: Error %d deriving initiator_sign key\n",
- 			__func__, err);
-@@ -543,7 +543,7 @@ context_derive_keys_new(struct krb5_ctx *ctx)
- 	/* acceptor sign checksum */
- 	set_cdata(cdata, KG_USAGE_ACCEPTOR_SIGN, KEY_USAGE_SEED_CHECKSUM);
- 	keyout.data = ctx->acceptor_sign;
--	err = krb5_derive_key(ctx->gk5e, &keyin, &keyout, &c);
-+	err = krb5_derive_key(ctx->gk5e, &keyin, &keyout, &c, gfp_mask);
- 	if (err) {
- 		dprintk("%s: Error %d deriving acceptor_sign key\n",
- 			__func__, err);
-@@ -553,7 +553,7 @@ context_derive_keys_new(struct krb5_ctx *ctx)
- 	/* initiator seal integrity */
- 	set_cdata(cdata, KG_USAGE_INITIATOR_SEAL, KEY_USAGE_SEED_INTEGRITY);
- 	keyout.data = ctx->initiator_integ;
--	err = krb5_derive_key(ctx->gk5e, &keyin, &keyout, &c);
-+	err = krb5_derive_key(ctx->gk5e, &keyin, &keyout, &c, gfp_mask);
- 	if (err) {
- 		dprintk("%s: Error %d deriving initiator_integ key\n",
- 			__func__, err);
-@@ -563,7 +563,7 @@ context_derive_keys_new(struct krb5_ctx *ctx)
- 	/* acceptor seal integrity */
- 	set_cdata(cdata, KG_USAGE_ACCEPTOR_SEAL, KEY_USAGE_SEED_INTEGRITY);
- 	keyout.data = ctx->acceptor_integ;
--	err = krb5_derive_key(ctx->gk5e, &keyin, &keyout, &c);
-+	err = krb5_derive_key(ctx->gk5e, &keyin, &keyout, &c, gfp_mask);
- 	if (err) {
- 		dprintk("%s: Error %d deriving acceptor_integ key\n",
- 			__func__, err);
-@@ -598,7 +598,8 @@ out_err:
- }
- 
- static int
--gss_import_v2_context(const void *p, const void *end, struct krb5_ctx *ctx)
-+gss_import_v2_context(const void *p, const void *end, struct krb5_ctx *ctx,
-+		gfp_t gfp_mask)
- {
- 	int keylen;
- 
-@@ -645,7 +646,7 @@ gss_import_v2_context(const void *p, const void *end, struct krb5_ctx *ctx)
- 	}
- 
- 	ctx->mech_used.data = kmemdup(gss_kerberos_mech.gm_oid.data,
--				      gss_kerberos_mech.gm_oid.len, GFP_KERNEL);
-+				      gss_kerberos_mech.gm_oid.len, gfp_mask);
- 	if (unlikely(ctx->mech_used.data == NULL)) {
- 		p = ERR_PTR(-ENOMEM);
- 		goto out_err;
-@@ -654,12 +655,12 @@ gss_import_v2_context(const void *p, const void *end, struct krb5_ctx *ctx)
- 
- 	switch (ctx->enctype) {
- 	case ENCTYPE_DES3_CBC_RAW:
--		return context_derive_keys_des3(ctx);
-+		return context_derive_keys_des3(ctx, gfp_mask);
- 	case ENCTYPE_ARCFOUR_HMAC:
- 		return context_derive_keys_rc4(ctx);
- 	case ENCTYPE_AES128_CTS_HMAC_SHA1_96:
- 	case ENCTYPE_AES256_CTS_HMAC_SHA1_96:
--		return context_derive_keys_new(ctx);
-+		return context_derive_keys_new(ctx, gfp_mask);
- 	default:
- 		return -EINVAL;
- 	}
-@@ -670,20 +671,21 @@ out_err:
- 
- static int
- gss_import_sec_context_kerberos(const void *p, size_t len,
--				struct gss_ctx *ctx_id)
-+				struct gss_ctx *ctx_id,
-+				gfp_t gfp_mask)
- {
- 	const void *end = (const void *)((const char *)p + len);
- 	struct  krb5_ctx *ctx;
- 	int ret;
- 
--	ctx = kzalloc(sizeof(*ctx), GFP_KERNEL);
-+	ctx = kzalloc(sizeof(*ctx), gfp_mask);
- 	if (ctx == NULL)
- 		return -ENOMEM;
- 
- 	if (len == 85)
- 		ret = gss_import_v1_context(p, end, ctx);
- 	else
--		ret = gss_import_v2_context(p, end, ctx);
-+		ret = gss_import_v2_context(p, end, ctx, gfp_mask);
- 
- 	if (ret == 0)
- 		ctx_id->internal_ctx_id = ctx;
-diff --git a/net/sunrpc/auth_gss/gss_mech_switch.c b/net/sunrpc/auth_gss/gss_mech_switch.c
-index 28a84ef..2689de3 100644
---- a/net/sunrpc/auth_gss/gss_mech_switch.c
-+++ b/net/sunrpc/auth_gss/gss_mech_switch.c
-@@ -249,14 +249,15 @@ EXPORT_SYMBOL_GPL(gss_mech_put);
- int
- gss_import_sec_context(const void *input_token, size_t bufsize,
- 		       struct gss_api_mech	*mech,
--		       struct gss_ctx		**ctx_id)
-+		       struct gss_ctx		**ctx_id,
-+		       gfp_t gfp_mask)
- {
--	if (!(*ctx_id = kzalloc(sizeof(**ctx_id), GFP_KERNEL)))
-+	if (!(*ctx_id = kzalloc(sizeof(**ctx_id), gfp_mask)))
- 		return -ENOMEM;
- 	(*ctx_id)->mech_type = gss_mech_get(mech);
- 
- 	return mech->gm_ops
--		->gss_import_sec_context(input_token, bufsize, *ctx_id);
-+		->gss_import_sec_context(input_token, bufsize, *ctx_id, gfp_mask);
- }
- 
- /* gss_get_mic: compute a mic over message and return mic_token. */
-diff --git a/net/sunrpc/auth_gss/gss_spkm3_mech.c b/net/sunrpc/auth_gss/gss_spkm3_mech.c
-index 035e1dd..dc3f1f5 100644
---- a/net/sunrpc/auth_gss/gss_spkm3_mech.c
-+++ b/net/sunrpc/auth_gss/gss_spkm3_mech.c
-@@ -84,13 +84,14 @@ simple_get_netobj(const void *p, const void *end, struct xdr_netobj *res)
- 
- static int
- gss_import_sec_context_spkm3(const void *p, size_t len,
--				struct gss_ctx *ctx_id)
-+				struct gss_ctx *ctx_id,
-+				gfp_t gfp_mask)
- {
- 	const void *end = (const void *)((const char *)p + len);
- 	struct	spkm3_ctx *ctx;
- 	int	version;
- 
--	if (!(ctx = kzalloc(sizeof(*ctx), GFP_NOFS)))
-+	if (!(ctx = kzalloc(sizeof(*ctx), gfp_mask)))
- 		goto out_err;
- 
- 	p = simple_get_bytes(p, end, &version, sizeof(version));
-diff --git a/net/sunrpc/auth_gss/svcauth_gss.c b/net/sunrpc/auth_gss/svcauth_gss.c
-index 1d9ac4a..cc385b3 100644
---- a/net/sunrpc/auth_gss/svcauth_gss.c
-+++ b/net/sunrpc/auth_gss/svcauth_gss.c
-@@ -494,7 +494,7 @@ static int rsc_parse(struct cache_detail *cd,
- 		len = qword_get(&mesg, buf, mlen);
- 		if (len < 0)
- 			goto out;
--		status = gss_import_sec_context(buf, len, gm, &rsci.mechctx);
-+		status = gss_import_sec_context(buf, len, gm, &rsci.mechctx, GFP_KERNEL);
- 		if (status)
- 			goto out;
- 
--- 
-1.6.6.1
+e.g.
+i did not see this issues with "0 > /proc/sys/vm/overcommit_accounting"
+But this happened several times with "2 > /proc/sys/vm/overcommit_accounting"
 
+any clue ?
+
+we are suffering everyday ..... :-|
+
+__
+tharindu.info
+
+"those that can, do. Those that can’t, complain." -- Linus
+
+
+
+On Fri, May 21, 2010 at 9:55 PM, Hugh Dickins <hughd@google.com> wrote:
+> On Fri, 21 May 2010, Tharindu Rukshan Bamunuarachchi wrote:
+>>
+>> I tried to export tmpfs file system over NFS and got followin oops ....
+>> this kernel is provided with SLES 11 and tainted due to OFED installation.
+>>
+>> I am using NFSv4. Please help me to find the root cause if you feel free ....
+>>
+>>
+>> BUG: unable to handle kernel NULL pointer dereference at 00000000000000b0
+>> IP: __vm_enough_memory+0xf9/0x14e
+>> PGD 0
+>> Oops: 0000 [1] SMP
+>> last sysfs file:
+>> /sys/devices/pci0000:00/0000:00:09.0/0000:24:00.0/infiniband/mlx4_1/node_desc
+>> CPU 0
+>> Modules linked in: blah blah blah
+>> Supported: No, Unsupported modules are loaded
+>> Pid: 8855, comm: nfsd Tainted: G 2.6.27.45-0.1-default #1
+>> RIP: 0010: __vm_enough_memory+0xf9/0x14e
+> ...
+>> Process nfsd (pid: 8855, threadinfo ffff8803642cc000, task ffff88036f140380)
+>> Stack: ffff88037b93b668 ffff88037009de40 ffff88037b93b668 0000000000000000
+>> ffff88037b93b601 ffffffff802a8573 ffffffff80a33680 ffffffff80a30730
+>> 0000000000000000 0000000300000002 ffff8803642cd930 0000000000000000
+>> Call Trace:
+>> shmem_getpage+0x4d8/0x764
+>> generic_perform_write+0xae/0x1b5
+>> generic_file_buffered_write+0x80/0x130
+>> __generic_file_aio_write_nolock+0x349/0x37d
+>> generic_file_aio_write+0x64/0xc4
+>> do_sync_readv_writev+0xc0/0x107
+>> do_readv_writev+0xb2/0x18b
+>> nfsd_vfs_write+0x10a/0x328 [nfsd]
+>> nfsd_write+0x79/0xe2 [nfsd]
+>> nfsd4_write+0xd9/0x10d [nfsd]
+>> nfsd4_proc_compound+0x1bd/0x2c7 [nfsd]
+>> nfsd_dispatch+0xdd/0x1b9 [nfsd]
+>> svc_process+0x3d8/0x700 [sunrpc]
+>> nfsd+0x1b1/0x27e [nfsd]
+>> kthread+0x47/0x73
+>> child_rip+0xa/0x11
+>
+> I believe that was fixed in 2.6.28 by the patch below:
+> please would you try it, and if it works for you, then
+> I'll ask for it to be included in the next 2.6.27-stable,
+> which I expect SLES 11 will include in an update later.
+> Strange that more people haven't suffered from it...
+>
+> Hugh
+>
+> commit 731572d39fcd3498702eda4600db4c43d51e0b26
+> Author: Alan Cox <alan@redhat.com>
+> Date:   Wed Oct 29 14:01:20 2008 -0700
+>
+>    nfsd: fix vm overcommit crash
+>
+>    Junjiro R.  Okajima reported a problem where knfsd crashes if you are
+>    using it to export shmemfs objects and run strict overcommit.  In this
+>    situation the current->mm based modifier to the overcommit goes through a
+>    NULL pointer.
+>
+>    We could simply check for NULL and skip the modifier but we've caught
+>    other real bugs in the past from mm being NULL here - cases where we did
+>    need a valid mm set up (eg the exec bug about a year ago).
+>
+>    To preserve the checks and get the logic we want shuffle the checking
+>    around and add a new helper to the vm_ security wrappers
+>
+>    Also fix a current->mm reference in nommu that should use the passed mm
+>
+>    [akpm@linux-foundation.org: coding-style fixes]
+>    [akpm@linux-foundation.org: fix build]
+>    Reported-by: Junjiro R. Okajima <hooanon05@yahoo.co.jp>
+>    Acked-by: James Morris <jmorris@namei.org>
+>    Signed-off-by: Alan Cox <alan@redhat.com>
+>    Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
+>    Signed-off-by: Linus Torvalds <torvalds@linux-foundation.org>
+>
+> diff --git a/include/linux/security.h b/include/linux/security.h
+> index f5c4a51..c13f1ce 100644
+> --- a/include/linux/security.h
+> +++ b/include/linux/security.h
+> @@ -1585,6 +1585,7 @@ int security_syslog(int type);
+>  int security_settime(struct timespec *ts, struct timezone *tz);
+>  int security_vm_enough_memory(long pages);
+>  int security_vm_enough_memory_mm(struct mm_struct *mm, long pages);
+> +int security_vm_enough_memory_kern(long pages);
+>  int security_bprm_alloc(struct linux_binprm *bprm);
+>  void security_bprm_free(struct linux_binprm *bprm);
+>  void security_bprm_apply_creds(struct linux_binprm *bprm, int unsafe);
+> @@ -1820,6 +1821,11 @@ static inline int security_vm_enough_memory(long pages)
+>        return cap_vm_enough_memory(current->mm, pages);
+>  }
+>
+> +static inline int security_vm_enough_memory_kern(long pages)
+> +{
+> +       return cap_vm_enough_memory(current->mm, pages);
+> +}
+> +
+>  static inline int security_vm_enough_memory_mm(struct mm_struct *mm, long pages)
+>  {
+>        return cap_vm_enough_memory(mm, pages);
+> diff --git a/mm/mmap.c b/mm/mmap.c
+> index 74f4d15..de14ac2 100644
+> --- a/mm/mmap.c
+> +++ b/mm/mmap.c
+> @@ -175,7 +175,8 @@ int __vm_enough_memory(struct mm_struct *mm, long pages, int cap_sys_admin)
+>
+>        /* Don't let a single process grow too big:
+>           leave 3% of the size of this process for other processes */
+> -       allowed -= mm->total_vm / 32;
+> +       if (mm)
+> +               allowed -= mm->total_vm / 32;
+>
+>        /*
+>         * cast `allowed' as a signed long because vm_committed_space
+> diff --git a/mm/nommu.c b/mm/nommu.c
+> index 2696b24..7695dc8 100644
+> --- a/mm/nommu.c
+> +++ b/mm/nommu.c
+> @@ -1454,7 +1454,8 @@ int __vm_enough_memory(struct mm_struct *mm, long pages, int cap_sys_admin)
+>
+>        /* Don't let a single process grow too big:
+>           leave 3% of the size of this process for other processes */
+> -       allowed -= current->mm->total_vm / 32;
+> +       if (mm)
+> +               allowed -= mm->total_vm / 32;
+>
+>        /*
+>         * cast `allowed' as a signed long because vm_committed_space
+> diff --git a/mm/shmem.c b/mm/shmem.c
+> index d38d7e6..0ed0752 100644
+> --- a/mm/shmem.c
+> +++ b/mm/shmem.c
+> @@ -161,8 +161,8 @@ static inline struct shmem_sb_info *SHMEM_SB(struct super_block *sb)
+>  */
+>  static inline int shmem_acct_size(unsigned long flags, loff_t size)
+>  {
+> -       return (flags & VM_ACCOUNT)?
+> -               security_vm_enough_memory(VM_ACCT(size)): 0;
+> +       return (flags & VM_ACCOUNT) ?
+> +               security_vm_enough_memory_kern(VM_ACCT(size)) : 0;
+>  }
+>
+>  static inline void shmem_unacct_size(unsigned long flags, loff_t size)
+> @@ -179,8 +179,8 @@ static inline void shmem_unacct_size(unsigned long flags, loff_t size)
+>  */
+>  static inline int shmem_acct_block(unsigned long flags)
+>  {
+> -       return (flags & VM_ACCOUNT)?
+> -               0: security_vm_enough_memory(VM_ACCT(PAGE_CACHE_SIZE));
+> +       return (flags & VM_ACCOUNT) ?
+> +               0 : security_vm_enough_memory_kern(VM_ACCT(PAGE_CACHE_SIZE));
+>  }
+>
+>  static inline void shmem_unacct_blocks(unsigned long flags, long pages)
+> diff --git a/security/security.c b/security/security.c
+> index 255b085..c0acfa7 100644
+> --- a/security/security.c
+> +++ b/security/security.c
+> @@ -198,14 +198,23 @@ int security_settime(struct timespec *ts, struct timezone *tz)
+>
+>  int security_vm_enough_memory(long pages)
+>  {
+> +       WARN_ON(current->mm == NULL);
+>        return security_ops->vm_enough_memory(current->mm, pages);
+>  }
+>
+>  int security_vm_enough_memory_mm(struct mm_struct *mm, long pages)
+>  {
+> +       WARN_ON(mm == NULL);
+>        return security_ops->vm_enough_memory(mm, pages);
+>  }
+>
+> +int security_vm_enough_memory_kern(long pages)
+> +{
+> +       /* If current->mm is a kernel thread then we will pass NULL,
+> +          for this specific case that is fine */
+> +       return security_ops->vm_enough_memory(current->mm, pages);
+> +}
+> +
+>  int security_bprm_alloc(struct linux_binprm *bprm)
+>  {
+>        return security_ops->bprm_alloc_security(bprm);
+>
