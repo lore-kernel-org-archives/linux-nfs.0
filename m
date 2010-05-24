@@ -1,34 +1,50 @@
-From: redshield88888 <redshield88888@gmail.com>
-Subject: Can the pNFS be able to construct high-available about the data ?
-Date: Tue, 25 May 2010 07:41:59 +0000 (UTC)
-Message-ID: <loom.20100525T092804-609@post.gmane.org>
+From: Pavel Machek <pavel@ucw.cz>
+Subject: Re: Deadlock in NFSv4 in all kernels
+Date: Mon, 24 May 2010 23:24:23 +0200
+Message-ID: <20100524212422.GA1286@ucw.cz>
+References: <20100507153920.GP28167@ics.muni.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-To: linux-nfs@vger.kernel.org
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from lo.gmane.org ([80.91.229.12]:50855 "EHLO lo.gmane.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751127Ab0EYHmI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 25 May 2010 03:42:08 -0400
-Received: from list by lo.gmane.org with local (Exim 4.69)
-	(envelope-from <glN-linux-nfs@m.gmane.org>)
-	id 1OGom6-0005av-No
-	for linux-nfs@vger.kernel.org; Tue, 25 May 2010 09:42:06 +0200
-Received: from softbank221086052216.bbtec.net ([221.86.52.216])
-        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-nfs@vger.kernel.org>; Tue, 25 May 2010 09:42:06 +0200
-Received: from redshield88888 by softbank221086052216.bbtec.net with local (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-nfs@vger.kernel.org>; Tue, 25 May 2010 09:42:06 +0200
-Sender: linux-nfs-owner@vger.kernel.org
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org, salvet@ics.muni.cz
+To: Lukas Hejtmanek <xhejtman@ics.muni.cz>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <20100507153920.GP28167@ics.muni.cz>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi
+Hi!
 
-I wonder that about the pNFS's high availability.
-The pNFS will stripe a file on each DSs, so this file will be currupted when one
-DS has crushed, will not ?
+> I encountered the following problem. We use short expiration time for
+> kerberos contexts created by rpc.gssd (some patches were included in mainline
+> nfs-utils). In particular, we use 120secs expiration time.
+> 
+> Now, I run application that eats 80% of available RAM. Then I run 10 parallel
+> dd processes that write data into NFS4 volume with sec=krb5.
+> 
+> As soon as the kerberos context expires (i.e., up to 120 secs), the whole
+> system gets stuck in do_page_fault and succesive functions. It is because
+> there is no free memory in kernel, all free memory is used as cache for NFS4
+> (due to dd traffic), kernel ask NFS to write back its pages but NFS cannot do
+> anything as it is missing valid context. NFS contacts rpc.gssd to provide
+> a renewed context, the rpc.gssd does not provide the context as it needs some memory
+> to scan /tmp for a ticket. I.e., it deadlocks.
+> 
+> Longer context expiration time is no real solution as it only makes the
+> deadlock less often. 
+> 
+> Any ideas what can be done here? (Please cc me.) We could preallocate some
+> memory in rpc.gssd and use mlockall but not sure whether this proctects also
+> kernel malloc for things related to rpc.gssd and context creation (new file
+> descriptors and so on). 
+> 
+> This is seen in 2.6.32 kernel but most probably this is related to all kernel
+> versions.
 
+Seems like pretty fundamental problem in nfs :-(. Limiting writeback
+caches for nfs, so that system has enough memory to perform rpc calls
+with the rest might do the trick, but...
 
-
+-- 
+(english) http://www.livejournal.com/~pavelmachek
+(cesky, pictures) http://atrey.karlin.mff.cuni.cz/~pavel/picture/horses/blog.html
