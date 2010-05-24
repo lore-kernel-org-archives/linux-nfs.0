@@ -1,54 +1,60 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-out1.uio.no ([129.240.10.57]:43799 "EHLO mail-out1.uio.no"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755727Ab0EXQVb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 24 May 2010 12:21:31 -0400
+Received: from zeniv.linux.org.uk ([195.92.253.2]:35714 "EHLO
+	ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756673Ab0EXTIc (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 24 May 2010 15:08:32 -0400
+Date: Mon, 24 May 2010 20:08:28 +0100
+From: Al Viro <viro@ZenIV.linux.org.uk>
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+Cc: Neil Brown <neilb@suse.de>, "Dr. J. Bruce Fields" <bfields@fieldses.org>,
+        Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org
 Subject: Re: [PATCH] VFS: fix recent breakage of FS_REVAL_DOT
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-To: Al Viro <viro@ZenIV.linux.org.uk>
-Cc: Neil Brown <neilb@suse.de>, Chuck Lever <chuck.lever@oracle.com>,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-In-Reply-To: <20100524155031.GQ31073@ZenIV.linux.org.uk>
+Message-ID: <20100524190828.GS31073@ZenIV.linux.org.uk>
 References: <20100524165756.2cfa54c4@notabene.brown>
-	 <20100524115903.GP31073@ZenIV.linux.org.uk>
-	 <20100524155031.GQ31073@ZenIV.linux.org.uk>
-Content-Type: text/plain; charset="UTF-8"
-Date: Mon, 24 May 2010 12:21:22 -0400
-Message-ID: <1274718082.10795.31.camel@heimdal.trondhjem.org>
+ <20100524115903.GP31073@ZenIV.linux.org.uk>
+ <20100524155031.GQ31073@ZenIV.linux.org.uk>
+ <1274718082.10795.31.camel@heimdal.trondhjem.org>
+ <20100524164736.GR31073@ZenIV.linux.org.uk>
+ <1274720791.10795.50.camel@heimdal.trondhjem.org>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1274720791.10795.50.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Mon, 2010-05-24 at 16:50 +0100, Al Viro wrote: 
-> On Mon, May 24, 2010 at 12:59:03PM +0100, Al Viro wrote:
-> 
-> > BTW, here's a question for nfs client folks: is it true that for any two
-> > pathnames on _client_ resolving to pairs (mnt1, dentry) and (mnt2, dentry)
-> > resp., nfs_devname(mnt1, dentry, ...) and nfs_devname(mnt2, dentry, ...)
-> > should yield the strings that do not differ past the ':' (i.e. that the
-> > only possible difference is going to be in spelling the server name)?
-> 
-> Actually, there's a related one: suppose we have two mounts from the same
-> server, with the same flags, etc., ending up sharing a dentry on client.
-> What will we get from GETATTR asking for fs_locations, in fs_root field?
-> 
-> Can an nfs4 server e.g. have /x/y being a symlink that resolves to /a/b and
-> allow mounting of both /x/y/c and /a/b/c?  Which path would it return to
-> client that has mounted both, walked to some referral point and called
-> nfs_do_refmount(), triggering nfs4_proc_fs_locations()?
-> 
-> Trond, Neil?
+On Mon, May 24, 2010 at 01:06:31PM -0400, Trond Myklebust wrote:
 
-When mounting /x/y/c in your example above, the NFSv4 protocol requires
-the client itself to resolve the symlink, and then walk down /a/b/c
-(looking up component by component), so it will in practice not see
-anything other than /a/b/c.
+> I believe that the answer is that most filehandle types include an
+> encoding of the inode number of the export directory. In other words, as
+> long as '/a' and '/b' are different directories, then they will result
+> in the generation of different filehandles for /a/x and /b/x.
+> 
+> It seems that is not always the case, though. According to the
+> definition of mk_fsid(), it looks as if the 'FSID_UUID8' and
+> 'FSID_UUID16' filehandle types only encode the uuid of the filesystem,
+> and have no inode information. They will therefore not be able to
+> distinguish between an export through '/a' or '/b'.
+> 
+> Neil, Bruce am I right?
 
-If it walks down to a referral, and then calls nfs_do_refmount, it will
-do the same thing: obtain a path /e/f/g on the new server, and then walk
-down that component by component while resolving any symlinks and/or
-referrals that it crosses in the process.
+Er?  On server:
 
-Cheers
-  Trond
+mount -t ext2 /dev/sdb1 /srv/nfs4
+mount -t ext2 /dev/sda1 /srv/nfs4/a
+mount -t ext2 /dev/sda1 /srv/nfs4/b
 
+after that /srv/nfs4/a and /srv/nfs4/b will have the *same* inode, nevermind
+the inode number.  I really mean the same filesystem mounted twice; if you
+want to include inumber of mountpoint into fsid, fine, turn the above into
+
+mount -t ext2 /dev/sdb1 /srv/nfs4
+mount -t ext2 /dev/sda1 /srv/nfs4/a
+mount -t ext2 /dev/sda1 /srv/nfs4/b
+mount -t ext2 /dev/sda3 /srv/nfs4/a/z
+mount -t ext2 /dev/sda3 /srv/nfs4/b/z
+
+At that point you have the same fs (ext2 from sda3) mounted on /srv/nfs4/a/z
+and /srv/nfs4/b/z, with the same directory inode overmounted by it in both
+mountpoints.  Suppose your referral point is on /a/z/x and /b/z/x resp. and
+see the question upthread...
