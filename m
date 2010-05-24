@@ -1,29 +1,28 @@
-From: "J. R. Okajima" <hooanon05-/E1597aS9LR3+QwDJ9on6Q@public.gmane.org>
-Subject: Re: NFS, race in writeback?
-Date: Mon, 24 May 2010 13:56:44 +0900
-Message-ID: <28595.1274677004@jrobl>
-References: <11621.1274548448@jrobl> <1274640976.4860.97.camel@heimdal.trondhjem.org>
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
+From: Tao Guo <glorioustao@gmail.com>
+Subject: Re: [PATCH 1/1] SQUASHME pnfs-submit: replace layoutcommit_ctx with
+	rpc_cred
+Date: Mon, 24 May 2010 14:37:43 +0800
+Message-ID: <AANLkTinvXyrrqR7YpkLOUAJ890oTBdQCgQuNXD9o3gk-@mail.gmail.com>
+References: <1274371457-10003-1-git-send-email-andros@netapp.com>
+	 <AANLkTinRG_AhVwFZ6a3GllIHSLa3zBDl0zmVDp3btJhn@mail.gmail.com>
+	 <AANLkTikCPFKKMWFVCT3AlIz792q12x3QrH3vDVVePPXN@mail.gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Cc: bhalevy@panasas.com, linux-nfs@vger.kernel.org
+To: "William A. (Andy) Adamson" <androsadamson@gmail.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mtoichi12.ns.itscom.net ([219.110.2.182]:51519 "EHLO
-	mtoichi12.ns.itscom.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1749667Ab0EXE5N (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 24 May 2010 00:57:13 -0400
-In-Reply-To: <1274640976.4860.97.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
+Received: from mail-vw0-f46.google.com ([209.85.212.46]:46799 "EHLO
+	mail-vw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756061Ab0EXGhq (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 24 May 2010 02:37:46 -0400
+Received: by vws9 with SMTP id 9so2143120vws.19
+        for <linux-nfs@vger.kernel.org>; Sun, 23 May 2010 23:37:44 -0700 (PDT)
+In-Reply-To: <AANLkTikCPFKKMWFVCT3AlIz792q12x3QrH3vDVVePPXN-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+I see... But what if sync == 1? At that time, data must have already
+been freed, so you should not use data->cred anymore.
 
-Trond Myklebust:
-> Urgh. Yes, this looks like it is a consequence of commit
-> ba8b06e67ed7a560b0e7c80091bcadda4f4727a5. We need to revert the part
-> that calls sync_inode().
->
-> Does the following fix it for you?
-
-Applying the patch against 2.6.34, it passed my local stress test for
-two hours. The problem was fixed. Thank you.
-
-
-J. R. Okajima
+-- 
+tao.
