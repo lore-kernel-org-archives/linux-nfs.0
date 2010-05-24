@@ -1,145 +1,83 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-wy0-f174.google.com ([74.125.82.174]:36274 "EHLO
-	mail-wy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750732Ab0ELE0w (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 12 May 2010 00:26:52 -0400
-Received: by wyb32 with SMTP id 32so481626wyb.19
-        for <linux-nfs@vger.kernel.org>; Tue, 11 May 2010 21:26:50 -0700 (PDT)
-Message-ID: <4BEA2E06.7070902@panasas.com>
-Date: Wed, 12 May 2010 07:26:46 +0300
-From: Benny Halevy <bhalevy@panasas.com>
-To: "J. Bruce Fields" <bfields@citi.umich.edu>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v2 8/9] nfsd4: keep a reference count on client while
- in use
-References: <4BE9C7A2.8030801@panasas.com> <1273612434-13726-1-git-send-email-bhalevy@panasas.com> <20100512024030.GA27184@fieldses.org>
-In-Reply-To: <20100512024030.GA27184@fieldses.org>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from jarvis.server1.odu.edu ([128.82.96.116]:34130 "EHLO
+	jarvis.server1.odu.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757804Ab0EXVSn convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 24 May 2010 17:18:43 -0400
+From: "Kumar, Amit H." <AHKumar@odu.edu>
+To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "owner-linux-nfs@vger.kernel.org" <owner-linux-nfs@vger.kernel.org>
+Date: Mon, 24 May 2010 17:18:41 -0400
+Subject: FW: Yet Another NFS Performance Question
+Message-ID: <A17A76CF549D0F4EBC38AD7AA7A3CBDA7675EA69FD@MUFASA.ts.odu.edu>
+Content-Type: text/plain; charset="iso-8859-1"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On May. 12, 2010, 5:40 +0300, " J. Bruce Fields" <bfields@citi.umich.edu> wrote:
-> Something still doesn't look quite right: a sequence operation
-> increments cl_count from 1 to 2; then, say, an exchangeid in another
-> thread expires the client, dropping cl_count from 2 to 1; then the
-> laundromat runs, sees cl_count 1, and decides it can expire the
-> client.  Meanwhile, the original compound is still running.
-> 
-> Am I missing something?
+Hi All:
 
-Yeah.  exchange_id doesn't touch cl_refcount.  It may call expire_client
-explicitly which will unhash the client but will not destroy it if cl_refcount > 0
-the laundromat won't the client either after that since it's not on the lru list
-any more (and even if it would, it's refcount is still great than zero so it would
-have been ignored)
+Context: NFSv3:
 
-Benny
+I would like to get your input on the following NFS stats recorded on our server. I have read up this thread(http://www.opensubscriber.com/message/nfs@lists.sourceforge.net/7833588.html) describing the contents of /proc/net/rpc/nfsd;
 
-> 
-> --b.
-> 
-> On Wed, May 12, 2010 at 12:13:54AM +0300, Benny Halevy wrote:
->> Get a refcount on the client on SEQUENCE,
->> Release the refcount and renew the client when all respective compounds completed.
->> Do not expire the client by the laundromat while in use.
->> If the client was expired via another path, free it when the compounds
->> complete and the refcount reaches 0.
->>
->> Note that unhash_client_locked must call list_del_init on cl_lru as
->> it may be called twice for the same client (once from nfs4_laundromat
->> and then from expire_client)
->>
->> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
->> ---
->>  fs/nfsd/nfs4state.c |   27 ++++++++++++++++++++++++---
->>  fs/nfsd/nfs4xdr.c   |    3 ++-
->>  fs/nfsd/state.h     |    1 +
->>  3 files changed, 27 insertions(+), 4 deletions(-)
->>
->> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
->> index 378ee86..1a8fb39 100644
->> --- a/fs/nfsd/nfs4state.c
->> +++ b/fs/nfsd/nfs4state.c
->> @@ -701,6 +701,22 @@ free_client(struct nfs4_client *clp)
->>  	kfree(clp);
->>  }
->>  
->> +void
->> +release_session_client(struct nfsd4_session *session)
->> +{
->> +	struct nfs4_client *clp = session->se_client;
->> +
->> +	spin_lock(&client_lock);
->> +	BUG_ON(clp->cl_refcount <= 0);
->> +	if (--clp->cl_refcount <= 0) {
->> +		free_client(clp);
->> +		session->se_client = NULL;
->> +	} else if (clp->cl_refcount == 1)
->> +		renew_client_locked(clp);
->> +	spin_unlock(&client_lock);
->> +	nfsd4_put_session(session);
->> +}
->> +
->>  /* must be called under the client_lock */
->>  static inline void
->>  unhash_client_locked(struct nfs4_client *clp)
->> @@ -1477,8 +1493,7 @@ out:
->>  	/* Hold a session reference until done processing the compound. */
->>  	if (cstate->session) {
->>  		nfsd4_get_session(cstate->session);
->> -		/* Renew the clientid on success and on replay */
->> -		renew_client_locked(session->se_client);
->> +		session->se_client->cl_refcount++;
->>  	}
->>  	spin_unlock(&client_lock);
->>  	dprintk("%s: return %d\n", __func__, ntohl(status));
->> @@ -2599,7 +2614,13 @@ nfs4_laundromat(void)
->>  				clientid_val = t;
->>  			break;
->>  		}
->> -		list_move(&clp->cl_lru, &reaplist);
->> +		if (clp->cl_refcount > 1) {
->> +			dprintk("NFSD: client in use (clientid %08x)\n",
->> +				clp->cl_clientid.cl_id);
->> +			continue;
->> +		}
->> +		unhash_client_locked(clp);
->> +		list_add(&clp->cl_lru, &reaplist);
->>  	}
->>  	spin_unlock(&client_lock);
->>  	list_for_each_safe(pos, next, &reaplist) {
->> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
->> index 5c2de47..126d0ca 100644
->> --- a/fs/nfsd/nfs4xdr.c
->> +++ b/fs/nfsd/nfs4xdr.c
->> @@ -3313,7 +3313,8 @@ nfs4svc_encode_compoundres(struct svc_rqst *rqstp, __be32 *p, struct nfsd4_compo
->>  			dprintk("%s: SET SLOT STATE TO AVAILABLE\n", __func__);
->>  			cs->slot->sl_inuse = false;
->>  		}
->> -		nfsd4_put_session(cs->session);
->> +		/* Renew the clientid on success and on replay */
->> +		release_session_client(cs->session);
->>  	}
->>  	return 1;
->>  }
->> diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
->> index 37e1dff..f263174 100644
->> --- a/fs/nfsd/state.h
->> +++ b/fs/nfsd/state.h
->> @@ -419,6 +419,7 @@ extern int nfs4_has_reclaimed_state(const char *name, bool use_exchange_id);
->>  extern void nfsd4_recdir_purge_old(void);
->>  extern int nfsd4_create_clid_dir(struct nfs4_client *clp);
->>  extern void nfsd4_remove_clid_dir(struct nfs4_client *clp);
->> +extern void release_session_client(struct nfsd4_session *);
->>  
->>  static inline void
->>  nfs4_put_stateowner(struct nfs4_stateowner *so)
->> -- 
->> 1.6.5.1
->>
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+My Numbers are really high, for 'th' line in nfsd file: I am not able to ascertain as to:  My server is heavily busy or poorly performing, because each thread is busy that big number of times on the 'th' line; 
 
+Q0. Does the stats below represent a bad performance?
+Q1. Is there anymore way I can tweak this if this represents a bad performance? 
+
+You input is greatly appreciated and will help us tweak this server and better understand the performance. 
+
+Thank you,
+Amit
+
+
+/******************/
+Generally on all of My Client this is what the nfsstats reports: retans number fluctuates but not greatly. To me retrans number seems negligible. 
+# nfsstat
+Client rpc stats:
+calls      retrans    authrefrsh
+138601858   13119      0
+
+# uname -a
+Linux nfs3-io-0-3.local 2.6.18-53.1.14.el5 #1 SMP Wed Mar 5 11:37:38 EST 2008 x86_64 x86_64 x86_64 GNU/Linux
+
+NFS server:# cat /proc/net/rpc/nfsd
+rc 579356 2561581103 930328921
+fh 68593119 0 0 0 0
+io 3005241904 1001209956
+th 128 43577408 757955.761 677495.276 387088.572 462962.421 425292.746 165116.697 66147.746 26071.602 8148.127 9079.092
+ra 256 319824137 968005 35905 6510 2981 1790 1450 1056 895 634 141481
+net 3493483810 0 3492990059 29031
+rpc 3489730527 0 0 0 0
+proc2 18 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+proc3 22 116 11578551 9138195 364276603 91767377 380 318502944 2552319828 174234 11301 1470 0 178776 6302 15842 2962 1001562 335879 122371298 117 0 18968257
+proc4 2 0 0
+proc4ops 40 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+
+NFS server:# nfsstat
+Server rpc stats:
+calls      badcalls   badauth    badclnt    xdrcall
+-803696698   0          0          0          0
+
+Server nfs v3:
+null         getattr      setattr      lookup       access       readlink
+116       0% 11579177  0% 9138217   0% 364330037 10% 91788465  2% 380       0%
+read         write        create       mkdir        symlink      mknod
+319793180  9% -1742476768 73% 174245    0% 11301     0% 1470      0% 0         0%
+remove       rmdir        rename       link         readdir      readdirplus
+178780    0% 6302      0% 15842     0% 2962      0% 1001733   0% 335887    0%
+fsstat       fsinfo       pathconf     commit
+122372898  3% 117       0% 0         0% 18968795  0%
+
+NFS server:# ifconfig -i eth0
+eth0      Link encap:Ethernet  HWaddr xx:xx:xx:70:AD:27
+          inet addr:xx.xx.24.251  Bcast:xxx.xx.24.255  Mask:255.255.255.0
+          inet6 addr: xxxx::xxx:9ff:fe70:ad27/64 Scope:Link
+          UP BROADCAST RUNNING MULTICAST  MTU:1500  Metric:1
+          RX packets:180118110167 errors:0 dropped:4 overruns:0 frame:0
+          TX packets:238857904405 errors:0 dropped:0 overruns:0 carrier:0
+          collisions:0 txqueuelen:1000
+          RX bytes:74126472507659 (67.4 TiB)  TX bytes:306386976112971 (278.6 TiB)
+          Interrupt:169 Memory:f8000000-f8012100
+
+/******************/
