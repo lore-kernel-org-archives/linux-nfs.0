@@ -1,68 +1,54 @@
-From: Boaz Harrosh <bharrosh@panasas.com>
-Subject: Re: Am I still the one to fix the NFS_FILE_SYNC problem
-Date: Mon, 24 May 2010 18:39:09 +0300
-Message-ID: <4BFA9D9D.2030908@panasas.com>
-References: <4BF975A3.7090509@panasas.com> <AANLkTilR7cJu1uCv60GrpFimqDWb0ogyvKVh1q0iW_6a@mail.gmail.com>
+From: Tao Guo <glorioustao@gmail.com>
+Subject: Re: [PATCH 1/1] SQUASHME pnfs-submit: replace layoutcommit_ctx with
+	rpc_cred
+Date: Tue, 25 May 2010 00:02:51 +0800
+Message-ID: <AANLkTik-l_9nhBGWv-C8FKz9Aq99uP7-AWSi_uB4YDBG@mail.gmail.com>
+References: <1274371457-10003-1-git-send-email-andros@netapp.com>
+	 <AANLkTinRG_AhVwFZ6a3GllIHSLa3zBDl0zmVDp3btJhn@mail.gmail.com>
+	 <AANLkTikCPFKKMWFVCT3AlIz792q12x3QrH3vDVVePPXN@mail.gmail.com>
+	 <AANLkTinvXyrrqR7YpkLOUAJ890oTBdQCgQuNXD9o3gk-@mail.gmail.com>
+	 <AANLkTikvP2aetI4bF-3ebus1Y91qFV4ahCXfxR_5ZNBN@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
-Cc: Benny Halevy <bhalevy@panasas.com>,
-	NFS list <linux-nfs@vger.kernel.org>
+Cc: bhalevy@panasas.com, linux-nfs@vger.kernel.org
 To: "William A. (Andy) Adamson" <androsadamson@gmail.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:22544 "EHLO
-	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1752332Ab0EXPjP (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 24 May 2010 11:39:15 -0400
-In-Reply-To: <AANLkTilR7cJu1uCv60GrpFimqDWb0ogyvKVh1q0iW_6a-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
+Received: from mail-vw0-f46.google.com ([209.85.212.46]:40227 "EHLO
+	mail-vw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757681Ab0EXQCw (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 24 May 2010 12:02:52 -0400
+Received: by vws9 with SMTP id 9so2482519vws.19
+        for <linux-nfs@vger.kernel.org>; Mon, 24 May 2010 09:02:51 -0700 (PDT)
+In-Reply-To: <AANLkTikvP2aetI4bF-3ebus1Y91qFV4ahCXfxR_5ZNBN-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 05/24/2010 04:14 PM, William A. (Andy) Adamson wrote:
-> Hi Boaz
-> 
-> The last patch I sent in [PATCH 1/1] SQUASHME pnfs-submit: replace
-> layoutcommit_ctx with rpc_cred fixes the NFS_FILE_SYNC problem for
-> files. It replaces taking a reference on the open context with taking
-> a reference on the rpc_cred.
-> 
-
-Hi Andy.
-
-I hope you are online could you chat with me a bit about this, 
-on boazharrosh-Re5JQEeQqe9fmgfxC/sS/w@public.gmane.org
-
-I have seen your patch and i like it a lot. I have not yet test with
-it, so I own you.
-
-I'm talking about the other problem I had where the write-out returns
-NFS_FILE_SYNC and commit is not called and pnfs_client_ops->nfs_commit_complete()
-is not eventually called, then inode never gets written/updated and we get all
-these straining .nfs000000000000XXX files and IO never finishes. You said
-you had them too and I had a work around for objects. (This problem is new
-in 2.6.34)
-
-Do you have this problem or it's only me?
-
-Boaz
-
+On Mon, May 24, 2010 at 9:43 PM, William A. (Andy) Adamson
+<androsadamson@gmail.com> wrote:
+> On Mon, May 24, 2010 at 2:37 AM, Tao Guo <glorioustao@gmail.com> wrote:
+>> I see... But what if sync == 1? At that time, data must have already
+>> been freed, so you should not use data->cred anymore.
+>
+> Agreed.
+>
+> Since LAYOUTCOMMIT is not called after close, we can get rid of taking
+> the reference all together since a reference is taken on OPEN and
+> dropped on CLOSE.
+>
 > -->Andy
-> 				
-> 
-> On Sun, May 23, 2010 at 2:36 PM, Boaz Harrosh <bharrosh@panasas.com> wrote:
->>
->> Andy, Benny are you waiting on me to fix the NFS_FILE_SYNC problem?
->>
->> I've been on a long holiday, but I can attempt a fix tomorrow if still
->> needed?
->>
->> I was hoping someone else need that more urgently then me, since I already
->> have a work around, for my testing ;-)
->>
->> Boaz
+I agree. However that will change several functions' interface I guess.
+
+I still have a question: why some procedures need to set rpc_cred
+whereas some needn't ? what is the connection between ctx's rpc_cred
+and nfs4_state_owner's so_cred? Any guidance will be appreciated...
+
 >>
 >> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>> tao.
 >>
+>
 
+
+
+-- 
+tao.
