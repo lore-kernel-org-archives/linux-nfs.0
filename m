@@ -1,85 +1,65 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-pv0-f174.google.com ([74.125.83.174]:54403 "EHLO
-	mail-pv0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756775Ab0EMDCA convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 12 May 2010 23:02:00 -0400
-Received: by pvg12 with SMTP id 12so113539pvg.19
-        for <linux-nfs@vger.kernel.org>; Wed, 12 May 2010 20:01:59 -0700 (PDT)
-In-Reply-To: <AANLkTilCfQl5zM9cap4vJSbFfJQ8OvoPNoydif_4DN6T@mail.gmail.com>
-References: <20100512074204.GA7643@MDS-78.localdomain>
-	 <AANLkTilCfQl5zM9cap4vJSbFfJQ8OvoPNoydif_4DN6T@mail.gmail.com>
-Date: Thu, 13 May 2010 11:01:59 +0800
-Message-ID: <AANLkTinCK22GlF336-SZhZoboRfyB9Ez_Zo_rPBm90Q0@mail.gmail.com>
-Subject: Re: [PATCH] pnfs: set pnfs_curr_ld before calling
-	initialize_mountpoint
-From: Zhang Jingwang <yyalone@gmail.com>
-To: "William A. (Andy) Adamson" <androsadamson@gmail.com>
-Cc: linux-nfs@vger.kernel.org, bhalevy@panasas.com
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from smtp-out.google.com ([216.239.44.51]:21132 "EHLO
+	smtp-out.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755629Ab0EXJ5f (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 24 May 2010 05:57:35 -0400
+Received: from hpaq6.eem.corp.google.com (hpaq6.eem.corp.google.com [172.25.149.6])
+	by smtp-out.google.com with ESMTP id o4O9vWY2017930
+	for <linux-nfs@vger.kernel.org>; Mon, 24 May 2010 02:57:33 -0700
+Received: from vws3 (vws3.prod.google.com [10.241.21.131])
+	by hpaq6.eem.corp.google.com with ESMTP id o4O9vLGc014350
+	for <linux-nfs@vger.kernel.org>; Mon, 24 May 2010 02:57:31 -0700
+Received: by vws3 with SMTP id 3so249713vws.28
+        for <linux-nfs@vger.kernel.org>; Mon, 24 May 2010 02:57:31 -0700 (PDT)
+In-Reply-To: <AANLkTil7I6q4wdLgmwZdRN6hb9LVVagN_7oGTIVNDhUk@mail.gmail.com>
+References: <AANLkTik47c6l3y8CdJ-hUCd2h3SRSb3qAtRovWryb8_p@mail.gmail.com>
+	<alpine.LSU.2.00.1005211344440.7369@sister.anvils>
+	<AANLkTil7I6q4wdLgmwZdRN6hb9LVVagN_7oGTIVNDhUk@mail.gmail.com>
+Date: Mon, 24 May 2010 02:57:30 -0700
+Message-ID: <AANLkTilMQjZaUom2h_aFgU6WB83IGH-VVKTg-CJD-_ZZ@mail.gmail.com>
+Subject: Re: TMPFS over NFSv4
+From: Hugh Dickins <hughd@google.com>
+To: Tharindu Rukshan Bamunuarachchi <btharindu@gmail.com>
+Cc: linux-mm@kvack.org, linux-nfs@vger.kernel.org,
+        Alan Cox <alan@lxorguk.ukuu.org.uk>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-2010/5/12 William A. (Andy) Adamson <androsadamson@gmail.com>:
-> On Wed, May 12, 2010 at 3:42 AM, Zhang Jingwang
-> <zhangjingwang@nrchpc.ac.cn> wrote:
->> initialize_mountpoint will call _nfs4_pnfs_getdevicelist and then
->> pnfs_curr_ld->id is accessed.
->
-> Where is pnfs_curr_ld->ld_policy_ops accessed?
-In pnfs_set_ds_iosize after set_pnfs_layoutdriver, pnfs_curr_ld is set
-in set_pnfs_layoutdriver so it's OK to access
-pnfs_curr_ld->ld_policy_ops.
+On Mon, May 24, 2010 at 2:26 AM, Tharindu Rukshan Bamunuarachchi
+<btharindu@gmail.com> wrote:
+> thankx a lot Hugh ... I will try this out ... (bit harder patch
+> already patched SLES kernel :-p ) ....
+
+If patch conflicts are a problem, you really only need to put in the
+two-liner patch to mm/mmap.c: Alan was seeking perfection in
+the rest of the patch, but you can get away without it.
 
 >
-> -->Andy
+> BTW, what does Alan means by "strict overcommit" ?
+
+Ah, that phrase, yes, it's a nonsense, but many of us do say it by mistake.
+Alan meant to say "strict no-overcommit".
+
 >
->> This introduce a NULL pointer reference.
->>
->> Signed-off-by: Zhang Jingwang <zhangjingwang@nrchpc.ac.cn>
->> ---
->>  fs/nfs/pnfs.c |    2 +-
->>  1 files changed, 1 insertions(+), 1 deletions(-)
->>
->> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
->> index 3739c38..5ad7fc6 100644
->> --- a/fs/nfs/pnfs.c
->> +++ b/fs/nfs/pnfs.c
->> @@ -212,6 +212,7 @@ set_pnfs_layoutdriver(struct nfs_server *server, const struct nfs_fh *mntfh,
->>                return;
->>
->>        if (id > 0 && find_pnfs(id, &mod)) {
->> +               server->pnfs_curr_ld = mod->pnfs_ld_type;
->>                if (mod->pnfs_ld_type->ld_io_ops->initialize_mountpoint(
->>                                                        server, mntfh)) {
->>                        printk(KERN_ERR "%s: Error initializing mount point "
->> @@ -222,7 +223,6 @@ set_pnfs_layoutdriver(struct nfs_server *server, const struct nfs_fh *mntfh,
->>                 * Layout driver succeeded in initializing mountpoint
->>                 * and has taken a reference on the nfs_client cl_devid_cache
->>                 */
->> -               server->pnfs_curr_ld = mod->pnfs_ld_type;
->>                server->nfs_client->rpc_ops = &pnfs_v4_clientops;
->>                dprintk("%s: pNFS module for %u set\n", __func__, id);
->>                return;
->> --
->> 1.6.2.5
->>
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->
+> e.g.
+> i did not see this issues with "0 > /proc/sys/vm/overcommit_accounting"
 
+I assume "overcommit_accounting" is either a typo for "overcommit_memory",
+or SLES gives "overcommit_memory" a slightly different name.
 
+0 means overcommit memory (let people allocate more private writable user
+memory than there is actually ram+swap to back), but throw in a check against
+really wild allocation requests.  1 omits even that check.
 
--- 
-Zhang Jingwang
-National Research Centre for High Performance Computers
-Institute of Computing Technology, Chinese Academy of Sciences
-No. 6, South Kexueyuan Road, Haidian District
-Beijing, China
+> But this happened several times with "2 > /proc/sys/vm/overcommit_accounting"
+
+2 means account for all private writable memory and fail any allocation which
+would take the system over the edge - the edge being defined roughly by
+overcommit_ratio * (ram+swap)  (I expect there's a divisor needed in there!)
+i.e. 2 means strict no-overcommit.
+
+So what you see fits with what Alan was fixing.
+
+Hugh
