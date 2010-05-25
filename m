@@ -1,94 +1,33 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cantor.suse.de ([195.135.220.2]:58017 "EHLO mx1.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754085Ab0EHWIX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 8 May 2010 18:08:23 -0400
-Date: Sun, 9 May 2010 08:08:10 +1000
-From: Neil Brown <neilb@suse.de>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: Trond Myklebust <trond.myklebust@fys.uio.no>, linux-nfs@vger.kernel.org,
-        Alexander Viro <viro@zeniv.linux.org.uk>
-Subject: Re: [PATCH] Should we expect close-to-open consistency on
- directories?
-Message-ID: <20100509080810.338f6e8f@notabene.brown>
-In-Reply-To: <4BE56180.2020307@oracle.com>
-References: <20100420172238.520eaa89@notabene.brown>
-	<1271768521.25129.94.camel@localhost.localdomain>
-	<20100421170321.41592c77@notabene.brown>
-	<20100506141347.06451f56@notabene.brown>
-	<1273154311.7699.33.camel@localhost.localdomain>
-	<20100508083415.54231ffe@notabene.brown>
-	<4BE56180.2020307@oracle.com>
-Content-Type: text/plain; charset=US-ASCII
+Received: from daytona.panasas.com ([67.152.220.89]:38999 "EHLO
+	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1754211Ab0EYLZY (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 25 May 2010 07:25:24 -0400
+Message-ID: <4BFBB3A1.8020300@panasas.com>
+Date: Tue, 25 May 2010 14:25:21 +0300
+From: Boaz Harrosh <bharrosh@panasas.com>
+To: redshield88888 <redshield88888@gmail.com>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: Can the pNFS be able to construct high-available about the data
+ ?
+References: <loom.20100525T092804-609@post.gmane.org>
+In-Reply-To: <loom.20100525T092804-609@post.gmane.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Sat, 08 May 2010 09:05:04 -0400
-Chuck Lever <chuck.lever@oracle.com> wrote:
-
-> On 05/07/2010 06:34 PM, Neil Brown wrote:
-> > On Thu, 06 May 2010 09:58:31 -0400 Trond Myklebust<trond.myklebust@fys.uio.no>  wrote:
-> >>>
-> >>>
-> >>> diff --git a/fs/namei.c b/fs/namei.c
-> >>> index a7dce91..256ae13 100644
-> >>> --- a/fs/namei.c
-> >>> +++ b/fs/namei.c
-> >>> @@ -719,7 +719,11 @@ static int do_lookup(struct nameidata *nd, struct qstr *name,
-> >>>   done:
-> >>>   	path->mnt = mnt;
-> >>>   	path->dentry = dentry;
-> >>> -	__follow_mount(path);
-> >>> +	if (__follow_mount(path)&&
-> >>> +	    (path->mnt->mnt_sb->s_type->fs_flags&  FS_REVAL_DOT)) {
-> >>> +		if (!path->dentry->d_op->d_revalidate(path->dentry, nd))
-> >>> +			return -ESTALE;
-> >>
-> >> Won't this prevent you from ever being able to unmount the stale
-> >> filesystem?
-> >>
-> >
-> > Good point - I think you are right.
-> >
-> > It seems to me that ->d_revalidate is being used for two distinct, though
-> > related, tasks.
-> > One is to revalidate the dentry - make sure the name still refers to the same
-> > inode.  The other is to revalidate the inode - make sure the cached
-> > attributes are still valid.  In NFS (v3 and v4 at least) these are both
-> > performed by one call so it makes some sense to combine them.  But from the
-> > VFS perspective I would have thought they were quite separate.
-> > nfs_lookup_revalidate sometimes does a GETATTR, and sometimes does a LOOKUP,
-> > depending to some extent on the 'intent' in the nameidata.  I find this makes
-> > it a bit hard to follow what is really happening, or how d_revalidate should
-> > really be used.
-> >
-> > Maybe we should just ignore the return value above.  Or maybe d_revalidate
-> > should never do a GETATTR - that should be done by ->open ??
-> >
-> > Confused :-(
+On 05/25/2010 10:41 AM, redshield88888 wrote:
+> Hi
 > 
-> The reason for this arrangement is that by the time ->open is called, 
-> it's too late to return ESTALE.  During the path walk, there is still an 
-> opportunity to renew the mapping between dentry and inode, should the 
-> cached value of that mapping be stale.
+> I wonder that about the pNFS's high availability.
+> The pNFS will stripe a file on each DSs, so this file will be currupted when one
+> DS has crushed, will not ?
 > 
 
-Is it?
-->open seems to be able to return an error code, and that error code seems to
-be propagated up.  What am I missing?
+pNFS over objects can do that, and striping over mirrors, and more.
 
-I appreciate that a previous lookup might have already done the equivalent of
-'open' (e.g. for O_EXCL) but it seems wrong to assume that the last lookup
-will always do the GETATTR required for open (because there isn't always a
-'last lookup').
-I would rather see the lookup (or d_revalidate) remember how much of an open
-it has done, and then ->open does the rest.  i.e. it does a GETATTR if that
-hasn't already been done.
-I don't think there is currently an easy way for 'open' to know how much work
-'d_revalidate' or 'lookup' has done, though I suspect that could be fixed.
-Maybe pass (as pointer to) the whole intent structure into open rather than
-just the intent.open.file ??
+You need to use: pnfs-client with objlayoutdriver on client, exofs on MDS, and osd-targets
+on disk-servers.
 
-Thanks,
-NeilBrown
+Cheers Boaz
