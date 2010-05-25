@@ -1,31 +1,43 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cmsout01.mbox.net ([165.212.64.31]:41990 "EHLO
-	cmsout01.mbox.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1759026Ab0ECO6B convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 3 May 2010 10:58:01 -0400
-Received: from cmsout01.mbox.net (cmsout01-lo [127.0.0.1])
-	by cmsout01.mbox.net (Postfix) with ESMTP id 7EEFF2AC566
-	for <linux-nfs@vger.kernel.org>; Mon,  3 May 2010 14:45:54 +0000 (GMT)
-Date: Mon, 03 May 2010 09:45:53 -0500
-From: "Jack Byer" <ojbyer@usa.net>
-Reply-To: ftn768@gmail.com
-To: <linux-nfs@vger.kernel.org>
-Subject: IPv6 and NFS4
-Message-ID: <544oecoS23680S01.1272897953@web01.cms.usa.net>
-Content-Type: text/plain; charset=US-ASCII
+Received: from daytona.panasas.com ([67.152.220.89]:48285 "EHLO
+	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1756991Ab0EYD4E (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 24 May 2010 23:56:04 -0400
+Message-ID: <4BFB4A51.8040405@panasas.com>
+Date: Tue, 25 May 2010 06:56:01 +0300
+From: Benny Halevy <bhalevy@panasas.com>
+To: redshield88888 <redshield88888@gmail.com>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: Where is the spnfsd in ?
+References: <loom.20100525T040243-971@post.gmane.org>
+In-Reply-To: <loom.20100525T040243-971@post.gmane.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-If I have an NFS4 server successfully sharing a directory with a client and
-both machines have valid IPv4 and IPv6 addresses should it be possible to
-mount the directory using either IPv4 or IPv6?
+On May. 25, 2010, 5:06 +0300, redshield88888 <redshield88888@gmail.com> wrote:
+> I using pnfs-anebled kernel and nfs-utils from this repo
+> http://steved.fedorapeople.org/repos/pnfs/12/x86_64/rpms/
+> 
+> The kernel just working and installation of the nfs-util
+> using rpm has succeeded. But I couldn't find "spnfsd".
+> 
+> Where? Should I build the nfs-utils from sources ?
 
-Both machines are running 2.6.34-rc6 kernels, nfs-utils-1.2.2,
-libtirpc-0.2.0 and rpcbind-0.2.0. Mounting over IPv4 works perfectly, but
-IPv6 just times out while trying to mount the share. Using tcpdump I see
-that the two machines exchange 40 packets before the client finally gives
-up. There are no messages generated in the system log or dmesg of either
-machine.
+It's in git://linux-nfs.org/~bhalevy/pnfs-nfs-utils
+and yes, you should build from source.
+There are quite a few development packages you might need
+to install for that, please see the wiki topic below:
 
+http://wiki.linux-nfs.org/wiki/index.php/Configuring_pNFS/spnfsd
+"Kernel and nfs-utils compilation"
 
+Benny
+
+> 
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
