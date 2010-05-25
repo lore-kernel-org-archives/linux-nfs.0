@@ -1,287 +1,166 @@
 From: Boaz Harrosh <bharrosh@panasas.com>
-Subject: Re: [PATCH -v2] pnfs: unlock lo_lock spinlock before calling specific
- layoutdriver's setup_layoutcommit() operation
-Date: Tue, 25 May 2010 16:23:24 +0300
-Message-ID: <4BFBCF4C.5080606@panasas.com>
-References: <20100525085119.GA7998@vmware> <4BFBCA35.5070104@panasas.com>
+Subject: [PATCH v3] SQUASHME: pnfs: unlock lo_lock before calling layoutdriver's
+ setup_layoutcommit
+Date: Tue, 25 May 2010 16:33:52 +0300
+Message-ID: <4BFBD1C0.1040105@panasas.com>
+References: <20100525085119.GA7998@vmware>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
 Cc: linux-nfs@vger.kernel.org, Benny Halevy <bhalevy@panasas.com>
 To: Tao Guo <guotao-U4AKAne5IzAR5TUyvShJeg@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:35689 "EHLO
+Received: from daytona.panasas.com ([67.152.220.89]:24510 "EHLO
 	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1755631Ab0EYNX1 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 25 May 2010 09:23:27 -0400
-In-Reply-To: <4BFBCA35.5070104@panasas.com>
+	with ESMTP id S1756263Ab0EYNdz (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 25 May 2010 09:33:55 -0400
+In-Reply-To: <20100525085119.GA7998@vmware>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 05/25/2010 04:01 PM, Boaz Harrosh wrote:
-> On 05/25/2010 11:51 AM, Tao Guo wrote:
->> So in blocklayoutdriver, we can use GFP_KERNEL to do memory
->> allocation in bl_setup_layoutcommit().
->>
->> Signed-off-by: Tao Guo <guotao-U4AKAne5IzAR5TUyvShJeg@public.gmane.org>
->> ---
->>  fs/nfs/pnfs.c |   63 ++++++++++++++++++++++++++------------------------------
->>  1 files changed, 29 insertions(+), 34 deletions(-)
->>
->> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
->> index d4e4ba9..bbd1548 100644
->> --- a/fs/nfs/pnfs.c
->> +++ b/fs/nfs/pnfs.c
->> @@ -2075,15 +2075,23 @@ pnfs_layoutcommit_done(struct pnfs_layoutcommit_data *data)
->>   * Set up the argument/result storage required for the RPC call.
->>   */
->>  static int
->> -pnfs_layoutcommit_setup(struct pnfs_layoutcommit_data *data, int sync)
->> +pnfs_layoutcommit_setup(struct inode *inode,
->> +			struct pnfs_layoutcommit_data *data, int sync)
->>  {
->> -	struct nfs_inode *nfsi = NFS_I(data->args.inode);
->> -	struct nfs_server *nfss = NFS_SERVER(data->args.inode);
->> +	struct nfs_inode *nfsi = NFS_I(inode);
->> +	struct nfs_server *nfss = NFS_SERVER(inode);
->>  	int result = 0;
->>  
->>  	dprintk("%s Begin (sync:%d)\n", __func__, sync);
->> +
->> +	data->is_sync = sync;
->> +	data->cred = nfsi->lo_cred;
->> +	data->args.inode = inode;
->>  	data->args.fh = NFS_FH(data->args.inode);
->>  	data->args.layout_type = nfss->pnfs_curr_ld->id;
->> +	pnfs_get_layout_stateid(&data->args.stateid, &nfsi->layout);
->> +	data->res.fattr = &data->fattr;
->> +	nfs_fattr_init(&data->fattr);
->>  
->>  	/* TODO: Need to determine the correct values */
->>  	data->args.time_modify_changed = 0;
->> @@ -2098,19 +2106,21 @@ pnfs_layoutcommit_setup(struct pnfs_layoutcommit_data *data, int sync)
->>  	data->args.bitmask = nfss->attr_bitmask;
->>  	data->res.server = nfss;
->>  
->> +	/* Clear layoutcommit properties in the inode so
->> +	 * new lc info can be generated
->> +	 */
->> +	nfsi->pnfs_write_begin_pos = 0;
->> +	nfsi->pnfs_write_end_pos = 0;
->> +	nfsi->lo_cred = NULL;
->> +
->> +	spin_unlock(&nfsi->lo_lock);
->> +
-> 
-> I don't like it when _unlock is done in a different function then _lock
-> 
-> Please see below proposal for somthing I would think should be more clear.
-> 
->>  	/* Call layout driver to set the arguments.
->>  	 */
->> -	if (nfss->pnfs_curr_ld->ld_io_ops->setup_layoutcommit) {
->> +	if (nfss->pnfs_curr_ld->ld_io_ops->setup_layoutcommit)
->>  		result = nfss->pnfs_curr_ld->ld_io_ops->setup_layoutcommit(
->>  				&nfsi->layout, &data->args);
->> -		if (result)
->> -			goto out;
->> -	}
->> -	pnfs_get_layout_stateid(&data->args.stateid, &nfsi->layout);
->> -	data->res.fattr = &data->fattr;
->> -	nfs_fattr_init(&data->fattr);
->>  
->> -out:
->>  	dprintk("%s End Status %d\n", __func__, result);
->>  	return result;
->>  }
->> @@ -2133,39 +2143,24 @@ pnfs_layoutcommit_inode(struct inode *inode, int sync)
->>  		return -ENOMEM;
->>  
->>  	spin_lock(&nfsi->lo_lock);
->> -	if (!layoutcommit_needed(nfsi))
->> -		goto out_unlock;
->> -
->> -	data->args.inode = inode;
->> -	data->cred = nfsi->lo_cred;
->> -
->> -	/* Set up layout commit args*/
->> -	status = pnfs_layoutcommit_setup(data, sync);
->> -
->> -	/* Clear layoutcommit properties in the inode so
->> -	 * new lc info can be generated
->> -	 */
->> -	nfsi->pnfs_write_begin_pos = 0;
->> -	nfsi->pnfs_write_end_pos = 0;
->> -	nfsi->lo_cred = NULL;
->> +	if (!layoutcommit_needed(nfsi)) {
->> +		spin_unlock(&nfsi->lo_lock);
->> +		goto out_free;
->> +	}
->>  
->> +	/* Set up layout commit args */
->> +	status = pnfs_layoutcommit_setup(inode, data, sync);
->>  	if (status) {
->>  		/* The layout driver failed to setup the layoutcommit */
->>  		put_rpccred(data->cred);
->> -		goto out_unlock;
->> +		goto out_free;
->>  	}
->> -
->> -	/* release lock on pnfs layoutcommit attrs */
->> -	spin_unlock(&nfsi->lo_lock);
->> -
->> -	data->is_sync = sync;
->>  	status = pnfs4_proc_layoutcommit(data);
->>  out:
->>  	dprintk("%s end (err:%d)\n", __func__, status);
->>  	return status;
->> -out_unlock:
->> +out_free:
->>  	pnfs_layoutcommit_free(data);
->> -	spin_unlock(&nfsi->lo_lock);
->>  	goto out;
->>  }
->>  
-> 
-> SQUASHME: apply this on top of: pnfs: unlock lo_lock spinlock before calling layoutdriver's setup_layoutcommit
-> 
-> (BTW subject line too long see above)
-> 
-> lock/unlock on same call sight. it is also much more clear what is protected by the spinlock which is
-> the write_begin/end_pos and most importantly the nfsi->lo_cred which is also the state variable.
-> (layoutcommit_needed)
-> 
-> I'm also sending a [PATCH -v3] which is a squash of this with Toa's patch.
-> 
-> ---
-> git diff --stat -p -M fs/nfs/pnfs.c
->  fs/nfs/pnfs.c |   37 ++++++++++++++++++++++---------------
->  1 files changed, 22 insertions(+), 15 deletions(-)
-> 
-> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-> index bbd1548..88d4865 100644
-> --- a/fs/nfs/pnfs.c
-> +++ b/fs/nfs/pnfs.c
-> @@ -2076,7 +2076,8 @@ pnfs_layoutcommit_done(struct pnfs_layoutcommit_data *data)
->   */
->  static int
->  pnfs_layoutcommit_setup(struct inode *inode,
-> -			struct pnfs_layoutcommit_data *data, int sync)
-> +			struct pnfs_layoutcommit_data *data,
-> +			loff_t write_begin_pos, loff_t write_end_pos, int sync)
->  {
->  	struct nfs_inode *nfsi = NFS_I(inode);
->  	struct nfs_server *nfss = NFS_SERVER(inode);
-> @@ -2099,22 +2100,13 @@ pnfs_layoutcommit_setup(struct inode *inode,
->  	/* Set values from inode so it can be reset
->  	 */
->  	data->args.lseg.iomode = IOMODE_RW;
-> -	data->args.lseg.offset = nfsi->pnfs_write_begin_pos;
-> -	data->args.lseg.length = nfsi->pnfs_write_end_pos - nfsi->pnfs_write_begin_pos + 1;
-> -	data->args.lastbytewritten =  min(nfsi->pnfs_write_end_pos,
-> -					i_size_read(&nfsi->vfs_inode) - 1);
-> +	data->args.lseg.offset = write_begin_pos;
-> +	data->args.lseg.length = write_end_pos - write_begin_pos + 1;
-> +	data->args.lastbytewritten =  min(write_end_pos,
-> +					  i_size_read(&nfsi->vfs_inode) - 1);
->  	data->args.bitmask = nfss->attr_bitmask;
->  	data->res.server = nfss;
->  
-> -	/* Clear layoutcommit properties in the inode so
-> -	 * new lc info can be generated
-> -	 */
-> -	nfsi->pnfs_write_begin_pos = 0;
-> -	nfsi->pnfs_write_end_pos = 0;
-> -	nfsi->lo_cred = NULL;
-> -
-> -	spin_unlock(&nfsi->lo_lock);
-> -
->  	/* Call layout driver to set the arguments.
->  	 */
->  	if (nfss->pnfs_curr_ld->ld_io_ops->setup_layoutcommit)
-> @@ -2132,6 +2124,9 @@ pnfs_layoutcommit_inode(struct inode *inode, int sync)
->  {
->  	struct pnfs_layoutcommit_data *data;
->  	struct nfs_inode *nfsi = NFS_I(inode);
-> +	loff_t write_begin_pos;
-> +	loff_t write_end_pos;
-> +
->  	int status = 0;
->  
->  	dprintk("%s Begin (sync:%d)\n", __func__, sync);
-> @@ -2148,8 +2143,20 @@ pnfs_layoutcommit_inode(struct inode *inode, int sync)
->  		goto out_free;
->  	}
->  
-> +	/* Clear layoutcommit properties in the inode so
-> +	 * new lc info can be generated
-> +	 */
-> +	write_begin_pos = nfsi->pnfs_write_begin_pos;
-> +	write_end_pos = nfsi->pnfs_write_end_pos;
-> +	nfsi->pnfs_write_begin_pos = 0;
-> +	nfsi->pnfs_write_end_pos = 0;
-> +	nfsi->lo_cred = NULL;
-> +
-> +	spin_unlock(&nfsi->lo_lock);
-> +
->  	/* Set up layout commit args */
-> -	status = pnfs_layoutcommit_setup(inode, data, sync);
-> +	status = pnfs_layoutcommit_setup(inode, data, write_begin_pos,
-> +					 write_end_pos, sync);
->  	if (status) {
->  		/* The layout driver failed to setup the layoutcommit */
->  		put_rpccred(data->cred);
-> 
-> 
+From: Tao Guo <guotao-U4AKAne5IzAR5TUyvShJeg@public.gmane.org>
 
-So that had a bug, should test before posting. Here is a 3rd squashme
-on top of my squashme. (Am sending a v3 yet)
+So in blocklayoutdriver, we can use GFP_KERNEL to do memory
+allocation in bl_setup_layoutcommit().
 
-Also probably pnfs_get_layout_stateid should be under the lock, so
-fix that too.
+The state protected by the lo_lock here is clear now, which is the
+layout_commit's position and state. .i.e write_begin/end_pos,
+nfsi->lo_cred, and the call to pnfs_get_layout_stateid.
 
-Boaz
+Signed-off-by: Tao Guo <guotao-U4AKAne5IzAR5TUyvShJeg@public.gmane.org>
+Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
 ---
-git diff --stat -p -M fs/nfs/pnfs.c
- fs/nfs/pnfs.c |    8 ++++----
- 1 files changed, 4 insertions(+), 4 deletions(-)
+ fs/nfs/pnfs.c |   66 +++++++++++++++++++++++++++++---------------------------
+ 1 files changed, 34 insertions(+), 32 deletions(-)
 
 diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 88d4865..cf9cfe5 100644
+index d4e4ba9..cf9cfe5 100644
 --- a/fs/nfs/pnfs.c
 +++ b/fs/nfs/pnfs.c
-@@ -2086,11 +2086,9 @@ pnfs_layoutcommit_setup(struct inode *inode,
- 	dprintk("%s Begin (sync:%d)\n", __func__, sync);
+@@ -2075,15 +2075,22 @@ pnfs_layoutcommit_done(struct pnfs_layoutcommit_data *data)
+  * Set up the argument/result storage required for the RPC call.
+  */
+ static int
+-pnfs_layoutcommit_setup(struct pnfs_layoutcommit_data *data, int sync)
++pnfs_layoutcommit_setup(struct inode *inode,
++			struct pnfs_layoutcommit_data *data,
++			loff_t write_begin_pos, loff_t write_end_pos, int sync)
+ {
+-	struct nfs_inode *nfsi = NFS_I(data->args.inode);
+-	struct nfs_server *nfss = NFS_SERVER(data->args.inode);
++	struct nfs_inode *nfsi = NFS_I(inode);
++	struct nfs_server *nfss = NFS_SERVER(inode);
+ 	int result = 0;
  
- 	data->is_sync = sync;
--	data->cred = nfsi->lo_cred;
- 	data->args.inode = inode;
+ 	dprintk("%s Begin (sync:%d)\n", __func__, sync);
 -	data->args.fh = NFS_FH(data->args.inode);
++
++	data->is_sync = sync;
++	data->args.inode = inode;
 +	data->args.fh = NFS_FH(inode);
  	data->args.layout_type = nfss->pnfs_curr_ld->id;
--	pnfs_get_layout_stateid(&data->args.stateid, &nfsi->layout);
- 	data->res.fattr = &data->fattr;
- 	nfs_fattr_init(&data->fattr);
++	data->res.fattr = &data->fattr;
++	nfs_fattr_init(&data->fattr);
  
-@@ -2103,7 +2101,7 @@ pnfs_layoutcommit_setup(struct inode *inode,
- 	data->args.lseg.offset = write_begin_pos;
- 	data->args.lseg.length = write_end_pos - write_begin_pos + 1;
- 	data->args.lastbytewritten =  min(write_end_pos,
--					  i_size_read(&nfsi->vfs_inode) - 1);
+ 	/* TODO: Need to determine the correct values */
+ 	data->args.time_modify_changed = 0;
+@@ -2091,26 +2098,19 @@ pnfs_layoutcommit_setup(struct pnfs_layoutcommit_data *data, int sync)
+ 	/* Set values from inode so it can be reset
+ 	 */
+ 	data->args.lseg.iomode = IOMODE_RW;
+-	data->args.lseg.offset = nfsi->pnfs_write_begin_pos;
+-	data->args.lseg.length = nfsi->pnfs_write_end_pos - nfsi->pnfs_write_begin_pos + 1;
+-	data->args.lastbytewritten =  min(nfsi->pnfs_write_end_pos,
+-					i_size_read(&nfsi->vfs_inode) - 1);
++	data->args.lseg.offset = write_begin_pos;
++	data->args.lseg.length = write_end_pos - write_begin_pos + 1;
++	data->args.lastbytewritten =  min(write_end_pos,
 +					  i_size_read(inode) - 1);
  	data->args.bitmask = nfss->attr_bitmask;
  	data->res.server = nfss;
  
-@@ -2148,9 +2146,11 @@ pnfs_layoutcommit_inode(struct inode *inode, int sync)
+ 	/* Call layout driver to set the arguments.
  	 */
- 	write_begin_pos = nfsi->pnfs_write_begin_pos;
- 	write_end_pos = nfsi->pnfs_write_end_pos;
+-	if (nfss->pnfs_curr_ld->ld_io_ops->setup_layoutcommit) {
++	if (nfss->pnfs_curr_ld->ld_io_ops->setup_layoutcommit)
+ 		result = nfss->pnfs_curr_ld->ld_io_ops->setup_layoutcommit(
+ 				&nfsi->layout, &data->args);
+-		if (result)
+-			goto out;
+-	}
+-	pnfs_get_layout_stateid(&data->args.stateid, &nfsi->layout);
+-	data->res.fattr = &data->fattr;
+-	nfs_fattr_init(&data->fattr);
+ 
+-out:
+ 	dprintk("%s End Status %d\n", __func__, result);
+ 	return result;
+ }
+@@ -2122,6 +2122,9 @@ pnfs_layoutcommit_inode(struct inode *inode, int sync)
+ {
+ 	struct pnfs_layoutcommit_data *data;
+ 	struct nfs_inode *nfsi = NFS_I(inode);
++	loff_t write_begin_pos;
++	loff_t write_end_pos;
++
+ 	int status = 0;
+ 
+ 	dprintk("%s Begin (sync:%d)\n", __func__, sync);
+@@ -2133,39 +2136,38 @@ pnfs_layoutcommit_inode(struct inode *inode, int sync)
+ 		return -ENOMEM;
+ 
+ 	spin_lock(&nfsi->lo_lock);
+-	if (!layoutcommit_needed(nfsi))
+-		goto out_unlock;
+-
+-	data->args.inode = inode;
+-	data->cred = nfsi->lo_cred;
+-
+-	/* Set up layout commit args*/
+-	status = pnfs_layoutcommit_setup(data, sync);
++	if (!layoutcommit_needed(nfsi)) {
++		spin_unlock(&nfsi->lo_lock);
++		goto out_free;
++	}
+ 
+ 	/* Clear layoutcommit properties in the inode so
+ 	 * new lc info can be generated
+ 	 */
++	write_begin_pos = nfsi->pnfs_write_begin_pos;
++	write_end_pos = nfsi->pnfs_write_end_pos;
 +	data->cred = nfsi->lo_cred;
  	nfsi->pnfs_write_begin_pos = 0;
  	nfsi->pnfs_write_end_pos = 0;
  	nfsi->lo_cred = NULL;
 +	pnfs_get_layout_stateid(&data->args.stateid, &nfsi->layout);
  
- 	spin_unlock(&nfsi->lo_lock);
++	spin_unlock(&nfsi->lo_lock);
++
++	/* Set up layout commit args */
++	status = pnfs_layoutcommit_setup(inode, data, write_begin_pos,
++					 write_end_pos, sync);
+ 	if (status) {
+ 		/* The layout driver failed to setup the layoutcommit */
+ 		put_rpccred(data->cred);
+-		goto out_unlock;
++		goto out_free;
+ 	}
+-
+-	/* release lock on pnfs layoutcommit attrs */
+-	spin_unlock(&nfsi->lo_lock);
+-
+-	data->is_sync = sync;
+ 	status = pnfs4_proc_layoutcommit(data);
+ out:
+ 	dprintk("%s end (err:%d)\n", __func__, status);
+ 	return status;
+-out_unlock:
++out_free:
+ 	pnfs_layoutcommit_free(data);
+-	spin_unlock(&nfsi->lo_lock);
+ 	goto out;
+ }
  
+-- 
+1.6.6.1
 
 
