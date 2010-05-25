@@ -1,53 +1,37 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:27545 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:55774 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758290Ab0ENRzF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 14 May 2010 13:55:05 -0400
+	id S932105Ab0EYUhn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 25 May 2010 16:37:43 -0400
+Date: Tue, 25 May 2010 16:37:42 -0400
+To: David Greaves <david@dgreaves.com>
 Cc: linux-nfs@vger.kernel.org
-Message-Id: <D74F260C-E7BE-436B-BBC2-6DFFB02FA0C1@netapp.com>
-From: Andy Adamson <andros@netapp.com>
-To: Jiri Kortus <sumix@atlas.cz>
-In-Reply-To: <4BED89E2.8070903@atlas.cz>
-Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
-Subject: Re: IPv6 support in pNFS
-Date: Fri, 14 May 2010 13:55:03 -0400
-References: <4BED89E2.8070903@atlas.cz>
+Subject: Re: NFS wiki : NFSv4 Enduser doc kerberos
+Message-ID: <20100525203742.GL7085@fieldses.org>
+References: <4BFBCF77.2070702@dgreaves.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4BFBCF77.2070702@dgreaves.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Hi
-
-The file layout client does not currently have the ability to store  
-ipv6 addresses in the data server cache. So even though the data  
-servers themselves support ipv6 (via a NFSv4.1 connection), and the  
-GETDEVICEINFO for the file layout can communicate ipv6 addresses the  
-pNFS file layout client will not use them. This is a feature that is  
-on the 'B' list of pNFS features to implement.
-
--->Andy
-
-On May 14, 2010, at 1:35 PM, Jiri Kortus wrote:
-
-> Hi,
+On Tue, May 25, 2010 at 02:24:07PM +0100, David Greaves wrote:
+> FYI I've made an attempt to update this page:
+>   http://wiki.linux-nfs.org/wiki/index.php/Enduser_doc_kerberos
 >
-> I'm sorry to flood the mailing list by repeating my question several  
-> times - I've already asked whether someone would be so kind as to  
-> tell me something about the situation of IPv6 support in pNFS. Just  
-> anything related to it would be appreciated very much since nobody  
-> gave me an answer (except Boaz Harrosh who wrote me about the IPv6  
-> absence in OSD target). I'd like to know whether there's any support  
-> for IPv6 (concerning all of the layouts available), if yes what are  
-> the issues with that, if not when the implementation is planned to  
-> start etc. I did google that a lot before asking but haven't found  
-> anything. Thanks very much in advance.
+> If someone could please take a look and correct any errors I've made that 
+> would be nice.
 >
-> Best regards,
->
-> Jiri Kortus
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs"  
-> in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> Some questions:
+> * should a client have an nfs/<fqdn> principal  (it works without)
 
+I'm actually not sure what the latest client requires--I thought it
+still needed some kind of machine credential on the client.
+
+> * Is the "allow_weak_crypto=true" part still correct?
+
+Yes, unless you're running the very latest (unreleased) upstream kernel
+and nfs-utils, which includes support for stronger crypto.
+
+--b.
