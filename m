@@ -1,41 +1,106 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yw0-f198.google.com ([209.85.211.198]:45538 "EHLO
-	mail-yw0-f198.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756488Ab0ECTX5 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 3 May 2010 15:23:57 -0400
-Received: by ywh36 with SMTP id 36so1337206ywh.4
-        for <linux-nfs@vger.kernel.org>; Mon, 03 May 2010 12:23:57 -0700 (PDT)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 0/3] Three more IPv6-related mountd patches
-To: steved@redhat.com
-Cc: linux-nfs@vger.kernel.org
-Date: Mon, 03 May 2010 15:23:51 -0400
-Message-ID: <20100503192041.29316.35846.stgit@localhost.localdomain>
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-yw0-f182.google.com ([209.85.211.182]:49720 "EHLO
+	mail-yw0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758083Ab0EYNuy convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 25 May 2010 09:50:54 -0400
+In-Reply-To: <20100507153920.GP28167@ics.muni.cz>
+References: <20100507153920.GP28167@ics.muni.cz>
+Date: Tue, 25 May 2010 09:45:32 -0400
+Message-ID: <AANLkTimsQTYWndbQo2nU01pcJfTRSZlPCMEY8m-CnksM@mail.gmail.com>
+Subject: Re: Deadlock in NFSv4 in all kernels
+From: "William A. (Andy) Adamson" <androsadamson@gmail.com>
+To: Lukas Hejtmanek <xhejtman@ics.muni.cz>
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, salvet@ics.muni.cz
+Content-Type: text/plain; charset=ISO-8859-2
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Hi Steve-
+2010/5/7 Lukas Hejtmanek <xhejtman@ics.muni.cz>:
+> Hi,
+>
+> I encountered the following problem. We use short expiration time for
+> kerberos contexts created by rpc.gssd (some patches were included in mainline
+> nfs-utils). In particular, we use 120secs expiration time.
+>
+> Now, I run application that eats 80% of available RAM. Then I run 10 parallel
+> dd processes that write data into NFS4 volume with sec=krb5.
+>
+> As soon as the kerberos context expires (i.e., up to 120 secs), the whole
+> system gets stuck in do_page_fault and succesive functions. It is because
+> there is no free memory in kernel, all free memory is used as cache for NFS4
+> (due to dd traffic), kernel ask NFS to write back its pages but NFS cannot do
+> anything as it is missing valid context. NFS contacts rpc.gssd to provide
+> a renewed context, the rpc.gssd does not provide the context as it needs some memory
+> to scan /tmp for a ticket. I.e., it deadlocks.
+>
+> Longer context expiration time is no real solution as it only makes the
+> deadlock less often.
+>
+> Any ideas what can be done here?
 
-Here are two clean-up patches, and one patch that modifies the
-nfs_client struct so it can store both IPv4 and IPv6 addresses
-concurrently.
+Not get into the problem in the first place: this means
 
----
+1) determine a 'lead time' where the NFS client declares a context
+expired even though it really as 'lead time' until it actually
+expires.
 
-Chuck Lever (3):
-      mountd/exportfs: Make m_addrlist field a nfs_sockaddr
-      libexport.a: Clean up client_add()
-      libexport.a: Refactor client_init()
+2) flush all writes on any contex that will expire within the lead
+time which needs to be long enough for flushes to take place.
+
+-->Andy
 
 
- support/export/client.c    |  158 ++++++++++++++++++++++++++------------------
- support/export/nfsctl.c    |   17 ++++-
- support/include/exportfs.h |   50 +++++++++++++-
- utils/mountd/auth.c        |    2 -
- utils/mountd/cache.c       |    3 +
- 5 files changed, 158 insertions(+), 72 deletions(-)
-
--- 
-Chuck Lever
+>(Please cc me.) We could preallocate some
+> memory in rpc.gssd and use mlockall but not sure whether this proctects also
+> kernel malloc for things related to rpc.gssd and context creation (new file
+> descriptors and so on).
+>
+> This is seen in 2.6.32 kernel but most probably this is related to all kernel
+> versions.
+>
+> rpc.gssd and all dd processes are stuck in:
+>
+> May  6 15:33:10 skirit20 kernel: [84087.788019] rpc.gssd      D 6758d881     0 26864      1 0x00000000
+> May  6 15:33:10 skirit20 kernel: [84087.788019]  c280594c 00000086 f94c3d6c 6758d881 00004c5a 0f3e1c27 c1d868c0 c1c068dc
+> May  6 15:33:10 skirit20 kernel: [84087.788019]  c07d8880 c07d8880 f6752130 f67523d4 c1c06880 00000000 c1c06880 00000000
+> May  6 15:33:10 skirit20 kernel: [84087.788019]  f6d7c8f0 f67523d4 f6752130 c1c06cd4 c1c06880 c2805960 c052101f 00000000
+> May  6 15:33:10 skirit20 kernel: [84087.788019] Call Trace:
+> May  6 15:33:10 skirit20 kernel: [84087.788019]  [<c052101f>] io_schedule+0x6f/0xc0
+> May  6 15:33:10 skirit20 kernel: [84087.788019]  [<f88d8af5>] nfs_wait_bit_uninterruptible+0x5/0x10 [nfs]
+> May  6 15:33:10 skirit20 kernel: [84087.788019]  [<c05215a7>] __wait_on_bit+0x47/0x70
+> May  6 15:33:10 skirit20 kernel: [84087.788019]  [<c0521683>] out_of_line_wait_on_bit+0xb3/0xd0
+> May  6 15:33:10 skirit20 kernel: [84087.788019]  [<f88d8ae3>] nfs_wait_on_request+0x23/0x30 [nfs]
+> May  6 15:33:10 skirit20 kernel: [84087.788019]  [<f88ddb4a>] nfs_sync_mapping_wait+0xea/0x200 [nfs]
+> May  6 15:33:10 skirit20 kernel: [84087.788019]  [<f88ddd0e>] nfs_wb_page_priority+0xae/0x170 [nfs]
+> May  6 15:33:10 skirit20 kernel: [84087.788019]  [<f88cdfec>] nfs_release_page+0x5c/0x70 [nfs]
+> May  6 15:33:10 skirit20 kernel: [84087.788019]  [<c029620b>] try_to_release_page+0x2b/0x40
+> May  6 15:33:10 skirit20 kernel: [84087.788019]  [<c02a25af>] shrink_page_list+0x37f/0x4b0
+> May  6 15:33:10 skirit20 kernel: [84087.788019]  [<c02a29ae>] shrink_inactive_list+0x2ce/0x6c0
+> May  6 15:33:10 skirit20 kernel: [84087.788019]  [<c02a34c8>] shrink_zone+0x1c8/0x260
+> May  6 15:33:10 skirit20 kernel: [84087.788019]  [<c02a35ae>] shrink_zones+0x4e/0xe0
+> May  6 15:33:10 skirit20 kernel: [84087.788019]  [<c02a43b5>] do_try_to_free_pages+0x75/0x2e0
+> May  6 15:33:10 skirit20 kernel: [84087.788019]  [<c02a4756>] try_to_free_pages+0x86/0xa0
+> May  6 15:33:10 skirit20 kernel: [84087.788019]  [<c029cda4>] __alloc_pages_slowpath+0x164/0x470
+> May  6 15:33:10 skirit20 kernel: [84087.788019]  [<c029d1c8>] __alloc_pages_nodemask+0x118/0x120
+> May  6 15:33:10 skirit20 kernel: [84087.788019]  [<c02acce0>] do_anonymous_page+0x100/0x240
+> May  6 15:33:10 skirit20 kernel: [84087.788019]  [<c02b072a>] handle_mm_fault+0x34a/0x3d0
+> May  6 15:33:10 skirit20 kernel: [84087.788019]  [<c0524c54>] do_page_fault+0x174/0x370
+> May  6 15:33:10 skirit20 kernel: [84087.788019]  [<c0522cb6>] error_code+0x66/0x70
+> May  6 15:33:10 skirit20 kernel: [84087.788019]  [<c0296ac2>] file_read_actor+0x32/0xf0
+> May  6 15:33:10 skirit20 kernel: [84087.788019]  [<c029815f>] do_generic_file_read+0x3af/0x4c0
+> May  6 15:33:10 skirit20 kernel: [84087.788019]  [<c0298a01>] generic_file_aio_read+0xb1/0x210
+> May  6 15:33:10 skirit20 kernel: [84087.788019]  [<c02cdc05>] do_sync_read+0xd5/0x120
+> May  6 15:33:10 skirit20 kernel: [84087.788019]  [<c02ce3bb>] vfs_read+0x9b/0x110
+> May  6 15:33:10 skirit20 kernel: [84087.788019]  [<c02ce501>] sys_read+0x41/0x80
+> May  6 15:33:10 skirit20 kernel: [84087.788019]  [<c0203150>] sysenter_do_call+0x12/0x22
+> May  6 15:33:10 skirit20 kernel: [84087.788019]  [<ffffe430>] 0xffffe430
+>
+> --
+> Luká¹ Hejtmánek
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
