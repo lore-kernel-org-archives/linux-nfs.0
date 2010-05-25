@@ -1,59 +1,70 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:63543 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753266Ab0EMVI1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 13 May 2010 17:08:27 -0400
-Received: from localhost.localdomain (heimdal.trondhjem.org [10.58.49.73] (may be forged))
-	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id o4DL8MCR021257
-	for <linux-nfs@vger.kernel.org>; Thu, 13 May 2010 14:08:26 -0700 (PDT)
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
+Received: from mtagate5.de.ibm.com ([195.212.17.165]:40937 "EHLO
+	mtagate5.de.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757178Ab0EYNg5 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 25 May 2010 09:36:57 -0400
+Received: from d12nrmr1507.megacenter.de.ibm.com (d12nrmr1507.megacenter.de.ibm.com [9.149.167.1])
+	by mtagate5.de.ibm.com (8.13.1/8.13.1) with ESMTP id o4PDauTm013908
+	for <linux-nfs@vger.kernel.org>; Tue, 25 May 2010 13:36:56 GMT
+Received: from d12av06.megacenter.de.ibm.com (d12av06.megacenter.de.ibm.com [9.149.165.230])
+	by d12nrmr1507.megacenter.de.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id o4PDauBM1286276
+	for <linux-nfs@vger.kernel.org>; Tue, 25 May 2010 15:36:56 +0200
+Received: from d12av06.megacenter.de.ibm.com (loopback [127.0.0.1])
+	by d12av06.megacenter.de.ibm.com (8.14.3/8.13.1/NCO v10.0 AVout) with ESMTP id o4PDatKT030351
+	for <linux-nfs@vger.kernel.org>; Tue, 25 May 2010 15:36:55 +0200
+Received: from d12ml072.megacenter.de.ibm.com (d12ml072.megacenter.de.ibm.com [9.149.166.115])
+	by d12av06.megacenter.de.ibm.com (8.14.3/8.13.1/NCO v10.0 AVin) with ESMTP id o4PDatg0030348
+	for <linux-nfs@vger.kernel.org>; Tue, 25 May 2010 15:36:55 +0200
+Subject: Profiling knfsd
 To: linux-nfs@vger.kernel.org
-Subject: [PATCH 08/15] SUNRPC: Ensure rpcauth_prune_expired() respects the nr_to_scan parameter
-Date: Thu, 13 May 2010 17:08:14 -0400
-Message-Id: <1273784901-25599-8-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1273784901-25599-7-git-send-email-Trond.Myklebust@netapp.com>
-References: <1273784901-25599-1-git-send-email-Trond.Myklebust@netapp.com>
- <1273784901-25599-2-git-send-email-Trond.Myklebust@netapp.com>
- <1273784901-25599-3-git-send-email-Trond.Myklebust@netapp.com>
- <1273784901-25599-4-git-send-email-Trond.Myklebust@netapp.com>
- <1273784901-25599-5-git-send-email-Trond.Myklebust@netapp.com>
- <1273784901-25599-6-git-send-email-Trond.Myklebust@netapp.com>
- <1273784901-25599-7-git-send-email-Trond.Myklebust@netapp.com>
+Message-ID: <OF356BDCDD.AFFB6E1B-ONC125772E.004AC232-C125772E.004AC9B8@de.ibm.com>
+From: Eric Veith1 <eric.veith@de.ibm.com>
+Date: Tue, 25 May 2010 15:36:53 +0200
+Content-type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- net/sunrpc/auth.c |    5 ++---
- 1 files changed, 2 insertions(+), 3 deletions(-)
 
-diff --git a/net/sunrpc/auth.c b/net/sunrpc/auth.c
-index 2213dc5..5fb02ac 100644
---- a/net/sunrpc/auth.c
-+++ b/net/sunrpc/auth.c
-@@ -236,6 +236,8 @@ rpcauth_prune_expired(struct list_head *free, int nr_to_scan)
- 
- 	list_for_each_entry_safe(cred, next, &cred_unused, cr_lru) {
- 
-+		if (nr_to_scan-- == 0)
-+			break;
- 		/*
- 		 * Enforce a 60 second garbage collection moratorium
- 		 * Note that the cred_unused list must be time-ordered.
-@@ -255,11 +257,8 @@ rpcauth_prune_expired(struct list_head *free, int nr_to_scan)
- 			get_rpccred(cred);
- 			list_add_tail(&cred->cr_lru, free);
- 			rpcauth_unhash_cred_locked(cred);
--			nr_to_scan--;
- 		}
- 		spin_unlock(cache_lock);
--		if (nr_to_scan == 0)
--			break;
- 	}
- 	return (number_cred_unused / 100) * sysctl_vfs_cache_pressure;
- }
--- 
-1.6.6.1
+Hello everybody,
+
+I'm facing the somewhat difficult task of looking under the hood of the
+knfsd and profiling its behaviour on WRITE/COMMIT calls. Basically, I'd
+like to answer the following questions:
+
+- What amount of payload is comming in?
+- What WRITE flags are set (UNSTABLE/DATA_SYNC/FILE_SYNC)?
+- What happens to the incoming RPCs (are they stored in a queue, or cached
+if UNSTABLE is set? If yes, what is the queue/cache size)?
+- What does the nfsd write out to disk?
+- How many NFS I/O operations are a kernel VFS (?) operation, and how many
+FS IOPs does this make?
+
+Regarding the last question, I already have a way of finding out what I/O
+operations containing what payload are done with what delay.
+
+I'm a little at loss here because I have only a very vague idea of where to
+look. I though using systemtap and tapping some functions would give me
+answers to the questions above. Could somebody give me please some
+pointers, be it function names, header files, or a general idea of the call
+flow a NFS WRITE packet creates from being received over a socket until it
+is written out to disk?
+
+Thank you very much in advance.
+
+                  Eric
+
+--
+Eric MSP Veith <eric.veith@de.ibm.com>
+Hechtsheimer Str. 2
+DE-55131 Mainz
+Germany
+
+IBM Deutschland GmbH
+Vorsitzender des Aufsichtsrats: Erich Clementi
+Geschäftsführung: Martin Jetter (Vorsitzender), Reinhard Reschke, Christoph
+Grandpierre, Matthias Hartmann, Michael Diemer, Martina Koederitz
+Sitz der Gesellschaft: Stuttgart
+Registergericht: Amtsgericht Stuttgart, HRB 14562
+WEEE-Reg.-Nr. DE 99369940
 
