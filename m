@@ -1,35 +1,29 @@
-From: Dan Carpenter <error27@gmail.com>
-Subject: question about gss_verify_mic_v2()
-Date: Mon, 31 May 2010 12:12:34 +0200
-Message-ID: <20100531101234.GQ5483@bicker>
+From: redshield88888 <redshield88888@gmail.com>
+Subject: testpost
+Date: Tue, 25 May 2010 00:45:57 +0000 (UTC)
+Message-ID: <loom.20100525T024530-549@post.gmane.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs@vger.kernel.org
-To: Kevin Coffman <kwc@citi.umich.edu>
+To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from ey-out-2122.google.com ([74.125.78.24]:7624 "EHLO
-	ey-out-2122.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751049Ab0EaKMq (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 31 May 2010 06:12:46 -0400
-Received: by ey-out-2122.google.com with SMTP id d26so192214eyd.19
-        for <linux-nfs@vger.kernel.org>; Mon, 31 May 2010 03:12:45 -0700 (PDT)
+Received: from lo.gmane.org ([80.91.229.12]:53175 "EHLO lo.gmane.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751593Ab0EYAqJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 24 May 2010 20:46:09 -0400
+Received: from list by lo.gmane.org with local (Exim 4.69)
+	(envelope-from <glN-linux-nfs@m.gmane.org>)
+	id 1OGiHV-0004e8-NZ
+	for linux-nfs@vger.kernel.org; Tue, 25 May 2010 02:46:05 +0200
+Received: from softbank221086052216.bbtec.net ([221.86.52.216])
+        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
+        id 1AlnuQ-0007hv-00
+        for <linux-nfs@vger.kernel.org>; Tue, 25 May 2010 02:46:05 +0200
+Received: from redshield88888 by softbank221086052216.bbtec.net with local (Gmexim 0.1 (Debian))
+        id 1AlnuQ-0007hv-00
+        for <linux-nfs@vger.kernel.org>; Tue, 25 May 2010 02:46:05 +0200
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Kevin,
+this is test of the posting sorry
 
-Are we planning to add the sequencing checks later or can I remove the
-comment?
 
-net/sunrpc/auth_gss/gss_krb5_unseal.c +202 gss_verify_mic_v2()
-	 warn: unused return: seqnum = __be64_to_cpup()
-
-   200          /* do sequencing checks */
-   201
-   202          seqnum = be64_to_cpup((__be64 *)ptr + 8);
-   203
-   204          return GSS_S_COMPLETE;
-   205  }
-
-regards,
-dan carpenter
