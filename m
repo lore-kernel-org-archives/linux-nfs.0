@@ -1,38 +1,80 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:57970 "EHLO
-	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1751635Ab0EKVJ7 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 11 May 2010 17:09:59 -0400
-Message-ID: <4BE9C7A2.8030801@panasas.com>
-Date: Wed, 12 May 2010 00:09:54 +0300
-From: Benny Halevy <bhalevy@panasas.com>
-To: "J. Bruce Fields" <bfields@citi.umich.edu>
-CC: NFS list <linux-nfs@vger.kernel.org>
-Subject: [PATCH v2 0/9] nfsd4: keep the client from expiring while in use
- by nfs41 compounds
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from cantor2.suse.de ([195.135.220.15]:34539 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1758306Ab0EYBOP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 24 May 2010 21:14:15 -0400
+Date: Tue, 25 May 2010 11:14:05 +1000
+From: Neil Brown <neilb@suse.de>
+To: Al Viro <viro@ZenIV.linux.org.uk>
+Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
+        Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Subject: Re: [PATCH] VFS: fix recent breakage of FS_REVAL_DOT
+Message-ID: <20100525111405.04eaf924@notabene.brown>
+In-Reply-To: <20100524115903.GP31073@ZenIV.linux.org.uk>
+References: <20100524165756.2cfa54c4@notabene.brown>
+	<20100524115903.GP31073@ZenIV.linux.org.uk>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Changes since first version:
+On Mon, 24 May 2010 12:59:03 +0100
+Al Viro <viro@ZenIV.linux.org.uk> wrote:
 
-- move clients to be expired by laundromat to temporary reaplist
-  under the client lock.  Then release the lock and expire them
-  without holding the client lock.
+> On Mon, May 24, 2010 at 04:57:56PM +1000, Neil Brown wrote:
+> > 
+> > Commit 1f36f774b22a0ceb7dd33eca626746c81a97b6a5 broke FS_REVAL_DOT semantics.
+> > 
+> > In particular, before this patch, the command
+> >    ls -l
+> > in an NFS mounted directory would always check if the directory on the server
+> > had changed and if so would flush and refill the pagecache for the dir.
+> > After this patch, the same "ls -l" will repeatedly return stale date until
+> > the cached attributes for the directory time out.
+> > 
+> > The following patch fixes this by ensuring the d_revalidate is called by
+> > do_last when "." is being looked-up.
+> > link_path_walk has already called d_revalidate, but in that case LOOKUP_OPEN
+> > is not set so nfs_lookup_verify_inode chooses not to do any validation.
+> > 
+> > The following patch restores the original behaviour.
+> > 
+> > Cc: stable@kernel.org
+> > Signed-off-by: NeilBrown <neilb@suse.de>
+> 
+> Applied, but I really don't like the way you do it; note that e.g. foo/bar/.
+> gets that revalidation as well, for no good reason.  If anything, shouldn't
+> we handle that thing in the _beginning_ of pathname resolution, not in
+> the end?  For now it'd do, and it's a genuine regression, but...
+> 
 
-- mark clients as expired under the client lock, do not renew
-  clients mark as expired
+Thanks.
 
-- fix an existing bug in nfsd4_destroy_session that must take the state lock
-  for clearing the callback client.
+I think I see what you mean by "at the beginning" - the problem path is
+simply ".", and both the start and end of that are "." so we can handle at
+either end...  But I don't think there is any other special handling of the
+'start' of a path, so I imagine it would be a fairly ugly special case.
 
-[PATCH v2 1/9] nfsd4: rename sessionid_lock to client_lock
-[PATCH v2 2/9] nfsd4: fold release_session into expire_client
-[PATCH v2 3/9] nfsd4: use list_move in move_to_confirmed
-[PATCH v2 4/9] nfsd4: extend the client_lock to cover cl_lru
-[PATCH v2 5/9] nfsd4: refactor expire_client
-[PATCH v2 6/9] nfsd4: introduce nfs4_client.cl_refcount
-[PATCH v2 7/9] nfsd4: mark_client_expired
-[PATCH v2 8/9] nfsd4: keep a reference count on client while in use
-[PATCH v2 9/9] nfsd4: nfsd4_destroy_session must set callback client under the state lock
+We could avoid the extra GETATTR in "foo/bar/." by allowing NFS to keep some
+state in the namei_data to record that it has valid attributes for a given
+dentry so if it sees the same dentry again it doesn't need to revalidate.
+
+I must confess though that I don't feel I understand VFS name lookup properly
+any more.  Since intents were added it seems to have become much more obscure
+and complex.  I cannot help thinking that there must be a better way:
+distinguish between the various cases at a higher level so we don't need as
+many flags being passed around and interpreted by widely separate pieces of
+code.  I don't have a concrete proposal but I would certainly be interested
+to work on one if there were any hope of real change.
+Thoughts?
+
+Thanks,
+NeilBrown
+
+> BTW, here's a question for nfs client folks: is it true that for any two
+> pathnames on _client_ resolving to pairs (mnt1, dentry) and (mnt2, dentry)
+> resp., nfs_devname(mnt1, dentry, ...) and nfs_devname(mnt2, dentry, ...)
+> should yield the strings that do not differ past the ':' (i.e. that the
+> only possible difference is going to be in spelling the server name)?
+
