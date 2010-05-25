@@ -1,56 +1,75 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mailgate2.disneyanimation.com ([198.187.190.102]:36231 "EHLO
-	mailgate2.disneyanimation.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752188Ab0E1Wv6 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 28 May 2010 18:51:58 -0400
-From: Kevin Constantine <Kevin.Constantine@disneyanimation.com>
-Message-ID: <4C00490E.3030801@disney.com>
-Date: Fri, 28 May 2010 15:51:58 -0700
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: linux-nfs@vger.kernel.org, steved@redhat.com
-Subject: Re: [PATCH 1/1] nfs-iostat.py: Fixes several Divide by Zero errors
-References: <1275004718-1802-1-git-send-email-kevin.constantine@disneyanimation.com> <4BFF0CB9.7010700@oracle.com> <4BFF1345.9070306@disney.com> <4BFFF6A8.2090103@oracle.com>
-In-Reply-To: <4BFFF6A8.2090103@oracle.com>
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Received: from mx2.netapp.com ([216.240.18.37]:25078 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S933356Ab0EYTDe convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 25 May 2010 15:03:34 -0400
+Subject: Re: [PATCH 00/22] LAYOUTGET invocation
+Content-Type: text/plain; charset=us-ascii
+From: Fred Isaman <iisaman@netapp.com>
+In-Reply-To: <4BFC1686.4000509@gmail.com>
+Date: Tue, 25 May 2010 15:03:26 -0400
+Cc: linux-nfs@vger.kernel.org
+Message-Id: <51AD8F7D-D172-4DE6-8F7A-CDFA292CBF8B@netapp.com>
+References: <1273972993-15369-1-git-send-email-iisaman@netapp.com> <4BFC1686.4000509@gmail.com>
+To: Dean Hildebrand <seattleplus@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 05/28/2010 10:00 AM, Chuck Lever wrote:
-> On 05/27/10 08:50 PM, Kevin Constantine wrote:
->> The first time through the code sample_time is set to 0.0 on line 588.
->> Eventually we call display_iostats() and check if sample_time == 0. It
->> does, so we set sample_time equal to the mount age on line 368. I'm
->> seeing instances where the age of a mount is 0.
->>
->> cat /proc/self/mountstats | egrep "device|age"
->> device fashome-n1:/vol/home/fahome mounted on /home/fahome with fstype
->> nfs statvers=1.0
->> age: 0
->>
->> All of our storage is automounted, so volumes are frequently getting
->> unmounted and remounted.
->
-> Makes sense. When I wrote the script, I wasn't using automounter at all.
-> It might be simpler to have one check for a zero age at 368.
->
 
-My only concern with checking and just returning (which is certainly 
-easier and a smaller change) is that we end up not printing anything for 
-a volume that is technically mounted.  I figured it was better to print 
-the volume info and all zeroes than to not print anything.
+On May 25, 2010, at 2:27 PM, Dean Hildebrand wrote:
 
-I'll defer to your opinion on which of those two is best.
+> 
+> 
+> Fred Isaman wrote:
+>> (My apologies for the 4 patches that went out about 1/2 hour ago.  Please ignore those.)
+>> 
+>> This patch series limits LAYOUTGET invocation to the beginning of the IO paths.
+>> 
+>> It is intended for the pnfs_submit branch, without reversion in a post_submit branch.
+>> 
+>> Patches 1-4 revert direct IO.  Commit is already broken, and this series breaks them further.  The problem is that the direct IO redefines data->wb_req and data->pages, so that it can only work with the pnfs code if we don't look at those fields.
+>>  
+> 
+> Can you give some history on this?  Is it crashing?  Has this problem been around for a long time or is a new set of patches causing the problem?  Does this affect pNFS O_DIRECT or all O_DIRECT code?
+> 
 
--kevin
+Any use of pnfs_commit from the directIO code will cause a crash.
 
->> On 05/27/2010 05:22 PM, Chuck Lever wrote:
->>> On 05/27/2010 07:58 PM, Kevin Constantine wrote:
->>>> There was no check to see if sample_time was zero before dividing by
->>>> it.
->>>
->>> I haven't looked at this code in a very long time. Why was sample_time
->>> zero? That seems wrong.
->>>
->>>> This was causing ZeroDivisionError's:
->>>>
+In my current tree, the breakage is introduced by with pnfs_commit in patch 3ca1c1136, (use of variables first and last), but because of all the rewriting I can't tell how long it has been around, though I suspect since the beginning given the reliance in filelayout_commit (patch a43d8107) on wb_pages.  If the directIO avoided commit, then it is not obviously broken.
+
+
+> I don't think revert is the right way to go about this.  Removing support for O_DIRECT because changes to the non-O_DIRECT path break it would not fly in the mainline, and so I don't see why it would fly here.  At the minimum, since O_DIRECT is a B-list feature, I could see it being commented/ifdef'd out for the time being, but completely removing the patches is extremely invasive considering this is a b-list development branch.
+> 
+
+The problem is the redefinition of the data->wb_req and wb_pages fields.  For directIO to work, these either have to be marked as completely off limits to the pnfs code and the filelayout commit code in particular rewritten, or the directIO (not just the pnfs directIO) needs to be substantially rewritten. 
+
+I can send some post_submit patches with the code ifdef'ed out if people would be content with that.
+
+Fred
+
+
+> Dean
+> 
+>> Patches 5-8 do some code cleanup in preperation for the real work.
+>> 
+>> Patches 9-19 implement the change.  NOTE that patch 19 changes the calling convention of the layout drivers commit calls.  There is no longer a universal lseg for the commit, instead each nfs_page has an lseg attached, with NULL meaning to go through the MDS.
+>> 
+>> Patches 20-22 rework the filelayout commit function, and then do some code cleanup this enables.
+>> 
+>> 
+>> 
+>> The basic idea of these patches is as follows:
+>> 
+>> We attempt to grab a lseg (possibly invoking LAYOUTGET) early in the IO.  If we succeed, we refcount and stash it, using it through the rest of the io.  If we fail, we revert to straight nfs, even if the area becomes covered by a layout due to other io.
+>> 
+>> The tricky, though hopefully anomalous, case is when we start without the layout, but have it at this particular stage of the IO.  We ignore this for the moment at write_pages, which will cause block and object to issue CB_LAYOUTRECALL.  At commit, it is tricky to handle, but since block doesn't use commit, and file needs to handle complicated splitting anyway, I just push all complicated decisions of splitting commit between nfs (for IO started without layout) and pnfs to the driver.
+>> 
+>> Fred
+>> 
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>  
+
