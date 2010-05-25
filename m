@@ -1,61 +1,83 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from minas.ics.muni.cz ([147.251.4.40]:47230 "EHLO minas.ics.muni.cz"
+Received: from fieldses.org ([174.143.236.118]:43833 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759229Ab0EMP5G (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 13 May 2010 11:57:06 -0400
-Message-ID: <4BEC2146.6030301@atlas.cz>
-Date: Thu, 13 May 2010 17:56:54 +0200
-From: Jiri Kortus <sumix@atlas.cz>
-To: Boaz Harrosh <bharrosh@panasas.com>
+	id S1758533Ab0EYVXO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 25 May 2010 17:23:14 -0400
+Date: Tue, 25 May 2010 17:23:12 -0400
+To: Eric Veith1 <eric.veith@de.ibm.com>
 Cc: linux-nfs@vger.kernel.org
-Subject: Re: pNFS-related questions
-References: <4BEB283C.1020102@atlas.cz> <4BEBBF92.4020705@panasas.com> <4BEC0373.9040606@atlas.cz> <4BEC1BCE.1010907@panasas.com> <4BEC1C45.6020907@panasas.com>
-In-Reply-To: <4BEC1C45.6020907@panasas.com>
-Content-Type: text/plain; charset=UTF-8; format=flowed
+Subject: Re: Profiling knfsd
+Message-ID: <20100525212312.GM7085@fieldses.org>
+References: <OF356BDCDD.AFFB6E1B-ONC125772E.004AC232-C125772E.004AC9B8@de.ibm.com>
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <OF356BDCDD.AFFB6E1B-ONC125772E.004AC232-C125772E.004AC9B8@de.ibm.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Dne 13.5.2010 17:35, Boaz Harrosh napsal(a):
-> On 05/13/2010 06:33 PM, Boaz Harrosh wrote:
->    
->> On 05/13/2010 04:49 PM, Jiri Kortus wrote:
->>      
->>> Hi Boaz,
->>>
->>> thank you for describing how it works :) It looks good and quite simple
->>> to grasp.
->>> I'd like to ask you whether you would be also so kind as to write me
->>> some information about the IPv6 support?
->>>
->>> Thank you very much.
->>>
->>> Best regards,
->>>
->>> Jiri
->>>
->>>        
->> No idea! :-(
->>
->> I don't have any ipv6 setup anywhere
->>
->> Boaz
->>      
-> BTW tgtd does not support it yet as well. iscsi-initiator does.
-> osd does not care it is all hidden under the iscsi stack.
->
-> Boaz
->    
+On Tue, May 25, 2010 at 03:36:53PM +0200, Eric Veith1 wrote:
+> 
+> Hello everybody,
+> 
+> I'm facing the somewhat difficult task of looking under the hood of the
+> knfsd and profiling its behaviour on WRITE/COMMIT calls. Basically, I'd
+> like to answer the following questions:
+> 
+> - What amount of payload is comming in?
+> - What WRITE flags are set (UNSTABLE/DATA_SYNC/FILE_SYNC)?
+> - What happens to the incoming RPCs (are they stored in a queue, or cached
+> if UNSTABLE is set? If yes, what is the queue/cache size)?
+> - What does the nfsd write out to disk?
+> - How many NFS I/O operations are a kernel VFS (?) operation, and how many
+> FS IOPs does this make?
+> 
+> Regarding the last question, I already have a way of finding out what I/O
+> operations containing what payload are done with what delay.
+> 
+> I'm a little at loss here because I have only a very vague idea of where to
+> look. I though using systemtap and tapping some functions would give me
+> answers to the questions above. Could somebody give me please some
+> pointers, be it function names, header files, or a general idea of the call
+> flow a NFS WRITE packet creates from being received over a socket until it
+> is written out to disk?
 
-Thanks, Boaz! Even this is good to know.
+There's a little bit of information in /proc/net/rpc/nfsd and
+/proc/fs/nfsd/pool_stats.
 
+Greg Banks had some patches to improve nfsd statistics (and provide some
+of the information you're asking for) that never got merged.  If someone
+wanted to take over the task of forward-porting them and fixing the
+final problems, that might be one way to be to learn the code in
+question.
 
-Would someone else who knows something about IPv6 and pNFS (in general, 
-i. e. all kinds of layouts, just anything concerning the domain of IPv6 
-and pNFS) be so kind as to write me something about it or at least give 
-some hint where I can find more?
+Unfortunately I don't know of any really good documentation; you
+probably just have to dive in, read the code, and experiment.
 
-Thanks in advance,
+What's the high-level question you're trying to answer?
 
-Jiri
+--b.
 
+> 
+> Thank you very much in advance.
+> 
+>                   Eric
+> 
+> --
+> Eric MSP Veith <eric.veith@de.ibm.com>
+> Hechtsheimer Str. 2
+> DE-55131 Mainz
+> Germany
+> 
+> IBM Deutschland GmbH
+> Vorsitzender des Aufsichtsrats: Erich Clementi
+> Geschäftsführung: Martin Jetter (Vorsitzender), Reinhard Reschke, Christoph
+> Grandpierre, Matthias Hartmann, Michael Diemer, Martina Koederitz
+> Sitz der Gesellschaft: Stuttgart
+> Registergericht: Amtsgericht Stuttgart, HRB 14562
+> WEEE-Reg.-Nr. DE 99369940
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
