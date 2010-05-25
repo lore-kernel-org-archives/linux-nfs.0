@@ -1,65 +1,57 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mailgw1.uni-kl.de ([131.246.120.220]:37614 "EHLO
-	mailgw1.uni-kl.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752985Ab0EKLC2 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 11 May 2010 07:02:28 -0400
-Received: from itwm2.itwm.fhg.de (itwm2.itwm.fhg.de [131.246.191.3])
-	by mailgw1.uni-kl.de (8.14.3/8.14.3/Debian-5+lenny1) with ESMTP id o4BB2Ppk032372
-	(version=TLSv1/SSLv3 cipher=EDH-RSA-DES-CBC3-SHA bits=168 verify=NOT)
-	for <linux-nfs@vger.kernel.org>; Tue, 11 May 2010 13:02:26 +0200
-Received: from mail1.itwm.fhg.de ([131.246.191.78]:41657)
-	by itwm2.itwm.fhg.de with esmtps (TLSv1:DES-CBC3-SHA:168)
-	(/C=DE/ST=Rheinland-Pfalz/L=Kaiserslautern/O=Fraunhofer ITWM/OU=SLG/CN=mail1.itwm.fhg.de)(verified=1)
-	 (Exim 4.66 #1)
-	id 1OBnEH-00001E-NG
-	for linux-nfs@vger.kernel.org; Tue, 11 May 2010 13:02:25 +0200
-Message-ID: <4BE93940.5070804@itwm.fraunhofer.de>
-Date: Tue, 11 May 2010 13:02:24 +0200
-From: Martin Vogt <martin.vogt@itwm.fraunhofer.de>
-To: linux-nfs@vger.kernel.org
-Subject: Re: permission denied with >= ~2.6.25
-References: <4BE7ED5D.90801@itwm.fraunhofer.de>
-In-Reply-To: <4BE7ED5D.90801@itwm.fraunhofer.de>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from zeniv.linux.org.uk ([195.92.253.2]:35149 "EHLO
+	ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758771Ab0EYB6Z (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 24 May 2010 21:58:25 -0400
+Date: Tue, 25 May 2010 02:58:22 +0100
+From: Al Viro <viro@ZenIV.linux.org.uk>
+To: Neil Brown <neilb@suse.de>
+Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
+        Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Subject: Re: [PATCH] VFS: fix recent breakage of FS_REVAL_DOT
+Message-ID: <20100525015822.GV31073@ZenIV.linux.org.uk>
+References: <20100524165756.2cfa54c4@notabene.brown>
+ <20100524115903.GP31073@ZenIV.linux.org.uk>
+ <20100525111405.04eaf924@notabene.brown>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20100525111405.04eaf924@notabene.brown>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Martin Vogt wrote:
-> Hello list,
-> 
-> recently I updated my client to a new vendor kernel(SLES11), but the
-> problem is the same if I use a 2.6.33.3 as a client.
-> 
-> If I'm doing svn checkouts in an endless loop,
-> or running make -j X builds sometimes it happens
-> that I get a "Permision denied" error.
-> 
+On Tue, May 25, 2010 at 11:14:05AM +1000, Neil Brown wrote:
 
-Hello,
+> I must confess though that I don't feel I understand VFS name lookup properly
+> any more.  Since intents were added it seems to have become much more obscure
+> and complex.  I cannot help thinking that there must be a better way:
+> distinguish between the various cases at a higher level so we don't need as
+> many flags being passed around and interpreted by widely separate pieces of
+> code.  I don't have a concrete proposal but I would certainly be interested
+> to work on one if there were any hope of real change.
+> Thoughts?
 
-I tested 2.6.34-rc7 now and it has the problem too.
-Then I checked 2.6.24.7 which has the problem,
-but 2.6.23.1 looks fine.
+Intents are vile crap that has been introduced by the nfs folks to start
+with...  I've been trying to localize the mess and it's got a _lot_ better
+than it used to be a year ago, but they are still not gone.  And yes, I
+plan to kill that crap.  Basically, most of the do_last() guts will become
+a method that would get struct file *explicitly* and ask the fs to do
+(possibly atomic) open.  With normal filesystems defaulting to what's there
+right now.
 
->svn: In directory 'Kernel.9TKDNMQTDm/arch/arm/mach-realview'
->svn: Error processing command 'readonly' in
->'Kernel.9TKDNMQTDm/arch/arm/mach-realview'
->svn: Can't change perms of file
->'Kernel.9TKDNMQTDm/arch/arm/mach-realview/.svn/text-base/Makefile.boot.svn-base':
->Permission denied
->Tue May 11 12:57:51 CEST 2010,1
->runcounter: 1
->vogt@pxe3[vogt_nfs]>uname -a
->Linux pxe3.itwm.fhg.de 2.6.34-rc7-0.1-default #2 SMP Tue May 11
->10:28:41 CEST 2010 x86_64 x86_64 x86_64 GNU/Linux
+The main obstacle at the moment is in ->d_revalidate() abuses.  NFS, CIFS
+*and* autofs, the last one in a way that isn't really compatible with what
+NFS et.al. are trying to do.  Overloading of ->d_revalidate() and ->lookup()
+to do the work of open() doesn't help, and the horrors nfs4 piles on top
+of that are even scarier.
 
+_Another_ fine piece of something is ->follow_link() abuses, including
+referrals' treatment.  Also tied to the previous messes.
 
-Usually the "permission denied" happens very early. In this case the
-first run.
+We definitely will need to get VFS-to-fs APIs in that area changed; most of
+the mess has been created by the deeply misguided efforts to keep the API
+changes minimal.
 
-regards,
-
-Martin
-
-
+As for the flags, quite a few will be gone once we split "opening the final
+component" from the normal cases.  Google for lookup_instantiate_filp+shit
+for details of these plans...
