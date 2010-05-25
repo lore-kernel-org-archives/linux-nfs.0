@@ -1,58 +1,64 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:60581 "EHLO
+Received: from rcsinet10.oracle.com ([148.87.113.121]:64518 "EHLO
 	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751754Ab0EJRgk (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 10 May 2010 13:36:40 -0400
-Message-ID: <4BE84419.6010306@oracle.com>
-Date: Mon, 10 May 2010 13:36:25 -0400
-From: Chuck Lever <chuck.lever@oracle.com>
-To: Beast in Black <beast.in.black@gmail.com>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: NFS hang when writing to loopback file from VMWare ESX (kernel
-  2.6.30)
-References: <AANLkTinyu2l0ykkWfqjHQV2HW9g5rPvWIj-DX6dnDBbI@mail.gmail.com>
-In-Reply-To: <AANLkTinyu2l0ykkWfqjHQV2HW9g5rPvWIj-DX6dnDBbI@mail.gmail.com>
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+	with ESMTP id S1754317Ab0EYRLt (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 25 May 2010 13:11:49 -0400
+Message-ID: <4BFC046F.7000005@oracle.com>
+Date: Tue, 25 May 2010 10:10:07 -0700
+From: Sunil Mushran <sunil.mushran@oracle.com>
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+CC: Pavel Machek <pavel@ucw.cz>, Lukas Hejtmanek <xhejtman@ics.muni.cz>,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, salvet@ics.muni.cz
+Subject: Re: Deadlock in NFSv4 in all kernels
+References: <20100507153920.GP28167@ics.muni.cz>	 <20100524212422.GA1286@ucw.cz> <1274790520.2949.20.camel@heimdal.trondhjem.org>
+In-Reply-To: <1274790520.2949.20.camel@heimdal.trondhjem.org>
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 05/10/2010 05:20 AM, Beast in Black wrote:
-> Greetings.
->
-> Every so often, when i'm writing via NFS to a loopback-mounted file, i
-> find that about 10-15 nfsd threads (out of a total of 64) go into D
-> state, along with the loop file, and never recover from the D state.
-> My setup is as follows:
->
-> 1. sparse file is created via dd and loopback-mounted onto a
-> /dev/loopX device (where 0<= X<= 100)
-> 2. sparse file is mke2fs'd and mounted on mount point "/volumes/localvol"
-> 3. "/volumes/localvol" is exported with options
-> *(rw,no_root_squash,no_subtree_check,async,insecure,nohide,no_wdelay).
-> 4. /volumes/localvol is set as a network datastore (NFS mount) in ESX
-> 5. Virtual machine files for an ESX VM are copied into the NFS mount on ESX
-> 6. Virtual machine is powered on and I do some activity in it...write files etc.
->
-> At this point, the VM is running fine in ESX. After a while, however,
-> I notice that the VM freezes and that ESX reports the NFS mounted
-> datastore as unreachable. When I check the NFS server machine, I find
-> that 10-15 NFS threads are in D state, along with the associated
-> loopback-mounted file. The D states are never recovered from, and the
-> only way out is to reboot the NFS server machine.
->
-> I have also tried with specifying the export as "sync" instead of
-> "async" (and removing no_wdelay) but I still see the same behavior.
->
-> The NFS server is running the vanilla 2.6.30 kernel on Ubuntu 8.10.
-> The NFS exports are all NFSv3.
->
-> Does anyone have an idea of why this may be occurring? I would be glad
-> to provide any additional info required.
+On 05/25/2010 05:28 AM, Trond Myklebust wrote:
+>>> I encountered the following problem. We use short expiration time for
+>>> kerberos contexts created by rpc.gssd (some patches were included in mainline
+>>> nfs-utils). In particular, we use 120secs expiration time.
+>>>
+>>> Now, I run application that eats 80% of available RAM. Then I run 10 parallel
+>>> dd processes that write data into NFS4 volume with sec=krb5.
+>>>
+>>> As soon as the kerberos context expires (i.e., up to 120 secs), the whole
+>>> system gets stuck in do_page_fault and succesive functions. It is because
+>>> there is no free memory in kernel, all free memory is used as cache for NFS4
+>>> (due to dd traffic), kernel ask NFS to write back its pages but NFS cannot do
+>>> anything as it is missing valid context. NFS contacts rpc.gssd to provide
+>>> a renewed context, the rpc.gssd does not provide the context as it needs some memory
+>>> to scan /tmp for a ticket. I.e., it deadlocks.
+>>>
+>>> Longer context expiration time is no real solution as it only makes the
+>>> deadlock less often.
+>>>
+>>> Any ideas what can be done here? (Please cc me.) We could preallocate some
+>>> memory in rpc.gssd and use mlockall but not sure whether this proctects also
+>>> kernel malloc for things related to rpc.gssd and context creation (new file
+>>> descriptors and so on).
+>>>
+>>> This is seen in 2.6.32 kernel but most probably this is related to all kernel
+>>> versions.
+>>>        
+>> Seems like pretty fundamental problem in nfs :-(. Limiting writeback
+>> caches for nfs, so that system has enough memory to perform rpc calls
+>> with the rest might do the trick, but...
+>>      
+> It's the same problem that you have for any file or storage system that
+> has initiators in userland. On the storage side, iSCSI in particular has
+> the same problem. On the filesystem side, CIFS, AFS, coda, .... do too.
+> The clustered filesystems can deadlock if the node that is running the
+> DLM runs out of memory...
+>    
 
-There may be a deadlock due to memory pressure on the server.  You might 
-get some information by doing a "sudo echo 't' > /proc/sysrq_trigger", 
-then looking in your syslog, when the server gets into the hung state.
+Not so trivially. In ocfs2, the dlm allocates small blocks with GFP_NOFS.
+Furthermore, in the time-sensitive recovery thread, it preallocates buffers,
+what it can, at create time. That does not mean it is not affected by
+memory pressure. It is. But that shows up as slower response and not
+a deadlock.
 
--- 
-chuck[dot]lever[at]oracle[dot]com
