@@ -1,128 +1,69 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:38590 "EHLO fieldses.org"
+Received: from mail-out2.uio.no ([129.240.10.58]:49158 "EHLO mail-out2.uio.no"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751383Ab0ESU5x (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 19 May 2010 16:57:53 -0400
-Date: Wed, 19 May 2010 16:57:52 -0400
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Cc: linux-nfs@vger.kernel.org
-Subject: nfsd changes for 2.6.35
-Message-ID: <20100519205752.GO9720@fieldses.org>
-Content-Type: text/plain; charset=us-ascii
-From: "J. Bruce Fields" <bfields@fieldses.org>
+	id S1756578Ab0EYM2r (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 25 May 2010 08:28:47 -0400
+Subject: Re: Deadlock in NFSv4 in all kernels
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+To: Pavel Machek <pavel@ucw.cz>
+Cc: Lukas Hejtmanek <xhejtman@ics.muni.cz>, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        salvet@ics.muni.cz
+In-Reply-To: <20100524212422.GA1286@ucw.cz>
+References: <20100507153920.GP28167@ics.muni.cz>
+	 <20100524212422.GA1286@ucw.cz>
+Content-Type: text/plain; charset="UTF-8"
+Date: Tue, 25 May 2010 08:28:40 -0400
+Message-ID: <1274790520.2949.20.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Please pull the following nfsd changes from the for-2.6.35 branch at:
+On Mon, 2010-05-24 at 23:24 +0200, Pavel Machek wrote: 
+> Hi!
+> 
+> > I encountered the following problem. We use short expiration time for
+> > kerberos contexts created by rpc.gssd (some patches were included in mainline
+> > nfs-utils). In particular, we use 120secs expiration time.
+> > 
+> > Now, I run application that eats 80% of available RAM. Then I run 10 parallel
+> > dd processes that write data into NFS4 volume with sec=krb5.
+> > 
+> > As soon as the kerberos context expires (i.e., up to 120 secs), the whole
+> > system gets stuck in do_page_fault and succesive functions. It is because
+> > there is no free memory in kernel, all free memory is used as cache for NFS4
+> > (due to dd traffic), kernel ask NFS to write back its pages but NFS cannot do
+> > anything as it is missing valid context. NFS contacts rpc.gssd to provide
+> > a renewed context, the rpc.gssd does not provide the context as it needs some memory
+> > to scan /tmp for a ticket. I.e., it deadlocks.
+> > 
+> > Longer context expiration time is no real solution as it only makes the
+> > deadlock less often. 
+> > 
+> > Any ideas what can be done here? (Please cc me.) We could preallocate some
+> > memory in rpc.gssd and use mlockall but not sure whether this proctects also
+> > kernel malloc for things related to rpc.gssd and context creation (new file
+> > descriptors and so on). 
+> > 
+> > This is seen in 2.6.32 kernel but most probably this is related to all kernel
+> > versions.
+> 
+> Seems like pretty fundamental problem in nfs :-(. Limiting writeback
+> caches for nfs, so that system has enough memory to perform rpc calls
+> with the rest might do the trick, but...
+> 
 
-  git://linux-nfs.org/~bfields/linux.git for-2.6.35
+It's the same problem that you have for any file or storage system that
+has initiators in userland. On the storage side, iSCSI in particular has
+the same problem. On the filesystem side, CIFS, AFS, coda, .... do too.
+The clustered filesystems can deadlock if the node that is running the
+DLM runs out of memory...
 
-Changes include implementation of RECLAIM_COMPLETE.  That depended on
-improvements to the nfsv4 state code from Benny Halevy, which a) allow
-us to safely deference a client from an associated session as long as
-we're processing a compound associated with that session, b) keep down
-the scope of the state lock, and c) prevent us from rudely expiring a
-client while we're still processing a compound from that client.
+A few years ago there were several people proposing various solutions
+for allowing these daemons to run in a protected memory environment to
+avoid deadlocks, but those efforts have since petered out. Perhaps it is
+time to review the problem?
 
-The grace and lease-time setting interfaces have been fixed.  (For
-developers, one improvement is that it's easier to set shorter grace and
-lease periods if necessary to reduce testing time.)
+Cheers
+  Trond
 
-We now support a long-neglected NFSv4.0 SETCLIENTID feature which allows
-a client to change its callback path.  It's little-used in 4.0, though
-mandatory.  More importantly, it sets the groundwork for some callback
-improvements which will be needed to bring the 4.1 session
-implementation up to spec.
-
-Neil Brown did some cleanup of the cache code in preparation for some
-improvements to the deferral behavior, which unfortunately haven't
-themselves been merged yet.
-
-And there are miscellaneous fixes and cleanup from a number of people.
-Thanks to all contributors!
-
---b.
-
-Benny Halevy (10):
-      nfsd4: use local variable in nfs4svc_encode_compoundres
-      nfsd4: rename sessionid_lock to client_lock
-      nfsd4: fold release_session into expire_client
-      nfsd4: use list_move in move_to_confirmed
-      nfsd4: extend the client_lock to cover cl_lru
-      nfsd4: refactor expire_client
-      nfsd4: introduce nfs4_client.cl_refcount
-      nfsd4: mark_client_expired
-      nfsd4: keep a reference count on client while in use
-      nfsd4: nfsd4_destroy_session must set callback client under the state lock
-
-Dan Carpenter (1):
-      nfsd: potential ERR_PTR dereference on exp_export() error paths.
-
-J. Bruce Fields (27):
-      nfsd4: simplify references to nfsd4 lease time
-      nfsd4: simplify lease/grace interaction
-      nfsd4: remove unnecessary lease-setting function
-      nfsd4: reshuffle lease-setting code to allow reuse
-      nfsd4: allow setting grace period time
-      nfsd4: document lease/grace-period limits
-      Merge commit 'v2.6.34-rc1' into for-2.6.35-incoming
-      svcrpc: don't hold sv_lock over svc_xprt_put()
-      nfsd4: preallocate nfs4_rpc_args
-      nfsd4: shutdown callbacks on expiry
-      nfsd4: remove dprintk
-      nfsd4: remove probe task's reference on client
-      nfsd4: consistent session flag setting
-      nfsd4: indentation cleanup
-      nfsd4: don't sleep in lease-break callback
-      nfsd4: cl_count is unused
-      nfsd4: rearrange cb data structures
-      nfsd4: allow 4.0 clients to change callback path
-      nfsd4: complete enforcement of 4.1 op ordering
-      nfsd4: fix filehandle comment
-      nfsd4: fix unlikely race in session replay case
-      nfsd: further comment typos
-      Merge commit 'v2.6.34-rc6'
-      nfsd4: fix bare destroy_session null dereference
-      nfsd4: implement reclaim_complete
-      nfs4: minor callback code simplification, comment
-      Revert "nfsd4: distinguish expired from stale stateids"
-
-Jeff Layton (1):
-      nfsd: don't break lease while servicing a COMMIT
-
-Li Zefan (1):
-      sunrpc/cache: fix module refcnt leak in a failure path
-
-Neil Brown (1):
-      sunrpc: centralise most calls to svc_xprt_received
-
-NeilBrown (4):
-      sunrpc: don't keep expired entries in the auth caches.
-      sunrpc/cache: factor out cache_is_expired
-      sunrpc: never return expired entries in sunrpc_cache_lookup
-      nfsd: factor out hash functions for export caches.
-
-Pavel Emelyanov (2):
-      NFSD: don't report compiled-out versions as present
-      nfsd: safer initialization order in find_file()
-
- Documentation/filesystems/nfs/nfs41-server.txt |    2 +-
- fs/nfsd/export.c                               |   44 ++--
- fs/nfsd/nfs4callback.c                         |  140 ++++++---
- fs/nfsd/nfs4proc.c                             |   50 +++-
- fs/nfsd/nfs4state.c                            |  376 ++++++++++++-----------
- fs/nfsd/nfs4xdr.c                              |   27 ++-
- fs/nfsd/nfsctl.c                               |   64 +++-
- fs/nfsd/nfsd.h                                 |    6 +-
- fs/nfsd/nfssvc.c                               |    2 +-
- fs/nfsd/state.h                                |   47 +++-
- fs/nfsd/vfs.c                                  |    8 +-
- fs/nfsd/vfs.h                                  |    1 +
- fs/nfsd/xdr4.h                                 |   11 +-
- include/linux/nfsd/nfsfh.h                     |    6 +-
- net/sunrpc/cache.c                             |   45 ++-
- net/sunrpc/svc_xprt.c                          |    6 +-
- net/sunrpc/svcsock.c                           |   15 +-
- net/sunrpc/xprtrdma/svc_rdma_recvfrom.c        |    3 -
- 18 files changed, 510 insertions(+), 343 deletions(-)
