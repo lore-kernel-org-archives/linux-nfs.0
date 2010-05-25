@@ -1,53 +1,44 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from neil.brown.name ([220.233.11.133]:58847 "EHLO neil.brown.name"
+Received: from mail.ukfsn.org ([77.75.108.10]:42392 "EHLO mail.ukfsn.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758818Ab0EMMlh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 13 May 2010 08:41:37 -0400
-Received: from brown by neil.brown.name with local (Exim 4.71)
-	(envelope-from <nfs-bounces@lists.sourceforge.net>)
-	id 1OCXjK-0006hs-Tl
-	for linux-nfs@vger.kernel.org; Thu, 13 May 2010 22:41:35 +1000
-Date: Thu, 13 May 2010 22:40:43 +1000
-From: Neil Brown <neilb@suse.de>
-To: nfs@lists.sourceforge.net
-Subject: Second Last Email to nfs@lists.sourceforge.net
-Message-ID: <20100513224043.3d9891f4@notabene.brown>
-Content-Type: text/plain; charset="us-ascii"
+	id S932925Ab0EYNxm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 25 May 2010 09:53:42 -0400
+Received: from localhost (smtp-filter.ukfsn.org [192.168.54.205])
+	by mail.ukfsn.org (Postfix) with ESMTP id 18E1DDEBCB
+	for <linux-nfs@vger.kernel.org>; Tue, 25 May 2010 14:24:08 +0100 (BST)
+Received: from mail.ukfsn.org ([192.168.54.25])
+	by localhost (smtp-filter.ukfsn.org [192.168.54.205]) (amavisd-new, port 10024)
+	with ESMTP id 8RJMde9GIaEY for <linux-nfs@vger.kernel.org>;
+	Tue, 25 May 2010 14:24:08 +0100 (BST)
+Received: from elm.dgreaves.com (unknown [78.32.229.233])
+	by mail.ukfsn.org (Postfix) with ESMTP id E6343DEBC8
+	for <linux-nfs@vger.kernel.org>; Tue, 25 May 2010 14:24:07 +0100 (BST)
+Received: from ash.dgreaves.com ([10.0.0.111])
+	by elm.dgreaves.com with esmtp (Exim 4.69)
+	(envelope-from <david@dgreaves.com>)
+	id 1OGu75-0006uz-Ev
+	for linux-nfs@vger.kernel.org; Tue, 25 May 2010 14:24:07 +0100
+Message-ID: <4BFBCF77.2070702@dgreaves.com>
+Date: Tue, 25 May 2010 14:24:07 +0100
+From: David Greaves <david@dgreaves.com>
+To: linux-nfs@vger.kernel.org
+Subject: NFS wiki : NFSv4 Enduser doc kerberos
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+FYI I've made an attempt to update this page:
+   http://wiki.linux-nfs.org/wiki/index.php/Enduser_doc_kerberos
 
-Many months ago we started to deprecate the
-   nfs@lists.sourceforge.net
-list in favour of 
-   linux-nfs@vger.kernel.org
+If someone could please take a look and correct any errors I've made that would 
+be nice.
 
-During that time I got a steady stream of subscription requests which I
-redirected to the new list.
-Earlier this year I removed the reference to the old list from
-   http://nfs.sourceforge.net
-and since then there have been no more subscription requests.
+Some questions:
+* should a client have an nfs/<fqdn> principal  (it works without)
+* Is the "allow_weak_crypto=true" part still correct?
 
-So I think it is time to turn this list off.
+David
 
-So this is the second last email to this list.
-
-After I send this, I will stop the nfs@lists.sourceforge.net from forwarding
-to linux-nfs@vger.kernel.org and send another email telling everyone left on
-the old list that they have been unsubscribed.
-Then I will unsubscribe them and see if I can destroy the list.
-
-Thanks,
-NeilBrown
-
-------------------------------------------------------------------------------
-
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
-_______________________________________________
-Please note that nfs@lists.sourceforge.net is being discontinued.
-Please subscribe to linux-nfs@vger.kernel.org instead.
-    http://vger.kernel.org/vger-lists.html#linux-nfs
-
+-- 
+"Don't worry, you'll be fine; I saw it work in a cartoon once..."
