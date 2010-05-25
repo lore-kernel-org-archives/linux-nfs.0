@@ -1,62 +1,61 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH] nfs4: allow server to change forechannel max_ops
-Date: Tue, 25 May 2010 14:32:23 -0400
-Message-ID: <20100525183223.GA6929@fieldses.org>
-References: <20100525164224.GC4235@fieldses.org> <1274806624.11283.10.camel@heimdal.trondhjem.org>
+Subject: Re: [PATCH] SQUASHME: nfsd4: fix cb_recall encoding
+Date: Tue, 25 May 2010 14:49:01 -0400
+Message-ID: <20100525184900.GD7085@fieldses.org>
+References: <20100524152825.GB18625@fieldses.org> <4BFB6AAA.5090308@panasas.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: Michael Groshans <groshans@citi.umich.edu>,
+	linux-nfs@vger.kernel.org
+To: Benny Halevy <bhalevy@panasas.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:48742 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:44151 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933013Ab0EYSc0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 25 May 2010 14:32:26 -0400
-In-Reply-To: <1274806624.11283.10.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
+	id S933161Ab0EYStB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 25 May 2010 14:49:01 -0400
+In-Reply-To: <4BFB6AAA.5090308@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, May 25, 2010 at 12:57:04PM -0400, Trond Myklebust wrote:
-> On Tue, 2010-05-25 at 12:42 -0400, J. Bruce Fields wrote: 
+On Tue, May 25, 2010 at 09:14:02AM +0300, Benny Halevy wrote:
+> On May. 24, 2010, 18:28 +0300, "J. Bruce Fields" <bfields@fieldses.org> wrote:
 > > From: J. Bruce Fields <bfields@citi.umich.edu>
 > > 
-> > Section 18.36.3 of rfc 5661 says that "For the fore channel, the server
-> > MAY change the requested value."
+> > "nfsd: nfs4callback encode_stateid helper function" forgot to reserve
+> > more space after return from the new helper.
 > > 
-> > Also, there's no reason why the client would have to care if the server
-> > is willing to accept *more* operations per compound than the client
-> > requested.
-> > 
+> > Reported-by: Michael Groshans <groshans@citi.umich.edu>
 > > Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
 > > ---
-> >  fs/nfs/nfs4proc.c |    1 -
-> >  1 files changed, 0 insertions(+), 1 deletions(-)
+> >  fs/nfsd/nfs4callback.c |    1 +
+> >  1 files changed, 1 insertions(+), 0 deletions(-)
 > > 
-> > On the other hand, if the server *decreases* max_ops on the forechannel,
-> > the client may need to do something.  (Probably just fail for now.)  Why
-> > aren't we checking for that case?
+> > Benny, maybe you could fix that patch and then pass it upstream?
+> 
+> Sure.  I submitted this fix to the pnfs tree and will test and
+> send a fixed version of "nfsd: nfs4callback encode_stateid helper function"
+> upstream.
+
+That's what I meant to say, yes, thanks!
+
+--b.
+
+> 
+> Benny
+> 
 > > 
 > > --b.
 > > 
-> > diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-> > index 071fced..a5a3690 100644
-> > --- a/fs/nfs/nfs4proc.c
-> > +++ b/fs/nfs/nfs4proc.c
-> > @@ -4880,7 +4880,6 @@ static int nfs4_verify_channel_attrs(struct nfs41_create_session_args *args,
-> >  
-> >  	ret |= _verify_fore_channel_attr(headerpadsz);
-> >  	ret |= _verify_fore_channel_attr(max_resp_sz);
-> > -	ret |= _verify_fore_channel_attr(max_ops);
-> >  
-> >  	ret |= _verify_back_channel_attr(headerpadsz);
-> >  	ret |= _verify_back_channel_attr(max_rqst_sz);
+> > diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
+> > index b279738..238e0b8 100644
+> > --- a/fs/nfsd/nfs4callback.c
+> > +++ b/fs/nfsd/nfs4callback.c
+> > @@ -246,6 +246,7 @@ encode_cb_recall(struct xdr_stream *xdr, struct nfs4_delegation *dp,
+> >  	RESERVE_SPACE(4);
+> >  	WRITE32(OP_CB_RECALL);
+> >  	encode_stateid(xdr, &dp->dl_stateid);
+> > +	RESERVE_SPACE(8 + (XDR_QUADLEN(len) << 2));
+> >  	WRITE32(0); /* truncate optimization not implemented */
+> >  	WRITE32(len);
+> >  	WRITEMEM(&dp->dl_fh.fh_base, len);
 > 
-> Yes. That all looks wrong.
-> 
-> Can we please just get rid of that senseless macro, and open code those
-> checks instead of the above patch? The current code is just pure
-> obfuscation...
-
-Sounds good to me.  I'm hoping Andy can be roped into it....
-
---b.
