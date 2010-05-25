@@ -1,39 +1,36 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qy0-f183.google.com ([209.85.221.183]:44423 "EHLO
-	mail-qy0-f183.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755741Ab0EGRpX (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 7 May 2010 13:45:23 -0400
-Received: by qyk13 with SMTP id 13so1957785qyk.1
-        for <linux-nfs@vger.kernel.org>; Fri, 07 May 2010 10:45:22 -0700 (PDT)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 0/2] Two more patches related to mountd IPv6 support
-To: steved@redhat.com
-Cc: linux-nfs@vger.kernel.org
-Date: Fri, 07 May 2010 13:45:17 -0400
-Message-ID: <20100507174128.4221.36914.stgit@localhost.localdomain>
-Content-Type: text/plain; charset="utf-8"
+Received: from lo.gmane.org ([80.91.229.12]:41317 "EHLO lo.gmane.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S933673Ab0EYUDi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 25 May 2010 16:03:38 -0400
+Received: from list by lo.gmane.org with local (Exim 4.69)
+	(envelope-from <glN-linux-nfs@m.gmane.org>)
+	id 1OH0Lg-00005i-MN
+	for linux-nfs@vger.kernel.org; Tue, 25 May 2010 22:03:36 +0200
+Received: from softbank221086052216.bbtec.net ([221.86.52.216])
+        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
+        id 1AlnuQ-0007hv-00
+        for <linux-nfs@vger.kernel.org>; Tue, 25 May 2010 22:03:36 +0200
+Received: from redshield88888 by softbank221086052216.bbtec.net with local (Gmexim 0.1 (Debian))
+        id 1AlnuQ-0007hv-00
+        for <linux-nfs@vger.kernel.org>; Tue, 25 May 2010 22:03:36 +0200
+To: linux-nfs@vger.kernel.org
+From: redshield88888 <redshield88888@gmail.com>
+Subject: Re: Can the pNFS be able to construct high-available about the data ?
+Date: Tue, 25 May 2010 20:03:27 +0000 (UTC)
+Message-ID: <loom.20100525T220042-263@post.gmane.org>
+References: <loom.20100525T092804-609@post.gmane.org> <AANLkTilLg16uuaAoR2iXQ0KmGK68L_4Ju-i1k4838qu4@mail.gmail.com>
+Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Steve-
+William
 
-Here are two more minor clean-up patches for IPv6 support in mountd.
-The second patch defines the format in which IPv6 address are stored
-in rmtab.  Since IPv6 addresses are new to this file, I hope there are
-no backward-compatibility concerns about this change, but please let
-me know if there might be a problem.
-
----
-
-Chuck Lever (2):
-      mountd: Convert colons in IPv6 presentation addresses to semicolons
-      libexport.a: Refactor rmtab_read()
+So I should use the nfslayoutdriver, the objlayoutdriver, the blocklayoutdriver,
+the xofs and so on in a real work, should'nt I ?
 
 
- support/export/rmtab.c |   64 +++++++++++++++++++++++++++++++-----------------
- support/nfs/rmtab.c    |   42 +++++++++++++++++++++++++++++---
- 2 files changed, 80 insertions(+), 26 deletions(-)
 
--- 
-Chuck Lever
+
+
