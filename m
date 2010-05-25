@@ -1,51 +1,68 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:63543 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753389Ab0EMVI1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 13 May 2010 17:08:27 -0400
-Received: from localhost.localdomain (heimdal.trondhjem.org [10.58.49.73] (may be forged))
-	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id o4DL8MCS021257
-	for <linux-nfs@vger.kernel.org>; Thu, 13 May 2010 14:08:27 -0700 (PDT)
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 09/15] NFS: Don't run nfs_access_cache_shrinker() when the mask is GFP_NOFS
-Date: Thu, 13 May 2010 17:08:15 -0400
-Message-Id: <1273784901-25599-9-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1273784901-25599-8-git-send-email-Trond.Myklebust@netapp.com>
-References: <1273784901-25599-1-git-send-email-Trond.Myklebust@netapp.com>
- <1273784901-25599-2-git-send-email-Trond.Myklebust@netapp.com>
- <1273784901-25599-3-git-send-email-Trond.Myklebust@netapp.com>
- <1273784901-25599-4-git-send-email-Trond.Myklebust@netapp.com>
- <1273784901-25599-5-git-send-email-Trond.Myklebust@netapp.com>
- <1273784901-25599-6-git-send-email-Trond.Myklebust@netapp.com>
- <1273784901-25599-7-git-send-email-Trond.Myklebust@netapp.com>
- <1273784901-25599-8-git-send-email-Trond.Myklebust@netapp.com>
+Received: from daytona.panasas.com ([67.152.220.89]:63099 "EHLO
+	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S932192Ab0EYGu0 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 25 May 2010 02:50:26 -0400
+From: Benny Halevy <bhalevy@panasas.com>
+To: " J. Bruce Fields" <bfields@citi.umich.edu>
+Cc: linux-nfs@vger.kernel.org, Benny Halevy <bhalevy@panasas.com>,
+        "J. Bruce Fields" <bfields@citi.umich.edu>
+Subject: [PATCH] nfsd: nfs4callback encode_stateid helper function
+Date: Tue, 25 May 2010 09:50:23 +0300
+Message-Id: <1274770223-28968-1-git-send-email-bhalevy@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
 MIME-Version: 1.0
 
-Both iput() and put_rpccred() might allocate memory under certain
-circumstances, so make sure that we don't recurse and deadlock...
+To be used also for the pnfs cb_layoutrecall callback
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+[nfsd4: fix cb_recall encoding]
+    "nfsd: nfs4callback encode_stateid helper function" forgot to reserve
+    more space after return from the new helper.
+Reported-by: Michael Groshans <groshans@citi.umich.edu>
+Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 ---
- fs/nfs/dir.c |    2 ++
- 1 files changed, 2 insertions(+), 0 deletions(-)
+ fs/nfsd/nfs4callback.c |   16 +++++++++++++---
+ 1 files changed, 13 insertions(+), 3 deletions(-)
 
-diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index 18da8ab..bc136ef 100644
---- a/fs/nfs/dir.c
-+++ b/fs/nfs/dir.c
-@@ -1703,6 +1703,8 @@ int nfs_access_cache_shrinker(int nr_to_scan, gfp_t gfp_mask)
- 	struct nfs_inode *nfsi;
- 	struct nfs_access_entry *cache;
+diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
+index eb78e7e..6bacd0e 100644
+--- a/fs/nfsd/nfs4callback.c
++++ b/fs/nfsd/nfs4callback.c
+@@ -205,6 +205,16 @@ nfs_cb_stat_to_errno(int stat)
+  */
  
-+	if ((gfp_mask & GFP_KERNEL) != GFP_KERNEL)
-+		return -1;
- restart:
- 	spin_lock(&nfs_access_lru_lock);
- 	list_for_each_entry(nfsi, &nfs_access_lru_list, access_cache_inode_lru) {
+ static void
++encode_stateid(struct xdr_stream *xdr, stateid_t *sid)
++{
++	__be32 *p;
++
++	RESERVE_SPACE(sizeof(stateid_t));
++	WRITE32(sid->si_generation);
++	WRITEMEM(&sid->si_opaque, sizeof(stateid_opaque_t));
++}
++
++static void
+ encode_cb_compound_hdr(struct xdr_stream *xdr, struct nfs4_cb_compound_hdr *hdr)
+ {
+ 	__be32 * p;
+@@ -229,10 +239,10 @@ encode_cb_recall(struct xdr_stream *xdr, struct nfs4_delegation *dp,
+ 	__be32 *p;
+ 	int len = dp->dl_fh.fh_size;
+ 
+-	RESERVE_SPACE(12+sizeof(dp->dl_stateid) + len);
++	RESERVE_SPACE(4);
+ 	WRITE32(OP_CB_RECALL);
+-	WRITE32(dp->dl_stateid.si_generation);
+-	WRITEMEM(&dp->dl_stateid.si_opaque, sizeof(stateid_opaque_t));
++	encode_stateid(xdr, &dp->dl_stateid);
++	RESERVE_SPACE(8 + (XDR_QUADLEN(len) << 2));
+ 	WRITE32(0); /* truncate optimization not implemented */
+ 	WRITE32(len);
+ 	WRITEMEM(&dp->dl_fh.fh_base, len);
 -- 
 1.6.6.1
 
