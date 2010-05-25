@@ -1,197 +1,89 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp-out.google.com ([216.239.44.51]:15710 "EHLO
-	smtp-out.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932301Ab0EXXqe (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 24 May 2010 19:46:34 -0400
-Date: Mon, 24 May 2010 16:46:24 -0700 (PDT)
-From: Hugh Dickins <hughd@google.com>
-To: Greg KH <gregkh@suse.de>
-cc: Alan Cox <alan@lxorguk.ukuu.org.uk>,
-        Tharindu Rukshan Bamunuarachchi <btharindu@gmail.com>,
-        linux-mm@kvack.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, stable@kernel.org
-Subject: Re: TMPFS over NFSv4
-In-Reply-To: <20100524110903.72524853@lxorguk.ukuu.org.uk>
-Message-ID: <alpine.LSU.2.00.1005241624130.28773@sister.anvils>
-References: <AANLkTik47c6l3y8CdJ-hUCd2h3SRSb3qAtRovWryb8_p@mail.gmail.com> <alpine.LSU.2.00.1005211344440.7369@sister.anvils> <AANLkTil7I6q4wdLgmwZdRN6hb9LVVagN_7oGTIVNDhUk@mail.gmail.com> <AANLkTilMQjZaUom2h_aFgU6WB83IGH-VVKTg-CJD-_ZZ@mail.gmail.com>
- <20100524110903.72524853@lxorguk.ukuu.org.uk>
-Content-Type: TEXT/PLAIN; charset=US-ASCII
+Received: from minas.ics.muni.cz ([147.251.4.40]:41897 "EHLO minas.ics.muni.cz"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754053Ab0EYM6c (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 25 May 2010 08:58:32 -0400
+Date: Tue, 25 May 2010 14:58:33 +0200
+From: Lukas Hejtmanek <xhejtman@ics.muni.cz>
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+Cc: Pavel Machek <pavel@ucw.cz>, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        salvet@ics.muni.cz
+Subject: Re: Deadlock in NFSv4 in all kernels
+Message-ID: <20100525125833.GB9731@ics.muni.cz>
+References: <20100507153920.GP28167@ics.muni.cz>
+ <20100524212422.GA1286@ucw.cz>
+ <1274790520.2949.20.camel@heimdal.trondhjem.org>
+Content-Type: text/plain; charset=iso-8859-2
+In-Reply-To: <1274790520.2949.20.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Hi Greg,
+Hi,
 
-On Mon, 24 May 2010, Alan Cox wrote:
-> On Mon, 24 May 2010 02:57:30 -0700
-> Hugh Dickins <hughd@google.com> wrote:
-> > On Mon, May 24, 2010 at 2:26 AM, Tharindu Rukshan Bamunuarachchi
-> > <btharindu@gmail.com> wrote:
-> > > thankx a lot Hugh ... I will try this out ... (bit harder patch
-> > > already patched SLES kernel :-p ) ....
+On Tue, May 25, 2010 at 08:28:40AM -0400, Trond Myklebust wrote:
+> > Seems like pretty fundamental problem in nfs :-(. Limiting writeback
+> > caches for nfs, so that system has enough memory to perform rpc calls
+> > with the rest might do the trick, but...
 > > 
-> > If patch conflicts are a problem, you really only need to put in the
-> > two-liner patch to mm/mmap.c: Alan was seeking perfection in
-> > the rest of the patch, but you can get away without it.
-> > 
-> > >
-> > > BTW, what does Alan means by "strict overcommit" ?
-> > 
-> > Ah, that phrase, yes, it's a nonsense, but many of us do say it by mistake.
-> > Alan meant to say "strict no-overcommit".
 > 
-> No I always meant to say 'strict overcommit'. It avoids excess negatives
-> and "no noovercommit" discussions.
+> It's the same problem that you have for any file or storage system that
+> has initiators in userland. On the storage side, iSCSI in particular has
+> the same problem. On the filesystem side, CIFS, AFS, coda, .... do too.
+> The clustered filesystems can deadlock if the node that is running the
+> DLM runs out of memory...
 > 
-> I guess 'strict overcommit control' would have been clearer 8)
-> 
-> Alan
+> A few years ago there were several people proposing various solutions
+> for allowing these daemons to run in a protected memory environment to
+> avoid deadlocks, but those efforts have since petered out. Perhaps it is
+> time to review the problem?
 
-I see we've just missed 2.6.27.47-rc1, but if there's to be an -rc2,
-please include Alan's 2.6.28 oops fix below: which Tharindu appears
-to be needing - just now discussed on linux-mm and linux-nfs.
-Failing that, please queue it up for 2.6.27.48.
+I saw some patches targeting 2.6.35 that should prevent some deadlocks. They
+seem to be not enough in some cases. rpc.* daemons should be mlocked for sure
+but there is a problem with libkrb that reads files using fread(). fread() uses
+anonymous mmap, under mlockall(MCL_FUTURE) this causes the anonymous map to be
+mapped instantly and it deadlocks. 
 
-Or if you'd prefer a smaller patch for -stable, then just the mm/mmap.c
-part of it should suffice: I think it's fair to say that the rest of the
-patch was more precautionary - as Alan describes, for catching other bugs,
-so good for an ongoing development tree, but not necessarily in -stable.
-(However, Alan may disagree - I've already misrepresented him once here!)
+IBM GPFS also uses userspace daemon, but it seems that the deamon is mlocked
+and it does not open any files and does not create new connections. 
 
-Thanks,
-Hugh
+My problem was quite easily reproducible.
 
-commit 731572d39fcd3498702eda4600db4c43d51e0b26
-Author: Alan Cox <alan@redhat.com>
-Date:   Wed Oct 29 14:01:20 2008 -0700
+I started an application that eats 80% of free memory. Then I started:
+for i in `seq 1 10`; do dd if=/dev/zero of=/mnt/nfs4/file$i bs=1M count=2048
+& done
 
-    nfsd: fix vm overcommit crash
+it deadlock within 2 minutes until this patch is applied:
+commit 3d7b08945e54a3a5358d5890240619a013cb7388
+Author: Trond Myklebust <Trond.Myklebust@netapp.com>
+Date:   Thu Apr 22 15:35:55 2010 -0400
+
+    SUNRPC: Fix a bug in rpcauth_prune_expired
     
-    Junjiro R.  Okajima reported a problem where knfsd crashes if you are
-    using it to export shmemfs objects and run strict overcommit.  In this
-    situation the current->mm based modifier to the overcommit goes through a
-    NULL pointer.
+    Don't want to evict a credential if cred->cr_expire == jiffies, since that
+    means that it was just placed on the cred_unused list. We therefore need
+to
+    use time_in_range() rather than time_in_range_open().
     
-    We could simply check for NULL and skip the modifier but we've caught
-    other real bugs in the past from mm being NULL here - cases where we did
-    need a valid mm set up (eg the exec bug about a year ago).
-    
-    To preserve the checks and get the logic we want shuffle the checking
-    around and add a new helper to the vm_ security wrappers
-    
-    Also fix a current->mm reference in nommu that should use the passed mm
-    
-    [akpm@linux-foundation.org: coding-style fixes]
-    [akpm@linux-foundation.org: fix build]
-    Reported-by: Junjiro R. Okajima <hooanon05@yahoo.co.jp>
-    Acked-by: James Morris <jmorris@namei.org>
-    Signed-off-by: Alan Cox <alan@redhat.com>
-    Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
-    Signed-off-by: Linus Torvalds <torvalds@linux-foundation.org>
+    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 
-diff --git a/include/linux/security.h b/include/linux/security.h
-index f5c4a51..c13f1ce 100644
---- a/include/linux/security.h
-+++ b/include/linux/security.h
-@@ -1585,6 +1585,7 @@ int security_syslog(int type);
- int security_settime(struct timespec *ts, struct timezone *tz);
- int security_vm_enough_memory(long pages);
- int security_vm_enough_memory_mm(struct mm_struct *mm, long pages);
-+int security_vm_enough_memory_kern(long pages);
- int security_bprm_alloc(struct linux_binprm *bprm);
- void security_bprm_free(struct linux_binprm *bprm);
- void security_bprm_apply_creds(struct linux_binprm *bprm, int unsafe);
-@@ -1820,6 +1821,11 @@ static inline int security_vm_enough_memory(long pages)
- 	return cap_vm_enough_memory(current->mm, pages);
- }
+diff --git a/net/sunrpc/auth.c b/net/sunrpc/auth.c
+index f394fc1..95afe79 100644
+--- a/net/sunrpc/auth.c
++++ b/net/sunrpc/auth.c
+@@ -237,7 +237,7 @@ rpcauth_prune_expired(struct list_head *free, int
+nr_to_scan)
+        list_for_each_entry_safe(cred, next, &cred_unused, cr_lru) {
  
-+static inline int security_vm_enough_memory_kern(long pages)
-+{
-+	return cap_vm_enough_memory(current->mm, pages);
-+}
-+
- static inline int security_vm_enough_memory_mm(struct mm_struct *mm, long pages)
- {
- 	return cap_vm_enough_memory(mm, pages);
-diff --git a/mm/mmap.c b/mm/mmap.c
-index 74f4d15..de14ac2 100644
---- a/mm/mmap.c
-+++ b/mm/mmap.c
-@@ -175,7 +175,8 @@ int __vm_enough_memory(struct mm_struct *mm, long pages, int cap_sys_admin)
- 
- 	/* Don't let a single process grow too big:
- 	   leave 3% of the size of this process for other processes */
--	allowed -= mm->total_vm / 32;
-+	if (mm)
-+		allowed -= mm->total_vm / 32;
- 
- 	/*
- 	 * cast `allowed' as a signed long because vm_committed_space
-diff --git a/mm/nommu.c b/mm/nommu.c
-index 2696b24..7695dc8 100644
---- a/mm/nommu.c
-+++ b/mm/nommu.c
-@@ -1454,7 +1454,8 @@ int __vm_enough_memory(struct mm_struct *mm, long pages, int cap_sys_admin)
- 
- 	/* Don't let a single process grow too big:
- 	   leave 3% of the size of this process for other processes */
--	allowed -= current->mm->total_vm / 32;
-+	if (mm)
-+		allowed -= mm->total_vm / 32;
- 
- 	/*
- 	 * cast `allowed' as a signed long because vm_committed_space
-diff --git a/mm/shmem.c b/mm/shmem.c
-index d38d7e6..0ed0752 100644
---- a/mm/shmem.c
-+++ b/mm/shmem.c
-@@ -161,8 +161,8 @@ static inline struct shmem_sb_info *SHMEM_SB(struct super_block *sb)
-  */
- static inline int shmem_acct_size(unsigned long flags, loff_t size)
- {
--	return (flags & VM_ACCOUNT)?
--		security_vm_enough_memory(VM_ACCT(size)): 0;
-+	return (flags & VM_ACCOUNT) ?
-+		security_vm_enough_memory_kern(VM_ACCT(size)) : 0;
- }
- 
- static inline void shmem_unacct_size(unsigned long flags, loff_t size)
-@@ -179,8 +179,8 @@ static inline void shmem_unacct_size(unsigned long flags, loff_t size)
-  */
- static inline int shmem_acct_block(unsigned long flags)
- {
--	return (flags & VM_ACCOUNT)?
--		0: security_vm_enough_memory(VM_ACCT(PAGE_CACHE_SIZE));
-+	return (flags & VM_ACCOUNT) ?
-+		0 : security_vm_enough_memory_kern(VM_ACCT(PAGE_CACHE_SIZE));
- }
- 
- static inline void shmem_unacct_blocks(unsigned long flags, long pages)
-diff --git a/security/security.c b/security/security.c
-index 255b085..c0acfa7 100644
---- a/security/security.c
-+++ b/security/security.c
-@@ -198,14 +198,23 @@ int security_settime(struct timespec *ts, struct timezone *tz)
- 
- int security_vm_enough_memory(long pages)
- {
-+	WARN_ON(current->mm == NULL);
- 	return security_ops->vm_enough_memory(current->mm, pages);
- }
- 
- int security_vm_enough_memory_mm(struct mm_struct *mm, long pages)
- {
-+	WARN_ON(mm == NULL);
- 	return security_ops->vm_enough_memory(mm, pages);
- }
- 
-+int security_vm_enough_memory_kern(long pages)
-+{
-+	/* If current->mm is a kernel thread then we will pass NULL,
-+	   for this specific case that is fine */
-+	return security_ops->vm_enough_memory(current->mm, pages);
-+}
-+
- int security_bprm_alloc(struct linux_binprm *bprm)
- {
- 	return security_ops->bprm_alloc_security(bprm);
+                /* Enforce a 60 second garbage collection moratorium */
+-               if (time_in_range_open(cred->cr_expire, expired, jiffies) &&
++               if (time_in_range(cred->cr_expire, expired, jiffies) &&
+                    test_bit(RPCAUTH_CRED_HASHED, &cred->cr_flags) != 0)
+                        continue;
+
+
+but I believe this only hides the real problem.
+
+-- 
+Luká¹ Hejtmánek
