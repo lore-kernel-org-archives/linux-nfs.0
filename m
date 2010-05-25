@@ -1,59 +1,111 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-vw0-f46.google.com ([209.85.212.46]:57849 "EHLO
-	mail-vw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752834Ab0EKRXE (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 11 May 2010 13:23:04 -0400
-Received: by vws17 with SMTP id 17so1282844vws.19
-        for <linux-nfs@vger.kernel.org>; Tue, 11 May 2010 10:23:03 -0700 (PDT)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 0/6] Update NFSROOT to use text-based mounts
+Received: from lo.gmane.org ([80.91.229.12]:43312 "EHLO lo.gmane.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757057Ab0EYAkG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 24 May 2010 20:40:06 -0400
+Received: from list by lo.gmane.org with local (Exim 4.69)
+	(envelope-from <glN-linux-nfs@m.gmane.org>)
+	id 1OGiBf-0001t8-Lx
+	for linux-nfs@vger.kernel.org; Tue, 25 May 2010 02:40:04 +0200
+Received: from softbank221086052216.bbtec.net ([221.86.52.216])
+        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
+        id 1AlnuQ-0007hv-00
+        for <linux-nfs@vger.kernel.org>; Tue, 25 May 2010 02:40:03 +0200
+Received: from redshield88888 by softbank221086052216.bbtec.net with local (Gmexim 0.1 (Debian))
+        id 1AlnuQ-0007hv-00
+        for <linux-nfs@vger.kernel.org>; Tue, 25 May 2010 02:40:03 +0200
 To: linux-nfs@vger.kernel.org
-Date: Tue, 11 May 2010 13:15:44 -0400
-Message-ID: <20100511170754.2167.72681.stgit@matisse.1015granger.net>
-Content-Type: text/plain; charset="utf-8"
+From: redshield88888 <redshield88888@gmail.com>
+Subject: Data has not been wrote to DSs
+Date: Tue, 25 May 2010 00:23:41 +0000 (UTC)
+Message-ID: <loom.20100525T014937-518@post.gmane.org>
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Here is a small patch set proposed for 2.6.35.
+■Reference
+http://wiki.linux-nfs.org/wiki/index.php/Configuring_pNFS/spnfsd
+http://osdir.com/ml/general/2010-05/msg10129.html
 
-Now that the kernel NFS client does text-based mount option pro-
-cessing and has its own MNT client, much of the code in nfsroot.c is
-redundant.  This series converts nfsroot.c to use mainline NFS client
-mount option processing, and removes the redundant code.
+■My environment
+kernel-2.6.32.11-107.2.3.pnfs.fc12.x86_64.rpm
+kernel-devel-2.6.32.11-107.2.3.pnfs.fc12.x86_64.rpm
+kernel-firmware-2.6.32.11-107.2.3.pnfs.fc12.noarch.rpm
+kernel-headers-2.6.32.11-107.2.3.pnfs.fc12.x86_64.rpm
+nfs-utils-1.2.2-4.1.pnfs.x86_64.rpm
 
-Note that the default mount option settings for NFSROOT change with
-this series.  The defaults are now vers=3 and tcp.  There is no
-longer a default mntport setting of 627 (used if the server does not
-have a running portmapper).
+MDS: 192.168.1.60
+DS: 192.168.1.45
+Client: 192.168.1.62 ( created on the KVM's virtual machine on the MDS )
 
-Some additional clean-ups are included, such as updating the in-kernel
-documentation for NFSROOT, and adding a new kernel command-line
-parameter that enables debugging messages during NFSROOT processing.
+■/etc/exports
+- MDS's
 
-It would be good if others who use NFSROOT on a regular basis could
-review and test these changes.
+/ *(rw,sync,pnfs,fsid=0,insecure,no_subtree_check,no_root_squash)
 
----
+- DS's
 
-Chuck Lever (6):
-      SUNRPC: Remove rpcb_getport_sync()
-      NFS: Allow NFSROOT debugging messages to be enabled dynamically
-      NFS: Clean up nfsroot.c
-      NFS: Use super.c for NFSROOT mount option parsing
-      NFS: Clean up NFSROOT command line parsing
-      NFS: Remove \t from mount debugging message
+/ *(rw,sync,fsid=0,insecure,no_subtree_check,pnfs,no_root_squash)
+
+■/etc/fstab
+- MDS's
+
+UUID=52ab88e8-5d93-440c-af45-0a85923898ec /                       ext4   
+defaults        1 1
+UUID=90d25a9c-54b4-4db4-979a-26ea0d67fe60 swap                    swap   
+defaults        0 0
+tmpfs                   /dev/shm                tmpfs   defaults        0 0
+devpts                  /dev/pts                devpts  gid=5,mode=620  0 0
+sysfs                   /sys                    sysfs   defaults        0 0
+proc                    /proc                   proc    defaults        0 0
+192.168.1.45:/pnfs /spnfs/192.168.1.45 nfs4 minorversion=1 0 0
+
+■/etc/spnfsd.conf of the MDS
+[General]
+Verbosity = 1
+Stripe-size = 8192
+Dense-striping = 0
+Pipefs-Directory = /var/lib/nfs/rpc_pipefs
+DS-Mount-Directory = /spnfs
+
+[DataServers]
+NumDS = 1
+DS1_IP = 192.168.1.45
+DS1_PORT = 2049
+DS1_ROOT = /pnfs
+DS1_ID = 1
+
+■Preparation nad Assumption
+-The NFS related ports has opened and has confirmed
+
+- on the DS
+$mkdir /pnfs
+
+- on the MDS
+$mkdir /spnfs
+$mkdir /spnfs/192.168.1.45
+$reboot
+$touch /spnfs/192.168.1.45/test <- write succeeded to the DS's /spnfs
+
+The MDS has mounted the exported directory of DS and able to read and write.
+The MDS's /proc/self/mountstats includes lines that means the PNFS has turned on
+like below
+
+        PNFS_LAYOUTGET: 0 0 0 0 0 0 0 0
+        PNFS_LAYOUTCOMMIT: 0 0 0 0 0 0 0 0
+        PNFS_LAYOUTRETURN: 0 0 0 0 0 0 0 0
+        PNFS_GETDEVICELIST: 0 0 0 0 0 0 0 0
+        PNFS_GETDEVICEINFO: 0 0 0 0 0 0 0 0
+          PNFS_WRITE: 0 0 0 0 0 0 0 0
+         PNFS_COMMIT: 0 0 0 0 0 0 0 0
+
+■issue
+- on the client
+$mkdir /mnt/pnfs
+$modprobe nfslayoutdriver;modprobe blocklayoutdriver
+$mount -t nfs4 -o minorversion=1 192.168.1.60:/ /mnt/pnfs  <- SUCCEEDED
+$echo "heeeeeeeeeeeeeeeey" >> /mnt/pnfs/hello.txt  <- has not been wrote to the
+DS but has been worte under / of the MDS.
 
 
- Documentation/filesystems/nfs/nfsroot.txt |   22 +
- Documentation/kernel-parameters.txt       |    5 
- fs/nfs/mount_clnt.c                       |    2 
- fs/nfs/nfsroot.c                          |  566 +++++++++--------------------
- include/linux/nfs_fs.h                    |   10 -
- include/linux/sunrpc/clnt.h               |    1 
- init/do_mounts.c                          |   12 -
- net/sunrpc/rpcb_clnt.c                    |   51 ---
- 8 files changed, 209 insertions(+), 460 deletions(-)
-
--- 
-Chuck Lever
