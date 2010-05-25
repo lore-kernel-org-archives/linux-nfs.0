@@ -1,44 +1,51 @@
-From: Tao Guo <guotao-U4AKAne5IzAR5TUyvShJeg@public.gmane.org>
-Subject: Re: [PATCH v3] SQUASHME: pnfs: unlock lo_lock before calling
-	layoutdriver's setup_layoutcommit
-Date: Tue, 25 May 2010 23:26:44 +0800
-Message-ID: <AANLkTik8xzvd8vahf_tm-9UyauObg5ES3gmyFOXZy3MJ@mail.gmail.com>
-References: <20100525085119.GA7998@vmware> <4BFBD1C0.1040105@panasas.com>
-	 <4BFBE146.1060906@panasas.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: [PATCH] nfs4: allow server to change forechannel max_ops
+Date: Tue, 25 May 2010 12:42:24 -0400
+Message-ID: <20100525164224.GC4235@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: Boaz Harrosh <bharrosh@panasas.com>, linux-nfs@vger.kernel.org
-To: Benny Halevy <bhalevy@panasas.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
+To: Trond Myklebust <trond@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-vw0-f46.google.com ([209.85.212.46]:46251 "EHLO
-	mail-vw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758691Ab0EYP0p (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 25 May 2010 11:26:45 -0400
-Received: by vws9 with SMTP id 9so3390734vws.19
-        for <linux-nfs@vger.kernel.org>; Tue, 25 May 2010 08:26:44 -0700 (PDT)
-In-Reply-To: <4BFBE146.1060906@panasas.com>
+Received: from fieldses.org ([174.143.236.118]:39542 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754363Ab0EYQmZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 25 May 2010 12:42:25 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, May 25, 2010 at 10:40 PM, Benny Halevy <bhalevy@panasas.com> wrote:
-> Boaz Harrosh wrote:
->> From: Tao Guo <guotao-U4AKAne5IzAR5TUyvShJeg@public.gmane.org>
->>
->> So in blocklayoutdriver, we can use GFP_KERNEL to do memory
->> allocation in bl_setup_layoutcommit().
->>
->> The state protected by the lo_lock here is clear now, which is the
->> layout_commit's position and state. .i.e write_begin/end_pos,
->> nfsi->lo_cred, and the call to pnfs_get_layout_stateid.
->
-> Yeah, this looks cleaner.
-Yes, thanks.
-> Tao, can you please test and ack this patch before I merge it?
->
-> Thanks!
->
-> Benny
->
-Ok, I will test it tomorrow morning.
+From: J. Bruce Fields <bfields@citi.umich.edu>
+
+Section 18.36.3 of rfc 5661 says that "For the fore channel, the server
+MAY change the requested value."
+
+Also, there's no reason why the client would have to care if the server
+is willing to accept *more* operations per compound than the client
+requested.
+
+Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
+---
+ fs/nfs/nfs4proc.c |    1 -
+ 1 files changed, 0 insertions(+), 1 deletions(-)
+
+On the other hand, if the server *decreases* max_ops on the forechannel,
+the client may need to do something.  (Probably just fail for now.)  Why
+aren't we checking for that case?
+
+--b.
+
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 071fced..a5a3690 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -4880,7 +4880,6 @@ static int nfs4_verify_channel_attrs(struct nfs41_create_session_args *args,
+ 
+ 	ret |= _verify_fore_channel_attr(headerpadsz);
+ 	ret |= _verify_fore_channel_attr(max_resp_sz);
+-	ret |= _verify_fore_channel_attr(max_ops);
+ 
+ 	ret |= _verify_back_channel_attr(headerpadsz);
+ 	ret |= _verify_back_channel_attr(max_rqst_sz);
 -- 
-Tao.
+1.7.0.4
+
