@@ -1,64 +1,48 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from minas.ics.muni.cz ([147.251.4.40]:39467 "EHLO minas.ics.muni.cz"
+Received: from mail-out2.uio.no ([129.240.10.58]:50333 "EHLO mail-out2.uio.no"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757158Ab0ELWWT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 12 May 2010 18:22:19 -0400
-Received: from ns.sks3.muni.cz (sks.bb10.muni.cz [147.251.242.226] (may be forged))
-	by minas.ics.muni.cz (8.13.8/8.13.8/SuSE Linux 0.8) with ESMTP id o4CMEPRg017648
-	for <linux-nfs@vger.kernel.org>; Thu, 13 May 2010 00:14:26 +0200
-Received: from [147.251.209.121] (jk.sks3.muni.cz [147.251.209.121])
-	by ns.sks3.muni.cz (Postfix) with ESMTP id 7CEE69E201
-	for <linux-nfs@vger.kernel.org>; Thu, 13 May 2010 00:14:20 +0200 (CEST)
-Message-ID: <4BEB283C.1020102@atlas.cz>
-Date: Thu, 13 May 2010 00:14:20 +0200
-From: Jiri Kortus <sumix@atlas.cz>
-To: linux-nfs@vger.kernel.org
-Subject: pNFS-related questions
-Content-Type: text/plain; charset=ISO-8859-2; format=flowed
+	id S1758228Ab0EYO3w (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 25 May 2010 10:29:52 -0400
+Subject: Re: Deadlock in NFSv4 in all kernels
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+To: "William A. (Andy) Adamson" <androsadamson@gmail.com>
+Cc: Lukas Hejtmanek <xhejtman@ics.muni.cz>, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        salvet@ics.muni.cz
+In-Reply-To: <AANLkTimfHrXViu0Zm75i4cFED7pXqAvv2edmKRpIi4me@mail.gmail.com>
+References: <20100507153920.GP28167@ics.muni.cz>
+	 <AANLkTimsQTYWndbQo2nU01pcJfTRSZlPCMEY8m-CnksM@mail.gmail.com>
+	 <20100525140240.GG9731@ics.muni.cz>
+	 <AANLkTimfHrXViu0Zm75i4cFED7pXqAvv2edmKRpIi4me@mail.gmail.com>
+Content-Type: text/plain; charset="UTF-8"
+Date: Tue, 25 May 2010 10:29:45 -0400
+Message-ID: <1274797785.5377.50.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Hi,
+On Tue, 2010-05-25 at 10:10 -0400, William A. (Andy) Adamson wrote: 
+> 2010/5/25 Lukas Hejtmanek <xhejtman@ics.muni.cz>:
+> > On Tue, May 25, 2010 at 09:45:32AM -0400, William A. (Andy) Adamson wrote:
+> >> Not get into the problem in the first place: this means
+> >>
+> >> 1) determine a 'lead time' where the NFS client declares a context
+> >> expired even though it really as 'lead time' until it actually
+> >> expires.
+> >>
+> >> 2) flush all writes on any contex that will expire within the lead
+> >> time which needs to be long enough for flushes to take place.
+> >
+> > I think you cannot give any guarantees that the flush happens on time. There
+> > can be server overload, network overload, anything and you are out of luck.
+> 
+> True - but this will be the case no matter what scheme is in place.
+> The above is to handle the normal working situation. When this fails
+> due to network, server overload, server reboot, i.e. not-normal
+> situation, then use the machine credential.
 
-I'd like to ask two questions that are related to pNFS, I hope it's not 
-a problem that I put them in one post even though they aren't related 
-one to the other.
+Use of the machine credential also requires help from the rpc.gssd
+daemon. It's not a solution to the deadlock Lukas is describing.
 
-1. How to configure a pNFS+exofs setup with multiple OSD targets? I was 
-able to use a setup with one OSD target, one OSD initiator+pNFS metadata 
-server and one client with the help of pNFS mailing list and the 
-instructions from here 
-http://mailman.open-osd.org/pipermail/osd-dev/2009-July/001033.html 
-which seems to be quite clear to me. But I've been thinking about how a 
-setup with more OSDs would look like? (I mean mainly the metadata 
-server). I suppose that I would configure more OSDs in the same way as I 
-did with one. Then how about the pNFS MDS setup? I've been wondering if 
-I could do it this way:
-- login to the targets, then mount /dev/osdX devices for example in 
-/exofs/osdX
-- set up the /etc/exports file in this way:
-/exofs    *(....,fsid=0,pnfs)
-/exofs/osd1    *(....)
-/exofs/osd2    *(....)
-...
-/exofs/osdX    *(....)
+Trond
 
-- then reload the exports by running "exportfs -r"
-- and finally I would login to the OSDs on the client, load 
-objlayoutdriver and mount the export from MDS with the "minorversion=1" 
-option.
-Could the content of /etc/exports file look like that? Or is it 
-fundamentally wrong? I'd be glad for any advice. I can't test it right 
-now but I have to know how to do it to describe it in my bachelor's thesis.
-
-
-2. I'd like to know how well the IPv6 support in pNFS works - what 
-works, what doesn't, if there are any problems to solve etc., just 
-anything worth to know concerning the IPv6 support.
-
-Thank you very much in advance.
-
-Best regards,
-
-Jiri Kortus
