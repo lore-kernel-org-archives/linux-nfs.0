@@ -1,87 +1,70 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:55070 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:4054 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757867Ab0ERPMk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 18 May 2010 11:12:40 -0400
-Date: Tue, 18 May 2010 11:12:39 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Marc Eshel <eshel@almaden.ibm.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [pnfs] Linux pNFS status meeting 05/13
-Message-ID: <20100518151239.GE17823@fieldses.org>
-References: <OF0E51ED85.C973CB93-ON88257721.006B7902-88257721.006B9A2F@us.ibm.com> <20100512200801.GN6135@fieldses.org>
+	id S1751377Ab0EZR66 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 26 May 2010 13:58:58 -0400
+Subject: Re: [PATCH 00/22] LAYOUTGET invocation
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20100512200801.GN6135@fieldses.org>
+From: Fred Isaman <iisaman@netapp.com>
+In-Reply-To: <4BFD5CEF.8030703@gmail.com>
+Date: Wed, 26 May 2010 13:58:30 -0400
+Cc: Boaz Harrosh <bharrosh@panasas.com>, linux-nfs@vger.kernel.org
+Message-Id: <97B934E1-78E4-4CC0-986C-08AFDA0B327C@netapp.com>
+References: <1273972993-15369-1-git-send-email-iisaman@netapp.com> <4BFC1686.4000509@gmail.com> <51AD8F7D-D172-4DE6-8F7A-CDFA292CBF8B@netapp.com> <4BFC2FA2.2050506@gmail.com> <4BFCDF1B.60608@panasas.com> <4BFD5CEF.8030703@gmail.com>
+To: Dean Hildebrand <seattleplus@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, May 12, 2010 at 04:08:01PM -0400, bfields wrote:
-> On Wed, May 12, 2010 at 12:35:18PM -0700, Marc Eshel wrote:
-> > Meeting on Thursday 05/13/10 at 9:30 AM pacific time (12:30 PM UMICH time)
+
+On May 26, 2010, at 1:39 PM, Dean Hildebrand wrote:
+
+> Try to remember that this isn't some new feature that we are disabling, or a new way of doing things, this is a primary I/O path. We MUST fix this with the B-list code submission, so why go through the hassle of searching through old patches and tags to find it.
 > 
-> Rough agenda:
 
-Apologies, I've been busier than usual and forgot to send out my notes:
 
-1. upstream status/merge plans (trond, bfields)
-	- rc7 released
-	- bfields: reclaim complete, benny's patches
-	- Trond: cleaning up branches, merged 2.6.35 stuff in (stack
-	  reduction, Chuck's rtc-resolution patches).  Haven't merged in
-	  access & auth cache -shrinker changes.  Also: state-recovery
-	  thread deadlock still being worked.  Rearranged rpc-task
-	  structure fields to shrink struct size.  That done, will send
-	  changelog to list.
+To be clear, I am not disabling directIO itself, only directIO's use of pnfs.  DirectIO will still be functional, but will use the MDS.
 
-2. State of pNFS tree (bhalevy)
-	- [distracted, missed some notes]
-	- note also cleaned up gfs2 branch
+Fred
 
-3. Mailing list change
-	- no problems reported, except Benny getting repeatedly bounced
-	  off?  He'll investigate farther.  No response from postmaster.
-
-4. Client
-	4.1. Client pNFS status
-		- stable/unstable write-discussion.
-		- Andy notes: usually tests with writes to gfs2 turned
-		  on, even though not really optimal (and will stay turned
-		  off in mainstream).
-		- Benny: working on some io path bugs; will discuss on
-		  mailing list bugs.  Ricardo: note Fred may be working
-		  on same area.  (E.g.: on "done" path, two closes (one
-		  of layout_commit context, one layout return on close
-		  path?) were racing with each other?  Looks like there
-		  may be patches that fix that.  Also saw stable
-		  object-layout write problems.)
-		- Alexandros doing some work on layout-management, close
-		  to sending.
-		- what about ipv6?: reports are that it's work; not sure
-		  anyone's been thinking about it hard, though.
-		  (What about device cache?  Andy should take a look.
-		  What about gfs2 data server references?  Ricardo says
-		  this was all "priority B" on client.)
-	4.2. Client state management design documentation (trond)
-		- some progress last week, none this.
-5. Server
-	5.1. Todo's for minimal 4.1 server (bfields)
-		- Benny's patches
-		- pynfs testing
-	5.2. pnfs
-		- question about exports.
-		- exofs; did some testing, no report yet (distracted by
-		  some bugs)
-
-6. redhat status (steved)
-	- nothing to report
-7. bakeathon plans
-	- ann arbor: going fine
-	- boston: still waiting on hotel details.
-8. new business
-	- none
-9. next meeting
-	- same time (note Benny and Boaz expect to miss it).
-
---b.
+> If you want to talk about a *REAL* solution, then we need to figure out who broke O_DIRECT and reject their patches until they fix it.  You can't submit patches that break a primary I/O path.  But again, since we are focused on A-list items, ifdef'ing the code out for now in the B-list branch seems like a reasonable compromise.
+> 
+> Dean
+> 
+> Boaz Harrosh wrote:
+>> On 05/25/2010 11:14 PM, Dean Hildebrand wrote:
+>>  
+>>>    
+>>>> I can send some post_submit patches with the code ifdef'ed out if people would be content with that.
+>>>>        
+>>> Thanks for the background.  I would be much happier if you sent patches with the code ifdef'd out, added with the comment in the code regarding which patches you believe introduced the problem.
+>>> 
+>>> Dean
+>>>    
+>>>> Fred
+>>>>      
+>> 
+>> I disagree. Source code is not a version management system. We have git
+>> for that. The code is never lost it is there for eternity in the git
+>> tree. We could ask Benny to tag the last branch that had broken directIO
+>> as LAST_directIO_VERSION for easy random access at future time.
+>> 
+>> If in the future someone smart wants to forward port the code and fix it
+>> then the *right* way to do it is by manual octopus merge at the point of
+>> branch.
+>> Never, Never uncomment out code that was sitting collecting dust.
+>> Manual octopus merge I mean using the two diffs from the two sides of the
+>> branch, and replaying one on the other. For instance if at one patch
+>> a function was moved, then redo the move of the current function again, not
+>> leave the old code as it was before. Let the merge point out the points of
+>> friction. Because you see, with commented code, there is never a merge
+>> conflict it will always uncomment.
+>> 
+>> And anyway the Kernel people will never accept code in comments. There
+>> are out-of-tree gits to do that. So I don't even think it is an option.
+>> The pnfs branches are patches that should eventually go upstream. Or
+>> are currently the only option for the testing of upstream code.
+>> 
+>> Boaz
+>>  
 
