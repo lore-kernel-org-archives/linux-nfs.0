@@ -1,37 +1,86 @@
-From: Dean Hildebrand <seattleplus@gmail.com>
-Subject: Re: Linux pNFS status meeting  5/27/10
-Date: Wed, 26 May 2010 11:33:23 -0700
-Message-ID: <4BFD6973.20803@gmail.com>
-References: <4BFD5DBD.6090707@gmail.com> <1274896869.5270.18.camel@heimdal.trondhjem.org>
+From: "Arce, Abraham" <x0066660@ti.com>
+Subject: RE: NULL Pointer Deference: NFS & Telnet
+Date: Wed, 26 May 2010 15:19:07 -0500
+Message-ID: <27F9C60D11D683428E133F85D2BB4A53043E3EE6A3@dlee03.ent.ti.com>
+References: <27F9C60D11D683428E133F85D2BB4A53043E33A997@dlee03.ent.ti.com>
+	 <27F9C60D11D683428E133F85D2BB4A53043E3EDFE6@dlee03.ent.ti.com>
+	 <20100525.185236.193707791.davem@davemloft.net>
+	 <27F9C60D11D683428E133F85D2BB4A53043E3EDFF1@dlee03.ent.ti.com>
+ <1274851741.25136.16.camel@edumazet-laptop>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8; format=flowed
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-fx0-f46.google.com ([209.85.161.46]:42200 "EHLO
-	mail-fx0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757479Ab0EZSdB (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 26 May 2010 14:33:01 -0400
-Received: by fxm5 with SMTP id 5so4752204fxm.19
-        for <linux-nfs@vger.kernel.org>; Wed, 26 May 2010 11:33:00 -0700 (PDT)
-In-Reply-To: <1274896869.5270.18.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
-Sender: linux-nfs-owner@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+Cc: "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
+	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+	"linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+	"linux-omap@vger.kernel.org" <linux-omap@vger.kernel.org>,
+	"tony@atomide.com" <tony@atomide.com>,
+	"Shilimkar, Santosh" <santosh.shilimkar@ti.com>,
+	"Ha, Tristram" <Tristram.Ha@micrel.com>
+To: Eric Dumazet <eric.dumazet@gmail.com>,
+	David Miller <davem@davemloft.net>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <1274851741.25136.16.camel@edumazet-laptop>
+Sender: linux-kernel-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Thanks for letting me know.  Is everyone ok with simply cancelling this 
-weeks meeting?
-Dean
+Thanks Eric, David,
 
-Trond Myklebust wrote:
-> On Wed, 2010-05-26 at 10:43 -0700, Dean Hildebrand wrote: 
->   
->> Meeting on Thursday 5/27/2010 at 9:30 AM PDT (12:30 PM EST).
->>     
->
-> I have a conflict tomorrow. There's a NetApp all-hands meeting that is
-> scheduled to last until 1:00pm. I suspect that Andy, Ricardo and Fred
-> have the same constraint...
->
-> Cheers
->   Trond
->   
+[..]
+
+> > > > -		if (skb_shinfo(skb)->nr_frags) {
+> > > > +		if (skb_shinfo(skb)->nr_frags && skb_has_frags(skb)) {
+> > > >  			int i;
+> > > >  			for (i = 0; i < skb_shinfo(skb)->nr_frags; i++)
+> > > >  				put_page(skb_shinfo(skb)->frags[i].page);
+> > >
+> > > skb_shinfo(skb)->nr_frags counts the number of entries contained
+> > > in the skb_shinfo(skb)->frags[] array.
+> > >
+> > > This has nothing to do with the frag list pointer,
+> > > skb_shinfo(skb)->frag_list, which is what skb_has_frags()
+> > > tests.
+> > >
+> > > You've got some kind of memory corruption going on and it
+> > > appears to have nothing to do with the code paths you're
+> > > playing with here.
+> >
+> > Do you have any recommendation on debugging technique/tool for this memory
+> corruption issue?
+
+[..]
+
+> It seems quite strange. You have a skb->nr_frags > 0 value, but a
+> frags[i].page = 0 value
+> 
+> You might add following function :
+> 
+> shinfo_check(struct sk_buff *skb)
+> {
+> 	struct skb_shared_info *shinfo = skb_shinfo(skb);
+> 	int i;
+> 
+> 	WARN_ON(shinfo->nr_frags >= MAX_SKB_FRAGS);
+> 	for (i = 0; i < shinfo->nr_frags; i++)
+> 		WARN_ON(!shinfo->frags[i].page);
+> }
+> 
+> And call it from various points, to check who corrupts your skb.
+
+By increasing the allocation length of our rx skbuff the corruption issue is fixed... I have increased it by 2... Were we writing outside our boundaries of skb data?
+
+Please let me know about this approach...
+
+diff --git a/drivers/net/ks8851.c b/drivers/net/ks8851.c
+index b4fb07a..6da81e1 100644
+--- a/drivers/net/ks8851.c
++++ b/drivers/net/ks8851.c
+@@ -504,7 +504,7 @@ static void ks8851_rx_pkts(struct ks8851_net *ks)
+                               ks->rc_rxqcr | RXQCR_SDA | RXQCR_ADRFE);
+
+                if (rxlen > 0) {
+-                       skb = netdev_alloc_skb(ks->netdev, rxlen + 2 + 8);
++                       skb = netdev_alloc_skb(ks->netdev, rxlen + 4 + 8);
+                        if (!skb) {
+
+Best Regards
+Abraham
