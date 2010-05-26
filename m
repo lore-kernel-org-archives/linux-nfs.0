@@ -1,208 +1,115 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:2920 "EHLO
-	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1753068Ab0EQGDD (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 17 May 2010 02:03:03 -0400
-Message-ID: <4BF0DC12.40006@panasas.com>
-Date: Mon, 17 May 2010 09:02:58 +0300
-From: Benny Halevy <bhalevy@panasas.com>
-To: Zhang Jingwang <yyalone@gmail.com>
-CC: NFS list <linux-nfs@vger.kernel.org>
-Subject: Re: SQUASHME: missing from FIXME: async layout return
-References: <4BEBBAE9.8090605@panasas.com>	 <AANLkTind3eXmuPw5HrKqB6bHJSSXFL3g2cDSEyyYc1n8@mail.gmail.com>	 <4BEC0F78.5060203@panasas.com>	 <AANLkTilhbkde-kAPGSBHT1b8vIZq4cM1SPpI-Rd0iOb7@mail.gmail.com>	 <4BEC1B43.2040901@panasas.com>	 <AANLkTikXcTBNWXKmp7Fs_6cjOsJQ3C5iFNvW4GvuMkkY@mail.gmail.com>	 <4BEC26BC.2040900@panasas.com> <AANLkTikG-QLid-R4Zt0UJ29bbimpYXjA8XEQ0AVNxMhr@mail.gmail.com>
-In-Reply-To: <AANLkTikG-QLid-R4Zt0UJ29bbimpYXjA8XEQ0AVNxMhr@mail.gmail.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mail-pv0-f174.google.com ([74.125.83.174]:56769 "EHLO
+	mail-pv0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S934205Ab0EZSxU (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 26 May 2010 14:53:20 -0400
+Received: by pvg3 with SMTP id 3so1259768pvg.19
+        for <linux-nfs@vger.kernel.org>; Wed, 26 May 2010 11:53:20 -0700 (PDT)
+Message-ID: <4BFD6E39.6010604@gmail.com>
+Date: Wed, 26 May 2010 11:53:45 -0700
+From: Dean Hildebrand <seattleplus@gmail.com>
+To: Boaz Harrosh <bharrosh@panasas.com>
+CC: Fred Isaman <iisaman@netapp.com>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 00/22] LAYOUTGET invocation
+References: <1273972993-15369-1-git-send-email-iisaman@netapp.com> <4BFC1686.4000509@gmail.com> <51AD8F7D-D172-4DE6-8F7A-CDFA292CBF8B@netapp.com> <4BFC2FA2.2050506@gmail.com> <4BFCDF1B.60608@panasas.com> <4BFD5CEF.8030703@gmail.com> <4BFD64B6.5070109@panasas.com>
+In-Reply-To: <4BFD64B6.5070109@panasas.com>
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On May. 14, 2010, 6:28 +0300, Zhang Jingwang <yyalone@gmail.com> wrote:
-> 2010/5/14 Benny Halevy <bhalevy@panasas.com>:
->> On May. 13, 2010, 19:04 +0300, "William A. (Andy) Adamson" <androsadamson@gmail.com> wrote:
->>> On Thu, May 13, 2010 at 11:31 AM, Boaz Harrosh <bharrosh@panasas.com> wrote:
->>>> On 05/13/2010 06:17 PM, William A. (Andy) Adamson wrote:
->>>>> On Thu, May 13, 2010 at 10:40 AM, Benny Halevy <bhalevy@panasas.com> wrote:
->>>>>> On May. 13, 2010, 17:19 +0300, "William A. (Andy) Adamson" <androsadamson@gmail.com> wrote:
->>>>>>> On Thu, May 13, 2010 at 4:40 AM, Boaz Harrosh <bharrosh@panasas.com> wrote:
->>>>>>>> I've tested the patch:
->>>>>>>>        FIXME: async layout return
->>>>>>>>
->>>>>>>> And there is a missing small hunk
->>>>>>>>
->>>>>>>> I have tested with this patch and it is a very good patch
->>>>>>>> that should also go into 2.6.33. It is necessary in the rare
->>>>>>>> case when one inode have more then one open_context.
->>>>>>>
->>>>>>> Do you mean more than one open context per open owner?
->>>>>>
->>>>>> What we see is one "regular" open context and one which is the layout_commit_ctx
->>>>>
->>>>> Isn't that a BUG?
->>>>>
->>>>> Here is what we're seeing:
->>>>>
->>>>> nfs_file_release->nfs_release->nfs_file_clear_open_context->__put_nfs_open_context->
->>>>> NFS_PROTO(inode)->close_context->nfs4_close_sync->__nfs4_close->pnfs_layoutcommit_inode,
->>>>>
->>>>> This is the same code that Boaz's 'missing small hunk' adds the wait
->>>>> to the pnfs_layout_commit_inode to. This is good, because when
->>>>> __nfs4_close is called with sync, every thing must be sent/returned
->>>>> prior to the nfs_do_close call.
->>>>>
->>>>> But there is still a problem. Here is the __nfs4_close call (with out
->>>>> the wait that Boaz added)
->>>>>
->>>>>                 if (nfsi->layoutcommit_ctx)
->>>>>                         pnfs_layoutcommit_inode(state->inode, 0);
->>>>>                 if (has_layout(nfsi) && nfsi->layout.roc_iomode) {
->>>>>                         struct nfs4_pnfs_layout_segment range;
->>>>>
->>>>>                         range.iomode = nfsi->layout.roc_iomode;
->>>>>                         range.offset = 0;
->>>>>                         range.length = NFS4_MAX_UINT64;
->>>>>                         pnfs_return_layout(state->inode, &range, NULL,
->>>>>                                            RETURN_FILE);
->>>>>
->>>>> Note that a pnfs_return_layout which is always 'sync' (async with wait
->>>>> for completion). So the (currently) async LAYOUTCOMMIT call returns,
->>>>> and a LAYOUTRETURN is put on the wire
->>>>>
->>>>> Then the LAYOUTCOMMIT rpc_call_done routine calls
->>>>> pnfs_layoutcommit_done which calls put_nfs_open_context. If the open
->>>>> context is different from the open context that was put by
->>>>> nfs_file_release, then
->>>>>
->>>>> pnfs_layoutcommit_done->put_nfs_open_context-> ..... ->__nfs4_close
->>>>> and the return on close LAYOUTRETURN is sent again!
->>>>>
->>>>> Of couse this second LAYOUTRETURN either gets a zero stateid, or uses
->>>>> the same stateid as the first LAYOUTRETURN, and the reply to the
->>>>> second LAYOUTRETURN will result in a NFS4ERR_BAD_STATEID .....
->>>>>
->>>>> This will occur whether the LAYOUTCOMMIT is async or sync as they both
->>>>> call pnfs_layoutcommit_done.
->>>>>
->>>>> I need to understand why there are two open contexts. On the face of
->>>>> it, it seems wrong.
->>>>>
->>>>> We also add a pointer to the open context in the nfs_write_data, and
->>>>> in the pnfs_layoutcommit_data. Do we take a reference on the open data
->>>>> in theses cases? .
->>>>>
->>>>> -->Andy
->>>>>
->>>>>
->>>>
->>>> Yes on all acounts. This is what Benny's patch is fixing please try it out
->>>> it is most important (Add my small fix)
->>>
->>> Is this what you mean?
->>>
->>> With Benny's patch, with return-on-close set and the layoutcommit_ctx
->>> different from the open context that caused the __nfs4_close:
->>>
->>> The (now) sync LAYOUTCOMMIT triggered from the nfs_file_release
->>> __nfs4_close() will complete prior to calling the return-on-close
->>> LAYOUTRETURN call. Since pnfs_layoutcommit_done is still called,
->>> put_nfs_open_context will be call on the layoutconmit_ctx (saved in
->>> pnfs_layoutcommit_data->ctx) and __nfs4_close will be called.
->>>
->>> In _this_ instance of calling __nfs4_close (from
->>> pnfs_layoutcommit_done), the nfsi->layoutcommit_ctx pointer is null so
->>> the pnfs_layoutcommit_inode call is skipped, and  pnfs_return_layout
->>> is called. Since it is also a sync call, pnfs_layoutcommit_done does
->>> not return until it is complete. So the layout is returned, the layout
->>> is freed (all layout segments 'cause the range covers the whole file)
->>> and pnfs_layoutcommit_inode returns to the FIRST __nfs4_close (from
->>> nfs_file_release)
->>>
->>> Now since return-on-close is set, pnfs_layout_return is called (in the
->>> nfs_file_release __nfs4_close). This LAYOUTRETURN call will never go
->>> on the wire because the first pnfs_layout_return (from the
->>> pnfs_layoutcommit_done __nfs4_close) has removed the layout segment,
->>> and all is well.
->>>
->>> Sheese.
->>
->> Yeah :-/
->> I'm feeling increasingly uncomfortable with the current implementation
->> and we're planning to come up with the state-machine based model
->> for the Bakeathon and test it there.  Ideally, this will be stable enough
->> that we can get the gist of it into pnfs-submit.
->>
->> Benny
->>
-> 
-> Is there any document about the state-machine based model?
 
-Here: http://linux-nfs.org/pipermail/pnfs/attachments/20100304/f90bede4/attachment.txt
 
->>>
->>> --->Andy
->>>
->>>
->>>>
->>>> And about the multiple contexts I don't understand as well but the fact of it
->>>> is that an nfs_inode has an list_head of open_contexts and we must deal properly
->>>> with when that happens. (BTW with 2.6.34 Kernel it happens regularly as in
->>>> prev kernels it almost never trigger.)
->>>>
->>>> Benny's patch takes care of that and I've done heavy testing of it I can see cases
->>>> of more then one contexts and it works correctly.
->>>>
->>>> But I too would like to understand when is it that an inode can have more then
->>>> one open_context
->>>>
->>>> Boaz
->>>>
->>>>>
->>>>>>
->>>>>> Benny
->>>>>>
->>>>>>>
->>>>>>> -->Andy
->>>>>>>
->>>>>>>>
->>>>>>>> (For some reason I see that happening much more in 2.6.34
->>>>>>>>  I don't understand why)
->>>>>>>>
->>>>>>>> Boaz
->>>>>>>> ---
->>>>>>>> git diff --stat -p -M
->>>>>>>>  fs/nfs/nfs4state.c |    2 +-
->>>>>>>>  1 files changed, 1 insertions(+), 1 deletions(-)
->>>>>>>>
->>>>>>>> diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
->>>>>>>> index 15c8bc8..6dbe893 100644
->>>>>>>> --- a/fs/nfs/nfs4state.c
->>>>>>>> +++ b/fs/nfs/nfs4state.c
->>>>>>>> @@ -590,7 +590,7 @@ static void __nfs4_close(struct path *path, struct nfs4_state *state, fmode_t fm
->>>>>>>>                struct nfs_inode *nfsi = NFS_I(state->inode);
->>>>>>>>
->>>>>>>>                if (nfsi->layoutcommit_ctx)
->>>>>>>> -                       pnfs_layoutcommit_inode(state->inode, 0);
->>>>>>>> +                       pnfs_layoutcommit_inode(state->inode, wait);
->>>>>>>>                if (has_layout(nfsi) && nfsi->layout.roc_iomode) {
->>>>>>>>                        struct nfs4_pnfs_layout_segment range;
->>>>>>>>
->>>>>>>> --
->>>>>>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->>>>>>>> the body of a message to majordomo@vger.kernel.org
->>>>>>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>>>>>>>
->>>>>>
->>>>> --
->>>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->>>>> the body of a message to majordomo@vger.kernel.org
->>>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>>>>
->>>>
->>>>
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Boaz Harrosh wrote:
+> On 05/26/2010 08:39 PM, Dean Hildebrand wrote:
+>   
+>> Try to remember that this isn't some new feature that we are disabling, 
+>> or a new way of doing things, this is a primary I/O path. We MUST fix 
+>> this with the B-list code submission, so why go through the hassle of 
+>> searching through old patches and tags to find it.
+>>     
+>
+> No, this is no hassle. uncommenting old code and hopping for the best
+> is the hassle. (insert here the explanation from previous mail)
+>   
+To answer Fred's statement, I understand the nfs o_direct will still 
+work, but pNFS must support o_direct in the b-list.  O_direct is not a 
+wierd unused flag, it is very common.  Also, I wouldn't be hoping for 
+the best, I would actually fix it....
+>   
+>> If you want to talk about a *REAL* solution, then we need to figure out 
+>> who broke O_DIRECT and reject their patches until they fix it.  You 
+>> can't submit patches that break a primary I/O path.  But again, since we 
+>> are focused on A-list items, ifdef'ing the code out for now in the 
+>> B-list branch seems like a reasonable compromise.
 >>
-> 
-> 
-> 
+>>     
+>
+> No "ifdef'ing the code out" is never a "reasonable compromise" if you want
+> then keep it in a separate clean patch, with "BROKEN:" at subject line and
+> committed in a branch that is above the pnfs-all-latest. So it can be rebased
+> from time to time, but not included in the regular test scenario, until fixed.
+>
+> (Which is BTW what it means the keep it out-of-tree, these git games are done
+>  routinely, every day)
+>   
+
+My point is that someone's patches broke O_DIRECT, and this is ONLY 
+acceptable because it is in the B-list.  So temporarily having code in 
+the B-list that is #ifdef'd out really doesn't seem like the worst idea 
+in the world.  But either way, as long as its isn't simiply removed (as 
+the original patches would have done) and is easy to add back in so that 
+we can figure out what went wrong and fix it up.
+Dean
+> Boaz
+>
+>   
+>> Dean
+>>
+>> Boaz Harrosh wrote:
+>>     
+>>> On 05/25/2010 11:14 PM, Dean Hildebrand wrote:
+>>>   
+>>>       
+>>>>     
+>>>>         
+>>>>> I can send some post_submit patches with the code ifdef'ed out if people would be content with that.
+>>>>>   
+>>>>>       
+>>>>>           
+>>>> Thanks for the background.  I would be much happier if you sent patches 
+>>>> with the code ifdef'd out, added with the comment in the code regarding 
+>>>> which patches you believe introduced the problem.
+>>>>
+>>>> Dean
+>>>>     
+>>>>         
+>>>>> Fred
+>>>>>       
+>>>>>           
+>>> I disagree. Source code is not a version management system. We have git
+>>> for that. The code is never lost it is there for eternity in the git
+>>> tree. We could ask Benny to tag the last branch that had broken directIO
+>>> as LAST_directIO_VERSION for easy random access at future time.
+>>>
+>>> If in the future someone smart wants to forward port the code and fix it
+>>> then the *right* way to do it is by manual octopus merge at the point of
+>>> branch.
+>>> Never, Never uncomment out code that was sitting collecting dust.
+>>> Manual octopus merge I mean using the two diffs from the two sides of the
+>>> branch, and replaying one on the other. For instance if at one patch
+>>> a function was moved, then redo the move of the current function again, not
+>>> leave the old code as it was before. Let the merge point out the points of
+>>> friction. Because you see, with commented code, there is never a merge
+>>> conflict it will always uncomment.
+>>>
+>>> And anyway the Kernel people will never accept code in comments. There
+>>> are out-of-tree gits to do that. So I don't even think it is an option.
+>>> The pnfs branches are patches that should eventually go upstream. Or
+>>> are currently the only option for the testing of upstream code.
+>>>
+>>> Boaz
+>>>   
+>>>       
+>
+>   
