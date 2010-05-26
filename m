@@ -1,77 +1,54 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:63543 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753067Ab0EMVI0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 13 May 2010 17:08:26 -0400
-Received: from localhost.localdomain (heimdal.trondhjem.org [10.58.49.73] (may be forged))
-	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id o4DL8MCQ021257
-	for <linux-nfs@vger.kernel.org>; Thu, 13 May 2010 14:08:26 -0700 (PDT)
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 07/15] SUNRPC: Ensure memory shrinker doesn't waste time in rpcauth_prune_expired()
-Date: Thu, 13 May 2010 17:08:13 -0400
-Message-Id: <1273784901-25599-7-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1273784901-25599-6-git-send-email-Trond.Myklebust@netapp.com>
-References: <1273784901-25599-1-git-send-email-Trond.Myklebust@netapp.com>
- <1273784901-25599-2-git-send-email-Trond.Myklebust@netapp.com>
- <1273784901-25599-3-git-send-email-Trond.Myklebust@netapp.com>
- <1273784901-25599-4-git-send-email-Trond.Myklebust@netapp.com>
- <1273784901-25599-5-git-send-email-Trond.Myklebust@netapp.com>
- <1273784901-25599-6-git-send-email-Trond.Myklebust@netapp.com>
+Received: from daytona.panasas.com ([67.152.220.89]:23133 "EHLO
+	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1756320Ab0EZInL (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 26 May 2010 04:43:11 -0400
+Message-ID: <4BFCDF1B.60608@panasas.com>
+Date: Wed, 26 May 2010 11:43:07 +0300
+From: Boaz Harrosh <bharrosh@panasas.com>
+To: Dean Hildebrand <seattleplus@gmail.com>
+CC: Fred Isaman <iisaman@netapp.com>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 00/22] LAYOUTGET invocation
+References: <1273972993-15369-1-git-send-email-iisaman@netapp.com> <4BFC1686.4000509@gmail.com> <51AD8F7D-D172-4DE6-8F7A-CDFA292CBF8B@netapp.com> <4BFC2FA2.2050506@gmail.com>
+In-Reply-To: <4BFC2FA2.2050506@gmail.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-The 'cred_unused' list, that is traversed by rpcauth_cache_shrinker is
-ordered by time. If we hit a credential that is under the 60 second garbage
-collection moratorium, we should exit because we know at that point that
-all successive credentials are subject to the same moratorium...
+On 05/25/2010 11:14 PM, Dean Hildebrand wrote:
+> 
+> 
+>>
+>> I can send some post_submit patches with the code ifdef'ed out if people would be content with that.
+>>   
+> 
+> Thanks for the background.  I would be much happier if you sent patches 
+> with the code ifdef'd out, added with the comment in the code regarding 
+> which patches you believe introduced the problem.
+> 
+> Dean
+>> Fred
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- net/sunrpc/auth.c |   12 +++++++-----
- 1 files changed, 7 insertions(+), 5 deletions(-)
+I disagree. Source code is not a version management system. We have git
+for that. The code is never lost it is there for eternity in the git
+tree. We could ask Benny to tag the last branch that had broken directIO
+as LAST_directIO_VERSION for easy random access at future time.
 
-diff --git a/net/sunrpc/auth.c b/net/sunrpc/auth.c
-index 03ff9f9..2213dc5 100644
---- a/net/sunrpc/auth.c
-+++ b/net/sunrpc/auth.c
-@@ -236,10 +236,13 @@ rpcauth_prune_expired(struct list_head *free, int nr_to_scan)
- 
- 	list_for_each_entry_safe(cred, next, &cred_unused, cr_lru) {
- 
--		/* Enforce a 60 second garbage collection moratorium */
-+		/*
-+		 * Enforce a 60 second garbage collection moratorium
-+		 * Note that the cred_unused list must be time-ordered.
-+		 */
- 		if (time_in_range(cred->cr_expire, expired, jiffies) &&
- 		    test_bit(RPCAUTH_CRED_HASHED, &cred->cr_flags) != 0)
--			continue;
-+			return 0;
- 
- 		list_del_init(&cred->cr_lru);
- 		number_cred_unused--;
-@@ -258,7 +261,7 @@ rpcauth_prune_expired(struct list_head *free, int nr_to_scan)
- 		if (nr_to_scan == 0)
- 			break;
- 	}
--	return nr_to_scan;
-+	return (number_cred_unused / 100) * sysctl_vfs_cache_pressure;
- }
- 
- /*
-@@ -275,8 +278,7 @@ rpcauth_cache_shrinker(int nr_to_scan, gfp_t gfp_mask)
- 	if (list_empty(&cred_unused))
- 		return 0;
- 	spin_lock(&rpc_credcache_lock);
--	nr_to_scan = rpcauth_prune_expired(&free, nr_to_scan);
--	res = (number_cred_unused / 100) * sysctl_vfs_cache_pressure;
-+	res = rpcauth_prune_expired(&free, nr_to_scan);
- 	spin_unlock(&rpc_credcache_lock);
- 	rpcauth_destroy_credlist(&free);
- 	return res;
--- 
-1.6.6.1
+If in the future someone smart wants to forward port the code and fix it
+then the *right* way to do it is by manual octopus merge at the point of
+branch.
+Never, Never uncomment out code that was sitting collecting dust.
+Manual octopus merge I mean using the two diffs from the two sides of the
+branch, and replaying one on the other. For instance if at one patch
+a function was moved, then redo the move of the current function again, not
+leave the old code as it was before. Let the merge point out the points of
+friction. Because you see, with commented code, there is never a merge
+conflict it will always uncomment.
 
+And anyway the Kernel people will never accept code in comments. There
+are out-of-tree gits to do that. So I don't even think it is an option.
+The pnfs branches are patches that should eventually go upstream. Or
+are currently the only option for the testing of upstream code.
+
+Boaz
