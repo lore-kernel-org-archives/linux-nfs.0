@@ -1,70 +1,154 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:4054 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751377Ab0EZR66 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 26 May 2010 13:58:58 -0400
-Subject: Re: [PATCH 00/22] LAYOUTGET invocation
-Content-Type: text/plain; charset=us-ascii
-From: Fred Isaman <iisaman@netapp.com>
-In-Reply-To: <4BFD5CEF.8030703@gmail.com>
-Date: Wed, 26 May 2010 13:58:30 -0400
-Cc: Boaz Harrosh <bharrosh@panasas.com>, linux-nfs@vger.kernel.org
-Message-Id: <97B934E1-78E4-4CC0-986C-08AFDA0B327C@netapp.com>
-References: <1273972993-15369-1-git-send-email-iisaman@netapp.com> <4BFC1686.4000509@gmail.com> <51AD8F7D-D172-4DE6-8F7A-CDFA292CBF8B@netapp.com> <4BFC2FA2.2050506@gmail.com> <4BFCDF1B.60608@panasas.com> <4BFD5CEF.8030703@gmail.com>
-To: Dean Hildebrand <seattleplus@gmail.com>
+Received: from daytona.panasas.com ([67.152.220.89]:30279 "EHLO
+	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1753126Ab0EZODy (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 26 May 2010 10:03:54 -0400
+Message-ID: <4BFD2A46.8010307@panasas.com>
+Date: Wed, 26 May 2010 17:03:50 +0300
+From: Boaz Harrosh <bharrosh@panasas.com>
+To: Benny Halevy <bhalevy@panasas.com>
+CC: steved@redhat.com, NFS list <linux-nfs@vger.kernel.org>,
+        "Chen, Helen Y" <hycsw@sandia.gov>
+Subject: Re: Fwd: Re: [pnfs] problem building pnfs-nfs-utils under Fedora
+ 13
+References: <4BFD1595.1070502@panasas.com>
+In-Reply-To: <4BFD1595.1070502@panasas.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-
-On May 26, 2010, at 1:39 PM, Dean Hildebrand wrote:
-
-> Try to remember that this isn't some new feature that we are disabling, or a new way of doing things, this is a primary I/O path. We MUST fix this with the B-list code submission, so why go through the hassle of searching through old patches and tags to find it.
+On 05/26/2010 03:35 PM, Benny Halevy wrote:
+> Helen, please note that the pnfs@linux-nfs.org mailing list was deprecated.
+> Forwarding to linux-nfs@vger.kernel.org.
 > 
-
-
-To be clear, I am not disabling directIO itself, only directIO's use of pnfs.  DirectIO will still be functional, but will use the MDS.
-
-Fred
-
-> If you want to talk about a *REAL* solution, then we need to figure out who broke O_DIRECT and reject their patches until they fix it.  You can't submit patches that break a primary I/O path.  But again, since we are focused on A-list items, ifdef'ing the code out for now in the B-list branch seems like a reasonable compromise.
+>>From a quick glance I'm not sure what went wrong with your build,
+> Steve should know better :-)
 > 
-> Dean
+> Benny
 > 
-> Boaz Harrosh wrote:
->> On 05/25/2010 11:14 PM, Dean Hildebrand wrote:
->>  
->>>    
->>>> I can send some post_submit patches with the code ifdef'ed out if people would be content with that.
->>>>        
->>> Thanks for the background.  I would be much happier if you sent patches with the code ifdef'd out, added with the comment in the code regarding which patches you believe introduced the problem.
->>> 
->>> Dean
->>>    
->>>> Fred
->>>>      
->> 
->> I disagree. Source code is not a version management system. We have git
->> for that. The code is never lost it is there for eternity in the git
->> tree. We could ask Benny to tag the last branch that had broken directIO
->> as LAST_directIO_VERSION for easy random access at future time.
->> 
->> If in the future someone smart wants to forward port the code and fix it
->> then the *right* way to do it is by manual octopus merge at the point of
->> branch.
->> Never, Never uncomment out code that was sitting collecting dust.
->> Manual octopus merge I mean using the two diffs from the two sides of the
->> branch, and replaying one on the other. For instance if at one patch
->> a function was moved, then redo the move of the current function again, not
->> leave the old code as it was before. Let the merge point out the points of
->> friction. Because you see, with commented code, there is never a merge
->> conflict it will always uncomment.
->> 
->> And anyway the Kernel people will never accept code in comments. There
->> are out-of-tree gits to do that. So I don't even think it is an option.
->> The pnfs branches are patches that should eventually go upstream. Or
->> are currently the only option for the testing of upstream code.
->> 
->> Boaz
->>  
+> On May. 19, 2010, 20:32 +0300, "Chen, Helen Y" <hycsw@sandia.gov> wrote:
+> 
+> 
+> 
+>  
+> Has anyone successfully build pnfs enabled nfs utils under Fedora 13? 
+> I am running the kernel from:
+> http://steved.fedorapeople.org/repos/pnfs/13/x86_64/
+>  
+> I installed libtirpc{,-devel}, tcp_wrappers{,-devel}, libevent{,-devel},
+> nfs-utils-lib{,-devel},
+> libgssglue{,-devel}, libblkid{,-devel}, and libcap{,-devel}
+>  
+> per instructions from:
+> _http://wiki.linux-nfs.org/wiki/index.php/Configuring_pNFS/spnfsd#Kernel_and_nfs-utils_compilati__on_
+> <http://wiki.linux-nfs.org/wiki/index.php/Configuring_pNFS/spnfsd#Kernel_and_nfs-utils_compilation>
+>  
+> I used libnfsidmap{,-devel} bundled in:
+> Nfs-utils-lib-devel-1.1.5-1.fc13.X86_64.rpm
+>  
+> Finally, I downloaded _nfs-utils-1.2.2-4.1.pnfs.src.rpm_
+> <http://steved.fedorapeople.org/repos/pnfs/13/source/nfs-utils-1.2.2-4.1.pnfs.src.rpm>
+> from _http://steved.fedorapeople.org/repos/pnfs/13/source/_
+>  
+> I am having trouble building these utils. I failed to generate
+> ‘configure’ when I ran autogen.sh:
+>  
+> /c//leaning up ............. done
+> //lobotomize//: putting auxiliary files in `.'.
+> libtoolize: copying file `./ltmain.sh'
+> libtoolize: putting macros in AC_CONFIG_MACRO_DIR, `aclocal'.
+> libtoolize: copying file `aclocal/libtool.m4'
+> libtoolize: copying file `aclocal/ltoptions.m4'
+> libtoolize: copying file `aclocal/ltsugar.m4'
+> libtoolize: copying file `aclocal/ltversion.m4'
+> libtoolize: copying file `aclocal/lt~obsolete.m4'
+> configure.ac:5: installing `./config.guess'
+> configure.ac:5: installing `./config.sub'
+> configure.ac:421: required file `tools/mountstats/Makefile.in' not found
+> configure.ac:421: required file `tools/nfs-iostat/Makefile.in' not found/
+>  
+> I deleted the two Makefile.in requirements from line 421 in configure.ac
+> because there were only python scripts inside those directories.
+>  
+> When I ran the ‘configure’ generated after the modification, it failed
+> with the following output:
+>  
+> /checking build system type... x86_64-unknown-linux-gnu
+> checking host system type... x86_64-unknown-linux-gnu
+> checking for a BSD-compatible install... /usr/bin/install -c
+> checking whether build environment is sane... yes
+> checking for gawk... gawk
+> checking whether make sets $(MAKE)... yes
+> checking whether to enable maintainer-specific portions of Makefiles... no
+> checking for style of include used by make... GNU
+> checking for gcc... gcc
+> checking whether the C compiler works... yes
+> checking for C compiler default output file name... a.out
+> checking for suffix of executables...
+> checking whether we are cross compiling... no
+> checking for suffix of object files... o
+> checking whether we are using the GNU C compiler... yes
+> checking whether gcc accepts -g... yes
+> checking for gcc option to accept ISO C89... none needed
+> checking dependency style of gcc... gcc3
+> checking how to run the C preprocessor... gcc -E
+> checking for grep that handles long lines and -e... /bin/grep
+> checking for egrep... /bin/grep -E
+> checking for ANSI C header files... no
+> checking for sys/types.h... yes
+> checking for sys/stat.h... yes
+> checking for stdlib.h... no
+> checking for string.h... yes
+> checking for memory.h... yes
+> checking for strings.h... yes
+> checking for inttypes.h... yes
+> checking for stdint.h... yes
+> checking for unistd.h... yes
+> checking for clnt_tli_create in -ltirpc... yes
+> checking /usr/include/tirpc/netconfig.h usability... yes
+> checking /usr/include/tirpc/netconfig.h presence... yes
+> checking for /usr/include/tirpc/netconfig.h... yes
+> checking for prctl... yes
+> checking for cap_get_proc in -lcap... yes
+> checking sys/capability.h usability... yes
+> checking sys/capability.h presence... yes
+> checking for sys/capability.h... yes
+> checking for libwrap... /
+>  
+> But libwrap is obviously installed based on the locate command:
+> #locate libwrap
+> /usr/lib/libwrap.so
+> /usr/lib/libwrap.so.0
+> /usr/lib/libwrap.so.0.7.6
+> /usr/lib64/libwrap.so
+> /usr/lib64/libwrap.so.0
+> /usr/lib64/libwrap.so.0.7.6
+>  
 
+Yes I think I had that to, on FC12 did you also install tcp_wrappers-devel
+
+[What configure does is look for the tcpd.h file.
+ So basically you:
+ - Look in configure what failed, and analyse what was missing here it was
+   "#include <tcpd.h>".
+ - yum provides "*/tcpd.h" - will show the tcp_wrappers-devel
+
+ Imagine that stupid me, I attempted to configure without reading the wiki first
+ and had about 10 of these, by the time I gut to libwrap it was becoming routine
+
+ RANT: I wish configure would leave the failing code on disk and specify the commands
+       I need to do to run the failing test. Or at least save and print the gcc output
+       of the failing test, rrrr ...
+]
+
+> I am new at this and would appreciate any help you can provide.
+>  
+
+So there you have it
+
+> Thanks,
+> Helen
+>  
+
+Boaz
