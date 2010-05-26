@@ -1,46 +1,132 @@
-From: Tao Guo <guotao-U4AKAne5IzAR5TUyvShJeg@public.gmane.org>
-Subject: Re: [PATCH v3] SQUASHME: pnfs: unlock lo_lock before calling
-	layoutdriver's setup_layoutcommit
-Date: Wed, 26 May 2010 09:15:21 +0800
-Message-ID: <AANLkTimR9XBYuja0kj_8LEv-F1_9kbHQ97bcYcnTj4tI@mail.gmail.com>
-References: <20100525085119.GA7998@vmware> <4BFBD1C0.1040105@panasas.com>
-	 <4BFBE146.1060906@panasas.com>
-	 <AANLkTik8xzvd8vahf_tm-9UyauObg5ES3gmyFOXZy3MJ@mail.gmail.com>
+From: "Arce, Abraham" <x0066660@ti.com>
+Subject: RE: NULL Pointer Deference: NFS & Telnet
+Date: Tue, 25 May 2010 20:48:02 -0500
+Message-ID: <27F9C60D11D683428E133F85D2BB4A53043E3EDFE6@dlee03.ent.ti.com>
+References: <27F9C60D11D683428E133F85D2BB4A53043E33A997@dlee03.ent.ti.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: Boaz Harrosh <bharrosh@panasas.com>, linux-nfs@vger.kernel.org
-To: Benny Halevy <bhalevy@panasas.com>
+Content-Type: text/plain; charset="us-ascii"
+Cc: "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+	"linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+	"linux-omap@vger.kernel.org" <linux-omap@vger.kernel.org>,
+	Tony Lindgren <tony-4v6yS6AI5VpBDgjK7y7TUQ@public.gmane.org>,
+	"Shilimkar, Santosh" <santosh.shilimkar@ti.com>
+To: "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
+	David Miller <davem@davemloft.net>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-vw0-f46.google.com ([209.85.212.46]:52094 "EHLO
-	mail-vw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1759142Ab0EZBPW (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 25 May 2010 21:15:22 -0400
-Received: by vws9 with SMTP id 9so3899621vws.19
-        for <linux-nfs@vger.kernel.org>; Tue, 25 May 2010 18:15:21 -0700 (PDT)
-In-Reply-To: <AANLkTik8xzvd8vahf_tm-9UyauObg5ES3gmyFOXZy3MJ-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
+Received: from arroyo.ext.ti.com ([192.94.94.40]:51858 "EHLO arroyo.ext.ti.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S933412Ab0EZBsG convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 25 May 2010 21:48:06 -0400
+In-Reply-To: <27F9C60D11D683428E133F85D2BB4A53043E33A997-lTKHBJngVwKIQmiDNMet8wC/G2K4zDHf@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, May 25, 2010 at 11:26 PM, Tao Guo <guotao-U4AKAne5IzAR5TUyvShJeg@public.gmane.org> wrote:
-> On Tue, May 25, 2010 at 10:40 PM, Benny Halevy <bhalevy@panasas.com> wrote:
->> Boaz Harrosh wrote:
->>> From: Tao Guo <guotao-U4AKAne5IzAR5TUyvShJeg@public.gmane.org>
->>>
->>> So in blocklayoutdriver, we can use GFP_KERNEL to do memory
->>> allocation in bl_setup_layoutcommit().
->>>
->>> The state protected by the lo_lock here is clear now, which is the
->>> layout_commit's position and state. .i.e write_begin/end_pos,
->>> nfsi->lo_cred, and the call to pnfs_get_layout_stateid.
->>
->> Yeah, this looks cleaner.
-> Yes, thanks.
->> Tao, can you please test and ack this patch before I merge it?
->>
->> Thanks!
->>
->> Benny
-I have tested it, it is OK.
+Hi,
 
-Tao
+I am able to avoid the NULL pointer dereference but not sure if the handling
+is the correct one... find the patch below...
+
+> I have 2 scenarios in which I am getting a NULL pointer dereference:
+> 
+> 1) root filesystem over nfs
+> 2) telnet connection
+> 
+> The issue appeared on this commit
+> 
+> http://git.kernel.org/?p=linux/kernel/git/torvalds/linux-
+> 2.6.git;a=commit;h=f8965467f366fd18f01feafb5db10512d7b4422c
+> 
+> The driver I am working with is drivers/net/ks8851.c
+> Any help will be highly appreciated...
 >
+> ---
+> 
+> Scenario 1 | root filesystem over nfs
+> 
+> Looking up port of RPC 100005/1 on 10.87.231.229
+> VFS: Mounted root (nfs filesystem) on device 0:10.
+> Freeing init memory: 128K
+> Unable to handle kernel NULL pointer dereference at virtual address 00000000
+> [..]
+> PC is at put_page+0xc/0x120
+> LR is at skb_release_data+0x74/0xb8
+> [..]
+> Backtrace:
+> [<c0086dd0>] (put_page+0x0/0x120)
+> [<c01d0a48>] (skb_release_data+0x0/0xb8)
+> [<c01d1044>] (skb_release_all+0x0/0x20)
+> [<c01d075c>] (__kfree_skb+0x0/0xbc)
+> [<c01d0818>] (consume_skb+0x0/0x58)
+> [<c01d39cc>] (skb_free_datagram+0x0/0x40)
+> [<c023ff74>] (xs_udp_data_ready+0x0/0x1e8)
+> [<c01ce034>] (sock_queue_rcv_skb+0x0/0x1c0)
+> [<c01fbba8>] (ip_queue_rcv_skb+0x0/0x58)
+> [<c02176c0>] (__udp_queue_rcv_skb+0x0/0x18c)
+> [<c0218e28>] (udp_queue_rcv_skb+0x0/0x348)
+> [<c02195a4>] (__udp4_lib_rcv+0x0/0x564)
+> [<c0219b08>] (udp_rcv+0x0/0x20)
+> [<c01f5f34>] (ip_local_deliver+0x0/0x264)
+> [<c01f586c>] (ip_rcv+0x0/0x6c8)
+> [<c01d7ec0>] (__netif_receive_skb+0x0/0x2d0)
+> [<c01d8190>] (process_backlog+0x0/0x16c)
+> [<c01d8e14>] (net_rx_action+0x0/0x18c)
+> [<c00521a0>] (__do_softirq+0x0/0x12c)
+> [<c00522cc>] (irq_exit+0x0/0x70)
+> [<c0028000>] (asm_do_IRQ+0x0/0xc8)
+> 
+> Complete log at http://pastebin.mozilla.org/728027
+> 
+> ---
+> 
+> Scenario 2
+> 
+>  1. Root filesystem booted in ram
+>  2. eth0 brought up
+>  3. telnetd daemon started
+>  4. tried to connect through telnet
+> 
+> # Unable to handle kernel NULL pointer dereference at virtual address 00000000
+> pgd = d98e8000
+> [..]
+> PC is at put_page+0xc/0x120
+> LR is at skb_release_data+0x74/0xb8
+> [..]
+> Backtrace:
+> [<c0086dd0>] (put_page+0x0/0x120)
+> [<c01d0a48>] (skb_release_data+0x0/0xb8)
+> [<c01d1044>] (skb_release_all+0x0/0x20)
+> [<c01d075c>] (__kfree_skb+0x0/0xbc)
+> [<c0202444>] (tcp_recvmsg+0x0/0x93c)
+> [<c02201e8>] (inet_recvmsg+0x0/0xec)
+> [<c01c7fd0>] (sock_aio_read+0x0/0xf8)
+> [<c00ab3ac>] (do_sync_read+0x0/0xec)
+> [<c00abfbc>] (vfs_read+0x0/0x164)
+> [<c00ac1a0>] (sys_read+0x0/0x70)
+> [<c0029100>] (ret_fast_syscall+0x0/0x30)
+> 
+> Complete log at http://pastebin.mozilla.org/728028
+> 
+
+Check for NULL data in sk_buff before sending to put_page
+
+Signed-off-by: Abraham Arce <x0066660@ti.com>
+---
+ net/core/skbuff.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
+
+diff --git a/net/core/skbuff.c b/net/core/skbuff.c
+index f8abf68..eb81f76 100644
+--- a/net/core/skbuff.c
++++ b/net/core/skbuff.c
+@@ -334,7 +334,7 @@ static void skb_release_data(struct sk_buff *skb)
+ 	if (!skb->cloned ||
+ 	    !atomic_sub_return(skb->nohdr ? (1 << SKB_DATAREF_SHIFT) + 1 : 1,
+ 			       &skb_shinfo(skb)->dataref)) {
+-		if (skb_shinfo(skb)->nr_frags) {
++		if (skb_shinfo(skb)->nr_frags && skb_has_frags(skb)) {
+ 			int i;
+ 			for (i = 0; i < skb_shinfo(skb)->nr_frags; i++)
+ 				put_page(skb_shinfo(skb)->frags[i].page);
+-- 
+1.5.4.3
+
