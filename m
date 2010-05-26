@@ -1,529 +1,315 @@
 From: Benny Halevy <bhalevy@panasas.com>
-Subject: Re: [PATCH 4/8] pnfs-submit: change stateid to be a union
-Date: Wed, 26 May 2010 11:26:04 +0300
-Message-ID: <4BFCDB1C.10400@panasas.com>
-References: <1274119004-30213-1-git-send-email-batsakis@netapp.com> <1274119004-30213-2-git-send-email-batsakis@netapp.com> <1274119004-30213-3-git-send-email-batsakis@netapp.com> <1274119004-30213-4-git-send-email-batsakis@netapp.com> <1274119004-30213-5-git-send-email-batsakis@netapp.com>
+Subject: Re: [PATCH 2/8] pnfs-submit: clean locking infrastructure
+Date: Wed, 26 May 2010 11:28:35 +0300
+Message-ID: <4BFCDBB3.7010406@panasas.com>
+References: <1274119004-30213-1-git-send-email-batsakis@netapp.com> <1274119004-30213-2-git-send-email-batsakis@netapp.com> <1274119004-30213-3-git-send-email-batsakis@netapp.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Cc: linux-nfs@vger.kernel.org
 To: Alexandros Batsakis <batsakis@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fg-out-1718.google.com ([72.14.220.155]:15568 "EHLO
-	fg-out-1718.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751226Ab0EZI0J (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 26 May 2010 04:26:09 -0400
-Received: by fg-out-1718.google.com with SMTP id e12so677678fga.1
-        for <linux-nfs@vger.kernel.org>; Wed, 26 May 2010 01:26:07 -0700 (PDT)
-In-Reply-To: <1274119004-30213-5-git-send-email-batsakis@netapp.com>
+Received: from mail-fx0-f46.google.com ([209.85.161.46]:39678 "EHLO
+	mail-fx0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752037Ab0EZI2k (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 26 May 2010 04:28:40 -0400
+Received: by fxm5 with SMTP id 5so4097642fxm.19
+        for <linux-nfs@vger.kernel.org>; Wed, 26 May 2010 01:28:38 -0700 (PDT)
+In-Reply-To: <1274119004-30213-3-git-send-email-batsakis@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 On May. 17, 2010, 20:56 +0300, Alexandros Batsakis <batsakis@netapp.com> wrote:
-> In NFSv4.1 the stateid consists of the "other" and "seqid" fields. For layout
-> processing we need to numerically compare the seqid value among layout stateids.
-> To do so, introduce a union to nfs4_stateid to switch between opaque(16 bytes)
->  and opaque(12 bytes) / __be32
+> (also minor cleanup of pnfs_free_layout())
 > 
 > Signed-off-by: Alexandros Batsakis <batsakis@netapp.com>
-> ---
->  fs/nfs/callback_proc.c |   13 +++++++------
->  fs/nfs/callback_xdr.c  |    2 +-
->  fs/nfs/delegation.c    |   19 +++++++++++--------
->  fs/nfs/nfs4proc.c      |   41 +++++++++++++++++++++++++----------------
->  fs/nfs/nfs4state.c     |    4 ++--
->  fs/nfs/nfs4xdr.c       |   38 +++++++++++++++++++++-----------------
->  fs/nfs/pnfs.c          |   11 ++++++-----
->  fs/nfsd/nfs4callback.c |    1 -
->  include/linux/nfs4.h   |   18 ++++++++++++++++--
->  9 files changed, 89 insertions(+), 58 deletions(-)
 > 
-> diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
-> index ebf86df..8ef1502 100644
-> --- a/fs/nfs/callback_proc.c
-> +++ b/fs/nfs/callback_proc.c
-> @@ -121,8 +121,9 @@ out:
->  
->  int nfs4_validate_delegation_stateid(struct nfs_delegation *delegation, const nfs4_stateid *stateid)
->  {
-> -	if (delegation == NULL || memcmp(delegation->stateid.data, stateid->data,
-> -					 sizeof(delegation->stateid.data)) != 0)
-> +	if (delegation == NULL || memcmp(delegation->stateid.u.data,
-> +					 stateid->u.data,
-> +					 sizeof(delegation->stateid.u.data)))
->  		return 0;
->  	return 1;
->  }
-> @@ -383,11 +384,11 @@ int nfs41_validate_delegation_stateid(struct nfs_delegation *delegation, const n
->  	if (delegation == NULL)
->  		return 0;
->  
-> -	/* seqid is 4-bytes long */
-> -	if (((u32 *) &stateid->data)[0] != 0)
-> +	if (stateid->u.stateid.seqid != 0)
->  		return 0;
-> -	if (memcmp(&delegation->stateid.data[4], &stateid->data[4],
-> -		   sizeof(stateid->data)-4))
-> +	if (memcmp(&delegation->stateid.u.stateid.other,
-> +		   &stateid->u.stateid.other,
-> +		   NFS4_STATEID_OTHER_SIZE))
->  		return 0;
->  
->  	return 1;
-> diff --git a/fs/nfs/callback_xdr.c b/fs/nfs/callback_xdr.c
-> index 69a026d..7e34bb3 100644
-> --- a/fs/nfs/callback_xdr.c
-> +++ b/fs/nfs/callback_xdr.c
-> @@ -138,7 +138,7 @@ static __be32 decode_stateid(struct xdr_stream *xdr, nfs4_stateid *stateid)
->  	p = read_buf(xdr, 16);
->  	if (unlikely(p == NULL))
->  		return htonl(NFS4ERR_RESOURCE);
-> -	memcpy(stateid->data, p, 16);
-> +	memcpy(stateid->u.data, p, 16);
->  	return 0;
->  }
->  
-> diff --git a/fs/nfs/delegation.c b/fs/nfs/delegation.c
-> index 1567124..2e43ae2 100644
-> --- a/fs/nfs/delegation.c
-> +++ b/fs/nfs/delegation.c
-> @@ -108,7 +108,8 @@ again:
->  			continue;
->  		if (!test_bit(NFS_DELEGATED_STATE, &state->flags))
->  			continue;
-> -		if (memcmp(state->stateid.data, stateid->data, sizeof(state->stateid.data)) != 0)
-> +		if (memcmp(state->stateid.u.data, stateid->u.data,
-> +			   sizeof(state->stateid.u.data)) != 0)
->  			continue;
->  		get_nfs_open_context(ctx);
->  		spin_unlock(&inode->i_lock);
-> @@ -134,8 +135,8 @@ void nfs_inode_reclaim_delegation(struct inode *inode, struct rpc_cred *cred, st
->  
->  	if (delegation == NULL)
->  		return;
-> -	memcpy(delegation->stateid.data, res->delegation.data,
-> -			sizeof(delegation->stateid.data));
-> +	memcpy(delegation->stateid.u.data, res->delegation.u.data,
-> +			sizeof(delegation->stateid.u.data));
->  	delegation->type = res->delegation_type;
->  	delegation->maxsize = res->maxsize;
->  	oldcred = delegation->cred;
-> @@ -173,8 +174,9 @@ static struct nfs_delegation *nfs_detach_delegation_locked(struct nfs_inode *nfs
->  	if (delegation == NULL)
->  		goto nomatch;
->  	spin_lock(&delegation->lock);
-> -	if (stateid != NULL && memcmp(delegation->stateid.data, stateid->data,
-> -				sizeof(delegation->stateid.data)) != 0)
-> +	if (stateid != NULL && memcmp(delegation->stateid.u.data,
-> +				      stateid->u.data,
-> +				      sizeof(delegation->stateid.u.data)) != 0)
->  		goto nomatch_unlock;
->  	list_del_rcu(&delegation->super_list);
->  	delegation->inode = NULL;
-> @@ -202,8 +204,8 @@ int nfs_inode_set_delegation(struct inode *inode, struct rpc_cred *cred, struct
->  	delegation = kmalloc(sizeof(*delegation), GFP_KERNEL);
->  	if (delegation == NULL)
->  		return -ENOMEM;
-> -	memcpy(delegation->stateid.data, res->delegation.data,
-> -			sizeof(delegation->stateid.data));
-> +	memcpy(delegation->stateid.u.data, res->delegation.u.data,
-> +			sizeof(delegation->stateid.u.data));
->  	delegation->type = res->delegation_type;
->  	delegation->maxsize = res->maxsize;
->  	delegation->change_attr = nfsi->change_attr;
-> @@ -546,7 +548,8 @@ int nfs4_copy_delegation_stateid(nfs4_stateid *dst, struct inode *inode)
->  	rcu_read_lock();
->  	delegation = rcu_dereference(nfsi->delegation);
->  	if (delegation != NULL) {
-> -		memcpy(dst->data, delegation->stateid.data, sizeof(dst->data));
-> +		memcpy(dst->u.data, delegation->stateid.u.data,
-> +		       sizeof(dst->u.data));
->  		ret = 1;
->  	}
->  	rcu_read_unlock();
-> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-> index a8a6ad2..6739d15 100644
-> --- a/fs/nfs/nfs4proc.c
-> +++ b/fs/nfs/nfs4proc.c
-> @@ -865,8 +865,10 @@ static void update_open_stateflags(struct nfs4_state *state, fmode_t fmode)
->  static void nfs_set_open_stateid_locked(struct nfs4_state *state, nfs4_stateid *stateid, fmode_t fmode)
->  {
->  	if (test_bit(NFS_DELEGATED_STATE, &state->flags) == 0)
-> -		memcpy(state->stateid.data, stateid->data, sizeof(state->stateid.data));
-> -	memcpy(state->open_stateid.data, stateid->data, sizeof(state->open_stateid.data));
-> +		memcpy(state->stateid.u.data, stateid->u.data,
-> +		       sizeof(state->stateid.u.data));
-> +	memcpy(state->open_stateid.u.data, stateid->u.data,
-> +	       sizeof(state->open_stateid.u.data));
->  	switch (fmode) {
->  		case FMODE_READ:
->  			set_bit(NFS_O_RDONLY_STATE, &state->flags);
-> @@ -894,7 +896,8 @@ static void __update_open_stateid(struct nfs4_state *state, nfs4_stateid *open_s
->  	 */
->  	write_seqlock(&state->seqlock);
->  	if (deleg_stateid != NULL) {
-> -		memcpy(state->stateid.data, deleg_stateid->data, sizeof(state->stateid.data));
-> +		memcpy(state->stateid.u.data, deleg_stateid->u.data,
-> +		       sizeof(state->stateid.u.data));
->  		set_bit(NFS_DELEGATED_STATE, &state->flags);
->  	}
->  	if (open_stateid != NULL)
-> @@ -925,7 +928,8 @@ static int update_open_stateid(struct nfs4_state *state, nfs4_stateid *open_stat
->  
->  	if (delegation == NULL)
->  		delegation = &deleg_cur->stateid;
-> -	else if (memcmp(deleg_cur->stateid.data, delegation->data, NFS4_STATEID_SIZE) != 0)
-> +	else if (memcmp(deleg_cur->stateid.u.data, delegation->u.data,
-> +			NFS4_STATEID_SIZE) != 0)
->  		goto no_delegation_unlock;
->  
->  	nfs_mark_delegation_referenced(deleg_cur);
-> @@ -987,7 +991,8 @@ static struct nfs4_state *nfs4_try_open_cached(struct nfs4_opendata *opendata)
->  			break;
->  		}
->  		/* Save the delegation */
-> -		memcpy(stateid.data, delegation->stateid.data, sizeof(stateid.data));
-> +		memcpy(stateid.u.data, delegation->stateid.u.data,
-> +		       sizeof(stateid.u.data));
->  		rcu_read_unlock();
->  		ret = nfs_may_open(state->inode, state->owner->so_cred, open_mode);
->  		if (ret != 0)
-> @@ -1152,10 +1157,13 @@ static int nfs4_open_recover(struct nfs4_opendata *opendata, struct nfs4_state *
->  	 * Check if we need to update the current stateid.
->  	 */
->  	if (test_bit(NFS_DELEGATED_STATE, &state->flags) == 0 &&
-> -	    memcmp(state->stateid.data, state->open_stateid.data, sizeof(state->stateid.data)) != 0) {
-> +	    memcmp(state->stateid.u.data, state->open_stateid.u.data,
-> +		   sizeof(state->stateid.u.data)) != 0) {
->  		write_seqlock(&state->seqlock);
->  		if (test_bit(NFS_DELEGATED_STATE, &state->flags) == 0)
-> -			memcpy(state->stateid.data, state->open_stateid.data, sizeof(state->stateid.data));
-> +			memcpy(state->stateid.u.data,
-> +			       state->open_stateid.u.data,
-> +			       sizeof(state->stateid.u.data));
->  		write_sequnlock(&state->seqlock);
->  	}
->  	pnfs4_layout_reclaim(state);
-> @@ -1226,8 +1234,8 @@ static int _nfs4_open_delegation_recall(struct nfs_open_context *ctx, struct nfs
->  	if (IS_ERR(opendata))
->  		return PTR_ERR(opendata);
->  	opendata->o_arg.claim = NFS4_OPEN_CLAIM_DELEGATE_CUR;
-> -	memcpy(opendata->o_arg.u.delegation.data, stateid->data,
-> -			sizeof(opendata->o_arg.u.delegation.data));
-> +	memcpy(opendata->o_arg.u.delegation.u.data, stateid->u.data,
-> +			sizeof(opendata->o_arg.u.delegation.u.data));
->  	ret = nfs4_open_recover(opendata, state);
->  	nfs4_opendata_put(opendata);
->  	return ret;
-> @@ -1285,8 +1293,8 @@ static void nfs4_open_confirm_done(struct rpc_task *task, void *calldata)
->  	if (RPC_ASSASSINATED(task))
->  		return;
->  	if (data->rpc_status == 0) {
-> -		memcpy(data->o_res.stateid.data, data->c_res.stateid.data,
-> -				sizeof(data->o_res.stateid.data));
-> +		memcpy(data->o_res.stateid.u.data, data->c_res.stateid.u.data,
-> +				sizeof(data->o_res.stateid.u.data));
->  		nfs_confirm_seqid(&data->owner->so_seqid, 0);
->  		renew_lease(data->o_res.server, data->timestamp);
->  		data->rpc_done = 1;
-> @@ -4095,9 +4103,10 @@ static void nfs4_locku_done(struct rpc_task *task, void *data)
->  		return;
->  	switch (task->tk_status) {
->  		case 0:
-> -			memcpy(calldata->lsp->ls_stateid.data,
-> -					calldata->res.stateid.data,
-> -					sizeof(calldata->lsp->ls_stateid.data));
-> +			memcpy(calldata->lsp->ls_stateid.u.data,
-> +					calldata->res.stateid.u.data,
-> +					sizeof(calldata->lsp->ls_stateid.u.
-> +					       data));
->  			renew_lease(calldata->server, calldata->timestamp);
->  			break;
->  		case -NFS4ERR_BAD_STATEID:
-> @@ -4310,8 +4319,8 @@ static void nfs4_lock_done(struct rpc_task *task, void *calldata)
->  			goto out;
->  	}
->  	if (data->rpc_status == 0) {
-> -		memcpy(data->lsp->ls_stateid.data, data->res.stateid.data,
-> -					sizeof(data->lsp->ls_stateid.data));
-> +		memcpy(data->lsp->ls_stateid.u.data, data->res.stateid.u.data,
-> +					sizeof(data->lsp->ls_stateid.u.data));
->  		data->lsp->ls_flags |= NFS_LOCK_INITIALIZED;
->  		renew_lease(NFS_SERVER(data->ctx->path.dentry->d_inode), data->timestamp);
->  	}
-> diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-> index 3765ca1..2d52300 100644
-> --- a/fs/nfs/nfs4state.c
-> +++ b/fs/nfs/nfs4state.c
-> @@ -1049,8 +1049,8 @@ restart:
->  				 * Open state on this file cannot be recovered
->  				 * All we can do is revert to using the zero stateid.
->  				 */
-> -				memset(state->stateid.data, 0,
-> -					sizeof(state->stateid.data));
-> +				memset(state->stateid.u.data, 0,
-> +					sizeof(state->stateid.u.data));
->  				/* Mark the file as being 'closed' */
->  				state->state = 0;
->  				break;
-> diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-> index 718824c..44f789a 100644
-> --- a/fs/nfs/nfs4xdr.c
-> +++ b/fs/nfs/nfs4xdr.c
-> @@ -1000,7 +1000,7 @@ static void encode_close(struct xdr_stream *xdr, const struct nfs_closeargs *arg
->  	p = reserve_space(xdr, 8+NFS4_STATEID_SIZE);
->  	*p++ = cpu_to_be32(OP_CLOSE);
->  	*p++ = cpu_to_be32(arg->seqid->sequence->counter);
-> -	xdr_encode_opaque_fixed(p, arg->stateid->data, NFS4_STATEID_SIZE);
-> +	xdr_encode_opaque_fixed(p, arg->stateid->u.data, NFS4_STATEID_SIZE);
->  	hdr->nops++;
->  	hdr->replen += decode_close_maxsz;
->  }
-> @@ -1174,7 +1174,8 @@ static void encode_lock(struct xdr_stream *xdr, const struct nfs_lock_args *args
->  	if (args->new_lock_owner){
->  		p = reserve_space(xdr, 4+NFS4_STATEID_SIZE+32);
->  		*p++ = cpu_to_be32(args->open_seqid->sequence->counter);
-> -		p = xdr_encode_opaque_fixed(p, args->open_stateid->data, NFS4_STATEID_SIZE);
-> +		p = xdr_encode_opaque_fixed(p, args->open_stateid->u.data,
-> +					    NFS4_STATEID_SIZE);
->  		*p++ = cpu_to_be32(args->lock_seqid->sequence->counter);
->  		p = xdr_encode_hyper(p, args->lock_owner.clientid);
->  		*p++ = cpu_to_be32(16);
-> @@ -1183,7 +1184,7 @@ static void encode_lock(struct xdr_stream *xdr, const struct nfs_lock_args *args
->  	}
->  	else {
->  		p = reserve_space(xdr, NFS4_STATEID_SIZE+4);
-> -		p = xdr_encode_opaque_fixed(p, args->lock_stateid->data, NFS4_STATEID_SIZE);
-> +		p = xdr_encode_opaque_fixed(p, args->lock_stateid->u.data, NFS4_STATEID_SIZE);
->  		*p = cpu_to_be32(args->lock_seqid->sequence->counter);
->  	}
->  	hdr->nops++;
-> @@ -1215,7 +1216,8 @@ static void encode_locku(struct xdr_stream *xdr, const struct nfs_locku_args *ar
->  	*p++ = cpu_to_be32(OP_LOCKU);
->  	*p++ = cpu_to_be32(nfs4_lock_type(args->fl, 0));
->  	*p++ = cpu_to_be32(args->seqid->sequence->counter);
-> -	p = xdr_encode_opaque_fixed(p, args->stateid->data, NFS4_STATEID_SIZE);
-> +	p = xdr_encode_opaque_fixed(p, args->stateid->u.data,
-> +				    NFS4_STATEID_SIZE);
->  	p = xdr_encode_hyper(p, args->fl->fl_start);
->  	xdr_encode_hyper(p, nfs4_lock_length(args->fl));
->  	hdr->nops++;
-> @@ -1365,7 +1367,7 @@ static inline void encode_claim_delegate_cur(struct xdr_stream *xdr, const struc
->  
->  	p = reserve_space(xdr, 4+NFS4_STATEID_SIZE);
->  	*p++ = cpu_to_be32(NFS4_OPEN_CLAIM_DELEGATE_CUR);
-> -	xdr_encode_opaque_fixed(p, stateid->data, NFS4_STATEID_SIZE);
-> +	xdr_encode_opaque_fixed(p, stateid->u.data, NFS4_STATEID_SIZE);
->  	encode_string(xdr, name->len, name->name);
->  }
->  
-> @@ -1396,7 +1398,7 @@ static void encode_open_confirm(struct xdr_stream *xdr, const struct nfs_open_co
->  
->  	p = reserve_space(xdr, 4+NFS4_STATEID_SIZE+4);
->  	*p++ = cpu_to_be32(OP_OPEN_CONFIRM);
-> -	p = xdr_encode_opaque_fixed(p, arg->stateid->data, NFS4_STATEID_SIZE);
-> +	p = xdr_encode_opaque_fixed(p, arg->stateid->u.data, NFS4_STATEID_SIZE);
->  	*p = cpu_to_be32(arg->seqid->sequence->counter);
->  	hdr->nops++;
->  	hdr->replen += decode_open_confirm_maxsz;
-> @@ -1408,7 +1410,7 @@ static void encode_open_downgrade(struct xdr_stream *xdr, const struct nfs_close
->  
->  	p = reserve_space(xdr, 4+NFS4_STATEID_SIZE+4);
->  	*p++ = cpu_to_be32(OP_OPEN_DOWNGRADE);
-> -	p = xdr_encode_opaque_fixed(p, arg->stateid->data, NFS4_STATEID_SIZE);
-> +	p = xdr_encode_opaque_fixed(p, arg->stateid->u.data, NFS4_STATEID_SIZE);
->  	*p = cpu_to_be32(arg->seqid->sequence->counter);
->  	encode_share_access(xdr, arg->fmode);
->  	hdr->nops++;
-> @@ -1446,9 +1448,10 @@ static void encode_stateid(struct xdr_stream *xdr, const struct nfs_open_context
->  	p = reserve_space(xdr, NFS4_STATEID_SIZE);
->  	if (ctx->state != NULL) {
->  		nfs4_copy_stateid(&stateid, ctx->state, ctx->lockowner);
-> -		xdr_encode_opaque_fixed(p, stateid.data, NFS4_STATEID_SIZE);
-> +		xdr_encode_opaque_fixed(p, stateid.u.data,
-> +					NFS4_STATEID_SIZE);
->  	} else
-> -		xdr_encode_opaque_fixed(p, zero_stateid.data, NFS4_STATEID_SIZE);
-> +		xdr_encode_opaque_fixed(p, zero_stateid.u.data, NFS4_STATEID_SIZE);
->  }
->  
->  static void encode_read(struct xdr_stream *xdr, const struct nfs_readargs *args, struct compound_hdr *hdr)
-> @@ -1562,7 +1565,7 @@ encode_setacl(struct xdr_stream *xdr, struct nfs_setaclargs *arg, struct compoun
->  
->  	p = reserve_space(xdr, 4+NFS4_STATEID_SIZE);
->  	*p++ = cpu_to_be32(OP_SETATTR);
-> -	xdr_encode_opaque_fixed(p, zero_stateid.data, NFS4_STATEID_SIZE);
-> +	xdr_encode_opaque_fixed(p, zero_stateid.u.data, NFS4_STATEID_SIZE);
->  	p = reserve_space(xdr, 2*4);
->  	*p++ = cpu_to_be32(1);
->  	*p = cpu_to_be32(FATTR4_WORD0_ACL);
-> @@ -1593,7 +1596,7 @@ static void encode_setattr(struct xdr_stream *xdr, const struct nfs_setattrargs
->  
->  	p = reserve_space(xdr, 4+NFS4_STATEID_SIZE);
->  	*p++ = cpu_to_be32(OP_SETATTR);
-> -	xdr_encode_opaque_fixed(p, arg->stateid.data, NFS4_STATEID_SIZE);
-> +	xdr_encode_opaque_fixed(p, arg->stateid.u.data, NFS4_STATEID_SIZE);
->  	hdr->nops++;
->  	hdr->replen += decode_setattr_maxsz;
->  	encode_attrs(xdr, arg->iap, server);
-> @@ -1656,7 +1659,7 @@ static void encode_delegreturn(struct xdr_stream *xdr, const nfs4_stateid *state
->  	p = reserve_space(xdr, 4+NFS4_STATEID_SIZE);
->  
->  	*p++ = cpu_to_be32(OP_DELEGRETURN);
-> -	xdr_encode_opaque_fixed(p, stateid->data, NFS4_STATEID_SIZE);
-> +	xdr_encode_opaque_fixed(p, stateid->u.data, NFS4_STATEID_SIZE);
->  	hdr->nops++;
->  	hdr->replen += decode_delegreturn_maxsz;
->  }
-> @@ -1866,7 +1869,8 @@ encode_layoutget(struct xdr_stream *xdr,
->  	p = xdr_encode_hyper(p, args->lseg.offset);
->  	p = xdr_encode_hyper(p, args->lseg.length);
->  	p = xdr_encode_hyper(p, args->minlength);
-> -	p = xdr_encode_opaque_fixed(p, &args->stateid.data, NFS4_STATEID_SIZE);
-> +	p = xdr_encode_opaque_fixed(p, &args->stateid.u.data,
-> +				    NFS4_STATEID_SIZE);
->  	*p = cpu_to_be32(args->maxcount);
->  
->  	dprintk("%s: 1st type:0x%x iomode:%d off:%lu len:%lu mc:%d\n",
-> @@ -1898,7 +1902,7 @@ encode_layoutcommit(struct xdr_stream *xdr,
->  	p = xdr_encode_hyper(p, args->lseg.offset);
->  	p = xdr_encode_hyper(p, args->lseg.length);
->  	*p++ = cpu_to_be32(0);     /* reclaim */
-> -	p = xdr_encode_opaque_fixed(p, args->stateid.data, NFS4_STATEID_SIZE);
-> +	p = xdr_encode_opaque_fixed(p, args->stateid.u.data, NFS4_STATEID_SIZE);
->  	*p++ = cpu_to_be32(1);     /* newoffset = TRUE */
->  	p = xdr_encode_hyper(p, args->lastbytewritten);
->  	*p = cpu_to_be32(args->time_modify_changed != 0);
-> @@ -1945,7 +1949,7 @@ encode_layoutreturn(struct xdr_stream *xdr,
->  		p = reserve_space(xdr, 16 + NFS4_STATEID_SIZE);
->  		p = xdr_encode_hyper(p, args->lseg.offset);
->  		p = xdr_encode_hyper(p, args->lseg.length);
-> -		p = xdr_encode_opaque_fixed(p, &args->stateid.data,
-> +		p = xdr_encode_opaque_fixed(p, &args->stateid.u.data,
->  					    NFS4_STATEID_SIZE);
->  
->  		dprintk("%s: call %pF\n", __func__,
-> @@ -3989,7 +3993,7 @@ static int decode_opaque_fixed(struct xdr_stream *xdr, void *buf, size_t len)
->  
->  static int decode_stateid(struct xdr_stream *xdr, nfs4_stateid *stateid)
->  {
-> -	return decode_opaque_fixed(xdr, stateid->data, NFS4_STATEID_SIZE);
-> +	return decode_opaque_fixed(xdr, stateid->u.data, NFS4_STATEID_SIZE);
->  }
->  
->  static int decode_close(struct xdr_stream *xdr, struct nfs_closeres *res)
-> @@ -5281,7 +5285,7 @@ static int decode_layoutget(struct xdr_stream *xdr, struct rpc_rqst *req,
->  	if (unlikely(!p))
->  		goto out_overflow;
->  	res->return_on_close = be32_to_cpup(p++);
-> -	p = xdr_decode_opaque_fixed(p, res->stateid.data, NFS4_STATEID_SIZE);
-> +	p = xdr_decode_opaque_fixed(p, res->stateid.u.data, NFS4_STATEID_SIZE);
->  	layout_count = be32_to_cpup(p);
->  	if (!layout_count) {
->  		dprintk("%s: server responded with empty layout array\n",
+> Conflicts:
+> 
+> 	fs/nfs/pnfs.c
+> ---
+>  fs/nfs/pnfs.c |   80 +++++++++++++++++++++++++++++++++++++-------------------
+>  1 files changed, 53 insertions(+), 27 deletions(-)
+> 
 > diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-> index b2d203f..ecf6dc2 100644
+> index b72c013..74cb998 100644
 > --- a/fs/nfs/pnfs.c
 > +++ b/fs/nfs/pnfs.c
-> @@ -505,7 +505,7 @@ pnfs_set_layout_stateid(struct pnfs_layout_type *lo,
->  			const nfs4_stateid *stateid)
->  {
->  	write_seqlock(&lo->seqlock);
-> -	memcpy(lo->stateid.data, stateid->data, sizeof(lo->stateid.data));
-> +	memcpy(lo->stateid.u.data, stateid->u.data, sizeof(lo->stateid.u.data));
->  	write_sequnlock(&lo->seqlock);
->  }
->  
-> @@ -518,7 +518,8 @@ pnfs_get_layout_stateid(nfs4_stateid *dst, struct pnfs_layout_type *lo)
->  
->  	do {
->  		seq = read_seqbegin(&lo->seqlock);
-> -		memcpy(dst->data, lo->stateid.data, sizeof(lo->stateid.data));
-> +		memcpy(dst->u.data, lo->stateid.u.data,
-> +		       sizeof(lo->stateid.u.data));
->  	} while (read_seqretry(&lo->seqlock, seq));
->  
->  	dprintk("<-- %s\n", __func__);
-> @@ -533,8 +534,8 @@ pnfs_layout_from_open_stateid(nfs4_stateid *dst, struct nfs4_state *state)
->  
->  	do {
->  		seq = read_seqbegin(&state->seqlock);
-> -		memcpy(dst->data, state->stateid.data,
-> -				sizeof(state->stateid.data));
-> +		memcpy(dst->u.data, state->stateid.u.data,
-> +				sizeof(state->stateid.u.data));
->  	} while (read_seqretry(&state->seqlock, seq));
->  
->  	dprintk("<-- %s\n", __func__);
-> @@ -580,7 +581,7 @@ get_layout(struct inode *ino,
->  	lgp->args.inode = ino;
->  	lgp->lsegpp = lsegpp;
->  
-> -	if (!memcmp(lo->stateid.data, &zero_stateid, NFS4_STATEID_SIZE)) {
-> +	if (!memcmp(lo->stateid.u.data, &zero_stateid, NFS4_STATEID_SIZE)) {
->  		struct nfs_open_context *oldctx = ctx;
->  
->  		if (!oldctx) {
-> diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
-> index 7e32bd3..6a1fff7 100644
-> --- a/fs/nfsd/nfs4callback.c
-> +++ b/fs/nfsd/nfs4callback.c
-> @@ -40,7 +40,6 @@
->  
->  #define NFSPROC4_CB_NULL 0
->  #define NFSPROC4_CB_COMPOUND 1
-> -#define NFS4_STATEID_SIZE 16
->  
->  /* Index of predefined Linux callback client operations */
->  
-> diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
-> index 2bb8eeb..89020e5 100644
-> --- a/include/linux/nfs4.h
-> +++ b/include/linux/nfs4.h
-> @@ -17,7 +17,10 @@
->  
->  #define NFS4_BITMAP_SIZE	2
->  #define NFS4_VERIFIER_SIZE	8
-> -#define NFS4_STATEID_SIZE	16
-> +#define NFS4_STATEID_SEQID_SIZE 4
-> +#define NFS4_STATEID_OTHER_SIZE 12
-> +#define NFS4_STATEID_SIZE     (NFS4_STATEID_OTHER_SIZE +	\
-> +			       NFS4_STATEID_SEQID_SIZE)
->  #define NFS4_FHSIZE		128
->  #define NFS4_MAXPATHLEN		PATH_MAX
->  #define NFS4_MAXNAMLEN		NAME_MAX
-> @@ -174,7 +177,16 @@ struct nfs4_acl {
->  };
->  
->  typedef struct { char data[NFS4_VERIFIER_SIZE]; } nfs4_verifier;
-> -typedef struct { char data[NFS4_STATEID_SIZE]; } nfs4_stateid;
-> +typedef struct {
-> +	union {
-> +		char data[NFS4_STATEID_SIZE];
-> +		struct {
-> +			__be32 seqid;
-> +			char other[NFS4_STATEID_OTHER_SIZE];
-> +		} stateid;
+> @@ -1,4 +1,4 @@
+> -/*
+> + /*
 
-let's define this struct separately and use the __packed attribute.
-
-> +	} u;
-> +} nfs4_stateid;
-> +
->  
->  enum nfs_opnum4 {
->  	OP_ACCESS = 3,
-> @@ -554,6 +566,8 @@ struct nfs4_sessionid {
->  	unsigned char data[NFS4_MAX_SESSIONID_LEN];
->  };
->  
-> +
-> +
-
-Why? ;-)
+just picking nit...
 
 Benny
 
->  /* Create Session Flags */
->  #define SESSION4_PERSIST	 0x001
->  #define SESSION4_BACK_CHAN 	 0x002
-
+>   *  linux/fs/nfs/pnfs.c
+>   *
+>   *  pNFS functions to call and manage layout drivers.
+> @@ -60,6 +60,8 @@ static int pnfs_initialized;
+>  static void pnfs_free_layout(struct pnfs_layout_type *lo,
+>  			     struct nfs4_pnfs_layout_segment *range);
+>  static enum pnfs_try_status pnfs_commit(struct nfs_write_data *data, int sync);
+> +static inline void lock_current_layout(struct nfs_inode *nfsi);
+> +static inline void unlock_current_layout(struct nfs_inode *nfsi);
+>  
+>  /* Locking:
+>   *
+> @@ -153,16 +155,17 @@ pnfs_need_layoutcommit(struct nfs_inode *nfsi, struct nfs_open_context *ctx)
+>  {
+>  	dprintk("%s: has_layout=%d layoutcommit_ctx=%p ctx=%p\n", __func__,
+>  		has_layout(nfsi), nfsi->layout.layoutcommit_ctx, ctx);
+> -	spin_lock(&nfsi->lo_lock);
+> +
+> +	lock_current_layout(nfsi);
+>  	if (has_layout(nfsi) && !nfsi->layout.layoutcommit_ctx) {
+>  		nfsi->layout.layoutcommit_ctx = get_nfs_open_context(ctx);
+>  		nfsi->change_attr++;
+> -		spin_unlock(&nfsi->lo_lock);
+> +		unlock_current_layout(nfsi);
+>  		dprintk("%s: Set layoutcommit_ctx=%p\n", __func__,
+>  			nfsi->layout.layoutcommit_ctx);
+>  		return;
+>  	}
+> -	spin_unlock(&nfsi->lo_lock);
+> +	unlock_current_layout(nfsi);
+>  }
+>  
+>  /* Update last_write_offset for layoutcommit.
+> @@ -175,7 +178,7 @@ pnfs_update_last_write(struct nfs_inode *nfsi, loff_t offset, size_t extent)
+>  {
+>  	loff_t end_pos;
+>  
+> -	spin_lock(&nfsi->lo_lock);
+> +	lock_current_layout(nfsi);
+>  	if (offset < nfsi->layout.pnfs_write_begin_pos)
+>  		nfsi->layout.pnfs_write_begin_pos = offset;
+>  	end_pos = offset + extent - 1; /* I'm being inclusive */
+> @@ -187,7 +190,7 @@ pnfs_update_last_write(struct nfs_inode *nfsi, loff_t offset, size_t extent)
+>  		(unsigned long) offset ,
+>  		(unsigned long) nfsi->layout.pnfs_write_begin_pos,
+>  		(unsigned long) nfsi->layout.pnfs_write_end_pos);
+> -	spin_unlock(&nfsi->lo_lock);
+> +	unlock_current_layout(nfsi);
+>  }
+>  
+>  /* Unitialize a mountpoint in a layout driver */
+> @@ -296,12 +299,27 @@ pnfs_unregister_layoutdriver(struct pnfs_layoutdriver_type *ld_type)
+>   * pNFS client layout cache
+>   */
+>  #if defined(CONFIG_SMP)
+> +#define BUG_ON_LOCKED_LO(lo) \
+> +	BUG_ON(spin_is_locked(&PNFS_NFS_INODE(lo)->lo_lock))
+>  #define BUG_ON_UNLOCKED_LO(lo) \
+>  	BUG_ON(!spin_is_locked(&PNFS_NFS_INODE(lo)->lo_lock))
+>  #else /* CONFIG_SMP */
+> +#define BUG_ON_LOCKED_LO(lo) do {} while (0)
+>  #define BUG_ON_UNLOCKED_LO(lo) do {} while (0)
+>  #endif /* CONFIG_SMP */
+>  
+> +static inline void lock_current_layout(struct nfs_inode *nfsi)
+> +{
+> +	BUG_ON_LOCKED_LO((&nfsi->layout));
+> +	spin_lock(&nfsi->lo_lock);
+> +}
+> +
+> +static inline void unlock_current_layout(struct nfs_inode *nfsi)
+> +{
+> +	BUG_ON_UNLOCKED_LO((&nfsi->layout));
+> +	spin_unlock(&nfsi->lo_lock);
+> +}
+> +
+>  /*
+>   * get and lock nfsi->layout
+>   */
+> @@ -310,10 +328,10 @@ get_lock_current_layout(struct nfs_inode *nfsi)
+>  {
+>  	struct pnfs_layout_type *lo;
+>  
+> +	lock_current_layout(nfsi);
+>  	lo = &nfsi->layout;
+> -	spin_lock(&nfsi->lo_lock);
+>  	if (!lo->ld_data) {
+> -		spin_unlock(&nfsi->lo_lock);
+> +		unlock_current_layout(nfsi);
+>  		return NULL;
+>  	}
+>  
+> @@ -333,7 +351,12 @@ put_unlock_current_layout(struct pnfs_layout_type *lo)
+>  	BUG_ON_UNLOCKED_LO(lo);
+>  	BUG_ON(lo->refcount <= 0);
+>  
+> -	if (--lo->refcount == 0 && list_empty(&lo->segs)) {
+> +	lo->refcount--;
+> +
+> +	if (lo->refcount > 0)
+> +		goto out;
+> +
+> +	if (list_empty(&lo->segs)) {
+>  		struct layoutdriver_io_operations *io_ops =
+>  			PNFS_LD_IO_OPS(lo);
+>  
+> @@ -347,7 +370,8 @@ put_unlock_current_layout(struct pnfs_layout_type *lo)
+>  		list_del_init(&nfsi->lo_inodes);
+>  		spin_unlock(&clp->cl_lock);
+>  	}
+> -	spin_unlock(&nfsi->lo_lock);
+> +out:
+> +	unlock_current_layout(nfsi);
+>  }
+>  
+>  void
+> @@ -356,7 +380,7 @@ pnfs_layout_release(struct pnfs_layout_type *lo, atomic_t *count,
+>  {
+>  	struct nfs_inode *nfsi = PNFS_NFS_INODE(lo);
+>  
+> -	spin_lock(&nfsi->lo_lock);
+> +	lock_current_layout(nfsi);
+>  	if (range)
+>  		pnfs_free_layout(lo, range);
+>  	atomic_dec(count);
+> @@ -375,6 +399,8 @@ pnfs_destroy_layout(struct nfs_inode *nfsi)
+>  	};
+>  
+>  	lo = get_lock_current_layout(nfsi);
+> +	if (!lo)
+> +		return;
+>  	pnfs_free_layout(lo, &range);
+>  	put_unlock_current_layout(lo);
+>  }
+> @@ -652,7 +678,7 @@ pnfs_return_layout_barrier(struct nfs_inode *nfsi,
+>  	struct pnfs_layout_segment *lseg;
+>  	bool ret = false;
+>  
+> -	spin_lock(&nfsi->lo_lock);
+> +	lock_current_layout(nfsi);
+>  	list_for_each_entry (lseg, &nfsi->layout.segs, fi_list) {
+>  		if (!should_free_lseg(lseg, range))
+>  			continue;
+> @@ -666,7 +692,7 @@ pnfs_return_layout_barrier(struct nfs_inode *nfsi,
+>  	}
+>  	if (atomic_read(&nfsi->layout.lgetcount))
+>  		ret = true;
+> -	spin_unlock(&nfsi->lo_lock);
+> +	unlock_current_layout(nfsi);
+>  
+>  	dprintk("%s:Return %d\n", __func__, ret);
+>  	return ret;
+> @@ -756,7 +782,7 @@ _pnfs_return_layout(struct inode *ino, struct nfs4_pnfs_layout_segment *range,
+>  		/* unlock w/o put rebalanced by eventual call to
+>  		 * pnfs_layout_release
+>  		 */
+> -		spin_unlock(&nfsi->lo_lock);
+> +		unlock_current_layout(nfsi);
+>  
+>  		if (pnfs_return_layout_barrier(nfsi, &arg)) {
+>  			dprintk("%s: waiting\n", __func__);
+> @@ -887,7 +913,7 @@ static int pnfs_wait_schedule(void *word)
+>   *
+>   * Note: If successful, nfsi->lo_lock is taken and the caller
+>   * must put and unlock current_layout by using put_unlock_current_layout()
+> - * when the returned layout is released.
+> + * directly or pnfs_layout_release() when the returned layout is released.
+>   */
+>  static struct pnfs_layout_type *
+>  get_lock_alloc_layout(struct inode *ino)
+> @@ -922,7 +948,7 @@ get_lock_alloc_layout(struct inode *ino)
+>  			struct nfs_client *clp = NFS_SERVER(ino)->nfs_client;
+>  
+>  			/* must grab the layout lock before the client lock */
+> -			spin_lock(&nfsi->lo_lock);
+> +			lock_current_layout(nfsi);
+>  
+>  			spin_lock(&clp->cl_lock);
+>  			if (list_empty(&nfsi->lo_inodes))
+> @@ -1038,10 +1064,10 @@ void drain_layoutreturns(struct pnfs_layout_type *lo)
+>  	while (atomic_read(&lo->lretcount)) {
+>  		struct nfs_inode *nfsi = PNFS_NFS_INODE(lo);
+>  
+> -		spin_unlock(&nfsi->lo_lock);
+> +		unlock_current_layout(nfsi);
+>  		dprintk("%s: waiting\n", __func__);
+>  		wait_event(nfsi->lo_waitq, (atomic_read(&lo->lretcount) == 0));
+> -		spin_lock(&nfsi->lo_lock);
+> +		lock_current_layout(nfsi);
+>  	}
+>  }
+>  
+> @@ -1080,13 +1106,13 @@ pnfs_update_layout(struct inode *ino,
+>  	/* Check to see if the layout for the given range already exists */
+>  	lseg = pnfs_has_layout(lo, &arg, take_ref, !take_ref);
+>  	if (lseg && !lseg->valid) {
+> -		spin_unlock(&nfsi->lo_lock);
+> +		unlock_current_layout(nfsi);
+>  		if (take_ref)
+>  			put_lseg(lseg);
+>  		for (;;) {
+>  			prepare_to_wait(&nfsi->lo_waitq, &__wait,
+>  					TASK_KILLABLE);
+> -			spin_lock(&nfsi->lo_lock);
+> +			lock_current_layout(nfsi);
+>  			lseg = pnfs_has_layout(lo, &arg, take_ref, !take_ref);
+>  			if (!lseg || lseg->valid)
+>  				break;
+> @@ -1099,7 +1125,7 @@ pnfs_update_layout(struct inode *ino,
+>  				result = -ERESTARTSYS;
+>  				break;
+>  			}
+> -			spin_unlock(&nfsi->lo_lock);
+> +			unlock_current_layout(nfsi);
+>  			schedule();
+>  		}
+>  		finish_wait(&nfsi->lo_waitq, &__wait);
+> @@ -1136,7 +1162,7 @@ pnfs_update_layout(struct inode *ino,
+>  	/* Matching dec is done in .rpc_release (on non-error paths) */
+>  	atomic_inc(&lo->lgetcount);
+>  	/* Lose lock, but not reference, match this with pnfs_layout_release */
+> -	spin_unlock(&nfsi->lo_lock);
+> +	unlock_current_layout(nfsi);
+>  
+>  	result = get_layout(ino, ctx, &arg, lsegpp, lo);
+>  out:
+> @@ -1286,7 +1312,7 @@ pnfs_layout_process(struct nfs4_pnfs_layoutget *lgp)
+>  		*lgp->lsegpp = lseg;
+>  	}
+>  
+> -	spin_lock(&nfsi->lo_lock);
+> +	lock_current_layout(nfsi);
+>  	pnfs_insert_layout(lo, lseg);
+>  
+>  	if (res->return_on_close) {
+> @@ -1297,7 +1323,7 @@ pnfs_layout_process(struct nfs4_pnfs_layoutget *lgp)
+>  
+>  	/* Done processing layoutget. Set the layout stateid */
+>  	pnfs_set_layout_stateid(lo, &res->stateid);
+> -	spin_unlock(&nfsi->lo_lock);
+> +	unlock_current_layout(nfsi);
+>  out:
+>  	return status;
+>  }
+> @@ -2212,7 +2238,7 @@ pnfs_layoutcommit_inode(struct inode *inode, int sync)
+>  	if (!data)
+>  		return -ENOMEM;
+>  
+> -	spin_lock(&nfsi->lo_lock);
+> +	lock_current_layout(nfsi);
+>  	if (!nfsi->layout.layoutcommit_ctx)
+>  		goto out_unlock;
+>  
+> @@ -2233,7 +2259,7 @@ pnfs_layoutcommit_inode(struct inode *inode, int sync)
+>  	nfsi->layout.layoutcommit_ctx = NULL;
+>  
+>  	/* release lock on pnfs layoutcommit attrs */
+> -	spin_unlock(&nfsi->lo_lock);
+> +	unlock_current_layout(nfsi);
+>  
+>  	data->is_sync = sync;
+>  	status = pnfs4_proc_layoutcommit(data);
+> @@ -2242,7 +2268,7 @@ out:
+>  	return status;
+>  out_unlock:
+>  	pnfs_layoutcommit_free(data);
+> -	spin_unlock(&nfsi->lo_lock);
+> +	unlock_current_layout(nfsi);
+>  	goto out;
+>  }
+>  
