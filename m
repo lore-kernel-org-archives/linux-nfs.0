@@ -1,48 +1,83 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:51598 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758721Ab0EUXAN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 21 May 2010 19:00:13 -0400
-Date: Fri, 21 May 2010 19:00:11 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Tao Guo <glorioustao@gmail.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] pnfsblock: Lookup list entry of layouts and tags in
-	reverse order
-Message-ID: <20100521230011.GI13227@fieldses.org>
-References: <20100517135341.GA30737@fieldses.org> <4BF151A7.1070003@panasas.com> <20100517145311.GJ30737@fieldses.org> <20100517165302.GL30737@fieldses.org> <AANLkTilUpAHrtHH8pauvYrAuD3rWgj7aDmrTOzrmU-h5@mail.gmail.com> <20100518162005.GI17823@fieldses.org> <AANLkTik9L15tqpSboBpb9cSTy3hVPLEK487w94pEbLrS@mail.gmail.com> <20100519163632.GL4581@fieldses.org> <20100519213849.GR9720@fieldses.org> <AANLkTikEOhpGbCEAkxvDC93B1lM6d_htL_TOfjFOpAsD@mail.gmail.com>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <AANLkTikEOhpGbCEAkxvDC93B1lM6d_htL_TOfjFOpAsD@mail.gmail.com>
+Received: from daytona.panasas.com ([67.152.220.89]:57645 "EHLO
+	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1757942Ab0E0Ow1 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 27 May 2010 10:52:27 -0400
+Message-ID: <4BFE8728.8010302@panasas.com>
+Date: Thu, 27 May 2010 17:52:24 +0300
+From: Boaz Harrosh <bharrosh@panasas.com>
+To: Benny Halevy <bhalevy@panasas.com>, open-osd <osd-dev@open-osd.org>,
+        NFS list <linux-nfs@vger.kernel.org>
+Subject: [PATCH] SQUASHME: pnfs-obj: panlayout: Fix very old BUG_ONs on ol_state.status
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Thu, May 20, 2010 at 01:44:13PM +0800, Tao Guo wrote:
-> Hi, Fields
-> I used the connectathon general test with my latest code, and it
-> passed the tests.
-> Can you just try the two patches I have sent in the mailing list to
-> see if it helps?
 
-GENERAL TESTS: directory /mnt/TMP
-if test ! -x runtests; then chmod a+x runtests; fi
-cd /mnt/TMP; rm -f Makefile runtests runtests.wrk *.sh *.c mkdummy
-rmdummy nroff.in makefile.tst
-cp Makefile runtests runtests.wrk *.sh *.c mkdummy rmdummy nroff.in
-makefile.tst /mnt/TMP
+OK This is definitely my stupidity when converting panfs_shim to the
+new objlayout_read/write_done() API. But that was very, very long
+time ago. Did we not test panlayout since then.
 
-Small Compile
-/usr/lib/gcc/x86_64-linux-gnu/4.4.1/../../../../lib/crt1.o: In function
-`_start':
-/build/buildd/eglibc-2.10.1/csu/../sysdeps/x86_64/elf/start.S:109:
-undefined reference to `main'
-collect2: ld returned 1 exit status
-Command exited with non-zero status 1
-0.02user 0.05system 0:00.12elapsed 66%CPU (0avgtext+0avgdata
-22464maxresident)k
-0inputs+0outputs (0major+4946minor)pagefaults 0swaps
-general tests failed
+So I fixed the stale check on ol_state.status which is never set
+until much later inside the call to generic layer.
 
-I don't know what's going on there; sounds like data corruption?
+While at it I converted the BUG_ONs to WARN_ONs because it could
+be data corruption but otherwise it will not crush the Kernel.
+Better continue to be able to debug it better. (And added missing
+information to the WARN_ON)
 
---b.
+Congratulation, I've successfully ran all tests over
+panfs-export/panfs_shim over real Panasas HW. With latest code.
+[ This is with the new panfs-export that is also compatible with
+  the std objects layout driver. Patches to that will follow]
+
+TODO:
+  I should also simulate/cause some IO errors and see that
+  errors are reported at layout_return
+
+Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+---
+ fs/nfs/objlayout/panfs_shim.c |   19 +++++++++++++------
+ 1 files changed, 13 insertions(+), 6 deletions(-)
+
+diff --git a/fs/nfs/objlayout/panfs_shim.c b/fs/nfs/objlayout/panfs_shim.c
+index 414831e..c34fb5c 100644
+--- a/fs/nfs/objlayout/panfs_shim.c
++++ b/fs/nfs/objlayout/panfs_shim.c
+@@ -421,9 +421,12 @@ panfs_shim_read_done(
+ 		rc = res_p->result;
+ 	if (rc == PAN_SUCCESS) {
+ 		status = res_p->length;
+-		BUG_ON(state->ol_state.status < 0);
+-		BUG_ON((pan_stor_len_t)state->ol_state.status !=
+-		       state->u.read.res.length);
++		WARN_ON(status < 0);
++		if (WARN_ON((pan_stor_len_t)status != state->u.read.res.length))
++			printk(KERN_ERR
++			      "%s: status(0x%llx) != read.res.length(0x%llx)\n",
++			       __func__, (u64)status,
++			       (u64)state->u.read.res.length);
+ 	} else {
+ 		status = -panfs_export_ops->convert_rc(rc);
+ 		dprintk("%s: pan_sam_read rc %d: status %Zd\n",
+@@ -499,9 +502,13 @@ panfs_shim_write_done(
+ 	if (rc == PAN_SUCCESS) {
+ 		state->ol_state.committed = NFS_FILE_SYNC;
+ 		status = res_p->length;
+-		BUG_ON(state->ol_state.status < 0);
+-		BUG_ON((pan_stor_len_t)state->ol_state.status !=
+-		       state->u.write.res.length);
++		WARN_ON(status < 0);
++		if (WARN_ON((pan_stor_len_t)status != state->u.write.res.length))
++			printk(KERN_ERR
++			     "%s: status(0x%llx) != write.res.length(0x%llx)\n",
++			     __func__, (u64)status,
++			    (u64)state->u.write.res.length);
++
+ 		objlayout_add_delta_space_used(&state->ol_state,
+ 					       res_p->delta_capacity_used);
+ 	} else {
+-- 
+1.6.6.1
+
