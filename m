@@ -1,39 +1,76 @@
-From: Dean Hildebrand <seattleplus@gmail.com>
-Subject: Re: Linux pNFS status meeting  5/27/10
-Date: Thu, 27 May 2010 08:17:01 -0700
-Message-ID: <4BFE8CED.6040902@gmail.com>
-References: <4BFD5DBD.6090707@gmail.com> <1274896869.5270.18.camel@heimdal.trondhjem.org> <4BFD6973.20803@gmail.com>
+From: <Staubach_Peter@emc.com>
+Subject: RE: [PATCH] SQUASHME: pnfs-obj: panlayout: Fix very old BUG_ONs on ol_state.status
+Date: Thu, 27 May 2010 11:26:10 -0400
+Message-ID: <BF3BB6D12298F54B89C8DCC1E4073D80F2C566@CORPUSMX50A.corp.emc.com>
+References: <4BFE8728.8010302@panasas.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8; format=flowed
-To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Content-Type: text/plain;
+	charset="utf-8"
+To: <bharrosh@panasas.com>, <bhalevy@panasas.com>,
+	<osd-dev@open-osd.org>, <linux-nfs@vger.kernel.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-pz0-f176.google.com ([209.85.222.176]:53261 "EHLO
-	mail-pz0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755512Ab0E0PQh (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 27 May 2010 11:16:37 -0400
-Received: by pzk6 with SMTP id 6so75876pzk.1
-        for <linux-nfs@vger.kernel.org>; Thu, 27 May 2010 08:16:36 -0700 (PDT)
-In-Reply-To: <4BFD6973.20803@gmail.com>
+Received: from mexforward.lss.emc.com ([128.222.32.20]:10154 "EHLO
+	mexforward.lss.emc.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758195Ab0E0P0s (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 27 May 2010 11:26:48 -0400
+In-Reply-To: <4BFE8728.8010302@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Ok, based on input from several people, today's pNFS meeting is cancelled.
-Dean
-
-Dean Hildebrand wrote:
-> Thanks for letting me know.  Is everyone ok with simply cancelling 
-> this weeks meeting?
-> Dean
->
-> Trond Myklebust wrote:
->> On Wed, 2010-05-26 at 10:43 -0700, Dean Hildebrand wrote:  
->>> Meeting on Thursday 5/27/2010 at 9:30 AM PDT (12:30 PM EST).
->>>     
->>
->> I have a conflict tomorrow. There's a NetApp all-hands meeting that is
->> scheduled to last until 1:00pm. I suspect that Andy, Ricardo and Fred
->> have the same constraint...
->>
->> Cheers
->>   Trond
->>   
+LS0tLS1PcmlnaW5hbCBNZXNzYWdlLS0tLS0NCkZyb206IGxpbnV4LW5mcy1vd25lckB2Z2VyLmtl
+cm5lbC5vcmcgW21haWx0bzpsaW51eC1uZnMtb3duZXJAdmdlci5rZXJuZWwub3JnXSBPbiBCZWhh
+bGYgT2YgQm9heiBIYXJyb3NoDQpTZW50OiBUaHVyc2RheSwgTWF5IDI3LCAyMDEwIDEwOjUyIEFN
+DQpUbzogQmVubnkgSGFsZXZ5OyBvcGVuLW9zZDsgTkZTIGxpc3QNClN1YmplY3Q6IFtQQVRDSF0g
+U1FVQVNITUU6IHBuZnMtb2JqOiBwYW5sYXlvdXQ6IEZpeCB2ZXJ5IG9sZCBCVUdfT05zIG9uIG9s
+X3N0YXRlLnN0YXR1cw0KDQoNCk9LIFRoaXMgaXMgZGVmaW5pdGVseSBteSBzdHVwaWRpdHkgd2hl
+biBjb252ZXJ0aW5nIHBhbmZzX3NoaW0gdG8gdGhlDQpuZXcgb2JqbGF5b3V0X3JlYWQvd3JpdGVf
+ZG9uZSgpIEFQSS4gQnV0IHRoYXQgd2FzIHZlcnksIHZlcnkgbG9uZw0KdGltZSBhZ28uIERpZCB3
+ZSBub3QgdGVzdCBwYW5sYXlvdXQgc2luY2UgdGhlbi4NCg0KU28gSSBmaXhlZCB0aGUgc3RhbGUg
+Y2hlY2sgb24gb2xfc3RhdGUuc3RhdHVzIHdoaWNoIGlzIG5ldmVyIHNldA0KdW50aWwgbXVjaCBs
+YXRlciBpbnNpZGUgdGhlIGNhbGwgdG8gZ2VuZXJpYyBsYXllci4NCg0KV2hpbGUgYXQgaXQgSSBj
+b252ZXJ0ZWQgdGhlIEJVR19PTnMgdG8gV0FSTl9PTnMgYmVjYXVzZSBpdCBjb3VsZA0KYmUgZGF0
+YSBjb3JydXB0aW9uIGJ1dCBvdGhlcndpc2UgaXQgd2lsbCBub3QgY3J1c2ggdGhlIEtlcm5lbC4N
+CkJldHRlciBjb250aW51ZSB0byBiZSBhYmxlIHRvIGRlYnVnIGl0IGJldHRlci4gKEFuZCBhZGRl
+ZCBtaXNzaW5nDQppbmZvcm1hdGlvbiB0byB0aGUgV0FSTl9PTikNCg0KQ29uZ3JhdHVsYXRpb24s
+IEkndmUgc3VjY2Vzc2Z1bGx5IHJhbiBhbGwgdGVzdHMgb3Zlcg0KcGFuZnMtZXhwb3J0L3BhbmZz
+X3NoaW0gb3ZlciByZWFsIFBhbmFzYXMgSFcuIFdpdGggbGF0ZXN0IGNvZGUuDQpbIFRoaXMgaXMg
+d2l0aCB0aGUgbmV3IHBhbmZzLWV4cG9ydCB0aGF0IGlzIGFsc28gY29tcGF0aWJsZSB3aXRoDQog
+IHRoZSBzdGQgb2JqZWN0cyBsYXlvdXQgZHJpdmVyLiBQYXRjaGVzIHRvIHRoYXQgd2lsbCBmb2xs
+b3ddDQoNClRPRE86DQogIEkgc2hvdWxkIGFsc28gc2ltdWxhdGUvY2F1c2Ugc29tZSBJTyBlcnJv
+cnMgYW5kIHNlZSB0aGF0DQogIGVycm9ycyBhcmUgcmVwb3J0ZWQgYXQgbGF5b3V0X3JldHVybg0K
+DQpTaWduZWQtb2ZmLWJ5OiBCb2F6IEhhcnJvc2ggPGJoYXJyb3NoQHBhbmFzYXMuY29tPg0KLS0t
+DQogZnMvbmZzL29iamxheW91dC9wYW5mc19zaGltLmMgfCAgIDE5ICsrKysrKysrKysrKystLS0t
+LS0NCiAxIGZpbGVzIGNoYW5nZWQsIDEzIGluc2VydGlvbnMoKyksIDYgZGVsZXRpb25zKC0pDQoN
+CmRpZmYgLS1naXQgYS9mcy9uZnMvb2JqbGF5b3V0L3BhbmZzX3NoaW0uYyBiL2ZzL25mcy9vYmps
+YXlvdXQvcGFuZnNfc2hpbS5jDQppbmRleCA0MTQ4MzFlLi5jMzRmYjVjIDEwMDY0NA0KLS0tIGEv
+ZnMvbmZzL29iamxheW91dC9wYW5mc19zaGltLmMNCisrKyBiL2ZzL25mcy9vYmpsYXlvdXQvcGFu
+ZnNfc2hpbS5jDQpAQCAtNDIxLDkgKzQyMSwxMiBAQCBwYW5mc19zaGltX3JlYWRfZG9uZSgNCiAJ
+CXJjID0gcmVzX3AtPnJlc3VsdDsNCiAJaWYgKHJjID09IFBBTl9TVUNDRVNTKSB7DQogCQlzdGF0
+dXMgPSByZXNfcC0+bGVuZ3RoOw0KLQkJQlVHX09OKHN0YXRlLT5vbF9zdGF0ZS5zdGF0dXMgPCAw
+KTsNCi0JCUJVR19PTigocGFuX3N0b3JfbGVuX3Qpc3RhdGUtPm9sX3N0YXRlLnN0YXR1cyAhPQ0K
+LQkJICAgICAgIHN0YXRlLT51LnJlYWQucmVzLmxlbmd0aCk7DQorCQlXQVJOX09OKHN0YXR1cyA8
+IDApOw0KKwkJaWYgKFdBUk5fT04oKHBhbl9zdG9yX2xlbl90KXN0YXR1cyAhPSBzdGF0ZS0+dS5y
+ZWFkLnJlcy5sZW5ndGgpKQ0KDQpJbnN0ZWFkIG9mIGNhc3Rpbmcgc3RhdHVzIGJhY2sgdG8gYSBw
+YW5fc3Rvcl9sZW5fdCwgY291bGRuJ3QgeW91IHVzZSByZXNfcC0+bGVuZ3RoIGhlcmU/DQoNCkFu
+ZCwgZG8geW91IHdhbnQgdG8gdXNlIFdBUk5fT04gaGVyZSBvciB3b3VsZG4ndCBhIHNpbXBsZSB0
+ZXN0IHN1ZmZpY2U/DQoNClRoZSBzYW1lIGJlbG93Lg0KDQoJVGhhbnguLi4NCg0KCQlwcw0KDQor
+CQkJcHJpbnRrKEtFUk5fRVJSDQorCQkJICAgICAgIiVzOiBzdGF0dXMoMHglbGx4KSAhPSByZWFk
+LnJlcy5sZW5ndGgoMHglbGx4KVxuIiwNCisJCQkgICAgICAgX19mdW5jX18sICh1NjQpc3RhdHVz
+LA0KKwkJCSAgICAgICAodTY0KXN0YXRlLT51LnJlYWQucmVzLmxlbmd0aCk7DQogCX0gZWxzZSB7
+DQogCQlzdGF0dXMgPSAtcGFuZnNfZXhwb3J0X29wcy0+Y29udmVydF9yYyhyYyk7DQogCQlkcHJp
+bnRrKCIlczogcGFuX3NhbV9yZWFkIHJjICVkOiBzdGF0dXMgJVpkXG4iLA0KQEAgLTQ5OSw5ICs1
+MDIsMTMgQEAgcGFuZnNfc2hpbV93cml0ZV9kb25lKA0KIAlpZiAocmMgPT0gUEFOX1NVQ0NFU1Mp
+IHsNCiAJCXN0YXRlLT5vbF9zdGF0ZS5jb21taXR0ZWQgPSBORlNfRklMRV9TWU5DOw0KIAkJc3Rh
+dHVzID0gcmVzX3AtPmxlbmd0aDsNCi0JCUJVR19PTihzdGF0ZS0+b2xfc3RhdGUuc3RhdHVzIDwg
+MCk7DQotCQlCVUdfT04oKHBhbl9zdG9yX2xlbl90KXN0YXRlLT5vbF9zdGF0ZS5zdGF0dXMgIT0N
+Ci0JCSAgICAgICBzdGF0ZS0+dS53cml0ZS5yZXMubGVuZ3RoKTsNCisJCVdBUk5fT04oc3RhdHVz
+IDwgMCk7DQorCQlpZiAoV0FSTl9PTigocGFuX3N0b3JfbGVuX3Qpc3RhdHVzICE9IHN0YXRlLT51
+LndyaXRlLnJlcy5sZW5ndGgpKQ0KKwkJCXByaW50ayhLRVJOX0VSUg0KKwkJCSAgICAgIiVzOiBz
+dGF0dXMoMHglbGx4KSAhPSB3cml0ZS5yZXMubGVuZ3RoKDB4JWxseClcbiIsDQorCQkJICAgICBf
+X2Z1bmNfXywgKHU2NClzdGF0dXMsDQorCQkJICAgICh1NjQpc3RhdGUtPnUud3JpdGUucmVzLmxl
+bmd0aCk7DQorDQogCQlvYmpsYXlvdXRfYWRkX2RlbHRhX3NwYWNlX3VzZWQoJnN0YXRlLT5vbF9z
+dGF0ZSwNCiAJCQkJCSAgICAgICByZXNfcC0+ZGVsdGFfY2FwYWNpdHlfdXNlZCk7DQogCX0gZWxz
+ZSB7DQotLSANCjEuNi42LjENCg0KLS0NClRvIHVuc3Vic2NyaWJlIGZyb20gdGhpcyBsaXN0OiBz
+ZW5kIHRoZSBsaW5lICJ1bnN1YnNjcmliZSBsaW51eC1uZnMiIGluDQp0aGUgYm9keSBvZiBhIG1l
+c3NhZ2UgdG8gbWFqb3Jkb21vQHZnZXIua2VybmVsLm9yZw0KTW9yZSBtYWpvcmRvbW8gaW5mbyBh
+dCAgaHR0cDovL3ZnZXIua2VybmVsLm9yZy9tYWpvcmRvbW8taW5mby5odG1sDQoNCg==
