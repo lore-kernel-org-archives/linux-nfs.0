@@ -1,162 +1,74 @@
 From: Benny Halevy <bhalevy@panasas.com>
-Subject: [PATCH 4/5] pnfs: unlock lo_lock before calling layoutdriver's setup_layoutcommit
-Date: Thu, 27 May 2010 21:13:37 +0300
-Message-ID: <1274984017-26591-1-git-send-email-bhalevy@panasas.com>
+Subject: [PATCH 5/5] pnfs-obj: panlayout: Fix very old BUG_ONs on ol_state.status
+Date: Thu, 27 May 2010 21:13:49 +0300
+Message-ID: <1274984029-26628-1-git-send-email-bhalevy@panasas.com>
 References: <4BFEB5D4.30608@panasas.com>
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:14047 "EHLO
+Received: from daytona.panasas.com ([67.152.220.89]:58957 "EHLO
 	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S934554Ab0E0SNj (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 27 May 2010 14:13:39 -0400
+	with ESMTP id S934672Ab0E0SNv (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 27 May 2010 14:13:51 -0400
 In-Reply-To: <4BFEB5D4.30608@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Tao Guo <guotao-U4AKAne5IzAR5TUyvShJeg@public.gmane.org>
+From: Boaz Harrosh <bharrosh@panasas.com>
 
-So in blocklayoutdriver, we can use GFP_KERNEL to do memory
-allocation in bl_setup_layoutcommit().
+OK This is definitely my stupidity when converting panfs_shim to the
+new objlayout_read/write_done() API. But that was very, very long
+time ago.
 
-The state protected by the lo_lock here is clear now, which is the
-layout_commit's position and state. .i.e write_begin/end_pos,
-nfsi->lo_cred, and the call to pnfs_get_layout_stateid.
+So I fixed the stale check on ol_state.status which is never set
+until much later inside the call to generic layer.
 
-Signed-off-by: Tao Guo <guotao-U4AKAne5IzAR5TUyvShJeg@public.gmane.org>
+While at it I converted the BUG_ONs to WARN_ONs because it could
+be data corruption but otherwise it will not crush the Kernel.
+Better continue to be able to debug it better. (And added missing
+information to the WARN_ON)
+
+Congratulation, I've successfully ran all tests over
+panfs-export/panfs_shim over real Panasas HW. With latest code.
+[ This is with the new panfs-export that is also compatible with
+  the std objects layout driver. Patches to that will follow]
+
+TODO:
+  I should also simulate/cause some IO errors and see that
+  errors are reported at layout_return
+
 Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
 Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 ---
- fs/nfs/pnfs.c |   66 +++++++++++++++++++++++++++++---------------------------
- 1 files changed, 34 insertions(+), 32 deletions(-)
+ fs/nfs/objlayout/panfs_shim.c |    9 +++------
+ 1 files changed, 3 insertions(+), 6 deletions(-)
 
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index dafd66e..80dbb8e 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -2161,15 +2161,22 @@ pnfs_layoutcommit_done(struct pnfs_layoutcommit_data *data)
-  * Set up the argument/result storage required for the RPC call.
-  */
- static int
--pnfs_layoutcommit_setup(struct pnfs_layoutcommit_data *data, int sync)
-+pnfs_layoutcommit_setup(struct inode *inode,
-+			struct pnfs_layoutcommit_data *data,
-+			loff_t write_begin_pos, loff_t write_end_pos, int sync)
- {
--	struct nfs_inode *nfsi = NFS_I(data->args.inode);
--	struct nfs_server *nfss = NFS_SERVER(data->args.inode);
-+	struct nfs_inode *nfsi = NFS_I(inode);
-+	struct nfs_server *nfss = NFS_SERVER(inode);
- 	int result = 0;
- 
- 	dprintk("%s Begin (sync:%d)\n", __func__, sync);
--	data->args.fh = NFS_FH(data->args.inode);
+diff --git a/fs/nfs/objlayout/panfs_shim.c b/fs/nfs/objlayout/panfs_shim.c
+index 414831e..7bb00aa 100644
+--- a/fs/nfs/objlayout/panfs_shim.c
++++ b/fs/nfs/objlayout/panfs_shim.c
+@@ -421,9 +421,7 @@ panfs_shim_read_done(
+ 		rc = res_p->result;
+ 	if (rc == PAN_SUCCESS) {
+ 		status = res_p->length;
+-		BUG_ON(state->ol_state.status < 0);
+-		BUG_ON((pan_stor_len_t)state->ol_state.status !=
+-		       state->u.read.res.length);
++		WARN_ON(status < 0);
+ 	} else {
+ 		status = -panfs_export_ops->convert_rc(rc);
+ 		dprintk("%s: pan_sam_read rc %d: status %Zd\n",
+@@ -499,9 +497,8 @@ panfs_shim_write_done(
+ 	if (rc == PAN_SUCCESS) {
+ 		state->ol_state.committed = NFS_FILE_SYNC;
+ 		status = res_p->length;
+-		BUG_ON(state->ol_state.status < 0);
+-		BUG_ON((pan_stor_len_t)state->ol_state.status !=
+-		       state->u.write.res.length);
++		WARN_ON(status < 0);
 +
-+	data->is_sync = sync;
-+	data->args.inode = inode;
-+	data->args.fh = NFS_FH(inode);
- 	data->args.layout_type = nfss->pnfs_curr_ld->id;
-+	data->res.fattr = &data->fattr;
-+	nfs_fattr_init(&data->fattr);
- 
- 	/* TODO: Need to determine the correct values */
- 	data->args.time_modify_changed = 0;
-@@ -2177,26 +2184,19 @@ pnfs_layoutcommit_setup(struct pnfs_layoutcommit_data *data, int sync)
- 	/* Set values from inode so it can be reset
- 	 */
- 	data->args.lseg.iomode = IOMODE_RW;
--	data->args.lseg.offset = nfsi->pnfs_write_begin_pos;
--	data->args.lseg.length = nfsi->pnfs_write_end_pos - nfsi->pnfs_write_begin_pos + 1;
--	data->args.lastbytewritten =  min(nfsi->pnfs_write_end_pos,
--					i_size_read(&nfsi->vfs_inode) - 1);
-+	data->args.lseg.offset = write_begin_pos;
-+	data->args.lseg.length = write_end_pos - write_begin_pos + 1;
-+	data->args.lastbytewritten =  min(write_end_pos,
-+					  i_size_read(inode) - 1);
- 	data->args.bitmask = nfss->attr_bitmask;
- 	data->res.server = nfss;
- 
- 	/* Call layout driver to set the arguments.
- 	 */
--	if (nfss->pnfs_curr_ld->ld_io_ops->setup_layoutcommit) {
-+	if (nfss->pnfs_curr_ld->ld_io_ops->setup_layoutcommit)
- 		result = nfss->pnfs_curr_ld->ld_io_ops->setup_layoutcommit(
- 				&nfsi->layout, &data->args);
--		if (result)
--			goto out;
--	}
--	pnfs_get_layout_stateid(&data->args.stateid, &nfsi->layout);
--	data->res.fattr = &data->fattr;
--	nfs_fattr_init(&data->fattr);
- 
--out:
- 	dprintk("%s End Status %d\n", __func__, result);
- 	return result;
- }
-@@ -2208,6 +2208,9 @@ pnfs_layoutcommit_inode(struct inode *inode, int sync)
- {
- 	struct pnfs_layoutcommit_data *data;
- 	struct nfs_inode *nfsi = NFS_I(inode);
-+	loff_t write_begin_pos;
-+	loff_t write_end_pos;
-+
- 	int status = 0;
- 
- 	dprintk("%s Begin (sync:%d)\n", __func__, sync);
-@@ -2219,39 +2222,38 @@ pnfs_layoutcommit_inode(struct inode *inode, int sync)
- 		return -ENOMEM;
- 
- 	spin_lock(&nfsi->lo_lock);
--	if (!layoutcommit_needed(nfsi))
--		goto out_unlock;
--
--	data->args.inode = inode;
--	data->cred = nfsi->lo_cred;
--
--	/* Set up layout commit args*/
--	status = pnfs_layoutcommit_setup(data, sync);
-+	if (!layoutcommit_needed(nfsi)) {
-+		spin_unlock(&nfsi->lo_lock);
-+		goto out_free;
-+	}
- 
- 	/* Clear layoutcommit properties in the inode so
- 	 * new lc info can be generated
- 	 */
-+	write_begin_pos = nfsi->pnfs_write_begin_pos;
-+	write_end_pos = nfsi->pnfs_write_end_pos;
-+	data->cred = nfsi->lo_cred;
- 	nfsi->pnfs_write_begin_pos = 0;
- 	nfsi->pnfs_write_end_pos = 0;
- 	nfsi->lo_cred = NULL;
-+	pnfs_get_layout_stateid(&data->args.stateid, &nfsi->layout);
- 
-+	spin_unlock(&nfsi->lo_lock);
-+
-+	/* Set up layout commit args */
-+	status = pnfs_layoutcommit_setup(inode, data, write_begin_pos,
-+					 write_end_pos, sync);
- 	if (status) {
- 		/* The layout driver failed to setup the layoutcommit */
- 		put_rpccred(data->cred);
--		goto out_unlock;
-+		goto out_free;
- 	}
--
--	/* release lock on pnfs layoutcommit attrs */
--	spin_unlock(&nfsi->lo_lock);
--
--	data->is_sync = sync;
- 	status = pnfs4_proc_layoutcommit(data);
- out:
- 	dprintk("%s end (err:%d)\n", __func__, status);
- 	return status;
--out_unlock:
-+out_free:
- 	pnfs_layoutcommit_free(data);
--	spin_unlock(&nfsi->lo_lock);
- 	goto out;
- }
- 
+ 		objlayout_add_delta_space_used(&state->ol_state,
+ 					       res_p->delta_capacity_used);
+ 	} else {
 -- 
 1.6.6.1
 
