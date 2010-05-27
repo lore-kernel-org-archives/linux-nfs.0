@@ -1,76 +1,108 @@
-From: <Staubach_Peter@emc.com>
-Subject: RE: [PATCH] SQUASHME: pnfs-obj: panlayout: Fix very old BUG_ONs on ol_state.status
-Date: Thu, 27 May 2010 11:26:10 -0400
-Message-ID: <BF3BB6D12298F54B89C8DCC1E4073D80F2C566@CORPUSMX50A.corp.emc.com>
-References: <4BFE8728.8010302@panasas.com>
+From: Benny Halevy <bhalevy@panasas.com>
+Subject: Re: [PATCH] SQUASHME: pnfs-obj: panlayout: Fix very old BUG_ONs on
+ ol_state.status
+Date: Thu, 27 May 2010 19:31:49 +0300
+Message-ID: <4BFE9E75.1020307@panasas.com>
+References: <4BFE8728.8010302@panasas.com> <BF3BB6D12298F54B89C8DCC1E4073D80F2C566@CORPUSMX50A.corp.emc.com>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="utf-8"
-To: <bharrosh@panasas.com>, <bhalevy@panasas.com>,
-	<osd-dev@open-osd.org>, <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
+Cc: bharrosh@panasas.com, osd-dev@open-osd.org,
+	linux-nfs@vger.kernel.org
+To: Staubach_Peter@emc.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mexforward.lss.emc.com ([128.222.32.20]:10154 "EHLO
-	mexforward.lss.emc.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758195Ab0E0P0s (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 27 May 2010 11:26:48 -0400
-In-Reply-To: <4BFE8728.8010302@panasas.com>
+Received: from daytona.panasas.com ([67.152.220.89]:38458 "EHLO
+	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1752666Ab0E0Qbw (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 27 May 2010 12:31:52 -0400
+In-Reply-To: <BF3BB6D12298F54B89C8DCC1E4073D80F2C566-1Zg0zMUlrbd9m/dOYFj4Yjjd7nCn89gW@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-LS0tLS1PcmlnaW5hbCBNZXNzYWdlLS0tLS0NCkZyb206IGxpbnV4LW5mcy1vd25lckB2Z2VyLmtl
-cm5lbC5vcmcgW21haWx0bzpsaW51eC1uZnMtb3duZXJAdmdlci5rZXJuZWwub3JnXSBPbiBCZWhh
-bGYgT2YgQm9heiBIYXJyb3NoDQpTZW50OiBUaHVyc2RheSwgTWF5IDI3LCAyMDEwIDEwOjUyIEFN
-DQpUbzogQmVubnkgSGFsZXZ5OyBvcGVuLW9zZDsgTkZTIGxpc3QNClN1YmplY3Q6IFtQQVRDSF0g
-U1FVQVNITUU6IHBuZnMtb2JqOiBwYW5sYXlvdXQ6IEZpeCB2ZXJ5IG9sZCBCVUdfT05zIG9uIG9s
-X3N0YXRlLnN0YXR1cw0KDQoNCk9LIFRoaXMgaXMgZGVmaW5pdGVseSBteSBzdHVwaWRpdHkgd2hl
-biBjb252ZXJ0aW5nIHBhbmZzX3NoaW0gdG8gdGhlDQpuZXcgb2JqbGF5b3V0X3JlYWQvd3JpdGVf
-ZG9uZSgpIEFQSS4gQnV0IHRoYXQgd2FzIHZlcnksIHZlcnkgbG9uZw0KdGltZSBhZ28uIERpZCB3
-ZSBub3QgdGVzdCBwYW5sYXlvdXQgc2luY2UgdGhlbi4NCg0KU28gSSBmaXhlZCB0aGUgc3RhbGUg
-Y2hlY2sgb24gb2xfc3RhdGUuc3RhdHVzIHdoaWNoIGlzIG5ldmVyIHNldA0KdW50aWwgbXVjaCBs
-YXRlciBpbnNpZGUgdGhlIGNhbGwgdG8gZ2VuZXJpYyBsYXllci4NCg0KV2hpbGUgYXQgaXQgSSBj
-b252ZXJ0ZWQgdGhlIEJVR19PTnMgdG8gV0FSTl9PTnMgYmVjYXVzZSBpdCBjb3VsZA0KYmUgZGF0
-YSBjb3JydXB0aW9uIGJ1dCBvdGhlcndpc2UgaXQgd2lsbCBub3QgY3J1c2ggdGhlIEtlcm5lbC4N
-CkJldHRlciBjb250aW51ZSB0byBiZSBhYmxlIHRvIGRlYnVnIGl0IGJldHRlci4gKEFuZCBhZGRl
-ZCBtaXNzaW5nDQppbmZvcm1hdGlvbiB0byB0aGUgV0FSTl9PTikNCg0KQ29uZ3JhdHVsYXRpb24s
-IEkndmUgc3VjY2Vzc2Z1bGx5IHJhbiBhbGwgdGVzdHMgb3Zlcg0KcGFuZnMtZXhwb3J0L3BhbmZz
-X3NoaW0gb3ZlciByZWFsIFBhbmFzYXMgSFcuIFdpdGggbGF0ZXN0IGNvZGUuDQpbIFRoaXMgaXMg
-d2l0aCB0aGUgbmV3IHBhbmZzLWV4cG9ydCB0aGF0IGlzIGFsc28gY29tcGF0aWJsZSB3aXRoDQog
-IHRoZSBzdGQgb2JqZWN0cyBsYXlvdXQgZHJpdmVyLiBQYXRjaGVzIHRvIHRoYXQgd2lsbCBmb2xs
-b3ddDQoNClRPRE86DQogIEkgc2hvdWxkIGFsc28gc2ltdWxhdGUvY2F1c2Ugc29tZSBJTyBlcnJv
-cnMgYW5kIHNlZSB0aGF0DQogIGVycm9ycyBhcmUgcmVwb3J0ZWQgYXQgbGF5b3V0X3JldHVybg0K
-DQpTaWduZWQtb2ZmLWJ5OiBCb2F6IEhhcnJvc2ggPGJoYXJyb3NoQHBhbmFzYXMuY29tPg0KLS0t
-DQogZnMvbmZzL29iamxheW91dC9wYW5mc19zaGltLmMgfCAgIDE5ICsrKysrKysrKysrKystLS0t
-LS0NCiAxIGZpbGVzIGNoYW5nZWQsIDEzIGluc2VydGlvbnMoKyksIDYgZGVsZXRpb25zKC0pDQoN
-CmRpZmYgLS1naXQgYS9mcy9uZnMvb2JqbGF5b3V0L3BhbmZzX3NoaW0uYyBiL2ZzL25mcy9vYmps
-YXlvdXQvcGFuZnNfc2hpbS5jDQppbmRleCA0MTQ4MzFlLi5jMzRmYjVjIDEwMDY0NA0KLS0tIGEv
-ZnMvbmZzL29iamxheW91dC9wYW5mc19zaGltLmMNCisrKyBiL2ZzL25mcy9vYmpsYXlvdXQvcGFu
-ZnNfc2hpbS5jDQpAQCAtNDIxLDkgKzQyMSwxMiBAQCBwYW5mc19zaGltX3JlYWRfZG9uZSgNCiAJ
-CXJjID0gcmVzX3AtPnJlc3VsdDsNCiAJaWYgKHJjID09IFBBTl9TVUNDRVNTKSB7DQogCQlzdGF0
-dXMgPSByZXNfcC0+bGVuZ3RoOw0KLQkJQlVHX09OKHN0YXRlLT5vbF9zdGF0ZS5zdGF0dXMgPCAw
-KTsNCi0JCUJVR19PTigocGFuX3N0b3JfbGVuX3Qpc3RhdGUtPm9sX3N0YXRlLnN0YXR1cyAhPQ0K
-LQkJICAgICAgIHN0YXRlLT51LnJlYWQucmVzLmxlbmd0aCk7DQorCQlXQVJOX09OKHN0YXR1cyA8
-IDApOw0KKwkJaWYgKFdBUk5fT04oKHBhbl9zdG9yX2xlbl90KXN0YXR1cyAhPSBzdGF0ZS0+dS5y
-ZWFkLnJlcy5sZW5ndGgpKQ0KDQpJbnN0ZWFkIG9mIGNhc3Rpbmcgc3RhdHVzIGJhY2sgdG8gYSBw
-YW5fc3Rvcl9sZW5fdCwgY291bGRuJ3QgeW91IHVzZSByZXNfcC0+bGVuZ3RoIGhlcmU/DQoNCkFu
-ZCwgZG8geW91IHdhbnQgdG8gdXNlIFdBUk5fT04gaGVyZSBvciB3b3VsZG4ndCBhIHNpbXBsZSB0
-ZXN0IHN1ZmZpY2U/DQoNClRoZSBzYW1lIGJlbG93Lg0KDQoJVGhhbnguLi4NCg0KCQlwcw0KDQor
-CQkJcHJpbnRrKEtFUk5fRVJSDQorCQkJICAgICAgIiVzOiBzdGF0dXMoMHglbGx4KSAhPSByZWFk
-LnJlcy5sZW5ndGgoMHglbGx4KVxuIiwNCisJCQkgICAgICAgX19mdW5jX18sICh1NjQpc3RhdHVz
-LA0KKwkJCSAgICAgICAodTY0KXN0YXRlLT51LnJlYWQucmVzLmxlbmd0aCk7DQogCX0gZWxzZSB7
-DQogCQlzdGF0dXMgPSAtcGFuZnNfZXhwb3J0X29wcy0+Y29udmVydF9yYyhyYyk7DQogCQlkcHJp
-bnRrKCIlczogcGFuX3NhbV9yZWFkIHJjICVkOiBzdGF0dXMgJVpkXG4iLA0KQEAgLTQ5OSw5ICs1
-MDIsMTMgQEAgcGFuZnNfc2hpbV93cml0ZV9kb25lKA0KIAlpZiAocmMgPT0gUEFOX1NVQ0NFU1Mp
-IHsNCiAJCXN0YXRlLT5vbF9zdGF0ZS5jb21taXR0ZWQgPSBORlNfRklMRV9TWU5DOw0KIAkJc3Rh
-dHVzID0gcmVzX3AtPmxlbmd0aDsNCi0JCUJVR19PTihzdGF0ZS0+b2xfc3RhdGUuc3RhdHVzIDwg
-MCk7DQotCQlCVUdfT04oKHBhbl9zdG9yX2xlbl90KXN0YXRlLT5vbF9zdGF0ZS5zdGF0dXMgIT0N
-Ci0JCSAgICAgICBzdGF0ZS0+dS53cml0ZS5yZXMubGVuZ3RoKTsNCisJCVdBUk5fT04oc3RhdHVz
-IDwgMCk7DQorCQlpZiAoV0FSTl9PTigocGFuX3N0b3JfbGVuX3Qpc3RhdHVzICE9IHN0YXRlLT51
-LndyaXRlLnJlcy5sZW5ndGgpKQ0KKwkJCXByaW50ayhLRVJOX0VSUg0KKwkJCSAgICAgIiVzOiBz
-dGF0dXMoMHglbGx4KSAhPSB3cml0ZS5yZXMubGVuZ3RoKDB4JWxseClcbiIsDQorCQkJICAgICBf
-X2Z1bmNfXywgKHU2NClzdGF0dXMsDQorCQkJICAgICh1NjQpc3RhdGUtPnUud3JpdGUucmVzLmxl
-bmd0aCk7DQorDQogCQlvYmpsYXlvdXRfYWRkX2RlbHRhX3NwYWNlX3VzZWQoJnN0YXRlLT5vbF9z
-dGF0ZSwNCiAJCQkJCSAgICAgICByZXNfcC0+ZGVsdGFfY2FwYWNpdHlfdXNlZCk7DQogCX0gZWxz
-ZSB7DQotLSANCjEuNi42LjENCg0KLS0NClRvIHVuc3Vic2NyaWJlIGZyb20gdGhpcyBsaXN0OiBz
-ZW5kIHRoZSBsaW5lICJ1bnN1YnNjcmliZSBsaW51eC1uZnMiIGluDQp0aGUgYm9keSBvZiBhIG1l
-c3NhZ2UgdG8gbWFqb3Jkb21vQHZnZXIua2VybmVsLm9yZw0KTW9yZSBtYWpvcmRvbW8gaW5mbyBh
-dCAgaHR0cDovL3ZnZXIua2VybmVsLm9yZy9tYWpvcmRvbW8taW5mby5odG1sDQoNCg==
+On May. 27, 2010, 18:26 +0300, <Staubach_Peter@emc.com> wrote:
+> -----Original Message-----
+> From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-owner@vger.kernel.org] On Behalf Of Boaz Harrosh
+> Sent: Thursday, May 27, 2010 10:52 AM
+> To: Benny Halevy; open-osd; NFS list
+> Subject: [PATCH] SQUASHME: pnfs-obj: panlayout: Fix very old BUG_ONs on ol_state.status
+> 
+> 
+> OK This is definitely my stupidity when converting panfs_shim to the
+> new objlayout_read/write_done() API. But that was very, very long
+> time ago. Did we not test panlayout since then.
+> 
+> So I fixed the stale check on ol_state.status which is never set
+> until much later inside the call to generic layer.
+> 
+> While at it I converted the BUG_ONs to WARN_ONs because it could
+> be data corruption but otherwise it will not crush the Kernel.
+> Better continue to be able to debug it better. (And added missing
+> information to the WARN_ON)
+> 
+> Congratulation, I've successfully ran all tests over
+> panfs-export/panfs_shim over real Panasas HW. With latest code.
+> [ This is with the new panfs-export that is also compatible with
+>   the std objects layout driver. Patches to that will follow]
+> 
+> TODO:
+>   I should also simulate/cause some IO errors and see that
+>   errors are reported at layout_return
+> 
+> Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+> ---
+>  fs/nfs/objlayout/panfs_shim.c |   19 +++++++++++++------
+>  1 files changed, 13 insertions(+), 6 deletions(-)
+> 
+> diff --git a/fs/nfs/objlayout/panfs_shim.c b/fs/nfs/objlayout/panfs_shim.c
+> index 414831e..c34fb5c 100644
+> --- a/fs/nfs/objlayout/panfs_shim.c
+> +++ b/fs/nfs/objlayout/panfs_shim.c
+> @@ -421,9 +421,12 @@ panfs_shim_read_done(
+>  		rc = res_p->result;
+>  	if (rc == PAN_SUCCESS) {
+>  		status = res_p->length;
+> -		BUG_ON(state->ol_state.status < 0);
+> -		BUG_ON((pan_stor_len_t)state->ol_state.status !=
+> -		       state->u.read.res.length);
+> +		WARN_ON(status < 0);
+> +		if (WARN_ON((pan_stor_len_t)status != state->u.read.res.length))
+> 
+> Instead of casting status back to a pan_stor_len_t, couldn't you use res_p->length here?
+
+res_p is actually &state->u.read.res.
+we can just drop this...
+
+Benny 
+
+> 
+> And, do you want to use WARN_ON here or wouldn't a simple test suffice?
+> 
+> The same below.
+> 
+> 	Thanx...
+> 
+> 		ps
+> 
+> +			printk(KERN_ERR
+> +			      "%s: status(0x%llx) != read.res.length(0x%llx)\n",
+> +			       __func__, (u64)status,
+> +			       (u64)state->u.read.res.length);
+>  	} else {
+>  		status = -panfs_export_ops->convert_rc(rc);
+>  		dprintk("%s: pan_sam_read rc %d: status %Zd\n",
+> @@ -499,9 +502,13 @@ panfs_shim_write_done(
+>  	if (rc == PAN_SUCCESS) {
+>  		state->ol_state.committed = NFS_FILE_SYNC;
+>  		status = res_p->length;
+> -		BUG_ON(state->ol_state.status < 0);
+> -		BUG_ON((pan_stor_len_t)state->ol_state.status !=
+> -		       state->u.write.res.length);
+> +		WARN_ON(status < 0);
+> +		if (WARN_ON((pan_stor_len_t)status != state->u.write.res.length))
+> +			printk(KERN_ERR
+> +			     "%s: status(0x%llx) != write.res.length(0x%llx)\n",
+> +			     __func__, (u64)status,
+> +			    (u64)state->u.write.res.length);
+> +
+>  		objlayout_add_delta_space_used(&state->ol_state,
+>  					       res_p->delta_capacity_used);
+>  	} else {
