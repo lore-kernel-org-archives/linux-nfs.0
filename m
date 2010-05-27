@@ -1,53 +1,61 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-pz0-f204.google.com ([209.85.222.204]:34485 "EHLO
-	mail-pz0-f204.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757058Ab0ECVOL (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 3 May 2010 17:14:11 -0400
-Received: by pzk42 with SMTP id 42so381369pzk.4
-        for <linux-nfs@vger.kernel.org>; Mon, 03 May 2010 14:14:10 -0700 (PDT)
-In-Reply-To: <1272914702.7559.13.camel@localhost.localdomain>
-References: <l2wdc64e7231005030953xb72ad73az3f883167a1a637c8@mail.gmail.com>
-	 <20100503185650.GA9864@fieldses.org>
-	 <1272914702.7559.13.camel@localhost.localdomain>
-Date: Mon, 3 May 2010 17:14:10 -0400
-Message-ID: <t2ndc64e7231005031414ob1ca0ebaze725bb73e712234d@mail.gmail.com>
-Subject: Re: Proxy
-From: maillists0@gmail.com
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mail-out2.uio.no ([129.240.10.58]:55839 "EHLO mail-out2.uio.no"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754315Ab0E0Mew (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 27 May 2010 08:34:52 -0400
+Subject: Re: Debugging fcntl() file locks
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+To: Bernd Petrovitsch <bernd@sysprog.at>
+Cc: linux-nfs@vger.kernel.org
+In-Reply-To: <1274955060.14002.40.camel@thorin>
+References: <1274955060.14002.40.camel@thorin>
+Content-Type: text/plain; charset="UTF-8"
+Date: Thu, 27 May 2010 08:34:46 -0400
+Message-ID: <1274963686.2895.7.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Mon, May 3, 2010 at 3:25 PM, Trond Myklebust
-<trond.myklebust@fys.uio.no> wrote:
-> On Mon, 2010-05-03 at 14:56 -0400, J. Bruce Fields wrote:
->> On Mon, May 03, 2010 at 12:53:15PM -0400, maillists0@gmail.com wrote:
->> > With NFS4's support for referrals and Kerberos, it seems like the
->> > original reasons to prevent re-exporting of an NFS share might no
->> > longer exist. With fs-proxy making its way into the mainline kernel
->> > and things like cachefilesd, there are also very good reasons to allow
->> > it. A proxy server with a persistent cache could give the ability to
->> > robustly use shares across a WAN or do failover pairs with no need for
->> > more complex replication. Speaking as an end-user, this would be very
->> > desirable.
->> >
->> > I see that others have implemented proxies with user-space NFS, which
->> > seems reasonable but not optimal. What is the obstacle to allowing
->> > re-exports with the standard nfs implentation? Is it possible at the
->> > moment to patch a kernel to make this work? Anyone have experience
->> > with it? Any input is appreciated.
->>
->> It's probably possible, but some kernel hacking would be required.
->>
+On Thu, 2010-05-27 at 12:11 +0200, Bernd Petrovitsch wrote:
+> Hi all!
+> 
+> How can I debug fcntl() file locks on a NFSv3-client?
+> The server side is a NetApp-Box (no details at hand but I can ask).
+> The client side are stock-RHEL5.3/CentOS-5.3 kernels - 2.6.18-92.el5.
+> 
+> The file system in question is mounted on 2 clients. flock() on a file
+> succeeds but fcntl() fails with EAGAIN. From what I found in the
+> Internet and manual pages, this means that someone else already locked
+> that file (- the file is successfully open()ed read/write so it can't be
+> "your are not allowed to write-lock the file").
+> But how do I find out on which host and which process?
+> 
+> strace shows:
+> ----  snip  ----
+> open("/... secret ...", O_RDWR) = 3
+> ioctl(3, SNDCTL_TMR_TIMEBASE or TCGETS, 0x7fff7925b400) = -1 ENOTTY (Inappropriate ioctl for device)
+> lseek(3, 0, SEEK_CUR)                   = 0
+> fstat(3, {st_mode=S_IFREG|0600, st_size=935, ...}) = 0
+> fcntl(3, F_SETFD, FD_CLOEXEC)           = 0
+> flock(3, LOCK_EX|LOCK_NB)               = 0
+> fcntl(3, F_SETLK, {type=F_WRLCK, whence=SEEK_SET, start=0, len=0}) = -1 EAGAIN (Resource temporarily unavailable)
+> ----  snip  ---- 
+> [ This is a perl script using CPAN modules at the top. ]
+> 
+> /proc/mounts shows 
+> ----  snip  ---- 
+> rw,nodiratime,vers=3,rsize=32768,wsize=32768,hard,proto=tcp,timeo=600,retrans=2,sec=sys,addr=<ip-address>
+> ----  snip  ---- 
+> as options for the filesystem.
+> 
+> Thanks in advance,
+> 	Bernd
 
-Have a look at this old thing from 2006:
-http://www.usenix.org/event/fast07/tech/full_papers/gulati/gulati_html/nache.html
-. They claim to have implemented a proxy with only the tools I
-mentioned above, along with their own modified version of nfs to allow
-multi-hops.
+The Linux NFS client does not allow you to lock a file using both
+flock() and POSIX locks. You should choose one or the other locking
+scheme. If you remove the flock() line above, then the POSIX lock will
+likely succeed.
 
-I have a workload of lots of reads/almost no writes, and their
-approach makes sense. It would be a great feature. Is something
-missing from that paper that makes it unrealistic?
+Cheers
+  Trond
+
