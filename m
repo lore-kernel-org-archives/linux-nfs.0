@@ -1,36 +1,42 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yw0-f198.google.com ([209.85.211.198]:57302 "EHLO
-	mail-yw0-f198.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758527Ab0ELXVD convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 12 May 2010 19:21:03 -0400
-Received: by ywh36 with SMTP id 36so292048ywh.4
-        for <linux-nfs@vger.kernel.org>; Wed, 12 May 2010 16:21:02 -0700 (PDT)
-In-Reply-To: <4BEB1FA2.1060001@inria.fr>
-References: <4BCFE979.2000406@inria.fr> <4BE1E099.9050902@inria.fr>
-	 <4BEB1FA2.1060001@inria.fr>
-Date: Wed, 12 May 2010 19:21:01 -0400
-Message-ID: <AANLkTinNTYrEe9G6urXBxv-hogZPatOe9zWbbjnVTbWz@mail.gmail.com>
-Subject: Re: trouble using kerberos between linux client and server
-From: Kevin Coffman <kwc@citi.umich.edu>
-To: Guillaume Rousse <Guillaume.Rousse@inria.fr>
-Cc: linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mail-out1.uio.no ([129.240.10.57]:55062 "EHLO mail-out1.uio.no"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932483Ab0E0RzI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 27 May 2010 13:55:08 -0400
+Subject: Re: nfs4 hang
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Christopher Hawkins <chawkins@bplinux.com>,
+        linux-nfs <linux-nfs@vger.kernel.org>
+In-Reply-To: <20100527170829.GA11559@fieldses.org>
+References: <2212784.91274721147769.JavaMail.javamailuser@localhost>
+	 <18251062.111274721421458.JavaMail.javamailuser@localhost>
+	 <20100527170829.GA11559@fieldses.org>
+Content-Type: text/plain; charset="UTF-8"
+Date: Thu, 27 May 2010 13:55:01 -0400
+Message-ID: <1274982901.20557.1.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, May 12, 2010 at 5:37 PM, Guillaume Rousse
-<Guillaume.Rousse@inria.fr> wrote:
-> Le 05/05/2010 23:18, Guillaume Rousse a écrit :
->> I'm attaching network capture, even I can't figure additional
->> information from it by myself.
-> Reading https://bugzilla.redhat.com/show_bug.cgi?id=562807, I rebuild
-> libtirpc with patch applied and -DDEBUG. Unfortunatly, it doesn't bring
-> additional information about the server-side failure :(
+On Thu, 2010-05-27 at 13:08 -0400, J. Bruce Fields wrote:
+> On Mon, May 24, 2010 at 01:17:01PM -0400, Christopher Hawkins wrote:
+> > Thanks Bruce, it does appear that idmapd is somehow related to this
+> > issue. However, I'm stumped because it does exist on the client, along
+> > with all the libraries it requires (according to ldd, anyway).
+> 
+> And /etc/passwd, and whatever other files it might decide it needs to
+> open to do its work?
+> 
+> > Is
+> > there an easy way to disable idmapd while still running nfs4 to
+> > determine if it is causing the hang?
+> 
+> Not that I know of.
 
-It looks to me like fflush(), called in qword_eol(), may be returning
-the number of bytes flushed (95) rather than zero for success?  I
-don't immediately see any changes that would cause this.  But I
-haven't looked extensively...
+Why would you need to? 'Magic sysrq-trigger t' will show you if the
+idmapper is deadlocked inside the NFS filesystem (as will the equivalent
+'echo t >/proc/sysrq-trigger').
 
-K.C.
+  Trond
+
