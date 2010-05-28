@@ -1,168 +1,81 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:39366 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752068Ab0ERXhr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 18 May 2010 19:37:47 -0400
-Received: from bfields by fieldses.org with local (Exim 4.69)
-	(envelope-from <bfields@fieldses.org>)
-	id 1OEWM6-0007CE-Hu
-	for linux-nfs@vger.kernel.org; Tue, 18 May 2010 19:37:46 -0400
-Date: Tue, 18 May 2010 19:37:46 -0400
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH] Revert "nfsd4: distinguish expired from stale stateids"
-Message-ID: <20100518233746.GC26911@fieldses.org>
-Content-Type: text/plain; charset=us-ascii
-From: "J. Bruce Fields" <bfields@fieldses.org>
+Received: from esgaroth.petrovitsch.at ([78.47.184.11]:5562 "EHLO
+	esgaroth.petrovitsch.priv.at" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S932262Ab0E1JgP (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 28 May 2010 05:36:15 -0400
+Subject: Re: Debugging fcntl() file locks
+From: Bernd Petrovitsch <bernd@sysprog.at>
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+Cc: linux-nfs@vger.kernel.org
+In-Reply-To: <1274969927.2895.19.camel@heimdal.trondhjem.org>
+References: <1274955060.14002.40.camel@thorin>
+	 <1274963686.2895.7.camel@heimdal.trondhjem.org>
+	 <1274967997.14002.42.camel@thorin>
+	 <1274969927.2895.19.camel@heimdal.trondhjem.org>
+Content-Type: text/plain; charset="UTF-8"
+Date: Fri, 28 May 2010 11:36:10 +0200
+Message-ID: <1275039370.20005.6.camel@thorin>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-From: J. Bruce Fields <bfields@citi.umich.edu>
+On Don, 2010-05-27 at 10:18 -0400, Trond Myklebust wrote:
+> On Thu, 2010-05-27 at 15:46 +0200, Bernd Petrovitsch wrote:
+[...]
+> > On Don, 2010-05-27 at 08:34 -0400, Trond Myklebust wrote:
+> > > On Thu, 2010-05-27 at 12:11 +0200, Bernd Petrovitsch wrote:
+> > [...]
+> > > > How can I debug fcntl() file locks on a NFSv3-client?
+> > > > The server side is a NetApp-Box (no details at hand but I can ask).
+> > > > The client side are stock-RHEL5.3/CentOS-5.3 kernels - 2.6.18-92.el5.
+> > > > 
+> > > > The file system in question is mounted on 2 clients. flock() on a file
+> > > > succeeds but fcntl() fails with EAGAIN. From what I found in the
+> > > > Internet and manual pages, this means that someone else already locked
+> > > > that file (- the file is successfully open()ed read/write so it can't be
+> > > > "your are not allowed to write-lock the file").
+> > > > But how do I find out on which host and which process?
+> > > > 
+> > > > strace shows:
+> > > > ----  snip  ----
+> > > > open("/... secret ...", O_RDWR) = 3
+> > > > ioctl(3, SNDCTL_TMR_TIMEBASE or TCGETS, 0x7fff7925b400) = -1 ENOTTY (Inappropriate ioctl for device)
+> > > > lseek(3, 0, SEEK_CUR)                   = 0
+> > > > fstat(3, {st_mode=S_IFREG|0600, st_size=935, ...}) = 0
+> > > > fcntl(3, F_SETFD, FD_CLOEXEC)           = 0
+> > > > flock(3, LOCK_EX|LOCK_NB)               = 0
+> > > > fcntl(3, F_SETLK, {type=F_WRLCK, whence=SEEK_SET, start=0, len=0}) = -1 EAGAIN (Resource temporarily unavailable)
+> > > > ----  snip  ---- 
+> > > > [ This is a perl script using CPAN modules at the top. ]
+> > [...]
+> > > The Linux NFS client does not allow you to lock a file using both
+> > > flock() and POSIX locks. You should choose one or the other locking
+> > > scheme. If you remove the flock() line above, then the POSIX lock will
+> > > likely succeed.
+> > 
+> > Thanks.
+> > Does flock() work on NFS these days on NFS?
+> > Historically that was not the case IIRC.
+> 
+> Yes. flock() has worked since the early 2.6.x series, however it uses
+> the same NFS byte range lock protocol as POSIX locks, so there is no way
+> to avoid conflicts.
 
-This reverts commit 78155ed75f470710f2aecb3e75e3d97107ba8374.
+IMHO this is the saner approach - treat flock() and fcntl()-locking the
+same with just different APIs/interfaces. But there are probably more
+(historically grown) differences.
 
-We're depending here on the boot time that we use to generate the
-stateid being monotonic, but get_seconds() is not necessarily.
+And other filesystems - especially ext3 - allow this "duplicate locking"
+- at least for /dev/null.
+Said script is trying that to check if fcntl() can be used after flock()
+or not.
+Not that I find that a particularly good solution because
+- there is no check if /dev/null is on the same filesystem as the
+  to-be-locked files and
+- is locking a special char device the same as a plain file.
 
-We still depend at least on boot_time being different every time, but
-that is a safer bet.
-
-We have a few reports of errors that might be explained by this problem,
-though we haven't been able to confirm any of them.
-
-But the minor gain of distinguishing expired from stale errors seems not
-worth the risk.
-
-Conflicts:
-
-	fs/nfsd/nfs4state.c
-
-Cc: Bian Naimeng <biannm@cn.fujitsu.com>
-Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
----
- fs/nfsd/nfs4state.c |   56 ++++++++++-----------------------------------------
- 1 files changed, 11 insertions(+), 45 deletions(-)
-
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 296eded..12f7109 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -190,7 +190,7 @@ alloc_init_deleg(struct nfs4_client *clp, struct nfs4_stateid *stp, struct svc_f
- 	dp->dl_vfs_file = stp->st_vfs_file;
- 	dp->dl_type = type;
- 	dp->dl_ident = cb->cb_ident;
--	dp->dl_stateid.si_boot = get_seconds();
-+	dp->dl_stateid.si_boot = boot_time;
- 	dp->dl_stateid.si_stateownerid = current_delegid++;
- 	dp->dl_stateid.si_fileid = 0;
- 	dp->dl_stateid.si_generation = 0;
-@@ -1884,7 +1884,7 @@ init_stateid(struct nfs4_stateid *stp, struct nfs4_file *fp, struct nfsd4_open *
- 	stp->st_stateowner = sop;
- 	get_nfs4_file(fp);
- 	stp->st_file = fp;
--	stp->st_stateid.si_boot = get_seconds();
-+	stp->st_stateid.si_boot = boot_time;
- 	stp->st_stateid.si_stateownerid = sop->so_id;
- 	stp->st_stateid.si_fileid = fp->fi_id;
- 	stp->st_stateid.si_generation = 0;
-@@ -2733,39 +2733,11 @@ nfs4_check_fh(struct svc_fh *fhp, struct nfs4_stateid *stp)
- static int
- STALE_STATEID(stateid_t *stateid)
- {
--	if (time_after((unsigned long)boot_time,
--			(unsigned long)stateid->si_boot)) {
--		dprintk("NFSD: stale stateid " STATEID_FMT "!\n",
--			STATEID_VAL(stateid));
--		return 1;
--	}
--	return 0;
--}
--
--static int
--EXPIRED_STATEID(stateid_t *stateid)
--{
--	if (time_before((unsigned long)boot_time,
--			((unsigned long)stateid->si_boot)) &&
--	    time_before((unsigned long)(stateid->si_boot + nfsd4_lease), get_seconds())) {
--		dprintk("NFSD: expired stateid " STATEID_FMT "!\n",
--			STATEID_VAL(stateid));
--		return 1;
--	}
--	return 0;
--}
--
--static __be32
--stateid_error_map(stateid_t *stateid)
--{
--	if (STALE_STATEID(stateid))
--		return nfserr_stale_stateid;
--	if (EXPIRED_STATEID(stateid))
--		return nfserr_expired;
--
--	dprintk("NFSD: bad stateid " STATEID_FMT "!\n",
-+	if (stateid->si_boot == boot_time)
-+		return 0;
-+	dprintk("NFSD: stale stateid " STATEID_FMT "!\n",
- 		STATEID_VAL(stateid));
--	return nfserr_bad_stateid;
-+	return 1;
- }
- 
- static inline int
-@@ -2889,10 +2861,8 @@ nfs4_preprocess_stateid_op(struct nfsd4_compound_state *cstate,
- 	status = nfserr_bad_stateid;
- 	if (is_delegation_stateid(stateid)) {
- 		dp = find_delegation_stateid(ino, stateid);
--		if (!dp) {
--			status = stateid_error_map(stateid);
-+		if (!dp)
- 			goto out;
--		}
- 		status = check_stateid_generation(stateid, &dp->dl_stateid,
- 						  flags);
- 		if (status)
-@@ -2905,10 +2875,8 @@ nfs4_preprocess_stateid_op(struct nfsd4_compound_state *cstate,
- 			*filpp = dp->dl_vfs_file;
- 	} else { /* open or lock stateid */
- 		stp = find_stateid(stateid, flags);
--		if (!stp) {
--			status = stateid_error_map(stateid);
-+		if (!stp)
- 			goto out;
--		}
- 		if (nfs4_check_fh(current_fh, stp))
- 			goto out;
- 		if (!stp->st_stateowner->so_confirmed)
-@@ -2980,7 +2948,7 @@ nfs4_preprocess_seqid_op(struct nfsd4_compound_state *cstate, u32 seqid,
- 		 */
- 		sop = search_close_lru(stateid->si_stateownerid, flags);
- 		if (sop == NULL)
--			return stateid_error_map(stateid);
-+			return nfserr_bad_stateid;
- 		*sopp = sop;
- 		goto check_replay;
- 	}
-@@ -3247,10 +3215,8 @@ nfsd4_delegreturn(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	if (!is_delegation_stateid(stateid))
- 		goto out;
- 	dp = find_delegation_stateid(inode, stateid);
--	if (!dp) {
--		status = stateid_error_map(stateid);
-+	if (!dp)
- 		goto out;
--	}
- 	status = check_stateid_generation(stateid, &dp->dl_stateid, flags);
- 	if (status)
- 		goto out;
-@@ -3476,7 +3442,7 @@ alloc_init_lock_stateid(struct nfs4_stateowner *sop, struct nfs4_file *fp, struc
- 	stp->st_stateowner = sop;
- 	get_nfs4_file(fp);
- 	stp->st_file = fp;
--	stp->st_stateid.si_boot = get_seconds();
-+	stp->st_stateid.si_boot = boot_time;
- 	stp->st_stateid.si_stateownerid = sop->so_id;
- 	stp->st_stateid.si_fileid = fp->fi_id;
- 	stp->st_stateid.si_generation = 0;
+	Bernd
 -- 
-1.7.0.4
+mobile: +43 664 4416156              http://www.sysprog.at/
+    Linux Software Development, Consulting and Services
 
