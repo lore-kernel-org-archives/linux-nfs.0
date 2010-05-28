@@ -1,57 +1,45 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from esgaroth.petrovitsch.at ([78.47.184.11]:1677 "EHLO
-	esgaroth.petrovitsch.priv.at" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752580Ab0E0LLE (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 27 May 2010 07:11:04 -0400
-Received: from [172.16.0.10] (chello062178036229.13.11.wu-wien.teleweb.at [62.178.36.229])
-	(authenticated bits=0)
-	by esgaroth.petrovitsch.priv.at (8.14.1/8.14.1) with ESMTP id o4RAB1rS019241
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-nfs@vger.kernel.org>; Thu, 27 May 2010 12:11:01 +0200
-Subject: Debugging fcntl() file locks
-From: Bernd Petrovitsch <bernd@sysprog.at>
-To: linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset="UTF-8"
-Date: Thu, 27 May 2010 12:11:00 +0200
-Message-ID: <1274955060.14002.40.camel@thorin>
+Received: from fieldses.org ([174.143.236.118]:57561 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754478Ab0E1RPW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 28 May 2010 13:15:22 -0400
+From: "J. Bruce Fields" <bfields@citi.umich.edu>
+To: Benny Halevy <bhalevy@panasas.com>
+Cc: linux-nfs@vger.kernel.org, Eric Anderle <eanderle@umich.edu>,
+        "J. Bruce Fields" <bfields@citi.umich.edu>
+Subject: [PATCH 2/2] pnfsd: fix test in nfsd4_find_pnfs_dlm_device
+Date: Fri, 28 May 2010 13:15:21 -0400
+Message-Id: <1275066921-29335-2-git-send-email-bfields@citi.umich.edu>
+In-Reply-To: <1275066921-29335-1-git-send-email-bfields@citi.umich.edu>
+References: <1275066921-29335-1-git-send-email-bfields@citi.umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-Hi all!
+From: Eric Anderle <eanderle@umich.edu>
 
-How can I debug fcntl() file locks on a NFSv3-client?
-The server side is a NetApp-Box (no details at hand but I can ask).
-The client side are stock-RHEL5.3/CentOS-5.3 kernels - 2.6.18-92.el5.
+This test is obviously backwards.  Noticed because pnfs_dlm_device was
+allowing us to re-add the same disk multiple times.
 
-The file system in question is mounted on 2 clients. flock() on a file
-succeeds but fcntl() fails with EAGAIN. From what I found in the
-Internet and manual pages, this means that someone else already locked
-that file (- the file is successfully open()ed read/write so it can't be
-"your are not allowed to write-lock the file").
-But how do I find out on which host and which process?
+Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
+---
+ fs/nfsd/nfs4pnfsdlm.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
 
-strace shows:
-----  snip  ----
-open("/... secret ...", O_RDWR) = 3
-ioctl(3, SNDCTL_TMR_TIMEBASE or TCGETS, 0x7fff7925b400) = -1 ENOTTY (Inappropriate ioctl for device)
-lseek(3, 0, SEEK_CUR)                   = 0
-fstat(3, {st_mode=S_IFREG|0600, st_size=935, ...}) = 0
-fcntl(3, F_SETFD, FD_CLOEXEC)           = 0
-flock(3, LOCK_EX|LOCK_NB)               = 0
-fcntl(3, F_SETLK, {type=F_WRLCK, whence=SEEK_SET, start=0, len=0}) = -1 EAGAIN (Resource temporarily unavailable)
-----  snip  ---- 
-[ This is a perl script using CPAN modules at the top. ]
-
-/proc/mounts shows 
-----  snip  ---- 
-rw,nodiratime,vers=3,rsize=32768,wsize=32768,hard,proto=tcp,timeo=600,retrans=2,sec=sys,addr=<ip-address>
-----  snip  ---- 
-as options for the filesystem.
-
-Thanks in advance,
-	Bernd
+diff --git a/fs/nfsd/nfs4pnfsdlm.c b/fs/nfsd/nfs4pnfsdlm.c
+index 0351d71..1cf1b69 100644
+--- a/fs/nfsd/nfs4pnfsdlm.c
++++ b/fs/nfsd/nfs4pnfsdlm.c
+@@ -53,7 +53,7 @@ nfsd4_find_pnfs_dlm_device(char *disk_name)
+ 
+ 	spin_lock(&dlm_device_list_lock);
+ 	list_for_each_entry(dlm_pdev, &dlm_device_list, dlm_dev_list) {
+-		if (memcmp(dlm_pdev->disk_name, disk_name, strlen(disk_name))) {
++		if (!memcmp(dlm_pdev->disk_name, disk_name, strlen(disk_name))) {
+ 			spin_unlock(&dlm_device_list_lock);
+ 			return dlm_pdev;
+ 		}
 -- 
-mobile: +43 664 4416156              http://www.sysprog.at/
-    Linux Software Development, Consulting and Services
+1.7.0.4
 
