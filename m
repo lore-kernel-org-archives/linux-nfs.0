@@ -1,25 +1,35 @@
-From: Maurice Volaski <maurice.volaski-z7/QA7fyNSQW5MiHCONvZA@public.gmane.org>
-Subject: (unknown)
-Date: Fri, 28 May 2010 14:30:48 -0400
-Message-ID: <a0624044cc825bc4b2ffd@[129.98.90.227]>
+From: Dan Carpenter <error27@gmail.com>
+Subject: question about gss_verify_mic_v2()
+Date: Mon, 31 May 2010 12:12:34 +0200
+Message-ID: <20100531101234.GQ5483@bicker>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii" ; format="flowed"
-To: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-nfs@vger.kernel.org
+To: Kevin Coffman <kwc@citi.umich.edu>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.aecom.yu.edu ([129.98.1.51]:59247 "EHLO mx1.aecom.yu.edu"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754417Ab0E1TAj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 28 May 2010 15:00:39 -0400
-Received: from draco.aecom.yu.edu (draco.aecom.yu.edu [129.98.1.160])
-	by mx1.aecom.yu.edu (Postfix) with ESMTP id 84EDA9F0015
-	for <linux-nfs@vger.kernel.org>; Fri, 28 May 2010 14:30:50 -0400 (EDT)
-Received: from smtp2.aecom.yu.edu (smtp2.aecom.yu.edu [129.98.1.62])
-	by draco.aecom.yu.edu (Symantec Mail Security) with ESMTP id 3187F718002
-	for <linux-nfs@vger.kernel.org>; Fri, 28 May 2010 14:30:50 -0400 (EDT)
-Received: from [129.98.90.227] (usseinstein.aecom.yu.edu [129.98.90.227])
-	by smtp2.aecom.yu.edu (Postfix) with ESMTP id ED627C2BF
-	for <linux-nfs@vger.kernel.org>; Fri, 28 May 2010 14:30:49 -0400 (EDT)
+Received: from ey-out-2122.google.com ([74.125.78.24]:7624 "EHLO
+	ey-out-2122.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751049Ab0EaKMq (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 31 May 2010 06:12:46 -0400
+Received: by ey-out-2122.google.com with SMTP id d26so192214eyd.19
+        for <linux-nfs@vger.kernel.org>; Mon, 31 May 2010 03:12:45 -0700 (PDT)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-subscribe nfs
+Hi Kevin,
+
+Are we planning to add the sequencing checks later or can I remove the
+comment?
+
+net/sunrpc/auth_gss/gss_krb5_unseal.c +202 gss_verify_mic_v2()
+	 warn: unused return: seqnum = __be64_to_cpup()
+
+   200          /* do sequencing checks */
+   201
+   202          seqnum = be64_to_cpup((__be64 *)ptr + 8);
+   203
+   204          return GSS_S_COMPLETE;
+   205  }
+
+regards,
+dan carpenter
