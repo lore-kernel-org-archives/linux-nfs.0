@@ -1,53 +1,39 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:48250 "EHLO mx2.netapp.com"
+Received: from verein.lst.de ([213.95.11.210]:41416 "EHLO verein.lst.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932087Ab0FHWOt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 8 Jun 2010 18:14:49 -0400
-From: Alexandros Batsakis <batsakis@netapp.com>
-To: linux-nfs@vger.kernel.org
-Cc: bhalevy@panasas.com, Alexandros Batsakis <batsakis@netapp.com>
-Subject: [PATCH 0/7] forgetful client
-Date: Tue,  8 Jun 2010 15:14:54 -0700
-Message-Id: <1276035301-2019-1-git-send-email-batsakis@netapp.com>
+	id S1753641Ab0FAT7Y (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 1 Jun 2010 15:59:24 -0400
+Date: Tue, 1 Jun 2010 21:59:18 +0200
+From: Christoph Hellwig <hch@lst.de>
+To: bfields@fieldses.org
+Cc: bpm@sgi.com, linux-nfs@vger.kernel.org
+Subject: [PATCH] nfsd: nfsd_setattr needs to call commit_metadata
+Message-ID: <20100601195917.GA25910@lst.de>
+Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-This set of patches (2.6.35-rc2) includes a first attempt to implement 
-the forgetful client model for the pNFS client. The model 
-is explained is patch 6.
-It also includes some minor cleanups in the layout management code 
-that help to improve the maintanability of the current code.
+The conversion of write_inode_now calls to commit_metadata in commit
+f501912a35c02eadc55ca9396ece55fe36f785d0 missed out the call in nfsd_setattr.
 
-Passed cthon tests against the pyNFS server, and against a modified 
-version of  pyNFS server that randomly issues layout recalls after opens.
+But without this conversion we can't guarantee that a SETATTR request
+has actually been commited to disk with XFS, which causes a regression
+from 2.6.32 (only for NFSv2, but anyway).
 
-Alexandros Batsakis (7):
-  pnfs-submit: clean struct nfs_inode
-  pnfs-submit: remove lgetcount, lretcount
-  pnfs-submit: change stateid to be a union
-  pnfs-submit: request whole-file layouts only
-  pnfs-submit: change layout list to be similar to other state lists
-  pnfs-submit: forgetful client (layouts)
-  pnfs-submit: support for CB_RECALL_ANY (layouts)
+Signed-off-by: Christoph Hellwig <hch@lst.de>
 
- fs/nfs/callback.h         |    7 ++
- fs/nfs/callback_proc.c    |  231 ++++++++++++++++++++++++++++++++++-----------
- fs/nfs/callback_xdr.c     |    2 +-
- fs/nfs/client.c           |    2 +-
- fs/nfs/delegation.c       |   19 ++--
- fs/nfs/inode.c            |   12 +-
- fs/nfs/nfs4_fs.h          |    1 +
- fs/nfs/nfs4proc.c         |   46 +++++----
- fs/nfs/nfs4state.c        |    4 +-
- fs/nfs/nfs4xdr.c          |   38 ++++----
- fs/nfs/pnfs.c             |  214 +++++++++++++++++------------------------
- fs/nfs/pnfs.h             |    3 +-
- fs/nfsd/nfs4callback.c    |    1 -
- include/linux/nfs4.h      |   16 +++-
- include/linux/nfs4_pnfs.h |    2 +-
- include/linux/nfs_fs.h    |   28 +++---
- include/linux/nfs_fs_sb.h |    2 +-
- 17 files changed, 372 insertions(+), 256 deletions(-)
-
+Index: linux-2.6/fs/nfsd/vfs.c
+===================================================================
+--- linux-2.6.orig/fs/nfsd/vfs.c	2010-06-01 21:24:34.945004695 +0200
++++ linux-2.6/fs/nfsd/vfs.c	2010-06-01 21:25:48.299003856 +0200
+@@ -443,8 +443,7 @@ nfsd_setattr(struct svc_rqst *rqstp, str
+ 	if (size_change)
+ 		put_write_access(inode);
+ 	if (!err)
+-		if (EX_ISSYNC(fhp->fh_export))
+-			write_inode_now(inode, 1);
++		commit_metadata(fhp);
+ out:
+ 	return err;
+ 
