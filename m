@@ -1,59 +1,25 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:12290 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752566Ab0FWS6l convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Jun 2010 14:58:41 -0400
-Subject: Re: [PATCH 3/8][RFC v05] NFSv3: add client implementation of XATTR
- protocol
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: James Morris <jmorris@namei.org>, Chuck Lever <chuck.lever@oracle.com>,
-        linux-nfs@vger.kernel.org, linux-security-module@vger.kernel.org,
-        Neil Brown <neilb@suse.de>, linux-fsdevel@vger.kernel.org,
-        Stephen Smalley <sds@tycho.nsa.gov>,
-        Christoph Hellwig <hch@infradead.org>,
-        Casey Schaufler <casey@schaufler-ca.com>
-In-Reply-To: <20100623183542.GC28346@fieldses.org>
-References: <alpine.LRH.2.00.1006212051530.13583@tundra.namei.org>
-	 <alpine.LRH.2.00.1006212128160.13583@tundra.namei.org>
-	 <4C1FC553.4030904@oracle.com>
-	 <alpine.LRH.2.00.1006220906300.16648@tundra.namei.org>
-	 <4C20D779.5040008@oracle.com>
-	 <alpine.LRH.2.00.1006230857450.25778@tundra.namei.org>
-	 <20100623183542.GC28346@fieldses.org>
-Content-Type: text/plain; charset="UTF-8"
-Date: Wed, 23 Jun 2010 14:58:17 -0400
-Message-ID: <1277319497.4991.41.camel@heimdal.trondhjem.org>
+Received: from daytona.panasas.com ([67.152.220.89]:60753 "EHLO
+	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1751181Ab0FAEkj (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 1 Jun 2010 00:40:39 -0400
+Message-ID: <4C048F45.10200@panasas.com>
+Date: Tue, 01 Jun 2010 07:40:37 +0300
+From: Benny Halevy <bhalevy@panasas.com>
+To: NFS list <linux-nfs@vger.kernel.org>
+Subject: pnfs-all-2.6.34
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, 2010-06-23 at 14:35 -0400, J. Bruce Fields wrote:
-> On Wed, Jun 23, 2010 at 10:26:18AM +1000, James Morris wrote:
-> > On Tue, 22 Jun 2010, Chuck Lever wrote:
-> > 
-> > > Another place to look is at NFSv4.  Some of the operations that can be
-> > > performed on NFSv4 xattrs are probably nearly what you would want for an NFSv3
-> > > implementation.  I think it is desirable for anything done for NFSv3 to be
-> > > compatible with NFSv4, as that is already a standard.
-> > 
-> > Are you referring to named attributes?  I've looked into this, as have 
-> > others, and they appear to be fundamentally incompatible with Linux/BSD 
-> > xattrs.  They're filesystems within files, with different semantics to the 
-> > name/value string model that we use.  I've heard a few developers say 
-> > they've looked at implementing xattrs over NAs, but found it unworkable.
-> 
-> Yes, if we were going to add xattr's to NFSv4, we'd want to define
-> entirely new operations for it rather than relying on the named
-> attribute mechanism.
+Now that v2.6.35-rc1 is out I'd like to close pnfs-all-2.6.34 for new features
+and it'll remain opened essentially only for bug fixes.
 
-Agreed, however there is already work underway in the IETF on the
-'labeled NFS' protocol for supporting security labels in NFSv4.
+the respective tips are:
+pnfs-all-2.6.33-2010-06-01
+pnfs-all-2.6.34-2010-06-01
 
-See http://linux-nfs.org/pipermail/labeled-nfs/
+I'll release a v2.6.35-rc based version of the -latest branches this week.
 
-Is there really much interest in adding NFSv4 support for xattrs beyond
-the security label use case?
-
-Cheers
-  Trond
+Benny
