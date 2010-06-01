@@ -1,39 +1,71 @@
 From: Benny Halevy <bhalevy@panasas.com>
-Subject: Re: [PATCH 2/8] pnfs-submit: clean locking infrastructure
-Date: Tue, 08 Jun 2010 10:34:59 +0300
-Message-ID: <4C0DF2A3.3030006@panasas.com>
-References: <1275945113-3436-1-git-send-email-batsakis@netapp.com> <1275945113-3436-2-git-send-email-batsakis@netapp.com> <1275945113-3436-3-git-send-email-batsakis@netapp.com> <20100608073053.GA12121@infradead.org>
+Subject: Re: [pnfs] pnfs code structure
+Date: Tue, 01 Jun 2010 06:38:02 +0300
+Message-ID: <4C04809A.1000503@panasas.com>
+References: <AANLkTilqCahXkLmgu0EL0Vbje_VcH0msM5o5I2edGglG@mail.gmail.com>	<4BFEB2B5.3050006@panasas.com> <AANLkTinMn17Fwkd_mVSSWnTUc1mT5pjWNZPoajbab07T@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
-Cc: Alexandros Batsakis <batsakis@netapp.com>,
-	linux-nfs@vger.kernel.org, Fred Isaman <iisaman@netapp.com>
-To: Christoph Hellwig <hch@infradead.org>
+Cc: linux-pnfs <linux-nfs@vger.kernel.org>
+To: quanli gui <gqlxj1987@gmail.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-bw0-f46.google.com ([209.85.214.46]:46464 "EHLO
-	mail-bw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751657Ab0FHHfF (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Jun 2010 03:35:05 -0400
-Received: by bwz11 with SMTP id 11so1099022bwz.19
-        for <linux-nfs@vger.kernel.org>; Tue, 08 Jun 2010 00:35:03 -0700 (PDT)
-In-Reply-To: <20100608073053.GA12121@infradead.org>
+Received: from daytona.panasas.com ([67.152.220.89]:12725 "EHLO
+	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1752968Ab0FADiG (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 31 May 2010 23:38:06 -0400
+In-Reply-To: <AANLkTinMn17Fwkd_mVSSWnTUc1mT5pjWNZPoajbab07T-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 2010-06-08 10:30, Christoph Hellwig wrote:
-> On Mon, Jun 07, 2010 at 02:11:47PM -0700, Alexandros Batsakis wrote:
->> +static inline void lock_current_layout(struct nfs_inode *nfsi)
->> +{
->> +	spin_lock(&nfsi->lo_lock);
->> +}
->> +
->> +static inline void unlock_current_layout(struct nfs_inode *nfsi)
->> +{
->> +	BUG_ON_UNLOCKED_LO((&nfsi->layout));
->> +	spin_unlock(&nfsi->lo_lock);
->> +}
-> 
-> Adding wrappers for these is nothing but obsfucation.  No need
-> for the BUG_ON above, the spinlock code asserts that already if
-> building with spinlock debugging.
+On May. 28, 2010, 5:55 +0300, quanli gui <gqlxj1987@gmail.com> wrote:
+> the replication policy for the pnfs is that we want add some replication
+> to the pnfs, to improve the performance of the pnfs, which is mentioned
+> in the pnfs white-paper.
 
-Good point.
+OK.  For that, multiple copies of the data should be maintained.
+The way to do it is different for each layout type.
+
+Benny
+
+> 
+> 2010/5/28 Benny Halevy <bhalevy@panasas.com <mailto:bhalevy@panasas.com>>
+> 
+>     Hi,
+> 
+>     [please note that the old pnfs@linux-nfs.org
+>     <mailto:pnfs@linux-nfs.org> mailing list is deprecated
+>     and we moved our pnfs discussions to linux-nfs@vger.kernel.org
+>     <mailto:linux-nfs@vger.kernel.org>]
+> 
+>     I have very rough and informal design notes I took not too long ago:
+>     http://linux-nfs.org/pipermail/pnfs/attachments/20100304/f90bede4/attachment.txt
+> 
+>     That said, I hope the code is clear enough to browse and get what it
+>     does.
+> 
+>     What do you mean by "replication policy for the pnfs"?
+> 
+>     Benny
+> 
+>     On May. 27, 2010, 4:22 +0300, quanli gui <gqlxj1987@gmail.com
+>     <mailto:gqlxj1987@gmail.com>> wrote:
+>     > Our group want to experiment something on the pnfs, for example, the
+>     > replication policy for the pnfs,and so on. So we want something about
+>     > the pnfs development, for example, the pnfs code structure, the
+>     key data
+>     > structure for the pnfs. Who has the related things? Please help us.
+>     >
+>     >
+>     >
+>     > _______________________________________________
+>     > NOTE: THIS LIST IS DEPRECATED.  Please use
+>     linux-nfs@vger.kernel.org <mailto:linux-nfs@vger.kernel.org>
+>     > instead.  (To subscribe to linux-nfs@vger.kernel.org
+>     <mailto:linux-nfs@vger.kernel.org>: send "subscribe
+>     > linux-nfs" in the body of a message to majordomo@vger.kernel.org
+>     <mailto:majordomo@vger.kernel.org>.)
+>     >
+>     > pNFS mailing list
+>     > pNFS@linux-nfs.org <mailto:pNFS@linux-nfs.org>
+>     > http://linux-nfs.org/cgi-bin/mailman/listinfo/pnfs
+> 
+> 
