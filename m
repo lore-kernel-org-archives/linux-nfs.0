@@ -1,101 +1,81 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:30080 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754916Ab0F0P6T convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 27 Jun 2010 11:58:19 -0400
-Subject: [GIT] Please pull NFS client fixes
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Content-Type: text/plain; charset="UTF-8"
-Date: Sun, 27 Jun 2010 11:58:01 -0400
-Message-ID: <1277654281.3311.3.camel@heimdal.trondhjem.org>
+Received: from mailgate2.disneyanimation.com ([198.187.190.102]:21171 "EHLO
+	mailgate2.disneyanimation.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1758035Ab0FBRNb (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 2 Jun 2010 13:13:31 -0400
+From: Kevin Constantine <Kevin.Constantine@disneyanimation.com>
+Message-ID: <4C06913A.7090608@disney.com>
+Date: Wed, 02 Jun 2010 10:13:30 -0700
+To: Chuck Lever <chuck.lever@oracle.com>
+CC: linux-nfs@vger.kernel.org, steved@redhat.com
+Subject: Re: [PATCH 1/1] nfs-iostat.py: Fixes several Divide by Zero errors
+References: <1275004718-1802-1-git-send-email-kevin.constantine@disneyanimation.com> <4BFF0CB9.7010700@oracle.com> <4BFF1345.9070306@disney.com> <4BFFF6A8.2090103@oracle.com> <4C00490E.3030801@disney.com> <4C052952.3020502@oracle.com>
+In-Reply-To: <4C052952.3020502@oracle.com>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Hi Linus,
+On 06/01/2010 08:37 AM, Chuck Lever wrote:
+> On 05/28/10 06:51 PM, Kevin Constantine wrote:
+>> On 05/28/2010 10:00 AM, Chuck Lever wrote:
+>>> On 05/27/10 08:50 PM, Kevin Constantine wrote:
+>>>> The first time through the code sample_time is set to 0.0 on line 588.
+>>>> Eventually we call display_iostats() and check if sample_time == 0. It
+>>>> does, so we set sample_time equal to the mount age on line 368. I'm
+>>>> seeing instances where the age of a mount is 0.
+>>>>
+>>>> cat /proc/self/mountstats | egrep "device|age"
+>>>> device fashome-n1:/vol/home/fahome mounted on /home/fahome with fstype
+>>>> nfs statvers=1.0
+>>>> age: 0
+>>>>
+>>>> All of our storage is automounted, so volumes are frequently getting
+>>>> unmounted and remounted.
+>>>
+>>> Makes sense. When I wrote the script, I wasn't using automounter at all.
+>>> It might be simpler to have one check for a zero age at 368.
+>>>
+>>
+>> My only concern with checking and just returning (which is certainly
+>> easier and a smaller change) is that we end up not printing anything for
+>> a volume that is technically mounted. I figured it was better to print
+>> the volume info and all zeroes than to not print anything.
+>
+> Unfortunately not printing anything in this case might be considered
+> "following the precedent" of Unix tools -- don't print anything in error
+> cases, or when there is nothing to show. I think that's the rule I
+> followed for RPC procedures that have a zero op count. But it would
+> still be useful to see other relevant information for that mount, as you
+> point out.
+>
+> What would happen if, at line 368, you set sample_time to 1 if the
+> mount's age is zero?
+>
 
-Please pull from the "bugfixes" branch of the repository at
+Substituting a 1 if 0 is found should cause fairly correct output. 
+/proc/self/mountstats does show values for the appropriate statistics 
+when age is 0, so setting sample_time to 1 would print those out instead 
+of printing zeroes.
 
-   git pull git://git.linux-nfs.org/projects/trondmy/nfs-2.6.git bugfixes
+It's a good compromise between not printing anything even though the 
+export is clearly mounted, and printing all zeroes which is kind of a 
+waste.
 
-This will update the following files through the appended changesets.
+-kevin
 
-  Cheers,
-    Trond
-
-----
- fs/nfs/client.c       |  122 ++++++++++++++++++++----------------------------
- fs/nfs/getroot.c      |    2 +-
- fs/nfs/nfs4xdr.c      |    4 +-
- fs/nfs/super.c        |   22 +++++++--
- net/sunrpc/xprtsock.c |   38 +++++++++------
- 5 files changed, 94 insertions(+), 94 deletions(-)
-
-commit d3f6baaa34c54040b3ef30950e59b54ac0624b21
-Author: Trond Myklebust <Trond.Myklebust@netapp.com>
-Date:   Tue Jun 22 08:52:39 2010 -0400
-
-    NFSv4: Fix an embarassing typo in encode_attrs()
-    
-    Apparently, we have never been able to set the atime correctly from the
-    NFSv4 client.
-    
-    Reported-by: 小倉一夫 <ka-ogura@bd6.so-net.ne.jp>
-    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-    Cc: stable@kernel.org
-
-commit 0be8189f2c87fcc747d6a4a657a0b6e2161b2318
-Author: Trond Myklebust <Trond.Myklebust@netapp.com>
-Date:   Fri Jun 18 12:23:58 2010 -0400
-
-    NFSv4: Ensure that /proc/self/mountinfo displays the minor version number
-    
-    Currently, we do not display the minor version mount parameter in the
-    /proc mount info.
-    
-    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-    Cc: stable@kernel.org
-
-commit 44950b67a6239b377a9e6fd52c498b310bcdd713
-Author: Trond Myklebust <Trond.Myklebust@netapp.com>
-Date:   Thu Jun 17 11:45:12 2010 -0400
-
-    NFSv4.1: Ensure that we initialise the session when following a referral
-    
-    Put the code that is common to both the referral and ordinary mount cases
-    into a common helper routine.
-    
-    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-
-commit b76ce56192bcf618013fb9aecd83488cffd645cc
-Author: Trond Myklebust <Trond.Myklebust@netapp.com>
-Date:   Wed Jun 16 13:57:32 2010 -0400
-
-    SUNRPC: Fix a re-entrancy bug in xs_tcp_read_calldir()
-    
-    If the attempt to read the calldir fails, then instead of storing the read
-    bytes, we currently discard them. This leads to a garbage final result when
-    upon re-entry to the same routine, we read the remaining bytes.
-    
-    Fixes the regression in bugzilla number 16213. Please see
-        https://bugzilla.kernel.org/show_bug.cgi?id=16213
-    
-    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-    Cc: stable@kernel.org
-
-commit f799bdb355edaabd81b778087613409a8932fbe9
-Author: Andy Adamson <andros@netapp.com>
-Date:   Wed Jun 16 09:51:02 2010 -0400
-
-    nfs4 use mandatory attribute file type in nfs4_get_root
-    
-    S_ISDIR(fsinfo.fattr->mode) checks the file type rather than the mode bits,
-    so we should be checking for the NFS_ATTR_FATTR_TYPE fattr property.
-    
-    Signed-off-by: Andy Adamson <andros@netapp.com>
-    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-    Cc: stable@kernel.org
-
+>> I'll defer to your opinion on which of those two is best.
+>>
+>> -kevin
+>>
+>>>> On 05/27/2010 05:22 PM, Chuck Lever wrote:
+>>>>> On 05/27/2010 07:58 PM, Kevin Constantine wrote:
+>>>>>> There was no check to see if sample_time was zero before dividing by
+>>>>>> it.
+>>>>>
+>>>>> I haven't looked at this code in a very long time. Why was sample_time
+>>>>> zero? That seems wrong.
+>>>>>
+>>>>>> This was causing ZeroDivisionError's:
+>>>>>>
 
