@@ -1,76 +1,91 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-fx0-f46.google.com ([209.85.161.46]:55608 "EHLO
-	mail-fx0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752788Ab0FWAcb convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 Jun 2010 20:32:31 -0400
-Received: by fxm10 with SMTP id 10so2777769fxm.19
-        for <linux-nfs@vger.kernel.org>; Tue, 22 Jun 2010 17:32:29 -0700 (PDT)
-In-Reply-To: <4C20EC0E.7070601@gmail.com>
-References: <AANLkTimkEM7CPctkwYiWa-rGXDs3EHNl-hldu5fQYqRo@mail.gmail.com>
-	<4C20EC0E.7070601@gmail.com>
-Date: Wed, 23 Jun 2010 08:32:29 +0800
-Message-ID: <AANLkTilIwm8fxUqJ3IwRrPLqr7o8D4TPnDzps8mp7dB-@mail.gmail.com>
-Subject: Re: How to increase rsize/wsize ?
-From: Yan Rui <rui.yan@gmail.com>
-To: Dean Hildebrand <seattleplus@gmail.com>
-Cc: linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from tauceti.net ([62.245.250.166]:57956 "EHLO www.tauceti.net"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753954Ab0FBJ5B (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 2 Jun 2010 05:57:01 -0400
+Date: Wed, 02 Jun 2010 13:56:58 +0200
+From: kernel <kernel@tauceti.net>
+To: Robert Wimmer <kernel@tauceti.net>
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>, <mst@redhat.com>,
+        Avi Kivity <avi@redhat.com>, Andrew Morton <akpm@linux-foundation.org>,
+        <linux-mm@kvack.org>, <bugzilla-daemon@bugzilla.kernel.org>,
+        Rusty Russell <rusty@rustcorp.com.au>, Mel Gorman <mel@csn.ul.ie>,
+        <linux-nfs@vger.kernel.org>, <linux-kernel@vger.kernel.org>
+Subject: Re: [Bugme-new] [Bug 15709] New: swapper page allocation failure
+In-Reply-To: <4BFC2CB2.9050305@tauceti.net>
+References: <4BC43097.3060000@tauceti.net> <4BCC52B9.8070200@tauceti.net> <20100419131718.GB16918@redhat.com> <dbf86fc1c370496138b3a74a3c74ec18@tauceti.net> <20100421094249.GC30855@redhat.com> <c638ec9fdee2954ec5a7a2bd405aa2ba@tauceti.net> <20100422100304.GC30532@redhat.com> <4BD12F9C.30802@tauceti.net> <20100425091759.GA9993@redhat.com> <4BD4A917.70702@tauceti.net> <20100425204916.GA12686@redhat.com> <1272284154.4252.34.camel@localhost.localdomain> <4BD5F6C5.8080605@tauceti.net> <1272315854.8984.125.camel@localhost.localdomain> <4BD61147.40709@tauceti.net> <1272324536.16814.45.camel@localhost.localdomain> <4BD76B81.2070606@tauceti.net> <be8a0f012ebb2ae02522998591e6f1a5@tauceti.net> <4BE33259.3000609@tauceti.net> <1273181438.22155.26.camel@localhost.localdomain> <4BEC6A5D.5070304@tauceti.net> <1273785234.22932.14.camel@localhost.localdomain> <a133ef4ed022a00afd40b505719ae3d2@tauceti.net> <4BFC2CB2.9050305@tauceti.net>
+Message-ID: <570793a158a0db68d623d424c38672bd@tauceti.net>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Dean,
+Hi Trond,
 
-The max_block_size is 256KB on my nfs server.   By changing it to a
-1MB,  I can mount a share with a bigger rsize/wsize now.  Thank you
-very much!
+currently it seems that the problem was 
+fixed by accident... ;-) Since 2.6.34 is now
+in Gentoo portage I thought I should give
+it a try. Using my 2.6.35-r5 .config 
+the 2.6.34 release is now working for 4 hours
+(instead of 5-10 minutes before). Hmmm...
+Hopefully it will run for some more hours
+and days now. Since I've definitely changed
+nothing besides the kernel it must have been
+fixed (hopefully) in one of the 2.6.34-rc's.
 
-Cheers,
-Rui
+If it's still running tomorrow I'll close
+the bug.
 
-On Wed, Jun 23, 2010 at 12:59 AM, Dean Hildebrand <seattleplus@gmail.com> wrote:
-> What's the value of /proc/fs/nfsd/max_block_size?  I'm not sure how it is
-> set, but it does not default to the max.
-> Dean
->
-> On 6/21/2010 8:29 AM, Yan Rui wrote:
+Greetings
+Robert
+
+On Tue, 25 May 2010 22:01:54 +0200, Robert Wimmer <kernel@tauceti.net>
+wrote:
+> Hi Trond,
+> 
+> just a little reminder ;-)
+> 
+> Thanks!
+> Robert
+> 
+> On 05/20/10 09:39, kernel@tauceti.net wrote:
+>> Hi Trond,
 >>
->> Hi,
+>> have you had some time to download the wireshark dump?
 >>
->> I failed to mount a nfs share with a bigger rsize/wsize (in my case,
->> 512K).   The biggest rsize/wsize I can get is only 256KB on my Ubuntu
->> 9.10 server box.  Can anyone give me some suggestions?
+>> Thanks!
+>> Robert
 >>
->> root@d03:~# exportfs -v
->> /tmp<world>(rw,wdelay,root_squash,no_subtree_check)
->>
->> root@d04:~# mount -t nfs -o wsize=524288,rsize=524288 d03:/tmp /mnt/nfs
->>
->> root@d04:~# nfsstat -m
->> /mnt/nfs from d03:/tmp
->>  Flags:
->>  rw,relatime,vers=3,rsize=262144,wsize=262144,namlen=255,hard,proto=tcp,timeo=600,retrans=2,sec=sys,mountaddr=10.0.0.3,mountvers=3,mountproto=tcp,addr=10.0.0.3
->>
->> root@d03:~# uname -a
->> Linux d03 2.6.31-14-server #48-Ubuntu SMP Fri Oct 16 15:07:34 UTC 2009
->> x86_64 GNU/Linux
->>
->> root@d03:~# dpkg -l | grep nfs
->> ii  nfs-common                        1:1.2.0-2ubuntu8
->>  NFS support files common to client and serve
->> ii  nfs-kernel-server                 1:1.2.0-2ubuntu8
->>  support for NFS kernel server
->>
->> According to NFS-HOWTO, I have checked the kernel const
->> NFSSVC_MAXBLKSIZE.  It is 1M on 2.6.31.
->>
->> Any comments will be appreciated!
->>
->> Regards,
->> Rui
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>
->
+>> On Thu, 13 May 2010 17:13:54 -0400, Trond Myklebust
+>> <Trond.Myklebust@netapp.com> wrote:
+>>   
+>>> On Thu, 2010-05-13 at 23:08 +0200, Robert Wimmer wrote: 
+>>>     
+>>>> Finally I've had some time to do the next test.
+>>>> Here is a wireshark dump (~750 MByte):
+>>>> http://213.252.12.93/2.6.34-rc5.cap.gz
+>>>>
+>>>> dmesg output after page allocation failure:
+>>>> https://bugzilla.kernel.org/attachment.cgi?id=26371
+>>>>
+>>>> stack trace before page allocation failure:
+>>>> https://bugzilla.kernel.org/attachment.cgi?id=26369
+>>>>
+>>>> stack trace after page allocation failure:
+>>>> https://bugzilla.kernel.org/attachment.cgi?id=26370
+>>>>
+>>>> I hope the wireshark dump is not to big to download.
+>>>> It was created with
+>>>> tshark -f "tcp port 2049" -i eth0 -w 2.6.34-rc5.cap
+>>>>
+>>>> Thanks!
+>>>> Robert
+>>>>       
+>>> Hi Robert,
+>>>
+>>> I tried the above wireshark dump URL, but it appears to point to an
+>>> empty file.
+>>>
+>>> Cheers
+>>>   Trond
+>>>
