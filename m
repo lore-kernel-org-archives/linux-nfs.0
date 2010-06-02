@@ -1,79 +1,45 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:44542 "EHLO fieldses.org"
+Received: from cantor.suse.de ([195.135.220.2]:50303 "EHLO mx1.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752863Ab0FGS3u (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 7 Jun 2010 14:29:50 -0400
-Date: Mon, 7 Jun 2010 14:29:48 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: sfaibish <sfaibish@emc.com>
-Cc: Boaz Harrosh <bharrosh@panasas.com>, NFS list <linux-nfs@vger.kernel.org>
-Subject: Re: Performance results with exofs
-Message-ID: <20100607182948.GF25257@fieldses.org>
-References: <op.vdxrrgf1unckof@usensfaibisl2e.eng.emc.com> <4C0D195B.8030401@panasas.com> <4C0D1AAB.4070304@panasas.com> <op.vdxxhfqsunckof@usensfaibisl2e.eng.emc.com>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <op.vdxxhfqsunckof@usensfaibisl2e.eng.emc.com>
+	id S1751674Ab0FBFEA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 2 Jun 2010 01:04:00 -0400
+Date: Wed, 2 Jun 2010 15:03:51 +1000
+From: Neil Brown <neilb@suse.de>
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+Cc: linux-btrfs@vger.kernel.org, linux-nfs@vger.kernel.org, jeffm@suse.com
+Subject: Re: NFS exporting btrfs subvolumes.
+Message-ID: <20100602150351.592e36a8@notabene.brown>
+In-Reply-To: <1275450980.4509.13.camel@heimdal.trondhjem.org>
+References: <20100602134145.0d523a75@notabene.brown>
+	<1275450980.4509.13.camel@heimdal.trondhjem.org>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
->> On 06/07/2010 07:07 PM, Boaz Harrosh wrote:
->>> I did not yet publish the Document. It's stuck behind my dis-talent for
->>> writing and the pnfs bugs de jur.
+On Tue, 01 Jun 2010 23:56:20 -0400
+Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
 
-Untalented writing we can fix, as long as the details are there!
+> On Wed, 2010-06-02 at 13:41 +1000, Neil Brown wrote:
+> > NFS needs a unique identifier for a filesystem to be able to export it.
+> <snip>
+> > Can anyone suggest a better way to get a good uuid for a btrfs filesystem?
+> 
+> How about just adding the btrfs subvolid to the filehandle and using
+> that to remove the ambiguity?
 
->>>
->>> Basically all machines:
->>> - connected by a 1 GBit link.
->>> - All clients doing a dd write of 8GB file from /dev/zero
->>> - 3of8 is the special raid-groups arrangement of exofs && objlayout
->>>   where out of 8 devices each file is striped over 3 devices in a
->>>   round robin fashion. (*With a small dirty trick)
+The filehandle has two parts - one part identifies the filesystem
+(i.e. vfsmnt), the other identifies the file (the dentry).
+We would need to get the btrfs subvolid into the filesystem part,
+and that is set (and looked-up) by mountd in user-space.
 
-Random stupid questions:
+I think you are suggesting getting the btrfs kernel module to put the
+subvolid in the filehandle, but that would only go in the 'file' part
+of the handle, so it would not be sufficient.
 
-	- why do you think the 3of8 arrangement is scaling better than
-	  the 8of8?
-	- Have you tried any other workloads?  (Perfectly reasonable
-	  that simple write throughput would be the first thing to
-	  check--I'm just curious.)
+We need a user-space program - preferably without too much
+filesystem-specific info - to be able to differentiate subvolumes.
 
->>>
->>
->> - All tests over an *empty* filesystem.
->>
->>> [single client]
->>> 1 - osds 40MB
->>> 2 - osds 80MB
->>> 4 - osds 114MB (saturation point of the 1 Gbit link)
->>> 8 - osds 114MB
->>>
->>> [2 clients 8of8 osds]
->>> 226 MBs
->>>
->>> [4 clients 8of8 osds]
->>> 263 MBs
->>>
->>> [8 clients 8of8 osds]
->>> 252 MBs
->>>
->>> [1 clients 3of8 osds]
->>> 114 MBs
->>>
->>> [2 clients 3of8 osds *]
->>> 226 MBs
->>>
->>> [4 clients 3of8 osds *]
->>> 417 MBs
+Thanks,
+NeilBrown
 
-If each osd has a single gigabit interface, and you're striping to 3, of
-them, isn't that 417/3 == 139 MB/s each?
-
-(Oh, I see: you must be writing to a different file from each client,
-hence you are using all osd's even if each client is only using 3?)
-
---b.
-
->>>
->>> [8 clients 3of8 osds]
->>> 405 MBs
