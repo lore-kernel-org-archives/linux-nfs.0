@@ -1,49 +1,67 @@
 From: andros@netapp.com
-Subject: [PATCH 5/6] SQUASHME pnfs-submit: handle async layoutcommit errors
-Date: Wed,  2 Jun 2010 11:54:26 -0400
-Message-ID: <1275494067-4058-6-git-send-email-andros@netapp.com>
+Subject: [PATCH 1/6] SQUASHME pnfs-submit: remove setup_layoutcommit
+Date: Wed,  2 Jun 2010 11:54:22 -0400
+Message-ID: <1275494067-4058-2-git-send-email-andros@netapp.com>
 References: <1275494067-4058-1-git-send-email-andros@netapp.com>
- <1275494067-4058-2-git-send-email-andros@netapp.com>
- <1275494067-4058-3-git-send-email-andros@netapp.com>
- <1275494067-4058-4-git-send-email-andros@netapp.com>
- <1275494067-4058-5-git-send-email-andros@netapp.com>
 Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
 To: bhalevy@panasas.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
 Received: from mx2.netapp.com ([216.240.18.37]:38483 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758337Ab0FBRz0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 2 Jun 2010 13:55:26 -0400
-In-Reply-To: <1275494067-4058-5-git-send-email-andros@netapp.com>
+	id S1758167Ab0FBRzZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 2 Jun 2010 13:55:25 -0400
+In-Reply-To: <1275494067-4058-1-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 From: Andy Adamson <andros@netapp.com>
 
-nfs4_async_handle_error handles session level and grace,delay errors.
-
-NOTE: Layout specific errors (NFS4ERR_BADIOMODE, NFS4ERR_BAD_LAYOUT,
-NFS4ERR_UNKNOWN_LAYOUTTYPE) need to be handled.
+Not used by the file layout driver
 
 Signed-off-by: Andy Adamson <andros@netapp.com>
 ---
- fs/nfs/nfs4proc.c |    3 +++
- 1 files changed, 3 insertions(+), 0 deletions(-)
+ fs/nfs/pnfs.c             |    7 -------
+ include/linux/nfs4_pnfs.h |    2 --
+ 2 files changed, 0 insertions(+), 9 deletions(-)
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 2826ada..514c5c6 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -5628,6 +5628,9 @@ pnfs_layoutcommit_rpc_done(struct rpc_task *task, void *calldata)
- 	put_rpccred(data->cred);
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 8cc4412..23787ff 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -1944,7 +1944,6 @@ pnfs_layoutcommit_setup(struct inode *inode,
+ 			struct pnfs_layoutcommit_data *data,
+ 			loff_t write_begin_pos, loff_t write_end_pos, int sync)
+ {
+-	struct nfs_inode *nfsi = NFS_I(inode);
+ 	struct nfs_server *nfss = NFS_SERVER(inode);
+ 	int result = 0;
  
- 	nfs4_sequence_done(server, &data->res.seq_res, task->tk_status);
-+
-+	if (nfs4_async_handle_error(task, server, NULL) == -EAGAIN)
-+		nfs_restart_rpc(task, server->nfs_client);
+@@ -1970,12 +1969,6 @@ pnfs_layoutcommit_setup(struct inode *inode,
+ 	data->args.bitmask = nfss->attr_bitmask;
+ 	data->res.server = nfss;
+ 
+-	/* Call layout driver to set the arguments.
+-	 */
+-	if (nfss->pnfs_curr_ld->ld_io_ops->setup_layoutcommit)
+-		result = nfss->pnfs_curr_ld->ld_io_ops->setup_layoutcommit(
+-				&nfsi->layout, &data->args);
+-
+ 	dprintk("%s End Status %d\n", __func__, result);
+ 	return result;
  }
+diff --git a/include/linux/nfs4_pnfs.h b/include/linux/nfs4_pnfs.h
+index 84d2e95..cab9137 100644
+--- a/include/linux/nfs4_pnfs.h
++++ b/include/linux/nfs4_pnfs.h
+@@ -146,8 +146,6 @@ struct layoutdriver_io_operations {
+ 	struct pnfs_layout_segment * (*alloc_lseg) (struct pnfs_layout_type *layoutid, struct nfs4_pnfs_layoutget_res *lgr);
+ 	void (*free_lseg) (struct pnfs_layout_segment *lseg);
  
- static void pnfs_layoutcommit_release(void *lcdata)
+-	int (*setup_layoutcommit) (struct pnfs_layout_type *layoutid,
+-				    struct pnfs_layoutcommit_arg *args);
+ 	void (*encode_layoutcommit) (struct pnfs_layout_type *layoutid,
+ 				     struct xdr_stream *xdr,
+ 				     const struct pnfs_layoutcommit_arg *args);
 -- 
 1.6.6
 
