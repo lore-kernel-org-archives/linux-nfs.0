@@ -1,65 +1,74 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:46410 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754173Ab0FXQHj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 24 Jun 2010 12:07:39 -0400
-Date: Thu, 24 Jun 2010 12:07:38 -0400
-To: Rob Henderson <robh@indiana.edu>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: Runaway kernel slab memory usage when user over quota
-Message-ID: <20100624160738.GC17827@fieldses.org>
-References: <4C1F7B58.4090802@indiana.edu>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4C1F7B58.4090802@indiana.edu>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+Received: from master.debian.org ([70.103.162.29]:58447 "EHLO
+	master.debian.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751823Ab0FBLf6 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 2 Jun 2010 07:35:58 -0400
+Date: Wed, 2 Jun 2010 21:25:21 +1000
+From: =?iso-8859-1?Q?An=EDbal?= Monsalve Salazar <anibal@debian.org>
+To: linux-nfs@vger.kernel.org
+Cc: Guillem Jover <guillem@debian.org>, 583435@bugs.debian.org
+Subject: Re: Bug#583435: rpcbind: Insecure handling of state files
+Message-ID: <20100602112520.GA22639@master.debian.org>
+References: <20100527170908.GA14298@gaara.hadrons.org>
+ <20100601120907.GA23357@gaara.hadrons.org>
+Content-Type: text/plain; charset=iso-8859-1
+In-Reply-To: <20100601120907.GA23357@gaara.hadrons.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-(Changed cc to new list.)
+On Tue, Jun 01, 2010 at 02:09:07PM +0200, Guillem Jover wrote:
+>Hi!
+>
+>On Thu, 2010-05-27 at 19:09:08 +0200, Guillem Jover wrote:
+>>Package: rpcbind
+>>Version: 0.2.0-4
+>>Severity: serious
+>>Tags: security
+>
+>>The rpcbind daemon, which runs as root, uses /tmp/portmap.xdr and
+>>/tmp/rpcbind.xdr for doing warm starts as what seems to be a way to
+>>preserve state between invokations. It parses (through libtirpc) and
+>>removes them on start. It creates them before exiting.
+>>
+>>So first off, *any* user can craft those two files before the daemon
+>>has started for the first time, which the daemon will parse. This
+>>might be ok, depending on the checks done on parse, I'd still be very
+>>wary of letting a user be able to craft such files at will.
+>
+>It seems to be doing no checks whatsoever. A simple test I performed at
+>the time of filing this report, but didn't seem to have any obvious
+>consequence, shows this which I noticed later on:
+>
+>,---
+>gaara:~# /etc/init.d/rpcbind start
+>Starting rpcbind daemon....
+>gaara:~# ps axuOp|egrep '(^USER|[r]pcbind)'
+>USER       PID %CPU %MEM    VSZ   RSS TTY      STAT START   TIME COMMAND
+>root     23424  0.0  0.0  18768   704 ?        Ss   13:53   0:00 /sbin/rpcbind -w
+>gaara:~# /etc/init.d/rpcbind stop
+>Stopping rpcbind daemon....
+>gaara:~# dd if=/dev/urandom of=/tmp/rpcbind.xdr bs=1024 count=1
+>1+0 records in
+>1+0 records out
+>1024 bytes (1,0 kB) copied, 0,000861307 s, 1,2 MB/s
+>gaara:~# /etc/init.d/rpcbind start
+>Starting rpcbind daemon....
+>gaara:~# ps axuOp|egrep '(^USER|[r]pcbind)'
+>USER       PID %CPU %MEM    VSZ   RSS TTY      STAT START   TIME COMMAND
+>root     23440  0.0  0.0 4008972  772 ?        Ss   13:54   0:00 /sbin/rpcbind -w
+>`---
+>
+>The first start is a normal clean invokation, the second one is using
+>the crafted file. See how it has allocated almost 4 GiB. Disregard though,
+>me running all this as root, a user would be able to craft those files as
+>long as they were not already in /tmp.
+>
+>thanks,
+>guillem
 
-On Mon, Jun 21, 2010 at 10:46:48AM -0400, Rob Henderson wrote:
-> We've been fighting a problem with runaway kernel slab memory usage on our file servers ever since moving from nfsv3 to nfsv4 and think I've finally identified the trigger.  We are using disk quotas and the problem seems to arise when a user (whose home directory is on the nfsv4 server) goes over quota.  I've suspected this was the cause for quite some time but just recently caught things in the act and collected evidence to support this theory.  Here was the scenario for one such incident.
+I'm sending this bug report to the linux-nfs mailing list.
 
-Thanks for the report.
+The original bug report is at http://bugs.debian.org/583435
 
-What distributions and kernels (client and server side) are involved?
-
-> 1) We have alerts to warn us when the slab usage goes over 650K and I got one such warning.
-> 2) I started monitoring the nfs network traffic and noticed one system hitting the server quite hard.
-> 3) I checked this system and found a user logged in who was over quota.
-> 4) At this point, the slab usage was still rising and was getting dangerously close to 800MB which is when the server dies.
-
-Could you capture the network traffic while the user over quota is
-attempting file operations?
-
-> 5) I increased the user in question's disk quota and the Slab usage immediately came down to around 600-650MB and stabilized.
-> 6) After a couple days, I noticed that the usage was still hanging in the 600-650MB range which is higher than I like to see.
-
-How are you measuring slab usage?  Also, does /proc/slabinfo tell you
-which slab specifically is responsible?
-
-> 7) I rebooted the workstation that the over quota user was still logged into and the usage *immediately* dropped to the 450MB range.
-> 
-> 
-> Since this time, there have been two other times when the slab usage started to rise quickly and in both cases I was able to head off any problems by getting the offending user under quota.
-> 
-> Here are some other random notes:
-> 
->  - During these incidents, if nothing is done the server will typically go from a slab usage of 600MB to 800MB (and crash) in a timeframe of about an hour.
->  - We are running RHEL5 with all updates on all servers and clients.
->  - The servers in question are running 32bit kernels.  We are looking at upgrading to 64bit as a stop-gap measure.
->  - We never saw this behavior in the many years we were using nfsv3.  We've been using nfsv4 for about a year now and started experiencing this behavior shortly after the migration.
-
-I'm working just 3 days between vacations and may not get to this
-promptly.
-
-Might also be worth attempting to find a small test case that will
-reproduce the same behavior.
-
-Off-hand one explanation might be a memory leak on an error path
-somewhere--presumably an error path that's only hit in frequently in the
-case when some operation fails due to a quota being exceeded.  I don't
-know what operation that would be, though.
-
---b.
+Thank you.
