@@ -1,115 +1,98 @@
 From: andros@netapp.com
-Subject: [PATCH 2/6] SQUASHNE pnfs-submit: remove cleanup_layoutcommit
-Date: Wed,  2 Jun 2010 11:54:23 -0400
-Message-ID: <1275494067-4058-3-git-send-email-andros@netapp.com>
+Subject: [PATCH 6/6] SQUASHME pnfs-submit: move layoutcommit to nfs_write_inode
+Date: Wed,  2 Jun 2010 11:54:27 -0400
+Message-ID: <1275494067-4058-7-git-send-email-andros@netapp.com>
 References: <1275494067-4058-1-git-send-email-andros@netapp.com>
  <1275494067-4058-2-git-send-email-andros@netapp.com>
+ <1275494067-4058-3-git-send-email-andros@netapp.com>
+ <1275494067-4058-4-git-send-email-andros@netapp.com>
+ <1275494067-4058-5-git-send-email-andros@netapp.com>
+ <1275494067-4058-6-git-send-email-andros@netapp.com>
 Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
 To: bhalevy@panasas.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
 Received: from mx2.netapp.com ([216.240.18.37]:18338 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758260Ab0FBRzZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 2 Jun 2010 13:55:25 -0400
-In-Reply-To: <1275494067-4058-2-git-send-email-andros@netapp.com>
+	id S1758345Ab0FBRz0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 2 Jun 2010 13:55:26 -0400
+In-Reply-To: <1275494067-4058-6-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 From: Andy Adamson <andros@netapp.com>
 
-Not used by the file layout driver
+The LAYOUTCOMMIT call indicates an update to the file meta data is needed,
+and should be called when clearing the I_DIRTY_SYNC state.
+
+A call to LAYOUTCOMMIT in nfs_write_inode replaces the calls in nfs_wb_all,
+nfs_commit_inode, and __nfs4_close.
 
 Signed-off-by: Andy Adamson <andros@netapp.com>
 ---
- fs/nfs/nfs4proc.c         |    4 ++--
- fs/nfs/pnfs.c             |   24 ------------------------
- fs/nfs/pnfs.h             |    1 -
- include/linux/nfs4_pnfs.h |    3 ---
- 4 files changed, 2 insertions(+), 30 deletions(-)
+ fs/nfs/nfs4state.c |    2 --
+ fs/nfs/write.c     |   22 ++++++++++------------
+ 2 files changed, 10 insertions(+), 14 deletions(-)
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 8b375a7..2826ada 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -5600,7 +5600,7 @@ static int pnfs4_sync_layoutcommit(struct pnfs_layoutcommit_data *data)
- 	} while (exception.retry);
+diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+index d0dbdd4..e1207fa 100644
+--- a/fs/nfs/nfs4state.c
++++ b/fs/nfs/nfs4state.c
+@@ -589,8 +589,6 @@ static void __nfs4_close(struct path *path, struct nfs4_state *state, fmode_t fm
+ #ifdef CONFIG_NFS_V4_1
+ 		struct nfs_inode *nfsi = NFS_I(state->inode);
  
- 	data->status = err;
--	pnfs_layoutcommit_done(data);
-+	put_rpccred(data->cred);
- 	pnfs_layoutcommit_free(data);
- 	return err;
+-		if (layoutcommit_needed(nfsi))
+-			pnfs_layoutcommit_inode(state->inode, wait);
+ 		if (has_layout(nfsi) && nfsi->layout.roc_iomode) {
+ 			struct nfs4_pnfs_layout_segment range;
+ 
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index 0fd33cb..875d07f 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -1489,13 +1489,6 @@ static int nfs_commit_inode(struct inode *inode, int how)
+ 			wait_on_bit(&NFS_I(inode)->flags, NFS_INO_COMMIT,
+ 					nfs_wait_bit_killable,
+ 					TASK_KILLABLE);
+-#ifdef CONFIG_NFS_V4_1
+-		if (may_wait && layoutcommit_needed(NFS_I(inode))) {
+-			error = pnfs_layoutcommit_inode(inode, 1);
+-			if (error < 0)
+-				return error;
+-		}
+-#endif /* CONFIG_NFS_V4_1 */
+ 	} else
+ 		nfs_commit_clear_lock(NFS_I(inode));
+ out:
+@@ -1545,7 +1538,16 @@ static int nfs_commit_unstable_pages(struct inode *inode, struct writeback_contr
+ 
+ int nfs_write_inode(struct inode *inode, struct writeback_control *wbc)
+ {
+-	return nfs_commit_unstable_pages(inode, wbc);
++	int ret;
++	ret = nfs_commit_unstable_pages(inode, wbc);
++#ifdef CONFIG_NFS_V4_1
++	if (ret >= 0 && layoutcommit_needed(NFS_I(inode))) {
++		int err = pnfs_layoutcommit_inode(inode, 1);
++		if (err < 0)
++			ret = err;
++	}
++#endif /* CONFIG_NFS_V4_1 */
++	return ret;
  }
-@@ -5625,7 +5625,7 @@ pnfs_layoutcommit_rpc_done(struct rpc_task *task, void *calldata)
- 	struct nfs_server *server = NFS_SERVER(data->args.inode);
  
- 	data->status = task->tk_status;
--	pnfs_layoutcommit_done(data);
-+	put_rpccred(data->cred);
- 
- 	nfs4_sequence_done(server, &data->res.seq_res, task->tk_status);
- }
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 23787ff..def27f8 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -1912,30 +1912,6 @@ out:
- 	return trypnfs;
- }
- 
--/* Called on completion of layoutcommit */
--void
--pnfs_layoutcommit_done(struct pnfs_layoutcommit_data *data)
--{
--	struct nfs_server *nfss = NFS_SERVER(data->args.inode);
--	struct nfs_inode *nfsi = NFS_I(data->args.inode);
--
--	dprintk("%s: (status %d)\n", __func__, data->status);
--
--	if (data->status < 0)
--		printk(KERN_ERR "%s, Layoutcommit Failed! = %d\n",
--		       __func__, data->status);
--
--	/* TODO: Maybe we should avoid this by allowing the layout driver
--	 * to directly xdr its layout on the wire.
--	 */
--	if (nfss->pnfs_curr_ld->ld_io_ops->cleanup_layoutcommit)
--		nfss->pnfs_curr_ld->ld_io_ops->cleanup_layoutcommit(
--							&nfsi->layout,
--							&data->args,
--							data->status);
--	put_rpccred(data->cred);
--}
--
  /*
-  * Set up the argument/result storage required for the RPC call.
-  */
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index c89be78..43e02f8 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -46,7 +46,6 @@ enum pnfs_try_status _pnfs_try_to_read_data(struct nfs_read_data *,
- 					    const struct rpc_call_ops *);
- int pnfs_initialize(void);
- void pnfs_uninitialize(void);
--void pnfs_layoutcommit_done(struct pnfs_layoutcommit_data *data);
- void pnfs_layoutcommit_free(struct pnfs_layoutcommit_data *data);
- int pnfs_layoutcommit_inode(struct inode *inode, int sync);
- void pnfs_update_last_write(struct nfs_inode *nfsi, loff_t offset, size_t extent);
-diff --git a/include/linux/nfs4_pnfs.h b/include/linux/nfs4_pnfs.h
-index cab9137..1b017fe 100644
---- a/include/linux/nfs4_pnfs.h
-+++ b/include/linux/nfs4_pnfs.h
-@@ -149,9 +149,6 @@ struct layoutdriver_io_operations {
- 	void (*encode_layoutcommit) (struct pnfs_layout_type *layoutid,
- 				     struct xdr_stream *xdr,
- 				     const struct pnfs_layoutcommit_arg *args);
--	void (*cleanup_layoutcommit) (struct pnfs_layout_type *layoutid,
--				      struct pnfs_layoutcommit_arg *args,
--				      int status);
- 	void (*encode_layoutreturn) (struct pnfs_layout_type *layoutid,
- 				struct xdr_stream *xdr,
- 				const struct nfs4_pnfs_layoutreturn_arg *args);
+@@ -1562,10 +1564,6 @@ int nfs_wb_all(struct inode *inode)
+ 	};
+ 
+ 	ret = sync_inode(inode, &wbc);
+-#ifdef CONFIG_NFS_V4_1
+-	if (!ret && layoutcommit_needed(NFS_I(inode)))
+-		ret = pnfs_layoutcommit_inode(inode, 1);
+-#endif
+ 	return ret;
+ }
+ 
 -- 
 1.6.6
 
