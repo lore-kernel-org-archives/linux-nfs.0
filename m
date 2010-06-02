@@ -1,62 +1,29 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-fx0-f46.google.com ([209.85.161.46]:33343 "EHLO
-	mail-fx0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752935Ab0FHGy6 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Jun 2010 02:54:58 -0400
-Received: by fxm8 with SMTP id 8so2604331fxm.19
-        for <linux-nfs@vger.kernel.org>; Mon, 07 Jun 2010 23:54:56 -0700 (PDT)
-Message-ID: <4C0DE93D.2050503@panasas.com>
-Date: Tue, 08 Jun 2010 09:54:53 +0300
-From: Benny Halevy <bhalevy@panasas.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Boaz Harrosh <bharrosh@panasas.com>, sfaibish <sfaibish@emc.com>,
-        NFS list <linux-nfs@vger.kernel.org>
-Subject: Re: Performance results with exofs
-References: <op.vdxrrgf1unckof@usensfaibisl2e.eng.emc.com> <4C0D195B.8030401@panasas.com> <4C0D1AAB.4070304@panasas.com> <op.vdxxhfqsunckof@usensfaibisl2e.eng.emc.com> <20100607182948.GF25257@fieldses.org> <4C0D3D59.4000305@panasas.com> <20100607184902.GI25257@fieldses.org>
-In-Reply-To: <20100607184902.GI25257@fieldses.org>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mail-out2.uio.no ([129.240.10.58]:56905 "EHLO mail-out2.uio.no"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755903Ab0FBD4Z (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 1 Jun 2010 23:56:25 -0400
+Subject: Re: NFS exporting btrfs subvolumes.
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+To: Neil Brown <neilb@suse.de>
+Cc: linux-btrfs@vger.kernel.org, linux-nfs@vger.kernel.org, jeffm@suse.com
+In-Reply-To: <20100602134145.0d523a75@notabene.brown>
+References: <20100602134145.0d523a75@notabene.brown>
+Content-Type: text/plain; charset="UTF-8"
+Date: Tue, 01 Jun 2010 23:56:20 -0400
+Message-ID: <1275450980.4509.13.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 2010-06-07 21:49, J. Bruce Fields wrote:
-> On Mon, Jun 07, 2010 at 09:41:29PM +0300, Boaz Harrosh wrote:
->> On 06/07/2010 09:29 PM, J. Bruce Fields wrote:
->>>>> On 06/07/2010 07:07 PM, Boaz Harrosh wrote:
->>>>>> I did not yet publish the Document. It's stuck behind my dis-talent for
->>>>>> writing and the pnfs bugs de jur.
->>>
->>> Untalented writing we can fix, as long as the details are there!
->>>
->>>>>>
->>>>>> Basically all machines:
->>>>>> - connected by a 1 GBit link.
->>>>>> - All clients doing a dd write of 8GB file from /dev/zero
->>>>>> - 3of8 is the special raid-groups arrangement of exofs && objlayout
->>>>>>   where out of 8 devices each file is striped over 3 devices in a
->>>>>>   round robin fashion. (*With a small dirty trick)
->>>
->>> Random stupid questions:
->>>
->>> 	- why do you think the 3of8 arrangement is scaling better than
->>> 	  the 8of8?
->>
->> It's a know problem with a network storage cluster. What happens is
->> that with 8of8 all the clients exercise all of the nodes at the same
->> time so they are clashing on the network.
-> 
-> OK, so if two clients are both trying to send a stripe of data to the
-> same OSD data at the same time, absent a switch that could somehow
-> afford to queue up a full stripe-unit's worth of data, packets get lost?
-> 
-> (Also, out of curiosity: do you know of any papers or documentation that
-> describe that problem in more detail?)
-> 
+On Wed, 2010-06-02 at 13:41 +1000, Neil Brown wrote:
+> NFS needs a unique identifier for a filesystem to be able to export it.
+<snip>
+> Can anyone suggest a better way to get a good uuid for a btrfs filesystem?
 
-A good place to start would be
-http://www.pdl.cmu.edu/Incast/
+How about just adding the btrfs subvolid to the filehandle and using
+that to remove the ambiguity?
 
-Benny
+Cheers
+   Trond
 
-> --b.
-> --
