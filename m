@@ -1,123 +1,87 @@
-From: Steve Dickson <SteveD@redhat.com>
-Subject: Re: [PATCH 1/2] mount: silently fails when bad option values are
- given
-Date: Thu, 03 Jun 2010 14:18:02 -0400
-Message-ID: <4C07F1DA.6000501@RedHat.com>
-References: <1275570134-24864-1-git-send-email-steved@redhat.com> <1275570134-24864-2-git-send-email-steved@redhat.com> <4C07B669.2040300@oracle.com> <4C07BE09.3060602@RedHat.com> <4C07D064.7070707@oracle.com> <4C07D922.7030302@RedHat.com> <4C07E888.20102@oracle.com>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: Bug#583435: rpcbind: Insecure handling of state files
+Date: Thu, 03 Jun 2010 16:07:50 -0400
+Message-ID: <4C080B96.1030707@oracle.com>
+References: <20100527170908.GA14298@gaara.hadrons.org> <20100601120907.GA23357@gaara.hadrons.org> <20100602112520.GA22639@master.debian.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-To: Chuck Lever <chuck.lever@oracle.com>
+Content-Type: text/plain; charset=iso-8859-1;
+	format=flowed
+To: linux-nfs@vger.kernel.org, Guillem Jover <guillem@debian.org>,
+	583435@bugs.debian.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:42900 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752291Ab0FCSSG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 3 Jun 2010 14:18:06 -0400
-In-Reply-To: <4C07E888.20102@oracle.com>
+Received: from rcsinet10.oracle.com ([148.87.113.121]:52933 "EHLO
+	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751404Ab0FCUIp (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 3 Jun 2010 16:08:45 -0400
+In-Reply-To: <20100602112520.GA22639-q3oZDYqQg6zyUObV3Cmqeti2O/JbrIOy@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-
-On 06/03/2010 01:38 PM, Chuck Lever wrote:
-> On 06/ 3/10 12:32 PM, Steve Dickson wrote:
+On 06/ 2/10 07:25 AM, An=EDbal Monsalve Salazar wrote:
+> On Tue, Jun 01, 2010 at 02:09:07PM +0200, Guillem Jover wrote:
+>> Hi!
 >>
+>> On Thu, 2010-05-27 at 19:09:08 +0200, Guillem Jover wrote:
+>>> Package: rpcbind
+>>> Version: 0.2.0-4
+>>> Severity: serious
+>>> Tags: security
 >>
->> On 06/03/2010 11:55 AM, Chuck Lever wrote:
->>> On 06/ 3/10 10:36 AM, Steve Dickson wrote:
->>>>
->>>>
->>>> On 06/03/2010 10:04 AM, Chuck Lever wrote:
->>>>> On 06/ 3/10 09:02 AM, Steve Dickson wrote:
->>>>>> mount.nfs should not only fail when an invalid option values
->>>>>> are supplied (as it does), it should also print a diagnostic
->>>>>> message identifying the problem
->>>>>>
->>>>>> Signed-off-by: Steve Dickson<steved@redhat.com>
->>>>>> ---
->>>>>>     utils/mount/network.c   |   20 ++++++++++++++++++--
->>>>>>     utils/mount/nfsumount.c |    4 +---
->>>>>>     2 files changed, 19 insertions(+), 5 deletions(-)
->>>>>>
->>>>>> diff --git a/utils/mount/network.c b/utils/mount/network.c
->>>>>> index c541257..d9903ed 100644
->>>>>> --- a/utils/mount/network.c
->>>>>> +++ b/utils/mount/network.c
->>>>>> @@ -1212,6 +1212,8 @@ nfs_nfs_program(struct mount_options *options,
->>>>>> unsigned long *program)
->>>>>>                 return 1;
->>>>>>             }
->>>>>
->>>>> Another missed fall-through.
->>>> I realized this.. but if tmp<= 0, then the given value is invalid
->>>> so an error message should be displayed.
->>>>
->>>>>
->>>>>>         case PO_BAD_VALUE:
->>>>>> +        nfs_error(_("%s: invalid value for 'nfsprog=' option"),
->>>>>> +                progname);
->>>>>>             return 0;
->>>>>>         }
->>>>>>
->>>>>> @@ -1251,9 +1253,12 @@ nfs_nfs_version(struct mount_options *options,
->>>>>> unsigned long *version)
->>>>>>                 }
->>>>>>                 return 0;
->>>>>>             case PO_NOT_FOUND:
->>>>>> -            nfs_error(_("%s: option parsing error\n"),
->>>>>> +            nfs_error(_("%s: parsing error on 'vers=' option\n"),
->>>>>>                         progname);
->>>>>> +            return 0;
->>>>>>             case PO_BAD_VALUE:
->>>>>> +            nfs_error(_("%s: invalid value for 'vers=' option"),
->>>>>> +                    progname);
->>>>>>                 return 0;
->>>>>>             }
->>>>>
->>>>> What I meant before is that, with this new code, this error diagnostic
->>>>> is displayed for "vers=booger" but not for "vers=12".  I think it
->>>>> should
->>>>> be displayed in both cases.
->>>> ah... This is not only routine where PO_FOUND is returned but the
->>>> value is invalid...
+>>> The rpcbind daemon, which runs as root, uses /tmp/portmap.xdr and
+>>> /tmp/rpcbind.xdr for doing warm starts as what seems to be a way to
+>>> preserve state between invokations. It parses (through libtirpc) an=
+d
+>>> removes them on start. It creates them before exiting.
 >>>
->>> PO_FOUND here means the option was a keyword/value pair, and the value
->>> was numeric (but not necessarily a legal value for this option, so the
->>> caller has to do some range checking).  PO_BAD_VALUE means the option
->>> was a keyword/value pair, and the value wasn't numeric, and is thus
->>> definitely not valid.
->>>
->>> PO_NOT_FOUND probably means the option was found, but the option isn't
->>> specified as a keyword/value; ie. "vers" by itself rather than "vers=n".
->>>   (Although you should check that, my recollection may be rusty).  Also
->>> invalid, and should be reported.
->>>
->>> Or, PO_NOT_FOUND could mean the option wasn't found at all, but since
->>> po_rightmost() found it, that would be a software bug in this case.
->> I believe I'm understanding the logic... Whether the given
->> value is either a PO_BAD_VALUE (should be an integer and its not)
->> or a value that is out of range (the PO_FOUND cause), the given value
->> is still "invalid"...
+>>> So first off, *any* user can craft those two files before the daemo=
+n
+>>> has started for the first time, which the daemon will parse. This
+>>> might be ok, depending on the checks done on parse, I'd still be ve=
+ry
+>>> wary of letting a user be able to craft such files at will.
 >>
->> PO_NOT_FOUND value is basically a parsing error and if its not
->> recoverable as
->> with some cases, we should generate a message...
+>> It seems to be doing no checks whatsoever. A simple test I performed=
+ at
+>> the time of filing this report, but didn't seem to have any obvious
+>> consequence, shows this which I noticed later on:
 >>
->> So as long as we identify the above three cases and give a pointer to the
->> incorrect option, I think that will be fine...
-> 
-> Agreed.  At this point in nfs_nfs_version() and friends, though, I don't
-> think there's any difference between any of these cases, so you might be
-> OK with an even simpler patch that just does:
-> 
->     /*FALLTHROUGH*/
->     default:
->         nfs_error(_("%s: bad xxx option"), progname);
-> 
-> What do you think?
-Basically that's what I did... Please see the latest version... 
+>> ,---
+>> gaara:~# /etc/init.d/rpcbind start
+>> Starting rpcbind daemon....
+>> gaara:~# ps axuOp|egrep '(^USER|[r]pcbind)'
+>> USER       PID %CPU %MEM    VSZ   RSS TTY      STAT START   TIME COM=
+MAND
+>> root     23424  0.0  0.0  18768   704 ?        Ss   13:53   0:00 /sb=
+in/rpcbind -w
+>> gaara:~# /etc/init.d/rpcbind stop
+>> Stopping rpcbind daemon....
+>> gaara:~# dd if=3D/dev/urandom of=3D/tmp/rpcbind.xdr bs=3D1024 count=3D=
+1
+>> 1+0 records in
+>> 1+0 records out
+>> 1024 bytes (1,0 kB) copied, 0,000861307 s, 1,2 MB/s
+>> gaara:~# /etc/init.d/rpcbind start
+>> Starting rpcbind daemon....
+>> gaara:~# ps axuOp|egrep '(^USER|[r]pcbind)'
+>> USER       PID %CPU %MEM    VSZ   RSS TTY      STAT START   TIME COM=
+MAND
+>> root     23440  0.0  0.0 4008972  772 ?        Ss   13:54   0:00 /sb=
+in/rpcbind -w
+>> `---
+>>
+>> The first start is a normal clean invokation, the second one is usin=
+g
+>> the crafted file. See how it has allocated almost 4 GiB. Disregard t=
+hough,
+>> me running all this as root, a user would be able to craft those fil=
+es as
+>> long as they were not already in /tmp.
+>>
+>> thanks,
+>> guillem
+>
+> I'm sending this bug report to the linux-nfs mailing list.
+>
+> The original bug report is at http://bugs.debian.org/583435
 
-steved.
-
-P.S. Thanks for taking the time!! 
-
+Would /var/run (or a subdirectory of it) be a better choice than /tmp ?
