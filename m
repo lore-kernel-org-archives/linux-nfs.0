@@ -1,73 +1,58 @@
-From: Benny Halevy <bhalevy@panasas.com>
-Subject: Re: [nfsv4] Fall 2010 Bakeathon
-Date: Mon, 03 May 2010 09:32:46 +0300
-Message-ID: <4BDE6E0E.4090308@panasas.com>
-References: <OFC5693BF5.897C5510-ON8825770D.000EBA5F-8825770D.000F1030@us.ibm.com>	<20100422154432.GD5926@fieldses.org>	<op.vbk1l0p2unckof@usensfaibisl2e.eng.emc.com>	<1272462129.19046.458.camel@moss-terrapins.epoch.ncsc.mil>	<op.vbvll1vzunckof@usensfaibisl2e.eng.emc.com>	<4BD94700.60608@panasas.com> <4BD9CC1D.2090005@oracle.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: NFS list <linux-nfs@vger.kernel.org>, nfsv4 list <nfsv4@ietf.org>,
-	pNFS Mailing List <pnfs@linux-nfs.org>
-To: Tom Haynes <tom.haynes@oracle.com>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:50979 "EHLO
-	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1751079Ab0ECGct (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 3 May 2010 02:32:49 -0400
-In-Reply-To: <4BD9CC1D.2090005@oracle.com>
+Return-Path: <linux-nfs-owner@vger.kernel.org>
+Received: from mx2.netapp.com ([216.240.18.37]:55065 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754691Ab0FCQZ3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 3 Jun 2010 12:25:29 -0400
+From: andros@netapp.com
+To: bhalevy@panasas.com
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH 0/4] pnfs-submit: cleanup layoutcommit verison 2 
+Date: Thu,  3 Jun 2010 12:25:23 -0400
+Message-Id: <1275582327-9285-1-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
+MIME-Version: 1.0
 
-On Apr. 29, 2010, 21:12 +0300, Tom Haynes <tom.haynes@oracle.com> wrote:
-> On 04/29/10 03:44 AM, Benny Halevy wrote:
->> Sorin, regarding possible dates, if possible let's try to avoid a conflict
->> with the SNIA Storage Developer Conference 2010 that's scheduled for
->> September 20 - 23, 2010 in Santa Clara (http://www.snia.org/events/storage-developer2010/)
->>
->> I suggest we schedule within one of two windows: Sept 7-19 or Sept 24-Oct 7.
->> The week before the SNIA conference (week of 9/13) or right after
->> (9/27) would work best as far as travelling goes.
->>
->> Thanks!
->>
->> Benny
->>
->>    
-> 
-> Benny,
-> 
-> How many people from outside the US will be going to both
-> SNIA and the BAT?
 
-Two form Panasas
+Responded to comments.
 
-> 
-> We haven't had this overlap hit us in the past and I would
-> prefer we not be so afraid of it now.
-> 
-> I also would prefer that we not meet in Sept and try to
-> keep the dates in October.
-> 
-> My reasoning on that is we want to keep a 4 month gap
-> between this event and both the prior and the cthon.
-> With just a 3 month gap from Ann Arbor, there may not
-> be much of anything significantly different.
+This is against the pnfs-submit branch of the 2.6.34 tree. They will need to be
+applied against the 2.6.35-rc1 tree which I can do after comments.
 
-Makes sense.
+A cleanup, and call the async error handler.
+0001-SQUASHME-pnfs-submit-cleanup-layoutcommit-call.patch
+0002-SQUASHME-pnfs-submit-handle-async-layoutcommit-erro.patch
 
-> 
-> And if there is not much new to test or if we don't find
-> new issues, then the different management chains might
-> start to question why we are spending so much travel
-> budget.
+These next two patches moves the pnfs_layoutcommit_inode call to
+nfs_write_inode, and it is the only call other than in layoutreturn.
+(removed calls in __nfs4_close, nfs_commit_inode, nfs_wb_sync).
 
-Absolutely, and 4 months of development should provide us with
-some substantial changes to (re)test.
+0003-SQUASHME-pnfs-remove-ifdef-around-layoutcommit_neede.patch
+0004-SQUASHME-pnfs-submit-move-layoutcommit-to-nfs_write.patch
 
-Benny
+pnfs_layoutcommit_inode is called after nfs_commit_unstable_pages() so that
+if LAYOUTCOMMIT fails, the unstable pages have been processed..
 
-> 
-> Tom
-> _______________________________________________
-> nfsv4 mailing list
-> nfsv4@ietf.org
-> https://www.ietf.org/mailman/listinfo/nfsv4
+The error handlers (sync and async) call nfs4_map_errors, so unhandled
+errors (such as NFS4ERR_BADLAYOUT) get returned to nfs_write_ioode as -EIO.
+
+We will add code to the error handlers for errors such as NFS4ERR_BADLAYOUT
+that require us to stop using and free the layout, and redo the I/O through
+the MDS.
+
+Testing:
+With CONFIG_NFS_V4_1 set
+NFSv4.1/pnfs passed Connectathon against write enabled GFS2/pNFS. Note: there
+were exactly the same number of LAYOUTCOMMITS sent as were sent with
+pnfs_layoutcommit_inode being called from __nfs4_close (never happened),
+nfs_commit_inode and nfs_wb_sync.
+
+V4.0 mount passes Connectathon tests
+
+With CONFIG_NFS_V4_1 not set
+
+V4.0 mount passes Connectathon tests
+
+-->Andy
+
