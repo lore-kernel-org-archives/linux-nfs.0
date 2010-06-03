@@ -1,115 +1,82 @@
-From: Boaz Harrosh <bharrosh@panasas.com>
-Subject: Re: [PATCH 0/6] pnfs-submit cleanup layoutcommit for file layout
-Date: Thu, 03 Jun 2010 11:10:25 +0300
-Message-ID: <4C076371.4060304@panasas.com>
-References: <1275494067-4058-1-git-send-email-andros@netapp.com>
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Re: [PATCH 1/2] mount.nfs: silently fails with bad version arguments
+Date: Thu, 03 Jun 2010 08:11:20 -0400
+Message-ID: <4C079BE8.5010509@RedHat.com>
+References: <1275486084-23899-1-git-send-email-steved@redhat.com> <1275486084-23899-2-git-send-email-steved@redhat.com> <4C06CE71.1020404@oracle.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: bhalevy@panasas.com, linux-nfs@vger.kernel.org
-To: andros@netapp.com
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:51201 "EHLO
-	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1752988Ab0FCIK3 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 3 Jun 2010 04:10:29 -0400
-In-Reply-To: <1275494067-4058-1-git-send-email-andros@netapp.com>
+Received: from mx1.redhat.com ([209.132.183.28]:29148 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751616Ab0FCMLX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 3 Jun 2010 08:11:23 -0400
+In-Reply-To: <4C06CE71.1020404@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 06/02/2010 06:54 PM, andros@netapp.com wrote:
-> This is against the pnfs-submit branch of the 2.6.34 tree. They will need to be
-> applied against the 2.6.35-rc1 tree which I can do after comments.
-> 
-> RFC: I would like comments, especially on
-> 0006-SQUASHME-pnfs-submit-move-layoutcommit-to-nfs_write_.patch.
-> 
-> Remove unused layoutcommit layoutdriver_io_operations. Will be restored
-> in post-submit patches
-> 0001-SQUASHME-pnfs-submit-remove-setup_layoutcommit.patch
-> 0002-SQUASHNE-pnfs-submit-remove-cleanup_layoutcommit.patch
 
-These two should be combined. The cleanup_ is to clean after
-what's done in setup_.
 
-> 0003-SQUASHME-pnfs-submit-remove-encode_layoutcommit.patch
+On 06/02/2010 05:34 PM, Chuck Lever wrote:
+> On 06/ 2/10 09:41 AM, Steve Dickson wrote:
+>> mount.nfs should not only fail when an invalid protocol
+>> option is used (as it does), it should also print a
+>> diagnostic identifying the problem.
+>>
+>> Signed-off-by: Steve Dickson<steved@redhat.com>
+>> ---
+>>   utils/mount/network.c |    4 ++++
+>>   1 files changed, 4 insertions(+), 0 deletions(-)
+>>
+>> diff --git a/utils/mount/network.c b/utils/mount/network.c
+>> index c541257..de1014d 100644
+>> --- a/utils/mount/network.c
+>> +++ b/utils/mount/network.c
+>> @@ -1254,6 +1254,8 @@ nfs_nfs_version(struct mount_options *options,
+>> unsigned long *version)
+>>               nfs_error(_("%s: option parsing error\n"),
+>>                       progname);
 > 
-
-For example objects can do with this one only
-
-> A cleanup, and call the async error handler.
-> 0004-SQUASHME-pnfs-submit-cleanup-layoutcommit-call.patch
-> 0005-SQUASHME-pnfs-submit-handle-async-layoutcommit-error.patch
+> Watch out for case fall-through.  You need to add:
 > 
-> This next  patch moves the pnfs_layoutcommit_inode call to nfs_write_inode,
-> and it is the only call other than in layoutreturn. (removed calls in
-> __nfs4_close, nfs_commit_inode, nfs_wb_sync).
+>             return 0;
 > 
-> This is fine for the file layout, and I think it's OK for the object and
-> block layouts as well.
+> here.
+Ah I didn't see that... good catch... 
 > 
-
-It sounds very nice. It might have problems though. On the NFS_STABLE path
-again. Because of this stupid thing I found that when returning NFS_STABLE
-from writes, and no commits are called, then the internal i_size does not
-get updated until after the layout commit has returned and the client detects
-a change_attr on server. (Even if it was this client that caused the update)
-
-But this should be fixed regardless. And currently I'm running with
-commits on in objlayout. (Which reminds me to send the patch to Benny)
-
-So yes I like this change a lot. It makes tons of sense to me as well.
-
-> I left the LAYOUTCOMMIT call in nfs_write_inode a synchronous call, because
-> nfs_commit_unstable_pages sets the FLUSH_SYNC flag. Should this
-> be an asyc LAYOUTCOMMIT call?
+>>           case PO_BAD_VALUE:
+>> +            nfs_error(_("%s: invalid value for 'vers=' option"),
+>> +                    progname);
+>>               return 0;
+>>           }
+>>       case 4: /* nfsvers */
+>> @@ -1268,6 +1270,8 @@ nfs_nfs_version(struct mount_options *options,
+>> unsigned long *version)
+>>               nfs_error(_("%s: option parsing error\n"),
+>>                       progname);
 > 
-
-look at the struct writeback_control *wbc received, it has a flag which states
-if this is sync or async do according to that flag. (Tell me if you don't find it)
-
-> pnfs_layoutcommit_inode is called after nfs_commit_unstable_pages() so that
-> if LAYOUTCOMMIT fails, the unstable pages have been processed..
+> Case fall-through here as well.
 > 
-> The error handlers (sync and async) call nfs4_map_errors, so unhandled
-> errors (such as NFS4ERR_BADLAYOUT) get returned to nfs_write_ioode as -EIO.
+>>           case PO_BAD_VALUE:
+>> +            nfs_error(_("%s: invalid value for 'nfsvers=' option"),
+>> +                    progname);
 > 
-> Examining the write_inode call paths, I could not see where the -EIO would
-> be passed back to the application.  Testing with pynfs which I
-> had return NFS4ERR_BADLAYOUT to the layout commit call, shows the -EIO return
-> not stopping the client nor is the error reported back to the application.
-> 
-> We will add code to the error handlers for errors such as NFS4ERR_BADLAYOUT 
-> that require us to stop using and free the layout, and redo the I/O through
-> the MDS.
-> 
-> Anyway, review is much appreciated.
-> 
-> 0006-SQUASHME-pnfs-submit-move-layoutcommit-to-nfs_write_.patch
-> 
-> Testing:
-> With CONFIG_NFS_V4_1 set
-> NFSv4.1/pnfs passed Connectathon against write enabled GFS2/pNFS. Note: there
-> were exactly the same number of LAYOUTCOMMITS sent as were sent with
-> pnfs_layoutcommit_inode being called from __nfs4_close (never happened),
-> nfs_commit_inode and nfs_wb_sync.
-> 
-> Passed Connectathon general test against pynfs file layout server with
-> the NFS4ERR_BADLAYOUT being returned on every third LAYOUTCOMMIT.
-> 
-
-Andy you got this patchset all backwards. And they are not a set.
-
-4,5,6 are to go in first and are intended for the full tree
-and the .34 and .33 backport tree's as well. If I want to test
-with them I'll need them stand alone un-conflicting.
-
-Then 1+2,3 are something else and should be done on top of these above.
-If they are self sustained and could be re applied on the to of the tree
-as patch -R, then grate. If not then a "bring them back patch" could be
-nice. without them we can't test any of this.
+> Why wouldn't you also print a diagnostic if a numeric value was used,
+> but the value was out of range?
+It did not appear there was any guarantee that &tmp would have been filled
+with anything useful, especially with something like nfsvers=v3 is given.
 
 > 
-> -->Andy
-> 
+> And, what about similar cases in nfs_nfs_port(), nfs_nfs_program(),
+> nfs_mount_program(), nfs_mount_version(), and nfs_mount_port() ?
+I was just looking at the version and protocol options and I really
+didn't want to make things too verbose. Meaning we don't need to be printing
+two or three messages for one error... 
 
-Boaz
+But I do see the need of going back and taking a good hard look
+at all the diagnostics that do (and do not) come out of the mount
+command in error conditions... since it appears the diagnostics 
+messages are a bit light at times..
+
+steved.
