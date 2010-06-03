@@ -1,172 +1,147 @@
-From: "William A. (Andy) Adamson" <androsadamson@gmail.com>
-Subject: Re: [PATCH 0/6] pnfs-submit cleanup layoutcommit for file layout
-Date: Thu, 3 Jun 2010 09:15:32 -0400
-Message-ID: <AANLkTind5BFXomyDpd3vPUkON3Ufau1OZKUWshVAjzhC@mail.gmail.com>
-References: <1275494067-4058-1-git-send-email-andros@netapp.com>
-	<4C076371.4060304@panasas.com>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: [PATCH 1/2] mount: silently fails when bad option values are
+ given
+Date: Thu, 03 Jun 2010 10:04:25 -0400
+Message-ID: <4C07B669.2040300@oracle.com>
+References: <1275570134-24864-1-git-send-email-steved@redhat.com> <1275570134-24864-2-git-send-email-steved@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: bhalevy@panasas.com, linux-nfs@vger.kernel.org
-To: Boaz Harrosh <bharrosh@panasas.com>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+To: Steve Dickson <steved@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yx0-f174.google.com ([209.85.213.174]:61388 "EHLO
-	mail-yx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753066Ab0FCNPe convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 3 Jun 2010 09:15:34 -0400
-Received: by yxl31 with SMTP id 31so22979yxl.19
-        for <linux-nfs@vger.kernel.org>; Thu, 03 Jun 2010 06:15:33 -0700 (PDT)
-In-Reply-To: <4C076371.4060304@panasas.com>
+Received: from rcsinet10.oracle.com ([148.87.113.121]:63158 "EHLO
+	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753990Ab0FCOF5 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 3 Jun 2010 10:05:57 -0400
+In-Reply-To: <1275570134-24864-2-git-send-email-steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Jun 3, 2010 at 4:10 AM, Boaz Harrosh <bharrosh@panasas.com> wro=
-te:
-> On 06/02/2010 06:54 PM, andros@netapp.com wrote:
->> This is against the pnfs-submit branch of the 2.6.34 tree. They will=
- need to be
->> applied against the 2.6.35-rc1 tree which I can do after comments.
->>
->> RFC: I would like comments, especially on
->> 0006-SQUASHME-pnfs-submit-move-layoutcommit-to-nfs_write_.patch.
->>
->> Remove unused layoutcommit layoutdriver_io_operations. Will be resto=
-red
->> in post-submit patches
->> 0001-SQUASHME-pnfs-submit-remove-setup_layoutcommit.patch
->> 0002-SQUASHNE-pnfs-submit-remove-cleanup_layoutcommit.patch
+On 06/ 3/10 09:02 AM, Steve Dickson wrote:
+> mount.nfs should not only fail when an invalid option values
+> are supplied (as it does), it should also print a diagnostic
+> message identifying the problem
 >
-> These two should be combined. The cleanup_ is to clean after
-> what's done in setup_.
+> Signed-off-by: Steve Dickson<steved@redhat.com>
+> ---
+>   utils/mount/network.c   |   20 ++++++++++++++++++--
+>   utils/mount/nfsumount.c |    4 +---
+>   2 files changed, 19 insertions(+), 5 deletions(-)
 >
->> 0003-SQUASHME-pnfs-submit-remove-encode_layoutcommit.patch
->>
->
-> For example objects can do with this one only
+> diff --git a/utils/mount/network.c b/utils/mount/network.c
+> index c541257..d9903ed 100644
+> --- a/utils/mount/network.c
+> +++ b/utils/mount/network.c
+> @@ -1212,6 +1212,8 @@ nfs_nfs_program(struct mount_options *options, unsigned long *program)
+>   			return 1;
+>   		}
 
-OK - makes sense as all three get squashed into the same patch.
+Another missed fall-through.
 
+>   	case PO_BAD_VALUE:
+> +		nfs_error(_("%s: invalid value for 'nfsprog=' option"),
+> +				progname);
+>   		return 0;
+>   	}
 >
->> A cleanup, and call the async error handler.
->> 0004-SQUASHME-pnfs-submit-cleanup-layoutcommit-call.patch
->> 0005-SQUASHME-pnfs-submit-handle-async-layoutcommit-error.patch
->>
->> This next =A0patch moves the pnfs_layoutcommit_inode call to nfs_wri=
-te_inode,
->> and it is the only call other than in layoutreturn. (removed calls i=
-n
->> __nfs4_close, nfs_commit_inode, nfs_wb_sync).
->>
->> This is fine for the file layout, and I think it's OK for the object=
- and
->> block layouts as well.
->>
->
-> It sounds very nice. It might have problems though. On the NFS_STABLE=
- path
-> again. Because of this stupid thing I found that when returning NFS_S=
-TABLE
-> from writes, and no commits are called, then the internal i_size does=
- not
-> get updated until after the layout commit has returned and the client=
- detects
-> a change_attr on server. (Even if it was this client that caused the =
-update)
->
-> But this should be fixed regardless. And currently I'm running with
-> commits on in objlayout. (Which reminds me to send the patch to Benny=
-)
->
-> So yes I like this change a lot. It makes tons of sense to me as well=
-=2E
+> @@ -1251,9 +1253,12 @@ nfs_nfs_version(struct mount_options *options, unsigned long *version)
+>   			}
+>   			return 0;
+>   		case PO_NOT_FOUND:
+> -			nfs_error(_("%s: option parsing error\n"),
+> +			nfs_error(_("%s: parsing error on 'vers=' option\n"),
+>   					progname);
+> +			return 0;
+>   		case PO_BAD_VALUE:
+> +			nfs_error(_("%s: invalid value for 'vers=' option"),
+> +					progname);
+>   			return 0;
+>   		}
 
-Good.
+What I meant before is that, with this new code, this error diagnostic 
+is displayed for "vers=booger" but not for "vers=12".  I think it should 
+be displayed in both cases.
 
->
->> I left the LAYOUTCOMMIT call in nfs_write_inode a synchronous call, =
-because
->> nfs_commit_unstable_pages sets the FLUSH_SYNC flag. Should this
->> be an asyc LAYOUTCOMMIT call?
->>
->
-> look at the struct writeback_control *wbc received, it has a flag whi=
-ch states
-> if this is sync or async do according to that flag. (Tell me if you d=
-on't find it)
+>   	case 4: /* nfsvers */
+> @@ -1265,9 +1270,12 @@ nfs_nfs_version(struct mount_options *options, unsigned long *version)
+>   			}
+>   			return 0;
+>   		case PO_NOT_FOUND:
+> -			nfs_error(_("%s: option parsing error\n"),
+> +			nfs_error(_("%s: parsing error on 'nfsvers=' option\n"),
+>   					progname);
+> +			return 0;
+>   		case PO_BAD_VALUE:
+> +			nfs_error(_("%s: invalid value for 'nfsvers=' option"),
+> +					progname);
+>   			return 0;
+>   		}
+>   	}
+> @@ -1336,6 +1344,8 @@ nfs_nfs_port(struct mount_options *options, unsigned long *port)
+>   			return 1;
+>   		}
 
-OK, thanks.
+Another missed fall-through.
 
->
->> pnfs_layoutcommit_inode is called after nfs_commit_unstable_pages() =
-so that
->> if LAYOUTCOMMIT fails, the unstable pages have been processed..
->>
->> The error handlers (sync and async) call nfs4_map_errors, so unhandl=
-ed
->> errors (such as NFS4ERR_BADLAYOUT) get returned to nfs_write_ioode a=
-s -EIO.
->>
->> Examining the write_inode call paths, I could not see where the -EIO=
- would
->> be passed back to the application. =A0Testing with pynfs which I
->> had return NFS4ERR_BADLAYOUT to the layout commit call, shows the -E=
-IO return
->> not stopping the client nor is the error reported back to the applic=
-ation.
->>
->> We will add code to the error handlers for errors such as NFS4ERR_BA=
-DLAYOUT
->> that require us to stop using and free the layout, and redo the I/O =
-through
->> the MDS.
->>
->> Anyway, review is much appreciated.
->>
->> 0006-SQUASHME-pnfs-submit-move-layoutcommit-to-nfs_write_.patch
->>
->> Testing:
->> With CONFIG_NFS_V4_1 set
->> NFSv4.1/pnfs passed Connectathon against write enabled GFS2/pNFS. No=
-te: there
->> were exactly the same number of LAYOUTCOMMITS sent as were sent with
->> pnfs_layoutcommit_inode being called from __nfs4_close (never happen=
-ed),
->> nfs_commit_inode and nfs_wb_sync.
->>
->> Passed Connectathon general test against pynfs file layout server wi=
-th
->> the NFS4ERR_BADLAYOUT being returned on every third LAYOUTCOMMIT.
->>
->
-> Andy you got this patchset all backwards. And they are not a set.
->
-> 4,5,6 are to go in first and are intended for the full tree
-> and the .34 and .33 backport tree's as well. If I want to test
-> with them I'll need them stand alone un-conflicting.
+>   	case PO_BAD_VALUE:
+> +		nfs_error(_("%s: invalid value for 'port=' option"),
+> +				progname);
+>   		return 0;
+>   	}
 
-Sure.
+And here, an error diagnostic is displayed for "port=crikey" but not for 
+"port=-17".
 
->
-> Then 1+2,3 are something else and should be done on top of these abov=
-e.
-> If they are self sustained and could be re applied on the to of the t=
-ree
-> as patch -R, then grate. If not then a "bring them back patch" could =
-be
-> nice. without them we can't test any of this
+> @@ -1423,6 +1433,8 @@ nfs_mount_program(struct mount_options *options, unsigned long *program)
+>   			return 1;
+>   		}
 
-Thanks for the review. I'll resend as requested so that you can test..
+Another missed fall-through.
 
--->Andy
+>   	case PO_BAD_VALUE:
+> +		nfs_error(_("%s: invalid value for 'mountprog=' option"),
+> +				progname);
+>   		return 0;
+>   	}
+>
+> @@ -1452,6 +1464,8 @@ nfs_mount_version(struct mount_options *options, unsigned long *version)
+>   			return 1;
+>   		}
 
+Ditto.
+
+>   	case PO_BAD_VALUE:
+> +		nfs_error(_("%s: invalid value for 'mountvers=' option"),
+> +				progname);
+>   		return 0;
+>   	}
 >
->>
->> -->Andy
->>
+> @@ -1510,6 +1524,8 @@ nfs_mount_port(struct mount_options *options, unsigned long *port)
+>   			return 1;
+>   		}
+
+Ditto.
+
+>   	case PO_BAD_VALUE:
+> +		nfs_error(_("%s: invalid value for 'mountport=' option"),
+> +				progname);
+>   		return 0;
+>   	}
 >
-> Boaz
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" =
-in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at =A0http://vger.kernel.org/majordomo-info.html
+> diff --git a/utils/mount/nfsumount.c b/utils/mount/nfsumount.c
+> index 9d798a2..1514340 100644
+> --- a/utils/mount/nfsumount.c
+> +++ b/utils/mount/nfsumount.c
+> @@ -179,10 +179,8 @@ static int nfs_umount_do_umnt(struct mount_options *options,
+>   	struct pmap nfs_pmap, mnt_pmap;
+>   	sa_family_t family;
 >
+> -	if (!nfs_options2pmap(options,&nfs_pmap,&mnt_pmap)) {
+> -		nfs_error(_("%s: bad mount options"), progname);
+> +	if (!nfs_options2pmap(options,&nfs_pmap,&mnt_pmap))
+>   		return EX_FAIL;
+> -	}
+>
+>   	/* Skip UMNT call for vers=4 mounts */
+>   	if (nfs_pmap.pm_vers == 4)
+
