@@ -1,77 +1,74 @@
-From: Guillem Jover <guillem@debian.org>
-Subject: Re: Bug#583435: rpcbind: Insecure handling of state files
-Date: Thu, 3 Jun 2010 23:07:07 +0200
-Message-ID: <20100603210707.GA7377@gaara.hadrons.org>
-References: <20100527170908.GA14298@gaara.hadrons.org>
- <20100601120907.GA23357@gaara.hadrons.org>
- <20100602112520.GA22639@master.debian.org>
- <4C080B96.1030707@oracle.com>
- <20100603202743.GA6643@gaara.hadrons.org>
- <4C0811B9.3060809@oracle.com>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: Bug#579397: STAT_FAIL to debian for SM_MON of 192.168.120.254,
+ No canonical hostname found for 192.168.120.254
+Date: Thu, 03 Jun 2010 17:08:18 -0400
+Message-ID: <4C0819C2.2020203@oracle.com>
+References: <4BF71C27.7070309@nchc.org.tw> <1274492328.11828.3.camel@localhost> <4BFA99CD.2040902@oracle.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Cc: linux-nfs@vger.kernel.org, 583435@bugs.debian.org
-To: Chuck Lever <chuck.lever@oracle.com>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Cc: Steven Shiau <steven@nchc.org.tw>, 579397@bugs.debian.org,
+	linux-nfs@vger.kernel.org
+To: Ben Hutchings <ben@decadent.org.uk>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp13.ono.com ([62.42.230.16]:55854 "EHLO resmaa13.ono.com"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1752929Ab0FCVHT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 3 Jun 2010 17:07:19 -0400
-In-Reply-To: <4C0811B9.3060809@oracle.com>
+Received: from rcsinet10.oracle.com ([148.87.113.121]:42887 "EHLO
+	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754655Ab0FCVK1 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 3 Jun 2010 17:10:27 -0400
+In-Reply-To: <4BFA99CD.2040902@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 2010-06-03 at 16:34:01 -0400, Chuck Lever wrote:
-> On 06/ 3/10 04:27 PM, Guillem Jover wrote:
-> >The second problem is that those files get created by the daemon on
-> >shutdown, and they *do* follow symlinks. So a user can drop two
-> >symlinks
-> >there while the daemon is running and overwrite any file on the file
-> >system on shutdown.
-> >
-> >The fix would consist of passing to configure something like
-> >=E2=80=9C--with-statedir=3D/var/cache/rpcbind=E2=80=9D, and make sur=
-e the daemon creates
-> >such directory if missing on exit in src/warmstart.c:write_struct(),
-> >which it does not seem to be doing currently.
-> >
-> >In addition it would be wise to notify upstream to change the defaul=
-t
-> >statedir to something else than /tmp.
->=20
-> Agree changing the upstream default is a good idea.
->=20
-> Generally, that kind of directory is created as part of installation
-> (like, by rpm --install) rather than by the daemon itself.
+On 05/24/10 11:22 AM, Chuck Lever wrote:
+> On 05/21/10 09:38 PM, Ben Hutchings wrote:
+>> On Sat, 2010-05-22 at 07:49 +0800, Steven Shiau wrote:
+>>> Same problem here. However, mine is on the client side.
+>>> On sid system, running kernel is 2.6.32-5-686, nfs-common is 1:1.2.2-1.
+>>> When I mount my NFS server 192.168.120.254, it works. However, if I want
+>>> to use some tool which need to lock file to save the file on the NFS
+>>> server, e.g.
+>>> vgcfgbackup -f $NFS_MNT_POINT/vg.cfg
+>>> I get the message "lockd: cannot monitor 192.168.120.254", and the
+>>> message shown on the /var/log/daemon.log:
+>>> May 21 08:52:44 debian rpc.statd[1298]: STAT_FAIL to debian for SM_MON
+>>> of 192.168.120.254
+>>> May 21 08:52:44 debian rpc.statd[1298]: No canonical hostname found for
+>>> 192.168.120.254
+>> [...]
+>>
+>> nfs-utils 1.2.2 includes the change:
+>>
+>> commit 8ce130c4c828b9d13d429f22160f992b9c1d45cd
+>> Author: Chuck Lever<chuck.lever@oracle.com>
+>> Date: Thu Jan 14 12:24:15 2010 -0500
+>>
+>> statd: Support IPv6 in sm_mon_1_svc()
+>>
+>> This appears to have removed support for IPv4 literals. Was this
+>> intentional?
+>
+> statd usually requires a DNS reverse mapping for any host it monitors.
+> Does your DNS have a reverse mapping for 192.168.120.254?
+>
+> It looks like the new logic is more restrictive than the old statd when
+> mon_name is a presentation address. The old code simply allowed
+> presentation addresses with no reverse mapping. The new code requires a
+> reverse DNS mapping for presentation addresses. I think even an entry in
+> /etc/hosts would allow a raw address to work in this case.
+>
+> We can probably remove the reverse mapping constraint for presentation
+> addresses. A simple fix might be to change statd_canonical_name() from:
+>
+> freeaddrinfo(ai);
+> if (!result)
+> return NULL;
+>
+> to
+>
+> freeaddrinfo(ai);
+> if (!result)
+> return strdup(hostname);
+>
+> Let me know if this works.
 
-At least for /var/run I think it's common for systems to mount it
-as tmpfs, so the directories might not be there on boot. But those can
-always be created by the init script (or equivalent), it might be a
-problem if run from inetd though.
-
-> >>Would /var/run (or a subdirectory of it) be a better choice than /t=
-mp ?
-> >
-> >/var/run might not be preserved across reboots, but regardless of th=
-at I
-> >think /var/cache is a better fit, it's internal state, but it's used
-> >to speed up start up time, and can be removed w/o ill effects.
->=20
-> No, it's not intended to speed start up.
->=20
-> The cache files aren't really supposed to be retained over a reboot.
-> After a system restart, all of the RPC services will restart and
-> register themselves again.  If just rpcbind restarts, all that
-> registration state is lost, so that's the point of saving it in a
-> file.
-
-Ah, yeah that makes more sense! More so given the configure option, I
-should have written "AFAIS" or something like that. :)
-
-> I don't have a preference wrt /var/run or /var/cache.
-
-So given that this is actually run time state, /var/run seems more
-appropriate, indeed.
-
-regards,
-guillem
+Any update?  I have a patch ready for nfs-utils to fix this regression, 
+but I need confirmation that it addresses your problem.
