@@ -1,50 +1,61 @@
-From: sfaibish <sfaibish@emc.com>
-Subject: Re: [pnfs] [PATCH 3/3] pnfs-blocklayout client: add block device pipe processing based on simple rpc pipefs
-Date: Fri, 04 Jun 2010 14:31:22 -0400
-Message-ID: <op.vdsgekf6unckof@usensfaibisl2e.eng.emc.com>
-References: <op.vdsfeiz2unckof@usensfaibisl2e.eng.emc.com> <op.vdsfn9iounckof@usensfaibisl2e.eng.emc.com> <op.vdsfuksdunckof@usensfaibisl2e.eng.emc.com> <20100604182506.GA22000@infradead.org>
+From: David Miller <davem@davemloft.net>
+Subject: Re: NULL Pointer Deference: NFS & Telnet
+Date: Fri, 04 Jun 2010 16:15:30 -0700 (PDT)
+Message-ID: <20100604.161530.245412851.davem@davemloft.net>
+References: <1274851741.25136.16.camel@edumazet-laptop>
+	<27F9C60D11D683428E133F85D2BB4A53043E3EE6A3@dlee03.ent.ti.com>
+	<1274906933.2542.17.camel@edumazet-laptop>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-15;
-	format=flowed	delsp=yes
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-	"Benny Halevy" <bhalevy@panasas.com>,
-	"pnfs@linux-nfs.org" <pnfs@linux-nfs.org>
-To: "Christoph Hellwig" <hch@infradead.org>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mexforward.lss.emc.com ([128.222.32.20]:21329 "EHLO
-	mexforward.lss.emc.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752264Ab0FDSbh (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 4 Jun 2010 14:31:37 -0400
-In-Reply-To: <20100604182506.GA22000@infradead.org>
-Sender: linux-nfs-owner@vger.kernel.org
+Content-Type: Text/Plain; charset=iso-8859-1
+Cc: x0066660@ti.com, netdev@vger.kernel.org,
+	linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
+	linux-omap@vger.kernel.org, tony@atomide.com,
+	santosh.shilimkar@ti.com, Tristram.Ha@micrel.com
+To: eric.dumazet@gmail.com
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <1274906933.2542.17.camel@edumazet-laptop>
+Sender: linux-kernel-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 04 Jun 2010 14:25:06 -0400, Christoph Hellwig <hch-wEGCiKHe2LouzsEnZMApLA@public.gmane.org=
-g> =20
-wrote:
+=46rom: Eric Dumazet <eric.dumazet@gmail.com>
+Date: Wed, 26 May 2010 22:48:53 +0200
 
-> Btw, simple reminder that all this has zero chance of going upstream
-> until someone addresses the issue of a proper API for locking down th=
-e
-> device mappings and getting the final block mapping in kernelspace.
-Remember our discussion of 2 years ago. :)
+> Le mercredi 26 mai 2010 =E0 15:19 -0500, Arce, Abraham a =E9crit :
+>=20
+>> By increasing the allocation length of our rx skbuff the corruption =
+issue is fixed... I have increased it by 2... Were we writing outside o=
+ur boundaries of skb data?
+>>=20
+>> Please let me know about this approach...
+>>=20
+>> diff --git a/drivers/net/ks8851.c b/drivers/net/ks8851.c
+>> index b4fb07a..6da81e1 100644
+>> --- a/drivers/net/ks8851.c
+>> +++ b/drivers/net/ks8851.c
+>> @@ -504,7 +504,7 @@ static void ks8851_rx_pkts(struct ks8851_net *ks=
+)
+>>                                ks->rc_rxqcr | RXQCR_SDA | RXQCR_ADRF=
+E);
+>>=20
+>>                 if (rxlen > 0) {
+>> -                       skb =3D netdev_alloc_skb(ks->netdev, rxlen +=
+ 2 + 8);
+>> +                       skb =3D netdev_alloc_skb(ks->netdev, rxlen +=
+ 4 + 8);
+>>                         if (!skb) {
+>>=20
+>> Best Regards
+>> Abraham
+>>=20
+>=20
+> Yes that makes sense, nr_frag is right after the packet (padded to L1
+> cache size)
+>=20
+> But please do the correct allocation ?
+>=20
+> Also, we dont need FCS ?
 
->
->
->
+Can we make some progress and get this patch tested and formally
+submitted so we can kill this bug?
 
-
-
---=20
-Best Regards
-
-Sorin Faibish
-Corporate Distinguished Engineer
-Network Storage Group
-
-         EMC=B2
-where information lives
-
-Phone: 508-435-1000 x 48545
-Cellphone: 617-510-0422
-Email : sfaibish@emc.com
+Thanks!
