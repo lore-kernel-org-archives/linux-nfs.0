@@ -1,78 +1,54 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: Bug#583435: rpcbind: Insecure handling of state files
-Date: Thu, 03 Jun 2010 17:11:10 -0400
-Message-ID: <4C081A6E.5020406@oracle.com>
-References: <20100527170908.GA14298@gaara.hadrons.org> <20100601120907.GA23357@gaara.hadrons.org> <20100602112520.GA22639@master.debian.org> <4C080B96.1030707@oracle.com> <20100603202743.GA6643@gaara.hadrons.org> <4C0811B9.3060809@oracle.com> <20100603210707.GA7377@gaara.hadrons.org>
+From: Timo Aaltonen <timo.aaltonen-uOixanVlb7U@public.gmane.org>
+Subject: Re: session hangs with 2.6.33rc7 & nfs-utils 1.2.2rc9
+Date: Fri, 4 Jun 2010 16:36:47 +0300
+Message-ID: <alpine.DEB.2.00.1006041556450.9383@deckard.hut.fi>
+References: <alpine.DEB.2.00.1002111604420.18032@kosh.hut.fi>  <1265897747.478.1.camel@localhost>  <alpine.DEB.2.00.1002111616470.18032@kosh.hut.fi>  <1265898673.478.3.camel@localhost>  <20100211102322.1581a385@barsoom.rdu.redhat.com>
+ <alpine.DEB.2.00.1002112017550.18032@kosh.hut.fi>  <alpine.DEB.2.00.1002112114190.18032@kosh.hut.fi>  <20100211152822.622dcc70@barsoom.rdu.redhat.com>  <alpine.DEB.2.00.1002121410090.18032@kosh.hut.fi>  <alpine.DEB.2.00.1002121615290.18032@kosh.hut.fi>
+ <20100212143249.GA17928@fieldses.org>  <alpine.DEB.2.00.1002121705390.18032@kosh.hut.fi>  <20100212111343.101fd0ce@tlielax.poochiereds.net>  <1265998794.2832.23.camel@localhost>  <alpine.DEB.2.00.1005061730460.3282@deckard.hut.fi> <1273165061.7699.39.camel@localhost.localdomain>
+ <alpine.DEB.2.00.1005140942440.13223@deckard.hut.fi>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8;
-	format=flowed
-Cc: linux-nfs@vger.kernel.org, 583435@bugs.debian.org
-To: Guillem Jover <guillem@debian.org>
+Content-Type: text/plain; format=flowed; charset="US-ASCII"
+Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
+	Jeff Layton <jlayton@redhat.com>
+To: <linux-nfs@vger.kernel.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:43399 "EHLO
-	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754655Ab0FCVLg (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 3 Jun 2010 17:11:36 -0400
-In-Reply-To: <20100603210707.GA7377-v62vTE6/wQGgM1MOaoewpti2O/JbrIOy@public.gmane.org>
+Received: from mx05.aalto.fi ([130.233.222.104]:56671 "EHLO mx05.aalto.fi"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755399Ab0FDNo1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 4 Jun 2010 09:44:27 -0400
+In-Reply-To: <alpine.DEB.2.00.1005140942440.13223-9o+TK994UVukEuhtYYxXtw@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 06/ 3/10 05:07 PM, Guillem Jover wrote:
-> On Thu, 2010-06-03 at 16:34:01 -0400, Chuck Lever wrote:
->> On 06/ 3/10 04:27 PM, Guillem Jover wrote:
->>> The second problem is that those files get created by the daemon on
->>> shutdown, and they *do* follow symlinks. So a user can drop two
->>> symlinks
->>> there while the daemon is running and overwrite any file on the fil=
-e
->>> system on shutdown.
->>>
->>> The fix would consist of passing to configure something like
->>> =E2=80=9C--with-statedir=3D/var/cache/rpcbind=E2=80=9D, and make su=
-re the daemon creates
->>> such directory if missing on exit in src/warmstart.c:write_struct()=
-,
->>> which it does not seem to be doing currently.
->>>
->>> In addition it would be wise to notify upstream to change the defau=
-lt
->>> statedir to something else than /tmp.
->>
->> Agree changing the upstream default is a good idea.
->>
->> Generally, that kind of directory is created as part of installation
->> (like, by rpm --install) rather than by the daemon itself.
->
-> At least for /var/run I think it's common for systems to mount it
-> as tmpfs, so the directories might not be there on boot. But those ca=
-n
-> always be created by the init script (or equivalent), it might be a
-> problem if run from inetd though.
+On Fri, 14 May 2010, Timo Aaltonen wrote:
 
-Sure, that makes sense.  Having the daemon create the directory also=20
-means there are fewer ways distributors can get this wrong.
+> On Thu, 6 May 2010, Trond Myklebust wrote:
+>
+>> On Thu, 2010-05-06 at 18:40 +0300, Timo Aaltonen wrote:
+>>> Reviving the old thread, since it's still happening. Maybe I should file a
+>>> proper bug about this?
+>> 
+>> Please do. Can you see if you can get a trace of the recovery thread?
+>> Also, please check your dmesg log for any 'unhandled error' messages. If
+>> there is nothing there, then we may have to get a 'wireshark' trace
+>> too...
+>
+> Alright, here we go:
+>
+> https://bugzilla.kernel.org/show_bug.cgi?id=15973
 
->>>> Would /var/run (or a subdirectory of it) be a better choice than /=
-tmp ?
->>>
->>> /var/run might not be preserved across reboots, but regardless of t=
-hat I
->>> think /var/cache is a better fit, it's internal state, but it's use=
-d
->>> to speed up start up time, and can be removed w/o ill effects.
->>
->> No, it's not intended to speed start up.
->>
->> The cache files aren't really supposed to be retained over a reboot.
->> After a system restart, all of the RPC services will restart and
->> register themselves again.  If just rpcbind restarts, all that
->> registration state is lost, so that's the point of saving it in a
->> file.
->
-> Ah, yeah that makes more sense! More so given the configure option, I
-> should have written "AFAIS" or something like that. :)
->
->> I don't have a preference wrt /var/run or /var/cache.
->
-> So given that this is actually run time state, /var/run seems more
-> appropriate, indeed.
+Still the same with 2.6.34. I'm trying to reproduce it on Redhat/Fedora, 
+but RHEL6 beta installation fails with a kernel panic, and F13 claims that 
+the root ticket cache is "expired or corrupt" (created with 'kinit -k 
+HOST$', looks just fine with klist). Logins work fine, just can't mount 
+the share :) I tried to use 'nsupdate -g' and it complained the same, so 
+I'm not sure what to blame.
+
+I'm amazed that no-one else has complained so far, that's why I'd like to 
+try if this happens on another recent distro as well..
+
+
+-- 
+Timo Aaltonen
+Systems Specialist
+Aalto University IT
