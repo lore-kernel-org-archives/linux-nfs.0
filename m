@@ -1,81 +1,112 @@
-From: Ben Hutchings <ben@decadent.org.uk>
-Subject: Re: Bug#579397: STAT_FAIL to debian for SM_MON of 192.168.120.254,
- No canonical hostname found for 192.168.120.254
-Date: Sat, 05 Jun 2010 21:29:59 +0100
-Message-ID: <1275769799.2870.107.camel@localhost>
-References: <4BF71C27.7070309@nchc.org.tw>
-	 <1274492328.11828.3.camel@localhost> <4BFA99CD.2040902@oracle.com>
-	 <4C0819C2.2020203@oracle.com>
+From: Benny Halevy <bhalevy@panasas.com>
+Subject: Re: Linux pNFS status meeting 06/03
+Date: Sun, 06 Jun 2010 14:11:21 +0300
+Message-ID: <4C0B8259.6090500@panasas.com>
+References: <OFD9CC398A.6555CB30-ON88257736.006D4B55-88257736.006D71E6@us.ibm.com> <20100603172210.GG24994@fieldses.org>
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg="pgp-sha1"; protocol="application/pgp-signature"; boundary="=-CoEYm119EEbUxDHKJKY7"
-Cc: 579397@bugs.debian.org, linux-nfs@vger.kernel.org
-To: Chuck Lever <chuck.lever@oracle.com>,
-	Steven Shiau <steven@nchc.org.tw>
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: NFS list <linux-nfs@vger.kernel.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from shadbolt.e.decadent.org.uk ([88.96.1.126]:40291 "EHLO
-	shadbolt.e.decadent.org.uk" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1755244Ab0FEUaO (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 5 Jun 2010 16:30:14 -0400
-In-Reply-To: <4C0819C2.2020203@oracle.com>
+Received: from mail-bw0-f46.google.com ([209.85.214.46]:34323 "EHLO
+	mail-bw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756783Ab0FFLL0 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 6 Jun 2010 07:11:26 -0400
+Received: by bwz11 with SMTP id 11so716080bwz.19
+        for <linux-nfs@vger.kernel.org>; Sun, 06 Jun 2010 04:11:24 -0700 (PDT)
+In-Reply-To: <20100603172210.GG24994@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Jun. 03, 2010, 20:22 +0300, "J. Bruce Fields" <bfields@fieldses.org> wrote:
+> On Wed, Jun 02, 2010 at 12:55:33PM -0700, Marc Eshel wrote:
+>> Meeting on Thursday 06/03/10 at 9:30 AM pacific time (12:30 PM UMICH time)
+> 
+> Rough notes (more distracted than usual, apologies):
+> 
+> 
+> Rough agenda.  Note Benny and Boaz will miss this one:
 
---=-CoEYm119EEbUxDHKJKY7
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
+Actually, not this one (prob. cut'n'pase typo?)
+[And correcting mailing list on the Cc]
 
-On Thu, 2010-06-03 at 17:08 -0400, Chuck Lever wrote:
-> On 05/24/10 11:22 AM, Chuck Lever wrote:
-[...]
-> > We can probably remove the reverse mapping constraint for presentation
-> > addresses. A simple fix might be to change statd_canonical_name() from:
-> >
-> > freeaddrinfo(ai);
-> > if (!result)
-> > return NULL;
-> >
-> > to
-> >
-> > freeaddrinfo(ai);
-> > if (!result)
-> > return strdup(hostname);
-> >
-> > Let me know if this works.
->=20
-> Any update?  I have a patch ready for nfs-utils to fix this regression,=
-=20
-> but I need confirmation that it addresses your problem.
+Benny
 
-Steven originally had this problem, not me.  Steven, do you need me to
-build a new package with this change?
-
-Ben.
-
---=20
-Ben Hutchings
-Once a job is fouled up, anything done to improve it makes it worse.
-
---=-CoEYm119EEbUxDHKJKY7
-Content-Type: application/pgp-signature; name="signature.asc"
-Content-Description: This is a digitally signed message part
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.10 (GNU/Linux)
-
-iQIVAwUATAqzxue/yOyVhhEJAQKD6hAAtT3I2egWDRSipPtRbHjIjg7Xv/8Oa0q9
-QIsjuwtMScBTcaI6OmlzBiDsy3PTQFSXsWuLfz1vwqSZXKzTkYt3jHDT/M9znfXG
-Q1hnOxUlOqliO938VsOxYaJ+1DTsIe997BLruJO59LN8LwwcVHe85Y/Nzh86COkC
-+lidQ/GCYryESJW5HE5k+uPEE4AGTDplhHIJ+gIsD67QqnjVszU7XE6RCdr9fMJ/
-eqcXJFhMspXGws60LwBR/ZnQy/mqCaDJmgyylS09BuiX/efuIiG8+XTLyfCfbqhY
-U9mK2rwJJyWL8KTJeSKKvoxX9XSP9JuakKzunfj3pr5iZs2er3pOUJtvNSIA7wrP
-FWiQBzKCx0xeH9LPeEgIJoxjVJ8zG8ZC6BpYqxxIBTVDXiPPBFksXwVbwEXG6Ud1
-M/eomF91ODKsuTl7wYW2l971JkHfXSNh6kFu6baN4rMsujLXbyTlu81WhafBySST
-dFFlW0UT2d6rC8gBrwhKtbxzNGk94XwCt6pfhbSJ0CSWqTnHgrPEFJTOT14Pr++r
-LAMSO/9tfrU17DVArti1SfBWJzDQ9ViLeZCmkfbkMuvT3couXLTPBiqdcxHEly27
-qN4K0CDhyFIaNbWEHE/mydqBAjmCQKiksXSKXoyGOUdn73EvsF8pPvsMGObJY/Va
-opOsfosXX9c=
-=sd+m
------END PGP SIGNATURE-----
-
---=-CoEYm119EEbUxDHKJKY7--
+> 
+> 1. upstream status/merge plans (trond, bfields)
+> 	- 2.6.34 released, 2.6.35 merge window come and gone, 
+> 	- That means 2.6.35 is now for (certain) bug fixes only, new
+> 	  development will be queued for 2.6.36.
+> 	- I've started a for-2.6.36 branch for the server, just small
+> 	  bugfixes so far.
+> 	- (Trond absent).
+> 
+> 2. State of pNFS tree (bhalevy)
+> 	- new 2.6.34 and 2.6.33 versions released.  Hoping to leave
+> 	  2.6.33 only now.
+> 
+> 3. Client
+> 	3.1. Client pNFS status
+> 		- (missed some.)
+> 		- Andy working on reboot recovery?
+> 		- Boaz: what testing at bthon?
+> 			- Andy: forgetful model
+> 			- Boaz: Note that would require changes to object
+> 			  (and block?) server implementations. (Changes to
+> 			  generic server may be required, e.g. to handle
+> 			  DELAY on layout recall callback?)
+> 	3.2. Client state management design documentation (trond)
+> 		- (Trond absent)
+> 4. Server
+> 	4.1. Todo's for minimal 4.1 server (bfields)
+> 		- have 4.1 pynfs running against linux server, ironing
+> 		  out some problems; our local pynfs changes here:
+> 		  git://linux-nfs.org/~bfields/pynfs41.git
+> 		  (Main problem now is a SERVERFAULT error that prevents
+> 		  running all tests at once.  Another resource
+> 		  accounting bug, maybe?)
+> 		- contemplating porting pynfs server reboot recovery
+> 		  tests from 4.0 pynfs to 4.1 pynfs.
+> 		- hoping to start writing new server 4.1 tests over
+> 		  the next couple weeks.
+> 	4.2. pnfs
+> 		pnfs/gfs2:
+> 		- running basic pnfs/gfs2 performance tests.  Results
+> 		  don't show expected scaling.  Backend appears OK
+> 		  (tested by reading 3 different files from each of 3
+> 		  different gfs2 nodes).  Perhaps gfs2 isn't scaling
+> 		  reads to shared files as expected; test that
+> 		  hypothesis by
+> 		  	a) simultaneous reads from shared files over
+> 			gfs2 (without pnfs in the way)
+> 			b) modifying pnfs/gfs2 to work around the
+> 			problem by handing out single-DS layouts
+> 			(instead of striping).
+> 		- sent in a couple gfs2 patches.  Note one was an
+> 		  "obvious" fix, but may have broken stuff (e.g.
+> 		  getdeviceinfo) that depended on previous buggy
+> 		  behavior?  Will test.
+> 		exofs:
+> 		- Boaz working on results; plans to report in next week
+> 		  or so.
+> 
+> 5. redhat status (steved)
+> 	- continuing to backport client and server code 
+> 	- should have result at bakeathon.
+> 6. bakeathon plans
+> 	- ann arbor: Heard from everyone I expect but EMC.  I'll try to get
+> 	  out some logistical information next week.
+> 	- boston (Sorin working on hotel information?)
+> 		- (Sorin absent?)
+> 7. new business
+> 8. next meeting
+> 	- next thursday as usual.  (Probably skip thursday after next.)
+> 
+> --b.
+> _______________________________________________
+> NOTE: THIS LIST IS DEPRECATED.  Please use linux-nfs@vger.kernel.org instead.
+> (To subscribe to linux-nfs@vger.kernel.org: send "subscribe linux-nfs" in the body of a message to majordomo-u79uwXL29TaiAVqoAR/hOA@public.gmane.org)
+> 
+> NFSv4 mailing list
+> NFSv4@linux-nfs.org
+> http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4
