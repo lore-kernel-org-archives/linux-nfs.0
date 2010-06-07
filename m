@@ -1,109 +1,78 @@
-From: Alexandros Batsakis <alexandros-4GNroTWusrE@public.gmane.org>
-Subject: Re: [PATCH 0/8] pnfs-submit: forgetful client v2
-Date: Mon, 7 Jun 2010 08:38:11 -0700
-Message-ID: <AANLkTimGBeFC4COLdjxHMkO933216iZ6sRIbFHOhmem1@mail.gmail.com>
-References: <1273078858-1923-1-git-send-email-batsakis@netapp.com>
-	<4C0CB334.1030405@panasas.com>
-	<4C0CB3C6.7070503@panasas.com>
+From: Boaz Harrosh <bharrosh@panasas.com>
+Subject: Re: Performance results with exofs
+Date: Mon, 07 Jun 2010 19:13:31 +0300
+Message-ID: <4C0D1AAB.4070304@panasas.com>
+References: <op.vdxrrgf1unckof@usensfaibisl2e.eng.emc.com> <4C0D195B.8030401@panasas.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: Alexandros Batsakis <batsakis@netapp.com>,
-	linux-nfs@vger.kernel.org, bhalevy@panasas.com
-To: Boaz Harrosh <bharrosh@panasas.com>
+Content-Type: text/plain; charset=UTF-8
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+	NFS list <linux-nfs@vger.kernel.org>
+To: sfaibish <sfaibish@emc.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-vw0-f46.google.com ([209.85.212.46]:41085 "EHLO
-	mail-vw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750867Ab0FGPiV convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 7 Jun 2010 11:38:21 -0400
-Received: by vws17 with SMTP id 17so150703vws.19
-        for <linux-nfs@vger.kernel.org>; Mon, 07 Jun 2010 08:38:20 -0700 (PDT)
-In-Reply-To: <4C0CB3C6.7070503@panasas.com>
+Received: from daytona.panasas.com ([67.152.220.89]:40254 "EHLO
+	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1751893Ab0FGQNd (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 7 Jun 2010 12:13:33 -0400
+In-Reply-To: <4C0D195B.8030401@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Jun 7, 2010 at 1:54 AM, Boaz Harrosh <bharrosh@panasas.com> wro=
-te:
-> On 06/07/2010 11:52 AM, Boaz Harrosh wrote:
->> On 05/05/2010 08:00 PM, Alexandros Batsakis wrote:
->>> This set of patches (2.6.35-rc1) includes a first attempt to implem=
-ent
+On 06/07/2010 07:07 PM, Boaz Harrosh wrote:
+> On 06/07/2010 06:24 PM, sfaibish wrote:
+>> Boaz,
 >>
->> Alexandros what's up with the date of these mails they are all marke=
-d
->> as 5/5/2010. Looks like a bug in git send-email. (Thunderbird gave m=
-e
->> a hard time with that)
+>> You were mentioning some preliminary performance on NFS4.1 and pNFS during
+>> the pNFS call few weeks back. I thought you put them in an email but I  
+>> couldn't
+>> find that email. Could you re-send it to me or summarize the results in a  
+>> new
+>> email for comparison to the block layout performance. Bruce is also  
+>> interested
+>> so I CC him as well. Thanks
 >>
->> Boaz
->
-> The previous set was sent on the 2010_05_17, perhaps it's your machin=
-e
-> then?
->
+>> /Sorin
+>>
+> 
+> I did not yet publish the Document. It's stuck behind my dis-talent for
+> writing and the pnfs bugs de jur.
+> 
+> Basically all machines:
+> - connected by a 1 GBit link.
+> - All clients doing a dd write of 8GB file from /dev/zero
+> - 3of8 is the special raid-groups arrangement of exofs && objlayout
+>   where out of 8 devices each file is striped over 3 devices in a
+>   round robin fashion. (*With a small dirty trick)
+> 
 
-Yeah... the "hardware" clock in my virtual machine gets crazy
-sometimes and I didn't notice.
-Apologies...
-I ll rebase to -rc2 and resend anyway.
+- All tests over an *empty* filesystem.
 
--alexandros
-
+> [single client]
+> 1 - osds 40MB
+> 2 - osds 80MB
+> 4 - osds 114MB (saturation point of the 1 Gbit link)
+> 8 - osds 114MB
+> 
+> [2 clients 8of8 osds]
+> 226 MBs
+> 
+> [4 clients 8of8 osds]
+> 263 MBs
+> 
+> [8 clients 8of8 osds]
+> 252 MBs
+> 
+> [1 clients 3of8 osds]
+> 114 MBs
+> 
+> [2 clients 3of8 osds *]
+> 226 MBs
+> 
+> [4 clients 3of8 osds *]
+> 417 MBs
+> 
+> [8 clients 3of8 osds]
+> 405 MBs
+> 
 > Boaz
->>> the forgetful client model for the pNFS client. The model
->>> is explained is patch 7.
->>> It also includes some minor cleanups in the layout management code
->>> that help to improve the maintanability of the current code.
->>>
->>> Passed cthon tests against the pyNFS server, and against a modified
->>> version of =A0pyNFS server that randomly issues layout recalls afte=
-r opens.
->>>
->>> Alexandros Batsakis (8):
->>> =A0 pnfs-submit: clean struct nfs_inode
->>> =A0 pnfs-submit: clean locking infrastructure
->>> =A0 pnfs-submit: remove lgetcount, lretcount (outstanding
->>> =A0 =A0 LAYOUTGETs/LAYOUTRETUNs)
->>> =A0 pnfs-submit: change stateid to be a union
->>> =A0 pnfs-submit: request whole file layouts only
->>> =A0 pnfs-submit: change layouts list to be similar to the other sta=
-te
->>> =A0 =A0 list management
->>> =A0 pnfs-submit: forgetful client model
->>> =A0 pnfs-submit: support for cb_recall_any (layouts)
->>>
->>> =A0fs/nfs/callback.h =A0 =A0 =A0 =A0 | =A0 =A07 +
->>> =A0fs/nfs/callback_proc.c =A0 =A0| =A0231 +++++++++++++++++++++++++=
-++++---------
->>> =A0fs/nfs/callback_xdr.c =A0 =A0 | =A0 =A02 +-
->>> =A0fs/nfs/client.c =A0 =A0 =A0 =A0 =A0 | =A0 =A02 +-
->>> =A0fs/nfs/delegation.c =A0 =A0 =A0 | =A0 19 ++--
->>> =A0fs/nfs/inode.c =A0 =A0 =A0 =A0 =A0 =A0| =A0 16 ++-
->>> =A0fs/nfs/nfs4_fs.h =A0 =A0 =A0 =A0 =A0| =A0 =A01 +
->>> =A0fs/nfs/nfs4proc.c =A0 =A0 =A0 =A0 | =A0 46 +++++---
->>> =A0fs/nfs/nfs4state.c =A0 =A0 =A0 =A0| =A0 =A04 +-
->>> =A0fs/nfs/nfs4xdr.c =A0 =A0 =A0 =A0 =A0| =A0 38 ++++---
->>> =A0fs/nfs/pnfs.c =A0 =A0 =A0 =A0 =A0 =A0 | =A0276 +++++++++++++++++=
-++++------------------------
->>> =A0fs/nfs/pnfs.h =A0 =A0 =A0 =A0 =A0 =A0 | =A0 =A03 +-
->>> =A0fs/nfsd/nfs4callback.c =A0 =A0| =A0 =A01 -
->>> =A0include/linux/nfs4.h =A0 =A0 =A0| =A0 16 +++-
->>> =A0include/linux/nfs4_pnfs.h | =A0 =A02 +-
->>> =A0include/linux/nfs_fs.h =A0 =A0| =A0 28 ++---
->>> =A0include/linux/nfs_fs_sb.h | =A0 =A02 +-
->>> =A017 files changed, 417 insertions(+), 277 deletions(-)
->>>
->>> --
->>> To unsubscribe from this list: send the line "unsubscribe linux-nfs=
-" in
->>> the body of a message to majordomo@vger.kernel.org
->>> More majordomo info at =A0http://vger.kernel.org/majordomo-info.htm=
-l
->>>
->>
->
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" =
-in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at =A0http://vger.kernel.org/majordomo-info.html
->
+> 
+
