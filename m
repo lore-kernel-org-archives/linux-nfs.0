@@ -1,51 +1,38 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-iw0-f174.google.com ([209.85.214.174]:56703 "EHLO
-	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756264Ab0FBCXg (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 1 Jun 2010 22:23:36 -0400
-Received: by iwn6 with SMTP id 6so1073854iwn.19
-        for <linux-nfs@vger.kernel.org>; Tue, 01 Jun 2010 19:23:36 -0700 (PDT)
-Date: Wed, 2 Jun 2010 12:23:35 +1000
-Message-ID: <AANLkTikWHjDT9_GesAqNmj31h-fNFiGMVeiYkk_oiLqd@mail.gmail.com>
-Subject: Issue for list directory contains large number files
-From: hce <webmail.hce@gmail.com>
-To: linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from daytona.panasas.com ([67.152.220.89]:48607 "EHLO
+	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1751767Ab0FGSoB (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 7 Jun 2010 14:44:01 -0400
+Message-ID: <4C0D3DEE.4020504@panasas.com>
+Date: Mon, 07 Jun 2010 21:43:58 +0300
+From: Boaz Harrosh <bharrosh@panasas.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: sfaibish <sfaibish@emc.com>, NFS list <linux-nfs@vger.kernel.org>
+Subject: Re: Performance results with exofs
+References: <op.vdxrrgf1unckof@usensfaibisl2e.eng.emc.com> <4C0D195B.8030401@panasas.com> <4C0D1AAB.4070304@panasas.com> <op.vdxxhfqsunckof@usensfaibisl2e.eng.emc.com> <20100607182948.GF25257@fieldses.org>
+In-Reply-To: <20100607182948.GF25257@fieldses.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Hi,
+On 06/07/2010 09:29 PM, J. Bruce Fields wrote:
+>>>> [4 clients 3of8 osds *]
+>>>> 417 MBs
+> 
+> If each osd has a single gigabit interface, and you're striping to 3, of
+> them, isn't that 417/3 == 139 MB/s each?
+> 
+> (Oh, I see: you must be writing to a different file from each client,
+> hence you are using all osd's even if each client is only using 3?)
+> 
 
-When I mounted NFS client to a FUSE filesystem in Linux, it took hours
-to list a directory contains 100 K files. There are following two
-issues:
+Right and that little trick from the previous email ;-)
 
-(1) The readdir returns all file names and file attributes to NFS, but
-despite NFS got the file attributes, it still called getattr for each
-file. Is there any mount option can suppress those getattrs during
-listing directory call?
+Boaz
+> --b.
+> 
+>>>>
+>>>> [8 clients 3of8 osds]
+>>>> 405 MBs
 
-(2) If a directory contains files smaller than 25, the NFS called only
-one readdir, a normal scenario. When a directory contains files larger
-than 25, NFS called multiple readdirs. In fact, between 25 getattrs,
-NFS called another readdir. Every readdir returned NFS the same
-directory content with all file names and file attributes in that
-directory. Not clear if the 25 is a magic number or if 25 is just
-coincident associated to entries, file size, or timing?
-
-If a directory contains 100 K files, NFS called thousands getdirs.
-Each getdir returned NFS the same 100 K file names and file
-attributes. A wired situation where the NFS should only need one
-getdir to list the directory contents on screen, is it correct?
-
-To make sure those problems were not caused from FUSE, I've tried to
-list a directory which contains 100 K files directly from FUSE mount
-point (No NFS client), it indeed only called readdir once, and there
-was no single getattr called after the readdir, a normal behaviour you
-can imagine.
-
-Appreciate any explanations and suggestions of how to resolve this
-issue (mount options?).
-
-Thank you.
