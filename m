@@ -1,88 +1,73 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-out2.uio.no ([129.240.10.58]:52531 "EHLO mail-out2.uio.no"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758602Ab0FRNb3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 18 Jun 2010 09:31:29 -0400
-Subject: Re: Please help: half working NFS / weird permissions issue
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-To: raimund@busy-byte.org
-Cc: linux-nfs@vger.kernel.org
-In-Reply-To: <d5417bd9b9142da098b1c0df06b7a294@localhost>
-References: <d5417bd9b9142da098b1c0df06b7a294@localhost>
-Content-Type: text/plain; charset="UTF-8"
-Date: Fri, 18 Jun 2010 09:31:23 -0400
-Message-ID: <1276867883.3083.8.camel@heimdal.trondhjem.org>
+Received: from daytona.panasas.com ([67.152.220.89]:40482 "EHLO
+	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1752138Ab0FGQH6 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 7 Jun 2010 12:07:58 -0400
+Message-ID: <4C0D195B.8030401@panasas.com>
+Date: Mon, 07 Jun 2010 19:07:55 +0300
+From: Boaz Harrosh <bharrosh@panasas.com>
+To: sfaibish <sfaibish@emc.com>
+CC: "J. Bruce Fields" <bfields@fieldses.org>,
+        NFS list <linux-nfs@vger.kernel.org>
+Subject: Re: Performance results with exofs
+References: <op.vdxrrgf1unckof@usensfaibisl2e.eng.emc.com>
+In-Reply-To: <op.vdxrrgf1unckof@usensfaibisl2e.eng.emc.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Thu, 2010-06-17 at 07:28 +0200, Raimund Eimann wrote:
-> Hi,
+On 06/07/2010 06:24 PM, sfaibish wrote:
+> Boaz,
 > 
-> I've been using NFS on SuSE/openSuSE Linux for 10 years now and know that
-> UID/GID must match the server to have the same permissions on the NFS
-> client box.
+> You were mentioning some preliminary performance on NFS4.1 and pNFS during
+> the pNFS call few weeks back. I thought you put them in an email but I  
+> couldn't
+> find that email. Could you re-send it to me or summarize the results in a  
+> new
+> email for comparison to the block layout performance. Bruce is also  
+> interested
+> so I CC him as well. Thanks
 > 
-> I've exported ~10 directories on the server. When the client box still ran
-> openSuSE 11.2, everything was ok.
+> /Sorin
 > 
-> Recently, I installed the client with Ubuntu 10.04 64 bit, and now NFS is
-> partly broken, without making any changes to the server:
-> 
-> * I'm running openLDAP to distribute user information, so UIDs and GIDs
-> are identical on both the client and the server.
-> 
-> * for certain groups, I get permission problems, for others everything is
-> fine:
-> 
->   * I have a openLDAP-provided group bbusers which all users belong to.
-> Home dir perms are <username>:bbusers with either 750 of even 700
-> permissions on most subdirectoies. No problems here.
-> 
->   * I have another groups provided by openLDAP called bbpcit_p and
-> bbpict_r and some directories that uses these groups on an NFS export
-> mounted on the client:
-> 
->     raimund@nfsclient:/nfs/p$ l -d Garten Scans
->     drwxr-x--- 3 root bbpict_p 36864 2009-09-13 18:46 Garten/
->     drwxr-x--- 9 root bbpict_r  4096 2008-12-04 21:36 Scans/
-> 
->     Numeric UIDs/GIDs here:
-> 
->     raimund@jupiter:/nfs/p$ l -dn Garten Scans
->     drwxr-x--- 3 0 1017 36864 2009-09-13 18:46 Garten/
->     drwxr-x--- 9 0 1007  4096 2008-12-04 21:36 Scans/
-> 
->     I can "cd Scans" without problems, but I can't "cd Garten", I get
-> "permission denied" If I try the latter. I am a member of both groups:
-> 
->     raimund@jupiter:/nfs/p$ id | tr "," "\n" |grep bbpict_
->     1007(bbpict_r)
->     1017(bbpict_p)
-> 
->   * I am sure this is an NFS problem, because when I create directories
-> with the same permissions/groups an a local filesystem, everything works
-> just fine. When I SSH into the server I can enter the directories just fine
-> as well.
-> 
->   * If I do a "sg bbict_p", my default group changes from bbusers
-> (GID=1000) to bbpict_p. After this procedure I can "cd Garten".
-> 
->   * Could it be that the NFS-client somehow ignores higher GIDs? Groups
-> with GIDs>=1012 seem to suffer from this problem more often, but I haven't
-> tested them all. Which config file might contain restrictions like this?
-> 
-> I am pretty much out of ideas on this problem. I would *greatly*
-> appreciate hints on how to solve it. Please, NFS-experts, enlighten me!
 
-The Sun RPC protocol does not support sending more than 16 groups over
-the wire, so if 'id -G' shows more than 16 entries, you are probably
-going to have issues.
+I did not yet publish the Document. It's stuck behind my dis-talent for
+writing and the pnfs bugs de jur.
 
-The Linux NFS server has a workaround: if you use the '-g' or
-'--manage-gids' argument to mountd, then the server will fill in the
-missing groups by looking up your uid in its copy of /etc/passwd.
+Basically all machines:
+- connected by a 1 GBit link.
+- All clients doing a dd write of 8GB file from /dev/zero
+- 3of8 is the special raid-groups arrangement of exofs && objlayout
+  where out of 8 devices each file is striped over 3 devices in a
+  round robin fashion. (*With a small dirty trick)
 
-Cheers
-  Trond
+[single client]
+1 - osds 40MB
+2 - osds 80MB
+4 - osds 114MB (saturation point of the 1 Gbit link)
+8 - osds 114MB
+
+[2 clients 8of8 osds]
+226 MBs
+
+[4 clients 8of8 osds]
+263 MBs
+
+[8 clients 8of8 osds]
+252 MBs
+
+[1 clients 3of8 osds]
+114 MBs
+
+[2 clients 3of8 osds *]
+226 MBs
+
+[4 clients 3of8 osds *]
+417 MBs
+
+[8 clients 3of8 osds]
+405 MBs
+
+Boaz
 
