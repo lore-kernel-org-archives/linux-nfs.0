@@ -1,78 +1,42 @@
 From: Boaz Harrosh <bharrosh@panasas.com>
-Subject: Re: [PATCH 0/8] pnfs-submit: forgetful client v2
-Date: Mon, 07 Jun 2010 11:54:30 +0300
-Message-ID: <4C0CB3C6.7070503@panasas.com>
-References: <1273078858-1923-1-git-send-email-batsakis@netapp.com> <4C0CB334.1030405@panasas.com>
+Subject: help: return_layout status: -10025 - NFS4ERR_BAD_STATEID
+Date: Mon, 07 Jun 2010 14:51:13 +0300
+Message-ID: <4C0CDD31.2050507@panasas.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
-Cc: linux-nfs@vger.kernel.org, bhalevy@panasas.com
-To: Alexandros Batsakis <batsakis@netapp.com>
+To: Benny Halevy <bhalevy@panasas.com>,
+	NFS list <linux-nfs@vger.kernel.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:49054 "EHLO
+Received: from daytona.panasas.com ([67.152.220.89]:23336 "EHLO
 	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1751521Ab0FGIyc (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 7 Jun 2010 04:54:32 -0400
-In-Reply-To: <4C0CB334.1030405@panasas.com>
+	with ESMTP id S1752239Ab0FGLvQ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 7 Jun 2010 07:51:16 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 06/07/2010 11:52 AM, Boaz Harrosh wrote:
-> On 05/05/2010 08:00 PM, Alexandros Batsakis wrote:
->> This set of patches (2.6.35-rc1) includes a first attempt to implement 
-> 
-> Alexandros what's up with the date of these mails they are all marked
-> as 5/5/2010. Looks like a bug in git send-email. (Thunderbird gave me
-> a hard time with that)
-> 
-> Boaz
+Benny hi.
 
-The previous set was sent on the 2010_05_17, perhaps it's your machine
-then?
+Only With Panfs. On a pnfs-2.6.33 Kernel after very heavy IO (git clone linux)
+on the client side I get:
+
+Jun  7 14:30:42 tl2 kernel: <-- return_layout status: -10025
+Jun  7 14:30:42 tl2 kernel: <-- _pnfs_return_layout status: -10025
+
+On the server side at the FS level I see a normal:
+Jun  7 14:30:42 tl1 kernel: pan_kernel_fs_client_pnfs_layout_return: Begin I-xD02005194137f000f-xGe401b24c-xUb7850bdbb6117413 iomode=3 offs
+et=0x0 length=0xffffffffffffffff cookie=0x0
+Jun  7 14:30:42 tl1 kernel: pan_kernel_fs_client_pnfs_layout_return: released 3 caps
+Jun  7 14:30:42 tl1 kernel: pan_kernel_fs_client_pnfs_layout_return: Return 0
+
+These happen for 5 6 different files that do need return at that particular point.
+(After Read was done and file closed by git)
+
+And then everything at client side *freezes*.
+
+1. Why would the Server return NFS4ERR_BAD_STATEID?
+2. Why would the Client freeze and do nothing after that?
+
+I'll try to run with nfs Server debug on to see what happens. Did Bruce fix
+something like this for 2.6.34? or it was something else?
 
 Boaz
->> the forgetful client model for the pNFS client. The model 
->> is explained is patch 7.
->> It also includes some minor cleanups in the layout management code 
->> that help to improve the maintanability of the current code.
->>
->> Passed cthon tests against the pyNFS server, and against a modified 
->> version of  pyNFS server that randomly issues layout recalls after opens.
->>
->> Alexandros Batsakis (8):
->>   pnfs-submit: clean struct nfs_inode
->>   pnfs-submit: clean locking infrastructure
->>   pnfs-submit: remove lgetcount, lretcount (outstanding
->>     LAYOUTGETs/LAYOUTRETUNs)
->>   pnfs-submit: change stateid to be a union
->>   pnfs-submit: request whole file layouts only
->>   pnfs-submit: change layouts list to be similar to the other state
->>     list management
->>   pnfs-submit: forgetful client model
->>   pnfs-submit: support for cb_recall_any (layouts)
->>
->>  fs/nfs/callback.h         |    7 +
->>  fs/nfs/callback_proc.c    |  231 +++++++++++++++++++++++++++++---------
->>  fs/nfs/callback_xdr.c     |    2 +-
->>  fs/nfs/client.c           |    2 +-
->>  fs/nfs/delegation.c       |   19 ++--
->>  fs/nfs/inode.c            |   16 ++-
->>  fs/nfs/nfs4_fs.h          |    1 +
->>  fs/nfs/nfs4proc.c         |   46 +++++---
->>  fs/nfs/nfs4state.c        |    4 +-
->>  fs/nfs/nfs4xdr.c          |   38 ++++---
->>  fs/nfs/pnfs.c             |  276 +++++++++++++++++++++------------------------
->>  fs/nfs/pnfs.h             |    3 +-
->>  fs/nfsd/nfs4callback.c    |    1 -
->>  include/linux/nfs4.h      |   16 +++-
->>  include/linux/nfs4_pnfs.h |    2 +-
->>  include/linux/nfs_fs.h    |   28 ++---
->>  include/linux/nfs_fs_sb.h |    2 +-
->>  17 files changed, 417 insertions(+), 277 deletions(-)
->>
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>
-> 
-
