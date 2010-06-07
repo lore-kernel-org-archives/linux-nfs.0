@@ -1,63 +1,49 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from crash-1.cutaway.it ([89.186.66.80]:58936 "EHLO mail.cutaway.it"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1754994Ab0FHQcX convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Jun 2010 12:32:23 -0400
-Received: from mail.cutaway.it (localhost [127.0.0.1])
-	by mail.cutaway.it (Postfix) with ESMTP id C4EA7208052
-	for <linux-nfs@vger.kernel.org>; Tue,  8 Jun 2010 18:24:50 +0200 (CEST)
-Received: from mail.cutaway.it (localhost [127.0.0.1])
-	by mail.cutaway.it (Postfix) with ESMTP id D5E6A20804F
-	for <linux-nfs@vger.kernel.org>; Tue,  8 Jun 2010 18:24:49 +0200 (CEST)
-Received: from [IPv6:::1] (89-96-63-86.ip11.fastwebnet.it [89.96.63.86])
-	by mail.cutaway.it (Postfix) with ESMTPA
-	for <linux-nfs@vger.kernel.org>; Tue,  8 Jun 2010 18:24:49 +0200 (CEST)
-Message-ID: <4C0E6ED0.60200@miamammausalinux.org>
-Date: Tue, 08 Jun 2010 18:24:48 +0200
-From: RaSca <rasca@miamammausalinux.org>
-Reply-To: rasca@miamammausalinux.org
-To: linux-nfs@vger.kernel.org
-Subject: Problem using exportfs in an active-active nfs cluster
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Received: from mail-bw0-f46.google.com ([209.85.214.46]:57123 "EHLO
+	mail-bw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752165Ab0FGFdk (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 7 Jun 2010 01:33:40 -0400
+Received: by bwz11 with SMTP id 11so865490bwz.19
+        for <linux-nfs@vger.kernel.org>; Sun, 06 Jun 2010 22:33:38 -0700 (PDT)
+Message-ID: <4C0C84B0.5010900@panasas.com>
+Date: Mon, 07 Jun 2010 08:33:36 +0300
+From: Benny Halevy <bhalevy@panasas.com>
+To: NFS list <linux-nfs@vger.kernel.org>
+Subject: pnfs-all-2.6.35-rc2-2010-06-06 is out
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Hi all,
-I'm trying to use a resource agent named exportfs for my active-active 
-nfs cluster configuration.
-The resource agent works using the exportfs command. I have an instance 
-of nfs-kernel-server for each node and exportfs dynamically remove or 
-append the export to the node (obviously I've got also a shared storage).
-The problem comes when the export is mounted by a client and this client 
-is writing on it: if the node switches, then the migration fails. The 
-sequence is this one:
+Howdy,
 
-- The resource exportfs stops correctly (the Resource Agent launch 
-exportfs -u)
-- The Filesystem resource tries to unmount the exported filesystem, 
-doing an fuser to see if some processes are locking the fs.
-- fuser doesn't return anything, but the filesystem is still locked. 
-This happens because the kernel process nfsd is locking the FS.
-- The migration fails.
+I've rebased the linux pnfs tree onto 2.6.35 with the tip tagged as
+pnfs-all-2.6.35-rc2-2010-06-06
+Development branches structure remains the same:
+master (2.6.345-rc2)
+		pnfs-submit
+			pnfs
+				pnfs-block
+		pnfsd-files
+			pnfsd
+				spnfs
+					spnfs-block
+				pnfsd-lexp
+					pnfs-submit-all
+						pnfs-all
+							pnfs-obj-all
+								pnfs-exofs-all
+									pnfs-block-all
+										spnfs-all
+											spnfs-block-all
+												pnfs-all-latest
 
-The only way to make thing work again is to restart the 
-nfs-kernel-daemon on the node which the resource reside and then cleanup 
-the resource.
+Let's try to get everything we want to test in the upcoming bakeathon into
+the tree in a decent shape.
 
-Now, after many discussions on the Linux-ha Mailing List, I'm here to 
-ask if this problem is about the exportfs command. Why a filesystem 
-remains locked to the nfsd kernel process even if I (or the resource 
-agent) have done an "exportfs -u" command?
+Cumulative diff against mainline can be generated as usual using:
+$ git diff v2.6.35-rc2 pnfs-all-2.6.35-rc2-2010-06-06
+http://wiki.linux-nfs.org/wiki/index.php/PNFS_Development_Git_tree
+has been updated to reflect the latest tags.
 
-What can else I do to free the exported filesystem? Note that I've tried 
-to mount from the client with "nolock" option and also the exported 
-filesystem is mounted with "noatime".
-
-Thanks a lot,
-
--- 
-RaSca
-Mia Mamma Usa Linux: Niente è impossibile da capire, se lo spieghi bene!
-rasca@miamammausalinux.org
-http://www.miamammausalinux.org
+Benny
