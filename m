@@ -1,34 +1,78 @@
-From: Benny Halevy <bhalevy@panasas.com>
-Subject: pnfs-submit patches for latest
-Date: Mon, 07 Jun 2010 08:42:58 +0300
-Message-ID: <4C0C86E2.80105@panasas.com>
+From: Boaz Harrosh <bharrosh@panasas.com>
+Subject: Re: [PATCH 0/8] pnfs-submit: forgetful client v2
+Date: Mon, 07 Jun 2010 11:54:30 +0300
+Message-ID: <4C0CB3C6.7070503@panasas.com>
+References: <1273078858-1923-1-git-send-email-batsakis@netapp.com> <4C0CB334.1030405@panasas.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: NFS list <linux-nfs@vger.kernel.org>
-To: "William A. (Andy) Adamson" <andros@netapp.com>,
-	Fred Isaman <iisaman@netapp.com>,
-	Alexandros Batsakis <batsakis@netapp.com>,
-	Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
+Content-Type: text/plain; charset=UTF-8
+Cc: linux-nfs@vger.kernel.org, bhalevy@panasas.com
+To: Alexandros Batsakis <batsakis@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-bw0-f46.google.com ([209.85.214.46]:36546 "EHLO
-	mail-bw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751737Ab0FGFnC (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 7 Jun 2010 01:43:02 -0400
-Received: by bwz11 with SMTP id 11so866839bwz.19
-        for <linux-nfs@vger.kernel.org>; Sun, 06 Jun 2010 22:43:01 -0700 (PDT)
+Received: from daytona.panasas.com ([67.152.220.89]:49054 "EHLO
+	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1751521Ab0FGIyc (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 7 Jun 2010 04:54:32 -0400
+In-Reply-To: <4C0CB334.1030405@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I'm not sure what order should we apply your different patchsets so please
-help me out.  There are, if I recall correctly:
-Alexandros' forgetful client patches
-Fred's layoutget patches
-Andy's layoutcommit cleanup
+On 06/07/2010 11:52 AM, Boaz Harrosh wrote:
+> On 05/05/2010 08:00 PM, Alexandros Batsakis wrote:
+>> This set of patches (2.6.35-rc1) includes a first attempt to implement 
+> 
+> Alexandros what's up with the date of these mails they are all marked
+> as 5/5/2010. Looks like a bug in git send-email. (Thunderbird gave me
+> a hard time with that)
+> 
+> Boaz
 
-I'd appreciate if you guys could rebase your patchsets on the
-pnfs-submit branch (in whatever order you think would work) and
-then re-send to the list.
+The previous set was sent on the 2010_05_17, perhaps it's your machine
+then?
 
-Thanks!
+Boaz
+>> the forgetful client model for the pNFS client. The model 
+>> is explained is patch 7.
+>> It also includes some minor cleanups in the layout management code 
+>> that help to improve the maintanability of the current code.
+>>
+>> Passed cthon tests against the pyNFS server, and against a modified 
+>> version of  pyNFS server that randomly issues layout recalls after opens.
+>>
+>> Alexandros Batsakis (8):
+>>   pnfs-submit: clean struct nfs_inode
+>>   pnfs-submit: clean locking infrastructure
+>>   pnfs-submit: remove lgetcount, lretcount (outstanding
+>>     LAYOUTGETs/LAYOUTRETUNs)
+>>   pnfs-submit: change stateid to be a union
+>>   pnfs-submit: request whole file layouts only
+>>   pnfs-submit: change layouts list to be similar to the other state
+>>     list management
+>>   pnfs-submit: forgetful client model
+>>   pnfs-submit: support for cb_recall_any (layouts)
+>>
+>>  fs/nfs/callback.h         |    7 +
+>>  fs/nfs/callback_proc.c    |  231 +++++++++++++++++++++++++++++---------
+>>  fs/nfs/callback_xdr.c     |    2 +-
+>>  fs/nfs/client.c           |    2 +-
+>>  fs/nfs/delegation.c       |   19 ++--
+>>  fs/nfs/inode.c            |   16 ++-
+>>  fs/nfs/nfs4_fs.h          |    1 +
+>>  fs/nfs/nfs4proc.c         |   46 +++++---
+>>  fs/nfs/nfs4state.c        |    4 +-
+>>  fs/nfs/nfs4xdr.c          |   38 ++++---
+>>  fs/nfs/pnfs.c             |  276 +++++++++++++++++++++------------------------
+>>  fs/nfs/pnfs.h             |    3 +-
+>>  fs/nfsd/nfs4callback.c    |    1 -
+>>  include/linux/nfs4.h      |   16 +++-
+>>  include/linux/nfs4_pnfs.h |    2 +-
+>>  include/linux/nfs_fs.h    |   28 ++---
+>>  include/linux/nfs_fs_sb.h |    2 +-
+>>  17 files changed, 417 insertions(+), 277 deletions(-)
+>>
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>
+> 
 
-Benny
