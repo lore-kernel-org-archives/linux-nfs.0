@@ -1,51 +1,89 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH 1/1] nfs-iostat.py: divide by zero with fresh mount
-Date: Mon, 07 Jun 2010 19:12:27 -0400
-Message-ID: <4C0D7CDB.4040105@oracle.com>
-References: <4C06913A.7090608@disney.com> <1275950427-10200-1-git-send-email-kevin.constantine@disneyanimation.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Cc: steved@redhat.com, linux-nfs@vger.kernel.org,
-	Kevin Constantine <Kevin.Constantine-P5ys19MLBK/QT0dZR+AlfA@public.gmane.org>
-To: Kevin Constantine <Kevin.Constantine-FfNkGbSheRGpB8w63BLUukEOCMrvLtNR@public.gmane.org>
+From: Fred Isaman <iisaman@netapp.com>
+Subject: [PATCH 03/24] Revert "pnfs: Enable O_DIRECT read path."
+Date: Tue,  8 Jun 2010 00:19:00 -0400
+Message-ID: <1275970761-31806-4-git-send-email-iisaman@netapp.com>
+References: <1275970761-31806-1-git-send-email-iisaman@netapp.com>
+ <1275970761-31806-2-git-send-email-iisaman@netapp.com>
+ <1275970761-31806-3-git-send-email-iisaman@netapp.com>
+To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:42229 "EHLO
-	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753806Ab0FGXOu (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 7 Jun 2010 19:14:50 -0400
-In-Reply-To: <1275950427-10200-1-git-send-email-kevin.constantine-FfNkGbSheRGpB8w63BLUukEOCMrvLtNR@public.gmane.org>
+Received: from mx2.netapp.com ([216.240.18.37]:4879 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750743Ab0FHETp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 8 Jun 2010 00:19:45 -0400
+Received: from localhost.localdomain (navitha-lxp.hq.netapp.com [10.58.53.227] (may be forged))
+	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id o584JOPs014203
+	for <linux-nfs@vger.kernel.org>; Mon, 7 Jun 2010 21:19:27 -0700 (PDT)
+In-Reply-To: <1275970761-31806-3-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 06/ 7/10 06:40 PM, Kevin Constantine wrote:
-> When an export is freshly mounted, /proc/self/mountstats displays age = 0.
-> This causes nfs-iostat.py to divide by zero throwing an error.  When we
-> have age = 0, other stats are greater than 0, so we'll set age = 1 and
-> print the relevant stats.
->
-> Signed-off-by: Kevin Constantine<kevin.constantine-FfNkGbSheRGpB8w63BLUukEOCMrvLtNR@public.gmane.org>
+This reverts commit fe1dbd120b6a94bbacec205d0a4ae40d36e314b5.
 
-Reviewed-by: Chuck Lever <chuck.lever@oracle.com>
+Signed-off-by: Fred Isaman <iisaman@netapp.com>
+---
+ fs/nfs/direct.c |   26 +-------------------------
+ 1 files changed, 1 insertions(+), 25 deletions(-)
 
-> ---
->   tools/nfs-iostat/nfs-iostat.py |    6 ++++++
->   1 files changed, 6 insertions(+), 0 deletions(-)
->
-> diff --git a/tools/nfs-iostat/nfs-iostat.py b/tools/nfs-iostat/nfs-iostat.py
-> index 2d0b143..1207674 100644
-> --- a/tools/nfs-iostat/nfs-iostat.py
-> +++ b/tools/nfs-iostat/nfs-iostat.py
-> @@ -366,6 +366,12 @@ class DeviceData:
->           sends = float(self.__rpc_data['rpcsends'])
->           if sample_time == 0:
->               sample_time = float(self.__nfs_data['age'])
-> +        #  sample_time could still be zero if the export was just mounted.
-> +        #  Set it to 1 to avoid divide by zero errors in this case since we'll
-> +        #  likely still have relevant mount statistics to show.
-> +        #
-> +        if sample_time == 0:
-> +            sample_time = 1;
->           if sends != 0:
->               backlog = (float(self.__rpc_data['backlogutil']) / sends) / sample_time
->           else:
+diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
+index 1148214..3ef9b0c 100644
+--- a/fs/nfs/direct.c
++++ b/fs/nfs/direct.c
+@@ -56,7 +56,6 @@
+ 
+ #include "internal.h"
+ #include "iostat.h"
+-#include "pnfs.h"
+ 
+ #define NFSDBG_FACILITY		NFSDBG_VFS
+ 
+@@ -329,17 +328,6 @@ static ssize_t nfs_direct_read_schedule_segment(struct nfs_direct_req *dreq,
+ 	unsigned int pgbase;
+ 	int result;
+ 	ssize_t started = 0;
+-	size_t pnfs_stripe_rem = count;
+-	enum pnfs_try_status trypnfs;
+-
+-	/* pnfs_stripe_rem will be set to the remaining bytes in
+-	 * the first stripe_unit (which for standard nfs is count)
+-	 */
+-	pnfs_direct_init_io(inode, ctx, count, pos, 0, &rsize,
+-			    &pnfs_stripe_rem);
+-
+-	dprintk("%s: pos %llu count %Zu wsize %Zu\n",
+-		__func__, pos, count, rsize);
+ 
+ 	do {
+ 		struct nfs_read_data *data;
+@@ -347,12 +335,6 @@ static ssize_t nfs_direct_read_schedule_segment(struct nfs_direct_req *dreq,
+ 
+ 		pgbase = user_addr & ~PAGE_MASK;
+ 		bytes = min(rsize,count);
+-#if defined(CONFIG_NFS_V4_1)
+-		if (pnfs_enabled_sb(NFS_SERVER(inode))) {
+-			bytes = min(bytes, pnfs_stripe_rem);
+-			pnfs_stripe_rem = rsize;
+-		}
+-#endif /* CONFIG_NFS_V4_1 */
+ 
+ 		result = -ENOMEM;
+ 		data = nfs_readdata_alloc(nfs_page_array_len(pgbase, bytes));
+@@ -393,14 +375,8 @@ static ssize_t nfs_direct_read_schedule_segment(struct nfs_direct_req *dreq,
+ 		data->res.eof = 0;
+ 		data->res.count = bytes;
+ 
+-		trypnfs = pnfs_try_to_read_data(data, &nfs_read_direct_ops);
+-		if (trypnfs == PNFS_ATTEMPTED) {
+-			result = pnfs_get_read_status(data);
+-			if (result)
+-				break;
+-		} else if (nfs_direct_read_execute(data, &task_setup_data, &msg)) {
++		if (nfs_direct_read_execute(data, &task_setup_data, &msg))
+ 			break;
+-		}
+ 
+ 		started += bytes;
+ 		user_addr += bytes;
+-- 
+1.6.6.1
 
