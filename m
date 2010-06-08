@@ -1,421 +1,216 @@
 From: Alexandros Batsakis <batsakis@netapp.com>
-Subject: [PATCH 6/7] pnfs-submit: forgetful client (layouts)
-Date: Tue,  8 Jun 2010 15:15:00 -0700
-Message-ID: <1276035301-2019-7-git-send-email-batsakis@netapp.com>
+Subject: [PATCH 2/7] pnfs-submit: remove lgetcount, lretcount
+Date: Tue,  8 Jun 2010 15:14:56 -0700
+Message-ID: <1276035301-2019-3-git-send-email-batsakis@netapp.com>
 References: <1276035301-2019-1-git-send-email-batsakis@netapp.com>
  <1276035301-2019-2-git-send-email-batsakis@netapp.com>
- <1276035301-2019-3-git-send-email-batsakis@netapp.com>
- <1276035301-2019-4-git-send-email-batsakis@netapp.com>
- <1276035301-2019-5-git-send-email-batsakis@netapp.com>
- <1276035301-2019-6-git-send-email-batsakis@netapp.com>
 Cc: bhalevy@panasas.com, Alexandros Batsakis <batsakis@netapp.com>
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:39227 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:30210 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932204Ab0FHWOu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 8 Jun 2010 18:14:50 -0400
-In-Reply-To: <1276035301-2019-6-git-send-email-batsakis@netapp.com>
+	id S932134Ab0FHWOt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 8 Jun 2010 18:14:49 -0400
+In-Reply-To: <1276035301-2019-2-git-send-email-batsakis@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Forgetful client model:
-
-If we receive a CB_LAYOUTRECALL
-        - we spawn a thread to handle the recall
-        (xxx: now only one recall can be active at a time, else NFS4ERR_DELAY)
-        - we check the stateid seqid
-        if it does not match we return NFS4ERR_DELAY
-        - we check for pending I/O
-        if there is we return NFS4ERR_DELAY
-        Else we return NO_MATCHING_LAYOUT.
-        Note that for whole file layouts there is no need to serialize LAYOUTGETs/LAYOUTRETURNs
-For bulk layouts, if there is a layout active, we return NFS4_OK and we start
-cleaning the layouts asynchronously. At the end we send a bulk LAYOUTRETURN.
-Note that there is no need to prevent any new LAYOUTGETs explicitly as the server should reject them.
+This is in order to prepare for the forgetful client. There is no need to explicitly count the number of outstanding layout operations, as the protocol has provision for it (seqid of stateid -- e.g. section 12.5.5.2.1.2). As long as no requests for intersecting layouts are issued LAYOUTGETs/LAYOUTRETURNs can be sent in parallel
 
 Signed-off-by: Alexandros Batsakis <batsakis@netapp.com>
 ---
- fs/nfs/callback_proc.c |  146 ++++++++++++++++++++++++++++++++++--------------
- fs/nfs/nfs4_fs.h       |    1 +
- fs/nfs/pnfs.c          |   70 ++++++++++-------------
- 3 files changed, 136 insertions(+), 81 deletions(-)
+ fs/nfs/nfs4proc.c      |    5 ++---
+ fs/nfs/pnfs.c          |   47 ++++++++++++-----------------------------------
+ fs/nfs/pnfs.h          |    3 +--
+ include/linux/nfs_fs.h |    2 --
+ 4 files changed, 15 insertions(+), 42 deletions(-)
 
-diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
-index 3bae785..abdbf40 100644
---- a/fs/nfs/callback_proc.c
-+++ b/fs/nfs/callback_proc.c
-@@ -129,6 +129,38 @@ int nfs4_validate_delegation_stateid(struct nfs_delegation *delegation, const nf
- 
- #if defined(CONFIG_NFS_V4_1)
- 
-+static bool
-+pnfs_is_next_layout_stateid(const struct pnfs_layout_type *lo,
-+			    const nfs4_stateid stateid)
-+{
-+	int seqlock;
-+	bool res;
-+	u32 oldseqid, newseqid;
-+
-+	do {
-+		seqlock = read_seqbegin(&lo->seqlock);
-+		oldseqid = be32_to_cpu(lo->stateid.u.stateid.seqid);
-+		newseqid = be32_to_cpu(stateid.u.stateid.seqid);
-+		res = !memcmp(lo->stateid.u.stateid.other,
-+			      stateid.u.stateid.other,
-+			      NFS4_STATEID_OTHER_SIZE);
-+		if (res) { /* comparing layout stateids */
-+			if (oldseqid == ~0)
-+				res = (newseqid == 1);
-+			else
-+				res = (newseqid == oldseqid + 1);
-+		} else { /* open stateid */
-+			res = !memcmp(lo->stateid.u.data,
-+				      &zero_stateid,
-+				      NFS4_STATEID_SIZE);
-+			if (res)
-+				res = (newseqid == 1);
-+		}
-+	} while (read_seqretry(&lo->seqlock, seqlock));
-+
-+	return res;
-+}
-+
- /*
-  * Retrieve an inode based on layout recall parameters
-  *
-@@ -191,9 +223,10 @@ static int pnfs_recall_layout(void *data)
- 	struct inode *inode, *ino;
- 	struct nfs_client *clp;
- 	struct cb_pnfs_layoutrecallargs rl;
-+	struct nfs4_pnfs_layoutreturn *lrp;
- 	struct recall_layout_threadargs *args =
- 		(struct recall_layout_threadargs *)data;
--	int status;
-+	int status = 0;
- 
- 	daemonize("nfsv4-layoutreturn");
- 
-@@ -204,47 +237,59 @@ static int pnfs_recall_layout(void *data)
- 	clp = args->clp;
- 	inode = args->inode;
- 	rl = *args->rl;
--	args->result = 0;
--	complete(&args->started);
--	args = NULL;
--	/* Note: args must not be used after this point!!! */
--
--/* FIXME: need barrier here:
--   pause I/O to data servers
--   pause layoutgets
--   drain all outstanding writes to storage devices
--   wait for any outstanding layoutreturns and layoutgets mentioned in
--   cb_sequence.
--   then return layouts, resume after layoutreturns complete
-- */
- 
- 	/* support whole file layouts only */
- 	rl.cbl_seg.offset = 0;
- 	rl.cbl_seg.length = NFS4_MAX_UINT64;
- 
- 	if (rl.cbl_recall_type == RETURN_FILE) {
--		status = pnfs_return_layout(inode, &rl.cbl_seg, &rl.cbl_stateid,
--					    RETURN_FILE, true);
-+		if (pnfs_is_next_layout_stateid(&NFS_I(inode)->layout,
-+						rl.cbl_stateid))
-+			status = pnfs_return_layout(inode, &rl.cbl_seg,
-+						    &rl.cbl_stateid, RETURN_FILE,
-+						    false);
-+		else
-+			status = cpu_to_be32(NFS4ERR_DELAY);
- 		if (status)
- 			dprintk("%s RETURN_FILE error: %d\n", __func__, status);
-+		else
-+			status =  cpu_to_be32(NFS4ERR_NOMATCHING_LAYOUT);
-+		args->result = status;
-+		complete(&args->started);
- 		goto out;
- 	}
- 
--	/* FIXME: This loop is inefficient, running in O(|s_inodes|^2) */
-+	status = cpu_to_be32(NFS4_OK);
-+	args->result = status;
-+	complete(&args->started);
-+	args = NULL;
-+
-+	/* IMPROVEME: This loop is inefficient, running in O(|s_inodes|^2) */
- 	while ((ino = nfs_layoutrecall_find_inode(clp, &rl)) != NULL) {
--		/* XXX need to check status on pnfs_return_layout */
--		pnfs_return_layout(ino, &rl.cbl_seg, NULL, RETURN_FILE, true);
-+		/* FIXME: need to check status on pnfs_return_layout */
-+		pnfs_return_layout(ino, &rl.cbl_seg, NULL, RETURN_FILE, false);
- 		iput(ino);
- 	}
- 
-+	lrp = kzalloc(sizeof(*lrp), GFP_KERNEL);
-+	if (!lrp) {
-+		dprintk("%s: allocation failed. Cannot send last LAYOUTRETURN\n",
-+			__func__);
-+		goto out;
-+	}
-+
- 	/* send final layoutreturn */
--	status = pnfs_return_layout(inode, &rl.cbl_seg, NULL,
--				    rl.cbl_recall_type, true);
--	if (status)
--		printk(KERN_INFO "%s: ignoring pnfs_return_layout status=%d\n",
--				__func__, status);
-+	lrp->args.reclaim = 0;
-+	lrp->args.layout_type = rl.cbl_layout_type;
-+	lrp->args.return_type = rl.cbl_recall_type;
-+	lrp->args.lseg = rl.cbl_seg;
-+	lrp->args.inode = inode;
-+	lrp->lo = NULL;
-+	pnfs4_proc_layoutreturn(lrp, true);
-+
- out:
--	iput(inode);
-+	clear_bit(NFS4CLNT_LAYOUT_RECALL, &clp->cl_state);
-+	nfs_put_client(clp);
- 	module_put_and_exit(0);
- 	dprintk("%s: exit status %d\n", __func__, 0);
- 	return 0;
-@@ -262,15 +307,18 @@ static int pnfs_async_return_layout(struct nfs_client *clp, struct inode *inode,
- 		.rl = rl,
- 	};
- 	struct task_struct *t;
--	int status;
--
--	/* should have returned NFS4ERR_NOMATCHING_LAYOUT... */
--	BUG_ON(inode == NULL);
-+	int status = -EAGAIN;
- 
- 	dprintk("%s: -->\n", __func__);
- 
-+	/* FIXME: do not allow two concurrent layout recalls */
-+	if (test_and_set_bit(NFS4CLNT_LAYOUT_RECALL, &clp->cl_state))
-+		return status;
-+
- 	init_completion(&data.started);
- 	__module_get(THIS_MODULE);
-+	if (!atomic_inc_not_zero(&clp->cl_count))
-+		goto out_put_no_client;
- 
- 	t = kthread_run(pnfs_recall_layout, &data, "%s", "pnfs_recall_layout");
- 	if (IS_ERR(t)) {
-@@ -284,6 +332,9 @@ static int pnfs_async_return_layout(struct nfs_client *clp, struct inode *inode,
- 	wait_for_completion(&data.started);
- 	return data.result;
- out_module_put:
-+	nfs_put_client(clp);
-+out_put_no_client:
-+	clear_bit(NFS4CLNT_LAYOUT_RECALL, &clp->cl_state);
- 	module_put(THIS_MODULE);
- 	return status;
- }
-@@ -294,35 +345,46 @@ __be32 pnfs_cb_layoutrecall(struct cb_pnfs_layoutrecallargs *args,
- 	struct nfs_client *clp;
- 	struct inode *inode = NULL;
- 	__be32 res;
-+	int status;
- 	unsigned int num_client = 0;
- 
- 	dprintk("%s: -->\n", __func__);
- 
--	res = htonl(NFS4ERR_INVAL);
--	clp = nfs_find_client(args->cbl_addr, 4);
-+	res = cpu_to_be32(NFS4ERR_OP_NOT_IN_SESSION);
-+	clp  = nfs_find_client(args->cbl_addr, 4);
- 	if (clp == NULL) {
- 		dprintk("%s: no client for addr %u.%u.%u.%u\n",
- 			__func__, NIPQUAD(args->cbl_addr));
- 		goto out;
- 	}
- 
--	res = htonl(NFS4ERR_NOMATCHING_LAYOUT);
-+	res = cpu_to_be32(NFS4ERR_NOMATCHING_LAYOUT);
- 	do {
- 		struct nfs_client *prev = clp;
- 		num_client++;
--		inode = nfs_layoutrecall_find_inode(clp, args);
--		if (inode != NULL) {
--			if (PNFS_LD(&NFS_I(inode)->layout)->id ==
--			    args->cbl_layout_type) {
--				/* Set up a helper thread to actually
--				 * return the delegation */
--				res = pnfs_async_return_layout(clp, inode, args);
--				if (res != 0)
--					res = htonl(NFS4ERR_RESOURCE);
--				break;
-+		/* the callback must come from the MDS personality */
-+		if (!(clp->cl_exchange_flags & EXCHGID4_FLAG_USE_PNFS_MDS))
-+			goto loop;
-+		if (args->cbl_recall_type == RETURN_FILE) {
-+			inode = nfs_layoutrecall_find_inode(clp, args);
-+			if (inode != NULL) {
-+				status = pnfs_async_return_layout(clp, inode,
-+								  args);
-+				if (status)
-+					res = cpu_to_be32(NFS4ERR_DELAY);
-+				iput(inode);
- 			}
-+		} else { /* _ALL or _FSID */
-+			/* we need the inode to get the nfs_server struct */
-+			inode = nfs_layoutrecall_find_inode(clp, args);
-+			if (!inode)
-+				goto loop;
-+			status = pnfs_async_return_layout(clp, inode, args);
-+			if (status)
-+				res = cpu_to_be32(NFS4ERR_DELAY);
- 			iput(inode);
- 		}
-+loop:
- 		clp = nfs_find_client_next(prev);
- 		nfs_put_client(prev);
- 	} while (clp != NULL);
-diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
-index ebc9b3b..2f7974b 100644
---- a/fs/nfs/nfs4_fs.h
-+++ b/fs/nfs/nfs4_fs.h
-@@ -47,6 +47,7 @@ enum nfs4_client_state {
- 	NFS4CLNT_SESSION_RESET,
- 	NFS4CLNT_SESSION_DRAINING,
- 	NFS4CLNT_RECALL_SLOT,
-+	NFS4CLNT_LAYOUT_RECALL,
- };
- 
- /*
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index bdd0d19..42c46d8 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -687,6 +687,8 @@ return_layout(struct inode *ino, struct nfs4_pnfs_layout_segment *range,
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index f962f92..bf854fe 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -5540,7 +5540,7 @@ static void nfs4_pnfs_layoutget_release(void *calldata)
+ 	struct nfs4_pnfs_layoutget *lgp = calldata;
  
  	dprintk("--> %s\n", __func__);
+-	pnfs_layout_release(lgp->lo, &lgp->lo->lgetcount, NULL);
++	pnfs_layout_release(lgp->lo, NULL);
+ 	if (lgp->res.layout.buf != NULL)
+ 		free_page((unsigned long) lgp->res.layout.buf);
+ 	kfree(calldata);
+@@ -5761,8 +5761,7 @@ static void nfs4_pnfs_layoutreturn_release(void *calldata)
+ 	if (lrp->lo && (lrp->args.return_type == RETURN_FILE)) {
+ 		if (!lrp->res.lrs_present)
+ 			pnfs_set_layout_stateid(lrp->lo, &zero_stateid);
+-		pnfs_layout_release(lrp->lo, &lrp->lo->lretcount,
+-				    &lrp->args.lseg);
++		pnfs_layout_release(lrp->lo, &lrp->args.lseg);
+ 	}
+ 	kfree(calldata);
+ 	dprintk("<-- %s\n", __func__);
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 8620f68..4e35ad9 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -361,7 +361,7 @@ put_unlock_current_layout(struct pnfs_layout_type *lo)
+ }
  
-+	BUG_ON(type != RETURN_FILE);
+ void
+-pnfs_layout_release(struct pnfs_layout_type *lo, atomic_t *count,
++pnfs_layout_release(struct pnfs_layout_type *lo,
+ 		    struct nfs4_pnfs_layout_segment *range)
+ {
+ 	struct nfs_inode *nfsi = PNFS_NFS_INODE(lo);
+@@ -369,7 +369,6 @@ pnfs_layout_release(struct pnfs_layout_type *lo, atomic_t *count,
+ 	spin_lock(&nfsi->lo_lock);
+ 	if (range)
+ 		pnfs_free_layout(lo, range);
+-	atomic_dec(count);
+ 	put_unlock_current_layout(lo);
+ 	wake_up_all(&nfsi->lo_waitq);
+ }
+@@ -552,7 +551,7 @@ get_layout(struct inode *ino,
+ 
+ 	lgp = kzalloc(sizeof(*lgp), GFP_KERNEL);
+ 	if (lgp == NULL) {
+-		pnfs_layout_release(lo, &lo->lgetcount, NULL);
++		pnfs_layout_release(lo, NULL);
+ 		return -ENOMEM;
+ 	}
+ 	lgp->lo = lo;
+@@ -626,6 +625,13 @@ has_layout_to_return(struct pnfs_layout_type *lo,
+ 	return out;
+ }
+ 
++static inline bool
++_pnfs_can_return_lseg(struct pnfs_layout_segment *lseg)
++{
++	return atomic_read(&lseg->kref.refcount) == 1;
++}
 +
++
+ static void
+ pnfs_free_layout(struct pnfs_layout_type *lo,
+ 		 struct nfs4_pnfs_layout_segment *range)
+@@ -636,7 +642,8 @@ pnfs_free_layout(struct pnfs_layout_type *lo,
+ 
+ 	BUG_ON_UNLOCKED_LO(lo);
+ 	list_for_each_entry_safe (lseg, next, &lo->segs, fi_list) {
+-		if (!should_free_lseg(lseg, range))
++		if (!should_free_lseg(lseg, range) ||
++		    !_pnfs_can_return_lseg(lseg))
+ 			continue;
+ 		dprintk("%s: freeing lseg %p iomode %d "
+ 			"offset %llu length %llu\n", __func__,
+@@ -649,12 +656,6 @@ pnfs_free_layout(struct pnfs_layout_type *lo,
+ 	dprintk("%s:Return\n", __func__);
+ }
+ 
+-static inline bool
+-_pnfs_can_return_lseg(struct pnfs_layout_segment *lseg)
+-{
+-	return atomic_read(&lseg->kref.refcount) == 1;
+-}
+-
+ static bool
+ pnfs_return_layout_barrier(struct nfs_inode *nfsi,
+ 			   struct nfs4_pnfs_layout_segment *range)
+@@ -674,10 +675,7 @@ pnfs_return_layout_barrier(struct nfs_inode *nfsi,
+ 			ret = true;
+ 		}
+ 	}
+-	if (atomic_read(&nfsi->layout.lgetcount))
+-		ret = true;
+ 	spin_unlock(&nfsi->lo_lock);
+-
+ 	dprintk("%s:Return %d\n", __func__, ret);
+ 	return ret;
+ }
+@@ -697,7 +695,7 @@ return_layout(struct inode *ino, struct nfs4_pnfs_layout_segment *range,
  	lrp = kzalloc(sizeof(*lrp), GFP_KERNEL);
  	if (lrp == NULL) {
  		if (lo && (type == RETURN_FILE))
-@@ -723,13 +725,11 @@ _pnfs_return_layout(struct inode *ino, struct nfs4_pnfs_layout_segment *range,
- 
- 	dprintk("--> %s type %d\n", __func__, type);
- 
--	if (range)
--		arg = *range;
--	else {
--		arg.iomode = IOMODE_ANY;
--		arg.offset = 0;
--		arg.length = NFS4_MAX_UINT64;
--	}
-+
-+	arg.iomode = range ? range->iomode : IOMODE_ANY;
-+	arg.offset = 0;
-+	arg.length = NFS4_MAX_UINT64;
-+
- 	if (type == RETURN_FILE) {
- 		lo = get_lock_current_layout(nfsi);
- 		if (lo && !has_layout_to_return(lo, &arg)) {
-@@ -738,11 +738,7 @@ _pnfs_return_layout(struct inode *ino, struct nfs4_pnfs_layout_segment *range,
- 		}
- 		if (!lo) {
- 			dprintk("%s: no layout segments to return\n", __func__);
--			/* must send the LAYOUTRETURN in response to recall */
--			if (stateid)
--				goto send_return;
--			else
--				goto out;
-+			goto out;
+-			pnfs_layout_release(lo, &lo->lretcount, NULL);
++			pnfs_layout_release(lo, NULL);
+ 		goto out;
+ 	}
+ 	lrp->args.reclaim = 0;
+@@ -752,9 +750,6 @@ _pnfs_return_layout(struct inode *ino, struct nfs4_pnfs_layout_segment *range,
+ 				goto out;
  		}
  
+-		/* Matching dec is done in .rpc_release (on non-error paths) */
+-		atomic_inc(&lo->lretcount);
+-
  		/* unlock w/o put rebalanced by eventual call to
-@@ -751,12 +747,23 @@ _pnfs_return_layout(struct inode *ino, struct nfs4_pnfs_layout_segment *range,
- 		spin_unlock(&nfsi->lo_lock);
+ 		 * pnfs_layout_release
+ 		 */
+@@ -879,8 +874,6 @@ alloc_init_layout(struct inode *ino)
+ 	seqlock_init(&lo->seqlock);
+ 	memset(&lo->stateid, 0, NFS4_STATEID_SIZE);
+ 	lo->refcount = 1;
+-	atomic_set(&lo->lgetcount, 0);
+-	atomic_set(&lo->lretcount, 0);
+ 	INIT_LIST_HEAD(&lo->segs);
+ 	lo->roc_iomode = 0;
+ 	return lo;
+@@ -1020,19 +1013,6 @@ pnfs_has_layout(struct pnfs_layout_type *lo,
+ 	return ret;
+ }
  
- 		if (pnfs_return_layout_barrier(nfsi, &arg)) {
-+			if (stateid) { /* callback */
-+				status = -EAGAIN;
-+				spin_lock(&nfsi->lo_lock);
-+				put_unlock_current_layout(lo);
-+				goto out;
-+			}
- 			dprintk("%s: waiting\n", __func__);
- 			wait_event(nfsi->lo_waitq,
--				!pnfs_return_layout_barrier(nfsi, &arg));
-+				   !pnfs_return_layout_barrier(nfsi, &arg));
- 		}
- 
- 		if (layoutcommit_needed(nfsi)) {
-+			if (stateid && !wait) { /* callback */
-+				dprintk("%s: layoutcommit pending\n", __func__);
-+				status = -EAGAIN;
-+				goto out;
-+			}
- 			status = pnfs_layoutcommit_inode(ino, wait);
- 			if (status) {
- 				dprintk("%s: layoutcommit failed, status=%d. "
-@@ -765,9 +772,13 @@ _pnfs_return_layout(struct inode *ino, struct nfs4_pnfs_layout_segment *range,
- 				status = 0;
- 			}
- 		}
-+
-+		if (stateid && wait)
-+			status = return_layout(ino, &arg, stateid, type,
-+					       lo, wait);
-+		else
-+			pnfs_layout_release(lo, &arg);
- 	}
--send_return:
--	status = return_layout(ino, &arg, stateid, type, lo, wait);
- out:
- 	dprintk("<-- %s status: %d\n", __func__, status);
- 	return status;
-@@ -1022,7 +1033,7 @@ pnfs_update_layout(struct inode *ino,
- 	struct nfs4_pnfs_layout_segment arg = {
- 		.iomode = iomode,
- 		.offset = 0,
--		.length = ~0
-+		.length = NFS4_MAX_UINT64,
- 	};
- 	struct nfs_inode *nfsi = NFS_I(ino);
- 	struct pnfs_layout_type *lo;
-@@ -1041,31 +1052,12 @@ pnfs_update_layout(struct inode *ino,
- 	/* Check to see if the layout for the given range already exists */
- 	lseg = pnfs_has_layout(lo, &arg, take_ref, !take_ref);
- 	if (lseg && !lseg->valid) {
+-/* Called with spin lock held */
+-void drain_layoutreturns(struct pnfs_layout_type *lo)
+-{
+-	while (atomic_read(&lo->lretcount)) {
+-		struct nfs_inode *nfsi = PNFS_NFS_INODE(lo);
+-
 -		spin_unlock(&nfsi->lo_lock);
- 		if (take_ref)
- 			put_lseg(lseg);
--		for (;;) {
--			prepare_to_wait(&nfsi->lo_waitq, &__wait,
--					TASK_KILLABLE);
--			spin_lock(&nfsi->lo_lock);
--			lseg = pnfs_has_layout(lo, &arg, take_ref, !take_ref);
--			if (!lseg || lseg->valid)
--				break;
--			dprintk("%s: invalid lseg %p ref %d\n", __func__,
--				lseg, atomic_read(&lseg->kref.refcount)-1);
--			if (take_ref)
--				put_lseg(lseg);
--			if (signal_pending(current)) {
--				lseg = NULL;
--				result = -ERESTARTSYS;
--				break;
--			}
--			spin_unlock(&nfsi->lo_lock);
--			schedule();
--		}
--		finish_wait(&nfsi->lo_waitq, &__wait);
--		if (result)
--			goto out_put;
-+
-+		/* someone is cleaning the layout */
-+		result = -EAGAIN;
-+		goto out_put;
+-		dprintk("%s: waiting\n", __func__);
+-		wait_event(nfsi->lo_waitq, (atomic_read(&lo->lretcount) == 0));
+-		spin_lock(&nfsi->lo_lock);
+-	}
+-}
+-
+ /* Update the file's layout for the given range and iomode.
+  * Layout is retreived from the server if needed.
+  * If lsegpp is given, the appropriate layout segment is referenced and
+@@ -1120,9 +1100,6 @@ pnfs_update_layout(struct inode *ino,
+ 		}
  	}
  
- 	if (lseg) {
+-	drain_layoutreturns(lo);
+-	/* Matching dec is done in .rpc_release (on non-error paths) */
+-	atomic_inc(&lo->lgetcount);
+ 	/* Lose lock, but not reference, match this with pnfs_layout_release */
+ 	spin_unlock(&nfsi->lo_lock);
+ 
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index c89be78..a71145e 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -61,8 +61,7 @@ void pnfs_update_layout_commit(struct inode *, struct list_head *, pgoff_t, unsi
+ ssize_t pnfs_file_write(struct file *, const char __user *, size_t, loff_t *);
+ void pnfs_get_layout_done(struct nfs4_pnfs_layoutget *, int rpc_status);
+ int pnfs_layout_process(struct nfs4_pnfs_layoutget *lgp);
+-void pnfs_layout_release(struct pnfs_layout_type *, atomic_t *,
+-			 struct nfs4_pnfs_layout_segment *range);
++void pnfs_layout_release(struct pnfs_layout_type *, struct nfs4_pnfs_layout_segment *range);
+ void pnfs_set_layout_stateid(struct pnfs_layout_type *lo,
+ 			     const nfs4_stateid *stateid);
+ void pnfs_destroy_layout(struct nfs_inode *);
+diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
+index 45846c5..f6e3e20 100644
+--- a/include/linux/nfs_fs.h
++++ b/include/linux/nfs_fs.h
+@@ -99,8 +99,6 @@ struct posix_acl;
+ 
+ struct pnfs_layout_type {
+ 	int refcount;
+-	atomic_t lretcount;		/* Layoutreturns outstanding */
+-	atomic_t lgetcount;		/* Layoutgets outstanding */
+ 	struct list_head segs;		/* layout segments list */
+ 	int roc_iomode;			/* iomode to return on close, 0=none */
+ 	seqlock_t seqlock;		/* Protects the stateid */
 -- 
 1.6.2.5
 
