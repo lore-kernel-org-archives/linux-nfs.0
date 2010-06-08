@@ -1,94 +1,62 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:30234 "EHLO
-	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1759186Ab0FJOGj (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Jun 2010 10:06:39 -0400
-Message-ID: <4C10F16D.1050408@panasas.com>
-Date: Thu, 10 Jun 2010 17:06:37 +0300
+Received: from mail-fx0-f46.google.com ([209.85.161.46]:33343 "EHLO
+	mail-fx0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752935Ab0FHGy6 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Jun 2010 02:54:58 -0400
+Received: by fxm8 with SMTP id 8so2604331fxm.19
+        for <linux-nfs@vger.kernel.org>; Mon, 07 Jun 2010 23:54:56 -0700 (PDT)
+Message-ID: <4C0DE93D.2050503@panasas.com>
+Date: Tue, 08 Jun 2010 09:54:53 +0300
 From: Benny Halevy <bhalevy@panasas.com>
 To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: linux-nfs@vger.kernel.org, eanderle@umich.edu
-Subject: Re: [PATCH] Fixed getdevinfo() and dlm_ino_hash() to search for	the
- correct disk name.
-References: <20100610133336.GB24596@fieldses.org> <20100610133555.GC24596@fieldses.org>
-In-Reply-To: <20100610133555.GC24596@fieldses.org>
+CC: Boaz Harrosh <bharrosh@panasas.com>, sfaibish <sfaibish@emc.com>,
+        NFS list <linux-nfs@vger.kernel.org>
+Subject: Re: Performance results with exofs
+References: <op.vdxrrgf1unckof@usensfaibisl2e.eng.emc.com> <4C0D195B.8030401@panasas.com> <4C0D1AAB.4070304@panasas.com> <op.vdxxhfqsunckof@usensfaibisl2e.eng.emc.com> <20100607182948.GF25257@fieldses.org> <4C0D3D59.4000305@panasas.com> <20100607184902.GI25257@fieldses.org>
+In-Reply-To: <20100607184902.GI25257@fieldses.org>
 Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Jun. 10, 2010, 16:35 +0300, "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> On Thu, Jun 10, 2010 at 09:33:37AM -0400, bfields wrote:
->> The patch "pnfsd: fix test in nfsd4_find_pnfs_dlm_device" was obviously
->> correct; before that patch, nfsd4_find_pnfs_dlm_device() returned the
->> first device which did *not* match, instead of the first device which
->> did.
+On 2010-06-07 21:49, J. Bruce Fields wrote:
+> On Mon, Jun 07, 2010 at 09:41:29PM +0300, Boaz Harrosh wrote:
+>> On 06/07/2010 09:29 PM, J. Bruce Fields wrote:
+>>>>> On 06/07/2010 07:07 PM, Boaz Harrosh wrote:
+>>>>>> I did not yet publish the Document. It's stuck behind my dis-talent for
+>>>>>> writing and the pnfs bugs de jur.
+>>>
+>>> Untalented writing we can fix, as long as the details are there!
+>>>
+>>>>>>
+>>>>>> Basically all machines:
+>>>>>> - connected by a 1 GBit link.
+>>>>>> - All clients doing a dd write of 8GB file from /dev/zero
+>>>>>> - 3of8 is the special raid-groups arrangement of exofs && objlayout
+>>>>>>   where out of 8 devices each file is striped over 3 devices in a
+>>>>>>   round robin fashion. (*With a small dirty trick)
+>>>
+>>> Random stupid questions:
+>>>
+>>> 	- why do you think the 3of8 arrangement is scaling better than
+>>> 	  the 8of8?
 >>
->> Other callers previous worked because they passed int the incorrect
->> name, and because we never had more than one element in the list, so
->> returning the first non-match would return the right thing.
+>> It's a know problem with a network storage cluster. What happens is
+>> that with 8of8 all the clients exercise all of the nodes at the same
+>> time so they are clashing on the network.
 > 
-> But then I don't know what point the "/dev/" is serving here.  May as
-> well just change the interface so that what's passed in is just the name
-> ("sdc2" or whatever)--no use pretending this is some kind of path name
-> if it's not really.
+> OK, so if two clients are both trying to send a stripe of data to the
+> same OSD data at the same time, absent a switch that could somehow
+> afford to queue up a full stripe-unit's worth of data, packets get lost?
 > 
-> However, I don't know whether passing in the disk name is really a
-> sensible way to refer to a filesystem in a user<->kernel api.
+> (Also, out of curiosity: do you know of any papers or documentation that
+> describe that problem in more detail?)
 > 
 
-up to you...  I think the whole scheme is currently GFS2 specific
-and it assumes the device exists symmetrically on /dev/... on all
-DSs.  The /dev prefix seems to be completely redundant.
-It makes more sense to get rid of it in the user->kernel
-API as passed down to nfsd4_set_pnfs_dlm_device() rather than
-adding it here.
+A good place to start would be
+http://www.pdl.cmu.edu/Incast/
 
 Benny
 
 > --b.
-> 
->>
->> But now we need to fix those callers.
->>
->> From: Eric Anderle <eanderle@umich.edu>
->>
->> ---
->>  fs/nfsd/nfs4pnfsdlm.c |   12 +++++++++---
->>  1 files changed, 9 insertions(+), 3 deletions(-)
->>
->> diff --git a/fs/nfsd/nfs4pnfsdlm.c b/fs/nfsd/nfs4pnfsdlm.c
->> index 84caa6e..5a66a71 100644
->> --- a/fs/nfsd/nfs4pnfsdlm.c
->> +++ b/fs/nfsd/nfs4pnfsdlm.c
->> @@ -268,10 +268,13 @@ static int nfsd4_pnfs_dlm_getdevinfo(struct super_block *sb,
->>  	/*
->>  	 * If the DS list has not been established, return -EINVAL
->>  	 */
->> -	dlm_pdev = nfsd4_find_pnfs_dlm_device(sb->s_bdev->bd_disk->disk_name);
->> +	/* Long enough to hold "/dev/" + disk name */
->> +	char full_disk_name[6 + strlen(sb->s_bdev->bd_disk->disk_name)];
->> +	sprintf(full_disk_name, "/dev/%s", sb->s_bdev->bd_disk->disk_name);
->> +	dlm_pdev = nfsd4_find_pnfs_dlm_device(full_disk_name);
->>  	if (!dlm_pdev) {
->>  		dprintk("%s: DEBUG: disk %s Not Found\n", __func__,
->> -			sb->s_bdev->bd_disk->disk_name);
->> +			full_disk_name);
->>  		return err;
->>  	}
->>  
->> @@ -364,7 +367,10 @@ static int dlm_ino_hash(struct inode *ino)
->>  	/* If can't find the inode block device in the pnfs_dlm_deivce list
->>  	 * then don't hand out a layout
->>  	 */
->> -	de = nfsd4_find_pnfs_dlm_device(ino->i_sb->s_bdev->bd_disk->disk_name);
->> +	/* Long enough to hold "/dev/" + disk name */
->> +	char full_disk_name[6 + strlen(ino->i_sb->s_bdev->bd_disk->disk_name)];
->> +	sprintf(full_disk_name, "/dev/%s", ino->i_sb->s_bdev->bd_disk->disk_name);
->> +	de = nfsd4_find_pnfs_dlm_device(full_disk_name);
->>  	if (!de)
->>  		return -1;
->>  	hash_mask = de->num_ds - 1;
->> -- 
->> 1.7.0.4
->>
+> --
