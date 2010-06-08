@@ -1,45 +1,45 @@
-From: Alexandros Batsakis <alexandros-4GNroTWusrE@public.gmane.org>
-Subject: Re: Got error -10052 from the server on DESTROY_SESSION. Session has
-	been destroyed regardless...
-Date: Tue, 8 Jun 2010 09:42:35 -0700
-Message-ID: <AANLkTinzsVkmZBAqXxQpBScy71L6DSUlYiRwa_kZAicN@mail.gmail.com>
-References: <4C0E6C37.3040504@panasas.com>
+From: "Sager, Mike" <Mike.Sager@netapp.com>
+Subject: RE: Got error -10052 from the server on DESTROY_SESSION. Session has been destroyed regardless...
+Date: Tue, 8 Jun 2010 12:56:02 -0400
+Message-ID: <7A6A58246D5F0B4EA127BEA555B3A9AD07A30E79@RTPMVEXC1-PRD.hq.netapp.com>
+References: <4C0E6C37.3040504@panasas.com> <7A6A58246D5F0B4EA127BEA555B3A9AD079E5EA2@RTPMVEXC1-PRD.hq.netapp.com> <4C0E724F.7030908@panasas.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: NFS list <linux-nfs@vger.kernel.org>
-To: Boaz Harrosh <bharrosh@panasas.com>
+Content-Type: text/plain;
+	charset="utf-8"
+Cc: "NFS list" <linux-nfs@vger.kernel.org>
+To: "Boaz Harrosh" <bharrosh@panasas.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-pv0-f174.google.com ([74.125.83.174]:41190 "EHLO
-	mail-pv0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755545Ab0FHQmh convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Jun 2010 12:42:37 -0400
-Received: by pvg16 with SMTP id 16so2000401pvg.19
-        for <linux-nfs@vger.kernel.org>; Tue, 08 Jun 2010 09:42:36 -0700 (PDT)
-In-Reply-To: <4C0E6C37.3040504@panasas.com>
+Received: from mx2.netapp.com ([216.240.18.37]:45372 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753430Ab0FHQ4F (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 8 Jun 2010 12:56:05 -0400
+In-Reply-To: <4C0E724F.7030908@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Any other operations during that time ? Like a COMMIT or a CLOSE maybe?
-
--alexandros
-
-On Tue, Jun 8, 2010 at 9:13 AM, Boaz Harrosh <bharrosh@panasas.com> wro=
-te:
->
-> On 2.6.35-rc2-pnfs I get:
->
-> Got error -10052 from the server on DESTROY_SESSION. Session has been=
- destroyed regardless...
->
-> at end of cthon test. And it has hard time umounting. After some seco=
-nds it is able to umount
-> Am investigating. Has any one seen this?
->
-> Boaz
->
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" =
-in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at =A0http://vger.kernel.org/majordomo-info.html
->
+Mi42LjM0LXBuZnMgYXMgd2VsbC4gIE15IGVudmlyb25tZW50IGlzIGZpbGVzLWJhc2VkIHJ1bm5p
+bmcgYWdhaW5zdCBzcG5mcy4NCg0KTWlrZQ0KDQo+IC0tLS0tT3JpZ2luYWwgTWVzc2FnZS0tLS0t
+DQo+IEZyb206IEJvYXogSGFycm9zaCBbbWFpbHRvOmJoYXJyb3NoQHBhbmFzYXMuY29tXQ0KPiBT
+ZW50OiBUdWVzZGF5LCBKdW5lIDA4LCAyMDEwIDEyOjQwIFBNDQo+IFRvOiBTYWdlciwgTWlrZQ0K
+PiBDYzogTkZTIGxpc3QNCj4gU3ViamVjdDogUmU6IEdvdCBlcnJvciAtMTAwNTIgZnJvbSB0aGUg
+c2VydmVyIG9uIERFU1RST1lfU0VTU0lPTi4NCj4gU2Vzc2lvbiBoYXMgYmVlbiBkZXN0cm95ZWQg
+cmVnYXJkbGVzcy4uLg0KPiANCj4gT24gMDYvMDgvMjAxMCAwNzozNiBQTSwgU2FnZXIsIE1pa2Ug
+d3JvdGU6DQo+ID4gWWVzLCBJJ3ZlIHNlZW4gdGhpcyBhIGxvdC4uLg0KPiA+DQo+ID4gTWlrZQ0K
+PiA+DQo+IA0KPiBXaGF0IHZlcnNpb25zPyBBcmUgdGhlc2Ugb24gMi42LjM1LXJjMi1wbmZzIG9u
+bHkgb3IgMzQtcG5mcyBhcyB3ZWxsPw0KPiANCj4gV2hhdCBpcyB5b3VyIHNldHVwIHBuZnMtZmls
+ZXMgbmZzNDEgZ2ZzMiA/DQo+IA0KPiBUaGFua3MNCj4gQm9heg0KPiANCj4gPj4gLS0tLS1Pcmln
+aW5hbCBNZXNzYWdlLS0tLS0NCj4gPj4gRnJvbTogQm9heiBIYXJyb3NoIFttYWlsdG86YmhhcnJv
+c2hAcGFuYXNhcy5jb21dDQo+ID4+IFNlbnQ6IFR1ZXNkYXksIEp1bmUgMDgsIDIwMTAgMTI6MTQg
+UE0NCj4gPj4gVG86IE5GUyBsaXN0DQo+ID4+IFN1YmplY3Q6IEdvdCBlcnJvciAtMTAwNTIgZnJv
+bSB0aGUgc2VydmVyIG9uIERFU1RST1lfU0VTU0lPTi4NCj4gU2Vzc2lvbg0KPiA+PiBoYXMgYmVl
+biBkZXN0cm95ZWQgcmVnYXJkbGVzcy4uLg0KPiA+Pg0KPiA+Pg0KPiA+PiBPbiAyLjYuMzUtcmMy
+LXBuZnMgSSBnZXQ6DQo+ID4+DQo+ID4+IEdvdCBlcnJvciAtMTAwNTIgZnJvbSB0aGUgc2VydmVy
+IG9uIERFU1RST1lfU0VTU0lPTi4gU2Vzc2lvbiBoYXMNCj4gYmVlbg0KPiA+PiBkZXN0cm95ZWQg
+cmVnYXJkbGVzcy4uLg0KPiA+Pg0KPiA+PiBhdCBlbmQgb2YgY3Rob24gdGVzdC4gQW5kIGl0IGhh
+cyBoYXJkIHRpbWUgdW1vdW50aW5nLiBBZnRlciBzb21lDQo+ID4+IHNlY29uZHMgaXQgaXMgYWJs
+ZSB0byB1bW91bnQNCj4gPj4gQW0gaW52ZXN0aWdhdGluZy4gSGFzIGFueSBvbmUgc2VlbiB0aGlz
+Pw0KPiA+Pg0KPiA+PiBCb2F6DQo+ID4+DQo+ID4+IC0tDQo+ID4+IFRvIHVuc3Vic2NyaWJlIGZy
+b20gdGhpcyBsaXN0OiBzZW5kIHRoZSBsaW5lICJ1bnN1YnNjcmliZSBsaW51eC1uZnMiDQo+IGlu
+DQo+ID4+IHRoZSBib2R5IG9mIGEgbWVzc2FnZSB0byBtYWpvcmRvbW9Admdlci5rZXJuZWwub3Jn
+DQo+ID4+IE1vcmUgbWFqb3Jkb21vIGluZm8gYXQgIGh0dHA6Ly92Z2VyLmtlcm5lbC5vcmcvbWFq
+b3Jkb21vLWluZm8uaHRtbA0KDQo=
