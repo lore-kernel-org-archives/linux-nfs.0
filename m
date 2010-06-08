@@ -1,47 +1,53 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from citi.umich.edu ([141.212.112.111]:59350 "EHLO citi.umich.edu"
+Received: from mx2.netapp.com ([216.240.18.37]:48250 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752156Ab0FQORb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 17 Jun 2010 10:17:31 -0400
-Received: from localhost.localdomain (netapp-61.citi.umich.edu [141.212.112.250])
-	by citi.umich.edu (Postfix) with ESMTP id 235D8180A0
-	for <linux-nfs@vger.kernel.org>; Thu, 17 Jun 2010 10:17:31 -0400 (EDT)
-From: Fred Isaman <iisaman@netapp.com>
+	id S932087Ab0FHWOt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 8 Jun 2010 18:14:49 -0400
+From: Alexandros Batsakis <batsakis@netapp.com>
 To: linux-nfs@vger.kernel.org
-Subject: [PATCH 1/1] net: fix deliver_no_wcard regression on loopback device
-Date: Wed, 16 Jun 2010 09:02:30 -0400
-Message-Id: <1276693350-1780-2-git-send-email-iisaman@netapp.com>
-In-Reply-To: <1276693350-1780-1-git-send-email-iisaman@netapp.com>
-References: <1276693350-1780-1-git-send-email-iisaman@netapp.com>
+Cc: bhalevy@panasas.com, Alexandros Batsakis <batsakis@netapp.com>
+Subject: [PATCH 0/7] forgetful client
+Date: Tue,  8 Jun 2010 15:14:54 -0700
+Message-Id: <1276035301-2019-1-git-send-email-batsakis@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
 MIME-Version: 1.0
 
-From: John Fastabend <john.r.fastabend@intel.com>
+This set of patches (2.6.35-rc2) includes a first attempt to implement 
+the forgetful client model for the pNFS client. The model 
+is explained is patch 6.
+It also includes some minor cleanups in the layout management code 
+that help to improve the maintanability of the current code.
 
-deliver_no_wcard is not being set in skb_copy_header.
-In the skb_cloned case it is not being cleared and
-may cause the skb to be dropped when the loopback device
-pushes it back up the stack.
+Passed cthon tests against the pyNFS server, and against a modified 
+version of  pyNFS server that randomly issues layout recalls after opens.
 
-Signed-off-by: John Fastabend <john.r.fastabend@intel.com>
----
- net/core/skbuff.c |    1 +
- 1 files changed, 1 insertions(+), 0 deletions(-)
+Alexandros Batsakis (7):
+  pnfs-submit: clean struct nfs_inode
+  pnfs-submit: remove lgetcount, lretcount
+  pnfs-submit: change stateid to be a union
+  pnfs-submit: request whole-file layouts only
+  pnfs-submit: change layout list to be similar to other state lists
+  pnfs-submit: forgetful client (layouts)
+  pnfs-submit: support for CB_RECALL_ANY (layouts)
 
-diff --git a/net/core/skbuff.c b/net/core/skbuff.c
-index 9f07e74..bcf2fa3 100644
---- a/net/core/skbuff.c
-+++ b/net/core/skbuff.c
-@@ -532,6 +532,7 @@ static void __copy_skb_header(struct sk_buff *new, const struct sk_buff *old)
- 	new->ip_summed		= old->ip_summed;
- 	skb_copy_queue_mapping(new, old);
- 	new->priority		= old->priority;
-+	new->deliver_no_wcard	= old->deliver_no_wcard;
- #if defined(CONFIG_IP_VS) || defined(CONFIG_IP_VS_MODULE)
- 	new->ipvs_property	= old->ipvs_property;
- #endif
--- 
-1.6.6.1
+ fs/nfs/callback.h         |    7 ++
+ fs/nfs/callback_proc.c    |  231 ++++++++++++++++++++++++++++++++++-----------
+ fs/nfs/callback_xdr.c     |    2 +-
+ fs/nfs/client.c           |    2 +-
+ fs/nfs/delegation.c       |   19 ++--
+ fs/nfs/inode.c            |   12 +-
+ fs/nfs/nfs4_fs.h          |    1 +
+ fs/nfs/nfs4proc.c         |   46 +++++----
+ fs/nfs/nfs4state.c        |    4 +-
+ fs/nfs/nfs4xdr.c          |   38 ++++----
+ fs/nfs/pnfs.c             |  214 +++++++++++++++++------------------------
+ fs/nfs/pnfs.h             |    3 +-
+ fs/nfsd/nfs4callback.c    |    1 -
+ include/linux/nfs4.h      |   16 +++-
+ include/linux/nfs4_pnfs.h |    2 +-
+ include/linux/nfs_fs.h    |   28 +++---
+ include/linux/nfs_fs_sb.h |    2 +-
+ 17 files changed, 372 insertions(+), 256 deletions(-)
 
