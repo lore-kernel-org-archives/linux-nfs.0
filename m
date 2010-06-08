@@ -1,191 +1,145 @@
-From: Fred Isaman <iisaman@netapp.com>
-Subject: [PATCH 12/24] pnfs_submit: stash and refcount lseg in read path
-Date: Tue,  8 Jun 2010 00:19:09 -0400
-Message-ID: <1275970761-31806-13-git-send-email-iisaman@netapp.com>
-References: <1275970761-31806-1-git-send-email-iisaman@netapp.com>
- <1275970761-31806-2-git-send-email-iisaman@netapp.com>
- <1275970761-31806-3-git-send-email-iisaman@netapp.com>
- <1275970761-31806-4-git-send-email-iisaman@netapp.com>
- <1275970761-31806-5-git-send-email-iisaman@netapp.com>
- <1275970761-31806-6-git-send-email-iisaman@netapp.com>
- <1275970761-31806-7-git-send-email-iisaman@netapp.com>
- <1275970761-31806-8-git-send-email-iisaman@netapp.com>
- <1275970761-31806-9-git-send-email-iisaman@netapp.com>
- <1275970761-31806-10-git-send-email-iisaman@netapp.com>
- <1275970761-31806-11-git-send-email-iisaman@netapp.com>
- <1275970761-31806-12-git-send-email-iisaman@netapp.com>
-To: linux-nfs@vger.kernel.org
+From: Benny Halevy <bhalevy@panasas.com>
+Subject: Re: [PATCH 5/8] pnfs-submit: request whole-file layouts only
+Date: Tue, 08 Jun 2010 10:14:09 +0300
+Message-ID: <4C0DEDC1.6070105@panasas.com>
+References: <1275945113-3436-1-git-send-email-batsakis@netapp.com> <1275945113-3436-2-git-send-email-batsakis@netapp.com> <1275945113-3436-3-git-send-email-batsakis@netapp.com> <1275945113-3436-4-git-send-email-batsakis@netapp.com> <1275945113-3436-5-git-send-email-batsakis@netapp.com> <1275945113-3436-6-git-send-email-batsakis@netapp.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: linux-nfs@vger.kernel.org
+To: Alexandros Batsakis <batsakis@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:4879 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751812Ab0FHETr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 8 Jun 2010 00:19:47 -0400
-Received: from localhost.localdomain (navitha-lxp.hq.netapp.com [10.58.53.227] (may be forged))
-	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id o584JOQ3014203
-	for <linux-nfs@vger.kernel.org>; Mon, 7 Jun 2010 21:19:33 -0700 (PDT)
-In-Reply-To: <1275970761-31806-12-git-send-email-iisaman@netapp.com>
+Received: from mail-fx0-f46.google.com ([209.85.161.46]:65053 "EHLO
+	mail-fx0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752935Ab0FHHOO (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Jun 2010 03:14:14 -0400
+Received: by fxm8 with SMTP id 8so2613628fxm.19
+        for <linux-nfs@vger.kernel.org>; Tue, 08 Jun 2010 00:14:13 -0700 (PDT)
+In-Reply-To: <1275945113-3436-6-git-send-email-batsakis@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Note we are not using it yet, but refcounting should be accurate.
+On 2010-06-08 00:11, Alexandros Batsakis wrote:
+> In the first iteration of the pNFS code, we support only whole file layouts.
+> To facilitate the move to multiple-segments, we keep the segment processing
+> code, but the segment list should always contain at most one segment per I/O type
+> 
+> Signed-off-by: Alexandros Batsakis <batsakis@netapp.com>
+> ---
+>  fs/nfs/callback_proc.c |    7 ++++---
+>  fs/nfs/pnfs.c          |   25 ++++++++-----------------
+>  2 files changed, 12 insertions(+), 20 deletions(-)
+> 
+> diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
+> index 8752239..16b4510 100644
+> --- a/fs/nfs/callback_proc.c
+> +++ b/fs/nfs/callback_proc.c
+> @@ -213,6 +213,10 @@ static int pnfs_recall_layout(void *data)
+>     then return layouts, resume after layoutreturns complete
+>   */
+>  
+> +	/* support whole file layouts only */
+> +	rl.cbl_seg.offset = 0;
+> +	rl.cbl_seg.length = NFS4_MAX_UINT64;
+> +
+>  	if (rl.cbl_recall_type == RETURN_FILE) {
+>  		status = pnfs_return_layout(inode, &rl.cbl_seg, &rl.cbl_stateid,
+>  					    RETURN_FILE, true);
+> @@ -221,9 +225,6 @@ static int pnfs_recall_layout(void *data)
+>  		goto out;
+>  	}
+>  
+> -	rl.cbl_seg.offset = 0;
+> -	rl.cbl_seg.length = NFS4_MAX_UINT64;
+> -
+>  	/* FIXME: This loop is inefficient, running in O(|s_inodes|^2) */
+>  	while ((ino = nfs_layoutrecall_find_inode(clp, &rl)) != NULL) {
+>  		/* XXX need to check status on pnfs_return_layout */
+> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+> index dd7ad26..8985e9f 100644
+> --- a/fs/nfs/pnfs.c
+> +++ b/fs/nfs/pnfs.c
+> @@ -551,12 +551,6 @@ pnfs_layout_from_open_stateid(nfs4_stateid *dst, struct nfs4_state *state)
+>  *    for now, assume that whole file layouts are requested.
+>  *    arg->offset: 0
+>  *    arg->length: all ones
+> -*
+> -*    for now, assume the LAYOUTGET operation is triggered by an I/O request.
+> -*    the count field is the count in the I/O request, and will be used
+> -*    as the minlength. for the file operation that piggy-backs
+> -*    the LAYOUTGET operation with an OPEN, s
+> -*    arg->minlength = count.
+>  */
+>  static int
+>  get_layout(struct inode *ino,
+> @@ -577,11 +571,11 @@ get_layout(struct inode *ino,
+>  		return -ENOMEM;
+>  	}
+>  	lgp->lo = lo;
+> -	lgp->args.minlength = PAGE_CACHE_SIZE;
+> +	lgp->args.minlength = NFS4_MAX_UINT64;
+>  	lgp->args.maxcount = PNFS_LAYOUT_MAXSIZE;
+>  	lgp->args.lseg.iomode = range->iomode;
+> -	lgp->args.lseg.offset = range->offset;
+> -	lgp->args.lseg.length = max(range->length, lgp->args.minlength);
+> +	lgp->args.lseg.offset = 0;
+> +	lgp->args.lseg.length = NFS4_MAX_UINT64;
 
-Signed-off-by: Fred Isaman <iisaman@netapp.com>
----
- fs/nfs/pagelist.c        |   11 +++++++++--
- fs/nfs/pnfs.c            |    4 +++-
- fs/nfs/read.c            |    9 +++++++--
- fs/nfs/write.c           |    2 +-
- include/linux/nfs_page.h |    5 ++++-
- 5 files changed, 24 insertions(+), 7 deletions(-)
+I'm not sure how well this will work for pnfs-obj writes.
+We might have to revert it in the pnfs post-submit branch.
 
-diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
-index 8314915..ed647b9 100644
---- a/fs/nfs/pagelist.c
-+++ b/fs/nfs/pagelist.c
-@@ -20,6 +20,7 @@
- #include <linux/nfs_mount.h>
- 
- #include "internal.h"
-+#include "pnfs.h"
- 
- static struct kmem_cache *nfs_page_cachep;
- 
-@@ -56,7 +57,8 @@ nfs_page_free(struct nfs_page *p)
- struct nfs_page *
- nfs_create_request(struct nfs_open_context *ctx, struct inode *inode,
- 		   struct page *page,
--		   unsigned int offset, unsigned int count)
-+		   unsigned int offset, unsigned int count,
-+		   struct pnfs_layout_segment *lseg)
- {
- 	struct nfs_page		*req;
- 
-@@ -80,6 +82,8 @@ nfs_create_request(struct nfs_open_context *ctx, struct inode *inode,
- 	req->wb_bytes   = count;
- 	req->wb_context = get_nfs_open_context(ctx);
- 	kref_init(&req->wb_kref);
-+	req->wb_lseg    = lseg;
-+	get_lseg(lseg);
- 	return req;
- }
- 
-@@ -150,9 +154,12 @@ void nfs_clear_request(struct nfs_page *req)
- 		put_nfs_open_context(ctx);
- 		req->wb_context = NULL;
- 	}
-+	if (req->wb_lseg != NULL) {
-+		put_lseg(req->wb_lseg);
-+		req->wb_lseg = NULL;
-+	}
- }
- 
--
- /**
-  * nfs_release_request - Release the count on an NFS read/write request
-  * @req: request to release
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index a74a4b6..2b5f6fc 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -1391,6 +1391,7 @@ pnfs_pageio_init_read(struct nfs_pageio_descriptor *pgio,
- 	pgio->pg_iswrite = 0;
- 	pgio->pg_boundary = 0;
- 	pgio->pg_test = NULL;
-+	pgio->pg_lseg = NULL;
- 
- 	if (!pnfs_enabled_sb(nfss))
- 		return;
-@@ -1400,7 +1401,8 @@ pnfs_pageio_init_read(struct nfs_pageio_descriptor *pgio,
- 
- 	if (count > 0) {
- 		status = _pnfs_update_layout(inode, ctx, count,
--						loff, IOMODE_READ, NULL);
-+					    loff, IOMODE_READ,
-+					    &pgio->pg_lseg);
- 		dprintk("%s virt update returned %d\n", __func__, status);
- 		if (status != 0)
- 			return;
-diff --git a/fs/nfs/read.c b/fs/nfs/read.c
-index 28c49f1..68b4ca8 100644
---- a/fs/nfs/read.c
-+++ b/fs/nfs/read.c
-@@ -121,11 +121,14 @@ int nfs_readpage_async(struct nfs_open_context *ctx, struct inode *inode,
- 	LIST_HEAD(one_request);
- 	struct nfs_page	*new;
- 	unsigned int len;
-+	struct pnfs_layout_segment *lseg;
- 
- 	len = nfs_page_length(page);
- 	if (len == 0)
- 		return nfs_return_empty_page(page);
--	new = nfs_create_request(ctx, inode, page, 0, len);
-+	pnfs_update_layout(inode, ctx, NFS4_MAX_UINT64, 0, IOMODE_READ, &lseg);
-+	new = nfs_create_request(ctx, inode, page, 0, len, lseg);
-+	put_lseg(lseg);
- 	if (IS_ERR(new)) {
- 		unlock_page(page);
- 		return PTR_ERR(new);
-@@ -606,7 +609,8 @@ readpage_async_filler(void *data, struct page *page)
- 	if (len == 0)
- 		return nfs_return_empty_page(page);
- 
--	new = nfs_create_request(desc->ctx, inode, page, 0, len);
-+	new = nfs_create_request(desc->ctx, inode, page, 0, len,
-+				 desc->pgio->pg_lseg);
- 	if (IS_ERR(new))
- 		goto out_error;
- 
-@@ -673,6 +677,7 @@ int nfs_readpages(struct file *filp, struct address_space *mapping,
- 	ret = read_cache_pages(mapping, pages, readpage_async_filler, &desc);
- 
- 	nfs_pageio_complete(&pgio);
-+	put_lseg(pgio.pg_lseg);
- 	npages = (pgio.pg_bytes_written + PAGE_CACHE_SIZE - 1) >> PAGE_CACHE_SHIFT;
- 	nfs_add_stats(inode, NFSIOS_READPAGES, npages);
- read_complete:
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index 13319c8..d8c0453 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -653,7 +653,7 @@ static struct nfs_page * nfs_setup_write_request(struct nfs_open_context* ctx,
- 	req = nfs_try_to_update_request(inode, page, offset, bytes);
- 	if (req != NULL)
- 		goto out;
--	req = nfs_create_request(ctx, inode, page, offset, bytes);
-+	req = nfs_create_request(ctx, inode, page, offset, bytes, NULL);
- 	if (IS_ERR(req))
- 		goto out;
- 	error = nfs_inode_add_request(inode, req);
-diff --git a/include/linux/nfs_page.h b/include/linux/nfs_page.h
-index d04ebb2..18a455c 100644
---- a/include/linux/nfs_page.h
-+++ b/include/linux/nfs_page.h
-@@ -48,6 +48,7 @@ struct nfs_page {
- 	struct kref		wb_kref;	/* reference count */
- 	unsigned long		wb_flags;
- 	struct nfs_writeverf	wb_verf;	/* Commit cookie */
-+	struct pnfs_layout_segment *wb_lseg;	/* Pnfs layout info */
- };
- 
- struct nfs_pageio_descriptor {
-@@ -61,6 +62,7 @@ struct nfs_pageio_descriptor {
- 	int			(*pg_doio)(struct inode *, struct list_head *, unsigned int, size_t, int);
- 	int 			pg_ioflags;
- 	int			pg_error;
-+	struct pnfs_layout_segment *pg_lseg;
- #ifdef CONFIG_NFS_V4_1
- 	int			pg_iswrite;
- 	int			pg_boundary;
-@@ -74,7 +76,8 @@ extern	struct nfs_page *nfs_create_request(struct nfs_open_context *ctx,
- 					    struct inode *inode,
- 					    struct page *page,
- 					    unsigned int offset,
--					    unsigned int count);
-+					    unsigned int count,
-+					    struct pnfs_layout_segment *lseg);
- extern	void nfs_clear_request(struct nfs_page *req);
- extern	void nfs_release_request(struct nfs_page *req);
- 
--- 
-1.6.6.1
+Benny
+
+>  	lgp->args.type = server->pnfs_curr_ld->id;
+>  	lgp->args.inode = ino;
+>  	lgp->lsegpp = lsegpp;
+> @@ -756,7 +750,7 @@ _pnfs_return_layout(struct inode *ino, struct nfs4_pnfs_layout_segment *range,
+>  	else {
+>  		arg.iomode = IOMODE_ANY;
+>  		arg.offset = 0;
+> -		arg.length = ~0;
+> +		arg.length = NFS4_MAX_UINT64;
+>  	}
+>  	if (type == RETURN_FILE) {
+>  		lo = get_lock_current_layout(nfsi);
+> @@ -1051,8 +1045,8 @@ pnfs_update_layout(struct inode *ino,
+>  {
+>  	struct nfs4_pnfs_layout_segment arg = {
+>  		.iomode = iomode,
+> -		.offset = pos,
+> -		.length = count
+> +		.offset = 0,
+> +		.length = ~0
+>  	};
+>  	struct nfs_inode *nfsi = NFS_I(ino);
+>  	struct pnfs_layout_type *lo;
+> @@ -1142,7 +1136,6 @@ out_put:
+>  void
+>  pnfs_get_layout_done(struct nfs4_pnfs_layoutget *lgp, int rpc_status)
+>  {
+> -	struct nfs4_pnfs_layoutget_res *res = &lgp->res;
+>  	struct pnfs_layout_segment *lseg = NULL;
+>  	struct nfs_inode *nfsi = PNFS_NFS_INODE(lgp->lo);
+>  	time_t suspend = 0;
+> @@ -1151,11 +1144,10 @@ pnfs_get_layout_done(struct nfs4_pnfs_layoutget *lgp, int rpc_status)
+>  
+>  	lgp->status = rpc_status;
+>  	if (likely(!rpc_status)) {
+> -		if (unlikely(res->layout.len <= 0)) {
+> +		if (unlikely(lgp->res.layout.len < 0)) {
+>  			printk(KERN_ERR
+> -			       "%s: ERROR!  Layout size is ZERO!\n", __func__);
+> +			       "%s: ERROR Returned layout size is ZERO\n", __func__);
+>  			lgp->status = -EIO;
+> -			goto get_out;
+>  		}
+>  		goto out;
+>  	}
+> @@ -1233,7 +1225,6 @@ pnfs_get_layout_done(struct nfs4_pnfs_layoutget *lgp, int rpc_status)
+>  		break;
+>  	}
+>  
+> -get_out:
+>  	/* remember that get layout failed and suspend trying */
+>  	nfsi->layout.pnfs_layout_suspend = suspend;
+>  	set_bit(lo_fail_bit(lgp->args.lseg.iomode),
 
