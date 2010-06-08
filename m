@@ -1,154 +1,26 @@
-From: Alexandros Batsakis <batsakis@netapp.com>
-Subject: [PATCH 7/7] pnfs-submit: support for CB_RECALL_ANY (layouts)
-Date: Tue,  8 Jun 2010 15:15:01 -0700
-Message-ID: <1276035301-2019-8-git-send-email-batsakis@netapp.com>
-References: <1276035301-2019-1-git-send-email-batsakis@netapp.com>
- <1276035301-2019-2-git-send-email-batsakis@netapp.com>
- <1276035301-2019-3-git-send-email-batsakis@netapp.com>
- <1276035301-2019-4-git-send-email-batsakis@netapp.com>
- <1276035301-2019-5-git-send-email-batsakis@netapp.com>
- <1276035301-2019-6-git-send-email-batsakis@netapp.com>
- <1276035301-2019-7-git-send-email-batsakis@netapp.com>
-Cc: bhalevy@panasas.com, Alexandros Batsakis <batsakis@netapp.com>
-To: linux-nfs@vger.kernel.org
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: Performance results with exofs
+Date: Tue, 8 Jun 2010 19:15:49 -0400
+Message-ID: <20100608231549.GD26435@fieldses.org>
+References: <op.vdxrrgf1unckof@usensfaibisl2e.eng.emc.com> <4C0D195B.8030401@panasas.com> <4C0D1AAB.4070304@panasas.com> <op.vdxxhfqsunckof@usensfaibisl2e.eng.emc.com> <20100607182948.GF25257@fieldses.org> <4C0D3D59.4000305@panasas.com> <20100607184902.GI25257@fieldses.org> <4C0DE93D.2050503@panasas.com> <op.vdzkrtmqunckof@usensfaibisl2e.eng.emc.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Benny Halevy <bhalevy@panasas.com>,
+	Boaz Harrosh <bharrosh@panasas.com>,
+	NFS list <linux-nfs@vger.kernel.org>
+To: sfaibish <sfaibish@emc.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:30210 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:34788 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932219Ab0FHWOv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 8 Jun 2010 18:14:51 -0400
-In-Reply-To: <1276035301-2019-7-git-send-email-batsakis@netapp.com>
+	id S1755024Ab0FHXPv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 8 Jun 2010 19:15:51 -0400
+In-Reply-To: <op.vdzkrtmqunckof-sXut7+96orlxdPWQvOaHCoI83tS8F2Zb0E9HWUfgJXw@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-CB_RECALL_ANY serves as a hint to the client to return some server state.
-We reply immediately and we clean the layouts asycnhronously.
+On Tue, Jun 08, 2010 at 10:48:55AM -0400, sfaibish wrote:
+> Problem solved; I sent Bruce 2 relevant papers from CMU and FAST 2009.
 
-FIXME: currently we return _all_ layouts
-FIXME: eventually we should treat layouts as delegations, marked them expired
-and fire the state manager to clean them.
+Thanks, all!
 
-Signed-off-by: Alexandros Batsakis <batsakis@netapp.com>
----
- fs/nfs/callback.h      |    7 +++++
- fs/nfs/callback_proc.c |   58 ++++++++++++++++++++++++++++++++++++++++++++++-
- 2 files changed, 63 insertions(+), 2 deletions(-)
-
-diff --git a/fs/nfs/callback.h b/fs/nfs/callback.h
-index 73f21bc..b39ac86 100644
---- a/fs/nfs/callback.h
-+++ b/fs/nfs/callback.h
-@@ -115,6 +115,13 @@ extern int nfs41_validate_delegation_stateid(struct nfs_delegation *delegation,
- 
- #define RCA4_TYPE_MASK_RDATA_DLG	0
- #define RCA4_TYPE_MASK_WDATA_DLG	1
-+#define RCA4_TYPE_MASK_DIR_DLG         2
-+#define RCA4_TYPE_MASK_FILE_LAYOUT     3
-+#define RCA4_TYPE_MASK_BLK_LAYOUT      4
-+#define RCA4_TYPE_MASK_OBJ_LAYOUT_MIN  8
-+#define RCA4_TYPE_MASK_OBJ_LAYOUT_MAX  9
-+#define RCA4_TYPE_MASK_OTHER_LAYOUT_MIN 12
-+#define RCA4_TYPE_MASK_OTHER_LAYOUT_MAX 15
- 
- struct cb_recallanyargs {
- 	struct sockaddr	*craa_addr;
-diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
-index abdbf40..a598b5a 100644
---- a/fs/nfs/callback_proc.c
-+++ b/fs/nfs/callback_proc.c
-@@ -339,6 +339,27 @@ out_put_no_client:
- 	return status;
- }
- 
-+static int pnfs_recall_all_layouts(struct nfs_client *clp)
-+{
-+	struct cb_pnfs_layoutrecallargs rl;
-+	struct inode *inode;
-+	int status = 0;
-+
-+	rl.cbl_recall_type = RETURN_ALL;
-+	rl.cbl_seg.iomode = IOMODE_ANY;
-+	rl.cbl_seg.offset = 0;
-+	rl.cbl_seg.length = NFS4_MAX_UINT64;
-+
-+	/* we need the inode to get the nfs_server struct */
-+	inode = nfs_layoutrecall_find_inode(clp, &rl);
-+	if (!inode)
-+		return status;
-+	status = pnfs_async_return_layout(clp, inode, &rl);
-+	iput(inode);
-+
-+	return status;
-+}
-+
- __be32 pnfs_cb_layoutrecall(struct cb_pnfs_layoutrecallargs *args,
- 			    void *dummy)
- {
-@@ -606,13 +627,37 @@ out:
- 	return status;
- }
- 
-+static inline bool
-+validate_bitmap_values(const unsigned long *mask)
-+{
-+	int i;
-+
-+	if (*mask == 0)
-+		return true;
-+	if (test_bit(RCA4_TYPE_MASK_RDATA_DLG, mask) ||
-+	    test_bit(RCA4_TYPE_MASK_WDATA_DLG, mask) ||
-+	    test_bit(RCA4_TYPE_MASK_DIR_DLG, mask) ||
-+	    test_bit(RCA4_TYPE_MASK_FILE_LAYOUT, mask) ||
-+	    test_bit(RCA4_TYPE_MASK_BLK_LAYOUT, mask))
-+		return true;
-+	for (i = RCA4_TYPE_MASK_OBJ_LAYOUT_MIN;
-+	     i <= RCA4_TYPE_MASK_OBJ_LAYOUT_MAX; i++)
-+		if (test_bit(i, mask))
-+			return true;
-+	for (i = RCA4_TYPE_MASK_OTHER_LAYOUT_MIN;
-+	     i <= RCA4_TYPE_MASK_OTHER_LAYOUT_MAX; i++)
-+		if (test_bit(i, mask))
-+			return true;
-+	return false;
-+}
-+
- __be32 nfs4_callback_recallany(struct cb_recallanyargs *args, void *dummy)
- {
- 	struct nfs_client *clp;
- 	__be32 status;
- 	fmode_t flags = 0;
- 
--	status = htonl(NFS4ERR_OP_NOT_IN_SESSION);
-+	status = cpu_to_be32(NFS4ERR_OP_NOT_IN_SESSION);
- 	clp = nfs_find_client(args->craa_addr, 4);
- 	if (clp == NULL)
- 		goto out;
-@@ -620,16 +665,25 @@ __be32 nfs4_callback_recallany(struct cb_recallanyargs *args, void *dummy)
- 	dprintk("NFS: RECALL_ANY callback request from %s\n",
- 		rpc_peeraddr2str(clp->cl_rpcclient, RPC_DISPLAY_ADDR));
- 
-+	status = cpu_to_be32(NFS4ERR_INVAL);
-+	if (!validate_bitmap_values((const unsigned long *)
-+				    &args->craa_type_mask))
-+		return status;
-+
-+	status = cpu_to_be32(NFS4_OK);
- 	if (test_bit(RCA4_TYPE_MASK_RDATA_DLG, (const unsigned long *)
- 		     &args->craa_type_mask))
- 		flags = FMODE_READ;
- 	if (test_bit(RCA4_TYPE_MASK_WDATA_DLG, (const unsigned long *)
- 		     &args->craa_type_mask))
- 		flags |= FMODE_WRITE;
-+	if (test_bit(RCA4_TYPE_MASK_FILE_LAYOUT, (const unsigned long *)
-+		     &args->craa_type_mask))
-+		if (pnfs_recall_all_layouts(clp) == -EAGAIN)
-+			status = cpu_to_be32(NFS4ERR_DELAY);
- 
- 	if (flags)
- 		nfs_expire_all_delegation_types(clp, flags);
--	status = htonl(NFS4_OK);
- out:
- 	dprintk("%s: exit with status = %d\n", __func__, ntohl(status));
- 	return status;
--- 
-1.6.2.5
-
+--b.
