@@ -1,7 +1,7 @@
 From: Fred Isaman <iisaman@netapp.com>
-Subject: [PATCH 16/24] pnfs_submit: remove pnfs_file_operations
-Date: Tue,  8 Jun 2010 00:19:13 -0400
-Message-ID: <1275970761-31806-17-git-send-email-iisaman@netapp.com>
+Subject: [PATCH 22/24] pnfs_submit: remove unecessary pnfs_fl_call_data field pnfs_client
+Date: Tue,  8 Jun 2010 00:19:19 -0400
+Message-ID: <1275970761-31806-23-git-send-email-iisaman@netapp.com>
 References: <1275970761-31806-1-git-send-email-iisaman@netapp.com>
  <1275970761-31806-2-git-send-email-iisaman@netapp.com>
  <1275970761-31806-3-git-send-email-iisaman@netapp.com>
@@ -18,153 +18,98 @@ References: <1275970761-31806-1-git-send-email-iisaman@netapp.com>
  <1275970761-31806-14-git-send-email-iisaman@netapp.com>
  <1275970761-31806-15-git-send-email-iisaman@netapp.com>
  <1275970761-31806-16-git-send-email-iisaman@netapp.com>
+ <1275970761-31806-17-git-send-email-iisaman@netapp.com>
+ <1275970761-31806-18-git-send-email-iisaman@netapp.com>
+ <1275970761-31806-19-git-send-email-iisaman@netapp.com>
+ <1275970761-31806-20-git-send-email-iisaman@netapp.com>
+ <1275970761-31806-21-git-send-email-iisaman@netapp.com>
+ <1275970761-31806-22-git-send-email-iisaman@netapp.com>
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
 Received: from mx2.netapp.com ([216.240.18.37]:4879 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751864Ab0FHETs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 8 Jun 2010 00:19:48 -0400
+	id S1751988Ab0FHETt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 8 Jun 2010 00:19:49 -0400
 Received: from localhost.localdomain (navitha-lxp.hq.netapp.com [10.58.53.227] (may be forged))
-	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id o584JOQ7014203
-	for <linux-nfs@vger.kernel.org>; Mon, 7 Jun 2010 21:19:35 -0700 (PDT)
-In-Reply-To: <1275970761-31806-16-git-send-email-iisaman@netapp.com>
+	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id o584JOQD014203
+	for <linux-nfs@vger.kernel.org>; Mon, 7 Jun 2010 21:19:40 -0700 (PDT)
+In-Reply-To: <1275970761-31806-22-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-pnfs_writepages is useful, but not necessary, for determining size
-parameters for LAYUTGET.
-
-Also, the pnfs_file_operations were getting out of sync with
-nfs_file_operations (see commits e1ebfd33be068 and bf40d3435caf49369).
-
 Signed-off-by: Fred Isaman <iisaman@netapp.com>
 ---
- fs/nfs/file.c          |   24 ------------------------
- fs/nfs/nfs4proc.c      |    1 -
- fs/nfs/pnfs.c          |   35 -----------------------------------
- fs/nfs/pnfs.h          |    1 -
- include/linux/nfs_fs.h |    3 ---
- 5 files changed, 0 insertions(+), 64 deletions(-)
+ fs/nfs/nfs4filelayout.c |    9 +++------
+ include/linux/nfs_xdr.h |    1 -
+ 2 files changed, 3 insertions(+), 7 deletions(-)
 
-diff --git a/fs/nfs/file.c b/fs/nfs/file.c
-index 7cdc2b7..d796156 100644
---- a/fs/nfs/file.c
-+++ b/fs/nfs/file.c
-@@ -82,30 +82,6 @@ const struct file_operations nfs_file_operations = {
- 	.setlease	= nfs_setlease,
- };
+diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+index 756cb64..b82e4ff 100644
+--- a/fs/nfs/nfs4filelayout.c
++++ b/fs/nfs/nfs4filelayout.c
+@@ -216,7 +216,6 @@ filelayout_read_pagelist(struct pnfs_layout_type *layoutid,
  
--#ifdef CONFIG_NFS_V4_1
--const struct file_operations pnfs_file_operations = {
--	.llseek		= nfs_file_llseek,
--	.read		= do_sync_read,
--	.write		= pnfs_file_write,
--	.aio_read	= nfs_file_read,
--	.aio_write	= nfs_file_write,
--#ifdef CONFIG_MMU
--	.mmap		= nfs_file_mmap,
--#else
--	.mmap		= generic_file_mmap,
--#endif
--	.open		= nfs_file_open,
--	.flush		= nfs_file_flush,
--	.release	= nfs_file_release,
--	.fsync		= nfs_file_fsync,
--	.lock		= nfs_lock,
--	.flock		= nfs_flock,
--	.splice_read	= nfs_file_splice_read,
--	.check_flags	= nfs_check_flags,
--	.setlease	= nfs_setlease,
--};
--#endif /* CONFIG_NFS_V4_1 */
--
- const struct inode_operations nfs_file_inode_operations = {
- 	.permission	= nfs_permission,
- 	.getattr	= nfs_getattr,
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index ee3e3bc..aa4581a 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -5981,7 +5981,6 @@ pnfs_v4_clientops_init(void)
- 	struct nfs_rpc_ops *p = (struct nfs_rpc_ops *)&pnfs_v4_clientops;
+ 	/* just try the first data server for the index..*/
+ 	data->fldata.ds_nfs_client = ds->ds_clp;
+-	data->fldata.pnfs_client = ds->ds_clp->cl_rpcclient;
+ 	data->args.fh = nfs4_fl_select_ds_fh(flseg, idx);
  
- 	memcpy(p, &nfs_v4_clientops, sizeof(*p));
--	p->file_ops		= &pnfs_file_operations;
- 	p->setattr		= pnfs4_proc_setattr;
- 	p->read_done		= pnfs4_read_done;
- 	p->write_setup		= pnfs4_proc_write_setup;
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 692a18e..456b057 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -1538,41 +1538,6 @@ pnfs_writeback_done(struct nfs_write_data *data)
- }
+ 	/* Now get the file offset on the dserver
+@@ -230,7 +229,7 @@ filelayout_read_pagelist(struct pnfs_layout_type *layoutid,
+ 	data->fldata.orig_offset = offset;
  
- /*
-- * Obtain a layout for the the write range, and call do_sync_write.
-- *
-- * Unlike the read path which can wait until page coalescing
-- * (pnfs_pageio_init_read) to get a layout, the write path discards the
-- * request range to form the address_mapping - so we get a layout in
-- * the file operations write method.
-- *
-- * If pnfs_update_layout fails, pages will be coalesced for MDS I/O.
-- */
--ssize_t
--pnfs_file_write(struct file *filp, const char __user *buf, size_t count,
--		loff_t *pos)
--{
--	struct inode *inode = filp->f_dentry->d_inode;
--	struct nfs_open_context *context = filp->private_data;
--	int status;
--
--	if (!pnfs_enabled_sb(NFS_SERVER(inode)))
--		goto out;
--
--	/* Retrieve and set layout if not allready cached */
--	status = _pnfs_update_layout(inode,
--				    context,
--				    count,
--				    *pos,
--				    IOMODE_RW,
--				    NULL);
--	if (status)
--		dprintk("%s: Unable to get a layout for %Zu@%llu iomode %d)\n",
--			__func__, count, *pos, IOMODE_RW);
--out:
--	return do_sync_write(filp, buf, count, pos);
--}
--
--/*
-  * Call the appropriate parallel I/O subsystem write function.
-  * If no I/O device driver exists, or one does match the returned
-  * fstype, then return a positive status for regular NFS processing.
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index 816ebe1..e463c76 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -59,7 +59,6 @@ void pnfs_pageio_init_read(struct nfs_pageio_descriptor *, struct inode *,
- 			   struct nfs_open_context *, struct list_head *);
- void pnfs_pageio_init_write(struct nfs_pageio_descriptor *, struct inode *);
- void pnfs_update_layout_commit(struct inode *, struct list_head *, pgoff_t, unsigned int);
--ssize_t pnfs_file_write(struct file *, const char __user *, size_t, loff_t *);
- void pnfs_get_layout_done(struct nfs4_pnfs_layoutget *, int rpc_status);
- int pnfs_layout_process(struct nfs4_pnfs_layoutget *lgp);
- void pnfs_layout_release(struct pnfs_layout_type *, struct nfs4_pnfs_layout_segment *range);
-diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
-index 0de7847..41026cb 100644
---- a/include/linux/nfs_fs.h
-+++ b/include/linux/nfs_fs.h
-@@ -411,9 +411,6 @@ extern const struct inode_operations nfs3_file_inode_operations;
- #endif /* CONFIG_NFS_V3 */
- extern const struct file_operations nfs_file_operations;
- extern const struct address_space_operations nfs_file_aops;
--#ifdef CONFIG_NFS_V4_1
--extern const struct file_operations pnfs_file_operations;
--#endif /* CONFIG_NFS_V4_1 */
+ 	/* Perform an asynchronous read */
+-	nfs_initiate_read(data, data->fldata.pnfs_client,
++	nfs_initiate_read(data, ds->ds_clp->cl_rpcclient,
+ 			  &filelayout_read_call_ops);
  
- static inline struct nfs_open_context *nfs_file_open_context(struct file *filp)
- {
+ 	data->pdata.pnfs_error = 0;
+@@ -269,7 +268,6 @@ filelayout_write_pagelist(struct pnfs_layout_type *layoutid,
+ 		htonl(ds->ds_ip_addr), ntohs(ds->ds_port), ds->r_addr);
+ 
+ 	data->fldata.ds_nfs_client = ds->ds_clp;
+-	data->fldata.pnfs_client = ds->ds_clp->cl_rpcclient;
+ 	data->args.fh = nfs4_fl_select_ds_fh(flseg, idx);
+ 
+ 	/* Get the file offset on the dserver. Set the write offset to
+@@ -281,7 +279,7 @@ filelayout_write_pagelist(struct pnfs_layout_type *layoutid,
+ 	/* Perform an asynchronous write The offset will be reset in the
+ 	 * call_ops->rpc_call_done() routine
+ 	 */
+-	nfs_initiate_write(data, data->fldata.pnfs_client,
++	nfs_initiate_write(data, ds->ds_clp->cl_rpcclient,
+ 			   &filelayout_write_call_ops, sync);
+ 
+ 	data->pdata.pnfs_error = 0;
+@@ -572,7 +570,7 @@ filelayout_commit(struct pnfs_layout_type *layoutid, int sync,
+ 	struct nfs4_pnfs_ds *ds;
+ 
+ 	dprintk("%s data %p pnfs_client %p sync %d\n",
+-		__func__, data, data->fldata.pnfs_client, sync);
++		__func__, data, data->fldata.ds_nfs_client->cl_rpcclient, sync);
+ 
+ 	/* Alloc room for both in one go */
+ 	ds_page_list = kzalloc((NFS4_PNFS_MAX_MULTI_CNT + 1) *
+@@ -643,7 +641,6 @@ filelayout_commit(struct pnfs_layout_type *layoutid, int sync,
+ 				continue;
+ 			}
+ 			clnt = ds->ds_clp->cl_rpcclient;
+-			dsdata->fldata.pnfs_client = clnt;
+ 			dsdata->fldata.ds_nfs_client = ds->ds_clp;
+ 			dsdata->args.fh = \
+ 				nfs4_fl_select_ds_fh(LSEG_LD_DATA(req->wb_lseg),
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index 07d6dd2..183a9c3 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -980,7 +980,6 @@ struct pnfs_call_data {
+ 
+ /* files layout-type specific data for read, write, and commit */
+ struct pnfs_fl_call_data {
+-	struct rpc_clnt		*pnfs_client;	/* Holds pNFS device across async calls */
+ 	struct nfs_client	*ds_nfs_client;
+ 	__u64			orig_offset;
+ 	int			commit_through_mds;
 -- 
 1.6.6.1
 
