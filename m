@@ -1,67 +1,92 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-out2.uio.no ([129.240.10.58]:53999 "EHLO mail-out2.uio.no"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752387Ab0F1UN1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 28 Jun 2010 16:13:27 -0400
-Subject: Re: Problem: Clients freeze on transfer of large files, w gigabit
- lan
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-To: Jasper Mackenzie <jasper.mackenzie@gmail.com>
-Cc: linux-nfs@vger.kernel.org
-In-Reply-To: <op.ve0zt0xmo2qfwp@foundation>
-References: <op.vet93peko2qfwp@foundation>
-	 <1277491873.6141.23.camel@heimdal.trondhjem.org>
-	 <op.ve0zt0xmo2qfwp@foundation>
-Content-Type: text/plain; charset="UTF-8"
-Date: Mon, 28 Jun 2010 16:13:17 -0400
-Message-ID: <1277755997.4433.8.camel@heimdal.trondhjem.org>
+Received: from mexforward.lss.emc.com ([128.222.32.20]:49370 "EHLO
+	mexforward.lss.emc.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755335Ab0FHOtK (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Jun 2010 10:49:10 -0400
+To: "Benny Halevy" <bhalevy@panasas.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: Performance results with exofs
+From: sfaibish <sfaibish@emc.com>
+Cc: "Boaz Harrosh" <bharrosh@panasas.com>,
+        "NFS list" <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; format=flowed; delsp=yes; charset=iso-8859-15
+References: <op.vdxrrgf1unckof@usensfaibisl2e.eng.emc.com> <4C0D195B.8030401@panasas.com> <4C0D1AAB.4070304@panasas.com> <op.vdxxhfqsunckof@usensfaibisl2e.eng.emc.com> <20100607182948.GF25257@fieldses.org> <4C0D3D59.4000305@panasas.com> <20100607184902.GI25257@fieldses.org> <4C0DE93D.2050503@panasas.com>
+Date: Tue, 08 Jun 2010 10:48:55 -0400
+Message-ID: <op.vdzkrtmqunckof@usensfaibisl2e.eng.emc.com>
+In-Reply-To: <4C0DE93D.2050503@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Tue, 2010-06-29 at 07:45 +1200, Jasper Mackenzie wrote:
-> >>     I and many others have been plagued by a problem that can be  
-> >> summarised
-> >> as follows:
-> >>
-> >> Client hangs upon copying of large files TO the server. Transfer begins
-> >> quickly then hangs, sometimes taking the client o/s with it, until
-> >> transfer starts again. In less extreme cases transfer is sporadic.
-> >>     I am using nfs4 w gigabit nics.
-> >> http://ubuntuforums.org/showthread.php?p=9269703
-> >>     It appears that this problem is not restricted to ubuntu and exists
-> >
-> > Could this perhaps be related to the following bugzilla entry?
-> >     https://bugzilla.kernel.org/show_bug.cgi?id=16213
-> >
-> > If so, then could you please try the proposed fix and see if it helps.
-> >
-> > Cheers
-> >   Trond
->   Thanks Trond,
-> The patch solved the client lockups with a patched vanilla kernel (will  
-> keep trying with an ubuntu kernel, as it should do the same, but didnt)
-> 
-> Unfortunatley it dousnt fix the other problem, as it seems they are  
-> separate, of the transfer happening in bursts, reducing the actual  
-> throughput dramatically. i.e transfer starts at 16mb/s (according to  
-> nautilus), then 3 or 4 seconds later the progress bar stops, the hdd  
-> activity also stops (its the same with cp of course, nautilus just gives  
-> me a good indication of xfer speed), then 4 or 5 seconds later it starts  
-> again for 3 or 4 seconds.... repeat ad nausium...
->   Refer to the forum thread for graphs etc. of throughput if nesc.
+Problem solved; I sent Bruce 2 relevant papers from CMU and FAST 2009.
 
-That is usually because the server is caching too much data instead of
-progressively writing it out. When the client calls 'commit' (the NFS
-equivalent of fsync()) then the disk on the server goes into a frenzy of
-writing, and the client does the RPC equivalent of twiddling its thumbs
-until the server is done...
+/Sorin
 
-I'd suggest trying to lower the values
-of /proc/sys/vm/dirty_expire_centisecs
-and /proc/sys/vm/dirty_background_ratio on the server. You might also
-try lowering /proc/sys/vm/dirty_writeback_centisecs...
 
-Cheers
-  Trond
+On Tue, 08 Jun 2010 02:54:53 -0400, Benny Halevy <bhalevy@panasas.com>  
+wrote:
 
+> On 2010-06-07 21:49, J. Bruce Fields wrote:
+>> On Mon, Jun 07, 2010 at 09:41:29PM +0300, Boaz Harrosh wrote:
+>>> On 06/07/2010 09:29 PM, J. Bruce Fields wrote:
+>>>>>> On 06/07/2010 07:07 PM, Boaz Harrosh wrote:
+>>>>>>> I did not yet publish the Document. It's stuck behind my  
+>>>>>>> dis-talent for
+>>>>>>> writing and the pnfs bugs de jur.
+>>>>
+>>>> Untalented writing we can fix, as long as the details are there!
+>>>>
+>>>>>>>
+>>>>>>> Basically all machines:
+>>>>>>> - connected by a 1 GBit link.
+>>>>>>> - All clients doing a dd write of 8GB file from /dev/zero
+>>>>>>> - 3of8 is the special raid-groups arrangement of exofs && objlayout
+>>>>>>>   where out of 8 devices each file is striped over 3 devices in a
+>>>>>>>   round robin fashion. (*With a small dirty trick)
+>>>>
+>>>> Random stupid questions:
+>>>>
+>>>> 	- why do you think the 3of8 arrangement is scaling better than
+>>>> 	  the 8of8?
+>>>
+>>> It's a know problem with a network storage cluster. What happens is
+>>> that with 8of8 all the clients exercise all of the nodes at the same
+>>> time so they are clashing on the network.
+>>
+>> OK, so if two clients are both trying to send a stripe of data to the
+>> same OSD data at the same time, absent a switch that could somehow
+>> afford to queue up a full stripe-unit's worth of data, packets get lost?
+>>
+>> (Also, out of curiosity: do you know of any papers or documentation that
+>> describe that problem in more detail?)
+>>
+>
+> A good place to start would be
+> http://www.pdl.cmu.edu/Incast/
+>
+> Benny
+>
+>> --b.
+>> --
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
+>
+
+
+
+-- 
+Best Regards
+
+Sorin Faibish
+Corporate Distinguished Engineer
+Network Storage Group
+
+         EMC²
+where information lives
+
+Phone: 508-435-1000 x 48545
+Cellphone: 617-510-0422
+Email : sfaibish@emc.com
