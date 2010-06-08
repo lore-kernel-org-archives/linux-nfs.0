@@ -1,70 +1,63 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:5004 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753426Ab0FWTW3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 23 Jun 2010 15:22:29 -0400
-From: andros@netapp.com
-To: bhalevy@panasas.com
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 0/10] pnfs-submit add layoutget,layoutreturn error handling version 2
-Date: Wed, 23 Jun 2010 15:21:08 -0400
-Message-Id: <1277320878-3726-1-git-send-email-andros@netapp.com>
+Received: from crash-1.cutaway.it ([89.186.66.80]:58936 "EHLO mail.cutaway.it"
+	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1754994Ab0FHQcX convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Jun 2010 12:32:23 -0400
+Received: from mail.cutaway.it (localhost [127.0.0.1])
+	by mail.cutaway.it (Postfix) with ESMTP id C4EA7208052
+	for <linux-nfs@vger.kernel.org>; Tue,  8 Jun 2010 18:24:50 +0200 (CEST)
+Received: from mail.cutaway.it (localhost [127.0.0.1])
+	by mail.cutaway.it (Postfix) with ESMTP id D5E6A20804F
+	for <linux-nfs@vger.kernel.org>; Tue,  8 Jun 2010 18:24:49 +0200 (CEST)
+Received: from [IPv6:::1] (89-96-63-86.ip11.fastwebnet.it [89.96.63.86])
+	by mail.cutaway.it (Postfix) with ESMTPA
+	for <linux-nfs@vger.kernel.org>; Tue,  8 Jun 2010 18:24:49 +0200 (CEST)
+Message-ID: <4C0E6ED0.60200@miamammausalinux.org>
+Date: Tue, 08 Jun 2010 18:24:48 +0200
+From: RaSca <rasca@miamammausalinux.org>
+Reply-To: rasca@miamammausalinux.org
+To: linux-nfs@vger.kernel.org
+Subject: Problem using exportfs in an active-active nfs cluster
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
+Hi all,
+I'm trying to use a resource agent named exportfs for my active-active 
+nfs cluster configuration.
+The resource agent works using the exportfs command. I have an instance 
+of nfs-kernel-server for each node and exportfs dynamically remove or 
+append the export to the node (obviously I've got also a shared storage).
+The problem comes when the export is mounted by a client and this client 
+is writing on it: if the node switches, then the migration fails. The 
+sequence is this one:
 
+- The resource exportfs stops correctly (the Resource Agent launch 
+exportfs -u)
+- The Filesystem resource tries to unmount the exported filesystem, 
+doing an fuser to see if some processes are locking the fs.
+- fuser doesn't return anything, but the filesystem is still locked. 
+This happens because the kernel process nfsd is locking the FS.
+- The migration fails.
 
-Responded to comments, added a 2 cleanup patchses
+The only way to make thing work again is to restart the 
+nfs-kernel-daemon on the node which the resource reside and then cleanup 
+the resource.
 
-Plus some code cleanup
-0001-SQUASHME-pnfs-submit-remove-unused-filelayout_mount_.patch
+Now, after many discussions on the Linux-ha Mailing List, I'm here to 
+ask if this problem is about the exportfs command. Why a filesystem 
+remains locked to the nfsd kernel process even if I (or the resource 
+agent) have done an "exportfs -u" command?
 
-and some bug fixes
-0002-SQUASHME-pnfs-submit-pnfs_try_to_read-write-commit-u.patch
+What can else I do to free the exported filesystem? Note that I've tried 
+to mount from the client with "nolock" option and also the exported 
+filesystem is mounted with "noatime".
 
-NOTE: this patch: 0003-SQUASHME-pnfs-submit-tell-commit-to-use-the-MDS.patch
-was replaced by:
-0003-SQUASHME-pnfs-submit-clear-page-lseg-on-partial-i-o.patch
+Thanks a lot,
 
-
-Remove unused (by file layout) encode_layoutreturn io operation
-0004-SQUASHME-pnfs-submit-remove-encode_layoutreturn.patch
-0005-SQUASHME-pnfs-submit-add-error-handling-to-layout-re.patch
-
-0006-SQUASHME-pnfs-submit-handle-assassinated-layoutcommi.patch
-
-Note: pnfs4_proc_layoutget is only called by send_layout() which prints
-the status.
-0007-SQUASHME-pnfs-submit-add-error-handlers-to-layout-ge.patch
-
-Add back encode_layoutreturn io operation
-0008-pnfs-post-submit-restore-encode_layoutreturn.patch
-
-
-New patches:
-0009-SQUASHME-pnfs-submit-don-t-re-initialize-i_lock.patch
-
-This gets rid of a frame stack warning;
-0010-SQUASHME-pnfs-submit-remove-struct-nfs_server-from-s.patch
-
-Testing:
----------
-
-CONFIG_NFS_V4_1 set: NFSv4.0 NFSv4.1 pNFS
-Passes Connectathon tests
-
-Tested layoutget and layoutreturn recovery from NFS4ERR_DEAD_SESSION with the
-pyNFS server and the testclient framework.
-
-Still todo:
-
-Recover from NFS4ERR_BAD_STATEID. Currently layoutreturn, layoutget, and
-layoutcommit do not pass nfs_stste to the error handlers.
-
-Handle NFS4ERR_BAD_LAYOUT.
-
-CONFIG_NFS_V4_1 not set: NFSv4.o mount passes cthon tests.
-
--->Andy
+-- 
+RaSca
+Mia Mamma Usa Linux: Niente è impossibile da capire, se lo spieghi bene!
+rasca@miamammausalinux.org
+http://www.miamammausalinux.org
