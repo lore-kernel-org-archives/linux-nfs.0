@@ -1,87 +1,63 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH 1/3] nfsd: don't try to shut down nfs4 state handling
-	unless it's up
-Date: Wed, 9 Jun 2010 14:09:07 -0400
-Message-ID: <20100609180907.GB10953@fieldses.org>
-References: <1275924800-5214-1-git-send-email-jlayton@redhat.com> <1275924800-5214-2-git-send-email-jlayton@redhat.com> <20100608235828.GK26435@fieldses.org> <20100609062922.4bae21ac@corrin.poochiereds.net>
+From: Boaz Harrosh <bharrosh@panasas.com>
+Subject: Re: [PATCH 05/24] SQUASHME: ensure pnfs_update_lseg clears lsegp
+ on error
+Date: Wed, 09 Jun 2010 21:18:22 +0300
+Message-ID: <4C0FDAEE.3010300@panasas.com>
+References: <1275970761-31806-1-git-send-email-iisaman@netapp.com> <1275970761-31806-2-git-send-email-iisaman@netapp.com> <1275970761-31806-3-git-send-email-iisaman@netapp.com> <1275970761-31806-4-git-send-email-iisaman@netapp.com> <1275970761-31806-5-git-send-email-iisaman@netapp.com> <1275970761-31806-6-git-send-email-iisaman@netapp.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=UTF-8
 Cc: linux-nfs@vger.kernel.org
-To: Jeff Layton <jlayton@redhat.com>
+To: Fred Isaman <iisaman@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:54635 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752222Ab0FISJJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 9 Jun 2010 14:09:09 -0400
-In-Reply-To: <20100609062922.4bae21ac-4QP7MXygkU+dMjc06nkz3ljfA9RmPOcC@public.gmane.org>
+Received: from daytona.panasas.com ([67.152.220.89]:35126 "EHLO
+	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1757409Ab0FISSY (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 9 Jun 2010 14:18:24 -0400
+In-Reply-To: <1275970761-31806-6-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Jun 09, 2010 at 06:29:22AM -0400, Jeff Layton wrote:
-> On Tue, 8 Jun 2010 19:58:28 -0400
-> "J. Bruce Fields" <bfields@fieldses.org> wrote:
+On 06/08/2010 07:19 AM, Fred Isaman wrote:
+> This should be squashed into my (or alexandros's)submission patches for
+> version 2. Compensate for Alexandros returning error but assigning lseg.
 > 
-> > On Mon, Jun 07, 2010 at 11:33:18AM -0400, Jeff Layton wrote:
-> > > If someone tries to shut down the laundry_wq while it isn't up it'll
-> > > cause an oops.
-> > 
-> > OK, thanks.
-> > 
-> > Hm: what about the opposite (admittedly probably less crucial) problem:
-> > are there cases where nfs4_state_start() gets called but never
-> > nfs4_state_shutdown?
-> > 
-> > From a quick look, I don't see what prevents that.
-> > 
-> > --b.
-> > 
+> Signed-off-by: Fred Isaman <iisaman@netapp.com>
+> ---
+>  fs/nfs/pnfs.c |    3 +++
+>  1 files changed, 3 insertions(+), 0 deletions(-)
 > 
-> I don't see that problem. nfs4_state_shutdown gets called when the
-> nfsd_serv is torn down, and it only gets brought up in nfsd_svc,
+> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+> index 2f8fa3c..b990471 100644
+> --- a/fs/nfs/pnfs.c
+> +++ b/fs/nfs/pnfs.c
+> @@ -1064,6 +1064,8 @@ pnfs_update_layout(struct inode *ino,
+>  	DEFINE_WAIT(__wait);
+>  	int result = 0;
+>  
+> +	if (take_ref)
+> +		*lsegpp = NULL;
+>  	lo = get_lock_alloc_layout(ino);
+>  	if (IS_ERR(lo)) {
+>  		dprintk("%s ERROR: can't get pnfs_layout_type\n", __func__);
+> @@ -1078,6 +1080,7 @@ pnfs_update_layout(struct inode *ino,
+>  			put_lseg(lseg);
+>  
+>  		/* someone is cleaning the layout */
+> +		lseg = NULL;
+>  		result = -EAGAIN;
+>  		goto out_put;
+>  	}
 
-If nfs4_state_start() succeeds, then nfsd_create_server() is called.  It calls
-svc_create_pooled(), which is passed nfsd_last_thread() as a parameter.
+Please get these patchset organised.
+* Cleanup which go in permanently - first / separate.
+* Degrading B to A patches - later / separate.
+  Plus the A to B patch if needed or a note that a simple patch -R will do.
+  (Or a TODO: note that an A to B patch is missing)
 
-If svc_create_pooled succeeds, then I think we're guaranteed nfsd_last_thread()
-will get called eventually.
+This kind of patch kills any ability to really see what is happening.
 
-But if svc_create_pooled fails, I don't think nfsd_last_thread() is ever
-called.
+And, as far as code progression and understanding goes:
+* Fred's patches should go first - We first get a layout.
+* Then Alexandros patches ontop. - Then we return / recall a layout.
 
---b.
-
-> so as
-> far as I can tell it'll always be up as long as there are nfsd kthreads
-> running.
-> 
-> I should make it clear that this patch is just a prerequisite for the
-> following patches. I don't know of a way to trigger this oops with the
-> existing code, but if we call svc_destroy from the write_ports
-> codepaths like I'm proposing then it can happen.
-> 
-> > > 
-> > > Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> > > ---
-> > >  fs/nfsd/nfs4state.c |    2 ++
-> > >  1 files changed, 2 insertions(+), 0 deletions(-)
-> > > 
-> > > diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> > > index 1176708..fc52920 100644
-> > > --- a/fs/nfsd/nfs4state.c
-> > > +++ b/fs/nfsd/nfs4state.c
-> > > @@ -4124,6 +4124,8 @@ __nfs4_state_shutdown(void)
-> > >  void
-> > >  nfs4_state_shutdown(void)
-> > >  {
-> > > +	if (!nfs4_init)
-> > > +		return;
-> > >  	cancel_rearming_delayed_workqueue(laundry_wq, &laundromat_work);
-> > >  	destroy_workqueue(laundry_wq);
-> > >  	locks_end_grace(&nfsd4_manager);
-> > > -- 
-> > > 1.5.5.6
-> > > 
-> 
-> 
-> -- 
-> Jeff Layton <jlayton@redhat.com>
+Boaz
