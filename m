@@ -1,59 +1,47 @@
-From: RaSca <rasca-9B074fXSGsOr88ip1nKoZ2D2FQJk+8+b@public.gmane.org>
+From: Neil Brown <neilb@suse.de>
 Subject: Re: Problem using exportfs in an active-active nfs cluster
-Date: Wed, 09 Jun 2010 10:01:45 +0200
-Message-ID: <4C0F4A69.20005@miamammausalinux.org>
-References: <4C0E6ED0.60200@miamammausalinux.org> <20100609075425.7ec4ccd9@notabene.brown> <4C0F4634.8090102@miamammausalinux.org>
-Reply-To: rasca-9B074fXSGsOr88ip1nKoZ2D2FQJk+8+b@public.gmane.org
+Date: Wed, 9 Jun 2010 18:04:39 +1000
+Message-ID: <20100609180439.40e856ac@notabene.brown>
+References: <4C0E6ED0.60200@miamammausalinux.org>
+	<20100609075425.7ec4ccd9@notabene.brown>
+	<4C0F4634.8090102@miamammausalinux.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1;
-	format=flowed
+Content-Type: text/plain; charset=US-ASCII
 Cc: linux-nfs@vger.kernel.org
-To: Neil Brown <neilb@suse.de>
+To: rasca-9B074fXSGsOr88ip1nKoZ2D2FQJk+8+b@public.gmane.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from crash-1.cutaway.it ([89.186.66.80]:38700 "EHLO mail.cutaway.it"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1755567Ab0FIIBs convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 9 Jun 2010 04:01:48 -0400
+Received: from cantor2.suse.de ([195.135.220.15]:53761 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755802Ab0FIIEt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 9 Jun 2010 04:04:49 -0400
 In-Reply-To: <4C0F4634.8090102-9B074fXSGsOr88ip1nKoZ2D2FQJk+8+b@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Il giorno Mer 09 Giu 2010 09:43:48 CET, RaSca ha scritto:
+On Wed, 09 Jun 2010 09:43:48 +0200
+RaSca <rasca-9B074fXSGsOr88ip1nKoZ2D2FQJk+8+b@public.gmane.org> wrote:
+
 > Il giorno Mar 08 Giu 2010 23:54:25 CET, Neil Brown ha scritto:
 > [...]
->> Try
->> exportfs -f
-> Already tried, it didn't work. The file system is still locked by nfs=
-d.
+> > Try
+> >    exportfs -f
+> 
+> Already tried, it didn't work. The file system is still locked by nfsd.
+> 
 
-To be more specific: In my try first I do an exportfs -u of the export =
-i=20
-need to move and then i do an exportfs -f.
-Client side the copy wait for a while and then gives some "Permission=20
-denied" and exit.
-Server side the problem, as already said is this one:
+Seems unlikely ... "exportfs -f" flushes all the export caches in the kernel
+thus letting go of any filesystems.
+I guess an active NFS request could still hold the fs active, but that should
+complete fairly quickly.
+file locking might be an issue.  Might a client have a lock on some file in
+the filesystem?  Failover of locks is rather more complicated that simple
+file-access fail-over.  I don't recall what the status of this is currently.
 
-Jun  9 11:54:16 ubuntu-nodo1 lrmd: [692]: info: RA output:=20
-(share-a-fs:stop:stderr) umount: /share-a: device is busy.#012=20
-(In some cases useful info about processes that use#012         the=20
-device is found by lsof(8) or fuser(1))
-Jun  9 11:54:16 ubuntu-nodo1 lrmd: [692]: info: RA output:=20
-(share-a-fs:stop:stderr)
-Jun  9 11:54:16 ubuntu-nodo1 Filesystem[4065]: ERROR: Couldn't unmount=20
-/share-a; trying cleanup with KILL
-Jun  9 11:54:16 ubuntu-nodo1 Filesystem[4065]: INFO: No processes on=20
-/share-a were signalled
+When the umount files, check the content of
+   /proc/net/rpc/nfsd.export/content
+and
+   /proc/locks
 
-As you can see the filesystem resource agent tries to unmount /share-a=20
-but even if fuser or lsof does not give output, it still remains locked=
-=20
-(by nfsd, of course).
+to check what is actually using the filesystem.
 
-Have you got any other suggestion? Thanks a lot for your help.
-
---=20
-RaSca
-Mia Mamma Usa Linux: Niente =E8 impossibile da capire, se lo spieghi be=
-ne!
-rasca-9B074fXSGsOr88ip1nKoZ2D2FQJk+8+b@public.gmane.org
-http://www.miamammausalinux.org
+NeilBrown
