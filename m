@@ -1,68 +1,64 @@
-From: Steven Shiau <steven@nchc.org.tw>
-Subject: Bug#579397: STAT_FAIL to debian for SM_MON of 192.168.120.254, No canonical hostname found for 192.168.120.254
-Date: Wed, 09 Jun 2010 22:41:01 +0800
-Message-ID: <4C0FA7FD.3000301@nchc.org.tw>
-References: <4BF71C27.7070309@nchc.org.tw>	 <1274492328.11828.3.camel@localhost> <4BFA99CD.2040902@oracle.com>	 <4C0819C2.2020203@oracle.com> <1275769799.2870.107.camel@localhost>
-Reply-To: Steven Shiau <steven@nchc.org.tw>, 579397@bugs.debian.org
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: FW: Unable to mount nfs directories RHEL 4.8
+Date: Wed, 09 Jun 2010 12:18:24 -0400
+Message-ID: <4C0FBED0.9030809@oracle.com>
+References: <620E93B2E5CC3B46BD811165E3335B8708C2A04E@0461-its-exmb02.us.saic.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8; format=flowed
-Cc: Chuck Lever <chuck.lever@oracle.com>, 579397@bugs.debian.org,
- linux-nfs@vger.kernel.org
-To: Ben Hutchings <ben@decadent.org.uk>
-Return-path: <bounce-debian-bugs-dist=glddb-debian-bugs-dist=m.gmane.org@lists.debian.org>
-Resent-Message-ID: <handler.579397.B579397.127609446926316@bugs.debian.org>
-In-Reply-To: <1275769799.2870.107.camel@localhost>
-List-Post: <mailto:debian-bugs-dist@lists.debian.org>
-List-Help: <mailto:debian-bugs-dist-request@lists.debian.org?subject=help>
-List-Subscribe: <mailto:debian-bugs-dist-request@lists.debian.org?subject=subscribe>
-List-Unsubscribe: <mailto:debian-bugs-dist-request@lists.debian.org?subject=unsubscribe>
+Content-Type: text/plain; charset=us-ascii; format=flowed
+Cc: linux-nfs@vger.kernel.org
+To: "Murata, Dennis" <DENNIS.MURATA-jTGLxe6cr0Q@public.gmane.org>
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from rcsinet10.oracle.com ([148.87.113.121]:65516 "EHLO
+	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756899Ab0FIQTG (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 9 Jun 2010 12:19:06 -0400
+In-Reply-To: <620E93B2E5CC3B46BD811165E3335B8708C2A04E-9/h0XwadXgnyjpQT3Si/rsM9+qvyE0V4QQ4Iyu8u01E@public.gmane.org>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-
-On 2010=E5=B9=B406=E6=9C=8806=E6=97=A5 04:29, Ben Hutchings wrote:
-> On Thu, 2010-06-03 at 17:08 -0400, Chuck Lever wrote:
->   =20
->> On 05/24/10 11:22 AM, Chuck Lever wrote:
->>     =20
-> [...]
->   =20
->>> We can probably remove the reverse mapping constraint for presentatio=
-n
->>> addresses. A simple fix might be to change statd_canonical_name() fro=
-m:
->>>
->>> freeaddrinfo(ai);
->>> if (!result)
->>> return NULL;
->>>
->>> to
->>>
->>> freeaddrinfo(ai);
->>> if (!result)
->>> return strdup(hostname);
->>>
->>> Let me know if this works.
->>>       =20
->> Any update?  I have a patch ready for nfs-utils to fix this regression=
-,
->> but I need confirmation that it addresses your problem.
->>     =20
-> Steven originally had this problem, not me.  Steven, do you need me to
-> build a new package with this change?
+On 06/ 8/10 08:05 PM, Murata, Dennis wrote:
+> Didn't see the original message, sorry if this is a duplicate
 >
-> Ben.
+> -----Original Message-----
+> From: Murata, Dennis
+> Sent: Tuesday, June 08, 2010 3:26 PM
+> To: linux-nfs-owner@vger.kernel.org
+> Subject: Unable to mount nfs directories RHEL 4.8
 >
->   =20
-Ben,
-Yes, please.
-Thanks.
+> We are using a modified RHEL 4.8 build accessing Netapp filers for data
+> directories.  The build has nfs-utils-1.0.6-93.EL4,
+> nfs-utils-lib-1.0.6-10.el4, kernel-largesmp-2.6.9-89.EL all x86_64.
+> After a period of use, on a very questionable network using tcp as the
+> nfs transport, workstation will start getting error messages in
+> /var/log/messages|dmesg and are not able to mount/access the data
+> directories.  A reboot is necessary to allow the mounts.  The time
+> period varies and seems to depend on the usage, but in general will
+> start within a week of moderate use.  The error messages are:
+>
+> lockd: cannot monitor 192.168.10.133
+> lockd: failed to monitor 192.168.10.133
+> nsm_mon_unmon: rpc failed, status=-96
+> lockd: cannot monitor 192.168.10.133
+> lockd: failed to monitor 192.168.10.133
+> nsm_mon_unmon: rpc failed, status=-96
+> lockd: cannot monitor 192.168.10.133
+> lockd: failed to monitor 192.168.10.133
+>
+> These errors are repeated as access to the filer (ip address has been
+> changed) is tried.  A ps on the workstation shows rpc.statd still
+> running, service nfslock status reports rpc.statd running.
 
-Steven.
+Is portmap running, and is the statd service registered?  Is lockd 
+registered for both UDP and TCP?
 
---=20
-Steven Shiau<steven _at_ nchc org tw>  <steven _at_ stevenshiau org>
-National Center for High-performance Computing, Taiwan.
-http://www.nchc.org.tw
-Public Key Server PGP Key ID: 1024D/9762755A
-Fingerprint: A2A1 08B7 C22C 3D06 34DB  F4BC 08B3 E3D7 9762 755A
+> If the nfs-utils rpm from RHEL 4.6 is loaded, nfs-utils-1.0.6-84.EL4,
+> the problem does not occur.  We have been testing a few workstations for
+> ~two weeks without problem.  Any ideas?
+>
+> TIA
+> Wayne
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
