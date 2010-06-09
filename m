@@ -1,58 +1,54 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH 0/3] nfsd: fix error handling in write_ports interfaces
-Date: Tue, 8 Jun 2010 20:00:03 -0400
-Message-ID: <20100609000002.GL26435@fieldses.org>
-References: <1275924800-5214-1-git-send-email-jlayton@redhat.com>
+From: "Murata, Dennis" <DENNIS.MURATA-jTGLxe6cr0Q@public.gmane.org>
+Subject: FW: Unable to mount nfs directories RHEL 4.8
+Date: Tue, 8 Jun 2010 17:05:50 -0700
+Message-ID: <620E93B2E5CC3B46BD811165E3335B8708C2A04E@0461-its-exmb02.us.saic.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs@vger.kernel.org
-To: Jeff Layton <jlayton@redhat.com>
+Content-Type: text/plain;
+	charset="us-ascii"
+To: <linux-nfs@vger.kernel.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:34734 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752963Ab0FIAAJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 8 Jun 2010 20:00:09 -0400
-In-Reply-To: <1275924800-5214-1-git-send-email-jlayton@redhat.com>
+Received: from cpmx2.mail.saic.com ([139.121.17.172]:43926 "EHLO
+	cpmx2.mail.saic.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756314Ab0FIAUx convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Jun 2010 20:20:53 -0400
+Received: from 0599-its-sbg03.saic.com ([139.121.20.253] [139.121.20.253]) by cpmx2.mail.saic.com with ESMTP id BT-MMP-4417616 for linux-nfs@vger.kernel.org; Tue, 8 Jun 2010 17:05:51 -0700
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Jun 07, 2010 at 11:33:17AM -0400, Jeff Layton wrote:
-> This patchset fixes some problems with refcounting when there are
-> problems starting up nfsd. The easiest way to reproduce this is to have
-> rpcbind down and then try to start nfsd. The write_ports calls will
-> generally return failure at that point due to the fact that lockd can't
-> register its ports. That leaves the nfsd_serv pointer set, with the
-> sv_threads count set at 0. The first two patches fix this problem.
+Didn't see the original message, sorry if this is a duplicate
 
-Does this look like it's always been a problem, or was it introduced by
-recent changes?
+-----Original Message-----
+From: Murata, Dennis 
+Sent: Tuesday, June 08, 2010 3:26 PM
+To: linux-nfs-owner@vger.kernel.org
+Subject: Unable to mount nfs directories RHEL 4.8
 
-(Just a question of priority and whether it should be fixed in -stable
-branches too.)
+We are using a modified RHEL 4.8 build accessing Netapp filers for data
+directories.  The build has nfs-utils-1.0.6-93.EL4,
+nfs-utils-lib-1.0.6-10.el4, kernel-largesmp-2.6.9-89.EL all x86_64.
+After a period of use, on a very questionable network using tcp as the
+nfs transport, workstation will start getting error messages in
+/var/log/messages|dmesg and are not able to mount/access the data
+directories.  A reboot is necessary to allow the mounts.  The time
+period varies and seems to depend on the usage, but in general will
+start within a week of moderate use.  The error messages are:
 
---b.
+lockd: cannot monitor 192.168.10.133
+lockd: failed to monitor 192.168.10.133
+nsm_mon_unmon: rpc failed, status=-96
+lockd: cannot monitor 192.168.10.133
+lockd: failed to monitor 192.168.10.133
+nsm_mon_unmon: rpc failed, status=-96
+lockd: cannot monitor 192.168.10.133
+lockd: failed to monitor 192.168.10.133
 
-> 
-> The third patch, I'm not 100% sure on. It looks correct to me, but the
-> intent of the existing code is not very clear. I know this interface is
-> used by the rdma code, and I may be missing the point of doing it this
-> way. If the existing code is correct as-is, I'll plan to do a patch to
-> add some clarifying comments.
-> 
-> It also seems suspicious to me that __write_ports_addfd/delfd take and
-> put lockd references, but the addxprt/delxprt interfaces do not. If
-> someone were to addfd a socket and then delxprt it, it'll leave a lockd
-> reference dangling.
-> 
-> Should we be taking and putting lockd references in those codepaths as
-> well?
-> 
-> Jeff Layton (3):
->   nfsd: don't try to shut down nfs4 state handling unless it's up
->   nfsd: fix error handling when starting nfsd with rpcbind down
->   nfsd: fix error handling in __write_ports_addxprt
-> 
->  fs/nfsd/nfs4state.c |    2 ++
->  fs/nfsd/nfsctl.c    |   18 ++++++++++++------
->  2 files changed, 14 insertions(+), 6 deletions(-)
-> 
+These errors are repeated as access to the filer (ip address has been
+changed) is tried.  A ps on the workstation shows rpc.statd still
+running, service nfslock status reports rpc.statd running.
+
+If the nfs-utils rpm from RHEL 4.6 is loaded, nfs-utils-1.0.6-84.EL4,
+the problem does not occur.  We have been testing a few workstations for
+~two weeks without problem.  Any ideas?
+
+TIA
+Wayne 
