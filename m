@@ -1,47 +1,41 @@
-From: Neil Brown <neilb@suse.de>
-Subject: Re: Problem using exportfs in an active-active nfs cluster
-Date: Wed, 9 Jun 2010 18:04:39 +1000
-Message-ID: <20100609180439.40e856ac@notabene.brown>
-References: <4C0E6ED0.60200@miamammausalinux.org>
-	<20100609075425.7ec4ccd9@notabene.brown>
-	<4C0F4634.8090102@miamammausalinux.org>
+From: Boaz Harrosh <bharrosh@panasas.com>
+Subject: Re: Got error -10052 from the server on DESTROY_SESSION. Session
+ has 	been destroyed regardless...
+Date: Wed, 09 Jun 2010 11:16:28 +0300
+Message-ID: <4C0F4DDC.9000107@panasas.com>
+References: <4C0E6C37.3040504@panasas.com>	<AANLkTinzsVkmZBAqXxQpBScy71L6DSUlYiRwa_kZAicN@mail.gmail.com>	<4C0E8176.9090406@panasas.com> <AANLkTimF96pcQl53ZaBdpECe-OBP-JX7lw2zZ3S_1UZ5@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Cc: linux-nfs@vger.kernel.org
-To: rasca-9B074fXSGsOr88ip1nKoZ2D2FQJk+8+b@public.gmane.org
+Content-Type: text/plain; charset=UTF-8
+Cc: NFS list <linux-nfs@vger.kernel.org>
+To: Alexandros Batsakis <alexandros-4GNroTWusrE@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:53761 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755802Ab0FIIEt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 9 Jun 2010 04:04:49 -0400
-In-Reply-To: <4C0F4634.8090102-9B074fXSGsOr88ip1nKoZ2D2FQJk+8+b@public.gmane.org>
+Received: from daytona.panasas.com ([67.152.220.89]:60399 "EHLO
+	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1752986Ab0FIIQb (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 9 Jun 2010 04:16:31 -0400
+In-Reply-To: <AANLkTimF96pcQl53ZaBdpECe-OBP-JX7lw2zZ3S_1UZ5-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 09 Jun 2010 09:43:48 +0200
-RaSca <rasca-9B074fXSGsOr88ip1nKoZ2D2FQJk+8+b@public.gmane.org> wrote:
+On 06/08/2010 08:56 PM, Alexandros Batsakis wrote:
+> can you collect lient traces ? They would be more useful.
 
-> Il giorno Mar 08 Giu 2010 23:54:25 CET, Neil Brown ha scritto:
-> [...]
-> > Try
-> >    exportfs -f
+I'll leave this down for now. I can't reliably reproduce it.
+I'm sure it will come up again later. Will do when that comes.
+
+> The error message you see is not fatal, it happens if the RPC is
+> killed for some reason (e.g. during umount) or if the request
+> timeouts. But this trace wasn't collected at umount time, right ?
+
+No, normal heavy IO (git clone linux)
+
+> Also are these the objects client and server ?
 > 
-> Already tried, it didn't work. The file system is still locked by nfsd.
+
+That you never need to ask. Always ;-)
+Do you suspect it might be different, because of the no-rpc thing?
+
+> -alexandros
 > 
 
-Seems unlikely ... "exportfs -f" flushes all the export caches in the kernel
-thus letting go of any filesystems.
-I guess an active NFS request could still hold the fs active, but that should
-complete fairly quickly.
-file locking might be an issue.  Might a client have a lock on some file in
-the filesystem?  Failover of locks is rather more complicated that simple
-file-access fail-over.  I don't recall what the status of this is currently.
-
-When the umount files, check the content of
-   /proc/net/rpc/nfsd.export/content
-and
-   /proc/locks
-
-to check what is actually using the filesystem.
-
-NeilBrown
+Boaz
