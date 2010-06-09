@@ -1,231 +1,70 @@
-From: Fred Isaman <iisaman@umich.edu>
-Subject: Re: [PATCH 13/24] pnfs_submit: read path changeover
-Date: Wed, 9 Jun 2010 15:46:55 -0400
-Message-ID: <AANLkTim_AH3NwVm0K9fUySaupmGw6gMUYsB3JhUhvIwK@mail.gmail.com>
-References: <1275970761-31806-1-git-send-email-iisaman@netapp.com>
-	<1275970761-31806-2-git-send-email-iisaman@netapp.com>
-	<1275970761-31806-3-git-send-email-iisaman@netapp.com>
-	<1275970761-31806-4-git-send-email-iisaman@netapp.com>
-	<1275970761-31806-5-git-send-email-iisaman@netapp.com>
-	<1275970761-31806-6-git-send-email-iisaman@netapp.com>
-	<1275970761-31806-7-git-send-email-iisaman@netapp.com>
-	<1275970761-31806-8-git-send-email-iisaman@netapp.com>
-	<1275970761-31806-9-git-send-email-iisaman@netapp.com>
-	<1275970761-31806-10-git-send-email-iisaman@netapp.com>
-	<1275970761-31806-11-git-send-email-iisaman@netapp.com>
-	<1275970761-31806-12-git-send-email-iisaman@netapp.com>
-	<1275970761-31806-13-git-send-email-iisaman@netapp.com>
-	<1275970761-31806-14-git-send-email-iisaman@netapp.com>
-	<4C0FE936.2090901@panasas.com>
-	<AANLkTilecdPbSOJCDkGYH-X25gcZB-1fmBmU9mEpFO_y@mail.gmail.com>
-	<4C0FEDE2.4080506@panasas.com>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: [PATCH] rpcbind: set SO_REUSEADDR on NC_TPI_COTS listening sockets
+ (resend)
+Date: Wed, 09 Jun 2010 15:58:42 -0400
+Message-ID: <4C0FF272.3010600@oracle.com>
+References: <1276081743-31277-1-git-send-email-jlayton@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: Fred Isaman <iisaman@netapp.com>, linux-nfs@vger.kernel.org
-To: Boaz Harrosh <bharrosh@panasas.com>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Cc: libtirpc-devel-pyega4qmqnRoyOMFzWx49A@public.gmane.org, linux-nfs@vger.kernel.org
+To: Jeff Layton <jlayton@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-bw0-f46.google.com ([209.85.214.46]:38450 "EHLO
-	mail-bw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752496Ab0FITq5 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 9 Jun 2010 15:46:57 -0400
-Received: by bwz11 with SMTP id 11so1665410bwz.19
-        for <linux-nfs@vger.kernel.org>; Wed, 09 Jun 2010 12:46:55 -0700 (PDT)
-In-Reply-To: <4C0FEDE2.4080506@panasas.com>
+Received: from rcsinet10.oracle.com ([148.87.113.121]:24874 "EHLO
+	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932544Ab0FIT7Z (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 9 Jun 2010 15:59:25 -0400
+In-Reply-To: <1276081743-31277-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Jun 9, 2010 at 3:39 PM, Boaz Harrosh <bharrosh@panasas.com> wro=
-te:
-> On 06/09/2010 10:29 PM, Fred Isaman wrote:
->> On Wed, Jun 9, 2010 at 3:19 PM, Boaz Harrosh <bharrosh@panasas.com> =
-wrote:
->>> On 06/08/2010 07:19 AM, Fred Isaman wrote:
->>>> Change readpages path to only call LAYOUTGET once.
->>>>
->>>> Signed-off-by: Fred Isaman <iisaman@netapp.com>
->>>> ---
->>>> =A0fs/nfs/pagelist.c | =A0 =A02 ++
->>>> =A0fs/nfs/pnfs.c =A0 =A0 | =A0 37 +++++++-------------------------=
------
->>>> =A0fs/nfs/pnfs.h =A0 =A0 | =A0 25 ++++++++++++++++---------
->>>> =A03 files changed, 25 insertions(+), 39 deletions(-)
->>>>
->>>> diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
->>>> index ed647b9..c3e5a1f 100644
->>>> --- a/fs/nfs/pagelist.c
->>>> +++ b/fs/nfs/pagelist.c
->>>> @@ -253,6 +253,8 @@ static int nfs_can_coalesce_requests(struct nf=
-s_page *prev,
->>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 return 0;
->>>> =A0 =A0 =A0 if (prev->wb_pgbase + prev->wb_bytes !=3D PAGE_CACHE_S=
-IZE)
->>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 return 0;
->>>> + =A0 =A0 if (req->wb_lseg !=3D prev->wb_lseg)
->>>> + =A0 =A0 =A0 =A0 =A0 =A0 return 0;
->>>> =A0#ifdef CONFIG_NFS_V4_1
->>>> =A0 =A0 =A0 if (pgio->pg_test && !pgio->pg_test(pgio, prev, req))
->>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 return 0;
->>>> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
->>>> index 2b5f6fc..692a18e 100644
->>>> --- a/fs/nfs/pnfs.c
->>>> +++ b/fs/nfs/pnfs.c
->>>> @@ -1689,7 +1689,7 @@ pnfs_readpages(struct nfs_read_data *rdata)
->>>> =A0{
->>>> =A0 =A0 =A0 struct nfs_readargs *args =3D &rdata->args;
->>>> =A0 =A0 =A0 struct inode *inode =3D rdata->inode;
->>>> - =A0 =A0 int numpages, status, pgcount, temp;
->>>> + =A0 =A0 int numpages, pgcount, temp;
->>>> =A0 =A0 =A0 struct nfs_server *nfss =3D NFS_SERVER(inode);
->>>> =A0 =A0 =A0 struct nfs_inode *nfsi =3D NFS_I(inode);
->>>> =A0 =A0 =A0 struct pnfs_layout_segment *lseg;
->>>> @@ -1701,19 +1701,8 @@ pnfs_readpages(struct nfs_read_data *rdata)
->>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 args->count,
->>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 args->offset);
->>>>
->>>> - =A0 =A0 /* Retrieve and set layout if not allready cached */
->>>> - =A0 =A0 status =3D _pnfs_update_layout(inode,
->>>> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =
-args->context,
->>>> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =
-args->count,
->>>> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =
-args->offset,
->>>> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =
-IOMODE_READ,
->>>> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =
-&lseg);
->>>> - =A0 =A0 if (status) {
->>>> - =A0 =A0 =A0 =A0 =A0 =A0 dprintk("%s: Updating layout failed (%d)=
-, retry with NFS \n",
->>>> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 __func__, status);
->>>> - =A0 =A0 =A0 =A0 =A0 =A0 trypnfs =3D PNFS_NOT_ATTEMPTED;
->>>> - =A0 =A0 =A0 =A0 =A0 =A0 goto out;
->>>> - =A0 =A0 }
->>>> + =A0 =A0 lseg =3D rdata->req->wb_lseg;
->>>> + =A0 =A0 get_lseg(lseg);
->>>>
->>>> =A0 =A0 =A0 /* Determine number of pages. */
->>>> =A0 =A0 =A0 pgcount =3D args->pgbase + args->count;
->>>> @@ -1740,7 +1729,6 @@ pnfs_readpages(struct nfs_read_data *rdata)
->>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 rdata->pdata.lseg =3D NULL;
->>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 put_lseg(lseg);
->>>> =A0 =A0 =A0 }
->>>> - out:
->>>> =A0 =A0 =A0 dprintk("%s End (trypnfs:%d)\n", __func__, trypnfs);
->>>> =A0 =A0 =A0 return trypnfs;
->>>> =A0}
->>>> @@ -1749,21 +1737,10 @@ enum pnfs_try_status
->>>> =A0_pnfs_try_to_read_data(struct nfs_read_data *data,
->>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0const struct rpc_call_o=
-ps *call_ops)
->>>> =A0{
->>>> - =A0 =A0 struct inode *ino =3D data->inode;
->>>> - =A0 =A0 struct nfs_server *nfss =3D NFS_SERVER(ino);
->>>> -
->>>> - =A0 =A0 dprintk("--> %s\n", __func__);
->>>> - =A0 =A0 /* Only create an rpc request if utilizing NFSv4 I/O */
->>>> - =A0 =A0 if (!pnfs_enabled_sb(nfss) ||
->>>> - =A0 =A0 =A0 =A0 !nfss->pnfs_curr_ld->ld_io_ops->read_pagelist) {
->>>> - =A0 =A0 =A0 =A0 =A0 =A0 dprintk("<-- %s: not using pnfs\n", __fu=
-nc__);
->>>> - =A0 =A0 =A0 =A0 =A0 =A0 return PNFS_NOT_ATTEMPTED;
->>>> - =A0 =A0 } else {
->>>> - =A0 =A0 =A0 =A0 =A0 =A0 dprintk("%s: Utilizing pNFS I/O\n", __fu=
-nc__);
->>>> - =A0 =A0 =A0 =A0 =A0 =A0 data->pdata.call_ops =3D call_ops;
->>>> - =A0 =A0 =A0 =A0 =A0 =A0 data->pdata.pnfs_error =3D 0;
->>>> - =A0 =A0 =A0 =A0 =A0 =A0 return pnfs_readpages(data);
->>>> - =A0 =A0 }
->>>
->>> Wahoo, nice stuff Ha
->>>
->>> By now this can go into it's only caller.
->>> (And caller de-inlined, what was that all about)
->>>
->>>> + =A0 =A0 dprintk("%s: Utilizing pNFS I/O\n", __func__);
->>>> + =A0 =A0 data->pdata.call_ops =3D call_ops;
->>>> + =A0 =A0 data->pdata.pnfs_error =3D 0;
->>>> + =A0 =A0 return pnfs_readpages(data);
->>>> =A0}
->>>>
->>>> =A0enum pnfs_try_status
->>>> diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
->>>> index 6326ed5..816ebe1 100644
->>>> --- a/fs/nfs/pnfs.h
->>>> +++ b/fs/nfs/pnfs.h
->>>> @@ -94,22 +94,29 @@ static inline int pnfs_enabled_sb(struct nfs_s=
-erver *nfss)
->>>> =A0 =A0 =A0 return nfss->pnfs_curr_ld !=3D NULL;
->>>> =A0}
->>>>
->>>> +static inline void _pnfs_clear_lseg_from_pages(struct list_head *=
-head)
->>>> +{
->>>> + =A0 =A0 struct nfs_page *req;
->>>> +
->>>> + =A0 =A0 list_for_each_entry(req, head, wb_list) {
->>>> + =A0 =A0 =A0 =A0 =A0 =A0 put_lseg(req->wb_lseg);
->>>> + =A0 =A0 =A0 =A0 =A0 =A0 req->wb_lseg =3D NULL;
->>>> + =A0 =A0 }
->>>> +}
->>>> +
->>>> =A0static inline enum pnfs_try_status
->>>> =A0pnfs_try_to_read_data(struct nfs_read_data *data,
->>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 const struct rpc_call_ops =
-*call_ops)
->>>
->>> Don't think this needs to be inline, whats the point?
->>>
->>
->> The point is that it is in the header file, not a c file.
->>
->
-> That's what I meant. Why is it in the header file. Why not
-> in .c file and declared.
->
+For the record, this is an issue for any network service daemon that 
+uses a fixed port.  This solution is similar to what sshd does in many 
+cases.
 
-To make it easy to ifdef out if CONFIG_NFS_V4_1 is not set.
+Reviewed-by: Chuck Lever <chuck.lever@oracle.com>
 
-=46red
+On 06/ 9/10 07:09 AM, Jeff Layton wrote:
+> I previously sent this patch to the libtirpc-devel list but got no
+> response. Resending with wider distribution...
+>
+> If we don't set SO_REUSEADDR, then if there are any sockets on this port
+> in TIME_WAIT state when rpcbind is restarted then that will prevent the
+> bind() call from succeeding.
+>
+> Details of the problem are here:
+>
+>      https://bugzilla.redhat.com/show_bug.cgi?id=597356
+>
+> Signed-off-by: Jeff Layton<jlayton@redhat.com>
+> ---
+>   src/rpcbind.c |    9 +++++++++
+>   1 files changed, 9 insertions(+), 0 deletions(-)
+>
+> diff --git a/src/rpcbind.c b/src/rpcbind.c
+> index ddf2cfc..c8f0d9f 100644
+> --- a/src/rpcbind.c
+> +++ b/src/rpcbind.c
+> @@ -276,6 +276,7 @@ init_transport(struct netconfig *nconf)
+>   	int addrlen = 0;
+>   	int nhostsbak;
+>   	int checkbind;
+> +	int on = 1;
+>   	struct sockaddr *sa = NULL;
+>   	u_int32_t host_addr[4];  /* IPv4 or IPv6 */
+>   	struct sockaddr_un sun;
+> @@ -493,6 +494,14 @@ init_transport(struct netconfig *nconf)
+>   		}
+>   		oldmask = umask(S_IXUSR|S_IXGRP|S_IXOTH);
+>   		__rpc_fd2sockinfo(fd,&si);
+> +		if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR,&on,
+> +				sizeof(on)) != 0) {
+> +			syslog(LOG_ERR, "cannot set SO_REUSEADDR on %s",
+> +				nconf->nc_netid);
+> +			if (res != NULL)
+> +				freeaddrinfo(res);
+> +			return 1;
+> +		}
+>   		if (bind(fd, sa, addrlen)<  0) {
+>   			syslog(LOG_ERR, "cannot bind %s: %m", nconf->nc_netid);
+>   			if (res != NULL)
 
->> Fred
->>
->
-> (-Bz
->
->>>> =A0{
->>>> - =A0 =A0 struct inode *inode =3D data->inode;
->>>> - =A0 =A0 struct nfs_server *nfss =3D NFS_SERVER(inode);
->>>> =A0 =A0 =A0 enum pnfs_try_status ret;
->>>>
->>>> - =A0 =A0 /* FIXME: read_pagelist should probably be mandated */
->>>> - =A0 =A0 if (PNFS_EXISTS_LDIO_OP(nfss, read_pagelist))
->>>> - =A0 =A0 =A0 =A0 =A0 =A0 ret =3D _pnfs_try_to_read_data(data, cal=
-l_ops);
->>>> - =A0 =A0 else
->>>> - =A0 =A0 =A0 =A0 =A0 =A0 ret =3D PNFS_NOT_ATTEMPTED;
->>>> -
->>>> + =A0 =A0 if (!data->req->wb_lseg)
->>>> + =A0 =A0 =A0 =A0 =A0 =A0 return PNFS_NOT_ATTEMPTED;
->>>> + =A0 =A0 ret =3D _pnfs_try_to_read_data(data, call_ops);
->>>> =A0 =A0 =A0 if (ret =3D=3D PNFS_ATTEMPTED)
->>>> - =A0 =A0 =A0 =A0 =A0 =A0 nfs_inc_stats(inode, NFSIOS_PNFS_READ);
->>>> + =A0 =A0 =A0 =A0 =A0 =A0 nfs_inc_stats(data->inode, NFSIOS_PNFS_R=
-EAD);
->>>> + =A0 =A0 else
->>>> + =A0 =A0 =A0 =A0 =A0 =A0 _pnfs_clear_lseg_from_pages(&data->pages=
-);
->>>> =A0 =A0 =A0 return ret;
->>>> =A0}
->>>>
->>>
->>> Boaz
->>> --
->>> To unsubscribe from this list: send the line "unsubscribe linux-nfs=
-" in
->>> the body of a message to majordomo@vger.kernel.org
->>> More majordomo info at =A0http://vger.kernel.org/majordomo-info.htm=
-l
->>>
->
->
