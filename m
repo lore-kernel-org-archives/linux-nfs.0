@@ -1,57 +1,33 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH 0/3] nfsd: fix error handling in write_ports interfaces
-Date: Tue, 8 Jun 2010 20:49:58 -0400
-Message-ID: <20100609004958.GA28390@fieldses.org>
-References: <1275924800-5214-1-git-send-email-jlayton@redhat.com>
+From: RaSca <rasca-9B074fXSGsOr88ip1nKoZ2D2FQJk+8+b@public.gmane.org>
+Subject: Re: Problem using exportfs in an active-active nfs cluster
+Date: Wed, 09 Jun 2010 09:43:48 +0200
+Message-ID: <4C0F4634.8090102@miamammausalinux.org>
+References: <4C0E6ED0.60200@miamammausalinux.org> <20100609075425.7ec4ccd9@notabene.brown>
+Reply-To: rasca-9B074fXSGsOr88ip1nKoZ2D2FQJk+8+b@public.gmane.org
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=ISO-8859-1;
+	format=flowed
 Cc: linux-nfs@vger.kernel.org
-To: Jeff Layton <jlayton@redhat.com>
+To: Neil Brown <neilb@suse.de>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:38989 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755782Ab0FIAt7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 8 Jun 2010 20:49:59 -0400
-In-Reply-To: <1275924800-5214-1-git-send-email-jlayton@redhat.com>
+Received: from crash-1.cutaway.it ([89.186.66.80]:58414 "EHLO mail.cutaway.it"
+	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1755777Ab0FIHnw convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 9 Jun 2010 03:43:52 -0400
+In-Reply-To: <20100609075425.7ec4ccd9-wvvUuzkyo1EYVZTmpyfIwg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Jun 07, 2010 at 11:33:17AM -0400, Jeff Layton wrote:
-> This patchset fixes some problems with refcounting when there are
-> problems starting up nfsd. The easiest way to reproduce this is to have
-> rpcbind down and then try to start nfsd. The write_ports calls will
-> generally return failure at that point due to the fact that lockd can't
-> register its ports. That leaves the nfsd_serv pointer set, with the
-> sv_threads count set at 0. The first two patches fix this problem.
-> 
-> The third patch, I'm not 100% sure on. It looks correct to me, but the
-> intent of the existing code is not very clear. I know this interface is
-> used by the rdma code, and I may be missing the point of doing it this
-> way. If the existing code is correct as-is, I'll plan to do a patch to
-> add some clarifying comments.
-> 
-> It also seems suspicious to me that __write_ports_addfd/delfd take and
-> put lockd references, but the addxprt/delxprt interfaces do not. If
-> someone were to addfd a socket and then delxprt it, it'll leave a lockd
-> reference dangling.
+Il giorno Mar 08 Giu 2010 23:54:25 CET, Neil Brown ha scritto:
+[...]
+> Try
+>    exportfs -f
 
-I haven't looked at this closely enough to have any though beyond: boy,
-it seems confusing to use sv_nrthreads this way.  What is the
-refcounting actually meant to accomplish, and if we were designing it
-from scratch, what would we do?
+Already tried, it didn't work. The file system is still locked by nfsd.
 
---b.
-
-> 
-> Should we be taking and putting lockd references in those codepaths as
-> well?
-> 
-> Jeff Layton (3):
->   nfsd: don't try to shut down nfs4 state handling unless it's up
->   nfsd: fix error handling when starting nfsd with rpcbind down
->   nfsd: fix error handling in __write_ports_addxprt
-> 
->  fs/nfsd/nfs4state.c |    2 ++
->  fs/nfsd/nfsctl.c    |   18 ++++++++++++------
->  2 files changed, 14 insertions(+), 6 deletions(-)
-> 
+--=20
+RaSca
+Mia Mamma Usa Linux: Niente =E8 impossibile da capire, se lo spieghi be=
+ne!
+rasca-9B074fXSGsOr88ip1nKoZ2D2FQJk+8+b@public.gmane.org
+http://www.miamammausalinux.org
