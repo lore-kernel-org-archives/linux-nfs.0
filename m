@@ -1,19 +1,19 @@
 From: RaSca <rasca-9B074fXSGsOr88ip1nKoZ2D2FQJk+8+b@public.gmane.org>
 Subject: Re: Problem using exportfs in an active-active nfs cluster
-Date: Wed, 09 Jun 2010 10:01:39 +0200
-Message-ID: <4C0F4A63.3070002@miamammausalinux.org>
+Date: Wed, 09 Jun 2010 10:01:45 +0200
+Message-ID: <4C0F4A69.20005@miamammausalinux.org>
 References: <4C0E6ED0.60200@miamammausalinux.org> <20100609075425.7ec4ccd9@notabene.brown> <4C0F4634.8090102@miamammausalinux.org>
 Reply-To: rasca-9B074fXSGsOr88ip1nKoZ2D2FQJk+8+b@public.gmane.org
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1;
 	format=flowed
-Cc: Neil Brown <neilb@suse.de>, linux-nfs@vger.kernel.org
-To: rasca-9B074fXSGsOr88ip1nKoZ2D2FQJk+8+b@public.gmane.org
+Cc: linux-nfs@vger.kernel.org
+To: Neil Brown <neilb@suse.de>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from crash-1.cutaway.it ([89.186.66.80]:38683 "EHLO mail.cutaway.it"
+Received: from crash-1.cutaway.it ([89.186.66.80]:38700 "EHLO mail.cutaway.it"
 	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1755567Ab0FIIBl convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 9 Jun 2010 04:01:41 -0400
+	id S1755567Ab0FIIBs convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 9 Jun 2010 04:01:48 -0400
 In-Reply-To: <4C0F4634.8090102-9B074fXSGsOr88ip1nKoZ2D2FQJk+8+b@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
