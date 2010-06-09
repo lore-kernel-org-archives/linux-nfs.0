@@ -1,109 +1,116 @@
-From: Jeff Layton <jlayton@redhat.com>
-Subject: Re: [PATCH 1/3] nfsd: don't try to shut down nfs4 state handling
- unless it's up
-Date: Wed, 9 Jun 2010 14:29:43 -0400
-Message-ID: <20100609142943.60d31a11@tlielax.poochiereds.net>
-References: <1275924800-5214-1-git-send-email-jlayton@redhat.com>
-	<1275924800-5214-2-git-send-email-jlayton@redhat.com>
-	<20100608235828.GK26435@fieldses.org>
-	<20100609062922.4bae21ac@corrin.poochiereds.net>
-	<20100609180907.GB10953@fieldses.org>
+From: "Murata, Dennis" <DENNIS.MURATA-jTGLxe6cr0Q@public.gmane.org>
+Subject: RE: FW: Unable to mount nfs directories RHEL 4.8
+Date: Wed, 9 Jun 2010 11:47:08 -0700
+Message-ID: <620E93B2E5CC3B46BD811165E3335B8708CB9D3B@0461-its-exmb02.us.saic.com>
+References: <620E93B2E5CC3B46BD811165E3335B8708C2A04E@0461-its-exmb02.us.saic.com> <4C0FBED0.9030809@oracle.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Cc: linux-nfs@vger.kernel.org
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Content-Type: text/plain;
+	charset="us-ascii"
+Cc: <linux-nfs@vger.kernel.org>
+To: "Chuck Lever" <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:49918 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758105Ab0FIS3q convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 9 Jun 2010 14:29:46 -0400
-In-Reply-To: <20100609180907.GB10953@fieldses.org>
+Received: from cpmx2.mail.saic.com ([139.121.17.172]:43237 "EHLO
+	cpmx2.mail.saic.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758200Ab0FISr0 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 9 Jun 2010 14:47:26 -0400
+In-Reply-To: <4C0FBED0.9030809@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 9 Jun 2010 14:09:07 -0400
-"J. Bruce Fields" <bfields@fieldses.org> wrote:
-
-> On Wed, Jun 09, 2010 at 06:29:22AM -0400, Jeff Layton wrote:
-> > On Tue, 8 Jun 2010 19:58:28 -0400
-> > "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> > 
-> > > On Mon, Jun 07, 2010 at 11:33:18AM -0400, Jeff Layton wrote:
-> > > > If someone tries to shut down the laundry_wq while it isn't up it'll
-> > > > cause an oops.
-> > > 
-> > > OK, thanks.
-> > > 
-> > > Hm: what about the opposite (admittedly probably less crucial) problem:
-> > > are there cases where nfs4_state_start() gets called but never
-> > > nfs4_state_shutdown?
-> > > 
-> > > From a quick look, I don't see what prevents that.
-> > > 
-> > > --b.
-> > > 
-> > 
-> > I don't see that problem. nfs4_state_shutdown gets called when the
-> > nfsd_serv is torn down, and it only gets brought up in nfsd_svc,
-> 
-> If nfs4_state_start() succeeds, then nfsd_create_server() is called.  It calls
-> svc_create_pooled(), which is passed nfsd_last_thread() as a parameter.
-> 
-> If svc_create_pooled succeeds, then I think we're guaranteed nfsd_last_thread()
-> will get called eventually.
-> 
-> But if svc_create_pooled fails, I don't think nfsd_last_thread() is ever
-> called.
-> 
-
-Ahh ok, I see what you're talking about now. Yeah, that should probably
-also be fixed. I think we just need to ensure to shut down the state in
-an error condition. Something like this compile-tested only patch?
-
->From 19bd25ea9a76ea184e4c30831765e812ce19b0a5 Mon Sep 17 00:00:00 2001
-From: Jeff Layton <jlayton@redhat.com>
-Date: Wed, 9 Jun 2010 14:21:51 -0400
-Subject: [PATCH] nfsd: shut down NFSv4 state when nfsd_svc encounters an error
-
-Currently, it's left up in some situations. That could cause the grace
-period to be shorter than it should be (along with other problems).
-
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- fs/nfsd/nfssvc.c |   11 +++++++----
- 1 files changed, 7 insertions(+), 4 deletions(-)
-
-diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
-index 06b2a26..a06ea99 100644
---- a/fs/nfsd/nfssvc.c
-+++ b/fs/nfsd/nfssvc.c
-@@ -402,9 +402,9 @@ nfsd_svc(unsigned short port, int nrservs)
- 	nfsd_reset_versions();
  
- 	error = nfsd_create_serv();
--
- 	if (error)
--		goto out;
-+		goto shutdown_state;
-+
- 	error = nfsd_init_socks(port);
- 	if (error)
- 		goto failure;
-@@ -416,9 +416,12 @@ nfsd_svc(unsigned short port, int nrservs)
- 		 * so subtract 1
- 		 */
- 		error = nfsd_serv->sv_nrthreads - 1;
-- failure:
-+failure:
- 	svc_destroy(nfsd_serv);		/* Release server */
-- out:
-+shutdown_state:
-+	if (error < 0)
-+		nfs4_state_shutdown();
-+out:
- 	mutex_unlock(&nfsd_mutex);
- 	return error;
- }
--- 
-1.5.5.6
 
+> -----Original Message-----
+> From: Chuck Lever [mailto:chuck.lever@oracle.com] 
+> Sent: Wednesday, June 09, 2010 11:18 AM
+> To: Murata, Dennis
+> Cc: linux-nfs@vger.kernel.org
+> Subject: Re: FW: Unable to mount nfs directories RHEL 4.8
+> 
+> On 06/ 8/10 08:05 PM, Murata, Dennis wrote:
+> > Didn't see the original message, sorry if this is a duplicate
+> >
+> > -----Original Message-----
+> > From: Murata, Dennis
+> > Sent: Tuesday, June 08, 2010 3:26 PM
+> > To: linux-nfs-owner@vger.kernel.org
+> > Subject: Unable to mount nfs directories RHEL 4.8
+> >
+> > We are using a modified RHEL 4.8 build accessing Netapp filers for 
+> > data directories.  The build has nfs-utils-1.0.6-93.EL4, 
+> > nfs-utils-lib-1.0.6-10.el4, kernel-largesmp-2.6.9-89.EL all x86_64.
+> > After a period of use, on a very questionable network using 
+> tcp as the 
+> > nfs transport, workstation will start getting error messages in 
+> > /var/log/messages|dmesg and are not able to mount/access the data 
+> > directories.  A reboot is necessary to allow the mounts.  The time 
+> > period varies and seems to depend on the usage, but in general will 
+> > start within a week of moderate use.  The error messages are:
+> >
+> > lockd: cannot monitor 192.168.10.133
+> > lockd: failed to monitor 192.168.10.133
+> > nsm_mon_unmon: rpc failed, status=-96
+> > lockd: cannot monitor 192.168.10.133
+> > lockd: failed to monitor 192.168.10.133
+> > nsm_mon_unmon: rpc failed, status=-96
+> > lockd: cannot monitor 192.168.10.133
+> > lockd: failed to monitor 192.168.10.133
+> >
+> > These errors are repeated as access to the filer (ip 
+> address has been
+> > changed) is tried.  A ps on the workstation shows rpc.statd still 
+> > running, service nfslock status reports rpc.statd running.
+> 
+> Is portmap running, and is the statd service registered?  Is 
+> lockd registered for both UDP and TCP?
+Portmap is running.  Not sure how to check if lockd is registered but
+the output from rpcinfo -p
+[root@host1 ~]# rpcinfo -p
+   program vers proto   port
+    100000    2   tcp    111  portmapper
+    100000    2   udp    111  portmapper
+    100007    2   udp    880  ypbind
+    100007    1   udp    880  ypbind
+    100007    2   tcp    883  ypbind
+    100007    1   tcp    883  ypbind
+    100011    1   udp    948  rquotad
+    100011    2   udp    948  rquotad
+    100011    1   tcp    963  rquotad
+    100011    2   tcp    963  rquotad
+    100003    2   udp   2049  nfs
+    100003    3   udp   2049  nfs
+    100003    4   udp   2049  nfs
+    100003    2   tcp   2049  nfs
+    100003    3   tcp   2049  nfs
+    100003    4   tcp   2049  nfs
+    100021    1   udp  34574  nlockmgr
+    100021    3   udp  34574  nlockmgr
+    100021    4   udp  34574  nlockmgr
+    100021    1   tcp  32786  nlockmgr
+    100021    3   tcp  32786  nlockmgr
+    100021    4   tcp  32786  nlockmgr
+    100005    1   udp    962  mountd
+    100005    1   tcp    974  mountd
+    100005    2   udp    962  mountd
+    100005    2   tcp    974  mountd
+    100005    3   udp    962  mountd
+    100005    3   tcp    974  mountd
+    100024    1   udp    744  status
+    100024    1   tcp    750  status
+[root@host1 ~]#
+> 
+> > If the nfs-utils rpm from RHEL 4.6 is loaded, 
+> nfs-utils-1.0.6-84.EL4, 
+> > the problem does not occur.  We have been testing a few 
+> workstations 
+> > for ~two weeks without problem.  Any ideas?
+> >
+> > TIA
+> > Wayne
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe 
+> linux-nfs" 
+> > in the body of a message to majordomo@vger.kernel.org More 
+> majordomo 
+> > info at  http://vger.kernel.org/majordomo-info.html
+> 
+> 
