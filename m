@@ -1,93 +1,76 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:42945 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758061Ab0FITMt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 9 Jun 2010 15:12:49 -0400
-Date: Wed, 9 Jun 2010 15:12:47 -0400
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Cc: linux-nfs@vger.kernel.org
-Subject: nfsd bugfixes for 2.6.35
-Message-ID: <20100609191246.GA12134@fieldses.org>
-Content-Type: text/plain; charset=us-ascii
-From: "J. Bruce Fields" <bfields@fieldses.org>
+Received: from daytona.panasas.com ([67.152.220.89]:59065 "EHLO
+	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1753051Ab0FJNJP (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Jun 2010 09:09:15 -0400
+Message-ID: <4C10E3F8.2040603@panasas.com>
+Date: Thu, 10 Jun 2010 16:09:12 +0300
+From: Boaz Harrosh <bharrosh@panasas.com>
+To: Benny Halevy <bhalevy@panasas.com>
+CC: Fred Isaman <iisaman@netapp.com>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 14/24] pnfs_submit: use fsdata to pass lseg
+References: <1275970761-31806-1-git-send-email-iisaman@netapp.com> <1275970761-31806-3-git-send-email-iisaman@netapp.com> <1275970761-31806-4-git-send-email-iisaman@netapp.com> <1275970761-31806-5-git-send-email-iisaman@netapp.com> <1275970761-31806-6-git-send-email-iisaman@netapp.com> <1275970761-31806-7-git-send-email-iisaman@netapp.com> <1275970761-31806-8-git-send-email-iisaman@netapp.com> <1275970761-31806-9-git-send-email-iisaman@netapp.com> <1275970761-31806-10-git-send-email-iisaman@netapp.com> <1275970761-31806-11-git-send-email-iisaman@netapp.com> <1275970761-31806-12-git-send-email-iisaman@netapp.com> <1275970761-31806-13-git-send-email-iisaman@netapp.com> <1275970761-31806-14-git-send-email-iisaman@netapp.com> <1275970761-31806-15-git-send-email-iisaman@netapp.com> <4C0F6F11.7050602@panasas.com> <AANLkTillGAndgQoohtCV36csBH6CzxkZ3792H16nRV-S@mail.gmail.com> <D0754698-130E-40CA-B28A-3A6926E7D25C@netapp.com> <4C10DE61.7010706@panasas.com> <4C10DF1E.6060608@panasas.!
+ com>
+In-Reply-To: <4C10DF1E.6060608@panasas.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-These two nfsd bugfixes are suitable for 2.6.35:
+On 06/10/2010 03:48 PM, Benny Halevy wrote:
+> On Jun. 10, 2010, 15:45 +0300, Benny Halevy <bhalevy@panasas.com> wrote:
+>> On 06/10/2010 01:33 PM, Fred Isaman wrote:
+>>>
+>>> On Jun 9, 2010, at 8:08 AM, Fred Isaman wrote:
+>>>
+>>>> On Wed, Jun 9, 2010 at 6:38 AM, Benny Halevy <bhalevy@panasas.com> wrote:
+>>>>> Fred, how does that patch interact with
+>>>>> 285052f pnfs_post_submit: Restore "pnfs: pnfs_do_flush"
+>>>>> and the latter patches that depend on it?
+>>>>>
+>>>>> Benny
+>>>>>
+>>>>
+>>>> They will have to be modified.  I'll look at that today.
+>>>>
+>>>> Fred
+>>>
+>>> OK, this is a general git question.  How in the world do I send in these modifications?
+>>>
+>>> Basically, because of the way we have pnfs-submit in the middle of our tree, I have a branch that looks like:
+>>>
+>>> A->B->C->D
+>>>
+>>> I've inserted my new patch F between And B, which requires a rebase of the subsequent patches:
+>>>
+>>> A->F->B'->C'->D'
+>>>
+>>> But that rebase is non-trivial, in particular for patch C (a block-layout patch), and I want to communicate the modifications I made.
+>>>
+>>> The best I have been able to come up with is to do the minimal obvious rebase, just sufficient to remove all the conflict markers,
+>>> then add a following modification patch, so I would have something like:
+>>>
+>>> A->F->B'->C'->C''->D'
+>>>
+>>> and I could send in C''.  But this seems less than ideal, especially when you consider I have ~10 patches which would require this handling.
+>>>
+>>
+>> You can either send your a patchset based on C and I can
+>> rebase parts of it onto A and B or just send the clean rebased
+>> patches from B and C and we can review the diff (B vs. B' and
+>> C vs. C')
+> 
+> Oh and I apologize for having set a moving target for you.
+> I'm about to release a tree with merged patches from Alexandros,
+> Andy, and Boaz (merge conflicts should be minimal though)
+> 
+>>
+>> Benny
+>>
 
-  git://linux-nfs.org/~bfields/linux.git for-2.6.35
+Fred do you have a git tree on the linux-nfs.org/ or at Netapp that's open on the net?
+If so you could just publish your cleanup tree, Benny will "git remote add" your branch
+and can then cherry-pick / rebase very easily. It's how we did it a few times.
+(We still need patches for review though)
 
-Christoph Hellwig (1):
-      nfsd: nfsd_setattr needs to call commit_metadata
-
-J. Bruce Fields (2):
-      nfsd4: shut down callback queue outside state lock
-      Merge branch 'for-2.6.34-incoming' into for-2.6.35-incoming
-
-commit 44b56603c4c476b845a824cff6fe905c6268b2a1
-Merge: c3935e3 b160fda
-Author: J. Bruce Fields <bfields@citi.umich.edu>
-Date:   Tue Jun 8 20:05:18 2010 -0400
-
-    Merge branch 'for-2.6.34-incoming' into for-2.6.35-incoming
-
-commit c3935e30495869dd611e1cd62253c94ebc7c6c04
-Author: J. Bruce Fields <bfields@citi.umich.edu>
-Date:   Fri Jun 4 16:42:08 2010 -0400
-
-    nfsd4: shut down callback queue outside state lock
-    
-    This reportedly causes a lockdep warning on nfsd shutdown.  That looks
-    like a false positive to me, but there's no reason why this needs the
-    state lock anyway.
-    
-    Reported-by: Jeff Layton <jlayton@redhat.com>
-    Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
-
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 12f7109..4a27347 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -4122,8 +4122,8 @@ nfs4_state_shutdown(void)
- 	nfs4_lock_state();
- 	nfs4_release_reclaim();
- 	__nfs4_state_shutdown();
--	nfsd4_destroy_callback_queue();
- 	nfs4_unlock_state();
-+	nfsd4_destroy_callback_queue();
- }
- 
- /*
-
-commit b160fdabe93a8a53094f90f02bf4dcb500782aab
-Author: Christoph Hellwig <hch@lst.de>
-Date:   Tue Jun 1 21:59:18 2010 +0200
-
-    nfsd: nfsd_setattr needs to call commit_metadata
-    
-    The conversion of write_inode_now calls to commit_metadata in commit
-    f501912a35c02eadc55ca9396ece55fe36f785d0 missed out the call in nfsd_setattr.
-    
-    But without this conversion we can't guarantee that a SETATTR request
-    has actually been commited to disk with XFS, which causes a regression
-    from 2.6.32 (only for NFSv2, but anyway).
-    
-    Signed-off-by: Christoph Hellwig <hch@lst.de>
-    Cc: stable@kernel.org
-    Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
-
-diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-index 6dd5f19..3440dd8 100644
---- a/fs/nfsd/vfs.c
-+++ b/fs/nfsd/vfs.c
-@@ -443,8 +443,7 @@ nfsd_setattr(struct svc_rqst *rqstp, struct svc_fh *fhp, struct iattr *iap,
- 	if (size_change)
- 		put_write_access(inode);
- 	if (!err)
--		if (EX_ISSYNC(fhp->fh_export))
--			write_inode_now(inode, 1);
-+		commit_metadata(fhp);
- out:
- 	return err;
- 
+Boaz
