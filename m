@@ -1,45 +1,69 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cantor.suse.de ([195.135.220.2]:50303 "EHLO mx1.suse.de"
+Received: from fieldses.org ([174.143.236.118]:48164 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751674Ab0FBFEA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 2 Jun 2010 01:04:00 -0400
-Date: Wed, 2 Jun 2010 15:03:51 +1000
-From: Neil Brown <neilb@suse.de>
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-Cc: linux-btrfs@vger.kernel.org, linux-nfs@vger.kernel.org, jeffm@suse.com
-Subject: Re: NFS exporting btrfs subvolumes.
-Message-ID: <20100602150351.592e36a8@notabene.brown>
-In-Reply-To: <1275450980.4509.13.camel@heimdal.trondhjem.org>
-References: <20100602134145.0d523a75@notabene.brown>
-	<1275450980.4509.13.camel@heimdal.trondhjem.org>
-Content-Type: text/plain; charset=US-ASCII
+	id S1758287Ab0FJNdh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 10 Jun 2010 09:33:37 -0400
+Date: Thu, 10 Jun 2010 09:33:37 -0400
+To: Benny Halevy <bhalevy@panasas.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH] Fixed getdevinfo() and dlm_ino_hash() to search for the
+	correct disk name.
+Message-ID: <20100610133336.GB24596@fieldses.org>
+Content-Type: text/plain; charset=us-ascii
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Tue, 01 Jun 2010 23:56:20 -0400
-Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
+The patch "pnfsd: fix test in nfsd4_find_pnfs_dlm_device" was obviously
+correct; before that patch, nfsd4_find_pnfs_dlm_device() returned the
+first device which did *not* match, instead of the first device which
+did.
 
-> On Wed, 2010-06-02 at 13:41 +1000, Neil Brown wrote:
-> > NFS needs a unique identifier for a filesystem to be able to export it.
-> <snip>
-> > Can anyone suggest a better way to get a good uuid for a btrfs filesystem?
-> 
-> How about just adding the btrfs subvolid to the filehandle and using
-> that to remove the ambiguity?
+Other callers previous worked because they passed int the incorrect
+name, and because we never had more than one element in the list, so
+returning the first non-match would return the right thing.
 
-The filehandle has two parts - one part identifies the filesystem
-(i.e. vfsmnt), the other identifies the file (the dentry).
-We would need to get the btrfs subvolid into the filesystem part,
-and that is set (and looked-up) by mountd in user-space.
+But now we need to fix those callers.
 
-I think you are suggesting getting the btrfs kernel module to put the
-subvolid in the filehandle, but that would only go in the 'file' part
-of the handle, so it would not be sufficient.
+From: Eric Anderle <eanderle@umich.edu>
 
-We need a user-space program - preferably without too much
-filesystem-specific info - to be able to differentiate subvolumes.
+---
+ fs/nfsd/nfs4pnfsdlm.c |   12 +++++++++---
+ 1 files changed, 9 insertions(+), 3 deletions(-)
 
-Thanks,
-NeilBrown
+diff --git a/fs/nfsd/nfs4pnfsdlm.c b/fs/nfsd/nfs4pnfsdlm.c
+index 84caa6e..5a66a71 100644
+--- a/fs/nfsd/nfs4pnfsdlm.c
++++ b/fs/nfsd/nfs4pnfsdlm.c
+@@ -268,10 +268,13 @@ static int nfsd4_pnfs_dlm_getdevinfo(struct super_block *sb,
+ 	/*
+ 	 * If the DS list has not been established, return -EINVAL
+ 	 */
+-	dlm_pdev = nfsd4_find_pnfs_dlm_device(sb->s_bdev->bd_disk->disk_name);
++	/* Long enough to hold "/dev/" + disk name */
++	char full_disk_name[6 + strlen(sb->s_bdev->bd_disk->disk_name)];
++	sprintf(full_disk_name, "/dev/%s", sb->s_bdev->bd_disk->disk_name);
++	dlm_pdev = nfsd4_find_pnfs_dlm_device(full_disk_name);
+ 	if (!dlm_pdev) {
+ 		dprintk("%s: DEBUG: disk %s Not Found\n", __func__,
+-			sb->s_bdev->bd_disk->disk_name);
++			full_disk_name);
+ 		return err;
+ 	}
+ 
+@@ -364,7 +367,10 @@ static int dlm_ino_hash(struct inode *ino)
+ 	/* If can't find the inode block device in the pnfs_dlm_deivce list
+ 	 * then don't hand out a layout
+ 	 */
+-	de = nfsd4_find_pnfs_dlm_device(ino->i_sb->s_bdev->bd_disk->disk_name);
++	/* Long enough to hold "/dev/" + disk name */
++	char full_disk_name[6 + strlen(ino->i_sb->s_bdev->bd_disk->disk_name)];
++	sprintf(full_disk_name, "/dev/%s", ino->i_sb->s_bdev->bd_disk->disk_name);
++	de = nfsd4_find_pnfs_dlm_device(full_disk_name);
+ 	if (!de)
+ 		return -1;
+ 	hash_mask = de->num_ds - 1;
+-- 
+1.7.0.4
 
