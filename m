@@ -1,50 +1,124 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:4193 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:64880 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754569Ab0F3VZy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 30 Jun 2010 17:25:54 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH 0/5] NFSv4 Lock owner fixes
-Date: Wed, 30 Jun 2010 17:25:32 -0400
-Message-Id: <1277933137-6955-1-git-send-email-Trond.Myklebust@netapp.com>
+	id S1752822Ab0FJKeQ convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Jun 2010 06:34:16 -0400
+Subject: Re: [PATCH 14/24] pnfs_submit: use fsdata to pass lseg
+Content-Type: text/plain; charset=us-ascii
+From: Fred Isaman <iisaman@netapp.com>
+In-Reply-To: <AANLkTillGAndgQoohtCV36csBH6CzxkZ3792H16nRV-S@mail.gmail.com>
+Date: Thu, 10 Jun 2010 06:33:59 -0400
+Cc: linux-nfs@vger.kernel.org
+Message-Id: <D0754698-130E-40CA-B28A-3A6926E7D25C@netapp.com>
+References: <1275970761-31806-1-git-send-email-iisaman@netapp.com> <1275970761-31806-2-git-send-email-iisaman@netapp.com> <1275970761-31806-3-git-send-email-iisaman@netapp.com> <1275970761-31806-4-git-send-email-iisaman@netapp.com> <1275970761-31806-5-git-send-email-iisaman@netapp.com> <1275970761-31806-6-git-send-email-iisaman@netapp.com> <1275970761-31806-7-git-send-email-iisaman@netapp.com> <1275970761-31806-8-git-send-email-iisaman@netapp.com> <1275970761-31806-9-git-send-email-iisaman@netapp.com> <1275970761-31806-10-git-send-email-iisaman@netapp.com> <1275970761-31806-11-git-send-email-iisaman@netapp.com> <1275970761-31806-12-git-send-email-iisaman@netapp.com> <1275970761-31806-13-git-send-email-iisaman@netapp.com> <1275970761-31806-14-git-send-email-iisaman@netapp.com> <1275970761-31806-15-git-send-email-iisaman@netapp.com> <4C0F6F11.7050602@panasas.com> <AANLkTillGAndgQoohtCV36csBH6CzxkZ3792H16nRV-S@mail.gmail.com>
+To: Benny Halevy <bhalevy@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-The following patchset fixes up the NFSv4 lock stateid tracking in an
-attempt to fix bugzilla entry 14501.
 
-It also adds RELEASE_LOCKOWNER to ensure that NFSv4.0 servers don't run
-out of resources when the client is doing a lot of lock/unlock operations
-without closing the file.
+On Jun 9, 2010, at 8:08 AM, Fred Isaman wrote:
 
-Cheers
-  Trond
--------
+> On Wed, Jun 9, 2010 at 6:38 AM, Benny Halevy <bhalevy@panasas.com> wrote:
+>> Fred, how does that patch interact with
+>> 285052f pnfs_post_submit: Restore "pnfs: pnfs_do_flush"
+>> and the latter patches that depend on it?
+>> 
+>> Benny
+>> 
+> 
+> They will have to be modified.  I'll look at that today.
+> 
+> Fred
 
-Trond Myklebust (5):
-  NFSv4: Clean up struct nfs4_state_owner
-  NFSv4: Ensure that we track the NFSv4 lock state in read/write
-    requests.
-  NFSv4: Clean up for lockowner XDR encoding
-  NFSv4: Add support for the RELEASE_LOCKOWNER operation
-  NFSv4: Ensure the lockowners are labelled using the fl_owner and/or
-    fl_pid
+OK, this is a general git question.  How in the world do I send in these modifications?
 
- fs/nfs/inode.c           |   70 ++++++++++++++++++++++++++++++++--
- fs/nfs/nfs4_fs.h         |   18 +++++++--
- fs/nfs/nfs4proc.c        |   32 ++++++++++++++-
- fs/nfs/nfs4state.c       |   61 +++++++++++++++++++++---------
- fs/nfs/nfs4xdr.c         |   95 ++++++++++++++++++++++++++++++++++++++--------
- fs/nfs/pagelist.c        |    8 +++-
- fs/nfs/read.c            |    1 +
- fs/nfs/write.c           |    5 ++-
- include/linux/nfs4.h     |    1 +
- include/linux/nfs_fs.h   |   13 +++++-
- include/linux/nfs_page.h |    1 +
- include/linux/nfs_xdr.h  |    6 +++
- 12 files changed, 263 insertions(+), 48 deletions(-)
+Basically, because of the way we have pnfs-submit in the middle of our tree, I have a branch that looks like:
+
+A->B->C->D
+
+I've inserted my new patch F between And B, which requires a rebase of the subsequent patches:
+
+A->F->B'->C'->D'
+
+But that rebase is non-trivial, in particular for patch C (a block-layout patch), and I want to communicate the modifications I made.
+
+The best I have been able to come up with is to do the minimal obvious rebase, just sufficient to remove all the conflict markers,
+then add a following modification patch, so I would have something like:
+
+A->F->B'->C'->C''->D'
+
+and I could send in C''.  But this seems less than ideal, especially when you consider I have ~10 patches which would require this handling.
+
+Fred
+
+
+> 
+>> On Jun. 08, 2010, 7:19 +0300, Fred Isaman <iisaman@netapp.com> wrote:
+>>> Preparing for LAYUTGET invocation in nfs_write_begin to be the
+>>> only invocation in the write path.
+>>> 
+>>> It isn't used at all yet, but it should be properly referenced/dereferenced
+>>> 
+>>> Signed-off-by: Fred Isaman <iisaman@netapp.com>
+>>> ---
+>>>  fs/nfs/file.c |   16 +++++++++++++---
+>>>  1 files changed, 13 insertions(+), 3 deletions(-)
+>>> 
+>>> diff --git a/fs/nfs/file.c b/fs/nfs/file.c
+>>> index 03601d2..fde6cb5 100644
+>>> --- a/fs/nfs/file.c
+>>> +++ b/fs/nfs/file.c
+>>> @@ -420,6 +420,8 @@ static int nfs_write_begin(struct file *file, struct address_space *mapping,
+>>>               file->f_path.dentry->d_name.name,
+>>>               mapping->host->i_ino, len, (long long) pos);
+>>> 
+>>> +     pnfs_update_layout(mapping->host, NULL, NFS4_MAX_UINT64, 0, IOMODE_RW,
+>>> +                        (struct pnfs_layout_segment **) fsdata);
+>>>  start:
+>>>       /*
+>>>        * Prevent starvation issues if someone is doing a consistency
+>>> @@ -428,11 +430,13 @@ start:
+>>>       ret = wait_on_bit(&NFS_I(mapping->host)->flags, NFS_INO_FLUSHING,
+>>>                       nfs_wait_bit_killable, TASK_KILLABLE);
+>>>       if (ret)
+>>> -             return ret;
+>>> +             goto out;
+>>> 
+>>>       page = grab_cache_page_write_begin(mapping, index, flags);
+>>> -     if (!page)
+>>> -             return -ENOMEM;
+>>> +     if (!page) {
+>>> +             ret = -ENOMEM;
+>>> +             goto out;
+>>> +     }
+>>>       *pagep = page;
+>>> 
+>>>       ret = nfs_flush_incompatible(file, page);
+>>> @@ -447,6 +451,11 @@ start:
+>>>               if (!ret)
+>>>                       goto start;
+>>>       }
+>>> + out:
+>>> +     if (ret) {
+>>> +             put_lseg(*fsdata);
+>>> +             *fsdata = NULL;
+>>> +     }
+>>>       return ret;
+>>>  }
+>>> 
+>>> @@ -486,6 +495,7 @@ static int nfs_write_end(struct file *file, struct address_space *mapping,
+>>> 
+>>>       unlock_page(page);
+>>>       page_cache_release(page);
+>>> +     put_lseg(fsdata);
+>>> 
+>>>       if (status < 0)
+>>>               return status;
+>> 
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>> 
 
