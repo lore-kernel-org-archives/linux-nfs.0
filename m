@@ -1,50 +1,75 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:61040 "EHLO
-	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1751789Ab0FHF0s (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Jun 2010 01:26:48 -0400
-Message-ID: <4C0DD495.5070908@panasas.com>
-Date: Tue, 08 Jun 2010 08:26:45 +0300
-From: Boaz Harrosh <bharrosh@panasas.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>,
-        "Welch, Brent" <welch@panasas.com>
-CC: sfaibish <sfaibish@emc.com>, NFS list <linux-nfs@vger.kernel.org>
-Subject: Re: Performance results with exofs
-References: <op.vdxrrgf1unckof@usensfaibisl2e.eng.emc.com> <4C0D195B.8030401@panasas.com> <4C0D1AAB.4070304@panasas.com> <op.vdxxhfqsunckof@usensfaibisl2e.eng.emc.com> <20100607182948.GF25257@fieldses.org> <4C0D3D59.4000305@panasas.com> <20100607184902.GI25257@fieldses.org>
-In-Reply-To: <20100607184902.GI25257@fieldses.org>
-Content-Type: text/plain; charset=UTF-8
+Received: from mx1.redhat.com ([209.132.183.28]:33377 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752048Ab0FJNoK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 10 Jun 2010 09:44:10 -0400
+Date: Thu, 10 Jun 2010 09:45:03 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Linus Torvalds <torvalds@linux-foundation.org>, linux-nfs@vger.kernel.org
+Subject: Re: nfsd bugfixes for 2.6.35
+Message-ID: <20100610094503.0c7a7637@corrin.poochiereds.net>
+In-Reply-To: <20100609191246.GA12134@fieldses.org>
+References: <20100609191246.GA12134@fieldses.org>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 06/07/2010 09:49 PM, J. Bruce Fields wrote:
->>
->> It's a know problem with a network storage cluster. What happens is
->> that with 8of8 all the clients exercise all of the nodes at the same
->> time so they are clashing on the network.
+On Wed, 9 Jun 2010 15:12:47 -0400
+"J. Bruce Fields" <bfields@fieldses.org> wrote:
+
+> These two nfsd bugfixes are suitable for 2.6.35:
 > 
-> OK, so if two clients are both trying to send a stripe of data to the
-> same OSD data at the same time, absent a switch that could somehow
-> afford to queue up a full stripe-unit's worth of data, packets get lost?
+>   git://linux-nfs.org/~bfields/linux.git for-2.6.35
+> 
+> Christoph Hellwig (1):
+>       nfsd: nfsd_setattr needs to call commit_metadata
+> 
+> J. Bruce Fields (2):
+>       nfsd4: shut down callback queue outside state lock
+>       Merge branch 'for-2.6.34-incoming' into for-2.6.35-incoming
+> 
+> commit 44b56603c4c476b845a824cff6fe905c6268b2a1
+> Merge: c3935e3 b160fda
+> Author: J. Bruce Fields <bfields@citi.umich.edu>
+> Date:   Tue Jun 8 20:05:18 2010 -0400
+> 
+>     Merge branch 'for-2.6.34-incoming' into for-2.6.35-incoming
+> 
+> commit c3935e30495869dd611e1cd62253c94ebc7c6c04
+> Author: J. Bruce Fields <bfields@citi.umich.edu>
+> Date:   Fri Jun 4 16:42:08 2010 -0400
+> 
+>     nfsd4: shut down callback queue outside state lock
+>     
+>     This reportedly causes a lockdep warning on nfsd shutdown.  That looks
+>     like a false positive to me, but there's no reason why this needs the
+>     state lock anyway.
+>     
+>     Reported-by: Jeff Layton <jlayton@redhat.com>
+>     Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
 > 
 
-It's tcp they don't get lost, per-se they just get queued up. And that tcp
-ramp up and all that, you know. 
+FWIW, I figured out the reason for this yesterday...
 
-We use a 64k stripe unit with say raid of 4-8 that's 256k-1M bytes in a stripe.
-I don't think a network buffer that big will help at all. It'll just delay
-everything more. The best is a sound statistical network strategy that'll let
-the system even out overall. (Or not ...)
+When destroy_workqueue holds the cpu_add_remove_lock while it's
+flushing the workqueue during shutdown. The laundry_wq job locks the
+state during its work, so the locks are taken like this:
 
-> (Also, out of curiosity: do you know of any papers or documentation that
-> describe that problem in more detail?)
-> 
+#0: cpu_add_remove_lock
+#1: client_mutex
 
-Personally, I'm privileged to learn from the best here at Panasas. 
+...after shutting down the laundry_wq, we go to shut down the
+callback_wq. While doing that, we take and hold the client_mutex and
+then call destroy_workqueue. Now we end up with the locks taken in the
+reverse order and we get the lockdep splatter:
 
-CC: Brent, Can you recommend to Bruce some good papers about raid
-groups and network SAN strategies? 
+#0: client_mutex
+#1: cpu_add_remove_lock
 
-> --b.
+...moving the destroy of the callback_wq outside of the client_mutex
+seems like the easiest and best fix.
 
-Boaz
+-- 
+Jeff Layton <jlayton@redhat.com>
