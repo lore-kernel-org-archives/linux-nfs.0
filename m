@@ -1,41 +1,137 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:15343 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932124Ab0F2Qly (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 29 Jun 2010 12:41:54 -0400
-From: andros@netapp.com
-To: benny@panasas.com
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 0/5] pnfs-submit: embed pnfs_layout_type in per layout structure 
-Date: Tue, 29 Jun 2010 12:42:12 -0400
-Message-Id: <1277829737-5465-1-git-send-email-andros@netapp.com>
+Received: from daytona.panasas.com ([67.152.220.89]:19164 "EHLO
+	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1754470Ab0FJMpZ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Jun 2010 08:45:25 -0400
+Message-ID: <4C10DE61.7010706@panasas.com>
+Date: Thu, 10 Jun 2010 15:45:21 +0300
+From: Benny Halevy <bhalevy@panasas.com>
+To: Fred Isaman <iisaman@netapp.com>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 14/24] pnfs_submit: use fsdata to pass lseg
+References: <1275970761-31806-1-git-send-email-iisaman@netapp.com> <1275970761-31806-2-git-send-email-iisaman@netapp.com> <1275970761-31806-3-git-send-email-iisaman@netapp.com> <1275970761-31806-4-git-send-email-iisaman@netapp.com> <1275970761-31806-5-git-send-email-iisaman@netapp.com> <1275970761-31806-6-git-send-email-iisaman@netapp.com> <1275970761-31806-7-git-send-email-iisaman@netapp.com> <1275970761-31806-8-git-send-email-iisaman@netapp.com> <1275970761-31806-9-git-send-email-iisaman@netapp.com> <1275970761-31806-10-git-send-email-iisaman@netapp.com> <1275970761-31806-11-git-send-email-iisaman@netapp.com> <1275970761-31806-12-git-send-email-iisaman@netapp.com> <1275970761-31806-13-git-send-email-iisaman@netapp.com> <1275970761-31806-14-git-send-email-iisaman@netapp.com> <1275970761-31806-15-git-send-email-iisaman@netapp.com> <4C0F6F11.7050602@panasas.com> <AANLkTillGAndgQoohtCV36csBH6CzxkZ3792H16nRV-S@mail.gmail.com> <D0754698-130E-40CA-B28A-3A6926E7D25C@netapp.com>
+In-Reply-To: <D0754698-130E-40CA-B28A-3A6926E7D25C@netapp.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
+On 06/10/2010 01:33 PM, Fred Isaman wrote:
+> 
+> On Jun 9, 2010, at 8:08 AM, Fred Isaman wrote:
+> 
+>> On Wed, Jun 9, 2010 at 6:38 AM, Benny Halevy <bhalevy@panasas.com> wrote:
+>>> Fred, how does that patch interact with
+>>> 285052f pnfs_post_submit: Restore "pnfs: pnfs_do_flush"
+>>> and the latter patches that depend on it?
+>>>
+>>> Benny
+>>>
+>>
+>> They will have to be modified.  I'll look at that today.
+>>
+>> Fred
+> 
+> OK, this is a general git question.  How in the world do I send in these modifications?
+> 
+> Basically, because of the way we have pnfs-submit in the middle of our tree, I have a branch that looks like:
+> 
+> A->B->C->D
+> 
+> I've inserted my new patch F between And B, which requires a rebase of the subsequent patches:
+> 
+> A->F->B'->C'->D'
+> 
+> But that rebase is non-trivial, in particular for patch C (a block-layout patch), and I want to communicate the modifications I made.
+> 
+> The best I have been able to come up with is to do the minimal obvious rebase, just sufficient to remove all the conflict markers,
+> then add a following modification patch, so I would have something like:
+> 
+> A->F->B'->C'->C''->D'
+> 
+> and I could send in C''.  But this seems less than ideal, especially when you consider I have ~10 patches which would require this handling.
+> 
 
-A cleanup from Fred.
-0001-SQUASHME-pnfs-submit-add-state-flag-for-layoutcommit.patch
+You can either send your a patchset based on C and I can
+rebase parts of it onto A and B or just send the clean rebased
+patches from B and C and we can review the diff (B vs. B' and
+C vs. C')
 
-These patches introduce the allocation of the pnfs_layout_type changing the
-static declaration in struct nfs_inode to a pointer.
+Benny
 
-0002-SQUASHME-pnfs_submit-move-pnfs_layout_state-back-to-.patch
-0003-SQUASHME-pnfs-submit-move-pnfs_layout_suspend-back-t.patch
-0004-SQUASHME-pnfs-submit-embed-pnfs_layout_type.patch
-0005-SQUASHME-pnfs-submit-filelayout-use-new-alloc_layout.patch
-
-Testing
-
-CONFIG_NFS_V4_1 set:
-Connectathon passes on a VM SMP client against GFS2/pNFS with return_on_close
-and write layouts turned on, and against the pyNFS file layout server without
-return on close set.
-
-CONFIG_NFS_V4_1 not set
-NFSv4.0 Cthon tests pass
-
-
--->Andy
-
+> Fred
+> 
+> 
+>>
+>>> On Jun. 08, 2010, 7:19 +0300, Fred Isaman <iisaman@netapp.com> wrote:
+>>>> Preparing for LAYUTGET invocation in nfs_write_begin to be the
+>>>> only invocation in the write path.
+>>>>
+>>>> It isn't used at all yet, but it should be properly referenced/dereferenced
+>>>>
+>>>> Signed-off-by: Fred Isaman <iisaman@netapp.com>
+>>>> ---
+>>>>  fs/nfs/file.c |   16 +++++++++++++---
+>>>>  1 files changed, 13 insertions(+), 3 deletions(-)
+>>>>
+>>>> diff --git a/fs/nfs/file.c b/fs/nfs/file.c
+>>>> index 03601d2..fde6cb5 100644
+>>>> --- a/fs/nfs/file.c
+>>>> +++ b/fs/nfs/file.c
+>>>> @@ -420,6 +420,8 @@ static int nfs_write_begin(struct file *file, struct address_space *mapping,
+>>>>               file->f_path.dentry->d_name.name,
+>>>>               mapping->host->i_ino, len, (long long) pos);
+>>>>
+>>>> +     pnfs_update_layout(mapping->host, NULL, NFS4_MAX_UINT64, 0, IOMODE_RW,
+>>>> +                        (struct pnfs_layout_segment **) fsdata);
+>>>>  start:
+>>>>       /*
+>>>>        * Prevent starvation issues if someone is doing a consistency
+>>>> @@ -428,11 +430,13 @@ start:
+>>>>       ret = wait_on_bit(&NFS_I(mapping->host)->flags, NFS_INO_FLUSHING,
+>>>>                       nfs_wait_bit_killable, TASK_KILLABLE);
+>>>>       if (ret)
+>>>> -             return ret;
+>>>> +             goto out;
+>>>>
+>>>>       page = grab_cache_page_write_begin(mapping, index, flags);
+>>>> -     if (!page)
+>>>> -             return -ENOMEM;
+>>>> +     if (!page) {
+>>>> +             ret = -ENOMEM;
+>>>> +             goto out;
+>>>> +     }
+>>>>       *pagep = page;
+>>>>
+>>>>       ret = nfs_flush_incompatible(file, page);
+>>>> @@ -447,6 +451,11 @@ start:
+>>>>               if (!ret)
+>>>>                       goto start;
+>>>>       }
+>>>> + out:
+>>>> +     if (ret) {
+>>>> +             put_lseg(*fsdata);
+>>>> +             *fsdata = NULL;
+>>>> +     }
+>>>>       return ret;
+>>>>  }
+>>>>
+>>>> @@ -486,6 +495,7 @@ static int nfs_write_end(struct file *file, struct address_space *mapping,
+>>>>
+>>>>       unlock_page(page);
+>>>>       page_cache_release(page);
+>>>> +     put_lseg(fsdata);
+>>>>
+>>>>       if (status < 0)
+>>>>               return status;
+>>>
+>>> --
+>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>>> the body of a message to majordomo@vger.kernel.org
+>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>>
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
