@@ -1,134 +1,130 @@
-From: "William A. (Andy) Adamson" <androsadamson@gmail.com>
-Subject: Re: Linux pNFS status meeting 6/10/10
-Date: Thu, 10 Jun 2010 13:12:41 -0400
-Message-ID: <AANLkTikbecd52gX2zE4ywjj2ZrVEZDB1widt5ew3ME9_@mail.gmail.com>
-References: <4C0FDB8A.9010500@gmail.com>
-	<20100610143506.GF26427@fieldses.org>
-	<5967A1F5-CE19-46A3-A6EC-4EA84FBD5034@netapp.com>
-	<20100610144413.GG26427@fieldses.org>
-	<op.vd3gpvp0unckof@usensfaibisl2e.eng.emc.com>
+From: <Staubach_Peter@emc.com>
+Subject: RE: Linux pNFS status meeting 6/10/10
+Date: Thu, 10 Jun 2010 13:14:08 -0400
+Message-ID: <BF3BB6D12298F54B89C8DCC1E4073D8001419B24@CORPUSMX50A.corp.emc.com>
+References: <4C0FDB8A.9010500@gmail.com>	<20100610143506.GF26427@fieldses.org>	<5967A1F5-CE19-46A3-A6EC-4EA84FBD5034@netapp.com>	<4C10FABB.7020506@panasas.com>	<4C11151F.5000702@gmail.com> <AANLkTilHI_pte9auBl3Z1dcnkDY_Vdne8WVAX8QlGnVa@mail.gmail.com> <4C111C44.5050201@panasas.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-	Dean Hildebrand <seattleplus@gmail.com>,
-	"linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-To: sfaibish <sfaibish@emc.com>
+Content-Type: text/plain;
+	charset="us-ascii"
+Cc: <seattleplus@gmail.com>, <bfields@fieldses.org>,
+	<linux-nfs@vger.kernel.org>
+To: <bhalevy@panasas.com>, <androsadamson@gmail.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-gw0-f46.google.com ([74.125.83.46]:40923 "EHLO
-	mail-gw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752802Ab0FJRMl convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Jun 2010 13:12:41 -0400
-Received: by gwj15 with SMTP id 15so114253gwj.19
-        for <linux-nfs@vger.kernel.org>; Thu, 10 Jun 2010 10:12:41 -0700 (PDT)
-In-Reply-To: <op.vd3gpvp0unckof-sXut7+96orlxdPWQvOaHCoI83tS8F2Zb0E9HWUfgJXw@public.gmane.org>
+Received: from mexforward.lss.emc.com ([128.222.32.20]:17518 "EHLO
+	mexforward.lss.emc.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754846Ab0FJRO3 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Jun 2010 13:14:29 -0400
+In-Reply-To: <4C111C44.5050201@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Jun 10, 2010 at 1:11 PM, sfaibish <sfaibish@emc.com> wrote:
-> Do we have the call?
+The slow ticks are hypnotic, aren't they?
 
-We are awaiting Dean....
+	:-)
 
--->Andy
->
-> /Sorin
->
-> On Thu, 10 Jun 2010 10:44:13 -0400, J. Bruce Fields <bfields@fieldses=
-=2Eorg>
-> wrote:
->
->> On Thu, Jun 10, 2010 at 10:39:10AM -0400, Andy Adamson wrote:
+		ps
+
+
+-----Original Message-----
+From: linux-nfs-owner@vger.kernel.org
+[mailto:linux-nfs-owner@vger.kernel.org] On Behalf Of Benny Halevy
+Sent: Thursday, June 10, 2010 1:09 PM
+To: William A. (Andy) Adamson
+Cc: Dean Hildebrand; J. Bruce Fields; linux-nfs@vger.kernel.org
+Subject: Re: Linux pNFS status meeting 6/10/10
+
+I'm on hold too.
+
+On Jun. 10, 2010, 20:07 +0300, "William A. (Andy) Adamson"
+<androsadamson@gmail.com> wrote:
+> Hi Dean
+> Is the call on?
+> 
+> -->Andy
+> 
+> On Thu, Jun 10, 2010 at 12:38 PM, Dean Hildebrand
+<seattleplus@gmail.com> wrote:
+>> Ok, meeting is now at 10 AM PDT (1 PM EST).
+>>
+>> On 6/10/2010 7:46 AM, Benny Halevy wrote:
 >>>
->>> NetApp has an internal meeting that lasts until 1:00 EST. I know it=
-'s
->>> late - but could we start a 1/2 hour later?
->>
->> It works for me, as long as we agree to keep the meeting short (I'd
->> still like to be done by 1:30).
->>
->> Since most of us will be together next week to discuss the techincal
->> stuff, maybe we should just keep it to:
->>
->> =A0 =A0 =A0 =A0- pre-bakeathon questions
->> =A0 =A0 =A0 =A0- meeting scheduling for next week. =A0(We talked abo=
-ut reserving
->> =A0 =A0 =A0 =A0 =A0a room for pnfs client issues, at least.)
->>
->> --b.
->>
->>
+>>> On Jun. 10, 2010, 17:39 +0300, Andy Adamson<andros@netapp.com>
+wrote:
 >>>
->>> -->Andy
+>>>>
+>>>> NetApp has an internal meeting that lasts until 1:00 EST. I know
+it's
+>>>> late - but could we start a 1/2 hour later?
+>>>>
+>>>>
 >>>
->>> On Jun 10, 2010, at 10:35 AM, J. Bruce Fields wrote:
+>>> OK with me.
 >>>
->>>> On Wed, Jun 09, 2010 at 11:20:58AM -0700, Dean Hildebrand wrote:
+>>>
+>>>>
+>>>> -->Andy
+>>>>
+>>>> On Jun 10, 2010, at 10:35 AM, J. Bruce Fields wrote:
+>>>>
+>>>>
 >>>>>
->>>>> Meeting on Thursday 6/10/2010 at 9:30 AM PDT (12:30 PM EST).
+>>>>> On Wed, Jun 09, 2010 at 11:20:58AM -0700, Dean Hildebrand wrote:
+>>>>>
+>>>>>>
+>>>>>> Meeting on Thursday 6/10/2010 at 9:30 AM PDT (12:30 PM EST).
+>>>>>>
+>>>>>
+>>>>> Rough agenda:
+>>>>>
+>>>>> 1. upstream status/merge plans (trond, bfields)
+>>>>>
+>>>>> 2. State of pNFS tree (bhalevy)
+>>>>>
+>>>>> 3. Client
+>>>>>        3.1. Client pNFS status
+>>>>>        3.2. Client state management design documentation (trond)
+>>>>>        3.3. Block device discovery design
+>>>>>
+>>>>> 4. Server
+>>>>>        4.1. Todo's for minimal 4.1 server (bfields)
+>>>>>        4.2. pnfs
+>>>>>                pnfs/gfs2
+>>>>>                exofs
+>>>>>
+>>>>> 5. redhat status (steved)
+>>>>>
+>>>>> 6. bakeathon plans
+>>>>>        - ann arbor:
+>>>>>        - boston
+>>>>>
+>>>>> 7. new business
+>>>>>
+>>>>> 8. next meeting
+>>>>>
+>>>>> --b.
+>>>>> --
+>>>>> To unsubscribe from this list: send the line "unsubscribe
+linux-nfs"
+>>>>> in
+>>>>> the body of a message to majordomo@vger.kernel.org
+>>>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>>>>
 >>>>
->>>> Rough agenda:
->>>>
->>>> 1. upstream status/merge plans (trond, bfields)
->>>>
->>>> 2. State of pNFS tree (bhalevy)
->>>>
->>>> 3. Client
->>>> =A0 =A0 =A0 =A03.1. Client pNFS status
->>>> =A0 =A0 =A0 =A03.2. Client state management design documentation (=
-trond)
->>>> =A0 =A0 =A0 =A03.3. Block device discovery design
->>>>
->>>> 4. Server
->>>> =A0 =A0 =A0 =A04.1. Todo's for minimal 4.1 server (bfields)
->>>> =A0 =A0 =A0 =A04.2. pnfs
->>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0pnfs/gfs2
->>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0exofs
->>>>
->>>> 5. redhat status (steved)
->>>>
->>>> 6. bakeathon plans
->>>> =A0 =A0 =A0 =A0- ann arbor:
->>>> =A0 =A0 =A0 =A0- boston
->>>>
->>>> 7. new business
->>>>
->>>> 8. next meeting
->>>>
->>>> --b.
 >>>> --
->>>> To unsubscribe from this list: send the line "unsubscribe linux-nf=
-s"
->>>> in
+>>>> To unsubscribe from this list: send the line "unsubscribe
+linux-nfs" in
 >>>> the body of a message to majordomo@vger.kernel.org
->>>> More majordomo info at =A0http://vger.kernel.org/majordomo-info.ht=
-ml
->>>
+>>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>>>
+>>
 >> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs"=
- in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at =A0http://vger.kernel.org/majordomo-info.html
->>
->>
->
->
->
-> --
-> Best Regards
->
-> Sorin Faibish
-> Corporate Distinguished Engineer
-> Network Storage Group
->
-> =A0 =A0 =A0 =A0EMC=B2
-> where information lives
->
-> Phone: 508-435-1000 x 48545
-> Cellphone: 617-510-0422
-> Email : sfaibish@emc.com
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" =
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs"
 in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at =A0http://vger.kernel.org/majordomo-info.html
->
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>
+--
+To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
