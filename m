@@ -1,75 +1,83 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:33377 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:47610 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752048Ab0FJNoK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 10 Jun 2010 09:44:10 -0400
-Date: Thu, 10 Jun 2010 09:45:03 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Linus Torvalds <torvalds@linux-foundation.org>, linux-nfs@vger.kernel.org
-Subject: Re: nfsd bugfixes for 2.6.35
-Message-ID: <20100610094503.0c7a7637@corrin.poochiereds.net>
-In-Reply-To: <20100609191246.GA12134@fieldses.org>
-References: <20100609191246.GA12134@fieldses.org>
-Content-Type: text/plain; charset=US-ASCII
+	id S1759011Ab0FJNf6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 10 Jun 2010 09:35:58 -0400
+Date: Thu, 10 Jun 2010 09:35:56 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Benny Halevy <bhalevy@panasas.com>
+Cc: linux-nfs@vger.kernel.org, eanderle@umich.edu
+Subject: Re: [PATCH] Fixed getdevinfo() and dlm_ino_hash() to search for
+	the correct disk name.
+Message-ID: <20100610133555.GC24596@fieldses.org>
+References: <20100610133336.GB24596@fieldses.org>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20100610133336.GB24596@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, 9 Jun 2010 15:12:47 -0400
-"J. Bruce Fields" <bfields@fieldses.org> wrote:
-
-> These two nfsd bugfixes are suitable for 2.6.35:
+On Thu, Jun 10, 2010 at 09:33:37AM -0400, bfields wrote:
+> The patch "pnfsd: fix test in nfsd4_find_pnfs_dlm_device" was obviously
+> correct; before that patch, nfsd4_find_pnfs_dlm_device() returned the
+> first device which did *not* match, instead of the first device which
+> did.
 > 
->   git://linux-nfs.org/~bfields/linux.git for-2.6.35
-> 
-> Christoph Hellwig (1):
->       nfsd: nfsd_setattr needs to call commit_metadata
-> 
-> J. Bruce Fields (2):
->       nfsd4: shut down callback queue outside state lock
->       Merge branch 'for-2.6.34-incoming' into for-2.6.35-incoming
-> 
-> commit 44b56603c4c476b845a824cff6fe905c6268b2a1
-> Merge: c3935e3 b160fda
-> Author: J. Bruce Fields <bfields@citi.umich.edu>
-> Date:   Tue Jun 8 20:05:18 2010 -0400
-> 
->     Merge branch 'for-2.6.34-incoming' into for-2.6.35-incoming
-> 
-> commit c3935e30495869dd611e1cd62253c94ebc7c6c04
-> Author: J. Bruce Fields <bfields@citi.umich.edu>
-> Date:   Fri Jun 4 16:42:08 2010 -0400
-> 
->     nfsd4: shut down callback queue outside state lock
->     
->     This reportedly causes a lockdep warning on nfsd shutdown.  That looks
->     like a false positive to me, but there's no reason why this needs the
->     state lock anyway.
->     
->     Reported-by: Jeff Layton <jlayton@redhat.com>
->     Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
-> 
+> Other callers previous worked because they passed int the incorrect
+> name, and because we never had more than one element in the list, so
+> returning the first non-match would return the right thing.
 
-FWIW, I figured out the reason for this yesterday...
+But then I don't know what point the "/dev/" is serving here.  May as
+well just change the interface so that what's passed in is just the name
+("sdc2" or whatever)--no use pretending this is some kind of path name
+if it's not really.
 
-When destroy_workqueue holds the cpu_add_remove_lock while it's
-flushing the workqueue during shutdown. The laundry_wq job locks the
-state during its work, so the locks are taken like this:
+However, I don't know whether passing in the disk name is really a
+sensible way to refer to a filesystem in a user<->kernel api.
 
-#0: cpu_add_remove_lock
-#1: client_mutex
+--b.
 
-...after shutting down the laundry_wq, we go to shut down the
-callback_wq. While doing that, we take and hold the client_mutex and
-then call destroy_workqueue. Now we end up with the locks taken in the
-reverse order and we get the lockdep splatter:
-
-#0: client_mutex
-#1: cpu_add_remove_lock
-
-...moving the destroy of the callback_wq outside of the client_mutex
-seems like the easiest and best fix.
-
--- 
-Jeff Layton <jlayton@redhat.com>
+> 
+> But now we need to fix those callers.
+> 
+> From: Eric Anderle <eanderle@umich.edu>
+> 
+> ---
+>  fs/nfsd/nfs4pnfsdlm.c |   12 +++++++++---
+>  1 files changed, 9 insertions(+), 3 deletions(-)
+> 
+> diff --git a/fs/nfsd/nfs4pnfsdlm.c b/fs/nfsd/nfs4pnfsdlm.c
+> index 84caa6e..5a66a71 100644
+> --- a/fs/nfsd/nfs4pnfsdlm.c
+> +++ b/fs/nfsd/nfs4pnfsdlm.c
+> @@ -268,10 +268,13 @@ static int nfsd4_pnfs_dlm_getdevinfo(struct super_block *sb,
+>  	/*
+>  	 * If the DS list has not been established, return -EINVAL
+>  	 */
+> -	dlm_pdev = nfsd4_find_pnfs_dlm_device(sb->s_bdev->bd_disk->disk_name);
+> +	/* Long enough to hold "/dev/" + disk name */
+> +	char full_disk_name[6 + strlen(sb->s_bdev->bd_disk->disk_name)];
+> +	sprintf(full_disk_name, "/dev/%s", sb->s_bdev->bd_disk->disk_name);
+> +	dlm_pdev = nfsd4_find_pnfs_dlm_device(full_disk_name);
+>  	if (!dlm_pdev) {
+>  		dprintk("%s: DEBUG: disk %s Not Found\n", __func__,
+> -			sb->s_bdev->bd_disk->disk_name);
+> +			full_disk_name);
+>  		return err;
+>  	}
+>  
+> @@ -364,7 +367,10 @@ static int dlm_ino_hash(struct inode *ino)
+>  	/* If can't find the inode block device in the pnfs_dlm_deivce list
+>  	 * then don't hand out a layout
+>  	 */
+> -	de = nfsd4_find_pnfs_dlm_device(ino->i_sb->s_bdev->bd_disk->disk_name);
+> +	/* Long enough to hold "/dev/" + disk name */
+> +	char full_disk_name[6 + strlen(ino->i_sb->s_bdev->bd_disk->disk_name)];
+> +	sprintf(full_disk_name, "/dev/%s", ino->i_sb->s_bdev->bd_disk->disk_name);
+> +	de = nfsd4_find_pnfs_dlm_device(full_disk_name);
+>  	if (!de)
+>  		return -1;
+>  	hash_mask = de->num_ds - 1;
+> -- 
+> 1.7.0.4
+> 
