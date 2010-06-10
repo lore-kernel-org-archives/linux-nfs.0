@@ -1,126 +1,113 @@
-From: Benny Halevy <bhalevy@panasas.com>
-Subject: Re: Resent: [pnfs][PATCH 0/3] pnfs-blocklayout client: adding support
- for complex volume structure
-Date: Thu, 10 Jun 2010 20:10:27 +0300
-Message-ID: <4C111C83.4070209@panasas.com>
-References: <op.vdsfeiz2unckof@usensfaibisl2e.eng.emc.com> <4C110849.8000500@panasas.com> <op.vd3gi4n5unckof@usensfaibisl2e.eng.emc.com>
+From: sfaibish <sfaibish@emc.com>
+Subject: Re: Linux pNFS status meeting  6/10/10
+Date: Thu, 10 Jun 2010 13:11:45 -0400
+Message-ID: <op.vd3gpvp0unckof@usensfaibisl2e.eng.emc.com>
+References: <4C0FDB8A.9010500@gmail.com> <20100610143506.GF26427@fieldses.org> <5967A1F5-CE19-46A3-A6EC-4EA84FBD5034@netapp.com> <20100610144413.GG26427@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-15
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-To: sfaibish <sfaibish@emc.com>
+Content-Type: text/plain; charset=iso-8859-15;
+	format=flowed	delsp=yes
+Cc: "Dean Hildebrand" <seattleplus@gmail.com>,
+	"linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>,
+	"Andy Adamson" <andros@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:44711 "EHLO
-	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1759617Ab0FJRKa (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Jun 2010 13:10:30 -0400
-In-Reply-To: <op.vd3gi4n5unckof-sXut7+96orlxdPWQvOaHCoI83tS8F2Zb0E9HWUfgJXw@public.gmane.org>
+Received: from mexforward.lss.emc.com ([128.222.32.20]:16809 "EHLO
+	mexforward.lss.emc.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1759632Ab0FJRL7 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Jun 2010 13:11:59 -0400
+In-Reply-To: <20100610144413.GG26427@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Jun. 10, 2010, 20:07 +0300, sfaibish <sfaibish@emc.com> wrote:
-> On Thu, 10 Jun 2010 11:44:09 -0400, Benny Halevy <bhalevy@panasas.com>  
-> wrote:
-> 
->> On Jun. 04, 2010, 21:09 +0300, sfaibish <sfaibish@emc.com> wrote:
->>> Apply against 2.6.34-rc3 pnfs branch. For pNFS client submission. Only
->>> touches
->>> the block layout driver.
->>
->> Sorin, I suggest you guys test this set with the linux-pnfs 2.6.35-rc2  
->> tree
-> We already tested the patches and they work in our QA lab before we sent  
-> the
-> patches. We also tested in our labs in France. We used F13 as the base.
-> 
->> against both the EMC and the spnfs-block server in the Ann Arbor
-> As I mentioned in the patch at this time the spnfs block server doesn't
-> support complex structures. After we get the pnfs client patches in the
-> git we will work to implement the complex volumes support in the spnfs
-> server. In principle the testing was done with EMC pnfs server and all
-> the cthon tests passed so this is what we would do at BAT anyways.
-> I have VM with the code so, if Bruce can have a VM client with the
-> patches we have the pnfs server of EMC in CITI lab.
-> 
+Do we have the call?
 
-OK, but I want to sure the new code is backward compatible with
-the spnfs-block server, as it is today.
+/Sorin
 
-Benny
+On Thu, 10 Jun 2010 10:44:13 -0400, J. Bruce Fields <bfields@fieldses.o=
+rg> =20
+wrote:
 
->> Bakeathon
->> and resend.
-> Unfortunatelly, I will not be there and I am not sure if the new pNFS block
-> developer from CITI will be up to speed. I am busy with the next BAT
-> organization.
-> 
+> On Thu, Jun 10, 2010 at 10:39:10AM -0400, Andy Adamson wrote:
+>> NetApp has an internal meeting that lasts until 1:00 EST. I know it'=
+s
+>> late - but could we start a 1/2 hour later?
+>
+> It works for me, as long as we agree to keep the meeting short (I'd
+> still like to be done by 1:30).
+>
+> Since most of us will be together next week to discuss the techincal
+> stuff, maybe we should just keep it to:
+>
+> 	- pre-bakeathon questions
+> 	- meeting scheduling for next week.  (We talked about reserving
+> 	  a room for pnfs client issues, at least.)
+>
+> --b.
+>
+>
 >>
->> I admit I didn't review this thoroughly yet and hopefully we can find  
->> some
->> time to do it together in Ann Arbor.
->   :(
-> 
+>> -->Andy
 >>
->> Benny
+>> On Jun 10, 2010, at 10:35 AM, J. Bruce Fields wrote:
 >>
+>>> On Wed, Jun 09, 2010 at 11:20:58AM -0700, Dean Hildebrand wrote:
+>>>> Meeting on Thursday 6/10/2010 at 9:30 AM PDT (12:30 PM EST).
 >>>
->>> This patch set implements support for the complex volumes structures  
->>> such
->>> as
->>> stripe of multiple volumes in a single metavolume and slice of  
->>> metavolumes
->>> into
->>> smaller metavolumes. The patch set is specific to pnfs blocklayout and  
->>> uses
->>> simple rpc pipefs to generate messages that are passed to the userland
->>> which is
->>> using an daemon to discover all the devices in the message. The  
->>> userspace
->>> daemon
->>> patches will be sent in a separate patch set.
+>>> Rough agenda:
 >>>
->>> The patch set replaces the current single volume implementation of the
->>> pnfs blocklayout
->>> that has performance limitations and cannot support wide striped file
->>> systems.
->>> The wide stripe is imperious to the performance scalability both for
->>> single and multiple
->>> clients configurations. These patches address only the pnfs blocklayout
->>> client. Similar
->>> patches will be implemented for the pnfsd block layout served in the
->>> second phase.
+>>> 1. upstream status/merge plans (trond, bfields)
 >>>
->>> 0001-pnfs-block-layout-add-simple-rpc-pipefs.patch
->>> 0002-pnfs-block-layout-remove-device-creation-or-remove-from-kernel.patch
->>> 0003-pnfs-block-layout-add-block-device-pipe-processing-based-on-simple-rpc.patch
+>>> 2. State of pNFS tree (bhalevy)
 >>>
->>> Testing:
->>> CONFIG_NFS_V4_1 set:
+>>> 3. Client
+>>> 	3.1. Client pNFS status
+>>> 	3.2. Client state management design documentation (trond)
+>>> 	3.3. Block device discovery design
 >>>
->>> NFSv4.1/pNFS mounts:
->>> Connectathon tests pass against Celerra/pNFS block layout server with  
->>> both
->>> simple
->>> volumes and complex volumes stripe on 4 volumes and using a slice of  
->>> half
->>> of the
->>> striped metavolume.
+>>> 4. Server
+>>> 	4.1. Todo's for minimal 4.1 server (bfields)
+>>> 	4.2. pnfs
+>>> 		pnfs/gfs2
+>>> 		exofs
 >>>
->>> CONFIG_NFS_V4_1 not set:
->>> NFSv4.0 mount passes Connectathon tests.
+>>> 5. redhat status (steved)
 >>>
->>> /Sorin
+>>> 6. bakeathon plans
+>>> 	- ann arbor:
+>>> 	- boston
 >>>
+>>> 7. new business
+>>>
+>>> 8. next meeting
+>>>
+>>> --b.
 >>> --
->>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs=
+"
+>>> in
 >>> the body of a message to majordomo@vger.kernel.org
 >>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>>
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 >>
->>
-> 
-> 
-> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" =
+in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
+>
+
+
+
+--=20
+Best Regards
+
+Sorin Faibish
+Corporate Distinguished Engineer
+Network Storage Group
+
+         EMC=B2
+where information lives
+
+Phone: 508-435-1000 x 48545
+Cellphone: 617-510-0422
+Email : sfaibish@emc.com
