@@ -1,73 +1,72 @@
-From: Chris Vine <chris-TF6qbakwsgc2epGFuHBODCp2UmYkHbXO@public.gmane.org>
-Subject: Re: [PATCH] nfsd: just keep single lockd reference for nfsd
-Date: Fri, 18 Jun 2010 23:45:40 +0100
-Message-ID: <20100618234540.64e7b605@boulder.homenet>
-References: <1276858940-15499-1-git-send-email-jlayton@redhat.com>
-	<20100618151808.6e40a0ca@boulder.homenet>
-	<20100618103042.080aa597@corrin.poochiereds.net>
-	<20100618160411.14d65b2b@boulder.homenet>
-	<20100618111132.20fb518a@corrin.poochiereds.net>
+From: Benny Halevy <bhalevy@panasas.com>
+Subject: Re: Linux pNFS status meeting  6/10/10
+Date: Thu, 10 Jun 2010 17:46:19 +0300
+Message-ID: <4C10FABB.7020506@panasas.com>
+References: <4C0FDB8A.9010500@gmail.com> <20100610143506.GF26427@fieldses.org> <5967A1F5-CE19-46A3-A6EC-4EA84FBD5034@netapp.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org
-To: Jeff Layton <jlayton@redhat.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+	Dean Hildebrand <seattleplus@gmail.com>,
+	"linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+To: Andy Adamson <andros@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp5.freeserve.com ([193.252.22.159]:42500 "EHLO
-	smtp5.freeserve.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753470Ab0FRWt7 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Jun 2010 18:49:59 -0400
-In-Reply-To: <20100618111132.20fb518a-4QP7MXygkU+dMjc06nkz3ljfA9RmPOcC@public.gmane.org>
+Received: from daytona.panasas.com ([67.152.220.89]:1605 "EHLO
+	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1758727Ab0FJOqW (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Jun 2010 10:46:22 -0400
+In-Reply-To: <5967A1F5-CE19-46A3-A6EC-4EA84FBD5034@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 18 Jun 2010 11:11:32 -0400
-Jeff Layton <jlayton@redhat.com> wrote:
-> On Fri, 18 Jun 2010 16:04:11 +0100
-> Chris Vine <chris-TF6qbakwsgc2epGFuHBODCp2UmYkHbXO@public.gmane.org> wrote:
+On Jun. 10, 2010, 17:39 +0300, Andy Adamson <andros@netapp.com> wrote:
+> NetApp has an internal meeting that lasts until 1:00 EST. I know it's  
+> late - but could we start a 1/2 hour later?
 > 
-> > On Fri, 18 Jun 2010 10:30:42 -0400
-> > Jeff Layton <jlayton@redhat.com> wrote:
-> > [snip]
-> > > Thanks for testing them. No oops == improvement!
-> > > 
-> > > ...but it would still be good to know what's wrong here. It sounds
-> > > like something is really odd with loopback communications on this
-> > > box. Is the ipv4 loopback interface up at this time? Do you have
-> > > any iptables stuff set up that might be filtering out portmap
-> > > registration requests from the kernel? What happens if you run
-> > > "rpcinfo"? Does it also hang?
-> > > 
-> > > The kernel uses TCP for talking to portmap these days, so it might
-> > > also be good to see whether you can use rpcinfo to talk to it with
-> > > TCP too...
-> > 
-> > You are right. Although the lo interface is up, localhost is broken
-> > in 2.6.35-rc3. External networking works OK which is why I hadn't
-> > noticed.
-> > 
-> > It looks like some other unrelated bug in 2.6.35 is at work. Quite
-> > why it doesn't strike my Pentium machine I can't say.  The netbook
-> > takes its network address from DHCP (my Pentium does not) but that
-> > shouldn't make any difference to localhost.
-> > 
-> > I shall do a bit more looking around later today or tomorrow.
-> > 
-> > Chris
-> > 
-> > 
+
+OK with me.
+
+> -->Andy
 > 
-> Ok, good to know. I'll still plan to pursue these fixes. The error
-> handling in nfsd obviously an area that needs improvement. I think
-> Bruce's current plan is to take the earlier patches in that stack for
-> 2.6.36. If this one is OK, it's probably reasonable to go in at the
-> same time.
-
-The problem is indeed a loopback bug and for anyone else suffering this
-with nfsd, the fix is a one liner, here:
-http://marc.info/?l=linux-kernel&m=127646140827821
-
-At least this had the benefit of improving the error handling of nfsd!
-
-Chris
-
-
+> On Jun 10, 2010, at 10:35 AM, J. Bruce Fields wrote:
+> 
+>> On Wed, Jun 09, 2010 at 11:20:58AM -0700, Dean Hildebrand wrote:
+>>> Meeting on Thursday 6/10/2010 at 9:30 AM PDT (12:30 PM EST).
+>>
+>> Rough agenda:
+>>
+>> 1. upstream status/merge plans (trond, bfields)
+>>
+>> 2. State of pNFS tree (bhalevy)
+>>
+>> 3. Client
+>> 	3.1. Client pNFS status
+>> 	3.2. Client state management design documentation (trond)
+>> 	3.3. Block device discovery design
+>>
+>> 4. Server
+>> 	4.1. Todo's for minimal 4.1 server (bfields)
+>> 	4.2. pnfs
+>> 		pnfs/gfs2
+>> 		exofs
+>>
+>> 5. redhat status (steved)
+>>
+>> 6. bakeathon plans
+>> 	- ann arbor:
+>> 	- boston
+>>
+>> 7. new business
+>>
+>> 8. next meeting
+>>
+>> --b.
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs"  
+>> in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
