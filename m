@@ -1,102 +1,120 @@
 From: Fred Isaman <iisaman@netapp.com>
-Subject: [PATCH 2/3] pnfs_post_submit: Restore "pnfs: pnfs_do_flush" part 2
-Date: Fri, 11 Jun 2010 03:35:50 -0400
-Message-ID: <1276241751-18180-3-git-send-email-iisaman@netapp.com>
+Subject: [PATCH 3/3] pnfs_post_submit: Restore the pnfs_write_end part of "pnfs: commit and pnfs_write_end"
+Date: Fri, 11 Jun 2010 03:35:51 -0400
+Message-ID: <1276241751-18180-4-git-send-email-iisaman@netapp.com>
 References: <1276241751-18180-1-git-send-email-iisaman@netapp.com>
  <1276241751-18180-2-git-send-email-iisaman@netapp.com>
+ <1276241751-18180-3-git-send-email-iisaman@netapp.com>
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
 Received: from mx2.netapp.com ([216.240.18.37]:17848 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756833Ab0FKHgu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 11 Jun 2010 03:36:50 -0400
+	id S1757144Ab0FKHgv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 11 Jun 2010 03:36:51 -0400
 Received: from localhost.localdomain (lesleyk-lxp.hq.netapp.com [10.58.52.119] (may be forged))
-	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id o5B7akmQ026274
-	for <linux-nfs@vger.kernel.org>; Fri, 11 Jun 2010 00:36:49 -0700 (PDT)
-In-Reply-To: <1276241751-18180-2-git-send-email-iisaman@netapp.com>
+	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id o5B7akmR026274
+	for <linux-nfs@vger.kernel.org>; Fri, 11 Jun 2010 00:36:50 -0700 (PDT)
+In-Reply-To: <1276241751-18180-3-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 From: Fred Isaman <iisaman@citi.umich.edu>
 
-pnfs: pnfs_do_flush
+pnfs: commit and pnfs_write_end
 
-Adds a hook into the "check if request needs flushed" routines.
-This will be needed to allow driver the ability to prevent comingling
-of layout driver handled requests and fallback nfs requests.
+Add hooks in the nfs_write_end path, giving a driver the potential for
+post-copy manipulation of the page.
 
+[pnfs: pass lseg from write_begin to write_end]
 Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
-[pnfs: prevent offset overflow in _pnfs_do_flush]
-[pnfs: pnfs_has_layout take_ref parameter should be bool]
-[pnfs: clean up put_unlock_current_layout's interface]
-[pnfs: introduce lseg valid bit]
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+[pnfs: fix pnfs_commit update_layout range]
+    Whole file semantics are different for COMMIT (0,0) and layouts
+    (0,NFS4_MAX_UINT64).
+Reported-by: Alexandros Batsakis <batsakis@netapp.com>
+Signed-off-by: Andy Adamson <andros@netapp.com>
 Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 
 Signed-off-by: Fred Isaman <iisaman@netapp.com>
 Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-Signed-off-by: Fred Isaman <iisaman@netapp.com>
 ---
- fs/nfs/pnfs.c             |   14 ++++++++++++++
- fs/nfs/pnfs.h             |   24 ++++++++++++++++++++++++
- fs/nfs/write.c            |    4 ++--
+ fs/nfs/file.c             |    4 ++++
+ fs/nfs/pnfs.c             |   16 +++++++++++++++-
+ fs/nfs/pnfs.h             |   23 +++++++++++++++++++++++
  include/linux/nfs4_pnfs.h |    3 +++
- 4 files changed, 43 insertions(+), 2 deletions(-)
+ 4 files changed, 45 insertions(+), 1 deletions(-)
 
+diff --git a/fs/nfs/file.c b/fs/nfs/file.c
+index 0999200..d453487 100644
+--- a/fs/nfs/file.c
++++ b/fs/nfs/file.c
+@@ -478,8 +478,12 @@ static int nfs_write_end(struct file *file, struct address_space *mapping,
+ 	}
+ 
+ 	lseg = nfs4_pull_lseg_from_fsdata(file, fsdata);
++	status = pnfs_write_end(file, page, pos, len, copied, lseg);
++	if (status)
++		goto out;
+ 	status = nfs_updatepage(file, page, offset, copied, lseg);
+ 
++ out:
+ 	unlock_page(page);
+ 	page_cache_release(page);
+ 	pnfs_write_end_cleanup(file, fsdata);
 diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 679171e..f60420c 100644
+index f60420c..7c48713 100644
 --- a/fs/nfs/pnfs.c
 +++ b/fs/nfs/pnfs.c
-@@ -1693,6 +1693,20 @@ out:
+@@ -1693,7 +1693,21 @@ out:
  	return status;
  }
  
-+/* Given an nfs request, determine if it should be flushed before proceeding.
-+ * It should default to returning False, returning True only if there is a
-+ * specific reason to flush.
-+ */
-+int _pnfs_do_flush(struct inode *inode, struct nfs_page *req)
+-/* Given an nfs request, determine if it should be flushed before proceeding.
++/* Return 0 on succes, negative on failure */
++/* CAREFUL - what happens if copied < len??? */
++int _pnfs_write_end(struct inode *inode, struct page *page,
++		    loff_t pos, unsigned len, unsigned copied,
++		    struct pnfs_layout_segment *lseg)
 +{
 +	struct nfs_server *nfss = NFS_SERVER(inode);
-+	int status = 0;
++	int status;
 +
-+	/* Note that lseg==NULL may be useful info for do_flush */
-+	status = nfss->pnfs_curr_ld->ld_policy_ops->do_flush(req->wb_lseg, req);
++	status = nfss->pnfs_curr_ld->ld_io_ops->write_end(inode, page,
++						pos, len, copied, lseg);
 +	return status;
 +}
 +
- enum pnfs_try_status
- _pnfs_try_to_write_data(struct nfs_write_data *data,
- 			const struct rpc_call_ops *call_ops, int how)
++ /* Given an nfs request, determine if it should be flushed before proceeding.
+  * It should default to returning False, returning True only if there is a
+  * specific reason to flush.
+  */
 diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index df5668d..23cd4c3 100644
+index 23cd4c3..ceb9934 100644
 --- a/fs/nfs/pnfs.h
 +++ b/fs/nfs/pnfs.h
-@@ -75,6 +75,7 @@ int _pnfs_write_begin(struct inode *inode, struct page *page,
+@@ -75,6 +75,9 @@ int _pnfs_write_begin(struct inode *inode, struct page *page,
  		      loff_t pos, unsigned len,
  		      struct pnfs_layout_segment *lseg,
  		      struct pnfs_fsdata **fsdata);
-+int _pnfs_do_flush(struct inode *inode, struct nfs_page *req);
++int _pnfs_write_end(struct inode *inode, struct page *page,
++		    loff_t pos, unsigned len, unsigned copied,
++		    struct pnfs_layout_segment *lseg);
+ int _pnfs_do_flush(struct inode *inode, struct nfs_page *req);
  
  #define PNFS_EXISTS_LDIO_OP(srv, opname) ((srv)->pnfs_curr_ld &&	\
- 				     (srv)->pnfs_curr_ld->ld_io_ops &&	\
-@@ -181,6 +182,24 @@ static inline int pnfs_write_begin(struct file *filp, struct page *page,
- 	return status;
+@@ -200,6 +203,19 @@ static inline int pnfs_do_flush(struct nfs_page *req)
+ 		return 0;
  }
  
-+/* req may not be locked, so we have to be prepared for req->wb_page being
-+ * set to NULL at any time.
-+ */
-+static inline int pnfs_do_flush(struct nfs_page *req)
++static inline int pnfs_write_end(struct file *filp, struct page *page,
++				 loff_t pos, unsigned len, unsigned copied,
++				 struct pnfs_layout_segment *lseg)
 +{
-+	struct page *page = req->wb_page;
-+	struct inode *inode;
++	struct inode *inode = filp->f_dentry->d_inode;
++	struct nfs_server *nfss = NFS_SERVER(inode);
 +
-+	if (!page)
-+		return 1;
-+	inode = page->mapping->host;
-+
-+	if (PNFS_EXISTS_LDPOLICY_OP(NFS_SERVER(inode), do_flush))
-+		return _pnfs_do_flush(inode, req);
++	if (PNFS_EXISTS_LDIO_OP(nfss, write_end))
++		return _pnfs_write_end(inode, page, pos, len, copied, lseg);
 +	else
 +		return 0;
 +}
@@ -104,54 +122,34 @@ index df5668d..23cd4c3 100644
  static inline void pnfs_write_end_cleanup(struct file *filp, void *fsdata)
  {
  	if (fsdata) {
-@@ -291,6 +310,11 @@ pnfs_try_to_commit(struct nfs_write_data *data,
- 	return PNFS_NOT_ATTEMPTED;
+@@ -324,6 +340,13 @@ static inline int pnfs_write_begin(struct file *filp, struct page *page,
+ 	return 0;
  }
  
-+static inline int pnfs_do_flush(struct nfs_page *req)
++static inline int pnfs_write_end(struct file *filp, struct page *page,
++				 loff_t pos, unsigned len, unsigned copied,
++				 struct pnfs_layout_segment *lseg)
 +{
 +	return 0;
 +}
 +
- static inline int pnfs_write_begin(struct file *filp, struct page *page,
- 				   loff_t pos, unsigned len,
- 				   struct pnfs_layout_segment *lseg,
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index e575f7a..bd1115f 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -603,7 +603,7 @@ static struct nfs_page *nfs_try_to_update_request(struct inode *inode,
- 		 * have flushed out requests having wrong owners.
- 		 */
- 		if (offset > rqend || end < req->wb_offset ||
--		    req->wb_lseg != lseg)
-+		    req->wb_lseg != lseg || pnfs_do_flush(req))
- 			goto out_flushme;
- 
- 		if (nfs_set_page_tag_locked(req))
-@@ -710,7 +710,7 @@ int nfs_flush_incompatible(struct file *file, struct page *page,
- 		if (req == NULL)
- 			return 0;
- 		do_flush = req->wb_page != page || req->wb_context != ctx ||
--			req->wb_lseg != lseg;
-+			req->wb_lseg != lseg || pnfs_do_flush(req);
- 		nfs_release_request(req);
- 		if (!do_flush)
- 			return 0;
+ static inline void pnfs_write_end_cleanup(struct file *filp, void *fsdata)
+ {
+ }
 diff --git a/include/linux/nfs4_pnfs.h b/include/linux/nfs4_pnfs.h
-index 0880a2e..e2e6cd0 100644
+index e2e6cd0..a84d622 100644
 --- a/include/linux/nfs4_pnfs.h
 +++ b/include/linux/nfs4_pnfs.h
-@@ -199,6 +199,9 @@ struct layoutdriver_policy_operations {
- 	/* test for nfs page cache coalescing */
- 	int (*pg_test)(struct nfs_pageio_descriptor *, struct nfs_page *, struct nfs_page *);
+@@ -143,6 +143,9 @@ struct layoutdriver_io_operations {
+ 	int (*write_begin) (struct pnfs_layout_segment *lseg, struct page *page,
+ 			    loff_t pos, unsigned count,
+ 			    struct pnfs_fsdata *fsdata);
++	int (*write_end)(struct inode *inode, struct page *page, loff_t pos,
++			 unsigned count, unsigned copied,
++			 struct pnfs_layout_segment *lseg);
  
-+	/* Test for pre-write request flushing */
-+	int (*do_flush)(struct pnfs_layout_segment *lseg, struct nfs_page *req);
-+
- 	/* Retreive the block size of the file system.
- 	 * If gather_across_stripes == 1, then the file system will gather
- 	 * requests into the block size.
+ 	/* Consistency ops */
+ 	/* 2 problems:
 -- 
 1.6.6.1
 
