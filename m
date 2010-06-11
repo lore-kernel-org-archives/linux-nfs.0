@@ -1,73 +1,36 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:40923 "EHLO
-	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1751035Ab0FHK2U (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Jun 2010 06:28:20 -0400
-Message-ID: <4C0E1B42.7050703@panasas.com>
-Date: Tue, 08 Jun 2010 13:28:18 +0300
-From: Boaz Harrosh <bharrosh@panasas.com>
-To: Benny Halevy <bhalevy@panasas.com>, NFS list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] SQUASHME: DEVONLY: pnfs: Add -pnfs suffix to EXTRAVERSION
-References: <4C0E0387.8070502@panasas.com>
-In-Reply-To: <4C0E0387.8070502@panasas.com>
-Content-Type: text/plain; charset=UTF-8
+Received: from smtp.mcs.de ([212.1.60.21]:46141 "EHLO smtp.mcs.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753772Ab0FKVl6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 11 Jun 2010 17:41:58 -0400
+Received: from p4fe415b6.dip0.t-ipconnect.de ([79.228.21.182]:61470 helo=[192.168.64.24])
+	by smtp.mcs.de with esmtpa (Exim 4.71)
+	(envelope-from <slink@schokola.de>)
+	id 1ONBZh-00052X-9d
+	for linux-nfs@vger.kernel.org; Fri, 11 Jun 2010 23:15:38 +0200
+Message-ID: <4C12A779.6010005@schokola.de>
+Date: Fri, 11 Jun 2010 23:15:37 +0200
+From: Nils Goroll <slink@schokola.de>
+To: linux-nfs@vger.kernel.org
+Subject: nfs4 locks: What happens when a lease can't get renewed?
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 06/08/2010 11:47 AM, Boaz Harrosh wrote:
-> 
-> The official way of adding a tree identifier tag to the Kernel
-> version-string is a presence of a localversion-* file next to
-> the Makefile. It's content is appended to the Linus supplied
-> version-string from Makefile.
-> 
-> After this patch the output is the same as before xxx-2.6.35-rc2-pnfs
-> But is a more comfortable way to manage it.
-> 
-> (The appended "+" in post 2.6.35-rc Kernels is not resolved with
->  this. But I have sent a patch to Linus to fix this issue)
-> 
+Hi,
 
-OK That one is as follows:
+I wonder what happens if a lock on nfs4 has been acquired by an application (for
+instance, using fcntl(fd, F_SETLK, F_WRLCK)) and the lock can't be RENEWed, for
+instance due to a network outage preventing communication between the client and
+the server.
 
-If Benny will tag the branches tips (As he does today) with a
-$ git tag -a foo-xxxx
+I would have thought that some notification mechanism was useful, for instance
+my means of delivery of a signal as set using F_SETOWN / F_SETSIG for leases.
 
-(The difference is the "-a" option. He might also want to add the -m tage_name
- as well)
+I would highly appreciate helpful pointers should this question have already
+been discussed of if there exists any other helpful documentation on it.
 
-Then together with this patch the compilation will be "+" less.
-As soon as any one has any changes apart from Benny's tag-a he will get a "+"
-appended to his Kernel
+Thank you,
 
-Boaz
-
-> Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
-> ---
->  Makefile          |    2 +-
->  localversion-pnfs |    1 +
->  2 files changed, 2 insertions(+), 1 deletions(-)
->  create mode 100644 localversion-pnfs
-> 
-> diff --git a/Makefile b/Makefile
-> index 6ac434c..654c31a 100644
-> --- a/Makefile
-> +++ b/Makefile
-> @@ -1,7 +1,7 @@
->  VERSION = 2
->  PATCHLEVEL = 6
->  SUBLEVEL = 35
-> -EXTRAVERSION = -rc2-pnfs
-> +EXTRAVERSION = -rc2
->  NAME = Sheep on Meth
->  
->  # *DOCUMENTATION*
-> diff --git a/localversion-pnfs b/localversion-pnfs
-> new file mode 100644
-> index 0000000..7523328
-> --- /dev/null
-> +++ b/localversion-pnfs
-> @@ -0,0 +1 @@
-> +-pnfs
-
+Nils
