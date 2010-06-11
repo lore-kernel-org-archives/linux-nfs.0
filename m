@@ -1,258 +1,131 @@
 From: Fred Isaman <iisaman@netapp.com>
-Subject: [PATCH 11/26] pnfs_submit: expose pnfs_update_layout, put_lseg, and get_lseg functions
-Date: Fri, 11 Jun 2010 03:31:38 -0400
-Message-ID: <1276241513-17942-12-git-send-email-iisaman@netapp.com>
+Subject: [PATCH 02/26] pnfs-submit: Revert "pnfs: Enable O_DIRECT write path."
+Date: Fri, 11 Jun 2010 03:31:29 -0400
+Message-ID: <1276241513-17942-3-git-send-email-iisaman@netapp.com>
 References: <1276241513-17942-1-git-send-email-iisaman@netapp.com>
  <1276241513-17942-2-git-send-email-iisaman@netapp.com>
- <1276241513-17942-3-git-send-email-iisaman@netapp.com>
- <1276241513-17942-4-git-send-email-iisaman@netapp.com>
- <1276241513-17942-5-git-send-email-iisaman@netapp.com>
- <1276241513-17942-6-git-send-email-iisaman@netapp.com>
- <1276241513-17942-7-git-send-email-iisaman@netapp.com>
- <1276241513-17942-8-git-send-email-iisaman@netapp.com>
- <1276241513-17942-9-git-send-email-iisaman@netapp.com>
- <1276241513-17942-10-git-send-email-iisaman@netapp.com>
- <1276241513-17942-11-git-send-email-iisaman@netapp.com>
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:18981 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:64287 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751628Ab0FKHcV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 11 Jun 2010 03:32:21 -0400
+	id S1755140Ab0FKHcU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 11 Jun 2010 03:32:20 -0400
 Received: from localhost.localdomain (lesleyk-lxp.hq.netapp.com [10.58.52.119] (may be forged))
-	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id o5B7W3u4024376
-	for <linux-nfs@vger.kernel.org>; Fri, 11 Jun 2010 00:32:17 -0700 (PDT)
-In-Reply-To: <1276241513-17942-11-git-send-email-iisaman@netapp.com>
+	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id o5B7W3tt024376
+	for <linux-nfs@vger.kernel.org>; Fri, 11 Jun 2010 00:32:05 -0700 (PDT)
+In-Reply-To: <1276241513-17942-2-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-These will be used in the generic code.  Set so they will compile away to
-nothing if CONFIG_NFS_V4_1 not set.
-
-This requires kref_put to be under lock.  See rule 3 of Documentation/kref.txt
+This reverts commit 2faf680af973895bdfe19f2254b59dc1a153dd82.
 
 Signed-off-by: Fred Isaman <iisaman@netapp.com>
 ---
- fs/nfs/pnfs.c |   45 ++++++++++++++++++++++++++++++++-------------
- fs/nfs/pnfs.h |   43 ++++++++++++++++++++++++++++++++++++++++++-
- 2 files changed, 74 insertions(+), 14 deletions(-)
+ fs/nfs/direct.c |   41 +----------------------------------------
+ 1 files changed, 1 insertions(+), 40 deletions(-)
 
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index a82eac7..52dbcbe 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -415,7 +415,25 @@ destroy_lseg(struct kref *kref)
- 	PNFS_LD_IO_OPS(lseg->layout)->free_lseg(lseg);
- }
+diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
+index 02e5918..1148214 100644
+--- a/fs/nfs/direct.c
++++ b/fs/nfs/direct.c
+@@ -505,7 +505,6 @@ static void nfs_direct_write_reschedule(struct nfs_direct_req *dreq)
+ 		.workqueue = nfsiod_workqueue,
+ 		.flags = RPC_TASK_ASYNC,
+ 	};
+-	enum pnfs_try_status trypnfs;
  
--static inline void
-+static void
-+put_lseg_locked(struct pnfs_layout_segment *lseg)
-+{
-+	bool do_wake_up;
-+	struct nfs_inode *nfsi;
-+
-+	if (!lseg)
-+		return;
-+
-+	dprintk("%s: lseg %p ref %d valid %d\n", __func__, lseg,
-+		atomic_read(&lseg->kref.refcount), lseg->valid);
-+	do_wake_up = !lseg->valid;
-+	nfsi = PNFS_NFS_INODE(lseg->layout);
-+	kref_put(&lseg->kref, destroy_lseg);
-+	if (do_wake_up)
-+		wake_up(&nfsi->lo_waitq);
-+}
-+
-+void
- put_lseg(struct pnfs_layout_segment *lseg)
- {
- 	bool do_wake_up;
-@@ -428,7 +446,9 @@ put_lseg(struct pnfs_layout_segment *lseg)
- 		atomic_read(&lseg->kref.refcount), lseg->valid);
- 	do_wake_up = !lseg->valid;
- 	nfsi = PNFS_NFS_INODE(lseg->layout);
-+	spin_lock(&nfsi->lo_lock);
- 	kref_put(&lseg->kref, destroy_lseg);
-+	spin_unlock(&nfsi->lo_lock);
- 	if (do_wake_up)
- 		wake_up(&nfsi->lo_waitq);
- }
-@@ -653,7 +673,7 @@ pnfs_free_layout(struct pnfs_layout_type *lo,
- 			lseg, lseg->range.iomode, lseg->range.offset,
- 			lseg->range.length);
- 		list_del(&lseg->fi_list);
--		put_lseg(lseg);
-+		put_lseg_locked(lseg);
- 	}
- 
- 	dprintk("%s:Return\n", __func__);
-@@ -1011,7 +1031,7 @@ pnfs_has_layout(struct pnfs_layout_type *lo,
- 		    (lseg->valid || !only_valid)) {
- 			ret = lseg;
- 			if (take_ref)
--				kref_get(&ret->kref);
-+				get_lseg(ret);
- 			break;
- 		}
- 		if (cmp_layout(range, &lseg->range) > 0)
-@@ -1031,7 +1051,7 @@ pnfs_has_layout(struct pnfs_layout_type *lo,
-  * returned to the caller.
-  */
- int
--pnfs_update_layout(struct inode *ino,
-+_pnfs_update_layout(struct inode *ino,
- 		   struct nfs_open_context *ctx,
- 		   u64 count,
- 		   loff_t pos,
-@@ -1063,8 +1083,7 @@ pnfs_update_layout(struct inode *ino,
- 	lseg = pnfs_has_layout(lo, &arg, take_ref, !take_ref);
- 	if (lseg && !lseg->valid) {
- 		if (take_ref)
--			put_lseg(lseg);
+ 	dreq->count = 0;
+ 	get_dreq(dreq);
+@@ -529,11 +528,6 @@ static void nfs_direct_write_reschedule(struct nfs_direct_req *dreq)
+ 		 * Reuse data->task; data->args should not have changed
+ 		 * since the original request was sent.
+ 		 */
+-		trypnfs = pnfs_try_to_write_data(data, &nfs_write_direct_ops,
+-						 NFS_FILE_SYNC);
+-		if (trypnfs == PNFS_ATTEMPTED)
+-			continue;
 -
-+			put_lseg_locked(lseg);
- 		/* someone is cleaning the layout */
- 		lseg = NULL;
- 		result = -EAGAIN;
-@@ -1240,7 +1259,7 @@ pnfs_layout_process(struct nfs4_pnfs_layoutget *lgp)
- 	init_lseg(lo, lseg);
- 	lseg->range = res->lseg;
- 	if (lgp->lsegpp) {
--		kref_get(&lseg->kref);
-+		get_lseg(lseg);
- 		*lgp->lsegpp = lseg;
+ 		nfs_direct_write_execute(data, &task_setup_data, &msg);
  	}
  
-@@ -1358,7 +1377,7 @@ pnfs_pageio_init_read(struct nfs_pageio_descriptor *pgio,
- 	readahead_range(inode, pages, &loff, &count);
+@@ -616,7 +610,6 @@ static void nfs_direct_commit_schedule(struct nfs_direct_req *dreq)
+ 		.workqueue = nfsiod_workqueue,
+ 		.flags = RPC_TASK_ASYNC,
+ 	};
+-	enum pnfs_try_status trypnfs;
  
- 	if (count > 0) {
--		status = pnfs_update_layout(inode, ctx, count,
-+		status = _pnfs_update_layout(inode, ctx, count,
- 						loff, IOMODE_READ, NULL);
- 		dprintk("%s virt update returned %d\n", __func__, status);
- 		if (status != 0)
-@@ -1416,7 +1435,7 @@ pnfs_update_layout_commit(struct inode *inode,
- 	if (start == 0 && count == 0)
- 		count = NFS4_MAX_UINT64;
+ 	data->inode = dreq->inode;
+ 	data->cred = msg.rpc_cred;
+@@ -630,11 +623,6 @@ static void nfs_direct_commit_schedule(struct nfs_direct_req *dreq)
+ 	data->res.verf = &data->verf;
+ 	nfs_fattr_init(&data->fattr);
  
--	status = pnfs_update_layout(inode, nfs_page->wb_context,
-+	status = _pnfs_update_layout(inode, nfs_page->wb_context,
- 				count,
- 				start,
- 				IOMODE_RW,
-@@ -1516,7 +1535,7 @@ pnfs_file_write(struct file *filp, const char __user *buf, size_t count,
- 		goto out;
- 
- 	/* Retrieve and set layout if not allready cached */
--	status = pnfs_update_layout(inode,
-+	status = _pnfs_update_layout(inode,
- 				    context,
- 				    count,
- 				    *pos,
-@@ -1558,7 +1577,7 @@ pnfs_writepages(struct nfs_write_data *wdata, int how)
- 		args->offset);
- 
- 	/* Retrieve and set layout if not allready cached */
--	status = pnfs_update_layout(inode,
-+	status = _pnfs_update_layout(inode,
- 				    args->context,
- 				    args->count,
- 				    args->offset,
-@@ -1659,7 +1678,7 @@ pnfs_readpages(struct nfs_read_data *rdata)
- 		args->offset);
- 
- 	/* Retrieve and set layout if not allready cached */
--	status = pnfs_update_layout(inode,
-+	status = _pnfs_update_layout(inode,
- 				    args->context,
- 				    args->count,
- 				    args->offset,
-@@ -1823,7 +1842,7 @@ pnfs_commit(struct nfs_write_data *data, int sync)
- 	   new one.  If it was recalled we better commit the data first
- 	   before returning it, otherwise the data needs to be rewritten,
- 	   either with a new layout or to the MDS */
--	result = pnfs_update_layout(data->inode,
-+	result = _pnfs_update_layout(data->inode,
- 				    NULL,
- 				    count,
- 				    first->wb_offset,
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index 4581a3e..a2a7b94 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -31,7 +31,8 @@ extern int pnfs4_proc_layoutreturn(struct nfs4_pnfs_layoutreturn *lrp, bool wait
- /* pnfs.c */
- extern const nfs4_stateid zero_stateid;
- 
--int pnfs_update_layout(struct inode *ino, struct nfs_open_context *ctx,
-+void put_lseg(struct pnfs_layout_segment *lseg);
-+int _pnfs_update_layout(struct inode *ino, struct nfs_open_context *ctx,
- 	u64 count, loff_t pos, enum pnfs_iomode access_type,
- 	struct pnfs_layout_segment **lsegpp);
- 
-@@ -81,6 +82,11 @@ static inline int lo_fail_bit(u32 iomode)
- 			 NFS_INO_RW_LAYOUT_FAILED : NFS_INO_RO_LAYOUT_FAILED;
+-	trypnfs = pnfs_try_to_commit(data, &nfs_commit_direct_ops,
+-				     RPC_TASK_ASYNC);
+-	if (trypnfs == PNFS_ATTEMPTED)
+-		return;
+-
+ 	nfs_direct_commit_execute(dreq, data, &task_setup_data, &msg);
  }
  
-+static inline void get_lseg(struct pnfs_layout_segment *lseg)
-+{
-+	kref_get(&lseg->kref);
-+}
-+
- /* Return true if a layout driver is being used for this mountpoint */
- static inline int pnfs_enabled_sb(struct nfs_server *nfss)
+@@ -683,9 +671,6 @@ static void nfs_direct_write_result(struct rpc_task *task, void *calldata)
  {
-@@ -170,6 +176,23 @@ static inline int pnfs_return_layout(struct inode *ino,
- 	return 0;
+ 	struct nfs_write_data *data = calldata;
+ 
+-	dprintk("%s: verf: %d stable %d\n", __func__,
+-		data->res.verf->committed, data->args.stable);
+-
+ 	if (nfs_writeback_done(task, data) != 0)
+ 		return;
  }
+@@ -799,17 +784,6 @@ static ssize_t nfs_direct_write_schedule_segment(struct nfs_direct_req *dreq,
+ 	unsigned int pgbase;
+ 	int result;
+ 	ssize_t started = 0;
+-	size_t pnfs_stripe_rem = count;
+-	enum pnfs_try_status trypnfs;
+-
+-	/* pnfs_stripe_rem will be set to the remaining bytes in
+-	 * the first stripe_unit (which for standard nfs is count)
+-	 */
+-	pnfs_direct_init_io(inode, ctx, count, pos, 1,
+-			    &wsize, &pnfs_stripe_rem);
+-
+-	dprintk("%s: pos %llu count %Zu wsize %Zu\n",
+-		__func__, pos, count, wsize);
  
-+static inline int pnfs_update_layout(struct inode *ino,
-+	struct nfs_open_context *ctx,
-+	u64 count, loff_t pos, enum pnfs_iomode access_type,
-+	struct pnfs_layout_segment **lsegpp)
-+{
-+	struct nfs_server *nfss = NFS_SERVER(ino);
-+
-+	if (pnfs_enabled_sb(nfss))
-+		return _pnfs_update_layout(ino, ctx, count, pos,
-+					   access_type, lsegpp);
-+	else {
-+		if (lsegpp)
-+			*lsegpp = NULL;
-+		return 0;
-+	}
-+}
-+
- static inline int pnfs_get_write_status(struct nfs_write_data *data)
- {
- 	return data->pdata.pnfs_error;
-@@ -190,6 +213,24 @@ static inline int pnfs_use_rpc(struct nfs_server *nfss)
+ 	do {
+ 		struct nfs_write_data *data;
+@@ -818,12 +792,6 @@ static ssize_t nfs_direct_write_schedule_segment(struct nfs_direct_req *dreq,
+ 		pgbase = user_addr & ~PAGE_MASK;
+ 		bytes = min(wsize,count);
  
- #else  /* CONFIG_NFS_V4_1 */
+-#if defined(CONFIG_NFS_V4_1)
+-		if (pnfs_enabled_sb(NFS_SERVER(inode))) {
+-			bytes = min(bytes, pnfs_stripe_rem);
+-			pnfs_stripe_rem = wsize;
+-		}
+-#endif /* CONFIG_NFS_V4_1 */
+ 		result = -ENOMEM;
+ 		data = nfs_writedata_alloc(nfs_page_array_len(pgbase, bytes));
+ 		if (unlikely(!data))
+@@ -867,15 +835,8 @@ static ssize_t nfs_direct_write_schedule_segment(struct nfs_direct_req *dreq,
+ 		data->res.verf = &data->verf;
+ 		nfs_fattr_init(&data->fattr);
  
-+static inline void get_lseg(struct pnfs_layout_segment *lseg)
-+{
-+}
-+
-+static inline void put_lseg(struct pnfs_layout_segment *lseg)
-+{
-+}
-+
-+static inline int
-+pnfs_update_layout(struct inode *ino, struct nfs_open_context *ctx,
-+	u64 count, loff_t pos, enum pnfs_iomode access_type,
-+	struct pnfs_layout_segment **lsegpp)
-+{
-+	if (lsegpp)
-+		*lsegpp = NULL;
-+	return 0;
-+}
-+
- static inline enum pnfs_try_status
- pnfs_try_to_read_data(struct nfs_read_data *data,
- 		      const struct rpc_call_ops *call_ops)
+-		trypnfs = pnfs_try_to_write_data(data, &nfs_write_direct_ops,
+-						 sync);
+-		if (trypnfs == PNFS_ATTEMPTED) {
+-			result = pnfs_get_write_status(data);
+-			if (result)
+-				break;
+-		} else if (nfs_direct_write_execute(data, &task_setup_data, &msg)) {
++		if (nfs_direct_write_execute(data, &task_setup_data, &msg))
+ 			break;
+-		}
+ 
+ 		started += bytes;
+ 		user_addr += bytes;
 -- 
 1.6.6.1
 
