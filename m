@@ -1,7 +1,7 @@
 From: Fred Isaman <iisaman@netapp.com>
-Subject: [PATCH 22/26] pnfs_submit: remove unecessary pnfs_fl_call_data field pnfs_client
-Date: Fri, 11 Jun 2010 03:31:49 -0400
-Message-ID: <1276241513-17942-23-git-send-email-iisaman@netapp.com>
+Subject: [PATCH 24/26] pnfs_submit: pnfs_update_layout can return void
+Date: Fri, 11 Jun 2010 03:31:51 -0400
+Message-ID: <1276241513-17942-25-git-send-email-iisaman@netapp.com>
 References: <1276241513-17942-1-git-send-email-iisaman@netapp.com>
  <1276241513-17942-2-git-send-email-iisaman@netapp.com>
  <1276241513-17942-3-git-send-email-iisaman@netapp.com>
@@ -24,92 +24,165 @@ References: <1276241513-17942-1-git-send-email-iisaman@netapp.com>
  <1276241513-17942-20-git-send-email-iisaman@netapp.com>
  <1276241513-17942-21-git-send-email-iisaman@netapp.com>
  <1276241513-17942-22-git-send-email-iisaman@netapp.com>
+ <1276241513-17942-23-git-send-email-iisaman@netapp.com>
+ <1276241513-17942-24-git-send-email-iisaman@netapp.com>
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
 Received: from mx2.netapp.com ([216.240.18.37]:18981 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757982Ab0FKHcf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 11 Jun 2010 03:32:35 -0400
+	id S1755069Ab0FKHci (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 11 Jun 2010 03:32:38 -0400
 Received: from localhost.localdomain (lesleyk-lxp.hq.netapp.com [10.58.52.119] (may be forged))
-	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id o5B7W3uF024376
-	for <linux-nfs@vger.kernel.org>; Fri, 11 Jun 2010 00:32:34 -0700 (PDT)
-In-Reply-To: <1276241513-17942-22-git-send-email-iisaman@netapp.com>
+	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id o5B7W3uH024376
+	for <linux-nfs@vger.kernel.org>; Fri, 11 Jun 2010 00:32:37 -0700 (PDT)
+In-Reply-To: <1276241513-17942-24-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 Signed-off-by: Fred Isaman <iisaman@netapp.com>
 ---
- fs/nfs/nfs4filelayout.c |    9 +++------
- include/linux/nfs_xdr.h |    1 -
- 2 files changed, 3 insertions(+), 7 deletions(-)
+ fs/nfs/pnfs.c |   27 +++++++++------------------
+ fs/nfs/pnfs.h |   11 ++++-------
+ 2 files changed, 13 insertions(+), 25 deletions(-)
 
-diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
-index 756cb64..b82e4ff 100644
---- a/fs/nfs/nfs4filelayout.c
-+++ b/fs/nfs/nfs4filelayout.c
-@@ -216,7 +216,6 @@ filelayout_read_pagelist(struct pnfs_layout_type *layoutid,
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index e37b71e..ae76e88 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -1050,7 +1050,7 @@ pnfs_has_layout(struct pnfs_layout_type *lo,
+  * If lsegpp is given, the appropriate layout segment is referenced and
+  * returned to the caller.
+  */
+-int
++void
+ _pnfs_update_layout(struct inode *ino,
+ 		   struct nfs_open_context *ctx,
+ 		   u64 count,
+@@ -1068,14 +1068,12 @@ _pnfs_update_layout(struct inode *ino,
+ 	struct pnfs_layout_segment *lseg = NULL;
+ 	bool take_ref = (lsegpp != NULL);
+ 	DEFINE_WAIT(__wait);
+-	int result = 0;
  
- 	/* just try the first data server for the index..*/
- 	data->fldata.ds_nfs_client = ds->ds_clp;
--	data->fldata.pnfs_client = ds->ds_clp->cl_rpcclient;
- 	data->args.fh = nfs4_fl_select_ds_fh(flseg, idx);
+ 	if (take_ref)
+ 		*lsegpp = NULL;
+ 	lo = get_lock_alloc_layout(ino);
+ 	if (IS_ERR(lo)) {
+ 		dprintk("%s ERROR: can't get pnfs_layout_type\n", __func__);
+-		result = PTR_ERR(lo);
+ 		goto out;
+ 	}
  
- 	/* Now get the file offset on the dserver
-@@ -230,7 +229,7 @@ filelayout_read_pagelist(struct pnfs_layout_type *layoutid,
- 	data->fldata.orig_offset = offset;
+@@ -1086,7 +1084,6 @@ _pnfs_update_layout(struct inode *ino,
+ 			put_lseg_locked(lseg);
+ 		/* someone is cleaning the layout */
+ 		lseg = NULL;
+-		result = -EAGAIN;
+ 		goto out_put;
+ 	}
  
- 	/* Perform an asynchronous read */
--	nfs_initiate_read(data, data->fldata.pnfs_client,
-+	nfs_initiate_read(data, ds->ds_clp->cl_rpcclient,
- 			  &filelayout_read_call_ops);
+@@ -1109,21 +1106,18 @@ _pnfs_update_layout(struct inode *ino,
+ 			clear_bit(lo_fail_bit(iomode),
+ 				  &nfsi->layout.pnfs_layout_state);
+ 			nfsi->layout.pnfs_layout_suspend = 0;
+-		} else {
+-			result = 1;
++		} else
+ 			goto out_put;
+-		}
+ 	}
  
- 	data->pdata.pnfs_error = 0;
-@@ -269,7 +268,6 @@ filelayout_write_pagelist(struct pnfs_layout_type *layoutid,
- 		htonl(ds->ds_ip_addr), ntohs(ds->ds_port), ds->r_addr);
+ 	/* Lose lock, but not reference, match this with pnfs_layout_release */
+ 	spin_unlock(&nfsi->lo_lock);
  
- 	data->fldata.ds_nfs_client = ds->ds_clp;
--	data->fldata.pnfs_client = ds->ds_clp->cl_rpcclient;
- 	data->args.fh = nfs4_fl_select_ds_fh(flseg, idx);
+-	result = get_layout(ino, ctx, &arg, lsegpp, lo);
++	get_layout(ino, ctx, &arg, lsegpp, lo);
+ out:
+-	dprintk("%s end (err:%d) state 0x%lx lseg %p\n",
+-			__func__, result, nfsi->layout.pnfs_layout_state,
+-		lseg);
+-	return result;
++	dprintk("%s end, state 0x%lx lseg %p\n", __func__,
++		nfsi->layout.pnfs_layout_state, lseg);
++	return;
+ out_put:
+ 	if (lsegpp)
+ 		*lsegpp = lseg;
+@@ -1364,7 +1358,6 @@ pnfs_pageio_init_read(struct nfs_pageio_descriptor *pgio,
+ 	struct nfs_server *nfss = NFS_SERVER(inode);
+ 	size_t count = 0;
+ 	loff_t loff;
+-	int status = 0;
  
- 	/* Get the file offset on the dserver. Set the write offset to
-@@ -281,7 +279,7 @@ filelayout_write_pagelist(struct pnfs_layout_type *layoutid,
- 	/* Perform an asynchronous write The offset will be reset in the
- 	 * call_ops->rpc_call_done() routine
- 	 */
--	nfs_initiate_write(data, data->fldata.pnfs_client,
-+	nfs_initiate_write(data, ds->ds_clp->cl_rpcclient,
- 			   &filelayout_write_call_ops, sync);
+ 	pgio->pg_iswrite = 0;
+ 	pgio->pg_boundary = 0;
+@@ -1378,11 +1371,9 @@ pnfs_pageio_init_read(struct nfs_pageio_descriptor *pgio,
+ 	readahead_range(inode, pages, &loff, &count);
  
- 	data->pdata.pnfs_error = 0;
-@@ -572,7 +570,7 @@ filelayout_commit(struct pnfs_layout_type *layoutid, int sync,
- 	struct nfs4_pnfs_ds *ds;
+ 	if (count > 0) {
+-		status = _pnfs_update_layout(inode, ctx, count,
+-					    loff, IOMODE_READ,
+-					    &pgio->pg_lseg);
+-		dprintk("%s virt update returned %d\n", __func__, status);
+-		if (status != 0)
++		_pnfs_update_layout(inode, ctx, count, loff, IOMODE_READ,
++				    &pgio->pg_lseg);
++		if (!pgio->pg_lseg)
+ 			return;
  
- 	dprintk("%s data %p pnfs_client %p sync %d\n",
--		__func__, data, data->fldata.pnfs_client, sync);
-+		__func__, data, data->fldata.ds_nfs_client->cl_rpcclient, sync);
+ 		pgio->pg_boundary = pnfs_getboundary(inode);
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index bdf11bc..09de7a3 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -32,7 +32,7 @@ extern int pnfs4_proc_layoutreturn(struct nfs4_pnfs_layoutreturn *lrp, bool wait
+ extern const nfs4_stateid zero_stateid;
  
- 	/* Alloc room for both in one go */
- 	ds_page_list = kzalloc((NFS4_PNFS_MAX_MULTI_CNT + 1) *
-@@ -643,7 +641,6 @@ filelayout_commit(struct pnfs_layout_type *layoutid, int sync,
- 				continue;
- 			}
- 			clnt = ds->ds_clp->cl_rpcclient;
--			dsdata->fldata.pnfs_client = clnt;
- 			dsdata->fldata.ds_nfs_client = ds->ds_clp;
- 			dsdata->args.fh = \
- 				nfs4_fl_select_ds_fh(LSEG_LD_DATA(req->wb_lseg),
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index a8b85b6..38a5349 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -982,7 +982,6 @@ struct pnfs_call_data {
+ void put_lseg(struct pnfs_layout_segment *lseg);
+-int _pnfs_update_layout(struct inode *ino, struct nfs_open_context *ctx,
++void _pnfs_update_layout(struct inode *ino, struct nfs_open_context *ctx,
+ 	u64 count, loff_t pos, enum pnfs_iomode access_type,
+ 	struct pnfs_layout_segment **lsegpp);
  
- /* files layout-type specific data for read, write, and commit */
- struct pnfs_fl_call_data {
--	struct rpc_clnt		*pnfs_client;	/* Holds pNFS device across async calls */
- 	struct nfs_client	*ds_nfs_client;
- 	__u64			orig_offset;
- 	int			commit_through_mds;
+@@ -175,7 +175,7 @@ static inline int pnfs_return_layout(struct inode *ino,
+ 	return 0;
+ }
+ 
+-static inline int pnfs_update_layout(struct inode *ino,
++static inline void pnfs_update_layout(struct inode *ino,
+ 	struct nfs_open_context *ctx,
+ 	u64 count, loff_t pos, enum pnfs_iomode access_type,
+ 	struct pnfs_layout_segment **lsegpp)
+@@ -183,12 +183,10 @@ static inline int pnfs_update_layout(struct inode *ino,
+ 	struct nfs_server *nfss = NFS_SERVER(ino);
+ 
+ 	if (pnfs_enabled_sb(nfss))
+-		return _pnfs_update_layout(ino, ctx, count, pos,
+-					   access_type, lsegpp);
++		_pnfs_update_layout(ino, ctx, count, pos, access_type, lsegpp);
+ 	else {
+ 		if (lsegpp)
+ 			*lsegpp = NULL;
+-		return 0;
+ 	}
+ }
+ 
+@@ -220,14 +218,13 @@ static inline void put_lseg(struct pnfs_layout_segment *lseg)
+ {
+ }
+ 
+-static inline int
++static inline void
+ pnfs_update_layout(struct inode *ino, struct nfs_open_context *ctx,
+ 	u64 count, loff_t pos, enum pnfs_iomode access_type,
+ 	struct pnfs_layout_segment **lsegpp)
+ {
+ 	if (lsegpp)
+ 		*lsegpp = NULL;
+-	return 0;
+ }
+ 
+ static inline enum pnfs_try_status
 -- 
 1.6.6.1
 
