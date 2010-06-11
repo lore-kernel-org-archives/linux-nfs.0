@@ -1,353 +1,390 @@
 From: Fred Isaman <iisaman@netapp.com>
-Subject: [PATCH 20/26] pnfs_submit: API change: remove pnfs_commit layoutget invocation
-Date: Fri, 11 Jun 2010 03:31:47 -0400
-Message-ID: <1276241513-17942-21-git-send-email-iisaman@netapp.com>
+Subject: [PATCH 06/26] pnfs-submit: filelayout: clean and breakup nfs4_pnfs_dserver_get
+Date: Fri, 11 Jun 2010 03:31:33 -0400
+Message-ID: <1276241513-17942-7-git-send-email-iisaman@netapp.com>
 References: <1276241513-17942-1-git-send-email-iisaman@netapp.com>
  <1276241513-17942-2-git-send-email-iisaman@netapp.com>
  <1276241513-17942-3-git-send-email-iisaman@netapp.com>
  <1276241513-17942-4-git-send-email-iisaman@netapp.com>
  <1276241513-17942-5-git-send-email-iisaman@netapp.com>
  <1276241513-17942-6-git-send-email-iisaman@netapp.com>
- <1276241513-17942-7-git-send-email-iisaman@netapp.com>
- <1276241513-17942-8-git-send-email-iisaman@netapp.com>
- <1276241513-17942-9-git-send-email-iisaman@netapp.com>
- <1276241513-17942-10-git-send-email-iisaman@netapp.com>
- <1276241513-17942-11-git-send-email-iisaman@netapp.com>
- <1276241513-17942-12-git-send-email-iisaman@netapp.com>
- <1276241513-17942-13-git-send-email-iisaman@netapp.com>
- <1276241513-17942-14-git-send-email-iisaman@netapp.com>
- <1276241513-17942-15-git-send-email-iisaman@netapp.com>
- <1276241513-17942-16-git-send-email-iisaman@netapp.com>
- <1276241513-17942-17-git-send-email-iisaman@netapp.com>
- <1276241513-17942-18-git-send-email-iisaman@netapp.com>
- <1276241513-17942-19-git-send-email-iisaman@netapp.com>
- <1276241513-17942-20-git-send-email-iisaman@netapp.com>
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:18981 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:64287 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757815Ab0FKHcd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 11 Jun 2010 03:32:33 -0400
+	id S1754075Ab0FKHcU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 11 Jun 2010 03:32:20 -0400
 Received: from localhost.localdomain (lesleyk-lxp.hq.netapp.com [10.58.52.119] (may be forged))
-	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id o5B7W3uD024376
-	for <linux-nfs@vger.kernel.org>; Fri, 11 Jun 2010 00:32:32 -0700 (PDT)
-In-Reply-To: <1276241513-17942-20-git-send-email-iisaman@netapp.com>
+	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id o5B7W3tx024376
+	for <linux-nfs@vger.kernel.org>; Fri, 11 Jun 2010 00:32:08 -0700 (PDT)
+In-Reply-To: <1276241513-17942-6-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-WARNING - this is an API change.
-
-The layout driver's commit operation no longer takes an lseg.
-This is because each nfs_page may or may not have an associated lseg.
-It is the layout drivers task to send commits to the appropriate place.
+Rewrite nfs4_pnfs_dserver_get as two functions, nfs4_fl_calc_ds_index() and
+nfs4_fl_prepare_ds().  This cleans up the code a bit and prepares for more
+extensive rewrite of filelayout_commit().
 
 Signed-off-by: Fred Isaman <iisaman@netapp.com>
 ---
- fs/nfs/internal.h        |    2 +-
- fs/nfs/pagelist.c        |    5 ++-
- fs/nfs/pnfs.c            |   79 ++++++++-------------------------------------
- fs/nfs/pnfs.h            |   21 +++++-------
- fs/nfs/write.c           |   23 +++++++------
- include/linux/nfs_page.h |    3 +-
- 6 files changed, 43 insertions(+), 90 deletions(-)
+ fs/nfs/nfs4filelayout.c    |   75 ++++++++++++----------------------
+ fs/nfs/nfs4filelayout.h    |   33 +++++++--------
+ fs/nfs/nfs4filelayoutdev.c |   95 +++++++++++++++----------------------------
+ 3 files changed, 75 insertions(+), 128 deletions(-)
 
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index b754446..a30974a 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -286,7 +286,7 @@ extern int nfs_initiate_commit(struct nfs_write_data *data,
- extern int pnfs_initiate_commit(struct nfs_write_data *data,
- 			       struct rpc_clnt *clnt,
- 			       const struct rpc_call_ops *call_ops,
--			       int how);
-+				int how, int pnfs);
- extern void nfs_write_prepare(struct rpc_task *task, void *calldata);
- extern void nfs_mark_list_commit(struct list_head *head);
- #ifdef CONFIG_MIGRATION
-diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
-index 5b20545..453d100 100644
---- a/fs/nfs/pagelist.c
-+++ b/fs/nfs/pagelist.c
-@@ -381,6 +381,7 @@ void nfs_pageio_cond_complete(struct nfs_pageio_descriptor *desc, pgoff_t index)
-  * @idx_start: lower bound of page->index to scan
-  * @npages: idx_start + npages sets the upper bound to scan.
-  * @tag: tag to scan for
-+ * @use_pnfs: will be set TRUE if commit needs to be handled by layout driver
-  *
-  * Moves elements from one of the inode request lists.
-  * If the number of requests is set to 0, the entire address_space
-@@ -390,7 +391,7 @@ void nfs_pageio_cond_complete(struct nfs_pageio_descriptor *desc, pgoff_t index)
-  */
- int nfs_scan_list(struct nfs_inode *nfsi,
- 		struct list_head *dst, pgoff_t idx_start,
--		unsigned int npages, int tag)
-+		  unsigned int npages, int tag, int *use_pnfs)
+diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+index b0cda5d..2ffca74 100644
+--- a/fs/nfs/nfs4filelayout.c
++++ b/fs/nfs/nfs4filelayout.c
+@@ -196,8 +196,8 @@ filelayout_read_pagelist(struct pnfs_layout_type *layoutid,
  {
- 	struct nfs_page *pgvec[NFS_SCAN_MAXENTRIES];
- 	struct nfs_page *req;
-@@ -421,6 +422,8 @@ int nfs_scan_list(struct nfs_inode *nfsi,
- 				radix_tree_tag_clear(&nfsi->nfs_page_tree,
- 						req->wb_index, tag);
- 				nfs_list_add_request(req, dst);
-+				if (req->wb_lseg)
-+					*use_pnfs = 1;
- 				res++;
- 				if (res == INT_MAX)
- 					goto out;
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index afafd0a..e37b71e 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -1650,19 +1650,11 @@ enum pnfs_try_status
- _pnfs_try_to_commit(struct nfs_write_data *data,
- 		    const struct rpc_call_ops *call_ops, int how)
- {
--	struct inode *inode = data->inode;
--
--	if (!pnfs_enabled_sb(NFS_SERVER(inode))) {
--		dprintk("%s: Not using pNFS I/O\n", __func__);
--		return PNFS_NOT_ATTEMPTED;
--	} else {
--		/* data->call_ops and data->how set in nfs_commit_rpcsetup */
--		dprintk("%s: Utilizing pNFS I/O\n", __func__);
--		data->pdata.call_ops = call_ops;
--		data->pdata.pnfs_error = 0;
--		data->pdata.how = how;
--		return pnfs_commit(data, how);
--	}
-+	dprintk("%s: Utilizing pNFS I/O\n", __func__);
-+	data->pdata.call_ops = call_ops;
-+	data->pdata.pnfs_error = 0;
-+	data->pdata.how = how;
-+	return pnfs_commit(data, how);
- }
+ 	struct inode *inode = PNFS_INODE(layoutid);
+ 	struct nfs4_filelayout_segment *flseg;
+-	struct nfs4_pnfs_dserver dserver;
+-	int status;
++	struct nfs4_pnfs_ds *ds;
++	u32 idx;
  
- /* pNFS Commit callback function for all layout drivers */
-@@ -1683,76 +1675,33 @@ pnfs_commit_done(struct nfs_write_data *data)
- 		_pnfs_return_layout(data->inode, &range, NULL, RETURN_FILE,
- 				    true);
- 		pnfs_initiate_commit(data, NFS_CLIENT(data->inode),
--				     pdata->call_ops, pdata->how);
-+				     pdata->call_ops, pdata->how, 1);
+ 	dprintk("--> %s ino %lu nr_pages %d pgbase %u req %Zu@%llu\n",
+ 		__func__, inode->i_ino, nr_pages, pgbase, count, offset);
+@@ -205,23 +205,19 @@ filelayout_read_pagelist(struct pnfs_layout_type *layoutid,
+ 	flseg = LSEG_LD_DATA(data->pdata.lseg);
+ 
+ 	/* Retrieve the correct rpc_client for the byte range */
+-	status = nfs4_pnfs_dserver_get(data->pdata.lseg,
+-				       offset,
+-				       count,
+-				       &dserver);
+-	if (status) {
+-		printk(KERN_ERR "%s: dserver get failed status %d use MDS\n",
+-		       __func__, status);
++	idx = nfs4_fl_calc_ds_index(data->pdata.lseg, offset);
++	ds = nfs4_fl_prepare_ds(data->pdata.lseg, idx);
++	if (!ds) {
++		printk(KERN_ERR "%s: prepare_ds failed, use MDS\n", __func__);
+ 		return PNFS_NOT_ATTEMPTED;
  	}
- }
+-
+ 	dprintk("%s USE DS:ip %x %s\n", __func__,
+-		htonl(dserver.ds->ds_ip_addr), dserver.ds->r_addr);
++		htonl(ds->ds_ip_addr), ds->r_addr);
  
- static enum pnfs_try_status
- pnfs_commit(struct nfs_write_data *data, int sync)
+ 	/* just try the first data server for the index..*/
+-	data->fldata.pnfs_client = dserver.ds->ds_clp->cl_rpcclient;
+-	data->fldata.ds_nfs_client = dserver.ds->ds_clp;
+-	data->args.fh = dserver.fh;
++	data->fldata.ds_nfs_client = ds->ds_clp;
++	data->fldata.pnfs_client = ds->ds_clp->cl_rpcclient;
++	data->args.fh = nfs4_fl_select_ds_fh(flseg, idx);
+ 
+ 	/* Now get the file offset on the dserver
+ 	 * Set the read offset to this offset, and
+@@ -255,32 +251,26 @@ filelayout_write_pagelist(struct pnfs_layout_type *layoutid,
  {
--	int result;
- 	struct nfs_inode *nfsi = NFS_I(data->inode);
- 	struct nfs_server *nfss = NFS_SERVER(data->inode);
--	struct pnfs_layout_segment *lseg;
--	struct nfs_page *first, *last, *p;
--	int npages;
- 	enum pnfs_try_status trypnfs;
--	u64 count;
+ 	struct inode *inode = PNFS_INODE(layoutid);
+ 	struct nfs4_filelayout_segment *flseg = LSEG_LD_DATA(data->pdata.lseg);
+-	struct nfs4_pnfs_dserver dserver;
+-	int status;
++	struct nfs4_pnfs_ds *ds;
++	u32 idx;
  
- 	dprintk("%s: Begin\n", __func__);
+ 	dprintk("--> %s ino %lu nr_pages %d pgbase %u req %Zu@%llu sync %d\n",
+ 		__func__, inode->i_ino, nr_pages, pgbase, count, offset, sync);
  
--	/* If the layout driver doesn't define its own commit function
--	 * use standard NFSv4 commit
--	 */
--	first = last = nfs_list_entry(data->pages.next);
--	npages = 0;
--	list_for_each_entry(p, &data->pages, wb_list) {
--		last = p;
--		npages++;
--	}
--	/* COMMIT indicates the whole file with offset = count = 0
--	 * whereas layout segments indicate whole file with offset = 0,
--	 * count = NFS4_MAX_UINT64.
-+	/* We need to account for possibility that
-+	 * each nfs_page can point to a different lseg (or be NULL).
-+	 * For the immediate case of whole-file-only layouts, we at
-+	 * least know there can be only a single lseg.
-+	 * We still have to account for the possibility of some being NULL.
-+	 * This will be done by passing the buck to the layout driver.
- 	 */
--	count = ((npages - 1) << PAGE_CACHE_SHIFT) + first->wb_bytes +
--		 (first != last) ? last->wb_bytes : 0;
--	if (first->wb_offset == 0 && count == 0)
--		count = NFS4_MAX_UINT64;
+ 	/* Retrieve the correct rpc_client for the byte range */
+-	status = nfs4_pnfs_dserver_get(data->pdata.lseg,
+-				       offset,
+-				       count,
+-				       &dserver);
 -
--	/* FIXME: we really ought to keep the layout segment that we used
--	   to write the page around for committing it and never ask for a
--	   new one.  If it was recalled we better commit the data first
--	   before returning it, otherwise the data needs to be rewritten,
--	   either with a new layout or to the MDS */
--	result = _pnfs_update_layout(data->inode,
--				    NULL,
--				    count,
--				    first->wb_offset,
--				    IOMODE_RW,
--				    &lseg);
--	/* If no layout have been retrieved,
--	 * use standard NFSv4 commit
--	 */
--	if (result) {
--		dprintk("%s: Updating layout failed (%d), retry with NFS \n",
--			__func__, result);
--		trypnfs = PNFS_NOT_ATTEMPTED;
--		goto out;
--	}
+-	if (status) {
+-		printk(KERN_ERR "%s: dserver get failed status %d use MDS\n",
+-		       __func__, status);
++	idx = nfs4_fl_calc_ds_index(data->pdata.lseg, offset);
++	ds = nfs4_fl_prepare_ds(data->pdata.lseg, idx);
++	if (!ds) {
++		printk(KERN_ERR "%s: prepare_ds failed, use MDS\n", __func__);
+ 		return PNFS_NOT_ATTEMPTED;
+ 	}
 -
--	dprintk("%s: Calling layout driver commit\n", __func__);
-+	data->pdata.lseg = NULL;
- 	if (!pnfs_use_rpc(nfss))
- 		data->pdata.pnfsflags |= PNFS_NO_RPC;
--	data->pdata.lseg = lseg;
- 	trypnfs = nfss->pnfs_curr_ld->ld_io_ops->commit(&nfsi->layout,
- 							sync, data);
--	if (trypnfs == PNFS_NOT_ATTEMPTED) {
-+	if (trypnfs == PNFS_NOT_ATTEMPTED)
- 		data->pdata.pnfsflags &= ~PNFS_NO_RPC;
--		data->pdata.lseg = NULL;
--		put_lseg(lseg);
--	}
--
--out:
- 	dprintk("%s End (trypnfs:%d)\n", __func__, trypnfs);
- 	return trypnfs;
- }
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index 60a9db6..bdf11bc 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -139,21 +139,18 @@ pnfs_try_to_commit(struct nfs_write_data *data,
- 		   const struct rpc_call_ops *call_ops,
- 		   int how)
+ 	dprintk("%s ino %lu %Zu@%llu DS:%x:%hu %s\n",
+ 		__func__, inode->i_ino, count, offset,
+-		htonl(dserver.ds->ds_ip_addr), ntohs(dserver.ds->ds_port),
+-		dserver.ds->r_addr);
++		htonl(ds->ds_ip_addr), ntohs(ds->ds_port), ds->r_addr);
+ 
+-	data->fldata.pnfs_client = dserver.ds->ds_clp->cl_rpcclient;
+-	data->fldata.ds_nfs_client = dserver.ds->ds_clp;
+-	data->args.fh = dserver.fh;
++	data->fldata.ds_nfs_client = ds->ds_clp;
++	data->fldata.pnfs_client = ds->ds_clp->cl_rpcclient;
++	data->args.fh = nfs4_fl_select_ds_fh(flseg, idx);
+ 
+ 	/* Get the file offset on the dserver. Set the write offset to
+ 	 * this offset and save the original offset.
+@@ -568,15 +558,12 @@ filelayout_commit(struct pnfs_layout_type *layoutid, int sync,
  {
--	struct inode *inode = data->inode;
--	struct nfs_server *nfss = NFS_SERVER(inode);
- 	enum pnfs_try_status ret;
+ 	struct nfs4_filelayout_segment *nfslay;
+ 	struct nfs_write_data   *dsdata = NULL;
+-	struct nfs4_pnfs_dserver dserver;
+ 	struct nfs4_pnfs_ds *ds;
+ 	struct nfs_page *req, *reqt;
+ 	struct list_head *pos, *tmp, head, head2;
+ 	loff_t file_offset, comp_offset;
+ 	size_t stripesz, cbytes;
+-	int status;
+ 	enum pnfs_try_status trypnfs = PNFS_ATTEMPTED;
+-	struct nfs4_file_layout_dsaddr *dsaddr;
+ 	u32 idx1, idx2;
  
--	/* Note that we check for "write_pagelist" and not for "commit"
--	   since if async writes were done and pages weren't marked as stable
--	   the commit method MUST be defined by the LD */
--	/* FIXME: write_pagelist should probably be mandated */
--	if (PNFS_EXISTS_LDIO_OP(nfss, write_pagelist))
--		ret = _pnfs_try_to_commit(data, call_ops, how);
--	else
--		ret = PNFS_NOT_ATTEMPTED;
+ 	nfslay = LSEG_LD_DATA(data->pdata.lseg);
+@@ -593,9 +580,6 @@ filelayout_commit(struct pnfs_layout_type *layoutid, int sync,
+ 	stripesz = filelayout_get_stripesize(layoutid);
+ 	dprintk("%s stripesize %Zd\n", __func__, stripesz);
+ 
+-	dsaddr = container_of(data->pdata.lseg->deviceid,
+-			      struct nfs4_file_layout_dsaddr, deviceid);
 -
-+	/* Unlike in pnfs_try_to_write_data and pnfs_try_to_read_data,
-+	 * we have no guarantee that all nfs_pages point to the same
-+	 * lseg.  However, if we reach here, we are guaranteed that at
-+	 * least one points to some lseg.
-+	 */
-+	ret = _pnfs_try_to_commit(data, call_ops, how);
- 	if (ret == PNFS_ATTEMPTED)
--		nfs_inc_stats(inode, NFSIOS_PNFS_COMMIT);
-+		nfs_inc_stats(data->inode, NFSIOS_PNFS_COMMIT);
+ 	INIT_LIST_HEAD(&head);
+ 	INIT_LIST_HEAD(&head2);
+ 	list_add(&head, &data->pages);
+@@ -609,19 +593,13 @@ filelayout_commit(struct pnfs_layout_type *layoutid, int sync,
+ 		file_offset = (loff_t)req->wb_index << PAGE_CACHE_SHIFT;
+ 
+ 		/* Get dserver for the current page */
+-		status = nfs4_pnfs_dserver_get(data->pdata.lseg,
+-					       file_offset,
+-					       req->wb_bytes,
+-					       &dserver);
+-		if (status) {
++		idx1 = nfs4_fl_calc_ds_index(data->pdata.lseg, file_offset);
++		ds = nfs4_fl_prepare_ds(data->pdata.lseg, idx1);
++		if (!ds) {
+ 			data->pdata.pnfs_error = -EIO;
+ 			goto err_rewind;
+ 		}
+ 
+-		/* Get its index */
+-		idx1 = filelayout_dserver_get_index(file_offset, dsaddr,
+-						    nfslay);
+-
+ 		/* Gather all pages going to the current data server by
+ 		 * comparing their indices.
+ 		 * XXX: This recalculates the indices unecessarily.
+@@ -630,8 +608,8 @@ filelayout_commit(struct pnfs_layout_type *layoutid, int sync,
+ 		list_for_each_safe(pos, tmp, &head) {
+ 			reqt = nfs_list_entry(pos);
+ 			comp_offset = (loff_t)reqt->wb_index << PAGE_CACHE_SHIFT;
+-			idx2 = filelayout_dserver_get_index(comp_offset,
+-							    dsaddr, nfslay);
++			idx2 = nfs4_fl_calc_ds_index(data->pdata.lseg,
++						     comp_offset);
+ 			if (idx1 == idx2) {
+ 				nfs_list_remove_request(reqt);
+ 				nfs_list_add_request(reqt, &head2);
+@@ -655,10 +633,9 @@ filelayout_commit(struct pnfs_layout_type *layoutid, int sync,
+ 		list_add(&dsdata->pages, &head2);
+ 		list_del_init(&head2);
+ 
+-		ds = dserver.ds;
+ 		dsdata->fldata.pnfs_client = ds->ds_clp->cl_rpcclient;
+ 		dsdata->fldata.ds_nfs_client = ds->ds_clp;
+-		dsdata->args.fh = dserver.fh;
++		dsdata->args.fh = nfs4_fl_select_ds_fh(nfslay, idx1);
+ 
+ 		dprintk("%s: Initiating commit: %Zu@%llu USE DS:\n",
+ 			__func__, cbytes, file_offset);
+diff --git a/fs/nfs/nfs4filelayout.h b/fs/nfs/nfs4filelayout.h
+index fbf307c..3697926 100644
+--- a/fs/nfs/nfs4filelayout.h
++++ b/fs/nfs/nfs4filelayout.h
+@@ -26,6 +26,9 @@
+ 
+ #define FILE_MT(inode) ((struct filelayout_mount_type *) \
+ 			(NFS_SERVER(inode)->pnfs_mountid->mountid))
++#define FILE_DSADDR(lseg) (container_of(lseg->deviceid, \
++					struct nfs4_file_layout_dsaddr, \
++					deviceid))
+ 
+ enum stripetype4 {
+ 	STRIPE_SPARSE = 1,
+@@ -55,16 +58,6 @@ struct nfs4_pnfs_dev_hlist {
+ 	struct hlist_head	dev_list[NFS4_PNFS_DEV_HASH_SIZE];
+ };
+ 
+-/*
+- * Used for I/O, Maps a stripe index to a layout file handle and a
+- * multipath data server.
+- */
+-
+-struct nfs4_pnfs_dserver {
+-	struct nfs_fh        *fh;
+-	struct nfs4_pnfs_ds	*ds;
+-};
+-
+ struct nfs4_filelayout_segment {
+ 	u32 stripe_type;
+ 	u32 commit_through_mds;
+@@ -87,18 +80,24 @@ struct filelayout_mount_type {
+ 	struct super_block *fl_sb;
+ };
+ 
++static inline struct nfs_fh *
++nfs4_fl_select_ds_fh(struct nfs4_filelayout_segment *flseg, u32 idx)
++{
++	/* FRED - what about case == 0??? */
++	if (flseg->num_fh == 1)
++		return &flseg->fh_array[0];
 +	else
-+		_pnfs_clear_lseg_from_pages(&data->pages);
- 	return ret;
++		return &flseg->fh_array[idx];
++}
++
+ extern struct pnfs_client_operations *pnfs_callback_ops;
+ 
+ extern void nfs4_fl_free_deviceid_callback(struct kref *);
+ extern void print_ds(struct nfs4_pnfs_ds *ds);
+ char *deviceid_fmt(const struct pnfs_deviceid *dev_id);
+-int nfs4_pnfs_dserver_get(struct pnfs_layout_segment *lseg,
+-			  loff_t offset,
+-			  size_t count,
+-			  struct nfs4_pnfs_dserver *dserver);
+-u32 filelayout_dserver_get_index(loff_t offset,
+-				 struct nfs4_file_layout_dsaddr *di,
+-				 struct nfs4_filelayout_segment *layout);
++u32 nfs4_fl_calc_ds_index(struct pnfs_layout_segment *lseg, loff_t offset);
++struct nfs4_pnfs_ds *nfs4_fl_prepare_ds(struct pnfs_layout_segment *lseg,
++					u32 ds_idx);
+ extern struct nfs4_file_layout_dsaddr *
+ nfs4_pnfs_device_item_find(struct nfs_client *, struct pnfs_deviceid *dev_id);
+ struct nfs4_file_layout_dsaddr *
+diff --git a/fs/nfs/nfs4filelayoutdev.c b/fs/nfs/nfs4filelayoutdev.c
+index f5eb5f1..404dd5f 100644
+--- a/fs/nfs/nfs4filelayoutdev.c
++++ b/fs/nfs/nfs4filelayoutdev.c
+@@ -554,90 +554,61 @@ nfs4_pnfs_device_item_find(struct nfs_client *clp, struct pnfs_deviceid *id)
+ 		container_of(d, struct nfs4_file_layout_dsaddr, deviceid);
  }
  
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index 40abbd0..2427c1d 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -527,7 +527,7 @@ nfs_need_commit(struct nfs_inode *nfsi)
-  * The requests are *not* checked to ensure that they form a contiguous set.
+-/* Want res = ((offset / layout->stripe_unit) % dsaddr->stripe_count)
++/* Want res = (offset - layout->pattern_offset)/ layout->stripe_unit
+  * Then: ((res + fsi) % dsaddr->stripe_count)
   */
- static int
--nfs_scan_commit(struct inode *inode, struct list_head *dst, pgoff_t idx_start, unsigned int npages)
-+nfs_scan_commit(struct inode *inode, struct list_head *dst, pgoff_t idx_start, unsigned int npages, int *use_pnfs)
+-u32
+-filelayout_dserver_get_index(loff_t offset,
+-			     struct nfs4_file_layout_dsaddr *dsaddr,
+-			     struct nfs4_filelayout_segment *layout)
++static inline u32
++_nfs4_fl_calc_j_index(loff_t offset,
++		      struct nfs4_file_layout_dsaddr *dsaddr,
++		      struct nfs4_filelayout_segment *layout)
  {
- 	struct nfs_inode *nfsi = NFS_I(inode);
- 	int ret;
-@@ -535,7 +535,8 @@ nfs_scan_commit(struct inode *inode, struct list_head *dst, pgoff_t idx_start, u
- 	if (!nfs_need_commit(nfsi))
- 		return 0;
+-	u64 tmp, tmp2;
++	u64 tmp;
  
--	ret = nfs_scan_list(nfsi, dst, idx_start, npages, NFS_PAGE_TAG_COMMIT);
-+	ret = nfs_scan_list(nfsi, dst, idx_start, npages, NFS_PAGE_TAG_COMMIT,
-+			    use_pnfs);
- 	if (ret > 0)
- 		nfsi->ncommit -= ret;
- 	if (nfs_need_commit(NFS_I(inode)))
-@@ -1334,9 +1335,10 @@ EXPORT_SYMBOL(nfs_initiate_commit);
- int pnfs_initiate_commit(struct nfs_write_data *data,
- 			 struct rpc_clnt *clnt,
- 			 const struct rpc_call_ops *call_ops,
--			 int how)
-+			 int how, int pnfs)
- {
--	if (pnfs_try_to_commit(data, &nfs_commit_ops, how) == PNFS_ATTEMPTED)
-+	if (pnfs &&
-+	    (pnfs_try_to_commit(data, &nfs_commit_ops, how) == PNFS_ATTEMPTED))
- 		return pnfs_get_write_status(data);
- 
- 	return nfs_initiate_commit(data, clnt, &nfs_commit_ops, how);
-@@ -1347,7 +1349,7 @@ int pnfs_initiate_commit(struct nfs_write_data *data,
-  */
- static int nfs_commit_rpcsetup(struct list_head *head,
- 		struct nfs_write_data *data,
--		int how)
-+		int how, int pnfs)
- {
- 	struct nfs_page *first = nfs_list_entry(head->next);
- 	struct inode *inode = first->wb_context->path.dentry->d_inode;
-@@ -1374,7 +1376,7 @@ static int nfs_commit_rpcsetup(struct list_head *head,
- 	data->args.context = first->wb_context;  /* used by commit done */
- 
- 	return pnfs_initiate_commit(data, NFS_CLIENT(inode), &nfs_commit_ops,
--				    how);
-+				    how, pnfs);
+-	tmp = offset;
++	tmp = offset - layout->pattern_offset;
+ 	do_div(tmp, layout->stripe_unit);
+-	tmp2 = do_div(tmp, dsaddr->stripe_count) + layout->first_stripe_index;
+-	return do_div(tmp2, dsaddr->stripe_count);
++	tmp += layout->first_stripe_index;
++	return do_div(tmp, dsaddr->stripe_count);
  }
  
- /* Handle memory error during commit */
-@@ -1398,7 +1400,7 @@ EXPORT_SYMBOL(nfs_mark_list_commit);
-  * Commit dirty pages
-  */
- static int
--nfs_commit_list(struct inode *inode, struct list_head *head, int how)
-+nfs_commit_list(struct inode *inode, struct list_head *head, int how, int pnfs)
+-/* Retrieve the rpc client for a specified byte range
+- * in 'inode' by filling in the contents of 'dserver'.
+- */
+-int
+-nfs4_pnfs_dserver_get(struct pnfs_layout_segment *lseg,
+-		      loff_t offset,
+-		      size_t count,
+-		      struct nfs4_pnfs_dserver *dserver)
++u32
++nfs4_fl_calc_ds_index(struct pnfs_layout_segment *lseg, loff_t offset)
  {
- 	struct nfs_write_data	*data;
+-	struct nfs4_filelayout_segment *layout = LSEG_LD_DATA(lseg);
+-	struct inode *inode = PNFS_INODE(lseg->layout);
+-	struct nfs_server *mds_srv = NFS_SERVER(inode);
++	struct nfs4_filelayout_segment *flseg = LSEG_LD_DATA(lseg);
+ 	struct nfs4_file_layout_dsaddr *dsaddr;
+-	u64 tmp, tmp2;
+-	u32 stripe_idx, end_idx, ds_idx;
+-
+-	if (!layout)
+-		return 1;
+-
+-	dsaddr = container_of(lseg->deviceid, struct nfs4_file_layout_dsaddr,
+-			      deviceid);
+-
+-	stripe_idx = filelayout_dserver_get_index(offset, dsaddr, layout);
+-
+-	/* For debugging, ensure entire requested range is in this dserver */
+-	tmp = offset + count - 1;
+-	do_div(tmp, layout->stripe_unit);
+-	tmp2 = do_div(tmp, dsaddr->stripe_count) + layout->first_stripe_index;
+-	end_idx = do_div(tmp2, dsaddr->stripe_count);
++	u32 j;
  
-@@ -1407,7 +1409,7 @@ nfs_commit_list(struct inode *inode, struct list_head *head, int how)
- 		goto out_bad;
+-	dprintk("%s: offset=%Lu, count=%Zu, si=%u, dsi=%u, "
+-		"stripe_count=%u, stripe_unit=%u first_stripe_index %u\n",
+-		__func__,
+-		offset, count, stripe_idx, end_idx, dsaddr->stripe_count,
+-		layout->stripe_unit, layout->first_stripe_index);
++	dsaddr = FILE_DSADDR(lseg);
++	j = _nfs4_fl_calc_j_index(offset, dsaddr, flseg);
++	return dsaddr->stripe_indices[j];
++}
  
- 	/* Set up the argument struct */
--	return nfs_commit_rpcsetup(head, data, how);
-+	return nfs_commit_rpcsetup(head, data, how, pnfs);
-  out_bad:
- 	nfs_mark_list_commit(head);
- 	nfs_commit_clear_lock(NFS_I(inode));
-@@ -1495,14 +1497,15 @@ static int nfs_commit_inode(struct inode *inode, int how)
- 	LIST_HEAD(head);
- 	int may_wait = how & FLUSH_SYNC;
- 	int res = 0;
-+	int use_pnfs = 0;
+-	BUG_ON(end_idx != stripe_idx);
+-	BUG_ON(stripe_idx >= dsaddr->stripe_count);
++struct nfs4_pnfs_ds *
++nfs4_fl_prepare_ds(struct pnfs_layout_segment *lseg, u32 ds_idx)
++{
++	struct nfs4_filelayout_segment *flseg = LSEG_LD_DATA(lseg);
++	struct nfs4_file_layout_dsaddr *dsaddr;
  
- 	if (!nfs_commit_set_lock(NFS_I(inode), may_wait))
- 		goto out_mark_dirty;
- 	spin_lock(&inode->i_lock);
--	res = nfs_scan_commit(inode, &head, 0, 0);
-+	res = nfs_scan_commit(inode, &head, 0, 0, &use_pnfs);
- 	spin_unlock(&inode->i_lock);
- 	if (res) {
--		int error = nfs_commit_list(inode, &head, how);
-+		int error = nfs_commit_list(inode, &head, how, use_pnfs);
- 		if (error < 0)
- 			return error;
- 		if (may_wait) {
-diff --git a/include/linux/nfs_page.h b/include/linux/nfs_page.h
-index 18a455c..06e5157 100644
---- a/include/linux/nfs_page.h
-+++ b/include/linux/nfs_page.h
-@@ -83,7 +83,8 @@ extern	void nfs_release_request(struct nfs_page *req);
+-	ds_idx = dsaddr->stripe_indices[stripe_idx];
++	dsaddr = FILE_DSADDR(lseg);
+ 	if (dsaddr->ds_list[ds_idx] == NULL) {
+-		printk(KERN_ERR "%s: No data server for device id (%s)!! \n",
+-			__func__, deviceid_fmt(&layout->dev_id));
+-		return 1;
++		printk(KERN_ERR "%s: No data server for device id (%s)!!\n",
++			__func__, deviceid_fmt(&flseg->dev_id));
++		return NULL;
+ 	}
  
+ 	if (!dsaddr->ds_list[ds_idx]->ds_clp) {
+ 		int err;
  
- extern	int nfs_scan_list(struct nfs_inode *nfsi, struct list_head *dst,
--			  pgoff_t idx_start, unsigned int npages, int tag);
-+			  pgoff_t idx_start, unsigned int npages, int tag,
-+			  int *use_pnfs);
- extern	void nfs_pageio_init(struct nfs_pageio_descriptor *desc,
- 			     struct inode *inode,
- 			     int (*doio)(struct inode *, struct list_head *, unsigned int, size_t, int),
+-		err = nfs4_pnfs_ds_create(mds_srv, dsaddr->ds_list[ds_idx]);
++		err = nfs4_pnfs_ds_create(PNFS_NFS_SERVER(lseg->layout),
++					  dsaddr->ds_list[ds_idx]);
+ 		if (err) {
+ 			printk(KERN_ERR "%s nfs4_pnfs_ds_create error %d\n",
+ 			       __func__, err);
+-			return 1;
++			return NULL;
+ 		}
+ 	}
+-	dserver->ds = dsaddr->ds_list[ds_idx];
++	dprintk("%s: dev_id=%s, ds_idx=%u\n",
++		__func__, deviceid_fmt(&flseg->dev_id), ds_idx);
+ 
+-	if (layout->num_fh == 1)
+-		dserver->fh = &layout->fh_array[0];
+-	else
+-		dserver->fh = &layout->fh_array[ds_idx];
+-
+-	dprintk("%s: dev_id=%s, ip:port=%s, ds_idx=%u stripe_idx=%u, "
+-		"offset=%llu, count=%Zu\n",
+-		__func__, deviceid_fmt(&layout->dev_id),
+-		dserver->ds->r_addr,
+-		ds_idx, stripe_idx, offset, count);
+-
+-	return 0;
++	return dsaddr->ds_list[ds_idx];
+ }
++
 -- 
 1.6.6.1
 
