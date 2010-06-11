@@ -1,89 +1,112 @@
 From: Fred Isaman <iisaman@netapp.com>
-Subject: [PATCH 03/26] pnfs-submit: Revert "pnfs: Enable O_DIRECT read path."
-Date: Fri, 11 Jun 2010 03:31:30 -0400
-Message-ID: <1276241513-17942-4-git-send-email-iisaman@netapp.com>
+Subject: [PATCH 14/26] pnfs_submit: use fsdata to pass lseg
+Date: Fri, 11 Jun 2010 03:31:41 -0400
+Message-ID: <1276241513-17942-15-git-send-email-iisaman@netapp.com>
 References: <1276241513-17942-1-git-send-email-iisaman@netapp.com>
  <1276241513-17942-2-git-send-email-iisaman@netapp.com>
  <1276241513-17942-3-git-send-email-iisaman@netapp.com>
+ <1276241513-17942-4-git-send-email-iisaman@netapp.com>
+ <1276241513-17942-5-git-send-email-iisaman@netapp.com>
+ <1276241513-17942-6-git-send-email-iisaman@netapp.com>
+ <1276241513-17942-7-git-send-email-iisaman@netapp.com>
+ <1276241513-17942-8-git-send-email-iisaman@netapp.com>
+ <1276241513-17942-9-git-send-email-iisaman@netapp.com>
+ <1276241513-17942-10-git-send-email-iisaman@netapp.com>
+ <1276241513-17942-11-git-send-email-iisaman@netapp.com>
+ <1276241513-17942-12-git-send-email-iisaman@netapp.com>
+ <1276241513-17942-13-git-send-email-iisaman@netapp.com>
+ <1276241513-17942-14-git-send-email-iisaman@netapp.com>
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:30552 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:18981 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751628Ab0FKHcU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 11 Jun 2010 03:32:20 -0400
+	id S1757682Ab0FKHcX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 11 Jun 2010 03:32:23 -0400
 Received: from localhost.localdomain (lesleyk-lxp.hq.netapp.com [10.58.52.119] (may be forged))
-	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id o5B7W3tu024376
-	for <linux-nfs@vger.kernel.org>; Fri, 11 Jun 2010 00:32:06 -0700 (PDT)
-In-Reply-To: <1276241513-17942-3-git-send-email-iisaman@netapp.com>
+	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id o5B7W3u7024376
+	for <linux-nfs@vger.kernel.org>; Fri, 11 Jun 2010 00:32:23 -0700 (PDT)
+In-Reply-To: <1276241513-17942-14-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This reverts commit fe1dbd120b6a94bbacec205d0a4ae40d36e314b5.
+Preparing for LAYUTGET invocation in nfs_write_begin to be the
+only invocation in the write path.
+
+It isn't used at all yet, but it should be properly referenced/dereferenced
 
 Signed-off-by: Fred Isaman <iisaman@netapp.com>
 ---
- fs/nfs/direct.c |   26 +-------------------------
- 1 files changed, 1 insertions(+), 25 deletions(-)
+ fs/nfs/file.c |   21 ++++++++++++++++++---
+ 1 files changed, 18 insertions(+), 3 deletions(-)
 
-diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
-index 1148214..3ef9b0c 100644
---- a/fs/nfs/direct.c
-+++ b/fs/nfs/direct.c
-@@ -56,7 +56,6 @@
+diff --git a/fs/nfs/file.c b/fs/nfs/file.c
+index 03601d2..e308244 100644
+--- a/fs/nfs/file.c
++++ b/fs/nfs/file.c
+@@ -414,12 +414,17 @@ static int nfs_write_begin(struct file *file, struct address_space *mapping,
+ 	pgoff_t index = pos >> PAGE_CACHE_SHIFT;
+ 	struct page *page;
+ 	int once_thru = 0;
++	struct pnfs_layout_segment *lseg;
  
- #include "internal.h"
- #include "iostat.h"
--#include "pnfs.h"
+ 	dfprintk(PAGECACHE, "NFS: write_begin(%s/%s(%ld), %u@%lld)\n",
+ 		file->f_path.dentry->d_parent->d_name.name,
+ 		file->f_path.dentry->d_name.name,
+ 		mapping->host->i_ino, len, (long long) pos);
  
- #define NFSDBG_FACILITY		NFSDBG_VFS
++	pnfs_update_layout(mapping->host,
++			   nfs_file_open_context(file),
++			   NFS4_MAX_UINT64, 0, IOMODE_RW,
++			   &lseg);
+ start:
+ 	/*
+ 	 * Prevent starvation issues if someone is doing a consistency
+@@ -428,11 +433,13 @@ start:
+ 	ret = wait_on_bit(&NFS_I(mapping->host)->flags, NFS_INO_FLUSHING,
+ 			nfs_wait_bit_killable, TASK_KILLABLE);
+ 	if (ret)
+-		return ret;
++		goto out;
  
-@@ -329,17 +328,6 @@ static ssize_t nfs_direct_read_schedule_segment(struct nfs_direct_req *dreq,
- 	unsigned int pgbase;
- 	int result;
- 	ssize_t started = 0;
--	size_t pnfs_stripe_rem = count;
--	enum pnfs_try_status trypnfs;
--
--	/* pnfs_stripe_rem will be set to the remaining bytes in
--	 * the first stripe_unit (which for standard nfs is count)
--	 */
--	pnfs_direct_init_io(inode, ctx, count, pos, 0, &rsize,
--			    &pnfs_stripe_rem);
--
--	dprintk("%s: pos %llu count %Zu wsize %Zu\n",
--		__func__, pos, count, rsize);
+ 	page = grab_cache_page_write_begin(mapping, index, flags);
+-	if (!page)
+-		return -ENOMEM;
++	if (!page) {
++		ret = -ENOMEM;
++		goto out;
++	}
+ 	*pagep = page;
  
- 	do {
- 		struct nfs_read_data *data;
-@@ -347,12 +335,6 @@ static ssize_t nfs_direct_read_schedule_segment(struct nfs_direct_req *dreq,
+ 	ret = nfs_flush_incompatible(file, page);
+@@ -447,6 +454,12 @@ start:
+ 		if (!ret)
+ 			goto start;
+ 	}
++	*fsdata = lseg;
++ out:
++	if (ret) {
++		put_lseg(lseg);
++		*fsdata = NULL;
++	}
+ 	return ret;
+ }
  
- 		pgbase = user_addr & ~PAGE_MASK;
- 		bytes = min(rsize,count);
--#if defined(CONFIG_NFS_V4_1)
--		if (pnfs_enabled_sb(NFS_SERVER(inode))) {
--			bytes = min(bytes, pnfs_stripe_rem);
--			pnfs_stripe_rem = rsize;
--		}
--#endif /* CONFIG_NFS_V4_1 */
+@@ -456,6 +469,7 @@ static int nfs_write_end(struct file *file, struct address_space *mapping,
+ {
+ 	unsigned offset = pos & (PAGE_CACHE_SIZE - 1);
+ 	int status;
++	struct pnfs_layout_segment *lseg = fsdata;
  
- 		result = -ENOMEM;
- 		data = nfs_readdata_alloc(nfs_page_array_len(pgbase, bytes));
-@@ -393,14 +375,8 @@ static ssize_t nfs_direct_read_schedule_segment(struct nfs_direct_req *dreq,
- 		data->res.eof = 0;
- 		data->res.count = bytes;
+ 	dfprintk(PAGECACHE, "NFS: write_end(%s/%s(%ld), %u@%lld)\n",
+ 		file->f_path.dentry->d_parent->d_name.name,
+@@ -486,6 +500,7 @@ static int nfs_write_end(struct file *file, struct address_space *mapping,
  
--		trypnfs = pnfs_try_to_read_data(data, &nfs_read_direct_ops);
--		if (trypnfs == PNFS_ATTEMPTED) {
--			result = pnfs_get_read_status(data);
--			if (result)
--				break;
--		} else if (nfs_direct_read_execute(data, &task_setup_data, &msg)) {
-+		if (nfs_direct_read_execute(data, &task_setup_data, &msg))
- 			break;
--		}
+ 	unlock_page(page);
+ 	page_cache_release(page);
++	put_lseg(lseg);
  
- 		started += bytes;
- 		user_addr += bytes;
+ 	if (status < 0)
+ 		return status;
 -- 
 1.6.6.1
 
