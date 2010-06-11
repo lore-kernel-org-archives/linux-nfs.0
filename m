@@ -1,144 +1,91 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-wy0-f174.google.com ([74.125.82.174]:60334 "EHLO
-	mail-wy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752802Ab0FJRGl (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Jun 2010 13:06:41 -0400
-Received: by wyb40 with SMTP id 40so110888wyb.19
-        for <linux-nfs@vger.kernel.org>; Thu, 10 Jun 2010 10:06:40 -0700 (PDT)
-Message-ID: <4C111B9C.3080603@panasas.com>
-Date: Thu, 10 Jun 2010 20:06:36 +0300
-From: Benny Halevy <bhalevy@panasas.com>
-To: NFS list <linux-nfs@vger.kernel.org>
-Subject: pnfs git tree status pnfs-all-2.6.35-rc2-2010-06-10
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mx2.netapp.com ([216.240.18.37]:53612 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757361Ab0FKQqT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 11 Jun 2010 12:46:19 -0400
+From: andros@netapp.com
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
+Subject: [PATCH 1/1] pnfsd: fix dlm device naming
+Date: Fri, 11 Jun 2010 12:45:34 -0400
+Message-Id: <1276274734-4996-2-git-send-email-andros@netapp.com>
+In-Reply-To: <1276274734-4996-1-git-send-email-andros@netapp.com>
+References: <1276274734-4996-1-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-I've release the tree with Alexandros and Andy's latest pnfs-submit patches
-as well as some fixes for pnfs-obj from Boaz.  The latter, and Andy's
-patches went also for the pnfs-all-2.6.34 branch, tagged as
-pnfs-all-2.6.34-2010-06-10
+From: Andy Adamson <andros@netapp.com>
 
-Cumulative patches can be generated from
-git://linux-nfs.org/~bhalevy/linux-pnfs.git
-using
-git diff v2.6.35-rc2 pnfs-all-2.6.35-rc2-2010-06-10
-git diff v2.6.34 pnfs-all-2.6.34-2010-06-10
+Signed-off-by: Andy Adamson <andros@netapp.com>
+---
+ fs/nfsd/nfs4pnfsdlm.c |   19 +++++++++++++++----
+ 1 files changed, 15 insertions(+), 4 deletions(-)
 
-Or, they can be downloaded from the wiki at:
-http://wiki.linux-nfs.org/wiki/index.php/PNFS_Development_Git_tree
-
-Latest patches (since 2010-05-17):
-
-pnfs-submit:
-Alexandros Batsakis (7):
-      pnfs-submit: clean struct nfs_inode
-      pnfs-submit: remove lgetcount, lretcount
-      pnfs-submit: change stateid to be a union
-      pnfs-submit: request whole-file layouts only
-      pnfs-submit: change layout list to be similar to other state lists
-      pnfs-submit: forgetful client (layouts)
-      pnfs-submit: support for CB_RECALL_ANY (layouts)
-
-Andy Adamson (5):
-      SQUASHME: pnfs-submit: replace layoutcommit_ctx with rpc_cred
-      SQUASHME pnfs-submit: cleanup layoutcommit call
-      SQUASHME pnfs-submit: handle async layoutcommit errors
-      SQUASHME pnfs remove ifdef around layoutcommit_needed
-      SQUASHME pnfs-submit: move layoutcommit to nfs_write_inode
-
-Ricardo Labiaga (2):
-      SQUASHME: pnfs-submit: Use LAYOUT_NFSV4_1_FILES instead of LAYOUT_NFSV4_FILES
-      pnfs-submit: Dynamically load the nfslayoutdriver
-
-Tao Guo (2):
-      SQUASHME: pnfs-submit: call layoutcommit after flushing inode's data to disk.
-      SQUASHME: pnfs: unlock lo_lock before calling layoutdriver's setup_layoutcommit
-
-pnfs-block:
-Zhang Jingwang (1):
-      SQAUSHME: blocklayoutdriver: NULL pointer reference when committing too many extents
-
-pnfsd-files:
-Benny Halevy (1):
-      SQUASHME: pnfsd: dlm: fixup LAYOUT_NFSV4_1_FILES
-
-Eric Anderle (2):
-      pnfsd: make /proc/fs/nfsd/pnfs_dlm_device report dlm device list.
-      SQUASHME: pnfsd: fix test in nfsd4_find_pnfs_dlm_device
-
-Ricardo Labiaga (1):
-      SQUASHME: pnfs-submit: Use LAYOUT_NFSV4_1_FILES instead of LAYOUT_NFSV4_FILES
-
-pnfsd:
-Benny Halevy (2):
-      SQUASHME: pnfsd: cb_{set,client} moved in 2.6.35
-      SQUASHME: pnfsd: cl_count removed in 2.6.35
-
-J. Bruce Fields (1):
-      SQUASHME: nfsd4: fix cb_recall encoding
-
-spnfs:
-Benny Halevy (1):
-      SQUASHME: spnfs: fixup LAYOUT_NFSV4_1_FILES
-
-spnfs-block:
-pnfsd-lexp:
-Benny Halevy (1):
-      SQUASHME: pnfsd-lexp: fixup LAYOUT_NFSV4_1_FILES
-
-pnfs-obj-all:
-Boaz Harrosh (2):
-      SQUASHME: pnfs-obj: panlayout: Fix very old BUG_ONs on ol_state.status
-      SQUASHME: panfs_shim: Prints on Errors
-
-pnfs-block-all:
-Zhang Jingwang (1):
-      SQAUSHME: blocklayoutdriver: NULL pointer reference when committing too many extents
-
-spnfs-all:
-Benny Halevy (1):
-      SQUASHME: spnfs: fixup LAYOUT_NFSV4_1_FILES
-
-pnfs-all-latest:
-Benny Halevy (1):
-      DEBUG: pnfs: turn BUG_ONs in pnfs_destroy_inode to WARN_ONs
-
-pnfs-all-2.6.34:
-Andy Adamson (5):
-      SQUASHME: pnfs-submit: replace layoutcommit_ctx with rpc_cred
-      pnfs: cleanup layoutcommit call
-      pnfs: handle async layoutcommit errors
-      pnfs: remove ifdef around layoutcommit_needed
-      pnfs: move layoutcommit to nfs_write_inode
-
-Benny Halevy (4):
-      SQUASHME: pnfsd: dlm: fixup LAYOUT_NFSV4_1_FILES
-      SQUASHME: pnfsd-lexp: fixup LAYOUT_NFSV4_1_FILES
-      SQUASHME: spnfs: fixup LAYOUT_NFSV4_1_FILES
-      DEBUG: pnfs: turn BUG_ONs in pnfs_destroy_inode to WARN_ONs
-
-Boaz Harrosh (2):
-      SQUASHME: pnfs-obj: panlayout: Fix very old BUG_ONs on ol_state.status
-      panfs_shim: Prints on Errors
-
-Eric Anderle (2):
-      pnfsd: make /proc/fs/nfsd/pnfs_dlm_device report dlm device list.
-      SQUASHME: pnfsd: fix test in nfsd4_find_pnfs_dlm_device
-
-J. Bruce Fields (1):
-      SQUASHME: nfsd4: fix cb_recall encoding
-
-Ricardo Labiaga (3):
-      SQUASHME: pnfs-submit: Use LAYOUT_NFSV4_1_FILES instead of LAYOUT_NFSV4_FILES
-      SQUASHME: pnfs-submit: Use LAYOUT_NFSV4_1_FILES instead of LAYOUT_NFSV4_FILES
-      pnfs-submit: Dynamically load the nfslayoutdriver
-
-Tao Guo (2):
-      SQUASHME: pnfs-submit: call layoutcommit after flushing inode's data to disk.
-      SQUASHME: pnfs: unlock lo_lock before calling layoutdriver's setup_layoutcommit
-
-Zhang Jingwang (1):
-      SQAUSHME: blocklayoutdriver: NULL pointer reference when committing too many extents
+diff --git a/fs/nfsd/nfs4pnfsdlm.c b/fs/nfsd/nfs4pnfsdlm.c
+index 1cf1b69..ae46126 100644
+--- a/fs/nfsd/nfs4pnfsdlm.c
++++ b/fs/nfsd/nfs4pnfsdlm.c
+@@ -47,12 +47,15 @@ struct dlm_device_entry {
+ };
+ 
+ static struct dlm_device_entry *
+-nfsd4_find_pnfs_dlm_device(char *disk_name)
++_nfsd4_find_pnfs_dlm_device(char *disk_name)
+ {
+ 	struct dlm_device_entry *dlm_pdev;
+ 
++	dprintk("--> %s  disk name %s\n", __func__, disk_name);
+ 	spin_lock(&dlm_device_list_lock);
+ 	list_for_each_entry(dlm_pdev, &dlm_device_list, dlm_dev_list) {
++		dprintk("%s Look for dlm_pdev %s\n", __func__,
++			dlm_pdev->disk_name);
+ 		if (!memcmp(dlm_pdev->disk_name, disk_name, strlen(disk_name))) {
+ 			spin_unlock(&dlm_device_list_lock);
+ 			return dlm_pdev;
+@@ -62,6 +65,14 @@ nfsd4_find_pnfs_dlm_device(char *disk_name)
+ 	return NULL;
+ }
+ 
++static struct dlm_device_entry *
++nfsd4_find_pnfs_dlm_device(struct super_block *sb) {
++	char dname[BDEVNAME_SIZE];
++
++	bdevname(sb->s_bdev, dname);
++	return _nfsd4_find_pnfs_dlm_device(dname);
++}
++
+ ssize_t
+ nfsd4_get_pnfs_dlm_device_list(char *buf, ssize_t buflen)
+ {
+@@ -150,7 +161,7 @@ nfsd4_set_pnfs_dlm_device(char *pnfs_dlm_device, int len)
+ 	dprintk("%s disk_name %s num_ds %d ds_list %s\n", __func__,
+ 		new->disk_name, new->num_ds, new->ds_list);
+ 
+-	found = nfsd4_find_pnfs_dlm_device(new->disk_name);
++	found = _nfsd4_find_pnfs_dlm_device(new->disk_name);
+ 	if (found) {
+ 		/* FIXME: should compare found->ds_list with new->ds_list
+ 		 * and if it is different, kick off a CB_NOTIFY change
+@@ -243,7 +254,7 @@ static int nfsd4_pnfs_dlm_getdevinfo(struct super_block *sb,
+ 	/*
+ 	 * If the DS list has not been established, return -EINVAL
+ 	 */
+-	dlm_pdev = nfsd4_find_pnfs_dlm_device(sb->s_bdev->bd_disk->disk_name);
++	dlm_pdev = nfsd4_find_pnfs_dlm_device(sb);
+ 	if (!dlm_pdev) {
+ 		dprintk("%s: DEBUG: disk %s Not Found\n", __func__,
+ 			sb->s_bdev->bd_disk->disk_name);
+@@ -339,7 +350,7 @@ static int dlm_ino_hash(struct inode *ino)
+ 	/* If can't find the inode block device in the pnfs_dlm_deivce list
+ 	 * then don't hand out a layout
+ 	 */
+-	de = nfsd4_find_pnfs_dlm_device(ino->i_sb->s_bdev->bd_disk->disk_name);
++	de = nfsd4_find_pnfs_dlm_device(ino->i_sb);
+ 	if (!de)
+ 		return -1;
+ 	hash_mask = de->num_ds - 1;
+-- 
+1.6.6
 
