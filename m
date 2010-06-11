@@ -1,7 +1,7 @@
 From: Fred Isaman <iisaman@netapp.com>
-Subject: [PATCH 16/26] pnfs_submit: remove pnfs_file_operations
-Date: Fri, 11 Jun 2010 03:31:43 -0400
-Message-ID: <1276241513-17942-17-git-send-email-iisaman@netapp.com>
+Subject: [PATCH 20/26] pnfs_submit: API change: remove pnfs_commit layoutget invocation
+Date: Fri, 11 Jun 2010 03:31:47 -0400
+Message-ID: <1276241513-17942-21-git-send-email-iisaman@netapp.com>
 References: <1276241513-17942-1-git-send-email-iisaman@netapp.com>
  <1276241513-17942-2-git-send-email-iisaman@netapp.com>
  <1276241513-17942-3-git-send-email-iisaman@netapp.com>
@@ -18,153 +18,336 @@ References: <1276241513-17942-1-git-send-email-iisaman@netapp.com>
  <1276241513-17942-14-git-send-email-iisaman@netapp.com>
  <1276241513-17942-15-git-send-email-iisaman@netapp.com>
  <1276241513-17942-16-git-send-email-iisaman@netapp.com>
+ <1276241513-17942-17-git-send-email-iisaman@netapp.com>
+ <1276241513-17942-18-git-send-email-iisaman@netapp.com>
+ <1276241513-17942-19-git-send-email-iisaman@netapp.com>
+ <1276241513-17942-20-git-send-email-iisaman@netapp.com>
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
 Received: from mx2.netapp.com ([216.240.18.37]:18981 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757891Ab0FKHc1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 11 Jun 2010 03:32:27 -0400
+	id S1757815Ab0FKHcd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 11 Jun 2010 03:32:33 -0400
 Received: from localhost.localdomain (lesleyk-lxp.hq.netapp.com [10.58.52.119] (may be forged))
-	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id o5B7W3u9024376
-	for <linux-nfs@vger.kernel.org>; Fri, 11 Jun 2010 00:32:25 -0700 (PDT)
-In-Reply-To: <1276241513-17942-16-git-send-email-iisaman@netapp.com>
+	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id o5B7W3uD024376
+	for <linux-nfs@vger.kernel.org>; Fri, 11 Jun 2010 00:32:32 -0700 (PDT)
+In-Reply-To: <1276241513-17942-20-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-pnfs_writepages is useful, but not necessary, for determining size
-parameters for LAYUTGET.
+WARNING - this is an API change.
 
-Also, the pnfs_file_operations were getting out of sync with
-nfs_file_operations (see commits e1ebfd33be068 and bf40d3435caf49369).
+The layout driver's commit operation no longer takes an lseg.
+This is because each nfs_page may or may not have an associated lseg.
+It is the layout drivers task to send commits to the appropriate place.
 
 Signed-off-by: Fred Isaman <iisaman@netapp.com>
 ---
- fs/nfs/file.c          |   24 ------------------------
- fs/nfs/nfs4proc.c      |    1 -
- fs/nfs/pnfs.c          |   35 -----------------------------------
- fs/nfs/pnfs.h          |    1 -
- include/linux/nfs_fs.h |    3 ---
- 5 files changed, 0 insertions(+), 64 deletions(-)
+ fs/nfs/internal.h        |    2 +-
+ fs/nfs/pagelist.c        |    5 ++-
+ fs/nfs/pnfs.c            |   79 ++++++++-------------------------------------
+ fs/nfs/pnfs.h            |   21 +++++-------
+ fs/nfs/write.c           |   23 +++++++------
+ include/linux/nfs_page.h |    3 +-
+ 6 files changed, 43 insertions(+), 90 deletions(-)
 
-diff --git a/fs/nfs/file.c b/fs/nfs/file.c
-index 184535a..409892f 100644
---- a/fs/nfs/file.c
-+++ b/fs/nfs/file.c
-@@ -82,30 +82,6 @@ const struct file_operations nfs_file_operations = {
- 	.setlease	= nfs_setlease,
- };
- 
--#ifdef CONFIG_NFS_V4_1
--const struct file_operations pnfs_file_operations = {
--	.llseek		= nfs_file_llseek,
--	.read		= do_sync_read,
--	.write		= pnfs_file_write,
--	.aio_read	= nfs_file_read,
--	.aio_write	= nfs_file_write,
--#ifdef CONFIG_MMU
--	.mmap		= nfs_file_mmap,
--#else
--	.mmap		= generic_file_mmap,
--#endif
--	.open		= nfs_file_open,
--	.flush		= nfs_file_flush,
--	.release	= nfs_file_release,
--	.fsync		= nfs_file_fsync,
--	.lock		= nfs_lock,
--	.flock		= nfs_flock,
--	.splice_read	= nfs_file_splice_read,
--	.check_flags	= nfs_check_flags,
--	.setlease	= nfs_setlease,
--};
--#endif /* CONFIG_NFS_V4_1 */
--
- const struct inode_operations nfs_file_inode_operations = {
- 	.permission	= nfs_permission,
- 	.getattr	= nfs_getattr,
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 48492ae..7e6cb89 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -5984,7 +5984,6 @@ pnfs_v4_clientops_init(void)
- 	struct nfs_rpc_ops *p = (struct nfs_rpc_ops *)&pnfs_v4_clientops;
- 
- 	memcpy(p, &nfs_v4_clientops, sizeof(*p));
--	p->file_ops		= &pnfs_file_operations;
- 	p->setattr		= pnfs4_proc_setattr;
- 	p->read_done		= pnfs4_read_done;
- 	p->write_setup		= pnfs4_proc_write_setup;
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index b754446..a30974a 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -286,7 +286,7 @@ extern int nfs_initiate_commit(struct nfs_write_data *data,
+ extern int pnfs_initiate_commit(struct nfs_write_data *data,
+ 			       struct rpc_clnt *clnt,
+ 			       const struct rpc_call_ops *call_ops,
+-			       int how);
++				int how, int pnfs);
+ extern void nfs_write_prepare(struct rpc_task *task, void *calldata);
+ extern void nfs_mark_list_commit(struct list_head *head);
+ #ifdef CONFIG_MIGRATION
+diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
+index 5b20545..453d100 100644
+--- a/fs/nfs/pagelist.c
++++ b/fs/nfs/pagelist.c
+@@ -381,6 +381,7 @@ void nfs_pageio_cond_complete(struct nfs_pageio_descriptor *desc, pgoff_t index)
+  * @idx_start: lower bound of page->index to scan
+  * @npages: idx_start + npages sets the upper bound to scan.
+  * @tag: tag to scan for
++ * @use_pnfs: will be set TRUE if commit needs to be handled by layout driver
+  *
+  * Moves elements from one of the inode request lists.
+  * If the number of requests is set to 0, the entire address_space
+@@ -390,7 +391,7 @@ void nfs_pageio_cond_complete(struct nfs_pageio_descriptor *desc, pgoff_t index)
+  */
+ int nfs_scan_list(struct nfs_inode *nfsi,
+ 		struct list_head *dst, pgoff_t idx_start,
+-		unsigned int npages, int tag)
++		  unsigned int npages, int tag, int *use_pnfs)
+ {
+ 	struct nfs_page *pgvec[NFS_SCAN_MAXENTRIES];
+ 	struct nfs_page *req;
+@@ -421,6 +422,8 @@ int nfs_scan_list(struct nfs_inode *nfsi,
+ 				radix_tree_tag_clear(&nfsi->nfs_page_tree,
+ 						req->wb_index, tag);
+ 				nfs_list_add_request(req, dst);
++				if (req->wb_lseg)
++					*use_pnfs = 1;
+ 				res++;
+ 				if (res == INT_MAX)
+ 					goto out;
 diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 0e3208b..0f891d4 100644
+index afafd0a..e37b71e 100644
 --- a/fs/nfs/pnfs.c
 +++ b/fs/nfs/pnfs.c
-@@ -1516,41 +1516,6 @@ pnfs_writeback_done(struct nfs_write_data *data)
+@@ -1650,19 +1650,11 @@ enum pnfs_try_status
+ _pnfs_try_to_commit(struct nfs_write_data *data,
+ 		    const struct rpc_call_ops *call_ops, int how)
+ {
+-	struct inode *inode = data->inode;
+-
+-	if (!pnfs_enabled_sb(NFS_SERVER(inode))) {
+-		dprintk("%s: Not using pNFS I/O\n", __func__);
+-		return PNFS_NOT_ATTEMPTED;
+-	} else {
+-		/* data->call_ops and data->how set in nfs_commit_rpcsetup */
+-		dprintk("%s: Utilizing pNFS I/O\n", __func__);
+-		data->pdata.call_ops = call_ops;
+-		data->pdata.pnfs_error = 0;
+-		data->pdata.how = how;
+-		return pnfs_commit(data, how);
+-	}
++	dprintk("%s: Utilizing pNFS I/O\n", __func__);
++	data->pdata.call_ops = call_ops;
++	data->pdata.pnfs_error = 0;
++	data->pdata.how = how;
++	return pnfs_commit(data, how);
  }
  
- /*
-- * Obtain a layout for the the write range, and call do_sync_write.
-- *
-- * Unlike the read path which can wait until page coalescing
-- * (pnfs_pageio_init_read) to get a layout, the write path discards the
-- * request range to form the address_mapping - so we get a layout in
-- * the file operations write method.
-- *
-- * If pnfs_update_layout fails, pages will be coalesced for MDS I/O.
-- */
--ssize_t
--pnfs_file_write(struct file *filp, const char __user *buf, size_t count,
--		loff_t *pos)
--{
--	struct inode *inode = filp->f_dentry->d_inode;
--	struct nfs_open_context *context = filp->private_data;
--	int status;
+ /* pNFS Commit callback function for all layout drivers */
+@@ -1683,76 +1675,33 @@ pnfs_commit_done(struct nfs_write_data *data)
+ 		_pnfs_return_layout(data->inode, &range, NULL, RETURN_FILE,
+ 				    true);
+ 		pnfs_initiate_commit(data, NFS_CLIENT(data->inode),
+-				     pdata->call_ops, pdata->how);
++				     pdata->call_ops, pdata->how, 1);
+ 	}
+ }
+ 
+ static enum pnfs_try_status
+ pnfs_commit(struct nfs_write_data *data, int sync)
+ {
+-	int result;
+ 	struct nfs_inode *nfsi = NFS_I(data->inode);
+ 	struct nfs_server *nfss = NFS_SERVER(data->inode);
+-	struct pnfs_layout_segment *lseg;
+-	struct nfs_page *first, *last, *p;
+-	int npages;
+ 	enum pnfs_try_status trypnfs;
+-	u64 count;
+ 
+ 	dprintk("%s: Begin\n", __func__);
+ 
+-	/* If the layout driver doesn't define its own commit function
+-	 * use standard NFSv4 commit
+-	 */
+-	first = last = nfs_list_entry(data->pages.next);
+-	npages = 0;
+-	list_for_each_entry(p, &data->pages, wb_list) {
+-		last = p;
+-		npages++;
+-	}
+-	/* COMMIT indicates the whole file with offset = count = 0
+-	 * whereas layout segments indicate whole file with offset = 0,
+-	 * count = NFS4_MAX_UINT64.
++	/* We need to account for possibility that
++	 * each nfs_page can point to a different lseg (or be NULL).
++	 * For the immediate case of whole-file-only layouts, we at
++	 * least know there can be only a single lseg.
++	 * We still have to account for the possibility of some being NULL.
++	 * This will be done by passing the buck to the layout driver.
+ 	 */
+-	count = ((npages - 1) << PAGE_CACHE_SHIFT) + first->wb_bytes +
+-		 (first != last) ? last->wb_bytes : 0;
+-	if (first->wb_offset == 0 && count == 0)
+-		count = NFS4_MAX_UINT64;
 -
--	if (!pnfs_enabled_sb(NFS_SERVER(inode)))
--		goto out;
--
--	/* Retrieve and set layout if not allready cached */
--	status = _pnfs_update_layout(inode,
--				    context,
+-	/* FIXME: we really ought to keep the layout segment that we used
+-	   to write the page around for committing it and never ask for a
+-	   new one.  If it was recalled we better commit the data first
+-	   before returning it, otherwise the data needs to be rewritten,
+-	   either with a new layout or to the MDS */
+-	result = _pnfs_update_layout(data->inode,
+-				    NULL,
 -				    count,
--				    *pos,
+-				    first->wb_offset,
 -				    IOMODE_RW,
--				    NULL);
--	if (status)
--		dprintk("%s: Unable to get a layout for %Zu@%llu iomode %d)\n",
--			__func__, count, *pos, IOMODE_RW);
--out:
--	return do_sync_write(filp, buf, count, pos);
--}
+-				    &lseg);
+-	/* If no layout have been retrieved,
+-	 * use standard NFSv4 commit
+-	 */
+-	if (result) {
+-		dprintk("%s: Updating layout failed (%d), retry with NFS \n",
+-			__func__, result);
+-		trypnfs = PNFS_NOT_ATTEMPTED;
+-		goto out;
+-	}
 -
--/*
-  * Call the appropriate parallel I/O subsystem write function.
-  * If no I/O device driver exists, or one does match the returned
-  * fstype, then return a positive status for regular NFS processing.
+-	dprintk("%s: Calling layout driver commit\n", __func__);
++	data->pdata.lseg = NULL;
+ 	if (!pnfs_use_rpc(nfss))
+ 		data->pdata.pnfsflags |= PNFS_NO_RPC;
+-	data->pdata.lseg = lseg;
+ 	trypnfs = nfss->pnfs_curr_ld->ld_io_ops->commit(&nfsi->layout,
+ 							sync, data);
+-	if (trypnfs == PNFS_NOT_ATTEMPTED) {
++	if (trypnfs == PNFS_NOT_ATTEMPTED)
+ 		data->pdata.pnfsflags &= ~PNFS_NO_RPC;
+-		data->pdata.lseg = NULL;
+-		put_lseg(lseg);
+-	}
+-
+-out:
+ 	dprintk("%s End (trypnfs:%d)\n", __func__, trypnfs);
+ 	return trypnfs;
+ }
 diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index 1620026..1922ffa 100644
+index 60a9db6..bdf11bc 100644
 --- a/fs/nfs/pnfs.h
 +++ b/fs/nfs/pnfs.h
-@@ -59,7 +59,6 @@ void pnfs_pageio_init_read(struct nfs_pageio_descriptor *, struct inode *,
- 			   struct nfs_open_context *, struct list_head *);
- void pnfs_pageio_init_write(struct nfs_pageio_descriptor *, struct inode *);
- void pnfs_update_layout_commit(struct inode *, struct list_head *, pgoff_t, unsigned int);
--ssize_t pnfs_file_write(struct file *, const char __user *, size_t, loff_t *);
- void pnfs_get_layout_done(struct nfs4_pnfs_layoutget *, int rpc_status);
- int pnfs_layout_process(struct nfs4_pnfs_layoutget *lgp);
- void pnfs_layout_release(struct pnfs_layout_type *, struct nfs4_pnfs_layout_segment *range);
-diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
-index 0de7847..41026cb 100644
---- a/include/linux/nfs_fs.h
-+++ b/include/linux/nfs_fs.h
-@@ -411,9 +411,6 @@ extern const struct inode_operations nfs3_file_inode_operations;
- #endif /* CONFIG_NFS_V3 */
- extern const struct file_operations nfs_file_operations;
- extern const struct address_space_operations nfs_file_aops;
--#ifdef CONFIG_NFS_V4_1
--extern const struct file_operations pnfs_file_operations;
--#endif /* CONFIG_NFS_V4_1 */
- 
- static inline struct nfs_open_context *nfs_file_open_context(struct file *filp)
+@@ -139,21 +139,18 @@ pnfs_try_to_commit(struct nfs_write_data *data,
+ 		   const struct rpc_call_ops *call_ops,
+ 		   int how)
  {
+-	struct inode *inode = data->inode;
+-	struct nfs_server *nfss = NFS_SERVER(inode);
+ 	enum pnfs_try_status ret;
+ 
+-	/* Note that we check for "write_pagelist" and not for "commit"
+-	   since if async writes were done and pages weren't marked as stable
+-	   the commit method MUST be defined by the LD */
+-	/* FIXME: write_pagelist should probably be mandated */
+-	if (PNFS_EXISTS_LDIO_OP(nfss, write_pagelist))
+-		ret = _pnfs_try_to_commit(data, call_ops, how);
+-	else
+-		ret = PNFS_NOT_ATTEMPTED;
+-
++	/* Unlike in pnfs_try_to_write_data and pnfs_try_to_read_data,
++	 * we have no guarantee that all nfs_pages point to the same
++	 * lseg.  However, if we reach here, we are guaranteed that at
++	 * least one points to some lseg.
++	 */
++	ret = _pnfs_try_to_commit(data, call_ops, how);
+ 	if (ret == PNFS_ATTEMPTED)
+-		nfs_inc_stats(inode, NFSIOS_PNFS_COMMIT);
++		nfs_inc_stats(data->inode, NFSIOS_PNFS_COMMIT);
++	else
++		_pnfs_clear_lseg_from_pages(&data->pages);
+ 	return ret;
+ }
+ 
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index 40abbd0..2427c1d 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -527,7 +527,7 @@ nfs_need_commit(struct nfs_inode *nfsi)
+  * The requests are *not* checked to ensure that they form a contiguous set.
+  */
+ static int
+-nfs_scan_commit(struct inode *inode, struct list_head *dst, pgoff_t idx_start, unsigned int npages)
++nfs_scan_commit(struct inode *inode, struct list_head *dst, pgoff_t idx_start, unsigned int npages, int *use_pnfs)
+ {
+ 	struct nfs_inode *nfsi = NFS_I(inode);
+ 	int ret;
+@@ -535,7 +535,8 @@ nfs_scan_commit(struct inode *inode, struct list_head *dst, pgoff_t idx_start, u
+ 	if (!nfs_need_commit(nfsi))
+ 		return 0;
+ 
+-	ret = nfs_scan_list(nfsi, dst, idx_start, npages, NFS_PAGE_TAG_COMMIT);
++	ret = nfs_scan_list(nfsi, dst, idx_start, npages, NFS_PAGE_TAG_COMMIT,
++			    use_pnfs);
+ 	if (ret > 0)
+ 		nfsi->ncommit -= ret;
+ 	if (nfs_need_commit(NFS_I(inode)))
+@@ -1334,9 +1335,10 @@ EXPORT_SYMBOL(nfs_initiate_commit);
+ int pnfs_initiate_commit(struct nfs_write_data *data,
+ 			 struct rpc_clnt *clnt,
+ 			 const struct rpc_call_ops *call_ops,
+-			 int how)
++			 int how, int pnfs)
+ {
+-	if (pnfs_try_to_commit(data, &nfs_commit_ops, how) == PNFS_ATTEMPTED)
++	if (pnfs &&
++	    (pnfs_try_to_commit(data, &nfs_commit_ops, how) == PNFS_ATTEMPTED))
+ 		return pnfs_get_write_status(data);
+ 
+ 	return nfs_initiate_commit(data, clnt, &nfs_commit_ops, how);
+@@ -1347,7 +1349,7 @@ int pnfs_initiate_commit(struct nfs_write_data *data,
+  */
+ static int nfs_commit_rpcsetup(struct list_head *head,
+ 		struct nfs_write_data *data,
+-		int how)
++		int how, int pnfs)
+ {
+ 	struct nfs_page *first = nfs_list_entry(head->next);
+ 	struct inode *inode = first->wb_context->path.dentry->d_inode;
+@@ -1374,7 +1376,7 @@ static int nfs_commit_rpcsetup(struct list_head *head,
+ 	data->args.context = first->wb_context;  /* used by commit done */
+ 
+ 	return pnfs_initiate_commit(data, NFS_CLIENT(inode), &nfs_commit_ops,
+-				    how);
++				    how, pnfs);
+ }
+ 
+ /* Handle memory error during commit */
+@@ -1398,7 +1400,7 @@ EXPORT_SYMBOL(nfs_mark_list_commit);
+  * Commit dirty pages
+  */
+ static int
+-nfs_commit_list(struct inode *inode, struct list_head *head, int how)
++nfs_commit_list(struct inode *inode, struct list_head *head, int how, int pnfs)
+ {
+ 	struct nfs_write_data	*data;
+ 
+@@ -1407,7 +1409,7 @@ nfs_commit_list(struct inode *inode, struct list_head *head, int how)
+ 		goto out_bad;
+ 
+ 	/* Set up the argument struct */
+-	return nfs_commit_rpcsetup(head, data, how);
++	return nfs_commit_rpcsetup(head, data, how, pnfs);
+  out_bad:
+ 	nfs_mark_list_commit(head);
+ 	nfs_commit_clear_lock(NFS_I(inode));
+@@ -1495,14 +1497,15 @@ static int nfs_commit_inode(struct inode *inode, int how)
+ 	LIST_HEAD(head);
+ 	int may_wait = how & FLUSH_SYNC;
+ 	int res = 0;
++	int use_pnfs = 0;
+ 
+ 	if (!nfs_commit_set_lock(NFS_I(inode), may_wait))
+ 		goto out_mark_dirty;
+ 	spin_lock(&inode->i_lock);
+-	res = nfs_scan_commit(inode, &head, 0, 0);
++	res = nfs_scan_commit(inode, &head, 0, 0, &use_pnfs);
+ 	spin_unlock(&inode->i_lock);
+ 	if (res) {
+-		int error = nfs_commit_list(inode, &head, how);
++		int error = nfs_commit_list(inode, &head, how, use_pnfs);
+ 		if (error < 0)
+ 			return error;
+ 		if (may_wait) {
+diff --git a/include/linux/nfs_page.h b/include/linux/nfs_page.h
+index 18a455c..06e5157 100644
+--- a/include/linux/nfs_page.h
++++ b/include/linux/nfs_page.h
+@@ -83,7 +83,8 @@ extern	void nfs_release_request(struct nfs_page *req);
+ 
+ 
+ extern	int nfs_scan_list(struct nfs_inode *nfsi, struct list_head *dst,
+-			  pgoff_t idx_start, unsigned int npages, int tag);
++			  pgoff_t idx_start, unsigned int npages, int tag,
++			  int *use_pnfs);
+ extern	void nfs_pageio_init(struct nfs_pageio_descriptor *desc,
+ 			     struct inode *inode,
+ 			     int (*doio)(struct inode *, struct list_head *, unsigned int, size_t, int),
 -- 
 1.6.6.1
 
