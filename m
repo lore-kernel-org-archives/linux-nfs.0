@@ -1,85 +1,85 @@
 From: Fred Isaman <iisaman@netapp.com>
-Subject: [PATCH 1/7] SQUASHME: pnfs: export get_lseg and put_lseg
-Date: Fri, 11 Jun 2010 03:40:33 -0400
-Message-ID: <1276242039-18649-2-git-send-email-iisaman@netapp.com>
+Subject: [PATCH 2/7] SQUASHME: pnfsblock: write_begin adjust for removed fields
+Date: Fri, 11 Jun 2010 03:40:34 -0400
+Message-ID: <1276242039-18649-3-git-send-email-iisaman@netapp.com>
 References: <1276242039-18649-1-git-send-email-iisaman@netapp.com>
+ <1276242039-18649-2-git-send-email-iisaman@netapp.com>
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
 Received: from mx2.netapp.com ([216.240.18.37]:32582 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751628Ab0FKHkx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 11 Jun 2010 03:40:53 -0400
+	id S1751628Ab0FKHky (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 11 Jun 2010 03:40:54 -0400
 Received: from localhost.localdomain (lesleyk-lxp.hq.netapp.com [10.58.52.119] (may be forged))
-	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id o5B7eoVb027834
+	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id o5B7eoVc027834
 	for <linux-nfs@vger.kernel.org>; Fri, 11 Jun 2010 00:40:53 -0700 (PDT)
-In-Reply-To: <1276242039-18649-1-git-send-email-iisaman@netapp.com>
+In-Reply-To: <1276242039-18649-2-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+ok_to_use_pnfs and PG_USE_PNFS are gone, instead test req->wb_lseg for NULL.
+This also means that the entire do_flush routine is redundant.
+
 Signed-off-by: Fred Isaman <iisaman@netapp.com>
 ---
- fs/nfs/pnfs.c             |    8 ++++++++
- fs/nfs/pnfs.h             |    6 ------
- include/linux/nfs4_pnfs.h |    3 +++
- 3 files changed, 11 insertions(+), 6 deletions(-)
+ fs/nfs/blocklayout/blocklayout.c |   21 ++++-----------------
+ 1 files changed, 4 insertions(+), 17 deletions(-)
 
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index ab47308..d6ba358 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -454,6 +454,14 @@ put_lseg(struct pnfs_layout_segment *lseg)
- 		wake_up(&nfsi->lo_waitq);
+diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
+index 66044d4..eb5760f 100644
+--- a/fs/nfs/blocklayout/blocklayout.c
++++ b/fs/nfs/blocklayout/blocklayout.c
+@@ -988,10 +988,10 @@ bl_write_begin(struct pnfs_layout_segment *lseg, struct page *page, loff_t pos,
+ 	if (bl->bl_blocksize < (PAGE_CACHE_SIZE >> 9)) {
+ 		dprintk("%s Can't handle blocksize %llu\n", __func__,
+ 			(u64)bl->bl_blocksize);
+-		fsdata->ok_to_use_pnfs = 0;
++		put_lseg(fsdata->lseg);
++		fsdata->lseg = NULL;
+ 		return 0;
+ 	}
+-	fsdata->ok_to_use_pnfs = 1;
+ 	if (PageMappedToDisk(page)) {
+ 		/* Basically, this is a flag that says we have
+ 		 * successfully called write_begin already on this page.
+@@ -1014,7 +1014,8 @@ bl_write_begin(struct pnfs_layout_segment *lseg, struct page *page, loff_t pos,
+ 		 * should be true if we get here.
+ 		 */
+ 		BUG_ON(PagePrivate(page));
+-		fsdata->ok_to_use_pnfs = 0;
++		put_lseg(fsdata->lseg);
++		fsdata->lseg = NULL;
+ 		kfree(pages_to_mark);
+ 		ret = 0;
+ 	} else {
+@@ -1122,19 +1123,6 @@ bl_pg_test(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev,
+ 	}
  }
  
-+EXPORT_SYMBOL(put_lseg);
-+
-+void get_lseg(struct pnfs_layout_segment *lseg)
-+{
-+	kref_get(&lseg->kref);
-+}
-+EXPORT_SYMBOL(get_lseg);
-+
- static inline u64
- end_offset(u64 start, u64 len)
- {
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index 810ce9e..fd7c532 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -34,7 +34,6 @@ extern int pnfs4_proc_layoutreturn(struct nfs4_pnfs_layoutreturn *lrp, bool wait
- /* pnfs.c */
- extern const nfs4_stateid zero_stateid;
- 
--void put_lseg(struct pnfs_layout_segment *lseg);
- void _pnfs_update_layout(struct inode *ino, struct nfs_open_context *ctx,
- 	loff_t pos, u64 count, enum pnfs_iomode access_type,
- 	struct pnfs_layout_segment **lsegpp);
-@@ -95,11 +94,6 @@ static inline int lo_fail_bit(u32 iomode)
- 			 NFS_INO_RW_LAYOUT_FAILED : NFS_INO_RO_LAYOUT_FAILED;
- }
- 
--static inline void get_lseg(struct pnfs_layout_segment *lseg)
+-/* This checks if old req will likely use same io method as soon
+- * to be created request, and returns False if they are the same.
+- */
+-static int
+-bl_do_flush(struct pnfs_layout_segment *lseg, struct nfs_page *req,
+-	    struct pnfs_fsdata *fsdata)
 -{
--	kref_get(&lseg->kref);
+-	int will_try_pnfs;
+-	dprintk("%s enter\n", __func__);
+-	will_try_pnfs = fsdata ? (fsdata->ok_to_use_pnfs) : (lseg != NULL);
+-	return will_try_pnfs != test_bit(PG_USE_PNFS, &req->wb_flags);
 -}
 -
- /* Return true if a layout driver is being used for this mountpoint */
- static inline int pnfs_enabled_sb(struct nfs_server *nfss)
- {
-diff --git a/include/linux/nfs4_pnfs.h b/include/linux/nfs4_pnfs.h
-index 744ca33..b7772c8 100644
---- a/include/linux/nfs4_pnfs.h
-+++ b/include/linux/nfs4_pnfs.h
-@@ -92,6 +92,9 @@ layoutcommit_needed(struct nfs_inode *nfsi)
- 	return nfsi->layout.lo_cred != NULL;
- }
+ static struct layoutdriver_io_operations blocklayout_io_operations = {
+ 	.commit				= bl_commit,
+ 	.read_pagelist			= bl_read_pagelist,
+@@ -1156,7 +1144,6 @@ static struct layoutdriver_io_operations blocklayout_io_operations = {
+ static struct layoutdriver_policy_operations blocklayout_policy_operations = {
+ 	.get_stripesize			= bl_get_stripesize,
+ 	.pg_test			= bl_pg_test,
+-	.do_flush			= bl_do_flush,
+ };
  
-+extern void put_lseg(struct pnfs_layout_segment *lseg);
-+extern void get_lseg(struct pnfs_layout_segment *lseg);
-+
- #else /* CONFIG_NFS_V4_1 */
- 
- static inline bool
+ static struct pnfs_layoutdriver_type blocklayout_type = {
 -- 
 1.6.6.1
 
