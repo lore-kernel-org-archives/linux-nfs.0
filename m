@@ -1,7 +1,7 @@
 From: Fred Isaman <iisaman@netapp.com>
-Subject: [PATCH 25/26] pnfs-submit: Revert "pnfs: pnfs_redirty_request"
-Date: Fri, 11 Jun 2010 03:31:52 -0400
-Message-ID: <1276241513-17942-26-git-send-email-iisaman@netapp.com>
+Subject: [PATCH 26/26] pnfs-submit: Reorder arguments to pnfs_update_layout
+Date: Fri, 11 Jun 2010 03:31:53 -0400
+Message-ID: <1276241513-17942-27-git-send-email-iisaman@netapp.com>
 References: <1276241513-17942-1-git-send-email-iisaman@netapp.com>
  <1276241513-17942-2-git-send-email-iisaman@netapp.com>
  <1276241513-17942-3-git-send-email-iisaman@netapp.com>
@@ -27,82 +27,117 @@ References: <1276241513-17942-1-git-send-email-iisaman@netapp.com>
  <1276241513-17942-23-git-send-email-iisaman@netapp.com>
  <1276241513-17942-24-git-send-email-iisaman@netapp.com>
  <1276241513-17942-25-git-send-email-iisaman@netapp.com>
+ <1276241513-17942-26-git-send-email-iisaman@netapp.com>
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
 Received: from mx2.netapp.com ([216.240.18.37]:18981 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755069Ab0FKHcl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 11 Jun 2010 03:32:41 -0400
+	id S1758023Ab0FKHcm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 11 Jun 2010 03:32:42 -0400
 Received: from localhost.localdomain (lesleyk-lxp.hq.netapp.com [10.58.52.119] (may be forged))
-	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id o5B7W3uI024376
-	for <linux-nfs@vger.kernel.org>; Fri, 11 Jun 2010 00:32:40 -0700 (PDT)
-In-Reply-To: <1276241513-17942-25-git-send-email-iisaman@netapp.com>
+	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id o5B7W3uJ024376
+	for <linux-nfs@vger.kernel.org>; Fri, 11 Jun 2010 00:32:41 -0700 (PDT)
+In-Reply-To: <1276241513-17942-26-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The existance of req->wb_lseg can take the place of PG_USE_PNFS
-
-This reverts commit 447b65adcc53ab21e76ce8795827df7d4c165af1.
+offset and count were switched for some reason.
 
 Signed-off-by: Fred Isaman <iisaman@netapp.com>
 ---
- fs/nfs/pnfs.h            |    9 ---------
- fs/nfs/write.c           |    2 +-
- include/linux/nfs_page.h |    1 -
- 3 files changed, 1 insertions(+), 11 deletions(-)
+ fs/nfs/file.c |    2 +-
+ fs/nfs/pnfs.c |    4 ++--
+ fs/nfs/pnfs.h |    8 ++++----
+ fs/nfs/read.c |    2 +-
+ 4 files changed, 8 insertions(+), 8 deletions(-)
 
+diff --git a/fs/nfs/file.c b/fs/nfs/file.c
+index 409892f..3066141 100644
+--- a/fs/nfs/file.c
++++ b/fs/nfs/file.c
+@@ -399,7 +399,7 @@ static int nfs_write_begin(struct file *file, struct address_space *mapping,
+ 
+ 	pnfs_update_layout(mapping->host,
+ 			   nfs_file_open_context(file),
+-			   NFS4_MAX_UINT64, 0, IOMODE_RW,
++			   0, NFS4_MAX_UINT64, IOMODE_RW,
+ 			   &lseg);
+ start:
+ 	/*
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index ae76e88..7d322c9 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -1053,8 +1053,8 @@ pnfs_has_layout(struct pnfs_layout_type *lo,
+ void
+ _pnfs_update_layout(struct inode *ino,
+ 		   struct nfs_open_context *ctx,
+-		   u64 count,
+ 		   loff_t pos,
++		   u64 count,
+ 		   enum pnfs_iomode iomode,
+ 		   struct pnfs_layout_segment **lsegpp)
+ {
+@@ -1371,7 +1371,7 @@ pnfs_pageio_init_read(struct nfs_pageio_descriptor *pgio,
+ 	readahead_range(inode, pages, &loff, &count);
+ 
+ 	if (count > 0) {
+-		_pnfs_update_layout(inode, ctx, count, loff, IOMODE_READ,
++		_pnfs_update_layout(inode, ctx, loff, count, IOMODE_READ,
+ 				    &pgio->pg_lseg);
+ 		if (!pgio->pg_lseg)
+ 			return;
 diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index 09de7a3..541e3fd 100644
+index 541e3fd..75f6cf1 100644
 --- a/fs/nfs/pnfs.h
 +++ b/fs/nfs/pnfs.h
-@@ -154,11 +154,6 @@ pnfs_try_to_commit(struct nfs_write_data *data,
- 	return ret;
- }
+@@ -33,7 +33,7 @@ extern const nfs4_stateid zero_stateid;
  
--static inline void pnfs_redirty_request(struct nfs_page *req)
--{
--	clear_bit(PG_USE_PNFS, &req->wb_flags);
--}
--
- static inline int pnfs_return_layout(struct inode *ino,
- 				     struct nfs4_pnfs_layout_segment *lseg,
- 				     const nfs4_stateid *stateid, /* optional */
-@@ -248,10 +243,6 @@ pnfs_try_to_commit(struct nfs_write_data *data,
- 	return PNFS_NOT_ATTEMPTED;
- }
+ void put_lseg(struct pnfs_layout_segment *lseg);
+ void _pnfs_update_layout(struct inode *ino, struct nfs_open_context *ctx,
+-	u64 count, loff_t pos, enum pnfs_iomode access_type,
++	loff_t pos, u64 count, enum pnfs_iomode access_type,
+ 	struct pnfs_layout_segment **lsegpp);
  
--static inline void pnfs_redirty_request(struct nfs_page *req)
--{
--}
--
- static inline int pnfs_get_write_status(struct nfs_write_data *data)
+ int _pnfs_return_layout(struct inode *, struct nfs4_pnfs_layout_segment *,
+@@ -172,13 +172,13 @@ static inline int pnfs_return_layout(struct inode *ino,
+ 
+ static inline void pnfs_update_layout(struct inode *ino,
+ 	struct nfs_open_context *ctx,
+-	u64 count, loff_t pos, enum pnfs_iomode access_type,
++	loff_t pos, u64 count, enum pnfs_iomode access_type,
+ 	struct pnfs_layout_segment **lsegpp)
  {
- 	return 0;
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index f1e4120..65e2c62 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -903,7 +903,7 @@ static void nfs_redirty_request(struct nfs_page *req)
+ 	struct nfs_server *nfss = NFS_SERVER(ino);
+ 
+ 	if (pnfs_enabled_sb(nfss))
+-		_pnfs_update_layout(ino, ctx, count, pos, access_type, lsegpp);
++		_pnfs_update_layout(ino, ctx, pos, count, access_type, lsegpp);
+ 	else {
+ 		if (lsegpp)
+ 			*lsegpp = NULL;
+@@ -215,7 +215,7 @@ static inline void put_lseg(struct pnfs_layout_segment *lseg)
+ 
+ static inline void
+ pnfs_update_layout(struct inode *ino, struct nfs_open_context *ctx,
+-	u64 count, loff_t pos, enum pnfs_iomode access_type,
++	loff_t pos, u64 count, enum pnfs_iomode access_type,
+ 	struct pnfs_layout_segment **lsegpp)
  {
- 	struct page *page = req->wb_page;
- 
--	pnfs_redirty_request(req);
-+	nfs_mark_request_nopnfs(req);
- 	nfs_mark_request_dirty(req);
- 	nfs_clear_page_tag_locked(req);
- 	nfs_end_page_writeback(page);
-diff --git a/include/linux/nfs_page.h b/include/linux/nfs_page.h
-index 06e5157..7709d3e 100644
---- a/include/linux/nfs_page.h
-+++ b/include/linux/nfs_page.h
-@@ -32,7 +32,6 @@ enum {
- 	PG_CLEAN,
- 	PG_NEED_COMMIT,
- 	PG_NEED_RESCHED,
--	PG_USE_PNFS,
- };
- 
- struct nfs_inode;
+ 	if (lsegpp)
+diff --git a/fs/nfs/read.c b/fs/nfs/read.c
+index 68b4ca8..9cabf88 100644
+--- a/fs/nfs/read.c
++++ b/fs/nfs/read.c
+@@ -126,7 +126,7 @@ int nfs_readpage_async(struct nfs_open_context *ctx, struct inode *inode,
+ 	len = nfs_page_length(page);
+ 	if (len == 0)
+ 		return nfs_return_empty_page(page);
+-	pnfs_update_layout(inode, ctx, NFS4_MAX_UINT64, 0, IOMODE_READ, &lseg);
++	pnfs_update_layout(inode, ctx, 0, NFS4_MAX_UINT64, IOMODE_READ, &lseg);
+ 	new = nfs_create_request(ctx, inode, page, 0, len, lseg);
+ 	put_lseg(lseg);
+ 	if (IS_ERR(new)) {
 -- 
 1.6.6.1
 
