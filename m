@@ -1,95 +1,84 @@
-From: Fred Isaman <iisaman@umich.edu>
-Subject: Re: SQUASHME pnfs-submit: write to MDS on DS commit verifier mismatch
-Date: Fri, 11 Jun 2010 09:46:47 -0400
-Message-ID: <AANLkTilBmSlxmu9RS_JfCmod8RnJnoOCMXMgcQ8Sjxgh@mail.gmail.com>
-References: <1276205183-14014-1-git-send-email-andros@netapp.com>
-	<1276205183-14014-2-git-send-email-andros@netapp.com>
+From: Benny Halevy <bhalevy@panasas.com>
+Subject: BUG: no open context for layout_get for the commit on close path
+Date: Fri, 11 Jun 2010 18:05:27 +0300
+Message-ID: <4C1250B7.3020808@panasas.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
-Cc: iisaman@netapp.com, linux-nfs@vger.kernel.org
-To: andros@netapp.com
+To: NFS list <linux-nfs@vger.kernel.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-bw0-f46.google.com ([209.85.214.46]:45998 "EHLO
-	mail-bw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756382Ab0FKNqt convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 11 Jun 2010 09:46:49 -0400
-Received: by bwz7 with SMTP id 7so334625bwz.19
-        for <linux-nfs@vger.kernel.org>; Fri, 11 Jun 2010 06:46:47 -0700 (PDT)
-In-Reply-To: <1276205183-14014-2-git-send-email-andros@netapp.com>
+Received: from daytona.panasas.com ([67.152.220.89]:32318 "EHLO
+	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1751424Ab0FKPFa (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 11 Jun 2010 11:05:30 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Thanks Andy.  I've squashed this into my just submitted patchset.
+That's a tricky one.
+With pnfs-all-2.6.34-2010-06-10 we hit the BUG in get_layout(), here:
 
-=46red
+        if (!memcmp(lo->stateid.data, &zero_stateid, NFS4_STATEID_SIZE)) {
+                struct nfs_open_context *oldctx = ctx;
 
-On Thu, Jun 10, 2010 at 5:26 PM,  <andros@netapp.com> wrote:
-> From: Andy Adamson <andros@netapp.com>
->
-> Signed-off-by: Andy Adamson <andros@netapp.com>
-> ---
-> =A0fs/nfs/write.c | =A0 18 +++++++++++++-----
-> =A01 files changed, 13 insertions(+), 5 deletions(-)
->
-> diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-> index 482d41e..a47f03d 100644
-> --- a/fs/nfs/write.c
-> +++ b/fs/nfs/write.c
-> @@ -422,6 +422,17 @@ static void nfs_inode_remove_request(struct nfs_=
-page *req)
-> =A0 =A0 =A0 =A0nfs_clear_request(req);
-> =A0 =A0 =A0 =A0nfs_release_request(req);
-> =A0}
-> +static void
-> +nfs_mark_request_nopnfs(struct nfs_page *req)
-> +{
-> + =A0 =A0 =A0 struct pnfs_layout_segment *lseg =3D req->wb_lseg;
-> +
-> + =A0 =A0 =A0 if (req->wb_lseg =3D=3D NULL)
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 return;
-> + =A0 =A0 =A0 req->wb_lseg =3D NULL;
-> + =A0 =A0 =A0 put_lseg(lseg);
-> + =A0 =A0 =A0 dprintk(" retry through MDS\n");
-> +}
->
-> =A0static void
-> =A0nfs_mark_request_dirty(struct nfs_page *req)
-> @@ -1463,11 +1474,7 @@ static void nfs_commit_release(void *calldata)
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0(long long)req_offset(=
-req));
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0if (status < 0) {
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0if (req->wb_lseg) {
-> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 struct =
-pnfs_layout_segment *lseg =3D req->wb_lseg;
-> -
-> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 req->wb=
-_lseg =3D NULL;
-> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 put_lse=
-g(lseg);
-> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 dprintk=
-(" retry through MDS\n");
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 nfs_mar=
-k_request_nopnfs(req);
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0nfs_ma=
-rk_request_dirty(req);
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0goto n=
-ext;
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0}
-> @@ -1487,6 +1494,7 @@ static void nfs_commit_release(void *calldata)
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0}
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0/* We have a mismatch. Write the page =
-again */
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0dprintk(" mismatch\n");
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 nfs_mark_request_nopnfs(req);
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0nfs_mark_request_dirty(req);
-> =A0 =A0 =A0 =A0next:
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0nfs_clear_page_tag_locked(req);
-> --
-> 1.6.6
->
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" =
-in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at =A0http://vger.kernel.org/majordomo-info.html
->
+                if (!oldctx) {
+                        ctx = nfs_find_open_context(ino, NULL,
+                                        (range->iomode == IOMODE_READ) ?
+                                        FMODE_READ: FMODE_WRITE);
+                        BUG_ON(!ctx);
+			^^^^^^
+                }
+                pnfs_layout_from_open_stateid(&lgp->args.stateid, ctx->state);
+                if (!oldctx)
+                        put_nfs_open_context(ctx);
+        } else
+                pnfs_get_layout_stateid(&lgp->args.stateid, lo);
+
+Jun 11 17:40:23 tl1 kernel: kernel BUG at /usr0/export/dev/bhalevy/git/linux-pnfs-bh-nfs41/fs/nfs/pnfs.c:576!
+Jun 11 17:40:23 tl1 kernel: invalid opcode: 0000 [#1] SMP DEBUG_PAGEALLOC
+Jun 11 17:40:23 tl1 kernel: last sysfs file: /sys/devices/platform/host4/session1/target4:0:0/4:0:0:0/scsi_generic/sg2/dev
+Jun 11 17:40:23 tl1 kernel: CPU 0 
+Jun 11 17:40:23 tl1 kernel: Modules linked in: panfs(P) panlayoutdriver objlayoutdriver nfslayoutdriver exofs nfsd exportfs nfs lockd n
+fs_acl auth_rpcgss osd libosd crc32c sunrpc ip6_tables ipv6 iscsi_tcp libiscsi_tcp libiscsi scsi_transport_iscsi cpufreq_ondemand acpi_
+cpufreq freq_table ext2 dm_mirror dm_region_hash dm_log dm_multipath dm_mod snd_hda_codec_via snd_hda_intel snd_hda_codec snd_hwdep i91
+5 snd_seq_dummy snd_seq_oss drm_kms_helper snd_seq_midi_event snd_seq snd_seq_device snd_pcm_oss drm snd_mixer_oss snd_pcm snd_timer sn
+d soundcore i2c_algo_bit video i2c_i801 output sg atl1c i2c_core snd_page_alloc rng_core button ata_generic ata_piix libata sd_mod scsi
+_mod ext3 jbd mbcache uhci_hcd ohci_hcd ehci_hcd [last unloaded: objlayoutdriver]
+Jun 11 17:40:23 tl1 kernel:
+Jun 11 17:40:23 tl1 kernel: Pid: 5275, comm: ld Tainted: P           2.6.34-pnfs #3 G41TM-P33 (MS-7592)/MS-7592
+Jun 11 17:40:23 tl1 kernel: RIP: 0010:[<ffffffffa04c7eab>]  [<ffffffffa04c7eab>] pnfs_update_layout+0x5b4/0x6e9 [nfs]
+Jun 11 17:40:23 tl1 kernel: RSP: 0018:ffff88002407dc38  EFLAGS: 00010246
+Jun 11 17:40:23 tl1 kernel: RAX: 0000000000000000 RBX: ffff880046aa06f0 RCX: ffff880071a49c48
+Jun 11 17:40:23 tl1 kernel: RDX: ffff880046aa0588 RSI: 0000000000000000 RDI: ffff880046aa079c
+Jun 11 17:40:23 tl1 kernel: RBP: ffff88002407dd08 R08: 00000000000080d0 R09: ffff88002407dd20
+Jun 11 17:40:23 tl1 kernel: R10: 0000000000000000 R11: ffff880076b0ad80 R12: ffff88007cabb000
+Jun 11 17:40:23 tl1 kernel: R13: 0000000000000000 R14: ffff88007c079000 R15: ffff880076ab1300
+Jun 11 17:40:23 tl1 kernel: FS:  00007fe5e86396f0(0000) GS:ffff880001a00000(0000) knlGS:0000000000000000
+Jun 11 17:40:23 tl1 kernel: CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
+Jun 11 17:40:23 tl1 kernel: CR2: 0000000000472280 CR3: 000000002328b000 CR4: 00000000000406f0
+Jun 11 17:40:23 tl1 kernel: DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
+Jun 11 17:40:23 tl1 kernel: DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
+Jun 11 17:40:23 tl1 kernel: Process ld (pid: 5275, threadinfo ffff88002407c000, task ffff88002acd16c0)
+Jun 11 17:40:23 tl1 kernel: Stack:
+Jun 11 17:40:23 tl1 kernel: ffff88002407dc88 ffffffff8117b243 ffffffff00000002 0000000200000000
+Jun 11 17:40:23 tl1 kernel: <0> 0000000100000000 0000000000000003 ffff88002407dd20 0000000000000000
+Jun 11 17:40:23 tl1 kernel: <0> 01ff88002407ddc8 ffff880046aa0660 0000000000000000 ffff88002acd16c0
+Jun 11 17:40:23 tl1 kernel: Call Trace:
+Jun 11 17:40:23 tl1 kernel: [<ffffffff8117b243>] ? radix_tree_tag_set+0x6a/0xcd
+Jun 11 17:40:23 tl1 kernel: [<ffffffff8105750f>] ? autoremove_wake_function+0x0/0x39
+Jun 11 17:40:23 tl1 kernel: [<ffffffffa04c8129>] _pnfs_try_to_commit+0x149/0x229 [nfs]
+Jun 11 17:40:23 tl1 kernel: [<ffffffffa04a7248>] pnfs_initiate_commit+0x5a/0xa0 [nfs]
+Jun 11 17:40:23 tl1 kernel: [<ffffffffa04a8c0e>] nfs_write_inode+0x23a/0x394 [nfs]
+Jun 11 17:40:23 tl1 kernel: [<ffffffffa04a7d0c>] ? nfs_flush_one+0x0/0xf4 [nfs]
+Jun 11 17:40:23 tl1 kernel: [<ffffffff81104625>] writeback_single_inode+0x10e/0x1de
+Jun 11 17:40:23 tl1 kernel: [<ffffffff81104722>] sync_inode+0x2d/0x3a
+Jun 11 17:40:23 tl1 kernel: [<ffffffff8105750f>] ? autoremove_wake_function+0x0/0x39
+Jun 11 17:40:23 tl1 kernel: [<ffffffffa04a6bb8>] nfs_wb_all+0x42/0x44 [nfs]
+Jun 11 17:40:23 tl1 kernel: [<ffffffffa049a656>] nfs_do_fsync+0x20/0x3d [nfs]
+Jun 11 17:40:23 tl1 kernel: [<ffffffffa049a83b>] nfs_file_flush+0x75/0x7d [nfs]
+Jun 11 17:40:23 tl1 kernel: [<ffffffff810e7e88>] filp_close+0x43/0x72
+Jun 11 17:40:23 tl1 kernel: [<ffffffff810e7f53>] sys_close+0x9c/0xd0
+Jun 11 17:40:23 tl1 kernel: [<ffffffff81002c32>] system_call_fastpath+0x16/0x1b
+Jun 11 17:40:23 tl1 kernel: Code: 00 00 4c 8b ad 68 ff ff ff 4d 85 ed 75 21 31 d2 83 7d b0 01 48 89 df 0f 95 c2 31 f6 ff c2 e8 2e 4f fd
+ ff 48 85 c0 49 89 c5 75 04 <0f> 0b eb fe f6 05 f7 30 f6 ff 10 4d 8b 75 20 74 15 48 c7 c6 90 
+Jun 11 17:40:23 tl1 kernel: RIP  [<ffffffffa04c7eab>] pnfs_update_layout+0x5b4/0x6e9 [nfs]
+Jun 11 17:40:23 tl1 kernel: RSP <ffff88002407dc38>
+Jun 11 17:40:23 tl1 kernel: ---[ end trace 128a6a97ff1e98ed ]---
