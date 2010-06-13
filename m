@@ -1,184 +1,257 @@
 From: Fred Isaman <iisaman@netapp.com>
-Subject: [PATCH 4/4] pnfs-submit: Remove pnfs_error
-Date: Sun, 13 Jun 2010 16:18:42 -0400
-Message-ID: <1276460322-13873-5-git-send-email-iisaman@netapp.com>
+Subject: [PATCH 2/4] pnfs-submit: Remove checks for non-rpc drivers
+Date: Sun, 13 Jun 2010 16:18:40 -0400
+Message-ID: <1276460322-13873-3-git-send-email-iisaman@netapp.com>
 References: <1276460322-13873-1-git-send-email-iisaman@netapp.com>
  <1276460322-13873-2-git-send-email-iisaman@netapp.com>
- <1276460322-13873-3-git-send-email-iisaman@netapp.com>
- <1276460322-13873-4-git-send-email-iisaman@netapp.com>
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
 Received: from mx2.netapp.com ([216.240.18.37]:27832 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754378Ab0FMUSw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	id S1754670Ab0FMUSw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
 	Sun, 13 Jun 2010 16:18:52 -0400
 Received: from localhost.localdomain (kellyv2-lxp.hq.netapp.com [10.58.52.119] (may be forged))
-	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id o5DKIkff012997
-	for <linux-nfs@vger.kernel.org>; Sun, 13 Jun 2010 13:18:49 -0700 (PDT)
-In-Reply-To: <1276460322-13873-4-git-send-email-iisaman@netapp.com>
+	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id o5DKIkfd012997
+	for <linux-nfs@vger.kernel.org>; Sun, 13 Jun 2010 13:18:48 -0700 (PDT)
+In-Reply-To: <1276460322-13873-2-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-It was only being used to signal EAGAIN to the no longer existing
-pnfs_call_done functions.
+Removes PNFS_NO_RPC and pnfs_use_rpc()
 
 Signed-off-by: Fred Isaman <iisaman@netapp.com>
 ---
- fs/nfs/nfs4filelayout.c |    6 ------
- fs/nfs/pnfs.c           |    3 ---
- fs/nfs/pnfs.h           |   10 ----------
- fs/nfs/read.c           |    6 +-----
- fs/nfs/write.c          |    9 ++-------
- include/linux/nfs_xdr.h |    1 -
- 6 files changed, 3 insertions(+), 32 deletions(-)
+ fs/nfs/nfs4filelayout.c   |    1 -
+ fs/nfs/nfs4proc.c         |    9 ---------
+ fs/nfs/pnfs.c             |   40 +++++-----------------------------------
+ fs/nfs/pnfs.h             |   13 -------------
+ include/linux/nfs4_pnfs.h |   10 ----------
+ include/linux/nfs_xdr.h   |    3 ---
+ 6 files changed, 5 insertions(+), 71 deletions(-)
 
 diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
-index 9a3ea49..8a83c0d 100644
+index 472b613..9a3ea49 100644
 --- a/fs/nfs/nfs4filelayout.c
 +++ b/fs/nfs/nfs4filelayout.c
-@@ -254,9 +254,6 @@ filelayout_read_pagelist(struct pnfs_layout_type *layoutid,
- 	/* Perform an asynchronous read */
- 	nfs_initiate_read(data, ds->ds_clp->cl_rpcclient,
- 			  &filelayout_read_call_ops);
--
--	data->pdata.pnfs_error = 0;
--
- 	return PNFS_ATTEMPTED;
- }
+@@ -753,7 +753,6 @@ struct layoutdriver_io_operations filelayout_io_operations = {
+ };
  
-@@ -304,8 +301,6 @@ filelayout_write_pagelist(struct pnfs_layout_type *layoutid,
- 	 */
- 	nfs_initiate_write(data, ds->ds_clp->cl_rpcclient,
- 			   &filelayout_write_call_ops, sync);
--
--	data->pdata.pnfs_error = 0;
- 	return PNFS_ATTEMPTED;
- }
+ struct layoutdriver_policy_operations filelayout_policy_operations = {
+-	.flags                 = PNFS_USE_RPC_CODE,
+ 	.get_stripesize        = filelayout_get_stripesize,
+ 	.pg_test               = filelayout_pg_test,
+ };
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 192afc3..c7d68f5 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -3175,9 +3175,6 @@ static int pnfs4_read_done(struct rpc_task *task, struct nfs_read_data *data)
  
-@@ -678,7 +673,6 @@ filelayout_commit(struct pnfs_layout_type *layoutid, int sync,
+ 	dprintk("--> %s\n", __func__);
+ 
+-	if (data->pdata.pnfsflags & PNFS_NO_RPC)
+-		return 0;
+-
+ 	status = task->tk_status >= 0 ? 0 : task->tk_status;
+ 
+ 	/* Is this a DS session */
+@@ -3225,9 +3222,6 @@ static int pnfs4_write_done(struct rpc_task *task, struct nfs_write_data *data)
+ 		data->args.count = data->pdata.orig_count;
  	}
- 	kfree(clone_list);
- 	kfree(ds_page_list);
--	data->pdata.pnfs_error = 0;
- 	return PNFS_ATTEMPTED;
  
-  mem_error:
+-	if (data->pdata.pnfsflags & PNFS_NO_RPC)
+-		return 0;
+-
+ 	/* Is this a DS session */
+ 	if (data->fldata.ds_nfs_client) {
+ 		dprintk("%s DS write\n", __func__);
+@@ -3278,9 +3272,6 @@ static int pnfs4_commit_done(struct rpc_task *task, struct nfs_write_data *data)
+ 
+ 	dprintk("--> %s task->tk_status %d\n", __func__, task->tk_status);
+ 
+-	if (data->pdata.pnfsflags & PNFS_NO_RPC)
+-		return 0;
+-
+ 	/* Is this a DS session */
+ 	if (data->fldata.ds_nfs_client) {
+ 		dprintk("%s DS commit\n", __func__);
 diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 7795e3e..3f7f50a 100644
+index a4d1937..89c788d 100644
 --- a/fs/nfs/pnfs.c
 +++ b/fs/nfs/pnfs.c
-@@ -1513,7 +1513,6 @@ _pnfs_try_to_read_data(struct nfs_read_data *data,
- {
- 	dprintk("%s: Utilizing pNFS I/O\n", __func__);
- 	data->pdata.call_ops = call_ops;
--	data->pdata.pnfs_error = 0;
- 	return pnfs_readpages(data);
+@@ -1406,24 +1406,16 @@ pnfs_call_done(struct pnfs_call_data *pdata, struct rpc_task *task, void *data)
+ 	pdata->call_ops->rpc_call_done(task, data);
+ 	if (pdata->pnfs_error == -EAGAIN || task->tk_status == -EAGAIN)
+ 		return -EAGAIN;
+-	if (pdata->pnfsflags & PNFS_NO_RPC) {
+-		pdata->call_ops->rpc_release(data);
+-	} else {
+-		/*
+-		 * just restore original rpc call ops
+-		 * rpc_release will be called later by the rpc scheduling layer.
+-		 */
+-		task->tk_ops = pdata->call_ops;
+-	}
++	/*
++	 * just restore original rpc call ops
++	 * rpc_release will be called later by the rpc scheduling layer.
++	 */
++	task->tk_ops = pdata->call_ops;
+ 	return 0;
  }
  
-@@ -1523,7 +1522,6 @@ _pnfs_try_to_write_data(struct nfs_write_data *data,
- {
- 	dprintk("--> %s\n", __func__);
- 	data->pdata.call_ops = call_ops;
--	data->pdata.pnfs_error = 0;
- 	data->pdata.how = how;
- 	return pnfs_writepages(data, how);
- }
-@@ -1534,7 +1532,6 @@ _pnfs_try_to_commit(struct nfs_write_data *data,
- {
- 	dprintk("%s: Utilizing pNFS I/O\n", __func__);
- 	data->pdata.call_ops = call_ops;
--	data->pdata.pnfs_error = 0;
- 	data->pdata.how = how;
- 	return pnfs_commit(data, how);
+ /* Post-write completion function
+  * Invoked by all layout drivers when write_pagelist is done.
+- *
+- * NOTE: callers set data->pnfsflags PNFS_NO_RPC
+- * so that the NFS cleanup routines perform only the page cache
+- * cleanup.
+  */
+ static void
+ pnfs_write_retry(struct work_struct *work)
+@@ -1450,18 +1442,6 @@ pnfs_writeback_done(struct nfs_write_data *data)
+ 
+ 	dprintk("%s: Begin (status %d)\n", __func__, data->task.tk_status);
+ 
+-	/* update last write offset and need layout commit
+-	 * for non-files layout types (files layout calls
+-	 * pnfs4_write_done for this)
+-	 */
+-	if ((pdata->pnfsflags & PNFS_NO_RPC) &&
+-	    data->task.tk_status >= 0 && data->res.count > 0) {
+-		struct nfs_inode *nfsi = NFS_I(data->inode);
+-
+-		pnfs_update_last_write(nfsi, data->args.offset, data->res.count);
+-		pnfs_need_layoutcommit(nfsi, data->args.context);
+-	}
+-
+ 	if (pnfs_call_done(pdata, &data->task, data) == -EAGAIN) {
+ 		INIT_WORK(&data->task.u.tk_work, pnfs_write_retry);
+ 		queue_work(nfsiod_workqueue, &data->task.u.tk_work);
+@@ -1507,8 +1487,6 @@ pnfs_writepages(struct nfs_write_data *wdata, int how)
+ 		__func__,
+ 		how,
+ 		numpages);
+-	if (!pnfs_use_rpc(nfss))
+-		wdata->pdata.pnfsflags |= PNFS_NO_RPC;
+ 	wdata->pdata.lseg = lseg;
+ 	trypnfs = nfss->pnfs_curr_ld->ld_io_ops->write_pagelist(
+ 							&nfsi->layout,
+@@ -1521,7 +1499,6 @@ pnfs_writepages(struct nfs_write_data *wdata, int how)
+ 							wdata);
+ 
+ 	if (trypnfs == PNFS_NOT_ATTEMPTED) {
+-		wdata->pdata.pnfsflags &= ~PNFS_NO_RPC;
+ 		wdata->pdata.lseg = NULL;
+ 		put_lseg(lseg);
+ 	}
+@@ -1597,8 +1574,6 @@ pnfs_readpages(struct nfs_read_data *rdata)
+ 
+ 	dprintk("%s: Calling layout driver read with %d pages\n",
+ 		__func__, numpages);
+-	if (!pnfs_use_rpc(nfss))
+-		rdata->pdata.pnfsflags |= PNFS_NO_RPC;
+ 	rdata->pdata.lseg = lseg;
+ 	trypnfs = nfss->pnfs_curr_ld->ld_io_ops->read_pagelist(
+ 							&nfsi->layout,
+@@ -1609,7 +1584,6 @@ pnfs_readpages(struct nfs_read_data *rdata)
+ 							args->count,
+ 							rdata);
+ 	if (trypnfs == PNFS_NOT_ATTEMPTED) {
+-		rdata->pdata.pnfsflags &= ~PNFS_NO_RPC;
+ 		rdata->pdata.lseg = NULL;
+ 		put_lseg(lseg);
+ 	}
+@@ -1688,12 +1662,8 @@ pnfs_commit(struct nfs_write_data *data, int sync)
+ 	 * This will be done by passing the buck to the layout driver.
+ 	 */
+ 	data->pdata.lseg = NULL;
+-	if (!pnfs_use_rpc(nfss))
+-		data->pdata.pnfsflags |= PNFS_NO_RPC;
+ 	trypnfs = nfss->pnfs_curr_ld->ld_io_ops->commit(&nfsi->layout,
+ 							sync, data);
+-	if (trypnfs == PNFS_NOT_ATTEMPTED)
+-		data->pdata.pnfsflags &= ~PNFS_NO_RPC;
+ 	dprintk("%s End (trypnfs:%d)\n", __func__, trypnfs);
+ 	return trypnfs;
  }
 diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index 60bddc1..e802cec 100644
+index 75f6cf1..60bddc1 100644
 --- a/fs/nfs/pnfs.h
 +++ b/fs/nfs/pnfs.h
-@@ -185,16 +185,6 @@ static inline void pnfs_update_layout(struct inode *ino,
- 	}
+@@ -195,14 +195,6 @@ static inline int pnfs_get_read_status(struct nfs_read_data *data)
+ 	return data->pdata.pnfs_error;
  }
  
--static inline int pnfs_get_write_status(struct nfs_write_data *data)
+-static inline int pnfs_use_rpc(struct nfs_server *nfss)
 -{
--	return data->pdata.pnfs_error;
--}
+-	if (pnfs_enabled_sb(nfss))
+-		return pnfs_ld_use_rpc_code(nfss->pnfs_curr_ld);
 -
--static inline int pnfs_get_read_status(struct nfs_read_data *data)
--{
--	return data->pdata.pnfs_error;
+-	return 1;
 -}
 -
  #else  /* CONFIG_NFS_V4_1 */
  
  static inline void get_lseg(struct pnfs_layout_segment *lseg)
-diff --git a/fs/nfs/read.c b/fs/nfs/read.c
-index 9cabf88..6a18b9c 100644
---- a/fs/nfs/read.c
-+++ b/fs/nfs/read.c
-@@ -205,8 +205,7 @@ int pnfs_initiate_read(struct nfs_read_data *data, struct rpc_clnt *clnt,
- 		       const struct rpc_call_ops *call_ops)
- {
- 	if (pnfs_try_to_read_data(data, call_ops) == PNFS_ATTEMPTED)
--		return pnfs_get_read_status(data);
+@@ -253,11 +245,6 @@ static inline int pnfs_get_read_status(struct nfs_read_data *data)
+ 	return 0;
+ }
+ 
+-static inline int pnfs_use_rpc(struct nfs_server *nfss)
+-{
+-	return 1;
+-}
 -
-+		return 0;
- 	return nfs_initiate_read(data, clnt, call_ops);
- }
- 
-@@ -400,9 +399,6 @@ static void nfs_readpage_retry(struct rpc_task *task, struct nfs_read_data *data
- 	argp->offset += resp->count;
- 	argp->pgbase += resp->count;
- 	argp->count -= resp->count;
--#ifdef CONFIG_NFS_V4_1
--	data->pdata.pnfs_error = -EAGAIN;
--#endif /* CONFIG_NFS_V4_1 */
- 	nfs_restart_rpc(task, clp);
- }
- 
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index 65e2c62..2f80b20 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -851,8 +851,7 @@ int pnfs_initiate_write(struct nfs_write_data *data,
- 			int how)
+ static inline int pnfs_layoutcommit_inode(struct inode *inode, int sync)
  {
- 	if (pnfs_try_to_write_data(data, call_ops, how) == PNFS_ATTEMPTED)
--		return pnfs_get_write_status(data);
--
-+		return 0;
- 	return nfs_initiate_write(data, clnt, call_ops, how);
- }
+ 	return 0;
+diff --git a/include/linux/nfs4_pnfs.h b/include/linux/nfs4_pnfs.h
+index f6e97c8..a987d06 100644
+--- a/include/linux/nfs4_pnfs.h
++++ b/include/linux/nfs4_pnfs.h
+@@ -173,9 +173,6 @@ struct layoutdriver_io_operations {
+ };
  
-@@ -1258,9 +1257,6 @@ int nfs_writeback_done(struct rpc_task *task, struct nfs_write_data *data)
- 				 */
- 				argp->stable = NFS_FILE_SYNC;
- 			}
--#ifdef CONFIG_NFS_V4_1
--			data->pdata.pnfs_error = -EAGAIN;
--#endif /* CONFIG_NFS_V4_1 */
- 			nfs_restart_rpc(task, clp);
- 			return -EAGAIN;
- 		}
-@@ -1350,8 +1346,7 @@ int pnfs_initiate_commit(struct nfs_write_data *data,
- {
- 	if (pnfs &&
- 	    (pnfs_try_to_commit(data, &nfs_commit_ops, how) == PNFS_ATTEMPTED))
--		return pnfs_get_write_status(data);
+ enum layoutdriver_policy_flags {
+-	/* Should the full nfs rpc cleanup code be used after io */
+-	PNFS_USE_RPC_CODE		= 1 << 0,
 -
-+		return 0;
- 	return nfs_initiate_commit(data, clnt, &nfs_commit_ops, how);
- }
+ 	/* Should the NFS req. gather algorithm cross stripe boundaries? */
+ 	PNFS_GATHER_ACROSS_STRIPES	= 1 << 1,
  
+@@ -193,13 +190,6 @@ struct layoutdriver_policy_operations {
+ 	int (*pg_test)(struct nfs_pageio_descriptor *, struct nfs_page *, struct nfs_page *);
+ };
+ 
+-/* Should the full nfs rpc cleanup code be used after io */
+-static inline int
+-pnfs_ld_use_rpc_code(struct pnfs_layoutdriver_type *ld)
+-{
+-	return ld->ld_policy_ops->flags & PNFS_USE_RPC_CODE;
+-}
+-
+ /* Should the NFS req. gather algorithm cross stripe boundaries? */
+ static inline int
+ pnfs_ld_gather_across_stripes(struct pnfs_layoutdriver_type *ld)
 diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index aa41a3c..01d45ce 100644
+index 22113a1..aa41a3c 100644
 --- a/include/linux/nfs_xdr.h
 +++ b/include/linux/nfs_xdr.h
-@@ -973,7 +973,6 @@ struct pnfs_call_data {
- 	struct pnfs_layout_segment *lseg;
+@@ -967,8 +967,6 @@ struct nfs_page;
+ #define NFS_PAGEVEC_SIZE	(8U)
+ 
+ #if defined(CONFIG_NFS_V4_1)
+-/* pnfsflag values */
+-#define PNFS_NO_RPC		0x0001   /* non rpc result callback switch */
+ 
+ /* pnfs-specific data needed for read, write, and commit calls */
+ struct pnfs_call_data {
+@@ -976,7 +974,6 @@ struct pnfs_call_data {
  	const struct rpc_call_ops *call_ops;
  	u32			orig_count;	/* for retry via MDS */
--	int			pnfs_error;
+ 	int			pnfs_error;
+-	u8			pnfsflags;
  	u8			how;		/* for FLUSH_STABLE */
  };
  
