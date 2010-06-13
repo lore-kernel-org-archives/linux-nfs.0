@@ -1,95 +1,125 @@
-From: Benny Halevy <bhalevy@panasas.com>
-Subject: Re: [PATCH 1/1] pnfsd: fix dlm device naming
-Date: Sat, 12 Jun 2010 23:42:16 +0300
-Message-ID: <4C13F128.5040602@panasas.com>
-References: <1276274734-4996-1-git-send-email-andros@netapp.com> <1276274734-4996-2-git-send-email-andros@netapp.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org
-To: andros@netapp.com
+From: Fred Isaman <iisaman@netapp.com>
+Subject: [PATCH 1/4] pnfs-submit: filelayout: Stop using pnfs_call_done and friends
+Date: Sun, 13 Jun 2010 16:18:39 -0400
+Message-ID: <1276460322-13873-2-git-send-email-iisaman@netapp.com>
+References: <1276460322-13873-1-git-send-email-iisaman@netapp.com>
+To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:18982 "EHLO
-	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1752222Ab0FLUmT (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 12 Jun 2010 16:42:19 -0400
-In-Reply-To: <1276274734-4996-2-git-send-email-andros@netapp.com>
+Received: from mx2.netapp.com ([216.240.18.37]:24319 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754656Ab0FMUSv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 13 Jun 2010 16:18:51 -0400
+Received: from localhost.localdomain (kellyv2-lxp.hq.netapp.com [10.58.52.119] (may be forged))
+	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id o5DKIkfc012997
+	for <linux-nfs@vger.kernel.org>; Sun, 13 Jun 2010 13:18:47 -0700 (PDT)
+In-Reply-To: <1276460322-13873-1-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-merged under pnfs-all-2.6.35-rc2-2010-06-12
+The current handling is quite flawed.  The rpc_call_done function
+can restart the rpc, so doing anything after the call doesn't work.
 
-Thanks!
+In particular:
+The current code often ends trying to resend the rpc twice.
+The lseg_put should be in the release call, not the done call.
+There is no way to distinguish whether a retry should be through the DS or MDS
+If rpc_run_task returns an error, rpc_call_done won't even be called.
 
-Benny
+Signed-off-by: Fred Isaman <iisaman@netapp.com>
+---
+ fs/nfs/nfs4filelayout.c |   30 +++++++++++++++++++++++++++---
+ fs/nfs/pnfs.c           |    1 +
+ 2 files changed, 28 insertions(+), 3 deletions(-)
 
-On Jun. 11, 2010, 19:45 +0300, andros@netapp.com wrote:
-> From: Andy Adamson <andros@netapp.com>
-> 
-> Signed-off-by: Andy Adamson <andros@netapp.com>
-> ---
->  fs/nfsd/nfs4pnfsdlm.c |   19 +++++++++++++++----
->  1 files changed, 15 insertions(+), 4 deletions(-)
-> 
-> diff --git a/fs/nfsd/nfs4pnfsdlm.c b/fs/nfsd/nfs4pnfsdlm.c
-> index 1cf1b69..ae46126 100644
-> --- a/fs/nfsd/nfs4pnfsdlm.c
-> +++ b/fs/nfsd/nfs4pnfsdlm.c
-> @@ -47,12 +47,15 @@ struct dlm_device_entry {
->  };
->  
->  static struct dlm_device_entry *
-> -nfsd4_find_pnfs_dlm_device(char *disk_name)
-> +_nfsd4_find_pnfs_dlm_device(char *disk_name)
->  {
->  	struct dlm_device_entry *dlm_pdev;
->  
-> +	dprintk("--> %s  disk name %s\n", __func__, disk_name);
->  	spin_lock(&dlm_device_list_lock);
->  	list_for_each_entry(dlm_pdev, &dlm_device_list, dlm_dev_list) {
-> +		dprintk("%s Look for dlm_pdev %s\n", __func__,
-> +			dlm_pdev->disk_name);
->  		if (!memcmp(dlm_pdev->disk_name, disk_name, strlen(disk_name))) {
->  			spin_unlock(&dlm_device_list_lock);
->  			return dlm_pdev;
-> @@ -62,6 +65,14 @@ nfsd4_find_pnfs_dlm_device(char *disk_name)
->  	return NULL;
->  }
->  
-> +static struct dlm_device_entry *
-> +nfsd4_find_pnfs_dlm_device(struct super_block *sb) {
-> +	char dname[BDEVNAME_SIZE];
-> +
-> +	bdevname(sb->s_bdev, dname);
-> +	return _nfsd4_find_pnfs_dlm_device(dname);
-> +}
-> +
->  ssize_t
->  nfsd4_get_pnfs_dlm_device_list(char *buf, ssize_t buflen)
->  {
-> @@ -150,7 +161,7 @@ nfsd4_set_pnfs_dlm_device(char *pnfs_dlm_device, int len)
->  	dprintk("%s disk_name %s num_ds %d ds_list %s\n", __func__,
->  		new->disk_name, new->num_ds, new->ds_list);
->  
-> -	found = nfsd4_find_pnfs_dlm_device(new->disk_name);
-> +	found = _nfsd4_find_pnfs_dlm_device(new->disk_name);
->  	if (found) {
->  		/* FIXME: should compare found->ds_list with new->ds_list
->  		 * and if it is different, kick off a CB_NOTIFY change
-> @@ -243,7 +254,7 @@ static int nfsd4_pnfs_dlm_getdevinfo(struct super_block *sb,
->  	/*
->  	 * If the DS list has not been established, return -EINVAL
->  	 */
-> -	dlm_pdev = nfsd4_find_pnfs_dlm_device(sb->s_bdev->bd_disk->disk_name);
-> +	dlm_pdev = nfsd4_find_pnfs_dlm_device(sb);
->  	if (!dlm_pdev) {
->  		dprintk("%s: DEBUG: disk %s Not Found\n", __func__,
->  			sb->s_bdev->bd_disk->disk_name);
-> @@ -339,7 +350,7 @@ static int dlm_ino_hash(struct inode *ino)
->  	/* If can't find the inode block device in the pnfs_dlm_deivce list
->  	 * then don't hand out a layout
->  	 */
-> -	de = nfsd4_find_pnfs_dlm_device(ino->i_sb->s_bdev->bd_disk->disk_name);
-> +	de = nfsd4_find_pnfs_dlm_device(ino->i_sb);
->  	if (!de)
->  		return -1;
->  	hash_mask = de->num_ds - 1;
+diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+index e6d45b8..472b613 100644
+--- a/fs/nfs/nfs4filelayout.c
++++ b/fs/nfs/nfs4filelayout.c
+@@ -54,6 +54,7 @@
+ #include "nfs4filelayout.h"
+ #include "nfs4_fs.h"
+ #include "internal.h"
++#include "pnfs.h"
+ 
+ #define NFSDBG_FACILITY         NFSDBG_PNFS_LD
+ 
+@@ -151,7 +152,17 @@ static void filelayout_read_call_done(struct rpc_task *task, void *data)
+ 		rdata->args.offset = rdata->fldata.orig_offset;
+ 	}
+ 
+-	pnfs_callback_ops->nfs_readlist_complete(rdata);
++	/* Note this may cause RPC to be resent */
++	rdata->pdata.call_ops->rpc_call_done(task, data);
++}
++
++static void filelayout_read_release(void *data)
++{
++	struct nfs_read_data *rdata = (struct nfs_read_data *)data;
++
++	put_lseg(rdata->pdata.lseg);
++	rdata->pdata.lseg = NULL;
++	rdata->pdata.call_ops->rpc_release(data);
+ }
+ 
+ static void filelayout_write_call_done(struct rpc_task *task, void *data)
+@@ -164,17 +175,29 @@ static void filelayout_write_call_done(struct rpc_task *task, void *data)
+ 		wdata->args.offset = wdata->fldata.orig_offset;
+ 	}
+ 
+-	pnfs_callback_ops->nfs_writelist_complete(wdata);
++	/* Note this may cause RPC to be resent */
++	wdata->pdata.call_ops->rpc_call_done(task, data);
++}
++
++static void filelayout_write_release(void *data)
++{
++	struct nfs_write_data *wdata = (struct nfs_write_data *)data;
++
++	put_lseg(wdata->pdata.lseg);
++	wdata->pdata.lseg = NULL;
++	wdata->pdata.call_ops->rpc_release(data);
+ }
+ 
+ struct rpc_call_ops filelayout_read_call_ops = {
+ 	.rpc_call_prepare = nfs_read_prepare,
+ 	.rpc_call_done = filelayout_read_call_done,
++	.rpc_release = filelayout_read_release,
+ };
+ 
+ struct rpc_call_ops filelayout_write_call_ops = {
+ 	.rpc_call_prepare = nfs_write_prepare,
+ 	.rpc_call_done = filelayout_write_call_done,
++	.rpc_release = filelayout_write_release,
+ };
+ 
+ /* Perform sync or async reads.
+@@ -539,12 +562,13 @@ static void filelayout_commit_call_done(struct rpc_task *task, void *data)
+ {
+ 	struct nfs_write_data *wdata = (struct nfs_write_data *)data;
+ 
+-	pnfs_callback_ops->nfs_commit_complete(wdata);
++	wdata->pdata.call_ops->rpc_call_done(task, data);
+ }
+ 
+ static struct rpc_call_ops filelayout_commit_call_ops = {
+ 	.rpc_call_prepare = nfs_write_prepare,
+ 	.rpc_call_done = filelayout_commit_call_done,
++	.rpc_release = filelayout_write_release,
+ };
+ 
+ /*
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 7d322c9..a4d1937 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -452,6 +452,7 @@ put_lseg(struct pnfs_layout_segment *lseg)
+ 	if (do_wake_up)
+ 		wake_up(&nfsi->lo_waitq);
+ }
++EXPORT_SYMBOL(put_lseg);
+ 
+ static inline u64
+ end_offset(u64 start, u64 len)
+-- 
+1.6.6.1
+
