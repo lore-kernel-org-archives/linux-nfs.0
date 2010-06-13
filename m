@@ -1,139 +1,30 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:5657 "EHLO mx1.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:27832 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751933Ab0FYPtM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 25 Jun 2010 11:49:12 -0400
-From: Jeff Layton <jlayton@redhat.com>
+	id S1754378Ab0FMUSv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 13 Jun 2010 16:18:51 -0400
+Received: from localhost.localdomain (kellyv2-lxp.hq.netapp.com [10.58.52.119] (may be forged))
+	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id o5DKIkfb012997
+	for <linux-nfs@vger.kernel.org>; Sun, 13 Jun 2010 13:18:47 -0700 (PDT)
+From: Fred Isaman <iisaman@netapp.com>
 To: linux-nfs@vger.kernel.org
-Cc: trond.myklebust@fys.uio.no, Staubach_Peter@emc.com, bfields@fieldses.org
-Subject: [PATCH 1/2] sunrpc: split the vs_hidden flag into TCP and UDP variants (try #2)
-Date: Fri, 25 Jun 2010 11:49:05 -0400
-Message-Id: <1277480946-23844-1-git-send-email-jlayton@redhat.com>
+Subject: [PATCH 0/4]: Fix EAGAIN handling for the filelayout
+Date: Sun, 13 Jun 2010 16:18:38 -0400
+Message-Id: <1276460322-13873-1-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
 MIME-Version: 1.0
 
-RFC3530 states:
+These patches remove pnfs_call_done and all the routines associated with it.
+They were quite buggy for filelayout, and tended to crash the client anytime
+EAGAIN handling was invoked (in particular on short reads.)
 
-   Where an NFS version 4 implementation supports operation over the IP
-   network protocol, the supported transports between NFS and IP MUST be
-   among the IETF-approved congestion control transport protocols, which
-   include TCP and SCTP
+The first patch just has filelayout avoid using them entirely. It should NOT
+be reverted in the post-submit.
 
-The NFS server currently registers the NFSv4 UDP port with the
-portmapper, which it really shouldn't do. This patch splits the
-vs_hidden flag into TCP and UDP variants. A later patch will make
-the NFS server skip NFSv4+UDP registration with rpcbind.
+The subsequent patches remove the unused code for pnfs-submit. It is
+expected they will be reverted in the post-submit.
 
-Reported-by: Sachin Prabhu <sprabhu@redhat.com>
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- fs/nfs/callback_xdr.c      |    3 ++-
- fs/nfsd/nfs2acl.c          |    1 -
- fs/nfsd/nfs3acl.c          |    1 -
- include/linux/sunrpc/svc.h |    5 +++--
- net/sunrpc/svc.c           |   15 +++++++++++----
- 5 files changed, 16 insertions(+), 9 deletions(-)
-
-diff --git a/fs/nfs/callback_xdr.c b/fs/nfs/callback_xdr.c
-index 05af212..30baf97 100644
---- a/fs/nfs/callback_xdr.c
-+++ b/fs/nfs/callback_xdr.c
-@@ -783,7 +783,8 @@ struct svc_version nfs4_callback_version1 = {
- 	.vs_proc = nfs4_callback_procedures1,
- 	.vs_xdrsize = NFS4_CALLBACK_XDRSIZE,
- 	.vs_dispatch = NULL,
--	.vs_hidden = 1,
-+	.vs_hidden_tcp = true,
-+	.vs_hidden_udp = true,
- };
- 
- struct svc_version nfs4_callback_version4 = {
-diff --git a/fs/nfsd/nfs2acl.c b/fs/nfsd/nfs2acl.c
-index 6aa5590..ec602b4 100644
---- a/fs/nfsd/nfs2acl.c
-+++ b/fs/nfsd/nfs2acl.c
-@@ -352,5 +352,4 @@ struct svc_version	nfsd_acl_version2 = {
- 		.vs_proc	= nfsd_acl_procedures2,
- 		.vs_dispatch	= nfsd_dispatch,
- 		.vs_xdrsize	= NFS3_SVC_XDRSIZE,
--		.vs_hidden	= 0,
- };
-diff --git a/fs/nfsd/nfs3acl.c b/fs/nfsd/nfs3acl.c
-index a596e9d..1949a4c 100644
---- a/fs/nfsd/nfs3acl.c
-+++ b/fs/nfsd/nfs3acl.c
-@@ -262,6 +262,5 @@ struct svc_version	nfsd_acl_version3 = {
- 		.vs_proc	= nfsd_acl_procedures3,
- 		.vs_dispatch	= nfsd_dispatch,
- 		.vs_xdrsize	= NFS3_SVC_XDRSIZE,
--		.vs_hidden	= 0,
- };
- 
-diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
-index 5a3085b..27ff713 100644
---- a/include/linux/sunrpc/svc.h
-+++ b/include/linux/sunrpc/svc.h
-@@ -370,8 +370,9 @@ struct svc_version {
- 	struct svc_procedure *	vs_proc;	/* per-procedure info */
- 	u32			vs_xdrsize;	/* xdrsize needed for this version */
- 
--	unsigned int		vs_hidden : 1;	/* Don't register with portmapper.
--						 * Only used for nfsacl so far. */
-+	/* these flags control whether program is registered with rpcbind */
-+	bool			vs_hidden_tcp;
-+	bool			vs_hidden_udp;
- 
- 	/* Override dispatch function (e.g. when caching replies).
- 	 * A return value of 0 means drop the request. 
-diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
-index d9017d6..487792c 100644
---- a/net/sunrpc/svc.c
-+++ b/net/sunrpc/svc.c
-@@ -868,6 +868,7 @@ int svc_register(const struct svc_serv *serv, const int family,
- 	struct svc_program	*progp;
- 	unsigned int		i;
- 	int			error = 0;
-+	bool			vs_hidden;
- 
- 	BUG_ON(proto == 0 && port == 0);
- 
-@@ -876,16 +877,20 @@ int svc_register(const struct svc_serv *serv, const int family,
- 			if (progp->pg_vers[i] == NULL)
- 				continue;
- 
-+			vs_hidden = (proto == IPPROTO_UDP) ?
-+				    progp->pg_vers[i]->vs_hidden_udp :
-+				    progp->pg_vers[i]->vs_hidden_tcp;
-+
- 			dprintk("svc: svc_register(%sv%d, %s, %u, %u)%s\n",
- 					progp->pg_name,
- 					i,
--					proto == IPPROTO_UDP?  "udp" : "tcp",
-+					proto == IPPROTO_UDP ?  "udp" : "tcp",
- 					port,
- 					family,
--					progp->pg_vers[i]->vs_hidden?
-+					vs_hidden ?
- 						" (but not telling portmap)" : "");
- 
--			if (progp->pg_vers[i]->vs_hidden)
-+			if (vs_hidden)
- 				continue;
- 
- 			error = __svc_register(progp->pg_name, progp->pg_prog,
-@@ -943,7 +948,9 @@ static void svc_unregister(const struct svc_serv *serv)
- 		for (i = 0; i < progp->pg_nvers; i++) {
- 			if (progp->pg_vers[i] == NULL)
- 				continue;
--			if (progp->pg_vers[i]->vs_hidden)
-+
-+			if (progp->pg_vers[i]->vs_hidden_tcp &&
-+			    progp->pg_vers[i]->vs_hidden_udp)
- 				continue;
- 
- 			__svc_unregister(progp->pg_prog, i, progp->pg_name);
--- 
-1.5.5.6
+Fred
 
