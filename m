@@ -1,58 +1,82 @@
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: Re: [PATCH 1/1] nfs4 use mandatory attribute file type in
- nfs4_get_root
-Date: Mon, 14 Jun 2010 18:02:06 -0400
-Message-ID: <1276552926.3953.8.camel@heimdal.trondhjem.org>
-References: <1276203143-2118-1-git-send-email-andros@netapp.com>
+From: Benny Halevy <bhalevy@panasas.com>
+Subject: Re: [PATCH 13/15] NFSv41: Clean up exclusive create
+Date: Mon, 14 Jun 2010 19:13:58 -0400
+Message-ID: <4C16B7B6.6000100@panasas.com>
+References: <1276552299-6625-1-git-send-email-Trond.Myklebust@netapp.com> <1276552299-6625-2-git-send-email-Trond.Myklebust@netapp.com> <1276552299-6625-3-git-send-email-Trond.Myklebust@netapp.com> <1276552299-6625-4-git-send-email-Trond.Myklebust@netapp.com> <1276552299-6625-5-git-send-email-Trond.Myklebust@netapp.com> <1276552299-6625-6-git-send-email-Trond.Myklebust@netapp.com> <1276552299-6625-7-git-send-email-Trond.Myklebust@netapp.com> <1276552299-6625-8-git-send-email-Trond.Myklebust@netapp.com> <1276552299-6625-9-git-send-email-Trond.Myklebust@netapp.com> <1276552299-6625-10-git-send-email-Trond.Myklebust@netapp.com> <1276552299-6625-11-git-send-email-Trond.Myklebust@netapp.com> <1276552299-6625-12-git-send-email-Trond.Myklebust@netapp.com> <1276552299-6625-13-git-send-email-Trond.
+ Myklebust@netapp.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset=ISO-8859-1
 Cc: linux-nfs@vger.kernel.org
-To: andros@netapp.com
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:30718 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751244Ab0FNWCI convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 14 Jun 2010 18:02:08 -0400
-Received: from svlrsexc2-prd.hq.netapp.com (svlrsexc2-prd.hq.netapp.com [10.57.115.31])
-	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id o5EM28mr024756
-	for <linux-nfs@vger.kernel.org>; Mon, 14 Jun 2010 15:02:08 -0700 (PDT)
-In-Reply-To: <1276203143-2118-1-git-send-email-andros@netapp.com>
+Received: from mail-vw0-f46.google.com ([209.85.212.46]:40512 "EHLO
+	mail-vw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750893Ab0FNXOA (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 14 Jun 2010 19:14:00 -0400
+Received: by vws13 with SMTP id 13so373579vws.19
+        for <linux-nfs@vger.kernel.org>; Mon, 14 Jun 2010 16:13:59 -0700 (PDT)
+In-Reply-To: <1276552299-6625-13-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 2010-06-10 at 16:52 -0400, andros@netapp.com wrote:
-> From: Andy Adamson <andros@netapp.com>
-> 
-> decode_attr_type sets fattr->mode.
-
-Well, yes... It sets part of fattr->mode. More specifically, though, it
-sets the file type part, so your patch is correct.
-
-I'll fix up the above changelog entry so that it is a bit more
-descriptive. How about the following?
-
-        S_ISDIR(fsinfo.fattr->mode) checks the file type rather than the
-        mode bits, so we should be checking for the NFS_ATTR_FATTR_TYPE
-        fattr property.
-
-> 
-> Signed-off-by: Andy Adamson <andros@netapp.com>
+On Jun. 14, 2010, 17:51 -0400, Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
+> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 > ---
->  fs/nfs/getroot.c |    2 +-
->  1 files changed, 1 insertions(+), 1 deletions(-)
+>  fs/nfs/nfs4proc.c       |   17 ++++++-----------
+>  include/linux/nfs_xdr.h |    6 ++++--
+>  2 files changed, 10 insertions(+), 13 deletions(-)
 > 
-> diff --git a/fs/nfs/getroot.c b/fs/nfs/getroot.c
-> index 7428f7d..a70e446 100644
-> --- a/fs/nfs/getroot.c
-> +++ b/fs/nfs/getroot.c
-> @@ -146,7 +146,7 @@ int nfs4_get_rootfh(struct nfs_server *server, struct nfs_fh *mntfh)
->  		goto out;
->  	}
->  
-> -	if (!(fsinfo.fattr->valid & NFS_ATTR_FATTR_MODE)
-> +	if (!(fsinfo.fattr->valid & NFS_ATTR_FATTR_TYPE)
->  			|| !S_ISDIR(fsinfo.fattr->mode)) {
->  		printk(KERN_ERR "nfs4_get_rootfh:"
->  		       " getroot encountered non-directory\n");
+> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+> index ef613ea..e9913de 100644
+> --- a/fs/nfs/nfs4proc.c
+> +++ b/fs/nfs/nfs4proc.c
+> @@ -744,19 +744,14 @@ static struct nfs4_opendata *nfs4_opendata_alloc(struct path *path,
+>  	p->o_arg.server = server;
+>  	p->o_arg.bitmask = server->attr_bitmask;
+>  	p->o_arg.claim = NFS4_OPEN_CLAIM_NULL;
+> -	if (flags & O_EXCL) {
+> -		if (nfs4_has_persistent_session(server->nfs_client)) {
+> -			/* GUARDED */
+> -			p->o_arg.u.attrs = &p->attrs;
+> -			memcpy(&p->attrs, attrs, sizeof(p->attrs));
 
+What about this case?
+Aren't we losing the attrs?
+
+Benny
+
+> -		} else { /* EXCLUSIVE4_1 */
+> -			u32 *s = (u32 *) p->o_arg.u.verifier.data;
+> -			s[0] = jiffies;
+> -			s[1] = current->pid;
+> -		}
+> -	} else if (flags & O_CREAT) {
+> +	if (flags & O_CREAT) {
+> +		u32 *s;
+> +
+>  		p->o_arg.u.attrs = &p->attrs;
+>  		memcpy(&p->attrs, attrs, sizeof(p->attrs));
+> +		s = (u32 *) p->o_arg.u.verifier.data;
+> +		s[0] = jiffies;
+> +		s[1] = current->pid;
+>  	}
+>  	p->c_arg.fh = &p->o_res.fh;
+>  	p->c_arg.stateid = &p->o_res.stateid;
+> diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+> index 51914d7..a319cb9 100644
+> --- a/include/linux/nfs_xdr.h
+> +++ b/include/linux/nfs_xdr.h
+> @@ -196,8 +196,10 @@ struct nfs_openargs {
+>  	__u64                   clientid;
+>  	__u64                   id;
+>  	union {
+> -		struct iattr *  attrs;    /* UNCHECKED, GUARDED */
+> -		nfs4_verifier   verifier; /* EXCLUSIVE */
+> +		struct {
+> +			struct iattr *  attrs;    /* UNCHECKED, GUARDED */
+> +			nfs4_verifier   verifier; /* EXCLUSIVE */
+> +		};
+>  		nfs4_stateid	delegation;		/* CLAIM_DELEGATE_CUR */
+>  		fmode_t		delegation_type;	/* CLAIM_PREVIOUS */
+>  	} u;
 
