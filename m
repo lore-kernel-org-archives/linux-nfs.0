@@ -1,65 +1,59 @@
-From: Benny Halevy <bhalevy@panasas.com>
+From: Lukas Hejtmanek <xhejtman@ics.muni.cz>
 Subject: Re: pNFS timeouts
-Date: Mon, 14 Jun 2010 10:11:30 -0400
-Message-ID: <4C163892.20201@panasas.com>
+Date: Mon, 14 Jun 2010 16:23:32 +0200
+Message-ID: <20100614142332.GB17703@ics.muni.cz>
 References: <20100614085157.GS17703@ics.muni.cz>
+ <4C163892.20201@panasas.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-2
+Content-Type: text/plain; charset=iso-8859-2
 Cc: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
-To: Lukas Hejtmanek <xhejtman@ics.muni.cz>
+To: Benny Halevy <bhalevy@panasas.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:37435 "EHLO
-	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1753276Ab0FNOLa (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 14 Jun 2010 10:11:30 -0400
-In-Reply-To: <20100614085157.GS17703@ics.muni.cz>
+Received: from minas.ics.muni.cz ([147.251.4.40]:48126 "EHLO minas.ics.muni.cz"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754533Ab0FNOXc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 14 Jun 2010 10:23:32 -0400
+In-Reply-To: <4C163892.20201@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Jun. 14, 2010, 4:51 -0400, Lukas Hejtmanek <xhejtman@ics.muni.cz> wrote:
-> Hi,
-> 
-> I'm playing with pNFS (spnfs layouts) using one MDS and one DS. I have
-> a client that mount pNFS volume. 
-> 
-> I can touch (create) files on that volume immediately:
-> time touch c
-> 
-> real    0m0.005s
-> user    0m0.000s
-> sys     0m0.000s
-> 
-> But creating files with a content suffers from approx. 15 secs timeout:
-> 
-> dd if=/dev/zero of=testf10 bs=1M count=1 
-> 1+0 records in
-> 1+0 records out
-> 1048576 bytes (1.0 MB) copied, 15.1156 s, 69.4 kB/s
-> 
-> overwriting the same file works OK:
-> 
-> dd if=/dev/zero of=testf10 bs=1M count=1
-> 1+0 records in
-> 1+0 records out
-> 1048576 bytes (1.0 MB) copied, 0.0258294 s, 40.6 MB/s
-> 
-> I think this is an interesting part of the debug logs:
-> [69615.791232] pnfs_writeback_done: Begin (status -10008)
+Hi,
 
-I'm not sure if that explains the 15 seconds delay.
-I wonder if it could be related to the nfsv4 grace period.
-Does this happen if you wait for a couple minutes after
-the server restarts before starting the test?
+On Mon, Jun 14, 2010 at 10:11:30AM -0400, Benny Halevy wrote:
+> I'm not sure if that explains the 15 seconds delay.
+> I wonder if it could be related to the nfsv4 grace period.
+> Does this happen if you wait for a couple minutes after
+> the server restarts before starting the test?
 
-Benny
+I repeated the test after approx. 6 hours the server was restarted and =
+it is
+the same, the delay still happens.=20
 
-> [69615.791238] put_lseg: lseg ffff88003b987840 ref 7 valid 1
-> [69615.794450] NFS:  6195 nfs_writeback_done (status -10008 count 8192)
-> [69615.794450] pnfs4_write_done DS write
-> [69615.794450] nfs41_sequence_done: Error 0 free the slot 
-> [69615.794450] nfs4_free_slot: free_slotid 0 highest_used_slotid 5
-> [69615.794450] <-- pnfs4_write_done status= -11
-> [69615.990137] filelayout_write_call_done new off 8192 orig offset 8192
-> 
-> Any ideas? 
-> 
+But it could be something related, it complains about lease renewal:
+
+Jun 14 16:17:00 undomiel1 kernel: [187434.936220] nfs4_renew_state: don=
+e
+Jun 14 16:17:00 undomiel1 kernel: [187434.936492] nfs41_sequence_done: =
+Error 0 free the slot
+Jun 14 16:17:00 undomiel1 kernel: [187434.936500] nfs4_free_slot: free_=
+slotid 0 highest_used_slotid -1
+Jun 14 16:17:00 undomiel1 kernel: [187434.936507] nfs41_sequence_call_d=
+one rpc_cred ffff88003d7a0300
+Jun 14 16:17:00 undomiel1 kernel: [187434.936514] <-- nfs41_sequence_ca=
+ll_done
+Jun 14 16:17:00 undomiel1 kernel: [187434.936522] nfs4_schedule_state_r=
+enewal: requeueing work. Lease period =3D 60
+Jun 14 16:17:00 undomiel1 kernel: [187434.936530] --> nfs_put_client({2=
+})
+Jun 14 16:17:16 undomiel1 kernel: [187450.536014] nfs4_renew_state: sta=
+rt
+Jun 14 16:17:16 undomiel1 kernel: [187450.536045] nfs4_renew_state: fai=
+led to call renewd. Reason: lease not expired
+Jun 14 16:17:16 undomiel1 kernel: [187450.536056] nfs4_schedule_state_r=
+enewal: requeueing work. Lease period =3D 38
+
+The full log can be found at:
+http://undomiel.ics.muni.cz/tmp/nfs-log.txt
+
+--=20
+Luk=E1=B9 Hejtm=E1nek
