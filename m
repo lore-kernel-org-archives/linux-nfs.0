@@ -1,89 +1,129 @@
-From: Benny Halevy <bhalevy@panasas.com>
-Subject: Re: [PATCH] pnfsd: Add IP address validation to	nfsd4_set_pnfs_dlm_device()
-Date: Mon, 14 Jun 2010 16:09:16 -0400
-Message-ID: <4C168C6C.5060508@panasas.com>
-References: <20100614200001.GJ2745@fieldses.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: linux-nfs@vger.kernel.org, eanderle@umich.edu
-To: "J. Bruce Fields" <bfields@fieldses.org>
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: [PATCH 03/15] NFSv4.1: Simplify nfs41_sequence_done()
+Date: Mon, 14 Jun 2010 17:51:27 -0400
+Message-ID: <1276552299-6625-3-git-send-email-Trond.Myklebust@netapp.com>
+References: <1276552299-6625-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1276552299-6625-2-git-send-email-Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:34196 "EHLO
-	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1755123Ab0FNUJT (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 14 Jun 2010 16:09:19 -0400
-In-Reply-To: <20100614200001.GJ2745@fieldses.org>
+Received: from mx2.netapp.com ([216.240.18.37]:53421 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756726Ab0FNVvn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 14 Jun 2010 17:51:43 -0400
+In-Reply-To: <1276552299-6625-2-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 2010-06-14 16:00, J. Bruce Fields wrote:
-> From: Eric Anderle <eanderle@umich.edu>
-> 
-> We should catch errors in the format at the time the list is given to
-> the kernel, rather than just returning garbage to the client and letting
-> the client fail.
-> 
-> Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
-> ---
->  fs/nfsd/nfs4pnfsdlm.c |   29 +++++++++++++++++++++++------
->  1 files changed, 23 insertions(+), 6 deletions(-)
-> 
-> diff --git a/fs/nfsd/nfs4pnfsdlm.c b/fs/nfsd/nfs4pnfsdlm.c
-> index 1cf1b69..b6d9f23 100644
-> --- a/fs/nfsd/nfs4pnfsdlm.c
-> +++ b/fs/nfsd/nfs4pnfsdlm.c
-> @@ -26,6 +26,7 @@
->  #include <linux/nfsd/debug.h>
->  #include <linux/nfsd/nfs4pnfsdlm.h>
->  #include <linux/nfsd/nfs4layoutxdr.h>
-> +#include <linux/sunrpc/clnt.h>
->  
->  #include "nfsfh.h"
->  #include "nfsd.h"
-> @@ -87,6 +88,24 @@ out:
->  	return ret;
->  }
->  
-> +bool nfsd4_validate_pnfs_dlm_device(char *ds_list, int len, int *num_ds)
+Nobody uses the rpc_status parameter.
 
-Is "len" used?
+It is not obvious why we need the struct nfs_client argument either, when
+we already have that information in the session.
 
-Benny
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ fs/nfs/nfs4proc.c |   26 ++++++++++++--------------
+ 1 files changed, 12 insertions(+), 14 deletions(-)
 
-> +{
-> +	char *start = ds_list;
-> +
-> +	*num_ds = 0;
-> +
-> +	while (*start) {
-> +		struct sockaddr_storage tempAddr;
-> +		int ipLen = strcspn(start, ",");
-> +
-> +		if (!rpc_pton(start, ipLen, (struct sockaddr *)&tempAddr, sizeof(tempAddr)))
-> +			return false;
-> +		(*num_ds)++;
-> +		start += ipLen + 1;
-> +	}
-> +	return true;
-> +}
-> +
->  /*
->   * pnfs_dlm_device string format:
->   *     block-device-path:<ds1 ipv4 address>,<ds2 ipv4 address>
-> @@ -140,12 +159,10 @@ nfsd4_set_pnfs_dlm_device(char *pnfs_dlm_device, int len)
->  		goto out_free;
->  	memcpy(new->ds_list, bufp, len);
->  
-> -	/* count the number of comma-delimited DS IPs */
-> -	new->num_ds = 1;
-> -	while ((bufp = strchr(bufp, ',')) != NULL) {
-> -		new->num_ds++;
-> -		bufp++;
-> -	}
-> +
-> +	/*  validate the ips */
-> +	if (!nfsd4_validate_pnfs_dlm_device(new->ds_list, len, &(new->num_ds)))
-> +		goto out_free;
->  
->  	dprintk("%s disk_name %s num_ds %d ds_list %s\n", __func__,
->  		new->disk_name, new->num_ds, new->ds_list);
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index a7a2032..67b2359 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -370,12 +370,11 @@ static void nfs41_check_drain_session_complete(struct nfs4_session *ses)
+ 	complete(&ses->complete);
+ }
+ 
+-static void nfs41_sequence_free_slot(const struct nfs_client *clp,
+-			      struct nfs4_sequence_res *res)
++static void nfs41_sequence_free_slot(struct nfs4_sequence_res *res)
+ {
+ 	struct nfs4_slot_table *tbl;
+ 
+-	tbl = &clp->cl_session->fc_slot_table;
++	tbl = &res->sr_session->fc_slot_table;
+ 	if (res->sr_slotid == NFS4_MAX_SLOT_TABLE) {
+ 		/* just wake up the next guy waiting since
+ 		 * we may have not consumed a slot after all */
+@@ -385,14 +384,12 @@ static void nfs41_sequence_free_slot(const struct nfs_client *clp,
+ 
+ 	spin_lock(&tbl->slot_tbl_lock);
+ 	nfs4_free_slot(tbl, res->sr_slotid);
+-	nfs41_check_drain_session_complete(clp->cl_session);
++	nfs41_check_drain_session_complete(res->sr_session);
+ 	spin_unlock(&tbl->slot_tbl_lock);
+ 	res->sr_slotid = NFS4_MAX_SLOT_TABLE;
+ }
+ 
+-static void nfs41_sequence_done(struct nfs_client *clp,
+-				struct nfs4_sequence_res *res,
+-				int rpc_status)
++static void nfs41_sequence_done(struct nfs4_sequence_res *res)
+ {
+ 	unsigned long timestamp;
+ 	struct nfs4_slot_table *tbl;
+@@ -413,7 +410,8 @@ static void nfs41_sequence_done(struct nfs_client *clp,
+ 
+ 	/* Check the SEQUENCE operation status */
+ 	if (res->sr_status == 0) {
+-		tbl = &clp->cl_session->fc_slot_table;
++		struct nfs_client *clp = res->sr_session->clp;
++		tbl = &res->sr_session->fc_slot_table;
+ 		slot = tbl->slots + res->sr_slotid;
+ 		/* Update the slot's sequence and clientid lease timer */
+ 		++slot->seq_nr;
+@@ -429,7 +427,7 @@ static void nfs41_sequence_done(struct nfs_client *clp,
+ out:
+ 	/* The session may be reset by one of the error handlers. */
+ 	dprintk("%s: Error %d free the slot \n", __func__, res->sr_status);
+-	nfs41_sequence_free_slot(clp, res);
++	nfs41_sequence_free_slot(res);
+ }
+ 
+ /*
+@@ -582,7 +580,7 @@ static void nfs41_call_sync_done(struct rpc_task *task, void *calldata)
+ {
+ 	struct nfs41_call_sync_data *data = calldata;
+ 
+-	nfs41_sequence_done(data->clp, data->seq_res, task->tk_status);
++	nfs41_sequence_done(data->seq_res);
+ }
+ 
+ struct rpc_call_ops nfs41_call_sync_ops = {
+@@ -662,7 +660,7 @@ static void nfs4_sequence_done(const struct nfs_server *server,
+ {
+ #ifdef CONFIG_NFS_V4_1
+ 	if (nfs4_has_session(server->nfs_client))
+-		nfs41_sequence_done(server->nfs_client, res, rpc_status);
++		nfs41_sequence_done(res);
+ #endif /* CONFIG_NFS_V4_1 */
+ }
+ 
+@@ -4606,7 +4604,7 @@ static void nfs4_get_lease_time_done(struct rpc_task *task, void *calldata)
+ 			(struct nfs4_get_lease_time_data *)calldata;
+ 
+ 	dprintk("--> %s\n", __func__);
+-	nfs41_sequence_done(data->clp, &data->res->lr_seq_res, task->tk_status);
++	nfs41_sequence_done(&data->res->lr_seq_res);
+ 	switch (task->tk_status) {
+ 	case -NFS4ERR_DELAY:
+ 	case -NFS4ERR_GRACE:
+@@ -5095,7 +5093,7 @@ static void nfs41_sequence_call_done(struct rpc_task *task, void *data)
+ 	struct nfs4_sequence_data *calldata = data;
+ 	struct nfs_client *clp = calldata->clp;
+ 
+-	nfs41_sequence_done(clp, task->tk_msg.rpc_resp, task->tk_status);
++	nfs41_sequence_done(task->tk_msg.rpc_resp);
+ 
+ 	if (task->tk_status < 0) {
+ 		dprintk("%s ERROR %d\n", __func__, task->tk_status);
+@@ -5183,7 +5181,7 @@ static void nfs4_reclaim_complete_done(struct rpc_task *task, void *data)
+ 	struct nfs4_sequence_res *res = &calldata->res.seq_res;
+ 
+ 	dprintk("--> %s\n", __func__);
+-	nfs41_sequence_done(clp, res, task->tk_status);
++	nfs41_sequence_done(res);
+ 	switch (task->tk_status) {
+ 	case 0:
+ 	case -NFS4ERR_COMPLETE_ALREADY:
+-- 
+1.7.0.1
+
