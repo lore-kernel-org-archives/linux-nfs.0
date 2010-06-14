@@ -1,129 +1,117 @@
 From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH 03/15] NFSv4.1: Simplify nfs41_sequence_done()
-Date: Mon, 14 Jun 2010 17:51:27 -0400
-Message-ID: <1276552299-6625-3-git-send-email-Trond.Myklebust@netapp.com>
-References: <1276552299-6625-1-git-send-email-Trond.Myklebust@netapp.com>
- <1276552299-6625-2-git-send-email-Trond.Myklebust@netapp.com>
+Subject: [PATCH 01/15] NFSv41: Fix a memory leak in nfs41_proc_async_sequence()
+Date: Mon, 14 Jun 2010 17:51:25 -0400
+Message-ID: <1276552299-6625-1-git-send-email-Trond.Myklebust@netapp.com>
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
 Received: from mx2.netapp.com ([216.240.18.37]:53421 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756726Ab0FNVvn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 14 Jun 2010 17:51:43 -0400
-In-Reply-To: <1276552299-6625-2-git-send-email-Trond.Myklebust@netapp.com>
+	id S1756453Ab0FNVvm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 14 Jun 2010 17:51:42 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Nobody uses the rpc_status parameter.
-
-It is not obvious why we need the struct nfs_client argument either, when
-we already have that information in the session.
+If the call to rpc_call_async() fails, then the arguments will not be
+freed, since there will be no call to nfs41_sequence_call_done
 
 Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
- fs/nfs/nfs4proc.c |   26 ++++++++++++--------------
- 1 files changed, 12 insertions(+), 14 deletions(-)
+ fs/nfs/nfs4proc.c |   38 ++++++++++++++++++++------------------
+ 1 files changed, 20 insertions(+), 18 deletions(-)
 
 diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index a7a2032..67b2359 100644
+index 70015dd..bb70ff7 100644
 --- a/fs/nfs/nfs4proc.c
 +++ b/fs/nfs/nfs4proc.c
-@@ -370,12 +370,11 @@ static void nfs41_check_drain_session_complete(struct nfs4_session *ses)
- 	complete(&ses->complete);
+@@ -5078,18 +5078,27 @@ static int nfs4_proc_sequence(struct nfs_client *clp, struct rpc_cred *cred)
+ 				       &res, args.sa_cache_this, 1);
  }
  
--static void nfs41_sequence_free_slot(const struct nfs_client *clp,
--			      struct nfs4_sequence_res *res)
-+static void nfs41_sequence_free_slot(struct nfs4_sequence_res *res)
++struct nfs4_sequence_data {
++	struct nfs_client *clp;
++	struct nfs4_sequence_args args;
++	struct nfs4_sequence_res res;
++};
++
+ static void nfs41_sequence_release(void *data)
  {
- 	struct nfs4_slot_table *tbl;
+-	struct nfs_client *clp = (struct nfs_client *)data;
++	struct nfs4_sequence_data *calldata = data;
++	struct nfs_client *clp = calldata->clp;
  
--	tbl = &clp->cl_session->fc_slot_table;
-+	tbl = &res->sr_session->fc_slot_table;
- 	if (res->sr_slotid == NFS4_MAX_SLOT_TABLE) {
- 		/* just wake up the next guy waiting since
- 		 * we may have not consumed a slot after all */
-@@ -385,14 +384,12 @@ static void nfs41_sequence_free_slot(const struct nfs_client *clp,
- 
- 	spin_lock(&tbl->slot_tbl_lock);
- 	nfs4_free_slot(tbl, res->sr_slotid);
--	nfs41_check_drain_session_complete(clp->cl_session);
-+	nfs41_check_drain_session_complete(res->sr_session);
- 	spin_unlock(&tbl->slot_tbl_lock);
- 	res->sr_slotid = NFS4_MAX_SLOT_TABLE;
+ 	if (atomic_read(&clp->cl_count) > 1)
+ 		nfs4_schedule_state_renewal(clp);
+ 	nfs_put_client(clp);
++	kfree(calldata);
  }
  
--static void nfs41_sequence_done(struct nfs_client *clp,
--				struct nfs4_sequence_res *res,
--				int rpc_status)
-+static void nfs41_sequence_done(struct nfs4_sequence_res *res)
+ static void nfs41_sequence_call_done(struct rpc_task *task, void *data)
  {
- 	unsigned long timestamp;
- 	struct nfs4_slot_table *tbl;
-@@ -413,7 +410,8 @@ static void nfs41_sequence_done(struct nfs_client *clp,
+-	struct nfs_client *clp = (struct nfs_client *)data;
++	struct nfs4_sequence_data *calldata = data;
++	struct nfs_client *clp = calldata->clp;
  
- 	/* Check the SEQUENCE operation status */
- 	if (res->sr_status == 0) {
--		tbl = &clp->cl_session->fc_slot_table;
-+		struct nfs_client *clp = res->sr_session->clp;
-+		tbl = &res->sr_session->fc_slot_table;
- 		slot = tbl->slots + res->sr_slotid;
- 		/* Update the slot's sequence and clientid lease timer */
- 		++slot->seq_nr;
-@@ -429,7 +427,7 @@ static void nfs41_sequence_done(struct nfs_client *clp,
+ 	nfs41_sequence_done(clp, task->tk_msg.rpc_resp, task->tk_status);
+ 
+@@ -5106,19 +5115,16 @@ static void nfs41_sequence_call_done(struct rpc_task *task, void *data)
+ 	}
+ 	dprintk("%s rpc_cred %p\n", __func__, task->tk_msg.rpc_cred);
  out:
- 	/* The session may be reset by one of the error handlers. */
- 	dprintk("%s: Error %d free the slot \n", __func__, res->sr_status);
--	nfs41_sequence_free_slot(clp, res);
-+	nfs41_sequence_free_slot(res);
+-	kfree(task->tk_msg.rpc_argp);
+-	kfree(task->tk_msg.rpc_resp);
+-
+ 	dprintk("<-- %s\n", __func__);
  }
  
- /*
-@@ -582,7 +580,7 @@ static void nfs41_call_sync_done(struct rpc_task *task, void *calldata)
+ static void nfs41_sequence_prepare(struct rpc_task *task, void *data)
  {
- 	struct nfs41_call_sync_data *data = calldata;
+-	struct nfs_client *clp;
++	struct nfs4_sequence_data *calldata = data;
++	struct nfs_client *clp = calldata->clp;
+ 	struct nfs4_sequence_args *args;
+ 	struct nfs4_sequence_res *res;
  
--	nfs41_sequence_done(data->clp, data->seq_res, task->tk_status);
-+	nfs41_sequence_done(data->seq_res);
- }
+-	clp = (struct nfs_client *)data;
+ 	args = task->tk_msg.rpc_argp;
+ 	res = task->tk_msg.rpc_resp;
  
- struct rpc_call_ops nfs41_call_sync_ops = {
-@@ -662,7 +660,7 @@ static void nfs4_sequence_done(const struct nfs_server *server,
+@@ -5136,8 +5142,7 @@ static const struct rpc_call_ops nfs41_sequence_ops = {
+ static int nfs41_proc_async_sequence(struct nfs_client *clp,
+ 				     struct rpc_cred *cred)
  {
- #ifdef CONFIG_NFS_V4_1
- 	if (nfs4_has_session(server->nfs_client))
--		nfs41_sequence_done(server->nfs_client, res, rpc_status);
-+		nfs41_sequence_done(res);
- #endif /* CONFIG_NFS_V4_1 */
+-	struct nfs4_sequence_args *args;
+-	struct nfs4_sequence_res *res;
++	struct nfs4_sequence_data *calldata;
+ 	struct rpc_message msg = {
+ 		.rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_SEQUENCE],
+ 		.rpc_cred = cred,
+@@ -5145,20 +5150,17 @@ static int nfs41_proc_async_sequence(struct nfs_client *clp,
+ 
+ 	if (!atomic_inc_not_zero(&clp->cl_count))
+ 		return -EIO;
+-	args = kzalloc(sizeof(*args), GFP_NOFS);
+-	res = kzalloc(sizeof(*res), GFP_NOFS);
+-	if (!args || !res) {
+-		kfree(args);
+-		kfree(res);
++	calldata = kmalloc(sizeof(*calldata), GFP_NOFS);
++	if (calldata == NULL) {
+ 		nfs_put_client(clp);
+ 		return -ENOMEM;
+ 	}
+-	res->sr_slotid = NFS4_MAX_SLOT_TABLE;
+-	msg.rpc_argp = args;
+-	msg.rpc_resp = res;
++	msg.rpc_argp = &calldata->args;
++	msg.rpc_resp = &calldata->res;
++	calldata->clp = clp;
+ 
+ 	return rpc_call_async(clp->cl_rpcclient, &msg, RPC_TASK_SOFT,
+-			      &nfs41_sequence_ops, (void *)clp);
++			      &nfs41_sequence_ops, calldata);
  }
  
-@@ -4606,7 +4604,7 @@ static void nfs4_get_lease_time_done(struct rpc_task *task, void *calldata)
- 			(struct nfs4_get_lease_time_data *)calldata;
- 
- 	dprintk("--> %s\n", __func__);
--	nfs41_sequence_done(data->clp, &data->res->lr_seq_res, task->tk_status);
-+	nfs41_sequence_done(&data->res->lr_seq_res);
- 	switch (task->tk_status) {
- 	case -NFS4ERR_DELAY:
- 	case -NFS4ERR_GRACE:
-@@ -5095,7 +5093,7 @@ static void nfs41_sequence_call_done(struct rpc_task *task, void *data)
- 	struct nfs4_sequence_data *calldata = data;
- 	struct nfs_client *clp = calldata->clp;
- 
--	nfs41_sequence_done(clp, task->tk_msg.rpc_resp, task->tk_status);
-+	nfs41_sequence_done(task->tk_msg.rpc_resp);
- 
- 	if (task->tk_status < 0) {
- 		dprintk("%s ERROR %d\n", __func__, task->tk_status);
-@@ -5183,7 +5181,7 @@ static void nfs4_reclaim_complete_done(struct rpc_task *task, void *data)
- 	struct nfs4_sequence_res *res = &calldata->res.seq_res;
- 
- 	dprintk("--> %s\n", __func__);
--	nfs41_sequence_done(clp, res, task->tk_status);
-+	nfs41_sequence_done(res);
- 	switch (task->tk_status) {
- 	case 0:
- 	case -NFS4ERR_COMPLETE_ALREADY:
+ struct nfs4_reclaim_complete_data {
 -- 
 1.7.0.1
 
