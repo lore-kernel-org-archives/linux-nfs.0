@@ -1,76 +1,56 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH 1/3] nfsd: don't try to shut down nfs4 state handling
-	unless it's up
-Date: Sun, 13 Jun 2010 16:28:42 -0400
-Message-ID: <20100613202842.GA14132@fieldses.org>
-References: <1275924800-5214-1-git-send-email-jlayton@redhat.com> <1275924800-5214-2-git-send-email-jlayton@redhat.com> <20100608235828.GK26435@fieldses.org> <20100609062922.4bae21ac@corrin.poochiereds.net> <20100609180907.GB10953@fieldses.org> <20100609142943.60d31a11@tlielax.poochiereds.net>
+From: Lukas Hejtmanek <xhejtman@ics.muni.cz>
+Subject: pNFS timeouts
+Date: Mon, 14 Jun 2010 10:51:57 +0200
+Message-ID: <20100614085157.GS17703@ics.muni.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=iso-8859-2
 Cc: linux-nfs@vger.kernel.org
-To: Jeff Layton <jlayton@redhat.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:43867 "EHLO fieldses.org"
+Received: from minas.ics.muni.cz ([147.251.4.40]:46807 "EHLO minas.ics.muni.cz"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753430Ab0FMU2o (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 13 Jun 2010 16:28:44 -0400
-In-Reply-To: <20100609142943.60d31a11-9yPaYZwiELC+kQycOl6kW4xkIHaj4LzF@public.gmane.org>
+	id S1755531Ab0FNIv5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 14 Jun 2010 04:51:57 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Jun 09, 2010 at 02:29:43PM -0400, Jeff Layton wrote:
-> Ahh ok, I see what you're talking about now. Yeah, that should probably
-> also be fixed. I think we just need to ensure to shut down the state in
-> an error condition. Something like this compile-tested only patch?
-> 
-> From 19bd25ea9a76ea184e4c30831765e812ce19b0a5 Mon Sep 17 00:00:00 2001
-> From: Jeff Layton <jlayton@redhat.com>
-> Date: Wed, 9 Jun 2010 14:21:51 -0400
-> Subject: [PATCH] nfsd: shut down NFSv4 state when nfsd_svc encounters an error
-> 
-> Currently, it's left up in some situations. That could cause the grace
-> period to be shorter than it should be (along with other problems).
+Hi,
 
-The patch looks right to me, thanks.
+I'm playing with pNFS (spnfs layouts) using one MDS and one DS. I have
+a client that mount pNFS volume.=20
 
---b.
+I can touch (create) files on that volume immediately:
+time touch c
 
-> 
-> Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> ---
->  fs/nfsd/nfssvc.c |   11 +++++++----
->  1 files changed, 7 insertions(+), 4 deletions(-)
-> 
-> diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
-> index 06b2a26..a06ea99 100644
-> --- a/fs/nfsd/nfssvc.c
-> +++ b/fs/nfsd/nfssvc.c
-> @@ -402,9 +402,9 @@ nfsd_svc(unsigned short port, int nrservs)
->  	nfsd_reset_versions();
->  
->  	error = nfsd_create_serv();
-> -
->  	if (error)
-> -		goto out;
-> +		goto shutdown_state;
-> +
->  	error = nfsd_init_socks(port);
->  	if (error)
->  		goto failure;
-> @@ -416,9 +416,12 @@ nfsd_svc(unsigned short port, int nrservs)
->  		 * so subtract 1
->  		 */
->  		error = nfsd_serv->sv_nrthreads - 1;
-> - failure:
-> +failure:
->  	svc_destroy(nfsd_serv);		/* Release server */
-> - out:
-> +shutdown_state:
-> +	if (error < 0)
-> +		nfs4_state_shutdown();
-> +out:
->  	mutex_unlock(&nfsd_mutex);
->  	return error;
->  }
-> -- 
-> 1.5.5.6
-> 
+real    0m0.005s
+user    0m0.000s
+sys     0m0.000s
+
+But creating files with a content suffers from approx. 15 secs timeout:
+
+dd if=3D/dev/zero of=3Dtestf10 bs=3D1M count=3D1=20
+1+0 records in
+1+0 records out
+1048576 bytes (1.0 MB) copied, 15.1156 s, 69.4 kB/s
+
+overwriting the same file works OK:
+
+dd if=3D/dev/zero of=3Dtestf10 bs=3D1M count=3D1
+1+0 records in
+1+0 records out
+1048576 bytes (1.0 MB) copied, 0.0258294 s, 40.6 MB/s
+
+I think this is an interesting part of the debug logs:
+[69615.791232] pnfs_writeback_done: Begin (status -10008)
+[69615.791238] put_lseg: lseg ffff88003b987840 ref 7 valid 1
+[69615.794450] NFS:  6195 nfs_writeback_done (status -10008 count 8192)
+[69615.794450] pnfs4_write_done DS write
+[69615.794450] nfs41_sequence_done: Error 0 free the slot=20
+[69615.794450] nfs4_free_slot: free_slotid 0 highest_used_slotid 5
+[69615.794450] <-- pnfs4_write_done status=3D -11
+[69615.990137] filelayout_write_call_done new off 8192 orig offset 8192
+
+Any ideas?=20
+
+--=20
+Luk=E1=B9 Hejtm=E1nek
