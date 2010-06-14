@@ -1,117 +1,62 @@
 From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH 01/15] NFSv41: Fix a memory leak in nfs41_proc_async_sequence()
-Date: Mon, 14 Jun 2010 17:51:25 -0400
-Message-ID: <1276552299-6625-1-git-send-email-Trond.Myklebust@netapp.com>
+Subject: [PATCH 02/15] NFSv4.1: Clean up nfs4_setup_sequence
+Date: Mon, 14 Jun 2010 17:51:26 -0400
+Message-ID: <1276552299-6625-2-git-send-email-Trond.Myklebust@netapp.com>
+References: <1276552299-6625-1-git-send-email-Trond.Myklebust@netapp.com>
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
 Received: from mx2.netapp.com ([216.240.18.37]:53421 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756453Ab0FNVvm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 14 Jun 2010 17:51:42 -0400
+	id S1756675Ab0FNVvn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 14 Jun 2010 17:51:43 -0400
+In-Reply-To: <1276552299-6625-1-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-If the call to rpc_call_async() fails, then the arguments will not be
-freed, since there will be no call to nfs41_sequence_call_done
+Firstly, there is little point in first zeroing out the entire struct
+nfs4_sequence_res, and then initialising all fields save one. Just
+initialise the last field to zero...
+
+Secondly, nfs41_setup_sequence() has only 2 possible return values: 0, or
+-EAGAIN, so there is no 'terminate rpc task' case.
 
 Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
- fs/nfs/nfs4proc.c |   38 ++++++++++++++++++++------------------
- 1 files changed, 20 insertions(+), 18 deletions(-)
+ fs/nfs/nfs4proc.c |    7 +------
+ 1 files changed, 1 insertions(+), 6 deletions(-)
 
 diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 70015dd..bb70ff7 100644
+index bb70ff7..a7a2032 100644
 --- a/fs/nfs/nfs4proc.c
 +++ b/fs/nfs/nfs4proc.c
-@@ -5078,18 +5078,27 @@ static int nfs4_proc_sequence(struct nfs_client *clp, struct rpc_cred *cred)
- 				       &res, args.sa_cache_this, 1);
- }
+@@ -480,7 +480,6 @@ static int nfs41_setup_sequence(struct nfs4_session *session,
+ 	if (res->sr_slotid != NFS4_MAX_SLOT_TABLE)
+ 		return 0;
  
-+struct nfs4_sequence_data {
-+	struct nfs_client *clp;
-+	struct nfs4_sequence_args args;
-+	struct nfs4_sequence_res res;
-+};
-+
- static void nfs41_sequence_release(void *data)
- {
--	struct nfs_client *clp = (struct nfs_client *)data;
-+	struct nfs4_sequence_data *calldata = data;
-+	struct nfs_client *clp = calldata->clp;
+-	memset(res, 0, sizeof(*res));
+ 	res->sr_slotid = NFS4_MAX_SLOT_TABLE;
+ 	tbl = &session->fc_slot_table;
  
- 	if (atomic_read(&clp->cl_count) > 1)
- 		nfs4_schedule_state_renewal(clp);
- 	nfs_put_client(clp);
-+	kfree(calldata);
- }
- 
- static void nfs41_sequence_call_done(struct rpc_task *task, void *data)
- {
--	struct nfs_client *clp = (struct nfs_client *)data;
-+	struct nfs4_sequence_data *calldata = data;
-+	struct nfs_client *clp = calldata->clp;
- 
- 	nfs41_sequence_done(clp, task->tk_msg.rpc_resp, task->tk_status);
- 
-@@ -5106,19 +5115,16 @@ static void nfs41_sequence_call_done(struct rpc_task *task, void *data)
- 	}
- 	dprintk("%s rpc_cred %p\n", __func__, task->tk_msg.rpc_cred);
+@@ -525,6 +524,7 @@ static int nfs41_setup_sequence(struct nfs4_session *session,
+ 	res->sr_session = session;
+ 	res->sr_slotid = slotid;
+ 	res->sr_renewal_time = jiffies;
++	res->sr_status_flags = 0;
+ 	/*
+ 	 * sr_status is only set in decode_sequence, and so will remain
+ 	 * set to 1 if an rpc level failure occurs.
+@@ -548,11 +548,6 @@ int nfs4_setup_sequence(struct nfs_client *clp,
+ 		goto out;
+ 	ret = nfs41_setup_sequence(clp->cl_session, args, res, cache_reply,
+ 				   task);
+-	if (ret && ret != -EAGAIN) {
+-		/* terminate rpc task */
+-		task->tk_status = ret;
+-		task->tk_action = NULL;
+-	}
  out:
--	kfree(task->tk_msg.rpc_argp);
--	kfree(task->tk_msg.rpc_resp);
--
- 	dprintk("<-- %s\n", __func__);
- }
- 
- static void nfs41_sequence_prepare(struct rpc_task *task, void *data)
- {
--	struct nfs_client *clp;
-+	struct nfs4_sequence_data *calldata = data;
-+	struct nfs_client *clp = calldata->clp;
- 	struct nfs4_sequence_args *args;
- 	struct nfs4_sequence_res *res;
- 
--	clp = (struct nfs_client *)data;
- 	args = task->tk_msg.rpc_argp;
- 	res = task->tk_msg.rpc_resp;
- 
-@@ -5136,8 +5142,7 @@ static const struct rpc_call_ops nfs41_sequence_ops = {
- static int nfs41_proc_async_sequence(struct nfs_client *clp,
- 				     struct rpc_cred *cred)
- {
--	struct nfs4_sequence_args *args;
--	struct nfs4_sequence_res *res;
-+	struct nfs4_sequence_data *calldata;
- 	struct rpc_message msg = {
- 		.rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_SEQUENCE],
- 		.rpc_cred = cred,
-@@ -5145,20 +5150,17 @@ static int nfs41_proc_async_sequence(struct nfs_client *clp,
- 
- 	if (!atomic_inc_not_zero(&clp->cl_count))
- 		return -EIO;
--	args = kzalloc(sizeof(*args), GFP_NOFS);
--	res = kzalloc(sizeof(*res), GFP_NOFS);
--	if (!args || !res) {
--		kfree(args);
--		kfree(res);
-+	calldata = kmalloc(sizeof(*calldata), GFP_NOFS);
-+	if (calldata == NULL) {
- 		nfs_put_client(clp);
- 		return -ENOMEM;
- 	}
--	res->sr_slotid = NFS4_MAX_SLOT_TABLE;
--	msg.rpc_argp = args;
--	msg.rpc_resp = res;
-+	msg.rpc_argp = &calldata->args;
-+	msg.rpc_resp = &calldata->res;
-+	calldata->clp = clp;
- 
- 	return rpc_call_async(clp->cl_rpcclient, &msg, RPC_TASK_SOFT,
--			      &nfs41_sequence_ops, (void *)clp);
-+			      &nfs41_sequence_ops, calldata);
- }
- 
- struct nfs4_reclaim_complete_data {
+ 	dprintk("<-- %s status=%d\n", __func__, ret);
+ 	return ret;
 -- 
 1.7.0.1
 
