@@ -1,130 +1,65 @@
-From: Alex Samad <alex-SGFoFqf0RKf0CCvOHzKKcA@public.gmane.org>
-Subject: Unable to mount with udp and vers=4 screws up uid/gid
-Date: Mon, 14 Jun 2010 20:34:06 +1000
-Message-ID: <0AD72BA9-0C2D-45C7-9F80-24E407832938@samad.com.au>
-References: <AANLkTinOBIbuEFGKbPHP95zhBtUifFpIRdxkJr8cXCvn@mail.gmail.com>
-Mime-Version: 1.0 (iPhone Mail 7D11)
-Content-Type: text/plain;
-	charset=us-ascii;
-	format=flowed;
-	delsp=yes
-To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+From: Benny Halevy <bhalevy@panasas.com>
+Subject: Re: pNFS timeouts
+Date: Mon, 14 Jun 2010 10:11:30 -0400
+Message-ID: <4C163892.20201@panasas.com>
+References: <20100614085157.GS17703@ics.muni.cz>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-2
+Cc: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
+To: Lukas Hejtmanek <xhejtman@ics.muni.cz>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-px0-f174.google.com ([209.85.212.174]:60593 "EHLO
-	mail-px0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755469Ab0FNKeS (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 14 Jun 2010 06:34:18 -0400
-Received: by pxi8 with SMTP id 8so2715052pxi.19
-        for <linux-nfs@vger.kernel.org>; Mon, 14 Jun 2010 03:34:18 -0700 (PDT)
+Received: from daytona.panasas.com ([67.152.220.89]:37435 "EHLO
+	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1753276Ab0FNOLa (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 14 Jun 2010 10:11:30 -0400
+In-Reply-To: <20100614085157.GS17703@ics.muni.cz>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Jun. 14, 2010, 4:51 -0400, Lukas Hejtmanek <xhejtman@ics.muni.cz> wrote:
+> Hi,
+> 
+> I'm playing with pNFS (spnfs layouts) using one MDS and one DS. I have
+> a client that mount pNFS volume. 
+> 
+> I can touch (create) files on that volume immediately:
+> time touch c
+> 
+> real    0m0.005s
+> user    0m0.000s
+> sys     0m0.000s
+> 
+> But creating files with a content suffers from approx. 15 secs timeout:
+> 
+> dd if=/dev/zero of=testf10 bs=1M count=1 
+> 1+0 records in
+> 1+0 records out
+> 1048576 bytes (1.0 MB) copied, 15.1156 s, 69.4 kB/s
+> 
+> overwriting the same file works OK:
+> 
+> dd if=/dev/zero of=testf10 bs=1M count=1
+> 1+0 records in
+> 1+0 records out
+> 1048576 bytes (1.0 MB) copied, 0.0258294 s, 40.6 MB/s
+> 
+> I think this is an interesting part of the debug logs:
+> [69615.791232] pnfs_writeback_done: Begin (status -10008)
 
->
+I'm not sure if that explains the 15 seconds delay.
+I wonder if it could be related to the nfsv4 grace period.
+Does this happen if you wait for a couple minutes after
+the server restarts before starting the test?
 
-> Hi
->
-> I am having some problem with nfs-kernel on a debian amd64 (sid)  i am
-> using version (1:1.2.2-1).
->
-> when I do a tcpdump on my nfs machine and do a mount -o vers=4,udp
-> nfs:/exports/video /exports/video/ it fails
->
->
-> mount -o vers=3,udp  nfs:/exports/video /exports/video/
-> mount.nfs: mount to NFS server 'nfs:/exports/video' failed: timed  
-> out, giving up
->
->
-> and with tcpdump, I see the request from from the client and I see the
-> reply ok from the nfs machine, but it seem like the nfs packet doesn't
-> make it to the wire, machines on the same network doesn't see the
-> packet.
->
-> on the nfs server I have a bridge interface br0 => eth0 eth1 eth2  
-> eth3 vde0
->
-> on vde0 I have attached virtualbox 3.2.4, and when I look on the vde
-> switch with tcpdump I don't see the reply packet.
->
-> I have done some limited testing for udp and it seems to be working,
-> traced dns packets
->
-> I can mount tcp, but if I user vers4 i get wierd gid uid numbers
->
-> ls -l
-> drwxrwsr-x  2 4294967294 4294967294 4.1k Oct 25  2009 Funnies
->
->
->
-> rpcinfo -p
->   program vers proto   port
->    100000    2   tcp    111  portmapper
->    100024    1   udp  32765  status
->    100024    1   tcp  32765  status
->    100021    1   udp  32768  nlockmgr
->    100021    3   udp  32768  nlockmgr
->    100021    4   udp  32768  nlockmgr
->    100021    1   tcp  32768  nlockmgr
->    100021    3   tcp  32768  nlockmgr
->    100021    4   tcp  32768  nlockmgr
->    100003    2   tcp   2049  nfs
->    100003    3   tcp   2049  nfs
->    100003    4   tcp   2049  nfs
->    100227    2   tcp   2049
->    100227    3   tcp   2049
->    100003    2   udp   2049  nfs
->    100003    3   udp   2049  nfs
->    100003    4   udp   2049  nfs
->    100227    2   udp   2049
->    100227    3   udp   2049
->    100005    1   udp  32767  mountd
->    100005    1   tcp  32767  mountd
->    100005    2   udp  32767  mountd
->    100005    2   tcp  32767  mountd
->    100005    3   udp  32767  mountd
->    100005    3   tcp  32767  mountd
->
-> on nfs restart
->
-> Jun 13 22:05:20 max kernel: [21723.836493] svc: failed to register
-> lockdv1 RPC service (errno 97).
-> Jun 13 22:05:20 max kernel: [21723.837490] NFSD: Using
-> /var/lib/nfs/v4recovery as the NFSv4 state recovery directory
-> Jun 13 22:05:20 max kernel: [21723.837507] NFSD: starting 90-second  
-> grace period
->
->
-> tcpdump on nfs machine of mount -o vers=4,udp  nfs:/exports/video
-> /exports/video/
->
-> tcpdump -pni br0 host 192.168.10.221 and not port 22
-> tcpdump: verbose output suppressed, use -v or -vv for full protocol  
-> decode
-> listening on br0, link-type EN10MB (Ethernet), capture size 65535  
-> bytes
-> 22:09:12.565697 IP 192.168.10.221.30209 > 192.168.11.10.53: 52743+ A?
-> nfs.hme1.samad.com.au. (39)
-> 22:09:12.565891 IP 192.168.11.10.53 > 192.168.10.221.30209: 52743*
-> 2/2/3 CNAME max.lan1.hme1.samad.com.au., A 192.168.11.10 (182)
-> 22:09:12.567227 IP 192.168.10.221.35835 > 192.168.11.10.53: 59898+ A?
-> nfs.hme1.samad.com.au. (39)
-> 22:09:12.567369 IP 192.168.11.10.53 > 192.168.10.221.35835: 59898*
-> 2/2/3 CNAME max.lan1.hme1.samad.com.au., A 192.168.11.10 (182)
-> 22:09:12.568676 IP 192.168.10.221.243695162 > 192.168.11.10.2049: 40  
-> null
-> 22:09:12.568726 IP 192.168.11.10.2049 > 192.168.10.221.243695162:
-> reply ok 24 null <<<<<<<<<<<<< this is missing on the client ....
-> 22:09:13.668091 IP 192.168.10.221.243695162 > 192.168.11.10.2049: 40  
-> null
-> 22:09:13.668158 IP 192.168.11.10.2049 > 192.168.10.221.243695162:
-> reply ok 24 null
-> 22:09:15.867266 IP 192.168.10.221.243695162 > 192.168.11.10.2049: 40  
-> null
-> 22:09:15.867345 IP 192.168.11.10.2049 > 192.168.10.221.243695162:
-> reply ok 24 null
-> 22:09:17.680551 IP 192.168.10.221.58336 > 192.168.11.10.25826: UDP,  
-> length 917
->
->
-> Help :)
+Benny
+
+> [69615.791238] put_lseg: lseg ffff88003b987840 ref 7 valid 1
+> [69615.794450] NFS:  6195 nfs_writeback_done (status -10008 count 8192)
+> [69615.794450] pnfs4_write_done DS write
+> [69615.794450] nfs41_sequence_done: Error 0 free the slot 
+> [69615.794450] nfs4_free_slot: free_slotid 0 highest_used_slotid 5
+> [69615.794450] <-- pnfs4_write_done status= -11
+> [69615.990137] filelayout_write_call_done new off 8192 orig offset 8192
+> 
+> Any ideas? 
+> 
