@@ -1,59 +1,55 @@
-From: Lukas Hejtmanek <xhejtman@ics.muni.cz>
+From: Benny Halevy <bhalevy@panasas.com>
 Subject: Re: pNFS timeouts
-Date: Mon, 14 Jun 2010 16:23:32 +0200
-Message-ID: <20100614142332.GB17703@ics.muni.cz>
-References: <20100614085157.GS17703@ics.muni.cz>
- <4C163892.20201@panasas.com>
+Date: Mon, 14 Jun 2010 10:46:55 -0400
+Message-ID: <4C1640DF.5070506@panasas.com>
+References: <20100614085157.GS17703@ics.muni.cz> <4C163892.20201@panasas.com> <20100614142332.GB17703@ics.muni.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-2
+Content-Type: text/plain; charset=ISO-8859-2
 Cc: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
-To: Benny Halevy <bhalevy@panasas.com>
+To: Lukas Hejtmanek <xhejtman@ics.muni.cz>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from minas.ics.muni.cz ([147.251.4.40]:48126 "EHLO minas.ics.muni.cz"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754533Ab0FNOXc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 14 Jun 2010 10:23:32 -0400
-In-Reply-To: <4C163892.20201@panasas.com>
+Received: from daytona.panasas.com ([67.152.220.89]:19861 "EHLO
+	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1754070Ab0FNOq5 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 14 Jun 2010 10:46:57 -0400
+In-Reply-To: <20100614142332.GB17703@ics.muni.cz>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi,
+On Jun. 14, 2010, 10:23 -0400, Lukas Hejtmanek <xhejtman@ics.muni.cz> wrote:
+> Hi,
+> 
+> On Mon, Jun 14, 2010 at 10:11:30AM -0400, Benny Halevy wrote:
+>> I'm not sure if that explains the 15 seconds delay.
+>> I wonder if it could be related to the nfsv4 grace period.
+>> Does this happen if you wait for a couple minutes after
+>> the server restarts before starting the test?
+> 
+> I repeated the test after approx. 6 hours the server was restarted and it is
+> the same, the delay still happens. 
+> 
+> But it could be something related, it complains about lease renewal:
+> 
+> Jun 14 16:17:00 undomiel1 kernel: [187434.936220] nfs4_renew_state: done
+> Jun 14 16:17:00 undomiel1 kernel: [187434.936492] nfs41_sequence_done: Error 0 free the slot
+> Jun 14 16:17:00 undomiel1 kernel: [187434.936500] nfs4_free_slot: free_slotid 0 highest_used_slotid -1
+> Jun 14 16:17:00 undomiel1 kernel: [187434.936507] nfs41_sequence_call_done rpc_cred ffff88003d7a0300
+> Jun 14 16:17:00 undomiel1 kernel: [187434.936514] <-- nfs41_sequence_call_done
+> Jun 14 16:17:00 undomiel1 kernel: [187434.936522] nfs4_schedule_state_renewal: requeueing work. Lease period = 60
+> Jun 14 16:17:00 undomiel1 kernel: [187434.936530] --> nfs_put_client({2})
+> Jun 14 16:17:16 undomiel1 kernel: [187450.536014] nfs4_renew_state: start
+> Jun 14 16:17:16 undomiel1 kernel: [187450.536045] nfs4_renew_state: failed to call renewd. Reason: lease not expired
+> Jun 14 16:17:16 undomiel1 kernel: [187450.536056] nfs4_schedule_state_renewal: requeueing work. Lease period = 38
 
-On Mon, Jun 14, 2010 at 10:11:30AM -0400, Benny Halevy wrote:
-> I'm not sure if that explains the 15 seconds delay.
-> I wonder if it could be related to the nfsv4 grace period.
-> Does this happen if you wait for a couple minutes after
-> the server restarts before starting the test?
+This looks like a complaint but it's actually saying that the "failure"
+is due to the fact that everything is OK (lease not expired)
 
-I repeated the test after approx. 6 hours the server was restarted and =
-it is
-the same, the delay still happens.=20
+BTW, is this the same issue that Jiri reported?
+http://marc.info/?l=linux-nfs&m=127619696004097&w=2
 
-But it could be something related, it complains about lease renewal:
+Benny
 
-Jun 14 16:17:00 undomiel1 kernel: [187434.936220] nfs4_renew_state: don=
-e
-Jun 14 16:17:00 undomiel1 kernel: [187434.936492] nfs41_sequence_done: =
-Error 0 free the slot
-Jun 14 16:17:00 undomiel1 kernel: [187434.936500] nfs4_free_slot: free_=
-slotid 0 highest_used_slotid -1
-Jun 14 16:17:00 undomiel1 kernel: [187434.936507] nfs41_sequence_call_d=
-one rpc_cred ffff88003d7a0300
-Jun 14 16:17:00 undomiel1 kernel: [187434.936514] <-- nfs41_sequence_ca=
-ll_done
-Jun 14 16:17:00 undomiel1 kernel: [187434.936522] nfs4_schedule_state_r=
-enewal: requeueing work. Lease period =3D 60
-Jun 14 16:17:00 undomiel1 kernel: [187434.936530] --> nfs_put_client({2=
-})
-Jun 14 16:17:16 undomiel1 kernel: [187450.536014] nfs4_renew_state: sta=
-rt
-Jun 14 16:17:16 undomiel1 kernel: [187450.536045] nfs4_renew_state: fai=
-led to call renewd. Reason: lease not expired
-Jun 14 16:17:16 undomiel1 kernel: [187450.536056] nfs4_schedule_state_r=
-enewal: requeueing work. Lease period =3D 38
-
-The full log can be found at:
-http://undomiel.ics.muni.cz/tmp/nfs-log.txt
-
---=20
-Luk=E1=B9 Hejtm=E1nek
+> 
+> The full log can be found at:
+> http://undomiel.ics.muni.cz/tmp/nfs-log.txt
+> 
