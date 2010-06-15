@@ -1,87 +1,95 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: [PATCH 07/10] pnfs-submit: avoid race handling return on close
-Date: Tue, 15 Jun 2010 13:33:50 -0400
-Message-ID: <1276623230.8767.48.camel@heimdal.trondhjem.org>
-References: <1276566375-24566-1-git-send-email-iisaman@netapp.com>
-	 <1276566375-24566-2-git-send-email-iisaman@netapp.com>
-	 <1276566375-24566-3-git-send-email-iisaman@netapp.com>
-	 <1276566375-24566-4-git-send-email-iisaman@netapp.com>
-	 <1276566375-24566-5-git-send-email-iisaman@netapp.com>
-	 <1276566375-24566-6-git-send-email-iisaman@netapp.com>
-	 <1276566375-24566-7-git-send-email-iisaman@netapp.com>
-	 <1276566375-24566-8-git-send-email-iisaman@netapp.com>
-	 <4C17B304.4070308@panasas.com>
-	 <AANLkTilDj2Ua_t77kk5Gj_t0vqEcOJFKlqODAj18KQnm@mail.gmail.com>
+From: Jeff Layton <jlayton@redhat.com>
+Subject: Re: [PATCH 1/3] nfsd: don't try to shut down nfs4 state handling
+ unless it's up
+Date: Tue, 15 Jun 2010 13:36:22 -0400
+Message-ID: <20100615133622.10dad9f2@corrin.poochiereds.net>
+References: <1275924800-5214-1-git-send-email-jlayton@redhat.com>
+	<1275924800-5214-2-git-send-email-jlayton@redhat.com>
+	<20100608235828.GK26435@fieldses.org>
+	<20100609062922.4bae21ac@corrin.poochiereds.net>
+	<20100609180907.GB10953@fieldses.org>
+	<20100609142943.60d31a11@tlielax.poochiereds.net>
+	<20100613202842.GA14132@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Cc: Benny Halevy <bhalevy@panasas.com>,
-	Fred Isaman <iisaman@netapp.com>, linux-nfs@vger.kernel.org
-To: Fred Isaman <iisaman@umich.edu>
+Content-Type: text/plain; charset=US-ASCII
+Cc: linux-nfs@vger.kernel.org
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-out2.uio.no ([129.240.10.58]:54725 "EHLO mail-out2.uio.no"
+Received: from mx1.redhat.com ([209.132.183.28]:38704 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754302Ab0FOReB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 15 Jun 2010 13:34:01 -0400
-In-Reply-To: <AANLkTilDj2Ua_t77kk5Gj_t0vqEcOJFKlqODAj18KQnm-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
+	id S1754225Ab0FORe0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 15 Jun 2010 13:34:26 -0400
+In-Reply-To: <20100613202842.GA14132@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 2010-06-15 at 13:32 -0400, Fred Isaman wrote:
-> On Tue, Jun 15, 2010 at 1:06 PM, Benny Halevy <bhalevy@panasas.com> wrote:
-> > On Jun. 14, 2010, 21:46 -0400, Fred Isaman <iisaman@netapp.com> wrote:
-> >> This prepares for the next patch.
-> >>
-> >> NOTE this doesn't really fix any current race, since
-> >> layout going to NULL is OK.  But layout changing from NULL to nonNULL
-> >> is a real race that is not fixed
-> >>
-> >> Signed-off-by: Fred Isaman <iisaman@netapp.com>
-> >> ---
-> >>  fs/nfs/nfs4state.c        |    5 +++--
-> >>  fs/nfs/pnfs.c             |   11 +++++++++++
-> >>  include/linux/nfs4_pnfs.h |    2 ++
-> >>  3 files changed, 16 insertions(+), 2 deletions(-)
-> >>
-> >> diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-> >> index d5144bd..8a7a64c 100644
-> >> --- a/fs/nfs/nfs4state.c
-> >> +++ b/fs/nfs/nfs4state.c
-> >> @@ -594,11 +594,12 @@ static void __nfs4_close(struct path *path, struct nfs4_state *state,
-> >>       } else {
-> >>  #ifdef CONFIG_NFS_V4_1
-> >>               struct nfs_inode *nfsi = NFS_I(state->inode);
-> >> +             int roc = nfs4_roc_iomode(nfsi);
-> >>
-> >> -             if (has_layout(nfsi) && nfsi->layout.roc_iomode) {
-> >> +             if (roc) {
-> >>                       struct nfs4_pnfs_layout_segment range;
-> >>
-> >> -                     range.iomode = nfsi->layout.roc_iomode;
-> >> +                     range.iomode = roc;
-> >>                       range.offset = 0;
-> >>                       range.length = NFS4_MAX_UINT64;
-> >>                       pnfs_return_layout(state->inode, &range, NULL,
-> >> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-> >> index 6def09c..bd11ec7 100644
-> >> --- a/fs/nfs/pnfs.c
-> >> +++ b/fs/nfs/pnfs.c
-> >> @@ -321,6 +321,17 @@ pnfs_unregister_layoutdriver(struct pnfs_layoutdriver_type *ld_type)
-> >>  #define BUG_ON_UNLOCKED_LO(lo) do {} while (0)
-> >>  #endif /* CONFIG_SMP */
-> >>
-> >> +int nfs4_roc_iomode(struct nfs_inode *nfsi)
-> >> +{
-> >> +     int rv = 0;
-> >> +
-> >> +     spin_lock(&pnfs_spinlock);
-> >
-> > Why take the global lock rather than nfsi->lo_lock?
-> >
-> > Benny
+On Sun, 13 Jun 2010 16:28:42 -0400
+"J. Bruce Fields" <bfields@fieldses.org> wrote:
+
+> On Wed, Jun 09, 2010 at 02:29:43PM -0400, Jeff Layton wrote:
+> > Ahh ok, I see what you're talking about now. Yeah, that should probably
+> > also be fixed. I think we just need to ensure to shut down the state in
+> > an error condition. Something like this compile-tested only patch?
+> > 
+> > From 19bd25ea9a76ea184e4c30831765e812ce19b0a5 Mon Sep 17 00:00:00 2001
+> > From: Jeff Layton <jlayton@redhat.com>
+> > Date: Wed, 9 Jun 2010 14:21:51 -0400
+> > Subject: [PATCH] nfsd: shut down NFSv4 state when nfsd_svc encounters an error
+> > 
+> > Currently, it's left up in some situations. That could cause the grace
+> > period to be shorter than it should be (along with other problems).
 > 
-> You are right. That would be a copy-paste error.
+> The patch looks right to me, thanks.
+> 
+> --b.
+> 
 
-What's an nfsi->lo_lock, and why do we need one?
+FWIW, I've done a bit of testing with this patch on top of the other
+set and it seems to be ok. That said, I don't have a reliable test that
+makes the state setup "leak" like this, so I can't really say much
+other than that it seems to be ok.
 
-Trond
+> > 
+> > Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> > ---
+> >  fs/nfsd/nfssvc.c |   11 +++++++----
+> >  1 files changed, 7 insertions(+), 4 deletions(-)
+> > 
+> > diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
+> > index 06b2a26..a06ea99 100644
+> > --- a/fs/nfsd/nfssvc.c
+> > +++ b/fs/nfsd/nfssvc.c
+> > @@ -402,9 +402,9 @@ nfsd_svc(unsigned short port, int nrservs)
+> >  	nfsd_reset_versions();
+> >  
+> >  	error = nfsd_create_serv();
+> > -
+> >  	if (error)
+> > -		goto out;
+> > +		goto shutdown_state;
+> > +
+> >  	error = nfsd_init_socks(port);
+> >  	if (error)
+> >  		goto failure;
+> > @@ -416,9 +416,12 @@ nfsd_svc(unsigned short port, int nrservs)
+> >  		 * so subtract 1
+> >  		 */
+> >  		error = nfsd_serv->sv_nrthreads - 1;
+> > - failure:
+> > +failure:
+> >  	svc_destroy(nfsd_serv);		/* Release server */
+> > - out:
+> > +shutdown_state:
+> > +	if (error < 0)
+> > +		nfs4_state_shutdown();
+> > +out:
+> >  	mutex_unlock(&nfsd_mutex);
+> >  	return error;
+> >  }
+> > -- 
+> > 1.5.5.6
+> > 
 
+
+-- 
+Jeff Layton <jlayton@redhat.com>
