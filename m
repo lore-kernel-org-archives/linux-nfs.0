@@ -1,38 +1,70 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: Help please
-Date: Tue, 15 Jun 2010 09:15:40 -0400
-Message-ID: <1276607740.4922.2.camel@heimdal.trondhjem.org>
-References: <AANLkTinQkRf_ZkN5qw1rsK5MY7pB1NjFd5CiLaPa-ZOU@mail.gmail.com>
+From: "William A. (Andy) Adamson" <androsadamson@gmail.com>
+Subject: Re: [PATCH 1/1] nfs4 use mandatory attribute file type in
+	nfs4_get_root
+Date: Tue, 15 Jun 2010 09:30:54 -0400
+Message-ID: <AANLkTilKwdBqGoujSBEKhk2OHioPAnjv8mCEAotvUIR4@mail.gmail.com>
+References: <1276203143-2118-1-git-send-email-andros@netapp.com>
+	<1276552926.3953.8.camel@heimdal.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset=ISO-8859-1
 Cc: linux-nfs@vger.kernel.org
-To: Alexander Samad <alex-SGFoFqf0RKf0CCvOHzKKcA@public.gmane.org>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-out2.uio.no ([129.240.10.58]:36062 "EHLO mail-out2.uio.no"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752525Ab0FONPp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 15 Jun 2010 09:15:45 -0400
-In-Reply-To: <AANLkTinQkRf_ZkN5qw1rsK5MY7pB1NjFd5CiLaPa-ZOU-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
+Received: from mail-gw0-f46.google.com ([74.125.83.46]:37806 "EHLO
+	mail-gw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752959Ab0FONa4 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 Jun 2010 09:30:56 -0400
+Received: by mail-gw0-f46.google.com with SMTP id 15so3148420gwj.19
+        for <linux-nfs@vger.kernel.org>; Tue, 15 Jun 2010 06:30:56 -0700 (PDT)
+In-Reply-To: <1276552926.3953.8.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 2010-06-15 at 12:01 +1000, Alexander Samad wrote:
-> Hi
-> 
-> sorry if this is a duplicate, I have been having some problem
-> subscribing to the ml.
-> 
-> 
-> 
-> I am having some problem with nfs-kernel on a debian amd64 (sid)  i am
-> using version (1:1.2.2-1).
-> 
-> when I do a tcpdump on my nfs machine and do a mount -o vers=4,udp
-> nfs:/exports/video /exports/video/ it fails
+On Mon, Jun 14, 2010 at 6:02 PM, Trond Myklebust
+<Trond.Myklebust@netapp.com> wrote:
+> On Thu, 2010-06-10 at 16:52 -0400, andros@netapp.com wrote:
+>> From: Andy Adamson <andros@netapp.com>
+>>
+>> decode_attr_type sets fattr->mode.
+>
+> Well, yes... It sets part of fattr->mode. More specifically, though, it
+> sets the file type part, so your patch is correct.
+>
+> I'll fix up the above changelog entry so that it is a bit more
+> descriptive. How about the following?
+>
+>        S_ISDIR(fsinfo.fattr->mode) checks the file type rather than the
+>        mode bits, so we should be checking for the NFS_ATTR_FATTR_TYPE
+>        fattr property.
 
-UDP transport is not supported by the NFSv4 protocol. Some servers may
-allow it, but most will not.
+Looks good.
 
-Cheers
-  Trond
+-->Andy
 
+>
+>>
+>> Signed-off-by: Andy Adamson <andros@netapp.com>
+>> ---
+>>  fs/nfs/getroot.c |    2 +-
+>>  1 files changed, 1 insertions(+), 1 deletions(-)
+>>
+>> diff --git a/fs/nfs/getroot.c b/fs/nfs/getroot.c
+>> index 7428f7d..a70e446 100644
+>> --- a/fs/nfs/getroot.c
+>> +++ b/fs/nfs/getroot.c
+>> @@ -146,7 +146,7 @@ int nfs4_get_rootfh(struct nfs_server *server, struct nfs_fh *mntfh)
+>>               goto out;
+>>       }
+>>
+>> -     if (!(fsinfo.fattr->valid & NFS_ATTR_FATTR_MODE)
+>> +     if (!(fsinfo.fattr->valid & NFS_ATTR_FATTR_TYPE)
+>>                       || !S_ISDIR(fsinfo.fattr->mode)) {
+>>               printk(KERN_ERR "nfs4_get_rootfh:"
+>>                      " getroot encountered non-directory\n");
+>
+>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
