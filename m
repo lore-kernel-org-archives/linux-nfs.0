@@ -1,86 +1,140 @@
 From: Fred Isaman <iisaman@netapp.com>
-Subject: [PATCH 04/10] pnfs-submit: add backpointer to pnfs_layout_type
-Date: Mon, 14 Jun 2010 21:46:09 -0400
-Message-ID: <1276566375-24566-5-git-send-email-iisaman@netapp.com>
+Subject: [PATCH 03/10] pnfs-submit: remove list_empty check from put_layout
+Date: Mon, 14 Jun 2010 21:46:08 -0400
+Message-ID: <1276566375-24566-4-git-send-email-iisaman@netapp.com>
 References: <1276566375-24566-1-git-send-email-iisaman@netapp.com>
  <1276566375-24566-2-git-send-email-iisaman@netapp.com>
  <1276566375-24566-3-git-send-email-iisaman@netapp.com>
- <1276566375-24566-4-git-send-email-iisaman@netapp.com>
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from citi.umich.edu ([141.212.112.111]:52266 "EHLO citi.umich.edu"
+Received: from citi.umich.edu ([141.212.112.111]:52268 "EHLO citi.umich.edu"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932181Ab0FOO3E (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	id S932185Ab0FOO3E (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
 	Tue, 15 Jun 2010 10:29:04 -0400
 Received: from localhost.localdomain (netapp-61.citi.umich.edu [141.212.112.250])
-	by citi.umich.edu (Postfix) with ESMTP id 4AB2618165
+	by citi.umich.edu (Postfix) with ESMTP id 3E63018164
 	for <linux-nfs@vger.kernel.org>; Tue, 15 Jun 2010 10:20:11 -0400 (EDT)
-In-Reply-To: <1276566375-24566-4-git-send-email-iisaman@netapp.com>
+In-Reply-To: <1276566375-24566-3-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Andy Adamson <andros@netapp.com>
-
-Note: This should be avoided by passing struct inode instead of struct
-pnfs_layout_type in all layoutdriver_io_operaitons.(which i suggest we do)
-
-In preparation to changing the nfs_inode->layout to be a pointer to
-struct pnfs_layout_type and allocate it in the alloc_layout layoutdriver io
-operation.
-
--->Andy Adamson <andros@netapp.com>
+The check on list empty before destroying a layout has always bothered me.
+Get rid of it by having lsegs take a reference on their backpointer.
 
 Signed-off-by: Fred Isaman <iisaman@netapp.com>
 ---
- fs/nfs/inode.c            |    1 +
- include/linux/nfs4_pnfs.h |    4 ++--
- include/linux/nfs_fs.h    |    1 +
- 3 files changed, 4 insertions(+), 2 deletions(-)
+ fs/nfs/pnfs.c |   36 +++++++++++++++++++++++++-----------
+ 1 files changed, 25 insertions(+), 11 deletions(-)
 
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index cdec539..be25ffc 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -1423,6 +1423,7 @@ static void pnfs_init_once(struct nfs_inode *nfsi)
- 	INIT_LIST_HEAD(&nfsi->layout.segs);
- 	nfsi->layout.refcount = 0;
- 	nfsi->layout.ld_data = NULL;
-+	nfsi->layout.lo_inode = &nfsi->vfs_inode;
- #endif /* CONFIG_NFS_V4_1 */
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 924e6fd..21192b6 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -348,19 +348,27 @@ put_layout(struct pnfs_layout_type *lo)
+ 	BUG_ON_UNLOCKED_LO(lo);
+ 	BUG_ON(lo->refcount <= 0);
+ 
+-	if (--lo->refcount == 0 && list_empty(&lo->segs)) {
++	lo->refcount--;
++
++	if (lo->refcount > 1)
++		return;
++
++	/* Make sure is removed from inode list */
++	clp = NFS_SERVER(&nfsi->vfs_inode)->nfs_client;
++	spin_lock(&clp->cl_lock);
++	if (!list_empty(&lo->lo_layouts)) {
++		list_del_init(&lo->lo_layouts);
++		lo->refcount--;
++	}
++	spin_unlock(&clp->cl_lock);
++
++	if (lo->refcount == 0) {
+ 		struct layoutdriver_io_operations *io_ops =
+ 			PNFS_LD_IO_OPS(lo);
+ 
+ 		dprintk("%s: freeing layout %p\n", __func__, lo->ld_data);
+ 		io_ops->free_layout(lo->ld_data);
+ 		lo->ld_data = NULL;
+-
+-		/* Unlist the layout. */
+-		clp = NFS_SERVER(&nfsi->vfs_inode)->nfs_client;
+-		spin_lock(&clp->cl_lock);
+-		list_del_init(&lo->lo_layouts);
+-		spin_unlock(&clp->cl_lock);
+ 	}
  }
  
-diff --git a/include/linux/nfs4_pnfs.h b/include/linux/nfs4_pnfs.h
-index a88cd69..9dac941 100644
---- a/include/linux/nfs4_pnfs.h
-+++ b/include/linux/nfs4_pnfs.h
-@@ -35,13 +35,13 @@ struct pnfs_layoutdriver_type {
- static inline struct nfs_inode *
- PNFS_NFS_INODE(struct pnfs_layout_type *lo)
- {
--	return container_of(lo, struct nfs_inode, layout);
-+	return NFS_I(lo->lo_inode);
+@@ -404,6 +412,7 @@ init_lseg(struct pnfs_layout_type *lo, struct pnfs_layout_segment *lseg)
+ 	kref_init(&lseg->kref);
+ 	lseg->valid = true;
+ 	lseg->layout = lo;
++	get_layout(lo);
  }
  
- static inline struct inode *
- PNFS_INODE(struct pnfs_layout_type *lo)
- {
--	return &PNFS_NFS_INODE(lo)->vfs_inode;
-+	return lo->lo_inode;
+ static void
+@@ -413,6 +422,7 @@ destroy_lseg(struct kref *kref)
+ 		container_of(kref, struct pnfs_layout_segment, kref);
+ 
+ 	dprintk("--> %s\n", __func__);
++	put_layout(lseg->layout);
+ 	PNFS_LD_IO_OPS(lseg->layout)->free_lseg(lseg);
  }
  
- static inline struct nfs_server *
-diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
-index 41026cb..95d8d53 100644
---- a/include/linux/nfs_fs.h
-+++ b/include/linux/nfs_fs.h
-@@ -116,6 +116,7 @@ struct pnfs_layout_type {
- 	 */
- 	loff_t                  pnfs_write_begin_pos;
- 	loff_t                  pnfs_write_end_pos;
-+	struct inode		*lo_inode;
- };
+@@ -897,9 +907,10 @@ alloc_init_layout(struct inode *ino)
+ 	void *ld_data;
+ 	struct pnfs_layout_type *lo;
+ 	struct layoutdriver_io_operations *io_ops;
++	struct nfs_inode *nfsi = NFS_I(ino);
  
- /*
+ 	io_ops = NFS_SERVER(ino)->pnfs_curr_ld->ld_io_ops;
+-	lo = &NFS_I(ino)->layout;
++	lo  = &nfsi->layout;
+ 	ld_data = io_ops->alloc_layout(ino);
+ 	if (!ld_data) {
+ 		printk(KERN_ERR
+@@ -908,11 +919,13 @@ alloc_init_layout(struct inode *ino)
+ 		return NULL;
+ 	}
+ 
++	spin_lock(&nfsi->lo_lock);
+ 	BUG_ON(lo->ld_data != NULL);
+ 	lo->ld_data = ld_data;
+ 	memset(&lo->stateid, 0, NFS4_STATEID_SIZE);
+ 	lo->refcount = 1;
+ 	lo->roc_iomode = 0;
++	spin_unlock(&nfsi->lo_lock);
+ 	return lo;
+ }
+ 
+@@ -970,8 +983,10 @@ get_lock_alloc_layout(struct inode *ino)
+ 			spin_lock(&nfsi->lo_lock);
+ 
+ 			spin_lock(&clp->cl_lock);
+-			if (list_empty(&lo->lo_layouts))
++			if (list_empty(&lo->lo_layouts)) {
+ 				list_add_tail(&lo->lo_layouts, &clp->cl_layouts);
++				get_layout(lo);
++			}
+ 			spin_unlock(&clp->cl_lock);
+ 		} else
+ 			lo = ERR_PTR(-ENOMEM);
+@@ -1259,14 +1274,13 @@ pnfs_layout_process(struct nfs4_pnfs_layoutget *lgp)
+ 		goto out;
+ 	}
+ 
++	spin_lock(&nfsi->lo_lock);
+ 	init_lseg(lo, lseg);
+ 	lseg->range = res->lseg;
+ 	if (lgp->lsegpp) {
+ 		get_lseg(lseg);
+ 		*lgp->lsegpp = lseg;
+ 	}
+-
+-	spin_lock(&nfsi->lo_lock);
+ 	pnfs_insert_layout(lo, lseg);
+ 
+ 	if (res->return_on_close) {
 -- 
 1.6.6.1
 
