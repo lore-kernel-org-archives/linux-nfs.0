@@ -1,147 +1,59 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: Unable to mount with udp and vers=4 screws up uid/gid
-Date: Tue, 15 Jun 2010 10:55:29 -0400
-Message-ID: <20100615145529.GB17437@fieldses.org>
-References: <AANLkTinOBIbuEFGKbPHP95zhBtUifFpIRdxkJr8cXCvn@mail.gmail.com> <0AD72BA9-0C2D-45C7-9F80-24E407832938@samad.com.au>
+Subject: Re: [PATCH] pnfsd: Add IP address validation to
+	nfsd4_set_pnfs_dlm_device()
+Date: Tue, 15 Jun 2010 10:55:50 -0400
+Message-ID: <20100615145550.GC17437@fieldses.org>
+References: <20100614200001.GJ2745@fieldses.org> <4C168C6C.5060508@panasas.com> <4C16C4AD.9000906@panasas.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-To: Alex Samad <alex-SGFoFqf0RKf0CCvOHzKKcA@public.gmane.org>
+Cc: eanderle@umich.edu, linux-nfs@vger.kernel.org
+To: Benny Halevy <bhalevy@panasas.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:50425 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:50428 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753413Ab0FOOz3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 15 Jun 2010 10:55:29 -0400
-In-Reply-To: <0AD72BA9-0C2D-45C7-9F80-24E407832938-SGFoFqf0RKf0CCvOHzKKcA@public.gmane.org>
+	id S1757939Ab0FOOzw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 15 Jun 2010 10:55:52 -0400
+In-Reply-To: <4C16C4AD.9000906@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Jun 14, 2010 at 08:34:06PM +1000, Alex Samad wrote:
->
->>
->
->> Hi
->>
->> I am having some problem with nfs-kernel on a debian amd64 (sid)  i am
->> using version (1:1.2.2-1).
->>
->> when I do a tcpdump on my nfs machine and do a mount -o vers=4,udp
->> nfs:/exports/video /exports/video/ it fails
->>
->>
->> mount -o vers=3,udp  nfs:/exports/video /exports/video/
->> mount.nfs: mount to NFS server 'nfs:/exports/video' failed: timed out, 
->> giving up
+On Mon, Jun 14, 2010 at 08:09:17PM -0400, Benny Halevy wrote:
+> On Jun. 14, 2010, 16:09 -0400, Benny Halevy <bhalevy@panasas.com> wrote:
+> > On 2010-06-14 16:00, J. Bruce Fields wrote:
+> >> From: Eric Anderle <eanderle@umich.edu>
+> >>
+> >> We should catch errors in the format at the time the list is given to
+> >> the kernel, rather than just returning garbage to the client and letting
+> >> the client fail.
+> >>
+> >> Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
+> >> ---
+> >>  fs/nfsd/nfs4pnfsdlm.c |   29 +++++++++++++++++++++++------
+> >>  1 files changed, 23 insertions(+), 6 deletions(-)
+> >>
+> >> diff --git a/fs/nfsd/nfs4pnfsdlm.c b/fs/nfsd/nfs4pnfsdlm.c
+> >> index 1cf1b69..b6d9f23 100644
+> >> --- a/fs/nfsd/nfs4pnfsdlm.c
+> >> +++ b/fs/nfsd/nfs4pnfsdlm.c
+> >> @@ -26,6 +26,7 @@
+> >>  #include <linux/nfsd/debug.h>
+> >>  #include <linux/nfsd/nfs4pnfsdlm.h>
+> >>  #include <linux/nfsd/nfs4layoutxdr.h>
+> >> +#include <linux/sunrpc/clnt.h>
+> >>  
+> >>  #include "nfsfh.h"
+> >>  #include "nfsd.h"
+> >> @@ -87,6 +88,24 @@ out:
+> >>  	return ret;
+> >>  }
+> >>  
+> >> +bool nfsd4_validate_pnfs_dlm_device(char *ds_list, int len, int *num_ds)
+> > 
+> > Is "len" used?
+> 
+> Merged at pnfs-all-2.6.35-rc3-2010-06-14
+> len parameter removed.
 
-I'm confused; which are you using, v3 or v4?
-
->> and with tcpdump, I see the request from from the client and I see the
->> reply ok from the nfs machine, but it seem like the nfs packet doesn't
->> make it to the wire, machines on the same network doesn't see the
->> packet.
->>
->> on the nfs server I have a bridge interface br0 => eth0 eth1 eth2 eth3 
->> vde0
->>
->> on vde0 I have attached virtualbox 3.2.4, and when I look on the vde
->> switch with tcpdump I don't see the reply packet.
->>
->> I have done some limited testing for udp and it seems to be working,
->> traced dns packets
->>
->> I can mount tcp, but if I user vers4 i get wierd gid uid numbers
-
-I thought you said above that you *couldn't* mount v4?  Apologies, I may
-just be sleep-deprived, but could you take just a *single* problem and
-describe it  carefully from start to finish?
-
->> ls -l
->> drwxrwsr-x  2 4294967294 4294967294 4.1k Oct 25  2009 Funnies
-
-Probably an idmapping problem:
-
-	- check that the domain in /etc/idmapd.conf is set to the same
-	  thing on client and server.
-	- check that users have the same names on the client and on the
-	  server.
+Thanks.
 
 --b.
-
->>
->>
->>
->> rpcinfo -p
->>   program vers proto   port
->>    100000    2   tcp    111  portmapper
->>    100024    1   udp  32765  status
->>    100024    1   tcp  32765  status
->>    100021    1   udp  32768  nlockmgr
->>    100021    3   udp  32768  nlockmgr
->>    100021    4   udp  32768  nlockmgr
->>    100021    1   tcp  32768  nlockmgr
->>    100021    3   tcp  32768  nlockmgr
->>    100021    4   tcp  32768  nlockmgr
->>    100003    2   tcp   2049  nfs
->>    100003    3   tcp   2049  nfs
->>    100003    4   tcp   2049  nfs
->>    100227    2   tcp   2049
->>    100227    3   tcp   2049
->>    100003    2   udp   2049  nfs
->>    100003    3   udp   2049  nfs
->>    100003    4   udp   2049  nfs
->>    100227    2   udp   2049
->>    100227    3   udp   2049
->>    100005    1   udp  32767  mountd
->>    100005    1   tcp  32767  mountd
->>    100005    2   udp  32767  mountd
->>    100005    2   tcp  32767  mountd
->>    100005    3   udp  32767  mountd
->>    100005    3   tcp  32767  mountd
->>
->> on nfs restart
->>
->> Jun 13 22:05:20 max kernel: [21723.836493] svc: failed to register
->> lockdv1 RPC service (errno 97).
->> Jun 13 22:05:20 max kernel: [21723.837490] NFSD: Using
->> /var/lib/nfs/v4recovery as the NFSv4 state recovery directory
->> Jun 13 22:05:20 max kernel: [21723.837507] NFSD: starting 90-second  
->> grace period
->>
->>
->> tcpdump on nfs machine of mount -o vers=4,udp  nfs:/exports/video
->> /exports/video/
->>
->> tcpdump -pni br0 host 192.168.10.221 and not port 22
->> tcpdump: verbose output suppressed, use -v or -vv for full protocol  
->> decode
->> listening on br0, link-type EN10MB (Ethernet), capture size 65535  
->> bytes
->> 22:09:12.565697 IP 192.168.10.221.30209 > 192.168.11.10.53: 52743+ A?
->> nfs.hme1.samad.com.au. (39)
->> 22:09:12.565891 IP 192.168.11.10.53 > 192.168.10.221.30209: 52743*
->> 2/2/3 CNAME max.lan1.hme1.samad.com.au., A 192.168.11.10 (182)
->> 22:09:12.567227 IP 192.168.10.221.35835 > 192.168.11.10.53: 59898+ A?
->> nfs.hme1.samad.com.au. (39)
->> 22:09:12.567369 IP 192.168.11.10.53 > 192.168.10.221.35835: 59898*
->> 2/2/3 CNAME max.lan1.hme1.samad.com.au., A 192.168.11.10 (182)
->> 22:09:12.568676 IP 192.168.10.221.243695162 > 192.168.11.10.2049: 40  
->> null
->> 22:09:12.568726 IP 192.168.11.10.2049 > 192.168.10.221.243695162:
->> reply ok 24 null <<<<<<<<<<<<< this is missing on the client ....
->> 22:09:13.668091 IP 192.168.10.221.243695162 > 192.168.11.10.2049: 40  
->> null
->> 22:09:13.668158 IP 192.168.11.10.2049 > 192.168.10.221.243695162:
->> reply ok 24 null
->> 22:09:15.867266 IP 192.168.10.221.243695162 > 192.168.11.10.2049: 40  
->> null
->> 22:09:15.867345 IP 192.168.11.10.2049 > 192.168.10.221.243695162:
->> reply ok 24 null
->> 22:09:17.680551 IP 192.168.10.221.58336 > 192.168.11.10.25826: UDP,  
->> length 917
->>
->>
->> Help :)
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
