@@ -1,126 +1,35 @@
-From: Benny Halevy <bhalevy@panasas.com>
-Subject: Re: [PATCH 13/15] NFSv41: Clean up exclusive create
-Date: Tue, 15 Jun 2010 12:30:00 -0400
-Message-ID: <4C17AA88.9080702@panasas.com>
-References: <1276552299-6625-1-git-send-email-Trond.Myklebust@netapp.com>	 <1276552299-6625-2-git-send-email-Trond.Myklebust@netapp.com>	 <1276552299-6625-3-git-send-email-Trond.Myklebust@netapp.com>	 <1276552299-6625-4-git-send-email-Trond.Myklebust@netapp.com>	 <1276552299-6625-5-git-send-email-Trond.Myklebust@netapp.com>	 <1276552299-6625-6-git-send-email-Trond.Myklebust@netapp.com>	 <1276552299-6625-7-git-send-email-Trond.Myklebust@netapp.com>	 <1276552299-6625-8-git-send-email-Trond.Myklebust@netapp.com>	 <1276552299-6625-9-git-send-email-Trond.Myklebust@netapp.com>	 <1276552299-6625-10-git-send-email-Trond.Myklebust@netapp.com>	 <1276552299-6625-11-git-send-email-Trond.Myklebust@netapp.com>	 <1276552299-6625-12-git-send-email-Trond.Myklebust@netapp.com>	 <1276552299-6625-13-git-send-
- email-Trond.Myklebust@netapp.com>	 <4C16B7B6.6000100@panasas.com>	 <1276617009.8767.6.camel@heimdal.trondhjem.org>	 <4C17A564.6070702@panasas.com> <1276618750.8767.7.camel@heimdal.trondhjem.org>
+From: "Gilliam, PaulX J" <paulx.j.gilliam@intel.com>
+Subject: RE: [PATCH 02/15] NFSv4.1: Clean up nfs4_setup_sequence
+Date: Tue, 15 Jun 2010 09:50:40 -0700
+Message-ID: <0A97A441BFADC74EA1E299A79C69DF9213D49EB687@orsmsx504.amr.corp.intel.com>
+References: <1276552299-6625-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1276552299-6625-2-git-send-email-Trond.Myklebust@netapp.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: linux-nfs@vger.kernel.org
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Content-Type: text/plain; charset="us-ascii"
+To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qy0-f174.google.com ([209.85.216.174]:53867 "EHLO
-	mail-qy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753975Ab0FOQaG (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 Jun 2010 12:30:06 -0400
-Received: by qyk1 with SMTP id 1so752593qyk.19
-        for <linux-nfs@vger.kernel.org>; Tue, 15 Jun 2010 09:30:05 -0700 (PDT)
-In-Reply-To: <1276618750.8767.7.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
+Received: from mga14.intel.com ([143.182.124.37]:53584 "EHLO mga14.intel.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757504Ab0FOQuq convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 Jun 2010 12:50:46 -0400
+In-Reply-To: <1276552299-6625-2-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Jun. 15, 2010, 12:19 -0400, Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
-> On Tue, 2010-06-15 at 12:08 -0400, Benny Halevy wrote:
->> On Jun. 15, 2010, 11:50 -0400, Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
->>> On Mon, 2010-06-14 at 19:13 -0400, Benny Halevy wrote:
->>>> On Jun. 14, 2010, 17:51 -0400, Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
->>>>> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
->>>>> ---
->>>>>  fs/nfs/nfs4proc.c       |   17 ++++++-----------
->>>>>  include/linux/nfs_xdr.h |    6 ++++--
->>>>>  2 files changed, 10 insertions(+), 13 deletions(-)
->>>>>
->>>>> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
->>>>> index ef613ea..e9913de 100644
->>>>> --- a/fs/nfs/nfs4proc.c
->>>>> +++ b/fs/nfs/nfs4proc.c
->>>>> @@ -744,19 +744,14 @@ static struct nfs4_opendata *nfs4_opendata_alloc(struct path *path,
->>>>>  	p->o_arg.server = server;
->>>>>  	p->o_arg.bitmask = server->attr_bitmask;
->>>>>  	p->o_arg.claim = NFS4_OPEN_CLAIM_NULL;
->>>>> -	if (flags & O_EXCL) {
->>>>> -		if (nfs4_has_persistent_session(server->nfs_client)) {
->>>>> -			/* GUARDED */
->>>>> -			p->o_arg.u.attrs = &p->attrs;
->>>>> -			memcpy(&p->attrs, attrs, sizeof(p->attrs));
->>>>
->>>> What about this case?
->>>> Aren't we losing the attrs?
->>>
->>> I'm not sure what you mean. Are you asking what will happen if someone
->>> sets O_EXCL without setting O_CREAT? We don't call encode_createmode at
->>> all in that case. Otherwise, see below.
->>>
->>
->> It looks like in the O_CREAT|O_EXCL case with persistent session
->> the attrs passed in to nfs4_opendata_alloc are not copied to p->attrs
->> and p->o_arg.u.attrs is not set.
->> Then later on, in encode_createmode, in the respective path, we still use it:
->> 			if (nfs4_has_persistent_session(clp)) {
->> 				*p = cpu_to_be32(NFS4_CREATE_GUARDED);
->> 				encode_attrs(xdr, arg->u.attrs, arg->server);
->> 			} else {
->>
->> Benny
->>
->>> Cheers
->>>   Trond
->>>
->>>>
->>>>> -		} else { /* EXCLUSIVE4_1 */
->>>>> -			u32 *s = (u32 *) p->o_arg.u.verifier.data;
->>>>> -			s[0] = jiffies;
->>>>> -			s[1] = current->pid;
->>>>> -		}
->>>>> -	} else if (flags & O_CREAT) {
->>>>> +	if (flags & O_CREAT) {
->>>>> +		u32 *s;
->>>>> +
->>>>>  		p->o_arg.u.attrs = &p->attrs;
->>>>>  		memcpy(&p->attrs, attrs, sizeof(p->attrs));
->                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> -----Original Message-----
+> From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-owner@vger.kernel.org] On Behalf Of Trond Myklebust
+> Sent: Monday, June 14, 2010 2:51 PM
+> To: linux-nfs@vger.kernel.org
+> Subject: [PATCH 02/15] NFSv4.1: Clean up nfs4_setup_sequence
 > 
-> Why isn't this sufficient?
-> 
+> Firstly, there is little point in first zeroing out the entire struct
+> nfs4_sequence_res, and then initialising all fields save one. Just
+> initialise the last field to zero...
 
-Duh. Sorry, I missed that.
+The reason one may want to zero out the entire struct is that in the future, someone may add elements to the struct.  In that case, 
+	memset(res, 0, sizeof(*res));
+would not have to be changed, and any new elements will "automatically" be initialized to a known value.
 
-Benny
+Just a thought.
 
->>>>> +		s = (u32 *) p->o_arg.u.verifier.data;
->>>>> +		s[0] = jiffies;
->>>>> +		s[1] = current->pid;
->>>>>  	}
->>>>>  	p->c_arg.fh = &p->o_res.fh;
->>>>>  	p->c_arg.stateid = &p->o_res.stateid;
->>>>> diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
->>>>> index 51914d7..a319cb9 100644
->>>>> --- a/include/linux/nfs_xdr.h
->>>>> +++ b/include/linux/nfs_xdr.h
->>>>> @@ -196,8 +196,10 @@ struct nfs_openargs {
->>>>>  	__u64                   clientid;
->>>>>  	__u64                   id;
->>>>>  	union {
->>>>> -		struct iattr *  attrs;    /* UNCHECKED, GUARDED */
->>>>> -		nfs4_verifier   verifier; /* EXCLUSIVE */
->>>>> +		struct {
->>>>> +			struct iattr *  attrs;    /* UNCHECKED, GUARDED */
->>>>> +			nfs4_verifier   verifier; /* EXCLUSIVE */
->>>>> +		};
->>>>>  		nfs4_stateid	delegation;		/* CLAIM_DELEGATE_CUR */
->>>>>  		fmode_t		delegation_type;	/* CLAIM_PREVIOUS */
->>>>>  	} u;
->>>>
->>>
->>>
->>> --
->>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->>> the body of a message to majordomo@vger.kernel.org
->>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
+-=# Paul Gilliam #=-
