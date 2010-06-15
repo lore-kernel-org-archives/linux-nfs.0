@@ -1,126 +1,47 @@
-From: Fred Isaman <iisaman@umich.edu>
-Subject: Re: [PATCH 07/10] pnfs-submit: avoid race handling return on close
-Date: Tue, 15 Jun 2010 13:32:22 -0400
-Message-ID: <AANLkTilDj2Ua_t77kk5Gj_t0vqEcOJFKlqODAj18KQnm@mail.gmail.com>
-References: <1276566375-24566-1-git-send-email-iisaman@netapp.com>
-	<1276566375-24566-2-git-send-email-iisaman@netapp.com>
-	<1276566375-24566-3-git-send-email-iisaman@netapp.com>
-	<1276566375-24566-4-git-send-email-iisaman@netapp.com>
-	<1276566375-24566-5-git-send-email-iisaman@netapp.com>
-	<1276566375-24566-6-git-send-email-iisaman@netapp.com>
-	<1276566375-24566-7-git-send-email-iisaman@netapp.com>
-	<1276566375-24566-8-git-send-email-iisaman@netapp.com>
-	<4C17B304.4070308@panasas.com>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: RE: [PATCH 02/15] NFSv4.1: Clean up nfs4_setup_sequence
+Date: Tue, 15 Jun 2010 13:32:21 -0400
+Message-ID: <1276623141.8767.47.camel@heimdal.trondhjem.org>
+References: <1276552299-6625-1-git-send-email-Trond.Myklebust@netapp.com>
+	 <1276552299-6625-2-git-send-email-Trond.Myklebust@netapp.com>
+	 <0A97A441BFADC74EA1E299A79C69DF9213D49EB687@orsmsx504.amr.corp.intel.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: Fred Isaman <iisaman@netapp.com>, linux-nfs@vger.kernel.org
-To: Benny Halevy <bhalevy@panasas.com>
+Content-Type: text/plain; charset="UTF-8"
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+To: "Gilliam, PaulX J" <paulx.j.gilliam@intel.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-bw0-f46.google.com ([209.85.214.46]:36373 "EHLO
-	mail-bw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754298Ab0FORcY convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 Jun 2010 13:32:24 -0400
-Received: by bwz7 with SMTP id 7so2819576bwz.19
-        for <linux-nfs@vger.kernel.org>; Tue, 15 Jun 2010 10:32:22 -0700 (PDT)
-In-Reply-To: <4C17B304.4070308@panasas.com>
+Received: from mail-out2.uio.no ([129.240.10.58]:52186 "EHLO mail-out2.uio.no"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754302Ab0FORcd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 15 Jun 2010 13:32:33 -0400
+In-Reply-To: <0A97A441BFADC74EA1E299A79C69DF9213D49EB687-osO9UTpF0UQ64kNsxIetb7fspsVTdybXVpNB7YpNyf8@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Jun 15, 2010 at 1:06 PM, Benny Halevy <bhalevy@panasas.com> wro=
-te:
-> On Jun. 14, 2010, 21:46 -0400, Fred Isaman <iisaman@netapp.com> wrote=
-:
->> This prepares for the next patch.
->>
->> NOTE this doesn't really fix any current race, since
->> layout going to NULL is OK. =A0But layout changing from NULL to nonN=
-ULL
->> is a real race that is not fixed
->>
->> Signed-off-by: Fred Isaman <iisaman@netapp.com>
->> ---
->> =A0fs/nfs/nfs4state.c =A0 =A0 =A0 =A0| =A0 =A05 +++--
->> =A0fs/nfs/pnfs.c =A0 =A0 =A0 =A0 =A0 =A0 | =A0 11 +++++++++++
->> =A0include/linux/nfs4_pnfs.h | =A0 =A02 ++
->> =A03 files changed, 16 insertions(+), 2 deletions(-)
->>
->> diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
->> index d5144bd..8a7a64c 100644
->> --- a/fs/nfs/nfs4state.c
->> +++ b/fs/nfs/nfs4state.c
->> @@ -594,11 +594,12 @@ static void __nfs4_close(struct path *path, st=
-ruct nfs4_state *state,
->> =A0 =A0 =A0 } else {
->> =A0#ifdef CONFIG_NFS_V4_1
->> =A0 =A0 =A0 =A0 =A0 =A0 =A0 struct nfs_inode *nfsi =3D NFS_I(state->=
-inode);
->> + =A0 =A0 =A0 =A0 =A0 =A0 int roc =3D nfs4_roc_iomode(nfsi);
->>
->> - =A0 =A0 =A0 =A0 =A0 =A0 if (has_layout(nfsi) && nfsi->layout.roc_i=
-omode) {
->> + =A0 =A0 =A0 =A0 =A0 =A0 if (roc) {
->> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 struct nfs4_pnfs_layout_=
-segment range;
->>
->> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 range.iomode =3D nfsi->lay=
-out.roc_iomode;
->> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 range.iomode =3D roc;
->> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 range.offset =3D 0;
->> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 range.length =3D NFS4_MA=
-X_UINT64;
->> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 pnfs_return_layout(state=
-->inode, &range, NULL,
->> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
->> index 6def09c..bd11ec7 100644
->> --- a/fs/nfs/pnfs.c
->> +++ b/fs/nfs/pnfs.c
->> @@ -321,6 +321,17 @@ pnfs_unregister_layoutdriver(struct pnfs_layout=
-driver_type *ld_type)
->> =A0#define BUG_ON_UNLOCKED_LO(lo) do {} while (0)
->> =A0#endif /* CONFIG_SMP */
->>
->> +int nfs4_roc_iomode(struct nfs_inode *nfsi)
->> +{
->> + =A0 =A0 int rv =3D 0;
->> +
->> + =A0 =A0 spin_lock(&pnfs_spinlock);
->
-> Why take the global lock rather than nfsi->lo_lock?
->
-> Benny
+On Tue, 2010-06-15 at 09:50 -0700, Gilliam, PaulX J wrote:
+> > -----Original Message-----
+> > From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-owner@vger.kernel.org] On Behalf Of Trond Myklebust
+> > Sent: Monday, June 14, 2010 2:51 PM
+> > To: linux-nfs@vger.kernel.org
+> > Subject: [PATCH 02/15] NFSv4.1: Clean up nfs4_setup_sequence
+> > 
+> > Firstly, there is little point in first zeroing out the entire struct
+> > nfs4_sequence_res, and then initialising all fields save one. Just
+> > initialise the last field to zero...
+> 
+> The reason one may want to zero out the entire struct is that in the future, someone may add elements to the struct.  In that case, 
+> 	memset(res, 0, sizeof(*res));
+> would not have to be changed, and any new elements will "automatically" be initialized to a known value.
+> 
+> Just a thought.
 
-You are right. That would be a copy-paste error.
+That assumes this is a structure that is likely to change and/or be
+extended in the future, which is unlikely since the NFSv4.1 protocol
+specification is complete and the SEQUENCE results are fully contained
+in the current set of fields.
 
-=46red
+It also assumes that '0' would be a desirable default value for these
+new fields.
 
->
->> + =A0 =A0 if (has_layout(nfsi))
->> + =A0 =A0 =A0 =A0 =A0 =A0 rv =3D nfsi->layout.roc_iomode;
->> + =A0 =A0 spin_unlock(&pnfs_spinlock);
->> + =A0 =A0 return rv;
->> +}
->> +
->> =A0static inline void
->> =A0get_layout(struct pnfs_layout_type *lo)
->> =A0{
->> diff --git a/include/linux/nfs4_pnfs.h b/include/linux/nfs4_pnfs.h
->> index 0eb9b16..2ea131f 100644
->> --- a/include/linux/nfs4_pnfs.h
->> +++ b/include/linux/nfs4_pnfs.h
->> @@ -86,6 +86,8 @@ layoutcommit_needed(struct nfs_inode *nfsi)
->> =A0 =A0 =A0 return test_bit(NFS_INO_LAYOUTCOMMIT, &nfsi->pnfs_layout=
-_state);
->> =A0}
->>
->> +int nfs4_roc_iomode(struct nfs_inode *nfs);
->> +
->> =A0#else /* CONFIG_NFS_V4_1 */
->>
->> =A0static inline bool
->
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" =
-in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at =A0http://vger.kernel.org/majordomo-info.html
->
+Trond
+
