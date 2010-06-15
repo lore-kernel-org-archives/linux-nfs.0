@@ -1,68 +1,50 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:6089 "EHLO
-	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S933531Ab0FRO6G (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Jun 2010 10:58:06 -0400
-Message-ID: <4C1B8985.8090808@panasas.com>
-Date: Fri, 18 Jun 2010 10:58:13 -0400
-From: Benny Halevy <bhalevy@panasas.com>
-To: "Smets, Jan (Jan)" <jan.smets@alcatel-lucent.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: NFSv4.1 status
-References: <14C7F4F06DB5814AB0DE29716C4F6D670B6534E7@FRMRSSXCHMBSB1.dc-m.alcatel-lucent.com>
-In-Reply-To: <14C7F4F06DB5814AB0DE29716C4F6D670B6534E7@FRMRSSXCHMBSB1.dc-m.alcatel-lucent.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from fieldses.org ([174.143.236.118]:52144 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754800Ab0FORxk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 15 Jun 2010 13:53:40 -0400
+Date: Tue, 15 Jun 2010 13:53:36 -0400
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+Cc: "Gilliam, PaulX J" <paulx.j.gilliam@intel.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 02/15] NFSv4.1: Clean up nfs4_setup_sequence
+Message-ID: <20100615175336.GB20757@fieldses.org>
+References: <1276552299-6625-1-git-send-email-Trond.Myklebust@netapp.com> <1276552299-6625-2-git-send-email-Trond.Myklebust@netapp.com> <0A97A441BFADC74EA1E299A79C69DF9213D49EB687@orsmsx504.amr.corp.intel.com> <1276623141.8767.47.camel@heimdal.trondhjem.org>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1276623141.8767.47.camel@heimdal.trondhjem.org>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Jun. 16, 2010, 21:05 -0400, "Smets, Jan (Jan)" <jan.smets@alcatel-lucent.com> wrote:
-> Hi list
+On Tue, Jun 15, 2010 at 01:32:21PM -0400, Trond Myklebust wrote:
+> On Tue, 2010-06-15 at 09:50 -0700, Gilliam, PaulX J wrote:
+> > > -----Original Message-----
+> > > From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-owner@vger.kernel.org] On Behalf Of Trond Myklebust
+> > > Sent: Monday, June 14, 2010 2:51 PM
+> > > To: linux-nfs@vger.kernel.org
+> > > Subject: [PATCH 02/15] NFSv4.1: Clean up nfs4_setup_sequence
+> > > 
+> > > Firstly, there is little point in first zeroing out the entire struct
+> > > nfs4_sequence_res, and then initialising all fields save one. Just
+> > > initialise the last field to zero...
+> > 
+> > The reason one may want to zero out the entire struct is that in the future, someone may add elements to the struct.  In that case, 
+> > 	memset(res, 0, sizeof(*res));
+> > would not have to be changed, and any new elements will "automatically" be initialized to a known value.
+> > 
+> > Just a thought.
 > 
-> I would like to know what status the NFS 4.1 (pNFS) development is in. 
+> That assumes this is a structure that is likely to change and/or be
+> extended in the future, which is unlikely since the NFSv4.1 protocol
+> specification is complete and the SEQUENCE results are fully contained
+> in the current set of fields.
+> 
+> It also assumes that '0' would be a desirable default value for these
+> new fields.
 
-Hi Jan,
+Also, the memset's/kzalloc's mean that "git grep <structure field name>"
+doesn't turn up the initialization of the field.  Not a huge deal, but
+it trips me up sometimes.
 
-Our main focus in development right now is submitting basic implementation for the pnfs files layout
-and continuing to improve also the object and block layout implementations that will follow.
-
-> 
-> Can it be tested? If yes, is there any guide what exactly I can do with it at this stage (and how) ? 
-
-The guides are placed on our wiki:
-http://wiki.linux-nfs.org/wiki/index.php/PNFS_prototype_design
-
-> I already have the pnfs capable kernel, but it's unclear to me what userland tools I need (server side).
-
-What are you testing on the back end?
-
-> 
-> At the end I would like multiple dataservers that stripe data, 
-
-That should not be a problem.
-
-> and multiple metadata servers that also stripe data and all with failover/redundancy/load balancing stuff. But maybe I'm whishing for too much, yet.
-
-Yes, you're aiming too high at this point.
-That said, contributing code to do all that will be truly appreciated! ;-)
-
-Benny
-
-> 
-> Thanks
-> 
->  - Jan
-> 
-> 
-> 
-> 
-> 
-> 
-> 
-> 
-> 
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+--b.
