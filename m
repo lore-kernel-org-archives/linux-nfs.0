@@ -1,140 +1,147 @@
-From: Fred Isaman <iisaman@netapp.com>
-Subject: [PATCH 03/10] pnfs-submit: remove list_empty check from put_layout
-Date: Mon, 14 Jun 2010 21:46:08 -0400
-Message-ID: <1276566375-24566-4-git-send-email-iisaman@netapp.com>
-References: <1276566375-24566-1-git-send-email-iisaman@netapp.com>
- <1276566375-24566-2-git-send-email-iisaman@netapp.com>
- <1276566375-24566-3-git-send-email-iisaman@netapp.com>
-To: linux-nfs@vger.kernel.org
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: Unable to mount with udp and vers=4 screws up uid/gid
+Date: Tue, 15 Jun 2010 10:55:29 -0400
+Message-ID: <20100615145529.GB17437@fieldses.org>
+References: <AANLkTinOBIbuEFGKbPHP95zhBtUifFpIRdxkJr8cXCvn@mail.gmail.com> <0AD72BA9-0C2D-45C7-9F80-24E407832938@samad.com.au>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+To: Alex Samad <alex-SGFoFqf0RKf0CCvOHzKKcA@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from citi.umich.edu ([141.212.112.111]:52268 "EHLO citi.umich.edu"
+Received: from fieldses.org ([174.143.236.118]:50425 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932185Ab0FOO3E (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 15 Jun 2010 10:29:04 -0400
-Received: from localhost.localdomain (netapp-61.citi.umich.edu [141.212.112.250])
-	by citi.umich.edu (Postfix) with ESMTP id 3E63018164
-	for <linux-nfs@vger.kernel.org>; Tue, 15 Jun 2010 10:20:11 -0400 (EDT)
-In-Reply-To: <1276566375-24566-3-git-send-email-iisaman@netapp.com>
+	id S1753413Ab0FOOz3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 15 Jun 2010 10:55:29 -0400
+In-Reply-To: <0AD72BA9-0C2D-45C7-9F80-24E407832938-SGFoFqf0RKf0CCvOHzKKcA@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The check on list empty before destroying a layout has always bothered me.
-Get rid of it by having lsegs take a reference on their backpointer.
+On Mon, Jun 14, 2010 at 08:34:06PM +1000, Alex Samad wrote:
+>
+>>
+>
+>> Hi
+>>
+>> I am having some problem with nfs-kernel on a debian amd64 (sid)  i am
+>> using version (1:1.2.2-1).
+>>
+>> when I do a tcpdump on my nfs machine and do a mount -o vers=4,udp
+>> nfs:/exports/video /exports/video/ it fails
+>>
+>>
+>> mount -o vers=3,udp  nfs:/exports/video /exports/video/
+>> mount.nfs: mount to NFS server 'nfs:/exports/video' failed: timed out, 
+>> giving up
 
-Signed-off-by: Fred Isaman <iisaman@netapp.com>
----
- fs/nfs/pnfs.c |   36 +++++++++++++++++++++++++-----------
- 1 files changed, 25 insertions(+), 11 deletions(-)
+I'm confused; which are you using, v3 or v4?
 
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 924e6fd..21192b6 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -348,19 +348,27 @@ put_layout(struct pnfs_layout_type *lo)
- 	BUG_ON_UNLOCKED_LO(lo);
- 	BUG_ON(lo->refcount <= 0);
- 
--	if (--lo->refcount == 0 && list_empty(&lo->segs)) {
-+	lo->refcount--;
-+
-+	if (lo->refcount > 1)
-+		return;
-+
-+	/* Make sure is removed from inode list */
-+	clp = NFS_SERVER(&nfsi->vfs_inode)->nfs_client;
-+	spin_lock(&clp->cl_lock);
-+	if (!list_empty(&lo->lo_layouts)) {
-+		list_del_init(&lo->lo_layouts);
-+		lo->refcount--;
-+	}
-+	spin_unlock(&clp->cl_lock);
-+
-+	if (lo->refcount == 0) {
- 		struct layoutdriver_io_operations *io_ops =
- 			PNFS_LD_IO_OPS(lo);
- 
- 		dprintk("%s: freeing layout %p\n", __func__, lo->ld_data);
- 		io_ops->free_layout(lo->ld_data);
- 		lo->ld_data = NULL;
--
--		/* Unlist the layout. */
--		clp = NFS_SERVER(&nfsi->vfs_inode)->nfs_client;
--		spin_lock(&clp->cl_lock);
--		list_del_init(&lo->lo_layouts);
--		spin_unlock(&clp->cl_lock);
- 	}
- }
- 
-@@ -404,6 +412,7 @@ init_lseg(struct pnfs_layout_type *lo, struct pnfs_layout_segment *lseg)
- 	kref_init(&lseg->kref);
- 	lseg->valid = true;
- 	lseg->layout = lo;
-+	get_layout(lo);
- }
- 
- static void
-@@ -413,6 +422,7 @@ destroy_lseg(struct kref *kref)
- 		container_of(kref, struct pnfs_layout_segment, kref);
- 
- 	dprintk("--> %s\n", __func__);
-+	put_layout(lseg->layout);
- 	PNFS_LD_IO_OPS(lseg->layout)->free_lseg(lseg);
- }
- 
-@@ -897,9 +907,10 @@ alloc_init_layout(struct inode *ino)
- 	void *ld_data;
- 	struct pnfs_layout_type *lo;
- 	struct layoutdriver_io_operations *io_ops;
-+	struct nfs_inode *nfsi = NFS_I(ino);
- 
- 	io_ops = NFS_SERVER(ino)->pnfs_curr_ld->ld_io_ops;
--	lo = &NFS_I(ino)->layout;
-+	lo  = &nfsi->layout;
- 	ld_data = io_ops->alloc_layout(ino);
- 	if (!ld_data) {
- 		printk(KERN_ERR
-@@ -908,11 +919,13 @@ alloc_init_layout(struct inode *ino)
- 		return NULL;
- 	}
- 
-+	spin_lock(&nfsi->lo_lock);
- 	BUG_ON(lo->ld_data != NULL);
- 	lo->ld_data = ld_data;
- 	memset(&lo->stateid, 0, NFS4_STATEID_SIZE);
- 	lo->refcount = 1;
- 	lo->roc_iomode = 0;
-+	spin_unlock(&nfsi->lo_lock);
- 	return lo;
- }
- 
-@@ -970,8 +983,10 @@ get_lock_alloc_layout(struct inode *ino)
- 			spin_lock(&nfsi->lo_lock);
- 
- 			spin_lock(&clp->cl_lock);
--			if (list_empty(&lo->lo_layouts))
-+			if (list_empty(&lo->lo_layouts)) {
- 				list_add_tail(&lo->lo_layouts, &clp->cl_layouts);
-+				get_layout(lo);
-+			}
- 			spin_unlock(&clp->cl_lock);
- 		} else
- 			lo = ERR_PTR(-ENOMEM);
-@@ -1259,14 +1274,13 @@ pnfs_layout_process(struct nfs4_pnfs_layoutget *lgp)
- 		goto out;
- 	}
- 
-+	spin_lock(&nfsi->lo_lock);
- 	init_lseg(lo, lseg);
- 	lseg->range = res->lseg;
- 	if (lgp->lsegpp) {
- 		get_lseg(lseg);
- 		*lgp->lsegpp = lseg;
- 	}
--
--	spin_lock(&nfsi->lo_lock);
- 	pnfs_insert_layout(lo, lseg);
- 
- 	if (res->return_on_close) {
--- 
-1.6.6.1
+>> and with tcpdump, I see the request from from the client and I see the
+>> reply ok from the nfs machine, but it seem like the nfs packet doesn't
+>> make it to the wire, machines on the same network doesn't see the
+>> packet.
+>>
+>> on the nfs server I have a bridge interface br0 => eth0 eth1 eth2 eth3 
+>> vde0
+>>
+>> on vde0 I have attached virtualbox 3.2.4, and when I look on the vde
+>> switch with tcpdump I don't see the reply packet.
+>>
+>> I have done some limited testing for udp and it seems to be working,
+>> traced dns packets
+>>
+>> I can mount tcp, but if I user vers4 i get wierd gid uid numbers
 
+I thought you said above that you *couldn't* mount v4?  Apologies, I may
+just be sleep-deprived, but could you take just a *single* problem and
+describe it  carefully from start to finish?
+
+>> ls -l
+>> drwxrwsr-x  2 4294967294 4294967294 4.1k Oct 25  2009 Funnies
+
+Probably an idmapping problem:
+
+	- check that the domain in /etc/idmapd.conf is set to the same
+	  thing on client and server.
+	- check that users have the same names on the client and on the
+	  server.
+
+--b.
+
+>>
+>>
+>>
+>> rpcinfo -p
+>>   program vers proto   port
+>>    100000    2   tcp    111  portmapper
+>>    100024    1   udp  32765  status
+>>    100024    1   tcp  32765  status
+>>    100021    1   udp  32768  nlockmgr
+>>    100021    3   udp  32768  nlockmgr
+>>    100021    4   udp  32768  nlockmgr
+>>    100021    1   tcp  32768  nlockmgr
+>>    100021    3   tcp  32768  nlockmgr
+>>    100021    4   tcp  32768  nlockmgr
+>>    100003    2   tcp   2049  nfs
+>>    100003    3   tcp   2049  nfs
+>>    100003    4   tcp   2049  nfs
+>>    100227    2   tcp   2049
+>>    100227    3   tcp   2049
+>>    100003    2   udp   2049  nfs
+>>    100003    3   udp   2049  nfs
+>>    100003    4   udp   2049  nfs
+>>    100227    2   udp   2049
+>>    100227    3   udp   2049
+>>    100005    1   udp  32767  mountd
+>>    100005    1   tcp  32767  mountd
+>>    100005    2   udp  32767  mountd
+>>    100005    2   tcp  32767  mountd
+>>    100005    3   udp  32767  mountd
+>>    100005    3   tcp  32767  mountd
+>>
+>> on nfs restart
+>>
+>> Jun 13 22:05:20 max kernel: [21723.836493] svc: failed to register
+>> lockdv1 RPC service (errno 97).
+>> Jun 13 22:05:20 max kernel: [21723.837490] NFSD: Using
+>> /var/lib/nfs/v4recovery as the NFSv4 state recovery directory
+>> Jun 13 22:05:20 max kernel: [21723.837507] NFSD: starting 90-second  
+>> grace period
+>>
+>>
+>> tcpdump on nfs machine of mount -o vers=4,udp  nfs:/exports/video
+>> /exports/video/
+>>
+>> tcpdump -pni br0 host 192.168.10.221 and not port 22
+>> tcpdump: verbose output suppressed, use -v or -vv for full protocol  
+>> decode
+>> listening on br0, link-type EN10MB (Ethernet), capture size 65535  
+>> bytes
+>> 22:09:12.565697 IP 192.168.10.221.30209 > 192.168.11.10.53: 52743+ A?
+>> nfs.hme1.samad.com.au. (39)
+>> 22:09:12.565891 IP 192.168.11.10.53 > 192.168.10.221.30209: 52743*
+>> 2/2/3 CNAME max.lan1.hme1.samad.com.au., A 192.168.11.10 (182)
+>> 22:09:12.567227 IP 192.168.10.221.35835 > 192.168.11.10.53: 59898+ A?
+>> nfs.hme1.samad.com.au. (39)
+>> 22:09:12.567369 IP 192.168.11.10.53 > 192.168.10.221.35835: 59898*
+>> 2/2/3 CNAME max.lan1.hme1.samad.com.au., A 192.168.11.10 (182)
+>> 22:09:12.568676 IP 192.168.10.221.243695162 > 192.168.11.10.2049: 40  
+>> null
+>> 22:09:12.568726 IP 192.168.11.10.2049 > 192.168.10.221.243695162:
+>> reply ok 24 null <<<<<<<<<<<<< this is missing on the client ....
+>> 22:09:13.668091 IP 192.168.10.221.243695162 > 192.168.11.10.2049: 40  
+>> null
+>> 22:09:13.668158 IP 192.168.11.10.2049 > 192.168.10.221.243695162:
+>> reply ok 24 null
+>> 22:09:15.867266 IP 192.168.10.221.243695162 > 192.168.11.10.2049: 40  
+>> null
+>> 22:09:15.867345 IP 192.168.11.10.2049 > 192.168.10.221.243695162:
+>> reply ok 24 null
+>> 22:09:17.680551 IP 192.168.10.221.58336 > 192.168.11.10.25826: UDP,  
+>> length 917
+>>
+>>
+>> Help :)
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
