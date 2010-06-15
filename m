@@ -1,70 +1,80 @@
-From: "William A. (Andy) Adamson" <androsadamson@gmail.com>
-Subject: Re: [PATCH 1/1] nfs4 use mandatory attribute file type in
-	nfs4_get_root
-Date: Tue, 15 Jun 2010 09:30:54 -0400
-Message-ID: <AANLkTilKwdBqGoujSBEKhk2OHioPAnjv8mCEAotvUIR4@mail.gmail.com>
-References: <1276203143-2118-1-git-send-email-andros@netapp.com>
-	<1276552926.3953.8.camel@heimdal.trondhjem.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: linux-nfs@vger.kernel.org
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
+From: Fred Isaman <iisaman@netapp.com>
+Subject: [PATCH 06/10] pnfs-submit: Add state flag for layoutcommit_needed
+Date: Mon, 14 Jun 2010 21:46:11 -0400
+Message-ID: <1276566375-24566-7-git-send-email-iisaman@netapp.com>
+References: <1276566375-24566-1-git-send-email-iisaman@netapp.com>
+ <1276566375-24566-2-git-send-email-iisaman@netapp.com>
+ <1276566375-24566-3-git-send-email-iisaman@netapp.com>
+ <1276566375-24566-4-git-send-email-iisaman@netapp.com>
+ <1276566375-24566-5-git-send-email-iisaman@netapp.com>
+ <1276566375-24566-6-git-send-email-iisaman@netapp.com>
+To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-gw0-f46.google.com ([74.125.83.46]:37806 "EHLO
-	mail-gw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752959Ab0FONa4 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 Jun 2010 09:30:56 -0400
-Received: by mail-gw0-f46.google.com with SMTP id 15so3148420gwj.19
-        for <linux-nfs@vger.kernel.org>; Tue, 15 Jun 2010 06:30:56 -0700 (PDT)
-In-Reply-To: <1276552926.3953.8.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
+Received: from citi.umich.edu ([141.212.112.111]:52272 "EHLO citi.umich.edu"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932219Ab0FOO3G (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 15 Jun 2010 10:29:06 -0400
+Received: from localhost.localdomain (netapp-61.citi.umich.edu [141.212.112.250])
+	by citi.umich.edu (Postfix) with ESMTP id 50E1C18167
+	for <linux-nfs@vger.kernel.org>; Tue, 15 Jun 2010 10:20:11 -0400 (EDT)
+In-Reply-To: <1276566375-24566-6-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Jun 14, 2010 at 6:02 PM, Trond Myklebust
-<Trond.Myklebust@netapp.com> wrote:
-> On Thu, 2010-06-10 at 16:52 -0400, andros@netapp.com wrote:
->> From: Andy Adamson <andros@netapp.com>
->>
->> decode_attr_type sets fattr->mode.
->
-> Well, yes... It sets part of fattr->mode. More specifically, though, it
-> sets the file type part, so your patch is correct.
->
-> I'll fix up the above changelog entry so that it is a bit more
-> descriptive. How about the following?
->
->        S_ISDIR(fsinfo.fattr->mode) checks the file type rather than the
->        mode bits, so we should be checking for the NFS_ATTR_FATTR_TYPE
->        fattr property.
+This avoids locking and existance of layout issues in upcoming patches
 
-Looks good.
+Signed-off-by: Fred Isaman <iisaman@netapp.com>
+---
+ fs/nfs/pnfs.c             |    2 ++
+ include/linux/nfs4_pnfs.h |    2 +-
+ include/linux/nfs_fs.h    |    1 +
+ 3 files changed, 4 insertions(+), 1 deletions(-)
 
--->Andy
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index e667208..6def09c 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -155,6 +155,7 @@ pnfs_need_layoutcommit(struct nfs_inode *nfsi, struct nfs_open_context *ctx)
+ 	spin_lock(&nfsi->lo_lock);
+ 	if (has_layout(nfsi) && !layoutcommit_needed(nfsi)) {
+ 		nfsi->layout.lo_cred = get_rpccred(ctx->state->owner->so_cred);
++		__set_bit(NFS_INO_LAYOUTCOMMIT, &nfsi->pnfs_layout_state);
+ 		nfsi->change_attr++;
+ 		spin_unlock(&nfsi->lo_lock);
+ 		dprintk("%s: Set layoutcommit\n", __func__);
+@@ -1686,6 +1687,7 @@ pnfs_layoutcommit_inode(struct inode *inode, int sync)
+ 	nfsi->layout.pnfs_write_begin_pos = 0;
+ 	nfsi->layout.pnfs_write_end_pos = 0;
+ 	nfsi->layout.lo_cred = NULL;
++	__clear_bit(NFS_INO_LAYOUTCOMMIT, &nfsi->pnfs_layout_state);
+ 	pnfs_get_layout_stateid(&data->args.stateid, &nfsi->layout);
+ 
+ 	spin_unlock(&nfsi->lo_lock);
+diff --git a/include/linux/nfs4_pnfs.h b/include/linux/nfs4_pnfs.h
+index 9dac941..0eb9b16 100644
+--- a/include/linux/nfs4_pnfs.h
++++ b/include/linux/nfs4_pnfs.h
+@@ -83,7 +83,7 @@ has_layout(struct nfs_inode *nfsi)
+ static inline bool
+ layoutcommit_needed(struct nfs_inode *nfsi)
+ {
+-	return nfsi->layout.lo_cred != NULL;
++	return test_bit(NFS_INO_LAYOUTCOMMIT, &nfsi->pnfs_layout_state);
+ }
+ 
+ #else /* CONFIG_NFS_V4_1 */
+diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
+index 0b3419d..71bbc4c 100644
+--- a/include/linux/nfs_fs.h
++++ b/include/linux/nfs_fs.h
+@@ -208,6 +208,7 @@ struct nfs_inode {
+ 	#define NFS_INO_RO_LAYOUT_FAILED 0	/* get ro layout failed stop trying */
+ 	#define NFS_INO_RW_LAYOUT_FAILED 1	/* get rw layout failed stop trying */
+ 	#define NFS_INO_LAYOUT_ALLOC     2	/* bit lock for layout allocation */
++	#define NFS_INO_LAYOUTCOMMIT     3	/* LAYOUTCOMMIT needed */
+ 	time_t pnfs_layout_suspend;
+ #endif /* CONFIG_NFS_V4_1 */
+ #endif /* CONFIG_NFS_V4*/
+-- 
+1.6.6.1
 
->
->>
->> Signed-off-by: Andy Adamson <andros@netapp.com>
->> ---
->>  fs/nfs/getroot.c |    2 +-
->>  1 files changed, 1 insertions(+), 1 deletions(-)
->>
->> diff --git a/fs/nfs/getroot.c b/fs/nfs/getroot.c
->> index 7428f7d..a70e446 100644
->> --- a/fs/nfs/getroot.c
->> +++ b/fs/nfs/getroot.c
->> @@ -146,7 +146,7 @@ int nfs4_get_rootfh(struct nfs_server *server, struct nfs_fh *mntfh)
->>               goto out;
->>       }
->>
->> -     if (!(fsinfo.fattr->valid & NFS_ATTR_FATTR_MODE)
->> +     if (!(fsinfo.fattr->valid & NFS_ATTR_FATTR_TYPE)
->>                       || !S_ISDIR(fsinfo.fattr->mode)) {
->>               printk(KERN_ERR "nfs4_get_rootfh:"
->>                      " getroot encountered non-directory\n");
->
->
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->
