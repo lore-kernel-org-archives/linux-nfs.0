@@ -1,187 +1,156 @@
 From: Fred Isaman <iisaman@netapp.com>
-Subject: [PATCH 3/3] pnfs-submit: remove list_empty check from put_layout
-Date: Wed, 16 Jun 2010 19:44:48 -0400
-Message-ID: <1276731888-3202-3-git-send-email-iisaman@netapp.com>
+Subject: [PATCH 2/3] pnfs-submit: split get_layout and grab_current_layout
+Date: Wed, 16 Jun 2010 19:44:47 -0400
+Message-ID: <1276731888-3202-2-git-send-email-iisaman@netapp.com>
 References: <1276731888-3202-1-git-send-email-iisaman@netapp.com>
- <1276731888-3202-2-git-send-email-iisaman@netapp.com>
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from citi.umich.edu ([141.212.112.111]:48107 "EHLO citi.umich.edu"
+Received: from citi.umich.edu ([141.212.112.111]:48106 "EHLO citi.umich.edu"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757504Ab0FRQcU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	id S1755082Ab0FRQcU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
 	Fri, 18 Jun 2010 12:32:20 -0400
 Received: from localhost.localdomain (netapp-61.citi.umich.edu [141.212.112.250])
-	by citi.umich.edu (Postfix) with ESMTP id F3483180AE
+	by citi.umich.edu (Postfix) with ESMTP id EA3FD180AC
 	for <linux-nfs@vger.kernel.org>; Fri, 18 Jun 2010 12:32:19 -0400 (EDT)
-In-Reply-To: <1276731888-3202-2-git-send-email-iisaman@netapp.com>
+In-Reply-To: <1276731888-3202-1-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The check on list empty before destroying a layout has always bothered me.
-Get rid of it by having lsegs take a reference on their backpointer.
+Split get_layout (inc refcount) and grab_current_layout (find layout and inc refcount)
+functionality and rename appropriately.
 
 Signed-off-by: Fred Isaman <iisaman@netapp.com>
 ---
- fs/nfs/pnfs.c |   55 +++++++++++++++++++++++++++++++++----------------------
- 1 files changed, 33 insertions(+), 22 deletions(-)
+ fs/nfs/pnfs.c |   37 ++++++++++++++++++++++---------------
+ 1 files changed, 22 insertions(+), 15 deletions(-)
 
 diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 49093a0..c939cb0 100644
+index ed4c72e..49093a0 100644
 --- a/fs/nfs/pnfs.c
 +++ b/fs/nfs/pnfs.c
-@@ -60,6 +60,7 @@ static int pnfs_initialized;
- static void pnfs_free_layout(struct pnfs_layout_type *lo,
- 			     struct nfs4_pnfs_layout_segment *range);
- static enum pnfs_try_status pnfs_commit(struct nfs_write_data *data, int sync);
-+static inline void get_layout(struct pnfs_layout_type *lo);
+@@ -313,20 +313,27 @@ pnfs_unregister_layoutdriver(struct pnfs_layoutdriver_type *ld_type)
+ #define BUG_ON_UNLOCKED_LO(lo) do {} while (0)
+ #endif /* CONFIG_SMP */
  
- /* Locking:
-  *
-@@ -153,6 +154,7 @@ pnfs_need_layoutcommit(struct nfs_inode *nfsi, struct nfs_open_context *ctx)
- 	spin_lock(&nfsi->vfs_inode.i_lock);
- 	if (has_layout(nfsi) && !layoutcommit_needed(nfsi)) {
- 		nfsi->layout.lo_cred = get_rpccred(ctx->state->owner->so_cred);
-+		get_layout(&nfsi->layout);
- 		nfsi->change_attr++;
- 		spin_unlock(&nfsi->vfs_inode.i_lock);
- 		dprintk("%s: Set layoutcommit\n", __func__);
-@@ -335,25 +337,18 @@ grab_current_layout(struct nfs_inode *nfsi)
- static inline void
- put_layout(struct pnfs_layout_type *lo)
++static inline void
++get_layout(struct pnfs_layout_type *lo)
++{
++	BUG_ON_UNLOCKED_LO(lo);
++	lo->refcount++;
++}
++
+ static inline struct pnfs_layout_type *
+-get_current_layout(struct nfs_inode *nfsi)
++grab_current_layout(struct nfs_inode *nfsi)
  {
--	struct inode *inode = PNFS_INODE(lo);
--	struct nfs_client *clp;
--
- 	BUG_ON_UNLOCKED_LO(lo);
- 	BUG_ON(lo->refcount <= 0);
- 
--	if (--lo->refcount == 0 && list_empty(&lo->segs)) {
-+	lo->refcount--;
-+	if (!lo->refcount) {
- 		struct layoutdriver_io_operations *io_ops =
- 			PNFS_LD_IO_OPS(lo);
- 
- 		dprintk("%s: freeing layout %p\n", __func__, lo->ld_data);
-+		WARN_ON(!list_empty(&lo->lo_layouts));
- 		io_ops->free_layout(lo->ld_data);
- 		lo->ld_data = NULL;
--
--		/* Unlist the layout. */
--		clp = NFS_SERVER(inode)->nfs_client;
--		spin_lock(&clp->cl_lock);
--		list_del_init(&lo->lo_layouts);
--		spin_unlock(&clp->cl_lock);
- 	}
- }
- 
-@@ -397,6 +392,7 @@ init_lseg(struct pnfs_layout_type *lo, struct pnfs_layout_segment *lseg)
- 	kref_init(&lseg->kref);
- 	lseg->valid = true;
- 	lseg->layout = lo;
-+	get_layout(lo);
- }
- 
- static void
-@@ -406,6 +402,7 @@ destroy_lseg(struct kref *kref)
- 		container_of(kref, struct pnfs_layout_segment, kref);
- 
- 	dprintk("--> %s\n", __func__);
-+	put_layout(lseg->layout);
- 	PNFS_LD_IO_OPS(lseg->layout)->free_lseg(lseg);
- }
- 
-@@ -669,6 +666,15 @@ pnfs_free_layout(struct pnfs_layout_type *lo,
- 			lseg->range.length);
- 		list_del(&lseg->fi_list);
- 		put_lseg_locked(lseg);
-+		if (list_empty(&lo->segs)) {
-+			struct nfs_client *clp;
-+
-+			clp = PNFS_NFS_SERVER(lo)->nfs_client;
-+			spin_lock(&clp->cl_lock);
-+			list_del_init(&lo->lo_layouts);
-+			spin_unlock(&clp->cl_lock);
-+			put_layout(lo);
-+		}
- 	}
- 
- 	dprintk("%s:Return\n", __func__);
-@@ -854,6 +860,15 @@ pnfs_insert_layout(struct pnfs_layout_type *lo,
- 	dprintk("%s:Begin\n", __func__);
+ 	struct pnfs_layout_type *lo = &nfsi->layout;
  
  	BUG_ON_UNLOCKED_LO(lo);
-+	if (list_empty(&lo->segs)) {
-+		struct nfs_client *clp = PNFS_NFS_SERVER(lo)->nfs_client;
-+
-+		spin_lock(&clp->cl_lock);
-+		BUG_ON(!list_empty(&lo->lo_layouts));
-+		list_add_tail(&lo->lo_layouts, &clp->cl_layouts);
-+		spin_unlock(&clp->cl_lock);
-+		get_layout(lo);
-+	}
- 	list_for_each_entry (lp, &lo->segs, fi_list) {
- 		if (cmp_layout(&lp->range, &lseg->range) > 0)
- 			continue;
-@@ -896,11 +911,13 @@ alloc_init_layout(struct inode *ino)
+ 	if (!lo->ld_data)
  		return NULL;
- 	}
- 
-+	spin_lock(&ino->i_lock);
- 	BUG_ON(lo->ld_data != NULL);
- 	lo->ld_data = ld_data;
- 	memset(&lo->stateid, 0, NFS4_STATEID_SIZE);
- 	lo->refcount = 1;
- 	lo->roc_iomode = 0;
-+	spin_unlock(&ino->i_lock);
+-	lo->refcount++;
++	get_layout(lo);
  	return lo;
  }
  
-@@ -951,17 +968,9 @@ get_lock_alloc_layout(struct inode *ino)
+ static inline void
+-put_current_layout(struct pnfs_layout_type *lo)
++put_layout(struct pnfs_layout_type *lo)
+ {
+ 	struct inode *inode = PNFS_INODE(lo);
+ 	struct nfs_client *clp;
+@@ -359,7 +366,7 @@ pnfs_layout_release(struct pnfs_layout_type *lo,
+ 	spin_lock(&nfsi->vfs_inode.i_lock);
+ 	if (range)
+ 		pnfs_free_layout(lo, range);
+-	put_current_layout(lo);
++	put_layout(lo);
+ 	spin_unlock(&nfsi->vfs_inode.i_lock);
+ 	wake_up_all(&nfsi->lo_waitq);
+ }
+@@ -375,10 +382,10 @@ pnfs_destroy_layout(struct nfs_inode *nfsi)
+ 	};
+ 
+ 	spin_lock(&nfsi->vfs_inode.i_lock);
+-	lo = get_current_layout(nfsi);
++	lo = grab_current_layout(nfsi);
+ 	if (lo) {
+ 		pnfs_free_layout(lo, &range);
+-		put_current_layout(lo);
++		put_layout(lo);
+ 	}
+ 	spin_unlock(&nfsi->vfs_inode.i_lock);
+ }
+@@ -548,7 +555,7 @@ pnfs_layout_from_open_stateid(nfs4_stateid *dst, struct nfs4_state *state)
+ *    arg->length: all ones
+ */
+ static int
+-get_layout(struct inode *ino,
++send_layoutget(struct inode *ino,
+ 	   struct nfs_open_context *ctx,
+ 	   struct nfs4_pnfs_layout_segment *range,
+ 	   struct pnfs_layout_segment **lsegpp,
+@@ -744,9 +751,9 @@ _pnfs_return_layout(struct inode *ino, struct nfs4_pnfs_layout_segment *range,
+ 
+ 	if (type == RETURN_FILE) {
+ 		spin_lock(&ino->i_lock);
+-		lo = get_current_layout(nfsi);
++		lo = grab_current_layout(nfsi);
+ 		if (lo && !has_layout_to_return(lo, &arg)) {
+-			put_current_layout(lo);
++			put_layout(lo);
+ 			lo = NULL;
  		}
+ 		if (!lo) {
+@@ -764,7 +771,7 @@ _pnfs_return_layout(struct inode *ino, struct nfs4_pnfs_layout_segment *range,
+ 			if (stateid) { /* callback */
+ 				status = -EAGAIN;
+ 				spin_lock(&ino->i_lock);
+-				put_current_layout(lo);
++				put_layout(lo);
+ 				spin_unlock(&ino->i_lock);
+ 				goto out;
+ 			}
+@@ -921,7 +928,7 @@ get_lock_alloc_layout(struct inode *ino)
+ 	dprintk("%s Begin\n", __func__);
  
- 		lo = alloc_init_layout(ino);
--		if (lo) {
--			struct nfs_client *clp = NFS_SERVER(ino)->nfs_client;
--
--			/* must grab the layout lock before the client lock */
-+		if (lo)
- 			spin_lock(&ino->i_lock);
--
--			spin_lock(&clp->cl_lock);
--			if (list_empty(&lo->lo_layouts))
--				list_add_tail(&lo->lo_layouts, &clp->cl_layouts);
--			spin_unlock(&clp->cl_lock);
--		} else
-+		else
- 			lo = ERR_PTR(-ENOMEM);
+ 	spin_lock(&ino->i_lock);
+-	while ((lo = get_current_layout(nfsi)) == NULL) {
++	while ((lo = grab_current_layout(nfsi)) == NULL) {
+ 		spin_unlock(&ino->i_lock);
+ 		/* Compete against other threads on who's doing the allocation,
+ 		 * wait until bit is cleared if we lost this race.
+@@ -1102,7 +1109,7 @@ _pnfs_update_layout(struct inode *ino,
+ 	/* Lose lock, but not reference, match this with pnfs_layout_release */
+ 	spin_unlock(&ino->i_lock);
  
- 		/* release the NFS_INO_LAYOUT_ALLOC bit and wake up waiters */
-@@ -1247,14 +1256,13 @@ pnfs_layout_process(struct nfs4_pnfs_layoutget *lgp)
- 		goto out;
- 	}
- 
-+	spin_lock(&ino->i_lock);
- 	init_lseg(lo, lseg);
- 	lseg->range = res->lseg;
- 	if (lgp->lsegpp) {
- 		get_lseg(lseg);
- 		*lgp->lsegpp = lseg;
- 	}
--
--	spin_lock(&ino->i_lock);
- 	pnfs_insert_layout(lo, lseg);
- 
- 	if (res->return_on_close) {
-@@ -1642,6 +1650,9 @@ pnfs_layoutcommit_inode(struct inode *inode, int sync)
- 	}
- 	status = pnfs4_proc_layoutcommit(data, sync);
+-	get_layout(ino, ctx, &arg, lsegpp, lo);
++	send_layoutget(ino, ctx, &arg, lsegpp, lo);
  out:
-+	spin_lock(&inode->i_lock);
-+	put_layout(&nfsi->layout);
-+	spin_unlock(&inode->i_lock);
- 	dprintk("%s end (err:%d)\n", __func__, status);
- 	return status;
- out_free:
+ 	dprintk("%s end, state 0x%lx lseg %p\n", __func__,
+ 		nfsi->layout.pnfs_layout_state, lseg);
+@@ -1110,7 +1117,7 @@ out:
+ out_put:
+ 	if (lsegpp)
+ 		*lsegpp = lseg;
+-	put_current_layout(lo);
++	put_layout(lo);
+ 	spin_unlock(&ino->i_lock);
+ 	goto out;
+ }
+@@ -1328,10 +1335,10 @@ pnfs_getboundary(struct inode *inode)
+ 
+ 	nfsi = NFS_I(inode);
+ 	spin_lock(&inode->i_lock);
+-	lo = get_current_layout(nfsi);;
++	lo = grab_current_layout(nfsi);;
+ 	if (lo) {
+ 		stripe_size = policy_ops->get_stripesize(lo);
+-		put_current_layout(lo);
++		put_layout(lo);
+ 	}
+ 	spin_unlock(&inode->i_lock);
+ out:
 -- 
 1.6.6.1
 
