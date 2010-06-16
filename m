@@ -1,48 +1,186 @@
-From: Eric Anderle <eanderle@umich.edu>
-Subject: [PATCH 1/1] pnfs: Fix num_ds bug in nfsd4_set_pnfs_dlm_device()
-Date: Fri, 18 Jun 2010 11:55:58 -0400
-Message-ID: <1276876558.1796.19.camel@Berlin>
-Reply-To: eanderle@umich.edu
-Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-	linux-nfs <linux-nfs@vger.kernel.org>
-To: bhalevy <bhalevy@panasas.com>
+From: Fred Isaman <iisaman@netapp.com>
+Subject: [PATCH 1/3] pnfs-submit: separate locking from get and put of layout
+Date: Wed, 16 Jun 2010 19:44:46 -0400
+Message-ID: <1276731888-3202-1-git-send-email-iisaman@netapp.com>
+To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp.mail.umich.edu ([141.211.14.82]:56099 "EHLO
-	hellskitchen.mr.itd.umich.edu" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1753696Ab0FRP4F (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Jun 2010 11:56:05 -0400
+Received: from citi.umich.edu ([141.212.112.111]:48105 "EHLO citi.umich.edu"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755063Ab0FRQcU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 18 Jun 2010 12:32:20 -0400
+Received: from localhost.localdomain (netapp-61.citi.umich.edu [141.212.112.250])
+	by citi.umich.edu (Postfix) with ESMTP id E27BA1809E
+	for <linux-nfs@vger.kernel.org>; Fri, 18 Jun 2010 12:32:19 -0400 (EDT)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
->From cd18db8401e1df4ee031e6a6c53e0f3353080dca Mon Sep 17 00:00:00 2001
-From: Eric Anderle <eanderle@umich.edu>
-Date: Fri, 18 Jun 2010 10:09:46 -0400
-Subject: [PATCH 1/1] pnfs: Fix num_ds bug in nfsd4_set_pnfs_dlm_device()
+This is needed by next patch that changes refcounting
 
-Previously, when updating the DS list of an existing pnfs dlm device,
-the number of ds's was not updated. Fixed.
-
-Signed-off-by: Eric Anderle <eanderle@umich.edu>
+Signed-off-by: Fred Isaman <iisaman@netapp.com>
 ---
- fs/nfsd/nfs4pnfsdlm.c |    1 +
- 1 files changed, 1 insertions(+), 0 deletions(-)
+ fs/nfs/pnfs.c |   59 +++++++++++++++++++++++++++++----------------------------
+ 1 files changed, 30 insertions(+), 29 deletions(-)
 
-diff --git a/fs/nfsd/nfs4pnfsdlm.c b/fs/nfsd/nfs4pnfsdlm.c
-index 40f9b84..ffe1c32 100644
---- a/fs/nfsd/nfs4pnfsdlm.c
-+++ b/fs/nfsd/nfs4pnfsdlm.c
-@@ -189,6 +189,7 @@ nfsd4_set_pnfs_dlm_device(char *pnfs_dlm_device, int len)
- 			found->disk_name, found->ds_list, new->ds_list);
- 		memset(found->ds_list, 0, DISK_NAME_LEN);
- 		memcpy(found->ds_list, new->ds_list, strlen(new->ds_list));
-+		found->num_ds = new->num_ds;
- 		kfree(new);
- 	} else {
- 		dprintk("%s Adding pnfs_dlm_device %s:%s\n", __func__,
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 025675b..ed4c72e 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -313,30 +313,20 @@ pnfs_unregister_layoutdriver(struct pnfs_layoutdriver_type *ld_type)
+ #define BUG_ON_UNLOCKED_LO(lo) do {} while (0)
+ #endif /* CONFIG_SMP */
+ 
+-/*
+- * get and lock nfsi->layout
+- */
+ static inline struct pnfs_layout_type *
+-get_lock_current_layout(struct nfs_inode *nfsi)
++get_current_layout(struct nfs_inode *nfsi)
+ {
+-	struct pnfs_layout_type *lo;
++	struct pnfs_layout_type *lo = &nfsi->layout;
+ 
+-	lo = &nfsi->layout;
+-	spin_lock(&nfsi->vfs_inode.i_lock);
+-	if (!lo->ld_data) {
+-		spin_unlock(&nfsi->vfs_inode.i_lock);
++	BUG_ON_UNLOCKED_LO(lo);
++	if (!lo->ld_data)
+ 		return NULL;
+-	}
+-
+ 	lo->refcount++;
+ 	return lo;
+ }
+ 
+-/*
+- * put and unlock nfs->layout
+- */
+ static inline void
+-put_unlock_current_layout(struct pnfs_layout_type *lo)
++put_current_layout(struct pnfs_layout_type *lo)
+ {
+ 	struct inode *inode = PNFS_INODE(lo);
+ 	struct nfs_client *clp;
+@@ -358,7 +348,6 @@ put_unlock_current_layout(struct pnfs_layout_type *lo)
+ 		list_del_init(&lo->lo_layouts);
+ 		spin_unlock(&clp->cl_lock);
+ 	}
+-	spin_unlock(&inode->i_lock);
+ }
+ 
+ void
+@@ -370,7 +359,8 @@ pnfs_layout_release(struct pnfs_layout_type *lo,
+ 	spin_lock(&nfsi->vfs_inode.i_lock);
+ 	if (range)
+ 		pnfs_free_layout(lo, range);
+-	put_unlock_current_layout(lo);
++	put_current_layout(lo);
++	spin_unlock(&nfsi->vfs_inode.i_lock);
+ 	wake_up_all(&nfsi->lo_waitq);
+ }
+ 
+@@ -384,11 +374,13 @@ pnfs_destroy_layout(struct nfs_inode *nfsi)
+ 		.length = NFS4_MAX_UINT64,
+ 	};
+ 
+-	lo = get_lock_current_layout(nfsi);
++	spin_lock(&nfsi->vfs_inode.i_lock);
++	lo = get_current_layout(nfsi);
+ 	if (lo) {
+ 		pnfs_free_layout(lo, &range);
+-		put_unlock_current_layout(lo);
++		put_current_layout(lo);
+ 	}
++	spin_unlock(&nfsi->vfs_inode.i_lock);
+ }
+ 
+ static inline void
+@@ -751,12 +743,14 @@ _pnfs_return_layout(struct inode *ino, struct nfs4_pnfs_layout_segment *range,
+ 	arg.length = NFS4_MAX_UINT64;
+ 
+ 	if (type == RETURN_FILE) {
+-		lo = get_lock_current_layout(nfsi);
++		spin_lock(&ino->i_lock);
++		lo = get_current_layout(nfsi);
+ 		if (lo && !has_layout_to_return(lo, &arg)) {
+-			put_unlock_current_layout(lo);
++			put_current_layout(lo);
+ 			lo = NULL;
+ 		}
+ 		if (!lo) {
++			spin_unlock(&ino->i_lock);
+ 			dprintk("%s: no layout segments to return\n", __func__);
+ 			goto out;
+ 		}
+@@ -770,7 +764,8 @@ _pnfs_return_layout(struct inode *ino, struct nfs4_pnfs_layout_segment *range,
+ 			if (stateid) { /* callback */
+ 				status = -EAGAIN;
+ 				spin_lock(&ino->i_lock);
+-				put_unlock_current_layout(lo);
++				put_current_layout(lo);
++				spin_unlock(&ino->i_lock);
+ 				goto out;
+ 			}
+ 			dprintk("%s: waiting\n", __func__);
+@@ -914,8 +909,7 @@ static int pnfs_wait_schedule(void *word)
+  * get, possibly allocate, and lock current_layout
+  *
+  * Note: If successful, ino->i_lock is taken and the caller
+- * must put and unlock current_layout by using put_unlock_current_layout()
+- * when the returned layout is released.
++ * must put and unlock current_layout when the returned layout is released.
+  */
+ static struct pnfs_layout_type *
+ get_lock_alloc_layout(struct inode *ino)
+@@ -926,7 +920,9 @@ get_lock_alloc_layout(struct inode *ino)
+ 
+ 	dprintk("%s Begin\n", __func__);
+ 
+-	while ((lo = get_lock_current_layout(nfsi)) == NULL) {
++	spin_lock(&ino->i_lock);
++	while ((lo = get_current_layout(nfsi)) == NULL) {
++		spin_unlock(&ino->i_lock);
+ 		/* Compete against other threads on who's doing the allocation,
+ 		 * wait until bit is cleared if we lost this race.
+ 		 */
+@@ -942,8 +938,10 @@ get_lock_alloc_layout(struct inode *ino)
+ 		/* Was current_layout already allocated while we slept?
+ 		 * If so, retry get_lock'ing it. Otherwise, allocate it.
+ 		 */
+-		if (nfsi->layout.ld_data)
++		if (nfsi->layout.ld_data) {
++			spin_lock(&ino->i_lock);
+ 			continue;
++		}
+ 
+ 		lo = alloc_init_layout(ino);
+ 		if (lo) {
+@@ -1112,7 +1110,8 @@ out:
+ out_put:
+ 	if (lsegpp)
+ 		*lsegpp = lseg;
+-	put_unlock_current_layout(lo);
++	put_current_layout(lo);
++	spin_unlock(&ino->i_lock);
+ 	goto out;
+ }
+ 
+@@ -1328,11 +1327,13 @@ pnfs_getboundary(struct inode *inode)
+ 		goto out;
+ 
+ 	nfsi = NFS_I(inode);
+-	lo = get_lock_current_layout(nfsi);;
++	spin_lock(&inode->i_lock);
++	lo = get_current_layout(nfsi);;
+ 	if (lo) {
+ 		stripe_size = policy_ops->get_stripesize(lo);
+-		put_unlock_current_layout(lo);
++		put_current_layout(lo);
+ 	}
++	spin_unlock(&inode->i_lock);
+ out:
+ 	return stripe_size;
+ }
 -- 
-1.7.0.4
-
-
+1.6.6.1
 
