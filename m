@@ -1,62 +1,44 @@
-From: Jeff Layton <jlayton@redhat.com>
-Subject: Re: [PATCH] nfsd: just keep single lockd reference for nfsd
-Date: Fri, 18 Jun 2010 11:11:32 -0400
-Message-ID: <20100618111132.20fb518a@corrin.poochiereds.net>
-References: <1276858940-15499-1-git-send-email-jlayton@redhat.com>
-	<20100618151808.6e40a0ca@boulder.homenet>
-	<20100618103042.080aa597@corrin.poochiereds.net>
-	<20100618160411.14d65b2b@boulder.homenet>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org
-To: Chris Vine <chris-TF6qbakwsgc2epGFuHBODCp2UmYkHbXO@public.gmane.org>
+From: Fred Isaman <iisaman@netapp.com>
+Subject: [PATCH 1/1] SQUASHME pnfs-submit: pnfs4_proc_layoutcommit was using freed memory
+Date: Wed, 16 Jun 2010 18:43:31 -0400
+Message-ID: <1276728211-31092-1-git-send-email-iisaman@netapp.com>
+To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:33032 "EHLO mx1.redhat.com"
+Received: from citi.umich.edu ([141.212.112.111]:49035 "EHLO citi.umich.edu"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932443Ab0FRPJg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 18 Jun 2010 11:09:36 -0400
-In-Reply-To: <20100618160411.14d65b2b-PlFwYbz7hoIyinQH9hAyzg@public.gmane.org>
+	id S932475Ab0FRPbF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 18 Jun 2010 11:31:05 -0400
+Received: from localhost.localdomain (netapp-61.citi.umich.edu [141.212.112.250])
+	by citi.umich.edu (Postfix) with ESMTP id DCB7F18091
+	for <linux-nfs@vger.kernel.org>; Fri, 18 Jun 2010 11:31:02 -0400 (EDT)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 18 Jun 2010 16:04:11 +0100
-Chris Vine <chris-TF6qbakwsgc2epGFuHBODCp2UmYkHbXO@public.gmane.org> wrote:
+_pnfs4_proc_layoutcommit frees data when called with issync==true.
+This resulted in setting server from the freed memory.
 
-> On Fri, 18 Jun 2010 10:30:42 -0400
-> Jeff Layton <jlayton@redhat.com> wrote:
-> [snip]
-> > Thanks for testing them. No oops == improvement!
-> > 
-> > ...but it would still be good to know what's wrong here. It sounds
-> > like something is really odd with loopback communications on this
-> > box. Is the ipv4 loopback interface up at this time? Do you have any
-> > iptables stuff set up that might be filtering out portmap
-> > registration requests from the kernel? What happens if you run
-> > "rpcinfo"? Does it also hang?
-> > 
-> > The kernel uses TCP for talking to portmap these days, so it might
-> > also be good to see whether you can use rpcinfo to talk to it with
-> > TCP too...
-> 
-> You are right. Although the lo interface is up, localhost is broken in
-> 2.6.35-rc3. External networking works OK which is why I hadn't noticed.
-> 
-> It looks like some other unrelated bug in 2.6.35 is at work. Quite why
-> it doesn't strike my Pentium machine I can't say.  The netbook takes its
-> network address from DHCP (my Pentium does not) but that shouldn't make
-> any difference to localhost.
-> 
-> I shall do a bit more looking around later today or tomorrow.
-> 
-> Chris
-> 
-> 
+Signed-off-by: Fred Isaman <iisaman@netapp.com>
+---
+ fs/nfs/nfs4proc.c |    3 ++-
+ 1 files changed, 2 insertions(+), 1 deletions(-)
 
-Ok, good to know. I'll still plan to pursue these fixes. The error
-handling in nfsd obviously an area that needs improvement. I think
-Bruce's current plan is to take the earlier patches in that stack for
-2.6.36. If this one is OK, it's probably reasonable to go in at the
-same time.
-
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index b85239a..5ffdfe1 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -5607,10 +5607,11 @@ out:
+ int pnfs4_proc_layoutcommit(struct pnfs_layoutcommit_data *data, int issync)
+ {
+ 	struct nfs4_exception exception = { };
++	struct nfs_server *server = NFS_SERVER(data->args.inode);
+ 	int err;
+ 
+ 	do {
+-		err = nfs4_handle_exception(NFS_SERVER(data->args.inode),
++		err = nfs4_handle_exception(server,
+ 					_pnfs4_proc_layoutcommit(data, issync),
+ 					&exception);
+ 	} while (exception.retry);
 -- 
-Jeff Layton <jlayton@redhat.com>
+1.6.6.1
+
