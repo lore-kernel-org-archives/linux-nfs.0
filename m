@@ -1,122 +1,268 @@
-From: Benny Halevy <bhalevy@panasas.com>
-Subject: [PATCH 03/19] SQUASHME: pnfs-submit: optionally pass nfs_client to nfs4_async_handle_error
-Date: Thu, 17 Jun 2010 10:48:41 -0400
-Message-ID: <1276786121-11720-1-git-send-email-bhalevy@panasas.com>
-References: <4C1A3570.5030709@panasas.com>
+From: Fred Isaman <iisaman@netapp.com>
+Subject: [PATCH 1/1] pnfs-submit: filelayout: Support dense layouts
+Date: Wed, 16 Jun 2010 09:33:46 -0400
+Message-ID: <1276695226-11787-1-git-send-email-iisaman@netapp.com>
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:50315 "EHLO
-	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1755999Ab0FQOsf (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Jun 2010 10:48:35 -0400
-In-Reply-To: <4C1A3570.5030709@panasas.com>
+Received: from citi.umich.edu ([141.212.112.111]:39448 "EHLO citi.umich.edu"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755999Ab0FQOsp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 17 Jun 2010 10:48:45 -0400
+Received: from localhost.localdomain (netapp-61.citi.umich.edu [141.212.112.250])
+	by citi.umich.edu (Postfix) with ESMTP id 2DE291808A
+	for <linux-nfs@vger.kernel.org>; Thu, 17 Jun 2010 10:48:45 -0400 (EDT)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-To overrise the server->client with the data server's nfs client.
+We were silently accepting dense layouts but using sparse fh selection
+and flawed offset calculations.
 
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+Signed-off-by: Fred Isaman <iisaman@netapp.com>
 ---
- fs/nfs/nfs4proc.c |   22 ++++++----------------
- 1 files changed, 6 insertions(+), 16 deletions(-)
+ fs/nfs/nfs4filelayout.c    |   72 ++++++++++++++++++++-----------------------
+ fs/nfs/nfs4filelayout.h    |   11 +-----
+ fs/nfs/nfs4filelayoutdev.c |   38 ++++++++++++++++-------
+ 3 files changed, 62 insertions(+), 59 deletions(-)
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 8ab30d5..c4f707f 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -70,7 +70,7 @@ struct nfs4_opendata;
- static int _nfs4_proc_open(struct nfs4_opendata *data);
- static int _nfs4_recover_proc_open(struct nfs4_opendata *data);
- static int nfs4_do_fsinfo(struct nfs_server *, struct nfs_fh *, struct nfs_fsinfo *);
--static int nfs4_async_handle_error(struct rpc_task *, const struct nfs_server *, struct nfs4_state *, struct nfs4_session *ds_session);
-+static int nfs4_async_handle_error(struct rpc_task *, const struct nfs_server *, struct nfs4_state *, struct nfs_client *);
- static int _nfs4_proc_lookup(struct inode *dir, const struct qstr *name, struct nfs_fh *fhandle, struct nfs_fattr *fattr);
- static int _nfs4_proc_getattr(struct nfs_server *server, struct nfs_fh *fhandle, struct nfs_fattr *fattr);
- static int nfs4_do_setattr(struct inode *inode, struct rpc_cred *cred,
-@@ -3165,7 +3165,6 @@ static int pnfs4_read_done(struct rpc_task *task, struct nfs_read_data *data)
+diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+index 8a83c0d..57a0010 100644
+--- a/fs/nfs/nfs4filelayout.c
++++ b/fs/nfs/nfs4filelayout.c
+@@ -100,36 +100,26 @@ filelayout_uninitialize_mountpoint(struct nfs_server *nfss)
+  * offset of the file on the dserver based on whether the
+  * layout type is STRIPE_DENSE or STRIPE_SPARSE
+  */
+-loff_t
+-filelayout_get_dserver_offset(loff_t offset,
+-			      struct nfs4_filelayout_segment *layout)
++static loff_t
++filelayout_get_dserver_offset(struct pnfs_layout_segment *lseg, loff_t offset)
  {
- 	struct nfs_server *mds_svr = NFS_SERVER(data->inode);
- 	struct nfs_client *client = mds_svr->nfs_client;
--	struct nfs4_session *ds_session = NULL;
+-	if (!layout)
+-		return offset;
++	struct nfs4_filelayout_segment *flseg = LSEG_LD_DATA(lseg);
  
- 	dprintk("--> %s\n", __func__);
+-	switch (layout->stripe_type) {
++	switch (flseg->stripe_type) {
+ 	case STRIPE_SPARSE:
+ 		return offset;
  
-@@ -3176,7 +3175,6 @@ static int pnfs4_read_done(struct rpc_task *task, struct nfs_read_data *data)
- 	if (data->fldata.ds_nfs_client) {
- 		dprintk("%s DS read\n", __func__);
- 		client = data->fldata.ds_nfs_client;
--		ds_session = data->fldata.ds_nfs_client->cl_session;
+ 	case STRIPE_DENSE:
+ 	{
+-		u32 stripe_size;
+-		u32 stripe_unit;
+-		loff_t off;
+-		loff_t tmp;
+-		u32 stripe_unit_idx;
+-
+-		stripe_size = layout->stripe_unit * layout->num_fh;
+-		/* XXX I do this because do_div seems to take a 32 bit dividend */
+-		stripe_unit = layout->stripe_unit;
+-		tmp = off = offset;
+-
+-		do_div(off, stripe_size);
+-		stripe_unit_idx = do_div(tmp, stripe_unit);
+-
+-		return off * stripe_unit + stripe_unit_idx;
++		u32 stripe_width;
++		u64 tmp, off;
++		u32 unit = flseg->stripe_unit;
++
++		stripe_width = unit * FILE_DSADDR(lseg)->stripe_count;
++		tmp = off = offset - flseg->pattern_offset;
++		do_div(tmp, stripe_width);
++		return tmp * unit + do_div(off, unit);
  	}
- 
- 	nfs41_sequence_done(&data->res.seq_res);
-@@ -3187,7 +3185,7 @@ static int pnfs4_read_done(struct rpc_task *task, struct nfs_read_data *data)
- 
- 	/* FIXME: pass data->args.context->state to nfs4_async_handle_error
- 	   like in nfs4_read_done? */
--	if (nfs4_async_handle_error(task, mds_svr, NULL, ds_session) == -EAGAIN) {
-+	if (nfs4_async_handle_error(task, mds_svr, NULL, client) == -EAGAIN) {
- 		nfs_restart_rpc(task, client);
- 		dprintk("<-- %s status= %d\n", __func__, -EAGAIN);
- 		return -EAGAIN;
-@@ -3209,7 +3207,6 @@ static int pnfs4_write_done(struct rpc_task *task, struct nfs_write_data *data)
+-
+ 	default:
+ 		BUG();
+ 	}
+@@ -218,18 +208,17 @@ filelayout_read_pagelist(struct pnfs_layout_type *layoutid,
+ 			 struct nfs_read_data *data)
  {
- 	struct nfs_server *mds_svr = NFS_SERVER(data->inode);
- 	struct nfs_client *client = mds_svr->nfs_client;
--	struct nfs4_session *ds_session = NULL;
+ 	struct inode *inode = PNFS_INODE(layoutid);
+-	struct nfs4_filelayout_segment *flseg;
++	struct pnfs_layout_segment *lseg = data->pdata.lseg;
+ 	struct nfs4_pnfs_ds *ds;
+ 	u32 idx;
++	struct nfs_fh *fh;
  
- 	/* restore original count after retry? */
- 	if (data->pdata.orig_count) {
-@@ -3225,7 +3222,6 @@ static int pnfs4_write_done(struct rpc_task *task, struct nfs_write_data *data)
- 	if (data->fldata.ds_nfs_client) {
- 		dprintk("%s DS write\n", __func__);
- 		client = data->fldata.ds_nfs_client;
--		ds_session = client->cl_session;
- 	}
+ 	dprintk("--> %s ino %lu nr_pages %d pgbase %u req %Zu@%llu\n",
+ 		__func__, inode->i_ino, nr_pages, pgbase, count, offset);
  
- 	nfs41_sequence_done(&data->res.seq_res);
-@@ -3235,7 +3231,7 @@ static int pnfs4_write_done(struct rpc_task *task, struct nfs_write_data *data)
- 	*/
- 	/* FIXME: pass data->args.context->state to nfs4_async_handle_error
- 	   like in nfs4_write_done? */
--	if (nfs4_async_handle_error(task, mds_svr, NULL, ds_session) == -EAGAIN) {
-+	if (nfs4_async_handle_error(task, mds_svr, NULL, client) == -EAGAIN) {
- 		nfs_restart_rpc(task, client);
- 		dprintk("<-- %s status= %d\n", __func__, -EAGAIN);
- 		return -EAGAIN;
-@@ -3269,7 +3265,6 @@ static int pnfs4_commit_done(struct rpc_task *task, struct nfs_write_data *data)
+-	flseg = LSEG_LD_DATA(data->pdata.lseg);
+-
+ 	/* Retrieve the correct rpc_client for the byte range */
+-	idx = nfs4_fl_calc_ds_index(data->pdata.lseg, offset);
+-	ds = nfs4_fl_prepare_ds(data->pdata.lseg, idx);
++	idx = nfs4_fl_calc_ds_index(lseg, offset);
++	ds = nfs4_fl_prepare_ds(lseg, idx);
+ 	if (!ds) {
+ 		printk(KERN_ERR "%s: prepare_ds failed, use MDS\n", __func__);
+ 		return PNFS_NOT_ATTEMPTED;
+@@ -239,7 +228,9 @@ filelayout_read_pagelist(struct pnfs_layout_type *layoutid,
+ 
+ 	/* just try the first data server for the index..*/
+ 	data->fldata.ds_nfs_client = ds->ds_clp;
+-	data->args.fh = nfs4_fl_select_ds_fh(flseg, idx);
++	fh = nfs4_fl_select_ds_fh(lseg, offset);
++	if (fh)
++		data->args.fh = fh;
+ 
+ 	/* Now get the file offset on the dserver
+ 	 * Set the read offset to this offset, and
+@@ -247,8 +238,7 @@ filelayout_read_pagelist(struct pnfs_layout_type *layoutid,
+ 	 * In the case of aync reads, the offset will be reset in the
+ 	 * call_ops->rpc_call_done() routine.
+ 	 */
+-	data->args.offset = filelayout_get_dserver_offset(offset,
+-							  flseg);
++	data->args.offset = filelayout_get_dserver_offset(lseg, offset);
+ 	data->fldata.orig_offset = offset;
+ 
+ 	/* Perform an asynchronous read */
+@@ -269,16 +259,17 @@ filelayout_write_pagelist(struct pnfs_layout_type *layoutid,
+ 			  struct nfs_write_data *data)
  {
- 	struct nfs_server *mds_svr = NFS_SERVER(data->inode);
- 	struct nfs_client *client = mds_svr->nfs_client;
--	struct nfs4_session *ds_session = mds_svr->nfs_client->cl_session;
+ 	struct inode *inode = PNFS_INODE(layoutid);
+-	struct nfs4_filelayout_segment *flseg = LSEG_LD_DATA(data->pdata.lseg);
++	struct pnfs_layout_segment *lseg = data->pdata.lseg;
+ 	struct nfs4_pnfs_ds *ds;
+ 	u32 idx;
++	struct nfs_fh *fh;
  
- 	dprintk("--> %s task->tk_status %d\n", __func__, task->tk_status);
+ 	dprintk("--> %s ino %lu nr_pages %d pgbase %u req %Zu@%llu sync %d\n",
+ 		__func__, inode->i_ino, nr_pages, pgbase, count, offset, sync);
  
-@@ -3284,7 +3279,7 @@ static int pnfs4_commit_done(struct rpc_task *task, struct nfs_write_data *data)
+ 	/* Retrieve the correct rpc_client for the byte range */
+-	idx = nfs4_fl_calc_ds_index(data->pdata.lseg, offset);
+-	ds = nfs4_fl_prepare_ds(data->pdata.lseg, idx);
++	idx = nfs4_fl_calc_ds_index(lseg, offset);
++	ds = nfs4_fl_prepare_ds(lseg, idx);
+ 	if (!ds) {
+ 		printk(KERN_ERR "%s: prepare_ds failed, use MDS\n", __func__);
+ 		return PNFS_NOT_ATTEMPTED;
+@@ -288,12 +279,14 @@ filelayout_write_pagelist(struct pnfs_layout_type *layoutid,
+ 		htonl(ds->ds_ip_addr), ntohs(ds->ds_port), ds->r_addr);
  
- 	nfs41_sequence_done(&data->res.seq_res);
+ 	data->fldata.ds_nfs_client = ds->ds_clp;
+-	data->args.fh = nfs4_fl_select_ds_fh(flseg, idx);
++	fh = nfs4_fl_select_ds_fh(lseg, offset);
++	if (fh)
++		data->args.fh = fh;
  
--	if (nfs4_async_handle_error(task, mds_svr, NULL, ds_session) == -EAGAIN) {
-+	if (nfs4_async_handle_error(task, mds_svr, NULL, client) == -EAGAIN) {
- 		nfs_restart_rpc(task, client);
- 		return -EAGAIN;
- 	}
-@@ -3698,14 +3693,9 @@ static int nfs4_proc_set_acl(struct inode *inode, const void *buf, size_t buflen
+ 	/* Get the file offset on the dserver. Set the write offset to
+ 	 * this offset and save the original offset.
+ 	 */
+-	data->args.offset = filelayout_get_dserver_offset(offset, flseg);
++	data->args.offset = filelayout_get_dserver_offset(lseg, offset);
+ 	data->fldata.orig_offset = offset;
+ 
+ 	/* Perform an asynchronous write The offset will be reset in the
+@@ -649,6 +642,8 @@ filelayout_commit(struct pnfs_layout_type *layoutid, int sync,
+ 			clnt = NFS_CLIENT(dsdata->inode);
+ 			ds = NULL;
+ 		} else {
++			struct nfs_fh *fh;
++
+ 			call_ops = &filelayout_commit_call_ops;
+ 			req = nfs_list_entry(dsdata->pages.next);
+ 			ds = nfs4_fl_prepare_ds(req->wb_lseg, idx);
+@@ -660,9 +655,10 @@ filelayout_commit(struct pnfs_layout_type *layoutid, int sync,
+ 			}
+ 			clnt = ds->ds_clp->cl_rpcclient;
+ 			dsdata->fldata.ds_nfs_client = ds->ds_clp;
+-			dsdata->args.fh = \
+-				nfs4_fl_select_ds_fh(LSEG_LD_DATA(req->wb_lseg),
+-						     idx);
++			file_offset = (loff_t)req->wb_index << PAGE_CACHE_SHIFT;
++			fh = nfs4_fl_select_ds_fh(req->wb_lseg, file_offset);
++			if (fh)
++				dsdata->args.fh = fh;
+ 		}
+ 		dprintk("%s: Initiating commit: %llu USE DS:\n",
+ 			__func__, file_offset);
+diff --git a/fs/nfs/nfs4filelayout.h b/fs/nfs/nfs4filelayout.h
+index 3697926..29e481d 100644
+--- a/fs/nfs/nfs4filelayout.h
++++ b/fs/nfs/nfs4filelayout.h
+@@ -80,15 +80,8 @@ struct filelayout_mount_type {
+ 	struct super_block *fl_sb;
+ };
+ 
+-static inline struct nfs_fh *
+-nfs4_fl_select_ds_fh(struct nfs4_filelayout_segment *flseg, u32 idx)
+-{
+-	/* FRED - what about case == 0??? */
+-	if (flseg->num_fh == 1)
+-		return &flseg->fh_array[0];
+-	else
+-		return &flseg->fh_array[idx];
+-}
++extern struct nfs_fh *
++nfs4_fl_select_ds_fh(struct pnfs_layout_segment *lseg, loff_t offset);
+ 
+ extern struct pnfs_client_operations *pnfs_callback_ops;
+ 
+diff --git a/fs/nfs/nfs4filelayoutdev.c b/fs/nfs/nfs4filelayoutdev.c
+index 404dd5f..5842c09 100644
+--- a/fs/nfs/nfs4filelayoutdev.c
++++ b/fs/nfs/nfs4filelayoutdev.c
+@@ -558,28 +558,42 @@ nfs4_pnfs_device_item_find(struct nfs_client *clp, struct pnfs_deviceid *id)
+  * Then: ((res + fsi) % dsaddr->stripe_count)
+  */
+ static inline u32
+-_nfs4_fl_calc_j_index(loff_t offset,
+-		      struct nfs4_file_layout_dsaddr *dsaddr,
+-		      struct nfs4_filelayout_segment *layout)
++_nfs4_fl_calc_j_index(struct pnfs_layout_segment *lseg, loff_t offset)
+ {
++	struct nfs4_filelayout_segment *flseg = LSEG_LD_DATA(lseg);
+ 	u64 tmp;
+ 
+-	tmp = offset - layout->pattern_offset;
+-	do_div(tmp, layout->stripe_unit);
+-	tmp += layout->first_stripe_index;
+-	return do_div(tmp, dsaddr->stripe_count);
++	tmp = offset - flseg->pattern_offset;
++	do_div(tmp, flseg->stripe_unit);
++	tmp += flseg->first_stripe_index;
++	return do_div(tmp, FILE_DSADDR(lseg)->stripe_count);
  }
  
- static int
--nfs4_async_handle_error(struct rpc_task *task, const struct nfs_server *server, struct nfs4_state *state, struct nfs4_session *ds_session)
-+nfs4_async_handle_error(struct rpc_task *task, const struct nfs_server *server, struct nfs4_state *state, struct nfs_client *clp)
+ u32
+ nfs4_fl_calc_ds_index(struct pnfs_layout_segment *lseg, loff_t offset)
  {
--	struct nfs_client *clp;
--
--	/* Either server or ds_session is set */
--	if (ds_session)
--		clp = ds_session->clp;
--	else
-+	if (!clp)
- 		clp = server->nfs_client;
+-	struct nfs4_filelayout_segment *flseg = LSEG_LD_DATA(lseg);
+-	struct nfs4_file_layout_dsaddr *dsaddr;
+ 	u32 j;
  
- 	if (task->tk_status >= 0)
+-	dsaddr = FILE_DSADDR(lseg);
+-	j = _nfs4_fl_calc_j_index(offset, dsaddr, flseg);
+-	return dsaddr->stripe_indices[j];
++	j = _nfs4_fl_calc_j_index(lseg, offset);
++	return FILE_DSADDR(lseg)->stripe_indices[j];
++}
++
++struct nfs_fh *
++nfs4_fl_select_ds_fh(struct pnfs_layout_segment *lseg, loff_t offset)
++{
++	struct nfs4_filelayout_segment *flseg = LSEG_LD_DATA(lseg);
++	u32 i;
++
++	if (flseg->stripe_type == STRIPE_SPARSE) {
++		if (flseg->num_fh == 1)
++			i = 0;
++		else if (flseg->num_fh == 0)
++			return NULL;
++		else
++			i = nfs4_fl_calc_ds_index(lseg, offset);
++	} else
++		i = _nfs4_fl_calc_j_index(lseg, offset);
++	return &flseg->fh_array[i];
+ }
+ 
+ struct nfs4_pnfs_ds *
 -- 
-1.6.4.4
+1.6.6.1
 
