@@ -1,63 +1,57 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH] pnfsd: Add ability to clear pnfs dlm device ds list
-Date: Thu, 17 Jun 2010 17:17:11 -0400
-Message-ID: <20100617211711.GS29639@fieldses.org>
-References: <1276804400.1796.8.camel@Berlin> <4C1A8E45.3090004@panasas.com> <4C1A8E91.8060102@panasas.com>
+From: Benny Halevy <bhalevy@panasas.com>
+Subject: Re: [PATCH] SQUASHME: Support for cb_layout returning NFS4ERR_DELAY
+Date: Thu, 17 Jun 2010 17:56:29 -0400
+Message-ID: <4C1A9A0D.2040305@panasas.com>
+References: <4C1A4DED.50702@panasas.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: eanderle@umich.edu, linux-nfs@vger.kernel.org
-To: Benny Halevy <bhalevy@panasas.com>
+Content-Type: text/plain; charset=UTF-8
+Cc: NFS list <linux-nfs@vger.kernel.org>
+To: Boaz Harrosh <bharrosh@panasas.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:40503 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759930Ab0FQVRN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 17 Jun 2010 17:17:13 -0400
-In-Reply-To: <4C1A8E91.8060102@panasas.com>
+Received: from daytona.panasas.com ([67.152.220.89]:7978 "EHLO
+	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1753582Ab0FQV4X (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Jun 2010 17:56:23 -0400
+In-Reply-To: <4C1A4DED.50702@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Jun 17, 2010 at 05:07:29PM -0400, Benny Halevy wrote:
-> On Jun. 17, 2010, 17:06 -0400, Benny Halevy <bhalevy@panasas.com> wrote:
-> > On Jun. 17, 2010, 15:53 -0400, Eric Anderle <eanderle@umich.edu> wrote:
-> >> Added the ability to clear the pnfs dlm device ds list. Before, we
-> >> checked to make sure the list wasn't empty; this is accomplished by
-> >> examining the character after the ':' in the passed-in string. By
-> >> modifying this check, an empty list is considered valid, and everything
-> >> just works.
-> >>
-> > 
-> > Eric, a couple technical nits:
-> > One, please sign-off your patches.
-> > This is the fact convention that the author also signs off his/her
-> > own patches.
+Merged at pnfs-all-2.6.35-rc3-2010-06-17-1
 
-Note: see "120 Sign your work" under Documentation/SubmittingPatches to
-understand what you're agreeing to.  (Basically, it's just certifying
-that the work you're submitting is really yours.)
+Thanks!
 
-> > 
-> >> ---
-> >>  fs/nfsd/nfs4pnfsdlm.c |    4 +---
-> >>  1 files changed, 1 insertions(+), 3 deletions(-)
-> >>
-> >> diff --git a/fs/nfsd/nfs4pnfsdlm.c b/fs/nfsd/nfs4pnfsdlm.c
-> >> index 40f9b84..befec4f 100644
-> >> --- a/fs/nfsd/nfs4pnfsdlm.c
-> >> +++ b/fs/nfsd/nfs4pnfsdlm.c
-> >> @@ -160,17 +160,15 @@ nfsd4_set_pnfs_dlm_device(char *pnfs_dlm_device,
-> >> int len)
-> >>  
-> >>         err = -EINVAL;
-> >>         bufp += len + 1;
-> >> -       if (bufp >= endp)
-> >> +       if (bufp > endp)
-> > 
-> > Second, please make sure not to convert tabs to spaces...
-...
+Benny
+
+On Jun. 17, 2010, 12:31 -0400, Boaz Harrosh <bharrosh@panasas.com> wrote:
 > 
-> Oh, and beware of long line wrapping...
-
-The instructions for Evolution in Documentation/email-clients.txt may
-help.
-
---b.
+> On a recall, a client may return NFS4ERR_DELAY to indicate
+> that it is busy with the layout and wants to be poled.
+> 
+> TODO: If the client is stuck he would probably be cleaned
+>       at expire client. But it is possible that the client
+>       is active/renewing but would not acknowledge the
+>       recall. We should take a time stamp on first recall
+>       and expire the client if a lease time has passed.
+> 
+> Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+> ---
+>  fs/nfsd/nfs4callback.c |    6 ++++++
+>  1 files changed, 6 insertions(+), 0 deletions(-)
+> 
+> diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
+> index e1faad4..8374ebd 100644
+> --- a/fs/nfsd/nfs4callback.c
+> +++ b/fs/nfsd/nfs4callback.c
+> @@ -1044,6 +1044,12 @@ static void nfsd4_cb_layout_done(struct rpc_task *task, void *calldata)
+>  		 */
+>  		expire_client_lock(clp);
+>  		break;
+> +	case -NFS4ERR_DELAY:
+> +		/* Pole the client until it's done with the layout */
+> +		rpc_delay(task, HZ/100); /* 10 mili-seconds */
+> +		task->tk_status = 0;
+> +		rpc_restart_call(task);
+> +		break;
+>  	case -NFS4ERR_NOMATCHING_LAYOUT:
+>  		nomatching_layout(clr);
+>  	}
