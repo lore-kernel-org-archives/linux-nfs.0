@@ -1,112 +1,60 @@
-From: Boaz Harrosh <bharrosh@panasas.com>
-Subject: Re: [PATCH] SQUASHME: Support for cb_layout returning NFS4ERR_DELAY
-Date: Mon, 28 Jun 2010 20:13:13 +0300
-Message-ID: <4C28D829.5070706@panasas.com>
-References: <4C1A4DED.50702@panasas.com>
+From: Fred Isaman <iisaman@umich.edu>
+Subject: Re: [PATCH 06/19] SQUASHME: pnfs-submit: merge pnfs4_read_done into
+	nfs4_read_done - part 3
+Date: Thu, 17 Jun 2010 11:15:00 -0400
+Message-ID: <AANLkTikvo8qP_B23suRB-lKNCcCQv4W6Vw8kBmPC_6SX@mail.gmail.com>
+References: <4C1A3570.5030709@panasas.com>
+	<1276786155-12371-1-git-send-email-bhalevy@panasas.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-To: Benny Halevy <bhalevy@panasas.com>,
-	NFS list <linux-nfs@vger.kernel.org>,
-	"J. Bruce Fields" <bfields@citi.umich.edu>,
-	"Labiaga, Ricardo" <Ricardo.Labiaga@netapp.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: linux-nfs@vger.kernel.org
+To: Benny Halevy <bhalevy@panasas.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:1055 "EHLO
-	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1752799Ab0F1RNX (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 Jun 2010 13:13:23 -0400
-In-Reply-To: <4C1A4DED.50702@panasas.com>
+Received: from mail-bw0-f46.google.com ([209.85.214.46]:56464 "EHLO
+	mail-bw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754128Ab0FQPPC convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Jun 2010 11:15:02 -0400
+Received: by bwz7 with SMTP id 7so6205bwz.19
+        for <linux-nfs@vger.kernel.org>; Thu, 17 Jun 2010 08:15:00 -0700 (PDT)
+In-Reply-To: <1276786155-12371-1-git-send-email-bhalevy@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 06/17/2010 07:31 PM, Boaz Harrosh wrote:
-> 
-> On a recall, a client may return NFS4ERR_DELAY to indicate
-> that it is busy with the layout and wants to be poled.
-> 
-> TODO: If the client is stuck he would probably be cleaned
->       at expire client. But it is possible that the client
->       is active/renewing but would not acknowledge the
->       recall. We should take a time stamp on first recall
->       and expire the client if a lease time has passed.
-> 
-> Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
-
-So I was still crashing on callbacks all during bakethon even
-with this patch and Benny's fixes. (See below)
-
+On Thu, Jun 17, 2010 at 10:49 AM, Benny Halevy <bhalevy@panasas.com> wr=
+ote:
+> Do not renew the data server lease.
+>
+> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 > ---
->  fs/nfsd/nfs4callback.c |    6 ++++++
->  1 files changed, 6 insertions(+), 0 deletions(-)
-> 
-> diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
-> index e1faad4..8374ebd 100644
-> --- a/fs/nfsd/nfs4callback.c
-> +++ b/fs/nfsd/nfs4callback.c
-> @@ -1044,6 +1044,12 @@ static void nfsd4_cb_layout_done(struct rpc_task *task, void *calldata)
->  		 */
->  		expire_client_lock(clp);
->  		break;
-> +	case -NFS4ERR_DELAY:
-> +		/* Pole the client until it's done with the layout */
-> +		rpc_delay(task, HZ/100); /* 10 mili-seconds */
-> +		task->tk_status = 0;
-> +		rpc_restart_call(task);
+> =A0fs/nfs/nfs4proc.c | =A0 =A02 +-
+> =A01 files changed, 1 insertions(+), 1 deletions(-)
+>
+> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+> index 77b7182..e8b0f33 100644
+> --- a/fs/nfs/nfs4proc.c
+> +++ b/fs/nfs/nfs4proc.c
+> @@ -3164,7 +3164,7 @@ static int nfs4_read_done(struct rpc_task *task=
+, struct nfs_read_data *data)
+> =A0 =A0 =A0 =A0}
+>
+> =A0 =A0 =A0 =A0nfs_invalidate_atime(data->inode);
+> - =A0 =A0 =A0 if (task->tk_status > 0)
+> + =A0 =A0 =A0 if (task->tk_status > 0 && client =3D=3D server->nfs_cl=
+ient)
 
-When using rpc_restart_call here I get an hard crash at:
+Will this test work if there is a dual role MDS/DS?
 
-diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
-index f3b5015..7529f9a 100644
---- a/fs/nfsd/nfs4callback.c
-+++ b/fs/nfsd/nfs4callback.c
-@@ -514,6 +514,7 @@ decode_cb_sequence(struct xdr_stream *xdr, struct nfsd4_cb_sequence *res,
- 	u32 dummy;
- 	__be32 *p;
- 
-+	BUG_ON(!res);
- 	if (res->cbs_minorversion == 0)
- 		return 0;
+=46red
 
-[BUG_ON added for demonstration]
-
-The below code would fix it. (Obviously)
-
-diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
-index f3b5015..7529f9a 100644
---- a/fs/nfsd/nfs4callback.c
-+++ b/fs/nfsd/nfs4callback.c
-@@ -869,9 +870,6 @@ static void nfsd4_cb_done_sequence(struct rpc_task *task,
- 		rpc_wake_up_next(&clp->cl_cb_waitq);
- 		dprintk("%s: freed slot, new seqid=%d\n", __func__,
- 			clp->cl_cb_seq_nr);
--
--		/* We're done looking into the sequence information */
--		task->tk_msg.rpc_resp = NULL;
- 	}
- }
-
-This is because when the second rpc, that was retried above in nfsd4_cb_layout_done()
-has a NULL ->rpc_resp. (Which is the struct nfsd4_cb_sequence *res parameter to
-decode_cb_sequence on reply from server).
-
-Now this above nfsd4_cb_layout_done() is new pNFS code, but the same problem (crash) should apply
-when a retry is attempted in nfsd4_cb_recall_done(). So this hunk should go into current tree.
-(and stable)
-
-The code was introduced by this patch:
-	0421b5c55acd0e88920cb9a5bcea6ed738186853
-	From: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
-	Subject: [PATCH] nfsd41: Backchannel: Implement cb_recall over NFSv4.1
-
-I guess it was never tested with error on callback and retry attempt.
-Ricardo what was the original intention of the line above (plus the comment)
-
-[I'll send an official patch to Bruce as well]
-
-Thanks
-Boaz
-
-> +		break;
->  	case -NFS4ERR_NOMATCHING_LAYOUT:
->  		nomatching_layout(clr);
->  	}
-
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0renew_lease(server, data->timestamp);
+> =A0 =A0 =A0 =A0return 0;
+> =A0}
+> --
+> 1.6.4.4
+>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" =
+in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at =A0http://vger.kernel.org/majordomo-info.html
+>
