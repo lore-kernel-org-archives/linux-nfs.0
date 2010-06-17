@@ -1,54 +1,51 @@
-From: Benny Halevy <bhalevy@panasas.com>
-Subject: Re: [PATCH 1/1] net: fix deliver_no_wcard regression on loopback
- device
-Date: Thu, 17 Jun 2010 12:01:21 -0400
-Message-ID: <4C1A46D1.5080108@panasas.com>
-References: <1276693350-1780-1-git-send-email-iisaman@netapp.com> <1276693350-1780-2-git-send-email-iisaman@netapp.com>
+From: Boaz Harrosh <bharrosh@panasas.com>
+Subject: [PATCH] SQUASHME: Support for cb_layout returning NFS4ERR_DELAY
+Date: Thu, 17 Jun 2010 12:31:41 -0400
+Message-ID: <4C1A4DED.50702@panasas.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: linux-nfs@vger.kernel.org
-To: Fred Isaman <iisaman@netapp.com>
+Content-Type: text/plain; charset=UTF-8
+To: Benny Halevy <bhalevy@panasas.com>,
+	NFS list <linux-nfs@vger.kernel.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-iw0-f174.google.com ([209.85.214.174]:62061 "EHLO
-	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756381Ab0FQQBR (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Jun 2010 12:01:17 -0400
-Received: by iwn9 with SMTP id 9so6932374iwn.19
-        for <linux-nfs@vger.kernel.org>; Thu, 17 Jun 2010 09:01:17 -0700 (PDT)
-In-Reply-To: <1276693350-1780-2-git-send-email-iisaman@netapp.com>
+Received: from daytona.panasas.com ([67.152.220.89]:35665 "EHLO
+	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1756615Ab0FQQbo (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Jun 2010 12:31:44 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Took in at pnfs-all-2.6.35-rc3-2010-06-17
 
-Thanks!
+On a recall, a client may return NFS4ERR_DELAY to indicate
+that it is busy with the layout and wants to be poled.
 
-Benny
+TODO: If the client is stuck he would probably be cleaned
+      at expire client. But it is possible that the client
+      is active/renewing but would not acknowledge the
+      recall. We should take a time stamp on first recall
+      and expire the client if a lease time has passed.
 
+Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+---
+ fs/nfsd/nfs4callback.c |    6 ++++++
+ 1 files changed, 6 insertions(+), 0 deletions(-)
 
-On Jun. 16, 2010, 9:02 -0400, Fred Isaman <iisaman@netapp.com> wrote:
-> From: John Fastabend <john.r.fastabend@intel.com>
-> 
-> deliver_no_wcard is not being set in skb_copy_header.
-> In the skb_cloned case it is not being cleared and
-> may cause the skb to be dropped when the loopback device
-> pushes it back up the stack.
-> 
-> Signed-off-by: John Fastabend <john.r.fastabend@intel.com>
-> ---
->  net/core/skbuff.c |    1 +
->  1 files changed, 1 insertions(+), 0 deletions(-)
-> 
-> diff --git a/net/core/skbuff.c b/net/core/skbuff.c
-> index 9f07e74..bcf2fa3 100644
-> --- a/net/core/skbuff.c
-> +++ b/net/core/skbuff.c
-> @@ -532,6 +532,7 @@ static void __copy_skb_header(struct sk_buff *new, const struct sk_buff *old)
->  	new->ip_summed		= old->ip_summed;
->  	skb_copy_queue_mapping(new, old);
->  	new->priority		= old->priority;
-> +	new->deliver_no_wcard	= old->deliver_no_wcard;
->  #if defined(CONFIG_IP_VS) || defined(CONFIG_IP_VS_MODULE)
->  	new->ipvs_property	= old->ipvs_property;
->  #endif
+diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
+index e1faad4..8374ebd 100644
+--- a/fs/nfsd/nfs4callback.c
++++ b/fs/nfsd/nfs4callback.c
+@@ -1044,6 +1044,12 @@ static void nfsd4_cb_layout_done(struct rpc_task *task, void *calldata)
+ 		 */
+ 		expire_client_lock(clp);
+ 		break;
++	case -NFS4ERR_DELAY:
++		/* Pole the client until it's done with the layout */
++		rpc_delay(task, HZ/100); /* 10 mili-seconds */
++		task->tk_status = 0;
++		rpc_restart_call(task);
++		break;
+ 	case -NFS4ERR_NOMATCHING_LAYOUT:
+ 		nomatching_layout(clr);
+ 	}
+-- 
+1.7.0.1
 
