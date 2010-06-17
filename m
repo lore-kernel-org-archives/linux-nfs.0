@@ -1,48 +1,50 @@
-From: Nils Goroll <slink-fLMQ21Bj+IYb1SvskN2V4Q@public.gmane.org>
-Subject: Re: nfs4 locks: What happens when a lease can't get renewed?
-Date: Thu, 17 Jun 2010 12:08:56 +0200
-Message-ID: <4C19F438.6060800@schokola.de>
-References: <4C12A779.6010005@schokola.de>
+From: Alexander Samad <alex-SGFoFqf0RKf0CCvOHzKKcA@public.gmane.org>
+Subject: Re: Help please
+Date: Thu, 17 Jun 2010 22:42:52 +1000
+Message-ID: <AANLkTinPbTJ7xrcCHnAP54OKjY5HjZjmA4H4zJjFmeqf@mail.gmail.com>
+References: <AANLkTinQkRf_ZkN5qw1rsK5MY7pB1NjFd5CiLaPa-ZOU@mail.gmail.com>
+	<1276607740.4922.2.camel@heimdal.trondhjem.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp.mcs.de ([212.1.60.21]:56809 "EHLO smtp.mcs.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751065Ab0FQKI7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 17 Jun 2010 06:08:59 -0400
-Received: from p5dd5112e.dip0.t-ipconnect.de ([93.213.17.46]:39440 helo=[192.168.77.36])
-	by smtp.mcs.de with esmtpa (Exim 4.71)
-	(envelope-from <slink-fLMQ21Bj+IYb1SvskN2V4Q@public.gmane.org>)
-	id 1OPC1p-0005Ze-CQ
-	for linux-nfs@vger.kernel.org; Thu, 17 Jun 2010 12:08:57 +0200
-In-Reply-To: <4C12A779.6010005-fLMQ21Bj+IYb1SvskN2V4Q@public.gmane.org>
+Received: from mail-iw0-f174.google.com ([209.85.214.174]:44804 "EHLO
+	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752156Ab0FQMmx convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Jun 2010 08:42:53 -0400
+Received: by iwn9 with SMTP id 9so6739303iwn.19
+        for <linux-nfs@vger.kernel.org>; Thu, 17 Jun 2010 05:42:52 -0700 (PDT)
+In-Reply-To: <1276607740.4922.2.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi,
+On Tue, Jun 15, 2010 at 11:15 PM, Trond Myklebust
+<trond.myklebust@fys.uio.no> wrote:
+> On Tue, 2010-06-15 at 12:01 +1000, Alexander Samad wrote:
+>> Hi
+>>
+>> sorry if this is a duplicate, I have been having some problem
+>> subscribing to the ml.
+>>
+>>
+>>
+>> I am having some problem with nfs-kernel on a debian amd64 (sid) =A0=
+i am
+>> using version (1:1.2.2-1).
+>>
+>> when I do a tcpdump on my nfs machine and do a mount -o vers=3D4,udp
+>> nfs:/exports/video /exports/video/ it fails
+>
+> UDP transport is not supported by the NFSv4 protocol. Some servers ma=
+y
+> allow it, but most will not.
 
-I am reposting my question because I feel it is quite substantial. IMHO, some
-mechanism to ensure data integrity is needed for "lost locks".
+okay, but why does the nfs-kernel on linux look like it is sending
+packets (via udp), but they are not hitting the wire.
 
-On 06/11/10 11:15 PM, Nils Goroll wrote:
-> Hi,
-> 
-> I wonder what happens if a lock on nfs4 has been acquired by an application (for
-> instance, using fcntl(fd, F_SETLK, F_WRLCK)) and the lock can't be RENEWed, for
-> instance due to a network outage preventing communication between the client and
-> the server.
-> 
-> I would have thought that some notification mechanism was useful, for instance
-> my means of delivery of a signal as set using F_SETOWN / F_SETSIG for leases.
-> 
-> I would highly appreciate helpful pointers should this question have already
-> been discussed of if there exists any other helpful documentation on it.
-> 
-> Thank you,
-> 
-> Nils
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+>
+> Cheers
+> =A0Trond
+>
+>
