@@ -1,56 +1,92 @@
 From: Alexander Samad <alex-SGFoFqf0RKf0CCvOHzKKcA@public.gmane.org>
-Subject: Re: Unable to mount with udp and vers=4 screws up uid/gid
-Date: Thu, 17 Jun 2010 23:40:00 +1000
-Message-ID: <AANLkTilzmN8dytZz-0YoeCNTxj5YvwF0D2X7t3vYp6jJ@mail.gmail.com>
-References: <AANLkTinOBIbuEFGKbPHP95zhBtUifFpIRdxkJr8cXCvn@mail.gmail.com>
-	<0AD72BA9-0C2D-45C7-9F80-24E407832938@samad.com.au>
-	<20100615145529.GB17437@fieldses.org>
-	<AANLkTilISmYCH2I_icpr_ka1C0wrvXLv7PFpAU925DXw@mail.gmail.com>
+Subject: Re: Help please
+Date: Thu, 17 Jun 2010 23:46:19 +1000
+Message-ID: <AANLkTimMGgIchvP4MoWf2T1lXZNLked1hpwcQ4MTcL7Y@mail.gmail.com>
+References: <AANLkTinQkRf_ZkN5qw1rsK5MY7pB1NjFd5CiLaPa-ZOU@mail.gmail.com>
+	<1276607740.4922.2.camel@heimdal.trondhjem.org>
+	<AANLkTinPbTJ7xrcCHnAP54OKjY5HjZjmA4H4zJjFmeqf@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
-To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-gx0-f174.google.com ([209.85.161.174]:52475 "EHLO
-	mail-gx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1759762Ab0FQNkF convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Jun 2010 09:40:05 -0400
-Received: by gxk21 with SMTP id 21so1656106gxk.19
-        for <linux-nfs@vger.kernel.org>; Thu, 17 Jun 2010 06:40:03 -0700 (PDT)
-In-Reply-To: <AANLkTilISmYCH2I_icpr_ka1C0wrvXLv7PFpAU925DXw-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
+Received: from mail-iw0-f174.google.com ([209.85.214.174]:56506 "EHLO
+	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1759762Ab0FQNqW convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Jun 2010 09:46:22 -0400
+Received: by iwn9 with SMTP id 9so6799133iwn.19
+        for <linux-nfs@vger.kernel.org>; Thu, 17 Jun 2010 06:46:20 -0700 (PDT)
+In-Reply-To: <AANLkTinPbTJ7xrcCHnAP54OKjY5HjZjmA4H4zJjFmeqf-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Jun 17, 2010 at 10:52 PM, Alexander Samad <alex-SGFoFqf0RKf0CCvOHzKKcA@public.gmane.org> w=
+On Thu, Jun 17, 2010 at 10:42 PM, Alexander Samad <alex-SGFoFqf0RKf0CCvOHzKKcA@public.gmane.org> w=
 rote:
-> On Wed, Jun 16, 2010 at 12:55 AM, J. Bruce Fields <bfields@fieldses.o=
-rg> wrote:
->> On Mon, Jun 14, 2010 at 08:34:06PM +1000, Alex Samad wrote:
+> On Tue, Jun 15, 2010 at 11:15 PM, Trond Myklebust
+> <trond.myklebust@fys.uio.no> wrote:
+>> On Tue, 2010-06-15 at 12:01 +1000, Alexander Samad wrote:
+>>> Hi
 >>>
->>>>
+>>> sorry if this is a duplicate, I have been having some problem
+>>> subscribing to the ml.
 >>>
->>>> Hi
-> [snip]
-[snip]
->> =A0 =A0 =A0 =A0- check that the domain in /etc/idmapd.conf is set to=
- the same
->> =A0 =A0 =A0 =A0 =A0thing on client and server.
+>>>
+>>>
+>>> I am having some problem with nfs-kernel on a debian amd64 (sid) =A0=
+i am
+>>> using version (1:1.2.2-1).
+>>>
+>>> when I do a tcpdump on my nfs machine and do a mount -o vers=3D4,ud=
+p
+>>> nfs:/exports/video /exports/video/ it fails
+>>
+>> UDP transport is not supported by the NFSv4 protocol. Some servers m=
+ay
+>> allow it, but most will not.
 >
-> yes
+> okay, but why does the nfs-kernel on linux look like it is sending
+> packets (via udp), but they are not hitting the wire.
 
-idmap wasn't being started, once I started it on both servers it seems
-to be okay now with uid/gid
+Okay I have vers=3D4, tcp working.
+
+But I would like to have UDP, I had issues with laptop that were
+asleep (hibernating) and then unable to reconnect when I restart the
+laptop - sometimes because the nfs server needed a reboot etc...  With
+udp I don't have these problems.
+
+So i have done some more testing.
+
+I have enabled nfs on another server, with the same package revisions
+as my primary nfs server. Say server max is original nfs the one not
+working and nas is the newer one.
+
+if I do this on nas
+exportfs -o async,ro  192.168.8.0/22:/mnt/tmp
+
+I can do this on max
+mount -o vers=3D4,udp,ro,async nas:/mnt/tmp/ /mnt/tmp/
+
+but I can't do the reverse.
+
+I have tried rebooting max into difference kernel revisions -
+currently using 2.6.34, tried 6.32 and 6.30 - all failed.
+
+the pain is this used to work.
+
+What I see is the same flow of packets but from max I see the outbound
+ack, but it doesn't hit the wire.
+
+which makes me sort of think this might not be he right ml :(   but I
+tried different kernels....
+
+thanks
+frustrated
 
 
 >
->> =A0 =A0 =A0 =A0- check that users have the same names on the client =
-and on the
->> =A0 =A0 =A0 =A0 =A0server.
-> yes, shared name space using ldap
->
-> thanks hope that helps
 >
 >>
->> --b.
+>> Cheers
+>> =A0Trond
 >>
-> [snip]
+>>
 >
