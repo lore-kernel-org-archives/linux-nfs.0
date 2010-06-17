@@ -1,40 +1,80 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: Syslog flooded: "NFSD: preprocess_seqid_op: magic stateid!"
-Date: Wed, 16 Jun 2010 22:32:57 -0400
-Message-ID: <20100617023257.GB20645@fieldses.org>
-References: <501A322854D4C944BCAF0528CFC7B65E3B30E7F5EE@BALZ00SW-MBX.ads.mwn.de>
+From: Raimund Eimann <raimund-47KOqKphs/PNLxjTenLetw@public.gmane.org>
+Subject: Please help: half working NFS / weird permissions issue
+Date: Thu, 17 Jun 2010 07:28:44 +0200
+Message-ID: <d5417bd9b9142da098b1c0df06b7a294@localhost>
+Reply-To: raimund-47KOqKphs/PNLxjTenLetw@public.gmane.org
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-To: Joschi Brauchle <joschi.brauchle@tum.de>
+Content-Type: text/plain; charset=UTF-8
+To: <linux-nfs@vger.kernel.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:44797 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759287Ab0FQCc5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 16 Jun 2010 22:32:57 -0400
-In-Reply-To: <501A322854D4C944BCAF0528CFC7B65E3B30E7F5EE-7sgYbYbIMHsZ3TY+6YjGZ+/kjxG1y2if@public.gmane.org>
+Received: from [195.65.112.156] ([195.65.112.156]:60270 "EHLO
+	mail.ch.busy-byte.org" rhost-flags-FAIL-FAIL-OK-OK) by vger.kernel.org
+	with ESMTP id S1752262Ab0FQFg5 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Jun 2010 01:36:57 -0400
+Received: from mail.ch.busy-byte.org (localhost [127.0.0.1])
+	by mail.ch.busy-byte.org (Postfix) with ESMTP id A8E5A1605F
+	for <linux-nfs@vger.kernel.org>; Thu, 17 Jun 2010 07:28:44 +0200 (CEST)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Jun 16, 2010 at 10:20:15AM +0200, Joschi Brauchle wrote:
-> Second problem:
-> We recently downgraded from a patched nfs-utils 1.0.9 (patched to acc=
-ept the =E2=80=9C-h=E2=80=9D option for different hostname in Kerberos =
-service creds in a high availability environment) to the original Novel=
-l RPM providing nfs-utils 1.0.7 (now using the undocumented =E2=80=9C-c=
-=E2=80=9D switch to read the accepted creds from keytab file). (Note: t=
-he first problem has already occurred before this downgrade)
->=20
-> Since this change, we are experiencing massive lags (1-10 sec freezes=
-, irregularly, but a couple times an hour) on our client machines, whic=
-h are mounting their homes via NFSv4. There seem to be no related messa=
-ges or warnings on the server nor the clients.
->=20
-> We come to the conclusion that 1.0.9 was the more stable version. The=
- resulting question is: Which nfs-utils version would be best suited fo=
-r SLES10SP3 (see kernel version above). Can we go straight to the lates=
-t 1.2.2 available or should we stick with 1.0.xx version?
+Hi,
 
-No idea.  We'd have to figure out the cause of the lags.
+I've been using NFS on SuSE/openSuSE Linux for 10 years now and know that
+UID/GID must match the server to have the same permissions on the NFS
+client box.
 
---b.
+I've exported ~10 directories on the server. When the client box still ran
+openSuSE 11.2, everything was ok.
+
+Recently, I installed the client with Ubuntu 10.04 64 bit, and now NFS is
+partly broken, without making any changes to the server:
+
+* I'm running openLDAP to distribute user information, so UIDs and GIDs
+are identical on both the client and the server.
+
+* for certain groups, I get permission problems, for others everything is
+fine:
+
+  * I have a openLDAP-provided group bbusers which all users belong to.
+Home dir perms are <username>:bbusers with either 750 of even 700
+permissions on most subdirectoies. No problems here.
+
+  * I have another groups provided by openLDAP called bbpcit_p and
+bbpict_r and some directories that uses these groups on an NFS export
+mounted on the client:
+
+    raimund@nfsclient:/nfs/p$ l -d Garten Scans
+    drwxr-x--- 3 root bbpict_p 36864 2009-09-13 18:46 Garten/
+    drwxr-x--- 9 root bbpict_r  4096 2008-12-04 21:36 Scans/
+
+    Numeric UIDs/GIDs here:
+
+    raimund@jupiter:/nfs/p$ l -dn Garten Scans
+    drwxr-x--- 3 0 1017 36864 2009-09-13 18:46 Garten/
+    drwxr-x--- 9 0 1007  4096 2008-12-04 21:36 Scans/
+
+    I can "cd Scans" without problems, but I can't "cd Garten", I get
+"permission denied" If I try the latter. I am a member of both groups:
+
+    raimund@jupiter:/nfs/p$ id | tr "," "\n" |grep bbpict_
+    1007(bbpict_r)
+    1017(bbpict_p)
+
+  * I am sure this is an NFS problem, because when I create directories
+with the same permissions/groups an a local filesystem, everything works
+just fine. When I SSH into the server I can enter the directories just fine
+as well.
+
+  * If I do a "sg bbict_p", my default group changes from bbusers
+(GID=1000) to bbpict_p. After this procedure I can "cd Garten".
+
+  * Could it be that the NFS-client somehow ignores higher GIDs? Groups
+with GIDs>=1012 seem to suffer from this problem more often, but I haven't
+tested them all. Which config file might contain restrictions like this?
+
+I am pretty much out of ideas on this problem. I would *greatly*
+appreciate hints on how to solve it. Please, NFS-experts, enlighten me!
+
+Cheers,
+Raimund
+
