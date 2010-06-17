@@ -1,30 +1,33 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:19639 "EHLO
-	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1750971Ab0FRU7n (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Jun 2010 16:59:43 -0400
-Message-ID: <4C1BDE45.6020806@panasas.com>
-Date: Fri, 18 Jun 2010 16:59:49 -0400
-From: Benny Halevy <bhalevy@panasas.com>
-To: NFS list <linux-nfs@vger.kernel.org>
-Subject: [PATCH 0/3] pnfs callback fixes
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from smtp-2.hut.fi ([130.233.228.92]:41946 "EHLO smtp-2.hut.fi"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755386Ab0FQOm2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 17 Jun 2010 10:42:28 -0400
+Date: Thu, 17 Jun 2010 17:41:32 +0300 (EEST)
+From: Timo Aaltonen <timo.aaltonen@aalto.fi>
+To: Fred Isaman <iisaman@netapp.com>
+cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 0/1] fix delay on mount and umount
+In-Reply-To: <1276693350-1780-1-git-send-email-iisaman@netapp.com>
+Message-ID: <alpine.DEB.2.00.1006171737230.24360@deckard.hut.fi>
+References: <1276693350-1780-1-git-send-email-iisaman@netapp.com>
+Content-Type: TEXT/PLAIN; format=flowed; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-A small crop of fixes for pnfs callbacks.
+On Wed, 16 Jun 2010, Fred Isaman wrote:
 
-[PATCH 1/3] SQUASHME: pnfsd: move kfree of the cb_layout rpc_args to release time
-[PATCH 2/3] SQUASHME: pnfsd: move kfree of the cb_device rpc_args to release time
-[PATCH 3/3] pnfsd: reset status on NFS4ERR_NOMATCHING_LAYOUT
+> This fixes the delay issues we've been having.
 
-All of these patches, plus
-bc210d8 pnfs: Fix num_ds bug in nfsd4_set_pnfs_dlm_device()
-3baf7bf SQUASHME: pnfs-obj: use NFSDBG_PNFS_LD also in pnfs_osd_xdr_cli.c
+What kind of delays are we talking about and since which kernel version? 
+With 2.6.32 it takes several minutes to umount a 100 NFSv4 shares. 
+Mounting them is much faster but not instant.
 
-are in pnfs-all-latest at pnfs-all-2.6.35-rc3-2010-06-18
+Probably will end up using the automounter anyway, but it's nice to know 
+if this fixes the issue.
 
-I'll rebase them onto their respective branches after the Bakethon...
-
-Benny
+-- 
+Timo Aaltonen
+Systems Specialist
+Aalto University IT
