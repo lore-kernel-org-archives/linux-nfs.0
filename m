@@ -1,78 +1,88 @@
 From: Benny Halevy <bhalevy@panasas.com>
-Subject: [PATCH 17/19] SQUASHME: pnfs-submit: merge pnfs4_proc_write_setup into nfs4_proc_write_setup
-Date: Thu, 17 Jun 2010 10:51:15 -0400
-Message-ID: <1276786275-13074-1-git-send-email-bhalevy@panasas.com>
+Subject: [PATCH 19/19] SQUASHME: pnfs-submit: get rid of pnfs_v4_clientops
+Date: Thu, 17 Jun 2010 10:51:36 -0400
+Message-ID: <1276786296-13160-1-git-send-email-bhalevy@panasas.com>
 References: <4C1A3570.5030709@panasas.com>
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:36602 "EHLO
+Received: from daytona.panasas.com ([67.152.220.89]:6567 "EHLO
 	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S932803Ab0FQOvI (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Jun 2010 10:51:08 -0400
+	with ESMTP id S932915Ab0FQOva (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Jun 2010 10:51:30 -0400
 In-Reply-To: <4C1A3570.5030709@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 ---
- fs/nfs/nfs4proc.c |   30 +++++++-----------------------
- 1 files changed, 7 insertions(+), 23 deletions(-)
+ fs/nfs/internal.h |    4 ----
+ fs/nfs/nfs4proc.c |   12 ------------
+ fs/nfs/pnfs.c     |    7 -------
+ 3 files changed, 0 insertions(+), 23 deletions(-)
 
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index a30974a..e5f6f16 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -211,10 +211,6 @@ extern const u32 nfs41_maxwrite_overhead;
+ extern struct rpc_procinfo nfs4_procedures[];
+ #endif
+ 
+-#ifdef CONFIG_NFS_V4_1
+-extern void pnfs_v4_clientops_init(void);
+-#endif /* CONFIG_NFS_V4_1 */
+-
+ extern int nfs4_recover_expired_lease(struct nfs_client *clp);
+ 
+ /* proc.c */
 diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 3d15d34..667d525 100644
+index 915e7cb..8109692 100644
 --- a/fs/nfs/nfs4proc.c
 +++ b/fs/nfs/nfs4proc.c
-@@ -3237,6 +3237,13 @@ static void nfs4_proc_write_setup(struct nfs_write_data *data, struct rpc_messag
- 	data->res.server = server;
- 	data->timestamp   = jiffies;
+@@ -5939,18 +5939,6 @@ const struct nfs_rpc_ops nfs_v4_clientops = {
+ 	.close_context  = nfs4_close_context,
+ };
  
-+#ifdef CONFIG_NFS_V4_1
-+	/* writes to DS use pnfs vector */
-+	if (data->fldata.ds_nfs_client) {
-+		msg->rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_PNFS_WRITE];
-+		return;
-+	}
-+#endif /* CONFIG_NFS_V4_1 */
- 	msg->rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_WRITE];
- }
- 
-@@ -3296,28 +3303,6 @@ pnfs4_proc_commit_setup(struct nfs_write_data *data, struct rpc_message *msg)
- 	data->res.server = server;
- 	msg->rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_PNFS_COMMIT];
- }
+-#if defined(CONFIG_NFS_V4_1)
+-const struct nfs_rpc_ops pnfs_v4_clientops;
 -
--/*
-- * pNFS does not send a getattr on write.
-- */
--static void pnfs4_proc_write_setup(struct nfs_write_data *data,
--				   struct rpc_message *msg)
+-void
+-pnfs_v4_clientops_init(void)
 -{
--	struct nfs_server *server = NFS_SERVER(data->inode);
+-	struct nfs_rpc_ops *p = (struct nfs_rpc_ops *)&pnfs_v4_clientops;
 -
--	dprintk("--> %s ds_nfs_client %p\n", __func__,
--		data->fldata.ds_nfs_client);
--
--	/* writes to MDS use non-pnfs vector */
--	if (!data->fldata.ds_nfs_client)
--		return nfs4_proc_write_setup(data, msg);
--
--	data->args.bitmask = server->attr_bitmask;
--	data->res.server = server;
--	data->timestamp   = jiffies;
--
--	msg->rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_PNFS_WRITE];
+-	memcpy(p, &nfs_v4_clientops, sizeof(*p));
 -}
- #endif /* CONFIG_NFS_V4_1 */
+-#endif /* CONFIG_NFS_V4_1 */
+-
+ /*
+  * Local variables:
+  *  c-basic-offset: 8
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 414b7dc..6dd454c 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -118,8 +118,6 @@ pnfs_initialize(void)
+ 		return -ENOMEM;
+ 	}
  
- struct nfs4_renewdata {
-@@ -5978,7 +5963,6 @@ pnfs_v4_clientops_init(void)
- 	struct nfs_rpc_ops *p = (struct nfs_rpc_ops *)&pnfs_v4_clientops;
- 
- 	memcpy(p, &nfs_v4_clientops, sizeof(*p));
--	p->write_setup		= pnfs4_proc_write_setup;
- 	p->commit_setup		= pnfs4_proc_commit_setup;
+-	pnfs_v4_clientops_init();
+-
+ 	pnfs_initialized = 1;
+ 	return 0;
  }
- #endif /* CONFIG_NFS_V4_1 */
+@@ -229,11 +227,6 @@ set_pnfs_layoutdriver(struct nfs_server *server, const struct nfs_fh *mntfh,
+ 			       "for layout driver %u. ", __func__, id);
+ 			goto out_err;
+ 		}
+-		/*
+-		 * Layout driver succeeded in initializing mountpoint
+-		 * and has taken a reference on the nfs_client cl_devid_cache
+-		 */
+-		server->nfs_client->rpc_ops = &pnfs_v4_clientops;
+ 		dprintk("%s: pNFS module for %u set\n", __func__, id);
+ 		return;
+ 	}
 -- 
 1.6.4.4
 
