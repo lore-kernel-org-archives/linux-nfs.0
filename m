@@ -1,51 +1,30 @@
-From: Boaz Harrosh <bharrosh@panasas.com>
-Subject: [PATCH] SQUASHME: Support for cb_layout returning NFS4ERR_DELAY
-Date: Thu, 17 Jun 2010 12:31:41 -0400
-Message-ID: <4C1A4DED.50702@panasas.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-To: Benny Halevy <bhalevy@panasas.com>,
-	NFS list <linux-nfs@vger.kernel.org>
+From: "Juanita reeves" <adam-C1eJCIdwHfqGx3nfMn3GynxStJ4P+DSV@public.gmane.org>
+Subject: Nursing Homes mailing lists
+Date: Thu, 17 Jun 2010 13:49:55 -0400 (EDT)
+Message-ID: <20100617174955.2F6A9A04FA@mail.datavoiceinc.com>
+Reply-To: adam-C1eJCIdwHfqGx3nfMn3GynxStJ4P+DSV@public.gmane.org
+To: info-yRhHzsvSrm1bcLf3aV5vD1aTQe2KTcn/@public.gmane.org, philm-IJjZFQs6lvpOm2FXKvvI6EEOCMrvLtNR@public.gmane.org,
+	attireattic@gmail.com, naomi-GyGdOcCbGSB0ubjbjo6WXg@public.gmane.org, whizzo-l4F6jxvqKxi9FHfhHBbuYA@public.gmane.org,
+	helaine.neal-+kq+kb6yalYdnm+yROfE0A@public.gmane.org, steve-fi0u3PmazzGakBO8gow8eQ@public.gmane.org,
+	wouter.deheij@f
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:35665 "EHLO
-	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1756615Ab0FQQbo (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Jun 2010 12:31:44 -0400
+Received: from mail.datavoiceinc.com ([75.77.211.84]:59804 "EHLO
+	mail.datavoiceinc.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1759757Ab0FQSEF (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Jun 2010 14:04:05 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Here's some of the healthcare lists we have:
 
-On a recall, a client may return NFS4ERR_DELAY to indicate
-that it is busy with the layout and wants to be poled.
+Physicians (34 specialties) - 788k records, 17k emails, 200k fax numbers
+Chiropractors - 108,421 total records * 3,414 emails * 6,553 fax numbers
+US Surgery Centers - 85k records and 14k emails
 
-TODO: If the client is stuck he would probably be cleaned
-      at expire client. But it is possible that the client
-      is active/renewing but would not acknowledge the
-      recall. We should take a time stamp on first recall
-      and expire the client if a lease time has passed.
 
-Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
----
- fs/nfsd/nfs4callback.c |    6 ++++++
- 1 files changed, 6 insertions(+), 0 deletions(-)
+Theres many more too, just send me an email here for additional info/samples: Daniel.Overton-QNGYSb390WXkAZHsRKhlHA@public.gmane.org
 
-diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
-index e1faad4..8374ebd 100644
---- a/fs/nfsd/nfs4callback.c
-+++ b/fs/nfsd/nfs4callback.c
-@@ -1044,6 +1044,12 @@ static void nfsd4_cb_layout_done(struct rpc_task *task, void *calldata)
- 		 */
- 		expire_client_lock(clp);
- 		break;
-+	case -NFS4ERR_DELAY:
-+		/* Pole the client until it's done with the layout */
-+		rpc_delay(task, HZ/100); /* 10 mili-seconds */
-+		task->tk_status = 0;
-+		rpc_restart_call(task);
-+		break;
- 	case -NFS4ERR_NOMATCHING_LAYOUT:
- 		nomatching_layout(clr);
- 	}
--- 
-1.7.0.1
+  
 
+
+Send email to disappear-QNGYSb390WXkAZHsRKhlHA@public.gmane.org for deleted status
