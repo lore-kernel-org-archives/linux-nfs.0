@@ -1,63 +1,60 @@
-From: andros@netapp.com
-Subject: [PATCH 7/7] pnfs-post-submit: restore setup_layoutcommit
-Date: Thu, 17 Jun 2010 15:34:56 -0400
-Message-ID: <1276803296-9438-8-git-send-email-andros@netapp.com>
-References: <1276803296-9438-1-git-send-email-andros@netapp.com>
- <1276803296-9438-2-git-send-email-andros@netapp.com>
- <1276803296-9438-3-git-send-email-andros@netapp.com>
- <1276803296-9438-4-git-send-email-andros@netapp.com>
- <1276803296-9438-5-git-send-email-andros@netapp.com>
- <1276803296-9438-6-git-send-email-andros@netapp.com>
- <1276803296-9438-7-git-send-email-andros@netapp.com>
-Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
-To: bhalevy@panasas.com
+From: Benny Halevy <bhalevy@panasas.com>
+Subject: Re: [PATCH] pnfsd: Add ability to clear pnfs dlm device ds list
+Date: Thu, 17 Jun 2010 16:55:40 -0400
+Message-ID: <4C1A8BCC.1000909@panasas.com>
+References: <1276804400.1796.8.camel@Berlin>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Cc: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
+To: eanderle@umich.edu
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from citi.umich.edu ([141.212.112.111]:56799 "EHLO citi.umich.edu"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1760532Ab0FQTfc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 17 Jun 2010 15:35:32 -0400
-In-Reply-To: <1276803296-9438-7-git-send-email-andros@netapp.com>
+Received: from daytona.panasas.com ([67.152.220.89]:53232 "EHLO
+	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1757100Ab0FQUze (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Jun 2010 16:55:34 -0400
+In-Reply-To: <1276804400.1796.8.camel@Berlin>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Andy Adamson <andros@netapp.com>
+On Jun. 17, 2010, 15:53 -0400, Eric Anderle <eanderle@umich.edu> wrote:
+> Added the ability to clear the pnfs dlm device ds list. Before, we
+> checked to make sure the list wasn't empty; this is accomplished by
+> examining the character after the ':' in the passed-in string. By
+> modifying this check, an empty list is considered valid, and everything
+> just works.
+> 
+> ---
+>  fs/nfsd/nfs4pnfsdlm.c |    4 +---
+>  1 files changed, 1 insertions(+), 3 deletions(-)
+> 
+> diff --git a/fs/nfsd/nfs4pnfsdlm.c b/fs/nfsd/nfs4pnfsdlm.c
+> index 40f9b84..befec4f 100644
+> --- a/fs/nfsd/nfs4pnfsdlm.c
+> +++ b/fs/nfsd/nfs4pnfsdlm.c
+> @@ -160,17 +160,15 @@ nfsd4_set_pnfs_dlm_device(char *pnfs_dlm_device,
+> int len)
+>  
+>         err = -EINVAL;
+>         bufp += len + 1;
+> -       if (bufp >= endp)
+> +       if (bufp > endp)
+>                 goto out_free;
+>  
+>         /* data server list */ and 
+> -       /* FIXME: need to check for comma separated valid ip format */
+>         len = strcspn(bufp, ":");
+>         if (len > NFSD_DLM_DS_LIST_MAX)
+>                 goto out_free;
+>         memcpy(new->ds_list, bufp, len);
 
-Signed-off-by: Andy Adamson <andros@netapp.com>
----
- fs/nfs/pnfs.c             |    5 +++++
- include/linux/nfs4_pnfs.h |    3 +++
- 2 files changed, 8 insertions(+), 0 deletions(-)
+BTW, what about null termination in case len == NFSD_DLM_DS_LIST_MAX?
+and same for new->disk_name and DISK_NAME_LEN
 
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index cdadddd..035cdde 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -1599,6 +1599,11 @@ pnfs_layoutcommit_setup(struct inode *inode,
- 	data->args.bitmask = nfss->attr_bitmask;
- 	data->res.server = nfss;
- 
-+	/* Call layout driver to set the arguments */
-+	if (nfss->pnfs_curr_ld->ld_io_ops->setup_layoutcommit)
-+		result = nfss->pnfs_curr_ld->ld_io_ops->setup_layoutcommit(
-+				&NFS_I(inode)->layout, &data->args);
-+
- 	dprintk("<-- %s Status %d\n", __func__, result);
- 	return result;
- }
-diff --git a/include/linux/nfs4_pnfs.h b/include/linux/nfs4_pnfs.h
-index 3ff1dc3..3a150b1 100644
---- a/include/linux/nfs4_pnfs.h
-+++ b/include/linux/nfs4_pnfs.h
-@@ -154,6 +154,9 @@ struct layoutdriver_io_operations {
- 	struct pnfs_layout_segment * (*alloc_lseg) (struct pnfs_layout_type *layoutid, struct nfs4_pnfs_layoutget_res *lgr);
- 	void (*free_lseg) (struct pnfs_layout_segment *lseg);
- 
-+	int (*setup_layoutcommit) (struct pnfs_layout_type *layoutid,
-+				struct pnfs_layoutcommit_arg *args);
-+
- 	void (*encode_layoutcommit) (struct pnfs_layout_type *layoutid,
- 				struct xdr_stream *xdr,
- 				const struct pnfs_layoutcommit_arg *args);
--- 
-1.6.6
+Benny
 
+>  
+> -
+>         /*  validate the ips */
+>         if (!nfsd4_validate_pnfs_dlm_device(new->ds_list,
+> &(new->num_ds)))
+>                 goto out_free;
