@@ -1,61 +1,72 @@
 From: Benny Halevy <bhalevy@panasas.com>
-Subject: Re: [PATCH 09/19] SQUASHME: pnfs-submit: merge pnfs4_write_done into
- 	nfs4_write_done - part 2
-Date: Thu, 17 Jun 2010 11:27:25 -0400
-Message-ID: <4C1A3EDD.2040509@panasas.com>
-References: <4C1A3570.5030709@panasas.com>	<1276786187-12514-1-git-send-email-bhalevy@panasas.com> <AANLkTimHng4urMH5CTn68aZJ_NKIasCH6VJOTCI-2zRQ@mail.gmail.com>
+Subject: Re: [PATCH] SQUASHME: move objlayout to the PNFS_LD dprint channel
+Date: Thu, 17 Jun 2010 11:59:17 -0400
+Message-ID: <4C1A4655.3090008@panasas.com>
+References: <4C1926EF.4020002@panasas.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: linux-nfs@vger.kernel.org
-To: Fred Isaman <iisaman@umich.edu>
+Content-Type: text/plain; charset=UTF-8
+Cc: NFS list <linux-nfs@vger.kernel.org>
+To: Boaz Harrosh <bharrosh@panasas.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:37015 "EHLO
+Received: from daytona.panasas.com ([67.152.220.89]:27484 "EHLO
 	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S932948Ab0FQP1T (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Jun 2010 11:27:19 -0400
-In-Reply-To: <AANLkTimHng4urMH5CTn68aZJ_NKIasCH6VJOTCI-2zRQ-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
+	with ESMTP id S1756453Ab0FQP7M (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Jun 2010 11:59:12 -0400
+In-Reply-To: <4C1926EF.4020002@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Jun. 17, 2010, 11:19 -0400, Fred Isaman <iisaman@umich.edu> wrote:
-> On Thu, Jun 17, 2010 at 10:49 AM, Benny Halevy <bhalevy@panasas.com> wrote:
->> PNFS_NO_RPC.
->>
->> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
->> ---
->>  fs/nfs/nfs4proc.c |    3 +++
->>  1 files changed, 3 insertions(+), 0 deletions(-)
->>
->> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
->> index 5948de5..fd2b588 100644
->> --- a/fs/nfs/nfs4proc.c
->> +++ b/fs/nfs/nfs4proc.c
->> @@ -3279,6 +3279,9 @@ static int nfs4_write_done(struct rpc_task *task, struct nfs_write_data *data)
->>                        data->pdata.orig_count);
->>                data->args.count = data->pdata.orig_count;
->>        }
->> +
->> +       if (data->pdata.pnfsflags & PNFS_NO_RPC)
->> +               return 0;
->>  #endif /* CONFIG_NFS_V4_1 */
-> 
-> Again, this is is a post-submit patch
+Merged at pnfs-all-2.6.35-rc3-2010-06-17
 
-Right.  sorry for badly naming it.
-It will applied against the post-submit pnfs branch.
+Thanks!
 
 Benny
 
+On Jun. 16, 2010, 15:33 -0400, Boaz Harrosh <bharrosh@panasas.com> wrote:
 > 
-> Fred
+> Signed-off-by: Boaz Harrosh <bharrosh-xFkOKRQa54hHeCz7Ayp15r+LScJ5NNVl@public.gmane.org>
+> ---
+>  fs/nfs/objlayout/objio_osd.c  |    2 +-
+>  fs/nfs/objlayout/objlayout.c  |    2 +-
+>  fs/nfs/objlayout/panfs_shim.c |    2 +-
+>  3 files changed, 3 insertions(+), 3 deletions(-)
 > 
->>
->>        nfs4_sequence_done(NFS_SERVER(inode), &data->res.seq_res,
->> --
->> 1.6.4.4
->>
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>
+> diff --git a/fs/nfs/objlayout/objio_osd.c b/fs/nfs/objlayout/objio_osd.c
+> index 9079b7b..5f0612f 100644
+> --- a/fs/nfs/objlayout/objio_osd.c
+> +++ b/fs/nfs/objlayout/objio_osd.c
+> @@ -48,7 +48,7 @@
+>  
+>  #include "objlayout.h"
+>  
+> -#define NFSDBG_FACILITY         NFSDBG_PNFS
+> +#define NFSDBG_FACILITY         NFSDBG_PNFS_LD
+>  
+>  #define _LLU(x) ((unsigned long long)x)
+>  
+> diff --git a/fs/nfs/objlayout/objlayout.c b/fs/nfs/objlayout/objlayout.c
+> index ad56ab8..c380bf6 100644
+> --- a/fs/nfs/objlayout/objlayout.c
+> +++ b/fs/nfs/objlayout/objlayout.c
+> @@ -42,7 +42,7 @@
+>  #include <scsi/osd_initiator.h>
+>  #include "objlayout.h"
+>  
+> -#define NFSDBG_FACILITY         NFSDBG_PNFS
+> +#define NFSDBG_FACILITY         NFSDBG_PNFS_LD
+>  
+>  struct pnfs_client_operations *pnfs_client_ops;
+>  
+> diff --git a/fs/nfs/objlayout/panfs_shim.c b/fs/nfs/objlayout/panfs_shim.c
+> index 3c5baba..3f76233 100644
+> --- a/fs/nfs/objlayout/panfs_shim.c
+> +++ b/fs/nfs/objlayout/panfs_shim.c
+> @@ -46,7 +46,7 @@
+>  
+>  #include <linux/panfs_shim_api.h>
+>  
+> -#define NFSDBG_FACILITY         NFSDBG_PNFS
+> +#define NFSDBG_FACILITY         NFSDBG_PNFS_LD
+>  
+>  struct panfs_export_operations *panfs_export_ops;
+>  
