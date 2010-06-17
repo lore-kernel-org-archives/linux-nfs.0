@@ -1,40 +1,55 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:55020 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754052Ab0FCQvl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 3 Jun 2010 12:51:41 -0400
-Received: from int-mx02.intmail.prod.int.phx2.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
-	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id o53GpebQ024769
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Thu, 3 Jun 2010 12:51:40 -0400
-Received: from ns3.rdu.redhat.com (ns3.rdu.redhat.com [10.11.255.199])
-	by int-mx02.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id o53Gpd8i024565
-	for <linux-nfs@vger.kernel.org>; Thu, 3 Jun 2010 12:51:40 -0400
-Received: from localhost.localdomain (fathat.boston.devel.redhat.com [10.16.60.125])
-	by ns3.rdu.redhat.com (8.13.8/8.13.8) with ESMTP id o53GpcaC027759
-	for <linux-nfs@vger.kernel.org>; Thu, 3 Jun 2010 12:51:39 -0400
-From: Steve Dickson <steved@redhat.com>
-To: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: [PATCH 0/2] mountd.nfs: Better error diagnostics for the mount command (take 3)
-Date: Thu,  3 Jun 2010 12:51:36 -0400
-Message-Id: <1275583898-17908-1-git-send-email-steved@redhat.com>
+Received: from smtp.mail.umich.edu ([141.211.14.82]:56134 "EHLO
+	hellskitchen.mr.itd.umich.edu" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1757485Ab0FQTx0 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Jun 2010 15:53:26 -0400
+Subject: [PATCH] pnfsd: Add ability to clear pnfs dlm device ds list
+From: Eric Anderle <eanderle@umich.edu>
+Reply-To: eanderle@umich.edu
+To: bhalevy@panasas.com
+Cc: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
+Date: Thu, 17 Jun 2010 15:53:20 -0400
+Message-ID: <1276804400.1796.8.camel@Berlin>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-[I've incorporated the last few code review comments]
+Added the ability to clear the pnfs dlm device ds list. Before, we
+checked to make sure the list wasn't empty; this is accomplished by
+examining the character after the ':' in the passed-in string. By
+modifying this check, an empty list is considered valid, and everything
+just works.
 
-The following two patches add better error diagnostics when
-invalid option values are given and when the network protocol
-can not be determined. 
+---
+ fs/nfsd/nfs4pnfsdlm.c |    4 +---
+ 1 files changed, 1 insertions(+), 3 deletions(-)
 
-Steve Dickson (2):
-  mount: silently fails when bad option values are given
-  mount.nfs: silently fails when the network protocol is not found
-
- utils/mount/network.c   |   59 ++++++++++++++++++++++++++++++++++++----------
- utils/mount/nfsumount.c |    4 +--
- utils/mount/stropts.c   |   16 ++++++++----
- 3 files changed, 58 insertions(+), 21 deletions(-)
+diff --git a/fs/nfsd/nfs4pnfsdlm.c b/fs/nfsd/nfs4pnfsdlm.c
+index 40f9b84..befec4f 100644
+--- a/fs/nfsd/nfs4pnfsdlm.c
++++ b/fs/nfsd/nfs4pnfsdlm.c
+@@ -160,17 +160,15 @@ nfsd4_set_pnfs_dlm_device(char *pnfs_dlm_device,
+int len)
+ 
+        err = -EINVAL;
+        bufp += len + 1;
+-       if (bufp >= endp)
++       if (bufp > endp)
+                goto out_free;
+ 
+        /* data server list */
+-       /* FIXME: need to check for comma separated valid ip format */
+        len = strcspn(bufp, ":");
+        if (len > NFSD_DLM_DS_LIST_MAX)
+                goto out_free;
+        memcpy(new->ds_list, bufp, len);
+ 
+-
+        /*  validate the ips */
+        if (!nfsd4_validate_pnfs_dlm_device(new->ds_list,
+&(new->num_ds)))
+                goto out_free;
+-- 
+1.7.0.4
 
