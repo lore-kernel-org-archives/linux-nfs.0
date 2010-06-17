@@ -1,149 +1,90 @@
-From: Jeff Layton <jlayton@redhat.com>
-Subject: Re: [PATCH] nfsd: have __write_ports_add/delxprt get/put lockd
- references for transports
-Date: Thu, 17 Jun 2010 10:37:56 -0400
-Message-ID: <20100617103756.6eee5a0b@corrin.poochiereds.net>
-References: <1276784267-28500-1-git-send-email-jlayton@redhat.com>
-	<1276784267-28500-3-git-send-email-jlayton@redhat.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org,
-	chris-TF6qbakwsgc2epGFuHBODCp2UmYkHbXO@public.gmane.org, linux-kernel@vger.kernel.org
-To: Jeff Layton <jlayton@redhat.com>
+From: Benny Halevy <bhalevy@panasas.com>
+Subject: [PATCH 01/19] SQUASHME: pnfs-submit: merge pnfs4_proc_setattr into nfs4_proc_setattr
+Date: Thu, 17 Jun 2010 10:48:19 -0400
+Message-ID: <1276786099-11300-1-git-send-email-bhalevy@panasas.com>
+References: <4C1A3570.5030709@panasas.com>
+To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:10559 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755504Ab0FQOgF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 17 Jun 2010 10:36:05 -0400
-In-Reply-To: <1276784267-28500-3-git-send-email-jlayton@redhat.com>
+Received: from daytona.panasas.com ([67.152.220.89]:41814 "EHLO
+	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1755999Ab0FQOsN (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Jun 2010 10:48:13 -0400
+In-Reply-To: <4C1A3570.5030709@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 17 Jun 2010 10:17:47 -0400
-Jeff Layton <jlayton@redhat.com> wrote:
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+---
+ fs/nfs/nfs4proc.c |   35 +++++++++++++++--------------------
+ 1 files changed, 15 insertions(+), 20 deletions(-)
 
-> nfsd_last_thread expects that any socket on sv_permsocks will hold a
-> lockd reference. Make sure that __write_ports_addxprt takes a lockd
-> reference for each socket it creates and have __write_ports_delxprt
-> release references when it closes a socket.
-> 
-> Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> ---
->  fs/nfsd/nfsctl.c |   59 ++++++++++++++++++++++++++++++++++++++---------------
->  1 files changed, 42 insertions(+), 17 deletions(-)
-> 
-> diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
-> index 9e8645a..365aee0 100644
-> --- a/fs/nfsd/nfsctl.c
-> +++ b/fs/nfsd/nfsctl.c
-> @@ -989,6 +989,21 @@ static ssize_t __write_ports_delfd(char *buf)
->  	return len;
->  }
->  
-> +static int
-> +nfsd_shutdown_xprt(const char *transport, const unsigned short family,
-> +		     const int port)
-> +{
-> +	struct svc_xprt *xprt;
-> +
-> +	xprt = svc_find_xprt(nfsd_serv, transport, family, port);
-> +	if (xprt == NULL)
-> +		return -ENOTCONN;
-> +
-> +	svc_close_xprt(xprt);
-> +	svc_xprt_put(xprt);
-> +	return 0;
-> +}
-> +
->  /*
->   * A transport listener is added by writing it's transport name and
->   * a port number.
-> @@ -996,7 +1011,6 @@ static ssize_t __write_ports_delfd(char *buf)
->  static ssize_t __write_ports_addxprt(char *buf)
->  {
->  	char transport[16];
-> -	struct svc_xprt *xprt;
->  	int port, err;
->  
->  	if (sscanf(buf, "%15s %4u", transport, &port) != 2)
-> @@ -1014,20 +1028,29 @@ static ssize_t __write_ports_addxprt(char *buf)
->  	if (err < 0)
->  		goto out_err;
->  
-> +	err = lockd_up();
-> +	if (err != 0) {
-> +		nfsd_shutdown_xprt(transport, PF_INET, port);
-> +		goto out_err;
-> +	}
-> +
->  	err = svc_create_xprt(nfsd_serv, transport,
->  				PF_INET6, port, SVC_SOCK_ANONYMOUS);
-> -	if (err < 0 && err != -EAFNOSUPPORT)
-> -		goto out_close;
-> +	if (err < 0 && err != -EAFNOSUPPORT) {
-> +		nfsd_shutdown_xprt(transport, PF_INET, port);
-> +		goto out_err;
-> +	}
-> +
-> +	err = lockd_up();
-> +	if (err != 0) {
-> +		nfsd_shutdown_xprt(transport, PF_INET6, port);
-> +		nfsd_shutdown_xprt(transport, PF_INET, port);
-
-Oops, I just realized I made a mistake here. We need to release the
-lockd reference that was taken earlier here. Let me respin and I'll
-resend...
-
-> +		goto out_err;
-> +	}
->  
->  	/* Decrease the count, but don't shut down the service */
->  	nfsd_serv->sv_nrthreads--;
->  	return 0;
-> -out_close:
-> -	xprt = svc_find_xprt(nfsd_serv, transport, PF_INET, port);
-> -	if (xprt != NULL) {
-> -		svc_close_xprt(xprt);
-> -		svc_xprt_put(xprt);
-> -	}
->  out_err:
->  	svc_destroy(nfsd_serv);
->  	return err;
-> @@ -1039,9 +1062,8 @@ out_err:
->   */
->  static ssize_t __write_ports_delxprt(char *buf)
->  {
-> -	struct svc_xprt *xprt;
->  	char transport[16];
-> -	int port;
-> +	int port, err;
->  
->  	if (sscanf(&buf[1], "%15s %4u", transport, &port) != 2)
->  		return -EINVAL;
-> @@ -1049,13 +1071,16 @@ static ssize_t __write_ports_delxprt(char *buf)
->  	if (port < 1 || port > USHRT_MAX || nfsd_serv == NULL)
->  		return -EINVAL;
->  
-> -	xprt = svc_find_xprt(nfsd_serv, transport, AF_UNSPEC, port);
-> -	if (xprt == NULL)
-> -		return -ENOTCONN;
-> +	/* PF_INET6 sockets are considered optional */
-> +	err = nfsd_shutdown_xprt(transport, PF_INET6, port);
-> +	if (err == 0)
-> +		lockd_down();
->  
-> -	svc_close_xprt(xprt);
-> -	svc_xprt_put(xprt);
-> -	return 0;
-> +	err = nfsd_shutdown_xprt(transport, PF_INET, port);
-> +	if (err == 0)
-> +		lockd_down();
-> +
-> +	return err;
->  }
->  
->  static ssize_t __write_ports(struct file *file, char *buf, size_t size)
-
-
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 8c02296..17a2597 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -2333,6 +2333,19 @@ static int nfs4_proc_getattr(struct nfs_server *server, struct nfs_fh *fhandle,
+ 	return err;
+ }
+ 
++static void
++pnfs4_return_layout_on_setattr(struct inode *inode)
++{
++#ifdef CONFIG_NFS_V4_1
++	struct nfs_server *server = NFS_SERVER(inode);
++	struct nfs_inode *nfsi = NFS_I(inode);
++
++	if (pnfs_enabled_sb(server) && has_layout(nfsi) &&
++	    pnfs_ld_layoutret_on_setattr(server->pnfs_curr_ld))
++		pnfs_return_layout(inode, NULL, NULL, RETURN_FILE, true);
++#endif /* CONFIG_NFS_V4_1 */
++}
++
+ /* 
+  * The file is not closed if it is opened due to the a request to change
+  * the size of the file. The open call will not be needed once the
+@@ -2359,6 +2372,8 @@ nfs4_proc_setattr(struct dentry *dentry, struct nfs_fattr *fattr,
+ 	struct nfs4_state *state = NULL;
+ 	int status;
+ 
++	pnfs4_return_layout_on_setattr(inode);
++
+ 	nfs_fattr_init(fattr);
+ 	
+ 	/* Search for an existing open(O_WRITE) file */
+@@ -2378,25 +2393,6 @@ nfs4_proc_setattr(struct dentry *dentry, struct nfs_fattr *fattr,
+ 	return status;
+ }
+ 
+-#ifdef CONFIG_NFS_V4_1
+-/*
+- * Return layout before issueing a setattr
+- */
+-static int
+-pnfs4_proc_setattr(struct dentry *dentry, struct nfs_fattr *fattr,
+-		    struct iattr *sattr)
+-{
+-	struct inode *inode = dentry->d_inode;
+-	struct nfs_server *server = NFS_SERVER(inode);
+-	struct nfs_inode *nfsi = NFS_I(inode);
+-
+-	if (pnfs_enabled_sb(server) && has_layout(nfsi) &&
+-	    pnfs_ld_layoutret_on_setattr(server->pnfs_curr_ld))
+-		pnfs_return_layout(inode, NULL, NULL, RETURN_FILE, true);
+-	return nfs4_proc_setattr(dentry, fattr, sattr);
+-}
+-#endif /* CONFIG_NFS_V4_1 */
+-
+ static int _nfs4_proc_lookupfh(struct nfs_server *server, const struct nfs_fh *dirfh,
+ 		const struct qstr *name, struct nfs_fh *fhandle,
+ 		struct nfs_fattr *fattr)
+@@ -6068,7 +6064,6 @@ pnfs_v4_clientops_init(void)
+ 	struct nfs_rpc_ops *p = (struct nfs_rpc_ops *)&pnfs_v4_clientops;
+ 
+ 	memcpy(p, &nfs_v4_clientops, sizeof(*p));
+-	p->setattr		= pnfs4_proc_setattr;
+ 	p->read_done		= pnfs4_read_done;
+ 	p->write_setup		= pnfs4_proc_write_setup;
+ 	p->write_done		= pnfs4_write_done;
 -- 
-Jeff Layton <jlayton@redhat.com>
+1.6.4.4
+
