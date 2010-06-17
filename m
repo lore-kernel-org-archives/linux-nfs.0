@@ -1,63 +1,62 @@
-From: Fred Isaman <iisaman@umich.edu>
-Subject: Re: [PATCH 09/19] SQUASHME: pnfs-submit: merge pnfs4_write_done into
-	nfs4_write_done - part 2
-Date: Thu, 17 Jun 2010 11:19:46 -0400
-Message-ID: <AANLkTimHng4urMH5CTn68aZJ_NKIasCH6VJOTCI-2zRQ@mail.gmail.com>
-References: <4C1A3570.5030709@panasas.com>
-	<1276786187-12514-1-git-send-email-bhalevy@panasas.com>
+From: Benny Halevy <bhalevy@panasas.com>
+Subject: Re: [PATCH 06/19] SQUASHME: pnfs-submit: merge pnfs4_read_done into
+ 	nfs4_read_done - part 3
+Date: Thu, 17 Jun 2010 11:26:16 -0400
+Message-ID: <4C1A3E98.5070004@panasas.com>
+References: <4C1A3570.5030709@panasas.com>	<1276786155-12371-1-git-send-email-bhalevy@panasas.com> <AANLkTikvo8qP_B23suRB-lKNCcCQv4W6Vw8kBmPC_6SX@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Cc: linux-nfs@vger.kernel.org
-To: Benny Halevy <bhalevy@panasas.com>
+To: Fred Isaman <iisaman@umich.edu>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-bw0-f46.google.com ([209.85.214.46]:50511 "EHLO
-	mail-bw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932980Ab0FQPTs convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Jun 2010 11:19:48 -0400
-Received: by bwz7 with SMTP id 7so7412bwz.19
-        for <linux-nfs@vger.kernel.org>; Thu, 17 Jun 2010 08:19:46 -0700 (PDT)
-In-Reply-To: <1276786187-12514-1-git-send-email-bhalevy@panasas.com>
+Received: from daytona.panasas.com ([67.152.220.89]:33547 "EHLO
+	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1753963Ab0FQP0K (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Jun 2010 11:26:10 -0400
+In-Reply-To: <AANLkTikvo8qP_B23suRB-lKNCcCQv4W6Vw8kBmPC_6SX-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Jun 17, 2010 at 10:49 AM, Benny Halevy <bhalevy@panasas.com> wr=
-ote:
-> PNFS_NO_RPC.
->
-> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-> ---
-> =A0fs/nfs/nfs4proc.c | =A0 =A03 +++
-> =A01 files changed, 3 insertions(+), 0 deletions(-)
->
-> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-> index 5948de5..fd2b588 100644
-> --- a/fs/nfs/nfs4proc.c
-> +++ b/fs/nfs/nfs4proc.c
-> @@ -3279,6 +3279,9 @@ static int nfs4_write_done(struct rpc_task *tas=
-k, struct nfs_write_data *data)
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0data->pdata.orig_count=
-);
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0data->args.count =3D data->pdata.orig_=
-count;
-> =A0 =A0 =A0 =A0}
-> +
-> + =A0 =A0 =A0 if (data->pdata.pnfsflags & PNFS_NO_RPC)
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 return 0;
-> =A0#endif /* CONFIG_NFS_V4_1 */
+On Jun. 17, 2010, 11:15 -0400, Fred Isaman <iisaman@umich.edu> wrote:
+> On Thu, Jun 17, 2010 at 10:49 AM, Benny Halevy <bhalevy@panasas.com> wrote:
+>> Do not renew the data server lease.
+>>
+>> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+>> ---
+>>  fs/nfs/nfs4proc.c |    2 +-
+>>  1 files changed, 1 insertions(+), 1 deletions(-)
+>>
+>> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+>> index 77b7182..e8b0f33 100644
+>> --- a/fs/nfs/nfs4proc.c
+>> +++ b/fs/nfs/nfs4proc.c
+>> @@ -3164,7 +3164,7 @@ static int nfs4_read_done(struct rpc_task *task, struct nfs_read_data *data)
+>>        }
+>>
+>>        nfs_invalidate_atime(data->inode);
+>> -       if (task->tk_status > 0)
+>> +       if (task->tk_status > 0 && client == server->nfs_client)
+> 
+> Will this test work if there is a dual role MDS/DS?
+> 
 
-Again, this is is a post-submit patch
+The filehandle determines the "DS personality"
+as per 13.6. Operations Sent to NFSv4.1 Data Servers
+so the dual role server should act no different than any
+other DS with this respect.
 
-=46red
+Benny
 
->
-> =A0 =A0 =A0 =A0nfs4_sequence_done(NFS_SERVER(inode), &data->res.seq_r=
-es,
-> --
-> 1.6.4.4
->
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" =
-in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at =A0http://vger.kernel.org/majordomo-info.html
->
+> Fred
+> 
+>>                renew_lease(server, data->timestamp);
+>>        return 0;
+>>  }
+>> --
+>> 1.6.4.4
+>>
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>
