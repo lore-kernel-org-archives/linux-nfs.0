@@ -1,90 +1,43 @@
 From: Benny Halevy <bhalevy@panasas.com>
-Subject: [PATCH 01/19] SQUASHME: pnfs-submit: merge pnfs4_proc_setattr into nfs4_proc_setattr
-Date: Thu, 17 Jun 2010 10:48:19 -0400
-Message-ID: <1276786099-11300-1-git-send-email-bhalevy@panasas.com>
+Subject: [PATCH 02/19] SQUASHME: pnfs4_read_done status variable is unused
+Date: Thu, 17 Jun 2010 10:48:30 -0400
+Message-ID: <1276786110-11457-1-git-send-email-bhalevy@panasas.com>
 References: <4C1A3570.5030709@panasas.com>
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:41814 "EHLO
+Received: from daytona.panasas.com ([67.152.220.89]:24509 "EHLO
 	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1755999Ab0FQOsN (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Jun 2010 10:48:13 -0400
+	with ESMTP id S1755386Ab0FQOsY (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Jun 2010 10:48:24 -0400
 In-Reply-To: <4C1A3570.5030709@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 ---
- fs/nfs/nfs4proc.c |   35 +++++++++++++++--------------------
- 1 files changed, 15 insertions(+), 20 deletions(-)
+ fs/nfs/nfs4proc.c |    3 ---
+ 1 files changed, 0 insertions(+), 3 deletions(-)
 
 diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 8c02296..17a2597 100644
+index 17a2597..8ab30d5 100644
 --- a/fs/nfs/nfs4proc.c
 +++ b/fs/nfs/nfs4proc.c
-@@ -2333,6 +2333,19 @@ static int nfs4_proc_getattr(struct nfs_server *server, struct nfs_fh *fhandle,
- 	return err;
- }
+@@ -3166,15 +3166,12 @@ static int pnfs4_read_done(struct rpc_task *task, struct nfs_read_data *data)
+ 	struct nfs_server *mds_svr = NFS_SERVER(data->inode);
+ 	struct nfs_client *client = mds_svr->nfs_client;
+ 	struct nfs4_session *ds_session = NULL;
+-	int status;
  
-+static void
-+pnfs4_return_layout_on_setattr(struct inode *inode)
-+{
-+#ifdef CONFIG_NFS_V4_1
-+	struct nfs_server *server = NFS_SERVER(inode);
-+	struct nfs_inode *nfsi = NFS_I(inode);
-+
-+	if (pnfs_enabled_sb(server) && has_layout(nfsi) &&
-+	    pnfs_ld_layoutret_on_setattr(server->pnfs_curr_ld))
-+		pnfs_return_layout(inode, NULL, NULL, RETURN_FILE, true);
-+#endif /* CONFIG_NFS_V4_1 */
-+}
-+
- /* 
-  * The file is not closed if it is opened due to the a request to change
-  * the size of the file. The open call will not be needed once the
-@@ -2359,6 +2372,8 @@ nfs4_proc_setattr(struct dentry *dentry, struct nfs_fattr *fattr,
- 	struct nfs4_state *state = NULL;
- 	int status;
+ 	dprintk("--> %s\n", __func__);
  
-+	pnfs4_return_layout_on_setattr(inode);
-+
- 	nfs_fattr_init(fattr);
- 	
- 	/* Search for an existing open(O_WRITE) file */
-@@ -2378,25 +2393,6 @@ nfs4_proc_setattr(struct dentry *dentry, struct nfs_fattr *fattr,
- 	return status;
- }
+ 	if (data->pdata.pnfsflags & PNFS_NO_RPC)
+ 		return 0;
  
--#ifdef CONFIG_NFS_V4_1
--/*
-- * Return layout before issueing a setattr
-- */
--static int
--pnfs4_proc_setattr(struct dentry *dentry, struct nfs_fattr *fattr,
--		    struct iattr *sattr)
--{
--	struct inode *inode = dentry->d_inode;
--	struct nfs_server *server = NFS_SERVER(inode);
--	struct nfs_inode *nfsi = NFS_I(inode);
+-	status = task->tk_status >= 0 ? 0 : task->tk_status;
 -
--	if (pnfs_enabled_sb(server) && has_layout(nfsi) &&
--	    pnfs_ld_layoutret_on_setattr(server->pnfs_curr_ld))
--		pnfs_return_layout(inode, NULL, NULL, RETURN_FILE, true);
--	return nfs4_proc_setattr(dentry, fattr, sattr);
--}
--#endif /* CONFIG_NFS_V4_1 */
--
- static int _nfs4_proc_lookupfh(struct nfs_server *server, const struct nfs_fh *dirfh,
- 		const struct qstr *name, struct nfs_fh *fhandle,
- 		struct nfs_fattr *fattr)
-@@ -6068,7 +6064,6 @@ pnfs_v4_clientops_init(void)
- 	struct nfs_rpc_ops *p = (struct nfs_rpc_ops *)&pnfs_v4_clientops;
- 
- 	memcpy(p, &nfs_v4_clientops, sizeof(*p));
--	p->setattr		= pnfs4_proc_setattr;
- 	p->read_done		= pnfs4_read_done;
- 	p->write_setup		= pnfs4_proc_write_setup;
- 	p->write_done		= pnfs4_write_done;
+ 	/* Is this a DS session */
+ 	if (data->fldata.ds_nfs_client) {
+ 		dprintk("%s DS read\n", __func__);
 -- 
 1.6.4.4
 
