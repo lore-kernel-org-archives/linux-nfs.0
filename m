@@ -1,119 +1,88 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:29559 "EHLO mx1.redhat.com"
+Received: from mail-out2.uio.no ([129.240.10.58]:52531 "EHLO mail-out2.uio.no"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752034Ab0FYTCM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 25 Jun 2010 15:02:12 -0400
-Date: Fri, 25 Jun 2010 15:02:00 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-Cc: linux-nfs@vger.kernel.org, Staubach_Peter@emc.com, bfields@fieldses.org
-Subject: Re: [PATCH 2/2] nfsd: reject NFSv4 requests over UDP (try #2)
-Message-ID: <20100625150200.7eda3b0f@tlielax.poochiereds.net>
-In-Reply-To: <1277491509.6141.20.camel@heimdal.trondhjem.org>
-References: <1277490055-27030-1-git-send-email-jlayton@redhat.com>
-	<1277491509.6141.20.camel@heimdal.trondhjem.org>
-Content-Type: text/plain; charset=US-ASCII
+	id S1758602Ab0FRNb3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 18 Jun 2010 09:31:29 -0400
+Subject: Re: Please help: half working NFS / weird permissions issue
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+To: raimund@busy-byte.org
+Cc: linux-nfs@vger.kernel.org
+In-Reply-To: <d5417bd9b9142da098b1c0df06b7a294@localhost>
+References: <d5417bd9b9142da098b1c0df06b7a294@localhost>
+Content-Type: text/plain; charset="UTF-8"
+Date: Fri, 18 Jun 2010 09:31:23 -0400
+Message-ID: <1276867883.3083.8.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Fri, 25 Jun 2010 14:45:09 -0400
-Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
+On Thu, 2010-06-17 at 07:28 +0200, Raimund Eimann wrote:
+> Hi,
+> 
+> I've been using NFS on SuSE/openSuSE Linux for 10 years now and know that
+> UID/GID must match the server to have the same permissions on the NFS
+> client box.
+> 
+> I've exported ~10 directories on the server. When the client box still ran
+> openSuSE 11.2, everything was ok.
+> 
+> Recently, I installed the client with Ubuntu 10.04 64 bit, and now NFS is
+> partly broken, without making any changes to the server:
+> 
+> * I'm running openLDAP to distribute user information, so UIDs and GIDs
+> are identical on both the client and the server.
+> 
+> * for certain groups, I get permission problems, for others everything is
+> fine:
+> 
+>   * I have a openLDAP-provided group bbusers which all users belong to.
+> Home dir perms are <username>:bbusers with either 750 of even 700
+> permissions on most subdirectoies. No problems here.
+> 
+>   * I have another groups provided by openLDAP called bbpcit_p and
+> bbpict_r and some directories that uses these groups on an NFS export
+> mounted on the client:
+> 
+>     raimund@nfsclient:/nfs/p$ l -d Garten Scans
+>     drwxr-x--- 3 root bbpict_p 36864 2009-09-13 18:46 Garten/
+>     drwxr-x--- 9 root bbpict_r  4096 2008-12-04 21:36 Scans/
+> 
+>     Numeric UIDs/GIDs here:
+> 
+>     raimund@jupiter:/nfs/p$ l -dn Garten Scans
+>     drwxr-x--- 3 0 1017 36864 2009-09-13 18:46 Garten/
+>     drwxr-x--- 9 0 1007  4096 2008-12-04 21:36 Scans/
+> 
+>     I can "cd Scans" without problems, but I can't "cd Garten", I get
+> "permission denied" If I try the latter. I am a member of both groups:
+> 
+>     raimund@jupiter:/nfs/p$ id | tr "," "\n" |grep bbpict_
+>     1007(bbpict_r)
+>     1017(bbpict_p)
+> 
+>   * I am sure this is an NFS problem, because when I create directories
+> with the same permissions/groups an a local filesystem, everything works
+> just fine. When I SSH into the server I can enter the directories just fine
+> as well.
+> 
+>   * If I do a "sg bbict_p", my default group changes from bbusers
+> (GID=1000) to bbpict_p. After this procedure I can "cd Garten".
+> 
+>   * Could it be that the NFS-client somehow ignores higher GIDs? Groups
+> with GIDs>=1012 seem to suffer from this problem more often, but I haven't
+> tested them all. Which config file might contain restrictions like this?
+> 
+> I am pretty much out of ideas on this problem. I would *greatly*
+> appreciate hints on how to solve it. Please, NFS-experts, enlighten me!
 
-> On Fri, 2010-06-25 at 14:20 -0400, Jeff Layton wrote:
-> > RFC3530 states:
-> > 
-> >    Where an NFS version 4 implementation supports operation over the IP
-> >    network protocol, the supported transports between NFS and IP MUST be
-> >    among the IETF-approved congestion control transport protocols, which
-> >    include TCP and SCTP
-> > 
-> > This patch adds a wrapper for nfsd_dispatch that checks to see whether
-> > the call came in via UDP, and then rejects it with a PROG_MISMATCH RPC
-> > error. This replaces the earlier one I proposed -- it should mean no
-> > extra overhead for NFSv2/3.
-> > 
-> > It also has the NFS server skip rpcbind registration for NFSv4 over UDP.
-> > 
-> > Reported-by: Sachin Prabhu <sprabhu@redhat.com>
-> > Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> > ---
-> >  fs/nfsd/nfs4proc.c |    3 ++-
-> >  fs/nfsd/nfsd.h     |    1 +
-> >  fs/nfsd/nfssvc.c   |   13 +++++++++++++
-> >  3 files changed, 16 insertions(+), 1 deletions(-)
-> > 
-> > diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-> > index 59ec449..afbd03c 100644
-> > --- a/fs/nfsd/nfs4proc.c
-> > +++ b/fs/nfsd/nfs4proc.c
-> > @@ -1363,8 +1363,9 @@ struct svc_version	nfsd_version4 = {
-> >  		.vs_vers	= 4,
-> >  		.vs_nproc	= 2,
-> >  		.vs_proc	= nfsd_procedures4,
-> > -		.vs_dispatch	= nfsd_dispatch,
-> > +		.vs_dispatch	= nfsd4_dispatch,
-> >  		.vs_xdrsize	= NFS4_SVC_XDRSIZE,
-> > +		.vs_hidden_udp	= true,
-> >  };
-> >  
-> >  /*
-> > diff --git a/fs/nfsd/nfsd.h b/fs/nfsd/nfsd.h
-> > index 7237776..f36e07c 100644
-> > --- a/fs/nfsd/nfsd.h
-> > +++ b/fs/nfsd/nfsd.h
-> > @@ -41,6 +41,7 @@ extern const struct seq_operations nfs_exports_op;
-> >   */
-> >  int		nfsd_svc(unsigned short port, int nrservs);
-> >  int		nfsd_dispatch(struct svc_rqst *rqstp, __be32 *statp);
-> > +int		nfsd4_dispatch(struct svc_rqst *rqstp, __be32 *statp);
-> >  
-> >  int		nfsd_nrthreads(void);
-> >  int		nfsd_nrpools(void);
-> > diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
-> > index 6b59d32..0a04472 100644
-> > --- a/fs/nfsd/nfssvc.c
-> > +++ b/fs/nfsd/nfssvc.c
-> > @@ -595,6 +595,19 @@ nfsd_dispatch(struct svc_rqst *rqstp, __be32 *statp)
-> >  	return 1;
-> >  }
-> >  
-> > +int
-> > +nfsd4_dispatch(struct svc_rqst *rqstp, __be32 *statp)
-> > +{
-> > +	/* Reject any NFSv4 request over UDP. Don't bother caching it. */
-> > +	if (rqstp->rq_prot == IPPROTO_UDP) {
-> > +		dprintk("%s: rejecting vers 4 request over UDP\n", __func__);
-> > +		*statp = rpc_prog_mismatch;
-> > +		return 1;
-> > +	}
-> > +
-> > +	return nfsd_dispatch(rqstp, statp);
-> > +}
-> > +
-> >  int nfsd_pool_stats_open(struct inode *inode, struct file *file)
-> >  {
-> >  	int ret;
-> 
-> Won't that lead to svc_process() returning garbage? As far as I can see,
-> it will indeed lead to the status being set to RPC_PROG_MISMATCH, but it
-> will fail to set the 'lower/upper' RPC prognumber arguments.
-> 
-> Might something like the following perhaps work?
-> 
->             statp[0] = rpc_prog_mismatch;
->             statp[1] = 2;
-> 	    statp[2] = 3;
->             rqstp->rq_res.head[0].iov_len += 2 * sizeof(__be32);
-> 	    return 0;
-> 
-> Cheers
->   Trond
-> 
+The Sun RPC protocol does not support sending more than 16 groups over
+the wire, so if 'id -G' shows more than 16 entries, you are probably
+going to have issues.
 
-Thanks. I misread the spec there -- we do need to specify a low and
-high version. It's not quite that simple though -- I think we need to
-base this on what nfsd versions are currently enabled.
+The Linux NFS server has a workaround: if you use the '-g' or
+'--manage-gids' argument to mountd, then the server will fill in the
+missing groups by looking up your uid in its copy of /etc/passwd.
 
--- 
-Jeff Layton <jlayton@redhat.com>
+Cheers
+  Trond
+
