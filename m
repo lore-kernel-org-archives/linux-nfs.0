@@ -1,71 +1,59 @@
 From: Benny Halevy <bhalevy@panasas.com>
-Subject: Re: [PATCH 2/2] pnfs-post-submit: Revert "pnfs-submit: Remove unused
- encode_getattr_three code"
-Date: Fri, 18 Jun 2010 17:19:22 -0400
-Message-ID: <4C1BE2DA.5020206@panasas.com>
-References: <1276736809-9423-1-git-send-email-iisaman@netapp.com> <1276736809-9423-2-git-send-email-iisaman@netapp.com>
+Subject: Re: [PATCH 1/1] pnfs: Fix num_ds bug in nfsd4_set_pnfs_dlm_device()
+Date: Fri, 18 Jun 2010 17:23:48 -0400
+Message-ID: <4C1BE3E4.2040007@panasas.com>
+References: <1276876558.1796.19.camel@Berlin>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: linux-nfs@vger.kernel.org
-To: Fred Isaman <iisaman@netapp.com>
+Content-Type: text/plain; charset=UTF-8
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+	linux-nfs <linux-nfs@vger.kernel.org>
+To: eanderle@umich.edu
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qy0-f174.google.com ([209.85.216.174]:63135 "EHLO
+Received: from mail-qy0-f174.google.com ([209.85.216.174]:35542 "EHLO
 	mail-qy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753003Ab0FRVTQ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Jun 2010 17:19:16 -0400
-Received: by qyk1 with SMTP id 1so199306qyk.19
-        for <linux-nfs@vger.kernel.org>; Fri, 18 Jun 2010 14:19:15 -0700 (PDT)
-In-Reply-To: <1276736809-9423-2-git-send-email-iisaman@netapp.com>
+	with ESMTP id S1752989Ab0FRVXm (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Jun 2010 17:23:42 -0400
+Received: by qyk1 with SMTP id 1so200629qyk.19
+        for <linux-nfs@vger.kernel.org>; Fri, 18 Jun 2010 14:23:41 -0700 (PDT)
+In-Reply-To: <1276876558.1796.19.camel@Berlin>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Yeah.  This actually belongs to the pnfs-block branch.
-I'll move it there.
+Merged at pnfs-all-2.6.35-rc3-2010-06-18
+
+On Jun. 18, 2010, 11:55 -0400, Eric Anderle <eanderle@umich.edu> wrote:
+>>From cd18db8401e1df4ee031e6a6c53e0f3353080dca Mon Sep 17 00:00:00 2001
+> From: Eric Anderle <eanderle@umich.edu>
+> Date: Fri, 18 Jun 2010 10:09:46 -0400
+> Subject: [PATCH 1/1] pnfs: Fix num_ds bug in nfsd4_set_pnfs_dlm_device()
+
+Oh, and one more nit :)
+since this patch is for the server, our convention is to prefix
+its subject with "pnfsd:", not "pnfs:"
+
+Thanks!
 
 Benny
 
-On Jun. 16, 2010, 21:06 -0400, Fred Isaman <iisaman@netapp.com> wrote:
-> ---
->  fs/nfs/nfs4xdr.c |   29 +++++++++++++++++++++++++++++
->  1 files changed, 29 insertions(+), 0 deletions(-)
 > 
-> diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-> index 9ef0f0a..c0bdb60 100644
-> --- a/fs/nfs/nfs4xdr.c
-> +++ b/fs/nfs/nfs4xdr.c
-> @@ -1060,6 +1060,35 @@ static void encode_getattr_two(struct xdr_stream *xdr, uint32_t bm0, uint32_t bm
->  	hdr->replen += decode_getattr_maxsz;
->  }
->  
-> +static void
-> +encode_getattr_three(struct xdr_stream *xdr,
-> +		     uint32_t bm0, uint32_t bm1, uint32_t bm2,
-> +		     struct compound_hdr *hdr)
-> +{
-> +	__be32 *p;
-> +
-> +	p = reserve_space(xdr, 4);
-> +	*p = cpu_to_be32(OP_GETATTR);
-> +	if (bm2) {
-> +		p = reserve_space(xdr, 16);
-> +		*p++ = cpu_to_be32(3);
-> +		*p++ = cpu_to_be32(bm0);
-> +		*p++ = cpu_to_be32(bm1);
-> +		*p = cpu_to_be32(bm2);
-> +	} else if (bm1) {
-> +		p = reserve_space(xdr, 12);
-> +		*p++ = cpu_to_be32(2);
-> +		*p++ = cpu_to_be32(bm0);
-> +		*p = cpu_to_be32(bm1);
-> +	} else {
-> +		p = reserve_space(xdr, 8);
-> +		*p++ = cpu_to_be32(1);
-> +		*p = cpu_to_be32(bm0);
-> +	}
-> +	hdr->nops++;
-> +	hdr->replen += decode_getattr_maxsz;
-> +}
-> +
->  static void encode_getfattr(struct xdr_stream *xdr, const u32* bitmask, struct compound_hdr *hdr)
->  {
->  	encode_getattr_two(xdr, bitmask[0] & nfs4_fattr_bitmap[0],
+> Previously, when updating the DS list of an existing pnfs dlm device,
+> the number of ds's was not updated. Fixed.
+> 
+> Signed-off-by: Eric Anderle <eanderle@umich.edu>
+> ---
+>  fs/nfsd/nfs4pnfsdlm.c |    1 +
+>  1 files changed, 1 insertions(+), 0 deletions(-)
+> 
+> diff --git a/fs/nfsd/nfs4pnfsdlm.c b/fs/nfsd/nfs4pnfsdlm.c
+> index 40f9b84..ffe1c32 100644
+> --- a/fs/nfsd/nfs4pnfsdlm.c
+> +++ b/fs/nfsd/nfs4pnfsdlm.c
+> @@ -189,6 +189,7 @@ nfsd4_set_pnfs_dlm_device(char *pnfs_dlm_device, int len)
+>  			found->disk_name, found->ds_list, new->ds_list);
+>  		memset(found->ds_list, 0, DISK_NAME_LEN);
+>  		memcpy(found->ds_list, new->ds_list, strlen(new->ds_list));
+> +		found->num_ds = new->num_ds;
+>  		kfree(new);
+>  	} else {
+>  		dprintk("%s Adding pnfs_dlm_device %s:%s\n", __func__,
+
