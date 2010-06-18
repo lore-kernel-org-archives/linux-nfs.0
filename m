@@ -1,59 +1,79 @@
 From: Benny Halevy <bhalevy@panasas.com>
-Subject: Re: [PATCH 1/1] pnfs: Fix num_ds bug in nfsd4_set_pnfs_dlm_device()
-Date: Fri, 18 Jun 2010 17:23:48 -0400
-Message-ID: <4C1BE3E4.2040007@panasas.com>
-References: <1276876558.1796.19.camel@Berlin>
+Subject: Re: [PATCH] SQUASHME: pnfsd: setup backchannel in create_session
+ also in session reestablishment
+Date: Fri, 18 Jun 2010 17:55:58 -0400
+Message-ID: <4C1BEB6E.3050908@panasas.com>
+References: <1276815696-19281-1-git-send-email-bhalevy@panasas.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-	linux-nfs <linux-nfs@vger.kernel.org>
-To: eanderle@umich.edu
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: bharrosh@panasas.com, linux-nfs@vger.kernel.org
+To: bfields@citi.umich.edu
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qy0-f174.google.com ([209.85.216.174]:35542 "EHLO
-	mail-qy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752989Ab0FRVXm (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Jun 2010 17:23:42 -0400
-Received: by qyk1 with SMTP id 1so200629qyk.19
-        for <linux-nfs@vger.kernel.org>; Fri, 18 Jun 2010 14:23:41 -0700 (PDT)
-In-Reply-To: <1276876558.1796.19.camel@Berlin>
+Received: from mail-iw0-f174.google.com ([209.85.214.174]:53222 "EHLO
+	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753791Ab0FRVzz (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Jun 2010 17:55:55 -0400
+Received: by iwn9 with SMTP id 9so1498293iwn.19
+        for <linux-nfs@vger.kernel.org>; Fri, 18 Jun 2010 14:55:51 -0700 (PDT)
+In-Reply-To: <1276815696-19281-1-git-send-email-bhalevy@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Merged at pnfs-all-2.6.35-rc3-2010-06-18
+Bruce, this patch should go upstream.
 
-On Jun. 18, 2010, 11:55 -0400, Eric Anderle <eanderle@umich.edu> wrote:
->>From cd18db8401e1df4ee031e6a6c53e0f3353080dca Mon Sep 17 00:00:00 2001
-> From: Eric Anderle <eanderle@umich.edu>
-> Date: Fri, 18 Jun 2010 10:09:46 -0400
-> Subject: [PATCH 1/1] pnfs: Fix num_ds bug in nfsd4_set_pnfs_dlm_device()
-
-Oh, and one more nit :)
-since this patch is for the server, our convention is to prefix
-its subject with "pnfsd:", not "pnfs:"
-
-Thanks!
+Thanks,
 
 Benny
 
+On Jun. 17, 2010, 19:01 -0400, Benny Halevy <bhalevy@panasas.com> wrote:
+> The client may send an EXCHANGE_ID and a following CREATE_SESSION for an
+> existing clientid.  In this case we'll find the nfs4_client in the confirmed
+> list.
 > 
-> Previously, when updating the DS list of an existing pnfs dlm device,
-> the number of ds's was not updated. Fixed.
-> 
-> Signed-off-by: Eric Anderle <eanderle@umich.edu>
+> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 > ---
->  fs/nfsd/nfs4pnfsdlm.c |    1 +
->  1 files changed, 1 insertions(+), 0 deletions(-)
+>  fs/nfsd/nfs4state.c |   24 +++++++++++-------------
+>  1 files changed, 11 insertions(+), 13 deletions(-)
 > 
-> diff --git a/fs/nfsd/nfs4pnfsdlm.c b/fs/nfsd/nfs4pnfsdlm.c
-> index 40f9b84..ffe1c32 100644
-> --- a/fs/nfsd/nfs4pnfsdlm.c
-> +++ b/fs/nfsd/nfs4pnfsdlm.c
-> @@ -189,6 +189,7 @@ nfsd4_set_pnfs_dlm_device(char *pnfs_dlm_device, int len)
->  			found->disk_name, found->ds_list, new->ds_list);
->  		memset(found->ds_list, 0, DISK_NAME_LEN);
->  		memcpy(found->ds_list, new->ds_list, strlen(new->ds_list));
-> +		found->num_ds = new->num_ds;
->  		kfree(new);
+> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> index 3e012d4..0df5483 100644
+> --- a/fs/nfsd/nfs4state.c
+> +++ b/fs/nfsd/nfs4state.c
+> @@ -1405,25 +1405,23 @@ nfsd4_create_session(struct svc_rqst *rqstp,
+>  		if (is_ds_only_session(unconf->cl_exchange_flags))
+>  			cr_ses->flags &= ~SESSION4_BACK_CHAN;
+>  
+> -		if (cr_ses->flags & SESSION4_BACK_CHAN) {
+> -			unconf->cl_cb_conn.cb_xprt = rqstp->rq_xprt;
+> -			svc_xprt_get(rqstp->rq_xprt);
+> -			rpc_copy_addr(
+> -				(struct sockaddr *)&unconf->cl_cb_conn.cb_addr,
+> -				sa);
+> -			unconf->cl_cb_conn.cb_addrlen = svc_addr_len(sa);
+> -			unconf->cl_cb_conn.cb_minorversion =
+> -				cstate->minorversion;
+> -			unconf->cl_cb_conn.cb_prog = cr_ses->callback_prog;
+> -			unconf->cl_cb_seq_nr = 1;
+> -			nfsd4_probe_callback(unconf, &unconf->cl_cb_conn);
+> -		}
+>  		conf = unconf;
 >  	} else {
->  		dprintk("%s Adding pnfs_dlm_device %s:%s\n", __func__,
+>  		status = nfserr_stale_clientid;
+>  		goto out;
+>  	}
+>  
+> +	if (cr_ses->flags & SESSION4_BACK_CHAN) {
+> +		conf->cl_cb_conn.cb_xprt = rqstp->rq_xprt;
+> +		svc_xprt_get(rqstp->rq_xprt);
+> +		rpc_copy_addr((struct sockaddr *)&conf->cl_cb_conn.cb_addr, sa);
+> +		conf->cl_cb_conn.cb_addrlen = svc_addr_len(sa);
+> +		conf->cl_cb_conn.cb_minorversion = cstate->minorversion;
+> +		conf->cl_cb_conn.cb_prog = cr_ses->callback_prog;
+> +		conf->cl_cb_seq_nr = 1;
+> +		nfsd4_probe_callback(conf, &conf->cl_cb_conn);
+> +	}
+> +
+>  	/*
+>  	 * We do not support RDMA or persistent sessions
+>  	 */
 
