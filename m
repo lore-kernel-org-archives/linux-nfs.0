@@ -1,132 +1,129 @@
 From: Jeff Layton <jlayton@redhat.com>
-Subject: [PATCH] nfsd: just keep single lockd reference for nfsd
-Date: Fri, 18 Jun 2010 07:02:20 -0400
-Message-ID: <1276858940-15499-1-git-send-email-jlayton@redhat.com>
-Cc: linux-nfs@vger.kernel.org, chris-TF6qbakwsgc2epGFuHBODCp2UmYkHbXO@public.gmane.org
-To: bfields@fieldses.org
+Subject: Re: Failed to create machine krb5 context with any credentials
+ cache for  server
+Date: Fri, 18 Jun 2010 07:24:20 -0400
+Message-ID: <20100618072420.618d7130@corrin.poochiereds.net>
+References: <AANLkTilsxbQrLAEwypOGgL72ePRNM7v5lm4H56HtrhGR@mail.gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
+Cc: linux-nfs@vger.kernel.org
+To: yagi shinnosuke <linus404@gmail.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:51148 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:43147 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758468Ab0FRLGl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 18 Jun 2010 07:06:41 -0400
+	id S1760984Ab0FRLWX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 18 Jun 2010 07:22:23 -0400
+In-Reply-To: <AANLkTilsxbQrLAEwypOGgL72ePRNM7v5lm4H56HtrhGR-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This patch should replace the other patches that I proposed to make
-sure that each sv_permsock entry holds a lockd refrence.
+On Fri, 18 Jun 2010 07:27:18 +0900
+yagi shinnosuke <linus404@gmail.com> wrote:
 
-Right now, nfsd keeps a lockd reference for each socket that it has
-open. This is unnecessary and complicates the error handling on
-startup and shutdown. Change it to just do a lockd_up when creating
-the nfsd_serv and just do a single lockd_down when taking down the
-last nfsd thread.
+> Hello.
+> 
+> I have been trying to set up kerberized nfsv3 server and clients over IPv6
+> network, but run into a few problems.
+> 
+> When I try to mount NFS share, an error "permission denied." occured and
+> failed to mount.
+> 
+> My server is FreeBSD8. My client is Fedora 13.
+> Without Kerberos, I can mount NFS share.
+> 
+> Output of mount command is follow
+> =============================================================================================
+> # mount -t nfs nfsserv.localdomain:/export/work /mnt/nfs/ -o
+> sec=krb5,vers=3 -v
+> mount.nfs: timeout set for Tue Jun 15 10:54:11 2010
+> mount.nfs: trying text-based options
+> 'sec=krb5,vers=3,addr=2002:192:168:1:217:a4ff:fe20:e5f0'
+> mount.nfs: prog 100003, trying vers=3, prot=6
+> mount.nfs: trying 2001:XXXX::a4ff:fe20:e5f0 prog 100003 vers 3 prot TCP
+> port 2049
+> mount.nfs: prog 100005, trying vers=3, prot=17
+> mount.nfs: trying 2001:XXXX::a4ff:fe20:e5f0 prog 100005 vers 3 prot UDP
+> port 818
+> mount.nfs: mount(2): Permission denied
+> mount.nfs: access denied by server while mounting
+> nfsserv.localdomain:/export/work
+> ==============================================================================================
+> 
+> "nfsserv is hostname of NFS server and 2001:XXXX::a4ff:fe20:e5f0 is
+> its IPv6 address.
+> 
+> 
+> I run rpc.gssd with -vvvvv options, and I got following warnings.
+> ==============================================================================================
+> creating context with server nfs-m9Topm0561QB9AHHLWeGtNQXobZC6xk2@public.gmane.org
+> WARNING: Failed to create krb5 context for user with uid 0 for server
+> nfsserv.localdomain
+> WARNING: Failed to create machine krb5 context with credentials cache
+> FILE:/tmp/krb5cc_machine_NWBOOT for server nfsserv.localdomain
+> WARNING: Failed to create machine krb5 context with any credentials
+> cache for server nfsserv.localdomain
+> doing error downcall
+> ==============================================================================================
+> 
+> It seems that rpc.gssd could not create credentials for nfsserver.
+> However, I run kinit correctly on client.
+> 
+> My kinit and klist results are follow.
+> ==============================================================================================
+> [root@fedoravm]# kinit root
+> Password for root@NWBOOT:
+> [root@fedoravm]# klist
+> Ticket cache: FILE:/tmp/krb5cc_0
+> Default principal: root@NWBOOT
+> 
+> Valid starting     Expires            Service principal
+> 06/15/10 16:53:22  06/16/10 16:53:15  krbtgt/NWBOOT@NWBOOT
+>        renew until 06/22/10 16:53:15
+> ==============================================================================================
+> 
+> I read following page and added root keytab to client, but nothing changed.
+>  http://www.mail-archive.com/linux-nfs@vger.kernel.org/msg01360.html
+> 
+> My Client Keytab:
+> ==============================================================================================
+> [root@fedoravm]# ktutil
+> ktutil:  rkt /etc/krb5.keytab
+> ktutil:  list -e
+> slot KVNO Principal
+> ---- ----
+> ---------------------------------------------------------------------
+>   1    1          nfs/fedoravm.localdomain@NWBOOT (DES cbc mode with
+> CRC-32)
+>   2    1         root/fedoravm.localdomain@NWBOOT (DES cbc mode with
+> CRC-32)
+>   3    1         host/fedoravm.localdomain@NWBOOT (DES cbc mode with
+> CRC-32)
+> ==============================================================================================
+> 
+> My Server Keytab:
+> ==============================================================================================
+> nfsserv# ktutil list
+> FILE:/etc/krb5.keytab:
+> 
+> Vno  Type         Principal
+>  1  des-cbc-crc  nfs/nfsserv.localdomain@NWBOOT
+>  1  des-cbc-crc  root/nfsserv.localdomain@NWBOOT
+>  1  des-cbc-crc  host/nfsserv.localdomain@NWBOOT
+> ==============================================================================================
+> 
+> 
+> I have surveyed web pages to find nothing about Kerberized NFS over IPv6.
+> I'm not sure it works or not.
+> Does rpc.gssd works on IPv6 enviromnent?
+> 
+> Can anybody give me any hints or suggestions?
+> 
 
-This patch also changes the error handling in nfsd_create_serv a
-bit too. There doesn't seem to be any need to reset the nfssvc_boot
-time if the nfsd startup failed.
+It should work. If you run something like:
 
-Note though that this does change the user-visible behavior slightly.
-Today when someone writes a text socktype and port to the portlist file
-prior to starting nfsd, lockd is not started when nfsd threads are
-brought up. With this change, it will be started any time that
-the nfsd_serv is created. I'm making the assumption that that's not a
-problem. If it is then we'll need to take a different approach to fixing
-this.
+# kinit -k nfs/fedoravm.localdomain
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- fs/nfsd/nfsctl.c |   10 ----------
- fs/nfsd/nfssvc.c |   25 ++++++++++---------------
- 2 files changed, 10 insertions(+), 25 deletions(-)
+...does that get you a TGT? What kind of KDC is this?
 
-diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
-index 9e8645a..b1c5be8 100644
---- a/fs/nfsd/nfsctl.c
-+++ b/fs/nfsd/nfsctl.c
-@@ -949,15 +949,8 @@ static ssize_t __write_ports_addfd(char *buf)
- 	if (err != 0)
- 		return err;
- 
--	err = lockd_up();
--	if (err != 0) {
--		svc_destroy(nfsd_serv);
--		return err;
--	}
--
- 	err = svc_addsock(nfsd_serv, fd, buf, SIMPLE_TRANSACTION_LIMIT);
- 	if (err < 0) {
--		lockd_down();
- 		svc_destroy(nfsd_serv);
- 		return err;
- 	}
-@@ -982,9 +975,6 @@ static ssize_t __write_ports_delfd(char *buf)
- 	if (nfsd_serv != NULL)
- 		len = svc_sock_names(nfsd_serv, buf,
- 					SIMPLE_TRANSACTION_LIMIT, toclose);
--	if (len >= 0)
--		lockd_down();
--
- 	kfree(toclose);
- 	return len;
- }
-diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
-index a06ea99..6b59d32 100644
---- a/fs/nfsd/nfssvc.c
-+++ b/fs/nfsd/nfssvc.c
-@@ -183,9 +183,7 @@ int nfsd_nrthreads(void)
- static void nfsd_last_thread(struct svc_serv *serv)
- {
- 	/* When last nfsd thread exits we need to do some clean-up */
--	struct svc_xprt *xprt;
--	list_for_each_entry(xprt, &serv->sv_permsocks, xpt_list)
--		lockd_down();
-+	lockd_down();
- 	nfsd_serv = NULL;
- 	nfsd_racache_shutdown();
- 	nfs4_state_shutdown();
-@@ -264,13 +262,18 @@ int nfsd_create_serv(void)
- 			nfsd_max_blksize /= 2;
- 	}
- 
-+	err = lockd_up();
-+	if (err != 0)
-+		return err;
-+
- 	nfsd_serv = svc_create_pooled(&nfsd_program, nfsd_max_blksize,
- 				      nfsd_last_thread, nfsd, THIS_MODULE);
--	if (nfsd_serv == NULL)
--		err = -ENOMEM;
--	else
--		set_max_drc();
-+	if (nfsd_serv == NULL) {
-+		lockd_down();
-+		return -ENOMEM;
-+	}
- 
-+	set_max_drc();
- 	do_gettimeofday(&nfssvc_boot);		/* record boot time */
- 	return err;
- }
-@@ -286,19 +289,11 @@ static int nfsd_init_socks(int port)
- 	if (error < 0)
- 		return error;
- 
--	error = lockd_up();
--	if (error < 0)
--		return error;
--
- 	error = svc_create_xprt(nfsd_serv, "tcp", PF_INET, port,
- 					SVC_SOCK_DEFAULTS);
- 	if (error < 0)
- 		return error;
- 
--	error = lockd_up();
--	if (error < 0)
--		return error;
--
- 	return 0;
- }
- 
 -- 
-1.5.5.6
-
+Jeff Layton <jlayton@redhat.com>
