@@ -1,88 +1,34 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: [PATCH] TESTS: Allow server to reject commits with large offsets
-Date: Fri, 18 Jun 2010 08:44:54 -0400
-Message-ID: <20100618124454.GC10887@fieldses.org>
+From: DENIEL Philippe <philippe.deniel@cea.fr>
+Subject: NFSv4 and quota ?
+Date: Fri, 18 Jun 2010 15:15:52 +0200
+Message-ID: <4C1B7188.50607@cea.fr>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs@vger.kernel.org, Muneet Parhar <mparhar@umich.edu>
-To: iisaman@umich.edu
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:41456 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932106Ab0FRMoz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 18 Jun 2010 08:44:55 -0400
+Received: from cirse-out.extra.cea.fr ([132.166.172.106]:53643 "EHLO
+	cirse-out.extra.cea.fr" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932998Ab0FRODp (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Jun 2010 10:03:45 -0400
+Received: from pisaure.intra.cea.fr (pisaure.intra.cea.fr [132.166.88.21])
+	by cirse.extra.cea.fr (8.14.2/8.14.2/CEAnet-Internet-out-2.0) with ESMTP id o5IDFqKs021195
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NOT)
+	for <linux-nfs@vger.kernel.org>; Fri, 18 Jun 2010 15:15:52 +0200
+Received: from muguet1.intra.cea.fr (muguet1.intra.cea.fr [132.166.192.6])
+	by pisaure.intra.cea.fr (8.14.4/8.14.4) with ESMTP id o5IDFqu9016675
+	for <linux-nfs@vger.kernel.org>; Fri, 18 Jun 2010 15:15:52 +0200
+	(envelope-from Philippe.DENIEL-W2j0cThhBN0@public.gmane.org)
+Received: from zia.bruyeres.cea.fr (esteban.dam.intra.cea.fr [132.165.76.10])
+	by muguet1.intra.cea.fr (8.13.8/8.13.8/CEAnet-Intranet-out-1.1) with SMTP id o5IDFqH4015906
+	for <linux-nfs@vger.kernel.org>; Fri, 18 Jun 2010 15:15:52 +0200
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Muneet Parhar <mparhar@umich.edu>
+Hi,
 
-These two tests insist (incorrectly) that a server must accept commits
-with offset 2^64-1 and 2^64-2.
+are quota implemented in NFSv4 ? I know the fattr4 attributes exists for 
+this but are they supported by the current implementations of NFSv4.x ?
 
-The linux server was recently changed to reject (with INVAL) offsets
-over 2^63-1, which is the maximum that the vfs commit routine can
-accept.  That behavior is consistent with the NFSv3 commit
-implementation and with the NFSv4 write implementation.
+    Regards
 
-The maximum supported offset may vary depending on filesystem or server,
-so we should allow either success or INVAL here.
-
-Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
----
- lib/nfs4/servertests/st_commit.py |   11 +++++------
- 1 files changed, 5 insertions(+), 6 deletions(-)
-
-diff --git a/lib/nfs4/servertests/st_commit.py b/lib/nfs4/servertests/st_commit.py
-index 2955d79..b7f536e 100644
---- a/lib/nfs4/servertests/st_commit.py
-+++ b/lib/nfs4/servertests/st_commit.py
-@@ -1,9 +1,9 @@
- from nfs4.nfs4_const import *
--from environment import check
-+from environment import check, checklist
- 
- _text = "Random data to write"
- 
--def _commit(t, c, offset=0, count=0):
-+def _commit(t, c, offset=0, count=0, statlist=[NFS4_OK]):
-     """COMMIT
- 
-     FLAGS: commit all
-@@ -15,7 +15,7 @@ def _commit(t, c, offset=0, count=0):
-     res = c.write_file(fh, _text, 0, stateid, how=UNSTABLE4)
-     check(res, msg="WRITE with how=UNSTABLE4")
-     res = c.commit_file(fh, offset, count)
--    check(res, msg="COMMIT with offset=%x, count=%x" % (offset, count))
-+    checklist(res, statlist, msg="COMMIT with offset=%x, count=%x" % (offset, count))
- 
- def testCommitOffset0(t, env):
-     """COMMIT
-@@ -42,7 +42,7 @@ def testCommitOffsetMax1(t, env):
-     DEPEND: MKFILE
-     CODE: CMT1c
-     """
--    _commit(t, env.c1, 0xffffffffffffffffL)
-+    _commit(t, env.c1, 0xffffffffffffffffL, statlist=[NFS4_OK, NFS4ERR_INVAL])
- 
- def testCommitOffsetMax2(t, env):
-     """COMMIT
-@@ -51,7 +51,7 @@ def testCommitOffsetMax2(t, env):
-     DEPEND: MKFILE
-     CODE: CMT1d
-     """
--    _commit(t, env.c1, 0xfffffffffffffffeL)
-+    _commit(t, env.c1, 0xfffffffffffffffeL, statlist=[NFS4_OK, NFS4ERR_INVAL])
- 
- def testCommitCount1(t, env):
-     """COMMIT
-@@ -71,7 +71,6 @@ def testCommitCountMax(t, env):
-     """
-     _commit(t, env.c1, 0, 0xffffffffL)
- 
--
- def testLink(t, env):
-     """COMMIT
- 
--- 
-1.7.0.4
-
+       Philippe
