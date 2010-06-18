@@ -1,79 +1,73 @@
-From: Benny Halevy <bhalevy@panasas.com>
-Subject: Re: [PATCH] SQUASHME: pnfsd: setup backchannel in create_session
- also in session reestablishment
-Date: Fri, 18 Jun 2010 17:55:58 -0400
-Message-ID: <4C1BEB6E.3050908@panasas.com>
-References: <1276815696-19281-1-git-send-email-bhalevy@panasas.com>
+From: Chris Vine <chris-TF6qbakwsgc2epGFuHBODCp2UmYkHbXO@public.gmane.org>
+Subject: Re: [PATCH] nfsd: just keep single lockd reference for nfsd
+Date: Fri, 18 Jun 2010 23:45:40 +0100
+Message-ID: <20100618234540.64e7b605@boulder.homenet>
+References: <1276858940-15499-1-git-send-email-jlayton@redhat.com>
+	<20100618151808.6e40a0ca@boulder.homenet>
+	<20100618103042.080aa597@corrin.poochiereds.net>
+	<20100618160411.14d65b2b@boulder.homenet>
+	<20100618111132.20fb518a@corrin.poochiereds.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: bharrosh@panasas.com, linux-nfs@vger.kernel.org
-To: bfields@citi.umich.edu
+Content-Type: text/plain; charset=US-ASCII
+Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org
+To: Jeff Layton <jlayton@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-iw0-f174.google.com ([209.85.214.174]:53222 "EHLO
-	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753791Ab0FRVzz (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Jun 2010 17:55:55 -0400
-Received: by iwn9 with SMTP id 9so1498293iwn.19
-        for <linux-nfs@vger.kernel.org>; Fri, 18 Jun 2010 14:55:51 -0700 (PDT)
-In-Reply-To: <1276815696-19281-1-git-send-email-bhalevy@panasas.com>
+Received: from smtp5.freeserve.com ([193.252.22.159]:42500 "EHLO
+	smtp5.freeserve.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753470Ab0FRWt7 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Jun 2010 18:49:59 -0400
+In-Reply-To: <20100618111132.20fb518a-4QP7MXygkU+dMjc06nkz3ljfA9RmPOcC@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Bruce, this patch should go upstream.
-
-Thanks,
-
-Benny
-
-On Jun. 17, 2010, 19:01 -0400, Benny Halevy <bhalevy@panasas.com> wrote:
-> The client may send an EXCHANGE_ID and a following CREATE_SESSION for an
-> existing clientid.  In this case we'll find the nfs4_client in the confirmed
-> list.
+On Fri, 18 Jun 2010 11:11:32 -0400
+Jeff Layton <jlayton@redhat.com> wrote:
+> On Fri, 18 Jun 2010 16:04:11 +0100
+> Chris Vine <chris-TF6qbakwsgc2epGFuHBODCp2UmYkHbXO@public.gmane.org> wrote:
 > 
-> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-> ---
->  fs/nfsd/nfs4state.c |   24 +++++++++++-------------
->  1 files changed, 11 insertions(+), 13 deletions(-)
+> > On Fri, 18 Jun 2010 10:30:42 -0400
+> > Jeff Layton <jlayton@redhat.com> wrote:
+> > [snip]
+> > > Thanks for testing them. No oops == improvement!
+> > > 
+> > > ...but it would still be good to know what's wrong here. It sounds
+> > > like something is really odd with loopback communications on this
+> > > box. Is the ipv4 loopback interface up at this time? Do you have
+> > > any iptables stuff set up that might be filtering out portmap
+> > > registration requests from the kernel? What happens if you run
+> > > "rpcinfo"? Does it also hang?
+> > > 
+> > > The kernel uses TCP for talking to portmap these days, so it might
+> > > also be good to see whether you can use rpcinfo to talk to it with
+> > > TCP too...
+> > 
+> > You are right. Although the lo interface is up, localhost is broken
+> > in 2.6.35-rc3. External networking works OK which is why I hadn't
+> > noticed.
+> > 
+> > It looks like some other unrelated bug in 2.6.35 is at work. Quite
+> > why it doesn't strike my Pentium machine I can't say.  The netbook
+> > takes its network address from DHCP (my Pentium does not) but that
+> > shouldn't make any difference to localhost.
+> > 
+> > I shall do a bit more looking around later today or tomorrow.
+> > 
+> > Chris
+> > 
+> > 
 > 
-> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> index 3e012d4..0df5483 100644
-> --- a/fs/nfsd/nfs4state.c
-> +++ b/fs/nfsd/nfs4state.c
-> @@ -1405,25 +1405,23 @@ nfsd4_create_session(struct svc_rqst *rqstp,
->  		if (is_ds_only_session(unconf->cl_exchange_flags))
->  			cr_ses->flags &= ~SESSION4_BACK_CHAN;
->  
-> -		if (cr_ses->flags & SESSION4_BACK_CHAN) {
-> -			unconf->cl_cb_conn.cb_xprt = rqstp->rq_xprt;
-> -			svc_xprt_get(rqstp->rq_xprt);
-> -			rpc_copy_addr(
-> -				(struct sockaddr *)&unconf->cl_cb_conn.cb_addr,
-> -				sa);
-> -			unconf->cl_cb_conn.cb_addrlen = svc_addr_len(sa);
-> -			unconf->cl_cb_conn.cb_minorversion =
-> -				cstate->minorversion;
-> -			unconf->cl_cb_conn.cb_prog = cr_ses->callback_prog;
-> -			unconf->cl_cb_seq_nr = 1;
-> -			nfsd4_probe_callback(unconf, &unconf->cl_cb_conn);
-> -		}
->  		conf = unconf;
->  	} else {
->  		status = nfserr_stale_clientid;
->  		goto out;
->  	}
->  
-> +	if (cr_ses->flags & SESSION4_BACK_CHAN) {
-> +		conf->cl_cb_conn.cb_xprt = rqstp->rq_xprt;
-> +		svc_xprt_get(rqstp->rq_xprt);
-> +		rpc_copy_addr((struct sockaddr *)&conf->cl_cb_conn.cb_addr, sa);
-> +		conf->cl_cb_conn.cb_addrlen = svc_addr_len(sa);
-> +		conf->cl_cb_conn.cb_minorversion = cstate->minorversion;
-> +		conf->cl_cb_conn.cb_prog = cr_ses->callback_prog;
-> +		conf->cl_cb_seq_nr = 1;
-> +		nfsd4_probe_callback(conf, &conf->cl_cb_conn);
-> +	}
-> +
->  	/*
->  	 * We do not support RDMA or persistent sessions
->  	 */
+> Ok, good to know. I'll still plan to pursue these fixes. The error
+> handling in nfsd obviously an area that needs improvement. I think
+> Bruce's current plan is to take the earlier patches in that stack for
+> 2.6.36. If this one is OK, it's probably reasonable to go in at the
+> same time.
+
+The problem is indeed a loopback bug and for anyone else suffering this
+with nfsd, the fix is a one liner, here:
+http://marc.info/?l=linux-kernel&m=127646140827821
+
+At least this had the benefit of improving the error handling of nfsd!
+
+Chris
+
 
