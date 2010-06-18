@@ -1,29 +1,30 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-out2.uio.no ([129.240.10.58]:56905 "EHLO mail-out2.uio.no"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755903Ab0FBD4Z (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 1 Jun 2010 23:56:25 -0400
-Subject: Re: NFS exporting btrfs subvolumes.
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-To: Neil Brown <neilb@suse.de>
-Cc: linux-btrfs@vger.kernel.org, linux-nfs@vger.kernel.org, jeffm@suse.com
-In-Reply-To: <20100602134145.0d523a75@notabene.brown>
-References: <20100602134145.0d523a75@notabene.brown>
-Content-Type: text/plain; charset="UTF-8"
-Date: Tue, 01 Jun 2010 23:56:20 -0400
-Message-ID: <1275450980.4509.13.camel@heimdal.trondhjem.org>
+Received: from daytona.panasas.com ([67.152.220.89]:19639 "EHLO
+	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1750971Ab0FRU7n (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Jun 2010 16:59:43 -0400
+Message-ID: <4C1BDE45.6020806@panasas.com>
+Date: Fri, 18 Jun 2010 16:59:49 -0400
+From: Benny Halevy <bhalevy@panasas.com>
+To: NFS list <linux-nfs@vger.kernel.org>
+Subject: [PATCH 0/3] pnfs callback fixes
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, 2010-06-02 at 13:41 +1000, Neil Brown wrote:
-> NFS needs a unique identifier for a filesystem to be able to export it.
-<snip>
-> Can anyone suggest a better way to get a good uuid for a btrfs filesystem?
+A small crop of fixes for pnfs callbacks.
 
-How about just adding the btrfs subvolid to the filehandle and using
-that to remove the ambiguity?
+[PATCH 1/3] SQUASHME: pnfsd: move kfree of the cb_layout rpc_args to release time
+[PATCH 2/3] SQUASHME: pnfsd: move kfree of the cb_device rpc_args to release time
+[PATCH 3/3] pnfsd: reset status on NFS4ERR_NOMATCHING_LAYOUT
 
-Cheers
-   Trond
+All of these patches, plus
+bc210d8 pnfs: Fix num_ds bug in nfsd4_set_pnfs_dlm_device()
+3baf7bf SQUASHME: pnfs-obj: use NFSDBG_PNFS_LD also in pnfs_osd_xdr_cli.c
 
+are in pnfs-all-latest at pnfs-all-2.6.35-rc3-2010-06-18
+
+I'll rebase them onto their respective branches after the Bakethon...
+
+Benny
