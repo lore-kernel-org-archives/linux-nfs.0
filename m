@@ -1,51 +1,75 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:61773 "EHLO
-	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1754390Ab0FOUNj (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 Jun 2010 16:13:39 -0400
-Message-ID: <4C17DEF5.7000609@panasas.com>
-Date: Tue, 15 Jun 2010 16:13:41 -0400
-From: Benny Halevy <bhalevy@panasas.com>
-To: Andy Adamson <andros@netapp.com>
-CC: NFS list <linux-nfs@vger.kernel.org>
-Subject: pnfs-2.6.35-rc3 writeback hang w/ cthon test5
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from tundra.namei.org ([65.99.196.166]:56713 "EHLO tundra.namei.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752908Ab0FUL0b (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 21 Jun 2010 07:26:31 -0400
+Date: Mon, 21 Jun 2010 21:25:56 +1000 (EST)
+From: James Morris <jmorris@namei.org>
+To: linux-nfs@vger.kernel.org
+cc: linux-security-module@vger.kernel.org,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>, Neil Brown <neilb@suse.de>,
+        linux-fsdevel@vger.kernel.org, Stephen Smalley <sds@tycho.nsa.gov>
+Subject: [PATCH 0/8][v05][RFC] NFSv3: implement extended attribute protocol
+ (XATTR)
+Message-ID: <alpine.LRH.2.00.1006212051530.13583@tundra.namei.org>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-client and server running pnfs-all-2.6.35-rc3-2010-06-15
-client runs on UML
-server runs on redhat-3 and with files pnfsd_local_exp (Fedora 13 KVM)
+This is version 5 of the NFSv3 XATTR protocol extension patches, which 
+I've previously posted as:
+ 
+v1: http://thread.gmane.org/gmane.linux.file-systems/35475
+v2: http://thread.gmane.org/gmane.linux.nfs/30539
+v3: http://thread.gmane.org/gmane.linux.nfs/30971
+v4: http://thread.gmane.org/gmane.linux.kernel.lsm/10562
 
-./test5: read and write
-Got error -10052 from the server on DESTROY_SESSION. Session has been destroyed regardless...
-Got error -10052 from the server on DESTROY_SESSION. Session has been destroyed regardless...
-Got error -10052 from the server on DESTROY_SESSION. Session has been destroyed regardless...
-INFO: task flush-0:18:2310 blocked for more than 120 seconds.
-"echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables this message.
-flush-0:18    D 0000003d8c2dc84f  6928  2310      2 0x00000000
-       74b4c000 78f9e980 74b4dc60 601a89b0 74b4dcd0 74b4dcd0 74b4c000 00000000 
-       74b4dcc0 74b4dcd0 62499130 00000002 74b4dc70 60092704 74b4dcb0 601a8ea3 
-Call Trace: 
-74b4dbc8:  [<6002bbba>] dequeue_task+0x3b/0x4d
-74b4dbe8:  [<600137df>] _switch_to+0x5e/0xae
-74b4dc18:  [<601a89b0>] schedule+0x1d9/0x21f
-74b4dc68:  [<60092704>] inode_wait+0x9/0xd
-74b4dc78:  [<601a8ea3>] __wait_on_bit+0x47/0x78
-74b4dc80:  [<600926fb>] inode_wait+0x0/0xd
-74b4dcb8:  [<6009b159>] inode_wait_for_writeback+0x8f/0xae
-74b4dce0:  [<60043474>] wake_bit_function+0x0/0x2a
-74b4dd28:  [<6009c225>] wb_writeback+0x183/0x1a4
-74b4ddd8:  [<6009c429>] wb_do_writeback+0x13a/0x150
-74b4dde0:  [<60039686>] process_timeout+0x0/0xb
-74b4de58:  [<6009c47e>] bdi_writeback_task+0x3f/0xf7
-74b4de68:  [<600690be>] bdi_task_init+0x71/0x7d
-74b4de90:  [<6006996e>] bdi_start_fn+0x0/0xc7
-74b4dea8:  [<600699da>] bdi_start_fn+0x6c/0xc7
-74b4dec8:  [<6006996e>] bdi_start_fn+0x0/0xc7
-74b4ded8:  [<60043086>] kthread+0x91/0x99
-74b4df48:  [<600213a1>] run_kernel_thread+0x41/0x4a
-74b4df58:  [<60042ff5>] kthread+0x0/0x99
-74b4df98:  [<60021388>] run_kernel_thread+0x28/0x4a
-74b4dfc8:  [<60013757>] new_thread_handler+0x72/0x9c
+In the previous version, I implemented a new top-level xattr namespace on 
+the server, which is used to store client-supplied xattrs, e.g.:
+
+client: user.a        ->       server: nfsd.user.a
+
+In this version, I've enhanced support for security xattrs, and updated 
+SELinux so that it can utilize the XATTR protocol for security labeling.
+
+I added a new NFS error code, NFSERR_NODATA, so that we can cleanly handle 
+cases where the xattr system calls on the server return -ENODATA to 
+indicate a non-existent xattr (this is often not an error condition).
+
+Also new are the xattr and xattrsec mount options, which are used to 
+control the use of the XATTR protocol and XATTR security labeling 
+respectively (see patch #7).
+
+The userspace patch for the mount utility is available at:
+http://namei.org/nfsv3xattr/v05/userspace/
+
+The XATTR code also now calls back into the LSM during file creation so 
+that an appropriate security label may be installed at the same time 
+(atomically from the client pov).  This follows the behavior of the ACL 
+code (see nfs3_init_xattr() in patch #6).
+
+For SELinux, the approach is to allow both genfs (the current labeling 
+behavior) and xattr labeling.  To support the latter, an fs_use_xattr 
+statement needs to be added to policy for NFS:
+
+http://namei.org/nfsv3xattr/v05/policy/
+
+By default, mounts will still use genfs, unless the admin also supplies 
+the new 'xattrsec' mount option, to indicate to the security module that 
+it should use the XATTR protocol for labeling.  If XATTR is unavailable, 
+the mount will fail (and not fall back to genfs).
+
+
+This code still has several major todo items (mostly marked in the code), 
+and needs much more testing, although I'd like to get feedback from the 
+NFS and security folk on the current approach.
+
+Comments welcome.
+
+
+- James
+-- 
+James Morris
+<jmorris@namei.org>
