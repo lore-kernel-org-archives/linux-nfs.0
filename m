@@ -1,8 +1,8 @@
 From: James Morris <jmorris@namei.org>
-Subject: [PATCH 4/8][RFC v05] NFSv3: add server implementation of XATTR
- protocol
-Date: Mon, 21 Jun 2010 21:30:00 +1000 (EST)
-Message-ID: <alpine.LRH.2.00.1006212129120.13583@tundra.namei.org>
+Subject: [PATCH 5/8][RFC v05] XATTR: add new top level nfsd namespace and
+ implement ext3 support
+Date: Mon, 21 Jun 2010 21:30:41 +1000 (EST)
+Message-ID: <alpine.LRH.2.00.1006212130040.13583@tundra.namei.org>
 References: <alpine.LRH.2.00.1006212051530.13583@tundra.namei.org>
 Mime-Version: 1.0
 Content-Type: TEXT/PLAIN; charset=US-ASCII
@@ -12,681 +12,177 @@ Cc: linux-security-module@vger.kernel.org,
 	Neil Brown <neilb@suse.de>, linux-fsdevel@vger.kernel.org,
 	Stephen Smalley <sds@tycho.nsa.gov>
 To: linux-nfs@vger.kernel.org
-Return-path: <linux-security-module-owner@vger.kernel.org>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 In-Reply-To: <alpine.LRH.2.00.1006212051530.13583@tundra.namei.org>
-Sender: linux-security-module-owner@vger.kernel.org
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Add server support for the Linux NFSv3 extended attribute
-side protocol (XATTR).
+Add a new top-level 'nfsd' xattr namespace for use by the NFSv3 server
+when storing xattrs provided by clients using the XATTR
+protocol.
+
+Also implement filesystem-level support for the new namespace for the
+ext3 filesystem for testing.
 
 Signed-off-by: James Morris <jmorris@namei.org>
 ---
- fs/nfsd/Kconfig            |    8 +
- fs/nfsd/Makefile           |    1 +
- fs/nfsd/nfs3xattr.c        |  354 ++++++++++++++++++++++++++++++++++++++++++++
- fs/nfsd/nfsctl.c           |    3 +
- fs/nfsd/nfssvc.c           |   60 +++++++-
- fs/nfsd/vfs.c              |    5 +-
- fs/nfsd/vfs.h              |   13 ++
- fs/nfsd/xdr3.h             |   46 ++++++
- include/linux/sunrpc/svc.h |    2 +-
- 9 files changed, 486 insertions(+), 6 deletions(-)
- create mode 100644 fs/nfsd/nfs3xattr.c
+ fs/ext3/Makefile      |    2 +-
+ fs/ext3/xattr.c       |    2 +
+ fs/ext3/xattr.h       |    2 +
+ fs/ext3/xattr_nfsd.c  |   58 +++++++++++++++++++++++++++++++++++++++++++++++++
+ fs/xattr.c            |    6 +++-
+ include/linux/xattr.h |    3 ++
+ 6 files changed, 70 insertions(+), 3 deletions(-)
+ create mode 100644 fs/ext3/xattr_nfsd.c
 
-diff --git a/fs/nfsd/Kconfig b/fs/nfsd/Kconfig
-index 503b9da..4252d16 100644
---- a/fs/nfsd/Kconfig
-+++ b/fs/nfsd/Kconfig
-@@ -64,6 +64,14 @@ config NFSD_V3_ACL
+diff --git a/fs/ext3/Makefile b/fs/ext3/Makefile
+index e77766a..216ca8a 100644
+--- a/fs/ext3/Makefile
++++ b/fs/ext3/Makefile
+@@ -7,6 +7,6 @@ obj-$(CONFIG_EXT3_FS) += ext3.o
+ ext3-y	:= balloc.o bitmap.o dir.o file.o fsync.o ialloc.o inode.o \
+ 	   ioctl.o namei.o super.o symlink.o hash.o resize.o ext3_jbd.o
  
- 	  If unsure, say N.
+-ext3-$(CONFIG_EXT3_FS_XATTR)	 += xattr.o xattr_user.o xattr_trusted.o
++ext3-$(CONFIG_EXT3_FS_XATTR)	 += xattr.o xattr_user.o xattr_trusted.o xattr_nfsd.o
+ ext3-$(CONFIG_EXT3_FS_POSIX_ACL) += acl.o
+ ext3-$(CONFIG_EXT3_FS_SECURITY)	 += xattr_security.o
+diff --git a/fs/ext3/xattr.c b/fs/ext3/xattr.c
+index 71fb8d6..e264320 100644
+--- a/fs/ext3/xattr.c
++++ b/fs/ext3/xattr.c
+@@ -114,6 +114,7 @@ static const struct xattr_handler *ext3_xattr_handler_map[] = {
+ #ifdef CONFIG_EXT3_FS_SECURITY
+ 	[EXT3_XATTR_INDEX_SECURITY]	     = &ext3_xattr_security_handler,
+ #endif
++	[EXT3_XATTR_INDEX_NFSD]		     = &ext3_xattr_nfsd_handler,
+ };
  
-+config NFSD_V3_XATTR
-+	bool "NFS server support for the NFSv3 XATTR protocol extension (EXPERIMENTAL)"
-+	depends on NFSD_V3 && EXPERIMENTAL
-+	help
-+	  NFS server support for the NFSv3 XATTR protocol.
-+
-+	  If unsure, say N.
-+
- config NFSD_V4
- 	bool "NFS server support for NFS version 4 (EXPERIMENTAL)"
- 	depends on NFSD && PROC_FS && EXPERIMENTAL
-diff --git a/fs/nfsd/Makefile b/fs/nfsd/Makefile
-index 9b118ee..e206b52 100644
---- a/fs/nfsd/Makefile
-+++ b/fs/nfsd/Makefile
-@@ -9,5 +9,6 @@ nfsd-y 			:= nfssvc.o nfsctl.o nfsproc.o nfsfh.o vfs.o \
- nfsd-$(CONFIG_NFSD_V2_ACL) += nfs2acl.o
- nfsd-$(CONFIG_NFSD_V3)	+= nfs3proc.o nfs3xdr.o
- nfsd-$(CONFIG_NFSD_V3_ACL) += nfs3acl.o
-+nfsd-$(CONFIG_NFSD_V3_XATTR) += nfs3xattr.o
- nfsd-$(CONFIG_NFSD_V4)	+= nfs4proc.o nfs4xdr.o nfs4state.o nfs4idmap.o \
- 			   nfs4acl.o nfs4callback.o nfs4recover.o
-diff --git a/fs/nfsd/nfs3xattr.c b/fs/nfsd/nfs3xattr.c
+ const struct xattr_handler *ext3_xattr_handlers[] = {
+@@ -126,6 +127,7 @@ const struct xattr_handler *ext3_xattr_handlers[] = {
+ #ifdef CONFIG_EXT3_FS_SECURITY
+ 	&ext3_xattr_security_handler,
+ #endif
++	&ext3_xattr_nfsd_handler,
+ 	NULL
+ };
+ 
+diff --git a/fs/ext3/xattr.h b/fs/ext3/xattr.h
+index 377fe72..92eac0c 100644
+--- a/fs/ext3/xattr.h
++++ b/fs/ext3/xattr.h
+@@ -21,6 +21,7 @@
+ #define EXT3_XATTR_INDEX_TRUSTED		4
+ #define	EXT3_XATTR_INDEX_LUSTRE			5
+ #define EXT3_XATTR_INDEX_SECURITY	        6
++#define EXT3_XATTR_INDEX_NFSD			7
+ 
+ struct ext3_xattr_header {
+ 	__le32	h_magic;	/* magic number for identification */
+@@ -63,6 +64,7 @@ extern const struct xattr_handler ext3_xattr_trusted_handler;
+ extern const struct xattr_handler ext3_xattr_acl_access_handler;
+ extern const struct xattr_handler ext3_xattr_acl_default_handler;
+ extern const struct xattr_handler ext3_xattr_security_handler;
++extern const struct xattr_handler ext3_xattr_nfsd_handler;
+ 
+ extern ssize_t ext3_listxattr(struct dentry *, char *, size_t);
+ 
+diff --git a/fs/ext3/xattr_nfsd.c b/fs/ext3/xattr_nfsd.c
 new file mode 100644
-index 0000000..b5a5faa
+index 0000000..7e38c35
 --- /dev/null
-+++ b/fs/nfsd/nfs3xattr.c
-@@ -0,0 +1,354 @@
++++ b/fs/ext3/xattr_nfsd.c
+@@ -0,0 +1,58 @@
 +/*
-+ * Process version 3 NFSXATTR requests.
++ * linux/fs/ext3/xattr_nfsd.c
++ * Handler for nfsd extended attributes.
 + *
-+ * Based on the NFSACL code by:
-+ * Copyright (C) 2002-2003 Andreas Gruenbacher <agruen@suse.de>
-+ *
-+ * Copyright (C) 2009 Red Hat, Inc., James Morris <jmorris@redhat.com>
-+ *
-+ * This program is free software; you can redistribute it and/or modify
-+ * it under the terms of the GNU General Public License version 2,
-+ * as published by the Free Software Foundation.
++ * Copyright (C) 2003 by Andreas Gruenbacher, <a.gruenbacher@computer.org>
++ * Copyright (C) 2010 Red Hat, Inc., James Morris <jmorris@redhat.com>
 + */
-+#include <linux/sunrpc/svc.h>
-+#include <linux/nfs3.h>
-+#include <linux/xattr.h>
-+#include <linux/nfs_xattr.h>
++#include <linux/module.h>
++#include <linux/string.h>
++#include <linux/capability.h>
++#include <linux/fs.h>
++#include <linux/ext3_jbd.h>
++#include <linux/ext3_fs.h>
++#include "xattr.h"
 +
-+#include "nfsd.h"
-+#include "xdr3.h"
-+#include "vfs.h"
-+#include "cache.h"
-+
-+#define NFSDDBG_FACILITY	NFSDDBG_PROC
-+#define RETURN_STATUS(st)	{ resp->status = (st); return (st); }
-+
-+/* NULL call */
-+static __be32 nfsd3_proc_null(struct svc_rqst *rqstp, void *argp, void *resp)
++static size_t ext3_xattr_nfsd_list(struct dentry *dentry, char *list,
++				   size_t list_size, const char *name,
++				   size_t name_len, int type)
 +{
-+	return nfs_ok;
-+}
++	const size_t prefix_len = XATTR_NFSD_PREFIX_LEN;
++	const size_t total_len = prefix_len + name_len + 1;
 +
-+/*
-+ * GETXATTR
-+ *
-+ * FIXME:
-+ *  - Implement shared xattr cache
-+ *  - Audit nfs error returns
-+ */
-+static __be32 nfsd3_proc_getxattr(struct svc_rqst * rqstp,
-+				  struct nfsd3_getxattrargs *argp,
-+				  struct nfsd3_getxattrres *resp)
-+{
-+	__be32 nfserr = nfserrno(-EINVAL);
-+	svc_fh *fh;
-+	void *value;
-+	int ret;
-+	char *name, *xattr_name = argp->xattr_name;
-+	unsigned int size_max = argp->xattr_size_max;
-+	unsigned int name_len = argp->xattr_name_len;
-+
-+	dprintk("nfsd: GETXATTR(3)  %s %.*s %u\n", SVCFH_fmt(&argp->fh),
-+	        name_len, xattr_name, size_max);
-+
-+	if (name_len > XATTR_NAME_MAX)
-+		RETURN_STATUS(nfserr);
-+
-+	if (size_max > XATTR_SIZE_MAX)
-+		RETURN_STATUS(nfserr);
-+
-+	/* Probes must be handled by the client */
-+	if (size_max == 0)
-+		RETURN_STATUS(nfserr);
-+
-+	fh = fh_copy(&resp->fh, &argp->fh);
-+	nfserr = fh_verify(rqstp, &resp->fh, 0, NFSD_MAY_READ);
-+	if (nfserr)
-+		RETURN_STATUS(nfserr);
-+
-+	/* Convert xdr string to real string */
-+	name = kmalloc(name_len + 1, GFP_KERNEL);
-+	if (name == NULL)
-+		RETURN_STATUS(nfserrno(-ENOMEM));
-+
-+	ret = snprintf(name, name_len + 1, "%.*s", name_len, xattr_name);
-+	if (ret > name_len) {
-+		nfserr = nfserrno(-EINVAL);
-+		goto cleanup;
-+	}
-+
-+	/* Only the user namespace is currently supported by the server */
-+	if (strncmp(name, XATTR_USER_PREFIX, XATTR_USER_PREFIX_LEN)) {
-+		nfserr = nfserrno(-EINVAL);
-+		goto cleanup;
-+	}
-+
-+	ret = nfsd_getxattr(fh->fh_dentry, name, &value);
-+	if (ret <= 0) {
-+		if (ret == 0)
-+			ret = -ENODATA;
-+		nfserr = nfserrno(ret);
-+		goto cleanup;
-+	}
-+
-+	nfserr = 0;
-+	resp->xattr_val = value;
-+	resp->xattr_val_len = ret;
-+
-+cleanup:
-+	kfree(name);
-+	RETURN_STATUS(nfserr);
-+}
-+
-+/* cribbed from decode pathname */
-+static __be32 *decode_xattrname(__be32 *p, char **namp, unsigned int *lenp)
-+{
-+	char *name;
-+	unsigned int i;
-+
-+	p = xdr_decode_string_inplace(p, namp, lenp, XATTR_NAME_MAX);
-+	if (p != NULL)
-+		for (i = 0, name = *namp; i < *lenp; i++, name++)
-+			if (*name == '\0')
-+				return NULL;
-+	return p;
-+}
-+
-+static int nfs3svc_decode_getxattrargs(struct svc_rqst *rqstp, __be32 *p,
-+				       struct nfsd3_getxattrargs *argp)
-+{
-+	if (!(p = nfs3svc_decode_fh(p, &argp->fh)))
++	if (!capable(CAP_SYS_ADMIN))
 +		return 0;
-+	if (!(p = decode_xattrname(p, &argp->xattr_name, &argp->xattr_name_len)))
-+		return 0;
-+	argp->xattr_size_max = ntohl(*p++);
-+	return xdr_argsize_check(rqstp, p);
-+}
 +
-+static int nfs3svc_encode_getxattrres(struct svc_rqst *rqstp, __be32 *p,
-+				      struct nfsd3_getxattrres *resp)
-+{
-+	p = nfs3svc_encode_post_op_attr(rqstp, p, &resp->fh);
-+	if (resp->status == 0)
-+		p = xdr_encode_array(p, resp->xattr_val, resp->xattr_val_len);
-+	return xdr_ressize_check(rqstp, p);
-+}
-+
-+static int nfs3svc_release_getxattr(struct svc_rqst *rqstp, __be32 *p,
-+				    struct nfsd3_getxattrres *resp)
-+{
-+	fh_put(&resp->fh);
-+	kfree(resp->xattr_val);
-+	return 1;
-+}
-+
-+/*
-+ * SETXATTR and RMXATTR
-+ *
-+ * RMXATTR is detected with zero buffer len and XATTR_REPLACE.
-+ *
-+ */
-+static __be32 nfsd3_proc_setxattr(struct svc_rqst * rqstp,
-+				  struct nfsd3_setxattrargs *argp,
-+				  struct nfsd3_setxattrres *resp)
-+{
-+	__be32 nfserr = nfserrno(-EINVAL);
-+	svc_fh *fh;
-+	int ret;
-+	char *name, *xattr_name = argp->xattr_name;
-+	unsigned int name_len = argp->xattr_name_len;
-+	unsigned int val_len = argp->xattr_val_len;
-+	unsigned int flags = argp->xattr_flags;
-+
-+	dprintk("nfsd: SETXATTR(3)  %s %.*s %u %#x\n", SVCFH_fmt(&argp->fh),
-+		name_len, xattr_name, val_len, flags);
-+
-+	if (name_len > XATTR_NAME_MAX)
-+		RETURN_STATUS(nfserr);
-+
-+	if (val_len > XATTR_SIZE_MAX)
-+		RETURN_STATUS(nfserr);
-+
-+	if (flags & ~(XATTR_CREATE|XATTR_REPLACE))
-+		RETURN_STATUS(nfserr);
-+
-+	fh = fh_copy(&resp->fh, &argp->fh);
-+	nfserr = fh_verify(rqstp, &resp->fh, 0, NFSD_MAY_SATTR);
-+	if (nfserr)
-+		RETURN_STATUS(nfserr);
-+
-+	/* Convert xdr string to real string */
-+	name = kmalloc(name_len + 1, GFP_KERNEL);
-+	if (name == NULL)
-+		RETURN_STATUS(nfserrno(-ENOMEM));
-+
-+	ret = snprintf(name, name_len + 1, "%.*s", name_len, xattr_name);
-+	if (ret > name_len) {
-+		nfserr = nfserrno(-EINVAL);
-+		goto cleanup;
++	if (list && total_len <= list_size) {
++		memcpy(list, XATTR_NFSD_PREFIX, prefix_len);
++		memcpy(list+prefix_len, name, name_len);
++		list[prefix_len + name_len] = '\0';
 +	}
-+
-+	/* Only the user namespace is currently supported by the server */
-+	if (strncmp(name, XATTR_USER_PREFIX, XATTR_USER_PREFIX_LEN)) {
-+		nfserr = nfserrno(-EINVAL);
-+		goto cleanup;
-+	}
-+
-+	if (!val_len) {
-+		if (flags & ~XATTR_REPLACE) {
-+			nfserr = nfserrno(-EINVAL);
-+			goto cleanup;
-+		}
-+		ret = vfs_removexattr(fh->fh_dentry, name);
-+	} else
-+		ret = vfs_setxattr(fh->fh_dentry, name,
-+				   argp->xattr_val, val_len, flags);
-+
-+	nfserr = nfserrno(ret);
-+
-+cleanup:
-+	kfree(name);
-+	RETURN_STATUS(nfserr);
++	return total_len;
 +}
 +
-+static int nfs3svc_decode_setxattrargs(struct svc_rqst *rqstp, __be32 *p,
-+				       struct nfsd3_setxattrargs *argp)
++static int ext3_xattr_nfsd_get(struct dentry *dentry, const char *name,
++			       void *buffer, size_t size, int type)
 +{
-+	if (!(p = nfs3svc_decode_fh(p, &argp->fh)))
-+		return 0;
-+	if (!(p = decode_xattrname(p, &argp->xattr_name, &argp->xattr_name_len)))
-+		return 0;
-+	if (!(p = xdr_decode_string_inplace(p, &argp->xattr_val,
-+					&argp->xattr_val_len, XATTR_SIZE_MAX)))
-+		return 0;
-+	argp->xattr_flags = ntohl(*p++);
-+	return xdr_argsize_check(rqstp, p);
++	if (strcmp(name, "") == 0)
++		return -EINVAL;
++	return ext3_xattr_get(dentry->d_inode, EXT3_XATTR_INDEX_NFSD,
++			      name, buffer, size);
 +}
 +
-+static int nfs3svc_encode_setxattrres(struct svc_rqst *rqstp, __be32 *p,
-+				      struct nfsd3_setxattrres *resp)
++static int ext3_xattr_nfsd_set(struct dentry *dentry, const char *name,
++			       const void *value, size_t size, int flags,
++			       int type)
 +{
-+	p = nfs3svc_encode_post_op_attr(rqstp, p, &resp->fh);
-+	return xdr_ressize_check(rqstp, p);
++	if (strcmp(name, "") == 0)
++		return -EINVAL;
++	return ext3_xattr_set(dentry->d_inode, EXT3_XATTR_INDEX_NFSD, name,
++			      value, size, flags);
 +}
 +
-+static int nfs3svc_release_setxattr(struct svc_rqst *rqstp, __be32 *p,
-+				    struct nfsd3_setxattrres *resp)
-+{
-+	fh_put(&resp->fh);
-+	return 1;
-+}
-+
-+/*
-+ * LISTXATTR
-+ *
-+ * TODO: namespace filtering?
-+ */
-+static __be32 nfsd3_proc_listxattr(struct svc_rqst * rqstp,
-+				   struct nfsd3_listxattrargs *argp,
-+				   struct nfsd3_listxattrres *resp)
-+{
-+	__be32 nfserr = nfserrno(-EINVAL);
-+	svc_fh *fh;
-+	char *list;
-+	int ret;
-+	unsigned int list_max = argp->xattr_list_max;
-+
-+	dprintk("nfsd: LISTXATTR(3)  %s %u\n", SVCFH_fmt(&argp->fh), list_max);
-+
-+	if (list_max > XATTR_LIST_MAX)
-+		RETURN_STATUS(nfserr);
-+
-+	/* Probes must be handled by the client */
-+	if (list_max == 0)
-+		RETURN_STATUS(nfserr);
-+
-+	fh = fh_copy(&resp->fh, &argp->fh);
-+	nfserr = fh_verify(rqstp, &resp->fh, 0, NFSD_MAY_READ);
-+	if (nfserr)
-+		RETURN_STATUS(nfserr);
-+
-+	list = kmalloc(list_max, GFP_ATOMIC);
-+	if (list == NULL)
-+		RETURN_STATUS(nfserrno(-ENOMEM));
-+
-+	ret = vfs_listxattr(fh->fh_dentry, list, list_max);
-+	if (ret <= 0) {
-+		if (ret == 0)
-+			ret = -ENODATA;
-+		RETURN_STATUS(nfserrno(ret));
-+	}
-+
-+	nfserr = 0;
-+	resp->xattr_list = list;
-+	resp->xattr_list_len = ret;
-+
-+	RETURN_STATUS(nfserr);
-+}
-+
-+static int nfs3svc_decode_listxattrargs(struct svc_rqst *rqstp, __be32 *p,
-+				        struct nfsd3_listxattrargs *argp)
-+{
-+	if (!(p = nfs3svc_decode_fh(p, &argp->fh)))
-+		return 0;
-+	argp->xattr_list_max = ntohl(*p++);
-+	return xdr_argsize_check(rqstp, p);
-+}
-+
-+static int nfs3svc_encode_listxattrres(struct svc_rqst *rqstp, __be32 *p,
-+				       struct nfsd3_listxattrres *resp)
-+{
-+	p = nfs3svc_encode_post_op_attr(rqstp, p, &resp->fh);
-+	if (resp->status == 0)
-+		p = xdr_encode_array(p, resp->xattr_list, resp->xattr_list_len);
-+	return xdr_ressize_check(rqstp, p);
-+}
-+
-+static int nfs3svc_release_listxattr(struct svc_rqst *rqstp, __be32 *p,
-+				     struct nfsd3_listxattrres *resp)
-+{
-+	fh_put(&resp->fh);
-+	kfree(resp->xattr_list);
-+	return 1;
-+}
-+
-+#define ST 1		/* status */
-+#define AT 21           /* attributes */
-+#define pAT (1+AT)      /* post attributes - conditional */
-+
-+#define nfs3svc_decode_voidargs		NULL
-+#define nfs3svc_release_void		NULL
-+#define nfsd3_voidres			nfsd3_voidargs
-+struct nfsd3_voidargs { int dummy; };
-+
-+#define PROC(name, argt, rest, relt, cache, respsize)	\
-+ { (svc_procfunc) nfsd3_proc_##name,		\
-+   (kxdrproc_t) nfs3svc_decode_##argt##args,	\
-+   (kxdrproc_t) nfs3svc_encode_##rest##res,	\
-+   (kxdrproc_t) nfs3svc_release_##relt,		\
-+   sizeof(struct nfsd3_##argt##args),		\
-+   sizeof(struct nfsd3_##rest##res),		\
-+   0,						\
-+   cache,					\
-+   respsize,					\
-+ }
-+
-+#define G_RSZ	(ST+pAT+1+(XATTR_SIZE_MAX>>2))
-+#define S_RSZ	(ST+pAT)
-+#define L_RSZ	(ST+pAT+1+(XATTR_LIST_MAX>>2))
-+
-+static struct svc_procedure nfsd_xattr_procedures3[] = {
-+  PROC(null,       void,       void,       void,       RC_NOCACHE, ST),
-+  PROC(getxattr,   getxattr,   getxattr,   getxattr,   RC_NOCACHE, G_RSZ),
-+  PROC(setxattr,   setxattr,   setxattr,   setxattr,   RC_NOCACHE, S_RSZ),
-+  PROC(listxattr,  listxattr,  listxattr,  listxattr,  RC_NOCACHE, L_RSZ),
++const struct xattr_handler ext3_xattr_nfsd_handler = {
++	.prefix	= XATTR_NFSD_PREFIX,
++	.list	= ext3_xattr_nfsd_list,
++	.get	= ext3_xattr_nfsd_get,
++	.set	= ext3_xattr_nfsd_set,
 +};
-+
-+struct svc_version	nfsd_xattr_version3 = {
-+	.vs_vers	= 3,
-+	.vs_nproc	= 4,
-+	.vs_proc	= nfsd_xattr_procedures3,
-+	.vs_dispatch	= nfsd_dispatch,
-+	.vs_xdrsize	= NFS3_SVC_XDRSIZE,
-+	.vs_hidden	= 1,
-+};
-diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
-index 508941c..64945b5 100644
---- a/fs/nfsd/nfsctl.c
-+++ b/fs/nfsd/nfsctl.c
-@@ -1421,6 +1421,8 @@ static int create_proc_exports_entry(void)
- }
- #endif
+diff --git a/fs/xattr.c b/fs/xattr.c
+index 01bb813..ec4129b 100644
+--- a/fs/xattr.c
++++ b/fs/xattr.c
+@@ -46,9 +46,11 @@ xattr_permission(struct inode *inode, const char *name, int mask)
+ 		return 0;
  
-+extern void __init nfsd_prog_init(void);
-+
- static int __init init_nfsd(void)
- {
- 	int retval;
-@@ -1429,6 +1431,7 @@ static int __init init_nfsd(void)
- 	retval = nfs4_state_init(); /* nfs4 locking state */
- 	if (retval)
- 		return retval;
-+	nfsd_prog_init();
- 	nfsd_stat_init();	/* Statistics */
- 	retval = nfsd_reply_cache_init();
- 	if (retval)
-diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
-index 06b2a26..29096ae 100644
---- a/fs/nfsd/nfssvc.c
-+++ b/fs/nfsd/nfssvc.c
-@@ -15,6 +15,7 @@
- #include <linux/sunrpc/svcsock.h>
- #include <linux/lockd/bind.h>
- #include <linux/nfsacl.h>
-+#include <linux/nfs_xattr.h>
- #include <linux/seq_file.h>
- #include "nfsd.h"
- #include "cache.h"
-@@ -87,6 +88,27 @@ static struct svc_stat	nfsd_acl_svcstats = {
- };
- #endif /* defined(CONFIG_NFSD_V2_ACL) || defined(CONFIG_NFSD_V3_ACL) */
+ 	/*
+-	 * The trusted.* namespace can only be accessed by a privileged user.
++	 * The trusted.* and nfsd.* namespaces can only be accessed by a
++	 * privileged user.
+ 	 */
+-	if (!strncmp(name, XATTR_TRUSTED_PREFIX, XATTR_TRUSTED_PREFIX_LEN))
++	if (!strncmp(name, XATTR_TRUSTED_PREFIX, XATTR_TRUSTED_PREFIX_LEN) ||
++	    !strncmp(name, XATTR_NFSD_PREFIX, XATTR_NFSD_PREFIX_LEN))
+ 		return (capable(CAP_SYS_ADMIN) ? 0 : -EPERM);
  
-+#ifdef CONFIG_NFSD_V3_XATTR
-+static struct svc_stat	nfsd_xattr_svcstats;
-+static struct svc_version *	nfsd_xattr_version[] = {
-+	[3] = &nfsd_xattr_version3,
-+};
-+
-+#define NFSD_XATTR_MINVERS	3
-+#define NFSD_XATTR_NRVERS	ARRAY_SIZE(nfsd_xattr_version)
-+static struct svc_version *nfsd_xattr_versions[NFSD_XATTR_NRVERS];
-+
-+static struct svc_program	nfsd_xattr_program = {
-+	.pg_prog		= NFS_XATTR_PROGRAM,
-+	.pg_nvers		= NFSD_XATTR_NRVERS,
-+	.pg_vers		= nfsd_xattr_versions,
-+	.pg_name		= "nfsxattr",
-+	.pg_class		= "nfsd",		/* share nfsd auth */
-+	.pg_stats		= &nfsd_xattr_svcstats,
-+	.pg_authenticate	= &svc_set_client,
-+};
-+#endif	/* CONFIG_NFSD_V3_XATTR */
-+
- static struct svc_version *	nfsd_version[] = {
- 	[2] = &nfsd_version2,
- #if defined(CONFIG_NFSD_V3)
-@@ -102,9 +124,6 @@ static struct svc_version *	nfsd_version[] = {
- static struct svc_version *nfsd_versions[NFSD_NRVERS];
+ 	/* In user.* namespace, only regular files and directories can have
+diff --git a/include/linux/xattr.h b/include/linux/xattr.h
+index 0cfa1e9..da362a7 100644
+--- a/include/linux/xattr.h
++++ b/include/linux/xattr.h
+@@ -33,6 +33,9 @@
+ #define XATTR_USER_PREFIX "user."
+ #define XATTR_USER_PREFIX_LEN (sizeof (XATTR_USER_PREFIX) - 1)
  
- struct svc_program		nfsd_program = {
--#if defined(CONFIG_NFSD_V2_ACL) || defined(CONFIG_NFSD_V3_ACL)
--	.pg_next		= &nfsd_acl_program,
--#endif
- 	.pg_prog		= NFS_PROGRAM,		/* program number */
- 	.pg_nvers		= NFSD_NRVERS,		/* nr of entries in nfsd_version */
- 	.pg_vers		= nfsd_versions,	/* version table */
-@@ -115,6 +134,28 @@ struct svc_program		nfsd_program = {
++#define XATTR_NFSD_PREFIX "nfsd."
++#define XATTR_NFSD_PREFIX_LEN (sizeof (XATTR_NFSD_PREFIX) - 1)
++
+ struct inode;
+ struct dentry;
  
- };
- 
-+static void __init nfsd_prog_add(struct svc_program *new)
-+{
-+	struct svc_program *p = &nfsd_program;
-+
-+	while (p->pg_next)
-+		p = p->pg_next;
-+
-+	p->pg_next = new;
-+}
-+
-+/* Dynamically initialize list of service programs */
-+void __init nfsd_prog_init(void)
-+{
-+#if defined(CONFIG_NFSD_V2_ACL) || defined(CONFIG_NFSD_V3_ACL)
-+	nfsd_prog_add(&nfsd_acl_program);
-+#endif
-+
-+#ifdef CONFIG_NFSD_V3_XATTR
-+	nfsd_prog_add(&nfsd_xattr_program);
-+#endif
-+}
-+
- u32 nfsd_supported_minorversion;
- 
- int nfsd_vers(int vers, enum vers_op change)
-@@ -128,6 +169,10 @@ int nfsd_vers(int vers, enum vers_op change)
- 		if (vers < NFSD_ACL_NRVERS)
- 			nfsd_acl_versions[vers] = nfsd_acl_version[vers];
- #endif
-+#ifdef CONFIG_NFSD_V3_XATTR
-+		if (vers < NFSD_XATTR_NRVERS)
-+			nfsd_xattr_versions[vers] = nfsd_xattr_version[vers];
-+#endif
- 		break;
- 	case NFSD_CLEAR:
- 		nfsd_versions[vers] = NULL;
-@@ -135,6 +180,10 @@ int nfsd_vers(int vers, enum vers_op change)
- 		if (vers < NFSD_ACL_NRVERS)
- 			nfsd_acl_versions[vers] = NULL;
- #endif
-+#ifdef CONFIG_NFSD_V3_XATTR
-+		if (vers < NFSD_XATTR_NRVERS)
-+			nfsd_xattr_versions[vers] = NULL;
-+#endif
- 		break;
- 	case NFSD_TEST:
- 		return nfsd_versions[vers] != NULL;
-@@ -213,6 +262,11 @@ void nfsd_reset_versions(void)
- 			nfsd_acl_program.pg_vers[i] =
- 				nfsd_acl_version[i];
- #endif
-+#ifdef CONFIG_NFSD_V3_XATTR
-+		for (i = NFSD_XATTR_MINVERS; i < NFSD_XATTR_NRVERS; i++)
-+			nfsd_xattr_program.pg_vers[i] =
-+				nfsd_xattr_version[i];
-+#endif
- 	}
- }
- 
-diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-index 3c11112..86309d2 100644
---- a/fs/nfsd/vfs.c
-+++ b/fs/nfsd/vfs.c
-@@ -454,8 +454,9 @@ out_nfserr:
- 
- #if defined(CONFIG_NFSD_V2_ACL) || \
-     defined(CONFIG_NFSD_V3_ACL) || \
--    defined(CONFIG_NFSD_V4)
--static ssize_t nfsd_getxattr(struct dentry *dentry, char *key, void **buf)
-+    defined(CONFIG_NFSD_V4) || \
-+    defined(CONFIG_NFSD_V3_XATTR)
-+ssize_t nfsd_getxattr(struct dentry *dentry, char *key, void **buf)
- {
- 	ssize_t buflen;
- 	ssize_t ret;
-diff --git a/fs/nfsd/vfs.h b/fs/nfsd/vfs.h
-index 217a62c..4a4d6ec 100644
---- a/fs/nfsd/vfs.h
-+++ b/fs/nfsd/vfs.h
-@@ -99,4 +99,17 @@ struct posix_acl *nfsd_get_posix_acl(struct svc_fh *, int);
- int nfsd_set_posix_acl(struct svc_fh *, int, struct posix_acl *);
- #endif
- 
-+#if defined(CONFIG_NFSD_V2_ACL) || \
-+    defined(CONFIG_NFSD_V3_ACL) || \
-+    defined(CONFIG_NFSD_V4) || \
-+    defined(CONFIG_NFSD_V3_XATTR)
-+ssize_t nfsd_getxattr(struct dentry *dentry, char *key, void **buf);
-+#endif
-+
-+#ifdef CONFIG_NFSD_V3_XATTR
-+extern struct svc_version nfsd_xattr_version3;
-+#else
-+#define nfsd_xattr_version3 NULL
-+#endif
-+
- #endif /* LINUX_NFSD_VFS_H */
-diff --git a/fs/nfsd/xdr3.h b/fs/nfsd/xdr3.h
-index 7df980e..e6ccc60 100644
---- a/fs/nfsd/xdr3.h
-+++ b/fs/nfsd/xdr3.h
-@@ -119,6 +119,27 @@ struct nfsd3_setaclargs {
- 	struct posix_acl	*acl_default;
- };
- 
-+struct nfsd3_getxattrargs {
-+	struct svc_fh           fh;
-+	char *                  xattr_name;
-+	unsigned int            xattr_name_len;
-+	unsigned int            xattr_size_max;
-+};
-+
-+struct nfsd3_setxattrargs {
-+	struct svc_fh           fh;
-+	unsigned int            xattr_flags;
-+	char *                  xattr_name;
-+	unsigned int            xattr_name_len;
-+	char *                  xattr_val;
-+	int                     xattr_val_len;
-+};
-+
-+struct nfsd3_listxattrargs {
-+	struct svc_fh           fh;
-+	unsigned int            xattr_list_max;
-+};
-+
- struct nfsd3_attrstat {
- 	__be32			status;
- 	struct svc_fh		fh;
-@@ -227,6 +248,25 @@ struct nfsd3_getaclres {
- 	struct posix_acl	*acl_default;
- };
- 
-+struct nfsd3_getxattrres {
-+	__be32                  status;
-+	struct svc_fh           fh;
-+	char *                  xattr_val;
-+	unsigned int            xattr_val_len;
-+};
-+
-+struct nfsd3_setxattrres {
-+	__be32                  status;
-+	struct svc_fh           fh;
-+};
-+
-+struct nfsd3_listxattrres {
-+	__be32                  status;
-+	struct svc_fh           fh;
-+	char *                  xattr_list;
-+	unsigned int            xattr_list_len;
-+};
-+
- /* dummy type for release */
- struct nfsd3_fhandle_pair {
- 	__u32			dummy;
-@@ -247,6 +287,9 @@ union nfsd3_xdrstore {
- 	struct nfsd3_linkargs		linkargs;
- 	struct nfsd3_symlinkargs	symlinkargs;
- 	struct nfsd3_readdirargs	readdirargs;
-+	struct nfsd3_getxattrargs	getxattrargs;
-+	struct nfsd3_setxattrargs	setxattrargs;
-+	struct nfsd3_listxattrargs	listxattrargs;
- 	struct nfsd3_diropres 		diropres;
- 	struct nfsd3_accessres		accessres;
- 	struct nfsd3_readlinkres	readlinkres;
-@@ -260,6 +303,9 @@ union nfsd3_xdrstore {
- 	struct nfsd3_pathconfres	pathconfres;
- 	struct nfsd3_commitres		commitres;
- 	struct nfsd3_getaclres		getaclres;
-+	struct nfsd3_getxattrres	getxattrres;
-+	struct nfsd3_setxattrres	setxattrres;
-+	struct nfsd3_listxattrres	listxattrres;
- };
- 
- #define NFS3_SVC_XDRSIZE		sizeof(union nfsd3_xdrstore)
-diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
-index 5a3085b..8bde5c1 100644
---- a/include/linux/sunrpc/svc.h
-+++ b/include/linux/sunrpc/svc.h
-@@ -371,7 +371,7 @@ struct svc_version {
- 	u32			vs_xdrsize;	/* xdrsize needed for this version */
- 
- 	unsigned int		vs_hidden : 1;	/* Don't register with portmapper.
--						 * Only used for nfsacl so far. */
-+						 * Used for nfsacl and nfsxattr. */
- 
- 	/* Override dispatch function (e.g. when caching replies).
- 	 * A return value of 0 means drop the request. 
 -- 
 1.7.0.1
 
