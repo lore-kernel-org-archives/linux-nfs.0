@@ -1,72 +1,304 @@
-From: Benny Halevy <bhalevy@panasas.com>
-Subject: Re: Linux pNFS status meeting  6/10/10
-Date: Thu, 10 Jun 2010 17:46:19 +0300
-Message-ID: <4C10FABB.7020506@panasas.com>
-References: <4C0FDB8A.9010500@gmail.com> <20100610143506.GF26427@fieldses.org> <5967A1F5-CE19-46A3-A6EC-4EA84FBD5034@netapp.com>
+From: James Morris <jmorris@namei.org>
+Subject: [PATCH 1/8][RFC v05] NFSv3: convert client to generic xattr API
+Date: Mon, 21 Jun 2010 21:27:21 +1000 (EST)
+Message-ID: <alpine.LRH.2.00.1006212126120.13583@tundra.namei.org>
+References: <alpine.LRH.2.00.1006212051530.13583@tundra.namei.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-	Dean Hildebrand <seattleplus@gmail.com>,
-	"linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-To: Andy Adamson <andros@netapp.com>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:1605 "EHLO
-	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1758727Ab0FJOqW (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Jun 2010 10:46:22 -0400
-In-Reply-To: <5967A1F5-CE19-46A3-A6EC-4EA84FBD5034@netapp.com>
-Sender: linux-nfs-owner@vger.kernel.org
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: linux-security-module@vger.kernel.org,
+	Trond Myklebust <Trond.Myklebust@netapp.com>,
+	"J. Bruce Fields" <bfields@fieldses.org>,
+	Neil Brown <neilb@suse.de>, linux-fsdevel@vger.kernel.org,
+	Stephen Smalley <sds@tycho.nsa.gov>
+To: linux-nfs@vger.kernel.org
+Return-path: <linux-security-module-owner@vger.kernel.org>
+In-Reply-To: <alpine.LRH.2.00.1006212051530.13583@tundra.namei.org>
+Sender: linux-security-module-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Jun. 10, 2010, 17:39 +0300, Andy Adamson <andros@netapp.com> wrote:
-> NetApp has an internal meeting that lasts until 1:00 EST. I know it's  
-> late - but could we start a 1/2 hour later?
-> 
+Convert existing NFSv3 client use (i.e. ACLs) of the xattrs to
+the kernel's generic xattr API.
 
-OK with me.
+This helps simplify the code, and prepare for the subsequent
+NFSv3 xattr protocol patches, which will also utilize the
+generic xattr API.
 
-> -->Andy
-> 
-> On Jun 10, 2010, at 10:35 AM, J. Bruce Fields wrote:
-> 
->> On Wed, Jun 09, 2010 at 11:20:58AM -0700, Dean Hildebrand wrote:
->>> Meeting on Thursday 6/10/2010 at 9:30 AM PDT (12:30 PM EST).
->>
->> Rough agenda:
->>
->> 1. upstream status/merge plans (trond, bfields)
->>
->> 2. State of pNFS tree (bhalevy)
->>
->> 3. Client
->> 	3.1. Client pNFS status
->> 	3.2. Client state management design documentation (trond)
->> 	3.3. Block device discovery design
->>
->> 4. Server
->> 	4.1. Todo's for minimal 4.1 server (bfields)
->> 	4.2. pnfs
->> 		pnfs/gfs2
->> 		exofs
->>
->> 5. redhat status (steved)
->>
->> 6. bakeathon plans
->> 	- ann arbor:
->> 	- boston
->>
->> 7. new business
->>
->> 8. next meeting
->>
->> --b.
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs"  
->> in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Signed-off-by: James Morris <jmorris@namei.org>
+---
+ fs/nfs/dir.c           |    8 ++--
+ fs/nfs/file.c          |    8 ++--
+ fs/nfs/internal.h      |    4 ++
+ fs/nfs/nfs3acl.c       |  122 ++++++++++++++++++++---------------------------
+ fs/nfs/super.c         |    3 +
+ include/linux/nfs_fs.h |   16 ------
+ 6 files changed, 67 insertions(+), 94 deletions(-)
+
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index 782b431..5fce66f 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -94,10 +94,10 @@ const struct inode_operations nfs3_dir_inode_operations = {
+ 	.permission	= nfs_permission,
+ 	.getattr	= nfs_getattr,
+ 	.setattr	= nfs_setattr,
+-	.listxattr	= nfs3_listxattr,
+-	.getxattr	= nfs3_getxattr,
+-	.setxattr	= nfs3_setxattr,
+-	.removexattr	= nfs3_removexattr,
++	.listxattr	= generic_listxattr,
++	.getxattr	= generic_getxattr,
++	.setxattr	= generic_setxattr,
++	.removexattr	= generic_removexattr,
+ };
+ #endif  /* CONFIG_NFS_V3 */
+ 
+diff --git a/fs/nfs/file.c b/fs/nfs/file.c
+index 36a5e74..6f6349f 100644
+--- a/fs/nfs/file.c
++++ b/fs/nfs/file.c
+@@ -91,10 +91,10 @@ const struct inode_operations nfs3_file_inode_operations = {
+ 	.permission	= nfs_permission,
+ 	.getattr	= nfs_getattr,
+ 	.setattr	= nfs_setattr,
+-	.listxattr	= nfs3_listxattr,
+-	.getxattr	= nfs3_getxattr,
+-	.setxattr	= nfs3_setxattr,
+-	.removexattr	= nfs3_removexattr,
++	.listxattr	= generic_listxattr,
++	.getxattr	= generic_getxattr,
++	.setxattr	= generic_setxattr,
++	.removexattr	= generic_removexattr,
+ };
+ #endif  /* CONFIG_NFS_v3 */
+ 
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index d8bd619..733269c 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -4,6 +4,7 @@
+ 
+ #include "nfs4_fs.h"
+ #include <linux/mount.h>
++#include <linux/xattr.h>
+ #include <linux/security.h>
+ 
+ #define NFS_MS_MASK (MS_RDONLY|MS_NOSUID|MS_NODEV|MS_NOEXEC|MS_SYNCHRONOUS)
+@@ -282,6 +283,9 @@ static inline char *nfs_devname(const struct vfsmount *mnt_parent,
+ 			dentry, buffer, buflen);
+ }
+ 
++/* nfs3acl.c */
++extern const struct xattr_handler *nfs3_xattr_handlers[];
++
+ /*
+  * Determine the actual block size (and log2 thereof)
+  */
+diff --git a/fs/nfs/nfs3acl.c b/fs/nfs/nfs3acl.c
+index 9f88c5f..27d1a44 100644
+--- a/fs/nfs/nfs3acl.c
++++ b/fs/nfs/nfs3acl.c
+@@ -10,64 +10,41 @@
+ 
+ #define NFSDBG_FACILITY	NFSDBG_PROC
+ 
+-ssize_t nfs3_listxattr(struct dentry *dentry, char *buffer, size_t size)
++static size_t nfs3_acl_xattr_list(struct dentry *dentry,
++				  char *list, size_t list_len,
++				  const char *name, size_t name_len,
++				  int acl_type)
+ {
+-	struct inode *inode = dentry->d_inode;
+ 	struct posix_acl *acl;
+-	int pos=0, len=0;
++	char *acl_name = (acl_type == ACL_TYPE_ACCESS) ?
++		POSIX_ACL_XATTR_ACCESS : POSIX_ACL_XATTR_DEFAULT;
++	size_t size = strlen(acl_name) + 1;
+ 
+-#	define output(s) do {						\
+-			if (pos + sizeof(s) <= size) {			\
+-				memcpy(buffer + pos, s, sizeof(s));	\
+-				pos += sizeof(s);			\
+-			}						\
+-			len += sizeof(s);				\
+-		} while(0)
++	acl = nfs3_proc_getacl(dentry->d_inode, acl_type);
++	if (!acl)
++		return 0;
+ 
+-	acl = nfs3_proc_getacl(inode, ACL_TYPE_ACCESS);
+ 	if (IS_ERR(acl))
+ 		return PTR_ERR(acl);
+-	if (acl) {
+-		output("system.posix_acl_access");
+-		posix_acl_release(acl);
+-	}
+ 
+-	if (S_ISDIR(inode->i_mode)) {
+-		acl = nfs3_proc_getacl(inode, ACL_TYPE_DEFAULT);
+-		if (IS_ERR(acl))
+-			return PTR_ERR(acl);
+-		if (acl) {
+-			output("system.posix_acl_default");
+-			posix_acl_release(acl);
+-		}
+-	}
+-
+-#	undef output
++	if (list && size <= list_len)
++		memcpy(list, acl_name, size);
+ 
+-	if (!buffer || len <= size)
+-		return len;
+-	return -ERANGE;
++	posix_acl_release(acl);
++	return size;
+ }
+ 
+-ssize_t nfs3_getxattr(struct dentry *dentry, const char *name,
+-		void *buffer, size_t size)
++static int nfs3_acl_xattr_get(struct dentry *dentry, const char *name,
++			      void *buffer, size_t size, int acl_type)
+ {
+-	struct inode *inode = dentry->d_inode;
+ 	struct posix_acl *acl;
+-	int type, error = 0;
+-
+-	if (strcmp(name, POSIX_ACL_XATTR_ACCESS) == 0)
+-		type = ACL_TYPE_ACCESS;
+-	else if (strcmp(name, POSIX_ACL_XATTR_DEFAULT) == 0)
+-		type = ACL_TYPE_DEFAULT;
+-	else
+-		return -EOPNOTSUPP;
++	int error = 0;
+ 
+-	acl = nfs3_proc_getacl(inode, type);
++	acl = nfs3_proc_getacl(dentry->d_inode, acl_type);
+ 	if (IS_ERR(acl))
+ 		return PTR_ERR(acl);
+ 	else if (acl) {
+-		if (type == ACL_TYPE_ACCESS && acl->a_count == 0)
++		if (acl_type == ACL_TYPE_ACCESS && acl->a_count == 0)
+ 			error = -ENODATA;
+ 		else
+ 			error = posix_acl_to_xattr(acl, buffer, size);
+@@ -78,43 +55,48 @@ ssize_t nfs3_getxattr(struct dentry *dentry, const char *name,
+ 	return error;
+ }
+ 
+-int nfs3_setxattr(struct dentry *dentry, const char *name,
+-	     const void *value, size_t size, int flags)
++static int nfs3_acl_xattr_set(struct dentry *dentry, const char *name,
++			      const void *value, size_t size, int flags,
++			      int acl_type)
+ {
+-	struct inode *inode = dentry->d_inode;
+ 	struct posix_acl *acl;
+-	int type, error;
++	int error;
+ 
+-	if (strcmp(name, POSIX_ACL_XATTR_ACCESS) == 0)
+-		type = ACL_TYPE_ACCESS;
+-	else if (strcmp(name, POSIX_ACL_XATTR_DEFAULT) == 0)
+-		type = ACL_TYPE_DEFAULT;
+-	else
+-		return -EOPNOTSUPP;
++	if (value == NULL && (flags & XATTR_REPLACE))
++		acl = NULL;	/* remove xattr */
++	else {
++		acl = posix_acl_from_xattr(value, size);
++		if (IS_ERR(acl))
++			return PTR_ERR(acl);
++	}
+ 
+-	acl = posix_acl_from_xattr(value, size);
+-	if (IS_ERR(acl))
+-		return PTR_ERR(acl);
+-	error = nfs3_proc_setacl(inode, type, acl);
++	error = nfs3_proc_setacl(dentry->d_inode, acl_type, acl);
+ 	posix_acl_release(acl);
+ 
+ 	return error;
+ }
+ 
+-int nfs3_removexattr(struct dentry *dentry, const char *name)
+-{
+-	struct inode *inode = dentry->d_inode;
+-	int type;
+-
+-	if (strcmp(name, POSIX_ACL_XATTR_ACCESS) == 0)
+-		type = ACL_TYPE_ACCESS;
+-	else if (strcmp(name, POSIX_ACL_XATTR_DEFAULT) == 0)
+-		type = ACL_TYPE_DEFAULT;
+-	else
+-		return -EOPNOTSUPP;
+-
+-	return nfs3_proc_setacl(inode, type, NULL);
+-}
++static struct xattr_handler nfs3_xattr_acl_access_handler = {
++	.prefix = POSIX_ACL_XATTR_ACCESS,
++	.flags	= ACL_TYPE_ACCESS,
++	.list   = nfs3_acl_xattr_list,
++	.get    = nfs3_acl_xattr_get,
++	.set    = nfs3_acl_xattr_set,
++};
++
++static struct xattr_handler nfs3_xattr_acl_default_handler = {
++	.prefix = POSIX_ACL_XATTR_DEFAULT,
++	.flags	= ACL_TYPE_DEFAULT,
++	.list   = nfs3_acl_xattr_list,
++	.get    = nfs3_acl_xattr_get,
++	.set    = nfs3_acl_xattr_set,
++};
++
++const struct xattr_handler *nfs3_xattr_handlers[] = {
++	&nfs3_xattr_acl_access_handler,
++	&nfs3_xattr_acl_default_handler,
++	NULL
++};
+ 
+ static void __nfs3_forget_cached_acls(struct nfs_inode *nfsi)
+ {
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index 04214fc..69b55c0 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -2023,6 +2023,9 @@ static void nfs_fill_super(struct super_block *sb,
+ 		 */
+ 		sb->s_flags |= MS_POSIXACL;
+ 		sb->s_time_gran = 1;
++#ifdef CONFIG_NFS_V3_ACL
++		sb->s_xattr = nfs3_xattr_handlers;
++#endif
+ 	}
+ 
+ 	sb->s_op = &nfs_sops;
+diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
+index 77c2ae5..9b0d2de 100644
+--- a/include/linux/nfs_fs.h
++++ b/include/linux/nfs_fs.h
+@@ -401,22 +401,6 @@ static inline struct rpc_cred *nfs_file_cred(struct file *file)
+ }
+ 
+ /*
+- * linux/fs/nfs/xattr.c
+- */
+-#ifdef CONFIG_NFS_V3_ACL
+-extern ssize_t nfs3_listxattr(struct dentry *, char *, size_t);
+-extern ssize_t nfs3_getxattr(struct dentry *, const char *, void *, size_t);
+-extern int nfs3_setxattr(struct dentry *, const char *,
+-			const void *, size_t, int);
+-extern int nfs3_removexattr (struct dentry *, const char *name);
+-#else
+-# define nfs3_listxattr NULL
+-# define nfs3_getxattr NULL
+-# define nfs3_setxattr NULL
+-# define nfs3_removexattr NULL
+-#endif
+-
+-/*
+  * linux/fs/nfs/direct.c
+  */
+ extern ssize_t nfs_direct_IO(int, struct kiocb *, const struct iovec *, loff_t,
+-- 
+1.7.0.1
+
