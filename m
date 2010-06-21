@@ -1,404 +1,324 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 7/7] libexport.a: Remove unused hostent-based DNS helper
-	functions
-Date: Mon, 21 Jun 2010 12:55:26 -0400
-Message-ID: <20100621165526.4771.81402.stgit@ellison.1015granger.net>
-References: <20100621165114.4771.51575.stgit@ellison.1015granger.net>
+Subject: Re: [PATCH 3/8][RFC v05] NFSv3: add client implementation of XATTR
+ protocol
+Date: Mon, 21 Jun 2010 16:02:27 -0400
+Message-ID: <4C1FC553.4030904@oracle.com>
+References: <alpine.LRH.2.00.1006212051530.13583@tundra.namei.org> <alpine.LRH.2.00.1006212128160.13583@tundra.namei.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Cc: linux-nfs@vger.kernel.org
-To: steved@redhat.com
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-gw0-f46.google.com ([74.125.83.46]:46702 "EHLO
-	mail-gw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758112Ab0FUQza (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Jun 2010 12:55:30 -0400
-Received: by gwaa12 with SMTP id a12so393567gwa.19
-        for <linux-nfs@vger.kernel.org>; Mon, 21 Jun 2010 09:55:29 -0700 (PDT)
-In-Reply-To: <20100621165114.4771.51575.stgit-ewv44WTpT0t9HhUboXbp9zCvJB+x5qRC@public.gmane.org>
-Sender: linux-nfs-owner@vger.kernel.org
+Content-Type: text/plain; charset=US-ASCII; format=flowed
+Cc: linux-nfs@vger.kernel.org, linux-security-module@vger.kernel.org,
+	Trond Myklebust <Trond.Myklebust@netapp.com>,
+	"J. Bruce Fields" <bfields@fieldses.org>,
+	Neil Brown <neilb@suse.de>, linux-fsdevel@vger.kernel.org,
+	Stephen Smalley <sds@tycho.nsa.gov>
+To: James Morris <jmorris@namei.org>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <alpine.LRH.2.00.1006212128160.13583@tundra.namei.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Clean up:  Get rid of hostent-based DNS helper functions in
-libexport.a that have been replaced by addrinfo-based DNS helpers.
+On 06/21/10 07:29 AM, James Morris wrote:
+> Add client support for the Linux NFSv3 extended attribute
+> side protocol (XATTR).
+>
+> This extends Linux extended attributes over the network to
+> servers which support the protocol.
+>
+> Operation is currently limited to the user.* namespace.
+>
+> Signed-off-by: James Morris<jmorris@namei.org>
+> ---
+>   fs/nfs/Kconfig            |   32 ++++++
+>   fs/nfs/Makefile           |    1 +
+>   fs/nfs/client.c           |   51 +++++++++-
+>   fs/nfs/internal.h         |   11 ++
+>   fs/nfs/nfs3xattr.c        |  241 ++++++++++++++++++++++++++++++++++++++++++++-
+>   fs/nfs/nfs3xattr_user.c   |   53 ++++++++++
+>   fs/nfs/nfs3xdr.c          |  187 +++++++++++++++++++++++++++++++++++
+>   fs/nfs/super.c            |    2 +-
+>   include/linux/nfs_fs_sb.h |    3 +-
+>   include/linux/nfs_mount.h |    3 +
+>   include/linux/nfs_xattr.h |   21 ++++
+>   include/linux/nfs_xdr.h   |   45 +++++++++
+>   12 files changed, 646 insertions(+), 4 deletions(-)
+>   create mode 100644 fs/nfs/nfs3xattr_user.c
+>   create mode 100644 include/linux/nfs_xattr.h
 
-None of the original code remains, so replace the copyright notice as
-well.
+   [ ... snipped ... ]
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
+> diff --git a/fs/nfs/nfs3xdr.c b/fs/nfs/nfs3xdr.c
+> index 75dcfc7..08d5ec9 100644
+> --- a/fs/nfs/nfs3xdr.c
+> +++ b/fs/nfs/nfs3xdr.c
+> @@ -87,6 +87,26 @@
+>   #define ACL3_setaclres_sz	(1+NFS3_post_op_attr_sz)
+>
+>   /*
+> + * FIXME: currently, the RPC layer will allocate the maximum buffer size
+> + * here for each call (which can be ~ 64k).  The Labeled NFS prototype code
+> + * uses 4k, although we should not impose limits for NFS which don't exist
+> + * in the OS unless absolutely necsssary.  We likely need a dynamic scheme
+> + * here, possibly using pages.
+> + */
 
- support/export/hostname.c |  321 ++-------------------------------------------
- support/include/misc.h    |    5 -
- 2 files changed, 16 insertions(+), 310 deletions(-)
+Encoding directly into RPC buffers is usually only for small objects, a 
+few hundred bytes at most.  What are the challenges to using the page 
+cache for these right now?  We already do that for symlinks and ACLs, right?
 
-diff --git a/support/export/hostname.c b/support/export/hostname.c
-index 79b9a8c..232e040 100644
---- a/support/export/hostname.c
-+++ b/support/export/hostname.c
-@@ -1,33 +1,32 @@
- /*
-- * support/export/hostname.c
-+ * Copyright 2010 Oracle.  All rights reserved.
-  *
-- * Functions for hostname.
-+ * This file is part of nfs-utils.
-  *
-+ * nfs-utils is free software; you can redistribute it and/or modify
-+ * it under the terms of the GNU General Public License as published by
-+ * the Free Software Foundation; either version 2 of the License, or
-+ * (at your option) any later version.
-+ *
-+ * nfs-utils is distributed in the hope that it will be useful,
-+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
-+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-+ * GNU General Public License for more details.
-+ *
-+ * You should have received a copy of the GNU General Public License
-+ * along with nfs-utils.  If not, see <http://www.gnu.org/licenses/>.
-  */
- 
- #ifdef HAVE_CONFIG_H
- #include <config.h>
- #endif
- 
--/*
--#define TEST
--*/
--
- #include <string.h>
--#include <netdb.h>
--#include <netinet/in.h>
--#include <arpa/inet.h>
- #include <stdlib.h>
-+#include <arpa/inet.h>
-+#include <netdb.h>
- #include <errno.h>
- 
--#include <xlog.h>
--#ifdef TEST
--#define xmalloc malloc
--#else
--#include "xmalloc.h"
--#include "misc.h"
--#endif
--
- #include "sockaddr.h"
- #include "exportfs.h"
- 
-@@ -35,138 +34,6 @@
- #define AI_ADDRCONFIG	0
- #endif
- 
--#define ALIGNMENT	sizeof (char *)
--
--static int
--align (int len, int al)
--{
--  int i;
--  i = len % al;
--  if (i)
--    len += al - i;
--  return len;
--}
--
--struct hostent *
--get_hostent (const char *addr, int len, int type)
--{
--  struct hostent *cp;
--  int len_ent;
--  const char *name;
--  int len_name;
--  int num_aliases = 1;
--  int len_aliases = sizeof (char *);
--  int num_addr_list = 1;
--  int len_addr_list = sizeof (char *);
--  int pos;
--  struct in_addr *ipv4;
--
--  switch (type)
--    {
--    case AF_INET:
--      ipv4 = (struct in_addr *) addr;
--      name = inet_ntoa (*ipv4);
--      break;
--
--    default:
--      return NULL;
--    }
--
--  len_ent = align (sizeof (*cp), ALIGNMENT);
--  len_name = align (strlen (name) + 1, ALIGNMENT);
--
--  num_addr_list++;
--  len_addr_list += align (len, ALIGNMENT) + sizeof (char *);
--
--  cp = (struct hostent *) xmalloc (len_ent + len_name + len_aliases
--				   + len_addr_list);
--
--  cp->h_addrtype = type;
--  cp->h_length = len;
--  pos = len_ent;
--  cp->h_name = (char *) &(((char *) cp) [pos]);
--  strcpy (cp->h_name, name);
--
--  pos += len_name;
--  cp->h_aliases = (char **) &(((char *) cp) [pos]);
--  pos += num_aliases * sizeof (char *);
--  cp->h_aliases [0] = NULL;
--
--  pos = len_ent + len_name + len_aliases;
--  cp->h_addr_list = (char **) &(((char *) cp) [pos]);
--  pos += num_addr_list * sizeof (char *);
--  cp->h_addr_list [0] = (char *) &(((char *) cp) [pos]);
--  memcpy (cp->h_addr_list [0], addr, cp->h_length);
--  pos += align (cp->h_length, ALIGNMENT);
--  cp->h_addr_list [1] = NULL;
--
--  return cp;
--}
--
--struct hostent *
--hostent_dup (struct hostent *hp)
--{
--  int len_ent = align (sizeof (*hp), ALIGNMENT);
--  int len_name = align (strlen (hp->h_name) + 1, ALIGNMENT);
--  int num_aliases = 1;
--  int len_aliases = sizeof (char *);
--  int num_addr_list = 1;
--  int len_addr_list = sizeof (char *);
--  int pos, i;
--  char **sp;
--  struct hostent *cp;
--
--  for (sp = hp->h_aliases; sp && *sp; sp++)
--    {
--      num_aliases++;
--      len_aliases += align (strlen (*sp) + 1, ALIGNMENT)
--		     + sizeof (char *);
--    }
--
--  for (sp = hp->h_addr_list; *sp; sp++)
--    {
--      num_addr_list++;
--      len_addr_list += align (hp->h_length, ALIGNMENT)
--		       + sizeof (char *);
--    }
--
--  cp = (struct hostent *) xmalloc (len_ent + len_name + len_aliases
--				   + len_addr_list);
--
--  *cp = *hp;
--  pos = len_ent;
--  cp->h_name = (char *) &(((char *) cp) [pos]);
--  strcpy (cp->h_name, hp->h_name);
--
--  pos += len_name;
--  cp->h_aliases = (char **) &(((char *) cp) [pos]);
--  pos += num_aliases * sizeof (char *);
--  for (sp = hp->h_aliases, i = 0; i < num_aliases; i++, sp++)
--    if (sp && *sp)
--      {
--	cp->h_aliases [i] = (char *) &(((char *) cp) [pos]);
--	strcpy (cp->h_aliases [i], *sp);
--	pos += align (strlen (*sp) + 1, ALIGNMENT);
--      }
--    else
--      cp->h_aliases [i] = NULL;
--
--  pos = len_ent + len_name + len_aliases;
--  cp->h_addr_list = (char **) &(((char *) cp) [pos]);
--  pos += num_addr_list * sizeof (char *);
--  for (sp = hp->h_addr_list, i = 0; i < num_addr_list; i++, sp++)
--    if (*sp)
--      {
--	cp->h_addr_list [i] = (char *) &(((char *) cp) [pos]);
--	memcpy (cp->h_addr_list [i], *sp, hp->h_length);
--	pos += align (hp->h_length, ALIGNMENT);
--      }
--    else
--      cp->h_addr_list [i] = *sp;
--
--  return cp;
--}
--
- #ifdef HAVE_GETNAMEINFO
- static socklen_t
- sockaddr_size(const struct sockaddr *sap)
-@@ -508,159 +375,3 @@ host_numeric_addrinfo(const struct sockaddr *sap)
- 	return ai;
- }
- #endif	/* !HAVE_GETNAMEINFO */
--
--static int
--is_hostname(const char *sp)
--{
--  if (*sp == '\0' || *sp == '@')
--    return 0;
--
--  for (; *sp; sp++)
--    {
--      if (*sp == '*' || *sp == '?' || *sp == '[' || *sp == '/')
--	return 0;
--      if (*sp == '\\' && sp[1])
--	sp++;
--    }
--
--  return 1;
--}
--
--int
--matchhostname (const char *h1, const char *h2)
--{
--  struct hostent *hp1, *hp2;
--  int status;
--
--  if (strcasecmp (h1, h2) == 0)
--    return 1;
--
--  if (!is_hostname (h1) || !is_hostname (h2))
--    return 0;
--
--  hp1 = gethostbyname (h1);
--  if (hp1 == NULL)
--    return 0;
--
--  hp1 = hostent_dup (hp1);
--
--  hp2 = gethostbyname (h2);
--  if (hp2)
--    {
--      if (strcasecmp (hp1->h_name, hp2->h_name) == 0)
--	status = 1;
--      else
--	{
--	  char **ap1, **ap2;
--
--	  status = 0;
--	  for (ap1 = hp1->h_addr_list; *ap1 && status == 0; ap1++)
--	    for (ap2 = hp2->h_addr_list; *ap2; ap2++)
--	      if (memcmp (*ap1, *ap2, sizeof (struct in_addr)) == 0)
--		{
--		  status = 1;
--		  break;
--		}
--	}
--    }
--  else
--    status = 0;
--
--  free (hp1);
--  return status;
--}
--
--
--/* Map IP to hostname, and then map back to addr to make sure it is a
-- * reliable hostname
-- */
--struct hostent *
--get_reliable_hostbyaddr(const char *addr, int len, int type)
--{
--	struct hostent *hp = NULL;
--
--	struct hostent *reverse;
--	struct hostent *forward;
--	char **sp;
--
--	reverse = gethostbyaddr (addr, len, type);
--	if (!reverse)
--		return NULL;
--
--	/* must make sure the hostent is authorative. */
--
--	reverse = hostent_dup (reverse);
--	forward = gethostbyname (reverse->h_name);
--
--	if (forward) {
--		/* now make sure the "addr" is in the list */
--		for (sp = forward->h_addr_list ; *sp ; sp++) {
--			if (memcmp (*sp, addr, forward->h_length) == 0)
--				break;
--		}
--
--		if (*sp) {
--			/* it's valid */
--			hp = hostent_dup (forward);
--		}
--		else {
--			/* it was a FAKE */
--			xlog (L_WARNING, "Fake hostname %s for %s - forward lookup doesn't match reverse",
--			      reverse->h_name, inet_ntoa(*(struct in_addr*)addr));
--		}
--	}
--	else {
--		/* never heard of it. misconfigured DNS? */
--		xlog (L_WARNING, "Fake hostname %s for %s - forward lookup doesn't exist",
--		      reverse->h_name, inet_ntoa(*(struct in_addr*)addr));
--	}
--
--	free (reverse);
--	return hp;
--}
--
--
--#ifdef TEST
--void
--print_host (struct hostent *hp)
--{
--  char **sp;
--
--  if (hp)
--    {
--      printf ("official hostname: %s\n", hp->h_name);
--      printf ("aliases:\n");
--      for (sp = hp->h_aliases; *sp; sp++)
--	printf ("  %s\n", *sp);
--      printf ("IP addresses:\n");
--      for (sp = hp->h_addr_list; *sp; sp++)
--	printf ("  %s\n", inet_ntoa (*(struct in_addr *) *sp));
--    }
--  else
--    printf ("Not host information\n");
--}
--
--int
--main (int argc, char **argv)
--{
--  struct hostent *hp = gethostbyname (argv [1]);
--  struct hostent *cp;
--  struct in_addr addr;
--
--  print_host (hp);
--
--  if (hp)
--    {
--      cp = hostent_dup (hp);
--      print_host (cp);
--      free (cp);
--    }
--  printf ("127.0.0.1 == %s: %d\n", argv [1],
--	  matchhostname ("127.0.0.1", argv [1]));
--  addr.s_addr = inet_addr(argv [2]);
--  printf ("%s\n", inet_ntoa (addr));
--  cp = get_hostent ((const char *)&addr, sizeof(addr), AF_INET);
--  print_host (cp);
--  return 0;
--}
--#endif
-diff --git a/support/include/misc.h b/support/include/misc.h
-index e817bc5..bc5ba23 100644
---- a/support/include/misc.h
-+++ b/support/include/misc.h
-@@ -15,11 +15,6 @@
- int	randomkey(unsigned char *keyout, int len);
- int	weakrandomkey(unsigned char *keyout, int len);
- 
--struct hostent;
--struct hostent	*hostent_dup(struct hostent *hp);
--struct hostent	*get_hostent (const char *addr, int len, int type);
--struct hostent *get_reliable_hostbyaddr(const char *addr, int len, int type);
--
- extern int is_mountpoint(char *path);
- 
- #endif /* MISC_H */
+Is there a way the server can advertise a size limit for these objects, 
+similar to rsize and wsize?
+
+> +#define XATTR3_xattrname_sz	(1+(XATTR_NAME_MAX>>2))
+> +#define XATTR3_xattrval_sz	(1+(XATTR_SIZE_MAX>>2))
+> +#define XATTR3_xattrlist_sz	(1+(XATTR_LIST_MAX>>2))
+> +
+> +#define XATTR3_getxattrargs_sz	(NFS3_fh_sz+XATTR3_xattrname_sz+1)
+> +#define XATTR3_getxattrres_sz	(1+NFS3_post_op_attr_sz+XATTR3_xattrval_sz)
+> +
+> +#define XATTR3_setxattrargs_sz	(NFS3_fh_sz+XATTR3_xattrname_sz+XATTR3_xattrval_sz+1)
+> +#define XATTR3_setxattrres_sz	(1+NFS3_post_op_attr_sz)
+> +
+> +#define XATTR3_listxattrargs_sz	(NFS3_fh_sz+1)
+> +#define XATTR3_listxattrres_sz	(1+NFS3_post_op_attr_sz+XATTR3_xattrlist_sz)
+> +
+> +/*
+>    * Map file type to S_IFMT bits
+>    */
+>   static const umode_t nfs_type2fmt[] = {
+> @@ -726,6 +746,72 @@ nfs3_xdr_setaclargs(struct rpc_rqst *req, __be32 *p,
+>   }
+>   #endif  /* CONFIG_NFS_V3_ACL */
+>
+> +#ifdef CONFIG_NFS_V3_XATTR
+> +/*
+> + * Special case of xdr_encode_opaque, where the xattr helpers hand us
+> + * separate namespace and name buffers, which we encode as a single XDR
+> + * string over the wire.  Neither namespace nor name may be empty or null.
+> + */
+> +static __be32 *xattr_encode_name(__be32 *p, const char *namespace, const char *name)
+
+By convention this function would be called "xdr_encode_xattr_name()".
+
+Are these names going to be UTF-8 strings?
+
+> +{
+> +	unsigned int nslen, namelen, totlen, quadlen, padding;
+> +
+> +	nslen = strlen(namespace);
+> +	namelen = strlen(name);
+> +	totlen = nslen + namelen;
+> +	quadlen = XDR_QUADLEN(totlen);
+> +	padding = (quadlen<<  2) - totlen;
+> +
+> +	*p++ = cpu_to_be32(totlen);
+> +	memcpy(p, namespace, nslen);
+> +	memcpy((char *)p + nslen, name, namelen);
+> +
+> +	if (padding != 0)
+> +		memset((char *)p + totlen, 0, padding);
+> +	p += quadlen;
+> +	return p;
+> +}
+> +
+> +/*
+> + * Encode GETXATTR arguments
+> + */
+> +static int nfs3_xdr_getxattrargs(struct rpc_rqst *req, __be32 *p,
+> +				 struct nfs3_getxattrargs *args)
+> +{
+> +	p = xdr_encode_fhandle(p, args->fh);
+> +	p = xattr_encode_name(p, args->xattr_namespace, args->xattr_name);
+> +	*p++ = htonl(args->xattr_size_max);
+> +	req->rq_slen = xdr_adjust_iovec(req->rq_svec, p);
+> +	return 0;
+> +}
+> +
+> +/*
+> + * Encode SETXATTR arguments
+> + */
+> +static int nfs3_xdr_setxattrargs(struct rpc_rqst *req, __be32 *p,
+> +				 struct nfs3_setxattrargs *args)
+> +{
+> +	p = xdr_encode_fhandle(p, args->fh);
+> +	p = xattr_encode_name(p, args->xattr_namespace, args->xattr_name);
+> +	p = xdr_encode_array(p, args->xattr_val, args->xattr_val_len);
+> +	*p++ = htonl(args->xattr_flags);
+> +	req->rq_slen = xdr_adjust_iovec(req->rq_svec, p);
+> +	return 0;
+> +}
+> +
+> +/*
+> + * Encode LISTXATTR arguments
+> + */
+> +static int nfs3_xdr_listxattrargs(struct rpc_rqst *req, __be32 *p,
+> +				  struct nfs3_listxattrargs *args)
+> +{
+> +	p = xdr_encode_fhandle(p, args->fh);
+> +	*p++ = htonl(args->xattr_list_max);
+> +	req->rq_slen = xdr_adjust_iovec(req->rq_svec, p);
+> +	return 0;
+> +}
+> +#endif	/* CONFIG_NFS_V3_XATTR */
+> +
+>   /*
+>    * NFS XDR decode functions
+>    */
+> @@ -1135,6 +1221,69 @@ nfs3_xdr_setaclres(struct rpc_rqst *req, __be32 *p, struct nfs_fattr *fattr)
+>   }
+>   #endif  /* CONFIG_NFS_V3_ACL */
+>
+> +#ifdef CONFIG_NFS_V3_XATTR
+> +/*
+> + * Decode GETXATTR reply
+> + *
+> + * FIXME: determine appropriate error returns
+> + */
+> +static int nfs3_xdr_getxattrres(struct rpc_rqst *req, __be32 *p,
+> +				struct nfs3_getxattrres *res)
+> +{
+> +	char *xattr_val;
+> +	unsigned int xattr_max_size = res->xattr_val_len;
+> +	int status = ntohl(*p++);
+> +
+> +	if (status != 0)
+> +		return nfs_stat_to_errno(status);
+> +
+> +	p = xdr_decode_post_op_attr(p, res->fattr);
+> +	p = xdr_decode_string_inplace(p,&xattr_val,
+> +	&res->xattr_val_len,
+> +	                              xattr_max_size);
+> +	if (p == NULL)
+> +		return -EINVAL;
+> +	memcpy(res->xattr_val, xattr_val, res->xattr_val_len);
+> +	return 0;
+> +}
+> +
+> +/*
+> + * Decode SETXATTR reply
+> + */
+> +static int nfs3_xdr_setxattrres(struct rpc_rqst *req, __be32 *p,
+> +				struct nfs3_setxattrres *res)
+> +{
+> +	int status = ntohl(*p++);
+> +
+> +	if (status)
+> +		return nfs_stat_to_errno(status);
+> +	xdr_decode_post_op_attr(p, res->fattr);
+> +	return 0;
+> +}
+> +
+> +/*
+> + * Decode LISTXATTR reply
+> + */
+> +static int nfs3_xdr_listxattrres(struct rpc_rqst *req, __be32 *p,
+> +				 struct nfs3_listxattrres *res)
+> +{
+> +	char *xattr_list;
+> +	unsigned int size = res->xattr_list_len;
+> +	int status = ntohl(*p++);
+> +
+> +	if (status != 0)
+> +		return nfs_stat_to_errno(status);
+> +
+> +	p = xdr_decode_post_op_attr(p, res->fattr);
+> +	p = xdr_decode_string_inplace(p,&xattr_list,
+> +	&res->xattr_list_len, size);
+> +	if (p == NULL)
+> +		return -EINVAL;
+> +	memcpy(res->xattr_list, xattr_list, res->xattr_list_len);
+> +	return 0;
+> +}
+> +#endif	/* CONFIG_NFS_V3_XATTR */
+> +
+>   #define PROC(proc, argtype, restype, timer)				\
+>   [NFS3PROC_##proc] = {							\
+>   	.p_proc      = NFS3PROC_##proc,					\
+> @@ -1206,3 +1355,41 @@ struct rpc_version		nfsacl_version3 = {
+>   	.procs			= nfs3_acl_procedures,
+>   };
+>   #endif  /* CONFIG_NFS_V3_ACL */
+> +
+> +#ifdef CONFIG_NFS_V3_XATTR
+> +static struct rpc_procinfo	nfs3_xattr_procedures[] = {
+> +	[XATTRPROC3_GETXATTR] = {
+> +		.p_proc		= XATTRPROC3_GETXATTR,
+> +		.p_encode	= (kxdrproc_t) nfs3_xdr_getxattrargs,
+> +		.p_decode	= (kxdrproc_t) nfs3_xdr_getxattrres,
+> +		.p_arglen	= XATTR3_getxattrargs_sz,
+> +		.p_replen	= XATTR3_getxattrres_sz,
+> +		.p_timer	= 1,
+> +		.p_name		= "GETXATTR",
+> +	},
+> +	[XATTRPROC3_SETXATTR] = {
+> +		.p_proc		= XATTRPROC3_SETXATTR,
+> +		.p_encode	= (kxdrproc_t) nfs3_xdr_setxattrargs,
+> +		.p_decode	= (kxdrproc_t) nfs3_xdr_setxattrres,
+> +		.p_arglen	= XATTR3_setxattrargs_sz,
+> +		.p_replen	= XATTR3_setxattrres_sz,
+> +		.p_timer	= 1,
+> +		.p_name		= "SETXATTR",
+> +	},
+> +	[XATTRPROC3_LISTXATTR] = {
+> +		.p_proc		= XATTRPROC3_LISTXATTR,
+> +		.p_encode	= (kxdrproc_t) nfs3_xdr_listxattrargs,
+> +		.p_decode	= (kxdrproc_t) nfs3_xdr_listxattrres,
+> +		.p_arglen	= XATTR3_listxattrargs_sz,
+> +		.p_replen	= XATTR3_listxattrres_sz,
+> +		.p_timer	= 1,
+> +		.p_name		= "LISTXATTR",
+> +	},
+> +};
+> +
+> +struct rpc_version		nfs_xattr_version3 = {
+> +	.number			= 3,
+> +	.nrprocs		= ARRAY_SIZE(nfs3_xattr_procedures),
+> +	.procs			= nfs3_xattr_procedures,
+> +};
+> +#endif	/* CONFIG_NFS_V3_XATTR */
+
+   [ ... snipped ... ]
+
+> diff --git a/include/linux/nfs_xattr.h b/include/linux/nfs_xattr.h
+> new file mode 100644
+> index 0000000..98fdbed
+> --- /dev/null
+> +++ b/include/linux/nfs_xattr.h
+> @@ -0,0 +1,21 @@
+> +/*
+> + * Extended attribute protocol for NFSv3 (XATTR)
+> + *
+> + *
+> + * Copyright (C) 2009 Red Hat, Inc., James Morris<jmorris@redhat.com>
+> + *
+> + */
+> +#ifndef __LINUX_NFS_XATTR_H
+> +#define __LINUX_NFS_XATTR_H
+> +
+> +#include<linux/xattr.h>
+> +
+> +#define NFS_XATTR_PROGRAM	391063	/* TODO: find another value */
+
+RFC 5531, appendix B proscribes the appropriate method for requesting an 
+RPC program number assignment.
+
+Even though the NFSACL protocol doesn't have one, I have to agree with 
+Deniel that we should have the RPCL definition of the on-the-wire 
+protocol first, so we can review it and ensure our user space and kernel 
+XDR functions remain consistent and correct over time.  Is there an RFC?
+
+Especially if we expect non-Linux implementations, I would think an 
+IANA-assigned program number and a proper RPCL definition would be 
+apriori requirements.
+
+> +
+> +/* xattr procedure numbers */
+> +#define XATTRPROC3_GETXATTR	1
+> +#define XATTRPROC3_SETXATTR	2
+> +#define XATTRPROC3_LISTXATTR	3
+> +#define XATTRPROC3_RMXATTR	4
+
+NIT: Fwiw, I tend to prefer enums for this.
+
+> +
+> +#endif  /* __LINUX_NFS_XATTR_H */
 
