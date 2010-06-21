@@ -1,185 +1,188 @@
-From: James Morris <jmorris@namei.org>
-Subject: [PATCH 8/8][RFC v05] SELinux/NFSv3: Enable xattr labeling behavior
- for SELinux with the XATTR protocol
-Date: Mon, 21 Jun 2010 21:33:14 +1000 (EST)
-Message-ID: <alpine.LRH.2.00.1006212132190.13583@tundra.namei.org>
-References: <alpine.LRH.2.00.1006212051530.13583@tundra.namei.org>
-Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: linux-security-module@vger.kernel.org,
-	Trond Myklebust <Trond.Myklebust@netapp.com>,
-	"J. Bruce Fields" <bfields@fieldses.org>,
-	Neil Brown <neilb@suse.de>, linux-fsdevel@vger.kernel.org,
-	Stephen Smalley <sds@tycho.nsa.gov>
+From: Fred Isaman <iisaman@netapp.com>
+Subject: [PATCH 1/3] pnfs-submit: separate locking from get and put of layout
+Date: Mon, 21 Jun 2010 09:16:35 -0400
+Message-ID: <1277126197-2546-2-git-send-email-iisaman@netapp.com>
+References: <1277126197-2546-1-git-send-email-iisaman@netapp.com>
 To: linux-nfs@vger.kernel.org
-Return-path: <linux-security-module-owner@vger.kernel.org>
-In-Reply-To: <alpine.LRH.2.00.1006212051530.13583@tundra.namei.org>
-Sender: linux-security-module-owner@vger.kernel.org
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from mx2.netapp.com ([216.240.18.37]:12633 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932328Ab0FUNQw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 21 Jun 2010 09:16:52 -0400
+Received: from localhost.localdomain (pl03676a.hq.netapp.com [10.58.60.107] (may be forged))
+	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id o5LDGedv022922
+	for <linux-nfs@vger.kernel.org>; Mon, 21 Jun 2010 06:16:41 -0700 (PDT)
+In-Reply-To: <1277126197-2546-1-git-send-email-iisaman@netapp.com>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-When the new 'xattrsec' mount option is specified, and when the XATTR
-protocol is supported at the client and the server, enable 'xattr' labeling
-behavor for SELinux, if supported in policy.
+This is needed by next patch that changes refcounting
 
-This allows per-mount use of NFSv3 xattr labeling:
-
-  $ sudo mount.nfs host:/export /mnt -o "nfsvers=3,xattrsec"
-
-There must also be an appropriate addition to SELinux policy
-to support this, e.g.:
-
-  fs_use_xattr nfs gen_context(system_u:object_r:fs_t,s0);
-
-To cater for the case of no XATTR support available or desired,
-'genfs' labeling behavior may also still be specified in policy.
-
-If the xattrsec mount option is supplied, but the XATTR protocol
-is unavailable, then the SELinux code will not fall back to
-genfs behavior and the mount will fail.
-
-With xattr labeling successfully enabled for the mount, SELinux
-access control and labeling policy will be enforced at the client
-using the XATTR protocol, with security labels being stored
-on the server.
-
-Signed-off-by: James Morris <jmorris@namei.org>
+Signed-off-by: Fred Isaman <iisaman@netapp.com>
 ---
- security/selinux/hooks.c            |   32 +++++++++++++++++++++++++++-----
- security/selinux/include/security.h |    2 +-
- security/selinux/ss/services.c      |   23 ++++++++++++++++++++---
- 3 files changed, 48 insertions(+), 9 deletions(-)
+ fs/nfs/pnfs.c |   59 +++++++++++++++++++++++++++++----------------------------
+ 1 files changed, 30 insertions(+), 29 deletions(-)
 
-diff --git a/security/selinux/hooks.c b/security/selinux/hooks.c
-index 5c9f25b..3eaa13e 100644
---- a/security/selinux/hooks.c
-+++ b/security/selinux/hooks.c
-@@ -77,6 +77,7 @@
- #include <linux/mutex.h>
- #include <linux/posix-timers.h>
- #include <linux/syslog.h>
-+#include <linux/nfs_fs.h>	/* for nfs_server_capable() */
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 025675b..ed4c72e 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -313,30 +313,20 @@ pnfs_unregister_layoutdriver(struct pnfs_layoutdriver_type *ld_type)
+ #define BUG_ON_UNLOCKED_LO(lo) do {} while (0)
+ #endif /* CONFIG_SMP */
  
- #include "avc.h"
- #include "objsec.h"
-@@ -582,7 +583,7 @@ static int selinux_set_mnt_opts(struct super_block *sb,
- 				struct security_mnt_opts *opts)
+-/*
+- * get and lock nfsi->layout
+- */
+ static inline struct pnfs_layout_type *
+-get_lock_current_layout(struct nfs_inode *nfsi)
++get_current_layout(struct nfs_inode *nfsi)
  {
- 	const struct cred *cred = current_cred();
--	int rc = 0, i;
-+	int rc = 0, use_xattr = 0, i;
- 	struct superblock_security_struct *sbsec = sb->s_security;
- 	const char *name = sb->s_type->name;
- 	struct inode *inode = sbsec->sb->s_root->d_inode;
-@@ -697,11 +698,32 @@ static int selinux_set_mnt_opts(struct super_block *sb,
- 	if (strcmp(sb->s_type->name, "proc") == 0)
- 		sbsec->flags |= SE_SBPROC;
+-	struct pnfs_layout_type *lo;
++	struct pnfs_layout_type *lo = &nfsi->layout;
  
-+	/*
-+	 * Special handling for NFSv3: if the xattrsec mount option was
-+	 * specified, check to see if the XATTR protocol is supported, and
-+	 * if so, require SECURITY_FS_USE_XATTR behavior.
-+	 */
-+	if (!strcmp(sb->s_type->name, "nfs")) {
-+		if (nfs_server_xattrsec(inode)) {
-+			if (nfs_server_capable(inode, NFS_CAP_XATTR))
-+				use_xattr = 1;
-+			else {
-+				printk(KERN_WARNING "SELinux: xattrsec "
-+				       "specified but XATTR unsupported\n");
-+				rc = -EOPNOTSUPP;
-+				goto out;
-+			}
-+		}
-+	}
-+
- 	/* Determine the labeling behavior to use for this filesystem type. */
--	rc = security_fs_use((sbsec->flags & SE_SBPROC) ? "proc" : sb->s_type->name, &sbsec->behavior, &sbsec->sid);
-+	rc = security_fs_use((sbsec->flags & SE_SBPROC) ?
-+			     "proc" : sb->s_type->name, &sbsec->behavior,
-+			     &sbsec->sid, use_xattr);
- 	if (rc) {
--		printk(KERN_WARNING "%s: security_fs_use(%s) returned %d\n",
--		       __func__, sb->s_type->name, rc);
-+		printk(KERN_WARNING "%s: security_fs_use(%s) (use_xattr=%d) "
-+		       "returned %d\n", __func__, sb->s_type->name,
-+		       use_xattr, rc);
- 		goto out;
+-	lo = &nfsi->layout;
+-	spin_lock(&nfsi->vfs_inode.i_lock);
+-	if (!lo->ld_data) {
+-		spin_unlock(&nfsi->vfs_inode.i_lock);
++	BUG_ON_UNLOCKED_LO(lo);
++	if (!lo->ld_data)
+ 		return NULL;
+-	}
+-
+ 	lo->refcount++;
+ 	return lo;
+ }
+ 
+-/*
+- * put and unlock nfs->layout
+- */
+ static inline void
+-put_unlock_current_layout(struct pnfs_layout_type *lo)
++put_current_layout(struct pnfs_layout_type *lo)
+ {
+ 	struct inode *inode = PNFS_INODE(lo);
+ 	struct nfs_client *clp;
+@@ -358,7 +348,6 @@ put_unlock_current_layout(struct pnfs_layout_type *lo)
+ 		list_del_init(&lo->lo_layouts);
+ 		spin_unlock(&clp->cl_lock);
  	}
+-	spin_unlock(&inode->i_lock);
+ }
  
-@@ -1282,7 +1304,7 @@ static int inode_doinit_with_dentry(struct inode *inode, struct dentry *opt_dent
- 						   context, len);
+ void
+@@ -370,7 +359,8 @@ pnfs_layout_release(struct pnfs_layout_type *lo,
+ 	spin_lock(&nfsi->vfs_inode.i_lock);
+ 	if (range)
+ 		pnfs_free_layout(lo, range);
+-	put_unlock_current_layout(lo);
++	put_current_layout(lo);
++	spin_unlock(&nfsi->vfs_inode.i_lock);
+ 	wake_up_all(&nfsi->lo_waitq);
+ }
+ 
+@@ -384,11 +374,13 @@ pnfs_destroy_layout(struct nfs_inode *nfsi)
+ 		.length = NFS4_MAX_UINT64,
+ 	};
+ 
+-	lo = get_lock_current_layout(nfsi);
++	spin_lock(&nfsi->vfs_inode.i_lock);
++	lo = get_current_layout(nfsi);
+ 	if (lo) {
+ 		pnfs_free_layout(lo, &range);
+-		put_unlock_current_layout(lo);
++		put_current_layout(lo);
+ 	}
++	spin_unlock(&nfsi->vfs_inode.i_lock);
+ }
+ 
+ static inline void
+@@ -751,12 +743,14 @@ _pnfs_return_layout(struct inode *ino, struct nfs4_pnfs_layout_segment *range,
+ 	arg.length = NFS4_MAX_UINT64;
+ 
+ 	if (type == RETURN_FILE) {
+-		lo = get_lock_current_layout(nfsi);
++		spin_lock(&ino->i_lock);
++		lo = get_current_layout(nfsi);
+ 		if (lo && !has_layout_to_return(lo, &arg)) {
+-			put_unlock_current_layout(lo);
++			put_current_layout(lo);
+ 			lo = NULL;
  		}
- 		dput(dentry);
--		if (rc < 0) {
-+		if (rc <= 0) {
- 			if (rc != -ENODATA) {
- 				printk(KERN_WARNING "SELinux: %s:  getxattr returned "
- 				       "%d for dev=%s ino=%ld\n", __func__,
-diff --git a/security/selinux/include/security.h b/security/selinux/include/security.h
-index 1f7c249..b0dde76 100644
---- a/security/selinux/include/security.h
-+++ b/security/selinux/include/security.h
-@@ -163,7 +163,7 @@ int security_get_allow_unknown(void);
- #define SECURITY_FS_USE_MNTPOINT	6 /* use mountpoint labeling */
- 
- int security_fs_use(const char *fstype, unsigned int *behavior,
--	u32 *sid);
-+	u32 *sid, int use_xattr);
- 
- int security_genfs_sid(const char *fstype, char *name, u16 sclass,
- 	u32 *sid);
-diff --git a/security/selinux/ss/services.c b/security/selinux/ss/services.c
-index 1de60ce..17cb1b7 100644
---- a/security/selinux/ss/services.c
-+++ b/security/selinux/ss/services.c
-@@ -2238,11 +2238,12 @@ out:
-  * @fstype: filesystem type
-  * @behavior: labeling behavior
-  * @sid: SID for filesystem (superblock)
-+ * @use_xattr: use xattr labeling behavior for NFS
+ 		if (!lo) {
++			spin_unlock(&ino->i_lock);
+ 			dprintk("%s: no layout segments to return\n", __func__);
+ 			goto out;
+ 		}
+@@ -770,7 +764,8 @@ _pnfs_return_layout(struct inode *ino, struct nfs4_pnfs_layout_segment *range,
+ 			if (stateid) { /* callback */
+ 				status = -EAGAIN;
+ 				spin_lock(&ino->i_lock);
+-				put_unlock_current_layout(lo);
++				put_current_layout(lo);
++				spin_unlock(&ino->i_lock);
+ 				goto out;
+ 			}
+ 			dprintk("%s: waiting\n", __func__);
+@@ -914,8 +909,7 @@ static int pnfs_wait_schedule(void *word)
+  * get, possibly allocate, and lock current_layout
+  *
+  * Note: If successful, ino->i_lock is taken and the caller
+- * must put and unlock current_layout by using put_unlock_current_layout()
+- * when the returned layout is released.
++ * must put and unlock current_layout when the returned layout is released.
   */
- int security_fs_use(
- 	const char *fstype,
- 	unsigned int *behavior,
--	u32 *sid)
-+	u32 *sid, int use_xattr)
- {
- 	int rc = 0;
- 	struct ocontext *c;
-@@ -2251,8 +2252,19 @@ int security_fs_use(
+ static struct pnfs_layout_type *
+ get_lock_alloc_layout(struct inode *ino)
+@@ -926,7 +920,9 @@ get_lock_alloc_layout(struct inode *ino)
  
- 	c = policydb.ocontexts[OCON_FSUSE];
- 	while (c) {
--		if (strcmp(fstype, c->u.name) == 0)
--			break;
-+		/*
-+		 * Without significant redesign, we need to add a special
-+		 * case for NFS here.  TODO: consider using the new 'native'
-+		 * labeling behavior from LNFS.
-+		 */
-+		if (strcmp(fstype, c->u.name) == 0) {
-+			if (strcmp(fstype, "nfs") == 0) {
-+				if (use_xattr &&
-+				    (c->v.behavior == SECURITY_FS_USE_XATTR))
-+					break;
-+			} else
-+				break;
+ 	dprintk("%s Begin\n", __func__);
+ 
+-	while ((lo = get_lock_current_layout(nfsi)) == NULL) {
++	spin_lock(&ino->i_lock);
++	while ((lo = get_current_layout(nfsi)) == NULL) {
++		spin_unlock(&ino->i_lock);
+ 		/* Compete against other threads on who's doing the allocation,
+ 		 * wait until bit is cleared if we lost this race.
+ 		 */
+@@ -942,8 +938,10 @@ get_lock_alloc_layout(struct inode *ino)
+ 		/* Was current_layout already allocated while we slept?
+ 		 * If so, retry get_lock'ing it. Otherwise, allocate it.
+ 		 */
+-		if (nfsi->layout.ld_data)
++		if (nfsi->layout.ld_data) {
++			spin_lock(&ino->i_lock);
+ 			continue;
 +		}
- 		c = c->next;
+ 
+ 		lo = alloc_init_layout(ino);
+ 		if (lo) {
+@@ -1112,7 +1110,8 @@ out:
+ out_put:
+ 	if (lsegpp)
+ 		*lsegpp = lseg;
+-	put_unlock_current_layout(lo);
++	put_current_layout(lo);
++	spin_unlock(&ino->i_lock);
+ 	goto out;
+ }
+ 
+@@ -1328,11 +1327,13 @@ pnfs_getboundary(struct inode *inode)
+ 		goto out;
+ 
+ 	nfsi = NFS_I(inode);
+-	lo = get_lock_current_layout(nfsi);;
++	spin_lock(&inode->i_lock);
++	lo = get_current_layout(nfsi);;
+ 	if (lo) {
+ 		stripe_size = policy_ops->get_stripesize(lo);
+-		put_unlock_current_layout(lo);
++		put_current_layout(lo);
  	}
- 
-@@ -2267,6 +2279,11 @@ int security_fs_use(
- 		}
- 		*sid = c->sid[0];
- 	} else {
-+		if (use_xattr) {
-+			/* xattr required, must not fall back to genfs */
-+			rc = -EINVAL;
-+			goto out;
-+		}
- 		rc = security_genfs_sid(fstype, "/", SECCLASS_DIR, sid);
- 		if (rc) {
- 			*behavior = SECURITY_FS_USE_NONE;
++	spin_unlock(&inode->i_lock);
+ out:
+ 	return stripe_size;
+ }
 -- 
-1.7.0.1
+1.6.6.1
 
