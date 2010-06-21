@@ -1,56 +1,63 @@
-From: Yan Rui <rui.yan@gmail.com>
-Subject: How to increase rsize/wsize ?
-Date: Mon, 21 Jun 2010 23:29:49 +0800
-Message-ID: <AANLkTimkEM7CPctkwYiWa-rGXDs3EHNl-hldu5fQYqRo@mail.gmail.com>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 1/7] exportfs: Add a common exit label in exportfs()
+Date: Mon, 21 Jun 2010 12:54:28 -0400
+Message-ID: <20100621165428.4771.31564.stgit@ellison.1015granger.net>
+References: <20100621165114.4771.51575.stgit@ellison.1015granger.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-To: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset="utf-8"
+Cc: linux-nfs@vger.kernel.org
+To: steved@redhat.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-pv0-f174.google.com ([74.125.83.174]:55967 "EHLO
-	mail-pv0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932718Ab0FUP3t convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Jun 2010 11:29:49 -0400
-Received: by pvh11 with SMTP id 11so290970pvh.19
-        for <linux-nfs@vger.kernel.org>; Mon, 21 Jun 2010 08:29:49 -0700 (PDT)
+Received: from mail-iw0-f174.google.com ([209.85.214.174]:60812 "EHLO
+	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757288Ab0FUQyb (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Jun 2010 12:54:31 -0400
+Received: by mail-iw0-f174.google.com with SMTP id 36so1063318iwn.19
+        for <linux-nfs@vger.kernel.org>; Mon, 21 Jun 2010 09:54:31 -0700 (PDT)
+In-Reply-To: <20100621165114.4771.51575.stgit-ewv44WTpT0t9HhUboXbp9zCvJB+x5qRC@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi,
+Clean up: Reduce code duplication by introducing a goto label for
+freeing hp and exiting.  This will make replacing "struct hostent *"
+with "struct addrinfo *" more straightforward in this code.
 
-I failed to mount a nfs share with a bigger rsize/wsize (in my case,
-512K).=A0=A0 The biggest rsize/wsize I can get is only 256KB on my Ubun=
-tu
-9.10 server box.=A0 Can anyone give me some suggestions?
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
 
-root@d03:~# exportfs -v
-/tmp=A0=A0=A0=A0=A0=A0=A0=A0=A0 =A0=A0=A0 <world>(rw,wdelay,root_squash=
-,no_subtree_check)
+ utils/exportfs/exportfs.c |   14 ++++++--------
+ 1 files changed, 6 insertions(+), 8 deletions(-)
 
-root@d04:~# mount -t nfs -o wsize=3D524288,rsize=3D524288 d03:/tmp /mnt=
-/nfs
+diff --git a/utils/exportfs/exportfs.c b/utils/exportfs/exportfs.c
+index 83d00a0..50f1e34 100644
+--- a/utils/exportfs/exportfs.c
++++ b/utils/exportfs/exportfs.c
+@@ -263,14 +263,10 @@ exportfs(char *arg, char *options, int verbose)
+ 
+ 	if (!exp) {
+ 		if (!(eep = mkexportent(hname, path, options)) ||
+-		    !(exp = export_create(eep, 0))) {
+-			if (hp) free (hp);
+-			return;
+-		}
+-	} else if (!updateexportent(&exp->m_export, options)) {
+-		if (hp) free (hp);
+-		return;
+-	}
++		    !(exp = export_create(eep, 0)))
++			goto out;
++	} else if (!updateexportent(&exp->m_export, options))
++		goto out;
+ 
+ 	if (verbose)
+ 		printf("exporting %s:%s\n", exp->m_client->m_hostname, 
+@@ -280,6 +276,8 @@ exportfs(char *arg, char *options, int verbose)
+ 	exp->m_changed = 1;
+ 	exp->m_warned = 0;
+ 	validate_export(exp);
++
++out:
+ 	if (hp) free (hp);
+ }
+ 
 
-root@d04:~# nfsstat -m
-/mnt/nfs from d03:/tmp
-=A0Flags:=A0=A0=A0 rw,relatime,vers=3D3,rsize=3D262144,wsize=3D262144,n=
-amlen=3D255,hard,proto=3Dtcp,timeo=3D600,retrans=3D2,sec=3Dsys,mountadd=
-r=3D10.0.0.3,mountvers=3D3,mountproto=3Dtcp,addr=3D10.0.0.3
-
-root@d03:~# uname -a
-Linux d03 2.6.31-14-server #48-Ubuntu SMP Fri Oct 16 15:07:34 UTC 2009
-x86_64 GNU/Linux
-
-root@d03:~# dpkg -l | grep nfs
-ii=A0 nfs-common=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=
-=A0=A0=A0=A0 1:1.2.0-2ubuntu8
- NFS support files common to client and serve
-ii=A0 nfs-kernel-server=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=
- 1:1.2.0-2ubuntu8
- support for NFS kernel server
-
-According to NFS-HOWTO, I have checked the kernel const
-NFSSVC_MAXBLKSIZE.  It is 1M on 2.6.31.
-
-Any comments will be appreciated!
-
-Regards,
-Rui
