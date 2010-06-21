@@ -1,128 +1,97 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:53122 "EHLO mx2.netapp.com"
+Received: from tundra.namei.org ([65.99.196.166]:52978 "EHLO tundra.namei.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753399Ab0FJOgR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 10 Jun 2010 10:36:17 -0400
-Cc: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org,
-        eanderle@umich.edu
-Message-Id: <7D64BD28-8BE2-4047-B1B8-819FD64E147E@netapp.com>
-From: Andy Adamson <andros@netapp.com>
-To: Benny Halevy <bhalevy@panasas.com>
-In-Reply-To: <4C10F16D.1050408@panasas.com>
-Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
-Subject: Re: [PATCH] Fixed getdevinfo() and dlm_ino_hash() to search for	the correct disk name.
-Date: Thu, 10 Jun 2010 10:36:13 -0400
-References: <20100610133336.GB24596@fieldses.org> <20100610133555.GC24596@fieldses.org> <4C10F16D.1050408@panasas.com>
+	id S1754125Ab0FUXVj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 21 Jun 2010 19:21:39 -0400
+Date: Tue, 22 Jun 2010 09:21:05 +1000 (EST)
+From: James Morris <jmorris@namei.org>
+To: Chuck Lever <chuck.lever@oracle.com>
+cc: linux-nfs@vger.kernel.org, linux-security-module@vger.kernel.org,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>, Neil Brown <neilb@suse.de>,
+        linux-fsdevel@vger.kernel.org, Stephen Smalley <sds@tycho.nsa.gov>
+Subject: Re: [PATCH 3/8][RFC v05] NFSv3: add client implementation of XATTR
+ protocol
+In-Reply-To: <4C1FC553.4030904@oracle.com>
+Message-ID: <alpine.LRH.2.00.1006220906300.16648@tundra.namei.org>
+References: <alpine.LRH.2.00.1006212051530.13583@tundra.namei.org> <alpine.LRH.2.00.1006212128160.13583@tundra.namei.org> <4C1FC553.4030904@oracle.com>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+On Mon, 21 Jun 2010, Chuck Lever wrote:
 
-On Jun 10, 2010, at 10:06 AM, Benny Halevy wrote:
+> >   /*
+> > + * FIXME: currently, the RPC layer will allocate the maximum buffer size
+> > + * here for each call (which can be ~ 64k).  The Labeled NFS prototype code
+> > + * uses 4k, although we should not impose limits for NFS which don't exist
+> > + * in the OS unless absolutely necsssary.  We likely need a dynamic scheme
+> > + * here, possibly using pages.
+> > + */
+> 
+> Encoding directly into RPC buffers is usually only for small objects, a few
+> hundred bytes at most.  What are the challenges to using the page cache for
+> these right now?  We already do that for symlinks and ACLs, right?
 
-> On Jun. 10, 2010, 16:35 +0300, "J. Bruce Fields"  
-> <bfields@fieldses.org> wrote:
->> On Thu, Jun 10, 2010 at 09:33:37AM -0400, bfields wrote:
->>> The patch "pnfsd: fix test in nfsd4_find_pnfs_dlm_device" was  
->>> obviously
->>> correct; before that patch, nfsd4_find_pnfs_dlm_device() returned  
->>> the
->>> first device which did *not* match, instead of the first device  
->>> which
->>> did.
->>>
->>> Other callers previous worked because they passed int the incorrect
->>> name, and because we never had more than one element in the list, so
->>> returning the first non-match would return the right thing.
->>
->> But then I don't know what point the "/dev/" is serving here.  May as
->> well just change the interface so that what's passed in is just the  
->> name
->> ("sdc2" or whatever)--no use pretending this is some kind of path  
->> name
->> if it's not really.
->>
->> However, I don't know whether passing in the disk name is really a
->> sensible way to refer to a filesystem in a user<->kernel api.
->>
->
-> up to you...  I think the whole scheme is currently GFS2 specific
+There's nothing stopping it -- the code just needs to be written that way.
 
-No, it's DLM specific, with GFS2 being the only current user.
+> Is there a way the server can advertise a size limit for these objects,
+> similar to rsize and wsize?
 
-> and it assumes the device exists symmetrically on /dev/... on all
-> DSs.
+I guess we could add this, although most xattrs are quite small anyway, 
+with upper limits defined by the OS (and then likely the same defined in 
+the protocol).
 
-No. This identifies the MDS exported DLM pNFS file system, and has  
-nothing to do with the local DS file system.
+> > +/*
+> > + * Special case of xdr_encode_opaque, where the xattr helpers hand us
+> > + * separate namespace and name buffers, which we encode as a single XDR
+> > + * string over the wire.  Neither namespace nor name may be empty or null.
+> > + */
+> > +static __be32 *xattr_encode_name(__be32 *p, const char *namespace, const
+> > char *name)
+> 
+> By convention this function would be called "xdr_encode_xattr_name()".
 
->
+Ok.
 
-> The /dev prefix seems to be completely redundant.
-> It makes more sense to get rid of it in the user->kernel
-> API as passed down to nfsd4_set_pnfs_dlm_device() rather than
-> adding it here.
+> 
+> Are these names going to be UTF-8 strings?
 
-Sure.
+I believe so.
 
->
-> Benny
->
->> --b.
->>
->>>
->>> But now we need to fix those callers.
->>>
->>> From: Eric Anderle <eanderle@umich.edu>
->>>
->>> ---
->>> fs/nfsd/nfs4pnfsdlm.c |   12 +++++++++---
->>> 1 files changed, 9 insertions(+), 3 deletions(-)
->>>
->>> diff --git a/fs/nfsd/nfs4pnfsdlm.c b/fs/nfsd/nfs4pnfsdlm.c
->>> index 84caa6e..5a66a71 100644
->>> --- a/fs/nfsd/nfs4pnfsdlm.c
->>> +++ b/fs/nfsd/nfs4pnfsdlm.c
->>> @@ -268,10 +268,13 @@ static int nfsd4_pnfs_dlm_getdevinfo(struct  
->>> super_block *sb,
->>> 	/*
->>> 	 * If the DS list has not been established, return -EINVAL
->>> 	 */
->>> -	dlm_pdev = nfsd4_find_pnfs_dlm_device(sb->s_bdev->bd_disk- 
->>> >disk_name);
->>> +	/* Long enough to hold "/dev/" + disk name */
->>> +	char full_disk_name[6 + strlen(sb->s_bdev->bd_disk->disk_name)];
->>> +	sprintf(full_disk_name, "/dev/%s", sb->s_bdev->bd_disk- 
->>> >disk_name);
->>> +	dlm_pdev = nfsd4_find_pnfs_dlm_device(full_disk_name);
->>> 	if (!dlm_pdev) {
->>> 		dprintk("%s: DEBUG: disk %s Not Found\n", __func__,
->>> -			sb->s_bdev->bd_disk->disk_name);
->>> +			full_disk_name);
->>> 		return err;
->>> 	}
->>>
->>> @@ -364,7 +367,10 @@ static int dlm_ino_hash(struct inode *ino)
->>> 	/* If can't find the inode block device in the pnfs_dlm_deivce list
->>> 	 * then don't hand out a layout
->>> 	 */
->>> -	de = nfsd4_find_pnfs_dlm_device(ino->i_sb->s_bdev->bd_disk- 
->>> >disk_name);
->>> +	/* Long enough to hold "/dev/" + disk name */
->>> +	char full_disk_name[6 + strlen(ino->i_sb->s_bdev->bd_disk- 
->>> >disk_name)];
->>> +	sprintf(full_disk_name, "/dev/%s", ino->i_sb->s_bdev->bd_disk- 
->>> >disk_name);
->>> +	de = nfsd4_find_pnfs_dlm_device(full_disk_name);
->>> 	if (!de)
->>> 		return -1;
->>> 	hash_mask = de->num_ds - 1;
->>> -- 
->>> 1.7.0.4
->>>
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs"  
-> in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> > +#define NFS_XATTR_PROGRAM	391063	/* TODO: find another value */
+> 
+> RFC 5531, appendix B proscribes the appropriate method for requesting an RPC
+> program number assignment.
+> 
+> Even though the NFSACL protocol doesn't have one, I have to agree with Deniel
+> that we should have the RPCL definition of the on-the-wire protocol first, so
+> we can review it and ensure our user space and kernel XDR functions remain
+> consistent and correct over time.
 
+Indeed, this is something I'm hoping to do soon.
+
+>  Is there an RFC?
+
+No, there have been several implementations, but never an RFC for xattrs.  
+
+I'm using the XFS implementation as a starting point, and following the 
+ACL model of implementing a side-protocol.
+
+> Especially if we expect non-Linux implementations, I would think an
+> IANA-assigned program number and a proper RPCL definition would be apriori
+> requirements.
+
+It's possible the FreeBSD folk may want to interop with this, as they have 
+similar name/value xattrs.
+
+(Btw, slides from a presentation I did on this last year at LinuxCon are 
+at http://namei.org/presentations/linuxcon09_nfsv3xattrs.pdf)
+
+Thanks for reviewing the code!
+
+
+-- 
+James Morris
+<jmorris@namei.org>
