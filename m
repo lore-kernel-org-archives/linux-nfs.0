@@ -1,157 +1,56 @@
-From: Fred Isaman <iisaman@netapp.com>
-Subject: [PATCH 2/3] pnfs-submit: split get_layout and grab_current_layout
-Date: Mon, 21 Jun 2010 09:16:36 -0400
-Message-ID: <1277126197-2546-3-git-send-email-iisaman@netapp.com>
-References: <1277126197-2546-1-git-send-email-iisaman@netapp.com>
- <1277126197-2546-2-git-send-email-iisaman@netapp.com>
+From: Yan Rui <rui.yan@gmail.com>
+Subject: How to increase rsize/wsize ?
+Date: Mon, 21 Jun 2010 23:29:49 +0800
+Message-ID: <AANLkTimkEM7CPctkwYiWa-rGXDs3EHNl-hldu5fQYqRo@mail.gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:12633 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932305Ab0FUNQx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 21 Jun 2010 09:16:53 -0400
-Received: from localhost.localdomain (pl03676a.hq.netapp.com [10.58.60.107] (may be forged))
-	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id o5LDGedw022922
-	for <linux-nfs@vger.kernel.org>; Mon, 21 Jun 2010 06:16:42 -0700 (PDT)
-In-Reply-To: <1277126197-2546-2-git-send-email-iisaman@netapp.com>
+Received: from mail-pv0-f174.google.com ([74.125.83.174]:55967 "EHLO
+	mail-pv0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932718Ab0FUP3t convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Jun 2010 11:29:49 -0400
+Received: by pvh11 with SMTP id 11so290970pvh.19
+        for <linux-nfs@vger.kernel.org>; Mon, 21 Jun 2010 08:29:49 -0700 (PDT)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Split get_layout (inc refcount) and grab_current_layout (find layout and inc refcount)
-functionality and rename appropriately.
+Hi,
 
-Signed-off-by: Fred Isaman <iisaman@netapp.com>
----
- fs/nfs/pnfs.c |   37 ++++++++++++++++++++++---------------
- 1 files changed, 22 insertions(+), 15 deletions(-)
+I failed to mount a nfs share with a bigger rsize/wsize (in my case,
+512K).=A0=A0 The biggest rsize/wsize I can get is only 256KB on my Ubun=
+tu
+9.10 server box.=A0 Can anyone give me some suggestions?
 
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index ed4c72e..49093a0 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -313,20 +313,27 @@ pnfs_unregister_layoutdriver(struct pnfs_layoutdriver_type *ld_type)
- #define BUG_ON_UNLOCKED_LO(lo) do {} while (0)
- #endif /* CONFIG_SMP */
- 
-+static inline void
-+get_layout(struct pnfs_layout_type *lo)
-+{
-+	BUG_ON_UNLOCKED_LO(lo);
-+	lo->refcount++;
-+}
-+
- static inline struct pnfs_layout_type *
--get_current_layout(struct nfs_inode *nfsi)
-+grab_current_layout(struct nfs_inode *nfsi)
- {
- 	struct pnfs_layout_type *lo = &nfsi->layout;
- 
- 	BUG_ON_UNLOCKED_LO(lo);
- 	if (!lo->ld_data)
- 		return NULL;
--	lo->refcount++;
-+	get_layout(lo);
- 	return lo;
- }
- 
- static inline void
--put_current_layout(struct pnfs_layout_type *lo)
-+put_layout(struct pnfs_layout_type *lo)
- {
- 	struct inode *inode = PNFS_INODE(lo);
- 	struct nfs_client *clp;
-@@ -359,7 +366,7 @@ pnfs_layout_release(struct pnfs_layout_type *lo,
- 	spin_lock(&nfsi->vfs_inode.i_lock);
- 	if (range)
- 		pnfs_free_layout(lo, range);
--	put_current_layout(lo);
-+	put_layout(lo);
- 	spin_unlock(&nfsi->vfs_inode.i_lock);
- 	wake_up_all(&nfsi->lo_waitq);
- }
-@@ -375,10 +382,10 @@ pnfs_destroy_layout(struct nfs_inode *nfsi)
- 	};
- 
- 	spin_lock(&nfsi->vfs_inode.i_lock);
--	lo = get_current_layout(nfsi);
-+	lo = grab_current_layout(nfsi);
- 	if (lo) {
- 		pnfs_free_layout(lo, &range);
--		put_current_layout(lo);
-+		put_layout(lo);
- 	}
- 	spin_unlock(&nfsi->vfs_inode.i_lock);
- }
-@@ -548,7 +555,7 @@ pnfs_layout_from_open_stateid(nfs4_stateid *dst, struct nfs4_state *state)
- *    arg->length: all ones
- */
- static int
--get_layout(struct inode *ino,
-+send_layoutget(struct inode *ino,
- 	   struct nfs_open_context *ctx,
- 	   struct nfs4_pnfs_layout_segment *range,
- 	   struct pnfs_layout_segment **lsegpp,
-@@ -744,9 +751,9 @@ _pnfs_return_layout(struct inode *ino, struct nfs4_pnfs_layout_segment *range,
- 
- 	if (type == RETURN_FILE) {
- 		spin_lock(&ino->i_lock);
--		lo = get_current_layout(nfsi);
-+		lo = grab_current_layout(nfsi);
- 		if (lo && !has_layout_to_return(lo, &arg)) {
--			put_current_layout(lo);
-+			put_layout(lo);
- 			lo = NULL;
- 		}
- 		if (!lo) {
-@@ -764,7 +771,7 @@ _pnfs_return_layout(struct inode *ino, struct nfs4_pnfs_layout_segment *range,
- 			if (stateid) { /* callback */
- 				status = -EAGAIN;
- 				spin_lock(&ino->i_lock);
--				put_current_layout(lo);
-+				put_layout(lo);
- 				spin_unlock(&ino->i_lock);
- 				goto out;
- 			}
-@@ -921,7 +928,7 @@ get_lock_alloc_layout(struct inode *ino)
- 	dprintk("%s Begin\n", __func__);
- 
- 	spin_lock(&ino->i_lock);
--	while ((lo = get_current_layout(nfsi)) == NULL) {
-+	while ((lo = grab_current_layout(nfsi)) == NULL) {
- 		spin_unlock(&ino->i_lock);
- 		/* Compete against other threads on who's doing the allocation,
- 		 * wait until bit is cleared if we lost this race.
-@@ -1102,7 +1109,7 @@ _pnfs_update_layout(struct inode *ino,
- 	/* Lose lock, but not reference, match this with pnfs_layout_release */
- 	spin_unlock(&ino->i_lock);
- 
--	get_layout(ino, ctx, &arg, lsegpp, lo);
-+	send_layoutget(ino, ctx, &arg, lsegpp, lo);
- out:
- 	dprintk("%s end, state 0x%lx lseg %p\n", __func__,
- 		nfsi->layout.pnfs_layout_state, lseg);
-@@ -1110,7 +1117,7 @@ out:
- out_put:
- 	if (lsegpp)
- 		*lsegpp = lseg;
--	put_current_layout(lo);
-+	put_layout(lo);
- 	spin_unlock(&ino->i_lock);
- 	goto out;
- }
-@@ -1328,10 +1335,10 @@ pnfs_getboundary(struct inode *inode)
- 
- 	nfsi = NFS_I(inode);
- 	spin_lock(&inode->i_lock);
--	lo = get_current_layout(nfsi);;
-+	lo = grab_current_layout(nfsi);;
- 	if (lo) {
- 		stripe_size = policy_ops->get_stripesize(lo);
--		put_current_layout(lo);
-+		put_layout(lo);
- 	}
- 	spin_unlock(&inode->i_lock);
- out:
--- 
-1.6.6.1
+root@d03:~# exportfs -v
+/tmp=A0=A0=A0=A0=A0=A0=A0=A0=A0 =A0=A0=A0 <world>(rw,wdelay,root_squash=
+,no_subtree_check)
 
+root@d04:~# mount -t nfs -o wsize=3D524288,rsize=3D524288 d03:/tmp /mnt=
+/nfs
+
+root@d04:~# nfsstat -m
+/mnt/nfs from d03:/tmp
+=A0Flags:=A0=A0=A0 rw,relatime,vers=3D3,rsize=3D262144,wsize=3D262144,n=
+amlen=3D255,hard,proto=3Dtcp,timeo=3D600,retrans=3D2,sec=3Dsys,mountadd=
+r=3D10.0.0.3,mountvers=3D3,mountproto=3Dtcp,addr=3D10.0.0.3
+
+root@d03:~# uname -a
+Linux d03 2.6.31-14-server #48-Ubuntu SMP Fri Oct 16 15:07:34 UTC 2009
+x86_64 GNU/Linux
+
+root@d03:~# dpkg -l | grep nfs
+ii=A0 nfs-common=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=
+=A0=A0=A0=A0 1:1.2.0-2ubuntu8
+ NFS support files common to client and serve
+ii=A0 nfs-kernel-server=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=
+ 1:1.2.0-2ubuntu8
+ support for NFS kernel server
+
+According to NFS-HOWTO, I have checked the kernel const
+NFSSVC_MAXBLKSIZE.  It is 1M on 2.6.31.
+
+Any comments will be appreciated!
+
+Regards,
+Rui
