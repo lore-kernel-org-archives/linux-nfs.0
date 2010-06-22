@@ -1,40 +1,48 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: RFC: Is SM_SIMU_CRASH (in rpc.statd) needed?
-Date: Tue, 22 Jun 2010 12:58:24 -0400
-Message-ID: <4C20EBB0.9010800@oracle.com>
-References: <4C20CA12.2070002@oracle.com> <4C20E5D7.80908@RedHat.com>
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Re: [PATCH 0/2] mountd.nfs: Better error diagnostics for the mount
+ command (take 3)
+Date: Tue, 22 Jun 2010 16:15:36 -0400
+Message-ID: <4C2119E8.9010707@RedHat.com>
+References: <1275583898-17908-1-git-send-email-steved@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Cc: NFSv3 list <linux-nfs@vger.kernel.org>
-To: Steve Dickson <SteveD@redhat.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+To: Steve Dickson <steved@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:45889 "EHLO
-	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751321Ab0FVRA0 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 Jun 2010 13:00:26 -0400
-In-Reply-To: <4C20E5D7.80908-AfCzQyP5zfLQT0dZR+AlfA@public.gmane.org>
+Received: from mx1.redhat.com ([209.132.183.28]:27428 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753698Ab0FVUPi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 22 Jun 2010 16:15:38 -0400
+Received: from int-mx01.intmail.prod.int.phx2.redhat.com (int-mx01.intmail.prod.int.phx2.redhat.com [10.5.11.11])
+	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id o5MKFblZ021404
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Tue, 22 Jun 2010 16:15:37 -0400
+In-Reply-To: <1275583898-17908-1-git-send-email-steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 06/22/10 12:33 PM, Steve Dickson wrote:
->
->
-> On 06/22/2010 10:34 AM, Chuck Lever wrote:
->>> Does anybody know who uses SM_SIMU_CRASH and is it
->>> still needed? I'm getting some push back from our
->>> security folks to plug this DoS hole up...
->>
->> How is it a DoS?  statd ignores any SM_SIMU_CRASH from a non-loopback
->> address that does not use a privileged port.  To invoke it, you
->> basically have to be a privileged local user.
-> It happens during an ISS scan....
 
-What were the exact results?
 
->> Right now, no one uses it, but I think we should reserve the right to
->> use it in the future.  This could be part of a more robust interface
->> between lockd and statd.
-> hmm... how can having a way of bringing down a daemon, make it more robust?
+On 06/03/2010 12:51 PM, Steve Dickson wrote:
+> [I've incorporated the last few code review comments]
+> 
+> The following two patches add better error diagnostics when
+> invalid option values are given and when the network protocol
+> can not be determined. 
+> 
+> Steve Dickson (2):
+>   mount: silently fails when bad option values are given
+>   mount.nfs: silently fails when the network protocol is not found
+> 
+>  utils/mount/network.c   |   59 ++++++++++++++++++++++++++++++++++++----------
+>  utils/mount/nfsumount.c |    4 +--
+>  utils/mount/stropts.c   |   16 ++++++++----
+>  3 files changed, 58 insertions(+), 21 deletions(-)
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Committed... 
 
-SM_SIMU_CRASH is not supposed to bring down statd, it's supposed to 
-trigger sm-notify.  If something else is happening, that's a bug.
+steved.
