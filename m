@@ -1,70 +1,52 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp104.prem.mail.sp1.yahoo.com ([98.136.44.59]:42923 "HELO
-	smtp104.prem.mail.sp1.yahoo.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with SMTP id S1753764Ab0FWVjx (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Jun 2010 17:39:53 -0400
-Message-ID: <4C227F28.7050604@schaufler-ca.com>
-Date: Wed, 23 Jun 2010 14:39:52 -0700
-From: Casey Schaufler <casey@schaufler-ca.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: James Morris <jmorris@namei.org>, linux-nfs@vger.kernel.org,
-        linux-security-module@vger.kernel.org,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>, Neil Brown <neilb@suse.de>,
-        linux-fsdevel@vger.kernel.org, Stephen Smalley <sds@tycho.nsa.gov>,
-        Christoph Hellwig <hch@infradead.org>
-Subject: Re: [PATCH 3/8][RFC v05] NFSv3: add client implementation of XATTR
- protocol
-References: <alpine.LRH.2.00.1006212051530.13583@tundra.namei.org> <alpine.LRH.2.00.1006212128160.13583@tundra.namei.org> <4C1FC553.4030904@oracle.com> <alpine.LRH.2.00.1006220906300.16648@tundra.namei.org> <4C20D779.5040008@oracle.com> <alpine.LRH.2.00.1006230857450.25778@tundra.namei.org> <4C224463.90306@oracle.com>
-In-Reply-To: <4C224463.90306@oracle.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mail-out2.uio.no ([129.240.10.58]:32917 "EHLO mail-out2.uio.no"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755953Ab0FVMuZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 22 Jun 2010 08:50:25 -0400
+Subject: Re: atime couldn't be set on a Linux NFSv4 client machine
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+To: =?UTF-8?Q?=E5=B0=8F=E5=80=89=E4=B8=80=E5=A4=AB?=
+	<ka-ogura@bd6.so-net.ne.jp>
+Cc: nfsv4@linux-nfs.org, linux-nfs@vger.kernel.org
+In-Reply-To: <44BE948077174909AABF995F03389198@034730a2df3c489>
+References: <44BE948077174909AABF995F03389198@034730a2df3c489>
+Content-Type: text/plain; charset="UTF-8"
+Date: Tue, 22 Jun 2010 08:50:17 -0400
+Message-ID: <1277211017.3204.15.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Chuck Lever wrote:
-> Hi James-
->
-> Good points, see below.
->
-> On 06/22/10 08:26 PM, James Morris wrote:
->> On Tue, 22 Jun 2010, Chuck Lever wrote:
->>
->>> Another place to look is at NFSv4.  Some of the operations that can be
->>> performed on NFSv4 xattrs are probably nearly what you would want
->>> for an NFSv3
->>> implementation.  I think it is desirable for anything done for NFSv3
->>> to be
->>> compatible with NFSv4, as that is already a standard.
->>
->> Are you referring to named attributes?  I've looked into this, as have
->> others, and they appear to be fundamentally incompatible with Linux/BSD
->> xattrs.  They're filesystems within files, with different semantics
->> to the
->> name/value string model that we use.  I've heard a few developers say
->> they've looked at implementing xattrs over NAs, but found it unworkable.
->>
->> There's the issue of namespacing -- named attributes have no structured
->> namespace, whereas, Linux/BSD xattrs use namespaces to denote semantics.
->>
->> NAs are also intended to be managed at the user level without kernel
->> interaction, which conflicts with the semantics of our system
->> namespaces.
->>
->> In the past, I've seen several discussions on the issue conclude that
->> NFSv4 should have distinct Linux/BSD xattr OPs, although I don't know
->> what
->> the current thinking is.
->
-> My thought was to extend NFSv4 to provide native xattr support
-> alongside named attribute support.  If NFSv4 is getting security label
-> support then that's a moot point, unless there are other use cases for
-> exposing xattrs to NFS clients.
->
-> Overall, I think everyone is better off in the long run if we get the
-> needed features into NFSv4.
+On Tue, 2010-06-22 at 20:18 +0900, 小倉一夫 wrote:
+> Hi, all...
+> 
+> I'm using a Linux NFSv4 client and I've recently noticed that the atime of
+> an NFS file couldn't be set explicitly on my NFSv4 client machine.
+> 
+> So I looked into the Linux kernel code to find the reason.
+> Now I believe that the following code is a bug inherited from older NFSv4
+> kernel releases.
+> 
+> fs/nfs/nfs4xdr.c
+> 
+> static void encode_attrs(struct xdr_stream *xdr, const struct iattr *iap,
+> const struct nfs_server *server) {
+>         :
+>         if (iap->ia_valid & ATTR_ATIME_SET) {
+>                 bmval |= FATTR_WORD1_TIME_ACCESS_SET;
+>                 *p++ = cpu_to_be32(NFS4_SET_TO_CLIENT_TIME);
+>                 *p++ = cpu_to_be32(0);
+>                 *p++ = cpu_to_be32(iap->ia_mtime.tv_sec);
+>                 *p++ = cpu_to_be32(iap->ia_mtime.tv_usec);
+> 
+> Are they really ia_mtime?
 
-Agreed, but we're talking years before that happens. Work on labeled
-NFS has been ongoing since 1985 and there is no reason to believe that
-NFSv4 is going to progress at a quicker pace than any of its predecessors.
+Whoops! That's an embarassing typo. All the more so, since you are
+correct in that this probably dates back to the very early 2.6.x kernel
+series.
+
+Thanks for noticing this!
+
+Cheers
+  Trond
 
