@@ -1,35 +1,30 @@
-From: Benny Halevy <bhalevy@panasas.com>
-Subject: Re: [PATCH 0/3] pnfs refcount patches v3
-Date: Tue, 22 Jun 2010 09:56:21 +0300
-Message-ID: <4C205E95.3050608@panasas.com>
-References: <1277126197-2546-1-git-send-email-iisaman@netapp.com>
+From: Steve Dickson <SteveD@redhat.com>
+Subject: RFC: Is SM_SIMU_CRASH (in rpc.statd) needed?
+Date: Tue, 22 Jun 2010 06:03:53 -0400
+Message-ID: <4C208A89.4010301@RedHat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
-Cc: linux-nfs@vger.kernel.org
-To: Fred Isaman <iisaman@netapp.com>
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:2017 "EHLO
-	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1753843Ab0FVG4X (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 Jun 2010 02:56:23 -0400
-In-Reply-To: <1277126197-2546-1-git-send-email-iisaman@netapp.com>
+Received: from mx1.redhat.com ([209.132.183.28]:38876 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755259Ab0FVKDy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 22 Jun 2010 06:03:54 -0400
+Received: from int-mx01.intmail.prod.int.phx2.redhat.com (int-mx01.intmail.prod.int.phx2.redhat.com [10.5.11.11])
+	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id o5MA3sjk020907
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Tue, 22 Jun 2010 06:03:54 -0400
+Received: from badhat.bos.devel.redhat.com (vpn-225-247.phx2.redhat.com [10.3.225.247])
+	by int-mx01.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id o5MA3rBE017950
+	for <linux-nfs@vger.kernel.org>; Tue, 22 Jun 2010 06:03:53 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-All merged in pnfs-all-2.6.35-rc3-2010-06-21
+Hello,
 
-Thanks!
+Does anybody know who uses SM_SIMU_CRASH and is it
+still needed? I'm getting some push back from our
+security folks to plug this DoS hole up...
 
-Benny
-
-On Jun. 21, 2010, 16:16 +0300, Fred Isaman <iisaman@netapp.com> wrote:
-> Changes layout refcounting.
-> 
-> This version includes changes to patch 3 in response to Benny's comments.
-> 
-> Fred
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+steved.
+ 
