@@ -1,65 +1,127 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:35328 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757533Ab0FIKl4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 9 Jun 2010 06:41:56 -0400
-Date: Wed, 9 Jun 2010 06:43:43 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 0/3] nfsd: fix error handling in write_ports interfaces
-Message-ID: <20100609064343.1f448bf2@corrin.poochiereds.net>
-In-Reply-To: <20100609000002.GL26435@fieldses.org>
-References: <1275924800-5214-1-git-send-email-jlayton@redhat.com>
-	<20100609000002.GL26435@fieldses.org>
-Content-Type: text/plain; charset=US-ASCII
+Received: from rcsinet10.oracle.com ([148.87.113.121]:57861 "EHLO
+	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752847Ab0FVTDn (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 Jun 2010 15:03:43 -0400
+Message-ID: <4C2108E7.6040909@oracle.com>
+Date: Tue, 22 Jun 2010 15:03:03 -0400
+From: Chuck Lever <chuck.lever@oracle.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+CC: NFSv3 list <linux-nfs@vger.kernel.org>
+Subject: Connectathon locking test fails over NFSv3 with EBUSY
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Tue, 8 Jun 2010 20:00:03 -0400
-"J. Bruce Fields" <bfields@fieldses.org> wrote:
+It looks like the connectathon tests race with the removal of deleted 
+files.  The actual lock test is successful, but when the scripts attempt 
+to reset the test directory for another pass, the RMDIR fails because 
+the directory is full of ".nfsxxx" files.
 
-> On Mon, Jun 07, 2010 at 11:33:17AM -0400, Jeff Layton wrote:
-> > This patchset fixes some problems with refcounting when there are
-> > problems starting up nfsd. The easiest way to reproduce this is to have
-> > rpcbind down and then try to start nfsd. The write_ports calls will
-> > generally return failure at that point due to the fact that lockd can't
-> > register its ports. That leaves the nfsd_serv pointer set, with the
-> > sv_threads count set at 0. The first two patches fix this problem.
-> 
-> Does this look like it's always been a problem, or was it introduced by
-> recent changes?
-> 
-> (Just a question of priority and whether it should be fixed in -stable
-> branches too.)
-> 
+Seems like RMDIR should wait for those silly deletes before trying to 
+remove the parent directory.
 
-I think it's a long-standing bug -- at least since 2006 or so when the
-portlist file was added, but some recent changes made it easier to hit.
+I've seen this with both 2.6.34 and 2.6.35-rc3 clients, and it happens 
+nearly every time.
 
-Our QA group has a test where they restart both the nfs "service" and
-rpcbind. With the recent change to using TCP to do rpcbind
-registrations, the kernel now can hold open a socket to rpcbind for a
-little while after doing the registration.
 
-If you restart rpcbind within that window, it can fail to bind to port
-111 as it didn't use SO_REUSEADDR. I recently proposed a patch to
-rpcbind to fix that:
+Test #15 - Test 2nd open and I/O after lock and close.
+	Parent: Second open succeeded.
+	Parent: 15.0  - F_LOCK  [               0,          ENDING] PASSED.
+	Parent: 15.1  - F_ULOCK [               0,          ENDING] PASSED.
+	Parent: Closed testfile.
+	Parent: Wrote 'abcdefghij' to testfile [ 0, 11 ].
+	Parent: Read 'abcdefghij' from testfile [ 0, 11 ].
+	Parent: 15.2  - COMPARE [               0,               b] PASSED.
 
-http://sourceforge.net/mailarchive/forum.php?thread_name=1275575657-9666-1-git-send-email-jlayton%40redhat.com&forum_name=libtirpc-devel
+** PARENT pass 1 results: 49/49 pass, 1/1 warn, 0/0 fail (pass/total).
 
-...portmap has a similar bug, but I haven't gotten around to fixing it
-there yet.
+**  CHILD pass 1 results: 64/64 pass, 0/0 warn, 0/0 fail (pass/total).
+Congratulations, you passed the locking tests!
+... Pass 2 ...
 
-Due to that problem, our QA group ended up trying to start nfsd with
-rpcbind non-functional. When they got rpcbind to start, then they still
-couldn't bring up nfsd immediately since nfsd_serv had already been
-created and write_versions failed. 
+rm: cannot remove 
+`/mnt/klimt/ellison.test/.nfs0000000000000d8e00000041': Device or 
+resource busy
+rm: cannot remove 
+`/mnt/klimt/ellison.test/.nfs0000000000000df100000050': Device or 
+resource busy
+rm: cannot remove 
+`/mnt/klimt/ellison.test/.nfs0000000000000dfb0000004a': Device or 
+resource busy
+rm: cannot remove 
+`/mnt/klimt/ellison.test/.nfs0000000000000dec00000047': Device or 
+resource busy
+rm: cannot remove 
+`/mnt/klimt/ellison.test/.nfs0000000000000df90000004b': Device or 
+resource busy
+rm: cannot remove 
+`/mnt/klimt/ellison.test/.nfs0000000000000dfa0000004e': Device or 
+resource busy
+rm: cannot remove 
+`/mnt/klimt/ellison.test/.nfs0000000000000df80000004f': Device or 
+resource busy
+rm: cannot remove 
+`/mnt/klimt/ellison.test/.nfs0000000000000df20000004c': Device or 
+resource busy
+rm: cannot remove 
+`/mnt/klimt/ellison.test/.nfs0000000000000deb00000051': Device or 
+resource busy
+rm: cannot remove 
+`/mnt/klimt/ellison.test/.nfs0000000000000def00000048': Device or 
+resource busy
+rm: cannot remove 
+`/mnt/klimt/ellison.test/.nfs0000000000000dea0000004d': Device or 
+resource busy
+rm: cannot remove 
+`/mnt/klimt/ellison.test/.nfs0000000000000de900000049': Device or 
+resource busy
+Starting BASIC tests: test directory /mnt/klimt/ellison.test (arg: -t)
+mkdir: cannot create directory `/mnt/klimt/ellison.test': File exists
 
-IMO, this set probably isn't stable material. It's a nuisance, but the
-simple workaround is to just run "rpc.nfsd 0" and then you can start up
-nfsd.
+./test1: File and directory creation test
+rm: cannot remove 
+`/mnt/klimt/ellison.test/.nfs0000000000000d8e00000041': Device or 
+resource busy
+rm: cannot remove 
+`/mnt/klimt/ellison.test/.nfs0000000000000df100000050': Device or 
+resource busy
+rm: cannot remove 
+`/mnt/klimt/ellison.test/.nfs0000000000000dfb0000004a': Device or 
+resource busy
+rm: cannot remove 
+`/mnt/klimt/ellison.test/.nfs0000000000000dec00000047': Device or 
+resource busy
+rm: cannot remove 
+`/mnt/klimt/ellison.test/.nfs0000000000000df90000004b': Device or 
+resource busy
+rm: cannot remove 
+`/mnt/klimt/ellison.test/.nfs0000000000000dfa0000004e': Device or 
+resource busy
+rm: cannot remove 
+`/mnt/klimt/ellison.test/.nfs0000000000000df80000004f': Device or 
+resource busy
+rm: cannot remove 
+`/mnt/klimt/ellison.test/.nfs0000000000000df20000004c': Device or 
+resource busy
+rm: cannot remove 
+`/mnt/klimt/ellison.test/.nfs0000000000000deb00000051': Device or 
+resource busy
+rm: cannot remove 
+`/mnt/klimt/ellison.test/.nfs0000000000000def00000048': Device or 
+resource busy
+rm: cannot remove 
+`/mnt/klimt/ellison.test/.nfs0000000000000dea0000004d': Device or 
+resource busy
+rm: cannot remove 
+`/mnt/klimt/ellison.test/.nfs0000000000000de900000049': Device or 
+resource busy
+	./test1: (/home/cel/src/cthon04/basic) can't remove old test directory 
+/mnt/klimt/ellison.test
+basic tests failed
+Tests failed, leaving /mnt/klimt mounted
+[cel@ellison cthon04]$
 
 -- 
-Jeff Layton <jlayton@redhat.com>
+Chuck Lever
