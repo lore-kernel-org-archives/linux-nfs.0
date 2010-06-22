@@ -1,58 +1,50 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:55065 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754691Ab0FCQZ3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 3 Jun 2010 12:25:29 -0400
-From: andros@netapp.com
-To: bhalevy@panasas.com
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 0/4] pnfs-submit: cleanup layoutcommit verison 2 
-Date: Thu,  3 Jun 2010 12:25:23 -0400
-Message-Id: <1275582327-9285-1-git-send-email-andros@netapp.com>
+Received: from sainfoin-out.extra.cea.fr ([132.166.172.107]:49426 "EHLO
+	sainfoin-out.extra.cea.fr" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754417Ab0FVHO2 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 Jun 2010 03:14:28 -0400
+Received: from pisaure.intra.cea.fr (pisaure.intra.cea.fr [132.166.88.21])
+	by sainfoin.extra.cea.fr (8.14.2/8.14.2/CEAnet-Internet-out-2.0) with ESMTP id o5M7ERR7022835
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NOT)
+	for <linux-nfs@vger.kernel.org>; Tue, 22 Jun 2010 09:14:27 +0200
+Received: from muguet1.intra.cea.fr (muguet1.intra.cea.fr [132.166.192.6])
+	by pisaure.intra.cea.fr (8.14.4/8.14.4) with ESMTP id o5M7EQmE009963
+	for <linux-nfs@vger.kernel.org>; Tue, 22 Jun 2010 09:14:27 +0200
+	(envelope-from Philippe.DENIEL@CEA.FR)
+Received: from zia.bruyeres.cea.fr (esteban.dam.intra.cea.fr [132.165.76.10])
+	by muguet1.intra.cea.fr (8.13.8/8.13.8/CEAnet-Intranet-out-1.1) with SMTP id o5M7EQUq025092
+	for <linux-nfs@vger.kernel.org>; Tue, 22 Jun 2010 09:14:26 +0200
+Message-ID: <4C2062D2.8060309@cea.fr>
+Date: Tue, 22 Jun 2010 09:14:26 +0200
+From: DENIEL Philippe <philippe.deniel@cea.fr>
+To: James Morris <jmorris@namei.org>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: RPCL source file for NFSv3 XATTR ?
+References: <4C1F5041.4050408@cea.fr> <alpine.LRH.2.00.1006220921570.16648@tundra.namei.org>
+In-Reply-To: <alpine.LRH.2.00.1006220921570.16648@tundra.namei.org>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
+James Morris a écrit :
+> On Mon, 21 Jun 2010, DENIEL Philippe wrote:
+>
+>   
+>> I could quickly had the NFSv3 Xattr (with compatibility with James's
+>> patches), I just have to implement the right additional NFSv3 functions.
+>> In order to do this, I just need RPCL descriptions of the xattr
+>> dedicated NFSv3 functions. Where could I find this ?
+>>     
+>
+> There is no RPCL as yet -- it's on the todo list.
+>   
+In fact, I just need RPCL file to compile it into the related C 
+structures and XDR functions. If you can provide me with such stuff (I 
+am doing user space development, I am not sure the stuff from the kernel 
+sources is actually useful to me), then I'll have enough material to 
+start adding the feature to my product.
 
-Responded to comments.
+    Regards,
 
-This is against the pnfs-submit branch of the 2.6.34 tree. They will need to be
-applied against the 2.6.35-rc1 tree which I can do after comments.
-
-A cleanup, and call the async error handler.
-0001-SQUASHME-pnfs-submit-cleanup-layoutcommit-call.patch
-0002-SQUASHME-pnfs-submit-handle-async-layoutcommit-erro.patch
-
-These next two patches moves the pnfs_layoutcommit_inode call to
-nfs_write_inode, and it is the only call other than in layoutreturn.
-(removed calls in __nfs4_close, nfs_commit_inode, nfs_wb_sync).
-
-0003-SQUASHME-pnfs-remove-ifdef-around-layoutcommit_neede.patch
-0004-SQUASHME-pnfs-submit-move-layoutcommit-to-nfs_write.patch
-
-pnfs_layoutcommit_inode is called after nfs_commit_unstable_pages() so that
-if LAYOUTCOMMIT fails, the unstable pages have been processed..
-
-The error handlers (sync and async) call nfs4_map_errors, so unhandled
-errors (such as NFS4ERR_BADLAYOUT) get returned to nfs_write_ioode as -EIO.
-
-We will add code to the error handlers for errors such as NFS4ERR_BADLAYOUT
-that require us to stop using and free the layout, and redo the I/O through
-the MDS.
-
-Testing:
-With CONFIG_NFS_V4_1 set
-NFSv4.1/pnfs passed Connectathon against write enabled GFS2/pNFS. Note: there
-were exactly the same number of LAYOUTCOMMITS sent as were sent with
-pnfs_layoutcommit_inode being called from __nfs4_close (never happened),
-nfs_commit_inode and nfs_wb_sync.
-
-V4.0 mount passes Connectathon tests
-
-With CONFIG_NFS_V4_1 not set
-
-V4.0 mount passes Connectathon tests
-
--->Andy
-
+       Philippe
