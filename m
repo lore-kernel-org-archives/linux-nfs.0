@@ -1,70 +1,35 @@
-From: Yan Rui <rui.yan@gmail.com>
-Subject: Re: How to increase rsize/wsize ?
-Date: Tue, 22 Jun 2010 11:20:56 +0800
-Message-ID: <AANLkTilOZZyoXHypeILWYRlWi6PBV5jXNinSe4jbpmNC@mail.gmail.com>
-References: <AANLkTimkEM7CPctkwYiWa-rGXDs3EHNl-hldu5fQYqRo@mail.gmail.com>
+From: Benny Halevy <bhalevy@panasas.com>
+Subject: Re: [PATCH 0/3] pnfs refcount patches v3
+Date: Tue, 22 Jun 2010 09:56:21 +0300
+Message-ID: <4C205E95.3050608@panasas.com>
+References: <1277126197-2546-1-git-send-email-iisaman@netapp.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
-To: linux-nfs@vger.kernel.org
+Cc: linux-nfs@vger.kernel.org
+To: Fred Isaman <iisaman@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-pw0-f46.google.com ([209.85.160.46]:41183 "EHLO
-	mail-pw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758758Ab0FVDU5 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Jun 2010 23:20:57 -0400
-Received: by pwj8 with SMTP id 8so656602pwj.19
-        for <linux-nfs@vger.kernel.org>; Mon, 21 Jun 2010 20:20:56 -0700 (PDT)
-In-Reply-To: <AANLkTimkEM7CPctkwYiWa-rGXDs3EHNl-hldu5fQYqRo-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
+Received: from daytona.panasas.com ([67.152.220.89]:2017 "EHLO
+	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1753843Ab0FVG4X (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 Jun 2010 02:56:23 -0400
+In-Reply-To: <1277126197-2546-1-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-More info on this issue..
+All merged in pnfs-all-2.6.35-rc3-2010-06-21
 
-The client and server are directly conected  to a gigabit switch. The
-MTU is default 1500.  Server and client (in my case, d03 and d04) are
-with the same hardware, OS and configurations.
+Thanks!
 
-Thanks,
-Rui
+Benny
 
-On Mon, Jun 21, 2010 at 11:29 PM, Yan Rui <rui.yan@gmail.com> wrote:
-> Hi,
->
-> I failed to mount a nfs share with a bigger rsize/wsize (in my case,
-> 512K).=A0=A0 The biggest rsize/wsize I can get is only 256KB on my Ub=
-untu
-> 9.10 server box.=A0 Can anyone give me some suggestions?
->
-> root@d03:~# exportfs -v
-> /tmp=A0=A0=A0=A0=A0=A0=A0=A0=A0 =A0=A0=A0 <world>(rw,wdelay,root_squa=
-sh,no_subtree_check)
->
-> root@d04:~# mount -t nfs -o wsize=3D524288,rsize=3D524288 d03:/tmp /m=
-nt/nfs
->
-> root@d04:~# nfsstat -m
-> /mnt/nfs from d03:/tmp
-> =A0Flags:=A0=A0=A0 rw,relatime,vers=3D3,rsize=3D262144,wsize=3D262144=
-,namlen=3D255,hard,proto=3Dtcp,timeo=3D600,retrans=3D2,sec=3Dsys,mounta=
-ddr=3D10.0.0.3,mountvers=3D3,mountproto=3Dtcp,addr=3D10.0.0.3
->
-> root@d03:~# uname -a
-> Linux d03 2.6.31-14-server #48-Ubuntu SMP Fri Oct 16 15:07:34 UTC 200=
-9
-> x86_64 GNU/Linux
->
-> root@d03:~# dpkg -l | grep nfs
-> ii=A0 nfs-common=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=
-=A0=A0=A0=A0=A0 1:1.2.0-2ubuntu8
-> =A0NFS support files common to client and serve
-> ii=A0 nfs-kernel-server=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=
- 1:1.2.0-2ubuntu8
-> =A0support for NFS kernel server
->
-> According to NFS-HOWTO, I have checked the kernel const
-> NFSSVC_MAXBLKSIZE. =A0It is 1M on 2.6.31.
->
-> Any comments will be appreciated!
->
-> Regards,
-> Rui
->
+On Jun. 21, 2010, 16:16 +0300, Fred Isaman <iisaman@netapp.com> wrote:
+> Changes layout refcounting.
+> 
+> This version includes changes to patch 3 in response to Benny's comments.
+> 
+> Fred
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
