@@ -1,54 +1,52 @@
 From: Steve Dickson <SteveD@redhat.com>
-Subject: Re: [PATCH 0/7] Remaining IPv6 pre-requisites for mountd
-Date: Tue, 22 Jun 2010 16:17:27 -0400
-Message-ID: <4C211A57.6070609@RedHat.com>
-References: <20100621165114.4771.51575.stgit@ellison.1015granger.net>
+Subject: Re: [PATCH 1/1] nfs-iostat.py: divide by zero with fresh mount
+Date: Tue, 22 Jun 2010 17:52:09 -0400
+Message-ID: <4C213089.5090008@RedHat.com>
+References: <4C06913A.7090608@disney.com> <1275950427-10200-1-git-send-email-kevin.constantine@disneyanimation.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: linux-nfs@vger.kernel.org
-To: Chuck Lever <chuck.lever@oracle.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: chuck.lever@oracle.com, linux-nfs@vger.kernel.org,
+	Kevin Constantine <Kevin.Constantine-P5ys19MLBK/QT0dZR+AlfA@public.gmane.org>
+To: Kevin Constantine <Kevin.Constantine-FfNkGbSheRGpB8w63BLUukEOCMrvLtNR@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:10399 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:43325 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753112Ab0FVURc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 22 Jun 2010 16:17:32 -0400
-In-Reply-To: <20100621165114.4771.51575.stgit-ewv44WTpT0t9HhUboXbp9zCvJB+x5qRC@public.gmane.org>
+	id S1750938Ab0FVVw3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 22 Jun 2010 17:52:29 -0400
+In-Reply-To: <1275950427-10200-1-git-send-email-kevin.constantine-FfNkGbSheRGpB8w63BLUukEOCMrvLtNR@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
 
-On 06/21/2010 12:54 PM, Chuck Lever wrote:
-> Hi Steve-
+On 06/07/2010 06:40 PM, Kevin Constantine wrote:
+> When an export is freshly mounted, /proc/self/mountstats displays age = 0.
+> This causes nfs-iostat.py to divide by zero throwing an error.  When we
+> have age = 0, other stats are greater than 0, so we'll set age = 1 and
+> print the relevant stats.
 > 
-> As requested, here are the remaining seven patches that finish
-> mountd's conversion from gethostby{name,addr}(3) to
-> get{name,addr}info(3).
-> 
+> Signed-off-by: Kevin Constantine <kevin.constantine-FfNkGbSheRGpB8w63BLUukEOCMrvLtNR@public.gmane.org>
 > ---
+>  tools/nfs-iostat/nfs-iostat.py |    6 ++++++
+>  1 files changed, 6 insertions(+), 0 deletions(-)
 > 
-> Chuck Lever (7):
->       libexport.a: Remove unused hostent-based DNS helper functions
->       libexport.a: Replace matchhostname()
->       libexport.a: Add documenting comments
->       libexport.a: Make export_add() static
->       libexport.a: Make export_read() return void
->       mountd: Replace "struct hostent" with "struct addrinfo"
->       exportfs: Add a common exit label in exportfs()
-> 
-> 
->  support/export/client.c    |  268 +++++++++++++++++++++----------------
->  support/export/export.c    |   83 ++++++++---
->  support/export/hostname.c  |  321 ++------------------------------------------
->  support/export/rmtab.c     |   13 +-
->  support/include/exportfs.h |   20 ++-
->  support/include/misc.h     |    7 -
->  utils/exportfs/exportfs.c  |  117 +++++++++++++---
->  utils/mountd/auth.c        |   48 +++----
->  utils/mountd/cache.c       |   66 +++++----
->  utils/mountd/mountd.c      |   11 +-
->  10 files changed, 405 insertions(+), 549 deletions(-)
-> 
-All seven have been committed...
+> diff --git a/tools/nfs-iostat/nfs-iostat.py b/tools/nfs-iostat/nfs-iostat.py
+> index 2d0b143..1207674 100644
+> --- a/tools/nfs-iostat/nfs-iostat.py
+> +++ b/tools/nfs-iostat/nfs-iostat.py
+> @@ -366,6 +366,12 @@ class DeviceData:
+>          sends = float(self.__rpc_data['rpcsends'])
+>          if sample_time == 0:
+>              sample_time = float(self.__nfs_data['age'])
+> +        #  sample_time could still be zero if the export was just mounted.
+> +        #  Set it to 1 to avoid divide by zero errors in this case since we'll
+> +        #  likely still have relevant mount statistics to show.
+> +        #
+> +        if sample_time == 0:
+> +            sample_time = 1;
+>          if sends != 0:
+>              backlog = (float(self.__rpc_data['backlogutil']) / sends) / sample_time
+>          else:
+Committed.. 
 
 steved.
