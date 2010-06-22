@@ -1,23 +1,18 @@
 From: andros@netapp.com
-Subject: [PATCH 8/8] pnfs-post-submit: restore encode_layoutreturn
-Date: Tue, 22 Jun 2010 17:56:38 -0400
-Message-ID: <1277243798-8181-9-git-send-email-andros@netapp.com>
+Subject: [PATCH 3/8] SQUASHME pnfs-submit: tell commit to use the MDS
+Date: Tue, 22 Jun 2010 17:56:33 -0400
+Message-ID: <1277243798-8181-4-git-send-email-andros@netapp.com>
 References: <1277243798-8181-1-git-send-email-andros@netapp.com>
  <1277243798-8181-2-git-send-email-andros@netapp.com>
  <1277243798-8181-3-git-send-email-andros@netapp.com>
- <1277243798-8181-4-git-send-email-andros@netapp.com>
- <1277243798-8181-5-git-send-email-andros@netapp.com>
- <1277243798-8181-6-git-send-email-andros@netapp.com>
- <1277243798-8181-7-git-send-email-andros@netapp.com>
- <1277243798-8181-8-git-send-email-andros@netapp.com>
 Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
 To: bhalevy@panasas.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
 Received: from mx2.netapp.com ([216.240.18.37]:36643 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751944Ab0FVV4j (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 22 Jun 2010 17:56:39 -0400
-In-Reply-To: <1277243798-8181-8-git-send-email-andros@netapp.com>
+	id S1751811Ab0FVV4f (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 22 Jun 2010 17:56:35 -0400
+In-Reply-To: <1277243798-8181-3-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
@@ -25,55 +20,21 @@ From: Andy Adamson <andros@netapp.com>
 
 Signed-off-by: Andy Adamson <andros@netapp.com>
 ---
- fs/nfs/nfs4xdr.c          |   14 ++++++++++++--
- include/linux/nfs4_pnfs.h |    4 ++++
- 2 files changed, 16 insertions(+), 2 deletions(-)
+ fs/nfs/pnfs.c |    1 +
+ 1 files changed, 1 insertions(+), 0 deletions(-)
 
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index fb50361..eeee855 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -1874,13 +1874,23 @@ encode_layoutreturn(struct xdr_stream *xdr,
- 	*p++ = cpu_to_be32(args->lseg.iomode);
- 	*p = cpu_to_be32(args->return_type);
- 	if (args->return_type == RETURN_FILE) {
-+		struct layoutdriver_io_operations *ld_io_ops =
-+			NFS_SERVER(args->inode)->pnfs_curr_ld->ld_io_ops;
-+
- 		p = reserve_space(xdr, 16 + NFS4_STATEID_SIZE);
- 		p = xdr_encode_hyper(p, args->lseg.offset);
- 		p = xdr_encode_hyper(p, args->lseg.length);
- 		p = xdr_encode_opaque_fixed(p, &args->stateid.u.data,
- 					    NFS4_STATEID_SIZE);
--		p = reserve_space(xdr, 4);
--		*p = cpu_to_be32(0);
-+		dprintk("%s: call %pF\n", __func__,
-+		ld_io_ops->encode_layoutreturn);
-+		if (ld_io_ops->encode_layoutreturn) {
-+			ld_io_ops->encode_layoutreturn(
-+				&NFS_I(args->inode)->layout, xdr, args);
-+		} else {
-+			p = reserve_space(xdr, 4);
-+			*p = cpu_to_be32(0);
-+		}
- 	}
- 	hdr->nops++;
- 	hdr->replen += decode_layoutreturn_maxsz;
-diff --git a/include/linux/nfs4_pnfs.h b/include/linux/nfs4_pnfs.h
-index 782fdd9..d20b5de 100644
---- a/include/linux/nfs4_pnfs.h
-+++ b/include/linux/nfs4_pnfs.h
-@@ -154,6 +154,10 @@ struct layoutdriver_io_operations {
- 	struct pnfs_layout_segment * (*alloc_lseg) (struct pnfs_layout_type *layoutid, struct nfs4_pnfs_layoutget_res *lgr);
- 	void (*free_lseg) (struct pnfs_layout_segment *lseg);
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 9a295cf..c1a8066 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -1454,6 +1454,7 @@ pnfs_writepages(struct nfs_write_data *wdata, int how)
+ 							wdata);
  
-+	void (*encode_layoutreturn) (struct pnfs_layout_type *layoutid,
-+				struct xdr_stream *xdr,
-+				const struct nfs4_pnfs_layoutreturn_arg *args);
-+
- 	/* Registration information for a new mounted file system
- 	 */
- 	int (*initialize_mountpoint) (struct nfs_client *);
+ 	if (trypnfs == PNFS_NOT_ATTEMPTED) {
++		wdata->req->wb_lseg = NULL;
+ 		wdata->pdata.lseg = NULL;
+ 		put_lseg(lseg);
+ 	}
 -- 
 1.6.6
 
