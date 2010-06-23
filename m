@@ -1,48 +1,35 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ww0-f46.google.com ([74.125.82.46]:55254 "EHLO
-	mail-ww0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751490Ab0FWGtm (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Jun 2010 02:49:42 -0400
-Received: by wwc33 with SMTP id 33so710191wwc.19
-        for <linux-nfs@vger.kernel.org>; Tue, 22 Jun 2010 23:49:41 -0700 (PDT)
-Message-ID: <4C21AE7F.9080103@panasas.com>
-Date: Wed, 23 Jun 2010 09:49:35 +0300
-From: Benny Halevy <bhalevy@panasas.com>
+Received: from fieldses.org ([174.143.236.118]:34957 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752654Ab0FWSqW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 23 Jun 2010 14:46:22 -0400
+Date: Wed, 23 Jun 2010 14:46:20 -0400
 To: Yudong Gao <stgyd@umich.edu>
-CC: linux-nfs@vger.kernel.org
+Cc: Benny Halevy <bhalevy@panasas.com>, linux-nfs@vger.kernel.org
 Subject: Re: Supported cluster file system in v4.1
-References: <AANLkTilWpNghO37nF9Cmu3F7SxcHU2AI8hKyeDvNSi8d@mail.gmail.com>
-In-Reply-To: <AANLkTilWpNghO37nF9Cmu3F7SxcHU2AI8hKyeDvNSi8d@mail.gmail.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Message-ID: <20100623184620.GD28346@fieldses.org>
+References: <AANLkTilWpNghO37nF9Cmu3F7SxcHU2AI8hKyeDvNSi8d@mail.gmail.com> <4C21AE7F.9080103@panasas.com> <AANLkTimvyf-KbN-XWkawxp3SHG_WgHJ_sBXnlJjWMIjM@mail.gmail.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <AANLkTimvyf-KbN-XWkawxp3SHG_WgHJ_sBXnlJjWMIjM@mail.gmail.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 2010-06-16 20:17, Yudong Gao wrote:
-> Hi,
+On Wed, Jun 23, 2010 at 10:14:09AM -0700, Yudong Gao wrote:
+> Hi Benny,
 > 
-> We are trying to setup a pNFS testbed and deploy a cluster file system
-> on the storage servers. We find that the GFS from RedHat supports
-> pNFS. But is there any other cluster file system that also supports
+> Thanks a lot for the reply! I will check exofs.
+> 
+> We are looking for a block-based cluster file system that can be
+> deployed on top of a cluster of commodity machines and can use the
+> machines' local storage instead of using a SAN. We find that OCFS2 is
+> a good candidate.
+
+As far as I can tell OCFS2 and GFS2 are identical in their requirement
+for a shared disk.
+
+--b.
+
+> Is it possible to use OCFS2 as the storage server in
 > pNFS?
-
-Yudong, what are you looking for in your tests?
-Another option for the pNFS files layout is spnfs which is good for basic testing
-but it is experimental and not very well supported currently; i.e. if it breaks
-under load you'll probably have to fix it yourself...
-
-You could also consider testing exofs - a loosely clustered, objects-based
-file system that provides scalable performance and is stable enough for
-rather intensive workloads.
-
-Benny
-
-> 
-> Thanks.
-> 
-> Yudong
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
