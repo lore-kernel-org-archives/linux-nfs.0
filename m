@@ -1,132 +1,168 @@
-From: Benny Halevy <bhalevy@panasas.com>
+From: "William A. (Andy) Adamson" <androsadamson@gmail.com>
 Subject: Re: [PATCH 7/8] SQUASHME pnfs-submit: add error handlers to layout
- get
-Date: Wed, 23 Jun 2010 10:41:28 +0300
-Message-ID: <4C21BAA8.7030900@panasas.com>
-References: <1277243798-8181-1-git-send-email-andros@netapp.com> <1277243798-8181-2-git-send-email-andros@netapp.com> <1277243798-8181-3-git-send-email-andros@netapp.com> <1277243798-8181-4-git-send-email-andros@netapp.com> <1277243798-8181-5-git-send-email-andros@netapp.com> <1277243798-8181-6-git-send-email-andros@netapp.com> <1277243798-8181-7-git-send-email-andros@netapp.com> <1277243798-8181-8-git-send-email-andros@netapp.com>
+	get
+Date: Wed, 23 Jun 2010 09:04:34 -0400
+Message-ID: <AANLkTinew-MgRJeswY3x7gJS-GBE_WMHhJdkWnrNGuo4@mail.gmail.com>
+References: <1277243798-8181-1-git-send-email-andros@netapp.com>
+	<1277243798-8181-2-git-send-email-andros@netapp.com>
+	<1277243798-8181-3-git-send-email-andros@netapp.com>
+	<1277243798-8181-4-git-send-email-andros@netapp.com>
+	<1277243798-8181-5-git-send-email-andros@netapp.com>
+	<1277243798-8181-6-git-send-email-andros@netapp.com>
+	<1277243798-8181-7-git-send-email-andros@netapp.com>
+	<1277243798-8181-8-git-send-email-andros@netapp.com>
+	<4C21BAA8.7030900@panasas.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Cc: linux-nfs@vger.kernel.org
-To: andros@netapp.com
+To: Benny Halevy <bhalevy@panasas.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ww0-f46.google.com ([74.125.82.46]:43413 "EHLO
-	mail-ww0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751493Ab0FWHlh (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Jun 2010 03:41:37 -0400
-Received: by wwc33 with SMTP id 33so738854wwc.19
-        for <linux-nfs@vger.kernel.org>; Wed, 23 Jun 2010 00:41:35 -0700 (PDT)
-In-Reply-To: <1277243798-8181-8-git-send-email-andros@netapp.com>
+Received: from mail-yw0-f198.google.com ([209.85.211.198]:46261 "EHLO
+	mail-yw0-f198.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753144Ab0FWNEg convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Jun 2010 09:04:36 -0400
+Received: by ywh36 with SMTP id 36so3870717ywh.4
+        for <linux-nfs@vger.kernel.org>; Wed, 23 Jun 2010 06:04:35 -0700 (PDT)
+In-Reply-To: <4C21BAA8.7030900@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Jun. 23, 2010, 0:56 +0300, andros@netapp.com wrote:
-> From: Andy Adamson <andros@netapp.com>
-> 
-> Redo pnfs4_proc_layoutget() logic to match the other async operations that call
-> nfs4_wait_for_completion_rpc_task.
-> 
-> pnfs_get_layout_done passes session and delay errors. Handle them with the
-> generic error handlers.
-> 
-> Signed-off-by: Andy Adamson <andros@netapp.com>
-> ---
->  fs/nfs/nfs4proc.c |   45 +++++++++++++++++++++++++++++----------------
->  1 files changed, 29 insertions(+), 16 deletions(-)
-> 
-> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-> index 35e8a56..6283996 100644
-> --- a/fs/nfs/nfs4proc.c
-> +++ b/fs/nfs/nfs4proc.c
-> @@ -5446,6 +5446,10 @@ static void nfs4_pnfs_layoutget_done(struct rpc_task *task, void *calldata)
->  		return;
->  
->  	pnfs_get_layout_done(lgp, task->tk_status);
-> +
-> +	if (nfs4_async_handle_error(task, server, NULL, NULL) == -EAGAIN)
-> +		nfs_restart_rpc(task, server->nfs_client);
-> +
->  	dprintk("<-- %s\n", __func__);
->  }
->  
-> @@ -5471,10 +5475,9 @@ static const struct rpc_call_ops nfs4_pnfs_layoutget_call_ops = {
->   * and deal with retries.
->   * Currently we can't since we release lgp and its contents.
->   */
-> -int pnfs4_proc_layoutget(struct nfs4_pnfs_layoutget *lgp)
-> +static int _pnfs4_proc_layoutget(struct nfs4_pnfs_layoutget *lgp)
->  {
-> -	struct inode *ino = lgp->args.inode;
-> -	struct nfs_server *server = NFS_SERVER(ino);
-> +	struct nfs_server *server = NFS_SERVER(lgp->args.inode);
->  	struct rpc_task *task;
->  	struct rpc_message msg = {
->  		.rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_PNFS_LAYOUTGET],
-> @@ -5488,35 +5491,45 @@ int pnfs4_proc_layoutget(struct nfs4_pnfs_layoutget *lgp)
->  		.callback_data = lgp,
->  		.flags = RPC_TASK_ASYNC,
->  	};
-> -	int status;
-> +	int status = 0;
->  
->  	dprintk("--> %s\n", __func__);
->  
->  	lgp->res.layout.buf = (void *)__get_free_page(GFP_NOFS);
->  	if (lgp->res.layout.buf == NULL) {
->  		nfs4_pnfs_layoutget_release(lgp);
-> -		status = -ENOMEM;
-> -		goto out;
-> +		return -ENOMEM;
+On Wed, Jun 23, 2010 at 3:41 AM, Benny Halevy <bhalevy@panasas.com> wro=
+te:
+> On Jun. 23, 2010, 0:56 +0300, andros@netapp.com wrote:
+>> From: Andy Adamson <andros@netapp.com>
+>>
+>> Redo pnfs4_proc_layoutget() logic to match the other async operation=
+s that call
+>> nfs4_wait_for_completion_rpc_task.
+>>
+>> pnfs_get_layout_done passes session and delay errors. Handle them wi=
+th the
+>> generic error handlers.
+>>
+>> Signed-off-by: Andy Adamson <andros@netapp.com>
+>> ---
+>> =A0fs/nfs/nfs4proc.c | =A0 45 +++++++++++++++++++++++++++++---------=
+-------
+>> =A01 files changed, 29 insertions(+), 16 deletions(-)
+>>
+>> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+>> index 35e8a56..6283996 100644
+>> --- a/fs/nfs/nfs4proc.c
+>> +++ b/fs/nfs/nfs4proc.c
+>> @@ -5446,6 +5446,10 @@ static void nfs4_pnfs_layoutget_done(struct r=
+pc_task *task, void *calldata)
+>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 return;
+>>
+>> =A0 =A0 =A0 pnfs_get_layout_done(lgp, task->tk_status);
+>> +
+>> + =A0 =A0 if (nfs4_async_handle_error(task, server, NULL, NULL) =3D=3D=
+ -EAGAIN)
+>> + =A0 =A0 =A0 =A0 =A0 =A0 nfs_restart_rpc(task, server->nfs_client);
+>> +
+>> =A0 =A0 =A0 dprintk("<-- %s\n", __func__);
+>> =A0}
+>>
+>> @@ -5471,10 +5475,9 @@ static const struct rpc_call_ops nfs4_pnfs_la=
+youtget_call_ops =3D {
+>> =A0 * and deal with retries.
+>> =A0 * Currently we can't since we release lgp and its contents.
+>> =A0 */
+>> -int pnfs4_proc_layoutget(struct nfs4_pnfs_layoutget *lgp)
+>> +static int _pnfs4_proc_layoutget(struct nfs4_pnfs_layoutget *lgp)
+>> =A0{
+>> - =A0 =A0 struct inode *ino =3D lgp->args.inode;
+>> - =A0 =A0 struct nfs_server *server =3D NFS_SERVER(ino);
+>> + =A0 =A0 struct nfs_server *server =3D NFS_SERVER(lgp->args.inode);
+>> =A0 =A0 =A0 struct rpc_task *task;
+>> =A0 =A0 =A0 struct rpc_message msg =3D {
+>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 .rpc_proc =3D &nfs4_procedures[NFSPROC4_=
+CLNT_PNFS_LAYOUTGET],
+>> @@ -5488,35 +5491,45 @@ int pnfs4_proc_layoutget(struct nfs4_pnfs_la=
+youtget *lgp)
+>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 .callback_data =3D lgp,
+>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 .flags =3D RPC_TASK_ASYNC,
+>> =A0 =A0 =A0 };
+>> - =A0 =A0 int status;
+>> + =A0 =A0 int status =3D 0;
+>>
+>> =A0 =A0 =A0 dprintk("--> %s\n", __func__);
+>>
+>> =A0 =A0 =A0 lgp->res.layout.buf =3D (void *)__get_free_page(GFP_NOFS=
+);
+>> =A0 =A0 =A0 if (lgp->res.layout.buf =3D=3D NULL) {
+>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 nfs4_pnfs_layoutget_release(lgp);
+>> - =A0 =A0 =A0 =A0 =A0 =A0 status =3D -ENOMEM;
+>> - =A0 =A0 =A0 =A0 =A0 =A0 goto out;
+>> + =A0 =A0 =A0 =A0 =A0 =A0 return -ENOMEM;
+>
+> This will bypass the dprintk.
+> How about adding a out_no_task label after the call to rpc_put_task?
 
-This will bypass the dprintk.
-How about adding a out_no_task label after the call to rpc_put_task?
+Actually, I think we need to lose all of these dprintk's. Look at
+_nfs4_proc_delegreturn for example...
 
->  	}
->  
->  	lgp->res.seq_res.sr_slotid = NFS4_MAX_SLOT_TABLE;
->  	task = rpc_run_task(&task_setup_data);
-> -	if (IS_ERR(task)) {
-> -		status = PTR_ERR(task);
-> -		goto out;
-> -	}
-> +	if (IS_ERR(task))
-> +		return PTR_ERR(task);
+-->Andy
 
-ditto.
+>
+>> =A0 =A0 =A0 }
+>>
+>> =A0 =A0 =A0 lgp->res.seq_res.sr_slotid =3D NFS4_MAX_SLOT_TABLE;
+>> =A0 =A0 =A0 task =3D rpc_run_task(&task_setup_data);
+>> - =A0 =A0 if (IS_ERR(task)) {
+>> - =A0 =A0 =A0 =A0 =A0 =A0 status =3D PTR_ERR(task);
+>> - =A0 =A0 =A0 =A0 =A0 =A0 goto out;
+>> - =A0 =A0 }
+>> + =A0 =A0 if (IS_ERR(task))
+>> + =A0 =A0 =A0 =A0 =A0 =A0 return PTR_ERR(task);
+>
+> ditto
 
-Benny
-
->  	status = nfs4_wait_for_completion_rpc_task(task);
-> -	if (status == 0) {
-> -		status = lgp->status;
-> -		if (status == 0)
-> -			status = pnfs_layout_process(lgp);
-> -	}
-> -	rpc_put_task(task);
-> +	if (status != 0)
-> +		goto out;
-> +	status = lgp->status;
-> +	if (status != 0)
-> +		goto out;
-> +	status = pnfs_layout_process(lgp);
->  out:
-> +	rpc_put_task(task);
->  	dprintk("<-- %s status=%d\n", __func__, status);
->  	return status;
->  }
->  
-> +int pnfs4_proc_layoutget(struct nfs4_pnfs_layoutget *lgp)
-> +{
-> +	struct nfs_server *server = NFS_SERVER(lgp->args.inode);
-> +	struct nfs4_exception exception = { };
-> +	int err;
-> +	do {
-> +		err = nfs4_handle_exception(server, _pnfs4_proc_layoutget(lgp),
-> +					    &exception);
-> +	} while (exception.retry);
-> +	return err;
-> +}
-> +
->  static void pnfs_layoutcommit_prepare(struct rpc_task *task, void *data)
->  {
->  	struct pnfs_layoutcommit_data *ldata =
-
+>
+> Benny
+>
+>> =A0 =A0 =A0 status =3D nfs4_wait_for_completion_rpc_task(task);
+>> - =A0 =A0 if (status =3D=3D 0) {
+>> - =A0 =A0 =A0 =A0 =A0 =A0 status =3D lgp->status;
+>> - =A0 =A0 =A0 =A0 =A0 =A0 if (status =3D=3D 0)
+>> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 status =3D pnfs_layout_pro=
+cess(lgp);
+>> - =A0 =A0 }
+>> - =A0 =A0 rpc_put_task(task);
+>> + =A0 =A0 if (status !=3D 0)
+>> + =A0 =A0 =A0 =A0 =A0 =A0 goto out;
+>> + =A0 =A0 status =3D lgp->status;
+>> + =A0 =A0 if (status !=3D 0)
+>> + =A0 =A0 =A0 =A0 =A0 =A0 goto out;
+>> + =A0 =A0 status =3D pnfs_layout_process(lgp);
+>> =A0out:
+>> + =A0 =A0 rpc_put_task(task);
+>> =A0 =A0 =A0 dprintk("<-- %s status=3D%d\n", __func__, status);
+>> =A0 =A0 =A0 return status;
+>> =A0}
+>>
+>> +int pnfs4_proc_layoutget(struct nfs4_pnfs_layoutget *lgp)
+>> +{
+>> + =A0 =A0 struct nfs_server *server =3D NFS_SERVER(lgp->args.inode);
+>> + =A0 =A0 struct nfs4_exception exception =3D { };
+>> + =A0 =A0 int err;
+>> + =A0 =A0 do {
+>> + =A0 =A0 =A0 =A0 =A0 =A0 err =3D nfs4_handle_exception(server, _pnf=
+s4_proc_layoutget(lgp),
+>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+ =A0 =A0 =A0 &exception);
+>> + =A0 =A0 } while (exception.retry);
+>> + =A0 =A0 return err;
+>> +}
+>> +
+>> =A0static void pnfs_layoutcommit_prepare(struct rpc_task *task, void=
+ *data)
+>> =A0{
+>> =A0 =A0 =A0 struct pnfs_layoutcommit_data *ldata =3D
+>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" =
+in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at =A0http://vger.kernel.org/majordomo-info.html
+>
