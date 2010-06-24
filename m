@@ -1,57 +1,44 @@
-From: yo mama <mamamia69@gmail.com>
-Subject: Performance issues with pNFS
-Date: Thu, 24 Jun 2010 20:59:05 +0530
-Message-ID: <AANLkTilQPbs4yYGOCmj5Olo_YPKc0vrX8zChPRxv8NWL@mail.gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+From: "J. Bruce Fields" <bfields@citi.umich.edu>
+Subject: [PATCH 4/6] nfsd4: remove some debugging code
+Date: Thu, 24 Jun 2010 12:29:08 -0400
+Message-ID: <1277396950-18298-5-git-send-email-bfields@citi.umich.edu>
+References: <1277396950-18298-1-git-send-email-bfields@citi.umich.edu>
+ <1277396950-18298-2-git-send-email-bfields@citi.umich.edu>
+ <1277396950-18298-3-git-send-email-bfields@citi.umich.edu>
+ <1277396950-18298-4-git-send-email-bfields@citi.umich.edu>
+Cc: "J. Bruce Fields" <bfields@citi.umich.edu>
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ew0-f46.google.com ([209.85.215.46]:33171 "EHLO
-	mail-ew0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755270Ab0FXPe0 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 24 Jun 2010 11:34:26 -0400
-Received: by ewy20 with SMTP id 20so388129ewy.19
-        for <linux-nfs@vger.kernel.org>; Thu, 24 Jun 2010 08:34:23 -0700 (PDT)
+Received: from fieldses.org ([174.143.236.118]:52618 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756051Ab0FXQ3K (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 24 Jun 2010 12:29:10 -0400
+In-Reply-To: <1277396950-18298-4-git-send-email-bfields@citi.umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hello,
+This is overkill.
 
-ran a test to check trhoughput of , I am seeing drop in
- performance contrary to what is expected with multiple DS are added. Any
- thoughts on why there is no scaling of read performace is appreciated.
+Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
+---
+ fs/nfsd/nfs4state.c |    2 --
+ 1 files changed, 0 insertions(+), 2 deletions(-)
 
- ./iozone -I -i 0 -i 2 -s 512m -r 4 -t 1
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 603076f..182448f 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -591,10 +591,8 @@ find_in_sessionid_hashtbl(struct nfs4_sessionid *sessionid)
+ 
+ 	dump_sessionid(__func__, sessionid);
+ 	idx = hash_sessionid(sessionid);
+-	dprintk("%s: idx is %d\n", __func__, idx);
+ 	/* Search in the appropriate list */
+ 	list_for_each_entry(elem, &sessionid_hashtbl[idx], se_hash) {
+-		dump_sessionid("list traversal", &elem->se_sessionid);
+ 		if (!memcmp(elem->se_sessionid.data, sessionid->data,
+ 			    NFS4_MAX_SESSIONID_LEN)) {
+ 			return elem;
+-- 
+1.7.0.4
 
- -I disable FS caching and run Direct I/O
-
- -i 0 sequential write
-
- -i 2 random read and write
-
- -s 512m file size twice the size of RAM (256MB)
-
- -r record size 4KB
-
- -t 1 throughout mode and one thread
-
- With one DS server enabled in spnfd.conf
-
- One DS server Random read
-
-
-     Children see throughput for 1 random readers    =    3355.27 KB/sec
-         Parent sees throughput for 1 random readers     =    3355.21 KB/sec
-         Min throughput per process                      =    3355.27 KB/sec
-         Max throughput per process                      =    3355.27 KB/sec
-         Avg throughput per process                      =    3355.27 KB/sec
-         Min xfer                                        =  524288.00 KB
-
- two DS servers Random read
-
- Children see throughput for 1 random readers    =    3098.43 KB/sec
-         Parent sees throughput for 1 random readers     =    3098.36 KB/sec
-         Min throughput per process                      =    3098.43 KB/sec
-         Max throughput per process                      =    3098.43 KB/sec
-         Avg throughput per process                      =    3098.43 KB/sec
-         Min xfer                                        =  524288.00 KB
