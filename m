@@ -1,55 +1,70 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH] Improve support for exporting btrfs subvolumes.
-Date: Wed, 23 Jun 2010 20:15:23 -0400
-Message-ID: <20100624001523.GB8500@fieldses.org>
-References: <19481.43625.476833.275104@notabene.brown> <20100623182837.GB28346@fieldses.org> <20100624073157.743983ec@notabene.brown>
+From: "Serge E. Hallyn" <serge@hallyn.com>
+Subject: Re: [PATCH 3/8][RFC v05] NFSv3: add client implementation of XATTR
+ protocol
+Date: Wed, 23 Jun 2010 23:33:51 -0500
+Message-ID: <20100624043351.GA6024@hallyn.com>
+References: <alpine.LRH.2.00.1006212051530.13583@tundra.namei.org>
+ <alpine.LRH.2.00.1006212128160.13583@tundra.namei.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Steve Dickson <SteveD@redhat.com>, linux-nfs@vger.kernel.org,
-	linux-btrfs@vger.kernel.org
-To: Neil Brown <neilb@suse.de>
+Cc: linux-nfs@vger.kernel.org, linux-security-module@vger.kernel.org,
+	Trond Myklebust <Trond.Myklebust@netapp.com>,
+	"J. Bruce Fields" <bfields@fieldses.org>,
+	Neil Brown <neilb@suse.de>, linux-fsdevel@vger.kernel.org,
+	Stephen Smalley <sds@tycho.nsa.gov>
+To: James Morris <jmorris@namei.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:59277 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753006Ab0FXAP3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 23 Jun 2010 20:15:29 -0400
-In-Reply-To: <20100624073157.743983ec-wvvUuzkyo1EYVZTmpyfIwg@public.gmane.org>
+Received: from hrndva-omtalb.mail.rr.com ([71.74.56.122]:52117 "EHLO
+	hrndva-omtalb.mail.rr.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750991Ab0FXEdT (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 24 Jun 2010 00:33:19 -0400
+In-Reply-To: <alpine.LRH.2.00.1006212128160.13583-CK9fWmtY32x9JUWOpEiw7w@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Jun 24, 2010 at 07:31:57AM +1000, Neil Brown wrote:
-> On Wed, 23 Jun 2010 14:28:38 -0400
-> "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> 
-> > On Thu, Jun 17, 2010 at 02:54:01PM +1000, Neil Brown wrote:
-> > > 
-> > > If you export two subvolumes of a btrfs filesystem, they will both be
-> > > given the same uuid so lookups will be confused.
-> > > blkid cannot differentiate the two, so we must use the fsid from
-> > > statfs64 to identify the filesystem.
-> > > 
-> > > We cannot tell if blkid or statfs is best without knowing internal
-> > > details of the filesystem in question, so we need to encode specific
-> > > knowledge of btrfs in mountd.  This is unfortunate.
-> > > 
-> > > To ensure smooth handling of this and possible future changes in uuid
-> > > generation, we add infrastructure for multiple different uuids to be
-> > > recognised on old filehandles, but only the preferred on is used on
-> > > new filehandles.
-> > 
-> > Could you just contatenate the two (or hash them somehow)?  Or does that
-> > just use up too much space in the filehandle?
-> 
-> I did consider xoring them together but came to the conclusion that would
-> actually be a regression.
-> If you look down at the comment that I included in uuid_by_path, you will see
-> that some filesystems (e.g. VFAT) just use the major/minor device number for
-> the f_fsid from statfs.  As you know that is not necessarily stable over
-> reboots, while the UUID that blkid gives is.
-> So if we always adding the two uuids somehow, it would be an improvement for
-> btrfs, no change for e.g. ext3/XFS, and a regression for VFAT (and others I
-> think).  Not good.
+Quoting James Morris (jmorris@namei.org):
+...
+> +int nfs3_proc_getxattr(struct inode *inode, const char *namespace,
+> +		       const char *name, void *value, size_t size)
+> +{
+...
+> +	res.xattr_val_len = size;
+> +	res.xattr_val = kmalloc(size, GFP_KERNEL);
+> +	if (!res.xattr_val)
+> +		return -ENOMEM;
+> +
+> +	dprintk("NFS call getxattr %s%s %zd\n", namespace, name, size);
+> +
+> +	msg.rpc_proc = &server->client_xattr->cl_procinfo[XATTRPROC3_GETXATTR];
+> +	nfs_fattr_init(&fattr);
+> +	status = rpc_call_sync(server->client_xattr, &msg, 0);
+> +
+> +	dprintk("NFS reply getxattr: status=%d len=%d\n",
+> +		status, res.xattr_val_len);
+> +
+> +	switch (status) {
+> +	case 0:
+> +		status = nfs_refresh_inode(inode, &fattr);
+> +		break;
+> +	case -EPFNOSUPPORT:
+> +	case -EPROTONOSUPPORT:
+> +		dprintk("NFS_V3_XATTR extension not supported; disabling\n");
+> +		server->caps &= ~NFS_CAP_XATTR;
+> +	case -ENOTSUPP:
+> +		status = -EOPNOTSUPP;
+> +	default:
+> +		goto cleanup;
+> +	}
+> +
+> +	status = res.xattr_val_len;
+> +	if (status <= size)
 
-OK, got it.
+res.xattr_val_len was set to size, as was status, and none of the
+3 has been changed, so here status can't be > size can it?
 
---b.
+Was this just a safety to prevent overrun, or did you mean to
+do some other check?  (If a safety, then you'll still return
+status > size, but with garbage in value, so i think you'd want
+to also change status)
+
+> +		memcpy(value, res.xattr_val, status);
