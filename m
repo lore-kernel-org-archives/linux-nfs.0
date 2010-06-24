@@ -1,61 +1,65 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ww0-f46.google.com ([74.125.82.46]:40378 "EHLO
-	mail-ww0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754563Ab0FKIrf convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 11 Jun 2010 04:47:35 -0400
-Received: by wwb18 with SMTP id 18so540371wwb.19
-        for <linux-nfs@vger.kernel.org>; Fri, 11 Jun 2010 01:47:31 -0700 (PDT)
-In-Reply-To: <4C11EEAD.8060803@panasas.com>
-References: <1276242039-18649-1-git-send-email-iisaman@netapp.com>
-	<4C11EEAD.8060803@panasas.com>
-Date: Fri, 11 Jun 2010 04:47:31 -0400
-Message-ID: <AANLkTinwz5TNku2DCC1wszhBngklvOMTJhP7Oho_INJP@mail.gmail.com>
-Subject: Re: [PATCH 0/7] LAYOUTGET invocation cleanup patches
-From: Fred Isaman <iisaman@umich.edu>
-To: Boaz Harrosh <bharrosh@panasas.com>
-Cc: Fred Isaman <iisaman@netapp.com>, linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from fieldses.org ([174.143.236.118]:46410 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754173Ab0FXQHj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 24 Jun 2010 12:07:39 -0400
+Date: Thu, 24 Jun 2010 12:07:38 -0400
+To: Rob Henderson <robh@indiana.edu>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: Runaway kernel slab memory usage when user over quota
+Message-ID: <20100624160738.GC17827@fieldses.org>
+References: <4C1F7B58.4090802@indiana.edu>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4C1F7B58.4090802@indiana.edu>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Fri, Jun 11, 2010 at 4:07 AM, Boaz Harrosh <bharrosh@panasas.com> wrote:
-> On 06/11/2010 10:40 AM, Fred Isaman wrote:
->> These patches, applied to the head of pnfs-all-latest after rebase, bring
->> the blocklayout back in synch with the generic code changed by my previous
->> patches and the rebase.  The final tree containing the fully rebased tree
->> with these patches applied is at
->> git://linux-nfs.org/~isaman/pnfs-block.git in the branch for-benny-20100611.
->>
->
-> Grate Fred with a git tree it is actually usable.
->
-> I will clone your tree. And'll inspect it carefully on the flight.
-> I want to do even more. I'd like to rebase them over an Alexandros-less
-> patchset and actually test them. How hard will that be? Perhaps you
-> might have a branch based on 2.6.34 without Alexandros patches that
-> are up to date? Could you push it for me?
->
+(Changed cc to new list.)
 
-I switched the order of the two patchsets at one point, and it wasn't too hard.
-The original patchset I submitted was based directly on the then
-pnfs-submit tree.
+On Mon, Jun 21, 2010 at 10:46:48AM -0400, Rob Henderson wrote:
+> We've been fighting a problem with runaway kernel slab memory usage on our file servers ever since moving from nfsv3 to nfsv4 and think I've finally identified the trigger.  We are using disk quotas and the problem seems to arise when a user (whose home directory is on the nfsv4 server) goes over quota.  I've suspected this was the cause for quite some time but just recently caught things in the act and collected evidence to support this theory.  Here was the scenario for one such incident.
 
-Right now something is wrong with my connection between here and linux-nfs.org.
-At the current rate, the push of the tree I mentioned above will be
-done in about 10 hours :(
+Thanks for the report.
 
-I don't think I'll be pushing any other tree soon.
+What distributions and kernels (client and server side) are involved?
 
-Fred
+> 1) We have alerts to warn us when the slab usage goes over 650K and I got one such warning.
+> 2) I started monitoring the nfs network traffic and noticed one system hitting the server quite hard.
+> 3) I checked this system and found a user logged in who was over quota.
+> 4) At this point, the slab usage was still rising and was getting dangerously close to 800MB which is when the server dies.
 
->> Fred
->>
->
-> Thanks
-> Boaz
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->
+Could you capture the network traffic while the user over quota is
+attempting file operations?
+
+> 5) I increased the user in question's disk quota and the Slab usage immediately came down to around 600-650MB and stabilized.
+> 6) After a couple days, I noticed that the usage was still hanging in the 600-650MB range which is higher than I like to see.
+
+How are you measuring slab usage?  Also, does /proc/slabinfo tell you
+which slab specifically is responsible?
+
+> 7) I rebooted the workstation that the over quota user was still logged into and the usage *immediately* dropped to the 450MB range.
+> 
+> 
+> Since this time, there have been two other times when the slab usage started to rise quickly and in both cases I was able to head off any problems by getting the offending user under quota.
+> 
+> Here are some other random notes:
+> 
+>  - During these incidents, if nothing is done the server will typically go from a slab usage of 600MB to 800MB (and crash) in a timeframe of about an hour.
+>  - We are running RHEL5 with all updates on all servers and clients.
+>  - The servers in question are running 32bit kernels.  We are looking at upgrading to 64bit as a stop-gap measure.
+>  - We never saw this behavior in the many years we were using nfsv3.  We've been using nfsv4 for about a year now and started experiencing this behavior shortly after the migration.
+
+I'm working just 3 days between vacations and may not get to this
+promptly.
+
+Might also be worth attempting to find a small test case that will
+reproduce the same behavior.
+
+Off-hand one explanation might be a memory leak on an error path
+somewhere--presumably an error path that's only hit in frequently in the
+case when some operation fails due to a quota being exceeded.  I don't
+know what operation that would be, though.
+
+--b.
