@@ -1,50 +1,63 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from sainfoin-out.extra.cea.fr ([132.166.172.107]:49426 "EHLO
-	sainfoin-out.extra.cea.fr" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754417Ab0FVHO2 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 Jun 2010 03:14:28 -0400
-Received: from pisaure.intra.cea.fr (pisaure.intra.cea.fr [132.166.88.21])
-	by sainfoin.extra.cea.fr (8.14.2/8.14.2/CEAnet-Internet-out-2.0) with ESMTP id o5M7ERR7022835
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NOT)
-	for <linux-nfs@vger.kernel.org>; Tue, 22 Jun 2010 09:14:27 +0200
-Received: from muguet1.intra.cea.fr (muguet1.intra.cea.fr [132.166.192.6])
-	by pisaure.intra.cea.fr (8.14.4/8.14.4) with ESMTP id o5M7EQmE009963
-	for <linux-nfs@vger.kernel.org>; Tue, 22 Jun 2010 09:14:27 +0200
-	(envelope-from Philippe.DENIEL@CEA.FR)
-Received: from zia.bruyeres.cea.fr (esteban.dam.intra.cea.fr [132.165.76.10])
-	by muguet1.intra.cea.fr (8.13.8/8.13.8/CEAnet-Intranet-out-1.1) with SMTP id o5M7EQUq025092
-	for <linux-nfs@vger.kernel.org>; Tue, 22 Jun 2010 09:14:26 +0200
-Message-ID: <4C2062D2.8060309@cea.fr>
-Date: Tue, 22 Jun 2010 09:14:26 +0200
-From: DENIEL Philippe <philippe.deniel@cea.fr>
-To: James Morris <jmorris@namei.org>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: RPCL source file for NFSv3 XATTR ?
-References: <4C1F5041.4050408@cea.fr> <alpine.LRH.2.00.1006220921570.16648@tundra.namei.org>
-In-Reply-To: <alpine.LRH.2.00.1006220921570.16648@tundra.namei.org>
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Received: from mx1.redhat.com ([209.132.183.28]:37417 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752177Ab0FYWf1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 25 Jun 2010 18:35:27 -0400
+Date: Fri, 25 Jun 2010 18:35:13 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: linux-nfs@vger.kernel.org, trond.myklebust@fys.uio.no,
+        Staubach_Peter@emc.com, bfields@fieldses.org
+Subject: Re: [PATCH 1/2] sunrpc: split the vs_hidden flag into TCP and UDP
+ variants (try #2)
+Message-ID: <20100625183513.365f168a@tlielax.poochiereds.net>
+In-Reply-To: <4C2510C6.902@oracle.com>
+References: <1277480946-23844-1-git-send-email-jlayton@redhat.com>
+	<4C24D057.4090403@oracle.com>
+	<20100625120710.2ead8998@tlielax.poochiereds.net>
+	<4C24D95F.6090301@oracle.com>
+	<20100625134754.51e313fa@tlielax.poochiereds.net>
+	<4C2510C6.902@oracle.com>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-James Morris a écrit :
-> On Mon, 21 Jun 2010, DENIEL Philippe wrote:
->
->   
->> I could quickly had the NFSv3 Xattr (with compatibility with James's
->> patches), I just have to implement the right additional NFSv3 functions.
->> In order to do this, I just need RPCL descriptions of the xattr
->> dedicated NFSv3 functions. Where could I find this ?
->>     
->
-> There is no RPCL as yet -- it's on the todo list.
->   
-In fact, I just need RPCL file to compile it into the related C 
-structures and XDR functions. If you can provide me with such stuff (I 
-am doing user space development, I am not sure the stuff from the kernel 
-sources is actually useful to me), then I'll have enough material to 
-start adding the feature to my product.
+On Fri, 25 Jun 2010 16:25:42 -0400
+Chuck Lever <chuck.lever@oracle.com> wrote:
 
-    Regards,
+> On 06/25/10 01:47 PM, Jeff Layton wrote:
+> > nfsd shares the same sockets between all NFS versions. We can't change
+> > that since you don't know what NFS version you're getting a call for
+> > until you read in the data. There's really no way around this.
+> 
+> That is worth mentioning in a documenting comment before nfsd4_dispatch().
+> 
+> I feel that we're adding yet another kludge to the NFSD infrastructure 
+> to preserve an aging user space API and transport design that was built 
+> for an era when all NFS versions would always use every transport and 
+> address family.
+> 
+> I agree with Peter that we should make an effort to use the RPC 
+> infrastructure as it was intended, in order to advertise the correct 
+> services and transport capabilities; and update our user space API to 
+> allow user space to have more fine-grained control over what the kernel 
+> will advertise and run.  But perhaps that's for another day.
 
-       Philippe
+Now that I've started poking at this, there are some other
+irregularities. For instance doing this:
+
+$ rpcinfo -n 2049 -u server 100003 1
+rpcinfo: RPC: Program/version mismatch; low version = 2, high version = 4
+program 100003 version 1 is not available
+
+That looks reasonable, but those low/high versions are set at service
+create time and don't seem to be governed by the write_versions
+interfaces. We could certainly fix that with another set of hacks, but
+maybe you and Peter have a point here and it would be better to fix
+this at a more fundamental level.
+
+I think I need to step back and ponder this a bit. Thanks to all for
+the comments so far...
+-- 
+Jeff Layton <jlayton@redhat.com>
