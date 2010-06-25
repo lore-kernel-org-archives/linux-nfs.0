@@ -1,71 +1,49 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:3618 "EHLO mx1.redhat.com"
+Received: from mail-out1.uio.no ([129.240.10.57]:55887 "EHLO mail-out1.uio.no"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751933Ab0FYPtQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 25 Jun 2010 11:49:16 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: trond.myklebust@fys.uio.no, Staubach_Peter@emc.com, bfields@fieldses.org
-Subject: [PATCH 2/2] nfsd: reject NFSv4 requests over UDP
-Date: Fri, 25 Jun 2010 11:49:06 -0400
-Message-Id: <1277480946-23844-2-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1277480946-23844-1-git-send-email-jlayton@redhat.com>
-References: <1277480946-23844-1-git-send-email-jlayton@redhat.com>
+	id S1751253Ab0FYSvT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 25 Jun 2010 14:51:19 -0400
+Subject: Re: Problem: Clients freeze on transfer of large files, w gigabit
+ lan
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+To: Jasper Mackenzie <jasper.mackenzie@gmail.com>
+Cc: linux-nfs@vger.kernel.org
+In-Reply-To: <op.vet93peko2qfwp@foundation>
+References: <op.vet93peko2qfwp@foundation>
+Content-Type: text/plain; charset="UTF-8"
+Date: Fri, 25 Jun 2010 14:51:13 -0400
+Message-ID: <1277491873.6141.23.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-RFC3530 states:
+On Fri, 2010-06-25 at 16:44 +1200, Jasper Mackenzie wrote:
+> Good Day All,
+>     I and many others have been plagued by a problem that can be summarised
+> as follows:
+> 
+> Client hangs upon copying of large files TO the server. Transfer begins
+> quickly then hangs, sometimes taking the client o/s with it, until
+> transfer starts again. In less extreme cases transfer is sporadic.
+>     I am using nfs4 w gigabit nics.
+> 
+>     My experience is with debian and ubuntu clients and servers, as such I
+> started a thread on ubuntu forum to find similar cases to give you more to
+> work from:
+> http://ubuntuforums.org/showthread.php?p=9269703
+>     It appears that this problem is not restricted to ubuntu and exists in  
+> at
+> least fedora and redhat as well.
+> 
+> More details and user experience is in the above forum thread.
+> 
+>     Help in solving this would be greatly appreciated.
 
-   Where an NFS version 4 implementation supports operation over the IP
-   network protocol, the supported transports between NFS and IP MUST be
-   among the IETF-approved congestion control transport protocols, which
-   include TCP and SCTP
+Could this perhaps be related to the following bugzilla entry?
+    https://bugzilla.kernel.org/show_bug.cgi?id=16213
 
-This patch makes nfsd_dispatch check for NFSv4 requests over UDP and
-reject them with a PROG_MISMATCH RPC error.
+If so, then could you please try the proposed fix and see if it helps.
 
-It also has the NFS server skip rpcbind registration of the NFSv4 UDP
-port.
-
-Reported-by: Sachin Prabhu <sprabhu@redhat.com>
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- fs/nfsd/nfs4proc.c |    1 +
- fs/nfsd/nfssvc.c   |    7 +++++++
- 2 files changed, 8 insertions(+), 0 deletions(-)
-
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index 59ec449..4dfbf08 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -1365,6 +1365,7 @@ struct svc_version	nfsd_version4 = {
- 		.vs_proc	= nfsd_procedures4,
- 		.vs_dispatch	= nfsd_dispatch,
- 		.vs_xdrsize	= NFS4_SVC_XDRSIZE,
-+		.vs_hidden_udp	= true,
- };
- 
- /*
-diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
-index 6b59d32..9ae06ba 100644
---- a/fs/nfsd/nfssvc.c
-+++ b/fs/nfsd/nfssvc.c
-@@ -535,6 +535,13 @@ nfsd_dispatch(struct svc_rqst *rqstp, __be32 *statp)
- 				rqstp->rq_vers, rqstp->rq_proc);
- 	proc = rqstp->rq_procinfo;
- 
-+	/* Reject any NFSv4 request over UDP. Don't bother caching it. */
-+	if (rqstp->rq_vers == 4 && rqstp->rq_prot == IPPROTO_UDP) {
-+		dprintk("%s: rejecting vers 4 request over UDP\n", __func__);
-+		*statp = rpc_prog_mismatch;
-+		return 1;
-+	}
-+
- 	/* Check whether we have this call in the cache. */
- 	switch (nfsd_cache_lookup(rqstp, proc->pc_cachetype)) {
- 	case RC_INTR:
--- 
-1.5.5.6
+Cheers
+  Trond
 
