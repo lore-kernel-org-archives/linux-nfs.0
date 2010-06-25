@@ -1,71 +1,139 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:28986 "EHLO
-	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751500Ab0FWRvZ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Jun 2010 13:51:25 -0400
-Message-ID: <4C224991.1040809@oracle.com>
-Date: Wed, 23 Jun 2010 13:51:13 -0400
-From: Chuck Lever <chuck.lever@oracle.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-CC: NFSv3 list <linux-nfs@vger.kernel.org>
-Subject: Re: Connectathon locking test fails over NFSv3 with EBUSY
-References: <4C2108E7.6040909@oracle.com> <1277234232.3204.40.camel@heimdal.trondhjem.org>
-In-Reply-To: <1277234232.3204.40.camel@heimdal.trondhjem.org>
-Content-Type: text/plain; charset=UTF-8; format=flowed
+Received: from mx1.redhat.com ([209.132.183.28]:5657 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751933Ab0FYPtM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 25 Jun 2010 11:49:12 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: trond.myklebust@fys.uio.no, Staubach_Peter@emc.com, bfields@fieldses.org
+Subject: [PATCH 1/2] sunrpc: split the vs_hidden flag into TCP and UDP variants (try #2)
+Date: Fri, 25 Jun 2010 11:49:05 -0400
+Message-Id: <1277480946-23844-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On 06/22/10 03:17 PM, Trond Myklebust wrote:
-> On Tue, 2010-06-22 at 15:03 -0400, Chuck Lever wrote:
->> It looks like the connectathon tests race with the removal of deleted
->> files.  The actual lock test is successful, but when the scripts attempt
->> to reset the test directory for another pass, the RMDIR fails because
->> the directory is full of ".nfsxxx" files.
->>
->> Seems like RMDIR should wait for those silly deletes before trying to
->> remove the parent directory.
->>
->> I've seen this with both 2.6.34 and 2.6.35-rc3 clients, and it happens
->> nearly every time.
->>
->>
->> Test #15 - Test 2nd open and I/O after lock and close.
->> 	Parent: Second open succeeded.
->> 	Parent: 15.0  - F_LOCK  [               0,          ENDING] PASSED.
->> 	Parent: 15.1  - F_ULOCK [               0,          ENDING] PASSED.
->> 	Parent: Closed testfile.
->> 	Parent: Wrote 'abcdefghij' to testfile [ 0, 11 ].
->> 	Parent: Read 'abcdefghij' from testfile [ 0, 11 ].
->> 	Parent: 15.2  - COMPARE [               0,               b] PASSED.
->>
->> ** PARENT pass 1 results: 49/49 pass, 1/1 warn, 0/0 fail (pass/total).
->>
->> **  CHILD pass 1 results: 64/64 pass, 0/0 warn, 0/0 fail (pass/total).
->> Congratulations, you passed the locking tests!
->> ... Pass 2 ...
->
-> Err... Any idea what kind of operations are causing the sillyrename to
-> happen? The locking tests in particular should _never_ have any
-> outstanding operations post-ULOCK.
+RFC3530 states:
 
-I've reproduced this by running several passes of all of the tests 
-("./server -a -N10") while oprofile is running.  Without oprofile 
-running this seems to be nearly impossible to reproduce.
+   Where an NFS version 4 implementation supports operation over the IP
+   network protocol, the supported transports between NFS and IP MUST be
+   among the IETF-approved congestion control transport protocols, which
+   include TCP and SCTP
 
-When a pass finishes, the RMDIR of the test directory fails because 
-there are .nfsxxx files left in the directory.  These .nfsxxx files are 
-not eventually removed, they stay after the test fails.
+The NFS server currently registers the NFSv4 UDP port with the
+portmapper, which it really shouldn't do. This patch splits the
+vs_hidden flag into TCP and UDP variants. A later patch will make
+the NFS server skip NFSv4+UDP registration with rpcbind.
 
-Looking at the network trace, I see the RENAME that creates the files 
-but no REMOVE is issued for these files.  Somehow, the client is 
-forgetting to remove them.  There are plenty of proper RENAME/REMOVE 
-pairs in the trace, so maybe this is a race condition.
+Reported-by: Sachin Prabhu <sprabhu@redhat.com>
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/nfs/callback_xdr.c      |    3 ++-
+ fs/nfsd/nfs2acl.c          |    1 -
+ fs/nfsd/nfs3acl.c          |    1 -
+ include/linux/sunrpc/svc.h |    5 +++--
+ net/sunrpc/svc.c           |   15 +++++++++++----
+ 5 files changed, 16 insertions(+), 9 deletions(-)
 
-I found the RENAMEs in the network trace for all the remaining .nfsxxx 
-files.  The names are:
+diff --git a/fs/nfs/callback_xdr.c b/fs/nfs/callback_xdr.c
+index 05af212..30baf97 100644
+--- a/fs/nfs/callback_xdr.c
++++ b/fs/nfs/callback_xdr.c
+@@ -783,7 +783,8 @@ struct svc_version nfs4_callback_version1 = {
+ 	.vs_proc = nfs4_callback_procedures1,
+ 	.vs_xdrsize = NFS4_CALLBACK_XDRSIZE,
+ 	.vs_dispatch = NULL,
+-	.vs_hidden = 1,
++	.vs_hidden_tcp = true,
++	.vs_hidden_udp = true,
+ };
+ 
+ struct svc_version nfs4_callback_version4 = {
+diff --git a/fs/nfsd/nfs2acl.c b/fs/nfsd/nfs2acl.c
+index 6aa5590..ec602b4 100644
+--- a/fs/nfsd/nfs2acl.c
++++ b/fs/nfsd/nfs2acl.c
+@@ -352,5 +352,4 @@ struct svc_version	nfsd_acl_version2 = {
+ 		.vs_proc	= nfsd_acl_procedures2,
+ 		.vs_dispatch	= nfsd_dispatch,
+ 		.vs_xdrsize	= NFS3_SVC_XDRSIZE,
+-		.vs_hidden	= 0,
+ };
+diff --git a/fs/nfsd/nfs3acl.c b/fs/nfsd/nfs3acl.c
+index a596e9d..1949a4c 100644
+--- a/fs/nfsd/nfs3acl.c
++++ b/fs/nfsd/nfs3acl.c
+@@ -262,6 +262,5 @@ struct svc_version	nfsd_acl_version3 = {
+ 		.vs_proc	= nfsd_acl_procedures3,
+ 		.vs_dispatch	= nfsd_dispatch,
+ 		.vs_xdrsize	= NFS3_SVC_XDRSIZE,
+-		.vs_hidden	= 0,
+ };
+ 
+diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
+index 5a3085b..27ff713 100644
+--- a/include/linux/sunrpc/svc.h
++++ b/include/linux/sunrpc/svc.h
+@@ -370,8 +370,9 @@ struct svc_version {
+ 	struct svc_procedure *	vs_proc;	/* per-procedure info */
+ 	u32			vs_xdrsize;	/* xdrsize needed for this version */
+ 
+-	unsigned int		vs_hidden : 1;	/* Don't register with portmapper.
+-						 * Only used for nfsacl so far. */
++	/* these flags control whether program is registered with rpcbind */
++	bool			vs_hidden_tcp;
++	bool			vs_hidden_udp;
+ 
+ 	/* Override dispatch function (e.g. when caching replies).
+ 	 * A return value of 0 means drop the request. 
+diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
+index d9017d6..487792c 100644
+--- a/net/sunrpc/svc.c
++++ b/net/sunrpc/svc.c
+@@ -868,6 +868,7 @@ int svc_register(const struct svc_serv *serv, const int family,
+ 	struct svc_program	*progp;
+ 	unsigned int		i;
+ 	int			error = 0;
++	bool			vs_hidden;
+ 
+ 	BUG_ON(proto == 0 && port == 0);
+ 
+@@ -876,16 +877,20 @@ int svc_register(const struct svc_serv *serv, const int family,
+ 			if (progp->pg_vers[i] == NULL)
+ 				continue;
+ 
++			vs_hidden = (proto == IPPROTO_UDP) ?
++				    progp->pg_vers[i]->vs_hidden_udp :
++				    progp->pg_vers[i]->vs_hidden_tcp;
++
+ 			dprintk("svc: svc_register(%sv%d, %s, %u, %u)%s\n",
+ 					progp->pg_name,
+ 					i,
+-					proto == IPPROTO_UDP?  "udp" : "tcp",
++					proto == IPPROTO_UDP ?  "udp" : "tcp",
+ 					port,
+ 					family,
+-					progp->pg_vers[i]->vs_hidden?
++					vs_hidden ?
+ 						" (but not telling portmap)" : "");
+ 
+-			if (progp->pg_vers[i]->vs_hidden)
++			if (vs_hidden)
+ 				continue;
+ 
+ 			error = __svc_register(progp->pg_name, progp->pg_prog,
+@@ -943,7 +948,9 @@ static void svc_unregister(const struct svc_serv *serv)
+ 		for (i = 0; i < progp->pg_nvers; i++) {
+ 			if (progp->pg_vers[i] == NULL)
+ 				continue;
+-			if (progp->pg_vers[i]->vs_hidden)
++
++			if (progp->pg_vers[i]->vs_hidden_tcp &&
++			    progp->pg_vers[i]->vs_hidden_udp)
+ 				continue;
+ 
+ 			__svc_unregister(progp->pg_prog, i, progp->pg_name);
+-- 
+1.5.5.6
 
-op_unlk, stat, op_ren, op_chmod, dupreq, excltest, negseek, rename, 
-holey, truncate, nfsidem, rewind, telldir, bigfile, bigfile2, freesp
-
-These look like files created during the special tests.
