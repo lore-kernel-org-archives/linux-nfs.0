@@ -1,109 +1,82 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: [PATCH 2/2] nfsd: reject NFSv4 requests over UDP (try #2)
-Date: Fri, 25 Jun 2010 14:45:09 -0400
-Message-ID: <1277491509.6141.20.camel@heimdal.trondhjem.org>
-References: <1277490055-27030-1-git-send-email-jlayton@redhat.com>
+From: "J. Bruce Fields" <bfields@citi.umich.edu>
+Subject: Re: [PATCH] SQUASHME: pnfsd: setup backchannel in create_session
+ also in session reestablishment
+Date: Sat, 26 Jun 2010 11:24:42 -0400
+Message-ID: <20100626152442.GB3432@fieldses.org>
+References: <1276815696-19281-1-git-send-email-bhalevy@panasas.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Cc: linux-nfs@vger.kernel.org, Staubach_Peter@emc.com,
-	bfields@fieldses.org
-To: Jeff Layton <jlayton@redhat.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: bharrosh@panasas.com, linux-nfs@vger.kernel.org
+To: Benny Halevy <bhalevy@panasas.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-out2.uio.no ([129.240.10.58]:48297 "EHLO mail-out2.uio.no"
+Received: from fieldses.org ([174.143.236.118]:41924 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756731Ab0FYSpP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 25 Jun 2010 14:45:15 -0400
-In-Reply-To: <1277490055-27030-1-git-send-email-jlayton@redhat.com>
+	id S1752705Ab0FZPYs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 26 Jun 2010 11:24:48 -0400
+In-Reply-To: <1276815696-19281-1-git-send-email-bhalevy@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 2010-06-25 at 14:20 -0400, Jeff Layton wrote:
-> RFC3530 states:
+On Thu, Jun 17, 2010 at 07:01:36PM -0400, Benny Halevy wrote:
+> The client may send an EXCHANGE_ID and a following CREATE_SESSION for an
+> existing clientid.  In this case we'll find the nfs4_client in the confirmed
+> list.
+
+This changes callback information on a client after the client may
+already have callbacks in progress.  I think there will be races.
+
+I have a partial attempt at fixing this at:
+
+	git://linux-nfs.org/~bfields/linux-topics.git callbacks
+
+--b.
+
 > 
->    Where an NFS version 4 implementation supports operation over the IP
->    network protocol, the supported transports between NFS and IP MUST be
->    among the IETF-approved congestion control transport protocols, which
->    include TCP and SCTP
-> 
-> This patch adds a wrapper for nfsd_dispatch that checks to see whether
-> the call came in via UDP, and then rejects it with a PROG_MISMATCH RPC
-> error. This replaces the earlier one I proposed -- it should mean no
-> extra overhead for NFSv2/3.
-> 
-> It also has the NFS server skip rpcbind registration for NFSv4 over UDP.
-> 
-> Reported-by: Sachin Prabhu <sprabhu@redhat.com>
-> Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 > ---
->  fs/nfsd/nfs4proc.c |    3 ++-
->  fs/nfsd/nfsd.h     |    1 +
->  fs/nfsd/nfssvc.c   |   13 +++++++++++++
->  3 files changed, 16 insertions(+), 1 deletions(-)
+>  fs/nfsd/nfs4state.c |   24 +++++++++++-------------
+>  1 files changed, 11 insertions(+), 13 deletions(-)
 > 
-> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-> index 59ec449..afbd03c 100644
-> --- a/fs/nfsd/nfs4proc.c
-> +++ b/fs/nfsd/nfs4proc.c
-> @@ -1363,8 +1363,9 @@ struct svc_version	nfsd_version4 = {
->  		.vs_vers	= 4,
->  		.vs_nproc	= 2,
->  		.vs_proc	= nfsd_procedures4,
-> -		.vs_dispatch	= nfsd_dispatch,
-> +		.vs_dispatch	= nfsd4_dispatch,
->  		.vs_xdrsize	= NFS4_SVC_XDRSIZE,
-> +		.vs_hidden_udp	= true,
->  };
+> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> index 3e012d4..0df5483 100644
+> --- a/fs/nfsd/nfs4state.c
+> +++ b/fs/nfsd/nfs4state.c
+> @@ -1405,25 +1405,23 @@ nfsd4_create_session(struct svc_rqst *rqstp,
+>  		if (is_ds_only_session(unconf->cl_exchange_flags))
+>  			cr_ses->flags &= ~SESSION4_BACK_CHAN;
 >  
->  /*
-> diff --git a/fs/nfsd/nfsd.h b/fs/nfsd/nfsd.h
-> index 7237776..f36e07c 100644
-> --- a/fs/nfsd/nfsd.h
-> +++ b/fs/nfsd/nfsd.h
-> @@ -41,6 +41,7 @@ extern const struct seq_operations nfs_exports_op;
->   */
->  int		nfsd_svc(unsigned short port, int nrservs);
->  int		nfsd_dispatch(struct svc_rqst *rqstp, __be32 *statp);
-> +int		nfsd4_dispatch(struct svc_rqst *rqstp, __be32 *statp);
+> -		if (cr_ses->flags & SESSION4_BACK_CHAN) {
+> -			unconf->cl_cb_conn.cb_xprt = rqstp->rq_xprt;
+> -			svc_xprt_get(rqstp->rq_xprt);
+> -			rpc_copy_addr(
+> -				(struct sockaddr *)&unconf->cl_cb_conn.cb_addr,
+> -				sa);
+> -			unconf->cl_cb_conn.cb_addrlen = svc_addr_len(sa);
+> -			unconf->cl_cb_conn.cb_minorversion =
+> -				cstate->minorversion;
+> -			unconf->cl_cb_conn.cb_prog = cr_ses->callback_prog;
+> -			unconf->cl_cb_seq_nr = 1;
+> -			nfsd4_probe_callback(unconf, &unconf->cl_cb_conn);
+> -		}
+>  		conf = unconf;
+>  	} else {
+>  		status = nfserr_stale_clientid;
+>  		goto out;
+>  	}
 >  
->  int		nfsd_nrthreads(void);
->  int		nfsd_nrpools(void);
-> diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
-> index 6b59d32..0a04472 100644
-> --- a/fs/nfsd/nfssvc.c
-> +++ b/fs/nfsd/nfssvc.c
-> @@ -595,6 +595,19 @@ nfsd_dispatch(struct svc_rqst *rqstp, __be32 *statp)
->  	return 1;
->  }
->  
-> +int
-> +nfsd4_dispatch(struct svc_rqst *rqstp, __be32 *statp)
-> +{
-> +	/* Reject any NFSv4 request over UDP. Don't bother caching it. */
-> +	if (rqstp->rq_prot == IPPROTO_UDP) {
-> +		dprintk("%s: rejecting vers 4 request over UDP\n", __func__);
-> +		*statp = rpc_prog_mismatch;
-> +		return 1;
+> +	if (cr_ses->flags & SESSION4_BACK_CHAN) {
+> +		conf->cl_cb_conn.cb_xprt = rqstp->rq_xprt;
+> +		svc_xprt_get(rqstp->rq_xprt);
+> +		rpc_copy_addr((struct sockaddr *)&conf->cl_cb_conn.cb_addr, sa);
+> +		conf->cl_cb_conn.cb_addrlen = svc_addr_len(sa);
+> +		conf->cl_cb_conn.cb_minorversion = cstate->minorversion;
+> +		conf->cl_cb_conn.cb_prog = cr_ses->callback_prog;
+> +		conf->cl_cb_seq_nr = 1;
+> +		nfsd4_probe_callback(conf, &conf->cl_cb_conn);
 > +	}
 > +
-> +	return nfsd_dispatch(rqstp, statp);
-> +}
-> +
->  int nfsd_pool_stats_open(struct inode *inode, struct file *file)
->  {
->  	int ret;
-
-Won't that lead to svc_process() returning garbage? As far as I can see,
-it will indeed lead to the status being set to RPC_PROG_MISMATCH, but it
-will fail to set the 'lower/upper' RPC prognumber arguments.
-
-Might something like the following perhaps work?
-
-            statp[0] = rpc_prog_mismatch;
-            statp[1] = 2;
-	    statp[2] = 3;
-            rqstp->rq_res.head[0].iov_len += 2 * sizeof(__be32);
-	    return 0;
-
-Cheers
-  Trond
-
+>  	/*
+>  	 * We do not support RDMA or persistent sessions
+>  	 */
+> -- 
+> 1.6.4.4
