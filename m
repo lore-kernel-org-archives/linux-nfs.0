@@ -1,193 +1,214 @@
-From: "David P. Quigley" <dpquigl@tycho.nsa.gov>
-Subject: Issues mounting nfsv4
-Date: Mon, 28 Jun 2010 11:08:15 -0400
-Message-ID: <1277737695.30923.46.camel@moss-terrapins.epoch.ncsc.mil>
-Mime-Version: 1.0
-Content-Type: text/plain
-To: linux-nfs@vger.kernel.org
+From: Andy Adamson <andros@netapp.com>
+Subject: Re: [PATCH 0/10] pnfs-submit add layoutget,layoutreturn error  handling version 2
+Date: Mon, 28 Jun 2010 12:44:01 -0400
+Message-ID: <E0AA78BD-59D5-471B-8EA3-A3789C13BAAC@netapp.com>
+References: <1277320878-3726-1-git-send-email-andros@netapp.com> <4C235A1A.1060508@panasas.com> <AANLkTikJWftkWhU8TIOGxvGxo8s2_sXyMn8VIsk9caTv@mail.gmail.com>
+Mime-Version: 1.0 (Apple Message framework v936)
+Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
+Cc: "linux-nfs@vger.kernel.org Mailing list" <linux-nfs@vger.kernel.org>
+To: Benny Halevy <bhalevy@panasas.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from msux-gh1-uea02.nsa.gov ([63.239.65.40]:56142 "EHLO
-	msux-gh1-uea02.nsa.gov" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753083Ab0F1PZu (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 Jun 2010 11:25:50 -0400
-Received: from tarius.tycho.ncsc.mil (localhost [127.0.0.1])
-	by msux-gh1-uea02.nsa.gov (8.12.10/8.12.10) with ESMTP id o5SFGAJA004710
-	for <linux-nfs@vger.kernel.org>; Mon, 28 Jun 2010 15:16:10 GMT
-Received: from [144.51.25.2] (moss-terrapins [144.51.25.2])
-	by tarius.tycho.ncsc.mil (8.13.1/8.13.1) with ESMTP id o5SFEP8f017411
-	for <linux-nfs@vger.kernel.org>; Mon, 28 Jun 2010 11:14:25 -0400
+Received: from mx2.netapp.com ([216.240.18.37]:55347 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751348Ab0F1QoE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 28 Jun 2010 12:44:04 -0400
+In-Reply-To: <AANLkTikJWftkWhU8TIOGxvGxo8s2_sXyMn8VIsk9caTv-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hello,
-   I am working on rebasing the labeled-nfs patches on a newer kernel
-version and readding the label translation code in. I don't believe that
-I have touched anything related to the rpc client creation code. When I
-try to mount my nfsv4 share I am getting this error
+Hi Benny
 
-svc: 127.0.0.1, port=717: unknown version (4 for prog 100003, nfsd)
+I have not been able to reproduce this BUG. I've tried against the  
+files pyNFS server with return_on_close False as well a True, and  
+against a GFS2/pNFS cluster with write layouts turned on.
 
-This gives me the indication that whatever is throwing off that message
-doesn't recognize nfsv4 as a valid version for NFS.
+Patch 0003-SQUASHME-pnfs-submit-clear-page-lseg-on-partial-i-o.patch  
+calls put_lseg when I/O to a DS fails. I tested this using the pyNFS  
+files layout server and blocking the DS with iptables. I think this is  
+the only change in this patch set that would affect the refcounting.
 
-I've pasted the output of a mount attempt with rpcdebug -m
-{rpc,nfs,nfsd} all set to all.
+Are you able to reproduce the BUG?
 
-NFS: nfs mount opts='clientaddr=127.0.0.1,addr=127.0.0.1'
-NFS:   parsing nfs mount option 'clientaddr=127.0.0.1'
-NFS:   parsing nfs mount option 'addr=127.0.0.1'
-NFS: MNTPATH: '/'
---> nfs4_try_mount()
---> nfs4_create_server()
---> nfs4_init_server()
---> nfs4_set_client()
---> nfs_get_client(localhost,v4)
-RPC:       looking up machine cred
---> nfs_get_client() = ffff880129a48400 [new]
-RPC:       set up xprt to 127.0.0.1 (port 2049) via tcp
-RPC:       created transport ffff880126d0b000 with 16 slots
-RPC:       creating nfs client for localhost (xprt ffff880126d0b000)
-RPC:       creating UNIX authenticator for client ffff88012905aa00
-RPC:     0 holding NULL cred ffffffffa0263cb0
-RPC:       new task initialized, procpid 10133
-RPC:       allocated task ffff880121808f00
-RPC:    64 __rpc_execute flags=0x680
-RPC:    64 call_start nfs4 proc NULL (sync)
-RPC:    64 call_reserve (status 0)
-RPC:    64 reserved req ffff880128be6000 xid 58bf3f2b
-RPC:    64 call_reserveresult (status 0)
-RPC:    64 call_allocate (status 0)
-RPC:    64 allocated buffer of size 96 at ffff880126d0c800
-RPC:    64 call_bind (status 0)
-RPC:    64 call_connect xprt ffff880126d0b000 is not connected
-RPC:    64 xprt_connect xprt ffff880126d0b000 is not connected
-RPC:    64 sleep_on(queue "xprt_pending" time 4296522262)
-RPC:    64 added to queue ffff880126d0b320 "xprt_pending"
-RPC:    64 setting alarm for 60000 ms
-RPC:       xs_connect scheduled xprt ffff880126d0b000
-RPC:    64 sync task going to sleep
-RPC:       xs_bind4 0.0.0.0:877: ok (0)
-RPC:       worker connecting xprt ffff880126d0b000 via tcp to 127.0.0.1 (port 2049)
-RPC:       xs_tcp_state_change client ffff880126d0b000...
-RPC:       state 1 conn 0 dead 0 zapped 1
-RPC:    64 __rpc_wake_up_task (now 4296522263)
-RPC:    64 disabling timer
-RPC:    64 removed from queue ffff880126d0b320 "xprt_pending"
-RPC:       __rpc_wake_up_task done
-svc: socket ffff880126f59380 TCP (listen) state change 10
-svc: transport ffff88012995b000 served by daemon ffff880128be4000
-RPC:       ffff880126d0b000 connect status 115 connected 1 sock state 1
-svc: tcp_accept ffff88012995b000 sock ffff880126bd3180
-nfsd: connect from 127.0.0.1, port=877
-svc: svc_setup_socket ffff880126bd2680
-setting up TCP socket for reading
-svc: socket ffff880129de6400(inet ffff880126f5c100), write_space busy=1
-svc: svc_setup_socket created ffff880129de6400 (inet ffff880126f5c100)
-svc: transport ffff880129de6400 served by daemon ffff880128be2000
-svc: transport ffff88012995b000 served by daemon ffff880128be0000
-svc: transport ffff88012995b000 busy, not enqueued
-svc: server ffff880128be4000 waiting for data (to = 3600000)
-svc: server ffff880128be2000, pool 0, transport ffff880129de6400, inuse=2
-svc: tcp_recv ffff880129de6400 data 1 conn 0 close 0
-svc: socket ffff880129de6400(inet ffff880126f5c100), write_space busy=1
-svc: transport ffff880129de6400 busy, not enqueued
-svc: tcp_accept ffff88012995b000 sock ffff880126bd3180
-svc: server ffff880128be0000 waiting for data (to = 3600000)
-RPC:    64 sync task resuming
-RPC:    64 xprt_connect_status: retrying
-RPC:    64 call_connect_status (status -11)
-RPC:    64 call_transmit (status 0)
-RPC:    64 xprt_prepare_transmit
-RPC:    64 rpc_xdr_encode (status 0)
-RPC:    64 marshaling NULL cred ffffffffa0263cb0
-RPC:    64 using AUTH_NULL cred ffffffffa0263cb0 to wrap rpc data
-RPC:    64 xprt_transmit(44)
-svc: socket ffff880126f5c100 TCP data ready (svsk ffff880129de6400)
-svc: transport ffff880129de6400 busy, not enqueued
-RPC:       xs_tcp_send_request(44) = 44
-RPC:    64 xmit complete
-RPC:    64 sleep_on(queue "xprt_pending" time 4296522263)
-RPC:    64 added to queue ffff880126d0b320 "xprt_pending"
-RPC:    64 setting alarm for 60000 ms
-RPC:       wake_up_next(ffff880126d0b258 "xprt_resend")
-RPC:       wake_up_next(ffff880126d0b190 "xprt_sending")
-RPC:    64 sync task going to sleep
-svc: socket ffff880129de6400 recvfrom(ffff880129de669c, 0) = 4
-svc: TCP record, 40 bytes
-svc: socket ffff880129de6400 recvfrom(ffff880126d4e008, 4088) = 8
-svc: socket ffff880129de6400 recvfrom(ffff880126d4e028, 4056) = 32
-svc: TCP complete record (40 bytes)
-svc: transport ffff880129de6400 served by daemon ffff880128be0000
-svc: got len=40
-svc: svc_authenticate (0)
-svc: 127.0.0.1, port=877: unknown version (4 for prog 100003, nfsd)
-svc: server ffff880128be0000, pool 0, transport ffff880129de6400, inuse=3
-svc: tcp_recv ffff880129de6400 data 1 conn 0 close 0
-RPC:       xs_tcp_data_ready...
-RPC:       xs_tcp_data_recv started
-RPC:       reading TCP record fragment of length 32
-RPC:       reading XID (4 bytes)
-RPC:       reading request with XID 58bf3f2b
-RPC:       reading CALL/REPLY flag (4 bytes)
-RPC:       reading reply for CALL/REPLY flag 01000000
-RPC:       read reply XID 58bf3f2b
-RPC:       XID 58bf3f2b read 24 bytes
-RPC:       xprt = ffff880126d0b000, tcp_copied = 32, tcp_offset = 32, tcp_reclen = 32
-RPC:    64 xid 58bf3f2b complete (32 bytes received)
-RPC:    64 __rpc_wake_up_task (now 4296522264)
-RPC:    64 disabling timer
-RPC:    64 removed from queue ffff880126d0b320 "xprt_pending"
-RPC:       __rpc_wake_up_task done
-RPC:       xs_tcp_data_recv done
-svc: socket ffff880129de6400 sendto([ffff880126d4f000 36... ], 36) = 36 (addr 127.0.0.1, port=877)
-svc: socket ffff880129de6400 recvfrom(ffff880129de6698, 4) = -11
-svc: server ffff880128be2000 waiting for data (to = 3600000)
-RPC: TCP recv_record got EAGAIN
-svc: got len=-11
-svc: server ffff880128be0000 waiting for data (to = 3600000)
-RPC:    64 sync task resuming
-RPC:    64 call_status (status 32)
-RPC:    64 call_decode (status 32)
-RPC:    64 validating NULL cred ffffffffa0263cb0
-RPC:    64 rpc_verify_header: program 100003, version 4 unsupported by server localhost
-RPC:    64 rpc_verify_header: call failed with error -93
-RPC:    64 return 0, status -93
-RPC:    64 release task
-RPC:       freeing buffer of size 96 at ffff880126d0c800
-RPC:    64 release request ffff880128be6000
-RPC:       wake_up_next(ffff880126d0b3e8 "xprt_backlog")
-RPC:    64 releasing NULL cred ffffffffa0263cb0
-RPC:       rpc_release_client(ffff88012905aa00)
-RPC:    64 freeing task
-RPC:       shutting down nfs client for localhost
-RPC:       rpc_release_client(ffff88012905aa00)
-RPC:       destroying nfs client for localhost
-RPC:       destroying transport ffff880126d0b000
-RPC:       xs_destroy xprt ffff880126d0b000
-RPC:       xs_close xprt ffff880126d0b000
-svc: socket ffff880126f5c100 TCP (connected) state change 8 (svsk ffff880129de6400)
-svc: transport ffff880129de6400 served by daemon ffff880128be0000
-svc: socket ffff880126f5c100 TCP data ready (svsk ffff880129de6400)
-svc_recv: found XPT_CLOSE
-svc: transport ffff880129de6400 busy, not enqueued
-svc: svc_delete_xprt(ffff880129de6400)
-svc: svc_tcp_sock_detach(ffff880129de6400)
-svc: svc_sock_detach(ffff880129de6400)
-RPC:       disconnected transport ffff880126d0b000
-nfs_create_rpc_client: cannot create RPC client. Error = -93
-<-- nfs4_init_client() = xerror -93
---> nfs_put_client({1})
---> nfs_free_client(4)
-<-- nfs_free_client()
-<-- nfs4_set_client() = xerror -93
-<-- nfs4_init_server() = -93
---> nfs_free_server()
-<-- nfs_free_server()
-<-- nfs4_create_server() = error -93
-<-- nfs4_try_mount() = -93 [error]
-<-- nfs4_get_sb() = -93 [error]
-svc: transport ffff880129de6400 is dead, not enqueued
-svc: svc_sock_free(ffff880129de6400)
-svc: server ffff880128be0000 waiting for data (to = 3600000)
+-->Andy
 
+On Jun 24, 2010, at 1:02 PM, William A. (Andy) Adamson wrote:
+
+> OK - I'll look into it.
+>
+> Sorry I missed today's pNFS call.
+>
+> -->Andy
+>
+> On Thu, Jun 24, 2010 at 9:14 AM, Benny Halevy <bhalevy@panasas.com>  
+> wrote:
+>> On Jun. 23, 2010, 22:21 +0300, andros@netapp.com wrote:
+>>> Responded to comments, added a 2 cleanup patchses
+>>>
+>>> Plus some code cleanup
+>>> 0001-SQUASHME-pnfs-submit-remove-unused-filelayout_mount_.patch
+>>>
+>>> and some bug fixes
+>>> 0002-SQUASHME-pnfs-submit-pnfs_try_to_read-write-commit-u.patch
+>>>
+>>> NOTE: this patch: 0003-SQUASHME-pnfs-submit-tell-commit-to-use-the- 
+>>> MDS.patch
+>>> was replaced by:
+>>> 0003-SQUASHME-pnfs-submit-clear-page-lseg-on-partial-i-o.patch
+>>>
+>>>
+>>> Remove unused (by file layout) encode_layoutreturn io operation
+>>> 0004-SQUASHME-pnfs-submit-remove-encode_layoutreturn.patch
+>>> 0005-SQUASHME-pnfs-submit-add-error-handling-to-layout-re.patch
+>>>
+>>> 0006-SQUASHME-pnfs-submit-handle-assassinated-layoutcommi.patch
+>>>
+>>> Note: pnfs4_proc_layoutget is only called by send_layout() which  
+>>> prints
+>>> the status.
+>>> 0007-SQUASHME-pnfs-submit-add-error-handlers-to-layout-ge.patch
+>>>
+>>> Add back encode_layoutreturn io operation
+>>> 0008-pnfs-post-submit-restore-encode_layoutreturn.patch
+>>>
+>>>
+>>> New patches:
+>>> 0009-SQUASHME-pnfs-submit-don-t-re-initialize-i_lock.patch
+>>>
+>>> This gets rid of a frame stack warning;
+>>> 0010-SQUASHME-pnfs-submit-remove-struct-nfs_server-from-s.patch
+>>>
+>>> Testing:
+>>> ---------
+>>>
+>>> CONFIG_NFS_V4_1 set: NFSv4.0 NFSv4.1 pNFS
+>>> Passes Connectathon tests
+>>>
+>>> Tested layoutget and layoutreturn recovery from  
+>>> NFS4ERR_DEAD_SESSION with the
+>>> pyNFS server and the testclient framework.
+>>>
+>>> Still todo:
+>>>
+>>> Recover from NFS4ERR_BAD_STATEID. Currently layoutreturn,  
+>>> layoutget, and
+>>> layoutcommit do not pass nfs_stste to the error handlers.
+>>>
+>>> Handle NFS4ERR_BAD_LAYOUT.
+>>>
+>>> CONFIG_NFS_V4_1 not set: NFSv4.o mount passes cthon tests.
+>>>
+>>> -->Andy
+>>
+>> Andy, I've hit
+>>       BUG_ON(lo->refcount <= 0);
+>> in put_layout() with this patchset.
+>> I'm not sure if it introduced it or not, still investigating...
+>>
+>> Jun 24 12:07:26 tl2 kernel: pnfs_destroy_inode: WARNING:  
+>> layout.refcount 1
+>> Jun 24 12:07:26 tl2 kernel: ------------[ cut here ]------------
+>> Jun 24 12:07:26 tl2 kernel: kernel BUG at /usr0/export/dev/bhalevy/ 
+>> git/linux-pnfs-bh-nfs41/fs/nfs/pnfs.c:341!
+>> Jun 24 12:07:26 tl2 kernel: invalid opcode: 0000 [#1] SMP  
+>> DEBUG_PAGEALLOC
+>> Jun 24 12:07:26 tl2 kernel: last sysfs file: /sys/module/nfs/ 
+>> initstate
+>> Jun 24 12:07:26 tl2 kernel: CPU 1
+>> Jun 24 12:07:26 tl2 kernel: Modules linked in: nfslayoutdriver nfsd  
+>> exportfs nfs lockd nfs_acl auth_rpcgss sunrpc osd libosd autofs4  
+>> crc32c ipv6 iscsi_tcp libiscsi_tcp libiscsi scsi_transport_iscsi  
+>> cpufreq_ondemand acpi_cpufreq freq_table mperf ext3 jbd dm_mirror  
+>> dm_region_hash dm_log dm_multipath dm_mod kvm_intel kvm  
+>> snd_hda_codec_realtek i915 drm_kms_helper drm snd_hda_intel  
+>> snd_hda_codec snd_hwdep i2c_algo_bit snd_seq i2c_i801 i2c_core  
+>> snd_seq_device snd_pcm r8169 mii snd_timer sr_mod snd soundcore  
+>> snd_page_alloc button video output rng_core sg cdrom ata_generic  
+>> ata_piix libata sd_mod scsi_mod ext4 mbcache jbd2 crc16 uhci_hcd  
+>> ohci_hcd ehci_hcd [last unloaded: microcode]
+>> Jun 24 12:07:26 tl2 kernel:
+>> Jun 24 12:07:26 tl2 kernel: Pid: 1920, comm: rpciod/1 Not tainted  
+>> 2.6.35-rc3-pnfs+ #54 G31M4 (MS-7527)/MS-7527
+>> Jun 24 12:07:26 tl2 kernel: RIP: 0010:[<ffffffffa05d0ea4>]   
+>> [<ffffffffa05d0ea4>] put_layout+0x2f/0xa7 [nfs]
+>> Jun 24 12:07:26 tl2 kernel: RSP: 0018:ffff88007525dd20  EFLAGS:  
+>> 00010246
+>> Jun 24 12:07:26 tl2 kernel: RAX: 0000000000000000 RBX:  
+>> ffff8800704b6b78 RCX: 0000000000000066
+>> Jun 24 12:07:26 tl2 kernel: RDX: ffff8800704b69a8 RSI:  
+>> ffffea0001b931a8 RDI: ffff8800704b6b78
+>> Jun 24 12:07:26 tl2 kernel: RBP: ffff88007525dd30 R08:  
+>> 0000000000000000 R09: ffff88007356a500
+>> Jun 24 12:07:26 tl2 kernel: R10: ffff88007525dd80 R11:  
+>> 0000000000000003 R12: ffff8800704b69a8
+>> Jun 24 12:07:26 tl2 kernel: R13: ffff880073854f00 R14:  
+>> ffff88007356a508 R15: ffff88007356a590
+>> Jun 24 12:07:26 tl2 kernel: FS:  0000000000000000(0000)  
+>> GS:ffff880001a80000(0000) knlGS:0000000000000000
+>> Jun 24 12:07:26 tl2 kernel: CS:  0010 DS: 0000 ES: 0000 CR0:  
+>> 000000008005003b
+>> Jun 24 12:07:26 tl2 kernel: CR2: 0000003944279000 CR3:  
+>> 0000000001698000 CR4: 00000000000406e0
+>> Jun 24 12:07:26 tl2 kernel: DR0: 0000000000000000 DR1:  
+>> 0000000000000000 DR2: 0000000000000000
+>> Jun 24 12:07:26 tl2 kernel: DR3: 0000000000000000 DR6:  
+>> 00000000ffff0ff0 DR7: 0000000000000400
+>> Jun 24 12:07:26 tl2 kernel: Process rpciod/1 (pid: 1920, threadinfo  
+>> ffff88007525c000, task ffff88007d988000)
+>> Jun 24 12:07:26 tl2 kernel: Stack:
+>> Jun 24 12:07:26 tl2 kernel: ffff8800704b6b78 ffff8800704b69a8  
+>> ffff88007525dd60 ffffffffa05d203f
+>> Jun 24 12:07:26 tl2 kernel: <0> ffff88007525dd60 ffff880073854f18  
+>> ffff880073854f00 ffffffffa05d5880
+>> Jun 24 12:07:26 tl2 kernel: <0> ffff88007525dd80 ffffffffa05bfb5c  
+>> ffff88007525dd90 ffff88007356a500
+>> Jun 24 12:07:26 tl2 kernel: Call Trace:
+>> Jun 24 12:07:26 tl2 kernel: [<ffffffffa05d203f>] pnfs_layout_release 
+>> +0x43/0x68 [nfs]
+>> Jun 24 12:07:26 tl2 kernel: [<ffffffffa05bfb5c>]  
+>> nfs4_pnfs_layoutreturn_release+0x61/0x8b [nfs]
+>> Jun 24 12:07:26 tl2 kernel: [<ffffffffa056207d>]  
+>> rpc_release_calldata+0x17/0x19 [sunrpc]
+>> Jun 24 12:07:26 tl2 kernel: [<ffffffffa05621bd>] rpc_free_task+0x5e/ 
+>> 0x66 [sunrpc]
+>> Jun 24 12:07:26 tl2 kernel: [<ffffffffa056225d>] rpc_put_task 
+>> +0x98/0x9c [sunrpc]
+>> Jun 24 12:07:26 tl2 kernel: [<ffffffffa0562ea7>] __rpc_execute 
+>> +0x205/0x212 [sunrpc]
+>> Jun 24 12:07:26 tl2 kernel: [<ffffffffa0562ef0>] rpc_async_schedule 
+>> +0x15/0x17 [sunrpc]
+>> Jun 24 12:07:26 tl2 kernel: [<ffffffff81052cb7>] worker_thread 
+>> +0x1aa/0x23b
+>> Jun 24 12:07:26 tl2 kernel: [<ffffffffa0562edb>] ?  
+>> rpc_async_schedule+0x0/0x17 [sunrpc]
+>> Jun 24 12:07:26 tl2 kernel: [<ffffffff81056ab7>] ?  
+>> autoremove_wake_function+0x0/0x39
+>> Jun 24 12:07:26 tl2 kernel: [<ffffffff8102f96d>] ?  
+>> spin_unlock_irqrestore+0xe/0x10
+>> Jun 24 12:07:26 tl2 kernel: [<ffffffff81052b0d>] ? worker_thread 
+>> +0x0/0x23b
+>> Jun 24 12:07:26 tl2 kernel: [<ffffffff81056645>] kthread+0x7f/0x87
+>> Jun 24 12:07:26 tl2 kernel: [<ffffffff81003a24>]  
+>> kernel_thread_helper+0x4/0x10
+>> Jun 24 12:07:26 tl2 kernel: [<ffffffff810565c6>] ? kthread+0x0/0x87
+>> Jun 24 12:07:26 tl2 kernel: [<ffffffff81003a20>] ?  
+>> kernel_thread_helper+0x0/0x10
+>> Jun 24 12:07:26 tl2 kernel: Code: 41 54 53 0f 1f 44 00 00 8b 87 24  
+>> 01 00 00 48 89 fb 48 8d 97 30 fe ff ff 89 c1 c1 f9 08 38 c1 75 04  
+>> 0f 0b eb fe 8b 07 85 c0 7f 04 <0f> 0b eb fe ff c8 85 c0 89 07 75 67  
+>> 48 8b 82 48 03 00 00 f6 05
+>> Jun 24 12:07:26 tl2 kernel: RIP  [<ffffffffa05d0ea4>] put_layout 
+>> +0x2f/0xa7 [nfs]
+>> Jun 24 12:07:27 tl2 kernel: RSP <ffff88007525dd20>
+>> Jun 24 12:07:27 tl2 kernel: ---[ end trace 0468384c0ab45a1f ]---
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux- 
+>> nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs"  
+> in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
