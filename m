@@ -1,53 +1,62 @@
-Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:34562 "EHLO
+From: Boaz Harrosh <bharrosh@panasas.com>
+Subject: [PATCH] nfsd41: Fix a crash when a callback is retried
+Date: Mon, 28 Jun 2010 20:33:20 +0300
+Message-ID: <4C28DCE0.7050201@panasas.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+To: "J. Bruce Fields" <bfields@citi.umich.edu>,
+	Benny Halevy <bhalevy@panasas.com>,
+	"Labiaga, Ricardo" <Ricardo.Labiaga@netapp.com>,
+	NFS list <linux-nfs@vger.kernel.org>
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from daytona.panasas.com ([67.152.220.89]:54244 "EHLO
 	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1755999Ab0FQOrI (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Jun 2010 10:47:08 -0400
-Message-ID: <4C1A3570.5030709@panasas.com>
-Date: Thu, 17 Jun 2010 10:47:12 -0400
-From: Benny Halevy <bhalevy@panasas.com>
-To: NFS list <linux-nfs@vger.kernel.org>
-Subject: [PATCH 0/19]: merge pnfs client ops into nfs4's
-Content-Type: text/plain; charset=ISO-8859-1
+	with ESMTP id S1751495Ab0F1RdX (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 Jun 2010 13:33:23 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-MIME-Version: 1.0
 
-The following patchset folds the pnfs client ops into their
-nfs4 counterparts.
 
-Note that the pnfs implementation forked off of old versions
-of the nfs ops but we failed to update the pnfs implementation
-when the original code they were derived from changed so the
-current state captures an unintentional deviation.
+If a callback is retried at nfsd4_cb_recall_done() do to
+some error. The returned rpc reply would then crash here:
 
-Merging back the code ensures that the common paths are
-correctly used and we deal only with the pnfs-specific
-functionality.
+ @@ -514,6 +514,7 @@ decode_cb_sequence(struct xdr_stream *xdr, struct nfsd4_cb_sequence *res,
+ 	u32 dummy;
+ 	__be32 *p;
 
-This solves the bug where we were using two client structures when
-mounting the server more than once and seeing the session destroyed
-repeatedly (and the server returning 10052 on DESTROY_SESSION) and
-eventually hitting the session recovery deadlock reported here:
-http://marc.info/?l=linux-nfs&m=127663654927724&w=2
+ +	BUG_ON(!res);
+ 	if (res->cbs_minorversion == 0)
+ 		return 0;
 
-Here's the list of patches:
-[PATCH 01/19] SQUASHME: pnfs-submit: merge pnfs4_proc_setattr into nfs4_proc_setattr
-[PATCH 02/19] SQUASHME: pnfs4_read_done status variable is unused
-[PATCH 03/19] SQUASHME: pnfs-submit: optionally pass nfs_client to nfs4_async_handle_error
-[PATCH 04/19] SQUASHME: pnfs-submit: merge pnfs4_read_done into nfs4_read_done - part 1
-[PATCH 05/19] SQUASHME: pnfs-submit: merge pnfs4_read_done into nfs4_read_done - part 2
-[PATCH 06/19] SQUASHME: pnfs-submit: merge pnfs4_read_done into nfs4_read_done - part 3
-[PATCH 07/19] SQUASHME: pnfs-submit: get rid of pnfs4_read_done
-[PATCH 08/19] SQUASHME: pnfs-submit: merge pnfs4_write_done into nfs4_write_done - part 1
-[PATCH 09/19] SQUASHME: pnfs-submit: merge pnfs4_write_done into nfs4_write_done - part 2
-[PATCH 10/19] SQUASHME: pnfs-submit: merge pnfs4_write_done into nfs4_write_done - part 3
-[PATCH 11/19] SQUASHME: pnfs-submit: merge pnfs4_write_done into nfs4_write_done - part 4
-[PATCH 12/19] SQUASHME: pnfs-submit: get rid of pnfs4_write_done
-[PATCH 13/19] SQUASHME: pnfs-submit: merge pnfs4_commit_done into nfs4_commit_done - part 1
-[PATCH 14/19] SQUASHME: pnfs-submit: merge pnfs4_commit_done into nfs4_commit_done - part 2
-[PATCH 15/19] SQUASHME: pnfs-submit: merge pnfs4_commit_done into nfs4_commit_done - part 3
-[PATCH 16/19] SQUASHME: pnfs-submit: get rid of pnfs4_commit_done
-[PATCH 17/19] SQUASHME: pnfs-submit: merge pnfs4_proc_write_setup into nfs4_proc_write_setup
-[PATCH 18/19] SQUASHME: pnfs-submit: merge pnfs4_proc_commit_setup into nfs4_proc_commit_setup
-[PATCH 19/19] SQUASHME: pnfs-submit: get rid of pnfs_v4_clientops
+[BUG_ON added for demonstration]
+
+This is because the nfsd4_cb_done_sequence() has NULLed out
+the task->tk_msg.rpc_resp pointer.
+
+This problem was introduced by a 4.1 protocol addition patch:
+	[0421b5c5] nfsd41: Backchannel: Implement cb_recall over NFSv4.1
+
+Which was overlooking the possibility of an RPC callback retries.
+
+Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+---
+ fs/nfsd/nfs4callback.c |    3 ---
+ 1 files changed, 0 insertions(+), 3 deletions(-)
+
+diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
+index f3b5015..dace7e2 100644
+--- a/fs/nfsd/nfs4callback.c
++++ b/fs/nfsd/nfs4callback.c
+@@ -869,9 +869,6 @@ static void nfsd4_cb_done_sequence(struct rpc_task *task,
+ 		rpc_wake_up_next(&clp->cl_cb_waitq);
+ 		dprintk("%s: freed slot, new seqid=%d\n", __func__,
+ 			clp->cl_cb_seq_nr);
+-
+-		/* We're done looking into the sequence information */
+-		task->tk_msg.rpc_resp = NULL;
+ 	}
+ }
+ 
+-- 
+1.6.6.1
+
