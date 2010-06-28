@@ -1,49 +1,50 @@
-From: Jeff Layton <jlayton@redhat.com>
-Subject: Re: [PATCH 1/3] nfsd: don't try to shut down nfs4 state handling
- unless it's up
-Date: Sat, 26 Jun 2010 21:08:37 -0400
-Message-ID: <20100626210837.1da68d6b@corrin.poochiereds.net>
-References: <1275924800-5214-1-git-send-email-jlayton@redhat.com>
-	<1275924800-5214-2-git-send-email-jlayton@redhat.com>
-	<20100626155351.GA16951@pig.fieldses.org>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: About configure error
+Date: Mon, 28 Jun 2010 10:22:30 -0400
+Message-ID: <4C28B026.5010702@oracle.com>
+References: <74B0AE1BA53C37449DE49BB274F9A2DB2B3DA2@orion8.netlogicmicro.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Cc: <linux-nfs@vger.kernel.org>
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Content-Type: text/plain; charset=iso-8859-1; format=flowed
+Cc: linux-nfs@vger.kernel.org, steved@redhat.com,
+	Jeff Layton <jlayton@redhat.com>
+To: Henry Shao <hshao-oSioyQM9ZPnuBjGU1YDckgC/G2K4zDHf@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:43362 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753334Ab0F0BGe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 26 Jun 2010 21:06:34 -0400
-In-Reply-To: <20100626155351.GA16951-+qGSg9AQ1cLTsXDwO4sDpg@public.gmane.org>
+Received: from rcsinet10.oracle.com ([148.87.113.121]:46291 "EHLO
+	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753202Ab0F1OXQ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 Jun 2010 10:23:16 -0400
+In-Reply-To: <74B0AE1BA53C37449DE49BB274F9A2DB2B3DA2-eoZZxEticU+jYOuY2elzORyIOQ/kevag@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, 26 Jun 2010 11:53:51 -0400
-"J. Bruce Fields" <bfields@fieldses.org> wrote:
+On 06/26/10 03:37 PM, Henry Shao wrote:
+>
+> Hi Sir:
+>
+>      I try to compile nfs-utils-1.2.2 for our mips64 platform using cross compiler.  I keek get configure error:
+> checking for clnt_tli_create in -ltirpc... no
+> configure: error: libtirpc not found.
+>
+>       Then I download libtirpc  and compile it successfully and install it in  ../lib directory.   I try to use LIBS or exec_prefix ... to pass it in.   It did not successful.   Still keeping get this error.
+>
+>       Do you mind to tell me how can I pass this error and get it compiled for our mips target?
+>
+>      Thank you very much!
+>
+>
+>
+> # CC=mipsisa64r2rmi-linux-gcc ./configure --host=mips-linux --disable-gss --disable-nfsv4
 
-> On Mon, Jun 07, 2010 at 11:33:18AM -0400, Jeff Layton wrote:
-> > If someone tries to shut down the laundry_wq while it isn't up it'll
-> > cause an oops.
-> 
-> Sorry for getting behind....
-> 
+./configure should have noticed that libtirpc was missing and then 
+automatically set --disable-tirpc.  As a workaround you could manually 
+specify --disable-tirpc on your ./configure command line.
 
-No huge hurry. This series is pretty much 2.6.36 material unless you
-see a reason to push them sooner.
+After installing libtirpc, though, maybe you need to run ./configure 
+again from scratch:
 
-> I'm not seeing how this can happen: nfs4_state_shutdown() is called from
-> nfsd_last_thread(), which can't be called until after nfsd_create_serv()
-> is called.  But nfsd_create_serv() is called after nfs4_state_start().
-> 
-> Oh, I see, I'm overlooking __write_ports_add{fd,xprt}(), which can call
-> nfsd_create_serv() without first calling nfs4_state_start().  Argh.
-> 
+   $ make distclean
+   $ sh autogen.sh
+   $ ./configure ....
 
-Yep...and rpc.nfsd does write fd's to the kernel before bringing up
-threads, so this situation is actually the norm. The later patches in
-this series also mandate this to prevent oopses when there are errors
-bringing up the service.
-
--- 
-Jeff Layton <jlayton@redhat.com>
+If you are trying to install and use a local copy of libtirpc (ie one 
+that is not installed in /usr/lib), that may not be supported.
