@@ -1,24 +1,26 @@
-From: Boaz Harrosh <bharrosh@panasas.com>
+From: Benny Halevy <bhalevy@panasas.com>
 Subject: Re: [PATCH] nfsd41: Fix a crash when a callback is retried
-Date: Mon, 28 Jun 2010 20:38:36 +0300
-Message-ID: <4C28DE1C.3030907@panasas.com>
+Date: Mon, 28 Jun 2010 21:50:08 +0300
+Message-ID: <4C28EEE0.70502@panasas.com>
 References: <4C28DCE0.7050201@panasas.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
-To: "J. Bruce Fields" <bfields@citi.umich.edu>,
-	Benny Halevy <bhalevy@panasas.com>,
+Cc: "J. Bruce Fields" <bfields@citi.umich.edu>,
 	"Labiaga, Ricardo" <Ricardo.Labiaga@netapp.com>,
 	NFS list <linux-nfs@vger.kernel.org>
+To: Boaz Harrosh <bharrosh@panasas.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:51932 "EHLO
-	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1751495Ab0F1Rij (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 Jun 2010 13:38:39 -0400
+Received: from mail-ww0-f46.google.com ([74.125.82.46]:52127 "EHLO
+	mail-ww0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751872Ab0F1SuP (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 Jun 2010 14:50:15 -0400
+Received: by wwd20 with SMTP id 20so246030wwd.19
+        for <linux-nfs@vger.kernel.org>; Mon, 28 Jun 2010 11:50:14 -0700 (PDT)
 In-Reply-To: <4C28DCE0.7050201@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 06/28/2010 08:33 PM, Boaz Harrosh wrote:
+On Jun. 28, 2010, 20:33 +0300, Boaz Harrosh <bharrosh@panasas.com> wrote:
 > 
 > If a callback is retried at nfsd4_cb_recall_done() do to
 > some error. The returned rpc reply would then crash here:
@@ -42,15 +44,6 @@ On 06/28/2010 08:33 PM, Boaz Harrosh wrote:
 > Which was overlooking the possibility of an RPC callback retries.
 > 
 > Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
-
-Bruce do we need a CC: stable@kernel.org here. Is any code actually
-exercising callbacks? And with 4.1?
-
-It is an existing bug but an highly theoretical one. I'd say:
-innocent until proven guilty in this case. 
-
-Boaz
-
 > ---
 >  fs/nfsd/nfs4callback.c |    3 ---
 >  1 files changed, 0 insertions(+), 3 deletions(-)
@@ -69,4 +62,12 @@ Boaz
 >  	}
 >  }
 >  
+
+It looks like we have a more fundamental problem that
+nfsd41_cb_setup_sequence is not called on the retry path
+meaning that not only the message isn't reinitialized properly
+but the single slot is not allocated as it should.
+Boaz, I think you saw multiple callbacks going out concurrently, right?
+
+rpc_restart_call_prepare() should be called instead of rpc_restart_call()
 
