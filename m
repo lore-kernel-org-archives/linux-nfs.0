@@ -1,36 +1,68 @@
-From: Benny Halevy <bhalevy@panasas.com>
-Subject: [PATCH] SAUASHME: pnfs-submit: prevent buffer overrun in decode_and_add_ds
-Date: Tue, 29 Jun 2010 14:02:27 +0300
-Message-ID: <1277809347-13087-1-git-send-email-bhalevy@panasas.com>
-To: linux-nfs@vger.kernel.org
+From: Boaz Harrosh <bharrosh@panasas.com>
+Subject: [PATCH version2] nfsd41: Fix a crash when a callback is retried
+Date: Tue, 29 Jun 2010 14:33:55 +0300
+Message-ID: <4C29DA23.90200@panasas.com>
+References: <4C28DCE0.7050201@panasas.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+To: "J. Bruce Fields" <bfields@citi.umich.edu>,
+	Benny Halevy <bhalevy@panasas.com>,
+	"Labiaga, Ricardo" <Ricardo.Labiaga@netapp.com>,
+	NFS list <linux-nfs@vger.kernel.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:21676 "EHLO
+Received: from daytona.panasas.com ([67.152.220.89]:54248 "EHLO
 	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1755341Ab0F2LCa (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Jun 2010 07:02:30 -0400
+	with ESMTP id S1751761Ab0F2Ld6 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Jun 2010 07:33:58 -0400
+In-Reply-To: <4C28DCE0.7050201@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-If len == 29, r_addr[len] = '\0' will overrun r_addr.
 
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+If a callback is retried at nfsd4_cb_recall_done() do to
+some error. The returned rpc reply would then crash here:
+
+@@ -514,6 +514,7 @@ decode_cb_sequence(struct xdr_stream *xdr, struct nfsd4_cb_sequence *res,
+ 	u32 dummy;
+ 	__be32 *p;
+
+ +	BUG_ON(!res);
+ 	if (res->cbs_minorversion == 0)
+ 		return 0;
+
+[BUG_ON added for demonstration]
+
+This is because the nfsd4_cb_done_sequence() has NULLed out
+the task->tk_msg.rpc_resp pointer.
+
+Also eventually the rpc would use the new slot without making
+sure it is free by calling nfsd41_cb_setup_sequence().
+
+This problem was introduced by a 4.1 protocol addition patch:
+	[0421b5c5] nfsd41: Backchannel: Implement cb_recall over NFSv4.1
+
+Which was overlooking the possibility of an RPC callback retries.
+For not-4.1 case redoing the _prepare is harmless.
+
+Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
 ---
- fs/nfs/nfs4filelayoutdev.c |    2 +-
+ fs/nfsd/nfs4callback.c |    2 +-
  1 files changed, 1 insertions(+), 1 deletions(-)
 
-diff --git a/fs/nfs/nfs4filelayoutdev.c b/fs/nfs/nfs4filelayoutdev.c
-index 8e9d04a..3d84fef 100644
---- a/fs/nfs/nfs4filelayoutdev.c
-+++ b/fs/nfs/nfs4filelayoutdev.c
-@@ -332,7 +332,7 @@ decode_and_add_ds(uint32_t **pp, struct inode *inode)
- 	tmp[0] = be32_to_cpup(p++);
- 
- 	len = be32_to_cpup(p++);
--	if (len > 29) {
-+	if (len >= sizeof(r_addr)) {
- 		printk("%s: ERROR: Device ip/port too long (%d)\n",
- 			__func__, len);
- 		goto out_err;
+diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
+index f3b5015..3bbeae8 100644
+--- a/fs/nfsd/nfs4callback.c
++++ b/fs/nfsd/nfs4callback.c
+@@ -913,7 +913,7 @@ static void nfsd4_cb_recall_done(struct rpc_task *task, void *calldata)
+ 	if (dp->dl_retries--) {
+ 		rpc_delay(task, 2*HZ);
+ 		task->tk_status = 0;
+-		rpc_restart_call(task);
++		rpc_restart_call_prepare(task);
+ 		return;
+ 	} else {
+ 		atomic_set(&clp->cl_cb_set, 0);
 -- 
 1.6.6.1
+
 
