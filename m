@@ -1,46 +1,48 @@
 From: Benny Halevy <bhalevy@panasas.com>
-Subject: [PATCH] SQUASHME: pnfsd-files: verify_stateid's return status is __be32
-Date: Tue, 29 Jun 2010 15:41:41 +0300
-Message-ID: <1277815301-14292-1-git-send-email-bhalevy@panasas.com>
-To: linux-nfs@vger.kernel.org
+Subject: [PATCH] nfsd: fix pointer dereference in dprintk of write verifiers
+Date: Tue, 29 Jun 2010 15:49:12 +0300
+Message-ID: <1277815752-14948-1-git-send-email-bhalevy@panasas.com>
+Cc: linux-nfs@vger.kernel.org
+To: " J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:3828 "EHLO
+Received: from daytona.panasas.com ([67.152.220.89]:63034 "EHLO
 	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1753330Ab0F2Mln (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Jun 2010 08:41:43 -0400
+	with ESMTP id S1752229Ab0F2MtP (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Jun 2010 08:49:15 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Therefore nfs4_process_layout_stateid should check for != 0
-rather than < 0.
-
 Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 ---
- fs/nfsd/nfs4pnfsd.c |    4 ++--
- 1 files changed, 2 insertions(+), 2 deletions(-)
+ fs/nfsd/nfs4xdr.c |    8 ++++----
+ 1 files changed, 4 insertions(+), 4 deletions(-)
 
-diff --git a/fs/nfsd/nfs4pnfsd.c b/fs/nfsd/nfs4pnfsd.c
-index 5043878..cee9aff 100644
---- a/fs/nfsd/nfs4pnfsd.c
-+++ b/fs/nfsd/nfs4pnfsd.c
-@@ -255,7 +255,7 @@ find_get_layout_state(struct nfs4_client *clp, struct nfs4_file *fp)
- 	return NULL;
- }
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index 225023c..8b41a9d 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -2552,8 +2552,8 @@ nfsd4_encode_commit(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4_
+ 		RESERVE_SPACE(8);
+ 		WRITEMEM(commit->co_verf.data, 8);
+ 		dprintk("NFSD: nfsd4_encode_commit: verifier %x:%x\n",
+-			*(u32 *)(&commit->co_verf.data)[0],
+-			*(u32 *)(&commit->co_verf.data)[1]);
++			((u32 *)(&commit->co_verf.data))[0],
++			((u32 *)(&commit->co_verf.data))[1]);
  
--static int
-+static __be32
- verify_stateid(struct nfs4_file *fp, stateid_t *stateid)
- {
- 	struct nfs4_stateid *local = NULL;
-@@ -316,7 +316,7 @@ nfs4_process_layout_stateid(struct nfs4_client *clp, struct nfs4_file *fp,
- 
- 		/* verify input stateid */
- 		status = verify_stateid(fp, stateid);
--		if (status < 0) {
-+		if (status) {
- 			dprintk("%s ERROR: invalid open/deleg/lock stateid\n",
- 				__func__);
- 			goto out;
+ 		ADJUST_ARGS();
+ 	}
+@@ -3127,8 +3127,8 @@ nfsd4_encode_write(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4_w
+ 		WRITE32(write->wr_how_written);
+ 		WRITEMEM(write->wr_verifier.data, 8);
+ 		dprintk("NFSD: nfsd4_encode_write: verifier %x:%x\n",
+-			*(u32 *)(&write->wr_verifier.data)[0],
+-			*(u32 *)(&write->wr_verifier.data)[1]);
++			((u32 *)(&write->wr_verifier.data))[0],
++			((u32 *)(&write->wr_verifier.data))[1]);
+ 		ADJUST_ARGS();
+ 	}
+ 	return nfserr;
 -- 
 1.6.6.1
 
