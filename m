@@ -1,48 +1,26 @@
 From: Boaz Harrosh <bharrosh@panasas.com>
-Subject: [PATCH version2] nfsd41: Fix a crash when a callback is retried
-Date: Tue, 29 Jun 2010 14:33:55 +0300
-Message-ID: <4C29DA23.90200@panasas.com>
-References: <4C28DCE0.7050201@panasas.com>
+Subject: [PATCH] SQUASHME: into [SQUASHME: pnfsd: Support for cb_layout returning
+ NFS4ERR_DELAY]
+Date: Tue, 29 Jun 2010 14:36:56 +0300
+Message-ID: <4C29DAD8.1060809@panasas.com>
+References: <4C1A4DED.50702@panasas.com> <4C28D829.5070706@panasas.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
-To: "J. Bruce Fields" <bfields@citi.umich.edu>,
-	Benny Halevy <bhalevy@panasas.com>,
-	"Labiaga, Ricardo" <Ricardo.Labiaga@netapp.com>,
-	NFS list <linux-nfs@vger.kernel.org>
+To: Benny Halevy <bhalevy@panasas.com>,
+	NFS list <linux-nfs@vger.kernel.org>,
+	"J. Bruce Fields" <bfields@citi.umich.edu>,
+	"Labiaga, Ricardo" <Ricardo.Labiaga@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:54248 "EHLO
+Received: from daytona.panasas.com ([67.152.220.89]:27303 "EHLO
 	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1751761Ab0F2Ld6 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Jun 2010 07:33:58 -0400
-In-Reply-To: <4C28DCE0.7050201@panasas.com>
+	with ESMTP id S1755947Ab0F2Lg6 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Jun 2010 07:36:58 -0400
+In-Reply-To: <4C28D829.5070706@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
-If a callback is retried at nfsd4_cb_recall_done() do to
-some error. The returned rpc reply would then crash here:
-
-@@ -514,6 +514,7 @@ decode_cb_sequence(struct xdr_stream *xdr, struct nfsd4_cb_sequence *res,
- 	u32 dummy;
- 	__be32 *p;
-
- +	BUG_ON(!res);
- 	if (res->cbs_minorversion == 0)
- 		return 0;
-
-[BUG_ON added for demonstration]
-
-This is because the nfsd4_cb_done_sequence() has NULLed out
-the task->tk_msg.rpc_resp pointer.
-
-Also eventually the rpc would use the new slot without making
-sure it is free by calling nfsd41_cb_setup_sequence().
-
-This problem was introduced by a 4.1 protocol addition patch:
-	[0421b5c5] nfsd41: Backchannel: Implement cb_recall over NFSv4.1
-
-Which was overlooking the possibility of an RPC callback retries.
-For not-4.1 case redoing the _prepare is harmless.
+This is the correct code.
 
 Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
 ---
@@ -50,18 +28,18 @@ Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
  1 files changed, 1 insertions(+), 1 deletions(-)
 
 diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
-index f3b5015..3bbeae8 100644
+index 3bbeae8..60c719c 100644
 --- a/fs/nfsd/nfs4callback.c
 +++ b/fs/nfsd/nfs4callback.c
-@@ -913,7 +913,7 @@ static void nfsd4_cb_recall_done(struct rpc_task *task, void *calldata)
- 	if (dp->dl_retries--) {
- 		rpc_delay(task, 2*HZ);
+@@ -1046,7 +1046,7 @@ static void nfsd4_cb_layout_done(struct rpc_task *task, void *calldata)
+ 		/* Pole the client until it's done with the layout */
+ 		rpc_delay(task, HZ/100); /* 10 mili-seconds */
  		task->tk_status = 0;
 -		rpc_restart_call(task);
 +		rpc_restart_call_prepare(task);
- 		return;
- 	} else {
- 		atomic_set(&clp->cl_cb_set, 0);
+ 		break;
+ 	case -NFS4ERR_NOMATCHING_LAYOUT:
+ 		task->tk_status = 0;
 -- 
 1.6.6.1
 
