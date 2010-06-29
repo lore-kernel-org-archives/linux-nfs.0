@@ -1,87 +1,113 @@
-From: Boaz Harrosh <bharrosh@panasas.com>
-Subject: Re: [PATCH] nfsd41: Fix a crash when a callback is retried
-Date: Tue, 29 Jun 2010 10:43:26 +0300
-Message-ID: <4C29A41E.9010708@panasas.com>
-References: <4C28DCE0.7050201@panasas.com> <4C28EEE0.70502@panasas.com>
+From: "Halevy, Benny" <bhalevy@panasas.com>
+Subject: RE: [pnfs]pnfs functions procedure
+Date: Tue, 29 Jun 2010 05:22:52 -0400
+Message-ID: <7225594ED4A1304C9E43D030A886D221F4C96E@daytona.int.panasas.com>
+References: <AANLkTikdp54iyeqpCKRNce2YDZJ2UEuuSpMp6yj2p15A@mail.gmail.com><7225594ED4A1304C9E43D030A886D221F4C96C@daytona.int.panasas.com> <AANLkTimXMzj5e-XelyG8Z6-bmmaZhuQTHE-eXI-b2OOl@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: "J. Bruce Fields" <bfields@citi.umich.edu>,
-	"Labiaga, Ricardo" <Ricardo.Labiaga@netapp.com>,
-	NFS list <linux-nfs@vger.kernel.org>
-To: Benny Halevy <bhalevy@panasas.com>
+Content-Type: text/plain; charset=US-ASCII
+Cc: <linux-nfs@vger.kernel.org>
+To: "quanli gui" <gqlxj1987@gmail.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:35830 "EHLO
+Received: from daytona.panasas.com ([67.152.220.89]:54737 "EHLO
 	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1752075Ab0F2Hn3 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Jun 2010 03:43:29 -0400
-In-Reply-To: <4C28EEE0.70502@panasas.com>
+	with ESMTP id S1754685Ab0F2JWy convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Jun 2010 05:22:54 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 06/28/2010 09:50 PM, Benny Halevy wrote:
-> On Jun. 28, 2010, 20:33 +0300, Boaz Harrosh <bharrosh@panasas.com> wrote:
->>
->> If a callback is retried at nfsd4_cb_recall_done() do to
->> some error. The returned rpc reply would then crash here:
->>
->>  @@ -514,6 +514,7 @@ decode_cb_sequence(struct xdr_stream *xdr, struct nfsd4_cb_sequence *res,
->>  	u32 dummy;
->>  	__be32 *p;
->>
->>  +	BUG_ON(!res);
->>  	if (res->cbs_minorversion == 0)
->>  		return 0;
->>
->> [BUG_ON added for demonstration]
->>
->> This is because the nfsd4_cb_done_sequence() has NULLed out
->> the task->tk_msg.rpc_resp pointer.
->>
->> This problem was introduced by a 4.1 protocol addition patch:
->> 	[0421b5c5] nfsd41: Backchannel: Implement cb_recall over NFSv4.1
->>
->> Which was overlooking the possibility of an RPC callback retries.
->>
->> Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
->> ---
->>  fs/nfsd/nfs4callback.c |    3 ---
->>  1 files changed, 0 insertions(+), 3 deletions(-)
->>
->> diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
->> index f3b5015..dace7e2 100644
->> --- a/fs/nfsd/nfs4callback.c
->> +++ b/fs/nfsd/nfs4callback.c
->> @@ -869,9 +869,6 @@ static void nfsd4_cb_done_sequence(struct rpc_task *task,
->>  		rpc_wake_up_next(&clp->cl_cb_waitq);
->>  		dprintk("%s: freed slot, new seqid=%d\n", __func__,
->>  			clp->cl_cb_seq_nr);
->> -
->> -		/* We're done looking into the sequence information */
->> -		task->tk_msg.rpc_resp = NULL;
->>  	}
->>  }
->>  
-> 
-> It looks like we have a more fundamental problem that
-> nfsd41_cb_setup_sequence is not called on the retry path
-> meaning that not only the message isn't reinitialized properly
-> but the single slot is not allocated as it should.
+At the protocol level the write will require a layout
+and device information so that the client can map the
+byte offsets in the file to the particular devices.
 
-That's true clp->cl_cb_slot_busy is not set on the retry path and there for
-there might be a bug with a second in-coming cb_layout/cb_recall.
-This is not the case with my test because exofs limits one cb_layout per inode,
-and my test only uses one file. But with multiple files test it would.
+So, in case the client does not have this information in
+its cache it may issue a LAYOUTGET to the metadata server.
 
-> Boaz, I think you saw multiple callbacks going out concurrently, right?
-> 
+This happens in _pnfs_update_layout() which is currently
+being called from nfs_write_begin() (which essentially
+happens when the application data enters the client's
+cache)
 
-No, that was a stupid exofs bug. I showed you. I was sending two cb_layout
-each time, Just for fun ;-) (Patch coming soon)
+For any new device id mentioned in the layout,
+the layout driver will issue a GETDEVICEINFO
+to populate the device cache.  For example
+see this path:
+filelayout_alloc_lseg
+filelayout_check_layout
+get_device_info.
 
-> rpc_restart_call_prepare() should be called instead of rpc_restart_call()
-> 
+Eventually, when the data is flushed onto the storage
+the client and layout driver use the cached layout to
+write and commit the data to the data servers.
 
-Yes, that should work better, and nfsd4_cb_recall_done should be fixed as well.
-Am testing cb_layout_done() path. (Will send patches soon)
+See for example:
+nfs_writepage
+nfs_writepage_locked
+nfs_pageio_init_write
+nfs_pageio_init(... nfs_flush_multi)
+nfs_flush_multi
+nfs_write_rpcsetup
+pnfs_initiate_write
+pnfs_try_to_write_data
+_pnfs_try_to_write_data
+pnfs_writepages
+nfss->pnfs_curr_ld->ld_io_ops->write_pagelist()
 
-Boaz
+Which is, for example in the files layout case:
+filelayout_write_pagelist
+that in turn, calls nfs_initiate_write for the data server serving the byte offset
+
+later COMMIT (or the equivalent for the particular layout driver)
+may be called to commit the written data to non-volatile storage
+and LAYOUTCOMMIT is sent to the metadata server
+
+A code path that issues this, for example, starts in
+nfs_write_inode
+
+I hope this helps!
+
+Benny
+
+-----Original Message-----
+From: quanli gui [mailto:gqlxj1987@gmail.com]
+Sent: Tue 2010-06-29 10:58
+To: Halevy, Benny
+Subject: Re: [pnfs]pnfs functions procedure
+ 
+I means that for example, when i want to write a file, how pnfs handle this
+write file command? It would treat this command with which functions in
+pnfs. how is the functions procedure?
+
+2010/6/29 Halevy, Benny <bhalevy@panasas.com>
+
+> Dear Quanli,
+>
+> I'm not sure what you meant exactly from your message
+> so we'll have to close the language barrier somehow.
+> (I'm not a native English speaker as well ;-))
+>
+> It would help if you can please provide a concrete
+> example of a simple thing you want to accomplish
+> so we can focus on how to help you achieve that.
+>
+> Thanks,
+>
+> Benny
+>
+> -----Original Message-----
+> From: quanli gui [mailto:gqlxj1987@gmail.com]
+> Sent: Tue 2010-06-29 05:07
+> To: linux-pnfs
+> Cc: Halevy, Benny
+> Subject: [pnfs]pnfs functions procedure
+>
+> For pnfs, I nearly know every function, that means that i almost know the
+> meanings of the function. But i don't know how to  tandem these functions.
+> I
+> don't know in fact i use which function when i use pnfs. I don't know how
+> to
+> connect the function to the defacto use. When i  use pnfs setup by setup,
+> the functions procedure? I don't know. I hope that someone can give me
+> something about this. Thanks.
+>
+>
+
