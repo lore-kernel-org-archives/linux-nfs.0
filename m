@@ -1,46 +1,33 @@
-From: Boaz Harrosh <bharrosh@panasas.com>
-Subject: [PATCH] SQUASHME: into [SQUASHME: pnfsd: Support for cb_layout returning
- NFS4ERR_DELAY]
-Date: Tue, 29 Jun 2010 14:36:56 +0300
-Message-ID: <4C29DAD8.1060809@panasas.com>
-References: <4C1A4DED.50702@panasas.com> <4C28D829.5070706@panasas.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-To: Benny Halevy <bhalevy@panasas.com>,
-	NFS list <linux-nfs@vger.kernel.org>,
-	"J. Bruce Fields" <bfields@citi.umich.edu>,
-	"Labiaga, Ricardo" <Ricardo.Labiaga@netapp.com>
+From: Benny Halevy <bhalevy@panasas.com>
+Subject: [PATCH] SQUASHME: pnfs-submit: __wait no longer used by _pnfs_update_layout
+Date: Tue, 29 Jun 2010 14:39:09 +0300
+Message-ID: <1277811549-13826-1-git-send-email-bhalevy@panasas.com>
+To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:27303 "EHLO
+Received: from daytona.panasas.com ([67.152.220.89]:42891 "EHLO
 	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1755947Ab0F2Lg6 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Jun 2010 07:36:58 -0400
-In-Reply-To: <4C28D829.5070706@panasas.com>
+	with ESMTP id S1751885Ab0F2LjM (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Jun 2010 07:39:12 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-This is the correct code.
-
-Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 ---
- fs/nfsd/nfs4callback.c |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
+ fs/nfs/pnfs.c |    1 -
+ 1 files changed, 0 insertions(+), 1 deletions(-)
 
-diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
-index 3bbeae8..60c719c 100644
---- a/fs/nfsd/nfs4callback.c
-+++ b/fs/nfsd/nfs4callback.c
-@@ -1046,7 +1046,7 @@ static void nfsd4_cb_layout_done(struct rpc_task *task, void *calldata)
- 		/* Pole the client until it's done with the layout */
- 		rpc_delay(task, HZ/100); /* 10 mili-seconds */
- 		task->tk_status = 0;
--		rpc_restart_call(task);
-+		rpc_restart_call_prepare(task);
- 		break;
- 	case -NFS4ERR_NOMATCHING_LAYOUT:
- 		task->tk_status = 0;
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 379e614..c78e39c 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -1078,7 +1078,6 @@ _pnfs_update_layout(struct inode *ino,
+ 	struct pnfs_layout_type *lo;
+ 	struct pnfs_layout_segment *lseg = NULL;
+ 	bool take_ref = (lsegpp != NULL);
+-	DEFINE_WAIT(__wait);
+ 
+ 	if (take_ref)
+ 		*lsegpp = NULL;
 -- 
 1.6.6.1
-
 
