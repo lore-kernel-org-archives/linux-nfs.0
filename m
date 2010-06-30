@@ -1,217 +1,320 @@
 From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH 5/5] NFSv4: Ensure the lockowners are labelled using the fl_owner and/or fl_pid
-Date: Wed, 30 Jun 2010 17:25:37 -0400
-Message-ID: <1277933137-6955-6-git-send-email-Trond.Myklebust@netapp.com>
+Subject: [PATCH 2/5] NFSv4: Ensure that we track the NFSv4 lock state in read/write requests.
+Date: Wed, 30 Jun 2010 17:25:34 -0400
+Message-ID: <1277933137-6955-3-git-send-email-Trond.Myklebust@netapp.com>
 References: <1277933137-6955-1-git-send-email-Trond.Myklebust@netapp.com>
  <1277933137-6955-2-git-send-email-Trond.Myklebust@netapp.com>
- <1277933137-6955-3-git-send-email-Trond.Myklebust@netapp.com>
- <1277933137-6955-4-git-send-email-Trond.Myklebust@netapp.com>
- <1277933137-6955-5-git-send-email-Trond.Myklebust@netapp.com>
 Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:6636 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:4193 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757305Ab0F3VZ4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 30 Jun 2010 17:25:56 -0400
-In-Reply-To: <1277933137-6955-5-git-send-email-Trond.Myklebust@netapp.com>
+	id S1754569Ab0F3VZz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 30 Jun 2010 17:25:55 -0400
+In-Reply-To: <1277933137-6955-2-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-flock locks want to be labelled using the process pid, while posix locks
-want to be labelled using the fl_owner.
+This patch fixes bugzilla entry 14501:
+  https://bugzilla.kernel.org/show_bug.cgi?id=14501
 
 Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
- fs/nfs/nfs4_fs.h   |   15 +++++++++++++--
- fs/nfs/nfs4proc.c  |    2 +-
- fs/nfs/nfs4state.c |   45 +++++++++++++++++++++++++++++++++++----------
- fs/nfs/nfs4xdr.c   |    2 +-
- 4 files changed, 50 insertions(+), 14 deletions(-)
+ fs/nfs/inode.c           |   70 +++++++++++++++++++++++++++++++++++++++++++--
+ fs/nfs/nfs4xdr.c         |    8 ++--
+ fs/nfs/pagelist.c        |    8 ++++-
+ fs/nfs/read.c            |    1 +
+ fs/nfs/write.c           |    5 ++-
+ include/linux/nfs_fs.h   |   13 +++++++-
+ include/linux/nfs_page.h |    1 +
+ include/linux/nfs_xdr.h  |    2 +
+ 8 files changed, 96 insertions(+), 12 deletions(-)
 
-diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
-index deaf37f..311e15c 100644
---- a/fs/nfs/nfs4_fs.h
-+++ b/fs/nfs/nfs4_fs.h
-@@ -142,10 +142,20 @@ enum {
-  * LOCK: one nfs4_state (LOCK) to hold the lock stateid nfs4_state(OPEN)
-  */
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index 099b351..ec7a8f9 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -530,6 +530,68 @@ out:
+ 	return err;
+ }
  
-+struct nfs4_lock_owner {
-+	unsigned int lo_type;
-+#define NFS4_ANY_LOCK_TYPE	(0U)
-+#define NFS4_FLOCK_LOCK_TYPE	(1U << 0)
-+#define NFS4_POSIX_LOCK_TYPE	(1U << 1)
-+	union {
-+		fl_owner_t posix_owner;
-+		pid_t flock_owner;
-+	} lo_u;
-+};
++static void nfs_init_lock_context(struct nfs_lock_context *l_ctx)
++{
++	atomic_set(&l_ctx->count, 1);
++	l_ctx->lockowner = current->files;
++	l_ctx->pid = current->tgid;
++	INIT_LIST_HEAD(&l_ctx->list);
++}
 +
- struct nfs4_lock_state {
- 	struct list_head	ls_locks;	/* Other lock stateids */
- 	struct nfs4_state *	ls_state;	/* Pointer to open state */
--	fl_owner_t		ls_owner;	/* POSIX lock owner */
- #define NFS_LOCK_INITIALIZED 1
- 	int			ls_flags;
- 	struct nfs_seqid_counter	ls_seqid;
-@@ -153,6 +163,7 @@ struct nfs4_lock_state {
- 	struct nfs_unique_id	ls_id;
- 	nfs4_stateid		ls_stateid;
- 	atomic_t		ls_count;
-+	struct nfs4_lock_owner	ls_owner;
- };
- 
- /* bits for nfs4_state->flags */
-@@ -310,7 +321,7 @@ extern void nfs41_handle_sequence_flag_errors(struct nfs_client *clp, u32 flags)
- extern void nfs41_handle_recall_slot(struct nfs_client *clp);
- extern void nfs4_put_lock_state(struct nfs4_lock_state *lsp);
- extern int nfs4_set_lock_state(struct nfs4_state *state, struct file_lock *fl);
--extern void nfs4_copy_stateid(nfs4_stateid *, struct nfs4_state *, fl_owner_t);
-+extern void nfs4_copy_stateid(nfs4_stateid *, struct nfs4_state *, fl_owner_t, pid_t);
- 
- extern struct nfs_seqid *nfs_alloc_seqid(struct nfs_seqid_counter *counter, gfp_t gfp_mask);
- extern int nfs_wait_on_sequence(struct nfs_seqid *seqid, struct rpc_task *task);
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 5d3e8a2..d6413b4 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -1767,7 +1767,7 @@ static int _nfs4_do_setattr(struct inode *inode, struct rpc_cred *cred,
- 	if (nfs4_copy_delegation_stateid(&arg.stateid, inode)) {
- 		/* Use that stateid */
- 	} else if (state != NULL) {
--		nfs4_copy_stateid(&arg.stateid, state, current->files);
-+		nfs4_copy_stateid(&arg.stateid, state, current->files, current->tgid);
- 	} else
- 		memcpy(&arg.stateid, &zero_stateid, sizeof(arg.stateid));
- 
-diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-index 13a4f27..3e2f19b 100644
---- a/fs/nfs/nfs4state.c
-+++ b/fs/nfs/nfs4state.c
-@@ -602,12 +602,21 @@ void nfs4_close_sync(struct path *path, struct nfs4_state *state, fmode_t fmode)
-  * that is compatible with current->files
-  */
- static struct nfs4_lock_state *
--__nfs4_find_lock_state(struct nfs4_state *state, fl_owner_t fl_owner)
-+__nfs4_find_lock_state(struct nfs4_state *state, fl_owner_t fl_owner, pid_t fl_pid, unsigned int type)
- {
- 	struct nfs4_lock_state *pos;
- 	list_for_each_entry(pos, &state->lock_states, ls_locks) {
--		if (pos->ls_owner != fl_owner)
-+		if (type != NFS4_ANY_LOCK_TYPE && pos->ls_owner.lo_type != type)
- 			continue;
-+		switch (pos->ls_owner.lo_type) {
-+		case NFS4_POSIX_LOCK_TYPE:
-+			if (pos->ls_owner.lo_u.posix_owner != fl_owner)
-+				continue;
-+			break;
-+		case NFS4_FLOCK_LOCK_TYPE:
-+			if (pos->ls_owner.lo_u.flock_owner != fl_pid)
-+				continue;
-+		}
- 		atomic_inc(&pos->ls_count);
- 		return pos;
- 	}
-@@ -619,7 +628,7 @@ __nfs4_find_lock_state(struct nfs4_state *state, fl_owner_t fl_owner)
-  * exists, return an uninitialized one.
-  *
-  */
--static struct nfs4_lock_state *nfs4_alloc_lock_state(struct nfs4_state *state, fl_owner_t fl_owner)
-+static struct nfs4_lock_state *nfs4_alloc_lock_state(struct nfs4_state *state, fl_owner_t fl_owner, pid_t fl_pid, unsigned int type)
- {
- 	struct nfs4_lock_state *lsp;
- 	struct nfs_client *clp = state->owner->so_server->nfs_client;
-@@ -633,7 +642,18 @@ static struct nfs4_lock_state *nfs4_alloc_lock_state(struct nfs4_state *state, f
- 	lsp->ls_seqid.sequence = &lsp->ls_sequence;
- 	atomic_set(&lsp->ls_count, 1);
- 	lsp->ls_state = state;
--	lsp->ls_owner = fl_owner;
-+	lsp->ls_owner.lo_type = type;
-+	switch (lsp->ls_owner.lo_type) {
-+	case NFS4_FLOCK_LOCK_TYPE:
-+		lsp->ls_owner.lo_u.flock_owner = fl_pid;
-+		break;
-+	case NFS4_POSIX_LOCK_TYPE:
-+		lsp->ls_owner.lo_u.posix_owner = fl_owner;
-+		break;
-+	default:
-+		kfree(lsp);
-+		return NULL;
++static struct nfs_lock_context *__nfs_find_lock_context(struct nfs_open_context *ctx)
++{
++	struct nfs_lock_context *pos;
++
++	list_for_each_entry(pos, &ctx->lock_context.list, list) {
++		if (pos->lockowner != current->files)
++			continue;
++		if (pos->pid != current->tgid)
++			continue;
++		atomic_inc(&pos->count);
++		return pos;
 +	}
- 	spin_lock(&clp->cl_lock);
- 	nfs_alloc_unique_id(&clp->cl_lockowner_id, &lsp->ls_id, 1, 64);
- 	spin_unlock(&clp->cl_lock);
-@@ -657,13 +677,13 @@ static void nfs4_free_lock_state(struct nfs4_lock_state *lsp)
-  * exists, return an uninitialized one.
-  *
-  */
--static struct nfs4_lock_state *nfs4_get_lock_state(struct nfs4_state *state, fl_owner_t owner)
-+static struct nfs4_lock_state *nfs4_get_lock_state(struct nfs4_state *state, fl_owner_t owner, pid_t pid, unsigned int type)
- {
- 	struct nfs4_lock_state *lsp, *new = NULL;
- 	
- 	for(;;) {
- 		spin_lock(&state->state_lock);
--		lsp = __nfs4_find_lock_state(state, owner);
-+		lsp = __nfs4_find_lock_state(state, owner, pid, type);
- 		if (lsp != NULL)
- 			break;
- 		if (new != NULL) {
-@@ -674,7 +694,7 @@ static struct nfs4_lock_state *nfs4_get_lock_state(struct nfs4_state *state, fl_
- 			break;
- 		}
- 		spin_unlock(&state->state_lock);
--		new = nfs4_alloc_lock_state(state, owner);
-+		new = nfs4_alloc_lock_state(state, owner, pid, type);
- 		if (new == NULL)
- 			return NULL;
++	return NULL;
++}
++
++struct nfs_lock_context *nfs_get_lock_context(struct nfs_open_context *ctx)
++{
++	struct nfs_lock_context *res, *new = NULL;
++	struct inode *inode = ctx->path.dentry->d_inode;
++
++	spin_lock(&inode->i_lock);
++	res = __nfs_find_lock_context(ctx);
++	if (res == NULL) {
++		spin_unlock(&inode->i_lock);
++		new = kmalloc(sizeof(*new), GFP_KERNEL);
++		if (new == NULL)
++			return NULL;
++		nfs_init_lock_context(new);
++		spin_lock(&inode->i_lock);
++		res = __nfs_find_lock_context(ctx);
++		if (res == NULL) {
++			list_add_tail(&new->list, &ctx->lock_context.list);
++			new->open_context = ctx;
++			res = new;
++			new = NULL;
++		}
++	}
++	spin_unlock(&inode->i_lock);
++	kfree(new);
++	return res;
++}
++
++void nfs_put_lock_context(struct nfs_lock_context *l_ctx)
++{
++	struct nfs_open_context *ctx = l_ctx->open_context;
++	struct inode *inode = ctx->path.dentry->d_inode;
++
++	if (!atomic_dec_and_lock(&l_ctx->count, &inode->i_lock))
++		return;
++	list_del(&l_ctx->list);
++	spin_unlock(&inode->i_lock);
++	kfree(l_ctx);
++}
++
+ /**
+  * nfs_close_context - Common close_context() routine NFSv2/v3
+  * @ctx: pointer to context
+@@ -566,11 +628,11 @@ static struct nfs_open_context *alloc_nfs_open_context(struct path *path, struct
+ 		path_get(&ctx->path);
+ 		ctx->cred = get_rpccred(cred);
+ 		ctx->state = NULL;
+-		ctx->lockowner = current->files;
+ 		ctx->flags = 0;
+ 		ctx->error = 0;
+ 		ctx->dir_cookie = 0;
+-		atomic_set(&ctx->count, 1);
++		nfs_init_lock_context(&ctx->lock_context);
++		ctx->lock_context.open_context = ctx;
  	}
-@@ -730,7 +750,12 @@ int nfs4_set_lock_state(struct nfs4_state *state, struct file_lock *fl)
- 
- 	if (fl->fl_ops != NULL)
- 		return 0;
--	lsp = nfs4_get_lock_state(state, fl->fl_owner);
-+	if (fl->fl_flags & FL_POSIX)
-+		lsp = nfs4_get_lock_state(state, fl->fl_owner, 0, NFS4_POSIX_LOCK_TYPE);
-+	else if (fl->fl_flags & FL_FLOCK)
-+		lsp = nfs4_get_lock_state(state, 0, fl->fl_pid, NFS4_FLOCK_LOCK_TYPE);
-+	else
-+		return -EINVAL;
- 	if (lsp == NULL)
- 		return -ENOMEM;
- 	fl->fl_u.nfs4_fl.owner = lsp;
-@@ -742,7 +767,7 @@ int nfs4_set_lock_state(struct nfs4_state *state, struct file_lock *fl)
-  * Byte-range lock aware utility to initialize the stateid of read/write
-  * requests.
-  */
--void nfs4_copy_stateid(nfs4_stateid *dst, struct nfs4_state *state, fl_owner_t fl_owner)
-+void nfs4_copy_stateid(nfs4_stateid *dst, struct nfs4_state *state, fl_owner_t fl_owner, pid_t fl_pid)
+ 	return ctx;
+ }
+@@ -578,7 +640,7 @@ static struct nfs_open_context *alloc_nfs_open_context(struct path *path, struct
+ struct nfs_open_context *get_nfs_open_context(struct nfs_open_context *ctx)
  {
- 	struct nfs4_lock_state *lsp;
- 	int seq;
-@@ -755,7 +780,7 @@ void nfs4_copy_stateid(nfs4_stateid *dst, struct nfs4_state *state, fl_owner_t f
- 		return;
+ 	if (ctx != NULL)
+-		atomic_inc(&ctx->count);
++		atomic_inc(&ctx->lock_context.count);
+ 	return ctx;
+ }
  
- 	spin_lock(&state->state_lock);
--	lsp = __nfs4_find_lock_state(state, fl_owner);
-+	lsp = __nfs4_find_lock_state(state, fl_owner, fl_pid, NFS4_ANY_LOCK_TYPE);
- 	if (lsp != NULL && (lsp->ls_flags & NFS_LOCK_INITIALIZED) != 0)
- 		memcpy(dst, &lsp->ls_stateid, sizeof(*dst));
- 	spin_unlock(&state->state_lock);
+@@ -586,7 +648,7 @@ static void __put_nfs_open_context(struct nfs_open_context *ctx, int is_sync)
+ {
+ 	struct inode *inode = ctx->path.dentry->d_inode;
+ 
+-	if (!atomic_dec_and_lock(&ctx->count, &inode->i_lock))
++	if (!atomic_dec_and_lock(&ctx->lock_context.count, &inode->i_lock))
+ 		return;
+ 	list_del(&ctx->list);
+ 	spin_unlock(&inode->i_lock);
 diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index b3e9180..07bc8f1 100644
+index 1f7781d..873b62f 100644
 --- a/fs/nfs/nfs4xdr.c
 +++ b/fs/nfs/nfs4xdr.c
-@@ -1361,7 +1361,7 @@ static void encode_stateid(struct xdr_stream *xdr, const struct nfs_open_context
+@@ -1324,14 +1324,14 @@ static void encode_putrootfh(struct xdr_stream *xdr, struct compound_hdr *hdr)
+ 	hdr->replen += decode_putrootfh_maxsz;
+ }
+ 
+-static void encode_stateid(struct xdr_stream *xdr, const struct nfs_open_context *ctx)
++static void encode_stateid(struct xdr_stream *xdr, const struct nfs_open_context *ctx, const struct nfs_lock_context *l_ctx)
+ {
+ 	nfs4_stateid stateid;
+ 	__be32 *p;
  
  	p = reserve_space(xdr, NFS4_STATEID_SIZE);
  	if (ctx->state != NULL) {
--		nfs4_copy_stateid(&stateid, ctx->state, l_ctx->lockowner);
-+		nfs4_copy_stateid(&stateid, ctx->state, l_ctx->lockowner, l_ctx->pid);
+-		nfs4_copy_stateid(&stateid, ctx->state, ctx->lockowner);
++		nfs4_copy_stateid(&stateid, ctx->state, l_ctx->lockowner);
  		xdr_encode_opaque_fixed(p, stateid.data, NFS4_STATEID_SIZE);
  	} else
  		xdr_encode_opaque_fixed(p, zero_stateid.data, NFS4_STATEID_SIZE);
+@@ -1344,7 +1344,7 @@ static void encode_read(struct xdr_stream *xdr, const struct nfs_readargs *args,
+ 	p = reserve_space(xdr, 4);
+ 	*p = cpu_to_be32(OP_READ);
+ 
+-	encode_stateid(xdr, args->context);
++	encode_stateid(xdr, args->context, args->lock_context);
+ 
+ 	p = reserve_space(xdr, 12);
+ 	p = xdr_encode_hyper(p, args->offset);
+@@ -1523,7 +1523,7 @@ static void encode_write(struct xdr_stream *xdr, const struct nfs_writeargs *arg
+ 	p = reserve_space(xdr, 4);
+ 	*p = cpu_to_be32(OP_WRITE);
+ 
+-	encode_stateid(xdr, args->context);
++	encode_stateid(xdr, args->context, args->lock_context);
+ 
+ 	p = reserve_space(xdr, 16);
+ 	p = xdr_encode_hyper(p, args->offset);
+diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
+index a3654e5..9194902 100644
+--- a/fs/nfs/pagelist.c
++++ b/fs/nfs/pagelist.c
+@@ -79,6 +79,7 @@ nfs_create_request(struct nfs_open_context *ctx, struct inode *inode,
+ 	req->wb_pgbase	= offset;
+ 	req->wb_bytes   = count;
+ 	req->wb_context = get_nfs_open_context(ctx);
++	req->wb_lock_context = nfs_get_lock_context(ctx);
+ 	kref_init(&req->wb_kref);
+ 	return req;
+ }
+@@ -141,11 +142,16 @@ void nfs_clear_request(struct nfs_page *req)
+ {
+ 	struct page *page = req->wb_page;
+ 	struct nfs_open_context *ctx = req->wb_context;
++	struct nfs_lock_context *l_ctx = req->wb_lock_context;
+ 
+ 	if (page != NULL) {
+ 		page_cache_release(page);
+ 		req->wb_page = NULL;
+ 	}
++	if (l_ctx != NULL) {
++		nfs_put_lock_context(l_ctx);
++		req->wb_lock_context = NULL;
++	}
+ 	if (ctx != NULL) {
+ 		put_nfs_open_context(ctx);
+ 		req->wb_context = NULL;
+@@ -235,7 +241,7 @@ static int nfs_can_coalesce_requests(struct nfs_page *prev,
+ {
+ 	if (req->wb_context->cred != prev->wb_context->cred)
+ 		return 0;
+-	if (req->wb_context->lockowner != prev->wb_context->lockowner)
++	if (req->wb_lock_context->lockowner != prev->wb_lock_context->lockowner)
+ 		return 0;
+ 	if (req->wb_context->state != prev->wb_context->state)
+ 		return 0;
+diff --git a/fs/nfs/read.c b/fs/nfs/read.c
+index 5a33a92..87adc27 100644
+--- a/fs/nfs/read.c
++++ b/fs/nfs/read.c
+@@ -190,6 +190,7 @@ static int nfs_read_rpcsetup(struct nfs_page *req, struct nfs_read_data *data,
+ 	data->args.pages  = data->pagevec;
+ 	data->args.count  = count;
+ 	data->args.context = get_nfs_open_context(req->wb_context);
++	data->args.lock_context = req->wb_lock_context;
+ 
+ 	data->res.fattr   = &data->fattr;
+ 	data->res.count   = count;
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index 03df228..5eccea1 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -689,7 +689,9 @@ int nfs_flush_incompatible(struct file *file, struct page *page)
+ 		req = nfs_page_find_request(page);
+ 		if (req == NULL)
+ 			return 0;
+-		do_flush = req->wb_page != page || req->wb_context != ctx;
++		do_flush = req->wb_page != page || req->wb_context != ctx ||
++			req->wb_lock_context->lockowner != current->files ||
++			req->wb_lock_context->pid != current->tgid;
+ 		nfs_release_request(req);
+ 		if (!do_flush)
+ 			return 0;
+@@ -813,6 +815,7 @@ static int nfs_write_rpcsetup(struct nfs_page *req,
+ 	data->args.pages  = data->pagevec;
+ 	data->args.count  = count;
+ 	data->args.context = get_nfs_open_context(req->wb_context);
++	data->args.lock_context = req->wb_lock_context;
+ 	data->args.stable  = NFS_UNSTABLE;
+ 	if (how & FLUSH_STABLE) {
+ 		data->args.stable = NFS_DATA_SYNC;
+diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
+index 77c2ae5..a9d8026 100644
+--- a/include/linux/nfs_fs.h
++++ b/include/linux/nfs_fs.h
+@@ -72,13 +72,20 @@ struct nfs_access_entry {
+ 	int			mask;
+ };
+ 
++struct nfs_lock_context {
++	atomic_t count;
++	struct list_head list;
++	struct nfs_open_context *open_context;
++	fl_owner_t lockowner;
++	pid_t pid;
++};
++
+ struct nfs4_state;
+ struct nfs_open_context {
+-	atomic_t count;
++	struct nfs_lock_context lock_context;
+ 	struct path path;
+ 	struct rpc_cred *cred;
+ 	struct nfs4_state *state;
+-	fl_owner_t lockowner;
+ 	fmode_t mode;
+ 
+ 	unsigned long flags;
+@@ -353,6 +360,8 @@ extern void nfs_setattr_update_inode(struct inode *inode, struct iattr *attr);
+ extern struct nfs_open_context *get_nfs_open_context(struct nfs_open_context *ctx);
+ extern void put_nfs_open_context(struct nfs_open_context *ctx);
+ extern struct nfs_open_context *nfs_find_open_context(struct inode *inode, struct rpc_cred *cred, fmode_t mode);
++extern struct nfs_lock_context *nfs_get_lock_context(struct nfs_open_context *ctx);
++extern void nfs_put_lock_context(struct nfs_lock_context *l_ctx);
+ extern u64 nfs_compat_user_ino64(u64 fileid);
+ extern void nfs_fattr_init(struct nfs_fattr *fattr);
+ 
+diff --git a/include/linux/nfs_page.h b/include/linux/nfs_page.h
+index 3c60685..f8b60e7 100644
+--- a/include/linux/nfs_page.h
++++ b/include/linux/nfs_page.h
+@@ -39,6 +39,7 @@ struct nfs_page {
+ 	struct list_head	wb_list;	/* Defines state of page: */
+ 	struct page		*wb_page;	/* page to read in/write out */
+ 	struct nfs_open_context	*wb_context;	/* File state context info */
++	struct nfs_lock_context	*wb_lock_context;	/* lock context info */
+ 	atomic_t		wb_complete;	/* i/os we're waiting for */
+ 	pgoff_t			wb_index;	/* Offset >> PAGE_CACHE_SHIFT */
+ 	unsigned int		wb_offset,	/* Offset & ~PAGE_CACHE_MASK */
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index a319cb9..87202c7 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -334,6 +334,7 @@ struct nfs4_delegreturnres {
+ struct nfs_readargs {
+ 	struct nfs_fh *		fh;
+ 	struct nfs_open_context *context;
++	struct nfs_lock_context *lock_context;
+ 	__u64			offset;
+ 	__u32			count;
+ 	unsigned int		pgbase;
+@@ -354,6 +355,7 @@ struct nfs_readres {
+ struct nfs_writeargs {
+ 	struct nfs_fh *		fh;
+ 	struct nfs_open_context *context;
++	struct nfs_lock_context *lock_context;
+ 	__u64			offset;
+ 	__u32			count;
+ 	enum nfs3_stable_how	stable;
 -- 
 1.7.0.1
 
