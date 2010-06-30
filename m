@@ -1,131 +1,126 @@
-From: Boaz Harrosh <bharrosh@panasas.com>
-Subject: Re: [PATCH 07/10] SQUASHME pnfs-submit: add error handlers to layout
- get
-Date: Wed, 30 Jun 2010 18:19:51 +0300
-Message-ID: <4C2B6097.2000909@panasas.com>
-References: <1277320878-3726-1-git-send-email-andros@netapp.com> <1277320878-3726-2-git-send-email-andros@netapp.com> <1277320878-3726-3-git-send-email-andros@netapp.com> <1277320878-3726-4-git-send-email-andros@netapp.com> <1277320878-3726-5-git-send-email-andros@netapp.com> <1277320878-3726-6-git-send-email-andros@netapp.com> <1277320878-3726-7-git-send-email-andros@netapp.com> <1277320878-3726-8-git-send-email-andros@netapp.com>
+From: Laurent Bonnaud <bonnaud-jHyHnS8NkcXLSxaa5bH2iPQULIy34Utc@public.gmane.org>
+Subject: Mount error with NFSv4 and Kerberos (Bad encryption type)
+Date: Wed, 30 Jun 2010 17:43:51 +0200
+Message-ID: <1277912631.11798.22.camel@localhost>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: bhalevy@panasas.com, linux-nfs@vger.kernel.org
-To: andros@netapp.com
+Content-Type: multipart/mixed; boundary="=-DPlX50ycKONpI3Qgj8zo"
+To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:64143 "EHLO
-	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1753377Ab0F3PTy (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 30 Jun 2010 11:19:54 -0400
-In-Reply-To: <1277320878-3726-8-git-send-email-andros@netapp.com>
+Received: from smtp.ampere.inpg.fr ([147.171.64.83]:54453 "EHLO
+	smtp.ampere.inpg.fr" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751758Ab0F3PyQ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 30 Jun 2010 11:54:16 -0400
+Received: from localhost (localhost [127.0.0.1])
+	by smtp.ampere.inpg.fr (Postfix) with ESMTP id 2F6EE981F4
+	for <linux-nfs@vger.kernel.org>; Wed, 30 Jun 2010 17:43:52 +0200 (CEST)
+Received: from smtp.ampere.inpg.fr ([127.0.0.1])
+	by localhost (smtp.ampere.grenoble-inp.fr [127.0.0.1]) (amavisd-new, port 10024)
+	with ESMTP id jMESE5esqj30 for <linux-nfs@vger.kernel.org>;
+	Wed, 30 Jun 2010 17:43:52 +0200 (CEST)
+Received: from [193.55.51.151] (pc-dg-112-2.iut2.upmf-grenoble.fr [193.55.51.151])
+	(using SSLv3 with cipher DHE-RSA-AES256-SHA (256/256 bits))
+	(No client certificate requested)
+	by smtp.ampere.inpg.fr (Postfix) with ESMTPSA id 1685E98102
+	for <linux-nfs@vger.kernel.org>; Wed, 30 Jun 2010 17:43:52 +0200 (CEST)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 06/23/2010 10:21 PM, andros@netapp.com wrote:
-> From: Andy Adamson <andros@netapp.com>
-> 
-> Redo pnfs4_proc_layoutget() logic to match the other async operations that call
-> nfs4_wait_for_completion_rpc_task.
-> 
-> pnfs_get_layout_done passes session and delay errors. Handle them with the
-> generic error handlers.
-> 
-> Signed-off-by: Andy Adamson <andros@netapp.com>
-> ---
->  fs/nfs/nfs4proc.c |   45 +++++++++++++++++++++++++++++----------------
->  1 files changed, 29 insertions(+), 16 deletions(-)
-> 
-> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-> index 35e8a56..6283996 100644
-> --- a/fs/nfs/nfs4proc.c
-> +++ b/fs/nfs/nfs4proc.c
-> @@ -5446,6 +5446,10 @@ static void nfs4_pnfs_layoutget_done(struct rpc_task *task, void *calldata)
->  		return;
->  
->  	pnfs_get_layout_done(lgp, task->tk_status);
-> +
-> +	if (nfs4_async_handle_error(task, server, NULL, NULL) == -EAGAIN)
-> +		nfs_restart_rpc(task, server->nfs_client);
-> +
 
-Andy high.
+--=-DPlX50ycKONpI3Qgj8zo
+Content-Type: text/plain; charset="ISO-8859-1"
+Content-Transfer-Encoding: 7bit
 
-In pnfs_get_layout_done() it is working hard to do "lgp->status = XXX"
+Hi,
 
-I never understood, what gets to look at that later on?
+I am trying to mount a NFSv4 share from a Debian squeeze NFS server on a
+Debian squeeze NFS client using sec=krb5.  The same setup used to work
+an Debian lenny and failed just after the upgrade to Debian squeeze.
 
-Thanks
-Boaz
+Both systems use the latest versions in Debian squeeze, currently:
+ - nfs-utils version 1.2.2 (package version 1.2.2-1)
+ - kernel 2.6.32 (package version 2.6.32-15)
+ - krb5 1.8.1 (package version 1.8.1+dfsg-5)
 
->  	dprintk("<-- %s\n", __func__);
->  }
->  
-> @@ -5471,10 +5475,9 @@ static const struct rpc_call_ops nfs4_pnfs_layoutget_call_ops = {
->   * and deal with retries.
->   * Currently we can't since we release lgp and its contents.
->   */
-> -int pnfs4_proc_layoutget(struct nfs4_pnfs_layoutget *lgp)
-> +static int _pnfs4_proc_layoutget(struct nfs4_pnfs_layoutget *lgp)
->  {
-> -	struct inode *ino = lgp->args.inode;
-> -	struct nfs_server *server = NFS_SERVER(ino);
-> +	struct nfs_server *server = NFS_SERVER(lgp->args.inode);
->  	struct rpc_task *task;
->  	struct rpc_message msg = {
->  		.rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_PNFS_LAYOUTGET],
-> @@ -5488,35 +5491,45 @@ int pnfs4_proc_layoutget(struct nfs4_pnfs_layoutget *lgp)
->  		.callback_data = lgp,
->  		.flags = RPC_TASK_ASYNC,
->  	};
-> -	int status;
-> +	int status = 0;
->  
->  	dprintk("--> %s\n", __func__);
->  
->  	lgp->res.layout.buf = (void *)__get_free_page(GFP_NOFS);
->  	if (lgp->res.layout.buf == NULL) {
->  		nfs4_pnfs_layoutget_release(lgp);
-> -		status = -ENOMEM;
-> -		goto out;
-> +		return -ENOMEM;
->  	}
->  
->  	lgp->res.seq_res.sr_slotid = NFS4_MAX_SLOT_TABLE;
->  	task = rpc_run_task(&task_setup_data);
-> -	if (IS_ERR(task)) {
-> -		status = PTR_ERR(task);
-> -		goto out;
-> -	}
-> +	if (IS_ERR(task))
-> +		return PTR_ERR(task);
->  	status = nfs4_wait_for_completion_rpc_task(task);
-> -	if (status == 0) {
-> -		status = lgp->status;
-> -		if (status == 0)
-> -			status = pnfs_layout_process(lgp);
-> -	}
-> -	rpc_put_task(task);
-> +	if (status != 0)
-> +		goto out;
-> +	status = lgp->status;
-> +	if (status != 0)
-> +		goto out;
-> +	status = pnfs_layout_process(lgp);
->  out:
-> +	rpc_put_task(task);
->  	dprintk("<-- %s status=%d\n", __func__, status);
->  	return status;
->  }
->  
-> +int pnfs4_proc_layoutget(struct nfs4_pnfs_layoutget *lgp)
-> +{
-> +	struct nfs_server *server = NFS_SERVER(lgp->args.inode);
-> +	struct nfs4_exception exception = { };
-> +	int err;
-> +	do {
-> +		err = nfs4_handle_exception(server, _pnfs4_proc_layoutget(lgp),
-> +					    &exception);
-> +	} while (exception.retry);
-> +	return err;
-> +}
-> +
->  static void pnfs_layoutcommit_prepare(struct rpc_task *task, void *data)
->  {
->  	struct pnfs_layoutcommit_data *ldata =
+The mount operation fails with this error message:
+
+root@svn-info:~# mount -v /users
+mount.nfs4: timeout set for Wed Jun 30 17:29:47 2010
+mount.nfs4: trying text-based options 'intr,sec=krb5,addr=192.168.141.5,clientaddr=195.221.57.54'
+mount.nfs4: mount(2): Permission denied
+mount.nfs4: access denied by server while mounting erebus2-pdg:/users
+
+Here is the /etc/fstab entry on the client:
+
+  erebus2-pdg:/users /users nfs4 auto,user,exec,intr,sec=krb5
+
+On the server /var/log/daemon.log contains the following error messages:
+
+Jun 30 17:27:47 erebus2-pdg rpc.svcgssd[24332]: ERROR: GSS-API: error in
+handle_nullreq: gss_accept_sec_context(): Unspecified GSS failure.
+Minor code may provide more information - Bad encryption type
+Jun 30 17:27:47 erebus2-pdg rpc.svcgssd[24332]: ERROR: GSS-API: error in
+handle_nullreq: gss_accept_sec_context(): Unspecified GSS failure.
+Minor code may provide more information - Bad encryption type
+
+Kerberos keys were generated on a Windows 2003 AD server and the same
+keys used to work in Debian lenny:
+
+ - on the client:
+
+root@svn-info:~# klist -ke
+Keytab name: WRFILE:/etc/krb5.keytab
+KVNO Principal
+---- --------------------------------------------------------------------------
+   3 nfs/pc-client-nfs-mNjEMxXs7nNb7MaPNYHebcAQG6jrQJLRZR6xolQnxMI@public.gmane.org (DES cbc mode with RSA-MD5) 
+
+ - on the server:
+
+root@erebus2-pdg:~# klist -ke
+Keytab name: WRFILE:/etc/krb5.keytab
+KVNO Principal
+---- --------------------------------------------------------------------------
+   3 nfs/erebus2-pdg.iut2.upmf-grenoble.fr-mNjEMxXs7nNb7MaPNYHebcAQG6jrQJLRZR6xolQnxMI@public.gmane.org (DES cbc mode with RSA-MD5) 
+
+On the server /etc/krb5.conf does contain the following line (see the
+attached file):
+
+  allow_weak_crypto = true
+
+Google does not know about this problem:
+
+  http://www.google.com/search?q=rpc.svcgssd+%22Bad+encryption+type%22
+
+Could anybody please help ?
+
+-- 
+Laurent Bonnaud.
+
+
+--=-DPlX50ycKONpI3Qgj8zo
+Content-Disposition: attachment; filename="krb5.conf"
+Content-Type: text/plain; name="krb5.conf"; charset="ISO-8859-1"
+Content-Transfer-Encoding: 7bit
+
+[libdefaults]
+	default_realm = NTIUT2GRE.IUT2.UPMF-GRENOBLE.FR
+
+# The following krb5.conf variables are only for MIT Kerberos.
+	kdc_timesync = 1
+	ccache_type = 4
+	forwardable = true
+	proxiable = true
+
+     	allow_weak_crypto = true
+
+[realms]
+	NTIUT2GRE.IUT2.UPMF-GRENOBLE.FR = {
+		kdc = xxx.iut2.upmf-grenoble.fr
+		admin_server = xxx.iut2.upmf-grenoble.fr
+	}
+
+[domain_realm]
+	.iut2.upmf-grenoble.fr = NTIUT2GRE.IUT2.UPMF-GRENOBLE.FR
+	iut2.upmf-grenoble.fr = NTIUT2GRE.IUT2.UPMF-GRENOBLE.FR
+
+--=-DPlX50ycKONpI3Qgj8zo--
 
