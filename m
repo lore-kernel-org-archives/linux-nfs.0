@@ -1,115 +1,241 @@
-From: Andy Adamson <andros@netapp.com>
-Subject: Re: [PATCH 5/5] SQUASHME pnfs-submit: filelayout: use new alloc_layout API
-Date: Wed, 30 Jun 2010 09:42:59 -0400
-Message-ID: <F5A360A7-9116-4DB6-8A22-D05CAEA6360F@netapp.com>
-References: <1277829737-5465-1-git-send-email-andros@netapp.com> <1277829737-5465-2-git-send-email-andros@netapp.com> <1277829737-5465-3-git-send-email-andros@netapp.com> <1277829737-5465-4-git-send-email-andros@netapp.com> <1277829737-5465-5-git-send-email-andros@netapp.com> <1277829737-5465-6-git-send-email-andros@netapp.com> <4C2B091A.907@panasas.com>
-Mime-Version: 1.0 (Apple Message framework v936)
-Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
-Cc: benny@panasas.com, linux-nfs@vger.kernel.org
+From: Fred Isaman <iisaman@umich.edu>
+Subject: Re: [PATCH 2/5] SQUASHME: pnfs_submit: move pnfs_layout_state back to
+	nfs_inode
+Date: Wed, 30 Jun 2010 09:48:26 -0400
+Message-ID: <AANLkTilGlRlUL6lCJE6byfv17T2ihrYjj2VjHH0ok7oc@mail.gmail.com>
+References: <1277829737-5465-1-git-send-email-andros@netapp.com>
+	<1277829737-5465-2-git-send-email-andros@netapp.com>
+	<1277829737-5465-3-git-send-email-andros@netapp.com>
+	<4C2B08C4.5000105@panasas.com>
+	<4C2B0ED8.4000307@panasas.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: andros@netapp.com, benny@panasas.com, linux-nfs@vger.kernel.org
 To: Boaz Harrosh <bharrosh@panasas.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:42314 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753130Ab0F3NnQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 30 Jun 2010 09:43:16 -0400
-In-Reply-To: <4C2B091A.907@panasas.com>
+Received: from mail-fx0-f46.google.com ([209.85.161.46]:37747 "EHLO
+	mail-fx0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756040Ab0F3Ns1 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 30 Jun 2010 09:48:27 -0400
+Received: by mail-fx0-f46.google.com with SMTP id 14so463106fxm.19
+        for <linux-nfs@vger.kernel.org>; Wed, 30 Jun 2010 06:48:26 -0700 (PDT)
+In-Reply-To: <4C2B0ED8.4000307@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-On Jun 30, 2010, at 5:06 AM, Boaz Harrosh wrote:
-
-> On 06/29/2010 07:42 PM, andros@netapp.com wrote:
->> From: Andy Adamson <andros@netapp.com>
+On Wed, Jun 30, 2010 at 5:31 AM, Boaz Harrosh <bharrosh@panasas.com> wr=
+ote:
+> On 06/30/2010 12:05 PM, Boaz Harrosh wrote:
+>> On 06/29/2010 07:42 PM, andros@netapp.com wrote:
+>>> From: Andy Adamson <andros@netapp.com>
+>>>
+>>> Prepare to embed struct pnfs_layout_tupe into layout driver private=
+ structs
+>>> and to make layout a pointer: state flags need to be accessible bef=
+ore
+>>> allocation.
+>>>
 >>
->> Signed-off-by: Andy Adamson <andros@netapp.com>
->> ---
->> fs/nfs/nfs4filelayout.c |   11 +++++++----
->> fs/nfs/nfs4filelayout.h |    7 +++++++
->> 2 files changed, 14 insertions(+), 4 deletions(-)
+>> I don't get that. A pointer inspection operation is atomic. (gone ar=
+e the
+>> days of 16-bit large/huge models where a pointer is two registers.)
+>>
+>> So an: if (lo->pointer) is just as atomic as test_bit()
+>>
+>> And I don't see, not here, and not in the next patch, where are thes=
+e used before
+>> the allocation. if you throw away Fred's first patch and make:
+>> =A0layoutcommit_needed(struct nfs_inode *nfsi)
+>> =A0{
+>> - =A0 =A0 return nfsi->layout.lo_cred !=3D NULL;
+>> + =A0 =A0 return nfsi->layout !=3D NULL;
+>> =A0}
 >>
 >
-> Won't you go head and submit an API change to the other two layout  
-> drivers?
+> Rrrr need my morning coffee, sorry.
+>
+> But still, Fred's patch can go both sites of the pointer assignment h=
+ave an
+> MB and a pointer inspection is there-for atomic. Above can then be:
+>
+> =A0layoutcommit_needed(struct nfs_inode *nfsi)
+> =A0{
+> - =A0 =A0 =A0 return nfsi->layout.lo_cred !=3D NULL;
+> + =A0 =A0 =A0 return nfsi->layout && (nfsi->layout->lo_cred !=3D NULL=
+);
+> =A0}
+>
 
-OK. Just wanted comments first.
+This is called outside of pnfs.c, without lock.  Thus there is no
+guarantee that nfsi->layout won't go to to NULL during the '&&'.
 
--->Andy
+=46red
 
 >
->> diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
->> index 57a0010..07d5bf6 100644
->> --- a/fs/nfs/nfs4filelayout.c
->> +++ b/fs/nfs/nfs4filelayout.c
->> @@ -301,11 +301,14 @@ filelayout_write_pagelist(struct  
->> pnfs_layout_type *layoutid,
->>  * will use the pnfs_layout_type type to refer to the layout for this
->>  * inode from now on.
->>  */
->> -static void *
->> +static struct pnfs_layout_type *
->> filelayout_alloc_layout(struct inode *inode)
->> {
->> +	struct nfs4_filelayout *flp;
->> +
->> 	dprintk("NFS_FILELAYOUT: allocating layout\n");
->> -	return kzalloc(sizeof(struct nfs4_filelayout), GFP_KERNEL);
->> +	flp =  kzalloc(sizeof(struct nfs4_filelayout), GFP_KERNEL);
->> +	return flp ? &flp->fl_cache : NULL;
->> }
+>> Then all three patches (first one thrown away) can just collapse to =
+a single
+>> embedded-to-pointer conversion.
 >>
->> /* Free a filelayout layout structure
->> @@ -471,7 +474,7 @@ static struct pnfs_layout_segment *
->> filelayout_alloc_lseg(struct pnfs_layout_type *layoutid,
->> 		      struct nfs4_pnfs_layoutget_res *lgr)
->> {
->> -	struct nfs4_filelayout *flo = PNFS_LD_DATA(layoutid);
->> +	struct nfs4_filelayout *flo = FILE_LO_CACHE(layoutid);
->> 	struct pnfs_layout_segment *lseg;
->> 	int rc;
->>
->> @@ -693,7 +696,7 @@ filelayout_commit(struct pnfs_layout_type  
->> *layoutid, int sync,
->> ssize_t
->> filelayout_get_stripesize(struct pnfs_layout_type *layoutid)
->> {
->> -	struct nfs4_filelayout *flo = PNFS_LD_DATA(layoutid);
->> +	struct nfs4_filelayout *flo = FILE_LO_CACHE(layoutid);
->>
->> 	return flo->stripe_unit;
->> }
->> diff --git a/fs/nfs/nfs4filelayout.h b/fs/nfs/nfs4filelayout.h
->> index de8391f..eca459f 100644
->> --- a/fs/nfs/nfs4filelayout.h
->> +++ b/fs/nfs/nfs4filelayout.h
->> @@ -68,6 +68,7 @@ struct nfs4_filelayout_segment {
->> };
->>
->> struct nfs4_filelayout {
->> +	struct pnfs_layout_type fl_cache;
->> 	int uncommitted_write;
->> 	loff_t last_commit_size;
->> 	u64 layout_id;
->> @@ -77,6 +78,12 @@ struct nfs4_filelayout {
->> extern struct nfs_fh *
->> nfs4_fl_select_ds_fh(struct pnfs_layout_segment *lseg, loff_t  
->> offset);
->>
->> +static inline struct nfs4_filelayout *
->> +FILE_LO_CACHE(struct pnfs_layout_type *lo_cache)
->> +{
->> +	return container_of(lo_cache, struct nfs4_filelayout, fl_cache);
->> +}
->> +
 >
-> The name? why the __CACHE? why not just FILE_LO()? the struct it  
-> returns
-> name is nfs4_filelayout, simple.
+> This still applies
 >
 > Boaz
->
->> extern struct pnfs_client_operations *pnfs_callback_ops;
+>> Boaz
+>>> Signed-off-by: Andy Adamson <andros@netapp.com>
+>>> ---
+>>> =A0fs/nfs/inode.c =A0 =A0 =A0 =A0 | =A0 =A02 +-
+>>> =A0fs/nfs/pnfs.c =A0 =A0 =A0 =A0 =A0| =A0 16 ++++++++--------
+>>> =A0include/linux/nfs_fs.h | =A0 10 +++++-----
+>>> =A03 files changed, 14 insertions(+), 14 deletions(-)
+>>>
+>>> diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+>>> index 7989dea..66d7be2 100644
+>>> --- a/fs/nfs/inode.c
+>>> +++ b/fs/nfs/inode.c
+>>> @@ -1364,7 +1364,6 @@ void nfs4_clear_inode(struct inode *inode)
+>>> =A0static void pnfs_alloc_init_inode(struct nfs_inode *nfsi)
+>>> =A0{
+>>> =A0#ifdef CONFIG_NFS_V4_1
+>>> - =A0 =A0nfsi->layout.pnfs_layout_state =3D 0;
+>>> =A0 =A0 =A0memset(&nfsi->layout.stateid, 0, NFS4_STATEID_SIZE);
+>>> =A0 =A0 =A0nfsi->layout.roc_iomode =3D 0;
+>>> =A0 =A0 =A0nfsi->layout.lo_cred =3D NULL;
+>>> @@ -1420,6 +1419,7 @@ static void pnfs_init_once(struct nfs_inode *=
+nfsi)
+>>> =A0{
+>>> =A0#ifdef CONFIG_NFS_V4_1
+>>> =A0 =A0 =A0init_waitqueue_head(&nfsi->lo_waitq);
+>>> + =A0 =A0nfsi->pnfs_layout_state =3D 0;
+>>> =A0 =A0 =A0seqlock_init(&nfsi->layout.seqlock);
+>>> =A0 =A0 =A0INIT_LIST_HEAD(&nfsi->layout.lo_layouts);
+>>> =A0 =A0 =A0INIT_LIST_HEAD(&nfsi->layout.segs);
+>>> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+>>> index bf15b5c..d05cb03 100644
+>>> --- a/fs/nfs/pnfs.c
+>>> +++ b/fs/nfs/pnfs.c
+>>> @@ -951,7 +951,7 @@ get_lock_alloc_layout(struct inode *ino)
+>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 * wait until bit is cleared if we lost =
+this race.
+>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 */
+>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0res =3D wait_on_bit_lock(
+>>> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0&nfsi->layout.pnfs_layout_=
+state,
+>>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0&nfsi->pnfs_layout_state,
+>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0NFS_INO_LAYOUT_ALLOC,
+>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0pnfs_wait_schedule, TASK=
+_KILLABLE);
+>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0if (res) {
+>>> @@ -975,8 +975,8 @@ get_lock_alloc_layout(struct inode *ino)
+>>>
+>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0/* release the NFS_INO_LAYOUT_ALLOC bit =
+and wake up waiters */
+>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0clear_bit_unlock(NFS_INO_LAYOUT_ALLOC,
+>>> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 &nfsi->la=
+yout.pnfs_layout_state);
+>>> - =A0 =A0 =A0 =A0 =A0 =A0wake_up_bit(&nfsi->layout.pnfs_layout_stat=
+e,
+>>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 &nfsi->pn=
+fs_layout_state);
+>>> + =A0 =A0 =A0 =A0 =A0 =A0wake_up_bit(&nfsi->pnfs_layout_state,
+>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0NFS_INO_LAYOUT_A=
+LLOC);
+>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0break;
+>>> =A0 =A0 =A0}
+>>> @@ -1104,12 +1104,12 @@ _pnfs_update_layout(struct inode *ino,
+>>> =A0 =A0 =A0}
+>>>
+>>> =A0 =A0 =A0/* if get layout already failed once goto out */
+>>> - =A0 =A0if (test_bit(lo_fail_bit(iomode), &nfsi->layout.pnfs_layou=
+t_state)) {
+>>> + =A0 =A0if (test_bit(lo_fail_bit(iomode), &nfsi->pnfs_layout_state=
+)) {
+>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0if (unlikely(nfsi->layout.pnfs_layout_su=
+spend &&
+>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0get_seconds() >=3D nfsi->layout.=
+pnfs_layout_suspend)) {
+>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0dprintk("%s: layout_get =
+resumed\n", __func__);
+>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0clear_bit(lo_fail_bit(io=
+mode),
+>>> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0&nfsi-=
+>layout.pnfs_layout_state);
+>>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0&nfsi-=
+>pnfs_layout_state);
+>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0nfsi->layout.pnfs_layout=
+_suspend =3D 0;
+>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0} else
+>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0goto out_put;
+>>> @@ -1121,7 +1121,7 @@ _pnfs_update_layout(struct inode *ino,
+>>> =A0 =A0 =A0send_layoutget(ino, ctx, &arg, lsegpp, lo);
+>>> =A0out:
+>>> =A0 =A0 =A0dprintk("%s end, state 0x%lx lseg %p\n", __func__,
+>>> - =A0 =A0 =A0 =A0 =A0 =A0nfsi->layout.pnfs_layout_state, lseg);
+>>> + =A0 =A0 =A0 =A0 =A0 =A0nfsi->pnfs_layout_state, lseg);
+>>> =A0 =A0 =A0return;
+>>> =A0out_put:
+>>> =A0 =A0 =A0if (lsegpp)
+>>> @@ -1226,12 +1226,12 @@ pnfs_get_layout_done(struct nfs4_pnfs_layou=
+tget *lgp, int rpc_status)
+>>> =A0 =A0 =A0/* remember that get layout failed and suspend trying */
+>>> =A0 =A0 =A0nfsi->layout.pnfs_layout_suspend =3D suspend;
+>>> =A0 =A0 =A0set_bit(lo_fail_bit(lgp->args.lseg.iomode),
+>>> - =A0 =A0 =A0 =A0 =A0 =A0&nfsi->layout.pnfs_layout_state);
+>>> + =A0 =A0 =A0 =A0 =A0 =A0&nfsi->pnfs_layout_state);
+>>> =A0 =A0 =A0dprintk("%s: layout_get suspended until %ld\n",
+>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0__func__, suspend);
+>>> =A0out:
+>>> =A0 =A0 =A0dprintk("%s end (err:%d) state 0x%lx lseg %p\n",
+>>> - =A0 =A0 =A0 =A0 =A0 =A0__func__, lgp->status, nfsi->layout.pnfs_l=
+ayout_state, lseg);
+>>> + =A0 =A0 =A0 =A0 =A0 =A0__func__, lgp->status, nfsi->pnfs_layout_s=
+tate, lseg);
+>>> =A0 =A0 =A0return;
+>>> =A0}
+>>>
+>>> diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
+>>> index a33e86e..e216e24 100644
+>>> --- a/include/linux/nfs_fs.h
+>>> +++ b/include/linux/nfs_fs.h
+>>> @@ -105,11 +105,6 @@ struct pnfs_layout_type {
+>>> =A0 =A0 =A0seqlock_t seqlock; =A0 =A0 =A0 =A0 =A0 =A0 =A0/* Protect=
+s the stateid */
+>>> =A0 =A0 =A0nfs4_stateid stateid;
+>>> =A0 =A0 =A0void *ld_data; =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0/* lay=
+out driver private data */
+>>> - =A0 =A0unsigned long pnfs_layout_state;
+>>> - =A0 =A0#define NFS_INO_RO_LAYOUT_FAILED 0 =A0 =A0 =A0/* get ro la=
+yout failed stop trying */
+>>> - =A0 =A0#define NFS_INO_RW_LAYOUT_FAILED 1 =A0 =A0 =A0/* get rw la=
+yout failed stop trying */
+>>> - =A0 =A0#define NFS_INO_LAYOUT_ALLOC =A0 =A0 2 =A0 =A0 =A0/* bit l=
+ock for layout allocation */
+>>> - =A0 =A0#define NFS_INO_LAYOUTCOMMIT =A0 =A0 3 =A0 =A0 =A0/* LAYOU=
+TCOMMIT needed */
+>>> =A0 =A0 =A0time_t pnfs_layout_suspend;
+>>> =A0 =A0 =A0struct rpc_cred =A0 =A0 =A0 =A0 *lo_cred; /* layoutcommi=
+t credential */
+>>> =A0 =A0 =A0/* DH: These vars keep track of the maximum write range
+>>> @@ -208,6 +203,11 @@ struct nfs_inode {
+>>> =A0#if defined(CONFIG_NFS_V4_1)
+>>> =A0 =A0 =A0wait_queue_head_t lo_waitq;
+>>> =A0 =A0 =A0struct pnfs_layout_type layout;
+>>> + =A0 =A0unsigned long pnfs_layout_state;
+>>> + =A0 =A0#define NFS_INO_RO_LAYOUT_FAILED 0 /* ro LAYOUTGET failed =
+stop trying */
+>>> + =A0 =A0#define NFS_INO_RW_LAYOUT_FAILED 1 /* rw LAYOUTGET failed =
+stop trying */
+>>> + =A0 =A0#define NFS_INO_LAYOUT_ALLOC =A0 =A0 2 /* bit lock for lay=
+out allocation */
+>>> + =A0 =A0#define NFS_INO_LAYOUTCOMMIT =A0 =A0 3 /* LAYOUTCOMMIT nee=
+ded */
+>>> =A0#endif /* CONFIG_NFS_V4_1 */
+>>> =A0#endif /* CONFIG_NFS_V4*/
+>>> =A0#ifdef CONFIG_NFS_FSCACHE
 >>
->> extern void nfs4_fl_free_deviceid_callback(struct kref *);
 >
-
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" =
+in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at =A0http://vger.kernel.org/majordomo-info.html
+>
