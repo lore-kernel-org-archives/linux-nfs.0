@@ -1,126 +1,192 @@
-From: Laurent Bonnaud <bonnaud-jHyHnS8NkcXLSxaa5bH2iPQULIy34Utc@public.gmane.org>
-Subject: Mount error with NFSv4 and Kerberos (Bad encryption type)
-Date: Wed, 30 Jun 2010 17:43:51 +0200
-Message-ID: <1277912631.11798.22.camel@localhost>
+From: Boaz Harrosh <bharrosh@panasas.com>
+Subject: Re: [PATCH 3/5] SQUASHME: pnfs-submit: move pnfs_layout_suspend back
+ to nfs_inode
+Date: Wed, 30 Jun 2010 18:56:26 +0300
+Message-ID: <4C2B692A.4030300@panasas.com>
+References: <1277829737-5465-1-git-send-email-andros@netapp.com> <1277829737-5465-2-git-send-email-andros@netapp.com> <1277829737-5465-3-git-send-email-andros@netapp.com> <1277829737-5465-4-git-send-email-andros@netapp.com> <4C2B5994.7010801@panasas.com> <6434639C-16CE-43F0-BFCD-1AC4152690B9@netapp.com>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="=-DPlX50ycKONpI3Qgj8zo"
-To: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
+Cc: benny@panasas.com, linux-nfs@vger.kernel.org,
+	Fred Isaman <iisaman@netapp.com>
+To: Andy Adamson <andros@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp.ampere.inpg.fr ([147.171.64.83]:54453 "EHLO
-	smtp.ampere.inpg.fr" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751758Ab0F3PyQ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 30 Jun 2010 11:54:16 -0400
-Received: from localhost (localhost [127.0.0.1])
-	by smtp.ampere.inpg.fr (Postfix) with ESMTP id 2F6EE981F4
-	for <linux-nfs@vger.kernel.org>; Wed, 30 Jun 2010 17:43:52 +0200 (CEST)
-Received: from smtp.ampere.inpg.fr ([127.0.0.1])
-	by localhost (smtp.ampere.grenoble-inp.fr [127.0.0.1]) (amavisd-new, port 10024)
-	with ESMTP id jMESE5esqj30 for <linux-nfs@vger.kernel.org>;
-	Wed, 30 Jun 2010 17:43:52 +0200 (CEST)
-Received: from [193.55.51.151] (pc-dg-112-2.iut2.upmf-grenoble.fr [193.55.51.151])
-	(using SSLv3 with cipher DHE-RSA-AES256-SHA (256/256 bits))
-	(No client certificate requested)
-	by smtp.ampere.inpg.fr (Postfix) with ESMTPSA id 1685E98102
-	for <linux-nfs@vger.kernel.org>; Wed, 30 Jun 2010 17:43:52 +0200 (CEST)
+Received: from daytona.panasas.com ([67.152.220.89]:9292 "EHLO
+	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1755837Ab0F3P43 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 30 Jun 2010 11:56:29 -0400
+In-Reply-To: <6434639C-16CE-43F0-BFCD-1AC4152690B9@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On 06/30/2010 06:13 PM, Andy Adamson wrote:
+> 
+> On Jun 30, 2010, at 10:49 AM, Boaz Harrosh wrote:
+> 
+>> On 06/29/2010 07:42 PM, andros@netapp.com wrote:
+>>> From: Fred Isaman <iisaman@netapp.com>
+>>>
+>>> Prepare to embed struct pnfs_layout_tupe into layout driver private  
+>>> structs
+>>> and to make layout a pointer. Since a temp error on first LAYOUTGET
+>>> erases the layout, the suspend timer needs to be moved.
+>>>
+>>
+>> OK Fred, Andy. (I'm also referring to the 1/5 and 2/5 issues here)
+>>
+>> There is a total mess up. LAYOUTGET has nothing to do with layout
+>> (.eg struct pnfs_layout_type) and the layout must not be deallocated
+>> if there is any kind of error and/or if IO is actually to be done with
+>> MDS or not. LAYOUTGET corresponds to layout_seg held on a list in  
+>> layout.
+>> The list might be empty and so it's flags and state.
+> 
+> pnfs_layout_type is the layout cache head structure which has no  
 
---=-DPlX50ycKONpI3Qgj8zo
-Content-Type: text/plain; charset="ISO-8859-1"
-Content-Transfer-Encoding: 7bit
+Why are you calling this "cache" head? Are you referring to the
+segments list .ie layout->lo_layouts. For me it's a list head
+why is it a cache ?
 
-Hi,
+> business in nfsi unless there are layout segments populating it.
+> 
 
-I am trying to mount a NFSv4 share from a Debian squeeze NFS server on a
-Debian squeeze NFS client using sec=krb5.  The same setup used to work
-an Debian lenny and failed just after the upgrade to Debian squeeze.
+This is where we disagree. You say layout is lo_layouts. I say
+it is more, it is that plus the state and additional information.
+An empty list is not a none-existent list. There are two states
+here.
 
-Both systems use the latest versions in Debian squeeze, currently:
- - nfs-utils version 1.2.2 (package version 1.2.2-1)
- - kernel 2.6.32 (package version 2.6.32-15)
- - krb5 1.8.1 (package version 1.8.1+dfsg-5)
+>>
+>> Half of the problem was before and this here made it worse. The
+>> life time of nfsi->layout should be the same as nfsi itself just
+>> as it was before.
+> 
+> No, the nfs_inode exists with no regard to pnfs_layout_type (horrible  
+> name).
+> 
 
-The mount operation fails with this error message:
+Yes
 
-root@svn-info:~# mount -v /users
-mount.nfs4: timeout set for Wed Jun 30 17:29:47 2010
-mount.nfs4: trying text-based options 'intr,sec=krb5,addr=192.168.141.5,clientaddr=195.221.57.54'
-mount.nfs4: mount(2): Permission denied
-mount.nfs4: access denied by server while mounting erebus2-pdg:/users
+>>
+>> Once the life_time of nfsi && nfsi->layout are unified then all your
+>> problems go away because you are not checking for existence of nfsi
+>> anywhere right? that's because there is no such problem.
+> 
+> No, the problems don't go away simply because you statically allocate  
+> a cache head struct. We have problems with races and reference  
+> counting that exist independently of how a structure is allocated.
+> 
+> We don't need to check for the existence of nfsi, The inode is  
+> guaranteed to exist until nfs_destroy_inode is called by the VFS.
+> 
 
-Here is the /etc/fstab entry on the client:
+And so if you restrict the life time of layout with nfsi your problem
+will go away as well, no?
 
-  erebus2-pdg:/users /users nfs4 auto,user,exec,intr,sec=krb5
+>>
+>> Look at it this way. If a layout_driver is in the game it gets to
+>> allocate it's own area in NFS_I. part of that area is for generic
+>> pnfs.c use, i.e struct pnfs_layout_type, the rest is for private use.
+>> once existing it is part of the NFS_I life up till death.
+> 
+> No. It should only exists when needed - just like nfsi->nfs_acl and  
+> nfsi->delegation etc.
+> 
 
-On the server /var/log/daemon.log contains the following error messages:
+It is the same problem with what we had with commit. We had it all over
+the place and had races refcounting and shit for ever, until we simplified
+it and moved it to the proper NFS checkpoint.
 
-Jun 30 17:27:47 erebus2-pdg rpc.svcgssd[24332]: ERROR: GSS-API: error in
-handle_nullreq: gss_accept_sec_context(): Unspecified GSS failure.
-Minor code may provide more information - Bad encryption type
-Jun 30 17:27:47 erebus2-pdg rpc.svcgssd[24332]: ERROR: GSS-API: error in
-handle_nullreq: gss_accept_sec_context(): Unspecified GSS failure.
-Minor code may provide more information - Bad encryption type
+Here too we can just do much better and drop lots of accounting by saying:
 
-Kerberos keys were generated on a Windows 2003 AD server and the same
-keys used to work in Debian lenny:
+  If this nfsi is eligible for pnfs_io and layouts. We allocate a layout
+  governing structure for it. That will be freed at the end together with
+  nfsi. These that never need it like directories links and so on will not
+  have one.
 
- - on the client:
+  Now if that first layout_get() never gets through, well nu, we only used
+  it to say "Don't have any".
 
-root@svn-info:~# klist -ke
-Keytab name: WRFILE:/etc/krb5.keytab
-KVNO Principal
----- --------------------------------------------------------------------------
-   3 nfs/pc-client-nfs-mNjEMxXs7nNb7MaPNYHebcAQG6jrQJLRZR6xolQnxMI@public.gmane.org (DES cbc mode with RSA-MD5) 
+Don't you think that is a much simpler model. Why should one shoot one's foot?
 
- - on the server:
+Boaz
 
-root@erebus2-pdg:~# klist -ke
-Keytab name: WRFILE:/etc/krb5.keytab
-KVNO Principal
----- --------------------------------------------------------------------------
-   3 nfs/erebus2-pdg.iut2.upmf-grenoble.fr-mNjEMxXs7nNb7MaPNYHebcAQG6jrQJLRZR6xolQnxMI@public.gmane.org (DES cbc mode with RSA-MD5) 
-
-On the server /etc/krb5.conf does contain the following line (see the
-attached file):
-
-  allow_weak_crypto = true
-
-Google does not know about this problem:
-
-  http://www.google.com/search?q=rpc.svcgssd+%22Bad+encryption+type%22
-
-Could anybody please help ?
-
--- 
-Laurent Bonnaud.
-
-
---=-DPlX50ycKONpI3Qgj8zo
-Content-Disposition: attachment; filename="krb5.conf"
-Content-Type: text/plain; name="krb5.conf"; charset="ISO-8859-1"
-Content-Transfer-Encoding: 7bit
-
-[libdefaults]
-	default_realm = NTIUT2GRE.IUT2.UPMF-GRENOBLE.FR
-
-# The following krb5.conf variables are only for MIT Kerberos.
-	kdc_timesync = 1
-	ccache_type = 4
-	forwardable = true
-	proxiable = true
-
-     	allow_weak_crypto = true
-
-[realms]
-	NTIUT2GRE.IUT2.UPMF-GRENOBLE.FR = {
-		kdc = xxx.iut2.upmf-grenoble.fr
-		admin_server = xxx.iut2.upmf-grenoble.fr
-	}
-
-[domain_realm]
-	.iut2.upmf-grenoble.fr = NTIUT2GRE.IUT2.UPMF-GRENOBLE.FR
-	iut2.upmf-grenoble.fr = NTIUT2GRE.IUT2.UPMF-GRENOBLE.FR
-
---=-DPlX50ycKONpI3Qgj8zo--
+>>
+>> If it's not so it should be fixed, not some members leaking out
+>> to generic structures.
+>>
+>> Boaz
+>>
+>>> Signed-off-by: Fred Isaman <iisaman@netapp.com>
+>>> ---
+>>> fs/nfs/inode.c         |    1 +
+>>> fs/nfs/pnfs.c          |    8 ++++----
+>>> include/linux/nfs_fs.h |    2 +-
+>>> 3 files changed, 6 insertions(+), 5 deletions(-)
+>>>
+>>> diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+>>> index 66d7be2..cb12d33 100644
+>>> --- a/fs/nfs/inode.c
+>>> +++ b/fs/nfs/inode.c
+>>> @@ -1420,6 +1420,7 @@ static void pnfs_init_once(struct nfs_inode  
+>>> *nfsi)
+>>> #ifdef CONFIG_NFS_V4_1
+>>> 	init_waitqueue_head(&nfsi->lo_waitq);
+>>> 	nfsi->pnfs_layout_state = 0;
+>>> +	nfsi->pnfs_layout_suspend = 0;
+>>> 	seqlock_init(&nfsi->layout.seqlock);
+>>> 	INIT_LIST_HEAD(&nfsi->layout.lo_layouts);
+>>> 	INIT_LIST_HEAD(&nfsi->layout.segs);
+>>> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+>>> index d05cb03..7f6ace2 100644
+>>> --- a/fs/nfs/pnfs.c
+>>> +++ b/fs/nfs/pnfs.c
+>>> @@ -1105,12 +1105,12 @@ _pnfs_update_layout(struct inode *ino,
+>>>
+>>> 	/* if get layout already failed once goto out */
+>>> 	if (test_bit(lo_fail_bit(iomode), &nfsi->pnfs_layout_state)) {
+>>> -		if (unlikely(nfsi->layout.pnfs_layout_suspend &&
+>>> -		    get_seconds() >= nfsi->layout.pnfs_layout_suspend)) {
+>>> +		if (unlikely(nfsi->pnfs_layout_suspend &&
+>>> +		    get_seconds() >= nfsi->pnfs_layout_suspend)) {
+>>> 			dprintk("%s: layout_get resumed\n", __func__);
+>>> 			clear_bit(lo_fail_bit(iomode),
+>>> 				  &nfsi->pnfs_layout_state);
+>>> -			nfsi->layout.pnfs_layout_suspend = 0;
+>>> +			nfsi->pnfs_layout_suspend = 0;
+>>> 		} else
+>>> 			goto out_put;
+>>> 	}
+>>> @@ -1224,7 +1224,7 @@ pnfs_get_layout_done(struct  
+>>> nfs4_pnfs_layoutget *lgp, int rpc_status)
+>>> 	}
+>>>
+>>> 	/* remember that get layout failed and suspend trying */
+>>> -	nfsi->layout.pnfs_layout_suspend = suspend;
+>>> +	nfsi->pnfs_layout_suspend = suspend;
+>>> 	set_bit(lo_fail_bit(lgp->args.lseg.iomode),
+>>> 		&nfsi->pnfs_layout_state);
+>>> 	dprintk("%s: layout_get suspended until %ld\n",
+>>> diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
+>>> index e216e24..cebc958 100644
+>>> --- a/include/linux/nfs_fs.h
+>>> +++ b/include/linux/nfs_fs.h
+>>> @@ -105,7 +105,6 @@ struct pnfs_layout_type {
+>>> 	seqlock_t seqlock;		/* Protects the stateid */
+>>> 	nfs4_stateid stateid;
+>>> 	void *ld_data;			/* layout driver private data */
+>>> -	time_t pnfs_layout_suspend;
+>>> 	struct rpc_cred         *lo_cred; /* layoutcommit credential */
+>>> 	/* DH: These vars keep track of the maximum write range
+>>> 	 * so the values can be used for layoutcommit.
+>>> @@ -208,6 +207,7 @@ struct nfs_inode {
+>>> 	#define NFS_INO_RW_LAYOUT_FAILED 1 /* rw LAYOUTGET failed stop  
+>>> trying */
+>>> 	#define NFS_INO_LAYOUT_ALLOC     2 /* bit lock for layout  
+>>> allocation */
+>>> 	#define NFS_INO_LAYOUTCOMMIT     3 /* LAYOUTCOMMIT needed */
+>>> +	time_t pnfs_layout_suspend;
+>>> #endif /* CONFIG_NFS_V4_1 */
+>>> #endif /* CONFIG_NFS_V4*/
+>>> #ifdef CONFIG_NFS_FSCACHE
+>>
+> 
 
