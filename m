@@ -1,58 +1,48 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:48444 "EHLO
-	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751343Ab0GVPQI convert rfc822-to-8bit
-	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 22 Jul 2010 11:16:08 -0400
-In-Reply-To: <E1Obuiy-00C9jr-Al@intern.SerNet.DE>
-References: <alpine.LSU.2.01.1007221228260.6115@obet.zrqbmnf.qr>
-	<20100715021709.5544.64506.stgit@warthog.procyon.org.uk> <20100715021712.5544.44845.stgit@warthog.procyon.org.uk>
-	<30448.1279800887@redhat.com> <E1Obuiy-00C9jr-Al@intern.SerNet.DE>
-From: Linus Torvalds <torvalds@linux-foundation.org>
-Date: Thu, 22 Jul 2010 08:14:42 -0700
-Message-ID: <AANLkTikBCXK6uEwWq4f0LvpdoKCPs3jvyFa4Zw4e2J_7@mail.gmail.com>
-Subject: Re: [PATCH 02/18] xstat: Add a pair of system calls to make extended
-	file stats available [ver #6]
-To: Volker.Lendecke@sernet.de
-Cc: David Howells <dhowells@redhat.com>, Jan Engelhardt <jengelh@medozas.de>,
-        linux-cifs@vger.kernel.org, linux-nfs@vger.kernel.org,
-        samba-technical@lists.samba.org, linux-kernel@vger.kernel.org,
-        viro@zeniv.linux.org.uk, linux-fsdevel@vger.kernel.org,
-        linux-ext4@vger.kernel.org
+Received: from daytona.panasas.com ([67.152.220.89]:24176 "EHLO
+	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1755758Ab0GAOTv (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 1 Jul 2010 10:19:51 -0400
+Message-ID: <4C2CA404.601@panasas.com>
+Date: Thu, 01 Jul 2010 17:19:48 +0300
+From: Benny Halevy <bhalevy@panasas.com>
+To: Sandeep Joshi <sjoshi@bluearc.com>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: mount - Fedora13 - Nfsv4.1 mode
+References: <A062FCC8662DA848949F7C3046B9BEAE01F3A6D1@us-email.terastack.bluearc.com>
+In-Reply-To: <A062FCC8662DA848949F7C3046B9BEAE01F3A6D1@us-email.terastack.bluearc.com>
 Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Thu, Jul 22, 2010 at 5:17 AM, Volker Lendecke
-<Volker.Lendecke@sernet.de> wrote:
-> On Thu, Jul 22, 2010 at 01:14:47PM +0100, David Howells wrote:
->> Jan Engelhardt <jengelh@medozas.de> wrote:
->>
->> > Linux already has a creation time field, it's called otime (there is no "b"
->> > in "creation"), and you will find scattered fragments of that all over the
->> > kernel (foremost, fs/jfs/, now btrfs, and I also notice sysvipc having
->> > something with that name).
->>
->> It is?  It's called crtime in Ext4.  st_btime, however, would be compatible
->> with BSD's stat, and Samba would just use it by way of autoconf magic if it
->> appeared.
->
-> Samba has the following check:
->
-> # recent FreeBSD, NetBSD have creation timestamps called birthtime:
-> AC_CHECK_MEMBERS([struct stat.st_birthtimespec.tv_nsec])
-> AC_CHECK_MEMBERS([struct stat.st_birthtime], AC_CHECK_MEMBERS([struct stat.st_birthtimensec]))
->
-> and the supporting code around that. "birth" might also be
-> where the "b" comes from :-)
+What version of the kernel are you using?
+I sent a patchset that fixes this:
+http://marc.info/?l=linux-nfs&m=127678603202678&w=2
+That's in the latest linux-pnfs tree
+at tag pnfs-all-2.6.35-rc3-2010-06-21
 
-Oh wow. And all of this just convinces me that we should _not_ do any
-of this, since clearly it's all totally useless and people can't even
-agree on a name.
+Benny
 
-Let's wait five years and see if there is actually any consensus on it
-being needed and used at all, rather than rush into something just
-because "we can".
-
-                       Linus
+On Jul. 01, 2010, 0:15 +0300, "Sandeep Joshi" <sjoshi@bluearc.com> wrote:
+> I am using  NFS 4.1 client with nfslayoutdriver loaded. (using Fedora 13)
+> If I try to mount the same directory twice from client. I see two exchange id's
+> being sent to server. I was expecting only one exchange id. 
+> 
+> Here are the steps that I am executing:
+> 
+> modprobe nfslayoutdriver
+> mount -t nfs4 -o minorversion=1 <serv-ip-address>:/ /mnt/<dir>
+> mount -t nfs4 -o minorversion=1 <serv-ip-address>:/ /mnt/<dir>
+> 
+> Is this expected behavior?
+> 
+> 
+> regards,
+> 
+> Sandeep
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
