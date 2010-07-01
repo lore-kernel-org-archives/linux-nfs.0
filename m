@@ -1,50 +1,88 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from msux-gh1-uea01.nsa.gov ([63.239.65.39]:59381 "EHLO
-	msux-gh1-uea01.nsa.gov" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755189Ab0GHNj1 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 8 Jul 2010 09:39:27 -0400
-Subject: Re: [PATCH 04/10] SELinux: Add new labeling type native labels
-From: "David P. Quigley" <dpquigl@tycho.nsa.gov>
-To: James Morris <jmorris@namei.org>
-Cc: hch@infradead.org, viro@zeniv.linux.org.uk, casey@schaufler-ca.com,
-        sds@tycho.nsa.gov, "Matthew N. Dodd" <matthew.dodd@sparta.com>,
-        trond.myklebust@fys.uio.no, bfields@fieldses.org,
-        linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-security-module@vger.kernel.org, selinux@tycho.nsa.gov,
-        linux-nfs@vger.kernel.org
-In-Reply-To: <alpine.LRH.2.00.1007080921200.14102@tundra.namei.org>
-References: <1278513086-23964-1-git-send-email-dpquigl@tycho.nsa.gov>
-	 <1278513086-23964-5-git-send-email-dpquigl@tycho.nsa.gov>
-	 <alpine.LRH.2.00.1007080921200.14102@tundra.namei.org>
-Content-Type: text/plain
-Date: Thu, 08 Jul 2010 09:31:18 -0400
-Message-Id: <1278595878.2494.186.camel@moss-terrapins.epoch.ncsc.mil>
+Received: from daytona.panasas.com ([67.152.220.89]:35050 "EHLO
+	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1752760Ab0GAQ0x (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 1 Jul 2010 12:26:53 -0400
+Message-ID: <4C2CC1CA.7010605@panasas.com>
+Date: Thu, 01 Jul 2010 19:26:50 +0300
+From: Benny Halevy <bhalevy@panasas.com>
+To: Steve Dickson <SteveD@redhat.com>
+CC: Sandeep Joshi <sjoshi@bluearc.com>, linux-nfs@vger.kernel.org
+Subject: Re: mount - Fedora13 - Nfsv4.1 mode
+References: <A062FCC8662DA848949F7C3046B9BEAE01F3A6D1@us-email.terastack.bluearc.com> <4C2CA404.601@panasas.com> <A062FCC8662DA848949F7C3046B9BEAE01F3A6E1@us-email.terastack.bluearc.com> <4C2CC154.608@RedHat.com>
+In-Reply-To: <4C2CC154.608@RedHat.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Thu, 2010-07-08 at 09:23 +1000, James Morris wrote:
-> On Wed, 7 Jul 2010, David P. Quigley wrote:
-> 
-> > There currently doesn't exist a labeling type that is adequate for use with
-> > labeled NFS. Since NFS doesn't really support xattrs we can't use the use xattr
-> > labeling behavior. For this we developed a new labeling type. The native
-> > labeling type is used solely by NFS to ensure NFS inodes are labeled at runtime
-> > by the NFS code instead of relying on the SELinux security server on the client
-> > end.
-> 
-> It would be useful to have the ability to specify labeling behavior on a 
-> per-mount basis, with the default remaining as genfs.
-> 
-> Otherwise, this is a global policy decision which affects all NFSv4 
-> mounts, right?
+On Jul. 01, 2010, 19:24 +0300, Steve Dickson <SteveD@redhat.com> wrote:
 > 
 > 
+> On 07/01/2010 10:24 AM, Sandeep Joshi wrote:
+>> I am using fedora version from SteveD's website
+>>
+>> 2.6.33.5-112.2.2.pnfs.fc13.x86_64
+>>
+>> I guess I have to upgrade.
+> hmm... that kernel is based on the pnfs-all-2_6_35-2010-06-01
+> release which I guess that is a bit old... 
+> 
+> Benny should I go ahead a update to  pnfs-all-2.6.35-rc3-2010-06-21
+> or wait for the next release?
 
-I don't believe we have that ability in any other file system. If you
-want to decide that you want to use genfs style labels on NFSv4 just use
-a context mount. That way you can have the default behavior be use
-security label support unless you don't want to and then you can have a
-context mount.
+I've just released pnfs-all-2.6.35-rc3-2010-07-01
+at this very moment :)
 
+Benny
 
+> 
+> steved.
+> 
+>>
+>> regards,
+>> Sandeep
+>>
+>>
+>> -----Original Message-----
+>> From: Benny Halevy [mailto:bhalevy@panasas.com]
+>> Sent: Thu 7/1/2010 7:19 AM
+>> To: Sandeep Joshi
+>> Cc: linux-nfs@vger.kernel.org
+>> Subject: Re: mount - Fedora13 - Nfsv4.1 mode
+>>  
+>> What version of the kernel are you using?
+>> I sent a patchset that fixes this:
+>> http://marc.info/?l=linux-nfs&m=127678603202678&w=2
+>> That's in the latest linux-pnfs tree
+>> at tag pnfs-all-2.6.35-rc3-2010-06-21
+>>
+>> Benny
+>>
+>> On Jul. 01, 2010, 0:15 +0300, "Sandeep Joshi" <sjoshi@bluearc.com> wrote:
+>>> I am using  NFS 4.1 client with nfslayoutdriver loaded. (using Fedora 13)
+>>> If I try to mount the same directory twice from client. I see two exchange id's
+>>> being sent to server. I was expecting only one exchange id. 
+>>>
+>>> Here are the steps that I am executing:
+>>>
+>>> modprobe nfslayoutdriver
+>>> mount -t nfs4 -o minorversion=1 <serv-ip-address>:/ /mnt/<dir>
+>>> mount -t nfs4 -o minorversion=1 <serv-ip-address>:/ /mnt/<dir>
+>>>
+>>> Is this expected behavior?
+>>>
+>>>
+>>> regards,
+>>>
+>>> Sandeep
+>>>
+>>> --
+>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>>> the body of a message to majordomo@vger.kernel.org
+>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
