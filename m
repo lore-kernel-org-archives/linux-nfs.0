@@ -1,235 +1,125 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH 4/5] NFSv4: Add support for the RELEASE_LOCKOWNER operation
-Date: Thu, 01 Jul 2010 12:17:32 -0400
-Message-ID: <4C2CBF9C.5050408@oracle.com>
-References: <1277933137-6955-1-git-send-email-Trond.Myklebust@netapp.com> <1277933137-6955-2-git-send-email-Trond.Myklebust@netapp.com> <1277933137-6955-3-git-send-email-Trond.Myklebust@netapp.com> <1277933137-6955-4-git-send-email-Trond.Myklebust@netapp.com> <1277933137-6955-5-git-send-email-Trond.Myklebust@netapp.com>
+From: sfaibish <sfaibish@emc.com>
+Subject: Re: mount - Fedora13 - Nfsv4.1 mode
+Date: Thu, 01 Jul 2010 12:30:43 -0400
+Message-ID: <op.ve6ath0runckof@usensfaibisl2e.eng.emc.com>
+References: <A062FCC8662DA848949F7C3046B9BEAE01F3A6D1@us-email.terastack.bluearc.com> <4C2CA404.601@panasas.com> <A062FCC8662DA848949F7C3046B9BEAE01F3A6E1@us-email.terastack.bluearc.com> <4C2CC154.608@RedHat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Cc: linux-nfs@vger.kernel.org
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Content-Type: text/plain; charset=iso-8859-15;
+	format=flowed	delsp=yes
+To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:43703 "EHLO
-	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752752Ab0GAQT2 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 1 Jul 2010 12:19:28 -0400
-In-Reply-To: <1277933137-6955-5-git-send-email-Trond.Myklebust@netapp.com>
+Received: from mexforward.lss.emc.com ([128.222.32.20]:30709 "EHLO
+	mexforward.lss.emc.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752826Ab0GAQaz (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 1 Jul 2010 12:30:55 -0400
+Received: from hop04-l1d11-si02.isus.emc.com (HOP04-L1D11-SI02.isus.emc.com [10.254.111.55])
+	by mexforward.lss.emc.com (Switch-3.3.2/Switch-3.1.7) with ESMTP id o61GUsPv027700
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-nfs@vger.kernel.org>; Thu, 1 Jul 2010 12:30:54 -0400
+Received: from mailhub.lss.emc.com (numailhub.lss.emc.com [10.254.144.16]) by hop04-l1d11-si02.isus.emc.com (RSA Interceptor) for <linux-nfs@vger.kernel.org>; Thu, 1 Jul 2010 12:30:43 -0400
+Received: from usensfaibisl2e.eng.emc.com (USENSFAIBISL2E.eng.emc.com [10.240.12.52])
+	by mailhub.lss.emc.com (Switch-3.4.2/Switch-3.3.2mp) with ESMTP id o61GUhaA023150
+	for <linux-nfs@vger.kernel.org>; Thu, 1 Jul 2010 12:30:43 -0400
+In-Reply-To: <4C2CC154.608-AfCzQyP5zfLQT0dZR+AlfA@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 06/30/10 05:25 PM, Trond Myklebust wrote:
-> This is needed by NFSv4.0 servers in order to keep the number of locking
-> stateids at a manageable level.
->
-> Signed-off-by: Trond Myklebust<Trond.Myklebust@netapp.com>
-> ---
->   fs/nfs/nfs4_fs.h        |    1 +
->   fs/nfs/nfs4proc.c       |   28 ++++++++++++++++++++++++
->   fs/nfs/nfs4state.c      |    2 +
->   fs/nfs/nfs4xdr.c        |   55 +++++++++++++++++++++++++++++++++++++++++++++++
->   include/linux/nfs4.h    |    1 +
->   include/linux/nfs_xdr.h |    4 +++
->   6 files changed, 91 insertions(+), 0 deletions(-)
->
-> diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
-> index cee8714..deaf37f 100644
-> --- a/fs/nfs/nfs4_fs.h
-> +++ b/fs/nfs/nfs4_fs.h
-> @@ -236,6 +236,7 @@ extern int nfs4_open_revalidate(struct inode *, struct dentry *, int, struct nam
->   extern int nfs4_server_capabilities(struct nfs_server *server, struct nfs_fh *fhandle);
->   extern int nfs4_proc_fs_locations(struct inode *dir, const struct qstr *name,
->   		struct nfs4_fs_locations *fs_locations, struct page *page);
-> +extern void nfs4_release_lockowner(const struct nfs4_lock_state *);
->
->   #if defined(CONFIG_NFS_V4_1)
->   static inline struct nfs4_session *nfs4_get_session(const struct nfs_server *server)
-> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-> index de9ff15..5d3e8a2 100644
-> --- a/fs/nfs/nfs4proc.c
-> +++ b/fs/nfs/nfs4proc.c
-> @@ -4414,6 +4414,34 @@ out:
->   	return err;
->   }
->
-> +static void nfs4_release_lockowner_release(void *calldata)
-> +{
-> +	kfree(calldata);
-> +}
-> +
-> +const struct rpc_call_ops nfs4_release_lockowner_ops = {
-> +	.rpc_release = nfs4_release_lockowner_release,
-> +};
-> +
-> +void nfs4_release_lockowner(const struct nfs4_lock_state *lsp)
-> +{
-> +	struct nfs_server *server = lsp->ls_state->owner->so_server;
-> +	struct nfs_release_lockowner_args *args;
-> +	struct rpc_message msg = {
-> +		.rpc_proc =&nfs4_procedures[NFSPROC4_CLNT_RELEASE_LOCKOWNER],
-> +	};
-> +
-> +	if (server->nfs_client->cl_mvops->minor_version != 0)
-> +		return;
-> +	args = kmalloc(sizeof(*args), GFP_NOFS);
-> +	if (!args)
-> +		return;
-> +	args->lock_owner.clientid = server->nfs_client->cl_clientid;
-> +	args->lock_owner.id = lsp->ls_id.id;
-> +	msg.rpc_argp = args;
-> +	rpc_call_async(server->client,&msg, 0,&nfs4_release_lockowner_ops, args);
-> +}
-> +
->   #define XATTR_NAME_NFSV4_ACL "system.nfs4_acl"
->
->   int nfs4_setxattr(struct dentry *dentry, const char *key, const void *buf,
-> diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-> index 13e17e3..13a4f27 100644
-> --- a/fs/nfs/nfs4state.c
-> +++ b/fs/nfs/nfs4state.c
-> @@ -701,6 +701,8 @@ void nfs4_put_lock_state(struct nfs4_lock_state *lsp)
->   	if (list_empty(&state->lock_states))
->   		clear_bit(LK_STATE_IN_USE,&state->flags);
->   	spin_unlock(&state->state_lock);
-> +	if (lsp->ls_flags&  NFS_LOCK_INITIALIZED)
-> +		nfs4_release_lockowner(lsp);
->   	nfs4_free_lock_state(lsp);
->   }
->
-> diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-> index 49df05a..b3e9180 100644
-> --- a/fs/nfs/nfs4xdr.c
-> +++ b/fs/nfs/nfs4xdr.c
-> @@ -220,6 +220,11 @@ static int nfs4_stat_to_errno(int);
->   				 4)
->   #define decode_locku_maxsz	(op_decode_hdr_maxsz + \
->   				 decode_stateid_maxsz)
-> +#define encode_release_lockowner_maxsz \
-> +				(op_encode_hdr_maxsz + \
-> +				 encode_lockowner_maxsz)
-> +#define decode_release_lockowner_maxsz \
-> +				(op_decode_hdr_maxsz)
->   #define encode_access_maxsz	(op_encode_hdr_maxsz + 1)
->   #define decode_access_maxsz	(op_decode_hdr_maxsz + 2)
->   #define encode_symlink_maxsz	(op_encode_hdr_maxsz + \
-> @@ -474,6 +479,12 @@ static int nfs4_stat_to_errno(int);
->   				decode_sequence_maxsz + \
->   				decode_putfh_maxsz + \
->   				decode_locku_maxsz)
-> +#define NFS4_enc_release_lockowner_sz \
-> +				(compound_encode_hdr_maxsz + \
-> +				 encode_lockowner_maxsz)
-> +#define NFS4_dec_release_lockowner_sz \
-> +				(compound_decode_hdr_maxsz + \
-> +				 decode_lockowner_maxsz)
->   #define NFS4_enc_access_sz	(compound_encode_hdr_maxsz + \
->   				encode_sequence_maxsz + \
->   				encode_putfh_maxsz + \
-> @@ -1116,6 +1127,17 @@ static void encode_locku(struct xdr_stream *xdr, const struct nfs_locku_args *ar
->   	hdr->replen += decode_locku_maxsz;
->   }
->
-> +static void encode_release_lockowner(struct xdr_stream *xdr, const struct nfs_lowner *lowner, struct compound_hdr *hdr)
-> +{
-> +	__be32 *p;
-> +
-> +	p = reserve_space(xdr, 4);
-> +	*p++ = cpu_to_be32(OP_RELEASE_LOCKOWNER);
+Do we have a call today?
 
-Nit: *p++ isn't needed here.  *p will do.
+/Sorin
 
-> +	encode_lockowner(xdr, lowner);
-> +	hdr->nops++;
-> +	hdr->replen += decode_release_lockowner_maxsz;
-> +}
-> +
->   static void encode_lookup(struct xdr_stream *xdr, const struct qstr *name, struct compound_hdr *hdr)
->   {
->   	int len = name->len;
-> @@ -2056,6 +2078,20 @@ static int nfs4_xdr_enc_locku(struct rpc_rqst *req, __be32 *p, struct nfs_locku_
->   	return 0;
->   }
->
-> +static int nfs4_xdr_enc_release_lockowner(struct rpc_rqst *req, __be32 *p, struct nfs_release_lockowner_args *args)
-> +{
-> +	struct xdr_stream xdr;
-> +	struct compound_hdr hdr = {
-> +		.minorversion = 0,
-> +	};
-> +
-> +	xdr_init_encode(&xdr,&req->rq_snd_buf, p);
-> +	encode_compound_hdr(&xdr, req,&hdr);
-> +	encode_release_lockowner(&xdr,&args->lock_owner,&hdr);
-> +	encode_nops(&hdr);
-> +	return 0;
-> +}
-> +
->   /*
->    * Encode a READLINK request
->    */
-> @@ -3981,6 +4017,11 @@ static int decode_locku(struct xdr_stream *xdr, struct nfs_locku_res *res)
->   	return status;
->   }
->
-> +static int decode_release_lockowner(struct xdr_stream *xdr)
-> +{
-> +	return decode_op_hdr(xdr, OP_RELEASE_LOCKOWNER);
-> +}
-> +
->   static int decode_lookup(struct xdr_stream *xdr)
->   {
->   	return decode_op_hdr(xdr, OP_LOOKUP);
-> @@ -5267,6 +5308,19 @@ out:
->   	return status;
->   }
->
-> +static int nfs4_xdr_dec_release_lockowner(struct rpc_rqst *rqstp, __be32 *p, void *dummy)
-> +{
-> +	struct xdr_stream xdr;
-> +	struct compound_hdr hdr;
-> +	int status;
-> +
-> +	xdr_init_decode(&xdr,&rqstp->rq_rcv_buf, p);
-> +	status = decode_compound_hdr(&xdr,&hdr);
-> +	if (!status)
-> +		status = decode_release_lockowner(&xdr);
-> +	return status;
-> +}
-> +
->   /*
->    * Decode READLINK response
->    */
-> @@ -5874,6 +5928,7 @@ struct rpc_procinfo	nfs4_procedures[] = {
->     PROC(GETACL,		enc_getacl,	dec_getacl),
->     PROC(SETACL,		enc_setacl,	dec_setacl),
->     PROC(FS_LOCATIONS,	enc_fs_locations, dec_fs_locations),
-> +  PROC(RELEASE_LOCKOWNER, enc_release_lockowner, dec_release_lockowner),
->   #if defined(CONFIG_NFS_V4_1)
->     PROC(EXCHANGE_ID,	enc_exchange_id,	dec_exchange_id),
->     PROC(CREATE_SESSION,	enc_create_session,	dec_create_session),
-> diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
-> index 9b8299a..07e40c6 100644
-> --- a/include/linux/nfs4.h
-> +++ b/include/linux/nfs4.h
-> @@ -523,6 +523,7 @@ enum {
->   	NFSPROC4_CLNT_GETACL,
->   	NFSPROC4_CLNT_SETACL,
->   	NFSPROC4_CLNT_FS_LOCATIONS,
-> +	NFSPROC4_CLNT_RELEASE_LOCKOWNER,
->
->   	/* nfs41 */
->   	NFSPROC4_CLNT_EXCHANGE_ID,
-> diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-> index 87202c7..fc46192 100644
-> --- a/include/linux/nfs_xdr.h
-> +++ b/include/linux/nfs_xdr.h
-> @@ -315,6 +315,10 @@ struct nfs_lockt_res {
->   	struct nfs4_sequence_res	seq_res;
->   };
->
-> +struct nfs_release_lockowner_args {
-> +	struct nfs_lowner	lock_owner;
-> +};
-> +
->   struct nfs4_delegreturnargs {
->   	const struct nfs_fh *fhandle;
->   	const nfs4_stateid *stateid;
+On Thu, 01 Jul 2010 12:24:52 -0400, Steve Dickson <SteveD@redhat.com> =20
+wrote:
 
+>
+>
+> On 07/01/2010 10:24 AM, Sandeep Joshi wrote:
+>> I am using fedora version from SteveD's website
+>>
+>> 2.6.33.5-112.2.2.pnfs.fc13.x86_64
+>>
+>> I guess I have to upgrade.
+> hmm... that kernel is based on the pnfs-all-2_6_35-2010-06-01
+> release which I guess that is a bit old...
+>
+> Benny should I go ahead a update to  pnfs-all-2.6.35-rc3-2010-06-21
+> or wait for the next release?
+>
+> steved.
+>
+>>
+>> regards,
+>> Sandeep
+>>
+>>
+>> -----Original Message-----
+>> From: Benny Halevy [mailto:bhalevy@panasas.com]
+>> Sent: Thu 7/1/2010 7:19 AM
+>> To: Sandeep Joshi
+>> Cc: linux-nfs@vger.kernel.org
+>> Subject: Re: mount - Fedora13 - Nfsv4.1 mode
+>>
+>> What version of the kernel are you using?
+>> I sent a patchset that fixes this:
+>> http://marc.info/?l=3Dlinux-nfs&m=3D127678603202678&w=3D2
+>> That's in the latest linux-pnfs tree
+>> at tag pnfs-all-2.6.35-rc3-2010-06-21
+>>
+>> Benny
+>>
+>> On Jul. 01, 2010, 0:15 +0300, "Sandeep Joshi" <sjoshi-Pe6u2o1+k2hBDgjK7y7TUQ@public.gmane.org> =20
+>> wrote:
+>>> I am using  NFS 4.1 client with nfslayoutdriver loaded. (using Fedo=
+ra =20
+>>> 13)
+>>> If I try to mount the same directory twice from client. I see two =20
+>>> exchange id's
+>>> being sent to server. I was expecting only one exchange id.
+>>>
+>>> Here are the steps that I am executing:
+>>>
+>>> modprobe nfslayoutdriver
+>>> mount -t nfs4 -o minorversion=3D1 <serv-ip-address>:/ /mnt/<dir>
+>>> mount -t nfs4 -o minorversion=3D1 <serv-ip-address>:/ /mnt/<dir>
+>>>
+>>> Is this expected behavior?
+>>>
+>>>
+>>> regards,
+>>>
+>>> Sandeep
+>>>
+>>> --
+>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs=
+" in
+>>> the body of a message to majordomo@vger.kernel.org
+>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs"=
+ in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" =
+in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
+>
+
+
+
+--=20
+Best Regards
+
+Sorin Faibish
+Corporate Distinguished Engineer
+Network Storage Group
+
+         EMC=B2
+where information lives
+
+Phone: 508-435-1000 x 48545
+Cellphone: 617-510-0422
+Email : sfaibish@emc.com
