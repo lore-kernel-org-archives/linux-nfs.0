@@ -1,52 +1,36 @@
-From: "Sandeep Joshi" <sjoshi-Pe6u2o1+k2hBDgjK7y7TUQ@public.gmane.org>
-Subject: RE: mount - Fedora13 - Nfsv4.1 mode
-Date: Thu, 1 Jul 2010 09:56:22 -0700
-Message-ID: <A062FCC8662DA848949F7C3046B9BEAE01F3A6E4@us-email.terastack.bluearc.com>
-References: <A062FCC8662DA848949F7C3046B9BEAE01F3A6D1@us-email.terastack.bluearc.com> <4C2CA404.601@panasas.com> <A062FCC8662DA848949F7C3046B9BEAE01F3A6E1@us-email.terastack.bluearc.com> <4C2CC154.608@RedHat.com> <4C2CC1CA.7010605@panasas.com> <4C2CC21E.5060409@RedHat.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Cc: <linux-nfs@vger.kernel.org>
-To: "Steve Dickson" <SteveD@redhat.com>,
-	"Benny Halevy" <bhalevy@panasas.com>
+From: Benny Halevy <bhalevy@panasas.com>
+Subject: [PATCH] pnfs: get open context from nfs_page in pnfs_commit
+Date: Thu,  1 Jul 2010 21:17:33 +0300
+Message-ID: <1278008253-24666-1-git-send-email-bhalevy@panasas.com>
+To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from p01c12o149.mxlogic.net ([208.65.145.72]:34564 "EHLO
-	p01c12o149.mxlogic.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752925Ab0GAQ5M convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 1 Jul 2010 12:57:12 -0400
+Received: from daytona.panasas.com ([67.152.220.89]:20649 "EHLO
+	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1754538Ab0GASRf (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 1 Jul 2010 14:17:35 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Thank you, Steve.
+To fix a BUG_ON(!ctx) in pnfs_update_layout
 
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+---
+ fs/nfs/pnfs.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
 
------Original Message-----
-From: Steve Dickson [mailto:SteveD@redhat.com]
-Sent: Thu 7/1/2010 9:28 AM
-To: Benny Halevy
-Cc: Sandeep Joshi; linux-nfs@vger.kernel.org
-Subject: Re: mount - Fedora13 - Nfsv4.1 mode
- 
-
-
-On 07/01/2010 12:26 PM, Benny Halevy wrote:
-> On Jul. 01, 2010, 19:24 +0300, Steve Dickson <SteveD@redhat.com> wrote:
->>
->>
->> On 07/01/2010 10:24 AM, Sandeep Joshi wrote:
->>> I am using fedora version from SteveD's website
->>>
->>> 2.6.33.5-112.2.2.pnfs.fc13.x86_64
->>>
->>> I guess I have to upgrade.
->> hmm... that kernel is based on the pnfs-all-2_6_35-2010-06-01
->> release which I guess that is a bit old... 
->>
->> Benny should I go ahead a update to  pnfs-all-2.6.35-rc3-2010-06-21
->> or wait for the next release?
-> 
-> I've just released pnfs-all-2.6.35-rc3-2010-07-01
-> at this very moment :)
-Cool... the updated kernels are on their way...
-
-steved.
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index a4f50f6..784ea80 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -2015,7 +2015,7 @@ pnfs_commit(struct nfs_write_data *data, int sync)
+ 	   before returning it, otherwise the data needs to be rewritten,
+ 	   either with a new layout or to the MDS */
+ 	result = pnfs_update_layout(data->inode,
+-				    NULL,
++				    first->wb_context,
+ 				    count,
+ 				    first->wb_offset,
+ 				    IOMODE_RW,
+-- 
+1.6.6.1
 
