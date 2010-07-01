@@ -1,72 +1,38 @@
-From: Benny Halevy <bhalevy@panasas.com>
-Subject: Re: [PATCH version2] nfsd41: Fix a crash when a callback is retried
-Date: Thu, 01 Jul 2010 21:28:59 +0300
-Message-ID: <4C2CDE6B.2050702@panasas.com>
-References: <4C28DCE0.7050201@panasas.com> <4C29DA23.90200@panasas.com>
+From: Timo Aaltonen <timo.aaltonen-uOixanVlb7U@public.gmane.org>
+Subject: Re: Mount error with NFSv4 and Kerberos (Bad encryption type)
+Date: Fri, 2 Jul 2010 00:50:52 +0300 (EEST)
+Message-ID: <alpine.DEB.2.00.1007020048220.17692@kosh.hut.fi>
+References: <1277912631.11798.22.camel@localhost>  <alpine.DEB.2.00.1006301918360.17692@kosh.hut.fi> <1277918676.11798.58.camel@localhost>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: "J. Bruce Fields" <bfields@citi.umich.edu>,
-	"Labiaga, Ricardo" <Ricardo.Labiaga@netapp.com>,
-	NFS list <linux-nfs@vger.kernel.org>
-To: Boaz Harrosh <bharrosh@panasas.com>
+Content-Type: TEXT/PLAIN; format=flowed; charset=US-ASCII
+Cc: linux-nfs@vger.kernel.org
+To: Laurent Bonnaud <bonnaud-jHyHnS8NkcXLSxaa5bH2iPQULIy34Utc@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:60284 "EHLO
-	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1758157Ab0GAS3B (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 1 Jul 2010 14:29:01 -0400
-In-Reply-To: <4C29DA23.90200@panasas.com>
+Received: from smtp-1.hut.fi ([130.233.228.91]:36920 "EHLO smtp-1.hut.fi"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756325Ab0GAVvB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 1 Jul 2010 17:51:01 -0400
+In-Reply-To: <1277918676.11798.58.camel@localhost>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Jun. 29, 2010, 14:33 +0300, Boaz Harrosh <bharrosh@panasas.com> wrote:
-> 
-> If a callback is retried at nfsd4_cb_recall_done() do to
-> some error. The returned rpc reply would then crash here:
-> 
-> @@ -514,6 +514,7 @@ decode_cb_sequence(struct xdr_stream *xdr, struct nfsd4_cb_sequence *res,
->  	u32 dummy;
->  	__be32 *p;
-> 
->  +	BUG_ON(!res);
->  	if (res->cbs_minorversion == 0)
->  		return 0;
-> 
-> [BUG_ON added for demonstration]
-> 
-> This is because the nfsd4_cb_done_sequence() has NULLed out
-> the task->tk_msg.rpc_resp pointer.
-> 
-> Also eventually the rpc would use the new slot without making
-> sure it is free by calling nfsd41_cb_setup_sequence().
-> 
-> This problem was introduced by a 4.1 protocol addition patch:
-> 	[0421b5c5] nfsd41: Backchannel: Implement cb_recall over NFSv4.1
-> 
-> Which was overlooking the possibility of an RPC callback retries.
-> For not-4.1 case redoing the _prepare is harmless.
-> 
-> Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+On Wed, 30 Jun 2010, Laurent Bonnaud wrote:
 
-Merged at pnfs-all-2.6.35-rc3-2010-07-01
+> On Wed, 2010-06-30 at 19:22 +0300, Timo Aaltonen wrote:
+>
+>> Put that on the client as well and it should work.
+>
+> Thank you for the suggestion !
+>
+> Unfortunately the client already has the same /etc/krb5.conf file as the
+> server.  Any other idea ?
 
-Thanks!
+Try forcing the encryption type in krb5.conf:
 
-Benny
+default_tkt_enctypes = des-cbc-crc
+default_tgs_enctypes = des-cbc-crc
 
-> ---
->  fs/nfsd/nfs4callback.c |    2 +-
->  1 files changed, 1 insertions(+), 1 deletions(-)
-> 
-> diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
-> index f3b5015..3bbeae8 100644
-> --- a/fs/nfsd/nfs4callback.c
-> +++ b/fs/nfsd/nfs4callback.c
-> @@ -913,7 +913,7 @@ static void nfsd4_cb_recall_done(struct rpc_task *task, void *calldata)
->  	if (dp->dl_retries--) {
->  		rpc_delay(task, 2*HZ);
->  		task->tk_status = 0;
-> -		rpc_restart_call(task);
-> +		rpc_restart_call_prepare(task);
->  		return;
->  	} else {
->  		atomic_set(&clp->cl_cb_set, 0);
+
+-- 
+Timo Aaltonen
+Systems Specialist, Aalto IT
