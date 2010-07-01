@@ -1,88 +1,77 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:35050 "EHLO
-	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1752760Ab0GAQ0x (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 1 Jul 2010 12:26:53 -0400
-Message-ID: <4C2CC1CA.7010605@panasas.com>
-Date: Thu, 01 Jul 2010 19:26:50 +0300
-From: Benny Halevy <bhalevy@panasas.com>
-To: Steve Dickson <SteveD@redhat.com>
-CC: Sandeep Joshi <sjoshi@bluearc.com>, linux-nfs@vger.kernel.org
-Subject: Re: mount - Fedora13 - Nfsv4.1 mode
-References: <A062FCC8662DA848949F7C3046B9BEAE01F3A6D1@us-email.terastack.bluearc.com> <4C2CA404.601@panasas.com> <A062FCC8662DA848949F7C3046B9BEAE01F3A6E1@us-email.terastack.bluearc.com> <4C2CC154.608@RedHat.com>
-In-Reply-To: <4C2CC154.608@RedHat.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from cn.fujitsu.com ([222.73.24.84]:55455 "EHLO song.cn.fujitsu.com"
+	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
+	id S1751927Ab0GAJxz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 1 Jul 2010 05:53:55 -0400
+Message-ID: <4C2C65DE.3030602@cn.fujitsu.com>
+Date: Thu, 01 Jul 2010 17:54:38 +0800
+From: Mi Jinlong <mijinlong@cn.fujitsu.com>
+To: NFSv3 list <linux-nfs@vger.kernel.org>,
+        "Trond.Myklebust" <trond.myklebust@fys.uio.no>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        Chuck Lever <chuck.lever@oracle.com>, Jeff Layton <jlayton@redhat.com>,
+        Mi Jinlong <mijinlong@cn.fujitsu.com>
+Subject: [RFC][PATCH v2] NLM: Sending nfslock request fail should not be process
+ as blocked
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Jul. 01, 2010, 19:24 +0300, Steve Dickson <SteveD@redhat.com> wrote:
-> 
-> 
-> On 07/01/2010 10:24 AM, Sandeep Joshi wrote:
->> I am using fedora version from SteveD's website
->>
->> 2.6.33.5-112.2.2.pnfs.fc13.x86_64
->>
->> I guess I have to upgrade.
-> hmm... that kernel is based on the pnfs-all-2_6_35-2010-06-01
-> release which I guess that is a bit old... 
-> 
-> Benny should I go ahead a update to  pnfs-all-2.6.35-rc3-2010-06-21
-> or wait for the next release?
+hi,
 
-I've just released pnfs-all-2.6.35-rc3-2010-07-01
-at this very moment :)
+Sorry for sending this patch third times.
 
-Benny
+About this patch, I have discussed with Trond before. 
+He said "An unlock does not guarantee that the server will cancel the blocked
+lock request.", but when server receive an UNLOCK request, it will try to
+cancel the lock at first, and then unlock the file.
 
-> 
-> steved.
-> 
->>
->> regards,
->> Sandeep
->>
->>
->> -----Original Message-----
->> From: Benny Halevy [mailto:bhalevy@panasas.com]
->> Sent: Thu 7/1/2010 7:19 AM
->> To: Sandeep Joshi
->> Cc: linux-nfs@vger.kernel.org
->> Subject: Re: mount - Fedora13 - Nfsv4.1 mode
->>  
->> What version of the kernel are you using?
->> I sent a patchset that fixes this:
->> http://marc.info/?l=linux-nfs&m=127678603202678&w=2
->> That's in the latest linux-pnfs tree
->> at tag pnfs-all-2.6.35-rc3-2010-06-21
->>
->> Benny
->>
->> On Jul. 01, 2010, 0:15 +0300, "Sandeep Joshi" <sjoshi@bluearc.com> wrote:
->>> I am using  NFS 4.1 client with nfslayoutdriver loaded. (using Fedora 13)
->>> If I try to mount the same directory twice from client. I see two exchange id's
->>> being sent to server. I was expecting only one exchange id. 
->>>
->>> Here are the steps that I am executing:
->>>
->>> modprobe nfslayoutdriver
->>> mount -t nfs4 -o minorversion=1 <serv-ip-address>:/ /mnt/<dir>
->>> mount -t nfs4 -o minorversion=1 <serv-ip-address>:/ /mnt/<dir>
->>>
->>> Is this expected behavior?
->>>
->>>
->>> regards,
->>>
->>> Sandeep
->>>
->>> --
->>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->>> the body of a message to majordomo@vger.kernel.org
->>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+  codes as follows:
+    ...
+    567 nlmsvc_unlock(struct nlm_file *file, struct nlm_lock *lock)
+    568 {
+    ....
+    578         /* First, cancel any lock that might be there */
+    579         nlmsvc_cancel_blocked(file, lock);
+    ...
+
+as before, the UNLOCK request means it contain a CANCEL request.
+
+So, I don't know the reason in detail.
+
+Waiting for some better analysis. Thanks.
+
+-------------
+If local reason cause nfslock request is sent fail(means status < 0,
+but resp->status not be reset), the request will be process as blocked 
+at the kernel.
+
+If the network partition cause the LOCK request be sent fail, the 
+kernel will processed it as being blocked right now, but sending
+an UNLOCK request is needed but CANCEL request here.
+
+Signed-off-by: Mi Jinlong <mijinlong@cn.fujitsu.com>
+
+---
+ fs/lockd/clntproc.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
+
+diff --git a/fs/lockd/clntproc.c b/fs/lockd/clntproc.c
+index 7932c39..b79c8b1 100644
+--- a/fs/lockd/clntproc.c
++++ b/fs/lockd/clntproc.c
+@@ -536,7 +536,7 @@ again:
+ 	 * Initialise resp->status to a valid non-zero value,
+ 	 * since 0 == nlm_lck_granted
+ 	 */
+-	resp->status = nlm_lck_blocked;
++	resp->status = nlm_lck_denied_nolocks;
+ 	for(;;) {
+ 		/* Reboot protection */
+ 		fl->fl_u.nfs_fl.state = host->h_state;
+-- 
+1.7.0
+
+
+
