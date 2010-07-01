@@ -1,37 +1,53 @@
-Return-Path: <pgp@psu.edu>
-Message-ID: <4C5311F4.2050100@psu.edu>
-Date: Fri, 30 Jul 2010 13:55:00 -0400
-From: Phil Pishioneri <pgp@psu.edu>
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-CC: Volker.Lendecke@SerNet.DE, Jeremy Allison <jra@samba.org>,
-        Linus Torvalds <torvalds@linux-foundation.org>,
-        David Howells <dhowells@redhat.com>,
-        Jan Engelhardt <jengelh@medozas.de>, linux-cifs@vger.kernel.org,
-        linux-nfs@vger.kernel.org, samba-technical@lists.samba.org,
-        linux-kernel@vger.kernel.org, viro@zeniv.linux.org.uk,
-        linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
-Subject: Re: [PATCH 02/18] xstat: Add a pair of system calls to make extended
-  file stats available [ver #6]
-References: <20100715021712.5544.44845.stgit@warthog.procyon.org.uk>	 <30448.1279800887@redhat.com> <E1Obuiy-00C9jr-Al@intern.SerNet.DE>	 <AANLkTikBCXK6uEwWq4f0LvpdoKCPs3jvyFa4Zw4e2J_7@mail.gmail.com>	 <E1Obxpd-00CRIo-SF@intern.SerNet.DE>	 <AANLkTimwIq0pBhCeOjOVjB0yeM3JHOvzVoj9M4ui6al9@mail.gmail.com>	 <20100722162712.GB10352@jeremy-laptop>	 <AANLkTimdFCGSKLn7aGMpBMIauHTsHY7hpAAmpo6uTcnD@mail.gmail.com>	 <1279817930.3621.14.camel@heimdal.trondhjem.org>	 <20100722180204.GA32008@samba1>  <E1Oc08W-00CZuz-Ns@intern.SerNet.DE> <1279825160.3621.71.camel@heimdal.trondhjem.org>
-In-Reply-To: <1279825160.3621.71.camel@heimdal.trondhjem.org>
-Content-Type: text/plain; charset=UTF-8; format=flowed
-MIME-Version: 1.0
+Return-Path: <linux-nfs-owner@vger.kernel.org>
+Received: from mail-iw0-f174.google.com ([209.85.214.174]:51330 "EHLO
+	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751927Ab0GAJoG (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 1 Jul 2010 05:44:06 -0400
+Received: by iwn7 with SMTP id 7so1850403iwn.19
+        for <linux-nfs@vger.kernel.org>; Thu, 01 Jul 2010 02:44:01 -0700 (PDT)
+Message-ID: <4C2C635D.9000906@gmail.com>
+Date: Thu, 01 Jul 2010 05:43:57 -0400
+From: Doug Nazar <nazard.lkml@gmail.com>
+To: linux-nfs@vger.kernel.org
+Subject: Fix memcmp result comparison error for uuid match.
+Content-Type: multipart/mixed;
+ boundary="------------000101050702090101010202"
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+MIME-Version: 1.0
 
-  On 7/22/10 2:59 PM, Trond Myklebust wrote:
-> The fact remains that most of us would be hard pressed to name an
-> application
+--------------000101050702090101010202
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
 
-Microsoft Office?
+  Small typo in the new fs uuid comparison code.
 
-> that requires you to share the same dataset to both
-> Windows/CIFS and posix NFS clients.
 
-NFS client: Mac OS X (NFSv3, since v4 on it is still alpha *cough*).
+--------------000101050702090101010202
+Content-Type: text/plain;
+ name="nfs-utils-fsuuid-memcmp.diff"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+ filename="nfs-utils-fsuuid-memcmp.diff"
 
-> tends to discourage mixing the two environments.
+commit 361f6d6c5da3c5c5ba709f8f3704865b0f7267cc
+Author: Doug Nazar <nazard.michi@gmail.com>
+Date:   Thu Jul 1 05:37:23 2010 -0400
 
-Or is "discourage" not strong enough term to describe that we shouldn't 
-be doing this?
+    Fix memcmp result comparison error for uuid match.
 
--Phil
+diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c
+index 9e1b164..bf18a9a 100644
+--- a/utils/mountd/cache.c
++++ b/utils/mountd/cache.c
+@@ -513,7 +513,7 @@ void nfsd_fh(FILE *f)
+ 					for (type = 0;
+ 					     uuid_by_path(path, type, uuidlen, u);
+ 					     type++)
+-						if (memcmp(u, fhuuid, uuidlen) != 0)
++						if (memcmp(u, fhuuid, uuidlen) == 0)
+ 							break;
+ 
+ 				if (memcmp(u, fhuuid, uuidlen) != 0)
+
+--------------000101050702090101010202--
