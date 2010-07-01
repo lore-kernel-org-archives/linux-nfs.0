@@ -1,21 +1,31 @@
-From: Steve Dickson <SteveD@redhat.com>
-Subject: Re: mount - Fedora13 - Nfsv4.1 mode
-Date: Thu, 01 Jul 2010 12:28:14 -0400
-Message-ID: <4C2CC21E.5060409@RedHat.com>
-References: <A062FCC8662DA848949F7C3046B9BEAE01F3A6D1@us-email.terastack.bluearc.com> <4C2CA404.601@panasas.com> <A062FCC8662DA848949F7C3046B9BEAE01F3A6E1@us-email.terastack.bluearc.com> <4C2CC154.608@RedHat.com> <4C2CC1CA.7010605@panasas.com>
+From: "Sandeep Joshi" <sjoshi-Pe6u2o1+k2hBDgjK7y7TUQ@public.gmane.org>
+Subject: RE: mount - Fedora13 - Nfsv4.1 mode
+Date: Thu, 1 Jul 2010 09:56:22 -0700
+Message-ID: <A062FCC8662DA848949F7C3046B9BEAE01F3A6E4@us-email.terastack.bluearc.com>
+References: <A062FCC8662DA848949F7C3046B9BEAE01F3A6D1@us-email.terastack.bluearc.com> <4C2CA404.601@panasas.com> <A062FCC8662DA848949F7C3046B9BEAE01F3A6E1@us-email.terastack.bluearc.com> <4C2CC154.608@RedHat.com> <4C2CC1CA.7010605@panasas.com> <4C2CC21E.5060409@RedHat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: Sandeep Joshi <sjoshi-Pe6u2o1+k2hBDgjK7y7TUQ@public.gmane.org>, linux-nfs@vger.kernel.org
-To: Benny Halevy <bhalevy@panasas.com>
+Content-Type: text/plain; charset=US-ASCII
+Cc: <linux-nfs@vger.kernel.org>
+To: "Steve Dickson" <SteveD@redhat.com>,
+	"Benny Halevy" <bhalevy@panasas.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:23045 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752958Ab0GAQvg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 1 Jul 2010 12:51:36 -0400
-In-Reply-To: <4C2CC1CA.7010605@panasas.com>
+Received: from p01c12o149.mxlogic.net ([208.65.145.72]:34564 "EHLO
+	p01c12o149.mxlogic.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752925Ab0GAQ5M convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 1 Jul 2010 12:57:12 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Thank you, Steve.
+
+
+-----Original Message-----
+From: Steve Dickson [mailto:SteveD@redhat.com]
+Sent: Thu 7/1/2010 9:28 AM
+To: Benny Halevy
+Cc: Sandeep Joshi; linux-nfs@vger.kernel.org
+Subject: Re: mount - Fedora13 - Nfsv4.1 mode
+ 
 
 
 On 07/01/2010 12:26 PM, Benny Halevy wrote:
@@ -39,3 +49,4 @@ On 07/01/2010 12:26 PM, Benny Halevy wrote:
 Cool... the updated kernels are on their way...
 
 steved.
+
