@@ -1,7 +1,8 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 18/22] NFS: Remove unused old NFSv3 decoder functions
-Date: Fri, 02 Jul 2010 13:21:14 -0400
-Message-ID: <20100702172114.8761.59098.stgit@ellison.1015granger.net>
+Subject: [PATCH 19/22] NFS: Move and update xdr_decode_foo() functions that
+	we're keeping
+Date: Fri, 02 Jul 2010 13:21:23 -0400
+Message-ID: <20100702172123.8761.80740.stgit@ellison.1015granger.net>
 References: <20100702165935.8761.88528.stgit@ellison.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -9,10 +10,10 @@ To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
 Received: from mail-iw0-f174.google.com ([209.85.214.174]:51418 "EHLO
 	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1759347Ab0GBRVQ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 2 Jul 2010 13:21:16 -0400
+	with ESMTP id S1759338Ab0GBRV0 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 2 Jul 2010 13:21:26 -0400
 Received: by mail-iw0-f174.google.com with SMTP id 7so3461836iwn.19
-        for <linux-nfs@vger.kernel.org>; Fri, 02 Jul 2010 10:21:16 -0700 (PDT)
+        for <linux-nfs@vger.kernel.org>; Fri, 02 Jul 2010 10:21:25 -0700 (PDT)
 In-Reply-To: <20100702165935.8761.88528.stgit-ewv44WTpT0t9HhUboXbp9zCvJB+x5qRC@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
@@ -22,666 +23,262 @@ Clean up.
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- fs/nfs/nfs3xdr.c |  526 ------------------------------------------------------
- 1 files changed, 4 insertions(+), 522 deletions(-)
+ fs/nfs/nfs3xdr.c |  181 +++++++++++++++++++++++++++---------------------------
+ 1 files changed, 90 insertions(+), 91 deletions(-)
 
 diff --git a/fs/nfs/nfs3xdr.c b/fs/nfs/nfs3xdr.c
-index f170f33..bda8cc3 100644
+index bda8cc3..2126889 100644
 --- a/fs/nfs/nfs3xdr.c
 +++ b/fs/nfs/nfs3xdr.c
-@@ -206,22 +206,6 @@ xdr_decode_post_op_attr(__be32 *p, struct nfs_fattr *fattr)
- 	return p;
- }
+@@ -127,87 +127,6 @@ static void print_overflow_msg(const char *func, const struct xdr_stream *xdr)
  
+ 
+ /*
+- * Common NFS XDR functions as inlines
+- */
 -static inline __be32 *
--xdr_decode_pre_op_attr(__be32 *p, struct nfs_fattr *fattr)
+-xdr_decode_fhandle(__be32 *p, struct nfs_fh *fh)
+-{
+-	if ((fh->size = ntohl(*p++)) <= NFS3_FHSIZE) {
+-		memcpy(fh->data, p, fh->size);
+-		return p + XDR_QUADLEN(fh->size);
+-	}
+-	return NULL;
+-}
+-
+-/*
+- * Encode/decode time.
+- */
+-static inline __be32 *
+-xdr_decode_time3(__be32 *p, struct timespec *timep)
+-{
+-	timep->tv_sec = ntohl(*p++);
+-	timep->tv_nsec = ntohl(*p++);
+-	return p;
+-}
+-
+-static __be32 *
+-xdr_decode_fattr(__be32 *p, struct nfs_fattr *fattr)
+-{
+-	unsigned int	type, major, minor;
+-	umode_t		fmode;
+-
+-	type = ntohl(*p++);
+-	if (type > NF3FIFO)
+-		type = NF3NON;
+-	fmode = nfs_type2fmt[type];
+-	fattr->mode = (ntohl(*p++) & ~S_IFMT) | fmode;
+-	fattr->nlink = ntohl(*p++);
+-	fattr->uid = ntohl(*p++);
+-	fattr->gid = ntohl(*p++);
+-	p = xdr_decode_hyper(p, &fattr->size);
+-	p = xdr_decode_hyper(p, &fattr->du.nfs3.used);
+-
+-	/* Turn remote device info into Linux-specific dev_t */
+-	major = ntohl(*p++);
+-	minor = ntohl(*p++);
+-	fattr->rdev = MKDEV(major, minor);
+-	if (MAJOR(fattr->rdev) != major || MINOR(fattr->rdev) != minor)
+-		fattr->rdev = 0;
+-
+-	p = xdr_decode_hyper(p, &fattr->fsid.major);
+-	fattr->fsid.minor = 0;
+-	p = xdr_decode_hyper(p, &fattr->fileid);
+-	p = xdr_decode_time3(p, &fattr->atime);
+-	p = xdr_decode_time3(p, &fattr->mtime);
+-	p = xdr_decode_time3(p, &fattr->ctime);
+-
+-	/* Update the mode bits */
+-	fattr->valid |= NFS_ATTR_FATTR_V3;
+-	return p;
+-}
+-
+-static inline __be32 *
+-xdr_decode_wcc_attr(__be32 *p, struct nfs_fattr *fattr)
+-{
+-	p = xdr_decode_hyper(p, &fattr->pre_size);
+-	p = xdr_decode_time3(p, &fattr->pre_mtime);
+-	p = xdr_decode_time3(p, &fattr->pre_ctime);
+-	fattr->valid |= NFS_ATTR_FATTR_PRESIZE
+-		| NFS_ATTR_FATTR_PREMTIME
+-		| NFS_ATTR_FATTR_PRECTIME;
+-	return p;
+-}
+-
+-static inline __be32 *
+-xdr_decode_post_op_attr(__be32 *p, struct nfs_fattr *fattr)
 -{
 -	if (*p++)
--		return xdr_decode_wcc_attr(p, fattr);
+-		p = xdr_decode_fattr(p, fattr);
 -	return p;
 -}
 -
 -
--static inline __be32 *
--xdr_decode_wcc_data(__be32 *p, struct nfs_fattr *fattr)
--{
--	p = xdr_decode_pre_op_attr(p, fattr);
--	return xdr_decode_post_op_attr(p, fattr);
--}
--
- 
- /*
+-/*
   * Encode/decode NFSv3 basic data types
-@@ -1315,128 +1299,6 @@ static int nfs3_xdr_enc_readdirplus3args(struct rpc_rqst *req, __be32 *p,
- }
- 
- /*
-- * Decode the result of a readdir call.
-- * We just check for syntactical correctness.
-- */
--static int
--nfs3_xdr_readdirres(struct rpc_rqst *req, __be32 *p, struct nfs3_readdirres *res)
--{
--	struct xdr_buf *rcvbuf = &req->rq_rcv_buf;
--	struct kvec *iov = rcvbuf->head;
--	struct page **page;
--	size_t hdrlen;
--	u32 len, recvd, pglen;
--	int status, nr = 0;
--	__be32 *entry, *end, *kaddr;
--
--	status = ntohl(*p++);
--	/* Decode post_op_attrs */
--	p = xdr_decode_post_op_attr(p, res->dir_attr);
--	if (status)
--		return nfs_stat_to_errno(status);
--	/* Decode verifier cookie */
--	if (res->verf) {
--		res->verf[0] = *p++;
--		res->verf[1] = *p++;
--	} else {
--		p += 2;
--	}
--
--	hdrlen = (u8 *) p - (u8 *) iov->iov_base;
--	if (iov->iov_len < hdrlen) {
--		dprintk("NFS: READDIR reply header overflowed:"
--				"length %Zu > %Zu\n", hdrlen, iov->iov_len);
--		return -errno_NFSERR_IO;
--	} else if (iov->iov_len != hdrlen) {
--		dprintk("NFS: READDIR header is short. iovec will be shifted.\n");
--		xdr_shift_buf(rcvbuf, iov->iov_len - hdrlen);
--	}
--
--	pglen = rcvbuf->page_len;
--	recvd = rcvbuf->len - hdrlen;
--	if (pglen > recvd)
--		pglen = recvd;
--	page = rcvbuf->pages;
--	kaddr = p = kmap_atomic(*page, KM_USER0);
--	end = (__be32 *)((char *)p + pglen);
--	entry = p;
--
--	/* Make sure the packet actually has a value_follows and EOF entry */
--	if ((entry + 1) > end)
--		goto short_pkt;
--
--	for (; *p++; nr++) {
--		if (p + 3 > end)
--			goto short_pkt;
--		p += 2;				/* inode # */
--		len = ntohl(*p++);		/* string length */
--		p += XDR_QUADLEN(len) + 2;	/* name + cookie */
--		if (len > NFS3_MAXNAMLEN) {
--			dprintk("NFS: giant filename in readdir (len 0x%x)!\n",
--						len);
--			goto err_unmap;
--		}
--
--		if (res->plus) {
--			/* post_op_attr */
--			if (p + 2 > end)
--				goto short_pkt;
--			if (*p++) {
--				p += 21;
--				if (p + 1 > end)
--					goto short_pkt;
--			}
--			/* post_op_fh3 */
--			if (*p++) {
--				if (p + 1 > end)
--					goto short_pkt;
--				len = ntohl(*p++);
--				if (len > NFS3_FHSIZE) {
--					dprintk("NFS: giant filehandle in "
--						"readdir (len 0x%x)!\n", len);
--					goto err_unmap;
--				}
--				p += XDR_QUADLEN(len);
--			}
--		}
--
--		if (p + 2 > end)
--			goto short_pkt;
--		entry = p;
--	}
--
--	/*
--	 * Apparently some server sends responses that are a valid size, but
--	 * contain no entries, and have value_follows==0 and EOF==0. For
--	 * those, just set the EOF marker.
--	 */
--	if (!nr && entry[1] == 0) {
--		dprintk("NFS: readdir reply truncated!\n");
--		entry[1] = 1;
--	}
-- out:
--	kunmap_atomic(kaddr, KM_USER0);
--	return nr;
-- short_pkt:
--	/*
--	 * When we get a short packet there are 2 possibilities. We can
--	 * return an error, or fix up the response to look like a valid
--	 * response and return what we have so far. If there are no
--	 * entries and the packet was short, then return -EIO. If there
--	 * are valid entries in the response, return them and pretend that
--	 * the call was successful, but incomplete. The caller can retry the
--	 * readdir starting at the last cookie.
--	 */
--	entry[0] = entry[1] = 0;
--	if (!nr)
--		nr = -errno_NFSERR_IO;
--	goto out;
--err_unmap:
--	nr = -errno_NFSERR_IO;
--	goto out;
--}
--
--/*
-  * 3.3.21  COMMIT3args
   *
-  *	struct COMMIT3args {
-@@ -1514,24 +1376,13 @@ static int nfs3_xdr_enc_setacl3args(struct rpc_rqst *req, __be32 *p,
- #endif  /* CONFIG_NFS_V3_ACL */
+  * Basic NFSv3 data types are defined in section 2.5 of RFC 1813:
+@@ -417,6 +336,17 @@ static void encode_ftype3(struct xdr_stream *xdr, const u32 type)
+ 	encode_uint32(xdr, type);
+ }
  
++static __be32 *xdr_decode_ftype3(__be32 *p, umode_t *mode)
++{
++	u32 type;
++
++	type = be32_to_cpup(p++);
++	if (type > NF3FIFO)
++		type = NF3NON;
++	*mode = nfs_type2fmt[type];
++	return p;
++}
++
  /*
-- * NFS XDR decode functions
-+ * NFSv3 XDR decode functions
-+ *
-+ * NFSv3 result types are defined in section 3.3 of RFC 1813:
-+ * "NFS Version 3 Protocol Specification".
-  */
- 
- /*
-- * Decode attrstat reply.
-- */
--static int
--nfs3_xdr_attrstat(struct rpc_rqst *req, __be32 *p, struct nfs_fattr *fattr)
--{
--	int	status;
--
--	if ((status = ntohl(*p++)))
--		return nfs_stat_to_errno(status);
--	xdr_decode_fattr(p, fattr);
--	return 0;
--}
--
--/*
-  * 3.3.1  GETATTR3res
+  * specdata3
   *
-  *	struct GETATTR3resok {
-@@ -1566,21 +1417,6 @@ out_default:
+@@ -435,6 +365,18 @@ static void encode_specdata3(struct xdr_stream *xdr, const dev_t rdev)
+ 	*p = cpu_to_be32(MINOR(rdev));
  }
  
++static __be32 *xdr_decode_specdata3(__be32 *p, dev_t *rdev)
++{
++	unsigned int major, minor;
++
++	major = be32_to_cpup(p++);
++	minor = be32_to_cpup(p++);
++	*rdev = MKDEV(major, minor);
++	if (MAJOR(*rdev) != major || MINOR(*rdev) != minor)
++		*rdev = 0;
++	return p;
++}
++
  /*
-- * Decode status+wcc_data reply
-- * SATTR, REMOVE, RMDIR
-- */
--static int
--nfs3_xdr_wccstat(struct rpc_rqst *req, __be32 *p, struct nfs_fattr *fattr)
--{
--	int	status;
--
--	if ((status = ntohl(*p++)))
--		status = nfs_stat_to_errno(status);
--	xdr_decode_wcc_data(p, fattr);
--	return status;
--}
--
--/*
-  * 3.3.2  SETATTR3res
+  * nfs_fh3
   *
-  *	struct SETATTR3resok {
-@@ -1620,31 +1456,6 @@ out_status:
- 	return nfs_stat_to_errno(status);
+@@ -452,6 +394,22 @@ static void encode_nfs_fh3(struct xdr_stream *xdr, const struct nfs_fh *fh)
+ 	xdr_encode_opaque(p, fh->data, fh->size);
  }
  
--static int
--nfs3_xdr_removeres(struct rpc_rqst *req, __be32 *p, struct nfs_removeres *res)
--{
--	return nfs3_xdr_wccstat(req, p, res->dir_attr);
--}
--
--/*
-- * Decode LOOKUP reply
-- */
--static int
--nfs3_xdr_lookupres(struct rpc_rqst *req, __be32 *p, struct nfs3_diropres *res)
--{
--	int	status;
--
--	if ((status = ntohl(*p++))) {
--		status = nfs_stat_to_errno(status);
--	} else {
--		if (!(p = xdr_decode_fhandle(p, res->fh)))
--			return -errno_NFSERR_IO;
--		p = xdr_decode_post_op_attr(p, res->fattr);
--	}
--	xdr_decode_post_op_attr(p, res->dir_attr);
--	return status;
--}
--
- /*
-  * 3.3.3  LOOKUP3res
-  *
-@@ -1695,21 +1506,6 @@ out_default:
- }
- 
- /*
-- * Decode ACCESS reply
-- */
--static int
--nfs3_xdr_accessres(struct rpc_rqst *req, __be32 *p, struct nfs3_accessres *res)
--{
--	int	status = ntohl(*p++);
--
--	p = xdr_decode_post_op_attr(p, res->fattr);
--	if (status)
--		return nfs_stat_to_errno(status);
--	res->access = ntohl(*p++);
--	return 0;
--}
--
--/*
-  * 3.3.4  ACCESS3res
-  *
-  *	struct ACCESS3resok {
-@@ -1752,52 +1548,6 @@ out_default:
- }
- 
- /*
-- * Decode READLINK reply
-- */
--static int
--nfs3_xdr_readlinkres(struct rpc_rqst *req, __be32 *p, struct nfs_fattr *fattr)
--{
--	struct xdr_buf *rcvbuf = &req->rq_rcv_buf;
--	struct kvec *iov = rcvbuf->head;
--	size_t hdrlen;
--	u32 len, recvd;
--	int	status;
--
--	status = ntohl(*p++);
--	p = xdr_decode_post_op_attr(p, fattr);
--
--	if (status != 0)
--		return nfs_stat_to_errno(status);
--
--	/* Convert length of symlink */
--	len = ntohl(*p++);
--	if (len >= rcvbuf->page_len) {
--		dprintk("nfs: server returned giant symlink!\n");
--		return -ENAMETOOLONG;
--	}
--
--	hdrlen = (u8 *) p - (u8 *) iov->iov_base;
--	if (iov->iov_len < hdrlen) {
--		dprintk("NFS: READLINK reply header overflowed:"
--				"length %Zu > %Zu\n", hdrlen, iov->iov_len);
--		return -errno_NFSERR_IO;
--	} else if (iov->iov_len != hdrlen) {
--		dprintk("NFS: READLINK header is short. "
--			"iovec will be shifted.\n");
--		xdr_shift_buf(rcvbuf, iov->iov_len - hdrlen);
--	}
--	recvd = req->rq_rcv_buf.len - hdrlen;
--	if (recvd < len) {
--		dprintk("NFS: server cheating in readlink reply: "
--				"count %u > recvd %u\n", len, recvd);
--		return -EIO;
--	}
--
--	xdr_terminate_string(rcvbuf, len);
--	return 0;
--}
--
--/*
-  * 3.3.5  READLINK3res
-  *
-  *	struct READLINK3resok {
-@@ -1840,59 +1590,6 @@ out_default:
- }
- 
- /*
-- * Decode READ reply
-- */
--static int
--nfs3_xdr_readres(struct rpc_rqst *req, __be32 *p, struct nfs_readres *res)
--{
--	struct kvec *iov = req->rq_rcv_buf.head;
--	size_t hdrlen;
--	u32 count, ocount, recvd;
--	int status;
--
--	status = ntohl(*p++);
--	p = xdr_decode_post_op_attr(p, res->fattr);
--
--	if (status != 0)
--		return nfs_stat_to_errno(status);
--
--	/* Decode reply count and EOF flag. NFSv3 is somewhat redundant
--	 * in that it puts the count both in the res struct and in the
--	 * opaque data count. */
--	count    = ntohl(*p++);
--	res->eof = ntohl(*p++);
--	ocount   = ntohl(*p++);
--
--	if (ocount != count) {
--		dprintk("NFS: READ count doesn't match RPC opaque count.\n");
--		return -errno_NFSERR_IO;
--	}
--
--	hdrlen = (u8 *) p - (u8 *) iov->iov_base;
--	if (iov->iov_len < hdrlen) {
--		dprintk("NFS: READ reply header overflowed:"
--				"length %Zu > %Zu\n", hdrlen, iov->iov_len);
--       		return -errno_NFSERR_IO;
--	} else if (iov->iov_len != hdrlen) {
--		dprintk("NFS: READ header is short. iovec will be shifted.\n");
--		xdr_shift_buf(&req->rq_rcv_buf, iov->iov_len - hdrlen);
--	}
--
--	recvd = req->rq_rcv_buf.len - hdrlen;
--	if (count > recvd) {
--		dprintk("NFS: server cheating in read reply: "
--			"count %u > recvd %u\n", count, recvd);
--		count = recvd;
--		res->eof = 0;
--	}
--
--	if (count < res->count)
--		res->count = count;
--
--	return count;
--}
--
--/*
-  * 3.3.6  READ3res
-  *
-  *	struct READ3resok {
-@@ -1977,28 +1674,6 @@ out_status:
- }
- 
- /*
-- * Decode WRITE response
-- */
--static int
--nfs3_xdr_writeres(struct rpc_rqst *req, __be32 *p, struct nfs_writeres *res)
--{
--	int	status;
--
--	status = ntohl(*p++);
--	p = xdr_decode_wcc_data(p, res->fattr);
--
--	if (status != 0)
--		return nfs_stat_to_errno(status);
--
--	res->count = ntohl(*p++);
--	res->verf->committed = (enum nfs3_stable_how)ntohl(*p++);
--	res->verf->verifier[0] = *p++;
--	res->verf->verifier[1] = *p++;
--
--	return res->count;
--}
--
--/*
-  * 3.3.7  WRITE3res
-  *
-  *	enum stable_how {
-@@ -2071,33 +1746,6 @@ out_status:
- }
- 
- /*
-- * Decode a CREATE response
-- */
--static int
--nfs3_xdr_createres(struct rpc_rqst *req, __be32 *p, struct nfs3_diropres *res)
--{
--	int	status;
--
--	status = ntohl(*p++);
--	if (status == 0) {
--		if (*p++) {
--			if (!(p = xdr_decode_fhandle(p, res->fh)))
--				return -errno_NFSERR_IO;
--			p = xdr_decode_post_op_attr(p, res->fattr);
--		} else {
--			memset(res->fh, 0, sizeof(*res->fh));
--			/* Do decode post_op_attr but set it to NULL */
--			p = xdr_decode_post_op_attr(p, res->fattr);
--			res->fattr->valid = 0;
--		}
--	} else {
--		status = nfs_stat_to_errno(status);
--	}
--	p = xdr_decode_wcc_data(p, res->dir_attr);
--	return status;
--}
--
--/*
-  * 3.3.8  CREATE3res
-  *
-  *	struct CREATE3resok {
-@@ -2203,21 +1851,6 @@ out_status:
- }
- 
- /*
-- * Decode RENAME reply
-- */
--static int
--nfs3_xdr_renameres(struct rpc_rqst *req, __be32 *p, struct nfs3_renameres *res)
--{
--	int	status;
--
--	if ((status = ntohl(*p++)) != 0)
--		status = nfs_stat_to_errno(status);
--	p = xdr_decode_wcc_data(p, res->fromattr);
--	p = xdr_decode_wcc_data(p, res->toattr);
--	return status;
--}
--
--/*
-  * 3.3.14  RENAME3res
-  *
-  *	struct RENAME3resok {
-@@ -2263,21 +1896,6 @@ out_status:
- }
- 
- /*
-- * Decode LINK reply
-- */
--static int
--nfs3_xdr_linkres(struct rpc_rqst *req, __be32 *p, struct nfs3_linkres *res)
--{
--	int	status;
--
--	if ((status = ntohl(*p++)) != 0)
--		status = nfs_stat_to_errno(status);
--	p = xdr_decode_post_op_attr(p, res->fattr);
--	p = xdr_decode_wcc_data(p, res->dir_attr);
--	return status;
--}
--
--/*
-  * 3.3.15  LINK3res
-  *
-  *	struct LINK3resok {
-@@ -2569,31 +2187,6 @@ out_truncated:
- }
- 
- /*
-- * Decode FSSTAT reply
-- */
--static int
--nfs3_xdr_fsstatres(struct rpc_rqst *req, __be32 *p, struct nfs_fsstat *res)
--{
--	int		status;
--
--	status = ntohl(*p++);
--
--	p = xdr_decode_post_op_attr(p, res->fattr);
--	if (status != 0)
--		return nfs_stat_to_errno(status);
--
--	p = xdr_decode_hyper(p, &res->tbytes);
--	p = xdr_decode_hyper(p, &res->fbytes);
--	p = xdr_decode_hyper(p, &res->abytes);
--	p = xdr_decode_hyper(p, &res->tfiles);
--	p = xdr_decode_hyper(p, &res->ffiles);
--	p = xdr_decode_hyper(p, &res->afiles);
--
--	/* ignore invarsec */
--	return 0;
--}
--
--/*
-  * 3.3.18  FSSTAT3res
-  *
-  *	struct FSSTAT3resok {
-@@ -2663,34 +2256,6 @@ out_status:
- }
- 
- /*
-- * Decode FSINFO reply
-- */
--static int
--nfs3_xdr_fsinfores(struct rpc_rqst *req, __be32 *p, struct nfs_fsinfo *res)
--{
--	int		status;
--
--	status = ntohl(*p++);
--
--	p = xdr_decode_post_op_attr(p, res->fattr);
--	if (status != 0)
--		return nfs_stat_to_errno(status);
--
--	res->rtmax  = ntohl(*p++);
--	res->rtpref = ntohl(*p++);
--	res->rtmult = ntohl(*p++);
--	res->wtmax  = ntohl(*p++);
--	res->wtpref = ntohl(*p++);
--	res->wtmult = ntohl(*p++);
--	res->dtpref = ntohl(*p++);
--	p = xdr_decode_hyper(p, &res->maxfilesize);
--
--	/* ignore time_delta and properties */
--	res->lease_time = 0;
--	return 0;
--}
--
--/*
-  * 3.3.19  FSINFO3res
-  *
-  *	struct FSINFO3resok {
-@@ -2766,26 +2331,6 @@ out_status:
- }
- 
- /*
-- * Decode PATHCONF reply
-- */
--static int
--nfs3_xdr_pathconfres(struct rpc_rqst *req, __be32 *p, struct nfs_pathconf *res)
--{
--	int		status;
--
--	status = ntohl(*p++);
--
--	p = xdr_decode_post_op_attr(p, res->fattr);
--	if (status != 0)
--		return nfs_stat_to_errno(status);
--	res->max_link = ntohl(*p++);
--	res->max_namelen = ntohl(*p++);
--
--	/* ignore remaining fields */
--	return 0;
--}
--
--/*
-  * 3.3.20  PATHCONF3res
-  *
-  *	struct PATHCONF3resok {
-@@ -2850,24 +2395,6 @@ out_status:
- }
- 
- /*
-- * Decode COMMIT reply
-- */
--static int
--nfs3_xdr_commitres(struct rpc_rqst *req, __be32 *p, struct nfs_writeres *res)
--{
--	int		status;
--
--	status = ntohl(*p++);
--	p = xdr_decode_wcc_data(p, res->fattr);
--	if (status != 0)
--		return nfs_stat_to_errno(status);
--
--	res->verf->verifier[0] = *p++;
--	res->verf->verifier[1] = *p++;
--	return 0;
--}
--
--/*
-  * 3.3.21  COMMIT3res
-  *
-  *	struct COMMIT3resok {
-@@ -2910,37 +2437,6 @@ out_status:
- }
- 
- #ifdef CONFIG_NFS_V3_ACL
--/*
-- * Decode GETACL reply
-- */
--static int
--nfs3_xdr_getaclres(struct rpc_rqst *req, __be32 *p,
--		   struct nfs3_getaclres *res)
--{
--	struct xdr_buf *buf = &req->rq_rcv_buf;
--	int status = ntohl(*p++);
--	struct posix_acl **acl;
--	unsigned int *aclcnt;
--	int err, base;
--
--	if (status != 0)
--		return nfs_stat_to_errno(status);
--	p = xdr_decode_post_op_attr(p, res->fattr);
--	res->mask = ntohl(*p++);
--	if (res->mask & ~(NFS_ACL|NFS_ACLCNT|NFS_DFACL|NFS_DFACLCNT))
--		return -EINVAL;
--	base = (char *)p - (char *)req->rq_rcv_buf.head->iov_base;
--
--	acl = (res->mask & NFS_ACL) ? &res->acl_access : NULL;
--	aclcnt = (res->mask & NFS_ACLCNT) ? &res->acl_access_count : NULL;
--	err = nfsacl_decode(buf, base, aclcnt, acl);
--
--	acl = (res->mask & NFS_DFACL) ? &res->acl_default : NULL;
--	aclcnt = (res->mask & NFS_DFACLCNT) ? &res->acl_default_count : NULL;
--	if (err > 0)
--		err = nfsacl_decode(buf, base + err, aclcnt, acl);
--	return (err > 0) ? 0 : err;
--}
- 
- static inline int decode_getacl3resok(struct xdr_stream *xdr,
- 				      struct nfs3_getaclres *result)
-@@ -3006,20 +2502,6 @@ out_default:
- 	return nfs_stat_to_errno(status);
- }
- 
--/*
-- * Decode setacl reply.
-- */
--static int
--nfs3_xdr_setaclres(struct rpc_rqst *req, __be32 *p, struct nfs_fattr *fattr)
--{
--	int status = ntohl(*p++);
--
--	if (status)
--		return nfs_stat_to_errno(status);
--	xdr_decode_post_op_attr(p, fattr);
--	return 0;
--}
--
- static int nfs3_xdr_dec_setacl3res(struct rpc_rqst *req, __be32 *p,
- 				   struct nfs_fattr *result)
++static __be32 *xdr_decode_nfs_fh3(__be32 *p, struct nfs_fh *fh)
++{
++	u32 len;
++
++	len = be32_to_cpup(p++);
++	if (unlikely(len > NFS3_FHSIZE))
++		goto out_toolong;
++	fh->size = len;
++	memcpy(fh->data, p, len);
++	return p + XDR_QUADLEN(fh->size);
++
++out_toolong:
++	dprintk("NFS: file handle length too large: %u\n", len);
++	return NULL;
++}
++
+ static int decode_nfs_fh3(struct xdr_stream *xdr, struct nfs_fh *fh)
  {
+ 	u32 length;
+@@ -497,6 +455,13 @@ static __be32 *xdr_encode_nfstime3(__be32 *p, const struct timespec *timep)
+ 	return p;
+ }
+ 
++static __be32 *xdr_decode_nfstime3(__be32 *p, struct timespec *timep)
++{
++	timep->tv_sec = be32_to_cpup(p++);
++	timep->tv_nsec = be32_to_cpup(p++);
++	return p;
++}
++
+ /*
+  * sattr3
+  *
+@@ -644,6 +609,33 @@ static void encode_sattr3(struct xdr_stream *xdr, const struct iattr *attr)
+  *		nfstime3	ctime;
+  *	};
+  */
++static __be32 *xdr_decode_fattr(__be32 *p, struct nfs_fattr *fattr)
++{
++	umode_t fmode;
++
++	p = xdr_decode_ftype3(p, &fmode);
++
++	fattr->mode	= (be32_to_cpup(p++) & ~S_IFMT) | fmode;
++	fattr->nlink	= be32_to_cpup(p++);
++	fattr->uid	= be32_to_cpup(p++);
++	fattr->gid	= be32_to_cpup(p++);
++
++	p = xdr_decode_hyper(p, &fattr->size);		/* size3 */
++	p = xdr_decode_hyper(p, &fattr->du.nfs3.used);	/* size3 */
++	p = xdr_decode_specdata3(p, &fattr->rdev);
++
++	p = xdr_decode_hyper(p, &fattr->fsid.major);
++	fattr->fsid.minor = 0;
++
++	p = xdr_decode_hyper(p, &fattr->fileid);	/* fileid3 */
++	p = xdr_decode_nfstime3(p, &fattr->atime);
++	p = xdr_decode_nfstime3(p, &fattr->mtime);
++	p = xdr_decode_nfstime3(p, &fattr->ctime);
++
++	fattr->valid |= NFS_ATTR_FATTR_V3;
++	return p;
++}
++
+ static int decode_fattr3(struct xdr_stream *xdr, struct nfs_fattr *fattr)
+ {
+ 	__be32 *p;
+@@ -668,6 +660,13 @@ out_overflow:
+  *		void;
+  *	};
+  */
++static __be32 *xdr_decode_post_op_attr(__be32 *p, struct nfs_fattr *fattr)
++{
++	if (*p++ != xdr_zero)
++		p = xdr_decode_fattr(p, fattr);
++	return p;
++}
++
+ static int decode_post_op_attr(struct xdr_stream *xdr, struct nfs_fattr *fattr)
+ {
+ 	__be32 *p;
+@@ -698,7 +697,15 @@ static int decode_wcc_attr(struct xdr_stream *xdr, struct nfs_fattr *fattr)
+ 	p = xdr_inline_decode(xdr, NFS3_wcc_attr_sz << 2);
+ 	if (unlikely(p == NULL))
+ 		goto out_overflow;
+-	xdr_decode_wcc_attr(p, fattr);
++
++	fattr->valid |= NFS_ATTR_FATTR_PRESIZE
++		| NFS_ATTR_FATTR_PREMTIME
++		| NFS_ATTR_FATTR_PRECTIME;
++
++	p = xdr_decode_size3(p, &fattr->pre_size);
++	p = xdr_decode_nfstime3(p, &fattr->pre_mtime);
++	xdr_decode_nfstime3(p, &fattr->pre_ctime);
++
+ 	return 0;
+ out_overflow:
+ 	print_overflow_msg(__func__, xdr);
+@@ -706,14 +713,6 @@ out_overflow:
+ }
+ 
+ /*
+- * pre_op_attr
+- *	union pre_op_attr switch (bool attributes_follow) {
+- *	case TRUE:
+- *		wcc_attr	attributes;
+- *	case FALSE:
+- *		void;
+- *	};
+- *
+  * wcc_data
+  *
+  *	struct wcc_data {
+@@ -2170,7 +2169,7 @@ __be32 *nfs3_decode_dirent(__be32 *p, struct nfs_entry *entry, int plus)
+ 		p = xdr_decode_post_op_attr(p, entry->fattr);
+ 		/* In fact, a post_op_fh3: */
+ 		if (*p++ != xdr_zero) {
+-			p = xdr_decode_fhandle(p, entry->fh);
++			p = xdr_decode_nfs_fh3(p, entry->fh);
+ 			if (unlikely(p == NULL))
+ 				goto out_truncated;
+ 		} else
 
