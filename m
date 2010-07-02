@@ -1,55 +1,54 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from he.sipsolutions.net ([78.46.109.217]:42402 "EHLO
-	sipsolutions.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755664Ab0G0Ksk (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 27 Jul 2010 06:48:40 -0400
-Received: by sipsolutions.net with esmtpsa (TLS1.0:DHE_RSA_AES_256_CBC_SHA1:32)
-	(Exim 4.72)
-	(envelope-from <johannes@sipsolutions.net>)
-	id 1OdhiB-0006pn-RO
-	for linux-nfs@vger.kernel.org; Tue, 27 Jul 2010 12:48:39 +0200
-Subject: auth_gss.c - rcu dereference warning
-From: Johannes Berg <johannes@sipsolutions.net>
-To: linux-nfs <linux-nfs@vger.kernel.org>
+Received: from mail-out1.uio.no ([129.240.10.57]:40645 "EHLO mail-out1.uio.no"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757111Ab0GBND3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 2 Jul 2010 09:03:29 -0400
+Subject: Re: Empty core dumps on NFSv4 mounts
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+To: Arnaud Giersch <arnaud.giersch@iut-bm.univ-fcomte.fr>
+Cc: linux-nfs@vger.kernel.org
+In-Reply-To: <wwezkyas466.fsf@powwow.iut-bm.univ-fcomte.fr>
+References: <wwezkyas466.fsf@powwow.iut-bm.univ-fcomte.fr>
 Content-Type: text/plain; charset="UTF-8"
-Date: Tue, 27 Jul 2010 12:48:38 +0200
-Message-ID: <1280227718.3755.3.camel@jlt3.sipsolutions.net>
+Date: Fri, 02 Jul 2010 09:03:24 -0400
+Message-ID: <1278075804.3258.20.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-I consistently get this when I unmount an NFS volume.
+On Fri, 2010-07-02 at 10:01 +0200, Arnaud Giersch wrote:
+> Hi,
+> 
+> On NFSv4 mounts, many core dumps are empty, although ulimit -c is
+> unlimited.  An ls command shortly after the core dump often shows
+> 4294967294 (2^32-2) as UID and GID for the "core" file.
+> 
+> This only happens when there was no "core" file before the dump.  If a
+> "core" file owned by the current user is already present, it is
+> correctly filled.
+> 
+> After having done a git bisect, it seems that the problem was
+> introduced by commit 80e52aced138bb41b045a8595a87510f27d8d8c5
+> (NFSv4: Don't do idmapper upcalls for asynchronous RPC calls).
+> 
+> If I understand correctly what happens, do_coredump() [fs/exec.c] fails
+> because (inode->i_uid != current_fsuid()).  In fact inode->i_uid equals
+> -2, because decode_attr_owner() [fs/nfs/nfs4xdr.c], which is called from
+> nfs4_xdr_dec_open() via decode_getfattr(), returns without calling
+> nfs_map_to_uid(), since its may_sleep parameter is false.
+> 
+> I however do not clearly understand what the aforementioned commit is
+> supposed to fix.  I read the linux-nfs mailing list archive, and tried
+> some google search, but I didn't find anything.
 
-johannes
+rpciod threads should never do anything that can cause them to sleep.
+Doing an upcall as part of an XDR decode is therefore verboten.
 
-[  381.427221] ===================================================
-[  381.427225] [ INFO: suspicious rcu_dereference_check() usage. ]
-[  381.427228] ---------------------------------------------------
-[  381.427232] /home/johannes/sys/wireless-testing/net/sunrpc/auth_gss/auth_gss.c:947 invoked rcu_dereference_check() without protection!
-[  381.427236] 
-[  381.427237] other info that might help us debug this:
-[  381.427238] 
-[  381.427241] 
-[  381.427242] rcu_scheduler_active = 1, debug_locks = 1
-[  381.427246] 2 locks held by rpciod/0/1881:
-[  381.427248]  #0:  (rpciod){+.+.+.}, at: [<ffffffff810640cf>] run_workqueue+0x11f/0x3c0
-[  381.427262]  #1:  ((&task->u.tk_work)){+.+.+.}, at: [<ffffffff810640cf>] run_workqueue+0x11f/0x3c0
-[  381.427271] 
-[  381.427272] stack backtrace:
-[  381.427276] Pid: 1881, comm: rpciod/0 Not tainted 2.6.35-rc6-wl-47665-gc2e2180-dirty #174
-[  381.427280] Call Trace:
-[  381.427289]  [<ffffffff8107e494>] lockdep_rcu_dereference+0xa4/0xc0
-[  381.427297]  [<ffffffffa05e0191>] gss_free_ctx+0x91/0xa0 [auth_rpcgss]
-[  381.427311]  [<ffffffffa05e19ed>] gss_destroy_nullcred+0x4d/0x70 [auth_rpcgss]
-[  381.427331]  [<ffffffffa0598f97>] put_rpccred+0x127/0x140 [sunrpc]
-[  381.427348]  [<ffffffffa059922e>] rpcauth_unbindcred+0x2e/0x70 [sunrpc]
-[  381.427371]  [<ffffffffa05970ea>] rpc_put_task+0x3a/0xd0 [sunrpc]
-[  381.427386]  [<ffffffffa0597810>] rpc_release_task+0x70/0xa0 [sunrpc]
-[  381.427402]  [<ffffffffa0598229>] __rpc_execute+0x179/0x200 [sunrpc]
-[  381.427433]  [<ffffffffa05982f5>] rpc_async_schedule+0x15/0x20 [sunrpc]
-[  381.427438]  [<ffffffff81064120>] run_workqueue+0x170/0x3c0
-[  381.427457]  [<ffffffff81064413>] worker_thread+0xa3/0x110
-[  381.427472]  [<ffffffff81069386>] kthread+0x96/0xa0
-[  381.427479]  [<ffffffff81003514>] kernel_thread_helper+0x4/0x10
+We should ideally rather be saving the owner/group strings and doing the
+upcall after the XDR is done. While that wasn't feasible when 'fattr'
+structs were being allocated on the stack, now that they are dynamically
+allocated, maybe we can rethink that...
 
+Cheers
+  Trond
 
