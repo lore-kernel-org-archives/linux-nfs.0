@@ -1,92 +1,92 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:56451 "EHLO
-	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S935158Ab0GSPRy convert rfc822-to-8bit
-	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 19 Jul 2010 11:17:54 -0400
-In-Reply-To: <20100715021712.5544.44845.stgit@warthog.procyon.org.uk>
-References: <20100715021709.5544.64506.stgit@warthog.procyon.org.uk>
-	<20100715021712.5544.44845.stgit@warthog.procyon.org.uk>
-Date: Mon, 19 Jul 2010 08:17:14 -0700
-Message-ID: <AANLkTikuzYqYpGHcubb7QVciZW0dNFjOG82qIwy5M4gO@mail.gmail.com>
-Subject: Re: [PATCH 02/18] xstat: Add a pair of system calls to make extended
-	file stats available [ver #6]
-From: Linus Torvalds <torvalds@linux-foundation.org>
-To: David Howells <dhowells@redhat.com>
-Cc: viro@zeniv.linux.org.uk, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-cifs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, samba-technical@lists.samba.org,
-        linux-ext4@vger.kernel.org
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mail-iw0-f174.google.com ([209.85.214.174]:51418 "EHLO
+	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1759311Ab0GBRSd (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 2 Jul 2010 13:18:33 -0400
+Received: by iwn7 with SMTP id 7so3461836iwn.19
+        for <linux-nfs@vger.kernel.org>; Fri, 02 Jul 2010 10:18:32 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 00/22] NFS v2 and v3 XDR overhaul
+To: linux-nfs@vger.kernel.org
+Date: Fri, 02 Jul 2010 13:18:30 -0400
+Message-ID: <20100702165935.8761.88528.stgit@ellison.1015granger.net>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, Jul 14, 2010 at 7:17 PM, David Howells <dhowells@redhat.com> wrote:
->
->        ssize_t ret = xstat(int dfd,
->                            const char *filename,
->                            unsigned flags,
->                            const struct xstat_parameters *params,
->                            struct xstat *buffer,
->                            size_t buflen);
+Some light reading for the holiday weekend.
 
-Ugh. So I think this is pretty disgusting. For a few reasons:
+We'd like better protection against RPC buffer overflows due to bogus
+server replies.  Also, for better CPU efficiency and a smaller
+instruction cache footprint, we'd like to call all XDR encode/decode
+functions with an xdr_stream already prepared by call_encode() and
+call_decode(), rather than preparing it in every called XDR function.
 
- - that whole xstat buffer handling is just a mess. I think you
-already fixed the "xstat_parameters" crud and just made it a simple
-unsigned long and a direct argument, but the "buffer+buflen" thing is
-still disgusting.
+Towards that end, I've rewritten the NFSv2, NLMv3, NFSv3, and NLMv4
+XDR encoders and decoders to use xdr_streams.  Similar rewrites have
+already been done for the kernel's rpcbind, MNT, and NSM XDR encoders
+and decoders.
 
-   Why not just leave a few empty fields at the end, and make the rule
-be: "We don't just add random crap, so don't expect it to grow widely
-in the future".
+I've attempted to follow the style precedents set by Benny's recent
+rewrite of the NFSv4 XDR encoders and decoders.
 
- - you use "long long" all over the place. Don't do that. If you want
-a fixed size, say so, and use "u64/s64". That's the _real_ fixed size,
-and "long long" just _happens_ to be the same size on all current
-architectures.
+Testing via Oprofile and "perf top" shows that these routines weren't
+a significant CPU user before these changes.  Afterwards, I don't see
+much difference.  I checked CPU cycles, mispredicted branches, and bus
+cycles.
 
-   Put another way: "long" just _happened_ to be 32 bits way back when
-on pretty much all targets. That's where all the 64-bit compatibility
-mess came from. Don't make the same mistake. Besides, if the point is
-to make things be the same, _document_ that point by using a type that
-is explicitly sized.
+These are also available in my cel-2.6.git repo on linux-nfs.org,
+along with recent NFSROOT changes to use the mount option parsing
+routines in fs/nfs/super.c.
 
- - why create that new kind of xstat() that realistically absolutely
-nobody will use outside of some very special cases, and that has no
-real advantages for 99.9% of all people?
+---
 
-   You could make it a "atomic stat+open" by replacing the useless
-"size" return value with a "fd" return value, add a flag saying "we're
-also interested in opening it" (in the same result set flags), and
-instead of that stupid "buflen" input, give the "mode" input that open
-needs.
+Chuck Lever (22):
+      NFS: Fix hdrlen calculation in NFSv4's decode_read()
+      lockd: Move nlmdbg_cookie2a() to svclock.c
+      lockd: Introduce new-style XDR functions for NLMv4
+      NFS: Move and update xdr_decode_foo() functions that we're keeping
+      NFS: Remove unused old NFSv3 decoder functions
+      NFS: Switch in new NFSv3 decoder functions
+      NFS: Introduce new-style XDR decoding functions for NFSv2
+      NFS: Move and update xdr_encode_foo() functions that we're keeping
+      NFS: Remove unused old NFSv3 encoder functions
+      NFS: Replace old NFSv3 encoder functions with xdr_stream-based ones
+      NFS: Introduce new-style XDR encoding functions for NFSv3
+      lockd: Introduce new-style XDR functions for NLMv3
+      NFS: Move and update xdr_decode_foo() functions that we're keeping
+      NFS: Replace old NFSv2 decoder functions with xdr_stream-based ones
+      NFS: Introduce new-style XDR decoding functions for NFSv2
+      NFS: Use the "nfs_stat" enum for nfs_stat_to_errno()'s argument
+      NFS: Move and update xdr_encode_foo() functions that we're keeping
+      NFS: Remove old NFSv2 encoder functions
+      NFS: Introduce new-style XDR encoding functions for NFSv2
+      SUNRPC: Refactor logic to NUL-terminate strings in pages
+      SUNRPC: Correct an rpcbind debugging message
+      Fix NFSv3 debugging messages in fs/nfs/nfs3proc.c
 
-   Tadaa! You now have something that more people might be interested
-in, if only because it avoids a system call and might be a performance
-win. Who knows. Ask the Wine people what strange
-open-function-from-hell they are interested in.
 
->        ssize_t ret = fxstat(unsigned fd,
+ fs/lockd/Makefile           |    6 
+ fs/lockd/clnt4xdr.c         |  640 +++++++++
+ fs/lockd/clntxdr.c          |  657 ++++++++++
+ fs/lockd/svclock.c          |   30 
+ fs/lockd/xdr.c              |  287 ----
+ fs/lockd/xdr4.c             |  255 ----
+ fs/nfs/internal.h           |    4 
+ fs/nfs/nfs2xdr.c            | 1350 +++++++++++++-------
+ fs/nfs/nfs3proc.c           |    5 
+ fs/nfs/nfs3xdr.c            | 2924 ++++++++++++++++++++++++++++++++-----------
+ fs/nfs/nfs4xdr.c            |    7 
+ fs/nfs/proc.c               |    2 
+ include/linux/lockd/debug.h |   10 
+ include/linux/nfs3.h        |    3 
+ include/linux/sunrpc/xdr.h  |    1 
+ net/sunrpc/rpcb_clnt.c      |    5 
+ net/sunrpc/xdr.c            |   17 
+ 17 files changed, 4428 insertions(+), 1775 deletions(-)
+ create mode 100644 fs/lockd/clnt4xdr.c
+ create mode 100644 fs/lockd/clntxdr.c
 
-Quite frankly, my gut feel is that once you do "xstat(dfd, filename,
-...)" then it's damn stupid to do a separate "fxstat()", when you
-might as well say that "xtstat(dfd, NULL, ...)" is the same as
-"fxstat(fd, ...)"
-
-Now, the difference between adding one or two system calls may not be
-huge, but just from a cleanliness angle, I really don't see the point
-of having another fstat variant when the extended xstat() already very
-naturally supports the thing. And let's face it, using a NULL path
-pointer just makes sense if you don't have a path. You already passed
-it a target file descriptor in the dfd.
-
-Anyway, I didn't look at whether the new xstat fields made any sense,
-but I hated the interface enough that I can't be bothered to. Don't
-make up baroque new things that will never be used. Make a better
-argument for why anybody would use them despite the lack of
-standardization etc. And make sure they are as simple as possible
-(which is why I hate that "buflen" thing etc).
-
-                    Linus
+-- 
+Chuck Lever
