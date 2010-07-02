@@ -1,67 +1,56 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:54540 "EHLO
-	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752537Ab0G1SIi (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 28 Jul 2010 14:08:38 -0400
-Message-ID: <4C507208.6030309@oracle.com>
-Date: Wed, 28 Jul 2010 14:08:08 -0400
-From: Chuck Lever <chuck.lever@oracle.com>
-To: =?UTF-8?B?IkouQS4gTWFnYWxsw7NuIg==?= <jamagallon@ono.com>
-CC: Linux Kernel <linux-kernel@vger.kernel.org>, linux-nfs@vger.kernel.org
-Subject: Re: Questions and problems with NFS4
-References: <20100728004611.00c46b13@werewolf.home>
-In-Reply-To: <20100728004611.00c46b13@werewolf.home>
-Content-Type: text/plain; charset=UTF-8; format=flowed
+Received: from messager.iut-bm.univ-fcomte.fr ([194.57.86.195]:42619 "EHLO
+	messager.iut-bm.univ-fcomte.fr" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1754592Ab0GBIKA (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 2 Jul 2010 04:10:00 -0400
+Received: from localhost (localhost.localdomain [127.0.0.1])
+	by messager.iut-bm.univ-fcomte.fr (Postfix) with ESMTP id AA26A2B47B
+	for <linux-nfs@vger.kernel.org>; Fri,  2 Jul 2010 10:01:39 +0200 (CEST)
+Received: from messager.iut-bm.univ-fcomte.fr ([127.0.0.1])
+	by localhost (messager.iut-bm.univ-fcomte.fr [127.0.0.1]) (amavisd-new, port 10024)
+	with ESMTP id qkY5sAp7P-g3 for <linux-nfs@vger.kernel.org>;
+	Fri,  2 Jul 2010 10:01:37 +0200 (CEST)
+Received: from powwow.iut-bm.univ-fcomte.fr (powwow.iut-bm.univ-fcomte.fr [193.52.61.133])
+	by messager.iut-bm.univ-fcomte.fr (Postfix) with ESMTPS id 9C5BD2B478
+	for <linux-nfs@vger.kernel.org>; Fri,  2 Jul 2010 10:01:37 +0200 (CEST)
+Received: from giersch by powwow.iut-bm.univ-fcomte.fr with local (Exim 4.72)
+	(envelope-from <arnaud.giersch@iut-bm.univ-fcomte.fr>)
+	id 1OUbBp-00044p-Iy
+	for linux-nfs@vger.kernel.org; Fri, 02 Jul 2010 10:01:37 +0200
+From: Arnaud Giersch <arnaud.giersch@iut-bm.univ-fcomte.fr>
+To: linux-nfs@vger.kernel.org
+Subject: Empty core dumps on NFSv4 mounts
+Date: Fri, 02 Jul 2010 10:01:37 +0200
+Message-ID: <wwezkyas466.fsf@powwow.iut-bm.univ-fcomte.fr>
+Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 07/27/10 06:46 PM, J.A. Magallón wrote:
-> - AFAIK, with NFS4 the only needed daemons are nfsd and idmapd. And the
->    only accesible port from the outside is 2049, for nfsd.
->    I have tried to strip down my nfs server (-N 2 -N 3 -U),
->    but rpcinfo still gives me:
->
-> annwn:~# rpcinfo -p localhost
->     program vers proto   port  service
->      100000    4   tcp    111  portmapper
->      100000    3   tcp    111  portmapper
->      100000    2   tcp    111  portmapper
->      100000    4   udp    111  portmapper
->      100000    3   udp    111  portmapper
->      100000    2   udp    111  portmapper
->      100024    1   udp  48461  status
->      100024    1   tcp  37515  status
->      100021    1   udp  38583  nlockmgr
->      100021    3   udp  38583  nlockmgr
->      100021    4   udp  38583  nlockmgr
->      100021    1   tcp  37873  nlockmgr
->      100021    3   tcp  37873  nlockmgr
->      100021    4   tcp  37873  nlockmgr
->      100003    4   tcp   2049  nfs
->      100005    1   udp  45341  mountd
->      100005    1   tcp  58639  mountd
->
->    disabling portampper and mountd is just a matter of initscripts
->    requirements, but how can I disable nlockmgr ? It isn't needed for
->    NFS4, isn't it ? Nor portmapper nor mountd...
+Hi,
 
-Strictly speaking, portmapper is not required for NFSv4 service. 
-However, the NFS infrastructure on Linux is still designed for NFSv2 and 
-v3.  There remains some work needed to make portmapper optional for a 
-v4-only server.  For now, continue to run it in order to handle kernel 
-upcalls.
+On NFSv4 mounts, many core dumps are empty, although ulimit -c is
+unlimited.  An ls command shortly after the core dump often shows
+4294967294 (2^32-2) as UID and GID for the "core" file.
 
-rpc.mountd is, however, still required on Linux NFSv4 servers.  Although 
-NFSv4 clients do not contact the server's mountd, the kernel's NFS 
-server performs upcalls to rpc.mountd to manage export information.  You 
-can firewall off the mountd service on the server without affecting 
-NFSv4 clients.  Recent versions of rpc.mountd accept command line 
-options that disable the mountd network service while still handling 
-kernel upcalls.
+This only happens when there was no "core" file before the dump.  If a
+"core" file owned by the current user is already present, it is
+correctly filled.
 
-And, as long as lockd is running, you will need to keep rpc.statd 
-around.  Again, you can firewall this service so that it is not exposed 
-on the network, but it must continue to be available to handle kernel 
-upcalls.  This is something we hope to address eventually as part of the 
-lockd work Bruce mentioned.
+After having done a git bisect, it seems that the problem was
+introduced by commit 80e52aced138bb41b045a8595a87510f27d8d8c5
+(NFSv4: Don't do idmapper upcalls for asynchronous RPC calls).
+
+If I understand correctly what happens, do_coredump() [fs/exec.c] fails
+because (inode->i_uid != current_fsuid()).  In fact inode->i_uid equals
+-2, because decode_attr_owner() [fs/nfs/nfs4xdr.c], which is called from
+nfs4_xdr_dec_open() via decode_getfattr(), returns without calling
+nfs_map_to_uid(), since its may_sleep parameter is false.
+
+I however do not clearly understand what the aforementioned commit is
+supposed to fix.  I read the linux-nfs mailing list archive, and tried
+some google search, but I didn't find anything.
+
+Regards,
+
+        Arnaud Giersch
