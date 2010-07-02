@@ -1,136 +1,489 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 13/22] NFS: Replace old NFSv3 encoder functions with
-	xdr_stream-based ones
-Date: Fri, 02 Jul 2010 13:20:29 -0400
-Message-ID: <20100702172029.8761.82846.stgit@ellison.1015granger.net>
+Subject: [PATCH 14/22] NFS: Remove unused old NFSv3 encoder functions
+Date: Fri, 02 Jul 2010 13:20:38 -0400
+Message-ID: <20100702172038.8761.19127.stgit@ellison.1015granger.net>
 References: <20100702165935.8761.88528.stgit@ellison.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-px0-f174.google.com ([209.85.212.174]:34391 "EHLO
-	mail-px0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758930Ab0GBRUb (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 2 Jul 2010 13:20:31 -0400
-Received: by pxi14 with SMTP id 14so908476pxi.19
-        for <linux-nfs@vger.kernel.org>; Fri, 02 Jul 2010 10:20:31 -0700 (PDT)
+Received: from mail-iw0-f174.google.com ([209.85.214.174]:51418 "EHLO
+	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757400Ab0GBRUk (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 2 Jul 2010 13:20:40 -0400
+Received: by mail-iw0-f174.google.com with SMTP id 7so3461836iwn.19
+        for <linux-nfs@vger.kernel.org>; Fri, 02 Jul 2010 10:20:40 -0700 (PDT)
 In-Reply-To: <20100702165935.8761.88528.stgit-ewv44WTpT0t9HhUboXbp9zCvJB+x5qRC@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The naming scheme of the new encoder functions is slightly different
-than the scheme used for the old functions.
+Clean up.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- fs/nfs/nfs3xdr.c |   58 ++++++++++++++++++++++++++++--------------------------
- 1 files changed, 30 insertions(+), 28 deletions(-)
+ fs/nfs/nfs3xdr.c |  328 +-----------------------------------------------------
+ 1 files changed, 4 insertions(+), 324 deletions(-)
 
 diff --git a/fs/nfs/nfs3xdr.c b/fs/nfs/nfs3xdr.c
-index 68c3863..1dcdd7b 100644
+index 1dcdd7b..705d019 100644
 --- a/fs/nfs/nfs3xdr.c
 +++ b/fs/nfs/nfs3xdr.c
-@@ -46,10 +46,11 @@
- #define NFS3_fsinfo_sz		
- #define NFS3_pathconf_sz		
- #define NFS3_entry_sz		(NFS3_filename_sz+3)
+@@ -124,12 +124,6 @@ static void prepare_reply_buffer(struct rpc_rqst *req, struct page **pages,
+  * Common NFS XDR functions as inlines
+  */
+ static inline __be32 *
+-xdr_encode_fhandle(__be32 *p, const struct nfs_fh *fh)
+-{
+-	return xdr_encode_array(p, fh->data, fh->size);
+-}
 -
--#define NFS3_sattrargs_sz	(NFS3_fh_sz+NFS3_sattr_sz+3)
- #define NFS3_diropargs_sz	(NFS3_fh_sz+NFS3_filename_sz)
--#define NFS3_removeargs_sz	(NFS3_fh_sz+NFS3_filename_sz)
-+
-+#define NFS3_getattrargs_sz	(NFS3_fh_sz)
-+#define NFS3_setattrargs_sz	(NFS3_fh_sz+NFS3_sattr_sz+3)
-+#define NFS3_lookupargs_sz	(NFS3_fh_sz+NFS3_filename_sz)
- #define NFS3_accessargs_sz	(NFS3_fh_sz+1)
- #define NFS3_readlinkargs_sz	(NFS3_fh_sz)
- #define NFS3_readargs_sz	(NFS3_fh_sz+3)
-@@ -58,6 +59,7 @@
- #define NFS3_mkdirargs_sz	(NFS3_diropargs_sz+NFS3_sattr_sz)
- #define NFS3_symlinkargs_sz	(NFS3_diropargs_sz+1+NFS3_sattr_sz)
- #define NFS3_mknodargs_sz	(NFS3_diropargs_sz+2+NFS3_sattr_sz)
-+#define NFS3_removeargs_sz	(NFS3_fh_sz+NFS3_filename_sz)
- #define NFS3_renameargs_sz	(NFS3_diropargs_sz+NFS3_diropargs_sz)
- #define NFS3_linkargs_sz		(NFS3_fh_sz+NFS3_diropargs_sz)
- #define NFS3_readdirargs_sz	(NFS3_fh_sz+NFS3_cookieverf_sz+3)
-@@ -1968,9 +1970,9 @@ nfs3_xdr_setaclres(struct rpc_rqst *req, __be32 *p, struct nfs_fattr *fattr)
- #define PROC(proc, argtype, restype, timer)				\
- [NFS3PROC_##proc] = {							\
- 	.p_proc      = NFS3PROC_##proc,					\
--	.p_encode    = (kxdrproc_t) nfs3_xdr_##argtype,			\
-+	.p_encode    = (kxdrproc_t) nfs3_xdr_enc_##argtype##3args,	\
- 	.p_decode    = (kxdrproc_t) nfs3_xdr_##restype,			\
--	.p_arglen    = NFS3_##argtype##_sz,				\
-+	.p_arglen    = NFS3_##argtype##args_sz,				\
- 	.p_replen    = NFS3_##restype##_sz,				\
- 	.p_timer     = timer,						\
- 	.p_statidx   = NFS3PROC_##proc,					\
-@@ -1978,27 +1980,27 @@ nfs3_xdr_setaclres(struct rpc_rqst *req, __be32 *p, struct nfs_fattr *fattr)
- 	}
+-static inline __be32 *
+ xdr_decode_fhandle(__be32 *p, struct nfs_fh *fh)
+ {
+ 	if ((fh->size = ntohl(*p++)) <= NFS3_FHSIZE) {
+@@ -516,21 +510,13 @@ static void encode_diropargs3(struct xdr_stream *xdr, const struct nfs_fh *fh,
  
- struct rpc_procinfo	nfs3_procedures[] = {
--  PROC(GETATTR,		fhandle,	attrstat, 1),
--  PROC(SETATTR, 	sattrargs,	wccstat, 0),
--  PROC(LOOKUP,		diropargs,	lookupres, 2),
--  PROC(ACCESS,		accessargs,	accessres, 1),
--  PROC(READLINK,	readlinkargs,	readlinkres, 3),
--  PROC(READ,		readargs,	readres, 3),
--  PROC(WRITE,		writeargs,	writeres, 4),
--  PROC(CREATE,		createargs,	createres, 0),
--  PROC(MKDIR,		mkdirargs,	createres, 0),
--  PROC(SYMLINK,		symlinkargs,	createres, 0),
--  PROC(MKNOD,		mknodargs,	createres, 0),
--  PROC(REMOVE,		removeargs,	removeres, 0),
--  PROC(RMDIR,		diropargs,	wccstat, 0),
--  PROC(RENAME,		renameargs,	renameres, 0),
--  PROC(LINK,		linkargs,	linkres, 0),
--  PROC(READDIR,		readdirargs,	readdirres, 3),
--  PROC(READDIRPLUS,	readdirargs,	readdirres, 3),
--  PROC(FSSTAT,		fhandle,	fsstatres, 0),
--  PROC(FSINFO,  	fhandle,	fsinfores, 0),
--  PROC(PATHCONF,	fhandle,	pathconfres, 0),
--  PROC(COMMIT,		commitargs,	commitres, 5),
-+  PROC(GETATTR,		getattr,	attrstat, 1),
-+  PROC(SETATTR,		setattr,	wccstat, 0),
-+  PROC(LOOKUP,		lookup,		lookupres, 2),
-+  PROC(ACCESS,		access,		accessres, 1),
-+  PROC(READLINK,	readlink,	readlinkres, 3),
-+  PROC(READ,		read,		readres, 3),
-+  PROC(WRITE,		write,		writeres, 4),
-+  PROC(CREATE,		create,		createres, 0),
-+  PROC(MKDIR,		mkdir,		createres, 0),
-+  PROC(SYMLINK,		symlink,	createres, 0),
-+  PROC(MKNOD,		mknod,		createres, 0),
-+  PROC(REMOVE,		remove,		removeres, 0),
-+  PROC(RMDIR,		lookup,		wccstat, 0),
-+  PROC(RENAME,		rename,		renameres, 0),
-+  PROC(LINK,		link,		linkres, 0),
-+  PROC(READDIR,		readdir,	readdirres, 3),
-+  PROC(READDIRPLUS,	readdirplus,	readdirres, 3),
-+  PROC(FSSTAT,		getattr,	fsstatres, 0),
-+  PROC(FSINFO,		getattr,	fsinfores, 0),
-+  PROC(PATHCONF,	getattr,	pathconfres, 0),
-+  PROC(COMMIT,		commit,		commitres, 5),
- };
  
- struct rpc_version		nfs_version3 = {
-@@ -2011,7 +2013,7 @@ struct rpc_version		nfs_version3 = {
- static struct rpc_procinfo	nfs3_acl_procedures[] = {
- 	[ACLPROC3_GETACL] = {
- 		.p_proc = ACLPROC3_GETACL,
--		.p_encode = (kxdrproc_t) nfs3_xdr_getaclargs,
-+		.p_encode = (kxdrproc_t) nfs3_xdr_enc_getacl3args,
- 		.p_decode = (kxdrproc_t) nfs3_xdr_getaclres,
- 		.p_arglen = ACL3_getaclargs_sz,
- 		.p_replen = ACL3_getaclres_sz,
-@@ -2020,7 +2022,7 @@ static struct rpc_procinfo	nfs3_acl_procedures[] = {
- 	},
- 	[ACLPROC3_SETACL] = {
- 		.p_proc = ACLPROC3_SETACL,
--		.p_encode = (kxdrproc_t) nfs3_xdr_setaclargs,
-+		.p_encode = (kxdrproc_t) nfs3_xdr_enc_setacl3args,
- 		.p_decode = (kxdrproc_t) nfs3_xdr_setaclres,
- 		.p_arglen = ACL3_setaclargs_sz,
- 		.p_replen = ACL3_setaclres_sz,
+ /*
+- * NFS encode functions
++ * NFSv3 XDR encode functions
++ *
++ * NFSv3 argument types are defined in section 3.3 of RFC 1813:
++ * "NFS Version 3 Protocol Specification".
+  */
+ 
+ /*
+- * Encode file handle argument
+- */
+-static int
+-nfs3_xdr_fhandle(struct rpc_rqst *req, __be32 *p, struct nfs_fh *fh)
+-{
+-	p = xdr_encode_fhandle(p, fh);
+-	req->rq_slen = xdr_adjust_iovec(req->rq_svec, p);
+-	return 0;
+-}
+-
+-/*
+  * 3.3.1  GETATTR3args
+  *
+  *	struct GETATTR3args {
+@@ -548,21 +534,6 @@ static int nfs3_xdr_enc_getattr3args(struct rpc_rqst *req, __be32 *p,
+ }
+ 
+ /*
+- * Encode SETATTR arguments
+- */
+-static int
+-nfs3_xdr_sattrargs(struct rpc_rqst *req, __be32 *p, struct nfs3_sattrargs *args)
+-{
+-	p = xdr_encode_fhandle(p, args->fh);
+-	p = xdr_encode_sattr(p, args->sattr);
+-	*p++ = htonl(args->guard);
+-	if (args->guard)
+-		p = xdr_encode_time3(p, &args->guardtime);
+-	req->rq_slen = xdr_adjust_iovec(req->rq_svec, p);
+-	return 0;
+-}
+-
+-/*
+  * 3.3.2  SETATTR3args
+  *
+  *	union sattrguard3 switch (bool check) {
+@@ -608,18 +579,6 @@ static int nfs3_xdr_enc_setattr3args(struct rpc_rqst *req, __be32 *p,
+ }
+ 
+ /*
+- * Encode directory ops argument
+- */
+-static int
+-nfs3_xdr_diropargs(struct rpc_rqst *req, __be32 *p, struct nfs3_diropargs *args)
+-{
+-	p = xdr_encode_fhandle(p, args->fh);
+-	p = xdr_encode_array(p, args->name, args->len);
+-	req->rq_slen = xdr_adjust_iovec(req->rq_svec, p);
+-	return 0;
+-}
+-
+-/*
+  * 3.3.3  LOOKUP3args
+  *
+  *	struct LOOKUP3args {
+@@ -637,30 +596,6 @@ static int nfs3_xdr_enc_lookup3args(struct rpc_rqst *req, __be32 *p,
+ }
+ 
+ /*
+- * Encode REMOVE argument
+- */
+-static int
+-nfs3_xdr_removeargs(struct rpc_rqst *req, __be32 *p, const struct nfs_removeargs *args)
+-{
+-	p = xdr_encode_fhandle(p, args->fh);
+-	p = xdr_encode_array(p, args->name.name, args->name.len);
+-	req->rq_slen = xdr_adjust_iovec(req->rq_svec, p);
+-	return 0;
+-}
+-
+-/*
+- * Encode access() argument
+- */
+-static int
+-nfs3_xdr_accessargs(struct rpc_rqst *req, __be32 *p, struct nfs3_accessargs *args)
+-{
+-	p = xdr_encode_fhandle(p, args->fh);
+-	*p++ = htonl(args->access);
+-	req->rq_slen = xdr_adjust_iovec(req->rq_svec, p);
+-	return 0;
+-}
+-
+-/*
+  * 3.3.4  ACCESS3args
+  *
+  *	struct ACCESS3args {
+@@ -705,31 +640,6 @@ static int nfs3_xdr_enc_readlink3args(struct rpc_rqst *req, __be32 *p,
+ }
+ 
+ /*
+- * Arguments to a READ call. Since we read data directly into the page
+- * cache, we also set up the reply iovec here so that iov[1] points
+- * exactly to the page we want to fetch.
+- */
+-static int
+-nfs3_xdr_readargs(struct rpc_rqst *req, __be32 *p, struct nfs_readargs *args)
+-{
+-	struct rpc_auth	*auth = req->rq_task->tk_msg.rpc_cred->cr_auth;
+-	unsigned int replen;
+-	u32 count = args->count;
+-
+-	p = xdr_encode_fhandle(p, args->fh);
+-	p = xdr_encode_hyper(p, args->offset);
+-	*p++ = htonl(count);
+-	req->rq_slen = xdr_adjust_iovec(req->rq_svec, p);
+-
+-	/* Inline the page array */
+-	replen = (RPC_REPHDRSIZE + auth->au_rslack + NFS3_readres_sz) << 2;
+-	xdr_inline_pages(&req->rq_rcv_buf, replen,
+-			 args->pages, args->pgbase, count);
+-	req->rq_rcv_buf.flags |= XDRBUF_READ;
+-	return 0;
+-}
+-
+-/*
+  * 3.3.6  READ3args
+  *
+  *	struct READ3args {
+@@ -765,28 +675,6 @@ static int nfs3_xdr_enc_read3args(struct rpc_rqst *req, __be32 *p,
+ }
+ 
+ /*
+- * Write arguments. Splice the buffer to be written into the iovec.
+- */
+-static int
+-nfs3_xdr_writeargs(struct rpc_rqst *req, __be32 *p, struct nfs_writeargs *args)
+-{
+-	struct xdr_buf *sndbuf = &req->rq_snd_buf;
+-	u32 count = args->count;
+-
+-	p = xdr_encode_fhandle(p, args->fh);
+-	p = xdr_encode_hyper(p, args->offset);
+-	*p++ = htonl(count);
+-	*p++ = htonl(args->stable);
+-	*p++ = htonl(count);
+-	sndbuf->len = xdr_adjust_iovec(sndbuf->head, p);
+-
+-	/* Copy the page array */
+-	xdr_encode_pages(sndbuf, args->pages, args->pgbase, count);
+-	sndbuf->flags |= XDRBUF_WRITE;
+-	return 0;
+-}
+-
+-/*
+  * 3.3.7  WRITE3args
+  *
+  *	enum stable_how {
+@@ -834,26 +722,6 @@ static int nfs3_xdr_enc_write3args(struct rpc_rqst *req, __be32 *p,
+ }
+ 
+ /*
+- * Encode CREATE arguments
+- */
+-static int
+-nfs3_xdr_createargs(struct rpc_rqst *req, __be32 *p, struct nfs3_createargs *args)
+-{
+-	p = xdr_encode_fhandle(p, args->fh);
+-	p = xdr_encode_array(p, args->name, args->len);
+-
+-	*p++ = htonl(args->createmode);
+-	if (args->createmode == NFS3_CREATE_EXCLUSIVE) {
+-		*p++ = args->verifier[0];
+-		*p++ = args->verifier[1];
+-	} else
+-		p = xdr_encode_sattr(p, args->sattr);
+-
+-	req->rq_slen = xdr_adjust_iovec(req->rq_svec, p);
+-	return 0;
+-}
+-
+-/*
+  * 3.3.8  CREATE3args
+  *
+  *	enum createmode3 {
+@@ -904,19 +772,6 @@ static int nfs3_xdr_enc_create3args(struct rpc_rqst *req, __be32 *p,
+ }
+ 
+ /*
+- * Encode MKDIR arguments
+- */
+-static int
+-nfs3_xdr_mkdirargs(struct rpc_rqst *req, __be32 *p, struct nfs3_mkdirargs *args)
+-{
+-	p = xdr_encode_fhandle(p, args->fh);
+-	p = xdr_encode_array(p, args->name, args->len);
+-	p = xdr_encode_sattr(p, args->sattr);
+-	req->rq_slen = xdr_adjust_iovec(req->rq_svec, p);
+-	return 0;
+-}
+-
+-/*
+  * 3.3.9  MKDIR3args
+  *
+  *	struct MKDIR3args {
+@@ -936,23 +791,6 @@ static int nfs3_xdr_enc_mkdir3args(struct rpc_rqst *req, __be32 *p,
+ }
+ 
+ /*
+- * Encode SYMLINK arguments
+- */
+-static int
+-nfs3_xdr_symlinkargs(struct rpc_rqst *req, __be32 *p, struct nfs3_symlinkargs *args)
+-{
+-	p = xdr_encode_fhandle(p, args->fromfh);
+-	p = xdr_encode_array(p, args->fromname, args->fromlen);
+-	p = xdr_encode_sattr(p, args->sattr);
+-	*p++ = htonl(args->pathlen);
+-	req->rq_slen = xdr_adjust_iovec(req->rq_svec, p);
+-
+-	/* Copy the page */
+-	xdr_encode_pages(&req->rq_snd_buf, args->pages, 0, args->pathlen);
+-	return 0;
+-}
+-
+-/*
+  * 3.3.10  SYMLINK3args
+  *
+  *	struct symlinkdata3 {
+@@ -984,25 +822,6 @@ static int nfs3_xdr_enc_symlink3args(struct rpc_rqst *req, __be32 *p,
+  }
+ 
+ /*
+- * Encode MKNOD arguments
+- */
+-static int
+-nfs3_xdr_mknodargs(struct rpc_rqst *req, __be32 *p, struct nfs3_mknodargs *args)
+-{
+-	p = xdr_encode_fhandle(p, args->fh);
+-	p = xdr_encode_array(p, args->name, args->len);
+-	*p++ = htonl(args->type);
+-	p = xdr_encode_sattr(p, args->sattr);
+-	if (args->type == NF3CHR || args->type == NF3BLK) {
+-		*p++ = htonl(MAJOR(args->rdev));
+-		*p++ = htonl(MINOR(args->rdev));
+-	}
+-
+-	req->rq_slen = xdr_adjust_iovec(req->rq_svec, p);
+-	return 0;
+-}
+-
+-/*
+  * 3.3.11  MKNOD3args
+  *
+  *	struct devicedata3 {
+@@ -1083,20 +902,6 @@ static int nfs3_xdr_enc_remove3args(struct rpc_rqst *req, __be32 *p,
+ }
+ 
+ /*
+- * Encode RENAME arguments
+- */
+-static int
+-nfs3_xdr_renameargs(struct rpc_rqst *req, __be32 *p, struct nfs3_renameargs *args)
+-{
+-	p = xdr_encode_fhandle(p, args->fromfh);
+-	p = xdr_encode_array(p, args->fromname, args->fromlen);
+-	p = xdr_encode_fhandle(p, args->tofh);
+-	p = xdr_encode_array(p, args->toname, args->tolen);
+-	req->rq_slen = xdr_adjust_iovec(req->rq_svec, p);
+-	return 0;
+-}
+-
+-/*
+  * 3.3.14  RENAME3args
+  *
+  *	struct RENAME3args {
+@@ -1116,19 +921,6 @@ static int nfs3_xdr_enc_rename3args(struct rpc_rqst *req, __be32 *p,
+ }
+ 
+ /*
+- * Encode LINK arguments
+- */
+-static int
+-nfs3_xdr_linkargs(struct rpc_rqst *req, __be32 *p, struct nfs3_linkargs *args)
+-{
+-	p = xdr_encode_fhandle(p, args->fromfh);
+-	p = xdr_encode_fhandle(p, args->tofh);
+-	p = xdr_encode_array(p, args->toname, args->tolen);
+-	req->rq_slen = xdr_adjust_iovec(req->rq_svec, p);
+-	return 0;
+-}
+-
+-/*
+  * 3.3.15  LINK3args
+  *
+  *	struct LINK3args {
+@@ -1148,34 +940,6 @@ static int nfs3_xdr_enc_link3args(struct rpc_rqst *req, __be32 *p,
+ }
+ 
+ /*
+- * Encode arguments to readdir call
+- */
+-static int
+-nfs3_xdr_readdirargs(struct rpc_rqst *req, __be32 *p, struct nfs3_readdirargs *args)
+-{
+-	struct rpc_auth	*auth = req->rq_task->tk_msg.rpc_cred->cr_auth;
+-	unsigned int replen;
+-	u32 count = args->count;
+-
+-	p = xdr_encode_fhandle(p, args->fh);
+-	p = xdr_encode_hyper(p, args->cookie);
+-	*p++ = args->verf[0];
+-	*p++ = args->verf[1];
+-	if (args->plus) {
+-		/* readdirplus: need dircount + buffer size.
+-		 * We just make sure we make dircount big enough */
+-		*p++ = htonl(count >> 3);
+-	}
+-	*p++ = htonl(count);
+-	req->rq_slen = xdr_adjust_iovec(req->rq_svec, p);
+-
+-	/* Inline the page array */
+-	replen = (RPC_REPHDRSIZE + auth->au_rslack + NFS3_readdirres_sz) << 2;
+-	xdr_inline_pages(&req->rq_rcv_buf, replen, args->pages, 0, count);
+-	return 0;
+-}
+-
+-/*
+  * 3.3.16  READDIR3args
+  *
+  *	struct READDIR3args {
+@@ -1417,19 +1181,6 @@ nfs3_decode_dirent(__be32 *p, struct nfs_entry *entry, int plus)
+ }
+ 
+ /*
+- * Encode COMMIT arguments
+- */
+-static int
+-nfs3_xdr_commitargs(struct rpc_rqst *req, __be32 *p, struct nfs_writeargs *args)
+-{
+-	p = xdr_encode_fhandle(p, args->fh);
+-	p = xdr_encode_hyper(p, args->offset);
+-	*p++ = htonl(args->count);
+-	req->rq_slen = xdr_adjust_iovec(req->rq_svec, p);
+-	return 0;
+-}
+-
+-/*
+  * 3.3.21  COMMIT3args
+  *
+  *	struct COMMIT3args {
+@@ -1462,29 +1213,6 @@ static int nfs3_xdr_enc_commit3args(struct rpc_rqst *req, __be32 *p,
+ }
+ 
+ #ifdef CONFIG_NFS_V3_ACL
+-/*
+- * Encode GETACL arguments
+- */
+-static int
+-nfs3_xdr_getaclargs(struct rpc_rqst *req, __be32 *p,
+-		    struct nfs3_getaclargs *args)
+-{
+-	struct rpc_auth	*auth = req->rq_task->tk_msg.rpc_cred->cr_auth;
+-	unsigned int replen;
+-
+-	p = xdr_encode_fhandle(p, args->fh);
+-	*p++ = htonl(args->mask);
+-	req->rq_slen = xdr_adjust_iovec(req->rq_svec, p);
+-
+-	if (args->mask & (NFS_ACL | NFS_DFACL)) {
+-		/* Inline the page array */
+-		replen = (RPC_REPHDRSIZE + auth->au_rslack +
+-			  ACL3_getaclres_sz) << 2;
+-		xdr_inline_pages(&req->rq_rcv_buf, replen, args->pages, 0,
+-				 NFSACL_MAXPAGES << PAGE_SHIFT);
+-	}
+-	return 0;
+-}
+ 
+ static int nfs3_xdr_enc_getacl3args(struct rpc_rqst *req, __be32 *p,
+ 				    const struct nfs3_getaclargs *args)
+@@ -1501,39 +1229,6 @@ static int nfs3_xdr_enc_getacl3args(struct rpc_rqst *req, __be32 *p,
+ 	return 0;
+ }
+ 
+-/*
+- * Encode SETACL arguments
+- */
+-static int
+-nfs3_xdr_setaclargs(struct rpc_rqst *req, __be32 *p,
+-                   struct nfs3_setaclargs *args)
+-{
+-	struct xdr_buf *buf = &req->rq_snd_buf;
+-	unsigned int base;
+-	int err;
+-
+-	p = xdr_encode_fhandle(p, NFS_FH(args->inode));
+-	*p++ = htonl(args->mask);
+-	req->rq_slen = xdr_adjust_iovec(req->rq_svec, p);
+-	base = req->rq_slen;
+-
+-	if (args->npages != 0)
+-		xdr_encode_pages(buf, args->pages, 0, args->len);
+-	else
+-		req->rq_slen = xdr_adjust_iovec(req->rq_svec,
+-				p + XDR_QUADLEN(args->len));
+-
+-	err = nfsacl_encode(buf, base, args->inode,
+-			    (args->mask & NFS_ACL) ?
+-			    args->acl_access : NULL, 1, 0);
+-	if (err > 0)
+-		err = nfsacl_encode(buf, base + err, args->inode,
+-				    (args->mask & NFS_DFACL) ?
+-				    args->acl_default : NULL, 1,
+-				    NFS_ACL_DEFAULT);
+-	return (err > 0) ? 0 : err;
+-}
+-
+ static int nfs3_xdr_enc_setacl3args(struct rpc_rqst *req, __be32 *p,
+ 				    const struct nfs3_setaclargs *args)
+ {
+@@ -1635,21 +1330,6 @@ nfs3_xdr_accessres(struct rpc_rqst *req, __be32 *p, struct nfs3_accessres *res)
+ 	return 0;
+ }
+ 
+-static int
+-nfs3_xdr_readlinkargs(struct rpc_rqst *req, __be32 *p, struct nfs3_readlinkargs *args)
+-{
+-	struct rpc_auth	*auth = req->rq_task->tk_msg.rpc_cred->cr_auth;
+-	unsigned int replen;
+-
+-	p = xdr_encode_fhandle(p, args->fh);
+-	req->rq_slen = xdr_adjust_iovec(req->rq_svec, p);
+-
+-	/* Inline the page array */
+-	replen = (RPC_REPHDRSIZE + auth->au_rslack + NFS3_readlinkres_sz) << 2;
+-	xdr_inline_pages(&req->rq_rcv_buf, replen, args->pages, args->pgbase, args->pglen);
+-	return 0;
+-}
+-
+ /*
+  * Decode READLINK reply
+  */
 
