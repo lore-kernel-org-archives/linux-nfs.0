@@ -1,45 +1,36 @@
-From: Sandeep Joshi <sjoshi-Pe6u2o1+k2hBDgjK7y7TUQ@public.gmane.org>
-Subject: 4.1 client - LAYOUTCOMMIT & close
-Date: Thu, 1 Jul 2010 17:07:55 -0700
-Message-ID: <A062FCC8662DA848949F7C3046B9BEAE01F3A6EE@us-email.terastack.bluearc.com>
-References: <A062FCC8662DA848949F7C3046B9BEAE01F3A6ED@us-email.terastack.bluearc.com>
+From: Laurent Bonnaud <bonnaud-jHyHnS8NkcXLSxaa5bH2iPQULIy34Utc@public.gmane.org>
+Subject: Re: Mount error with NFSv4 and Kerberos (Bad encryption type)
+Date: Fri, 02 Jul 2010 15:57:15 +0200
+Message-ID: <1278079035.2834.0.camel@localhost>
+References: <1277912631.11798.22.camel@localhost>
+	 <alpine.DEB.2.00.1006301918360.17692@kosh.hut.fi>
+	 <1277918676.11798.58.camel@localhost>
+	 <alpine.DEB.2.00.1007020048220.17692@kosh.hut.fi>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Cc: <bhalevy@panasas.com>
-To: "Sandeep Joshi" <sjoshi-Pe6u2o1+k2hBDgjK7y7TUQ@public.gmane.org>, <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset="ISO-8859-1"
+Cc: linux-nfs@vger.kernel.org
+To: Timo Aaltonen <timo.aaltonen-uOixanVlb7U@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from p01c12o143.mxlogic.net ([208.65.145.66]:37376 "EHLO
-	p01c12o143.mxlogic.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753763Ab0GBAMw convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 1 Jul 2010 20:12:52 -0400
+Received: from smtp.ampere.inpg.fr ([147.171.64.83]:49345 "EHLO
+	smtp.ampere.inpg.fr" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753752Ab0GBN5R (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 2 Jul 2010 09:57:17 -0400
+In-Reply-To: <alpine.DEB.2.00.1007020048220.17692-8U32XKBxp6oxHbG02/KK1g@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Fri, 2010-07-02 at 00:50 +0300, Timo Aaltonen wrote:
+> 
+> Try forcing the encryption type in krb5.conf:
+> 
+> default_tkt_enctypes = des-cbc-crc
+> default_tgs_enctypes = des-cbc-crc 
 
-In certain cases, I don't see layoutcommit on a file at all even after doing many writes.
+I did that both on the client and the server and the result is the
+same :<.
 
+-- 
+Laurent Bonnaud.
+http://www.lis.inpg.fr/pages_perso/bonnaud/
 
-
-Client side operations:
-
-open
-write(s)
-close
-
-
-On server side (observed operations):
-
-open
-layoutget's 
-close
-
-
-But, I do not see laycommit at all. In terms data written by client it is about 4-5MB.
-
-When does client issue laycommit? 
-
-
-regards,
-
-Sandeep
 
