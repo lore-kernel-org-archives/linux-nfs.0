@@ -1,75 +1,58 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fn.samba.org ([216.83.154.106]:39277 "EHLO lists.samba.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752210Ab0GVQ1D (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 22 Jul 2010 12:27:03 -0400
-Date: Thu, 22 Jul 2010 09:27:12 -0700
-From: Jeremy Allison <jra@samba.org>
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Cc: Volker.Lendecke@sernet.de, David Howells <dhowells@redhat.com>,
-        Jan Engelhardt <jengelh@medozas.de>, linux-cifs@vger.kernel.org,
-        linux-nfs@vger.kernel.org, samba-technical@lists.samba.org,
-        linux-kernel@vger.kernel.org, viro@zeniv.linux.org.uk,
-        linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
-Subject: Re: [PATCH 02/18] xstat: Add a pair of system calls to make
- extended file stats available [ver #6]
-Message-ID: <20100722162712.GB10352@jeremy-laptop>
-Reply-To: Jeremy Allison <jra@samba.org>
-References: <alpine.LSU.2.01.1007221228260.6115@obet.zrqbmnf.qr>
- <20100715021709.5544.64506.stgit@warthog.procyon.org.uk>
- <20100715021712.5544.44845.stgit@warthog.procyon.org.uk>
- <30448.1279800887@redhat.com>
- <E1Obuiy-00C9jr-Al@intern.SerNet.DE>
- <AANLkTikBCXK6uEwWq4f0LvpdoKCPs3jvyFa4Zw4e2J_7@mail.gmail.com>
- <E1Obxpd-00CRIo-SF@intern.SerNet.DE>
- <AANLkTimwIq0pBhCeOjOVjB0yeM3JHOvzVoj9M4ui6al9@mail.gmail.com>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <AANLkTimwIq0pBhCeOjOVjB0yeM3JHOvzVoj9M4ui6al9@mail.gmail.com>
+Received: from smtp.nokia.com ([192.100.105.134]:21853 "EHLO
+	mgw-mx09.nokia.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753135Ab0GEMfa (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 5 Jul 2010 08:35:30 -0400
+Subject: Re: [PATCH] sunrpc: make the cache cleaner workqueue deferrable
+From: Artem Bityutskiy <dedekind1@gmail.com>
+Reply-To: dedekind1@gmail.com
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Neil Brown <neilb@suse.de>, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "David S. Miller" <davem@davemloft.net>
+In-Reply-To: <1277996756-8415-1-git-send-email-dedekind1@gmail.com>
+References: <1277996756-8415-1-git-send-email-dedekind1@gmail.com>
+Content-Type: text/plain; charset="UTF-8"
+Date: Mon, 05 Jul 2010 15:31:30 +0300
+Message-ID: <1278333090.29620.47.camel@localhost>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Thu, Jul 22, 2010 at 08:47:46AM -0700, Linus Torvalds wrote:
-> On Thu, Jul 22, 2010 at 8:36 AM, Volker Lendecke
-> <Volker.Lendecke@sernet.de> wrote:
-> >
-> > The nice thing about this is also that if this is supposed
-> > to be fully usable for Windows clients, the birthtime needs
-> > to be changeable. That's what NTFS semantics gives you, thus
-> > Windows clients tend to require it.
+On Thu, 2010-07-01 at 18:05 +0300, Artem Bityutskiy wrote:
+> From: Artem Bityutskiy <Artem.Bityutskiy@nokia.com>
 > 
-> Ok. So it's not really a creation date, exactly the same way ctime
-> isn't at all a creation date.
+> This patch makes the cache_cleaner workqueue deferrable, to prevent
+> unnecessary system wake-ups, which is very important for embedded
+> battery-powered devices.
 > 
-> And maybe that actually hints at a better solution: maybe a better
-> model is to create a new per-thread flag that says "do ctime updates
-> the way windows does them".
+> do_cache_clean() is called every 30 seconds at the moment, and often
+> makes the system wake up from its power-save sleep state. With this
+> change, when the workqueue uses a deferrable timer, the
+> do_cache_clean() invocation will be delayed and combined with the
+> closest "real" wake-up. This improves the power consumption situation.
 > 
-> So instead of adding another "btime" - which isn't actually what even
-> windows does - just admit that the _real_ issue is that Unix and
-> Windows semantics are different for the pre-existing "ctime".
+> Note, I tried to create a DECLARE_DELAYED_WORK_DEFERRABLE() helper
+> macro, similar to DECLARE_DELAYED_WORK(), but failed because of the
+> way the timer wheel core stores the deferrable flag (it is the
+> LSBit in the time->base pointer). My attempt to define a static
+> variable with this bit set ended up with the "initializer element is
+> not constant" error.
 > 
-> The fact is, windows has "access time", "modification time" and
-> "creation time" _exactly_ like UNIX. It's just that the ctime has
-> slightly different semantics in windows vs unix. So quite frankly,
-> it's totally insane to introduce a "birthtime", when that isn't even
-> what windows wants, just because people cannot face the actual real
-> difference.
+> Thus, I have to use run-time initialization, so I created a new
+> cache_initialize() function which is called once when sunrpc is
+> being initialized.
 > 
-> Tell me why we shouldn't just do this right?
+> Signed-off-by: Artem Bityutskiy <Artem.Bityutskiy@nokia.com>
 
-No, ctime isn't the same as Windows "create time". Windows
-"create time" semantics are that the timestamp is set to
-current time on file creation, but afterwards anyone with
-sufficient access can then modify it (!). Which is different
-from the "birthtime" spec on *BSD, as they can't be modified.
+Bruce,
 
-Currently on *BSD we look for our special EA containing any
-modified create times on a file, and return that as "create
-time" if found, if not we return the st_birthtime from the
-stat struct. That works well enough for systems where you
-don't want to allow birthtime to be changed. Having said
-that I'm not sure how they cope with doing restores to
-a filesystem where you would need to set st_birthtime :-).
+I did some git-logging, and found out that sunrpc stuff goes from you,
+from Trond, and from David, and MAINTAINERS also mentions Neil. Whom
+should I ping WRT to merging this patch?
 
-Jeremy.
+-- 
+Best Regards,
+Artem Bityutskiy (Артём Битюцкий)
+
