@@ -1,138 +1,98 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-iw0-f174.google.com ([209.85.214.174]:60553 "EHLO
-	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756545Ab0GHPn4 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 8 Jul 2010 11:43:56 -0400
-Received: by iwn7 with SMTP id 7so1001207iwn.19
-        for <linux-nfs@vger.kernel.org>; Thu, 08 Jul 2010 08:43:54 -0700 (PDT)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH] NFSD: Return full WCC data for NFSv3 metadata operations
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Date: Thu, 08 Jul 2010 11:43:46 -0400
-Message-ID: <20100708154037.2820.51702.stgit@ellison.1015granger.net>
-Content-Type: text/plain; charset="utf-8"
+Received: from daytona.panasas.com ([67.152.220.89]:65236 "EHLO
+	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1755267Ab0GEPof (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 5 Jul 2010 11:44:35 -0400
+Message-ID: <4C31FDDF.4040308@panasas.com>
+Date: Mon, 05 Jul 2010 18:44:31 +0300
+From: Boaz Harrosh <bharrosh@panasas.com>
+To: Benny Halevy <bhalevy@panasas.com>
+CC: NFS list <linux-nfs@vger.kernel.org>
+Subject: Re: pnfs git tree status pnfs-all-2.6.35-rc3-2010-07-01
+References: <4C111B9C.3080603@panasas.com> <4C1A4F0E.5070406@panasas.com> <4C2CE107.3080406@panasas.com>
+In-Reply-To: <4C2CE107.3080406@panasas.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-NFSv3 WCC data, or "weak cache consistency" data, is an attempt to
-reduce the number of on-the-wire transactions needed by NFS clients
-to keep their caches up to date.  WCC data consists of two parts:
+On 07/01/2010 09:40 PM, Benny Halevy wrote:
+> Here's the list of patches that went into the latest linux-pnfs tree as of 2010-07-01
+> since last update (pnfs-all-2.6.35-rc2-2010-06-17)
+> 
+> As usual, cumulative patches against the mainline kernel can be
+> generated via http://wiki.linux-nfs.org/wiki/index.php/PNFS_Development_Git_tree
+> 
+> nfsd-upstream:
+>   Boaz Harrosh     b9598af SQUASHME: nfsd41: Fix a crash when a callback is retried
+> 
+> nfs-upstream:
+>   Benny Halevy     a1c6087 nfs: fix possible leak in nfs_proc_symlink
+>   Trond Myklebust  1308c3f NFSv4: Ensure that /proc/self/mountinfo displays the minor version number
+> 
+> nfs41-all:
+>   Benny Halevy     20265c2 i915_dma Bug #16247
+> 
+> pnfs-submit:
+>   Benny Halevy     f88044b SQUASHME: pnfs-submit: __wait no longer used by _pnfs_update_layout
+>   Benny Halevy     397af9d SQUASHME: pnfs-submit: fix possible leak in nfs4_pnfs_ds_create
+>   Benny Halevy     970b309 SAUASHME: pnfs-submit: prevent buffer overrun in decode_and_add_ds
+>   Andy Adamson     4ae3ac5 SQUASHME pnfs-submit: remove struct nfs_server from stack
+>   Andy Adamson     fcc6499 SQUASHME: pnfs-submit: don't re-initialize i_lock
+>   Andy Adamson     f83fa38 SQUASHME pnfs-submit: add error handlers to layout get
+>   Andy Adamson     14e9066 SQUASHME pnfs-submit: handle assassinated layoutcommit
+>   Andy Adamson     2a1ef93 SQUASHME pnfs-submit: add error handling to layout return
+>   Andy Adamson     cbae7a5 SQUASHME pnfs-submit: remove encode_layoutreturn
+>   Andy Adamson     761f452 SQUASHME pnfs-submit: pnfs_try_to_read, write, commit using freed memory
+>   Andy Adamson     56a98e8 SQUASHME: pnfs-submit remove unused filelayout_mount_type
+>   Fred Isaman      fcbaa5e pnfs-submit: remove list_empty check from put_layout
+> 
 
-  o  pre-op data, which is a subset of file metadata as it was before
-     a procedure starts, and
-
-  o  post-op data, which is a full set of NFSv3 file attribute data as
-     it is after a procedure finishes.
-
-For an NFSv3 procedure that returns wcc_data, an NFSv3 server is free
-to return either, both, or neither of these.  Define "full WCC data"
-as a reply that contains both pre-op and post-op data.
-
-To make this data useful, a server must ensure that file metadata is
-captured atomically around the requested operation.  If the pre-op
-data in a reply matches the file metadata that the client already has
-cached, the client can assume that no other operation on that file
-occurred while the server was fulfilling the current request, and that
-therefore the post-op metadata is the latest version, and can be
-cached.
-
-Conversely, NFSv3 clients invalidate their metadata caches when they
-receive replies to metadata altering operations that do not contain
-full WCC data.  When a server presents a reply that does not have both
-pre-op and post-op WCC data, clients must employ extra LOOKUP and
-GETATTR requests to ensure their metadata caches are up to date,
-causing performance to suffer needlessly.  For example, untarring a
-large tar file can take almost an order of magnitude longer in this
-case, depending on the client implementation.
-
-In the Linux NFS server implementation, to ensure that WCC data
-reflects only changes made during the current file system operation,
-the file's inode mutex is held in order to serialize metadata altering
-operations on that inode.  Our server saves pre-op data for a file
-handle just after the target inode's mutex is taken, and saves post-op
-data just before the inode's mutex is dropped (see fh_lock() and
-fh_unlock()).
-
-In order to return full WCC data to clients, our server must have both
-the saved pre-op and the saved post-op attribute data for a file
-handle filled in before it starts XDR encoding the reply.
-Unfortunately, for the NFSv3 MKDIR, MKNOD, REMOVE, RMDIR procedures,
-our server does not unlock the parent directory inode until well after
-the reply has been XDR encoded.
-
-In these cases, encode_wcc_data() does have saved pre-op WCC data
-available, since the fh is locked, but does not have saved post-op WCC
-data for the parent directory, since it hasn't yet been unlocked.  In
-this situation, encode_wcc_data() simply grabs the parent's current
-metadata, uses that as the post-op WCC data, and returns no pre-op
-WCC data to the client.
-
-By instead unlocking the parent directory file handle immediately
-after the internal operations for each of these NFS procedures is
-complete, saved post-op WCC data for the file handle is filled in
-before XDR encoding starts, so full WCC data for that procedure can
-be returned to clients.
-
-Note that the NFSv4 CREATE and REMOVE procedures already invoke
-fh_unlock() explicitly on the parent directory in order to fill in the
-NFSv4 post change attribute.
-
-Note also that NFSv3 CREATE, RENAME, SETATTR, and SYMLINK already
-perform explicit file handle unlocking.
-
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
-
-Bruce-
-
-This patch is mechanically the same as the previous one, but the patch
-description has a more accurate and clearly stated rationale for the
-change.
-
-Please use this one instead of the previous one.
+Benny you have missed a patch from Andy's patchset I can count 9 patches by Andy
+but the original set had 10.
+The missing patch is titled:
+	[PATCH 03/10] SQUASHME pnfs-submit: clear page lseg on partial i/o
 
 
- fs/nfsd/nfs3proc.c |    6 ++++--
- 1 files changed, 4 insertions(+), 2 deletions(-)
+Your Friday bhalevy tree had it I think. And I have on queue a patchset that conflicts
+with it. (Which is why I waited for your release before posting). So what is the
+disposition of this patch, is it in or out? Andy?
 
-diff --git a/fs/nfsd/nfs3proc.c b/fs/nfsd/nfs3proc.c
-index 3d68f45..9ae9331 100644
---- a/fs/nfsd/nfs3proc.c
-+++ b/fs/nfsd/nfs3proc.c
-@@ -271,7 +271,7 @@ nfsd3_proc_mkdir(struct svc_rqst *rqstp, struct nfsd3_createargs *argp,
- 	fh_init(&resp->fh, NFS3_FHSIZE);
- 	nfserr = nfsd_create(rqstp, &resp->dirfh, argp->name, argp->len,
- 				    &argp->attrs, S_IFDIR, 0, &resp->fh);
--
-+	fh_unlock(&resp->dirfh);
- 	RETURN_STATUS(nfserr);
- }
- 
-@@ -327,7 +327,7 @@ nfsd3_proc_mknod(struct svc_rqst *rqstp, struct nfsd3_mknodargs *argp,
- 	type = nfs3_ftypes[argp->ftype];
- 	nfserr = nfsd_create(rqstp, &resp->dirfh, argp->name, argp->len,
- 				    &argp->attrs, type, rdev, &resp->fh);
--
-+	fh_unlock(&resp->dirfh);
- 	RETURN_STATUS(nfserr);
- }
- 
-@@ -348,6 +348,7 @@ nfsd3_proc_remove(struct svc_rqst *rqstp, struct nfsd3_diropargs *argp,
- 	/* Unlink. -S_IFDIR means file must not be a directory */
- 	fh_copy(&resp->fh, &argp->fh);
- 	nfserr = nfsd_unlink(rqstp, &resp->fh, -S_IFDIR, argp->name, argp->len);
-+	fh_unlock(&resp->fh);
- 	RETURN_STATUS(nfserr);
- }
- 
-@@ -367,6 +368,7 @@ nfsd3_proc_rmdir(struct svc_rqst *rqstp, struct nfsd3_diropargs *argp,
- 
- 	fh_copy(&resp->fh, &argp->fh);
- 	nfserr = nfsd_unlink(rqstp, &resp->fh, S_IFDIR, argp->name, argp->len);
-+	fh_unlock(&resp->fh);
- 	RETURN_STATUS(nfserr);
- }
- 
+I'll post a set based on [PATCH 03/10] applied.
+
+Boaz
+
+> pnfs:
+>   Benny Halevy     5157ed0 SQUASHME: pnfs: check for read_buf error in decode_pnfs_layoutrecall_args
+>   Andy Adamson     5637fa1 pnfs-post-submit: restore encode_layoutreturn
+> 
+> pnfs-block:
+>   Benny Halevy     5d459a3 SQUASHME: pnfs-block: nfs4_blk_add_block_disk ret must be signed
+> 
+> pnfsd-files:
+>   Benny Halevy     e840874 SQUASHME: pnfsd-files: nfsd4_pnfs_dlm_shutdown should use list_for_each_entry_safe
+>   Benny Halevy     a9fb462 SQUASHME: pnfsd-files: verify_stateid's return status is __be32
+>   Benny Halevy     3895976 SQUASHME: pnfsd-files: prevent NULL deref in nfsd4_pnfs_dlm_getdevinfo
+>   Eric Anderle     805dec2 pnfsd: Fix num_ds bug in nfsd4_set_pnfs_dlm_device()
+> 
+> pnfsd:
+>   Boaz Harrosh     259e31d SQUASHME: pnfsd: into [SQUASHME: pnfsd: Support for cb_layout returning NFS4ERR_DELAY]
+>   Benny Halevy     bf5656c SQUASHME: pnfsd: fix pointer dereference in dprintk of write verifiers
+>   Benny Halevy     263355c pnfsd: reset status on NFS4ERR_NOMATCHING_LAYOUT
+>   Benny Halevy     50debee SQUASHME: pnfsd: move kfree of the cb_device rpc_args to release time
+>   Benny Halevy     bc3b006 SQUASHME: pnfsd: move kfree of the cb_layout rpc_args to release time
+> 
+> spnfs-block:
+>   Benny Halevy     8b047ca SQUASHME: spnfs-block: kfree(res) in bl_pipe_downcall error path
+> 
+> pnfs-obj-all:
+>   Benny Halevy     8ef6e62 SQUASHME: pnfs-obj: use NFSDBG_PNFS_LD also in pnfs_osd_xdr_cli.c
+> 
+> pnfs-exofs-all:
+>   Boaz Harrosh     7cc0c0e SQUASHME: pnfsd-exofs: Fix exofs_inode_recall_layout() sending 2 recalls
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
 
