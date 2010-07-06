@@ -1,73 +1,92 @@
-From: andros@netapp.com
-Subject: [PATCH 2/5] SQUASHME pnfs-submit remove pnfs_alloc_init_inode
-Date: Tue,  6 Jul 2010 17:16:59 -0400
-Message-ID: <1278451022-2889-3-git-send-email-andros@netapp.com>
-References: <1278451022-2889-1-git-send-email-andros@netapp.com>
- <1278451022-2889-2-git-send-email-andros@netapp.com>
-Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
-To: bhalevy@panasas.com
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH] NFSD: Fill in WCC data for REMOVE, RMDIR, MKNOD, and MKDIR
+Date: Tue, 06 Jul 2010 16:53:34 -0400
+Message-ID: <20100706204750.2918.92546.stgit@ellison.1015granger.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
+Cc: linux-nfs@vger.kernel.org
+To: bfields@fieldses.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:30187 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754201Ab0GFURO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 6 Jul 2010 16:17:14 -0400
-In-Reply-To: <1278451022-2889-2-git-send-email-andros@netapp.com>
+Received: from mail-iw0-f174.google.com ([209.85.214.174]:57458 "EHLO
+	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755651Ab0GFUxg (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 6 Jul 2010 16:53:36 -0400
+Received: by iwn7 with SMTP id 7so7049027iwn.19
+        for <linux-nfs@vger.kernel.org>; Tue, 06 Jul 2010 13:53:36 -0700 (PDT)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Andy Adamson <andros@netapp.com>
+Some well-known NFSv3 clients drop their directory entry caches when
+they receive replies with no WCC data.  Without this data, they
+employ extra READ, LOOKUP, and GETATTR requests to ensure their
+directory entry caches are up to date, causing performance to suffer
+needlessly.
 
-Place all layout initialization in nfs4_init_once
+In order to return WCC data, our server has to have both the pre-op
+and the post-op attribute data on hand when a reply is XDR encoded.
+The pre-op data is filled in when the incoming fh is locked, and the
+post-op data is filled in when the fh is unlocked.
 
-Signed-off-by: Andy Adamson <andros@netapp.com>
+Unfortunately, for REMOVE, RMDIR, MKNOD, and MKDIR, the directory fh
+is not unlocked until well after the reply has been XDR encoded.  This
+means that encode_wcc_data() does not have wcc_data for the parent
+directory, so none is returned to the client after these operations
+complete.
+
+By unlocking the parent directory fh immediately after the internal
+operations for each NFS procedure is complete, the post-op data is
+filled in before XDR encoding starts, so it can be returned to the
+client properly.
+
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- fs/nfs/inode.c |   19 ++++++-------------
- 1 files changed, 6 insertions(+), 13 deletions(-)
 
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index 231cfa3..fa310b1 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -1361,18 +1361,6 @@ void nfs4_clear_inode(struct inode *inode)
- }
- #endif
- 
--static void pnfs_alloc_init_inode(struct nfs_inode *nfsi)
--{
--#ifdef CONFIG_NFS_V4_1
--	nfsi->layout.pnfs_layout_state = 0;
--	memset(&nfsi->layout.stateid, 0, NFS4_STATEID_SIZE);
--	nfsi->layout.roc_iomode = 0;
--	nfsi->layout.lo_cred = NULL;
--	nfsi->layout.pnfs_write_begin_pos = 0;
--	nfsi->layout.pnfs_write_end_pos = 0;
--#endif /* CONFIG_NFS_V4_1 */
--}
+Bruce-
+
+This patch seems to go a long way towards fixing the pre-wcc data
+problem and related performance issues.  Perhaps this patch is also
+appropriate for stable releases, though I haven't tested it with any.
+
+
+ fs/nfsd/nfs3proc.c |    6 ++++--
+ 1 files changed, 4 insertions(+), 2 deletions(-)
+
+diff --git a/fs/nfsd/nfs3proc.c b/fs/nfsd/nfs3proc.c
+index 3d68f45..9ae9331 100644
+--- a/fs/nfsd/nfs3proc.c
++++ b/fs/nfsd/nfs3proc.c
+@@ -271,7 +271,7 @@ nfsd3_proc_mkdir(struct svc_rqst *rqstp, struct nfsd3_createargs *argp,
+ 	fh_init(&resp->fh, NFS3_FHSIZE);
+ 	nfserr = nfsd_create(rqstp, &resp->dirfh, argp->name, argp->len,
+ 				    &argp->attrs, S_IFDIR, 0, &resp->fh);
 -
- struct inode *nfs_alloc_inode(struct super_block *sb)
- {
- 	struct nfs_inode *nfsi;
-@@ -1388,7 +1376,6 @@ struct inode *nfs_alloc_inode(struct super_block *sb)
- #ifdef CONFIG_NFS_V4
- 	nfsi->nfs4_acl = NULL;
- #endif /* CONFIG_NFS_V4 */
--	pnfs_alloc_init_inode(nfsi);
- 	return &nfsi->vfs_inode;
++	fh_unlock(&resp->dirfh);
+ 	RETURN_STATUS(nfserr);
  }
  
-@@ -1430,6 +1417,12 @@ static inline void nfs4_init_once(struct nfs_inode *nfsi)
- 	INIT_LIST_HEAD(&nfsi->layout.segs);
- 	nfsi->layout.refcount = 0;
- 	nfsi->layout.ld_data = NULL;
-+	nfsi->layout.pnfs_layout_state = 0;
-+	memset(&nfsi->layout.stateid, 0, NFS4_STATEID_SIZE);
-+	nfsi->layout.roc_iomode = 0;
-+	nfsi->layout.lo_cred = NULL;
-+	nfsi->layout.pnfs_write_begin_pos = 0;
-+	nfsi->layout.pnfs_write_end_pos = 0;
- #endif /* CONFIG_NFS_V4_1 */
- #endif
+@@ -327,7 +327,7 @@ nfsd3_proc_mknod(struct svc_rqst *rqstp, struct nfsd3_mknodargs *argp,
+ 	type = nfs3_ftypes[argp->ftype];
+ 	nfserr = nfsd_create(rqstp, &resp->dirfh, argp->name, argp->len,
+ 				    &argp->attrs, type, rdev, &resp->fh);
+-
++	fh_unlock(&resp->dirfh);
+ 	RETURN_STATUS(nfserr);
  }
--- 
-1.6.6
+ 
+@@ -348,6 +348,7 @@ nfsd3_proc_remove(struct svc_rqst *rqstp, struct nfsd3_diropargs *argp,
+ 	/* Unlink. -S_IFDIR means file must not be a directory */
+ 	fh_copy(&resp->fh, &argp->fh);
+ 	nfserr = nfsd_unlink(rqstp, &resp->fh, -S_IFDIR, argp->name, argp->len);
++	fh_unlock(&resp->fh);
+ 	RETURN_STATUS(nfserr);
+ }
+ 
+@@ -367,6 +368,7 @@ nfsd3_proc_rmdir(struct svc_rqst *rqstp, struct nfsd3_diropargs *argp,
+ 
+ 	fh_copy(&resp->fh, &argp->fh);
+ 	nfserr = nfsd_unlink(rqstp, &resp->fh, S_IFDIR, argp->name, argp->len);
++	fh_unlock(&resp->fh);
+ 	RETURN_STATUS(nfserr);
+ }
+ 
 
