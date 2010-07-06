@@ -1,39 +1,217 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-out1.uio.no ([129.240.10.57]:40606 "EHLO mail-out1.uio.no"
+Received: from mail-out2.uio.no ([129.240.10.58]:57500 "EHLO mail-out2.uio.no"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754874Ab0GLWIE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 12 Jul 2010 18:08:04 -0400
-Subject: Re: Implementation of delegation
+	id S1754540Ab0GFUkp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 6 Jul 2010 16:40:45 -0400
+Subject: RE: 4.1 client - LAYOUTCOMMIT & close
 From: Trond Myklebust <trond.myklebust@fys.uio.no>
-To: Yudong Gao <stgyd@umich.edu>
-Cc: linux-nfs@vger.kernel.org
-In-Reply-To: <AANLkTimjFbkLIs4GIdR_S06bu7PPOV-JUj5uGAMs7IjG@mail.gmail.com>
-References: <AANLkTik1dbBEnyqMEw9snDhjglJiDQJKs4dFdenqXaGJ@mail.gmail.com>
-	 <1278971292.14605.2.camel@heimdal.trondhjem.org>
-	 <AANLkTimjFbkLIs4GIdR_S06bu7PPOV-JUj5uGAMs7IjG@mail.gmail.com>
+To: Daniel.Muntz@emc.com
+Cc: andros@netapp.com, sjoshi@bluearc.com, linux-nfs@vger.kernel.org,
+        bhalevy@panasas.com
+In-Reply-To: <B9A709F368FAAF4DB4B33870F72A141D01017F94@CORPUSMX30A.corp.emc.com>
+References: <A062FCC8662DA848949F7C3046B9BEAE01F3A6ED@us-email.terastack.bluearc.com>
+	 <A062FCC8662DA848949F7C3046B9BEAE01F3A6EE@us-email.terastack.bluearc.com>
+	 <6206CE0E-0A32-46A7-B648-3FCC12ED1961@netapp.com>
+	 <B9A709F368FAAF4DB4B33870F72A141DFB88F3@CORPUSMX30A.corp.emc.com>
+	 <0E2B1FE3-3B42-4BF2-BECE-A611DADF3983@netapp.com>
+	 <B9A709F368FAAF4DB4B33870F72A141D01017F94@CORPUSMX30A.corp.emc.com>
 Content-Type: text/plain; charset="UTF-8"
-Date: Mon, 12 Jul 2010 18:07:55 -0400
-Message-ID: <1278972475.14605.9.camel@heimdal.trondhjem.org>
+Date: Tue, 06 Jul 2010 16:40:34 -0400
+Message-ID: <1278448834.16176.5.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Mon, 2010-07-12 at 15:00 -0700, Yudong Gao wrote:
-> Hi Trond,
-> 
-> Thanks for the prompt reply!
-> 
-> I find that in _nfs_do_open(), _nfs4_proc_open(), which do the RPC
-> call to the remote server, is always called before
-> nfs4_opendata_to_nfs4_state(), which will further invoke
-> nfs4_try_open_cached().
-> 
-> Does this means that whenever is file is opened, the client always
-> need to talk to the server first?
+On Tue, 2010-07-06 at 15:20 -0400, Daniel.Muntz@emc.com wrote: 
+> The COMMIT to the DS, ttbomk, commits data on the DS.  I see it as
+> orthogonal to updating the metadata on the MDS (but perhaps I'm wrong).
+> As sjoshi@bluearc mentioned, the LAYOUTCOMMIT provides a synchronization
+> point, so even if the non-clustered server does not want to update
+> metadata on every DS I/O, the LAYOUTCOMMIT could also be a trigger to
+> execute whatever synchronization mechanism the implementer wishes to put
+> in the control protocol.
 
-The actual RPC call is skipped if the call to can_open_cached() succeeds
-in nfs4_open_prepare(). In that case, we just grab the sequence, which
-ensures that we remain serialised w.r.t. CLOSE and OPEN_DOWNGRADE calls.
+As far as I'm aware, there are no exceptions in RFC5661 that would allow
+pNFS servers to break the rule that any visible change to the data must
+be atomically accompanied with a change attribute update.
 
-Trond
+As I see it, if your server allows one client to read data that may have
+been modified by another client that holds a WRITE layout for that range
+then (since that is a visible data change) it should provide a change
+attribute update irrespective of whether or not a LAYOUTCOMMIT has been
+sent.
+If your MDS is incapable of determining whether or not data has changed
+on the DSes, then it should probably recall the WRITE layout if someone
+tries to read data that may have been modified. Said server also needs a
+strategy for determining if a data change occurred if the client that
+held the WRITE layout died before it could send the LAYOUTCOMMIT.
+
+Cheers
+   Trond
+
+> -Dan
+> 
+> > -----Original Message-----
+> > From: Andy Adamson [mailto:andros@netapp.com] 
+> > Sent: Tuesday, July 06, 2010 6:38 AM
+> > To: Muntz, Daniel
+> > Cc: sjoshi@bluearc.com; linux-nfs@vger.kernel.org; bhalevy@panasas.com
+> > Subject: Re: 4.1 client - LAYOUTCOMMIT & close
+> > 
+> > 
+> > On Jul 2, 2010, at 5:46 PM, <Daniel.Muntz@emc.com> wrote:
+> > 
+> > > By "extremely lame server" I assume you mean any pNFS server that
+> > > doesn't have a cluster FS on the back end.
+> > 
+> > No, I mean a pNFS file layout type server that depends upon 
+> > the 'hint'  
+> > of file size given by LAYOUTCOMMIT. This does not mean that the file  
+> > system has to be a cluster FS.
+> > 
+> > If COMMIT through MDS is set, the MDS to DS protocol (be it a 
+> > cluster  
+> > FS or not) ensures the data is "commited" on the DSs.  
+> > LAYOUTCOMMIT is  
+> > not needed.
+> > 
+> > If COMMITs are sent to the DSs (or FILE_SYNC writes), then 
+> > the MDS to  
+> > DS protocol (be it a cluster FS or not) should kick off a 
+> > back-end DS  
+> > to MDS communication to update the file size on the MDS.
+> > 
+> > What I consider an 'extremely lame pNFS file layout server' is one  
+> > that requires COMMITs to the DS and then depends upon the 
+> > LAYOUTCOMMIT  
+> > to communicate the commited data size to the MDS.
+> > 
+> > -->Andy
+> > 
+> > 
+> > > So while this might work
+> > > well for NetApp (as long as NetApp never ships a non-clustered  
+> > > pNFS), it
+> > > might break others, or at least severely impact their 
+> > performance.   
+> > > For
+> > > example, will the Solaris pNFS server work correctly without
+> > > LAYOUTCOMMIT?  IMHO, the client MUST issue the appropriate  
+> > > LAYOUTCOMMIT,
+> > > but the server is free to handle it as a no-op if the server
+> > > implementation does not need to utilize the payload.
+> > >
+> > >  -Dan
+> > >
+> > >> -----Original Message-----
+> > >> From: linux-nfs-owner@vger.kernel.org
+> > >> [mailto:linux-nfs-owner@vger.kernel.org] On Behalf Of Andy Adamson
+> > >> Sent: Friday, July 02, 2010 8:41 AM
+> > >> To: Sandeep Joshi
+> > >> Cc: linux-nfs@vger.kernel.org; bhalevy@panasas.com
+> > >> Subject: Re: 4.1 client - LAYOUTCOMMIT & close
+> > >>
+> > >>
+> > >> On Jul 1, 2010, at 8:07 PM, Sandeep Joshi wrote:
+> > >>
+> > >> Hi Sandeep
+> > >>
+> > >>>
+> > >>> In certain cases, I don't see layoutcommit on a file at all even
+> > >>> after doing many writes.
+> > >>
+> > >> FYI:
+> > >>
+> > >> You should not be paying attention to layoutcommits  - they have no
+> > >> value for the file layout type.
+> > >>
+> > >> From RFC 5661:
+> > >>
+> > >> "The LAYOUTCOMMIT operation commits chages in the layout 
+> > represented
+> > >> by the current filehandle, client ID (derived from the 
+> > session ID in
+> > >> the preceding SEQUENCE operation), byte-range, and stateid."
+> > >>
+> > >> For the block layout type, this sentence has meaning in that
+> > >> there is
+> > >> a layoutupdate4 payload that enumerates the blocks that 
+> > have changed
+> > >> state from being 'handed out' to being 'written'.
+> > >>
+> > >> The file layout type has no layoutupdate4 payload, and the
+> > >> layout does
+> > >> not change due to writes, and thus the LAYOUTCOMMIT call 
+> > is useless.
+> > >>
+> > >> The only field in the LAYOUTCOMMIT4args that might possibly
+> > >> be useful
+> > >> is the loca_last_write_offset which tells the server what 
+> > the client
+> > >> thinks is the EOF of the file after WRITE. It is an extremely lame
+> > >> server (file layout type server) that depends upon clients for this
+> > >> info.
+> > >>
+> > >>>
+> > >>>
+> > >>>
+> > >>> Client side operations:
+> > >>>
+> > >>> open
+> > >>> write(s)
+> > >>> close
+> > >>>
+> > >>>
+> > >>> On server side (observed operations):
+> > >>>
+> > >>> open
+> > >>> layoutget's
+> > >>> close
+> > >>>
+> > >>>
+> > >>> But, I do not see laycommit at all. In terms data written
+> > >> by client
+> > >>> it is about 4-5MB.
+> > >>>
+> > >>> When does client issue laycommit?
+> > >>
+> > >> The latest linux client sends a layout commit when the VFS does a
+> > >> super_operations.write_inode call which happens when the 
+> > metadata of
+> > >> an inode needs updating. We are seriously considering removing the
+> > >> layoutcommit call from the file layout client.
+> > >>
+> > >> -->Andy
+> > >>
+> > >>>
+> > >>>
+> > >>> regards,
+> > >>>
+> > >>> Sandeep
+> > >>>
+> > >>> --
+> > >>> To unsubscribe from this list: send the line "unsubscribe
+> > >> linux-nfs"
+> > >>> in
+> > >>> the body of a message to majordomo@vger.kernel.org
+> > >>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> > >>
+> > >> --
+> > >> To unsubscribe from this list: send the line "unsubscribe
+> > >> linux-nfs" in
+> > >> the body of a message to majordomo@vger.kernel.org
+> > >> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> > >>
+> > >>
+> > 
+> > 
+> > 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+
+
+
 
