@@ -1,41 +1,55 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([18.85.46.34]:56090 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751525Ab0GNHAL (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 14 Jul 2010 03:00:11 -0400
-Date: Wed, 14 Jul 2010 03:00:08 -0400
-From: Christoph Hellwig <hch@infradead.org>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: Christoph Hellwig <hch@infradead.org>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 1/3] NFS: Fix up the fsync code
-Message-ID: <20100714070008.GA22884@infradead.org>
-References: <20100712220932.20019.21170.stgit@heimdal.trondhjem.org>
- <20100713011306.GA364@infradead.org>
- <1279050636.17993.14.camel@heimdal.trondhjem.org>
+Received: from fieldses.org ([174.143.236.118]:56507 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751649Ab0GFRTR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 6 Jul 2010 13:19:17 -0400
+Date: Tue, 6 Jul 2010 13:19:08 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Artem Bityutskiy <dedekind1@gmail.com>,
+        Thomas Gleixner <tglx@linutronix.de>
+Cc: Neil Brown <neilb@suse.de>, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org,
+        Venki Pallipadi <venkatesh.pallipadi@intel.com>
+Subject: [PATCH] timers.c: document meaning of deferrable timer
+Message-ID: <20100706171908.GL7387@fieldses.org>
+References: <1277996756-8415-1-git-send-email-dedekind1@gmail.com>
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1279050636.17993.14.camel@heimdal.trondhjem.org>
+In-Reply-To: <1277996756-8415-1-git-send-email-dedekind1@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Tue, Jul 13, 2010 at 03:50:36PM -0400, Trond Myklebust wrote:
-> NFS can't distinguish between a datasync and a full sync: a successful
-> COMMIT operation guarantees that both data+metadata updates are on disk.
-> For this reason we ignore the 'datasync' parameter in our fsync
-> implementation.
+From: J. Bruce Fields <bfields@citi.umich.edu>
 
-That's not what the datasync parameter means.
+Steal some text from 6e453a67510 "Add support for deferrable timers".
+A reader shouldn't have to dig through the git logs for the basic
+description of a deferrable timer.
 
-Both fsync and fdatasync will commit data and metadata to disk, the
-questions is how much metadata we need to commit.  For fdatasync it's
-only the metadata requires to locate the file data on disk, an
-fsync requires everything (which is the above + timestamps basically).
+Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
+---
+ kernel/timer.c |    9 +++++++--
+ 1 files changed, 7 insertions(+), 2 deletions(-)
 
-I suspect for NFS the difference still doesn't matter, I'd just try
-to make it clear.
-
-> Would it perhaps help if I added a comment to that effect in
-> nfs_file_fsync() itself?
-
-Yes, comments explaining such higher level concepts are always good.
+diff --git a/kernel/timer.c b/kernel/timer.c
+index ee305c8..947bcf6 100644
+--- a/kernel/timer.c
++++ b/kernel/timer.c
+@@ -90,8 +90,13 @@ static DEFINE_PER_CPU(struct tvec_base *, tvec_bases) = &boot_tvec_bases;
+ 
+ /*
+  * Note that all tvec_bases are 2 byte aligned and lower bit of
+- * base in timer_list is guaranteed to be zero. Use the LSB for
+- * the new flag to indicate whether the timer is deferrable
++ * base in timer_list is guaranteed to be zero. Use the LSB to
++ * indicate whether the timer is deferrable.
++ *
++ * A deferrable timer will work normally when the system is busy, but
++ * will not cause a CPU to come out of idle just to service it; instead,
++ * the timer will be serviced when the CPU eventually wakes up with a
++ * subsequent non-deferrable timer.
+  */
+ #define TBASE_DEFERRABLE_FLAG		(0x1)
+ 
+-- 
+1.7.0.4
 
