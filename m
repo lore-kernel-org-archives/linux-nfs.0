@@ -1,124 +1,184 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from april.london.02.net ([87.194.255.143]:44440 "EHLO
-	april.london.02.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1759304Ab0GWMKZ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 23 Jul 2010 08:10:25 -0400
-Received: from [192.168.1.64] (87.194.12.203) by april.london.02.net (8.5.124.03)
-        id 4C1F983E00F04F04 for linux-nfs@vger.kernel.org; Fri, 23 Jul 2010 13:10:23 +0100
-Message-ID: <4C4986A8.9090704@limepepper.co.uk>
-Date: Fri, 23 Jul 2010 13:10:16 +0100
-From: Tom H <tom@limepepper.co.uk>
-To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: CentOS5.4 x86_64 server with intermittent mount and read/write problems
- (BUG: soft lockup, debugging)
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Received: from mexforward.lss.emc.com ([128.222.32.20]:40798 "EHLO
+	mexforward.lss.emc.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753541Ab0GFTUu convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 6 Jul 2010 15:20:50 -0400
+Content-Type: text/plain;
+	charset="us-ascii"
+Subject: RE: 4.1 client - LAYOUTCOMMIT & close
+Date: Tue, 6 Jul 2010 15:20:08 -0400
+Message-ID: <B9A709F368FAAF4DB4B33870F72A141D01017F94@CORPUSMX30A.corp.emc.com>
+In-Reply-To: <0E2B1FE3-3B42-4BF2-BECE-A611DADF3983@netapp.com>
+References: <A062FCC8662DA848949F7C3046B9BEAE01F3A6ED@us-email.terastack.bluearc.com> <A062FCC8662DA848949F7C3046B9BEAE01F3A6EE@us-email.terastack.bluearc.com> <6206CE0E-0A32-46A7-B648-3FCC12ED1961@netapp.com> <B9A709F368FAAF4DB4B33870F72A141DFB88F3@CORPUSMX30A.corp.emc.com> <0E2B1FE3-3B42-4BF2-BECE-A611DADF3983@netapp.com>
+From: <Daniel.Muntz@emc.com>
+To: <andros@netapp.com>
+Cc: <sjoshi@bluearc.com>, <linux-nfs@vger.kernel.org>, <bhalevy@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+The COMMIT to the DS, ttbomk, commits data on the DS.  I see it as
+orthogonal to updating the metadata on the MDS (but perhaps I'm wrong).
+As sjoshi@bluearc mentioned, the LAYOUTCOMMIT provides a synchronization
+point, so even if the non-clustered server does not want to update
+metadata on every DS I/O, the LAYOUTCOMMIT could also be a trigger to
+execute whatever synchronization mechanism the implementer wishes to put
+in the control protocol.
 
-Hi All,
+  -Dan
 
-I have a nfs server that is under quite a bit of heavy usage from time 
-to time, and today I have had lots of problems with some clients not 
-being able to mount the export, and other servers reporting not 
-responding: kernel: nfs: server someserver not responding, timed out, 
-when reading/writing.
-
-There are no error logs being produced on the server, and only these 
-messages below on the client.
-
-I presume this is a load issue, and I would be keen to identify which 
-component is responsible so I can either upgrade or move some files 
-elsewhere.
-
-There appears to be a kernel upgrade available in the repos, and some 
-have suggested setting the kernel option noapic and apic=off for the 
-next boot, which I am going to try tomorrow)
-
-Any suggestions on how to determine the choking point on this server?
-
-Many Thanks
-Tom
-
-
-# uptime
- 04:59:17 up 97 days, 19:29,  2 users,  load average: 3.73, 3.47, 3.37
-
-# free -m
-             total       used       free     shared    buffers     cached
-Mem:         12007      11944         63          0       1308       9645
--/+ buffers/cache:        990      11017
-Swap:        12095          0      12095
-
-
-On the clients I am seeing
-# mount -vv -t nfs -o soft servername:/mount/processed34 /mount/processed34
-mount: trying 198.nn.nn.nn prog 100003 vers 3 prot tcp port 2049
-mount: mount to NFS server servername failed: timed out (retrying).
-mount: trying 198.nn.nn.nn prog 100003 vers 3 prot tcp port 2049
-mount: mount to NFS server 'servername' failed: timed out (giving up).
-
-and for the clients that have mounted the fs;
-kernel: nfs: server someserver not responding, timed out
-
-
-I am seeing errors like this in the /var/log/messages;
-# grep BUG messages
-Jul 23 03:18:21 servername kernel: BUG: soft lockup - CPU#5 stuck for 
-11s! [nfsd:20540]
-Jul 23 03:22:09 servername kernel: BUG: soft lockup - CPU#1 stuck for 
-15s! [nfsd:20545]
-(repeated many times)
-
-
-retrans from a client that was having problems;
-# nfsstat -c -3
-Client rpc stats:
-calls      retrans    authrefrsh
-25536750   209        0      
-
-Client nfs v3:
-null         getattr      setattr      lookup       access       
-readlink    
-0         0% 1467584   6% 2702      0% 16868358 69% 746134    3% 
-0         0%
-read         write        create       mkdir        symlink      
-mknod       
-337417    1% 683048    2% 24049     0% 91        0% 0         0% 
-0         0%
-remove       rmdir        rename       link         readdir      
-readdirplus 
-10923     0% 86        0% 4844      0% 0         0% 158020    0% 
-3805702  15%
-fsstat       fsinfo       pathconf     commit      
-156       0% 24        0% 0         0% 25625     0%
-
-server nfs stats;
-# nfsstat -s -3
-Server rpc stats:
-calls      badcalls   badauth    badclnt    xdrcall
-342989209   1397       1397       0          0      
-
-Server nfs v3:
-null         getattr      setattr      lookup       access       
-readlink    
-4169      0% 1951757   0% 1241244   0% 68875972 20% 2180568   0% 
-0         0%
-read         write        create       mkdir        symlink      
-mknod       
-18863     0% 144562881 42% 61482189 17% 456758    0% 0         0% 
-0         0%
-remove       rmdir        rename       link         readdir      
-readdirplus 
-8119668   2% 35533     0% 1         0% 0         0% 46596     0% 
-1805329   0%
-fsstat       fsinfo       pathconf     commit      
-545       0% 3379      0% 2         0% 51641657 15%
-
-
-
-
-
-
-
+> -----Original Message-----
+> From: Andy Adamson [mailto:andros@netapp.com] 
+> Sent: Tuesday, July 06, 2010 6:38 AM
+> To: Muntz, Daniel
+> Cc: sjoshi@bluearc.com; linux-nfs@vger.kernel.org; bhalevy@panasas.com
+> Subject: Re: 4.1 client - LAYOUTCOMMIT & close
+> 
+> 
+> On Jul 2, 2010, at 5:46 PM, <Daniel.Muntz@emc.com> wrote:
+> 
+> > By "extremely lame server" I assume you mean any pNFS server that
+> > doesn't have a cluster FS on the back end.
+> 
+> No, I mean a pNFS file layout type server that depends upon 
+> the 'hint'  
+> of file size given by LAYOUTCOMMIT. This does not mean that the file  
+> system has to be a cluster FS.
+> 
+> If COMMIT through MDS is set, the MDS to DS protocol (be it a 
+> cluster  
+> FS or not) ensures the data is "commited" on the DSs.  
+> LAYOUTCOMMIT is  
+> not needed.
+> 
+> If COMMITs are sent to the DSs (or FILE_SYNC writes), then 
+> the MDS to  
+> DS protocol (be it a cluster FS or not) should kick off a 
+> back-end DS  
+> to MDS communication to update the file size on the MDS.
+> 
+> What I consider an 'extremely lame pNFS file layout server' is one  
+> that requires COMMITs to the DS and then depends upon the 
+> LAYOUTCOMMIT  
+> to communicate the commited data size to the MDS.
+> 
+> -->Andy
+> 
+> 
+> > So while this might work
+> > well for NetApp (as long as NetApp never ships a non-clustered  
+> > pNFS), it
+> > might break others, or at least severely impact their 
+> performance.   
+> > For
+> > example, will the Solaris pNFS server work correctly without
+> > LAYOUTCOMMIT?  IMHO, the client MUST issue the appropriate  
+> > LAYOUTCOMMIT,
+> > but the server is free to handle it as a no-op if the server
+> > implementation does not need to utilize the payload.
+> >
+> >  -Dan
+> >
+> >> -----Original Message-----
+> >> From: linux-nfs-owner@vger.kernel.org
+> >> [mailto:linux-nfs-owner@vger.kernel.org] On Behalf Of Andy Adamson
+> >> Sent: Friday, July 02, 2010 8:41 AM
+> >> To: Sandeep Joshi
+> >> Cc: linux-nfs@vger.kernel.org; bhalevy@panasas.com
+> >> Subject: Re: 4.1 client - LAYOUTCOMMIT & close
+> >>
+> >>
+> >> On Jul 1, 2010, at 8:07 PM, Sandeep Joshi wrote:
+> >>
+> >> Hi Sandeep
+> >>
+> >>>
+> >>> In certain cases, I don't see layoutcommit on a file at all even
+> >>> after doing many writes.
+> >>
+> >> FYI:
+> >>
+> >> You should not be paying attention to layoutcommits  - they have no
+> >> value for the file layout type.
+> >>
+> >> From RFC 5661:
+> >>
+> >> "The LAYOUTCOMMIT operation commits chages in the layout 
+> represented
+> >> by the current filehandle, client ID (derived from the 
+> session ID in
+> >> the preceding SEQUENCE operation), byte-range, and stateid."
+> >>
+> >> For the block layout type, this sentence has meaning in that
+> >> there is
+> >> a layoutupdate4 payload that enumerates the blocks that 
+> have changed
+> >> state from being 'handed out' to being 'written'.
+> >>
+> >> The file layout type has no layoutupdate4 payload, and the
+> >> layout does
+> >> not change due to writes, and thus the LAYOUTCOMMIT call 
+> is useless.
+> >>
+> >> The only field in the LAYOUTCOMMIT4args that might possibly
+> >> be useful
+> >> is the loca_last_write_offset which tells the server what 
+> the client
+> >> thinks is the EOF of the file after WRITE. It is an extremely lame
+> >> server (file layout type server) that depends upon clients for this
+> >> info.
+> >>
+> >>>
+> >>>
+> >>>
+> >>> Client side operations:
+> >>>
+> >>> open
+> >>> write(s)
+> >>> close
+> >>>
+> >>>
+> >>> On server side (observed operations):
+> >>>
+> >>> open
+> >>> layoutget's
+> >>> close
+> >>>
+> >>>
+> >>> But, I do not see laycommit at all. In terms data written
+> >> by client
+> >>> it is about 4-5MB.
+> >>>
+> >>> When does client issue laycommit?
+> >>
+> >> The latest linux client sends a layout commit when the VFS does a
+> >> super_operations.write_inode call which happens when the 
+> metadata of
+> >> an inode needs updating. We are seriously considering removing the
+> >> layoutcommit call from the file layout client.
+> >>
+> >> -->Andy
+> >>
+> >>>
+> >>>
+> >>> regards,
+> >>>
+> >>> Sandeep
+> >>>
+> >>> --
+> >>> To unsubscribe from this list: send the line "unsubscribe
+> >> linux-nfs"
+> >>> in
+> >>> the body of a message to majordomo@vger.kernel.org
+> >>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> >>
+> >> --
+> >> To unsubscribe from this list: send the line "unsubscribe
+> >> linux-nfs" in
+> >> the body of a message to majordomo@vger.kernel.org
+> >> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> >>
+> >>
+> 
+> 
+> 
