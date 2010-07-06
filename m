@@ -1,52 +1,44 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:1029 "EHLO mx1.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:61433 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933591Ab0GSOJk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 19 Jul 2010 10:09:40 -0400
-From: David Howells <dhowells@redhat.com>
-In-Reply-To: <20100718084955.GB27794@infradead.org>
-References: <20100718084955.GB27794@infradead.org> <20100715021709.5544.64506.stgit@warthog.procyon.org.uk> <20100715021720.5544.19973.stgit@warthog.procyon.org.uk>
-To: Christoph Hellwig <hch@infradead.org>
-Cc: dhowells@redhat.com, viro@ZenIV.linux.org.uk,
-        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-cifs@vger.kernel.org, linux-kernel@vger.kernel.org,
-        samba-technical@lists.samba.org, linux-ext4@vger.kernel.org
-Subject: Re: [PATCH 09/18] xstat: Make special system filesystems return FS_SPECIAL_FL [ver #6]
-Date: Mon, 19 Jul 2010 15:09:33 +0100
-Message-ID: <8426.1279548573@redhat.com>
+	id S1752366Ab0GFURO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 6 Jul 2010 16:17:14 -0400
+From: andros@netapp.com
+To: bhalevy@panasas.com
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH 0/5] cleanup inode.c and bug fixes
+Date: Tue,  6 Jul 2010 17:16:57 -0400
+Message-Id: <1278451022-2889-1-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
 MIME-Version: 1.0
 
-Christoph Hellwig <hch@infradead.org> wrote:
 
-> special is not a very useful identifier.  Also what you are returning
-> is per-filesystem data, not per-file.  This needs to go into statfs,
-> not into stat.  We're about to introduce flags for statfs, so try
-> to do it ontop of those.
-> 
-> The same thing applies to the remote flag in the next patch.
+For the pnfs-submit branch 2.6.35-rc3 7-6-2010 tree.
 
-Which means that you have to do two calls (xstat+statfs) to find this
-information that we can return pretty much for free here, though you can cache
-it based on st_dev, I suppose.
+These first three patches simplify the inode.c pnfs initialization calls.
+0001-SQUASHME-pnfs-submit-remove-pnfs_init_once.patch
+0002-SQUASHME-pnfs-submit-remove-pnfs_alloc_init_inode.patch
+0003-SQUASHME-pnfs-submit-remove-pnfs_destroy_inode.patch
 
-Also, not all the flags are per-filesystem.  The following are:
+These two patches fix bugs in the layoutget and layoutcommit error handling
+where the calldata->status was not set after the async error handler in the
+rpc_call_done routines.
 
-	FS_SPECIAL_FL		/* Special file as found in procfs/sysfs */
-	FS_REMOTE_FL		/* File is remote */
+0004-SQUASHME-pnfs-submit-set-layoutcommit-status-after-a.patch
+0005-SQUASHME-pnfs-submit-set-layoutget-status-after-asyn.patch
 
-but the rest aren't:
+Tested:
+CONFIG_NFS_V4_1 set:
 
-	FS_AUTOMOUNT_FL		/* Specific automount point */
-	FS_AUTOMOUNT_ANY_FL	/* Unspecific automount directory */
-	FS_ENCRYPTED_FL		/* File is encrypted */
-	FS_HIDDEN_FL		/* File is marked hidden (DOS+) */
-	FS_SYSTEM_FL		/* File is marked system (DOS+) */
-	FS_ARCHIVE_FL		/* File is marked archive (DOS+) */
-	FS_TEMPORARY_FL		/* File is temporary (NTFS/CIFS) */
-	FS_OFFLINE_FL		/* File is offline (CIFS) */
-	FS_REPARSE_POINT_FL	/* Reparse point (NTFS/CIFS) */
+pNFS mount connectathon tests pass.
+pyNFS server with NFS4ERR_DELAY returned by layoutget handles the error in
+the async error handler, and then the calldata->status is set to NFS4_OK.
 
-David
+CONFIG_NFS_V4_1 not set;
+
+NFSv4.0 mount passes connectathon tests.
+
+-->Andy
+
