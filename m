@@ -1,65 +1,60 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-out1.uio.no ([129.240.10.57]:39346 "EHLO mail-out1.uio.no"
+Received: from mx2.netapp.com ([216.240.18.37]:62418 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933224Ab0G3S3G (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 30 Jul 2010 14:29:06 -0400
-Subject: Re: BUG: unable to handle kernel NULL pointer dereference at
- 0000000000000020
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-To: Bian Naimeng <biannm@cn.fujitsu.com>
-Cc: yo mama <mamamia69@gmail.com>, linux-nfs@vger.kernel.org,
-        Benny Halevy <bhalevy@panasas.com>
-In-Reply-To: <4C5105F8.5050101@cn.fujitsu.com>
-References: <AANLkTikYDGpeX8kcK3ygFzjM+bYMFTtqr8Wgx+CygUt8@mail.gmail.com>
-	 <4C5105F8.5050101@cn.fujitsu.com>
-Content-Type: text/plain; charset="UTF-8"
-Date: Fri, 30 Jul 2010 14:28:51 -0400
-Message-ID: <1280514531.12852.23.camel@heimdal.trondhjem.org>
+	id S1751814Ab0GFO5t convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 6 Jul 2010 10:57:49 -0400
+Subject: Re: [PATCH 1/6] SQUASME pnfs-submit: Collapse pnfs_try_to_write_data code path and avoid big fat inlines
+Content-Type: text/plain; charset=us-ascii
+From: Fred Isaman <iisaman@netapp.com>
+In-Reply-To: <4C3341D4.3020000@panasas.com>
+Date: Tue, 6 Jul 2010 10:57:40 -0400
+Cc: Benny Halevy <bhalevy@panasas.com>, Andy Adamson <andros@netapp.com>,
+        pNFS Mailing List <pnfs@linux-nfs.org>,
+        NFS list <linux-nfs@vger.kernel.org>
+Message-Id: <4BFA54E7-4656-4EC8-A68E-848B95356E44@netapp.com>
+References: <4C3334E3.7070600@panasas.com> <1278424509-22230-1-git-send-email-bharrosh@panasas.com> <264D5500-73A1-4315-9182-D21A6D2141FD@netapp.com> <4C3341D4.3020000@panasas.com>
+To: Boaz Harrosh <bharrosh@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Thu, 2010-07-29 at 12:39 +0800, Bian Naimeng wrote:
-> > Hello,
-> > 
-> > I am running Kernel version 2.6.35-rc5-pnfs and notice there is kernel
-> > crash everytime i run iozone on the mounted directory. Is there a
-> > patch already developed for this bug which i can apply. Please see the
-> > error message from message log.
-> > 
-> 
->  I'm not sure it's ok, please try it.
-> 
-> ----
-> 
->  nfs_writeargs.lock_context always NULL at direct write procedure,
-> it will cause kernel panic when encode stateid.
-> 
-> Signed-off-by: Bian Naimeng <biannm@cn.fujitsu.com>
-> 
-> ---
->  fs/nfs/direct.c |    1 +
->  1 files changed, 1 insertions(+), 0 deletions(-)
-> 
-> diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
-> index 3ef9b0c..cb2e1fd 100644
-> --- a/fs/nfs/direct.c
-> +++ b/fs/nfs/direct.c
-> @@ -801,6 +801,7 @@ static ssize_t nfs_direct_write_schedule_segment(struct nfs_direct_req *dreq,
->  		data->cred = msg.rpc_cred;
->  		data->args.fh = NFS_FH(inode);
->  		data->args.context = ctx;
-> +		data->args.lock_context = nfs_get_lock_context(ctx);
->  		data->args.offset = pos;
->  		data->args.pgbase = pgbase;
->  		data->args.pages = data->pagevec;
-> -- 
-> 1.6.5.2
-> 
 
-Well caught. There is a similar issue with NFS reads too. I'll fix up
-the lock state tracking patch...
+On Jul 6, 2010, at 10:46 AM, Boaz Harrosh wrote:
 
-Thanks
-  Trond
+> On 07/06/2010 05:31 PM, Fred Isaman wrote:
+>> 
+>> On Jul 6, 2010, at 9:55 AM, Boaz Harrosh wrote:
+>> 
+> <snip>
+>>> @@ -1547,9 +1548,8 @@ pnfs_writepages(struct nfs_write_data *wdata, int how)
+>>> 	numpages = nfs_page_array_len(args->pgbase, args->count);
+>>> 
+>>> 	dprintk("%s: Calling layout driver (how %d) write with %d pages\n",
+>>> -		__func__,
+>>> -		how,
+>>> -		numpages);
+>>> +		__func__, how, numpages);
+>>> +
+>>> 	if (!pnfs_use_rpc(nfss))
+>>> 		wdata->pdata.pnfsflags |= PNFS_NO_RPC;
+>> 
+>> Just curious, what branch is this based on?  The above code was removed in the pnfs-submit branches a while ago.
+>> 
+>> Other than that, looks good.
+>> 
+> 
+> It's over pnfs-all-latest because for me I need the bigger tree for actually testing
+> my code. So more work for Benny when squashing to sort out the hunks.
+> 
+> But if it was removed what patch brings it back, this is odd. Benny?
+
+No, that makes sense then.  It is removed in pnfs-submit, then the removal patch is immediately reverted.
+
+Fred
+
+> 
+>> Fred
+>> 
+> 
+> Boaz
 
