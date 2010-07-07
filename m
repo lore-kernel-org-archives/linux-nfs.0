@@ -1,7 +1,7 @@
 From: "David P. Quigley" <dpquigl@tycho.nsa.gov>
-Subject: [PATCH 01/10] Security: Add hook to calculate context based on a negative dentry.
-Date: Wed,  7 Jul 2010 10:31:17 -0400
-Message-ID: <1278513086-23964-2-git-send-email-dpquigl@tycho.nsa.gov>
+Subject: [PATCH 06/10] NFSv4: Add label recommended attribute and NFSv4 flags
+Date: Wed,  7 Jul 2010 10:31:22 -0400
+Message-ID: <1278513086-23964-7-git-send-email-dpquigl@tycho.nsa.gov>
 References: <1278513086-23964-1-git-send-email-dpquigl@tycho.nsa.gov>
 Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
 	linux-security-module@vger.kernel.org, selinux@tycho.nsa.gov,
@@ -16,164 +16,121 @@ In-Reply-To: <1278513086-23964-1-git-send-email-dpquigl@tycho.nsa.gov>
 Sender: linux-kernel-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-There is a time where we need to calculate a context without the
-inode having been created yet. To do this we take the negative dentry and
-calculate a context based on the process and the parent directory contexts.
+This patch adds a new recommended attribute named label into the NFSv4 file
+attribute structure. It also adds several new flags to allow the NFS client and
+server to determine if this attribute is supported and if it is being sent over
+the wire.
 
 Signed-off-by: Matthew N. Dodd <Matthew.Dodd@sparta.com>
 Signed-off-by: David P. Quigley <dpquigl@tycho.nsa.gov>
 ---
- include/linux/security.h |   22 ++++++++++++++++++++++
- security/capability.c    |    6 ++++++
- security/security.c      |    7 +++++++
- security/selinux/hooks.c |   32 ++++++++++++++++++++++++++++++++
- 4 files changed, 67 insertions(+), 0 deletions(-)
+ fs/nfsd/nfsd.h              |    6 +++---
+ include/linux/nfs4.h        |    2 ++
+ include/linux/nfs_fs_sb.h   |    1 +
+ include/linux/nfs_xdr.h     |    4 +++-
+ include/linux/nfsd/export.h |    5 +++--
+ 5 files changed, 12 insertions(+), 6 deletions(-)
 
-diff --git a/include/linux/security.h b/include/linux/security.h
-index 3158dd9..4d01784 100644
---- a/include/linux/security.h
-+++ b/include/linux/security.h
-@@ -322,6 +322,14 @@ static inline void security_free_mnt_opts(struct security_mnt_opts *opts)
-  *	Parse a string of security data filling in the opts structure
-  *	@options string containing all mount options known by the LSM
-  *	@opts binary data structure usable by the LSM
-+ * @dentry_init_security:
-+ *	Compute a context for a dentry as the inode is not yet available
-+ * 	since NFSv4 has no label backed by an EA anyway.
-+ * 	@dentry dentry to use in calculating the context.
-+ * 	@mode mode used to determine resource type.
-+ * 	@ctx pointer to place the pointer to the resulting context in.
-+ * 	@ctxlen point to place the length of the resulting context.
-+ *
-  *
-  * Security hooks for inode operations.
-  *
-@@ -1501,6 +1509,9 @@ struct security_operations {
- 	void (*sb_clone_mnt_opts) (const struct super_block *oldsb,
- 				   struct super_block *newsb);
- 	int (*sb_parse_opts_str) (char *options, struct security_mnt_opts *opts);
-+	int (*dentry_init_security) (struct dentry *dentry, int mode,
-+				     void **ctx, u32 *ctxlen);
-+
+diff --git a/fs/nfsd/nfsd.h b/fs/nfsd/nfsd.h
+index e942a1a..ae20d51 100644
+--- a/fs/nfsd/nfsd.h
++++ b/fs/nfsd/nfsd.h
+@@ -277,8 +277,8 @@ extern struct timeval	nfssvc_boot;
+  | FATTR4_WORD1_OWNER	        | FATTR4_WORD1_OWNER_GROUP  | FATTR4_WORD1_RAWDEV           \
+  | FATTR4_WORD1_SPACE_AVAIL     | FATTR4_WORD1_SPACE_FREE   | FATTR4_WORD1_SPACE_TOTAL      \
+  | FATTR4_WORD1_SPACE_USED      | FATTR4_WORD1_TIME_ACCESS  | FATTR4_WORD1_TIME_ACCESS_SET  \
+- | FATTR4_WORD1_TIME_DELTA   | FATTR4_WORD1_TIME_METADATA    \
+- | FATTR4_WORD1_TIME_MODIFY     | FATTR4_WORD1_TIME_MODIFY_SET | FATTR4_WORD1_MOUNTED_ON_FILEID)
++ | FATTR4_WORD1_TIME_DELTA   	| FATTR4_WORD1_TIME_METADATA | FATTR4_WORD1_TIME_MODIFY     \
++ | FATTR4_WORD1_TIME_MODIFY_SET | FATTR4_WORD1_MOUNTED_ON_FILEID | FATTR4_WORD1_SECURITY_LABEL)
  
- #ifdef CONFIG_SECURITY_PATH
- 	int (*path_unlink) (struct path *dir, struct dentry *dentry);
-@@ -1795,6 +1806,8 @@ int security_sb_set_mnt_opts(struct super_block *sb, struct security_mnt_opts *o
- void security_sb_clone_mnt_opts(const struct super_block *oldsb,
- 				struct super_block *newsb);
- int security_sb_parse_opts_str(char *options, struct security_mnt_opts *opts);
-+int security_dentry_init_security (struct dentry *dentry, int mode,
-+				   void **ctx, u32 *ctxlen);
+ #define NFSD4_SUPPORTED_ATTRS_WORD2 0
  
- int security_inode_alloc(struct inode *inode);
- void security_inode_free(struct inode *inode);
-@@ -2157,6 +2170,15 @@ static inline int security_inode_alloc(struct inode *inode)
- static inline void security_inode_free(struct inode *inode)
- { }
+@@ -318,7 +318,7 @@ static inline u32 nfsd_suppattrs2(u32 minorversion)
+ (FATTR4_WORD0_SIZE              | FATTR4_WORD0_ACL                                         )
+ #define NFSD_WRITEABLE_ATTRS_WORD1                                                          \
+ (FATTR4_WORD1_MODE              | FATTR4_WORD1_OWNER         | FATTR4_WORD1_OWNER_GROUP     \
+- | FATTR4_WORD1_TIME_ACCESS_SET | FATTR4_WORD1_TIME_MODIFY_SET)
++ | FATTR4_WORD1_TIME_ACCESS_SET | FATTR4_WORD1_TIME_MODIFY_SET | FATTR4_WORD1_SECURITY_LABEL)
+ #define NFSD_WRITEABLE_ATTRS_WORD2 0
  
-+static inline int security_dentry_init_security (struct dentry *dentry,
-+						 int mode,
-+						 void **ctx,
-+						 u32 *ctxlen)
-+{
-+	return -EOPNOTSUPP;
-+}
-+
-+
- static inline int security_inode_init_security(struct inode *inode,
- 						struct inode *dir,
- 						char **name,
-diff --git a/security/capability.c b/security/capability.c
-index 4875142..9ce1c2f 100644
---- a/security/capability.c
-+++ b/security/capability.c
-@@ -134,6 +134,11 @@ static int cap_sb_parse_opts_str(char *options, struct security_mnt_opts *opts)
- 	return 0;
- }
+ #define NFSD_SUPPATTR_EXCLCREAT_WORD0 \
+diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
+index 9b8299a..a2abd1a 100644
+--- a/include/linux/nfs4.h
++++ b/include/linux/nfs4.h
+@@ -23,6 +23,7 @@
+ #define NFS4_MAXNAMLEN		NAME_MAX
+ #define NFS4_OPAQUE_LIMIT	1024
+ #define NFS4_MAX_SESSIONID_LEN	16
++#define NFS4_MAXLABELLEN	4096
  
-+static int cap_dentry_init_security(struct dentry *dentry, int mode, void **ctx, u32 *ctxlen)
-+{
-+	return 0;
-+}
-+
- static int cap_inode_alloc_security(struct inode *inode)
- {
- 	return 0;
-@@ -952,6 +957,7 @@ void security_fixup_ops(struct security_operations *ops)
- 	set_to_cap_if_null(ops, sb_set_mnt_opts);
- 	set_to_cap_if_null(ops, sb_clone_mnt_opts);
- 	set_to_cap_if_null(ops, sb_parse_opts_str);
-+	set_to_cap_if_null(ops, dentry_init_security);
- 	set_to_cap_if_null(ops, inode_alloc_security);
- 	set_to_cap_if_null(ops, inode_free_security);
- 	set_to_cap_if_null(ops, inode_init_security);
-diff --git a/security/security.c b/security/security.c
-index 687c6fd..c1b6847 100644
---- a/security/security.c
-+++ b/security/security.c
-@@ -386,6 +386,13 @@ void security_inode_free(struct inode *inode)
- 	security_ops->inode_free_security(inode);
- }
+ #define NFS4_ACCESS_READ        0x0001
+ #define NFS4_ACCESS_LOOKUP      0x0002
+@@ -471,6 +472,7 @@ enum lock_type4 {
+ #define FATTR4_WORD1_TIME_MODIFY        (1UL << 21)
+ #define FATTR4_WORD1_TIME_MODIFY_SET    (1UL << 22)
+ #define FATTR4_WORD1_MOUNTED_ON_FILEID  (1UL << 23)
++#define FATTR4_WORD1_SECURITY_LABEL     (1UL << 31)
  
-+int security_dentry_init_security (struct dentry *dentry, int mode,
-+				   void **ctx, u32 *ctxlen)
-+{
-+	return security_ops->dentry_init_security (dentry, mode, ctx, ctxlen);
-+}
-+EXPORT_SYMBOL(security_dentry_init_security);
-+
- int security_inode_init_security(struct inode *inode, struct inode *dir,
- 				  char **name, void **value, size_t *len)
- {
-diff --git a/security/selinux/hooks.c b/security/selinux/hooks.c
-index 5feecb4..435c51f 100644
---- a/security/selinux/hooks.c
-+++ b/security/selinux/hooks.c
-@@ -2577,6 +2577,37 @@ static void selinux_inode_free_security(struct inode *inode)
- 	inode_free_security(inode);
- }
+ #define NFSPROC4_NULL 0
+ #define NFSPROC4_COMPOUND 1
+diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
+index e82957a..aa95a22 100644
+--- a/include/linux/nfs_fs_sb.h
++++ b/include/linux/nfs_fs_sb.h
+@@ -177,6 +177,7 @@ struct nfs_server {
+ #define NFS_CAP_CTIME		(1U << 12)
+ #define NFS_CAP_MTIME		(1U << 13)
+ #define NFS_CAP_POSIX_LOCK	(1U << 14)
++#define NFS_CAP_SECURITY_LABEL	(1U << 15)
  
-+static int selinux_dentry_init_security(struct dentry *dentry, int mode, void **ctx, u32 *ctxlen)
-+{
-+	struct cred *cred = current_cred();
-+	struct task_security_struct *tsec;
-+	struct inode_security_struct *dsec;
-+	struct superblock_security_struct *sbsec;
-+	struct inode *dir = dentry->d_parent->d_inode;
-+	u32 newsid;
-+	int rc;
-+
-+	tsec = cred->security;
-+	dsec = dir->i_security;
-+	sbsec = dir->i_sb->s_security;
-+
-+	if (tsec->create_sid && sbsec->behavior != SECURITY_FS_USE_MNTPOINT) {
-+		newsid = tsec->create_sid;
-+	} else {
-+		rc = security_transition_sid(tsec->sid, dsec->sid,
-+					     inode_mode_to_security_class(mode),
-+					     &newsid);
-+		if (rc) {
-+			printk(KERN_WARNING "%s:  "
-+			       "security_transition_sid failed, rc=%d\n",
-+			       __FUNCTION__, -rc);
-+			return rc;
-+		}
-+	}
-+
-+	return security_sid_to_context(newsid, (char **)ctx, ctxlen);
-+}
-+
- static int selinux_inode_init_security(struct inode *inode, struct inode *dir,
- 				       char **name, void **value,
- 				       size_t *len)
-@@ -5484,6 +5515,7 @@ static struct security_operations selinux_ops = {
- 	.sb_clone_mnt_opts =		selinux_sb_clone_mnt_opts,
- 	.sb_parse_opts_str = 		selinux_parse_opts_str,
  
-+	.dentry_init_security =		selinux_dentry_init_security,
+ /* maximum number of slots to use */
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index 89b2881..28cde54 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -78,6 +78,7 @@ struct nfs_fattr {
+ #define NFS_ATTR_FATTR_CHANGE		(1U << 17)
+ #define NFS_ATTR_FATTR_PRECHANGE	(1U << 18)
+ #define NFS_ATTR_FATTR_V4_REFERRAL	(1U << 19)	/* NFSv4 referral */
++#define NFS_ATTR_FATTR_V4_SECURITY_LABEL (1U << 20)	/* NFSv4 Security Labels */
  
- 	.inode_alloc_security =		selinux_inode_alloc_security,
- 	.inode_free_security =		selinux_inode_free_security,
+ #define NFS_ATTR_FATTR (NFS_ATTR_FATTR_TYPE \
+ 		| NFS_ATTR_FATTR_MODE \
+@@ -97,7 +98,8 @@ struct nfs_fattr {
+ 		| NFS_ATTR_FATTR_SPACE_USED)
+ #define NFS_ATTR_FATTR_V4 (NFS_ATTR_FATTR \
+ 		| NFS_ATTR_FATTR_SPACE_USED \
+-		| NFS_ATTR_FATTR_CHANGE)
++		| NFS_ATTR_FATTR_CHANGE \
++		| NFS_ATTR_FATTR_V4_SECURITY_LABEL)
+ 
+ /*
+  * Info on the file system
+diff --git a/include/linux/nfsd/export.h b/include/linux/nfsd/export.h
+index 8ae78a6..72abeb6 100644
+--- a/include/linux/nfsd/export.h
++++ b/include/linux/nfsd/export.h
+@@ -31,7 +31,8 @@
+ #define NFSEXP_ALLSQUASH	0x0008
+ #define NFSEXP_ASYNC		0x0010
+ #define NFSEXP_GATHERED_WRITES	0x0020
+-/* 40 80 100 currently unused */
++#define NFSEXP_SECURITY_LABEL	0x0040  /* Support security label fattr4 */
++/* 80 100 currently unused */
+ #define NFSEXP_NOHIDE		0x0200
+ #define NFSEXP_NOSUBTREECHECK	0x0400
+ #define	NFSEXP_NOAUTHNLM	0x0800		/* Don't authenticate NLM requests - just trust */
+@@ -50,7 +51,7 @@
+  */
+ #define	NFSEXP_V4ROOT		0x10000
+ /* All flags that we claim to support.  (Note we don't support NOACL.) */
+-#define NFSEXP_ALLFLAGS		0x17E3F
++#define NFSEXP_ALLFLAGS		0x17E7F
+ 
+ /* The flags that may vary depending on security flavor: */
+ #define NFSEXP_SECINFO_FLAGS	(NFSEXP_READONLY | NFSEXP_ROOTSQUASH \
 -- 
 1.6.2.5
