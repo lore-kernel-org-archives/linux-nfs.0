@@ -1,70 +1,345 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ww0-f44.google.com ([74.125.82.44]:39051 "EHLO
-	mail-ww0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754612Ab0GAS5H (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 1 Jul 2010 14:57:07 -0400
-Received: by wwb24 with SMTP id 24so193544wwb.1
-        for <linux-nfs@vger.kernel.org>; Thu, 01 Jul 2010 11:57:05 -0700 (PDT)
-Message-ID: <4C2CE4FC.8030004@panasas.com>
-Date: Thu, 01 Jul 2010 21:57:00 +0300
-From: Benny Halevy <bhalevy@panasas.com>
-To: NFS list <linux-nfs@vger.kernel.org>
-Subject: pnfs git tree status pnfs-all-2.6.34-2010-07-01
-References: <4BD9BF01.2000508@panasas.com> <4BE330E6.70707@panasas.com> <4BE3315C.9090908@panasas.com> <4BF1AAFC.7000308@panasas.com>
-In-Reply-To: <4BF1AAFC.7000308@panasas.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from rcsinet10.oracle.com ([148.87.113.121]:42519 "EHLO
+	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756088Ab0GGQDl (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 7 Jul 2010 12:03:41 -0400
+Message-ID: <4C34A4F1.3060708@oracle.com>
+Date: Wed, 07 Jul 2010 12:01:53 -0400
+From: Chuck Lever <chuck.lever@oracle.com>
+To: "David P. Quigley" <dpquigl@tycho.nsa.gov>
+CC: hch@infradead.org, viro@zeniv.linux.org.uk, casey@schaufler-ca.com,
+        sds@tycho.nsa.gov, matthew.dodd@sparta.com, trond.myklebust@fys.uio.no,
+        bfields@fieldses.org, linux-kernel@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, linux-security-module@vger.kernel.org,
+        selinux@tycho.nsa.gov, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 07/10] NFSv4: Introduce new label structure
+References: <1278513086-23964-1-git-send-email-dpquigl@tycho.nsa.gov> <1278513086-23964-8-git-send-email-dpquigl@tycho.nsa.gov>
+In-Reply-To: <1278513086-23964-8-git-send-email-dpquigl@tycho.nsa.gov>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Here's the list of patches that went into the pnfs-all-2.6.34 branch as of 2010-07-01
-since last update (pnfs-all-2.6.34-2010-05-17)
+My comments below apply to the other NFS client patches as well.  This 
+seemed like the right one to use for code examples.
 
-As usual, cumulative patches against the mainline kernel can be
-generated via http://wiki.linux-nfs.org/wiki/index.php/PNFS_Development_Git_tree
+On 07/ 7/10 10:31 AM, David P. Quigley wrote:
+> In order to mimic the way that NFSv4 ACLs are implemented we have created a
+> structure to be used to pass label data up and down the call chain. This patch
+> adds the new structure and new members to the required NFSv4 call structures.
+>
+> Signed-off-by: Matthew N. Dodd<Matthew.Dodd@sparta.com>
+> Signed-off-by: David P. Quigley<dpquigl@tycho.nsa.gov>
+> ---
+>   fs/nfs/nfs4proc.c       |   26 ++++++++++++++++++++++++++
+>   fs/nfsd/xdr4.h          |    3 +++
+>   include/linux/nfs4.h    |    7 +++++++
+>   include/linux/nfs_fs.h  |    7 +++++++
+>   include/linux/nfs_xdr.h |   22 ++++++++++++++++++++++
+>   5 files changed, 65 insertions(+), 0 deletions(-)
+>
+> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+> index 071fced..71bb8da 100644
+> --- a/fs/nfs/nfs4proc.c
+> +++ b/fs/nfs/nfs4proc.c
+> @@ -148,6 +148,32 @@ const u32 nfs4_fs_locations_bitmap[2] = {
+>   	| FATTR4_WORD1_MOUNTED_ON_FILEID
+>   };
+>
+> +#ifdef CONFIG_NFS_V4_SECURITY_LABEL
+> +
+> +struct nfs4_label * nfs4_label_alloc (gfp_t flags)
 
-pnfs-all-2.6.34:
-  Benny Halevy     66e57bb pnfs: get open context from nfs_page in pnfs_commit
-  Benny Halevy     e04e8ec SQUASHME: pnfs-block: nfs4_blk_add_block_disk ret must be signed
-  Benny Halevy     a604747 SQUASHME: pnfs: check for read_buf error in decode_pnfs_layoutrecall_args
-  Benny Halevy     e79eea9 SQUASHME: pnfs-submit: fix possible leak in nfs4_pnfs_ds_create
-  Benny Halevy     c9bc804 pnfs-submit: prevent buffer overrun in decode_and_add_ds
-  Andy Adamson     8a9844c pnfs-submit: remove struct nfs_server from stack
-  Boaz Harrosh     4b85c27 pnfsd-exofs: Fix exofs_inode_recall_layout() sending 2 recalls
-  Benny Halevy     a2ad195 pnfs-obj: use NFSDBG_PNFS_LD also in pnfs_osd_xdr_cli.c
-  Boaz Harrosh     89b2bc5 move objlayout to the PNFS_LD dprint channel
-  Benny Halevy     6abc85e spnfs-block: kfree(res) in bl_pipe_downcall error path
-  Benny Halevy     1020447 pnfsd: fix pointer dereference in dprintk of write verifiers
-  Benny Halevy     3d81dc8 pnfsd: reset status on NFS4ERR_NOMATCHING_LAYOUT
-  Benny Halevy     12b5063 pnfsd: move kfree of the cb_device rpc_args to release time
-  Benny Halevy     d20319d pnfsd: move kfree of the cb_layout rpc_args to release time
-  Benny Halevy     12f11b7 FIXME: pnfsd: do not expire client on cb_layout error.
-  Boaz Harrosh     76fcb35 pnfsd: Support for cb_layout returning NFS4ERR_DELAY
-  Benny Halevy     9a3b60d pnfsd: fix error handling for s_pnfs_op->get_device_info
-  Benny Halevy     81d3a84 pnfsd-files: nfsd4_pnfs_dlm_shutdown should use list_for_each_entry_safe
-  Benny Halevy     7582d4e pnfsd-files: verify_stateid's return status is __be32
-  Benny Halevy     17659ad pnfsd-files: prevent NULL deref in nfsd4_pnfs_dlm_getdevinfo
-  Eric Anderle     a3b5760 pnfsd: Fix num_ds bug in nfsd4_set_pnfs_dlm_device()
-  Eric Anderle     6d2b022 pnfsd: Add IP address validation to nfsd4_set_pnfs_dlm_device()
-  Andy Adamson     9f133db pnfsd: fix dlm device naming
-  Boaz Harrosh     cfa67a7 nfsd41: Fix a crash when a callback is retried
-  Benny Halevy     97d791f nfsd41: setup backchannel in create_session also in session reestablishment
-  Benny Halevy     87237ef DEBUG: pnfs: turn BUG_ONs in pnfs_destroy_inode to WARN_ONs
-  Andy Adamson     58f4a6e pnfs: move layoutcommit to nfs_write_inode
-  Andy Adamson     de0aee1 pnfs: remove ifdef around layoutcommit_needed
-  Andy Adamson     f000c40 pnfs: handle async layoutcommit errors
-  Andy Adamson     6513daa pnfs: cleanup layoutcommit call
-  Boaz Harrosh     b529d19 panfs_shim: Prints on Errors
-  Benny Halevy     36b51a9 SQUASHME: spnfs: fixup LAYOUT_NFSV4_1_FILES
-  Boaz Harrosh     b6c10f9 SQUASHME: pnfs-obj: panlayout: Fix very old BUG_ONs on ol_state.status
-  Tao Guo          6f62de5 SQUASHME: pnfs: unlock lo_lock before calling layoutdriver's setup_layoutcommit
-  Ricardo Labiaga  887a9a5 pnfs-submit: Dynamically load the nfslayoutdriver
-  Ricardo Labiaga  56fab5a SQUASHME: pnfs-submit: Use LAYOUT_NFSV4_1_FILES instead of LAYOUT_NFSV4_FILES
-  Tao Guo          29d2037 SQUASHME: pnfs-submit: call layoutcommit after flushing inode's data to disk.
-  Andy Adamson     fe990bd SQUASHME: pnfs-submit: replace layoutcommit_ctx with rpc_cred
-  Benny Halevy     4c7381c SQUASHME: pnfsd-lexp: fixup LAYOUT_NFSV4_1_FILES
-  J. Bruce Fields  4fb8130 SQUASHME: nfsd4: fix cb_recall encoding
-  Eric Anderle     99882b9 SQUASHME: pnfsd: fix test in nfsd4_find_pnfs_dlm_device
-  Eric Anderle     abab4a7 pnfsd: make /proc/fs/nfsd/pnfs_dlm_device report dlm device list.
-  Benny Halevy     0cc2897 SQUASHME: pnfsd: dlm: fixup LAYOUT_NFSV4_1_FILES
-  Ricardo Labiaga  465a7ff SQUASHME: pnfs-submit: Use LAYOUT_NFSV4_1_FILES instead of LAYOUT_NFSV4_FILES
+Style: have you run these patches through scripts/checkpatch.pl?  Kernel 
+coding style likes "struct foo *function(args)", without the spaces.
+
+> +{
+> +	struct nfs4_label *label = NULL;
+> +
+> +	label = kzalloc(sizeof(struct nfs4_label) + NFS4_MAXLABELLEN, flags);
+> +	if (label == NULL)
+> +		return NULL;
+
+Instead of NULL, you could return an ERR_PTR.  NULL could then be used 
+to signal that labels aren't supported.  See below.
+
+> +
+> +	label->label = (void *)(label + 1);
+> +	label->len = NFS4_MAXLABELLEN;
+> +	/* 0 is the null format meaning that the data is not to be translated */
+> + 	label->lfs = 0;
+> +	return label;
+> +}
+> +
+> +void nfs4_label_free (struct nfs4_label *label)
+> +{
+> +	if (label)
+> +		kfree(label);
+
+Style: kfree() already checks for a NULL pointer, so you shouldn't.  At 
+one point recently, all such checks were removed from the kernel in 
+favor of using the one already in kfree().
+
+Also, you check the server capabilities before calling this function, 
+nearly every time.  Is that really needed?  If there's a label data 
+structure, it should be freed whether the server supports it or not.
+
+That capabilities check is probably going to be more complex if you want 
+to have NFSv3 label support as well.  Would it make sense to provide a 
+function that can check for NFSv3 (eventually) or NFSv4 label support?
+
+Or, fold such checks into your allocator?  Hiding the capabilities check 
+here would allow easy expansion in the future to include other NFS 
+versions, and cause less clutter in all callers.
+
+> +	return;
+> +}
+> +
+> +#endif
+
+Style: Generally speaking, we like to keep "#ifdef CONFIG_BAR" noise 
+down to a dull roar.  So, this is the right place to keep it, and the 
+generic functions (like nfs_lookup() and nfs_readdir()) is generally not.
+
+Usually we accomplish this by having functions like nfs4_label_free() 
+always be available, but if CONFIG_NFS_V4_SECURITY_LABEL isn't set, the 
+function call is a no-op.
+
+> +
+>   static void nfs4_setup_readdir(u64 cookie, __be32 *verifier, struct dentry *dentry,
+>   		struct nfs4_readdir_arg *readdir)
+>   {
+> diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
+> index efa3377..c217277 100644
+> --- a/fs/nfsd/xdr4.h
+> +++ b/fs/nfsd/xdr4.h
+> @@ -108,6 +108,7 @@ struct nfsd4_create {
+>   	struct iattr	cr_iattr;           /* request */
+>   	struct nfsd4_change_info  cr_cinfo; /* response */
+>   	struct nfs4_acl *cr_acl;
+> +	struct nfs4_label *cr_label;
+>   };
+>   #define cr_linklen	u.link.namelen
+>   #define cr_linkname	u.link.name
+> @@ -235,6 +236,7 @@ struct nfsd4_open {
+>   	int		op_truncate;        /* used during processing */
+>   	struct nfs4_stateowner *op_stateowner; /* used during processing */
+>   	struct nfs4_acl *op_acl;
+> +	struct nfs4_label *op_label;
+>   };
+>   #define op_iattr	iattr
+>   #define op_verf		verf
+> @@ -316,6 +318,7 @@ struct nfsd4_setattr {
+>   	u32		sa_bmval[3];        /* request */
+>   	struct iattr	sa_iattr;           /* request */
+>   	struct nfs4_acl *sa_acl;
+> +	struct nfs4_label *sa_label;
+>   };
+>
+>   struct nfsd4_setclientid {
+> diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
+> index a2abd1a..c512a0c 100644
+> --- a/include/linux/nfs4.h
+> +++ b/include/linux/nfs4.h
+> @@ -167,6 +167,13 @@ struct nfs4_acl {
+>   	struct nfs4_ace	aces[0];
+>   };
+>
+> +struct nfs4_label {
+> +	void		*label;
+> +	u32		len;
+> +	uint32_t	lfs;
+> +};
+
+If we have support for NFS labels in NFSv3, would we also use struct 
+nfs4_label?
+
+It seems to me you want something more generic, just like nfs_fh or 
+nfs_fattr, to represent these.  Over time, I'm guessing label support 
+won't be tied to a specific NFS version.  And, you are passing these 
+around in the generic NFS functions (for post-op updates and inode 
+revalidation, and what not).
+
+Can I recommend "struct nfs_seclabel" instead?  Then have 
+nfs_seclabel_alloc() and nfs_seclabel_free().
+
+Does it make sense to deduplicate these in the client's memory?  It 
+seems to me that you could have hundreds or thousands that all contain 
+the same label information.
+
+> +
+> +
+>   typedef struct { char data[NFS4_VERIFIER_SIZE]; } nfs4_verifier;
+>   typedef struct { char data[NFS4_STATEID_SIZE]; } nfs4_stateid;
+>
+> diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
+> index 07ce460..2813b71 100644
+> --- a/include/linux/nfs_fs.h
+> +++ b/include/linux/nfs_fs.h
+> @@ -454,6 +454,13 @@ extern int nfs_mountpoint_expiry_timeout;
+>   extern void nfs_release_automount_timer(void);
+>
+>   /*
+> + * linux/fs/nfs/nfs4proc.c
+> + */
+> +
+> +struct nfs4_label *	nfs4_label_alloc (gfp_t flags);
+> +void			nfs4_label_free (struct nfs4_label *);
+> +
+> +/*
+>    * linux/fs/nfs/unlink.c
+>    */
+>   extern int  nfs_async_unlink(struct inode *dir, struct dentry *dentry);
+> diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+> index 28cde54..dc505e4 100644
+> --- a/include/linux/nfs_xdr.h
+> +++ b/include/linux/nfs_xdr.h
+> @@ -207,6 +207,7 @@ struct nfs_openargs {
+>   	const struct nfs_server *server;	 /* Needed for ID mapping */
+>   	const u32 *		bitmask;
+>   	__u32			claim;
+> +	const struct nfs4_label *label;
+>   	struct nfs4_sequence_args	seq_args;
+>   };
+>
+> @@ -216,7 +217,9 @@ struct nfs_openres {
+>   	struct nfs4_change_info	cinfo;
+>   	__u32                   rflags;
+>   	struct nfs_fattr *      f_attr;
+> +	struct nfs4_label *	f_label;
+>   	struct nfs_fattr *      dir_attr;
+> +	struct nfs4_label *	dir_label;
+>   	struct nfs_seqid *	seqid;
+>   	const struct nfs_server *server;
+>   	fmode_t			delegation_type;
+> @@ -256,6 +259,7 @@ struct nfs_closeargs {
+>   struct nfs_closeres {
+>   	nfs4_stateid            stateid;
+>   	struct nfs_fattr *	fattr;
+> +	struct nfs4_label *	label;
+>   	struct nfs_seqid *	seqid;
+>   	const struct nfs_server *server;
+>   	struct nfs4_sequence_res	seq_res;
+> @@ -324,6 +328,7 @@ struct nfs4_delegreturnargs {
+>
+>   struct nfs4_delegreturnres {
+>   	struct nfs_fattr * fattr;
+> +	struct nfs4_label * label;
+>   	const struct nfs_server *server;
+>   	struct nfs4_sequence_res	seq_res;
+>   };
+> @@ -343,6 +348,7 @@ struct nfs_readargs {
+>
+>   struct nfs_readres {
+>   	struct nfs_fattr *	fattr;
+> +	struct nfs4_label *	label;
+>   	__u32			count;
+>   	int                     eof;
+>   	struct nfs4_sequence_res	seq_res;
+> @@ -390,6 +396,7 @@ struct nfs_removeres {
+>   	const struct nfs_server *server;
+>   	struct nfs4_change_info	cinfo;
+>   	struct nfs_fattr	dir_attr;
+> +	struct nfs4_label	*dir_label;
+>   	struct nfs4_sequence_res 	seq_res;
+>   };
+>
+> @@ -405,6 +412,7 @@ struct nfs_entry {
+>   	int			eof;
+>   	struct nfs_fh *		fh;
+>   	struct nfs_fattr *	fattr;
+> +	struct nfs4_label *	label;
+>   };
+>
+>   /*
+> @@ -443,6 +451,7 @@ struct nfs_setattrargs {
+>   	struct iattr *                  iap;
+>   	const struct nfs_server *	server; /* Needed for name mapping */
+>   	const u32 *			bitmask;
+> +	const struct nfs4_label *	label;
+>   	struct nfs4_sequence_args 	seq_args;
+>   };
+>
+> @@ -473,6 +482,7 @@ struct nfs_getaclres {
+>
+>   struct nfs_setattrres {
+>   	struct nfs_fattr *              fattr;
+> +	struct nfs4_label *		label;
+>   	const struct nfs_server *	server;
+>   	struct nfs4_sequence_res	seq_res;
+>   };
+> @@ -662,6 +672,7 @@ struct nfs4_accessargs {
+>   struct nfs4_accessres {
+>   	const struct nfs_server *	server;
+>   	struct nfs_fattr *		fattr;
+> +	struct nfs4_label *		label;
+>   	u32				supported;
+>   	u32				access;
+>   	struct nfs4_sequence_res	seq_res;
+> @@ -684,6 +695,7 @@ struct nfs4_create_arg {
+>   	const struct iattr *		attrs;
+>   	const struct nfs_fh *		dir_fh;
+>   	const u32 *			bitmask;
+> +	const struct nfs4_label *	label;
+>   	struct nfs4_sequence_args 	seq_args;
+>   };
+>
+> @@ -691,8 +703,10 @@ struct nfs4_create_res {
+>   	const struct nfs_server *	server;
+>   	struct nfs_fh *			fh;
+>   	struct nfs_fattr *		fattr;
+> +	struct nfs4_label *		label;
+>   	struct nfs4_change_info		dir_cinfo;
+>   	struct nfs_fattr *		dir_fattr;
+> +	struct nfs4_label *		dir_label;
+>   	struct nfs4_sequence_res	seq_res;
+>   };
+>
+> @@ -717,6 +731,7 @@ struct nfs4_getattr_res {
+>   	const struct nfs_server *	server;
+>   	struct nfs_fattr *		fattr;
+>   	struct nfs4_sequence_res	seq_res;
+> +	struct nfs4_label *		label;
+>   };
+>
+>   struct nfs4_link_arg {
+> @@ -730,8 +745,10 @@ struct nfs4_link_arg {
+>   struct nfs4_link_res {
+>   	const struct nfs_server *	server;
+>   	struct nfs_fattr *		fattr;
+> +	struct nfs4_label *		label;
+>   	struct nfs4_change_info		cinfo;
+>   	struct nfs_fattr *		dir_attr;
+> +	struct nfs4_label *		dir_label;
+>   	struct nfs4_sequence_res	seq_res;
+>   };
+>
+> @@ -747,6 +764,7 @@ struct nfs4_lookup_res {
+>   	const struct nfs_server *	server;
+>   	struct nfs_fattr *		fattr;
+>   	struct nfs_fh *			fh;
+> +	struct nfs4_label *		label;
+>   	struct nfs4_sequence_res	seq_res;
+>   };
+>
+> @@ -800,6 +818,8 @@ struct nfs4_rename_arg {
+>   	const struct nfs_fh *		new_dir;
+>   	const struct qstr *		old_name;
+>   	const struct qstr *		new_name;
+> +	const struct nfs4_label *	old_label;
+> +	const struct nfs4_label *	new_label;
+>   	const u32 *			bitmask;
+>   	struct nfs4_sequence_args	seq_args;
+>   };
+> @@ -808,8 +828,10 @@ struct nfs4_rename_res {
+>   	const struct nfs_server *	server;
+>   	struct nfs4_change_info		old_cinfo;
+>   	struct nfs_fattr *		old_fattr;
+> +	struct nfs4_label *		old_label;
+>   	struct nfs4_change_info		new_cinfo;
+>   	struct nfs_fattr *		new_fattr;
+> +	struct nfs4_label *		new_label;
+>   	struct nfs4_sequence_res	seq_res;
+>   };
+>
+
