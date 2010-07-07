@@ -1,46 +1,76 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from borg.medozas.de ([188.40.89.202]:51809 "EHLO borg.medozas.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755177Ab0GVKwh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 22 Jul 2010 06:52:37 -0400
-Date: Thu, 22 Jul 2010 12:52:36 +0200 (CEST)
-From: Jan Engelhardt <jengelh@medozas.de>
-To: Christoph Hellwig <hch@infradead.org>
-cc: David Howells <dhowells@redhat.com>, viro@ZenIV.linux.org.uk,
-        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-cifs@vger.kernel.org, linux-kernel@vger.kernel.org,
-        samba-technical@lists.samba.org, linux-ext4@vger.kernel.org,
-        drepper@redhat.com, torvalds@linux-foundation.org
-Subject: Re: [PATCH 02/18] xstat: Add a pair of system calls to make extended
- file stats available [ver #6]
-In-Reply-To: <20100718084824.GA27794@infradead.org>
-Message-ID: <alpine.LSU.2.01.1007221248050.9353@obet.zrqbmnf.qr>
-References: <20100715021709.5544.64506.stgit@warthog.procyon.org.uk> <20100715021712.5544.44845.stgit@warthog.procyon.org.uk> <20100718084824.GA27794@infradead.org>
-Content-Type: TEXT/PLAIN; charset=US-ASCII
+Received: from rcsinet10.oracle.com ([148.87.113.121]:48836 "EHLO
+	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753758Ab0GGRv4 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 7 Jul 2010 13:51:56 -0400
+Message-ID: <4C34BE3A.3050806@oracle.com>
+Date: Wed, 07 Jul 2010 13:49:46 -0400
+From: Chuck Lever <chuck.lever@oracle.com>
+To: "David P. Quigley" <dpquigl@tycho.nsa.gov>
+CC: hch@infradead.org, viro@zeniv.linux.org.uk, casey@schaufler-ca.com,
+        sds@tycho.nsa.gov, matthew.dodd@sparta.com, trond.myklebust@fys.uio.no,
+        bfields@fieldses.org, linux-kernel@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, linux-security-module@vger.kernel.org,
+        selinux@tycho.nsa.gov, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 07/10] NFSv4: Introduce new label structure
+References: <1278513086-23964-1-git-send-email-dpquigl@tycho.nsa.gov>	 <1278513086-23964-8-git-send-email-dpquigl@tycho.nsa.gov>	 <4C34A4F1.3060708@oracle.com> <1278519727.2494.92.camel@moss-terrapins.epoch.ncsc.mil>
+In-Reply-To: <1278519727.2494.92.camel@moss-terrapins.epoch.ncsc.mil>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Sunday 2010-07-18 10:48, Christoph Hellwig wrote:
-
->Adding Uli to the Cc list to make sure this system call is useful
->for glibc / can be exported by it.  Otherwise it's rather pointless
->to add it.
+On 07/ 7/10 12:22 PM, David P. Quigley wrote:
+> Hello Chuck,
+>     Thank you for the comments. I'll go through and address them inline
+> (Sorry for the top post).
 >
->>  (6) BSD stat compatibility: Including more fields from the BSD stat such as
->>      creation time (st_btime) and inode generation number (st_gen) [Jeremy
->>      Allison, Bernd Schubert]
+> On Wed, 2010-07-07 at 12:01 -0400, Chuck Lever wrote:
+>> My comments below apply to the other NFS client patches as well.  This
+>> seemed like the right one to use for code examples.
+>>
+>> On 07/ 7/10 10:31 AM, David P. Quigley wrote:
+
+   [ ... snipped ... ]
+
+>> It seems to me you want something more generic, just like nfs_fh or
+>> nfs_fattr, to represent these.  Over time, I'm guessing label support
+>> won't be tied to a specific NFS version.  And, you are passing these
+>> around in the generic NFS functions (for post-op updates and inode
+>> revalidation, and what not).
+>>
+>> Can I recommend "struct nfs_seclabel" instead?  Then have
+>> nfs_seclabel_alloc() and nfs_seclabel_free().
 >
->How is this different from (1) and (4)?
-
-(4), the inode generation number, need not be related to time.
-
->>  (8) Allow the filesystem to indicate what it can/cannot provide: A filesystem
->>      can now say it doesn't support a standard stat feature if that isn't
->>      available.
+> I can definitely rename them to be more generic. I don't see anything
+> else besides NFSv4 using them but its fine with me to rename them. The
+> reason we call them nfs4_label is because we modeled it after the NFSv4
+> acl support code. I spoke with Christoph a long time ago and he
+> suggested that it should be handled the same way that the NFSv4 ACLs are
+> handled as opposed to the iattr thing we were trying.
 >
->What for?
+>>
+>> Does it make sense to deduplicate these in the client's memory?  It
+>> seems to me that you could have hundreds or thousands that all contain
+>> the same label information.
+>
+> I don't think it is worth the effort. We are only using these structures
+> until the security label is crammed into the inode. Once that happens
+> they get freed. You shouldn't have them sitting around for very long.
 
-Given xstat.otime=0, how would you determine whether the file is really 
-tagged with a date of 1970, or whether it's just the fs which didnot 
-store this kind of information.
+OK, the lifetime of these things wasn't clear.
+
+> They will be pulled again when the inode attributes expire and need to
+> be revalidated. For things like SELinux you could argue that the LSM
+> might benefit from this (and it might already do it but I'm not sure)
+> but I think that is something to be handled by the LSM itself or the
+> credentials code (since it already supports COW credentials it should be
+> possible).
+
+I think the lifetime of the label structure then is about the same as 
+the lifetime of an nfs_attr, and not at all the same as an ACL.  I'm 
+just guessing here.
+
+Would it then make sense to add a field that refers to the security 
+label to struct nfs_fattr instead?  That might simplify or eliminate all 
+of the internal API changes.
