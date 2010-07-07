@@ -1,63 +1,105 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:22495 "EHLO mx1.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:43252 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S966739Ab0GSUur (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 19 Jul 2010 16:50:47 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: bfields@fieldses.org
+	id S1753212Ab0GGWeW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 7 Jul 2010 18:34:22 -0400
+From: andros@netapp.com
+To: bhalevy@panasas.com
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 3/5] nfsd: fix error handling in __write_ports_addxprt
-Date: Mon, 19 Jul 2010 16:50:06 -0400
-Message-Id: <1279572608-7234-4-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1279572608-7234-1-git-send-email-jlayton@redhat.com>
-References: <1279572608-7234-1-git-send-email-jlayton@redhat.com>
+Subject: [PATCH 0/16] pnfs-submit fix layout allocation and reference counting 
+Date: Wed,  7 Jul 2010 18:34:07 -0400
+Message-Id: <1278542063-4009-1-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
 MIME-Version: 1.0
 
-__write_ports_addxprt calls nfsd_create_serv. That increases the
-refcount of nfsd_serv (which is tracked in sv_nrthreads). The service
-only decrements the thread count on error, not on success like
-__write_ports_addfd does, so using this interface leaves the nfsd
-thread count high.
 
-Fix this by having this function call svc_destroy() on error to release
-the reference (and possibly to tear down the service) and simply
-decrement the refcount without tearing down the service on success.
 
-This makes the sv_threads handling work basically the same in both
-__write_ports_addxprt and __write_ports_addfd.
+The current nfs_inode has an embedded pnfs_layout_type structure, with per
+layout type private data allocated. Change nfs_inode->layout to be a pointer
+to a pnfs_layout_type structure, embed the pnfs_layout_type in the per
+layout type structure, and allocate both.
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- fs/nfsd/nfsctl.c |    6 ++++--
- 1 files changed, 4 insertions(+), 2 deletions(-)
+The current pnfs_layout_type allocation waits on a bit lock to handle
+concurrent allocation attempts. Replace this with the normal form.
 
-diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
-index af7469e..9e8645a 100644
---- a/fs/nfsd/nfsctl.c
-+++ b/fs/nfsd/nfsctl.c
-@@ -1018,6 +1018,9 @@ static ssize_t __write_ports_addxprt(char *buf)
- 				PF_INET6, port, SVC_SOCK_ANONYMOUS);
- 	if (err < 0 && err != -EAFNOSUPPORT)
- 		goto out_close;
-+
-+	/* Decrease the count, but don't shut down the service */
-+	nfsd_serv->sv_nrthreads--;
- 	return 0;
- out_close:
- 	xprt = svc_find_xprt(nfsd_serv, transport, PF_INET, port);
-@@ -1026,8 +1029,7 @@ out_close:
- 		svc_xprt_put(xprt);
- 	}
- out_err:
--	/* Decrease the count, but don't shut down the service */
--	nfsd_serv->sv_nrthreads--;
-+	svc_destroy(nfsd_serv);
- 	return err;
- }
- 
--- 
-1.5.5.6
+The current pnfs_layout_type reference counting is very un-clear, and one
+instance of put_layout was called outside the i_lock which probably was
+causing the intermittant pnfs_layout_type refcount bug we've been seeing.
+
+Replace the nfs_inode->layout reference counting with the following scheme:
+
+As in the current code, the pnfs_layout_type reference counting is always done
+with the inode->i_lock held.
+
+The nfs_inode->layout comes into existence when the first layout_segment is
+cached and stays until inode is destroyed.
+
+1) alloc nfs_inode->layout:
+        - Initialized to 1. This holds it around for the clp->cl_layouts
+        (layout->lo_layouts) list.
+
+2) Each layoutget
+   layoutget    GET
+   layoutget release PUT
+
+3) insert lseg into nfs_inode->layout->segs GET
+   remove lseg from nfs_inode->layout->segs  PUT
+
+I/O - no reference (except the lseg is used and referenced in 3)
+
+4) Each layoutcommit references the layout which keeps it around while in use
+   by the call which could race with layoutreturn
+
+   layoutcommit GET
+   layoutcommit release PUT
+
+5) Each layoutreturn references the layout which keeps it around while in use
+   by the call.
+
+   layoutreturn  GET
+   layoutreturn release  PUT
+
+6) inode destruction (usually umount)
+
+   Destroy_layout PUT to balance initial allocation where it is set to 1.
+
+When the reference moves from 1->0 the layout is removed from the nfs_client
+cl_layouts list and freed.
+
+
+Change nfs_inode->layout to be a pointer to a pnfs_layout_type strucure.
+
+0001-SQUASHME-pnfs-submit-add-state-flag-for-layoutcommit.patch
+0002-SQUASHME-pnfs-submit-move-pnfs_layout_suspend-back-t.patch
+0003-SQUASHME-pnfs-submit-embed-pnfs_layout_type.patch
+0004-SQUASHME-pnfs-submit-filelayout-use-new-alloc-free_l.patch
+
+Rewrite the pnfs_layout_type allocation and reference counting
+
+0005-SQUASHME-pnfs-submit-rewrite-layout-allocation.patch
+0006-SQUASHME-pnfs-submit-fix-pnfs_update_layout-referenc.patch
+0007-SQUASHME-pnfs_submit-don-t-get-a-reference-on-bounda.patch
+0008-SQUASHME-pnfs-submit-don-t-reference-the-layout-in-i.patch
+0009-SQUASHME-pnfs-submit-pnfs_update_layout-always-refer.patch
+0010-SQUASHME-pnfs-submit-reference-the-layout-when-inser.patch
+0011-SQUASHME-pnfs-submit-rename-put_layout-to-put_layout.patch
+0012-SQUASHME-pnfs-submit-reference-layout-across-layoutc.patch
+0013-SQUASHME-pnfs-submit-reference-layout-for-layoutretu.patch
+0014-SQUASHME-pnfs-submit-remove-put_layout-from-pnfs_fre.patch
+0015-SQUASHME-pnfs-submit-do-not-reference-a-layout-in-de.patch
+0016-SQUASHME-pnfs-submit-remove-grab_current_layout.patch
+
+Testing;
+
+CONFIG_NFS_V4_1 set:
+Connectathon tests pass against GFS2/pNFS and pyNFS file layout server. Tested
+with layout return-on-close off and on.
+
+CONFIG_NFS_V4_1 not set;
+NFSv4.0 mount passes Connectation tests.
+
+-->Andy
+
 
