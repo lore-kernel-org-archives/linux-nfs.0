@@ -1,94 +1,105 @@
 From: andros@netapp.com
-Subject: [PATCH 02/16] SQUASHME: pnfs-submit: move pnfs_layout_suspend back to nfs_inode
-Date: Wed,  7 Jul 2010 18:34:09 -0400
-Message-ID: <1278542063-4009-3-git-send-email-andros@netapp.com>
+Subject: [PATCH 04/16] SQUASHME pnfs-submit: filelayout: use new alloc/free_layout API
+Date: Wed,  7 Jul 2010 18:34:11 -0400
+Message-ID: <1278542063-4009-5-git-send-email-andros@netapp.com>
 References: <1278542063-4009-1-git-send-email-andros@netapp.com>
  <1278542063-4009-2-git-send-email-andros@netapp.com>
-Cc: linux-nfs@vger.kernel.org, Fred Isaman <iisaman@netapp.com>
+ <1278542063-4009-3-git-send-email-andros@netapp.com>
+ <1278542063-4009-4-git-send-email-andros@netapp.com>
+Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
 To: bhalevy@panasas.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
 Received: from mx2.netapp.com ([216.240.18.37]:43252 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754820Ab0GGWeX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 7 Jul 2010 18:34:23 -0400
-In-Reply-To: <1278542063-4009-2-git-send-email-andros@netapp.com>
+	id S1755675Ab0GGWeZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 7 Jul 2010 18:34:25 -0400
+In-Reply-To: <1278542063-4009-4-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Fred Isaman <iisaman@netapp.com>
+From: Andy Adamson <andros@netapp.com>
 
-Prepare to embed struct pnfs_layout_tupe into layout driver private structs
-and to make layout a pointer. Since a temp error on first LAYOUTGET
-erases the layout, the suspend timer needs to be moved.
-
-Signed-off-by: Fred Isaman <iisaman@netapp.com>
+Signed-off-by: Andy Adamson <andros@netapp.com>
 ---
- fs/nfs/inode.c         |    1 +
- fs/nfs/pnfs.c          |    8 ++++----
- include/linux/nfs_fs.h |    2 +-
- 3 files changed, 6 insertions(+), 5 deletions(-)
+ fs/nfs/nfs4filelayout.c |   15 +++++++++------
+ fs/nfs/nfs4filelayout.h |    7 +++++++
+ 2 files changed, 16 insertions(+), 6 deletions(-)
 
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index 229cdab..3d51602 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -1396,6 +1396,7 @@ static inline void nfs4_init_once(struct nfs_inode *nfsi)
- 	init_rwsem(&nfsi->rwsem);
- #ifdef CONFIG_NFS_V4_1
- 	init_waitqueue_head(&nfsi->lo_waitq);
-+	nfsi->pnfs_layout_suspend = 0;
- 	seqlock_init(&nfsi->layout.seqlock);
- 	INIT_LIST_HEAD(&nfsi->layout.lo_layouts);
- 	INIT_LIST_HEAD(&nfsi->layout.segs);
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 5d472c6..53c15b1 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -1114,12 +1114,12 @@ _pnfs_update_layout(struct inode *ino,
+diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+index 57a0010..b49ccf4 100644
+--- a/fs/nfs/nfs4filelayout.c
++++ b/fs/nfs/nfs4filelayout.c
+@@ -301,20 +301,23 @@ filelayout_write_pagelist(struct pnfs_layout_type *layoutid,
+  * will use the pnfs_layout_type type to refer to the layout for this
+  * inode from now on.
+  */
+-static void *
++static struct pnfs_layout_type *
+ filelayout_alloc_layout(struct inode *inode)
+ {
++	struct nfs4_filelayout *flp;
++
+ 	dprintk("NFS_FILELAYOUT: allocating layout\n");
+-	return kzalloc(sizeof(struct nfs4_filelayout), GFP_KERNEL);
++	flp =  kzalloc(sizeof(struct nfs4_filelayout), GFP_KERNEL);
++	return flp ? &flp->fl_layout : NULL;
+ }
  
- 	/* if get layout already failed once goto out */
- 	if (test_bit(lo_fail_bit(iomode), &nfsi->layout.pnfs_layout_state)) {
--		if (unlikely(nfsi->layout.pnfs_layout_suspend &&
--		    get_seconds() >= nfsi->layout.pnfs_layout_suspend)) {
-+		if (unlikely(nfsi->pnfs_layout_suspend &&
-+		    get_seconds() >= nfsi->pnfs_layout_suspend)) {
- 			dprintk("%s: layout_get resumed\n", __func__);
- 			clear_bit(lo_fail_bit(iomode),
- 				  &nfsi->layout.pnfs_layout_state);
--			nfsi->layout.pnfs_layout_suspend = 0;
-+			nfsi->pnfs_layout_suspend = 0;
- 		} else
- 			goto out_put;
- 	}
-@@ -1233,7 +1233,7 @@ pnfs_get_layout_done(struct nfs4_pnfs_layoutget *lgp, int rpc_status)
- 	}
+ /* Free a filelayout layout structure
+  */
+ static void
+-filelayout_free_layout(void *layoutid)
++filelayout_free_layout(struct pnfs_layout_type *lo)
+ {
+ 	dprintk("NFS_FILELAYOUT: freeing layout\n");
+-	kfree(layoutid);
++	kfree(lo);
+ }
  
- 	/* remember that get layout failed and suspend trying */
--	nfsi->layout.pnfs_layout_suspend = suspend;
-+	nfsi->pnfs_layout_suspend = suspend;
- 	set_bit(lo_fail_bit(lgp->args.lseg.iomode),
- 		&nfsi->layout.pnfs_layout_state);
- 	dprintk("%s: layout_get suspended until %ld\n",
-diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
-index 3394d1e..b612746 100644
---- a/include/linux/nfs_fs.h
-+++ b/include/linux/nfs_fs.h
-@@ -110,7 +110,6 @@ struct pnfs_layout_type {
- 	#define NFS_INO_RW_LAYOUT_FAILED 1      /* get rw layout failed stop trying */
- 	#define NFS_INO_LAYOUT_ALLOC     2      /* bit lock for layout allocation */
- 	#define NFS_INO_LAYOUTCOMMIT     3      /* LAYOUTCOMMIT needed */
--	time_t pnfs_layout_suspend;
- 	struct rpc_cred         *lo_cred; /* layoutcommit credential */
- 	/* DH: These vars keep track of the maximum write range
- 	 * so the values can be used for layoutcommit.
-@@ -208,6 +207,7 @@ struct nfs_inode {
- #if defined(CONFIG_NFS_V4_1)
- 	wait_queue_head_t lo_waitq;
- 	struct pnfs_layout_type layout;
-+	time_t pnfs_layout_suspend;
- #endif /* CONFIG_NFS_V4_1 */
- #endif /* CONFIG_NFS_V4*/
- #ifdef CONFIG_NFS_FSCACHE
+ /*
+@@ -471,7 +474,7 @@ static struct pnfs_layout_segment *
+ filelayout_alloc_lseg(struct pnfs_layout_type *layoutid,
+ 		      struct nfs4_pnfs_layoutget_res *lgr)
+ {
+-	struct nfs4_filelayout *flo = PNFS_LD_DATA(layoutid);
++	struct nfs4_filelayout *flo = FILE_LO(layoutid);
+ 	struct pnfs_layout_segment *lseg;
+ 	int rc;
+ 
+@@ -693,7 +696,7 @@ filelayout_commit(struct pnfs_layout_type *layoutid, int sync,
+ ssize_t
+ filelayout_get_stripesize(struct pnfs_layout_type *layoutid)
+ {
+-	struct nfs4_filelayout *flo = PNFS_LD_DATA(layoutid);
++	struct nfs4_filelayout *flo = FILE_LO(layoutid);
+ 
+ 	return flo->stripe_unit;
+ }
+diff --git a/fs/nfs/nfs4filelayout.h b/fs/nfs/nfs4filelayout.h
+index de8391f..fd25e76 100644
+--- a/fs/nfs/nfs4filelayout.h
++++ b/fs/nfs/nfs4filelayout.h
+@@ -68,6 +68,7 @@ struct nfs4_filelayout_segment {
+ };
+ 
+ struct nfs4_filelayout {
++	struct pnfs_layout_type fl_layout;
+ 	int uncommitted_write;
+ 	loff_t last_commit_size;
+ 	u64 layout_id;
+@@ -77,6 +78,12 @@ struct nfs4_filelayout {
+ extern struct nfs_fh *
+ nfs4_fl_select_ds_fh(struct pnfs_layout_segment *lseg, loff_t offset);
+ 
++static inline struct nfs4_filelayout *
++FILE_LO(struct pnfs_layout_type *lo)
++{
++	return container_of(lo, struct nfs4_filelayout, fl_layout);
++}
++
+ extern struct pnfs_client_operations *pnfs_callback_ops;
+ 
+ extern void nfs4_fl_free_deviceid_callback(struct kref *);
 -- 
 1.6.6
 
