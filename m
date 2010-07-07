@@ -1,142 +1,99 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:46014 "EHLO
-	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1755554Ab0GGNwC (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 7 Jul 2010 09:52:02 -0400
-Message-ID: <4C348679.6010507@panasas.com>
-Date: Wed, 07 Jul 2010 16:51:53 +0300
-From: Benny Halevy <bhalevy@panasas.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-CC: linux-nfs@vger.kernel.org, NFSv4 <nfsv4@ietf.org>, andros@netapp.com,
-        Garth Gibson <garth@panasas.com>, Brent Welch <welch@panasas.com>
-Subject: Re: [nfsv4] 4.1 client - LAYOUTCOMMIT & close
-References: <A062FCC8662DA848949F7C3046B9BEAE01F3A6ED@us-email.terastack.bluearc.com>	<A062FCC8662DA848949F7C3046B9BEAE01F3A6EE@us-email.terastack.bluearc.com>	<6206CE0E-0A32-46A7-B648-3FCC12ED1961@netapp.com>	<B9A709F368FAAF4DB4B33870F72A141DFB88F3@CORPUSMX30A.corp.emc.com>	<0E2B1FE3-3B42-4BF2-BECE-A611DADF3983@netapp.com>	<B9A709F368FAAF4DB4B33870F72A141D01017F94@CORPUSMX30A.corp.emc.com>	<1278448834.16176.5.camel@heimdal.trondhjem.org>	<4C346D80.8010405@panasas.com>	<1278507985.2804.30.camel@heimdal.trondhjem.org> <1278508696.2804.35.camel@heimdal.trondhjem.org>
-In-Reply-To: <1278508696.2804.35.camel@heimdal.trondhjem.org>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from fieldses.org ([174.143.236.118]:36385 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755980Ab0GGTYl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 7 Jul 2010 15:24:41 -0400
+Date: Wed, 7 Jul 2010 15:24:31 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: "David P. Quigley" <dpquigl@tycho.nsa.gov>
+Cc: hch@infradead.org, viro@zeniv.linux.org.uk, casey@schaufler-ca.com,
+        sds@tycho.nsa.gov, matthew.dodd@sparta.com, trond.myklebust@fys.uio.no,
+        linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-security-module@vger.kernel.org, selinux@tycho.nsa.gov,
+        linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 10/10] NFSD: Server implementation of MAC Labeling
+Message-ID: <20100707192431.GK28815@fieldses.org>
+References: <1278513086-23964-1-git-send-email-dpquigl@tycho.nsa.gov>
+ <1278513086-23964-11-git-send-email-dpquigl@tycho.nsa.gov>
+ <20100707172100.GE28815@fieldses.org>
+ <1278525801.2494.162.camel@moss-terrapins.epoch.ncsc.mil>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1278525801.2494.162.camel@moss-terrapins.epoch.ncsc.mil>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Jul. 07, 2010, 16:18 +0300, Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
-> On Wed, 2010-07-07 at 09:06 -0400, Trond Myklebust wrote:
->> On Wed, 2010-07-07 at 15:05 +0300, Benny Halevy wrote:
->>> On Jul. 06, 2010, 23:40 +0300, Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
->>>> On Tue, 2010-07-06 at 15:20 -0400, Daniel.Muntz@emc.com wrote: 
->>>>> The COMMIT to the DS, ttbomk, commits data on the DS.  I see it as
->>>>> orthogonal to updating the metadata on the MDS (but perhaps I'm wrong).
->>>>> As sjoshi@bluearc mentioned, the LAYOUTCOMMIT provides a synchronization
->>>>> point, so even if the non-clustered server does not want to update
->>>>> metadata on every DS I/O, the LAYOUTCOMMIT could also be a trigger to
->>>>> execute whatever synchronization mechanism the implementer wishes to put
->>>>> in the control protocol.
->>>>
->>>> As far as I'm aware, there are no exceptions in RFC5661 that would allow
->>>> pNFS servers to break the rule that any visible change to the data must
->>>> be atomically accompanied with a change attribute update.
->>>>
->>>
->>> Trond, I'm not sure how this rule you mentioned is specified.
->>>
->>> See more in section 12.5.4 and 12.5.4.1. LAYOUTCOMMIT and change/time_modify
->>> in particular:
->>>
->>>    For some layout protocols, the storage device is able to notify the
->>>    metadata server of the occurrence of an I/O; as a result, the change
->>>    and time_modify attributes may be updated at the metadata server.
->>>    For a metadata server that is capable of monitoring updates to the
->>>    change and time_modify attributes, LAYOUTCOMMIT processing is not
->>>    required to update the change attribute.  In this case, the metadata
->>>    server must ensure that no further update to the data has occurred
->>>    since the last update of the attributes; file-based protocols may
->>>    have enough information to make this determination or may update the
->>>    change attribute upon each file modification.  This also applies for
->>>    the time_modify attribute.  If the server implementation is able to
->>>    determine that the file has not been modified since the last
->>>    time_modify update, the server need not update time_modify at
->>>    LAYOUTCOMMIT.  At LAYOUTCOMMIT completion, the updated attributes
->>>    should be visible if that file was modified since the latest previous
->>>    LAYOUTCOMMIT or LAYOUTGET
->>
->> I know. However the above paragraph does not state that the server
->> should make those changes visible to clients other than the one that is
->> writing.
->>
->> Section 18.32.4 states that writes will cause the time_modified and
->> change attributes to be updated (if and only if the file data is
->> modified). Several other sections rely on this behaviour, including
->> section 10.3.1, section 11.7.2.2, and section 11.7.7.
->>
->> The only 'special behaviour' that I see allowed for pNFS is in section
->> 13.10, which states that clients can't expect to see changes
->> immediately, but that they must be able to expect close-to-open
->> semantics to work. Again, if this is to be the case, then the server
->> _must_ be able to deal with the case where client 1 dies before it can
->> issue the LAYOUTCOMMIT.
-
-Agreed.
-
->>
->>
->>>> As I see it, if your server allows one client to read data that may have
->>>> been modified by another client that holds a WRITE layout for that range
->>>> then (since that is a visible data change) it should provide a change
->>>> attribute update irrespective of whether or not a LAYOUTCOMMIT has been
->>>> sent.
->>>
->>> the requirement for the server in WRITE's implementation section 
->>> is quite weak: "It is assumed that the act of writing data to a file will
->>> cause the time_modified and change attributes of the file to be updated."
->>>
->>> The difference here is that for pNFS the written data is not guaranteed
->>> to be visible until LAYOUTCOMMIT.  In a broader sense, assuming the clients
->>> are caching dirty data and use a write-behind cache, application-written data
->>> may be visible to other processes on the same host but not to others until
->>> fsync() or close() - open-to-close semantics are the only thing the client
->>> guarantees, right?  Issuing LAYOUTCOMMIT on fsync() and close() ensure the
->>> data is committed to stable storage and is visible to all other clients in
->>> the cluster.
->>
->> See above. I'm not disputing your statement that 'the written data is
->> not guaranteed to be visible until LAYOUTCOMMIT'. I am disputing an
->> assumption that 'the written data may be visible without an accompanying
->> change attribute update'.
+On Wed, Jul 07, 2010 at 02:03:21PM -0400, David P. Quigley wrote:
+> Comments inline
 > 
+> On Wed, 2010-07-07 at 13:21 -0400, J. Bruce Fields wrote:
+> > On Wed, Jul 07, 2010 at 10:31:26AM -0400, David P. Quigley wrote:
+> > > This patch adds the ability to encode and decode file labels on the server for
+> > >  static __be32
+> > >  nfsd4_decode_fattr(struct nfsd4_compoundargs *argp, u32 *bmval,
+> > > -		   struct iattr *iattr, struct nfs4_acl **acl)
+> > > +		   struct iattr *iattr, struct nfs4_acl **acl,
+> > > +		   struct nfs4_label **label)
+> > 
+> > As we add more arguments, I wonder if at some point it becomes worth
+> > creating something like
+> > 
+> > 	struct nfsd4_attrs {
+> > 		struct iattr iattr;
+> > 		struct nfs4_acl *acl;
+> > 		...
+> > 	}
+> > 
+> > and passing that instead?
 > 
-> In other words, I'd expect the following scenario to give the same
-> results in NFSv4.1 w/pNFS as it does in NFSv4:
+> I can definitely submit something like that as a stand alone patch and
+> then add our nfs4_label stuff to that instead.
 
-That's a strong requirement that may limit the scalability of the server.
+Not a big deal, but welcome if such a thing looks more generally useful
+(say, if the same arguments are passed elsewhere).
 
-The spirit of the pNFS operations, at least from Panasas perspective was that
-the data is transient until LAYOUTCOMMIT, meaning it may or may not be visible
-to clients other than the one who wrote it, and its associated metadata MUST
-be updated and describe the new data only on LAYOUTCOMMIT and until then it's
-undefined, i.e. it's up to the server implementation whether to update it or not.
+> > > +#ifdef CONFIG_NFSD_V4_SECURITY_LABEL
+> > > +	if (bmval[1] & FATTR4_WORD1_SECURITY_LABEL) {
+> > > +		uint32_t lfs;
+> > > +
+> > > +		READ_BUF(4);
+> > > +		len += 4;
+> > > +		READ32(lfs);
+> > > +		READ_BUF(4);
+> > > +		len += 4;
+> > > +		READ32(dummy32);
+> > > +		READ_BUF(dummy32);
+> > > +		len += (XDR_QUADLEN(dummy32) << 2);
+> > > +		READMEM(buf, dummy32);
+> > > +
+> > > +		if (dummy32 > NFS4_MAXLABELLEN)
+> > > +			return nfserr_resource;
+> > > +
+> > > +		*label = kzalloc(sizeof(struct nfs4_label), GFP_KERNEL);
+> > 
+> > Could we allocate this some toher way (it's small, right?) and avoid the
+> > extra dynamic allocation here, just for simplicity's sake?
+> 
+> How would you suggest going about doing that?
 
-Without locking, what do the stronger semantics buy you?
-Even if a client verified the change_attribute new data may become visible
-at any time after the GETATTR if the file/byte range aren't locked.
-
-Benny
+Maybe make op_label, cr_label, etc., a struct nfs4_label instead of a
+struct nfs4_label *?
 
 > 
-> Client 1			Client 2
-> ========			========
+> > 
+> > > +		if (*label == NULL) {
+> > > +			host_err = -ENOMEM;
+> > > +			goto out_nfserr;
+> > > +		}
+> > > +
+> > > +		(*label)->label = kmalloc(dummy32 + 1, GFP_KERNEL);
+> > 
+> > Might be nice to arrange NFS4_MAXLABELLEN to ensure this is never a
+> > higher-order allocation.
 > 
-> OPEN foo
-> READ
-> CLOSE
-> 				OPEN
-> 				LAYOUTGET ...
-> 				WRITE via DS
-> 				<dies>...
-> OPEN foo
-> verify change_attr
-> READ if above WRITE is visible
-> CLOSE
-> 
-> Trond
-> _______________________________________________
-> nfsv4 mailing list
-> nfsv4@ietf.org
-> https://www.ietf.org/mailman/listinfo/nfsv4
+> This should never be more than 4096. Under what circumstances would this
+> become a higher-order allocation?
+
+Can't dummy32+1 be 4097?
+
+--b.
