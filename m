@@ -1,89 +1,146 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: Linux pNFS status meeting 07/08
-Date: Thu, 8 Jul 2010 13:45:58 -0400
-Message-ID: <20100708174558.GE19375@fieldses.org>
-References: <OF60B406A7.E52268C8-ON8825775A.000C6BD9-8825775A.000C8A46@us.ibm.com>
- <20100708154802.GB19375@fieldses.org>
- <op.vfi7ssfcunckof@usensfaibisl2e.eng.emc.com>
- <20100708160637.GC19375@fieldses.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Marc Eshel <eshel@almaden.ibm.com>, linux-nfs@vger.kernel.org
-To: sfaibish <sfaibish@emc.com>
+From: Fred Isaman <iisaman@netapp.com>
+Subject: [PATCH 1/4] pnfs-submit: Rely on full-file layout assumption to clean out some code
+Date: Thu,  8 Jul 2010 15:25:19 -0400
+Message-ID: <1278617122-24164-2-git-send-email-iisaman@netapp.com>
+References: <1278617122-24164-1-git-send-email-iisaman@netapp.com>
+To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:40824 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:22871 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756709Ab0GHRqH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 8 Jul 2010 13:46:07 -0400
-In-Reply-To: <20100708160637.GC19375@fieldses.org>
+	id S1758513Ab0GHTZ0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 8 Jul 2010 15:25:26 -0400
+Received: from localhost.localdomain (khang-lxp.hq.netapp.com [10.58.60.105] (may be forged))
+	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id o68JPOdL010802
+	for <linux-nfs@vger.kernel.org>; Thu, 8 Jul 2010 12:25:25 -0700 (PDT)
+In-Reply-To: <1278617122-24164-1-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Also I'd like to hand off running and taking notes on this meeting to
-someone else for a while.  (Benny, maybe?)  Or we can go back to making
-the meeting more informal if that's preferred.
+Note that even assuming full file layout, there can still be two lsegs,
+one for each iomode.
 
---b.
+Signed-off-by: Fred Isaman <iisaman@netapp.com>
+---
+ fs/nfs/pnfs.c |   85 +-------------------------------------------------------
+ 1 files changed, 2 insertions(+), 83 deletions(-)
 
-1. upstream status/merge plans (trond, bfields)
-	- upstream at 2.6.35-rc4.
-	- server side: some bugfixes merged to callback code; allocation
-	  failures changed to return DELAY.
-	- discussion of error return on client callback-parsing error.
-	- trond: everything from before bakeathon is in nfs-2.6.36
-	  branch or upstream.  Also some file locking bugfixes
-	  (bugzilla.kernel.org #14501).  Also sending release_lockowner
-	  more often to keep server resources down.
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index baa3de7..5b0c4ec 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -444,65 +444,6 @@ put_lseg(struct pnfs_layout_segment *lseg)
+ }
+ EXPORT_SYMBOL(put_lseg);
+ 
+-static inline u64
+-end_offset(u64 start, u64 len)
+-{
+-	u64 end;
+-
+-	end = start + len;
+-	return end >= start ? end: NFS4_MAX_UINT64;
+-}
+-
+-/* last octet in a range */
+-static inline u64
+-last_byte_offset(u64 start, u64 len)
+-{
+-	u64 end;
+-
+-	BUG_ON(!len);
+-	end = start + len;
+-	return end > start ? end - 1: NFS4_MAX_UINT64;
+-}
+-
+-/*
+- * is l2 fully contained in l1?
+- *   start1                             end1
+- *   [----------------------------------)
+- *           start2           end2
+- *           [----------------)
+- */
+-static inline int
+-lo_seg_contained(struct nfs4_pnfs_layout_segment *l1,
+-		 struct nfs4_pnfs_layout_segment *l2)
+-{
+-	u64 start1 = l1->offset;
+-	u64 end1 = end_offset(start1, l1->length);
+-	u64 start2 = l2->offset;
+-	u64 end2 = end_offset(start2, l2->length);
+-
+-	return (start1 <= start2) && (end1 >= end2);
+-}
+-
+-/*
+- * is l1 and l2 intersecting?
+- *   start1                             end1
+- *   [----------------------------------)
+- *                              start2           end2
+- *                              [----------------)
+- */
+-static inline int
+-lo_seg_intersecting(struct nfs4_pnfs_layout_segment *l1,
+-		    struct nfs4_pnfs_layout_segment *l2)
+-{
+-	u64 start1 = l1->offset;
+-	u64 end1 = end_offset(start1, l1->length);
+-	u64 start2 = l2->offset;
+-	u64 end2 = end_offset(start2, l2->length);
+-
+-	return (end1 == NFS4_MAX_UINT64 || end1 > start2) &&
+-	       (end2 == NFS4_MAX_UINT64 || end2 > start1);
+-}
+-
+ void
+ pnfs_set_layout_stateid(struct pnfs_layout_type *lo,
+ 			const nfs4_stateid *stateid)
+@@ -616,8 +557,7 @@ should_free_lseg(struct pnfs_layout_segment *lseg,
+ 		   struct nfs4_pnfs_layout_segment *range)
+ {
+ 	return (range->iomode == IOMODE_ANY ||
+-		lseg->range.iomode == range->iomode) &&
+-	       lo_seg_intersecting(&lseg->range, range);
++		lseg->range.iomode == range->iomode);
+ }
+ 
+ static struct pnfs_layout_segment *
+@@ -832,18 +772,6 @@ static inline s64
+ cmp_layout(struct nfs4_pnfs_layout_segment *l1,
+ 	   struct nfs4_pnfs_layout_segment *l2)
+ {
+-	s64 d;
+-
+-	/* higher offset > lower offset */
+-	d = l1->offset - l2->offset;
+-	if (d)
+-		return d;
+-
+-	/* longer length > shorter length */
+-	d = l1->length - l2->length;
+-	if (d)
+-		return d;
+-
+ 	/* read > read/write */
+ 	return (int)(l1->iomode == IOMODE_READ) -
+ 	       (int)(l2->iomode == IOMODE_READ);
+@@ -1004,16 +932,7 @@ static inline int
+ has_matching_lseg(struct pnfs_layout_segment *lseg,
+ 		  struct nfs4_pnfs_layout_segment *range)
+ {
+-	struct nfs4_pnfs_layout_segment range1;
+-
+-	if ((range->iomode == IOMODE_RW && lseg->range.iomode != IOMODE_RW) ||
+-	    !lo_seg_intersecting(&lseg->range, range))
+-		return 0;
+-
+-	/* range1 covers only the first byte in the range */
+-	range1 = *range;
+-	range1.length = 1;
+-	return lo_seg_contained(&lseg->range, &range1);
++	return (range->iomode != IOMODE_RW || lseg->range.iomode == IOMODE_RW);
+ }
+ 
+ /*
+-- 
+1.6.6.1
 
-2. State of pNFS tree (bhalevy)
-	- working on patches from boaz and andy for release branch.
-	  Anyone else have big pending patchsets?
-		- Jim is getting complex-volume block patches tested,
-		  will send them out soon.
-		- Fred has some pending stuff ("minor cleanup")
-	- next week would like to start cleaning up and squashing
-	  together patches.  Also will truncate some of the history.
-
-3. Client
-	3.1. Client pNFS status
-		- Andy needs to look at state reclaim stuff?
-		- Andy still wondering what to do with the nfs inode
-		  layout pointer.  What's the lifetime of the thing that
-		  points to?
-	3.2. Client state management design documentation (trond)
-		- Also, on docs: Andy will check that wiki docs are
-		  uptodate.  And will do some more documentation of
-		  refcnts, as will Fred.
-
-4. Server
-	4.1. Todo's for minimal 4.1 server (bfields)
-		- still working on callback changes.  Trond notes
-		  ongoing rpc code improvements may allow us to do much
-		  of this by keeping a single client and modifying its
-		  transports, in which case I may be able to replace my
-		  callbacks with single rpc tasks.
-		- also fixing 4.0/4.1 bug that prevents exclusive locks
-		  on upgraded open.
-	4.2. pnfs
-		- pnfs/gfs2
-			- I'll ask Eric for a report on gfs2 bakeathon
-			  testing.
-		- exofs
-			- I'll ask Brian about citi exofs setup status.
-
-5. boston bakeathon
-	- October 4-8.
-	- Details are finalized, to be posted soon.
-	- If your company will be bringing large equipment, let Sorin
-	  know.
-	- If anyone would be interested in sponsoring a reception or
-	  other addition to the bakeathon, contact Sorin.  (Or if you
-	  know who at your company would handle such a thing, let Sorin
-	  know.)
-
-6. new business
-	- Sorin asked Trond for summary of layout-commit discussion.
-	  Discussion ensued.
-
-7. next meeting
-	- next week as usual.
