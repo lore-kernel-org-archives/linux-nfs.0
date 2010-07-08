@@ -1,73 +1,102 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:5920 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755449Ab0GVR7M (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 22 Jul 2010 13:59:12 -0400
-From: David Howells <dhowells@redhat.com>
-Subject: [PATCH 5/6] Remove the automount through follow_link() kludge code
-	from pathwalk
-To: viro@ZenIV.linux.org.uk
-Cc: linux-fsdevel@vger.kernel.org, linux-afs@lists.infradead.org,
-        linux-nfs@vger.kernel.org, linux-cifs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, David Howells <dhowells@redhat.com>
-Date: Thu, 22 Jul 2010 18:59:08 +0100
-Message-ID: <20100722175907.5552.34758.stgit@warthog.procyon.org.uk>
-In-Reply-To: <20100722175847.5552.11520.stgit@warthog.procyon.org.uk>
-References: <20100722175847.5552.11520.stgit@warthog.procyon.org.uk>
-Content-Type: text/plain; charset="utf-8"
+Received: from msux-gh1-uea01.nsa.gov ([63.239.65.39]:48214 "EHLO
+	msux-gh1-uea01.nsa.gov" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755840Ab0GHMvv (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 8 Jul 2010 08:51:51 -0400
+Subject: Re: [PATCH 01/10] Security: Add hook to calculate context based on
+ a negative dentry.
+From: Stephen Smalley <sds@tycho.nsa.gov>
+To: "David P. Quigley" <dpquigl@tycho.nsa.gov>
+Cc: hch@infradead.org, viro@zeniv.linux.org.uk, casey@schaufler-ca.com,
+        matthew.dodd@sparta.com, trond.myklebust@fys.uio.no,
+        bfields@fieldses.org, linux-kernel@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, linux-security-module@vger.kernel.org,
+        selinux@tycho.nsa.gov, linux-nfs@vger.kernel.org
+In-Reply-To: <1278513086-23964-2-git-send-email-dpquigl@tycho.nsa.gov>
+References: <1278513086-23964-1-git-send-email-dpquigl@tycho.nsa.gov>
+	 <1278513086-23964-2-git-send-email-dpquigl@tycho.nsa.gov>
+Content-Type: text/plain; charset="UTF-8"
+Date: Thu, 08 Jul 2010 08:51:33 -0400
+Message-ID: <1278593493.14920.12.camel@moss-pluto.epoch.ncsc.mil>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Remove the automount through follow_link() kludge code from pathwalk in favour
-of using d_automount().
+On Wed, 2010-07-07 at 10:31 -0400, David P. Quigley wrote:
+> There is a time where we need to calculate a context without the
+> inode having been created yet. To do this we take the negative dentry and
+> calculate a context based on the process and the parent directory contexts.
+> 
+> Signed-off-by: Matthew N. Dodd <Matthew.Dodd@sparta.com>
+> Signed-off-by: David P. Quigley <dpquigl@tycho.nsa.gov>
+> ---
+>  include/linux/security.h |   22 ++++++++++++++++++++++
+>  security/capability.c    |    6 ++++++
+>  security/security.c      |    7 +++++++
+>  security/selinux/hooks.c |   32 ++++++++++++++++++++++++++++++++
+>  4 files changed, 67 insertions(+), 0 deletions(-)
+> 
 
-Signed-off-by: David Howells <dhowells@redhat.com>
----
+> diff --git a/security/selinux/hooks.c b/security/selinux/hooks.c
+> index 5feecb4..435c51f 100644
+> --- a/security/selinux/hooks.c
+> +++ b/security/selinux/hooks.c
+> @@ -2577,6 +2577,37 @@ static void selinux_inode_free_security(struct inode *inode)
+>  	inode_free_security(inode);
+>  }
+>  
+> +static int selinux_dentry_init_security(struct dentry *dentry, int mode, void **ctx, u32 *ctxlen)
+> +{
+> +	struct cred *cred = current_cred();
+> +	struct task_security_struct *tsec;
+> +	struct inode_security_struct *dsec;
+> +	struct superblock_security_struct *sbsec;
+> +	struct inode *dir = dentry->d_parent->d_inode;
 
- fs/namei.c |   17 +++--------------
- 1 files changed, 3 insertions(+), 14 deletions(-)
+Locking?
 
-diff --git a/fs/namei.c b/fs/namei.c
-index fcec3c6..86068a2 100644
---- a/fs/namei.c
-+++ b/fs/namei.c
-@@ -845,17 +845,6 @@ fail:
- }
- 
- /*
-- * This is a temporary kludge to deal with "automount" symlinks; proper
-- * solution is to trigger them on follow_mount(), so that do_lookup()
-- * would DTRT.  To be killed before 2.6.34-final.
-- */
--static inline int follow_on_final(struct inode *inode, unsigned lookup_flags)
--{
--	return inode && unlikely(inode->i_op->follow_link) &&
--		((lookup_flags & LOOKUP_FOLLOW) || S_ISDIR(inode->i_mode));
--}
--
--/*
-  * Name resolution.
-  * This is the basic name resolution function, turning a pathname into
-  * the final dentry. We expect 'base' to be positive and a directory.
-@@ -975,7 +964,8 @@ last_component:
- 		if (err)
- 			break;
- 		inode = next.dentry->d_inode;
--		if (follow_on_final(inode, lookup_flags)) {
-+		if (inode && unlikely(inode->i_op->follow_link) &&
-+		    (lookup_flags & LOOKUP_FOLLOW)) {
- 			err = do_follow_link(&next, nd);
- 			if (err)
- 				goto return_err;
-@@ -1888,8 +1878,7 @@ reval:
- 		struct inode *inode = path.dentry->d_inode;
- 		void *cookie;
- 		error = -ELOOP;
--		/* S_ISDIR part is a temporary automount kludge */
--		if (!(nd.flags & LOOKUP_FOLLOW) && !S_ISDIR(inode->i_mode))
-+		if (!(nd.flags & LOOKUP_FOLLOW))
- 			goto exit_dput;
- 		if (count++ == 32)
- 			goto exit_dput;
+> +	u32 newsid;
+> +	int rc;
+> +
+> +	tsec = cred->security;
+> +	dsec = dir->i_security;
+> +	sbsec = dir->i_sb->s_security;
+> +
+> +	if (tsec->create_sid && sbsec->behavior != SECURITY_FS_USE_MNTPOINT) {
+
+The logic in selinux_inode_init_security() has changed to use
+(sbsec->flags & SE_SBLABELSUPP) instead.  Possibly you should factor the
+common code into a helper.
+
+> +		newsid = tsec->create_sid;
+> +	} else {
+> +		rc = security_transition_sid(tsec->sid, dsec->sid,
+> +					     inode_mode_to_security_class(mode),
+> +					     &newsid);
+> +		if (rc) {
+> +			printk(KERN_WARNING "%s:  "
+> +			       "security_transition_sid failed, rc=%d\n",
+> +			       __FUNCTION__, -rc);
+> +			return rc;
+> +		}
+> +	}
+> +
+> +	return security_sid_to_context(newsid, (char **)ctx, ctxlen);
+> +}
+> +
+>  static int selinux_inode_init_security(struct inode *inode, struct inode *dir,
+>  				       char **name, void **value,
+>  				       size_t *len)
+> @@ -5484,6 +5515,7 @@ static struct security_operations selinux_ops = {
+>  	.sb_clone_mnt_opts =		selinux_sb_clone_mnt_opts,
+>  	.sb_parse_opts_str = 		selinux_parse_opts_str,
+>  
+> +	.dentry_init_security =		selinux_dentry_init_security,
+>  
+>  	.inode_alloc_security =		selinux_inode_alloc_security,
+>  	.inode_free_security =		selinux_inode_free_security,
+
+-- 
+Stephen Smalley
+National Security Agency
 
