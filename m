@@ -1,253 +1,188 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:62050 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756060Ab0GVR7T (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 22 Jul 2010 13:59:19 -0400
-From: David Howells <dhowells@redhat.com>
-Subject: [PATCH 3/6] NFS: Use d_automount() rather than abusing follow_link()
-To: viro@ZenIV.linux.org.uk
-Cc: linux-fsdevel@vger.kernel.org, linux-afs@lists.infradead.org,
-        linux-nfs@vger.kernel.org, linux-cifs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, David Howells <dhowells@redhat.com>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>
-Date: Thu, 22 Jul 2010 18:58:57 +0100
-Message-ID: <20100722175857.5552.99050.stgit@warthog.procyon.org.uk>
-In-Reply-To: <20100722175847.5552.11520.stgit@warthog.procyon.org.uk>
-References: <20100722175847.5552.11520.stgit@warthog.procyon.org.uk>
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-gy0-f174.google.com ([209.85.160.174]:47673 "EHLO
+	mail-gy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754126Ab0GHQOI convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 8 Jul 2010 12:14:08 -0400
+Received: by gye5 with SMTP id 5so488550gye.19
+        for <linux-nfs@vger.kernel.org>; Thu, 08 Jul 2010 09:14:05 -0700 (PDT)
+In-Reply-To: <4C35A588.7040103@panasas.com>
+References: <1278542063-4009-1-git-send-email-andros@netapp.com>
+	<4C35A588.7040103@panasas.com>
+Date: Thu, 8 Jul 2010 12:14:05 -0400
+Message-ID: <AANLkTim1mQiVIum5X4YPUYx3KYaN6WMiXhTL9Oyb-WDE@mail.gmail.com>
+Subject: Re: [PATCH 0/16] pnfs-submit fix layout allocation and reference
+	counting
+From: "William A. (Andy) Adamson" <androsadamson@gmail.com>
+To: Boaz Harrosh <bharrosh@panasas.com>
+Cc: bhalevy@panasas.com, linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Make NFS use the new d_automount() dentry operation rather than abusing
-follow_link() on directories.
+On Thu, Jul 8, 2010 at 6:16 AM, Boaz Harrosh <bharrosh@panasas.com> wrote:
+> On 07/08/2010 01:34 AM, andros@netapp.com wrote:
+>
+> Hi Andy,
+>
+>> The current nfs_inode has an embedded pnfs_layout_type structure, with per
+>> layout type private data allocated. Change nfs_inode->layout to be a pointer
+>> to a pnfs_layout_type structure, embed the pnfs_layout_type in the per
+>> layout type structure, and allocate both.
+>>
+>
+> Amen
+>
+>> The current pnfs_layout_type allocation waits on a bit lock to handle
+>> concurrent allocation attempts. Replace this with the normal form.
+>>
+>
+> Why don't we allocate this at inode allocation.
 
-Signed-off-by: David Howells <dhowells@redhat.com>
-Acked-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
+We don't know if we need it at inode allocation. Remember, GFS2 only
+uses RO layouts. Plus, the protocol allows a file system to use more
+than one layout type and each layout type has a different private
+portion of the layout structure.
 
- fs/nfs/dir.c           |    4 ++
- fs/nfs/inode.c         |    4 +-
- fs/nfs/internal.h      |    1 +
- fs/nfs/namespace.c     |   87 ++++++++++++++++++++++--------------------------
- include/linux/nfs_fs.h |    1 -
- 5 files changed, 46 insertions(+), 51 deletions(-)
 
-diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index e60416d..9ce04af 100644
---- a/fs/nfs/dir.c
-+++ b/fs/nfs/dir.c
-@@ -727,7 +727,7 @@ int nfs_lookup_verify_inode(struct inode *inode, struct nameidata *nd)
- {
- 	struct nfs_server *server = NFS_SERVER(inode);
- 
--	if (test_bit(NFS_INO_MOUNTPOINT, &NFS_I(inode)->flags))
-+	if (IS_AUTOMOUNT(inode))
- 		return 0;
- 	if (nd != NULL) {
- 		/* VFS wants an on-the-wire revalidation */
-@@ -927,6 +927,7 @@ const struct dentry_operations nfs_dentry_operations = {
- 	.d_revalidate	= nfs_lookup_revalidate,
- 	.d_delete	= nfs_dentry_delete,
- 	.d_iput		= nfs_dentry_iput,
-+	.d_automount	= nfs_d_automount,
- };
- 
- static struct dentry *nfs_lookup(struct inode *dir, struct dentry * dentry, struct nameidata *nd)
-@@ -1002,6 +1003,7 @@ const struct dentry_operations nfs4_dentry_operations = {
- 	.d_revalidate	= nfs_open_revalidate,
- 	.d_delete	= nfs_dentry_delete,
- 	.d_iput		= nfs_dentry_iput,
-+	.d_automount	= nfs_d_automount,
- };
- 
- /*
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index 099b351..848abe8 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -295,7 +295,7 @@ nfs_fhget(struct super_block *sb, struct nfs_fh *fh, struct nfs_fattr *fattr)
- 				else
- 					inode->i_op = &nfs_mountpoint_inode_operations;
- 				inode->i_fop = NULL;
--				set_bit(NFS_INO_MOUNTPOINT, &nfsi->flags);
-+				inode->i_flags |= S_AUTOMOUNT;
- 			}
- 		} else if (S_ISLNK(inode->i_mode))
- 			inode->i_op = &nfs_symlink_inode_operations;
-@@ -1138,7 +1138,7 @@ static int nfs_update_inode(struct inode *inode, struct nfs_fattr *fattr)
- 	/* Update the fsid? */
- 	if (S_ISDIR(inode->i_mode) && (fattr->valid & NFS_ATTR_FATTR_FSID) &&
- 			!nfs_fsid_equal(&server->fsid, &fattr->fsid) &&
--			!test_bit(NFS_INO_MOUNTPOINT, &nfsi->flags))
-+			!IS_AUTOMOUNT(inode))
- 		server->fsid = fattr->fsid;
- 
- 	/*
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index e70f44b..f597aac 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -239,6 +239,7 @@ extern char *nfs_path(const char *base,
- 		      const struct dentry *droot,
- 		      const struct dentry *dentry,
- 		      char *buffer, ssize_t buflen);
-+extern struct vfsmount *nfs_d_automount(struct path *path);
- 
- /* getroot.c */
- extern struct dentry *nfs_get_root(struct super_block *, struct nfs_fh *);
-diff --git a/fs/nfs/namespace.c b/fs/nfs/namespace.c
-index db6aa36..bf80079 100644
---- a/fs/nfs/namespace.c
-+++ b/fs/nfs/namespace.c
-@@ -88,9 +88,8 @@ Elong:
- }
- 
- /*
-- * nfs_follow_mountpoint - handle crossing a mountpoint on the server
-- * @dentry - dentry of mountpoint
-- * @nd - nameidata info
-+ * nfs_d_automount - Handle crossing a mountpoint on the server
-+ * @path - The mountpoint
-  *
-  * When we encounter a mountpoint on the server, we want to set up
-  * a mountpoint on the client too, to prevent inode numbers from
-@@ -100,87 +99,81 @@ Elong:
-  * situation, and that different filesystems may want to use
-  * different security flavours.
-  */
--static void * nfs_follow_mountpoint(struct dentry *dentry, struct nameidata *nd)
-+struct vfsmount *nfs_d_automount(struct path *path)
- {
- 	struct vfsmount *mnt;
--	struct nfs_server *server = NFS_SERVER(dentry->d_inode);
-+	struct nfs_server *server = NFS_SERVER(path->dentry->d_inode);
- 	struct dentry *parent;
- 	struct nfs_fh *fh = NULL;
- 	struct nfs_fattr *fattr = NULL;
- 	int err;
- 
--	dprintk("--> nfs_follow_mountpoint()\n");
-+	dprintk("--> nfs_d_automount()\n");
- 
--	err = -ESTALE;
--	if (IS_ROOT(dentry))
--		goto out_err;
-+	mnt = ERR_PTR(-ESTALE);
-+	if (IS_ROOT(path->dentry))
-+		goto out_nofree;
- 
--	err = -ENOMEM;
-+	mnt = ERR_PTR(-ENOMEM);
- 	fh = nfs_alloc_fhandle();
- 	fattr = nfs_alloc_fattr();
- 	if (fh == NULL || fattr == NULL)
--		goto out_err;
-+		goto out;
- 
- 	dprintk("%s: enter\n", __func__);
--	dput(nd->path.dentry);
--	nd->path.dentry = dget(dentry);
- 
--	/* Look it up again */
--	parent = dget_parent(nd->path.dentry);
-+	/* Look it up again to get its attributes */
-+	parent = dget_parent(path->dentry);
- 	err = server->nfs_client->rpc_ops->lookup(parent->d_inode,
--						  &nd->path.dentry->d_name,
-+						  &path->dentry->d_name,
- 						  fh, fattr);
- 	dput(parent);
--	if (err != 0)
--		goto out_err;
-+	if (err != 0) {
-+		mnt = ERR_PTR(err);
-+		goto out;
-+	}
- 
- 	if (fattr->valid & NFS_ATTR_FATTR_V4_REFERRAL)
--		mnt = nfs_do_refmount(nd->path.mnt, nd->path.dentry);
-+		mnt = nfs_do_refmount(path->mnt, path->dentry);
- 	else
--		mnt = nfs_do_submount(nd->path.mnt, nd->path.dentry, fh,
--				      fattr);
--	err = PTR_ERR(mnt);
-+		mnt = nfs_do_submount(path->mnt, path->dentry, fh, fattr);
- 	if (IS_ERR(mnt))
--		goto out_err;
-+		goto out;
- 
- 	mntget(mnt);
--	err = do_add_mount(mnt, &nd->path, nd->path.mnt->mnt_flags|MNT_SHRINKABLE,
-+	err = do_add_mount(mnt, path, path->mnt->mnt_flags | MNT_SHRINKABLE,
- 			   &nfs_automount_list);
--	if (err < 0) {
-+	switch (err) {
-+	case 0:
-+		dprintk("%s: done, success\n", __func__);
-+		schedule_delayed_work(&nfs_automount_task, nfs_mountpoint_expiry_timeout);
-+		break;
-+	case -EBUSY:
-+		/* someone else made a mount here whilst we were busy */
- 		mntput(mnt);
--		if (err == -EBUSY)
--			goto out_follow;
--		goto out_err;
-+		dprintk("%s: done, collision\n", __func__);
-+		mnt = NULL;
-+		break;
-+	default:
-+		mntput(mnt);
-+		dprintk("%s: done, error %d\n", __func__, err);
-+		mnt = ERR_PTR(err);
-+		break;
- 	}
--	path_put(&nd->path);
--	nd->path.mnt = mnt;
--	nd->path.dentry = dget(mnt->mnt_root);
--	schedule_delayed_work(&nfs_automount_task, nfs_mountpoint_expiry_timeout);
-+
- out:
- 	nfs_free_fattr(fattr);
- 	nfs_free_fhandle(fh);
--	dprintk("%s: done, returned %d\n", __func__, err);
--
--	dprintk("<-- nfs_follow_mountpoint() = %d\n", err);
--	return ERR_PTR(err);
--out_err:
--	path_put(&nd->path);
--	goto out;
--out_follow:
--	while (d_mountpoint(nd->path.dentry) &&
--	       follow_down(&nd->path))
--		;
--	err = 0;
--	goto out;
-+out_nofree:
-+	dprintk("<-- nfs_follow_mountpoint() = %p\n", mnt);
-+	return mnt;
- }
- 
- const struct inode_operations nfs_mountpoint_inode_operations = {
--	.follow_link	= nfs_follow_mountpoint,
- 	.getattr	= nfs_getattr,
- };
- 
- const struct inode_operations nfs_referral_inode_operations = {
--	.follow_link	= nfs_follow_mountpoint,
- };
- 
- static void nfs_expire_automounts(struct work_struct *work)
-diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
-index 77c2ae5..4511220 100644
---- a/include/linux/nfs_fs.h
-+++ b/include/linux/nfs_fs.h
-@@ -205,7 +205,6 @@ struct nfs_inode {
- #define NFS_INO_ADVISE_RDPLUS	(0)		/* advise readdirplus */
- #define NFS_INO_STALE		(1)		/* possible stale inode */
- #define NFS_INO_ACL_LRU_SET	(2)		/* Inode is on the LRU list */
--#define NFS_INO_MOUNTPOINT	(3)		/* inode is remote mountpoint */
- #define NFS_INO_FLUSHING	(4)		/* inode is flushing out data */
- #define NFS_INO_FSCACHE		(5)		/* inode can be cached by FS-Cache */
- #define NFS_INO_FSCACHE_LOCK	(6)		/* FS-Cache cookie management lock */
+> Or inode iget() once
+> and be done with it.
+> Why the fights, races, and error handling?
+> In a normal pnfs-able mount five-9(s) percent of IO operations need
+> a layout_type structure. Let's optimize the fast path. On these
+> rare "error" cases when we could not get any lsegs and eventually
+> did not use the nfsi->layout, who cares that we allocated extra
+> 20 bytes.
+>
+>> The current pnfs_layout_type reference counting is very un-clear, and one
+>> instance of put_layout was called outside the i_lock which probably was
+>> causing the intermittant pnfs_layout_type refcount bug we've been seeing.
+>>
+>> Replace the nfs_inode->layout reference counting with the following scheme:
+>>
+>> As in the current code, the pnfs_layout_type reference counting is always done
+>> with the inode->i_lock held.
+>>
+>> The nfs_inode->layout comes into existence when the first layout_segment is
+>> cached and stays until inode is destroyed.
 
+Actually this is not true. pnfs_destroy_layout is not only called a
+inode destruction - it is also called in pnfs_reclaim_layout (state
+reclaim after reboot)
+
+In this case, the layout will be destroyed while the inode continues on.
+
+The use and implementation of pnfs_reclaim_layout needs a review.
+
+The question is, when should the nfs_inode->layout be freed when the
+inode is not? These are candidates.
+ - reclaim state after server reboot (current code does this)
+ - reclaim state after a network partition (current code does this)
+ - file system migration
+ - switching to a different file system replica
+ - CB_LAYOUTRECALL FSID
+ - CB_LAYOUTRECALL ALL
+
+>>
+>
+> I see that you have thought about my proposal. I have not looked at the
+> patches yet, will do soon.
+>
+> So I have a brave question. If nfs_inode->layout is only freed at
+> inode-destroy, why do we need to ref-count it. Refcounting is for
+> holding things so they don't go away. But since now the nfsi->layout
+> stays until the very end then what's the point?
+>
+> If you really think it is possible that the layout is held longer then
+> the inode itself then, 1- this is surly a bug, I'm not sure you can do
+> much with a layout with a dangling inode pointer. 2- Fine then just
+> take the inode reference. If you equate the life time of these two
+> objects why not use the ref that is already there?
+>
+>> 1) alloc nfs_inode->layout:
+>>         - Initialized to 1. This holds it around for the clp->cl_layouts
+>>         (layout->lo_layouts) list.
+>>
+>> 2) Each layoutget
+>>    layoutget    GET
+>>    layoutget release PUT
+>>
+>> 3) insert lseg into nfs_inode->layout->segs GET
+>>    remove lseg from nfs_inode->layout->segs  PUT
+>>
+>> I/O - no reference (except the lseg is used and referenced in 3)
+>>
+>> 4) Each layoutcommit references the layout which keeps it around while in use
+>>    by the call which could race with layoutreturn
+>>
+>>    layoutcommit GET
+>>    layoutcommit release PUT
+>>
+>> 5) Each layoutreturn references the layout which keeps it around while in use
+>>    by the call.
+>>
+>>    layoutreturn  GET
+>>    layoutreturn release  PUT
+>>
+>
+> 2, 4, 5 - surly the inode ref-count is taken during RPC?
+> 3 - inode gone while IO? I don't think so.
+>
+>> 6) inode destruction (usually umount)
+>>
+>>    Destroy_layout PUT to balance initial allocation where it is set to 1.
+>>
+>
+> inode are destructed when evicted from cache and/or at last reference
+> drop. Also at umount, but you should start testing like I do, "git clone"
+> you'll see inodes start to be destroyed 27 seconds into the operation.
+>
+>> When the reference moves from 1->0 the layout is removed from the nfs_client
+>> cl_layouts list and freed.
+>>
+>
+> The nfs_client->cl_layouts operations can be moved to the first/last lseg
+> insertion/removal, as an optimization step.
+>
+>>
+>> Change nfs_inode->layout to be a pointer to a pnfs_layout_type strucure.
+>>
+>> 0001-SQUASHME-pnfs-submit-add-state-flag-for-layoutcommit.patch
+>> 0002-SQUASHME-pnfs-submit-move-pnfs_layout_suspend-back-t.patch
+>> 0003-SQUASHME-pnfs-submit-embed-pnfs_layout_type.patch
+>> 0004-SQUASHME-pnfs-submit-filelayout-use-new-alloc-free_l.patch
+>>
+>> Rewrite the pnfs_layout_type allocation and reference counting
+>>
+>> 0005-SQUASHME-pnfs-submit-rewrite-layout-allocation.patch
+>> 0006-SQUASHME-pnfs-submit-fix-pnfs_update_layout-referenc.patch
+>> 0007-SQUASHME-pnfs_submit-don-t-get-a-reference-on-bounda.patch
+>> 0008-SQUASHME-pnfs-submit-don-t-reference-the-layout-in-i.patch
+>> 0009-SQUASHME-pnfs-submit-pnfs_update_layout-always-refer.patch
+>> 0010-SQUASHME-pnfs-submit-reference-the-layout-when-inser.patch
+>> 0011-SQUASHME-pnfs-submit-rename-put_layout-to-put_layout.patch
+>> 0012-SQUASHME-pnfs-submit-reference-layout-across-layoutc.patch
+>> 0013-SQUASHME-pnfs-submit-reference-layout-for-layoutretu.patch
+>> 0014-SQUASHME-pnfs-submit-remove-put_layout-from-pnfs_fre.patch
+>> 0015-SQUASHME-pnfs-submit-do-not-reference-a-layout-in-de.patch
+>> 0016-SQUASHME-pnfs-submit-remove-grab_current_layout.patch
+>>
+>> Testing;
+>>
+>> CONFIG_NFS_V4_1 set:
+>> Connectathon tests pass against GFS2/pNFS and pyNFS file layout server. Tested
+>> with layout return-on-close off and on.
+>>
+>> CONFIG_NFS_V4_1 not set;
+>> NFSv4.0 mount passes Connectation tests.
+>>
+>> -->Andy
+>
+> Thanks Andy for this work. The code is really getting clearer finally.
+>
+> Boaz
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
