@@ -1,28 +1,50 @@
-Return-Path: <pgp@psu.edu>
-Message-ID: <4C5317B9.4030806@psu.edu>
-Date: Fri, 30 Jul 2010 14:19:37 -0400
-From: Phil Pishioneri <pgp@psu.edu>
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-CC: Volker.Lendecke@SerNet.DE, Jeremy Allison <jra@samba.org>,
-        Linus Torvalds <torvalds@linux-foundation.org>,
-        David Howells <dhowells@redhat.com>,
-        Jan Engelhardt <jengelh@medozas.de>, linux-cifs@vger.kernel.org,
-        linux-nfs@vger.kernel.org, samba-technical@lists.samba.org,
-        linux-kernel@vger.kernel.org, viro@zeniv.linux.org.uk,
-        linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
-Subject: Re: [PATCH 02/18] xstat: Add a pair of system calls to make extended
- file stats available [ver #6]
-References: <20100715021712.5544.44845.stgit@warthog.procyon.org.uk>	 <30448.1279800887@redhat.com> <E1Obuiy-00C9jr-Al@intern.SerNet.DE>	 <AANLkTikBCXK6uEwWq4f0LvpdoKCPs3jvyFa4Zw4e2J_7@mail.gmail.com>	 <E1Obxpd-00CRIo-SF@intern.SerNet.DE>	 <AANLkTimwIq0pBhCeOjOVjB0yeM3JHOvzVoj9M4ui6al9@mail.gmail.com>	 <20100722162712.GB10352@jeremy-laptop>	 <AANLkTimdFCGSKLn7aGMpBMIauHTsHY7hpAAmpo6uTcnD@mail.gmail.com>	 <1279817930.3621.14.camel@heimdal.trondhjem.org>	 <20100722180204.GA32008@samba1>  <E1Oc08W-00CZuz-Ns@intern.SerNet.DE>	 <1279825160.3621.71.camel@heimdal.trondhjem.org> <4C5311F4.2050100@psu.edu> <1280513506.12852.22.camel@heimdal.trondhjem.org>
-In-Reply-To: <1280513506.12852.22.camel@heimdal.trondhjem.org>
-Content-Type: text/plain; charset=UTF-8; format=flowed
-MIME-Version: 1.0
+Return-Path: <linux-nfs-owner@vger.kernel.org>
+Received: from rcsinet10.oracle.com ([148.87.113.121]:34799 "EHLO
+	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753877Ab0GHPDC (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 8 Jul 2010 11:03:02 -0400
+Message-ID: <4C35E874.3050809@oracle.com>
+Date: Thu, 08 Jul 2010 11:02:12 -0400
+From: Chuck Lever <chuck.lever@oracle.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] NFSD: Fill in WCC data for REMOVE, RMDIR, MKNOD, and
+ MKDIR
+References: <20100706204750.2918.92546.stgit@ellison.1015granger.net> <20100707211037.GF2957@fieldses.org>
+In-Reply-To: <20100707211037.GF2957@fieldses.org>
+Content-Type: text/plain; charset=us-ascii; format=flowed
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+MIME-Version: 1.0
 
-  On 7/30/10 2:11 PM, Trond Myklebust wrote:
-> Your Mac has a perfectly functional CIFS client,
+On 07/ 7/10 05:10 PM, J. Bruce Fields wrote:
+> On Tue, Jul 06, 2010 at 04:53:34PM -0400, Chuck Lever wrote:
+>> Some well-known NFSv3 clients drop their directory entry caches when
+>> they receive replies with no WCC data.
+>
+> Can we include any more details?  (And/or a simple test case that
+> demonstrates the difference?)
 
-It didn't, at one point. Some version of Mac OS X would cause a client 
-kernel crash when unmounting the CIFS share. I think it's been fixed, 
-but we had to have some OS X clients switch to NFS because of it.
+I have a version of this patch with a much more comprehensive 
+description which I can post later today.
 
--Phil
+As for a test case... among other things, I untarred a large tarball on 
+a Mac OS 10.6 NFS client, and, once the server was fixed, it went as 
+quickly as you would expect.  Before, it took much longer.
+
+>> Without this data, they
+>> employ extra READ, LOOKUP, and GETATTR requests to ensure their
+>> directory entry caches are up to date, causing performance to suffer
+>> needlessly.
+>>
+>> In order to return WCC data, our server has to have both the pre-op
+>> and the post-op attribute data on hand when a reply is XDR encoded.
+>> The pre-op data is filled in when the incoming fh is locked, and the
+>> post-op data is filled in when the fh is unlocked.
+>>
+>> Unfortunately, for REMOVE, RMDIR, MKNOD, and MKDIR, the directory fh
+>> is not unlocked until well after the reply has been XDR encoded.
+>
+> So it wasn't happening until an fh_put() was done in .pc_release()?
+
+Correct.
