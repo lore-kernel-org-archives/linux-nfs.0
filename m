@@ -1,109 +1,59 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:16192 "EHLO
-	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1754500Ab0GFMo5 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 6 Jul 2010 08:44:57 -0400
-Message-ID: <4C332546.4080704@panasas.com>
-Date: Tue, 06 Jul 2010 15:44:54 +0300
-From: Benny Halevy <bhalevy@panasas.com>
-To: Boaz Harrosh <bharrosh@panasas.com>
-CC: NFS list <linux-nfs@vger.kernel.org>
-Subject: Re: pnfs git tree status pnfs-all-2.6.35-rc3-2010-07-01
-References: <4C111B9C.3080603@panasas.com> <4C1A4F0E.5070406@panasas.com> <4C2CE107.3080406@panasas.com> <4C31FDDF.4040308@panasas.com>
-In-Reply-To: <4C31FDDF.4040308@panasas.com>
-Content-Type: text/plain; charset=UTF-8
+Received: from fieldses.org ([174.143.236.118]:54598 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756698Ab0GHPFP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 8 Jul 2010 11:05:15 -0400
+Date: Thu, 8 Jul 2010 11:05:09 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] NFSD: Fill in WCC data for REMOVE, RMDIR, MKNOD, and
+ MKDIR
+Message-ID: <20100708150509.GA19375@fieldses.org>
+References: <20100706204750.2918.92546.stgit@ellison.1015granger.net>
+ <20100707211037.GF2957@fieldses.org>
+ <4C35E874.3050809@oracle.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4C35E874.3050809@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Jul. 05, 2010, 18:44 +0300, Boaz Harrosh <bharrosh@panasas.com> wrote:
-> On 07/01/2010 09:40 PM, Benny Halevy wrote:
->> Here's the list of patches that went into the latest linux-pnfs tree as of 2010-07-01
->> since last update (pnfs-all-2.6.35-rc2-2010-06-17)
->>
->> As usual, cumulative patches against the mainline kernel can be
->> generated via http://wiki.linux-nfs.org/wiki/index.php/PNFS_Development_Git_tree
->>
->> nfsd-upstream:
->>   Boaz Harrosh     b9598af SQUASHME: nfsd41: Fix a crash when a callback is retried
->>
->> nfs-upstream:
->>   Benny Halevy     a1c6087 nfs: fix possible leak in nfs_proc_symlink
->>   Trond Myklebust  1308c3f NFSv4: Ensure that /proc/self/mountinfo displays the minor version number
->>
->> nfs41-all:
->>   Benny Halevy     20265c2 i915_dma Bug #16247
->>
->> pnfs-submit:
->>   Benny Halevy     f88044b SQUASHME: pnfs-submit: __wait no longer used by _pnfs_update_layout
->>   Benny Halevy     397af9d SQUASHME: pnfs-submit: fix possible leak in nfs4_pnfs_ds_create
->>   Benny Halevy     970b309 SAUASHME: pnfs-submit: prevent buffer overrun in decode_and_add_ds
->>   Andy Adamson     4ae3ac5 SQUASHME pnfs-submit: remove struct nfs_server from stack
->>   Andy Adamson     fcc6499 SQUASHME: pnfs-submit: don't re-initialize i_lock
->>   Andy Adamson     f83fa38 SQUASHME pnfs-submit: add error handlers to layout get
->>   Andy Adamson     14e9066 SQUASHME pnfs-submit: handle assassinated layoutcommit
->>   Andy Adamson     2a1ef93 SQUASHME pnfs-submit: add error handling to layout return
->>   Andy Adamson     cbae7a5 SQUASHME pnfs-submit: remove encode_layoutreturn
->>   Andy Adamson     761f452 SQUASHME pnfs-submit: pnfs_try_to_read, write, commit using freed memory
->>   Andy Adamson     56a98e8 SQUASHME: pnfs-submit remove unused filelayout_mount_type
->>   Fred Isaman      fcbaa5e pnfs-submit: remove list_empty check from put_layout
->>
+On Thu, Jul 08, 2010 at 11:02:12AM -0400, Chuck Lever wrote:
+> On 07/ 7/10 05:10 PM, J. Bruce Fields wrote:
+> >On Tue, Jul 06, 2010 at 04:53:34PM -0400, Chuck Lever wrote:
+> >>Some well-known NFSv3 clients drop their directory entry caches when
+> >>they receive replies with no WCC data.
+> >
+> >Can we include any more details?  (And/or a simple test case that
+> >demonstrates the difference?)
 > 
-> Benny you have missed a patch from Andy's patchset I can count 9 patches by Andy
-> but the original set had 10.
-> The missing patch is titled:
-> 	[PATCH 03/10] SQUASHME pnfs-submit: clear page lseg on partial i/o
-> 
+> I have a version of this patch with a much more comprehensive
+> description which I can post later today.
 
-Correct.  Andy requested me to pull it out as it needs more work.
+Thanks, that would be interesting.
 
-> 
-> Your Friday bhalevy tree had it I think. And I have on queue a patchset that conflicts
-> with it. (Which is why I waited for your release before posting). So what is the
-> disposition of this patch, is it in or out? Andy?
+(Though note the version you posted is already applied for 2.6.36.)
 
-Let's deal with them in FIFO order.
-I hope the conflicts are not too hard to resolve so if you're ready
-with your patches first, let's go for them.
+--b.
 
-Benny
-
+> As for a test case... among other things, I untarred a large tarball
+> on a Mac OS 10.6 NFS client, and, once the server was fixed, it went
+> as quickly as you would expect.  Before, it took much longer.
 > 
-> I'll post a set based on [PATCH 03/10] applied.
+> >>Without this data, they
+> >>employ extra READ, LOOKUP, and GETATTR requests to ensure their
+> >>directory entry caches are up to date, causing performance to suffer
+> >>needlessly.
+> >>
+> >>In order to return WCC data, our server has to have both the pre-op
+> >>and the post-op attribute data on hand when a reply is XDR encoded.
+> >>The pre-op data is filled in when the incoming fh is locked, and the
+> >>post-op data is filled in when the fh is unlocked.
+> >>
+> >>Unfortunately, for REMOVE, RMDIR, MKNOD, and MKDIR, the directory fh
+> >>is not unlocked until well after the reply has been XDR encoded.
+> >
+> >So it wasn't happening until an fh_put() was done in .pc_release()?
 > 
-> Boaz
-> 
->> pnfs:
->>   Benny Halevy     5157ed0 SQUASHME: pnfs: check for read_buf error in decode_pnfs_layoutrecall_args
->>   Andy Adamson     5637fa1 pnfs-post-submit: restore encode_layoutreturn
->>
->> pnfs-block:
->>   Benny Halevy     5d459a3 SQUASHME: pnfs-block: nfs4_blk_add_block_disk ret must be signed
->>
->> pnfsd-files:
->>   Benny Halevy     e840874 SQUASHME: pnfsd-files: nfsd4_pnfs_dlm_shutdown should use list_for_each_entry_safe
->>   Benny Halevy     a9fb462 SQUASHME: pnfsd-files: verify_stateid's return status is __be32
->>   Benny Halevy     3895976 SQUASHME: pnfsd-files: prevent NULL deref in nfsd4_pnfs_dlm_getdevinfo
->>   Eric Anderle     805dec2 pnfsd: Fix num_ds bug in nfsd4_set_pnfs_dlm_device()
->>
->> pnfsd:
->>   Boaz Harrosh     259e31d SQUASHME: pnfsd: into [SQUASHME: pnfsd: Support for cb_layout returning NFS4ERR_DELAY]
->>   Benny Halevy     bf5656c SQUASHME: pnfsd: fix pointer dereference in dprintk of write verifiers
->>   Benny Halevy     263355c pnfsd: reset status on NFS4ERR_NOMATCHING_LAYOUT
->>   Benny Halevy     50debee SQUASHME: pnfsd: move kfree of the cb_device rpc_args to release time
->>   Benny Halevy     bc3b006 SQUASHME: pnfsd: move kfree of the cb_layout rpc_args to release time
->>
->> spnfs-block:
->>   Benny Halevy     8b047ca SQUASHME: spnfs-block: kfree(res) in bl_pipe_downcall error path
->>
->> pnfs-obj-all:
->>   Benny Halevy     8ef6e62 SQUASHME: pnfs-obj: use NFSDBG_PNFS_LD also in pnfs_osd_xdr_cli.c
->>
->> pnfs-exofs-all:
->>   Boaz Harrosh     7cc0c0e SQUASHME: pnfsd-exofs: Fix exofs_inode_recall_layout() sending 2 recalls
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>
-> 
+> Correct.
