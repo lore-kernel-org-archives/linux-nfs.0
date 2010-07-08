@@ -1,146 +1,102 @@
 From: Fred Isaman <iisaman@netapp.com>
-Subject: [PATCH 1/4] pnfs-submit: Rely on full-file layout assumption to clean out some code
-Date: Thu,  8 Jul 2010 15:25:19 -0400
-Message-ID: <1278617122-24164-2-git-send-email-iisaman@netapp.com>
+Subject: [PATCH 2/4] pnfs-submit: Remove readahead_range
+Date: Thu,  8 Jul 2010 15:25:20 -0400
+Message-ID: <1278617122-24164-3-git-send-email-iisaman@netapp.com>
 References: <1278617122-24164-1-git-send-email-iisaman@netapp.com>
+ <1278617122-24164-2-git-send-email-iisaman@netapp.com>
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
 Received: from mx2.netapp.com ([216.240.18.37]:22871 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758513Ab0GHTZ0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 8 Jul 2010 15:25:26 -0400
+	id S1758512Ab0GHTZ1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 8 Jul 2010 15:25:27 -0400
 Received: from localhost.localdomain (khang-lxp.hq.netapp.com [10.58.60.105] (may be forged))
-	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id o68JPOdL010802
-	for <linux-nfs@vger.kernel.org>; Thu, 8 Jul 2010 12:25:25 -0700 (PDT)
-In-Reply-To: <1278617122-24164-1-git-send-email-iisaman@netapp.com>
+	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id o68JPOdM010802
+	for <linux-nfs@vger.kernel.org>; Thu, 8 Jul 2010 12:25:26 -0700 (PDT)
+In-Reply-To: <1278617122-24164-2-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Note that even assuming full file layout, there can still be two lsegs,
-one for each iomode.
+This is not needed if we always use full file layout.
 
 Signed-off-by: Fred Isaman <iisaman@netapp.com>
 ---
- fs/nfs/pnfs.c |   85 +-------------------------------------------------------
- 1 files changed, 2 insertions(+), 83 deletions(-)
+ fs/nfs/pnfs.c |   47 +++++++----------------------------------------
+ 1 files changed, 7 insertions(+), 40 deletions(-)
 
 diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index baa3de7..5b0c4ec 100644
+index 5b0c4ec..a3b934d 100644
 --- a/fs/nfs/pnfs.c
 +++ b/fs/nfs/pnfs.c
-@@ -444,65 +444,6 @@ put_lseg(struct pnfs_layout_segment *lseg)
+@@ -1196,32 +1196,6 @@ out:
  }
- EXPORT_SYMBOL(put_lseg);
  
--static inline u64
--end_offset(u64 start, u64 len)
--{
--	u64 end;
--
--	end = start + len;
--	return end >= start ? end: NFS4_MAX_UINT64;
--}
--
--/* last octet in a range */
--static inline u64
--last_byte_offset(u64 start, u64 len)
--{
--	u64 end;
--
--	BUG_ON(!len);
--	end = start + len;
--	return end > start ? end - 1: NFS4_MAX_UINT64;
--}
--
--/*
-- * is l2 fully contained in l1?
-- *   start1                             end1
-- *   [----------------------------------)
-- *           start2           end2
-- *           [----------------)
-- */
--static inline int
--lo_seg_contained(struct nfs4_pnfs_layout_segment *l1,
--		 struct nfs4_pnfs_layout_segment *l2)
--{
--	u64 start1 = l1->offset;
--	u64 end1 = end_offset(start1, l1->length);
--	u64 start2 = l2->offset;
--	u64 end2 = end_offset(start2, l2->length);
--
--	return (start1 <= start2) && (end1 >= end2);
--}
--
--/*
-- * is l1 and l2 intersecting?
-- *   start1                             end1
-- *   [----------------------------------)
-- *                              start2           end2
-- *                              [----------------)
-- */
--static inline int
--lo_seg_intersecting(struct nfs4_pnfs_layout_segment *l1,
--		    struct nfs4_pnfs_layout_segment *l2)
--{
--	u64 start1 = l1->offset;
--	u64 end1 = end_offset(start1, l1->length);
--	u64 start2 = l2->offset;
--	u64 end2 = end_offset(start2, l2->length);
--
--	return (end1 == NFS4_MAX_UINT64 || end1 > start2) &&
--	       (end2 == NFS4_MAX_UINT64 || end2 > start1);
--}
--
  void
- pnfs_set_layout_stateid(struct pnfs_layout_type *lo,
- 			const nfs4_stateid *stateid)
-@@ -616,8 +557,7 @@ should_free_lseg(struct pnfs_layout_segment *lseg,
- 		   struct nfs4_pnfs_layout_segment *range)
+-readahead_range(struct inode *inode, struct list_head *pages, loff_t *offset,
+-		size_t *count)
+-{
+-	struct page *first, *last;
+-	loff_t foff, i_size = i_size_read(inode);
+-	pgoff_t end_index = (i_size - 1) >> PAGE_CACHE_SHIFT;
+-	size_t range;
+-
+-
+-	first = list_entry((pages)->prev, struct page, lru);
+-	last = list_entry((pages)->next, struct page, lru);
+-
+-	foff = (loff_t)first->index << PAGE_CACHE_SHIFT;
+-
+-	range = (last->index - first->index) * PAGE_CACHE_SIZE;
+-	if (last->index == end_index)
+-		range += ((i_size - 1) & ~PAGE_CACHE_MASK) + 1;
+-	else
+-		range += PAGE_CACHE_SIZE;
+-	dprintk("%s foff %lu, range %Zu\n", __func__, (unsigned long)foff,
+-		range);
+-	*offset = foff;
+-	*count = range;
+-}
+-
+-void
+ pnfs_set_pg_test(struct inode *inode, struct nfs_pageio_descriptor *pgio)
  {
- 	return (range->iomode == IOMODE_ANY ||
--		lseg->range.iomode == range->iomode) &&
--	       lo_seg_intersecting(&lseg->range, range);
-+		lseg->range.iomode == range->iomode);
+ 	struct pnfs_layout_type *laytype;
+@@ -1280,8 +1254,6 @@ pnfs_pageio_init_read(struct nfs_pageio_descriptor *pgio,
+ 		  struct list_head *pages)
+ {
+ 	struct nfs_server *nfss = NFS_SERVER(inode);
+-	size_t count = 0;
+-	loff_t loff;
+ 
+ 	pgio->pg_iswrite = 0;
+ 	pgio->pg_boundary = 0;
+@@ -1291,19 +1263,14 @@ pnfs_pageio_init_read(struct nfs_pageio_descriptor *pgio,
+ 	if (!pnfs_enabled_sb(nfss))
+ 		return;
+ 
+-	/* Calculate the total read-ahead count */
+-	readahead_range(inode, pages, &loff, &count);
+-
+-	if (count > 0) {
+-		_pnfs_update_layout(inode, ctx, loff, count, IOMODE_READ,
+-				    &pgio->pg_lseg);
+-		if (!pgio->pg_lseg)
+-			return;
++	_pnfs_update_layout(inode, ctx, 0, NFS4_MAX_UINT64, IOMODE_READ,
++			    &pgio->pg_lseg);
++	if (!pgio->pg_lseg)
++		return;
+ 
+-		pgio->pg_boundary = pnfs_getboundary(inode);
+-		if (pgio->pg_boundary)
+-			pnfs_set_pg_test(inode, pgio);
+-	}
++	pgio->pg_boundary = pnfs_getboundary(inode);
++	if (pgio->pg_boundary)
++		pnfs_set_pg_test(inode, pgio);
  }
  
- static struct pnfs_layout_segment *
-@@ -832,18 +772,6 @@ static inline s64
- cmp_layout(struct nfs4_pnfs_layout_segment *l1,
- 	   struct nfs4_pnfs_layout_segment *l2)
- {
--	s64 d;
--
--	/* higher offset > lower offset */
--	d = l1->offset - l2->offset;
--	if (d)
--		return d;
--
--	/* longer length > shorter length */
--	d = l1->length - l2->length;
--	if (d)
--		return d;
--
- 	/* read > read/write */
- 	return (int)(l1->iomode == IOMODE_READ) -
- 	       (int)(l2->iomode == IOMODE_READ);
-@@ -1004,16 +932,7 @@ static inline int
- has_matching_lseg(struct pnfs_layout_segment *lseg,
- 		  struct nfs4_pnfs_layout_segment *range)
- {
--	struct nfs4_pnfs_layout_segment range1;
--
--	if ((range->iomode == IOMODE_RW && lseg->range.iomode != IOMODE_RW) ||
--	    !lo_seg_intersecting(&lseg->range, range))
--		return 0;
--
--	/* range1 covers only the first byte in the range */
--	range1 = *range;
--	range1.length = 1;
--	return lo_seg_contained(&lseg->range, &range1);
-+	return (range->iomode != IOMODE_RW || lseg->range.iomode == IOMODE_RW);
- }
- 
- /*
+ void
 -- 
 1.6.6.1
 
