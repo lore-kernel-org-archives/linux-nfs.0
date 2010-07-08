@@ -1,42 +1,103 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH] NFSD: Fill in WCC data for REMOVE, RMDIR, MKNOD, and
- MKDIR
-Date: Thu, 8 Jul 2010 15:50:48 -0400
-Message-ID: <20100708195047.GA31173@fieldses.org>
-References: <20100706204750.2918.92546.stgit@ellison.1015granger.net>
- <20100707211037.GF2957@fieldses.org>
- <4C35E874.3050809@oracle.com>
+Subject: Re: [PATCH] NFSD: Return full WCC data for NFSv3 metadata
+ operations
+Date: Thu, 8 Jul 2010 15:53:35 -0400
+Message-ID: <20100708195335.GB31173@fieldses.org>
+References: <20100708154037.2820.51702.stgit@ellison.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-nfs@vger.kernel.org
 To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:42516 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:42518 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755918Ab0GHTuz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 8 Jul 2010 15:50:55 -0400
-In-Reply-To: <4C35E874.3050809@oracle.com>
+	id S1757138Ab0GHTxm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 8 Jul 2010 15:53:42 -0400
+In-Reply-To: <20100708154037.2820.51702.stgit-ewv44WTpT0t9HhUboXbp9zCvJB+x5qRC@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Jul 08, 2010 at 11:02:12AM -0400, Chuck Lever wrote:
-> On 07/ 7/10 05:10 PM, J. Bruce Fields wrote:
-> >On Tue, Jul 06, 2010 at 04:53:34PM -0400, Chuck Lever wrote:
-> >>Some well-known NFSv3 clients drop their directory entry caches when
-> >>they receive replies with no WCC data.
-> >
-> >Can we include any more details?  (And/or a simple test case that
-> >demonstrates the difference?)
+On Thu, Jul 08, 2010 at 11:43:46AM -0400, Chuck Lever wrote:
+> NFSv3 WCC data, or "weak cache consistency" data, is an attempt to
+> reduce the number of on-the-wire transactions needed by NFS clients
+> to keep their caches up to date.  WCC data consists of two parts:
 > 
-> I have a version of this patch with a much more comprehensive
-> description which I can post later today.
+>   o  pre-op data, which is a subset of file metadata as it was before
+>      a procedure starts, and
 > 
-> As for a test case... among other things, I untarred a large tarball
-> on a Mac OS 10.6 NFS client, and, once the server was fixed, it went
-> as quickly as you would expect.  Before, it took much longer.
+>   o  post-op data, which is a full set of NFSv3 file attribute data as
+>      it is after a procedure finishes.
+> 
+> For an NFSv3 procedure that returns wcc_data, an NFSv3 server is free
+> to return either, both, or neither of these.  Define "full WCC data"
+> as a reply that contains both pre-op and post-op data.
+> 
+> To make this data useful, a server must ensure that file metadata is
+> captured atomically around the requested operation.  If the pre-op
+> data in a reply matches the file metadata that the client already has
+> cached, the client can assume that no other operation on that file
+> occurred while the server was fulfilling the current request, and that
+> therefore the post-op metadata is the latest version, and can be
+> cached.
+> 
+> Conversely, NFSv3 clients invalidate their metadata caches when they
+> receive replies to metadata altering operations that do not contain
+> full WCC data.  When a server presents a reply that does not have both
+> pre-op and post-op WCC data, clients must employ extra LOOKUP and
+> GETATTR requests to ensure their metadata caches are up to date,
+> causing performance to suffer needlessly.  For example, untarring a
+> large tar file can take almost an order of magnitude longer in this
+> case, depending on the client implementation.
+> 
+> In the Linux NFS server implementation, to ensure that WCC data
+> reflects only changes made during the current file system operation,
+> the file's inode mutex is held in order to serialize metadata altering
+> operations on that inode.  Our server saves pre-op data for a file
+> handle just after the target inode's mutex is taken, and saves post-op
+> data just before the inode's mutex is dropped (see fh_lock() and
+> fh_unlock()).
+> 
+> In order to return full WCC data to clients, our server must have both
+> the saved pre-op and the saved post-op attribute data for a file
+> handle filled in before it starts XDR encoding the reply.
+> Unfortunately, for the NFSv3 MKDIR, MKNOD, REMOVE, RMDIR procedures,
+> our server does not unlock the parent directory inode until well after
+> the reply has been XDR encoded.
+> 
+> In these cases, encode_wcc_data() does have saved pre-op WCC data
+> available, since the fh is locked, but does not have saved post-op WCC
+> data for the parent directory, since it hasn't yet been unlocked.  In
+> this situation, encode_wcc_data() simply grabs the parent's current
+> metadata, uses that as the post-op WCC data, and returns no pre-op
+> WCC data to the client.
+> 
+> By instead unlocking the parent directory file handle immediately
+> after the internal operations for each of these NFS procedures is
+> complete, saved post-op WCC data for the file handle is filled in
+> before XDR encoding starts, so full WCC data for that procedure can
+> be returned to clients.
+> 
+> Note that the NFSv4 CREATE and REMOVE procedures already invoke
+> fh_unlock() explicitly on the parent directory in order to fill in the
+> NFSv4 post change attribute.
+> 
+> Note also that NFSv3 CREATE, RENAME, SETATTR, and SYMLINK already
+> perform explicit file handle unlocking.
+> 
+> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> ---
+> 
+> Bruce-
+> 
+> This patch is mechanically the same as the previous one, but the patch
+> description has a more accurate and clearly stated rationale for the
+> change.
+> 
+> Please use this one instead of the previous one.
 
-By the way, why isn't this reproduceable on the Linux client?
-
-If it's ignoring whether updates are atomic--is that really OK?
+Thanks.  The first is already committed, though.  I'm not sure if
+there's a good place for the longer explanation in the docs, so it may
+just have to live on in the list archives. (It's the testcase (untarring
+a linux kernel from an OS X client) that I was mainly curious about.)
 
 --b.
