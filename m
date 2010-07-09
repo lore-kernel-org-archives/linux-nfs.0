@@ -1,68 +1,112 @@
-From: "David P. Quigley" <dpquigl@tycho.nsa.gov>
-Subject: Re: [PATCH 04/10] SELinux: Add new labeling type native labels
-Date: Fri, 09 Jul 2010 10:09:26 -0400
-Message-ID: <1278684566.2494.226.camel@moss-terrapins.epoch.ncsc.mil>
-References: <1278513086-23964-1-git-send-email-dpquigl@tycho.nsa.gov>
-	 <1278513086-23964-5-git-send-email-dpquigl@tycho.nsa.gov>
-	 <alpine.LRH.2.00.1007080921200.14102@tundra.namei.org>
-	 <1278595878.2494.186.camel@moss-terrapins.epoch.ncsc.mil>
-	 <alpine.LRH.2.00.1007090824150.23354@tundra.namei.org>
-Mime-Version: 1.0
-Content-Type: text/plain
-Cc: hch@infradead.org, viro@zeniv.linux.org.uk, casey@schaufler-ca.com,
-	sds@tycho.nsa.gov, "Matthew N. Dodd" <matthew.dodd@sparta.com>,
-	trond.myklebust@fys.uio.no, bfields@fieldses.org,
-	linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	linux-security-module@vger.kernel.org, selinux@tycho.nsa.gov,
-	linux-nfs@vger.kernel.org
-To: James Morris <jmorris@namei.org>
-Return-path: <linux-security-module-owner@vger.kernel.org>
-In-Reply-To: <alpine.LRH.2.00.1007090824150.23354@tundra.namei.org>
-Sender: linux-security-module-owner@vger.kernel.org
+From: andros@netapp.com
+Subject: [PATCH 1/2] SQUASHME pnfs-submit: reinitialize pnfs_layout_type
+Date: Fri,  9 Jul 2010 12:39:30 -0400
+Message-ID: <1278693571-3328-2-git-send-email-andros@netapp.com>
+References: <1278693571-3328-1-git-send-email-andros@netapp.com>
+Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
+To: bhalevy@panasas.com
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from mx2.netapp.com ([216.240.18.37]:23972 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757917Ab0GIQjl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 9 Jul 2010 12:39:41 -0400
+In-Reply-To: <1278693571-3328-1-git-send-email-andros@netapp.com>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 2010-07-09 at 08:33 +1000, James Morris wrote:
-> On Thu, 8 Jul 2010, David P. Quigley wrote:
-> 
-> > > Otherwise, this is a global policy decision which affects all NFSv4 
-> > > mounts, right?
-> > > 
-> > > 
-> > 
-> > I don't believe we have that ability in any other file system.
-> 
-> NFS is quite different to other filesystems.  Your files are on other 
-> systems, for example, which may or may not support security labeling.
+From: Andy Adamson <andros@netapp.com>
 
-And if that is the case then the capability flag does not get set in the
-NFSv4 server caps and we don't use security label support on that mount.
+We do not free the pnfs_layout_type when the layout segment list is empty, but
+we do remove the layout from the nfs_client cl_layouts list, and we also need
+to re-initialize it. The next LAYOUTGET will set the layout values.
 
-> 
-> > If you want to decide that you want to use genfs style labels on NFSv4 
-> > just use a context mount.
-> 
-> So, we enable this feature, and virtually all existing mounts break 
-> because the servers do not support labeling.
+Note: API change: layoutdriver_io_operations free_layout now has a boolean
+to indicate initiaize_only, do not free.
 
-No it should default back to being nfs_t which is what happens when I
-use my client on an export that doesn't have security_label set.
+Signed-off-by: Andy Adamson <andros@netapp.com>
+---
+ fs/nfs/pnfs.c             |   30 ++++++++++++++++++++++++++++--
+ include/linux/nfs4_pnfs.h |    5 ++++-
+ 2 files changed, 32 insertions(+), 3 deletions(-)
 
-> 
-> > That way you can have the default behavior be 
-> > use security label support unless you don't want to and then you can 
-> > have a context mount.
-> 
-> It needs to be the other way around.  This is a new feature, so the 
-> default needs to be the existing behavior, with security labeling as an 
-> option to enable at mount time.
-
-We made sure it falls back properly. It was decided a long time ago with
-discussion by several people that having it default to use it if its
-there otherwise fall back to the old behavior makes much more sense to
-an administrator.
-
-> 
-> 
-> 
-> - James
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 6832237..d8887ef 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -337,7 +337,7 @@ put_layout_locked(struct pnfs_layout_type *lo)
+ 
+ 		dprintk("%s: freeing layout cache %p\n", __func__, lo);
+ 		WARN_ON(!list_empty(&lo->lo_layouts));
+-		io_ops->free_layout(lo);
++		io_ops->free_layout(lo, false);
+ 		nfsi->layout = NULL;
+ 	}
+ }
+@@ -658,6 +658,31 @@ _pnfs_can_return_lseg(struct pnfs_layout_segment *lseg)
+ 	return atomic_read(&lseg->kref.refcount) == 1;
+ }
+ 
++/*
++ * We don't free the pnfs_layout_type upon last LAYOUTRETURN, but we do
++ * un-initialize.  lo->segs is empty, and the layout has been removed from
++ * lo_layouts. Leave the lo->refcount un-touched.
++ *
++ * Called with inode->i_lock held.
++ *
++ * There still might be an outstanding async LAYOUTCOMMIT, but that's OK
++ * because the pnfs_layout_type is not referenced (exept for the refcount)
++ * by layoutcommit rpc_release.
++ *
++ * Call the layoutdriver free_layout with the initialze-only parameter set
++ * to true.
++ */
++static void nfs4_uninitialize_layout(struct pnfs_layout_type *lo)
++{
++	dprintk("--> %s lo->refcount %d\n", __func__, lo->refcount);
++	lo->roc_iomode = 0;
++	pnfs_set_layout_stateid(lo, &zero_stateid);
++	lo->pnfs_layout_state = 0;
++	lo->pnfs_write_begin_pos = 0;
++	lo->pnfs_write_end_pos = 0;
++	/* True means initialize, do not free the layout */
++	PNFS_LD_IO_OPS(lo)->free_layout(lo, true);
++}
+ 
+ static void
+ pnfs_free_layout(struct pnfs_layout_type *lo,
+@@ -686,6 +711,7 @@ pnfs_free_layout(struct pnfs_layout_type *lo,
+ 		spin_lock(&clp->cl_lock);
+ 		list_del_init(&lo->lo_layouts);
+ 		spin_unlock(&clp->cl_lock);
++		nfs4_uninitialize_layout(lo);
+ 	}
+ 
+ 	dprintk("%s:Return\n", __func__);
+@@ -959,7 +985,7 @@ nfs_lock_alloc_layout(struct inode *ino)
+ 		/* Reference the layout accross i_lock release and grab */
+ 		get_layout(NFS_I(ino)->layout);
+ 		spin_unlock(&ino->i_lock);
+-		NFS_SERVER(ino)->pnfs_curr_ld->ld_io_ops->free_layout(new);
++		PNFS_LD_IO_OPS(NFS_I(ino)->layout)->free_layout(new, false);
+ 		spin_lock(&ino->i_lock);
+ 		put_layout_locked(NFS_I(ino)->layout);
+ 	}
+diff --git a/include/linux/nfs4_pnfs.h b/include/linux/nfs4_pnfs.h
+index 2c6ce4c..70e80cd 100644
+--- a/include/linux/nfs4_pnfs.h
++++ b/include/linux/nfs4_pnfs.h
+@@ -145,7 +145,10 @@ struct layoutdriver_io_operations {
+ 	 * inode specific layout structure.  Each subsequent layoutget operation results in
+ 	 * a set_layout call to set the opaque layout in the layout driver.*/
+ 	struct pnfs_layout_type * (*alloc_layout) (struct inode *inode);
+-	void (*free_layout) (struct pnfs_layout_type *);
++
++	/* init_only true, means do not free the layout, just re-initialize */
++	void (*free_layout) (struct pnfs_layout_type *, bool init_only);
++
+ 	struct pnfs_layout_segment * (*alloc_lseg) (struct pnfs_layout_type *layoutid, struct nfs4_pnfs_layoutget_res *lgr);
+ 	void (*free_lseg) (struct pnfs_layout_segment *lseg);
+ 
+-- 
+1.6.6
 
