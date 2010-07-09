@@ -1,164 +1,68 @@
-From: "Sorin Faibish" <sfaibish@emc.com>
-Subject: Re: [nfsv4] Linux pNFS status meeting 07/08
-Date: Fri, 09 Jul 2010 07:31:15 -0400
-Message-ID: <op.vfkqads4rwwil4@sfaibish1.corp.emc.com>
-References: <OF60B406A7.E52268C8-ON8825775A.000C6BD9-8825775A.000C8A46@us.ibm.com> <20100708154802.GB19375@fieldses.org> <op.vfi7ssfcunckof@usensfaibisl2e.eng.emc.com> <20100708160637.GC19375@fieldses.org> <20100708174558.GE19375@fieldses.org> <op.vfj1i5vyunckof@usensfaibisl2e.eng.emc.com> <1278644957.3148.5.camel@heimdal.trondhjem.org>
+From: "David P. Quigley" <dpquigl@tycho.nsa.gov>
+Subject: Re: [PATCH 04/10] SELinux: Add new labeling type native labels
+Date: Fri, 09 Jul 2010 10:09:26 -0400
+Message-ID: <1278684566.2494.226.camel@moss-terrapins.epoch.ncsc.mil>
+References: <1278513086-23964-1-git-send-email-dpquigl@tycho.nsa.gov>
+	 <1278513086-23964-5-git-send-email-dpquigl@tycho.nsa.gov>
+	 <alpine.LRH.2.00.1007080921200.14102@tundra.namei.org>
+	 <1278595878.2494.186.camel@moss-terrapins.epoch.ncsc.mil>
+	 <alpine.LRH.2.00.1007090824150.23354@tundra.namei.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-15;
-	format=flowed	delsp=yes
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-	linux-nfs@vger.kernel.org, "Marc Eshel" <eshel@almaden.ibm.com>,
-	"nfsv4 list" <nfsv4@ietf.org>
-To: "Trond Myklebust" <trond.myklebust@fys.uio.no>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mexforward.lss.emc.com ([128.222.32.20]:20698 "EHLO
-	mexforward.lss.emc.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755654Ab0GILa7 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 9 Jul 2010 07:30:59 -0400
-In-Reply-To: <1278644957.3148.5.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
-Sender: linux-nfs-owner@vger.kernel.org
+Content-Type: text/plain
+Cc: hch@infradead.org, viro@zeniv.linux.org.uk, casey@schaufler-ca.com,
+	sds@tycho.nsa.gov, "Matthew N. Dodd" <matthew.dodd@sparta.com>,
+	trond.myklebust@fys.uio.no, bfields@fieldses.org,
+	linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	linux-security-module@vger.kernel.org, selinux@tycho.nsa.gov,
+	linux-nfs@vger.kernel.org
+To: James Morris <jmorris@namei.org>
+Return-path: <linux-security-module-owner@vger.kernel.org>
+In-Reply-To: <alpine.LRH.2.00.1007090824150.23354@tundra.namei.org>
+Sender: linux-security-module-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 08 Jul 2010 23:09:17 -0400, Trond Myklebust =20
-<trond.myklebust@fys.uio.no> wrote:
+On Fri, 2010-07-09 at 08:33 +1000, James Morris wrote:
+> On Thu, 8 Jul 2010, David P. Quigley wrote:
+> 
+> > > Otherwise, this is a global policy decision which affects all NFSv4 
+> > > mounts, right?
+> > > 
+> > > 
+> > 
+> > I don't believe we have that ability in any other file system.
+> 
+> NFS is quite different to other filesystems.  Your files are on other 
+> systems, for example, which may or may not support security labeling.
 
-> Hi Sorin,
->
-> I'm getting a 'There are no rooms available for the dates you specifi=
-ed'
-> reply when I try to book for the dates 10/4 to 10/8 using the link yo=
-u
-> provided on the web page below. Should I be using a special booking
-> code?
-Yes. The person I mentioned is in vacation this week and probably not a=
-ll =20
-the
-arrangements were made. Try again on next Monday. Sorry about this I fo=
-und =20
-out
-too late after I posted the page.
+And if that is the case then the capability flag does not get set in the
+NFSv4 server caps and we don't use security label support on that mount.
 
->
-> Cheers
->   Trond
->
-> On Thu, 2010-07-08 at 22:36 -0400, sfaibish wrote:
->> I posted a preliminary web page announcement for the Fall Bake-a-Tho=
-n in
->> Boston
->> on CITI website:
->>
->>   http://www.citi.umich.edu/projects/nfsv4/citi_bakeathon/15th_nfsv4=
-_bakeathon.html
->>
->>
->> On Thu, 08 Jul 2010 13:45:58 -0400, J. Bruce Fields =20
->> <bfields@fieldses.org>
->> wrote:
->>
->> > Also I'd like to hand off running and taking notes on this meeting=
- to
->> > someone else for a while.  (Benny, maybe?)  Or we can go back to =20
->> making
->> > the meeting more informal if that's preferred.
->> >
->> > --b.
->> >
->> > 1. upstream status/merge plans (trond, bfields)
->> > 	- upstream at 2.6.35-rc4.
->> > 	- server side: some bugfixes merged to callback code; allocation
->> > 	  failures changed to return DELAY.
->> > 	- discussion of error return on client callback-parsing error.
->> > 	- trond: everything from before bakeathon is in nfs-2.6.36
->> > 	  branch or upstream.  Also some file locking bugfixes
->> > 	  (bugzilla.kernel.org #14501).  Also sending release_lockowner
->> > 	  more often to keep server resources down.
->> >
->> > 2. State of pNFS tree (bhalevy)
->> > 	- working on patches from boaz and andy for release branch.
->> > 	  Anyone else have big pending patchsets?
->> > 		- Jim is getting complex-volume block patches tested,
->> > 		  will send them out soon.
->> > 		- Fred has some pending stuff ("minor cleanup")
->> > 	- next week would like to start cleaning up and squashing
->> > 	  together patches.  Also will truncate some of the history.
->> >
->> > 3. Client
->> > 	3.1. Client pNFS status
->> > 		- Andy needs to look at state reclaim stuff?
->> > 		- Andy still wondering what to do with the nfs inode
->> > 		  layout pointer.  What's the lifetime of the thing that
->> > 		  points to?
->> > 	3.2. Client state management design documentation (trond)
->> > 		- Also, on docs: Andy will check that wiki docs are
->> > 		  uptodate.  And will do some more documentation of
->> > 		  refcnts, as will Fred.
->> >
->> > 4. Server
->> > 	4.1. Todo's for minimal 4.1 server (bfields)
->> > 		- still working on callback changes.  Trond notes
->> > 		  ongoing rpc code improvements may allow us to do much
->> > 		  of this by keeping a single client and modifying its
->> > 		  transports, in which case I may be able to replace my
->> > 		  callbacks with single rpc tasks.
->> > 		- also fixing 4.0/4.1 bug that prevents exclusive locks
->> > 		  on upgraded open.
->> > 	4.2. pnfs
->> > 		- pnfs/gfs2
->> > 			- I'll ask Eric for a report on gfs2 bakeathon
->> > 			  testing.
->> > 		- exofs
->> > 			- I'll ask Brian about citi exofs setup status.
->> >
->> > 5. boston bakeathon
->> > 	- October 4-8.
->> > 	- Details are finalized, to be posted soon.
->> > 	- If your company will be bringing large equipment, let Sorin
->> > 	  know.
->> > 	- If anyone would be interested in sponsoring a reception or
->> > 	  other addition to the bakeathon, contact Sorin.  (Or if you
->> > 	  know who at your company would handle such a thing, let Sorin
->> > 	  know.)
->> >
->> > 6. new business
->> > 	- Sorin asked Trond for summary of layout-commit discussion.
->> > 	  Discussion ensued.
->> >
->> > 7. next meeting
->> > 	- next week as usual.
->> > --
->> > To unsubscribe from this list: send the line "unsubscribe linux-nf=
-s" =20
->> in
->> > the body of a message to majordomo@vger.kernel.org
->> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
->> >
->> >
->>
->>
->>
->
->
->
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" =
-in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->
->
+> 
+> > If you want to decide that you want to use genfs style labels on NFSv4 
+> > just use a context mount.
+> 
+> So, we enable this feature, and virtually all existing mounts break 
+> because the servers do not support labeling.
 
+No it should default back to being nfs_t which is what happens when I
+use my client on an export that doesn't have security_label set.
 
+> 
+> > That way you can have the default behavior be 
+> > use security label support unless you don't want to and then you can 
+> > have a context mount.
+> 
+> It needs to be the other way around.  This is a new feature, so the 
+> default needs to be the existing behavior, with security labeling as an 
+> option to enable at mount time.
 
---=20
-Best Regards
-Sorin Faibish
-Corporate Distinguished Engineer
-Unified Storage Division
+We made sure it falls back properly. It was decided a long time ago with
+discussion by several people that having it default to use it if its
+there otherwise fall back to the old behavior makes much more sense to
+an administrator.
 
-        EMC=B2
-where information lives
+> 
+> 
+> 
+> - James
 
-Phone: 508-435-1000 x 48545
-Cellphone: 617-510-0422
-Email : sfaibish@emc.com
