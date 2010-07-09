@@ -1,111 +1,54 @@
 From: andros@netapp.com
-Subject: [PATCH 1/2] SQUASHME pnfs-submit: reinitialize pnfs_layout_type
-Date: Fri,  9 Jul 2010 12:39:30 -0400
-Message-ID: <1278693571-3328-2-git-send-email-andros@netapp.com>
+Subject: [PATCH 2/2] SQUASHME pnfs-submit file layout free_layout init_only
+Date: Fri,  9 Jul 2010 12:39:31 -0400
+Message-ID: <1278693571-3328-3-git-send-email-andros@netapp.com>
 References: <1278693571-3328-1-git-send-email-andros@netapp.com>
+ <1278693571-3328-2-git-send-email-andros@netapp.com>
 Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
 To: bhalevy@panasas.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:23972 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:63483 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757917Ab0GIQjl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	id S1757926Ab0GIQjl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
 	Fri, 9 Jul 2010 12:39:41 -0400
-In-Reply-To: <1278693571-3328-1-git-send-email-andros@netapp.com>
+In-Reply-To: <1278693571-3328-2-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 From: Andy Adamson <andros@netapp.com>
 
-We do not free the pnfs_layout_type when the layout segment list is empty, but
-we do remove the layout from the nfs_client cl_layouts list, and we also need
-to re-initialize it. The next LAYOUTGET will set the layout values.
-
-Note: API change: layoutdriver_io_operations free_layout now has a boolean
-to indicate initiaize_only, do not free.
+Implement the new free_layout layoutdriver io operation init_only boolean.
 
 Signed-off-by: Andy Adamson <andros@netapp.com>
 ---
- fs/nfs/pnfs.c             |   30 ++++++++++++++++++++++++++++--
- include/linux/nfs4_pnfs.h |    5 ++++-
- 2 files changed, 32 insertions(+), 3 deletions(-)
+ fs/nfs/nfs4filelayout.c |   14 ++++++++++++--
+ 1 files changed, 12 insertions(+), 2 deletions(-)
 
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 6832237..d8887ef 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -337,7 +337,7 @@ put_layout_locked(struct pnfs_layout_type *lo)
- 
- 		dprintk("%s: freeing layout cache %p\n", __func__, lo);
- 		WARN_ON(!list_empty(&lo->lo_layouts));
--		io_ops->free_layout(lo);
-+		io_ops->free_layout(lo, false);
- 		nfsi->layout = NULL;
- 	}
- }
-@@ -658,6 +658,31 @@ _pnfs_can_return_lseg(struct pnfs_layout_segment *lseg)
- 	return atomic_read(&lseg->kref.refcount) == 1;
- }
- 
-+/*
-+ * We don't free the pnfs_layout_type upon last LAYOUTRETURN, but we do
-+ * un-initialize.  lo->segs is empty, and the layout has been removed from
-+ * lo_layouts. Leave the lo->refcount un-touched.
-+ *
-+ * Called with inode->i_lock held.
-+ *
-+ * There still might be an outstanding async LAYOUTCOMMIT, but that's OK
-+ * because the pnfs_layout_type is not referenced (exept for the refcount)
-+ * by layoutcommit rpc_release.
-+ *
-+ * Call the layoutdriver free_layout with the initialze-only parameter set
-+ * to true.
-+ */
-+static void nfs4_uninitialize_layout(struct pnfs_layout_type *lo)
-+{
-+	dprintk("--> %s lo->refcount %d\n", __func__, lo->refcount);
-+	lo->roc_iomode = 0;
-+	pnfs_set_layout_stateid(lo, &zero_stateid);
-+	lo->pnfs_layout_state = 0;
-+	lo->pnfs_write_begin_pos = 0;
-+	lo->pnfs_write_end_pos = 0;
-+	/* True means initialize, do not free the layout */
-+	PNFS_LD_IO_OPS(lo)->free_layout(lo, true);
-+}
- 
+diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+index b49ccf4..e1b0d6c 100644
+--- a/fs/nfs/nfs4filelayout.c
++++ b/fs/nfs/nfs4filelayout.c
+@@ -314,9 +314,19 @@ filelayout_alloc_layout(struct inode *inode)
+ /* Free a filelayout layout structure
+  */
  static void
- pnfs_free_layout(struct pnfs_layout_type *lo,
-@@ -686,6 +711,7 @@ pnfs_free_layout(struct pnfs_layout_type *lo,
- 		spin_lock(&clp->cl_lock);
- 		list_del_init(&lo->lo_layouts);
- 		spin_unlock(&clp->cl_lock);
-+		nfs4_uninitialize_layout(lo);
- 	}
- 
- 	dprintk("%s:Return\n", __func__);
-@@ -959,7 +985,7 @@ nfs_lock_alloc_layout(struct inode *ino)
- 		/* Reference the layout accross i_lock release and grab */
- 		get_layout(NFS_I(ino)->layout);
- 		spin_unlock(&ino->i_lock);
--		NFS_SERVER(ino)->pnfs_curr_ld->ld_io_ops->free_layout(new);
-+		PNFS_LD_IO_OPS(NFS_I(ino)->layout)->free_layout(new, false);
- 		spin_lock(&ino->i_lock);
- 		put_layout_locked(NFS_I(ino)->layout);
- 	}
-diff --git a/include/linux/nfs4_pnfs.h b/include/linux/nfs4_pnfs.h
-index 2c6ce4c..70e80cd 100644
---- a/include/linux/nfs4_pnfs.h
-+++ b/include/linux/nfs4_pnfs.h
-@@ -145,7 +145,10 @@ struct layoutdriver_io_operations {
- 	 * inode specific layout structure.  Each subsequent layoutget operation results in
- 	 * a set_layout call to set the opaque layout in the layout driver.*/
- 	struct pnfs_layout_type * (*alloc_layout) (struct inode *inode);
--	void (*free_layout) (struct pnfs_layout_type *);
+-filelayout_free_layout(struct pnfs_layout_type *lo)
++filelayout_free_layout(struct pnfs_layout_type *lo, bool init_only)
+ {
+-	dprintk("NFS_FILELAYOUT: freeing layout\n");
++	if (init_only) {
++		struct nfs4_filelayout *flp = FILE_LO(lo);
 +
-+	/* init_only true, means do not free the layout, just re-initialize */
-+	void (*free_layout) (struct pnfs_layout_type *, bool init_only);
-+
- 	struct pnfs_layout_segment * (*alloc_lseg) (struct pnfs_layout_type *layoutid, struct nfs4_pnfs_layoutget_res *lgr);
- 	void (*free_lseg) (struct pnfs_layout_segment *lseg);
++		dprintk("%s re-intializing layout\n", __func__);
++		flp->uncommitted_write = 0;
++		flp->last_commit_size = 0;
++		flp->layout_id = 0;
++		flp->stripe_unit = 0;
++		return;
++	}
++	dprintk("%s freeing layout\n", __func__);
+ 	kfree(lo);
+ }
  
 -- 
 1.6.6
