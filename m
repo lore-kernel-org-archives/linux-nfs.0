@@ -1,45 +1,79 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from moutng.kundenserver.de ([212.227.126.186]:53936 "EHLO
-	moutng.kundenserver.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753149Ab0G3VXO (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 30 Jul 2010 17:23:14 -0400
-Subject: Re: [PATCH 02/18] xstat: Add a pair of system calls to make
- extended  file stats available [ver #6]
-From: utz lehmann <lkml123@s2y4n2c.de>
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Cc: Jeremy Allison <jra@samba.org>, Volker.Lendecke@sernet.de,
-        David Howells <dhowells@redhat.com>,
-        Jan Engelhardt <jengelh@medozas.de>, linux-cifs@vger.kernel.org,
-        linux-nfs@vger.kernel.org, samba-technical@lists.samba.org,
-        linux-kernel@vger.kernel.org, viro@zeniv.linux.org.uk,
-        linux-fsde@jasper.es
-In-Reply-To: <AANLkTimdFCGSKLn7aGMpBMIauHTsHY7hpAAmpo6uTcnD@mail.gmail.com>
-References: <alpine.LSU.2.01.1007221228260.6115@obet.zrqbmnf.qr>
-	 <20100715021709.5544.64506.stgit@warthog.procyon.org.uk>
-	 <20100715021712.5544.44845.stgit@warthog.procyon.org.uk>
-	 <30448.1279800887@redhat.com> <E1Obuiy-00C9jr-Al@intern.SerNet.DE>
-	 <AANLkTikBCXK6uEw  <AANLkTimdFCGSKLn7aGMpBMIauHTsHY7hpAAmpo6uTcnD@mail.gmail.com>
-Content-Type: text/plain; charset="UTF-8"
-Date: Fri, 30 Jul 2010 23:22:58 +0200
-Message-ID: <1280524978.2452.9.camel@segv.aura.of.mankind>
+Received: from msux-gh1-uea02.nsa.gov ([63.239.65.40]:33588 "EHLO
+	msux-gh1-uea02.nsa.gov" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752029Ab0GIOOG (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 9 Jul 2010 10:14:06 -0400
+Subject: Re: [PATCH 06/10] NFSv4: Add label recommended attribute and NFSv4
+ flags
+From: "David P. Quigley" <dpquigl@tycho.nsa.gov>
+To: James Morris <jmorris@namei.org>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>, hch@infradead.org,
+        viro@zeniv.linux.org.uk, casey@schaufler-ca.com, sds@tycho.nsa.gov,
+        matthew.dodd@sparta.com, trond.myklebust@fys.uio.no,
+        linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-security-module@vger.kernel.org, selinux@tycho.nsa.gov,
+        linux-nfs@vger.kernel.org
+In-Reply-To: <alpine.LRH.2.00.1007090834190.23354@tundra.namei.org>
+References: <1278513086-23964-1-git-send-email-dpquigl@tycho.nsa.gov>
+	 <1278513086-23964-7-git-send-email-dpquigl@tycho.nsa.gov>
+	 <20100707170058.GD28815@fieldses.org>
+	 <alpine.LRH.2.00.1007080928180.14102@tundra.namei.org>
+	 <1278596363.2494.194.camel@moss-terrapins.epoch.ncsc.mil>
+	 <alpine.LRH.2.00.1007090834190.23354@tundra.namei.org>
+Content-Type: text/plain
+Date: Fri, 09 Jul 2010 10:05:48 -0400
+Message-Id: <1278684348.2494.223.camel@moss-terrapins.epoch.ncsc.mil>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Thu, 2010-07-22 at 09:40 -0700, Linus Torvalds wrote:
-> But the fact is, th Unix ctime semantics are insane and largely
-> useless. There's a damn good reason almost nobody uses ctime under
-> unix.
+On Fri, 2010-07-09 at 08:48 +1000, James Morris wrote:
+> On Thu, 8 Jul 2010, David P. Quigley wrote:
 > 
-> So what I'm suggesting is that we have a flag - either per-process or
-> per-mount - that just says "use windows semantics for ctime".
+> > > The maximum security label size on Linux is:
+> > > 
+> > > #define XATTR_SIZE_MAX 65536
+> > > 
+> > > Why arbitrarily limit this over the network?
+> > 
+> > Because there is no easy way not to. The specification doesn't specify a
+> > limit to label size in the IETF draft. However there is no way to do
+> > allocation of the memory needed to store the label where we first get
+> > access to its size. We tried this before and it failed. When I asked
+> > trond about it he said doing memory allocation in the rpc context isn't
+> > allowed.
+> 
+> In the NFSv3 code, the workaround I've been using is to always allocate 
+> 64k, but the correct way of doing this apparently is to use the page 
+> cache, as is used for ACLs and symlinks.
+> 
+> > For the most part what would make this label size inadequate would be 
+> > the MLS component. There are some cases where people want every other 
+> > compartment or something crazy like that. In terms of a normal label 
+> > though 4096 should be more than enough.
+> 
+> Yes, but we should not unnecessarily limit the network protocol when 
+> something is valid and possible in the local implementation (which is ~64k 
+> under Linux).
+> 
+> > Just to put this in perspective the string below is 4096 a's.
+> 
+> A security label include just about anything, e.g. an x509 certificate, or 
+> a base64 encoded image.
+> 
+> In the Linux implementation, if we can store a local label up to 64k, then 
+> we should try and ensure that it can be conveyed via NFS.
+> 
+> 
+> 
+> - James
 
-When abusing an existing time stamp use atime not ctime please.
-ctime has it's uses. atime was just a mistake and is nearly useless.
 
-And with noatime we already have creation time semantics for atime.
+If you want that to be the case you need to make your case to Trond
+about that. I've already had this conversation before and he seems to
+think that a page is sufficient. Bruce also has concerns about not
+wanting these labels to require a high order allocation. Under memory
+pressure finding 16 contiguous pages for each label might be a problem.
 
-
-utz
-
+Dave
 
