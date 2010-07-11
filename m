@@ -1,77 +1,65 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ww0-f44.google.com ([74.125.82.44]:64579 "EHLO
-	mail-ww0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757947Ab0GASkN (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 1 Jul 2010 14:40:13 -0400
-Received: by wwb24 with SMTP id 24so185645wwb.1
-        for <linux-nfs@vger.kernel.org>; Thu, 01 Jul 2010 11:40:12 -0700 (PDT)
-Message-ID: <4C2CE107.3080406@panasas.com>
-Date: Thu, 01 Jul 2010 21:40:07 +0300
-From: Benny Halevy <bhalevy@panasas.com>
-To: NFS list <linux-nfs@vger.kernel.org>
-Subject: pnfs git tree status pnfs-all-2.6.35-rc3-2010-07-01
-References: <4C111B9C.3080603@panasas.com> <4C1A4F0E.5070406@panasas.com>
-In-Reply-To: <4C1A4F0E.5070406@panasas.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mail-ey0-f174.google.com ([209.85.215.174]:54796 "EHLO
+	mail-ey0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750873Ab0GKFDW (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 11 Jul 2010 01:03:22 -0400
+In-Reply-To: <1278684348.2494.223.camel@moss-terrapins.epoch.ncsc.mil>
+References: <1278513086-23964-1-git-send-email-dpquigl@tycho.nsa.gov>
+	<1278513086-23964-7-git-send-email-dpquigl@tycho.nsa.gov>
+	<20100707170058.GD28815@fieldses.org> <alpine.LRH.2.00.1007080928180.14102@tundra.namei.org>
+	<1278596363.2494.194.camel@moss-terrapins.epoch.ncsc.mil>
+	<alpine.LRH.2.00.1007090834190.23354@tundra.namei.org> <1278684348.2494.223.camel@moss-terrapins.epoch.ncsc.mil>
+From: Kyle Moffett <kyle@moffetthome.net>
+Date: Sun, 11 Jul 2010 01:02:59 -0400
+Message-ID: <AANLkTinUO-xqvQQINTzKLcXnljq-RaN5X6ulEAqvuf0d@mail.gmail.com>
+Subject: Re: [PATCH 06/10] NFSv4: Add label recommended attribute and NFSv4
+	flags
+To: "David P. Quigley" <dpquigl@tycho.nsa.gov>
+Cc: James Morris <jmorris@namei.org>, "J. Bruce Fields" <bfields@fieldses.org>,
+        hch@infradead.org, viro@zeniv.linux.org.uk, casey@schaufler-ca.com,
+        sds@tycho.nsa.gov, matthew.dodd@sparta.com, trond.myklebust@fys.uio.no,
+        linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-security-module@vger.kernel.org, selinux@tycho.nsa.gov,
+        linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Here's the list of patches that went into the latest linux-pnfs tree as of 2010-07-01
-since last update (pnfs-all-2.6.35-rc2-2010-06-17)
+On Fri, Jul 9, 2010 at 10:05, David P. Quigley <dpquigl@tycho.nsa.gov> wrote:
+> On Fri, 2010-07-09 at 08:48 +1000, James Morris wrote:
+>> Yes, but we should not unnecessarily limit the network protocol when
+>> something is valid and possible in the local implementation (which is ~64k
+>> under Linux).
+>>
+>> A security label include just about anything, e.g. an x509 certificate, or
+>> a base64 encoded image.
+>>
+>> In the Linux implementation, if we can store a local label up to 64k, then
+>> we should try and ensure that it can be conveyed via NFS.
+>
+> If you want that to be the case you need to make your case to Trond
+> about that. I've already had this conversation before and he seems to
+> think that a page is sufficient. Bruce also has concerns about not
+> wanting these labels to require a high order allocation. Under memory
+> pressure finding 16 contiguous pages for each label might be a problem.
 
-As usual, cumulative patches against the mainline kernel can be
-generated via http://wiki.linux-nfs.org/wiki/index.php/PNFS_Development_Git_tree
+I would argue that if somebody wants to stick a base64-encoded image
+or an x509 certificate in their security labels then shipping the
+whole thing across the wire every time somebody does an extended
+"stat" is just stupid.  Think about how much overhead there would be
+if you did an "ls -Z" of a directory with 100 files (64k * 100 ==
+6.4MB!!!), where that data would previously have fit in no more than
+10-20k TOTAL.
 
-nfsd-upstream:
-  Boaz Harrosh     b9598af SQUASHME: nfsd41: Fix a crash when a callback is retried
+A better solution would be something along the lines of putting at
+most a SHA512 sum in the label field and have a separate caching
+communication protocol (either in-band or out-of-band) to pass the
+fully-descriptive payload.
 
-nfs-upstream:
-  Benny Halevy     a1c6087 nfs: fix possible leak in nfs_proc_symlink
-  Trond Myklebust  1308c3f NFSv4: Ensure that /proc/self/mountinfo displays the minor version number
+Even in local filesystems like ext3 we prefer to turn labels into
+numbers, store the number with each inode, and then keep the labels
+indexed in a separate datastructure.
 
-nfs41-all:
-  Benny Halevy     20265c2 i915_dma Bug #16247
-
-pnfs-submit:
-  Benny Halevy     f88044b SQUASHME: pnfs-submit: __wait no longer used by _pnfs_update_layout
-  Benny Halevy     397af9d SQUASHME: pnfs-submit: fix possible leak in nfs4_pnfs_ds_create
-  Benny Halevy     970b309 SAUASHME: pnfs-submit: prevent buffer overrun in decode_and_add_ds
-  Andy Adamson     4ae3ac5 SQUASHME pnfs-submit: remove struct nfs_server from stack
-  Andy Adamson     fcc6499 SQUASHME: pnfs-submit: don't re-initialize i_lock
-  Andy Adamson     f83fa38 SQUASHME pnfs-submit: add error handlers to layout get
-  Andy Adamson     14e9066 SQUASHME pnfs-submit: handle assassinated layoutcommit
-  Andy Adamson     2a1ef93 SQUASHME pnfs-submit: add error handling to layout return
-  Andy Adamson     cbae7a5 SQUASHME pnfs-submit: remove encode_layoutreturn
-  Andy Adamson     761f452 SQUASHME pnfs-submit: pnfs_try_to_read, write, commit using freed memory
-  Andy Adamson     56a98e8 SQUASHME: pnfs-submit remove unused filelayout_mount_type
-  Fred Isaman      fcbaa5e pnfs-submit: remove list_empty check from put_layout
-
-pnfs:
-  Benny Halevy     5157ed0 SQUASHME: pnfs: check for read_buf error in decode_pnfs_layoutrecall_args
-  Andy Adamson     5637fa1 pnfs-post-submit: restore encode_layoutreturn
-
-pnfs-block:
-  Benny Halevy     5d459a3 SQUASHME: pnfs-block: nfs4_blk_add_block_disk ret must be signed
-
-pnfsd-files:
-  Benny Halevy     e840874 SQUASHME: pnfsd-files: nfsd4_pnfs_dlm_shutdown should use list_for_each_entry_safe
-  Benny Halevy     a9fb462 SQUASHME: pnfsd-files: verify_stateid's return status is __be32
-  Benny Halevy     3895976 SQUASHME: pnfsd-files: prevent NULL deref in nfsd4_pnfs_dlm_getdevinfo
-  Eric Anderle     805dec2 pnfsd: Fix num_ds bug in nfsd4_set_pnfs_dlm_device()
-
-pnfsd:
-  Boaz Harrosh     259e31d SQUASHME: pnfsd: into [SQUASHME: pnfsd: Support for cb_layout returning NFS4ERR_DELAY]
-  Benny Halevy     bf5656c SQUASHME: pnfsd: fix pointer dereference in dprintk of write verifiers
-  Benny Halevy     263355c pnfsd: reset status on NFS4ERR_NOMATCHING_LAYOUT
-  Benny Halevy     50debee SQUASHME: pnfsd: move kfree of the cb_device rpc_args to release time
-  Benny Halevy     bc3b006 SQUASHME: pnfsd: move kfree of the cb_layout rpc_args to release time
-
-spnfs-block:
-  Benny Halevy     8b047ca SQUASHME: spnfs-block: kfree(res) in bl_pipe_downcall error path
-
-pnfs-obj-all:
-  Benny Halevy     8ef6e62 SQUASHME: pnfs-obj: use NFSDBG_PNFS_LD also in pnfs_osd_xdr_cli.c
-
-pnfs-exofs-all:
-  Boaz Harrosh     7cc0c0e SQUASHME: pnfsd-exofs: Fix exofs_inode_recall_layout() sending 2 recalls
+Cheers,
+Kyle Moffett
