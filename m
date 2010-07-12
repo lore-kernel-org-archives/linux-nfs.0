@@ -1,22 +1,24 @@
-From: Boaz Harrosh <bharrosh@panasas.com>
+From: Benny Halevy <bhalevy@panasas.com>
 Subject: Re: [PATCH 12/16] SQUASHME pnfs-submit: reference layout across layoutcommit
-Date: Mon, 12 Jul 2010 20:25:14 +0300
-Message-ID: <4C3B4FFA.2010704@panasas.com>
+Date: Mon, 12 Jul 2010 20:19:41 +0300
+Message-ID: <4C3B4EAD.7070404@panasas.com>
 References: <1278542063-4009-1-git-send-email-andros@netapp.com> <1278542063-4009-2-git-send-email-andros@netapp.com> <1278542063-4009-3-git-send-email-andros@netapp.com> <1278542063-4009-4-git-send-email-andros@netapp.com> <1278542063-4009-5-git-send-email-andros@netapp.com> <1278542063-4009-6-git-send-email-andros@netapp.com> <1278542063-4009-7-git-send-email-andros@netapp.com> <1278542063-4009-8-git-send-email-andros@netapp.com> <1278542063-4009-9-git-send-email-andros@netapp.com> <1278542063-4009-10-git-send-email-andros@netapp.com> <1278542063-4009-11-git-send-email-andros@netapp.com> <1278542063-4009-12-git-send-email-andros@netapp.com> <1278542063-4009-13-git-send-email-andros@netapp.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: bhalevy@panasas.com, linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: linux-nfs@vger.kernel.org
 To: andros@netapp.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:23885 "EHLO
-	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1752087Ab0GLRZU (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 12 Jul 2010 13:25:20 -0400
+Received: from mail-ww0-f42.google.com ([74.125.82.42]:40163 "EHLO
+	mail-ww0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752690Ab0GLR01 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 12 Jul 2010 13:26:27 -0400
+Received: by wwb13 with SMTP id 13so3414416wwb.1
+        for <linux-nfs@vger.kernel.org>; Mon, 12 Jul 2010 10:26:26 -0700 (PDT)
 In-Reply-To: <1278542063-4009-13-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 07/08/2010 01:34 AM, andros@netapp.com wrote:
+On Jul. 08, 2010, 1:34 +0300, andros@netapp.com wrote:
 > From: Andy Adamson <andros@netapp.com>
 > 
 > Signed-off-by: Andy Adamson <andros@netapp.com>
@@ -67,7 +69,14 @@ On 07/08/2010 01:34 AM, andros@netapp.com wrote:
 > +	get_layout(NFS_I(inode)->layout);
 > +
 
-Has of your rules this should be now called get_layout_locked
+So from the 30000 foot level, I need to remind myself what do
+we need the refcount on the layout hdr (pnfs_layout_type) for?
+
+Can we really use it detached from the inode? NO
+Is it only for debugging to make catch the case that the inode
+is released while there are references to the layout?
+
+Benny
 
 >  	spin_unlock(&inode->i_lock);
 >  
@@ -77,10 +86,6 @@ Has of your rules this should be now called get_layout_locked
 >  		/* The layout driver failed to setup the layoutcommit */
 >  		put_rpccred(data->cred);
 > +		put_layout(inode);
-
-And it is really nice that put_layout takes an inode and get_layout takes an
-struct layout_type.
-
 >  		goto out_free;
 >  	}
 >  	status = pnfs4_proc_layoutcommit(data, sync);
@@ -97,8 +102,3 @@ struct layout_type.
 >  #define PNFS_EXISTS_LDIO_OP(srv, opname) ((srv)->pnfs_curr_ld &&	\
 >  				     (srv)->pnfs_curr_ld->ld_io_ops &&	\
 
-I still think they can all go away.
-What is the point of a layout without it's nfsi+inode. And who cares if we free the layout_type structure
-2 milliseconds before, and in the error case?
-
-Boaz
