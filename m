@@ -1,252 +1,165 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:10070 "EHLO
-	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1753000Ab0GGMF3 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 7 Jul 2010 08:05:29 -0400
-Message-ID: <4C346D80.8010405@panasas.com>
-Date: Wed, 07 Jul 2010 15:05:20 +0300
-From: Benny Halevy <bhalevy@panasas.com>
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-CC: Daniel.Muntz@emc.com, andros@netapp.com, sjoshi@bluearc.com,
-        linux-nfs@vger.kernel.org, NFSv4 <nfsv4@ietf.org>
-Subject: Re: 4.1 client - LAYOUTCOMMIT & close
-References: <A062FCC8662DA848949F7C3046B9BEAE01F3A6ED@us-email.terastack.bluearc.com>	 <A062FCC8662DA848949F7C3046B9BEAE01F3A6EE@us-email.terastack.bluearc.com>	 <6206CE0E-0A32-46A7-B648-3FCC12ED1961@netapp.com>	 <B9A709F368FAAF4DB4B33870F72A141DFB88F3@CORPUSMX30A.corp.emc.com>	 <0E2B1FE3-3B42-4BF2-BECE-A611DADF3983@netapp.com>	 <B9A709F368FAAF4DB4B33870F72A141D01017F94@CORPUSMX30A.corp.emc.com> <1278448834.16176.5.camel@heimdal.trondhjem.org>
-In-Reply-To: <1278448834.16176.5.camel@heimdal.trondhjem.org>
-Content-Type: text/plain; charset=UTF-8
+Received: from mx2.netapp.com ([216.240.18.37]:16076 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754185Ab0GLWKV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 12 Jul 2010 18:10:21 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: [PATCH 1/3] NFS: Fix up the fsync code
+To: Christoph Hellwig <hch@infradead.org>
+Cc: linux-nfs@vger.kernel.org
+Date: Mon, 12 Jul 2010 18:09:32 -0400
+Message-ID: <20100712220932.20019.21170.stgit@heimdal.trondhjem.org>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Jul. 06, 2010, 23:40 +0300, Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
-> On Tue, 2010-07-06 at 15:20 -0400, Daniel.Muntz@emc.com wrote: 
->> The COMMIT to the DS, ttbomk, commits data on the DS.  I see it as
->> orthogonal to updating the metadata on the MDS (but perhaps I'm wrong).
->> As sjoshi@bluearc mentioned, the LAYOUTCOMMIT provides a synchronization
->> point, so even if the non-clustered server does not want to update
->> metadata on every DS I/O, the LAYOUTCOMMIT could also be a trigger to
->> execute whatever synchronization mechanism the implementer wishes to put
->> in the control protocol.
-> 
-> As far as I'm aware, there are no exceptions in RFC5661 that would allow
-> pNFS servers to break the rule that any visible change to the data must
-> be atomically accompanied with a change attribute update.
-> 
+Christoph points out that the VFS will always flush out data before calling
+nfs_fsync(), so we can dispense with a full call to nfs_wb_all(), and
+replace that with a simpler call to nfs_commit_inode().
 
-Trond, I'm not sure how this rule you mentioned is specified.
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
 
-See more in section 12.5.4 and 12.5.4.1. LAYOUTCOMMIT and change/time_modify
-in particular:
+ fs/nfs/file.c     |   50 +++++++++++++++++++++-----------------------------
+ fs/nfs/internal.h |    1 +
+ fs/nfs/write.c    |    4 ++--
+ 3 files changed, 24 insertions(+), 31 deletions(-)
 
-   For some layout protocols, the storage device is able to notify the
-   metadata server of the occurrence of an I/O; as a result, the change
-   and time_modify attributes may be updated at the metadata server.
-   For a metadata server that is capable of monitoring updates to the
-   change and time_modify attributes, LAYOUTCOMMIT processing is not
-   required to update the change attribute.  In this case, the metadata
-   server must ensure that no further update to the data has occurred
-   since the last update of the attributes; file-based protocols may
-   have enough information to make this determination or may update the
-   change attribute upon each file modification.  This also applies for
-   the time_modify attribute.  If the server implementation is able to
-   determine that the file has not been modified since the last
-   time_modify update, the server need not update time_modify at
-   LAYOUTCOMMIT.  At LAYOUTCOMMIT completion, the updated attributes
-   should be visible if that file was modified since the latest previous
-   LAYOUTCOMMIT or LAYOUTGET
+diff --git a/fs/nfs/file.c b/fs/nfs/file.c
+index 36a5e74..4bf7306 100644
+--- a/fs/nfs/file.c
++++ b/fs/nfs/file.c
+@@ -202,31 +202,6 @@ static loff_t nfs_file_llseek(struct file *filp, loff_t offset, int origin)
+ }
+ 
+ /*
+- * Helper for nfs_file_flush() and nfs_file_fsync()
+- *
+- * Notice that it clears the NFS_CONTEXT_ERROR_WRITE before synching to
+- * disk, but it retrieves and clears ctx->error after synching, despite
+- * the two being set at the same time in nfs_context_set_write_error().
+- * This is because the former is used to notify the _next_ call to
+- * nfs_file_write() that a write error occured, and hence cause it to
+- * fall back to doing a synchronous write.
+- */
+-static int nfs_do_fsync(struct nfs_open_context *ctx, struct inode *inode)
+-{
+-	int have_error, status;
+-	int ret = 0;
+-
+-	have_error = test_and_clear_bit(NFS_CONTEXT_ERROR_WRITE, &ctx->flags);
+-	status = nfs_wb_all(inode);
+-	have_error |= test_bit(NFS_CONTEXT_ERROR_WRITE, &ctx->flags);
+-	if (have_error)
+-		ret = xchg(&ctx->error, 0);
+-	if (!ret)
+-		ret = status;
+-	return ret;
+-}
+-
+-/*
+  * Flush all dirty pages, and check for write errors.
+  */
+ static int
+@@ -245,7 +220,7 @@ nfs_file_flush(struct file *file, fl_owner_t id)
+ 		return 0;
+ 
+ 	/* Flush writes to the server and return any errors */
+-	return nfs_do_fsync(ctx, inode);
++	return vfs_fsync(file, 0);
+ }
+ 
+ static ssize_t
+@@ -320,6 +295,13 @@ nfs_file_mmap(struct file * file, struct vm_area_struct * vma)
+  * Flush any dirty pages for this process, and check for write errors.
+  * The return status from this call provides a reliable indication of
+  * whether any write errors occurred for this process.
++ *
++ * Notice that it clears the NFS_CONTEXT_ERROR_WRITE before synching to
++ * disk, but it retrieves and clears ctx->error after synching, despite
++ * the two being set at the same time in nfs_context_set_write_error().
++ * This is because the former is used to notify the _next_ call to
++ * nfs_file_write() that a write error occured, and hence cause it to
++ * fall back to doing a synchronous write.
+  */
+ static int
+ nfs_file_fsync(struct file *file, int datasync)
+@@ -327,13 +309,23 @@ nfs_file_fsync(struct file *file, int datasync)
+ 	struct dentry *dentry = file->f_path.dentry;
+ 	struct nfs_open_context *ctx = nfs_file_open_context(file);
+ 	struct inode *inode = dentry->d_inode;
++	int have_error, status;
++	int ret = 0;
++
+ 
+ 	dprintk("NFS: fsync file(%s/%s) datasync %d\n",
+ 			dentry->d_parent->d_name.name, dentry->d_name.name,
+ 			datasync);
+ 
+ 	nfs_inc_stats(inode, NFSIOS_VFSFSYNC);
+-	return nfs_do_fsync(ctx, inode);
++	have_error = test_and_clear_bit(NFS_CONTEXT_ERROR_WRITE, &ctx->flags);
++	status = nfs_commit_inode(inode, FLUSH_SYNC);
++	have_error |= test_bit(NFS_CONTEXT_ERROR_WRITE, &ctx->flags);
++	if (have_error)
++		ret = xchg(&ctx->error, 0);
++	if (!ret)
++		ret = status;
++	return ret;
+ }
+ 
+ /*
+@@ -639,7 +631,7 @@ static ssize_t nfs_file_write(struct kiocb *iocb, const struct iovec *iov,
+ 
+ 	/* Return error values for O_DSYNC and IS_SYNC() */
+ 	if (result >= 0 && nfs_need_sync_write(iocb->ki_filp, inode)) {
+-		int err = nfs_do_fsync(nfs_file_open_context(iocb->ki_filp), inode);
++		int err = vfs_fsync(iocb->ki_filp, 0);
+ 		if (err < 0)
+ 			result = err;
+ 	}
+@@ -675,7 +667,7 @@ static ssize_t nfs_file_splice_write(struct pipe_inode_info *pipe,
+ 		written = ret;
+ 
+ 	if (ret >= 0 && nfs_need_sync_write(filp, inode)) {
+-		int err = nfs_do_fsync(nfs_file_open_context(filp), inode);
++		int err = vfs_fsync(filp, 0);
+ 		if (err < 0)
+ 			ret = err;
+ 	}
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index d8bd619..bdaaedf 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -251,6 +251,7 @@ extern int nfs4_get_rootfh(struct nfs_server *server, struct nfs_fh *mntfh);
+ extern void nfs_read_prepare(struct rpc_task *task, void *calldata);
+ 
+ /* write.c */
++extern int nfs_commit_inode(struct inode *inode, int how);
+ extern void nfs_write_prepare(struct rpc_task *task, void *calldata);
+ #ifdef CONFIG_MIGRATION
+ extern int nfs_migrate_page(struct address_space *,
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index 5eccea1..8fda8a7 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -1382,7 +1382,7 @@ static const struct rpc_call_ops nfs_commit_ops = {
+ 	.rpc_release = nfs_commit_release,
+ };
+ 
+-static int nfs_commit_inode(struct inode *inode, int how)
++int nfs_commit_inode(struct inode *inode, int how)
+ {
+ 	LIST_HEAD(head);
+ 	int may_wait = how & FLUSH_SYNC;
+@@ -1446,7 +1446,7 @@ out_mark_dirty:
+ 	return ret;
+ }
+ #else
+-static int nfs_commit_inode(struct inode *inode, int how)
++int nfs_commit_inode(struct inode *inode, int how)
+ {
+ 	return 0;
+ }
 
-> As I see it, if your server allows one client to read data that may have
-> been modified by another client that holds a WRITE layout for that range
-> then (since that is a visible data change) it should provide a change
-> attribute update irrespective of whether or not a LAYOUTCOMMIT has been
-> sent.
-
-the requirement for the server in WRITE's implementation section 
-is quite weak: "It is assumed that the act of writing data to a file will
-cause the time_modified and change attributes of the file to be updated."
-
-The difference here is that for pNFS the written data is not guaranteed
-to be visible until LAYOUTCOMMIT.  In a broader sense, assuming the clients
-are caching dirty data and use a write-behind cache, application-written data
-may be visible to other processes on the same host but not to others until
-fsync() or close() - open-to-close semantics are the only thing the client
-guarantees, right?  Issuing LAYOUTCOMMIT on fsync() and close() ensure the
-data is committed to stable storage and is visible to all other clients in
-the cluster.
-
-Benny
-
-> If your MDS is incapable of determining whether or not data has changed
-> on the DSes, then it should probably recall the WRITE layout if someone
-> tries to read data that may have been modified. Said server also needs a
-> strategy for determining if a data change occurred if the client that
-> held the WRITE layout died before it could send the LAYOUTCOMMIT.
-> 
-> Cheers
->    Trond
-> 
->> -Dan
->>
->>> -----Original Message-----
->>> From: Andy Adamson [mailto:andros@netapp.com] 
->>> Sent: Tuesday, July 06, 2010 6:38 AM
->>> To: Muntz, Daniel
->>> Cc: sjoshi@bluearc.com; linux-nfs@vger.kernel.org; bhalevy@panasas.com
->>> Subject: Re: 4.1 client - LAYOUTCOMMIT & close
->>>
->>>
->>> On Jul 2, 2010, at 5:46 PM, <Daniel.Muntz@emc.com> wrote:
->>>
->>>> By "extremely lame server" I assume you mean any pNFS server that
->>>> doesn't have a cluster FS on the back end.
->>>
->>> No, I mean a pNFS file layout type server that depends upon 
->>> the 'hint'  
->>> of file size given by LAYOUTCOMMIT. This does not mean that the file  
->>> system has to be a cluster FS.
->>>
->>> If COMMIT through MDS is set, the MDS to DS protocol (be it a 
->>> cluster  
->>> FS or not) ensures the data is "commited" on the DSs.  
->>> LAYOUTCOMMIT is  
->>> not needed.
->>>
->>> If COMMITs are sent to the DSs (or FILE_SYNC writes), then 
->>> the MDS to  
->>> DS protocol (be it a cluster FS or not) should kick off a 
->>> back-end DS  
->>> to MDS communication to update the file size on the MDS.
->>>
->>> What I consider an 'extremely lame pNFS file layout server' is one  
->>> that requires COMMITs to the DS and then depends upon the 
->>> LAYOUTCOMMIT  
->>> to communicate the commited data size to the MDS.
->>>
->>> -->Andy
->>>
->>>
->>>> So while this might work
->>>> well for NetApp (as long as NetApp never ships a non-clustered  
->>>> pNFS), it
->>>> might break others, or at least severely impact their 
->>> performance.   
->>>> For
->>>> example, will the Solaris pNFS server work correctly without
->>>> LAYOUTCOMMIT?  IMHO, the client MUST issue the appropriate  
->>>> LAYOUTCOMMIT,
->>>> but the server is free to handle it as a no-op if the server
->>>> implementation does not need to utilize the payload.
->>>>
->>>>  -Dan
->>>>
->>>>> -----Original Message-----
->>>>> From: linux-nfs-owner@vger.kernel.org
->>>>> [mailto:linux-nfs-owner@vger.kernel.org] On Behalf Of Andy Adamson
->>>>> Sent: Friday, July 02, 2010 8:41 AM
->>>>> To: Sandeep Joshi
->>>>> Cc: linux-nfs@vger.kernel.org; bhalevy@panasas.com
->>>>> Subject: Re: 4.1 client - LAYOUTCOMMIT & close
->>>>>
->>>>>
->>>>> On Jul 1, 2010, at 8:07 PM, Sandeep Joshi wrote:
->>>>>
->>>>> Hi Sandeep
->>>>>
->>>>>>
->>>>>> In certain cases, I don't see layoutcommit on a file at all even
->>>>>> after doing many writes.
->>>>>
->>>>> FYI:
->>>>>
->>>>> You should not be paying attention to layoutcommits  - they have no
->>>>> value for the file layout type.
->>>>>
->>>>> From RFC 5661:
->>>>>
->>>>> "The LAYOUTCOMMIT operation commits chages in the layout 
->>> represented
->>>>> by the current filehandle, client ID (derived from the 
->>> session ID in
->>>>> the preceding SEQUENCE operation), byte-range, and stateid."
->>>>>
->>>>> For the block layout type, this sentence has meaning in that
->>>>> there is
->>>>> a layoutupdate4 payload that enumerates the blocks that 
->>> have changed
->>>>> state from being 'handed out' to being 'written'.
->>>>>
->>>>> The file layout type has no layoutupdate4 payload, and the
->>>>> layout does
->>>>> not change due to writes, and thus the LAYOUTCOMMIT call 
->>> is useless.
->>>>>
->>>>> The only field in the LAYOUTCOMMIT4args that might possibly
->>>>> be useful
->>>>> is the loca_last_write_offset which tells the server what 
->>> the client
->>>>> thinks is the EOF of the file after WRITE. It is an extremely lame
->>>>> server (file layout type server) that depends upon clients for this
->>>>> info.
->>>>>
->>>>>>
->>>>>>
->>>>>>
->>>>>> Client side operations:
->>>>>>
->>>>>> open
->>>>>> write(s)
->>>>>> close
->>>>>>
->>>>>>
->>>>>> On server side (observed operations):
->>>>>>
->>>>>> open
->>>>>> layoutget's
->>>>>> close
->>>>>>
->>>>>>
->>>>>> But, I do not see laycommit at all. In terms data written
->>>>> by client
->>>>>> it is about 4-5MB.
->>>>>>
->>>>>> When does client issue laycommit?
->>>>>
->>>>> The latest linux client sends a layout commit when the VFS does a
->>>>> super_operations.write_inode call which happens when the 
->>> metadata of
->>>>> an inode needs updating. We are seriously considering removing the
->>>>> layoutcommit call from the file layout client.
->>>>>
->>>>> -->Andy
->>>>>
->>>>>>
->>>>>>
->>>>>> regards,
->>>>>>
->>>>>> Sandeep
->>>>>>
->>>>>> --
->>>>>> To unsubscribe from this list: send the line "unsubscribe
->>>>> linux-nfs"
->>>>>> in
->>>>>> the body of a message to majordomo@vger.kernel.org
->>>>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>>>>
->>>>> --
->>>>> To unsubscribe from this list: send the line "unsubscribe
->>>>> linux-nfs" in
->>>>> the body of a message to majordomo@vger.kernel.org
->>>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>>>>
->>>>>
->>>
->>>
->>>
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-> 
-> 
-> 
-> 
