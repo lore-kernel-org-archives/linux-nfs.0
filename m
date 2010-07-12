@@ -1,119 +1,106 @@
 From: Benny Halevy <bhalevy@panasas.com>
-Subject: [PATCH 2/2] SQUASHME: pnfs-obj: use new alloc/free_layout API
-Date: Mon, 12 Jul 2010 21:43:04 +0300
-Message-ID: <1278960184-32320-1-git-send-email-bhalevy@panasas.com>
+Subject: [PATCH 1/1] SQUASHME: pnfs-block: use new alloc/free_layout API
+Date: Mon, 12 Jul 2010 21:42:55 +0300
+Message-ID: <1278960175-32282-1-git-send-email-bhalevy@panasas.com>
 References: <4C3B61FC.90306@panasas.com>
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:10408 "EHLO
+Received: from daytona.panasas.com ([67.152.220.89]:36705 "EHLO
 	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1753891Ab0GLSnL (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 12 Jul 2010 14:43:11 -0400
+	with ESMTP id S1753891Ab0GLSnA (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 12 Jul 2010 14:43:00 -0400
 In-Reply-To: <4C3B61FC.90306@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 ---
- fs/nfs/objlayout/objlayout.c |   14 +++++++-------
- fs/nfs/objlayout/objlayout.h |   10 +++++++++-
- 2 files changed, 16 insertions(+), 8 deletions(-)
+ fs/nfs/blocklayout/blocklayout.c    |    9 ++++-----
+ fs/nfs/blocklayout/blocklayout.h    |   15 +++++++++++++--
+ fs/nfs/blocklayout/blocklayoutdev.c |    2 +-
+ 3 files changed, 18 insertions(+), 8 deletions(-)
 
-diff --git a/fs/nfs/objlayout/objlayout.c b/fs/nfs/objlayout/objlayout.c
-index c380bf6..1381c60 100644
---- a/fs/nfs/objlayout/objlayout.c
-+++ b/fs/nfs/objlayout/objlayout.c
-@@ -49,7 +49,7 @@ struct pnfs_client_operations *pnfs_client_ops;
- /*
-  * Create a objlayout layout structure for the given inode and return it.
-  */
--static void *
-+static struct pnfs_layout_type *
- objlayout_alloc_layout(struct inode *inode)
+diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
+index 92f0b4b..63d3b5a 100644
+--- a/fs/nfs/blocklayout/blocklayout.c
++++ b/fs/nfs/blocklayout/blocklayout.c
+@@ -552,18 +552,17 @@ release_inval_marks(struct pnfs_inval_markings *marks)
+ 
+ /* Note we are relying on caller locking to prevent nasty races. */
+ static void
+-bl_free_layout(void *p)
++bl_free_layout(struct pnfs_layout_type *lo)
  {
- 	struct objlayout *objlay;
-@@ -60,16 +60,16 @@ objlayout_alloc_layout(struct inode *inode)
- 		INIT_LIST_HEAD(&objlay->err_list);
- 	}
- 	dprintk("%s: Return %p\n", __func__, objlay);
--	return objlay;
-+	return &objlay->pnfs_layout;
+-	struct pnfs_block_layout	*bl = p;
++	struct pnfs_block_layout *bl = BLK_LO2EXT(lo);
+ 
+ 	dprintk("%s enter\n", __func__);
+ 	release_extents(bl, NULL);
+ 	release_inval_marks(&bl->bl_inval);
+ 	kfree(bl);
+-	return;
  }
  
- /*
-  * Free an objlayout layout structure
-  */
+-static void *
++static struct pnfs_layout_type *
+ bl_alloc_layout(struct inode *inode)
+ {
+ 	struct pnfs_block_layout	*bl;
+@@ -579,7 +578,7 @@ bl_alloc_layout(struct inode *inode)
+ 	bl->bl_count = 0;
+ 	bl->bl_blocksize = NFS_SERVER(inode)->pnfs_blksize >> 9;
+ 	INIT_INVAL_MARKS(&bl->bl_inval, bl->bl_blocksize);
+-	return bl;
++	return &bl->bl_layout;
+ }
+ 
  static void
--objlayout_free_layout(void *p)
-+objlayout_free_layout(struct pnfs_layout_type *lo)
- {
--	struct objlayout *objlay = p;
-+	struct objlayout *objlay = OBJLAYOUT(lo);
+diff --git a/fs/nfs/blocklayout/blocklayout.h b/fs/nfs/blocklayout/blocklayout.h
+index 0efed8d..d316b7f 100644
+--- a/fs/nfs/blocklayout/blocklayout.h
++++ b/fs/nfs/blocklayout/blocklayout.h
+@@ -177,6 +177,7 @@ static inline int choose_list(enum exstate4 state)
+ }
  
- 	dprintk("%s: objlay %p\n", __func__, objlay);
- 
-@@ -232,7 +232,7 @@ objlayout_iodone(struct objlayout_io_state *state)
- 	if (likely(state->status >= 0)) {
- 		objlayout_free_io_state(state);
- 	} else {
--		struct objlayout *objlay = PNFS_LD_DATA(state->lseg->layout);
-+		struct objlayout *objlay = OBJLAYOUT(state->lseg->layout);
- 
- 		spin_lock(&objlay->lock);
- 		objlay->delta_space_valid = OBJ_DSU_INVALID;
-@@ -485,7 +485,7 @@ objlayout_encode_layoutcommit(struct pnfs_layout_type *pnfslay,
- 			      struct xdr_stream *xdr,
- 			      const struct pnfs_layoutcommit_arg *args)
- {
--	struct objlayout *objlay = PNFS_LD_DATA(pnfslay);
-+	struct objlayout *objlay = OBJLAYOUT(pnfslay);
- 	struct pnfs_osd_layoutupdate lou;
- 	__be32 *start;
- 
-@@ -621,7 +621,7 @@ objlayout_encode_layoutreturn(struct pnfs_layout_type *pnfslay,
- 			      struct xdr_stream *xdr,
- 			      const struct nfs4_pnfs_layoutreturn_arg *args)
- {
--	struct objlayout *objlay = PNFS_LD_DATA(pnfslay);
-+	struct objlayout *objlay = OBJLAYOUT(pnfslay);
- 	struct objlayout_io_state *state, *tmp;
- 	__be32 *start, *uninitialized_var(last_xdr);
- 
-diff --git a/fs/nfs/objlayout/objlayout.h b/fs/nfs/objlayout/objlayout.h
-index 248a562..8bc3c94 100644
---- a/fs/nfs/objlayout/objlayout.h
-+++ b/fs/nfs/objlayout/objlayout.h
-@@ -59,6 +59,8 @@ struct objlayout_segment {
-  * per-inode layout
-  */
- struct objlayout {
-+	struct pnfs_layout_type pnfs_layout;
-+
- 	 /* for layout_commit */
- 	enum osd_delta_space_valid_enum {
- 		OBJ_DSU_INIT = 0,
-@@ -72,6 +74,12 @@ struct objlayout {
- 	struct list_head err_list;
+ struct pnfs_block_layout {
++	struct pnfs_layout_type bl_layout;
+ 	struct pnfs_inval_markings bl_inval; /* tracks INVAL->RW transition */
+ 	spinlock_t		bl_ext_lock;   /* Protects list manipulation */
+ 	struct list_head	bl_extents[EXTENT_LISTS]; /* R and RW extents */
+@@ -193,8 +194,18 @@ struct bl_layoutupdate_data {
  };
  
-+static inline struct objlayout *
-+OBJLAYOUT(struct pnfs_layout_type *lo)
+ #define BLK_ID(lo) ((struct block_mount_id *)(PNFS_NFS_SERVER(lo)->pnfs_ld_data))
+-#define BLK_LSEG2EXT(lseg) ((struct pnfs_block_layout *)lseg->layout->ld_data)
+-#define BLK_LO2EXT(lo) ((struct pnfs_block_layout *)lo->ld_data)
++
++static inline struct pnfs_block_layout *
++BLK_LO2EXT(struct pnfs_layout_type *lo)
 +{
-+	return container_of(lo, struct objlayout, pnfs_layout);
++	return container_of(lo, struct pnfs_block_layout, bl_layout);
 +}
 +
- /*
-  * per-I/O operation state
-  * embedded in objects provider io_state data structure
-@@ -131,7 +139,7 @@ extern void objlayout_io_set_result(struct objlayout_io_state *state,
- static inline void
- objlayout_add_delta_space_used(struct objlayout_io_state *state, s64 space_used)
- {
--	struct objlayout *objlay = PNFS_LD_DATA(state->lseg->layout);
-+	struct objlayout *objlay = OBJLAYOUT(state->lseg->layout);
++static inline struct pnfs_block_layout *
++BLK_LSEG2EXT(struct pnfs_layout_segment *lseg)
++{
++	return BLK_LO2EXT(lseg->layout);
++}
  
- 	/* If one of the I/Os errored out and the delta_space_used was
- 	 * invalid we render the complete report as invalid. Protocol mandate
+ uint32_t *blk_overflow(uint32_t *p, uint32_t *end, size_t nbytes);
+ 
+diff --git a/fs/nfs/blocklayout/blocklayoutdev.c b/fs/nfs/blocklayout/blocklayoutdev.c
+index a866f5c..7285d5e 100644
+--- a/fs/nfs/blocklayout/blocklayoutdev.c
++++ b/fs/nfs/blocklayout/blocklayoutdev.c
+@@ -620,7 +620,7 @@ int
+ nfs4_blk_process_layoutget(struct pnfs_layout_type *lo,
+ 			   struct nfs4_pnfs_layoutget_res *lgr)
+ {
+-	struct pnfs_block_layout *bl = PNFS_LD_DATA(lo);
++	struct pnfs_block_layout *bl = BLK_LO2EXT(lo);
+ 	uint32_t *p = (uint32_t *)lgr->layout.buf;
+ 	uint32_t *end = (uint32_t *)((char *)lgr->layout.buf + lgr->layout.len);
+ 	int i, status = -EIO;
 -- 
 1.7.1.1
 
