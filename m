@@ -1,67 +1,77 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from tundra.namei.org ([65.99.196.166]:47031 "EHLO tundra.namei.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755969Ab0GHWsz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 8 Jul 2010 18:48:55 -0400
-Date: Fri, 9 Jul 2010 08:48:34 +1000 (EST)
-From: James Morris <jmorris@namei.org>
-To: "David P. Quigley" <dpquigl@tycho.nsa.gov>
-cc: "J. Bruce Fields" <bfields@fieldses.org>, hch@infradead.org,
-        viro@zeniv.linux.org.uk, casey@schaufler-ca.com, sds@tycho.nsa.gov,
-        matthew.dodd@sparta.com, trond.myklebust@fys.uio.no,
-        linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-security-module@vger.kernel.org, selinux@tycho.nsa.gov,
-        linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 06/10] NFSv4: Add label recommended attribute and NFSv4
- flags
-In-Reply-To: <1278596363.2494.194.camel@moss-terrapins.epoch.ncsc.mil>
-Message-ID: <alpine.LRH.2.00.1007090834190.23354@tundra.namei.org>
-References: <1278513086-23964-1-git-send-email-dpquigl@tycho.nsa.gov>  <1278513086-23964-7-git-send-email-dpquigl@tycho.nsa.gov>  <20100707170058.GD28815@fieldses.org>  <alpine.LRH.2.00.1007080928180.14102@tundra.namei.org>
- <1278596363.2494.194.camel@moss-terrapins.epoch.ncsc.mil>
-Content-Type: TEXT/PLAIN; CHARSET=US-ASCII
+Received: from daytona.panasas.com ([67.152.220.89]:59127 "EHLO
+	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1751613Ab0GLPdo (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 12 Jul 2010 11:33:44 -0400
+Message-ID: <4C3B35D5.7050003@panasas.com>
+Date: Mon, 12 Jul 2010 18:33:41 +0300
+From: Boaz Harrosh <bharrosh@panasas.com>
+To: "William A. (Andy) Adamson" <androsadamson@gmail.com>
+CC: bhalevy@panasas.com, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 0/16] pnfs-submit fix layout allocation and reference
+ 	counting
+References: <1278542063-4009-1-git-send-email-andros@netapp.com>	<4C35A588.7040103@panasas.com> <AANLkTim1mQiVIum5X4YPUYx3KYaN6WMiXhTL9Oyb-WDE@mail.gmail.com>
+In-Reply-To: <AANLkTim1mQiVIum5X4YPUYx3KYaN6WMiXhTL9Oyb-WDE@mail.gmail.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Thu, 8 Jul 2010, David P. Quigley wrote:
-
-> > The maximum security label size on Linux is:
-> > 
-> > #define XATTR_SIZE_MAX 65536
-> > 
-> > Why arbitrarily limit this over the network?
+On 07/08/2010 07:14 PM, William A. (Andy) Adamson wrote:
+> On Thu, Jul 8, 2010 at 6:16 AM, Boaz Harrosh <bharrosh@panasas.com> wrote:
+>> On 07/08/2010 01:34 AM, andros@netapp.com wrote:
+>>
+>> Why don't we allocate this at inode allocation.
 > 
-> Because there is no easy way not to. The specification doesn't specify a
-> limit to label size in the IETF draft. However there is no way to do
-> allocation of the memory needed to store the label where we first get
-> access to its size. We tried this before and it failed. When I asked
-> trond about it he said doing memory allocation in the rpc context isn't
-> allowed.
+> We don't know if we need it at inode allocation. Remember, GFS2 only
+> uses RO layouts. 
 
-In the NFSv3 code, the workaround I've been using is to always allocate 
-64k, but the correct way of doing this apparently is to use the page 
-cache, as is used for ACLs and symlinks.
+right! optimize for a specific File System (broken at that).
 
-> For the most part what would make this label size inadequate would be 
-> the MLS component. There are some cases where people want every other 
-> compartment or something crazy like that. In terms of a normal label 
-> though 4096 should be more than enough.
+I don't mind if you leave the current code placement and allocate
+layout_type on first layout-request (first call to _pnfs_update_layout)
+Then deallocate at inode destruction.
 
-Yes, but we should not unnecessarily limit the network protocol when 
-something is valid and possible in the local implementation (which is ~64k 
-under Linux).
+The few places that couple the destruction of all layout segments
+and return them, with the layout_type structure deallocation should just
+be de-coupled. Don't mix up between the allocation/deallocation of
+layout_type and destruction of layout-segments.
 
-> Just to put this in perspective the string below is 4096 a's.
+> Plus, the protocol allows a file system to use more
+> than one layout type and each layout type has a different private
+> portion of the layout structure.
 
-A security label include just about anything, e.g. an x509 certificate, or 
-a base64 encoded image.
+We don't support that, now, for other reasons. Lets not go there.
 
-In the Linux implementation, if we can store a local label up to 64k, then 
-we should try and ensure that it can be conveyed via NFS.
+> 
+> 
+> Actually this is not true. pnfs_destroy_layout is not only called a
+> inode destruction - it is also called in pnfs_reclaim_layout (state
+> reclaim after reboot)
+> 
+> In this case, the layout will be destroyed while the inode continues on.
+> 
 
+You mean the layout-segments. But the layout_type can stay, why deallocate
+it? it will be needed again.
 
+> The use and implementation of pnfs_reclaim_layout needs a review.
+> 
+> The question is, when should the nfs_inode->layout be freed when the
+> inode is not? These are candidates.
+>  - reclaim state after server reboot (current code does this)
+>  - reclaim state after a network partition (current code does this)
+>  - file system migration
+>  - switching to a different file system replica
+>  - CB_LAYOUTRECALL FSID
+>  - CB_LAYOUTRECALL ALL
+> 
 
-- James
--- 
-James Morris
-<jmorris@namei.org>
+None of the above. These are all related to on-the-line layouts which
+are layout-segments in our code. The governing structure is just an
+inode-thing/per-layout-type.
+
+If we follow my simple rules then you see that all these run-away pnfs
+flags and states that where put back into nfsi can return to ->layout.
+
+Boaz
