@@ -1,271 +1,265 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:48497 "EHLO mx1.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:61372 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751734Ab0GVR6z (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 22 Jul 2010 13:58:55 -0400
-From: David Howells <dhowells@redhat.com>
-Subject: [PATCH 1/6] Add a dentry op to handle automounting rather than
-	abusing follow_link()
-To: viro@ZenIV.linux.org.uk
-Cc: linux-fsdevel@vger.kernel.org, linux-afs@lists.infradead.org,
-        linux-nfs@vger.kernel.org, linux-cifs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, David Howells <dhowells@redhat.com>
-Date: Thu, 22 Jul 2010 18:58:47 +0100
-Message-ID: <20100722175847.5552.11520.stgit@warthog.procyon.org.uk>
-Content-Type: text/plain; charset="utf-8"
+	id S1754489Ab0GLVw7 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 12 Jul 2010 17:52:59 -0400
+Subject: NFSv4.1: Handle NFS4ERR_DELAY on SEQUENCE correctly
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Jim Rees <rees@umich.edu>, Benny Halevy <bhalevy@panasas.com>
+Cc: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
+Date: Mon, 12 Jul 2010 17:52:55 -0400
+Message-ID: <1278971575.14605.5.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Add a dentry op (d_automount) to handle automounting directories rather than
-abusing the follow_link() inode operation.  The operation is keyed off a new
-inode flag (S_AUTOMOUNT).
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
 
-This makes it easier to add an AT_ flag to suppress terminal segment automount
-during pathwalk.  It should also remove the need for the kludge code in the
-pathwalk algorithm to handle directories with follow_link() semantics.
+In RFC5661, an NFS4ERR_DELAY error on a SEQUENCE operation has the special
+meaning that the server is not finished processing the request. In this
+case we want to just retry the request without touching the slot.
 
-I've only changed __follow_mount() to handle automount points, but it might be
-necessary to change follow_mount() too.  The latter is only used from
-follow_dotdot(), but any automounts on ".." should be pinned whilst we're using
-a child of it.
+Also fix a bug whereby we would fail to update the sequence id if the
+server returned any error other than NFS_OK/NFS4ERR_DELAY.
 
-Note that autofs4's use of follow_mount() will need examining if this patch is
-committed.
-
-Signed-off-by: David Howells <dhowells@redhat.com>
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
 
- Documentation/filesystems/Locking |    2 +
- Documentation/filesystems/vfs.txt |   13 ++++++
- fs/namei.c                        |   85 +++++++++++++++++++++++++++++--------
- include/linux/dcache.h            |    5 ++
- include/linux/fs.h                |    2 +
- 5 files changed, 89 insertions(+), 18 deletions(-)
+ fs/nfs/nfs4proc.c |   92 ++++++++++++++++++++++++++++++++++++-----------------
+ 1 files changed, 62 insertions(+), 30 deletions(-)
 
-diff --git a/Documentation/filesystems/Locking b/Documentation/filesystems/Locking
-index 96d4293..ccbfa98 100644
---- a/Documentation/filesystems/Locking
-+++ b/Documentation/filesystems/Locking
-@@ -16,6 +16,7 @@ prototypes:
- 	void (*d_release)(struct dentry *);
- 	void (*d_iput)(struct dentry *, struct inode *);
- 	char *(*d_dname)((struct dentry *dentry, char *buffer, int buflen);
-+	struct vfsmount *(*d_automount)(struct path *path);
- 
- locking rules:
- 	none have BKL
-@@ -27,6 +28,7 @@ d_delete:	yes		no		yes		no
- d_release:	no		no		no		yes
- d_iput:		no		no		no		yes
- d_dname:	no		no		no		no
-+d_automount:	no		no		no		yes
- 
- --------------------------- inode_operations --------------------------- 
- prototypes:
-diff --git a/Documentation/filesystems/vfs.txt b/Documentation/filesystems/vfs.txt
-index 94677e7..31a9e8f 100644
---- a/Documentation/filesystems/vfs.txt
-+++ b/Documentation/filesystems/vfs.txt
-@@ -851,6 +851,7 @@ struct dentry_operations {
- 	void (*d_release)(struct dentry *);
- 	void (*d_iput)(struct dentry *, struct inode *);
- 	char *(*d_dname)(struct dentry *, char *, int);
-+	struct vfsmount *(*d_automount)(struct path *);
- };
- 
-   d_revalidate: called when the VFS needs to revalidate a dentry. This
-@@ -885,6 +886,18 @@ struct dentry_operations {
- 	at the end of the buffer, and returns a pointer to the first char.
- 	dynamic_dname() helper function is provided to take care of this.
- 
-+  d_automount: called when an automount dentry is to be traversed (optional).
-+	This should create a new VFS mount record, mount it on the directory
-+	and return the record to the caller.  The caller is supplied with a
-+	path parameter giving the automount directory to describe the automount
-+	target and the parent VFS mount record to provide inheritable mount
-+	parameters.  NULL should be returned if someone else managed to make
-+	the automount first.  If the automount failed, then an error code
-+	should be returned.
-+
-+	This function is only used if S_AUTOMOUNT is set on the inode to which
-+	the dentry refers.
-+
- Example :
- 
- static char *pipefs_dname(struct dentry *dent, char *buffer, int buflen)
-diff --git a/fs/namei.c b/fs/namei.c
-index 868d0cb..fcec3c6 100644
---- a/fs/namei.c
-+++ b/fs/namei.c
-@@ -617,24 +617,71 @@ int follow_up(struct path *path)
- 	return 1;
+
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index d6413b4..ba79c0e 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -389,11 +389,12 @@ static void nfs41_sequence_free_slot(struct nfs4_sequence_res *res)
+ 	res->sr_slotid = NFS4_MAX_SLOT_TABLE;
  }
  
-+/*
-+ * Perform an automount
-+ */
-+static int follow_automount(struct path *path, int res)
-+{
-+	struct vfsmount *mnt;
-+
-+	if (!path->dentry->d_op || !path->dentry->d_op->d_automount)
-+		return -EREMOTE;
-+
-+	current->total_link_count++;
-+	if (current->total_link_count >= 40)
-+		return -ELOOP;
-+
-+	mnt = path->dentry->d_op->d_automount(path);
-+	if (IS_ERR(mnt))
-+		return PTR_ERR(mnt);
-+	if (!mnt) /* mount collision */
-+		return 0;
-+
-+	if (mnt->mnt_sb == path->mnt->mnt_sb &&
-+	    mnt->mnt_root == path->dentry) {
-+		mntput(mnt);
-+		return -ELOOP;
-+	}
-+
-+	dput(path->dentry);
-+	if (res)
-+		mntput(path->mnt);
-+	path->mnt = mnt;
-+	path->dentry = dget(mnt->mnt_root);
-+	return 0;
-+}
-+
- /* no need for dcache_lock, as serialization is taken care in
-  * namespace.c
-  */
--static int __follow_mount(struct path *path)
-+static int __follow_mount(struct path *path, unsigned nofollow)
+-static void nfs41_sequence_done(struct nfs4_sequence_res *res)
++static int nfs41_sequence_done(struct rpc_task *task, struct nfs4_sequence_res *res)
  {
--	int res = 0;
--	while (d_mountpoint(path->dentry)) {
--		struct vfsmount *mounted = lookup_mnt(path);
--		if (!mounted)
-+	struct vfsmount *mounted;
-+	int ret, res = 0;
-+	for (;;) {
-+		while (d_mountpoint(path->dentry)) {
-+			if (nofollow)
-+				return -ELOOP;
-+			mounted = lookup_mnt(path);
-+			if (!mounted)
-+				break;
-+			dput(path->dentry);
-+			if (res)
-+				mntput(path->mnt);
-+			path->mnt = mounted;
-+			path->dentry = dget(mounted->mnt_root);
-+			res = 1;
-+		}
-+		if (!d_automount_point(path->dentry))
- 			break;
--		dput(path->dentry);
--		if (res)
--			mntput(path->mnt);
--		path->mnt = mounted;
--		path->dentry = dget(mounted->mnt_root);
-+		if (nofollow)
-+			return -ELOOP;
-+		ret = follow_automount(path, res);
-+		if (ret < 0)
-+			return ret;
- 		res = 1;
+ 	unsigned long timestamp;
+ 	struct nfs4_slot_table *tbl;
+ 	struct nfs4_slot *slot;
++	struct nfs_client *clp;
+ 
+ 	/*
+ 	 * sr_status remains 1 if an RPC level error occurred. The server
+@@ -408,14 +409,16 @@ static void nfs41_sequence_done(struct nfs4_sequence_res *res)
+ 	if (res->sr_slotid == NFS4_MAX_SLOT_TABLE)
+ 		goto out;
+ 
++	tbl = &res->sr_session->fc_slot_table;
++	slot = tbl->slots + res->sr_slotid;
++
+ 	/* Check the SEQUENCE operation status */
+-	if (res->sr_status == 0) {
+-		struct nfs_client *clp = res->sr_session->clp;
+-		tbl = &res->sr_session->fc_slot_table;
+-		slot = tbl->slots + res->sr_slotid;
++	switch (res->sr_status) {
++	case 0:
+ 		/* Update the slot's sequence and clientid lease timer */
+ 		++slot->seq_nr;
+ 		timestamp = res->sr_renewal_time;
++		clp = res->sr_session->clp;
+ 		spin_lock(&clp->cl_lock);
+ 		if (time_before(clp->cl_last_renewal, timestamp))
+ 			clp->cl_last_renewal = timestamp;
+@@ -423,18 +426,39 @@ static void nfs41_sequence_done(struct nfs4_sequence_res *res)
+ 		/* Check sequence flags */
+ 		if (atomic_read(&clp->cl_count) > 1)
+ 			nfs41_handle_sequence_flag_errors(clp, res->sr_status_flags);
++		break;
++	case -NFS4ERR_DELAY:
++		/* The server detected a resend of the RPC call and
++		 * returned NFS4ERR_DELAY as per Section 2.10.6.2
++		 * of RFC5661.
++		 */
++		dprintk("%s: slot=%d seq=%d: Operation in progress\n",
++				__func__, res->sr_slotid, slot->seq_nr);
++		goto out_retry;
++	default:
++		/* Just update the slot sequence no. */
++		++slot->seq_nr;
  	}
--	return res;
+ out:
+ 	/* The session may be reset by one of the error handlers. */
+ 	dprintk("%s: Error %d free the slot \n", __func__, res->sr_status);
+ 	nfs41_sequence_free_slot(res);
++	return 1;
++out_retry:
++	rpc_delay(task, NFS4_POLL_RETRY_MAX);
++	rpc_restart_call(task);
++	/* FIXME: rpc_restart_call() should be made to return success/fail */
++	if (RPC_ASSASSINATED(task))
++		goto out;
 +	return 0;
  }
  
- static void follow_mount(struct path *path)
-@@ -702,6 +749,8 @@ static int do_lookup(struct nameidata *nd, struct qstr *name,
- 	struct vfsmount *mnt = nd->path.mnt;
- 	struct dentry *dentry, *parent;
- 	struct inode *dir;
-+	int ret;
-+
- 	/*
- 	 * See if the low-level filesystem might want
- 	 * to use its own hash..
-@@ -720,8 +769,10 @@ static int do_lookup(struct nameidata *nd, struct qstr *name,
- done:
- 	path->mnt = mnt;
- 	path->dentry = dentry;
--	__follow_mount(path);
--	return 0;
-+	ret = __follow_mount(path, 0);
-+	if (unlikely(ret < 0))
-+		path_put(path);
-+	return ret;
- 
- need_lookup:
- 	parent = nd->path.dentry;
-@@ -1721,11 +1772,9 @@ static struct file *do_last(struct nameidata *nd, struct path *path,
- 	if (open_flag & O_EXCL)
- 		goto exit_dput;
- 
--	if (__follow_mount(path)) {
--		error = -ELOOP;
--		if (open_flag & O_NOFOLLOW)
--			goto exit_dput;
--	}
-+	error = __follow_mount(path, open_flag & O_NOFOLLOW);
-+	if (error < 0)
-+		goto exit_dput;
- 
- 	error = -ENOENT;
- 	if (!path->dentry->d_inode)
-diff --git a/include/linux/dcache.h b/include/linux/dcache.h
-index eebb617..5380bff 100644
---- a/include/linux/dcache.h
-+++ b/include/linux/dcache.h
-@@ -139,6 +139,7 @@ struct dentry_operations {
- 	void (*d_release)(struct dentry *);
- 	void (*d_iput)(struct dentry *, struct inode *);
- 	char *(*d_dname)(struct dentry *, char *, int);
-+	struct vfsmount *(*d_automount)(struct path *);
- };
- 
- /* the dentry parameter passed to d_hash and d_compare is the parent
-@@ -157,6 +158,7 @@ d_compare:	no		yes		yes      no
- d_delete:	no		yes		no       no
- d_release:	no		no		no       yes
- d_iput:		no		no		no       yes
-+d_automount:	no		no		no	 yes
-  */
- 
- /* d_flags entries */
-@@ -389,6 +391,9 @@ static inline int d_mountpoint(struct dentry *dentry)
- 	return dentry->d_mounted;
+-static void nfs4_sequence_done(const struct nfs_server *server,
+-			       struct nfs4_sequence_res *res, int rpc_status)
++static int nfs4_sequence_done(struct rpc_task *task,
++			       struct nfs4_sequence_res *res)
+ {
+-	if (res->sr_session != NULL)
+-		nfs41_sequence_done(res);
++	if (res->sr_session == NULL)
++		return 1;
++	return nfs41_sequence_done(task, res);
  }
- 
-+#define d_automount_point(dentry) \
-+	(dentry->d_inode && IS_AUTOMOUNT(dentry->d_inode))
-+
- extern struct vfsmount *lookup_mnt(struct path *);
- extern struct dentry *lookup_create(struct nameidata *nd, int is_dir);
- 
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 68ca1b0..a83fc81 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -235,6 +235,7 @@ struct inodes_stat_t {
- #define S_NOCMTIME	128	/* Do not update file c/mtime */
- #define S_SWAPFILE	256	/* Do not truncate: swapon got its bmaps */
- #define S_PRIVATE	512	/* Inode is fs-internal */
-+#define S_AUTOMOUNT	1024	/* Automount/referral quasi-directory */
  
  /*
-  * Note that nosuid etc flags are inode-specific: setting some file-system
-@@ -269,6 +270,7 @@ struct inodes_stat_t {
- #define IS_NOCMTIME(inode)	((inode)->i_flags & S_NOCMTIME)
- #define IS_SWAPFILE(inode)	((inode)->i_flags & S_SWAPFILE)
- #define IS_PRIVATE(inode)	((inode)->i_flags & S_PRIVATE)
-+#define IS_AUTOMOUNT(inode)	((inode)->i_flags & S_AUTOMOUNT)
+@@ -592,7 +616,7 @@ static void nfs41_call_sync_done(struct rpc_task *task, void *calldata)
+ {
+ 	struct nfs41_call_sync_data *data = calldata;
  
- /* the read-only stuff doesn't really belong here, but any other place is
-    probably as bad and I don't want to create yet another include file. */
+-	nfs41_sequence_done(data->seq_res);
++	nfs41_sequence_done(task, data->seq_res);
+ }
+ 
+ struct rpc_call_ops nfs41_call_sync_ops = {
+@@ -650,9 +674,10 @@ int _nfs4_call_sync_session(struct nfs_server *server,
+ }
+ 
+ #else
+-static void nfs4_sequence_done(const struct nfs_server *server,
+-			       struct nfs4_sequence_res *res, int rpc_status)
++static int nfs4_sequence_done(struct rpc_task *task,
++			       struct nfs4_sequence_res *res)
+ {
++	return 1;
+ }
+ #endif /* CONFIG_NFS_V4_1 */
+ 
+@@ -1379,8 +1404,8 @@ static void nfs4_open_done(struct rpc_task *task, void *calldata)
+ 
+ 	data->rpc_status = task->tk_status;
+ 
+-	nfs4_sequence_done(data->o_arg.server, &data->o_res.seq_res,
+-			task->tk_status);
++	if (!nfs4_sequence_done(task, &data->o_res.seq_res))
++		return;
+ 
+ 	if (RPC_ASSASSINATED(task))
+ 		return;
+@@ -1832,7 +1857,8 @@ static void nfs4_close_done(struct rpc_task *task, void *data)
+ 	struct nfs4_state *state = calldata->state;
+ 	struct nfs_server *server = NFS_SERVER(calldata->inode);
+ 
+-	nfs4_sequence_done(server, &calldata->res.seq_res, task->tk_status);
++	if (!nfs4_sequence_done(task, &calldata->res.seq_res))
++		return;
+ 	if (RPC_ASSASSINATED(task))
+ 		return;
+         /* hmm. we are done with the inode, and in the process of freeing
+@@ -2642,7 +2668,8 @@ static int nfs4_proc_unlink_done(struct rpc_task *task, struct inode *dir)
+ {
+ 	struct nfs_removeres *res = task->tk_msg.rpc_resp;
+ 
+-	nfs4_sequence_done(res->server, &res->seq_res, task->tk_status);
++	if (!nfs4_sequence_done(task, &res->seq_res))
++		return 0;
+ 	if (nfs4_async_handle_error(task, res->server, NULL) == -EAGAIN)
+ 		return 0;
+ 	update_changeattr(dir, &res->cinfo);
+@@ -3087,7 +3114,8 @@ static int nfs4_read_done(struct rpc_task *task, struct nfs_read_data *data)
+ 
+ 	dprintk("--> %s\n", __func__);
+ 
+-	nfs4_sequence_done(server, &data->res.seq_res, task->tk_status);
++	if (!nfs4_sequence_done(task, &data->res.seq_res))
++		return -EAGAIN;
+ 
+ 	if (nfs4_async_handle_error(task, server, data->args.context->state) == -EAGAIN) {
+ 		nfs_restart_rpc(task, server->nfs_client);
+@@ -3110,8 +3138,8 @@ static int nfs4_write_done(struct rpc_task *task, struct nfs_write_data *data)
+ {
+ 	struct inode *inode = data->inode;
+ 	
+-	nfs4_sequence_done(NFS_SERVER(inode), &data->res.seq_res,
+-			   task->tk_status);
++	if (!nfs4_sequence_done(task, &data->res.seq_res))
++		return -EAGAIN;
+ 
+ 	if (nfs4_async_handle_error(task, NFS_SERVER(inode), data->args.context->state) == -EAGAIN) {
+ 		nfs_restart_rpc(task, NFS_SERVER(inode)->nfs_client);
+@@ -3139,8 +3167,9 @@ static int nfs4_commit_done(struct rpc_task *task, struct nfs_write_data *data)
+ {
+ 	struct inode *inode = data->inode;
+ 	
+-	nfs4_sequence_done(NFS_SERVER(inode), &data->res.seq_res,
+-			   task->tk_status);
++	if (!nfs4_sequence_done(task, &data->res.seq_res))
++		return -EAGAIN;
++
+ 	if (nfs4_async_handle_error(task, NFS_SERVER(inode), NULL) == -EAGAIN) {
+ 		nfs_restart_rpc(task, NFS_SERVER(inode)->nfs_client);
+ 		return -EAGAIN;
+@@ -3630,8 +3659,8 @@ static void nfs4_delegreturn_done(struct rpc_task *task, void *calldata)
+ {
+ 	struct nfs4_delegreturndata *data = calldata;
+ 
+-	nfs4_sequence_done(data->res.server, &data->res.seq_res,
+-			task->tk_status);
++	if (!nfs4_sequence_done(task, &data->res.seq_res))
++		return;
+ 
+ 	switch (task->tk_status) {
+ 	case -NFS4ERR_STALE_STATEID:
+@@ -3881,8 +3910,8 @@ static void nfs4_locku_done(struct rpc_task *task, void *data)
+ {
+ 	struct nfs4_unlockdata *calldata = data;
+ 
+-	nfs4_sequence_done(calldata->server, &calldata->res.seq_res,
+-			   task->tk_status);
++	if (!nfs4_sequence_done(task, &calldata->res.seq_res))
++		return;
+ 	if (RPC_ASSASSINATED(task))
+ 		return;
+ 	switch (task->tk_status) {
+@@ -4091,8 +4120,8 @@ static void nfs4_lock_done(struct rpc_task *task, void *calldata)
+ 
+ 	dprintk("%s: begin!\n", __func__);
+ 
+-	nfs4_sequence_done(data->server, &data->res.seq_res,
+-			task->tk_status);
++	if (!nfs4_sequence_done(task, &data->res.seq_res))
++		return;
+ 
+ 	data->rpc_status = task->tk_status;
+ 	if (RPC_ASSASSINATED(task))
+@@ -4629,7 +4658,8 @@ static void nfs4_get_lease_time_done(struct rpc_task *task, void *calldata)
+ 			(struct nfs4_get_lease_time_data *)calldata;
+ 
+ 	dprintk("--> %s\n", __func__);
+-	nfs41_sequence_done(&data->res->lr_seq_res);
++	if (!nfs41_sequence_done(task, &data->res->lr_seq_res))
++		return;
+ 	switch (task->tk_status) {
+ 	case -NFS4ERR_DELAY:
+ 	case -NFS4ERR_GRACE:
+@@ -5111,7 +5141,8 @@ static void nfs41_sequence_call_done(struct rpc_task *task, void *data)
+ 	struct nfs4_sequence_data *calldata = data;
+ 	struct nfs_client *clp = calldata->clp;
+ 
+-	nfs41_sequence_done(task->tk_msg.rpc_resp);
++	if (!nfs41_sequence_done(task, task->tk_msg.rpc_resp))
++		return;
+ 
+ 	if (task->tk_status < 0) {
+ 		dprintk("%s ERROR %d\n", __func__, task->tk_status);
+@@ -5255,7 +5286,8 @@ static void nfs4_reclaim_complete_done(struct rpc_task *task, void *data)
+ 	struct nfs4_sequence_res *res = &calldata->res.seq_res;
+ 
+ 	dprintk("--> %s\n", __func__);
+-	nfs41_sequence_done(res);
++	if (!nfs41_sequence_done(task, res))
++		return;
+ 
+ 	if (nfs41_reclaim_complete_handle_errors(task, clp) == -EAGAIN) {
+ 		rpc_restart_call_prepare(task);
 
