@@ -1,57 +1,72 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:27408 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:16076 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755870Ab0G3TRd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 30 Jul 2010 15:17:33 -0400
-Received: from [10.58.58.222] ([10.58.58.222])
-	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id o6UJHW2H014265
-	for <linux-nfs@vger.kernel.org>; Fri, 30 Jul 2010 12:17:32 -0700 (PDT)
-Message-ID: <4C532564.2030302@netapp.com>
-Date: Fri, 30 Jul 2010 15:17:56 -0400
-From: Bryan Schumaker <bjschuma@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH] NFS: Fix /proc/mount for legacy binary interface
-Content-Type: text/plain; charset=ISO-8859-1
+	id S1753043Ab0GLWKV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 12 Jul 2010 18:10:21 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: [PATCH 2/3] NFS: Clean up the callers of nfs_wb_all()
+To: Christoph Hellwig <hch@infradead.org>
+Cc: linux-nfs@vger.kernel.org
+Date: Mon, 12 Jul 2010 18:09:33 -0400
+Message-ID: <20100712220932.20019.74781.stgit@heimdal.trondhjem.org>
+In-Reply-To: <20100712220932.20019.21170.stgit@heimdal.trondhjem.org>
+References: <20100712220932.20019.21170.stgit@heimdal.trondhjem.org>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Add a flag so we know if we mounted the NFS server using the legacy
-binary interface.  If we used the legacy interface, then we should not
-show the mountd options.
+There is no need to flush out writes before calling nfs_wb_all().
 
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index f9df16d..9b359a7 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -546,6 +546,9 @@ static void nfs_show_mountd_options(struct seq_file *m, struct nfs_server *nfss,
- {
- 	struct sockaddr *sap = (struct sockaddr *)&nfss->mountd_address;
 
-+	if (nfss->flags & NFS_MOUNT_LEGACY_INTERFACE)
-+		return
-+
- 	switch (sap->sa_family) {
- 	case AF_INET: {
- 		struct sockaddr_in *sin = (struct sockaddr_in *)sap;
-@@ -1780,6 +1783,7 @@ static int nfs_validate_mount_data(void *options,
- 		 * can deal with.
- 		 */
- 		args->flags		= data->flags & NFS_MOUNT_FLAGMASK;
-+		args->flags		|= NFS_MOUNT_LEGACY_INTERFACE;
- 		args->rsize		= data->rsize;
- 		args->wsize		= data->wsize;
- 		args->timeo		= data->timeo;
-diff --git a/include/linux/nfs_mount.h b/include/linux/nfs_mount.h
-index 4499016..5d59ae8 100644
---- a/include/linux/nfs_mount.h
-+++ b/include/linux/nfs_mount.h
-@@ -69,5 +69,6 @@ struct nfs_mount_data {
- #define NFS_MOUNT_LOOKUP_CACHE_NONEG	0x10000
- #define NFS_MOUNT_LOOKUP_CACHE_NONE	0x20000
- #define NFS_MOUNT_NORESVPORT		0x40000
-+#define NFS_MOUNT_LEGACY_INTERFACE	0x80000
+ fs/nfs/delegation.c |   10 +---------
+ fs/nfs/inode.c      |    4 +---
+ 2 files changed, 2 insertions(+), 12 deletions(-)
 
- #endif
+diff --git a/fs/nfs/delegation.c b/fs/nfs/delegation.c
+index f34f4ac..b9c3c43 100644
+--- a/fs/nfs/delegation.c
++++ b/fs/nfs/delegation.c
+@@ -268,14 +268,6 @@ out:
+ 	return status;
+ }
+ 
+-/* Sync all data to disk upon delegation return */
+-static void nfs_msync_inode(struct inode *inode)
+-{
+-	filemap_fdatawrite(inode->i_mapping);
+-	nfs_wb_all(inode);
+-	filemap_fdatawait(inode->i_mapping);
+-}
+-
+ /*
+  * Basic procedure for returning a delegation to the server
+  */
+@@ -367,7 +359,7 @@ int nfs_inode_return_delegation(struct inode *inode)
+ 		delegation = nfs_detach_delegation_locked(nfsi, NULL, clp);
+ 		spin_unlock(&clp->cl_lock);
+ 		if (delegation != NULL) {
+-			nfs_msync_inode(inode);
++			nfs_wb_all(inode);
+ 			err = __nfs_inode_return_delegation(inode, delegation, 1);
+ 		}
+ 	}
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index ec7a8f9..581d8f0 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -413,10 +413,8 @@ nfs_setattr(struct dentry *dentry, struct iattr *attr)
+ 		return 0;
+ 
+ 	/* Write all dirty data */
+-	if (S_ISREG(inode->i_mode)) {
+-		filemap_write_and_wait(inode->i_mapping);
++	if (S_ISREG(inode->i_mode))
+ 		nfs_wb_all(inode);
+-	}
+ 
+ 	fattr = nfs_alloc_fattr();
+ 	if (fattr == NULL)
+
