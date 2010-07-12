@@ -1,502 +1,127 @@
-From: Benny Halevy <bhalevy@panasas.com>
-Subject: Re: [PATCH 03/16] SQUASHME pnfs-submit embed pnfs_layout_type
-Date: Mon, 12 Jul 2010 20:05:26 +0300
-Message-ID: <4C3B4B56.9050300@panasas.com>
-References: <1278542063-4009-1-git-send-email-andros@netapp.com> <1278542063-4009-2-git-send-email-andros@netapp.com> <1278542063-4009-3-git-send-email-andros@netapp.com> <1278542063-4009-4-git-send-email-andros@netapp.com> <4C3B42FD.1070809@panasas.com>
+From: Boaz Harrosh <bharrosh@panasas.com>
+Subject: Re: [PATCH 0/2] pnfs-submit Re-initialize pnfs_layout_type when segs
+ 	list is empty
+Date: Mon, 12 Jul 2010 20:07:31 +0300
+Message-ID: <4C3B4BD3.1090308@panasas.com>
+References: <1278693571-3328-1-git-send-email-andros@netapp.com>	<4C3B395F.8080903@panasas.com> <AANLkTinjab9XPUjRe2knYyRQg8j9pmc9Gdk_fRkGGfY2@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
-Cc: andros@netapp.com, linux-nfs@vger.kernel.org
-To: Boaz Harrosh <bharrosh@panasas.com>
+Cc: bhalevy@panasas.com, linux-nfs@vger.kernel.org
+To: "William A. (Andy) Adamson" <androsadamson@gmail.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:38825 "EHLO
+Received: from daytona.panasas.com ([67.152.220.89]:22710 "EHLO
 	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1752323Ab0GLRFc (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 12 Jul 2010 13:05:32 -0400
-In-Reply-To: <4C3B42FD.1070809@panasas.com>
+	with ESMTP id S1755913Ab0GLRHi (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 12 Jul 2010 13:07:38 -0400
+In-Reply-To: <AANLkTinjab9XPUjRe2knYyRQg8j9pmc9Gdk_fRkGGfY2-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Jul. 12, 2010, 19:29 +0300, Boaz Harrosh <bharrosh@panasas.com> wrote:
-> On 07/08/2010 01:34 AM, andros@netapp.com wrote:
->> From: Andy Adamson <andros@netapp.com>
+On 07/12/2010 07:36 PM, William A. (Andy) Adamson wrote:
+> On Mon, Jul 12, 2010 at 11:48 AM, Boaz Harrosh <bharrosh@panasas.com> wrote:
+>> On 07/09/2010 07:39 PM, andros@netapp.com wrote:
+>>> e keep the nfs_inode->layout when the segs list is empty, and we remove it
+>>> from the nfs_client cl_layouts list, but we fail to reset the other fields.
+>>> Re-initialize the layout (all except for the refcount) so that the next
+>>> layoutget with potentially new deviceid.... sets the layout fields.
+>>>
+>>> Note: API change to layoutdriver_io_operations free_layout
+>>>
+>>> 0001-SQUASHME-pnfs-submit-reinitialize-pnfs_layout_type.patch
+>>> 0002-SQUASHME-pnfs-submit-file-layout-free_layout-init_on.patch
+>>>
+>>> Tested
+>>>
+>>> CONFIG_V4_I set:
+>>> Connectathon tests pass against GFS2/pNFS and pyNFS file layout servers. Both
+>>> return-on-close and not return-on-close tested.
+>>>
+>>> CONFIG_V4_I not set:
+>>> NFSv4.0 mount passes Connectathon tests.
+>>>
+>>> -->Andy
+>>>
 >>
->> Change nfs_inode layout field to a pointer
+>> Andy sorry to get on your case. But I hate it. It is an hack that takes
+>> us back not forward. (Code less clean more obscure)
 >>
->> Each layoutdriver embeds the pnfs_layout_type in it's private layout cache
->> head structure, and allocates them both with the alloc_layout
->> layoutdriver_io_operation.
+>> For starts don't save me a vector please. The two functions are unrelated
+>> see your last patch 0002 there is no common code and a return in the middle
+>> of an if() which should trigger an alarm for a bad API.
+> 
+> OK, that would be more clear.
+> 
 >>
->> NOTE API change: the layoutdriver_io_operation alloc_layout and free_layout now
->> use pnfs_layout_type pointers instead of void*.
->>
->> Signed-off-by: Andy Adamson <andros@netapp.com>
->> ---
->>  fs/nfs/callback_proc.c    |    2 +-
->>  fs/nfs/inode.c            |   12 +-----
->>  fs/nfs/nfs4proc.c         |    2 +-
->>  fs/nfs/nfs4state.c        |    4 +-
->>  fs/nfs/pnfs.c             |  111 +++++++++++++++++++++++----------------------
->>  include/linux/nfs4_pnfs.h |   19 +++-----
->>  include/linux/nfs_fs.h    |    4 +-
->>  7 files changed, 71 insertions(+), 83 deletions(-)
->>
->> diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
->> index 4766695..d999ea8 100644
->> --- a/fs/nfs/callback_proc.c
->> +++ b/fs/nfs/callback_proc.c
->> @@ -233,7 +233,7 @@ static int pnfs_recall_layout(void *data)
->>  	rl.cbl_seg.length = NFS4_MAX_UINT64;
->>  
->>  	if (rl.cbl_recall_type == RETURN_FILE) {
->> -		if (pnfs_is_next_layout_stateid(&NFS_I(inode)->layout,
->> +		if (pnfs_is_next_layout_stateid(NFS_I(inode)->layout,
->>  						rl.cbl_stateid))
->>  			status = pnfs_return_layout(inode, &rl.cbl_seg,
->>  						    &rl.cbl_stateid, RETURN_FILE,
->> diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
->> index 3d51602..30252f4 100644
->> --- a/fs/nfs/inode.c
->> +++ b/fs/nfs/inode.c
->> @@ -1397,17 +1397,7 @@ static inline void nfs4_init_once(struct nfs_inode *nfsi)
->>  #ifdef CONFIG_NFS_V4_1
->>  	init_waitqueue_head(&nfsi->lo_waitq);
->>  	nfsi->pnfs_layout_suspend = 0;
->> -	seqlock_init(&nfsi->layout.seqlock);
->> -	INIT_LIST_HEAD(&nfsi->layout.lo_layouts);
->> -	INIT_LIST_HEAD(&nfsi->layout.segs);
->> -	nfsi->layout.refcount = 0;
->> -	nfsi->layout.ld_data = NULL;
->> -	nfsi->layout.pnfs_layout_state = 0;
->> -	memset(&nfsi->layout.stateid, 0, NFS4_STATEID_SIZE);
->> -	nfsi->layout.roc_iomode = 0;
->> -	nfsi->layout.lo_cred = NULL;
->> -	nfsi->layout.pnfs_write_begin_pos = 0;
->> -	nfsi->layout.pnfs_write_end_pos = 0;
->> +	nfsi->layout = NULL;
->>  #endif /* CONFIG_NFS_V4_1 */
->>  #endif
->>  }
->> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
->> index c5b8a2f..6acebc3 100644
->> --- a/fs/nfs/nfs4proc.c
->> +++ b/fs/nfs/nfs4proc.c
->> @@ -1086,7 +1086,7 @@ static void pnfs4_layout_reclaim(struct nfs4_state *state)
->>  	 * flag during grace period
->>  	 */
->>  	pnfs_destroy_layout(NFS_I(state->inode));
->> -	pnfs_set_layout_stateid(&NFS_I(state->inode)->layout, &zero_stateid);
->> +	pnfs_set_layout_stateid(NFS_I(state->inode)->layout, &zero_stateid);
->>  #endif /* CONFIG_NFS_V4_1 */
->>  }
->>  
->> diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
->> index bfe679b..6f44cb0 100644
->> --- a/fs/nfs/nfs4state.c
->> +++ b/fs/nfs/nfs4state.c
->> @@ -597,10 +597,10 @@ static void __nfs4_close(struct path *path, struct nfs4_state *state,
->>  #ifdef CONFIG_NFS_V4_1
->>  		struct nfs_inode *nfsi = NFS_I(state->inode);
->>  
->> -		if (has_layout(nfsi) && nfsi->layout.roc_iomode) {
->> +		if (has_layout(nfsi) && nfsi->layout->roc_iomode) {
->>  			struct nfs4_pnfs_layout_segment range;
->>  
->> -			range.iomode = nfsi->layout.roc_iomode;
->> +			range.iomode = nfsi->layout->roc_iomode;
->>  			range.offset = 0;
->>  			range.length = NFS4_MAX_UINT64;
->>  			pnfs_return_layout(state->inode, &range, NULL,
->> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
->> index 53c15b1..6d435ed 100644
->> --- a/fs/nfs/pnfs.c
->> +++ b/fs/nfs/pnfs.c
->> @@ -152,10 +152,11 @@ pnfs_need_layoutcommit(struct nfs_inode *nfsi, struct nfs_open_context *ctx)
->>  {
->>  	dprintk("%s: has_layout=%d ctx=%p\n", __func__, has_layout(nfsi), ctx);
->>  	spin_lock(&nfsi->vfs_inode.i_lock);
->> -	if (has_layout(nfsi) && !layoutcommit_needed(nfsi)) {
->> -		nfsi->layout.lo_cred = get_rpccred(ctx->state->owner->so_cred);
->> +	if (has_layout(nfsi) && !
->> +	    !test_bit(NFS_INO_LAYOUTCOMMIT, &nfsi->layout->pnfs_layout_state)) {
+>> Second if at all, then the costume is to initialize on re-use not on end
+>> of previous operation. (Clearer intentions, might not be reused, etc...)
 > 
-> Is the "!!" intended
+> We need to zero the stateid at the return of the last layout segment.
+> Once we return the last segment, we signal the server that the layout
+> stateid is no longer in use and it can dispose of the layout state.
 > 
-> Why did you open code layoutcommit_needed() ?
-> 
->> +		nfsi->layout->lo_cred = get_rpccred(ctx->state->owner->so_cred);
->>  		__set_bit(NFS_INO_LAYOUTCOMMIT,
->> -			  &nfsi->layout.pnfs_layout_state);
->> +			  &nfsi->layout->pnfs_layout_state);
->>  		nfsi->change_attr++;
->>  		spin_unlock(&nfsi->vfs_inode.i_lock);
->>  		dprintk("%s: Set layoutcommit\n", __func__);
->> @@ -175,17 +176,17 @@ pnfs_update_last_write(struct nfs_inode *nfsi, loff_t offset, size_t extent)
->>  	loff_t end_pos;
->>  
->>  	spin_lock(&nfsi->vfs_inode.i_lock);
->> -	if (offset < nfsi->layout.pnfs_write_begin_pos)
->> -		nfsi->layout.pnfs_write_begin_pos = offset;
->> +	if (offset < nfsi->layout->pnfs_write_begin_pos)
->> +		nfsi->layout->pnfs_write_begin_pos = offset;
->>  	end_pos = offset + extent - 1; /* I'm being inclusive */
->> -	if (end_pos > nfsi->layout.pnfs_write_end_pos)
->> -		nfsi->layout.pnfs_write_end_pos = end_pos;
->> +	if (end_pos > nfsi->layout->pnfs_write_end_pos)
->> +		nfsi->layout->pnfs_write_end_pos = end_pos;
->>  	dprintk("%s: Wrote %lu@%lu bpos %lu, epos: %lu\n",
->>  		__func__,
->>  		(unsigned long) extent,
->>  		(unsigned long) offset ,
->> -		(unsigned long) nfsi->layout.pnfs_write_begin_pos,
->> -		(unsigned long) nfsi->layout.pnfs_write_end_pos);
->> +		(unsigned long) nfsi->layout->pnfs_write_begin_pos,
->> +		(unsigned long) nfsi->layout->pnfs_write_end_pos);
->>  	spin_unlock(&nfsi->vfs_inode.i_lock);
->>  }
->>  
->> @@ -326,10 +327,9 @@ get_layout(struct pnfs_layout_type *lo)
->>  static inline struct pnfs_layout_type *
->>  grab_current_layout(struct nfs_inode *nfsi)
->>  {
->> -	struct pnfs_layout_type *lo = &nfsi->layout;
->> +	struct pnfs_layout_type *lo = nfsi->layout;
->>  
->> -	BUG_ON_UNLOCKED_LO(lo);
->> -	if (!lo->ld_data)
->> +	if (!lo)
->>  		return NULL;
->>  	get_layout(lo);
->>  	return lo;
->> @@ -343,13 +343,13 @@ put_layout(struct pnfs_layout_type *lo)
->>  
->>  	lo->refcount--;
->>  	if (!lo->refcount) {
->> -		struct layoutdriver_io_operations *io_ops =
->> -			PNFS_LD_IO_OPS(lo);
->> +		struct layoutdriver_io_operations *io_ops = PNFS_LD_IO_OPS(lo);
->> +		struct nfs_inode *nfsi = PNFS_NFS_INODE(lo);
->>  
->> -		dprintk("%s: freeing layout %p\n", __func__, lo->ld_data);
->> +		dprintk("%s: freeing layout cache %p\n", __func__, lo);
->>  		WARN_ON(!list_empty(&lo->lo_layouts));
->> -		io_ops->free_layout(lo->ld_data);
->> -		lo->ld_data = NULL;
->> +		io_ops->free_layout(lo);
->> +		nfsi->layout = NULL;
->>  	}
->>  }
->>  
->> @@ -381,14 +381,13 @@ pnfs_destroy_layout(struct nfs_inode *nfsi)
->>  	lo = grab_current_layout(nfsi);
->>  	if (lo) {
->>  		pnfs_free_layout(lo, &range);
->> -		WARN_ON(!list_empty(&nfsi->layout.segs));
->> -		WARN_ON(!list_empty(&nfsi->layout.lo_layouts));
->> -		WARN_ON(nfsi->layout.ld_data);
->> +		WARN_ON(!list_empty(&nfsi->layout->segs));
->> +		WARN_ON(!list_empty(&nfsi->layout->lo_layouts));
->>  
->> -		if (nfsi->layout.refcount != 1)
->> +		if (nfsi->layout->refcount != 1)
->>  			printk(KERN_WARNING "%s: layout refcount not=1 %d\n",
->> -				__func__, nfsi->layout.refcount);
->> -		WARN_ON(nfsi->layout.refcount != 1);
->> +				__func__, nfsi->layout->refcount);
->> +		WARN_ON(nfsi->layout->refcount != 1);
->>  
->>  		put_layout(lo);
->>  	}
->> @@ -698,7 +697,7 @@ pnfs_return_layout_barrier(struct nfs_inode *nfsi,
->>  	bool ret = false;
->>  
->>  	spin_lock(&nfsi->vfs_inode.i_lock);
->> -	list_for_each_entry (lseg, &nfsi->layout.segs, fi_list) {
->> +	list_for_each_entry(lseg, &nfsi->layout->segs, fi_list) {
->>  		if (!should_free_lseg(lseg, range))
->>  			continue;
->>  		lseg->valid = false;
->> @@ -904,29 +903,33 @@ pnfs_insert_layout(struct pnfs_layout_type *lo,
->>  	dprintk("%s:Return\n", __func__);
->>  }
->>  
->> +/*
->> + * Each layoutdriver embeds pnfs_layout_type as the first field in it's
->> + * per-layout type layout cache structure and returns it ZEROed
->> + * from layoutdriver_io_ops->alloc_layout
->> + */
->>  static struct pnfs_layout_type *
->>  alloc_init_layout(struct inode *ino)
->>  {
->> -	void *ld_data;
->>  	struct pnfs_layout_type *lo;
->>  	struct layoutdriver_io_operations *io_ops;
->>  
->> +	BUG_ON(NFS_I(ino)->layout != NULL);
->>  	io_ops = NFS_SERVER(ino)->pnfs_curr_ld->ld_io_ops;
->> -	lo = &NFS_I(ino)->layout;
->> -	ld_data = io_ops->alloc_layout(ino);
->> -	if (!ld_data) {
->> +	lo = io_ops->alloc_layout(ino);
->> +	if (!lo) {
->>  		printk(KERN_ERR
->>  			"%s: out of memory: io_ops->alloc_layout failed\n",
->>  			__func__);
->>  		return NULL;
->>  	}
->> -
->>  	spin_lock(&ino->i_lock);
->> -	BUG_ON(lo->ld_data != NULL);
->> -	lo->ld_data = ld_data;
->> -	memset(&lo->stateid, 0, NFS4_STATEID_SIZE);
->>  	lo->refcount = 1;
->> -	lo->roc_iomode = 0;
->> +	INIT_LIST_HEAD(&lo->lo_layouts);
->> +	INIT_LIST_HEAD(&lo->segs);
->> +	seqlock_init(&lo->seqlock);
->> +	lo->lo_inode = ino;
-> 
-> 
-> The spin_lock() could be moved to here, it's the single place
-> that actually touches the nfsi.
-> 
->> +	NFS_I(ino)->layout = lo;
->>  	spin_unlock(&ino->i_lock);
->>  	return lo;
->>  }
->> @@ -961,7 +964,7 @@ get_lock_alloc_layout(struct inode *ino)
->>  		 * wait until bit is cleared if we lost this race.
->>  		 */
->>  		res = wait_on_bit_lock(
->> -			&nfsi->layout.pnfs_layout_state,
->> +			&nfsi->layout->pnfs_layout_state,
->>  			NFS_INO_LAYOUT_ALLOC,
->>  			pnfs_wait_schedule, TASK_KILLABLE);
->>  		if (res) {
->> @@ -972,7 +975,7 @@ get_lock_alloc_layout(struct inode *ino)
->>  		/* Was current_layout already allocated while we slept?
->>  		 * If so, retry get_lock'ing it. Otherwise, allocate it.
->>  		 */
->> -		if (nfsi->layout.ld_data) {
->> +		if (nfsi->layout) {
->>  			spin_lock(&ino->i_lock);
->>  			continue;
->>  		}
->> @@ -985,8 +988,8 @@ get_lock_alloc_layout(struct inode *ino)
->>  
->>  		/* release the NFS_INO_LAYOUT_ALLOC bit and wake up waiters */
->>  		clear_bit_unlock(NFS_INO_LAYOUT_ALLOC,
->> -				 &nfsi->layout.pnfs_layout_state);
->> -		wake_up_bit(&nfsi->layout.pnfs_layout_state,
->> +				 &nfsi->layout->pnfs_layout_state);
->> +		wake_up_bit(&nfsi->layout->pnfs_layout_state,
->>  			    NFS_INO_LAYOUT_ALLOC);
->>  		break;
->>  	}
->> @@ -1113,12 +1116,12 @@ _pnfs_update_layout(struct inode *ino,
->>  	}
->>  
->>  	/* if get layout already failed once goto out */
->> -	if (test_bit(lo_fail_bit(iomode), &nfsi->layout.pnfs_layout_state)) {
->> +	if (test_bit(lo_fail_bit(iomode), &nfsi->layout->pnfs_layout_state)) {
->>  		if (unlikely(nfsi->pnfs_layout_suspend &&
->>  		    get_seconds() >= nfsi->pnfs_layout_suspend)) {
->>  			dprintk("%s: layout_get resumed\n", __func__);
->>  			clear_bit(lo_fail_bit(iomode),
->> -				  &nfsi->layout.pnfs_layout_state);
->> +				  &nfsi->layout->pnfs_layout_state);
->>  			nfsi->pnfs_layout_suspend = 0;
->>  		} else
->>  			goto out_put;
->> @@ -1130,7 +1133,7 @@ _pnfs_update_layout(struct inode *ino,
->>  	send_layoutget(ino, ctx, &arg, lsegpp, lo);
->>  out:
->>  	dprintk("%s end, state 0x%lx lseg %p\n", __func__,
->> -		nfsi->layout.pnfs_layout_state, lseg);
->> +		nfsi->layout->pnfs_layout_state, lseg);
->>  	return;
->>  out_put:
->>  	if (lsegpp)
->> @@ -1235,12 +1238,12 @@ pnfs_get_layout_done(struct nfs4_pnfs_layoutget *lgp, int rpc_status)
->>  	/* remember that get layout failed and suspend trying */
->>  	nfsi->pnfs_layout_suspend = suspend;
->>  	set_bit(lo_fail_bit(lgp->args.lseg.iomode),
->> -		&nfsi->layout.pnfs_layout_state);
->> +		&nfsi->layout->pnfs_layout_state);
->>  	dprintk("%s: layout_get suspended until %ld\n",
->>  		__func__, suspend);
->>  out:
->>  	dprintk("%s end (err:%d) state 0x%lx lseg %p\n",
->> -		__func__, lgp->status, nfsi->layout.pnfs_layout_state, lseg);
->> +		__func__, lgp->status, nfsi->layout->pnfs_layout_state, lseg);
->>  	return;
->>  }
->>  
->> @@ -1321,7 +1324,7 @@ pnfs_set_pg_test(struct inode *inode, struct nfs_pageio_descriptor *pgio)
->>  
->>  	pgio->pg_test = NULL;
->>  
->> -	laytype = &NFS_I(inode)->layout;
->> +	laytype = NFS_I(inode)->layout;
->>  	ld = NFS_SERVER(inode)->pnfs_curr_ld;
->>  	if (!pnfs_enabled_sb(NFS_SERVER(inode)) || !laytype)
->>  		return;
->> @@ -1454,7 +1457,7 @@ pnfs_writepages(struct nfs_write_data *wdata, int how)
->>  		numpages);
->>  	wdata->pdata.lseg = lseg;
->>  	trypnfs = nfss->pnfs_curr_ld->ld_io_ops->write_pagelist(
->> -							&nfsi->layout,
->> +							nfsi->layout,
->>  							args->pages,
->>  							args->pgbase,
->>  							numpages,
->> @@ -1507,7 +1510,7 @@ pnfs_readpages(struct nfs_read_data *rdata)
->>  		__func__, numpages);
->>  	rdata->pdata.lseg = lseg;
->>  	trypnfs = nfss->pnfs_curr_ld->ld_io_ops->read_pagelist(
->> -							&nfsi->layout,
->> +							nfsi->layout,
->>  							args->pages,
->>  							args->pgbase,
->>  							numpages,
->> @@ -1568,7 +1571,7 @@ pnfs_commit(struct nfs_write_data *data, int sync)
->>  	 * This will be done by passing the buck to the layout driver.
->>  	 */
->>  	data->pdata.lseg = NULL;
->> -	trypnfs = nfss->pnfs_curr_ld->ld_io_ops->commit(&nfsi->layout,
->> +	trypnfs = nfss->pnfs_curr_ld->ld_io_ops->commit(nfsi->layout,
->>  							sync, data);
->>  	dprintk("%s End (trypnfs:%d)\n", __func__, trypnfs);
->>  	return trypnfs;
->> @@ -1639,14 +1642,14 @@ pnfs_layoutcommit_inode(struct inode *inode, int sync)
->>  	/* Clear layoutcommit properties in the inode so
->>  	 * new lc info can be generated
->>  	 */
->> -	write_begin_pos = nfsi->layout.pnfs_write_begin_pos;
->> -	write_end_pos = nfsi->layout.pnfs_write_end_pos;
->> -	data->cred = nfsi->layout.lo_cred;
->> -	nfsi->layout.pnfs_write_begin_pos = 0;
->> -	nfsi->layout.pnfs_write_end_pos = 0;
->> -	nfsi->layout.lo_cred = NULL;
->> -	__clear_bit(NFS_INO_LAYOUTCOMMIT, &nfsi->layout.pnfs_layout_state);
->> -	pnfs_get_layout_stateid(&data->args.stateid, &nfsi->layout);
->> +	write_begin_pos = nfsi->layout->pnfs_write_begin_pos;
->> +	write_end_pos = nfsi->layout->pnfs_write_end_pos;
->> +	data->cred = nfsi->layout->lo_cred;
->> +	nfsi->layout->pnfs_write_begin_pos = 0;
->> +	nfsi->layout->pnfs_write_end_pos = 0;
->> +	nfsi->layout->lo_cred = NULL;
->> +	__clear_bit(NFS_INO_LAYOUTCOMMIT, &nfsi->layout->pnfs_layout_state);
->> +	pnfs_get_layout_stateid(&data->args.stateid, nfsi->layout);
->>  
->>  	spin_unlock(&inode->i_lock);
->>  
->> diff --git a/include/linux/nfs4_pnfs.h b/include/linux/nfs4_pnfs.h
->> index c5af82f..2c6ce4c 100644
->> --- a/include/linux/nfs4_pnfs.h
->> +++ b/include/linux/nfs4_pnfs.h
->> @@ -35,13 +35,13 @@ struct pnfs_layoutdriver_type {
->>  static inline struct nfs_inode *
->>  PNFS_NFS_INODE(struct pnfs_layout_type *lo)
->>  {
->> -	return container_of(lo, struct nfs_inode, layout);
->> +	return NFS_I(lo->lo_inode);
->>  }
->>  
->>  static inline struct inode *
->>  PNFS_INODE(struct pnfs_layout_type *lo)
->>  {
->> -	return &PNFS_NFS_INODE(lo)->vfs_inode;
->> +	return lo->lo_inode;
->>  }
->>  
->>  static inline struct nfs_server *
->> @@ -50,12 +50,6 @@ PNFS_NFS_SERVER(struct pnfs_layout_type *lo)
->>  	return NFS_SERVER(PNFS_INODE(lo));
->>  }
->>  
->> -static inline void *
->> -PNFS_LD_DATA(struct pnfs_layout_type *lo)
->> -{
->> -	return lo->ld_data;
->> -}
->> -
->>  static inline struct pnfs_layoutdriver_type *
->>  PNFS_LD(struct pnfs_layout_type *lo)
->>  {
->> @@ -77,13 +71,14 @@ PNFS_LD_POLICY_OPS(struct pnfs_layout_type *lo)
->>  static inline bool
->>  has_layout(struct nfs_inode *nfsi)
->>  {
->> -	return nfsi->layout.ld_data != NULL;
->> +	return nfsi->layout != NULL;
-> 
-> does this mean the same thing now?
-> 
-> You could perhaps optimize with a bit flag that is set on
-> first segment insert, and reset on last segment removal.
-> Or some other/better scheme.
 
-We may want to have has_layout() as well as has_layout_segs()
-which will check that the lsegs list is not empty.
+Sure then we should have some _on_last_segment state somewhere, for example
+when removing from client-list, right? Free the stateid there, and call it
+free_stateid. and not call it reinit().
 
-Benny
+And is this a layoutdriver specific? It looks like generic business only.
 
+> 8.2.1. Stateid Types
 > 
->>  }
->>  
->>  static inline bool
->>  layoutcommit_needed(struct nfs_inode *nfsi)
->>  {
->> -	return test_bit(NFS_INO_LAYOUTCOMMIT, &nfsi->layout.pnfs_layout_state);
->> +	return has_layout(nfsi) &&
->> +	       test_bit(NFS_INO_LAYOUTCOMMIT, &nfsi->layout->pnfs_layout_state);
+>       A stateid represents the set of all layouts held by a particular
+>       client for a particular filehandle with a given layout type.
 > 
-> What is the purpose of patch[1/1] ?
 > 
-> you are unlocked and asking about a layout pointer. Which according to you might
-> go away mid-flight?
+> 12.5.3. Layout Stateid
 > 
->>  }
->>  
->>  #else /* CONFIG_NFS_V4_1 */
->> @@ -149,8 +144,8 @@ struct layoutdriver_io_operations {
->>  	/* Layout information. For each inode, alloc_layout is executed once to retrieve an
->>  	 * inode specific layout structure.  Each subsequent layoutget operation results in
->>  	 * a set_layout call to set the opaque layout in the layout driver.*/
->> -	void * (*alloc_layout) (struct inode *inode);
->> -	void (*free_layout) (void *layoutid);
->> +	struct pnfs_layout_type * (*alloc_layout) (struct inode *inode);
->> +	void (*free_layout) (struct pnfs_layout_type *);
->>  	struct pnfs_layout_segment * (*alloc_lseg) (struct pnfs_layout_type *layoutid, struct nfs4_pnfs_layoutget_res *lgr);
->>  	void (*free_lseg) (struct pnfs_layout_segment *lseg);
->>  
->> diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
->> index b612746..7b999a4 100644
->> --- a/include/linux/nfs_fs.h
->> +++ b/include/linux/nfs_fs.h
->> @@ -104,7 +104,6 @@ struct pnfs_layout_type {
->>  	int roc_iomode;			/* iomode to return on close, 0=none */
->>  	seqlock_t seqlock;		/* Protects the stateid */
->>  	nfs4_stateid stateid;
->> -	void *ld_data;			/* layout driver private data */
->>  	unsigned long pnfs_layout_state;
->>  	#define NFS_INO_RO_LAYOUT_FAILED 0      /* get ro layout failed stop trying */
->>  	#define NFS_INO_RW_LAYOUT_FAILED 1      /* get rw layout failed stop trying */
->> @@ -116,6 +115,7 @@ struct pnfs_layout_type {
->>  	 */
->>  	loff_t                  pnfs_write_begin_pos;
->>  	loff_t                  pnfs_write_end_pos;
->> +	struct inode		*lo_inode;
->>  };
->>  
->>  /*
->> @@ -206,7 +206,7 @@ struct nfs_inode {
->>  	/* pNFS layout information */
->>  #if defined(CONFIG_NFS_V4_1)
->>  	wait_queue_head_t lo_waitq;
->> -	struct pnfs_layout_type layout;
->> +	struct pnfs_layout_type *layout;
->>  	time_t pnfs_layout_suspend;
->>  #endif /* CONFIG_NFS_V4_1 */
->>  #endif /* CONFIG_NFS_V4*/
 > 
+>    As with all other stateids, the layout stateid consists of a "seqid"
+>    and "other" field.  Once a layout stateid is established, the "other"
+>    field will stay constant unless the stateid is revoked or the client
+>    returns all layouts on the file and the server disposes of the
+>    stateid.
+> 
+> Once the stateid is no longer valid, the rest of the layout follows suit.
+> 
+> 
+>>
+>> 3rd, if you'd follow my original proposal you'll see that this hack is not
+>> needed.
+> 
+> If by you're original proposal you mean have the nfs_inode->layout
+> follow the life of the nfs_inode it is indeed needed!  You still need
+> to zero the stateid at the return of the last layout segment. You
+> still can't assume that any fields of the layout received from a
+> LAYOUTGET after you cleared the nfs_inode->layout->segs list will be
+> the same as the old layout returned. So, you need to re-initialize the
+> nfs_inode->layout.
+> 
+
+By now you should have a on_first_segment/on_last_segment states in code.
+Generic part should clean sweep at on_first_segment state.
+
+If you have a particular layout-driver specific initialization, LD can
+check if segment is first in alloc_lseg and take care of itself. (Or
+a flag could be supplied for the lazy)
+
+>>
+>> If these patches fix an actual bug you've been hitting, could you just fix
+>> the particular field in question that needs zeroing. And we can see how to
+>> solve it better.
+> 
+> The actual bug we are hitting is that we keep the stateid past the
+> last layout segment, and actually re-use it on a subsequent LAYOUTGET
+> (send_layout)
+> 
+
+As I said above: on_last_segment/remove-from-client-list can call a specific
+free_lo_stateid, could be nice for readability.
+
+> I should have added this to the patch comments.
+> 
+> -->Andy
+>>
+>> Thanks
+>> Boaz
+
+Boaz
