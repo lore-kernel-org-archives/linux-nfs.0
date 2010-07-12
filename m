@@ -1,84 +1,68 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-iw0-f174.google.com ([209.85.214.174]:59064 "EHLO
-	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751758Ab0GVQGY convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 22 Jul 2010 12:06:24 -0400
-In-Reply-To: <AANLkTimwIq0pBhCeOjOVjB0yeM3JHOvzVoj9M4ui6al9@mail.gmail.com>
-References: <alpine.LSU.2.01.1007221228260.6115@obet.zrqbmnf.qr>
-	<20100715021709.5544.64506.stgit@warthog.procyon.org.uk>
-	<20100715021712.5544.44845.stgit@warthog.procyon.org.uk>
-	<30448.1279800887@redhat.com>
-	<E1Obuiy-00C9jr-Al@intern.SerNet.DE>
-	<AANLkTikBCXK6uEwWq4f0LvpdoKCPs3jvyFa4Zw4e2J_7@mail.gmail.com>
-	<E1Obxpd-00CRIo-SF@intern.SerNet.DE>
-	<AANLkTimwIq0pBhCeOjOVjB0yeM3JHOvzVoj9M4ui6al9@mail.gmail.com>
-Date: Thu, 22 Jul 2010 12:06:22 -0400
-Message-ID: <AANLkTimsjARdMfnvFRSyy6gakCtVhGRBbyauVTc_Cuwt@mail.gmail.com>
-Subject: Re: [PATCH 02/18] xstat: Add a pair of system calls to make extended
-	file stats available [ver #6]
-From: Greg Freemyer <greg.freemyer@gmail.com>
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Cc: Volker.Lendecke@sernet.de, David Howells <dhowells@redhat.com>,
-        Jan Engelhardt <jengelh@medozas.de>, linux-cifs@vger.kernel.org,
-        linux-nfs@vger.kernel.org, samba-technical@lists.samba.org,
-        linux-kernel@vger.kernel.org, viro@zeniv.linux.org.uk,
-        linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from msux-gh1-uea02.nsa.gov ([63.239.65.40]:42010 "EHLO
+	msux-gh1-uea02.nsa.gov" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755190Ab0GLOhI (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 12 Jul 2010 10:37:08 -0400
+Subject: Re: [PATCH 06/10] NFSv4: Add label recommended attribute and NFSv4
+ flags
+From: Stephen Smalley <sds@tycho.nsa.gov>
+To: Casey Schaufler <casey@schaufler-ca.com>
+Cc: Kyle Moffett <kyle@moffetthome.net>,
+        "David P. Quigley" <dpquigl@tycho.nsa.gov>,
+        James Morris <jmorris@namei.org>,
+        "J. Bruce Fields" <bfields@fieldses.org>, hch@infradead.org,
+        viro@zeniv.linux.org.uk, matthew.dodd@sparta.com,
+        trond.myklebust@fys.uio.no, linux-kernel@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, linux-security-module@vger.kernel.org,
+        selinux@tycho.nsa.gov, linux-nfs@vger.kernel.org
+In-Reply-To: <4C3952D6.7040608@schaufler-ca.com>
+References: <1278513086-23964-1-git-send-email-dpquigl@tycho.nsa.gov>
+	 <1278513086-23964-7-git-send-email-dpquigl@tycho.nsa.gov>
+	 <20100707170058.GD28815@fieldses.org>
+	 <alpine.LRH.2.00.1007080928180.14102@tundra.namei.org>
+	 <1278596363.2494.194.camel@moss-terrapins.epoch.ncsc.mil>
+	 <alpine.LRH.2.00.1007090834190.23354@tundra.namei.org>
+	 <1278684348.2494.223.camel@moss-terrapins.epoch.ncsc.mil>
+	 <AANLkTinUO-xqvQQINTzKLcXnljq-RaN5X6ulEAqvuf0d@mail.gmail.com>
+	 <4C3952D6.7040608@schaufler-ca.com>
+Content-Type: text/plain; charset="UTF-8"
+Date: Mon, 12 Jul 2010 10:36:36 -0400
+Message-ID: <1278945396.5221.14.camel@moss-pluto.epoch.ncsc.mil>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Thu, Jul 22, 2010 at 11:47 AM, Linus Torvalds
-<torvalds@linux-foundation.org> wrote:
-> On Thu, Jul 22, 2010 at 8:36 AM, Volker Lendecke
-> <Volker.Lendecke@sernet.de> wrote:
->>
->> The nice thing about this is also that if this is supposed
->> to be fully usable for Windows clients, the birthtime needs
->> to be changeable. That's what NTFS semantics gives you, thus
->> Windows clients tend to require it.
->
-> Ok. So it's not really a creation date, exactly the same way ctime
-> isn't at all a creation date.
->
-> And maybe that actually hints at a better solution: maybe a better
-> model is to create a new per-thread flag that says "do ctime updates
-> the way windows does them".
->
-> So instead of adding another "btime" - which isn't actually what even
-> windows does - just admit that the _real_ issue is that Unix and
-> Windows semantics are different for the pre-existing "ctime".
->
-> The fact is, windows has "access time", "modification time" and
-> "creation time" _exactly_ like UNIX. It's just that the ctime has
-> slightly different semantics in windows vs unix. So quite frankly,
-> it's totally insane to introduce a "birthtime", when that isn't even
-> what windows wants, just because people cannot face the actual real
-> difference.
->
-> Tell me why we shouldn't just do this right?
->
->                Linus
+On Sat, 2010-07-10 at 22:12 -0700, Casey Schaufler wrote:
+> Kyle Moffett wrote:
+> > ...
+> > Even in local filesystems like ext3 we prefer to turn labels into
+> > numbers, store the number with each inode, and then keep the labels
+> > indexed in a separate datastructure.
+> >   
+> 
+> I don't know what system you're talking about, but that notion
+> was pretty well dispelled in the late 1980's, after the SystemV/MLS
+> and SecureWare examples.
 
-I haven't been keeping up with this thread, but I believe NTFS has a
-number of timestamps, not just 3.
+SELinux did that too before switching to using xattrs for label storage.
+Persistent security identifier (PSID) associated with each inode (either
+stored directly in the inode in the original kernel patches or
+associated through a separate mapping in the LSM-based implementation),
+with a mapping from PSID to context stored in a mapping within each
+filesystem.  Allowed you to keep the labels with the volume but avoided
+storing the same label multiple times.
 
-This blog post references 8 in the left hand column.
+The xattr based implementation can sometimes share storage but only when
+the xattr is stored in the additional block (not when they are stored
+inline) and only if all of the xattrs on the file are identical.
 
-The 4 standard (most common) ones are:
+> > Cheers,
+> > Kyle Moffett
+> >
+> >
+> >   
 
-File last access
-File last modified
-File created
-MFT last modified
+-- 
+Stephen Smalley
+National Security Agency
 
-My understanding is that "MFT last modified" has semantics very
-similar to Linux ctime.
-
-But there is not a generic equivalent to NTFS created.
-
-Thus if trying to have the Linux kernel match NTFS semantics for the
-benefit of Samba is the goal, it seems a new field should be preferred
-instead of having linux ctime try to do different jobs.
-
-Greg
