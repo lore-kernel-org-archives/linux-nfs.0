@@ -1,105 +1,119 @@
 From: Benny Halevy <bhalevy@panasas.com>
-Subject: [PATCH 2/2] SQUASHME: pnfs-submit: clean up nfs_lock_alloc_layout
-Date: Mon, 12 Jul 2010 21:40:15 +0300
-Message-ID: <1278960015-32215-1-git-send-email-bhalevy@panasas.com>
-References: <4C3B611C.1000208@panasas.com>
+Subject: [PATCH 2/2] SQUASHME: pnfs-obj: use new alloc/free_layout API
+Date: Mon, 12 Jul 2010 21:43:04 +0300
+Message-ID: <1278960184-32320-1-git-send-email-bhalevy@panasas.com>
+References: <4C3B61FC.90306@panasas.com>
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:33102 "EHLO
+Received: from daytona.panasas.com ([67.152.220.89]:10408 "EHLO
 	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1751597Ab0GLSkY (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 12 Jul 2010 14:40:24 -0400
-In-Reply-To: <4C3B611C.1000208@panasas.com>
+	with ESMTP id S1753891Ab0GLSnL (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 12 Jul 2010 14:43:11 -0400
+In-Reply-To: <4C3B61FC.90306@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Fix a bug where the function returned without taking the i_lock
-if the layout hdr was already allocated.
-Simplify by moving inode locking to caller.
-
-Rename function as it no longer grabs the lock.
-Clean up the implementation so it's clearer what's going on
-and what are the likely cases vs. the unlikely ones.
-
 Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 ---
- fs/nfs/pnfs.c |   42 ++++++++++++++++++++++--------------------
- 1 files changed, 22 insertions(+), 20 deletions(-)
+ fs/nfs/objlayout/objlayout.c |   14 +++++++-------
+ fs/nfs/objlayout/objlayout.h |   10 +++++++++-
+ 2 files changed, 16 insertions(+), 8 deletions(-)
 
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 4ba7595..053a5c1 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -938,36 +938,37 @@ alloc_init_layout(struct inode *ino)
- }
- 
+diff --git a/fs/nfs/objlayout/objlayout.c b/fs/nfs/objlayout/objlayout.c
+index c380bf6..1381c60 100644
+--- a/fs/nfs/objlayout/objlayout.c
++++ b/fs/nfs/objlayout/objlayout.c
+@@ -49,7 +49,7 @@ struct pnfs_client_operations *pnfs_client_ops;
  /*
-- * Lock and possibly allocate the inode layout
-+ * Retrieve and possibly allocate the inode layout
-  *
-- * If successful, ino->i_lock is taken, and the caller must unlock.
-+ * ino->i_lock must be taken by the caller.
+  * Create a objlayout layout structure for the given inode and return it.
   */
- static struct pnfs_layout_type *
--nfs_lock_alloc_layout(struct inode *ino)
-+pnfs_alloc_layout(struct inode *ino)
+-static void *
++static struct pnfs_layout_type *
+ objlayout_alloc_layout(struct inode *inode)
  {
-+	struct nfs_inode *nfsi = NFS_I(ino);
- 	struct pnfs_layout_type *new = NULL;
- 
--	dprintk("%s Begin ino=%p layout=%p\n", __func__, ino, NFS_I(ino)->layout);
-+	dprintk("%s Begin ino=%p layout=%p\n", __func__, ino, nfsi->layout);
- 
--	if (NFS_I(ino)->layout == NULL) {
--		new = alloc_init_layout(ino);
--		if (new == NULL)
--			return NULL;
--		spin_lock(&ino->i_lock);
--		if (NFS_I(ino)->layout == NULL) {
--			NFS_I(ino)->layout = new;
--			new = NULL;
--		}
--	}
--	if (new) {
-+	BUG_ON(!spin_is_locked(&ino->i_lock));
-+	if (likely(nfsi->layout))
-+		return nfsi->layout;
-+
-+	spin_unlock(&ino->i_lock);
-+	new = alloc_init_layout(ino);
-+	spin_lock(&ino->i_lock);
-+
-+	if (likely(nfsi->layout == NULL)) {	/* Won the race? */
-+		nfsi->layout = new;
-+	} else if (new) {
- 		/* Reference the layout accross i_lock release and grab */
--		get_layout(NFS_I(ino)->layout);
-+		get_layout(nfsi->layout);
- 		spin_unlock(&ino->i_lock);
- 		NFS_SERVER(ino)->pnfs_curr_ld->ld_io_ops->free_layout(new);
- 		spin_lock(&ino->i_lock);
--		put_layout_locked(NFS_I(ino)->layout);
-+		put_layout_locked(nfsi->layout);
+ 	struct objlayout *objlay;
+@@ -60,16 +60,16 @@ objlayout_alloc_layout(struct inode *inode)
+ 		INIT_LIST_HEAD(&objlay->err_list);
  	}
--	return NFS_I(ino)->layout;
-+	return nfsi->layout;
+ 	dprintk("%s: Return %p\n", __func__, objlay);
+-	return objlay;
++	return &objlay->pnfs_layout;
  }
  
  /*
-@@ -1055,10 +1056,11 @@ _pnfs_update_layout(struct inode *ino,
+  * Free an objlayout layout structure
+  */
+ static void
+-objlayout_free_layout(void *p)
++objlayout_free_layout(struct pnfs_layout_type *lo)
+ {
+-	struct objlayout *objlay = p;
++	struct objlayout *objlay = OBJLAYOUT(lo);
  
- 	if (take_ref)
- 		*lsegpp = NULL;
--	lo = nfs_lock_alloc_layout(ino);
-+	spin_lock(&ino->i_lock);
-+	lo = pnfs_alloc_layout(ino);
- 	if (lo == NULL) {
- 		dprintk("%s ERROR: can't get pnfs_layout_type\n", __func__);
--		goto out;
-+		goto out_unlock;
- 	}
+ 	dprintk("%s: objlay %p\n", __func__, objlay);
  
- 	/* Check to see if the layout for the given range already exists */
+@@ -232,7 +232,7 @@ objlayout_iodone(struct objlayout_io_state *state)
+ 	if (likely(state->status >= 0)) {
+ 		objlayout_free_io_state(state);
+ 	} else {
+-		struct objlayout *objlay = PNFS_LD_DATA(state->lseg->layout);
++		struct objlayout *objlay = OBJLAYOUT(state->lseg->layout);
+ 
+ 		spin_lock(&objlay->lock);
+ 		objlay->delta_space_valid = OBJ_DSU_INVALID;
+@@ -485,7 +485,7 @@ objlayout_encode_layoutcommit(struct pnfs_layout_type *pnfslay,
+ 			      struct xdr_stream *xdr,
+ 			      const struct pnfs_layoutcommit_arg *args)
+ {
+-	struct objlayout *objlay = PNFS_LD_DATA(pnfslay);
++	struct objlayout *objlay = OBJLAYOUT(pnfslay);
+ 	struct pnfs_osd_layoutupdate lou;
+ 	__be32 *start;
+ 
+@@ -621,7 +621,7 @@ objlayout_encode_layoutreturn(struct pnfs_layout_type *pnfslay,
+ 			      struct xdr_stream *xdr,
+ 			      const struct nfs4_pnfs_layoutreturn_arg *args)
+ {
+-	struct objlayout *objlay = PNFS_LD_DATA(pnfslay);
++	struct objlayout *objlay = OBJLAYOUT(pnfslay);
+ 	struct objlayout_io_state *state, *tmp;
+ 	__be32 *start, *uninitialized_var(last_xdr);
+ 
+diff --git a/fs/nfs/objlayout/objlayout.h b/fs/nfs/objlayout/objlayout.h
+index 248a562..8bc3c94 100644
+--- a/fs/nfs/objlayout/objlayout.h
++++ b/fs/nfs/objlayout/objlayout.h
+@@ -59,6 +59,8 @@ struct objlayout_segment {
+  * per-inode layout
+  */
+ struct objlayout {
++	struct pnfs_layout_type pnfs_layout;
++
+ 	 /* for layout_commit */
+ 	enum osd_delta_space_valid_enum {
+ 		OBJ_DSU_INIT = 0,
+@@ -72,6 +74,12 @@ struct objlayout {
+ 	struct list_head err_list;
+ };
+ 
++static inline struct objlayout *
++OBJLAYOUT(struct pnfs_layout_type *lo)
++{
++	return container_of(lo, struct objlayout, pnfs_layout);
++}
++
+ /*
+  * per-I/O operation state
+  * embedded in objects provider io_state data structure
+@@ -131,7 +139,7 @@ extern void objlayout_io_set_result(struct objlayout_io_state *state,
+ static inline void
+ objlayout_add_delta_space_used(struct objlayout_io_state *state, s64 space_used)
+ {
+-	struct objlayout *objlay = PNFS_LD_DATA(state->lseg->layout);
++	struct objlayout *objlay = OBJLAYOUT(state->lseg->layout);
+ 
+ 	/* If one of the I/Os errored out and the delta_space_used was
+ 	 * invalid we render the complete report as invalid. Protocol mandate
 -- 
 1.7.1.1
 
