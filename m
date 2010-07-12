@@ -1,56 +1,39 @@
-From: Igor Chudov <ichudov@gmail.com>
-Subject: NFS _write_ Performance became horrible overnight
-Date: Mon, 12 Jul 2010 10:37:48 -0500
-Message-ID: <AANLkTinaHi1bZYRwI-jXiv_xPhQyvTUGmzBrfP-JRYs3@mail.gmail.com>
+From: Benny Halevy <bhalevy@panasas.com>
+Subject: Re: [PATCH 0/4] pnfs-submit code removal patches
+Date: Mon, 12 Jul 2010 18:46:57 +0300
+Message-ID: <4C3B38F1.9050105@panasas.com>
+References: <1278617122-24164-1-git-send-email-iisaman@netapp.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
-To: linux-nfs@vger.kernel.org
+Cc: linux-nfs@vger.kernel.org
+To: Fred Isaman <iisaman@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ww0-f44.google.com ([74.125.82.44]:50627 "EHLO
-	mail-ww0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751203Ab0GLPiK (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 12 Jul 2010 11:38:10 -0400
-Received: by wwi17 with SMTP id 17so146858wwi.1
-        for <linux-nfs@vger.kernel.org>; Mon, 12 Jul 2010 08:38:09 -0700 (PDT)
+Received: from daytona.panasas.com ([67.152.220.89]:24371 "EHLO
+	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1752328Ab0GLPq7 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 12 Jul 2010 11:46:59 -0400
+In-Reply-To: <1278617122-24164-1-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hello,
+On Jul. 08, 2010, 22:25 +0300, Fred Isaman <iisaman@netapp.com> wrote:
+> All these patches should be immediately reverted in the post-submit branch.
+> 
+> The first three take advantage of the fact that we are only using
+> full-file layouts to remove some code.
+> 
+> The fourth is a repeat of a previously sent patch that seems to have
+> fallen throught the the cracks.
 
-I would like to apologize in advance if, for any reason, my question
-is inappropriate for this mailing list. Please let meknow if that is
-the case.
+Hmm, it looks like I had a pilot error on this one.
+Will fix.
 
-This seems to be a very odd problem that I have isolated to NFS.
+Benny
 
-I have two NFS servers. Server A and server B. They serve unrelated
-shares.
-
-Server A is actually two servers using DRBD to stay in sync.
-
-I also have a number of NFS clients.
-
-Both servers worked great up to about last night.
-
-Somehow, NFS writes became extremely slow over Server A, for all
-clients, but not for Server B.
-
-I have no idea, yet, what changed, but wanted to ask here if anyone
-ever had a similar problem (NFS performance going to shit overnight).
-
-Some data points:
-
-1) From any client, reading files over NFS is fast
-2) From any client, writing to NFS on Server A is VERY SLOW
-3) From any client, writing to Samba shares on Server A is fast.
-4) From any client, writing to NFS on Server B is fast.
-5) When logged on to Server A, copying a file from local A filesystem
-to itself is fast.
-
-IOW, everything is fast, EXCEPT for NFS writes to server A.
-
-Any ideas what might cause this sudden deterioration of Server A?
-
-Thank you!!!!!!!!!!!
-
-i
+> 
+> Fred
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
