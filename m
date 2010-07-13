@@ -1,40 +1,40 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:2423 "EHLO mx1.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:54309 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S966728Ab0GSUut (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 19 Jul 2010 16:50:49 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: bfields@fieldses.org
+	id S1753909Ab0GMTvS convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 13 Jul 2010 15:51:18 -0400
+Subject: Re: [PATCH 1/3] NFS: Fix up the fsync code
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Christoph Hellwig <hch@infradead.org>
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 0/5] nfsd: fix error handling in write_ports interfaces (resend)
-Date: Mon, 19 Jul 2010 16:50:03 -0400
-Message-Id: <1279572608-7234-1-git-send-email-jlayton@redhat.com>
+In-Reply-To: <20100713011306.GA364@infradead.org>
+References: <20100712220932.20019.21170.stgit@heimdal.trondhjem.org>
+	 <20100713011306.GA364@infradead.org>
+Content-Type: text/plain; charset="UTF-8"
+Date: Tue, 13 Jul 2010 15:50:36 -0400
+Message-ID: <1279050636.17993.14.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-Hi Bruce,
+On Mon, 2010-07-12 at 21:13 -0400, Christoph Hellwig wrote:
+> >  	/* Flush writes to the server and return any errors */
+> > -	return nfs_do_fsync(ctx, inode);
+> > +	return vfs_fsync(file, 0);
+> 
+> Either the argument to vfs_fsync or the comment needs some changes.
+> datasync = 0 means we don't just flush writes but also metadata.  I
+> don't know enough about the NFS CTO guarantees to figure which one you
+> actually want.
+> 
 
-This patchset is a resend of the set I sent a month or so ago, with
-a couple of other patches to fix related problems that came to light
-as we were discussing them.
+NFS can't distinguish between a datasync and a full sync: a successful
+COMMIT operation guarantees that both data+metadata updates are on disk.
+For this reason we ignore the 'datasync' parameter in our fsync
+implementation.
 
-It's changed a bit from the original set by virtue of the fact that
-patch #5 simplifies the lockd_up/down handling. Let me know if you
-see any problems with the set and I'll work on addressing them.
+Would it perhaps help if I added a comment to that effect in
+nfs_file_fsync() itself?
 
-Thanks,
-
-Jeff Layton (5):
-  nfsd: don't try to shut down nfs4 state handling unless it's up
-  nfsd: fix error handling when starting nfsd with rpcbind down
-  nfsd: fix error handling in __write_ports_addxprt
-  nfsd: shut down NFSv4 state when nfsd_svc encounters an error
-  nfsd: just keep single lockd reference for nfsd
-
- fs/nfsd/nfs4state.c |    2 ++
- fs/nfsd/nfsctl.c    |   20 ++++++++------------
- fs/nfsd/nfssvc.c    |   36 +++++++++++++++++-------------------
- 3 files changed, 27 insertions(+), 31 deletions(-)
-
+Cheers
+  Trond
