@@ -1,46 +1,70 @@
-From: Gyorgy Jeney <nog.lkml@gmail.com>
-Subject: NFS over RDMA problem: svcrdma: Error fast registering memory for
-	xprt ffff8803307d7400
-Date: Tue, 13 Jul 2010 10:45:51 +0200
-Message-ID: <AANLkTinjZfpICMjP1EcU4CPAe1TwxKp1zsk-lwX6fmzA@mail.gmail.com>
+From: Boaz Harrosh <bharrosh@panasas.com>
+Subject: Re: [PATCH 0/2] pnfs-submit Re-initialize pnfs_layout_type when segs
+ 	list is empty
+Date: Tue, 13 Jul 2010 12:02:11 +0300
+Message-ID: <4C3C2B93.9050407@panasas.com>
+References: <1278693571-3328-1-git-send-email-andros@netapp.com>	<4C3B395F.8080903@panasas.com>	<AANLkTinjab9XPUjRe2knYyRQg8j9pmc9Gdk_fRkGGfY2@mail.gmail.com>	<4C3B4BD3.1090308@panasas.com> <AANLkTilSPhZ1aBtU1taI8UnKQ9CddgaK3oQ1xoSMOuh3@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-To: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
+Cc: bhalevy@panasas.com, linux-nfs@vger.kernel.org
+To: "William A. (Andy) Adamson" <androsadamson@gmail.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-wy0-f174.google.com ([74.125.82.174]:56536 "EHLO
-	mail-wy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751167Ab0GMIpx (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 13 Jul 2010 04:45:53 -0400
-Received: by wyf23 with SMTP id 23so3974797wyf.19
-        for <linux-nfs@vger.kernel.org>; Tue, 13 Jul 2010 01:45:52 -0700 (PDT)
+Received: from daytona.panasas.com ([67.152.220.89]:19096 "EHLO
+	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1752714Ab0GMJCO (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 13 Jul 2010 05:02:14 -0400
+In-Reply-To: <AANLkTilSPhZ1aBtU1taI8UnKQ9CddgaK3oQ1xoSMOuh3-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hello all,
+On 07/12/2010 09:07 PM, William A. (Andy) Adamson wrote:
+> On Mon, Jul 12, 2010 at 1:07 PM, Boaz Harrosh <bharrosh@panasas.com> wrote:
+>> >
 
-Should this mailing-list be the wrong place to ask, I apologise and I
-would take it kindly, if someone could then point me to the right forum.
+>> > And is this a layoutdriver specific? It looks like generic business only.
+> 
+> The file layout driver zero's the stripe unit. I anticipate other
+> fields that would need to be zeroed.
+> 
 
-I am attempting to use NFS over RDMA (over infiniband), but there is some
-problem.  The NFS filesystem can be mounted on the client, and things
-will work for some time (can read, modify, etc. the files over the mount),
-but then (at a seemingly random time) the NFS server will dump these
-lines to the logs:
+The stripe_unit is per segment surly. It should be set on new segment
+received. (Again the mix up between layout_type and layout_segment)
+If stripe_unit also doubles for a flag that says, I have a layout.
+Then zero it on free_lseg, when identified as last.
 
-[ 4380.623922] svcrdma: Error fast registering memory for xprt ffff8803307d7400
-[ 4413.343161] svcrdma: error fast registering xdr for xprt ffff8803319edc00
+(Which also means that you are hard coding all-file-layout at heart
+ of files-layout-driver)
 
-and the nfs filesystem on the NFS client will be unacessable.  Is this a
-known problem?  Do workarounds exist?  Or am I just missing something?
+>>
+>> As I said above: on_last_segment/remove-from-client-list can call a specific
+>> free_lo_stateid, could be nice for readability.
+> 
+> It does: I call pnfs_set_layout_stateid() with the zero_stateid. That
+> is very clear.
+> 
+> I just don't see the need for two more states. 
 
+You might miss-understood me. By state I meant: "a point in code where
+it is identified that this is first/last segment" This already exists.
+I did not mean like an NFS4 state machine.
 
-Both client and server are running the latest vanilla 2.6.34.1 kernel
-with Mellanox Connect-X infiniband cards.  If more information is
-required, please do ask.
+I wish we had functions that said _on_first_seg, on_last_seg. But
+that's just me.
 
-BTW: I can reproduce the problem quite reliably by running the bonnie++
-"benchmark" on the NFS mounted filesystem.
+> We have a point in the
+> generic code where the layout segment list is empty. Therefore the
+> pnfs_layout_type information is stale. Simply initialize and all the
+> checks we have work.
+> 
 
-nog.
+That is what I meant that I do not like. The initialize should be on
+first_seg_insert, Not "last_seg_remove in case of re-insert". The only
+check should be list-is-empty. Then on first insert, all should be initialized.
 
-ps: I'm not subscribed to the list, please CC me on all replies.
+But I guess it's hard to talk about this. Submit the last fixes and I
+can RFC my approach. I hope when you see it you'll be convinced.
+
+Thanks
+Boaz
+
+> -->Andy
