@@ -1,111 +1,181 @@
 From: "William A. (Andy) Adamson" <androsadamson@gmail.com>
-Subject: Re: [PATCH 0/2] pnfs-submit Re-initialize pnfs_layout_type when segs
-	list is empty
-Date: Tue, 13 Jul 2010 10:06:28 -0400
-Message-ID: <AANLkTinBNIUOzcqwFffYLgwne1KGoZOiADhjt2IHDIFm@mail.gmail.com>
-References: <1278693571-3328-1-git-send-email-andros@netapp.com>
-	<4C3B395F.8080903@panasas.com>
-	<AANLkTinjab9XPUjRe2knYyRQg8j9pmc9Gdk_fRkGGfY2@mail.gmail.com>
-	<4C3B4BD3.1090308@panasas.com>
-	<AANLkTilSPhZ1aBtU1taI8UnKQ9CddgaK3oQ1xoSMOuh3@mail.gmail.com>
-	<4C3C2B93.9050407@panasas.com>
+Subject: Re: [PATCH 2/2] SQUASHME: pnfs-submit: clean up nfs_lock_alloc_layout
+Date: Tue, 13 Jul 2010 10:22:22 -0400
+Message-ID: <AANLkTilggIcSbrd6Jkv9WTDj21wEKC_t1noi2aX8gPar@mail.gmail.com>
+References: <4C3B611C.1000208@panasas.com>
+	<1278960015-32215-1-git-send-email-bhalevy@panasas.com>
+	<AANLkTin5Wo-9paVQvfXZwDx5KZFkpSSspTCIN6vRCc8h@mail.gmail.com>
+	<4C3C7200.9070508@panasas.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
-Cc: bhalevy@panasas.com, linux-nfs@vger.kernel.org
-To: Boaz Harrosh <bharrosh@panasas.com>
+Cc: linux-nfs@vger.kernel.org
+To: Benny Halevy <bhalevy@panasas.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-gy0-f174.google.com ([209.85.160.174]:62835 "EHLO
-	mail-gy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756628Ab0GMOG3 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 13 Jul 2010 10:06:29 -0400
-Received: by gyh4 with SMTP id 4so318669gyh.19
-        for <linux-nfs@vger.kernel.org>; Tue, 13 Jul 2010 07:06:28 -0700 (PDT)
-In-Reply-To: <4C3C2B93.9050407@panasas.com>
+Received: from mail-gw0-f46.google.com ([74.125.83.46]:35986 "EHLO
+	mail-gw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752011Ab0GMOWY convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 13 Jul 2010 10:22:24 -0400
+Received: by gwj18 with SMTP id 18so2721647gwj.19
+        for <linux-nfs@vger.kernel.org>; Tue, 13 Jul 2010 07:22:24 -0700 (PDT)
+In-Reply-To: <4C3C7200.9070508@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Jul 13, 2010 at 5:02 AM, Boaz Harrosh <bharrosh@panasas.com> wr=
+On Tue, Jul 13, 2010 at 10:02 AM, Benny Halevy <bhalevy@panasas.com> wr=
 ote:
-> On 07/12/2010 09:07 PM, William A. (Andy) Adamson wrote:
->> On Mon, Jul 12, 2010 at 1:07 PM, Boaz Harrosh <bharrosh@panasas.com>=
- wrote:
->>> >
->
->>> > And is this a layoutdriver specific? It looks like generic busine=
-ss only.
+> On Jul. 13, 2010, 16:44 +0300, "William A. (Andy) Adamson" <androsada=
+mson@gmail.com> wrote:
+>> On Mon, Jul 12, 2010 at 2:40 PM, Benny Halevy <bhalevy@panasas.com> =
+wrote:
+>>> Fix a bug where the function returned without taking the i_lock
+>>> if the layout hdr was already allocated.
+>>> Simplify by moving inode locking to caller.
 >>
->> The file layout driver zero's the stripe unit. I anticipate other
->> fields that would need to be zeroed.
+>> No, the original function I sent had no such bug.
 >>
 >
-> The stripe_unit is per segment surly. It should be set on new segment
-> received. (Again the mix up between layout_type and layout_segment)
-> If stripe_unit also doubles for a flag that says, I have a layout.
-> Then zero it on free_lseg, when identified as last.
-
-
-When we only have full file layouts, the only two possible layout
-segments are full file segments with different iomodes, and so must
-have an equal stripe unit.
-
-I can init on free_lseg - agreed.
-
->
-> (Which also means that you are hard coding all-file-layout at heart
-> =A0of files-layout-driver)
+> True. =A0It was my bad.
 >
 >>>
->>> As I said above: on_last_segment/remove-from-client-list can call a=
- specific
->>> free_lo_stateid, could be nice for readability.
+>>> Rename function as it no longer grabs the lock.
+>>> Clean up the implementation so it's clearer what's going on
+>>> and what are the likely cases vs. the unlikely ones.
 >>
->> It does: I call pnfs_set_layout_stateid() with the zero_stateid. Tha=
-t
->> is very clear.
+>> I do not think this is any clearer!
 >>
->> I just don't see the need for two more states.
 >
-> You might miss-understood me. By state I meant: "a point in code wher=
-e
-> it is identified that this is first/last segment" This already exists=
+> I think that getting the lock by the caller is simpler
+> than having the callee take it, but it doesn't matter that much.
+>
+> My main problems with your patch were:
+> a. usage of the 'new' variable, setting it to NULL if it was used
+> rather than using simple if/else logic.
+>
+> b. if alloc_init_layout failed after releasing the lock
+> the function always returned NULL, even if someone else
+> was able to allocate it in parallel (very unlikely, but possible)
+
+:)
+
+>
+> c. the fast path had to go through 2 unlikely if's
+
+Absolutely not concerned with fast path as almost always occurs once
+per inode until umount (unless server reboots, network partition,
+migration or use of another replica)
+
+OK, I guess it doesn't matter that much. It just seems like a
+re-arrange for very little reason.
+
+-->Andy
+
+>
+> Benny
+>
+>>>
+>>> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+>>> ---
+>>> =A0fs/nfs/pnfs.c | =A0 42 ++++++++++++++++++++++-------------------=
+-
+>>> =A01 files changed, 22 insertions(+), 20 deletions(-)
+>>>
+>>> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+>>> index 4ba7595..053a5c1 100644
+>>> --- a/fs/nfs/pnfs.c
+>>> +++ b/fs/nfs/pnfs.c
+>>> @@ -938,36 +938,37 @@ alloc_init_layout(struct inode *ino)
+>>> =A0}
+>>>
+>>> =A0/*
+>>> - * Lock and possibly allocate the inode layout
+>>> + * Retrieve and possibly allocate the inode layout
+>>> =A0*
+>>> - * If successful, ino->i_lock is taken, and the caller must unlock=
 =2E
-> I did not mean like an NFS4 state machine.
->
-> I wish we had functions that said _on_first_seg, on_last_seg. But
-> that's just me.
->
->> We have a point in the
->> generic code where the layout segment list is empty. Therefore the
->> pnfs_layout_type information is stale. Simply initialize and all the
->> checks we have work.
->>
->
-> That is what I meant that I do not like. The initialize should be on
-> first_seg_insert, Not "last_seg_remove in case of re-insert". The onl=
-y
-> check should be list-is-empty.
-
-No! The layout stateid needs to be zeroed as well.
-
->Then on first insert, all should be initialized.
-
-I guess we just do things differently. I for one like to clean up the
-dishes after the meal, not wait until before the next meal! But that's
-just me.
-
--->Andy
-
->
-> But I guess it's hard to talk about this. Submit the last fixes and I
-> can RFC my approach. I hope when you see it you'll be convinced.
-
-OK.
-
--->Andy
-
->
-> Thanks
-> Boaz
->
->> -->Andy
+>>> + * ino->i_lock must be taken by the caller.
+>>> =A0*/
+>>> =A0static struct pnfs_layout_type *
+>>> -nfs_lock_alloc_layout(struct inode *ino)
+>>> +pnfs_alloc_layout(struct inode *ino)
+>>> =A0{
+>>> + =A0 =A0 =A0 struct nfs_inode *nfsi =3D NFS_I(ino);
+>>> =A0 =A0 =A0 =A0struct pnfs_layout_type *new =3D NULL;
+>>>
+>>> - =A0 =A0 =A0 dprintk("%s Begin ino=3D%p layout=3D%p\n", __func__, =
+ino, NFS_I(ino)->layout);
+>>> + =A0 =A0 =A0 dprintk("%s Begin ino=3D%p layout=3D%p\n", __func__, =
+ino, nfsi->layout);
+>>>
+>>> - =A0 =A0 =A0 if (NFS_I(ino)->layout =3D=3D NULL) {
+>>> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 new =3D alloc_init_layout(ino);
+>>> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 if (new =3D=3D NULL)
+>>> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 return NULL;
+>>> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 spin_lock(&ino->i_lock);
+>>> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 if (NFS_I(ino)->layout =3D=3D NULL) {
+>>> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 NFS_I(ino)->layout =3D=
+ new;
+>>> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 new =3D NULL;
+>>> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 }
+>>> - =A0 =A0 =A0 }
+>>> - =A0 =A0 =A0 if (new) {
+>>> + =A0 =A0 =A0 BUG_ON(!spin_is_locked(&ino->i_lock));
+>>> + =A0 =A0 =A0 if (likely(nfsi->layout))
+>>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 return nfsi->layout;
+>>> +
+>>> + =A0 =A0 =A0 spin_unlock(&ino->i_lock);
+>>> + =A0 =A0 =A0 new =3D alloc_init_layout(ino);
+>>> + =A0 =A0 =A0 spin_lock(&ino->i_lock);
+>>> +
+>>> + =A0 =A0 =A0 if (likely(nfsi->layout =3D=3D NULL)) { =A0 =A0 /* Wo=
+n the race? */
+>>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 nfsi->layout =3D new;
+>>> + =A0 =A0 =A0 } else if (new) {
+>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0/* Reference the layout accross i_lo=
+ck release and grab */
+>>> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 get_layout(NFS_I(ino)->layout);
+>>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 get_layout(nfsi->layout);
+>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0spin_unlock(&ino->i_lock);
+>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0NFS_SERVER(ino)->pnfs_curr_ld->ld_io=
+_ops->free_layout(new);
+>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0spin_lock(&ino->i_lock);
+>>> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 put_layout_locked(NFS_I(ino)->layout)=
+;
+>>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 put_layout_locked(nfsi->layout);
+>>> =A0 =A0 =A0 =A0}
+>>> - =A0 =A0 =A0 return NFS_I(ino)->layout;
+>>> + =A0 =A0 =A0 return nfsi->layout;
+>>> =A0}
+>>>
+>>> =A0/*
+>>> @@ -1055,10 +1056,11 @@ _pnfs_update_layout(struct inode *ino,
+>>>
+>>> =A0 =A0 =A0 =A0if (take_ref)
+>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0*lsegpp =3D NULL;
+>>> - =A0 =A0 =A0 lo =3D nfs_lock_alloc_layout(ino);
+>>> + =A0 =A0 =A0 spin_lock(&ino->i_lock);
+>>> + =A0 =A0 =A0 lo =3D pnfs_alloc_layout(ino);
+>>> =A0 =A0 =A0 =A0if (lo =3D=3D NULL) {
+>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0dprintk("%s ERROR: can't get pnfs_la=
+yout_type\n", __func__);
+>>> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 goto out;
+>>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 goto out_unlock;
+>>> =A0 =A0 =A0 =A0}
+>>>
+>>> =A0 =A0 =A0 =A0/* Check to see if the layout for the given range al=
+ready exists */
+>>> --
+>>> 1.7.1.1
+>>>
+>>> --
+>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs=
+" in
+>>> the body of a message to majordomo@vger.kernel.org
+>>> More majordomo info at =A0http://vger.kernel.org/majordomo-info.htm=
+l
+>>>
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs"=
+ in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at =A0http://vger.kernel.org/majordomo-info.html
 >
