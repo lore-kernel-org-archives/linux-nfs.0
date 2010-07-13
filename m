@@ -1,200 +1,111 @@
-From: Benny Halevy <bhalevy@panasas.com>
-Subject: Re: [PATCH 05/16] SQUASHME pnfs-submit: rewrite layout allocation
-Date: Tue, 13 Jul 2010 17:04:03 +0300
-Message-ID: <4C3C7253.2050606@panasas.com>
-References: <1278542063-4009-1-git-send-email-andros@netapp.com>	<1278542063-4009-2-git-send-email-andros@netapp.com>	<1278542063-4009-3-git-send-email-andros@netapp.com>	<1278542063-4009-4-git-send-email-andros@netapp.com>	<1278542063-4009-5-git-send-email-andros@netapp.com>	<1278542063-4009-6-git-send-email-andros@netapp.com>	<4C3AD2AD.5010403@panasas.com> <AANLkTilb6ePL7s6H4TbhGfJt05Yw7Gc24V0C8cPHC22K@mail.gmail.com>
+From: "William A. (Andy) Adamson" <androsadamson@gmail.com>
+Subject: Re: [PATCH 0/2] pnfs-submit Re-initialize pnfs_layout_type when segs
+	list is empty
+Date: Tue, 13 Jul 2010 10:06:28 -0400
+Message-ID: <AANLkTinBNIUOzcqwFffYLgwne1KGoZOiADhjt2IHDIFm@mail.gmail.com>
+References: <1278693571-3328-1-git-send-email-andros@netapp.com>
+	<4C3B395F.8080903@panasas.com>
+	<AANLkTinjab9XPUjRe2knYyRQg8j9pmc9Gdk_fRkGGfY2@mail.gmail.com>
+	<4C3B4BD3.1090308@panasas.com>
+	<AANLkTilSPhZ1aBtU1taI8UnKQ9CddgaK3oQ1xoSMOuh3@mail.gmail.com>
+	<4C3C2B93.9050407@panasas.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
-Cc: linux-nfs@vger.kernel.org
-To: "William A. (Andy) Adamson" <androsadamson@gmail.com>
+Cc: bhalevy@panasas.com, linux-nfs@vger.kernel.org
+To: Boaz Harrosh <bharrosh@panasas.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:15527 "EHLO
-	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1751351Ab0GMOEI (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 13 Jul 2010 10:04:08 -0400
-In-Reply-To: <AANLkTilb6ePL7s6H4TbhGfJt05Yw7Gc24V0C8cPHC22K-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
+Received: from mail-gy0-f174.google.com ([209.85.160.174]:62835 "EHLO
+	mail-gy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756628Ab0GMOG3 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 13 Jul 2010 10:06:29 -0400
+Received: by gyh4 with SMTP id 4so318669gyh.19
+        for <linux-nfs@vger.kernel.org>; Tue, 13 Jul 2010 07:06:28 -0700 (PDT)
+In-Reply-To: <4C3C2B93.9050407@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Jul. 13, 2010, 16:39 +0300, "William A. (Andy) Adamson" <androsadamson@gmail.com> wrote:
-> On Mon, Jul 12, 2010 at 4:30 AM, Benny Halevy <bhalevy@panasas.com> wrote:
->> On Jul. 08, 2010, 1:34 +0300, andros@netapp.com wrote:
->>> From: Andy Adamson <andros@netapp.com>
->>>
->>> Don't wait on a bit if layout is not allocated. Instead, allocate,
->>> check for existance, and possibly free.
->>>
->>> As per new layout refcounting scheme,don't take a reference on the layout.
->>>
->>> Signed-off-by: Andy Adamson <andros@netapp.com>
->>> ---
->>>  fs/nfs/pnfs.c          |   84 +++++++++++++----------------------------------
->>>  include/linux/nfs_fs.h |    1 -
->>>  2 files changed, 23 insertions(+), 62 deletions(-)
->>>
->>> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
->>> index 6d435ed..92b7772 100644
->>> --- a/fs/nfs/pnfs.c
->>> +++ b/fs/nfs/pnfs.c
->>> @@ -914,7 +914,6 @@ alloc_init_layout(struct inode *ino)
->>>       struct pnfs_layout_type *lo;
->>>       struct layoutdriver_io_operations *io_ops;
->>>
->>> -     BUG_ON(NFS_I(ino)->layout != NULL);
->>>       io_ops = NFS_SERVER(ino)->pnfs_curr_ld->ld_io_ops;
->>>       lo = io_ops->alloc_layout(ino);
->>>       if (!lo) {
->>> @@ -923,84 +922,47 @@ alloc_init_layout(struct inode *ino)
->>>                       __func__);
->>>               return NULL;
->>>       }
->>> -     spin_lock(&ino->i_lock);
->>>       lo->refcount = 1;
->>>       INIT_LIST_HEAD(&lo->lo_layouts);
->>>       INIT_LIST_HEAD(&lo->segs);
->>>       seqlock_init(&lo->seqlock);
->>>       lo->lo_inode = ino;
->>> -     NFS_I(ino)->layout = lo;
->>> -     spin_unlock(&ino->i_lock);
->>>       return lo;
->>>  }
->>>
->>> -static int pnfs_wait_schedule(void *word)
->>> -{
->>> -     if (signal_pending(current))
->>> -             return -ERESTARTSYS;
->>> -     schedule();
->>> -     return 0;
->>> -}
->>> -
->>>  /*
->>> - * get, possibly allocate, and lock current_layout
->>> + * Lock and possibly allocate the inode layout
->>>   *
->>> - * Note: If successful, ino->i_lock is taken and the caller
->>> - * must put and unlock current_layout when the returned layout is released.
->>> + * If successful, ino->i_lock is taken, and the caller must unlock.
->>>   */
->>>  static struct pnfs_layout_type *
->>> -get_lock_alloc_layout(struct inode *ino)
->>> +nfs_lock_alloc_layout(struct inode *ino)
->>>  {
->>> -     struct nfs_inode *nfsi = NFS_I(ino);
->>> -     struct pnfs_layout_type *lo;
->>> -     int res;
->>> +     struct pnfs_layout_type *new = NULL;
->>>
->>>       dprintk("%s Begin\n", __func__);
->>>
->>>       spin_lock(&ino->i_lock);
->>> -     while ((lo = grab_current_layout(nfsi)) == NULL) {
->>> +     if (NFS_I(ino)->layout == NULL) {
->>>               spin_unlock(&ino->i_lock);
+On Tue, Jul 13, 2010 at 5:02 AM, Boaz Harrosh <bharrosh@panasas.com> wr=
+ote:
+> On 07/12/2010 09:07 PM, William A. (Andy) Adamson wrote:
+>> On Mon, Jul 12, 2010 at 1:07 PM, Boaz Harrosh <bharrosh@panasas.com>=
+ wrote:
+>>> >
+>
+>>> > And is this a layoutdriver specific? It looks like generic busine=
+ss only.
 >>
->> There's no real need to take the lock here just for checking for NULL,
->> only down below before actually committing the newly allocated struct.
->> [I'll make this fix)
-> 
-> 
-> I'm not taking the lock just to check for NULL. I'm taking the lock
-> because the function returns a locked i_lock - (or did before you
-> changed it!)
+>> The file layout driver zero's the stripe unit. I anticipate other
+>> fields that would need to be zeroed.
+>>
+>
+> The stripe_unit is per segment surly. It should be set on new segment
+> received. (Again the mix up between layout_type and layout_segment)
+> If stripe_unit also doubles for a flag that says, I have a layout.
+> Then zero it on free_lseg, when identified as last.
 
-True. My mistake.
 
-Benny
+When we only have full file layouts, the only two possible layout
+segments are full file segments with different iomodes, and so must
+have an equal stripe unit.
 
-> 
-> -->Andy
-> 
->>
->> Benny
->>
->>> -             /* Compete against other threads on who's doing the allocation,
->>> -              * wait until bit is cleared if we lost this race.
->>> -              */
->>> -             res = wait_on_bit_lock(
->>> -                     &nfsi->layout->pnfs_layout_state,
->>> -                     NFS_INO_LAYOUT_ALLOC,
->>> -                     pnfs_wait_schedule, TASK_KILLABLE);
->>> -             if (res) {
->>> -                     lo = ERR_PTR(res);
->>> -                     break;
->>> -             }
->>> -
->>> -             /* Was current_layout already allocated while we slept?
->>> -              * If so, retry get_lock'ing it. Otherwise, allocate it.
->>> -              */
->>> -             if (nfsi->layout) {
->>> -                     spin_lock(&ino->i_lock);
->>> -                     continue;
->>> +             new = alloc_init_layout(ino);
->>> +             if (new == NULL)
->>> +                     return NULL;
->>> +             spin_lock(&ino->i_lock);
->>> +             if (NFS_I(ino)->layout == NULL) {
->>> +                     NFS_I(ino)->layout = new;
->>> +                     new = NULL;
->>>               }
->>> -
->>> -             lo = alloc_init_layout(ino);
->>> -             if (lo)
->>> -                     spin_lock(&ino->i_lock);
->>> -             else
->>> -                     lo = ERR_PTR(-ENOMEM);
->>> -
->>> -             /* release the NFS_INO_LAYOUT_ALLOC bit and wake up waiters */
->>> -             clear_bit_unlock(NFS_INO_LAYOUT_ALLOC,
->>> -                              &nfsi->layout->pnfs_layout_state);
->>> -             wake_up_bit(&nfsi->layout->pnfs_layout_state,
->>> -                         NFS_INO_LAYOUT_ALLOC);
->>> -             break;
->>>       }
->>> -
->>> -#ifdef NFS_DEBUG
->>> -     if (!IS_ERR(lo))
->>> -             dprintk("%s Return %p\n", __func__, lo);
->>> -     else
->>> -             dprintk("%s Return error %ld\n", __func__, PTR_ERR(lo));
->>> -#endif
->>> -     return lo;
->>> +     if (new) {
->>> +             /* Reference the layout accross i_lock release and grab */
->>> +             get_layout(NFS_I(ino)->layout);
->>> +             spin_unlock(&ino->i_lock);
->>> +             NFS_SERVER(ino)->pnfs_curr_ld->ld_io_ops->free_layout(new);
->>> +             spin_lock(&ino->i_lock);
->>> +             put_layout(NFS_I(ino)->layout);
->>> +     }
->>> +     return NFS_I(ino)->layout;
->>>  }
+I can init on free_lseg - agreed.
+
+>
+> (Which also means that you are hard coding all-file-layout at heart
+> =A0of files-layout-driver)
+>
 >>>
->>>  /*
->>> @@ -1088,8 +1050,8 @@ _pnfs_update_layout(struct inode *ino,
->>>
->>>       if (take_ref)
->>>               *lsegpp = NULL;
->>> -     lo = get_lock_alloc_layout(ino);
->>> -     if (IS_ERR(lo)) {
->>> +     lo = nfs_lock_alloc_layout(ino);
->>> +     if (lo == NULL) {
->>>               dprintk("%s ERROR: can't get pnfs_layout_type\n", __func__);
->>>               goto out;
->>>       }
->>> diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
->>> index 7b999a4..005b3ea 100644
->>> --- a/include/linux/nfs_fs.h
->>> +++ b/include/linux/nfs_fs.h
->>> @@ -107,7 +107,6 @@ struct pnfs_layout_type {
->>>       unsigned long pnfs_layout_state;
->>>       #define NFS_INO_RO_LAYOUT_FAILED 0      /* get ro layout failed stop trying */
->>>       #define NFS_INO_RW_LAYOUT_FAILED 1      /* get rw layout failed stop trying */
->>> -     #define NFS_INO_LAYOUT_ALLOC     2      /* bit lock for layout allocation */
->>>       #define NFS_INO_LAYOUTCOMMIT     3      /* LAYOUTCOMMIT needed */
->>>       struct rpc_cred         *lo_cred; /* layoutcommit credential */
->>>       /* DH: These vars keep track of the maximum write range
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>> As I said above: on_last_segment/remove-from-client-list can call a=
+ specific
+>>> free_lo_stateid, could be nice for readability.
 >>
+>> It does: I call pnfs_set_layout_stateid() with the zero_stateid. Tha=
+t
+>> is very clear.
+>>
+>> I just don't see the need for two more states.
+>
+> You might miss-understood me. By state I meant: "a point in code wher=
+e
+> it is identified that this is first/last segment" This already exists=
+=2E
+> I did not mean like an NFS4 state machine.
+>
+> I wish we had functions that said _on_first_seg, on_last_seg. But
+> that's just me.
+>
+>> We have a point in the
+>> generic code where the layout segment list is empty. Therefore the
+>> pnfs_layout_type information is stale. Simply initialize and all the
+>> checks we have work.
+>>
+>
+> That is what I meant that I do not like. The initialize should be on
+> first_seg_insert, Not "last_seg_remove in case of re-insert". The onl=
+y
+> check should be list-is-empty.
+
+No! The layout stateid needs to be zeroed as well.
+
+>Then on first insert, all should be initialized.
+
+I guess we just do things differently. I for one like to clean up the
+dishes after the meal, not wait until before the next meal! But that's
+just me.
+
+-->Andy
+
+>
+> But I guess it's hard to talk about this. Submit the last fixes and I
+> can RFC my approach. I hope when you see it you'll be convinced.
+
+OK.
+
+-->Andy
+
+>
+> Thanks
+> Boaz
+>
+>> -->Andy
+>
