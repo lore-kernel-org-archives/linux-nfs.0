@@ -1,70 +1,52 @@
-From: Boaz Harrosh <bharrosh@panasas.com>
-Subject: Re: [PATCH 0/2] pnfs-submit Re-initialize pnfs_layout_type when segs
- 	list is empty
-Date: Tue, 13 Jul 2010 12:02:11 +0300
-Message-ID: <4C3C2B93.9050407@panasas.com>
-References: <1278693571-3328-1-git-send-email-andros@netapp.com>	<4C3B395F.8080903@panasas.com>	<AANLkTinjab9XPUjRe2knYyRQg8j9pmc9Gdk_fRkGGfY2@mail.gmail.com>	<4C3B4BD3.1090308@panasas.com> <AANLkTilSPhZ1aBtU1taI8UnKQ9CddgaK3oQ1xoSMOuh3@mail.gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: bhalevy@panasas.com, linux-nfs@vger.kernel.org
-To: "William A. (Andy) Adamson" <androsadamson@gmail.com>
+From: Benny Halevy <bhalevy@panasas.com>
+Subject: [PATCH] SQUASHME: DEBUG: pnfs-submit: define and use BUG_ON_UNLOCKED_INO
+Date: Tue, 13 Jul 2010 12:17:32 +0300
+Message-ID: <1279012652-3318-1-git-send-email-bhalevy@panasas.com>
+To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:19096 "EHLO
+Received: from daytona.panasas.com ([67.152.220.89]:61311 "EHLO
 	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1752714Ab0GMJCO (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 13 Jul 2010 05:02:14 -0400
-In-Reply-To: <AANLkTilSPhZ1aBtU1taI8UnKQ9CddgaK3oQ1xoSMOuh3-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
+	with ESMTP id S1751207Ab0GMJRk (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 13 Jul 2010 05:17:40 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 07/12/2010 09:07 PM, William A. (Andy) Adamson wrote:
-> On Mon, Jul 12, 2010 at 1:07 PM, Boaz Harrosh <bharrosh@panasas.com> wrote:
->> >
+in pnfs_alloc_layout there's no layout yet so we can't use
+BUG_ON_UNLOCKED_LO. Checking spin_is_lock does not work well too
+as it always returns false for uni-processors with no DEBUG_SPINLOCK.
 
->> > And is this a layoutdriver specific? It looks like generic business only.
-> 
-> The file layout driver zero's the stripe unit. I anticipate other
-> fields that would need to be zeroed.
-> 
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+---
+ fs/nfs/pnfs.c |    7 +++++--
+ 1 files changed, 5 insertions(+), 2 deletions(-)
 
-The stripe_unit is per segment surly. It should be set on new segment
-received. (Again the mix up between layout_type and layout_segment)
-If stripe_unit also doubles for a flag that says, I have a layout.
-Then zero it on free_lseg, when identified as last.
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 8b26104..6382cc6 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -310,9 +310,12 @@ pnfs_unregister_layoutdriver(struct pnfs_layoutdriver_type *ld_type)
+  * pNFS client layout cache
+  */
+ #if defined(CONFIG_SMP)
++#define BUG_ON_UNLOCKED_INO(ino) \
++	BUG_ON(!spin_is_locked(&ino->i_lock))
+ #define BUG_ON_UNLOCKED_LO(lo) \
+-	BUG_ON(!spin_is_locked(&PNFS_INODE(lo)->i_lock))
++	BUG_ON_UNLOCKED_INO(PNFS_INODE(lo))
+ #else /* CONFIG_SMP */
++#define BUG_ON_UNLOCKED_INO(lo) do {} while (0)
+ #define BUG_ON_UNLOCKED_LO(lo) do {} while (0)
+ #endif /* CONFIG_SMP */
+ 
+@@ -871,7 +874,7 @@ pnfs_alloc_layout(struct inode *ino)
+ 
+ 	dprintk("%s Begin ino=%p layout=%p\n", __func__, ino, nfsi->layout);
+ 
+-	BUG_ON(!spin_is_locked(&ino->i_lock));
++	BUG_ON_UNLOCKED_INO(ino);
+ 	if (likely(nfsi->layout))
+ 		return nfsi->layout;
+ 
+-- 
+1.7.1.1
 
-(Which also means that you are hard coding all-file-layout at heart
- of files-layout-driver)
-
->>
->> As I said above: on_last_segment/remove-from-client-list can call a specific
->> free_lo_stateid, could be nice for readability.
-> 
-> It does: I call pnfs_set_layout_stateid() with the zero_stateid. That
-> is very clear.
-> 
-> I just don't see the need for two more states. 
-
-You might miss-understood me. By state I meant: "a point in code where
-it is identified that this is first/last segment" This already exists.
-I did not mean like an NFS4 state machine.
-
-I wish we had functions that said _on_first_seg, on_last_seg. But
-that's just me.
-
-> We have a point in the
-> generic code where the layout segment list is empty. Therefore the
-> pnfs_layout_type information is stale. Simply initialize and all the
-> checks we have work.
-> 
-
-That is what I meant that I do not like. The initialize should be on
-first_seg_insert, Not "last_seg_remove in case of re-insert". The only
-check should be list-is-empty. Then on first insert, all should be initialized.
-
-But I guess it's hard to talk about this. Submit the last fixes and I
-can RFC my approach. I hope when you see it you'll be convinced.
-
-Thanks
-Boaz
-
-> -->Andy
