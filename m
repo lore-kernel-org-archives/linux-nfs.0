@@ -1,67 +1,76 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:52689 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932491Ab0GTPn5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 20 Jul 2010 11:43:57 -0400
-Date: Tue, 20 Jul 2010 11:43:17 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 0/5] nfsd: fix error handling in write_ports interfaces
- (resend)
-Message-ID: <20100720154316.GC28972@fieldses.org>
-References: <1279572608-7234-1-git-send-email-jlayton@redhat.com>
- <20100720145540.GA28972@fieldses.org>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20100720145540.GA28972@fieldses.org>
+Received: from mail-yx0-f174.google.com ([209.85.213.174]:58811 "EHLO
+	mail-yx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756312Ab0GMMxo convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 13 Jul 2010 08:53:44 -0400
+In-Reply-To: <20100713101650.2835.15245.sendpatchset@danny.redhat>
+References: <20100713101650.2835.15245.sendpatchset@danny.redhat>
+Date: Tue, 13 Jul 2010 20:53:43 +0800
+Message-ID: <AANLkTil9hGHoomM9LlhURipKO7_sTON09JHP3zDwOLgI@mail.gmail.com>
+Subject: Re: [PATCH -mmotm 00/30] [RFC] swap over nfs -v21
+From: =?UTF-8?Q?Am=C3=A9rico_Wang?= <xiyou.wangcong@gmail.com>
+To: Xiaotian Feng <dfeng@redhat.com>
+Cc: linux-mm@kvack.org, linux-nfs@vger.kernel.org, netdev@vger.kernel.org,
+        riel@redhat.com, cl@linux-foundation.org, a.p.zijlstra@chello.nl,
+        linux-kernel@vger.kernel.org, lwang@redhat.com, penberg@cs.helsinki.fi,
+        akpm@linux-foundation.org, davem@davemloft.net
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Tue, Jul 20, 2010 at 10:55:40AM -0400, J. Bruce Fields wrote:
-> On Mon, Jul 19, 2010 at 04:50:03PM -0400, Jeff Layton wrote:
-> > This patchset is a resend of the set I sent a month or so ago, with
-> > a couple of other patches to fix related problems that came to light
-> > as we were discussing them.
-> 
-> So, rpc.nfsd starts the nfs server by more or less:
-> 
-> 	1. write nfs versions to /proc/fs/nfsd/versions
-> 	2. write tcp socket fd to /proc/fs/nfsd/portlist
-> 	3. write udp socket fd to /proc/fs/nfsd/portlist
-> 	4. write number of threads to /proc/fs/nfsd/threads
-> 
-> A failure anywhere between step 2 and 4 leaves the server in an odd
-> state: it's created, but not really running yet.
-> 
-> Your patches help when it's step 2 that fails.  Probably that's the most
-> common case, so good.
-> 
-> But what if we step 3 fails?  Or rpc.nfsd encounters some other error
-> between steps 2 and 4?  Does it have any way to clean up?  (Is starting
-> a single thread and then stopping it the only way to destroy the server
-> at that point?)  And what if rpc.nfsd is interrupted before it gets to
-> step 4?
-> 
-> The whole interface seems strange and fragile.
+On Tue, Jul 13, 2010 at 6:16 PM, Xiaotian Feng <dfeng@redhat.com> wrote:
+> Hi,
+>
+> Here's the latest version of swap over NFS series since -v20 last October. We decide to push
+> this feature as it is useful for NAS or virt environment.
+>
+> The patches are against the mmotm-2010-07-01. We can split the patchset into following parts:
+>
+> Patch 1 - 12: provides a generic reserve framework. This framework
+> could also be used to get rid of some of the __GFP_NOFAIL users.
+>
+> Patch 13 - 15: Provide some generic network infrastructure needed later on.
+>
+> Patch 16 - 21: reserve a little pool to act as a receive buffer, this allows us to
+> inspect packets before tossing them.
+>
+> Patch 22 - 23: Generic vm infrastructure to handle swapping to a filesystem instead of a block
+> device.
+>
+> Patch 24 - 27: convert NFS to make use of the new network and vm infrastructure to
+> provide swap over NFS.
+>
+> Patch 28 - 30: minor bug fixing with latest -mmotm.
+>
+> [some history]
+> v19: http://lwn.net/Articles/301915/
+> v20: http://lwn.net/Articles/355350/
+>
+> Changes since v20:
+>        - rebased to mmotm-2010-07-01
+>        - dropped the null pointer deref patch for the root cause is wrong SWP_FILE enum
+>        - some minor build fixes
+>        - fix a null pointer deref with mmotm-2010-07-01
+>        - fix a bug when swap with multi files on the same nfs server
 
-Also, looking at this from userland's point of view:
+Please use the "From:" line correctly, as stated in
+Documentation/SubmittingPatches:
 
-	- Why am I no longer allowed to set nfs versions after writing
-	  to "portlist"?
-	- Why does changing threads from non-zero to zero destroy
-	  portlist configuration, but not any other configuration?
+The "from" line must be the very first line in the message body,
+and has the form:
 
-It's a strange interface to use.
+        From: Original Author <author@example.com>
 
-Maybe it would be simpler (and solve your problem) if we made the rule
-that any configuration can be done as long as nrthreads is 0.  And that
-lockd startup also only happens on transition between zero and nonzero
-nrthreads.  ?
+The "from" line specifies who will be credited as the author of the
+patch in the permanent changelog.  If the "from" line is missing,
+then the "From:" line from the email header will be used to determine
+the patch author in the changelog.
 
-(On the other hand, I don't really like overloading the meaning of "echo
-0 >/proc/fs/nfsd/threads".  There might be times when it's convenient to
-stall the server temporarily while still keeping nfsv4 state, sockets,
-etc., all up.)
 
---b.
+I think you are using git format-patch to generate those patches, please supply
+--author=<author> to git commit when you commit them to your local
+tree. (or git am
+if the patches you received already had the correct From: line.)
+
+Thanks.
