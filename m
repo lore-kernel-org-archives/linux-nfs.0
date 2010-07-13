@@ -1,181 +1,195 @@
-From: "William A. (Andy) Adamson" <androsadamson@gmail.com>
-Subject: Re: [PATCH 2/2] SQUASHME: pnfs-submit: clean up nfs_lock_alloc_layout
-Date: Tue, 13 Jul 2010 10:22:22 -0400
-Message-ID: <AANLkTilggIcSbrd6Jkv9WTDj21wEKC_t1noi2aX8gPar@mail.gmail.com>
-References: <4C3B611C.1000208@panasas.com>
-	<1278960015-32215-1-git-send-email-bhalevy@panasas.com>
-	<AANLkTin5Wo-9paVQvfXZwDx5KZFkpSSspTCIN6vRCc8h@mail.gmail.com>
-	<4C3C7200.9070508@panasas.com>
+From: Pekka Enberg <penberg-bbCR+/B0CizivPeTLB3BmA@public.gmane.org>
+Subject: Re: [PATCH -mmotm 05/30] mm: sl[au]b: add knowledge of reserve pages
+Date: Tue, 13 Jul 2010 23:33:14 +0300
+Message-ID: <AANLkTilj5GrhbRJZfSsfXP1v9cQSRlARFmxpys1vUelr@mail.gmail.com>
+References: <20100713101650.2835.15245.sendpatchset@danny.redhat>
+	<20100713101747.2835.45722.sendpatchset@danny.redhat>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
-Cc: linux-nfs@vger.kernel.org
-To: Benny Halevy <bhalevy@panasas.com>
+Cc: linux-mm@kvack.org, linux-nfs@vger.kernel.org,
+	netdev@vger.kernel.org, riel@redhat.com, cl@linux-foundation.org,
+	a.p.zijlstra@chello.nl, linux-kernel@vger.kernel.org,
+	lwang@redhat.com, akpm@linux-foundation.org, davem@davemloft.net
+To: Xiaotian Feng <dfeng@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-gw0-f46.google.com ([74.125.83.46]:35986 "EHLO
-	mail-gw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752011Ab0GMOWY convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 13 Jul 2010 10:22:24 -0400
-Received: by gwj18 with SMTP id 18so2721647gwj.19
-        for <linux-nfs@vger.kernel.org>; Tue, 13 Jul 2010 07:22:24 -0700 (PDT)
-In-Reply-To: <4C3C7200.9070508@panasas.com>
+Received: from mail-bw0-f46.google.com ([209.85.214.46]:62441 "EHLO
+	mail-bw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753168Ab0GMUdR convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 13 Jul 2010 16:33:17 -0400
+In-Reply-To: <20100713101747.2835.45722.sendpatchset-bd3XojVv5Xrm7B5McmCzzQ@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Jul 13, 2010 at 10:02 AM, Benny Halevy <bhalevy@panasas.com> wr=
-ote:
-> On Jul. 13, 2010, 16:44 +0300, "William A. (Andy) Adamson" <androsada=
-mson@gmail.com> wrote:
->> On Mon, Jul 12, 2010 at 2:40 PM, Benny Halevy <bhalevy@panasas.com> =
-wrote:
->>> Fix a bug where the function returned without taking the i_lock
->>> if the layout hdr was already allocated.
->>> Simplify by moving inode locking to caller.
->>
->> No, the original function I sent had no such bug.
->>
->
-> True. =A0It was my bad.
->
->>>
->>> Rename function as it no longer grabs the lock.
->>> Clean up the implementation so it's clearer what's going on
->>> and what are the likely cases vs. the unlikely ones.
->>
->> I do not think this is any clearer!
->>
->
-> I think that getting the lock by the caller is simpler
-> than having the callee take it, but it doesn't matter that much.
->
-> My main problems with your patch were:
-> a. usage of the 'new' variable, setting it to NULL if it was used
-> rather than using simple if/else logic.
->
-> b. if alloc_init_layout failed after releasing the lock
-> the function always returned NULL, even if someone else
-> was able to allocate it in parallel (very unlikely, but possible)
+Hi Xiaotian!
 
-:)
+I would actually prefer that the SLAB, SLOB, and SLUB changes were in
+separate patches to make reviewing easier.
 
+Looking at SLUB:
+
+On Tue, Jul 13, 2010 at 1:17 PM, Xiaotian Feng <dfeng@redhat.com> wrote=
+:
+> diff --git a/mm/slub.c b/mm/slub.c
+> index 7bb7940..7a5d6dc 100644
+> --- a/mm/slub.c
+> +++ b/mm/slub.c
+> @@ -27,6 +27,8 @@
+> =A0#include <linux/memory.h>
+> =A0#include <linux/math64.h>
+> =A0#include <linux/fault-inject.h>
+> +#include "internal.h"
+> +
 >
-> c. the fast path had to go through 2 unlikely if's
-
-Absolutely not concerned with fast path as almost always occurs once
-per inode until umount (unless server reboots, network partition,
-migration or use of another replica)
-
-OK, I guess it doesn't matter that much. It just seems like a
-re-arrange for very little reason.
-
--->Andy
-
+> =A0/*
+> =A0* Lock order:
+> @@ -1139,7 +1141,8 @@ static void setup_object(struct kmem_cache *s, =
+struct page *page,
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0s->ctor(object);
+> =A0}
 >
-> Benny
+> -static struct page *new_slab(struct kmem_cache *s, gfp_t flags, int =
+node)
+> +static
+> +struct page *new_slab(struct kmem_cache *s, gfp_t flags, int node, i=
+nt *reserve)
+> =A0{
+> =A0 =A0 =A0 =A0struct page *page;
+> =A0 =A0 =A0 =A0void *start;
+> @@ -1153,6 +1156,8 @@ static struct page *new_slab(struct kmem_cache =
+*s, gfp_t flags, int node)
+> =A0 =A0 =A0 =A0if (!page)
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0goto out;
 >
->>>
->>> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
->>> ---
->>> =A0fs/nfs/pnfs.c | =A0 42 ++++++++++++++++++++++-------------------=
--
->>> =A01 files changed, 22 insertions(+), 20 deletions(-)
->>>
->>> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
->>> index 4ba7595..053a5c1 100644
->>> --- a/fs/nfs/pnfs.c
->>> +++ b/fs/nfs/pnfs.c
->>> @@ -938,36 +938,37 @@ alloc_init_layout(struct inode *ino)
->>> =A0}
->>>
->>> =A0/*
->>> - * Lock and possibly allocate the inode layout
->>> + * Retrieve and possibly allocate the inode layout
->>> =A0*
->>> - * If successful, ino->i_lock is taken, and the caller must unlock=
-=2E
->>> + * ino->i_lock must be taken by the caller.
->>> =A0*/
->>> =A0static struct pnfs_layout_type *
->>> -nfs_lock_alloc_layout(struct inode *ino)
->>> +pnfs_alloc_layout(struct inode *ino)
->>> =A0{
->>> + =A0 =A0 =A0 struct nfs_inode *nfsi =3D NFS_I(ino);
->>> =A0 =A0 =A0 =A0struct pnfs_layout_type *new =3D NULL;
->>>
->>> - =A0 =A0 =A0 dprintk("%s Begin ino=3D%p layout=3D%p\n", __func__, =
-ino, NFS_I(ino)->layout);
->>> + =A0 =A0 =A0 dprintk("%s Begin ino=3D%p layout=3D%p\n", __func__, =
-ino, nfsi->layout);
->>>
->>> - =A0 =A0 =A0 if (NFS_I(ino)->layout =3D=3D NULL) {
->>> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 new =3D alloc_init_layout(ino);
->>> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 if (new =3D=3D NULL)
->>> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 return NULL;
->>> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 spin_lock(&ino->i_lock);
->>> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 if (NFS_I(ino)->layout =3D=3D NULL) {
->>> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 NFS_I(ino)->layout =3D=
- new;
->>> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 new =3D NULL;
->>> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 }
->>> - =A0 =A0 =A0 }
->>> - =A0 =A0 =A0 if (new) {
->>> + =A0 =A0 =A0 BUG_ON(!spin_is_locked(&ino->i_lock));
->>> + =A0 =A0 =A0 if (likely(nfsi->layout))
->>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 return nfsi->layout;
->>> +
->>> + =A0 =A0 =A0 spin_unlock(&ino->i_lock);
->>> + =A0 =A0 =A0 new =3D alloc_init_layout(ino);
->>> + =A0 =A0 =A0 spin_lock(&ino->i_lock);
->>> +
->>> + =A0 =A0 =A0 if (likely(nfsi->layout =3D=3D NULL)) { =A0 =A0 /* Wo=
-n the race? */
->>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 nfsi->layout =3D new;
->>> + =A0 =A0 =A0 } else if (new) {
->>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0/* Reference the layout accross i_lo=
-ck release and grab */
->>> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 get_layout(NFS_I(ino)->layout);
->>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 get_layout(nfsi->layout);
->>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0spin_unlock(&ino->i_lock);
->>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0NFS_SERVER(ino)->pnfs_curr_ld->ld_io=
-_ops->free_layout(new);
->>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0spin_lock(&ino->i_lock);
->>> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 put_layout_locked(NFS_I(ino)->layout)=
-;
->>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 put_layout_locked(nfsi->layout);
->>> =A0 =A0 =A0 =A0}
->>> - =A0 =A0 =A0 return NFS_I(ino)->layout;
->>> + =A0 =A0 =A0 return nfsi->layout;
->>> =A0}
->>>
->>> =A0/*
->>> @@ -1055,10 +1056,11 @@ _pnfs_update_layout(struct inode *ino,
->>>
->>> =A0 =A0 =A0 =A0if (take_ref)
->>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0*lsegpp =3D NULL;
->>> - =A0 =A0 =A0 lo =3D nfs_lock_alloc_layout(ino);
->>> + =A0 =A0 =A0 spin_lock(&ino->i_lock);
->>> + =A0 =A0 =A0 lo =3D pnfs_alloc_layout(ino);
->>> =A0 =A0 =A0 =A0if (lo =3D=3D NULL) {
->>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0dprintk("%s ERROR: can't get pnfs_la=
-yout_type\n", __func__);
->>> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 goto out;
->>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 goto out_unlock;
->>> =A0 =A0 =A0 =A0}
->>>
->>> =A0 =A0 =A0 =A0/* Check to see if the layout for the given range al=
-ready exists */
->>> --
->>> 1.7.1.1
->>>
->>> --
->>> To unsubscribe from this list: send the line "unsubscribe linux-nfs=
-" in
->>> the body of a message to majordomo@vger.kernel.org
->>> More majordomo info at =A0http://vger.kernel.org/majordomo-info.htm=
-l
->>>
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs"=
- in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at =A0http://vger.kernel.org/majordomo-info.html
+> + =A0 =A0 =A0 *reserve =3D page->reserve;
+> +
+> =A0 =A0 =A0 =A0inc_slabs_node(s, page_to_nid(page), page->objects);
+> =A0 =A0 =A0 =A0page->slab =3D s;
+> =A0 =A0 =A0 =A0page->flags |=3D 1 << PG_slab;
+> @@ -1606,10 +1611,20 @@ static void *__slab_alloc(struct kmem_cache *=
+s, gfp_t gfpflags, int node,
+> =A0{
+> =A0 =A0 =A0 =A0void **object;
+> =A0 =A0 =A0 =A0struct page *new;
+> + =A0 =A0 =A0 int reserve;
+>
+> =A0 =A0 =A0 =A0/* We handle __GFP_ZERO in the caller */
+> =A0 =A0 =A0 =A0gfpflags &=3D ~__GFP_ZERO;
+>
+> + =A0 =A0 =A0 if (unlikely(c->reserve)) {
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 /*
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0* If the current slab is a reserve s=
+lab and the current
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0* allocation context does not allow =
+access to the reserves we
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0* must force an allocation to test t=
+he current levels.
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0*/
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 if (!(gfp_to_alloc_flags(gfpflags) & AL=
+LOC_NO_WATERMARKS))
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 goto grow_slab;
+
+OK, so assume that:
+
+  (1) c->reserve is set to one
+
+  (2) GFP flags don't allow dipping into the reserves
+
+  (3) we've managed to free enough pages so normal
+       allocations are fine
+
+  (4) the page from reserves is not yet empty
+
+we will call flush_slab() and put the "emergency page" on partial list
+and clear c->reserve. This effectively means that now some other
+allocation can fetch the partial page and start to use it. Is this OK?
+Who makes sure the emergency reserves are large enough for the next
+out-of-memory condition where we swap over NFS?
+
+> + =A0 =A0 =A0 }
+> =A0 =A0 =A0 =A0if (!c->page)
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0goto new_slab;
+>
+> @@ -1623,8 +1638,8 @@ load_freelist:
+> =A0 =A0 =A0 =A0object =3D c->page->freelist;
+> =A0 =A0 =A0 =A0if (unlikely(!object))
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0goto another_slab;
+> - =A0 =A0 =A0 if (unlikely(SLABDEBUG && PageSlubDebug(c->page)))
+> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 goto debug;
+> + =A0 =A0 =A0 if (unlikely(SLABDEBUG && PageSlubDebug(c->page) || c->=
+reserve))
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 goto slow_path;
+>
+> =A0 =A0 =A0 =A0c->freelist =3D get_freepointer(s, object);
+> =A0 =A0 =A0 =A0c->page->inuse =3D c->page->objects;
+> @@ -1646,16 +1661,18 @@ new_slab:
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0goto load_freelist;
+> =A0 =A0 =A0 =A0}
+>
+> +grow_slab:
+> =A0 =A0 =A0 =A0if (gfpflags & __GFP_WAIT)
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0local_irq_enable();
+>
+> - =A0 =A0 =A0 new =3D new_slab(s, gfpflags, node);
+> + =A0 =A0 =A0 new =3D new_slab(s, gfpflags, node, &reserve);
+>
+> =A0 =A0 =A0 =A0if (gfpflags & __GFP_WAIT)
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0local_irq_disable();
+>
+> =A0 =A0 =A0 =A0if (new) {
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0c =3D __this_cpu_ptr(s->cpu_slab);
+> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 c->reserve =3D reserve;
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0stat(s, ALLOC_SLAB);
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0if (c->page)
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0flush_slab(s, c);
+> @@ -1667,10 +1684,20 @@ new_slab:
+> =A0 =A0 =A0 =A0if (!(gfpflags & __GFP_NOWARN) && printk_ratelimit())
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0slab_out_of_memory(s, gfpflags, node);
+> =A0 =A0 =A0 =A0return NULL;
+> -debug:
+> - =A0 =A0 =A0 if (!alloc_debug_processing(s, c->page, object, addr))
+> +
+> +slow_path:
+> + =A0 =A0 =A0 if (!c->reserve && !alloc_debug_processing(s, c->page, =
+object, addr))
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0goto another_slab;
+>
+> + =A0 =A0 =A0 /*
+> + =A0 =A0 =A0 =A0* Avoid the slub fast path in slab_alloc() by not se=
+tting
+> + =A0 =A0 =A0 =A0* c->freelist and the fast path in slab_free() by ma=
+king
+> + =A0 =A0 =A0 =A0* node_match() fail by setting c->node to -1.
+> + =A0 =A0 =A0 =A0*
+> + =A0 =A0 =A0 =A0* We use this for for debug and reserve checks which=
+ need
+> + =A0 =A0 =A0 =A0* to be done for each allocation.
+> + =A0 =A0 =A0 =A0*/
+> +
+> =A0 =A0 =A0 =A0c->page->inuse++;
+> =A0 =A0 =A0 =A0c->page->freelist =3D get_freepointer(s, object);
+> =A0 =A0 =A0 =A0c->node =3D -1;
+> @@ -2095,10 +2122,11 @@ static void early_kmem_cache_node_alloc(gfp_t=
+ gfpflags, int node)
+> =A0 =A0 =A0 =A0struct page *page;
+> =A0 =A0 =A0 =A0struct kmem_cache_node *n;
+> =A0 =A0 =A0 =A0unsigned long flags;
+> + =A0 =A0 =A0 int reserve;
+>
+> =A0 =A0 =A0 =A0BUG_ON(kmalloc_caches->size < sizeof(struct kmem_cache=
+_node));
+>
+> - =A0 =A0 =A0 page =3D new_slab(kmalloc_caches, gfpflags, node);
+> + =A0 =A0 =A0 page =3D new_slab(kmalloc_caches, gfpflags, node, &rese=
+rve);
+>
+> =A0 =A0 =A0 =A0BUG_ON(!page);
+> =A0 =A0 =A0 =A0if (page_to_nid(page) !=3D node) {
+> --
+> 1.7.1.1
+>
+> --
+> To unsubscribe, send a message with 'unsubscribe linux-mm' in
+> the body to majordomo-Bw31MaZKKs0EbZ0PF+XxCw@public.gmane.org =A0For more info on Linux MM,
+> see: http://www.linux-mm.org/ .
+> Don't email: <a href=3Dmailto:"dont@kvack.org"> email@kvack.org </a>
 >
