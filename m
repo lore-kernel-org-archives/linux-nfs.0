@@ -1,7 +1,7 @@
 From: Xiaotian Feng <dfeng@redhat.com>
-Subject: [PATCH -mmotm 01/30] mm: serialize access to min_free_kbytes
-Date: Tue, 13 Jul 2010 06:17:02 -0400
-Message-ID: <20100713101702.2835.19139.sendpatchset@danny.redhat>
+Subject: [PATCH -mmotm 02/30] Swap over network documentation
+Date: Tue, 13 Jul 2010 06:17:14 -0400
+Message-ID: <20100713101713.2835.78327.sendpatchset@danny.redhat>
 References: <20100713101650.2835.15245.sendpatchset@danny.redhat>
 Cc: riel@redhat.com, cl@linux-foundation.org, a.p.zijlstra@chello.nl,
         Xiaotian Feng <dfeng@redhat.com>, linux-kernel@vger.kernel.org,
@@ -13,75 +13,295 @@ In-Reply-To: <20100713101650.2835.15245.sendpatchset@danny.redhat>
 Sender: owner-linux-mm@kvack.org
 List-ID: <linux-nfs.vger.kernel.org>
 
->From bc55bacd6bcc0f8a69c0d7e0d554c78237233e07 Mon Sep 17 00:00:00 2001
+>From 8c68e4dc644be32cd82ba9711ba3ef89cb687cdf Mon Sep 17 00:00:00 2001
 From: Xiaotian Feng <dfeng@redhat.com>
-Date: Mon, 12 Jul 2010 17:58:34 +0800
-Subject: [PATCH 01/30] mm: serialize access to min_free_kbytes
+Date: Mon, 12 Jul 2010 17:59:16 +0800
+Subject: [PATCH 02/30] Swap over network documentation
 
-There is a small race between the procfs caller and the memory hotplug caller
-of setup_per_zone_wmarks(). Not a big deal, but the next patch will add yet
-another caller. Time to close the gap.
+Document describing the problem and proposed solution
 
 Signed-off-by: Peter Zijlstra <a.p.zijlstra@chello.nl>
 Signed-off-by: Suresh Jayaraman <sjayaraman@suse.de>
 Signed-off-by: Xiaotian Feng <dfeng@redhat.com>
 ---
- mm/page_alloc.c |   16 +++++++++++++---
- 1 files changed, 13 insertions(+), 3 deletions(-)
+ Documentation/network-swap.txt |  268 ++++++++++++++++++++++++++++++++++++++++
+ 1 files changed, 268 insertions(+), 0 deletions(-)
+ create mode 100644 Documentation/network-swap.txt
 
-diff --git a/mm/page_alloc.c b/mm/page_alloc.c
-index 50a6d10..ebf0af7 100644
---- a/mm/page_alloc.c
-+++ b/mm/page_alloc.c
-@@ -165,6 +165,7 @@ static char * const zone_names[MAX_NR_ZONES] = {
- 	 "Movable",
- };
- 
-+static DEFINE_SPINLOCK(min_free_lock);
- int min_free_kbytes = 1024;
- 
- static unsigned long __meminitdata nr_kernel_pages;
-@@ -4839,13 +4840,13 @@ static void setup_per_zone_lowmem_reserve(void)
- }
- 
- /**
-- * setup_per_zone_wmarks - called when min_free_kbytes changes
-+ * __setup_per_zone_wmarks - called when min_free_kbytes changes
-  * or when memory is hot-{added|removed}
-  *
-  * Ensures that the watermark[min,low,high] values for each zone are set
-  * correctly with respect to min_free_kbytes.
-  */
--void setup_per_zone_wmarks(void)
-+static void __setup_per_zone_wmarks(void)
- {
- 	unsigned long pages_min = min_free_kbytes >> (PAGE_SHIFT - 10);
- 	unsigned long lowmem_pages = 0;
-@@ -4943,6 +4944,15 @@ static void __init setup_per_zone_inactive_ratio(void)
- 		calculate_zone_inactive_ratio(zone);
- }
- 
-+void setup_per_zone_wmarks(void)
-+{
-+	unsigned long flags;
+diff --git a/Documentation/network-swap.txt b/Documentation/network-swap.txt
+new file mode 100644
+index 0000000..760af2e
+--- /dev/null
++++ b/Documentation/network-swap.txt
+@@ -0,0 +1,268 @@
 +
-+	spin_lock_irqsave(&min_free_lock, flags);
-+	__setup_per_zone_wmarks();
-+	spin_unlock_irqrestore(&min_free_lock, flags);
-+}
++Problem:
++   When Linux needs to allocate memory it may find that there is
++   insufficient free memory so it needs to reclaim space that is in
++   use but not needed at the moment.  There are several options:
 +
- /*
-  * Initialise min_free_kbytes.
-  *
-@@ -4978,7 +4988,7 @@ static int __init init_per_zone_wmark_min(void)
- 		min_free_kbytes = 128;
- 	if (min_free_kbytes > 65536)
- 		min_free_kbytes = 65536;
--	setup_per_zone_wmarks();
-+	__setup_per_zone_wmarks();
- 	setup_per_zone_lowmem_reserve();
- 	setup_per_zone_inactive_ratio();
- 	return 0;
++   1/ Shrink a kernel cache such as the inode or dentry cache.  This
++      is fairly easy but provides limited returns.
++   2/ Discard 'clean' pages from the page cache.  This is easy, and
++      works well as long as there are clean pages in the page cache.
++      Similarly clean 'anonymous' pages can be discarded - if there
++      are any.
++   3/ Write out some dirty page-cache pages so that they become clean.
++      The VM limits the number of dirty page-cache pages to e.g. 40%
++      of available memory so that (among other reasons) a "sync" will
++      not take excessively long.  So there should never be excessive
++      amounts of dirty pagecache.
++      Writing out dirty page-cache pages involves work by the
++      filesystem which may need to allocate memory itself.  To avoid
++      deadlock, filesystems use GFP_NOFS when allocating memory on the
++      write-out path.  When this is used, cleaning dirty page-cache
++      pages is not an option so if the filesystem finds that  memory
++      is tight, another option must be found.
++   4/ Write out dirty anonymous pages to the "Swap" partition/file.
++      This is the most interesting for a couple of reasons.
++      a/ Unlike dirty page-cache pages, there is no need to write anon
++         pages out unless we are actually short of memory.  Thus they
++         tend to be left to last.
++      b/ Anon pages tend to be updated randomly and unpredictably, and
++         flushing them out of memory can have a very significant
++         performance impact on the process using them.  This contrasts
++         with page-cache pages which are often written sequentially
++         and often treated as "write-once, read-many".
++      So anon pages tend to be left until last to be cleaned, and may
++      be the only cleanable pages while there are still some dirty
++      page-cache pages (which are waiting on a GFP_NOFS allocation).
++
++[I don't find the above wholly satisfying.  There seems to be too much
++ hand-waving.  If someone can provide better text explaining why
++ swapout is a special case, that would be great.]
++
++So we need to be able to write to the swap file/partition without
++needing to allocate any memory ... or only a small well controlled
++amount.
++
++The VM reserves a small amount of memory that can only be allocated
++for use as part of the swap-out procedure.  It is only available to
++processes with the PF_MEMALLOC flag set, which is typically just the
++memory cleaner.
++
++Traditionally swap-out is performed directly to block devices (swap
++files on block-device filesystems are supported by examining the
++mapping from file offset to device offset in advance, and then using
++the device offsets to write directly to the device).  Block devices
++are (required to be) written to pre-allocate any memory that might be
++needed during write-out, and to block when the pre-allocated memory is
++exhausted and no other memory is available.  They can be sure not to
++block forever as the pre-allocated memory will be returned as soon as
++the data it is being used for has been written out.  The primary
++mechanism for pre-allocating memory is called "mempools".
++
++This approach does not work for writing anonymous pages
++(i.e. swapping) over a network, using e.g NFS or NBD or iSCSI.
++
++
++The main reason that it does not work is that when data from an anon
++page is written to the network, we must wait for a reply to confirm
++the data is safe.  Receiving that reply will consume memory and,
++significantly, we need to allocate memory to an incoming packet before
++we can tell if it is the reply we are waiting for or not.
++
++The secondary reason is that the network code is not written to use
++mempools and in most cases does not need to use them.  Changing all
++allocations in the networking layer to use mempools would be quite
++intrusive, and would waste memory, and probably cause a slow-down in
++the common case of not swapping over the network.
++
++These problems are addressed by enhancing the system of memory
++reserves used by PF_MEMALLOC and requiring any in-kernel networking
++client that is used for swap-out to indicate which sockets are used
++for swapout so they can be handled specially in low memory situations.
++
++There are several major parts to this enhancement:
++
++1/ page->reserve, GFP_MEMALLOC
++
++  To handle low memory conditions we need to know when those
++  conditions exist.  Having a global "low on memory" flag seems easy,
++  but its implementation is problematic.  Instead we make it possible
++  to tell if a recent memory allocation required use of the emergency
++  memory pool.
++  For pages returned by alloc_page, the new page->reserve flag
++  can be tested.  If this is set, then a low memory condition was
++  current when the page was allocated, so the memory should be used
++  carefully. (Because low memory conditions are transient, this
++  state is kept in an overloaded member instead of in page flags, which
++  would suggest a more permanent state.)
++
++  For memory allocated using slab/slub: If a page that is added to a
++  kmem_cache is found to have page->reserve set, then a  s->reserve
++  flag is set for the whole kmem_cache.  Further allocations will only
++  be returned from that page (or any other page in the cache) if they
++  are emergency allocation (i.e. PF_MEMALLOC or GFP_MEMALLOC is set).
++  Non-emergency allocations will block in alloc_page until a
++  non-reserve page is available.  Once a non-reserve page has been
++  added to the cache, the s->reserve flag on the cache is removed.
++
++  Because slab objects have no individual state its hard to pass
++  reserve state along, the current code relies on a regular alloc
++  failing. There are various allocation wrappers help here.
++
++  This allows us to
++   a/ request use of the emergency pool when allocating memory
++     (GFP_MEMALLOC), and
++   b/ to find out if the emergency pool was used.
++
++2/ SK_MEMALLOC, sk_buff->emergency.
++
++  When memory from the reserve is used to store incoming network
++  packets, the memory must be freed (and the packet dropped) as soon
++  as we find out that the packet is not for a socket that is used for
++  swap-out.
++  To achieve this we have an ->emergency flag for skbs, and an
++  SK_MEMALLOC flag for sockets.
++  When memory is allocated for an skb, it is allocated with
++  GFP_MEMALLOC (if we are currently swapping over the network at
++  all).  If a subsequent test shows that the emergency pool was used,
++  ->emergency is set.
++  When the skb is finally attached to its destination socket, the
++  SK_MEMALLOC flag on the socket is tested.  If the skb has
++  ->emergency set, but the socket does not have SK_MEMALLOC set, then
++  the skb is immediately freed and the packet is dropped.
++  This ensures that reserve memory is never queued on a socket that is
++  not used for swapout.
++
++  Similarly, if an skb is ever queued for delivery to user-space for
++  example by netfilter, the ->emergency flag is tested and the skb is
++  released if ->emergency is set. (so obviously the storage route may
++  not pass through a userspace helper, otherwise the packets will never
++  arrive and we'll deadlock)
++
++  This ensures that memory from the emergency reserve can be used to
++  allow swapout to proceed, but will not get caught up in any other
++  network queue.
++
++
++3/ pages_emergency
++
++  The above would be sufficient if the total memory below the lowest
++  memory watermark (i.e the size of the emergency reserve) were known
++  to be enough to hold all transient allocations needed for writeout.
++  I'm a little blurry on how big the current emergency pool is, but it
++  isn't big and certainly hasn't been sized to allow network traffic
++  to consume any.
++
++  We could simply make the size of the reserve bigger. However in the
++  common case that we are not swapping over the network, that would be
++  a waste of memory.
++
++  So a new "watermark" is defined: pages_emergency.  This is
++  effectively added to the current low water marks, so that pages from
++  this emergency pool can only be allocated if one of PF_MEMALLOC or
++  GFP_MEMALLOC are set.
++
++  pages_emergency can be changed dynamically based on need.  When
++  swapout over the network is required, pages_emergency is increased
++  to cover the maximum expected load.  When network swapout is
++  disabled, pages_emergency is decreased.
++
++  To determine how much to increase it by, we introduce reservation
++  groups....
++
++3a/ reservation groups
++
++  The memory used transiently for swapout can be in a number of
++  different places.  e.g. the network route cache, the network
++  fragment cache, in transit between network card and socket, or (in
++  the case of NFS) in sunrpc data structures awaiting a reply.
++  We need to ensure each of these is limited in the amount of memory
++  they use, and that the maximum is included in the reserve.
++
++  The memory required by the network layer only needs to be reserved
++  once, even if there are multiple swapout paths using the network
++  (e.g. NFS and NDB and iSCSI, though using all three for swapout at
++  the same time would be unusual).
++
++  So we create a tree of reservation groups.  The network might
++  register a collection of reservations, but not mark them as being in
++  use.  NFS and sunrpc might similarly register a collection of
++  reservations, and attach it to the network reservations as it
++  depends on them.
++  When swapout over NFS is requested, the NFS/sunrpc reservations are
++  activated which implicitly activates the network reservations.
++
++  The total new reservation is added to pages_emergency.
++
++  Provided each memory usage stays beneath the registered limit (at
++  least when allocating memory from reserves), the system will never
++  run out of emergency memory, and swapout will not deadlock.
++
++  It is worth noting here that it is not critical that each usage
++  stays beneath the limit 100% of the time.  Occasional excess is
++  acceptable provided that the memory will be freed  again within a
++  short amount of time that does *not* require waiting for any event
++  that itself might require memory.
++  This is because, at all stages of transmit and receive, it is
++  acceptable to discard all transient memory associated with a
++  particular writeout and try again later.  On transmit, the page can
++  be re-queued for later transmission.  On receive, the packet can be
++  dropped assuming that the peer will resend after a timeout.
++
++  Thus allocations that are truly transient and will be freed without
++  blocking do not strictly need to be reserved for.  Doing so might
++  still be a good idea to ensure forward progress doesn't take too
++  long.
++
++4/ low-mem accounting
++
++  Most places that might hold on to emergency memory (e.g. route
++  cache, fragment cache etc) already place a limit on the amount of
++  memory that they can use.  This limit can simply be reserved using
++  the above mechanism and no more needs to be done.
++
++  However some memory usage might not be accounted with sufficient
++  firmness to allow an appropriate emergency reservation.  The
++  in-flight skbs for incoming packets is one such example.
++
++  To support this, a low-overhead mechanism for accounting memory
++  usage against the reserves is provided.  This mechanism uses the
++  same data structure that is used to store the emergency memory
++  reservations through the addition of a 'usage' field.
++
++  Before we attempt allocation from the memory reserves, we much check
++  if the resulting 'usage' is below the reservation. If so, we increase
++  the usage and attempt the allocation (which should succeed). If
++  the projected 'usage' exceeds the reservation we'll either fail the
++  allocation, or wait for 'usage' to decrease enough so that it would
++  succeed, depending on __GFP_WAIT.
++
++  When memory that was allocated for that purpose is freed, the
++  'usage' field is checked again.  If it is non-zero, then the size of
++  the freed memory is subtracted from the usage, making sure the usage
++  never becomes less than zero.
++
++  This provides adequate accounting with minimal overheads when not in
++  a low memory condition.  When a low memory condition is encountered
++  it does add the cost of a spin lock necessary to serialise updates
++  to 'usage'.
++
++
++
++5/ swapon/swapoff/swap_out/swap_in
++
++  So that a filesystem (e.g. NFS) can know when to set SK_MEMALLOC on
++  any network socket that it uses, and can know when to account
++  reserve memory carefully, new address_space_operations are
++  available.
++  "swapon" requests that an address space (i.e a file) be make ready
++  for swapout.  swap_out and swap_in request the actual IO.  They
++  together must ensure that each swap_out request can succeed without
++  allocating more emergency memory that was reserved by swapon. swapoff
++  is used to reverse the state changes caused by swapon when we disable
++  the swap file.
++
++
++Thanks for reading this far.  I hope it made sense :-)
++
++Neil Brown (with updates from Peter Zijlstra)
 -- 
 1.7.1.1
 
