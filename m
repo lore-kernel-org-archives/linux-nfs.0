@@ -1,45 +1,46 @@
-From: Benny Halevy <bhalevy@panasas.com>
-Subject: Re: [pnfs]ds ip
-Date: Tue, 13 Jul 2010 11:32:01 +0300
-Message-ID: <4C3C2481.1090708@panasas.com>
-References: <AANLkTilJTogMkslFT-bGoOJYgGSznHnpi75e6IeCuWzC@mail.gmail.com>
+From: Gyorgy Jeney <nog.lkml@gmail.com>
+Subject: NFS over RDMA problem: svcrdma: Error fast registering memory for
+	xprt ffff8803307d7400
+Date: Tue, 13 Jul 2010 10:45:51 +0200
+Message-ID: <AANLkTinjZfpICMjP1EcU4CPAe1TwxKp1zsk-lwX6fmzA@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
-Cc: linux-pnfs <linux-nfs@vger.kernel.org>
-To: quanli gui <gqlxj1987@gmail.com>
+To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:2480 "EHLO
-	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1754096Ab0GMIcE (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 13 Jul 2010 04:32:04 -0400
-In-Reply-To: <AANLkTilJTogMkslFT-bGoOJYgGSznHnpi75e6IeCuWzC-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
+Received: from mail-wy0-f174.google.com ([74.125.82.174]:56536 "EHLO
+	mail-wy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751167Ab0GMIpx (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 13 Jul 2010 04:45:53 -0400
+Received: by wyf23 with SMTP id 23so3974797wyf.19
+        for <linux-nfs@vger.kernel.org>; Tue, 13 Jul 2010 01:45:52 -0700 (PDT)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Jul. 13, 2010, 5:05 +0300, quanli gui <gqlxj1987@gmail.com> wrote:
-> I use 
-> #define dprintk printk
+Hello all,
 
-You don't have to modify the kernel to see the debug prints...
-You can turn the debug prints on and off in run time
-by writing the numeric bitmask (in ASCII) into /proc/sys/sunrpc/nfs_debug
-for example:
-# echo 32767 > /proc/sys/sunrpc/nfs_debug
+Should this mailing-list be the wrong place to ask, I apologise and I
+would take it kindly, if someone could then point me to the right forum.
 
-> to show some messages in the pnfs process. In the pnfs process, the
-> client would use some functions in nfs4filelayoutdev.c to connect with
-> ds. But from the printk messages, I found that the functions that
-> connect to the ds printk the ip message, which is belong to the mds. Do
-> the client only connect to the mds? Do the mds become the storage server
-> which connect to the client? This conficts the pnfs architecture.Please
-> give me some answers. 
+I am attempting to use NFS over RDMA (over infiniband), but there is some
+problem.  The NFS filesystem can be mounted on the client, and things
+will work for some time (can read, modify, etc. the files over the mount),
+but then (at a seemingly random time) the NFS server will dump these
+lines to the logs:
 
-The client should communicate with the DS for I/O operations.
-If the MSD has dual function, both as a DS and a MDS, the DS ip address
-may be the same as the MDS's.
+[ 4380.623922] svcrdma: Error fast registering memory for xprt ffff8803307d7400
+[ 4413.343161] svcrdma: error fast registering xdr for xprt ffff8803319edc00
 
-Can you give an example of a particular message you're worried about?
+and the nfs filesystem on the NFS client will be unacessable.  Is this a
+known problem?  Do workarounds exist?  Or am I just missing something?
 
-What do you have running on the server side?
 
-Benny
+Both client and server are running the latest vanilla 2.6.34.1 kernel
+with Mellanox Connect-X infiniband cards.  If more information is
+required, please do ask.
+
+BTW: I can reproduce the problem quite reliably by running the bonnie++
+"benchmark" on the NFS mounted filesystem.
+
+nog.
+
+ps: I'm not subscribed to the list, please CC me on all replies.
