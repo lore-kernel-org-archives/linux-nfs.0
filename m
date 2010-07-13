@@ -1,7 +1,7 @@
 From: Xiaotian Feng <dfeng@redhat.com>
-Subject: [PATCH -mmotm 28/30] build fix for skb_emergency_protocol
-Date: Tue, 13 Jul 2010 06:22:07 -0400
-Message-ID: <20100713102206.2835.61332.sendpatchset@danny.redhat>
+Subject: [PATCH -mmotm 29/30] fix null pointer deref in swap_entry_free
+Date: Tue, 13 Jul 2010 06:22:18 -0400
+Message-ID: <20100713102217.2835.75779.sendpatchset@danny.redhat>
 References: <20100713101650.2835.15245.sendpatchset@danny.redhat>
 Cc: riel@redhat.com, cl@linux-foundation.org, a.p.zijlstra@chello.nl,
         Xiaotian Feng <dfeng@redhat.com>, linux-kernel@vger.kernel.org,
@@ -13,82 +13,46 @@ In-Reply-To: <20100713101650.2835.15245.sendpatchset@danny.redhat>
 Sender: owner-linux-mm@kvack.org
 List-ID: <linux-nfs.vger.kernel.org>
 
->From 50d2e72527b3e821544cc97c4dd5b1e5a44b6659 Mon Sep 17 00:00:00 2001
+>From ea7b13006f42f7dcadd1bfb874d5e525b4c259e3 Mon Sep 17 00:00:00 2001
 From: Xiaotian Feng <dfeng@redhat.com>
-Date: Tue, 13 Jul 2010 13:21:10 +0800
-Subject: [PATCH 28/30] build fix for skb_emergency_protocol
+Date: Tue, 13 Jul 2010 13:44:08 +0800
+Subject: [PATCH 29/30] fix null pointer deref in swap_entry_free
+
+Commit b3a27d uses p->bdev->bd_disk, this will lead a null pointer
+deref with swap over nfs.
 
 Signed-off-by: Xiaotian Feng <dfeng@redhat.com>
 ---
- net/core/dev.c |   48 ++++++++++++++++++++++++------------------------
- 1 files changed, 24 insertions(+), 24 deletions(-)
+ mm/swapfile.c |    9 +++++----
+ 1 files changed, 5 insertions(+), 4 deletions(-)
 
-diff --git a/net/core/dev.c b/net/core/dev.c
-index 7169b9b..fd7f8ac 100644
---- a/net/core/dev.c
-+++ b/net/core/dev.c
-@@ -2791,6 +2791,30 @@ int __skb_bond_should_drop(struct sk_buff *skb, struct net_device *master)
- }
- EXPORT_SYMBOL(__skb_bond_should_drop);
+diff --git a/mm/swapfile.c b/mm/swapfile.c
+index d8a05e4..3eb53fc 100644
+--- a/mm/swapfile.c
++++ b/mm/swapfile.c
+@@ -577,7 +577,6 @@ static unsigned char swap_entry_free(struct swap_info_struct *p,
  
-+/*
-+ * Filter the protocols for which the reserves are adequate.
-+ *
-+ * Before adding a protocol make sure that it is either covered by the existing
-+ * reserves, or add reserves covering the memory need of the new protocol's
-+ * packet processing.
-+ */
-+static int skb_emergency_protocol(struct sk_buff *skb)
-+{
-+	if (skb_emergency(skb))
-+		switch (skb->protocol) {
-+		case __constant_htons(ETH_P_ARP):
-+		case __constant_htons(ETH_P_IP):
-+		case __constant_htons(ETH_P_IPV6):
-+		case __constant_htons(ETH_P_8021Q):
-+			break;
-+
-+		default:
-+			return 0;
+ 	/* free if no reference */
+ 	if (!usage) {
+-		struct gendisk *disk = p->bdev->bd_disk;
+ 		if (offset < p->lowest_bit)
+ 			p->lowest_bit = offset;
+ 		if (offset > p->highest_bit)
+@@ -587,9 +586,11 @@ static unsigned char swap_entry_free(struct swap_info_struct *p,
+ 			swap_list.next = p->type;
+ 		nr_swap_pages++;
+ 		p->inuse_pages--;
+-		if ((p->flags & SWP_BLKDEV) &&
+-				disk->fops->swap_slot_free_notify)
+-			disk->fops->swap_slot_free_notify(p->bdev, offset);
++		if (p->flags & SWP_BLKDEV) {
++			struct gendisk *disk = p->bdev->bd_disk;
++			if (disk->fops->swap_slot_free_notify)
++				disk->fops->swap_slot_free_notify(p->bdev, offset);
 +		}
-+
-+	return 1;
-+}
-+
- static int __netif_receive_skb(struct sk_buff *skb)
- {
- 	struct packet_type *ptype, *pt_prev;
-@@ -2942,30 +2966,6 @@ out:
- 	return ret;
- }
+ 	}
  
--/*
-- * Filter the protocols for which the reserves are adequate.
-- *
-- * Before adding a protocol make sure that it is either covered by the existing
-- * reserves, or add reserves covering the memory need of the new protocol's
-- * packet processing.
-- */
--static int skb_emergency_protocol(struct sk_buff *skb)
--{
--	if (skb_emergency(skb))
--		switch (skb->protocol) {
--		case __constant_htons(ETH_P_ARP):
--		case __constant_htons(ETH_P_IP):
--		case __constant_htons(ETH_P_IPV6):
--		case __constant_htons(ETH_P_8021Q):
--			break;
--
--		default:
--			return 0;
--		}
--
--	return 1;
--}
--
- /**
-  *	netif_receive_skb - process receive buffer from network
-  *	@skb: buffer to process
+ 	return usage;
 -- 
 1.7.1.1
 
