@@ -1,7 +1,7 @@
 From: Xiaotian Feng <dfeng@redhat.com>
-Subject: [PATCH -mmotm 16/30] netvm: INET reserves
-Date: Tue, 13 Jul 2010 06:19:52 -0400
-Message-ID: <20100713101951.2835.89303.sendpatchset@danny.redhat>
+Subject: [PATCH -mmotm 17/30] netvm: hook skb allocation to reserves
+Date: Tue, 13 Jul 2010 06:20:03 -0400
+Message-ID: <20100713102003.2835.88018.sendpatchset@danny.redhat>
 References: <20100713101650.2835.15245.sendpatchset@danny.redhat>
 Cc: riel@redhat.com, cl@linux-foundation.org, a.p.zijlstra@chello.nl,
         Xiaotian Feng <dfeng@redhat.com>, linux-kernel@vger.kernel.org,
@@ -13,466 +13,470 @@ In-Reply-To: <20100713101650.2835.15245.sendpatchset@danny.redhat>
 Sender: owner-linux-mm@kvack.org
 List-ID: <linux-nfs.vger.kernel.org>
 
->From e1a39da88a7b093474c48bb5f22f3b715e5ec205 Mon Sep 17 00:00:00 2001
+>From 3e824860934af5aa0150608314693c5e0e3608b6 Mon Sep 17 00:00:00 2001
 From: Xiaotian Feng <dfeng@redhat.com>
-Date: Tue, 13 Jul 2010 11:17:23 +0800
-Subject: [PATCH 16/30] netvm: INET reserves.
+Date: Tue, 13 Jul 2010 11:30:27 +0800
+Subject: [PATCH 17/30] netvm: hook skb allocation to reserves
 
-Add reserves for INET.
+Change the skb allocation api to indicate RX usage and use this to fall back to
+the reserve when needed. SKBs allocated from the reserve are tagged in
+skb->emergency.
 
-The two big users seem to be the route cache and ip-fragment cache.
+Teach all other skb ops about emergency skbs and the reserve accounting.
 
-Reserve the route cache under generic RX reserve, its usage is bounded by
-the high reclaim watermark, and thus does not need further accounting.
+Use the (new) packet split API to allocate and track fragment pages from the
+emergency reserve. Do this using an atomic counter in page->index. This is
+needed because the fragments have a different sharing semantic than that
+indicated by skb_shinfo()->dataref.
 
-Reserve the ip-fragement caches under SKB data reserve, these add to the
-SKB RX limit. By ensuring we can at least receive as much data as fits in
-the reassmbly line we avoid fragment attack deadlocks.
+Note that the decision to distinguish between regular and emergency SKBs allows
+the accounting overhead to be limited to the later kind.
 
-Adds to the reserve tree:
-
-  total network reserve
-    network TX reserve
-      protocol TX pages
-    network RX reserve
-+     IPv6 route cache
-+     IPv4 route cache
-      SKB data reserve
-+       IPv6 fragment cache
-+       IPv4 fragment cache
-
-[jeffm@suse.de: PROCFS typo fix]
-[dfeng@redhat.com: build fix for removing .strategy]
 Signed-off-by: Peter Zijlstra <a.p.zijlstra@chello.nl>
-Signed-off-by: Jeff Mahoney <jeffm@suse.com>
 Signed-off-by: Suresh Jayaraman <sjayaraman@suse.de>
 Signed-off-by: Xiaotian Feng <dfeng@redhat.com>
 ---
- include/net/inet_frag.h  |    7 ++++++
- include/net/netns/ipv6.h |    4 +++
- net/ipv4/inet_fragment.c |    3 ++
- net/ipv4/ip_fragment.c   |   34 +++++++++++++++++++++++++++-
- net/ipv4/route.c         |   42 ++++++++++++++++++++++++++++++++++-
- net/ipv6/reassembly.c    |   55 ++++++++++++++++++++++++++++++++++++++++++++-
- net/ipv6/route.c         |   47 +++++++++++++++++++++++++++++++++++++-
- 7 files changed, 186 insertions(+), 6 deletions(-)
+ include/linux/mm_types.h |    1 +
+ include/linux/skbuff.h   |   27 +++++++--
+ net/core/skbuff.c        |  137 +++++++++++++++++++++++++++++++++++++---------
+ 3 files changed, 133 insertions(+), 32 deletions(-)
 
-diff --git a/include/net/inet_frag.h b/include/net/inet_frag.h
-index 16ff29a..958ee27 100644
---- a/include/net/inet_frag.h
-+++ b/include/net/inet_frag.h
-@@ -1,6 +1,9 @@
- #ifndef __NET_FRAG_H__
- #define __NET_FRAG_H__
- 
-+#include <linux/reserve.h>
-+#include <linux/mutex.h>
-+
- struct netns_frags {
- 	int			nqueues;
- 	atomic_t		mem;
-@@ -10,6 +13,10 @@ struct netns_frags {
- 	int			timeout;
- 	int			high_thresh;
- 	int			low_thresh;
-+
-+	/* reserves */
-+	struct mutex		lock;
-+	struct mem_reserve	reserve;
- };
- 
- struct inet_frag_queue {
-diff --git a/include/net/netns/ipv6.h b/include/net/netns/ipv6.h
-index 81abfcb..1f644b2 100644
---- a/include/net/netns/ipv6.h
-+++ b/include/net/netns/ipv6.h
-@@ -25,6 +25,8 @@ struct netns_sysctl_ipv6 {
- 	int ip6_rt_mtu_expires;
- 	int ip6_rt_min_advmss;
- 	int icmpv6_time;
-+
-+	struct mutex ip6_rt_lock;
- };
- 
- struct netns_ipv6 {
-@@ -58,6 +60,8 @@ struct netns_ipv6 {
- 	struct sock             *ndisc_sk;
- 	struct sock             *tcp_sk;
- 	struct sock             *igmp_sk;
-+
-+	struct mem_reserve	ip6_rt_reserve;
- #ifdef CONFIG_IPV6_MROUTE
- #ifndef CONFIG_IPV6_MROUTE_MULTIPLE_TABLES
- 	struct mr6_table	*mrt6;
-diff --git a/net/ipv4/inet_fragment.c b/net/ipv4/inet_fragment.c
-index a2ca6ae..58270a3 100644
---- a/net/ipv4/inet_fragment.c
-+++ b/net/ipv4/inet_fragment.c
-@@ -20,6 +20,7 @@
- #include <linux/skbuff.h>
- #include <linux/rtnetlink.h>
- #include <linux/slab.h>
-+#include <linux/reserve.h>
- 
- #include <net/inet_frag.h>
- 
-@@ -75,6 +76,8 @@ void inet_frags_init_net(struct netns_frags *nf)
- 	nf->nqueues = 0;
- 	atomic_set(&nf->mem, 0);
- 	INIT_LIST_HEAD(&nf->lru_list);
-+	mutex_init(&nf->lock);
-+	mem_reserve_init(&nf->reserve, "IP fragement cache", NULL);
- }
- EXPORT_SYMBOL(inet_frags_init_net);
- 
-diff --git a/net/ipv4/ip_fragment.c b/net/ipv4/ip_fragment.c
-index dd0dbf0..a2e2e05 100644
---- a/net/ipv4/ip_fragment.c
-+++ b/net/ipv4/ip_fragment.c
-@@ -45,6 +45,8 @@
- #include <linux/udp.h>
- #include <linux/inet.h>
- #include <linux/netfilter_ipv4.h>
-+#include <linux/reserve.h>
-+#include <linux/nsproxy.h>
- 
- /* NOTE. Logic of IP defragmentation is parallel to corresponding IPv6
-  * code now. If you change something here, _PLEASE_ update ipv6/reassembly.c
-@@ -634,6 +636,34 @@ int ip_defrag(struct sk_buff *skb, u32 user)
- }
- 
- #ifdef CONFIG_SYSCTL
-+static int
-+proc_dointvec_fragment(struct ctl_table *table, int write,
-+		void __user *buffer, size_t *lenp, loff_t *ppos)
-+{
-+	struct net *net = container_of(table->data, struct net,
-+				       ipv4.frags.high_thresh);
-+	ctl_table tmp = *table;
-+	int new_bytes, ret;
-+
-+	mutex_lock(&net->ipv4.frags.lock);
-+	if (write) {
-+		tmp.data = &new_bytes;
-+		table = &tmp;
-+	}
-+
-+	ret = proc_dointvec(table, write, buffer, lenp, ppos);
-+
-+	if (!ret && write) {
-+		ret = mem_reserve_kmalloc_set(&net->ipv4.frags.reserve,
-+				new_bytes);
-+		if (!ret)
-+			net->ipv4.frags.high_thresh = new_bytes;
-+	}
-+	mutex_unlock(&net->ipv4.frags.lock);
-+
-+	return ret;
-+}
-+
- static int zero;
- 
- static struct ctl_table ip4_frags_ns_ctl_table[] = {
-@@ -642,7 +672,7 @@ static struct ctl_table ip4_frags_ns_ctl_table[] = {
- 		.data		= &init_net.ipv4.frags.high_thresh,
- 		.maxlen		= sizeof(int),
- 		.mode		= 0644,
--		.proc_handler	= proc_dointvec
-+		.proc_handler	= &proc_dointvec_fragment,
- 	},
- 	{
- 		.procname	= "ipfrag_low_thresh",
-@@ -740,6 +770,8 @@ static inline void ip4_frags_ctl_register(void)
- 
- static int __net_init ipv4_frags_init_net(struct net *net)
- {
-+	int ret;
-+
- 	/*
- 	 * Fragment cache limits. We will commit 256K at one time. Should we
- 	 * cross that limit we will prune down to 192K. This should cope with
-diff --git a/net/ipv4/route.c b/net/ipv4/route.c
-index 03430de..548aa37 100644
---- a/net/ipv4/route.c
-+++ b/net/ipv4/route.c
-@@ -108,6 +108,7 @@
- #ifdef CONFIG_SYSCTL
- #include <linux/sysctl.h>
+diff --git a/include/linux/mm_types.h b/include/linux/mm_types.h
+index a95a202..73e0526 100644
+--- a/include/linux/mm_types.h
++++ b/include/linux/mm_types.h
+@@ -72,6 +72,7 @@ struct page {
+ 		pgoff_t index;		/* Our offset within mapping. */
+ 		void *freelist;		/* SLUB: freelist req. slab lock */
+ 		int reserve;		/* page_alloc: page is a reserve page */
++		atomic_t frag_count;	/* skb fragment use count */
+ 	};
+ 	struct list_head lru;		/* Pageout list, eg. active_list
+ 					 * protected by zone->lru_lock !
+diff --git a/include/linux/skbuff.h b/include/linux/skbuff.h
+index 988a4dc..4ac45ad 100644
+--- a/include/linux/skbuff.h
++++ b/include/linux/skbuff.h
+@@ -385,9 +385,12 @@ struct sk_buff {
+ #else
+ 	__u8			deliver_no_wcard:1;
  #endif
-+#include <linux/reserve.h>
- 
- #define RT_FL_TOS(oldflp) \
-     ((u32)(oldflp->fl4_tos & (IPTOS_RT_MASK | RTO_ONLINK)))
-@@ -268,6 +269,8 @@ static inline int rt_genid(struct net *net)
- 	return atomic_read(&net->ipv4.rt_genid);
- }
- 
-+static struct mem_reserve ipv4_route_reserve;
-+
- #ifdef CONFIG_PROC_FS
- struct rt_cache_iter_state {
- 	struct seq_net_private p;
-@@ -398,6 +401,34 @@ static int rt_cache_seq_show(struct seq_file *seq, void *v)
- 	return 0;
- }
- 
-+static struct mutex ipv4_route_lock;
-+
-+static int
-+proc_dointvec_route(struct ctl_table *table, int write,
-+		void __user *buffer, size_t *lenp, loff_t *ppos)
-+{
-+	ctl_table tmp = *table;
-+	int new_size, ret;
-+
-+	mutex_lock(&ipv4_route_lock);
-+	if (write) {
-+		tmp.data = &new_size;
-+		table = &tmp;
-+	}
-+
-+	ret = proc_dointvec(table, write, buffer, lenp, ppos);
-+
-+	if (!ret && write) {
-+		ret = mem_reserve_kmem_cache_set(&ipv4_route_reserve,
-+				ipv4_dst_ops.kmem_cachep, new_size);
-+		if (!ret)
-+			ip_rt_max_size = new_size;
-+	}
-+	mutex_unlock(&ipv4_route_lock);
-+
-+	return ret;
-+}
-+
- static const struct seq_operations rt_cache_seq_ops = {
- 	.start  = rt_cache_seq_start,
- 	.next   = rt_cache_seq_next,
-@@ -3096,7 +3127,7 @@ static ctl_table ipv4_route_table[] = {
- 		.data		= &ip_rt_max_size,
- 		.maxlen		= sizeof(int),
- 		.mode		= 0644,
--		.proc_handler	= proc_dointvec,
-+		.proc_handler	= &proc_dointvec_route,
- 	},
- 	{
- 		/*  Deprecated. Use gc_min_interval_ms */
-@@ -3327,6 +3358,15 @@ int __init ip_rt_init(void)
- 	ipv4_dst_ops.gc_thresh = (rt_hash_mask + 1);
- 	ip_rt_max_size = (rt_hash_mask + 1) * 16;
- 
-+#ifdef CONFIG_PROC_FS
-+	mutex_init(&ipv4_route_lock);
++#ifdef CONFIG_NETVM
++	__u8                    emergency:1;
 +#endif
+ 	kmemcheck_bitfield_end(flags2);
+ 
+-	/* 0/14 bit hole */
++	/* 0/13/14 bit hole */
+ 
+ #ifdef CONFIG_NET_DMA
+ 	dma_cookie_t		dma_cookie;
+@@ -429,6 +432,18 @@ struct sk_buff {
+ #define SKB_DST_NOREF	1UL
+ #define SKB_DST_PTRMASK	~(SKB_DST_NOREF)
+ 
++#define SKB_ALLOC_FCLONE       0x01
++#define SKB_ALLOC_RX           0x02
 +
-+	mem_reserve_init(&ipv4_route_reserve, "IPv4 route cache",
-+			&net_rx_reserve);
-+	mem_reserve_kmem_cache_set(&ipv4_route_reserve,
-+			ipv4_dst_ops.kmem_cachep, ip_rt_max_size);
-+
- 	devinet_init();
- 	ip_fib_init();
- 
-diff --git a/net/ipv6/reassembly.c b/net/ipv6/reassembly.c
-index 545c414..6f02d8c 100644
---- a/net/ipv6/reassembly.c
-+++ b/net/ipv6/reassembly.c
-@@ -42,6 +42,7 @@
- #include <linux/jhash.h>
- #include <linux/skbuff.h>
- #include <linux/slab.h>
-+#include <linux/reserve.h>
- 
- #include <net/sock.h>
- #include <net/snmp.h>
-@@ -639,13 +640,41 @@ static const struct inet6_protocol frag_protocol =
- };
- 
- #ifdef CONFIG_SYSCTL
-+static int
-+proc_dointvec_fragment(struct ctl_table *table, int write,
-+		void __user *buffer, size_t *lenp, loff_t *ppos)
++static inline bool skb_emergency(const struct sk_buff *skb)
 +{
-+	struct net *net = container_of(table->data, struct net,
-+				       ipv6.frags.high_thresh);
-+	ctl_table tmp = *table;
-+	int new_bytes, ret;
-+
-+	mutex_lock(&net->ipv6.frags.lock);
-+	if (write) {
-+		tmp.data = &new_bytes;
-+		table = &tmp;
-+	}
-+
-+	ret = proc_dointvec(table, write, buffer, lenp, ppos);
-+
-+	if (!ret && write) {
-+		ret = mem_reserve_kmalloc_set(&net->ipv6.frags.reserve,
-+					      new_bytes);
-+		if (!ret)
-+			net->ipv6.frags.high_thresh = new_bytes;
-+	}
-+	mutex_unlock(&net->ipv6.frags.lock);
-+
-+	return ret;
++#ifdef CONFIG_NETVM
++	return unlikely(skb->emergency);
++#else
++	return false;
++#endif
 +}
 +
- static struct ctl_table ip6_frags_ns_ctl_table[] = {
- 	{
- 		.procname	= "ip6frag_high_thresh",
- 		.data		= &init_net.ipv6.frags.high_thresh,
- 		.maxlen		= sizeof(int),
- 		.mode		= 0644,
--		.proc_handler	= proc_dointvec
-+		.proc_handler	= &proc_dointvec_fragment,
- 	},
- 	{
- 		.procname	= "ip6frag_low_thresh",
-@@ -750,17 +779,39 @@ static inline void ip6_frags_sysctl_unregister(void)
- 
- static int __net_init ipv6_frags_init_net(struct net *net)
+ /**
+  * skb_dst - returns skb dst_entry
+  * @skb: buffer
+@@ -491,7 +506,7 @@ extern void kfree_skb(struct sk_buff *skb);
+ extern void consume_skb(struct sk_buff *skb);
+ extern void	       __kfree_skb(struct sk_buff *skb);
+ extern struct sk_buff *__alloc_skb(unsigned int size,
+-				   gfp_t priority, int fclone, int node);
++				   gfp_t priority, int flags, int node);
+ static inline struct sk_buff *alloc_skb(unsigned int size,
+ 					gfp_t priority)
  {
-+	int ret;
-+
- 	net->ipv6.frags.high_thresh = IPV6_FRAG_HIGH_THRESH;
- 	net->ipv6.frags.low_thresh = IPV6_FRAG_LOW_THRESH;
- 	net->ipv6.frags.timeout = IPV6_FRAG_TIMEOUT;
+@@ -501,7 +516,7 @@ static inline struct sk_buff *alloc_skb(unsigned int size,
+ static inline struct sk_buff *alloc_skb_fclone(unsigned int size,
+ 					       gfp_t priority)
+ {
+-	return __alloc_skb(size, priority, 1, -1);
++	return __alloc_skb(size, priority, SKB_ALLOC_FCLONE, -1);
+ }
  
- 	inet_frags_init_net(&net->ipv6.frags);
+ extern bool skb_recycle_check(struct sk_buff *skb, int skb_size);
+@@ -1516,7 +1531,8 @@ static inline void __skb_queue_purge(struct sk_buff_head *list)
+ static inline struct sk_buff *__dev_alloc_skb(unsigned int length,
+ 					      gfp_t gfp_mask)
+ {
+-	struct sk_buff *skb = alloc_skb(length + NET_SKB_PAD, gfp_mask);
++	struct sk_buff *skb =
++		__alloc_skb(length + NET_SKB_PAD, gfp_mask, SKB_ALLOC_RX, -1);
+ 	if (likely(skb))
+ 		skb_reserve(skb, NET_SKB_PAD);
+ 	return skb;
+@@ -1557,6 +1573,7 @@ static inline struct sk_buff *netdev_alloc_skb_ip_align(struct net_device *dev,
+ }
  
--	return ip6_frags_ns_sysctl_register(net);
-+	ret = ip6_frags_ns_sysctl_register(net);
-+	if (ret)
-+		goto out_reg;
+ extern struct page *__netdev_alloc_page(struct net_device *dev, gfp_t gfp_mask);
++extern void __netdev_free_page(struct net_device *dev, struct page *page);
+ 
+ /**
+  *	netdev_alloc_page - allocate a page for ps-rx on a specific device
+@@ -1573,7 +1590,7 @@ static inline struct page *netdev_alloc_page(struct net_device *dev)
+ 
+ static inline void netdev_free_page(struct net_device *dev, struct page *page)
+ {
+-	__free_page(page);
++	__netdev_free_page(dev, page);
+ }
+ 
+ /**
+diff --git a/net/core/skbuff.c b/net/core/skbuff.c
+index 34432b4..9e36dc2 100644
+--- a/net/core/skbuff.c
++++ b/net/core/skbuff.c
+@@ -168,14 +168,21 @@ static void skb_under_panic(struct sk_buff *skb, int sz, void *here)
+  *	%GFP_ATOMIC.
+  */
+ struct sk_buff *__alloc_skb(unsigned int size, gfp_t gfp_mask,
+-			    int fclone, int node)
++			    int flags, int node)
+ {
+ 	struct kmem_cache *cache;
+ 	struct skb_shared_info *shinfo;
+ 	struct sk_buff *skb;
+ 	u8 *data;
++	int emergency = 0;
++	int memalloc = sk_memalloc_socks();
+ 
+-	cache = fclone ? skbuff_fclone_cache : skbuff_head_cache;
++	size = SKB_DATA_ALIGN(size);
++	cache = (flags & SKB_ALLOC_FCLONE)
++		? skbuff_fclone_cache : skbuff_head_cache;
 +
-+	mem_reserve_init(&net->ipv6.frags.reserve, "IPv6 fragment cache",
-+			 &net_skb_reserve);
-+	ret = mem_reserve_kmalloc_set(&net->ipv6.frags.reserve,
-+				      net->ipv6.frags.high_thresh);
-+	if (ret)
-+		goto out_reserve;
++	if (memalloc && (flags & SKB_ALLOC_RX))
++		gfp_mask |= __GFP_MEMALLOC;
+ 
+ 	/* Get the HEAD */
+ 	skb = kmem_cache_alloc_node(cache, gfp_mask & ~__GFP_DMA, node);
+@@ -183,9 +190,8 @@ struct sk_buff *__alloc_skb(unsigned int size, gfp_t gfp_mask,
+ 		goto out;
+ 	prefetchw(skb);
+ 
+-	size = SKB_DATA_ALIGN(size);
+-	data = kmalloc_node_track_caller(size + sizeof(struct skb_shared_info),
+-			gfp_mask, node);
++	data = kmalloc_reserve(size + sizeof(struct skb_shared_info),
++			gfp_mask, node, &net_skb_reserve, &emergency);
+ 	if (!data)
+ 		goto nodata;
+ 	prefetchw(data + size);
+@@ -196,6 +202,9 @@ struct sk_buff *__alloc_skb(unsigned int size, gfp_t gfp_mask,
+ 	 * the tail pointer in struct sk_buff!
+ 	 */
+ 	memset(skb, 0, offsetof(struct sk_buff, tail));
++#ifdef CONFIG_NETVM
++	skb->emergency = emergency;
++#endif
+ 	skb->truesize = size + sizeof(struct sk_buff);
+ 	atomic_set(&skb->users, 1);
+ 	skb->head = data;
+@@ -213,7 +222,7 @@ struct sk_buff *__alloc_skb(unsigned int size, gfp_t gfp_mask,
+ 	memset(shinfo, 0, offsetof(struct skb_shared_info, dataref));
+ 	atomic_set(&shinfo->dataref, 1);
+ 
+-	if (fclone) {
++	if (flags & SKB_ALLOC_FCLONE) {
+ 		struct sk_buff *child = skb + 1;
+ 		atomic_t *fclone_ref = (atomic_t *) (child + 1);
+ 
+@@ -223,6 +232,9 @@ struct sk_buff *__alloc_skb(unsigned int size, gfp_t gfp_mask,
+ 		atomic_set(fclone_ref, 1);
+ 
+ 		child->fclone = SKB_FCLONE_UNAVAILABLE;
++#ifdef CONFIG_NETVM
++		child->emergency = skb->emergency;
++#endif
+ 	}
+ out:
+ 	return skb;
+@@ -252,7 +264,7 @@ struct sk_buff *__netdev_alloc_skb(struct net_device *dev,
+ 	int node = dev->dev.parent ? dev_to_node(dev->dev.parent) : -1;
+ 	struct sk_buff *skb;
+ 
+-	skb = __alloc_skb(length + NET_SKB_PAD, gfp_mask, 0, node);
++	skb = __alloc_skb(length + NET_SKB_PAD, gfp_mask, SKB_ALLOC_RX, node);
+ 	if (likely(skb)) {
+ 		skb_reserve(skb, NET_SKB_PAD);
+ 		skb->dev = dev;
+@@ -266,11 +278,19 @@ struct page *__netdev_alloc_page(struct net_device *dev, gfp_t gfp_mask)
+ 	int node = dev->dev.parent ? dev_to_node(dev->dev.parent) : -1;
+ 	struct page *page;
+ 
+-	page = alloc_pages_node(node, gfp_mask, 0);
++	page = alloc_pages_reserve(node, gfp_mask | __GFP_MEMALLOC, 0,
++			&net_skb_reserve, NULL);
++
+ 	return page;
+ }
+ EXPORT_SYMBOL(__netdev_alloc_page);
+ 
++void __netdev_free_page(struct net_device *dev, struct page *page)
++{
++	free_pages_reserve(page, 0, &net_skb_reserve, page->reserve);
++}
++EXPORT_SYMBOL(__netdev_free_page);
++
+ void skb_add_rx_frag(struct sk_buff *skb, int i, struct page *page, int off,
+ 		int size)
+ {
+@@ -278,6 +298,27 @@ void skb_add_rx_frag(struct sk_buff *skb, int i, struct page *page, int off,
+ 	skb->len += size;
+ 	skb->data_len += size;
+ 	skb->truesize += size;
++
++#ifdef CONFIG_NETVM
++	/*
++	 * In the rare case that skb_emergency() != page->reserved we'll
++	 * skew the accounting slightly, but since its only a 'small' constant
++	 * shift its ok.
++	 */
++	if (skb_emergency(skb)) {
++		/*
++		 * We need to track fragment pages so that we properly
++		 * release their reserve in skb_put_page().
++		 */
++		atomic_set(&page->frag_count, 1);
++	} else if (unlikely(page->reserve)) {
++		/*
++		 * Release the reserve now, because normal skbs don't
++		 * do the emergency accounting.
++		 */
++		mem_reserve_pages_charge(&net_skb_reserve, -1);
++	}
++#endif
+ }
+ EXPORT_SYMBOL(skb_add_rx_frag);
+ 
+@@ -329,21 +370,38 @@ static void skb_clone_fraglist(struct sk_buff *skb)
+ 		skb_get(list);
+ }
+ 
++static void skb_get_page(struct sk_buff *skb, struct page *page)
++{
++	get_page(page);
++	if (skb_emergency(skb))
++		atomic_inc(&page->frag_count);
++}
++
++static void skb_put_page(struct sk_buff *skb, struct page *page)
++{
++	if (skb_emergency(skb) && atomic_dec_and_test(&page->frag_count))
++		mem_reserve_pages_charge(&net_skb_reserve, -1);
++	put_page(page);
++}
++
+ static void skb_release_data(struct sk_buff *skb)
+ {
+ 	if (!skb->cloned ||
+ 	    !atomic_sub_return(skb->nohdr ? (1 << SKB_DATAREF_SHIFT) + 1 : 1,
+ 			       &skb_shinfo(skb)->dataref)) {
++
+ 		if (skb_shinfo(skb)->nr_frags) {
+ 			int i;
+-			for (i = 0; i < skb_shinfo(skb)->nr_frags; i++)
+-				put_page(skb_shinfo(skb)->frags[i].page);
++			for (i = 0; i < skb_shinfo(skb)->nr_frags; i++) {
++				skb_put_page(skb,
++					     skb_shinfo(skb)->frags[i].page);
++			}
+ 		}
+ 
+ 		if (skb_has_frags(skb))
+ 			skb_drop_fraglist(skb);
+ 
+-		kfree(skb->head);
++		kfree_reserve(skb->head, &net_skb_reserve, skb_emergency(skb));
+ 	}
+ }
+ 
+@@ -536,6 +594,9 @@ static void __copy_skb_header(struct sk_buff *new, const struct sk_buff *old)
+ #if defined(CONFIG_IP_VS) || defined(CONFIG_IP_VS_MODULE)
+ 	new->ipvs_property	= old->ipvs_property;
+ #endif
++#ifdef CONFIG_NETVM
++	new->emergency		= old->emergency;
++#endif
+ 	new->protocol		= old->protocol;
+ 	new->mark		= old->mark;
+ 	new->skb_iif		= old->skb_iif;
+@@ -630,6 +691,9 @@ struct sk_buff *skb_clone(struct sk_buff *skb, gfp_t gfp_mask)
+ 		n->fclone = SKB_FCLONE_CLONE;
+ 		atomic_inc(fclone_ref);
+ 	} else {
++		if (skb_emergency(skb))
++			gfp_mask |= __GFP_MEMALLOC;
++
+ 		n = kmem_cache_alloc(skbuff_head_cache, gfp_mask);
+ 		if (!n)
+ 			return NULL;
+@@ -666,6 +730,14 @@ static void copy_skb_header(struct sk_buff *new, const struct sk_buff *old)
+ 	skb_shinfo(new)->gso_type = skb_shinfo(old)->gso_type;
+ }
+ 
++static inline int skb_alloc_rx_flag(const struct sk_buff *skb)
++{
++	if (skb_emergency(skb))
++		return SKB_ALLOC_RX;
 +
 +	return 0;
-+
-+out_reserve:
-+	mem_reserve_disconnect(&net->ipv6.frags.reserve);
-+	ip6_frags_ns_sysctl_unregister(net);
-+out_reg:
-+	inet_frags_exit_net(&net->ipv6.frags, &ip6_frags);
-+
-+	return ret;
- }
- 
- static void __net_exit ipv6_frags_exit_net(struct net *net)
- {
-+	mem_reserve_disconnect(&net->ipv6.frags.reserve);
- 	ip6_frags_ns_sysctl_unregister(net);
- 	inet_frags_exit_net(&net->ipv6.frags, &ip6_frags);
- }
-diff --git a/net/ipv6/route.c b/net/ipv6/route.c
-index 8f2d040..67aa341 100644
---- a/net/ipv6/route.c
-+++ b/net/ipv6/route.c
-@@ -37,6 +37,7 @@
- #include <linux/mroute6.h>
- #include <linux/init.h>
- #include <linux/if_arp.h>
-+#include <linux/reserve.h>
- #include <linux/proc_fs.h>
- #include <linux/seq_file.h>
- #include <linux/nsproxy.h>
-@@ -2532,6 +2533,34 @@ int ipv6_sysctl_rtcache_flush(ctl_table *ctl, int write,
- 		return -EINVAL;
- }
- 
-+static int
-+proc_dointvec_route(struct ctl_table *table, int write,
-+		void __user *buffer, size_t *lenp, loff_t *ppos)
-+{
-+	struct net *net = container_of(table->data, struct net,
-+				       ipv6.sysctl.ip6_rt_max_size);
-+	ctl_table tmp = *table;
-+	int new_size, ret;
-+
-+	mutex_lock(&net->ipv6.sysctl.ip6_rt_lock);
-+	if (write) {
-+		tmp.data = &new_size;
-+		table = &tmp;
-+	}
-+
-+	ret = proc_dointvec(table, write, buffer, lenp, ppos);
-+
-+	if (!ret && write) {
-+		ret = mem_reserve_kmem_cache_set(&net->ipv6.ip6_rt_reserve,
-+				net->ipv6.ip6_dst_ops.kmem_cachep, new_size);
-+		if (!ret)
-+			net->ipv6.sysctl.ip6_rt_max_size = new_size;
-+	}
-+	mutex_unlock(&net->ipv6.sysctl.ip6_rt_lock);
-+
-+	return ret;
 +}
 +
- ctl_table ipv6_route_table_template[] = {
- 	{
- 		.procname	=	"flush",
-@@ -2552,7 +2581,7 @@ ctl_table ipv6_route_table_template[] = {
- 		.data		=	&init_net.ipv6.sysctl.ip6_rt_max_size,
- 		.maxlen		=	sizeof(int),
- 		.mode		=	0644,
--		.proc_handler	=	proc_dointvec,
-+		.proc_handler	=	&proc_dointvec_route,
- 	},
- 	{
- 		.procname	=	"gc_min_interval",
-@@ -2627,6 +2656,8 @@ struct ctl_table * __net_init ipv6_route_sysctl_init(struct net *net)
- 		table[9].data = &net->ipv6.sysctl.ip6_rt_gc_min_interval;
+ /**
+  *	skb_copy	-	create private copy of an sk_buff
+  *	@skb: buffer to copy
+@@ -686,15 +758,17 @@ static void copy_skb_header(struct sk_buff *new, const struct sk_buff *old)
+ struct sk_buff *skb_copy(const struct sk_buff *skb, gfp_t gfp_mask)
+ {
+ 	int headerlen = skb->data - skb->head;
++	int size;
+ 	/*
+ 	 *	Allocate the copy buffer
+ 	 */
+ 	struct sk_buff *n;
+ #ifdef NET_SKBUFF_DATA_USES_OFFSET
+-	n = alloc_skb(skb->end + skb->data_len, gfp_mask);
++	size = skb->end + skb->data_len;
+ #else
+-	n = alloc_skb(skb->end - skb->head + skb->data_len, gfp_mask);
++	size = skb->end - skb->head + skb->data_len;
+ #endif
++	n = __alloc_skb(size, gfp_mask, skb_alloc_rx_flag(skb), -1);
+ 	if (!n)
+ 		return NULL;
+ 
+@@ -729,12 +803,14 @@ struct sk_buff *pskb_copy(struct sk_buff *skb, gfp_t gfp_mask)
+ 	/*
+ 	 *	Allocate the copy buffer
+ 	 */
++	int size;
+ 	struct sk_buff *n;
+ #ifdef NET_SKBUFF_DATA_USES_OFFSET
+-	n = alloc_skb(skb->end, gfp_mask);
++	size = skb->end;
+ #else
+-	n = alloc_skb(skb->end - skb->head, gfp_mask);
++	size = skb->end - skb->head;
+ #endif
++	n = __alloc_skb(size, gfp_mask, skb_alloc_rx_flag(skb), -1);
+ 	if (!n)
+ 		goto out;
+ 
+@@ -753,8 +829,9 @@ struct sk_buff *pskb_copy(struct sk_buff *skb, gfp_t gfp_mask)
+ 		int i;
+ 
+ 		for (i = 0; i < skb_shinfo(skb)->nr_frags; i++) {
+-			skb_shinfo(n)->frags[i] = skb_shinfo(skb)->frags[i];
+-			get_page(skb_shinfo(n)->frags[i].page);
++			skb_frag_t *frag = &skb_shinfo(skb)->frags[i];
++			skb_shinfo(n)->frags[i] = *frag;
++			skb_get_page(n, frag->page);
+ 		}
+ 		skb_shinfo(n)->nr_frags = i;
  	}
+@@ -805,7 +882,11 @@ int pskb_expand_head(struct sk_buff *skb, int nhead, int ntail,
  
-+	mutex_init(&net->ipv6.sysctl.ip6_rt_lock);
+ 	size = SKB_DATA_ALIGN(size);
+ 
+-	data = kmalloc(size + sizeof(struct skb_shared_info), gfp_mask);
++	if (skb_emergency(skb))
++		gfp_mask |= __GFP_MEMALLOC;
 +
- 	return table;
- }
- #endif
-@@ -2676,6 +2707,14 @@ static int __net_init ip6_route_net_init(struct net *net)
- 	net->ipv6.sysctl.ip6_rt_mtu_expires = 10*60*HZ;
- 	net->ipv6.sysctl.ip6_rt_min_advmss = IPV6_MIN_MTU - 20 - 40;
++	data = kmalloc_reserve(size + sizeof(struct skb_shared_info),
++			gfp_mask, -1, &net_skb_reserve, NULL);
+ 	if (!data)
+ 		goto nodata;
  
-+	mem_reserve_init(&net->ipv6.ip6_rt_reserve, "IPv6 route cache",
-+			 &net_rx_reserve);
-+	ret = mem_reserve_kmem_cache_set(&net->ipv6.ip6_rt_reserve,
-+			net->ipv6.ip6_dst_ops.kmem_cachep,
-+			net->ipv6.sysctl.ip6_rt_max_size);
-+	if (ret)
-+		goto out_reserve_fail;
-+
- #ifdef CONFIG_PROC_FS
- 	proc_net_fops_create(net, "ipv6_route", 0, &ipv6_route_proc_fops);
- 	proc_net_fops_create(net, "rt6_stats", S_IRUGO, &rt6_stats_seq_fops);
-@@ -2686,12 +2725,15 @@ static int __net_init ip6_route_net_init(struct net *net)
- out:
- 	return ret;
+@@ -820,7 +901,7 @@ int pskb_expand_head(struct sk_buff *skb, int nhead, int ntail,
+ 	       sizeof(struct skb_shared_info));
  
-+out_reserve_fail:
-+	mem_reserve_disconnect(&net->ipv6.ip6_rt_reserve);
- #ifdef CONFIG_IPV6_MULTIPLE_TABLES
-+	kfree(net->ipv6.ip6_blk_hole_entry);
- out_ip6_prohibit_entry:
- 	kfree(net->ipv6.ip6_prohibit_entry);
- out_ip6_null_entry:
--	kfree(net->ipv6.ip6_null_entry);
- #endif
-+	kfree(net->ipv6.ip6_null_entry);
- out_ip6_dst_ops:
- 	goto out;
- }
-@@ -2702,6 +2744,7 @@ static void __net_exit ip6_route_net_exit(struct net *net)
- 	proc_net_remove(net, "ipv6_route");
- 	proc_net_remove(net, "rt6_stats");
- #endif
-+	mem_reserve_disconnect(&net->ipv6.ip6_rt_reserve);
- 	kfree(net->ipv6.ip6_null_entry);
- #ifdef CONFIG_IPV6_MULTIPLE_TABLES
- 	kfree(net->ipv6.ip6_prohibit_entry);
+ 	for (i = 0; i < skb_shinfo(skb)->nr_frags; i++)
+-		get_page(skb_shinfo(skb)->frags[i].page);
++		skb_get_page(skb, skb_shinfo(skb)->frags[i].page);
+ 
+ 	if (skb_has_frags(skb))
+ 		skb_clone_fraglist(skb);
+@@ -901,8 +982,8 @@ struct sk_buff *skb_copy_expand(const struct sk_buff *skb,
+ 	/*
+ 	 *	Allocate the copy buffer
+ 	 */
+-	struct sk_buff *n = alloc_skb(newheadroom + skb->len + newtailroom,
+-				      gfp_mask);
++	struct sk_buff *n = __alloc_skb(newheadroom + skb->len + newtailroom,
++					gfp_mask, skb_alloc_rx_flag(skb), -1);
+ 	int oldheadroom = skb_headroom(skb);
+ 	int head_copy_len, head_copy_off;
+ 	int off;
+@@ -1094,7 +1175,7 @@ drop_pages:
+ 		skb_shinfo(skb)->nr_frags = i;
+ 
+ 		for (; i < nfrags; i++)
+-			put_page(skb_shinfo(skb)->frags[i].page);
++			skb_put_page(skb, skb_shinfo(skb)->frags[i].page);
+ 
+ 		if (skb_has_frags(skb))
+ 			skb_drop_fraglist(skb);
+@@ -1263,7 +1344,7 @@ pull_pages:
+ 	k = 0;
+ 	for (i = 0; i < skb_shinfo(skb)->nr_frags; i++) {
+ 		if (skb_shinfo(skb)->frags[i].size <= eat) {
+-			put_page(skb_shinfo(skb)->frags[i].page);
++			skb_put_page(skb, skb_shinfo(skb)->frags[i].page);
+ 			eat -= skb_shinfo(skb)->frags[i].size;
+ 		} else {
+ 			skb_shinfo(skb)->frags[k] = skb_shinfo(skb)->frags[i];
+@@ -2045,6 +2126,7 @@ static inline void skb_split_no_header(struct sk_buff *skb,
+ 			skb_shinfo(skb1)->frags[k] = skb_shinfo(skb)->frags[i];
+ 
+ 			if (pos < len) {
++				struct page *page = skb_shinfo(skb)->frags[i].page;
+ 				/* Split frag.
+ 				 * We have two variants in this case:
+ 				 * 1. Move all the frag to the second
+@@ -2053,7 +2135,7 @@ static inline void skb_split_no_header(struct sk_buff *skb,
+ 				 *    where splitting is expensive.
+ 				 * 2. Split is accurately. We make this.
+ 				 */
+-				get_page(skb_shinfo(skb)->frags[i].page);
++				skb_get_page(skb1, page);
+ 				skb_shinfo(skb1)->frags[0].page_offset += len - pos;
+ 				skb_shinfo(skb1)->frags[0].size -= len - pos;
+ 				skb_shinfo(skb)->frags[i].size	= len - pos;
+@@ -2552,8 +2634,9 @@ struct sk_buff *skb_segment(struct sk_buff *skb, int features)
+ 			skb_release_head_state(nskb);
+ 			__skb_push(nskb, doffset);
+ 		} else {
+-			nskb = alloc_skb(hsize + doffset + headroom,
+-					 GFP_ATOMIC);
++			nskb = __alloc_skb(hsize + doffset + headroom,
++					 GFP_ATOMIC, skb_alloc_rx_flag(skb),
++					 -1);
+ 
+ 			if (unlikely(!nskb))
+ 				goto err;
+@@ -2595,7 +2678,7 @@ struct sk_buff *skb_segment(struct sk_buff *skb, int features)
+ 
+ 		while (pos < offset + len && i < nfrags) {
+ 			*frag = skb_shinfo(skb)->frags[i];
+-			get_page(frag->page);
++			skb_get_page(nskb, frag->page);
+ 			size = frag->size;
+ 
+ 			if (pos < offset) {
 -- 
 1.7.1.1
 
