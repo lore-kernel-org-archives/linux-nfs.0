@@ -1,7 +1,7 @@
 From: Xiaotian Feng <dfeng@redhat.com>
-Subject: [PATCH -mmotm 09/30] mm: system wide ALLOC_NO_WATERMARK
-Date: Tue, 13 Jul 2010 06:18:32 -0400
-Message-ID: <20100713101832.2835.42184.sendpatchset@danny.redhat>
+Subject: [PATCH -mmotm 10/30] mm: __GFP_MEMALLOC
+Date: Tue, 13 Jul 2010 06:18:43 -0400
+Message-ID: <20100713101843.2835.12822.sendpatchset@danny.redhat>
 References: <20100713101650.2835.15245.sendpatchset@danny.redhat>
 Cc: riel@redhat.com, cl@linux-foundation.org, a.p.zijlstra@chello.nl,
         Xiaotian Feng <dfeng@redhat.com>, linux-kernel@vger.kernel.org,
@@ -13,46 +13,61 @@ In-Reply-To: <20100713101650.2835.15245.sendpatchset@danny.redhat>
 Sender: owner-linux-mm@kvack.org
 List-ID: <linux-nfs.vger.kernel.org>
 
->From 6d9ae36dfe34cdbc6e1fc52e6db0b27286eb4b58 Mon Sep 17 00:00:00 2001
+>From 78618cc83e6a21b876c30a8fb3940ccc1f5b99e1 Mon Sep 17 00:00:00 2001
 From: Xiaotian Feng <dfeng@redhat.com>
-Date: Tue, 13 Jul 2010 10:46:50 +0800
-Subject: [PATCH 09/30] mm: system wide ALLOC_NO_WATERMARK
+Date: Tue, 13 Jul 2010 10:49:16 +0800
+Subject: [PATCH 10/30] mm: __GFP_MEMALLOC
 
-The reserve is proportionally distributed over all (!highmem) zones in the
-system. So we need to allow an emergency allocation access to all zones. In
-order to do that we need to break out of any mempolicy boundaries we might
-have.
+__GFP_MEMALLOC will allow the allocation to disregard the watermarks,
+much like PF_MEMALLOC.
 
-In my opinion that does not break mempolicies as those are user oriented
-and not system oriented. That is, system allocations are not guaranteed to be
-within mempolicy boundaries. For instance IRQs don't even have a mempolicy.
-
-So breaking out of mempolicy boundaries for 'rare' emergency allocations,
-which are always system allocations (as opposed to user) is ok.
+It allows one to pass along the memalloc state in object related allocation
+flags as opposed to task related flags, such as sk->sk_allocation.
 
 Signed-off-by: Peter Zijlstra <a.p.zijlstra@chello.nl>
 Signed-off-by: Suresh Jayaraman <sjayaraman@suse.de>
 Signed-off-by: Xiaotian Feng <dfeng@redhat.com>
 ---
- mm/page_alloc.c |    5 +++++
- 1 files changed, 5 insertions(+), 0 deletions(-)
+ include/linux/gfp.h |    3 ++-
+ mm/page_alloc.c     |    4 +++-
+ 2 files changed, 5 insertions(+), 2 deletions(-)
 
+diff --git a/include/linux/gfp.h b/include/linux/gfp.h
+index 975609c..c608e26 100644
+--- a/include/linux/gfp.h
++++ b/include/linux/gfp.h
+@@ -47,6 +47,7 @@ struct vm_area_struct;
+ #define __GFP_REPEAT	((__force gfp_t)0x400u)	/* See above */
+ #define __GFP_NOFAIL	((__force gfp_t)0x800u)	/* See above */
+ #define __GFP_NORETRY	((__force gfp_t)0x1000u)/* See above */
++#define __GFP_MEMALLOC  ((__force gfp_t)0x2000u)/* Use emergency reserves */
+ #define __GFP_COMP	((__force gfp_t)0x4000u)/* Add compound page metadata */
+ #define __GFP_ZERO	((__force gfp_t)0x8000u)/* Return zeroed page on success */
+ #define __GFP_NOMEMALLOC ((__force gfp_t)0x10000u) /* Don't use emergency reserves */
+@@ -98,7 +99,7 @@ struct vm_area_struct;
+ /* Control page allocator reclaim behavior */
+ #define GFP_RECLAIM_MASK (__GFP_WAIT|__GFP_HIGH|__GFP_IO|__GFP_FS|\
+ 			__GFP_NOWARN|__GFP_REPEAT|__GFP_NOFAIL|\
+-			__GFP_NORETRY|__GFP_NOMEMALLOC)
++			__GFP_NORETRY|__GFP_MEMALLOC|__GFP_NOMEMALLOC)
+ 
+ /* Control slab gfp mask during early boot */
+ #define GFP_BOOT_MASK (__GFP_BITS_MASK & ~(__GFP_WAIT|__GFP_IO|__GFP_FS))
 diff --git a/mm/page_alloc.c b/mm/page_alloc.c
-index 6c85e9e..21d64f7 100644
+index 21d64f7..f7d3060 100644
 --- a/mm/page_alloc.c
 +++ b/mm/page_alloc.c
-@@ -1995,6 +1995,11 @@ restart:
- rebalance:
- 	/* Allocate without watermarks if the context allows */
- 	if (alloc_flags & ALLOC_NO_WATERMARKS) {
-+		/*
-+		 * break out mempolicy boundaries
-+		 */
-+		zonelist = node_zonelist(numa_node_id(), gfp_mask);
-+
- 		page = __alloc_pages_high_priority(gfp_mask, order,
- 				zonelist, high_zoneidx, nodemask,
- 				preferred_zone, migratetype);
+@@ -1930,7 +1930,9 @@ int gfp_to_alloc_flags(gfp_t gfp_mask)
+ 		alloc_flags |= ALLOC_HARDER;
+ 
+ 	if (likely(!(gfp_mask & __GFP_NOMEMALLOC))) {
+-		if (!in_irq() && (p->flags & PF_MEMALLOC))
++		if (gfp_mask & __GFP_MEMALLOC)
++			alloc_flags |= ALLOC_NO_WATERMARKS;
++		else if (!in_irq() && (p->flags & PF_MEMALLOC))
+ 			alloc_flags |= ALLOC_NO_WATERMARKS;
+ 		else if (!in_interrupt() &&
+ 				unlikely(test_thread_flag(TIF_MEMDIE)))
 -- 
 1.7.1.1
 
