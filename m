@@ -1,327 +1,242 @@
-Return-Path: <nfsv4-bounces@ietf.org>
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Noveck_David@emc.com
-In-Reply-To: <BF3BB6D12298F54B89C8DCC1E4073D8001ADDDA5@CORPUSMX50A.corp.emc.com>
-References: <A062FCC8662DA848949F7C3046B9BEAE01F3A6ED@us-email.terastack.bluearc.com>
-	<A062FCC8662DA848949F7C3046B9BEAE01F3A6EE@us-email.terastack.bluearc.com>
-	<6206CE0E-0A32-46A7-B648-3FCC12ED1961@netapp.com>
-	<B9A709F368FAAF4DB4B33870F72A141DFB88F3@CORPUSMX30A.corp.emc.com>
-	<0E2B1FE3-3B42-4BF2-BECE-A611DADF3983@netapp.com>
-	<B9A709F368FAAF4DB4B33870F72A141D01017F94@CORPUSMX30A.corp.emc.com>
-	<1278448834.16176.5.camel@heimdal.trondhjem.org>
-	<4C346D80.8010405@panasas.com>
-	<1278507985.2804.30.camel@heimdal.trondhjem.org>
-	<1278508696.2804.35.camel@heimdal.trondhjem.org>
-	<4C348679.6010507@panasas.com>
-	<1278511416.2804.52.camel@heimdal.trondhjem.org>
-	<B9A709F368FAAF4DB4B33870F72A141D0106B6B0@CORPUSMX30A.corp.emc.com>
-	<1278536484.12889.4.camel@heimdal.trondhjem.org>
-	<BF3BB6D12298F54B89C8DCC1E4073D8001ADDDA5@CORPUSMX50A.corp.emc.com>
-Date: Wed, 07 Jul 2010 18:27:58 -0400
-Message-ID: <1278541678.13643.3.camel@heimdal.trondhjem.org>
-Cc: linux-nfs@vger.kernel.org, garth@panasas.com, welch@panasas.com,
-        nfsv4@ietf.org, andros@netapp.com, bhalevy@panasas.com
-Subject: Re: [nfsv4] 4.1 client - LAYOUTCOMMIT & close
-List-Unsubscribe: <https://www.ietf.org/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@ietf.org?subject=unsubscribe>
-List-Archive: <http://www.ietf.org/mail-archive/web/nfsv4>
-List-Post: <mailto:nfsv4@ietf.org>
-List-Help: <mailto:nfsv4-request@ietf.org?subject=help>
-List-Subscribe: <https://www.ietf.org/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@ietf.org?subject=subscribe>
-Content-Type: text/plain; charset="us-ascii"
-Sender: nfsv4-bounces@ietf.org
-Errors-To: nfsv4-bounces@ietf.org
-MIME-Version: 1.0
+Return-Path: <linux-nfs-owner@vger.kernel.org>
+Received: from moutng.kundenserver.de ([212.227.126.171]:56310 "EHLO
+	moutng.kundenserver.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752423Ab0GMJdH (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 13 Jul 2010 05:33:07 -0400
+Received: from [192.168.30.62] (goofy.thiele.lan [192.168.30.62])
+	by mail.thiele.lan (Postfix) with ESMTP id 0E65738428
+	for <linux-nfs@vger.kernel.org>; Tue, 13 Jul 2010 11:33:01 +0200 (CEST)
+Message-ID: <4C3C32CC.5060907@thiele-hydraulik.de>
+Date: Tue, 13 Jul 2010 11:33:00 +0200
+From: Erik Thiele <erik.thiele@thiele-hydraulik.de>
+To: linux-nfs@vger.kernel.org
+Subject: strange lstat lockup on nfs3
+Content-Type: text/plain; charset=ISO-8859-15; format=flowed
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+MIME-Version: 1.0
 
-On Wed, 2010-07-07 at 18:04 -0400, Noveck_David@emc.com wrote:
-> > Yes. I would agree that the client cannot rely on the updates being
-> made
-> > visible if it fails to send the LAYOUTCOMMIT. My point was simply that
-> a
-> > compliant server MUST also have a valid strategy for dealing with the
-> > case where the client doesn't send it.
-> 
-> So you are saying the updates "MUST be made visible" through the
-> server's valid strategy.  Is that right.
-> 
-> And that the client cannot rely on that.  Why not, if the server must
-> have a valid strategy.
-> 
-> Is this just prudent "belt and suspenders" design or what?
-> 
-> It seems to me that if one side here is MUST (and the spec needs to be
-> clearer about what might or might not constitute a valid strategy), then
-> the other side should be SHOULD.
-> 
-> If both sides are "MUST", then if things don't work out then the client
-> and server can equally point to one another and say "It's his fault".
-> 
-> Am I missing something here?
+hello,
 
-See the example at the very bottom of this email. If the client dies
-after it has written data to the data servers, but before it can issue
-LAYOUTCOMMIT, then the server needs to have a strategy for dealing with
-that. Either it has to figure out that changes have been made, and to
-update the change attribute so that close-to-open cache consistency
-works, or it needs to ensure that those changes are not made visible.
+summary:
 
-A "solution" where the file data changes, but the client can't detect it
-is not acceptable.
+on my system an lstat call on the nfs mountpoint blocks forever. for me 
+this is reproducible. sometimes i have to wait a minute and then every 
+start of the program fails again. once blocked, an ls on the mounted 
+directory also blocks. a C-c of the lstat process frees the lock and the 
+ls continues to run.
 
-Trond
+details:
 
-> -----Original Message-----
-> From: nfsv4-bounces@ietf.org [mailto:nfsv4-bounces@ietf.org] On Behalf
-> Of Trond Myklebust
-> Sent: Wednesday, July 07, 2010 5:01 PM
-> To: Muntz, Daniel
-> Cc: linux-nfs@vger.kernel.org; garth@panasas.com; welch@panasas.com;
-> nfsv4@ietf.org; andros@netapp.com; bhalevy@panasas.com
-> Subject: Re: [nfsv4] 4.1 client - LAYOUTCOMMIT & close
-> 
-> On Wed, 2010-07-07 at 16:39 -0400, Daniel.Muntz@emc.com wrote:
-> > To bring this discussion full circle, since we agree that a compliant
-> > server can implement a scheme where written data does not become
-> visible
-> > until after a LAYOUTCOMMIT, do we also agree that LAYOUTCOMMIT is a
-> > "MUST" from a compliant client (independent of layout type)?
-> 
-> Yes. I would agree that the client cannot rely on the updates being made
-> visible if it fails to send the LAYOUTCOMMIT. My point was simply that a
-> compliant server MUST also have a valid strategy for dealing with the
-> case where the client doesn't send it.
-> 
-> Cheers
->   Trond
-> 
-> >   -Dan
-> > 
-> > > -----Original Message-----
-> > > From: nfsv4-bounces@ietf.org [mailto:nfsv4-bounces@ietf.org] 
-> > > On Behalf Of Trond Myklebust
-> > > Sent: Wednesday, July 07, 2010 7:04 AM
-> > > To: Benny Halevy
-> > > Cc: andros@netapp.com; linux-nfs@vger.kernel.org; Garth 
-> > > Gibson; Brent Welch; NFSv4
-> > > Subject: Re: [nfsv4] 4.1 client - LAYOUTCOMMIT & close
-> > > 
-> > > On Wed, 2010-07-07 at 16:51 +0300, Benny Halevy wrote:
-> > > > On Jul. 07, 2010, 16:18 +0300, Trond Myklebust 
-> > > <Trond.Myklebust@netapp.com> wrote:
-> > > > > On Wed, 2010-07-07 at 09:06 -0400, Trond Myklebust wrote:
-> > > > >> On Wed, 2010-07-07 at 15:05 +0300, Benny Halevy wrote:
-> > > > >>> On Jul. 06, 2010, 23:40 +0300, Trond Myklebust 
-> > > <trond.myklebust@fys.uio.no> wrote:
-> > > > >>>> On Tue, 2010-07-06 at 15:20 -0400, Daniel.Muntz@emc.com
-> wrote: 
-> > > > >>>>> The COMMIT to the DS, ttbomk, commits data on the DS. 
-> > >  I see it as
-> > > > >>>>> orthogonal to updating the metadata on the MDS (but 
-> > > perhaps I'm wrong).
-> > > > >>>>> As sjoshi@bluearc mentioned, the LAYOUTCOMMIT 
-> > > provides a synchronization
-> > > > >>>>> point, so even if the non-clustered server does not 
-> > > want to update
-> > > > >>>>> metadata on every DS I/O, the LAYOUTCOMMIT could also 
-> > > be a trigger to
-> > > > >>>>> execute whatever synchronization mechanism the 
-> > > implementer wishes to put
-> > > > >>>>> in the control protocol.
-> > > > >>>>
-> > > > >>>> As far as I'm aware, there are no exceptions in 
-> > > RFC5661 that would allow
-> > > > >>>> pNFS servers to break the rule that any visible change 
-> > > to the data must
-> > > > >>>> be atomically accompanied with a change attribute update.
-> > > > >>>>
-> > > > >>>
-> > > > >>> Trond, I'm not sure how this rule you mentioned is specified.
-> > > > >>>
-> > > > >>> See more in section 12.5.4 and 12.5.4.1. LAYOUTCOMMIT 
-> > > and change/time_modify
-> > > > >>> in particular:
-> > > > >>>
-> > > > >>>    For some layout protocols, the storage device is 
-> > > able to notify the
-> > > > >>>    metadata server of the occurrence of an I/O; as a 
-> > > result, the change
-> > > > >>>    and time_modify attributes may be updated at the 
-> > > metadata server.
-> > > > >>>    For a metadata server that is capable of monitoring 
-> > > updates to the
-> > > > >>>    change and time_modify attributes, LAYOUTCOMMIT 
-> > > processing is not
-> > > > >>>    required to update the change attribute.  In this 
-> > > case, the metadata
-> > > > >>>    server must ensure that no further update to the 
-> > > data has occurred
-> > > > >>>    since the last update of the attributes; file-based 
-> > > protocols may
-> > > > >>>    have enough information to make this determination 
-> > > or may update the
-> > > > >>>    change attribute upon each file modification.  This 
-> > > also applies for
-> > > > >>>    the time_modify attribute.  If the server 
-> > > implementation is able to
-> > > > >>>    determine that the file has not been modified since the
-> last
-> > > > >>>    time_modify update, the server need not update time_modify
-> at
-> > > > >>>    LAYOUTCOMMIT.  At LAYOUTCOMMIT completion, the 
-> > > updated attributes
-> > > > >>>    should be visible if that file was modified since 
-> > > the latest previous
-> > > > >>>    LAYOUTCOMMIT or LAYOUTGET
-> > > > >>
-> > > > >> I know. However the above paragraph does not state that 
-> > > the server
-> > > > >> should make those changes visible to clients other than 
-> > > the one that is
-> > > > >> writing.
-> > > > >>
-> > > > >> Section 18.32.4 states that writes will cause the 
-> > > time_modified and
-> > > > >> change attributes to be updated (if and only if the file data
-> is
-> > > > >> modified). Several other sections rely on this 
-> > > behaviour, including
-> > > > >> section 10.3.1, section 11.7.2.2, and section 11.7.7.
-> > > > >>
-> > > > >> The only 'special behaviour' that I see allowed for pNFS 
-> > > is in section
-> > > > >> 13.10, which states that clients can't expect to see changes
-> > > > >> immediately, but that they must be able to expect close-to-open
-> > > > >> semantics to work. Again, if this is to be the case, 
-> > > then the server
-> > > > >> _must_ be able to deal with the case where client 1 dies 
-> > > before it can
-> > > > >> issue the LAYOUTCOMMIT.
-> > > > 
-> > > > Agreed.
-> > > > 
-> > > > >>
-> > > > >>
-> > > > >>>> As I see it, if your server allows one client to read 
-> > > data that may have
-> > > > >>>> been modified by another client that holds a WRITE 
-> > > layout for that range
-> > > > >>>> then (since that is a visible data change) it should 
-> > > provide a change
-> > > > >>>> attribute update irrespective of whether or not a 
-> > > LAYOUTCOMMIT has been
-> > > > >>>> sent.
-> > > > >>>
-> > > > >>> the requirement for the server in WRITE's 
-> > > implementation section 
-> > > > >>> is quite weak: "It is assumed that the act of writing 
-> > > data to a file will
-> > > > >>> cause the time_modified and change attributes of the 
-> > > file to be updated."
-> > > > >>>
-> > > > >>> The difference here is that for pNFS the written data 
-> > > is not guaranteed
-> > > > >>> to be visible until LAYOUTCOMMIT.  In a broader sense, 
-> > > assuming the clients
-> > > > >>> are caching dirty data and use a write-behind cache, 
-> > > application-written data
-> > > > >>> may be visible to other processes on the same host but 
-> > > not to others until
-> > > > >>> fsync() or close() - open-to-close semantics are the 
-> > > only thing the client
-> > > > >>> guarantees, right?  Issuing LAYOUTCOMMIT on fsync() and 
-> > > close() ensure the
-> > > > >>> data is committed to stable storage and is visible to 
-> > > all other clients in
-> > > > >>> the cluster.
-> > > > >>
-> > > > >> See above. I'm not disputing your statement that 'the 
-> > > written data is
-> > > > >> not guaranteed to be visible until LAYOUTCOMMIT'. I am 
-> > > disputing an
-> > > > >> assumption that 'the written data may be visible without 
-> > > an accompanying
-> > > > >> change attribute update'.
-> > > > > 
-> > > > > 
-> > > > > In other words, I'd expect the following scenario to give the
-> same
-> > > > > results in NFSv4.1 w/pNFS as it does in NFSv4:
-> > > > 
-> > > > That's a strong requirement that may limit the scalability 
-> > > of the server.
-> > > > 
-> > > > The spirit of the pNFS operations, at least from Panasas 
-> > > perspective was that
-> > > > the data is transient until LAYOUTCOMMIT, meaning it may or 
-> > > may not be visible
-> > > > to clients other than the one who wrote it, and its 
-> > > associated metadata MUST
-> > > > be updated and describe the new data only on LAYOUTCOMMIT 
-> > > and until then it's
-> > > > undefined, i.e. it's up to the server implementation 
-> > > whether to update it or not.
-> > > > 
-> > > > Without locking, what do the stronger semantics buy you?
-> > > > Even if a client verified the change_attribute new data may 
-> > > become visible
-> > > > at any time after the GETATTR if the file/byte range aren't
-> locked.
-> > > 
-> > > There is no locking needed in the scenario below: it is ordinary
-> > > close-to-open semantics.
-> > > 
-> > > The point is that if you remove the one and only way that clients
-> have
-> > > to determine whether or not their data caches are valid, then they
-> can
-> > > no longer cache data at all, and server scalability will be shot to
-> > > smithereens anyway.
-> > > 
-> > > Trond
-> > > 
-> > > > Benny
-> > > > 
-> > > > > 
-> > > > > Client 1			Client 2
-> > > > > ========			========
-> > > > > 
-> > > > > OPEN foo
-> > > > > READ
-> > > > > CLOSE
-> > > > > 				OPEN
-> > > > > 				LAYOUTGET ...
-> > > > > 				WRITE via DS
-> > > > > 				<dies>...
-> > > > > OPEN foo
-> > > > > verify change_attr
-> > > > > READ if above WRITE is visible
-> > > > > CLOSE
-> > > > > 
-> > > > > Trond
-> > > > > _______________________________________________
-> > > > > nfsv4 mailing list
-> > > > > nfsv4@ietf.org
-> > > > > https://www.ietf.org/mailman/listinfo/nfsv4
-> > > 
-> > > 
-> > > _______________________________________________
-> > > nfsv4 mailing list
-> > > nfsv4@ietf.org
-> > > https://www.ietf.org/mailman/listinfo/nfsv4
-> > > 
-> > > 
-> 
-> 
-> _______________________________________________
-> nfsv4 mailing list
-> nfsv4@ietf.org
-> https://www.ietf.org/mailman/listinfo/nfsv4
-> 
+on the server i use the -g RPCMOUNTDOPTS variable, because my users may 
+have more then 16 groups. it once took me a year of pain to find out 
+that this option is damn needed.
+
+while locked, i do:
+
+echo 0 >/proc/sys/sunrpc/rpc_debug
+
+and i get:
+
+Jul 13 10:40:09 goofy kernel: [425776.952565] -pid- proc flgs status 
+-client- -prog- --rqstp- -timeout -rpcwait -action- ---ops--
+Jul 13 10:40:09 goofy kernel: [425776.952565] 20804 0001 0080      0 
+c6b02800 100003 d4495000    15000 xprt_pending f8ff9a08 f9008e94
+
+when C-c the lstat process, the list will be empty again.
+
+when the lstat process is blocked i do:
+
+echo t > /proc/sysrq-trigger
+
+and i get:
+
+Jul 13 10:42:20 goofy kernel: [425932.998710]  =======================
+Jul 13 10:42:20 goofy kernel: [425932.998710] PACKcxxmisc_F D 
+0000006c     0  9659   8555 (now the process is called crashnfs, but it 
+was called PACK.. before)
+Jul 13 10:42:20 goofy kernel: [425932.998710]        c541c8c0 00000082 
+0000006c 0000006c 00000000 c541ca4c c2011fc0 00000000
+Jul 13 10:42:20 goofy kernel: [425932.998710]        d4495b64 0506902f 
+00000000 00000286 00000000 00000000 00000000 000000ff
+Jul 13 10:42:20 goofy kernel: [425932.998710]        e38ddd7c 00000000 
+e38ddd84 c2001d90 f8ffd7bd c02b8f96 f8ffd798 c68f3488
+Jul 13 10:42:20 goofy kernel: [425932.998710] Call Trace:
+Jul 13 10:42:20 goofy kernel: [425932.998710]  [<f8ffd7bd>] 
+rpc_wait_bit_killable+0x25/0x2a [sunrpc]
+Jul 13 10:42:20 goofy kernel: [425932.998710]  [<c02b8f96>] 
+__wait_on_bit+0x33/0x58
+Jul 13 10:42:20 goofy kernel: [425932.998710]  [<f8ffd798>] 
+rpc_wait_bit_killable+0x0/0x2a [sunrpc]
+Jul 13 10:42:20 goofy kernel: [425932.998710]  [<f8ffd798>] 
+rpc_wait_bit_killable+0x0/0x2a [sunrpc]
+Jul 13 10:42:20 goofy kernel: [425932.998710]  [<c02b901a>] 
+out_of_line_wait_on_bit+0x5f/0x67
+Jul 13 10:42:20 goofy kernel: [425932.998710]  [<c0131a4d>] 
+wake_bit_function+0x0/0x3c
+Jul 13 10:42:20 goofy kernel: [425932.998710]  [<f8ffdc02>] 
+__rpc_execute+0xbe/0x1d9 [sunrpc]
+Jul 13 10:42:20 goofy kernel: [425932.998710]  [<f8ff8a72>] 
+rpc_run_task+0x40/0x45 [sunrpc]
+Jul 13 10:42:20 goofy kernel: [425932.998710]  [<f8ff8b00>] 
+rpc_call_sync+0x38/0x52 [sunrpc]
+Jul 13 10:42:20 goofy kernel: [425932.998710]  [<f8f8d34d>] 
+nfs3_rpc_wrapper+0x14/0x49 [nfs]
+Jul 13 10:42:20 goofy kernel: [425932.998710]  [<f8f8d6b9>] 
+nfs3_proc_getattr+0x52/0x73 [nfs]
+Jul 13 10:42:20 goofy kernel: [425932.998710]  [<f8f83349>] 
+__nfs_revalidate_inode+0xed/0x211 [nfs]
+Jul 13 10:42:20 goofy kernel: [425932.998710]  [<c017a8fc>] 
+do_lookup+0x53/0x153
+Jul 13 10:42:20 goofy kernel: [425932.998710]  [<c0186de8>] 
+mntput_no_expire+0x13/0xd9
+Jul 13 10:42:20 goofy kernel: [425932.998710]  [<c017c84b>] 
+__link_path_walk+0xa11/0xb26
+Jul 13 10:42:20 goofy kernel: [425932.998710]  [<c0158acf>] 
+filemap_fault+0x1f5/0x35a
+Jul 13 10:42:20 goofy kernel: [425932.998710]  [<c0186de8>] 
+mntput_no_expire+0x13/0xd9
+Jul 13 10:42:20 goofy kernel: [425932.998710]  [<c017c9c7>] 
+path_walk+0x67/0x70
+Jul 13 10:42:20 goofy kernel: [425932.998710]  [<f8f83aaa>] 
+nfs_getattr+0x8f/0xbe [nfs]
+Jul 13 10:42:20 goofy kernel: [425932.998710]  [<f8f83a1b>] 
+nfs_getattr+0x0/0xbe [nfs]
+Jul 13 10:42:20 goofy kernel: [425932.998710]  [<c017748e>] 
+vfs_getattr+0x36/0x4d
+Jul 13 10:42:20 goofy kernel: [425932.998710]  [<c0177566>] 
+vfs_lstat_fd+0x27/0x39
+Jul 13 10:42:20 goofy kernel: [425932.998710]  [<c02222ee>] 
+tty_ldisc_deref+0x4c/0x5b
+Jul 13 10:42:20 goofy kernel: [425932.998710]  [<c01775e5>] 
+sys_lstat64+0xf/0x23
+Jul 13 10:42:20 goofy kernel: [425932.998710]  [<c0115bab>] 
+do_page_fault+0x2a3/0x5c0
+Jul 13 10:42:20 goofy kernel: [425932.998710]  [<c017524a>] 
+sys_write+0x3c/0x63
+Jul 13 10:42:20 goofy kernel: [425932.998710]  [<c0115908>] 
+do_page_fault+0x0/0x5c0
+Jul 13 10:42:20 goofy kernel: [425932.998710]  [<c0103857>] 
+sysenter_past_esp+0x78/0xb1
+Jul 13 10:42:20 goofy kernel: [425932.998710]  =======================
+
+here is the sourcecode of the client crash program:
+
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#include <string.h>
+#include <grp.h>
+#include <stdio.h>
+
+int main(int argc, char *argv[])
+{
+  setresuid(-1, 0, -1);
+  setresgid(-1, 0, -1);
+  gid_t mygid=65534;
+  setgroups(1, &mygid);
+  setgid(65534);
+  setuid(0);
+  setgid(0);
+  getuid();
+  getuid();
+  setuid(0);
+  setgid(65534);
+  setresuid(-1, 110, -1);
+  struct stat64 mybuf;
+  memset(&mybuf, 0, sizeof(mybuf));
+  printf("prepare to block\n");
+  lstat64("/thiele/DNC_POOL", &mybuf);
+  printf("survived this time\n");
+  return 0;
+}
+
+EOF
+
+compile with:
+gcc -Wall -Werror -D_GNU_SOURCE crashnfs.c -o crashnfs
+
+when executed normally, you can C-c it and the process gets gone.
+
+when executed under strace, you can C-c but the process stays alive. 
+although strace terminates. you have to kill -9 then. -INT and -TERM 
+won't work.
+
+the program does work several times, then it fails several times again. 
+don't know the thing that triggers the problem. but strange is that 
+either it works some minute or it fails some minute. it's not that you 
+call it and on each call you have maybe 30% chance, but instead you have 
+some kind of time window in which the problem always fails or always works.
+
+the strange sequence of setresgid etc. is stolen from the proftpd ftp 
+server which initially triggered the problem. if i leave out the setgid 
+etc. stuff, everything works. but i don't know in which way this might 
+be only some kind of timing issue also ...
+
+some other interesting fact i found out:
+
+when starting the crashnfs program and it blocks, i can "ls 
+/thiele/DNC_POOL" and get locked also. but if i instead do "ls 
+/thiele/DNC_POOL/MC60" which is a subdirecory, then the ls works and not 
+blocks. and after that ls i can also do ls "/thiele/DNC_POOL" without 
+blocking. but the crashnfs program will never unlock.
+
+when starting crashnfs and it blocks, i can do "ls /thiele/DNC_POOL" and 
+get blocked also. then on another console i do "ls 
+/thiele/DNC_POOL/MC60" (subdirectory), and it will not block. then 
+afterwards i can do "ls /thiele/DNC_POOL" without blocking! but the 
+initial "ls /thiele/DNC_POOL" keeps blocking until C-c of crashnfs.
+
+when starting crashnfs and it blocks, i can run as many "ls 
+/thiele/DNC_POOL" processes as i want and every one of them blocks. then 
+once i do "ls /thiele/DNC_POOL/MC60" (subdirectory), it works, and then 
+all new "ls /thiele/DNC_POOL" work also. but the initial created "ls 
+/thiele/DNC_POOL" processes all won't ever unlock until kill of crashnfs 
+process.
+
+i ran some wireshark analysis and found out that when the crashnfs 
+program starts and blocks, it sends a GETATTR, the server does a TCP ACK 
+but won't reply to the GETATTR request. see:
+364    31.472536    192.168.30.62    192.168.30.2    NFS    V3 GETATTR 
+Call, FH:0xa2be3531
+365    31.512536    192.168.30.2    192.168.30.62    TCP    nfs > 929 
+[ACK] Seq=15961 Ack=76425 Win=1002 Len=0 TSV=154782046 TSER=84877917
+wireshark sais in "seq / ack analysis" that 365 is a ack to 364.
+there comes no real reply to the request. so that's why it blocks.
+
+i have to say, that the client has much more nfs stuff mounted from that 
+server at the same time and all works without problems. i.e. home 
+directory with heavy KDE polling traffic all the time.
 
 
-_______________________________________________
-nfsv4 mailing list
-nfsv4@ietf.org
-https://www.ietf.org/mailman/listinfo/nfsv4
+******************** server:
+hostname: fileserv
+os: debian lenny on xen (also debian lenny)
+kernel: Linux fileserv 2.6.26-2-xen-686 #1 SMP Mon Jun 21 10:37:05 UTC 
+2010 i686 GNU/Linux
+/etc/exports has 102 entries. the relevant entry here is:
+/thiele/DNC_POOL goofy.thiele.lan(rw,sync,no_subtree_check,no_root_squash)
+RPCMOUNTDOPTS="-N 1 -N 2 -g"
+
+******************** client:
+hostname: goofy
+os: debian lenny
+kernel: Linux goofy 2.6.26-2-686 #1 SMP Mon Jun 21 05:58:44 UTC 2010 
+i686 GNU/Linux
+/etc/fstab:  nfs.thiele.lan:/thiele/DNC_POOL /thiele/DNC_POOL nfs 
+nolock,nosuid,nodev 0 0
+
+cat /proc/mounts:
+nfs.thiele.lan:/thiele/DNC_POOL /thiele/DNC_POOL nfs 
+rw,nosuid,nodev,noatime,vers=3,rsize=262144,wsize=262144,namlen=255,hard,nointr,nolock,proto=tcp,timeo=600,retrans=2,sec=sys,mountproto=udp,addr=192.168.30.2 
+0 0
+
+
+
+
+OK that's it. i gained no more information and am calling for your help 
+here.
+
+
+thanks
+Erik
