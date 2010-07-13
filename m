@@ -1,7 +1,7 @@
 From: Xiaotian Feng <dfeng@redhat.com>
-Subject: [PATCH -mmotm 15/30] netvm: network reserve infrastructure
-Date: Tue, 13 Jul 2010 06:19:40 -0400
-Message-ID: <20100713101939.2835.90633.sendpatchset@danny.redhat>
+Subject: [PATCH -mmotm 16/30] netvm: INET reserves
+Date: Tue, 13 Jul 2010 06:19:52 -0400
+Message-ID: <20100713101951.2835.89303.sendpatchset@danny.redhat>
 References: <20100713101650.2835.15245.sendpatchset@danny.redhat>
 Cc: riel@redhat.com, cl@linux-foundation.org, a.p.zijlstra@chello.nl,
         Xiaotian Feng <dfeng@redhat.com>, linux-kernel@vger.kernel.org,
@@ -13,268 +13,466 @@ In-Reply-To: <20100713101650.2835.15245.sendpatchset@danny.redhat>
 Sender: owner-linux-mm@kvack.org
 List-ID: <linux-nfs.vger.kernel.org>
 
->From e8a09c013cf8416ece804ddcbc0d016d2f936e6d Mon Sep 17 00:00:00 2001
+>From e1a39da88a7b093474c48bb5f22f3b715e5ec205 Mon Sep 17 00:00:00 2001
 From: Xiaotian Feng <dfeng@redhat.com>
-Date: Tue, 13 Jul 2010 11:06:54 +0800
-Subject: [PATCH 15/30] netvm: network reserve infrastructure
+Date: Tue, 13 Jul 2010 11:17:23 +0800
+Subject: [PATCH 16/30] netvm: INET reserves.
 
-Provide the basic infrastructure to reserve and charge/account network memory.
+Add reserves for INET.
 
-We provide the following reserve tree:
+The two big users seem to be the route cache and ip-fragment cache.
 
-1)  total network reserve
-2)    network TX reserve
-3)      protocol TX pages
-4)    network RX reserve
-5)      SKB data reserve
+Reserve the route cache under generic RX reserve, its usage is bounded by
+the high reclaim watermark, and thus does not need further accounting.
 
-[1] is used to make all the network reserves a single subtree, for easy
-manipulation.
+Reserve the ip-fragement caches under SKB data reserve, these add to the
+SKB RX limit. By ensuring we can at least receive as much data as fits in
+the reassmbly line we avoid fragment attack deadlocks.
 
-[2] and [4] are merely for eastetic reasons.
+Adds to the reserve tree:
 
-The TX pages reserve [3] is assumed bounded by it being the upper bound of
-memory that can be used for sending pages (not quite true, but good enough)
+  total network reserve
+    network TX reserve
+      protocol TX pages
+    network RX reserve
++     IPv6 route cache
++     IPv4 route cache
+      SKB data reserve
++       IPv6 fragment cache
++       IPv4 fragment cache
 
-The SKB reserve [5] is an aggregate reserve, which is used to charge SKB data
-against in the fallback path.
-
-The consumers for these reserves are sockets marked with:
-  SOCK_MEMALLOC
-
-Such sockets are to be used to service the VM (iow. to swap over). They
-must be handled kernel side, exposing such a socket to user-space is a BUG.
-
+[jeffm@suse.de: PROCFS typo fix]
+[dfeng@redhat.com: build fix for removing .strategy]
 Signed-off-by: Peter Zijlstra <a.p.zijlstra@chello.nl>
+Signed-off-by: Jeff Mahoney <jeffm@suse.com>
 Signed-off-by: Suresh Jayaraman <sjayaraman@suse.de>
 Signed-off-by: Xiaotian Feng <dfeng@redhat.com>
 ---
- include/net/sock.h |   43 ++++++++++++++++++++-
- net/Kconfig        |    3 +
- net/core/sock.c    |  107 ++++++++++++++++++++++++++++++++++++++++++++++++++++
- 3 files changed, 152 insertions(+), 1 deletions(-)
+ include/net/inet_frag.h  |    7 ++++++
+ include/net/netns/ipv6.h |    4 +++
+ net/ipv4/inet_fragment.c |    3 ++
+ net/ipv4/ip_fragment.c   |   34 +++++++++++++++++++++++++++-
+ net/ipv4/route.c         |   42 ++++++++++++++++++++++++++++++++++-
+ net/ipv6/reassembly.c    |   55 ++++++++++++++++++++++++++++++++++++++++++++-
+ net/ipv6/route.c         |   47 +++++++++++++++++++++++++++++++++++++-
+ 7 files changed, 186 insertions(+), 6 deletions(-)
 
-diff --git a/include/net/sock.h b/include/net/sock.h
-index 9ddb37b..1de14b6 100644
---- a/include/net/sock.h
-+++ b/include/net/sock.h
-@@ -52,6 +52,7 @@
- #include <linux/mm.h>
- #include <linux/security.h>
+diff --git a/include/net/inet_frag.h b/include/net/inet_frag.h
+index 16ff29a..958ee27 100644
+--- a/include/net/inet_frag.h
++++ b/include/net/inet_frag.h
+@@ -1,6 +1,9 @@
+ #ifndef __NET_FRAG_H__
+ #define __NET_FRAG_H__
+ 
++#include <linux/reserve.h>
++#include <linux/mutex.h>
++
+ struct netns_frags {
+ 	int			nqueues;
+ 	atomic_t		mem;
+@@ -10,6 +13,10 @@ struct netns_frags {
+ 	int			timeout;
+ 	int			high_thresh;
+ 	int			low_thresh;
++
++	/* reserves */
++	struct mutex		lock;
++	struct mem_reserve	reserve;
+ };
+ 
+ struct inet_frag_queue {
+diff --git a/include/net/netns/ipv6.h b/include/net/netns/ipv6.h
+index 81abfcb..1f644b2 100644
+--- a/include/net/netns/ipv6.h
++++ b/include/net/netns/ipv6.h
+@@ -25,6 +25,8 @@ struct netns_sysctl_ipv6 {
+ 	int ip6_rt_mtu_expires;
+ 	int ip6_rt_min_advmss;
+ 	int icmpv6_time;
++
++	struct mutex ip6_rt_lock;
+ };
+ 
+ struct netns_ipv6 {
+@@ -58,6 +60,8 @@ struct netns_ipv6 {
+ 	struct sock             *ndisc_sk;
+ 	struct sock             *tcp_sk;
+ 	struct sock             *igmp_sk;
++
++	struct mem_reserve	ip6_rt_reserve;
+ #ifdef CONFIG_IPV6_MROUTE
+ #ifndef CONFIG_IPV6_MROUTE_MULTIPLE_TABLES
+ 	struct mr6_table	*mrt6;
+diff --git a/net/ipv4/inet_fragment.c b/net/ipv4/inet_fragment.c
+index a2ca6ae..58270a3 100644
+--- a/net/ipv4/inet_fragment.c
++++ b/net/ipv4/inet_fragment.c
+@@ -20,6 +20,7 @@
+ #include <linux/skbuff.h>
+ #include <linux/rtnetlink.h>
  #include <linux/slab.h>
 +#include <linux/reserve.h>
  
- #include <linux/filter.h>
- #include <linux/rculist_nulls.h>
-@@ -532,6 +533,7 @@ enum sock_flags {
- 	SOCK_RCVTSTAMPNS, /* %SO_TIMESTAMPNS setting */
- 	SOCK_LOCALROUTE, /* route locally only, %SO_DONTROUTE setting */
- 	SOCK_QUEUE_SHRUNK, /* write queue has been shrunk recently */
-+	SOCK_MEMALLOC, /* the VM depends on us - make sure we're serviced */
- 	SOCK_TIMESTAMPING_TX_HARDWARE,  /* %SOF_TIMESTAMPING_TX_HARDWARE */
- 	SOCK_TIMESTAMPING_TX_SOFTWARE,  /* %SOF_TIMESTAMPING_TX_SOFTWARE */
- 	SOCK_TIMESTAMPING_RX_HARDWARE,  /* %SOF_TIMESTAMPING_RX_HARDWARE */
-@@ -563,9 +565,48 @@ static inline int sock_flag(struct sock *sk, enum sock_flags flag)
- 	return test_bit(flag, &sk->sk_flags);
+ #include <net/inet_frag.h>
+ 
+@@ -75,6 +76,8 @@ void inet_frags_init_net(struct netns_frags *nf)
+ 	nf->nqueues = 0;
+ 	atomic_set(&nf->mem, 0);
+ 	INIT_LIST_HEAD(&nf->lru_list);
++	mutex_init(&nf->lock);
++	mem_reserve_init(&nf->reserve, "IP fragement cache", NULL);
+ }
+ EXPORT_SYMBOL(inet_frags_init_net);
+ 
+diff --git a/net/ipv4/ip_fragment.c b/net/ipv4/ip_fragment.c
+index dd0dbf0..a2e2e05 100644
+--- a/net/ipv4/ip_fragment.c
++++ b/net/ipv4/ip_fragment.c
+@@ -45,6 +45,8 @@
+ #include <linux/udp.h>
+ #include <linux/inet.h>
+ #include <linux/netfilter_ipv4.h>
++#include <linux/reserve.h>
++#include <linux/nsproxy.h>
+ 
+ /* NOTE. Logic of IP defragmentation is parallel to corresponding IPv6
+  * code now. If you change something here, _PLEASE_ update ipv6/reassembly.c
+@@ -634,6 +636,34 @@ int ip_defrag(struct sk_buff *skb, u32 user)
  }
  
-+static inline int sk_has_memalloc(struct sock *sk)
+ #ifdef CONFIG_SYSCTL
++static int
++proc_dointvec_fragment(struct ctl_table *table, int write,
++		void __user *buffer, size_t *lenp, loff_t *ppos)
 +{
-+	return sock_flag(sk, SOCK_MEMALLOC);
++	struct net *net = container_of(table->data, struct net,
++				       ipv4.frags.high_thresh);
++	ctl_table tmp = *table;
++	int new_bytes, ret;
++
++	mutex_lock(&net->ipv4.frags.lock);
++	if (write) {
++		tmp.data = &new_bytes;
++		table = &tmp;
++	}
++
++	ret = proc_dointvec(table, write, buffer, lenp, ppos);
++
++	if (!ret && write) {
++		ret = mem_reserve_kmalloc_set(&net->ipv4.frags.reserve,
++				new_bytes);
++		if (!ret)
++			net->ipv4.frags.high_thresh = new_bytes;
++	}
++	mutex_unlock(&net->ipv4.frags.lock);
++
++	return ret;
 +}
 +
-+extern struct mem_reserve net_rx_reserve;
-+extern struct mem_reserve net_skb_reserve;
-+
-+#ifdef CONFIG_NETVM
-+/*
-+ * Guestimate the per request queue TX upper bound.
-+ *
-+ * Max packet size is 64k, and we need to reserve that much since the data
-+ * might need to bounce it. Double it to be on the safe side.
-+ */
-+#define TX_RESERVE_PAGES DIV_ROUND_UP(2*65536, PAGE_SIZE)
-+
-+extern int memalloc_socks;
-+
-+static inline int sk_memalloc_socks(void)
-+{
-+	return memalloc_socks;
-+}
-+
-+extern int sk_adjust_memalloc(int socks, long tx_reserve_pages);
-+extern int sk_set_memalloc(struct sock *sk);
-+extern int sk_clear_memalloc(struct sock *sk);
-+#else
-+static inline int sk_memalloc_socks(void)
-+{
-+	return 0;
-+}
-+
-+static inline int sk_clear_memalloc(struct sock *sk)
-+{
-+	return 0;
-+}
-+#endif
-+
- static inline gfp_t sk_allocation(struct sock *sk, gfp_t gfp_mask)
+ static int zero;
+ 
+ static struct ctl_table ip4_frags_ns_ctl_table[] = {
+@@ -642,7 +672,7 @@ static struct ctl_table ip4_frags_ns_ctl_table[] = {
+ 		.data		= &init_net.ipv4.frags.high_thresh,
+ 		.maxlen		= sizeof(int),
+ 		.mode		= 0644,
+-		.proc_handler	= proc_dointvec
++		.proc_handler	= &proc_dointvec_fragment,
+ 	},
+ 	{
+ 		.procname	= "ipfrag_low_thresh",
+@@ -740,6 +770,8 @@ static inline void ip4_frags_ctl_register(void)
+ 
+ static int __net_init ipv4_frags_init_net(struct net *net)
  {
--	return gfp_mask;
-+	return gfp_mask | (sk->sk_allocation & __GFP_MEMALLOC);
- }
- 
- static inline void sk_acceptq_removed(struct sock *sk)
-diff --git a/net/Kconfig b/net/Kconfig
-index 0d68b40..2b61a85 100644
---- a/net/Kconfig
-+++ b/net/Kconfig
-@@ -284,4 +284,7 @@ source "net/9p/Kconfig"
- source "net/caif/Kconfig"
- 
- 
-+config NETVM
-+	def_bool n
++	int ret;
 +
- endif   # if NET
-diff --git a/net/core/sock.c b/net/core/sock.c
-index fef2434..6bd5765 100644
---- a/net/core/sock.c
-+++ b/net/core/sock.c
-@@ -111,6 +111,7 @@
- #include <linux/init.h>
- #include <linux/highmem.h>
- #include <linux/user_namespace.h>
+ 	/*
+ 	 * Fragment cache limits. We will commit 256K at one time. Should we
+ 	 * cross that limit we will prune down to 192K. This should cope with
+diff --git a/net/ipv4/route.c b/net/ipv4/route.c
+index 03430de..548aa37 100644
+--- a/net/ipv4/route.c
++++ b/net/ipv4/route.c
+@@ -108,6 +108,7 @@
+ #ifdef CONFIG_SYSCTL
+ #include <linux/sysctl.h>
+ #endif
 +#include <linux/reserve.h>
  
- #include <asm/uaccess.h>
- #include <asm/system.h>
-@@ -224,6 +225,105 @@ int net_cls_subsys_id = -1;
- EXPORT_SYMBOL_GPL(net_cls_subsys_id);
- #endif
- 
-+static struct mem_reserve net_reserve;
-+struct mem_reserve net_rx_reserve;
-+EXPORT_SYMBOL_GPL(net_rx_reserve); /* modular ipv6 only */
-+struct mem_reserve net_skb_reserve;
-+EXPORT_SYMBOL_GPL(net_skb_reserve); /* modular ipv6 only */
-+static struct mem_reserve net_tx_reserve;
-+static struct mem_reserve net_tx_pages;
-+
-+#ifdef CONFIG_NETVM
-+static DEFINE_MUTEX(memalloc_socks_lock);
-+int memalloc_socks;
-+
-+/**
-+ *	sk_adjust_memalloc - adjust the global memalloc reserve for critical RX
-+ *	@socks: number of new %SOCK_MEMALLOC sockets
-+ *	@tx_resserve_pages: number of pages to (un)reserve for TX
-+ *
-+ *	This function adjusts the memalloc reserve based on system demand.
-+ *	The RX reserve is a limit, and only added once, not for each socket.
-+ *
-+ *	NOTE:
-+ *	   @tx_reserve_pages is an upper-bound of memory used for TX hence
-+ *	   we need not account the pages like we do for RX pages.
-+ */
-+int sk_adjust_memalloc(int socks, long tx_reserve_pages)
-+{
-+	int err;
-+
-+	mutex_lock(&memalloc_socks_lock);
-+	err = mem_reserve_pages_add(&net_tx_pages, tx_reserve_pages);
-+	if (err)
-+		goto unlock;
-+
-+	/*
-+	 * either socks is positive and we need to check for 0 -> !0
-+	 * transition and connect the reserve tree when we observe it.
-+	 */
-+	if (!memalloc_socks && socks > 0) {
-+		err = mem_reserve_connect(&net_reserve, &mem_reserve_root);
-+		if (err) {
-+			/*
-+			 * if we failed to connect the tree, undo the tx
-+			 * reserve so that failure has no side effects.
-+			 */
-+			mem_reserve_pages_add(&net_tx_pages, -tx_reserve_pages);
-+			goto unlock;
-+		}
-+	}
-+	memalloc_socks += socks;
-+	/*
-+	 * or socks is negative and we must observe the !0 -> 0 transition
-+	 * and disconnect the reserve tree.
-+	 */
-+	if (!memalloc_socks && socks)
-+		mem_reserve_disconnect(&net_reserve);
-+
-+unlock:
-+	mutex_unlock(&memalloc_socks_lock);
-+
-+	return err;
-+}
-+EXPORT_SYMBOL_GPL(sk_adjust_memalloc);
-+
-+/**
-+ *	sk_set_memalloc - sets %SOCK_MEMALLOC
-+ *	@sk: socket to set it on
-+ *
-+ *	Set %SOCK_MEMALLOC on a socket and increase the memalloc reserve
-+ *	accordingly.
-+ */
-+int sk_set_memalloc(struct sock *sk)
-+{
-+	int set = sock_flag(sk, SOCK_MEMALLOC);
-+
-+	if (!set) {
-+		int err = sk_adjust_memalloc(1, 0);
-+		if (err)
-+			return err;
-+
-+		sock_set_flag(sk, SOCK_MEMALLOC);
-+		sk->sk_allocation |= __GFP_MEMALLOC;
-+	}
-+	return !set;
-+}
-+EXPORT_SYMBOL_GPL(sk_set_memalloc);
-+
-+int sk_clear_memalloc(struct sock *sk)
-+{
-+	int set = sock_flag(sk, SOCK_MEMALLOC);
-+	if (set) {
-+		sk_adjust_memalloc(-1, 0);
-+		sock_reset_flag(sk, SOCK_MEMALLOC);
-+		sk->sk_allocation &= ~__GFP_MEMALLOC;
-+	}
-+	return set;
-+}
-+EXPORT_SYMBOL_GPL(sk_clear_memalloc);
-+#endif
-+
- static int sock_set_timeout(long *timeo_p, char __user *optval, int optlen)
- {
- 	struct timeval tv;
-@@ -1121,6 +1221,7 @@ static void __sk_free(struct sock *sk)
- {
- 	struct sk_filter *filter;
- 
-+	sk_clear_memalloc(sk);
- 	if (sk->sk_destruct)
- 		sk->sk_destruct(sk);
- 
-@@ -1300,6 +1401,12 @@ void __init sk_init(void)
- 		sysctl_wmem_max = 131071;
- 		sysctl_rmem_max = 131071;
- 	}
-+
-+	mem_reserve_init(&net_reserve, "total network reserve", NULL);
-+	mem_reserve_init(&net_rx_reserve, "network RX reserve", &net_reserve);
-+	mem_reserve_init(&net_skb_reserve, "SKB data reserve", &net_rx_reserve);
-+	mem_reserve_init(&net_tx_reserve, "network TX reserve", &net_reserve);
-+	mem_reserve_init(&net_tx_pages, "protocol TX pages", &net_tx_reserve);
+ #define RT_FL_TOS(oldflp) \
+     ((u32)(oldflp->fl4_tos & (IPTOS_RT_MASK | RTO_ONLINK)))
+@@ -268,6 +269,8 @@ static inline int rt_genid(struct net *net)
+ 	return atomic_read(&net->ipv4.rt_genid);
  }
  
- /*
++static struct mem_reserve ipv4_route_reserve;
++
+ #ifdef CONFIG_PROC_FS
+ struct rt_cache_iter_state {
+ 	struct seq_net_private p;
+@@ -398,6 +401,34 @@ static int rt_cache_seq_show(struct seq_file *seq, void *v)
+ 	return 0;
+ }
+ 
++static struct mutex ipv4_route_lock;
++
++static int
++proc_dointvec_route(struct ctl_table *table, int write,
++		void __user *buffer, size_t *lenp, loff_t *ppos)
++{
++	ctl_table tmp = *table;
++	int new_size, ret;
++
++	mutex_lock(&ipv4_route_lock);
++	if (write) {
++		tmp.data = &new_size;
++		table = &tmp;
++	}
++
++	ret = proc_dointvec(table, write, buffer, lenp, ppos);
++
++	if (!ret && write) {
++		ret = mem_reserve_kmem_cache_set(&ipv4_route_reserve,
++				ipv4_dst_ops.kmem_cachep, new_size);
++		if (!ret)
++			ip_rt_max_size = new_size;
++	}
++	mutex_unlock(&ipv4_route_lock);
++
++	return ret;
++}
++
+ static const struct seq_operations rt_cache_seq_ops = {
+ 	.start  = rt_cache_seq_start,
+ 	.next   = rt_cache_seq_next,
+@@ -3096,7 +3127,7 @@ static ctl_table ipv4_route_table[] = {
+ 		.data		= &ip_rt_max_size,
+ 		.maxlen		= sizeof(int),
+ 		.mode		= 0644,
+-		.proc_handler	= proc_dointvec,
++		.proc_handler	= &proc_dointvec_route,
+ 	},
+ 	{
+ 		/*  Deprecated. Use gc_min_interval_ms */
+@@ -3327,6 +3358,15 @@ int __init ip_rt_init(void)
+ 	ipv4_dst_ops.gc_thresh = (rt_hash_mask + 1);
+ 	ip_rt_max_size = (rt_hash_mask + 1) * 16;
+ 
++#ifdef CONFIG_PROC_FS
++	mutex_init(&ipv4_route_lock);
++#endif
++
++	mem_reserve_init(&ipv4_route_reserve, "IPv4 route cache",
++			&net_rx_reserve);
++	mem_reserve_kmem_cache_set(&ipv4_route_reserve,
++			ipv4_dst_ops.kmem_cachep, ip_rt_max_size);
++
+ 	devinet_init();
+ 	ip_fib_init();
+ 
+diff --git a/net/ipv6/reassembly.c b/net/ipv6/reassembly.c
+index 545c414..6f02d8c 100644
+--- a/net/ipv6/reassembly.c
++++ b/net/ipv6/reassembly.c
+@@ -42,6 +42,7 @@
+ #include <linux/jhash.h>
+ #include <linux/skbuff.h>
+ #include <linux/slab.h>
++#include <linux/reserve.h>
+ 
+ #include <net/sock.h>
+ #include <net/snmp.h>
+@@ -639,13 +640,41 @@ static const struct inet6_protocol frag_protocol =
+ };
+ 
+ #ifdef CONFIG_SYSCTL
++static int
++proc_dointvec_fragment(struct ctl_table *table, int write,
++		void __user *buffer, size_t *lenp, loff_t *ppos)
++{
++	struct net *net = container_of(table->data, struct net,
++				       ipv6.frags.high_thresh);
++	ctl_table tmp = *table;
++	int new_bytes, ret;
++
++	mutex_lock(&net->ipv6.frags.lock);
++	if (write) {
++		tmp.data = &new_bytes;
++		table = &tmp;
++	}
++
++	ret = proc_dointvec(table, write, buffer, lenp, ppos);
++
++	if (!ret && write) {
++		ret = mem_reserve_kmalloc_set(&net->ipv6.frags.reserve,
++					      new_bytes);
++		if (!ret)
++			net->ipv6.frags.high_thresh = new_bytes;
++	}
++	mutex_unlock(&net->ipv6.frags.lock);
++
++	return ret;
++}
++
+ static struct ctl_table ip6_frags_ns_ctl_table[] = {
+ 	{
+ 		.procname	= "ip6frag_high_thresh",
+ 		.data		= &init_net.ipv6.frags.high_thresh,
+ 		.maxlen		= sizeof(int),
+ 		.mode		= 0644,
+-		.proc_handler	= proc_dointvec
++		.proc_handler	= &proc_dointvec_fragment,
+ 	},
+ 	{
+ 		.procname	= "ip6frag_low_thresh",
+@@ -750,17 +779,39 @@ static inline void ip6_frags_sysctl_unregister(void)
+ 
+ static int __net_init ipv6_frags_init_net(struct net *net)
+ {
++	int ret;
++
+ 	net->ipv6.frags.high_thresh = IPV6_FRAG_HIGH_THRESH;
+ 	net->ipv6.frags.low_thresh = IPV6_FRAG_LOW_THRESH;
+ 	net->ipv6.frags.timeout = IPV6_FRAG_TIMEOUT;
+ 
+ 	inet_frags_init_net(&net->ipv6.frags);
+ 
+-	return ip6_frags_ns_sysctl_register(net);
++	ret = ip6_frags_ns_sysctl_register(net);
++	if (ret)
++		goto out_reg;
++
++	mem_reserve_init(&net->ipv6.frags.reserve, "IPv6 fragment cache",
++			 &net_skb_reserve);
++	ret = mem_reserve_kmalloc_set(&net->ipv6.frags.reserve,
++				      net->ipv6.frags.high_thresh);
++	if (ret)
++		goto out_reserve;
++
++	return 0;
++
++out_reserve:
++	mem_reserve_disconnect(&net->ipv6.frags.reserve);
++	ip6_frags_ns_sysctl_unregister(net);
++out_reg:
++	inet_frags_exit_net(&net->ipv6.frags, &ip6_frags);
++
++	return ret;
+ }
+ 
+ static void __net_exit ipv6_frags_exit_net(struct net *net)
+ {
++	mem_reserve_disconnect(&net->ipv6.frags.reserve);
+ 	ip6_frags_ns_sysctl_unregister(net);
+ 	inet_frags_exit_net(&net->ipv6.frags, &ip6_frags);
+ }
+diff --git a/net/ipv6/route.c b/net/ipv6/route.c
+index 8f2d040..67aa341 100644
+--- a/net/ipv6/route.c
++++ b/net/ipv6/route.c
+@@ -37,6 +37,7 @@
+ #include <linux/mroute6.h>
+ #include <linux/init.h>
+ #include <linux/if_arp.h>
++#include <linux/reserve.h>
+ #include <linux/proc_fs.h>
+ #include <linux/seq_file.h>
+ #include <linux/nsproxy.h>
+@@ -2532,6 +2533,34 @@ int ipv6_sysctl_rtcache_flush(ctl_table *ctl, int write,
+ 		return -EINVAL;
+ }
+ 
++static int
++proc_dointvec_route(struct ctl_table *table, int write,
++		void __user *buffer, size_t *lenp, loff_t *ppos)
++{
++	struct net *net = container_of(table->data, struct net,
++				       ipv6.sysctl.ip6_rt_max_size);
++	ctl_table tmp = *table;
++	int new_size, ret;
++
++	mutex_lock(&net->ipv6.sysctl.ip6_rt_lock);
++	if (write) {
++		tmp.data = &new_size;
++		table = &tmp;
++	}
++
++	ret = proc_dointvec(table, write, buffer, lenp, ppos);
++
++	if (!ret && write) {
++		ret = mem_reserve_kmem_cache_set(&net->ipv6.ip6_rt_reserve,
++				net->ipv6.ip6_dst_ops.kmem_cachep, new_size);
++		if (!ret)
++			net->ipv6.sysctl.ip6_rt_max_size = new_size;
++	}
++	mutex_unlock(&net->ipv6.sysctl.ip6_rt_lock);
++
++	return ret;
++}
++
+ ctl_table ipv6_route_table_template[] = {
+ 	{
+ 		.procname	=	"flush",
+@@ -2552,7 +2581,7 @@ ctl_table ipv6_route_table_template[] = {
+ 		.data		=	&init_net.ipv6.sysctl.ip6_rt_max_size,
+ 		.maxlen		=	sizeof(int),
+ 		.mode		=	0644,
+-		.proc_handler	=	proc_dointvec,
++		.proc_handler	=	&proc_dointvec_route,
+ 	},
+ 	{
+ 		.procname	=	"gc_min_interval",
+@@ -2627,6 +2656,8 @@ struct ctl_table * __net_init ipv6_route_sysctl_init(struct net *net)
+ 		table[9].data = &net->ipv6.sysctl.ip6_rt_gc_min_interval;
+ 	}
+ 
++	mutex_init(&net->ipv6.sysctl.ip6_rt_lock);
++
+ 	return table;
+ }
+ #endif
+@@ -2676,6 +2707,14 @@ static int __net_init ip6_route_net_init(struct net *net)
+ 	net->ipv6.sysctl.ip6_rt_mtu_expires = 10*60*HZ;
+ 	net->ipv6.sysctl.ip6_rt_min_advmss = IPV6_MIN_MTU - 20 - 40;
+ 
++	mem_reserve_init(&net->ipv6.ip6_rt_reserve, "IPv6 route cache",
++			 &net_rx_reserve);
++	ret = mem_reserve_kmem_cache_set(&net->ipv6.ip6_rt_reserve,
++			net->ipv6.ip6_dst_ops.kmem_cachep,
++			net->ipv6.sysctl.ip6_rt_max_size);
++	if (ret)
++		goto out_reserve_fail;
++
+ #ifdef CONFIG_PROC_FS
+ 	proc_net_fops_create(net, "ipv6_route", 0, &ipv6_route_proc_fops);
+ 	proc_net_fops_create(net, "rt6_stats", S_IRUGO, &rt6_stats_seq_fops);
+@@ -2686,12 +2725,15 @@ static int __net_init ip6_route_net_init(struct net *net)
+ out:
+ 	return ret;
+ 
++out_reserve_fail:
++	mem_reserve_disconnect(&net->ipv6.ip6_rt_reserve);
+ #ifdef CONFIG_IPV6_MULTIPLE_TABLES
++	kfree(net->ipv6.ip6_blk_hole_entry);
+ out_ip6_prohibit_entry:
+ 	kfree(net->ipv6.ip6_prohibit_entry);
+ out_ip6_null_entry:
+-	kfree(net->ipv6.ip6_null_entry);
+ #endif
++	kfree(net->ipv6.ip6_null_entry);
+ out_ip6_dst_ops:
+ 	goto out;
+ }
+@@ -2702,6 +2744,7 @@ static void __net_exit ip6_route_net_exit(struct net *net)
+ 	proc_net_remove(net, "ipv6_route");
+ 	proc_net_remove(net, "rt6_stats");
+ #endif
++	mem_reserve_disconnect(&net->ipv6.ip6_rt_reserve);
+ 	kfree(net->ipv6.ip6_null_entry);
+ #ifdef CONFIG_IPV6_MULTIPLE_TABLES
+ 	kfree(net->ipv6.ip6_prohibit_entry);
 -- 
 1.7.1.1
 
