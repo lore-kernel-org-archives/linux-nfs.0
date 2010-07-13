@@ -1,7 +1,7 @@
 From: Xiaotian Feng <dfeng@redhat.com>
-Subject: [PATCH -mmotm 03/30] mm: expose gfp_to_alloc_flags()
-Date: Tue, 13 Jul 2010 06:17:25 -0400
-Message-ID: <20100713101725.2835.41105.sendpatchset@danny.redhat>
+Subject: [PATCH -mmotm 04/30] mm: tag reseve pages
+Date: Tue, 13 Jul 2010 06:17:36 -0400
+Message-ID: <20100713101736.2835.76110.sendpatchset@danny.redhat>
 References: <20100713101650.2835.15245.sendpatchset@danny.redhat>
 Cc: riel@redhat.com, cl@linux-foundation.org, a.p.zijlstra@chello.nl,
         Xiaotian Feng <dfeng@redhat.com>, linux-kernel@vger.kernel.org,
@@ -13,82 +13,55 @@ In-Reply-To: <20100713101650.2835.15245.sendpatchset@danny.redhat>
 Sender: owner-linux-mm@kvack.org
 List-ID: <linux-nfs.vger.kernel.org>
 
->From 8a554f86ab2fd4d8a1daecaef4cc5bb3901c4423 Mon Sep 17 00:00:00 2001
+>From 14f7823986429b8374d18e3f648cd84575296e03 Mon Sep 17 00:00:00 2001
 From: Xiaotian Feng <dfeng@redhat.com>
-Date: Mon, 12 Jul 2010 17:59:52 +0800
-Subject: [PATCH 03/30] mm: expose gfp_to_alloc_flags()
+Date: Mon, 12 Jul 2010 18:00:37 +0800
+Subject: [PATCH 04/30] mm: tag reseve pages
 
-Expose the gfp to alloc_flags mapping, so we can use it in other parts
-of the vm.
+Tag pages allocated from the reserves with a non-zero page->reserve.
+This allows us to distinguish and account reserve pages.
+
+Since low-memory situations are transient, and unrelated the the actual
+page (any page can be on the freelist when we run low), don't mark the
+page in any permanent way - just pass along the information to the
+allocatee.
 
 Signed-off-by: Peter Zijlstra <a.p.zijlstra@chello.nl>
 Signed-off-by: Suresh Jayaraman <sjayaraman@suse.de>
 Signed-off-by: Xiaotian Feng <dfeng@redhat.com>
 ---
- mm/internal.h   |   15 +++++++++++++++
- mm/page_alloc.c |   16 +---------------
- 2 files changed, 16 insertions(+), 15 deletions(-)
+ include/linux/mm_types.h |    1 +
+ mm/page_alloc.c          |    4 +++-
+ 2 files changed, 4 insertions(+), 1 deletions(-)
 
-diff --git a/mm/internal.h b/mm/internal.h
-index 6a697bb..3e2cc3a 100644
---- a/mm/internal.h
-+++ b/mm/internal.h
-@@ -185,6 +185,21 @@ static inline struct page *mem_map_next(struct page *iter,
- #define __paginginit __init
- #endif
- 
-+/* The ALLOC_WMARK bits are used as an index to zone->watermark */
-+#define ALLOC_WMARK_MIN		WMARK_MIN
-+#define ALLOC_WMARK_LOW		WMARK_LOW
-+#define ALLOC_WMARK_HIGH	WMARK_HIGH
-+#define ALLOC_NO_WATERMARKS	0x04 /* don't check watermarks at all */
-+
-+/* Mask to get the watermark bits */
-+#define ALLOC_WMARK_MASK	(ALLOC_NO_WATERMARKS-1)
-+
-+#define ALLOC_HARDER		0x10 /* try to alloc harder */
-+#define ALLOC_HIGH		0x20 /* __GFP_HIGH set */
-+#define ALLOC_CPUSET		0x40 /* check for correct cpuset */
-+
-+int gfp_to_alloc_flags(gfp_t gfp_mask);
-+
- /* Memory initialisation debug and verification */
- enum mminit_level {
- 	MMINIT_WARNING,
+diff --git a/include/linux/mm_types.h b/include/linux/mm_types.h
+index b8bb9a6..a95a202 100644
+--- a/include/linux/mm_types.h
++++ b/include/linux/mm_types.h
+@@ -71,6 +71,7 @@ struct page {
+ 	union {
+ 		pgoff_t index;		/* Our offset within mapping. */
+ 		void *freelist;		/* SLUB: freelist req. slab lock */
++		int reserve;		/* page_alloc: page is a reserve page */
+ 	};
+ 	struct list_head lru;		/* Pageout list, eg. active_list
+ 					 * protected by zone->lru_lock !
 diff --git a/mm/page_alloc.c b/mm/page_alloc.c
-index ebf0af7..72a6be5 100644
+index 72a6be5..b9989c5 100644
 --- a/mm/page_alloc.c
 +++ b/mm/page_alloc.c
-@@ -1345,19 +1345,6 @@ failed:
- 	return NULL;
- }
- 
--/* The ALLOC_WMARK bits are used as an index to zone->watermark */
--#define ALLOC_WMARK_MIN		WMARK_MIN
--#define ALLOC_WMARK_LOW		WMARK_LOW
--#define ALLOC_WMARK_HIGH	WMARK_HIGH
--#define ALLOC_NO_WATERMARKS	0x04 /* don't check watermarks at all */
--
--/* Mask to get the watermark bits */
--#define ALLOC_WMARK_MASK	(ALLOC_NO_WATERMARKS-1)
--
--#define ALLOC_HARDER		0x10 /* try to alloc harder */
--#define ALLOC_HIGH		0x20 /* __GFP_HIGH set */
--#define ALLOC_CPUSET		0x40 /* check for correct cpuset */
--
- #ifdef CONFIG_FAIL_PAGE_ALLOC
- 
- static struct fail_page_alloc_attr {
-@@ -1911,8 +1898,7 @@ void wake_all_kswapd(unsigned int order, struct zonelist *zonelist,
- 		wakeup_kswapd(zone, order);
- }
- 
--static inline int
--gfp_to_alloc_flags(gfp_t gfp_mask)
-+int gfp_to_alloc_flags(gfp_t gfp_mask)
- {
- 	struct task_struct *p = current;
- 	int alloc_flags = ALLOC_WMARK_MIN | ALLOC_CPUSET;
+@@ -1656,8 +1656,10 @@ zonelist_scan:
+ try_this_zone:
+ 		page = buffered_rmqueue(preferred_zone, zone, order,
+ 						gfp_mask, migratetype);
+-		if (page)
++		if (page) {
++			page->reserve = !!(alloc_flags & ALLOC_NO_WATERMARKS);
+ 			break;
++		}
+ this_zone_full:
+ 		if (NUMA_BUILD)
+ 			zlc_mark_zone_full(zonelist, z);
 -- 
 1.7.1.1
 
