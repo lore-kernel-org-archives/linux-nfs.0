@@ -1,50 +1,45 @@
-From: Yudong Gao <stgyd@umich.edu>
-Subject: Re: Implementation of delegation
-Date: Mon, 12 Jul 2010 15:19:26 -0700
-Message-ID: <AANLkTilKhiHmLdssHLhW4_0bzb15cJnvlAMhjC5akPVi@mail.gmail.com>
-References: <AANLkTik1dbBEnyqMEw9snDhjglJiDQJKs4dFdenqXaGJ@mail.gmail.com>
-	<1278971292.14605.2.camel@heimdal.trondhjem.org> <AANLkTimjFbkLIs4GIdR_S06bu7PPOV-JUj5uGAMs7IjG@mail.gmail.com>
-	<1278972475.14605.9.camel@heimdal.trondhjem.org>
+From: Benny Halevy <bhalevy@panasas.com>
+Subject: Re: [pnfs]ds ip
+Date: Tue, 13 Jul 2010 11:32:01 +0300
+Message-ID: <4C3C2481.1090708@panasas.com>
+References: <AANLkTilJTogMkslFT-bGoOJYgGSznHnpi75e6IeCuWzC@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
-Cc: linux-nfs@vger.kernel.org
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
+Cc: linux-pnfs <linux-nfs@vger.kernel.org>
+To: quanli gui <gqlxj1987@gmail.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-vw0-f46.google.com ([209.85.212.46]:33102 "EHLO
-	mail-vw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754357Ab0GLWTr (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 12 Jul 2010 18:19:47 -0400
-Received: by vws5 with SMTP id 5so4928208vws.19
-        for <linux-nfs@vger.kernel.org>; Mon, 12 Jul 2010 15:19:46 -0700 (PDT)
-In-Reply-To: <1278972475.14605.9.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
+Received: from daytona.panasas.com ([67.152.220.89]:2480 "EHLO
+	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1754096Ab0GMIcE (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 13 Jul 2010 04:32:04 -0400
+In-Reply-To: <AANLkTilJTogMkslFT-bGoOJYgGSznHnpi75e6IeCuWzC-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I see! Thanks a lot for the pointer!
+On Jul. 13, 2010, 5:05 +0300, quanli gui <gqlxj1987@gmail.com> wrote:
+> I use 
+> #define dprintk printk
 
-best,
+You don't have to modify the kernel to see the debug prints...
+You can turn the debug prints on and off in run time
+by writing the numeric bitmask (in ASCII) into /proc/sys/sunrpc/nfs_debug
+for example:
+# echo 32767 > /proc/sys/sunrpc/nfs_debug
 
-Yudong
+> to show some messages in the pnfs process. In the pnfs process, the
+> client would use some functions in nfs4filelayoutdev.c to connect with
+> ds. But from the printk messages, I found that the functions that
+> connect to the ds printk the ip message, which is belong to the mds. Do
+> the client only connect to the mds? Do the mds become the storage server
+> which connect to the client? This conficts the pnfs architecture.Please
+> give me some answers. 
 
-On Mon, Jul 12, 2010 at 3:07 PM, Trond Myklebust
-<trond.myklebust@fys.uio.no> wrote:
-> On Mon, 2010-07-12 at 15:00 -0700, Yudong Gao wrote:
->> Hi Trond,
->>
->> Thanks for the prompt reply!
->>
->> I find that in _nfs_do_open(), _nfs4_proc_open(), which do the RPC
->> call to the remote server, is always called before
->> nfs4_opendata_to_nfs4_state(), which will further invoke
->> nfs4_try_open_cached().
->>
->> Does this means that whenever is file is opened, the client always
->> need to talk to the server first?
->
-> The actual RPC call is skipped if the call to can_open_cached() succeeds
-> in nfs4_open_prepare(). In that case, we just grab the sequence, which
-> ensures that we remain serialised w.r.t. CLOSE and OPEN_DOWNGRADE calls.
->
-> Trond
->
->
+The client should communicate with the DS for I/O operations.
+If the MSD has dual function, both as a DS and a MDS, the DS ip address
+may be the same as the MDS's.
+
+Can you give an example of a particular message you're worried about?
+
+What do you have running on the server side?
+
+Benny
