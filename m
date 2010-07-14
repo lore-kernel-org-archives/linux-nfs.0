@@ -1,44 +1,54 @@
 From: andros@netapp.com
-Subject: [PATCH 1/1] SQUASHME pnfs-submit zero layout stateid on last layout segment removal
-Date: Wed, 14 Jul 2010 13:05:08 -0400
-Message-ID: <1279127108-2553-2-git-send-email-andros@netapp.com>
-References: <1279127108-2553-1-git-send-email-andros@netapp.com>
+Subject: [PATCH 1/5] SQUASHME pnfs-submit: pnfs_try_to_commit can release nfs_write_data
+Date: Wed, 14 Jul 2010 15:43:54 -0400
+Message-ID: <1279136638-3097-1-git-send-email-andros@netapp.com>
 Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
 To: bhalevy@panasas.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:19514 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:57527 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754090Ab0GNRFP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 14 Jul 2010 13:05:15 -0400
-In-Reply-To: <1279127108-2553-1-git-send-email-andros@netapp.com>
+	id S1753236Ab0GNTn4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 14 Jul 2010 15:43:56 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 From: Andy Adamson <andros@netapp.com>
 
-Section 12.5.3 RFC 5661
-
-"Once a client has no more layouts on a file, the layout stateid is no longer
-valid and MUST NOT be used. Any attempt to use such a layout stateid will
-result in NFS4ERR_BAD_STATEID."
+So don't reference nfs_write_data.
 
 Signed-off-by: Andy Adamson <andros@netapp.com>
 ---
- fs/nfs/pnfs.c |    1 +
- 1 files changed, 1 insertions(+), 0 deletions(-)
+ fs/nfs/pnfs.c |    6 +++---
+ 1 files changed, 3 insertions(+), 3 deletions(-)
 
 diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 8b26104..3018ed6 100644
+index 3018ed6..56c3af4 100644
 --- a/fs/nfs/pnfs.c
 +++ b/fs/nfs/pnfs.c
-@@ -625,6 +625,7 @@ pnfs_free_layout(struct pnfs_layout_type *lo,
- 		spin_lock(&clp->cl_lock);
- 		list_del_init(&lo->lo_layouts);
- 		spin_unlock(&clp->cl_lock);
-+		pnfs_set_layout_stateid(lo, &zero_stateid);
- 	}
+@@ -1373,7 +1373,7 @@ enum pnfs_try_status
+ pnfs_try_to_commit(struct nfs_write_data *data,
+ 		    const struct rpc_call_ops *call_ops, int sync)
+ {
+-	struct nfs_inode *nfsi = NFS_I(data->inode);
++	struct inode *inode = data->inode;
+ 	struct nfs_server *nfss = NFS_SERVER(data->inode);
+ 	enum pnfs_try_status trypnfs;
  
- 	dprintk("%s:Return\n", __func__);
+@@ -1389,12 +1389,12 @@ pnfs_try_to_commit(struct nfs_write_data *data,
+ 	data->pdata.call_ops = call_ops;
+ 	data->pdata.how = sync;
+ 	data->pdata.lseg = NULL;
+-	trypnfs = nfss->pnfs_curr_ld->ld_io_ops->commit(nfsi->layout,
++	trypnfs = nfss->pnfs_curr_ld->ld_io_ops->commit(NFS_I(inode)->layout,
+ 							sync, data);
+ 	if (trypnfs == PNFS_NOT_ATTEMPTED)
+ 		_pnfs_clear_lseg_from_pages(&data->pages);
+ 	else
+-		nfs_inc_stats(data->inode, NFSIOS_PNFS_COMMIT);
++		nfs_inc_stats(inode, NFSIOS_PNFS_COMMIT);
+ 	dprintk("%s End (trypnfs:%d)\n", __func__, trypnfs);
+ 	return trypnfs;
+ }
 -- 
 1.6.6
 
