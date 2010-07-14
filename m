@@ -1,88 +1,58 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:40906 "EHLO
-	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1751800Ab0G1PKz (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 28 Jul 2010 11:10:55 -0400
-Message-ID: <4C50487C.1040505@panasas.com>
-Date: Wed, 28 Jul 2010 18:10:52 +0300
-From: Boaz Harrosh <bharrosh@panasas.com>
-To: Fred Isaman <iisaman@umich.edu>
-CC: Andy Adamson <andros@netapp.com>, linux-nfs@vger.kernel.org
-Subject: Re: pNFS client structure and function rename suggestions
-References: <DD09EF29-A704-4F17-B917-C01051355CA3@netapp.com>	<4C500FFD.4000206@panasas.com>	<AANLkTikf-9UDhi6_Jg0k8=wV64=JPGVm5T=scQk14xM1@mail.gmail.com>	<4C503AB5.1090204@panasas.com> <AANLkTi=QtN2_HcwHefv2KTQeFa+9QTCUEHvBMUw4RrFr@mail.gmail.com>
-In-Reply-To: <AANLkTi=QtN2_HcwHefv2KTQeFa+9QTCUEHvBMUw4RrFr@mail.gmail.com>
-Content-Type: text/plain; charset=UTF-8
+Received: from mx2.netapp.com ([216.240.18.37]:12353 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754253Ab0GNNSB convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 14 Jul 2010 09:18:01 -0400
+Subject: Re: [PATCH 1/3] NFS: Fix up the fsync code
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Christoph Hellwig <hch@infradead.org>
+Cc: linux-nfs@vger.kernel.org
+In-Reply-To: <20100714070008.GA22884@infradead.org>
+References: <20100712220932.20019.21170.stgit@heimdal.trondhjem.org>
+	 <20100713011306.GA364@infradead.org>
+	 <1279050636.17993.14.camel@heimdal.trondhjem.org>
+	 <20100714070008.GA22884@infradead.org>
+Content-Type: text/plain; charset="UTF-8"
+Date: Wed, 14 Jul 2010 09:17:23 -0400
+Message-ID: <1279113443.3103.10.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 07/28/2010 05:29 PM, Fred Isaman wrote:
-> On Wed, Jul 28, 2010 at 10:12 AM, Boaz Harrosh <bharrosh@panasas.com> wrote:
->> On 07/28/2010 04:48 PM, Fred Isaman wrote:
->>> On Wed, Jul 28, 2010 at 7:09 AM, Boaz Harrosh <bharrosh@panasas.com> wrote:
->>>>> struct nfs4_pnfs_layout_segment => pnfs_layout_range
->>>>
->>>> Isn't this a struct layout4 above?
->>>
->>> No, this is probably the most confusingly named structure of them all,
->>> and one I would strongly urge be changed along the line of Andy's
->>> suggestion.
->>>
->>> Fred
->>>
->>
->> We are like a married couple on a freezing night. Each pulling the blanket
->> to his/her side.
->>
->> I'm trying to pull the blanket to the side. where all these are converted
->> to exactly the names and structures as stated by the standard.
->> That the Linux-pnfs-workgroup tried to invent their own STD is a misfortune
->> which I missed, getting so late into the game.
->>
->> What side of the Bed are you pulling to?
->> I wish you elaborate more, and explain, instead of just saying "NO"
->>
+On Wed, 2010-07-14 at 03:00 -0400, Christoph Hellwig wrote:
+> On Tue, Jul 13, 2010 at 03:50:36PM -0400, Trond Myklebust wrote:
+> > NFS can't distinguish between a datasync and a full sync: a successful
+> > COMMIT operation guarantees that both data+metadata updates are on disk.
+> > For this reason we ignore the 'datasync' parameter in our fsync
+> > implementation.
 > 
-> All I meant that "no, this is not the struct layout4 above."
+> That's not what the datasync parameter means.
 > 
-> There currently exists:
+> Both fsync and fdatasync will commit data and metadata to disk, the
+> questions is how much metadata we need to commit.  For fdatasync it's
+> only the metadata requires to locate the file data on disk, an
+> fsync requires everything (which is the above + timestamps basically).
 > 
-> struct nfs4_pnfs_layout_segment {
-> 	u32 iomode;
-> 	u64 offset;
-> 	u64 length;
-> };
+> I suspect for NFS the difference still doesn't matter, I'd just try
+> to make it clear.
+
+Right. My point was that in NFSv3 and NFSv4, COMMIT always acts like
+fsync(): it commits data + _all_ metadata (i.e. including size
++timestamps) to disk.
+
+The exception is NFSv4.1 with pNFS, where you have an extra
+'LAYOUTCOMMIT' operation that tells the metadata server when to write
+the size+timestamps (because the WRITE and COMMIT operations are sent to
+the data servers). So we might want to distinguish between fsync() and
+fdatasync() when we merge that code.
+
+> > Would it perhaps help if I added a comment to that effect in
+> > nfs_file_fsync() itself?
 > 
-> which is used to hold range information, but which is easy to confuse
-> with struct pnfs_layout_segment.
-> 
+> Yes, comments explaining such higher level concepts are always good.
 
-OK, perhaps the STD failed to define that RANGE structure that got open coded
-in lots of operations. Adding that should be a refinement (use the new type
-where it is open coded). Not the complete re-ordering and invention of
-new structures that carry the same information but different.
+OK. I'll add something to that effect.
 
-> I REALLY want the name nfs4_pnfs_layout_segment changed.
-> 
+Thanks for the review!
 
-OK Agreed *pnfs_layout_range* is a good name. Because anything nfs4_ is expected
-to derive from the STD, and the above is our own invention. Some comments to
-that effect could be nice.
-
-> When possible, I'm all for changing names to coincide with those used
-> in the spec.  But note that those structures are most useful for XDR
-> encoding/decoding, and don't always correspond to the information we
-> need to pass around internally.
-> 
-
-I wish we could, other then such refinements like the new pnfs_layout_range,
-stick closer to the STD. Including an nfs4_layout structure which corresponds
-to the layout4 from RFC.
-
-> Fred
-> 
-
-(I know, words are cheep, I wish I had the time, busy with raid5/6. Just my
- $0.017)
-
-Boaz
+  Trond
