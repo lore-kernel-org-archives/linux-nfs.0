@@ -1,72 +1,79 @@
-From: andros@netapp.com
-Subject: [PATCH 2/5] SQUASHME pnfs-submit remove gather_across_stripes policy
-Date: Wed, 14 Jul 2010 15:43:55 -0400
-Message-ID: <1279136638-3097-2-git-send-email-andros@netapp.com>
-References: <1279136638-3097-1-git-send-email-andros@netapp.com>
-Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
-To: bhalevy@panasas.com
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:57527 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754258Ab0GNTn4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 14 Jul 2010 15:43:56 -0400
-In-Reply-To: <1279136638-3097-1-git-send-email-andros@netapp.com>
-Sender: linux-nfs-owner@vger.kernel.org
+From: Gyorgy Jeney <nog.lkml@gmail.com>
+Subject: Re: NFS over RDMA problem: svcrdma: Error fast registering memory for
+	xprt ffff8803307d7400
+Date: Wed, 14 Jul 2010 23:17:23 +0200
+Message-ID: <AANLkTik-BR1txJIbbzaB8YKJQM5lswbmWpbhKSdeUseg@mail.gmail.com>
+References: <AANLkTinjZfpICMjP1EcU4CPAe1TwxKp1zsk-lwX6fmzA@mail.gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+To: linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org
+Return-path: <linux-rdma-owner@vger.kernel.org>
+In-Reply-To: <AANLkTinjZfpICMjP1EcU4CPAe1TwxKp1zsk-lwX6fmzA-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
+Sender: linux-rdma-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Andy Adamson <andros@netapp.com>
+> I am attempting to use NFS over RDMA (over infiniband), but there is =
+some
+> problem. =A0The NFS filesystem can be mounted on the client, and thin=
+gs
+> will work for some time (can read, modify, etc. the files over the mo=
+unt),
+> but then (at a seemingly random time) the NFS server will dump these
+> lines to the logs:
+>
+> [ 4380.623922] svcrdma: Error fast registering memory for xprt ffff88=
+03307d7400
+> [ 4413.343161] svcrdma: error fast registering xdr for xprt ffff88033=
+19edc00
 
-Unused by the file layout. Will restore.
+Digging into it further, it seems like the Mellanox Infiniband driver
+could somehow be involved.  Adding some trace's to the code, it's obvio=
+us
+something like this is happening:
 
-Signed-off-by: Andy Adamson <andros@netapp.com>
----
- fs/nfs/pnfs.c             |    4 ----
- include/linux/nfs4_pnfs.h |   10 ----------
- 2 files changed, 0 insertions(+), 14 deletions(-)
+At some time sq_cq_reap() is called, which ends up like this:
 
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 56c3af4..d3df8df 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -1191,10 +1191,6 @@ pnfs_getboundary(struct inode *inode)
- 	if (!policy_ops || !policy_ops->get_stripesize)
- 		goto out;
- 
--	/* The default is to not gather across stripes */
--	if (pnfs_ld_gather_across_stripes(nfss->pnfs_curr_ld))
--		goto out;
--
- 	spin_lock(&inode->i_lock);
- 	if (NFS_I(inode)->layout)
- 		stripe_size = policy_ops->get_stripesize(NFS_I(inode)->layout);
-diff --git a/include/linux/nfs4_pnfs.h b/include/linux/nfs4_pnfs.h
-index 9eebbdd..eb9dfe4 100644
---- a/include/linux/nfs4_pnfs.h
-+++ b/include/linux/nfs4_pnfs.h
-@@ -156,9 +156,6 @@ struct layoutdriver_io_operations {
- };
- 
- enum layoutdriver_policy_flags {
--	/* Should the NFS req. gather algorithm cross stripe boundaries? */
--	PNFS_GATHER_ACROSS_STRIPES	= 1 << 1,
--
- 	/* Should the pNFS client commit and return the layout upon a setattr */
- 	PNFS_LAYOUTRET_ON_SETATTR	= 1 << 3,
- };
-@@ -173,13 +170,6 @@ struct layoutdriver_policy_operations {
- 	int (*pg_test)(struct nfs_pageio_descriptor *, struct nfs_page *, struct nfs_page *);
- };
- 
--/* Should the NFS req. gather algorithm cross stripe boundaries? */
--static inline int
--pnfs_ld_gather_across_stripes(struct pnfs_layoutdriver_type *ld)
--{
--	return ld->ld_policy_ops->flags & PNFS_GATHER_ACROSS_STRIPES;
--}
--
- struct pnfs_device {
- 	struct pnfs_deviceid dev_id;
- 	unsigned int  layout_type;
--- 
-1.6.6
+  sq_cq_reap()
+    ib_poll_cq()
+      mlx4_ib_poll_cq()
+        mlx4_ib_poll_one()
+          mlx4_ib_handle_error_cqe()
+            - Which then sets wc->status to IB_WC_WR_FLUSH_ERR rather
+              often, but the killer blow seems to be when
+              IB_WC_REM_ACCESS_ERR is set.
+    - Because of the error previously, sq_cq_reap sets the XPT_CLOSE
+      flag
 
+Then, sometime later:
+
+  fast_reg_read_chunks()
+    svc_rdma_fastreg()
+      svc_rdma_send()
+        svc_rdma_send()
+          - XPT_CLOSE is set and hence -ENOTCONN is returned
+    - Since svc_rdma_fastreg() had an error fast_reg_read_chunks() bail=
+s
+      and the client seems to then hang.
+
+I'd ask the infiband guys, what does IB_WC_WR_FLUSH_ERR and
+IB_WC_REM_ACCESS_ERR mean?  Is it something drastic that should result
+in hangs?
+
+nog.
+
+> Both client and server are running the latest vanilla 2.6.34.1 kernel
+> with Mellanox Connect-X infiniband cards. =A0If more information is
+> required, please do ask.
+>
+> BTW: I can reproduce the problem quite reliably by running the bonnie=
+++
+> "benchmark" on the NFS mounted filesystem.
+>
+> nog.
+>
+> ps: I'm not subscribed to the list, please CC me on all replies.
+--
+To unsubscribe from this list: send the line "unsubscribe linux-rdma" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
