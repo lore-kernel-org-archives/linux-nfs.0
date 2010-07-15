@@ -1,101 +1,40 @@
-From: andros@netapp.com
-Subject: [PATCH 4/4] SQUASHME pnfs-submit nfs4_filelayoutdev.c cleanup
-Date: Thu, 15 Jul 2010 12:33:50 -0400
-Message-ID: <1279211630-6039-4-git-send-email-andros@netapp.com>
-References: <1279211630-6039-1-git-send-email-andros@netapp.com>
- <1279211630-6039-2-git-send-email-andros@netapp.com>
- <1279211630-6039-3-git-send-email-andros@netapp.com>
-Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
-To: bhalevy@panasas.com
+From: Scott Serr <scott-ZQqfhXz8jV/QT0dZR+AlfA@public.gmane.org>
+Subject: newer Linux nfs client freeze under load to OpenSolaris server
+Date: Thu, 15 Jul 2010 10:44:36 -0600 (MDT)
+Message-ID: <20031040.12221279212276848.JavaMail.root@mail>
+References: <20664671.12201279211977122.JavaMail.root@mail>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:2923 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933695Ab0GOQd3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 15 Jul 2010 12:33:29 -0400
-In-Reply-To: <1279211630-6039-3-git-send-email-andros@netapp.com>
+Received: from mail.geeksite.org ([63.227.241.157]:37157 "EHLO
+	mail.geeksite.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S933733Ab0GOQyu (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 15 Jul 2010 12:54:50 -0400
+Received: from localhost (localhost [127.0.0.1])
+	by mail.geeksite.org (Postfix) with ESMTP id 276D036026
+	for <linux-nfs@vger.kernel.org>; Thu, 15 Jul 2010 10:44:37 -0600 (MDT)
+Received: from mail.geeksite.org ([127.0.0.1])
+	by localhost (mail.geeksite.org [127.0.0.1]) (amavisd-new, port 10024)
+	with ESMTP id yZJ31fak0458 for <linux-nfs@vger.kernel.org>;
+	Thu, 15 Jul 2010 10:44:36 -0600 (MDT)
+Received: from mail.geeksite.org (unknown [192.168.0.202])
+	by mail.geeksite.org (Postfix) with ESMTP id DF78B36022
+	for <linux-nfs@vger.kernel.org>; Thu, 15 Jul 2010 10:44:36 -0600 (MDT)
+In-Reply-To: <20664671.12201279211977122.JavaMail.root@mail>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Andy Adamson <andros@netapp.com>
+My Ubuntu 10.04 workstation automounts my OpenSolaris 2008.11 server.  This works and is stable for "light use."  If I hit it hard though with large "cp -a" reads or rsync/unison, then Linux locks up.  The system is non-responsive, the activity light on my switch shows very active until I force the power off on the box.  The activity light to NFS Server is calm during the Linux NFS Client activity.
 
-Cleanup comment formatting and extra whitespace.
+I believe this happened when I ran Ubuntu 9.04.  It does not happen on 2 other boxes: Ubuntu 8.04 and Gentoo ~2009.  These other boxes are on the same switch 1Gb as the NFS Server, the problemed 10.04 workstation has 2 1Gb switches between.
 
-Signed-off-by: Andy Adamson <andros@netapp.com>
----
- fs/nfs/nfs4filelayoutdev.c |   20 +++++++++++---------
- 1 files changed, 11 insertions(+), 9 deletions(-)
+I've tried nfs mount options vers=3 and udp and tcp, none seem to solve the problem.
 
-diff --git a/fs/nfs/nfs4filelayoutdev.c b/fs/nfs/nfs4filelayoutdev.c
-index c2b8a0a..1452710 100644
---- a/fs/nfs/nfs4filelayoutdev.c
-+++ b/fs/nfs/nfs4filelayoutdev.c
-@@ -193,13 +193,11 @@ nfs4_pnfs_ds_create(struct nfs_server *mds_srv, struct nfs4_pnfs_ds *ds)
- 		err = -ENODEV;
- 		goto out_put;
- 	}
--
- 	/*
- 	 * Mask the (possibly) returned EXCHGID4_FLAG_USE_PNFS_MDS pNFS role
- 	 * The is_ds_only_session depends on this.
- 	 */
- 	clp->cl_exchange_flags &= ~EXCHGID4_FLAG_USE_PNFS_MDS;
--
- 	/*
- 	 * Set DS lease equal to the MDS lease, renewal is scheduled in
- 	 * create_session
-@@ -327,8 +325,10 @@ decode_and_add_ds(uint32_t **pp, struct inode *inode)
- 			__func__, len);
- 		goto out_err;
- 	}
--	/* Read the bytes into a temporary buffer */
--	/* XXX: should probably sanity check them */
-+	/*
-+	 * Read the bytes into a temporary buffer
-+	 * XXX: should probably sanity check them
-+	 */
- 	tmp[0] = be32_to_cpup(p++);
- 
- 	len = be32_to_cpup(p++);
-@@ -355,8 +355,7 @@ out_err:
- 	return NULL;
- }
- 
--/* Decode opaque device data and return the result
-- */
-+/* Decode opaque device data and return the result */
- static struct nfs4_file_layout_dsaddr*
- decode_device(struct inode *ino, struct pnfs_device *pdev)
- {
-@@ -476,7 +475,8 @@ decode_and_add_device(struct inode *inode, struct pnfs_device *dev)
- 	return container_of(d, struct nfs4_file_layout_dsaddr, deviceid);
- }
- 
--/* Retrieve the information for dev_id, add it to the list
-+/*
-+ * Retrieve the information for dev_id, add it to the list
-  * of available devices, and return it.
-  */
- struct nfs4_file_layout_dsaddr *
-@@ -533,7 +533,8 @@ get_device_info(struct inode *inode, struct pnfs_deviceid *dev_id)
- 	if (rc)
- 		goto out_free;
- 
--	/* Found new device, need to decode it and then add it to the
-+	/*
-+	 * Found new device, need to decode it and then add it to the
- 	 * list of known devices for this mountpoint.
- 	 */
- 	dsaddr = decode_and_add_device(inode, pdev);
-@@ -560,7 +561,8 @@ nfs4_pnfs_device_item_find(struct nfs_client *clp, struct pnfs_deviceid *id)
- 		container_of(d, struct nfs4_file_layout_dsaddr, deviceid);
- }
- 
--/* Want res = (offset - layout->pattern_offset)/ layout->stripe_unit
-+/*
-+ * Want res = (offset - layout->pattern_offset)/ layout->stripe_unit
-  * Then: ((res + fsi) % dsaddr->stripe_count)
-  */
- static inline u32
--- 
-1.6.6
+I put another 100M switch between my 2 1Gb switches, this seems to work around the problem - no crashing.
 
+Ideas?  Seems harsh that Linux would freeze.
+(I'll try with no switches next.)
+
+Thanks for any ideas,
+Scott
