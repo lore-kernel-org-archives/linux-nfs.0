@@ -1,55 +1,57 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:53257 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:48226 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754888Ab0G2WWj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 29 Jul 2010 18:22:39 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 4/5] nfsd4: fix openmode checking on IO using lock stateid
-Date: Thu, 29 Jul 2010 18:21:23 -0400
-Message-Id: <1280442084-17867-5-git-send-email-bfields@redhat.com>
-In-Reply-To: <1280442084-17867-1-git-send-email-bfields@redhat.com>
-References: <1280442084-17867-1-git-send-email-bfields@redhat.com>
+	id S933589Ab0GOVxg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 15 Jul 2010 17:53:36 -0400
+From: David Howells <dhowells@redhat.com>
+In-Reply-To: <201007152235.22373.arnd@arndb.de>
+References: <201007152235.22373.arnd@arndb.de> <20100715021709.5544.64506.stgit@warthog.procyon.org.uk> <20100715021712.5544.44845.stgit@warthog.procyon.org.uk>
+To: Arnd Bergmann <arnd@arndb.de>
+Cc: dhowells@redhat.com, viro@zeniv.linux.org.uk,
+        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-cifs@vger.kernel.org, linux-kernel@vger.kernel.org,
+        samba-technical@lists.samba.org, linux-ext4@vger.kernel.org
+Subject: Re: [PATCH 02/18] xstat: Add a pair of system calls to make extended file stats available [ver #6]
+Date: Thu, 15 Jul 2010 22:53:27 +0100
+Message-ID: <30646.1279230807@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
 MIME-Version: 1.0
 
-It is legal to perform a write using the lock stateid that was
-originally associated with a read lock, or with a file that was
-originally opened for read, but has since been upgraded.
+Arnd Bergmann <arnd@arndb.de> wrote:
 
-So, when checking the openmode, check the mode associated with the
-open stateid from which the lock was derived.
+> > This was initially proposed as a set of xattrs, but the general preferance
+> > is for an extended stat structure.
+> 
+> I don't think I'd call this general preference. Three of the four
+> are fixed length and could easily be done inside the structure if you
+> leave a bit of space instead of a variable-length field at the end.
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/nfsd/nfs4state.c |    4 +++-
- 1 files changed, 3 insertions(+), 1 deletions(-)
+?
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index d9c8232..b996a4b 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -2779,6 +2779,9 @@ __be32 nfs4_check_openmode(struct nfs4_stateid *stp, int flags)
- {
-         __be32 status = nfserr_openmode;
- 
-+	/* For lock stateid's, we test the parent open, not the lock: */
-+	if (stp->st_openstp)
-+		stp = stp->st_openstp;
- 	if ((flags & WR_STATE) && (!access_permit_write(stp->st_access_bmap)))
-                 goto out;
- 	if ((flags & RD_STATE) && (!access_permit_read(stp->st_access_bmap)))
-@@ -3466,7 +3469,6 @@ alloc_init_lock_stateid(struct nfs4_stateowner *sop, struct nfs4_file *fp, struc
- 	stp->st_stateid.si_fileid = fp->fi_id;
- 	stp->st_stateid.si_generation = 0;
- 	stp->st_vfs_file = open_stp->st_vfs_file; /* FIXME refcount?? */
--	stp->st_access_bmap = open_stp->st_access_bmap;
- 	stp->st_deny_bmap = open_stp->st_deny_bmap;
- 	stp->st_openstp = open_stp;
- 
--- 
-1.7.0.4
+Maybe I wasn't clear: I meant having an extended stat() syscall rather than
+using a bunch of getxattr()'s was the general preference.
 
+> For the volume id, I could not find any file system that requires more
+> than 32 bytes here, which is also reasonable to put into the structure.
+> Make it 36 if you want to cover ascii encoded UUIDs.
+
+You should also include a length.  Volume IDs may be binary rather than
+NUL-terminated strings.
+
+> That's at most 60 bytes for the extensions you're considering already,
+> plus the 152
+
+160, I think.
+
+> you have already is still less than a cache line on
+> some machines. Padding it to 256 bytes would make it nice and round,
+> if you want to be really sure, make it 384 bytes.
+
+Which we currently allocate on the kernel stack, plus up to a couple of kstat
+structs if something like eCryptFS is used.  Admittedly, the base xstat struct
+could be kmalloc()'d instead, but why use up all that space if you don't need
+it?
+
+David
