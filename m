@@ -1,50 +1,57 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from p01c12o148.mxlogic.net ([208.65.145.71]:44415 "EHLO
-	p01c12o148.mxlogic.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756166Ab0G2KKT (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 29 Jul 2010 06:10:19 -0400
-Message-ID: <4C515384.6030905@bluearc.com>
-Date: Thu, 29 Jul 2010 11:10:12 +0100
-From: Andy Chittenden <andyc@bluearc.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: Eric Dumazet <eric.dumazet@gmail.com>,
-        "Linux Kernel Mailing List (linux-kernel@vger.kernel.org)"
-	<linux-kernel@vger.kernel.org>,
-        Trond Myklebust <trond.myklebust@fys.uio.no>,
-        netdev <netdev@vger.kernel.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: nfs client hang
-References: <99613C19B13C5D40914FB8930657FA9303365708DE@uk-ex-mbx1.terastack.bluearc.com>	 <4C4E89D4.8040607@bluearc.com>	 <ABFC24E4C13D81489F7F624E14891C8607DDF8D1E4@uk-ex-mbx1.terastack.bluearc.com> <1280233276.2827.175.camel@edumazet-laptop> <4C4F174C.2000308@oracle.com> <ABFC24E4C13D81489F7F624E14891C8607DDF8D3D0@uk-ex-mbx1.terastack.bluearc.com> <4C506AD0.4070608@oracle.com>
-In-Reply-To: <4C506AD0.4070608@oracle.com>
-Content-Type: text/plain; charset="UTF-8"; format=flowed
+Received: from fieldses.org ([174.143.236.118]:32806 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S933810Ab0GOR3E (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 15 Jul 2010 13:29:04 -0400
+Date: Thu, 15 Jul 2010 13:28:36 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Marc Eshel <eshel@almaden.ibm.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: Linux pNFS status meeting 07/15
+Message-ID: <20100715172836.GC15126@fieldses.org>
+References: <OF01D34025.9BF2DCCC-ON88257760.007510C5-88257760.007530DA@us.ibm.com>
+ <20100714212928.GD8161@fieldses.org>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20100714212928.GD8161@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-  On 2010-07-28 18:37, Chuck Lever wrote:
-> On 07/28/10 03:24 AM, Andy Chittenden wrote:
->> resending as it seems to have been corrupted on LKML!
->>
->>> The RPC client marks the socket closed. and the linger timeout is
->>> cancelled.  At this point, sk_shutdown should be set to zero, correct?
->>> I don't see an xs_error_report() call here, which would confirm that the
->>> socket took a trip through tcp_disconnect().
->>  From my reading of tcp_disconnect(), it calls sk->sk_error_report(sk)
->> unconditionally so as there's no xs_error_report(), that surely means
->> the exact opposite: tcp_disconnect() wasn't called. If it's not
->> called, sk_shutdown is not cleared. And my revised tracing confirmed
->> that it was set to SEND_SHUTDOWN.
-> Sorry, that's what I meant above.
->
-> An xs_error_report() debugging message at that point in the log would
-> confirm that the socket took a trip through tcp_disconnect().  But I
-> don't see such a message.
-I don't see how tcp_disconnect() gets called if the application does a 
-shutdown when the state is TCP_ESTABLISHED (or a myriad of other 
-states). It just seems to send a FIN. Should tcp_disconnect() be called? 
-If so, how? Alternatively, I wonder whether my patch that set 
-sk_shutdown to 0 in tcp_connect_init() is the correct fix after all.
 
--- 
-Andy, BlueArc Engineering
+Notes:
 
+Bruce:
+	- nothing to report (transitioning to new hardware, etc.)
+
+Trond:
+	- did some fsync cleanup
+	- bugfixes to handling of ERR_DELAY on sequence operations.
+	- preparing for rpc changes required for migration.
+		(some discusison here of idempotency problems on
+		migration/reboot)
+
+Benny:
+	- Included Trond's delay/sequence fix
+	(missed some additional discussion)
+
+Andy:
+	- simplification of write_pagelist/read_pagelist prototypes
+	- making sure layouts removed on server reboot
+	- looking at layout commit/reclaim issues in preparation for
+	  discussion at Maastricht.
+	- wants to rename some structures; will mail proposal to list.
+
+Jim Rees:
+	- bugfixing complex-volume patches; not ready to submit to Benny
+	  quite yet.
+
+Steved:
+	- Discussion of RHEL prospects.  When will we have some pnfs
+	  patches that are ready to review?  Concensus seems to be
+	  2.6.36 will be too early.  Ricardo, Benny think 2.6.37
+	  possible to finish up remaining work, squash changes into a
+	  single cleaned-up patch series.  Trond reminds that adequate
+	  time is required before merge window for review, especially
+	  for large change.  Benny volunteering to do squashing.
+
+--b.
