@@ -1,88 +1,146 @@
 From: andros@netapp.com
-Subject: [PATCH 4/4] SQUASHME pnfs-submit remove unnecessary layoutget field
-Date: Thu, 15 Jul 2010 16:58:54 -0400
-Message-ID: <1279227534-3226-5-git-send-email-andros@netapp.com>
+Subject: [PATCH 1/4] SQUASHME pnfs-submit get layoutget stateid from layout in xdr layer
+Date: Thu, 15 Jul 2010 16:58:51 -0400
+Message-ID: <1279227534-3226-2-git-send-email-andros@netapp.com>
 References: <1279227534-3226-1-git-send-email-andros@netapp.com>
- <1279227534-3226-2-git-send-email-andros@netapp.com>
- <1279227534-3226-3-git-send-email-andros@netapp.com>
- <1279227534-3226-4-git-send-email-andros@netapp.com>
 Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
 To: bhalevy@panasas.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
 Received: from mx2.netapp.com ([216.240.18.37]:37399 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S934723Ab0GOU6c (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 15 Jul 2010 16:58:32 -0400
-In-Reply-To: <1279227534-3226-4-git-send-email-andros@netapp.com>
+	id S1758683Ab0GOU6a (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 15 Jul 2010 16:58:30 -0400
+In-Reply-To: <1279227534-3226-1-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 From: Andy Adamson <andros@netapp.com>
 
-Don't need both an inode and a pnfs_layout_type field.
+Set the un-initialized layout stateid from an open stateid.
+
+This pulls the latest stateid from the layout. Fixes bug where
+retry on NFS4ERR_OLD_STATEID, (and any retry) would re-use the same stateid.
 
 Signed-off-by: Andy Adamson <andros@netapp.com>
 ---
- fs/nfs/nfs4proc.c        |    2 +-
- fs/nfs/pnfs.c            |    5 ++---
+ fs/nfs/nfs4xdr.c         |    6 ++++--
+ fs/nfs/pnfs.c            |   25 ++++++++++++++-----------
+ fs/nfs/pnfs.h            |    1 +
  include/linux/pnfs_xdr.h |    1 -
- 3 files changed, 3 insertions(+), 5 deletions(-)
+ 4 files changed, 19 insertions(+), 14 deletions(-)
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index ebe1b49..4aa4fc1 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -5448,7 +5448,7 @@ static void nfs4_pnfs_layoutget_release(void *calldata)
- 	struct nfs4_pnfs_layoutget *lgp = calldata;
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index 9a52050..d542bc2 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -54,6 +54,7 @@
+ #include <linux/pnfs_xdr.h>
+ #include "nfs4_fs.h"
+ #include "internal.h"
++#include "pnfs.h"
  
- 	dprintk("--> %s\n", __func__);
--	pnfs_layout_release(lgp->lo, NULL);
-+	pnfs_layout_release(NFS_I(lgp->args.inode)->layout, NULL);
- 	if (lgp->res.layout.buf != NULL)
- 		free_page((unsigned long) lgp->res.layout.buf);
- 	kfree(calldata);
+ #define NFSDBG_FACILITY		NFSDBG_XDR
+ 
+@@ -1797,6 +1798,7 @@ encode_layoutget(struct xdr_stream *xdr,
+ 		      const struct nfs4_pnfs_layoutget_arg *args,
+ 		      struct compound_hdr *hdr)
+ {
++	nfs4_stateid stateid;
+ 	__be32 *p;
+ 
+ 	p = reserve_space(xdr, 44 + NFS4_STATEID_SIZE);
+@@ -1807,8 +1809,8 @@ encode_layoutget(struct xdr_stream *xdr,
+ 	p = xdr_encode_hyper(p, args->lseg.offset);
+ 	p = xdr_encode_hyper(p, args->lseg.length);
+ 	p = xdr_encode_hyper(p, args->minlength);
+-	p = xdr_encode_opaque_fixed(p, &args->stateid.u.data,
+-				    NFS4_STATEID_SIZE);
++	pnfs_get_layout_stateid(&stateid, NFS_I(args->inode)->layout);
++	p = xdr_encode_opaque_fixed(p, &stateid.u.data, NFS4_STATEID_SIZE);
+ 	*p = cpu_to_be32(args->maxcount);
+ 
+ 	dprintk("%s: 1st type:0x%x iomode:%d off:%lu len:%lu mc:%d\n",
 diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index edcbe46..7a30eb0 100644
+index b9ada8e..9b72c00 100644
 --- a/fs/nfs/pnfs.c
 +++ b/fs/nfs/pnfs.c
-@@ -524,7 +524,6 @@ send_layoutget(struct inode *ino,
- 		pnfs_layout_release(lo, NULL);
- 		return -ENOMEM;
- 	}
--	lgp->lo = lo;
- 	lgp->args.minlength = NFS4_MAX_UINT64;
- 	lgp->args.maxcount = PNFS_LAYOUT_MAXSIZE;
- 	lgp->args.lseg.iomode = range->iomode;
-@@ -1003,7 +1002,7 @@ void
- pnfs_get_layout_done(struct nfs4_pnfs_layoutget *lgp, int rpc_status)
- {
- 	struct pnfs_layout_segment *lseg = NULL;
--	struct nfs_inode *nfsi = PNFS_NFS_INODE(lgp->lo);
-+	struct nfs_inode *nfsi = NFS_I(lgp->args.inode);
- 	time_t suspend = 0;
+@@ -465,7 +465,7 @@ pnfs_set_layout_stateid(struct pnfs_layout_type *lo,
+ 	write_sequnlock(&lo->seqlock);
+ }
  
- 	dprintk("-->%s\n", __func__);
-@@ -1106,7 +1105,7 @@ out:
- int
- pnfs_layout_process(struct nfs4_pnfs_layoutget *lgp)
+-static void
++void
+ pnfs_get_layout_stateid(nfs4_stateid *dst, struct pnfs_layout_type *lo)
  {
--	struct pnfs_layout_type *lo = lgp->lo;
-+	struct pnfs_layout_type *lo = NFS_I(lgp->args.inode)->layout;
- 	struct nfs4_pnfs_layoutget_res *res = &lgp->res;
- 	struct pnfs_layout_segment *lseg;
- 	struct inode *ino = PNFS_INODE(lo);
+ 	int seq;
+@@ -482,18 +482,21 @@ pnfs_get_layout_stateid(nfs4_stateid *dst, struct pnfs_layout_type *lo)
+ }
+ 
+ static void
+-pnfs_layout_from_open_stateid(nfs4_stateid *dst, struct nfs4_state *state)
++pnfs_layout_from_open_stateid(struct pnfs_layout_type *lo,
++			      struct nfs4_state *state)
+ {
+ 	int seq;
+ 
+ 	dprintk("--> %s\n", __func__);
+ 
+-	do {
+-		seq = read_seqbegin(&state->seqlock);
+-		memcpy(dst->u.data, state->stateid.u.data,
+-				sizeof(state->stateid.u.data));
+-	} while (read_seqretry(&state->seqlock, seq));
+-
++	write_seqlock(&lo->seqlock);
++	if (!memcmp(lo->stateid.u.data, &zero_stateid, NFS4_STATEID_SIZE))
++		do {
++			seq = read_seqbegin(&state->seqlock);
++			memcpy(lo->stateid.u.data, state->stateid.u.data,
++					sizeof(state->stateid.u.data));
++		} while (read_seqretry(&state->seqlock, seq));
++	write_sequnlock(&lo->seqlock);
+ 	dprintk("<-- %s\n", __func__);
+ }
+ 
+@@ -540,11 +543,11 @@ send_layoutget(struct inode *ino,
+ 					FMODE_READ: FMODE_WRITE);
+ 			BUG_ON(!ctx);
+ 		}
+-		pnfs_layout_from_open_stateid(&lgp->args.stateid, ctx->state);
++		/* Set the layout stateid from the open stateid */
++		pnfs_layout_from_open_stateid(NFS_I(ino)->layout, ctx->state);
+ 		if (!oldctx)
+ 			put_nfs_open_context(ctx);
+-	} else
+-		pnfs_get_layout_stateid(&lgp->args.stateid, lo);
++	}
+ 
+ 	/* Retrieve layout information from server */
+ 	status = pnfs4_proc_layoutget(lgp);
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index d5dc2e2..87b6303 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -65,6 +65,7 @@ void pnfs_set_layout_stateid(struct pnfs_layout_type *lo,
+ 			     const nfs4_stateid *stateid);
+ void pnfs_destroy_layout(struct nfs_inode *);
+ void put_layout(struct inode *inode);
++void pnfs_get_layout_stateid(nfs4_stateid *dst, struct pnfs_layout_type *lo);
+ 
+ #define PNFS_EXISTS_LDIO_OP(srv, opname) ((srv)->pnfs_curr_ld &&	\
+ 				     (srv)->pnfs_curr_ld->ld_io_ops &&	\
 diff --git a/include/linux/pnfs_xdr.h b/include/linux/pnfs_xdr.h
-index f9c9950..c9a01b3 100644
+index d3d0d78..5b8f4c3 100644
 --- a/include/linux/pnfs_xdr.h
 +++ b/include/linux/pnfs_xdr.h
-@@ -49,7 +49,6 @@ struct nfs4_pnfs_layoutget_res {
+@@ -35,7 +35,6 @@ struct nfs4_pnfs_layoutget_arg {
+ 	struct nfs4_pnfs_layout_segment lseg;
+ 	__u64 minlength;
+ 	__u32 maxcount;
+-	nfs4_stateid stateid;
+ 	struct inode *inode;
+ 	struct nfs4_sequence_args seq_args;
  };
- 
- struct nfs4_pnfs_layoutget {
--	struct pnfs_layout_type *lo;
- 	struct nfs4_pnfs_layoutget_arg args;
- 	struct nfs4_pnfs_layoutget_res res;
- 	struct pnfs_layout_segment **lsegpp;
 -- 
 1.6.6
 
