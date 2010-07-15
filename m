@@ -1,103 +1,78 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from ipmail04.adl6.internode.on.net ([150.101.137.141]:7109 "EHLO
-	ipmail04.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1750791Ab0GJFS4 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 10 Jul 2010 01:18:56 -0400
-Received: from ricks-laptop.localnet (Ricks-LAPTOP.localnet [192.168.0.14])
-	by mightylegends.org (Postfix) with ESMTPA id 74211733CB4
-	for <linux-nfs@vger.kernel.org>; Sat, 10 Jul 2010 14:43:51 +0930 (CST)
-Content-Type: text/plain; charset=us-ascii; format=flowed; delsp=yes
-To: linux-nfs@vger.kernel.org
-Date: Sat, 10 Jul 2010 14:43:51 +0930
-Subject: Memory leaks in rpc.mountd
-From: "Rick Harris" <rickfharris@yahoo.com.au>
-Message-ID: <op.vfl3hdllxjjcjd@ricks-laptop.localnet>
+Received: from moutng.kundenserver.de ([212.227.17.8]:59654 "EHLO
+	moutng.kundenserver.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S934652Ab0GOUfs (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 15 Jul 2010 16:35:48 -0400
+From: Arnd Bergmann <arnd@arndb.de>
+To: David Howells <dhowells@redhat.com>
+Subject: Re: [PATCH 02/18] xstat: Add a pair of system calls to make extended file stats available [ver #6]
+Date: Thu, 15 Jul 2010 22:35:22 +0200
+Cc: viro@zeniv.linux.org.uk, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-cifs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, samba-technical@lists.samba.org,
+        linux-ext4@vger.kernel.org
+References: <20100715021709.5544.64506.stgit@warthog.procyon.org.uk> <20100715021712.5544.44845.stgit@warthog.procyon.org.uk>
+In-Reply-To: <20100715021712.5544.44845.stgit@warthog.procyon.org.uk>
+Content-Type: Text/Plain;
+  charset="utf-8"
+Message-Id: <201007152235.22373.arnd@arndb.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Hi all,
+On Thursday 15 July 2010 04:17:12 David Howells wrote:
+> (10) Can be extended by using more request flags and tagging further data after
+>      the end of the standard return data.  Such things as the following could
+>      be returned:
+> 
+>         - BSD st_flags or FS_IOC_GETFLAGS.
+>         - Volume ID / Remote Device ID [Steve French].
+>         - Time granularity (NFSv4 time_delta) [Steve French].
+>         - Mask of features available on file (eg: ACLs, seclabel) [Brad Boyer,
+>           Michael Kerrisk].
+> 
+> This was initially proposed as a set of xattrs, but the general preferance is
+> for an extended stat structure.
 
-I'm currently experiencing some large memory leaks on an NFS server when  
-copying files to it from an NFS client.
-This happens for both NFSv3 and NFSv4, am currently using an NFSv4 setup.
-Installed software and kernel versions below...
+I don't think I'd call this general preference. Three of the four
+are fixed length and could easily be done inside the structure if you
+leave a bit of space instead of a variable-length field at the end.
 
+For the volume id, I could not find any file system that requires more
+than 32 bytes here, which is also reasonable to put into the structure.
+Make it 36 if you want to cover ascii encoded UUIDs.
 
-SERVER:
-Kernel 2.6.32.9
-CONFIG_NFS_FS=y
-# CONFIG_NFS_V3 is not set
-CONFIG_NFS_V4=y
-# CONFIG_NFS_V4_1 is not set
-# CONFIG_ROOT_NFS is not set
-CONFIG_NFSD=y
-CONFIG_NFSD_V3=y
-# CONFIG_NFSD_V3_ACL is not set
-CONFIG_NFSD_V4=y
-CONFIG_NFS_COMMON=y
+That's at most 60 bytes for the extensions you're considering already,
+plus the 152 you have already is still less than a cache line on
+some machines. Padding it to 256 bytes would make it nice and round,
+if you want to be really sure, make it 384 bytes.
 
-libtirpc-0.2.0
-rpcbind-0.2.0
-nfs-utils-1.2.2
+> The following structures are defined for the use of these new system calls:
+> 
+>         struct xstat_parameters {
+>                 unsigned long long      request_mask;
+>         };
 
+I'd also still argue that 32 bits would be better since you can
+put them into the argument list instead of having to use a pointer
+to xstat_parameters. You only use 15 bits so far, so the remaining
+17 bits should go a long way. It's not as important to me as the
+previous point though.
 
-CLIENT:
-Kernel 2.6.34
-CONFIG_NFS_FS=y
-# CONFIG_NFS_V3 is not set
-CONFIG_NFS_V4=y
-# CONFIG_NFS_V4_1 is not set
-CONFIG_NFSD=y
-CONFIG_NFSD_V3=y
-# CONFIG_NFSD_V3_ACL is not set
-CONFIG_NFSD_V4=y
-CONFIG_NFS_COMMON=y
+> The system calls are:
+> 
+>         ssize_t ret = xstat(int dfd,
+>                             const char *filename,
+>                             unsigned flags,
+>                             const struct xstat_parameters *params,
+>                             struct xstat *buffer,
+>                             size_t buflen);
 
-libtirpc-0.2.0
-rpcbind-0.2.0
-nfs-utils-1.2.2
+The resulting syscall I'd hope for would be
 
+int xstat(dfd, const char *filename, unsigned flags,
+	  unsigned mask, struct xstat *buf);
 
-Output of kmemleak report...
+Everything else in your patch looks very good and has my full support.
 
-unreferenced object 0xf4b2ec60 (size 32):
-   comm "rpc.mountd", pid 1814, jiffies 4294759177
-   hex dump (first 32 bytes):
-     ab 82 c0 3b c4 54 4f e9 a5 c9 ee db 43 71 fc 38  ...;.TO.....Cq.8
-     00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00  ................
-   backtrace:
-     [<c12e7d79>] kmemleak_alloc+0x59/0xc0
-     [<c106ac5a>] __kmalloc+0xfa/0x110
-     [<c105787f>] kmemdup+0x1f/0x70
-     [<c113dfb1>] svc_export_parse+0x621/0x770
-     [<c12db79d>] cache_do_downcall+0x2d/0x40
-     [<c12dc2f1>] cache_write+0x91/0xe0
-     [<c12dc392>] cache_write_procfs+0x22/0x30
-     [<c10a6e34>] proc_reg_write+0x44/0x60
-     [<c106fbcc>] vfs_write+0x9c/0x160
-     [<c106fd4d>] sys_write+0x3d/0x70
-     [<c1002c48>] sysenter_do_call+0x12/0x26
-     [<ffffffff>] 0xffffffff
-
-
-The test case is copying a 1.5GB file from the nfs client to the server.
-It literally takes only a minute for the server's 1.2GB of memory to be  
-almost totally exhausted down to around 5MB.
-The copying process hangs, then resumes many times along the way until it  
-does successfully finish around 4 minutes later.
-The consumed memory is then not freed and the server's memory remains  
-depleted to almost nothing.
-The memory is never completely exhausted so it never starts to swap ?
-
-Reading from server works fine with no memory loss, albeit a much slower  
-transfer rate.
-
-This started happening after a kernel upgrade on the server from 2.6.20.7  
-to 2.6.29.5, but is still occurring with the latest kernels.
-Hope the above info helps, I'm willing to try any patches that may get  
-thrown my way.
-
-
-Cheers,
-Rick
+	Arnd
