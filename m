@@ -1,96 +1,93 @@
-From: sfaibish <sfaibish@emc.com>
-Subject: Re: Linux pNFS status meeting 07/15
-Date: Thu, 15 Jul 2010 16:26:02 -0400
-Message-ID: <op.vfwi1ojxunckof@usensfaibisl2e.eng.emc.com>
-References: <OF01D34025.9BF2DCCC-ON88257760.007510C5-88257760.007530DA@us.ibm.com> <20100714212928.GD8161@fieldses.org> <20100715172836.GC15126@fieldses.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-15;
-	format=flowed	delsp=yes
-Cc: linux-nfs@vger.kernel.org, "nfsv4 list" <nfsv4@ietf.org>
-To: "J. Bruce Fields" <bfields@fieldses.org>,
-	"Marc Eshel" <eshel@almaden.ibm.com>
+From: andros@netapp.com
+Subject: [PATCH 3/4] SQUASHME pnfs-submit remove unnecessary layoutreturn field
+Date: Thu, 15 Jul 2010 16:58:53 -0400
+Message-ID: <1279227534-3226-4-git-send-email-andros@netapp.com>
+References: <1279227534-3226-1-git-send-email-andros@netapp.com>
+ <1279227534-3226-2-git-send-email-andros@netapp.com>
+ <1279227534-3226-3-git-send-email-andros@netapp.com>
+Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
+To: bhalevy@panasas.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mexforward.lss.emc.com ([128.222.32.20]:24956 "EHLO
-	mexforward.lss.emc.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S934652Ab0GOU0R (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 15 Jul 2010 16:26:17 -0400
-In-Reply-To: <20100715172836.GC15126@fieldses.org>
+Received: from mx2.netapp.com ([216.240.18.37]:37399 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S934693Ab0GOU6c (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 15 Jul 2010 16:58:32 -0400
+In-Reply-To: <1279227534-3226-3-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-=46all BAT update
-Hotel reservation is posted at:
-http://www.starwoodmeeting.com/Book/NFSv4Bakeathon
+From: Andy Adamson <andros@netapp.com>
 
-I will update the webpage later today at:
-http://www.citi.umich.edu/projects/nfsv4/citi_bakeathon/15th_nfsv4_bake=
-athon.html
+Don't need both an inode and a pnfs_layout_type field.
 
-/Sorin
+Signed-off-by: Andy Adamson <andros@netapp.com>
+---
+ fs/nfs/callback_proc.c   |    1 -
+ fs/nfs/nfs4proc.c        |    9 +++++----
+ fs/nfs/pnfs.c            |    1 -
+ include/linux/pnfs_xdr.h |    1 -
+ 4 files changed, 5 insertions(+), 7 deletions(-)
 
+diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
+index d999ea8..e2ea2be 100644
+--- a/fs/nfs/callback_proc.c
++++ b/fs/nfs/callback_proc.c
+@@ -274,7 +274,6 @@ static int pnfs_recall_layout(void *data)
+ 	lrp->args.return_type = rl.cbl_recall_type;
+ 	lrp->args.lseg = rl.cbl_seg;
+ 	lrp->args.inode = inode;
+-	lrp->lo = NULL;
+ 	pnfs4_proc_layoutreturn(lrp, true);
+ 
+ out:
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 288025e..ebe1b49 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -5660,14 +5660,15 @@ static void nfs4_pnfs_layoutreturn_done(struct rpc_task *task, void *calldata)
+ static void nfs4_pnfs_layoutreturn_release(void *calldata)
+ {
+ 	struct nfs4_pnfs_layoutreturn *lrp = calldata;
++	struct pnfs_layout_type *lo = NFS_I(lrp->args.inode)->layout;
+ 
+ 	dprintk("--> %s return_type %d lo %p\n", __func__,
+-		lrp->args.return_type, lrp->lo);
++		lrp->args.return_type, lo);
+ 
+-	if (lrp->lo && (lrp->args.return_type == RETURN_FILE)) {
++	if (lrp->args.return_type == RETURN_FILE) {
+ 		if (!lrp->res.lrs_present)
+-			pnfs_set_layout_stateid(lrp->lo, &zero_stateid);
+-		pnfs_layout_release(lrp->lo, &lrp->args.lseg);
++			pnfs_set_layout_stateid(lo, &zero_stateid);
++		pnfs_layout_release(lo, &lrp->args.lseg);
+ 	}
+ 	kfree(calldata);
+ 	dprintk("<-- %s\n", __func__);
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index ea508bf..edcbe46 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -682,7 +682,6 @@ return_layout(struct inode *ino, struct nfs4_pnfs_layout_segment *range,
+ 	lrp->args.return_type = type;
+ 	lrp->args.lseg = *range;
+ 	lrp->args.inode = ino;
+-	lrp->lo = lo;
+ 
+ 	status = pnfs4_proc_layoutreturn(lrp, wait);
+ out:
+diff --git a/include/linux/pnfs_xdr.h b/include/linux/pnfs_xdr.h
+index 185fade..f9c9950 100644
+--- a/include/linux/pnfs_xdr.h
++++ b/include/linux/pnfs_xdr.h
+@@ -105,7 +105,6 @@ struct nfs4_pnfs_layoutreturn_res {
+ };
+ 
+ struct nfs4_pnfs_layoutreturn {
+-	struct pnfs_layout_type *lo;
+ 	struct nfs4_pnfs_layoutreturn_arg args;
+ 	struct nfs4_pnfs_layoutreturn_res res;
+ 	struct rpc_cred *cred;
+-- 
+1.6.6
 
-On Thu, 15 Jul 2010 13:28:36 -0400, J. Bruce Fields <bfields@fieldses.o=
-rg> =20
-wrote:
-
->
-> Notes:
->
-> Bruce:
-> 	- nothing to report (transitioning to new hardware, etc.)
->
-> Trond:
-> 	- did some fsync cleanup
-> 	- bugfixes to handling of ERR_DELAY on sequence operations.
-> 	- preparing for rpc changes required for migration.
-> 		(some discusison here of idempotency problems on
-> 		migration/reboot)
->
-> Benny:
-> 	- Included Trond's delay/sequence fix
-> 	(missed some additional discussion)
->
-> Andy:
-> 	- simplification of write_pagelist/read_pagelist prototypes
-> 	- making sure layouts removed on server reboot
-> 	- looking at layout commit/reclaim issues in preparation for
-> 	  discussion at Maastricht.
-> 	- wants to rename some structures; will mail proposal to list.
->
-> Jim Rees:
-> 	- bugfixing complex-volume patches; not ready to submit to Benny
-> 	  quite yet.
->
-> Steved:
-> 	- Discussion of RHEL prospects.  When will we have some pnfs
-> 	  patches that are ready to review?  Concensus seems to be
-> 	  2.6.36 will be too early.  Ricardo, Benny think 2.6.37
-> 	  possible to finish up remaining work, squash changes into a
-> 	  single cleaned-up patch series.  Trond reminds that adequate
-> 	  time is required before merge window for review, especially
-> 	  for large change.  Benny volunteering to do squashing.
->
-> --b.
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" =
-in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->
->
-
-
-
---=20
-Best Regards
-
-Sorin Faibish
-Corporate Distinguished Engineer
-Network Storage Group
-
-         EMC=B2
-where information lives
-
-Phone: 508-435-1000 x 48545
-Cellphone: 617-510-0422
-Email : sfaibish@emc.com
