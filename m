@@ -1,7 +1,7 @@
 From: David Howells <dhowells@redhat.com>
-Subject: [PATCH 04/18] xstat: AFS: Return extended attributes [ver #6]
-Date: Thu, 15 Jul 2010 03:17:14 +0100
-Message-ID: <20100715021714.5544.76201.stgit@warthog.procyon.org.uk>
+Subject: [PATCH 05/18] xstat: eCryptFS: Return extended attributes [ver #6]
+Date: Thu, 15 Jul 2010 03:17:15 +0100
+Message-ID: <20100715021715.5544.83732.stgit@warthog.procyon.org.uk>
 References: <20100715021709.5544.64506.stgit@warthog.procyon.org.uk>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -23,47 +23,31 @@ Sender: samba-technical-bounces@lists.samba.org
 Errors-To: samba-technical-bounces@lists.samba.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Return extended attributes from the AFS filesystem.  This includes the
-following:
+Return extended attributes from the eCryptFS filesystem, dredged up from the
+lower filesystem.
 
- (1) The vnode uniquifier as st_gen.
-
- (2) The data version number as st_data_version.
-
- (3) FS_AUTOMOUNT_FL on mountpoint directories.
+Possibly eCryptFS should also set FS_COMPR_FL on its compressed files.
 
 Signed-off-by: David Howells <dhowells@redhat.com>
 ---
 
- fs/afs/inode.c |   13 ++++++++-----
- 1 files changed, 8 insertions(+), 5 deletions(-)
+ fs/ecryptfs/inode.c |    6 ++++--
+ 1 files changed, 4 insertions(+), 2 deletions(-)
 
-diff --git a/fs/afs/inode.c b/fs/afs/inode.c
-index ee3190a..02f115f 100644
---- a/fs/afs/inode.c
-+++ b/fs/afs/inode.c
-@@ -300,16 +300,19 @@ error_unlock:
- /*
-  * read the attributes of an inode
-  */
--int afs_getattr(struct vfsmount *mnt, struct dentry *dentry,
--		      struct kstat *stat)
-+int afs_getattr(struct vfsmount *mnt, struct dentry *dentry, struct kstat *stat)
- {
--	struct inode *inode;
--
--	inode = dentry->d_inode;
-+	struct inode *inode = dentry->d_inode;
+diff --git a/fs/ecryptfs/inode.c b/fs/ecryptfs/inode.c
+index 31ef525..41bc407 100644
+--- a/fs/ecryptfs/inode.c
++++ b/fs/ecryptfs/inode.c
+@@ -994,8 +994,10 @@ int ecryptfs_getattr(struct vfsmount *mnt, struct dentry *dentry,
+ 	struct kstat lower_stat;
+ 	int rc;
  
- 	_enter("{ ino=%lu v=%u }", inode->i_ino, inode->i_generation);
- 
- 	generic_fillattr(inode, stat);
-+
-+	stat->result_mask |= XSTAT_REQUEST_GEN | XSTAT_REQUEST_DATA_VERSION;
-+	stat->gen = inode->i_generation;
-+	stat->data_version = inode->i_version;
-+	if (test_bit(AFS_VNODE_MOUNTPOINT, &AFS_FS_I(inode)->flags))
-+		stat->inode_flags |= FS_AUTOMOUNT_FL;
- 	return 0;
- }
- 
+-	rc = vfs_getattr(ecryptfs_dentry_to_lower_mnt(dentry),
+-			 ecryptfs_dentry_to_lower(dentry), &lower_stat);
++	lower_stat.query_flags = stat->query_flags;
++	lower_stat.request_mask = stat->request_mask | XSTAT_REQUEST_BLOCKS;
++	rc = vfs_xgetattr(ecryptfs_dentry_to_lower_mnt(dentry),
++			  ecryptfs_dentry_to_lower(dentry), &lower_stat);
+ 	if (!rc) {
+ 		generic_fillattr(dentry->d_inode, stat);
+ 		stat->blocks = lower_stat.blocks;
