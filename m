@@ -1,14 +1,16 @@
 From: andros@netapp.com
 Subject: [PATCH 1/1] SQUASHME pnfs-submit pnfs operations use new nfs4_sequence_done
-Date: Fri, 16 Jul 2010 11:56:36 -0400
-Message-ID: <1279295797-4113-1-git-send-email-andros@netapp.com>
+Date: Fri, 16 Jul 2010 11:56:37 -0400
+Message-ID: <1279295797-4113-2-git-send-email-andros@netapp.com>
+References: <1279295797-4113-1-git-send-email-andros@netapp.com>
 Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
 To: bhalevy@panasas.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
 Received: from mx2.netapp.com ([216.240.18.37]:19909 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S965894Ab0GPP5N (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	id S965898Ab0GPP5N (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
 	Fri, 16 Jul 2010 11:57:13 -0400
+In-Reply-To: <1279295797-4113-1-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
