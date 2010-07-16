@@ -1,117 +1,68 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:21965 "EHLO
-	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1751723Ab0GTEeB (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 20 Jul 2010 00:34:01 -0400
-Message-ID: <4C452736.7010201@panasas.com>
-Date: Tue, 20 Jul 2010 07:33:58 +0300
-From: Benny Halevy <bhalevy@panasas.com>
-To: andros@netapp.com
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 4/7] SQUASHME pnfs-submit consolidate write_pagelist parameters
-References: <1279210434-2772-1-git-send-email-andros@netapp.com> <1279210434-2772-2-git-send-email-andros@netapp.com> <1279210434-2772-3-git-send-email-andros@netapp.com> <1279210434-2772-4-git-send-email-andros@netapp.com> <1279210434-2772-5-git-send-email-andros@netapp.com> <4C45257D.7000507@panasas.com>
-In-Reply-To: <4C45257D.7000507@panasas.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from woodbine.london.02.net ([87.194.255.145]:33177 "EHLO
+	woodbine.london.02.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S965798Ab0GPPUW (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 16 Jul 2010 11:20:22 -0400
+Received: from [192.168.1.65] (87.194.12.203) by woodbine.london.02.net (8.5.124.03)
+        id 4C1F980300D8110B for linux-nfs@vger.kernel.org; Fri, 16 Jul 2010 16:20:21 +0100
+Message-ID: <4C4078AE.5070300@limepepper.co.uk>
+Date: Fri, 16 Jul 2010 16:20:14 +0100
+From: Tom H <tom@limepepper.co.uk>
+To: linux-nfs@vger.kernel.org
+Subject: why do attempts to access a nfs v3 filesystem (ro,soft) block the
+ process for minutes at a time? (when the nfs server is down)
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Jul. 20, 2010, 7:26 +0300, Benny Halevy <bhalevy@panasas.com> wrote:
-> On Jul. 15, 2010, 19:13 +0300, andros@netapp.com wrote:
->> From: Andy Adamson <andros@netapp.com>
->>
->> Remove the numpages calculation which is not used by the file layout driver.
->> Layout drivers that need the number of pages can call nfs_page_array_len in
->> their write_pagelist operation.
->>
->> NOTE: API change.
->>
->> Signed-off-by: Andy Adamson <andros@netapp.com>
->> ---
->>  fs/nfs/pnfs.c             |   24 +++---------------------
->>  include/linux/nfs4_pnfs.h |    5 +----
->>  2 files changed, 4 insertions(+), 25 deletions(-)
->>
->> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
->> index 576946b..51bd66f 100644
->> --- a/fs/nfs/pnfs.c
->> +++ b/fs/nfs/pnfs.c
->> @@ -1271,39 +1271,21 @@ enum pnfs_try_status
->>  pnfs_try_to_write_data(struct nfs_write_data *wdata,
->>  			const struct rpc_call_ops *call_ops, int how)
->>  {
->> -	struct nfs_writeargs *args = &wdata->args;
->>  	struct inode *inode = wdata->inode;
->>  	enum pnfs_try_status trypnfs;
->>  	struct nfs_server *nfss = NFS_SERVER(inode);
->> -	struct nfs_inode *nfsi = NFS_I(inode);
->>  	struct pnfs_layout_segment *lseg = wdata->req->wb_lseg;
->> -	int numpages;
->>  
->>  	wdata->pdata.call_ops = call_ops;
->>  	wdata->pdata.how = how;
->>  
->> -	dprintk("%s: Writing ino:%lu %u@%llu\n", __func__,
->> -		inode->i_ino, args->count, args->offset);
->> +	dprintk("%s: Writing ino:%lu %u@%llu (how %d)\n", __func__,
->> +		inode->i_ino, wdata->args.count, wdata->args.offset, how);
->>  
->>  	get_lseg(lseg);
->>  
->> -	/* Determine number of pages
->> -	 */
->> -	numpages = nfs_page_array_len(args->pgbase, args->count);
-> 
-> Andy, removing this from the interface is a bit problematic
-> since nfs_page_array_len is private to the nfs module and I want to leave
-> the logic there rather than copying it to the layout driver.
-> Also, we still pass in its equivalent to read_pagelist so for symmetry
-> reasons it would be cleaner to pass to to the write path as well.
 
-and we should use nfs_page_array_len for the read path as well.
-In any case the calculation is straight forward so we should either do
-it in the generic layer in both cases or neither.
+(apologies for the cross post from the deprecated list)
 
-Benny
+Hi all,
 
-> 
-> Benny
-> 
->> -
->> -	dprintk("%s: Calling layout driver (how %d) write with %d pages\n",
->> -		__func__, how, numpages);
->> -
->>  	wdata->pdata.lseg = lseg;
->> -	trypnfs = nfss->pnfs_curr_ld->ld_io_ops->write_pagelist(
->> -							nfsi->layout,
->> -							args->pages,
->> -							args->pgbase,
->> -							numpages,
->> -							(loff_t)args->offset,
->> -							args->count,
->> -							how,
->> -							wdata);
->> +	trypnfs = nfss->pnfs_curr_ld->ld_io_ops->write_pagelist(wdata, how);
->>  
->>  	if (trypnfs == PNFS_NOT_ATTEMPTED) {
->>  		wdata->pdata.lseg = NULL;
->> diff --git a/include/linux/nfs4_pnfs.h b/include/linux/nfs4_pnfs.h
->> index b379225..13f71ad 100644
->> --- a/include/linux/nfs4_pnfs.h
->> +++ b/include/linux/nfs4_pnfs.h
->> @@ -130,10 +130,7 @@ struct layoutdriver_io_operations {
->>  	enum pnfs_try_status
->>  	(*read_pagelist) (struct nfs_read_data *nfs_data, unsigned nr_pages);
->>  	enum pnfs_try_status
->> -	(*write_pagelist) (struct pnfs_layout_type *layoutid,
->> -			   struct page **pages, unsigned int pgbase,
->> -			   unsigned nr_pages, loff_t offset, size_t count,
->> -			   int sync, struct nfs_write_data *nfs_data);
->> +	(*write_pagelist) (struct nfs_write_data *nfs_data, int how);
->>  
->>  	/* Consistency ops */
->>  	/* 2 problems:
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+I have a web server which serves some content from an nfs filesystem
+mounted like so;
+nfsserver1:/somemount /var/www/html/somefiles  nfs     rw,soft
+             0 0
+
+# mount | grep nfs
+nfsserver1:/somemount on /var/www/html/somefiles type nfs
+(ro,soft,addr=xx.xx.xx.xx)
+
+According to the documentation, an NFS operation on a soft mount should
+wait for a "major timeout" and then report "server not responding" to
+syslog and return an error. where a major timeout is after default
+retrans=3 retransmissions.
+
+I understand the process to be like this;
+call --->0.7 secs --->retransmission--->1.4
+secs--->retransmission--->2.8 secs--->server not responding(major timeout)
+
+However it is pretty clear that this is retrying indefinitely (or at 
+least many more times that I would like), as the
+log files show loads of;
+Jul 16 07:56:09 server1 kernel: nfs: server server2 not responding,
+timed out
+Jul 16 07:57:09 server1 last message repeated 4 times
+Jul 16 07:57:09 server1 last message repeated 6 times
+
+and eventually this kills the apache server as all the available
+processes are blocked during "retrying indefinitely", until the apache
+server is restarted. (restarting the nfs server at this point does not
+seem to recover the apache child processes)
+
+So what should my strategy be to stop the failed mount killing apache. I
+care more about the apache staying up, as I don't have that much control
+over the nfs server..
+
+(also I noticed that it seems to timeout quicker with the mount options
+set like (soft, timeo=7, retrans=3) which is unexpected, because they
+are supposed to be the default)
+
+Regards and thanks in advance,
+T
+
+
+
+
