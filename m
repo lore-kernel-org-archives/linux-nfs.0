@@ -1,77 +1,81 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cn.fujitsu.com ([222.73.24.84]:55455 "EHLO song.cn.fujitsu.com"
-	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
-	id S1751927Ab0GAJxz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 1 Jul 2010 05:53:55 -0400
-Message-ID: <4C2C65DE.3030602@cn.fujitsu.com>
-Date: Thu, 01 Jul 2010 17:54:38 +0800
-From: Mi Jinlong <mijinlong@cn.fujitsu.com>
-To: NFSv3 list <linux-nfs@vger.kernel.org>,
-        "Trond.Myklebust" <trond.myklebust@fys.uio.no>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Chuck Lever <chuck.lever@oracle.com>, Jeff Layton <jlayton@redhat.com>,
-        Mi Jinlong <mijinlong@cn.fujitsu.com>
-Subject: [RFC][PATCH v2] NLM: Sending nfslock request fail should not be process
- as blocked
-Content-Type: text/plain; charset=UTF-8
+Received: from mx1.redhat.com ([209.132.183.28]:21940 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S964919Ab0GPKYx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 16 Jul 2010 06:24:53 -0400
+From: David Howells <dhowells@redhat.com>
+In-Reply-To: <20100716062251.GA9318@zoia.osj.us>
+References: <20100716062251.GA9318@zoia.osj.us> <201007152235.22373.arnd@arndb.de> <20100715021709.5544.64506.stgit@warthog.procyon.org.uk> <20100715021712.5544.44845.stgit@warthog.procyon.org.uk> <30646.1279230807@redhat.com>
+To: Mark Harris <mhlk@osj.us>, Steve French <smfrench@gmail.com>
+Cc: dhowells@redhat.com, viro@zeniv.linux.org.uk,
+        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-cifs@vger.kernel.org, linux-kernel@vger.kernel.org,
+        samba-technical@lists.samba.org, linux-ext4@vger.kernel.org
+Subject: Re: [PATCH 02/18] xstat: Add a pair of system calls to make extended file stats available [ver #6]
+Date: Fri, 16 Jul 2010 11:24:02 +0100
+Message-ID: <8527.1279275842@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-hi,
+Mark Harris <mhlk@osj.us> wrote:
 
-Sorry for sending this patch third times.
+> > struct xstat_time {
+> > 	unsigned long long	tv_sec, tv_nsec;
+> > };
+> 
+> unsigned?  Existing filesystems support on-disk timestamps
+> representing times prior to the epoch.
 
-About this patch, I have discussed with Trond before. 
-He said "An unlock does not guarantee that the server will cancel the blocked
-lock request.", but when server receive an UNLOCK request, it will try to
-cancel the lock at first, and then unlock the file.
+I suppose it doesn't hurt to make is signed.  It's large enough...
 
-  codes as follows:
-    ...
-    567 nlmsvc_unlock(struct nlm_file *file, struct nlm_lock *lock)
-    568 {
-    ....
-    578         /* First, cancel any lock that might be there */
-    579         nlmsvc_cancel_blocked(file, lock);
-    ...
+Looking at it again, having a 64-bit field for tv_nsec is overkill.  It can't
+(or shouldn't) exceed 999,999,999 - well within the capability of a 32-bit
+unsigned integer.
 
-as before, the UNLOCK request means it contain a CANCEL request.
+So how about using up the dead space for what Steve French wanted:
 
-So, I don't know the reason in detail.
+	| One hole that this reminded me about is how to return the superblock
+	| time granularity (for NFSv4 this is attribute 51 "time_delta" which
+	| is called on a superblock not on a file).  We run into time rounding
+	| issues with Samba too.
 
-Waiting for some better analysis. Thanks.
+By doing something like:
 
--------------
-If local reason cause nfslock request is sent fail(means status < 0,
-but resp->status not be reset), the request will be process as blocked 
-at the kernel.
+	struct xstat_time {
+		signed long long	tv_sec;
+		unsigned int		tv_nsec;
+		unsigned short		tv_granularity;
+		unsigned short		tv_gran_units;
+	};
 
-If the network partition cause the LOCK request be sent fail, the 
-kernel will processed it as being blocked right now, but sending
-an UNLOCK request is needed but CANCEL request here.
+Where tv_granularity is the minimum granularity for tv_sec and tv_nsec given
+as a quantity of tv_gran_units.  tv_gran_units could then be a constant, such
+as:
 
-Signed-off-by: Mi Jinlong <mijinlong@cn.fujitsu.com>
+	XSTAT_NANOSECONDS_GRANULARITY
+	XSTAT_MICROSECONDS_GRANULARITY
+	XSTAT_MILLISECONDS_GRANULARITY
+	XSTAT_SECONDS_GRANULARITY
+	XSTAT_MINUTES_GRANULARITY
+	XSTAT_HOURS_GRANULARITY
+	XSTAT_DAYS_GRANULARITY
 
----
- fs/lockd/clntproc.c |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
+So, for example, FAT times are a 2s granularity, so FAT would set
+tv_granularity to 2 and tv_gran_units to XSTAT_SECONDS_GRANULARITY.
 
-diff --git a/fs/lockd/clntproc.c b/fs/lockd/clntproc.c
-index 7932c39..b79c8b1 100644
---- a/fs/lockd/clntproc.c
-+++ b/fs/lockd/clntproc.c
-@@ -536,7 +536,7 @@ again:
- 	 * Initialise resp->status to a valid non-zero value,
- 	 * since 0 == nlm_lck_granted
- 	 */
--	resp->status = nlm_lck_blocked;
-+	resp->status = nlm_lck_denied_nolocks;
- 	for(;;) {
- 		/* Reboot protection */
- 		fl->fl_u.nfs_fl.state = host->h_state;
--- 
-1.7.0
+We could even support picosecond granularity if we made tv_nsec a 5-byte
+field (tv_psec):
 
+	struct xstat_time {
+		signed long long	tv_sec;
+		unsigned long long	tv_gran_units : 8;
+		unsigned long long	tv_granularity : 16;
+		unsigned long long	tv_psec	: 48;
+	};
 
+but that's probably excessive.  Does any filesystem we currently support need
+that?
 
+David
