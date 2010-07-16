@@ -1,68 +1,29 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: NFS _write_ Performance became horrible overnight
-Date: Fri, 16 Jul 2010 16:08:02 -0400
-Message-ID: <20100716200802.GA13077@fieldses.org>
-References: <AANLkTinaHi1bZYRwI-jXiv_xPhQyvTUGmzBrfP-JRYs3@mail.gmail.com>
+From: "David P. Quigley" <dpquigl@tycho.nsa.gov>
+Subject: Re: nfs-utils atomicio.c
+Date: Fri, 16 Jul 2010 16:09:12 -0400
+Message-ID: <1279310952.8180.0.camel@moss-terrapins.epoch.ncsc.mil>
+References: <20100716193508.GA14878@merit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain
 Cc: linux-nfs@vger.kernel.org
-To: Igor Chudov <ichudov@gmail.com>
+To: Jim Rees <rees@umich.edu>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:41660 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754803Ab0GPUIc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 16 Jul 2010 16:08:32 -0400
-In-Reply-To: <AANLkTinaHi1bZYRwI-jXiv_xPhQyvTUGmzBrfP-JRYs3-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
+Received: from msux-gh1-uea02.nsa.gov ([63.239.65.40]:45054 "EHLO
+	msux-gh1-uea02.nsa.gov" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755136Ab0GPUSv (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 16 Jul 2010 16:18:51 -0400
+In-Reply-To: <20100716193508.GA14878-8f4Pc2RrbJmHXe+LvDLADg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Jul 12, 2010 at 10:37:48AM -0500, Igor Chudov wrote:
-> Hello,
-> 
-> I would like to apologize in advance if, for any reason, my question
-> is inappropriate for this mailing list. Please let meknow if that is
-> the case.
-> 
-> This seems to be a very odd problem that I have isolated to NFS.
-> 
-> I have two NFS servers. Server A and server B. They serve unrelated
-> shares.
-> 
-> Server A is actually two servers using DRBD to stay in sync.
-> 
-> I also have a number of NFS clients.
-> 
-> Both servers worked great up to about last night.
-> 
-> Somehow, NFS writes became extremely slow over Server A, for all
-> clients, but not for Server B.
-> 
-> I have no idea, yet, what changed, but wanted to ask here if anyone
-> ever had a similar problem (NFS performance going to shit overnight).
-> 
-> Some data points:
-> 
-> 1) From any client, reading files over NFS is fast
-> 2) From any client, writing to NFS on Server A is VERY SLOW
-> 3) From any client, writing to Samba shares on Server A is fast.
-> 4) From any client, writing to NFS on Server B is fast.
-> 5) When logged on to Server A, copying a file from local A filesystem
-> to itself is fast.
+On Fri, 2010-07-16 at 15:35 -0400, Jim Rees wrote:
+> Someone should move atomicio.c into nfs-utils/support/nfs.  There are
+> currently two copies, in idmapd and spnfsd, and I'm about to add a third.
+> I'll move it if no one has a better idea or beats me to it.
 
-How are you measuring those exactly?  (E.g. are you including the time
-to do a sync after writing?)
+I agree with this move as I have a label mapping daemon based off of
+idmapd which uses it as well (although not merged yet). My patch set
+actually moves this file to support/nfs as well.
 
---b.
+Dave
 
-> 
-> IOW, everything is fast, EXCEPT for NFS writes to server A.
-> 
-> Any ideas what might cause this sudden deterioration of Server A?
-> 
-> Thank you!!!!!!!!!!!
-> 
-> i
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
