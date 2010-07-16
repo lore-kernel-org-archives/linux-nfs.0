@@ -1,58 +1,87 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cn.fujitsu.com ([222.73.24.84]:56959 "EHLO song.cn.fujitsu.com"
-	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
-	id S1750883Ab0G2Ek3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 29 Jul 2010 00:40:29 -0400
-Message-ID: <4C5105F8.5050101@cn.fujitsu.com>
-Date: Thu, 29 Jul 2010 12:39:20 +0800
-From: Bian Naimeng <biannm@cn.fujitsu.com>
-To: yo mama <mamamia69@gmail.com>
-CC: linux-nfs@vger.kernel.org, Benny Halevy <bhalevy@panasas.com>
-Subject: Re: BUG: unable to handle kernel NULL pointer dereference at 	0000000000000020
-References: <AANLkTikYDGpeX8kcK3ygFzjM+bYMFTtqr8Wgx+CygUt8@mail.gmail.com>
-In-Reply-To: <AANLkTikYDGpeX8kcK3ygFzjM+bYMFTtqr8Wgx+CygUt8@mail.gmail.com>
-Content-Type: text/plain; charset=Shift_JIS
+Received: from moutng.kundenserver.de ([212.227.17.10]:52191 "EHLO
+	moutng.kundenserver.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S965028Ab0GPKqd (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 16 Jul 2010 06:46:33 -0400
+From: Arnd Bergmann <arnd@arndb.de>
+To: David Howells <dhowells@redhat.com>
+Subject: Re: [PATCH 02/18] xstat: Add a pair of system calls to make extended file stats available [ver #6]
+Date: Fri, 16 Jul 2010 12:46:15 +0200
+Cc: viro@zeniv.linux.org.uk, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-cifs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, samba-technical@lists.samba.org,
+        linux-ext4@vger.kernel.org
+References: <201007152235.22373.arnd@arndb.de> <20100715021712.5544.44845.stgit@warthog.procyon.org.uk> <30646.1279230807@redhat.com>
+In-Reply-To: <30646.1279230807@redhat.com>
+Content-Type: Text/Plain;
+  charset="iso-8859-15"
+Message-Id: <201007161246.15923.arnd@arndb.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-> Hello,
+On Thursday 15 July 2010, David Howells wrote:
+> Arnd Bergmann <arnd@arndb.de> wrote:
 > 
-> I am running Kernel version 2.6.35-rc5-pnfs and notice there is kernel
-> crash everytime i run iozone on the mounted directory. Is there a
-> patch already developed for this bug which i can apply. Please see the
-> error message from message log.
+> > > This was initially proposed as a set of xattrs, but the general preferance
+> > > is for an extended stat structure.
+> > 
+> > I don't think I'd call this general preference. Three of the four
+> > are fixed length and could easily be done inside the structure if you
+> > leave a bit of space instead of a variable-length field at the end.
 > 
+> ?
+> 
+> Maybe I wasn't clear: I meant having an extended stat() syscall rather than
+> using a bunch of getxattr()'s was the general preference.
 
- I'm not sure it's ok, please try it.
+Ok, I misparsed your statement there. I don't think anyone was
+objecting the use of xstat for this.
 
-----
+The controversial part is only how the extension happens. I would
+already feel better about it if you just dropped the
+'unsigned long long      st_extra_results[0];' at the end and
+added a comment saying that the structure may grow in the future, though
+my preference would be to space for extensions and make it fixed length.
 
- nfs_writeargs.lock_context always NULL at direct write procedure,
-it will cause kernel panic when encode stateid.
+> > For the volume id, I could not find any file system that requires more
+> > than 32 bytes here, which is also reasonable to put into the structure.
+> > Make it 36 if you want to cover ascii encoded UUIDs.
+> 
+> You should also include a length.  Volume IDs may be binary rather than
+> NUL-terminated strings.
 
-Signed-off-by: Bian Naimeng <biannm@cn.fujitsu.com>
+Yes, maybe. There are several possible encodings for this. I was actually
+thinking of fixed-length string rather than zero-terminated, but that
+is possible as well. If this gets added, we need to audit every possible
+use to make sure each of them is covered. My point was mostly that if we
+need at most 40 bytes, it doesn't have to be variable length at all.
 
----
- fs/nfs/direct.c |    1 +
- 1 files changed, 1 insertions(+), 0 deletions(-)
+> > That's at most 60 bytes for the extensions you're considering already,
+> > plus the 152
+> 
+> 160, I think.
 
-diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
-index 3ef9b0c..cb2e1fd 100644
---- a/fs/nfs/direct.c
-+++ b/fs/nfs/direct.c
-@@ -801,6 +801,7 @@ static ssize_t nfs_direct_write_schedule_segment(struct nfs_direct_req *dreq,
- 		data->cred = msg.rpc_cred;
- 		data->args.fh = NFS_FH(inode);
- 		data->args.context = ctx;
-+		data->args.lock_context = nfs_get_lock_context(ctx);
- 		data->args.offset = pos;
- 		data->args.pgbase = pgbase;
- 		data->args.pages = data->pagevec;
--- 
-1.6.5.2
+right.
 
--- 
-Regards
-Bian Naimeng
+> > you have already is still less than a cache line on
+> > some machines. Padding it to 256 bytes would make it nice and round,
+> > if you want to be really sure, make it 384 bytes.
+> 
+> Which we currently allocate on the kernel stack, plus up to a couple of kstat
+> structs if something like eCryptFS is used.  Admittedly, the base xstat struct
+> could be kmalloc()'d instead, but why use up all that space if you don't need
+> it?
 
+If you're worried about stack utilization, xstat could also be embedded into
+kstat, like
+
+struct kstat {
+	u64 request_mask;
+	struct xstat x;
+};
+
+Then you only need one of them on the stack for sys_xstat, or have both
+struct kstat and struct stat/stat64 for the other syscalls.
+
+	Arnd
