@@ -1,85 +1,118 @@
-Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:47202 "EHLO
-	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752526Ab0GVQsf (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 22 Jul 2010 12:48:35 -0400
-In-Reply-To: <20100722162712.GB10352@jeremy-laptop>
-References: <alpine.LSU.2.01.1007221228260.6115@obet.zrqbmnf.qr>
-	<20100715021709.5544.64506.stgit@warthog.procyon.org.uk> <20100715021712.5544.44845.stgit@warthog.procyon.org.uk>
-	<30448.1279800887@redhat.com> <E1Obuiy-00C9jr-Al@intern.SerNet.DE>
-	<AANLkTikBCXK6uEwWq4f0LvpdoKCPs3jvyFa4Zw4e2J_7@mail.gmail.com>
-	<E1Obxpd-00CRIo-SF@intern.SerNet.DE> <AANLkTimwIq0pBhCeOjOVjB0yeM3JHOvzVoj9M4ui6al9@mail.gmail.com>
-	<20100722162712.GB10352@jeremy-laptop>
-From: Linus Torvalds <torvalds@linux-foundation.org>
-Date: Thu, 22 Jul 2010 09:40:22 -0700
-Message-ID: <AANLkTimdFCGSKLn7aGMpBMIauHTsHY7hpAAmpo6uTcnD@mail.gmail.com>
-Subject: Re: [PATCH 02/18] xstat: Add a pair of system calls to make extended
-	file stats available [ver #6]
-To: Jeremy Allison <jra@samba.org>
-Cc: Volker.Lendecke@sernet.de, David Howells <dhowells@redhat.com>,
-        Jan Engelhardt <jengelh@medozas.de>, linux-cifs@vger.kernel.org,
-        linux-nfs@vger.kernel.org, samba-technical@lists.samba.org,
-        linux-kernel@vger.kernel.org, viro@zeniv.linux.org.uk,
-        linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
-Content-Type: text/plain; charset=ISO-8859-1
-Sender: linux-nfs-owner@vger.kernel.org
-List-ID: <linux-nfs.vger.kernel.org>
+Return-Path: <nfsv4-bounces@ietf.org>
+Date: Sat, 17 Jul 2010 10:58:10 -0400
+To: sfaibish <sfaibish@emc.com>, "J. Bruce Fields" <bfields@fieldses.org>,
+        "Marc Eshel" <eshel@almaden.ibm.com>
+From: "Sorin Faibish" <sfaibish@emc.com>
+References: <OF01D34025.9BF2DCCC-ON88257760.007510C5-88257760.007530DA@us.ibm.com>
+	<20100714212928.GD8161@fieldses.org>
+	<20100715172836.GC15126@fieldses.org>
+	<op.vfwi1ojxunckof@usensfaibisl2e.eng.emc.com>
+Message-ID: <op.vfzs68aorwwil4@sfaibish1.corp.emc.com>
+In-Reply-To: <op.vfwi1ojxunckof@usensfaibisl2e.eng.emc.com>
+Cc: linux-nfs@vger.kernel.org, nfsv4 list <nfsv4@ietf.org>
+Subject: Re: [nfsv4] Linux pNFS status meeting 07/15
+List-Unsubscribe: <https://www.ietf.org/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@ietf.org?subject=unsubscribe>
+List-Archive: <http://www.ietf.org/mail-archive/web/nfsv4>
+List-Post: <mailto:nfsv4@ietf.org>
+List-Help: <mailto:nfsv4-request@ietf.org?subject=help>
+List-Subscribe: <https://www.ietf.org/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@ietf.org?subject=subscribe>
+Content-Type: text/plain; charset="iso-8859-15"; Format="flowed"; DelSp="yes"
+Sender: nfsv4-bounces@ietf.org
+Errors-To: nfsv4-bounces@ietf.org
 MIME-Version: 1.0
+List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Jul 22, 2010 at 9:27 AM, Jeremy Allison <jra@samba.org> wrote:
-> On Thu, Jul 22, 2010 at 08:47:46AM -0700, Linus Torvalds wrote:
->> Tell me why we shouldn't just do this right?
+The Fall BAT webpage was updated with all the correct hotel reservation =20
+forms:
+http://www.citi.umich.edu/projects/nfsv4/citi_bakeathon/15th_nfsv4_bakeatho=
+n.html
+
+Sorry for the delay.
+
+/Sorin
+
+
+On Thu, 15 Jul 2010 16:26:02 -0400, sfaibish <sfaibish@emc.com> wrote:
+
+> Fall BAT update
+> Hotel reservation is posted at:
+> http://www.starwoodmeeting.com/Book/NFSv4Bakeathon
 >
-> No, ctime isn't the same as Windows "create time".
+> I will update the webpage later today at:
+> http://www.citi.umich.edu/projects/nfsv4/citi_bakeathon/15th_nfsv4_bakeat=
+hon.html
+>
+> /Sorin
+>
+>
+> On Thu, 15 Jul 2010 13:28:36 -0400, J. Bruce Fields =20
+> <bfields@fieldses.org> wrote:
+>
+>>
+>> Notes:
+>>
+>> Bruce:
+>> 	- nothing to report (transitioning to new hardware, etc.)
+>>
+>> Trond:
+>> 	- did some fsync cleanup
+>> 	- bugfixes to handling of ERR_DELAY on sequence operations.
+>> 	- preparing for rpc changes required for migration.
+>> 		(some discusison here of idempotency problems on
+>> 		migration/reboot)
+>>
+>> Benny:
+>> 	- Included Trond's delay/sequence fix
+>> 	(missed some additional discussion)
+>>
+>> Andy:
+>> 	- simplification of write_pagelist/read_pagelist prototypes
+>> 	- making sure layouts removed on server reboot
+>> 	- looking at layout commit/reclaim issues in preparation for
+>> 	  discussion at Maastricht.
+>> 	- wants to rename some structures; will mail proposal to list.
+>>
+>> Jim Rees:
+>> 	- bugfixing complex-volume patches; not ready to submit to Benny
+>> 	  quite yet.
+>>
+>> Steved:
+>> 	- Discussion of RHEL prospects.  When will we have some pnfs
+>> 	  patches that are ready to review?  Concensus seems to be
+>> 	  2.6.36 will be too early.  Ricardo, Benny think 2.6.37
+>> 	  possible to finish up remaining work, squash changes into a
+>> 	  single cleaned-up patch series.  Trond reminds that adequate
+>> 	  time is required before merge window for review, especially
+>> 	  for large change.  Benny volunteering to do squashing.
+>>
+>> --b.
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>
+>>
+>
+>
+>
 
-Umm. What kind of reading problems do you guys have?
 
-I know effin well that ctime isn't the same as Windows create time.
-THAT WAS MY POINT.
 
-But the fact is, th Unix ctime semantics are insane and largely
-useless. There's a damn good reason almost nobody uses ctime under
-unix.
+--=20
+Best Regards
+Sorin Faibish
+Corporate Distinguished Engineer
+Unified Storage Division
 
-So what I'm suggesting is that we have a flag - either per-process or
-per-mount - that just says "use windows semantics for ctime".
+        EMC=B2
+where information lives
 
-And yes, I'm very aware that the "c" in ctime doesn't stand for
-"create". But anybody who points that out is - once more - totally
-missing the point. My point is that we have three timestamps, and
-windows wants three timestamps (somebody claims that NTFS has four
-timestamps, but the Windows file time access functions certainly only
-shows three times, so any potential extra on-disk times have no
-relevance because they are invisible to pretty much everybody). We can
-have unix semantics for mtime/atime/ctime, or we can have windows
-semantics for those three values.
-
-So let's say that we introduce a mount flag that says
-"ctime=winctime", which basically just sets a flag that instead of
-changing ctime on chmod/chown/etc, it just changes mtime instead (or,
-as mentioned, we could make it a process flag instead).
-
-Let's face it, Unix semantics are not sacred.  Especially not
-something like ctime, which is pretty damn useless. If you're a samba
-server, why not just say "let's do ctime the way windows does creation
-times", and let it be at that?
-
-I personally think that Unix ctime is insane. There is no real reason
-why "write()" should change mtime, but "chmod" changes ctime. It was
-just a random decision way back when, and it's clearly not what samba
-wants, and it's equally clearly not what even most _unix_ people want
-(just google for "ctime" and "creation time", and watch the confusion
-- exactly because unix semantics are simply _random_ and odd semantics
-in this area)
-
-I would not be at all surprised if it turns out that people might want
-to really turn ctime into creation time (with the mount flag or
-whatever) even if they are _not_ running samba.
-
-An added issue is that most filesystems simply don't have more than
-three times (and some obviously have not even that, but that's true in
-Windows too). So re-using ctime actually means that this scheme would
-work a whole lot better than some crazy xstat() interface that doesn't
-support common filesystems anyway.
-
-                                         Linus
+Phone: 508-435-1000 x 48545
+Cellphone: 617-510-0422
+Email : sfaibish@emc.com
+_______________________________________________
+nfsv4 mailing list
+nfsv4@ietf.org
+https://www.ietf.org/mailman/listinfo/nfsv4
