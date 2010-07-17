@@ -1,61 +1,78 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.SerNet.de ([193.175.80.2]:39012 "EHLO mail.SerNet.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753033Ab0GWJWN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 23 Jul 2010 05:22:13 -0400
-Date: Fri, 23 Jul 2010 11:14:53 +0200
-From: =?iso-8859-1?Q?Bj=F6rn?= Jacke <bj@SerNet.DE>
-To: "Ted Ts'o" <tytso@mit.edu>, tridge@samba.org,
-        Linus Torvalds <torvalds@linux-foundation.org>,
-        Jeremy Allison <jra@samba.org>, linux-cifs@vger.kernel.org,
-        linux-nfs@vger.kernel.org, Volker.Lendecke@SerNet.DE,
-        samba-technical@lists.samba.org, linux-kernel@vger.kernel.org,
-        Jan Engelhardt <jengelh@medozas.de>,
-        David Howells <dhowells@redhat.com>, viro@zeniv.linux.org.uk,
-        linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
-Subject: Re: [PATCH 02/18] xstat: Add a pair of system calls to make
- extended file stats available [ver #6]
-References: <20100715021712.5544.44845.stgit@warthog.procyon.org.uk>
- <30448.1279800887@redhat.com>
- <E1Obuiy-00C9jr-Al@intern.SerNet.DE>
- <AANLkTikBCXK6uEwWq4f0LvpdoKCPs3jvyFa4Zw4e2J_7@mail.gmail.com>
- <E1Obxpd-00CRIo-SF@intern.SerNet.DE>
- <AANLkTimwIq0pBhCeOjOVjB0yeM3JHOvzVoj9M4ui6al9@mail.gmail.com>
- <20100722162712.GB10352@jeremy-laptop>
- <AANLkTimdFCGSKLn7aGMpBMIauHTsHY7hpAAmpo6uTcnD@mail.gmail.com>
- <19528.60019.28495.655512@samba.org>
- <20100723012130.GD16373@thunk.org>
-Content-Type: text/plain; charset=iso-8859-1
-In-Reply-To: <20100723012130.GD16373@thunk.org>
-Message-Id: <E1OcEL8-00DP7W-V3@intern.SerNet.DE>
+Received: from mail-wy0-f174.google.com ([74.125.82.174]:57326 "EHLO
+	mail-wy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1759483Ab0GQAJq convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 16 Jul 2010 20:09:46 -0400
+In-Reply-To: <1278945396.5221.14.camel@moss-pluto.epoch.ncsc.mil>
+References: <1278513086-23964-1-git-send-email-dpquigl@tycho.nsa.gov>
+	<1278513086-23964-7-git-send-email-dpquigl@tycho.nsa.gov>
+	<20100707170058.GD28815@fieldses.org> <alpine.LRH.2.00.1007080928180.14102@tundra.namei.org>
+	<1278596363.2494.194.camel@moss-terrapins.epoch.ncsc.mil>
+	<alpine.LRH.2.00.1007090834190.23354@tundra.namei.org> <1278684348.2494.223.camel@moss-terrapins.epoch.ncsc.mil>
+	<AANLkTinUO-xqvQQINTzKLcXnljq-RaN5X6ulEAqvuf0d@mail.gmail.com>
+	<4C3952D6.7040608@schaufler-ca.com> <1278945396.5221.14.camel@moss-pluto.epoch.ncsc.mil>
+From: Kyle Moffett <kyle@moffetthome.net>
+Date: Fri, 16 Jul 2010 20:09:23 -0400
+Message-ID: <AANLkTimBkFfkNmh8Rn3IH1ktGixUxQY8LPP56_joA93S@mail.gmail.com>
+Subject: Re: [PATCH 06/10] NFSv4: Add label recommended attribute and NFSv4
+	flags
+To: Stephen Smalley <sds@tycho.nsa.gov>
+Cc: Casey Schaufler <casey@schaufler-ca.com>,
+        "David P. Quigley" <dpquigl@tycho.nsa.gov>,
+        James Morris <jmorris@namei.org>,
+        "J. Bruce Fields" <bfields@fieldses.org>, hch@infradead.org,
+        viro@zeniv.linux.org.uk, matthew.dodd@sparta.com,
+        trond.myklebust@fys.uio.no, linux-kernel@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, linux-security-module@vger.kernel.org,
+        selinux@tycho.nsa.gov, linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 2010-07-22 at 21:21 -0400 Ted Ts'o sent off:
-> Well, not POSIX, because POSIX doesn't have CreationTime at all.
-> BSD's birthtime doesn't allow it to be set, and the question here is
-> largely philosophical.
+On Mon, Jul 12, 2010 at 10:36, Stephen Smalley <sds@tycho.nsa.gov> wrote:
+> On Sat, 2010-07-10 at 22:12 -0700, Casey Schaufler wrote:
+>> Kyle Moffett wrote:
+>> > ...
+>> > Even in local filesystems like ext3 we prefer to turn labels into
+>> > numbers, store the number with each inode, and then keep the labels
+>> > indexed in a separate datastructure.
+>> >
+>>
+>> I don't know what system you're talking about, but that notion
+>> was pretty well dispelled in the late 1980's, after the SystemV/MLS
+>> and SecureWare examples.
+>
+> SELinux did that too before switching to using xattrs for label storage.
+> Persistent security identifier (PSID) associated with each inode (either
+> stored directly in the inode in the original kernel patches or
+> associated through a separate mapping in the LSM-based implementation),
+> with a mapping from PSID to context stored in a mapping within each
+> filesystem. Â Allowed you to keep the labels with the volume but avoided
+> storing the same label multiple times.
+>
+> The xattr based implementation can sometimes share storage but only when
+> the xattr is stored in the additional block (not when they are stored
+> inline) and only if all of the xattrs on the file are identical.
 
-actually, it can (partly :). But the way it can be done is an insane hack:
+Hmm, for some reason I was still thinking that we stored an encoded
+form of the label even in xattrs.  Whoops!
 
-<quote "http://ace.delos.com/kirk/">
-To provide a sensible birth time for applications that are unaware of the birth
-time attribute, we changed the semantics of the "utimes" system call so that if
-the birth time was newer than the value of the modification time that it was
-setting, it sets the birth time to the same time as the modification time. An
-application that is aware of the birth time attribute can set both the birth
-time and the modification time by doing two calls to "utimes". First it calls
-"utimes" with a modification time equal to the saved birth time, then it calls
-"utimes" a second time with a modification time equal to the (presumably newer)
-saved modification time.
-</quote>
+On the other hand, I guess it should be noted that the "common" case
+of an SELinux label is the inline storage case, labels are on average
+no more than ~40 bytes:
+  system_u:object_r:sysadm_homedir_t:s0
 
-Thus it can also be only be set more in the past.
+In filesystems that are space optimized (like squashfs), we still
+prefer to pack xattrs, symlinks, and even file permissions as tightly
+as possible through table lookups of various forms.  Heck, the
+read-only squashfs only stores a single empty-directory inode and
+references it wherever needed.
 
-Cheers
-Björn
--- 
-SerNet GmbH, Bahnhofsallee 1b, 37081 Göttingen
-phone: +49-551-370000-0, fax: +49-551-370000-9
-AG Göttingen, HRB 2816, GF: Dr. Johannes Loxen
+On the other hand, if you're doing something completely silly with 64k
+labels then any hope of inline storage went out the window along with
+any space savings from nifty FS optimizations like de-duplication or
+tail-packing.
+
+Cheers,
+Kyle Moffett
