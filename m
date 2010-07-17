@@ -1,27 +1,38 @@
-From: David Howells <dhowells@redhat.com>
-Subject: Re: [PATCH 02/18] xstat: Add a pair of system calls to make extended file stats available [ver #6]
-Date: Sat, 17 Jul 2010 10:49:00 +0100
-Message-ID: <19785.1279360140@redhat.com>
-References: <20100717055130.GA2053@zoia.osj.us> <201007161302.35775.arnd@arndb.de> <20100716062251.GA9318@zoia.osj.us> <30646.1279230807@redhat.com> <8527.1279275842@redhat.com> <10677.1279283886@redhat.com>
-Cc: dhowells@redhat.com, Arnd Bergmann <arnd@arndb.de>,
-	Steve French <smfrench@gmail.com>, viro@zeniv.linux.org.uk,
-	linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-	linux-cifs@vger.kernel.org, linux-kernel@vger.kernel.org,
-	samba-technical@lists.samba.org, linux-ext4@vger.kernel.org
-To: Mark Harris <mhlk-gcwzot8L0og@public.gmane.org>
-Return-path: <linux-cifs-owner@vger.kernel.org>
-In-Reply-To: <20100717055130.GA2053-EJgEOVOPJGBzbRFIqnYvSA@public.gmane.org>
-Sender: linux-cifs-owner@vger.kernel.org
+From: Artem Bityutskiy <dedekind1@gmail.com>
+Subject: Re: [PATCH] timers.c: document meaning of deferrable timer
+Date: Sat, 17 Jul 2010 15:30:32 +0300
+Message-ID: <1279369832.7515.4.camel@localhost.localdomain>
+References: <1277996756-8415-1-git-send-email-dedekind1@gmail.com>
+	 <20100706171908.GL7387@fieldses.org>
+Reply-To: dedekind1@gmail.com
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Cc: Thomas Gleixner <tglx@linutronix.de>, Neil Brown <neilb@suse.de>,
+	linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+	Venki Pallipadi <venkatesh.pallipadi@intel.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from mail-fx0-f46.google.com ([209.85.161.46]:42782 "EHLO
+	mail-fx0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753805Ab0GQMaj (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 17 Jul 2010 08:30:39 -0400
+In-Reply-To: <20100706171908.GL7387@fieldses.org>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Mark Harris <mhlk-gcwzot8L0og@public.gmane.org> wrote:
+On Tue, 2010-07-06 at 13:19 -0400, J. Bruce Fields wrote:
+> From: J. Bruce Fields <bfields@citi.umich.edu>
+>=20
+> Steal some text from 6e453a67510 "Add support for deferrable timers".
+> A reader shouldn't have to dig through the git logs for the basic
+> description of a deferrable timer.
+>=20
+> Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
 
-> At least for the in-tree filesystems, I do not see any that keep
-> timestamps with a granularity larger than 2s.  For that, a simple
-> 32-bit tv_granularity in nanoseconds (not limited to 1e9) would
-> suffice, and there is no need for the complexity of dealing with
-> a separate exponent.
+Yes, this is a good idea. Someone cares to pick this?
 
-That's a good point.
+--=20
+Best Regards,
+Artem Bityutskiy (=D0=90=D1=80=D1=82=D1=91=D0=BC =D0=91=D0=B8=D1=82=D1=8E=
+=D1=86=D0=BA=D0=B8=D0=B9)
 
-David
