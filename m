@@ -1,31 +1,43 @@
-From: "Grant Mayor" <grantfinancing@gmail.com>
-Subject: (unknown)
-Date: Sat, 17 Jul 2010 10:06:45 +0200 (CEST)
-Message-ID: <2148.41.138.190.28.1279354005.squirrel__22236.6780661561$1279354278$gmane$org@www.scalabrini.net>
-Reply-To: to.grantfinancing@gmail.com
+From: Arnd Bergmann <arnd@arndb.de>
+Subject: Re: [PATCH 02/18] xstat: Add a pair of system calls to make extended file stats available [ver #6]
+Date: Sat, 17 Jul 2010 11:00:30 +0200
+Message-ID: <201007171100.31186.arnd@arndb.de>
+References: <201007161302.35775.arnd@arndb.de> <10677.1279283886@redhat.com> <20100717055130.GA2053@zoia.osj.us>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-To: unlisted-recipients:; (no To-header on input)
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from moutng.kundenserver.de ([212.227.17.10]:59561 "EHLO
-	moutng.kundenserver.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752466Ab0GQIJm (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 17 Jul 2010 04:09:42 -0400
-Subject: 
-Sender: linux-nfs-owner@vger.kernel.org
+Content-Type: Text/Plain;
+  charset="iso-8859-1"
+Cc: David Howells <dhowells@redhat.com>,
+	Steve French <smfrench@gmail.com>, viro@zeniv.linux.org.uk,
+	linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+	linux-cifs@vger.kernel.org, linux-kernel@vger.kernel.org,
+	samba-technical@lists.samba.org, linux-ext4@vger.kernel.org
+To: Mark Harris <mhlk@osj.us>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+In-Reply-To: <20100717055130.GA2053@zoia.osj.us>
+Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-FUNDING NOTIFICATION.............I am Mr Grant Mayor. i am a loan lender
-as well as an angel investor, I offer funds based on demands and i use the
-best possible interest rate so that it can make both paties smile. I allow
-my clients to decide the loan repayment duration. So i have my door for
-funding opened to all that is in need, If you have been turned down be
-many financial institutions, this is a great time for you to make things
-up. If you need a stress free funing, kindly get back to me with a mail of
-application for funding and you will get funded within 3 working days.
-Send all mails of application to: to.grantfinancing-Re5JQEeQqe9fmgfxC/sS/w@public.gmane.org
+On Saturday 17 July 2010 07:51:30 Mark Harris wrote:
+> David Howells wrote:
+> > With a 2:2 split between exponent
+> > (tv_gran_units) and mantissa (tv_granularity), you can do:
+> > 
+> >       UNIT            SECONDS/UNIT    EXPONENT        MANTISSA
+> >       nanoseconds     0.000000001     -9              1
+> >       microseconds    0.000001        -6              1
+> >       millseconds     0.001           -3              1
+> >       seconds         1               0               1
+> >       minutes         60              1               6
+> >       hours           3600            2               36
+> >       days            86400           2               864
+> >       weeks           604800          2               6048
+> 
+> At least for the in-tree filesystems, I do not see any that keep
+> timestamps with a granularity larger than 2s.  For that, a simple
+> 32-bit tv_granularity in nanoseconds (not limited to 1e9) would
+> suffice, and there is no need for the complexity of dealing with
+> a separate exponent.
 
-I await your response.
+Yes, good point. That would indeed be a significant simplification.
 
-Grant Mayor.
-
+	Arnd
