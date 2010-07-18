@@ -1,36 +1,22 @@
-From: "Henry Shao" <hshao-oSioyQM9ZPnuBjGU1YDckgC/G2K4zDHf@public.gmane.org>
-Subject: About configure error
-Date: Sat, 26 Jun 2010 12:37:09 -0700
-Message-ID: <74B0AE1BA53C37449DE49BB274F9A2DB2B3DA2@orion8.netlogicmicro.com>
+From: Christoph Hellwig <hch@infradead.org>
+Subject: Re: [PATCH 18/18] xstat: Provide a mechanism to gather extra results
+ for [f]xstat() [ver #6]
+Date: Sun, 18 Jul 2010 04:51:40 -0400
+Message-ID: <20100718085140.GD27794@infradead.org>
+References: <20100715021709.5544.64506.stgit@warthog.procyon.org.uk>
+ <20100715021730.5544.68442.stgit@warthog.procyon.org.uk>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Cc: <chuck.lever@oracle.com>, <steved@redhat.com>
-To: <linux-nfs@vger.kernel.org>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.netlogicmicro.com ([12.49.93.86]:1970 "EHLO
-	orion5.netlogicmicro.com" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1756447Ab0GQScB convert rfc822-to-8bit
-	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 17 Jul 2010 14:32:01 -0400
-Sender: linux-nfs-owner@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: viro@ZenIV.linux.org.uk, linux-fsdevel@vger.kernel.org,
+	linux-nfs@vger.kernel.org, linux-cifs@vger.kernel.org,
+	linux-kernel@vger.kernel.org, samba-technical@lists.samba.org,
+	linux-ext4@vger.kernel.org
+To: David Howells <dhowells@redhat.com>
+Return-path: <linux-cifs-owner@vger.kernel.org>
+In-Reply-To: <20100715021730.5544.68442.stgit-S6HVgzuS8uM4Awkfq6JHfwNdhmdF6hFW@public.gmane.org>
+Sender: linux-cifs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-Hi Sir:
-
-    I try to compile nfs-utils-1.2.2 for our mips64 platform using cross compiler.  I keek get configure error:
-checking for clnt_tli_create in -ltirpc... no
-configure: error: libtirpc not found.
-
-     Then I download libtirpc  and compile it successfully and install it in  ../lib directory.   I try to use LIBS or exec_prefix ... to pass it in.   It did not successful.   Still keeping get this error.
-
-     Do you mind to tell me how can I pass this error and get it compiled for our mips target?
-
-    Thank you very much!
-
-
-
-# CC=mipsisa64r2rmi-linux-gcc ./configure --host=mips-linux --disable-gss --disable-nfsv4
-
-
-Henry Shao
+As mentioned before this is total overkill.  The request/respond flags
+together with the buffer size already provide enough ways to extent
+the structure in a backwards compatible way if needed.
