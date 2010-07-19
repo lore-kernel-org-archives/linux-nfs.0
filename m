@@ -1,22 +1,30 @@
-From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: [PATCH 18/18] xstat: Provide a mechanism to gather extra results
- for [f]xstat() [ver #6]
-Date: Sun, 18 Jul 2010 04:51:40 -0400
-Message-ID: <20100718085140.GD27794@infradead.org>
-References: <20100715021709.5544.64506.stgit@warthog.procyon.org.uk>
- <20100715021730.5544.68442.stgit@warthog.procyon.org.uk>
+From: Peng Yu <pengyu.ut@gmail.com>
+Subject: on demaind nfs
+Date: Sun, 18 Jul 2010 19:31:58 -0500
+Message-ID: <AANLkTinokaOEBVHu5KMxofnnkN-0e5MsIfnf1zNPhVmA@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: viro@ZenIV.linux.org.uk, linux-fsdevel@vger.kernel.org,
-	linux-nfs@vger.kernel.org, linux-cifs@vger.kernel.org,
-	linux-kernel@vger.kernel.org, samba-technical@lists.samba.org,
-	linux-ext4@vger.kernel.org
-To: David Howells <dhowells@redhat.com>
-Return-path: <linux-cifs-owner@vger.kernel.org>
-In-Reply-To: <20100715021730.5544.68442.stgit-S6HVgzuS8uM4Awkfq6JHfwNdhmdF6hFW@public.gmane.org>
-Sender: linux-cifs-owner@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+To: linux-nfs@vger.kernel.org
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from mail-gw0-f46.google.com ([74.125.83.46]:51503 "EHLO
+	mail-gw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757803Ab0GSAb7 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 18 Jul 2010 20:31:59 -0400
+Received: by gwj18 with SMTP id 18so1772818gwj.19
+        for <linux-nfs@vger.kernel.org>; Sun, 18 Jul 2010 17:31:58 -0700 (PDT)
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-As mentioned before this is total overkill.  The request/respond flags
-together with the buffer size already provide enough ways to extent
-the structure in a backwards compatible way if needed.
+Hi,
+
+I've seen that an nfs filesystem can be mount on demand. Suppose, that
+the nfs filesystems should be mounted on /local, say /local/nfs1 ...
+/local/nfs10. If I don't access them for a while, then I will not see
+them mounted (no such file system in df).
+
+If I try to cd to /local/nfs1, then I will see it in df. I'm wondering
+if any body can let me know how to mount nfs file system on demand.
+
+-- 
+Regards,
+Peng
