@@ -1,72 +1,71 @@
-From: Andy Adamson <andros@netapp.com>
-Subject: Re: [PATCH 1/1] SQUASHME pnfs-submit pnfs operations use new nfs4_sequence_done
-Date: Mon, 19 Jul 2010 09:44:35 -0400
-Message-ID: <000DFADD-9D18-45BA-A621-51B466093048@netapp.com>
-References: <1279295797-4113-1-git-send-email-andros@netapp.com> <1279295797-4113-2-git-send-email-andros@netapp.com> <4C4410D3.3070900@panasas.com>
-Mime-Version: 1.0 (Apple Message framework v1081)
-Content-Type: text/plain; charset=us-ascii
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Re: [PATCH] nfs-utils: Fix C aliasing rules violation in	nfs_getrpccaller()
+Date: Mon, 19 Jul 2010 10:10:40 -0400
+Message-ID: <4C445CE0.2030707@RedHat.com>
+References: <20100706165849.4436.13124.stgit@ellison.1015granger.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
 Cc: linux-nfs@vger.kernel.org
-To: Benny Halevy <bhalevy@panasas.com>
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:21386 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:58162 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933414Ab0GSNoh convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 19 Jul 2010 09:44:37 -0400
-In-Reply-To: <4C4410D3.3070900@panasas.com>
+	id S933591Ab0GSOKn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 19 Jul 2010 10:10:43 -0400
+In-Reply-To: <20100706165849.4436.13124.stgit-ewv44WTpT0t9HhUboXbp9zCvJB+x5qRC@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-OK - Thanks for the heads up
 
--->Andy
 
-On Jul 19, 2010, at 4:46 AM, Benny Halevy wrote:
+On 07/06/2010 12:59 PM, Chuck Lever wrote:
+> Squelch compiler warnings reported with -Wextra:
+>=20
+> In file included from statd.c:24:
+> ../../support/include/rpcmisc.h: In function =E2=80=98nfs_getrpccalle=
+r_in=E2=80=99:
+> ../../support/include/rpcmisc.h:58: warning: dereferencing type-punne=
+d
+> pointer might break strict-aliasing rules
+> ../../support/include/rpcmisc.h: In function =E2=80=98nfs_getrpccalle=
+r=E2=80=99:
+> ../../support/include/rpcmisc.h:63: warning: dereferencing type-punne=
+d
+> pointer might break strict-aliasing rules
+>=20
+> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> ---
+> Steve-
+>=20
+> This minor clean-up patch has been floating around in my repo for a
+> while.  Please consider applying it for the next release of nfs-utils=
+=2E
+Committed...=20
 
-> Andy, I've fixed this already in my tree, but with additionaly
-> checking on nfs4_sequence_done's status:
-> 
-> if (!nfs4_sequence_done(task, &res))
-> 	return 0;
-> 
-> Benny
-> 
-> On Jul. 16, 2010, 18:56 +0300, andros@netapp.com wrote:
->> From: Andy Adamson <andros@netapp.com>
->> 
->> Signed-off-by: Andy Adamson <andros@netapp.com>
->> ---
->> fs/nfs/nfs4proc.c |    6 +++---
->> 1 files changed, 3 insertions(+), 3 deletions(-)
->> 
->> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
->> index f5779a1..17b0c31 100644
->> --- a/fs/nfs/nfs4proc.c
->> +++ b/fs/nfs/nfs4proc.c
->> @@ -5448,7 +5448,7 @@ static void nfs4_pnfs_layoutget_done(struct rpc_task *task, void *calldata)
->> 
->> 	dprintk("--> %s\n", __func__);
->> 
->> -	nfs4_sequence_done(server, &lgp->res.seq_res, task->tk_status);
->> +	nfs4_sequence_done(task, &lgp->res.seq_res);
->> 
->> 	if (RPC_ASSASSINATED(task))
->> 		return;
->> @@ -5558,7 +5558,7 @@ pnfs_layoutcommit_done(struct rpc_task *task, void *calldata)
->> 		(struct pnfs_layoutcommit_data *)calldata;
->> 	struct nfs_server *server = NFS_SERVER(data->args.inode);
->> 
->> -	nfs4_sequence_done(server, &data->res.seq_res, task->tk_status);
->> +	nfs4_sequence_done(task, &data->res.seq_res);
->> 	if (RPC_ASSASSINATED(task))
->> 		return;
->> 
->> @@ -5666,7 +5666,7 @@ static void nfs4_pnfs_layoutreturn_done(struct rpc_task *task, void *calldata)
->> 
->> 	dprintk("--> %s\n", __func__);
->> 
->> -	nfs4_sequence_done(server, &lrp->res.seq_res, task->tk_status);
->> +	nfs4_sequence_done(task, &lrp->res.seq_res);
->> 	if (RPC_ASSASSINATED(task))
->> 		return;
->> 
+steved.
 
+>=20
+>=20
+>  support/include/rpcmisc.h |    4 ++--
+>  1 files changed, 2 insertions(+), 2 deletions(-)
+>=20
+> diff --git a/support/include/rpcmisc.h b/support/include/rpcmisc.h
+> index 1b8f411..c5847fa 100644
+> --- a/support/include/rpcmisc.h
+> +++ b/support/include/rpcmisc.h
+> @@ -60,12 +60,12 @@ extern int	_rpcsvcdirty;
+> =20
+>  static inline struct sockaddr_in *nfs_getrpccaller_in(SVCXPRT *xprt)
+>  {
+> -	return (struct sockaddr_in *)svc_getcaller(xprt);
+> +	return (struct sockaddr_in *)(char *)svc_getcaller(xprt);
+>  }
+> =20
+>  static inline struct sockaddr *nfs_getrpccaller(SVCXPRT *xprt)
+>  {
+> -	return (struct sockaddr *)svc_getcaller(xprt);
+> +	return (struct sockaddr *)(char *)svc_getcaller(xprt);
+>  }
+> =20
+>  #endif /* RPCMISC_H */
+>=20
