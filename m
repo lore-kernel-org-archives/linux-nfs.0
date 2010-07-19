@@ -1,57 +1,63 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:32806 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:22495 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933810Ab0GOR3E (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 15 Jul 2010 13:29:04 -0400
-Date: Thu, 15 Jul 2010 13:28:36 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Marc Eshel <eshel@almaden.ibm.com>
+	id S966739Ab0GSUur (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 19 Jul 2010 16:50:47 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: bfields@fieldses.org
 Cc: linux-nfs@vger.kernel.org
-Subject: Re: Linux pNFS status meeting 07/15
-Message-ID: <20100715172836.GC15126@fieldses.org>
-References: <OF01D34025.9BF2DCCC-ON88257760.007510C5-88257760.007530DA@us.ibm.com>
- <20100714212928.GD8161@fieldses.org>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20100714212928.GD8161@fieldses.org>
+Subject: [PATCH 3/5] nfsd: fix error handling in __write_ports_addxprt
+Date: Mon, 19 Jul 2010 16:50:06 -0400
+Message-Id: <1279572608-7234-4-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1279572608-7234-1-git-send-email-jlayton@redhat.com>
+References: <1279572608-7234-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
+__write_ports_addxprt calls nfsd_create_serv. That increases the
+refcount of nfsd_serv (which is tracked in sv_nrthreads). The service
+only decrements the thread count on error, not on success like
+__write_ports_addfd does, so using this interface leaves the nfsd
+thread count high.
 
-Notes:
+Fix this by having this function call svc_destroy() on error to release
+the reference (and possibly to tear down the service) and simply
+decrement the refcount without tearing down the service on success.
 
-Bruce:
-	- nothing to report (transitioning to new hardware, etc.)
+This makes the sv_threads handling work basically the same in both
+__write_ports_addxprt and __write_ports_addfd.
 
-Trond:
-	- did some fsync cleanup
-	- bugfixes to handling of ERR_DELAY on sequence operations.
-	- preparing for rpc changes required for migration.
-		(some discusison here of idempotency problems on
-		migration/reboot)
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/nfsd/nfsctl.c |    6 ++++--
+ 1 files changed, 4 insertions(+), 2 deletions(-)
 
-Benny:
-	- Included Trond's delay/sequence fix
-	(missed some additional discussion)
+diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
+index af7469e..9e8645a 100644
+--- a/fs/nfsd/nfsctl.c
++++ b/fs/nfsd/nfsctl.c
+@@ -1018,6 +1018,9 @@ static ssize_t __write_ports_addxprt(char *buf)
+ 				PF_INET6, port, SVC_SOCK_ANONYMOUS);
+ 	if (err < 0 && err != -EAFNOSUPPORT)
+ 		goto out_close;
++
++	/* Decrease the count, but don't shut down the service */
++	nfsd_serv->sv_nrthreads--;
+ 	return 0;
+ out_close:
+ 	xprt = svc_find_xprt(nfsd_serv, transport, PF_INET, port);
+@@ -1026,8 +1029,7 @@ out_close:
+ 		svc_xprt_put(xprt);
+ 	}
+ out_err:
+-	/* Decrease the count, but don't shut down the service */
+-	nfsd_serv->sv_nrthreads--;
++	svc_destroy(nfsd_serv);
+ 	return err;
+ }
+ 
+-- 
+1.5.5.6
 
-Andy:
-	- simplification of write_pagelist/read_pagelist prototypes
-	- making sure layouts removed on server reboot
-	- looking at layout commit/reclaim issues in preparation for
-	  discussion at Maastricht.
-	- wants to rename some structures; will mail proposal to list.
-
-Jim Rees:
-	- bugfixing complex-volume patches; not ready to submit to Benny
-	  quite yet.
-
-Steved:
-	- Discussion of RHEL prospects.  When will we have some pnfs
-	  patches that are ready to review?  Concensus seems to be
-	  2.6.36 will be too early.  Ricardo, Benny think 2.6.37
-	  possible to finish up remaining work, squash changes into a
-	  single cleaned-up patch series.  Trond reminds that adequate
-	  time is required before merge window for review, especially
-	  for large change.  Benny volunteering to do squashing.
-
---b.
