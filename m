@@ -1,57 +1,60 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:53253 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:40318 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754888Ab0G2WWh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 29 Jul 2010 18:22:37 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 2/5] nfsd4: don't pretend to support write delegations
-Date: Thu, 29 Jul 2010 18:21:21 -0400
-Message-Id: <1280442084-17867-3-git-send-email-bfields@redhat.com>
-In-Reply-To: <1280442084-17867-1-git-send-email-bfields@redhat.com>
-References: <1280442084-17867-1-git-send-email-bfields@redhat.com>
+	id S966728Ab0GSUux (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 19 Jul 2010 16:50:53 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH 4/5] nfsd: shut down NFSv4 state when nfsd_svc encounters an error
+Date: Mon, 19 Jul 2010 16:50:07 -0400
+Message-Id: <1279572608-7234-5-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1279572608-7234-1-git-send-email-jlayton@redhat.com>
+References: <1279572608-7234-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
 MIME-Version: 1.0
 
-The delegation code mostly pretends to support either read or write
-delegations.  However, correct support for write delegations would
-require, for example, breaking of delegations (and/or implementation of
-cb_getattr) on stat.  Currently all that stops us from handing out
-delegations is a subtle reference-counting issue.
+Currently, it's left up in some situations. That could cause the grace
+period to be shorter than it should be (along with other problems).
 
-Avoid confusion by adding an earlier check that explicitly refuses write
-delegations.
-
-For now, though, I'm not going so far as to rip out existing
-half-support for write delegations, in case we get around to using that
-soon.
-
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
 ---
- fs/nfsd/nfs4state.c |    7 +++++++
- 1 files changed, 7 insertions(+), 0 deletions(-)
+ fs/nfsd/nfssvc.c |   11 +++++++----
+ 1 files changed, 7 insertions(+), 4 deletions(-)
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 9cc3b78..c07c988 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -170,6 +170,13 @@ alloc_init_deleg(struct nfs4_client *clp, struct nfs4_stateid *stp, struct svc_f
- 	struct nfs4_cb_conn *cb = &stp->st_stateowner->so_client->cl_cb_conn;
+diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
+index 06b2a26..a06ea99 100644
+--- a/fs/nfsd/nfssvc.c
++++ b/fs/nfsd/nfssvc.c
+@@ -402,9 +402,9 @@ nfsd_svc(unsigned short port, int nrservs)
+ 	nfsd_reset_versions();
  
- 	dprintk("NFSD alloc_init_deleg\n");
-+	/*
-+	 * Major work on the lease subsystem (for example, to support
-+	 * calbacks on stat) will be required before we can support
-+	 * write delegations properly.
-+	 */
-+	if (type != NFS4_OPEN_DELEGATE_READ)
-+		return NULL;
- 	if (fp->fi_had_conflict)
- 		return NULL;
- 	if (num_delegations > max_delegations)
+ 	error = nfsd_create_serv();
+-
+ 	if (error)
+-		goto out;
++		goto shutdown_state;
++
+ 	error = nfsd_init_socks(port);
+ 	if (error)
+ 		goto failure;
+@@ -416,9 +416,12 @@ nfsd_svc(unsigned short port, int nrservs)
+ 		 * so subtract 1
+ 		 */
+ 		error = nfsd_serv->sv_nrthreads - 1;
+- failure:
++failure:
+ 	svc_destroy(nfsd_serv);		/* Release server */
+- out:
++shutdown_state:
++	if (error < 0)
++		nfs4_state_shutdown();
++out:
+ 	mutex_unlock(&nfsd_mutex);
+ 	return error;
+ }
 -- 
-1.7.0.4
+1.5.5.6
 
