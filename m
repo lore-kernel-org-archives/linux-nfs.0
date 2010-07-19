@@ -1,65 +1,37 @@
-From: Benny Halevy <bhalevy@panasas.com>
-Subject: Re: [PATCH 1/1] SQUASHME pnfs-submit pnfs operations use new nfs4_sequence_done
-Date: Mon, 19 Jul 2010 11:46:11 +0300
-Message-ID: <4C4410D3.3070900@panasas.com>
-References: <1279295797-4113-1-git-send-email-andros@netapp.com> <1279295797-4113-2-git-send-email-andros@netapp.com>
+From: Bernd Petrovitsch <bernd@petrovitsch.priv.at>
+Subject: Re: on demaind nfs
+Date: Mon, 19 Jul 2010 10:52:07 +0200
+Message-ID: <1279529527.13175.0.camel@thorin>
+References: <AANLkTinokaOEBVHu5KMxofnnkN-0e5MsIfnf1zNPhVmA@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset="UTF-8"
 Cc: linux-nfs@vger.kernel.org
-To: andros@netapp.com
+To: Peng Yu <pengyu.ut@gmail.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:26332 "EHLO
-	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1760216Ab0GSIqN (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 19 Jul 2010 04:46:13 -0400
-In-Reply-To: <1279295797-4113-2-git-send-email-andros@netapp.com>
+Received: from esgaroth.petrovitsch.at ([78.47.184.11]:6209 "EHLO
+	esgaroth.petrovitsch.priv.at" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1760216Ab0GSIwN (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 19 Jul 2010 04:52:13 -0400
+In-Reply-To: <AANLkTinokaOEBVHu5KMxofnnkN-0e5MsIfnf1zNPhVmA-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Andy, I've fixed this already in my tree, but with additionaly
-checking on nfs4_sequence_done's status:
+Hi!
 
-if (!nfs4_sequence_done(task, &res))
-	return 0;
-
-Benny
-
-On Jul. 16, 2010, 18:56 +0300, andros@netapp.com wrote:
-> From: Andy Adamson <andros@netapp.com>
+On Son, 2010-07-18 at 19:31 -0500, Peng Yu wrote:
+[...]
+> I've seen that an nfs filesystem can be mount on demand. Suppose, that
+> the nfs filesystems should be mounted on /local, say /local/nfs1 ...
+> /local/nfs10. If I don't access them for a while, then I will not see
+> them mounted (no such file system in df).
 > 
-> Signed-off-by: Andy Adamson <andros@netapp.com>
-> ---
->  fs/nfs/nfs4proc.c |    6 +++---
->  1 files changed, 3 insertions(+), 3 deletions(-)
-> 
-> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-> index f5779a1..17b0c31 100644
-> --- a/fs/nfs/nfs4proc.c
-> +++ b/fs/nfs/nfs4proc.c
-> @@ -5448,7 +5448,7 @@ static void nfs4_pnfs_layoutget_done(struct rpc_task *task, void *calldata)
->  
->  	dprintk("--> %s\n", __func__);
->  
-> -	nfs4_sequence_done(server, &lgp->res.seq_res, task->tk_status);
-> +	nfs4_sequence_done(task, &lgp->res.seq_res);
->  
->  	if (RPC_ASSASSINATED(task))
->  		return;
-> @@ -5558,7 +5558,7 @@ pnfs_layoutcommit_done(struct rpc_task *task, void *calldata)
->  		(struct pnfs_layoutcommit_data *)calldata;
->  	struct nfs_server *server = NFS_SERVER(data->args.inode);
->  
-> -	nfs4_sequence_done(server, &data->res.seq_res, task->tk_status);
-> +	nfs4_sequence_done(task, &data->res.seq_res);
->  	if (RPC_ASSASSINATED(task))
->  		return;
->  
-> @@ -5666,7 +5666,7 @@ static void nfs4_pnfs_layoutreturn_done(struct rpc_task *task, void *calldata)
->  
->  	dprintk("--> %s\n", __func__);
->  
-> -	nfs4_sequence_done(server, &lrp->res.seq_res, task->tk_status);
-> +	nfs4_sequence_done(task, &lrp->res.seq_res);
->  	if (RPC_ASSASSINATED(task))
->  		return;
->  
+> If I try to cd to /local/nfs1, then I will see it in df. I'm wondering
+> if any body can let me know how to mount nfs file system on demand.
+
+Google for "autofs" and "automount".
+
+	Bernd
+-- 
+Bernd Petrovitsch                  Email : bernd@petrovitsch.priv.at
+                     LUGA : http://www.luga.at
+
