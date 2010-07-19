@@ -1,51 +1,48 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from borg.medozas.de ([188.40.89.202]:50444 "EHLO borg.medozas.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751555Ab0GVPql (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 22 Jul 2010 11:46:41 -0400
-Date: Thu, 22 Jul 2010 17:46:39 +0200 (CEST)
-From: Jan Engelhardt <jengelh@medozas.de>
-To: Linus Torvalds <torvalds@linux-foundation.org>
-cc: Volker.Lendecke@sernet.de, David Howells <dhowells@redhat.com>,
-        linux-cifs@vger.kernel.org, linux-nfs@vger.kernel.org,
-        samba-technical@lists.samba.org, linux-kernel@vger.kernel.org,
-        viro@zeniv.linux.org.uk, linux-fsdevel@vger.kernel.org,
-        linux-ext4@vger.kernel.org
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:58344 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S932452Ab0GSRrd convert rfc822-to-8bit
+	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 19 Jul 2010 13:47:33 -0400
+In-Reply-To: <11817.1279560400@redhat.com>
+References: <20100715021709.5544.64506.stgit@warthog.procyon.org.uk>
+	<20100715021712.5544.44845.stgit@warthog.procyon.org.uk>
+	<AANLkTikuzYqYpGHcubb7QVciZW0dNFjOG82qIwy5M4gO@mail.gmail.com>
+	<10783.1279556132@redhat.com>
+	<AANLkTinVns77R7yCCh-lydd0eQufdAF9O2OaWmCL7uSn@mail.gmail.com>
+	<11817.1279560400@redhat.com>
+Date: Mon, 19 Jul 2010 10:46:55 -0700
+Message-ID: <AANLkTikxHJgguNn6EOK6fX53xYSRPmcNjIeGSTigQ9qu@mail.gmail.com>
 Subject: Re: [PATCH 02/18] xstat: Add a pair of system calls to make extended
-  file stats available [ver #6]
-In-Reply-To: <AANLkTikBCXK6uEwWq4f0LvpdoKCPs3jvyFa4Zw4e2J_7@mail.gmail.com>
-Message-ID: <alpine.LSU.2.01.1007221740570.12308@obet.zrqbmnf.qr>
-References: <alpine.LSU.2.01.1007221228260.6115@obet.zrqbmnf.qr>  <20100715021709.5544.64506.stgit@warthog.procyon.org.uk> <20100715021712.5544.44845.stgit@warthog.procyon.org.uk>  <30448.1279800887@redhat.com> <E1Obuiy-00C9jr-Al@intern.SerNet.DE>
- <AANLkTikBCXK6uEwWq4f0LvpdoKCPs3jvyFa4Zw4e2J_7@mail.gmail.com>
-Content-Type: TEXT/PLAIN; charset=UTF-8
+	file stats available [ver #6]
+From: Linus Torvalds <torvalds@linux-foundation.org>
+To: David Howells <dhowells@redhat.com>
+Cc: viro@zeniv.linux.org.uk, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-cifs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, samba-technical@lists.samba.org,
+        linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-
-On Thursday 2010-07-22 17:14, Linus Torvalds wrote:
->>>
->>> It is? Â It's called crtime in Ext4. Â st_btime, however, would be compatible
->>> with BSD's stat, and Samba would just use it by way of autoconf magic if it
->>> appeared.
->>
->> Samba has the following check:
->> # recent FreeBSD, NetBSD have creation timestamps called birthtime:
->> AC_CHECK_MEMBERS([struct stat.st_birthtimespec.tv_nsec])
->> AC_CHECK_MEMBERS([struct stat.st_birthtime], AC_CHECK_MEMBERS([struct stat.st_birthtimensec]))
->>
->> and the supporting code around that. "birth" might also be
->> where the "b" comes from :-)
+On Mon, Jul 19, 2010 at 10:26 AM, David Howells <dhowells@redhat.com> wrote:
 >
->Oh wow. And all of this just convinces me that we should _not_ do any
->of this, since clearly it's all totally useless and people can't even
->agree on a name.
+>> Ask your samba people, for example, if they'd _ever_ do just a "xstat()"?
 >
->Let's wait five years and see if there is actually any consensus on it
->being needed and used at all, rather than rush into something just
->because "we can".
+> I suspect they would, though maybe they can say otherwise.  What about SMB
+> directory enumeration?  I believe that is effectively getdents-with-stat.
+> Having to do open+stat for each file for that would be painful.
 
-There just is no way currently to store creation times. Abusing ctimes
-for write-once archives also stops working once you rsync it from one
-place to another. (Which brings me to the side question of why
-the ctime isn't settable through futimesnat.)
+Yeah, but do you need xstat information at all for something like
+that? Most people try very hard to make do with the information
+returned by readdir itself (d_type and inode number), because if you
+end up looking up each name you've already pretty much lost in a
+performance model.
+
+(And I do agree that a "readdirplus()" is probably something that a
+lot of server people would find useful, but obviously that's another
+cross-filesystem nightmare. Only a few filesystems can cheaply give
+you anything but d_type/d_ino, and not all do even that),
+
+                      Linus
