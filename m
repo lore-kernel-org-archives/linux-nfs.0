@@ -1,33 +1,40 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:35244 "EHLO
-	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1752052Ab0GFNve (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 6 Jul 2010 09:51:34 -0400
-Message-ID: <4C3334E3.7070600@panasas.com>
-Date: Tue, 06 Jul 2010 16:51:31 +0300
-From: Boaz Harrosh <bharrosh@panasas.com>
-To: Benny Halevy <bhalevy@panasas.com>, Andy Adamson <andros@netapp.com>,
-        NFS list <linux-nfs@vger.kernel.org>, Fred Isaman <iisaman@netapp.com>
-Subject: [PATCH 0/6] Some pnfs-submit love
-Content-Type: text/plain; charset=UTF-8
+Received: from mx1.redhat.com ([209.132.183.28]:2423 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S966728Ab0GSUut (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 19 Jul 2010 16:50:49 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH 0/5] nfsd: fix error handling in write_ports interfaces (resend)
+Date: Mon, 19 Jul 2010 16:50:03 -0400
+Message-Id: <1279572608-7234-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-Some cleanup love to pnfs code.
+Hi Bruce,
 
-Andy this would conflict with your dropped:
-	[PATCH 03/10] SQUASHME pnfs-submit: clear page lseg on partial i/o
+This patchset is a resend of the set I sent a month or so ago, with
+a couple of other patches to fix related problems that came to light
+as we were discussing them.
 
-I redone them based on Current Benny's tree.
+It's changed a bit from the original set by virtue of the fact that
+patch #5 simplifies the lockd_up/down handling. Let me know if you
+see any problems with the set and I'll work on addressing them.
 
-[PATCH 1/6] SQUASME pnfs-submit: Collapse pnfs_try_to_write_data code path and avoid big fat inlines
-[PATCH 2/6] SQUASME pnfs-submit: Collapse pnfs_try_to_read_data code path and avoid big fat inlines
-[PATCH 3/6] SQUASME pnfs-submit: Collapse pnfs_try_to_commit code path and avoid big fat inlines
-[PATCH 4/6] SQUASHME: pnfs-submit: Move _pnfs_clear_lseg_from_pages to pnfs.c
-[PATCH 5/6] SQUASHME: pnfs-commit: Fix scariness in nfs4_clear_inode
-[PATCH 6/6] SQUASHME: pnfs-submit: pnfs_return_layout remove surrounding #ifdef CONFIG_NFS_V4_1
+Thanks,
 
-Please review?
-Boaz
+Jeff Layton (5):
+  nfsd: don't try to shut down nfs4 state handling unless it's up
+  nfsd: fix error handling when starting nfsd with rpcbind down
+  nfsd: fix error handling in __write_ports_addxprt
+  nfsd: shut down NFSv4 state when nfsd_svc encounters an error
+  nfsd: just keep single lockd reference for nfsd
+
+ fs/nfsd/nfs4state.c |    2 ++
+ fs/nfsd/nfsctl.c    |   20 ++++++++------------
+ fs/nfsd/nfssvc.c    |   36 +++++++++++++++++-------------------
+ 3 files changed, 27 insertions(+), 31 deletions(-)
 
