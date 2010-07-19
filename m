@@ -1,106 +1,124 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-bw0-f46.google.com ([209.85.214.46]:45366 "EHLO
-	mail-bw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754764Ab0G1O3b convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 28 Jul 2010 10:29:31 -0400
-Received: by bwz1 with SMTP id 1so3983444bwz.19
-        for <linux-nfs@vger.kernel.org>; Wed, 28 Jul 2010 07:29:30 -0700 (PDT)
-In-Reply-To: <4C503AB5.1090204@panasas.com>
-References: <DD09EF29-A704-4F17-B917-C01051355CA3@netapp.com>
-	<4C500FFD.4000206@panasas.com>
-	<AANLkTikf-9UDhi6_Jg0k8=wV64=JPGVm5T=scQk14xM1@mail.gmail.com>
-	<4C503AB5.1090204@panasas.com>
-Date: Wed, 28 Jul 2010 10:29:29 -0400
-Message-ID: <AANLkTi=QtN2_HcwHefv2KTQeFa+9QTCUEHvBMUw4RrFr@mail.gmail.com>
-Subject: Re: pNFS client structure and function rename suggestions
-From: Fred Isaman <iisaman@umich.edu>
-To: Boaz Harrosh <bharrosh@panasas.com>
-Cc: Andy Adamson <andros@netapp.com>, linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mx1.redhat.com ([209.132.183.28]:13290 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S936320Ab0GSQPp convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 19 Jul 2010 12:15:45 -0400
+From: David Howells <dhowells@redhat.com>
+In-Reply-To: <AANLkTikuzYqYpGHcubb7QVciZW0dNFjOG82qIwy5M4gO@mail.gmail.com>
+References: <AANLkTikuzYqYpGHcubb7QVciZW0dNFjOG82qIwy5M4gO@mail.gmail.com> <20100715021709.5544.64506.stgit@warthog.procyon.org.uk> <20100715021712.5544.44845.stgit@warthog.procyon.org.uk>
+To: Linus Torvalds <torvalds@linux-foundation.org>
+Cc: dhowells@redhat.com, viro@zeniv.linux.org.uk,
+        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-cifs@vger.kernel.org, linux-kernel@vger.kernel.org,
+        samba-technical@lists.samba.org, linux-ext4@vger.kernel.org
+Subject: Re: [PATCH 02/18] xstat: Add a pair of system calls to make extended file stats available [ver #6]
+Content-Type: text/plain; charset=iso-8859-1
+Date: Mon, 19 Jul 2010 17:15:32 +0100
+Message-ID: <10783.1279556132@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, Jul 28, 2010 at 10:12 AM, Boaz Harrosh <bharrosh@panasas.com> wrote:
-> On 07/28/2010 04:48 PM, Fred Isaman wrote:
->> On Wed, Jul 28, 2010 at 7:09 AM, Boaz Harrosh <bharrosh@panasas.com> wrote:
->>>> struct nfs4_pnfs_layout_segment => pnfs_layout_range
->>>
->>> Isn't this a struct layout4 above?
->>
->> No, this is probably the most confusingly named structure of them all,
->> and one I would strongly urge be changed along the line of Andy's
->> suggestion.
->>
->> Fred
->>
->
-> We are like a married couple on a freezing night. Each pulling the blanket
-> to his/her side.
->
-> I'm trying to pull the blanket to the side. where all these are converted
-> to exactly the names and structures as stated by the standard.
-> That the Linux-pnfs-workgroup tried to invent their own STD is a misfortune
-> which I missed, getting so late into the game.
->
-> What side of the Bed are you pulling to?
-> I wish you elaborate more, and explain, instead of just saying "NO"
->
+Linus Torvalds <torvalds@linux-foundation.org> wrote:
 
-All I meant that "no, this is not the struct layout4 above."
+>  - that whole xstat buffer handling is just a mess. I think you
+> already fixed the "xstat_parameters" crud and just made it a simple
+> unsigned long and a direct argument,
 
-There currently exists:
+I was thinking more of an unsigned int argument, since it can't have more than
+32 flags in it if it is also to work on 32-bit arches.
 
-struct nfs4_pnfs_layout_segment {
-	u32 iomode;
-	u64 offset;
-	u64 length;
-};
-
-which is used to hold range information, but which is easy to confuse
-with struct pnfs_layout_segment.
-
-I REALLY want the name nfs4_pnfs_layout_segment changed.
-
-When possible, I'm all for changing names to coincide with those used
-in the spec.  But note that those structures are most useful for XDR
-encoding/decoding, and don't always correspond to the information we
-need to pass around internally.
-
-Fred
-
-
-> struct layout_content {
->           layouttype4 loc_type;
->           void      *loc_body;
-> };
+> but the "buffer+buflen" thing is still disgusting.
 >
-> struct layout {
->           offset4                 lo_offset;
->           length4                 lo_length;
->           layoutiomode4           lo_iomode;
->           layout_content4         lo_content;
-> };
->
-> struct layoutget_args {
->           /* CURRENT_FH: file */
->           bool                    loga_signal_layout_avail;
->           layouttype4             loga_layout_type;
->           layoutiomode4           loga_iomode;
->           offset4                 loga_offset;
->           length4                 loga_length;
->           length4                 loga_minlength;
->           stateid4                loga_stateid;
->           count4                  loga_maxcount;
-> };
->
-> struct layoutget_res {
->           bool               logr_return_on_close;
->           stateid4           logr_stateid;
->           layout             logr_layout;
-> };
->
-> How is the above less useful then the mess we have now?
->
-> Boaz
->
+>    Why not just leave a few empty fields at the end, and make the rule
+> be: "We don't just add random crap, so don't expect it to grow widely
+> in the future".
+
+Because it gets allocated on the kernel stack.  It's already 160 bytes, and
+expanding it will eat more kernel stack space.  Now, I can offset that by: (a)
+embedding it in struct kstat so that we allocate less stack space in xstat()
+overall, and (b) allocating kstat/xstat structs with kmalloc() rather than on
+the stack in all the stat syscalls.
+
+>  - you use "long long" all over the place. Don't do that. If you want
+> a fixed size, say so, and use "u64/s64". That's the _real_ fixed size,
+> and "long long" just _happens_ to be the same size on all current
+> architectures.
+
+I was following struct stat/stat64 in arch/x86/include/asm/stat.h which do the
+same.  Also, if this is going to be seen by userspace, isn't it better to use
+uint32_t and suchlike?
+
+>  - why create that new kind of xstat() that realistically absolutely
+> nobody will use outside of some very special cases, and that has no
+> real advantages for 99.9% of all people?
+
+The new information is useful for some cases.  Samba for example.  At least
+two of the fields I'm adding are also made available through BSD's stat()
+call, and will automatically be used for some things by autoconf magic if they
+become available.
+
+I'm still trying to get a handle on what people think will be truly useful.  I
+can see things *could* be useful, particularly to GUI file managers and ls,
+but not everyone is of the same opinion.
+
+Perhaps you or others can offer answers to the following questions as these
+might help:
+
+ (1) Should I offer information that's effectively free to come by, but could
+     be got through:
+
+     (a) An extra statfs() call - such as whether a file is remote, whether
+     	 it's some kernel special file?  Or what the volume label is for this
+     	 file?
+
+     (b) An extra getxattr() call - such as a file's security label.
+
+     (c) An extra ioctl() call - such as FS_IOC_GETFLAGS.
+
+ (2) Should I offer information that's appropriate to non-UNIX filesystems
+     such as FAT, NTFS or CIFS.  Some of this may map onto other fields, such
+     as FS_IOC_GETFLAGS.
+
+ (3) Should I offer information about which results that I've returned are
+     actually useful, as opposed to being fabricated on the spot?  Such as
+     UID/GID in FAT or blocks in UBIFS.  This may be of use to df or a GUI.
+     For instance, a GUI, seeing that UID/GID aren't useful, could ask the
+     filesystem to provide information about what it considers to be valid
+     ownership information.
+
+>    You could make it a "atomic stat+open" by replacing the useless
+> "size" return value with a "fd" return value, add a flag saying "we're
+> also interested in opening it" (in the same result set flags), and
+> instead of that stupid "buflen" input, give the "mode" input that open
+> needs.
+
+Which would be used by even fewer people, I suspect.  However, it's certainly
+an interesting idea.  I suspect it doesn't gain much over open()+fstat()
+though, given that you'd still have to do most of the work of fstat() after
+doing the open() thing anyway.
+
+Also, I'm not sure how much use the atomicity is, given that the file may have
+changed state between the gathering of the stat data and userspace getting to
+do anything with it.
+
+> >        ssize_t ret = fxstat(unsigned fd,
+> 
+> Quite frankly, my gut feel is that once you do "xstat(dfd, filename,
+> ...)" then it's damn stupid to do a separate "fxstat()", when you
+> might as well say that "xtstat(dfd, NULL, ...)" is the same as
+> "fxstat(fd, ...)"
+
+This has been suggested and denounced as stupid already.  That said, I agree
+with you.
+
+> Now, the difference between adding one or two system calls may not be
+> huge, but just from a cleanliness angle, I really don't see the point
+> of having another fstat variant when the extended xstat() already very
+> naturally supports the thing. And let's face it, using a NULL path
+> pointer just makes sense if you don't have a path. You already passed
+> it a target file descriptor in the dfd.
+
+Agreed.
+
+David
