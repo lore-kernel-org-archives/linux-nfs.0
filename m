@@ -1,64 +1,46 @@
 From: Steve Dickson <SteveD@redhat.com>
-Subject: Re: gssd picking wrong creds
-Date: Mon, 19 Jul 2010 11:10:04 -0400
-Message-ID: <4C446ACC.8090305@RedHat.com>
-References: <4C300049.7040603@gmail.com>
+Subject: Re: nfs-utils atomicio.c
+Date: Mon, 19 Jul 2010 11:28:13 -0400
+Message-ID: <4C446F0D.8020405@RedHat.com>
+References: <20100716193508.GA14878@merit.edu>	 <1279310952.8180.0.camel@moss-terrapins.epoch.ncsc.mil>	 <20100716205355.GA7962@merit.edu> <4C40C8DF.8030107@RedHat.com>	 <20100716220609.GA7828@merit.edu> <1279319622.8180.2.camel@moss-terrapins.epoch.ncsc.mil>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
-Cc: linux-nfs@vger.kernel.org
-To: Doug Nazar <nazard.michi@gmail.com>
+Cc: Jim Rees <rees@umich.edu>, linux-nfs@vger.kernel.org
+To: "David P. Quigley" <dpquigl@tycho.nsa.gov>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:5172 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:42821 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S935158Ab0GSPKH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 19 Jul 2010 11:10:07 -0400
-In-Reply-To: <4C300049.7040603@gmail.com>
+	id S935158Ab0GSP2T (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 19 Jul 2010 11:28:19 -0400
+In-Reply-To: <1279319622.8180.2.camel-88+Bj4OksMGWPftkNcioYDMZycKHmlmlfvIqQ387n9k@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Hey David,
 
-
-On 07/03/2010 11:30 PM, Doug Nazar wrote:
->  I'm running rpc.gssd with the the -n option. Noticed that with the new
-> version it's now creating the machine cache file which is also owned by
-> root so when it scans the cache files it matches the root user and then
-> depending on the timestamp it can grab the wrong file.
+On 07/16/2010 06:33 PM, David P. Quigley wrote:
+> On Fri, 2010-07-16 at 18:06 -0400, Jim Rees wrote:
+>> Steve Dickson wrote:
+>>
+>>   > strlcat and strlcpy should probably go too.
+>>   Anything else?
+>>
+>> I don't see any other library functions that should move.  Configure should
+>> check for strlcat and strlcpy, and not compile them if there are system
+>> versions.  Again, I'll do that if no one beats me to it.
+>>
+>> On a related note, I've been using benny's pnfs-nfs-utils.git tree as a base
+>> for adding the block layout helper, as suggested by the wiki.  Is that
+>> correct?
 > 
-> Doug
-> 
-> 
-> nfs-utils-ignore-machine-cred.diff
-> 
-
-Committed...
+> Just got back from dinner and I'm heading out soon for the weekend but
+> here is the patch that I have. It should apply on top of
+> 2ef57222b10a91f4b96a06808d05a47e8f4c14f7 and moves strlcat and strlcpy
+> as well. The only think you might have to check is I know at some point
+> some changes were made to cfg.c and cfg.h make sure the ones I have in
+> this patch are the new ones instead of the old ones. I'd take a closer
+> look but I'm short on time here.
+Thanks for being so proactive... but... there is no utils/idmapd/cfg.[ch]
+files in my upstream repo... so where is that coming from?? 
 
 steved.
-
-> 
-> commit 891bf46cd23dbbb24188456aad29ac0ead2bc31f
-> Author: Doug Nazar <nazard.michi@gmail.com>
-> Date:   Sat Jul 3 23:12:27 2010 -0400
-> 
->     When not using machine credentials for root, if the machine
->     credential cache file is newer than the root credential file
->     the wrong file will get picked. Ignore the machine file in this
->     case.
-> 
-> diff --git a/utils/gssd/krb5_util.c b/utils/gssd/krb5_util.c
-> index dccbeb6..d23654f 100644
-> --- a/utils/gssd/krb5_util.c
-> +++ b/utils/gssd/krb5_util.c
-> @@ -224,6 +224,13 @@ gssd_find_existing_krb5_ccache(uid_t uid, char *dirname, struct dirent **d)
->  				free(namelist[i]);
->  				continue;
->  			}
-> +			if (uid == 0 && !root_uses_machine_creds && 
-> +				strstr(namelist[i]->d_name, "_machine_")) {
-> +				printerr(3, "CC file '%s' not available to root\n",
-> +					 statname);
-> +				free(namelist[i]);
-> +				continue;
-> +			}
->  			if (!query_krb5_ccache(buf, &princname, &realm)) {
->  				printerr(3, "CC file '%s' is expired or corrupt\n",
->  					 statname);
