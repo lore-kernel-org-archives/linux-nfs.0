@@ -1,48 +1,67 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:58344 "EHLO
-	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S932452Ab0GSRrd convert rfc822-to-8bit
-	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 19 Jul 2010 13:47:33 -0400
-In-Reply-To: <11817.1279560400@redhat.com>
-References: <20100715021709.5544.64506.stgit@warthog.procyon.org.uk>
-	<20100715021712.5544.44845.stgit@warthog.procyon.org.uk>
-	<AANLkTikuzYqYpGHcubb7QVciZW0dNFjOG82qIwy5M4gO@mail.gmail.com>
-	<10783.1279556132@redhat.com>
-	<AANLkTinVns77R7yCCh-lydd0eQufdAF9O2OaWmCL7uSn@mail.gmail.com>
-	<11817.1279560400@redhat.com>
-Date: Mon, 19 Jul 2010 10:46:55 -0700
-Message-ID: <AANLkTikxHJgguNn6EOK6fX53xYSRPmcNjIeGSTigQ9qu@mail.gmail.com>
-Subject: Re: [PATCH 02/18] xstat: Add a pair of system calls to make extended
-	file stats available [ver #6]
-From: Linus Torvalds <torvalds@linux-foundation.org>
-To: David Howells <dhowells@redhat.com>
-Cc: viro@zeniv.linux.org.uk, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-cifs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, samba-technical@lists.samba.org,
-        linux-ext4@vger.kernel.org
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mx1.redhat.com ([209.132.183.28]:20410 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S966728Ab0GSUuw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 19 Jul 2010 16:50:52 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH 2/5] nfsd: fix error handling when starting nfsd with rpcbind down
+Date: Mon, 19 Jul 2010 16:50:05 -0400
+Message-Id: <1279572608-7234-3-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1279572608-7234-1-git-send-email-jlayton@redhat.com>
+References: <1279572608-7234-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Mon, Jul 19, 2010 at 10:26 AM, David Howells <dhowells@redhat.com> wrote:
->
->> Ask your samba people, for example, if they'd _ever_ do just a "xstat()"?
->
-> I suspect they would, though maybe they can say otherwise.  What about SMB
-> directory enumeration?  I believe that is effectively getdents-with-stat.
-> Having to do open+stat for each file for that would be painful.
+The refcounting for nfsd is a little goofy. What happens is that we
+create the nfsd RPC service, attach sockets to it but don't actually
+start the threads until someone writes to the "threads" procfile. To do
+this, __write_ports_addfd will create the nfsd service and then will
+decrement the refcount when exiting but won't actually destroy the
+service.
 
-Yeah, but do you need xstat information at all for something like
-that? Most people try very hard to make do with the information
-returned by readdir itself (d_type and inode number), because if you
-end up looking up each name you've already pretty much lost in a
-performance model.
+This is fine when there aren't errors, but when there are this can
+cause later attempts to start nfsd to fail. nfsd_serv will be set,
+and that causes __write_versions to return EBUSY.
 
-(And I do agree that a "readdirplus()" is probably something that a
-lot of server people would find useful, but obviously that's another
-cross-filesystem nightmare. Only a few filesystems can cheaply give
-you anything but d_type/d_ino, and not all do even that),
+Fix this by calling svc_destroy on nfsd_serv when this function is
+going to return error.
 
-                      Linus
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/nfsd/nfsctl.c |   12 ++++++++----
+ 1 files changed, 8 insertions(+), 4 deletions(-)
+
+diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
+index 508941c..af7469e 100644
+--- a/fs/nfsd/nfsctl.c
++++ b/fs/nfsd/nfsctl.c
+@@ -950,14 +950,18 @@ static ssize_t __write_ports_addfd(char *buf)
+ 		return err;
+ 
+ 	err = lockd_up();
+-	if (err != 0)
+-		goto out;
++	if (err != 0) {
++		svc_destroy(nfsd_serv);
++		return err;
++	}
+ 
+ 	err = svc_addsock(nfsd_serv, fd, buf, SIMPLE_TRANSACTION_LIMIT);
+-	if (err < 0)
++	if (err < 0) {
+ 		lockd_down();
++		svc_destroy(nfsd_serv);
++		return err;
++	}
+ 
+-out:
+ 	/* Decrease the count, but don't shut down the service */
+ 	nfsd_serv->sv_nrthreads--;
+ 	return err;
+-- 
+1.5.5.6
+
