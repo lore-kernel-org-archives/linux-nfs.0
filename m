@@ -1,68 +1,79 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from woodbine.london.02.net ([87.194.255.145]:33177 "EHLO
-	woodbine.london.02.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S965798Ab0GPPUW (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 16 Jul 2010 11:20:22 -0400
-Received: from [192.168.1.65] (87.194.12.203) by woodbine.london.02.net (8.5.124.03)
-        id 4C1F980300D8110B for linux-nfs@vger.kernel.org; Fri, 16 Jul 2010 16:20:21 +0100
-Message-ID: <4C4078AE.5070300@limepepper.co.uk>
-Date: Fri, 16 Jul 2010 16:20:14 +0100
-From: Tom H <tom@limepepper.co.uk>
-To: linux-nfs@vger.kernel.org
-Subject: why do attempts to access a nfs v3 filesystem (ro,soft) block the
- process for minutes at a time? (when the nfs server is down)
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Received: from mail-out1.uio.no ([129.240.10.57]:45315 "EHLO mail-out1.uio.no"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754875Ab0GTOKD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 20 Jul 2010 10:10:03 -0400
+Subject: Re: [PATCH 2/3] SQUASHME: pnfs-submit: filelayout: add nr_pages
+ back to write_pagelist api
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+To: Benny Halevy <bhalevy@panasas.com>
+Cc: "William A. (Andy) Adamson" <androsadamson@gmail.com>,
+        linux-nfs@vger.kernel.org
+In-Reply-To: <4C45AD8B.3070802@panasas.com>
+References: <4C453A50.7070009@panasas.com>
+	 <1279605456-7349-1-git-send-email-bhalevy@panasas.com>
+	 <AANLkTinv670aR9NSYb7O=KdJAhhsRHo3gZTcSrj0MHY_@mail.gmail.com>
+	 <4C45AD8B.3070802@panasas.com>
+Content-Type: text/plain; charset="UTF-8"
+Date: Tue, 20 Jul 2010 10:09:56 -0400
+Message-ID: <1279634996.4487.15.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+On Tue, 2010-07-20 at 17:07 +0300, Benny Halevy wrote:
+> On 2010-07-20 16:50, William A. (Andy) Adamson wrote:
+> > The file layout does not use nr_pages. The calculation is easy. No
+> 
+> True, but we should strive for a coherent interface IMO,
+> even if it's not the absolute minimal one.
+> 
+> > need to pass the extra parameter. Why not just call
+> > nfs_page_array_len() in the layout drivers that need it?
+> 
+> It's defined in fs/nfs/internal.h, so to use it officially
+> it should be moved to a public header file or exported as
+> a public function.
 
-(apologies for the cross post from the deprecated list)
+There is nothing NFS-specific about that particular calculation: it is
+100% generic. Feel free to move it into a public header.
 
-Hi all,
+Trond
 
-I have a web server which serves some content from an nfs filesystem
-mounted like so;
-nfsserver1:/somemount /var/www/html/somefiles  nfs     rw,soft
-             0 0
-
-# mount | grep nfs
-nfsserver1:/somemount on /var/www/html/somefiles type nfs
-(ro,soft,addr=xx.xx.xx.xx)
-
-According to the documentation, an NFS operation on a soft mount should
-wait for a "major timeout" and then report "server not responding" to
-syslog and return an error. where a major timeout is after default
-retrans=3 retransmissions.
-
-I understand the process to be like this;
-call --->0.7 secs --->retransmission--->1.4
-secs--->retransmission--->2.8 secs--->server not responding(major timeout)
-
-However it is pretty clear that this is retrying indefinitely (or at 
-least many more times that I would like), as the
-log files show loads of;
-Jul 16 07:56:09 server1 kernel: nfs: server server2 not responding,
-timed out
-Jul 16 07:57:09 server1 last message repeated 4 times
-Jul 16 07:57:09 server1 last message repeated 6 times
-
-and eventually this kills the apache server as all the available
-processes are blocked during "retrying indefinitely", until the apache
-server is restarted. (restarting the nfs server at this point does not
-seem to recover the apache child processes)
-
-So what should my strategy be to stop the failed mount killing apache. I
-care more about the apache staying up, as I don't have that much control
-over the nfs server..
-
-(also I noticed that it seems to timeout quicker with the mount options
-set like (soft, timeo=7, retrans=3) which is unexpected, because they
-are supposed to be the default)
-
-Regards and thanks in advance,
-T
-
+> Benny
+> 
+> > 
+> > -->Andy
+> > 
+> > On Tue, Jul 20, 2010 at 1:57 AM, Benny Halevy <bhalevy@panasas.com> wrote:
+> >> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+> >> ---
+> >>  fs/nfs/nfs4filelayout.c |    2 +-
+> >>  1 files changed, 1 insertions(+), 1 deletions(-)
+> >>
+> >> diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+> >> index 9b6ba8d..b2ce478 100644
+> >> --- a/fs/nfs/nfs4filelayout.c
+> >> +++ b/fs/nfs/nfs4filelayout.c
+> >> @@ -244,7 +244,7 @@ filelayout_read_pagelist(struct nfs_read_data *data, unsigned nr_pages)
+> >>
+> >>  /* Perform async writes. */
+> >>  static enum pnfs_try_status
+> >> -filelayout_write_pagelist(struct nfs_write_data *data, int sync)
+> >> +filelayout_write_pagelist(struct nfs_write_data *data, unsigned nr_pages, int sync)
+> >>  {
+> >>        struct pnfs_layout_segment *lseg = data->pdata.lseg;
+> >>        struct nfs4_pnfs_ds *ds;
+> >> --
+> >> 1.7.1.1
+> >>
+> >> --
+> >> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> >> the body of a message to majordomo@vger.kernel.org
+> >> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> >>
+> 
+> 
 
 
 
