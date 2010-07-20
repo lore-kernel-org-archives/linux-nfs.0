@@ -1,123 +1,72 @@
 From: Steve Dickson <steved@redhat.com>
-Subject: [PATCH 08/24] Removed warnings from mountd.c
-Date: Tue, 20 Jul 2010 19:37:21 -0400
-Message-ID: <1279669057-17509-9-git-send-email-steved@redhat.com>
+Subject: [PATCH 09/24] Removed warnings from fsloc.c
+Date: Tue, 20 Jul 2010 19:37:22 -0400
+Message-ID: <1279669057-17509-10-git-send-email-steved@redhat.com>
 References: <1279669057-17509-1-git-send-email-steved@redhat.com>
 To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from 4dicksons.org ([207.22.49.45]:60384 "EHLO
+Received: from 4dicksons.org ([207.22.49.45]:60387 "EHLO
 	Dobby.Home.4dicksons.org" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1761871Ab0GUAnW (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 20 Jul 2010 20:43:22 -0400
+	by vger.kernel.org with ESMTP id S1761683Ab0GUAnZ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 20 Jul 2010 20:43:25 -0400
 Received: from tophat.home.4dicksons.org ([192.168.62.20] helo=localhost.localdomain)
 	by Dobby.Home.4dicksons.org with esmtp (Exim 4.63)
 	(envelope-from <steved@redhat.com>)
-	id 1ObMNX-0004K5-61
+	id 1ObMNY-0004K5-2Q
 	for linux-nfs@vger.kernel.org; Tue, 20 Jul 2010 19:37:40 -0400
 In-Reply-To: <1279669057-17509-1-git-send-email-steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-mountd.c: In function 'mount_null_1_svc':
-mountd.c:195: warning: unused parameter 'rqstp'
-mountd.c:195: warning: unused parameter 'argp'
-mountd.c:195: warning: unused parameter 'resp'
-mountd.c: In function 'mount_dump_1_svc':
-mountd.c:213: warning: unused parameter 'argp'
-mountd.c: In function 'mount_umnt_1_svc':
-mountd.c:224: warning: unused parameter 'resp'
-mountd.c: In function 'mount_umntall_1_svc':
-mountd.c:248: warning: unused parameter 'argp'
-mountd.c:248: warning: unused parameter 'resp'
-mountd.c: In function 'mount_export_1_svc':
-mountd.c:258: warning: unused parameter 'argp'
-mountd.c: In function 'mount_exportall_1_svc':
-mountd.c:269: warning: unused parameter 'argp'
-mountd.c: In function 'mount_dump_1_svc':
-mountd.c:216: warning: unused parameter 'argp'
-mountd.c: In function 'mount_umnt_1_svc':
-mountd.c:227: warning: unused parameter 'resp'
-mountd.c: In function 'mount_umntall_1_svc':
-mountd.c:251: warning: unused parameter 'argp'
-mountd.c:251: warning: unused parameter 'resp'
-mountd.c: In function 'mount_export_1_svc':
-mountd.c:261: warning: unused parameter 'argp'
-mountd.c: In function 'mount_exportall_1_svc':
-mountd.c:272: warning: unused parameter 'argp'
+fsloc.c: In function 'replicas_lookup':
+fsloc.c:149: warning: unused parameter 'key'
 
 Signed-off-by: Steve Dickson <steved@redhat.com>
 ---
- utils/mountd/mountd.c |   19 +++++++++++++++----
- 1 files changed, 15 insertions(+), 4 deletions(-)
+ utils/mountd/cache.c |    2 +-
+ utils/mountd/fsloc.c |    2 +-
+ utils/mountd/fsloc.h |    2 +-
+ 3 files changed, 3 insertions(+), 3 deletions(-)
 
-diff --git a/utils/mountd/mountd.c b/utils/mountd/mountd.c
-index 6571454..43aec11 100644
---- a/utils/mountd/mountd.c
-+++ b/utils/mountd/mountd.c
-@@ -194,6 +194,9 @@ sig_hup (int sig)
- bool_t
- mount_null_1_svc(struct svc_req *rqstp, void *argp, void *resp)
- {
-+	xlog(D_CALL, "MNT1(%s) null: rqstp %p argp %p resp %p",
-+		rqstp, argp, resp);
-+
- 	return 1;
+diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c
+index bf18a9a..5488056 100644
+--- a/utils/mountd/cache.c
++++ b/utils/mountd/cache.c
+@@ -600,7 +600,7 @@ static void write_fsloc(FILE *f, struct exportent *ep, char *path)
+ 	if (ep->e_fslocmethod == FSLOC_NONE)
+ 		return;
+ 
+-	servers = replicas_lookup(ep->e_fslocmethod, ep->e_fslocdata, path);
++	servers = replicas_lookup(ep->e_fslocmethod, ep->e_fslocdata);
+ 	if (!servers)
+ 		return;
+ 	qword_print(f, "fsloc");
+diff --git a/utils/mountd/fsloc.c b/utils/mountd/fsloc.c
+index 5b094b0..e2add2d 100644
+--- a/utils/mountd/fsloc.c
++++ b/utils/mountd/fsloc.c
+@@ -146,7 +146,7 @@ static struct servers *method_list(char *data)
  }
  
-@@ -214,7 +217,8 @@ mount_dump_1_svc(struct svc_req *rqstp, void *argp, mountlist *res)
+ /* Returns appropriately filled struct servers, or NULL if had a problem */
+-struct servers *replicas_lookup(int method, char *data, char *key)
++struct servers *replicas_lookup(int method, char *data)
  {
- 	struct sockaddr_in *addr = nfs_getrpccaller_in(rqstp->rq_xprt);
+ 	struct servers *sp=NULL;
+ 	switch(method) {
+diff --git a/utils/mountd/fsloc.h b/utils/mountd/fsloc.h
+index 8296d1c..1605df4 100644
+--- a/utils/mountd/fsloc.h
++++ b/utils/mountd/fsloc.h
+@@ -44,7 +44,7 @@ struct servers {
+ 	int h_referral;		/* 0=replica, 1=referral */
+ };
  
--	xlog(D_CALL, "dump request from %s.", inet_ntoa(addr->sin_addr));
-+	xlog(D_CALL, "MNT1(%s) dump request: argp %p", 
-+		inet_ntoa(addr->sin_addr), argp);
- 	*res = mountlist_list();
+-struct servers *replicas_lookup(int method, char *data, char *key);
++struct servers *replicas_lookup(int method, char *data);
+ void release_replicas(struct servers *server);
  
- 	return 1;
-@@ -235,6 +239,8 @@ mount_umnt_1_svc(struct svc_req *rqstp, dirpath *argp, void *resp)
- 		rpath[sizeof (rpath) - 1] = '\0';
- 		p = rpath;
- 	}
-+	xlog(D_CALL, "MNT1(%s) unmount: path %s resp %p", 
-+		inet_ntoa(sin->sin_addr), p, resp);
- 
- 	if (!(exp = auth_authenticate("unmount", sin, p))) {
- 		return 1;
-@@ -247,10 +253,15 @@ mount_umnt_1_svc(struct svc_req *rqstp, dirpath *argp, void *resp)
- bool_t
- mount_umntall_1_svc(struct svc_req *rqstp, void *argp, void *resp)
- {
-+	struct sockaddr_in *sin = nfs_getrpccaller_in(rqstp->rq_xprt);
-+
-+	xlog(D_CALL, "UMNT1(%s) unmountall: argp %s resp %p", 
-+		inet_ntoa(sin->sin_addr), argp, resp);
-+
- 	/* Reload /etc/xtab if necessary */
- 	auth_reload();
- 
--	mountlist_del_all(nfs_getrpccaller_in(rqstp->rq_xprt));
-+	mountlist_del_all(sin);
- 	return 1;
- }
- 
-@@ -259,7 +270,7 @@ mount_export_1_svc(struct svc_req *rqstp, void *argp, exports *resp)
- {
- 	struct sockaddr_in *addr = nfs_getrpccaller_in(rqstp->rq_xprt);
- 
--	xlog(D_CALL, "export request from %s.", inet_ntoa(addr->sin_addr));
-+	xlog(D_CALL, "EXPORT(%s) dump: argp %p", inet_ntoa(addr->sin_addr), argp);
- 	*resp = get_exportlist();
- 		
- 	return 1;
-@@ -270,7 +281,7 @@ mount_exportall_1_svc(struct svc_req *rqstp, void *argp, exports *resp)
- {
- 	struct sockaddr_in *addr = nfs_getrpccaller_in(rqstp->rq_xprt);
- 
--	xlog(D_CALL, "exportall request from %s.", inet_ntoa(addr->sin_addr));
-+	xlog(D_CALL, "EXPORTALL(%s) dump: argp %p", inet_ntoa(addr->sin_addr), argp);
- 	*resp = get_exportlist();
- 
- 	return 1;
+ #endif /* FSLOC_H */
 -- 
 1.7.0.1
 
