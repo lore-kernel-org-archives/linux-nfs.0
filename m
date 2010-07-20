@@ -1,148 +1,86 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from msux-gh1-uea02.nsa.gov ([63.239.65.40]:33770 "EHLO
-	msux-gh1-uea02.nsa.gov" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754839Ab0GGSLS (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 7 Jul 2010 14:11:18 -0400
-Subject: Re: [PATCH 10/10] NFSD: Server implementation of MAC Labeling
-From: "David P. Quigley" <dpquigl@tycho.nsa.gov>
+Received: from mx1.redhat.com ([209.132.183.28]:36630 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932356Ab0GTPnQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 20 Jul 2010 11:43:16 -0400
+Date: Tue, 20 Jul 2010 11:43:13 -0400
+From: Jeff Layton <jlayton@redhat.com>
 To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: hch@infradead.org, viro@zeniv.linux.org.uk, casey@schaufler-ca.com,
-        sds@tycho.nsa.gov, matthew.dodd@sparta.com, trond.myklebust@fys.uio.no,
-        linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-security-module@vger.kernel.org, selinux@tycho.nsa.gov,
-        linux-nfs@vger.kernel.org
-In-Reply-To: <20100707172100.GE28815@fieldses.org>
-References: <1278513086-23964-1-git-send-email-dpquigl@tycho.nsa.gov>
-	 <1278513086-23964-11-git-send-email-dpquigl@tycho.nsa.gov>
-	 <20100707172100.GE28815@fieldses.org>
-Content-Type: text/plain
-Date: Wed, 07 Jul 2010 14:03:21 -0400
-Message-Id: <1278525801.2494.162.camel@moss-terrapins.epoch.ncsc.mil>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 0/5] nfsd: fix error handling in write_ports interfaces
+ (resend)
+Message-ID: <20100720114313.78509cbb@tlielax.poochiereds.net>
+In-Reply-To: <20100720145540.GA28972@fieldses.org>
+References: <1279572608-7234-1-git-send-email-jlayton@redhat.com>
+	<20100720145540.GA28972@fieldses.org>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Comments inline
+On Tue, 20 Jul 2010 10:55:40 -0400
+"J. Bruce Fields" <bfields@fieldses.org> wrote:
 
-On Wed, 2010-07-07 at 13:21 -0400, J. Bruce Fields wrote:
-> On Wed, Jul 07, 2010 at 10:31:26AM -0400, David P. Quigley wrote:
-> > This patch adds the ability to encode and decode file labels on the server for
-> >  static __be32
-> >  nfsd4_decode_fattr(struct nfsd4_compoundargs *argp, u32 *bmval,
-> > -		   struct iattr *iattr, struct nfs4_acl **acl)
-> > +		   struct iattr *iattr, struct nfs4_acl **acl,
-> > +		   struct nfs4_label **label)
+> On Mon, Jul 19, 2010 at 04:50:03PM -0400, Jeff Layton wrote:
+> > This patchset is a resend of the set I sent a month or so ago, with
+> > a couple of other patches to fix related problems that came to light
+> > as we were discussing them.
 > 
-> As we add more arguments, I wonder if at some point it becomes worth
-> creating something like
+> So, rpc.nfsd starts the nfs server by more or less:
 > 
-> 	struct nfsd4_attrs {
-> 		struct iattr iattr;
-> 		struct nfs4_acl *acl;
-> 		...
-> 	}
+> 	1. write nfs versions to /proc/fs/nfsd/versions
+> 	2. write tcp socket fd to /proc/fs/nfsd/portlist
+> 	3. write udp socket fd to /proc/fs/nfsd/portlist
+> 	4. write number of threads to /proc/fs/nfsd/threads
 > 
-> and passing that instead?
+> A failure anywhere between step 2 and 4 leaves the server in an odd
+> state: it's created, but not really running yet.
+> 
 
-I can definitely submit something like that as a stand alone patch and
-then add our nfs4_label stuff to that instead.
+Yep.
 
+> Your patches help when it's step 2 that fails.  Probably that's the most
+> common case, so good.
 > 
-> > +#ifdef CONFIG_NFSD_V4_SECURITY_LABEL
-> > +	if (bmval[1] & FATTR4_WORD1_SECURITY_LABEL) {
-> > +		uint32_t lfs;
-> > +
-> > +		READ_BUF(4);
-> > +		len += 4;
-> > +		READ32(lfs);
-> > +		READ_BUF(4);
-> > +		len += 4;
-> > +		READ32(dummy32);
-> > +		READ_BUF(dummy32);
-> > +		len += (XDR_QUADLEN(dummy32) << 2);
-> > +		READMEM(buf, dummy32);
-> > +
-> > +		if (dummy32 > NFS4_MAXLABELLEN)
-> > +			return nfserr_resource;
-> > +
-> > +		*label = kzalloc(sizeof(struct nfs4_label), GFP_KERNEL);
+> But what if we step 3 fails?  Or rpc.nfsd encounters some other error
+> between steps 2 and 4?  Does it have any way to clean up?  (Is starting
+> a single thread and then stopping it the only way to destroy the server
+> at that point?)  And what if rpc.nfsd is interrupted before it gets to
+> step 4?
 > 
-> Could we allocate this some toher way (it's small, right?) and avoid the
-> extra dynamic allocation here, just for simplicity's sake?
 
-How would you suggest going about doing that?
+Then the server will remain "created", lockd will be up, etc and the
+refcount will stay at 0. I think starting a single thread and stopping
+it is the only way to clean it up.
 
+> The whole interface seems strange and fragile.
 > 
-> > +		if (*label == NULL) {
-> > +			host_err = -ENOMEM;
-> > +			goto out_nfserr;
-> > +		}
-> > +
-> > +		(*label)->label = kmalloc(dummy32 + 1, GFP_KERNEL);
+> The correct thing may be to apply your patches anyway, as long as they
+> solve a problem and don't make things any worse.
 > 
-> Might be nice to arrange NFS4_MAXLABELLEN to ensure this is never a
-> higher-order allocation.
-
-This should never be more than 4096. Under what circumstances would this
-become a higher-order allocation?
+> But I fear we'll be spending more time on corner cases in the future.
 > 
-> > +#ifdef CONFIG_NFSD_V4_SECURITY_LABEL
-> > +static inline __be32
-> > +nfsd4_encode_security_label(struct svc_rqst *rqstp, struct dentry *dentry, __be32 **pp, int *buflen)
-> > +{
-> > +	void *context;
-> > +	int err;
-> > +	int len;
-> > +	uint32_t lfs = 0;
-> > +	__be32 *p = *pp;
-> > +
-> > +	err = 0;
-> > +	(void)security_inode_getsecctx(dentry->d_inode, &context, &len);
-> > +	if (len < 0)
-> > +		return nfserrno(len);
-> > +
-> > +	if (*buflen < ((XDR_QUADLEN(len) << 2) + 4 +4)) {
+> As a first exercise, maybe we should figure out how the interface would
+> look if we had the opportunity to start over from scratch.
 > 
-> We could use better helpers for this; it's kind of lame to have to do
-> this by hand.
 
-Give me an idea of what you'd like it to look like and I can try to code
-it up.
+I wholeheartedly agree. This set is essentially a bandaid and I think
+it helps the basic problems but there are plenty of others.
 
-> 
-> > +		err = nfserr_resource;
-> > +		goto out;
-> > +	}
-> > +
-> > +	/* XXX: A call to the translation code should be placed here
-> > +	 * for now send 0  until we have that to indicate the null
-> > +	 * translation */ 
-> 
-> I guess I should try to understand what that is some day.
+I'm all for redesigning the innards for better fault tolerance, but I
+think we ought to shoot for not changing the userspace interface unless
+there's just no other way, or it provides a substantial "win".
 
-Ahh. Sorry that was a place holder for me. The idea is that in order to
-allow for multiple models and policies we will have a deamon similar to
-idmapd except to handle label translations. An example of this would be
-if we have an SELinux box with an MLS policy and a FreeBSD box with
-their MLS MAC module. If we want to ensure that they can both talk to
-each other we have them agree ahead of time to a label format which is
-just MLS label information. The translation daemon on the SELinux side
-would take the label strip out the SELinux specific stuff and encode it
-into the MLS label (probably a CALIPSO label) to send across the wire.
-Then when the BSD box receives it they have their translation daemon
-take the label convert it into something that makes sense to them
-locally filling in whatever information they need outside of the MLS
-label.
+I think we could fix this in a much better way by not creating the
+nfsd_serv until threads need to be started. 
 
+Basically just have write_ports add socket info to a global list rather
+than to the nfsd_serv itself. When nfsd_serv is created, we'd walk that
+list and add those sockets to the nfsd_serv.
 
-> 
-> > +
-> > +	if ((*buflen -= 4) < 0)
-> 
-> Redundant?
+Any time that the portlist file is written to, we'd check to see if
+nfsd is up. If it is then sync up the nfsd sockets with the contents of
+the list.
 
-I don't think so. I'll go back and double check just to be safe.
-
-> 
-> --b.
-
+-- 
+Jeff Layton <jlayton@redhat.com>
