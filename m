@@ -1,76 +1,70 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yx0-f174.google.com ([209.85.213.174]:58811 "EHLO
-	mail-yx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756312Ab0GMMxo convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 13 Jul 2010 08:53:44 -0400
-In-Reply-To: <20100713101650.2835.15245.sendpatchset@danny.redhat>
-References: <20100713101650.2835.15245.sendpatchset@danny.redhat>
-Date: Tue, 13 Jul 2010 20:53:43 +0800
-Message-ID: <AANLkTil9hGHoomM9LlhURipKO7_sTON09JHP3zDwOLgI@mail.gmail.com>
-Subject: Re: [PATCH -mmotm 00/30] [RFC] swap over nfs -v21
-From: =?UTF-8?Q?Am=C3=A9rico_Wang?= <xiyou.wangcong@gmail.com>
-To: Xiaotian Feng <dfeng@redhat.com>
-Cc: linux-mm@kvack.org, linux-nfs@vger.kernel.org, netdev@vger.kernel.org,
-        riel@redhat.com, cl@linux-foundation.org, a.p.zijlstra@chello.nl,
-        linux-kernel@vger.kernel.org, lwang@redhat.com, penberg@cs.helsinki.fi,
-        akpm@linux-foundation.org, davem@davemloft.net
-Content-Type: text/plain; charset=UTF-8
+Received: from mx1.redhat.com ([209.132.183.28]:45009 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932356Ab0GTPnm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 20 Jul 2010 11:43:42 -0400
+Date: Tue, 20 Jul 2010 11:43:35 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 5/5] nfsd: just keep single lockd reference for nfsd
+Message-ID: <20100720114335.3b7a08a6@tlielax.poochiereds.net>
+In-Reply-To: <20100720150237.GB28972@fieldses.org>
+References: <1279572608-7234-1-git-send-email-jlayton@redhat.com>
+	<1279572608-7234-6-git-send-email-jlayton@redhat.com>
+	<20100720150237.GB28972@fieldses.org>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Tue, Jul 13, 2010 at 6:16 PM, Xiaotian Feng <dfeng@redhat.com> wrote:
-> Hi,
->
-> Here's the latest version of swap over NFS series since -v20 last October. We decide to push
-> this feature as it is useful for NAS or virt environment.
->
-> The patches are against the mmotm-2010-07-01. We can split the patchset into following parts:
->
-> Patch 1 - 12: provides a generic reserve framework. This framework
-> could also be used to get rid of some of the __GFP_NOFAIL users.
->
-> Patch 13 - 15: Provide some generic network infrastructure needed later on.
->
-> Patch 16 - 21: reserve a little pool to act as a receive buffer, this allows us to
-> inspect packets before tossing them.
->
-> Patch 22 - 23: Generic vm infrastructure to handle swapping to a filesystem instead of a block
-> device.
->
-> Patch 24 - 27: convert NFS to make use of the new network and vm infrastructure to
-> provide swap over NFS.
->
-> Patch 28 - 30: minor bug fixing with latest -mmotm.
->
-> [some history]
-> v19: http://lwn.net/Articles/301915/
-> v20: http://lwn.net/Articles/355350/
->
-> Changes since v20:
->        - rebased to mmotm-2010-07-01
->        - dropped the null pointer deref patch for the root cause is wrong SWP_FILE enum
->        - some minor build fixes
->        - fix a null pointer deref with mmotm-2010-07-01
->        - fix a bug when swap with multi files on the same nfs server
+On Tue, 20 Jul 2010 11:02:37 -0400
+"J. Bruce Fields" <bfields@fieldses.org> wrote:
 
-Please use the "From:" line correctly, as stated in
-Documentation/SubmittingPatches:
+> On Mon, Jul 19, 2010 at 04:50:08PM -0400, Jeff Layton wrote:
+> > This patch should replace the other patches that I proposed to make
+> > sure that each sv_permsock entry holds a lockd refrence.
+> > 
+> > Right now, nfsd keeps a lockd reference for each socket that it has
+> > open. This is unnecessary and complicates the error handling on
+> > startup and shutdown. Change it to just do a lockd_up when creating
+> > the nfsd_serv and just do a single lockd_down when taking down the
+> > last nfsd thread.
+> > 
+> > This patch also changes the error handling in nfsd_create_serv a
+> > bit too. There doesn't seem to be any need to reset the nfssvc_boot
+> > time if the nfsd startup failed.
+> > 
+> > Note though that this does change the user-visible behavior slightly.
+> > Today when someone writes a text socktype and port to the portlist file
+> > prior to starting nfsd, lockd is not started when nfsd threads are
+> > brought up. With this change, it will be started any time that
+> > the nfsd_serv is created.
+> 
+> OK, so it may be started earlier in the process than it was before.
+> 
+> > I'm making the assumption that that's not a
+> > problem. If it is then we'll need to take a different approach to fixing
+> > this.
+> 
+> Especially in the case of a later failure, it does worry me a little
+> that we could leave lockd running without having started nfsd.
+> 
+> Is there a clean way to defer starting lock till we start the first
+> server threads?  Maybe fs/nfsd/nfssvc.c:nfsd() could (at the start,
+> while under nfsd_mutex), check if lockd is up and start it if not??  But
+> I think that can leave us calling lockd_down and not lockd_up in some
+> cases.  Maybe start lockd in svc_set_num_threads()?
+> 
 
-The "from" line must be the very first line in the message body,
-and has the form:
+That's a good point. We do have to consider that starting lockd starts
+the grace period...
 
-        From: Original Author <author@example.com>
+I suppose we could add a global flag that indicates whether the
+nfsd_serv currently holds a lockd reference yet, and only conditionally
+do the lockd_down if it does. That seems pretty kludgey, but I don't
+really see a better way to handle it without a more substantial
+overhaul.
 
-The "from" line specifies who will be credited as the author of the
-patch in the permanent changelog.  If the "from" line is missing,
-then the "From:" line from the email header will be used to determine
-the patch author in the changelog.
-
-
-I think you are using git format-patch to generate those patches, please supply
---author=<author> to git commit when you commit them to your local
-tree. (or git am
-if the patches you received already had the correct From: line.)
-
-Thanks.
+-- 
+Jeff Layton <jlayton@redhat.com>
