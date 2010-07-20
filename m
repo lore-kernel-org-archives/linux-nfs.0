@@ -1,56 +1,49 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from bronze.cs.yorku.ca ([130.63.90.34]:33273 "EHLO
-	bronze.cs.yorku.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753150Ab0G1OXf (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 28 Jul 2010 10:23:35 -0400
-Received: from [130.63.86.125] (ident=jas)
-	by bronze.cs.yorku.ca with esmtpsa (TLSv1:AES256-SHA:256)
-	(Exim 4.67)
-	(envelope-from <jas@cse.yorku.ca>)
-	id 1Oe6wC-00006D-A8
-	for linux-nfs@vger.kernel.org; Wed, 28 Jul 2010 09:44:48 -0400
-Message-ID: <4C503450.1010609@cse.yorku.ca>
-Date: Wed, 28 Jul 2010 09:44:48 -0400
-From: Jason Keltz <jas@cse.yorku.ca>
-To: linux-nfs@vger.kernel.org
-Subject: hang on existing systems when exporting NFS share to new systems
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Received: from idcmail-mo2no.shaw.ca ([64.59.134.9]:64611 "EHLO
+	idcmail-mo2no.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755710Ab0GTI21 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 20 Jul 2010 04:28:27 -0400
+Subject: Re: [PATCH 02/18] xstat: Add a pair of system calls to make extended file stats available [ver #6]
+Content-Type: text/plain; charset=us-ascii
+From: Andreas Dilger <adilger@dilger.ca>
+In-Reply-To: <AANLkTikxHJgguNn6EOK6fX53xYSRPmcNjIeGSTigQ9qu@mail.gmail.com>
+Date: Tue, 20 Jul 2010 02:28:25 -0600
+Cc: David Howells <dhowells@redhat.com>, viro@zeniv.linux.org.uk,
+        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-cifs@vger.kernel.org, linux-kernel@vger.kernel.org,
+        samba-technical@lists.samba.org, linux-ext4@vger.kernel.org
+Message-Id: <4161BF3D-D410-4AEC-8185-975203182B94@dilger.ca>
+References: <20100715021709.5544.64506.stgit@warthog.procyon.org.uk> <20100715021712.5544.44845.stgit@warthog.procyon.org.uk> <AANLkTikuzYqYpGHcubb7QVciZW0dNFjOG82qIwy5M4gO@mail.gmail.com> <10783.1279556132@redhat.com> <AANLkTinVns77R7yCCh-lydd0eQufdAF9O2OaWmCL7uSn@mail.gmail.com> <11817.1279560400@redhat.com> <AANLkTikxHJgguNn6EOK6fX53xYSRPmcNjIeGSTigQ9qu@mail.gmail.com>
+To: Linus Torvalds <torvalds@linux-foundation.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Hi.
+On 2010-07-19, at 11:46, Linus Torvalds wrote:
+> On Mon, Jul 19, 2010 at 10:26 AM, David Howells <dhowells@redhat.com> wrote:
+>> I suspect they would, though maybe they can say otherwise.  What about SMB
+>> directory enumeration?  I believe that is effectively getdents-with-stat.
+>> Having to do open+stat for each file for that would be painful.
+> 
+> Yeah, but do you need xstat information at all for something like
+> that? Most people try very hard to make do with the information
+> returned by readdir itself (d_type and inode number), because if you
+> end up looking up each name you've already pretty much lost in a
+> performance model.
 
-My list of NFS exports has been gradually growing over the years.  Right 
-now, for example, my home directories are exported to around 800 hosts. 
-(although only a relatively small subset of those will mount at the same 
-time...).  I used to just add hosts to /etc/exports on the file server, 
-and run "exportfs -r", and everything would be fine.  New systems would 
-be able to mount everything perfectly, and existing systems would not be 
-affected at all.  As the list has grown, I've been noticing a problem. 
-Now, when I run exportfs -r, there is an approximate 7-10 second hang on 
-the systems that have already mounted the share, and then everything 
-returns to normal.  This doesn't happen *while* exportfs -r is running, 
-but just after it exits.  I figured that maybe exportfs was 
-"unexporting"/re-exporting to hosts that already had the share in use 
-which might have caused the problem, so I tried to manually add/remove 
-hosts thinking that this would only affect those hosts, but it did not. 
-Exporting to one new host still causes the hang on all existing hosts.
+This lightweight stat() interface is exactly needed for things like "color ls",
+which is the default on all distros today.  "ls --color" always does a stat on the file just to get the file mode to color executable files differently.  For Lustre and other distributed filesystems, getting things like the current file size is hard work (i.e. multiple RPCs per file), yet "ls" doesn't care about the size or modification times unless "ls -l" is used.  Same goes for "find".
 
-Since I have multiple exports to all of the hosts, adding one new host 
-can hang things for a while.  I can see that reducing the list of 
-exports, or hosts would reduce the delay.  What I am wondering is if 
-there is a better way that I can add hosts without affecting 
-connectivity to existing hosts?
+> (And I do agree that a "readdirplus()" is probably something that a
+> lot of server people would find useful, but obviously that's another
+> cross-filesystem nightmare. Only a few filesystems can cheaply give
+> you anything but d_type/d_ino, and not all do even that),
 
-The NFS server itself is pretty powerful -- dual quad core box, lots of 
-memory, many NFS threads, exclusive NFS server, etc...  I am running an 
-older RHEL4 release though, so it would have an older kernel/NFS system. 
-  Maybe this issue has been solved in newer releases.
+Having a readdirplus() syscall would be even better, but again only with the ability to request specific attributes.  Otherwise the filesystem may be doing a lot of extra work to collect all of the file attributes, and then userspace will probably be throwing most of them away.
 
-Any feedback would be helpful.
+Cheers, Andreas
 
-Thanks!
 
-Jason.
+
+
 
