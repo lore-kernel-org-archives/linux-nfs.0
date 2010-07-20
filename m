@@ -1,122 +1,82 @@
-From: andros@netapp.com
-Subject: [PATCH 4/5] SQUASHME pnfs-submit pnfs_release_layout just use inode
-Date: Tue, 20 Jul 2010 13:01:22 -0400
-Message-ID: <1279645283-9862-5-git-send-email-andros@netapp.com>
+From: "William A. (Andy) Adamson" <androsadamson@gmail.com>
+Subject: Re: [PATCH 0/5] pnfs-submit fix kfree under spin lock
+Date: Tue, 20 Jul 2010 13:30:35 -0400
+Message-ID: <AANLkTikzt-A69kM863U=YuGZ1-HGWr51KsJEts3uKFx6@mail.gmail.com>
 References: <1279645283-9862-1-git-send-email-andros@netapp.com>
- <1279645283-9862-2-git-send-email-andros@netapp.com>
- <1279645283-9862-3-git-send-email-andros@netapp.com>
- <1279645283-9862-4-git-send-email-andros@netapp.com>
-Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: linux-nfs@vger.kernel.org
 To: bhalevy@panasas.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:33574 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1761410Ab0GTRCE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 20 Jul 2010 13:02:04 -0400
-In-Reply-To: <1279645283-9862-4-git-send-email-andros@netapp.com>
+Received: from mail-iw0-f174.google.com ([209.85.214.174]:52496 "EHLO
+	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754113Ab0GTRag convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 20 Jul 2010 13:30:36 -0400
+Received: by iwn7 with SMTP id 7so5869908iwn.19
+        for <linux-nfs@vger.kernel.org>; Tue, 20 Jul 2010 10:30:35 -0700 (PDT)
+In-Reply-To: <1279645283-9862-1-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Andy Adamson <andros@netapp.com>
+Trond and Fred informed me that kfree under a spin lock is actually
+OK. So, maybe these patches aren't needed.
 
-Signed-off-by: Andy Adamson <andros@netapp.com>
----
- fs/nfs/nfs4proc.c |    4 ++--
- fs/nfs/pnfs.c     |   16 +++++++---------
- fs/nfs/pnfs.h     |    3 ++-
- 3 files changed, 11 insertions(+), 12 deletions(-)
+On the other hand, with these patches we don't hold the spin lock over
+function calls which to my mind is easier to read. Also, the
+free_layout/free_lseg layoutdriver calls may do more than call kfree.
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 17b0c31..d0fa4d1 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -5467,7 +5467,7 @@ static void nfs4_pnfs_layoutget_release(void *calldata)
- 	struct nfs4_pnfs_layoutget *lgp = calldata;
- 
- 	dprintk("--> %s\n", __func__);
--	pnfs_layout_release(NFS_I(lgp->args.inode)->layout, NULL);
-+	pnfs_layout_release(lgp->args.inode, NULL);
- 	if (lgp->res.layout.buf != NULL)
- 		free_page((unsigned long) lgp->res.layout.buf);
- 	kfree(calldata);
-@@ -5687,7 +5687,7 @@ static void nfs4_pnfs_layoutreturn_release(void *calldata)
- 	if (lrp->args.return_type == RETURN_FILE) {
- 		if (!lrp->res.lrs_present)
- 			pnfs_set_layout_stateid(lo, &zero_stateid);
--		pnfs_layout_release(lo, &lrp->args.lseg);
-+		pnfs_layout_release(lrp->args.inode, &lrp->args.lseg);
- 	}
- 	kfree(calldata);
- 	dprintk("<-- %s\n", __func__);
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index cf64f16..aba3478 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -345,19 +345,17 @@ put_layout(struct inode *inode)
- }
- 
- void
--pnfs_layout_release(struct pnfs_layout_type *lo,
-+pnfs_layout_release(struct inode *inode,
- 		    struct nfs4_pnfs_layout_segment *range)
- {
--	struct nfs_inode *nfsi = PNFS_NFS_INODE(lo);
--
- 	if (range)
--		pnfs_free_layout(lo->lo_inode, range);
-+		pnfs_free_layout(inode, range);
- 	/*
- 	 * Matched in _pnfs_update_layout for layoutget
- 	 * and by get_layout in _pnfs_return_layout for layoutreturn
- 	 */
--	put_layout(lo->lo_inode);
--	wake_up_all(&nfsi->lo_waitq);
-+	put_layout(inode);
-+	wake_up_all(&NFS_I(inode)->lo_waitq);
- }
- 
- void
-@@ -490,7 +488,7 @@ send_layoutget(struct inode *ino,
- 
- 	lgp = kzalloc(sizeof(*lgp), GFP_KERNEL);
- 	if (lgp == NULL) {
--		pnfs_layout_release(lo, NULL);
-+		pnfs_layout_release(ino, NULL);
- 		return -ENOMEM;
- 	}
- 	lgp->args.minlength = NFS4_MAX_UINT64;
-@@ -652,7 +650,7 @@ return_layout(struct inode *ino, struct nfs4_pnfs_layout_segment *range,
- 	lrp = kzalloc(sizeof(*lrp), GFP_KERNEL);
- 	if (lrp == NULL) {
- 		if (lo && (type == RETURN_FILE))
--			pnfs_layout_release(lo, NULL);
-+			pnfs_layout_release(ino, NULL);
- 		goto out;
- 	}
- 	lrp->args.reclaim = 0;
-@@ -730,7 +728,7 @@ _pnfs_return_layout(struct inode *ino, struct nfs4_pnfs_layout_segment *range,
- 		if (!stateid)
- 			status = return_layout(ino, &arg, type, lo, wait);
- 		else
--			pnfs_layout_release(lo, &arg);
-+			pnfs_layout_release(ino, &arg);
- 	}
- out:
- 	dprintk("<-- %s status: %d\n", __func__, status);
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index 9498e4e..b3830f5 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -60,7 +60,8 @@ void pnfs_pageio_init_read(struct nfs_pageio_descriptor *, struct inode *,
- void pnfs_pageio_init_write(struct nfs_pageio_descriptor *, struct inode *);
- void pnfs_get_layout_done(struct nfs4_pnfs_layoutget *, int rpc_status);
- int pnfs_layout_process(struct nfs4_pnfs_layoutget *lgp);
--void pnfs_layout_release(struct pnfs_layout_type *, struct nfs4_pnfs_layout_segment *range);
-+void pnfs_layout_release(struct inode *,
-+			 struct nfs4_pnfs_layout_segment *range);
- void pnfs_set_layout_stateid(struct pnfs_layout_type *lo,
- 			     const nfs4_stateid *stateid);
- void pnfs_destroy_layout(struct nfs_inode *);
--- 
-1.6.6
+At least, we should document what we expect from the
+free_layout/free_lseg - e.g. no side affects that conflict with being
+called under a spinlock..
 
+-->Andy
+
+On Tue, Jul 20, 2010 at 1:01 PM,  <andros@netapp.com> wrote:
+>
+> Fix kfree under spin lock
+>
+> Both put_lseg and put_layout are called under the inode i_lock where =
+the
+> last reference will end up freeing structures.
+>
+> I know there has been a lot of churn in this code, but free'ing under=
+ the
+> spin lock is a no-no.
+> In this patch I refactor the layout allocation, combining it with the
+> layout segment lookup code. The new function, pnfs_get_layout_segment=
+ takes
+> inode spin lock, and looks to see if the requested range is serviced =
+by an
+> existing layout segment. If the layout has not been allocated, alloca=
+te it.
+> If a layout segement is found, reference it and give up the lock. If =
+no
+> layout segment is found, reference the layout for the layoutget call =
+and
+> give up the lock.
+>
+> 0001-SQUASHME-pnfs-submit-alloc-layout-don-t-call-put_lay.patch
+> 0002-SQUASHME-pnfs-submit-use-atomic_dec_and_lock-for-lay.patch
+>
+> Fix the put_lseg under spin lock.
+> 0003-SQUASHME-pnfs-submit-don-t-call-put_lseg-under-spin-.patch
+>
+> Cleanup.
+> 0004-SQUASHME-pnfs-submit-pnfs_release_layout-just-use-in.patch
+> 0005-SQUASHME-pnfs-submit-fix-has_layout-compile-error.patch
+>
+> Tests:
+> CONFIG_NFS_V4_1 set:
+> Connectathon tests pass against GFS2 and pyNFS file layout servers.
+>
+> CONFIG_NFS_V4_1 not set:
+> Connectathon tests pass.
+>
+> -->Andy
+>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" =
+in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at =A0http://vger.kernel.org/majordomo-info.html
+>
