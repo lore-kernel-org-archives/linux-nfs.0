@@ -1,212 +1,171 @@
 From: andros@netapp.com
-Subject: [PATCH 1/5] SQUASHME pnfs-submit alloc layout don't call put_layout under spin lock
-Date: Tue, 20 Jul 2010 13:01:19 -0400
-Message-ID: <1279645283-9862-2-git-send-email-andros@netapp.com>
+Subject: [PATCH 2/5] SQUASHME pnfs-submit use atomic_dec_and_lock for layout refcounting
+Date: Tue, 20 Jul 2010 13:01:20 -0400
+Message-ID: <1279645283-9862-3-git-send-email-andros@netapp.com>
 References: <1279645283-9862-1-git-send-email-andros@netapp.com>
+ <1279645283-9862-2-git-send-email-andros@netapp.com>
 Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
 To: bhalevy@panasas.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
 Received: from mx2.netapp.com ([216.240.18.37]:33574 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1761374Ab0GTRB6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 20 Jul 2010 13:01:58 -0400
-In-Reply-To: <1279645283-9862-1-git-send-email-andros@netapp.com>
+	id S1761395Ab0GTRCA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 20 Jul 2010 13:02:00 -0400
+In-Reply-To: <1279645283-9862-2-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 From: Andy Adamson <andros@netapp.com>
 
-Remove the pnfs_alloc_layout call to put_layout_locked under the i_lock.
-
-Combine the search for an lseg range with the potential allocation of the
-pnfs_layout_type. Return a referenced layout segment or NULL with a reference
-taken on the layout in preparation for a layoutget call
+Remove put_layout from under i_lock.
+Note: destroy_lseg still calls put_layout under i_lock - fixed in next patch.
 
 Signed-off-by: Andy Adamson <andros@netapp.com>
 ---
- fs/nfs/pnfs.c |  117 +++++++++++++++++++++------------------------------------
- 1 files changed, 43 insertions(+), 74 deletions(-)
+ fs/nfs/pnfs.c          |   69 ++++++++++++++++++++---------------------------
+ include/linux/nfs_fs.h |    2 +-
+ 2 files changed, 30 insertions(+), 41 deletions(-)
 
 diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index fd979ec..77e6671 100644
+index 77e6671..2cef53e 100644
 --- a/fs/nfs/pnfs.c
 +++ b/fs/nfs/pnfs.c
-@@ -863,40 +863,6 @@ alloc_init_layout(struct inode *ino)
- }
- 
- /*
-- * Retrieve and possibly allocate the inode layout
-- *
-- * ino->i_lock must be taken by the caller.
-- */
--static struct pnfs_layout_type *
--pnfs_alloc_layout(struct inode *ino)
--{
--	struct nfs_inode *nfsi = NFS_I(ino);
--	struct pnfs_layout_type *new = NULL;
--
--	dprintk("%s Begin ino=%p layout=%p\n", __func__, ino, nfsi->layout);
--
--	BUG_ON_UNLOCKED_INO(ino);
--	if (likely(nfsi->layout))
--		return nfsi->layout;
--
--	spin_unlock(&ino->i_lock);
--	new = alloc_init_layout(ino);
--	spin_lock(&ino->i_lock);
--
--	if (likely(nfsi->layout == NULL)) {	/* Won the race? */
--		nfsi->layout = new;
--	} else if (new) {
--		/* Reference the layout accross i_lock release and grab */
--		get_layout(nfsi->layout);
--		spin_unlock(&ino->i_lock);
--		NFS_SERVER(ino)->pnfs_curr_ld->ld_io_ops->free_layout(new);
--		spin_lock(&ino->i_lock);
--		put_layout_locked(nfsi->layout);
--	}
--	return nfsi->layout;
--}
--
--/*
-  * iomode matching rules:
-  * range	lseg	match
-  * -----	-----	-----
-@@ -915,28 +881,52 @@ has_matching_lseg(struct pnfs_layout_segment *lseg,
- }
- 
- /*
-- * lookup range in layout
-+ * Lookup range in layout. Return a referenced layout segment or
-+ * NULL with a reference on the layout in preparation for a layoutget call.
-  */
- static struct pnfs_layout_segment *
--pnfs_has_layout(struct pnfs_layout_type *lo,
--		struct nfs4_pnfs_layout_segment *range)
-+pnfs_get_layout_segment(struct inode *inode,
-+			struct nfs4_pnfs_layout_segment *range)
+@@ -322,35 +322,26 @@ pnfs_unregister_layoutdriver(struct pnfs_layoutdriver_type *ld_type)
+ static inline void
+ get_layout(struct pnfs_layout_type *lo)
  {
- 	struct pnfs_layout_segment *lseg, *ret = NULL;
-+	struct nfs_inode *nfsi = NFS_I(inode);
-+	struct pnfs_layout_type *new = NULL;
- 
- 	dprintk("%s:Begin\n", __func__);
--
 -	BUG_ON_UNLOCKED_LO(lo);
--	list_for_each_entry (lseg, &lo->segs, fi_list) {
--		if (has_matching_lseg(lseg, range)) {
-+	spin_lock(&inode->i_lock);
-+	if (nfsi->layout == NULL) {
-+		spin_unlock(&inode->i_lock);
-+		new = alloc_init_layout(inode);
-+		if (new == NULL)
-+			goto out;
-+		spin_lock(&inode->i_lock);
-+		if (NFS_I(inode)->layout == NULL) {
-+			NFS_I(inode)->layout = new;
-+			new = NULL;
-+		}
-+	}
-+	/* Is there a layout segment covering requested range? */
-+	list_for_each_entry(lseg, &NFS_I(inode)->layout->segs, fi_list) {
-+		if (has_matching_lseg(lseg, range) && lseg->valid) {
- 			ret = lseg;
- 			get_lseg(ret);
--			break;
-+			goto out_unlock;
- 		}
- 		if (cmp_layout(range, &lseg->range) > 0)
- 			break;
- 	}
-+	/*
-+	 * No layout segment. Reference the layout for layoutget
-+	 * (matched in pnfs_layout_release)
-+	 */
-+	get_layout(NFS_I(inode)->layout);
+-	lo->refcount++;
++	atomic_inc(&lo->refcount);
+ }
  
--	dprintk("%s:Return lseg %p ref %d valid %d\n",
-+out_unlock:
-+	spin_unlock(&inode->i_lock);
-+	if (new)
-+		NFS_SERVER(inode)->pnfs_curr_ld->ld_io_ops->free_layout(new);
-+out:
-+	dprintk("<-- %s lseg %p ref %d valid %d\n",
- 		__func__, ret, ret ? atomic_read(&ret->kref.refcount) : 0,
- 		ret ? ret->valid : 0);
- 	return ret;
-@@ -958,26 +948,10 @@ _pnfs_update_layout(struct inode *ino,
- 		.length = NFS4_MAX_UINT64,
- 	};
- 	struct nfs_inode *nfsi = NFS_I(ino);
--	struct pnfs_layout_type *lo;
- 	struct pnfs_layout_segment *lseg = NULL;
+-static inline void
+-put_layout_locked(struct pnfs_layout_type *lo)
++inline void
++put_layout(struct inode *inode)
+ {
+-	BUG_ON_UNLOCKED_LO(lo);
+-	BUG_ON(lo->refcount <= 0);
++	struct pnfs_layout_type *lo = NFS_I(inode)->layout;
  
- 	*lsegpp = NULL;
--	spin_lock(&ino->i_lock);
--	lo = pnfs_alloc_layout(ino);
--	if (lo == NULL) {
--		dprintk("%s ERROR: can't get pnfs_layout_type\n", __func__);
--		goto out_unlock;
+-	lo->refcount--;
+-	if (!lo->refcount) {
+-		struct layoutdriver_io_operations *io_ops = PNFS_LD_IO_OPS(lo);
+-		struct nfs_inode *nfsi = PNFS_NFS_INODE(lo);
++	dprintk("--> %s i_ino %lu, lo %p\n", __func__, inode->i_ino, lo);
+ 
+-		dprintk("%s: freeing layout cache %p\n", __func__, lo);
+-		WARN_ON(!list_empty(&lo->lo_layouts));
+-		io_ops->free_layout(lo);
+-		nfsi->layout = NULL;
 -	}
--
--	/* Check to see if the layout for the given range already exists */
--	lseg = pnfs_has_layout(lo, &arg);
--	if (lseg && !lseg->valid) {
--		put_lseg_locked(lseg);
--		/* someone is cleaning the layout */
--		lseg = NULL;
--		goto out_unlock;
--	}
--
-+	lseg = pnfs_get_layout_segment(ino, &arg);
- 	if (lseg) {
- 		dprintk("%s: Using cached lseg %p for %llu@%llu iomode %d)\n",
- 			__func__,
-@@ -985,35 +959,30 @@ _pnfs_update_layout(struct inode *ino,
- 			arg.length,
- 			arg.offset,
- 			arg.iomode);
--
--		goto out_unlock;
-+		*lsegpp = lseg;
-+		goto out;
- 	}
+-}
++	BUG_ON(lo == NULL);
++	if (!atomic_dec_and_lock(&lo->refcount, &inode->i_lock))
++		return;
++	WARN_ON(!list_empty(&lo->lo_layouts));
  
--	/* if get layout already failed once goto out */
-+	/* if layoutget failed wait pnfs_layout_suspend time to retry */
- 	if (test_bit(lo_fail_bit(iomode), &nfsi->layout->pnfs_layout_state)) {
- 		if (unlikely(nfsi->pnfs_layout_suspend &&
- 		    get_seconds() >= nfsi->pnfs_layout_suspend)) {
- 			dprintk("%s: layout_get resumed\n", __func__);
-+			spin_lock(&ino->i_lock);
- 			clear_bit(lo_fail_bit(iomode),
- 				  &nfsi->layout->pnfs_layout_state);
- 			nfsi->pnfs_layout_suspend = 0;
--		} else
--			goto out_unlock;
-+			spin_unlock(&ino->i_lock);
-+		} else {
-+			goto out;
-+		}
- 	}
+-void
+-put_layout(struct inode *inode)
+-{
+-	spin_lock(&inode->i_lock);
+-	put_layout_locked(NFS_I(inode)->layout);
++	NFS_I(inode)->layout = NULL;
+ 	spin_unlock(&inode->i_lock);
  
--	/* Reference the layout for layoutget matched in pnfs_layout_release */
--	get_layout(lo);
--	spin_unlock(&ino->i_lock);
--
--	send_layoutget(ino, ctx, &arg, lsegpp, lo);
-+	send_layoutget(ino, ctx, &arg, lsegpp, nfsi->layout);
- out:
- 	dprintk("%s end, state 0x%lx lseg %p\n", __func__,
- 		nfsi->layout->pnfs_layout_state, lseg);
- 	return;
--out_unlock:
--	*lsegpp = lseg;
--	spin_unlock(&ino->i_lock);
--	goto out;
++	dprintk("%s: freeing layout cache %p\n", __func__, lo);
++	NFS_SERVER(inode)->pnfs_curr_ld->ld_io_ops->free_layout(lo);
  }
  
  void
+@@ -362,41 +353,39 @@ pnfs_layout_release(struct pnfs_layout_type *lo,
+ 	spin_lock(&nfsi->vfs_inode.i_lock);
+ 	if (range)
+ 		pnfs_free_layout(lo, range);
++	spin_unlock(&nfsi->vfs_inode.i_lock);
+ 	/*
+ 	 * Matched in _pnfs_update_layout for layoutget
+ 	 * and by get_layout in _pnfs_return_layout for layoutreturn
+ 	 */
+-	put_layout_locked(lo);
+-	spin_unlock(&nfsi->vfs_inode.i_lock);
++	put_layout(lo->lo_inode);
+ 	wake_up_all(&nfsi->lo_waitq);
+ }
+ 
+ void
+ pnfs_destroy_layout(struct nfs_inode *nfsi)
+ {
+-	struct pnfs_layout_type *lo;
+ 	struct nfs4_pnfs_layout_segment range = {
+ 		.iomode = IOMODE_ANY,
+ 		.offset = 0,
+ 		.length = NFS4_MAX_UINT64,
+ 	};
+ 
++	if (!has_layout(nfsi))
++		return;
+ 	spin_lock(&nfsi->vfs_inode.i_lock);
+-	lo = nfsi->layout;
+-	if (lo) {
+-		pnfs_free_layout(lo, &range);
+-		WARN_ON(!list_empty(&nfsi->layout->segs));
+-		WARN_ON(!list_empty(&nfsi->layout->lo_layouts));
+-
+-		if (nfsi->layout->refcount != 1)
+-			printk(KERN_WARNING "%s: layout refcount not=1 %d\n",
+-				__func__, nfsi->layout->refcount);
+-		WARN_ON(nfsi->layout->refcount != 1);
+-
+-		/* Matched by refcount set to 1 in alloc_init_layout */
+-		put_layout_locked(lo);
+-	}
++	pnfs_free_layout(nfsi->layout, &range);
++	WARN_ON(!list_empty(&nfsi->layout->segs));
++	WARN_ON(!list_empty(&nfsi->layout->lo_layouts));
++
++	if (atomic_read(&nfsi->layout->refcount) != 1)
++		printk(KERN_WARNING "%s: layout refcount not=1 %d\n",
++			__func__, atomic_read(&nfsi->layout->refcount));
++
+ 	spin_unlock(&nfsi->vfs_inode.i_lock);
++
++	/* Matched by refcount set to 1 in alloc_init_layout */
++	put_layout(&nfsi->vfs_inode);
+ }
+ 
+ static inline void
+@@ -416,7 +405,7 @@ destroy_lseg(struct kref *kref)
+ 
+ 	dprintk("--> %s\n", __func__);
+ 	/* Matched by get_layout in pnfs_insert_layout */
+-	put_layout_locked(lseg->layout);
++	put_layout(lseg->layout->lo_inode);
+ 	PNFS_LD_IO_OPS(lseg->layout)->free_lseg(lseg);
+ }
+ 
+@@ -854,7 +843,7 @@ alloc_init_layout(struct inode *ino)
+ 			__func__);
+ 		return NULL;
+ 	}
+-	lo->refcount = 1;
++	atomic_set(&lo->refcount, 1);
+ 	INIT_LIST_HEAD(&lo->lo_layouts);
+ 	INIT_LIST_HEAD(&lo->segs);
+ 	seqlock_init(&lo->seqlock);
+diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
+index 005b3ea..877673e 100644
+--- a/include/linux/nfs_fs.h
++++ b/include/linux/nfs_fs.h
+@@ -98,7 +98,7 @@ struct nfs_delegation;
+ struct posix_acl;
+ 
+ struct pnfs_layout_type {
+-	int refcount;
++	atomic_t refcount;
+ 	struct list_head lo_layouts;	/* other client layouts */
+ 	struct list_head segs;		/* layout segments list */
+ 	int roc_iomode;			/* iomode to return on close, 0=none */
 -- 
 1.6.6
 
