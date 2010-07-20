@@ -1,25 +1,55 @@
-From: "Sonia Porter" <sporter-2w+f3CLSCfj7uhv0AaPmaA@public.gmane.org>
-Subject: Dear Webmail User
-Date: Mon, 19 Jul 2010 18:26:37 -0700
-Message-ID: <8A78544F83994B468EAC5A3D242C1E34C79054__1035.84482935748$1279590214$gmane$org@exchsrv02.jusd.dom>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-To: <info-dfAhzUOI1ZhBDgjK7y7TUQ@public.gmane.org>
+From: Benny Halevy <bhalevy@panasas.com>
+Subject: [PATCH 1/3] SQUASHME: pnfs-submit: add nr_pages back to write_pagelist api
+Date: Tue, 20 Jul 2010 08:57:27 +0300
+Message-ID: <1279605447-7315-1-git-send-email-bhalevy@panasas.com>
+References: <4C453A50.7070009@panasas.com>
+Cc: andros@netapp.com
+To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.jusd.k12.ca.us ([204.100.155.6]:43451 "EHLO
-	mail.jusd.k12.ca.us" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932088Ab0GTBma convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 19 Jul 2010 21:42:30 -0400
+Received: from daytona.panasas.com ([67.152.220.89]:9116 "EHLO
+	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1754377Ab0GTF5b (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 20 Jul 2010 01:57:31 -0400
+In-Reply-To: <4C453A50.7070009@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This message was sent automatically by a program on Web mail which periodically checks the size of in boxes, where new messages are received.The program is run weekly to ensure no one's in box grows too large. If your in box becomes too large,you will be unable to receive new email. Just before this message was sent,you had 18 Mega bytes (MB) or more of messages stored in your in box on your Web mail. To help's re-set your SPACE on our database prior to maintain your IN BOX.
- 
-YOU MUST COPY AND PAST THE BELOW LINK TO INCREASE YOUR INBOX QUOTA AND UPGRADE YOUR WEBMAIL ACCOUNT
+Keep it symmetrical with read_pagelist, using nfs_page_array_len.
 
-http://www.eformit.com/eform.aspx?webmasterupgradesystem 
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+---
+ fs/nfs/pnfs.c             |    4 +++-
+ include/linux/nfs4_pnfs.h |    2 +-
+ 2 files changed, 4 insertions(+), 2 deletions(-)
+
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 4de0b73..6ab1938 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -1269,7 +1269,9 @@ pnfs_try_to_write_data(struct nfs_write_data *wdata,
+ 	get_lseg(lseg);
  
- You will continue to receive this warning message periodically if your inbox size continues to be between 18 and 20 MB. If your in box size grows to 20MB,then a program on the Web mail will move your oldest email to a folder in your home directory to ensure that you will continue to be able to receive incoming email. You will be notified by email that this has taken place. If your in box grows to 25 MB, you will be unable to receive new email as it will be returned to the sender.After you read a message,it is best to REPLY and SAVE a copy.
+ 	wdata->pdata.lseg = lseg;
+-	trypnfs = nfss->pnfs_curr_ld->ld_io_ops->write_pagelist(wdata, how);
++	trypnfs = nfss->pnfs_curr_ld->ld_io_ops->write_pagelist(wdata,
++		nfs_page_array_len(wdata->args.pgbase, wdata->args.count),
++								how);
  
-Thanks.
-Web mail Help Desk
+ 	if (trypnfs == PNFS_NOT_ATTEMPTED) {
+ 		wdata->pdata.lseg = NULL;
+diff --git a/include/linux/nfs4_pnfs.h b/include/linux/nfs4_pnfs.h
+index 1c3cd49..6236687 100644
+--- a/include/linux/nfs4_pnfs.h
++++ b/include/linux/nfs4_pnfs.h
+@@ -130,7 +130,7 @@ struct layoutdriver_io_operations {
+ 	enum pnfs_try_status
+ 	(*read_pagelist) (struct nfs_read_data *nfs_data, unsigned nr_pages);
+ 	enum pnfs_try_status
+-	(*write_pagelist) (struct nfs_write_data *nfs_data, int how);
++	(*write_pagelist) (struct nfs_write_data *nfs_data, unsigned nr_pages, int how);
+ 
+ 	/* Consistency ops */
+ 	/* 2 problems:
+-- 
+1.7.1.1
+
