@@ -1,43 +1,117 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from magus.merit.edu ([198.108.1.13]:34914 "EHLO magus.merit.edu"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752130Ab0GVRMZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 22 Jul 2010 13:12:25 -0400
-Date: Thu, 22 Jul 2010 13:12:24 -0400
-From: Jim Rees <rees@umich.edu>
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Cc: Jeremy Allison <jra@samba.org>, Volker.Lendecke@sernet.de,
-        David Howells <dhowells@redhat.com>,
-        Jan Engelhardt <jengelh@medozas.de>, linux-cifs@vger.kernel.org,
-        linux-nfs@vger.kernel.org, samba-technical@lists.samba.org,
-        linux-kernel@vger.kernel.org, viro@zeniv.linux.org.uk,
-        linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
-Subject: Re: [PATCH 02/18] xstat: Add a pair of system calls to make
- extended file stats available [ver #6]
-Message-ID: <20100722171224.GA8630@merit.edu>
-References: <alpine.LSU.2.01.1007221228260.6115@obet.zrqbmnf.qr>
- <20100715021709.5544.64506.stgit@warthog.procyon.org.uk>
- <20100715021712.5544.44845.stgit@warthog.procyon.org.uk>
- <30448.1279800887@redhat.com>
- <E1Obuiy-00C9jr-Al@intern.SerNet.DE>
- <AANLkTikBCXK6uEwWq4f0LvpdoKCPs3jvyFa4Zw4e2J_7@mail.gmail.com>
- <E1Obxpd-00CRIo-SF@intern.SerNet.DE>
- <AANLkTimwIq0pBhCeOjOVjB0yeM3JHOvzVoj9M4ui6al9@mail.gmail.com>
- <20100722162712.GB10352@jeremy-laptop>
- <AANLkTimdFCGSKLn7aGMpBMIauHTsHY7hpAAmpo6uTcnD@mail.gmail.com>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <AANLkTimdFCGSKLn7aGMpBMIauHTsHY7hpAAmpo6uTcnD@mail.gmail.com>
+Received: from daytona.panasas.com ([67.152.220.89]:21965 "EHLO
+	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1751723Ab0GTEeB (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 20 Jul 2010 00:34:01 -0400
+Message-ID: <4C452736.7010201@panasas.com>
+Date: Tue, 20 Jul 2010 07:33:58 +0300
+From: Benny Halevy <bhalevy@panasas.com>
+To: andros@netapp.com
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 4/7] SQUASHME pnfs-submit consolidate write_pagelist parameters
+References: <1279210434-2772-1-git-send-email-andros@netapp.com> <1279210434-2772-2-git-send-email-andros@netapp.com> <1279210434-2772-3-git-send-email-andros@netapp.com> <1279210434-2772-4-git-send-email-andros@netapp.com> <1279210434-2772-5-git-send-email-andros@netapp.com> <4C45257D.7000507@panasas.com>
+In-Reply-To: <4C45257D.7000507@panasas.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Linus Torvalds wrote:
+On Jul. 20, 2010, 7:26 +0300, Benny Halevy <bhalevy@panasas.com> wrote:
+> On Jul. 15, 2010, 19:13 +0300, andros@netapp.com wrote:
+>> From: Andy Adamson <andros@netapp.com>
+>>
+>> Remove the numpages calculation which is not used by the file layout driver.
+>> Layout drivers that need the number of pages can call nfs_page_array_len in
+>> their write_pagelist operation.
+>>
+>> NOTE: API change.
+>>
+>> Signed-off-by: Andy Adamson <andros@netapp.com>
+>> ---
+>>  fs/nfs/pnfs.c             |   24 +++---------------------
+>>  include/linux/nfs4_pnfs.h |    5 +----
+>>  2 files changed, 4 insertions(+), 25 deletions(-)
+>>
+>> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+>> index 576946b..51bd66f 100644
+>> --- a/fs/nfs/pnfs.c
+>> +++ b/fs/nfs/pnfs.c
+>> @@ -1271,39 +1271,21 @@ enum pnfs_try_status
+>>  pnfs_try_to_write_data(struct nfs_write_data *wdata,
+>>  			const struct rpc_call_ops *call_ops, int how)
+>>  {
+>> -	struct nfs_writeargs *args = &wdata->args;
+>>  	struct inode *inode = wdata->inode;
+>>  	enum pnfs_try_status trypnfs;
+>>  	struct nfs_server *nfss = NFS_SERVER(inode);
+>> -	struct nfs_inode *nfsi = NFS_I(inode);
+>>  	struct pnfs_layout_segment *lseg = wdata->req->wb_lseg;
+>> -	int numpages;
+>>  
+>>  	wdata->pdata.call_ops = call_ops;
+>>  	wdata->pdata.how = how;
+>>  
+>> -	dprintk("%s: Writing ino:%lu %u@%llu\n", __func__,
+>> -		inode->i_ino, args->count, args->offset);
+>> +	dprintk("%s: Writing ino:%lu %u@%llu (how %d)\n", __func__,
+>> +		inode->i_ino, wdata->args.count, wdata->args.offset, how);
+>>  
+>>  	get_lseg(lseg);
+>>  
+>> -	/* Determine number of pages
+>> -	 */
+>> -	numpages = nfs_page_array_len(args->pgbase, args->count);
+> 
+> Andy, removing this from the interface is a bit problematic
+> since nfs_page_array_len is private to the nfs module and I want to leave
+> the logic there rather than copying it to the layout driver.
+> Also, we still pass in its equivalent to read_pagelist so for symmetry
+> reasons it would be cleaner to pass to to the write path as well.
 
-  I personally think that Unix ctime is insane. There is no real reason
-  why "write()" should change mtime, but "chmod" changes ctime. It was
-  just a random decision way back when...
+and we should use nfs_page_array_len for the read path as well.
+In any case the calculation is straight forward so we should either do
+it in the generic layer in both cases or neither.
 
-I believe it was done that way so "dump" could backup just the inode and not
-the data if only the inode had changed.  Full history here:
+Benny
 
-http://blog.plover.com/Unix/ctime.html
+> 
+> Benny
+> 
+>> -
+>> -	dprintk("%s: Calling layout driver (how %d) write with %d pages\n",
+>> -		__func__, how, numpages);
+>> -
+>>  	wdata->pdata.lseg = lseg;
+>> -	trypnfs = nfss->pnfs_curr_ld->ld_io_ops->write_pagelist(
+>> -							nfsi->layout,
+>> -							args->pages,
+>> -							args->pgbase,
+>> -							numpages,
+>> -							(loff_t)args->offset,
+>> -							args->count,
+>> -							how,
+>> -							wdata);
+>> +	trypnfs = nfss->pnfs_curr_ld->ld_io_ops->write_pagelist(wdata, how);
+>>  
+>>  	if (trypnfs == PNFS_NOT_ATTEMPTED) {
+>>  		wdata->pdata.lseg = NULL;
+>> diff --git a/include/linux/nfs4_pnfs.h b/include/linux/nfs4_pnfs.h
+>> index b379225..13f71ad 100644
+>> --- a/include/linux/nfs4_pnfs.h
+>> +++ b/include/linux/nfs4_pnfs.h
+>> @@ -130,10 +130,7 @@ struct layoutdriver_io_operations {
+>>  	enum pnfs_try_status
+>>  	(*read_pagelist) (struct nfs_read_data *nfs_data, unsigned nr_pages);
+>>  	enum pnfs_try_status
+>> -	(*write_pagelist) (struct pnfs_layout_type *layoutid,
+>> -			   struct page **pages, unsigned int pgbase,
+>> -			   unsigned nr_pages, loff_t offset, size_t count,
+>> -			   int sync, struct nfs_write_data *nfs_data);
+>> +	(*write_pagelist) (struct nfs_write_data *nfs_data, int how);
+>>  
+>>  	/* Consistency ops */
+>>  	/* 2 problems:
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
