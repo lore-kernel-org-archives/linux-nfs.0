@@ -1,96 +1,67 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:53659 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:52689 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751788Ab0GaTUU convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 31 Jul 2010 15:20:20 -0400
-Subject: Re: auth_gss.c - rcu dereference warning
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Johannes Berg <johannes@sipsolutions.net>
-Cc: linux-nfs <linux-nfs@vger.kernel.org>
-In-Reply-To: <1280227718.3755.3.camel@jlt3.sipsolutions.net>
-References: <1280227718.3755.3.camel@jlt3.sipsolutions.net>
-Content-Type: text/plain; charset="UTF-8"
-Date: Sat, 31 Jul 2010 15:20:11 -0400
-Message-ID: <1280604011.3125.28.camel@heimdal.trondhjem.org>
+	id S932491Ab0GTPn5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 20 Jul 2010 11:43:57 -0400
+Date: Tue, 20 Jul 2010 11:43:17 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Jeff Layton <jlayton@redhat.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 0/5] nfsd: fix error handling in write_ports interfaces
+ (resend)
+Message-ID: <20100720154316.GC28972@fieldses.org>
+References: <1279572608-7234-1-git-send-email-jlayton@redhat.com>
+ <20100720145540.GA28972@fieldses.org>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20100720145540.GA28972@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Tue, 2010-07-27 at 12:48 +0200, Johannes Berg wrote:
-> I consistently get this when I unmount an NFS volume.
+On Tue, Jul 20, 2010 at 10:55:40AM -0400, J. Bruce Fields wrote:
+> On Mon, Jul 19, 2010 at 04:50:03PM -0400, Jeff Layton wrote:
+> > This patchset is a resend of the set I sent a month or so ago, with
+> > a couple of other patches to fix related problems that came to light
+> > as we were discussing them.
 > 
-> johannes
+> So, rpc.nfsd starts the nfs server by more or less:
 > 
-> [  381.427221] ===================================================
-> [  381.427225] [ INFO: suspicious rcu_dereference_check() usage. ]
-> [  381.427228] ---------------------------------------------------
-> [  381.427232] /home/johannes/sys/wireless-testing/net/sunrpc/auth_gss/auth_gss.c:947 invoked rcu_dereference_check() without protection!
-> [  381.427236] 
-> [  381.427237] other info that might help us debug this:
-> [  381.427238] 
-> [  381.427241] 
-> [  381.427242] rcu_scheduler_active = 1, debug_locks = 1
-> [  381.427246] 2 locks held by rpciod/0/1881:
-> [  381.427248]  #0:  (rpciod){+.+.+.}, at: [<ffffffff810640cf>] run_workqueue+0x11f/0x3c0
-> [  381.427262]  #1:  ((&task->u.tk_work)){+.+.+.}, at: [<ffffffff810640cf>] run_workqueue+0x11f/0x3c0
-> [  381.427271] 
-> [  381.427272] stack backtrace:
-> [  381.427276] Pid: 1881, comm: rpciod/0 Not tainted 2.6.35-rc6-wl-47665-gc2e2180-dirty #174
-> [  381.427280] Call Trace:
-> [  381.427289]  [<ffffffff8107e494>] lockdep_rcu_dereference+0xa4/0xc0
-> [  381.427297]  [<ffffffffa05e0191>] gss_free_ctx+0x91/0xa0 [auth_rpcgss]
-> [  381.427311]  [<ffffffffa05e19ed>] gss_destroy_nullcred+0x4d/0x70 [auth_rpcgss]
-> [  381.427331]  [<ffffffffa0598f97>] put_rpccred+0x127/0x140 [sunrpc]
-> [  381.427348]  [<ffffffffa059922e>] rpcauth_unbindcred+0x2e/0x70 [sunrpc]
-> [  381.427371]  [<ffffffffa05970ea>] rpc_put_task+0x3a/0xd0 [sunrpc]
-> [  381.427386]  [<ffffffffa0597810>] rpc_release_task+0x70/0xa0 [sunrpc]
-> [  381.427402]  [<ffffffffa0598229>] __rpc_execute+0x179/0x200 [sunrpc]
-> [  381.427433]  [<ffffffffa05982f5>] rpc_async_schedule+0x15/0x20 [sunrpc]
-> [  381.427438]  [<ffffffff81064120>] run_workqueue+0x170/0x3c0
-> [  381.427457]  [<ffffffff81064413>] worker_thread+0xa3/0x110
-> [  381.427472]  [<ffffffff81069386>] kthread+0x96/0xa0
-> [  381.427479]  [<ffffffff81003514>] kernel_thread_helper+0x4/0x10
+> 	1. write nfs versions to /proc/fs/nfsd/versions
+> 	2. write tcp socket fd to /proc/fs/nfsd/portlist
+> 	3. write udp socket fd to /proc/fs/nfsd/portlist
+> 	4. write number of threads to /proc/fs/nfsd/threads
+> 
+> A failure anywhere between step 2 and 4 leaves the server in an odd
+> state: it's created, but not really running yet.
+> 
+> Your patches help when it's step 2 that fails.  Probably that's the most
+> common case, so good.
+> 
+> But what if we step 3 fails?  Or rpc.nfsd encounters some other error
+> between steps 2 and 4?  Does it have any way to clean up?  (Is starting
+> a single thread and then stopping it the only way to destroy the server
+> at that point?)  And what if rpc.nfsd is interrupted before it gets to
+> step 4?
+> 
+> The whole interface seems strange and fragile.
 
-Hi,
+Also, looking at this from userland's point of view:
 
-Does the following patch help?
+	- Why am I no longer allowed to set nfs versions after writing
+	  to "portlist"?
+	- Why does changing threads from non-zero to zero destroy
+	  portlist configuration, but not any other configuration?
 
-Cheers
-  Trond
-------------------------------------------------------------------------------------------
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-SUNRPC: Defer deleting the security context until gss_do_free_ctx()
-    
-There is no need to delete the gss context separately from the rest
-of the security context information, and doing so gives rise to a
-an rcu_dereference_check() warning.
+It's a strange interface to use.
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
-diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
-index 8da2a0e..496601f 100644
---- a/net/sunrpc/auth_gss/auth_gss.c
-+++ b/net/sunrpc/auth_gss/auth_gss.c
-@@ -928,6 +928,7 @@ gss_do_free_ctx(struct gss_cl_ctx *ctx)
- {
- 	dprintk("RPC:       gss_free_ctx\n");
- 
-+	gss_delete_sec_context(&ctx->gc_gss_ctx);
- 	kfree(ctx->gc_wire_ctx.data);
- 	kfree(ctx);
- }
-@@ -942,13 +943,7 @@ gss_free_ctx_callback(struct rcu_head *head)
- static void
- gss_free_ctx(struct gss_cl_ctx *ctx)
- {
--	struct gss_ctx *gc_gss_ctx;
--
--	gc_gss_ctx = rcu_dereference(ctx->gc_gss_ctx);
--	rcu_assign_pointer(ctx->gc_gss_ctx, NULL);
- 	call_rcu(&ctx->gc_rcu, gss_free_ctx_callback);
--	if (gc_gss_ctx)
--		gss_delete_sec_context(&gc_gss_ctx);
- }
- 
- static void
+Maybe it would be simpler (and solve your problem) if we made the rule
+that any configuration can be done as long as nrthreads is 0.  And that
+lockd startup also only happens on transition between zero and nonzero
+nrthreads.  ?
 
+(On the other hand, I don't really like overloading the meaning of "echo
+0 >/proc/fs/nfsd/threads".  There might be times when it's convenient to
+stall the server temporarily while still keeping nfsv4 state, sockets,
+etc., all up.)
+
+--b.
