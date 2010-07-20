@@ -1,72 +1,74 @@
 From: Steve Dickson <steved@redhat.com>
-Subject: [PATCH 09/24] Removed warnings from fsloc.c
-Date: Tue, 20 Jul 2010 19:37:22 -0400
-Message-ID: <1279669057-17509-10-git-send-email-steved@redhat.com>
+Subject: [PATCH 07/24] Removed warnings from conffile.c
+Date: Tue, 20 Jul 2010 19:37:20 -0400
+Message-ID: <1279669057-17509-8-git-send-email-steved@redhat.com>
 References: <1279669057-17509-1-git-send-email-steved@redhat.com>
 To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from 4dicksons.org ([207.22.49.45]:60387 "EHLO
+Received: from 4dicksons.org ([207.22.49.45]:60383 "EHLO
 	Dobby.Home.4dicksons.org" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1761683Ab0GUAnZ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 20 Jul 2010 20:43:25 -0400
+	by vger.kernel.org with ESMTP id S1761683Ab0GUAnU (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 20 Jul 2010 20:43:20 -0400
 Received: from tophat.home.4dicksons.org ([192.168.62.20] helo=localhost.localdomain)
 	by Dobby.Home.4dicksons.org with esmtp (Exim 4.63)
 	(envelope-from <steved@redhat.com>)
-	id 1ObMNY-0004K5-2Q
-	for linux-nfs@vger.kernel.org; Tue, 20 Jul 2010 19:37:40 -0400
+	id 1ObMNX-0004K5-3B
+	for linux-nfs@vger.kernel.org; Tue, 20 Jul 2010 19:37:39 -0400
 In-Reply-To: <1279669057-17509-1-git-send-email-steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-fsloc.c: In function 'replicas_lookup':
-fsloc.c:149: warning: unused parameter 'key'
+conffile.c: In function 'conf_parse_line':
+conffile.c:301: warning: comparison between signed and unsigned integer expressions
+
+conffile.c: In function 'conf_load_defaults':
+conffile.c:356: warning: unused parameter 'tr'
 
 Signed-off-by: Steve Dickson <steved@redhat.com>
 ---
- utils/mountd/cache.c |    2 +-
- utils/mountd/fsloc.c |    2 +-
- utils/mountd/fsloc.h |    2 +-
- 3 files changed, 3 insertions(+), 3 deletions(-)
+ support/nfs/conffile.c |    8 ++++----
+ 1 files changed, 4 insertions(+), 4 deletions(-)
 
-diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c
-index bf18a9a..5488056 100644
---- a/utils/mountd/cache.c
-+++ b/utils/mountd/cache.c
-@@ -600,7 +600,7 @@ static void write_fsloc(FILE *f, struct exportent *ep, char *path)
- 	if (ep->e_fslocmethod == FSLOC_NONE)
- 		return;
+diff --git a/support/nfs/conffile.c b/support/nfs/conffile.c
+index b277c2a..24640f4 100644
+--- a/support/nfs/conffile.c
++++ b/support/nfs/conffile.c
+@@ -49,7 +49,7 @@
+ #include "conffile.h"
+ #include "xlog.h"
  
--	servers = replicas_lookup(ep->e_fslocmethod, ep->e_fslocdata, path);
-+	servers = replicas_lookup(ep->e_fslocmethod, ep->e_fslocdata);
- 	if (!servers)
- 		return;
- 	qword_print(f, "fsloc");
-diff --git a/utils/mountd/fsloc.c b/utils/mountd/fsloc.c
-index 5b094b0..e2add2d 100644
---- a/utils/mountd/fsloc.c
-+++ b/utils/mountd/fsloc.c
-@@ -146,7 +146,7 @@ static struct servers *method_list(char *data)
+-static void conf_load_defaults (int);
++static void conf_load_defaults(void);
+ static int conf_set(int , char *, char *, char *, 
+ 	char *, int , int );
+ 
+@@ -212,7 +212,7 @@ conf_parse_line(int trans, char *line, size_t sz)
+ {
+ 	char *val, *ptr;
+ 	size_t i;
+-	int j;
++	size_t j;
+ 	static char *section = 0;
+ 	static char *arg = 0;
+ 	static int ln = 0;
+@@ -353,7 +353,7 @@ conf_parse(int trans, char *buf, size_t sz)
  }
  
- /* Returns appropriately filled struct servers, or NULL if had a problem */
--struct servers *replicas_lookup(int method, char *data, char *key)
-+struct servers *replicas_lookup(int method, char *data)
+ static void
+-conf_load_defaults(int tr)
++conf_load_defaults(void)
  {
- 	struct servers *sp=NULL;
- 	switch(method) {
-diff --git a/utils/mountd/fsloc.h b/utils/mountd/fsloc.h
-index 8296d1c..1605df4 100644
---- a/utils/mountd/fsloc.h
-+++ b/utils/mountd/fsloc.h
-@@ -44,7 +44,7 @@ struct servers {
- 	int h_referral;		/* 0=replica, 1=referral */
- };
+ 	/* No defaults */
+ 	return;
+@@ -412,7 +412,7 @@ conf_reinit(void)
+ 		trans = conf_begin();
  
--struct servers *replicas_lookup(int method, char *data, char *key);
-+struct servers *replicas_lookup(int method, char *data);
- void release_replicas(struct servers *server);
+ 	/* Load default configuration values.  */
+-	conf_load_defaults(trans);
++	conf_load_defaults();
  
- #endif /* FSLOC_H */
+ 	/* Free potential existing configuration.  */
+ 	if (conf_addr) {
 -- 
 1.7.0.1
 
