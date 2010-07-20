@@ -1,146 +1,106 @@
 From: Steve Dickson <steved@redhat.com>
-Subject: [PATCH 17/24] Removed warnings from krb5_util.c
-Date: Tue, 20 Jul 2010 19:37:30 -0400
-Message-ID: <1279669057-17509-18-git-send-email-steved@redhat.com>
+Subject: [PATCH 10/24] Removed warnings from cache.c
+Date: Tue, 20 Jul 2010 19:37:23 -0400
+Message-ID: <1279669057-17509-11-git-send-email-steved@redhat.com>
 References: <1279669057-17509-1-git-send-email-steved@redhat.com>
 To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from 4dicksons.org ([207.22.49.45]:60385 "EHLO
+Received: from 4dicksons.org ([207.22.49.45]:60382 "EHLO
 	Dobby.Home.4dicksons.org" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S932485Ab0GUAnX (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 20 Jul 2010 20:43:23 -0400
+	by vger.kernel.org with ESMTP id S1761324Ab0GUAnT (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 20 Jul 2010 20:43:19 -0400
 Received: from tophat.home.4dicksons.org ([192.168.62.20] helo=localhost.localdomain)
 	by Dobby.Home.4dicksons.org with esmtp (Exim 4.63)
 	(envelope-from <steved@redhat.com>)
-	id 1ObMNY-0004K5-U4
-	for linux-nfs@vger.kernel.org; Tue, 20 Jul 2010 19:37:41 -0400
+	id 1ObMNY-0004K5-5A
+	for linux-nfs@vger.kernel.org; Tue, 20 Jul 2010 19:37:40 -0400
 In-Reply-To: <1279669057-17509-1-git-send-email-steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-krb5_util.c: In function 'realm_and_service_match':
-krb5_util.c:617: warning: unused parameter 'context'
-krb5_util.c: In function 'limit_krb5_enctypes':
-krb5_util.c:1275: warning: unused parameter 'uid'
+cache.c:812: warning: missing initializer
+cache.c:812: warning: (near initialization for 'cachelist[0].f')
+cache.c:813: warning: missing initializer
+cache.c:813: warning: (near initialization for 'cachelist[1].f')
+cache.c:814: warning: missing initializer
+cache.c:814: warning: (near initialization for 'cachelist[2].f')
+cache.c:815: warning: missing initializer
+cache.c:815: warning: (near initialization for 'cachelist[3].f')
+cache.c:816: warning: missing initializer
+cache.c:816: warning: (near initialization for 'cachelist[4].f')
+cache.c: In function 'cache_export_ent':
+cache.c:887: warning: comparison between signed and unsigned integer expressions
+cache.c:907: warning: comparison between signed and unsigned integer expressions
 
 Signed-off-by: Steve Dickson <steved@redhat.com>
 ---
- utils/gssd/gssd_proc.c |    2 +-
- utils/gssd/krb5_util.c |   29 +++++++++++++++++++++--------
- utils/gssd/krb5_util.h |    2 +-
- 3 files changed, 23 insertions(+), 10 deletions(-)
+ support/include/nfslib.h |    2 +-
+ utils/mountd/cache.c     |   18 +++++++++---------
+ 2 files changed, 10 insertions(+), 10 deletions(-)
 
-diff --git a/utils/gssd/gssd_proc.c b/utils/gssd/gssd_proc.c
-index a55418b..3902b95 100644
---- a/utils/gssd/gssd_proc.c
-+++ b/utils/gssd/gssd_proc.c
-@@ -859,7 +859,7 @@ int create_auth_rpc_client(struct clnt_info *clp,
- 		 * Do this before creating rpc connection since we won't need
- 		 * rpc connection if it fails!
- 		 */
--		if (limit_krb5_enctypes(&sec, uid)) {
-+		if (limit_krb5_enctypes(&sec)) {
- 			printerr(1, "WARNING: Failed while limiting krb5 "
- 				    "encryption types for user with uid %d\n",
- 				 uid);
-diff --git a/utils/gssd/krb5_util.c b/utils/gssd/krb5_util.c
-index d23654f..f071600 100644
---- a/utils/gssd/krb5_util.c
-+++ b/utils/gssd/krb5_util.c
-@@ -613,24 +613,32 @@ out:
-  * and has *any* instance (hostname), return 1.
-  * Otherwise return 0, indicating no match.
-  */
-+#ifdef HAVE_KRB5
- static int
--realm_and_service_match(krb5_context context, krb5_principal p,
--			const char *realm, const char *service)
-+realm_and_service_match(krb5_principal p, const char *realm, const char *service)
- {
--#ifdef HAVE_KRB5
- 	/* Must have two components */
- 	if (p->length != 2)
- 		return 0;
-+
- 	if ((strlen(realm) == p->realm.length)
- 	    && (strncmp(realm, p->realm.data, p->realm.length) == 0)
- 	    && (strlen(service) == p->data[0].length)
- 	    && (strncmp(service, p->data[0].data, p->data[0].length) == 0))
- 		return 1;
-+
-+	return 0;
-+}
- #else
-+static int
-+realm_and_service_match(krb5_context context, krb5_principal p,
-+			const char *realm, const char *service)
-+{
- 	const char *name, *inst;
- 
- 	if (p->name.name_string.len != 2)
- 		return 0;
-+
- 	name = krb5_principal_get_comp_string(context, p, 0);
- 	inst = krb5_principal_get_comp_string(context, p, 1);
- 	if (name == NULL || inst == NULL)
-@@ -638,9 +646,10 @@ realm_and_service_match(krb5_context context, krb5_principal p,
- 	if ((strcmp(realm, p->realm) == 0)
- 	    && (strcmp(service, name) == 0))
- 		return 1;
--#endif
-+
- 	return 0;
+diff --git a/support/include/nfslib.h b/support/include/nfslib.h
+index b8e7c40..f57f2e2 100644
+--- a/support/include/nfslib.h
++++ b/support/include/nfslib.h
+@@ -83,7 +83,7 @@ struct exportent {
+ 	int		e_nsquids;
+ 	int *		e_sqgids;
+ 	int		e_nsqgids;
+-	int		e_fsid;
++	unsigned int	e_fsid;
+ 	char *		e_mountpoint;
+ 	int             e_fslocmethod;
+ 	char *          e_fslocdata;
+diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c
+index 5488056..2909ad3 100644
+--- a/utils/mountd/cache.c
++++ b/utils/mountd/cache.c
+@@ -593,7 +593,7 @@ void nfsd_fh(FILE *f)
+ 	return;		
  }
-+#endif
  
- /*
-  * Search the given keytab file looking for an entry with the given
-@@ -662,7 +671,7 @@ gssd_search_krb5_keytab(krb5_context context, krb5_keytab kt,
- 	krb5_kt_cursor cursor;
- 	krb5_error_code code;
- 	struct gssd_k5_kt_princ *ple;
--	int retval = -1;
-+	int retval = -1, status;
- 	char kt_name[BUFSIZ];
- 	char *pname;
- 	char *k5err = NULL;
-@@ -705,8 +714,12 @@ gssd_search_krb5_keytab(krb5_context context, krb5_keytab kt,
- 		printerr(4, "Processing keytab entry for principal '%s'\n",
- 			 pname);
- 		/* Use the first matching keytab entry found */
--	        if ((realm_and_service_match(context, kte->principal, realm,
--					     service))) {
-+#ifdef HAVE_KRB5
-+		status = realm_and_service_match(kte->principal, realm, service);
-+#else
-+		status = realm_and_service_match(context, kte->principal, realm, service);
-+#endif
-+		if (status) {
- 			printerr(4, "We WILL use this entry (%s)\n", pname);
- 			ple = get_ple_by_princ(context, kte->principal);
- 			/*
-@@ -1272,7 +1285,7 @@ gssd_k5_get_default_realm(char **def_realm)
-  */
- 
- int
--limit_krb5_enctypes(struct rpc_gss_sec *sec, uid_t uid)
-+limit_krb5_enctypes(struct rpc_gss_sec *sec)
+-static void write_fsloc(FILE *f, struct exportent *ep, char *path)
++static void write_fsloc(FILE *f, struct exportent *ep)
  {
- 	u_int maj_stat, min_stat;
- 	gss_cred_id_t credh;
-diff --git a/utils/gssd/krb5_util.h b/utils/gssd/krb5_util.h
-index 4602cc3..b42b91e 100644
---- a/utils/gssd/krb5_util.h
-+++ b/utils/gssd/krb5_util.h
-@@ -36,7 +36,7 @@ char *gssd_k5_err_msg(krb5_context context, krb5_error_code code);
- void gssd_k5_get_default_realm(char **def_realm);
+ 	struct servers *servers;
  
- #ifdef HAVE_SET_ALLOWABLE_ENCTYPES
--int limit_krb5_enctypes(struct rpc_gss_sec *sec, uid_t uid);
-+int limit_krb5_enctypes(struct rpc_gss_sec *sec);
- #endif
+@@ -648,7 +648,7 @@ static int dump_to_cache(FILE *f, char *domain, char *path, struct exportent *ex
+ 		qword_printint(f, exp->e_anonuid);
+ 		qword_printint(f, exp->e_anongid);
+ 		qword_printint(f, exp->e_fsid);
+-		write_fsloc(f, exp, path);
++		write_fsloc(f, exp);
+ 		write_secinfo(f, exp, flag_mask);
+  		if (exp->e_uuid == NULL || different_fs) {
+  			char u[16];
+@@ -809,11 +809,11 @@ struct {
+ 	void (*cache_handle)(FILE *f);
+ 	FILE *f;
+ } cachelist[] = {
+-	{ "auth.unix.ip", auth_unix_ip},
+-	{ "auth.unix.gid", auth_unix_gid},
+-	{ "nfsd.export", nfsd_export},
+-	{ "nfsd.fh", nfsd_fh},
+-	{ NULL, NULL }
++	{ "auth.unix.ip", auth_unix_ip, NULL},
++	{ "auth.unix.gid", auth_unix_gid, NULL},
++	{ "nfsd.export", nfsd_export, NULL},
++	{ "nfsd.fh", nfsd_fh, NULL},
++	{ NULL, NULL, NULL }
+ };
  
- /*
+ extern int manage_gids;
+@@ -881,8 +881,8 @@ int cache_export_ent(char *domain, struct exportent *exp, char *path)
+ 		 * and export them with the same options
+ 		 */
+ 		struct stat stb;
+-		int l = strlen(exp->e_path);
+-		int dev;
++		size_t l = strlen(exp->e_path);
++		__dev_t dev;
+ 
+ 		if (strlen(path) <= l || path[l] != '/' ||
+ 		    strncmp(exp->e_path, path, l) != 0)
 -- 
 1.7.0.1
 
