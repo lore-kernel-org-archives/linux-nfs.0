@@ -1,78 +1,73 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:55751 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:32884 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754548Ab0GVMi5 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 22 Jul 2010 08:38:57 -0400
-Subject: Re: NFS commit: sync or async?
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Wu Fengguang <fengguang.wu@intel.com>
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-In-Reply-To: <20100722073623.GA24462@localhost>
-References: <20100722073623.GA24462@localhost>
-Content-Type: text/plain; charset="UTF-8"
-Date: Thu, 22 Jul 2010 08:38:55 -0400
-Message-ID: <1279802335.3621.8.camel@heimdal.trondhjem.org>
+	id S1758407Ab0GTO4V (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 20 Jul 2010 10:56:21 -0400
+Date: Tue, 20 Jul 2010 10:55:40 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Jeff Layton <jlayton@redhat.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 0/5] nfsd: fix error handling in write_ports interfaces
+ (resend)
+Message-ID: <20100720145540.GA28972@fieldses.org>
+References: <1279572608-7234-1-git-send-email-jlayton@redhat.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1279572608-7234-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Thu, 2010-07-22 at 15:36 +0800, Wu Fengguang wrote:
-> Hi Trond,
-> 
-> May I ask you an NFS question? I got a bit puzzled by this call trace. It
-> happens after stopping the nfsd at server side when the client side is
-> doing cp over NFSv3:
-> 
-> [49388.040091] cp            D 0000000000000082  2968  2782  28204 0x00000000
-> [49388.040097]  ffff8800b8587778 0000000000000002 ffff8800b85877f8 00000000001d4e40
-> [49388.040103]  ffff8800b8587fd8 00000000001d4e40 ffff8800b8587fd8 ffff8800b8ec4700
-> [49388.040110]  00000000001d4e40 ffff8800b8587fd8 00000000001d4e40 00000000001d4e40
-> [49388.040116] Call Trace:
-> [49388.040121]  [<ffffffff810de503>] ? prepare_to_wait+0x73/0xc0
-> [49388.040127]  [<ffffffff81b32750>] ? rpc_wait_bit_killable+0x0/0x60
-> [49388.040132]  [<ffffffff81b3277f>] rpc_wait_bit_killable+0x2f/0x60
-> [49388.040136]  [<ffffffff81babded>] __wait_on_bit+0x8d/0xe0
-> [49388.040140]  [<ffffffff81b32750>] ? rpc_wait_bit_killable+0x0/0x60
-> [49388.040144]  [<ffffffff81babec6>] out_of_line_wait_on_bit+0x86/0xa0
-> [49388.040149]  [<ffffffff810de170>] ? wake_bit_function+0x0/0x70
-> [49388.040154]  [<ffffffff81b333bf>] __rpc_execute+0x16f/0x3f0
-> [49388.040158]  [<ffffffff81b3367b>] rpc_execute+0x3b/0x50
-> [49388.040162]  [<ffffffff81b28d31>] rpc_run_task+0x51/0xc0
-> [49388.040167]  [<ffffffff81366ad6>] nfs_commit_list+0x1f6/0x3e0
-> [49388.040172]  [<ffffffff81366de9>] nfs_commit_inode+0x129/0x170
-> [49388.040176]  [<ffffffff813677fa>] nfs_write_inode+0x7a/0xf0
-> [49388.040180]  [<ffffffff81239a8b>] writeback_single_inode+0x28b/0x3f0
-> [49388.040186]  [<ffffffff8123ac08>] writeback_inodes_wb+0x318/0x650
-> [49388.040191]  [<ffffffff8123b1d2>] writeback_inodes_wbc+0x22/0x30
-> [49388.040196]  [<ffffffff811a5a00>] balance_dirty_pages_ratelimited_nr+0x400/0x5d0
-> [49388.040202]  [<ffffffff81196306>] ? iov_iter_copy_from_user_atomic+0xa6/0x1c0
-> [49388.040207]  [<ffffffff81196898>] generic_file_buffered_write+0x258/0x370
-> [49388.040213]  [<ffffffff81199b7a>] __generic_file_aio_write+0x2ea/0x5f0
-> [49388.040218]  [<ffffffff81bad374>] ? mutex_lock_nested+0x394/0x530
-> [49388.040223]  [<ffffffff81199edf>] ? generic_file_aio_write+0x5f/0x100
-> [49388.040229]  [<ffffffff81199ef9>] generic_file_aio_write+0x79/0x100
-> [49388.040235]  [<ffffffff81353f00>] nfs_file_write+0xe0/0x2a0
-> [49388.040240]  [<ffffffff8120a138>] do_sync_write+0xe8/0x140
-> [49388.040246]  [<ffffffff811bd7b6>] ? might_fault+0xd6/0xf0
-> [49388.040251]  [<ffffffff8120b156>] vfs_write+0xb6/0x220
-> [49388.040255]  [<ffffffff8120b406>] sys_write+0x66/0xb0
-> [49388.040260]  [<ffffffff8104ab72>] system_call_fastpath+0x16/0x1b
-> 
-> >From simple code review I cannot explain why out_of_line_wait_on_bit()
-> is called inside __rpc_execute() for a commit request.
-> 
-> nfs_commit_rpcsetup() sets RPC_TASK_ASYNC for task_setup_data.flags,
-> which is transferred to task->tk_flags in rpc_init_task().
-> __rpc_execute() should then return on task_is_async=1 and skip the
-> out_of_line_wait_on_bit() call. However the trace shows that
-> out_of_line_wait_on_bit() is called. I'm a bit puzzled. I must have
-> missed something. Is this the expected behavior?
+On Mon, Jul 19, 2010 at 04:50:03PM -0400, Jeff Layton wrote:
+> This patchset is a resend of the set I sent a month or so ago, with
+> a couple of other patches to fix related problems that came to light
+> as we were discussing them.
 
-Hi Fengguang,
+So, rpc.nfsd starts the nfs server by more or less:
 
-Are you sure this trace is from a recent kernel? In all kernels prior to
-2.6.34-rc3, COMMIT was a synchronous RPC call, which would explain the
-above trace.
+	1. write nfs versions to /proc/fs/nfsd/versions
+	2. write tcp socket fd to /proc/fs/nfsd/portlist
+	3. write udp socket fd to /proc/fs/nfsd/portlist
+	4. write number of threads to /proc/fs/nfsd/threads
 
-Cheers
-  Trond
+A failure anywhere between step 2 and 4 leaves the server in an odd
+state: it's created, but not really running yet.
+
+Your patches help when it's step 2 that fails.  Probably that's the most
+common case, so good.
+
+But what if we step 3 fails?  Or rpc.nfsd encounters some other error
+between steps 2 and 4?  Does it have any way to clean up?  (Is starting
+a single thread and then stopping it the only way to destroy the server
+at that point?)  And what if rpc.nfsd is interrupted before it gets to
+step 4?
+
+The whole interface seems strange and fragile.
+
+The correct thing may be to apply your patches anyway, as long as they
+solve a problem and don't make things any worse.
+
+But I fear we'll be spending more time on corner cases in the future.
+
+As a first exercise, maybe we should figure out how the interface would
+look if we had the opportunity to start over from scratch.
+
+--b.
+
+> It's changed a bit from the original set by virtue of the fact that
+> patch #5 simplifies the lockd_up/down handling. Let me know if you
+> see any problems with the set and I'll work on addressing them.
+> 
+> Thanks,
+> 
+> Jeff Layton (5):
+>   nfsd: don't try to shut down nfs4 state handling unless it's up
+>   nfsd: fix error handling when starting nfsd with rpcbind down
+>   nfsd: fix error handling in __write_ports_addxprt
+>   nfsd: shut down NFSv4 state when nfsd_svc encounters an error
+>   nfsd: just keep single lockd reference for nfsd
+> 
+>  fs/nfsd/nfs4state.c |    2 ++
+>  fs/nfsd/nfsctl.c    |   20 ++++++++------------
+>  fs/nfsd/nfssvc.c    |   36 +++++++++++++++++-------------------
+>  3 files changed, 27 insertions(+), 31 deletions(-)
+> 
