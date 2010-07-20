@@ -1,61 +1,122 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fn.samba.org ([216.83.154.106]:34053 "EHLO lists.samba.org"
+Received: from fieldses.org ([174.143.236.118]:51651 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752421Ab0GVSHw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 22 Jul 2010 14:07:52 -0400
-Date: Thu, 22 Jul 2010 11:07:51 -0700
-From: Jeremy Allison <jra@samba.org>
-To: Volker Lendecke <Volker.Lendecke@SerNet.DE>
-Cc: Jeremy Allison <jra@samba.org>,
-        Trond Myklebust <trond.myklebust@fys.uio.no>,
-        Linus Torvalds <torvalds@linux-foundation.org>,
-        David Howells <dhowells@redhat.com>,
-        Jan Engelhardt <jengelh@medozas.de>, linux-cifs@vger.kernel.org,
-        linux-nfs@vger.kernel.org, samba-technical@lists.samba.org,
-        linux-kernel@vger.kernel.org, viro@zeniv.linux.org.uk,
-        linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
-Subject: Re: [PATCH 02/18] xstat: Add a pair of system calls to make
- extended  file stats available [ver #6]
-Message-ID: <20100722180751.GC32008@samba1>
-Reply-To: Jeremy Allison <jra@samba.org>
-References: <30448.1279800887@redhat.com>
- <E1Obuiy-00C9jr-Al@intern.SerNet.DE>
- <AANLkTikBCXK6uEwWq4f0LvpdoKCPs3jvyFa4Zw4e2J_7@mail.gmail.com>
- <E1Obxpd-00CRIo-SF@intern.SerNet.DE>
- <AANLkTimwIq0pBhCeOjOVjB0yeM3JHOvzVoj9M4ui6al9@mail.gmail.com>
- <20100722162712.GB10352@jeremy-laptop>
- <AANLkTimdFCGSKLn7aGMpBMIauHTsHY7hpAAmpo6uTcnD@mail.gmail.com>
- <1279817930.3621.14.camel@heimdal.trondhjem.org>
- <20100722180204.GA32008@samba1>
- <E1Oc08W-00CZuz-Ns@intern.SerNet.DE>
+	id S1757653Ab0GTUiX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 20 Jul 2010 16:38:23 -0400
+Date: Tue, 20 Jul 2010 16:37:42 -0400
+To: Rick Harris <rickfharris@yahoo.com.au>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: Memory leaks in rpc.mountd
+Message-ID: <20100720203741.GB11367@fieldses.org>
+References: <op.vfl3hdllxjjcjd@ricks-laptop.localnet>
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <E1Oc08W-00CZuz-Ns@intern.SerNet.DE>
+In-Reply-To: <op.vfl3hdllxjjcjd@ricks-laptop.localnet>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Thu, Jul 22, 2010 at 08:04:41PM +0200, Volker Lendecke wrote:
-> On Thu, Jul 22, 2010 at 11:02:04AM -0700, Jeremy Allison wrote:
-> > On Thu, Jul 22, 2010 at 12:58:50PM -0400, Trond Myklebust wrote:
-> > > 
-> > > That would make it impossible to export the filesystem with NFSv2 and
-> > > v3. They do rely on ctime checking for certain operations (e.g. deciding
-> > > when to invalidate access and acl caches). NFSv4 needs this too if the
-> > > filesystem has no dedicated change attribute.
-> > > 
-> > > Still, I suppose the market for exporting the same filesystem with both
-> > > NFS and Samba is limited...
-> > 
-> > Ask NetApp about that :-). They have built a rather large
-> > business on just that fact :-).
+On Sat, Jul 10, 2010 at 02:43:51PM +0930, Rick Harris wrote:
+> Hi all,
 > 
-> Jeremy, how many hours have you spent getting "posix
-> locking" to the point where it is now? :-)
+> I'm currently experiencing some large memory leaks on an NFS server
+> when copying files to it from an NFS client.
+> This happens for both NFSv3 and NFSv4, am currently using an NFSv4 setup.
+> Installed software and kernel versions below...
 > 
-> Volker
 > 
-> P.S: For those not aware, "posix locking = yes" is
-> cross-protocol byte range locking done by smbd to co-operate
-> with local processes and NFS.
+> SERVER:
+> Kernel 2.6.32.9
+> CONFIG_NFS_FS=y
+> # CONFIG_NFS_V3 is not set
+> CONFIG_NFS_V4=y
+> # CONFIG_NFS_V4_1 is not set
+> # CONFIG_ROOT_NFS is not set
+> CONFIG_NFSD=y
+> CONFIG_NFSD_V3=y
+> # CONFIG_NFSD_V3_ACL is not set
+> CONFIG_NFSD_V4=y
+> CONFIG_NFS_COMMON=y
+> 
+> libtirpc-0.2.0
+> rpcbind-0.2.0
+> nfs-utils-1.2.2
+> 
+> 
+> CLIENT:
+> Kernel 2.6.34
+> CONFIG_NFS_FS=y
+> # CONFIG_NFS_V3 is not set
+> CONFIG_NFS_V4=y
+> # CONFIG_NFS_V4_1 is not set
+> CONFIG_NFSD=y
+> CONFIG_NFSD_V3=y
+> # CONFIG_NFSD_V3_ACL is not set
+> CONFIG_NFSD_V4=y
+> CONFIG_NFS_COMMON=y
+> 
+> libtirpc-0.2.0
+> rpcbind-0.2.0
+> nfs-utils-1.2.2
+> 
+> 
+> Output of kmemleak report...
+> 
+> unreferenced object 0xf4b2ec60 (size 32):
 
-The time is counted in years, not hours :-).
+If I understand right, it's saying that it only found the one
+unreferenced object?  svc_export_parse should be called relatively
+rarely, so it's unlikely to explain your symptoms anyway.
+
+>   comm "rpc.mountd", pid 1814, jiffies 4294759177
+>   hex dump (first 32 bytes):
+>     ab 82 c0 3b c4 54 4f e9 a5 c9 ee db 43 71 fc 38  ...;.TO.....Cq.8
+>     00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00  ................
+>   backtrace:
+>     [<c12e7d79>] kmemleak_alloc+0x59/0xc0
+>     [<c106ac5a>] __kmalloc+0xfa/0x110
+>     [<c105787f>] kmemdup+0x1f/0x70
+>     [<c113dfb1>] svc_export_parse+0x621/0x770
+>     [<c12db79d>] cache_do_downcall+0x2d/0x40
+>     [<c12dc2f1>] cache_write+0x91/0xe0
+>     [<c12dc392>] cache_write_procfs+0x22/0x30
+>     [<c10a6e34>] proc_reg_write+0x44/0x60
+>     [<c106fbcc>] vfs_write+0x9c/0x160
+>     [<c106fd4d>] sys_write+0x3d/0x70
+>     [<c1002c48>] sysenter_do_call+0x12/0x26
+>     [<ffffffff>] 0xffffffff
+> 
+> 
+> The test case is copying a 1.5GB file from the nfs client to the server.
+> It literally takes only a minute for the server's 1.2GB of memory to
+> be almost totally exhausted down to around 5MB.
+
+How are you measuring the amount of free memory?
+
+> The copying process hangs, then resumes many times along the way
+> until it does successfully finish around 4 minutes later.
+> The consumed memory is then not freed and the server's memory
+> remains depleted to almost nothing.
+
+What kind of drive are you exporting, over what network?
+
+--b.
+
+> The memory is never completely exhausted so it never starts to swap ?
+> 
+> Reading from server works fine with no memory loss, albeit a much
+> slower transfer rate.
+> 
+> This started happening after a kernel upgrade on the server from
+> 2.6.20.7 to 2.6.29.5, but is still occurring with the latest
+> kernels.
+> Hope the above info helps, I'm willing to try any patches that may
+> get thrown my way.
+> 
+> 
+> Cheers,
+> Rick
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
