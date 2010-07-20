@@ -1,69 +1,44 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: 2.6.32.16 - NFS still having trouble (nfsd: peername failed
- (err 107)!)
-Date: Tue, 20 Jul 2010 16:23:53 -0400
-Message-ID: <20100720202353.GA11367@fieldses.org>
-References: <20100714110020.GB10153@develbox.linuxbox.cz>
+From: "William A. (Andy) Adamson" <androsadamson@gmail.com>
+Subject: Re: [PATCH 0/5] pnfs-submit fix kfree under spin lock
+Date: Tue, 20 Jul 2010 16:36:59 -0400
+Message-ID: <AANLkTinrF4uXsia_5fXmps=31C9Ab9AZ0M6kruL_rczS@mail.gmail.com>
+References: <1279645283-9862-1-git-send-email-andros@netapp.com>
+	<20100720190953.GA22237@infradead.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux NFS list <linux-nfs@vger.kernel.org>,
-	nikola.ciprich-Jp3n8lUXroTtwjQa/ONI9g@public.gmane.org, mzik-Jp3n8lUXroTtwjQa/ONI9g@public.gmane.org
-To: Nikola Ciprich <extmaillist-Jp3n8lUXroTtwjQa/ONI9g@public.gmane.org>
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: bhalevy@panasas.com, linux-nfs@vger.kernel.org
+To: Christoph Hellwig <hch@infradead.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:50649 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932525Ab0GTUYg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 20 Jul 2010 16:24:36 -0400
-In-Reply-To: <20100714110020.GB10153-K8br+RTdgN68z6Q06MQEFCF40CQGThNF@public.gmane.org>
+Received: from mail-iw0-f174.google.com ([209.85.214.174]:42316 "EHLO
+	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1761637Ab0GTUhA (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 20 Jul 2010 16:37:00 -0400
+Received: by iwn7 with SMTP id 7so6011081iwn.19
+        for <linux-nfs@vger.kernel.org>; Tue, 20 Jul 2010 13:37:00 -0700 (PDT)
+In-Reply-To: <20100720190953.GA22237@infradead.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Jul 14, 2010 at 01:00:20PM +0200, Nikola Ciprich wrote:
-> Hi,
-> 
-> I just updated one of my NFS boxes to 2.6.32.16, but NFS is still not in
-> top condition.
+On Tue, Jul 20, 2010 at 3:09 PM, Christoph Hellwig <hch@infradead.org> wrote:
+> On Tue, Jul 20, 2010 at 01:01:18PM -0400, andros@netapp.com wrote:
+>>
+>> Fix kfree under spin lock
+>>
+>> Both put_lseg and put_layout are called under the inode i_lock where the
+>> last reference will end up freeing structures.
+>>
+>> I know there has been a lot of churn in this code, but free'ing under the
+>> spin lock is a no-no.
+>
+> kfree under a spinlock is perfectly fine.  That is as long as you
+> don't free the spinlock itself.
 
-Sorry, I'm missing some history: was NFS doing OK in some previous
-kernel version, or has this always been a problem?
+:)
 
-> Clients are hanging during copying, and following messages 
-> are appearing in dmesg:
-> 
-...
-> 
-> machine is x86_64, what is certainly important to note is that
-> NFS share sits on top of (large) dm-crypted ext4 volume.
-> Could somebody please help me to track the source of problems?
-
-Hangs appear to be in ext4, and my first impulse would be to blame
-dm-crypt and/or ext4; have you asked them?
-
---b.
-
-> 
-> Thanks a lot in advance...
-> 
-> with best regards
-> 
-> nikola ciprich
-> 
-> 
-> -- 
-> -------------------------------------
-> Ing. Nikola CIPRICH
-> LinuxBox.cz, s.r.o.
-> 28. rijna 168, 709 01 Ostrava
-> 
-> tel.:   +420 596 603 142
-> fax:    +420 596 621 273
-> mobil:  +420 777 093 799
-> www.linuxbox.cz
-> 
-> mobil servis: +420 737 238 656
-> email servis: servis-Jp3n8lUXroTtwjQa/ONI9g@public.gmane.org
-> -------------------------------------
+-->Andy
+>
 > --
 > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
 > the body of a message to majordomo@vger.kernel.org
 > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
