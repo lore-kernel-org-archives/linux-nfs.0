@@ -1,44 +1,76 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:61433 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752366Ab0GFURO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 6 Jul 2010 16:17:14 -0400
-From: andros@netapp.com
-To: bhalevy@panasas.com
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 0/5] cleanup inode.c and bug fixes
-Date: Tue,  6 Jul 2010 17:16:57 -0400
-Message-Id: <1278451022-2889-1-git-send-email-andros@netapp.com>
+Received: from daytona.panasas.com ([67.152.220.89]:27605 "EHLO
+	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1754727Ab0GTOHL (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 20 Jul 2010 10:07:11 -0400
+Message-ID: <4C45AD8B.3070802@panasas.com>
+Date: Tue, 20 Jul 2010 17:07:07 +0300
+From: Benny Halevy <bhalevy@panasas.com>
+To: "William A. (Andy) Adamson" <androsadamson@gmail.com>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 2/3] SQUASHME: pnfs-submit: filelayout: add nr_pages back
+ 	to write_pagelist api
+References: <4C453A50.7070009@panasas.com>	<1279605456-7349-1-git-send-email-bhalevy@panasas.com> <AANLkTinv670aR9NSYb7O=KdJAhhsRHo3gZTcSrj0MHY_@mail.gmail.com>
+In-Reply-To: <AANLkTinv670aR9NSYb7O=KdJAhhsRHo3gZTcSrj0MHY_@mail.gmail.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
+On 2010-07-20 16:50, William A. (Andy) Adamson wrote:
+> The file layout does not use nr_pages. The calculation is easy. No
 
-For the pnfs-submit branch 2.6.35-rc3 7-6-2010 tree.
+True, but we should strive for a coherent interface IMO,
+even if it's not the absolute minimal one.
 
-These first three patches simplify the inode.c pnfs initialization calls.
-0001-SQUASHME-pnfs-submit-remove-pnfs_init_once.patch
-0002-SQUASHME-pnfs-submit-remove-pnfs_alloc_init_inode.patch
-0003-SQUASHME-pnfs-submit-remove-pnfs_destroy_inode.patch
+> need to pass the extra parameter. Why not just call
+> nfs_page_array_len() in the layout drivers that need it?
 
-These two patches fix bugs in the layoutget and layoutcommit error handling
-where the calldata->status was not set after the async error handler in the
-rpc_call_done routines.
+It's defined in fs/nfs/internal.h, so to use it officially
+it should be moved to a public header file or exported as
+a public function.
 
-0004-SQUASHME-pnfs-submit-set-layoutcommit-status-after-a.patch
-0005-SQUASHME-pnfs-submit-set-layoutget-status-after-asyn.patch
+Benny
 
-Tested:
-CONFIG_NFS_V4_1 set:
+> 
+> -->Andy
+> 
+> On Tue, Jul 20, 2010 at 1:57 AM, Benny Halevy <bhalevy@panasas.com> wrote:
+>> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+>> ---
+>>  fs/nfs/nfs4filelayout.c |    2 +-
+>>  1 files changed, 1 insertions(+), 1 deletions(-)
+>>
+>> diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+>> index 9b6ba8d..b2ce478 100644
+>> --- a/fs/nfs/nfs4filelayout.c
+>> +++ b/fs/nfs/nfs4filelayout.c
+>> @@ -244,7 +244,7 @@ filelayout_read_pagelist(struct nfs_read_data *data, unsigned nr_pages)
+>>
+>>  /* Perform async writes. */
+>>  static enum pnfs_try_status
+>> -filelayout_write_pagelist(struct nfs_write_data *data, int sync)
+>> +filelayout_write_pagelist(struct nfs_write_data *data, unsigned nr_pages, int sync)
+>>  {
+>>        struct pnfs_layout_segment *lseg = data->pdata.lseg;
+>>        struct nfs4_pnfs_ds *ds;
+>> --
+>> 1.7.1.1
+>>
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>
 
-pNFS mount connectathon tests pass.
-pyNFS server with NFS4ERR_DELAY returned by layoutget handles the error in
-the async error handler, and then the calldata->status is set to NFS4_OK.
 
-CONFIG_NFS_V4_1 not set;
+-- 
+Benny Halevy
+Software Architect
+Panasas, Inc.
+bhalevy@panasas.com
+Tel/Fax: +972-3-647-8340
+Mobile: +972-54-802-8340
 
-NFSv4.0 mount passes connectathon tests.
-
--->Andy
-
+Panasas: The Leader in Parallel Storage
+www.panasas.com
