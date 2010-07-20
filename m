@@ -1,54 +1,75 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-out1.uio.no ([129.240.10.57]:40645 "EHLO mail-out1.uio.no"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757111Ab0GBND3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 2 Jul 2010 09:03:29 -0400
-Subject: Re: Empty core dumps on NFSv4 mounts
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-To: Arnaud Giersch <arnaud.giersch@iut-bm.univ-fcomte.fr>
-Cc: linux-nfs@vger.kernel.org
-In-Reply-To: <wwezkyas466.fsf@powwow.iut-bm.univ-fcomte.fr>
-References: <wwezkyas466.fsf@powwow.iut-bm.univ-fcomte.fr>
-Content-Type: text/plain; charset="UTF-8"
-Date: Fri, 02 Jul 2010 09:03:24 -0400
-Message-ID: <1278075804.3258.20.camel@heimdal.trondhjem.org>
+Received: from daytona.panasas.com ([67.152.220.89]:51924 "EHLO
+	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1758499Ab0GTOhj (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 20 Jul 2010 10:37:39 -0400
+Message-ID: <4C45B4B0.2020208@panasas.com>
+Date: Tue, 20 Jul 2010 17:37:36 +0300
+From: Boaz Harrosh <bharrosh@panasas.com>
+To: "J. Bruce Fields" <bfields@citi.umich.edu>
+CC: Benny Halevy <bhalevy@panasas.com>,
+        "Labiaga, Ricardo" <Ricardo.Labiaga@netapp.com>,
+        NFS list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH version2] nfsd41: Fix a crash when a callback is retried
+References: <4C28DCE0.7050201@panasas.com> <4C29DA23.90200@panasas.com>
+In-Reply-To: <4C29DA23.90200@panasas.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Fri, 2010-07-02 at 10:01 +0200, Arnaud Giersch wrote:
-> Hi,
+On 06/29/2010 02:33 PM, Boaz Harrosh wrote:
 > 
-> On NFSv4 mounts, many core dumps are empty, although ulimit -c is
-> unlimited.  An ls command shortly after the core dump often shows
-> 4294967294 (2^32-2) as UID and GID for the "core" file.
+> If a callback is retried at nfsd4_cb_recall_done() do to
+> some error. The returned rpc reply would then crash here:
 > 
-> This only happens when there was no "core" file before the dump.  If a
-> "core" file owned by the current user is already present, it is
-> correctly filled.
+> @@ -514,6 +514,7 @@ decode_cb_sequence(struct xdr_stream *xdr, struct nfsd4_cb_sequence *res,
+>  	u32 dummy;
+>  	__be32 *p;
 > 
-> After having done a git bisect, it seems that the problem was
-> introduced by commit 80e52aced138bb41b045a8595a87510f27d8d8c5
-> (NFSv4: Don't do idmapper upcalls for asynchronous RPC calls).
+>  +	BUG_ON(!res);
+>  	if (res->cbs_minorversion == 0)
+>  		return 0;
 > 
-> If I understand correctly what happens, do_coredump() [fs/exec.c] fails
-> because (inode->i_uid != current_fsuid()).  In fact inode->i_uid equals
-> -2, because decode_attr_owner() [fs/nfs/nfs4xdr.c], which is called from
-> nfs4_xdr_dec_open() via decode_getfattr(), returns without calling
-> nfs_map_to_uid(), since its may_sleep parameter is false.
+> [BUG_ON added for demonstration]
 > 
-> I however do not clearly understand what the aforementioned commit is
-> supposed to fix.  I read the linux-nfs mailing list archive, and tried
-> some google search, but I didn't find anything.
+> This is because the nfsd4_cb_done_sequence() has NULLed out
+> the task->tk_msg.rpc_resp pointer.
+> 
+> Also eventually the rpc would use the new slot without making
+> sure it is free by calling nfsd41_cb_setup_sequence().
+> 
+> This problem was introduced by a 4.1 protocol addition patch:
+> 	[0421b5c5] nfsd41: Backchannel: Implement cb_recall over NFSv4.1
+> 
+> Which was overlooking the possibility of an RPC callback retries.
+> For not-4.1 case redoing the _prepare is harmless.
+> 
+> Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
 
-rpciod threads should never do anything that can cause them to sleep.
-Doing an upcall as part of an XDR decode is therefore verboten.
+Bruce hi.
 
-We should ideally rather be saving the owner/group strings and doing the
-upcall after the XDR is done. While that wasn't feasible when 'fattr'
-structs were being allocated on the stack, now that they are dynamically
-allocated, maybe we can rethink that...
+This is a crash fix for current 4.1 code. Perhaps you have missed it.
+(If not, sorry. Just that I've not seen any response)
 
-Cheers
-  Trond
+Thanks
+Boaz
+
+> ---
+>  fs/nfsd/nfs4callback.c |    2 +-
+>  1 files changed, 1 insertions(+), 1 deletions(-)
+> 
+> diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
+> index f3b5015..3bbeae8 100644
+> --- a/fs/nfsd/nfs4callback.c
+> +++ b/fs/nfsd/nfs4callback.c
+> @@ -913,7 +913,7 @@ static void nfsd4_cb_recall_done(struct rpc_task *task, void *calldata)
+>  	if (dp->dl_retries--) {
+>  		rpc_delay(task, 2*HZ);
+>  		task->tk_status = 0;
+> -		rpc_restart_call(task);
+> +		rpc_restart_call_prepare(task);
+>  		return;
+>  	} else {
+>  		atomic_set(&clp->cl_cb_set, 0);
 
