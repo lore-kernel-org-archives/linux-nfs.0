@@ -1,104 +1,57 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from moutng.kundenserver.de ([212.227.126.186]:54941 "EHLO
-	moutng.kundenserver.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S965352Ab0GPNcP (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 16 Jul 2010 09:32:15 -0400
-From: Arnd Bergmann <arnd@arndb.de>
-To: David Howells <dhowells@redhat.com>
-Subject: Re: [PATCH 02/18] xstat: Add a pair of system calls to make extended file stats available [ver #6]
-Date: Fri, 16 Jul 2010 15:32:02 +0200
-Cc: Mark Harris <mhlk@osj.us>, Steve French <smfrench@gmail.com>,
-        viro@zeniv.linux.org.uk, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-cifs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, samba-technical@lists.samba.org,
-        linux-ext4@vger.kernel.org
-References: <201007161302.35775.arnd@arndb.de> <8527.1279275842@redhat.com> <10677.1279283886@redhat.com>
-In-Reply-To: <10677.1279283886@redhat.com>
-Content-Type: Text/Plain;
-  charset="iso-8859-15"
-Message-Id: <201007161532.02210.arnd@arndb.de>
+Received: from fieldses.org ([174.143.236.118]:37542 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751206Ab0GTP5h (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 20 Jul 2010 11:57:37 -0400
+Date: Tue, 20 Jul 2010 11:56:56 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Jeff Layton <jlayton@redhat.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 0/5] nfsd: fix error handling in write_ports interfaces
+ (resend)
+Message-ID: <20100720155656.GD28972@fieldses.org>
+References: <1279572608-7234-1-git-send-email-jlayton@redhat.com>
+ <20100720145540.GA28972@fieldses.org>
+ <20100720114313.78509cbb@tlielax.poochiereds.net>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20100720114313.78509cbb@tlielax.poochiereds.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Friday 16 July 2010, David Howells wrote:
-> Arnd Bergmann <arnd@arndb.de> wrote:
+On Tue, Jul 20, 2010 at 11:43:13AM -0400, Jeff Layton wrote:
+> On Tue, 20 Jul 2010 10:55:40 -0400
+> "J. Bruce Fields" <bfields@fieldses.org> wrote:
 > 
-> > You could also define the tv_gran_units to be power-of-ten nanoseconds,
-> > making it a decimal floating point number like 
+> > On Mon, Jul 19, 2010 at 04:50:03PM -0400, Jeff Layton wrote:
+> > As a first exercise, maybe we should figure out how the interface would
+> > look if we had the opportunity to start over from scratch.
 > > 
-> > enum {
-> >       XSTAT_NANOSECONDS_GRANULARITY = 0,
-> >       XSTAT_MICROSECONDS_GRANULARITY = 3,
-> >       XSTAT_MILLISECONDS_GRANULARITY = 6,
-> >       XSTAT_SECONDS_GRANULARITY = 9,
-> > };
 > 
-> Are you thinking, then, of having tv_nsec be in terms of those units?
-
-No, just tv_granularity. Most users won't need to care that this
-is not a regular timespec then.
-
-> > That would make it easier to define an xstat_time_before() function, though
-> > it means that you could no longer do XSTAT_MINUTES_GRANULARITY and
-> > higher directly other than { .tv_gran_units = 10, .tv_granularity = 6, }.
+> I wholeheartedly agree. This set is essentially a bandaid and I think
+> it helps the basic problems but there are plenty of others.
 > 
-> So you're thinking of indicating time (in)equality based on overlapping time
-> granules?
+> I'm all for redesigning the innards for better fault tolerance, but I
+> think we ought to shoot for not changing the userspace interface unless
+> there's just no other way, or it provides a substantial "win".
 
-Yes, for example rsync could use this to determine wether a local (e.g. FAT)
-and a remote (e.g. NFS) file are identical or not. Right now, you can pass
-the granularity in seconds as a command line argument, but it would be nice
-to have rsync do this automatically if possible.
+Yeah, agreed--that's why I said "as a first exercise".  Sometimes once
+you figure out what you want, it also becomes easier to figure out how
+to get there in a backwards-compatible way.
 
-> Your suggestion would suffice, I think.  With a 2:2 split between exponent
-> (tv_gran_units) and mantissa (tv_granularity), you can do:
+> I think we could fix this in a much better way by not creating the
+> nfsd_serv until threads need to be started. 
 > 
->         UNIT            SECONDS/UNIT    EXPONENT        MANTISSA
->         nanoseconds     0.000000001     -9              1
->         microseconds    0.000001        -6              1
->         millseconds     0.001           -3              1
->         seconds         1               0               1
->         minutes         60              1               6
->         hours           3600            2               36
->         days            86400           2               864
->         weeks           604800          2               6048
+> Basically just have write_ports add socket info to a global list rather
+> than to the nfsd_serv itself. When nfsd_serv is created, we'd walk that
+> list and add those sockets to the nfsd_serv.
 > 
-> Any units beyond that are variable length and not worth considering, IMO.
+> Any time that the portlist file is written to, we'd check to see if
+> nfsd is up. If it is then sync up the nfsd sockets with the contents of
+> the list.
 
-right.
- 
-> And if you don't want negative numbers in your exponent, you can make the base
-> unit nS instead of S.
+If the problem with creating nfsd_server earlier is just that it
+prevents things like versions or leasetime from being changed, perhaps
+we should just relax that rule.
 
-either way works fine for me.
-
-> Is it worth allowing a filesystem to indicate that it has granularity smaller
-> than nS, even if the resolution can't be handled here?  We could even have:
-> 
->         struct xstat_time {
->                 signed long long        tv_sec;         /* seconds */
->                 unsigned int            tv_nsec;        /* nanoseconds */
->                 unsigned char           tv_psec4;       /* picoseconds/4 */
->                 signed char             tv_gran_exp;    /* exponent */
->                 unsigned short          tv_gran_mant;   /* mantissa */
->         };
-> 
-> Though it's probably still an unnecessary extravagance to have the pS field.
-> It's probably best left as padding for now; we can always change our minds
-> later...
-
-There are also two extra bits in tv_nsec ;-). No, I don't think we
-need picoseconds any time soon.
-
-One byte padding might not be the worst thing to have in here, like
-
-        struct xstat_time {
-                signed long long        tv_sec;         /* seconds */
-                unsigned int            tv_nsec;        /* nanoseconds */
-                unsigned short          tv_gran_mant;   /* mantissa */
-                signed char             tv_gran_exp;    /* exponent */
-                unsigned char           unused;
-        };
-
-	Arnd
+--b.
