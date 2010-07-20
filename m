@@ -1,49 +1,25 @@
-From: Jeff Layton <jlayton@redhat.com>
-Subject: Re: [PATCH 1/5] nfsd: don't try to shut down nfs4 state handling
- unless it's up
-Date: Mon, 19 Jul 2010 20:54:50 -0400
-Message-ID: <20100719205450.3a194116@corrin.poochiereds.net>
-References: <1279572608-7234-1-git-send-email-jlayton@redhat.com>
-	<1279572608-7234-2-git-send-email-jlayton@redhat.com>
-	<20100719220837.GA31074@fieldses.org>
+From: "Sonia Porter" <sporter-2w+f3CLSCfj7uhv0AaPmaA@public.gmane.org>
+Subject: Dear Webmail User
+Date: Mon, 19 Jul 2010 18:26:37 -0700
+Message-ID: <8A78544F83994B468EAC5A3D242C1E34C79054__1035.84482935748$1279590214$gmane$org@exchsrv02.jusd.dom>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=US-ASCII
-Cc: linux-nfs@vger.kernel.org
-To: "J. Bruce Fields" <bfields@fieldses.org>
+To: <info-dfAhzUOI1ZhBDgjK7y7TUQ@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:19187 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1760973Ab0GTAwR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 19 Jul 2010 20:52:17 -0400
-In-Reply-To: <20100719220837.GA31074@fieldses.org>
+Received: from mail.jusd.k12.ca.us ([204.100.155.6]:43451 "EHLO
+	mail.jusd.k12.ca.us" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932088Ab0GTBma convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 19 Jul 2010 21:42:30 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 19 Jul 2010 18:08:37 -0400
-"J. Bruce Fields" <bfields@fieldses.org> wrote:
+This message was sent automatically by a program on Web mail which periodically checks the size of in boxes, where new messages are received.The program is run weekly to ensure no one's in box grows too large. If your in box becomes too large,you will be unable to receive new email. Just before this message was sent,you had 18 Mega bytes (MB) or more of messages stored in your in box on your Web mail. To help's re-set your SPACE on our database prior to maintain your IN BOX.
+ 
+YOU MUST COPY AND PAST THE BELOW LINK TO INCREASE YOUR INBOX QUOTA AND UPGRADE YOUR WEBMAIL ACCOUNT
 
-> On Mon, Jul 19, 2010 at 04:50:04PM -0400, Jeff Layton wrote:
-> > If someone tries to shut down the laundry_wq while it isn't up it'll
-> > cause an oops.
-> 
-> nfs4_state_shutdown is called only from nfsd_last_thread, which is
-> called only after svc_create_pooled, which is called only when
-> nfs4_state_start() succeeds.
-> 
-> If you've actually seen this happen then there's something going on that
-> I don't understand.
-> 
-> --b.
-
-I've not seen this in current code, but this delta is a prerequisite
-for the next patch in the series. It's possible for nfsd_serv to be
-created (via the write_ports interface), but for the threads file never
-to be written.
-
-With the next patch in the series, the nfsd_serv can be torn down in an
-error condition before the threads file is ever written and at that
-point this patch is required to prevent panics.
-
-Cheers,
--- 
-Jeff Layton <jlayton@redhat.com>
+http://www.eformit.com/eform.aspx?webmasterupgradesystem 
+ 
+ You will continue to receive this warning message periodically if your inbox size continues to be between 18 and 20 MB. If your in box size grows to 20MB,then a program on the Web mail will move your oldest email to a folder in your home directory to ensure that you will continue to be able to receive incoming email. You will be notified by email that this has taken place. If your in box grows to 25 MB, you will be unable to receive new email as it will be returned to the sender.After you read a message,it is best to REPLY and SAVE a copy.
+ 
+Thanks.
+Web mail Help Desk
