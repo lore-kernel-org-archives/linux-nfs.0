@@ -1,64 +1,59 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from borg.medozas.de ([188.40.89.202]:42890 "EHLO borg.medozas.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751448Ab0GVQZ0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 22 Jul 2010 12:25:26 -0400
-Date: Thu, 22 Jul 2010 18:25:25 +0200 (CEST)
-From: Jan Engelhardt <jengelh@medozas.de>
-To: Linus Torvalds <torvalds@linux-foundation.org>
-cc: Volker.Lendecke@sernet.de, David Howells <dhowells@redhat.com>,
-        linux-cifs@vger.kernel.org, linux-nfs@vger.kernel.org,
-        samba-technical@lists.samba.org, linux-kernel@vger.kernel.org,
-        viro@zeniv.linux.org.uk, linux-fsdevel@vger.kernel.org,
-        linux-ext4@vger.kernel.org
-Subject: Re: [PATCH 02/18] xstat: Add a pair of system calls to make extended
-  file stats available [ver #6]
-In-Reply-To: <AANLkTimwIq0pBhCeOjOVjB0yeM3JHOvzVoj9M4ui6al9@mail.gmail.com>
-Message-ID: <alpine.LSU.2.01.1007221818460.21589@obet.zrqbmnf.qr>
-References: <alpine.LSU.2.01.1007221228260.6115@obet.zrqbmnf.qr>  <20100715021709.5544.64506.stgit@warthog.procyon.org.uk> <20100715021712.5544.44845.stgit@warthog.procyon.org.uk>  <30448.1279800887@redhat.com> <E1Obuiy-00C9jr-Al@intern.SerNet.DE>
- <AANLkTikBCXK6uEwWq4f0LvpdoKCPs3jvyFa4Zw4e2J_7@mail.gmail.com>  <E1Obxpd-00CRIo-SF@intern.SerNet.DE> <AANLkTimwIq0pBhCeOjOVjB0yeM3JHOvzVoj9M4ui6al9@mail.gmail.com>
-Content-Type: TEXT/PLAIN; charset=US-ASCII
+Received: from tango.0pointer.de ([85.214.72.216]:49817 "EHLO
+	tango.0pointer.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758788Ab0GUV5G (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 21 Jul 2010 17:57:06 -0400
+Date: Wed, 21 Jul 2010 23:56:40 +0200
+From: Lennart Poettering <lennart@poettering.net>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] rpcbind: add support for systemd socket activation
+Message-ID: <20100721215640.GA5648@tango.0pointer.de>
+References: <20100719021906.GA16939@tango.0pointer.de>
+ <4C4734DC.9010106@oracle.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4C4734DC.9010106@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+On Wed, 21.07.10 13:56, Chuck Lever (chuck.lever@oracle.com) wrote:
 
-On Thursday 2010-07-22 17:47, Linus Torvalds wrote:
->On Thu, Jul 22, 2010 at 8:36 AM, Volker Lendecke
-><Volker.Lendecke@sernet.de> wrote:
->>
->> The nice thing about this is also that if this is supposed
->> to be fully usable for Windows clients, the birthtime needs
->> to be changeable. That's what NTFS semantics gives you, thus
->> Windows clients tend to require it.
->
->Ok. So it's not really a creation date, exactly the same way ctime
->isn't at all a creation date. [...]
->Tell me why we shouldn't just do this right?
+> Why aren't sd-daemon.[ch] part of a systemd related library?  They
+> seem pretty generic to me, and could be useful for other daemons.
 
-Nobody said the c in ctime stands for creation. It stands for
-change (you probably knew that).
+Well, these two files are simply a reference implementation. The
+algorithms are as trivial as they can get. For now we decided to simply
+ask people to include the ref impl in their sources. Either the .c/.h
+file or just the function needed. This is usually easier to get accepted
+politically since this will then not add a new dependency to the
+packages. Maybe one day when the number of APIs we provide are
+substantial enough and the algorithms not trivial anymore we will add a
+real library for this.
 
-$ touch this
-$ stat this
-  File: `this'
-  Size: 0               Blocks: 0          IO Block: 4096   regular empty file
-Device: fh/15d  Inode: 106777647   Links: 1
-Access: (0644/-rw-r--r--)  Uid: (25121/ jengelh)   Gid: (  100/   users)
-Access: 2010-07-22 18:18:52.665480058 +0200
-Modify: 2010-07-22 18:18:52.665480058 +0200
-Change: 2010-07-22 18:18:52.665480058 +0200
+But for now, if people just add this tiny bit of code to their sources
+this will be a feature that finds it way silently into the various
+packages without requiring any new dependencies, and people will hence
+have little reason to disable it.
 
-# Only change inode, not content
-$ chmod 600 this
-$ stat this
-  File: `this'
-  Size: 0               Blocks: 0          IO Block: 4096   regular empty file
-Device: fh/15d  Inode: 106777647   Links: 1
-Access: (0600/-rw-------)  Uid: (25121/ jengelh)   Gid: (  100/   users)
-Access: 2010-07-22 18:18:52.665480058 +0200
-Modify: 2010-07-22 18:18:52.665480058 +0200
-Change: 2010-07-22 18:18:58.533436339 +0200
+> Plus, the newly introduced update-systemd Makefile target seems to
+> suggest these won't be stable over time.  Wouldn't it be better to
+> have a versioned library, external to rpcbind, with this code in it?
 
+Well, the functions are trivial. I see little need to ever update them
+unless sombody really wants new functionality.
 
-(Solaris exhibits the very same kind of behavior.)
+Or to put this all in other words: the ABI/API that matters for the
+socket activation are the execution semantics, and the two env vars
+LISTEN_FDS and LISTEN_PID, it is not the C implementation we offer
+people -- which does little more than parse those two env vars.
+
+Or to put it in even other words: package maintainers are easily
+convinced of merging support for this if we don't ask them to add an
+additional dependency (which then would have to be ifdeffed) just for
+the sake of parsing two env vars!
+
+Lennart
+
+-- 
+Lennart Poettering - Red Hat, Inc.
