@@ -1,102 +1,49 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from msux-gh1-uea01.nsa.gov ([63.239.65.39]:48214 "EHLO
-	msux-gh1-uea01.nsa.gov" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755840Ab0GHMvv (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 8 Jul 2010 08:51:51 -0400
-Subject: Re: [PATCH 01/10] Security: Add hook to calculate context based on
- a negative dentry.
-From: Stephen Smalley <sds@tycho.nsa.gov>
-To: "David P. Quigley" <dpquigl@tycho.nsa.gov>
-Cc: hch@infradead.org, viro@zeniv.linux.org.uk, casey@schaufler-ca.com,
-        matthew.dodd@sparta.com, trond.myklebust@fys.uio.no,
-        bfields@fieldses.org, linux-kernel@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, linux-security-module@vger.kernel.org,
-        selinux@tycho.nsa.gov, linux-nfs@vger.kernel.org
-In-Reply-To: <1278513086-23964-2-git-send-email-dpquigl@tycho.nsa.gov>
-References: <1278513086-23964-1-git-send-email-dpquigl@tycho.nsa.gov>
-	 <1278513086-23964-2-git-send-email-dpquigl@tycho.nsa.gov>
-Content-Type: text/plain; charset="UTF-8"
-Date: Thu, 08 Jul 2010 08:51:33 -0400
-Message-ID: <1278593493.14920.12.camel@moss-pluto.epoch.ncsc.mil>
+Received: from magus.merit.edu ([198.108.1.13]:43153 "EHLO magus.merit.edu"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753514Ab0GUW3k (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 21 Jul 2010 18:29:40 -0400
+Date: Wed, 21 Jul 2010 18:29:38 -0400
+From: Jim Rees <rees@umich.edu>
+To: bhalevy@panasas.com
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH 0/2] complex block layout
+Message-ID: <cover.1279743856.git.rees@umich.edu>
+Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, 2010-07-07 at 10:31 -0400, David P. Quigley wrote:
-> There is a time where we need to calculate a context without the
-> inode having been created yet. To do this we take the negative dentry and
-> calculate a context based on the process and the parent directory contexts.
-> 
-> Signed-off-by: Matthew N. Dodd <Matthew.Dodd@sparta.com>
-> Signed-off-by: David P. Quigley <dpquigl@tycho.nsa.gov>
-> ---
->  include/linux/security.h |   22 ++++++++++++++++++++++
->  security/capability.c    |    6 ++++++
->  security/security.c      |    7 +++++++
->  security/selinux/hooks.c |   32 ++++++++++++++++++++++++++++++++
->  4 files changed, 67 insertions(+), 0 deletions(-)
-> 
+This is a replacement for the patch set I sent last week, rebased to current
+pnfs-all-latest and incorporating suggestions both from reviewers and from
+checkpatch.pl.
 
-> diff --git a/security/selinux/hooks.c b/security/selinux/hooks.c
-> index 5feecb4..435c51f 100644
-> --- a/security/selinux/hooks.c
-> +++ b/security/selinux/hooks.c
-> @@ -2577,6 +2577,37 @@ static void selinux_inode_free_security(struct inode *inode)
->  	inode_free_security(inode);
->  }
->  
-> +static int selinux_dentry_init_security(struct dentry *dentry, int mode, void **ctx, u32 *ctxlen)
-> +{
-> +	struct cred *cred = current_cred();
-> +	struct task_security_struct *tsec;
-> +	struct inode_security_struct *dsec;
-> +	struct superblock_security_struct *sbsec;
-> +	struct inode *dir = dentry->d_parent->d_inode;
+These two patches move the complex block layout device mapping from the
+kernel to a user space daemon.  The first patch adds a simple upcall
+mechanism via pipefs for the kernel piece to communicate with the daemon.
+The second patch removes the kernel device mapping and replaces it with
+calls to the daemon.
 
-Locking?
+Passes Connectathon tests to both EMC and spnfs servers.
 
-> +	u32 newsid;
-> +	int rc;
-> +
-> +	tsec = cred->security;
-> +	dsec = dir->i_security;
-> +	sbsec = dir->i_sb->s_security;
-> +
-> +	if (tsec->create_sid && sbsec->behavior != SECURITY_FS_USE_MNTPOINT) {
+The user daemon will be sent separately as a patch to nfs-utils.
 
-The logic in selinux_inode_init_security() has changed to use
-(sbsec->flags & SE_SBLABELSUPP) instead.  Possibly you should factor the
-common code into a helper.
+Haiying Tang (2):
+  pnfs-block: Add support for simple rpc pipefs
+  pnfs-block: Remove device creation from kernel
 
-> +		newsid = tsec->create_sid;
-> +	} else {
-> +		rc = security_transition_sid(tsec->sid, dsec->sid,
-> +					     inode_mode_to_security_class(mode),
-> +					     &newsid);
-> +		if (rc) {
-> +			printk(KERN_WARNING "%s:  "
-> +			       "security_transition_sid failed, rc=%d\n",
-> +			       __FUNCTION__, -rc);
-> +			return rc;
-> +		}
-> +	}
-> +
-> +	return security_sid_to_context(newsid, (char **)ctx, ctxlen);
-> +}
-> +
->  static int selinux_inode_init_security(struct inode *inode, struct inode *dir,
->  				       char **name, void **value,
->  				       size_t *len)
-> @@ -5484,6 +5515,7 @@ static struct security_operations selinux_ops = {
->  	.sb_clone_mnt_opts =		selinux_sb_clone_mnt_opts,
->  	.sb_parse_opts_str = 		selinux_parse_opts_str,
->  
-> +	.dentry_init_security =		selinux_dentry_init_security,
->  
->  	.inode_alloc_security =		selinux_inode_alloc_security,
->  	.inode_free_security =		selinux_inode_free_security,
-
--- 
-Stephen Smalley
-National Security Agency
+ fs/nfs/blocklayout/Makefile                      |    2 +-
+ fs/nfs/blocklayout/block-device-discovery-pipe.c |   66 +++
+ fs/nfs/blocklayout/blocklayout.c                 |   15 +-
+ fs/nfs/blocklayout/blocklayout.h                 |   18 +-
+ fs/nfs/blocklayout/blocklayoutdev.c              |  494 +++-------------------
+ fs/nfs/blocklayout/blocklayoutdm.c               |  297 ++-----------
+ include/linux/sunrpc/rpc_pipe_fs.h               |    4 +
+ include/linux/sunrpc/simple_rpc_pipefs.h         |  111 +++++
+ net/sunrpc/Makefile                              |    2 +-
+ net/sunrpc/simple_rpc_pipefs.c                   |  424 +++++++++++++++++++
+ 10 files changed, 721 insertions(+), 712 deletions(-)
+ create mode 100644 fs/nfs/blocklayout/block-device-discovery-pipe.c
+ create mode 100644 include/linux/sunrpc/simple_rpc_pipefs.h
+ create mode 100644 net/sunrpc/simple_rpc_pipefs.c
 
