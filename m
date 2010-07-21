@@ -1,64 +1,55 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH 24/24] Removed warnings from configfile.c
-Date: Wed, 21 Jul 2010 13:53:36 -0400
-Message-ID: <4C473420.20802@oracle.com>
-References: <1279669057-17509-1-git-send-email-steved@redhat.com> <1279669057-17509-25-git-send-email-steved@redhat.com>
+From: "Chen, Helen Y" <hycsw@sandia.gov>
+Subject: RE: Fwd: Re: [pnfs] typo in the pnfs setup wiki?
+Date: Wed, 21 Jul 2010 13:06:57 -0600
+Message-ID: <F9F38212E2D77948B1CD89D239A7C07B138EFFAD86@ES01SNLNT.srn.sandia.gov>
+References: <4BFD1595.1070502@panasas.com> <4BFD65CA.7080509@RedHat.com>
+ <F9F38212E2D77948B1CD89D239A7C07B138EFFAC41@ES01SNLNT.srn.sandia.gov>
+ <7A6A58246D5F0B4EA127BEA555B3A9AD06111FB6@RTPMVEXC1-PRD.hq.netapp.com>
+ <4C46F6A7.3090800@RedHat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-To: Steve Dickson <steved@redhat.com>
+Content-Type: text/plain;
+ charset=us-ascii
+Cc: "'Benny Halevy'" <bhalevy@panasas.com>,
+	"'NFS list'" <linux-nfs@vger.kernel.org>
+To: "'Steve Dickson'" <SteveD@redhat.com>,
+	"'Sager, Mike'" <Mike.Sager@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:21475 "EHLO
-	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753482Ab0GURzC (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 21 Jul 2010 13:55:02 -0400
-In-Reply-To: <1279669057-17509-25-git-send-email-steved@redhat.com>
+Received: from sentry-three.sandia.gov ([132.175.109.17]:59724 "EHLO
+	sentry-three.sandia.gov" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932191Ab0GUTHM convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 21 Jul 2010 15:07:12 -0400
+In-Reply-To: <4C46F6A7.3090800-AfCzQyP5zfLQT0dZR+AlfA@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Steve-
+Mike,
 
-On 07/20/10 07:37 PM, Steve Dickson wrote:
-> configfile.c:195: warning: 'inline' is not at beginning of declaration
-> configfile.c:232: warning: 'inline' is not at beginning of declaration
->
-> Signed-off-by: Steve Dickson<steved@redhat.com>
-> ---
->   utils/mount/configfile.c |    4 ++--
->   1 files changed, 2 insertions(+), 2 deletions(-)
->
-> diff --git a/utils/mount/configfile.c b/utils/mount/configfile.c
-> index 5cff009..3f3b249 100644
-> --- a/utils/mount/configfile.c
-> +++ b/utils/mount/configfile.c
-> @@ -192,7 +192,7 @@ void free_all(void)
->   	}
->   }
->   static char *versions[] = {"v2", "v3", "v4", "vers", "nfsvers", NULL};
-> -int inline check_vers(char *mopt, char *field)
-> +inline int check_vers(char *mopt, char *field)
+I got spnfsd to run successfully after I corrected a typo in the DataServers section of my spnfsd.conf.  I didn't step far enough in gdb to realize that I actually had a typo there.  Sorry if I have wasted your time!
 
-I don't see the purpose of using inline here, nor of keeping this a 
-global function.  Is "inline" is addressing some Fortify warning?
+I was still struggling with the remote I/O error even after spnfsd had been started successfully.  I had to remove the pnfs option in /etc/exportfs on the DS server to get rid of the remote I/O error.  Is there a mistake in the wiki instruction?
 
-If you're updating this, shouldn't it rather be:
+Thank you very much for your help,
+Helen
 
-static int
-check_vers(char *mopt, char *field)
 
-?
+-----Original Message-----
+From: Steve Dickson [mailto:SteveD@redhat.com] 
+Sent: Wednesday, July 21, 2010 6:31 AM
+To: Sager, Mike
+Cc: Chen, Helen Y; Benny Halevy; NFS list
+Subject: Re: Fwd: Re: [pnfs] problem building pnfs-nfs-utils under Fedora 13
 
->   {
->   	int i, found=0;
->
-> @@ -229,7 +229,7 @@ extern sa_family_t config_default_family;
->    * If so, set the appropriate global value which will
->    * be used as the initial value in the server negation.
->    */
-> -int inline default_value(char *mopt)
-> +inline int default_value(char *mopt)
->   {
->   	struct mount_options *options = NULL;
->   	int dftlen = strlen("default");
 
-And likewise...?
+
+On 07/20/2010 10:50 PM, Sager, Mike wrote:
+> Does the kernel have spnfs configured in (i.e., CONFIG_SPNFS)?  Upon
+> start up, spnfsd expects to find certain files under /proc/fs/spnfs.  If
+> spnfs isn't configured, those files won't exist.
+Yes... I have the following set,
+CONFIG_SPNFS=y
+CONFIG_SPNFS_LAYOUTSEGMENTS=y
+CONFIG_SPNFS_BLOCK=y
+
+steved.
+
+
