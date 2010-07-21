@@ -1,33 +1,64 @@
-From: Steve Dickson <SteveD@redhat.com>
-Subject: Re: Fwd: Re: [pnfs] problem building pnfs-nfs-utils under Fedora
- 13
-Date: Wed, 21 Jul 2010 09:31:19 -0400
-Message-ID: <4C46F6A7.3090800@RedHat.com>
-References: <4BFD1595.1070502@panasas.com> <4BFD65CA.7080509@RedHat.com> <F9F38212E2D77948B1CD89D239A7C07B138EFFAC41@ES01SNLNT.srn.sandia.gov> <7A6A58246D5F0B4EA127BEA555B3A9AD06111FB6@RTPMVEXC1-PRD.hq.netapp.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: "Chen, Helen Y" <hycsw@sandia.gov>,
-	Benny Halevy <bhalevy@panasas.com>,
-	NFS list <linux-nfs@vger.kernel.org>
-To: "Sager, Mike" <Mike.Sager@netapp.com>
+From: andros@netapp.com
+Subject: [PATCH 1/2] SQUASHME pnfs-submit remove pnfs4_layout_reclaim
+Date: Wed, 21 Jul 2010 10:43:35 -0400
+Message-ID: <1279723416-4467-1-git-send-email-andros@netapp.com>
+Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
+To: bhalevy@panasas.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:20394 "EHLO mx1.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:60914 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756970Ab0GUNbY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 21 Jul 2010 09:31:24 -0400
-In-Reply-To: <7A6A58246D5F0B4EA127BEA555B3A9AD06111FB6-rtwIt2gI0FxT+ZUat5FNkAK/GNPrWCqfQQ4Iyu8u01E@public.gmane.org>
+	id S1758326Ab0GUOoN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 21 Jul 2010 10:44:13 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+From: Andy Adamson <andros@netapp.com>
 
+Not used. Destroy all layouts on lease expiration instead.
 
-On 07/20/2010 10:50 PM, Sager, Mike wrote:
-> Does the kernel have spnfs configured in (i.e., CONFIG_SPNFS)?  Upon
-> start up, spnfsd expects to find certain files under /proc/fs/spnfs.  If
-> spnfs isn't configured, those files won't exist.
-Yes... I have the following set,
-CONFIG_SPNFS=y
-CONFIG_SPNFS_LAYOUTSEGMENTS=y
-CONFIG_SPNFS_BLOCK=y
+Signed-off-by: Andy Adamson <andros@netapp.com>
+---
+ fs/nfs/nfs4proc.c |   13 -------------
+ 1 files changed, 0 insertions(+), 13 deletions(-)
 
-steved.
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index fd6438d..05f072c 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -1094,17 +1094,6 @@ static struct nfs_open_context *nfs4_state_find_open_context(struct nfs4_state *
+ 	return ERR_PTR(-ENOENT);
+ }
+ 
+-static void pnfs4_layout_reclaim(struct nfs4_state *state)
+-{
+-#if defined(CONFIG_NFS_V4_1)
+-	/* FIXME: send gratuitous layout commits and return with the reclaim
+-	 * flag during grace period
+-	 */
+-	pnfs_destroy_layout(NFS_I(state->inode));
+-	pnfs_set_layout_stateid(NFS_I(state->inode)->layout, &zero_stateid);
+-#endif /* CONFIG_NFS_V4_1 */
+-}
+-
+ static struct nfs4_opendata *nfs4_open_recoverdata_alloc(struct nfs_open_context *ctx, struct nfs4_state *state)
+ {
+ 	struct nfs4_opendata *opendata;
+@@ -1181,7 +1170,6 @@ static int nfs4_open_recover(struct nfs4_opendata *opendata, struct nfs4_state *
+ 			       sizeof(state->stateid.u.data));
+ 		write_sequnlock(&state->seqlock);
+ 	}
+-	pnfs4_layout_reclaim(state);
+ 	return 0;
+ }
+ 
+@@ -1236,7 +1224,6 @@ static int nfs4_open_reclaim(struct nfs4_state_owner *sp, struct nfs4_state *sta
+ 		return PTR_ERR(ctx);
+ 	ret = nfs4_do_open_reclaim(ctx, state);
+ 	put_nfs_open_context(ctx);
+-	pnfs4_layout_reclaim(state);
+ 	return ret;
+ }
+ 
+-- 
+1.6.6
+
