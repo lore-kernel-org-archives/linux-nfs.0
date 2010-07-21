@@ -1,56 +1,33 @@
-From: Marc Kleine-Budde <mkl@pengutronix.de>
-Subject: [PATCH] SUNRPC auth: add context argument to shrinker callback
-Date: Wed, 21 Jul 2010 09:41:35 +0200
-Message-ID: <1279698095-17287-1-git-send-email-mkl@pengutronix.de>
-Cc: Dave Chinner <dchinner@redhat.com>, linux-kernel@vger.kernel.org,
-	Trond Myklebust <Trond.Myklebust@netapp.com>,
-	"J. Bruce Fields" <bfields@fieldses.org>,
-	Marc Kleine-Budde <mkl@pengutronix.de>
-To: linux-nfs@vger.kernel.org
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Re: Fwd: Re: [pnfs] problem building pnfs-nfs-utils under Fedora
+ 13
+Date: Wed, 21 Jul 2010 09:31:19 -0400
+Message-ID: <4C46F6A7.3090800@RedHat.com>
+References: <4BFD1595.1070502@panasas.com> <4BFD65CA.7080509@RedHat.com> <F9F38212E2D77948B1CD89D239A7C07B138EFFAC41@ES01SNLNT.srn.sandia.gov> <7A6A58246D5F0B4EA127BEA555B3A9AD06111FB6@RTPMVEXC1-PRD.hq.netapp.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: "Chen, Helen Y" <hycsw@sandia.gov>,
+	Benny Halevy <bhalevy@panasas.com>,
+	NFS list <linux-nfs@vger.kernel.org>
+To: "Sager, Mike" <Mike.Sager@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from metis.ext.pengutronix.de ([92.198.50.35]:46529 "EHLO
-	metis.ext.pengutronix.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752799Ab0GUHlq (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 21 Jul 2010 03:41:46 -0400
+Received: from mx1.redhat.com ([209.132.183.28]:20394 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756970Ab0GUNbY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 21 Jul 2010 09:31:24 -0400
+In-Reply-To: <7A6A58246D5F0B4EA127BEA555B3A9AD06111FB6-rtwIt2gI0FxT+ZUat5FNkAK/GNPrWCqfQQ4Iyu8u01E@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hello,
 
-I found this regression in the current mainline tree.
 
-Please review,
-Marc
+On 07/20/2010 10:50 PM, Sager, Mike wrote:
+> Does the kernel have spnfs configured in (i.e., CONFIG_SPNFS)?  Upon
+> start up, spnfsd expects to find certain files under /proc/fs/spnfs.  If
+> spnfs isn't configured, those files won't exist.
+Yes... I have the following set,
+CONFIG_SPNFS=y
+CONFIG_SPNFS_LAYOUTSEGMENTS=y
+CONFIG_SPNFS_BLOCK=y
 
----------8<--------8<--------8<--------8<--------8<--------8<--------8<-------
-
-This patch fixes a regression introduced with commit
-7f8275d0d660c146de6ee3017e1e2e594c49e820, the signature of the shrinker
-callback has been changes, but this file has not been modified.
-
-This results in the following compiler warning:
-
-net/sunrpc/auth.c:586: warning: initialization from incompatible pointer
-type
-
-Signed-off-by: Marc Kleine-Budde <mkl@pengutronix.de>
----
- net/sunrpc/auth.c |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
-
-diff --git a/net/sunrpc/auth.c b/net/sunrpc/auth.c
-index 73affb8..8dc47f1 100644
---- a/net/sunrpc/auth.c
-+++ b/net/sunrpc/auth.c
-@@ -267,7 +267,7 @@ rpcauth_prune_expired(struct list_head *free, int nr_to_scan)
-  * Run memory cache shrinker.
-  */
- static int
--rpcauth_cache_shrinker(int nr_to_scan, gfp_t gfp_mask)
-+rpcauth_cache_shrinker(struct shrinker *shrink, int nr_to_scan, gfp_t gfp_mask)
- {
- 	LIST_HEAD(free);
- 	int res;
--- 
-1.7.1
-
+steved.
