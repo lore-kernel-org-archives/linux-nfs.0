@@ -1,72 +1,64 @@
-From: Benny Halevy <bhalevy@panasas.com>
-Subject: Re: [PATCH 1/2] SQUASHME pnfs-submit remove pnfs4_layout_reclaim
-Date: Wed, 21 Jul 2010 20:40:06 +0300
-Message-ID: <4C4730F6.8000701@panasas.com>
-References: <1279723416-4467-1-git-send-email-andros@netapp.com>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: [PATCH 24/24] Removed warnings from configfile.c
+Date: Wed, 21 Jul 2010 13:53:36 -0400
+Message-ID: <4C473420.20802@oracle.com>
+References: <1279669057-17509-1-git-send-email-steved@redhat.com> <1279669057-17509-25-git-send-email-steved@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: linux-nfs@vger.kernel.org
-To: andros@netapp.com
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+To: Steve Dickson <steved@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:18753 "EHLO
-	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1756887Ab0GURkK (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 21 Jul 2010 13:40:10 -0400
-In-Reply-To: <1279723416-4467-1-git-send-email-andros@netapp.com>
+Received: from rcsinet10.oracle.com ([148.87.113.121]:21475 "EHLO
+	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753482Ab0GURzC (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 21 Jul 2010 13:55:02 -0400
+In-Reply-To: <1279669057-17509-25-git-send-email-steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Jul. 21, 2010, 17:43 +0300, andros@netapp.com wrote:
-> From: Andy Adamson <andros@netapp.com>
-> 
-> Not used. Destroy all layouts on lease expiration instead.
+Hi Steve-
 
-What do you mean by not used?
-You've just deleted two uses in this patch...
-
-Benny
-
-> 
-> Signed-off-by: Andy Adamson <andros@netapp.com>
+On 07/20/10 07:37 PM, Steve Dickson wrote:
+> configfile.c:195: warning: 'inline' is not at beginning of declaration
+> configfile.c:232: warning: 'inline' is not at beginning of declaration
+>
+> Signed-off-by: Steve Dickson<steved@redhat.com>
 > ---
->  fs/nfs/nfs4proc.c |   13 -------------
->  1 files changed, 0 insertions(+), 13 deletions(-)
-> 
-> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-> index fd6438d..05f072c 100644
-> --- a/fs/nfs/nfs4proc.c
-> +++ b/fs/nfs/nfs4proc.c
-> @@ -1094,17 +1094,6 @@ static struct nfs_open_context *nfs4_state_find_open_context(struct nfs4_state *
->  	return ERR_PTR(-ENOENT);
->  }
->  
-> -static void pnfs4_layout_reclaim(struct nfs4_state *state)
-> -{
-> -#if defined(CONFIG_NFS_V4_1)
-> -	/* FIXME: send gratuitous layout commits and return with the reclaim
-> -	 * flag during grace period
-> -	 */
-> -	pnfs_destroy_layout(NFS_I(state->inode));
-> -	pnfs_set_layout_stateid(NFS_I(state->inode)->layout, &zero_stateid);
-> -#endif /* CONFIG_NFS_V4_1 */
-> -}
-> -
->  static struct nfs4_opendata *nfs4_open_recoverdata_alloc(struct nfs_open_context *ctx, struct nfs4_state *state)
->  {
->  	struct nfs4_opendata *opendata;
-> @@ -1181,7 +1170,6 @@ static int nfs4_open_recover(struct nfs4_opendata *opendata, struct nfs4_state *
->  			       sizeof(state->stateid.u.data));
->  		write_sequnlock(&state->seqlock);
->  	}
-> -	pnfs4_layout_reclaim(state);
->  	return 0;
->  }
->  
-> @@ -1236,7 +1224,6 @@ static int nfs4_open_reclaim(struct nfs4_state_owner *sp, struct nfs4_state *sta
->  		return PTR_ERR(ctx);
->  	ret = nfs4_do_open_reclaim(ctx, state);
->  	put_nfs_open_context(ctx);
-> -	pnfs4_layout_reclaim(state);
->  	return ret;
->  }
->  
+>   utils/mount/configfile.c |    4 ++--
+>   1 files changed, 2 insertions(+), 2 deletions(-)
+>
+> diff --git a/utils/mount/configfile.c b/utils/mount/configfile.c
+> index 5cff009..3f3b249 100644
+> --- a/utils/mount/configfile.c
+> +++ b/utils/mount/configfile.c
+> @@ -192,7 +192,7 @@ void free_all(void)
+>   	}
+>   }
+>   static char *versions[] = {"v2", "v3", "v4", "vers", "nfsvers", NULL};
+> -int inline check_vers(char *mopt, char *field)
+> +inline int check_vers(char *mopt, char *field)
+
+I don't see the purpose of using inline here, nor of keeping this a 
+global function.  Is "inline" is addressing some Fortify warning?
+
+If you're updating this, shouldn't it rather be:
+
+static int
+check_vers(char *mopt, char *field)
+
+?
+
+>   {
+>   	int i, found=0;
+>
+> @@ -229,7 +229,7 @@ extern sa_family_t config_default_family;
+>    * If so, set the appropriate global value which will
+>    * be used as the initial value in the server negation.
+>    */
+> -int inline default_value(char *mopt)
+> +inline int default_value(char *mopt)
+>   {
+>   	struct mount_options *options = NULL;
+>   	int dftlen = strlen("default");
+
+And likewise...?
