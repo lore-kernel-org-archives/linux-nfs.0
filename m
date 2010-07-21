@@ -1,83 +1,134 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH 20/24] Removed warnings from svcgssd_proc.c
-Date: Wed, 21 Jul 2010 13:23:04 -0400
-Message-ID: <20100721172304.GC26418@fieldses.org>
-References: <1279669057-17509-1-git-send-email-steved@redhat.com>
- <1279669057-17509-21-git-send-email-steved@redhat.com>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: [PATCH 08/24] Removed warnings from mountd.c
+Date: Wed, 21 Jul 2010 13:23:52 -0400
+Message-ID: <4C472D28.6050608@oracle.com>
+References: <1279669057-17509-1-git-send-email-steved@redhat.com> <1279669057-17509-9-git-send-email-steved@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
 To: Steve Dickson <steved@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:51612 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752628Ab0GURXs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 21 Jul 2010 13:23:48 -0400
-In-Reply-To: <1279669057-17509-21-git-send-email-steved@redhat.com>
+Received: from rcsinet10.oracle.com ([148.87.113.121]:48843 "EHLO
+	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753305Ab0GURYk (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 21 Jul 2010 13:24:40 -0400
+In-Reply-To: <1279669057-17509-9-git-send-email-steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Jul 20, 2010 at 07:37:33PM -0400, Steve Dickson wrote:
-> svcgssd_proc.c: In function 'send_response':
-> svcgssd_proc.c:135: warning: unused parameter 'f'
-> svcgssd_proc.c: In function 'handle_nullreq':
-> svcgssd_proc.c:434: warning: comparison of unsigned expression < 0 is always false
-> 
-> Signed-off-by: Steve Dickson <steved@redhat.com>
+Hi Steve-
+
+On 07/20/10 07:37 PM, Steve Dickson wrote:
+> mountd.c: In function 'mount_null_1_svc':
+> mountd.c:195: warning: unused parameter 'rqstp'
+> mountd.c:195: warning: unused parameter 'argp'
+> mountd.c:195: warning: unused parameter 'resp'
+> mountd.c: In function 'mount_dump_1_svc':
+> mountd.c:213: warning: unused parameter 'argp'
+> mountd.c: In function 'mount_umnt_1_svc':
+> mountd.c:224: warning: unused parameter 'resp'
+> mountd.c: In function 'mount_umntall_1_svc':
+> mountd.c:248: warning: unused parameter 'argp'
+> mountd.c:248: warning: unused parameter 'resp'
+> mountd.c: In function 'mount_export_1_svc':
+> mountd.c:258: warning: unused parameter 'argp'
+> mountd.c: In function 'mount_exportall_1_svc':
+> mountd.c:269: warning: unused parameter 'argp'
+> mountd.c: In function 'mount_dump_1_svc':
+> mountd.c:216: warning: unused parameter 'argp'
+> mountd.c: In function 'mount_umnt_1_svc':
+> mountd.c:227: warning: unused parameter 'resp'
+> mountd.c: In function 'mount_umntall_1_svc':
+> mountd.c:251: warning: unused parameter 'argp'
+> mountd.c:251: warning: unused parameter 'resp'
+> mountd.c: In function 'mount_export_1_svc':
+> mountd.c:261: warning: unused parameter 'argp'
+> mountd.c: In function 'mount_exportall_1_svc':
+> mountd.c:272: warning: unused parameter 'argp'
+>
+> Signed-off-by: Steve Dickson<steved@redhat.com>
 > ---
->  utils/gssd/svcgssd_proc.c |    8 ++++----
->  1 files changed, 4 insertions(+), 4 deletions(-)
-> 
-> diff --git a/utils/gssd/svcgssd_proc.c b/utils/gssd/svcgssd_proc.c
-> index f1bfbef..28336c2 100644
-> --- a/utils/gssd/svcgssd_proc.c
-> +++ b/utils/gssd/svcgssd_proc.c
-> @@ -132,7 +132,7 @@ struct gss_verifier {
->  #define RPCSEC_GSS_SEQ_WIN	5
->  
->  static int
-> -send_response(FILE *f, gss_buffer_desc *in_handle, gss_buffer_desc *in_token,
-> +send_response(gss_buffer_desc *in_handle, gss_buffer_desc *in_token,
->  	      u_int32_t maj_stat, u_int32_t min_stat,
->  	      gss_buffer_desc *out_handle, gss_buffer_desc *out_token)
->  {
-> @@ -431,7 +431,7 @@ handle_nullreq(FILE *f) {
->  	print_hexl("in_tok", in_tok.value, in_tok.length);
->  #endif
->  
-> -	if (in_tok.length < 0) {
-> +	if (in_tok.length == 0) {
+>   utils/mountd/mountd.c |   19 +++++++++++++++----
+>   1 files changed, 15 insertions(+), 4 deletions(-)
+>
+> diff --git a/utils/mountd/mountd.c b/utils/mountd/mountd.c
+> index 6571454..43aec11 100644
+> --- a/utils/mountd/mountd.c
+> +++ b/utils/mountd/mountd.c
+> @@ -194,6 +194,9 @@ sig_hup (int sig)
+>   bool_t
+>   mount_null_1_svc(struct svc_req *rqstp, void *argp, void *resp)
+>   {
+> +	xlog(D_CALL, "MNT1(%s) null: rqstp %p argp %p resp %p",
+> +		rqstp, argp, resp);
+> +
+>   	return 1;
+>   }
+>
+> @@ -214,7 +217,8 @@ mount_dump_1_svc(struct svc_req *rqstp, void *argp, mountlist *res)
+>   {
+>   	struct sockaddr_in *addr = nfs_getrpccaller_in(rqstp->rq_xprt);
+>
+> -	xlog(D_CALL, "dump request from %s.", inet_ntoa(addr->sin_addr));
+> +	xlog(D_CALL, "MNT1(%s) dump request: argp %p",
+> +		inet_ntoa(addr->sin_addr), argp);
+>   	*res = mountlist_list();
+>
+>   	return 1;
+> @@ -235,6 +239,8 @@ mount_umnt_1_svc(struct svc_req *rqstp, dirpath *argp, void *resp)
+>   		rpath[sizeof (rpath) - 1] = '\0';
+>   		p = rpath;
+>   	}
+> +	xlog(D_CALL, "MNT1(%s) unmount: path %s resp %p",
+> +		inet_ntoa(sin->sin_addr), p, resp);
 
-Is a zero-length token really illegal?  I'd just ditch this check
-entirely.
+I have to agree with Bruce: adding xlog() calls here is the wrong thing 
+to do.  Instead, use
 
---b.
+    __attribute__((unused))
 
->  		printerr(0, "WARNING: handle_nullreq: "
->  			    "failed parsing request\n");
->  		goto out_err;
-> @@ -498,7 +498,7 @@ handle_nullreq(FILE *f) {
->  	do_svc_downcall(&out_handle, &cred, mech, &ctx_token, ctx_endtime,
->  			hostbased_name);
->  continue_needed:
-> -	send_response(f, &in_handle, &in_tok, maj_stat, min_stat,
-> +	send_response(&in_handle, &in_tok, maj_stat, min_stat,
->  			&out_handle, &out_tok);
->  out:
->  	if (ctx_token.value != NULL)
-> @@ -514,7 +514,7 @@ out:
->  out_err:
->  	if (ctx != GSS_C_NO_CONTEXT)
->  		gss_delete_sec_context(&ignore_min_stat, &ctx, &ignore_out_tok);
-> -	send_response(f, &in_handle, &in_tok, maj_stat, min_stat,
-> +	send_response(&in_handle, &in_tok, maj_stat, min_stat,
->  			&null_token, &null_token);
->  	goto out;
->  }
-> -- 
-> 1.7.0.1
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+for the unused parameters.
+
+>   	if (!(exp = auth_authenticate("unmount", sin, p))) {
+>   		return 1;
+> @@ -247,10 +253,15 @@ mount_umnt_1_svc(struct svc_req *rqstp, dirpath *argp, void *resp)
+>   bool_t
+>   mount_umntall_1_svc(struct svc_req *rqstp, void *argp, void *resp)
+>   {
+> +	struct sockaddr_in *sin = nfs_getrpccaller_in(rqstp->rq_xprt);
+> +
+> +	xlog(D_CALL, "UMNT1(%s) unmountall: argp %s resp %p",
+> +		inet_ntoa(sin->sin_addr), argp, resp);
+> +
+>   	/* Reload /etc/xtab if necessary */
+>   	auth_reload();
+>
+> -	mountlist_del_all(nfs_getrpccaller_in(rqstp->rq_xprt));
+> +	mountlist_del_all(sin);
+
+You couldn't wait until the rest of my IPv6 mountd patches are 
+integrated?  I address a lot of these problems in those patches, and now 
+I'm going to have to rebase all of that work.  What's the rush?
+
+>   	return 1;
+>   }
+>
+> @@ -259,7 +270,7 @@ mount_export_1_svc(struct svc_req *rqstp, void *argp, exports *resp)
+>   {
+>   	struct sockaddr_in *addr = nfs_getrpccaller_in(rqstp->rq_xprt);
+>
+> -	xlog(D_CALL, "export request from %s.", inet_ntoa(addr->sin_addr));
+> +	xlog(D_CALL, "EXPORT(%s) dump: argp %p", inet_ntoa(addr->sin_addr), argp);
+>   	*resp = get_exportlist();
+>   		
+>   	return 1;
+> @@ -270,7 +281,7 @@ mount_exportall_1_svc(struct svc_req *rqstp, void *argp, exports *resp)
+>   {
+>   	struct sockaddr_in *addr = nfs_getrpccaller_in(rqstp->rq_xprt);
+>
+> -	xlog(D_CALL, "exportall request from %s.", inet_ntoa(addr->sin_addr));
+> +	xlog(D_CALL, "EXPORTALL(%s) dump: argp %p", inet_ntoa(addr->sin_addr), argp);
+>   	*resp = get_exportlist();
+>
+>   	return 1;
+
