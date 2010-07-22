@@ -1,54 +1,67 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:25268 "EHLO
-	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750877Ab0GWPPa (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 23 Jul 2010 11:15:30 -0400
-Message-ID: <4C49B1AD.3060302@oracle.com>
-Date: Fri, 23 Jul 2010 11:13:49 -0400
-From: Chuck Lever <chuck.lever@oracle.com>
-To: Lennart Poettering <lennart@poettering.net>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] rpcbind: add support for systemd socket activation
-References: <20100719021906.GA16939@tango.0pointer.de> <4C4734DC.9010106@oracle.com> <20100721215640.GA5648@tango.0pointer.de>
-In-Reply-To: <20100721215640.GA5648@tango.0pointer.de>
-Content-Type: text/plain; charset=us-ascii; format=flowed
+Received: from mail-out1.uio.no ([129.240.10.57]:52171 "EHLO mail-out1.uio.no"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751260Ab0GVRQc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 22 Jul 2010 13:16:32 -0400
+Subject: Re: [PATCH 02/18] xstat: Add a pair of system calls to make
+ extended file stats available [ver #6]
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+To: Jan Engelhardt <jengelh@medozas.de>
+Cc: Linus Torvalds <torvalds@linux-foundation.org>,
+        Jeremy Allison <jra@samba.org>, Volker.Lendecke@sernet.de,
+        David Howells <dhowells@redhat.com>, linux-cifs@vger.kernel.org,
+        linux-nfs@vger.kernel.org, samba-technical@lists.samba.org,
+        linux-kernel@vger.kernel.org, viro@zeniv.linux.org.uk,
+        linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
+In-Reply-To: <alpine.LSU.2.01.1007221859180.27496@obet.zrqbmnf.qr>
+References: <alpine.LSU.2.01.1007221228260.6115@obet.zrqbmnf.qr>
+	 <20100715021709.5544.64506.stgit@warthog.procyon.org.uk>
+	 <20100715021712.5544.44845.stgit@warthog.procyon.org.uk>
+	 <30448.1279800887@redhat.com> <E1Obuiy-00C9jr-Al@intern.SerNet.DE>
+	 <AANLkTikBCXK6uEwWq4f0LvpdoKCPs3jvyFa4Zw4e2J_7@mail.gmail.com>
+	 <E1Obxpd-00CRIo-SF@intern.SerNet.DE>
+	 <AANLkTimwIq0pBhCeOjOVjB0yeM3JHOvzVoj9M4ui6al9@mail.gmail.com>
+	 <20100722162712.GB10352@jeremy-laptop>
+	 <AANLkTimdFCGSKLn7aGMpBMIauHTsHY7hpAAmpo6uTcnD@mail.gmail.com>
+	 <alpine.LSU.2.01.1007221859180.27496@obet.zrqbmnf.qr>
+Content-Type: text/plain; charset="UTF-8"
+Date: Thu, 22 Jul 2010 13:16:07 -0400
+Message-ID: <1279818967.3621.23.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Hi Lennart-
+On Thu, 2010-07-22 at 19:03 +0200, Jan Engelhardt wrote:
+> On Thursday 2010-07-22 18:40, Linus Torvalds wrote:
+> 
+> >On Thu, Jul 22, 2010 at 9:27 AM, Jeremy Allison <jra@samba.org> wrote:
+> >> On Thu, Jul 22, 2010 at 08:47:46AM -0700, Linus Torvalds wrote:
+> >>> Tell me why we shouldn't just do this right?
+> >>
+> >> No, ctime isn't the same as Windows "create time".
+> >
+> >Umm. What kind of reading problems do you guys have?
+> >
+> >I know effin well that ctime isn't the same as Windows create time.
+> >THAT WAS MY POINT.
+> >
+> >But the fact is, th Unix ctime semantics are insane and largely
+> >useless. There's a damn good reason almost nobody uses ctime under
+> >unix.
+> 
+> I beg to differ. ctime is not completely useless. It reflects changes on 
+> the inode for when you don't you change the content. It's like an mtime 
+> for the metadata. It comes useful when you go around in your filesystem 
+> trying to figure out who of your co-admins screwed up the permissions on 
+> /etc/passwd... and if the mtime is the same as that of the last backup, 
+> I can at least have a reasonable assurance that it was /only/ the 
+> metadata that was tampered with. (SHA1 check, yeah yeah, costly on large 
+> files.)
 
-On 07/21/10 05:56 PM, Lennart Poettering wrote:
-> On Wed, 21.07.10 13:56, Chuck Lever (chuck.lever@oracle.com) wrote:
->
->> Why aren't sd-daemon.[ch] part of a systemd related library?  They
->> seem pretty generic to me, and could be useful for other daemons.
->
-> Well, these two files are simply a reference implementation. The
-> algorithms are as trivial as they can get. For now we decided to simply
-> ask people to include the ref impl in their sources. Either the .c/.h
-> file or just the function needed. This is usually easier to get accepted
-> politically since this will then not add a new dependency to the
-> packages. Maybe one day when the number of APIs we provide are
-> substantial enough and the algorithms not trivial anymore we will add a
-> real library for this.
->
-> But for now, if people just add this tiny bit of code to their sources
-> this will be a feature that finds it way silently into the various
-> packages without requiring any new dependencies, and people will hence
-> have little reason to disable it.
+Errr... Only if you eliminate utimes() from your syscall table.
+Otherwise it is trivial to reset the mtime after changing the file
+contents.
 
-The complexity or size of the systemd code is not the issue, it is how 
-it will be maintained going forward.  Especially since these are all 
-system daemons, you know that there will be security bug fixes.  The 
-current situation means every daemon will have to be rebuilt and 
-redistributed to fix a bug in the systemd code.  It also creates inertia 
-to fixing problems, thus inviting the individual snippets in each daemon 
-to become hacked up and out of date.
+Cheers
+  Trond
 
-The least you could do is provide both the raw source files and a 
-library implementation, and let daemon maintainers choose which they 
-prefer.  The best solution would provide a clean versioned C language 
-API via a shared library
-
-Do you have some picture of systemd adoption outside of Fedora?
