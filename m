@@ -1,275 +1,67 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:51546 "EHLO fieldses.org"
+Received: from mail-out1.uio.no ([129.240.10.57]:52165 "EHLO mail-out1.uio.no"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751328Ab0GUUPW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 21 Jul 2010 16:15:22 -0400
-Date: Wed, 21 Jul 2010 16:14:37 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 5/5] nfsd: just keep single lockd reference for nfsd
- (try #4)
-Message-ID: <20100721201437.GD28123@fieldses.org>
-References: <1279718501-6834-1-git-send-email-jlayton@redhat.com>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1279718501-6834-1-git-send-email-jlayton@redhat.com>
+	id S1750799Ab0GVS7r (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 22 Jul 2010 14:59:47 -0400
+Subject: Re: [PATCH 02/18] xstat: Add a pair of system calls to make
+ extended  file stats available [ver #6]
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+To: Volker.Lendecke@SerNet.DE
+Cc: Jeremy Allison <jra@samba.org>,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        David Howells <dhowells@redhat.com>,
+        Jan Engelhardt <jengelh@medozas.de>, linux-cifs@vger.kernel.org,
+        linux-nfs@vger.kernel.org, samba-technical@lists.samba.org,
+        linux-kernel@vger.kernel.org, viro@zeniv.linux.org.uk,
+        linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
+In-Reply-To: <E1Oc08W-00CZuz-Ns@intern.SerNet.DE>
+References: <20100715021712.5544.44845.stgit@warthog.procyon.org.uk>
+	 <30448.1279800887@redhat.com> <E1Obuiy-00C9jr-Al@intern.SerNet.DE>
+	 <AANLkTikBCXK6uEwWq4f0LvpdoKCPs3jvyFa4Zw4e2J_7@mail.gmail.com>
+	 <E1Obxpd-00CRIo-SF@intern.SerNet.DE>
+	 <AANLkTimwIq0pBhCeOjOVjB0yeM3JHOvzVoj9M4ui6al9@mail.gmail.com>
+	 <20100722162712.GB10352@jeremy-laptop>
+	 <AANLkTimdFCGSKLn7aGMpBMIauHTsHY7hpAAmpo6uTcnD@mail.gmail.com>
+	 <1279817930.3621.14.camel@heimdal.trondhjem.org>
+	 <20100722180204.GA32008@samba1>  <E1Oc08W-00CZuz-Ns@intern.SerNet.DE>
+Content-Type: text/plain; charset="UTF-8"
+Date: Thu, 22 Jul 2010 14:59:20 -0400
+Message-ID: <1279825160.3621.71.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, Jul 21, 2010 at 09:21:41AM -0400, Jeff Layton wrote:
-> Right now, nfsd keeps a lockd reference for each socket that it has
-> open. This is unnecessary and complicates the error handling on startup
-> and shutdown. Change it to just do a lockd_up when starting the first
-> nfsd thread just do a single lockd_down when taking down the last nfsd
-> thread. Because of the strange way the sv_count is handled, this
-> requires an extra flag to tell whether the nfsd_serv holds a reference
-> for lockd or not.
+On Thu, 2010-07-22 at 20:04 +0200, Volker Lendecke wrote:
+> On Thu, Jul 22, 2010 at 11:02:04AM -0700, Jeremy Allison wrote:
+> > On Thu, Jul 22, 2010 at 12:58:50PM -0400, Trond Myklebust wrote:
+> > > 
+> > > That would make it impossible to export the filesystem with NFSv2 and
+> > > v3. They do rely on ctime checking for certain operations (e.g. deciding
+> > > when to invalidate access and acl caches). NFSv4 needs this too if the
+> > > filesystem has no dedicated change attribute.
+> > > 
+> > > Still, I suppose the market for exporting the same filesystem with both
+> > > NFS and Samba is limited...
+> > 
+> > Ask NetApp about that :-). They have built a rather large
+> > business on just that fact :-).
 > 
-> This patch also changes the error handling in nfsd_create_serv a bit
-> too. There doesn't seem to be any need to reset the nfssvc_boot time if
-> the nfsd startup failed.
+> Jeremy, how many hours have you spent getting "posix
+> locking" to the point where it is now? :-)
 > 
-> Note though that this does change the user-visible behavior slightly.
-> Today, a lockd_up is done whenever a socket fd is handed off to the
-> kernel. With this change, lockd is brought up as soon as the first
-> thread is started. I think this makes more sense. If there are problems
-> in userspace, the old scheme had the possibility to start lockd long
-> before any nfsd threads were started. This patch helps minimize that
-> possibility.
+> Volker
+> 
+> P.S: For those not aware, "posix locking = yes" is
+> cross-protocol byte range locking done by smbd to co-operate
+> with local processes and NFS.
 
-The nfs4 state startup has the same problem that I think lockd_up was
-designed to solve.
+I said "limited", not "non-existent".
 
-There's a bunch of stuff that only makes sense to run when nrthreads
-transitions from zero to nonzero, or vice-versa; so, if we stick them
-all in one helper function I think it's cleaner and solves another minor
-startup bug.  Something like this?
+The fact remains that most of us would be hard pressed to name an
+application that requires you to share the same dataset to both
+Windows/CIFS and posix NFS clients. Everything from ACL models through
+caseless vs case-aware filesystems and Windows vs posix locking
+semantics tends to discourage mixing the two environments.
 
-(Incremental on top of your last patch, with some noise due to moving
-stuff around to avoid forward references.  I'll clean these up and
-resend.)
+   Trond
 
-Then we could also get rid of some of the individual flags (nfs4_init at
-least), I think.
-
---b.
-
-diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
-index 2e15db0..fd2524b 100644
---- a/fs/nfsd/nfssvc.c
-+++ b/fs/nfsd/nfssvc.c
-@@ -25,7 +25,6 @@
- extern struct svc_program	nfsd_program;
- static int			nfsd(void *vrqstp);
- struct timeval			nfssvc_boot;
--static bool			nfsd_lockd_up;
- 
- /*
-  * nfsd_mutex protects nfsd_serv -- both the pointer itself and the members
-@@ -181,16 +180,79 @@ int nfsd_nrthreads(void)
- 	return rv;
- }
- 
-+static int nfsd_init_socks(int port)
-+{
-+	int error;
-+	if (!list_empty(&nfsd_serv->sv_permsocks))
-+		return 0;
-+
-+	error = svc_create_xprt(nfsd_serv, "udp", PF_INET, port,
-+					SVC_SOCK_DEFAULTS);
-+	if (error < 0)
-+		return error;
-+
-+	error = svc_create_xprt(nfsd_serv, "tcp", PF_INET, port,
-+					SVC_SOCK_DEFAULTS);
-+	if (error < 0)
-+		return error;
-+
-+	return 0;
-+}
-+
-+static bool nfsd_up = false;
-+
-+static int nfsd_startup(unsigned short port, int nrservs)
-+{
-+	int ret;
-+
-+	/*
-+	 * Readahead param cache - will no-op if it already exists.
-+	 * (Note therefore results will be suboptimal if number of
-+	 * threads is modified after nfsd start.)
-+	 */
-+	ret = nfsd_racache_init(2*nrservs);
-+	if (ret)
-+		return ret;
-+	ret = nfsd_init_socks(port);
-+	if (ret)
-+		goto out_racache;
-+	ret = lockd_up();
-+	if (ret)
-+		return ret;
-+	ret = nfs4_state_start();
-+	if (ret)
-+		goto out_lockd;
-+	nfsd_reset_versions();
-+	nfsd_up = true;
-+	return 0;
-+out_lockd:
-+	lockd_down();
-+out_racache:
-+	nfsd_racache_shutdown();
-+	return ret;
-+}
-+
-+static void nfsd_shutdown(void)
-+{
-+	/*
-+	 * write_ports can create the server without actually starting
-+	 * any threads--if we get shut down before any threads are
-+	 * started, the nfsd_last_thread will be run before any of this
-+	 * other initialization has been done.
-+	 */
-+	if (!nfsd_up)
-+		return;
-+	nfs4_state_shutdown();
-+	lockd_down();
-+	nfsd_racache_shutdown();
-+	nfsd_up = false;
-+}
-+
- static void nfsd_last_thread(struct svc_serv *serv)
- {
- 	/* When last nfsd thread exits we need to do some clean-up */
--	if (nfsd_lockd_up) {
--		lockd_down();
--		nfsd_lockd_up = false;
--	}
- 	nfsd_serv = NULL;
--	nfsd_racache_shutdown();
--	nfs4_state_shutdown();
-+	nfsd_shutdown();
- 
- 	printk(KERN_WARNING "nfsd: last server has exited, flushing export "
- 			    "cache\n");
-@@ -276,25 +338,6 @@ int nfsd_create_serv(void)
- 	return err;
- }
- 
--static int nfsd_init_socks(int port)
--{
--	int error;
--	if (!list_empty(&nfsd_serv->sv_permsocks))
--		return 0;
--
--	error = svc_create_xprt(nfsd_serv, "udp", PF_INET, port,
--					SVC_SOCK_DEFAULTS);
--	if (error < 0)
--		return error;
--
--	error = svc_create_xprt(nfsd_serv, "tcp", PF_INET, port,
--					SVC_SOCK_DEFAULTS);
--	if (error < 0)
--		return error;
--
--	return 0;
--}
--
- int nfsd_nrpools(void)
- {
- 	if (nfsd_serv == NULL)
-@@ -369,11 +412,16 @@ int nfsd_set_nrthreads(int n, int *nthreads)
- 	return err;
- }
- 
-+/*
-+ * Adjust the number of threads and return the new number of threads.
-+ * This is also the function that starts the server if necessary, if
-+ * this is the first time nrservs is nonzero.
-+ */
- int
- nfsd_svc(unsigned short port, int nrservs)
- {
- 	int	error;
--	bool	lockd_started = false;
-+	bool	first_thread;
- 
- 	mutex_lock(&nfsd_mutex);
- 	dprintk("nfsd: creating service\n");
-@@ -385,59 +433,33 @@ nfsd_svc(unsigned short port, int nrservs)
- 	if (nrservs == 0 && nfsd_serv == NULL)
- 		goto out;
- 
--	/* Readahead param cache - will no-op if it already exists */
--	error =	nfsd_racache_init(2*nrservs);
--	if (error<0)
--		goto out;
-+	first_thread = (nfsd_serv->sv_nrthreads == 0) && (nrservs != 0);
- 
--	/* start lockd iff we're starting threads */
--	if ((nrservs > 0) && !nfsd_lockd_up) {
--		error = lockd_up();
--		if (error != 0)
-+	if (first_thread) {
-+		error = nfsd_startup(port, nrservs);
-+		if (error)
- 			goto out;
--		nfsd_lockd_up = true;
--		lockd_started = true;
- 	}
- 
--	error = nfs4_state_start();
--	if (error)
--		goto out;
--
--	nfsd_reset_versions();
--
- 	error = nfsd_create_serv();
- 	if (error)
--		goto shutdown_state;
--
--	error = nfsd_init_socks(port);
--	if (error)
--		goto failure;
-+		goto out_shutdown;
- 
- 	error = svc_set_num_threads(nfsd_serv, NULL, nrservs);
--	if (error == 0)
--		/* We are holding a reference to nfsd_serv which
--		 * we don't want to count in the return value,
--		 * so subtract 1
--		 */
--		error = nfsd_serv->sv_nrthreads - 1;
--
--	/* if we brought all threads down, do a lockd_down */
--	if ((error == 0) && nfsd_lockd_up) {
--		lockd_down();
--		nfsd_lockd_up = false;
--	}
-+	if (error)
-+		goto out_destroy;
-+	/* We are holding a reference to nfsd_serv which
-+	 * we don't want to count in the return value,
-+	 * so subtract 1
-+	 */
-+	error = nfsd_serv->sv_nrthreads - 1;
- 
--failure:
-+out_destroy:
- 	svc_destroy(nfsd_serv);		/* Release server */
--shutdown_state:
--	if (error < 0)
--		nfs4_state_shutdown();
-+out_shutdown:
-+	if (error < 0 && first_thread)
-+		nfsd_shutdown();
- out:
--	/* lockd_down if there was an error, and we did a lockd_up */
--	if (lockd_started && error < 0) {
--		lockd_down();
--		nfsd_lockd_up = false;
--	}
- 	mutex_unlock(&nfsd_mutex);
- 	return error;
- }
