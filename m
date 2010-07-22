@@ -1,24 +1,55 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:65374 "EHLO
-	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1753613Ab0GLSi2 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 12 Jul 2010 14:38:28 -0400
-Message-ID: <4C3B611C.1000208@panasas.com>
-Date: Mon, 12 Jul 2010 21:38:20 +0300
-From: Benny Halevy <bhalevy@panasas.com>
-To: NFS list <linux-nfs@vger.kernel.org>
-Subject: [PATCH 0/2] layout rework fixes
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mail.SerNet.de ([193.175.80.2]:46505 "EHLO mail.SerNet.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751865Ab0GVPhN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 22 Jul 2010 11:37:13 -0400
+Date: Thu, 22 Jul 2010 17:36:59 +0200
+Date: Thu, 22 Jul 2010 17:36:59 +0200
+From: Volker Lendecke <Volker.Lendecke@SerNet.DE>
+To: Linus Torvalds <torvalds@linux-foundation.org>
+Cc: David Howells <dhowells@redhat.com>, Jan Engelhardt <jengelh@medozas.de>,
+        linux-cifs@vger.kernel.org, linux-nfs@vger.kernel.org,
+        samba-technical@lists.samba.org, linux-kernel@vger.kernel.org,
+        viro@zeniv.linux.org.uk, linux-fsdevel@vger.kernel.org,
+        linux-ext4@vger.kernel.org
+Subject: Re: [PATCH 02/18] xstat: Add a pair of system calls to make
+ extended file stats available [ver #6]
+Reply-To: Volker.Lendecke@SerNet.DE
+References: <alpine.LSU.2.01.1007221228260.6115@obet.zrqbmnf.qr>
+ <20100715021709.5544.64506.stgit@warthog.procyon.org.uk>
+ <20100715021712.5544.44845.stgit@warthog.procyon.org.uk>
+ <30448.1279800887@redhat.com>
+ <E1Obuiy-00C9jr-Al@intern.SerNet.DE>
+ <AANLkTikBCXK6uEwWq4f0LvpdoKCPs3jvyFa4Zw4e2J_7@mail.gmail.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <AANLkTikBCXK6uEwWq4f0LvpdoKCPs3jvyFa4Zw4e2J_7@mail.gmail.com>
+Message-Id: <E1Obxpd-00CRIo-SF@intern.SerNet.DE>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-The following fixes result from Andy latest patchset to change
-nfs_inode.layout into a pointer and reworking the layout allocation scheme.
+On Thu, Jul 22, 2010 at 08:14:42AM -0700, Linus Torvalds wrote:
+> > # recent FreeBSD, NetBSD have creation timestamps called birthtime:
+> > AC_CHECK_MEMBERS([struct stat.st_birthtimespec.tv_nsec])
+> > AC_CHECK_MEMBERS([struct stat.st_birthtime], AC_CHECK_MEMBERS([struct stat.st_birthtimensec]))
+> >
+> > and the supporting code around that. "birth" might also be
+> > where the "b" comes from :-)
+> 
+> Oh wow. And all of this just convinces me that we should _not_ do any
+> of this, since clearly it's all totally useless and people can't even
+> agree on a name.
+> 
+> Let's wait five years and see if there is actually any consensus on it
+> being needed and used at all, rather than rush into something just
+> because "we can".
 
-[PATCH 1/2] SQUASHME: pnfs-submit: check has_layout in __nfs4_close
-This fixes a NULL dereference on __nfs4_closer when the layout is NULL.
+The nice thing about this is also that if this is supposed
+to be fully usable for Windows clients, the birthtime needs
+to be changeable. That's what NTFS semantics gives you, thus
+Windows clients tend to require it.
 
-[PATCH 2/2] SQUASHME: pnfs-submit: clean up nfs_lock_alloc_layout
-This fixes a BUG_ON where nfs_lock_alloc_layout did not lock the inode
-if the layout was already allocated.
+Just as a hint, nothing that Linux should necessarily have
+to be bothered with, this is Samba's duty :-)
+
+Volker
