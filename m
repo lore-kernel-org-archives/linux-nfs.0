@@ -1,90 +1,69 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-iw0-f174.google.com ([209.85.214.174]:55347 "EHLO
-	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754398Ab0GVQHI convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 22 Jul 2010 12:07:08 -0400
-In-Reply-To: <AANLkTimsjARdMfnvFRSyy6gakCtVhGRBbyauVTc_Cuwt@mail.gmail.com>
-References: <alpine.LSU.2.01.1007221228260.6115@obet.zrqbmnf.qr>
-	<20100715021709.5544.64506.stgit@warthog.procyon.org.uk>
-	<20100715021712.5544.44845.stgit@warthog.procyon.org.uk>
-	<30448.1279800887@redhat.com>
-	<E1Obuiy-00C9jr-Al@intern.SerNet.DE>
-	<AANLkTikBCXK6uEwWq4f0LvpdoKCPs3jvyFa4Zw4e2J_7@mail.gmail.com>
-	<E1Obxpd-00CRIo-SF@intern.SerNet.DE>
-	<AANLkTimwIq0pBhCeOjOVjB0yeM3JHOvzVoj9M4ui6al9@mail.gmail.com>
-	<AANLkTimsjARdMfnvFRSyy6gakCtVhGRBbyauVTc_Cuwt@mail.gmail.com>
-Date: Thu, 22 Jul 2010 12:07:05 -0400
-Message-ID: <AANLkTik8bhdLHlM_vX1qdWzOW23GmiMJSAMyRkEz7QIS@mail.gmail.com>
+Received: from daytona.panasas.com ([67.152.220.89]:28110 "EHLO
+	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1752067Ab0GVTxk (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 22 Jul 2010 15:53:40 -0400
+Message-ID: <4C48A1BE.8010503@panasas.com>
+Date: Thu, 22 Jul 2010 22:53:34 +0300
+From: Benny Halevy <bhalevy@panasas.com>
+To: Greg Freemyer <greg.freemyer@gmail.com>
+CC: Linus Torvalds <torvalds@linux-foundation.org>,
+        Jan Engelhardt <jengelh@medozas.de>, Jeremy Allison <jra@samba.org>,
+        Volker.Lendecke@sernet.de, David Howells <dhowells@redhat.com>,
+        linux-cifs@vger.kernel.org, linux-nfs@vger.kernel.org,
+        samba-technical@lists.samba.org, linux-kernel@vger.kernel.org,
+        viro@zeniv.linux.org.uk, linux-fsdevel@vger.kernel.org,
+        linux-ext4@vger.kernel.org
 Subject: Re: [PATCH 02/18] xstat: Add a pair of system calls to make extended
-	file stats available [ver #6]
-From: Greg Freemyer <greg.freemyer@gmail.com>
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Cc: Volker.Lendecke@sernet.de, David Howells <dhowells@redhat.com>,
-        Jan Engelhardt <jengelh@medozas.de>, linux-cifs@vger.kernel.org,
-        linux-nfs@vger.kernel.org, samba-technical@lists.samba.org,
-        linux-kernel@vger.kernel.org, viro@zeniv.linux.org.uk,
-        linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
+ 	file stats available [ver #6]
+References: <alpine.LSU.2.01.1007221228260.6115@obet.zrqbmnf.qr>	<20100715021709.5544.64506.stgit@warthog.procyon.org.uk>	<20100715021712.5544.44845.stgit@warthog.procyon.org.uk>	<30448.1279800887@redhat.com>	<E1Obuiy-00C9jr-Al@intern.SerNet.DE>	<AANLkTikBCXK6uEwWq4f0LvpdoKCPs3jvyFa4Zw4e2J_7@mail.gmail.com>	<E1Obxpd-00CRIo-SF@intern.SerNet.DE>	<AANLkTimwIq0pBhCeOjOVjB0yeM3JHOvzVoj9M4ui6al9@mail.gmail.com>	<20100722162712.GB10352@jeremy-laptop>	<AANLkTimdFCGSKLn7aGMpBMIauHTsHY7hpAAmpo6uTcnD@mail.gmail.com>	<alpine.LSU.2.01.1007221859180.27496@obet.zrqbmnf.qr>	<AANLkTilmVdyVdO4EmVtTYi_cvMmPqNEPEnzUkJdk1XyR@mail.gmail.com>	<4C488C41.60002@panasas.com> <AANLkTilU5QLBzOgwpmYRP5aZglOMta2iMCaNk62tiUIB@mail.gmail.com>
+In-Reply-To: <AANLkTilU5QLBzOgwpmYRP5aZglOMta2iMCaNk62tiUIB@mail.gmail.com>
 Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Thu, Jul 22, 2010 at 12:06 PM, Greg Freemyer <greg.freemyer@gmail.com> wrote:
-> On Thu, Jul 22, 2010 at 11:47 AM, Linus Torvalds
-> <torvalds@linux-foundation.org> wrote:
->> On Thu, Jul 22, 2010 at 8:36 AM, Volker Lendecke
->> <Volker.Lendecke@sernet.de> wrote:
+On Jul. 22, 2010, 21:45 +0300, Greg Freemyer <greg.freemyer@gmail.com> wrote:
+> On Thu, Jul 22, 2010 at 2:21 PM, Benny Halevy <bhalevy@panasas.com> wrote:
+>> On Jul. 22, 2010, 20:24 +0300, Linus Torvalds <torvalds@linux-foundation.org> wrote:
+>>> On Thu, Jul 22, 2010 at 10:03 AM, Jan Engelhardt <jengelh@medozas.de> wrote:
+>>>>
+>>>> I beg to differ. ctime is not completely useless. It reflects changes on
+>>>> the inode for when you don't you change the content.
 >>>
->>> The nice thing about this is also that if this is supposed
->>> to be fully usable for Windows clients, the birthtime needs
->>> to be changeable. That's what NTFS semantics gives you, thus
->>> Windows clients tend to require it.
+>>> Uh. Yes. Except that why is file metadata really different from file
+>>> data? Most people really don't care. And a lot of people have asked
+>>> for creation dates - and I seriously doubt that Windows people
+>>> complain a lot about the fact that there you have mtime for metadata
+>>> changes too.
+>>>
+>>> The point being that Unix ctime semantics certainly have well-defined
+>>> semantics, but they are in no way "better" than having a real creation
+>>> time, and are often worse.
 >>
->> Ok. So it's not really a creation date, exactly the same way ctime
->> isn't at all a creation date.
->>
->> And maybe that actually hints at a better solution: maybe a better
->> model is to create a new per-thread flag that says "do ctime updates
->> the way windows does them".
->>
->> So instead of adding another "btime" - which isn't actually what even
->> windows does - just admit that the _real_ issue is that Unix and
->> Windows semantics are different for the pre-existing "ctime".
->>
->> The fact is, windows has "access time", "modification time" and
->> "creation time" _exactly_ like UNIX. It's just that the ctime has
->> slightly different semantics in windows vs unix. So quite frankly,
->> it's totally insane to introduce a "birthtime", when that isn't even
->> what windows wants, just because people cannot face the actual real
->> difference.
->>
->> Tell me why we shouldn't just do this right?
->>
->>                Linus
->
-> I haven't been keeping up with this thread, but I believe NTFS has a
-> number of timestamps, not just 3.
->
-> This blog post references 8 in the left hand column.
->
-> The 4 standard (most common) ones are:
->
-> File last access
-> File last modified
-> File created
-> MFT last modified
->
-> My understanding is that "MFT last modified" has semantics very
-> similar to Linux ctime.
->
-> But there is not a generic equivalent to NTFS created.
->
-> Thus if trying to have the Linux kernel match NTFS semantics for the
-> benefit of Samba is the goal, it seems a new field should be preferred
-> instead of having linux ctime try to do different jobs.
->
+>> Yeah, having create time would be important.
+>> That said, having a non user-settable modify timestamp is crucial
+>> for quickly determining whether a file has changed.
+> 
+> How would "cp --archive" and a host of backup/restore tools work
+> without user-settable modify timestamps?
+> 
+> Or are you proposing another timestamp?  I do computer forensics, I
+> like timestamps, but enough is enough.
+
+mtime and atime are already user settable and archive programs use
+this on the destination, but ctime would be different after
+copy/restore.
+
+When updating the archive, just comparing mtime to determine if the source
+changed is problematic as it can be set to any value after the change,
+but src.ctime would be greater than dest.ctime in this case.
+
+With posix semantics (http://www.opengroup.org/onlinepubs/009695399/basedefs/xbd_chap04.html#tag_04_07)
+this is not perfect either as there can be false-positives when the file stat changed but
+the file has not, e.g. when st_nlink changed.
+
+Benny
+
+> 
 > Greg
-
-I forgot the blog post url:
-
-http://blogs.sans.org/computer-forensics/2010/04/12/windows-7-mft-entry-timestamp-properties/
