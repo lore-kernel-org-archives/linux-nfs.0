@@ -1,48 +1,73 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:25658 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:5920 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757979Ab0GVMZr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 22 Jul 2010 08:25:47 -0400
+	id S1755449Ab0GVR7M (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 22 Jul 2010 13:59:12 -0400
 From: David Howells <dhowells@redhat.com>
-In-Reply-To: <alpine.LSU.2.01.1007221248050.9353@obet.zrqbmnf.qr>
-References: <alpine.LSU.2.01.1007221248050.9353@obet.zrqbmnf.qr> <20100715021709.5544.64506.stgit@warthog.procyon.org.uk> <20100715021712.5544.44845.stgit@warthog.procyon.org.uk> <20100718084824.GA27794@infradead.org>
-To: Jan Engelhardt <jengelh@medozas.de>
-Cc: dhowells@redhat.com, Christoph Hellwig <hch@infradead.org>,
-        viro@ZenIV.linux.org.uk, linux-fsdevel@vger.kernel.org,
+Subject: [PATCH 5/6] Remove the automount through follow_link() kludge code
+	from pathwalk
+To: viro@ZenIV.linux.org.uk
+Cc: linux-fsdevel@vger.kernel.org, linux-afs@lists.infradead.org,
         linux-nfs@vger.kernel.org, linux-cifs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, samba-technical@lists.samba.org,
-        linux-ext4@vger.kernel.org, drepper@redhat.com,
-        torvalds@linux-foundation.org
-Subject: Re: [PATCH 02/18] xstat: Add a pair of system calls to make extended file stats available [ver #6]
-Date: Thu, 22 Jul 2010 13:25:31 +0100
-Message-ID: <30638.1279801531@redhat.com>
+        linux-kernel@vger.kernel.org, David Howells <dhowells@redhat.com>
+Date: Thu, 22 Jul 2010 18:59:08 +0100
+Message-ID: <20100722175907.5552.34758.stgit@warthog.procyon.org.uk>
+In-Reply-To: <20100722175847.5552.11520.stgit@warthog.procyon.org.uk>
+References: <20100722175847.5552.11520.stgit@warthog.procyon.org.uk>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-Jan Engelhardt <jengelh@medozas.de> wrote:
+Remove the automount through follow_link() kludge code from pathwalk in favour
+of using d_automount().
 
-> >> (8) Allow the filesystem to indicate what it can/cannot provide: A
-> >>     filesystem can now say it doesn't support a standard stat feature if
-> >>     that isn't available.
-> >
-> >What for?
-> 
-> Given xstat.otime=0, how would you determine whether the file is really 
-> tagged with a date of 1970, or whether it's just the fs which didnot 
-> store this kind of information.
+Signed-off-by: David Howells <dhowells@redhat.com>
+---
 
-I was thinking more of stuff that's already in the Linux stat struct, some of
-which is fabricated because the underlying fs doesn't support it.
+ fs/namei.c |   17 +++--------------
+ 1 files changed, 3 insertions(+), 14 deletions(-)
 
-Take RomFS for example: it fabricates all of st_mtime, st_atime, st_ctime,
-st_nlinks, st_blocks, st_uid and st_gid because none of them are stored in the
-medium
+diff --git a/fs/namei.c b/fs/namei.c
+index fcec3c6..86068a2 100644
+--- a/fs/namei.c
++++ b/fs/namei.c
+@@ -845,17 +845,6 @@ fail:
+ }
+ 
+ /*
+- * This is a temporary kludge to deal with "automount" symlinks; proper
+- * solution is to trigger them on follow_mount(), so that do_lookup()
+- * would DTRT.  To be killed before 2.6.34-final.
+- */
+-static inline int follow_on_final(struct inode *inode, unsigned lookup_flags)
+-{
+-	return inode && unlikely(inode->i_op->follow_link) &&
+-		((lookup_flags & LOOKUP_FOLLOW) || S_ISDIR(inode->i_mode));
+-}
+-
+-/*
+  * Name resolution.
+  * This is the basic name resolution function, turning a pathname into
+  * the final dentry. We expect 'base' to be positive and a directory.
+@@ -975,7 +964,8 @@ last_component:
+ 		if (err)
+ 			break;
+ 		inode = next.dentry->d_inode;
+-		if (follow_on_final(inode, lookup_flags)) {
++		if (inode && unlikely(inode->i_op->follow_link) &&
++		    (lookup_flags & LOOKUP_FOLLOW)) {
+ 			err = do_follow_link(&next, nd);
+ 			if (err)
+ 				goto return_err;
+@@ -1888,8 +1878,7 @@ reval:
+ 		struct inode *inode = path.dentry->d_inode;
+ 		void *cookie;
+ 		error = -ELOOP;
+-		/* S_ISDIR part is a temporary automount kludge */
+-		if (!(nd.flags & LOOKUP_FOLLOW) && !S_ISDIR(inode->i_mode))
++		if (!(nd.flags & LOOKUP_FOLLOW))
+ 			goto exit_dput;
+ 		if (count++ == 32)
+ 			goto exit_dput;
 
-Similarly, UbiFS fabricates st_blocks and complains in a comment that it makes
-no sense for that type of filesystem.
-
-There are other examples.
-
-David
