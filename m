@@ -1,168 +1,253 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:60433 "EHLO mx2.suse.de"
+Received: from mx1.redhat.com ([209.132.183.28]:62050 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752344Ab0G1XEO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 28 Jul 2010 19:04:14 -0400
-Date: Thu, 29 Jul 2010 09:04:01 +1000
-From: Neil Brown <neilb@suse.de>
-To: David Howells <dhowells@redhat.com>
-Cc: Linus Torvalds <torvalds@linux-foundation.org>,
-        Jan Engelhardt <jengelh@medozas.de>, Jeremy Allison <jra@samba.org>,
-        Volker.Lendecke@sernet.de, linux-cifs@vger.kernel.org,
-        linux-nfs@vger.kernel.org, samba-technical@lists.samba.org,
-        linux-kernel@vger.kernel.org, viro@zeniv.linux.org.uk,
-        linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
-Subject: Re: [PATCH 02/18] xstat: Add a pair of system calls to make
- extended file stats available [ver #6]
-Message-ID: <20100729090401.4b0a21f8@notabene>
-In-Reply-To: <13591.1280338082@redhat.com>
-References: <20100728111525.355a2bd3@notabene>
-	<alpine.LSU.2.01.1007221228260.6115@obet.zrqbmnf.qr>
-	<20100715021709.5544.64506.stgit@warthog.procyon.org.uk>
-	<20100715021712.5544.44845.stgit@warthog.procyon.org.uk>
-	<30448.1279800887@redhat.com>
-	<E1Obuiy-00C9jr-Al@intern.SerNet.DE>
-	<AANLkTikBCXK6uEwWq4f0LvpdoKCPs3jvyFa4Zw4e2J_7@mail.gmail.com>
-	<E1Obxpd-00CRIo-SF@intern.SerNet.DE>
-	<AANLkTimwIq0pBhCeOjOVjB0yeM3JHOvzVoj9M4ui6al9@mail.gmail.com>
-	<20100722162712.GB10352@jeremy-laptop>
-	<AANLkTimdFCGSKLn7aGMpBMIauHTsHY7hpAAmpo6uTcnD@mail.gmail.com>
-	<alpine.LSU.2.01.1007221859180.27496@obet.zrqbmnf.qr>
-	<AANLkTilmVdyVdO4EmVtTYi_cvMmPqNEPEnzUkJdk1XyR@mail.gmail.com>
-	<13591.1280338082@redhat.com>
-Content-Type: text/plain; charset=US-ASCII
+	id S1756060Ab0GVR7T (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 22 Jul 2010 13:59:19 -0400
+From: David Howells <dhowells@redhat.com>
+Subject: [PATCH 3/6] NFS: Use d_automount() rather than abusing follow_link()
+To: viro@ZenIV.linux.org.uk
+Cc: linux-fsdevel@vger.kernel.org, linux-afs@lists.infradead.org,
+        linux-nfs@vger.kernel.org, linux-cifs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, David Howells <dhowells@redhat.com>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>
+Date: Thu, 22 Jul 2010 18:58:57 +0100
+Message-ID: <20100722175857.5552.99050.stgit@warthog.procyon.org.uk>
+In-Reply-To: <20100722175847.5552.11520.stgit@warthog.procyon.org.uk>
+References: <20100722175847.5552.11520.stgit@warthog.procyon.org.uk>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, 28 Jul 2010 18:28:02 +0100
-David Howells <dhowells@redhat.com> wrote:
+Make NFS use the new d_automount() dentry operation rather than abusing
+follow_link() on directories.
 
-> Neil Brown <neilb@suse.de> wrote:
-> 
-> > ctime and mtime have real cache-coherence semantics which require them being
-> > updated by the kernel (whether the cache is on an NFS client, in a backup
-> > archive, or in a .o translation of a .c file).
-> 
-> So does creation time, at least for CIFS caching.  Creation time has potential
-> for spotting when the object at a pathname has changed for something else,
-> given the lack of inode number and inode generation from windows servers.
-> Creation time gives us one more datum to use.
+Signed-off-by: David Howells <dhowells@redhat.com>
+Acked-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
 
-This justifies for me why a CIFS client would want to extract the
-creation-time from the CIFS protocol, but not why you want to expose it via a
-generic interface.
-The kernel/filesystem doesn't need to maintain creation-time to meet this
-need, only the CIFS server needs to maintain it - the kernel/filesystem just
-needs to provide somewhere to store it - xattrs.
+ fs/nfs/dir.c           |    4 ++
+ fs/nfs/inode.c         |    4 +-
+ fs/nfs/internal.h      |    1 +
+ fs/nfs/namespace.c     |   87 ++++++++++++++++++++++--------------------------
+ include/linux/nfs_fs.h |    1 -
+ 5 files changed, 46 insertions(+), 51 deletions(-)
 
-Given that we have an extensible attribute framework, it seems wrong to be
-adding new attributes to *stat.  If a given filesystem wants to store certain
-attributes more efficiently, then it is welcome to intercept xattr calls and
-store (say) "cifs.birthtime" directly at a known offset in the inode.
-
-The flip-side of extracting these various attributes is setting them.  One
-presumably doesn't want to set st_data_version and possibly not st_gen, but
-there seems to be a need to set st_btime and FS_SYSTEM_FL and FS_TEMPORARY_FL
-might want to be set.  Your xstat doesn't give any way to do that, xattrs
-already does - you just need to define names for the attributes.
-
-So I'm against adding new attributes that simply involve the fs storing some
-information for the application to use.
-
-I'm still pondering those extra flags:
-  FS_SPECIAL_FL
-  FS_AUTOMOUNT_FL
-  FS_AUTOMOUNT_ANY_FL
-  FS_REMOTE_FL
-  FS_ENCRYPTED_FL
-  FS_OFFLINE_FL
-
-They sound like they might be useful, they are not file-metadata (like
-btime) but rather implementation details (like st_blocks).  So it is probably
-sensible to include them as you have done.
-
-However I would really like to see clear and complete documentation for them.
-When exactly should a filesystem set these flag, and what exactly can an
-application assume if they are (or are not) set.
-
-If a filesystem is mounted on an network-block-device, or a loop-back of a
-file on NFS, is FS_REMOTE_FL set?
-Is ROT13 enough for FS_ENCRYPTED_FL to be set?
-If the NFS server is "not responding, still trying", should FS_OFFLINE_FL get
-set on all files?
-And I cannot even guess at the different between the two FS_AUTOMOUNT flags.
-I'm sure it is something useful, but doco would be good.  Should one of them
-be set on mountpoints that NFSv4 detects from the server?
-
-They sound useful, but they are only really useful if they have precise
-meanings.
-
-
-> 
-> > The only role the kernel might have would be setting the 'creation time' when
-> > the file was created, but it seems even that isn't always what is wanted,
-> > because people don't so much what the time of create of the
-> > container-on-disk, but the time of creation of the data-content.
-> 
-> That should be a timestamp in the content itself, not a filesystem metadata
-> timestamp.
-> 
-> > I would want to see a pretty convincing use-case that cannot be solved with
-> > xattrs before 'creation time' was added to a generic kernel interface.
-> 
-> Then there's no point even considering this.  You could emulate the entirety
-> of stat() with getxattr().  I've previously posted a patch to implement the
-> retrieval of creation time, inode gen and data version as xattrs and been told
-> that it's the wrong way to do it and I should extend stat instead.
-
-:-(  stuck between a rock and a hard-place ??
-
-It would probably help to keep that sort of decision process (complete with
-who to blame) documented in the change-log entry, but one never thinks of
-doing that at the time.
-
-I don't have any veto power here, and I don't want any.  I think creation
-time and inode gen make more sense as xattrs.  I'm less certain about
-data-version as the kernel has to know about it as a first-class concept.
-
-If I have any power to influence the results, I would much rather spend it on
-requiring clear precise useful definitions for each new attribute than on
-determining which attributes should be first-class and which should be xattrs.
-
-
-> 
-> > So just use xattrs and don't involve the kernel in any detailed knowledge of
-> > this value.
-> 
-> Why not?  BSD has it in its stat struct.  Windows has it in its Win32
-> equivalents.  Samba for one will look for it there, and use it if it is.
-> 
-> Using an xattr means an extra pathwalk and extra locking per access for any
-> program that wants it.  It's a reasonable bet such a program will also be
-> stat'ing the file it wants the creation time for.
-> 
-> If we are going to extend stat anyway, then why not make out a short list of
-> extra things we could usefully return and consider adding them?  Something
-> like creation time is reasonably easy to come by for little extra overhead.
-> Ext4, for example, retains a copy of it in RAM in its inode struct.
-
-Providing everybody imposes exactly the same semantics for "creation time"...
-
-> 
-> > Maybe xstat should take a list of xattrs to be retrieved as well??  or maybe
-> > not.
-> 
-> The idea of xstat() having a variable-length buffer and variable arguments has
-> been well derided.  It ain't going to happen, much though I'd like it to.  I'd
-> quite like to offer the opportunity to return the security label, for example.
-
-"well derided" like high-mem and SMP support?  or "real-time" support and
-priority inheritance?
-I guess the deriders are wrong, and will eventually realise that they are
-wrong.  The difficult bit is we cannot know how long it will take them, or
-how much you have to care.
-
-NeilBrown
-(unambiguous documentation!! the rest is just details)
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index e60416d..9ce04af 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -727,7 +727,7 @@ int nfs_lookup_verify_inode(struct inode *inode, struct nameidata *nd)
+ {
+ 	struct nfs_server *server = NFS_SERVER(inode);
+ 
+-	if (test_bit(NFS_INO_MOUNTPOINT, &NFS_I(inode)->flags))
++	if (IS_AUTOMOUNT(inode))
+ 		return 0;
+ 	if (nd != NULL) {
+ 		/* VFS wants an on-the-wire revalidation */
+@@ -927,6 +927,7 @@ const struct dentry_operations nfs_dentry_operations = {
+ 	.d_revalidate	= nfs_lookup_revalidate,
+ 	.d_delete	= nfs_dentry_delete,
+ 	.d_iput		= nfs_dentry_iput,
++	.d_automount	= nfs_d_automount,
+ };
+ 
+ static struct dentry *nfs_lookup(struct inode *dir, struct dentry * dentry, struct nameidata *nd)
+@@ -1002,6 +1003,7 @@ const struct dentry_operations nfs4_dentry_operations = {
+ 	.d_revalidate	= nfs_open_revalidate,
+ 	.d_delete	= nfs_dentry_delete,
+ 	.d_iput		= nfs_dentry_iput,
++	.d_automount	= nfs_d_automount,
+ };
+ 
+ /*
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index 099b351..848abe8 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -295,7 +295,7 @@ nfs_fhget(struct super_block *sb, struct nfs_fh *fh, struct nfs_fattr *fattr)
+ 				else
+ 					inode->i_op = &nfs_mountpoint_inode_operations;
+ 				inode->i_fop = NULL;
+-				set_bit(NFS_INO_MOUNTPOINT, &nfsi->flags);
++				inode->i_flags |= S_AUTOMOUNT;
+ 			}
+ 		} else if (S_ISLNK(inode->i_mode))
+ 			inode->i_op = &nfs_symlink_inode_operations;
+@@ -1138,7 +1138,7 @@ static int nfs_update_inode(struct inode *inode, struct nfs_fattr *fattr)
+ 	/* Update the fsid? */
+ 	if (S_ISDIR(inode->i_mode) && (fattr->valid & NFS_ATTR_FATTR_FSID) &&
+ 			!nfs_fsid_equal(&server->fsid, &fattr->fsid) &&
+-			!test_bit(NFS_INO_MOUNTPOINT, &nfsi->flags))
++			!IS_AUTOMOUNT(inode))
+ 		server->fsid = fattr->fsid;
+ 
+ 	/*
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index e70f44b..f597aac 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -239,6 +239,7 @@ extern char *nfs_path(const char *base,
+ 		      const struct dentry *droot,
+ 		      const struct dentry *dentry,
+ 		      char *buffer, ssize_t buflen);
++extern struct vfsmount *nfs_d_automount(struct path *path);
+ 
+ /* getroot.c */
+ extern struct dentry *nfs_get_root(struct super_block *, struct nfs_fh *);
+diff --git a/fs/nfs/namespace.c b/fs/nfs/namespace.c
+index db6aa36..bf80079 100644
+--- a/fs/nfs/namespace.c
++++ b/fs/nfs/namespace.c
+@@ -88,9 +88,8 @@ Elong:
+ }
+ 
+ /*
+- * nfs_follow_mountpoint - handle crossing a mountpoint on the server
+- * @dentry - dentry of mountpoint
+- * @nd - nameidata info
++ * nfs_d_automount - Handle crossing a mountpoint on the server
++ * @path - The mountpoint
+  *
+  * When we encounter a mountpoint on the server, we want to set up
+  * a mountpoint on the client too, to prevent inode numbers from
+@@ -100,87 +99,81 @@ Elong:
+  * situation, and that different filesystems may want to use
+  * different security flavours.
+  */
+-static void * nfs_follow_mountpoint(struct dentry *dentry, struct nameidata *nd)
++struct vfsmount *nfs_d_automount(struct path *path)
+ {
+ 	struct vfsmount *mnt;
+-	struct nfs_server *server = NFS_SERVER(dentry->d_inode);
++	struct nfs_server *server = NFS_SERVER(path->dentry->d_inode);
+ 	struct dentry *parent;
+ 	struct nfs_fh *fh = NULL;
+ 	struct nfs_fattr *fattr = NULL;
+ 	int err;
+ 
+-	dprintk("--> nfs_follow_mountpoint()\n");
++	dprintk("--> nfs_d_automount()\n");
+ 
+-	err = -ESTALE;
+-	if (IS_ROOT(dentry))
+-		goto out_err;
++	mnt = ERR_PTR(-ESTALE);
++	if (IS_ROOT(path->dentry))
++		goto out_nofree;
+ 
+-	err = -ENOMEM;
++	mnt = ERR_PTR(-ENOMEM);
+ 	fh = nfs_alloc_fhandle();
+ 	fattr = nfs_alloc_fattr();
+ 	if (fh == NULL || fattr == NULL)
+-		goto out_err;
++		goto out;
+ 
+ 	dprintk("%s: enter\n", __func__);
+-	dput(nd->path.dentry);
+-	nd->path.dentry = dget(dentry);
+ 
+-	/* Look it up again */
+-	parent = dget_parent(nd->path.dentry);
++	/* Look it up again to get its attributes */
++	parent = dget_parent(path->dentry);
+ 	err = server->nfs_client->rpc_ops->lookup(parent->d_inode,
+-						  &nd->path.dentry->d_name,
++						  &path->dentry->d_name,
+ 						  fh, fattr);
+ 	dput(parent);
+-	if (err != 0)
+-		goto out_err;
++	if (err != 0) {
++		mnt = ERR_PTR(err);
++		goto out;
++	}
+ 
+ 	if (fattr->valid & NFS_ATTR_FATTR_V4_REFERRAL)
+-		mnt = nfs_do_refmount(nd->path.mnt, nd->path.dentry);
++		mnt = nfs_do_refmount(path->mnt, path->dentry);
+ 	else
+-		mnt = nfs_do_submount(nd->path.mnt, nd->path.dentry, fh,
+-				      fattr);
+-	err = PTR_ERR(mnt);
++		mnt = nfs_do_submount(path->mnt, path->dentry, fh, fattr);
+ 	if (IS_ERR(mnt))
+-		goto out_err;
++		goto out;
+ 
+ 	mntget(mnt);
+-	err = do_add_mount(mnt, &nd->path, nd->path.mnt->mnt_flags|MNT_SHRINKABLE,
++	err = do_add_mount(mnt, path, path->mnt->mnt_flags | MNT_SHRINKABLE,
+ 			   &nfs_automount_list);
+-	if (err < 0) {
++	switch (err) {
++	case 0:
++		dprintk("%s: done, success\n", __func__);
++		schedule_delayed_work(&nfs_automount_task, nfs_mountpoint_expiry_timeout);
++		break;
++	case -EBUSY:
++		/* someone else made a mount here whilst we were busy */
+ 		mntput(mnt);
+-		if (err == -EBUSY)
+-			goto out_follow;
+-		goto out_err;
++		dprintk("%s: done, collision\n", __func__);
++		mnt = NULL;
++		break;
++	default:
++		mntput(mnt);
++		dprintk("%s: done, error %d\n", __func__, err);
++		mnt = ERR_PTR(err);
++		break;
+ 	}
+-	path_put(&nd->path);
+-	nd->path.mnt = mnt;
+-	nd->path.dentry = dget(mnt->mnt_root);
+-	schedule_delayed_work(&nfs_automount_task, nfs_mountpoint_expiry_timeout);
++
+ out:
+ 	nfs_free_fattr(fattr);
+ 	nfs_free_fhandle(fh);
+-	dprintk("%s: done, returned %d\n", __func__, err);
+-
+-	dprintk("<-- nfs_follow_mountpoint() = %d\n", err);
+-	return ERR_PTR(err);
+-out_err:
+-	path_put(&nd->path);
+-	goto out;
+-out_follow:
+-	while (d_mountpoint(nd->path.dentry) &&
+-	       follow_down(&nd->path))
+-		;
+-	err = 0;
+-	goto out;
++out_nofree:
++	dprintk("<-- nfs_follow_mountpoint() = %p\n", mnt);
++	return mnt;
+ }
+ 
+ const struct inode_operations nfs_mountpoint_inode_operations = {
+-	.follow_link	= nfs_follow_mountpoint,
+ 	.getattr	= nfs_getattr,
+ };
+ 
+ const struct inode_operations nfs_referral_inode_operations = {
+-	.follow_link	= nfs_follow_mountpoint,
+ };
+ 
+ static void nfs_expire_automounts(struct work_struct *work)
+diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
+index 77c2ae5..4511220 100644
+--- a/include/linux/nfs_fs.h
++++ b/include/linux/nfs_fs.h
+@@ -205,7 +205,6 @@ struct nfs_inode {
+ #define NFS_INO_ADVISE_RDPLUS	(0)		/* advise readdirplus */
+ #define NFS_INO_STALE		(1)		/* possible stale inode */
+ #define NFS_INO_ACL_LRU_SET	(2)		/* Inode is on the LRU list */
+-#define NFS_INO_MOUNTPOINT	(3)		/* inode is remote mountpoint */
+ #define NFS_INO_FLUSHING	(4)		/* inode is flushing out data */
+ #define NFS_INO_FSCACHE		(5)		/* inode can be cached by FS-Cache */
+ #define NFS_INO_FSCACHE_LOCK	(6)		/* FS-Cache cookie management lock */
 
