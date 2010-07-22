@@ -1,70 +1,85 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:40987 "EHLO
-	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S965851Ab0GPP40 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 16 Jul 2010 11:56:26 -0400
-Message-ID: <4C4079CC.8070205@oracle.com>
-Date: Fri, 16 Jul 2010 11:25:00 -0400
-From: Chuck Lever <chuck.lever@oracle.com>
-To: Tom H <tom@limepepper.co.uk>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: why do attempts to access a nfs v3 filesystem (ro,soft) block
- the process for minutes at a time? (when the nfs server is down)
-References: <4C4078AE.5070300@limepepper.co.uk>
-In-Reply-To: <4C4078AE.5070300@limepepper.co.uk>
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:47202 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752526Ab0GVQsf (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 22 Jul 2010 12:48:35 -0400
+In-Reply-To: <20100722162712.GB10352@jeremy-laptop>
+References: <alpine.LSU.2.01.1007221228260.6115@obet.zrqbmnf.qr>
+	<20100715021709.5544.64506.stgit@warthog.procyon.org.uk> <20100715021712.5544.44845.stgit@warthog.procyon.org.uk>
+	<30448.1279800887@redhat.com> <E1Obuiy-00C9jr-Al@intern.SerNet.DE>
+	<AANLkTikBCXK6uEwWq4f0LvpdoKCPs3jvyFa4Zw4e2J_7@mail.gmail.com>
+	<E1Obxpd-00CRIo-SF@intern.SerNet.DE> <AANLkTimwIq0pBhCeOjOVjB0yeM3JHOvzVoj9M4ui6al9@mail.gmail.com>
+	<20100722162712.GB10352@jeremy-laptop>
+From: Linus Torvalds <torvalds@linux-foundation.org>
+Date: Thu, 22 Jul 2010 09:40:22 -0700
+Message-ID: <AANLkTimdFCGSKLn7aGMpBMIauHTsHY7hpAAmpo6uTcnD@mail.gmail.com>
+Subject: Re: [PATCH 02/18] xstat: Add a pair of system calls to make extended
+	file stats available [ver #6]
+To: Jeremy Allison <jra@samba.org>
+Cc: Volker.Lendecke@sernet.de, David Howells <dhowells@redhat.com>,
+        Jan Engelhardt <jengelh@medozas.de>, linux-cifs@vger.kernel.org,
+        linux-nfs@vger.kernel.org, samba-technical@lists.samba.org,
+        linux-kernel@vger.kernel.org, viro@zeniv.linux.org.uk,
+        linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 07/16/2010 11:20 AM, Tom H wrote:
+On Thu, Jul 22, 2010 at 9:27 AM, Jeremy Allison <jra@samba.org> wrote:
+> On Thu, Jul 22, 2010 at 08:47:46AM -0700, Linus Torvalds wrote:
+>> Tell me why we shouldn't just do this right?
 >
-> (apologies for the cross post from the deprecated list)
->
-> Hi all,
->
-> I have a web server which serves some content from an nfs filesystem
-> mounted like so;
-> nfsserver1:/somemount /var/www/html/somefiles nfs rw,soft
-> 0 0
->
-> # mount | grep nfs
-> nfsserver1:/somemount on /var/www/html/somefiles type nfs
-> (ro,soft,addr=xx.xx.xx.xx)
->
-> According to the documentation, an NFS operation on a soft mount should
-> wait for a "major timeout" and then report "server not responding" to
-> syslog and return an error. where a major timeout is after default
-> retrans=3 retransmissions.
->
-> I understand the process to be like this;
-> call --->0.7 secs --->retransmission--->1.4
-> secs--->retransmission--->2.8 secs--->server not responding(major timeout)
->
-> However it is pretty clear that this is retrying indefinitely (or at
-> least many more times that I would like), as the
-> log files show loads of;
-> Jul 16 07:56:09 server1 kernel: nfs: server server2 not responding,
-> timed out
-> Jul 16 07:57:09 server1 last message repeated 4 times
-> Jul 16 07:57:09 server1 last message repeated 6 times
->
-> and eventually this kills the apache server as all the available
-> processes are blocked during "retrying indefinitely", until the apache
-> server is restarted. (restarting the nfs server at this point does not
-> seem to recover the apache child processes)
->
-> So what should my strategy be to stop the failed mount killing apache. I
-> care more about the apache staying up, as I don't have that much control
-> over the nfs server..
->
-> (also I noticed that it seems to timeout quicker with the mount options
-> set like (soft, timeo=7, retrans=3) which is unexpected, because they
-> are supposed to be the default)
+> No, ctime isn't the same as Windows "create time".
 
-They are the default settings for UDP mounts, but you didn't specify 
-UDP.  TCP is the default transport protocol, and has been for some time. 
-  TCP uses a long retransmit timeout.  See nfs(5).
+Umm. What kind of reading problems do you guys have?
 
--- 
-Chuck Lever
+I know effin well that ctime isn't the same as Windows create time.
+THAT WAS MY POINT.
+
+But the fact is, th Unix ctime semantics are insane and largely
+useless. There's a damn good reason almost nobody uses ctime under
+unix.
+
+So what I'm suggesting is that we have a flag - either per-process or
+per-mount - that just says "use windows semantics for ctime".
+
+And yes, I'm very aware that the "c" in ctime doesn't stand for
+"create". But anybody who points that out is - once more - totally
+missing the point. My point is that we have three timestamps, and
+windows wants three timestamps (somebody claims that NTFS has four
+timestamps, but the Windows file time access functions certainly only
+shows three times, so any potential extra on-disk times have no
+relevance because they are invisible to pretty much everybody). We can
+have unix semantics for mtime/atime/ctime, or we can have windows
+semantics for those three values.
+
+So let's say that we introduce a mount flag that says
+"ctime=winctime", which basically just sets a flag that instead of
+changing ctime on chmod/chown/etc, it just changes mtime instead (or,
+as mentioned, we could make it a process flag instead).
+
+Let's face it, Unix semantics are not sacred.  Especially not
+something like ctime, which is pretty damn useless. If you're a samba
+server, why not just say "let's do ctime the way windows does creation
+times", and let it be at that?
+
+I personally think that Unix ctime is insane. There is no real reason
+why "write()" should change mtime, but "chmod" changes ctime. It was
+just a random decision way back when, and it's clearly not what samba
+wants, and it's equally clearly not what even most _unix_ people want
+(just google for "ctime" and "creation time", and watch the confusion
+- exactly because unix semantics are simply _random_ and odd semantics
+in this area)
+
+I would not be at all surprised if it turns out that people might want
+to really turn ctime into creation time (with the mount flag or
+whatever) even if they are _not_ running samba.
+
+An added issue is that most filesystems simply don't have more than
+three times (and some obviously have not even that, but that's true in
+Windows too). So re-using ctime actually means that this scheme would
+work a whole lot better than some crazy xstat() interface that doesn't
+support common filesystems anyway.
+
+                                         Linus
