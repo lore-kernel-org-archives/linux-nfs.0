@@ -1,56 +1,78 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from messager.iut-bm.univ-fcomte.fr ([194.57.86.195]:42619 "EHLO
-	messager.iut-bm.univ-fcomte.fr" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1754592Ab0GBIKA (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 2 Jul 2010 04:10:00 -0400
-Received: from localhost (localhost.localdomain [127.0.0.1])
-	by messager.iut-bm.univ-fcomte.fr (Postfix) with ESMTP id AA26A2B47B
-	for <linux-nfs@vger.kernel.org>; Fri,  2 Jul 2010 10:01:39 +0200 (CEST)
-Received: from messager.iut-bm.univ-fcomte.fr ([127.0.0.1])
-	by localhost (messager.iut-bm.univ-fcomte.fr [127.0.0.1]) (amavisd-new, port 10024)
-	with ESMTP id qkY5sAp7P-g3 for <linux-nfs@vger.kernel.org>;
-	Fri,  2 Jul 2010 10:01:37 +0200 (CEST)
-Received: from powwow.iut-bm.univ-fcomte.fr (powwow.iut-bm.univ-fcomte.fr [193.52.61.133])
-	by messager.iut-bm.univ-fcomte.fr (Postfix) with ESMTPS id 9C5BD2B478
-	for <linux-nfs@vger.kernel.org>; Fri,  2 Jul 2010 10:01:37 +0200 (CEST)
-Received: from giersch by powwow.iut-bm.univ-fcomte.fr with local (Exim 4.72)
-	(envelope-from <arnaud.giersch@iut-bm.univ-fcomte.fr>)
-	id 1OUbBp-00044p-Iy
-	for linux-nfs@vger.kernel.org; Fri, 02 Jul 2010 10:01:37 +0200
-From: Arnaud Giersch <arnaud.giersch@iut-bm.univ-fcomte.fr>
-To: linux-nfs@vger.kernel.org
-Subject: Empty core dumps on NFSv4 mounts
-Date: Fri, 02 Jul 2010 10:01:37 +0200
-Message-ID: <wwezkyas466.fsf@powwow.iut-bm.univ-fcomte.fr>
-Content-Type: text/plain; charset=us-ascii
+Received: from mx2.netapp.com ([216.240.18.37]:55751 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754548Ab0GVMi5 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 22 Jul 2010 08:38:57 -0400
+Subject: Re: NFS commit: sync or async?
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Wu Fengguang <fengguang.wu@intel.com>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+In-Reply-To: <20100722073623.GA24462@localhost>
+References: <20100722073623.GA24462@localhost>
+Content-Type: text/plain; charset="UTF-8"
+Date: Thu, 22 Jul 2010 08:38:55 -0400
+Message-ID: <1279802335.3621.8.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Hi,
+On Thu, 2010-07-22 at 15:36 +0800, Wu Fengguang wrote:
+> Hi Trond,
+> 
+> May I ask you an NFS question? I got a bit puzzled by this call trace. It
+> happens after stopping the nfsd at server side when the client side is
+> doing cp over NFSv3:
+> 
+> [49388.040091] cp            D 0000000000000082  2968  2782  28204 0x00000000
+> [49388.040097]  ffff8800b8587778 0000000000000002 ffff8800b85877f8 00000000001d4e40
+> [49388.040103]  ffff8800b8587fd8 00000000001d4e40 ffff8800b8587fd8 ffff8800b8ec4700
+> [49388.040110]  00000000001d4e40 ffff8800b8587fd8 00000000001d4e40 00000000001d4e40
+> [49388.040116] Call Trace:
+> [49388.040121]  [<ffffffff810de503>] ? prepare_to_wait+0x73/0xc0
+> [49388.040127]  [<ffffffff81b32750>] ? rpc_wait_bit_killable+0x0/0x60
+> [49388.040132]  [<ffffffff81b3277f>] rpc_wait_bit_killable+0x2f/0x60
+> [49388.040136]  [<ffffffff81babded>] __wait_on_bit+0x8d/0xe0
+> [49388.040140]  [<ffffffff81b32750>] ? rpc_wait_bit_killable+0x0/0x60
+> [49388.040144]  [<ffffffff81babec6>] out_of_line_wait_on_bit+0x86/0xa0
+> [49388.040149]  [<ffffffff810de170>] ? wake_bit_function+0x0/0x70
+> [49388.040154]  [<ffffffff81b333bf>] __rpc_execute+0x16f/0x3f0
+> [49388.040158]  [<ffffffff81b3367b>] rpc_execute+0x3b/0x50
+> [49388.040162]  [<ffffffff81b28d31>] rpc_run_task+0x51/0xc0
+> [49388.040167]  [<ffffffff81366ad6>] nfs_commit_list+0x1f6/0x3e0
+> [49388.040172]  [<ffffffff81366de9>] nfs_commit_inode+0x129/0x170
+> [49388.040176]  [<ffffffff813677fa>] nfs_write_inode+0x7a/0xf0
+> [49388.040180]  [<ffffffff81239a8b>] writeback_single_inode+0x28b/0x3f0
+> [49388.040186]  [<ffffffff8123ac08>] writeback_inodes_wb+0x318/0x650
+> [49388.040191]  [<ffffffff8123b1d2>] writeback_inodes_wbc+0x22/0x30
+> [49388.040196]  [<ffffffff811a5a00>] balance_dirty_pages_ratelimited_nr+0x400/0x5d0
+> [49388.040202]  [<ffffffff81196306>] ? iov_iter_copy_from_user_atomic+0xa6/0x1c0
+> [49388.040207]  [<ffffffff81196898>] generic_file_buffered_write+0x258/0x370
+> [49388.040213]  [<ffffffff81199b7a>] __generic_file_aio_write+0x2ea/0x5f0
+> [49388.040218]  [<ffffffff81bad374>] ? mutex_lock_nested+0x394/0x530
+> [49388.040223]  [<ffffffff81199edf>] ? generic_file_aio_write+0x5f/0x100
+> [49388.040229]  [<ffffffff81199ef9>] generic_file_aio_write+0x79/0x100
+> [49388.040235]  [<ffffffff81353f00>] nfs_file_write+0xe0/0x2a0
+> [49388.040240]  [<ffffffff8120a138>] do_sync_write+0xe8/0x140
+> [49388.040246]  [<ffffffff811bd7b6>] ? might_fault+0xd6/0xf0
+> [49388.040251]  [<ffffffff8120b156>] vfs_write+0xb6/0x220
+> [49388.040255]  [<ffffffff8120b406>] sys_write+0x66/0xb0
+> [49388.040260]  [<ffffffff8104ab72>] system_call_fastpath+0x16/0x1b
+> 
+> >From simple code review I cannot explain why out_of_line_wait_on_bit()
+> is called inside __rpc_execute() for a commit request.
+> 
+> nfs_commit_rpcsetup() sets RPC_TASK_ASYNC for task_setup_data.flags,
+> which is transferred to task->tk_flags in rpc_init_task().
+> __rpc_execute() should then return on task_is_async=1 and skip the
+> out_of_line_wait_on_bit() call. However the trace shows that
+> out_of_line_wait_on_bit() is called. I'm a bit puzzled. I must have
+> missed something. Is this the expected behavior?
 
-On NFSv4 mounts, many core dumps are empty, although ulimit -c is
-unlimited.  An ls command shortly after the core dump often shows
-4294967294 (2^32-2) as UID and GID for the "core" file.
+Hi Fengguang,
 
-This only happens when there was no "core" file before the dump.  If a
-"core" file owned by the current user is already present, it is
-correctly filled.
+Are you sure this trace is from a recent kernel? In all kernels prior to
+2.6.34-rc3, COMMIT was a synchronous RPC call, which would explain the
+above trace.
 
-After having done a git bisect, it seems that the problem was
-introduced by commit 80e52aced138bb41b045a8595a87510f27d8d8c5
-(NFSv4: Don't do idmapper upcalls for asynchronous RPC calls).
-
-If I understand correctly what happens, do_coredump() [fs/exec.c] fails
-because (inode->i_uid != current_fsuid()).  In fact inode->i_uid equals
--2, because decode_attr_owner() [fs/nfs/nfs4xdr.c], which is called from
-nfs4_xdr_dec_open() via decode_getfattr(), returns without calling
-nfs_map_to_uid(), since its may_sleep parameter is false.
-
-I however do not clearly understand what the aforementioned commit is
-supposed to fix.  I read the linux-nfs mailing list archive, and tried
-some google search, but I didn't find anything.
-
-Regards,
-
-        Arnaud Giersch
+Cheers
+  Trond
