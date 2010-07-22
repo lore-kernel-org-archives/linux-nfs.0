@@ -1,84 +1,36 @@
-From: "J. Bruce Fields" <bfields@citi.umich.edu>
-Subject: Re: [PATCH version2] nfsd41: Fix a crash when a callback is retried
-Date: Wed, 21 Jul 2010 19:28:51 -0400
-Message-ID: <20100721232851.GB6689@fieldses.org>
-References: <4C28DCE0.7050201@panasas.com>
- <4C29DA23.90200@panasas.com>
- <4C45B4B0.2020208@panasas.com>
+From: Dave Chinner <dchinner@redhat.com>
+Subject: Re: [PATCH] SUNRPC auth: add context argument to shrinker callback
+Date: Thu, 22 Jul 2010 10:13:55 +1000
+Message-ID: <20100722001355.GB31881@devil>
+References: <1279698095-17287-1-git-send-email-mkl@pengutronix.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Benny Halevy <bhalevy@panasas.com>,
-	"Labiaga, Ricardo" <Ricardo.Labiaga@netapp.com>,
-	NFS list <linux-nfs@vger.kernel.org>
-To: Boaz Harrosh <bharrosh@panasas.com>
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+	Trond Myklebust <Trond.Myklebust@netapp.com>,
+	"J. Bruce Fields" <bfields@fieldses.org>
+To: Marc Kleine-Budde <mkl@pengutronix.de>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:46658 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:60472 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754916Ab0GUX3j (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 21 Jul 2010 19:29:39 -0400
-In-Reply-To: <4C45B4B0.2020208@panasas.com>
+	id S1752042Ab0GVAPG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 21 Jul 2010 20:15:06 -0400
+In-Reply-To: <1279698095-17287-1-git-send-email-mkl@pengutronix.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Jul 20, 2010 at 05:37:36PM +0300, Boaz Harrosh wrote:
-> On 06/29/2010 02:33 PM, Boaz Harrosh wrote:
-> > 
-> > If a callback is retried at nfsd4_cb_recall_done() do to
-> > some error. The returned rpc reply would then crash here:
-> > 
-> > @@ -514,6 +514,7 @@ decode_cb_sequence(struct xdr_stream *xdr, struct nfsd4_cb_sequence *res,
-> >  	u32 dummy;
-> >  	__be32 *p;
-> > 
-> >  +	BUG_ON(!res);
-> >  	if (res->cbs_minorversion == 0)
-> >  		return 0;
-> > 
-> > [BUG_ON added for demonstration]
-> > 
-> > This is because the nfsd4_cb_done_sequence() has NULLed out
-> > the task->tk_msg.rpc_resp pointer.
-> > 
-> > Also eventually the rpc would use the new slot without making
-> > sure it is free by calling nfsd41_cb_setup_sequence().
-> > 
-> > This problem was introduced by a 4.1 protocol addition patch:
-> > 	[0421b5c5] nfsd41: Backchannel: Implement cb_recall over NFSv4.1
-> > 
-> > Which was overlooking the possibility of an RPC callback retries.
-> > For not-4.1 case redoing the _prepare is harmless.
-> > 
-> > Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+On Wed, Jul 21, 2010 at 09:41:35AM +0200, Marc Kleine-Budde wrote:
+> Hello,
 > 
-> Bruce hi.
-> 
-> This is a crash fix for current 4.1 code. Perhaps you have missed it.
-> (If not, sorry. Just that I've not seen any response)
+> I found this regression in the current mainline tree.
 
-It's always good to poke me again in a case like this....  I haven't
-gotten to it yet, but it's on my list, thanks.
+The fix is already in Linus' current git tree (commit
+567c7b0edec0200c5c6613f07c3d3b4034fdc836 ("mm: add context argument to
+shrinker callback to remaining shrinkers"). Thanks for catching
+it, anyway.
 
---b.
+Cheers,
 
-> 
-> Thanks
-> Boaz
-> 
-> > ---
-> >  fs/nfsd/nfs4callback.c |    2 +-
-> >  1 files changed, 1 insertions(+), 1 deletions(-)
-> > 
-> > diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
-> > index f3b5015..3bbeae8 100644
-> > --- a/fs/nfsd/nfs4callback.c
-> > +++ b/fs/nfsd/nfs4callback.c
-> > @@ -913,7 +913,7 @@ static void nfsd4_cb_recall_done(struct rpc_task *task, void *calldata)
-> >  	if (dp->dl_retries--) {
-> >  		rpc_delay(task, 2*HZ);
-> >  		task->tk_status = 0;
-> > -		rpc_restart_call(task);
-> > +		rpc_restart_call_prepare(task);
-> >  		return;
-> >  	} else {
-> >  		atomic_set(&clp->cl_cb_set, 0);
-> 
+Dave.
+-- 
+Dave Chinner
+dchinner@redhat.com
