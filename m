@@ -1,157 +1,64 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:41936 "EHLO fieldses.org"
+Received: from borg.medozas.de ([188.40.89.202]:42890 "EHLO borg.medozas.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759562Ab0G3ScG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 30 Jul 2010 14:32:06 -0400
-Date: Fri, 30 Jul 2010 14:30:52 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Christoph Hellwig <hch@infradead.org>
-Cc: "J. Bruce Fields" <bfields@redhat.com>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 1/5] nfsd: bypass readahead cache when have struct file
-Message-ID: <20100730183052.GD21729@fieldses.org>
-References: <1280442084-17867-1-git-send-email-bfields@redhat.com>
- <1280442084-17867-2-git-send-email-bfields@redhat.com>
- <20100730081041.GA4126@infradead.org>
- <20100730154128.GA21729@fieldses.org>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20100730154128.GA21729@fieldses.org>
+	id S1751448Ab0GVQZ0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 22 Jul 2010 12:25:26 -0400
+Date: Thu, 22 Jul 2010 18:25:25 +0200 (CEST)
+From: Jan Engelhardt <jengelh@medozas.de>
+To: Linus Torvalds <torvalds@linux-foundation.org>
+cc: Volker.Lendecke@sernet.de, David Howells <dhowells@redhat.com>,
+        linux-cifs@vger.kernel.org, linux-nfs@vger.kernel.org,
+        samba-technical@lists.samba.org, linux-kernel@vger.kernel.org,
+        viro@zeniv.linux.org.uk, linux-fsdevel@vger.kernel.org,
+        linux-ext4@vger.kernel.org
+Subject: Re: [PATCH 02/18] xstat: Add a pair of system calls to make extended
+  file stats available [ver #6]
+In-Reply-To: <AANLkTimwIq0pBhCeOjOVjB0yeM3JHOvzVoj9M4ui6al9@mail.gmail.com>
+Message-ID: <alpine.LSU.2.01.1007221818460.21589@obet.zrqbmnf.qr>
+References: <alpine.LSU.2.01.1007221228260.6115@obet.zrqbmnf.qr>  <20100715021709.5544.64506.stgit@warthog.procyon.org.uk> <20100715021712.5544.44845.stgit@warthog.procyon.org.uk>  <30448.1279800887@redhat.com> <E1Obuiy-00C9jr-Al@intern.SerNet.DE>
+ <AANLkTikBCXK6uEwWq4f0LvpdoKCPs3jvyFa4Zw4e2J_7@mail.gmail.com>  <E1Obxpd-00CRIo-SF@intern.SerNet.DE> <AANLkTimwIq0pBhCeOjOVjB0yeM3JHOvzVoj9M4ui6al9@mail.gmail.com>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Fri, Jul 30, 2010 at 11:41:28AM -0400, bfields wrote:
-> On Fri, Jul 30, 2010 at 04:10:42AM -0400, Christoph Hellwig wrote:
-> > The callers of nfsd_read are:
-> > 
-> > fs/nfsd/nfs3proc.c:     nfserr = nfsd_read(rqstp, &resp->fh, NULL,
-> > fs/nfsd/nfs4proc.c:     /* no need to check permission - this will be done in nfsd_read() */
-> > fs/nfsd/nfs4xdr.c:      nfserr = nfsd_read(read->rd_rqstp, read->rd_fhp, read->rd_filp,
-> > fs/nfsd/nfsproc.c:      nfserr = nfsd_read(rqstp, fh_copy(&resp->fh, &argp->fh), NULL,
-> > 
-> > which suggests that we're better off just calling nfsd_open_read
-> > (possible with a better name) directly from fs/nfsd/nfs3proc.c and
-> > fs/nfsd/nfsproc.c and nfsd_vfs_read directly from fs/nfsd/nfs4proc.c
-> > and fs/nfsd/nfs4xdr.c instead of doing this conditional.
-> 
-> So, something like this.--b.
 
-No, I forgot the parameter the v4 caller passes can sometimes be NULL
-(v4 allows use of a "special stateid" not associated with any open), so
-we still need the condition in that case.
+On Thursday 2010-07-22 17:47, Linus Torvalds wrote:
+>On Thu, Jul 22, 2010 at 8:36 AM, Volker Lendecke
+><Volker.Lendecke@sernet.de> wrote:
+>>
+>> The nice thing about this is also that if this is supposed
+>> to be fully usable for Windows clients, the birthtime needs
+>> to be changeable. That's what NTFS semantics gives you, thus
+>> Windows clients tend to require it.
+>
+>Ok. So it's not really a creation date, exactly the same way ctime
+>isn't at all a creation date. [...]
+>Tell me why we shouldn't just do this right?
 
-Still probably an improvement.
+Nobody said the c in ctime stands for creation. It stands for
+change (you probably knew that).
 
---b.
+$ touch this
+$ stat this
+  File: `this'
+  Size: 0               Blocks: 0          IO Block: 4096   regular empty file
+Device: fh/15d  Inode: 106777647   Links: 1
+Access: (0644/-rw-r--r--)  Uid: (25121/ jengelh)   Gid: (  100/   users)
+Access: 2010-07-22 18:18:52.665480058 +0200
+Modify: 2010-07-22 18:18:52.665480058 +0200
+Change: 2010-07-22 18:18:52.665480058 +0200
 
-commit 039a87ca536a85bc169ce092e44bd57adfa1f563
-Author: J. Bruce Fields <bfields@redhat.com>
-Date:   Fri Jul 30 11:33:32 2010 -0400
+# Only change inode, not content
+$ chmod 600 this
+$ stat this
+  File: `this'
+  Size: 0               Blocks: 0          IO Block: 4096   regular empty file
+Device: fh/15d  Inode: 106777647   Links: 1
+Access: (0600/-rw-------)  Uid: (25121/ jengelh)   Gid: (  100/   users)
+Access: 2010-07-22 18:18:52.665480058 +0200
+Modify: 2010-07-22 18:18:52.665480058 +0200
+Change: 2010-07-22 18:18:58.533436339 +0200
 
-    nfsd: minor nfsd read api cleanup
-    
-    Christoph points that the NFSv2/v3 callers know which case they want
-    here, so we may as well just call the file=NULL case directly instead of
-    making this conditional.
-    
-    Cc: Christoph Hellwig <hch@infradead.org>
-    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 
-diff --git a/fs/nfsd/nfs3proc.c b/fs/nfsd/nfs3proc.c
-index 9ae9331..5b7e302 100644
---- a/fs/nfsd/nfs3proc.c
-+++ b/fs/nfsd/nfs3proc.c
-@@ -168,7 +168,7 @@ nfsd3_proc_read(struct svc_rqst *rqstp, struct nfsd3_readargs *argp,
- 	svc_reserve_auth(rqstp, ((1 + NFS3_POST_OP_ATTR_WORDS + 3)<<2) + resp->count +4);
- 
- 	fh_copy(&resp->fh, &argp->fh);
--	nfserr = nfsd_read(rqstp, &resp->fh, NULL,
-+	nfserr = nfsd_read(rqstp, &resp->fh,
- 				  argp->offset,
- 			   	  rqstp->rq_vec, argp->vlen,
- 				  &resp->count);
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 835924f..f8931ac 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -2630,7 +2630,7 @@ nfsd4_encode_read(struct nfsd4_compoundres *resp, __be32 nfserr,
- 	}
- 	read->rd_vlen = v;
- 
--	nfserr = nfsd_read(read->rd_rqstp, read->rd_fhp, read->rd_filp,
-+	nfserr = nfsd_read_file(read->rd_rqstp, read->rd_fhp, read->rd_filp,
- 			read->rd_offset, resp->rqstp->rq_vec, read->rd_vlen,
- 			&maxcount);
- 
-diff --git a/fs/nfsd/nfsproc.c b/fs/nfsd/nfsproc.c
-index 1edb78b..08e1726 100644
---- a/fs/nfsd/nfsproc.c
-+++ b/fs/nfsd/nfsproc.c
-@@ -144,7 +144,7 @@ nfsd_proc_read(struct svc_rqst *rqstp, struct nfsd_readargs *argp,
- 	svc_reserve_auth(rqstp, (19<<2) + argp->count + 4);
- 
- 	resp->count = argp->count;
--	nfserr = nfsd_read(rqstp, fh_copy(&resp->fh, &argp->fh), NULL,
-+	nfserr = nfsd_read(rqstp, fh_copy(&resp->fh, &argp->fh),
- 				  argp->offset,
- 			   	  rqstp->rq_vec, argp->vlen,
- 				  &resp->count);
-diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-index 3458a8f..1709138 100644
---- a/fs/nfsd/vfs.c
-+++ b/fs/nfsd/vfs.c
-@@ -1065,7 +1065,12 @@ out:
- 	return err;
- }
- 
--static __be32 nfsd_open_read(struct svc_rqst *rqstp, struct svc_fh *fhp,
-+/*
-+ * Read data from a file. count must contain the requested read count
-+ * on entry. On return, *count contains the number of bytes actually read.
-+ * N.B. After this call fhp needs an fh_put
-+ */
-+__be32 nfsd_read(struct svc_rqst *rqstp, struct svc_fh *fhp,
- 	loff_t offset, struct kvec *vec, int vlen, unsigned long *count)
- {
- 	struct file *file;
-@@ -1101,13 +1106,9 @@ static __be32 nfsd_open_read(struct svc_rqst *rqstp, struct svc_fh *fhp,
- 	return err;
- }
- 
--/*
-- * Read data from a file. count must contain the requested read count
-- * on entry. On return, *count contains the number of bytes actually read.
-- * N.B. After this call fhp needs an fh_put
-- */
-+/* As above, but use the provided file descriptor. */
- __be32
--nfsd_read(struct svc_rqst *rqstp, struct svc_fh *fhp, struct file *file,
-+nfsd_read_file(struct svc_rqst *rqstp, struct svc_fh *fhp, struct file *file,
- 		loff_t offset, struct kvec *vec, int vlen,
- 		unsigned long *count)
- {
-@@ -1119,8 +1120,8 @@ nfsd_read(struct svc_rqst *rqstp, struct svc_fh *fhp, struct file *file,
- 		if (err)
- 			goto out;
- 		err = nfsd_vfs_read(rqstp, fhp, file, offset, vec, vlen, count);
--	} else
--		err = nfsd_open_read(rqstp, fhp, offset, vec, vlen, count);
-+	} else /* Note file may still be NULL in NFSv4 special stateid case: */
-+		err = nfsd_read(rqstp, fhp, offset, vec, vlen, count);
- out:
- 	return err;
- }
-diff --git a/fs/nfsd/vfs.h b/fs/nfsd/vfs.h
-index 217a62c..9a370a5 100644
---- a/fs/nfsd/vfs.h
-+++ b/fs/nfsd/vfs.h
-@@ -64,7 +64,9 @@ __be32		nfsd_commit(struct svc_rqst *, struct svc_fh *,
- __be32		nfsd_open(struct svc_rqst *, struct svc_fh *, int,
- 				int, struct file **);
- void		nfsd_close(struct file *);
--__be32 		nfsd_read(struct svc_rqst *, struct svc_fh *, struct file *,
-+__be32 		nfsd_read(struct svc_rqst *, struct svc_fh *,
-+				loff_t, struct kvec *, int, unsigned long *);
-+__be32 		nfsd_read_file(struct svc_rqst *, struct svc_fh *, struct file *,
- 				loff_t, struct kvec *, int, unsigned long *);
- __be32 		nfsd_write(struct svc_rqst *, struct svc_fh *,struct file *,
- 				loff_t, struct kvec *,int, unsigned long *, int *);
+(Solaris exhibits the very same kind of behavior.)
