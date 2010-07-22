@@ -1,78 +1,65 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:51127 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932278Ab0G3Sss (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 30 Jul 2010 14:48:48 -0400
-Date: Fri, 30 Jul 2010 14:47:38 -0400
-To: =?utf-8?B?Si5BLiBNYWdhbGzDs24=?= <jamagallon@ono.com>
-Cc: Linux Kernel <linux-kernel@vger.kernel.org>, linux-nfs@vger.kernel.org
-Subject: Re: Questions and problems with NFS4
-Message-ID: <20100730184738.GF21729@fieldses.org>
-References: <20100728004611.00c46b13@werewolf.home>
- <4C507208.6030309@oracle.com>
- <20100730021837.65549fa7@werewolf.home>
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <20100730021837.65549fa7@werewolf.home>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+Received: from mail-yx0-f174.google.com ([209.85.213.174]:54970 "EHLO
+	mail-yx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756634Ab0GVSpJ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 22 Jul 2010 14:45:09 -0400
+In-Reply-To: <4C488C41.60002@panasas.com>
+References: <alpine.LSU.2.01.1007221228260.6115@obet.zrqbmnf.qr>
+	<20100715021709.5544.64506.stgit@warthog.procyon.org.uk>
+	<20100715021712.5544.44845.stgit@warthog.procyon.org.uk>
+	<30448.1279800887@redhat.com>
+	<E1Obuiy-00C9jr-Al@intern.SerNet.DE>
+	<AANLkTikBCXK6uEwWq4f0LvpdoKCPs3jvyFa4Zw4e2J_7@mail.gmail.com>
+	<E1Obxpd-00CRIo-SF@intern.SerNet.DE>
+	<AANLkTimwIq0pBhCeOjOVjB0yeM3JHOvzVoj9M4ui6al9@mail.gmail.com>
+	<20100722162712.GB10352@jeremy-laptop>
+	<AANLkTimdFCGSKLn7aGMpBMIauHTsHY7hpAAmpo6uTcnD@mail.gmail.com>
+	<alpine.LSU.2.01.1007221859180.27496@obet.zrqbmnf.qr>
+	<AANLkTilmVdyVdO4EmVtTYi_cvMmPqNEPEnzUkJdk1XyR@mail.gmail.com>
+	<4C488C41.60002@panasas.com>
+Date: Thu, 22 Jul 2010 14:45:07 -0400
+Message-ID: <AANLkTilU5QLBzOgwpmYRP5aZglOMta2iMCaNk62tiUIB@mail.gmail.com>
+Subject: Re: [PATCH 02/18] xstat: Add a pair of system calls to make extended
+	file stats available [ver #6]
+From: Greg Freemyer <greg.freemyer@gmail.com>
+To: Benny Halevy <bhalevy@panasas.com>
+Cc: Linus Torvalds <torvalds@linux-foundation.org>,
+        Jan Engelhardt <jengelh@medozas.de>, Jeremy Allison <jra@samba.org>,
+        Volker.Lendecke@sernet.de, David Howells <dhowells@redhat.com>,
+        linux-cifs@vger.kernel.org, linux-nfs@vger.kernel.org,
+        samba-technical@lists.samba.org, linux-kernel@vger.kernel.org,
+        viro@zeniv.linux.org.uk, linux-fsdevel@vger.kernel.org,
+        linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Fri, Jul 30, 2010 at 02:18:37AM +0200, J.A. Magallón wrote:
-> First of all, plz correct me if this is in some kind of wiki, web page or
-> the like, but I have not been able to find it. All this things should be
-> on a document somewhere, perhaps even in the kernel itself...
+On Thu, Jul 22, 2010 at 2:21 PM, Benny Halevy <bhalevy@panasas.com> wrote:
+> On Jul. 22, 2010, 20:24 +0300, Linus Torvalds <torvalds@linux-foundation.org> wrote:
+>> On Thu, Jul 22, 2010 at 10:03 AM, Jan Engelhardt <jengelh@medozas.de> wrote:
+>>>
+>>> I beg to differ. ctime is not completely useless. It reflects changes on
+>>> the inode for when you don't you change the content.
+>>
+>> Uh. Yes. Except that why is file metadata really different from file
+>> data? Most people really don't care. And a lot of people have asked
+>> for creation dates - and I seriously doubt that Windows people
+>> complain a lot about the fact that there you have mtime for metadata
+>> changes too.
+>>
+>> The point being that Unix ctime semantics certainly have well-defined
+>> semantics, but they are in no way "better" than having a real creation
+>> time, and are often worse.
+>
+> Yeah, having create time would be important.
+> That said, having a non user-settable modify timestamp is crucial
+> for quickly determining whether a file has changed.
 
-Agreed.
+How would "cp --archive" and a host of backup/restore tools work
+without user-settable modify timestamps?
 
-> These are the things I have found out (thanks to your answers...).
-> I'm a long time unix admin, not new to NFS, but all this things were not
-> obvious to me, so perhaps they deserve to be in a document, something like
-> "NFS 3 to 4 migration for dummy admins":
-> 
-> - Everything just works if you mount shares as nfs4. Even, if you have a
->   bunch of linux boxen with recent kernel/nfs-utils, probably you are
->   already doing nfs4... modern mount tries nfs4 first.
-> 
-> - Using nfsroot with fsid=0 is not mandatory, nor bind-mounting everything
->   under some /export (like many documents say), that only forces you to
+Or are you proposing another timestamp?  I do computer forensics, I
+like timestamps, but enough is enough.
 
-We should update that documentation.
-
->   use the old way of specifying paths in the server (absolute, not
->   relative to /export).
-> 
-> - Even if you use nfsroot(fsid=0), and you mount it on the client
->   at /somepoint, you are not forced to mount everything else under
->   /somepoint (plz, correct me if I'm wrong).
-> 
-> - You can strip your server for NFS4, but not too much... Old daemons
->   are still needed locally. For example, you can get rid of NFS2 and
->   UDP for nfsd (-N 2 -U, -any os still uses NFS2??-), and old
->   mount protocols (-N 1 -N 2 for mountd)...
-> 
-> - ... but they can be firewalled, use is just local
-> 
-> - portmap/rpcbind is not needed, but still used because nfsd is not
->   yet proper clean for only-nfs4-behavior.
-> 
-> There are also some things I have not been able to discover, like
-> using the interesting things of NFS4:
-> 
-> - How do you activate delegations ? Is this an automatic thing, or
->   do I have to add any option somewhere ?
-
-It's automatic.  You can turn them off on the server side with
-/proc/sys/fs/leases-enable.  They'll be turned off automatically if the
-server can't open a tcp connection back to the client (for example, if
-the client is behind a NAT).
-
-> - How do you use cache ? Many docs talk about fsc option, but man
->   does not mention it (nfs-utils 1.2.2).
->   I have tried to use cachefiles module, and cachefilesd, but
->   when I try to run it, I get:
-
-I haven't used that.  I don't believe there's anything NFSv4-specific
-about it.
-
---b.
+Greg
