@@ -1,124 +1,145 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:13290 "EHLO mx1.redhat.com"
+Received: from fn.samba.org ([216.83.154.106]:42940 "EHLO lists.samba.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S936320Ab0GSQPp convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 19 Jul 2010 12:15:45 -0400
-From: David Howells <dhowells@redhat.com>
-In-Reply-To: <AANLkTikuzYqYpGHcubb7QVciZW0dNFjOG82qIwy5M4gO@mail.gmail.com>
-References: <AANLkTikuzYqYpGHcubb7QVciZW0dNFjOG82qIwy5M4gO@mail.gmail.com> <20100715021709.5544.64506.stgit@warthog.procyon.org.uk> <20100715021712.5544.44845.stgit@warthog.procyon.org.uk>
+	id S1752240Ab0GWBD7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 22 Jul 2010 21:03:59 -0400
+Content-Type: text/plain; charset=us-ascii
+Message-ID: <19528.60019.28495.655512@samba.org>
+Date: Fri, 23 Jul 2010 11:03:47 +1000
 To: Linus Torvalds <torvalds@linux-foundation.org>
-Cc: dhowells@redhat.com, viro@zeniv.linux.org.uk,
-        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-cifs@vger.kernel.org, linux-kernel@vger.kernel.org,
-        samba-technical@lists.samba.org, linux-ext4@vger.kernel.org
-Subject: Re: [PATCH 02/18] xstat: Add a pair of system calls to make extended file stats available [ver #6]
-Content-Type: text/plain; charset=iso-8859-1
-Date: Mon, 19 Jul 2010 17:15:32 +0100
-Message-ID: <10783.1279556132@redhat.com>
+Cc: Jeremy Allison <jra@samba.org>, linux-cifs@vger.kernel.org,
+        linux-nfs@vger.kernel.org, Volker.Lendecke@sernet.de,
+        samba-technical@lists.samba.org, linux-kernel@vger.kernel.org,
+        Jan Engelhardt <jengelh@medozas.de>,
+        David Howells <dhowells@redhat.com>, viro@zeniv.linux.org.uk,
+        linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
+Subject: Re: [PATCH 02/18] xstat: Add a pair of system calls to make extended
+	file stats available [ver #6]
+In-Reply-To: <AANLkTimdFCGSKLn7aGMpBMIauHTsHY7hpAAmpo6uTcnD@mail.gmail.com>
+References: <alpine.LSU.2.01.1007221228260.6115@obet.zrqbmnf.qr>
+	<20100715021709.5544.64506.stgit@warthog.procyon.org.uk>
+	<20100715021712.5544.44845.stgit@warthog.procyon.org.uk>
+	<30448.1279800887@redhat.com>
+	<E1Obuiy-00C9jr-Al@intern.SerNet.DE>
+	<AANLkTikBCXK6uEwWq4f0LvpdoKCPs3jvyFa4Zw4e2J_7@mail.gmail.com>
+	<E1Obxpd-00CRIo-SF@intern.SerNet.DE>
+	<AANLkTimwIq0pBhCeOjOVjB0yeM3JHOvzVoj9M4ui6al9@mail.gmail.com>
+	<20100722162712.GB10352@jeremy-laptop>
+	<AANLkTimdFCGSKLn7aGMpBMIauHTsHY7hpAAmpo6uTcnD@mail.gmail.com>
+Reply-To: tridge@samba.org
+From: tridge@samba.org
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Linus Torvalds <torvalds@linux-foundation.org> wrote:
+Hi Linus,
 
->  - that whole xstat buffer handling is just a mess. I think you
-> already fixed the "xstat_parameters" crud and just made it a simple
-> unsigned long and a direct argument,
+ > My point is that we have three timestamps, and
+ > windows wants three timestamps (somebody claims that NTFS has four
+ > timestamps, but the Windows file time access functions certainly only
+ > shows three times, so any potential extra on-disk times have no
+ > relevance because they are invisible to pretty much everybody).
 
-I was thinking more of an unsigned int argument, since it can't have more than
-32 flags in it if it is also to work on 32-bit arches.
+Not quite. The underlying structure available to Windows programmers
+is this one:
 
-> but the "buffer+buflen" thing is still disgusting.
->
->    Why not just leave a few empty fields at the end, and make the rule
-> be: "We don't just add random crap, so don't expect it to grow widely
-> in the future".
+typedef struct _FILE_BASIC_INFORMATION {
+  LARGE_INTEGER CreationTime;
+  LARGE_INTEGER LastAccessTime;
+  LARGE_INTEGER LastWriteTime;
+  LARGE_INTEGER ChangeTime;
+  ULONG         FileAttributes;
+} FILE_BASIC_INFORMATION, *PFILE_BASIC_INFORMATION;
 
-Because it gets allocated on the kernel stack.  It's already 160 bytes, and
-expanding it will eat more kernel stack space.  Now, I can offset that by: (a)
-embedding it in struct kstat so that we allocate less stack space in xstat()
-overall, and (b) allocating kstat/xstat structs with kmalloc() rather than on
-the stack in all the stat syscalls.
+See http://msdn.microsoft.com/en-us/library/ff545762%28v=VS.85%29.aspx
 
->  - you use "long long" all over the place. Don't do that. If you want
-> a fixed size, say so, and use "u64/s64". That's the _real_ fixed size,
-> and "long long" just _happens_ to be the same size on all current
-> architectures.
+These are the definitions:
 
-I was following struct stat/stat64 in arch/x86/include/asm/stat.h which do the
-same.  Also, if this is going to be seen by userspace, isn't it better to use
-uint32_t and suchlike?
+CreationTime
+    Specifies the time that the file was created. 
+LastAccessTime
+    Specifies the time that the file was last accessed. 
+LastWriteTime
+    Specifies the time that the file was last written to. 
+ChangeTime
+    Specifies the last time the file was changed. 
 
->  - why create that new kind of xstat() that realistically absolutely
-> nobody will use outside of some very special cases, and that has no
-> real advantages for 99.9% of all people?
+You are right that the more commonly used APIs (such as
+GetFileInformationByHandle()) omit the ChangeTime field in the return
+value. The ChangeTime is also not visible via the normal Windows GUI
+or command line tools.
 
-The new information is useful for some cases.  Samba for example.  At least
-two of the fields I'm adding are also made available through BSD's stat()
-call, and will automatically be used for some things by autoconf magic if they
-become available.
+But there are APIs that are used by quite a few programs that do get
+all 4 timestamps. For example, GetFileInformationByHandleEx() returns
+all 4 fields. I include an example program that uses that API to show
+all the timestamps below.
 
-I'm still trying to get a handle on what people think will be truly useful.  I
-can see things *could* be useful, particularly to GUI file managers and ls,
-but not everyone is of the same opinion.
+and yes, we think that real applications (such as Excel), look at
+these values separately.
 
-Perhaps you or others can offer answers to the following questions as these
-might help:
+The other big difference from POSIX timestamps is that the
+CreationTime is settable on Windows, and some of the windows UI
+behaviour relies on this.
 
- (1) Should I offer information that's effectively free to come by, but could
-     be got through:
+Cheers, Tridge
 
-     (a) An extra statfs() call - such as whether a file is remote, whether
-     	 it's some kernel special file?  Or what the volume label is for this
-     	 file?
+PS: Sorry for coming into this discussion so late
 
-     (b) An extra getxattr() call - such as a file's security label.
 
-     (c) An extra ioctl() call - such as FS_IOC_GETFLAGS.
+/* 
+   show all 4 file times
+   tridge@samba.org, July 2010
+*/
 
- (2) Should I offer information that's appropriate to non-UNIX filesystems
-     such as FAT, NTFS or CIFS.  Some of this may map onto other fields, such
-     as FS_IOC_GETFLAGS.
+#define _WIN32_WINNT 0x0600
 
- (3) Should I offer information about which results that I've returned are
-     actually useful, as opposed to being fabricated on the spot?  Such as
-     UID/GID in FAT or blocks in UBIFS.  This may be of use to df or a GUI.
-     For instance, a GUI, seeing that UID/GID aren't useful, could ask the
-     filesystem to provide information about what it considers to be valid
-     ownership information.
+#include <stdio.h>
+#include <stdlib.h>
+#include "windows.h"
+#include "winbase.h"
 
->    You could make it a "atomic stat+open" by replacing the useless
-> "size" return value with a "fd" return value, add a flag saying "we're
-> also interested in opening it" (in the same result set flags), and
-> instead of that stupid "buflen" input, give the "mode" input that open
-> needs.
 
-Which would be used by even fewer people, I suspect.  However, it's certainly
-an interesting idea.  I suspect it doesn't gain much over open()+fstat()
-though, given that you'd still have to do most of the work of fstat() after
-doing the open() thing anyway.
+static void FileTime(const char *fname)
+{
+	HANDLE h;
+	FILE_BASIC_INFO info;
+	BOOL ret;
 
-Also, I'm not sure how much use the atomicity is, given that the file may have
-changed state between the gathering of the stat data and userspace getting to
-do anything with it.
+        h = CreateFile(
+                fname, GENERIC_READ, 
+                FILE_SHARE_READ,
+                NULL,           
+                OPEN_EXISTING,  
+                0,
+                NULL
+        );
+	if (h == INVALID_HANDLE_VALUE) {
+		printf("Unable to open %s\n", fname);
+		exit(1);
+	}
 
-> >        ssize_t ret = fxstat(unsigned fd,
-> 
-> Quite frankly, my gut feel is that once you do "xstat(dfd, filename,
-> ...)" then it's damn stupid to do a separate "fxstat()", when you
-> might as well say that "xtstat(dfd, NULL, ...)" is the same as
-> "fxstat(fd, ...)"
+	ret = GetFileInformationByHandleEx(h, FileBasicInfo, &info, sizeof(info));
 
-This has been suggested and denounced as stupid already.  That said, I agree
-with you.
+	if (!ret) {
+		printf("Unable to get file information\n");
+		exit(1);
+	}
 
-> Now, the difference between adding one or two system calls may not be
-> huge, but just from a cleanliness angle, I really don't see the point
-> of having another fstat variant when the extended xstat() already very
-> naturally supports the thing. And let's face it, using a NULL path
-> pointer just makes sense if you don't have a path. You already passed
-> it a target file descriptor in the dfd.
+	printf("CreationTime:   %llu\n", (unsigned long long)info.CreationTime.QuadPart);
+	printf("LastAccessTime: %llu\n", (unsigned long long)info.LastAccessTime.QuadPart);
+	printf("LastWriteTime:  %llu\n", (unsigned long long)info.LastWriteTime.QuadPart);
+	printf("ChangeTime:     %llu\n", (unsigned long long)info.ChangeTime.QuadPart);
 
-Agreed.
+	CloseHandle(h);
+}
 
-David
+int main(int argc, char* argv[])
+{
+	if (argc < 2) {
+		printf("Usage: filetime FILENAME\n");
+		exit(1);
+	}
+
+	FileTime(argv[1]);
+	return 0;
+}
