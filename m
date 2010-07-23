@@ -1,32 +1,40 @@
-From: Wu Fengguang <fengguang.wu@intel.com>
-Subject: Re: NFS commit: sync or async?
-Date: Fri, 23 Jul 2010 08:47:56 +0800
-Message-ID: <20100723004756.GB5246@localhost>
-References: <20100722073623.GA24462@localhost>
- <1279802335.3621.8.camel@heimdal.trondhjem.org>
+From: Tom H <tom-6kxvdouIZplzjhtm8Ag3mw@public.gmane.org>
+Subject: Jul 22 23:53:35 serverNameNX: svc: unknown version (0 for prog 100003
+ nfsd)
+Date: Fri, 23 Jul 2010 10:15:38 +0100
+Message-ID: <4C495DBA.6090600@limepepper.co.uk>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mga11.intel.com ([192.55.52.93]:11674 "EHLO mga11.intel.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755808Ab0GWAr6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 22 Jul 2010 20:47:58 -0400
-In-Reply-To: <1279802335.3621.8.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
+Received: from honeysuckle.london.02.net ([87.194.255.144]:60446 "EHLO
+	honeysuckle.london.02.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752748Ab0GWJPp (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 23 Jul 2010 05:15:45 -0400
+Received: from [192.168.1.64] (87.194.12.203) by honeysuckle.london.02.net (8.5.124.03)
+        id 4C1F9BC2012922FA for linux-nfs@vger.kernel.org; Fri, 23 Jul 2010 10:15:44 +0100
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-> Hi Fengguang,
-> 
-> Are you sure this trace is from a recent kernel? In all kernels prior to
-> 2.6.34-rc3, COMMIT was a synchronous RPC call, which would explain the
-> above trace.
 
-My god. I was running 2.6.34-rc1 and reading 2.6.35-rc4 code ..
+Hi,
 
-Sorry for the noise!
+Since last week my syslog is full of these messages;
 
-Thanks,
-Fengguang
+
+  Jul 22 23:53:35 serverNameNX: svc: unknown version (0 for prog 100003
+  nfsd)
+ 
+<http://serverfault.com/questions/163306/jul-22-235335-servernamexxx-svc-unknown-version-0-for-prog-100003-nfsd>
+
+
+I think it is since we started to monitor for rpcinfo -p serverNameNX
+remotely.
+
+Any suggestions on what I can do to either understand or suppress this
+alert?
+
+Thanks
+
+Tom
 
