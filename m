@@ -1,395 +1,326 @@
-Return-Path: <nfsv4-bounces@ietf.org>
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: david.black@emc.com
-In-Reply-To: <1278543175.15524.2.camel@heimdal.trondhjem.org>
-References: <A062FCC8662DA848949F7C3046B9BEAE01F3A6ED@us-email.terastack.bluearc.com>
-	<A062FCC8662DA848949F7C3046B9BEAE01F3A6EE@us-email.terastack.bluearc.com>
-	<6206CE0E-0A32-46A7-B648-3FCC12ED1961@netapp.com>
-	<B9A709F368FAAF4DB4B33870F72A141DFB88F3@CORPUSMX30A.corp.emc.com>
-	<0E2B1FE3-3B42-4BF2-BECE-A611DADF3983@netapp.com>
-	<B9A709F368FAAF4DB4B33870F72A141D01017F94@CORPUSMX30A.corp.emc.com>
-	<1278448834.16176.5.camel@heimdal.trondhjem.org>
-	<4C346D80.8010405@panasas.com>
-	<1278507985.2804.30.camel@heimdal.trondhjem.org>
-	<1278508696.2804.35.camel@heimdal.trondhjem.org>
-	<4C348679.6010507@panasas.com>
-	<1278511416.2804.52.camel@heimdal.trondhjem.org>
-	<B9A709F368FAAF4DB4B33870F72A141D0106B6B0@CORPUSMX30A.corp.emc.com>
-	<1278536484.12889.4.camel@heimdal.trondhjem.org>
-	<BF3BB6D12298F54B89C8DCC1E4073D8001ADDDA5@CORPUSMX50A.corp.emc.com>
-	<C2D311A6F086424F99E385949ECFEBCB030F2A80@CORPUSMX80B.corp.emc.com>
-	<1278543175.15524.2.camel@heimdal.trondhjem.org>
-Date: Wed, 07 Jul 2010 19:09:09 -0400
-Message-ID: <1278544149.15524.15.camel@heimdal.trondhjem.org>
-Cc: linux-nfs@vger.kernel.org, garth@panasas.com, welch@panasas.com,
-        nfsv4@ietf.org, andros@netapp.com, bhalevy@panasas.com
-Subject: Re: [nfsv4] 4.1 client - LAYOUTCOMMIT & close
-List-Unsubscribe: <https://www.ietf.org/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@ietf.org?subject=unsubscribe>
-List-Archive: <http://www.ietf.org/mail-archive/web/nfsv4>
-List-Post: <mailto:nfsv4@ietf.org>
-List-Help: <mailto:nfsv4-request@ietf.org?subject=help>
-List-Subscribe: <https://www.ietf.org/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@ietf.org?subject=subscribe>
-Content-Type: text/plain; charset="us-ascii"
-Sender: nfsv4-bounces@ietf.org
-Errors-To: nfsv4-bounces@ietf.org
-MIME-Version: 1.0
+Return-Path: <linux-nfs-owner@vger.kernel.org>
+Received: from out1.smtp.messagingengine.com ([66.111.4.25]:59685 "EHLO
+	out1.smtp.messagingengine.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1750720Ab0GXELM (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 24 Jul 2010 00:11:12 -0400
+Subject: Re: [PATCH 1/6] Add a dentry op to handle automounting rather than
+ abusing follow_link() [ver #2]
+From: Ian Kent <raven@themaw.net>
+To: David Howells <dhowells@redhat.com>
+Cc: viro@ZenIV.linux.org.uk, linux-fsdevel@vger.kernel.org,
+        linux-afs@lists.infradead.org, linux-nfs@vger.kernel.org,
+        linux-cifs@vger.kernel.org, linux-kernel@vger.kernel.org
+In-Reply-To: <17723.1279897759@redhat.com>
+References: <20100722175847.5552.11520.stgit@warthog.procyon.org.uk>
+	 <17723.1279897759@redhat.com>
+Content-Type: text/plain; charset="UTF-8"
+Date: Sat, 24 Jul 2010 12:11:04 +0800
+Message-ID: <1279944664.2944.8.camel@localhost>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+MIME-Version: 1.0
 
-On Wed, 2010-07-07 at 18:52 -0400, Trond Myklebust wrote:
-> On Wed, 2010-07-07 at 18:44 -0400, david.black@emc.com wrote:
-> > Let me try this ...
-> > 
-> > A correct client will always send LAYOUTCOMMIT.
-> > Assume that the client is correct.
-> > Hence if the LAYOUTCOMMIT doesn't arrive, something's failed.
-> > 
-> > Important implication: No LAYOUTCOMMIT is an error/failure case.  It
-> > just has to work; it doesn't have to be fast.
-> > 
-> > Suggestion: If a client dies while holding writeable layouts that permit
-> > write-in-place, and the client doesn't reappear or doesn't reclaim those
-> > layouts, then the server should assume that the files involved were
-> > written before the client died, and set the file attributes accordingly
-> > as part of internally reclaiming the layout that the client has
-> > abandoned.
-> > 
-> > Caveat: It may take a while for the server to determine that the client
-> > has abandoned a layout.
-> > 
-> > This can result in false positives (file appears to be modified when it
-> > wasn't) but won't yield false negatives (file does not appear to be
-> > modified even though it was modified).
+On Fri, 2010-07-23 at 16:09 +0100, David Howells wrote:
+> Here's an updated patch that:
 > 
-> OK... So we're going to have to turn off client side file caching
-> entirely for pNFS? I can do that...
+>  (1) Fixes a bug in error handling (needs to use path_put_conditional not
+>      path_put).
 > 
-> The above won't work. Think readahead...
+>  (2) Absorbs autofs4's decisions about whether to automount or not.  This
+>      means that colour-ls won't cause automounts unless -L is supplied or it
+>      doesn't get a DT_DIR flag from getdents().  It also means that autofs4
+>      can dispense with this logic should it choose to use d_automount().
 
-So... What can work, is if you modify it to work explicitly for
-close-to-open
+I think my statements about this were a little incorrect.
 
-"Upon receiving an OPEN, LOCK or a WANT_DELEGATION, the server must
-check that it has received LAYOUTCOMMITs from any other clients that may
-have the file open for writing. If it hasn't, then it MUST take some
-action to ensure that any file data changes are accompanied by a change
-attribute update."
+In the current kernel the check isn't imposed for ->lookup() but only
+->d_revalidate() (the deosn't already exist vs the already exists
+cases). Since ->d_lookup() (currently) leaves the dentry negative until
+->mkdir() that could be used in the check. But then this may be starting
+to get a little too autofs specific, maybe we should re-consider passing
+the flags, I don't know.
 
-Then you can add the above suggestion without the offending caveat. Note
-however that it does break the "SHOULD NOT" admonition in section
-18.32.4.
+In any case I'll have a go at using this as is, and see what happens.
 
-Trond
-
-
-> Trond
 > 
-> > Thanks,
-> > --David
-> > 
-> > > -----Original Message-----
-> > > From: nfsv4-bounces@ietf.org [mailto:nfsv4-bounces@ietf.org] On Behalf
-> > Of Noveck_David@emc.com
-> > > Sent: Wednesday, July 07, 2010 6:04 PM
-> > > To: Trond.Myklebust@netapp.com; Muntz, Daniel
-> > > Cc: linux-nfs@vger.kernel.org; garth@panasas.com; welch@panasas.com;
-> > nfsv4@ietf.org;
-> > > andros@netapp.com; bhalevy@panasas.com
-> > > Subject: Re: [nfsv4] 4.1 client - LAYOUTCOMMIT & close
-> > > 
-> > > > Yes. I would agree that the client cannot rely on the updates being
-> > made
-> > > > visible if it fails to send the LAYOUTCOMMIT. My point was simply
-> > that a
-> > > > compliant server MUST also have a valid strategy for dealing with
-> > the
-> > > > case where the client doesn't send it.
-> > > 
-> > > So you are saying the updates "MUST be made visible" through the
-> > > server's valid strategy.  Is that right.
-> > > 
-> > > And that the client cannot rely on that.  Why not, if the server must
-> > > have a valid strategy.
-> > > 
-> > > Is this just prudent "belt and suspenders" design or what?
-> > > 
-> > > It seems to me that if one side here is MUST (and the spec needs to be
-> > > clearer about what might or might not constitute a valid strategy),
-> > then
-> > > the other side should be SHOULD.
-> > > 
-> > > If both sides are "MUST", then if things don't work out then the
-> > client
-> > > and server can equally point to one another and say "It's his fault".
-> > > 
-> > > Am I missing something here?
-> > > 
-> > > 
-> > > 
-> > > -----Original Message-----
-> > > From: nfsv4-bounces@ietf.org [mailto:nfsv4-bounces@ietf.org] On Behalf
-> > > Of Trond Myklebust
-> > > Sent: Wednesday, July 07, 2010 5:01 PM
-> > > To: Muntz, Daniel
-> > > Cc: linux-nfs@vger.kernel.org; garth@panasas.com; welch@panasas.com;
-> > > nfsv4@ietf.org; andros@netapp.com; bhalevy@panasas.com
-> > > Subject: Re: [nfsv4] 4.1 client - LAYOUTCOMMIT & close
-> > > 
-> > > On Wed, 2010-07-07 at 16:39 -0400, Daniel.Muntz@emc.com wrote:
-> > > > To bring this discussion full circle, since we agree that a
-> > compliant
-> > > > server can implement a scheme where written data does not become
-> > > visible
-> > > > until after a LAYOUTCOMMIT, do we also agree that LAYOUTCOMMIT is a
-> > > > "MUST" from a compliant client (independent of layout type)?
-> > > 
-> > > Yes. I would agree that the client cannot rely on the updates being
-> > made
-> > > visible if it fails to send the LAYOUTCOMMIT. My point was simply that
-> > a
-> > > compliant server MUST also have a valid strategy for dealing with the
-> > > case where the client doesn't send it.
-> > > 
-> > > Cheers
-> > >   Trond
-> > > 
-> > > >   -Dan
-> > > >
-> > > > > -----Original Message-----
-> > > > > From: nfsv4-bounces@ietf.org [mailto:nfsv4-bounces@ietf.org]
-> > > > > On Behalf Of Trond Myklebust
-> > > > > Sent: Wednesday, July 07, 2010 7:04 AM
-> > > > > To: Benny Halevy
-> > > > > Cc: andros@netapp.com; linux-nfs@vger.kernel.org; Garth
-> > > > > Gibson; Brent Welch; NFSv4
-> > > > > Subject: Re: [nfsv4] 4.1 client - LAYOUTCOMMIT & close
-> > > > >
-> > > > > On Wed, 2010-07-07 at 16:51 +0300, Benny Halevy wrote:
-> > > > > > On Jul. 07, 2010, 16:18 +0300, Trond Myklebust
-> > > > > <Trond.Myklebust@netapp.com> wrote:
-> > > > > > > On Wed, 2010-07-07 at 09:06 -0400, Trond Myklebust wrote:
-> > > > > > >> On Wed, 2010-07-07 at 15:05 +0300, Benny Halevy wrote:
-> > > > > > >>> On Jul. 06, 2010, 23:40 +0300, Trond Myklebust
-> > > > > <trond.myklebust@fys.uio.no> wrote:
-> > > > > > >>>> On Tue, 2010-07-06 at 15:20 -0400, Daniel.Muntz@emc.com
-> > > wrote:
-> > > > > > >>>>> The COMMIT to the DS, ttbomk, commits data on the DS. I
-> > see it as
-> > > > > > >>>>> orthogonal to updating the metadata on the MDS (but
-> > perhaps I'm wrong).
-> > > > > > >>>>> As sjoshi@bluearc mentioned, the LAYOUTCOMMIT provides a
-> > synchronization
-> > > > > > >>>>> point, so even if the non-clustered server does not want
-> > to update
-> > > > > > >>>>> metadata on every DS I/O, the LAYOUTCOMMIT could also be a
-> > trigger to
-> > > > > > >>>>> execute whatever synchronization mechanism the implementer
-> > wishes to put
-> > > > > > >>>>> in the control protocol.
-> > > > > > >>>>
-> > > > > > >>>> As far as I'm aware, there are no exceptions in RFC5661
-> > that would allow
-> > > > > > >>>> pNFS servers to break the rule that any visible change to
-> > the data must
-> > > > > > >>>> be atomically accompanied with a change attribute update.
-> > > > > > >>>>
-> > > > > > >>>
-> > > > > > >>> Trond, I'm not sure how this rule you mentioned is
-> > specified.
-> > > > > > >>>
-> > > > > > >>> See more in section 12.5.4 and 12.5.4.1. LAYOUTCOMMIT and
-> > change/time_modify
-> > > > > > >>> in particular:
-> > > > > > >>>
-> > > > > > >>>    For some layout protocols, the storage device is able to
-> > notify the
-> > > > > > >>>    metadata server of the occurrence of an I/O; as a result,
-> > the change
-> > > > > > >>>    and time_modify attributes may be updated at the metadata
-> > server.
-> > > > > > >>>    For a metadata server that is capable of monitoring
-> > updates to the
-> > > > > > >>>    change and time_modify attributes, LAYOUTCOMMIT
-> > processing is not
-> > > > > > >>>    required to update the change attribute.  In this case,
-> > the metadata
-> > > > > > >>>    server must ensure that no further update to the data has
-> > occurred
-> > > > > > >>>    since the last update of the attributes; file-based
-> > protocols may
-> > > > > > >>>    have enough information to make this determination or may
-> > update the
-> > > > > > >>>    change attribute upon each file modification.  This also
-> > applies for
-> > > > > > >>>    the time_modify attribute.  If the server implementation
-> > is able to
-> > > > > > >>>    determine that the file has not been modified since the
-> > last
-> > > > > > >>>    time_modify update, the server need not update
-> > time_modify at
-> > > > > > >>>    LAYOUTCOMMIT.  At LAYOUTCOMMIT completion, the updated
-> > attributes
-> > > > > > >>>    should be visible if that file was modified since the
-> > latest previous
-> > > > > > >>>    LAYOUTCOMMIT or LAYOUTGET
-> > > > > > >>
-> > > > > > >> I know. However the above paragraph does not state that the
-> > server
-> > > > > > >> should make those changes visible to clients other than the
-> > one that is
-> > > > > > >> writing.
-> > > > > > >>
-> > > > > > >> Section 18.32.4 states that writes will cause the
-> > time_modified and
-> > > > > > >> change attributes to be updated (if and only if the file data
-> > is
-> > > > > > >> modified). Several other sections rely on this behaviour,
-> > including
-> > > > > > >> section 10.3.1, section 11.7.2.2, and section 11.7.7.
-> > > > > > >>
-> > > > > > >> The only 'special behaviour' that I see allowed for pNFS is
-> > in section
-> > > > > > >> 13.10, which states that clients can't expect to see changes
-> > > > > > >> immediately, but that they must be able to expect
-> > close-to-open
-> > > > > > >> semantics to work. Again, if this is to be the case, then the
-> > server
-> > > > > > >> _must_ be able to deal with the case where client 1 dies
-> > before it can
-> > > > > > >> issue the LAYOUTCOMMIT.
-> > > > > >
-> > > > > > Agreed.
-> > > > > >
-> > > > > > >>
-> > > > > > >>
-> > > > > > >>>> As I see it, if your server allows one client to read data
-> > that may have
-> > > > > > >>>> been modified by another client that holds a WRITE layout
-> > for that range
-> > > > > > >>>> then (since that is a visible data change) it should
-> > provide a change
-> > > > > > >>>> attribute update irrespective of whether or not a
-> > LAYOUTCOMMIT has been
-> > > > > > >>>> sent.
-> > > > > > >>>
-> > > > > > >>> the requirement for the server in WRITE's implementation
-> > section
-> > > > > > >>> is quite weak: "It is assumed that the act of writing data
-> > to a file will
-> > > > > > >>> cause the time_modified and change attributes of the file to
-> > be updated."
-> > > > > > >>>
-> > > > > > >>> The difference here is that for pNFS the written data is not
-> > guaranteed
-> > > > > > >>> to be visible until LAYOUTCOMMIT.  In a broader sense,
-> > assuming the clients
-> > > > > > >>> are caching dirty data and use a write-behind cache,
-> > application-written data
-> > > > > > >>> may be visible to other processes on the same host but not
-> > to others until
-> > > > > > >>> fsync() or close() - open-to-close semantics are the only
-> > thing the client
-> > > > > > >>> guarantees, right?  Issuing LAYOUTCOMMIT on fsync() and
-> > close() ensure the
-> > > > > > >>> data is committed to stable storage and is visible to all
-> > other clients in
-> > > > > > >>> the cluster.
-> > > > > > >>
-> > > > > > >> See above. I'm not disputing your statement that 'the written
-> > data is
-> > > > > > >> not guaranteed to be visible until LAYOUTCOMMIT'. I am
-> > disputing an
-> > > > > > >> assumption that 'the written data may be visible without an
-> > accompanying
-> > > > > > >> change attribute update'.
-> > > > > > >
-> > > > > > >
-> > > > > > > In other words, I'd expect the following scenario to give the
-> > same
-> > > > > > > results in NFSv4.1 w/pNFS as it does in NFSv4:
-> > > > > >
-> > > > > > That's a strong requirement that may limit the scalability of
-> > the server.
-> > > > > >
-> > > > > > The spirit of the pNFS operations, at least from Panasas
-> > perspective was that
-> > > > > > the data is transient until LAYOUTCOMMIT, meaning it may or may
-> > not be visible
-> > > > > > to clients other than the one who wrote it, and its associated
-> > metadata MUST
-> > > > > > be updated and describe the new data only on LAYOUTCOMMIT and
-> > until then it's
-> > > > > > undefined, i.e. it's up to the server implementation whether to
-> > update it or not.
-> > > > > >
-> > > > > > Without locking, what do the stronger semantics buy you?
-> > > > > > Even if a client verified the change_attribute new data may
-> > become visible
-> > > > > > at any time after the GETATTR if the file/byte range aren't
-> > locked.
-> > > > >
-> > > > > There is no locking needed in the scenario below: it is ordinary
-> > > > > close-to-open semantics.
-> > > > >
-> > > > > The point is that if you remove the one and only way that clients
-> > have
-> > > > > to determine whether or not their data caches are valid, then they
-> > can
-> > > > > no longer cache data at all, and server scalability will be shot
-> > to
-> > > > > smithereens anyway.
-> > > > >
-> > > > > Trond
-> > > > >
-> > > > > > Benny
-> > > > > >
-> > > > > > >
-> > > > > > > Client 1			Client 2
-> > > > > > > ========			========
-> > > > > > >
-> > > > > > > OPEN foo
-> > > > > > > READ
-> > > > > > > CLOSE
-> > > > > > > 				OPEN
-> > > > > > > 				LAYOUTGET ...
-> > > > > > > 				WRITE via DS
-> > > > > > > 				<dies>...
-> > > > > > > OPEN foo
-> > > > > > > verify change_attr
-> > > > > > > READ if above WRITE is visible
-> > > > > > > CLOSE
-> > > > > > >
-> > > > > > > Trond
-> > > > > > > _______________________________________________
-> > > > > > > nfsv4 mailing list
-> > > > > > > nfsv4@ietf.org
-> > > > > > > https://www.ietf.org/mailman/listinfo/nfsv4
-> > > > >
-> > > > >
-> > > > > _______________________________________________
-> > > > > nfsv4 mailing list
-> > > > > nfsv4@ietf.org
-> > > > > https://www.ietf.org/mailman/listinfo/nfsv4
-> > > > >
-> > > > >
-> > > 
-> > > 
-> > > _______________________________________________
-> > > nfsv4 mailing list
-> > > nfsv4@ietf.org
-> > > https://www.ietf.org/mailman/listinfo/nfsv4
-> > > 
-> > > _______________________________________________
-> > > nfsv4 mailing list
-> > > nfsv4@ietf.org
-> > > https://www.ietf.org/mailman/listinfo/nfsv4
-> > 
+>  (3) Moves all the automounter logic out of __follow_mount() into
+>      follow_automount().
+> 
+>  (4) Stops pathwalk at the automount point and returns that point in the fs
+>      tree if it decides not to automount rather than reporting ELOOP (see its
+>      use of EXDEV for this).
+> 
+> David
+> 
+> ---
+> From: David Howells <dhowells@redhat.com>
+> Subject: [PATCH] Add a dentry op to handle automounting rather than abusing follow_link()
+> 
+> Add a dentry op (d_automount) to handle automounting directories rather than
+> abusing the follow_link() inode operation.  The operation is keyed off a new
+> inode flag (S_AUTOMOUNT).
+> 
+> This makes it easier to add an AT_ flag to suppress terminal segment automount
+> during pathwalk.  It should also remove the need for the kludge code in the
+> pathwalk algorithm to handle directories with follow_link() semantics.
+> 
+> I've only changed __follow_mount() to handle automount points, but it might be
+> necessary to change follow_mount() too.  The latter is only used from
+> follow_dotdot(), but any automounts on ".." should be pinned whilst we're using
+> a child of it.
+> 
+> I've also extracted the mount/don't-mount logic from autofs4 and included it
+> here.  It makes the mount go ahead anyway if someone calls open() or creat(),
+> tries to traverse the directory, tries to chdir/chroot/etc. into the directory,
+> or sticks a '/' on the end of the pathname.  If they do a stat(), however,
+> they'll only trigger the automount if they didn't also say O_NOFOLLOW.
+> 
+> Signed-off-by: David Howells <dhowells@redhat.com>
+> ---
+> 
+>  Documentation/filesystems/Locking |    2 +
+>  Documentation/filesystems/vfs.txt |   13 +++++
+>  fs/namei.c                        |   96 ++++++++++++++++++++++++++++++-------
+>  include/linux/dcache.h            |    5 ++
+>  include/linux/fs.h                |    2 +
+>  5 files changed, 100 insertions(+), 18 deletions(-)
 > 
 > 
+> diff --git a/Documentation/filesystems/Locking b/Documentation/filesystems/Locking
+> index 96d4293..ccbfa98 100644
+> --- a/Documentation/filesystems/Locking
+> +++ b/Documentation/filesystems/Locking
+> @@ -16,6 +16,7 @@ prototypes:
+>  	void (*d_release)(struct dentry *);
+>  	void (*d_iput)(struct dentry *, struct inode *);
+>  	char *(*d_dname)((struct dentry *dentry, char *buffer, int buflen);
+> +	struct vfsmount *(*d_automount)(struct path *path);
+>  
+>  locking rules:
+>  	none have BKL
+> @@ -27,6 +28,7 @@ d_delete:	yes		no		yes		no
+>  d_release:	no		no		no		yes
+>  d_iput:		no		no		no		yes
+>  d_dname:	no		no		no		no
+> +d_automount:	no		no		no		yes
+>  
+>  --------------------------- inode_operations --------------------------- 
+>  prototypes:
+> diff --git a/Documentation/filesystems/vfs.txt b/Documentation/filesystems/vfs.txt
+> index 94677e7..31a9e8f 100644
+> --- a/Documentation/filesystems/vfs.txt
+> +++ b/Documentation/filesystems/vfs.txt
+> @@ -851,6 +851,7 @@ struct dentry_operations {
+>  	void (*d_release)(struct dentry *);
+>  	void (*d_iput)(struct dentry *, struct inode *);
+>  	char *(*d_dname)(struct dentry *, char *, int);
+> +	struct vfsmount *(*d_automount)(struct path *);
+>  };
+>  
+>    d_revalidate: called when the VFS needs to revalidate a dentry. This
+> @@ -885,6 +886,18 @@ struct dentry_operations {
+>  	at the end of the buffer, and returns a pointer to the first char.
+>  	dynamic_dname() helper function is provided to take care of this.
+>  
+> +  d_automount: called when an automount dentry is to be traversed (optional).
+> +	This should create a new VFS mount record, mount it on the directory
+> +	and return the record to the caller.  The caller is supplied with a
+> +	path parameter giving the automount directory to describe the automount
+> +	target and the parent VFS mount record to provide inheritable mount
+> +	parameters.  NULL should be returned if someone else managed to make
+> +	the automount first.  If the automount failed, then an error code
+> +	should be returned.
+> +
+> +	This function is only used if S_AUTOMOUNT is set on the inode to which
+> +	the dentry refers.
+> +
+>  Example :
+>  
+>  static char *pipefs_dname(struct dentry *dent, char *buffer, int buflen)
+> diff --git a/fs/namei.c b/fs/namei.c
+> index 868d0cb..6509ca5 100644
+> --- a/fs/namei.c
+> +++ b/fs/namei.c
+> @@ -617,24 +617,82 @@ int follow_up(struct path *path)
+>  	return 1;
+>  }
+>  
+> +/*
+> + * Perform an automount
+> + * - return -EXDEV to tell __follow_mount() to stop and return the path we were
+> + *   called with.
+> + */
+> +static int follow_automount(struct path *path, unsigned flags, int res)
+> +{
+> +	struct vfsmount *mnt;
+> +
+> +	if (!path->dentry->d_op || !path->dentry->d_op->d_automount)
+> +		return -EREMOTE;
+> +
+> +	/* We want to mount if someone is trying to open/create a file of any
+> +	 * type under the mountpoint, wants to traverse through the mountpoint
+> +	 * or wants to open the mounted directory.
+> +	 *
+> +	 * We don't want to mount if someone's just doing a stat and they've
+> +	 * set AT_SYMLINK_NOFOLLOW - unless they're stat'ing a directory and
+> +	 * appended a '/' to the name.
+> +	 */
+> +	if (!(flags & LOOKUP_FOLLOW) &&
+> +	    !(flags & (LOOKUP_CONTINUE | LOOKUP_DIRECTORY |
+> +		       LOOKUP_OPEN | LOOKUP_CREATE)))
+> +		return -EXDEV;
+> +
+> +	current->total_link_count++;
+> +	if (current->total_link_count >= 40)
+> +		return -ELOOP;
+> +
+> +	mnt = path->dentry->d_op->d_automount(path);
+> +	if (IS_ERR(mnt))
+> +		return PTR_ERR(mnt);
+> +	if (!mnt) /* mount collision */
+> +		return 0;
+> +
+> +	if (mnt->mnt_sb == path->mnt->mnt_sb &&
+> +	    mnt->mnt_root == path->dentry) {
+> +		mntput(mnt);
+> +		return -ELOOP;
+> +	}
+> +
+> +	dput(path->dentry);
+> +	if (res)
+> +		mntput(path->mnt);
+> +	path->mnt = mnt;
+> +	path->dentry = dget(mnt->mnt_root);
+> +	return 0;
+> +}
+> +
+>  /* no need for dcache_lock, as serialization is taken care in
+>   * namespace.c
+>   */
+> -static int __follow_mount(struct path *path)
+> +static int __follow_mount(struct path *path, unsigned flags)
+>  {
+> -	int res = 0;
+> -	while (d_mountpoint(path->dentry)) {
+> -		struct vfsmount *mounted = lookup_mnt(path);
+> -		if (!mounted)
+> +	struct vfsmount *mounted;
+> +	int ret, res = 0;
+> +	for (;;) {
+> +		while (d_mountpoint(path->dentry)) {
+> +			mounted = lookup_mnt(path);
+> +			if (!mounted)
+> +				break;
+> +			dput(path->dentry);
+> +			if (res)
+> +				mntput(path->mnt);
+> +			path->mnt = mounted;
+> +			path->dentry = dget(mounted->mnt_root);
+> +			res = 1;
+> +		}
+> +		if (!d_automount_point(path->dentry))
+>  			break;
+> -		dput(path->dentry);
+> -		if (res)
+> -			mntput(path->mnt);
+> -		path->mnt = mounted;
+> -		path->dentry = dget(mounted->mnt_root);
+> +		ret = follow_automount(path, flags, res);
+> +		if (ret < 0)
+> +			return ret == -EXDEV ? 0 : ret;
+>  		res = 1;
+>  	}
+> -	return res;
+> +	return 0;
+>  }
+>  
+>  static void follow_mount(struct path *path)
+> @@ -702,6 +760,8 @@ static int do_lookup(struct nameidata *nd, struct qstr *name,
+>  	struct vfsmount *mnt = nd->path.mnt;
+>  	struct dentry *dentry, *parent;
+>  	struct inode *dir;
+> +	int ret;
+> +
+>  	/*
+>  	 * See if the low-level filesystem might want
+>  	 * to use its own hash..
+> @@ -720,8 +780,10 @@ static int do_lookup(struct nameidata *nd, struct qstr *name,
+>  done:
+>  	path->mnt = mnt;
+>  	path->dentry = dentry;
+> -	__follow_mount(path);
+> -	return 0;
+> +	ret = __follow_mount(path, nd->flags);
+> +	if (unlikely(ret < 0))
+> +		path_put_conditional(path, nd);
+> +	return ret;
+>  
+>  need_lookup:
+>  	parent = nd->path.dentry;
+> @@ -1721,11 +1783,9 @@ static struct file *do_last(struct nameidata *nd, struct path *path,
+>  	if (open_flag & O_EXCL)
+>  		goto exit_dput;
+>  
+> -	if (__follow_mount(path)) {
+> -		error = -ELOOP;
+> -		if (open_flag & O_NOFOLLOW)
+> -			goto exit_dput;
+> -	}
+> +	error = __follow_mount(path, nd->flags);
+> +	if (error < 0)
+> +		goto exit_dput;
+>  
+>  	error = -ENOENT;
+>  	if (!path->dentry->d_inode)
+> diff --git a/include/linux/dcache.h b/include/linux/dcache.h
+> index eebb617..5380bff 100644
+> --- a/include/linux/dcache.h
+> +++ b/include/linux/dcache.h
+> @@ -139,6 +139,7 @@ struct dentry_operations {
+>  	void (*d_release)(struct dentry *);
+>  	void (*d_iput)(struct dentry *, struct inode *);
+>  	char *(*d_dname)(struct dentry *, char *, int);
+> +	struct vfsmount *(*d_automount)(struct path *);
+>  };
+>  
+>  /* the dentry parameter passed to d_hash and d_compare is the parent
+> @@ -157,6 +158,7 @@ d_compare:	no		yes		yes      no
+>  d_delete:	no		yes		no       no
+>  d_release:	no		no		no       yes
+>  d_iput:		no		no		no       yes
+> +d_automount:	no		no		no	 yes
+>   */
+>  
+>  /* d_flags entries */
+> @@ -389,6 +391,9 @@ static inline int d_mountpoint(struct dentry *dentry)
+>  	return dentry->d_mounted;
+>  }
+>  
+> +#define d_automount_point(dentry) \
+> +	(dentry->d_inode && IS_AUTOMOUNT(dentry->d_inode))
+> +
+>  extern struct vfsmount *lookup_mnt(struct path *);
+>  extern struct dentry *lookup_create(struct nameidata *nd, int is_dir);
+>  
+> diff --git a/include/linux/fs.h b/include/linux/fs.h
+> index 68ca1b0..a83fc81 100644
+> --- a/include/linux/fs.h
+> +++ b/include/linux/fs.h
+> @@ -235,6 +235,7 @@ struct inodes_stat_t {
+>  #define S_NOCMTIME	128	/* Do not update file c/mtime */
+>  #define S_SWAPFILE	256	/* Do not truncate: swapon got its bmaps */
+>  #define S_PRIVATE	512	/* Inode is fs-internal */
+> +#define S_AUTOMOUNT	1024	/* Automount/referral quasi-directory */
+>  
+>  /*
+>   * Note that nosuid etc flags are inode-specific: setting some file-system
+> @@ -269,6 +270,7 @@ struct inodes_stat_t {
+>  #define IS_NOCMTIME(inode)	((inode)->i_flags & S_NOCMTIME)
+>  #define IS_SWAPFILE(inode)	((inode)->i_flags & S_SWAPFILE)
+>  #define IS_PRIVATE(inode)	((inode)->i_flags & S_PRIVATE)
+> +#define IS_AUTOMOUNT(inode)	((inode)->i_flags & S_AUTOMOUNT)
+>  
+>  /* the read-only stuff doesn't really belong here, but any other place is
+>     probably as bad and I don't want to create yet another include file. */
 
 
-_______________________________________________
-nfsv4 mailing list
-nfsv4@ietf.org
-https://www.ietf.org/mailman/listinfo/nfsv4
