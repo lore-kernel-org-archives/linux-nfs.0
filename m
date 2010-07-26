@@ -1,73 +1,60 @@
-From: Tom H <tom-6kxvdouIZplzjhtm8Ag3mw@public.gmane.org>
-Subject: kernel: BUG: soft lockup - CPU#5 stuck for 11s! [nfsd:20540]
-Date: Sat, 24 Jul 2010 16:58:09 +0100
-Message-ID: <4C4B0D91.3080207@limepepper.co.uk>
+From: Benny Halevy <bhalevy@panasas.com>
+Subject: Re: [PATCH 0/2] complex block layout
+Date: Mon, 26 Jul 2010 09:58:27 +0300
+Message-ID: <4C4D3213.9050506@panasas.com>
+References: <cover.1279743856.git.rees@umich.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-To: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: linux-nfs@vger.kernel.org
+To: Jim Rees <rees@umich.edu>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from april.london.02.net ([87.194.255.143]:39160 "EHLO
-	april.london.02.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754619Ab0GXP6S (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 24 Jul 2010 11:58:18 -0400
-Received: from [192.168.1.64] (87.194.12.203) by april.london.02.net (8.5.124.03)
-        id 4C1F983E00F70E29 for linux-nfs@vger.kernel.org; Sat, 24 Jul 2010 16:58:16 +0100
+Received: from daytona.panasas.com ([67.152.220.89]:49685 "EHLO
+	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1753335Ab0GZG6a (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 26 Jul 2010 02:58:30 -0400
+In-Reply-To: <cover.1279743856.git.rees@umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Jul. 22, 2010, 1:29 +0300, Jim Rees <rees@umich.edu> wrote:
+> This is a replacement for the patch set I sent last week, rebased to current
+> pnfs-all-latest and incorporating suggestions both from reviewers and from
+> checkpatch.pl.
+> 
+> These two patches move the complex block layout device mapping from the
+> kernel to a user space daemon.  The first patch adds a simple upcall
+> mechanism via pipefs for the kernel piece to communicate with the daemon.
+> The second patch removes the kernel device mapping and replaces it with
+> calls to the daemon.
+> 
+> Passes Connectathon tests to both EMC and spnfs servers.
+> 
+> The user daemon will be sent separately as a patch to nfs-utils.
 
-Hi,
+Jim, I've merged these patches only into the pnfs-block branch,
+not pnfs-block-all (part of the pnfs-all-latest chain), until
+we get the user mode daemon into pnfs-nfs-utils.  Once there.
+I'll merge the patches also into pnfs-block-all.
 
-Has anyone any suggesions on what these messages might mean;
+Benny
 
-# grep BUG /var/log/messages*
-/var/log/messages:Jul 23 03:18:21 server111 kernel: BUG: soft lockup - 
-CPU#5 stuck for 11s! [nfsd:20540]
-/var/log/messages:Jul 23 03:22:09 server111 kernel: BUG: soft lockup - 
-CPU#1 stuck for 15s! [nfsd:20545]
-/var/log/messages:Jul 23 03:24:21 server111 kernel: BUG: soft lockup - 
-CPU#1 stuck for 24s! [nfsd:20546]
-
-There were associated with a period of high load and poor performance on 
-the NFS server.
-
-Thanks
-Tom
-
-
-
-
-
-
-
-there were quite a few more...
-/var/log/messages:Jul 23 03:29:17 server111 kernel: BUG: soft lockup - 
-CPU#2 stuck for 14s! [nfsd:20552]
-/var/log/messages:Jul 23 03:30:38 server111 kernel: BUG: soft lockup - 
-CPU#6 stuck for 10s! [nfsd:20544]
-/var/log/messages:Jul 23 03:30:58 server111 kernel: BUG: soft lockup - 
-CPU#6 stuck for 12s! [nfsd:20540]
-/var/log/messages:Jul 23 03:31:22 server111 kernel: BUG: soft lockup - 
-CPU#3 stuck for 23s! [nfsd:20545]
-/var/log/messages:Jul 23 03:31:33 server111 kernel: BUG: soft lockup - 
-CPU#6 stuck for 10s! [nfsd:20549]
-/var/log/messages:Jul 23 03:31:43 server111 kernel: BUG: soft lockup - 
-CPU#5 stuck for 10s! [nfsd:20541]
-/var/log/messages:Jul 23 03:32:30 server111 kernel: BUG: soft lockup - 
-CPU#7 stuck for 20s! [nfsd:20548]
-/var/log/messages:Jul 23 03:35:14 server111 kernel: BUG: soft lockup - 
-CPU#1 stuck for 13s! [nfsd:20541]
-/var/log/messages:Jul 23 03:37:12 server111 kernel: BUG: soft lockup - 
-CPU#3 stuck for 11s! [nfsd:20541]
-/var/log/messages:Jul 23 03:39:41 server111 kernel: BUG: soft lockup - 
-CPU#5 stuck for 10s! [nfsd:20540]
-/var/log/messages:Jul 23 03:42:21 server111 kernel: BUG: soft lockup - 
-CPU#3 stuck for 10s! [nfsd:20549]
-/var/log/messages:Jul 23 03:42:51 server111 kernel: BUG: soft lockup - 
-CPU#1 stuck for 17s! [nfsd:20542]
-/var/log/messages:Jul 23 03:43:07 server111 kernel: BUG: soft lockup - 
-CPU#3 stuck for 15s! [nfsd:20553]
-/var/log/messages:Jul 23 03:47:49 server111 kernel: BUG: soft lockup - 
-CPU#7 stuck for 16s! [nfsd:20545]
-/var/log/messages:Jul 23 03:48:22 server111 kernel: BUG: soft lockup - 
-CPU#1 stuck for 23s! [nfsd:20547]
+> 
+> Haiying Tang (2):
+>   pnfs-block: Add support for simple rpc pipefs
+>   pnfs-block: Remove device creation from kernel
+> 
+>  fs/nfs/blocklayout/Makefile                      |    2 +-
+>  fs/nfs/blocklayout/block-device-discovery-pipe.c |   66 +++
+>  fs/nfs/blocklayout/blocklayout.c                 |   15 +-
+>  fs/nfs/blocklayout/blocklayout.h                 |   18 +-
+>  fs/nfs/blocklayout/blocklayoutdev.c              |  494 +++-------------------
+>  fs/nfs/blocklayout/blocklayoutdm.c               |  297 ++-----------
+>  include/linux/sunrpc/rpc_pipe_fs.h               |    4 +
+>  include/linux/sunrpc/simple_rpc_pipefs.h         |  111 +++++
+>  net/sunrpc/Makefile                              |    2 +-
+>  net/sunrpc/simple_rpc_pipefs.c                   |  424 +++++++++++++++++++
+>  10 files changed, 721 insertions(+), 712 deletions(-)
+>  create mode 100644 fs/nfs/blocklayout/block-device-discovery-pipe.c
+>  create mode 100644 include/linux/sunrpc/simple_rpc_pipefs.h
+>  create mode 100644 net/sunrpc/simple_rpc_pipefs.c
+> 
