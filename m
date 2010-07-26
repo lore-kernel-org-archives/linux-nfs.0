@@ -1,136 +1,46 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:35945 "EHLO mx1.redhat.com"
+Received: from mail-out1.uio.no ([129.240.10.57]:59210 "EHLO mail-out1.uio.no"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S966728Ab0GSUus (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 19 Jul 2010 16:50:48 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 5/5] nfsd: just keep single lockd reference for nfsd
-Date: Mon, 19 Jul 2010 16:50:08 -0400
-Message-Id: <1279572608-7234-6-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1279572608-7234-1-git-send-email-jlayton@redhat.com>
-References: <1279572608-7234-1-git-send-email-jlayton@redhat.com>
+	id S1752769Ab0GZPeB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 26 Jul 2010 11:34:01 -0400
+Subject: Re: dentry cache memory usage
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+To: Casey Bodley <cbodley@umich.edu>
+Cc: linux-nfs@vger.kernel.org, Olga Kornievskaia <aglo@citi.umich.edu>
+In-Reply-To: <AANLkTinSHDKPO5frmr4sik6ZnIZyOpfsDvXc20W74Df1@mail.gmail.com>
+References: <AANLkTinSHDKPO5frmr4sik6ZnIZyOpfsDvXc20W74Df1@mail.gmail.com>
+Content-Type: text/plain; charset="UTF-8"
+Date: Mon, 26 Jul 2010 11:33:54 -0400
+Message-ID: <1280158434.2869.16.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-This patch should replace the other patches that I proposed to make
-sure that each sv_permsock entry holds a lockd refrence.
+On Mon, 2010-07-26 at 11:21 -0400, Casey Bodley wrote:
+> I'm a developer at CITI working on the windows pnfs client.  We've
+> been looking into some optimizations for our name and attribute
+> caches, mainly involving the use of pools to avoid allocating memory
+> for each new entry.
+> 
+> We're looking for a sensible initial/maximum pool size.  Once the
+> maximum pool size is reached, we'll start scavenging the least
+> recently used entries.  Does the linux client impose any limits on the
+> size of the dentry cache?
+> 
+> I'm also curious what time limits you're using before expiring cached
+> attributes and lookups.
+> 
+> I suppose I'm just asking for magic numbers here, in the hope that
+> smart people have tested and benchmarked this stuff in the linux
+> client.
 
-Right now, nfsd keeps a lockd reference for each socket that it has
-open. This is unnecessary and complicates the error handling on
-startup and shutdown. Change it to just do a lockd_up when creating
-the nfsd_serv and just do a single lockd_down when taking down the
-last nfsd thread.
+Linux doesn't really allow you to set a maximum dcache size. Instead,
+the system allows you to allocate as many dentries as you like. When the
+system runs low on memory, the VM will trigger an LRU based reclaim of
+older dentries.
 
-This patch also changes the error handling in nfsd_create_serv a
-bit too. There doesn't seem to be any need to reset the nfssvc_boot
-time if the nfsd startup failed.
+The page cache is managed on a similar basis.
 
-Note though that this does change the user-visible behavior slightly.
-Today when someone writes a text socktype and port to the portlist file
-prior to starting nfsd, lockd is not started when nfsd threads are
-brought up. With this change, it will be started any time that
-the nfsd_serv is created. I'm making the assumption that that's not a
-problem. If it is then we'll need to take a different approach to fixing
-this.
-
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- fs/nfsd/nfsctl.c |   10 ----------
- fs/nfsd/nfssvc.c |   25 ++++++++++---------------
- 2 files changed, 10 insertions(+), 25 deletions(-)
-
-diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
-index 9e8645a..b1c5be8 100644
---- a/fs/nfsd/nfsctl.c
-+++ b/fs/nfsd/nfsctl.c
-@@ -949,15 +949,8 @@ static ssize_t __write_ports_addfd(char *buf)
- 	if (err != 0)
- 		return err;
- 
--	err = lockd_up();
--	if (err != 0) {
--		svc_destroy(nfsd_serv);
--		return err;
--	}
--
- 	err = svc_addsock(nfsd_serv, fd, buf, SIMPLE_TRANSACTION_LIMIT);
- 	if (err < 0) {
--		lockd_down();
- 		svc_destroy(nfsd_serv);
- 		return err;
- 	}
-@@ -982,9 +975,6 @@ static ssize_t __write_ports_delfd(char *buf)
- 	if (nfsd_serv != NULL)
- 		len = svc_sock_names(nfsd_serv, buf,
- 					SIMPLE_TRANSACTION_LIMIT, toclose);
--	if (len >= 0)
--		lockd_down();
--
- 	kfree(toclose);
- 	return len;
- }
-diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
-index a06ea99..6b59d32 100644
---- a/fs/nfsd/nfssvc.c
-+++ b/fs/nfsd/nfssvc.c
-@@ -183,9 +183,7 @@ int nfsd_nrthreads(void)
- static void nfsd_last_thread(struct svc_serv *serv)
- {
- 	/* When last nfsd thread exits we need to do some clean-up */
--	struct svc_xprt *xprt;
--	list_for_each_entry(xprt, &serv->sv_permsocks, xpt_list)
--		lockd_down();
-+	lockd_down();
- 	nfsd_serv = NULL;
- 	nfsd_racache_shutdown();
- 	nfs4_state_shutdown();
-@@ -264,13 +262,18 @@ int nfsd_create_serv(void)
- 			nfsd_max_blksize /= 2;
- 	}
- 
-+	err = lockd_up();
-+	if (err != 0)
-+		return err;
-+
- 	nfsd_serv = svc_create_pooled(&nfsd_program, nfsd_max_blksize,
- 				      nfsd_last_thread, nfsd, THIS_MODULE);
--	if (nfsd_serv == NULL)
--		err = -ENOMEM;
--	else
--		set_max_drc();
-+	if (nfsd_serv == NULL) {
-+		lockd_down();
-+		return -ENOMEM;
-+	}
- 
-+	set_max_drc();
- 	do_gettimeofday(&nfssvc_boot);		/* record boot time */
- 	return err;
- }
-@@ -286,19 +289,11 @@ static int nfsd_init_socks(int port)
- 	if (error < 0)
- 		return error;
- 
--	error = lockd_up();
--	if (error < 0)
--		return error;
--
- 	error = svc_create_xprt(nfsd_serv, "tcp", PF_INET, port,
- 					SVC_SOCK_DEFAULTS);
- 	if (error < 0)
- 		return error;
- 
--	error = lockd_up();
--	if (error < 0)
--		return error;
--
- 	return 0;
- }
- 
--- 
-1.5.5.6
+Cheers
+  Trond
 
