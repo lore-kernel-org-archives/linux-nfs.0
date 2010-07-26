@@ -1,60 +1,46 @@
-From: Benny Halevy <bhalevy@panasas.com>
-Subject: Re: [PATCH 0/2] complex block layout
-Date: Mon, 26 Jul 2010 09:58:27 +0300
-Message-ID: <4C4D3213.9050506@panasas.com>
-References: <cover.1279743856.git.rees@umich.edu>
+From: Yudong Gao <stgyd@umich.edu>
+Subject: Re: config delegation lease time
+Date: Mon, 26 Jul 2010 10:14:30 -0700
+Message-ID: <AANLkTikb+8LuFFDrSW5AE+ZKYuR_tP94wKb5UoJHiwro@mail.gmail.com>
+References: <AANLkTikMa7FzBewHyZ=7Pxrf=EmKU3jb8y9hrO+QhfWd@mail.gmail.com>
+	<1279935504.5268.23.camel@heimdal.trondhjem.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Cc: linux-nfs@vger.kernel.org
-To: Jim Rees <rees@umich.edu>
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:49685 "EHLO
-	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1753335Ab0GZG6a (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 26 Jul 2010 02:58:30 -0400
-In-Reply-To: <cover.1279743856.git.rees@umich.edu>
+Received: from mail-vw0-f46.google.com ([209.85.212.46]:57835 "EHLO
+	mail-vw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752816Ab0GZROw (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 26 Jul 2010 13:14:52 -0400
+Received: by vws3 with SMTP id 3so2596826vws.19
+        for <linux-nfs@vger.kernel.org>; Mon, 26 Jul 2010 10:14:51 -0700 (PDT)
+In-Reply-To: <1279935504.5268.23.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Jul. 22, 2010, 1:29 +0300, Jim Rees <rees@umich.edu> wrote:
-> This is a replacement for the patch set I sent last week, rebased to current
-> pnfs-all-latest and incorporating suggestions both from reviewers and from
-> checkpatch.pl.
-> 
-> These two patches move the complex block layout device mapping from the
-> kernel to a user space daemon.  The first patch adds a simple upcall
-> mechanism via pipefs for the kernel piece to communicate with the daemon.
-> The second patch removes the kernel device mapping and replaces it with
-> calls to the daemon.
-> 
-> Passes Connectathon tests to both EMC and spnfs servers.
-> 
-> The user daemon will be sent separately as a patch to nfs-utils.
+I see. Thanks a lot for the pointer, Trond!
 
-Jim, I've merged these patches only into the pnfs-block branch,
-not pnfs-block-all (part of the pnfs-all-latest chain), until
-we get the user mode daemon into pnfs-nfs-utils.  Once there.
-I'll merge the patches also into pnfs-block-all.
+Is there a through document about all the available configurations?
 
-Benny
+Thanks!
 
-> 
-> Haiying Tang (2):
->   pnfs-block: Add support for simple rpc pipefs
->   pnfs-block: Remove device creation from kernel
-> 
->  fs/nfs/blocklayout/Makefile                      |    2 +-
->  fs/nfs/blocklayout/block-device-discovery-pipe.c |   66 +++
->  fs/nfs/blocklayout/blocklayout.c                 |   15 +-
->  fs/nfs/blocklayout/blocklayout.h                 |   18 +-
->  fs/nfs/blocklayout/blocklayoutdev.c              |  494 +++-------------------
->  fs/nfs/blocklayout/blocklayoutdm.c               |  297 ++-----------
->  include/linux/sunrpc/rpc_pipe_fs.h               |    4 +
->  include/linux/sunrpc/simple_rpc_pipefs.h         |  111 +++++
->  net/sunrpc/Makefile                              |    2 +-
->  net/sunrpc/simple_rpc_pipefs.c                   |  424 +++++++++++++++++++
->  10 files changed, 721 insertions(+), 712 deletions(-)
->  create mode 100644 fs/nfs/blocklayout/block-device-discovery-pipe.c
->  create mode 100644 include/linux/sunrpc/simple_rpc_pipefs.h
->  create mode 100644 net/sunrpc/simple_rpc_pipefs.c
-> 
+best,
+
+Yudong
+
+On Fri, Jul 23, 2010 at 6:38 PM, Trond Myklebust
+<trond.myklebust@fys.uio.no> wrote:
+> On Fri, 2010-07-23 at 17:29 -0700, Yudong Gao wrote:
+>> Hi,
+>>
+>> I am trying to change the delegation lease time in NFS4.1, but I can
+>> not find any documentation talking about this.
+>>
+>> Do I need to change the source code directly to change the lease time?
+>
+> Change the contents of /proc/fs/nfsd/nfsv4leasetime on the server.
+>
+> Trond
+>
+>
