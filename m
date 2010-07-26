@@ -1,43 +1,70 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from borg.medozas.de ([188.40.89.202]:55226 "EHLO borg.medozas.de"
+Received: from mx1.redhat.com ([209.132.183.28]:17988 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751083Ab0GaSsl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 31 Jul 2010 14:48:41 -0400
-Date: Sat, 31 Jul 2010 20:48:39 +0200 (CEST)
-From: Jan Engelhardt <jengelh@medozas.de>
-To: Andreas Dilger <adilger@dilger.ca>
-cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
-        Phil Pishioneri <pgp@psu.edu>, Volker.Lendecke@SerNet.DE,
-        Jeremy Allison <jra@samba.org>,
-        Linus Torvalds <torvalds@linux-foundation.org>,
-        David Howells <dhowells@redhat.com>, linux-cifs@vger.kernel.org,
-        linux-nfs@vger.kernel.org, samba-technical@lists.samba.org,
-        linux-kernel@vger.kernel.org, viro@zeniv.linux.org.uk,
-        linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
-Subject: Re: [PATCH 02/18] xstat: Add a pair of system calls to make extended
- file stats available [ver #6]
-In-Reply-To: <09B770A6-48DB-4296-B6C2-BF46D4DC7E57@dilger.ca>
-Message-ID: <alpine.LSU.2.01.1007312048200.15118@obet.zrqbmnf.qr>
-References: <20100715021712.5544.44845.stgit@warthog.procyon.org.uk> <30448.1279800887@redhat.com> <E1Obuiy-00C9jr-Al@intern.SerNet.DE> <AANLkTikBCXK6uEwWq4f0LvpdoKCPs3jvyFa4Zw4e2J_7@mail.gmail.com> <E1Obxpd-00CRIo-SF@intern.SerNet.DE>
- <AANLkTimwIq0pBhCeOjOVjB0yeM3JHOvzVoj9M4ui6al9@mail.gmail.com> <20100722162712.GB10352@jeremy-laptop> <AANLkTimdFCGSKLn7aGMpBMIauHTsHY7hpAAmpo6uTcnD@mail.gmail.com> <1279817930.3621.14.camel@heimdal.trondhjem.org> <20100722180204.GA32008@samba1>
- <E1Oc08W-00CZuz-Ns@intern.SerNet.DE> <1279825160.3621.71.camel@heimdal.trondhjem.org> <4C5311F4.2050100@psu.edu> <1280513506.12852.22.camel@heimdal.trondhjem.org> <09B770A6-48DB-4296-B6C2-BF46D4DC7E57@dilger.ca>
-Content-Type: TEXT/PLAIN; charset=US-ASCII
+	id S1753377Ab0GZPzJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 26 Jul 2010 11:55:09 -0400
+From: David Howells <dhowells@redhat.com>
+In-Reply-To: <1280157768.3569.14.camel@localhost>
+References: <1280157768.3569.14.camel@localhost> <1279944664.2944.8.camel@localhost> <20100722175847.5552.11520.stgit@warthog.procyon.org.uk> <17723.1279897759@redhat.com> <9168.1280153997@redhat.com>
+To: Ian Kent <raven@themaw.net>
+Cc: dhowells@redhat.com, viro@ZenIV.linux.org.uk,
+        linux-fsdevel@vger.kernel.org, linux-afs@lists.infradead.org,
+        linux-nfs@vger.kernel.org, linux-cifs@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Subject: Re: [PATCH 1/6] Add a dentry op to handle automounting rather than abusing follow_link() [ver #2]
+Date: Mon, 26 Jul 2010 16:54:55 +0100
+Message-ID: <30118.1280159695@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
+Ian Kent <raven@themaw.net> wrote:
 
-On Saturday 2010-07-31 20:41, Andreas Dilger wrote:
->On 2010-07-30, at 12:11, Trond Myklebust wrote:
->> Your Mac has a perfectly functional CIFS client, as do your Linux boxes.
->> They both interoperate just fine with Samba, and would presumably
->> continue to do so if someone were to decide to reuse the ctime field on
->> your Samba box as storage for a create time.
->
->CIFS doesn't support symlinks (they just appear as the referenced
->file), so I've had applications that scan the filesystem recurse
->indefinitely due to symlinked directories on a CIFS share appearing
->as hard-linked directories on the client. This doesn't happen when
->the filesystem is accessed via NFS.
+> > Does it make autofs easier if d_op->d_automount() is allowed to return
+> > -EXDEV to request this?  Then you can return it in Oz mode to allow the
+> > daemon to see/use the underlying mountpoint without recursing back into
+> > d_automount().
+> 
+> Yes, it's really useful.
 
-This shouldn't go on indefinitely - PATH_MAX is reached at some point.
+I think what's required, then, is if d_automount() returns -EXDEV then:
+
+ (1) If the dentry is terminal in the lookup path, then we just return -EXDEV
+     to indicate to __follow_mount() that we really do want to stop there.
+
+ (2) If the dentry is not terminal, then we convert the error to -EREMOTE to
+     indicate that we can't complete the pathwalk as one of the earlier
+     components is inaccessible.
+
+See the attached patch.
+
+David
+---
+diff --git a/fs/namei.c b/fs/namei.c
+index c154112..6c385d4 100644
+--- a/fs/namei.c
++++ b/fs/namei.c
+@@ -653,8 +653,20 @@ static int follow_automount(struct path *path, unsigned flags, int res)
+ 		return -ELOOP;
+ 
+ 	mnt = path->dentry->d_op->d_automount(path);
+-	if (IS_ERR(mnt))
++	if (IS_ERR(mnt)) {
++		/*
++		 * The filesystem is allowed to return -EXDEV here to indicate
++		 * they don't want to automount.  For instance, autofs would do
++		 * this so that its userspace daemon can mount on this dentry.
++		 *
++		 * However, we can only permit this if it's a terminal point in
++		 * the path being looked up; if it wasn't then the remainder of
++		 * the path is inaccessible and we should say so.
++		 */
++		if (PTR_ERR(mnt) == -EXDEV && (flags & LOOKUP_CONTINUE))
++			return -EREMOTE;
+ 		return PTR_ERR(mnt);
++	}
+ 	if (!mnt) /* mount collision */
+ 		return 0;
+ 
+
