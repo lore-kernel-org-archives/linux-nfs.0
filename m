@@ -1,71 +1,30 @@
-From: Yudong Gao <stgyd@umich.edu>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Subject: Re: config delegation lease time
-Date: Mon, 26 Jul 2010 10:36:03 -0700
-Message-ID: <AANLkTincaDK0nbGV6aroNo00+Di3mzKYf=5rd2mLbTqB@mail.gmail.com>
+Date: Tue, 27 Jul 2010 13:46:25 -0400
+Message-ID: <20100727174625.GA1383@fieldses.org>
 References: <AANLkTikMa7FzBewHyZ=7Pxrf=EmKU3jb8y9hrO+QhfWd@mail.gmail.com>
-	<1279935504.5268.23.camel@heimdal.trondhjem.org> <AANLkTikb+8LuFFDrSW5AE+ZKYuR_tP94wKb5UoJHiwro@mail.gmail.com>
-	<1280165225.2869.20.camel@heimdal.trondhjem.org>
+ <1279935504.5268.23.camel@heimdal.trondhjem.org>
+ <AANLkTikb+8LuFFDrSW5AE+ZKYuR_tP94wKb5UoJHiwro@mail.gmail.com>
+ <1280165225.2869.20.camel@heimdal.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Yudong Gao <stgyd@umich.edu>, linux-nfs@vger.kernel.org
 To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-vw0-f46.google.com ([209.85.212.46]:54106 "EHLO
-	mail-vw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751201Ab0GZRgZ convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 26 Jul 2010 13:36:25 -0400
-Received: by vws3 with SMTP id 3so2619863vws.19
-        for <linux-nfs@vger.kernel.org>; Mon, 26 Jul 2010 10:36:24 -0700 (PDT)
+Received: from fieldses.org ([174.143.236.118]:41183 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752924Ab0G0Rr3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 27 Jul 2010 13:47:29 -0400
 In-Reply-To: <1280165225.2869.20.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I see. I will look into the source code.
-
-Thanks again!
-
-best,
-
-Yudong
-
-On Mon, Jul 26, 2010 at 10:27 AM, Trond Myklebust
-<trond.myklebust@fys.uio.no> wrote:
-> That would be the source code. I'm not aware of any other documentati=
-on
+On Mon, Jul 26, 2010 at 01:27:05PM -0400, Trond Myklebust wrote:
+> That would be the source code. I'm not aware of any other documentation
 > for these particular options.
->
-> Cheers
-> =A0Trond
->
-> On Mon, 2010-07-26 at 10:14 -0700, Yudong Gao wrote:
->> I see. Thanks a lot for the pointer, Trond!
->>
->> Is there a through document about all the available configurations?
->>
->> Thanks!
->>
->> best,
->>
->> Yudong
->>
->> On Fri, Jul 23, 2010 at 6:38 PM, Trond Myklebust
->> <trond.myklebust@fys.uio.no> wrote:
->> > On Fri, 2010-07-23 at 17:29 -0700, Yudong Gao wrote:
->> >> Hi,
->> >>
->> >> I am trying to change the delegation lease time in NFS4.1, but I =
-can
->> >> not find any documentation talking about this.
->> >>
->> >> Do I need to change the source code directly to change the lease =
-time?
->> >
->> > Change the contents of /proc/fs/nfsd/nfsv4leasetime on the server.
->> >
->> > Trond
->> >
->> >
->
->
->
->
+
+An nfsd (and/or nfs) administrator's manual would be useful.  Existing
+FAQs and HOWTOs could provide a starting point.  I'd be happy to help
+review, but don't have the cycles to start one right now.
+
+--b.
