@@ -1,61 +1,89 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fn.samba.org ([216.83.154.106]:52222 "EHLO lists.samba.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755563Ab0GVSPv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 22 Jul 2010 14:15:51 -0400
-Date: Thu, 22 Jul 2010 11:15:49 -0700
-From: Jeremy Allison <jra@samba.org>
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Cc: Jan Engelhardt <jengelh@medozas.de>, Jeremy Allison <jra@samba.org>,
-        Volker.Lendecke@sernet.de, David Howells <dhowells@redhat.com>,
-        linux-cifs@vger.kernel.org, linux-nfs@vger.kernel.org,
-        samba-technical@lists.samba.org, linux-kernel@vger.kernel.org,
-        viro@zeniv.linux.org.uk, linux-fsdevel@vger.kernel.org,
-        linux-ext4@vger.kernel.org
-Subject: Re: [PATCH 02/18] xstat: Add a pair of system calls to make
- extended file stats available [ver #6]
-Message-ID: <20100722181549.GD32008@samba1>
-Reply-To: Jeremy Allison <jra@samba.org>
-References: <20100715021712.5544.44845.stgit@warthog.procyon.org.uk>
- <30448.1279800887@redhat.com>
- <E1Obuiy-00C9jr-Al@intern.SerNet.DE>
- <AANLkTikBCXK6uEwWq4f0LvpdoKCPs3jvyFa4Zw4e2J_7@mail.gmail.com>
- <E1Obxpd-00CRIo-SF@intern.SerNet.DE>
- <AANLkTimwIq0pBhCeOjOVjB0yeM3JHOvzVoj9M4ui6al9@mail.gmail.com>
- <20100722162712.GB10352@jeremy-laptop>
- <AANLkTimdFCGSKLn7aGMpBMIauHTsHY7hpAAmpo6uTcnD@mail.gmail.com>
- <alpine.LSU.2.01.1007221859180.27496@obet.zrqbmnf.qr>
- <AANLkTilmVdyVdO4EmVtTYi_cvMmPqNEPEnzUkJdk1XyR@mail.gmail.com>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <AANLkTilmVdyVdO4EmVtTYi_cvMmPqNEPEnzUkJdk1XyR@mail.gmail.com>
+Received: from out1.smtp.messagingengine.com ([66.111.4.25]:48055 "EHLO
+	out1.smtp.messagingengine.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752371Ab0G0Dnw (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 26 Jul 2010 23:43:52 -0400
+Subject: Re: [PATCH 1/6] Add a dentry op to handle automounting rather than
+ abusing follow_link() [ver #2]
+From: Ian Kent <raven@themaw.net>
+To: David Howells <dhowells@redhat.com>
+Cc: viro@ZenIV.linux.org.uk, linux-fsdevel@vger.kernel.org,
+        linux-afs@lists.infradead.org, linux-nfs@vger.kernel.org,
+        linux-cifs@vger.kernel.org, linux-kernel@vger.kernel.org
+In-Reply-To: <30118.1280159695@redhat.com>
+References: <1280157768.3569.14.camel@localhost>
+	 <1279944664.2944.8.camel@localhost>
+	 <20100722175847.5552.11520.stgit@warthog.procyon.org.uk>
+	 <17723.1279897759@redhat.com> <9168.1280153997@redhat.com>
+	 <30118.1280159695@redhat.com>
+Content-Type: text/plain; charset="UTF-8"
+Date: Tue, 27 Jul 2010 11:43:45 +0800
+Message-ID: <1280202225.2944.20.camel@localhost>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Thu, Jul 22, 2010 at 10:24:17AM -0700, Linus Torvalds wrote:
+On Mon, 2010-07-26 at 16:54 +0100, David Howells wrote:
+> Ian Kent <raven@themaw.net> wrote:
 > 
-> And yes, I am also sure that there are applications that do depend on
-> ctime semantics. Trond mentioned NFS serving, and that's unfortunate.
-> I bet there are others. That's inevitable when you have 40 years of
-> history. So I'm not claiming that re-using ctime is painfree, but for
-> somebody that cares about samba a lot, I bet it's a _lot_ better than
-> adding a new time that almost nobody actually supports as things stand
-> now.
+> > > Does it make autofs easier if d_op->d_automount() is allowed to return
+> > > -EXDEV to request this?  Then you can return it in Oz mode to allow the
+> > > daemon to see/use the underlying mountpoint without recursing back into
+> > > d_automount().
+> > 
+> > Yes, it's really useful.
+> 
+> I think what's required, then, is if d_automount() returns -EXDEV then:
+> 
+>  (1) If the dentry is terminal in the lookup path, then we just return -EXDEV
+>      to indicate to __follow_mount() that we really do want to stop there.
+> 
+>  (2) If the dentry is not terminal, then we convert the error to -EREMOTE to
+>      indicate that we can't complete the pathwalk as one of the earlier
+>      components is inaccessible.
 
-Samba mostly ignores ctime, for just the reasons you mention.
-But re-using ctime as create time will lead to more horrible
-confusion (IMHO).
+Is this something others need?
 
-Easier to add a btime field to stat (or whatever you want to
-call it), especially as some of the filesystems already support it,
-the code for it exists inside Samba and is working on other UNIX-style
-OS'es, and for filesystems that don't support it, just return
-zero or -1 in that field (which we already ignore).
+Again, the exists vs not yet exists case for paths within indirect
+autofs mounts. At the moment I can just set the flag on all dentrys in
+the autofs fs and return EXDEV for non-empty directories in order to
+return the dentry as a path component. OTOH if the dentry is a mount
+embeded in the path and the mount fails we get a error return.
 
-> Of people can just use xattrs and do it all entirely in user space. I
-> assume that's what samba does now, even outside of birthtime.
+I could clear the flag on non-root parent dentrys during mkdir if this
+is needed by others.
+  
+> 
+> See the attached patch.
+> 
+> David
+> ---
+> diff --git a/fs/namei.c b/fs/namei.c
+> index c154112..6c385d4 100644
+> --- a/fs/namei.c
+> +++ b/fs/namei.c
+> @@ -653,8 +653,20 @@ static int follow_automount(struct path *path, unsigned flags, int res)
+>  		return -ELOOP;
+>  
+>  	mnt = path->dentry->d_op->d_automount(path);
+> -	if (IS_ERR(mnt))
+> +	if (IS_ERR(mnt)) {
+> +		/*
+> +		 * The filesystem is allowed to return -EXDEV here to indicate
+> +		 * they don't want to automount.  For instance, autofs would do
+> +		 * this so that its userspace daemon can mount on this dentry.
+> +		 *
+> +		 * However, we can only permit this if it's a terminal point in
+> +		 * the path being looked up; if it wasn't then the remainder of
+> +		 * the path is inaccessible and we should say so.
+> +		 */
+> +		if (PTR_ERR(mnt) == -EXDEV && (flags & LOOKUP_CONTINUE))
+> +			return -EREMOTE;
+>  		return PTR_ERR(mnt);
+> +	}
+>  	if (!mnt) /* mount collision */
+>  		return 0;
+>  
+> 
 
-Yep. We even have to do that on systems with an immutable
-btime to get Windows semantics.
 
-Jeremy.
