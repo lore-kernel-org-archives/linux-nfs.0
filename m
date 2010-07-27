@@ -1,37 +1,32 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:11233 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751949Ab0G0Nld (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 27 Jul 2010 09:41:33 -0400
-From: David Howells <dhowells@redhat.com>
-In-Reply-To: <8426.1279548573@redhat.com>
-References: <8426.1279548573@redhat.com> <20100718084955.GB27794@infradead.org> <20100715021709.5544.64506.stgit@warthog.procyon.org.uk> <20100715021720.5544.19973.stgit@warthog.procyon.org.uk>
-Cc: dhowells@redhat.com, Christoph Hellwig <hch@infradead.org>,
-        viro@ZenIV.linux.org.uk, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-cifs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, samba-technical@lists.samba.org,
-        linux-ext4@vger.kernel.org
-Subject: Re: [PATCH 09/18] xstat: Make special system filesystems return FS_SPECIAL_FL [ver #6]
-Date: Tue, 27 Jul 2010 14:41:24 +0100
-Message-ID: <17717.1280238084@redhat.com>
-To: unlisted-recipients:; (no To-header on input)
+Received: from fwil.voltaire.com ([193.47.165.2]:27995 "EHLO exil.voltaire.com"
+	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1753703Ab0G0KHH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 27 Jul 2010 06:07:07 -0400
+Date: Tue, 27 Jul 2010 13:07:04 +0300 (IDT)
+From: Or Gerlitz <ogerlitz@voltaire.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+cc: linux-nfs@vger.kernel.org
+Subject: iostat "await" like counter for measuring nfs latency
+Message-ID: <Pine.LNX.4.64.1007271300180.2110@zuben.voltaire.com>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-David Howells <dhowells@redhat.com> wrote:
+Doing some iscsi and nfs performance testing, I realized that iostat(1)
+doesn't support an "await" (*) like counter for measuring nfs latency.
 
-> Also, not all the flags are per-filesystem.  The following are:
-> 
-> 	FS_SPECIAL_FL		/* Special file as found in procfs/sysfs */
-> 	FS_REMOTE_FL		/* File is remote */
+Can tracking nfs latency be done in other means? is there a plan to
+extend the nfs iostats code to include such/similar counter?
 
-Actually, that last is not true; FS_REMOTE_FL is per-file, not per-fs.  You
-can have a filesystem that has fabricated files and remote files.  For
-instance, with kAFS at some point you will be go into /afs, do a lookup for a
-directory that doesn't exist, but whose name represents a cell+volume, the
-filesystem will fabricate a local directory and then attempt to mount a remote
-directory on to it.
+thanks,
 
-David
+Or.
+
+
+(*) await - The average time (in milliseconds) for I/O requests issued
+    to the device to be served. This includes the time spent by the
+    requests in queue and the time spent servicing them.
+
+
