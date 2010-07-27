@@ -1,151 +1,81 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:8616 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751734Ab0GVR67 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 22 Jul 2010 13:58:59 -0400
-From: David Howells <dhowells@redhat.com>
-Subject: [PATCH 2/6] AFS: Use d_automount() rather than abusing follow_link()
-To: viro@ZenIV.linux.org.uk
-Cc: linux-fsdevel@vger.kernel.org, linux-afs@lists.infradead.org,
-        linux-nfs@vger.kernel.org, linux-cifs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, David Howells <dhowells@redhat.com>
-Date: Thu, 22 Jul 2010 18:58:52 +0100
-Message-ID: <20100722175852.5552.85642.stgit@warthog.procyon.org.uk>
-In-Reply-To: <20100722175847.5552.11520.stgit@warthog.procyon.org.uk>
-References: <20100722175847.5552.11520.stgit@warthog.procyon.org.uk>
-Content-Type: text/plain; charset="utf-8"
+Received: from smtp13.ono.com ([62.42.230.16]:59357 "EHLO resmaa13.ono.com"
+	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1751518Ab0G0WvQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 27 Jul 2010 18:51:16 -0400
+Date: Wed, 28 Jul 2010 00:46:11 +0200
+From: "J.A. =?ISO-8859-1?B?TWFnYWxs824=?=" <jamagallon@ono.com>
+To: Linux Kernel <linux-kernel@vger.kernel.org>, linux-nfs@vger.kernel.org
+Subject: Questions and problems with NFS4
+Message-ID: <20100728004611.00c46b13@werewolf.home>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Make AFS use the new d_automount() dentry operation rather than abusing
-follow_link() on directories.
+Hi all...
 
-Signed-off-by: David Howells <dhowells@redhat.com>
----
+I'm beginning to move my boxen to use nfs4, and have some questions...
 
- fs/afs/dir.c      |    1 +
- fs/afs/internal.h |    1 +
- fs/afs/mntpt.c    |   46 +++++++++++++++-------------------------------
- 3 files changed, 17 insertions(+), 31 deletions(-)
+First of all, versions of my software: kernel 2.6.33.5, nfs-utils 1.2.2
+(perhaps some of my doubts are solved in newer versions)
 
-diff --git a/fs/afs/dir.c b/fs/afs/dir.c
-index b42d5cc..5366f9b 100644
---- a/fs/afs/dir.c
-+++ b/fs/afs/dir.c
-@@ -65,6 +65,7 @@ static const struct dentry_operations afs_fs_dentry_operations = {
- 	.d_revalidate	= afs_d_revalidate,
- 	.d_delete	= afs_d_delete,
- 	.d_release	= afs_d_release,
-+	.d_automount	= afs_d_automount,
- };
- 
- #define AFS_DIR_HASHTBL_SIZE	128
-diff --git a/fs/afs/internal.h b/fs/afs/internal.h
-index 5f679b7..2c700dc 100644
---- a/fs/afs/internal.h
-+++ b/fs/afs/internal.h
-@@ -583,6 +583,7 @@ extern int afs_abort_to_error(u32);
- extern const struct inode_operations afs_mntpt_inode_operations;
- extern const struct file_operations afs_mntpt_file_operations;
- 
-+extern struct vfsmount *afs_d_automount(struct path *);
- extern int afs_mntpt_check_symlink(struct afs_vnode *, struct key *);
- extern void afs_mntpt_kill_timer(void);
- 
-diff --git a/fs/afs/mntpt.c b/fs/afs/mntpt.c
-index a9e2303..ea9cfee 100644
---- a/fs/afs/mntpt.c
-+++ b/fs/afs/mntpt.c
-@@ -24,7 +24,6 @@ static struct dentry *afs_mntpt_lookup(struct inode *dir,
- 				       struct dentry *dentry,
- 				       struct nameidata *nd);
- static int afs_mntpt_open(struct inode *inode, struct file *file);
--static void *afs_mntpt_follow_link(struct dentry *dentry, struct nameidata *nd);
- static void afs_mntpt_expiry_timed_out(struct work_struct *work);
- 
- const struct file_operations afs_mntpt_file_operations = {
-@@ -33,7 +32,6 @@ const struct file_operations afs_mntpt_file_operations = {
- 
- const struct inode_operations afs_mntpt_inode_operations = {
- 	.lookup		= afs_mntpt_lookup,
--	.follow_link	= afs_mntpt_follow_link,
- 	.readlink	= page_readlink,
- 	.getattr	= afs_getattr,
- };
-@@ -82,6 +80,7 @@ int afs_mntpt_check_symlink(struct afs_vnode *vnode, struct key *key)
- 		_debug("symlink is a mountpoint");
- 		spin_lock(&vnode->lock);
- 		set_bit(AFS_VNODE_MOUNTPOINT, &vnode->flags);
-+		vnode->vfs_inode.i_flags |= S_AUTOMOUNT;
- 		spin_unlock(&vnode->lock);
- 	}
- 
-@@ -205,52 +204,37 @@ error_no_devname:
- }
- 
- /*
-- * follow a link from a mountpoint directory, thus causing it to be mounted
-+ * handle an automount point
-  */
--static void *afs_mntpt_follow_link(struct dentry *dentry, struct nameidata *nd)
-+struct vfsmount *afs_d_automount(struct path *path)
- {
- 	struct vfsmount *newmnt;
- 	int err;
- 
--	_enter("%p{%s},{%s:%p{%s},}",
--	       dentry,
--	       dentry->d_name.name,
--	       nd->path.mnt->mnt_devname,
--	       dentry,
--	       nd->path.dentry->d_name.name);
--
--	dput(nd->path.dentry);
--	nd->path.dentry = dget(dentry);
-+	_enter("{%s,%s}", path->mnt->mnt_devname, path->dentry->d_name.name);
- 
--	newmnt = afs_mntpt_do_automount(nd->path.dentry);
--	if (IS_ERR(newmnt)) {
--		path_put(&nd->path);
--		return (void *)newmnt;
--	}
-+	newmnt = afs_mntpt_do_automount(path->dentry);
-+	if (IS_ERR(newmnt))
-+		return newmnt;
- 
- 	mntget(newmnt);
--	err = do_add_mount(newmnt, &nd->path, MNT_SHRINKABLE, &afs_vfsmounts);
-+	err = do_add_mount(newmnt, path, MNT_SHRINKABLE, &afs_vfsmounts);
- 	switch (err) {
- 	case 0:
--		path_put(&nd->path);
--		nd->path.mnt = newmnt;
--		nd->path.dentry = dget(newmnt->mnt_root);
- 		schedule_delayed_work(&afs_mntpt_expiry_timer,
- 				      afs_mntpt_expiry_timeout * HZ);
--		break;
-+		_leave(" = %p {%s}", newmnt, newmnt->mnt_devname);
-+		return newmnt;
- 	case -EBUSY:
- 		/* someone else made a mount here whilst we were busy */
--		while (d_mountpoint(nd->path.dentry) &&
--		       follow_down(&nd->path))
--			;
--		err = 0;
-+		mntput(newmnt);
-+		_leave(" = NULL [EBUSY]");
-+		return NULL;
- 	default:
- 		mntput(newmnt);
--		break;
-+		_leave(" = %d", err);
-+		return ERR_PTR(err);
- 	}
--
--	_leave(" = %d", err);
--	return ERR_PTR(err);
- }
- 
- /*
+Questions:
 
+- Is it mandatory to use a setup with a common root for exported filesystems ?
+  In my setup I first did not use it, no fsid=0 root, and everything
+  worked fine, just change the mount type in the clients. In fact, new
+  nfs-utils just try first version 4 and you dont have to do anything.
+  You loose the ability to use simple paths inside /export, for example, 
+  and have to use full paths like in V3, but that is not so bad.
+  Am I loosing something else wrt functionality ?
+
+- If you have a common root, is it mandatory to mount it in the client ?
+
+- If I setup a common root (say /export), and aoutomount some folders:
+  
+  /scratch/local
+  /scratch/node/00
+  /scratch/node/01
+  ......
+  /export/scratch -> /scratch/local (bind mount).
+
+  /scratch/node/?? is automounted from node ??, in which it is its own
+  /scratch/local. When I acess scratch for local node, it backs to a local
+  mount and mounts the REAL /scratch, not /export/scratch.
+  Any ideas ?
+
+- AFAIK, with NFS4 the only needed daemons are nfsd and idmapd. And the
+  only accesible port from the outside is 2049, for nfsd.
+  I have tried to strip down my nfs server (-N 2 -N 3 -U),
+  but rpcinfo still gives me:
+
+annwn:~# rpcinfo -p localhost
+   program vers proto   port  service
+    100000    4   tcp    111  portmapper
+    100000    3   tcp    111  portmapper
+    100000    2   tcp    111  portmapper
+    100000    4   udp    111  portmapper
+    100000    3   udp    111  portmapper
+    100000    2   udp    111  portmapper
+    100024    1   udp  48461  status
+    100024    1   tcp  37515  status
+    100021    1   udp  38583  nlockmgr
+    100021    3   udp  38583  nlockmgr
+    100021    4   udp  38583  nlockmgr
+    100021    1   tcp  37873  nlockmgr
+    100021    3   tcp  37873  nlockmgr
+    100021    4   tcp  37873  nlockmgr
+    100003    4   tcp   2049  nfs
+    100005    1   udp  45341  mountd
+    100005    1   tcp  58639  mountd
+
+  disabling portampper and mountd is just a matter of initscripts
+  requirements, but how can I disable nlockmgr ? It isn't needed for
+  NFS4, isn't it ? Nor portmapper nor mountd...
+
+TIA
+
+--
+J.A. Magallon <jamagallon()ono!com>     \               Software is like sex:
+                                         \         It's better when it's free
