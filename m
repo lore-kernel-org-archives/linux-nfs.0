@@ -1,63 +1,42 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp20.orange.fr ([80.12.242.26]:17842 "EHLO smtp20.orange.fr"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751006Ab0G1TVB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 28 Jul 2010 15:21:01 -0400
-Message-ID: <4C508330.8010303@orange.fr>
-Date: Wed, 28 Jul 2010 21:21:20 +0200
-From: Sebastien Godard <sysstat@orange.fr>
-To: Or Gerlitz <ogerlitz@Voltaire.com>
-CC: Chuck Lever <chuck.lever@oracle.com>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        linux-nfs@vger.kernel.org
-Subject: Re: iostat "await" like counter for measuring nfs latency
-References: <Pine.LNX.4.64.1007271300180.2110@zuben.voltaire.com> <1280244478.2981.3.camel@heimdal.trondhjem.org> <4C4FFC2B.4020906@Voltaire.com> <4C506B78.7040108@oracle.com>
-In-Reply-To: <4C506B78.7040108@oracle.com>
-Content-Type: text/plain; charset=UTF-8; format=flowed
+Received: from rcsinet10.oracle.com ([148.87.113.121]:29030 "EHLO
+	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754575Ab0G1Rix (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 28 Jul 2010 13:38:53 -0400
+Message-ID: <4C506AD0.4070608@oracle.com>
+Date: Wed, 28 Jul 2010 13:37:20 -0400
+From: Chuck Lever <chuck.lever@oracle.com>
+To: Andy Chittenden <andyc@bluearc.com>
+CC: Eric Dumazet <eric.dumazet@gmail.com>,
+        "Linux Kernel Mailing List (linux-kernel@vger.kernel.org)"
+	<linux-kernel@vger.kernel.org>,
+        Trond Myklebust <trond.myklebust@fys.uio.no>,
+        netdev <netdev@vger.kernel.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: nfs client hang
+References: <99613C19B13C5D40914FB8930657FA9303365708DE@uk-ex-mbx1.terastack.bluearc.com>	 <4C4E89D4.8040607@bluearc.com>	 <ABFC24E4C13D81489F7F624E14891C8607DDF8D1E4@uk-ex-mbx1.terastack.bluearc.com> <1280233276.2827.175.camel@edumazet-laptop> <4C4F174C.2000308@oracle.com> <ABFC24E4C13D81489F7F624E14891C8607DDF8D3D0@uk-ex-mbx1.terastack.bluearc.com>
+In-Reply-To: <ABFC24E4C13D81489F7F624E14891C8607DDF8D3D0@uk-ex-mbx1.terastack.bluearc.com>
+Content-Type: text/plain; charset=utf-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 07/28/2010 07:40 PM, Chuck Lever wrote:
+On 07/28/10 03:24 AM, Andy Chittenden wrote:
+> resending as it seems to have been corrupted on LKML!
 >
-> On 07/28/10 05:45 AM, Or Gerlitz wrote:
->> Trond Myklebust wrote:
->>> On Tue, 2010-07-27 at 13:07 +0300, Or Gerlitz wrote:
->>>> Doing some iscsi and nfs performance testing, I realized that 
->>>> iostat(1)
->>>> doesn't support an "await" like counter for measuring nfs latency.
->>>> Can tracking nfs latency be done in other means? is there a plan to
->>>> extend the nfs iostats code to include such/similar counter?
->>
->>> The information is already available in /proc/self/mountstats. It is up
->>> to iostat to start using it.
->>
->> Sebastian, is there a plan to support await like counter in sysstat?
->>
->> I didn't find a source repository (is there an open one? where?) so
->> downloaded the latest code (version 9.1.3) drop from the website and
->> couldn't see there such a counter, am I missing something?
+>> The RPC client marks the socket closed. and the linger timeout is
+>> cancelled.  At this point, sk_shutdown should be set to zero, correct?
+>> I don't see an xs_error_report() call here, which would confirm that the
+>> socket took a trip through tcp_disconnect().
 >
-> There are Python scripts in nfs-utils that report the statistics in 
-> /proc/self/mountstats.  Nobody really likes the file format of 
-> /proc/self/mountstats, so the plan is to move these, at some point, to 
-> someplace where perf can report them.
->
-> At that point, iostat support would also be nice.
->
+> From my reading of tcp_disconnect(), it calls sk->sk_error_report(sk)
+> unconditionally so as there's no xs_error_report(), that surely means
+> the exact opposite: tcp_disconnect() wasn't called. If it's not
+> called, sk_shutdown is not cleared. And my revised tracing confirmed
+> that it was set to SEND_SHUTDOWN.
 
-I'm ready to accept a patch that would add an await like counter to 
-measure NFS latency.
-BTW beginning with sysstat version 9.1.3, there is a specific command 
-("nfsiostat") aimed at displaying stats for network filesystems.
+Sorry, that's what I meant above.
 
-Regards,
-
--- 
-Sébastien Godard (sysstat<at>  orange.fr)
-Help support sysstat...!
-Visit http://pagesperso-orange.fr/sebastien.godard/
-
-
-
-
+An xs_error_report() debugging message at that point in the log would 
+confirm that the socket took a trip through tcp_disconnect().  But I 
+don't see such a message.
