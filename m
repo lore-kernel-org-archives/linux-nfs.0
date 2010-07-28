@@ -1,145 +1,166 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fn.samba.org ([216.83.154.106]:42940 "EHLO lists.samba.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752240Ab0GWBD7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 22 Jul 2010 21:03:59 -0400
-Content-Type: text/plain; charset=us-ascii
-Message-ID: <19528.60019.28495.655512@samba.org>
-Date: Fri, 23 Jul 2010 11:03:47 +1000
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Cc: Jeremy Allison <jra@samba.org>, linux-cifs@vger.kernel.org,
-        linux-nfs@vger.kernel.org, Volker.Lendecke@sernet.de,
-        samba-technical@lists.samba.org, linux-kernel@vger.kernel.org,
-        Jan Engelhardt <jengelh@medozas.de>,
-        David Howells <dhowells@redhat.com>, viro@zeniv.linux.org.uk,
-        linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
-Subject: Re: [PATCH 02/18] xstat: Add a pair of system calls to make extended
-	file stats available [ver #6]
-In-Reply-To: <AANLkTimdFCGSKLn7aGMpBMIauHTsHY7hpAAmpo6uTcnD@mail.gmail.com>
-References: <alpine.LSU.2.01.1007221228260.6115@obet.zrqbmnf.qr>
-	<20100715021709.5544.64506.stgit@warthog.procyon.org.uk>
-	<20100715021712.5544.44845.stgit@warthog.procyon.org.uk>
-	<30448.1279800887@redhat.com>
-	<E1Obuiy-00C9jr-Al@intern.SerNet.DE>
-	<AANLkTikBCXK6uEwWq4f0LvpdoKCPs3jvyFa4Zw4e2J_7@mail.gmail.com>
-	<E1Obxpd-00CRIo-SF@intern.SerNet.DE>
-	<AANLkTimwIq0pBhCeOjOVjB0yeM3JHOvzVoj9M4ui6al9@mail.gmail.com>
-	<20100722162712.GB10352@jeremy-laptop>
-	<AANLkTimdFCGSKLn7aGMpBMIauHTsHY7hpAAmpo6uTcnD@mail.gmail.com>
-Reply-To: tridge@samba.org
-From: tridge@samba.org
+Received: from daytona.panasas.com ([67.152.220.89]:47561 "EHLO
+	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1750795Ab0G1LJw (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 28 Jul 2010 07:09:52 -0400
+Message-ID: <4C500FFD.4000206@panasas.com>
+Date: Wed, 28 Jul 2010 14:09:49 +0300
+From: Boaz Harrosh <bharrosh@panasas.com>
+To: Andy Adamson <andros@netapp.com>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: pNFS client structure and function rename suggestions
+References: <DD09EF29-A704-4F17-B917-C01051355CA3@netapp.com>
+In-Reply-To: <DD09EF29-A704-4F17-B917-C01051355CA3@netapp.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Hi Linus,
+On 07/27/2010 06:37 PM, Andy Adamson wrote:
+> *********
+> include/linux/nfs_fs.h
+> 
+> struct pnfs_layout_type => pnfs_layout
 
- > My point is that we have three timestamps, and
- > windows wants three timestamps (somebody claims that NTFS has four
- > timestamps, but the Windows file time access functions certainly only
- > shows three times, so any potential extra on-disk times have no
- > relevance because they are invisible to pretty much everybody).
+I must disagree. Sorry.
 
-Not quite. The underlying structure available to Windows programmers
-is this one:
+The layout4 type in the standard is defined as:
+struct layout4 {
+           offset4                 lo_offset;
+           length4                 lo_length;
+           layoutiomode4           lo_iomode;
+           layout_content4         lo_content;
+};
 
-typedef struct _FILE_BASIC_INFORMATION {
-  LARGE_INTEGER CreationTime;
-  LARGE_INTEGER LastAccessTime;
-  LARGE_INTEGER LastWriteTime;
-  LARGE_INTEGER ChangeTime;
-  ULONG         FileAttributes;
-} FILE_BASIC_INFORMATION, *PFILE_BASIC_INFORMATION;
+Which is what we use as layout_segment. All the "LAYOUT" operations
+operate on an embedded concept of the above layout (seg) and or
+the LAYOUTGET actually returns a layout4.
 
-See http://msdn.microsoft.com/en-us/library/ff545762%28v=VS.85%29.aspx
+Calling something else pnfs_layout, will totally confuse. (And it seems
+it has already confused the best of us ;-) )
 
-These are the definitions:
+The above, former struct pnfs_layout_type, is a collection of "layout"s
+and governing state, plus general LD based IO management stuff.
 
-CreationTime
-    Specifies the time that the file was created. 
-LastAccessTime
-    Specifies the time that the file was last accessed. 
-LastWriteTime
-    Specifies the time that the file was last written to. 
-ChangeTime
-    Specifies the last time the file was changed. 
+For me it is just the "nfs inode extension for pnfs", embedded inside the
+"LD inode extension"
 
-You are right that the more commonly used APIs (such as
-GetFileInformationByHandle()) omit the ChangeTime field in the return
-value. The ChangeTime is also not visible via the normal Windows GUI
-or command line tools.
+Call it what you like. But the concept of "layout" was invented by the
+rfc5661. Please don't overload it to mean something else.
 
-But there are APIs that are used by quite a few programs that do get
-all 4 timestamps. For example, GetFileInformationByHandleEx() returns
-all 4 fields. I include an example program that uses that API to show
-all the timestamps below.
+> fields:
+>     refcount => lo_refcount
+>     segs => lo_segs
+>     roc_iomode => lo_roc_iomode
+>     seqlock => lo_seqlock
+>     stateid => lo_stateid
+>     pnfs_layout_state => lo_state
+>     pnfs_write_begin_pos => lo_write_begin
+>     pnfs_write_end_pos => lo_write_end
+> 
 
-and yes, we think that real applications (such as Excel), look at
-these values separately.
+Maybe just call it:
+struct nfs_inode {
+	...
+	struct pnfs_info *pnfs;
 
-The other big difference from POSIX timestamps is that the
-CreationTime is settable on Windows, and some of the windows UI
-behaviour relies on this.
+If the "layout" name is dropped then by naming convention the "lo_" is not
+appropriate as well.
 
-Cheers, Tridge
+> *********
+> include/linux/pnfs_xdr.h
+> 
+> NOTE: consider removing and adding to include/linux/nfs_xdr.h where the other
+> nfsv4.1 xdr structs are declared.
+> 
+> struct nfs4_pnfs_layout => remove, inline in nfs4_layoutget_args.
+> 
+> struct nfs4_pnfs_layout_segment => pnfs_layout_range
 
-PS: Sorry for coming into this discussion so late
+Isn't this a struct layout4 above?
+(And what an ugly reorder from the STD's fields, with these double
+miss alignment inside the nfs4_pnfs_layoutget_arg)
 
+I don't see why we have to invent new names (and structures) that translate
+to yet other names and concepts in the standard. (And a dictionary that
+translates one to the other). Why can't we just use the STDs names and structures
+directly? Is there not to many already?
 
-/* 
-   show all 4 file times
-   tridge@samba.org, July 2010
-*/
+> 
+> struct nfs4_pnfs_layoutget_arg => nfs4_layoutget_args
+> fields:
+>     lseg => range
+>     layout: remove. inline with:
+> 	add: layout_len
+>         add: layout_buf
+> 
+> struct nfs4_pnfs_layoutget_res => nfs4_layoutget_res
+> fields:
+>     lseg => range
+> 
 
-#define _WIN32_WINNT 0x0600
+All these lsegs above and below are layouts
 
-#include <stdio.h>
-#include <stdlib.h>
-#include "windows.h"
-#include "winbase.h"
+> struct nfs4_pnfs_layoutget => nfs4_layoutget
+> 
 
+OMG, yes!
 
-static void FileTime(const char *fname)
-{
-	HANDLE h;
-	FILE_BASIC_INFO info;
-	BOOL ret;
+Boaz
 
-        h = CreateFile(
-                fname, GENERIC_READ, 
-                FILE_SHARE_READ,
-                NULL,           
-                OPEN_EXISTING,  
-                0,
-                NULL
-        );
-	if (h == INVALID_HANDLE_VALUE) {
-		printf("Unable to open %s\n", fname);
-		exit(1);
-	}
-
-	ret = GetFileInformationByHandleEx(h, FileBasicInfo, &info, sizeof(info));
-
-	if (!ret) {
-		printf("Unable to get file information\n");
-		exit(1);
-	}
-
-	printf("CreationTime:   %llu\n", (unsigned long long)info.CreationTime.QuadPart);
-	printf("LastAccessTime: %llu\n", (unsigned long long)info.LastAccessTime.QuadPart);
-	printf("LastWriteTime:  %llu\n", (unsigned long long)info.LastWriteTime.QuadPart);
-	printf("ChangeTime:     %llu\n", (unsigned long long)info.ChangeTime.QuadPart);
-
-	CloseHandle(h);
-}
-
-int main(int argc, char* argv[])
-{
-	if (argc < 2) {
-		printf("Usage: filetime FILENAME\n");
-		exit(1);
-	}
-
-	FileTime(argv[1]);
-	return 0;
-}
+> struct pnfs_layoutcommit_arg => nfs4_layoutcommit_args
+> fields:
+>     lseg => range
+> 
+> struct pnfs_layoutcommit_res => nfs4_layoutcommit_res
+> 
+> struct pnfs_layoutcommit_data => nfs4_layoutcommit_data
+> 
+> struct nfs4_pnfs_layoutreturn_arg => nfs4_layoutreturn_args
+> fields:
+>     lseg => range
+> 
+> struct nfs4_pnfs_layoutreturn_res => nfs4_layoutreturn_res
+> 
+> struct nfs4_pnfs_layoutreturn => nfs4_layoutreturn
+> 
+> struct nfs4_pnfs_getdeviceinfo_arg => nfs4_getdeviceinfo_args
+> 
+> struct nfs4_pnfs_getdeviceinfo_res => nfs4_getdeviceinfo_res
+> 
+> *********
+> include/linux/nfs4.h
+> 
+> NFSPROC4_CLNT_PNFS_LAYOUTGET => NFSPROC4_CLNT_LAYOUTGET
+> NFSPROC4_CLNT_PNFS_LAYOUTCOMMIT => NFSPROC4_CLNT_LAYOUTCOMMIT
+> NFSPROC4_CLNT_PNFS_LAYOUTRETURN => NFSPROC4_CLNT_LAYOUTRETURN
+> NFSPROC4_CLNT_PNFS_GETDEVICEINFO => NFSPROC4_CLNT_GETDEVICEINFO
+> 
+> *********
+> 
+> fs/nfs/nfs4proc.c
+> 
+> nfs4_pnfs_layoutget_prepare => nfs4_layoutget_prepare
+> nfs4_pnfs_layoutget_done => nfs4_layoutget_done
+> nfs4_pnfs_layoutget_release => nfs4_layoutget_release
+> 
+> _pnfs4_proc_layoutget => _nfs4_proc_layoutget
+> pnfs4_proc_layoutget => nfs4_proc_layoutget
+> 
+> 
+> pnfs_layoutcommit_prepare => nfs4_layoutcommit_prepare
+> pnfs_layoutcommit_done => nfs4_layoutcommit_done
+> pnfs_layoutcommit_release => nfs4_layoutcommit_release
+> 
+> _pnfs4_proc_layoutcommit => _nfs4_proc_layoutcommit
+> pnfs4_proc_layoutcommit => nfs4_proc_layoutcommit
+> 
+> nfs4_pnfs_layoutreturn_prepare => nfs4_layoutreturn_prepare
+> nfs4_pnfs_layoutreturn_done => nfs4_layoutreturn_done
+> nfs4_pnfs_layoutreturn_release => nfs4_layoutreturn_release
+> 
+> _pnfs4_proc_layoutreturn => _nfs4_proc_layoutreturn
+> pnfs4_proc_layoutreturn => nfs4_proc_layoutreturn
+> 
+> nfs4_pnfs_getdeviceinfo => nfs4_proc_getdeviceinfo
+> 
