@@ -1,332 +1,75 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:33374 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754901Ab0GVR7K (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 22 Jul 2010 13:59:10 -0400
-From: David Howells <dhowells@redhat.com>
-Subject: [PATCH 4/6] CIFS: Use d_automount() rather than abusing follow_link()
-To: viro@ZenIV.linux.org.uk
-Cc: linux-fsdevel@vger.kernel.org, linux-afs@lists.infradead.org,
-        linux-nfs@vger.kernel.org, linux-cifs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, David Howells <dhowells@redhat.com>,
-        Steve French <sfrench@samba.org>
-Date: Thu, 22 Jul 2010 18:59:02 +0100
-Message-ID: <20100722175902.5552.16278.stgit@warthog.procyon.org.uk>
-In-Reply-To: <20100722175847.5552.11520.stgit@warthog.procyon.org.uk>
-References: <20100722175847.5552.11520.stgit@warthog.procyon.org.uk>
-Content-Type: text/plain; charset="utf-8"
+Received: from daytona.panasas.com ([67.152.220.89]:29410 "EHLO
+	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1753926Ab0G1OMI (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 28 Jul 2010 10:12:08 -0400
+Message-ID: <4C503AB5.1090204@panasas.com>
+Date: Wed, 28 Jul 2010 17:12:05 +0300
+From: Boaz Harrosh <bharrosh@panasas.com>
+To: Fred Isaman <iisaman@umich.edu>
+CC: Andy Adamson <andros@netapp.com>, linux-nfs@vger.kernel.org
+Subject: Re: pNFS client structure and function rename suggestions
+References: <DD09EF29-A704-4F17-B917-C01051355CA3@netapp.com>	<4C500FFD.4000206@panasas.com> <AANLkTikf-9UDhi6_Jg0k8=wV64=JPGVm5T=scQk14xM1@mail.gmail.com>
+In-Reply-To: <AANLkTikf-9UDhi6_Jg0k8=wV64=JPGVm5T=scQk14xM1@mail.gmail.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Make CIFS use the new d_automount() dentry operation rather than abusing
-follow_link() on directories.
+On 07/28/2010 04:48 PM, Fred Isaman wrote:
+> On Wed, Jul 28, 2010 at 7:09 AM, Boaz Harrosh <bharrosh@panasas.com> wrote:
+>>> struct nfs4_pnfs_layout_segment => pnfs_layout_range
+>>
+>> Isn't this a struct layout4 above?
+> 
+> No, this is probably the most confusingly named structure of them all,
+> and one I would strongly urge be changed along the line of Andy's
+> suggestion.
+> 
+> Fred
+> 
 
-[NOTE: THIS IS UNTESTED!]
+We are like a married couple on a freezing night. Each pulling the blanket
+to his/her side.
 
-[Question:  Why does cifs_dfs_do_refmount() when the caller has already done
-	    that and could pass the result through?]
+I'm trying to pull the blanket to the side. where all these are converted
+to exactly the names and structures as stated by the standard.
+That the Linux-pnfs-workgroup tried to invent their own STD is a misfortune
+which I missed, getting so late into the game.
 
-Signed-off-by: David Howells <dhowells@redhat.com>
-Cc: Steve French <sfrench@samba.org>
----
+What side of the Bed are you pulling to?
+I wish you elaborate more, and explain, instead of just saying "NO"
 
- fs/cifs/cifs_dfs_ref.c |  145 +++++++++++++++++++++++-------------------------
- fs/cifs/cifsfs.h       |    6 ++
- fs/cifs/dir.c          |    2 +
- fs/cifs/inode.c        |    8 ++-
- 4 files changed, 83 insertions(+), 78 deletions(-)
+struct layout_content {
+           layouttype4 loc_type;
+           void      *loc_body;
+};
 
-diff --git a/fs/cifs/cifs_dfs_ref.c b/fs/cifs/cifs_dfs_ref.c
-index 37543e8..bc094f4 100644
---- a/fs/cifs/cifs_dfs_ref.c
-+++ b/fs/cifs/cifs_dfs_ref.c
-@@ -230,8 +230,8 @@ compose_mount_options_err:
- }
- 
- 
--static struct vfsmount *cifs_dfs_do_refmount(const struct vfsmount *mnt_parent,
--		struct dentry *dentry, const struct dfs_info3_param *ref)
-+static struct vfsmount *cifs_dfs_do_refmount(struct dentry *mntpt,
-+					     const struct dfs_info3_param *ref)
- {
- 	struct cifs_sb_info *cifs_sb;
- 	struct vfsmount *mnt;
-@@ -239,12 +239,12 @@ static struct vfsmount *cifs_dfs_do_refmount(const struct vfsmount *mnt_parent,
- 	char *devname = NULL;
- 	char *fullpath;
- 
--	cifs_sb = CIFS_SB(dentry->d_inode->i_sb);
-+	cifs_sb = CIFS_SB(mntpt->d_inode->i_sb);
- 	/*
- 	 * this function gives us a path with a double backslash prefix. We
- 	 * require a single backslash for DFS.
- 	 */
--	fullpath = build_path_from_dentry(dentry);
-+	fullpath = build_path_from_dentry(mntpt);
- 	if (!fullpath)
- 		return ERR_PTR(-ENOMEM);
- 
-@@ -262,35 +262,6 @@ static struct vfsmount *cifs_dfs_do_refmount(const struct vfsmount *mnt_parent,
- 
- }
- 
--static int add_mount_helper(struct vfsmount *newmnt, struct nameidata *nd,
--				struct list_head *mntlist)
--{
--	/* stolen from afs code */
--	int err;
--
--	mntget(newmnt);
--	err = do_add_mount(newmnt, &nd->path, nd->path.mnt->mnt_flags | MNT_SHRINKABLE, mntlist);
--	switch (err) {
--	case 0:
--		path_put(&nd->path);
--		nd->path.mnt = newmnt;
--		nd->path.dentry = dget(newmnt->mnt_root);
--		schedule_delayed_work(&cifs_dfs_automount_task,
--				      cifs_dfs_mountpoint_expiry_timeout);
--		break;
--	case -EBUSY:
--		/* someone else made a mount here whilst we were busy */
--		while (d_mountpoint(nd->path.dentry) &&
--		       follow_down(&nd->path))
--			;
--		err = 0;
--	default:
--		mntput(newmnt);
--		break;
--	}
--	return err;
--}
--
- static void dump_referral(const struct dfs_info3_param *ref)
- {
- 	cFYI(1, "DFS: ref path: %s", ref->path_name);
-@@ -300,34 +271,30 @@ static void dump_referral(const struct dfs_info3_param *ref)
- 				ref->path_consumed);
- }
- 
--
--static void*
--cifs_dfs_follow_mountpoint(struct dentry *dentry, struct nameidata *nd)
-+/*
-+ * Create a vfsmount that we can automount
-+ */
-+static struct vfsmount *cifs_dfs_do_automount(struct dentry *mntpt)
- {
- 	struct dfs_info3_param *referrals = NULL;
- 	unsigned int num_referrals = 0;
- 	struct cifs_sb_info *cifs_sb;
- 	struct cifsSesInfo *ses;
--	char *full_path = NULL;
-+	char *full_path;
- 	int xid, i;
--	int rc = 0;
--	struct vfsmount *mnt = ERR_PTR(-ENOENT);
-+	int rc;
-+	struct vfsmount *mnt;
- 
- 	cFYI(1, "in %s", __func__);
--	BUG_ON(IS_ROOT(dentry));
-+	BUG_ON(IS_ROOT(mntpt));
- 
- 	xid = GetXid();
- 
--	dput(nd->path.dentry);
--	nd->path.dentry = dget(dentry);
--
--	cifs_sb = CIFS_SB(dentry->d_inode->i_sb);
-+	cifs_sb = CIFS_SB(mntpt->d_inode->i_sb);
-+	mnt = ERR_PTR(-EINVAL);
- 	ses = cifs_sb->tcon->ses;
--
--	if (!ses) {
--		rc = -EINVAL;
--		goto out_err;
--	}
-+	if (!ses)
-+		goto free_xid;
- 
- 	/*
- 	 * The MSDFS spec states that paths in DFS referral requests and
-@@ -335,56 +302,84 @@ cifs_dfs_follow_mountpoint(struct dentry *dentry, struct nameidata *nd)
- 	 * the double backslashes usually used in the UNC. This function
- 	 * gives us the latter, so we must adjust the result.
- 	 */
--	full_path = build_path_from_dentry(dentry);
--	if (full_path == NULL) {
--		rc = -ENOMEM;
--		goto out_err;
--	}
-+	mnt = ERR_PTR(-ENOMEM);
-+	full_path = build_path_from_dentry(mntpt);
-+	if (full_path == NULL)
-+		goto free_xid;
- 
- 	rc = get_dfs_path(xid, ses , full_path + 1, cifs_sb->local_nls,
- 		&num_referrals, &referrals,
- 		cifs_sb->mnt_cifs_flags & CIFS_MOUNT_MAP_SPECIAL_CHR);
- 
-+	mnt = ERR_PTR(-ENOENT);
- 	for (i = 0; i < num_referrals; i++) {
- 		int len;
--		dump_referral(referrals+i);
-+		dump_referral(referrals + i);
- 		/* connect to a node */
- 		len = strlen(referrals[i].node_name);
- 		if (len < 2) {
- 			cERROR(1, "%s: Net Address path too short: %s",
- 					__func__, referrals[i].node_name);
--			rc = -EINVAL;
--			goto out_err;
-+			mnt = ERR_PTR(-EINVAL);
-+			break;
- 		}
--		mnt = cifs_dfs_do_refmount(nd->path.mnt,
--				nd->path.dentry, referrals + i);
-+		mnt = cifs_dfs_do_refmount(mntpt, referrals + i);
- 		cFYI(1, "%s: cifs_dfs_do_refmount:%s , mnt:%p", __func__,
- 					referrals[i].node_name, mnt);
--
--		/* complete mount procedure if we accured submount */
- 		if (!IS_ERR(mnt))
--			break;
-+			goto success;
- 	}
- 
--	/* we need it cause for() above could exit without valid submount */
--	rc = PTR_ERR(mnt);
--	if (IS_ERR(mnt))
--		goto out_err;
--
--	rc = add_mount_helper(mnt, nd, &cifs_dfs_automount_list);
-+	/* no valid submounts were found; return error from get_dfs_path() by
-+	 * preference */
-+	if (rc != 0)
-+		mnt = ERR_PTR(rc);
- 
--out:
--	FreeXid(xid);
-+success:
- 	free_dfs_info_array(referrals, num_referrals);
- 	kfree(full_path);
-+free_xid:
-+	FreeXid(xid);
- 	cFYI(1, "leaving %s" , __func__);
- 	return ERR_PTR(rc);
--out_err:
--	path_put(&nd->path);
--	goto out;
-+}
-+
-+/*
-+ * Attempt to automount the referral
-+ */
-+struct vfsmount *cifs_dfs_d_automount(struct path *path)
-+{
-+	struct vfsmount *newmnt;
-+	int err;
-+
-+	cFYI(1, "in %s", __func__);
-+
-+	newmnt = cifs_dfs_do_automount(path->dentry);
-+	if (IS_ERR(newmnt)) {
-+		cFYI(1, "leaving %s [automount failed]" , __func__);
-+		return newmnt;
-+	}
-+
-+	mntget(newmnt);
-+	err = do_add_mount(newmnt, path, MNT_SHRINKABLE,
-+			   &cifs_dfs_automount_list);
-+	switch (err) {
-+	case 0:
-+		schedule_delayed_work(&cifs_dfs_automount_task,
-+				      cifs_dfs_mountpoint_expiry_timeout);
-+		cFYI(1, "leaving %s [ok]" , __func__);
-+		return newmnt;
-+	case -EBUSY:
-+		/* someone else made a mount here whilst we were busy */
-+		mntput(newmnt);
-+		cFYI(1, "leaving %s [EBUSY]" , __func__);
-+		return NULL;
-+	default:
-+		mntput(newmnt);
-+		cFYI(1, "leaving %s [error %d]" , __func__, err);
-+		return ERR_PTR(err);
-+	}
- }
- 
- const struct inode_operations cifs_dfs_referral_inode_operations = {
--	.follow_link = cifs_dfs_follow_mountpoint,
- };
--
-diff --git a/fs/cifs/cifsfs.h b/fs/cifs/cifsfs.h
-index a7eb65c..d74bda0 100644
---- a/fs/cifs/cifsfs.h
-+++ b/fs/cifs/cifsfs.h
-@@ -95,6 +95,12 @@ extern int cifs_readdir(struct file *file, void *direntry, filldir_t filldir);
- extern const struct dentry_operations cifs_dentry_ops;
- extern const struct dentry_operations cifs_ci_dentry_ops;
- 
-+#ifdef CONFIG_CIFS_DFS_UPCALL
-+extern struct vfsmount *cifs_dfs_d_automount(struct path *path);
-+#else
-+#define cifs_dfs_d_automount NULL
-+#endif
-+
- /* Functions related to symlinks */
- extern void *cifs_follow_link(struct dentry *direntry, struct nameidata *nd);
- extern void cifs_put_link(struct dentry *direntry,
-diff --git a/fs/cifs/dir.c b/fs/cifs/dir.c
-index e7ae78b..b147905 100644
---- a/fs/cifs/dir.c
-+++ b/fs/cifs/dir.c
-@@ -804,6 +804,7 @@ cifs_d_revalidate(struct dentry *direntry, struct nameidata *nd)
- 
- const struct dentry_operations cifs_dentry_ops = {
- 	.d_revalidate = cifs_d_revalidate,
-+	.d_automount = cifs_dfs_d_automount,
- /* d_delete:       cifs_d_delete,      */ /* not needed except for debugging */
- };
- 
-@@ -844,4 +845,5 @@ const struct dentry_operations cifs_ci_dentry_ops = {
- 	.d_revalidate = cifs_d_revalidate,
- 	.d_hash = cifs_ci_hash,
- 	.d_compare = cifs_ci_compare,
-+	.d_automount = cifs_dfs_d_automount,
- };
-diff --git a/fs/cifs/inode.c b/fs/cifs/inode.c
-index 6f0683c..011100f 100644
---- a/fs/cifs/inode.c
-+++ b/fs/cifs/inode.c
-@@ -31,7 +31,7 @@
- #include "cifs_fs_sb.h"
- 
- 
--static void cifs_set_ops(struct inode *inode, const bool is_dfs_referral)
-+static void cifs_set_ops(struct inode *inode)
- {
- 	struct cifs_sb_info *cifs_sb = CIFS_SB(inode->i_sb);
- 
-@@ -59,7 +59,7 @@ static void cifs_set_ops(struct inode *inode, const bool is_dfs_referral)
- 		break;
- 	case S_IFDIR:
- #ifdef CONFIG_CIFS_DFS_UPCALL
--		if (is_dfs_referral) {
-+		if (IS_AUTOMOUNT(inode)) {
- 			inode->i_op = &cifs_dfs_referral_inode_operations;
- 		} else {
- #else /* NO DFS support, treat as a directory */
-@@ -166,7 +166,9 @@ cifs_fattr_to_inode(struct inode *inode, struct cifs_fattr *fattr)
- 	}
- 	spin_unlock(&inode->i_lock);
- 
--	cifs_set_ops(inode, fattr->cf_flags & CIFS_FATTR_DFS_REFERRAL);
-+	if (fattr->cf_flags & CIFS_FATTR_DFS_REFERRAL)
-+		inode->i_flags |= S_AUTOMOUNT;
-+	cifs_set_ops(inode);
- }
- 
- void
+struct layout {
+           offset4                 lo_offset;
+           length4                 lo_length;
+           layoutiomode4           lo_iomode;
+           layout_content4         lo_content;
+};
 
+struct layoutget_args {
+           /* CURRENT_FH: file */
+           bool                    loga_signal_layout_avail;
+           layouttype4             loga_layout_type;
+           layoutiomode4           loga_iomode;
+           offset4                 loga_offset;
+           length4                 loga_length;
+           length4                 loga_minlength;
+           stateid4                loga_stateid;
+           count4                  loga_maxcount;
+};
+
+struct layoutget_res {
+           bool               logr_return_on_close;
+           stateid4           logr_stateid;
+           layout             logr_layout;
+};
+
+How is the above less useful then the mess we have now?
+
+Boaz
