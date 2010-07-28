@@ -1,52 +1,63 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fmailhost03.isp.att.net ([204.127.217.103]:37420 "EHLO
-	fmailhost03.isp.att.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752380Ab0GQFvf (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 17 Jul 2010 01:51:35 -0400
-Date: Fri, 16 Jul 2010 22:51:30 -0700
-From: Mark Harris <mhlk@osj.us>
-To: David Howells <dhowells@redhat.com>
-Cc: Arnd Bergmann <arnd@arndb.de>, Steve French <smfrench@gmail.com>,
-        viro@zeniv.linux.org.uk, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-cifs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, samba-technical@lists.samba.org,
-        linux-ext4@vger.kernel.org
-Subject: Re: [PATCH 02/18] xstat: Add a pair of system calls to make
-	extended file stats available [ver #6]
-Message-ID: <20100717055130.GA2053@zoia.osj.us>
-References: <201007161302.35775.arnd@arndb.de> <20100716062251.GA9318@zoia.osj.us> <30646.1279230807@redhat.com> <8527.1279275842@redhat.com> <10677.1279283886@redhat.com>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <10677.1279283886@redhat.com>
+Received: from smtp20.orange.fr ([80.12.242.26]:17842 "EHLO smtp20.orange.fr"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751006Ab0G1TVB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 28 Jul 2010 15:21:01 -0400
+Message-ID: <4C508330.8010303@orange.fr>
+Date: Wed, 28 Jul 2010 21:21:20 +0200
+From: Sebastien Godard <sysstat@orange.fr>
+To: Or Gerlitz <ogerlitz@Voltaire.com>
+CC: Chuck Lever <chuck.lever@oracle.com>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        linux-nfs@vger.kernel.org
+Subject: Re: iostat "await" like counter for measuring nfs latency
+References: <Pine.LNX.4.64.1007271300180.2110@zuben.voltaire.com> <1280244478.2981.3.camel@heimdal.trondhjem.org> <4C4FFC2B.4020906@Voltaire.com> <4C506B78.7040108@oracle.com>
+In-Reply-To: <4C506B78.7040108@oracle.com>
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-David Howells wrote:
-> With a 2:2 split between exponent
-> (tv_gran_units) and mantissa (tv_granularity), you can do:
-> 
-> 	UNIT		SECONDS/UNIT	EXPONENT	MANTISSA
-> 	nanoseconds	0.000000001	-9		1
-> 	microseconds	0.000001	-6		1
-> 	millseconds	0.001		-3		1
-> 	seconds		1		0		1
-> 	minutes		60		1		6
-> 	hours		3600		2		36
-> 	days		86400		2		864
-> 	weeks		604800		2		6048
+On 07/28/2010 07:40 PM, Chuck Lever wrote:
+>
+> On 07/28/10 05:45 AM, Or Gerlitz wrote:
+>> Trond Myklebust wrote:
+>>> On Tue, 2010-07-27 at 13:07 +0300, Or Gerlitz wrote:
+>>>> Doing some iscsi and nfs performance testing, I realized that 
+>>>> iostat(1)
+>>>> doesn't support an "await" like counter for measuring nfs latency.
+>>>> Can tracking nfs latency be done in other means? is there a plan to
+>>>> extend the nfs iostats code to include such/similar counter?
+>>
+>>> The information is already available in /proc/self/mountstats. It is up
+>>> to iostat to start using it.
+>>
+>> Sebastian, is there a plan to support await like counter in sysstat?
+>>
+>> I didn't find a source repository (is there an open one? where?) so
+>> downloaded the latest code (version 9.1.3) drop from the website and
+>> couldn't see there such a counter, am I missing something?
+>
+> There are Python scripts in nfs-utils that report the statistics in 
+> /proc/self/mountstats.  Nobody really likes the file format of 
+> /proc/self/mountstats, so the plan is to move these, at some point, to 
+> someplace where perf can report them.
+>
+> At that point, iostat support would also be nice.
+>
 
-At least for the in-tree filesystems, I do not see any that keep
-timestamps with a granularity larger than 2s.  For that, a simple
-32-bit tv_granularity in nanoseconds (not limited to 1e9) would
-suffice, and there is no need for the complexity of dealing with
-a separate exponent.
+I'm ready to accept a patch that would add an await like counter to 
+measure NFS latency.
+BTW beginning with sysstat version 9.1.3, there is a specific command 
+("nfsiostat") aimed at displaying stats for network filesystems.
 
-If there is a need to handle larger granularity, its msb could
-potentially be used to indicate that the number is in seconds
-instead of nanoseconds.  This is convenient because the timestamp
-is already broken down into sec and nsec fields.  So this bit would
-then indicate that the granularity applies to the tv_sec field, and
-that tv_nsec is not in use.  But even this is overkill if no one
-uses a granularity larger than 2s.
+Regards,
 
- - Mark
+-- 
+Sébastien Godard (sysstat<at>  orange.fr)
+Help support sysstat...!
+Visit http://pagesperso-orange.fr/sebastien.godard/
+
+
+
+
