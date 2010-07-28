@@ -1,40 +1,43 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:37399 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751229Ab0GOU6a (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 15 Jul 2010 16:58:30 -0400
-From: andros@netapp.com
-To: bhalevy@panasas.com
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 0/4] pnfs-submit use latest layout stateid 
-Date: Thu, 15 Jul 2010 16:58:50 -0400
-Message-Id: <1279227534-3226-1-git-send-email-andros@netapp.com>
+Received: from rcsinet10.oracle.com ([148.87.113.121]:33735 "EHLO
+	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753352Ab0G1RlI (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 28 Jul 2010 13:41:08 -0400
+Message-ID: <4C506B78.7040108@oracle.com>
+Date: Wed, 28 Jul 2010 13:40:08 -0400
+From: Chuck Lever <chuck.lever@oracle.com>
+To: Or Gerlitz <ogerlitz@Voltaire.com>
+CC: Sebastien Godard <sysstat@orange.fr>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        linux-nfs@vger.kernel.org
+Subject: Re: iostat "await" like counter for measuring nfs latency
+References: <Pine.LNX.4.64.1007271300180.2110@zuben.voltaire.com> <1280244478.2981.3.camel@heimdal.trondhjem.org> <4C4FFC2B.4020906@Voltaire.com>
+In-Reply-To: <4C4FFC2B.4020906@Voltaire.com>
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
+On 07/28/10 05:45 AM, Or Gerlitz wrote:
+> Trond Myklebust wrote:
+>> On Tue, 2010-07-27 at 13:07 +0300, Or Gerlitz wrote:
+>>> Doing some iscsi and nfs performance testing, I realized that iostat(1)
+>>> doesn't support an "await" like counter for measuring nfs latency.
+>>> Can tracking nfs latency be done in other means? is there a plan to
+>>> extend the nfs iostats code to include such/similar counter?
+>
+>> The information is already available in /proc/self/mountstats. It is up
+>> to iostat to start using it.
+>
+> Sebastian, is there a plan to support await like counter in sysstat?
+>
+> I didn't find a source repository (is there an open one? where?) so
+> downloaded the latest code (version 9.1.3) drop from the website and
+> couldn't see there such a counter, am I missing something?
 
-Set the layout stateid from an open stateid in layoutget iff the layout stateid
-is zero.
+There are Python scripts in nfs-utils that report the statistics in 
+/proc/self/mountstats.  Nobody really likes the file format of 
+/proc/self/mountstats, so the plan is to move these, at some point, to 
+someplace where perf can report them.
 
-Get the layout stateid from the layout in the xdr layer for layoutget and
-layoutreturn so that the latest stateid is used. Fixes a bug where a retry due
-to NFS4ERR_OLD_STATEID (and any retry) will use the old stateid.
-
-0001-SQUASHME-pnfs-submit-get-layoutget-stateid-from-layo.patch
-0002-SQUASHME-pnfs-submit-get-layoutreturn-stateid-from-l.patch
-
-Remove unnecessary fields.
-
-0003-SQUASHME-pnfs-submit-remove-unnecessary-layoutreturn.patch
-0004-SQUASHME-pnfs-submit-remove-unnecessary-layoutget-fi.patch
-
-Tested
-
-CONFIG_NFS_V4_1 set
-
-Connectathon passes
-
--->Andy
-
+At that point, iostat support would also be nice.
