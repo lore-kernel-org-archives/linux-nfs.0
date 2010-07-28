@@ -1,76 +1,31 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:48836 "EHLO
-	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753758Ab0GGRv4 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 7 Jul 2010 13:51:56 -0400
-Message-ID: <4C34BE3A.3050806@oracle.com>
-Date: Wed, 07 Jul 2010 13:49:46 -0400
-From: Chuck Lever <chuck.lever@oracle.com>
-To: "David P. Quigley" <dpquigl@tycho.nsa.gov>
-CC: hch@infradead.org, viro@zeniv.linux.org.uk, casey@schaufler-ca.com,
-        sds@tycho.nsa.gov, matthew.dodd@sparta.com, trond.myklebust@fys.uio.no,
-        bfields@fieldses.org, linux-kernel@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, linux-security-module@vger.kernel.org,
-        selinux@tycho.nsa.gov, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 07/10] NFSv4: Introduce new label structure
-References: <1278513086-23964-1-git-send-email-dpquigl@tycho.nsa.gov>	 <1278513086-23964-8-git-send-email-dpquigl@tycho.nsa.gov>	 <4C34A4F1.3060708@oracle.com> <1278519727.2494.92.camel@moss-terrapins.epoch.ncsc.mil>
-In-Reply-To: <1278519727.2494.92.camel@moss-terrapins.epoch.ncsc.mil>
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Received: from fieldses.org ([174.143.236.118]:48848 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755837Ab0G1RPg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 28 Jul 2010 13:15:36 -0400
+Date: Wed, 28 Jul 2010 13:14:29 -0400
+To: Bian Naimeng <biannm@cn.fujitsu.com>
+Cc: =?utf-8?B?Si5BLiDvv70=?= <jamagallon@ono.com>,
+        Linux Kernel <linux-kernel@vger.kernel.org>, linux-nfs@vger.kernel.org
+Subject: Re: Questions and problems with NFS4
+Message-ID: <20100728171429.GA19362@fieldses.org>
+References: <20100728004611.00c46b13@werewolf.home>
+ <4C4F95BC.3060200@cn.fujitsu.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4C4F95BC.3060200@cn.fujitsu.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 07/ 7/10 12:22 PM, David P. Quigley wrote:
-> Hello Chuck,
->     Thank you for the comments. I'll go through and address them inline
-> (Sorry for the top post).
->
-> On Wed, 2010-07-07 at 12:01 -0400, Chuck Lever wrote:
->> My comments below apply to the other NFS client patches as well.  This
->> seemed like the right one to use for code examples.
->>
->> On 07/ 7/10 10:31 AM, David P. Quigley wrote:
+On Wed, Jul 28, 2010 at 10:28:12AM +0800, Bian Naimeng wrote:
+>     As i see, there's no way to disabe nlockmgr, it's start by lockd,
+>     and lockd will be up when we start nfsd. It's always work until the
+>     last nfsd thread stop.
 
-   [ ... snipped ... ]
+Some day we should probably modify the server to turn off lockd in the
+v4-only case.  For now we don't do that.
 
->> It seems to me you want something more generic, just like nfs_fh or
->> nfs_fattr, to represent these.  Over time, I'm guessing label support
->> won't be tied to a specific NFS version.  And, you are passing these
->> around in the generic NFS functions (for post-op updates and inode
->> revalidation, and what not).
->>
->> Can I recommend "struct nfs_seclabel" instead?  Then have
->> nfs_seclabel_alloc() and nfs_seclabel_free().
->
-> I can definitely rename them to be more generic. I don't see anything
-> else besides NFSv4 using them but its fine with me to rename them. The
-> reason we call them nfs4_label is because we modeled it after the NFSv4
-> acl support code. I spoke with Christoph a long time ago and he
-> suggested that it should be handled the same way that the NFSv4 ACLs are
-> handled as opposed to the iattr thing we were trying.
->
->>
->> Does it make sense to deduplicate these in the client's memory?  It
->> seems to me that you could have hundreds or thousands that all contain
->> the same label information.
->
-> I don't think it is worth the effort. We are only using these structures
-> until the security label is crammed into the inode. Once that happens
-> they get freed. You shouldn't have them sitting around for very long.
+It should be fine to firewall off lockd if you only care about NFSv4.
 
-OK, the lifetime of these things wasn't clear.
-
-> They will be pulled again when the inode attributes expire and need to
-> be revalidated. For things like SELinux you could argue that the LSM
-> might benefit from this (and it might already do it but I'm not sure)
-> but I think that is something to be handled by the LSM itself or the
-> credentials code (since it already supports COW credentials it should be
-> possible).
-
-I think the lifetime of the label structure then is about the same as 
-the lifetime of an nfs_attr, and not at all the same as an ACL.  I'm 
-just guessing here.
-
-Would it then make sense to add a field that refers to the security 
-label to struct nfs_fattr instead?  That might simplify or eliminate all 
-of the internal API changes.
+--b.
