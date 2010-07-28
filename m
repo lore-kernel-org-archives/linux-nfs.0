@@ -1,69 +1,37 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:28110 "EHLO
-	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1752067Ab0GVTxk (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 22 Jul 2010 15:53:40 -0400
-Message-ID: <4C48A1BE.8010503@panasas.com>
-Date: Thu, 22 Jul 2010 22:53:34 +0300
-From: Benny Halevy <bhalevy@panasas.com>
-To: Greg Freemyer <greg.freemyer@gmail.com>
-CC: Linus Torvalds <torvalds@linux-foundation.org>,
-        Jan Engelhardt <jengelh@medozas.de>, Jeremy Allison <jra@samba.org>,
-        Volker.Lendecke@sernet.de, David Howells <dhowells@redhat.com>,
-        linux-cifs@vger.kernel.org, linux-nfs@vger.kernel.org,
-        samba-technical@lists.samba.org, linux-kernel@vger.kernel.org,
-        viro@zeniv.linux.org.uk, linux-fsdevel@vger.kernel.org,
-        linux-ext4@vger.kernel.org
-Subject: Re: [PATCH 02/18] xstat: Add a pair of system calls to make extended
- 	file stats available [ver #6]
-References: <alpine.LSU.2.01.1007221228260.6115@obet.zrqbmnf.qr>	<20100715021709.5544.64506.stgit@warthog.procyon.org.uk>	<20100715021712.5544.44845.stgit@warthog.procyon.org.uk>	<30448.1279800887@redhat.com>	<E1Obuiy-00C9jr-Al@intern.SerNet.DE>	<AANLkTikBCXK6uEwWq4f0LvpdoKCPs3jvyFa4Zw4e2J_7@mail.gmail.com>	<E1Obxpd-00CRIo-SF@intern.SerNet.DE>	<AANLkTimwIq0pBhCeOjOVjB0yeM3JHOvzVoj9M4ui6al9@mail.gmail.com>	<20100722162712.GB10352@jeremy-laptop>	<AANLkTimdFCGSKLn7aGMpBMIauHTsHY7hpAAmpo6uTcnD@mail.gmail.com>	<alpine.LSU.2.01.1007221859180.27496@obet.zrqbmnf.qr>	<AANLkTilmVdyVdO4EmVtTYi_cvMmPqNEPEnzUkJdk1XyR@mail.gmail.com>	<4C488C41.60002@panasas.com> <AANLkTilU5QLBzOgwpmYRP5aZglOMta2iMCaNk62tiUIB@mail.gmail.com>
-In-Reply-To: <AANLkTilU5QLBzOgwpmYRP5aZglOMta2iMCaNk62tiUIB@mail.gmail.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from fwil.voltaire.com ([193.47.165.2]:48564 "EHLO exil.voltaire.com"
+	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1752886Ab0G1JpT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 28 Jul 2010 05:45:19 -0400
+Message-ID: <4C4FFC2B.4020906@Voltaire.com>
+Date: Wed, 28 Jul 2010 12:45:15 +0300
+From: Or Gerlitz <ogerlitz@Voltaire.com>
+To: Sebastien Godard <sysstat@orange.fr>
+CC: Trond Myklebust <Trond.Myklebust@netapp.com>, linux-nfs@vger.kernel.org
+Subject: Re: iostat "await" like counter for measuring nfs latency
+References: <Pine.LNX.4.64.1007271300180.2110@zuben.voltaire.com> <1280244478.2981.3.camel@heimdal.trondhjem.org>
+In-Reply-To: <1280244478.2981.3.camel@heimdal.trondhjem.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Jul. 22, 2010, 21:45 +0300, Greg Freemyer <greg.freemyer@gmail.com> wrote:
-> On Thu, Jul 22, 2010 at 2:21 PM, Benny Halevy <bhalevy@panasas.com> wrote:
->> On Jul. 22, 2010, 20:24 +0300, Linus Torvalds <torvalds@linux-foundation.org> wrote:
->>> On Thu, Jul 22, 2010 at 10:03 AM, Jan Engelhardt <jengelh@medozas.de> wrote:
->>>>
->>>> I beg to differ. ctime is not completely useless. It reflects changes on
->>>> the inode for when you don't you change the content.
->>>
->>> Uh. Yes. Except that why is file metadata really different from file
->>> data? Most people really don't care. And a lot of people have asked
->>> for creation dates - and I seriously doubt that Windows people
->>> complain a lot about the fact that there you have mtime for metadata
->>> changes too.
->>>
->>> The point being that Unix ctime semantics certainly have well-defined
->>> semantics, but they are in no way "better" than having a real creation
->>> time, and are often worse.
->>
->> Yeah, having create time would be important.
->> That said, having a non user-settable modify timestamp is crucial
->> for quickly determining whether a file has changed.
-> 
-> How would "cp --archive" and a host of backup/restore tools work
-> without user-settable modify timestamps?
-> 
-> Or are you proposing another timestamp?  I do computer forensics, I
-> like timestamps, but enough is enough.
+Trond Myklebust wrote:
+> On Tue, 2010-07-27 at 13:07 +0300, Or Gerlitz wrote:
+>> Doing some iscsi and nfs performance testing, I realized that iostat(1)
+>> doesn't support an "await" like counter for measuring nfs latency.
+>> Can tracking nfs latency be done in other means? is there a plan to
+>> extend the nfs iostats code to include such/similar counter?
 
-mtime and atime are already user settable and archive programs use
-this on the destination, but ctime would be different after
-copy/restore.
+> The information is already available in /proc/self/mountstats. It is up
+> to iostat to start using it.
 
-When updating the archive, just comparing mtime to determine if the source
-changed is problematic as it can be set to any value after the change,
-but src.ctime would be greater than dest.ctime in this case.
+Sebastian, is there a plan to support await like counter in sysstat? 
 
-With posix semantics (http://www.opengroup.org/onlinepubs/009695399/basedefs/xbd_chap04.html#tag_04_07)
-this is not perfect either as there can be false-positives when the file stat changed but
-the file has not, e.g. when st_nlink changed.
+I didn't find a source repository (is there an open one? where?) so 
+downloaded the latest code (version 9.1.3) drop from the website and 
+couldn't see there such a counter, am I missing something?
 
-Benny
+Or.
 
-> 
-> Greg
+
