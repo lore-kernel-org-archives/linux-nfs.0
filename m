@@ -1,58 +1,50 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from out1.smtp.messagingengine.com ([66.111.4.25]:48823 "EHLO
-	out1.smtp.messagingengine.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1754396Ab0GZPXA (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 26 Jul 2010 11:23:00 -0400
-Subject: Re: [PATCH 1/6] Add a dentry op to handle automounting rather than
- abusing follow_link() [ver #2]
-From: Ian Kent <raven@themaw.net>
-To: David Howells <dhowells@redhat.com>
-Cc: viro@ZenIV.linux.org.uk, linux-fsdevel@vger.kernel.org,
-        linux-afs@lists.infradead.org, linux-nfs@vger.kernel.org,
-        linux-cifs@vger.kernel.org, linux-kernel@vger.kernel.org
-In-Reply-To: <9168.1280153997@redhat.com>
-References: <1279944664.2944.8.camel@localhost>
-	 <20100722175847.5552.11520.stgit@warthog.procyon.org.uk>
-	 <17723.1279897759@redhat.com>  <9168.1280153997@redhat.com>
-Content-Type: text/plain; charset="UTF-8"
-Date: Mon, 26 Jul 2010 23:22:48 +0800
-Message-ID: <1280157768.3569.14.camel@localhost>
+Received: from p01c12o148.mxlogic.net ([208.65.145.71]:44415 "EHLO
+	p01c12o148.mxlogic.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756166Ab0G2KKT (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 29 Jul 2010 06:10:19 -0400
+Message-ID: <4C515384.6030905@bluearc.com>
+Date: Thu, 29 Jul 2010 11:10:12 +0100
+From: Andy Chittenden <andyc@bluearc.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+CC: Eric Dumazet <eric.dumazet@gmail.com>,
+        "Linux Kernel Mailing List (linux-kernel@vger.kernel.org)"
+	<linux-kernel@vger.kernel.org>,
+        Trond Myklebust <trond.myklebust@fys.uio.no>,
+        netdev <netdev@vger.kernel.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: nfs client hang
+References: <99613C19B13C5D40914FB8930657FA9303365708DE@uk-ex-mbx1.terastack.bluearc.com>	 <4C4E89D4.8040607@bluearc.com>	 <ABFC24E4C13D81489F7F624E14891C8607DDF8D1E4@uk-ex-mbx1.terastack.bluearc.com> <1280233276.2827.175.camel@edumazet-laptop> <4C4F174C.2000308@oracle.com> <ABFC24E4C13D81489F7F624E14891C8607DDF8D3D0@uk-ex-mbx1.terastack.bluearc.com> <4C506AD0.4070608@oracle.com>
+In-Reply-To: <4C506AD0.4070608@oracle.com>
+Content-Type: text/plain; charset="UTF-8"; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Mon, 2010-07-26 at 15:19 +0100, David Howells wrote:
-> Ian Kent <raven@themaw.net> wrote:
-> 
-> > >  (4) Stops pathwalk at the automount point and returns that point in the fs
-> > >      tree if it decides not to automount rather than reporting ELOOP (see its
-> > >      use of EXDEV for this).
-> 
-> Does it make autofs easier if d_op->d_automount() is allowed to return -EXDEV
-> to request this?  Then you can return it in Oz mode to allow the daemon to
-> see/use the underlying mountpoint without recursing back into d_automount().
+  On 2010-07-28 18:37, Chuck Lever wrote:
+> On 07/28/10 03:24 AM, Andy Chittenden wrote:
+>> resending as it seems to have been corrupted on LKML!
+>>
+>>> The RPC client marks the socket closed. and the linger timeout is
+>>> cancelled.  At this point, sk_shutdown should be set to zero, correct?
+>>> I don't see an xs_error_report() call here, which would confirm that the
+>>> socket took a trip through tcp_disconnect().
+>>  From my reading of tcp_disconnect(), it calls sk->sk_error_report(sk)
+>> unconditionally so as there's no xs_error_report(), that surely means
+>> the exact opposite: tcp_disconnect() wasn't called. If it's not
+>> called, sk_shutdown is not cleared. And my revised tracing confirmed
+>> that it was set to SEND_SHUTDOWN.
+> Sorry, that's what I meant above.
+>
+> An xs_error_report() debugging message at that point in the log would
+> confirm that the socket took a trip through tcp_disconnect().  But I
+> don't see such a message.
+I don't see how tcp_disconnect() gets called if the application does a 
+shutdown when the state is TCP_ESTABLISHED (or a myriad of other 
+states). It just seems to send a FIN. Should tcp_disconnect() be called? 
+If so, how? Alternatively, I wonder whether my patch that set 
+sk_shutdown to 0 in tcp_connect_init() is the correct fix after all.
 
-Yes, it's really useful.
-
-> 
-> Ideally, the daemon would use AT_NO_AUTOMOUNT, but there's no way to pass that
-> to sys_mount() or sys_umount().
-
-The use of EXDEV, and if we had a way of saying we want a negative
-dentry to trigger a mount, allows this mechanism to work for autofs
-without any user space changes for direct and indirect mounts, at least
-to match the current function.
-
-Having said that though I've only just begun to test the various cases.
-
-I know this was originally meant to deal with just the follow_link abuse
-but the approach as it is appears to be able to resolve a long standing
-deadlock bug autofs has with indirect mounts and affords a huge amount
-of simplification to the autofs module code. I really hope we can work
-out a suitable way to change the implementation to allow for negative
-dentrys to trigger mounts. Of course it's quite possible I'll hit a snag
-during testing but I hope not as I've spent a lot of time on alternate
-approaches in the last few years.
-
-Ian
+-- 
+Andy, BlueArc Engineering
 
