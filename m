@@ -1,58 +1,57 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:12353 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:53253 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754253Ab0GNNSB convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 14 Jul 2010 09:18:01 -0400
-Subject: Re: [PATCH 1/3] NFS: Fix up the fsync code
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Christoph Hellwig <hch@infradead.org>
-Cc: linux-nfs@vger.kernel.org
-In-Reply-To: <20100714070008.GA22884@infradead.org>
-References: <20100712220932.20019.21170.stgit@heimdal.trondhjem.org>
-	 <20100713011306.GA364@infradead.org>
-	 <1279050636.17993.14.camel@heimdal.trondhjem.org>
-	 <20100714070008.GA22884@infradead.org>
-Content-Type: text/plain; charset="UTF-8"
-Date: Wed, 14 Jul 2010 09:17:23 -0400
-Message-ID: <1279113443.3103.10.camel@heimdal.trondhjem.org>
+	id S1754888Ab0G2WWh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 29 Jul 2010 18:22:37 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 2/5] nfsd4: don't pretend to support write delegations
+Date: Thu, 29 Jul 2010 18:21:21 -0400
+Message-Id: <1280442084-17867-3-git-send-email-bfields@redhat.com>
+In-Reply-To: <1280442084-17867-1-git-send-email-bfields@redhat.com>
+References: <1280442084-17867-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Wed, 2010-07-14 at 03:00 -0400, Christoph Hellwig wrote:
-> On Tue, Jul 13, 2010 at 03:50:36PM -0400, Trond Myklebust wrote:
-> > NFS can't distinguish between a datasync and a full sync: a successful
-> > COMMIT operation guarantees that both data+metadata updates are on disk.
-> > For this reason we ignore the 'datasync' parameter in our fsync
-> > implementation.
-> 
-> That's not what the datasync parameter means.
-> 
-> Both fsync and fdatasync will commit data and metadata to disk, the
-> questions is how much metadata we need to commit.  For fdatasync it's
-> only the metadata requires to locate the file data on disk, an
-> fsync requires everything (which is the above + timestamps basically).
-> 
-> I suspect for NFS the difference still doesn't matter, I'd just try
-> to make it clear.
+The delegation code mostly pretends to support either read or write
+delegations.  However, correct support for write delegations would
+require, for example, breaking of delegations (and/or implementation of
+cb_getattr) on stat.  Currently all that stops us from handing out
+delegations is a subtle reference-counting issue.
 
-Right. My point was that in NFSv3 and NFSv4, COMMIT always acts like
-fsync(): it commits data + _all_ metadata (i.e. including size
-+timestamps) to disk.
+Avoid confusion by adding an earlier check that explicitly refuses write
+delegations.
 
-The exception is NFSv4.1 with pNFS, where you have an extra
-'LAYOUTCOMMIT' operation that tells the metadata server when to write
-the size+timestamps (because the WRITE and COMMIT operations are sent to
-the data servers). So we might want to distinguish between fsync() and
-fdatasync() when we merge that code.
+For now, though, I'm not going so far as to rip out existing
+half-support for write delegations, in case we get around to using that
+soon.
 
-> > Would it perhaps help if I added a comment to that effect in
-> > nfs_file_fsync() itself?
-> 
-> Yes, comments explaining such higher level concepts are always good.
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/nfsd/nfs4state.c |    7 +++++++
+ 1 files changed, 7 insertions(+), 0 deletions(-)
 
-OK. I'll add something to that effect.
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 9cc3b78..c07c988 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -170,6 +170,13 @@ alloc_init_deleg(struct nfs4_client *clp, struct nfs4_stateid *stp, struct svc_f
+ 	struct nfs4_cb_conn *cb = &stp->st_stateowner->so_client->cl_cb_conn;
+ 
+ 	dprintk("NFSD alloc_init_deleg\n");
++	/*
++	 * Major work on the lease subsystem (for example, to support
++	 * calbacks on stat) will be required before we can support
++	 * write delegations properly.
++	 */
++	if (type != NFS4_OPEN_DELEGATE_READ)
++		return NULL;
+ 	if (fp->fi_had_conflict)
+ 		return NULL;
+ 	if (num_delegations > max_delegations)
+-- 
+1.7.0.4
 
-Thanks for the review!
-
-  Trond
