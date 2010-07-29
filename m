@@ -1,155 +1,639 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:39351 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:53259 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752589Ab0G3Pmn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 30 Jul 2010 11:42:43 -0400
-Date: Fri, 30 Jul 2010 11:41:28 -0400
-To: Christoph Hellwig <hch@infradead.org>
-Cc: "J. Bruce Fields" <bfields@redhat.com>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 1/5] nfsd: bypass readahead cache when have struct file
-Message-ID: <20100730154128.GA21729@fieldses.org>
+	id S1754888Ab0G2WWn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 29 Jul 2010 18:22:43 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: "J. Bruce Fields" <bfields@citi.umich.edu>
+Subject: [PATCH 5/5] nfsd4: share file descriptors between stateid's
+Date: Thu, 29 Jul 2010 18:21:24 -0400
+Message-Id: <1280442084-17867-6-git-send-email-bfields@redhat.com>
+In-Reply-To: <1280442084-17867-1-git-send-email-bfields@redhat.com>
 References: <1280442084-17867-1-git-send-email-bfields@redhat.com>
- <1280442084-17867-2-git-send-email-bfields@redhat.com>
- <20100730081041.GA4126@infradead.org>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20100730081041.GA4126@infradead.org>
-From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Fri, Jul 30, 2010 at 04:10:42AM -0400, Christoph Hellwig wrote:
-> The callers of nfsd_read are:
-> 
-> fs/nfsd/nfs3proc.c:     nfserr = nfsd_read(rqstp, &resp->fh, NULL,
-> fs/nfsd/nfs4proc.c:     /* no need to check permission - this will be done in nfsd_read() */
-> fs/nfsd/nfs4xdr.c:      nfserr = nfsd_read(read->rd_rqstp, read->rd_fhp, read->rd_filp,
-> fs/nfsd/nfsproc.c:      nfserr = nfsd_read(rqstp, fh_copy(&resp->fh, &argp->fh), NULL,
-> 
-> which suggests that we're better off just calling nfsd_open_read
-> (possible with a better name) directly from fs/nfsd/nfs3proc.c and
-> fs/nfsd/nfsproc.c and nfsd_vfs_read directly from fs/nfsd/nfs4proc.c
-> and fs/nfsd/nfs4xdr.c instead of doing this conditional.
+From: J. Bruce Fields <bfields@citi.umich.edu>
 
-So, something like this.--b.
+The vfs doesn't really allow us to "upgrade" a file descriptor from
+read-only to read-write, and our attempt to do so in nfs4_upgrade_open
+is ugly and incomplete.
 
-commit 13d8e940c837960f2356043a92e79f16347d567d
-Author: J. Bruce Fields <bfields@redhat.com>
-Date:   Fri Jul 30 11:33:32 2010 -0400
+Move to a different scheme where we keep multiple opens, shared between
+open stateid's, in the nfs4_file struct.  Each file will be opened at
+most 3 times (for read, write, and read-write), and those opens will be
+shared between all clients and openers.  On upgrade we will do another
+open if necessary instead of attempting to upgrade an existing open.
+We keep count of the number of readers and writers so we know when to
+close the shared files.
 
-    nfsd: minor nfsd read api cleanup
-    
-    Christoph points that the callers always know which case they want here,
-    so we may as well just call one of the two directly instead of making
-    this conditional.  That seems clearer.
-    
-    Cc: Christoph Hellwig <hch@infradead.org>
-    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
+---
+ fs/nfsd/nfs4state.c |  303 ++++++++++++++++++++++++++++++--------------------
+ fs/nfsd/nfsd.h      |    1 +
+ fs/nfsd/state.h     |   40 +++++++-
+ 3 files changed, 221 insertions(+), 123 deletions(-)
 
-diff --git a/fs/nfsd/nfs3proc.c b/fs/nfsd/nfs3proc.c
-index 9ae9331..5b7e302 100644
---- a/fs/nfsd/nfs3proc.c
-+++ b/fs/nfsd/nfs3proc.c
-@@ -168,7 +168,7 @@ nfsd3_proc_read(struct svc_rqst *rqstp, struct nfsd3_readargs *argp,
- 	svc_reserve_auth(rqstp, ((1 + NFS3_POST_OP_ATTR_WORDS + 3)<<2) + resp->count +4);
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index b996a4b..7ab572f 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -162,6 +162,28 @@ static struct list_head	ownerstr_hashtbl[OWNER_HASH_SIZE];
+ static struct list_head file_hashtbl[FILE_HASH_SIZE];
+ static struct list_head stateid_hashtbl[STATEID_HASH_SIZE];
  
- 	fh_copy(&resp->fh, &argp->fh);
--	nfserr = nfsd_read(rqstp, &resp->fh, NULL,
-+	nfserr = nfsd_read(rqstp, &resp->fh,
- 				  argp->offset,
- 			   	  rqstp->rq_vec, argp->vlen,
- 				  &resp->count);
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 835924f..f8931ac 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -2630,7 +2630,7 @@ nfsd4_encode_read(struct nfsd4_compoundres *resp, __be32 nfserr,
++static inline void nfs4_file_get_access(struct nfs4_file *fp, int oflag)
++{
++	BUG_ON(!(fp->fi_fds[oflag] || fp->fi_fds[O_RDWR]));
++	atomic_inc(&fp->fi_access[oflag]);
++}
++
++static inline void nfs4_file_put_fd(struct nfs4_file *fp, int oflag)
++{
++	if (fp->fi_fds[oflag]) {
++		fput(fp->fi_fds[oflag]);
++		fp->fi_fds[oflag] = NULL;
++	}
++}
++
++static inline void nfs4_file_put_access(struct nfs4_file *fp, int oflag)
++{
++	if (atomic_dec_and_test(&fp->fi_access[oflag])) {
++		nfs4_file_put_fd(fp, O_RDWR);
++		nfs4_file_put_fd(fp, oflag);
++	}
++}
++
+ static struct nfs4_delegation *
+ alloc_init_deleg(struct nfs4_client *clp, struct nfs4_stateid *stp, struct svc_fh *current_fh, u32 type)
+ {
+@@ -191,9 +213,8 @@ alloc_init_deleg(struct nfs4_client *clp, struct nfs4_stateid *stp, struct svc_f
+ 	dp->dl_client = clp;
+ 	get_nfs4_file(fp);
+ 	dp->dl_file = fp;
++	nfs4_file_get_access(fp, O_RDONLY);
+ 	dp->dl_flock = NULL;
+-	get_file(stp->st_vfs_file);
+-	dp->dl_vfs_file = stp->st_vfs_file;
+ 	dp->dl_type = type;
+ 	dp->dl_ident = cb->cb_ident;
+ 	dp->dl_stateid.si_boot = boot_time;
+@@ -228,15 +249,12 @@ nfs4_put_delegation(struct nfs4_delegation *dp)
+ static void
+ nfs4_close_delegation(struct nfs4_delegation *dp)
+ {
+-	struct file *filp = dp->dl_vfs_file;
++	struct file *filp = find_readable_file(dp->dl_file);
+ 
+ 	dprintk("NFSD: close_delegation dp %p\n",dp);
+-	dp->dl_vfs_file = NULL;
+-	/* The following nfsd_close may not actually close the file,
+-	 * but we want to remove the lease in any case. */
+ 	if (dp->dl_flock)
+ 		vfs_setlease(filp, F_UNLCK, &dp->dl_flock);
+-	nfsd_close(filp);
++	nfs4_file_put_access(dp->dl_file, O_RDONLY);
+ }
+ 
+ /* Called under the state lock. */
+@@ -308,8 +326,12 @@ static void free_generic_stateid(struct nfs4_stateid *stp)
+ 
+ static void release_lock_stateid(struct nfs4_stateid *stp)
+ {
++	struct file *file;
++
+ 	unhash_generic_stateid(stp);
+-	locks_remove_posix(stp->st_vfs_file, (fl_owner_t)stp->st_stateowner);
++	file = find_any_file(stp->st_file);
++	if (file)
++		locks_remove_posix(file, (fl_owner_t)stp->st_stateowner);
+ 	free_generic_stateid(stp);
+ }
+ 
+@@ -347,11 +369,85 @@ release_stateid_lockowners(struct nfs4_stateid *open_stp)
  	}
- 	read->rd_vlen = v;
- 
--	nfserr = nfsd_read(read->rd_rqstp, read->rd_fhp, read->rd_filp,
-+	nfserr = nfsd_read_file(read->rd_rqstp, read->rd_fhp, read->rd_filp,
- 			read->rd_offset, resp->rqstp->rq_vec, read->rd_vlen,
- 			&maxcount);
- 
-diff --git a/fs/nfsd/nfsproc.c b/fs/nfsd/nfsproc.c
-index 1edb78b..08e1726 100644
---- a/fs/nfsd/nfsproc.c
-+++ b/fs/nfsd/nfsproc.c
-@@ -144,7 +144,7 @@ nfsd_proc_read(struct svc_rqst *rqstp, struct nfsd_readargs *argp,
- 	svc_reserve_auth(rqstp, (19<<2) + argp->count + 4);
- 
- 	resp->count = argp->count;
--	nfserr = nfsd_read(rqstp, fh_copy(&resp->fh, &argp->fh), NULL,
-+	nfserr = nfsd_read(rqstp, fh_copy(&resp->fh, &argp->fh),
- 				  argp->offset,
- 			   	  rqstp->rq_vec, argp->vlen,
- 				  &resp->count);
-diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-index 3458a8f..e976e69 100644
---- a/fs/nfsd/vfs.c
-+++ b/fs/nfsd/vfs.c
-@@ -1065,7 +1065,12 @@ out:
- 	return err;
  }
  
--static __be32 nfsd_open_read(struct svc_rqst *rqstp, struct svc_fh *fhp,
 +/*
-+ * Read data from a file. count must contain the requested read count
-+ * on entry. On return, *count contains the number of bytes actually read.
-+ * N.B. After this call fhp needs an fh_put
++ * We store the NONE, READ, WRITE, and BOTH bits separately in the
++ * st_{access,deny}_bmap field of the stateid, in order to track not
++ * only what share bits are currently in force, but also what
++ * combinations of share bits previous opens have used.  This allows us
++ * to enforce the recommendation of rfc 3530 14.2.19 that the server
++ * return an error if the client attempt to downgrade to a combination
++ * of share bits not explicable by closing some of its previous opens.
++ *
++ * XXX: This enforcement is actually incomplete, since we don't keep
++ * track of access/deny bit combinations; so, e.g., we allow:
++ *
++ *	OPEN allow read, deny write
++ *	OPEN allow both, deny none
++ *	DOWNGRADE allow read, deny none
++ *
++ * which we should reject.
 + */
-+__be32 nfsd_read(struct svc_rqst *rqstp, struct svc_fh *fhp,
- 	loff_t offset, struct kvec *vec, int vlen, unsigned long *count)
++static void
++set_access(unsigned int *access, unsigned long bmap) {
++	int i;
++
++	*access = 0;
++	for (i = 1; i < 4; i++) {
++		if (test_bit(i, &bmap))
++			*access |= i;
++	}
++}
++
++static void
++set_deny(unsigned int *deny, unsigned long bmap) {
++	int i;
++
++	*deny = 0;
++	for (i = 0; i < 4; i++) {
++		if (test_bit(i, &bmap))
++			*deny |= i ;
++	}
++}
++
++static int
++test_share(struct nfs4_stateid *stp, struct nfsd4_open *open) {
++	unsigned int access, deny;
++
++	set_access(&access, stp->st_access_bmap);
++	set_deny(&deny, stp->st_deny_bmap);
++	if ((access & open->op_share_deny) || (deny & open->op_share_access))
++		return 0;
++	return 1;
++}
++
++static int nfs4_access_to_omode(u32 access)
++{
++	switch (access) {
++	case NFS4_SHARE_ACCESS_READ:
++		return O_RDONLY;
++	case NFS4_SHARE_ACCESS_WRITE:
++		return O_WRONLY;
++	case NFS4_SHARE_ACCESS_BOTH:
++		return O_RDWR;
++	}
++	BUG();
++}
++
++static int nfs4_access_bmap_to_omode(struct nfs4_stateid *stp)
++{
++	unsigned int access;
++
++	set_access(&access, stp->st_access_bmap);
++	return nfs4_access_to_omode(access);
++}
++
+ static void release_open_stateid(struct nfs4_stateid *stp)
  {
- 	struct file *file;
-@@ -1101,28 +1106,19 @@ static __be32 nfsd_open_read(struct svc_rqst *rqstp, struct svc_fh *fhp,
- 	return err;
++	int oflag = nfs4_access_bmap_to_omode(stp);
++
+ 	unhash_generic_stateid(stp);
+ 	release_stateid_lockowners(stp);
+-	nfsd_close(stp->st_vfs_file);
++	nfs4_file_put_access(stp->st_file, oflag);
+ 	free_generic_stateid(stp);
  }
  
--/*
-- * Read data from a file. count must contain the requested read count
-- * on entry. On return, *count contains the number of bytes actually read.
-- * N.B. After this call fhp needs an fh_put
-- */
-+/* As above, but use the provided file descriptor. */
- __be32
--nfsd_read(struct svc_rqst *rqstp, struct svc_fh *fhp, struct file *file,
-+nfsd_read_file(struct svc_rqst *rqstp, struct svc_fh *fhp, struct file *file,
- 		loff_t offset, struct kvec *vec, int vlen,
- 		unsigned long *count)
- {
- 	__be32		err;
- 
--	if (file) {
--		err = nfsd_permission(rqstp, fhp->fh_export, fhp->fh_dentry,
-+	err = nfsd_permission(rqstp, fhp->fh_export, fhp->fh_dentry,
- 				NFSD_MAY_READ|NFSD_MAY_OWNER_OVERRIDE);
--		if (err)
--			goto out;
--		err = nfsd_vfs_read(rqstp, fhp, file, offset, vec, vlen, count);
--	} else
--		err = nfsd_open_read(rqstp, fhp, offset, vec, vlen, count);
--out:
--	return err;
-+	if (err)
-+		return err;
-+	return nfsd_vfs_read(rqstp, fhp, file, offset, vec, vlen, count);
+@@ -1763,6 +1859,8 @@ alloc_init_file(struct inode *ino)
+ 		fp->fi_inode = igrab(ino);
+ 		fp->fi_id = current_fileid++;
+ 		fp->fi_had_conflict = false;
++		memset(fp->fi_fds, 0, sizeof(fp->fi_fds));
++		memset(fp->fi_access, 0, sizeof(fp->fi_access));
+ 		spin_lock(&recall_lock);
+ 		list_add(&fp->fi_hash, &file_hashtbl[hashval]);
+ 		spin_unlock(&recall_lock);
+@@ -1974,57 +2072,6 @@ static inline int deny_valid(u32 x)
  }
  
  /*
-diff --git a/fs/nfsd/vfs.h b/fs/nfsd/vfs.h
-index 217a62c..9a370a5 100644
---- a/fs/nfsd/vfs.h
-+++ b/fs/nfsd/vfs.h
-@@ -64,7 +64,9 @@ __be32		nfsd_commit(struct svc_rqst *, struct svc_fh *,
- __be32		nfsd_open(struct svc_rqst *, struct svc_fh *, int,
- 				int, struct file **);
- void		nfsd_close(struct file *);
--__be32 		nfsd_read(struct svc_rqst *, struct svc_fh *, struct file *,
-+__be32 		nfsd_read(struct svc_rqst *, struct svc_fh *,
-+				loff_t, struct kvec *, int, unsigned long *);
-+__be32 		nfsd_read_file(struct svc_rqst *, struct svc_fh *, struct file *,
- 				loff_t, struct kvec *, int, unsigned long *);
- __be32 		nfsd_write(struct svc_rqst *, struct svc_fh *,struct file *,
- 				loff_t, struct kvec *,int, unsigned long *, int *);
+- * We store the NONE, READ, WRITE, and BOTH bits separately in the
+- * st_{access,deny}_bmap field of the stateid, in order to track not
+- * only what share bits are currently in force, but also what
+- * combinations of share bits previous opens have used.  This allows us
+- * to enforce the recommendation of rfc 3530 14.2.19 that the server
+- * return an error if the client attempt to downgrade to a combination
+- * of share bits not explicable by closing some of its previous opens.
+- *
+- * XXX: This enforcement is actually incomplete, since we don't keep
+- * track of access/deny bit combinations; so, e.g., we allow:
+- *
+- *	OPEN allow read, deny write
+- *	OPEN allow both, deny none
+- *	DOWNGRADE allow read, deny none
+- *
+- * which we should reject.
+- */
+-static void
+-set_access(unsigned int *access, unsigned long bmap) {
+-	int i;
+-
+-	*access = 0;
+-	for (i = 1; i < 4; i++) {
+-		if (test_bit(i, &bmap))
+-			*access |= i;
+-	}
+-}
+-
+-static void
+-set_deny(unsigned int *deny, unsigned long bmap) {
+-	int i;
+-
+-	*deny = 0;
+-	for (i = 0; i < 4; i++) {
+-		if (test_bit(i, &bmap))
+-			*deny |= i ;
+-	}
+-}
+-
+-static int
+-test_share(struct nfs4_stateid *stp, struct nfsd4_open *open) {
+-	unsigned int access, deny;
+-
+-	set_access(&access, stp->st_access_bmap);
+-	set_deny(&deny, stp->st_deny_bmap);
+-	if ((access & open->op_share_deny) || (deny & open->op_share_access))
+-		return 0;
+-	return 1;
+-}
+-
+-/*
+  * Called to check deny when READ with all zero stateid or
+  * WRITE with all zero or all one stateid
+  */
+@@ -2055,14 +2102,12 @@ out:
+ }
+ 
+ static inline void
+-nfs4_file_downgrade(struct file *filp, unsigned int share_access)
++nfs4_file_downgrade(struct nfs4_file *fp, unsigned int share_access)
+ {
+-	if (share_access & NFS4_SHARE_ACCESS_WRITE) {
+-		drop_file_write_access(filp);
+-		spin_lock(&filp->f_lock);
+-		filp->f_mode = (filp->f_mode | FMODE_READ) & ~FMODE_WRITE;
+-		spin_unlock(&filp->f_lock);
+-	}
++	if (share_access & NFS4_SHARE_ACCESS_WRITE)
++		nfs4_file_put_access(fp, O_WRONLY);
++	if (share_access & NFS4_SHARE_ACCESS_READ)
++		nfs4_file_put_access(fp, O_RDONLY);
+ }
+ 
+ /*
+@@ -2328,32 +2373,42 @@ static inline int nfs4_access_to_access(u32 nfs4_access)
+ 	return flags;
+ }
+ 
++static __be32 nfs4_get_vfs_file(struct svc_rqst *rqstp, struct nfs4_file
++*fp, struct svc_fh *cur_fh, u32 nfs4_access)
++{
++	__be32 status;
++	int oflag = nfs4_access_to_omode(nfs4_access);
++	int access = nfs4_access_to_access(nfs4_access);
++
++	if (!fp->fi_fds[oflag]) {
++		status = nfsd_open(rqstp, cur_fh, S_IFREG, access,
++			&fp->fi_fds[oflag]);
++		if (status == nfserr_dropit)
++			status = nfserr_jukebox;
++		if (status)
++			return status;
++	}
++	nfs4_file_get_access(fp, oflag);
++
++	return nfs_ok;
++}
++
+ static __be32
+ nfs4_new_open(struct svc_rqst *rqstp, struct nfs4_stateid **stpp,
+-		struct nfs4_delegation *dp,
+-		struct svc_fh *cur_fh, struct nfsd4_open *open)
++		struct nfs4_file *fp, struct svc_fh *cur_fh,
++		struct nfsd4_open *open)
+ {
+ 	struct nfs4_stateid *stp;
++	__be32 status;
+ 
+ 	stp = nfs4_alloc_stateid();
+ 	if (stp == NULL)
+ 		return nfserr_resource;
+ 
+-	if (dp) {
+-		get_file(dp->dl_vfs_file);
+-		stp->st_vfs_file = dp->dl_vfs_file;
+-	} else {
+-		__be32 status;
+-		int access = nfs4_access_to_access(open->op_share_access);
+-
+-		status = nfsd_open(rqstp, cur_fh, S_IFREG, access,
+-					&stp->st_vfs_file);
+-		if (status) {
+-			if (status == nfserr_dropit)
+-				status = nfserr_jukebox;
+-			kmem_cache_free(stateid_slab, stp);
+-			return status;
+-		}
++	status = nfs4_get_vfs_file(rqstp, fp, cur_fh, open->op_share_access);
++	if (status) {
++		kmem_cache_free(stateid_slab, stp);
++		return status;
+ 	}
+ 	*stpp = stp;
+ 	return 0;
+@@ -2375,36 +2430,29 @@ nfsd4_truncate(struct svc_rqst *rqstp, struct svc_fh *fh,
+ }
+ 
+ static __be32
+-nfs4_upgrade_open(struct svc_rqst *rqstp, struct svc_fh *cur_fh, struct nfs4_stateid *stp, struct nfsd4_open *open)
++nfs4_upgrade_open(struct svc_rqst *rqstp, struct nfs4_file *fp, struct svc_fh *cur_fh, struct nfs4_stateid *stp, struct nfsd4_open *open)
+ {
+-	struct file *filp = stp->st_vfs_file;
+-	struct inode *inode = filp->f_path.dentry->d_inode;
+-	unsigned int share_access, new_writer;
+-	u32 op_share_access;
++	u32 op_share_access, new_access;
+ 	__be32 status;
+ 
+-	set_access(&share_access, stp->st_access_bmap);
+-	new_writer = (~share_access) & open->op_share_access
+-			& NFS4_SHARE_ACCESS_WRITE;
+-
+-	if (new_writer) {
+-		int err = get_write_access(inode);
+-		if (err)
+-			return nfserrno(err);
+-		err = mnt_want_write(cur_fh->fh_export->ex_path.mnt);
+-		if (err)
+-			return nfserrno(err);
+-		file_take_write(filp);
++	set_access(&new_access, stp->st_access_bmap);
++	new_access = (~new_access) & open->op_share_access & ~NFS4_SHARE_WANT_MASK;
++
++	if (new_access) {
++		status = nfs4_get_vfs_file(rqstp, fp, cur_fh, new_access);
++		if (status)
++			return status;
+ 	}
+ 	status = nfsd4_truncate(rqstp, cur_fh, open);
+ 	if (status) {
+-		if (new_writer)
+-			put_write_access(inode);
++		if (new_access) {
++			int oflag = nfs4_access_to_omode(new_access);
++			nfs4_file_put_access(fp, oflag);
++		}
+ 		return status;
+ 	}
+ 	/* remember the open */
+ 	op_share_access = open->op_share_access & ~NFS4_SHARE_WANT_MASK;
+-	filp->f_mode |= op_share_access;
+ 	__set_bit(op_share_access, &stp->st_access_bmap);
+ 	__set_bit(open->op_share_deny, &stp->st_deny_bmap);
+ 
+@@ -2468,13 +2516,14 @@ nfs4_open_delegation(struct svc_fh *fh, struct nfsd4_open *open, struct nfs4_sta
+ 	fl.fl_type = flag == NFS4_OPEN_DELEGATE_READ? F_RDLCK: F_WRLCK;
+ 	fl.fl_end = OFFSET_MAX;
+ 	fl.fl_owner =  (fl_owner_t)dp;
+-	fl.fl_file = stp->st_vfs_file;
++	fl.fl_file = find_readable_file(stp->st_file);
++	BUG_ON(!fl.fl_file);
+ 	fl.fl_pid = current->tgid;
+ 
+ 	/* vfs_setlease checks to see if delegation should be handed out.
+ 	 * the lock_manager callbacks fl_mylease and fl_change are used
+ 	 */
+-	if ((status = vfs_setlease(stp->st_vfs_file, fl.fl_type, &flp))) {
++	if ((status = vfs_setlease(fl.fl_file, fl.fl_type, &flp))) {
+ 		dprintk("NFSD: setlease failed [%d], no delegation\n", status);
+ 		unhash_delegation(dp);
+ 		flag = NFS4_OPEN_DELEGATE_NONE;
+@@ -2538,13 +2587,12 @@ nfsd4_process_open2(struct svc_rqst *rqstp, struct svc_fh *current_fh, struct nf
+ 	 */
+ 	if (stp) {
+ 		/* Stateid was found, this is an OPEN upgrade */
+-		status = nfs4_upgrade_open(rqstp, current_fh, stp, open);
++		status = nfs4_upgrade_open(rqstp, fp, current_fh, stp, open);
+ 		if (status)
+ 			goto out;
+ 		update_stateid(&stp->st_stateid);
+ 	} else {
+-		/* Stateid was not found, this is a new OPEN */
+-		status = nfs4_new_open(rqstp, &stp, dp, current_fh, open);
++		status = nfs4_new_open(rqstp, &stp, fp, current_fh, open);
+ 		if (status)
+ 			goto out;
+ 		init_stateid(stp, fp, open);
+@@ -2746,7 +2794,7 @@ search_close_lru(u32 st_id, int flags)
+ static inline int
+ nfs4_check_fh(struct svc_fh *fhp, struct nfs4_stateid *stp)
+ {
+-	return fhp->fh_dentry->d_inode != stp->st_vfs_file->f_path.dentry->d_inode;
++	return fhp->fh_dentry->d_inode != stp->st_file->fi_inode;
+ }
+ 
+ static int
+@@ -2894,7 +2942,8 @@ nfs4_preprocess_stateid_op(struct nfsd4_compound_state *cstate,
+ 			goto out;
+ 		renew_client(dp->dl_client);
+ 		if (filpp)
+-			*filpp = dp->dl_vfs_file;
++			*filpp = find_readable_file(dp->dl_file);
++		BUG_ON(!*filpp);
+ 	} else { /* open or lock stateid */
+ 		stp = find_stateid(stateid, flags);
+ 		if (!stp)
+@@ -2911,8 +2960,13 @@ nfs4_preprocess_stateid_op(struct nfsd4_compound_state *cstate,
+ 		if (status)
+ 			goto out;
+ 		renew_client(stp->st_stateowner->so_client);
+-		if (filpp)
+-			*filpp = stp->st_vfs_file;
++		if (filpp) {
++			if (flags & RD_STATE)
++				*filpp = find_readable_file(stp->st_file);
++			else
++				*filpp = find_writeable_file(stp->st_file);
++			BUG_ON(!*filpp); /* assured by check_openmode */
++		}
+ 	}
+ 	status = nfs_ok;
+ out:
+@@ -3148,8 +3202,7 @@ nfsd4_open_downgrade(struct svc_rqst *rqstp,
+ 		goto out;
+ 	}
+ 	set_access(&share_access, stp->st_access_bmap);
+-	nfs4_file_downgrade(stp->st_vfs_file,
+-	                    share_access & ~od->od_share_access);
++	nfs4_file_downgrade(stp->st_file, share_access & ~od->od_share_access);
+ 
+ 	reset_union_bmap_access(od->od_share_access, &stp->st_access_bmap);
+ 	reset_union_bmap_deny(od->od_share_deny, &stp->st_deny_bmap);
+@@ -3468,7 +3521,6 @@ alloc_init_lock_stateid(struct nfs4_stateowner *sop, struct nfs4_file *fp, struc
+ 	stp->st_stateid.si_stateownerid = sop->so_id;
+ 	stp->st_stateid.si_fileid = fp->fi_id;
+ 	stp->st_stateid.si_generation = 0;
+-	stp->st_vfs_file = open_stp->st_vfs_file; /* FIXME refcount?? */
+ 	stp->st_deny_bmap = open_stp->st_deny_bmap;
+ 	stp->st_openstp = open_stp;
+ 
+@@ -3568,7 +3620,6 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 		lock_sop = lock->lk_replay_owner;
+ 	}
+ 	/* lock->lk_replay_owner and lock_stp have been created or found */
+-	filp = lock_stp->st_vfs_file;
+ 
+ 	status = nfserr_grace;
+ 	if (locks_in_grace() && !lock->lk_reclaim)
+@@ -3581,11 +3632,13 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	switch (lock->lk_type) {
+ 		case NFS4_READ_LT:
+ 		case NFS4_READW_LT:
++			filp = find_readable_file(lock_stp->st_file);
+ 			file_lock.fl_type = F_RDLCK;
+ 			cmd = F_SETLK;
+ 		break;
+ 		case NFS4_WRITE_LT:
+ 		case NFS4_WRITEW_LT:
++			filp = find_writeable_file(lock_stp->st_file);
+ 			file_lock.fl_type = F_WRLCK;
+ 			cmd = F_SETLK;
+ 		break;
+@@ -3593,6 +3646,10 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 			status = nfserr_inval;
+ 		goto out;
+ 	}
++	if (!filp) {
++		status = nfserr_openmode;
++		goto out;
++	}
+ 	file_lock.fl_owner = (fl_owner_t)lock_sop;
+ 	file_lock.fl_pid = current->tgid;
+ 	file_lock.fl_file = filp;
+@@ -3761,7 +3818,11 @@ nfsd4_locku(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 					&locku->lu_stateowner, &stp, NULL)))
+ 		goto out;
+ 
+-	filp = stp->st_vfs_file;
++	filp = find_any_file(stp->st_file);
++	if (!filp) {
++		status = nfserr_lock_range;
++		goto out;
++	}
+ 	BUG_ON(!filp);
+ 	locks_init_lock(&file_lock);
+ 	file_lock.fl_type = F_UNLCK;
+@@ -3808,10 +3869,10 @@ out_nfserr:
+  * 	0: no locks held by lockowner
+  */
+ static int
+-check_for_locks(struct file *filp, struct nfs4_stateowner *lowner)
++check_for_locks(struct nfs4_file *filp, struct nfs4_stateowner *lowner)
+ {
+ 	struct file_lock **flpp;
+-	struct inode *inode = filp->f_path.dentry->d_inode;
++	struct inode *inode = filp->fi_inode;
+ 	int status = 0;
+ 
+ 	lock_kernel();
+@@ -3862,7 +3923,7 @@ nfsd4_release_lockowner(struct svc_rqst *rqstp,
+ 				continue;
+ 			list_for_each_entry(stp, &sop->so_stateids,
+ 					st_perstateowner) {
+-				if (check_for_locks(stp->st_vfs_file, sop))
++				if (check_for_locks(stp->st_file, sop))
+ 					goto out;
+ 				/* Note: so_perclient unused for lockowners,
+ 				 * so it's OK to fool with here. */
+diff --git a/fs/nfsd/nfsd.h b/fs/nfsd/nfsd.h
+index 7237776..b76ac3a 100644
+--- a/fs/nfsd/nfsd.h
++++ b/fs/nfsd/nfsd.h
+@@ -153,6 +153,7 @@ void		nfsd_lockd_shutdown(void);
+ #define nfserr_bad_seqid	cpu_to_be32(NFSERR_BAD_SEQID)
+ #define	nfserr_symlink		cpu_to_be32(NFSERR_SYMLINK)
+ #define	nfserr_not_same		cpu_to_be32(NFSERR_NOT_SAME)
++#define nfserr_lock_range	cpu_to_be32(NFSERR_LOCK_RANGE)
+ #define	nfserr_restorefh	cpu_to_be32(NFSERR_RESTOREFH)
+ #define	nfserr_attrnotsupp	cpu_to_be32(NFSERR_ATTRNOTSUPP)
+ #define	nfserr_bad_xdr		cpu_to_be32(NFSERR_BAD_XDR)
+diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+index 006c842..7731a75 100644
+--- a/fs/nfsd/state.h
++++ b/fs/nfsd/state.h
+@@ -88,7 +88,6 @@ struct nfs4_delegation {
+ 	struct nfs4_client	*dl_client;
+ 	struct nfs4_file	*dl_file;
+ 	struct file_lock	*dl_flock;
+-	struct file		*dl_vfs_file;
+ 	u32			dl_type;
+ 	time_t			dl_time;
+ /* For recall: */
+@@ -342,12 +341,50 @@ struct nfs4_file {
+ 	struct list_head        fi_hash;    /* hash by "struct inode *" */
+ 	struct list_head        fi_stateids;
+ 	struct list_head	fi_delegations;
++	/* One each for O_RDONLY, O_WRONLY, O_RDWR: */
++	struct file *		fi_fds[3];
++	/* One each for O_RDONLY, O_WRONLY: */
++	atomic_t		fi_access[2];
++	/*
++	 * Each open stateid contributes 1 to either fi_readers or
++	 * fi_writers, or both, depending on the open mode.  A
++	 * delegation also takes an fi_readers reference.  Lock
++	 * stateid's take none.
++	 */
++	atomic_t		fi_readers;
++	atomic_t		fi_writers;
+ 	struct inode		*fi_inode;
+ 	u32                     fi_id;      /* used with stateowner->so_id 
+ 					     * for stateid_hashtbl hash */
+ 	bool			fi_had_conflict;
+ };
+ 
++/* XXX: for first cut may fall back on returning file that doesn't work
++ * at all? */
++static inline struct file *find_writeable_file(struct nfs4_file *f)
++{
++	if (f->fi_fds[O_RDWR])
++		return f->fi_fds[O_RDWR];
++	return f->fi_fds[O_WRONLY];
++}
++
++static inline struct file *find_readable_file(struct nfs4_file *f)
++{
++	if (f->fi_fds[O_RDWR])
++		return f->fi_fds[O_RDWR];
++	return f->fi_fds[O_RDONLY];
++}
++
++static inline struct file *find_any_file(struct nfs4_file *f)
++{
++	if (f->fi_fds[O_RDWR])
++		return f->fi_fds[O_RDWR];
++	else if (f->fi_fds[O_RDWR])
++		return f->fi_fds[O_WRONLY];
++	else
++		return f->fi_fds[O_RDONLY];
++}
++
+ /*
+ * nfs4_stateid can either be an open stateid or (eventually) a lock stateid
+ *
+@@ -373,7 +410,6 @@ struct nfs4_stateid {
+ 	struct nfs4_stateowner      * st_stateowner;
+ 	struct nfs4_file            * st_file;
+ 	stateid_t                     st_stateid;
+-	struct file                 * st_vfs_file;
+ 	unsigned long                 st_access_bmap;
+ 	unsigned long                 st_deny_bmap;
+ 	struct nfs4_stateid         * st_openstp;
+-- 
+1.7.0.4
+
