@@ -1,66 +1,57 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qy0-f174.google.com ([209.85.216.174]:58982 "EHLO
-	mail-qy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756721Ab0GDDac (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 3 Jul 2010 23:30:32 -0400
-Received: by qyk35 with SMTP id 35so965912qyk.19
-        for <linux-nfs@vger.kernel.org>; Sat, 03 Jul 2010 20:30:31 -0700 (PDT)
-Message-ID: <4C300049.7040603@gmail.com>
-Date: Sat, 03 Jul 2010 23:30:17 -0400
-From: Doug Nazar <nazard.michi@gmail.com>
-To: linux-nfs@vger.kernel.org
-Subject: gssd picking wrong creds
-Content-Type: multipart/mixed;
- boundary="------------020801000701050304040608"
+Received: from bombadil.infradead.org ([18.85.46.34]:38877 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753803Ab0G3IKn (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 30 Jul 2010 04:10:43 -0400
+Date: Fri, 30 Jul 2010 04:10:42 -0400
+From: Christoph Hellwig <hch@infradead.org>
+To: "J. Bruce Fields" <bfields@redhat.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 1/5] nfsd: bypass readahead cache when have struct file
+Message-ID: <20100730081041.GA4126@infradead.org>
+References: <1280442084-17867-1-git-send-email-bfields@redhat.com>
+ <1280442084-17867-2-git-send-email-bfields@redhat.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1280442084-17867-2-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
---------------020801000701050304040608
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
+On Thu, Jul 29, 2010 at 06:21:20PM -0400, J. Bruce Fields wrote:
+> The readahead cache compensates for the fact that the NFS server
+> currently does an open and close on every IO operation in the NFSv2 and
+> NFSv3 case.
+> 
+> In the NFSv4 case we have long-lived struct files associated with client
+> opens, so there's no need for this.  In fact, concurrent IO's using
+> trying to modify the same file->f_ra may cause problems.
 
-  I'm running rpc.gssd with the the -n option. Noticed that with the new 
-version it's now creating the machine cache file which is also owned by 
-root so when it scans the cache files it matches the root user and then 
-depending on the timestamp it can grab the wrong file.
+Interesting.  So why did we get these for v4, but not a file handle
+cache for v2 and v3 at the same time?  That would make life for the
+filesystems a lot easier.
 
-Doug
+>  		if (err)
+>  			goto out;
+>  		err = nfsd_vfs_read(rqstp, fhp, file, offset, vec, vlen, count);
+> -	} else {
+> -		err = nfsd_open(rqstp, fhp, S_IFREG, NFSD_MAY_READ, &file);
+> -		if (err)
+> -			goto out;
+> -		err = nfsd_vfs_read(rqstp, fhp, file, offset, vec, vlen, count);
+> -		nfsd_close(file);
+> -	}
+> +	} else
+> +		err = nfsd_open_read(rqstp, fhp, offset, vec, vlen, count);
 
+The callers of nfsd_read are:
 
---------------020801000701050304040608
-Content-Type: text/plain;
- name="nfs-utils-ignore-machine-cred.diff"
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
- filename="nfs-utils-ignore-machine-cred.diff"
+fs/nfsd/nfs3proc.c:     nfserr = nfsd_read(rqstp, &resp->fh, NULL,
+fs/nfsd/nfs4proc.c:     /* no need to check permission - this will be done in nfsd_read() */
+fs/nfsd/nfs4xdr.c:      nfserr = nfsd_read(read->rd_rqstp, read->rd_fhp, read->rd_filp,
+fs/nfsd/nfsproc.c:      nfserr = nfsd_read(rqstp, fh_copy(&resp->fh, &argp->fh), NULL,
 
-commit 891bf46cd23dbbb24188456aad29ac0ead2bc31f
-Author: Doug Nazar <nazard.michi@gmail.com>
-Date:   Sat Jul 3 23:12:27 2010 -0400
+which suggests that we're better off just calling nfsd_open_read
+(possible with a better name) directly from fs/nfsd/nfs3proc.c and
+fs/nfsd/nfsproc.c and nfsd_vfs_read directly from fs/nfsd/nfs4proc.c
+and fs/nfsd/nfs4xdr.c instead of doing this conditional.
 
-    When not using machine credentials for root, if the machine
-    credential cache file is newer than the root credential file
-    the wrong file will get picked. Ignore the machine file in this
-    case.
-
-diff --git a/utils/gssd/krb5_util.c b/utils/gssd/krb5_util.c
-index dccbeb6..d23654f 100644
---- a/utils/gssd/krb5_util.c
-+++ b/utils/gssd/krb5_util.c
-@@ -224,6 +224,13 @@ gssd_find_existing_krb5_ccache(uid_t uid, char *dirname, struct dirent **d)
- 				free(namelist[i]);
- 				continue;
- 			}
-+			if (uid == 0 && !root_uses_machine_creds && 
-+				strstr(namelist[i]->d_name, "_machine_")) {
-+				printerr(3, "CC file '%s' not available to root\n",
-+					 statname);
-+				free(namelist[i]);
-+				continue;
-+			}
- 			if (!query_krb5_ccache(buf, &princname, &realm)) {
- 				printerr(3, "CC file '%s' is expired or corrupt\n",
- 					 statname);
-
---------------020801000701050304040608--
