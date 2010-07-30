@@ -1,59 +1,65 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:54598 "EHLO fieldses.org"
+Received: from mail-out1.uio.no ([129.240.10.57]:39346 "EHLO mail-out1.uio.no"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756698Ab0GHPFP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 8 Jul 2010 11:05:15 -0400
-Date: Thu, 8 Jul 2010 11:05:09 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] NFSD: Fill in WCC data for REMOVE, RMDIR, MKNOD, and
- MKDIR
-Message-ID: <20100708150509.GA19375@fieldses.org>
-References: <20100706204750.2918.92546.stgit@ellison.1015granger.net>
- <20100707211037.GF2957@fieldses.org>
- <4C35E874.3050809@oracle.com>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4C35E874.3050809@oracle.com>
+	id S933224Ab0G3S3G (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 30 Jul 2010 14:29:06 -0400
+Subject: Re: BUG: unable to handle kernel NULL pointer dereference at
+ 0000000000000020
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+To: Bian Naimeng <biannm@cn.fujitsu.com>
+Cc: yo mama <mamamia69@gmail.com>, linux-nfs@vger.kernel.org,
+        Benny Halevy <bhalevy@panasas.com>
+In-Reply-To: <4C5105F8.5050101@cn.fujitsu.com>
+References: <AANLkTikYDGpeX8kcK3ygFzjM+bYMFTtqr8Wgx+CygUt8@mail.gmail.com>
+	 <4C5105F8.5050101@cn.fujitsu.com>
+Content-Type: text/plain; charset="UTF-8"
+Date: Fri, 30 Jul 2010 14:28:51 -0400
+Message-ID: <1280514531.12852.23.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Thu, Jul 08, 2010 at 11:02:12AM -0400, Chuck Lever wrote:
-> On 07/ 7/10 05:10 PM, J. Bruce Fields wrote:
-> >On Tue, Jul 06, 2010 at 04:53:34PM -0400, Chuck Lever wrote:
-> >>Some well-known NFSv3 clients drop their directory entry caches when
-> >>they receive replies with no WCC data.
-> >
-> >Can we include any more details?  (And/or a simple test case that
-> >demonstrates the difference?)
+On Thu, 2010-07-29 at 12:39 +0800, Bian Naimeng wrote:
+> > Hello,
+> > 
+> > I am running Kernel version 2.6.35-rc5-pnfs and notice there is kernel
+> > crash everytime i run iozone on the mounted directory. Is there a
+> > patch already developed for this bug which i can apply. Please see the
+> > error message from message log.
+> > 
 > 
-> I have a version of this patch with a much more comprehensive
-> description which I can post later today.
-
-Thanks, that would be interesting.
-
-(Though note the version you posted is already applied for 2.6.36.)
-
---b.
-
-> As for a test case... among other things, I untarred a large tarball
-> on a Mac OS 10.6 NFS client, and, once the server was fixed, it went
-> as quickly as you would expect.  Before, it took much longer.
+>  I'm not sure it's ok, please try it.
 > 
-> >>Without this data, they
-> >>employ extra READ, LOOKUP, and GETATTR requests to ensure their
-> >>directory entry caches are up to date, causing performance to suffer
-> >>needlessly.
-> >>
-> >>In order to return WCC data, our server has to have both the pre-op
-> >>and the post-op attribute data on hand when a reply is XDR encoded.
-> >>The pre-op data is filled in when the incoming fh is locked, and the
-> >>post-op data is filled in when the fh is unlocked.
-> >>
-> >>Unfortunately, for REMOVE, RMDIR, MKNOD, and MKDIR, the directory fh
-> >>is not unlocked until well after the reply has been XDR encoded.
-> >
-> >So it wasn't happening until an fh_put() was done in .pc_release()?
+> ----
 > 
-> Correct.
+>  nfs_writeargs.lock_context always NULL at direct write procedure,
+> it will cause kernel panic when encode stateid.
+> 
+> Signed-off-by: Bian Naimeng <biannm@cn.fujitsu.com>
+> 
+> ---
+>  fs/nfs/direct.c |    1 +
+>  1 files changed, 1 insertions(+), 0 deletions(-)
+> 
+> diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
+> index 3ef9b0c..cb2e1fd 100644
+> --- a/fs/nfs/direct.c
+> +++ b/fs/nfs/direct.c
+> @@ -801,6 +801,7 @@ static ssize_t nfs_direct_write_schedule_segment(struct nfs_direct_req *dreq,
+>  		data->cred = msg.rpc_cred;
+>  		data->args.fh = NFS_FH(inode);
+>  		data->args.context = ctx;
+> +		data->args.lock_context = nfs_get_lock_context(ctx);
+>  		data->args.offset = pos;
+>  		data->args.pgbase = pgbase;
+>  		data->args.pages = data->pagevec;
+> -- 
+> 1.6.5.2
+> 
+
+Well caught. There is a similar issue with NFS reads too. I'll fix up
+the lock state tracking patch...
+
+Thanks
+  Trond
+
