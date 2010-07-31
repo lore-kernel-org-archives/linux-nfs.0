@@ -1,68 +1,31 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:30343 "EHLO
-	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753534Ab0GGRoG (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 7 Jul 2010 13:44:06 -0400
-Message-ID: <4C34BC77.4040906@oracle.com>
-Date: Wed, 07 Jul 2010 13:42:15 -0400
-From: Chuck Lever <chuck.lever@oracle.com>
-To: Casey Schaufler <casey@schaufler-ca.com>
-CC: "David P. Quigley" <dpquigl@tycho.nsa.gov>, hch@infradead.org,
-        viro@zeniv.linux.org.uk, sds@tycho.nsa.gov, matthew.dodd@sparta.com,
-        trond.myklebust@fys.uio.no, bfields@fieldses.org,
-        linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-security-module@vger.kernel.org, selinux@tycho.nsa.gov,
-        linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 07/10] NFSv4: Introduce new label structure
-References: <1278513086-23964-1-git-send-email-dpquigl@tycho.nsa.gov> <1278513086-23964-8-git-send-email-dpquigl@tycho.nsa.gov> <4C34A4F1.3060708@oracle.com> <4C34A9A2.4080308@schaufler-ca.com>
-In-Reply-To: <4C34A9A2.4080308@schaufler-ca.com>
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Received: from mx1.redhat.com ([209.132.183.28]:45031 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754125Ab0GaQyF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 31 Jul 2010 12:54:05 -0400
+From: David Howells <dhowells@redhat.com>
+In-Reply-To: <1280524978.2452.9.camel@segv.aura.of.mankind>
+References: <1280524978.2452.9.camel@segv.aura.of.mankind> <alpine.LSU.2.01.1007221228260.6115@obet.zrqbmnf.qr> <20100715021709.5544.64506.stgit@warthog.procyon.org.uk> <20100715021712.5544.44845.stgit@warthog.procyon.org.uk> <30448.1279800887@redhat.com> <E1Obuiy-00C9jr-Al@intern.SerNet.DE> <AANLkTikBCXK6uEw <AANLkTimdFCGSKLn7aGMpBMIauHTsHY7hpAAmpo6uTcnD@mail.gmail.com> 
+To: utz lehmann <lkml123@s2y4n2c.de>
+Cc: dhowells@redhat.com, Linus Torvalds <torvalds@linux-foundation.org>,
+        Jeremy Allison <jra@samba.org>, Volker.Lendecke@sernet.de,
+        Jan Engelhardt <jengelh@medozas.de>, linux-cifs@vger.kernel.org,
+        linux-nfs@vger.kernel.org, samba-technical@lists.samba.org,
+        linux-kernel@vger.kernel.org, viro@zeniv.linux.org.uk,
+        linux-fsde@jasper.es
+Subject: Re: [PATCH 02/18] xstat: Add a pair of system calls to make extended file stats available [ver #6]
+Date: Sat, 31 Jul 2010 17:53:32 +0100
+Message-ID: <3533.1280595212@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On 07/ 7/10 12:21 PM, Casey Schaufler wrote:
-> Chuck Lever wrote:
->> My comments below apply to the other NFS client patches as well.  This
->> seemed like the right one to use for code examples.
->>
->> On 07/ 7/10 10:31 AM, David P. Quigley wrote:
+utz lehmann <lkml123@s2y4n2c.de> wrote:
 
-   [ ... snipped ... ]
+> When abusing an existing time stamp use atime not ctime please.
+> ctime has it's uses. atime was just a mistake and is nearly useless.
 
->>> diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
->>> index a2abd1a..c512a0c 100644
->>> --- a/include/linux/nfs4.h
->>> +++ b/include/linux/nfs4.h
->>> @@ -167,6 +167,13 @@ struct nfs4_acl {
->>>        struct nfs4_ace    aces[0];
->>>    };
->>>
->>> +struct nfs4_label {
->>> +    void        *label;
->>> +    u32        len;
->>> +    uint32_t    lfs;
->>> +};
->>
->> If we have support for NFS labels in NFSv3, would we also use struct
->> nfs4_label?
->>
->> It seems to me you want something more generic, just like nfs_fh or
->> nfs_fattr, to represent these.  Over time, I'm guessing label support
->> won't be tied to a specific NFS version.  And, you are passing these
->> around in the generic NFS functions (for post-op updates and inode
->> revalidation, and what not).
->>
->> Can I recommend "struct nfs_seclabel" instead?  Then have
->> nfs_seclabel_alloc() and nfs_seclabel_free().
->
-> Security has been the primary consumer of labels to date, but
-> the xattr concept has always been envisioned as useful in many
-> ways. That, and people have so many different views on what is
-> and isn't security and whether it is good or evil that you are
-> asking to limit the value if you tie "security" to the names.
-> Plus, it adds unnecessary characters.
+CacheFiles currently uses atime to determine least-recently-usedness.
 
-My main point is that the "nfs4" prefix is probably not optimal in the 
-long run.  It seems to me that these labels are of generic use in the 
-NFS client, and not necessarily specific to version 4.
+David
