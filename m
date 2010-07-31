@@ -1,53 +1,99 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([18.85.46.34]:49107 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753512Ab0GRJJv (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 18 Jul 2010 05:09:51 -0400
-Date: Sun, 18 Jul 2010 05:09:48 -0400
-From: Christoph Hellwig <hch@infradead.org>
-To: Jim Rees <rees@umich.edu>
-Cc: bhalevy@panasas.com, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 1/2] pnfs-block: Add support for simple rpc pipefs
-Message-ID: <20100718090948.GB24960@infradead.org>
-References: <cover.1279221394.git.rees@umich.edu>
- <abe8b56a1428b4a5b8372d619fb65b7986b8e501.1279221394.git.rees@umich.edu>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <abe8b56a1428b4a5b8372d619fb65b7986b8e501.1279221394.git.rees@umich.edu>
+Received: from smtp105.rog.mail.re2.yahoo.com ([206.190.36.83]:25661 "HELO
+	smtp105.rog.mail.re2.yahoo.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with SMTP id S1751321Ab0GaCOF (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 30 Jul 2010 22:14:05 -0400
+Message-ID: <4C53855F.5060201@cse.yorku.ca>
+Date: Fri, 30 Jul 2010 22:07:27 -0400
+From: Jason Keltz <jas@cse.yorku.ca>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: hang on existing systems when exporting NFS share to new systems
+References: <4C503450.1010609@cse.yorku.ca> <20100728174241.GB19362@fieldses.org>
+In-Reply-To: <20100728174241.GB19362@fieldses.org>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-> --- /dev/null
-> +++ b/include/linux/sunrpc/simple_rpc_pipefs.h
-> @@ -0,0 +1,112 @@
-> +/*
-> + *  linux/fs/gfs2/simple_rpc_pipefs.h
+On 28/07/2010 1:42 PM, J. Bruce Fields wrote:
+> On Wed, Jul 28, 2010 at 09:44:48AM -0400, Jason Keltz wrote
+> My list of NFS exports has been gradually growing over the years.
+> Right now, for example, my home directories are exported to around
+> 800 hosts. (although only a relatively small subset of those will
+> mount at the same time...).  I used to just add hosts to
+> /etc/exports on the file server, and run "exportfs -r", and
+> everything would be fine.  New systems would be able to mount
+> everything perfectly, and existing systems would not be affected at
+> all.  As the list has grown, I've been noticing a problem. Now, when
+> I run exportfs -r, there is an approximate 7-10 second hang on the
+> systems that have already mounted the share, and then everything
+> returns to normal.  This doesn't happen *while* exportfs -r is
+> running, but just after it exits.  I figured that maybe exportfs was
+> "unexporting"/re-exporting to hosts that already had the share in
+> use which might have caused the problem, so I tried to manually
+> add/remove hosts thinking that this would only affect those hosts,
+> but it did not. Exporting to one new host still causes the hang on
+> all existing hosts.
+>
+> Since I have multiple exports to all of the hosts, adding one new
+> host can hang things for a while.  I can see that reducing the list
+> of exports, or hosts would reduce the delay.  What I am wondering is
+> if there is a better way that I can add hosts without affecting
+> connectivity to existing hosts?
+>
+> The NFS server itself is pretty powerful -- dual quad core box, lots
+> of memory, many NFS threads, exclusive NFS server, etc...  I am
+> running an older RHEL4 release though, so it would have an older
+> kernel/NFS system.  Maybe this issue has been solved in newer
+> releases.
+>    
+> There have been fixes in this area, though I don't see any that I'm sure
+> would address your problem.  If you could test with the latest nfs-utils
+> (ideally, with the latest nfs-utils and kernel) and let us know the
+> result, that would be helpful.
+>
+> The -t option to rpc.mountd (may need a newer nfs-utils?) may also help.
+>
+> Also worth filing an RHEL bug.
+>    
 
-There's a reason why these kind of filename comments are useless, and
-you have just proven it.
+Hi Bruce,
 
-> +#include <linux/fs.h>
-> +#include <linux/list.h>
-> +#include <linux/mount.h>
-> +#include <linux/sched.h>
-> +#include <linux/sunrpc/clnt.h>
-> +#include <linux/sunrpc/rpc_pipe_fs.h>
+I backported the -t option to RHEL4 by looking at the latest nfs-utils, 
+but it didn't fix the problem.
+I'm having trouble compiling the latest nfs-utils for RHEL4 because a 
+couple of changed libraries...
 
-Do you actually need all these in a header?  I suspect many could go
-away in favour of forward declarations.
+What I have learned:
 
-> +typedef struct pipefs_hdr {
-> +	u32 msgid;
-> +	u8  type;
-> +	u8  flags;
-> +	u16 totallen; /* length of entire message, including hdr itself */
-> +	u32 status;
-> +} pipefs_hdr_t;
+1) whether exportfs -r, or manually add a single host with exportfs, or 
+even remove a host with exportfs -u, the delay to all the clients is the 
+same.  The delay doesn't change depending on the share.
+2) the delay doesn't happen while exportfs is running.  It happens 
+immediately afterwards, and when it does happen, an strace of rpc.mountd 
+shows that rpc.mountd is busy resolving every single hostname in etab.. 
+on one of our NFS servers, this means a total of  13,000 DNS requests... 
+on another system, that's over 30,000 DNS requests (and around a 30 
+second delay to all shares).  Once rpc.mountd stops burdening the DNS, 
+that's exactly when activity on all the shares returns.
+3) I've tried to change /etc/exports to use just IP... but exportfs 
+happily switches etab back to using hostnames, and then mountd does all 
+the lookups again...
 
-> +typedef struct pipefs_list {
-> +	struct list_head list;
-> +	spinlock_t list_lock;
-> +} pipefs_list_t;
+I suppose that the reason why exportfs doesn't convert etab to just use 
+IPs in the first place is because a name can resolve to multiple IPs... 
+but if I start with a list of IPs in /etc/exports, it would be nice if 
+they just stayed like that in etab, and if mountd could use them as 
+is... what's the point of all the DNS requests? (first to generate etab, 
+then from mountd a second time!)
 
-Please do not add typedefs for your structures.
+The only thing I can think to try at this point would be to see if I 
+populated /etc/hosts locally on the file server to see if the timing 
+works better than the DNS requests.
 
+If someone has any suggestions, I'd love to hear them.
+
+Thanks!
+
+Jason.
