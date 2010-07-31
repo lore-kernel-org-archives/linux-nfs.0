@@ -1,52 +1,58 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:4633 "EHLO
-	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1751311Ab0GFOqr (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 6 Jul 2010 10:46:47 -0400
-Message-ID: <4C3341D4.3020000@panasas.com>
-Date: Tue, 06 Jul 2010 17:46:44 +0300
-From: Boaz Harrosh <bharrosh@panasas.com>
-To: Fred Isaman <iisaman@netapp.com>
-CC: Benny Halevy <bhalevy@panasas.com>, Andy Adamson <andros@netapp.com>,
-        pNFS Mailing List <pnfs@linux-nfs.org>,
-        NFS list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 1/6] SQUASME pnfs-submit: Collapse pnfs_try_to_write_data
- code path and avoid big fat inlines
-References: <4C3334E3.7070600@panasas.com> <1278424509-22230-1-git-send-email-bharrosh@panasas.com> <264D5500-73A1-4315-9182-D21A6D2141FD@netapp.com>
-In-Reply-To: <264D5500-73A1-4315-9182-D21A6D2141FD@netapp.com>
-Content-Type: text/plain; charset=UTF-8
+Received: from moutng.kundenserver.de ([212.227.126.186]:49380 "EHLO
+	moutng.kundenserver.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756052Ab0GaOoT (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 31 Jul 2010 10:44:19 -0400
+Subject: Re: [PATCH 02/18] xstat: Add a pair of system calls to make
+ extended file stats available [ver #6]
+From: utz lehmann <lkml123@s2y4n2c.de>
+To: Jan Engelhardt <jengelh@medozas.de>
+Cc: Linus Torvalds <torvalds@linux-foundation.org>,
+        Jeremy Allison <jra@samba.org>, Volker.Lendecke@sernet.de,
+        David Howells <dhowells@redhat.com>, linux-cifs@vger.kernel.org,
+        linux-nfs@vger.kernel.org, samba-technical@lists.samba.org,
+        linux-kernel@vger.kernel.org, viro@zeniv.linux.org.uk,
+        linux-fsde@jasper.es
+In-Reply-To: <alpine.LSU.2.01.1007311006070.19122@obet.zrqbmnf.qr>
+References: <alpine.LSU.2.01.1007221228260.6115@obet.zrqbmnf.qr>
+	 <20100715021709.5544.64506.stgit@warthog.procyon.org.uk>
+	 <20100715021712.5544.44845.stgit@warthog.procyon.org.uk>
+	 <30448.1279800887@redhat.com> <E1Obuiy-00C9jr-Al@intern.SerNet.DE>
+	 <AANLkTikBCXK6uEw  <AANLkTimdFCGSKLn7aGMpBMIauHTsHY7hpAAmpo6uTcnD@mail.gmail.com>
+	 <1280524978.2452.9.camel@segv.aura.of.mankind>
+	 <alpine.LSU.2.01.1007311006070.19122@obet.zrqbmnf.qr>
+Content-Type: text/plain; charset="UTF-8"
+Date: Sat, 31 Jul 2010 16:43:53 +0200
+Message-ID: <1280587433.3284.10.camel@segv.aura.of.mankind>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 07/06/2010 05:31 PM, Fred Isaman wrote:
+On Sat, 2010-07-31 at 10:08 +0200, Jan Engelhardt wrote:
+> >When abusing an existing time stamp use atime not ctime please.
+> >ctime has it's uses. atime was just a mistake and is nearly useless.
 > 
-> On Jul 6, 2010, at 9:55 AM, Boaz Harrosh wrote:
-> 
-<snip>
->> @@ -1547,9 +1548,8 @@ pnfs_writepages(struct nfs_write_data *wdata, int how)
->> 	numpages = nfs_page_array_len(args->pgbase, args->count);
->>
->> 	dprintk("%s: Calling layout driver (how %d) write with %d pages\n",
->> -		__func__,
->> -		how,
->> -		numpages);
->> +		__func__, how, numpages);
->> +
->> 	if (!pnfs_use_rpc(nfss))
->> 		wdata->pdata.pnfsflags |= PNFS_NO_RPC;
-> 
-> Just curious, what branch is this based on?  The above code was removed in the pnfs-submit branches a while ago.
-> 
-> Other than that, looks good.
-> 
+> MUAs make use of atime.
 
-It's over pnfs-all-latest because for me I need the bigger tree for actually testing
-my code. So more work for Benny when squashing to sort out the hunks.
+I know mutt uses atime to detect new messages. But there are better and
+more reliable ways to do this.
 
-But if it was removed what patch brings it back, this is odd. Benny?
-
-> Fred
 > 
+> >And with noatime we already have creation time semantics for atime.
+> 
+> noatime was a late afterthought, and because it can interfere with
+> some programs, relatime came along too.
 
-Boaz
+There are people who prefer noatime over relatime.
+
+Using an existing time stamp for creation time is a bad idea IMHO. But
+when doing this use the least important one. Which is atime. For example
+ctime is used by backup programs.
+
+Anyway when we want to support creation time it should be an additional
+time stamp.
+
+
+utz
+
+
