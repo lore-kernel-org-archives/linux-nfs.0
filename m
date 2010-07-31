@@ -1,118 +1,48 @@
-Return-Path: <nfsv4-bounces@ietf.org>
-Date: Sat, 17 Jul 2010 10:58:10 -0400
-To: sfaibish <sfaibish@emc.com>, "J. Bruce Fields" <bfields@fieldses.org>,
-        "Marc Eshel" <eshel@almaden.ibm.com>
-From: "Sorin Faibish" <sfaibish@emc.com>
-References: <OF01D34025.9BF2DCCC-ON88257760.007510C5-88257760.007530DA@us.ibm.com>
-	<20100714212928.GD8161@fieldses.org>
-	<20100715172836.GC15126@fieldses.org>
-	<op.vfwi1ojxunckof@usensfaibisl2e.eng.emc.com>
-Message-ID: <op.vfzs68aorwwil4@sfaibish1.corp.emc.com>
-In-Reply-To: <op.vfwi1ojxunckof@usensfaibisl2e.eng.emc.com>
-Cc: linux-nfs@vger.kernel.org, nfsv4 list <nfsv4@ietf.org>
-Subject: Re: [nfsv4] Linux pNFS status meeting 07/15
-List-Unsubscribe: <https://www.ietf.org/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@ietf.org?subject=unsubscribe>
-List-Archive: <http://www.ietf.org/mail-archive/web/nfsv4>
-List-Post: <mailto:nfsv4@ietf.org>
-List-Help: <mailto:nfsv4-request@ietf.org?subject=help>
-List-Subscribe: <https://www.ietf.org/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@ietf.org?subject=subscribe>
-Content-Type: text/plain; charset="iso-8859-15"; Format="flowed"; DelSp="yes"
-Sender: nfsv4-bounces@ietf.org
-Errors-To: nfsv4-bounces@ietf.org
-MIME-Version: 1.0
+Return-Path: <linux-nfs-owner@vger.kernel.org>
+Received: from borg.medozas.de ([188.40.89.202]:49624 "EHLO borg.medozas.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752072Ab0GaVU0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 31 Jul 2010 17:20:26 -0400
+Date: Sat, 31 Jul 2010 23:20:24 +0200 (CEST)
+From: Jan Engelhardt <jengelh@medozas.de>
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+cc: Andreas Dilger <adilger@dilger.ca>, Phil Pishioneri <pgp@psu.edu>,
+        Volker.Lendecke@SerNet.DE, Jeremy Allison <jra@samba.org>,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        David Howells <dhowells@redhat.com>, linux-cifs@vger.kernel.org,
+        linux-nfs@vger.kernel.org, samba-technical@lists.samba.org,
+        linux-kernel@vger.kernel.org, viro@zeniv.linux.org.uk,
+        linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
+Subject: Re: [PATCH 02/18] xstat: Add a pair of system calls to make extended
+ file stats available [ver #6]
+In-Reply-To: <1280603032.3125.24.camel@heimdal.trondhjem.org>
+Message-ID: <alpine.LSU.2.01.1007312316580.27642@obet.zrqbmnf.qr>
+References: <20100715021712.5544.44845.stgit@warthog.procyon.org.uk>  <30448.1279800887@redhat.com> <E1Obuiy-00C9jr-Al@intern.SerNet.DE>  <AANLkTikBCXK6uEwWq4f0LvpdoKCPs3jvyFa4Zw4e2J_7@mail.gmail.com>  <E1Obxpd-00CRIo-SF@intern.SerNet.DE>
+ <AANLkTimwIq0pBhCeOjOVjB0yeM3JHOvzVoj9M4ui6al9@mail.gmail.com>  <20100722162712.GB10352@jeremy-laptop>  <AANLkTimdFCGSKLn7aGMpBMIauHTsHY7hpAAmpo6uTcnD@mail.gmail.com>  <1279817930.3621.14.camel@heimdal.trondhjem.org>  <20100722180204.GA32008@samba1>
+ <E1Oc08W-00CZuz-Ns@intern.SerNet.DE>  <1279825160.3621.71.camel@heimdal.trondhjem.org> <4C5311F4.2050100@psu.edu>  <1280513506.12852.22.camel@heimdal.trondhjem.org>  <09B770A6-48DB-4296-B6C2-BF46D4DC7E57@dilger.ca>
+ <1280603032.3125.24.camel@heimdal.trondhjem.org>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-
-The Fall BAT webpage was updated with all the correct hotel reservation =20
-forms:
-http://www.citi.umich.edu/projects/nfsv4/citi_bakeathon/15th_nfsv4_bakeatho=
-n.html
-
-Sorry for the delay.
-
-/Sorin
+MIME-Version: 1.0
 
 
-On Thu, 15 Jul 2010 16:26:02 -0400, sfaibish <sfaibish@emc.com> wrote:
-
-> Fall BAT update
-> Hotel reservation is posted at:
-> http://www.starwoodmeeting.com/Book/NFSv4Bakeathon
+On Saturday 2010-07-31 21:03, Trond Myklebust wrote:
+>On Sat, 2010-07-31 at 12:41 -0600, Andreas Dilger wrote:
+>> On 2010-07-30, at 12:11, Trond Myklebust wrote:
+>> > Your Mac has a perfectly functional CIFS client, as do your Linux boxes.
+>> > They both interoperate just fine with Samba, and would presumably
+>> > continue to do so if someone were to decide to reuse the ctime field on
+>> > your Samba box as storage for a create time.
+>> 
+>> CIFS doesn't support symlinks (they just appear as the referenced file), so I've had applications that scan the filesystem recurse indefinitely due to symlinked directories on a CIFS share appearing as hard-linked directories on the client.  This doesn't happen when the filesystem is accessed via NFS.
 >
-> I will update the webpage later today at:
-> http://www.citi.umich.edu/projects/nfsv4/citi_bakeathon/15th_nfsv4_bakeat=
-hon.html
->
-> /Sorin
->
->
-> On Thu, 15 Jul 2010 13:28:36 -0400, J. Bruce Fields =20
-> <bfields@fieldses.org> wrote:
->
->>
->> Notes:
->>
->> Bruce:
->> 	- nothing to report (transitioning to new hardware, etc.)
->>
->> Trond:
->> 	- did some fsync cleanup
->> 	- bugfixes to handling of ERR_DELAY on sequence operations.
->> 	- preparing for rpc changes required for migration.
->> 		(some discusison here of idempotency problems on
->> 		migration/reboot)
->>
->> Benny:
->> 	- Included Trond's delay/sequence fix
->> 	(missed some additional discussion)
->>
->> Andy:
->> 	- simplification of write_pagelist/read_pagelist prototypes
->> 	- making sure layouts removed on server reboot
->> 	- looking at layout commit/reclaim issues in preparation for
->> 	  discussion at Maastricht.
->> 	- wants to rename some structures; will mail proposal to list.
->>
->> Jim Rees:
->> 	- bugfixing complex-volume patches; not ready to submit to Benny
->> 	  quite yet.
->>
->> Steved:
->> 	- Discussion of RHEL prospects.  When will we have some pnfs
->> 	  patches that are ready to review?  Concensus seems to be
->> 	  2.6.36 will be too early.  Ricardo, Benny think 2.6.37
->> 	  possible to finish up remaining work, squash changes into a
->> 	  single cleaned-up patch series.  Trond reminds that adequate
->> 	  time is required before merge window for review, especially
->> 	  for large change.  Benny volunteering to do squashing.
->>
->> --b.
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>
->>
->
->
->
+>Sigh... So please explain how it would be useful to export that
+>particular filesystem through _both_ CIFS and NFS?
 
+Seems like a reasonable case for, say, a public "ftp server". For
+example, I keep ftp5.gwdg.de:/ftp/pub mounted, that's a little more
+convenient than always having to start an ftp cilent.
 
-
---=20
-Best Regards
-Sorin Faibish
-Corporate Distinguished Engineer
-Unified Storage Division
-
-        EMC=B2
-where information lives
-
-Phone: 508-435-1000 x 48545
-Cellphone: 617-510-0422
-Email : sfaibish@emc.com
-_______________________________________________
-nfsv4 mailing list
-nfsv4@ietf.org
-https://www.ietf.org/mailman/listinfo/nfsv4
+Conversely, since NFS is, well, non-existent on Windows, one would
+use CIFS there (had it ftp5 opened) to get the same convenience.
