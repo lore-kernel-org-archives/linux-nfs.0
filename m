@@ -1,140 +1,96 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:41877 "EHLO
-	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1751088Ab0GFNgA (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 6 Jul 2010 09:36:00 -0400
-Message-ID: <4C33313C.5070708@panasas.com>
-Date: Tue, 06 Jul 2010 16:35:56 +0300
-From: Benny Halevy <bhalevy@panasas.com>
-To: Daniel.Muntz@emc.com
-CC: andros@netapp.com, sjoshi@bluearc.com, linux-nfs@vger.kernel.org
-Subject: Re: 4.1 client - LAYOUTCOMMIT & close
-References: <A062FCC8662DA848949F7C3046B9BEAE01F3A6ED@us-email.terastack.bluearc.com> <A062FCC8662DA848949F7C3046B9BEAE01F3A6EE@us-email.terastack.bluearc.com> <6206CE0E-0A32-46A7-B648-3FCC12ED1961@netapp.com> <B9A709F368FAAF4DB4B33870F72A141DFB88F3@CORPUSMX30A.corp.emc.com>
-In-Reply-To: <B9A709F368FAAF4DB4B33870F72A141DFB88F3@CORPUSMX30A.corp.emc.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mx2.netapp.com ([216.240.18.37]:53659 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751788Ab0GaTUU convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 31 Jul 2010 15:20:20 -0400
+Subject: Re: auth_gss.c - rcu dereference warning
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Johannes Berg <johannes@sipsolutions.net>
+Cc: linux-nfs <linux-nfs@vger.kernel.org>
+In-Reply-To: <1280227718.3755.3.camel@jlt3.sipsolutions.net>
+References: <1280227718.3755.3.camel@jlt3.sipsolutions.net>
+Content-Type: text/plain; charset="UTF-8"
+Date: Sat, 31 Jul 2010 15:20:11 -0400
+Message-ID: <1280604011.3125.28.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Jul. 03, 2010, 0:46 +0300, <Daniel.Muntz@emc.com> wrote:
-> By "extremely lame server" I assume you mean any pNFS server that
-> doesn't have a cluster FS on the back end.  So while this might work
-> well for NetApp (as long as NetApp never ships a non-clustered pNFS), it
-> might break others, or at least severely impact their performance.  For
-> example, will the Solaris pNFS server work correctly without
-> LAYOUTCOMMIT?  IMHO, the client MUST issue the appropriate LAYOUTCOMMIT,
-> but the server is free to handle it as a no-op if the server
-> implementation does not need to utilize the payload.
-
-I completely agree.
-
-Only with Dave Noveck suggestion of adding a "LAYOUT_{DATA,FILE}_SYNC4"
-stable_how4 values (or maybe a LAYOUT_SYNC4=4 or higher power of 2 flag)
-to be returned by a DS on WRITE, the DS can say that it ensures metadata
-synchronization with the MDS in a cluster coherent way and the client can relax
-and avoid sending LAYOUTCOMMIT to the MDS.
-
-Otherwise, the linux implementation can potentially support a mount option
-telling the client to not send a LAYOUTCOMMIT to the MDS as an optimization
-if the admin is sure that the server doesn't require it.
-
-Benny
-
-
+On Tue, 2010-07-27 at 12:48 +0200, Johannes Berg wrote:
+> I consistently get this when I unmount an NFS volume.
 > 
->   -Dan
+> johannes
 > 
->> -----Original Message-----
->> From: linux-nfs-owner@vger.kernel.org 
->> [mailto:linux-nfs-owner@vger.kernel.org] On Behalf Of Andy Adamson
->> Sent: Friday, July 02, 2010 8:41 AM
->> To: Sandeep Joshi
->> Cc: linux-nfs@vger.kernel.org; bhalevy@panasas.com
->> Subject: Re: 4.1 client - LAYOUTCOMMIT & close
->>
->>
->> On Jul 1, 2010, at 8:07 PM, Sandeep Joshi wrote:
->>
->> Hi Sandeep
->>
->>>
->>> In certain cases, I don't see layoutcommit on a file at all even  
->>> after doing many writes.
->>
->> FYI:
->>
->> You should not be paying attention to layoutcommits  - they have no  
->> value for the file layout type.
->>
->>  From RFC 5661:
->>
->> "The LAYOUTCOMMIT operation commits chages in the layout represented  
->> by the current filehandle, client ID (derived from the session ID in  
->> the preceding SEQUENCE operation), byte-range, and stateid."
->>
->> For the block layout type, this sentence has meaning in that 
->> there is  
->> a layoutupdate4 payload that enumerates the blocks that have changed  
->> state from being 'handed out' to being 'written'.
->>
->> The file layout type has no layoutupdate4 payload, and the 
->> layout does  
->> not change due to writes, and thus the LAYOUTCOMMIT call is useless.
->>
->> The only field in the LAYOUTCOMMIT4args that might possibly 
->> be useful  
->> is the loca_last_write_offset which tells the server what the client  
->> thinks is the EOF of the file after WRITE. It is an extremely lame  
->> server (file layout type server) that depends upon clients for this  
->> info.
->>
->>>
->>>
->>>
->>> Client side operations:
->>>
->>> open
->>> write(s)
->>> close
->>>
->>>
->>> On server side (observed operations):
->>>
->>> open
->>> layoutget's
->>> close
->>>
->>>
->>> But, I do not see laycommit at all. In terms data written 
->> by client  
->>> it is about 4-5MB.
->>>
->>> When does client issue laycommit?
->>
->> The latest linux client sends a layout commit when the VFS does a  
->> super_operations.write_inode call which happens when the metadata of  
->> an inode needs updating. We are seriously considering removing the  
->> layoutcommit call from the file layout client.
->>
->> -->Andy
->>
->>>
->>>
->>> regards,
->>>
->>> Sandeep
->>>
->>> --
->>> To unsubscribe from this list: send the line "unsubscribe 
->> linux-nfs"  
->>> in
->>> the body of a message to majordomo@vger.kernel.org
->>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>
->> --
->> To unsubscribe from this list: send the line "unsubscribe 
->> linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>
->>
+> [  381.427221] ===================================================
+> [  381.427225] [ INFO: suspicious rcu_dereference_check() usage. ]
+> [  381.427228] ---------------------------------------------------
+> [  381.427232] /home/johannes/sys/wireless-testing/net/sunrpc/auth_gss/auth_gss.c:947 invoked rcu_dereference_check() without protection!
+> [  381.427236] 
+> [  381.427237] other info that might help us debug this:
+> [  381.427238] 
+> [  381.427241] 
+> [  381.427242] rcu_scheduler_active = 1, debug_locks = 1
+> [  381.427246] 2 locks held by rpciod/0/1881:
+> [  381.427248]  #0:  (rpciod){+.+.+.}, at: [<ffffffff810640cf>] run_workqueue+0x11f/0x3c0
+> [  381.427262]  #1:  ((&task->u.tk_work)){+.+.+.}, at: [<ffffffff810640cf>] run_workqueue+0x11f/0x3c0
+> [  381.427271] 
+> [  381.427272] stack backtrace:
+> [  381.427276] Pid: 1881, comm: rpciod/0 Not tainted 2.6.35-rc6-wl-47665-gc2e2180-dirty #174
+> [  381.427280] Call Trace:
+> [  381.427289]  [<ffffffff8107e494>] lockdep_rcu_dereference+0xa4/0xc0
+> [  381.427297]  [<ffffffffa05e0191>] gss_free_ctx+0x91/0xa0 [auth_rpcgss]
+> [  381.427311]  [<ffffffffa05e19ed>] gss_destroy_nullcred+0x4d/0x70 [auth_rpcgss]
+> [  381.427331]  [<ffffffffa0598f97>] put_rpccred+0x127/0x140 [sunrpc]
+> [  381.427348]  [<ffffffffa059922e>] rpcauth_unbindcred+0x2e/0x70 [sunrpc]
+> [  381.427371]  [<ffffffffa05970ea>] rpc_put_task+0x3a/0xd0 [sunrpc]
+> [  381.427386]  [<ffffffffa0597810>] rpc_release_task+0x70/0xa0 [sunrpc]
+> [  381.427402]  [<ffffffffa0598229>] __rpc_execute+0x179/0x200 [sunrpc]
+> [  381.427433]  [<ffffffffa05982f5>] rpc_async_schedule+0x15/0x20 [sunrpc]
+> [  381.427438]  [<ffffffff81064120>] run_workqueue+0x170/0x3c0
+> [  381.427457]  [<ffffffff81064413>] worker_thread+0xa3/0x110
+> [  381.427472]  [<ffffffff81069386>] kthread+0x96/0xa0
+> [  381.427479]  [<ffffffff81003514>] kernel_thread_helper+0x4/0x10
+
+Hi,
+
+Does the following patch help?
+
+Cheers
+  Trond
+------------------------------------------------------------------------------------------
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+SUNRPC: Defer deleting the security context until gss_do_free_ctx()
+    
+There is no need to delete the gss context separately from the rest
+of the security context information, and doing so gives rise to a
+an rcu_dereference_check() warning.
+
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
+index 8da2a0e..496601f 100644
+--- a/net/sunrpc/auth_gss/auth_gss.c
++++ b/net/sunrpc/auth_gss/auth_gss.c
+@@ -928,6 +928,7 @@ gss_do_free_ctx(struct gss_cl_ctx *ctx)
+ {
+ 	dprintk("RPC:       gss_free_ctx\n");
+ 
++	gss_delete_sec_context(&ctx->gc_gss_ctx);
+ 	kfree(ctx->gc_wire_ctx.data);
+ 	kfree(ctx);
+ }
+@@ -942,13 +943,7 @@ gss_free_ctx_callback(struct rcu_head *head)
+ static void
+ gss_free_ctx(struct gss_cl_ctx *ctx)
+ {
+-	struct gss_ctx *gc_gss_ctx;
+-
+-	gc_gss_ctx = rcu_dereference(ctx->gc_gss_ctx);
+-	rcu_assign_pointer(ctx->gc_gss_ctx, NULL);
+ 	call_rcu(&ctx->gc_rcu, gss_free_ctx_callback);
+-	if (gc_gss_ctx)
+-		gss_delete_sec_context(&gc_gss_ctx);
+ }
+ 
+ static void
+
