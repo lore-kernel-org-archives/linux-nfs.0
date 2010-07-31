@@ -1,46 +1,43 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-out1.uio.no ([129.240.10.57]:59210 "EHLO mail-out1.uio.no"
+Received: from borg.medozas.de ([188.40.89.202]:55226 "EHLO borg.medozas.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752769Ab0GZPeB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 26 Jul 2010 11:34:01 -0400
-Subject: Re: dentry cache memory usage
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-To: Casey Bodley <cbodley@umich.edu>
-Cc: linux-nfs@vger.kernel.org, Olga Kornievskaia <aglo@citi.umich.edu>
-In-Reply-To: <AANLkTinSHDKPO5frmr4sik6ZnIZyOpfsDvXc20W74Df1@mail.gmail.com>
-References: <AANLkTinSHDKPO5frmr4sik6ZnIZyOpfsDvXc20W74Df1@mail.gmail.com>
-Content-Type: text/plain; charset="UTF-8"
-Date: Mon, 26 Jul 2010 11:33:54 -0400
-Message-ID: <1280158434.2869.16.camel@heimdal.trondhjem.org>
+	id S1751083Ab0GaSsl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 31 Jul 2010 14:48:41 -0400
+Date: Sat, 31 Jul 2010 20:48:39 +0200 (CEST)
+From: Jan Engelhardt <jengelh@medozas.de>
+To: Andreas Dilger <adilger@dilger.ca>
+cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
+        Phil Pishioneri <pgp@psu.edu>, Volker.Lendecke@SerNet.DE,
+        Jeremy Allison <jra@samba.org>,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        David Howells <dhowells@redhat.com>, linux-cifs@vger.kernel.org,
+        linux-nfs@vger.kernel.org, samba-technical@lists.samba.org,
+        linux-kernel@vger.kernel.org, viro@zeniv.linux.org.uk,
+        linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
+Subject: Re: [PATCH 02/18] xstat: Add a pair of system calls to make extended
+ file stats available [ver #6]
+In-Reply-To: <09B770A6-48DB-4296-B6C2-BF46D4DC7E57@dilger.ca>
+Message-ID: <alpine.LSU.2.01.1007312048200.15118@obet.zrqbmnf.qr>
+References: <20100715021712.5544.44845.stgit@warthog.procyon.org.uk> <30448.1279800887@redhat.com> <E1Obuiy-00C9jr-Al@intern.SerNet.DE> <AANLkTikBCXK6uEwWq4f0LvpdoKCPs3jvyFa4Zw4e2J_7@mail.gmail.com> <E1Obxpd-00CRIo-SF@intern.SerNet.DE>
+ <AANLkTimwIq0pBhCeOjOVjB0yeM3JHOvzVoj9M4ui6al9@mail.gmail.com> <20100722162712.GB10352@jeremy-laptop> <AANLkTimdFCGSKLn7aGMpBMIauHTsHY7hpAAmpo6uTcnD@mail.gmail.com> <1279817930.3621.14.camel@heimdal.trondhjem.org> <20100722180204.GA32008@samba1>
+ <E1Oc08W-00CZuz-Ns@intern.SerNet.DE> <1279825160.3621.71.camel@heimdal.trondhjem.org> <4C5311F4.2050100@psu.edu> <1280513506.12852.22.camel@heimdal.trondhjem.org> <09B770A6-48DB-4296-B6C2-BF46D4DC7E57@dilger.ca>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Mon, 2010-07-26 at 11:21 -0400, Casey Bodley wrote:
-> I'm a developer at CITI working on the windows pnfs client.  We've
-> been looking into some optimizations for our name and attribute
-> caches, mainly involving the use of pools to avoid allocating memory
-> for each new entry.
-> 
-> We're looking for a sensible initial/maximum pool size.  Once the
-> maximum pool size is reached, we'll start scavenging the least
-> recently used entries.  Does the linux client impose any limits on the
-> size of the dentry cache?
-> 
-> I'm also curious what time limits you're using before expiring cached
-> attributes and lookups.
-> 
-> I suppose I'm just asking for magic numbers here, in the hope that
-> smart people have tested and benchmarked this stuff in the linux
-> client.
 
-Linux doesn't really allow you to set a maximum dcache size. Instead,
-the system allows you to allocate as many dentries as you like. When the
-system runs low on memory, the VM will trigger an LRU based reclaim of
-older dentries.
+On Saturday 2010-07-31 20:41, Andreas Dilger wrote:
+>On 2010-07-30, at 12:11, Trond Myklebust wrote:
+>> Your Mac has a perfectly functional CIFS client, as do your Linux boxes.
+>> They both interoperate just fine with Samba, and would presumably
+>> continue to do so if someone were to decide to reuse the ctime field on
+>> your Samba box as storage for a create time.
+>
+>CIFS doesn't support symlinks (they just appear as the referenced
+>file), so I've had applications that scan the filesystem recurse
+>indefinitely due to symlinked directories on a CIFS share appearing
+>as hard-linked directories on the client. This doesn't happen when
+>the filesystem is accessed via NFS.
 
-The page cache is managed on a similar basis.
-
-Cheers
-  Trond
-
+This shouldn't go on indefinitely - PATH_MAX is reached at some point.
