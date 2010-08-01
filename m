@@ -1,57 +1,68 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:57129 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:60068 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752246Ab0HaQ1Q (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 31 Aug 2010 12:27:16 -0400
-Date: Tue, 31 Aug 2010 12:26:48 -0400
-To: "Labiaga, Ricardo" <Ricardo.Labiaga@netapp.com>
-Cc: Benny Halevy <bhalevy@panasas.com>, Marc Eshel <eshel@almaden.ibm.com>,
-        linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org
-Subject: Re: Linux pNFS status meeting 08/26
-Message-ID: <20100831162648.GF3071@fieldses.org>
-References: <OFED8B9B7B.45CD28BB-ON8825777C.005B88F3-8825777C.005BC3F5@us.ibm.com>
- <OF1477B0A3.3F72D2BF-ON88257783.005FBF98-88257783.005FDE25@us.ibm.com>
- <OFF2C1BE64.0E5C418F-ON8825778B.001353F9-8825778B.00136C6A@us.ibm.com>
- <4C761A61.2070203@panasas.com>
- <273FE88A07F5D445824060902F7003440C5CDD52@SACMVEXC1-PRD.hq.netapp.com>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <273FE88A07F5D445824060902F7003440C5CDD52@SACMVEXC1-PRD.hq.netapp.com>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+	id S1751749Ab0HARkp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 1 Aug 2010 13:40:45 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Linus Torvalds <torvalds@linux-foundation.org>
+Cc: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        Ingo Molnar <mingo@elte.hu>, Randy Dunlap <rdunlap@xenotime.net>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: [PATCH] NFS: Fix a typo in include/linux/nfs_fs.h
+Date: Sun,  1 Aug 2010 13:40:40 -0400
+Message-Id: <1280684440-5763-1-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1280684100.4430.8.camel@heimdal.trondhjem.org>
+References: <1280684100.4430.8.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Mon, Aug 30, 2010 at 02:15:43PM -0700, Labiaga, Ricardo wrote:
-> Last week Andy, Fred, Trond, and I were physically in the same location,
-> so we took the opportunity to review the first set of patches in the
-> pnfs-submit branch and further discussed the best way to proceed with
-> the submission.  For ease of review, Trond reiterated that we submit our
-> patches in waves of functionality and that they be submitted as a set of
-> few large patches.
-> 
-> The proposal is to submit the functionality in the following order:
-> 
-> 1st Layoutget and getdeviceinfo (together)
-> 2nd Layoutreturn
-> 3rd Read/ Write I/O path (could be broken into two sets)
-> 4th Callback Path
-> 5th Layoutcommit
-> 
-> For the 1st wave of functionality, the suggestion is to submit three
-> large patches:
-> 
-> 1. Everything that touches NFS common code 
->   (such as init and uninit pNFS, pnfs_update_layout invocations)
-> 2. Layoutget and getdeviceinfo generic code common to all layout drivers
-> 3. File layout specific layoutget and getdeviceinfo
+nfs_commit_inode() needs to be defined irrespectively of whether or not
+we are supporting NFSv3 and NFSv4.
+Allow the compiler to optimise away code in the NFSv2-only case by
+converting it into an inlined stub function.
 
-I understand large patches for the latter two, but for the first, might
-it be worth keeping smaller patches?  Changes to common code seem most
-at risk of breaking existing functionality.  And they might be
-individually testable (since you can test for regressions), as opposed to
-the new stuff that may be impossible to test until it's all applied.
+Reported-by: Ingo Molnar <mingo@elte.hu>
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ fs/nfs/write.c         |    5 -----
+ include/linux/nfs_fs.h |    6 ++++++
+ 2 files changed, 6 insertions(+), 5 deletions(-)
 
-But that's all just generalities--if people who've looked at the patches
-don't think they split up sensibly, then fine.
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index bb72ad3..9f81bdd 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -1454,11 +1454,6 @@ out_mark_dirty:
+ 	return ret;
+ }
+ #else
+-int nfs_commit_inode(struct inode *inode, int how)
+-{
+-	return 0;
+-}
+-
+ static int nfs_commit_unstable_pages(struct inode *inode, struct writeback_control *wbc)
+ {
+ 	return 0;
+diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
+index f6e2455..bad4d12 100644
+--- a/include/linux/nfs_fs.h
++++ b/include/linux/nfs_fs.h
+@@ -496,6 +496,12 @@ extern int nfs_wb_page_cancel(struct inode *inode, struct page* page);
+ extern int  nfs_commit_inode(struct inode *, int);
+ extern struct nfs_write_data *nfs_commitdata_alloc(void);
+ extern void nfs_commit_free(struct nfs_write_data *wdata);
++#else
++static inline int
++nfs_commit_inode(struct inode *inode, int how)
++{
++	return 0;
++}
+ #endif
+ 
+ static inline int
+-- 
+1.7.2
 
---b.
