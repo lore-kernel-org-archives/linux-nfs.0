@@ -1,62 +1,73 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fn.samba.org ([216.83.154.106]:36452 "EHLO lists.samba.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755486Ab0HMTTF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 13 Aug 2010 15:19:05 -0400
-Date: Fri, 13 Aug 2010 12:19:00 -0700
-From: Jeremy Allison <jra@samba.org>
-To: Jan Engelhardt <jengelh@medozas.de>
-Cc: Jeremy Allison <jra@samba.org>, "J. Bruce Fields" <bfields@fieldses.org>,
-        Jeff Layton <jlayton@redhat.com>, Neil Brown <neilb@suse.de>,
-        utz lehmann <lkml123@s2y4n2c.de>,
-        Linus Torvalds <torvalds@linux-foundation.org>,
-        Volker.Lendecke@sernet.de, David Howells <dhowells@redhat.com>,
-        linux-cifs@vger.kernel.org, linux-nfs@vger.kernel.org,
-        samba-technical@lists.samba.org, linux-kernel@vger.kernel.org,
-        viro@zeniv.linux.org.uk, linux-fsde@jasper.es
-Subject: Re: [PATCH 02/18] xstat: Add a pair of system calls to make
- extended file stats available [ver #6]
-Message-ID: <20100813191900.GB8202@samba1>
-Reply-To: Jeremy Allison <jra@samba.org>
-References: <1280524978.2452.9.camel@segv.aura.of.mankind>
- <20100801092529.5e6ba0e0@corrin.poochiereds.net>
- <20100805235218.GB31233@jeremy-laptop>
- <20100806133836.49757af9@notabene>
- <20100808121208.GA7329@jeremy-laptop>
- <20100808085301.24f53e5a@tlielax.poochiereds.net>
- <20100808130501.GA9851@jeremy-laptop>
- <20100813125432.GB8945@fieldses.org>
- <20100813175410.GA8202@samba1>
- <alpine.LSU.2.01.1008132104290.12206@obet.zrqbmnf.qr>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <alpine.LSU.2.01.1008132104290.12206@obet.zrqbmnf.qr>
+Received: from mail-iw0-f174.google.com ([209.85.214.174]:52264 "EHLO
+	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751879Ab0HAHrc (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 1 Aug 2010 03:47:32 -0400
+Received: by iwn7 with SMTP id 7so2936092iwn.19
+        for <linux-nfs@vger.kernel.org>; Sun, 01 Aug 2010 00:47:31 -0700 (PDT)
+Date: Sun, 1 Aug 2010 19:47:31 +1200
+Message-ID: <AANLkTinZN+uhDShmg8aKiSEA8M3pr_RXu58OyyLPapxm@mail.gmail.com>
+Subject: statd: server localhost not responding, timed out; lockd: cannot
+	monitor <client>
+From: Dan Wallis <mrdanwallis@gmail.com>
+To: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Fri, Aug 13, 2010 at 09:06:28PM +0200, Jan Engelhardt wrote:
-> 
-> On Friday 2010-08-13 19:54, Jeremy Allison wrote:
-> >On Fri, Aug 13, 2010 at 08:54:32AM -0400, J. Bruce Fields wrote:
-> >> On Sun, Aug 08, 2010 at 06:05:01AM -0700, Jeremy Allison wrote:
-> >> > We don't need to ape Windows in everything.
-> >> > The coming ACL disaster will show that (we will go from an ACL
-> >> > model that is slightly too complex to use, to one that is impossibly
-> >> > complex to use :-).
-> >> 
-> >> Care to elaborate?
-> >
-> >POSIX ACLs -> RichACLs (NT-style). Not criticising Andreas here,
-> >people are asking for this. But Windows ACLs are a nightmare
-> >beyond human comprehension :-). In the "too complex to be
-> >usable" camp.
-> 
-> Well, for one, ACLs in NT can be recursive IIRC. You can't say that of Linux
-> ACLs - instead you have to setfacl -R and setfacl -Rd to give one user access
-> to a directory and all its subdirs including future new inodes.
+Hello list :)
 
-You do realize that Windows does exactly the same thing under
-the covers, right ? Watch SMB or SMB2 traffic between a client
-and Windows server when someone changes an ACL sometime :-).
+This is my first post here, so if it's in the wrong place, or if I've
+not read the appropriate documentation, please feel free to send me a
+link to the relevant bits. I've tried searching the archives, and the
+internet at large, but haven't yet come across anything that's helped.
 
-Jeremy
+Our NFS-shared file-system is locking up.
+
+At the time, there are a lot of processes in "disk sleep" state, and
+the load averages on our machines sky-rocket. The machines are
+responsive on SSH, but our the majority of our websites
+(apache+mod_php) just hang, as does our email system (exim+dovecot).
+Any websites which don't require write access to the file-system
+continue to operate.
+
+The load averages continue to rise until some kind of time-out is
+reached, but for at least 10-15 minutes. I've seen load averages over
+800, yet the machines are still responsive for actions which don't
+require writing to the shared file-system.
+
+I've been investigating a variety of options, which have all turned
+out to be red-herrings: nagios, proftpd, bind, cron tasks.
+
+I'm seeing these messages in the file server's system log:
+
+Jul 30 09:37:17 fs0 kernel: [1810036.560046] statd: server localhost
+not responding, timed out
+Jul 30 09:37:17 fs0 kernel: [1810036.560053] nsm_mon_unmon: rpc
+failed, status=-5
+Jul 30 09:37:17 fs0 kernel: [1810036.560064] lockd: cannot monitor node2
+Jul 30 09:38:22 fs0 kernel: [1810101.384027] statd: server localhost
+not responding, timed out
+Jul 30 09:38:22 fs0 kernel: [1810101.384033] nsm_mon_unmon: rpc
+failed, status=-5
+Jul 30 09:38:22 fs0 kernel: [1810101.384044] lockd: cannot monitor node0
+
+Software involved:
+VMWare, Debian lenny (64bit), ancient Red Hat (32 bit) (version 7 I
+believe), Debian etch (32bit)
+NFS, apache2+mod_php, exim, dovecot, bind, amanda, proftpd, nagios,
+cacti, drbd, heartbeat, keepalived, LVS, cron, ssmtp, NIS, svn,
+puppet, memcache, mysql, postgres
+Joomla!, Magento, Typo3, Midgard, Symfony, custom php apps
+
+So far, I've spent a lot of time trying to reproduce the problem, but
+haven't been able to do so.
+
+
+If you've any ideas, please let me know. :)
+
+
+
+Cheers
+Dan
