@@ -1,36 +1,50 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from magus.merit.edu ([198.108.1.13]:52058 "EHLO magus.merit.edu"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752666Ab0HDPpe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 4 Aug 2010 11:45:34 -0400
-Date: Wed, 4 Aug 2010 11:45:33 -0400
-From: Jim Rees <rees@umich.edu>
-To: Andy Adamson <andros@netapp.com>
-Cc: Jonathan Manton <jmanton@illinois.edu>, linux-nfs@vger.kernel.org
-Subject: Re: Kerberized NFS (v3 and v4) does not work if Kerberos token is
- >= 2048 bytes (if PAGE_SIZE == 4096)
-Message-ID: <20100804154533.GA13950@merit.edu>
-References: <E820D075-2582-4FF8-B788-14D41070DA29@illinois.edu>
- <D17BAFDB-6B3B-40B6-9C28-5689D18FBBA5@netapp.com>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <D17BAFDB-6B3B-40B6-9C28-5689D18FBBA5@netapp.com>
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:49711 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751358Ab0HARK7 convert rfc822-to-8bit
+	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 1 Aug 2010 13:10:59 -0400
+In-Reply-To: <20100801064415.GA10523@elte.hu>
+References: <1280519035.12852.32.camel@heimdal.trondhjem.org>
+	<20100801064415.GA10523@elte.hu>
+From: Linus Torvalds <torvalds@linux-foundation.org>
+Date: Sun, 1 Aug 2010 10:10:02 -0700
+Message-ID: <AANLkTim=6q1FC8YZvmi2Cju_6+00mHHkNPpCLHB8e3=h@mail.gmail.com>
+Subject: Re: [PATCH] NFS: Fix build failure on !CONFIG_NFS_V3 &&
+	!CONFIG_NFS_V3
+To: Ingo Molnar <mingo@elte.hu>
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, Randy Dunlap <rdunlap@xenotime.net>
+Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Andy Adamson wrote:
+On Sat, Jul 31, 2010 at 11:44 PM, Ingo Molnar <mingo@elte.hu> wrote:
+>
+> FYI, these commits introduced a build failure on x86:
+>
+>  fs/nfs/file.c:508: error: implicit declaration of function ‘nfs_commit_inode’
 
-  > When a user with a Kerberos token of 2048 bytes or larger attempts to
-  > access a filesystem mounted using Kerberized NFS, the NFS server locks up
-  > for 30 seconds, and ultimately the call fails.
+Grr. Trond?
 
-  Yes, this limitation has been known for a long time. We ran into this same
-  issue using X.509 certs and spkm3. I imagine PKINIT will also hit this
-  limitation.
+> @@ -492,11 +492,9 @@ extern int nfs_writeback_done(struct rpc_task *, struct nfs_write_data *);
+>  extern int nfs_wb_all(struct inode *inode);
+>  extern int nfs_wb_page(struct inode *inode, struct page* page);
+>  extern int nfs_wb_page_cancel(struct inode *inode, struct page* page);
+> -#if defined(CONFIG_NFS_V3) || defined(CONFIG_NFS_V4)
+>  extern int  nfs_commit_inode(struct inode *, int);
+>  extern struct nfs_write_data *nfs_commitdata_alloc(void);
+>  extern void nfs_commit_free(struct nfs_write_data *wdata);
+> -#endif
 
-But shouldn't it fail right away instead of locking up for 30 seconds?
+No, I think perhaps the '#if' line should just be moved down one line.
+The other function still only exist for V3/V4, it's just
+nfs_commit_inode() that is available (as a stub that just returns 0)
+for V2.
 
-Does the entire server lock up, or just that one rpc?
+But maybe that stub should be made an inline function or #define?
 
-Can a malicious client use this as a DOS?  Does it require a valid ticket,
-or will any ticket >= 2048 do?
+Trond?
+
+                  Linus
