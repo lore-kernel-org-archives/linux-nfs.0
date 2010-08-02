@@ -1,98 +1,62 @@
-Return-Path: <nfsv4-bounces@ietf.org>
-Date: Fri, 20 Aug 2010 11:35:02 -0400
-Message-ID: <BF3BB6D12298F54B89C8DCC1E4073D80024B7187@CORPUSMX50A.corp.emc.com>
-In-Reply-To: <20100819164448.GF30151@fieldses.org>
-References: <1278545423.15524.26.camel@heimdal.trondhjem.org>
-	<BF3BB6D12298F54B89C8DCC1E4073D8001ADE6C8@CORPUSMX50A.corp.emc.com>
-	<1278623332.13551.47.camel@heimdal.trondhjem.org>
-	<20100819164448.GF30151@fieldses.org>
-From: <david.noveck@emc.com>
-To: <bfields@fieldses.org>, <Trond.Myklebust@netapp.com>
-Cc: linux-nfs@vger.kernel.org, nfsv4@ietf.org
-Subject: Re: [nfsv4] OPEN_DOWNGRADE and posix byte range locking issue
-List-Unsubscribe: <https://www.ietf.org/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@ietf.org?subject=unsubscribe>
-List-Archive: <http://www.ietf.org/mail-archive/web/nfsv4>
-List-Post: <mailto:nfsv4@ietf.org>
-List-Help: <mailto:nfsv4-request@ietf.org?subject=help>
-List-Subscribe: <https://www.ietf.org/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@ietf.org?subject=subscribe>
-Content-Type: text/plain; charset="us-ascii"
-Sender: nfsv4-bounces@ietf.org
-Errors-To: nfsv4-bounces@ietf.org
-MIME-Version: 1.0
+Return-Path: <linux-nfs-owner@vger.kernel.org>
+Received: from fieldses.org ([174.143.236.118]:48871 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753511Ab0HBNvz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 2 Aug 2010 09:51:55 -0400
+Date: Mon, 2 Aug 2010 09:50:36 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Bian Naimeng <biannm@cn.fujitsu.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] Revert "nfsd4: distinguish expired from stale stateids"
+Message-ID: <20100802135036.GA12637@fieldses.org>
+References: <20100518233746.GC26911@fieldses.org>
+ <4C563CE5.1010101@cn.fujitsu.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4C563CE5.1010101@cn.fujitsu.com>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+MIME-Version: 1.0
 
-It isn't the server's problem.  There is no way the server has access to
-the Vfs opens as visible objects or as having the assignment of locks to
-such fine-grained opens.
-
-I'm kind of thinking that this shows we (Bruce, me, and rest of the
-working group) made a mistake in that sort of a design in which we do
-not allow multiple distinguished open objects for a given fh-owner pair.
-Anyway the problems that it caused are pretty minor and we don't know
-what problems would have been generated with an alternate design.  I
-think this is something to look at in NFSv5 or the next NFSv4.1-style
-minor version, if any. 
-
------Original Message-----
-From: J. Bruce Fields [mailto:bfields@fieldses.org] 
-Sent: Thursday, August 19, 2010 12:45 PM
-To: Trond Myklebust
-Cc: Noveck, David; nfsv4@ietf.org; linux-nfs@vger.kernel.org
-Subject: Re: [nfsv4] OPEN_DOWNGRADE and posix byte range locking issue
-
-> > -----Original Message-----
-> > From: nfsv4-bounces@ietf.org [mailto:nfsv4-bounces@ietf.org] On
-Behalf
-> > Of Trond Myklebust
-> > Sent: Wednesday, July 07, 2010 7:30 PM
-> > To: nfsv4@ietf.org
-> > Subject: [nfsv4] OPEN_DOWNGRADE and posix byte range locking issue
+On Mon, Aug 02, 2010 at 11:35:01AM +0800, Bian Naimeng wrote:
+> > From: J. Bruce Fields <bfields@citi.umich.edu>
 > > 
-> > Neither RFC3530, nor RFC5661 appear to list NFS4ERR_LOCKS_HELD as a
-> > valid response when the client calls OPEN_DOWNGRADE.
+> > This reverts commit 78155ed75f470710f2aecb3e75e3d97107ba8374.
 > > 
-> > The question is: what should the server then do if the NFS client
-holds
-> > a WRITE_LT lock, but then asks for an OPEN_DOWNGRADE to
-> > OPEN4_SHARE_ACCESS_READ. I understand that this is sanctioned in
-Windows
-> > server environments, but it should definitely be forbidden in a
-POSIX
-> > environment, and NFS4ERR_LOCKS_HELD would appear to fit the bill...
+> > We're depending here on the boot time that we use to generate the
+> > stateid being monotonic, but get_seconds() is not necessarily.
+> > 
+> > We still depend at least on boot_time being different every time, but
+> > that is a safer bet.
+> > 
+> > We have a few reports of errors that might be explained by this problem,
+> > though we haven't been able to confirm any of them.
+> > 
+> > But the minor gain of distinguishing expired from stale errors seems not
+> > worth the risk.
+> > 
+> 
+>   Hi bruce, if remove this patch, some my test will fail. So what's your opinion
+>   for those test case.
+> 
+>     STEP1: open the file, and get a open stateid (STATEID).
+>     STEP2: shutdown the network between client and server
+>     STEP3: keep the network partition lease_time(90s by default) seconds
+>     STEP4: recovery network
+>     STEP5: do some IO operation, such as LOCK.
+> 
+>   If i use the patch 78155ed75f470710f2aecb3e75e3d97107ba8374, this case will OK
+>   at STEP5,  however, it's will fail when remove this patch.
 
-A bizarre variation: the linux server associates vfs opens with
-stateid's.  Locks are performed on vfs opens, and the vfs will complain
-if you attempt to close a file that still has locks associated with it.
+How does it fail, exactly?
 
-The sequence
+> 
+>   So i think it's no good for the network recovery, what do you think about it, 
+>   or give me some suggestions, thanks very much.
 
-	open RW
-	lock R
-	open R
-	open downgrade to R
+The theoretical problem with the patch is that time changes could cause
+the server to return spurious errors when the client hands it state that
+should still be good.
 
-would therefore be implemented at the vfs level as:
-
-	open RW -> f
-	lock R on f
-	open R -> g
-	close f
-
-Oops.  We're stuck with ditching the lock (or erroring out) even though
-it's still compatible with the new config option.
-
-Well, I suppose this is my problem: either I should get a new vfs open
-for the use of the lock, or represent the original RW open by two vfs
-open's.
-
-It's not something a unix-like client could do, I think, but I don't
-think it's safe for me to assume I can reject it?
+We might be able to solve that by using a different time source?
 
 --b.
-
-_______________________________________________
-nfsv4 mailing list
-nfsv4@ietf.org
-https://www.ietf.org/mailman/listinfo/nfsv4
