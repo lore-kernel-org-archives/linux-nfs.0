@@ -1,63 +1,96 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp.opengridcomputing.com ([209.198.142.2]:36101 "EHLO
-	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1758119Ab0HDDYc (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 3 Aug 2010 23:24:32 -0400
-Message-ID: <4C58DD6D.7090904@opengridcomputing.com>
-Date: Tue, 03 Aug 2010 21:24:29 -0600
-From: Tom Tucker <tom@opengridcomputing.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-CC: Tom Tucker <tom@ogc.us>, bfields@fieldses.org, linux-nfs@vger.kernel.org,
-        swise@ogc.us
-Subject: Re: [PATCH 0/4] nfsrdma: Miscellanseous Bug Fixes
-References: <20100803164411.2567.31416.stgit@build.ogc.int> <1280889722.24669.31.camel@heimdal.trondhjem.org>
-In-Reply-To: <1280889722.24669.31.camel@heimdal.trondhjem.org>
-Content-Type: text/plain; charset=UTF-8; format=flowed
+Received: from mx1.redhat.com ([209.132.183.28]:20291 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754454Ab0HBSxg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 2 Aug 2010 14:53:36 -0400
+Date: Mon, 2 Aug 2010 14:53:26 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Tetsuo Handa <penguin-kernel@I-love.SAKURA.ne.jp>,
+        linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org
+Subject: Re: linux-next NFSD: NULL pointer dereference at nfsd_svc()
+Message-ID: <20100802145326.590d9a0d@tlielax.poochiereds.net>
+In-Reply-To: <20100802181634.GD12637@fieldses.org>
+References: <201008020747.o727lqXs064715@www262.sakura.ne.jp>
+	<20100802103214.7eea09eb@corrin.poochiereds.net>
+	<20100802103620.5638dac1@corrin.poochiereds.net>
+	<20100802181634.GD12637@fieldses.org>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Trond Myklebust wrote:
-> On Tue, 2010-08-03 at 11:44 -0500, Tom Tucker wrote:
->   
->> The following series fixes a number of bugs in the NFSRDMA transport.
->>
->> ---
->>
->> Steve Wise (1):
->>       xprtrdma: Do not truncate iova_start values in frmr registrations.
->>
->> Tom Tucker (3):
->>       rpcrdma: Fix SQ size calculation when memreg is FRMR
->>       svcrdma: Cleanup DMA unmapping in error paths.
->>       svcrdma: Change DMA mapping logic to avoid the page_address kernel API
->>
->>
->>  net/sunrpc/xprtrdma/rpc_rdma.c           |    2 +
->>  net/sunrpc/xprtrdma/svc_rdma_recvfrom.c  |   19 ++++---
->>  net/sunrpc/xprtrdma/svc_rdma_sendto.c    |   82 ++++++++++++++++++++++--------
->>  net/sunrpc/xprtrdma/svc_rdma_transport.c |   41 +++++++--------
->>  net/sunrpc/xprtrdma/verbs.c              |   22 ++++++--
->>  5 files changed, 111 insertions(+), 55 deletions(-)
->>     
->
-> Hi Tom,
->
-> How do you want to split these patches? The first one looks definitely
-> like a client bug, and the next 2 look like server bugs, but what about
-> the last patch?
->
->   
-Yes, I wrestled with that, but decided to post them as a collection 
-since it's the 'same transport' for review. But obviously, the client 
-ones will go to your tree and the server ones to Bruce's tree. I'll 
-split and repost the final after the review.
+On Mon, 2 Aug 2010 14:16:34 -0400
+"J. Bruce Fields" <bfields@fieldses.org> wrote:
 
-Will that work?
+> On Mon, Aug 02, 2010 at 10:36:20AM -0400, Jeff Layton wrote:
+> > nevermind...that patch will probably fix this panic, but there's another
+> > possible one in nfsd_init_socks. We'll have to fix that one too.
+> 
+> (After private conversation with Jeff): something like this?
+> Compile-tested only.
+> 
+> --b.
+> 
+> commit 86d0cc3b91315c475c1c38ee7a06b5ebe5c01755
+> Author: J. Bruce Fields <bfields@redhat.com>
+> Date:   Mon Aug 2 14:12:44 2010 -0400
+> 
+>     nfsd: fix startup/shutdown order bug
+>     
+>     We must create the server before we can call init_socks or check the
+>     number of threads.
+>     
+>     Symptoms were a NULL pointer dereference in nfsd_svc().  Problem
+>     identified by Jeff Layton.
+>     
+>     Reported-by: Tetsuo Handa <penguin-kernel@I-love.SAKURA.ne.jp>
+>     Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+> 
+> diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
+> index 92173bd..1de1cb3 100644
+> --- a/fs/nfsd/nfssvc.c
+> +++ b/fs/nfsd/nfssvc.c
+> @@ -432,29 +432,30 @@ nfsd_svc(unsigned short port, int nrservs)
+>  	if (nrservs == 0 && nfsd_serv == NULL)
+>  		goto out;
+>  
+> +	error = nfsd_create_serv();
+> +	if (error)
+> +		goto out;
+> +
+>  	first_thread = (nfsd_serv->sv_nrthreads == 0) && (nrservs != 0);
+>  
+>  	if (first_thread) {
+>  		error = nfsd_startup(port, nrservs);
+>  		if (error)
+> -			goto out;
+> +			goto out_destroy;
+>  	}
+> -	error = nfsd_create_serv();
+> -	if (error)
+> -		goto out_shutdown;
+>  	error = svc_set_num_threads(nfsd_serv, NULL, nrservs);
+>  	if (error)
+> -		goto out_destroy;
+> +		goto out_shutdown;
+>  	/* We are holding a reference to nfsd_serv which
+>  	 * we don't want to count in the return value,
+>  	 * so subtract 1
+>  	 */
+>  	error = nfsd_serv->sv_nrthreads - 1;
+> -out_destroy:
+> -	svc_destroy(nfsd_serv);		/* Release server */
+>  out_shutdown:
+>  	if (error < 0 && first_thread)
+>  		nfsd_shutdown();
+> +out_destroy:
+> +	svc_destroy(nfsd_serv);		/* Release server */
+>  out:
+>  	mutex_unlock(&nfsd_mutex);
+>  	return error;
 
-Tom
+I was able to reproduce the problem and the patch fixes it. Assuming
+that Tetsuo's testing goes well:
 
-> Cheers
->   Trond
->   
-
+Reviewed-and-Tested-by: Jeff Layton <jlayton@redhat.com>
