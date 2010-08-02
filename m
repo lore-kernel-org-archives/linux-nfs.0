@@ -1,54 +1,102 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail1.math.uiuc.edu ([130.126.108.26]:58430 "EHLO
-	mail1.math.uiuc.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751203Ab0HDPSR (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 4 Aug 2010 11:18:17 -0400
-Received: from nano.math.uiuc.edu (nano.math.uiuc.edu [130.126.108.233])
-	by mail1.math.uiuc.edu (8.12.10/8.12.10) with ESMTP id o74Ecvcl026387
-	for <linux-nfs@vger.kernel.org>; Wed, 4 Aug 2010 09:38:57 -0500
-Message-Id: <E820D075-2582-4FF8-B788-14D41070DA29@illinois.edu>
-From: Jonathan Manton <jmanton@illinois.edu>
-To: linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
-Subject: Kerberized NFS (v3 and v4) does not work if Kerberos token is >= 2048 bytes (if PAGE_SIZE == 4096)
-Date: Wed, 4 Aug 2010 09:38:57 -0500
+Received: from daytona.panasas.com ([67.152.220.89]:50884 "EHLO
+	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1751284Ab0HBOjR (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 2 Aug 2010 10:39:17 -0400
+Message-ID: <4C56D891.6080303@panasas.com>
+Date: Mon, 02 Aug 2010 17:39:13 +0300
+From: Benny Halevy <bhalevy@panasas.com>
+To: Andy Adamson <andros@netapp.com>
+CC: Boaz Harrosh <bharrosh@panasas.com>, Fred Isaman <iisaman@umich.edu>,
+        linux-nfs@vger.kernel.org
+Subject: Re: pNFS client structure and function rename suggestions
+References: <DD09EF29-A704-4F17-B917-C01051355CA3@netapp.com>	<4C500FFD.4000206@panasas.com>	<AANLkTikf-9UDhi6_Jg0k8=wV64=JPGVm5T=scQk14xM1@mail.gmail.com>	<4C503AB5.1090204@panasas.com> <AANLkTi=QtN2_HcwHefv2KTQeFa+9QTCUEHvBMUw4RrFr@mail.gmail.com> <4C50487C.1040505@panasas.com>
+In-Reply-To: <4C50487C.1040505@panasas.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Kerberized NFS does not work for users who have a Kerberos token that  
-is 2048 bytes or larger (assuming PAGE_SIZE == 4096).  This can  
-(easily) happen in enterprise environments that use Active Directory  
-as their Kerberos source, due to the additional Privilege Account  
-Certificate (PAC) added by AD to the token.
+On Jul. 28, 2010, 18:10 +0300, Boaz Harrosh <bharrosh@panasas.com> wrote:
+> On 07/28/2010 05:29 PM, Fred Isaman wrote:
+>> On Wed, Jul 28, 2010 at 10:12 AM, Boaz Harrosh <bharrosh@panasas.com> wrote:
+>>> On 07/28/2010 04:48 PM, Fred Isaman wrote:
+>>>> On Wed, Jul 28, 2010 at 7:09 AM, Boaz Harrosh <bharrosh@panasas.com> wrote:
+>>>>>> struct nfs4_pnfs_layout_segment => pnfs_layout_range
+>>>>>
+>>>>> Isn't this a struct layout4 above?
+>>>>
+>>>> No, this is probably the most confusingly named structure of them all,
+>>>> and one I would strongly urge be changed along the line of Andy's
+>>>> suggestion.
+>>>>
+>>>> Fred
+>>>>
+>>>
+>>> We are like a married couple on a freezing night. Each pulling the blanket
+>>> to his/her side.
+>>>
+>>> I'm trying to pull the blanket to the side. where all these are converted
+>>> to exactly the names and structures as stated by the standard.
+>>> That the Linux-pnfs-workgroup tried to invent their own STD is a misfortune
+>>> which I missed, getting so late into the game.
+>>>
+>>> What side of the Bed are you pulling to?
+>>> I wish you elaborate more, and explain, instead of just saying "NO"
+>>>
+>>
+>> All I meant that "no, this is not the struct layout4 above."
+>>
+>> There currently exists:
+>>
+>> struct nfs4_pnfs_layout_segment {
+>> 	u32 iomode;
+>> 	u64 offset;
+>> 	u64 length;
+>> };
+>>
+>> which is used to hold range information, but which is easy to confuse
+>> with struct pnfs_layout_segment.
+>>
+> 
+> OK, perhaps the STD failed to define that RANGE structure that got open coded
+> in lots of operations. Adding that should be a refinement (use the new type
+> where it is open coded). Not the complete re-ordering and invention of
+> new structures that carry the same information but different.
+> 
+>> I REALLY want the name nfs4_pnfs_layout_segment changed.
+>>
+> 
+> OK Agreed *pnfs_layout_range* is a good name. Because anything nfs4_ is expected
+> to derive from the STD, and the above is our own invention. Some comments to
+> that effect could be nice.
+> 
 
-When a user with a Kerberos token of 2048 bytes or larger attempts to  
-access a filesystem mounted using Kerberized NFS, the NFS server locks  
-up for 30 seconds, and ultimately the call fails.
+I'm ok with _range, though it is a bit more than a range since it also has an iomode
 
-The root cause of this problem is the interface between the sunrpc  
-layer and the rpc.svcgssd daemon.  When an NFS NULL request comes in  
-from a client to establish the initial security context, information  
-is passed via the rpc cache mechanism through a named pipe  
-(sunrpc_cache_pipe_upcall() in net/sunrpc/cache.c), to be consumed by  
-the rpc.svcgssd daemon.  This results in the upcall data being  
-formatted via rsi_request() in net/sunrpc/auth_gss/svcauth_gss.c.   
-rsi_request() uses the qword_addhex() routine (implemented in net/ 
-sunrpc/cache.c) to encode the upcall data as ASCII for the named pipe.
+I propose pnfs_layout_hdr to replace pnfs_layout_type.
 
-The issue is that the upcall data is limited to PAGE_SIZE bytes (this  
-buffer is allocated in sunrpc_cache_pipe_upcall).  On my kernel at  
-least, this is 4096 bytes.  The upcall data is encoded as ASCII  
-characters.  It takes two ASCII characters to encode each byte of  
-upcall data, meaning that any token over 2047 bytes will fill the  
-buffer and result in an error condition.
+Benny
 
-When that happens, sunrpc_cache_pipe_upcall returns -EAGAIN, which  
-implies (according to Documentation/filesystems/nfs/rpc-cache.txt)  
-that the upcall is pending, even though in fact  
-sunrpc_cache_pipe_upcall has actually freed the buffer and never added  
-the call to the cache request queue.
+>> When possible, I'm all for changing names to coincide with those used
+>> in the spec.  But note that those structures are most useful for XDR
+>> encoding/decoding, and don't always correspond to the information we
+>> need to pass around internally.
+>>
+> 
+> I wish we could, other then such refinements like the new pnfs_layout_range,
+> stick closer to the STD. Including an nfs4_layout structure which corresponds
+> to the layout4 from RFC.
+> 
+>> Fred
+>>
+> 
+> (I know, words are cheep, I wish I had the time, busy with raid5/6. Just my
+>  $0.017)
+> 
+> Boaz
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
-The result is that all nfsd kernel processes continue to try to  
-process the request and check back on the request, continuously, for  
-30 seconds, trying to enqueue the upcall.
