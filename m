@@ -1,45 +1,73 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:48371 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750796Ab0HTMSH convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 20 Aug 2010 08:18:07 -0400
-Subject: Re: [PATCH] VM: kswapd should not do blocking memory allocations
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Wu Fengguang <fengguang.wu@intel.com>
-Cc: Ram Pai <ram.n.pai@gmail.com>, linux-mm@kvack.org,
-        linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org
-In-Reply-To: <20100820054533.GB11847@localhost>
-References: <1282158241.8540.85.camel@heimdal.trondhjem.org>
-	 <AANLkTi=WkoxjwZbt6Vd0VhbuA7_k2WM-NUXZnrmzOOPy@mail.gmail.com>
-	 <1282159872.8540.96.camel@heimdal.trondhjem.org>
-	 <20100820054533.GB11847@localhost>
-Content-Type: text/plain; charset="UTF-8"
-Date: Fri, 20 Aug 2010 08:17:08 -0400
-Message-ID: <1282306628.3927.0.camel@heimdal.trondhjem.org>
+Received: from smtp.opengridcomputing.com ([209.198.142.2]:35147 "EHLO
+	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S932352Ab0HCQpS (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 3 Aug 2010 12:45:18 -0400
+From: Tom Tucker <tom@ogc.us>
+Subject: [PATCH 4/4] rpcrdma: Fix SQ size calculation when memreg is FRMR
+To: trond.myklebust@netapp.com, bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org, swise@ogc.us, tom@ogc.us
+Date: Tue, 03 Aug 2010 11:45:17 -0500
+Message-ID: <20100803164517.2567.50208.stgit@build.ogc.int>
+In-Reply-To: <20100803164411.2567.31416.stgit@build.ogc.int>
+References: <20100803164411.2567.31416.stgit@build.ogc.int>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Fri, 2010-08-20 at 13:45 +0800, Wu Fengguang wrote:
-> > Hi Ram,
-> > 
-> > I was seeing it on NFS until I put in the following kswapd-specific hack
-> > into nfs_release_page():
-> > 
-> > 	/* Only do I/O if gfp is a superset of GFP_KERNEL */
-> > 	if (mapping && (gfp & GFP_KERNEL) == GFP_KERNEL) {
-> > 		int how = FLUSH_SYNC;
-> > 
-> > 		/* Don't let kswapd deadlock waiting for OOM RPC calls */
-> > 		if (current_is_kswapd())
-> > 			how = 0;
-> 
-> So the patch can remove the above workaround together, and add comment
-> that NFS exploits the gfp mask to avoid complex operations involving
-> recursive memory allocation and hence deadlock?
+This patch updates the computation to include the worst case situation
+where three FRMR are required to map a single RPC REQ.
 
-I thought I'd send that as a separate patch, but yes, that is my
-intention next.
+Signed-off-by: Tom Tucker <tom@ogc.us>
+---
 
-Cheers
-  Trond
+ net/sunrpc/xprtrdma/rpc_rdma.c |    2 ++
+ net/sunrpc/xprtrdma/verbs.c    |   20 ++++++++++++++++----
+ 2 files changed, 18 insertions(+), 4 deletions(-)
+
+diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
+index e5e28d1..2ac3f6e 100644
+--- a/net/sunrpc/xprtrdma/rpc_rdma.c
++++ b/net/sunrpc/xprtrdma/rpc_rdma.c
+@@ -249,6 +249,8 @@ rpcrdma_create_chunks(struct rpc_rqst *rqst, struct xdr_buf *target,
+ 	req->rl_nchunks = nchunks;
+ 
+ 	BUG_ON(nchunks == 0);
++	BUG_ON((r_xprt->rx_ia.ri_memreg_strategy == RPCRDMA_FRMR)
++	       && (nchunks > 3));
+ 
+ 	/*
+ 	 * finish off header. If write, marshal discrim and nchunks.
+diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+index 3bdbd9f..5f4c7b3 100644
+--- a/net/sunrpc/xprtrdma/verbs.c
++++ b/net/sunrpc/xprtrdma/verbs.c
+@@ -650,10 +650,22 @@ rpcrdma_ep_create(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia,
+ 	ep->rep_attr.cap.max_send_wr = cdata->max_requests;
+ 	switch (ia->ri_memreg_strategy) {
+ 	case RPCRDMA_FRMR:
+-		/* Add room for frmr register and invalidate WRs */
+-		ep->rep_attr.cap.max_send_wr *= 3;
+-		if (ep->rep_attr.cap.max_send_wr > devattr.max_qp_wr)
+-			return -EINVAL;
++		/* Add room for frmr register and invalidate WRs.
++		 * 1. FRMR reg WR for head
++		 * 2. FRMR invalidate WR for head
++		 * 3. FRMR reg WR for pagelist
++		 * 4. FRMR invalidate WR for pagelist
++		 * 5. FRMR reg WR for tail
++		 * 6. FRMR invalidate WR for tail
++		 * 7. The RDMA_SEND WR
++		 */
++		ep->rep_attr.cap.max_send_wr *= 7;
++		if (ep->rep_attr.cap.max_send_wr > devattr.max_qp_wr) {
++			cdata->max_requests = devattr.max_qp_wr / 7;
++			if (!cdata->max_requests)
++				return -EINVAL;
++			ep->rep_attr.cap.max_send_wr = cdata->max_requests * 7;
++		}
+ 		break;
+ 	case RPCRDMA_MEMWINDOWS_ASYNC:
+ 	case RPCRDMA_MEMWINDOWS:
+
