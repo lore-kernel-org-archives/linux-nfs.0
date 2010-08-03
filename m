@@ -1,93 +1,63 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:59394 "EHLO mx2.suse.de"
+Received: from mail-out1.uio.no ([129.240.10.57]:53806 "EHLO mail-out1.uio.no"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933645Ab0HFDiy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 5 Aug 2010 23:38:54 -0400
-Date: Fri, 6 Aug 2010 13:38:36 +1000
-From: Neil Brown <neilb@suse.de>
-To: Jeremy Allison <jra@samba.org>
-Cc: Jeff Layton <jlayton@redhat.com>, utz lehmann <lkml123@s2y4n2c.de>,
-        Linus Torvalds <torvalds@linux-foundation.org>,
-        Volker.Lendecke@sernet.de, David Howells <dhowells@redhat.com>,
-        Jan Engelhardt <jengelh@medozas.de>, linux-cifs@vger.kernel.org,
-        linux-nfs@vger.kernel.org, samba-technical@lists.samba.org,
-        linux-kernel@vger.kernel.org, viro@zeniv.linux.org.uk,
-        linux-fsde@jasper.es
-Subject: Re: [PATCH 02/18] xstat: Add a pair of system calls to make
- extended  file stats available [ver #6]
-Message-ID: <20100806133836.49757af9@notabene>
-In-Reply-To: <20100805235218.GB31233@jeremy-laptop>
-References: <alpine.LSU.2.01.1007221228260.6115@obet.zrqbmnf.qr>
-	<20100715021709.5544.64506.stgit@warthog.procyon.org.uk>
-	<20100715021712.5544.44845.stgit@warthog.procyon.org.uk>
-	<30448.1279800887@redhat.com>
-	<E1Obuiy-00C9jr-Al@intern.SerNet.DE>
-	<AANLkTimdFCGSKLn7aGMpBMIauHTsHY7hpAAmpo6uTcnD@mail.gmail.com>
-	<1280524978.2452.9.camel@segv.aura.of.mankind>
-	<20100801092529.5e6ba0e0@corrin.poochiereds.net>
-	<20100805235218.GB31233@jeremy-laptop>
-Content-Type: text/plain; charset=US-ASCII
+	id S1755997Ab0HCWbX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 3 Aug 2010 18:31:23 -0400
+Subject: Re: numeric UIDs
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Jim Rees <rees@umich.edu>, Daniel.Muntz@emc.com, linux-nfs@vger.kernel.org
+In-Reply-To: <20100803222337.GA9752@fieldses.org>
+References: <201008030401.33552.dreck@vmsd.ath.cx>
+	 <20100803164318.GB13896@merit.edu> <20100803192216.GC31579@fieldses.org>
+	 <DE966DA98A4ABE438D726BDF1699CF61403FAF9D@MX05A.corp.emc.com>
+	 <20100803215704.GA15494@merit.edu>
+	 <1280873719.14520.17.camel@heimdal.trondhjem.org>
+	 <20100803222337.GA9752@fieldses.org>
+Content-Type: text/plain; charset="UTF-8"
+Date: Tue, 03 Aug 2010 18:31:15 -0400
+Message-ID: <1280874675.14520.23.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Thu, 5 Aug 2010 16:52:18 -0700
-Jeremy Allison <jra@samba.org> wrote:
-
-> On Sun, Aug 01, 2010 at 09:25:29AM -0400, Jeff Layton wrote:
-> > On Fri, 30 Jul 2010 23:22:58 +0200
-> > utz lehmann <lkml123@s2y4n2c.de> wrote:
-> > 
-> > > On Thu, 2010-07-22 at 09:40 -0700, Linus Torvalds wrote:
-> > > > But the fact is, th Unix ctime semantics are insane and largely
-> > > > useless. There's a damn good reason almost nobody uses ctime under
-> > > > unix.
-> > > > 
-> > > > So what I'm suggesting is that we have a flag - either per-process or
-> > > > per-mount - that just says "use windows semantics for ctime".
+On Tue, 2010-08-03 at 18:23 -0400, J. Bruce Fields wrote:
+> On Tue, Aug 03, 2010 at 06:15:19PM -0400, Trond Myklebust wrote:
+> > On Tue, 2010-08-03 at 17:57 -0400, Jim Rees wrote:
+> > > Daniel.Muntz@emc.com wrote:
 > > > 
-> > > When abusing an existing time stamp use atime not ctime please.
-> > > ctime has it's uses. atime was just a mistake and is nearly useless.
+> > >   I'll fourth this motion.  The spec goes out of its way to declare this a
+> > >   violation.  IMHO, the NFSv4.[0-n] specs should adopt the convention that a
+> > >   uid string consisting of [0-9]+ be interpreted as the string
+> > >   representation of a numeric UID--just as valid as a "user@domain" string.
 > > > 
-> > > And with noatime we already have creation time semantics for atime.
-> > > 
+> > > I argued for this as an option in the early days but was shouted down.
+> > > Sorry I can't remember the details, it was many years ago.
 > > 
-> > Ugh. Honestly all of this talk of abusing different time fields seems
-> > like craziness to me. It's going to be very hard to do that without
-> > breaking *something*. There's also very little reason to do this when
-> > xattrs are a much cleaner approach.
-> > 
-> > Neil Brown has put forth a very reasoned justification for putting the
-> > birthtime in an xattr. After reading it, I think that makes more sense
-> > than anything. It's also something that can be done without any extra
-> > infrastructure. If at some point in the future we get an xstat-like
-> > syscall then we can always add birthtime to that as well.
+> > Why is nobody talking about fixing AUTH_SYS? The alternative to using
+> > numeric uids/gids in NFS would be to use user@domain/group@domain in the
+> > credential.
 > 
-> Just my 2 cents (as a Samba server implementor). I *hate* the idea
-> of adding a "virtual" EA for birthtime. If you're going to add it,
-> just add it to the stat struct like *BSD does. Don't abuse the other
-> time fields, it's a new one.
+> I'm not sure what that does to address complaints like original
+> poster's:
 > 
-> Jeff, please don't advocate for an EA for the Samba server to use.
-> Don't add it as an EA. It's *not* an EA, it's a timestamp.
+> 	http://marc.info/?l=linux-nfs&m=128080127215350&w=2
+> 
+> And I'd like it to be possible to make the NFSv3->NFSv4 upgrade as
+> transparent as possible.
 
-I'm curious.  Why do you particularly care what interface the kernel uses to
-provide you with access to this attribute?
+1) RFC3530 does allow a workaround for cases where the _server_ doesn't
+have a mapping from uid/gid -> name. We just haven't implemented it on
+Linux servers (or clients).
 
-And given that it is an attribute that is not part of 'POSIX' or "UNIX", it
-would seem to be an extension - an extended attribute.
-As the Linux kernel does virtually nothing with this attribute except provide
-access, it seems to be a very different class of thing to other timestamps.
-Surely it is simply some storage associated with a file which is capable of
-storing a timestamp, which can be set or retrieved by an application, and
-which happens to be initialised to the current time when a file is created.
+2) Why is AUTH_SYS so sacrosanct? We know it has a bunch of problems,
+not least the one that limits ngroups <= 16, and the fact that it relies
+on uids (as opposed to login names) being the same on client and server
+so why not try to fix those limitations?
 
-Yes, to you it is a timestamp.  But to Linux it is a few bytes of
-user-settable metadata.  Sounds like an EA to me.
+3) SECINFO can advertise a new auth mechanism without any problems. If
+done right, there would be no need to change default mount options on
+the client.
 
-Or do you really want something like BSD's 'btime' which as I understand it
-cannot be set.  Would that be really useful to you?
+Trond
 
-Is there something important that I am missing?
-
-NeilBrown
