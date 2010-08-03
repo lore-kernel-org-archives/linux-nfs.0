@@ -1,65 +1,48 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-out1.uio.no ([129.240.10.57]:55954 "EHLO mail-out1.uio.no"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756363Ab0HCSkV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 3 Aug 2010 14:40:21 -0400
-Subject: Re: sunrpc: what prevents an xprt from being freed before
- task_cleanup runs?
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: linux-nfs@vger.kernel.org, netdev@vger.kernel.org, bfields@fieldses.org
-In-Reply-To: <20100803132453.4fa18444@tlielax.poochiereds.net>
-References: <20100803132453.4fa18444@tlielax.poochiereds.net>
-Content-Type: text/plain; charset="UTF-8"
-Date: Tue, 03 Aug 2010 14:40:15 -0400
-Message-ID: <1280860815.9771.25.camel@heimdal.trondhjem.org>
+Received: from lvps87-230-0-242.dedicated.hosteurope.de ([87.230.0.242]:49067
+	"EHLO lvps87-230-0-242.dedicated.hosteurope.de" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1756424Ab0HCVzc (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 3 Aug 2010 17:55:32 -0400
+Date: Tue, 3 Aug 2010 23:55:24 +0200
+From: Michael Guntsche <mike@it-loops.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: Kerberos auth Problem with nfs3/4
+Message-ID: <20100803215523.GA25413@gibson.comsick.at>
+References: <20100803154556.GA6262@gibson.comsick.at>
+ <20100803194342.GE31579@fieldses.org>
+ <20100803211906.GA24236@gibson.comsick.at>
+ <20100803213650.GJ31579@fieldses.org>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20100803213650.GJ31579@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Tue, 2010-08-03 at 13:24 -0400, Jeff Layton wrote:
-> We got a report recently about a panic in RHEL5 (2.6.18 based kernel).
-> The problem appears to be that a task_cleanup workqueue job ran and got
-> passed a pointer to an xprt that had been freed. The bug is here in
-> case anyone is interested in the details:
+On 03 Aug 10 17:36, J. Bruce Fields wrote:
+> > Aug  3 23:12:23 gibson kernel: RPC: AUTH_GSS upcall timed out.
+> > Aug  3 23:12:23 gibson kernel: Please check user daemon is running.
+> > 
+> > Of course all the daemons on the server are running and the system seems
+> > to work fine otherwise.
 > 
->     https://bugzilla.redhat.com/show_bug.cgi?id=611938
-> 
-> The situation seems to be pretty difficult to reproduce, but I don't
-> see anything that's intended to ensure that this doesn't occur in RHEL5
-> or mainline. The task_cleanup workqueue job doesn't hold a reference to
-> the xprt, and the job isn't canceled when the xprt is torn down.
-> 
-> Bruce had a look and suggested that we may need something like the
-> patch below (pasted in, so it probably won't apply correctly). I've
-> tested a backported version of it on RHEL5 and it seems to work fine.
-> 
-> Is it reasonable to cancel task_cleanup when destroying the xprt? Or,
-> am I missing something that should prevent this situation in mainline
-> (and perhaps isn't in RHEL5's kernel).
-> 
-> Any help is appreciated...
-> 
-> -----------------------------[snip]---------------------------------
-> diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
-> index dcd0132..2a1f664 100644
-> --- a/net/sunrpc/xprt.c
-> +++ b/net/sunrpc/xprt.c
-> @@ -1129,6 +1129,7 @@ static void xprt_destroy(struct kref *kref)
->   rpc_destroy_wait_queue(&xprt->sending);
->   rpc_destroy_wait_queue(&xprt->resend);
->   rpc_destroy_wait_queue(&xprt->backlog);
-> + cancel_work_sync(&xprt->task_cleanup);
->   /*
->    * Tear down transport state and free the rpc_xprt
->    */
-> -----------------------------[snip]---------------------------------
-> 
-> Thanks,
+> That's actually a client-side complaint--if you're seeing it on the
+> server then it's probably the server trying to do a callback to an NFSv4
+> client.  Are you running rpc.gssd as well as rpc.svcgssd on the server?
+> Might want to if you want delegations to work (but it's not a critical
+> problem).
+Yes, rpc.gssd as well as rpc.svcgssd is running on the server. To make
+matters worse I noticed something else with sec=krb5. This messages
+appears on first access to a file either read or write. Not always, it
+seems that it reappears after some timeout but it is sparmming my logs
+nevertheless. But what's worse is that I now got a Stale NFS file handle
+on the lost+found directory of the export. A lot of question marks and
+then just the name. I am now running with sec=sys and cannot up to now
+was not able to reproduce this problem. Is it possible that does two
+problems are related or are they completely separate from each other?
 
-How about doing a wait_on_bit_lock(&xprt->state, XPRT_LOCKED,...)
-instead?
+FYI the patched nfs-utils version is only running on the server for now
+but I do not think that this is the problem.
 
-Cheers
-   Trond
-
+Kind regards,
+Michael
