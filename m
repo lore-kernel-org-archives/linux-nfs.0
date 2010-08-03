@@ -1,54 +1,49 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-out1.uio.no ([129.240.10.57]:33554 "EHLO mail-out1.uio.no"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1760259Ab0HLPuJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 12 Aug 2010 11:50:09 -0400
-Subject: Re: [PATCH] nfs: lookupcache coherence bugs in WCC update path
- (revised)
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-To: "Patrick J. LoPresti" <lopresti@gmail.com>
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-In-Reply-To: <8762zgmmer.fsf@patl.com>
-References: <87lj8ckb1e.fsf@patl.com>  <8762zgmmer.fsf@patl.com>
-Content-Type: text/plain; charset="UTF-8"
-Date: Thu, 12 Aug 2010 11:49:55 -0400
-Message-ID: <1281628195.2873.12.camel@heimdal.trondhjem.org>
+Received: from lvps87-230-0-242.dedicated.hosteurope.de ([87.230.0.242]:39603
+	"EHLO lvps87-230-0-242.dedicated.hosteurope.de" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1757131Ab0HCQ1Q (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 3 Aug 2010 12:27:16 -0400
+Date: Tue, 3 Aug 2010 18:27:08 +0200
+From: Michael Guntsche <mike@it-loops.com>
+To: linux-nfs@vger.kernel.org
+Subject: Re: Kerberos auth Problem with nfs3/4
+Message-ID: <20100803162707.GA9004@gibson.comsick.at>
+Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, 2010-08-11 at 22:26 -0700, Patrick J. LoPresti wrote:
-> (Well, crud.  I screwed up the previous diff and was missing a
-> close-curly.  This version actually compiles...)
-> 
-> This patch fixes some coherence bugs in the NFS "dentry lookup cache".
-> 
-> The NFS dentry lookup cache provides the nfs_force_lookup_revalidate()
-> call to invalidate all cached dentries associated with an inode.  In
-> general, the NFS client uses the ctime and mtime in the inode to detect
-> when changes are made on the server.
-> 
-> Therefore, to maintain cache coherence, nfs_force_lookup_revalidate()
-> must be called whenever the ctime or mtime of a directory inode is
-> updated with fresh data from the server.  There are a few spots in
-> nfs_wcc_update_inode() where this rule is violated, making it possible
-> for the lookup cache to return arbitrarily stale data.
-> 
-> This actually bit me in practice.  I have an application where a
-> negative dentry results in -ENOENT for a file that was created 30+
-> minutes earlier (despite the "noac" mount option).  Unfortunately I
-> cannot share my test case, but I believe the following simple patch is
-> "obviously correct", and I can confirm that it fixes my issue.
-
-This looks less than obviously correct to me. The wcc case is invoked
-when the ctime/mtime/.... change is known to have occurred due to a file
-creation/unlink/... from this client. It is a weak cache consistency
-case.
-
-If your client is seeing ENOENT after it created the file itself, then
-the problem isn't cache coherency, but a bug in the file creation code.
-
-Cheers
-  Trond
+Hi again,
 
 
+Some more information from the logs when trying to mount the export
+
+Aug  3 18:24:28 gibson rpc.gssd: in authgss_create_default()
+Aug  3 18:24:28 gibson rpc.gssd: in authgss_create()
+Aug  3 18:24:28 gibson rpc.gssd: authgss_create: name is 0x9f852e8
+Aug  3 18:24:28 gibson rpc.gssd: authgss_create: gd->name is 0x9f80df8
+Aug  3 18:24:28 gibson rpc.gssd: in authgss_refresh()
+Aug  3 18:24:28 gibson rpc.gssd: in authgss_marshal()
+Aug  3 18:24:28 gibson rpc.gssd: xdr_rpc_gss_cred: encode success (v 1,
+proc 1, seq 0, svc 1, ctx (nil):0)
+Aug  3 18:24:28 gibson rpc.gssd: xdr_rpc_gss_init_args: encode success
+(token 0x9f884f0:595)
+Aug  3 18:24:28 gibson rpc.svcgssd: libnfsidmap: using (default) domain:
+comsick.at
+Aug  3 18:24:28 gibson rpc.svcgssd: libnfsidmap: loaded plugin
+/usr/lib/libnfsidmap/nsswitch.so for method nsswitch
+Aug  3 18:24:28 gibson rpc.gssd: in authgss_validate()
+Aug  3 18:24:28 gibson rpc.gssd: xdr_rpc_gss_init_res decode success
+(ctx 0x9f87f80:4, maj 0, min 0, win 128, token 0x9f89dc8:114)
+Aug  3 18:24:28 gibson rpc.gssd: authgss_create_default: freeing name
+0x9f852e8
+Aug  3 18:24:28 gibson rpc.gssd: in authgss_get_private_data()
+Aug  3 18:24:28 gibson rpc.gssd: in authgss_free_private_data()
+Aug  3 18:24:28 gibson rpc.gssd: in authgss_destroy()
+Aug  3 18:24:28 gibson rpc.gssd: in authgss_destroy_context()
+Aug  3 18:24:28 gibson rpc.gssd: authgss_destroy: freeing name 0x9f80df8
+
+And then it just steps and the steps repeat after a timeout.
+
+Kind regards,
+Michael
