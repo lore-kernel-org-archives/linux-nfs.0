@@ -1,63 +1,80 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:27670 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752188Ab0HANXK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 1 Aug 2010 09:23:10 -0400
-Date: Sun, 1 Aug 2010 09:25:29 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: utz lehmann <lkml123@s2y4n2c.de>
-Cc: Linus Torvalds <torvalds@linux-foundation.org>,
-        Jeremy Allison <jra@samba.org>, Volker.Lendecke@sernet.de,
-        David Howells <dhowells@redhat.com>,
-        Jan Engelhardt <jengelh@medozas.de>, linux-cifs@vger.kernel.org,
-        linux-nfs@vger.kernel.org, samba-technical@lists.samba.org,
-        linux-kernel@vger.kernel.org, viro@zeniv.linux.org.uk,
-        linux-fsde@jasper.es
-Subject: Re: [PATCH 02/18] xstat: Add a pair of system calls to make
- extended  file stats available [ver #6]
-Message-ID: <20100801092529.5e6ba0e0@corrin.poochiereds.net>
-In-Reply-To: <1280524978.2452.9.camel@segv.aura.of.mankind>
-References: <alpine.LSU.2.01.1007221228260.6115@obet.zrqbmnf.qr>
-	<20100715021709.5544.64506.stgit@warthog.procyon.org.uk>
-	<20100715021712.5544.44845.stgit@warthog.procyon.org.uk>
-	<30448.1279800887@redhat.com>
-	<E1Obuiy-00C9jr-Al@intern.SerNet.DE>
-	<AANLkTikBCXK6uEw  <AANLkTimdFCGSKLn7aGMpBMIauHTsHY7hpAAmpo6uTcnD@mail.gmail.com>
-	<1280524978.2452.9.camel@segv.aura.of.mankind>
-Content-Type: text/plain; charset=US-ASCII
+Received: from lvps87-230-0-242.dedicated.hosteurope.de ([87.230.0.242]:38568
+	"EHLO lvps87-230-0-242.dedicated.hosteurope.de" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S932271Ab0HCPwq (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 3 Aug 2010 11:52:46 -0400
+Date: Tue, 3 Aug 2010 17:45:56 +0200
+From: Michael Guntsche <mike@it-loops.com>
+To: linux-nfs@vger.kernel.org
+Subject: Kerberos auth Problem with nfs3/4
+Message-ID: <20100803154556.GA6262@gibson.comsick.at>
+Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Fri, 30 Jul 2010 23:22:58 +0200
-utz lehmann <lkml123@s2y4n2c.de> wrote:
+Hi,
 
-> On Thu, 2010-07-22 at 09:40 -0700, Linus Torvalds wrote:
-> > But the fact is, th Unix ctime semantics are insane and largely
-> > useless. There's a damn good reason almost nobody uses ctime under
-> > unix.
-> > 
-> > So what I'm suggesting is that we have a flag - either per-process or
-> > per-mount - that just says "use windows semantics for ctime".
-> 
-> When abusing an existing time stamp use atime not ctime please.
-> ctime has it's uses. atime was just a mistake and is nearly useless.
-> 
-> And with noatime we already have creation time semantics for atime.
-> 
+I recently tried re-enabling a kerberos setup here after running with
+sec=sys for a while. Now the problem is that mount the export with
+sec=krb5 just hangs.
 
-Ugh. Honestly all of this talk of abusing different time fields seems
-like craziness to me. It's going to be very hard to do that without
-breaking *something*. There's also very little reason to do this when
-xattrs are a much cleaner approach.
+To rule everything out I tried mount from the server itself.
 
-Neil Brown has put forth a very reasoned justification for putting the
-birthtime in an xattr. After reading it, I think that makes more sense
-than anything. It's also something that can be done without any extra
-infrastructure. If at some point in the future we get an xstat-like
-syscall then we can always add birthtime to that as well.
+mount gibson:/export /mnt
 
-Ditto for the other fields under discussion (i_generation and the like).
+The mount just hangs and does not return.
+This is happening on a debian sid system with nfs-utils 1.2.2 installed.
 
--- 
-Jeff Layton <jlayton@redhat.com>
+rpc.svcgssd -vvf:
+=================
+entering poll
+leaving poll
+handling null request
+sname = nfs/gibson.comsick.at@COMSICK.AT
+DEBUG: serialize_krb5_ctx: lucid version!
+prepare_krb5_rfc1964_buffer: serializing keys with enctype 4 and length
+8
+doing downcall
+mech: krb5, hndl len: 4, ctx len 85, timeout: 1280885973 (35783 from
+now), clnt: nfs@gibson.comsick.at, uid: -1, gid: -1, num aux grps: 0:
+sending null reply
+finished handling null request
+entering poll
+
+rpc.gssd -vvf:
+==============
+beginning poll
+destroying client /var/lib/nfs/rpc_pipefs/nfs/clnt1b
+destroying client /var/lib/nfs/rpc_pipefs/nfs/clnt1a
+handling gssd upcall (/var/lib/nfs/rpc_pipefs/nfs/clnt1c)
+handle_gssd_upcall: 'mech=krb5 uid=0 enctypes=18,17,16,23,3,1,2 '
+handling krb5 upcall (/var/lib/nfs/rpc_pipefs/nfs/clnt1c)
+process_krb5_upcall: service is '<null>'
+Successfully obtained machine credentials for principal
+'nfs/gibson.comsick.at@COMSICK.AT' stored in ccache
+'FILE:/tmp/krb5cc_machine_COMSICK.AT'
+INFO: Credentials in CC 'FILE:/tmp/krb5cc_machine_COMSICK.AT' are good
+until 1280886246
+using FILE:/tmp/krb5cc_machine_COMSICK.AT as credentials cache for
+machine creds
+using environment variable to select krb5 ccache
+FILE:/tmp/krb5cc_machine_COMSICK.AT
+creating context using fsuid 0 (save_uid 0)
+creating tcp client for server gibson.comsick.at
+DEBUG: port already set to 2049
+creating context with server nfs@gibson.comsick.at
+DEBUG: serialize_krb5_ctx: lucid version!
+prepare_krb5_rfc1964_buffer: serializing keys with enctype 4 and length
+8
+doing downcall
+
+After that nothing. the same setup worked a while ago but of course both
+the kernel and the nfs-utils have been updated in the meantime. I tried
+this both with nfs3 and nfs4. 
+
+Please tell me if you need further information to help me debug this
+problem.
+
+Kind regards,
+Michael
