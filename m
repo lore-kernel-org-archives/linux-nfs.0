@@ -1,189 +1,42 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-gx0-f174.google.com ([209.85.161.174]:61911 "EHLO
-	mail-gx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753608Ab0HWRLg (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Aug 2010 13:11:36 -0400
-Received: by gxk23 with SMTP id 23so2191346gxk.19
-        for <linux-nfs@vger.kernel.org>; Mon, 23 Aug 2010 10:11:35 -0700 (PDT)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 5/5] exportfs: Use xlog() for error reporting
-To: steved@redhat.com
+Received: from fieldses.org ([174.143.236.118]:51695 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753993Ab0HCViM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 3 Aug 2010 17:38:12 -0400
+Date: Tue, 3 Aug 2010 17:36:50 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Michael Guntsche <mike@it-loops.com>
 Cc: linux-nfs@vger.kernel.org
-Date: Mon, 23 Aug 2010 13:11:32 -0400
-Message-ID: <20100823171132.2123.57600.stgit@matisse.1015granger.net>
-In-Reply-To: <20100823170552.2123.43124.stgit@matisse.1015granger.net>
-References: <20100823170552.2123.43124.stgit@matisse.1015granger.net>
-Content-Type: text/plain; charset="utf-8"
+Subject: Re: Kerberos auth Problem with nfs3/4
+Message-ID: <20100803213650.GJ31579@fieldses.org>
+References: <20100803154556.GA6262@gibson.comsick.at>
+ <20100803194342.GE31579@fieldses.org>
+ <20100803211906.GA24236@gibson.comsick.at>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20100803211906.GA24236@gibson.comsick.at>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-exportfs already invokes xlog_open() because libexport.a uses xlog()
-exclusively for error reporting and debugging messages.  If we can
-use xlog() throughout exportfs itself, that enables xlog debugging
-messages everywhere in the code path.
+On Tue, Aug 03, 2010 at 11:19:06PM +0200, Michael Guntsche wrote:
+> Hello Bruce.
+> 
+> I was a little bit early with my success report. I can now successfully
+> mount the exports with sec=krb5 and can also read and write from linux
+> clients. But now I get the following messages from the kernel on the
+> server itself. This apparently happens when I try to read/write to the
+> export.
+> 
+> Aug  3 23:12:23 gibson kernel: RPC: AUTH_GSS upcall timed out.
+> Aug  3 23:12:23 gibson kernel: Please check user daemon is running.
+> 
+> Of course all the daemons on the server are running and the system seems
+> to work fine otherwise.
 
-In addition, use xlog() instead of fprintf(stderr) for reporting
-errors in exportfs.c, to be consistent with libexport.a and other
-components of nfs-utils.
+That's actually a client-side complaint--if you're seeing it on the
+server then it's probably the server trying to do a callback to an NFSv4
+client.  Are you running rpc.gssd as well as rpc.svcgssd on the server?
+Might want to if you want delegations to work (but it's not a critical
+problem).
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
-
- utils/exportfs/exportfs.c |   56 +++++++++++++++++++++++----------------------
- 1 files changed, 29 insertions(+), 27 deletions(-)
-
-diff --git a/utils/exportfs/exportfs.c b/utils/exportfs/exportfs.c
-index 93bad32..8496d82 100644
---- a/utils/exportfs/exportfs.c
-+++ b/utils/exportfs/exportfs.c
-@@ -37,7 +37,7 @@ static void	unexportfs(char *arg, int verbose);
- static void	exports_update(int verbose);
- static void	dump(int verbose);
- static void	error(nfs_export *exp, int err);
--static void	usage(void);
-+static void	usage(const char *progname);
- static void	validate_export(nfs_export *exp);
- static int	matchhostname(const char *hostname1, const char *hostname2);
- 
-@@ -45,6 +45,7 @@ int
- main(int argc, char **argv)
- {
- 	char	*options = NULL;
-+	char	*progname = NULL;
- 	int	f_export = 1;
- 	int	f_all = 0;
- 	int	f_verbose = 0;
-@@ -54,7 +55,14 @@ main(int argc, char **argv)
- 	int	new_cache = 0;
- 	int	force_flush = 0;
- 
--	xlog_open("exportfs");
-+	if ((progname = strrchr(argv[0], '/')) != NULL)
-+		progname++;
-+	else
-+		progname = argv[0];
-+
-+	xlog_open(progname);
-+	xlog_stderr(1);
-+	xlog_syslog(0);
- 
- 	export_errno = 0;
- 
-@@ -83,21 +91,21 @@ main(int argc, char **argv)
- 			force_flush = 1;
- 			break;
- 		default:
--			usage();
-+			usage(progname);
- 			break;
- 		}
- 	}
- 
- 	if (optind != argc && f_all) {
--		fprintf(stderr,"exportfs: extra arguments are not permitted with -a or -r.\n");
-+		xlog(L_ERROR, "extra arguments are not permitted with -a or -r");
- 		return 1;
- 	}
- 	if (f_ignore && (f_all || ! f_export)) {
--		fprintf(stderr,"exportfs: -i not meaningful with -a, -r or -u.\n");
-+		xlog(L_ERROR, "-i not meaningful with -a, -r or -u");
- 		return 1;
- 	}
- 	if (f_reexport && ! f_export) {
--		fprintf(stderr, "exportfs: -r and -u are incompatible.\n");
-+		xlog(L_ERROR, "-r and -u are incompatible");
- 		return 1;
- 	}
- 	new_cache = check_new_cache();
-@@ -106,8 +114,10 @@ main(int argc, char **argv)
- 			if (new_cache)
- 				cache_flush(1);
- 			else {
--				fprintf(stderr, "exportfs: -f: only available with new cache controls: mount /proc/fs/nfsd first\n");
--				exit(1);
-+				xlog(L_ERROR, "-f is available only "
-+					"with new cache controls. "
-+					"Mount /proc/fs/nfsd first");
-+				return 1;
- 			}
- 			return 0;
- 		} else {
-@@ -245,7 +255,7 @@ exportfs(char *arg, char *options, int verbose)
- 		*path++ = '\0';
- 
- 	if (!path || *path != '/') {
--		fprintf(stderr, "Invalid exporting option: %s\n", arg);
-+		xlog(L_ERROR, "Invalid exporting option: %s", arg);
- 		return;
- 	}
- 
-@@ -291,8 +301,7 @@ unexportfs(char *arg, int verbose)
- 		*path++ = '\0';
- 
- 	if (!path || *path != '/') {
--		fprintf(stderr, "Invalid unexporting option: %s\n",
--			arg);
-+		xlog(L_ERROR, "Invalid unexporting option: %s", arg);
- 		return;
- 	}
- 
-@@ -387,14 +396,12 @@ validate_export(nfs_export *exp)
- 	int fs_has_fsid = 0;
- 
- 	if (stat(path, &stb) < 0) {
--		fprintf(stderr, "exportfs: Warning: %s does not exist\n",
--			path);
-+		xlog(L_ERROR, "Failed to stat %s: %m \n", path);
- 		return;
- 	}
- 	if (!S_ISDIR(stb.st_mode) && !S_ISREG(stb.st_mode)) {
--		fprintf(stderr, "exportfs: Warning: %s is neither "
--			"a directory nor a file.\n"
--			"     remote access will fail\n", path);
-+		xlog(L_ERROR, "%s is neither a directory nor a file. "
-+			"Remote access will fail", path);
- 		return;
- 	}
- 	if (!can_test())
-@@ -407,19 +414,14 @@ validate_export(nfs_export *exp)
- 	if ((exp->m_export.e_flags & NFSEXP_FSID) || exp->m_export.e_uuid ||
- 	    fs_has_fsid) {
- 		if ( !test_export(path, 1)) {
--			fprintf(stderr, "exportfs: Warning: %s does not "
--				"support NFS export.\n",
--				path);
-+			xlog(L_ERROR, "%s does not support NFS export", path);
- 			return;
- 		}
- 	} else if ( ! test_export(path, 0)) {
- 		if (test_export(path, 1))
--			fprintf(stderr, "exportfs: Warning: %s requires fsid= "
--				"for NFS export\n", path);
-+			xlog(L_ERROR, "%s requires fsid= for NFS export", path);
- 		else
--			fprintf(stderr, "exportfs: Warning: %s does not "
--				"support NFS export.\n",
--				path);
-+			xlog(L_ERROR, "%s does not support NFS export", path);
- 		return;
- 
- 	}
-@@ -602,13 +604,13 @@ dump(int verbose)
- static void
- error(nfs_export *exp, int err)
- {
--	fprintf(stderr, "%s:%s: %s\n", exp->m_client->m_hostname, 
-+	xlog(L_ERROR, "%s:%s: %s\n", exp->m_client->m_hostname,
- 		exp->m_export.e_path, strerror(err));
- }
- 
- static void
--usage(void)
-+usage(const char *progname)
- {
--	fprintf(stderr, "usage: exportfs [-aruv] [host:/path]\n");
-+	fprintf(stderr, "usage: %s [-aruv] [host:/path]\n", progname);
- 	exit(1);
- }
-
+--b.
