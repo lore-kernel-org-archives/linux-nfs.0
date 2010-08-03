@@ -1,68 +1,69 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cantor.suse.de ([195.135.220.2]:32821 "EHLO mx1.suse.de"
+Received: from fieldses.org ([174.143.236.118]:39754 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755907Ab0HKXGL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 11 Aug 2010 19:06:11 -0400
-Date: Thu, 12 Aug 2010 09:06:02 +1000
-From: Neil Brown <neilb@suse.de>
-To: David Brodbeck <brodbd@u.washington.edu>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: numeric UIDs
-Message-ID: <20100812090602.3a24c2bd@notabene>
-In-Reply-To: <03068BD0-0613-469E-B918-07019EC54055@u.washington.edu>
-References: <201008030401.33552.dreck@vmsd.ath.cx>
-	<20100803164318.GB13896@merit.edu>
-	<20100803192216.GC31579@fieldses.org>
-	<DE966DA98A4ABE438D726BDF1699CF61403FAF9D@MX05A.corp.emc.com>
-	<20100803215704.GA15494@merit.edu>
-	<1280873719.14520.17.camel@heimdal.trondhjem.org>
-	<20100803222337.GA9752@fieldses.org>
-	<1280874675.14520.23.camel@heimdal.trondhjem.org>
-	<20100803224245.GB9752@fieldses.org>
-	<1280887336.24669.23.camel@heimdal.trondhjem.org>
-	<0969EC03-E225-4265-BADC-582F2089D13E@u.washington.edu>
-	<C2AFF31B-A4A4-432C-A152-B28676B8C3A4@netapp.com>
-	<03068BD0-0613-469E-B918-07019EC54055@u.washington.edu>
-Content-Type: text/plain; charset=US-ASCII
+	id S1757608Ab0HCSuV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 3 Aug 2010 14:50:21 -0400
+Date: Tue, 3 Aug 2010 14:48:56 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+Cc: Jeff Layton <jlayton@redhat.com>, linux-nfs@vger.kernel.org,
+        netdev@vger.kernel.org
+Subject: Re: sunrpc: what prevents an xprt from being freed before
+ task_cleanup runs?
+Message-ID: <20100803184856.GA31579@fieldses.org>
+References: <20100803132453.4fa18444@tlielax.poochiereds.net>
+ <1280860815.9771.25.camel@heimdal.trondhjem.org>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1280860815.9771.25.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, 4 Aug 2010 14:32:06 -0700
-David Brodbeck <brodbd@u.washington.edu> wrote:
-
-> 
-> On Aug 4, 2010, at 11:30 AM, Andy Adamson wrote:
-> 
+On Tue, Aug 03, 2010 at 02:40:15PM -0400, Trond Myklebust wrote:
+> On Tue, 2010-08-03 at 13:24 -0400, Jeff Layton wrote:
+> > We got a report recently about a panic in RHEL5 (2.6.18 based kernel).
+> > The problem appears to be that a task_cleanup workqueue job ran and got
+> > passed a pointer to an xprt that had been freed. The bug is here in
+> > case anyone is interested in the details:
 > > 
-> > On Aug 4, 2010, at 1:06 PM, David Brodbeck wrote:
+> >     https://bugzilla.redhat.com/show_bug.cgi?id=611938
 > > 
-> >> 
-> >> On Aug 3, 2010, at 7:02 PM, Trond Myklebust wrote:
-> >> 
-> >>> On Tue, 2010-08-03 at 18:42 -0400, J. Bruce Fields wrote:
-> >>>> On Tue, Aug 03, 2010 at 06:31:15PM -0400, Trond Myklebust wrote:
-> >>>>> On Tue, 2010-08-03 at 18:23 -0400, J. Bruce Fields wrote:
-> >>>>>> On Tue, Aug 03, 2010 at 06:15:19PM -0400, Trond Myklebust wrote:
-> >>>> 
-> >>>>> 2) Why is AUTH_SYS so sacrosanct?
-> >>>> 
-> >>>> Because it's what almost everyone uses.
-> >>> 
-> >>> No. It's the _default_. ...and a really really bad default.
-> >> 
-> >> The problem is the only supported alternative is to set up Kerberos.  This is a lot of work, especially for established sites where it essentially requires every user to change their password during the migration.  It also creates problems with ticket expiration if you have daemons or batch jobs that need continuous access to NFS filesystems.
+> > The situation seems to be pretty difficult to reproduce, but I don't
+> > see anything that's intended to ensure that this doesn't occur in RHEL5
+> > or mainline. The task_cleanup workqueue job doesn't hold a reference to
+> > the xprt, and the job isn't canceled when the xprt is torn down.
 > > 
-> > Changing passwords is a good thing - should be done on a regular basis anyway.
+> > Bruce had a look and suggested that we may need something like the
+> > patch below (pasted in, so it probably won't apply correctly). I've
+> > tested a backported version of it on RHEL5 and it seems to work fine.
+> > 
+> > Is it reasonable to cancel task_cleanup when destroying the xprt? Or,
+> > am I missing something that should prevent this situation in mainline
+> > (and perhaps isn't in RHEL5's kernel).
+> > 
+> > Any help is appreciated...
+> > 
+> > -----------------------------[snip]---------------------------------
+> > diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
+> > index dcd0132..2a1f664 100644
+> > --- a/net/sunrpc/xprt.c
+> > +++ b/net/sunrpc/xprt.c
+> > @@ -1129,6 +1129,7 @@ static void xprt_destroy(struct kref *kref)
+> >   rpc_destroy_wait_queue(&xprt->sending);
+> >   rpc_destroy_wait_queue(&xprt->resend);
+> >   rpc_destroy_wait_queue(&xprt->backlog);
+> > + cancel_work_sync(&xprt->task_cleanup);
+> >   /*
+> >    * Tear down transport state and free the rpc_xprt
+> >    */
+> > -----------------------------[snip]---------------------------------
+> > 
+> > Thanks,
 > 
-> True, 
+> How about doing a wait_on_bit_lock(&xprt->state, XPRT_LOCKED,...)
+> instead?
 
-Not true.  Forced password changing encourages poor choice of passwords and
-other poor practices.
-Much better to choose a really good password and only change it when you have
-reason to believe that it has been compromised, or when you get bored of the
-old one.
+I'll believe you, but I don't get it: what guarantees that XPRT_LOCKED
+isn't cleared while xprt_autoclose autoclose is still running?
 
-(better still is two-factor authentication of course).
-
-NeilBrown
+--b.
