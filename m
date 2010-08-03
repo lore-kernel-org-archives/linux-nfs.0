@@ -1,62 +1,89 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:24454 "EHLO
-	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754327Ab0HKQGl convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 11 Aug 2010 12:06:41 -0400
-Subject: Re: Tuning NFS client write pagecache
+Received: from fieldses.org ([174.143.236.118]:45481 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756598Ab0HCTT5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 3 Aug 2010 15:19:57 -0400
+Date: Tue, 3 Aug 2010 15:18:33 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+Cc: Jeff Layton <jlayton@redhat.com>, linux-nfs@vger.kernel.org,
+        netdev@vger.kernel.org
+Subject: Re: sunrpc: what prevents an xprt from being freed before
+ task_cleanup runs?
+Message-ID: <20100803191833.GB31579@fieldses.org>
+References: <20100803132453.4fa18444@tlielax.poochiereds.net>
+ <1280860815.9771.25.camel@heimdal.trondhjem.org>
+ <20100803184856.GA31579@fieldses.org>
+ <1280861775.12283.7.camel@heimdal.trondhjem.org>
 Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <AANLkTin-6OWetGMi-F7n3VnuJg0dh27tdN-C=jHR5hw+@mail.gmail.com>
-Date: Wed, 11 Aug 2010 10:05:32 -0600
-Cc: "linux-nfs@vger.kernel.org Mailing list" <linux-nfs@vger.kernel.org>
-Message-Id: <1EDC250A-9F5E-4353-A78D-0A16B2612BBD@oracle.com>
-References: <4C5BFE47.8020905@mxtelecom.com> <20100806132620.GA2921@merit.edu> <AANLkTin_pg7GCw9jcB2JK+0TbGu+MrQEcv4H_qAg_A3H@mail.gmail.com> <1281116260.2900.6.camel@heimdal.trondhjem.org> <AANLkTimArNXgDSJeHrqsdAhCQo_O0=bhRuqsQEp0ofN7@mail.gmail.com> <1281123565.2900.17.camel@heimdal.trondhjem.org> <AANLkTin7Q_X6Ovy3Q2XYqWUbNd57XauGsDQGekU=DSf1@mail.gmail.com> <98DC3FB9-72A7-44CF-AB8B-914F2379B01B@oracle.com> <0A97A441BFADC74EA1E299A79C69DF9213F109F3B2@orsmsx504.amr.corp.intel.com> <3DFB27D5-7AFE-4D03-AB35-9BCCBD5C6CA6@oracle.com> <AANLkTin-6OWetGMi-F7n3VnuJg0dh27tdN-C=jHR5hw+@mail.gmail.com>
-To: Peter Chacko <peterchacko35@gmail.com>
+In-Reply-To: <1280861775.12283.7.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-[ Trimming CC: list ]
-
-On Aug 10, 2010, at 8:09 PM, Peter Chacko wrote:
-
-> Chuck,
+On Tue, Aug 03, 2010 at 02:56:15PM -0400, Trond Myklebust wrote:
+> On Tue, 2010-08-03 at 14:48 -0400, J. Bruce Fields wrote:
+> > On Tue, Aug 03, 2010 at 02:40:15PM -0400, Trond Myklebust wrote:
+> > > On Tue, 2010-08-03 at 13:24 -0400, Jeff Layton wrote:
+> > > > We got a report recently about a panic in RHEL5 (2.6.18 based kernel).
+> > > > The problem appears to be that a task_cleanup workqueue job ran and got
+> > > > passed a pointer to an xprt that had been freed. The bug is here in
+> > > > case anyone is interested in the details:
+> > > > 
+> > > >     https://bugzilla.redhat.com/show_bug.cgi?id=611938
+> > > > 
+> > > > The situation seems to be pretty difficult to reproduce, but I don't
+> > > > see anything that's intended to ensure that this doesn't occur in RHEL5
+> > > > or mainline. The task_cleanup workqueue job doesn't hold a reference to
+> > > > the xprt, and the job isn't canceled when the xprt is torn down.
+> > > > 
+> > > > Bruce had a look and suggested that we may need something like the
+> > > > patch below (pasted in, so it probably won't apply correctly). I've
+> > > > tested a backported version of it on RHEL5 and it seems to work fine.
+> > > > 
+> > > > Is it reasonable to cancel task_cleanup when destroying the xprt? Or,
+> > > > am I missing something that should prevent this situation in mainline
+> > > > (and perhaps isn't in RHEL5's kernel).
+> > > > 
+> > > > Any help is appreciated...
+> > > > 
+> > > > -----------------------------[snip]---------------------------------
+> > > > diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
+> > > > index dcd0132..2a1f664 100644
+> > > > --- a/net/sunrpc/xprt.c
+> > > > +++ b/net/sunrpc/xprt.c
+> > > > @@ -1129,6 +1129,7 @@ static void xprt_destroy(struct kref *kref)
+> > > >   rpc_destroy_wait_queue(&xprt->sending);
+> > > >   rpc_destroy_wait_queue(&xprt->resend);
+> > > >   rpc_destroy_wait_queue(&xprt->backlog);
+> > > > + cancel_work_sync(&xprt->task_cleanup);
+> > > >   /*
+> > > >    * Tear down transport state and free the rpc_xprt
+> > > >    */
+> > > > -----------------------------[snip]---------------------------------
+> > > > 
+> > > > Thanks,
+> > > 
+> > > How about doing a wait_on_bit_lock(&xprt->state, XPRT_LOCKED,...)
+> > > instead?
+> > 
+> > I'll believe you, but I don't get it: what guarantees that XPRT_LOCKED
+> > isn't cleared while xprt_autoclose autoclose is still running?
 > 
-> Ok i will then check to see the command line option to request the DIO
-> mode for NFS, as you suggested.
-> 
-> yes i other wise I fully understand the need of client caching.....for
-> desktop bound or any general purpose applications... AFS, cacheFS are
-> all good products in its own right.....but the only problem in such
-> cases are cache coherence issues...(i mean other application clientss
-> are not guaranteed to get the latest data,on their read) ..as NFS
-> honor only open-to-close session semantics.
-> 
-> The situation i have is that,
-> 
-> we have a data protection product, that has agents on indvidual
-> servers and a  storage gateway.(which is an NFS mounted box). The only
-> purpose of this box is to store all data, in a streaming write
-> mode.....for all the data coming from 10s of agents....essentially
-> this acts like a VTL target....from this node, to NFS server node,
-> there is no data travelling in the reverse path (or from the client
-> cache to the application).
-> 
-> THis is the only use we put NFS under....
-> 
-> For recovery, its again a streamed read...... we never updating the
-> read data, or re-reading the updated data....This is special , single
-> function box.....
-> 
-> What do you think the best mount options for this scenario ?
+> Look more closely: the callers that enqueue task_cleanup on the
+> workqueue all ensure that XPRT_LOCKED is held, and it isn't released
+> until the call to xprt_release_write() at the very end of
+> xprt_autoclose().
 
-What is the data rate (both IOPS and data throughput) of both the read and write cases?  How large are application read and write ops, on average?  What kind of networking is deployed?  What is the server and clients (hardware and OS)?
+I see that (assuming snd_task is always NULL--but, OK, I think I see why
+that's true), but we still dereference the xprt after returning from
+xprt_release_write().  Only to drop the transport_lock, but I don't see
+why there isn't a race.
 
-And, I assume you are asking because the environment is not performing as you expect.  Can you detail your performance issues?
+> The rpciod_workqueue deadlocking is an issue, though, so unfortunately,
+> we won't be able to make use of the above.
 
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+Yeah, OK, it was just bugging me that I didn't feel like I understood
+how XPRT_LOCKED is used.
 
-
-
+--b.
