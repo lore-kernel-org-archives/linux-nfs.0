@@ -1,179 +1,41 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cantor.suse.de ([195.135.220.2]:42402 "EHLO mx1.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758066Ab0HLHFk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 12 Aug 2010 03:05:40 -0400
-From: NeilBrown <neilb@suse.de>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Date: Thu, 12 Aug 2010 17:04:06 +1000
-Subject: [PATCH 1/6] sunrpc/cache: allow threads to block while waiting for
-	cache update.
-Cc: linux-nfs@vger.kernel.org
-Message-ID: <20100812070405.11459.91402.stgit@localhost.localdomain>
-In-Reply-To: <20100812065722.11459.18978.stgit@localhost.localdomain>
-References: <20100812065722.11459.18978.stgit@localhost.localdomain>
-Content-Type: text/plain; charset="utf-8"
+Received: from bronze.cs.yorku.ca ([130.63.90.34]:44284 "EHLO
+	bronze.cs.yorku.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756319Ab0HCPxJ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 3 Aug 2010 11:53:09 -0400
+Received: from [130.63.86.125] (ident=jas)
+	by bronze.cs.yorku.ca with esmtpsa (TLSv1:AES256-SHA:256)
+	(Exim 4.67)
+	(envelope-from <jas@cse.yorku.ca>)
+	id 1OgJnf-0004vQ-7C
+	for linux-nfs@vger.kernel.org; Tue, 03 Aug 2010 11:53:07 -0400
+Message-ID: <4C583B63.4050903@cse.yorku.ca>
+Date: Tue, 03 Aug 2010 11:53:07 -0400
+From: Jason Keltz <jas@cse.yorku.ca>
+To: linux-nfs@vger.kernel.org
+Subject: exporting to a list of IPs
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-The current practice of waiting for cache updates by queueing the
-whole request to be retried has (at least) two problems.
+Hi.
 
-1/ With NFSv4, requests can be quite complex and re-trying a whole
-  request when a later part fails should only be a last-resort, not a
-  normal practice.
+Why is it that you cannot NFS export to a list of IPs and have exportfs 
+leave the list of IPs in etab without converting over to FQDN?
 
-2/ Large requests, and in particular any 'write' request, will not be
-  queued by the current code and doing so would be undesirable.
+In Changelog:
 
-In many cases only a very sort wait is needed before the cache gets
-valid data.
+2001-09-20 NeilBrown <neilb@cse.unsw.edu.au>
+             Anne Milicia <milicia@missioncriticallinux.com>
 
-So, providing the underlying transport permits it by setting
- ->thread_wait,
-arrange to wait briefly for an upcall to be completed (as reflected in
-the clearing of CACHE_PENDING).
-If the short wait was not long enough and CACHE_PENDING is still set,
-fall back on the old approach.
+         * support/export/client.c (client_lookup) call gethostbyadd
+         to make sure that we have a canonical hostname, even for
+         dotted-quads
 
-The 'thread_wait' value is set to 5 seconds when there are spare
-threads, and 1 second when there are no spare threads.
+Why does mountd need to repeat the gethostbyname() lookup on every host 
+even though exportfs already converted over to using hostname?
 
-These values are probably much higher than needed, but will ensure
-some forward progress.
+Thanks,
 
-Note that as we only request an update for a non-valid item, and as
-non-valid items are updated in place it is extremely unlikely that
-cache_check will return -ETIMEDOUT.  Normally cache_defer_req will
-sleep for a short while and then find that the item is_valid.
-
-
-Signed-off-by: NeilBrown <neilb@suse.de>
----
- include/linux/sunrpc/cache.h |    3 +++
- net/sunrpc/cache.c           |   47 +++++++++++++++++++++++++++++++++++++++++-
- net/sunrpc/svc_xprt.c        |   11 ++++++++++
- 3 files changed, 60 insertions(+), 1 deletions(-)
-
-diff --git a/include/linux/sunrpc/cache.h b/include/linux/sunrpc/cache.h
-index 7bf3e84..61f521f 100644
---- a/include/linux/sunrpc/cache.h
-+++ b/include/linux/sunrpc/cache.h
-@@ -125,6 +125,9 @@ struct cache_detail {
-  */
- struct cache_req {
- 	struct cache_deferred_req *(*defer)(struct cache_req *req);
-+	int thread_wait;  /* How long (jiffies) we can block the
-+			   * current thread to wait for updates.
-+			   */
- };
- /* this must be embedded in a deferred_request that is being
-  * delayed awaiting cache-fill
-diff --git a/net/sunrpc/cache.c b/net/sunrpc/cache.c
-index 2b06410..2fdd66b 100644
---- a/net/sunrpc/cache.c
-+++ b/net/sunrpc/cache.c
-@@ -509,10 +509,22 @@ static LIST_HEAD(cache_defer_list);
- static struct list_head cache_defer_hash[DFR_HASHSIZE];
- static int cache_defer_cnt;
- 
-+struct thread_deferred_req {
-+	struct cache_deferred_req handle;
-+	struct completion completion;
-+};
-+static void cache_restart_thread(struct cache_deferred_req *dreq, int too_many)
-+{
-+	struct thread_deferred_req *dr =
-+		container_of(dreq, struct thread_deferred_req, handle);
-+	complete(&dr->completion);
-+}
-+
- static int cache_defer_req(struct cache_req *req, struct cache_head *item)
- {
- 	struct cache_deferred_req *dreq, *discard;
- 	int hash = DFR_HASH(item);
-+	struct thread_deferred_req sleeper;
- 
- 	if (cache_defer_cnt >= DFR_MAX) {
- 		/* too much in the cache, randomly drop this one,
-@@ -521,7 +533,15 @@ static int cache_defer_req(struct cache_req *req, struct cache_head *item)
- 		if (net_random()&1)
- 			return -ENOMEM;
- 	}
--	dreq = req->defer(req);
-+	if (req->thread_wait) {
-+		dreq = &sleeper.handle;
-+		sleeper.completion =
-+			COMPLETION_INITIALIZER_ONSTACK(sleeper.completion);
-+		dreq->revisit = cache_restart_thread;
-+	} else
-+		dreq = req->defer(req);
-+
-+ retry:
- 	if (dreq == NULL)
- 		return -ENOMEM;
- 
-@@ -555,6 +575,31 @@ static int cache_defer_req(struct cache_req *req, struct cache_head *item)
- 		cache_revisit_request(item);
- 		return -EAGAIN;
- 	}
-+
-+	if (dreq == &sleeper.handle) {
-+		wait_for_completion_interruptible_timeout(
-+			&sleeper.completion, req->thread_wait);
-+		spin_lock(&cache_defer_lock);
-+		if (!list_empty(&sleeper.handle.hash)) {
-+			list_del_init(&sleeper.handle.recent);
-+			list_del_init(&sleeper.handle.hash);
-+			cache_defer_cnt--;
-+		}
-+		spin_unlock(&cache_defer_lock);
-+		if (test_bit(CACHE_PENDING, &item->flags)) {
-+			/* item is still pending, try request
-+			 * deferral
-+			 */
-+			dreq = req->defer(req);
-+			goto retry;
-+		}
-+		/* only return success if we actually deferred the
-+		 * request.  In this case we waited until it was
-+		 * answered so no deferral has happened - rather
-+		 * an answer already exists.
-+		 */
-+		return -EEXIST;
-+	}
- 	return 0;
- }
- 
-diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-index cbc0849..8ff6840 100644
---- a/net/sunrpc/svc_xprt.c
-+++ b/net/sunrpc/svc_xprt.c
-@@ -651,6 +651,11 @@ int svc_recv(struct svc_rqst *rqstp, long timeout)
- 	if (signalled() || kthread_should_stop())
- 		return -EINTR;
- 
-+	/* Normally we will wait up to 5 seconds for any required
-+	 * cache information to be provided.
-+	 */
-+	rqstp->rq_chandle.thread_wait = 5*HZ;
-+
- 	spin_lock_bh(&pool->sp_lock);
- 	xprt = svc_xprt_dequeue(pool);
- 	if (xprt) {
-@@ -658,6 +663,12 @@ int svc_recv(struct svc_rqst *rqstp, long timeout)
- 		svc_xprt_get(xprt);
- 		rqstp->rq_reserved = serv->sv_max_mesg;
- 		atomic_add(rqstp->rq_reserved, &xprt->xpt_reserved);
-+
-+		/* As there is a shortage of threads and this request
-+		 * had to be queue, don't allow the thread to wait so
-+		 * long for cache updates.
-+		 */
-+		rqstp->rq_chandle.thread_wait = 1*HZ;
- 	} else {
- 		/* No data pending. Go to sleep */
- 		svc_thread_enqueue(pool, rqstp);
-
-
+Jason.
