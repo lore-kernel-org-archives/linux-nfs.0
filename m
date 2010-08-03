@@ -1,58 +1,61 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-out1.uio.no ([129.240.10.57]:47229 "EHLO mail-out1.uio.no"
+Received: from fieldses.org ([174.143.236.118]:53777 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752570Ab0HRTXS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 18 Aug 2010 15:23:18 -0400
-Subject: Re: [PATCH 0/2] Support for Numeric Representations of UIDs and
- GIDs.
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-To: Steve Dickson <SteveD@redhat.com>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-In-Reply-To: <4C6C3000.5010003@RedHat.com>
-References: <1282073925-18707-1-git-send-email-steved@redhat.com>
-	 <20100818182053.GB13050@fieldses.org>  <4C6C3000.5010003@RedHat.com>
-Content-Type: text/plain; charset="UTF-8"
-Date: Wed, 18 Aug 2010 15:23:11 -0400
-Message-ID: <1282159391.8540.90.camel@heimdal.trondhjem.org>
+	id S1755695Ab0HCVXo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 3 Aug 2010 17:23:44 -0400
+Date: Tue, 3 Aug 2010 17:22:20 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+Cc: Jeff Layton <jlayton@redhat.com>, linux-nfs@vger.kernel.org,
+        netdev@vger.kernel.org
+Subject: [PATCH] SUNRPC: prevent task_cleanup running on freed xprt
+Message-ID: <20100803212220.GI31579@fieldses.org>
+References: <20100803132453.4fa18444@tlielax.poochiereds.net>
+ <1280860815.9771.25.camel@heimdal.trondhjem.org>
+ <1280861363.12283.2.camel@heimdal.trondhjem.org>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1280861363.12283.2.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, 2010-08-18 at 15:09 -0400, Steve Dickson wrote:
+From: J. Bruce Fields <bfields@redhat.com>
+
+We saw a report of a NULL dereference in xprt_autoclose:
+
+	https://bugzilla.redhat.com/show_bug.cgi?id=611938
+
+This appears to be the result of an xprt's task_cleanup running after
+the xprt is destroyed.  Nothing in the current code appears to prevent
+that.
+
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ net/sunrpc/xprt.c |    1 +
+ 1 files changed, 1 insertions(+), 0 deletions(-)
+
+On Tue, Aug 03, 2010 at 02:49:23PM -0400, Trond Myklebust wrote:
+> Hmm... On the other hand, since xprt_destroy() may get called from
+> inside the rpciod_workqueue, the wait_on_bit_lock() may end up
+> deadlocking.
 > 
-> On 08/18/2010 02:20 PM, J. Bruce Fields wrote:
-> > On Tue, Aug 17, 2010 at 03:38:43PM -0400, Steve Dickson wrote:
-> >> In recent NFS v2/v3 to v4 transitions, one of the sticking 
-> >> points have been that fact v4 uses strings in the format
-> >> of "user@domain" instead of 32bit integers for uids and 
-> >> gids.
-> >>
-> >> When the string can not be mapped, its mapped to the 'nobody'
-> >> user which is not optimal for things like backup servers and
-> >> such where the ids will not be know by both sides.
-> >>
-> >> So this patch series enables the server to send out numeric 
-> >> string of uids and gids that do not have the '@domain' part.
-> >> The series also adds functionality to the client that parse these
-> >> type of strings and will use the numeric representation
-> >> of the ids iff the id exists on the client, which is 
-> >> sightly different that Solaris. Solaris dose not have that
-> >> "id must exist" restriction.
-> > 
-> > Why did you decide to impose that restriction?
-> I just thought it made sense, from a security standpoint to make sure the 
-> ids were at least valid on the client... if they are not valid the id 
-> becomes 'nobody' which how it works today... but is different than how 
-> OpenSolaris does it... they just use whatever the server tells to... 
+> Nevermind, then. Let's go with the cancel_work_sync().
 
-As I read RFC3530, the recommendation is that the server SHOULD reject
-an attempt by the client to use numeric ids if it knows of a valid
-name@domain mapping for that uid or gid.
+Here you are--only if you don't have something equivalent already queued
+up.--b.
 
-The client has no such restriction. It probably should just accept the
-numeric uid or gid if that is what the server supplies.
-
-Cheers
-  Trond
+diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
+index dcd0132..2a1f664 100644
+--- a/net/sunrpc/xprt.c
++++ b/net/sunrpc/xprt.c
+@@ -1129,6 +1129,7 @@ static void xprt_destroy(struct kref *kref)
+ 	rpc_destroy_wait_queue(&xprt->sending);
+ 	rpc_destroy_wait_queue(&xprt->resend);
+ 	rpc_destroy_wait_queue(&xprt->backlog);
++	cancel_work_sync(&xprt->task_cleanup);
+ 	/*
+ 	 * Tear down transport state and free the rpc_xprt
+ 	 */
+-- 
+1.7.0.4
 
