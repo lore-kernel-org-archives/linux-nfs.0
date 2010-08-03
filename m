@@ -1,102 +1,135 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:2486 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754918Ab0H3NvV convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Aug 2010 09:51:21 -0400
-Subject: Re: [REGRESSION PATCH] NFS: let NFS_V4 and NFSD_V4 enforce CRYPTO
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Uwe =?ISO-8859-1?Q?Kleine-K=F6nig?=
-	<u.kleine-koenig@pengutronix.de>
-Cc: Neil Brown <neilb@suse.de>, Randy Dunlap <randy.dunlap@oracle.com>,
-        Linus Torvalds <torvalds@linux-foundation.org>,
-        akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
-        "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
-In-Reply-To: <20100830121022.GA14459@pengutronix.de>
-References: <20100825084912.GA10293@pengutronix.de>
-	 <1282727119-8295-1-git-send-email-u.kleine-koenig@pengutronix.de>
-	 <20100827061139.GA27851@pengutronix.de>
-	 <20100830082618.GA24402@pengutronix.de> <20100830203659.3b9884f6@notabene>
-	 <20100830121022.GA14459@pengutronix.de>
-Content-Type: text/plain; charset="UTF-8"
-Date: Mon, 30 Aug 2010 09:50:24 -0400
-Message-ID: <1283176224.7073.13.camel@heimdal.trondhjem.org>
+Received: from smtp.opengridcomputing.com ([209.198.142.2]:35139 "EHLO
+	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S932283Ab0HCQpM (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 3 Aug 2010 12:45:12 -0400
+From: Tom Tucker <tom@ogc.us>
+Subject: [PATCH 3/4] svcrdma: Cleanup DMA unmapping in error paths.
+To: trond.myklebust@netapp.com, bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org, swise@ogc.us, tom@ogc.us
+Date: Tue, 03 Aug 2010 11:45:12 -0500
+Message-ID: <20100803164512.2567.51211.stgit@build.ogc.int>
+In-Reply-To: <20100803164411.2567.31416.stgit@build.ogc.int>
+References: <20100803164411.2567.31416.stgit@build.ogc.int>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Mon, 2010-08-30 at 14:10 +0200, Uwe Kleine-König wrote:
-> On Mon, Aug 30, 2010 at 08:36:59PM +1000, Neil Brown wrote:
-> > On Mon, 30 Aug 2010 10:26:18 +0200
-> > Uwe Kleine-König <u.kleine-koenig@pengutronix.de> wrote:
-> > 
-> > > [extending Cc: to contain Neil and linux-nfs]
-> > > 
-> > > On Fri, Aug 27, 2010 at 08:11:39AM +0200, Uwe Kleine-König wrote:
-> > > > On Wed, Aug 25, 2010 at 11:05:19AM +0200, Uwe Kleine-König wrote:
-> > 
-> > I would tend to wait more than 2 days between pings..
->
-> 	ukl@octopus:~/gsrc/linux-2.6$ git rev-parse linus/master
-> 	2bfc96a127bc1cc94d26bfaa40159966064f9c8c
-> 	ukl@octopus:~/gsrc/linux-2.6$ git grep -E CRYPTO= linus/master arch/arm/configs/ | wc -l
-> 	6
-> 	ukl@octopus:~/gsrc/linux-2.6$ git grep -E NFSD?_V4 linus/master arch/arm/configs/ | wc -l
-> 	37
-> 
-> So I think that at least 31 arm-defconfigs don't build because of this
-> issue.  And as this kind of error greatly hurts automatic bisection I
-> thought this to be critical enough to be a bit impatient.
+There are several error paths in the code that do not unmap DMA. This
+patch adds calls to svc_rdma_unmap_dma to free these DMA contexts.
 
-So, why aren't you first and foremost fixing the damned arm-defconfigs?
-They are clearly broken if they are auto-selecting NFSv4 without CRYPTO
-and RPCSEC_GSS.
+Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
+---
 
-> > > > > This is a follow up to
-> > > > > 
-> > > > > 	df486a2 (NFS: Fix the selection of security flavours in Kconfig)
-> > > > > 
-> > > > > which broke (among others) arm/mx1_defconfig.
-> > > > > 
-> > > > > Moreover let NFS_V4 select RPCSEC_GSS_KRB5 again as it was before
-> > > > > df486a2.  This make the dependency more explicit than relying on the no
-> > > > > prompt + default y if !(NFS_V4 || NFSD_V4).
-> > 
-> > Maybe if you said a little bit about how it broke?
->   LD      .tmp_vmlinux1
-> fs/built-in.o: In function `nfs_callback_authenticate':
-> compr_zlib.c:(.text+0x7c040): undefined reference to `svc_gss_principal'
-> make[2]: *** [.tmp_vmlinux1] Error 1
-> make[1]: *** [sub-make] Error 2
-> make: *** [all] Error 2
-> 
-> I can add this to the commit log.
+ net/sunrpc/xprtrdma/svc_rdma_recvfrom.c  |    1 +
+ net/sunrpc/xprtrdma/svc_rdma_sendto.c    |    2 ++
+ net/sunrpc/xprtrdma/svc_rdma_transport.c |   29 ++++++++++++++---------------
+ 3 files changed, 17 insertions(+), 15 deletions(-)
 
-This is exactly the problem that Randy was seeing _before_ commit
-df486a2, so just reverting that patch by adding the selects back into
-NFSv4 is wrong.
+diff --git a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
+index 926bdb4..df67211 100644
+--- a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
++++ b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
+@@ -495,6 +495,7 @@ next_sge:
+ 			printk(KERN_ERR "svcrdma: Error %d posting RDMA_READ\n",
+ 			       err);
+ 			set_bit(XPT_CLOSE, &xprt->sc_xprt.xpt_flags);
++			svc_rdma_unmap_dma(ctxt);
+ 			svc_rdma_put_context(ctxt, 0);
+ 			goto out;
+ 		}
+diff --git a/net/sunrpc/xprtrdma/svc_rdma_sendto.c b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
+index d4f5e0e..249a835 100644
+--- a/net/sunrpc/xprtrdma/svc_rdma_sendto.c
++++ b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
+@@ -367,6 +367,8 @@ static int send_write(struct svcxprt_rdma *xprt, struct svc_rqst *rqstp,
+ 		goto err;
+ 	return 0;
+  err:
++	svc_rdma_unmap_dma(ctxt);
++	svc_rdma_put_frmr(xprt, vec->frmr);
+ 	svc_rdma_put_context(ctxt, 0);
+ 	/* Fatal error, close transport */
+ 	return -EIO;
+diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+index 23f90c3..d22a44d 100644
+--- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
++++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+@@ -511,9 +511,9 @@ int svc_rdma_post_recv(struct svcxprt_rdma *xprt)
+ 		ctxt->sge[sge_no].addr = pa;
+ 		ctxt->sge[sge_no].length = PAGE_SIZE;
+ 		ctxt->sge[sge_no].lkey = xprt->sc_dma_lkey;
++		ctxt->count = sge_no + 1;
+ 		buflen += PAGE_SIZE;
+ 	}
+-	ctxt->count = sge_no;
+ 	recv_wr.next = NULL;
+ 	recv_wr.sg_list = &ctxt->sge[0];
+ 	recv_wr.num_sge = ctxt->count;
+@@ -529,6 +529,7 @@ int svc_rdma_post_recv(struct svcxprt_rdma *xprt)
+ 	return ret;
+ 
+  err_put_ctxt:
++	svc_rdma_unmap_dma(ctxt);
+ 	svc_rdma_put_context(ctxt, 1);
+ 	return -ENOMEM;
+ }
+@@ -1306,7 +1307,6 @@ void svc_rdma_send_error(struct svcxprt_rdma *xprt, struct rpcrdma_msg *rmsgp,
+ 			 enum rpcrdma_errcode err)
+ {
+ 	struct ib_send_wr err_wr;
+-	struct ib_sge sge;
+ 	struct page *p;
+ 	struct svc_rdma_op_ctxt *ctxt;
+ 	u32 *va;
+@@ -1319,26 +1319,27 @@ void svc_rdma_send_error(struct svcxprt_rdma *xprt, struct rpcrdma_msg *rmsgp,
+ 	/* XDR encode error */
+ 	length = svc_rdma_xdr_encode_error(xprt, rmsgp, err, va);
+ 
++	ctxt = svc_rdma_get_context(xprt);
++	ctxt->direction = DMA_FROM_DEVICE;
++	ctxt->count = 1;
++	ctxt->pages[0] = p;
++
+ 	/* Prepare SGE for local address */
+-	sge.addr = ib_dma_map_page(xprt->sc_cm_id->device,
+-				   p, 0, PAGE_SIZE, DMA_FROM_DEVICE);
+-	if (ib_dma_mapping_error(xprt->sc_cm_id->device, sge.addr)) {
++	ctxt->sge[0].addr = ib_dma_map_page(xprt->sc_cm_id->device,
++					    p, 0, length, DMA_FROM_DEVICE);
++	if (ib_dma_mapping_error(xprt->sc_cm_id->device, ctxt->sge[0].addr)) {
+ 		put_page(p);
+ 		return;
+ 	}
+ 	atomic_inc(&xprt->sc_dma_used);
+-	sge.lkey = xprt->sc_dma_lkey;
+-	sge.length = length;
+-
+-	ctxt = svc_rdma_get_context(xprt);
+-	ctxt->count = 1;
+-	ctxt->pages[0] = p;
++	ctxt->sge[0].lkey = xprt->sc_dma_lkey;
++	ctxt->sge[0].length = length;
+ 
+ 	/* Prepare SEND WR */
+ 	memset(&err_wr, 0, sizeof err_wr);
+ 	ctxt->wr_op = IB_WR_SEND;
+ 	err_wr.wr_id = (unsigned long)ctxt;
+-	err_wr.sg_list = &sge;
++	err_wr.sg_list = ctxt->sge;
+ 	err_wr.num_sge = 1;
+ 	err_wr.opcode = IB_WR_SEND;
+ 	err_wr.send_flags = IB_SEND_SIGNALED;
+@@ -1348,9 +1349,7 @@ void svc_rdma_send_error(struct svcxprt_rdma *xprt, struct rpcrdma_msg *rmsgp,
+ 	if (ret) {
+ 		dprintk("svcrdma: Error %d posting send for protocol error\n",
+ 			ret);
+-		ib_dma_unmap_page(xprt->sc_cm_id->device,
+-				  sge.addr, PAGE_SIZE,
+-				  DMA_FROM_DEVICE);
++		svc_rdma_unmap_dma(ctxt);
+ 		svc_rdma_put_context(ctxt, 1);
+ 	}
+ }
 
-The right thing to do here (aside from fixing the crummy defconfigs) is
-rather to fix nfs_callback_authenticate() to stop depending on GSS
-private interfaces such as svc_gss_principal().
-
-> > And I'm not sure of the point of the "recursive dependency" comment below...
-> I added this because if kconfig were a bit smarter it would select
-> CRYPTO, too, if asked to select RPCSEC_GSS_KRB5.  On the
-> linux-arm-kernel ML Catalin Marinas already thought about making kconfig
-> smarter and so I wanted to mark the symbol.
->  
-> > I don't fully understand all the issues behind choosing between 'depends' and
-> > 'select' (why isn't is 'selects' I wonder - that would be more consistent...)
-> I think it's an imperative, not a normal present tense?!  And note this
-> is different.  Here it's not depend vs. select but select vs.
-> 
-> 	config SOMESYMBOL
-> 		prompt "sometext" if !(NFS_V4 || NFSD_V4)
-> 		default y
-> 
-> So a dependency for NFS_V4 is hidden in net/sunrpc/Kconfig.
-
-You are simply not supposed to be given the option of turning it off if
-NFSv4 is selected.
-
-Trond
