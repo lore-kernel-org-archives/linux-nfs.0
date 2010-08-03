@@ -1,94 +1,96 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ey0-f174.google.com ([209.85.215.174]:57861 "EHLO
-	mail-ey0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752793Ab0H0TBO (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 27 Aug 2010 15:01:14 -0400
-Received: by eyg5 with SMTP id 5so2339496eyg.19
-        for <linux-nfs@vger.kernel.org>; Fri, 27 Aug 2010 12:01:12 -0700 (PDT)
-In-Reply-To: <AANLkTi=gj901aF_84+40j9MhvAwNJSNB8qRnpY8o0gBZ@mail.gmail.com>
-References: <AANLkTikWR_YSnx=4=KAodATpX+xO9+hj-cf7_e158f4d@mail.gmail.com>
-	<AANLkTi=gj901aF_84+40j9MhvAwNJSNB8qRnpY8o0gBZ@mail.gmail.com>
-Date: Fri, 27 Aug 2010 12:01:12 -0700
-Message-ID: <AANLkTinEoMgXLvN4MvfnCHjHtHCwV1HDP67BoKQ3ZbQx@mail.gmail.com>
-Subject: Re: fsync/wb deadlocks in 2.6.32
-From: Kian Mohageri <kian.mohageri@gmail.com>
-To: davidr@ressman.org
-Cc: linux-nfs@vger.kernel.org, cl@linux-foundation.com
-Content-Type: text/plain; charset=UTF-8
+Received: from rcsinet10.oracle.com ([148.87.113.121]:31771 "EHLO
+	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932121Ab0HCPLi (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 3 Aug 2010 11:11:38 -0400
+Message-ID: <4C583193.4070700@oracle.com>
+Date: Tue, 03 Aug 2010 11:11:15 -0400
+From: Chuck Lever <chuck.lever@oracle.com>
+To: Neil Brown <neilb@suse.de>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: Possible issue with nfs-utils patch: mountd: Replace "struct
+ hostent" with "struct addrinfo"
+References: <20100803172409.1961c5e1@notabene>
+In-Reply-To: <20100803172409.1961c5e1@notabene>
+Content-Type: text/plain; charset=US-ASCII; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Fri, Aug 27, 2010 at 7:16 AM,  <davidr@ressman.org> wrote:
-> Hi all,
+On 08/ 3/10 03:24 AM, Neil Brown wrote:
 >
-> I'm guessing this is uncommon and nobody here has seen it. One of my
-> friends looked through the list archives and discovered commit
-> 0702099bd86c33c2dcdbd3963433a61f3f503901, which looked relevant. I
-> backported it to 2.6.32.18 (if you can call anything involving a one
-> line patch "backporting" :) ), and the problem has not yet returned.
+> Hi Chuck,
+>   I've been reviewing some recent nfs-utils commits prior to possibly
+>   including them in a suse product.
 >
+> I think there is part of
+>
+> commit fbc1b2c8e47ee9371c3565b266f1386575b46920
+> Author: Chuck Lever<chuck.lever@oracle.com>
+> Date:   Tue Jun 22 12:43:01 2010 -0400
+>
+>      mountd: Replace "struct hostent" with "struct addrinfo"
+>
+> which is wrong.  However I'm not sure if it actually breaks something or if
+> the relevant code is effectively dead.
+>
+> The questionable chunk is in check_netgroup
+>
+>
+>          /* If hname is ip address convert to FQDN */
+> -       if (inet_aton(hname,&addr.sin_addr)&&
+> -          (nhp = gethostbyaddr((const char *)&(addr.sin_addr),
+> -           sizeof(addr.sin_addr), AF_INET))) {
+> -               hname = nhp->h_name;
+> +       tmp = host_pton(hname);
+> +       if (tmp != NULL) {
+> +               freeaddrinfo(tmp);
+>                  if (innetgr(netgroup, hname, NULL, NULL))
+>                          return 1;
+>          }
+>
+>
+> The new code is effectively a no-op - it conditionally calls
+>                  if (innetgr(netgroup, hname, NULL, NULL))
+>                          return 1;
+>
+> and if that succeeds, it would have already succeeded near the top of the
+> function so we would not get here.
+>
+> The original code checked if 'hname' looked like an IP address.  If it did it
+> looked up the canonical name and checked that for membership in the netgroup.
+> I'm not entirely sure when check_netgroup (or client_check) would be called
+> with such a string in a context where doing a lookup would make sense.  I
+> hunted through the code and found some rmtab manipulations that could result
+> in this, but I'm not sure.
+>
+> This code was originally added about 9 years ago in what is now commit
+> 86ae664e66c439354cb4f959e9f289059e7760a4
+> which blames it on Anne Milicia<milicia@missioncriticallinux.com>  without
+> any real explanation.  I don't suppose Anne is still around ???
+>
+> Did you think about this at all when you made the patch?  Do you have any
+> thoughts about whether that section of code is still needed?  I don't feel
+> very comfortable removing it without knowing why it is there, and I don't
+> really know why it is there....
 
-Hi David,
+I'm not really able to exercise the netgroup logic here, since I don't 
+use netgroups.  I assumed that since Steve touched this code as recently 
+as last year (see commit 6a72b8af), he would have some test cases to 
+ensure I wasn't breaking anything badly.  He might even know of real 
+customer scenarios that depend on this logic.
 
-Just happened upon this message.  My symptoms are a little different,
-however, and I'm still investigating the possibility of a faulty drive
-on the NFS server.... but thought I'd chime in anyway:
+Anyway, from a local static analysis standpoint, it looks like removing 
+the gethostbyaddr(3) call is a bug.  The code should continue to perform 
+a reverse lookup there to get a new name to use with the second 
+innetgr() call.
 
-[141720.614673] INFO: task apache2:21298 blocked for more than 120 seconds.
-[141720.614704] "echo 0 > /proc/sys/kernel/hung_task_timeout_secs"
-disables this message.
-[141720.614749] apache2       D 0000000000000000     0 21298   1697 0x00000000
-[141720.614752]  ffffffff8145b1f0 0000000000000046 0000000000000000
-0000000000000000
-[141720.614755]  ffff88007c80fc98 0000000000000000 000000000000f8a0
-ffff88007c80ffd8
-[141720.614758]  0000000000015640 0000000000015640 ffff880029b69530
-ffff880029b69828
-[141720.614761] Call Trace:
-[141720.614764]  [<ffffffff810bb72a>] ? pagevec_lookup_tag+0x1a/0x21
-[141720.614771]  [<ffffffffa03f0d54>] ?
-nfs_wait_bit_uninterruptible+0x0/0xd [nfs]
-[141720.614773]  [<ffffffff812f9549>] ? io_schedule+0x73/0xb7
-[141720.614780]  [<ffffffffa03f0d5d>] ?
-nfs_wait_bit_uninterruptible+0x9/0xd [nfs]
-[141720.614783]  [<ffffffff812f9a56>] ? __wait_on_bit+0x41/0x70
-[141720.614785]  [<ffffffff81190848>] ? __lookup_tag+0xad/0x11b
-[141720.614792]  [<ffffffffa03f0d54>] ?
-nfs_wait_bit_uninterruptible+0x0/0xd [nfs]
-[141720.614795]  [<ffffffff812f9af0>] ? out_of_line_wait_on_bit+0x6b/0x77
-[141720.614797]  [<ffffffff81064b28>] ? wake_bit_function+0x0/0x23
-[141720.614805]  [<ffffffffa03f4cff>] ? nfs_sync_mapping_wait+0xfa/0x227 [nfs]
-[141720.614812]  [<ffffffffa03f54e6>] ? nfs_write_mapping+0x69/0x8e [nfs]
-[141720.614815]  [<ffffffff810cf8f5>] ? remove_vma+0x6b/0x72
-[141720.614821]  [<ffffffffa03e83af>] ? nfs_do_fsync+0x1c/0x3c [nfs]
-[141720.614823]  [<ffffffff810ec3ae>] ? filp_close+0x37/0x62
-[141720.614826]  [<ffffffff8104f768>] ? put_files_struct+0x64/0xc1
-[141720.614828]  [<ffffffff81051016>] ? do_exit+0x225/0x6b5
-[141720.614831]  [<ffffffff8105151c>] ? do_group_exit+0x76/0x9d
-[141720.614833]  [<ffffffff81051555>] ? sys_exit_group+0x12/0x16
-[141720.614836]  [<ffffffff81010b42>] ? system_call_fastpath+0x16/0x1b
-[141758.556016] nfs: server 10.20.153.68 not responding, still trying
-[141758.556790] nfs: server 10.20.153.68 OK
+I recommend this: using the new calls I added, the thing to do is pass 
+tmp->ai_addr to host_canonname(), and then call freeaddrinfo(tmp).  The 
+string returned by host_canonname() can then be passed to the second 
+innetgr(3) call, but needs to be freed before check_netgroup() can 
+return to its caller.  That would allow somewhat more confidence that 
+the semantics of this function don't change.  If you like, I can code 
+something and post it.
 
-
-2 clients + 1 server, all are Debian Squeeze (2.6.32-5-amd64).
-
-Client mount options:
-10.20.153.68:/ on /mnt/data type nfs4
-(rw,sync,noatime,lookupcache=none,noac,addr=10.20.153.68,clientaddr=10.20.153.70)
-
-Server:
-/srv/nfs4
-10.20.153.70/26(rw,sync,fsid=0,no_subtree_check,no_root_squash)
-
-
-ii  nfs-common                          1:1.2.2-1
-NFS support files common to client and serve
-ii  nfs-kernel-server                   1:1.2.2-1
-support for NFS kernel server
-
-Seeing the same thing you are with iowait but of course, if it's the
-server at fault, I might expect that.
-
--Kian
+Thanks much for the careful review.
