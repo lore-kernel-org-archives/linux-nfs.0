@@ -1,60 +1,55 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:6955 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:41884 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752227Ab0HROo1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 18 Aug 2010 10:44:27 -0400
-From: andros@netapp.com
-To: bhalevy@panasas.com
-Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
-Subject: [PATCH 04/11] SQUASHME pnfs-submit rename pnfs_layout_type 4
-Date: Wed, 18 Aug 2010 10:44:11 -0400
-Message-Id: <1282142658-21579-5-git-send-email-andros@netapp.com>
-In-Reply-To: <1282142658-21579-4-git-send-email-andros@netapp.com>
-References: <1282142658-21579-1-git-send-email-andros@netapp.com>
- <1282142658-21579-2-git-send-email-andros@netapp.com>
- <1282142658-21579-3-git-send-email-andros@netapp.com>
- <1282142658-21579-4-git-send-email-andros@netapp.com>
+	id S1756232Ab0HCTYC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 3 Aug 2010 15:24:02 -0400
+Date: Tue, 3 Aug 2010 15:22:41 -0400
+To: Victor =?utf-8?Q?Matar=C3=A9?= <dreck@vmsd.ath.cx>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: numeric UIDs
+Message-ID: <20100803192241.GD31579@fieldses.org>
+References: <201008030401.33552.dreck@vmsd.ath.cx>
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <201008030401.33552.dreck@vmsd.ath.cx>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Andy Adamson <andros@netapp.com>
+On Tue, Aug 03, 2010 at 04:01:32AM +0200, Victor Mataré wrote:
+> Hello,
+> 
+> I still hope I'm mistaken in assuming I have to go back to NFSv3 if I want to 
+> skip NFSv4 UID mapping altogether and just use the numeric UIDs the way 
+> they're stored on-disk. However if that's actually true, I'd like to try and 
+> make a case for implementing an option to turn off UID mapping completely (or 
+> at least for unknown UIDs). If this is already work in progress, just ignore 
+> this mail.
+> 
+> Thing is, the forced UID mapping seems to make tasks like backing up data a 
+> little inconvenient. You might want to preserve UIDs that are only known to 
+> the client.
+> But when you copy an entire root filesystem, it becomes outright destructive, 
+> because the rootfs will probably have several accounts that the server can't 
+> be expected know. Just imagine a server that's used for maintenance (like 
+> backing up and replacing hard drives) of random (foreign) systems. Idmapd will 
+> map all unknown UIDs to a single value and thereby destroy that information.
+> 
+> I think I read somewhere
 
-squash into pnfs_submit: layoutget
+Pointer?
 
-Signed-off-by: Andy Adamson <andros@netapp.com>
----
- fs/nfs/pnfs.c |    2 +-
- fs/nfs/pnfs.h |    2 +-
- 2 files changed, 2 insertions(+), 2 deletions(-)
+--b.
 
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 98f53c2..fdc4028 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -348,7 +348,7 @@ put_layout(struct inode *inode)
- }
- 
- void
--pnfs_layout_release(struct pnfs_layout_type *lo,
-+pnfs_layout_release(struct pnfs_layout_hdr *lo,
- 		    struct nfs4_pnfs_layout_segment *range)
- {
- 	struct nfs_inode *nfsi = PNFS_NFS_INODE(lo);
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index 7da54fe..e39af4f 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -58,7 +58,7 @@ void pnfs_pageio_init_read(struct nfs_pageio_descriptor *, struct inode *,
- void pnfs_pageio_init_write(struct nfs_pageio_descriptor *, struct inode *);
- void pnfs_get_layout_done(struct nfs4_pnfs_layoutget *, int rpc_status);
- int pnfs_layout_process(struct nfs4_pnfs_layoutget *lgp);
--void pnfs_layout_release(struct pnfs_layout_type *, struct nfs4_pnfs_layout_segment *range);
-+void pnfs_layout_release(struct pnfs_layout_hdr *, struct nfs4_pnfs_layout_segment *range);
- void pnfs_set_layout_stateid(struct pnfs_layout_hdr *lo,
- 			     const nfs4_stateid *stateid);
- void pnfs_destroy_layout(struct nfs_inode *);
--- 
-1.6.2.5
-
+> that the Sun people already have a way of handling 
+> this. Any chance Linux could do that, too?
+> 
+> Please excuse me if I'm barking up the wrong tree. If this has already been 
+> discussed, I'd appreciate a pointer.
+> 
+> Thanks,
+> Victor
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
