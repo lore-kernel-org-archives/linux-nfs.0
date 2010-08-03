@@ -1,67 +1,65 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:56307 "EHLO fieldses.org"
+Received: from mail-out1.uio.no ([129.240.10.57]:55954 "EHLO mail-out1.uio.no"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750705Ab0HQTbq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 17 Aug 2010 15:31:46 -0400
-Date: Tue, 17 Aug 2010 15:29:38 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Alan Cox <alan@lxorguk.ukuu.org.uk>
-Cc: "Patrick J. LoPresti" <lopresti@gmail.com>,
-        Andi Kleen <andi@firstfloor.org>, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-kernel <linux-kernel@vger.kernel.org>
-Subject: Re: Proposal: Use hi-res clock for file timestamps
-Message-ID: <20100817192937.GD26609@fieldses.org>
-References: <AANLkTimnyXKahtjaFeSsgcq=xMy-pP3na1jidQhZ-dt2@mail.gmail.com>
- <87aaolwar8.fsf@basil.nowhere.org>
- <20100817174134.GA23176@fieldses.org>
- <20100817182920.GD18161@basil.fritz.box>
- <20100817190447.GA28049@fieldses.org>
- <AANLkTi=w1UA5ZZDBigpxMiL7A7DnbnQhLkg62JZpC6Ri@mail.gmail.com>
- <20100817203941.729830b7@lxorguk.ukuu.org.uk>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20100817203941.729830b7@lxorguk.ukuu.org.uk>
+	id S1756363Ab0HCSkV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 3 Aug 2010 14:40:21 -0400
+Subject: Re: sunrpc: what prevents an xprt from being freed before
+ task_cleanup runs?
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+To: Jeff Layton <jlayton@redhat.com>
+Cc: linux-nfs@vger.kernel.org, netdev@vger.kernel.org, bfields@fieldses.org
+In-Reply-To: <20100803132453.4fa18444@tlielax.poochiereds.net>
+References: <20100803132453.4fa18444@tlielax.poochiereds.net>
+Content-Type: text/plain; charset="UTF-8"
+Date: Tue, 03 Aug 2010 14:40:15 -0400
+Message-ID: <1280860815.9771.25.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Tue, Aug 17, 2010 at 08:39:41PM +0100, Alan Cox wrote:
-> > The problem with "increment mtime by a nanosecond when necessary" is
-> > that timestamps can wind up out of order.  As in:
+On Tue, 2010-08-03 at 13:24 -0400, Jeff Layton wrote:
+> We got a report recently about a panic in RHEL5 (2.6.18 based kernel).
+> The problem appears to be that a task_cleanup workqueue job ran and got
+> passed a pointer to an xprt that had been freed. The bug is here in
+> case anyone is interested in the details:
 > 
-> Surely that depends on your implementation ?
+>     https://bugzilla.redhat.com/show_bug.cgi?id=611938
 > 
-> > 1) Do a bunch of operations on file A
-> > 2) Do one operation on file B
-> > 
-> > Imagine each operation on A incrementing its timestamp by a nanosecond
-> > "just because".  If all of these operations happen in less than 4 ms,
-> > you can wind up with the timestamp on B being EARLIER than the
-> > timestamp on A.  That is a big no-no (think "make" or anything else
-> > relying on timestamps for relative times).
+> The situation seems to be pretty difficult to reproduce, but I don't
+> see anything that's intended to ensure that this doesn't occur in RHEL5
+> or mainline. The task_cleanup workqueue job doesn't hold a reference to
+> the xprt, and the job isn't canceled when the xprt is torn down.
 > 
+> Bruce had a look and suggested that we may need something like the
+> patch below (pasted in, so it probably won't apply correctly). I've
+> tested a backported version of it on RHEL5 and it seems to work fine.
 > 
-> [time resolution bits of data][value incremented value for that time]
+> Is it reasonable to cancel task_cleanup when destroying the xprt? Or,
+> am I missing something that should prevent this situation in mainline
+> (and perhaps isn't in RHEL5's kernel).
 > 
+> Any help is appreciated...
 > 
-> 	if (time_now == time_last)
-> 		return { time_last , ++ct };
-> 	else {
-> 		ct = 0;
-> 		time_last = time_now
-> 		return { time_last , 0 };
-> 	}
+> -----------------------------[snip]---------------------------------
+> diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
+> index dcd0132..2a1f664 100644
+> --- a/net/sunrpc/xprt.c
+> +++ b/net/sunrpc/xprt.c
+> @@ -1129,6 +1129,7 @@ static void xprt_destroy(struct kref *kref)
+>   rpc_destroy_wait_queue(&xprt->sending);
+>   rpc_destroy_wait_queue(&xprt->resend);
+>   rpc_destroy_wait_queue(&xprt->backlog);
+> + cancel_work_sync(&xprt->task_cleanup);
+>   /*
+>    * Tear down transport state and free the rpc_xprt
+>    */
+> -----------------------------[snip]---------------------------------
 > 
-> providing it is done with the same 'ct' across the fs and you can't do
-> enough ops/second to wrap the nanosecs - which should be fine for now,
-> your ordering is still safe is it not ?
+> Thanks,
 
-Right, so if I understand correctly, you're proposing a time source
-that's global to the filesystem and that guarantees it will always
-return a unique value by incrementing the nanoseconds field if jiffies
-haven't changed since the last time it was called.
+How about doing a wait_on_bit_lock(&xprt->state, XPRT_LOCKED,...)
+instead?
 
-(Does it really need to be global across all filesystems?  Or is it
-unreasonable to expect your unbelievably-fast make's to behave well when
-sources and targets live on different filesystems?)
+Cheers
+   Trond
 
---b.
