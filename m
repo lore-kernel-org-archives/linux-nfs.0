@@ -1,86 +1,57 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.mail.elte.hu ([157.181.151.9]:40960 "EHLO mx2.mail.elte.hu"
+Received: from mx1.redhat.com ([209.132.183.28]:28907 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751368Ab0HAGo1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 1 Aug 2010 02:44:27 -0400
-Date: Sun, 1 Aug 2010 08:44:15 +0200
-From: Ingo Molnar <mingo@elte.hu>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: Linus Torvalds <torvalds@linux-foundation.org>, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, Randy Dunlap <rdunlap@xenotime.net>
-Subject: [PATCH] NFS: Fix build failure on !CONFIG_NFS_V3 && !CONFIG_NFS_V3
-Message-ID: <20100801064415.GA10523@elte.hu>
-References: <1280519035.12852.32.camel@heimdal.trondhjem.org>
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <1280519035.12852.32.camel@heimdal.trondhjem.org>
+	id S1751882Ab0HCRZB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 3 Aug 2010 13:25:01 -0400
+Date: Tue, 3 Aug 2010 13:24:53 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: netdev@vger.kernel.org, bfields@fieldses.org
+Subject: sunrpc: what prevents an xprt from being freed before task_cleanup
+ runs?
+Message-ID: <20100803132453.4fa18444@tlielax.poochiereds.net>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+We got a report recently about a panic in RHEL5 (2.6.18 based kernel).
+The problem appears to be that a task_cleanup workqueue job ran and got
+passed a pointer to an xprt that had been freed. The bug is here in
+case anyone is interested in the details:
 
-* Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
+    https://bugzilla.redhat.com/show_bug.cgi?id=611938
 
-> Hi Linus,
-> 
-> Please pull from the "bugfixes" branch of the repository at
-> 
->    git pull git://git.linux-nfs.org/projects/trondmy/nfs-2.6.git bugfixes
-> 
-> This will update the following files through the appended changesets.
-> 
->   Cheers,
->     Trond
-> 
-> ----
->  fs/nfs/file.c          |   13 +++++++++++--
->  fs/nfs/nfsroot.c       |    2 +-
->  fs/nfs/write.c         |   27 +++++++++++++++++++--------
->  include/linux/nfs_fs.h |    1 +
->  4 files changed, 32 insertions(+), 11 deletions(-)
+The situation seems to be pretty difficult to reproduce, but I don't
+see anything that's intended to ensure that this doesn't occur in RHEL5
+or mainline. The task_cleanup workqueue job doesn't hold a reference to
+the xprt, and the job isn't canceled when the xprt is torn down.
 
-FYI, these commits introduced a build failure on x86:
+Bruce had a look and suggested that we may need something like the
+patch below (pasted in, so it probably won't apply correctly). I've
+tested a backported version of it on RHEL5 and it seems to work fine.
 
-  fs/nfs/file.c:508: error: implicit declaration of function ‘nfs_commit_inode’
+Is it reasonable to cancel task_cleanup when destroying the xprt? Or,
+am I missing something that should prevent this situation in mainline
+(and perhaps isn't in RHEL5's kernel).
 
-The nfs_commit_inode() prototype:
+Any help is appreciated...
 
- #if defined(CONFIG_NFS_V3) || defined(CONFIG_NFS_V4)
- extern int  nfs_commit_inode(struct inode *, int);
- extern struct nfs_write_data *nfs_commitdata_alloc(void);
- extern void nfs_commit_free(struct nfs_write_data *wdata);
- #endif
-
-is missing if the kernel is configured for legacy NFS:
-
- CONFIG_NFS_FS=y
- # CONFIG_NFS_V3 is not set
- # CONFIG_NFS_V4 is not set
-
-The fix below solves the build problem here, but I have not tested whether NFS 
-still works fine for this config.
+-----------------------------[snip]---------------------------------
+diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
+index dcd0132..2a1f664 100644
+--- a/net/sunrpc/xprt.c
++++ b/net/sunrpc/xprt.c
+@@ -1129,6 +1129,7 @@ static void xprt_destroy(struct kref *kref)
+  rpc_destroy_wait_queue(&xprt->sending);
+  rpc_destroy_wait_queue(&xprt->resend);
+  rpc_destroy_wait_queue(&xprt->backlog);
++ cancel_work_sync(&xprt->task_cleanup);
+  /*
+   * Tear down transport state and free the rpc_xprt
+   */
+-----------------------------[snip]---------------------------------
 
 Thanks,
-
-	Ingo
-
-Signed-off-by: Ingo Molnar <mingo@elte.hu>
----
- include/linux/nfs_fs.h |    2 --
- 1 files changed, 0 insertions(+), 2 deletions(-)
-
-diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
-index f6e2455..bf145c6 100644
---- a/include/linux/nfs_fs.h
-+++ b/include/linux/nfs_fs.h
-@@ -492,11 +492,9 @@ extern int nfs_writeback_done(struct rpc_task *, struct nfs_write_data *);
- extern int nfs_wb_all(struct inode *inode);
- extern int nfs_wb_page(struct inode *inode, struct page* page);
- extern int nfs_wb_page_cancel(struct inode *inode, struct page* page);
--#if defined(CONFIG_NFS_V3) || defined(CONFIG_NFS_V4)
- extern int  nfs_commit_inode(struct inode *, int);
- extern struct nfs_write_data *nfs_commitdata_alloc(void);
- extern void nfs_commit_free(struct nfs_write_data *wdata);
--#endif
- 
- static inline int
- nfs_have_writebacks(struct inode *inode)
+-- 
+Jeff Layton <jlayton@redhat.com>
