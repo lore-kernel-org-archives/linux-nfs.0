@@ -1,43 +1,40 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: Jul 22 23:53:35 serverNameNX: svc: unknown version (0 for prog
- 100003 nfsd)
-Date: Tue, 3 Aug 2010 15:55:00 -0400
-Message-ID: <20100803195500.GF31579@fieldses.org>
-References: <4C495DBA.6090600@limepepper.co.uk>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: [PATCH] SUNRPC: prevent task_cleanup running on freed xprt
+Date: Tue, 03 Aug 2010 17:32:22 -0400
+Message-ID: <1280871142.14520.7.camel@heimdal.trondhjem.org>
+References: <20100803132453.4fa18444@tlielax.poochiereds.net>
+	 <1280860815.9771.25.camel@heimdal.trondhjem.org>
+	 <1280861363.12283.2.camel@heimdal.trondhjem.org>
+	 <20100803212220.GI31579@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs@vger.kernel.org
-To: Tom H <tom-6kxvdouIZplzjhtm8Ag3mw@public.gmane.org>
+Content-Type: text/plain; charset="UTF-8"
+Cc: Jeff Layton <jlayton@redhat.com>, linux-nfs@vger.kernel.org,
+	netdev@vger.kernel.org
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:33857 "EHLO fieldses.org"
+Received: from mail-out1.uio.no ([129.240.10.57]:54787 "EHLO mail-out1.uio.no"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756326Ab0HCT4W (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 3 Aug 2010 15:56:22 -0400
-In-Reply-To: <4C495DBA.6090600-6kxvdouIZplzjhtm8Ag3mw@public.gmane.org>
+	id S1751453Ab0HCVc2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 3 Aug 2010 17:32:28 -0400
+In-Reply-To: <20100803212220.GI31579@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Jul 23, 2010 at 10:15:38AM +0100, Tom H wrote:
+On Tue, 2010-08-03 at 17:22 -0400, J. Bruce Fields wrote:
+> From: J. Bruce Fields <bfields@redhat.com>
 > 
-> Hi,
+> We saw a report of a NULL dereference in xprt_autoclose:
 > 
-> Since last week my syslog is full of these messages;
+> 	https://bugzilla.redhat.com/show_bug.cgi?id=611938
 > 
+> This appears to be the result of an xprt's task_cleanup running after
+> the xprt is destroyed.  Nothing in the current code appears to prevent
+> that.
 > 
->  Jul 22 23:53:35 serverNameNX: svc: unknown version (0 for prog 100003
->  nfsd)
-> 
-> <http://serverfault.com/questions/163306/jul-22-235335-servernamexxx-svc-unknown-version-0-for-prog-100003-nfsd>
-> 
-> 
-> I think it is since we started to monitor for rpcinfo -p serverNameNX
-> remotely.
+> Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+> ---
 
-I don't see why rpcinfo -p should be sending version 0 nfsd packets.
+Thanks. Applied to nfs-for-2.6.36...
 
-> Any suggestions on what I can do to either understand or suppress this
-> alert?
+Trond
 
-We should probably just remove it some day.
-
---b.
