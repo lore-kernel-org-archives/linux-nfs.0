@@ -1,37 +1,37 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([18.85.46.34]:43080 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750963Ab0HRU3K (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 18 Aug 2010 16:29:10 -0400
-Date: Wed, 18 Aug 2010 16:29:09 -0400
-From: Christoph Hellwig <hch@infradead.org>
-To: andros@netapp.com
-Cc: bhalevy@panasas.com, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 10/50] pnfs_submit: register unregister pnfs module
-Message-ID: <20100818202909.GD16851@infradead.org>
-References: <1281735122-1496-2-git-send-email-andros@netapp.com>
- <1281735122-1496-3-git-send-email-andros@netapp.com>
- <1281735122-1496-4-git-send-email-andros@netapp.com>
- <1281735122-1496-5-git-send-email-andros@netapp.com>
- <1281735122-1496-6-git-send-email-andros@netapp.com>
- <1281735122-1496-7-git-send-email-andros@netapp.com>
- <1281735122-1496-8-git-send-email-andros@netapp.com>
- <1281735122-1496-9-git-send-email-andros@netapp.com>
- <1281735122-1496-10-git-send-email-andros@netapp.com>
- <1281735122-1496-11-git-send-email-andros@netapp.com>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1281735122-1496-11-git-send-email-andros@netapp.com>
+Received: from fieldses.org ([174.143.236.118]:41882 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754421Ab0HCTXh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 3 Aug 2010 15:23:37 -0400
+Date: Tue, 3 Aug 2010 15:22:16 -0400
+To: Jim Rees <rees@umich.edu>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: numeric UIDs
+Message-ID: <20100803192216.GC31579@fieldses.org>
+References: <201008030401.33552.dreck@vmsd.ath.cx>
+ <20100803164318.GB13896@merit.edu>
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <20100803164318.GB13896@merit.edu>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-> +#ifdef CONFIG_NFS_V4_1
-> +	err = pnfs_initialize();
-> +	if (err)
-> +		goto out00;
-> +#endif /* CONFIG_NFS_V4_1 */
+On Tue, Aug 03, 2010 at 12:43:18PM -0400, Jim Rees wrote:
+> Victor Mataré wrote:
+> 
+>   I'd like to try and 
+>   make a case for implementing an option to turn off UID mapping completely (or 
+>   at least for unknown UIDs).
+> 
+> I've always thought this would be useful too, just as an option for auth_sys
+> of course.  Some people think it's a security problem but since there is no
+> security in an auth_sys mount I don't see what the issue is.
 
-Unless the pnfs code goes into it's own module anyway this really
-screams for stubs for the !CONFIG_NFS_V4_1 case to avoid all the
-ifdef mess.
+I'm not sure what the security flavor has to do with it.
 
+I'll admit I like the idea of a v2/v3-compatibility mode that uses
+(ascii-encoded) uid's only, though I think it's a technical violation of
+the spec.
+
+--b.
