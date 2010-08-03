@@ -1,57 +1,132 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:64282 "EHLO
-	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752008Ab0HMVQY convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 13 Aug 2010 17:16:24 -0400
-Subject: Re: NFS and file locking for use with sqllite
-Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <AANLkTik_gAeTWhD_=zSUrqh2eYir=q4bK4cJ6UdGQ11M@mail.gmail.com>
-Date: Fri, 13 Aug 2010 17:15:40 -0400
+Received: from fieldses.org ([174.143.236.118]:37446 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757332Ab0HCTpF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 3 Aug 2010 15:45:05 -0400
+Date: Tue, 3 Aug 2010 15:43:42 -0400
+To: Michael Guntsche <mike@it-loops.com>
 Cc: linux-nfs@vger.kernel.org
-Message-Id: <0C88B758-1DE8-4CFB-9546-A30104009A12@oracle.com>
-References: <AANLkTik_gAeTWhD_=zSUrqh2eYir=q4bK4cJ6UdGQ11M@mail.gmail.com>
-To: Rahul Nabar <rpnabar@gmail.com>
+Subject: Re: Kerberos auth Problem with nfs3/4
+Message-ID: <20100803194342.GE31579@fieldses.org>
+References: <20100803154556.GA6262@gibson.comsick.at>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20100803154556.GA6262@gibson.comsick.at>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-
-On Aug 13, 2010, at 4:54 PM, Rahul Nabar wrote:
-
-> I came across a snippet in the sqlite FAQ that warns against using
-> some network file-systems due to file locking bugs. In the past I've
-> had excellent experiences using NFS+Linux (CentOS) so was wondering if
-> people had comments if or not this (fairly vague) warning might apply
-> to NFS or not at all?
+On Tue, Aug 03, 2010 at 05:45:56PM +0200, Michael Guntsche wrote:
+> Hi,
 > 
-> From the sqlite FAQ:
+> I recently tried re-enabling a kerberos setup here after running with
+> sec=sys for a while. Now the problem is that mount the export with
+> sec=krb5 just hangs.
 > 
-> .........the file locking logic of many network filesystems
-> implementation contains bugs (on both Unix and Windows). If file
-> locking does not work like it should, it might be possible for two or
-> more client programs to modify the same part of the same database at
-> the same time, resulting in database corruption..........
-
-It's really not clear what is meant by this vague warning.  Maybe you should ask for details from the sqlite development community.
-
-> Does file-locking in NFS work "as it should". Is this dependent on the
-> particular options I pass to the NFS mount? e.g. I usually use hard
-> mounts with the intr option.
-> A snippet from my fstab:
+> To rule everything out I tried mount from the server itself.
 > 
-> eustorage:/opt /opt nfs
-> rw,nodev,noatime,nfsvers=3,timeo=110,retrans=50,hard,intr,proto=udp,rsize=32768,wsize=32768
-> 0 0
+> mount gibson:/export /mnt
 > 
-> If I desired the ideal file-locking properties should I be modifying /
-> adding any particular option?
+> The mount just hangs and does not return.
+> This is happening on a debian sid system with nfs-utils 1.2.2 installed.
 
-You have two choices on Linux clients:  "lock" and "nolock".  They control whether file locks appear to other clients or not.  I assume your applications cares about serialization with processes only on the same client where it is running.  Mount options almost certainly do not matter in this case.
+You might try the following (in upstream nfs-utils)?
 
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+--b.
 
+commit 6ca440c2661dccb05ae74ffb65817e9c30f05c8a
+Author: Steve Dickson <steved@redhat.com>
+Date:   Mon Mar 8 11:22:46 2010 -0500
 
+    mountd: fix --manage-gids hang due to int/uint bug
+    
+    A uid or gid should be represented as unsigned, not signed.
+    
+    The conversion to signed here could cause a hang on access by an unknown
+    user to a server running mountd with --manage-gids; such a user is
+    likely to be mapped to 232-1, which may be converted to 231-1 when
+    represented as an int, resulting in a downcall for uid 231-1, hence the
+    original rpc hanging forever waiting for a cache downcall for 232-1.
+    
+    Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
+    Signed-off-by: Steve Dickson <steved@redhat.com>
 
+diff --git a/support/nfs/cacheio.c b/support/nfs/cacheio.c
+index bdf5d84..0587ecb 100644
+--- a/support/nfs/cacheio.c
++++ b/support/nfs/cacheio.c
+@@ -148,6 +148,11 @@ void qword_printint(FILE *f, int num)
+ 	fprintf(f, "%d ", num);
+ }
+ 
++void qword_printuint(FILE *f, unsigned int num)
++{
++	fprintf(f, "%u ", num);
++}
++
+ int qword_eol(FILE *f)
+ {
+ 	int err;
+@@ -236,6 +241,20 @@ int qword_get_int(char **bpp, int *anint)
+ 	return 0;
+ }
+ 
++int qword_get_uint(char *bpp, unsigned int *anint)
++{
++	char buf[50];
++	char *ep;
++	unsigned int rv;
++	int len = qword_get(bpp, buf, 50);
++	if (len < 0) return -1;
++	if (len ==0) return -1;
++	rv = strtoul(buf, &ep, 0);
++	if (*ep) return -1;
++	*anint = rv;
++	return 0;
++}
++
+ #define READLINE_BUFFER_INCREMENT 2048
+ 
+ int readline(int fd, char **buf, int *lenp)
+diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c
+index d63e10a..b6c148f 100644
+--- a/utils/mountd/cache.c
++++ b/utils/mountd/cache.c
+@@ -125,7 +125,7 @@ void auth_unix_gid(FILE *f)
+ 	 * reply is
+ 	 *  uid expiry count list of group ids
+ 	 */
+-	int uid;
++	uid_t uid;
+ 	struct passwd *pw;
+ 	gid_t glist[100], *groups = glist;
+ 	int ngroups = 100;
+@@ -136,7 +136,7 @@ void auth_unix_gid(FILE *f)
+ 		return;
+ 
+ 	cp = lbuf;
+-	if (qword_get_int(&cp, &uid) != 0)
++	if (qword_get_uint(&cp, &uid) != 0)
+ 		return;
+ 
+ 	pw = getpwuid(uid);
+@@ -153,14 +153,14 @@ void auth_unix_gid(FILE *f)
+ 						  groups, &ngroups);
+ 		}
+ 	}
+-	qword_printint(f, uid);
+-	qword_printint(f, time(0)+30*60);
++	qword_printuint(f, uid);
++	qword_printuint(f, time(0)+30*60);
+ 	if (rv >= 0) {
+-		qword_printint(f, ngroups);
++		qword_printuint(f, ngroups);
+ 		for (i=0; i<ngroups; i++)
+-			qword_printint(f, groups[i]);
++			qword_printuint(f, groups[i]);
+ 	} else
+-		qword_printint(f, 0);
++		qword_printuint(f, 0);
+ 	qword_eol(f);
+ 
+ 	if (groups != glist)
