@@ -1,82 +1,145 @@
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: Re: [PATCH 4/4] rpcrdma: Fix SQ size calculation when memreg is
- FRMR
-Date: Tue, 03 Aug 2010 22:40:14 -0400
-Message-ID: <1280889614.24669.29.camel@heimdal.trondhjem.org>
-References: <20100803164411.2567.31416.stgit@build.ogc.int>
-	 <20100803164517.2567.50208.stgit@build.ogc.int>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org, swise@ogc.us
-To: Tom Tucker <tom@ogc.us>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: [PATCH] Fix IP address check in check_netgroup()
+Date: Wed, 4 Aug 2010 10:58:50 -0400
+Message-ID: <7D005326-D41F-4EA9-B6B8-C4987B534950@oracle.com>
+References: <20100803191107.19326.19237.stgit@seurat.1015granger.net> <20100804102913.207c1a4d@notabene>
+Mime-Version: 1.0 (Apple Message framework v1081)
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-nfs@vger.kernel.org
+To: Neil Brown <neilb@suse.de>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:40400 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756777Ab0HDCkc convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 3 Aug 2010 22:40:32 -0400
-In-Reply-To: <20100803164517.2567.50208.stgit-T4OLL4TyM9aNDNWfRnPdfg@public.gmane.org>
+Received: from rcsinet10.oracle.com ([148.87.113.121]:50925 "EHLO
+	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932985Ab0HDPAB convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 4 Aug 2010 11:00:01 -0400
+In-Reply-To: <20100804102913.207c1a4d@notabene>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Tom
 
-On Tue, 2010-08-03 at 11:45 -0500, Tom Tucker wrote:
-> This patch updates the computation to include the worst case situation
-> where three FRMR are required to map a single RPC REQ.
-> 
-> Signed-off-by: Tom Tucker <tom@ogc.us>
-> ---
-> 
->  net/sunrpc/xprtrdma/rpc_rdma.c |    2 ++
->  net/sunrpc/xprtrdma/verbs.c    |   20 ++++++++++++++++----
->  2 files changed, 18 insertions(+), 4 deletions(-)
-> 
-> diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
-> index e5e28d1..2ac3f6e 100644
-> --- a/net/sunrpc/xprtrdma/rpc_rdma.c
-> +++ b/net/sunrpc/xprtrdma/rpc_rdma.c
-> @@ -249,6 +249,8 @@ rpcrdma_create_chunks(struct rpc_rqst *rqst, struct xdr_buf *target,
->  	req->rl_nchunks = nchunks;
->  
->  	BUG_ON(nchunks == 0);
-> +	BUG_ON((r_xprt->rx_ia.ri_memreg_strategy == RPCRDMA_FRMR)
-> +	       && (nchunks > 3));
+On Aug 3, 2010, at 8:29 PM, Neil Brown wrote:
 
-Where does the number 3 come from?
-
->  	/*
->  	 * finish off header. If write, marshal discrim and nchunks.
-> diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-> index 3bdbd9f..5f4c7b3 100644
-> --- a/net/sunrpc/xprtrdma/verbs.c
-> +++ b/net/sunrpc/xprtrdma/verbs.c
-> @@ -650,10 +650,22 @@ rpcrdma_ep_create(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia,
->  	ep->rep_attr.cap.max_send_wr = cdata->max_requests;
->  	switch (ia->ri_memreg_strategy) {
->  	case RPCRDMA_FRMR:
-> -		/* Add room for frmr register and invalidate WRs */
-> -		ep->rep_attr.cap.max_send_wr *= 3;
-> -		if (ep->rep_attr.cap.max_send_wr > devattr.max_qp_wr)
-> -			return -EINVAL;
-> +		/* Add room for frmr register and invalidate WRs.
-> +		 * 1. FRMR reg WR for head
-> +		 * 2. FRMR invalidate WR for head
-> +		 * 3. FRMR reg WR for pagelist
-> +		 * 4. FRMR invalidate WR for pagelist
-> +		 * 5. FRMR reg WR for tail
-> +		 * 6. FRMR invalidate WR for tail
-> +		 * 7. The RDMA_SEND WR
-> +		 */
-> +		ep->rep_attr.cap.max_send_wr *= 7;
-> +		if (ep->rep_attr.cap.max_send_wr > devattr.max_qp_wr) {
-> +			cdata->max_requests = devattr.max_qp_wr / 7;
-> +			if (!cdata->max_requests)
-> +				return -EINVAL;
-> +			ep->rep_attr.cap.max_send_wr = cdata->max_requests * 7;
-> +		}
->  		break;
->  	case RPCRDMA_MEMWINDOWS_ASYNC:
->  	case RPCRDMA_MEMWINDOWS:
+> On Tue, 03 Aug 2010 15:13:06 -0400
+> Chuck Lever <chuck.lever@oracle.com> wrote:
 > 
+>> Neil Brown reports that recent changes to replace
+>> gethostby{addr,name}(3) with get{addr,info}name(3) may have
+>> inadvertently broken netgroup support.  There used to be a
+>> gethostbyaddr(3) call in the third paragraph in check_netgroup().
+>> 
+>> See http://marc.info/?l=linux-nfs&m=128084830214653&w=2 .
+>> 
+>> Introduced by commit 0509d3428f523776ddd9d6e9fa318587d3ec7d84.
+>> 
+>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> 
+> Thanks Chuck - that look good, except .....
+> 
+> 
+>> ---
+>> 
+>> Compile-tested only.
+>> 
+>> support/export/client.c |   37 ++++++++++++++++++++++++++++---------
+>> 1 files changed, 28 insertions(+), 9 deletions(-)
+>> 
+>> diff --git a/support/export/client.c b/support/export/client.c
+>> index 91b17f3..0d34a55 100644
+>> --- a/support/export/client.c
+>> +++ b/support/export/client.c
+>> @@ -583,43 +583,62 @@ static int
+>> check_netgroup(const nfs_client *clp, const struct addrinfo *ai)
+>> {
+>> 	const char *netgroup = clp->m_hostname + 1;
+>> -	const char *hname = ai->ai_canonname;
+>> 	struct addrinfo *tmp = NULL;
+>> 	struct hostent *hp;
+>> +	char *dot, *hname;
+>> 	int i, match;
+>> -	char *dot;
+>> +
+>> +	match = 0;
+>> +
+>> +	hname = strdup(ai->ai_canonname);
+>> +	if (hname == NULL) {
+>> +		xlog(D_GENERAL, "%s: no memory for strdup", __func__);
+>> +		goto out;
+>> +	}
+>> 
+>> 	/* First, try to match the hostname without
+>> 	 * splitting off the domain */
+>> -	if (innetgr(netgroup, hname, NULL, NULL))
+>> -		return 1;
+>> +	if (innetgr(netgroup, hname, NULL, NULL)) {
+>> +		match = 1;
+>> +		goto out;
+>> +	}
+>> 
+>> 	/* See if hname aliases listed in /etc/hosts or nis[+]
+>> 	 * match the requested netgroup */
+>> 	hp = gethostbyname(hname);
+>> 	if (hp != NULL) {
+>> 		for (i = 0; hp->h_aliases[i]; i++)
+>> -			if (innetgr(netgroup, hp->h_aliases[i], NULL, NULL))
+>> -				return 1;
+>> +			if (innetgr(netgroup, hp->h_aliases[i], NULL, NULL)) {
+>> +				match = 1;
+>> +				goto out;
+>> +			}
+>> 	}
+>> 
+>> 	/* If hname is ip address convert to FQDN */
+>> 	tmp = host_pton(hname);
+>> 	if (tmp != NULL) {
+>> +		char *cname = host_canonname(tmp->ai_addr);
+>> 		freeaddrinfo(tmp);
+>> -		if (innetgr(netgroup, hname, NULL, NULL))
+>> -			return 1;
+>> +		if (cname != NULL) {
+>> +			hname = cname;
+> 
+> You need to "free(hname)" before assigning cname to it.
+> Also ...
+> 
+>> +			if (innetgr(netgroup, hname, NULL, NULL)) {
+>> +				match = 1;
+>> +				goto out;
+>> +			}
+>> +		}
+>> 	}
+>> 
+>> 	/* Okay, strip off the domain (if we have one) */
+>> 	dot = strchr(hname, '.');
+>> 	if (dot == NULL)
+>> -		return 0;
+>> +		goto out;
+>> 
+>> 	*dot = '\0';
+>> 	match = innetgr(netgroup, hname, NULL, NULL);
+>> 	*dot = '.';
+> 
+> It is fairly pointless to re-instate the '.' when we are about to free the
+> name.  Not a big issue, but I thought I would mention it.
+> 
+> With those provisos:
+> Reviewed-By: NeilBrown <neilb@suse.de>
+
+Agreed, to both comments.  I'll fix these and post a more final version for Steve.
+
+> Thanks a lot!
+> 
+> NeilBrown
+> 
+>> 
+>> +out:
+>> +	free(hname);
+>> 	return match;
+>> }
+>> #else	/* !HAVE_INNETGR */
+
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
 
 
