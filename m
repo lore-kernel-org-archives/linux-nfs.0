@@ -1,41 +1,36 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:45866 "EHLO mx2.suse.de"
+Received: from magus.merit.edu ([198.108.1.13]:52058 "EHLO magus.merit.edu"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754082Ab0H3NFG convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Aug 2010 09:05:06 -0400
-From: Olaf Kirch <okir@suse.de>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 0/2] Make libtirpc work with old style portmapper
-Date: Mon, 30 Aug 2010 15:03:19 +0200
-Cc: nfsv4@linux-nfs.org, Steve Dickson <SteveD@redhat.com>
-Content-Type: Text/Plain;
-  charset="iso-8859-1"
-Message-Id: <201008301503.19783.okir@suse.de>
+	id S1752666Ab0HDPpe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 4 Aug 2010 11:45:34 -0400
+Date: Wed, 4 Aug 2010 11:45:33 -0400
+From: Jim Rees <rees@umich.edu>
+To: Andy Adamson <andros@netapp.com>
+Cc: Jonathan Manton <jmanton@illinois.edu>, linux-nfs@vger.kernel.org
+Subject: Re: Kerberized NFS (v3 and v4) does not work if Kerberos token is
+ >= 2048 bytes (if PAGE_SIZE == 4096)
+Message-ID: <20100804154533.GA13950@merit.edu>
+References: <E820D075-2582-4FF8-B788-14D41070DA29@illinois.edu>
+ <D17BAFDB-6B3B-40B6-9C28-5689D18FBBA5@netapp.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <D17BAFDB-6B3B-40B6-9C28-5689D18FBBA5@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+Andy Adamson wrote:
 
-Hi Steve et al,
+  > When a user with a Kerberos token of 2048 bytes or larger attempts to
+  > access a filesystem mounted using Kerberized NFS, the NFS server locks up
+  > for 30 seconds, and ultimately the call fails.
 
-We recently got a bug report from a customer trying to run nfs-utils
-(which is compiled against libtirpc on SLES 11) on a system with
-portmapper installed instead of rpcbind. Which failed miserably,
-because none of the RPC servers was able to register with portmap.
+  Yes, this limitation has been known for a long time. We ran into this same
+  issue using X.509 certs and spkm3. I imagine PKINIT will also hit this
+  limitation.
 
-One might argue, if it hurts don't do it, but OTOH this configuration
-isn't totally outlandish. In particular, ISVs may decide they want
-to compile an RPC enabled application against libtirpc, but still
-want it to run on a wide range of Linux versions.
+But shouldn't it fail right away instead of locking up for 30 seconds?
 
-I looked into the issue and put together the following two patches,
-which I'm submitting for your kindly review.
+Does the entire server lock up, or just that one rpc?
 
-Thanks
-Olaf
--- 
-Neo didn't bring down the Matrix. SOA did. (soafacts.com)
---------------------------------------------
-Olaf Kirch - Director Server (okir@novell.com)
-SUSE LINUX Products GmbH, Maxfeldstr. 5, D-90409 Nürnberg
-GF: Markus Rex, HRB 16746 (AG Nürnberg)
+Can a malicious client use this as a DOS?  Does it require a valid ticket,
+or will any ticket >= 2048 do?
