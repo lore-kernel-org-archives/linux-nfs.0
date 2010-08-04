@@ -1,76 +1,105 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:49292 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753786Ab0HHMxi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 8 Aug 2010 08:53:38 -0400
-Date: Sun, 8 Aug 2010 08:53:01 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: Jeremy Allison <jra@samba.org>
-Cc: Neil Brown <neilb@suse.de>, utz lehmann <lkml123@s2y4n2c.de>,
-        Linus Torvalds <torvalds@linux-foundation.org>,
-        Volker.Lendecke@sernet.de, David Howells <dhowells@redhat.com>,
-        Jan Engelhardt <jengelh@medozas.de>, linux-cifs@vger.kernel.org,
-        linux-nfs@vger.kernel.org, samba-technical@lists.samba.org,
-        linux-kernel@vger.kernel.org, viro@zeniv.linux.org.uk,
-        linux-fsde@jasper.es
-Subject: Re: [PATCH 02/18] xstat: Add a pair of system calls to make
- extended  file stats available [ver #6]
-Message-ID: <20100808085301.24f53e5a@tlielax.poochiereds.net>
-In-Reply-To: <20100808121208.GA7329@jeremy-laptop>
-References: <alpine.LSU.2.01.1007221228260.6115@obet.zrqbmnf.qr>
-	<20100715021709.5544.64506.stgit@warthog.procyon.org.uk>
-	<20100715021712.5544.44845.stgit@warthog.procyon.org.uk>
-	<30448.1279800887@redhat.com>
-	<E1Obuiy-00C9jr-Al@intern.SerNet.DE>
-	<AANLkTimdFCGSKLn7aGMpBMIauHTsHY7hpAAmpo6uTcnD@mail.gmail.com>
-	<1280524978.2452.9.camel@segv.aura.of.mankind>
-	<20100801092529.5e6ba0e0@corrin.poochiereds.net>
-	<20100805235218.GB31233@jeremy-laptop>
-	<20100806133836.49757af9@notabene>
-	<20100808121208.GA7329@jeremy-laptop>
-Content-Type: text/plain; charset=US-ASCII
+Received: from rcsinet10.oracle.com ([148.87.113.121]:47400 "EHLO
+	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752313Ab0HDP6S convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 4 Aug 2010 11:58:18 -0400
+Subject: Re: [PATCH 08/24] Removed warnings from mountd.c
+Content-Type: text/plain; charset=us-ascii
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <4C597028.9040404@RedHat.com>
+Date: Wed, 4 Aug 2010 11:57:42 -0400
+Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Message-Id: <104DAA68-6BB8-43DF-BB8E-B76E5629DF52@oracle.com>
+References: <1279669057-17509-1-git-send-email-steved@redhat.com> <1279669057-17509-9-git-send-email-steved@redhat.com> <4C472D28.6050608@oracle.com> <4C597028.9040404@RedHat.com>
+To: Steve Dickson <SteveD@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Sun, 8 Aug 2010 05:12:09 -0700
-Jeremy Allison <jra@samba.org> wrote:
 
-> On Fri, Aug 06, 2010 at 01:38:36PM +1000, Neil Brown wrote:
-> > I'm curious.  Why do you particularly care what interface the kernel uses to
-> > provide you with access to this attribute?
+On Aug 4, 2010, at 9:50 AM, Steve Dickson wrote:
+
 > 
-> It's a matter of taste. The *BSD's have this right IMHO. It
-> should be part of the stat information. A file timestamp is not
-> an EA. Making it available that way just feels like an appalingly
-> tasteless kludge. It offends the artist in me :-).
 > 
+> On 07/21/2010 01:23 PM, Chuck Lever wrote:
+>> Hi Steve-
+>> 
+>>> 
+>>> diff --git a/utils/mountd/mountd.c b/utils/mountd/mountd.c
+>>> index 6571454..43aec11 100644
+>>> --- a/utils/mountd/mountd.c
+>>> +++ b/utils/mountd/mountd.c
+>>> @@ -194,6 +194,9 @@ sig_hup (int sig)
+>>>  bool_t
+>>>  mount_null_1_svc(struct svc_req *rqstp, void *argp, void *resp)
+>>>  {
+>>> +    xlog(D_CALL, "MNT1(%s) null: rqstp %p argp %p resp %p",
+>>> +        rqstp, argp, resp);
+>>> +
+>>>      return 1;
+>>>  }
+>>> 
+>> 
+>> I have to agree with Bruce: adding xlog() calls here is the wrong thing
+>> to do.  Instead, use
+>> 
+>>   __attribute__((unused))
+>> 
+>> for the unused parameters.
+> Boy... using those really make the code look ugly...
+> bool_t
+> mount_null_1_svc(
+>    __attribute__((unused))struct svc_req *rqstp , 
+>    __attribute__((unused))void *argp, 
+>    __attribute__((unused))void *resp)
+> {
+>    return 1;
+> }
+> So ugly up the code verses adding a bit more debugging... I must
+> say I'm leaning toward the latter... 
 
-It would be more convenient if this were part of stat() but adding a
-new stat call is non-trivial. Even if we did that, it still doesn't
-solve the problem of being able to set the create time. The fact that
-that's rarely done doesn't really matter much -- we ought to shoot for
-the semantics that are needed to handle this properly.
+Aesthetics are in the eye of the beholder.  I don't find that at all difficult to read.  In fact, listing each parameter on a separate line is perhaps somewhat nicer that what we have here, and has a long history in C coding style.  If the look really bugs you, you can do what so many software projects before us have done:
 
-If we do settle on a xstat() interface, it might also end up being able
-to report things like selinux labels which are also available and
-settable via xattr. I don't see a problem with presenting the same data
-via multiple interfaces. If presenting this data via xattr solves the
-immediate problem of being able to properly store and report the create
-time then it seems like a win.
+  #define ARG_UNUSED __attribute__((unused))
 
-> > Or do you really want something like BSD's 'btime' which as I understand it
-> > cannot be set.  Would that be really useful to you?
-> 
-> It is *already* useful to us, and is widely used in
-> existing code. The occasions when btime is set are
-> relatively rare, and at that point we store it in a
-> separate EA for Windows reporting purposes.
-> 
+or even:
 
-If that's the case, don't you have to query for this EA every time you
-need to return the create time anyway? If so, then doing this really
-isn't any more costly -- you'd just be querying a different EA, right?
+  #define _unused_ __attribute__((unused))
 
--- 
-Jeff Layton <jlayton@redhat.com>
+I seem to recall that /usr/include/ldap.h has an example of this.  We may already have something like this in one of the nfs-utils headers.  There could also be shorter synonyms for __attribute__((unused)) available from the compiler.
+
+Debugging messages in general are fine, but really there's no need to show the pointer addresses of the arguments and response for a NULL procedure, for example; that's entirely useless for debugging.  And, like the __attribute__ directive, adding noise in these messages can also be viewed as needless visual clutter (both in the source code, and in the system log, making it somewhat of a double sin).
+
+A useful debugging message would display just the name of the procedure (eg. MNTPROC_NULL) and the client's IP address, and any arguments (NULL has none).  I'm not objecting to adding a debugging message here, but adding it solely for the purpose of quelling a compiler warning is, well, silly.  Let's fix the compiler warnings with an appropriate direct remedy, then consider introducing a debugging message on its own merit.
+
+>>>      if (!(exp = auth_authenticate("unmount", sin, p))) {
+>>>          return 1;
+>>> @@ -247,10 +253,15 @@ mount_umnt_1_svc(struct svc_req *rqstp, dirpath
+>>> *argp, void *resp)
+>>>  bool_t
+>>>  mount_umntall_1_svc(struct svc_req *rqstp, void *argp, void *resp)
+>>>  {
+>>> +    struct sockaddr_in *sin = nfs_getrpccaller_in(rqstp->rq_xprt);
+>>> +
+>>> +    xlog(D_CALL, "UMNT1(%s) unmountall: argp %s resp %p",
+>>> +        inet_ntoa(sin->sin_addr), argp, resp);
+>>> +
+>>>      /* Reload /etc/xtab if necessary */
+>>>      auth_reload();
+>>> 
+>>> -    mountlist_del_all(nfs_getrpccaller_in(rqstp->rq_xprt));
+>>> +    mountlist_del_all(sin);
+>> 
+>> You couldn't wait until the rest of my IPv6 mountd patches are
+>> integrated?  I address a lot of these problems in those patches, and now
+>> I'm going to have to rebase all of that work.  What's the rush?
+> No rush.. I just wanted to clean things up... 
+
+Cleaning is good :-)  I've got many similar changes in my tree, and I'm committed to not introducing any new compiler warnings in my nfs-utils submissions.
+
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
