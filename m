@@ -1,49 +1,64 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:15701 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:33881 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753748Ab0HRUKO convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 18 Aug 2010 16:10:14 -0400
-Subject: Re: [PATCH] VM: kswapd should not do blocking memory allocations
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Chris Mason <chris.mason@oracle.com>
-Cc: linux-mm@kvack.org, linux-kernel@vger.kernel.org,
-        linux-nfs@vger.kernel.org
-In-Reply-To: <20100818193440.GZ5854@think>
-References: <1282158241.8540.85.camel@heimdal.trondhjem.org>
-	 <20100818193440.GZ5854@think>
-Content-Type: text/plain; charset="UTF-8"
-Date: Wed, 18 Aug 2010 16:10:10 -0400
-Message-ID: <1282162210.8540.100.camel@heimdal.trondhjem.org>
+	id S932476Ab0HDMgZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 4 Aug 2010 08:36:25 -0400
+Message-ID: <4C595EC3.2040500@RedHat.com>
+Date: Wed, 04 Aug 2010 08:36:19 -0400
+From: Steve Dickson <SteveD@redhat.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 02/24] Remove warnings from nfsctl.c
+References: <1279669057-17509-1-git-send-email-steved@redhat.com> <1279669057-17509-3-git-send-email-steved@redhat.com> <20100721170646.GA26418@fieldses.org>
+In-Reply-To: <20100721170646.GA26418@fieldses.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, 2010-08-18 at 15:34 -0400, Chris Mason wrote:
-> On Wed, Aug 18, 2010 at 03:04:01PM -0400, Trond Myklebust wrote:
-> > From: Trond Myklebust <Trond.Myklebust@netapp.com>
-> > 
-> > Allowing kswapd to do GFP_KERNEL memory allocations (or any blocking memory
-> > allocations) is wrong and can cause deadlocks in try_to_release_page(), as
-> > the filesystem believes it is safe to allocate new memory and block,
-> > whereas kswapd is there specifically to clear a low-memory situation...
-> > 
-> > Set the gfp_mask to GFP_IOFS instead.
+
+
+On 07/21/2010 01:06 PM, J. Bruce Fields wrote:
+> On Tue, Jul 20, 2010 at 07:37:15PM -0400, Steve Dickson wrote:
+>> nfsctl.c: In function 'expsetup':
+>> nfsctl.c:112: warning: signed and unsigned type in conditional expression
+>>
+>> Signed-off-by: Steve Dickson <steved@redhat.com>
+>> ---
+>>  support/export/nfsctl.c |    2 +-
+>>  1 files changed, 1 insertions(+), 1 deletions(-)
+>>
+>> diff --git a/support/export/nfsctl.c b/support/export/nfsctl.c
+>> index 3b9876a..f89c644 100644
+>> --- a/support/export/nfsctl.c
+>> +++ b/support/export/nfsctl.c
+>> @@ -109,7 +109,7 @@ expsetup(struct nfsctl_export *exparg, nfs_export *exp, int unexport)
+>>  	str_tolower(exparg->ex_client);
+>>  	exparg->ex_flags    = exp->m_export.e_flags;
+>>  	exparg->ex_dev      = (!unexport && (exp->m_export.e_flags & NFSEXP_FSID)) ?
+>> -				exp->m_export.e_fsid : stb.st_dev;
+>> +			(__nfsd_dev_t)exp->m_export.e_fsid : stb.st_dev;
 > 
-> I always thought releasepage was supposed to do almost zero work.  It
-> could release an instantly freeable page but it wasn't supposed to dive
-> in and solve world hunger or anything.
+> Any reason not to just define e_fsid as an __nfsd_dev_t to start off
+> with?
+Well would changing e_fsid from a int to an unsigned long (i.e. __nfsd_dev_t)
+break the dump_to_cache() interface between the mound and the kernel?
+
+steved.
 > 
-> I thought the VM would be using writepage for that.
-
-writepage isn't sufficient for the NFS case: the page may be in the
-'clean but unstable' state, in which case the NFS client needs to send a
-COMMIT rpc call before the page can finally be released.
-
-That is why we need the gfp_flag to tell us when it is safe to do this,
-and when it is not.
-The main case where it is safe and necessary for try_to_release_page()
-to initiate a COMMIT call is in the invalidate_inode_pages2(). We might
-want to do it in the kswapd case too, but in that case, we definitely
-should tell the filesystem that it is unsafe to block.
-
-Trond
+> --b.
+> 
+>>  	exparg->ex_ino      = stb.st_ino;
+>>  	exparg->ex_anon_uid = exp->m_export.e_anonuid;
+>>  	exparg->ex_anon_gid = exp->m_export.e_anongid;
+>> -- 
+>> 1.7.0.1
+>>
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
