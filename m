@@ -1,65 +1,82 @@
 From: Steve Dickson <steved@redhat.com>
-Subject: [PATCH 09/24] Removed warnings from nfssvc.c
-Date: Wed,  4 Aug 2010 11:12:05 -0400
-Message-ID: <1280934740-11366-10-git-send-email-steved@redhat.com>
-References: <1280934740-11366-1-git-send-email-steved@redhat.com>
+Subject: [PATCH 00/24] Turn on the -Wextra compile flag (Take 2)
+Date: Wed,  4 Aug 2010 11:11:56 -0400
+Message-ID: <1280934740-11366-1-git-send-email-steved@redhat.com>
 To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from 4dicksons.org ([207.22.49.45]:54510 "EHLO
+Received: from 4dicksons.org ([207.22.49.45]:54501 "EHLO
 	Dobby.Home.4dicksons.org" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1752401Ab0HDPMY (ORCPT
+	by vger.kernel.org with ESMTP id S1751970Ab0HDPMY (ORCPT
 	<rfc822;linux-nfs@vger.kernel.org>); Wed, 4 Aug 2010 11:12:24 -0400
 Received: from tophat.home.4dicksons.org ([192.168.62.20])
 	by Dobby.Home.4dicksons.org with esmtp (Exim 4.63)
 	(envelope-from <steved@redhat.com>)
-	id 1Ogfdm-0002SZ-S8
-	for linux-nfs@vger.kernel.org; Wed, 04 Aug 2010 11:12:22 -0400
-In-Reply-To: <1280934740-11366-1-git-send-email-steved@redhat.com>
+	id 1Ogfdk-0002SZ-NC
+	for linux-nfs@vger.kernel.org; Wed, 04 Aug 2010 11:12:21 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-nfssvc.c:184: warning: comparison between signed and unsigned integer expressions
-nfssvc.c: In function 'nfssvc_setvers':
-nfssvc.c:254: warning: comparison between signed and unsigned integer expressions
-nfssvc.c: In function 'nfssvc_threads':
-nfssvc.c:280: warning: comparison between signed and unsigned integer expressions
+To catch potential during compile time, the -Wextra compile flag
+was added to the CFLAGS. The raise the bar like this, with regard to
+warnings, will keep the code cleaner in the long run.
 
-Signed-off-by: Steve Dickson <steved@redhat.com>
----
- utils/nfsd/nfssvc.c |    6 +++---
- 1 files changed, 3 insertions(+), 3 deletions(-)
 
-diff --git a/utils/nfsd/nfssvc.c b/utils/nfsd/nfssvc.c
-index 60232b8..34c67ca 100644
---- a/utils/nfsd/nfssvc.c
-+++ b/utils/nfsd/nfssvc.c
-@@ -181,7 +181,7 @@ nfssvc_setfds(const struct addrinfo *hints, const char *node, const char *port)
- 		}
- 
- 		snprintf(buf, sizeof(buf), "%d\n", sockfd); 
--		if (write(fd, buf, strlen(buf)) != strlen(buf)) {
-+		if (write(fd, buf, strlen(buf)) != (ssize_t)strlen(buf)) {
- 			/*
- 			 * this error may be common on older kernels that don't
- 			 * support IPv6, so turn into a debug message.
-@@ -251,7 +251,7 @@ nfssvc_setvers(unsigned int ctlbits, int minorvers4)
- 	}
- 	xlog(D_GENERAL, "Writing version string to kernel: %s", buf);
- 	snprintf(ptr+off, sizeof(buf) - off, "\n");
--	if (write(fd, buf, strlen(buf)) != strlen(buf))
-+	if (write(fd, buf, strlen(buf)) != (ssize_t)strlen(buf))
- 		xlog(L_ERROR, "Setting version failed: errno %d (%m)", errno);
- 
- 	close(fd);
-@@ -277,7 +277,7 @@ nfssvc_threads(unsigned short port, const int nrservs)
- 		snprintf(buf, sizeof(buf), "%d\n", nrservs);
- 		n = write(fd, buf, strlen(buf));
- 		close(fd);
--		if (n != strlen(buf))
-+		if (n != (ssize_t)strlen(buf))
- 			return -1;
- 		else
- 			return 0;
+Steve Dickson (24):
+  Enable extra compile warnings (-Wextra) by default.
+  Removed warnings from rpcdispatch.c
+  Remove warnings from svc_socket.c
+  emove warnings from cacheio.c
+  Remove warnings from nfs_mntent.c
+  Removed warnings from conffile.c
+  Removed warnings from fsloc.c
+  Removed warnings from cache.c
+  Removed warnings from nfssvc.c
+  Removed warnings from nfsstat.c
+  Removed warnings from atomicio.c
+  Removed warnings from gssd.c
+  Removed warnings from gssd_main_loop.c
+  Removed warnings from krb5_util.c
+  Removed warnings from gssd_proc.c
+  Removed warnings from svcgssd.c
+  Removed warnings from nfsmount.c
+  Removed warnings from nfs4mount.c
+  Removed warnings from network.c
+  Removed warnings from svcgssd_proc.c
+  Removed warnings from configfile.c
+  Removed warnings from idmapd.c
+  Removed warnings from mountd.c
+  Remove warnings from nfsctl.c
+
+ configure.ac                |    2 +-
+ support/export/nfsctl.c     |    2 +-
+ support/include/nfslib.h    |    7 +++++--
+ support/nfs/cacheio.c       |    2 +-
+ support/nfs/conffile.c      |    8 ++++----
+ support/nfs/nfs_mntent.c    |    2 +-
+ support/nfs/rpcdispatch.c   |    4 ++--
+ support/nfs/rpcmisc.c       |    2 +-
+ support/nfs/svc_socket.c    |    6 +++---
+ utils/gssd/gssd.c           |    2 +-
+ utils/gssd/gssd_main_loop.c |    2 ++
+ utils/gssd/gssd_proc.c      |    8 ++++----
+ utils/gssd/krb5_util.c      |   29 +++++++++++++++++++++--------
+ utils/gssd/krb5_util.h      |    2 +-
+ utils/gssd/svcgssd.c        |    2 +-
+ utils/gssd/svcgssd_proc.c   |   12 +++---------
+ utils/idmapd/atomicio.c     |    3 ++-
+ utils/idmapd/idmapd.c       |   36 ++++++++++++++++++++++++++----------
+ utils/mount/configfile.c    |    6 ++++--
+ utils/mount/network.c       |    3 ++-
+ utils/mount/nfs4mount.c     |    2 +-
+ utils/mount/nfsmount.c      |    8 ++++++--
+ utils/mountd/cache.c        |   20 ++++++++++----------
+ utils/mountd/fsloc.c        |    2 +-
+ utils/mountd/fsloc.h        |    2 +-
+ utils/mountd/mountd.c       |   14 ++++++++------
+ utils/nfsd/nfssvc.c         |    6 +++---
+ utils/nfsstat/nfsstat.c     |    6 +++---
+ 28 files changed, 119 insertions(+), 81 deletions(-)
+
 -- 
 1.7.2
 
