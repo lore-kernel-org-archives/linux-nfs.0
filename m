@@ -1,37 +1,45 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp-vbr13.xs4all.nl ([194.109.24.33]:4190 "EHLO
-	smtp-vbr13.xs4all.nl" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752485Ab0HVSbc (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 22 Aug 2010 14:31:32 -0400
-Date: Sun, 22 Aug 2010 20:31:09 +0200
-From: Miquel van Smoorenburg <mikevs@xs4all.net>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Received: from lvps87-230-0-242.dedicated.hosteurope.de ([87.230.0.242]:59075
+	"EHLO lvps87-230-0-242.dedicated.hosteurope.de" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1756120Ab0HDF3g (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 4 Aug 2010 01:29:36 -0400
+Date: Wed, 4 Aug 2010 07:29:27 +0200
+From: Michael Guntsche <mike@it-loops.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 02/03]: sunrpc: make auth_hashtable_size param mode 0444
-Message-ID: <20100822183109.GB26607@xs4all.net>
-References: <20100822182848.GA26590@xs4all.net>
+Subject: Re: Kerberos auth Problem with nfs3/4
+Message-ID: <20100804052927.GA2781@gibson.comsick.at>
+References: <20100803154556.GA6262@gibson.comsick.at>
+ <20100803194342.GE31579@fieldses.org>
+ <20100803211906.GA24236@gibson.comsick.at>
+ <20100803213650.GJ31579@fieldses.org>
+ <20100803215523.GA25413@gibson.comsick.at>
+ <20100803231625.GD9752@fieldses.org>
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20100822182848.GA26590@xs4all.net>
+In-Reply-To: <20100803231625.GD9752@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-The auth_hashtable_size parameter shows up in
-/sys/module/sunrpc/parameters with mode 0644. However the hashtables
-are allocated when the module is loaded, and changing the parameter
-afterwards doesn't do much. So make it read-only.
+On 03 Aug 10 19:16, J. Bruce Fields wrote:
+> > Yes, rpc.gssd as well as rpc.svcgssd is running on the server. To make
+> > matters worse I noticed something else with sec=krb5. This messages
+> > appears on first access to a file either read or write. Not always, it
+> > seems that it reappears after some timeout but it is sparmming my logs
+> > nevertheless. But what's worse is that I now got a Stale NFS file handle
+> > on the lost+found directory of the export. A lot of question marks and
+> > then just the name. I am now running with sec=sys and cannot up to now
+> > was not able to reproduce this problem. Is it possible that does two
+> > problems are related or are they completely separate from each other?
+> 
+> I doubt they're related.
+> 
+> Is there something special about the lost+found directory that would
+> lead to stale filehandles?  I can't think why there would be.
 
-Signed-off-by: Miquel van Smoorenburg <mikevs@xs4all.net>
+Nothing really special as far as I can see. Just out of curiosity it
+tried nfs-utils-1.2.3-rc4 from Steve Dickson's tree and was not even
+able to monunt the export (stale NFS file handles during mount).
 
-diff -ruN linux-2.6.36-rc1.orig/net/sunrpc/auth.c linux-2.6.36-rc1/net/sunrpc/auth.c
---- linux-2.6.36-rc1.orig/net/sunrpc/auth.c	2010-08-16 02:41:37.000000000 +0200
-+++ linux-2.6.36-rc1/net/sunrpc/auth.c	2010-08-22 17:02:27.896009116 +0200
-@@ -76,7 +77,7 @@
- 	.get = param_get_hashtbl_sz,
- };
- 
--module_param_named(auth_hashtable_size, auth_hashbits, hashtbl_sz, 0644);
-+module_param_named(auth_hashtable_size, auth_hashbits, hashtbl_sz, 0444);
- MODULE_PARM_DESC(auth_hashtable_size, "RPC credential cache hashtable size");
- 
- static u32
+Kind regards,
+Michael
