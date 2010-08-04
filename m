@@ -1,89 +1,105 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:39256 "EHLO fieldses.org"
+Received: from mail-out1.uio.no ([129.240.10.57]:34511 "EHLO mail-out1.uio.no"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752351Ab0HaQQN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 31 Aug 2010 12:16:13 -0400
-Date: Tue, 31 Aug 2010 12:15:47 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Steve Dickson <SteveD@redhat.com>
-Cc: Jeff Layton <jlayton@redhat.com>, linux-nfs@vger.kernel.org,
-        chuck.lever@oracle.com
-Subject: Re: [PATCH] rpc.nfsd: mount up nfsdfs is it doesn't appear to be
- mounted yet
-Message-ID: <20100831161547.GD3071@fieldses.org>
-References: <4C7BE1FC.2020400@RedHat.com>
- <20100830134801.1696dffa@tlielax.poochiereds.net>
- <4C7CF499.5090003@RedHat.com>
- <20100831084323.02a1abf5@corrin.poochiereds.net>
- <4C7D1694.6000708@RedHat.com>
- <20100831111008.157618f4@corrin.poochiereds.net>
- <20100831151342.GA3071@fieldses.org>
- <4C7D1D3B.1030607@RedHat.com>
- <20100831155128.GB3071@fieldses.org>
- <4C7D2A20.1040806@RedHat.com>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4C7D2A20.1040806@RedHat.com>
+	id S1759033Ab0HDVWZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 4 Aug 2010 17:22:25 -0400
+Subject: Re: Write delegation
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+To: Yudong Gao <stgyd@umich.edu>
+Cc: Andy Adamson <andros@netapp.com>, linux-nfs@vger.kernel.org
+In-Reply-To: <AANLkTimi9CSa=XfoKBMCm-XAKcVQKVi0bEXgtA+XHexE@mail.gmail.com>
+References: <AANLkTi=2KYZ-8qaXMG=C_s617q3k1Ocs7h1gyd8=RpY6@mail.gmail.com>
+	 <AANLkTimr9QfF0+MJ47hUihJgSLVOfquR=Atp4iV5D2gr@mail.gmail.com>
+	 <97A00951-577C-4365-AA38-3C6E2D03B372@netapp.com>
+	 <AANLkTimi9CSa=XfoKBMCm-XAKcVQKVi0bEXgtA+XHexE@mail.gmail.com>
+Content-Type: text/plain; charset="UTF-8"
+Date: Wed, 04 Aug 2010 17:22:17 -0400
+Message-ID: <1280956937.2865.13.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Tue, Aug 31, 2010 at 12:13:20PM -0400, Steve Dickson wrote:
+On Wed, 2010-08-04 at 14:11 -0700, Yudong Gao wrote:
+> Thanks for the reply, Andy!
 > 
+> So the write delegation can only reduce the unnecessary open/close and
+> lock/locku. But if a client modify the same page for multiple times,
+> e.g. editing the file in a editor, is there any optimization to
+> prevent the client from sending the half-updated pages? Ideally only
+> the final update need to be put on the wire.
 > 
-> On 08/31/2010 11:51 AM, J. Bruce Fields wrote:
-> > On Tue, Aug 31, 2010 at 11:18:19AM -0400, Steve Dickson wrote:
+
+Yes. However that optimisation is not linked to whether or not we hold a
+write delegation. The NFS client assumes close-to-open cache
+consistency, and so will cache writes until either the VM tries to
+reclaim memory by writing out dirty page, or the application calls one
+of fcntl(F_UNLCK), fsync() or close().
+
+Trond
+
+> Thanks!
+> 
+> best,
+> 
+> Yudong
+> 
+> On Wed, Aug 4, 2010 at 1:59 PM, Andy Adamson <andros@netapp.com> wrote:
+> >
+> > On Aug 4, 2010, at 3:21 PM, Yudong Gao wrote:
+> >
+> >> Hi,
 > >>
+> >> I am not able to find the implementation of directory delegation,
+> >> either. Similarly, the callback functions CB_NOTIFY is not
+> >> implemented, either. I find that in preprocss_nfs41_op() in
+> >> callback_xdr.c, whenever a CB_NOTIFY is encountered, an
+> >> NFS4ERR_NOTSUPP is returned directly.
+> >
+> > CB_NOTIFY is not currently supported on the Linux NFS client.
+> >
 > >>
-> >> On 08/31/2010 11:13 AM, J. Bruce Fields wrote:
-> >>> On Tue, Aug 31, 2010 at 11:10:08AM -0400, Jeff Layton wrote:
-> >>>> I was just pointing out that checking the return code from the system()
-> >>>> call isn't sufficient. Because of the way most people have modprobe set
-> >>>> up, it can return an error even though nfsdfs ended up being mounted
-> >>>> anyway. Checking for the presence of the file after attempting the
-> >>>> mount would be a more reliable test.
-> >>>>
-> >>>> Assuming we're in agreement there, we have another question to
-> >>>> settle...If the mount attempt fails, what should we do about it?
-> >>>>
-> >>>> With my original patch, we fall back to using nfsctl(). You're
-> >>>> suggesting that we should error out there. I'm not opposed to that, but
-> >>>> it does mean dropping support for some really old kernels. It also
-> >>>> means that we can remove some dead code in rpc.nfsd.
-> >>>>
-> >>>> OTOH, the fallback might allow nfsd to keep working for some people.
-> >>>> Maybe it would be better to just log a scary warning and fall back to
-> >>>> using nfsctl() for now.
-> >>>>
-> >>>> In a couple of releases, we could start returning an error there and
-> >>>> rip out the legacy interface code, or compile it out by default and
-> >>>> allow people to compile it in via a configure option?
+> >> Am I missing something? Or they are just not supported in the current version?
+> >>
+> >> Thanks a lot!
+> >>
+> >> best,
+> >>
+> >> Yudong
+> >>
+> >> On Mon, Aug 2, 2010 at 5:17 PM, Yudong Gao <stgyd@umich.edu> wrote:
+> >>> Hi,
 > >>>
-> >>> Yes, let's just add the additional mount attempt for now, and figure out
-> >>> what to do about the legacy interface as a next step.
-> >> When the mount fails, I think we should exit... basically eliminating the
-> >> legacy interface code
-> > 
-> > Maybe.  But as I say, make it two separate steps:
-> > 
-> > 	1. Add code to attempt the mount.
-> But the question comes do to, what do we do when the mount 
-> fails? It sounds like you are advocating ignoring the error
-> and allow the nfsd threads to be started via the nfsctl(NFSCTL_SVC)
-> call... 
+> >>> I am looking at the delegation implementation in the source code of
+> >>> NFS 4.1 in kernel 2.6.32.15. I can find the code for read delegation,
+> >>> which is working and can serve the read requests locally. But I can
+> >>> never find the code about write delegation, which is supposed to cache
+> >>> the write update locally. I try to look at the functions including
+> >>> nfs_writepage(s), nfs_file_flush() but none of them checks or uses the
+> >>> write delegation.
+> >>>
+> >>> Is write delegation currently implemented in NFS 4.1?
+> >
+> > Write delegation is supported but I don't think write behavior changes - writes are still cached and flushed as without a write delegation. The write delegation does prevent open/close and lock/locku from being put on the wire.
+> >
+> > -->Andy
+> >
+> >>>
+> >>> Thanks!
+> >>>
+> >>> best,
+> >>>
+> >>> Yudong
+> >>>
+> >> --
+> >> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> >> the body of a message to majordomo@vger.kernel.org
+> >> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> >
+> >
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
-Yes.
 
-> I'm advocating that we exit on the mount error, because even thought
-> the nfsd threads may be set up correctly, the protocols and versions
-> will not be set up correctly because there is no nfsctl() calls to
-> set them up correctly... especially with IPV6 enabled... 
 
-Perhaps so.  But that should be done as a *separate* follow-up patch
-that is clearly labelled "drop support for kernel versions before
-x.y.z".
-
-Dropping backwards compatibility may be a reasonable thing to do, but
-it's something that we should be very clear about, and that we should
-put in a patch that does that and nothing else.
-
---b.
