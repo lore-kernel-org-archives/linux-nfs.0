@@ -1,74 +1,83 @@
 From: Steve Dickson <steved@redhat.com>
-Subject: [PATCH 06/24] Removed warnings from conffile.c
-Date: Wed,  4 Aug 2010 11:12:02 -0400
-Message-ID: <1280934740-11366-7-git-send-email-steved@redhat.com>
+Subject: [PATCH 03/24] Remove warnings from svc_socket.c
+Date: Wed,  4 Aug 2010 11:11:59 -0400
+Message-ID: <1280934740-11366-4-git-send-email-steved@redhat.com>
 References: <1280934740-11366-1-git-send-email-steved@redhat.com>
 To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from 4dicksons.org ([207.22.49.45]:54507 "EHLO
+Received: from 4dicksons.org ([207.22.49.45]:54502 "EHLO
 	Dobby.Home.4dicksons.org" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1752793Ab0HDPMZ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 4 Aug 2010 11:12:25 -0400
+	by vger.kernel.org with ESMTP id S1752630Ab0HDPMY (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 4 Aug 2010 11:12:24 -0400
 Received: from tophat.home.4dicksons.org ([192.168.62.20])
 	by Dobby.Home.4dicksons.org with esmtp (Exim 4.63)
 	(envelope-from <steved@redhat.com>)
-	id 1Ogfdm-0002SZ-HS
+	id 1Ogfdm-0002SZ-4R
 	for linux-nfs@vger.kernel.org; Wed, 04 Aug 2010 11:12:22 -0400
 In-Reply-To: <1280934740-11366-1-git-send-email-steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-conffile.c: In function 'conf_parse_line':
-conffile.c:301: warning: comparison between signed and unsigned integer expressions
-
-conffile.c: In function 'conf_load_defaults':
-conffile.c:356: warning: unused parameter 'tr'
+svc_socket.c: In function 'svcudp_socket':
+svc_socket.c:160: warning: unused parameter 'reuse'
 
 Signed-off-by: Steve Dickson <steved@redhat.com>
 ---
- support/nfs/conffile.c |    8 ++++----
- 1 files changed, 4 insertions(+), 4 deletions(-)
+ support/include/nfslib.h |    2 +-
+ support/nfs/rpcmisc.c    |    2 +-
+ support/nfs/svc_socket.c |    6 +++---
+ 3 files changed, 5 insertions(+), 5 deletions(-)
 
-diff --git a/support/nfs/conffile.c b/support/nfs/conffile.c
-index b277c2a..24640f4 100644
---- a/support/nfs/conffile.c
-+++ b/support/nfs/conffile.c
-@@ -49,7 +49,7 @@
- #include "conffile.h"
- #include "xlog.h"
+diff --git a/support/include/nfslib.h b/support/include/nfslib.h
+index e44cf8f..b8e7c40 100644
+--- a/support/include/nfslib.h
++++ b/support/include/nfslib.h
+@@ -158,6 +158,6 @@ void qword_printuint(FILE *f, unsigned int num);
+ void closeall(int min);
  
--static void conf_load_defaults (int);
-+static void conf_load_defaults(void);
- static int conf_set(int , char *, char *, char *, 
- 	char *, int , int );
+ int			svctcp_socket (u_long __number, int __reuse);
+-int			svcudp_socket (u_long __number, int __reuse);
++int			svcudp_socket (u_long __number);
  
-@@ -212,7 +212,7 @@ conf_parse_line(int trans, char *line, size_t sz)
+ #endif /* NFSLIB_H */
+diff --git a/support/nfs/rpcmisc.c b/support/nfs/rpcmisc.c
+index a0854e7..b73187a 100644
+--- a/support/nfs/rpcmisc.c
++++ b/support/nfs/rpcmisc.c
+@@ -154,7 +154,7 @@ rpc_init(char *name, int prog, int vers,
+ 				sock = makesock(defport, IPPROTO_UDP);
+ 		}
+ 		if (sock == RPC_ANYSOCK)
+-			sock = svcudp_socket (prog, 1);
++			sock = svcudp_socket (prog);
+ 		transp = svcudp_create(sock);
+ 		if (transp == NULL) {
+ 			xlog(L_FATAL, "cannot create udp service.");
+diff --git a/support/nfs/svc_socket.c b/support/nfs/svc_socket.c
+index f44217a..03a5325 100644
+--- a/support/nfs/svc_socket.c
++++ b/support/nfs/svc_socket.c
+@@ -157,9 +157,9 @@ svctcp_socket (u_long number, int reuse)
+  * Create and bind a UDP socket based on program number
+  */
+ int
+-svcudp_socket (u_long number, int reuse)
++svcudp_socket (u_long number)
  {
- 	char *val, *ptr;
- 	size_t i;
--	int j;
-+	size_t j;
- 	static char *section = 0;
- 	static char *arg = 0;
- 	static int ln = 0;
-@@ -353,7 +353,7 @@ conf_parse(int trans, char *buf, size_t sz)
+-  return svc_socket (number, SOCK_DGRAM, IPPROTO_UDP, 0);
++  return svc_socket (number, SOCK_DGRAM, IPPROTO_UDP, FALSE);
  }
  
- static void
--conf_load_defaults(int tr)
-+conf_load_defaults(void)
- {
- 	/* No defaults */
- 	return;
-@@ -412,7 +412,7 @@ conf_reinit(void)
- 		trans = conf_begin();
+ #ifdef TEST
+@@ -174,7 +174,7 @@ check (u_long number, u_short port, int protocol, int reuse)
+   if (protocol == IPPROTO_TCP)
+     socket = svctcp_socket (number, reuse);
+   else
+-    socket = svcudp_socket (number, reuse);
++    socket = svcudp_socket (number);
  
- 	/* Load default configuration values.  */
--	conf_load_defaults(trans);
-+	conf_load_defaults();
- 
- 	/* Free potential existing configuration.  */
- 	if (conf_addr) {
+   if (socket < 0)
+     return 1;
 -- 
 1.7.2
 
