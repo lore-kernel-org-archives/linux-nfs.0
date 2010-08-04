@@ -1,137 +1,90 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:49174 "EHLO mx2.netapp.com"
+Received: from cantor2.suse.de ([195.135.220.15]:55416 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754015Ab0HMVcR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 13 Aug 2010 17:32:17 -0400
-From: andros@netapp.com
-To: bhalevy@panasas.com
-Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
-Subject: [PATCH 15/50] pnfs_submit: filelayout deviceid cache
-Date: Fri, 13 Aug 2010 17:31:27 -0400
-Message-Id: <1281735122-1496-16-git-send-email-andros@netapp.com>
-In-Reply-To: <1281735122-1496-15-git-send-email-andros@netapp.com>
-References: <1281735122-1496-1-git-send-email-andros@netapp.com>
- <1281735122-1496-2-git-send-email-andros@netapp.com>
- <1281735122-1496-3-git-send-email-andros@netapp.com>
- <1281735122-1496-4-git-send-email-andros@netapp.com>
- <1281735122-1496-5-git-send-email-andros@netapp.com>
- <1281735122-1496-6-git-send-email-andros@netapp.com>
- <1281735122-1496-7-git-send-email-andros@netapp.com>
- <1281735122-1496-8-git-send-email-andros@netapp.com>
- <1281735122-1496-9-git-send-email-andros@netapp.com>
- <1281735122-1496-10-git-send-email-andros@netapp.com>
- <1281735122-1496-11-git-send-email-andros@netapp.com>
- <1281735122-1496-12-git-send-email-andros@netapp.com>
- <1281735122-1496-13-git-send-email-andros@netapp.com>
- <1281735122-1496-14-git-send-email-andros@netapp.com>
- <1281735122-1496-15-git-send-email-andros@netapp.com>
+	id S932508Ab0HDGuv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 4 Aug 2010 02:50:51 -0400
+From: Neil Brown <neilb@suse.de>
+To: Chuck Lever <chuck.lever@oracle.com>, Steve Dickson <steved@redhat.com>
+Date: Wed, 04 Aug 2010 16:49:45 +1000
+Subject: [PATCH 2/3] Give hostname.c more support for IPv6
+Cc: linux-nfs@vger.kernel.org
+Message-ID: <20100804064945.16641.71097.stgit@localhost.localdomain>
+In-Reply-To: <20100804064553.16641.92857.stgit@localhost.localdomain>
+References: <20100804064553.16641.92857.stgit@localhost.localdomain>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: The pNFS Team <linux-nfs@vger.kernel.org>
+Allow host_pton,  host_addrinfo, and all functions that use
+sockaddr_size to work correctly with IPv6 addresses.
 
-Signed-off-by: Andy Adamson <andros@netapp.com>
+This means host_addrinfo can now return IPv6 addresses, but I think
+all code is ready for that.
+
+Signed-off-by: NeilBrown <neilb@suse.de>
 ---
- fs/nfs/nfs4filelayout.h    |    3 ++
- fs/nfs/nfs4filelayoutdev.c |   57 ++++++++++++++++++++++++++++++++++++++++++++
- 2 files changed, 60 insertions(+), 0 deletions(-)
+ support/export/hostname.c |   26 ++++++++++++++++++--------
+ 1 files changed, 18 insertions(+), 8 deletions(-)
 
-diff --git a/fs/nfs/nfs4filelayout.h b/fs/nfs/nfs4filelayout.h
-index f272d0f..39dcdba 100644
---- a/fs/nfs/nfs4filelayout.h
-+++ b/fs/nfs/nfs4filelayout.h
-@@ -43,4 +43,7 @@ extern struct pnfs_client_operations *pnfs_callback_ops;
- 
- extern void nfs4_fl_free_deviceid_callback(struct kref *);
- extern void print_ds(struct nfs4_pnfs_ds *ds);
-+char *deviceid_fmt(const struct pnfs_deviceid *dev_id);
-+extern struct nfs4_file_layout_dsaddr *
-+nfs4_pnfs_device_item_find(struct nfs_client *, struct pnfs_deviceid *dev_id);
- #endif /* FS_NFS_NFS4FILELAYOUT_H */
-diff --git a/fs/nfs/nfs4filelayoutdev.c b/fs/nfs/nfs4filelayoutdev.c
-index c8b8ca7..0da1510 100644
---- a/fs/nfs/nfs4filelayoutdev.c
-+++ b/fs/nfs/nfs4filelayoutdev.c
-@@ -84,6 +84,21 @@ print_ds_list(struct nfs4_file_layout_dsaddr *dsaddr)
- 		print_ds(dsaddr->ds_list[i]);
- }
- 
-+/* Debugging function assuming a 64bit major/minor split of the deviceid */
-+char *
-+deviceid_fmt(const struct pnfs_deviceid *dev_id)
-+{
-+	static char buf[17];
-+	uint32_t *p = (uint32_t *)dev_id->data;
-+	uint64_t major, minor;
-+
-+	p = xdr_decode_hyper(p, &major);
-+	p = xdr_decode_hyper(p, &minor);
-+
-+	sprintf(buf, "%08llu %08llu", major, minor);
-+	return buf;
-+}
-+
- /* nfs4_ds_cache_lock is held */
- static inline struct nfs4_pnfs_ds *
- _data_server_lookup(u32 ip_addr, u32 port)
-@@ -113,9 +128,39 @@ destroy_ds(struct nfs4_pnfs_ds *ds)
- 	kfree(ds);
- }
- 
-+static void
-+nfs4_fl_free_deviceid(struct nfs4_file_layout_dsaddr *dsaddr)
-+{
-+	struct nfs4_pnfs_ds *ds;
-+	int i;
-+
-+	dprintk("%s: device id=%s\n", __func__,
-+		deviceid_fmt(&dsaddr->deviceid.de_id));
-+
-+	for (i = 0; i < dsaddr->ds_num; i++) {
-+		ds = dsaddr->ds_list[i];
-+		if (ds != NULL) {
-+			if (atomic_dec_and_lock(&ds->ds_count,
-+						&nfs4_ds_cache_lock)) {
-+				list_del_init(&ds->ds_node);
-+				spin_unlock(&nfs4_ds_cache_lock);
-+				destroy_ds(ds);
-+			}
-+		}
-+	}
-+	kfree(dsaddr->stripe_indices);
-+	kfree(dsaddr);
-+}
-+
- void
- nfs4_fl_free_deviceid_callback(struct kref *kref)
+diff --git a/support/export/hostname.c b/support/export/hostname.c
+index f6a59f1..46ddfe2 100644
+--- a/support/export/hostname.c
++++ b/support/export/hostname.c
+@@ -38,9 +38,11 @@
+ static socklen_t
+ sockaddr_size(const struct sockaddr *sap)
  {
-+	struct nfs4_deviceid *device =
-+		container_of(kref, struct nfs4_deviceid, de_kref);
-+	struct nfs4_file_layout_dsaddr *dsaddr =
-+		container_of(device, struct nfs4_file_layout_dsaddr, deviceid);
-+
-+	nfs4_fl_free_deviceid(dsaddr);
+-	if (sap->sa_family != AF_INET)
+-		return 0;
+-	return (socklen_t)sizeof(struct sockaddr_in);
++	if (sap->sa_family == AF_INET)
++		return (socklen_t)sizeof(struct sockaddr_in);
++	if (sap->sa_family == AF_INET6)
++		return (socklen_t)sizeof(struct sockaddr_in6);
++	return 0;
  }
+ #endif	/* HAVE_GETNAMEINFO */
  
- static void
-@@ -154,3 +199,15 @@ nfs4_pnfs_ds_add(struct inode *inode, struct nfs4_pnfs_ds **dsp,
- 		kfree(ds);
- 	}
- }
-+
-+struct nfs4_file_layout_dsaddr *
-+nfs4_pnfs_device_item_find(struct nfs_client *clp, struct pnfs_deviceid *id)
-+{
-+	struct nfs4_deviceid *d;
-+
-+	d = nfs4_find_deviceid(clp->cl_devid_cache, id);
-+	dprintk("%s device id (%s) nfs4_deviceid %p\n", __func__,
-+		deviceid_fmt(id), d);
-+	return (d == NULL) ? NULL :
-+		container_of(d, struct nfs4_file_layout_dsaddr, deviceid);
-+}
--- 
-1.6.2.5
+@@ -126,10 +128,12 @@ host_pton(const char *paddr)
+ 	 * addresses that end with a blank.
+ 	 *
+ 	 * inet_pton(3) is much stricter.  Use it to be certain we
+-	 * have a real AF_INET presentation address, before invoking
+-	 * getaddrinfo(3) to generate the full addrinfo list.
++	 * have a real AF_INET or AF_INET6 presentation address,
++	 * before invoking getaddrinfo(3) to generate the full
++	 * addrinfo list.
+ 	 */
+-	if (inet_pton(AF_INET, paddr, &sin.sin_addr) == 0)
++	if (inet_pton(AF_INET, paddr, &sin.sin_addr) == 0 &&
++	    inet_pton(AF_INET6, paddr, &sin.sin_addr) == 0)
+ 		return NULL;
+ 
+ 	error = getaddrinfo(paddr, NULL, &hint, &ai);
+@@ -168,7 +172,7 @@ host_addrinfo(const char *hostname)
+ {
+ 	struct addrinfo *ai = NULL;
+ 	struct addrinfo hint = {
+-		.ai_family	= AF_INET,
++		.ai_family	= AF_UNSPEC,
+ 		/* don't return duplicates */
+ 		.ai_protocol	= (int)IPPROTO_UDP,
+ 		.ai_flags	= AI_ADDRCONFIG | AI_CANONNAME,
+@@ -178,7 +182,13 @@ host_addrinfo(const char *hostname)
+ 	error = getaddrinfo(hostname, NULL, &hint, &ai);
+ 	switch (error) {
+ 	case 0:
+-		return ai;
++		if (ai->ai_family == AF_INET ||
++		    ai->ai_family == AF_INET6)
++			return ai;
++		freeaddrinfo(ai);
++		xlog(D_GENERAL, "%s: resolved to neither IPv4 nor IPv6 address.",
++				hostname);
++		break;
+ 	case EAI_SYSTEM:
+ 		xlog(D_GENERAL, "%s: failed to resolve %s: (%d) %m",
+ 				__func__, hostname, errno);
+
 
