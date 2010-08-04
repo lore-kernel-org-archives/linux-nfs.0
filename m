@@ -1,72 +1,44 @@
 From: Steve Dickson <steved@redhat.com>
-Subject: [PATCH 07/24] Removed warnings from fsloc.c
-Date: Wed,  4 Aug 2010 11:12:03 -0400
-Message-ID: <1280934740-11366-8-git-send-email-steved@redhat.com>
+Subject: [PATCH 04/24] emove warnings from cacheio.c
+Date: Wed,  4 Aug 2010 11:12:00 -0400
+Message-ID: <1280934740-11366-5-git-send-email-steved@redhat.com>
 References: <1280934740-11366-1-git-send-email-steved@redhat.com>
 To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from 4dicksons.org ([207.22.49.45]:54506 "EHLO
+Received: from 4dicksons.org ([207.22.49.45]:54503 "EHLO
 	Dobby.Home.4dicksons.org" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1752730Ab0HDPMY (ORCPT
+	by vger.kernel.org with ESMTP id S1752713Ab0HDPMY (ORCPT
 	<rfc822;linux-nfs@vger.kernel.org>); Wed, 4 Aug 2010 11:12:24 -0400
 Received: from tophat.home.4dicksons.org ([192.168.62.20])
 	by Dobby.Home.4dicksons.org with esmtp (Exim 4.63)
 	(envelope-from <steved@redhat.com>)
-	id 1Ogfdm-0002SZ-KJ
+	id 1Ogfdm-0002SZ-AG
 	for linux-nfs@vger.kernel.org; Wed, 04 Aug 2010 11:12:22 -0400
 In-Reply-To: <1280934740-11366-1-git-send-email-steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-fsloc.c: In function 'replicas_lookup':
-fsloc.c:149: warning: unused parameter 'key'
+cacheio.c: In function 'cache_flush':
+cacheio.c:352: warning: comparison between signed and unsigned integer expressions
 
 Signed-off-by: Steve Dickson <steved@redhat.com>
 ---
- utils/mountd/cache.c |    2 +-
- utils/mountd/fsloc.c |    2 +-
- utils/mountd/fsloc.h |    2 +-
- 3 files changed, 3 insertions(+), 3 deletions(-)
+ support/nfs/cacheio.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
 
-diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c
-index bf18a9a..5488056 100644
---- a/utils/mountd/cache.c
-+++ b/utils/mountd/cache.c
-@@ -600,7 +600,7 @@ static void write_fsloc(FILE *f, struct exportent *ep, char *path)
- 	if (ep->e_fslocmethod == FSLOC_NONE)
- 		return;
- 
--	servers = replicas_lookup(ep->e_fslocmethod, ep->e_fslocdata, path);
-+	servers = replicas_lookup(ep->e_fslocmethod, ep->e_fslocdata);
- 	if (!servers)
- 		return;
- 	qword_print(f, "fsloc");
-diff --git a/utils/mountd/fsloc.c b/utils/mountd/fsloc.c
-index 5b094b0..e2add2d 100644
---- a/utils/mountd/fsloc.c
-+++ b/utils/mountd/fsloc.c
-@@ -146,7 +146,7 @@ static struct servers *method_list(char *data)
- }
- 
- /* Returns appropriately filled struct servers, or NULL if had a problem */
--struct servers *replicas_lookup(int method, char *data, char *key)
-+struct servers *replicas_lookup(int method, char *data)
- {
- 	struct servers *sp=NULL;
- 	switch(method) {
-diff --git a/utils/mountd/fsloc.h b/utils/mountd/fsloc.h
-index 8296d1c..1605df4 100644
---- a/utils/mountd/fsloc.h
-+++ b/utils/mountd/fsloc.h
-@@ -44,7 +44,7 @@ struct servers {
- 	int h_referral;		/* 0=replica, 1=referral */
- };
- 
--struct servers *replicas_lookup(int method, char *data, char *key);
-+struct servers *replicas_lookup(int method, char *data);
- void release_replicas(struct servers *server);
- 
- #endif /* FSLOC_H */
+diff --git a/support/nfs/cacheio.c b/support/nfs/cacheio.c
+index 55fa45d..9bad8e6 100644
+--- a/support/nfs/cacheio.c
++++ b/support/nfs/cacheio.c
+@@ -349,7 +349,7 @@ cache_flush(int force)
+ 		sprintf(path, "/proc/net/rpc/%s/flush", cachelist[c]);
+ 		fd = open(path, O_RDWR);
+ 		if (fd >= 0) {
+-			if (write(fd, stime, strlen(stime)) != strlen(stime)) {
++			if (write(fd, stime, strlen(stime)) != (ssize_t)strlen(stime)) {
+ 				xlog_warn("Writing to '%s' failed: errno %d (%s)",
+ 				path, errno, strerror(errno));
+ 			}
 -- 
 1.7.2
 
