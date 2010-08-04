@@ -1,83 +1,53 @@
 From: Steve Dickson <steved@redhat.com>
-Subject: [PATCH 03/24] Remove warnings from svc_socket.c
-Date: Wed,  4 Aug 2010 11:11:59 -0400
-Message-ID: <1280934740-11366-4-git-send-email-steved@redhat.com>
+Subject: [PATCH 02/24] Removed warnings from rpcdispatch.c
+Date: Wed,  4 Aug 2010 11:11:58 -0400
+Message-ID: <1280934740-11366-3-git-send-email-steved@redhat.com>
 References: <1280934740-11366-1-git-send-email-steved@redhat.com>
 To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from 4dicksons.org ([207.22.49.45]:54502 "EHLO
+Received: from 4dicksons.org ([207.22.49.45]:54504 "EHLO
 	Dobby.Home.4dicksons.org" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1752630Ab0HDPMY (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 4 Aug 2010 11:12:24 -0400
+	by vger.kernel.org with ESMTP id S1752855Ab0HDPMZ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 4 Aug 2010 11:12:25 -0400
 Received: from tophat.home.4dicksons.org ([192.168.62.20])
 	by Dobby.Home.4dicksons.org with esmtp (Exim 4.63)
 	(envelope-from <steved@redhat.com>)
-	id 1Ogfdm-0002SZ-4R
+	id 1Ogfdm-0002SZ-0n
 	for linux-nfs@vger.kernel.org; Wed, 04 Aug 2010 11:12:22 -0400
 In-Reply-To: <1280934740-11366-1-git-send-email-steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-svc_socket.c: In function 'svcudp_socket':
-svc_socket.c:160: warning: unused parameter 'reuse'
+rpcdispatch.c: In function 'rpc_dispatch':
+rpcdispatch.c:30: warning: comparison between signed and unsigned
+     integer expressions
+rpcdispatch.c:35: warning: comparison between signed and unsigned
+     integer expressions
 
 Signed-off-by: Steve Dickson <steved@redhat.com>
 ---
- support/include/nfslib.h |    2 +-
- support/nfs/rpcmisc.c    |    2 +-
- support/nfs/svc_socket.c |    6 +++---
- 3 files changed, 5 insertions(+), 5 deletions(-)
+ support/nfs/rpcdispatch.c |    4 ++--
+ 1 files changed, 2 insertions(+), 2 deletions(-)
 
-diff --git a/support/include/nfslib.h b/support/include/nfslib.h
-index e44cf8f..b8e7c40 100644
---- a/support/include/nfslib.h
-+++ b/support/include/nfslib.h
-@@ -158,6 +158,6 @@ void qword_printuint(FILE *f, unsigned int num);
- void closeall(int min);
- 
- int			svctcp_socket (u_long __number, int __reuse);
--int			svcudp_socket (u_long __number, int __reuse);
-+int			svcudp_socket (u_long __number);
- 
- #endif /* NFSLIB_H */
-diff --git a/support/nfs/rpcmisc.c b/support/nfs/rpcmisc.c
-index a0854e7..b73187a 100644
---- a/support/nfs/rpcmisc.c
-+++ b/support/nfs/rpcmisc.c
-@@ -154,7 +154,7 @@ rpc_init(char *name, int prog, int vers,
- 				sock = makesock(defport, IPPROTO_UDP);
- 		}
- 		if (sock == RPC_ANYSOCK)
--			sock = svcudp_socket (prog, 1);
-+			sock = svcudp_socket (prog);
- 		transp = svcudp_create(sock);
- 		if (transp == NULL) {
- 			xlog(L_FATAL, "cannot create udp service.");
-diff --git a/support/nfs/svc_socket.c b/support/nfs/svc_socket.c
-index f44217a..03a5325 100644
---- a/support/nfs/svc_socket.c
-+++ b/support/nfs/svc_socket.c
-@@ -157,9 +157,9 @@ svctcp_socket (u_long number, int reuse)
-  * Create and bind a UDP socket based on program number
-  */
- int
--svcudp_socket (u_long number, int reuse)
-+svcudp_socket (u_long number)
+diff --git a/support/nfs/rpcdispatch.c b/support/nfs/rpcdispatch.c
+index 502fc5f..984c646 100644
+--- a/support/nfs/rpcdispatch.c
++++ b/support/nfs/rpcdispatch.c
+@@ -27,12 +27,12 @@ rpc_dispatch(struct svc_req *rqstp, SVCXPRT *transp,
  {
--  return svc_socket (number, SOCK_DGRAM, IPPROTO_UDP, 0);
-+  return svc_socket (number, SOCK_DGRAM, IPPROTO_UDP, FALSE);
- }
+ 	struct rpc_dentry	*dent;
  
- #ifdef TEST
-@@ -174,7 +174,7 @@ check (u_long number, u_short port, int protocol, int reuse)
-   if (protocol == IPPROTO_TCP)
-     socket = svctcp_socket (number, reuse);
-   else
--    socket = svcudp_socket (number, reuse);
-+    socket = svcudp_socket (number);
- 
-   if (socket < 0)
-     return 1;
+-	if (rqstp->rq_vers > nvers) {
++	if (((int)rqstp->rq_vers) > nvers) {
+ 		svcerr_progvers(transp, 1, nvers);
+ 		return;
+ 	}
+ 	dtable += (rqstp->rq_vers - 1);
+-	if (rqstp->rq_proc > dtable->nproc) {
++	if (((int)rqstp->rq_proc) > dtable->nproc) {
+ 		svcerr_noproc(transp);
+ 		return;
+ 	}
 -- 
 1.7.2
 
