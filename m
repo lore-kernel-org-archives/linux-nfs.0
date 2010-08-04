@@ -1,40 +1,139 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: [PATCH] SUNRPC: prevent task_cleanup running on freed xprt
-Date: Tue, 03 Aug 2010 17:32:22 -0400
-Message-ID: <1280871142.14520.7.camel@heimdal.trondhjem.org>
-References: <20100803132453.4fa18444@tlielax.poochiereds.net>
-	 <1280860815.9771.25.camel@heimdal.trondhjem.org>
-	 <1280861363.12283.2.camel@heimdal.trondhjem.org>
-	 <20100803212220.GI31579@fieldses.org>
+From: Neil Brown <neilb@suse.de>
+Subject: Re: [PATCH] Fix IP address check in check_netgroup()
+Date: Wed, 4 Aug 2010 10:29:13 +1000
+Message-ID: <20100804102913.207c1a4d@notabene>
+References: <20100803191107.19326.19237.stgit@seurat.1015granger.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Cc: Jeff Layton <jlayton@redhat.com>, linux-nfs@vger.kernel.org,
-	netdev@vger.kernel.org
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Content-Type: text/plain; charset=US-ASCII
+Cc: linux-nfs@vger.kernel.org
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-out1.uio.no ([129.240.10.57]:54787 "EHLO mail-out1.uio.no"
+Received: from cantor2.suse.de ([195.135.220.15]:47039 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751453Ab0HCVc2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 3 Aug 2010 17:32:28 -0400
-In-Reply-To: <20100803212220.GI31579@fieldses.org>
+	id S1756799Ab0HDA3V (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 3 Aug 2010 20:29:21 -0400
+In-Reply-To: <20100803191107.19326.19237.stgit-x+BlCsqV7M/wdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 2010-08-03 at 17:22 -0400, J. Bruce Fields wrote:
-> From: J. Bruce Fields <bfields@redhat.com>
+On Tue, 03 Aug 2010 15:13:06 -0400
+Chuck Lever <chuck.lever@oracle.com> wrote:
+
+> Neil Brown reports that recent changes to replace
+> gethostby{addr,name}(3) with get{addr,info}name(3) may have
+> inadvertently broken netgroup support.  There used to be a
+> gethostbyaddr(3) call in the third paragraph in check_netgroup().
 > 
-> We saw a report of a NULL dereference in xprt_autoclose:
+> See http://marc.info/?l=linux-nfs&m=128084830214653&w=2 .
 > 
-> 	https://bugzilla.redhat.com/show_bug.cgi?id=611938
+> Introduced by commit 0509d3428f523776ddd9d6e9fa318587d3ec7d84.
 > 
-> This appears to be the result of an xprt's task_cleanup running after
-> the xprt is destroyed.  Nothing in the current code appears to prevent
-> that.
-> 
-> Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+
+Thanks Chuck - that look good, except .....
+
+
 > ---
+> 
+> Compile-tested only.
+> 
+>  support/export/client.c |   37 ++++++++++++++++++++++++++++---------
+>  1 files changed, 28 insertions(+), 9 deletions(-)
+> 
+> diff --git a/support/export/client.c b/support/export/client.c
+> index 91b17f3..0d34a55 100644
+> --- a/support/export/client.c
+> +++ b/support/export/client.c
+> @@ -583,43 +583,62 @@ static int
+>  check_netgroup(const nfs_client *clp, const struct addrinfo *ai)
+>  {
+>  	const char *netgroup = clp->m_hostname + 1;
+> -	const char *hname = ai->ai_canonname;
+>  	struct addrinfo *tmp = NULL;
+>  	struct hostent *hp;
+> +	char *dot, *hname;
+>  	int i, match;
+> -	char *dot;
+> +
+> +	match = 0;
+> +
+> +	hname = strdup(ai->ai_canonname);
+> +	if (hname == NULL) {
+> +		xlog(D_GENERAL, "%s: no memory for strdup", __func__);
+> +		goto out;
+> +	}
+>  
+>  	/* First, try to match the hostname without
+>  	 * splitting off the domain */
+> -	if (innetgr(netgroup, hname, NULL, NULL))
+> -		return 1;
+> +	if (innetgr(netgroup, hname, NULL, NULL)) {
+> +		match = 1;
+> +		goto out;
+> +	}
+>  
+>  	/* See if hname aliases listed in /etc/hosts or nis[+]
+>  	 * match the requested netgroup */
+>  	hp = gethostbyname(hname);
+>  	if (hp != NULL) {
+>  		for (i = 0; hp->h_aliases[i]; i++)
+> -			if (innetgr(netgroup, hp->h_aliases[i], NULL, NULL))
+> -				return 1;
+> +			if (innetgr(netgroup, hp->h_aliases[i], NULL, NULL)) {
+> +				match = 1;
+> +				goto out;
+> +			}
+>  	}
+>  
+>  	/* If hname is ip address convert to FQDN */
+>  	tmp = host_pton(hname);
+>  	if (tmp != NULL) {
+> +		char *cname = host_canonname(tmp->ai_addr);
+>  		freeaddrinfo(tmp);
+> -		if (innetgr(netgroup, hname, NULL, NULL))
+> -			return 1;
+> +		if (cname != NULL) {
+> +			hname = cname;
 
-Thanks. Applied to nfs-for-2.6.36...
+You need to "free(hname)" before assigning cname to it.
+Also ...
 
-Trond
+> +			if (innetgr(netgroup, hname, NULL, NULL)) {
+> +				match = 1;
+> +				goto out;
+> +			}
+> +		}
+>  	}
+>  
+>  	/* Okay, strip off the domain (if we have one) */
+>  	dot = strchr(hname, '.');
+>  	if (dot == NULL)
+> -		return 0;
+> +		goto out;
+>  
+>  	*dot = '\0';
+>  	match = innetgr(netgroup, hname, NULL, NULL);
+>  	*dot = '.';
+
+It is fairly pointless to re-instate the '.' when we are about to free the
+name.  Not a big issue, but I thought I would mention it.
+
+With those provisos:
+ Reviewed-By: NeilBrown <neilb@suse.de>
+
+Thanks a lot!
+
+NeilBrown
+
+>  
+> +out:
+> +	free(hname);
+>  	return match;
+>  }
+>  #else	/* !HAVE_INNETGR */
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
