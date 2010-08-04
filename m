@@ -1,71 +1,89 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:63598 "EHLO
-	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1751551Ab0HRT5F (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 18 Aug 2010 15:57:05 -0400
-Message-ID: <4C6C3B0D.2080005@panasas.com>
-Date: Wed, 18 Aug 2010 22:57:01 +0300
-From: Benny Halevy <bhalevy@panasas.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-CC: andros@netapp.com, linux-nfs@vger.kernel.org,
-        Fred Isaman <iisaman@citi.umich.edu>
-Subject: Re: [PATCH 1/1] nfs41: prevent exchange_id from sending server-only
- flag
-References: <1282153092-7228-1-git-send-email-andros@netapp.com> <1282154873.8540.69.camel@heimdal.trondhjem.org>
-In-Reply-To: <1282154873.8540.69.camel@heimdal.trondhjem.org>
-Content-Type: text/plain; charset=UTF-8
+Received: from mail-gx0-f174.google.com ([209.85.161.174]:43391 "EHLO
+	mail-gx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758319Ab0HDVMS convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 4 Aug 2010 17:12:18 -0400
+Received: by gxk23 with SMTP id 23so2174282gxk.19
+        for <linux-nfs@vger.kernel.org>; Wed, 04 Aug 2010 14:12:17 -0700 (PDT)
+In-Reply-To: <97A00951-577C-4365-AA38-3C6E2D03B372@netapp.com>
+References: <AANLkTi=2KYZ-8qaXMG=C_s617q3k1Ocs7h1gyd8=RpY6@mail.gmail.com>
+	<AANLkTimr9QfF0+MJ47hUihJgSLVOfquR=Atp4iV5D2gr@mail.gmail.com>
+	<97A00951-577C-4365-AA38-3C6E2D03B372@netapp.com>
+From: Yudong Gao <stgyd@umich.edu>
+Date: Wed, 4 Aug 2010 14:11:57 -0700
+Message-ID: <AANLkTimi9CSa=XfoKBMCm-XAKcVQKVi0bEXgtA+XHexE@mail.gmail.com>
+Subject: Re: Write delegation
+To: Andy Adamson <andros@netapp.com>
+Cc: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Aug. 18, 2010, 21:07 +0300, Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
-> On Wed, 2010-08-18 at 13:38 -0400, andros@netapp.com wrote:
->> From: Fred Isaman <iisaman@citi.umich.edu>
->>
->> clp->cl_exchange_flags is used both for client output and server input.
->> This causes problems in certain recovery situations, when the server
->> has sent back EXCHGID4_FLAG_CONFIRMED_R, causing the client to erroneously
->> use the flag in future EXCHANGE_ID requests.
->>
->> Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
->> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
->> ---
->>  fs/nfs/nfs4proc.c |    2 +-
->>  1 files changed, 1 insertions(+), 1 deletions(-)
->>
->> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
->> index 198d51d..e5fea95 100644
->> --- a/fs/nfs/nfs4proc.c
->> +++ b/fs/nfs/nfs4proc.c
->> @@ -4427,7 +4427,7 @@ int nfs4_proc_exchange_id(struct nfs_client *clp, struct rpc_cred *cred)
->>  	nfs4_verifier verifier;
->>  	struct nfs41_exchange_id_args args = {
->>  		.client = clp,
->> -		.flags = clp->cl_exchange_flags,
->> +		.flags = clp->cl_exchange_flags & ~EXCHGID4_FLAG_CONFIRMED_R,
->>  	};
->>  	struct nfs41_exchange_id_res res = {
->>  		.client = clp,
-> 
-> Wait... This is utterly silly...
-> 
-> So we start be passing in clp->cl_exchange_flags == 0, then the server
-> modifies that to some other value, and then from there on we always use
-> the latest value of clp->cl_exchange_flags that resulted from the last
-> call to EXCHANGE_ID????
-> 
-> We should be setting .flags according to the client capabilities, not
-> according to the server reply...
-> 
-> IOW:
-> args.flags = EXCHGID4_FLAG_SUPP_MOVED_REFER | EXCHGID4_FLAG_USE_NON_PNFS;
-> 
-> 
+Thanks for the reply, Andy!
 
-Makes sense for upstream.
+So the write delegation can only reduce the unnecessary open/close and
+lock/locku. But if a client modify the same page for multiple times,
+e.g. editing the file in a editor, is there any optimization to
+prevent the client from sending the half-updated pages? Ideally only
+the final update need to be put on the wire.
 
-For pNFS, besides dropping EXCHGID4_FLAG_USE_NON_PNFS we should retain
-EXCHGID4_FLAG_USE_PNFS_MDS | EXCHGID4_FLAG_USE_PNFS_DS as exchange_id
-is called from both the MDS and the DS paths.
+Thanks!
 
-Benny
+best,
+
+Yudong
+
+On Wed, Aug 4, 2010 at 1:59 PM, Andy Adamson <andros@netapp.com> wrote:
+>
+> On Aug 4, 2010, at 3:21 PM, Yudong Gao wrote:
+>
+>> Hi,
+>>
+>> I am not able to find the implementation of directory delegation,
+>> either. Similarly, the callback functions CB_NOTIFY is not
+>> implemented, either. I find that in preprocss_nfs41_op() in
+>> callback_xdr.c, whenever a CB_NOTIFY is encountered, an
+>> NFS4ERR_NOTSUPP is returned directly.
+>
+> CB_NOTIFY is not currently supported on the Linux NFS client.
+>
+>>
+>> Am I missing something? Or they are just not supported in the current version?
+>>
+>> Thanks a lot!
+>>
+>> best,
+>>
+>> Yudong
+>>
+>> On Mon, Aug 2, 2010 at 5:17 PM, Yudong Gao <stgyd@umich.edu> wrote:
+>>> Hi,
+>>>
+>>> I am looking at the delegation implementation in the source code of
+>>> NFS 4.1 in kernel 2.6.32.15. I can find the code for read delegation,
+>>> which is working and can serve the read requests locally. But I can
+>>> never find the code about write delegation, which is supposed to cache
+>>> the write update locally. I try to look at the functions including
+>>> nfs_writepage(s), nfs_file_flush() but none of them checks or uses the
+>>> write delegation.
+>>>
+>>> Is write delegation currently implemented in NFS 4.1?
+>
+> Write delegation is supported but I don't think write behavior changes - writes are still cached and flushed as without a write delegation. The write delegation does prevent open/close and lock/locku from being put on the wire.
+>
+> -->Andy
+>
+>>>
+>>> Thanks!
+>>>
+>>> best,
+>>>
+>>> Yudong
+>>>
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
+>
