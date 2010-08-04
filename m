@@ -1,104 +1,47 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cn.fujitsu.com ([222.73.24.84]:50783 "EHLO song.cn.fujitsu.com"
-	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
-	id S1751050Ab0HSDkJ convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 18 Aug 2010 23:40:09 -0400
-Message-ID: <4C6CA739.5030504@cn.fujitsu.com>
-Date: Thu, 19 Aug 2010 11:38:33 +0800
-From: Bian Naimeng <biannm@cn.fujitsu.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Trond Myklebust <Trond.Myklebust@netapp.com>, linux-nfs@vger.kernel.org,
-        Christoph Hellwig <hch@infradead.org>
-Subject: Re: [PATCH] Server should allow offset larger than LLONG_MAX at commit
- procedure
-References: <4C6B9538.2020608@cn.fujitsu.com> <20100819001647.GD18367@fieldses.org>
-In-Reply-To: <20100819001647.GD18367@fieldses.org>
-Content-Type: text/plain; charset=Shift_JIS
+Received: from mx2.netapp.com ([216.240.18.37]:6166 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756860Ab0HDCmO convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 3 Aug 2010 22:42:14 -0400
+Subject: Re: [PATCH 0/4] nfsrdma: Miscellanseous Bug Fixes
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Tom Tucker <tom@ogc.us>
+Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org, swise@ogc.us
+In-Reply-To: <20100803164411.2567.31416.stgit@build.ogc.int>
+References: <20100803164411.2567.31416.stgit@build.ogc.int>
+Content-Type: text/plain; charset="UTF-8"
+Date: Tue, 03 Aug 2010 22:42:02 -0400
+Message-ID: <1280889722.24669.31.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-
-
-J. Bruce Fields ŽÊ“¹:
-> On Wed, Aug 18, 2010 at 04:09:28PM +0800, Bian Naimeng wrote:
->> When offset larger than LLONG_MAX, it's better to sync all the data of file
->> than return nfserr_inval.
+On Tue, 2010-08-03 at 11:44 -0500, Tom Tucker wrote:
+> The following series fixes a number of bugs in the NFSRDMA transport.
 > 
-> I believe the current behavior is correct.
+> ---
 > 
-> See http://marc.info/?l=linux-nfs&m=128200558207974&w=2 for a pynfs-side
-> fix.
+> Steve Wise (1):
+>       xprtrdma: Do not truncate iova_start values in frmr registrations.
 > 
-
-  Thanks.
-
-  But why we must return nfserr_inval at nfs layer, the commitarg.offset and
-  writearg.offset are the U64 type, i think maybe we should set the vfs as the
-  authority not nfs for whether the offset is valid when it over 2^63-1.
-
-  Maybe some day, VFS can support lager offset, we need modify our nfs code again
-  to fit it. So i think which check offset at nfsd4_write and nfsd4_commit is 
-  unnecessary, looks like VFS can return EINVAL for it.
-
--- 
-Regards
-Bian Naimeng
-
-> --b.
+> Tom Tucker (3):
+>       rpcrdma: Fix SQ size calculation when memreg is FRMR
+>       svcrdma: Cleanup DMA unmapping in error paths.
+>       svcrdma: Change DMA mapping logic to avoid the page_address kernel API
 > 
->> Signed-off-by: Bian Naimeng <biannm@cn.fujitsu.com>
->>
->> ---
->>  fs/nfsd/vfs.c |   14 ++++++++------
->>  1 files changed, 8 insertions(+), 6 deletions(-)
->>
->> diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
->> index 96360a8..f67fe31 100644
->> --- a/fs/nfsd/vfs.c
->> +++ b/fs/nfsd/vfs.c
->> @@ -1174,20 +1174,23 @@ nfsd_commit(struct svc_rqst *rqstp, struct svc_fh *fhp,
->>  {
->>  	struct file	*file;
->>  	loff_t		end = LLONG_MAX;
->> -	__be32		err = nfserr_inval;
->> +	__be32		err;
->> +
->> +	if ((u64)count > ~(u64)offset)
->> +		return nfserr_inval;
->>  
->>  	if (offset < 0)
->> -		goto out;
->> -	if (count != 0) {
->> +		offset = 0;
->> +	else if (count != 0) {
->>  		end = offset + (loff_t)count - 1;
->>  		if (end < offset)
->> -			goto out;
->> +			end = LLONG_MAX;
->>  	}
->>  
->>  	err = nfsd_open(rqstp, fhp, S_IFREG,
->>  			NFSD_MAY_WRITE|NFSD_MAY_NOT_BREAK_LEASE, &file);
->>  	if (err)
->> -		goto out;
->> +		return err;
->>  	if (EX_ISSYNC(fhp->fh_export)) {
->>  		int err2 = vfs_fsync_range(file, offset, end, 0);
->>  
->> @@ -1198,7 +1201,6 @@ nfsd_commit(struct svc_rqst *rqstp, struct svc_fh *fhp,
->>  	}
->>  
->>  	nfsd_close(file);
->> -out:
->>  	return err;
->>  }
->>  #endif /* CONFIG_NFSD_V3 */
->> -- 
->> 1.6.5.2
+> 
+>  net/sunrpc/xprtrdma/rpc_rdma.c           |    2 +
+>  net/sunrpc/xprtrdma/svc_rdma_recvfrom.c  |   19 ++++---
+>  net/sunrpc/xprtrdma/svc_rdma_sendto.c    |   82 ++++++++++++++++++++++--------
+>  net/sunrpc/xprtrdma/svc_rdma_transport.c |   41 +++++++--------
+>  net/sunrpc/xprtrdma/verbs.c              |   22 ++++++--
+>  5 files changed, 111 insertions(+), 55 deletions(-)
 
+Hi Tom,
 
--- 
-Regards
-Bian Naimeng
+How do you want to split these patches? The first one looks definitely
+like a client bug, and the next 2 look like server bugs, but what about
+the last patch?
 
+Cheers
+  Trond
