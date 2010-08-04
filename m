@@ -1,40 +1,69 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ww0-f44.google.com ([74.125.82.44]:62353 "EHLO
-	mail-ww0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752228Ab0H0XI0 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 27 Aug 2010 19:08:26 -0400
-Received: by wwb28 with SMTP id 28so4061691wwb.1
-        for <linux-nfs@vger.kernel.org>; Fri, 27 Aug 2010 16:08:25 -0700 (PDT)
-Date: Fri, 27 Aug 2010 18:08:25 -0500
-Message-ID: <AANLkTimog6uTdsxzFeA0YY+HK6gtcwEGXaFDJs+Aorm0@mail.gmail.com>
-Subject: 30 time speed difference between using NFS and without using NFS
-From: Peng Yu <pengyu.ut@gmail.com>
-To: linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mx2.netapp.com ([216.240.18.37]:27803 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1758588Ab0HDU7u convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 4 Aug 2010 16:59:50 -0400
+Subject: Re: Write delegation
+Content-Type: text/plain; charset=us-ascii
+From: Andy Adamson <andros@netapp.com>
+In-Reply-To: <AANLkTimr9QfF0+MJ47hUihJgSLVOfquR=Atp4iV5D2gr@mail.gmail.com>
+Date: Wed, 4 Aug 2010 16:59:49 -0400
+Cc: linux-nfs@vger.kernel.org
+Message-Id: <97A00951-577C-4365-AA38-3C6E2D03B372@netapp.com>
+References: <AANLkTi=2KYZ-8qaXMG=C_s617q3k1Ocs7h1gyd8=RpY6@mail.gmail.com> <AANLkTimr9QfF0+MJ47hUihJgSLVOfquR=Atp4iV5D2gr@mail.gmail.com>
+To: Yudong Gao <stgyd@umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Hi,
 
-I use the following command to search for some directory.
+On Aug 4, 2010, at 3:21 PM, Yudong Gao wrote:
 
-find -L some_dir -type d -name some_name
+> Hi,
+> 
+> I am not able to find the implementation of directory delegation,
+> either. Similarly, the callback functions CB_NOTIFY is not
+> implemented, either. I find that in preprocss_nfs41_op() in
+> callback_xdr.c, whenever a CB_NOTIFY is encountered, an
+> NFS4ERR_NOTSUPP is returned directly.
 
-If I'm on the machine that has some_dir locally, the run time is
-real	0m0.199s
-user	0m0.048s
-sys	0m0.140s
+CB_NOTIFY is not currently supported on the Linux NFS client.
 
-If I'm on another machine that sees the same directory by NFS (NFS3).
-the run time is
-real	0m6.509s
-user	0m0.090s
-sys	0m1.380s
+> 
+> Am I missing something? Or they are just not supported in the current version?
+> 
+> Thanks a lot!
+> 
+> best,
+> 
+> Yudong
+> 
+> On Mon, Aug 2, 2010 at 5:17 PM, Yudong Gao <stgyd@umich.edu> wrote:
+>> Hi,
+>> 
+>> I am looking at the delegation implementation in the source code of
+>> NFS 4.1 in kernel 2.6.32.15. I can find the code for read delegation,
+>> which is working and can serve the read requests locally. But I can
+>> never find the code about write delegation, which is supposed to cache
+>> the write update locally. I try to look at the functions including
+>> nfs_writepage(s), nfs_file_flush() but none of them checks or uses the
+>> write delegation.
+>> 
+>> Is write delegation currently implemented in NFS 4.1?
 
-There are 30 time speed difference. Is this normal? Is there any NFS
-parameter that I should tune to make the latter faster?
+Write delegation is supported but I don't think write behavior changes - writes are still cached and flushed as without a write delegation. The write delegation does prevent open/close and lock/locku from being put on the wire.
 
--- 
-Regards,
-Peng
+-->Andy
+
+>> 
+>> Thanks!
+>> 
+>> best,
+>> 
+>> Yudong
+>> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
