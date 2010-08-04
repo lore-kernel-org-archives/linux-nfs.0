@@ -1,86 +1,100 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cobra.newdream.net ([66.33.216.30]:55208 "EHLO
-	cobra.newdream.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750817Ab0HTCfu (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 19 Aug 2010 22:35:50 -0400
-Date: Thu, 19 Aug 2010 19:36:19 -0700 (PDT)
-From: Sage Weil <sage@newdream.net>
-To: Wu Fengguang <fengguang.wu@gmail.com>
-cc: Christoph Hellwig <hch@infradead.org>, Jeff Layton <jlayton@redhat.com>,
-        linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-mm@kvack.org, Chris Mason <chris.mason@oracle.com>,
-        Jens Axboe <axboe@kernel.dk>, David Howells <dhowells@redhat.com>,
-        Steve French <sfrench@samba.org>
-Subject: Re: why are WB_SYNC_NONE COMMITs being done with FLUSH_SYNC set ?
-In-Reply-To: <20100820000258.GA30226@localhost>
-Message-ID: <Pine.LNX.4.64.1008191935420.22373@cobra.newdream.net>
-References: <20100819101525.076831ad@barsoom.rdu.redhat.com>
- <20100819143710.GA4752@infradead.org> <20100819235553.GB22747@localhost>
- <20100820000258.GA30226@localhost>
-Content-Type: TEXT/PLAIN; charset=US-ASCII
+Received: from mail-out1.uio.no ([129.240.10.57]:47097 "EHLO mail-out1.uio.no"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1758004Ab0HDCCY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 3 Aug 2010 22:02:24 -0400
+Subject: Re: numeric UIDs
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Jim Rees <rees@umich.edu>, Daniel.Muntz@emc.com, linux-nfs@vger.kernel.org
+In-Reply-To: <20100803224245.GB9752@fieldses.org>
+References: <201008030401.33552.dreck@vmsd.ath.cx>
+	 <20100803164318.GB13896@merit.edu> <20100803192216.GC31579@fieldses.org>
+	 <DE966DA98A4ABE438D726BDF1699CF61403FAF9D@MX05A.corp.emc.com>
+	 <20100803215704.GA15494@merit.edu>
+	 <1280873719.14520.17.camel@heimdal.trondhjem.org>
+	 <20100803222337.GA9752@fieldses.org>
+	 <1280874675.14520.23.camel@heimdal.trondhjem.org>
+	 <20100803224245.GB9752@fieldses.org>
+Content-Type: text/plain; charset="UTF-8"
+Date: Tue, 03 Aug 2010 22:02:16 -0400
+Message-ID: <1280887336.24669.23.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Fri, 20 Aug 2010, Wu Fengguang wrote:
-
-> [add CC to afs/cifs/ceph maintainers]
-> 
-> On Fri, Aug 20, 2010 at 07:55:53AM +0800, Wu Fengguang wrote:
-> > On Thu, Aug 19, 2010 at 10:37:10AM -0400, Christoph Hellwig wrote:
-> > > On Thu, Aug 19, 2010 at 10:15:25AM -0400, Jeff Layton wrote:
-> > > > I'm looking at backporting some upstream changes to earlier kernels,
-> > > > and ran across something I don't quite understand...
+On Tue, 2010-08-03 at 18:42 -0400, J. Bruce Fields wrote:
+> On Tue, Aug 03, 2010 at 06:31:15PM -0400, Trond Myklebust wrote:
+> > On Tue, 2010-08-03 at 18:23 -0400, J. Bruce Fields wrote:
+> > > On Tue, Aug 03, 2010 at 06:15:19PM -0400, Trond Myklebust wrote:
+> > > > On Tue, 2010-08-03 at 17:57 -0400, Jim Rees wrote:
+> > > > > Daniel.Muntz@emc.com wrote:
+> > > > > 
+> > > > >   I'll fourth this motion.  The spec goes out of its way to declare this a
+> > > > >   violation.  IMHO, the NFSv4.[0-n] specs should adopt the convention that a
+> > > > >   uid string consisting of [0-9]+ be interpreted as the string
+> > > > >   representation of a numeric UID--just as valid as a "user@domain" string.
+> > > > > 
+> > > > > I argued for this as an option in the early days but was shouted down.
+> > > > > Sorry I can't remember the details, it was many years ago.
 > > > > 
-> > > > In nfs_commit_unstable_pages, we set the flags to FLUSH_SYNC. We then
-> > > > zero out the flags if wbc->nonblocking or wbc->for_background is set.
-> > > > 
-> > > > Shouldn't we also clear it out if wbc->sync_mode == WB_SYNC_NONE ?
-> > > > WB_SYNC_NONE means "don't wait on anything", so shouldn't that include
-> > > > not waiting on the COMMIT to complete?
+> > > > Why is nobody talking about fixing AUTH_SYS? The alternative to using
+> > > > numeric uids/gids in NFS would be to use user@domain/group@domain in the
+> > > > credential.
 > > > 
-> > > I've been trying to figure out what the nonblocking flag is supposed
-> > > to mean for a while now.
+> > > I'm not sure what that does to address complaints like original
+> > > poster's:
 > > > 
-> > > It basically disappeared in commit 0d99519efef15fd0cf84a849492c7b1deee1e4b7
+> > > 	http://marc.info/?l=linux-nfs&m=128080127215350&w=2
 > > > 
-> > > 	"writeback: remove unused nonblocking and congestion checks"
-> > > 
-> > > from Wu.  What's left these days is a couple of places in local copies
-> > > of write_cache_pages (afs, cifs), and a couple of checks in random
-> > > writepages instances (afs, block_write_full_page, ceph, nfs, reiserfs, xfs)
-> > > and the use in nfs_write_inode.
+> > > And I'd like it to be possible to make the NFSv3->NFSv4 upgrade as
+> > > transparent as possible.
 > > 
-> > In principle all nonblocking checks in ->writepages should be removed.
-> > 
-> > (My original patch does have chunks for afs/cifs that somehow get
-> >  dropped in the process, and missed ceph because it's not upstream
-> >  when I started patch..)
-
-I'll queue up a fix for Ceph's ->writepages in my tree.
-
-Thanks!
-sage
-
-
-> > 
-> > > It's only actually set for memory
-> > > migration and pageout, that is VM writeback.
-> > > 
-> > > To me it really doesn't make much sense, but maybe someone has a better
-> > > idea what it is for.
-> >  
-> > Since migration and pageout still set nonblocking for ->writepage, we
-> > may keep them in the near future, until VM does not start IO on itself.
-> > 
-> > > > +	if (wbc->nonblocking || wbc->for_background ||
-> > > > +	    wbc->sync_mode == WB_SYNC_NONE)
-> > > 
-> > > You could remove the nonblocking and for_background checks as
-> > > these impliy WB_SYNC_NONE.
-> > 
-> > Agreed.
-> > 
-> > Thanks,
-> > Fengguang
+> > 1) RFC3530 does allow a workaround for cases where the _server_ doesn't
+> > have a mapping from uid/gid -> name. We just haven't implemented it on
+> > Linux servers (or clients).
 > 
+> Yeah, somebody should.
+> 
+> > 2) Why is AUTH_SYS so sacrosanct?
+> 
+> Because it's what almost everyone uses.
+
+No. It's the _default_. ...and a really really bad default.
+
+The sane thing to do is to change that default instead of trying to add
+in yet another ptolemaic epicycle to "fix" just one of the many
+problems...
+For NFSv4, an auth system that is based on user/groupnames and domains
+is a sane fix. It can be made to work with legacy NFSv2/v3 uids and gids
+by setting up /etc/passwords, /etc/groups and/or ldap appropriately (as
+should already be the case if you are using NFSv2/v3).
+
+> > We know it has a bunch of problems,
+> > not least the one that limits ngroups <= 16, and the fact that it relies
+> > on uids (as opposed to login names) being the same on client and server
+> > so why not try to fix those limitations?
+> 
+> Sure, that would be great.
+> 
+> Again, that doesn't address the complaints above.
+
+Yes it does.
+
+It is far better to return an error when the NFS server doesn't
+recognize the user and group name rather than to try to use a uid and
+gid that is only valid on the local client. Better still, the server
+could allocate a new uid or gid (just like Samba does) when it
+encounters an unknown user or group name, instead of returning the
+error.
+
+The server can still default to the workaround of using the ascii
+uid/gid when it is trying to export a file for which it has no
+user/group.
+
+It boils down to the fact that we all log in to our clients with
+_usernames_, not uids. Trying to make the uid the fundamental object is
+the mistake that got us here in the first place.
+
+Trond
+
