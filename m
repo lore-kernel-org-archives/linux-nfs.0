@@ -1,97 +1,87 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:35502 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752281Ab0HLHGF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 12 Aug 2010 03:06:05 -0400
-From: NeilBrown <neilb@suse.de>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Date: Thu, 12 Aug 2010 17:04:07 +1000
-Subject: [PATCH 5/6] svcauth_gss: replace a trivial 'switch' with an 'if'
-Cc: linux-nfs@vger.kernel.org
-Message-ID: <20100812070407.11459.92833.stgit@localhost.localdomain>
-In-Reply-To: <20100812065722.11459.18978.stgit@localhost.localdomain>
-References: <20100812065722.11459.18978.stgit@localhost.localdomain>
-Content-Type: text/plain; charset="utf-8"
+Received: from cn.fujitsu.com ([222.73.24.84]:61008 "EHLO song.cn.fujitsu.com"
+	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
+	id S1756820Ab0HDJQm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 4 Aug 2010 05:16:42 -0400
+Message-ID: <4C592FAF.5090700@cn.fujitsu.com>
+Date: Wed, 04 Aug 2010 17:15:27 +0800
+From: Bian Naimeng <biannm@cn.fujitsu.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+CC: linux-nfs@vger.kernel.org
+Subject: [PATCH 1/2] Make lock inode before lock nfs4_state_owner
+References: <4C592F85.8070308@cn.fujitsu.com>
+In-Reply-To: <4C592F85.8070308@cn.fujitsu.com>
+Content-Type: text/plain; charset=Shift_JIS
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Code like:
+ We should lock inode before lock nfs4_state_owner, sometimes, we want scan
+nfsi->open_states, and modify once state, so we need lock state->owner.
 
-  switch(xxx) {
-  case -error1:
-  case -error2:
-     ..
-     return;
-  case 0:
-     stuff;
-  }
+Signed-off-by: Bian Naimeng <biannm@cn.fujitsu.com>
 
-  can more naturally be written:
-
-  if (xxx < 0)
-      return;
-
-  stuff;
-
-Signed-off-by: NeilBrown <neilb@suse.de>
 ---
- net/sunrpc/auth_gss/svcauth_gss.c |   41 +++++++++++++++++--------------------
- 1 files changed, 19 insertions(+), 22 deletions(-)
+ fs/nfs/nfs4state.c |   16 +++++++++-------
+ 1 files changed, 9 insertions(+), 7 deletions(-)
 
-diff --git a/net/sunrpc/auth_gss/svcauth_gss.c b/net/sunrpc/auth_gss/svcauth_gss.c
-index ed005af..dec2a6f 100644
---- a/net/sunrpc/auth_gss/svcauth_gss.c
-+++ b/net/sunrpc/auth_gss/svcauth_gss.c
-@@ -1034,30 +1034,27 @@ static int svcauth_gss_handle_init(struct svc_rqst *rqstp,
- 	rsi_free(&rsikey);
- 	if (!rsip)
- 		return SVC_CLOSE;
--	switch (cache_check(&rsi_cache, &rsip->h, &rqstp->rq_chandle)) {
--	case -EAGAIN:
--	case -ETIMEDOUT:
--	case -ENOENT:
-+	if (cache_check(&rsi_cache, &rsip->h, &rqstp->rq_chandle) < 0)
- 		/* No upcall result: */
- 		return SVC_CLOSE;
--	case 0:
--		ret = SVC_CLOSE;
--		/* Got an answer to the upcall; use it: */
--		if (gss_write_init_verf(rqstp, rsip))
--			goto out;
--		if (resv->iov_len + 4 > PAGE_SIZE)
--			goto out;
--		svc_putnl(resv, RPC_SUCCESS);
--		if (svc_safe_putnetobj(resv, &rsip->out_handle))
--			goto out;
--		if (resv->iov_len + 3 * 4 > PAGE_SIZE)
--			goto out;
--		svc_putnl(resv, rsip->major_status);
--		svc_putnl(resv, rsip->minor_status);
--		svc_putnl(resv, GSS_SEQ_WIN);
--		if (svc_safe_putnetobj(resv, &rsip->out_token))
--			goto out;
--	}
-+
-+	ret = SVC_CLOSE;
-+	/* Got an answer to the upcall; use it: */
-+	if (gss_write_init_verf(rqstp, rsip))
-+		goto out;
-+	if (resv->iov_len + 4 > PAGE_SIZE)
-+		goto out;
-+	svc_putnl(resv, RPC_SUCCESS);
-+	if (svc_safe_putnetobj(resv, &rsip->out_handle))
-+		goto out;
-+	if (resv->iov_len + 3 * 4 > PAGE_SIZE)
-+		goto out;
-+	svc_putnl(resv, rsip->major_status);
-+	svc_putnl(resv, rsip->minor_status);
-+	svc_putnl(resv, GSS_SEQ_WIN);
-+	if (svc_safe_putnetobj(resv, &rsip->out_token))
-+		goto out;
-+
- 	ret = SVC_COMPLETE;
- out:
- 	cache_put(&rsip->h, &rsi_cache);
+diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+index 34acf59..fe34c41 100644
+--- a/fs/nfs/nfs4state.c
++++ b/fs/nfs/nfs4state.c
+@@ -498,8 +498,8 @@ nfs4_get_open_state(struct inode *inode, struct nfs4_state_owner *owner)
+ 	if (state)
+ 		goto out;
+ 	new = nfs4_alloc_open_state();
+-	spin_lock(&owner->so_lock);
+ 	spin_lock(&inode->i_lock);
++	spin_lock(&owner->so_lock);
+ 	state = __nfs4_find_state_byowner(inode, owner);
+ 	if (state == NULL && new != NULL) {
+ 		state = new;
+@@ -507,14 +507,14 @@ nfs4_get_open_state(struct inode *inode, struct nfs4_state_owner *owner)
+ 		atomic_inc(&owner->so_count);
+ 		list_add(&state->inode_states, &nfsi->open_states);
+ 		state->inode = igrab(inode);
+-		spin_unlock(&inode->i_lock);
+ 		/* Note: The reclaim code dictates that we add stateless
+ 		 * and read-only stateids to the end of the list */
+ 		list_add_tail(&state->open_states, &owner->so_states);
+ 		spin_unlock(&owner->so_lock);
+-	} else {
+ 		spin_unlock(&inode->i_lock);
++	} else {
+ 		spin_unlock(&owner->so_lock);
++		spin_unlock(&inode->i_lock);
+ 		if (new)
+ 			nfs4_free_open_state(new);
+ 	}
+@@ -527,13 +527,15 @@ void nfs4_put_open_state(struct nfs4_state *state)
+ 	struct inode *inode = state->inode;
+ 	struct nfs4_state_owner *owner = state->owner;
+ 
+-	if (!atomic_dec_and_lock(&state->count, &owner->so_lock))
+-		return;
+ 	spin_lock(&inode->i_lock);
+-	list_del(&state->inode_states);
++	if (!atomic_dec_and_lock(&state->count, &owner->so_lock)) {
++		spin_unlock(&inode->i_lock);
++		return;
++	}
+ 	list_del(&state->open_states);
+-	spin_unlock(&inode->i_lock);
+ 	spin_unlock(&owner->so_lock);
++	list_del(&state->inode_states);
++	spin_unlock(&inode->i_lock);
+ 	iput(inode);
+ 	nfs4_free_open_state(state);
+ 	nfs4_put_state_owner(owner);
+-- 
+1.6.5.2
 
+
+
+-- 
+Regards
+Bian Naimeng
 
