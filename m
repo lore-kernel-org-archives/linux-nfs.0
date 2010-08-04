@@ -1,79 +1,58 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from e1.ny.us.ibm.com ([32.97.182.141]:58714 "EHLO e1.ny.us.ibm.com"
+Received: from mx2.netapp.com ([216.240.18.37]:11307 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751037Ab0HSDRX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 18 Aug 2010 23:17:23 -0400
-Subject: Re: Proposal: Use hi-res clock for file timestamps
-From: john stultz <johnstul@us.ibm.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: "Patrick J. LoPresti" <lopresti@gmail.com>,
-        Alan Cox <alan@lxorguk.ukuu.org.uk>, Andi Kleen <andi@firstfloor.org>,
-        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-kernel <linux-kernel@vger.kernel.org>
-In-Reply-To: <20100819023106.GB30151@fieldses.org>
-References: <AANLkTimnyXKahtjaFeSsgcq=xMy-pP3na1jidQhZ-dt2@mail.gmail.com>
-	 <87aaolwar8.fsf@basil.nowhere.org> <20100817174134.GA23176@fieldses.org>
-	 <20100817182920.GD18161@basil.fritz.box>
-	 <20100817190447.GA28049@fieldses.org>
-	 <AANLkTi=w1UA5ZZDBigpxMiL7A7DnbnQhLkg62JZpC6Ri@mail.gmail.com>
-	 <20100817203941.729830b7@lxorguk.ukuu.org.uk>
-	 <AANLkTi=sOW0Cgci+xX6rRmz+B-is0xb8DoKD350bFJN1@mail.gmail.com>
-	 <20100818181240.GA13050@fieldses.org>
-	 <AANLkTi=cx31Mgfe7FxJz6LUmTKFR4=9KEBgbFsNLjiSE@mail.gmail.com>
-	 <20100819023106.GB30151@fieldses.org>
-Content-Type: text/plain; charset="UTF-8"
-Date: Wed, 18 Aug 2010 20:17:14 -0700
-Message-ID: <1282187834.3575.30.camel@localhost.localdomain>
+	id S1751245Ab0HDSa0 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 4 Aug 2010 14:30:26 -0400
+Subject: Re: numeric UIDs
+Content-Type: text/plain; charset=us-ascii
+From: Andy Adamson <andros@netapp.com>
+In-Reply-To: <0969EC03-E225-4265-BADC-582F2089D13E@u.washington.edu>
+Date: Wed, 4 Aug 2010 14:30:05 -0400
+Cc: linux-nfs@vger.kernel.org
+Message-Id: <C2AFF31B-A4A4-432C-A152-B28676B8C3A4@netapp.com>
+References: <201008030401.33552.dreck@vmsd.ath.cx> <20100803164318.GB13896@merit.edu> <20100803192216.GC31579@fieldses.org> <DE966DA98A4ABE438D726BDF1699CF61403FAF9D@MX05A.corp.emc.com> <20100803215704.GA15494@merit.edu> <1280873719.14520.17.camel@heimdal.trondhjem.org> <20100803222337.GA9752@fieldses.org> <1280874675.14520.23.camel@heimdal.trondhjem.org> <20100803224245.GB9752@fieldses.org> <1280887336.24669.23.camel@heimdal.trondhjem.org> <0969EC03-E225-4265-BADC-582F2089D13E@u.washington.edu>
+To: David Brodbeck <brodbd@u.washington.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, 2010-08-18 at 22:31 -0400, J. Bruce Fields wrote:
-> On Wed, Aug 18, 2010 at 06:41:02PM -0700, john stultz wrote:
-> > On Wed, Aug 18, 2010 at 11:12 AM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> > > I'm completely ignorant about higher-resolution time sources.  Any
-> > > recommended reading?  What resolution do they actually provide, what's
-> > > the expense of reading them, how reliable are they, and how do the
-> > > answers to those questions vary across different hardware and kernel
-> > > versions?  A quick look at drivers/clocksource/ doesn't suggest
-> > > simple answers.
-> > 
-> > Yea, there aren't simple answers. Clocksource hardware varies
-> > drastically in resolution and access time across systems and
-> > architectures. Further, clocksources may change while the system is
-> > up, so we don't really expose the hardware resolution.
-> > 
-> > On x86, access latency varies from ~50ns (TSC) to ~1.3us (ACPI PM).
-> > (And that is ignoring the PIT, which can be 18us per call - luckily
-> > almost no hardware uses that). The resolution similarly scales from
-> > sub-ns (TSC @ > 1ghz cpus) to ~279ns (ACPI PM). Of course, across
-> > architectures you will see even more variance.
+
+On Aug 4, 2010, at 1:06 PM, David Brodbeck wrote:
+
 > 
-> The race in question occurs when you manage to check mtime between two
-> file data updates, with all three operations occurring within a clock
-> tick.
+> On Aug 3, 2010, at 7:02 PM, Trond Myklebust wrote:
 > 
-> No idea if that's feasible in hundreds of nanoseconds.
-
-I think this is what Andi meant that you'll always race with time and
-that version counters are the only real solution here.
-
-> I'm also not sure how to judge the access latency.  Certainly a
-> microsecond is a lot compared to just reading a cached mtime value.
+>> On Tue, 2010-08-03 at 18:42 -0400, J. Bruce Fields wrote:
+>>> On Tue, Aug 03, 2010 at 06:31:15PM -0400, Trond Myklebust wrote:
+>>>> On Tue, 2010-08-03 at 18:23 -0400, J. Bruce Fields wrote:
+>>>>> On Tue, Aug 03, 2010 at 06:15:19PM -0400, Trond Myklebust wrote:
+>>> 
+>>>> 2) Why is AUTH_SYS so sacrosanct?
+>>> 
+>>> Because it's what almost everyone uses.
+>> 
+>> No. It's the _default_. ...and a really really bad default.
 > 
-> Will we ever see them go backwards?  (So if I know I wrote to file B
-> after writing to file A, is there ever a case where I could end up with
-> an earlier mtime on B than A?)
+> The problem is the only supported alternative is to set up Kerberos.  This is a lot of work, especially for established sites where it essentially requires every user to change their password during the migration.  It also creates problems with ticket expiration if you have daemons or batch jobs that need continuous access to NFS filesystems.
 
-You should not. However, there have been bugs in the past, and there
-will probably be a few more in the future.
+Changing passwords is a good thing - should be done on a regular basis anyway. Ticket expiration is handled by using a keytab and a cron job to refresh the keytab.  That said, Kerberos does need to be easier (automatic) to set up than it is.
 
-There are also theoretical issues with SMP systems where the TSCs are
-not perfectly synced, but the window for those races should be small
-(ie: smaller then can be detected - otherwise we'll throw out the TSC).
+-->Andy
 
-
-thanks
--john
-
+> 
+> I've been looking at it for a while, because the 16-group limit is a problem for us, but it's a huge ball of wax.  I understand the security benefits, but the sheer complexity of setting it up and then coming up with workarounds for ticket expiration has me a bit cowed.
+> 
+> -- 
+> 
+> David Brodbeck
+> System Administrator, Linguistics
+> University of Washington
+> 
+> 
+> 
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
