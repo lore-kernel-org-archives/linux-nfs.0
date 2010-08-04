@@ -1,56 +1,64 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:61678 "EHLO mx2.netapp.com"
+Received: from cantor2.suse.de ([195.135.220.15]:51375 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756578Ab0HOA63 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 14 Aug 2010 20:58:29 -0400
-Subject: Re: 64bit inodes and IA32 apps over NFS
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Lukas Hejtmanek <xhejtman@ics.muni.cz>
+	id S1758207Ab0HDDpe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 3 Aug 2010 23:45:34 -0400
+Date: Wed, 4 Aug 2010 13:45:27 +1000
+From: Neil Brown <neilb@suse.de>
+To: Jason Keltz <jas@cse.yorku.ca>
 Cc: linux-nfs@vger.kernel.org
-In-Reply-To: <20100813144703.GP20901@ics.muni.cz>
-References: <20100813144703.GP20901@ics.muni.cz>
-Content-Type: text/plain; charset="UTF-8"
-Date: Sat, 14 Aug 2010 20:58:13 -0400
-Message-ID: <1281833894.9828.3.camel@heimdal.trondhjem.org>
+Subject: Re: exporting to a list of IPs
+Message-ID: <20100804134527.146397ff@notabene>
+In-Reply-To: <4C583B63.4050903@cse.yorku.ca>
+References: <4C583B63.4050903@cse.yorku.ca>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Fri, 2010-08-13 at 16:47 +0200, Lukas Hejtmanek wrote:
-> Hello,
-> 
-> is there any workaround for NFSv4 when exporting XFS with 64bit inodes?
-> 
-> IA32 apps receives:
-> getdents(3, 0xb7571008, 1000)           = -1 EOVERFLOW (Value too large for defined data type)
-> 
-> when compiling on x86_64, I got not error.
-> 
-> From the XFS man page:
-> By default, with 32bit inodes, XFS places inodes only in the first 1TB of
-> a disk. If you have a disk with 100TB, all inodes will be stuck in the first
-> TB. This can lead to strange things like "disk full" when you still have
-> plenty space free, but there's no more place in the first TB to create a new
-> inode. Also, performance sucks.
-> 
-> To come around this, use the inode64 mount options for filesystems >1TB.
-> Inodes will then be placed in the location where their data is, minimizing
-> disk seeks.
-> 
-> Beware that some old programs might have problems reading 64bit inodes,
-> especially over NFS.
-> 
-> 
-> So, is there any workaround in NFS for IA32 apps?
-> 
+On Tue, 03 Aug 2010 11:53:07 -0400
+Jason Keltz <jas@cse.yorku.ca> wrote:
 
-[trondmy@heimdal linux_nfs-2.6]$ less Documentation/kernel-parameters.txt
+> Hi.
+> 
+> Why is it that you cannot NFS export to a list of IPs and have exportfs 
+> leave the list of IPs in etab without converting over to FQDN?
 
-        nfs.enable_ino64=
-                        [NFS] enable 64-bit inode numbers.
-                        If zero, the NFS client will fake up a 32-bit inode
-                        number for the readdir() and stat() syscalls instead
-                        of returning the full 64-bit number.
-                        The default is to return 64-bit inode numbers.
+My memory is that if you only list IP addresses in /etc/exports then it will
+do just want you want.  But if you list any host names or net groups then it
+has to do a DNS lookup on everything to see if either of those matches.
 
-Trond
+> 
+> In Changelog:
+> 
+> 2001-09-20 NeilBrown <neilb@cse.unsw.edu.au>
+>              Anne Milicia <milicia@missioncriticallinux.com>
+> 
+>          * support/export/client.c (client_lookup) call gethostbyadd
+>          to make sure that we have a canonical hostname, even for
+>          dotted-quads
+
+I think this patch only related to netgroup lookups.
+
+> 
+> Why does mountd need to repeat the gethostbyname() lookup on every host 
+> even though exportfs already converted over to using hostname?
+
+exportfs doesn't convert over host hostnames.  It essentially
+copies /etc/exports to /var/lib/nfs/etab with minor formatting changes.
+
+What do you actually put in /etc/exports, what do you find
+in /var/lib/nfs/etab, and what exactly is the problem?
+
+NeilBrown
+
+
+> 
+> Thanks,
+> 
+> Jason.
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
