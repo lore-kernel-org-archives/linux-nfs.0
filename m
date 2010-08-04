@@ -1,41 +1,89 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from one.firstfloor.org ([213.235.205.2]:51090 "EHLO
-	one.firstfloor.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753332Ab0HRSx6 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 18 Aug 2010 14:53:58 -0400
-Date: Wed, 18 Aug 2010 20:53:54 +0200
-From: Andi Kleen <andi@firstfloor.org>
-To: David Woodhouse <dwmw2@infradead.org>
-Cc: Andi Kleen <andi@firstfloor.org>, "J. Bruce Fields" <bfields@fieldses.org>,
-        "Patrick J. LoPresti" <lopresti@gmail.com>,
-        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-kernel <linux-kernel@vger.kernel.org>
-Subject: Re: Proposal: Use hi-res clock for file timestamps
-Message-ID: <20100818185354.GB6567@basil.fritz.box>
-References: <AANLkTimnyXKahtjaFeSsgcq=xMy-pP3na1jidQhZ-dt2@mail.gmail.com>
- <87aaolwar8.fsf@basil.nowhere.org>
- <20100817174134.GA23176@fieldses.org>
- <20100817182920.GD18161@basil.fritz.box>
- <1282155658.13405.36.camel@localhost>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1282155658.13405.36.camel@localhost>
+Received: from mail-gw0-f46.google.com ([74.125.83.46]:64648 "EHLO
+	mail-gw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752914Ab0HDRNF (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 4 Aug 2010 13:13:05 -0400
+Received: by gwb20 with SMTP id 20so2074163gwb.19
+        for <linux-nfs@vger.kernel.org>; Wed, 04 Aug 2010 10:13:03 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 1/2] libexport: Add a common exit label to check_netgroup()
+To: steved@redhat.com
+Cc: neilb@suse.de, linux-nfs@vger.kernel.org
+Date: Wed, 04 Aug 2010 13:13:00 -0400
+Message-ID: <20100804171259.2657.58455.stgit@seurat.1015granger.net>
+In-Reply-To: <20100804171036.2657.8657.stgit@seurat.1015granger.net>
+References: <20100804171036.2657.8657.stgit@seurat.1015granger.net>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, Aug 18, 2010 at 07:20:58PM +0100, David Woodhouse wrote:
-> On Tue, 2010-08-17 at 20:29 +0200, Andi Kleen wrote:
-> > 
-> > >       - Increment mtime by a nanosecond when necessary.  
-> > 
-> > You cannot be more precise than the backing file system: this causes
-> > non monotonity when the inodes are flushed (has happened in the past)
-> 
-> Um, can't you? You can't *store* timestamps which are more precise, but
-> they can be in cache can't they?
+I'm about to change check_netgroup() to free dynamically allocated
+resources before it returns, so a common exit point is needed.
 
-No you can't. The initial implementation did that and it broke someone's
-make. After that the VFS was fixed to never be precise than the backing
-file system.
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Reviewed-by: Neil Brown <neilb@suse.de>
+---
 
--Andi
+ support/export/client.c |   23 ++++++++++++++++-------
+ 1 files changed, 16 insertions(+), 7 deletions(-)
+
+diff --git a/support/export/client.c b/support/export/client.c
+index 91b17f3..6667200 100644
+--- a/support/export/client.c
++++ b/support/export/client.c
+@@ -589,37 +589,46 @@ check_netgroup(const nfs_client *clp, const struct addrinfo *ai)
+ 	int i, match;
+ 	char *dot;
+ 
++	match = 0;
++
+ 	/* First, try to match the hostname without
+ 	 * splitting off the domain */
+-	if (innetgr(netgroup, hname, NULL, NULL))
+-		return 1;
++	if (innetgr(netgroup, hname, NULL, NULL)) {
++		match = 1;
++		goto out;
++	}
+ 
+ 	/* See if hname aliases listed in /etc/hosts or nis[+]
+ 	 * match the requested netgroup */
+ 	hp = gethostbyname(hname);
+ 	if (hp != NULL) {
+ 		for (i = 0; hp->h_aliases[i]; i++)
+-			if (innetgr(netgroup, hp->h_aliases[i], NULL, NULL))
+-				return 1;
++			if (innetgr(netgroup, hp->h_aliases[i], NULL, NULL)) {
++				match = 1;
++				goto out;
++			}
+ 	}
+ 
+ 	/* If hname is ip address convert to FQDN */
+ 	tmp = host_pton(hname);
+ 	if (tmp != NULL) {
+ 		freeaddrinfo(tmp);
+-		if (innetgr(netgroup, hname, NULL, NULL))
+-			return 1;
++		if (innetgr(netgroup, hname, NULL, NULL)) {
++			match = 1;
++			goto out;
++		}
+ 	}
+ 
+ 	/* Okay, strip off the domain (if we have one) */
+ 	dot = strchr(hname, '.');
+ 	if (dot == NULL)
+-		return 0;
++		goto out;
+ 
+ 	*dot = '\0';
+ 	match = innetgr(netgroup, hname, NULL, NULL);
+ 	*dot = '.';
+ 
++out:
+ 	return match;
+ }
+ #else	/* !HAVE_INNETGR */
+
