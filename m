@@ -1,59 +1,93 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([18.85.46.34]:36326 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751539Ab0HRU0D (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 18 Aug 2010 16:26:03 -0400
-Date: Wed, 18 Aug 2010 16:25:59 -0400
-From: Christoph Hellwig <hch@infradead.org>
-To: andros@netapp.com
-Cc: bhalevy@panasas.com, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 05/50] pnfs_submit: pnfs and nfslayoutdriver kconfig
-Message-ID: <20100818202559.GA16851@infradead.org>
-References: <1281735122-1496-1-git-send-email-andros@netapp.com>
- <1281735122-1496-2-git-send-email-andros@netapp.com>
- <1281735122-1496-3-git-send-email-andros@netapp.com>
- <1281735122-1496-4-git-send-email-andros@netapp.com>
- <1281735122-1496-5-git-send-email-andros@netapp.com>
- <1281735122-1496-6-git-send-email-andros@netapp.com>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1281735122-1496-6-git-send-email-andros@netapp.com>
+Received: from mail-gx0-f174.google.com ([209.85.161.174]:47709 "EHLO
+	mail-gx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752914Ab0HDRNO (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 4 Aug 2010 13:13:14 -0400
+Received: by mail-gx0-f174.google.com with SMTP id 23so2071760gxk.19
+        for <linux-nfs@vger.kernel.org>; Wed, 04 Aug 2010 10:13:14 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 2/2] libexport: Fix IP address check in check_netgroup()
+To: steved@redhat.com
+Cc: neilb@suse.de, linux-nfs@vger.kernel.org
+Date: Wed, 04 Aug 2010 13:13:11 -0400
+Message-ID: <20100804171310.2657.35125.stgit@seurat.1015granger.net>
+In-Reply-To: <20100804171036.2657.8657.stgit@seurat.1015granger.net>
+References: <20100804171036.2657.8657.stgit@seurat.1015granger.net>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Fri, Aug 13, 2010 at 05:31:17PM -0400, andros@netapp.com wrote:
-> From: The pNFS Team <linux-nfs@vger.kernel.org>
-> 
-> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+Neil Brown reports that recent changes to replace
+gethostby{addr,name}(3) with get{addr,info}name(3) may have
+inadvertently broken netgroup support.  There used to be a
+gethostbyaddr(3) call in the third paragraph in check_netgroup().
 
-If you split out the Kconfig from the code it guards it should come last
-in the series so that the code can't be enabled until it's complete.
+See http://marc.info/?l=linux-nfs&m=128084830214653&w=2 .
 
->  	depends on NFS_V4 && EXPERIMENTAL
->  	help
->  	  This option enables support for minor version 1 of the NFSv4 protocol
-> -	  (draft-ietf-nfsv4-minorversion1) in the kernel's NFS client.
-> +	  (RFC5661) including support for the parallel NFS (pNFS) features
-> +	  in the kernel's NFS client.
-> +
-> +	  Unless you're an NFS developer, say N.
+Introduced by commit 0509d3428f523776ddd9d6e9fa318587d3ec7d84.
 
-How much code does the pnfs support add to the nfs.ko module?  Just
-including this unconditionally might not be an all that good idea.
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Reviewed-by: Neil Brown <neilb@suse.de>
+---
 
-Also Trond seemed to be pretty determined to split up nfs.ko into
-version specific modules, and pnfs and the various layout drivers are
-pretty good candidates for that.  Maybe the pnfs patches should be ontop
-of that?
+ support/export/client.c |   22 ++++++++++++++++------
+ 1 files changed, 16 insertions(+), 6 deletions(-)
 
-> +config PNFS_FILE_LAYOUT
-> +	tristate "NFS client support for the pNFS nfs-files layout (DEVELOPER ONLY)"
-> +	depends on NFS_FS && NFS_V4_1
-
-is it really developers-only at this point?  And if it is so why doesn't
-it depend on EXPERIMENTAL
-
-> +	default y
-
-defaulting to y for random fringe features is frowned upon.
+diff --git a/support/export/client.c b/support/export/client.c
+index 6667200..278a990 100644
+--- a/support/export/client.c
++++ b/support/export/client.c
+@@ -583,14 +583,19 @@ static int
+ check_netgroup(const nfs_client *clp, const struct addrinfo *ai)
+ {
+ 	const char *netgroup = clp->m_hostname + 1;
+-	const char *hname = ai->ai_canonname;
+ 	struct addrinfo *tmp = NULL;
+ 	struct hostent *hp;
++	char *dot, *hname;
+ 	int i, match;
+-	char *dot;
+ 
+ 	match = 0;
+ 
++	hname = strdup(ai->ai_canonname);
++	if (hname == NULL) {
++		xlog(D_GENERAL, "%s: no memory for strdup", __func__);
++		goto out;
++	}
++
+ 	/* First, try to match the hostname without
+ 	 * splitting off the domain */
+ 	if (innetgr(netgroup, hname, NULL, NULL)) {
+@@ -612,10 +617,15 @@ check_netgroup(const nfs_client *clp, const struct addrinfo *ai)
+ 	/* If hname is ip address convert to FQDN */
+ 	tmp = host_pton(hname);
+ 	if (tmp != NULL) {
++		char *cname = host_canonname(tmp->ai_addr);
+ 		freeaddrinfo(tmp);
+-		if (innetgr(netgroup, hname, NULL, NULL)) {
+-			match = 1;
+-			goto out;
++		if (cname != NULL) {
++			free(hname);
++			hname = cname;
++			if (innetgr(netgroup, hname, NULL, NULL)) {
++				match = 1;
++				goto out;
++			}
+ 		}
+ 	}
+ 
+@@ -626,9 +636,9 @@ check_netgroup(const nfs_client *clp, const struct addrinfo *ai)
+ 
+ 	*dot = '\0';
+ 	match = innetgr(netgroup, hname, NULL, NULL);
+-	*dot = '.';
+ 
+ out:
++	free(hname);
+ 	return match;
+ }
+ #else	/* !HAVE_INNETGR */
 
