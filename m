@@ -1,39 +1,66 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cantor.suse.de ([195.135.220.2]:54284 "EHLO mx1.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751392Ab0HYXg4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 25 Aug 2010 19:36:56 -0400
-Date: Thu, 26 Aug 2010 09:36:48 +1000
-From: Neil Brown <neilb@suse.de>
-To: Peng Yu <pengyu.ut@gmail.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: Does the machine need to be restarted after RPCNFSDCOUNT in
- /etc/default/nfs-kernel-server (ubuntu) is edited?
-Message-ID: <20100826093648.26d03c1c@notabene>
-In-Reply-To: <AANLkTi=8rnEtOikhVqsH5Pj1QUhc5MiSHMfncZO1xCem@mail.gmail.com>
-References: <AANLkTi=8rnEtOikhVqsH5Pj1QUhc5MiSHMfncZO1xCem@mail.gmail.com>
-Content-Type: text/plain; charset=US-ASCII
+Received: from cn.fujitsu.com ([222.73.24.84]:57593 "EHLO song.cn.fujitsu.com"
+	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
+	id S1757428Ab0HDJTu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 4 Aug 2010 05:19:50 -0400
+Message-ID: <4C59306A.9090302@cn.fujitsu.com>
+Date: Wed, 04 Aug 2010 17:18:34 +0800
+From: Bian Naimeng <biannm@cn.fujitsu.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+CC: linux-nfs@vger.kernel.org
+Subject: [PATCH 2/2] We should clear NFS_DELEGATED_STATE after return delegation
+References: <4C592F85.8070308@cn.fujitsu.com>
+In-Reply-To: <4C592F85.8070308@cn.fujitsu.com>
+Content-Type: text/plain; charset=Shift_JIS
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, 25 Aug 2010 15:02:14 -0500
-Peng Yu <pengyu.ut@gmail.com> wrote:
+ We should clear NFS_DELEGATED_STATE bit for inode->open_states after return delegation.
 
-> Hi,
-> 
-> I changed the value of RPCNFSDCOUNT in /etc/default/nfs-kernel-server
-> (ubuntu). Do I need to restart the machine?
-> 
-> Or I need to restart nfsd? If so, would you please let me know how to
-> restart nfsd?
-> 
+Signed-off-by: Bian Naimeng <biannm@cn.fujitsu.com>
 
-Easiest thing to do is simply
+---
+ fs/nfs/nfs4proc.c |   15 ++++++++++++++-
+ 1 files changed, 14 insertions(+), 1 deletions(-)
 
-   rpc.nfsd $NUMBER
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 70015dd..76cdef4 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -933,16 +933,29 @@ no_delegation:
+ 
+ static void nfs4_return_incompatible_delegation(struct inode *inode, fmode_t fmode)
+ {
++	struct nfs_inode *nfsi = NFS_I(inode);
+ 	struct nfs_delegation *delegation;
++	struct nfs4_state *state;
+ 
+ 	rcu_read_lock();
+-	delegation = rcu_dereference(NFS_I(inode)->delegation);
++	delegation = rcu_dereference(nfsi->delegation);
+ 	if (delegation == NULL || (delegation->type & fmode) == fmode) {
+ 		rcu_read_unlock();
+ 		return;
+ 	}
+ 	rcu_read_unlock();
+ 	nfs_inode_return_delegation(inode);
++
++	spin_lock(&inode->i_lock);
++	list_for_each_entry(state, &nfsi->open_states, inode_states) {
++		if (state->owner == NULL)
++			continue;
++
++		spin_lock(&state->owner->so_lock);
++		clear_bit(NFS_DELEGATED_STATE, &state->flags);
++		spin_unlock(&state->owner->so_lock);
++	}
++	spin_unlock(&inode->i_lock);
+ }
+ 
+ static struct nfs4_state *nfs4_try_open_cached(struct nfs4_opendata *opendata)
+-- 
+1.6.5.2
 
-it will change the number of running threads to match the number that you
-give.
 
-NeilBrown
+
