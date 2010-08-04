@@ -1,44 +1,67 @@
 From: Steve Dickson <steved@redhat.com>
-Subject: [PATCH 18/24] Removed warnings from nfs4mount.c
-Date: Wed,  4 Aug 2010 11:12:14 -0400
-Message-ID: <1280934740-11366-19-git-send-email-steved@redhat.com>
+Subject: [PATCH 15/24] Removed warnings from gssd_proc.c
+Date: Wed,  4 Aug 2010 11:12:11 -0400
+Message-ID: <1280934740-11366-16-git-send-email-steved@redhat.com>
 References: <1280934740-11366-1-git-send-email-steved@redhat.com>
 To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from 4dicksons.org ([207.22.49.45]:45183 "EHLO
+Received: from 4dicksons.org ([207.22.49.45]:45177 "EHLO
 	Dobby.Home.4dicksons.org" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1754883Ab0HDPvV (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 4 Aug 2010 11:51:21 -0400
+	by vger.kernel.org with ESMTP id S1754968Ab0HDPvP (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 4 Aug 2010 11:51:15 -0400
 Received: from tophat.home.4dicksons.org ([192.168.62.20])
 	by Dobby.Home.4dicksons.org with esmtp (Exim 4.63)
 	(envelope-from <steved@redhat.com>)
-	id 1Ogfdo-0002SZ-9N
+	id 1Ogfdo-0002SZ-0g
 	for linux-nfs@vger.kernel.org; Wed, 04 Aug 2010 11:12:24 -0400
 In-Reply-To: <1280934740-11366-1-git-send-email-steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-nfs4mount.c: In function 'fill_ipv4_sockaddr':
-nfs4mount.c:149: warning: comparison between signed and unsigned integer expressions
+gssd_proc.c: In function 'create_auth_rpc_client':
+gssd_proc.c:939: warning: comparison between signed and unsigned integer expressions
+gssd_proc.c:939: warning: comparison between signed and unsigned integer expressions
+gssd_proc.c: In function 'handle_krb5_upcall':
+gssd_proc.c:1164: warning: comparison between signed and unsigned integer expressions
+gssd_proc.c: In function 'handle_spkm3_upcall':
+gssd_proc.c:1178: warning: comparison between signed and unsigned integer expressions
 
 Signed-off-by: Steve Dickson <steved@redhat.com>
 ---
- utils/mount/nfs4mount.c |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
+ utils/gssd/gssd_proc.c |    6 +++---
+ 1 files changed, 3 insertions(+), 3 deletions(-)
 
-diff --git a/utils/mount/nfs4mount.c b/utils/mount/nfs4mount.c
-index 4a2fab7..028e7cd 100644
---- a/utils/mount/nfs4mount.c
-+++ b/utils/mount/nfs4mount.c
-@@ -146,7 +146,7 @@ static int fill_ipv4_sockaddr(const char *hostname, struct sockaddr_in *addr)
- 				progname, hostname);
- 		return -1;
+diff --git a/utils/gssd/gssd_proc.c b/utils/gssd/gssd_proc.c
+index 3902b95..c301d46 100644
+--- a/utils/gssd/gssd_proc.c
++++ b/utils/gssd/gssd_proc.c
+@@ -936,7 +936,7 @@ int create_auth_rpc_client(struct clnt_info *clp,
+ 	if (sec.cred != GSS_C_NO_CREDENTIAL)
+ 		gss_release_cred(&min_stat, &sec.cred);
+ 	/* Restore euid to original value */
+-	if ((save_uid != -1) && (setfsuid(save_uid) != uid)) {
++	if (((int)save_uid != -1) && (setfsuid(save_uid) != (int)uid)) {
+ 		printerr(0, "WARNING: Failed to restore fsuid"
+ 			    " to uid %d from %d\n", save_uid, uid);
  	}
--	if (hp->h_length > sizeof(struct in_addr)) {
-+	if (hp->h_length > (int)sizeof(struct in_addr)) {
- 		nfs_error(_("%s: got bad hp->h_length"), progname);
- 		hp->h_length = sizeof(struct in_addr);
- 	}
+@@ -1161,7 +1161,7 @@ handle_krb5_upcall(struct clnt_info *clp)
+ {
+ 	uid_t			uid;
+ 
+-	if (read(clp->krb5_fd, &uid, sizeof(uid)) < sizeof(uid)) {
++	if (read(clp->krb5_fd, &uid, sizeof(uid)) < (ssize_t)sizeof(uid)) {
+ 		printerr(0, "WARNING: failed reading uid from krb5 "
+ 			    "upcall pipe: %s\n", strerror(errno));
+ 		return;
+@@ -1175,7 +1175,7 @@ handle_spkm3_upcall(struct clnt_info *clp)
+ {
+ 	uid_t			uid;
+ 
+-	if (read(clp->spkm3_fd, &uid, sizeof(uid)) < sizeof(uid)) {
++	if (read(clp->spkm3_fd, &uid, sizeof(uid)) < (ssize_t)sizeof(uid)) {
+ 		printerr(0, "WARNING: failed reading uid from spkm3 "
+ 			 "upcall pipe: %s\n", strerror(errno));
+ 		return;
 -- 
 1.7.2
 
