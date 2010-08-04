@@ -1,72 +1,52 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cantor.suse.de ([195.135.220.2]:47397 "EHLO mx1.suse.de"
+Received: from mx1.redhat.com ([209.132.183.28]:1026 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752074Ab0HRXrr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 18 Aug 2010 19:47:47 -0400
-Date: Thu, 19 Aug 2010 09:47:38 +1000
-From: Neil Brown <neilb@suse.de>
+	id S1757794Ab0HDNo7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 4 Aug 2010 09:44:59 -0400
+Message-ID: <4C596ED4.5010707@RedHat.com>
+Date: Wed, 04 Aug 2010 09:44:52 -0400
+From: Steve Dickson <SteveD@redhat.com>
 To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Alan Cox <alan@lxorguk.ukuu.org.uk>,
-        "Patrick J. LoPresti" <lopresti@gmail.com>,
-        Andi Kleen <andi@firstfloor.org>, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-kernel <linux-kernel@vger.kernel.org>
-Subject: Re: Proposal: Use hi-res clock for file timestamps
-Message-ID: <20100819094738.37cfa566@notabene>
-In-Reply-To: <20100818173203.GC32430@fieldses.org>
-References: <AANLkTimnyXKahtjaFeSsgcq=xMy-pP3na1jidQhZ-dt2@mail.gmail.com>
-	<87aaolwar8.fsf@basil.nowhere.org>
-	<20100817174134.GA23176@fieldses.org>
-	<20100817182920.GD18161@basil.fritz.box>
-	<20100817190447.GA28049@fieldses.org>
-	<AANLkTi=w1UA5ZZDBigpxMiL7A7DnbnQhLkg62JZpC6Ri@mail.gmail.com>
-	<20100817203941.729830b7@lxorguk.ukuu.org.uk>
-	<20100817192937.GD26609@fieldses.org>
-	<20100818155359.66b9ddb6@notabene>
-	<20100818173203.GC32430@fieldses.org>
-Content-Type: text/plain; charset=US-ASCII
+CC: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 08/24] Removed warnings from mountd.c
+References: <1279669057-17509-1-git-send-email-steved@redhat.com> <1279669057-17509-9-git-send-email-steved@redhat.com> <20100721171251.GB26418@fieldses.org>
+In-Reply-To: <20100721171251.GB26418@fieldses.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, 18 Aug 2010 13:32:03 -0400
-"J. Bruce Fields" <bfields@fieldses.org> wrote:
 
-> On Wed, Aug 18, 2010 at 03:53:59PM +1000, Neil Brown wrote:
-> > I'm not sure you even want to pay for a per-filesystem atomic access when
-> > updating mtime.  mnt_want_write - called at the same time - seems to go to
-> > some lengths to avoid an atomic operation.
-> > 
-> > I think that nfsd should be the only place that has to pay the atomic
-> > penalty, as it is where the need is.
-> > 
-> > I imagine something like this:
-> >  - Create a global struct timespec which is protected by a seqlock
-> >    Call it current_nfsd_time or similar.
-> >  - file_update_time reads this and uses it if it is newer than
-> >    current_fs_time.
-> >  - nfsd updates it whenever it reads an mtime out of an inode that matches
-> >    current_fs_time to the granularity of 1/HZ.
+
+On 07/21/2010 01:12 PM, J. Bruce Fields wrote:
+> On Tue, Jul 20, 2010 at 07:37:21PM -0400, Steve Dickson wrote:
+>> mountd.c: In function 'mount_null_1_svc':
+>> mountd.c:195: warning: unused parameter 'rqstp'
+>> mountd.c:195: warning: unused parameter 'argp'
+>> mountd.c:195: warning: unused parameter 'resp'
+>> mountd.c: In function 'mount_dump_1_svc':
+>> mountd.c:213: warning: unused parameter 'argp'
+> ...
+>> @@ -214,7 +217,8 @@ mount_dump_1_svc(struct svc_req *rqstp, void *argp, mountlist *res)
+>>  {
+>>  	struct sockaddr_in *addr = nfs_getrpccaller_in(rqstp->rq_xprt);
+>>  
+>> -	xlog(D_CALL, "dump request from %s.", inet_ntoa(addr->sin_addr));
+>> +	xlog(D_CALL, "MNT1(%s) dump request: argp %p", 
+>> +		inet_ntoa(addr->sin_addr), argp);
 > 
-> We can also skip the update whenever current_nfsd_time is greater than
-> the inode's mtime--that's enough to ensure that the next
-> file_update_time() call will get a time different from the inode's
-> current mtime.
-
-Yes, I agree with you and Patrick - very sensible optimisation.
+> Since those are unused, adding them to the debugging log doesn't add any
+> useful information.
+Well knowing that a client just sent a dump request when debug
+is enabled verses not knowing with debug enabled seems it might be 
+somewhat useful... 
 
 > 
-> Would the extra expense rule out treating sys_stat() the same as nfsd?
-> It would be nice to be able to solve the same problem for userspace
-> nfsd's (or any other application that might be using mtime to save
-> rereading data).
+> The extra warnings is maybe a useful exercise to do every now and then
+> to check if it turns up bugs, but I'm not sure forcing all the code to
+> pass those tests is worthwhile.
+Really... Maybe I'm misunderstanding you but forcing all the code to
+compile warning free is a really good thing... 
 
-It would be nice, but I would be loathe to add any cost to 'stat' unless we
-knew it was needed.
-If we had an xstat() which could explicitly ask for
-high-precision-time-stamps, then yes - otherwise maybe not.
+steved.
 
-(or maybe define a system:linux.xxxx xattr which would read as a
-high-precision time stamp...  I seem to be warming to the idea of using the
-xattr interface for enhancing stat).
-
-NeilBrown
