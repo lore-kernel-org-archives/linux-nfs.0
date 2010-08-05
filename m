@@ -1,34 +1,69 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:50613 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752880Ab0HMVcE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 13 Aug 2010 17:32:04 -0400
-From: andros@netapp.com
-To: bhalevy@panasas.com
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 0/50] Squashed and re-organized pnfs-submit tree
-Date: Fri, 13 Aug 2010 17:31:12 -0400
-Message-Id: <1281735122-1496-1-git-send-email-andros@netapp.com>
+Received: from www262.sakura.ne.jp ([202.181.97.72]:59087 "EHLO
+	www262.sakura.ne.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1759363Ab0HEBKd (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 4 Aug 2010 21:10:33 -0400
+Message-Id: <201008050110.o751AG18066496@www262.sakura.ne.jp>
+Subject: Re: linux-next NFSD: NULL pointer dereference at nfsd_svc()
+From: Tetsuo Handa <penguin-kernel@I-love.SAKURA.ne.jp>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        jlayton@redhat.com
+Date: Thu, 05 Aug 2010 10:10:16 +0900
+References: <201008020747.o727lqXs064715@www262.sakura.ne.jp> <20100802103214.7eea09eb@corrin.poochiereds.net> <20100802103620.5638dac1@corrin.poochiereds.net> <20100802181634.GD12637@fieldses.org> <201008030109.o73193bp094241@www262.sakura.ne.jp> <20100803154851.GA23467@fieldses.org> <201008040013.o740DmYK024832@www262.sakura.ne.jp> <20100804194045.GD18200@fieldses.org>
+In-Reply-To: <20100804194045.GD18200@fieldses.org>
+Content-Type: text/plain; charset="ISO-2022-JP"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
+J. Bruce Fields wrote:
+> Maybe figuring out exactly hwere that is would help work out what's
+> going on.  Doing
+> 
+> 	make net/sunrpc/svc.lst
+> 
+> then looking for c1356dd4 (or just mailing me svc.lst) could help.
 
+"make net/sunrpc/svc.lst" failed due to following error.
 
-Here is the pnfs-submit tree all squashed and reorganized. The resultant tree
-is unchanged. The patch comments and Signed-off-by's need to be added.
+  BFD: Dwarf Error: Abbrev offset (3238007024) greater than or equal to .debug_abbrev size (1607).
 
-We may want to split or re-order some of the patches. I left the "introduce
-new file" patches #6-9 unsquashed, but we probably want to squash them into
-the patch that uses them first.
+Manual printk() debug reported that
+rqstp->rq_argp == rqstp->rq_resp == ZERO_SIZE_PTR and
+procp->pc_argsize == procp->pc_ressize == 4.
 
-Patches 1-4 are not pnfs patches, and should be submitted to Trond/Bruce.
+--- linux-2.6.35-next.orig/net/sunrpc/svc.c
++++ linux-2.6.35-next/net/sunrpc/svc.c
+@@ -1084,6 +1084,11 @@ svc_process_common(struct svc_rqst *rqst
+ 	procp->pc_count++;
 
-Patch #50 "SQUASHME pnfs_submit: remove this unused code"
-should not be squashed, but removed.
+ 	/* Initialize storage for argp and resp */
++	printk(KERN_INFO "rqstp=%p procp=%p\n", rqstp, procp);
++	printk(KERN_INFO "rqstp->rq_argp=%p procp->pc_argsize=%u\n",
++	       rqstp->rq_argp, procp->pc_argsize);
++	printk(KERN_INFO "rqstp->rq_resp=%p procp->pc_ressize=%u\n",
++	       rqstp->rq_resp, procp->pc_ressize);
+ 	memset(rqstp->rq_argp, 0, procp->pc_argsize);
+ 	memset(rqstp->rq_resp, 0, procp->pc_ressize);
+ 
 
-Patches 47,-49 are for the post-submit trees.
+[   37.669174] NET: Registered protocol family 10
+[   38.080725] svc: failed to register lockdv1 RPC service (errno 97).
+[  122.895707] rqstp=dcb91000 procp=c154ca20
+[  122.896533] rqstp->rq_argp=00000010 procp->pc_argsize=4
+[  122.897484] rqstp->rq_resp=00000010 procp->pc_ressize=4
+[  122.898609] BUG: unable to handle kernel NULL pointer dereference at 00000010
+[  122.899964] IP: [<c1356e80>] svc_process_common+0x370/0x640
+[  122.900493] *pde = 00000000 
+[  122.900493] Oops: 0002 [#1] SMP DEBUG_PAGEALLOC
+[  122.923308] last sysfs file: /sys/devices/pci0000:00/0000:00:10.0/host0/target0:0:1/0:0:1:0/type
+[  122.923308] Modules linked in: nfs ipv6 pcnet32
 
--->Andy
+> OK, I wonder if Sarge didn't yet mount the nfsd filesystem on
+> /proc/fs/nfsd.
 
+According to /proc/mounts , the nfsd filesystem is not mounted on
+/proc/fs/nfsd . But mounting it manually before starting nfsd did not help.
+
+Regards.
