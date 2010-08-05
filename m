@@ -1,67 +1,80 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:6955 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:55144 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753378Ab0HROoc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 18 Aug 2010 10:44:32 -0400
-From: andros@netapp.com
-To: bhalevy@panasas.com
-Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
-Subject: [PATCH 07/11] SQUASHME pnfs_submit: rename pnfs_layout_type 7
-Date: Wed, 18 Aug 2010 10:44:14 -0400
-Message-Id: <1282142658-21579-8-git-send-email-andros@netapp.com>
-In-Reply-To: <1282142658-21579-7-git-send-email-andros@netapp.com>
-References: <1282142658-21579-1-git-send-email-andros@netapp.com>
- <1282142658-21579-2-git-send-email-andros@netapp.com>
- <1282142658-21579-3-git-send-email-andros@netapp.com>
- <1282142658-21579-4-git-send-email-andros@netapp.com>
- <1282142658-21579-5-git-send-email-andros@netapp.com>
- <1282142658-21579-6-git-send-email-andros@netapp.com>
- <1282142658-21579-7-git-send-email-andros@netapp.com>
+	id S1760574Ab0HEOXz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 5 Aug 2010 10:23:55 -0400
+Date: Thu, 5 Aug 2010 10:22:26 -0400
+From: "J. Bruce Fields" <bfields@citi.umich.edu>
+To: Boaz Harrosh <bharrosh@panasas.com>
+Cc: Benny Halevy <bhalevy@panasas.com>,
+        "Labiaga, Ricardo" <Ricardo.Labiaga@netapp.com>,
+        NFS list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH version2] nfsd41: Fix a crash when a callback is retried
+Message-ID: <20100805142226.GA27141@fieldses.org>
+References: <4C28DCE0.7050201@panasas.com>
+ <4C29DA23.90200@panasas.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4C29DA23.90200@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Andy Adamson <andros@netapp.com>
+On Tue, Jun 29, 2010 at 02:33:55PM +0300, Boaz Harrosh wrote:
+> 
+> If a callback is retried at nfsd4_cb_recall_done() do to
+> some error. The returned rpc reply would then crash here:
+> 
+> @@ -514,6 +514,7 @@ decode_cb_sequence(struct xdr_stream *xdr, struct nfsd4_cb_sequence *res,
+>  	u32 dummy;
+>  	__be32 *p;
+> 
+>  +	BUG_ON(!res);
+>  	if (res->cbs_minorversion == 0)
+>  		return 0;
 
-squash into pnfs_submit: layoutreturn helper functions
+Thanks, applied.  There may be a delay before it shows up in my
+for-2.6.36 queue, while I sort out a few other bugs.
 
-Signed-off-by: Andy Adamson <andros@netapp.com>
----
- fs/nfs/pnfs.c |    6 +++---
- 1 files changed, 3 insertions(+), 3 deletions(-)
+(We still have problems here: getting a new slot isn't always the
+correct thing to do, depending on the error.  But this seems an
+improvement....).
 
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index a10143e..b9bf9d6 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -590,7 +590,7 @@ should_free_lseg(struct pnfs_layout_segment *lseg,
- }
- 
- static struct pnfs_layout_segment *
--has_layout_to_return(struct pnfs_layout_type *lo,
-+has_layout_to_return(struct pnfs_layout_hdr *lo,
- 		     struct nfs4_pnfs_layout_segment *range)
- {
- 	struct pnfs_layout_segment *out = NULL, *lseg;
-@@ -674,7 +674,7 @@ pnfs_return_layout_barrier(struct nfs_inode *nfsi,
- 
- static int
- return_layout(struct inode *ino, struct nfs4_pnfs_layout_segment *range,
--	      enum pnfs_layoutreturn_type type, struct pnfs_layout_type *lo,
-+	      enum pnfs_layoutreturn_type type, struct pnfs_layout_hdr *lo,
- 	      bool wait)
- {
- 	struct nfs4_pnfs_layoutreturn *lrp;
-@@ -709,7 +709,7 @@ _pnfs_return_layout(struct inode *ino, struct nfs4_pnfs_layout_segment *range,
- 		    enum pnfs_layoutreturn_type type,
- 		    bool wait)
- {
--	struct pnfs_layout_type *lo = NULL;
-+	struct pnfs_layout_hdr *lo = NULL;
- 	struct nfs_inode *nfsi = NFS_I(ino);
- 	struct nfs4_pnfs_layout_segment arg;
- 	int status = 0;
--- 
-1.6.2.5
+--b.
 
+> 
+> [BUG_ON added for demonstration]
+> 
+> This is because the nfsd4_cb_done_sequence() has NULLed out
+> the task->tk_msg.rpc_resp pointer.
+> 
+> Also eventually the rpc would use the new slot without making
+> sure it is free by calling nfsd41_cb_setup_sequence().
+> 
+> This problem was introduced by a 4.1 protocol addition patch:
+> 	[0421b5c5] nfsd41: Backchannel: Implement cb_recall over NFSv4.1
+> 
+> Which was overlooking the possibility of an RPC callback retries.
+> For not-4.1 case redoing the _prepare is harmless.
+> 
+> Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+> ---
+>  fs/nfsd/nfs4callback.c |    2 +-
+>  1 files changed, 1 insertions(+), 1 deletions(-)
+> 
+> diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
+> index f3b5015..3bbeae8 100644
+> --- a/fs/nfsd/nfs4callback.c
+> +++ b/fs/nfsd/nfs4callback.c
+> @@ -913,7 +913,7 @@ static void nfsd4_cb_recall_done(struct rpc_task *task, void *calldata)
+>  	if (dp->dl_retries--) {
+>  		rpc_delay(task, 2*HZ);
+>  		task->tk_status = 0;
+> -		rpc_restart_call(task);
+> +		rpc_restart_call_prepare(task);
+>  		return;
+>  	} else {
+>  		atomic_set(&clp->cl_cb_set, 0);
+> -- 
+> 1.6.6.1
+> 
+> 
