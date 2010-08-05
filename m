@@ -1,61 +1,54 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:44423 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:41859 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933600Ab0HEPfv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 5 Aug 2010 11:35:51 -0400
-Date: Thu, 5 Aug 2010 11:34:21 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-Cc: Jim Rees <rees@umich.edu>, Daniel.Muntz@emc.com, linux-nfs@vger.kernel.org
-Subject: Re: numeric UIDs
-Message-ID: <20100805153421.GD27141@fieldses.org>
-References: <201008030401.33552.dreck@vmsd.ath.cx>
- <20100803164318.GB13896@merit.edu>
- <20100803192216.GC31579@fieldses.org>
- <DE966DA98A4ABE438D726BDF1699CF61403FAF9D@MX05A.corp.emc.com>
- <20100803215704.GA15494@merit.edu>
- <1280873719.14520.17.camel@heimdal.trondhjem.org>
- <20100803222337.GA9752@fieldses.org>
- <1280874675.14520.23.camel@heimdal.trondhjem.org>
- <20100803224245.GB9752@fieldses.org>
- <1280887336.24669.23.camel@heimdal.trondhjem.org>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1280887336.24669.23.camel@heimdal.trondhjem.org>
+	id S1759195Ab0HEOSE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 5 Aug 2010 10:18:04 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 2/5] NFS: Fix the locking in nfs4_callback_getattr
+Date: Thu,  5 Aug 2010 10:17:49 -0400
+Message-Id: <1281017872-6043-3-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1281017872-6043-2-git-send-email-Trond.Myklebust@netapp.com>
+References: <1281017872-6043-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1281017872-6043-2-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Tue, Aug 03, 2010 at 10:02:16PM -0400, Trond Myklebust wrote:
-> On Tue, 2010-08-03 at 18:42 -0400, J. Bruce Fields wrote:
-> > On Tue, Aug 03, 2010 at 06:31:15PM -0400, Trond Myklebust wrote:
-> > > We know it has a bunch of problems,
-> > > not least the one that limits ngroups <= 16, and the fact that it relies
-> > > on uids (as opposed to login names) being the same on client and server
-> > > so why not try to fix those limitations?
-> > 
-> > Sure, that would be great.
-> > 
-> > Again, that doesn't address the complaints above.
-> 
-> Yes it does.
+The delegation is protected by RCU now, so we need to replace the
+nfsi->rwsem protection with an rcu protected section.
 
-See the stated scenario:
+Reported-by: Fred Isaman <iisaman@netapp.com>
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ fs/nfs/callback_proc.c |    6 +++---
+ 1 files changed, 3 insertions(+), 3 deletions(-)
 
-	http://marc.info/?l=linux-nfs&m=128080127215350&w=2
+diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
+index 7445dd0..930d10f 100644
+--- a/fs/nfs/callback_proc.c
++++ b/fs/nfs/callback_proc.c
+@@ -37,8 +37,8 @@ __be32 nfs4_callback_getattr(struct cb_getattrargs *args, struct cb_getattrres *
+ 	if (inode == NULL)
+ 		goto out_putclient;
+ 	nfsi = NFS_I(inode);
+-	down_read(&nfsi->rwsem);
+-	delegation = nfsi->delegation;
++	rcu_read_lock();
++	delegation = rcu_dereference(nfsi->delegation);
+ 	if (delegation == NULL || (delegation->type & FMODE_WRITE) == 0)
+ 		goto out_iput;
+ 	res->size = i_size_read(inode);
+@@ -53,7 +53,7 @@ __be32 nfs4_callback_getattr(struct cb_getattrargs *args, struct cb_getattrres *
+ 		args->bitmap[1];
+ 	res->status = 0;
+ out_iput:
+-	up_read(&nfsi->rwsem);
++	rcu_read_unlock();
+ 	iput(inode);
+ out_putclient:
+ 	nfs_put_client(clp);
+-- 
+1.7.2
 
-It's a dumb client making a copy of a filesystem over NFS for backup.
-
-It's not true that this case could be dealt with by an auth_sys
-replacement that uses names instead of id's.
-
-(You could argue that it's a hypothetical case, crazy, not important, or
-whatever--just not that it has much to do with the authentication
-flavor.
-
-Personally I think it *is* of at least some importance, since anyone
-depending on that sort of behavior will see their systems stop working
-if they switch from v2/v3 to v4.  The v2/v3 install base being massive
-compared to v4's, the success of v4+ depends in part on reducing the
-chances of that kind of thing happening.)
-
---b.
