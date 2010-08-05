@@ -1,49 +1,31 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH 12/15] net: sunrpc: removed duplicated #include
-Date: Thu, 5 Aug 2010 11:09:20 -0400
-Message-ID: <20100805150920.GB27141@fieldses.org>
-References: <1281016299-23958-1-git-send-email-andrea.gelmini@gelma.net>
- <1281016299-23958-12-git-send-email-andrea.gelmini@gelma.net>
+Subject: Re: Linux pNFS status meeting 08/05
+Date: Thu, 5 Aug 2010 11:10:03 -0400
+Message-ID: <20100805151003.GC27141@fieldses.org>
+References: <OF732C9EED.393350A0-ON88257775.005E473A-88257776.00155FBA@us.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: gelma-PT7Us6ch6G9eoWH0uzbU5w@public.gmane.org, Trond Myklebust <Trond.Myklebust@netapp.com>,
-	Neil Brown <neilb@suse.de>,
-	"David S. Miller" <davem@davemloft.net>,
-	Frederic Weisbecker <fweisbec@gmail.com>,
-	linux-nfs@vger.kernel.org, netdev@vger.kernel.org
-To: Andrea Gelmini <andrea.gelmini-PT7Us6ch6G9eoWH0uzbU5w@public.gmane.org>
+Cc: linux-nfs@vger.kernel.org
+To: Marc Eshel <eshel@almaden.ibm.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:40574 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:40576 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756426Ab0HEPKx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 5 Aug 2010 11:10:53 -0400
-In-Reply-To: <1281016299-23958-12-git-send-email-andrea.gelmini-PT7Us6ch6G9eoWH0uzbU5w@public.gmane.org>
+	id S1758924Ab0HEPL3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 5 Aug 2010 11:11:29 -0400
+In-Reply-To: <OF732C9EED.393350A0-ON88257775.005E473A-88257776.00155FBA@us.ibm.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Aug 05, 2010 at 03:51:36PM +0200, Andrea Gelmini wrote:
-> Signed-off-by: Andrea Gelmini <andrea.gelmini-PT7Us6ch6G9eoWH0uzbU5w@public.gmane.org>
+Fixing mailing list.--b.
 
-Thanks, applied for 2.6.36.
-
---b.
-
-> ---
->  net/sunrpc/cache.c |    1 -
->  1 files changed, 0 insertions(+), 1 deletions(-)
+On Wed, Aug 04, 2010 at 08:53:29PM -0700, Marc Eshel wrote:
+> Meeting on Thursday 08/05/10 at 9:30 AM pacific time (12:30 PM UMICH time)
 > 
-> diff --git a/net/sunrpc/cache.c b/net/sunrpc/cache.c
-> index 58de76c..b75879b 100644
-> --- a/net/sunrpc/cache.c
-> +++ b/net/sunrpc/cache.c
-> @@ -34,7 +34,6 @@
->  #include <linux/sunrpc/cache.h>
->  #include <linux/sunrpc/stats.h>
->  #include <linux/sunrpc/rpc_pipe_fs.h>
-> -#include <linux/smp_lock.h>
->  
->  #define	 RPCDBG_FACILITY RPCDBG_CACHE
->  
-> -- 
-> 1.7.2.1.85.g2d089
+> Marc. 
+> _______________________________________________
+> NOTE: THIS LIST IS DEPRECATED.  Please use linux-nfs@vger.kernel.org instead.
+> (To subscribe to linux-nfs@vger.kernel.org: send "subscribe linux-nfs" in the body of a message to majordomo-u79uwXL29TaiAVqoAR/hOA@public.gmane.org)
 > 
+> NFSv4 mailing list
+> NFSv4@linux-nfs.org
+> http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4
