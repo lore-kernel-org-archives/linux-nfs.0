@@ -1,41 +1,84 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from bronze.cs.yorku.ca ([130.63.90.34]:44284 "EHLO
-	bronze.cs.yorku.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756319Ab0HCPxJ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 3 Aug 2010 11:53:09 -0400
-Received: from [130.63.86.125] (ident=jas)
-	by bronze.cs.yorku.ca with esmtpsa (TLSv1:AES256-SHA:256)
-	(Exim 4.67)
-	(envelope-from <jas@cse.yorku.ca>)
-	id 1OgJnf-0004vQ-7C
-	for linux-nfs@vger.kernel.org; Tue, 03 Aug 2010 11:53:07 -0400
-Message-ID: <4C583B63.4050903@cse.yorku.ca>
-Date: Tue, 03 Aug 2010 11:53:07 -0400
-From: Jason Keltz <jas@cse.yorku.ca>
-To: linux-nfs@vger.kernel.org
-Subject: exporting to a list of IPs
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Received: from fieldses.org ([174.143.236.118]:53791 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1759324Ab0HEUrk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 5 Aug 2010 16:47:40 -0400
+Date: Thu, 5 Aug 2010 16:46:12 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Tetsuo Handa <penguin-kernel@I-love.SAKURA.ne.jp>
+Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        jlayton@redhat.com
+Subject: Re: linux-next NFSD: NULL pointer dereference at nfsd_svc()
+Message-ID: <20100805204612.GA13821@fieldses.org>
+References: <201008020747.o727lqXs064715@www262.sakura.ne.jp>
+ <20100802103214.7eea09eb@corrin.poochiereds.net>
+ <20100802103620.5638dac1@corrin.poochiereds.net>
+ <20100802181634.GD12637@fieldses.org>
+ <201008030109.o73193bp094241@www262.sakura.ne.jp>
+ <20100803154851.GA23467@fieldses.org>
+ <201008040013.o740DmYK024832@www262.sakura.ne.jp>
+ <20100804194045.GD18200@fieldses.org>
+ <201008050110.o751AG18066496@www262.sakura.ne.jp>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <201008050110.o751AG18066496@www262.sakura.ne.jp>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Hi.
+On Thu, Aug 05, 2010 at 10:10:16AM +0900, Tetsuo Handa wrote:
+> J. Bruce Fields wrote:
+> > Maybe figuring out exactly hwere that is would help work out what's
+> > going on.  Doing
+> > 
+> > 	make net/sunrpc/svc.lst
+> > 
+> > then looking for c1356dd4 (or just mailing me svc.lst) could help.
+> 
+> "make net/sunrpc/svc.lst" failed due to following error.
+> 
+>   BFD: Dwarf Error: Abbrev offset (3238007024) greater than or equal to .debug_abbrev size (1607).
+> 
+> Manual printk() debug reported that
+> rqstp->rq_argp == rqstp->rq_resp == ZERO_SIZE_PTR and
 
-Why is it that you cannot NFS export to a list of IPs and have exportfs 
-leave the list of IPs in etab without converting over to FQDN?
+Huh.  As far as I can tell that will only happen if you've not no nfsd
+versions defined; how is that happening?
 
-In Changelog:
+--b.
 
-2001-09-20 NeilBrown <neilb@cse.unsw.edu.au>
-             Anne Milicia <milicia@missioncriticallinux.com>
-
-         * support/export/client.c (client_lookup) call gethostbyadd
-         to make sure that we have a canonical hostname, even for
-         dotted-quads
-
-Why does mountd need to repeat the gethostbyname() lookup on every host 
-even though exportfs already converted over to using hostname?
-
-Thanks,
-
-Jason.
+> procp->pc_argsize == procp->pc_ressize == 4.
+> 
+> --- linux-2.6.35-next.orig/net/sunrpc/svc.c
+> +++ linux-2.6.35-next/net/sunrpc/svc.c
+> @@ -1084,6 +1084,11 @@ svc_process_common(struct svc_rqst *rqst
+>  	procp->pc_count++;
+> 
+>  	/* Initialize storage for argp and resp */
+> +	printk(KERN_INFO "rqstp=%p procp=%p\n", rqstp, procp);
+> +	printk(KERN_INFO "rqstp->rq_argp=%p procp->pc_argsize=%u\n",
+> +	       rqstp->rq_argp, procp->pc_argsize);
+> +	printk(KERN_INFO "rqstp->rq_resp=%p procp->pc_ressize=%u\n",
+> +	       rqstp->rq_resp, procp->pc_ressize);
+>  	memset(rqstp->rq_argp, 0, procp->pc_argsize);
+>  	memset(rqstp->rq_resp, 0, procp->pc_ressize);
+>  
+> 
+> [   37.669174] NET: Registered protocol family 10
+> [   38.080725] svc: failed to register lockdv1 RPC service (errno 97).
+> [  122.895707] rqstp=dcb91000 procp=c154ca20
+> [  122.896533] rqstp->rq_argp=00000010 procp->pc_argsize=4
+> [  122.897484] rqstp->rq_resp=00000010 procp->pc_ressize=4
+> [  122.898609] BUG: unable to handle kernel NULL pointer dereference at 00000010
+> [  122.899964] IP: [<c1356e80>] svc_process_common+0x370/0x640
+> [  122.900493] *pde = 00000000 
+> [  122.900493] Oops: 0002 [#1] SMP DEBUG_PAGEALLOC
+> [  122.923308] last sysfs file: /sys/devices/pci0000:00/0000:00:10.0/host0/target0:0:1/0:0:1:0/type
+> [  122.923308] Modules linked in: nfs ipv6 pcnet32
+> 
+> > OK, I wonder if Sarge didn't yet mount the nfsd filesystem on
+> > /proc/fs/nfsd.
+> 
+> According to /proc/mounts , the nfsd filesystem is not mounted on
+> /proc/fs/nfsd . But mounting it manually before starting nfsd did not help.
+> 
+> Regards.
