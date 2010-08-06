@@ -1,87 +1,106 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cn.fujitsu.com ([222.73.24.84]:61008 "EHLO song.cn.fujitsu.com"
-	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
-	id S1756820Ab0HDJQm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 4 Aug 2010 05:16:42 -0400
-Message-ID: <4C592FAF.5090700@cn.fujitsu.com>
-Date: Wed, 04 Aug 2010 17:15:27 +0800
-From: Bian Naimeng <biannm@cn.fujitsu.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-CC: linux-nfs@vger.kernel.org
-Subject: [PATCH 1/2] Make lock inode before lock nfs4_state_owner
-References: <4C592F85.8070308@cn.fujitsu.com>
-In-Reply-To: <4C592F85.8070308@cn.fujitsu.com>
-Content-Type: text/plain; charset=Shift_JIS
+Received: from mail-pw0-f46.google.com ([209.85.160.46]:59396 "EHLO
+	mail-pw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1760423Ab0HFX6n convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 6 Aug 2010 19:58:43 -0400
+In-Reply-To: <20100807093057.7683bedd@notabene>
+References: <alpine.LSU.2.01.1007221228260.6115@obet.zrqbmnf.qr>
+	<20100715021709.5544.64506.stgit@warthog.procyon.org.uk>
+	<20100715021712.5544.44845.stgit@warthog.procyon.org.uk>
+	<30448.1279800887@redhat.com>
+	<E1Obuiy-00C9jr-Al@intern.SerNet.DE>
+	<AANLkTimdFCGSKLn7aGMpBMIauHTsHY7hpAAmpo6uTcnD@mail.gmail.com>
+	<1280524978.2452.9.camel@segv.aura.of.mankind>
+	<20100801092529.5e6ba0e0@corrin.poochiereds.net>
+	<20100805235218.GB31233@jeremy-laptop>
+	<20100806133836.49757af9@notabene>
+	<AANLkTinVCLVpqLtA2X=1mOkxX7Re61_ZYsUix_XTvZ5D@mail.gmail.com>
+	<20100807093057.7683bedd@notabene>
+Date: Fri, 6 Aug 2010 18:58:42 -0500
+Message-ID: <AANLkTikDBg5Brt=55Tsu8ozk0aVx=srpxP=U-sFqeBYL@mail.gmail.com>
+Subject: Re: [PATCH 02/18] xstat: Add a pair of system calls to make extended
+	file stats available [ver #6]
+From: Steve French <smfrench@gmail.com>
+To: Neil Brown <neilb@suse.de>
+Cc: Jeremy Allison <jra@samba.org>, Jeff Layton <jlayton@redhat.com>,
+        utz lehmann <lkml123@s2y4n2c.de>,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        Volker.Lendecke@sernet.de, David Howells <dhowells@redhat.com>,
+        Jan Engelhardt <jengelh@medozas.de>, linux-cifs@vger.kernel.org,
+        linux-nfs@vger.kernel.org, samba-technical@lists.samba.org,
+        linux-kernel@vger.kernel.org, viro@zeniv.linux.org.uk,
+        linux-fsde@jasper.es
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
- We should lock inode before lock nfs4_state_owner, sometimes, we want scan
-nfsi->open_states, and modify once state, so we need lock state->owner.
+On Fri, Aug 6, 2010 at 6:30 PM, Neil Brown <neilb@suse.de> wrote:
+> On Thu, 5 Aug 2010 22:55:06 -0500
+> Steve French <smfrench@gmail.com> wrote:
+>
+>> On Thu, Aug 5, 2010 at 10:38 PM, Neil Brown <neilb@suse.de> wrote:
+>> > On Thu, 5 Aug 2010 16:52:18 -0700
+>> > Jeremy Allison <jra@samba.org> wrote:
+>>
+>> >> Don't add it as an EA. It's *not* an EA, it's a timestamp.
+>> >
+>> > I'm curious.  Why do you particularly care what interface the kernel uses to
+>> > provide you with access to this attribute?
+>> >
+>> > And given that it is an attribute that is not part of 'POSIX' or "UNIX", it
+>> > would seem to be an extension - an extended attribute.
+>> > As the Linux kernel does virtually nothing with this attribute except provide
+>> > access, it seems to be a very different class of thing to other timestamps.
+>> > Surely it is simply some storage associated with a file which is capable of
+>> > storing a timestamp, which can be set or retrieved by an application, and
+>> > which happens to be initialised to the current time when a file is created.
+>> >
+>> > Yes, to you it is a timestamp.  But to Linux it is a few bytes of
+>> > user-settable metadata.  Sounds like an EA to me.
+>> >
+>> > Or do you really want something like BSD's 'btime' which as I understand it
+>> > cannot be set.  Would that be really useful to you?
+>>
+>> Obviously the cifs and SMB2 protocols which  Samba server support can
+>> ask the server to set the create time of a file (this is handled
+>> through xattrs today along with the "dos attribute" flags such as
+>> archive/hidden/system), but certainly it is much more common (and
+>> important) to read the creation time of an existing file.
+>>
+>
+> Just a point of clarification - when you say it is common and important to be
+> able to read the creation time on an existing file, and you still talking in
+> the context of cifs/smb windows compatibility, or are you talking in the
+> broader context?
+> If you are referring to a broader context could be please give more details
+> because I have not heard any mention of any real value of creation-time out
+> side of window interoperability - have such a use clearly documented would
+> assist the conversation I think.
+>
+> If on the other hand you are just referring the the windows interoperability
+> context ... given that you have to read an EA if the create-time has been
+> changed, you will always have to read and EA so having something else is
+> pointless ... or I'm missing something.
 
-Signed-off-by: Bian Naimeng <biannm@cn.fujitsu.com>
+There are other cases, less common than cifs and smb2.   One
+that comes to mind is NFS version 4, but there are a few other
+cases that I have heard of (backup/archive applications).
+The RFC recommends that servers return attribute 50 (creation
+time).  See below text:
 
----
- fs/nfs/nfs4state.c |   16 +++++++++-------
- 1 files changed, 9 insertions(+), 7 deletions(-)
+   time_create         50   nfstime4       R/W      The time of creation
+                                                    of the object.  This
+                                                    attribute does not
+                                                    have any relation to
+                                                    the traditional UNIX
+                                                    file attribute
+                                                    "ctime" or "change
+                                                    time".
 
-diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-index 34acf59..fe34c41 100644
---- a/fs/nfs/nfs4state.c
-+++ b/fs/nfs/nfs4state.c
-@@ -498,8 +498,8 @@ nfs4_get_open_state(struct inode *inode, struct nfs4_state_owner *owner)
- 	if (state)
- 		goto out;
- 	new = nfs4_alloc_open_state();
--	spin_lock(&owner->so_lock);
- 	spin_lock(&inode->i_lock);
-+	spin_lock(&owner->so_lock);
- 	state = __nfs4_find_state_byowner(inode, owner);
- 	if (state == NULL && new != NULL) {
- 		state = new;
-@@ -507,14 +507,14 @@ nfs4_get_open_state(struct inode *inode, struct nfs4_state_owner *owner)
- 		atomic_inc(&owner->so_count);
- 		list_add(&state->inode_states, &nfsi->open_states);
- 		state->inode = igrab(inode);
--		spin_unlock(&inode->i_lock);
- 		/* Note: The reclaim code dictates that we add stateless
- 		 * and read-only stateids to the end of the list */
- 		list_add_tail(&state->open_states, &owner->so_states);
- 		spin_unlock(&owner->so_lock);
--	} else {
- 		spin_unlock(&inode->i_lock);
-+	} else {
- 		spin_unlock(&owner->so_lock);
-+		spin_unlock(&inode->i_lock);
- 		if (new)
- 			nfs4_free_open_state(new);
- 	}
-@@ -527,13 +527,15 @@ void nfs4_put_open_state(struct nfs4_state *state)
- 	struct inode *inode = state->inode;
- 	struct nfs4_state_owner *owner = state->owner;
- 
--	if (!atomic_dec_and_lock(&state->count, &owner->so_lock))
--		return;
- 	spin_lock(&inode->i_lock);
--	list_del(&state->inode_states);
-+	if (!atomic_dec_and_lock(&state->count, &owner->so_lock)) {
-+		spin_unlock(&inode->i_lock);
-+		return;
-+	}
- 	list_del(&state->open_states);
--	spin_unlock(&inode->i_lock);
- 	spin_unlock(&owner->so_lock);
-+	list_del(&state->inode_states);
-+	spin_unlock(&inode->i_lock);
- 	iput(inode);
- 	nfs4_free_open_state(state);
- 	nfs4_put_state_owner(owner);
+
+
 -- 
-1.6.5.2
+Thanks,
 
-
-
--- 
-Regards
-Bian Naimeng
-
+Steve
