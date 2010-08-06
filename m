@@ -1,143 +1,34 @@
-From: Timo Aaltonen <timo.aaltonen-uOixanVlb7U@public.gmane.org>
-Subject: Re: [PATCH nfs-utils] gssd: Check for AD style machine principal
- name
-Date: Fri, 6 Aug 2010 11:59:10 +0300 (EEST)
-Message-ID: <alpine.DEB.2.00.1008061157330.15926@kosh.hut.fi>
-References: <1277729907-14299-1-git-send-email-timo.aaltonen@aalto.fi>
-Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; format=flowed; charset=US-ASCII
-Cc: steved@redhat.com
-To: linux-nfs@vger.kernel.org
+From: David Howells <dhowells@redhat.com>
+Subject: Re: [PATCH] NFS use kernel DNS resolver
+Date: Fri, 06 Aug 2010 22:00:13 +0100
+Message-ID: <11355.1281128413@redhat.com>
+References: <4C5C54A3.1010206@netapp.com> <1280970596.2865.28.camel@heimdal.trondhjem.org> <4C59D1A3.5030406@netapp.com> <13523.1281060342@redhat.com>
+Cc: dhowells@redhat.com, Trond Myklebust <Trond.Myklebust@netapp.com>,
+	linux-nfs@vger.kernel.org
+To: Bryan Schumaker <bjschuma@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp-3.hut.fi ([130.233.228.93]:40181 "EHLO smtp-3.hut.fi"
+Received: from mx1.redhat.com ([209.132.183.28]:22427 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932985Ab0HFJTi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 6 Aug 2010 05:19:38 -0400
-In-Reply-To: <1277729907-14299-1-git-send-email-timo.aaltonen-uOixanVlb7U@public.gmane.org>
+	id S1752473Ab0HFVAR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 6 Aug 2010 17:00:17 -0400
+In-Reply-To: <4C5C54A3.1010206@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 28 Jun 2010, Timo Aaltonen wrote:
+Bryan Schumaker <bjschuma@netapp.com> wrote:
 
-> On a MS Active Directory client the service principals cannot be used
-> for authentication. Add a check for the default machine principal name
-> so that krb5 auth works out of the box.
->
-> Signed-off-by: Timo Aaltonen <timo.aaltonen-uOixanVlb7U@public.gmane.org>
-> ---
->
-> Resending, the previous try didn't get any comments.
-
-Ping? Should it add a new option to try the default AD principal to get 
-accepted?
-
-> utils/gssd/krb5_util.c |   58 ++++++++++++++++++++++++++++++++++++++++++++++++
-> 1 files changed, 58 insertions(+), 0 deletions(-)
->
-> diff --git a/utils/gssd/krb5_util.c b/utils/gssd/krb5_util.c
-> index dccbeb6..686ef3b 100644
-> --- a/utils/gssd/krb5_util.c
-> +++ b/utils/gssd/krb5_util.c
-> @@ -737,6 +737,29 @@ gssd_search_krb5_keytab(krb5_context context, krb5_keytab kt,
-> }
->
-> /*
-> + * Convert the hostname to machine principal name as created
-> + * by MS Active Directory.
-> +*/
-> +
-> +static char *
-> +hostname_to_adprinc(char *name)
+> --- a/fs/nfs/dns_resolve.c
+> +++ b/fs/nfs/dns_resolve.c
+> ...
+> +inline int nfs_dns_resolver_init(void)
 > +{
-> +	int i = 0;
-> +	int len = strlen(name);
-> +	char *buf;
-> +	if ((buf = malloc(len+2))) {
-> +		while(i < len) {
-> +			buf[i] = toupper(name[i]);
-> +			i++;
-> +		}
-> +		buf[i++] = '$';
-> +		buf[i] = 0;
-> +		return buf;
-> +	}
-> +	return NULL;
+> +	return 0;
 > +}
 > +
-> +/*
->  * Find a keytab entry to use for a given target hostname.
->  * Tries to find the most appropriate keytab to use given the
->  * name of the host we are trying to connect with.
-> @@ -754,6 +777,7 @@ find_keytab_entry(krb5_context context, krb5_keytab kt, const char *hostname,
-> 	char *k5err = NULL;
-> 	int tried_all = 0, tried_default = 0;
-> 	krb5_principal princ;
-> +	char *adprinc = NULL;
->
->
-> 	/* Get full target hostname */
-> @@ -769,6 +793,9 @@ find_keytab_entry(krb5_context context, krb5_keytab kt, const char *hostname,
-> 		printerr(1, "%s while getting local hostname\n", k5err);
-> 		goto out;
-> 	}
-> +	/* Convert to Active Directory machine principal name */
-> +	adprinc = hostname_to_adprinc(myhostname);
-> +
-> 	retval = get_full_hostname(myhostname, myhostname, sizeof(myhostname));
-> 	if (retval)
-> 		goto out;
-> @@ -812,6 +839,36 @@ find_keytab_entry(krb5_context context, krb5_keytab kt, const char *hostname,
-> 			break;
-> 		if (strcmp(realm, default_realm) == 0)
-> 			tried_default = 1;
-> +		/* First try the Active Directory style machine principal */
-> +		if (adprinc != NULL) {
-> +			code = krb5_build_principal_ext(context, &princ,
-> +							strlen(realm),
-> +							realm,
-> +							strlen(adprinc),
-> +							adprinc,
-> +							NULL);
-> +			if (code) {
-> +				k5err = gssd_k5_err_msg(context, code);
-> +				printerr(1, "%s while building principal for "
-> +					 "'%s@%s'\n", k5err,
-> +					 adprinc, realm);
-> +			}
-> +			code = krb5_kt_get_entry(context, kt, princ, 0, 0, kte);
-> +			krb5_free_principal(context, princ);
-> +			if (code) {
-> +				k5err = gssd_k5_err_msg(context, code);
-> +				printerr(3, "%s while getting keytab entry for "
-> +					 "'%s@%s'\n", k5err,
-> +					 adprinc, realm);
-> +			} else {
-> +				printerr(3, "Success getting keytab entry for "
-> +					 "'%s@%s'\n",
-> +					 adprinc, realm);
-> +				retval = 0;
-> +				goto out;
-> +			}
-> +			retval =code;
-> +		}
-> 		for (j = 0; svcnames[j] != NULL; j++) {
-> 			code = krb5_build_principal_ext(context, &princ,
-> 							strlen(realm),
-> @@ -870,6 +927,7 @@ out:
-> 	if (realmnames)
-> 		krb5_free_host_realm(context, realmnames);
-> 	free(k5err);
-> +	free(adprinc);
-> 	return retval;
-> }
->
-> -- 
-> 1.7.0.4
->
->
+> +inline void nfs_dns_resolver_destroy(void)
+> +{}
 
--- 
-Timo Aaltonen
-Systems Specialist, Aalto IT
-tel. +358-9-47024317, mobile: +358-50-5918781
-http://users.tkk.fi/~tjaalton
+These functions are a little pointless since you do the same in the header
+file, so I've removed them.  It still compiles...
+
+David
