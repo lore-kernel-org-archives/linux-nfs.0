@@ -1,60 +1,125 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cantor.suse.de ([195.135.220.2]:54689 "EHLO mx1.suse.de"
+Received: from mx1.redhat.com ([209.132.183.28]:45923 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752737Ab0HZVnq convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Aug 2010 17:43:46 -0400
-Date: Fri, 27 Aug 2010 07:43:39 +1000
-From: Neil Brown <neilb@suse.de>
-To: Peng Yu <pengyu.ut@gmail.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: Does the machine need to be restarted after RPCNFSDCOUNT in
- /etc/default/nfs-kernel-server (ubuntu) is edited?
-Message-ID: <20100827074339.605f58c7@notabene>
-In-Reply-To: <AANLkTincnCeQYi6fvbEHLqqz+gYp0_ETdPAq6QebOxDg@mail.gmail.com>
-References: <AANLkTi=8rnEtOikhVqsH5Pj1QUhc5MiSHMfncZO1xCem@mail.gmail.com>
-	<20100826093648.26d03c1c@notabene>
-	<AANLkTincnCeQYi6fvbEHLqqz+gYp0_ETdPAq6QebOxDg@mail.gmail.com>
-Content-Type: text/plain; charset=UTF-8
+	id S1761664Ab0HFVBs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 6 Aug 2010 17:01:48 -0400
+From: David Howells <dhowells@redhat.com>
+Subject: [PATCH] NFS: Use kernel DNS resolver
+To: smfrench@gmail.com, jlayton@redhat.com
+Cc: linux-fsdevel@vger.kernel.org, linux-cifs@vger.kernel.org,
+        linux-afs@lists.infradead.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        David Howells <dhowells@redhat.com>
+Date: Fri, 06 Aug 2010 22:01:39 +0100
+Message-ID: <20100806210139.11486.77708.stgit@warthog.procyon.org.uk>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Thu, 26 Aug 2010 06:59:16 -0500
-Peng Yu <pengyu.ut@gmail.com> wrote:
+From: Bryan Schumaker <bjschuma@netapp.com>
 
-> On Wed, Aug 25, 2010 at 6:36 PM, Neil Brown <neilb@suse.de> wrote:
-> > On Wed, 25 Aug 2010 15:02:14 -0500
-> > Peng Yu <pengyu.ut@gmail.com> wrote:
-> >
-> >> Hi,
-> >>
-> >> I changed the value of RPCNFSDCOUNT in /etc/default/nfs-kernel-server
-> >> (ubuntu). Do I need to restart the machine?
-> >>
-> >> Or I need to restart nfsd? If so, would you please let me know how to
-> >> restart nfsd?
-> >>
-> >
-> > Easiest thing to do is simply
-> >
-> >   rpc.nfsd $NUMBER
-> >
-> > it will change the number of running threads to match the number that you
-> > give.
-> 
-> This will change the number in /etc/default/nfs-kernel-server? Or it
-> will not, meaning if I reboot machine, there will still be an old
-> number of nfsd running?
-> 
+Use the kernel DNS resolver to translate hostnames to IP addresses.  Create a
+new config option to choose between the legacy DNS resolver and the new
+resolver.
 
-Try it an see ???
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+Acked-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+Signed-off-by: David Howells <dhowells@redhat.com>
+---
 
+ fs/nfs/Kconfig       |   16 ++++++++++++++++
+ fs/nfs/dns_resolve.c |   24 ++++++++++++++++++++++++
+ fs/nfs/dns_resolve.h |   12 ++++++++++++
+ 3 files changed, 52 insertions(+), 0 deletions(-)
 
-No, it doesn't change any file.  It just changes the number of running
-threads.
+diff --git a/fs/nfs/Kconfig b/fs/nfs/Kconfig
+index a43d07e..10eebc5 100644
+--- a/fs/nfs/Kconfig
++++ b/fs/nfs/Kconfig
+@@ -100,3 +100,19 @@ config NFS_FSCACHE
+ 	help
+ 	  Say Y here if you want NFS data to be cached locally on disc through
+ 	  the general filesystem cache manager
++
++config NFS_USE_LEGACY_DNS
++	bool "Use the legacy NFS DNS resolver"
++	depends on NFS_V4
++	help
++	  The kernel now provides a method for translating a host name into an
++	  IP address.  Select Y here if you would rather use your own DNS
++	  resolver script.
++
++	  If unsure, say N
++
++config NFS_USE_KERNEL_DNS
++	bool
++	depends on NFS_V4 && !NFS_USE_LEGACY_DNS
++	select DNS_RESOLVER
++	default y
+diff --git a/fs/nfs/dns_resolve.c b/fs/nfs/dns_resolve.c
+index 76fd235..dba50a5 100644
+--- a/fs/nfs/dns_resolve.c
++++ b/fs/nfs/dns_resolve.c
+@@ -6,6 +6,29 @@
+  * Resolves DNS hostnames into valid ip addresses
+  */
+ 
++#ifdef CONFIG_NFS_USE_KERNEL_DNS
++
++#include <linux/sunrpc/clnt.h>
++#include <linux/dns_resolver.h>
++
++ssize_t nfs_dns_resolve_name(char *name, size_t namelen,
++		struct sockaddr *sa, size_t salen)
++{
++	ssize_t ret;
++	char *ip_addr = NULL;
++	int ip_len;
++
++	ip_len = dns_query(NULL, name, namelen, NULL, &ip_addr, NULL);
++	if (ip_len > 0)
++		ret = rpc_pton(ip_addr, ip_len, sa, salen);
++	else
++		ret = -ESRCH;
++	kfree(ip_addr);
++	return ret;
++}
++
++#else
++
+ #include <linux/hash.h>
+ #include <linux/string.h>
+ #include <linux/kmod.h>
+@@ -346,3 +369,4 @@ void nfs_dns_resolver_destroy(void)
+ 	nfs_cache_unregister(&nfs_dns_resolve);
+ }
+ 
++#endif
+diff --git a/fs/nfs/dns_resolve.h b/fs/nfs/dns_resolve.h
+index a3f0938..199bb55 100644
+--- a/fs/nfs/dns_resolve.h
++++ b/fs/nfs/dns_resolve.h
+@@ -6,8 +6,20 @@
+ 
+ #define NFS_DNS_HOSTNAME_MAXLEN	(128)
+ 
++
++#ifdef CONFIG_NFS_USE_KERNEL_DNS
++static inline int nfs_dns_resolver_init(void)
++{
++	return 0;
++}
++
++static inline void nfs_dns_resolver_destroy(void)
++{}
++#else
+ extern int nfs_dns_resolver_init(void);
+ extern void nfs_dns_resolver_destroy(void);
++#endif
++
+ extern ssize_t nfs_dns_resolve_name(char *name, size_t namelen,
+ 		struct sockaddr *sa, size_t salen);
+ 
 
-If you want to change the number of threads at next reboot, change the file.
-If you want to change the number of threads running now, run the command.
-If you want to do both, do both.
-
-NeilBrown
