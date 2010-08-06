@@ -1,78 +1,55 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-out1.uio.no ([129.240.10.57]:56822 "EHLO mail-out1.uio.no"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932397Ab0HCS4Y (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 3 Aug 2010 14:56:24 -0400
-Subject: Re: sunrpc: what prevents an xprt from being freed before
- task_cleanup runs?
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Jeff Layton <jlayton@redhat.com>, linux-nfs@vger.kernel.org,
-        netdev@vger.kernel.org
-In-Reply-To: <20100803184856.GA31579@fieldses.org>
-References: <20100803132453.4fa18444@tlielax.poochiereds.net>
-	 <1280860815.9771.25.camel@heimdal.trondhjem.org>
-	 <20100803184856.GA31579@fieldses.org>
-Content-Type: text/plain; charset="UTF-8"
-Date: Tue, 03 Aug 2010 14:56:15 -0400
-Message-ID: <1280861775.12283.7.camel@heimdal.trondhjem.org>
+Received: from mail-iw0-f174.google.com ([209.85.214.174]:60565 "EHLO
+	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756953Ab0HFOFr convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 6 Aug 2010 10:05:47 -0400
+Received: by iwn33 with SMTP id 33so1351265iwn.19
+        for <linux-nfs@vger.kernel.org>; Fri, 06 Aug 2010 07:05:47 -0700 (PDT)
+In-Reply-To: <20100806132620.GA2921@merit.edu>
+References: <4C5BFE47.8020905@mxtelecom.com>
+	<20100806132620.GA2921@merit.edu>
+Date: Fri, 6 Aug 2010 15:05:46 +0100
+Message-ID: <AANLkTin_pg7GCw9jcB2JK+0TbGu+MrQEcv4H_qAg_A3H@mail.gmail.com>
+Subject: Re: Tuning NFS client write pagecache
+From: Peter Chacko <peterchacko35@gmail.com>
+To: Jim Rees <rees@umich.edu>
+Cc: Matthew Hodgson <matthew@mxtelecom.com>, linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Tue, 2010-08-03 at 14:48 -0400, J. Bruce Fields wrote:
-> On Tue, Aug 03, 2010 at 02:40:15PM -0400, Trond Myklebust wrote:
-> > On Tue, 2010-08-03 at 13:24 -0400, Jeff Layton wrote:
-> > > We got a report recently about a panic in RHEL5 (2.6.18 based kernel).
-> > > The problem appears to be that a task_cleanup workqueue job ran and got
-> > > passed a pointer to an xprt that had been freed. The bug is here in
-> > > case anyone is interested in the details:
-> > > 
-> > >     https://bugzilla.redhat.com/show_bug.cgi?id=611938
-> > > 
-> > > The situation seems to be pretty difficult to reproduce, but I don't
-> > > see anything that's intended to ensure that this doesn't occur in RHEL5
-> > > or mainline. The task_cleanup workqueue job doesn't hold a reference to
-> > > the xprt, and the job isn't canceled when the xprt is torn down.
-> > > 
-> > > Bruce had a look and suggested that we may need something like the
-> > > patch below (pasted in, so it probably won't apply correctly). I've
-> > > tested a backported version of it on RHEL5 and it seems to work fine.
-> > > 
-> > > Is it reasonable to cancel task_cleanup when destroying the xprt? Or,
-> > > am I missing something that should prevent this situation in mainline
-> > > (and perhaps isn't in RHEL5's kernel).
-> > > 
-> > > Any help is appreciated...
-> > > 
-> > > -----------------------------[snip]---------------------------------
-> > > diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
-> > > index dcd0132..2a1f664 100644
-> > > --- a/net/sunrpc/xprt.c
-> > > +++ b/net/sunrpc/xprt.c
-> > > @@ -1129,6 +1129,7 @@ static void xprt_destroy(struct kref *kref)
-> > >   rpc_destroy_wait_queue(&xprt->sending);
-> > >   rpc_destroy_wait_queue(&xprt->resend);
-> > >   rpc_destroy_wait_queue(&xprt->backlog);
-> > > + cancel_work_sync(&xprt->task_cleanup);
-> > >   /*
-> > >    * Tear down transport state and free the rpc_xprt
-> > >    */
-> > > -----------------------------[snip]---------------------------------
-> > > 
-> > > Thanks,
-> > 
-> > How about doing a wait_on_bit_lock(&xprt->state, XPRT_LOCKED,...)
-> > instead?
-> 
-> I'll believe you, but I don't get it: what guarantees that XPRT_LOCKED
-> isn't cleared while xprt_autoclose autoclose is still running?
+Some distributed file systems such as IBM's SANFS, support direct IO
+to the target storage....without going through a cache... ( This
+feature is useful, for write only work load....say, we are backing up
+huge data to an NFS share....).
 
-Look more closely: the callers that enqueue task_cleanup on the
-workqueue all ensure that XPRT_LOCKED is held, and it isn't released
-until the call to xprt_release_write() at the very end of
-xprt_autoclose().
+I think if not available, we should add a DIO mount option, that tell
+the VFS not to cache any data, so that close operation will not stall.
 
-The rpciod_workqueue deadlocking is an issue, though, so unfortunately,
-we won't be able to make use of the above.
+With the open-to-close , cache coherence protocol of NFS, an
+aggressive caching client, is a performance downer for many work-loads
+that is write-mostly.
 
+
+
+On Fri, Aug 6, 2010 at 2:26 PM, Jim Rees <rees@umich.edu> wrote:
+> Matthew Hodgson wrote:
+>
+>  Is there any way to tune the linux NFSv3 client to prefer to write
+>  data straight to an async-mounted server, rather than having large
+>  writes to a file stack up in the local pagecache before being synced
+>  on close()?
+>
+> It's been a while since I've done this, but I think you can tune this with
+> vm.dirty_writeback_centisecs and vm.dirty_background_ratio sysctls.  The
+> data will still go through the page cache but you can reduce the amount that
+> stacks up.
+>
+> There are other places where the data can get buffered, like the rpc layer,
+> but it won't sit there any longer than it takes for it to go out the wire.
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
