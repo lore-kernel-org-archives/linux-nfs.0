@@ -1,106 +1,132 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:46838 "EHLO fieldses.org"
+Received: from cantor.suse.de ([195.135.220.2]:37948 "EHLO mx1.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751403Ab0HFV26 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 6 Aug 2010 17:28:58 -0400
-Date: Fri, 6 Aug 2010 17:27:28 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Tetsuo Handa <penguin-kernel@I-love.SAKURA.ne.jp>
-Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        jlayton@redhat.com
-Subject: Re: linux-next NFSD: NULL pointer dereference at nfsd_svc()
-Message-ID: <20100806212727.GC29536@fieldses.org>
-References: <20100802103214.7eea09eb@corrin.poochiereds.net>
- <20100802103620.5638dac1@corrin.poochiereds.net>
- <20100802181634.GD12637@fieldses.org>
- <201008030109.o73193bp094241@www262.sakura.ne.jp>
- <20100803154851.GA23467@fieldses.org>
- <201008040013.o740DmYK024832@www262.sakura.ne.jp>
- <20100804194045.GD18200@fieldses.org>
- <201008050110.o751AG18066496@www262.sakura.ne.jp>
- <20100805204612.GA13821@fieldses.org>
- <20100805213107.GB13821@fieldses.org>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20100805213107.GB13821@fieldses.org>
+	id S1750917Ab0HFE02 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 6 Aug 2010 00:26:28 -0400
+Date: Fri, 6 Aug 2010 14:26:18 +1000
+From: Neil Brown <neilb@suse.de>
+To: Jason Keltz <jas@cse.yorku.ca>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: exporting to a list of IPs
+Message-ID: <20100806142618.2268f332@notabene>
+In-Reply-To: <Pine.LNX.4.63.1008052140560.25210@indigo.cs.yorku.ca>
+References: <4C583B63.4050903@cse.yorku.ca>
+	<20100804134527.146397ff@notabene>
+	<4C596F81.6010409@cse.yorku.ca>
+	<20100805081311.727e9185@notabene>
+	<Pine.LNX.4.63.1008052140560.25210@indigo.cs.yorku.ca>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Thu, Aug 05, 2010 at 05:31:07PM -0400, J. Bruce Fields wrote:
-> On Thu, Aug 05, 2010 at 04:46:12PM -0400, J. Bruce Fields wrote:
-> > On Thu, Aug 05, 2010 at 10:10:16AM +0900, Tetsuo Handa wrote:
-> > > J. Bruce Fields wrote:
-> > > > Maybe figuring out exactly hwere that is would help work out what's
-> > > > going on.  Doing
-> > > > 
-> > > > 	make net/sunrpc/svc.lst
-> > > > 
-> > > > then looking for c1356dd4 (or just mailing me svc.lst) could help.
-> > > 
-> > > "make net/sunrpc/svc.lst" failed due to following error.
-> > > 
-> > >   BFD: Dwarf Error: Abbrev offset (3238007024) greater than or equal to .debug_abbrev size (1607).
-> > > 
-> > > Manual printk() debug reported that
-> > > rqstp->rq_argp == rqstp->rq_resp == ZERO_SIZE_PTR and
-> > 
-> > Huh.  As far as I can tell that will only happen if you've not no nfsd
-> > versions defined; how is that happening?
+On Thu, 5 Aug 2010 21:42:09 -0400 (EDT)
+Jason Keltz <jas@cse.yorku.ca> wrote:
+
+> On Thu, 5 Aug 2010, Neil Brown wrote:
 > 
-> OK, I think it's another startup-order problem: depending on how things
-> are started up, sv_nrthreads may already be nonzero, causing us to skip
-> nfsd_reset_versions(), so that the loop in __svc_create() ends up
-> leaving xdrsize 0, and then the kmalloc's in svc_prepare_thread() assign
-> ZERO_SIZE_PTR.
+> > On Wed, 04 Aug 2010 09:47:45 -0400
+> > Jason Keltz <jas@cse.yorku.ca> wrote:
+> >
+> >> Neil Brown wrote:
+> >>> On Tue, 03 Aug 2010 11:53:07 -0400
+> >>> Jason Keltz <jas@cse.yorku.ca> wrote:
+> >>>
+> >>>> Hi.
+> >>>>
+> >>>> Why is it that you cannot NFS export to a list of IPs and have exportfs
+> >>>> leave the list of IPs in etab without converting over to FQDN?
+> >>>
+> >>> My memory is that if you only list IP addresses in /etc/exports then it will
+> >>> do just want you want.  But if you list any host names or net groups then it
+> >>> has to do a DNS lookup on everything to see if either of those matches.
+> >>
+> >> Hi Neil.
+> >>
+> >> Thanks for your response!
+> >>
+> >> Actually, if I list ONLY IPs in /etc/exports, and nothing else, then
+> >> etab gets converted over to using hostnames:
+> >>
+> >> For example:
+> >>
+> >> # cat /etc/exports
+> >> /test 130.63.92.24(ro,sync)
+> >>
+> >> # cat /var/lib/nfs/etab
+> >> (it's empty)
+> >> # exportfs -a
+> >> # cat /var/lib/nfs/etab
+> >> /test
+> >> gold.cs.yorku.ca(ro,sync,wdelay,hide,nocrossmnt,secure,root_squash,no_all_squash,subtree_check,secure_locks,mapping=identity,anonuid=-2,anongid=-2)
+> >>
+> >> In fact, I see two problems here.  First, exportfs shouldn't convert
+> >> etab over to using FQDN.  Second, if it does do this, I don't see why
+> >> rpc.mountd needs to RE-resolve each hostname in etab.    During this
+> >> time (right after exportfs exits), all of my NFS shares hang, and an
+> >> strace of rpc.mountd shows that it is re-resolving all the hostnames
+> >> from etab.  When it finishes, all activity continues.  On one system
+> >> with a total of 30,000 hostnames listed, this ends up in a 30 second
+> >> hang time for all NFS exports!  I was able to shrink this time slightly
+> >> by putting a caching name server on the NFS server, so that the NFS
+> >> server wasn't killing the DNS, but this didn't help enough.  If exportfs
+> >> truly has to convert IPs over to hostname, I can live with that, but
+> >> then rpc.mountd shouldn't re-resolve the names.  If both can live with
+> >> IPs, I'm good with that as well.
+> >>
+> >> Now, albeit, I'm using an older nfs-utils that comes with RHEL4
+> >> installation.  Compiling a later version is a bit tricky because some
+> >> libraries have changed.  That being said, reviewing the source (given
+> >> that I don't really know it that well) for the newest nfs-utils, I don't
+> >> see how this behavior would really be any different.  For example, in
+> >> client_lookup in support/export/client.c, adding some printfs, I can see
+> >> that the IPs always get into the ...
+> >>
+> >>    if (htype == MCL_FQDN && !canonical) {
+> >> ... where there's a call to gethostbyname.
+> >>
+> >> This is the same in nfs-utils-1.0.6 as it is in 1.2.2.
+> >
+> > True, but client_gettype is different.
+> > In 1.0.6, w.x.y.z is treated as MCL_FQDN
+> > In 1.2.2, w.x.y.z is treated as MCL_SUBNETWORK
+> >
+> > If you use w.x.y.z/32 then it will be treated as MCL_SUBNETWORK and should do
+> > what you want.
 > 
-> I need to think a little more about what we should be doing here.
+> Hi Neil,
+> 
+> I tried this, and it worked wonderfully! Well, sort of.  It appears that 
+> mountd doesn't care about the mask, since I can set it to /1, /24, or /32 
+> and it works...  I'm disappointed to say that after exportfs exits, my NFS 
+> shares still hang for around 20 seconds.  Now it seems like this is 
+> happening while rpc.mountd is doing a whole bunch of lstat64 calls! I 
+> guess that comes after what used to be the name lookups.  I just don't get 
+> it.  I wrote a small program to loop through 38,000 lstat64 calls in a 
+> matter of a second... if you could look at the lstat output here 
+> (http://www.cse.yorku.ca/~jas/lstat.txt), it would be really helpful .. i 
+> added the times so you can see how long all the lstats take.  It's crazy.
+> 
+>
 
-Bah, so what you were hitting was simple--I just moved the
-nfsd_reset_versions() call to the wrong place; the below should fix it.
+I think it does care about the mask.
 
-There's also a couple other bugs in the area.
+192.168.1.1/1  means any address where the first 1 bit is the same as this
+address,
+192.168.1.1/16 means the first 16 - so 192.168.*.*
+192.168.1.1/32 means exactly 192.168.1.1, nothing else.
 
-Thanks for the -next testing!
+Your /var/lib/nfs/etab is 3 megabytes and appears to have about 18000 entries
+and this takes about 24 seconds to process so 750 per second on average.
+Of course it isn't just stating the files, it is also building up an internal
+data structure to hold it all, and quite possibly doing linear searches to
+make sure there aren't any duplicates resulting in quadratic behaviour.
+If you look at the number of stats per second it starts at over 2000 and by
+then end it is around 300.
 
---b.
+Do you really need that many entries?  I note there are 22 different
+directories being exported each to 858 ip addresses.  Are they really all
+distinct addresses or can you use a larger subnet mask to group some of them
+together?
 
-commit e844a7b9805a2b74cfd34c8604f5bba3e0869305
-Author: J. Bruce Fields <bfields@redhat.com>
-Date:   Fri Aug 6 15:48:03 2010 -0400
-
-    nfsd: initialize nfsd versions before creating svc
-    
-    Commit 59db4a0c102e0de226a3395dbf25ea51bf845937 "nfsd: move more into
-    nfsd_startup()" inadvertently moved nfsd_versions after
-    nfsd_create_svc().  On older distributions using an rpc.nfsd that does
-    not explicitly set the list of nfsd versions, this results in
-    svc-create_pooled() being called with an empty versions array.  The
-    resulting incomplete initialization leads to a NULL dereference in
-    svc_process_common() the first time a client accesses the server.
-    
-    Move nfsd_reset_versions() back before the svc_create_pooled(); this
-    time, put it closer to the svc_create_pooled() call, to make this
-    mistake more difficult in the future.
-    
-    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-
-diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
-index 39ced4a..e2c4346 100644
---- a/fs/nfsd/nfssvc.c
-+++ b/fs/nfsd/nfssvc.c
-@@ -224,7 +224,6 @@ static int nfsd_startup(unsigned short port, int nrservs)
- 	ret = nfs4_state_start();
- 	if (ret)
- 		goto out_lockd;
--	nfsd_reset_versions();
- 	nfsd_up = true;
- 	return 0;
- out_lockd:
-@@ -329,6 +328,7 @@ int nfsd_create_serv(void)
- 		       nfsd_max_blksize >= 8*1024*2)
- 			nfsd_max_blksize /= 2;
- 	}
-+	nfsd_reset_versions();
- 
- 	nfsd_serv = svc_create_pooled(&nfsd_program, nfsd_max_blksize,
- 				      nfsd_last_thread, nfsd, THIS_MODULE);
+NeilBrown
