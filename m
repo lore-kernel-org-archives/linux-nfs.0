@@ -1,83 +1,97 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:47310 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758122Ab0HQSUz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 17 Aug 2010 14:20:55 -0400
-Date: Tue, 17 Aug 2010 14:18:43 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Tom Haynes <tdh@excfb.com>
-Cc: Chuck Lever <chuck.lever@oracle.com>, Steve Dickson <SteveD@redhat.com>,
-        Neil Brown <neilb@suse.de>,
-        Trond Myklebust <trond.myklebust@fys.uio.no>,
-        Jim Rees <rees@umich.edu>, Daniel.Muntz@emc.com,
+Received: from mail-yw0-f46.google.com ([209.85.213.46]:60620 "EHLO
+	mail-yw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S965656Ab0HFT3Y convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 6 Aug 2010 15:29:24 -0400
+Received: by ywh1 with SMTP id 1so2950759ywh.19
+        for <linux-nfs@vger.kernel.org>; Fri, 06 Aug 2010 12:29:23 -0700 (PDT)
+In-Reply-To: <1281116260.2900.6.camel@heimdal.trondhjem.org>
+References: <4C5BFE47.8020905@mxtelecom.com>
+	<20100806132620.GA2921@merit.edu>
+	<AANLkTin_pg7GCw9jcB2JK+0TbGu+MrQEcv4H_qAg_A3H@mail.gmail.com>
+	<1281116260.2900.6.camel@heimdal.trondhjem.org>
+Date: Sat, 7 Aug 2010 00:59:21 +0530
+Message-ID: <AANLkTimArNXgDSJeHrqsdAhCQo_O0=bhRuqsQEp0ofN7@mail.gmail.com>
+Subject: Re: Tuning NFS client write pagecache
+From: Peter Chacko <peterchacko35@gmail.com>
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+Cc: Jim Rees <rees@umich.edu>, Matthew Hodgson <matthew@mxtelecom.com>,
         linux-nfs@vger.kernel.org
-Subject: Re: numeric UIDs
-Message-ID: <20100817181842.GD23176@fieldses.org>
-References: <20100803222337.GA9752@fieldses.org>
- <1280874675.14520.23.camel@heimdal.trondhjem.org>
- <20100803224245.GB9752@fieldses.org>
- <1280887336.24669.23.camel@heimdal.trondhjem.org>
- <20100805153421.GD27141@fieldses.org>
- <20100812092232.344314b2@notabene>
- <4C6559FA.5070809@RedHat.com>
- <20100813163156.GA16863@fieldses.org>
- <1CE074A1-2371-40E5-B0E5-F80474B02FA2@oracle.com>
- <4C6ACAE1.6060100@excfb.com>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4C6ACAE1.6060100@excfb.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Tue, Aug 17, 2010 at 12:46:09PM -0500, Tom Haynes wrote:
-> Chuck Lever wrote:
-> >On Aug 13, 2010, at 12:31 PM, J. Bruce Fields wrote:
-> >>There are four cases where translation can be done:
-> >>
-> >>	Sending id from server to client (ls, stat, getacl):
-> >>		1. server uid -> string
-> >>		2. string -> client uid
-> >>	Sending id from client to server (chown, setacl):
-> >>		3. client uid -> string
-> >>		4. string -> client uid
-> >>
-> >>Cases 1 and 2 are uncontroversial.  Definitely map ascii-fied integers
-> >>in both of those cases.
-> >>
-> >>Case 4 violates the SHOULD on page 47.  Which would make case 3 useless
-> >>if all servers respect that SHOULD.  I think we should ignore the SHOULD
-> >>and implement 3 and 4 too, but Trond may not agree.
-> >
-> 
-> So how would that happen?
+Imagine a third party backup app for which a customer has no source
+code. (that doesn't use open system call O_DIRECT mode) backing up
+millions of files through NFS....How can we do a non-cached IO to the
+target server ?  we cannot use O_DIRECT option here as we don't have
+the source code....If we have mount option, its works just right
+....if we can have read-only mounts, why not have a dio-only mount ?
 
-What's the antecedent to "that"?
+A true application-aware storage systems(in this case NFS client) ,
+which is the next generation storage systems should do, should absorb
+the application needs that may apply to the whole FS....
 
-> If we send "2525" and we can locally map uid 2525 to 'bfields", does
-> that mean the client is
-> attempting to subvert the normal process?
+i don't say O_DIRECT flag is a bad idea, but it will only work with a
+regular application that do IO to some files.....this is not the best
+solution when NFS server is used as the storage for secondary data,
+where NFS client runs third party applications thats otherwise run
+best in a local storage as there is no caching issues....
 
-I don't understand what you mean by "subvert the normal process", nor
-what you see as the threat here.
+What do you think ?
 
-> Or do we have to send uid 2525 to our id mapper to see if a reverse
-> mapping applies?
-
-Checking for a reverse mapping doesn't sound like a good idea to me.
-
-> What if there exists a thud@remote with that uid, but the mapping
-> was really bfields@crimson?
-
-In the case of a user upgrading from NFSv3 to NFSv4, that's the behavior
-they've always had, so presumably they can live with it.  I'd prefer to
-avoid situations where something that previously worked over v3 fails
-when you upgrade the protocol version.
-
-I assume that most users arrive at NFSv4 by an upgrade from a previous
-version of NFS.
-
-So my priorities would be 1) to ensure the NFSv3->NFSv4 upgrade goes
-smoothly, then 2) to make it easy for users to switch from ids to
-strings, rather than forcing both at once.
-
---b.
+On Fri, Aug 6, 2010 at 11:07 PM, Trond Myklebust
+<trond.myklebust@fys.uio.no> wrote:
+> On Fri, 2010-08-06 at 15:05 +0100, Peter Chacko wrote:
+>> Some distributed file systems such as IBM's SANFS, support direct IO
+>> to the target storage....without going through a cache... ( This
+>> feature is useful, for write only work load....say, we are backing up
+>> huge data to an NFS share....).
+>>
+>> I think if not available, we should add a DIO mount option, that tell
+>> the VFS not to cache any data, so that close operation will not stall.
+>
+> Ugh no! Applications that need direct IO should be using open(O_DIRECT),
+> not relying on hacks like mount options.
+>
+>> With the open-to-close , cache coherence protocol of NFS, an
+>> aggressive caching client, is a performance downer for many work-loads
+>> that is write-mostly.
+>
+> We already have full support for vectored aio/dio in the NFS for those
+> applications that want to use it.
+>
+> Trond
+>
+>>
+>>
+>>
+>> On Fri, Aug 6, 2010 at 2:26 PM, Jim Rees <rees@umich.edu> wrote:
+>> > Matthew Hodgson wrote:
+>> >
+>> >  Is there any way to tune the linux NFSv3 client to prefer to write
+>> >  data straight to an async-mounted server, rather than having large
+>> >  writes to a file stack up in the local pagecache before being synced
+>> >  on close()?
+>> >
+>> > It's been a while since I've done this, but I think you can tune this with
+>> > vm.dirty_writeback_centisecs and vm.dirty_background_ratio sysctls.  The
+>> > data will still go through the page cache but you can reduce the amount that
+>> > stacks up.
+>> >
+>> > There are other places where the data can get buffered, like the rpc layer,
+>> > but it won't sit there any longer than it takes for it to go out the wire.
+>> > --
+>> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> > the body of a message to majordomo@vger.kernel.org
+>> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>> >
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
+>
+>
+>
