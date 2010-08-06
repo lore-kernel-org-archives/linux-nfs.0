@@ -1,102 +1,92 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ew0-f46.google.com ([209.85.215.46]:47130 "EHLO
-	mail-ew0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753334Ab0HRU5r (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 18 Aug 2010 16:57:47 -0400
-Received: by ewy23 with SMTP id 23so755206ewy.19
-        for <linux-nfs@vger.kernel.org>; Wed, 18 Aug 2010 13:57:45 -0700 (PDT)
-Message-ID: <4C6C4944.7030501@panasas.com>
-Date: Wed, 18 Aug 2010 23:57:40 +0300
-From: Benny Halevy <bhalevy@panasas.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-CC: andros@netapp.com, linux-nfs@vger.kernel.org,
-        Fred Isaman <iisaman@citi.umich.edu>
-Subject: Re: [PATCH 1/1] nfs41: prevent exchange_id from sending server-only
- flag
-References: <1282153092-7228-1-git-send-email-andros@netapp.com>	 <1282154873.8540.69.camel@heimdal.trondhjem.org>	 <4C6C3B0D.2080005@panasas.com> <1282162601.8540.106.camel@heimdal.trondhjem.org>
-In-Reply-To: <1282162601.8540.106.camel@heimdal.trondhjem.org>
-Content-Type: text/plain; charset=UTF-8
+Received: from mx1.redhat.com ([209.132.183.28]:63568 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1761148Ab0HFLPv convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 6 Aug 2010 07:15:51 -0400
+Date: Fri, 6 Aug 2010 07:18:10 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: Jeremy Allison <jra@samba.org>
+Cc: Steve French <smfrench@gmail.com>, Neil Brown <neilb@suse.de>,
+        utz lehmann <lkml123@s2y4n2c.de>,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        Volker.Lendecke@sernet.de, David Howells <dhowells@redhat.com>,
+        Jan Engelhardt <jengelh@medozas.de>, linux-cifs@vger.kernel.org,
+        linux-nfs@vger.kernel.org, samba-technical@lists.samba.org,
+        linux-kernel@vger.kernel.org, viro@zeniv.linux.org.uk,
+        linux-fsde@jasper.es
+Subject: Re: [PATCH 02/18] xstat: Add a pair of system calls to make
+ extended  file stats available [ver #6]
+Message-ID: <20100806071810.5002dc2b@corrin.poochiereds.net>
+In-Reply-To: <AANLkTinVCLVpqLtA2X=1mOkxX7Re61_ZYsUix_XTvZ5D@mail.gmail.com>
+References: <alpine.LSU.2.01.1007221228260.6115@obet.zrqbmnf.qr>
+	<20100715021709.5544.64506.stgit@warthog.procyon.org.uk>
+	<20100715021712.5544.44845.stgit@warthog.procyon.org.uk>
+	<30448.1279800887@redhat.com>
+	<E1Obuiy-00C9jr-Al@intern.SerNet.DE>
+	<AANLkTimdFCGSKLn7aGMpBMIauHTsHY7hpAAmpo6uTcnD@mail.gmail.com>
+	<1280524978.2452.9.camel@segv.aura.of.mankind>
+	<20100801092529.5e6ba0e0@corrin.poochiereds.net>
+	<20100805235218.GB31233@jeremy-laptop>
+	<20100806133836.49757af9@notabene>
+	<AANLkTinVCLVpqLtA2X=1mOkxX7Re61_ZYsUix_XTvZ5D@mail.gmail.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Aug. 18, 2010, 23:16 +0300, Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
-> On Wed, 2010-08-18 at 22:57 +0300, Benny Halevy wrote:
->> On Aug. 18, 2010, 21:07 +0300, Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
->>> On Wed, 2010-08-18 at 13:38 -0400, andros@netapp.com wrote:
->>>> From: Fred Isaman <iisaman@citi.umich.edu>
->>>>
->>>> clp->cl_exchange_flags is used both for client output and server input.
->>>> This causes problems in certain recovery situations, when the server
->>>> has sent back EXCHGID4_FLAG_CONFIRMED_R, causing the client to erroneously
->>>> use the flag in future EXCHANGE_ID requests.
->>>>
->>>> Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
->>>> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
->>>> ---
->>>>  fs/nfs/nfs4proc.c |    2 +-
->>>>  1 files changed, 1 insertions(+), 1 deletions(-)
->>>>
->>>> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
->>>> index 198d51d..e5fea95 100644
->>>> --- a/fs/nfs/nfs4proc.c
->>>> +++ b/fs/nfs/nfs4proc.c
->>>> @@ -4427,7 +4427,7 @@ int nfs4_proc_exchange_id(struct nfs_client *clp, struct rpc_cred *cred)
->>>>  	nfs4_verifier verifier;
->>>>  	struct nfs41_exchange_id_args args = {
->>>>  		.client = clp,
->>>> -		.flags = clp->cl_exchange_flags,
->>>> +		.flags = clp->cl_exchange_flags & ~EXCHGID4_FLAG_CONFIRMED_R,
->>>>  	};
->>>>  	struct nfs41_exchange_id_res res = {
->>>>  		.client = clp,
->>>
->>> Wait... This is utterly silly...
->>>
->>> So we start be passing in clp->cl_exchange_flags == 0, then the server
->>> modifies that to some other value, and then from there on we always use
->>> the latest value of clp->cl_exchange_flags that resulted from the last
->>> call to EXCHANGE_ID????
->>>
->>> We should be setting .flags according to the client capabilities, not
->>> according to the server reply...
->>>
->>> IOW:
->>> args.flags = EXCHGID4_FLAG_SUPP_MOVED_REFER | EXCHGID4_FLAG_USE_NON_PNFS;
->>>
->>>
->>
->> Makes sense for upstream.
->>
->> For pNFS, besides dropping EXCHGID4_FLAG_USE_NON_PNFS we should retain
->> EXCHGID4_FLAG_USE_PNFS_MDS | EXCHGID4_FLAG_USE_PNFS_DS as exchange_id
->> is called from both the MDS and the DS paths.
+On Thu, 5 Aug 2010 22:55:06 -0500
+Steve French <smfrench@gmail.com> wrote:
+
+> On Thu, Aug 5, 2010 at 10:38 PM, Neil Brown <neilb@suse.de> wrote:
+> > On Thu, 5 Aug 2010 16:52:18 -0700
+> > Jeremy Allison <jra@samba.org> wrote:
 > 
-> No. As I read the spec, a pNFS-capable client should _retain_
-> EXCHGID4_FLAG_USE_NON_PNFS, and OR in the EXCHGID4_FLAG_USE_PNFS_MDS |
-> EXCHGID4_FLAG_USE_PNFS_DS flags too (see section 13.1).
-
-Oh, I meant that the function should retain the flags at the level
-it is being called, but the flags should be initialized by the respective
-callers appropriately. The server-returned values should not be retained,
-as you correctly noted.
-
-As for EXCHGID4_FLAG_USE_NON_PNFS, the server value can be retained, but
-I see no harm in probing it again (for a pNFS capable client), in case
-the server capabilities has changed in the meanwhile.  E.g., the admin
-loaded the the magic pnfs module on the server and restarted the nfs
-service.
-
-Benny
-
+> >> Don't add it as an EA. It's *not* an EA, it's a timestamp.
+> >
+> > I'm curious.  Why do you particularly care what interface the kernel uses to
+> > provide you with access to this attribute?
+> >
+> > And given that it is an attribute that is not part of 'POSIX' or "UNIX", it
+> > would seem to be an extension - an extended attribute.
+> > As the Linux kernel does virtually nothing with this attribute except provide
+> > access, it seems to be a very different class of thing to other timestamps.
+> > Surely it is simply some storage associated with a file which is capable of
+> > storing a timestamp, which can be set or retrieved by an application, and
+> > which happens to be initialised to the current time when a file is created.
+> >
+> > Yes, to you it is a timestamp.  But to Linux it is a few bytes of
+> > user-settable metadata.  Sounds like an EA to me.
+> >
+> > Or do you really want something like BSD's 'btime' which as I understand it
+> > cannot be set.  Would that be really useful to you?
 > 
-> The server will then reply with a subset of those 3 flags that tells the
-> client whether it is an MDS, a DS, or a non-MDS (or a valid combination
-> of 2 of those flags).
+> Obviously the cifs and SMB2 protocols which  Samba server support can
+> ask the server to set the create time of a file (this is handled
+> through xattrs today along with the "dos attribute" flags such as
+> archive/hidden/system), but certainly it is much more common (and
+> important) to read the creation time of an existing file.
 > 
-> Trond
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+> > Is there something important that I am missing?
+> 
+> It is another syscall that Samba server would have to make - and xattr
+> performance is extremely slow on some file systems (although
+> presumably this one would be more likely to be stored in inode and
+> perhaps not as bad on ext4, cifs and a few others such as ntfs).
+> 
+> 
 
+Right. One has to consider that samba has to satisfy READDIRPLUS-like
+calls, and on a large directory all of those extra syscalls are likely
+to impact performance.
+
+In my view, the ideal thing would be to add this field as an EA and
+continue work on implementing xstat(). Adding it as an EA gives
+userland a way to set this value, without needing to add a new utimes()
+variant.
+
+If/when xstat becomes available, samba could use that instead of the EA
+for reading this value.
+
+-- 
+Jeff Layton <jlayton@redhat.com>
