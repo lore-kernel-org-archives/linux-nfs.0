@@ -1,91 +1,93 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ew0-f46.google.com ([209.85.215.46]:51396 "EHLO
-	mail-ew0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753834Ab0HMSZv (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 13 Aug 2010 14:25:51 -0400
-Date: Fri, 13 Aug 2010 11:25:49 -0700
-Message-ID: <AANLkTimnyXKahtjaFeSsgcq=xMy-pP3na1jidQhZ-dt2@mail.gmail.com>
-Subject: Proposal: Use hi-res clock for file timestamps
-From: "Patrick J. LoPresti" <lopresti@gmail.com>
-To: linux-fsdevel@vger.kernel.org
-Cc: linux-nfs@vger.kernel.org, linux-kernel <linux-kernel@vger.kernel.org>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from cantor2.suse.de ([195.135.220.15]:59394 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S933645Ab0HFDiy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 5 Aug 2010 23:38:54 -0400
+Date: Fri, 6 Aug 2010 13:38:36 +1000
+From: Neil Brown <neilb@suse.de>
+To: Jeremy Allison <jra@samba.org>
+Cc: Jeff Layton <jlayton@redhat.com>, utz lehmann <lkml123@s2y4n2c.de>,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        Volker.Lendecke@sernet.de, David Howells <dhowells@redhat.com>,
+        Jan Engelhardt <jengelh@medozas.de>, linux-cifs@vger.kernel.org,
+        linux-nfs@vger.kernel.org, samba-technical@lists.samba.org,
+        linux-kernel@vger.kernel.org, viro@zeniv.linux.org.uk,
+        linux-fsde@jasper.es
+Subject: Re: [PATCH 02/18] xstat: Add a pair of system calls to make
+ extended  file stats available [ver #6]
+Message-ID: <20100806133836.49757af9@notabene>
+In-Reply-To: <20100805235218.GB31233@jeremy-laptop>
+References: <alpine.LSU.2.01.1007221228260.6115@obet.zrqbmnf.qr>
+	<20100715021709.5544.64506.stgit@warthog.procyon.org.uk>
+	<20100715021712.5544.44845.stgit@warthog.procyon.org.uk>
+	<30448.1279800887@redhat.com>
+	<E1Obuiy-00C9jr-Al@intern.SerNet.DE>
+	<AANLkTimdFCGSKLn7aGMpBMIauHTsHY7hpAAmpo6uTcnD@mail.gmail.com>
+	<1280524978.2452.9.camel@segv.aura.of.mankind>
+	<20100801092529.5e6ba0e0@corrin.poochiereds.net>
+	<20100805235218.GB31233@jeremy-laptop>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-For concreteness, let me start with the patch I have in mind.  Call it
-"patch version 1".
+On Thu, 5 Aug 2010 16:52:18 -0700
+Jeremy Allison <jra@samba.org> wrote:
 
+> On Sun, Aug 01, 2010 at 09:25:29AM -0400, Jeff Layton wrote:
+> > On Fri, 30 Jul 2010 23:22:58 +0200
+> > utz lehmann <lkml123@s2y4n2c.de> wrote:
+> > 
+> > > On Thu, 2010-07-22 at 09:40 -0700, Linus Torvalds wrote:
+> > > > But the fact is, th Unix ctime semantics are insane and largely
+> > > > useless. There's a damn good reason almost nobody uses ctime under
+> > > > unix.
+> > > > 
+> > > > So what I'm suggesting is that we have a flag - either per-process or
+> > > > per-mount - that just says "use windows semantics for ctime".
+> > > 
+> > > When abusing an existing time stamp use atime not ctime please.
+> > > ctime has it's uses. atime was just a mistake and is nearly useless.
+> > > 
+> > > And with noatime we already have creation time semantics for atime.
+> > > 
+> > 
+> > Ugh. Honestly all of this talk of abusing different time fields seems
+> > like craziness to me. It's going to be very hard to do that without
+> > breaking *something*. There's also very little reason to do this when
+> > xattrs are a much cleaner approach.
+> > 
+> > Neil Brown has put forth a very reasoned justification for putting the
+> > birthtime in an xattr. After reading it, I think that makes more sense
+> > than anything. It's also something that can be done without any extra
+> > infrastructure. If at some point in the future we get an xstat-like
+> > syscall then we can always add birthtime to that as well.
+> 
+> Just my 2 cents (as a Samba server implementor). I *hate* the idea
+> of adding a "virtual" EA for birthtime. If you're going to add it,
+> just add it to the stat struct like *BSD does. Don't abuse the other
+> time fields, it's a new one.
+> 
+> Jeff, please don't advocate for an EA for the Samba server to use.
+> Don't add it as an EA. It's *not* an EA, it's a timestamp.
 
---- linux-2.6.32.13-0.4/kernel/time.c.orig      2010-08-13
-10:52:50.000000000 -0700
-+++ linux-2.6.32.13-0.4/kernel/time.c   2010-08-13 10:53:20.000000000 -0700
-@@ -229,7 +229,7 @@ SYSCALL_DEFINE1(adjtimex, struct timex _
-  */
- struct timespec current_fs_time(struct super_block *sb)
- {
--        struct timespec now = current_kernel_time();
-+       struct timespec now = getnstimeofday();
-        return timespec_trunc(now, sb->s_time_gran);
- }
- EXPORT_SYMBOL(current_fs_time);
+I'm curious.  Why do you particularly care what interface the kernel uses to
+provide you with access to this attribute?
 
-...
+And given that it is an attribute that is not part of 'POSIX' or "UNIX", it
+would seem to be an extension - an extended attribute.
+As the Linux kernel does virtually nothing with this attribute except provide
+access, it seems to be a very different class of thing to other timestamps.
+Surely it is simply some storage associated with a file which is capable of
+storing a timestamp, which can be set or retrieved by an application, and
+which happens to be initialised to the current time when a file is created.
 
-I recently spent nearly a week tracking down an NFS cache coherence
-problem in an application:
+Yes, to you it is a timestamp.  But to Linux it is a few bytes of
+user-settable metadata.  Sounds like an EA to me.
 
-http://www.spinics.net/lists/linux-nfs/msg14974.html
+Or do you really want something like BSD's 'btime' which as I understand it
+cannot be set.  Would that be really useful to you?
 
-Here is what caused my problem:
+Is there something important that I am missing?
 
-1) File dir/A is created locally on NFS server.
-2) NFS client does LOOKUP on file dir/B, gets ENOENT.
-3) File dir/B is created locally on NFS server.
-
-In my case, these all happened in less than 4 milliseconds (much less,
-actually).  Since HZ on my system is 250, the file creation in step
-(3) failed to update the ctime/mtime on the directory.  The result is
-that the NFS client's "dentry lookup cache" became stale, but did not
-know it was stale (since it relies on the directory ctime/mtime to
-detect that).  Worse, the staleness persists even if additional
-changes are made to the directory from the NFS client, thanks to NFS
-v3's "weak cache consistency" optimizations.
-
-Why did this take me a week to diagnose?  Because I am using XFS, and
-I know XFS and NFS use nanosecond resolution for file timestamps.  It
-never occurred to me that, here in 2010, Linux would have an actual
-file timestamp resolution 6.5 orders of magnitude worse.
-
-I know, I know, "use NFS v4 and i_version".  But that is not the
-point.  The point is that 4 milliseconds is a very long time these
-days; an awful lot of file system operations can happen in such an
-interval.
-
-I am guessing the objection to the above patch will be:  "Waaah it's
-slow!"  My responses would be:
-
-1) Anybody who cares about file system performance is already using
-"noatime" or "relatime", which mitigates the hit greatly.
-
-2) Correctness is more important than performance, and 4 milliseconds
-is just embarrassing.
-
-3) On the 99.99% of Linux systems that are post-1990 x86, it is not
-slow at all, and the performance difference will be utterly
-undetectable in the real world.
-
-When was XFS designed?  It has nanosecond timestamps.  When was NFS
-designed?  It has nanosecond timestamps.  Even ext4 has nanosecond
-timestamps...  But what is the point if 22 bits' worth will forever be
-meaningless?
-
-If the above patch is too slow for some architectures, how about
-making it a configuration option?  Call it "CONFIG_1980S_FILE_TICK",
-have it default to YES on the architectures that care and NO on
-anything remotely modern and sane.
-
-OK that's my proposal.  Bash away.
-
- - Pat
+NeilBrown
