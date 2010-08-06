@@ -1,70 +1,173 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-out1.uio.no ([129.240.10.57]:43510 "EHLO mail-out1.uio.no"
+Received: from fieldses.org ([174.143.236.118]:60728 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756741Ab0HCSt2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 3 Aug 2010 14:49:28 -0400
-Subject: Re: sunrpc: what prevents an xprt from being freed before
- task_cleanup runs?
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: linux-nfs@vger.kernel.org, netdev@vger.kernel.org, bfields@fieldses.org
-In-Reply-To: <1280860815.9771.25.camel@heimdal.trondhjem.org>
-References: <20100803132453.4fa18444@tlielax.poochiereds.net>
-	 <1280860815.9771.25.camel@heimdal.trondhjem.org>
-Content-Type: text/plain; charset="UTF-8"
-Date: Tue, 03 Aug 2010 14:49:23 -0400
-Message-ID: <1280861363.12283.2.camel@heimdal.trondhjem.org>
+	id S1761596Ab0HFXiX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 6 Aug 2010 19:38:23 -0400
+Date: Fri, 6 Aug 2010 19:36:41 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Valerie Aurora <vaurora@redhat.com>
+Cc: Alexander Viro <viro@zeniv.linux.org.uk>,
+        Miklos Szeredi <miklos@szeredi.hu>, Jan Blunck <jblunck@suse.de>,
+        Christoph Hellwig <hch@infradead.org>, linux-kernel@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, David Woodhouse <dwmw2@infradead.org>,
+        linux-nfs@vger.kernel.org, Neil Brown <neilb@suse.de>
+Subject: Re: [PATCH 05/38] whiteout/NFSD: Don't return information about
+ whiteouts to userspace
+Message-ID: <20100806233641.GG29536@fieldses.org>
+References: <1281134124-17041-1-git-send-email-vaurora@redhat.com>
+ <1281134124-17041-6-git-send-email-vaurora@redhat.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1281134124-17041-6-git-send-email-vaurora@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Tue, 2010-08-03 at 14:40 -0400, Trond Myklebust wrote:
-> On Tue, 2010-08-03 at 13:24 -0400, Jeff Layton wrote:
-> > We got a report recently about a panic in RHEL5 (2.6.18 based kernel).
-> > The problem appears to be that a task_cleanup workqueue job ran and got
-> > passed a pointer to an xprt that had been freed. The bug is here in
-> > case anyone is interested in the details:
-> > 
-> >     https://bugzilla.redhat.com/show_bug.cgi?id=611938
-> > 
-> > The situation seems to be pretty difficult to reproduce, but I don't
-> > see anything that's intended to ensure that this doesn't occur in RHEL5
-> > or mainline. The task_cleanup workqueue job doesn't hold a reference to
-> > the xprt, and the job isn't canceled when the xprt is torn down.
-> > 
-> > Bruce had a look and suggested that we may need something like the
-> > patch below (pasted in, so it probably won't apply correctly). I've
-> > tested a backported version of it on RHEL5 and it seems to work fine.
-> > 
-> > Is it reasonable to cancel task_cleanup when destroying the xprt? Or,
-> > am I missing something that should prevent this situation in mainline
-> > (and perhaps isn't in RHEL5's kernel).
-> > 
-> > Any help is appreciated...
-> > 
-> > -----------------------------[snip]---------------------------------
-> > diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
-> > index dcd0132..2a1f664 100644
-> > --- a/net/sunrpc/xprt.c
-> > +++ b/net/sunrpc/xprt.c
-> > @@ -1129,6 +1129,7 @@ static void xprt_destroy(struct kref *kref)
-> >   rpc_destroy_wait_queue(&xprt->sending);
-> >   rpc_destroy_wait_queue(&xprt->resend);
-> >   rpc_destroy_wait_queue(&xprt->backlog);
-> > + cancel_work_sync(&xprt->task_cleanup);
-> >   /*
-> >    * Tear down transport state and free the rpc_xprt
-> >    */
-> > -----------------------------[snip]---------------------------------
-> > 
-> > Thanks,
+On Fri, Aug 06, 2010 at 03:34:51PM -0700, Valerie Aurora wrote:
+> From: Jan Blunck <jblunck@suse.de>
 > 
-> How about doing a wait_on_bit_lock(&xprt->state, XPRT_LOCKED,...)
-> instead?
+> Userspace isn't ready for handling another file type, so silently drop
+> whiteout directory entries before they leave the kernel.
+> 
+> Signed-off-by: Jan Blunck <jblunck@suse.de>
+> Signed-off-by: David Woodhouse <dwmw2@infradead.org>
+> Signed-off-by: Valerie Aurora <vaurora@redhat.com>
+> Cc: linux-nfs@vger.kernel.org
+> Cc: "J. Bruce Fields" <bfields@fieldses.org>
 
-Hmm... On the other hand, since xprt_destroy() may get called from
-inside the rpciod_workqueue, the wait_on_bit_lock() may end up
-deadlocking.
+For what it's worth:
 
-Nevermind, then. Let's go with the cancel_work_sync().
+	Acked-by: J. Bruce Fields <bfields@redhat.com>
 
+(Like Neil I kinda hoped we wouldn't need the check in every callback,
+but probably you're right that it wouldn't be worth the extra layer of
+indirection.)
+
+--b.
+
+> Cc: Neil Brown <neilb@suse.de>
+> ---
+>  fs/compat.c       |    9 +++++++++
+>  fs/nfsd/nfs3xdr.c |    5 +++++
+>  fs/nfsd/nfs4xdr.c |    5 +++++
+>  fs/nfsd/nfsxdr.c  |    4 ++++
+>  fs/readdir.c      |    9 +++++++++
+>  5 files changed, 32 insertions(+), 0 deletions(-)
+> 
+> diff --git a/fs/compat.c b/fs/compat.c
+> index 6490d21..7e7b3a4 100644
+> --- a/fs/compat.c
+> +++ b/fs/compat.c
+> @@ -912,6 +912,9 @@ static int compat_fillonedir(void *__buf, const char *name, int namlen,
+>  	struct compat_old_linux_dirent __user *dirent;
+>  	compat_ulong_t d_ino;
+>  
+> +	if (d_type == DT_WHT)
+> +		return 0;
+> +
+>  	if (buf->result)
+>  		return -EINVAL;
+>  	d_ino = ino;
+> @@ -983,6 +986,9 @@ static int compat_filldir(void *__buf, const char *name, int namlen,
+>  	compat_ulong_t d_ino;
+>  	int reclen = ALIGN(NAME_OFFSET(dirent) + namlen + 2, sizeof(compat_long_t));
+>  
+> +	if (d_type == DT_WHT)
+> +		return 0;
+> +
+>  	buf->error = -EINVAL;	/* only used if we fail.. */
+>  	if (reclen > buf->count)
+>  		return -EINVAL;
+> @@ -1072,6 +1078,9 @@ static int compat_filldir64(void * __buf, const char * name, int namlen, loff_t
+>  	int reclen = ALIGN(jj + namlen + 1, sizeof(u64));
+>  	u64 off;
+>  
+> +	if (d_type == DT_WHT)
+> +		return 0;
+> +
+>  	buf->error = -EINVAL;	/* only used if we fail.. */
+>  	if (reclen > buf->count)
+>  		return -EINVAL;
+> diff --git a/fs/nfsd/nfs3xdr.c b/fs/nfsd/nfs3xdr.c
+> index 2a533a0..9b96f5a 100644
+> --- a/fs/nfsd/nfs3xdr.c
+> +++ b/fs/nfsd/nfs3xdr.c
+> @@ -885,6 +885,11 @@ encode_entry(struct readdir_cd *ccd, const char *name, int namlen,
+>  	int		elen;		/* estimated entry length in words */
+>  	int		num_entry_words = 0;	/* actual number of words */
+>  
+> +	if (d_type == DT_WHT) {
+> +		cd->common.err = nfs_ok;
+> +		return 0;
+> +	}
+> +
+>  	if (cd->offset) {
+>  		u64 offset64 = offset;
+>  
+> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+> index ac17a70..fb67254 100644
+> --- a/fs/nfsd/nfs4xdr.c
+> +++ b/fs/nfsd/nfs4xdr.c
+> @@ -2279,6 +2279,11 @@ nfsd4_encode_dirent(void *ccdv, const char *name, int namlen,
+>  		return 0;
+>  	}
+>  
+> +	if (d_type == DT_WHT) {
+> +		cd->common.err = nfs_ok;
+> +		return 0;
+> +	}
+> +
+>  	if (cd->offset)
+>  		xdr_encode_hyper(cd->offset, (u64) offset);
+>  
+> diff --git a/fs/nfsd/nfsxdr.c b/fs/nfsd/nfsxdr.c
+> index 4ce005d..0e57d4b 100644
+> --- a/fs/nfsd/nfsxdr.c
+> +++ b/fs/nfsd/nfsxdr.c
+> @@ -503,6 +503,10 @@ nfssvc_encode_entry(void *ccdv, const char *name,
+>  			namlen, name, offset, ino);
+>  	 */
+>  
+> +	if (d_type == DT_WHT) {
+> +		cd->common.err = nfs_ok;
+> +		return 0;
+> +	}
+>  	if (offset > ~((u32) 0)) {
+>  		cd->common.err = nfserr_fbig;
+>  		return -EINVAL;
+> diff --git a/fs/readdir.c b/fs/readdir.c
+> index 7723401..3a48491 100644
+> --- a/fs/readdir.c
+> +++ b/fs/readdir.c
+> @@ -77,6 +77,9 @@ static int fillonedir(void * __buf, const char * name, int namlen, loff_t offset
+>  	struct old_linux_dirent __user * dirent;
+>  	unsigned long d_ino;
+>  
+> +	if (d_type == DT_WHT)
+> +		return 0;
+> +
+>  	if (buf->result)
+>  		return -EINVAL;
+>  	d_ino = ino;
+> @@ -154,6 +157,9 @@ static int filldir(void * __buf, const char * name, int namlen, loff_t offset,
+>  	unsigned long d_ino;
+>  	int reclen = ALIGN(NAME_OFFSET(dirent) + namlen + 2, sizeof(long));
+>  
+> +	if (d_type == DT_WHT)
+> +		return 0;
+> +
+>  	buf->error = -EINVAL;	/* only used if we fail.. */
+>  	if (reclen > buf->count)
+>  		return -EINVAL;
+> @@ -239,6 +245,9 @@ static int filldir64(void * __buf, const char * name, int namlen, loff_t offset,
+>  	struct getdents_callback64 * buf = (struct getdents_callback64 *) __buf;
+>  	int reclen = ALIGN(NAME_OFFSET(dirent) + namlen + 1, sizeof(u64));
+>  
+> +	if (d_type == DT_WHT)
+> +		return 0;
+> +
+>  	buf->error = -EINVAL;	/* only used if we fail.. */
+>  	if (reclen > buf->count)
+>  		return -EINVAL;
+> -- 
+> 1.6.3.3
+> 
