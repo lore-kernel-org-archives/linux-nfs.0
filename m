@@ -1,69 +1,106 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:57364 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:46838 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750845Ab0HPSHH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 16 Aug 2010 14:07:07 -0400
-Date: Mon, 16 Aug 2010 14:04:50 -0400
+	id S1751403Ab0HFV26 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 6 Aug 2010 17:28:58 -0400
+Date: Fri, 6 Aug 2010 17:27:28 -0400
 From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Jeremy Allison <jra@samba.org>
-Cc: Jan Engelhardt <jengelh@medozas.de>, Jeff Layton <jlayton@redhat.com>,
-        Neil Brown <neilb@suse.de>, utz lehmann <lkml123@s2y4n2c.de>,
-        Linus Torvalds <torvalds@linux-foundation.org>,
-        Volker.Lendecke@sernet.de, David Howells <dhowells@redhat.com>,
-        linux-cifs@vger.kernel.org, linux-nfs@vger.kernel.org,
-        samba-technical@lists.samba.org, linux-kernel@vger.kernel.org,
-        viro@zeniv.linux.org.uk, linux-fsde@jasper.es
-Subject: Re: [PATCH 02/18] xstat: Add a pair of system calls to make
- extended file stats available [ver #6]
-Message-ID: <20100816180450.GA7764@fieldses.org>
-References: <20100801092529.5e6ba0e0@corrin.poochiereds.net>
- <20100805235218.GB31233@jeremy-laptop>
- <20100806133836.49757af9@notabene>
- <20100808121208.GA7329@jeremy-laptop>
- <20100808085301.24f53e5a@tlielax.poochiereds.net>
- <20100808130501.GA9851@jeremy-laptop>
- <20100813125432.GB8945@fieldses.org>
- <20100813175410.GA8202@samba1>
- <alpine.LSU.2.01.1008132104290.12206@obet.zrqbmnf.qr>
- <20100813191900.GB8202@samba1>
+To: Tetsuo Handa <penguin-kernel@I-love.SAKURA.ne.jp>
+Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        jlayton@redhat.com
+Subject: Re: linux-next NFSD: NULL pointer dereference at nfsd_svc()
+Message-ID: <20100806212727.GC29536@fieldses.org>
+References: <20100802103214.7eea09eb@corrin.poochiereds.net>
+ <20100802103620.5638dac1@corrin.poochiereds.net>
+ <20100802181634.GD12637@fieldses.org>
+ <201008030109.o73193bp094241@www262.sakura.ne.jp>
+ <20100803154851.GA23467@fieldses.org>
+ <201008040013.o740DmYK024832@www262.sakura.ne.jp>
+ <20100804194045.GD18200@fieldses.org>
+ <201008050110.o751AG18066496@www262.sakura.ne.jp>
+ <20100805204612.GA13821@fieldses.org>
+ <20100805213107.GB13821@fieldses.org>
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20100813191900.GB8202@samba1>
+In-Reply-To: <20100805213107.GB13821@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Fri, Aug 13, 2010 at 12:19:00PM -0700, Jeremy Allison wrote:
-> On Fri, Aug 13, 2010 at 09:06:28PM +0200, Jan Engelhardt wrote:
+On Thu, Aug 05, 2010 at 05:31:07PM -0400, J. Bruce Fields wrote:
+> On Thu, Aug 05, 2010 at 04:46:12PM -0400, J. Bruce Fields wrote:
+> > On Thu, Aug 05, 2010 at 10:10:16AM +0900, Tetsuo Handa wrote:
+> > > J. Bruce Fields wrote:
+> > > > Maybe figuring out exactly hwere that is would help work out what's
+> > > > going on.  Doing
+> > > > 
+> > > > 	make net/sunrpc/svc.lst
+> > > > 
+> > > > then looking for c1356dd4 (or just mailing me svc.lst) could help.
+> > > 
+> > > "make net/sunrpc/svc.lst" failed due to following error.
+> > > 
+> > >   BFD: Dwarf Error: Abbrev offset (3238007024) greater than or equal to .debug_abbrev size (1607).
+> > > 
+> > > Manual printk() debug reported that
+> > > rqstp->rq_argp == rqstp->rq_resp == ZERO_SIZE_PTR and
 > > 
-> > On Friday 2010-08-13 19:54, Jeremy Allison wrote:
-> > >On Fri, Aug 13, 2010 at 08:54:32AM -0400, J. Bruce Fields wrote:
-> > >> On Sun, Aug 08, 2010 at 06:05:01AM -0700, Jeremy Allison wrote:
-> > >> > We don't need to ape Windows in everything.
-> > >> > The coming ACL disaster will show that (we will go from an ACL
-> > >> > model that is slightly too complex to use, to one that is impossibly
-> > >> > complex to use :-).
-> > >> 
-> > >> Care to elaborate?
-> > >
-> > >POSIX ACLs -> RichACLs (NT-style). Not criticising Andreas here,
-> > >people are asking for this. But Windows ACLs are a nightmare
-> > >beyond human comprehension :-). In the "too complex to be
-> > >usable" camp.
-> > 
-> > Well, for one, ACLs in NT can be recursive IIRC. You can't say that of Linux
-> > ACLs - instead you have to setfacl -R and setfacl -Rd to give one user access
-> > to a directory and all its subdirs including future new inodes.
+> > Huh.  As far as I can tell that will only happen if you've not no nfsd
+> > versions defined; how is that happening?
 > 
-> You do realize that Windows does exactly the same thing under
-> the covers, right ? Watch SMB or SMB2 traffic between a client
-> and Windows server when someone changes an ACL sometime :-).
+> OK, I think it's another startup-order problem: depending on how things
+> are started up, sv_nrthreads may already be nonzero, causing us to skip
+> nfsd_reset_versions(), so that the loop in __svc_create() ends up
+> leaving xdrsize 0, and then the kmalloc's in svc_prepare_thread() assign
+> ZERO_SIZE_PTR.
+> 
+> I need to think a little more about what we should be doing here.
 
-Yeah.  There's some explanation here:
+Bah, so what you were hitting was simple--I just moved the
+nfsd_reset_versions() call to the wrong place; the below should fix it.
 
-	http://tools.ietf.org/search/rfc5661#section-6.4.3.2
+There's also a couple other bugs in the area.
 
-What NT-style ACLs provide is a few bits that help a setfacl-like
-application decide how to propagate the change.  But it's still up to
-the application to do the recursive traversal.
+Thanks for the -next testing!
 
 --b.
+
+commit e844a7b9805a2b74cfd34c8604f5bba3e0869305
+Author: J. Bruce Fields <bfields@redhat.com>
+Date:   Fri Aug 6 15:48:03 2010 -0400
+
+    nfsd: initialize nfsd versions before creating svc
+    
+    Commit 59db4a0c102e0de226a3395dbf25ea51bf845937 "nfsd: move more into
+    nfsd_startup()" inadvertently moved nfsd_versions after
+    nfsd_create_svc().  On older distributions using an rpc.nfsd that does
+    not explicitly set the list of nfsd versions, this results in
+    svc-create_pooled() being called with an empty versions array.  The
+    resulting incomplete initialization leads to a NULL dereference in
+    svc_process_common() the first time a client accesses the server.
+    
+    Move nfsd_reset_versions() back before the svc_create_pooled(); this
+    time, put it closer to the svc_create_pooled() call, to make this
+    mistake more difficult in the future.
+    
+    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+
+diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
+index 39ced4a..e2c4346 100644
+--- a/fs/nfsd/nfssvc.c
++++ b/fs/nfsd/nfssvc.c
+@@ -224,7 +224,6 @@ static int nfsd_startup(unsigned short port, int nrservs)
+ 	ret = nfs4_state_start();
+ 	if (ret)
+ 		goto out_lockd;
+-	nfsd_reset_versions();
+ 	nfsd_up = true;
+ 	return 0;
+ out_lockd:
+@@ -329,6 +328,7 @@ int nfsd_create_serv(void)
+ 		       nfsd_max_blksize >= 8*1024*2)
+ 			nfsd_max_blksize /= 2;
+ 	}
++	nfsd_reset_versions();
+ 
+ 	nfsd_serv = svc_create_pooled(&nfsd_program, nfsd_max_blksize,
+ 				      nfsd_last_thread, nfsd, THIS_MODULE);
