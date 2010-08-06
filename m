@@ -1,96 +1,72 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:6507 "EHLO mx1.redhat.com"
+Received: from mail-out1.uio.no ([129.240.10.57]:49007 "EHLO mail-out1.uio.no"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754508Ab0HaRS4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 31 Aug 2010 13:18:56 -0400
-Message-ID: <4C7D3976.8070209@RedHat.com>
-Date: Tue, 31 Aug 2010 13:18:46 -0400
-From: Steve Dickson <SteveD@redhat.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Jeff Layton <jlayton@redhat.com>, linux-nfs@vger.kernel.org,
-        chuck.lever@oracle.com
-Subject: Re: [PATCH] rpc.nfsd: mount up nfsdfs is it doesn't appear to be
- mounted yet
-References: <4C7BE1FC.2020400@RedHat.com> <20100830134801.1696dffa@tlielax.poochiereds.net> <4C7CF499.5090003@RedHat.com> <20100831084323.02a1abf5@corrin.poochiereds.net> <4C7D1694.6000708@RedHat.com> <20100831111008.157618f4@corrin.poochiereds.net> <20100831151342.GA3071@fieldses.org> <4C7D1D3B.1030607@RedHat.com> <20100831155128.GB3071@fieldses.org> <4C7D2A20.1040806@RedHat.com> <20100831161547.GD3071@fieldses.org>
-In-Reply-To: <20100831161547.GD3071@fieldses.org>
-Content-Type: text/plain; charset=ISO-8859-1
+	id S1757022Ab0HFRhs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 6 Aug 2010 13:37:48 -0400
+Subject: Re: Tuning NFS client write pagecache
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+To: Peter Chacko <peterchacko35@gmail.com>
+Cc: Jim Rees <rees@umich.edu>, Matthew Hodgson <matthew@mxtelecom.com>,
+        linux-nfs@vger.kernel.org
+In-Reply-To: <AANLkTin_pg7GCw9jcB2JK+0TbGu+MrQEcv4H_qAg_A3H@mail.gmail.com>
+References: <4C5BFE47.8020905@mxtelecom.com>
+	 <20100806132620.GA2921@merit.edu>
+	 <AANLkTin_pg7GCw9jcB2JK+0TbGu+MrQEcv4H_qAg_A3H@mail.gmail.com>
+Content-Type: text/plain; charset="UTF-8"
+Date: Fri, 06 Aug 2010 13:37:40 -0400
+Message-ID: <1281116260.2900.6.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-
-
-On 08/31/2010 12:15 PM, J. Bruce Fields wrote:
-> On Tue, Aug 31, 2010 at 12:13:20PM -0400, Steve Dickson wrote:
->>
->>
->> On 08/31/2010 11:51 AM, J. Bruce Fields wrote:
->>> On Tue, Aug 31, 2010 at 11:18:19AM -0400, Steve Dickson wrote:
->>>>
->>>>
->>>> On 08/31/2010 11:13 AM, J. Bruce Fields wrote:
->>>>> On Tue, Aug 31, 2010 at 11:10:08AM -0400, Jeff Layton wrote:
->>>>>> I was just pointing out that checking the return code from the system()
->>>>>> call isn't sufficient. Because of the way most people have modprobe set
->>>>>> up, it can return an error even though nfsdfs ended up being mounted
->>>>>> anyway. Checking for the presence of the file after attempting the
->>>>>> mount would be a more reliable test.
->>>>>>
->>>>>> Assuming we're in agreement there, we have another question to
->>>>>> settle...If the mount attempt fails, what should we do about it?
->>>>>>
->>>>>> With my original patch, we fall back to using nfsctl(). You're
->>>>>> suggesting that we should error out there. I'm not opposed to that, but
->>>>>> it does mean dropping support for some really old kernels. It also
->>>>>> means that we can remove some dead code in rpc.nfsd.
->>>>>>
->>>>>> OTOH, the fallback might allow nfsd to keep working for some people.
->>>>>> Maybe it would be better to just log a scary warning and fall back to
->>>>>> using nfsctl() for now.
->>>>>>
->>>>>> In a couple of releases, we could start returning an error there and
->>>>>> rip out the legacy interface code, or compile it out by default and
->>>>>> allow people to compile it in via a configure option?
->>>>>
->>>>> Yes, let's just add the additional mount attempt for now, and figure out
->>>>> what to do about the legacy interface as a next step.
->>>> When the mount fails, I think we should exit... basically eliminating the
->>>> legacy interface code
->>>
->>> Maybe.  But as I say, make it two separate steps:
->>>
->>> 	1. Add code to attempt the mount.
->> But the question comes do to, what do we do when the mount 
->> fails? It sounds like you are advocating ignoring the error
->> and allow the nfsd threads to be started via the nfsctl(NFSCTL_SVC)
->> call... 
+On Fri, 2010-08-06 at 15:05 +0100, Peter Chacko wrote:
+> Some distributed file systems such as IBM's SANFS, support direct IO
+> to the target storage....without going through a cache... ( This
+> feature is useful, for write only work load....say, we are backing up
+> huge data to an NFS share....).
 > 
-> Yes.
-Even if not failing could bring instability... Do we really know what
-will happen when the portlist and version files are not set up correctly??
-I know I do not test that configuration.... Does anybody? 
+> I think if not available, we should add a DIO mount option, that tell
+> the VFS not to cache any data, so that close operation will not stall.
+
+Ugh no! Applications that need direct IO should be using open(O_DIRECT),
+not relying on hacks like mount options.
+
+> With the open-to-close , cache coherence protocol of NFS, an
+> aggressive caching client, is a performance downer for many work-loads
+> that is write-mostly.
+
+We already have full support for vectored aio/dio in the NFS for those
+applications that want to use it.
+
+Trond
 
 > 
->> I'm advocating that we exit on the mount error, because even thought
->> the nfsd threads may be set up correctly, the protocols and versions
->> will not be set up correctly because there is no nfsctl() calls to
->> set them up correctly... especially with IPV6 enabled... 
 > 
-> Perhaps so.  But that should be done as a *separate* follow-up patch
-> that is clearly labelled "drop support for kernel versions before
-> x.y.z".
-Fine... put it in a separate patch but include it in this patch
-series... I really don't think we need to rip the guts out of 
-mountd and exportfs just to remove this one nfsctl() in rpc.nfsd.
-
 > 
-> Dropping backwards compatibility may be a reasonable thing to do, but
-> it's something that we should be very clear about, and that we should
-> put in a patch that does that and nothing else.
-So you are talking about doing a complete rewrite of mountd and exportfs
-just to take out that one call from rpc.nfsd... I just don't see the
-justification... If we are going to do that, let just think about rewriting
-all the tools to make the more v4 friendly... something we talked about
-at the last bakeathon...
+> On Fri, Aug 6, 2010 at 2:26 PM, Jim Rees <rees@umich.edu> wrote:
+> > Matthew Hodgson wrote:
+> >
+> >  Is there any way to tune the linux NFSv3 client to prefer to write
+> >  data straight to an async-mounted server, rather than having large
+> >  writes to a file stack up in the local pagecache before being synced
+> >  on close()?
+> >
+> > It's been a while since I've done this, but I think you can tune this with
+> > vm.dirty_writeback_centisecs and vm.dirty_background_ratio sysctls.  The
+> > data will still go through the page cache but you can reduce the amount that
+> > stacks up.
+> >
+> > There are other places where the data can get buffered, like the rpc layer,
+> > but it won't sit there any longer than it takes for it to go out the wire.
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> >
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
-steved.
+
+
