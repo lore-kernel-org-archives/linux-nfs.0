@@ -1,77 +1,139 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:48557 "EHLO mx1.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:54976 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751790Ab0HaQN3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 31 Aug 2010 12:13:29 -0400
-Message-ID: <4C7D2A20.1040806@RedHat.com>
-Date: Tue, 31 Aug 2010 12:13:20 -0400
-From: Steve Dickson <SteveD@redhat.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Jeff Layton <jlayton@redhat.com>, linux-nfs@vger.kernel.org,
-        chuck.lever@oracle.com
-Subject: Re: [PATCH] rpc.nfsd: mount up nfsdfs is it doesn't appear to be
- mounted yet
-References: <4C7BD394.3030705@RedHat.com> <20100830121600.529669bd@tlielax.poochiereds.net> <4C7BE1FC.2020400@RedHat.com> <20100830134801.1696dffa@tlielax.poochiereds.net> <4C7CF499.5090003@RedHat.com> <20100831084323.02a1abf5@corrin.poochiereds.net> <4C7D1694.6000708@RedHat.com> <20100831111008.157618f4@corrin.poochiereds.net> <20100831151342.GA3071@fieldses.org> <4C7D1D3B.1030607@RedHat.com> <20100831155128.GB3071@fieldses.org>
-In-Reply-To: <20100831155128.GB3071@fieldses.org>
+	id S1759331Ab0HFS3a (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 6 Aug 2010 14:29:30 -0400
+Message-ID: <4C5C54A3.1010206@netapp.com>
+Date: Fri, 06 Aug 2010 14:29:55 -0400
+From: Bryan Schumaker <bjschuma@netapp.com>
+To: David Howells <dhowells@redhat.com>
+CC: Trond Myklebust <Trond.Myklebust@netapp.com>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] NFS use kernel DNS resolver
+References: <1280970596.2865.28.camel@heimdal.trondhjem.org> <4C59D1A3.5030406@netapp.com> <13523.1281060342@redhat.com>
+In-Reply-To: <13523.1281060342@redhat.com>
 Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+The patch is below.  Thanks!
+
+Bryan
 
 
-On 08/31/2010 11:51 AM, J. Bruce Fields wrote:
-> On Tue, Aug 31, 2010 at 11:18:19AM -0400, Steve Dickson wrote:
->>
->>
->> On 08/31/2010 11:13 AM, J. Bruce Fields wrote:
->>> On Tue, Aug 31, 2010 at 11:10:08AM -0400, Jeff Layton wrote:
->>>> I was just pointing out that checking the return code from the system()
->>>> call isn't sufficient. Because of the way most people have modprobe set
->>>> up, it can return an error even though nfsdfs ended up being mounted
->>>> anyway. Checking for the presence of the file after attempting the
->>>> mount would be a more reliable test.
->>>>
->>>> Assuming we're in agreement there, we have another question to
->>>> settle...If the mount attempt fails, what should we do about it?
->>>>
->>>> With my original patch, we fall back to using nfsctl(). You're
->>>> suggesting that we should error out there. I'm not opposed to that, but
->>>> it does mean dropping support for some really old kernels. It also
->>>> means that we can remove some dead code in rpc.nfsd.
->>>>
->>>> OTOH, the fallback might allow nfsd to keep working for some people.
->>>> Maybe it would be better to just log a scary warning and fall back to
->>>> using nfsctl() for now.
->>>>
->>>> In a couple of releases, we could start returning an error there and
->>>> rip out the legacy interface code, or compile it out by default and
->>>> allow people to compile it in via a configure option?
->>>
->>> Yes, let's just add the additional mount attempt for now, and figure out
->>> what to do about the legacy interface as a next step.
->> When the mount fails, I think we should exit... basically eliminating the
->> legacy interface code
+
+
+Use the kernel DNS resolver to translate hostnames to IP addresses.
+Create a new config option to choose between the legacy DNS resolver and the
+new resolver.
+
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+
+diff --git a/fs/nfs/Kconfig b/fs/nfs/Kconfig
+index a43d07e..10eebc5 100644
+--- a/fs/nfs/Kconfig
++++ b/fs/nfs/Kconfig
+@@ -100,3 +100,19 @@ config NFS_FSCACHE
+ 	help
+ 	  Say Y here if you want NFS data to be cached locally on disc through
+ 	  the general filesystem cache manager
++
++config NFS_USE_LEGACY_DNS
++	bool "Use the legacy NFS DNS resolver"
++	depends on NFS_V4
++	help
++	  The kernel now provides a method for translating a host name into an
++	  IP address.  Select Y here if you would rather use your own DNS
++	  resolver script.
++
++	  If unsure, say N
++
++config NFS_USE_KERNEL_DNS
++	bool
++	depends on NFS_V4 && !NFS_USE_LEGACY_DNS
++	select DNS_RESOLVER
++	default y
+diff --git a/fs/nfs/dns_resolve.c b/fs/nfs/dns_resolve.c
+index 76fd235..7e5d3a9 100644
+--- a/fs/nfs/dns_resolve.c
++++ b/fs/nfs/dns_resolve.c
+@@ -6,6 +6,37 @@
+  * Resolves DNS hostnames into valid ip addresses
+  */
+
++#ifdef CONFIG_NFS_USE_KERNEL_DNS
++
++#include <linux/sunrpc/clnt.h>
++#include <linux/dns_resolver.h>
++
++ssize_t nfs_dns_resolve_name(char *name, size_t namelen,
++		struct sockaddr *sa, size_t salen)
++{
++	ssize_t ret;
++	char *ip_addr = NULL;
++	int ip_len;
++
++	ip_len = dns_query(NULL, name, namelen, NULL, &ip_addr, NULL);
++	if (ip_len > 0)
++		ret = rpc_pton(ip_addr, ip_len, sa, salen);
++	else
++		ret = -ESRCH;
++	kfree(ip_addr);
++	return ret;
++}
++
++inline int nfs_dns_resolver_init(void)
++{
++	return 0;
++}
++
++inline void nfs_dns_resolver_destroy(void)
++{}
++
++#else
++
+ #include <linux/hash.h>
+ #include <linux/string.h>
+ #include <linux/kmod.h>
+@@ -346,3 +377,4 @@ void nfs_dns_resolver_destroy(void)
+ 	nfs_cache_unregister(&nfs_dns_resolve);
+ }
+
++#endif
+diff --git a/fs/nfs/dns_resolve.h b/fs/nfs/dns_resolve.h
+index a3f0938..199bb55 100644
+--- a/fs/nfs/dns_resolve.h
++++ b/fs/nfs/dns_resolve.h
+@@ -6,8 +6,20 @@
+
+ #define NFS_DNS_HOSTNAME_MAXLEN	(128)
+
++
++#ifdef CONFIG_NFS_USE_KERNEL_DNS
++static inline int nfs_dns_resolver_init(void)
++{
++	return 0;
++}
++
++static inline void nfs_dns_resolver_destroy(void)
++{}
++#else
+ extern int nfs_dns_resolver_init(void);
+ extern void nfs_dns_resolver_destroy(void);
++#endif
++
+ extern ssize_t nfs_dns_resolve_name(char *name, size_t namelen,
+ 		struct sockaddr *sa, size_t salen);
+
+
+
+On 08/05/2010 10:05 PM, David Howells wrote:
+> Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
 > 
-> Maybe.  But as I say, make it two separate steps:
+>> David, can you carry this as part of your 'generic DNS resolver'
+>> patchset?
 > 
-> 	1. Add code to attempt the mount.
-But the question comes do to, what do we do when the mount 
-fails? It sounds like you are advocating ignoring the error
-and allow the nfsd threads to be started via the nfsctl(NFSCTL_SVC)
-call... 
-
-I'm advocating that we exit on the mount error, because even thought
-the nfsd threads may be set up correctly, the protocols and versions
-will not be set up correctly because there is no nfsctl() calls to
-set them up correctly... especially with IPV6 enabled... 
-
-steved. 
-
-
-> 	2. Add code to turn off the legacy interface if the mount
-> 	   doesn't work.
+> Probably.  Can you send me a copy of the patch?
 > 
-> They're two separate issues with separate justifications.
-> 
-> --b.
+> David
+
