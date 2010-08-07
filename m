@@ -1,135 +1,121 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp.opengridcomputing.com ([209.198.142.2]:35139 "EHLO
-	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S932283Ab0HCQpM (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 3 Aug 2010 12:45:12 -0400
-From: Tom Tucker <tom@ogc.us>
-Subject: [PATCH 3/4] svcrdma: Cleanup DMA unmapping in error paths.
-To: trond.myklebust@netapp.com, bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org, swise@ogc.us, tom@ogc.us
-Date: Tue, 03 Aug 2010 11:45:12 -0500
-Message-ID: <20100803164512.2567.51211.stgit@build.ogc.int>
-In-Reply-To: <20100803164411.2567.31416.stgit@build.ogc.int>
-References: <20100803164411.2567.31416.stgit@build.ogc.int>
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-pz0-f46.google.com ([209.85.210.46]:65170 "EHLO
+	mail-pz0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752766Ab0HGCmm convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 6 Aug 2010 22:42:42 -0400
+In-Reply-To: <20100807102901.6a0b53e7@notabene>
+References: <alpine.LSU.2.01.1007221228260.6115@obet.zrqbmnf.qr>
+	<20100715021709.5544.64506.stgit@warthog.procyon.org.uk>
+	<20100715021712.5544.44845.stgit@warthog.procyon.org.uk>
+	<30448.1279800887@redhat.com>
+	<E1Obuiy-00C9jr-Al@intern.SerNet.DE>
+	<AANLkTimdFCGSKLn7aGMpBMIauHTsHY7hpAAmpo6uTcnD@mail.gmail.com>
+	<1280524978.2452.9.camel@segv.aura.of.mankind>
+	<20100801092529.5e6ba0e0@corrin.poochiereds.net>
+	<20100805235218.GB31233@jeremy-laptop>
+	<20100806133836.49757af9@notabene>
+	<AANLkTinVCLVpqLtA2X=1mOkxX7Re61_ZYsUix_XTvZ5D@mail.gmail.com>
+	<20100807093057.7683bedd@notabene>
+	<AANLkTikDBg5Brt=55Tsu8ozk0aVx=srpxP=U-sFqeBYL@mail.gmail.com>
+	<20100807102901.6a0b53e7@notabene>
+Date: Fri, 6 Aug 2010 21:42:41 -0500
+Message-ID: <AANLkTinEFFAWMu62j2sCPy=ArExZNm2miJOGoXbG65jC@mail.gmail.com>
+Subject: Re: [PATCH 02/18] xstat: Add a pair of system calls to make extended
+	file stats available [ver #6]
+From: Steve French <smfrench@gmail.com>
+To: Neil Brown <neilb@suse.de>
+Cc: Jeremy Allison <jra@samba.org>, Jeff Layton <jlayton@redhat.com>,
+        utz lehmann <lkml123@s2y4n2c.de>,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        Volker.Lendecke@sernet.de, David Howells <dhowells@redhat.com>,
+        Jan Engelhardt <jengelh@medozas.de>, linux-cifs@vger.kernel.org,
+        linux-nfs@vger.kernel.org, samba-technical@lists.samba.org,
+        linux-kernel@vger.kernel.org, viro@zeniv.linux.org.uk,
+        linux-fsde@jasper.es
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-There are several error paths in the code that do not unmap DMA. This
-patch adds calls to svc_rdma_unmap_dma to free these DMA contexts.
+On Fri, Aug 6, 2010 at 7:29 PM, Neil Brown <neilb@suse.de> wrote:
+> On Fri, 6 Aug 2010 18:58:42 -0500
+> Steve French <smfrench@gmail.com> wrote:
+>
+>> On Fri, Aug 6, 2010 at 6:30 PM, Neil Brown <neilb@suse.de> wrote:
+>> > On Thu, 5 Aug 2010 22:55:06 -0500
+>> > Steve French <smfrench@gmail.com> wrote:
+>> >
+>> >> On Thu, Aug 5, 2010 at 10:38 PM, Neil Brown <neilb@suse.de> wrote:
+>> >> > On Thu, 5 Aug 2010 16:52:18 -0700
+>> >> > Jeremy Allison <jra@samba.org> wrote:
+>> >>
+>> >> >> Don't add it as an EA. It's *not* an EA, it's a timestamp.
+>> >> >
+>> >> > I'm curious.  Why do you particularly care what interface the kernel uses to
+>> >> > provide you with access to this attribute?
+>> >> >
+>> >> > And given that it is an attribute that is not part of 'POSIX' or "UNIX", it
+>> >> > would seem to be an extension - an extended attribute.
+>> >> > As the Linux kernel does virtually nothing with this attribute except provide
+>> >> > access, it seems to be a very different class of thing to other timestamps.
+>> >> > Surely it is simply some storage associated with a file which is capable of
+>> >> > storing a timestamp, which can be set or retrieved by an application, and
+>> >> > which happens to be initialised to the current time when a file is created.
+>> >> >
+>> >> > Yes, to you it is a timestamp.  But to Linux it is a few bytes of
+>> >> > user-settable metadata.  Sounds like an EA to me.
+>> >> >
+>> >> > Or do you really want something like BSD's 'btime' which as I understand it
+>> >> > cannot be set.  Would that be really useful to you?
+>> >>
+>> >> Obviously the cifs and SMB2 protocols which  Samba server support can
+>> >> ask the server to set the create time of a file (this is handled
+>> >> through xattrs today along with the "dos attribute" flags such as
+>> >> archive/hidden/system), but certainly it is much more common (and
+>> >> important) to read the creation time of an existing file.
+>> >>
+>> >
+>> > Just a point of clarification - when you say it is common and important to be
+>> > able to read the creation time on an existing file, and you still talking in
+>> > the context of cifs/smb windows compatibility, or are you talking in the
+>> > broader context?
+>> > If you are referring to a broader context could be please give more details
+>> > because I have not heard any mention of any real value of creation-time out
+>> > side of window interoperability - have such a use clearly documented would
+>> > assist the conversation I think.
+>> >
+>> > If on the other hand you are just referring the the windows interoperability
+>> > context ... given that you have to read an EA if the create-time has been
+>> > changed, you will always have to read and EA so having something else is
+>> > pointless ... or I'm missing something.
+>>
+>> There are other cases, less common than cifs and smb2.   One
+>> that comes to mind is NFS version 4, but there are a few other
+>> cases that I have heard of (backup/archive applications).
+>> The RFC recommends that servers return attribute 50 (creation
+>> time).  See below text:
+>>
+>>    time_create         50   nfstime4       R/W      The time of creation
+>>                                                     of the object.  This
+>>                                                     attribute does not
+>>                                                     have any relation to
+>>                                                     the traditional UNIX
+>>                                                     file attribute
+>>                                                     "ctime" or "change
+>>                                                     time".
+>
+> I really don't think NFSv4 is a separate justification.  I'm fairly sure
+> that attribute was only including in NFSv4 for enhanced Windows
+> compatibility (windows interoperation was a big issue during the protocol
+> development).
 
-Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
----
+Perhaps also useful for MacOS (and other BSD), not just Windows,
+although MacOS may use cifs more often than nfs.
 
- net/sunrpc/xprtrdma/svc_rdma_recvfrom.c  |    1 +
- net/sunrpc/xprtrdma/svc_rdma_sendto.c    |    2 ++
- net/sunrpc/xprtrdma/svc_rdma_transport.c |   29 ++++++++++++++---------------
- 3 files changed, 17 insertions(+), 15 deletions(-)
 
-diff --git a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-index 926bdb4..df67211 100644
---- a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-+++ b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-@@ -495,6 +495,7 @@ next_sge:
- 			printk(KERN_ERR "svcrdma: Error %d posting RDMA_READ\n",
- 			       err);
- 			set_bit(XPT_CLOSE, &xprt->sc_xprt.xpt_flags);
-+			svc_rdma_unmap_dma(ctxt);
- 			svc_rdma_put_context(ctxt, 0);
- 			goto out;
- 		}
-diff --git a/net/sunrpc/xprtrdma/svc_rdma_sendto.c b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
-index d4f5e0e..249a835 100644
---- a/net/sunrpc/xprtrdma/svc_rdma_sendto.c
-+++ b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
-@@ -367,6 +367,8 @@ static int send_write(struct svcxprt_rdma *xprt, struct svc_rqst *rqstp,
- 		goto err;
- 	return 0;
-  err:
-+	svc_rdma_unmap_dma(ctxt);
-+	svc_rdma_put_frmr(xprt, vec->frmr);
- 	svc_rdma_put_context(ctxt, 0);
- 	/* Fatal error, close transport */
- 	return -EIO;
-diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c b/net/sunrpc/xprtrdma/svc_rdma_transport.c
-index 23f90c3..d22a44d 100644
---- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
-+++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
-@@ -511,9 +511,9 @@ int svc_rdma_post_recv(struct svcxprt_rdma *xprt)
- 		ctxt->sge[sge_no].addr = pa;
- 		ctxt->sge[sge_no].length = PAGE_SIZE;
- 		ctxt->sge[sge_no].lkey = xprt->sc_dma_lkey;
-+		ctxt->count = sge_no + 1;
- 		buflen += PAGE_SIZE;
- 	}
--	ctxt->count = sge_no;
- 	recv_wr.next = NULL;
- 	recv_wr.sg_list = &ctxt->sge[0];
- 	recv_wr.num_sge = ctxt->count;
-@@ -529,6 +529,7 @@ int svc_rdma_post_recv(struct svcxprt_rdma *xprt)
- 	return ret;
- 
-  err_put_ctxt:
-+	svc_rdma_unmap_dma(ctxt);
- 	svc_rdma_put_context(ctxt, 1);
- 	return -ENOMEM;
- }
-@@ -1306,7 +1307,6 @@ void svc_rdma_send_error(struct svcxprt_rdma *xprt, struct rpcrdma_msg *rmsgp,
- 			 enum rpcrdma_errcode err)
- {
- 	struct ib_send_wr err_wr;
--	struct ib_sge sge;
- 	struct page *p;
- 	struct svc_rdma_op_ctxt *ctxt;
- 	u32 *va;
-@@ -1319,26 +1319,27 @@ void svc_rdma_send_error(struct svcxprt_rdma *xprt, struct rpcrdma_msg *rmsgp,
- 	/* XDR encode error */
- 	length = svc_rdma_xdr_encode_error(xprt, rmsgp, err, va);
- 
-+	ctxt = svc_rdma_get_context(xprt);
-+	ctxt->direction = DMA_FROM_DEVICE;
-+	ctxt->count = 1;
-+	ctxt->pages[0] = p;
-+
- 	/* Prepare SGE for local address */
--	sge.addr = ib_dma_map_page(xprt->sc_cm_id->device,
--				   p, 0, PAGE_SIZE, DMA_FROM_DEVICE);
--	if (ib_dma_mapping_error(xprt->sc_cm_id->device, sge.addr)) {
-+	ctxt->sge[0].addr = ib_dma_map_page(xprt->sc_cm_id->device,
-+					    p, 0, length, DMA_FROM_DEVICE);
-+	if (ib_dma_mapping_error(xprt->sc_cm_id->device, ctxt->sge[0].addr)) {
- 		put_page(p);
- 		return;
- 	}
- 	atomic_inc(&xprt->sc_dma_used);
--	sge.lkey = xprt->sc_dma_lkey;
--	sge.length = length;
--
--	ctxt = svc_rdma_get_context(xprt);
--	ctxt->count = 1;
--	ctxt->pages[0] = p;
-+	ctxt->sge[0].lkey = xprt->sc_dma_lkey;
-+	ctxt->sge[0].length = length;
- 
- 	/* Prepare SEND WR */
- 	memset(&err_wr, 0, sizeof err_wr);
- 	ctxt->wr_op = IB_WR_SEND;
- 	err_wr.wr_id = (unsigned long)ctxt;
--	err_wr.sg_list = &sge;
-+	err_wr.sg_list = ctxt->sge;
- 	err_wr.num_sge = 1;
- 	err_wr.opcode = IB_WR_SEND;
- 	err_wr.send_flags = IB_SEND_SIGNALED;
-@@ -1348,9 +1349,7 @@ void svc_rdma_send_error(struct svcxprt_rdma *xprt, struct rpcrdma_msg *rmsgp,
- 	if (ret) {
- 		dprintk("svcrdma: Error %d posting send for protocol error\n",
- 			ret);
--		ib_dma_unmap_page(xprt->sc_cm_id->device,
--				  sge.addr, PAGE_SIZE,
--				  DMA_FROM_DEVICE);
-+		svc_rdma_unmap_dma(ctxt);
- 		svc_rdma_put_context(ctxt, 1);
- 	}
- }
 
+
+-- 
+Thanks,
+
+Steve
