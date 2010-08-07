@@ -1,54 +1,131 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from lvps87-230-0-242.dedicated.hosteurope.de ([87.230.0.242]:46371
-	"EHLO lvps87-230-0-242.dedicated.hosteurope.de" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1754466Ab0HCUN3 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 3 Aug 2010 16:13:29 -0400
-Date: Tue, 3 Aug 2010 22:13:18 +0200
-From: Michael Guntsche <mike@it-loops.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: Kerberos auth Problem with nfs3/4
-Message-ID: <20100803201318.GA1623@gibson.comsick.at>
-References: <20100803154556.GA6262@gibson.comsick.at>
- <20100803194342.GE31579@fieldses.org>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20100803194342.GE31579@fieldses.org>
+Received: from mail-iw0-f174.google.com ([209.85.214.174]:47714 "EHLO
+	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751124Ab0HGDPz convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 6 Aug 2010 23:15:55 -0400
+Received: by iwn33 with SMTP id 33so1845597iwn.19
+        for <linux-nfs@vger.kernel.org>; Fri, 06 Aug 2010 20:15:54 -0700 (PDT)
+In-Reply-To: <1281123565.2900.17.camel@heimdal.trondhjem.org>
+References: <4C5BFE47.8020905@mxtelecom.com>
+	<20100806132620.GA2921@merit.edu>
+	<AANLkTin_pg7GCw9jcB2JK+0TbGu+MrQEcv4H_qAg_A3H@mail.gmail.com>
+	<1281116260.2900.6.camel@heimdal.trondhjem.org>
+	<AANLkTimArNXgDSJeHrqsdAhCQo_O0=bhRuqsQEp0ofN7@mail.gmail.com>
+	<1281123565.2900.17.camel@heimdal.trondhjem.org>
+Date: Sat, 7 Aug 2010 08:45:54 +0530
+Message-ID: <AANLkTin7Q_X6Ovy3Q2XYqWUbNd57XauGsDQGekU=DSf1@mail.gmail.com>
+Subject: Re: Tuning NFS client write pagecache
+From: Peter Chacko <peterchacko35@gmail.com>
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+Cc: Jim Rees <rees@umich.edu>, Matthew Hodgson <matthew@mxtelecom.com>,
+        linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 03 Aug 10 15:43, J. Bruce Fields wrote:
-> On Tue, Aug 03, 2010 at 05:45:56PM +0200, Michael Guntsche wrote:
-> > Hi,
-> > 
-> > I recently tried re-enabling a kerberos setup here after running with
-> > sec=sys for a while. Now the problem is that mount the export with
-> > sec=krb5 just hangs.
-> > 
-> > To rule everything out I tried mount from the server itself.
-> > 
-> > mount gibson:/export /mnt
-> > 
-> > The mount just hangs and does not return.
-> > This is happening on a debian sid system with nfs-utils 1.2.2 installed.
-> 
-> You might try the following (in upstream nfs-utils)?
-> 
-> --b.
-> 
-> commit 6ca440c2661dccb05ae74ffb65817e9c30f05c8a
-> Author: Steve Dickson <steved@redhat.com>
-> Date:   Mon Mar 8 11:22:46 2010 -0500
+I think you are not understanding the use case of a  file-system wide,
+non-cached IO for NFS.
 
-Hello Bruce,
+Imagine a case when a unix shell programmer  create a backup
+script,who doesn't know C programming or system calls....he just wants
+to use a  cp -R sourcedir  /targetDir.  Where targetDir is an NFS
+mounted share.
 
-Yes, this fixed the problem. I recompiled with the patch applied and
-installed the new binaries on the server. Now mounting both nfs3 and
-nfs4 with sec=krb5 works again. Will there a 1.2.3 release in the near
-future, otherwise I will file a bug with debian to ask them to include
-the patch in their package.
+How can we use programmatical , per file-session interface to O_DIRECT
+flag here ?
 
-Thank you very much for the quick fix.
+We need a file-system wide direct IO mechanisms ,the best place to
+have is at the mount time. We cannot tell all sysadmins to go and
+learn programming....or backup vendors to change their code that they
+wrote 10 - 12 years ago...... Operating system functionalities should
+cover a large audience, with different levels of  training/skills.
 
-Kind regards,
-Michael
+I hope you got my point here....
+
+On Sat, Aug 7, 2010 at 1:09 AM, Trond Myklebust
+<trond.myklebust@fys.uio.no> wrote:
+> On Sat, 2010-08-07 at 00:59 +0530, Peter Chacko wrote:
+>> Imagine a third party backup app for which a customer has no source
+>> code. (that doesn't use open system call O_DIRECT mode) backing up
+>> millions of files through NFS....How can we do a non-cached IO to the
+>> target server ?  we cannot use O_DIRECT option here as we don't have
+>> the source code....If we have mount option, its works just right
+>> ....if we can have read-only mounts, why not have a dio-only mount ?
+>>
+>> A true application-Yaware storage systems(in this case NFS client) ,
+>> which is the next generation storage systems should do, should absorb
+>> the application needs that may apply to the whole FS....
+>>
+>> i don't say O_DIRECT flag is a bad idea, but it will only work with a
+>> regular application that do IO to some files.....this is not the best
+>> solution when NFS server is used as the storage for secondary data,
+>> where NFS client runs third party applications thats otherwise run
+>> best in a local storage as there is no caching issues....
+>>
+>> What do you think ?
+>
+> I think that we've had O_DIRECT support in the kernel for more than six
+> years now. If there are backup vendors out there that haven't been
+> paying attention, then I'd suggest looking at other vendors.
+>
+> Trond
+>
+>> On Fri, Aug 6, 2010 at 11:07 PM, Trond Myklebust
+>> <trond.myklebust@fys.uio.no> wrote:
+>> > On Fri, 2010-08-06 at 15:05 +0100, Peter Chacko wrote:
+>> >> Some distributed file systems such as IBM's SANFS, support direct IO
+>> >> to the target storage....without going through a cache... ( This
+>> >> feature is useful, for write only work load....say, we are backing up
+>> >> huge data to an NFS share....).
+>> >>
+>> >> I think if not available, we should add a DIO mount option, that tell
+>> >> the VFS not to cache any data, so that close operation will not stall.
+>> >
+>> > Ugh no! Applications that need direct IO should be using open(O_DIRECT),
+>> > not relying on hacks like mount options.
+>> >
+>> >> With the open-to-close , cache coherence protocol of NFS, an
+>> >> aggressive caching client, is a performance downer for many work-loads
+>> >> that is write-mostly.
+>> >
+>> > We already have full support for vectored aio/dio in the NFS for those
+>> > applications that want to use it.
+>> >
+>> > Trond
+>> >
+>> >>
+>> >>
+>> >>
+>> >> On Fri, Aug 6, 2010 at 2:26 PM, Jim Rees <rees@umich.edu> wrote:
+>> >> > Matthew Hodgson wrote:
+>> >> >
+>> >> >  Is there any way to tune the linux NFSv3 client to prefer to write
+>> >> >  data straight to an async-mounted server, rather than having large
+>> >> >  writes to a file stack up in the local pagecache before being synced
+>> >> >  on close()?
+>> >> >
+>> >> > It's been a while since I've done this, but I think you can tune this with
+>> >> > vm.dirty_writeback_centisecs and vm.dirty_background_ratio sysctls.  The
+>> >> > data will still go through the page cache but you can reduce the amount that
+>> >> > stacks up.
+>> >> >
+>> >> > There are other places where the data can get buffered, like the rpc layer,
+>> >> > but it won't sit there any longer than it takes for it to go out the wire.
+>> >> > --
+>> >> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> >> > the body of a message to majordomo@vger.kernel.org
+>> >> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>> >> >
+>> >> --
+>> >> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> >> the body of a message to majordomo@vger.kernel.org
+>> >> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>> >
+>> >
+>> >
+>> >
+>
+>
+>
+>
