@@ -1,103 +1,95 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from eastrmmtao104.cox.net ([68.230.240.46]:33252 "EHLO
-	eastrmmtao104.cox.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1762823Ab0HQTBK (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 17 Aug 2010 15:01:10 -0400
-Message-ID: <4C6ADC57.80802@excfb.com>
-Date: Tue, 17 Aug 2010 14:00:39 -0500
-From: Tom Haynes <tdh@excfb.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: =?UTF-8?B?VmljdG9yIE1hdGFyw6k=?= <dreck@vmsd.ath.cx>,
-        linux-nfs@vger.kernel.org
-Subject: Re: numeric UIDs
-References: <201008030401.33552.dreck@vmsd.ath.cx> <20100803192241.GD31579@fieldses.org> <4C6ACB70.7080409@excfb.com> <20100817182400.GE23176@fieldses.org>
-In-Reply-To: <20100817182400.GE23176@fieldses.org>
-Content-Type: text/plain; charset=UTF-8; format=flowed
+Received: from cantor2.suse.de ([195.135.220.15]:51419 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753241Ab0HGLEk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 7 Aug 2010 07:04:40 -0400
+Date: Sat, 7 Aug 2010 21:04:22 +1000
+From: Neil Brown <neilb@suse.de>
+To: Jeff Layton <jlayton@samba.org>
+Cc: Steve French <smfrench@gmail.com>, Jeremy Allison <jra@samba.org>,
+        utz lehmann <lkml123@s2y4n2c.de>,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        Volker.Lendecke@sernet.de, David Howells <dhowells@redhat.com>,
+        Jan Engelhardt <jengelh@medozas.de>, linux-cifs@vger.kernel.org,
+        linux-nfs@vger.kernel.org, samba-technical@lists.samba.org,
+        linux-kernel@vger.kernel.org, viro@zeniv.linux.org.uk,
+        linux-fsde@jasper.es
+Subject: Re: [PATCH 02/18] xstat: Add a pair of system calls to make
+ extended  file stats available [ver #6]
+Message-ID: <20100807210422.0b8ce265@notabene>
+In-Reply-To: <20100807063400.6bd1776f@tlielax.poochiereds.net>
+References: <alpine.LSU.2.01.1007221228260.6115@obet.zrqbmnf.qr>
+	<20100715021709.5544.64506.stgit@warthog.procyon.org.uk>
+	<20100715021712.5544.44845.stgit@warthog.procyon.org.uk>
+	<30448.1279800887@redhat.com>
+	<E1Obuiy-00C9jr-Al@intern.SerNet.DE>
+	<AANLkTimdFCGSKLn7aGMpBMIauHTsHY7hpAAmpo6uTcnD@mail.gmail.com>
+	<1280524978.2452.9.camel@segv.aura.of.mankind>
+	<20100801092529.5e6ba0e0@corrin.poochiereds.net>
+	<20100805235218.GB31233@jeremy-laptop>
+	<20100806133836.49757af9@notabene>
+	<AANLkTinVCLVpqLtA2X=1mOkxX7Re61_ZYsUix_XTvZ5D@mail.gmail.com>
+	<20100807093057.7683bedd@notabene>
+	<AANLkTikDBg5Brt=55Tsu8ozk0aVx=srpxP=U-sFqeBYL@mail.gmail.com>
+	<20100807102901.6a0b53e7@notabene>
+	<AANLkTinEFFAWMu62j2sCPy=ArExZNm2miJOGoXbG65jC@mail.gmail.com>
+	<AANLkTik7KhgF=pkpdEcsYM75NVXNmU4ynzdh3KWknTEL@mail.gmail.com>
+	<20100807133240.02883b83@notabene>
+	<20100807063400.6bd1776f@tlielax.poochiereds.net>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-J. Bruce Fields wrote:
-> On Tue, Aug 17, 2010 at 12:48:32PM -0500, Tom Haynes wrote:
->   
->> J. Bruce Fields wrote:
->>     
->>> On Tue, Aug 03, 2010 at 04:01:32AM +0200, Victor Mataré wrote:
->>>       
->>>> Hello,
->>>>
->>>> I still hope I'm mistaken in assuming I have to go back to NFSv3
->>>> if I want to skip NFSv4 UID mapping altogether and just use the
->>>> numeric UIDs the way they're stored on-disk. However if that's
->>>> actually true, I'd like to try and make a case for implementing
->>>> an option to turn off UID mapping completely (or at least for
->>>> unknown UIDs). If this is already work in progress, just ignore
->>>> this mail.
->>>>
->>>> Thing is, the forced UID mapping seems to make tasks like
->>>> backing up data a little inconvenient. You might want to
->>>> preserve UIDs that are only known to the client.
->>>> But when you copy an entire root filesystem, it becomes outright
->>>> destructive, because the rootfs will probably have several
->>>> accounts that the server can't be expected know. Just imagine a
->>>> server that's used for maintenance (like backing up and
->>>> replacing hard drives) of random (foreign) systems. Idmapd will
->>>> map all unknown UIDs to a single value and thereby destroy that
->>>> information.
->>>>
->>>> I think I read somewhere
->>>>         
->>> Pointer?
->>>
->>>       
->> http://www.unix.com/man-page/OpenSolaris/4/nfs/
->>
->>       If  a  domainname  is still not obtained following all of the preceding
->>       steps, nfsmapid will have no domain configured.	This  results  in  the
->>       following behavior:
->>
->> 	   o	  Outbound  "owner"  and  "owner_group"  attribute strings are
->> 		  encoded as literal id's.  For  example,  the	UID  12345  is
->> 		  encoded as 12345.
->>
->> 	   o	  nfsmapid   ignores  the  "domain"  portion  of  the  inbound
->> 		  attribute string and performs name service lookups only  for
->> 		  the  user  or  group.  If the user/group exists in the local
->> 		  system name service databases, then the proper uid/gid  will
->> 		  be mapped even when no domain has been configured.
->>
->> 		  This	 behavior   implies   that   the  same	administrative
->> 		  user/group domain exists between  NFSv4  client  and	server
->> 		  (that is, the same uid/gid's for users/groups on both client
->> 		  and server). In the  case  of  overlapping  id  spaces,  the
->> 		  inbound  attribute string could potentially be mapped to the
->> 		  wrong id. However, this is not functionally  different  from
->> 		  mapping  the	inbound string to nobody, yet provides greater
->> 		  flexibility.
->>     
->
-> Thanks!
->
-> So the server rejects any attempts to set a numeric uid?
->   
+On Sat, 7 Aug 2010 06:34:00 -0400
+Jeff Layton <jlayton@samba.org> wrote:
 
-No, only ones which do not have a valid mapping in /etc/passwd.
+> On Sat, 7 Aug 2010 13:32:40 +1000
+> Neil Brown <neilb@suse.de> wrote:
+> 
+> > So we are left with an attribute that is needed for windows compatibility,
+> > and so just needs to be understood by samba and wine.  Some filesystems might
+> > support it efficiently, others might require the use of generic
+> > extended-attributes, still others might not support it at all (I guess you
+> > store it in some 'tdb' and hope it works well enough).
+> > 
+> > Core-linux doesn't really need to know about this - there just needs to be a
+> > channel to pass it between samba/wine and the filesystem. xattr still seems
+> > the best mechanism to pass this stuff around.  Team-samba can negotiate with
+> > fs developers to optimise/accelerate certain attributes, and linux-VFS
+> > doesn't need to know or care (except maybe to provide generic non-blocking or
+> > multiple-access interfaces).
+> > 
+> 
+> IIUC, you're saying that we should basically just have samba stuff the
+> current time into an xattr when it creates the file and leave the
+> filesystems alone. If so, I disagree here.
 
-> That means the sort of dumb-backup scenario required above would, as in
-> Linux, succeed over v3, but fail over v4?
->   
+I'm not quite saying that (though there is a temptation).  Some attributes
+are initialised by the filesystem rather than by common code.  i_uid is a
+simple example.  I have no problem with the filesystem initialising the
+storage that is used for this well-known-EA to the current time at creation.
+This would be part of what team-samba negotiated with FS developers.
 
-Yes, it appears so.
+> 
+> The problem with treating this as *just* an xattr is that it doesn't
+> account for files that are created outside of samba but are then shared
+> out by it.
 
-> And have there been reports of users hitting that issue, or does it
-> remain a completely hypothetical problem?
->
-> --b.
->   
+If something is created in a different universe, then brought into this one -
+when is its date of birth?  The moment of creation, or the moment of entry
+into this universe?   If both universes have a common time line (altough
+with a 10 year offset) then I guess the former, though I think it is a bit of
+a philosophical point.... :-)
 
-It is all hypothetical. I think you would have to work pretty hard to 
-get a system in such a state.
+> 
+> To handle this correctly, I believe it needs to be initialized by the
+> kernel to the current time whenever an inode is created, even if samba
+> doesn't create it. After that, it can be treated as just another xattr.
+> 
+Yes, I suspect that would be ideal, and trivial for the fs to implement (it
+has to initialise it to something after all).
 
-And the key would be whether or not the admin populates the local 
-/etc/passwd.
+i.e. I agree.
 
+NeilBrown
