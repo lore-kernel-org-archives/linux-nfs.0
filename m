@@ -1,99 +1,73 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mexforward.lss.emc.com ([128.222.32.20]:17227 "EHLO
-	mexforward.lss.emc.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752000Ab0HZKR7 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Aug 2010 06:17:59 -0400
-Date: Thu, 26 Aug 2010 06:17:43 -0400
-To: "Neil Brown" <neilb@suse.de>
-Subject: Re: Does the machine need to be restarted after RPCNFSDCOUNT in /etc/default/nfs-kernel-server (ubuntu) is edited?
-From: sfaibish <sfaibish@emc.com>
-Cc: "Peng Yu" <pengyu.ut@gmail.com>, linux-nfs@vger.kernel.org
-Content-Type: text/plain; format=flowed; delsp=yes; charset=iso-8859-15
-References: <AANLkTi=8rnEtOikhVqsH5Pj1QUhc5MiSHMfncZO1xCem@mail.gmail.com> <20100826093648.26d03c1c@notabene> <op.vh0qucfsunckof@usensfaibisl2e.eng.emc.com> <20100826103152.05627abb@notabene>
-Message-ID: <op.vh1ivtybunckof@usensfaibisl2e.eng.emc.com>
-In-Reply-To: <20100826103152.05627abb@notabene>
+Received: from cdptpa-omtalb.mail.rr.com ([75.180.132.121]:49073 "EHLO
+	cdptpa-omtalb.mail.rr.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751142Ab0HGKeH (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 7 Aug 2010 06:34:07 -0400
+Date: Sat, 7 Aug 2010 06:34:00 -0400
+From: Jeff Layton <jlayton@samba.org>
+To: Neil Brown <neilb@suse.de>
+Cc: Steve French <smfrench@gmail.com>, Jeremy Allison <jra@samba.org>,
+        utz lehmann <lkml123@s2y4n2c.de>,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        Volker.Lendecke@sernet.de, David Howells <dhowells@redhat.com>,
+        Jan Engelhardt <jengelh@medozas.de>, linux-cifs@vger.kernel.org,
+        linux-nfs@vger.kernel.org, samba-technical@lists.samba.org,
+        linux-kernel@vger.kernel.org, viro@zeniv.linux.org.uk,
+        linux-fsde@jasper.es
+Subject: Re: [PATCH 02/18] xstat: Add a pair of system calls to make
+ extended  file stats available [ver #6]
+Message-ID: <20100807063400.6bd1776f@tlielax.poochiereds.net>
+In-Reply-To: <20100807133240.02883b83@notabene>
+References: <alpine.LSU.2.01.1007221228260.6115@obet.zrqbmnf.qr>
+	<20100715021709.5544.64506.stgit@warthog.procyon.org.uk>
+	<20100715021712.5544.44845.stgit@warthog.procyon.org.uk>
+	<30448.1279800887@redhat.com>
+	<E1Obuiy-00C9jr-Al@intern.SerNet.DE>
+	<AANLkTimdFCGSKLn7aGMpBMIauHTsHY7hpAAmpo6uTcnD@mail.gmail.com>
+	<1280524978.2452.9.camel@segv.aura.of.mankind>
+	<20100801092529.5e6ba0e0@corrin.poochiereds.net>
+	<20100805235218.GB31233@jeremy-laptop>
+	<20100806133836.49757af9@notabene>
+	<AANLkTinVCLVpqLtA2X=1mOkxX7Re61_ZYsUix_XTvZ5D@mail.gmail.com>
+	<20100807093057.7683bedd@notabene>
+	<AANLkTikDBg5Brt=55Tsu8ozk0aVx=srpxP=U-sFqeBYL@mail.gmail.com>
+	<20100807102901.6a0b53e7@notabene>
+	<AANLkTinEFFAWMu62j2sCPy=ArExZNm2miJOGoXbG65jC@mail.gmail.com>
+	<AANLkTik7KhgF=pkpdEcsYM75NVXNmU4ynzdh3KWknTEL@mail.gmail.com>
+	<20100807133240.02883b83@notabene>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, 25 Aug 2010 20:31:52 -0400, Neil Brown <neilb@suse.de> wrote:
+On Sat, 7 Aug 2010 13:32:40 +1000
+Neil Brown <neilb@suse.de> wrote:
 
-> On Wed, 25 Aug 2010 20:12:02 -0400
-> sfaibish <sfaibish@emc.com> wrote:
->
->> On Wed, 25 Aug 2010 19:36:48 -0400, Neil Brown <neilb@suse.de> wrote:
->>
->> > On Wed, 25 Aug 2010 15:02:14 -0500
->> > Peng Yu <pengyu.ut@gmail.com> wrote:
->> >
->> >> Hi,
->> >>
->> >> I changed the value of RPCNFSDCOUNT in /etc/default/nfs-kernel-server
->> >> (ubuntu). Do I need to restart the machine?
->> >>
->> >> Or I need to restart nfsd? If so, would you please let me know how to
->> >> restart nfsd?
->> >>
->> >
->> > Easiest thing to do is simply
->> >
->> >    rpc.nfsd $NUMBER
->> >
->> > it will change the number of running threads to match the number that  
->> you
->> > give.
->> You still need to stop and restart the nfs for this to take effect.
->
-> Have you tried it?
-Have you? Obviously not.
+> So we are left with an attribute that is needed for windows compatibility,
+> and so just needs to be understood by samba and wine.  Some filesystems might
+> support it efficiently, others might require the use of generic
+> extended-attributes, still others might not support it at all (I guess you
+> store it in some 'tdb' and hope it works well enough).
+> 
+> Core-linux doesn't really need to know about this - there just needs to be a
+> channel to pass it between samba/wine and the filesystem. xattr still seems
+> the best mechanism to pass this stuff around.  Team-samba can negotiate with
+> fs developers to optimise/accelerate certain attributes, and linux-VFS
+> doesn't need to know or care (except maybe to provide generic non-blocking or
+> multiple-access interfaces).
+> 
 
->
-> I assure you that running rpc.nfsd like this does change the number of
-> threads from whatever it is to the given number. (I should know, I wrote  
-> the
-> code :-)
-No it does not if you check how many daemons are running (ps) you will see  
-that it only
-changed the value not the number of running daemons.
+IIUC, you're saying that we should basically just have samba stuff the
+current time into an xattr when it creates the file and leave the
+filesystems alone. If so, I disagree here.
 
->
-> NeilBrown
->
->>
->> /Sorin
->>
->> >
->> > NeilBrown
->> > --
->> > To unsubscribe from this list: send the line "unsubscribe linux-nfs"  
->> in
->> > the body of a message to majordomo@vger.kernel.org
->> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
->> >
->> >
->>
->>
->>
->
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->
->
+The problem with treating this as *just* an xattr is that it doesn't
+account for files that are created outside of samba but are then shared
+out by it.
 
-
+To handle this correctly, I believe it needs to be initialized by the
+kernel to the current time whenever an inode is created, even if samba
+doesn't create it. After that, it can be treated as just another xattr.
 
 -- 
-Best Regards
-
-Sorin Faibish
-Corporate Distinguished Engineer
-Network Storage Group
-
-         EMC²
-where information lives
-
-Phone: 508-435-1000 x 48545
-Cellphone: 617-510-0422
-Email : sfaibish@emc.com
+Jeff Layton <jlayton@samba.org>
