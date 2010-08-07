@@ -1,45 +1,170 @@
-From: Steve Gaarder <gaarder-O+4OpAMI7mIibAbXQ5Tkjg@public.gmane.org>
-Subject: Can create and delete but not overwrite
-Date: Tue, 17 Aug 2010 08:11:17 -0400 (EDT)
-Message-ID: <alpine.LRH.2.00.1008170810510.2003@reuleaux2.math.cornell.edu>
+From: Timo Aaltonen <timo.aaltonen-uOixanVlb7U@public.gmane.org>
+Subject: Re: [PATCH nfs-utils] gssd: Check for AD style machine principal
+ name
+Date: Sat, 7 Aug 2010 15:48:05 +0300 (EEST)
+Message-ID: <alpine.DEB.2.00.1008071543540.15926@kosh.hut.fi>
+References: <1277729907-14299-1-git-send-email-timo.aaltonen@aalto.fi> <alpine.DEB.2.00.1008061157330.15926@kosh.hut.fi> <20100806171825.GA28318@fieldses.org>
 Mime-Version: 1.0
 Content-Type: TEXT/PLAIN; charset=US-ASCII; format=flowed
-To: linux-nfs@vger.kernel.org
+Cc: linux-nfs@vger.kernel.org, steved@redhat.com
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from math.cornell.edu ([128.84.234.110]:36520 "EHLO math.cornell.edu"
+Received: from smtp-2.hut.fi ([130.233.228.92]:45972 "EHLO smtp-2.hut.fi"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754319Ab0HQNVy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 17 Aug 2010 09:21:54 -0400
-Received: from reuleaux2.math.cornell.edu ([128.84.234.141])
-	by math.cornell.edu with esmtp (Exim 4.43)
-	id 1OlL0f-000579-2t
-	for linux-nfs@vger.kernel.org; Tue, 17 Aug 2010 08:11:17 -0400
+	id S1751527Ab0HGMsn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 7 Aug 2010 08:48:43 -0400
+In-Reply-To: <20100806171825.GA28318@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I have a strange problem with Kerberos security and NFVv4.
+On Fri, 6 Aug 2010, J. Bruce Fields wrote:
 
-I have two servers, one running RHEL 4 (kernel 2.6.9-89.0.25.ELsmp) and the 
-other RHEL 5 (2.6.18-194.3.1.el5).  Clients running either OS work fine.
+> On Fri, Aug 06, 2010 at 11:59:10AM +0300, Timo Aaltonen wrote:
+>> On Mon, 28 Jun 2010, Timo Aaltonen wrote:
+>>
+>>> On a MS Active Directory client the service principals cannot be used
+>>> for authentication. Add a check for the default machine principal name
+>>> so that krb5 auth works out of the box.
+>>>
+>>> Signed-off-by: Timo Aaltonen <timo.aaltonen-uOixanVlb7U@public.gmane.org>
+>>> ---
+>>>
+>>> Resending, the previous try didn't get any comments.
+>>
+>> Ping? Should it add a new option to try the default AD principal to
+>> get accepted?
+>
+> find_keytab_entry() is already quite long, has multiple nested loops,
+> and I find the control flow hard to follow.  This piles a little more
+> on.
+>
+> Could you look into moving some of that code into logically-named helper
+> functions and clarifying the control flow?  Ideally  you could do that
+> in a preliminary patch that cleaned up the existing code, followed by an
+> update of this patch.  That might be easier to review.
 
-I have one user who is using Ubuntu (9.04 Jaunty; the kernel is 
-2.6.28-19-generic #61-Ubuntu).  On that machine, he can access filesystems on 
-the RHEL 5 server fine. Using filesystems mounted from the RHEL 4 server, 
-authenticated users can create and write files, but they cannot write to an 
-existing file. SO, for example,
+Yeah, you're right. I'll look into it and post patches to clean it up.
 
-echo foo >foo
 
-works, but a subsequent
 
-echo foo >foo
-
-says "Input/Output Error".
-
-Any ideas?
+>>> utils/gssd/krb5_util.c |   58 ++++++++++++++++++++++++++++++++++++++++++++++++
+>>> 1 files changed, 58 insertions(+), 0 deletions(-)
+>>>
+>>> diff --git a/utils/gssd/krb5_util.c b/utils/gssd/krb5_util.c
+>>> index dccbeb6..686ef3b 100644
+>>> --- a/utils/gssd/krb5_util.c
+>>> +++ b/utils/gssd/krb5_util.c
+>>> @@ -737,6 +737,29 @@ gssd_search_krb5_keytab(krb5_context context, krb5_keytab kt,
+>>> }
+>>>
+>>> /*
+>>> + * Convert the hostname to machine principal name as created
+>>> + * by MS Active Directory.
+>>> +*/
+>>> +
+>>> +static char *
+>>> +hostname_to_adprinc(char *name)
+>>> +{
+>>> +	int i = 0;
+>>> +	int len = strlen(name);
+>>> +	char *buf;
+>>> +	if ((buf = malloc(len+2))) {
+>>> +		while(i < len) {
+>>> +			buf[i] = toupper(name[i]);
+>>> +			i++;
+>>> +		}
+>>> +		buf[i++] = '$';
+>>> +		buf[i] = 0;
+>>> +		return buf;
+>>> +	}
+>>> +	return NULL;
+>>> +}
+>>> +
+>>> +/*
+>>> * Find a keytab entry to use for a given target hostname.
+>>> * Tries to find the most appropriate keytab to use given the
+>>> * name of the host we are trying to connect with.
+>>> @@ -754,6 +777,7 @@ find_keytab_entry(krb5_context context, krb5_keytab kt, const char *hostname,
+>>> 	char *k5err = NULL;
+>>> 	int tried_all = 0, tried_default = 0;
+>>> 	krb5_principal princ;
+>>> +	char *adprinc = NULL;
+>>>
+>>>
+>>> 	/* Get full target hostname */
+>>> @@ -769,6 +793,9 @@ find_keytab_entry(krb5_context context, krb5_keytab kt, const char *hostname,
+>>> 		printerr(1, "%s while getting local hostname\n", k5err);
+>>> 		goto out;
+>>> 	}
+>>> +	/* Convert to Active Directory machine principal name */
+>>> +	adprinc = hostname_to_adprinc(myhostname);
+>>> +
+>>> 	retval = get_full_hostname(myhostname, myhostname, sizeof(myhostname));
+>>> 	if (retval)
+>>> 		goto out;
+>>> @@ -812,6 +839,36 @@ find_keytab_entry(krb5_context context, krb5_keytab kt, const char *hostname,
+>>> 			break;
+>>> 		if (strcmp(realm, default_realm) == 0)
+>>> 			tried_default = 1;
+>>> +		/* First try the Active Directory style machine principal */
+>>> +		if (adprinc != NULL) {
+>>> +			code = krb5_build_principal_ext(context, &princ,
+>>> +							strlen(realm),
+>>> +							realm,
+>>> +							strlen(adprinc),
+>>> +							adprinc,
+>>> +							NULL);
+>>> +			if (code) {
+>>> +				k5err = gssd_k5_err_msg(context, code);
+>>> +				printerr(1, "%s while building principal for "
+>>> +					 "'%s@%s'\n", k5err,
+>>> +					 adprinc, realm);
+>>> +			}
+>>> +			code = krb5_kt_get_entry(context, kt, princ, 0, 0, kte);
+>>> +			krb5_free_principal(context, princ);
+>>> +			if (code) {
+>>> +				k5err = gssd_k5_err_msg(context, code);
+>>> +				printerr(3, "%s while getting keytab entry for "
+>>> +					 "'%s@%s'\n", k5err,
+>>> +					 adprinc, realm);
+>>> +			} else {
+>>> +				printerr(3, "Success getting keytab entry for "
+>>> +					 "'%s@%s'\n",
+>>> +					 adprinc, realm);
+>>> +				retval = 0;
+>>> +				goto out;
+>>> +			}
+>>> +			retval =code;
+>>> +		}
+>>> 		for (j = 0; svcnames[j] != NULL; j++) {
+>>> 			code = krb5_build_principal_ext(context, &princ,
+>>> 							strlen(realm),
+>>> @@ -870,6 +927,7 @@ out:
+>>> 	if (realmnames)
+>>> 		krb5_free_host_realm(context, realmnames);
+>>> 	free(k5err);
+>>> +	free(adprinc);
+>>> 	return retval;
+>>> }
+>>>
+>>> --
+>>> 1.7.0.4
+>>>
+>>>
+>>
+>> --
+>> Timo Aaltonen
+>> Systems Specialist, Aalto IT
+>> tel. +358-9-47024317, mobile: +358-50-5918781
+>> http://users.tkk.fi/~tjaalton
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
 
 -- 
-Steve Gaarder
-System Administrator, Dept of Mathematics
-Cornell University, Ithaca, NY, USA
-gaarder-O+4OpAMI7mIibAbXQ5Tkjg@public.gmane.org
+Timo Aaltonen
+Systems Specialist, Aalto IT
+tel. +358-9-47024317, mobile: +358-50-5918781
+http://users.tkk.fi/~tjaalton
