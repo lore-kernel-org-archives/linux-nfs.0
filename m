@@ -1,104 +1,101 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cantor.suse.de ([195.135.220.2]:44092 "EHLO mx1.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755157Ab0HFXbR convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 6 Aug 2010 19:31:17 -0400
-Date: Sat, 7 Aug 2010 09:30:57 +1000
-From: Neil Brown <neilb@suse.de>
-To: Steve French <smfrench@gmail.com>
-Cc: Jeremy Allison <jra@samba.org>, Jeff Layton <jlayton@redhat.com>,
-        utz lehmann <lkml123@s2y4n2c.de>,
-        Linus Torvalds <torvalds@linux-foundation.org>,
-        Volker.Lendecke@sernet.de, David Howells <dhowells@redhat.com>,
-        Jan Engelhardt <jengelh@medozas.de>, linux-cifs@vger.kernel.org,
-        linux-nfs@vger.kernel.org, samba-technical@lists.samba.org,
-        linux-kernel@vger.kernel.org, viro@zeniv.linux.org.uk,
-        linux-fsde@jasper.es
-Subject: Re: [PATCH 02/18] xstat: Add a pair of system calls to make
- extended  file stats available [ver #6]
-Message-ID: <20100807093057.7683bedd@notabene>
-In-Reply-To: <AANLkTinVCLVpqLtA2X=1mOkxX7Re61_ZYsUix_XTvZ5D@mail.gmail.com>
-References: <alpine.LSU.2.01.1007221228260.6115@obet.zrqbmnf.qr>
-	<20100715021709.5544.64506.stgit@warthog.procyon.org.uk>
-	<20100715021712.5544.44845.stgit@warthog.procyon.org.uk>
-	<30448.1279800887@redhat.com>
-	<E1Obuiy-00C9jr-Al@intern.SerNet.DE>
-	<AANLkTimdFCGSKLn7aGMpBMIauHTsHY7hpAAmpo6uTcnD@mail.gmail.com>
-	<1280524978.2452.9.camel@segv.aura.of.mankind>
-	<20100801092529.5e6ba0e0@corrin.poochiereds.net>
-	<20100805235218.GB31233@jeremy-laptop>
-	<20100806133836.49757af9@notabene>
-	<AANLkTinVCLVpqLtA2X=1mOkxX7Re61_ZYsUix_XTvZ5D@mail.gmail.com>
-Content-Type: text/plain; charset=UTF-8
+Received: from shadbolt.e.decadent.org.uk ([88.96.1.126]:40620 "EHLO
+	shadbolt.e.decadent.org.uk" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751248Ab0HHE7c (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 8 Aug 2010 00:59:32 -0400
+From: Ben Hutchings <ben@decadent.org.uk>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: Steven Shiau <steven@nchc.org.tw>, 579397@bugs.debian.org,
+        linux-nfs@vger.kernel.org
+In-Reply-To: <4C33624D.2070405@oracle.com>
+References: <4BF71C27.7070309@nchc.org.tw>
+	 <1274492328.11828.3.camel@localhost> <4BFA99CD.2040902@oracle.com>
+	 <4C0819C2.2020203@oracle.com> <1275769799.2870.107.camel@localhost>
+	 <4C0FA7FD.3000301@nchc.org.tw>  <4C33624D.2070405@oracle.com>
+Content-Type: multipart/signed; micalg="pgp-sha1"; protocol="application/pgp-signature"; boundary="=-eU/A7ZuKfIiy4oCPRxrk"
+Date: Sun, 08 Aug 2010 05:59:13 +0100
+Message-ID: <1281243553.7543.281.camel@localhost>
+Subject: Re: Bug#579397: STAT_FAIL to debian for SM_MON of 192.168.120.254,
+ No canonical hostname found for 192.168.120.254
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Thu, 5 Aug 2010 22:55:06 -0500
-Steve French <smfrench@gmail.com> wrote:
+--=-eU/A7ZuKfIiy4oCPRxrk
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
 
-> On Thu, Aug 5, 2010 at 10:38 PM, Neil Brown <neilb@suse.de> wrote:
-> > On Thu, 5 Aug 2010 16:52:18 -0700
-> > Jeremy Allison <jra@samba.org> wrote:
-> 
-> >> Don't add it as an EA. It's *not* an EA, it's a timestamp.
+On Tue, 2010-07-06 at 13:05 -0400, Chuck Lever wrote:
+> On 06/ 9/10 10:41 AM, Steven Shiau wrote:
 > >
-> > I'm curious.  Why do you particularly care what interface the kernel uses to
-> > provide you with access to this attribute?
 > >
-> > And given that it is an attribute that is not part of 'POSIX' or "UNIX", it
-> > would seem to be an extension - an extended attribute.
-> > As the Linux kernel does virtually nothing with this attribute except provide
-> > access, it seems to be a very different class of thing to other timestamps.
-> > Surely it is simply some storage associated with a file which is capable of
-> > storing a timestamp, which can be set or retrieved by an application, and
-> > which happens to be initialised to the current time when a file is created.
-> >
-> > Yes, to you it is a timestamp.  But to Linux it is a few bytes of
-> > user-settable metadata.  Sounds like an EA to me.
-> >
-> > Or do you really want something like BSD's 'btime' which as I understand it
-> > cannot be set.  Would that be really useful to you?
-> 
-> Obviously the cifs and SMB2 protocols which  Samba server support can
-> ask the server to set the create time of a file (this is handled
-> through xattrs today along with the "dos attribute" flags such as
-> archive/hidden/system), but certainly it is much more common (and
-> important) to read the creation time of an existing file.
-> 
+> > On 2010=E5=B9=B406=E6=9C=8806=E6=97=A5 04:29, Ben Hutchings wrote:
+> >> On Thu, 2010-06-03 at 17:08 -0400, Chuck Lever wrote:
+> >>> On 05/24/10 11:22 AM, Chuck Lever wrote:
+> >> [...]
+> >>>> We can probably remove the reverse mapping constraint for presentati=
+on
+> >>>> addresses. A simple fix might be to change statd_canonical_name() fr=
+om:
+> >>>>
+> >>>> freeaddrinfo(ai);
+> >>>> if (!result)
+> >>>> return NULL;
+> >>>>
+> >>>> to
+> >>>>
+> >>>> freeaddrinfo(ai);
+> >>>> if (!result)
+> >>>> return strdup(hostname);
+> >>>>
+> >>>> Let me know if this works.
+> >>> Any update? I have a patch ready for nfs-utils to fix this regression=
+,
+> >>> but I need confirmation that it addresses your problem.
+> >> Steven originally had this problem, not me. Steven, do you need me to
+> >> build a new package with this change?
+> >>
+> >> Ben.
+> >>
+> > Ben,
+> > Yes, please.
+> > Thanks.
+>=20
+> Any progress on this?
 
-Just a point of clarification - when you say it is common and important to be
-able to read the creation time on an existing file, and you still talking in
-the context of cifs/smb windows compatibility, or are you talking in the
-broader context?
-If you are referring to a broader context could be please give more details
-because I have not heard any mention of any real value of creation-time out
-side of window interoperability - have such a use clearly documented would
-assist the conversation I think.
+I've heard nothing from Steven but one positive report from another
+user.  In any case we'll include this in our package.
 
-If on the other hand you are just referring the the windows interoperability
-context ... given that you have to read an EA if the create-time has been
-changed, you will always have to read and EA so having something else is
-pointless ... or I'm missing something.
+We now have a git repository of the nfs-utils package at
+<git://git.debian.org/kernel/nfs-utils.git>; currently our changes are
+kept in a quilt patch series in debian/patches.
 
-> 
-> > Is there something important that I am missing?
-> 
-> It is another syscall that Samba server would have to make - and xattr
-> performance is extremely slow on some file systems (although
-> presumably this one would be more likely to be stored in inode and
-> perhaps not as bad on ext4, cifs and a few others such as ntfs).
-> 
-> 
+Ben.
 
-Obviously if we were to make xattrs the preferred way to get create time out
-of the filesystem we would want to make sure it is efficient.
-It would seem to make perfect sense to add a 'getxattrat' syscall and allow an
-AT_NONBLOCK flag (which would probably be useful for statat too).  The
-AT_NONBLOCK flag would only get attributes if they were available immediately
-without going to storage/network/whatever.
+--=20
+Ben Hutchings
+Once a job is fouled up, anything done to improve it makes it worse.
 
-And if it is simply a case of too many syscalls per file, then
-getxattrat_multi would seem to be the most general way to go.
+--=-eU/A7ZuKfIiy4oCPRxrk
+Content-Type: application/pgp-signature; name="signature.asc"
+Content-Description: This is a digitally signed message part
 
-NeilBrown
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.10 (GNU/Linux)
+
+iQIVAwUATF45nOe/yOyVhhEJAQImthAAvmtIXEjCAVw2yN8IU2XwXUL4NzGpiZRn
+fg3F4RowfhieyPrhD5NDMd8Ee13GGoFTz4jbWwNaqILVR/7MWI4i79jlOmaw89mD
+iTn/rqWP5ntvWxfG7+jNQKpD24yRzvVQNOnrUWWuv7Gtv7L4vx2qWpCfgGxWzJfS
+q9gBS9DDaHDb2XgUamPw2iKjIG0GQDML/qey699XXo4uxQvyoI5lJOvFpJxR+Byw
+hr3O83pzRnoEbNXCFsJghHOYi3k4G+wJze4VlAP0IA/pKSquJJCyauRUltLS7dzc
+sGO25LgUpVhHmuAhkl+2Y2rtUMUeHsIIv3p9eIhyiZr0PNqDQ3wjMCZd7F8g6R7t
+K83HRifb+1JS1Pxq3AMZQEDmYx6YpIaqmpNf36FliTIhA7CPFUp+tjmeP1wZxghK
+35OJWExFGuIveFY6IM//k3r3nO4BysYUyjNsZq6tQVhy3wzTw5xFCtiMyijEftwg
+hkXNWZN4+MJUrz08Ivw0rcoHx+wd+9pscMq9HqwZhHWm+nSazPB+t44FD8LUA2Z+
+W0ZMtJwK4/b6ZGLYe0movNju2KP1gbL7uJOJJEI+VfCKlbnkrJ2MDIy3qFPzGlE4
+Attpsy7FF5Oj/GR8qnb5DYDmIrGF3qM2x+O1SfW3ZGJ65qigZJEGLt+Mewi8YU8s
+gYh0VsVmDYw=
+=LEjo
+-----END PGP SIGNATURE-----
+
+--=-eU/A7ZuKfIiy4oCPRxrk--
