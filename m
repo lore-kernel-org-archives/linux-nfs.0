@@ -1,170 +1,78 @@
-From: Timo Aaltonen <timo.aaltonen-uOixanVlb7U@public.gmane.org>
-Subject: Re: [PATCH nfs-utils] gssd: Check for AD style machine principal
- name
-Date: Sat, 7 Aug 2010 15:48:05 +0300 (EEST)
-Message-ID: <alpine.DEB.2.00.1008071543540.15926@kosh.hut.fi>
-References: <1277729907-14299-1-git-send-email-timo.aaltonen@aalto.fi> <alpine.DEB.2.00.1008061157330.15926@kosh.hut.fi> <20100806171825.GA28318@fieldses.org>
-Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII; format=flowed
-Cc: linux-nfs@vger.kernel.org, steved@redhat.com
-To: "J. Bruce Fields" <bfields@fieldses.org>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: Bug#579397: STAT_FAIL to debian for SM_MON of 192.168.120.254, No canonical hostname found for 192.168.120.254
+Date: Sun, 8 Aug 2010 12:55:46 -0400
+Message-ID: <6C244072-B1DA-4F2D-8707-767DBAAC13B5@oracle.com>
+References: <4BF71C27.7070309@nchc.org.tw> <1274492328.11828.3.camel@localhost> <4BFA99CD.2040902@oracle.com> <4C0819C2.2020203@oracle.com> <1275769799.2870.107.camel@localhost> <4C0FA7FD.3000301@nchc.org.tw>  <4C33624D.2070405@oracle.com> <1281243553.7543.281.camel@localhost>
+Mime-Version: 1.0 (Apple Message framework v1081)
+Content-Type: text/plain; charset=utf-8
+Cc: Steven Shiau <steven@nchc.org.tw>, 579397@bugs.debian.org,
+	linux-nfs@vger.kernel.org
+To: Ben Hutchings <ben@decadent.org.uk>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp-2.hut.fi ([130.233.228.92]:45972 "EHLO smtp-2.hut.fi"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751527Ab0HGMsn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 7 Aug 2010 08:48:43 -0400
-In-Reply-To: <20100806171825.GA28318@fieldses.org>
+Received: from rcsinet10.oracle.com ([148.87.113.121]:17310 "EHLO
+	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750703Ab0HHQ42 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 8 Aug 2010 12:56:28 -0400
+In-Reply-To: <1281243553.7543.281.camel@localhost>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 6 Aug 2010, J. Bruce Fields wrote:
 
-> On Fri, Aug 06, 2010 at 11:59:10AM +0300, Timo Aaltonen wrote:
->> On Mon, 28 Jun 2010, Timo Aaltonen wrote:
->>
->>> On a MS Active Directory client the service principals cannot be used
->>> for authentication. Add a check for the default machine principal name
->>> so that krb5 auth works out of the box.
->>>
->>> Signed-off-by: Timo Aaltonen <timo.aaltonen-uOixanVlb7U@public.gmane.org>
->>> ---
->>>
->>> Resending, the previous try didn't get any comments.
->>
->> Ping? Should it add a new option to try the default AD principal to
->> get accepted?
->
-> find_keytab_entry() is already quite long, has multiple nested loops,
-> and I find the control flow hard to follow.  This piles a little more
-> on.
->
-> Could you look into moving some of that code into logically-named helper
-> functions and clarifying the control flow?  Ideally  you could do that
-> in a preliminary patch that cleaned up the existing code, followed by an
-> update of this patch.  That might be easier to review.
+On Aug 8, 2010, at 12:59 AM, Ben Hutchings wrote:
 
-Yeah, you're right. I'll look into it and post patches to clean it up.
+> On Tue, 2010-07-06 at 13:05 -0400, Chuck Lever wrote:
+>> On 06/ 9/10 10:41 AM, Steven Shiau wrote:
+>>>=20
+>>>=20
+>>> On 2010=E5=B9=B406=E6=9C=8806=E6=97=A5 04:29, Ben Hutchings wrote:
+>>>> On Thu, 2010-06-03 at 17:08 -0400, Chuck Lever wrote:
+>>>>> On 05/24/10 11:22 AM, Chuck Lever wrote:
+>>>> [...]
+>>>>>> We can probably remove the reverse mapping constraint for presen=
+tation
+>>>>>> addresses. A simple fix might be to change statd_canonical_name(=
+) from:
+>>>>>>=20
+>>>>>> freeaddrinfo(ai);
+>>>>>> if (!result)
+>>>>>> return NULL;
+>>>>>>=20
+>>>>>> to
+>>>>>>=20
+>>>>>> freeaddrinfo(ai);
+>>>>>> if (!result)
+>>>>>> return strdup(hostname);
+>>>>>>=20
+>>>>>> Let me know if this works.
+>>>>> Any update? I have a patch ready for nfs-utils to fix this regres=
+sion,
+>>>>> but I need confirmation that it addresses your problem.
+>>>> Steven originally had this problem, not me. Steven, do you need me=
+ to
+>>>> build a new package with this change?
+>>>>=20
+>>>> Ben.
+>>>>=20
+>>> Ben,
+>>> Yes, please.
+>>> Thanks.
+>>=20
+>> Any progress on this?
+>=20
+> I've heard nothing from Steven but one positive report from another
+> user.  In any case we'll include this in our package.
+>=20
+> We now have a git repository of the nfs-utils package at
+> <git://git.debian.org/kernel/nfs-utils.git>; currently our changes ar=
+e
+> kept in a quilt patch series in debian/patches.
+
+Thanks, I'll submit the latest version of this to the nfs-utils maintai=
+ner.
+
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
 
 
 
->>> utils/gssd/krb5_util.c |   58 ++++++++++++++++++++++++++++++++++++++++++++++++
->>> 1 files changed, 58 insertions(+), 0 deletions(-)
->>>
->>> diff --git a/utils/gssd/krb5_util.c b/utils/gssd/krb5_util.c
->>> index dccbeb6..686ef3b 100644
->>> --- a/utils/gssd/krb5_util.c
->>> +++ b/utils/gssd/krb5_util.c
->>> @@ -737,6 +737,29 @@ gssd_search_krb5_keytab(krb5_context context, krb5_keytab kt,
->>> }
->>>
->>> /*
->>> + * Convert the hostname to machine principal name as created
->>> + * by MS Active Directory.
->>> +*/
->>> +
->>> +static char *
->>> +hostname_to_adprinc(char *name)
->>> +{
->>> +	int i = 0;
->>> +	int len = strlen(name);
->>> +	char *buf;
->>> +	if ((buf = malloc(len+2))) {
->>> +		while(i < len) {
->>> +			buf[i] = toupper(name[i]);
->>> +			i++;
->>> +		}
->>> +		buf[i++] = '$';
->>> +		buf[i] = 0;
->>> +		return buf;
->>> +	}
->>> +	return NULL;
->>> +}
->>> +
->>> +/*
->>> * Find a keytab entry to use for a given target hostname.
->>> * Tries to find the most appropriate keytab to use given the
->>> * name of the host we are trying to connect with.
->>> @@ -754,6 +777,7 @@ find_keytab_entry(krb5_context context, krb5_keytab kt, const char *hostname,
->>> 	char *k5err = NULL;
->>> 	int tried_all = 0, tried_default = 0;
->>> 	krb5_principal princ;
->>> +	char *adprinc = NULL;
->>>
->>>
->>> 	/* Get full target hostname */
->>> @@ -769,6 +793,9 @@ find_keytab_entry(krb5_context context, krb5_keytab kt, const char *hostname,
->>> 		printerr(1, "%s while getting local hostname\n", k5err);
->>> 		goto out;
->>> 	}
->>> +	/* Convert to Active Directory machine principal name */
->>> +	adprinc = hostname_to_adprinc(myhostname);
->>> +
->>> 	retval = get_full_hostname(myhostname, myhostname, sizeof(myhostname));
->>> 	if (retval)
->>> 		goto out;
->>> @@ -812,6 +839,36 @@ find_keytab_entry(krb5_context context, krb5_keytab kt, const char *hostname,
->>> 			break;
->>> 		if (strcmp(realm, default_realm) == 0)
->>> 			tried_default = 1;
->>> +		/* First try the Active Directory style machine principal */
->>> +		if (adprinc != NULL) {
->>> +			code = krb5_build_principal_ext(context, &princ,
->>> +							strlen(realm),
->>> +							realm,
->>> +							strlen(adprinc),
->>> +							adprinc,
->>> +							NULL);
->>> +			if (code) {
->>> +				k5err = gssd_k5_err_msg(context, code);
->>> +				printerr(1, "%s while building principal for "
->>> +					 "'%s@%s'\n", k5err,
->>> +					 adprinc, realm);
->>> +			}
->>> +			code = krb5_kt_get_entry(context, kt, princ, 0, 0, kte);
->>> +			krb5_free_principal(context, princ);
->>> +			if (code) {
->>> +				k5err = gssd_k5_err_msg(context, code);
->>> +				printerr(3, "%s while getting keytab entry for "
->>> +					 "'%s@%s'\n", k5err,
->>> +					 adprinc, realm);
->>> +			} else {
->>> +				printerr(3, "Success getting keytab entry for "
->>> +					 "'%s@%s'\n",
->>> +					 adprinc, realm);
->>> +				retval = 0;
->>> +				goto out;
->>> +			}
->>> +			retval =code;
->>> +		}
->>> 		for (j = 0; svcnames[j] != NULL; j++) {
->>> 			code = krb5_build_principal_ext(context, &princ,
->>> 							strlen(realm),
->>> @@ -870,6 +927,7 @@ out:
->>> 	if (realmnames)
->>> 		krb5_free_host_realm(context, realmnames);
->>> 	free(k5err);
->>> +	free(adprinc);
->>> 	return retval;
->>> }
->>>
->>> --
->>> 1.7.0.4
->>>
->>>
->>
->> --
->> Timo Aaltonen
->> Systems Specialist, Aalto IT
->> tel. +358-9-47024317, mobile: +358-50-5918781
->> http://users.tkk.fi/~tjaalton
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->
-
--- 
-Timo Aaltonen
-Systems Specialist, Aalto IT
-tel. +358-9-47024317, mobile: +358-50-5918781
-http://users.tkk.fi/~tjaalton
