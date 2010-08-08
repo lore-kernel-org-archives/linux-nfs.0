@@ -1,107 +1,159 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:15964 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:64680 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752188Ab0HFNbH convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 6 Aug 2010 09:31:07 -0400
-Subject: Re: [PATCH 2/2] We should clear NFS_DELEGATED_STATE after return
- delegation
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Bian Naimeng <biannm@cn.fujitsu.com>
-Cc: linux-nfs@vger.kernel.org
-In-Reply-To: <4C5B8B48.4050008@cn.fujitsu.com>
-References: <4C592F85.8070308@cn.fujitsu.com>
-	 <4C59306A.9090302@cn.fujitsu.com>
-	 <1280925913.3011.23.camel@heimdal.trondhjem.org>
-	 <4C5A213F.9000506@cn.fujitsu.com>
-	 <1281013423.2948.1.camel@heimdal.trondhjem.org>
-	 <4C5B8B48.4050008@cn.fujitsu.com>
-Content-Type: text/plain; charset="UTF-8"
-Date: Fri, 06 Aug 2010 09:30:47 -0400
-Message-ID: <1281101448.3586.11.camel@heimdal.trondhjem.org>
+	id S1754488Ab0HHPy3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 8 Aug 2010 11:54:29 -0400
+From: Valerie Aurora <vaurora@redhat.com>
+To: Alexander Viro <viro@zeniv.linux.org.uk>
+Cc: Miklos Szeredi <miklos@szeredi.hu>, Jan Blunck <jblunck@suse.de>,
+        Christoph Hellwig <hch@infradead.org>, linux-kernel@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, David Woodhouse <dwmw2@infradead.org>,
+        Valerie Aurora <vaurora@redhat.com>, linux-nfs@vger.kernel.org,
+        "J. Bruce Fields" <bfields@fieldses.org>, Neil Brown <neilb@suse.de>
+Subject: [PATCH 05/39] whiteout/NFSD: Don't return information about whiteouts to userspace
+Date: Sun,  8 Aug 2010 11:52:22 -0400
+Message-Id: <1281282776-5447-6-git-send-email-vaurora@redhat.com>
+In-Reply-To: <1281282776-5447-1-git-send-email-vaurora@redhat.com>
+References: <1281282776-5447-1-git-send-email-vaurora@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Fri, 2010-08-06 at 12:10 +0800, Bian Naimeng wrote:
-> 
-> Trond Myklebust 写道:
-> > On Thu, 2010-08-05 at 10:26 +0800, Bian Naimeng wrote:
-> >>> On Wed, 2010-08-04 at 17:18 +0800, Bian Naimeng wrote:
-> >>>> We should clear NFS_DELEGATED_STATE bit for inode->open_states after return delegation.
-> >>>>
-> 
->     ... snip ...
-> 
-> >>  Thanks Trond.
-> >>  But why we must remove test_and_clear_bit behind memcmp?
-> >>
-> >>  Always test_bit and memcmp have same result, and I think test_and_clear_bit is fast 
-> >>  than memcmp, so i suggest we should call test_and_clear_bit first. right?
-> > 
-> > We can't clear the bit before the memcmp() test. What we could do is
-> > keep the current test_bit() and then do a clear_bit after the memcmp().
-> > 
-> 
->   When i apply the patch, my test still fail. 
-> 
->    The ctx->state will set set after open success, but this ctx add to the
->   the nfsi->open_files when we call nfs_open that is so early. So maybe
->   there are some states can be found at nfsi->open_states, but not at
->   ctx->state of nfsi->open_files, so we will miss clear NFS_DELEGATED_STATE
->   for these state.
-> 
-> Regards
->  Bian Naimeng
-> 
-> --------------------------------------------------
-> 
-> NFSv4: Remember to clear NFS_DELEGATED_STATE in nfs_delegation_claim_opens
-> 
-> Signed-off-by: Bian Naimeng <biannm@cn.fujitsu.com>
-> 
-> ---
->  fs/nfs/delegation.c |   15 +++++++++++----
->  1 files changed, 11 insertions(+), 4 deletions(-)
-> 
-> diff --git a/fs/nfs/delegation.c b/fs/nfs/delegation.c
-> index 3016345..94a63e3 100644
-> --- a/fs/nfs/delegation.c
-> +++ b/fs/nfs/delegation.c
-> @@ -94,7 +94,7 @@ static int nfs_delegation_claim_opens(struct inode *inode, const nfs4_stateid *s
->  	struct nfs_inode *nfsi = NFS_I(inode);
->  	struct nfs_open_context *ctx;
->  	struct nfs4_state *state;
-> -	int err;
-> +	int err = 0;
->  
->  again:
->  	spin_lock(&inode->i_lock);
-> @@ -112,12 +112,19 @@ again:
->  		if (err >= 0)
->  			err = nfs_delegation_claim_locks(ctx, state);
->  		put_nfs_open_context(ctx);
-> -		if (err != 0)
-> -			return err;
-> +		if (err != 0) {
-> +			spin_lock(&inode->i_lock);
-> +			break;
-> +		}
->  		goto again;
->  	}
-> +
-> +	list_for_each_entry(state, &nfsi->open_states, inode_states) {
-> +		clear_bit(NFS_DELEGATED_STATE, &state->flags);
-> +	}
-> +
->  	spin_unlock(&inode->i_lock);
-> -	return 0;
-> +	return err;
->  }
->  
+From: Jan Blunck <jblunck@suse.de>
 
-I still don't see why this should be necessary. In the case of a server
-reboot or network partition, the state recovery thread ought to be
-taking care of this for us.
+Userspace isn't ready for handling another file type, so silently drop
+whiteout directory entries before they leave the kernel.
 
-Cheers
-  Trond
+Signed-off-by: Jan Blunck <jblunck@suse.de>
+Signed-off-by: David Woodhouse <dwmw2@infradead.org>
+Signed-off-by: Valerie Aurora <vaurora@redhat.com>
+Cc: linux-nfs@vger.kernel.org
+Cc: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Neil Brown <neilb@suse.de>
+---
+ fs/compat.c       |    9 +++++++++
+ fs/nfsd/nfs3xdr.c |    5 +++++
+ fs/nfsd/nfs4xdr.c |    5 +++++
+ fs/nfsd/nfsxdr.c  |    4 ++++
+ fs/readdir.c      |    9 +++++++++
+ 5 files changed, 32 insertions(+), 0 deletions(-)
+
+diff --git a/fs/compat.c b/fs/compat.c
+index 6490d21..7e7b3a4 100644
+--- a/fs/compat.c
++++ b/fs/compat.c
+@@ -912,6 +912,9 @@ static int compat_fillonedir(void *__buf, const char *name, int namlen,
+ 	struct compat_old_linux_dirent __user *dirent;
+ 	compat_ulong_t d_ino;
+ 
++	if (d_type == DT_WHT)
++		return 0;
++
+ 	if (buf->result)
+ 		return -EINVAL;
+ 	d_ino = ino;
+@@ -983,6 +986,9 @@ static int compat_filldir(void *__buf, const char *name, int namlen,
+ 	compat_ulong_t d_ino;
+ 	int reclen = ALIGN(NAME_OFFSET(dirent) + namlen + 2, sizeof(compat_long_t));
+ 
++	if (d_type == DT_WHT)
++		return 0;
++
+ 	buf->error = -EINVAL;	/* only used if we fail.. */
+ 	if (reclen > buf->count)
+ 		return -EINVAL;
+@@ -1072,6 +1078,9 @@ static int compat_filldir64(void * __buf, const char * name, int namlen, loff_t
+ 	int reclen = ALIGN(jj + namlen + 1, sizeof(u64));
+ 	u64 off;
+ 
++	if (d_type == DT_WHT)
++		return 0;
++
+ 	buf->error = -EINVAL;	/* only used if we fail.. */
+ 	if (reclen > buf->count)
+ 		return -EINVAL;
+diff --git a/fs/nfsd/nfs3xdr.c b/fs/nfsd/nfs3xdr.c
+index 2a533a0..9b96f5a 100644
+--- a/fs/nfsd/nfs3xdr.c
++++ b/fs/nfsd/nfs3xdr.c
+@@ -885,6 +885,11 @@ encode_entry(struct readdir_cd *ccd, const char *name, int namlen,
+ 	int		elen;		/* estimated entry length in words */
+ 	int		num_entry_words = 0;	/* actual number of words */
+ 
++	if (d_type == DT_WHT) {
++		cd->common.err = nfs_ok;
++		return 0;
++	}
++
+ 	if (cd->offset) {
+ 		u64 offset64 = offset;
+ 
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index ac17a70..fb67254 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -2279,6 +2279,11 @@ nfsd4_encode_dirent(void *ccdv, const char *name, int namlen,
+ 		return 0;
+ 	}
+ 
++	if (d_type == DT_WHT) {
++		cd->common.err = nfs_ok;
++		return 0;
++	}
++
+ 	if (cd->offset)
+ 		xdr_encode_hyper(cd->offset, (u64) offset);
+ 
+diff --git a/fs/nfsd/nfsxdr.c b/fs/nfsd/nfsxdr.c
+index 4ce005d..0e57d4b 100644
+--- a/fs/nfsd/nfsxdr.c
++++ b/fs/nfsd/nfsxdr.c
+@@ -503,6 +503,10 @@ nfssvc_encode_entry(void *ccdv, const char *name,
+ 			namlen, name, offset, ino);
+ 	 */
+ 
++	if (d_type == DT_WHT) {
++		cd->common.err = nfs_ok;
++		return 0;
++	}
+ 	if (offset > ~((u32) 0)) {
+ 		cd->common.err = nfserr_fbig;
+ 		return -EINVAL;
+diff --git a/fs/readdir.c b/fs/readdir.c
+index 7723401..3a48491 100644
+--- a/fs/readdir.c
++++ b/fs/readdir.c
+@@ -77,6 +77,9 @@ static int fillonedir(void * __buf, const char * name, int namlen, loff_t offset
+ 	struct old_linux_dirent __user * dirent;
+ 	unsigned long d_ino;
+ 
++	if (d_type == DT_WHT)
++		return 0;
++
+ 	if (buf->result)
+ 		return -EINVAL;
+ 	d_ino = ino;
+@@ -154,6 +157,9 @@ static int filldir(void * __buf, const char * name, int namlen, loff_t offset,
+ 	unsigned long d_ino;
+ 	int reclen = ALIGN(NAME_OFFSET(dirent) + namlen + 2, sizeof(long));
+ 
++	if (d_type == DT_WHT)
++		return 0;
++
+ 	buf->error = -EINVAL;	/* only used if we fail.. */
+ 	if (reclen > buf->count)
+ 		return -EINVAL;
+@@ -239,6 +245,9 @@ static int filldir64(void * __buf, const char * name, int namlen, loff_t offset,
+ 	struct getdents_callback64 * buf = (struct getdents_callback64 *) __buf;
+ 	int reclen = ALIGN(NAME_OFFSET(dirent) + namlen + 1, sizeof(u64));
+ 
++	if (d_type == DT_WHT)
++		return 0;
++
+ 	buf->error = -EINVAL;	/* only used if we fail.. */
+ 	if (reclen > buf->count)
+ 		return -EINVAL;
+-- 
+1.6.3.3
+
