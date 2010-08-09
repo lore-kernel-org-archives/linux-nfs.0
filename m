@@ -1,18 +1,16 @@
 From: Yuehai Xu <yuehaixu@gmail.com>
 Subject: is nfsd sync or async?
-Date: Mon, 9 Aug 2010 08:00:17 -0400
-Message-ID: <AANLkTimU8OCKCaj0b5Ueg__c5DKSKGJWxoZUNK5xeyHk@mail.gmail.com>
+Date: Mon, 9 Aug 2010 09:02:51 -0400
+Message-ID: <AANLkTimvSygr1DqMnc97RVsaXik9s+iFRHUaXrHPyYiQ@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
-Cc: yhxu-jgEIgUtgKzeHXe+LvDLADg@public.gmane.org, green.trace@gmail.com
-To: linux-nfs@vger.kernel.org
+Cc: yhxu-jgEIgUtgKzeHXe+LvDLADg@public.gmane.org
+To: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-wy0-f174.google.com ([74.125.82.174]:52299 "EHLO
+Received: from mail-wy0-f174.google.com ([74.125.82.174]:60061 "EHLO
 	mail-wy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756162Ab0HIMAT (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 9 Aug 2010 08:00:19 -0400
-Received: by wyb39 with SMTP id 39so9774820wyb.19
-        for <linux-nfs@vger.kernel.org>; Mon, 09 Aug 2010 05:00:18 -0700 (PDT)
+	with ESMTP id S1756238Ab0HINCx (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 9 Aug 2010 09:02:53 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
@@ -29,6 +27,6 @@ served, without considering which clients the request belongs to? Or
 nfsd just dispatch async requests to the lower level as soon as it
 receives a request?
 
-Any answer will be appreciate!
+Any answer will be appreciated!
 
 Yuehai
