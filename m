@@ -1,113 +1,206 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cantor.suse.de ([195.135.220.2]:50749 "EHLO mx1.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750970Ab0HSCo2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 18 Aug 2010 22:44:28 -0400
-Date: Thu, 19 Aug 2010 12:44:13 +1000
-From: Neil Brown <neilb@suse.de>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Chuck Lever <chuck.lever@oracle.com>, Alan Cox <alan@lxorguk.ukuu.org.uk>,
-        "Patrick J. LoPresti" <lopresti@gmail.com>,
-        Andi Kleen <andi@firstfloor.org>, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-kernel <linux-kernel@vger.kernel.org>
-Subject: Re: Proposal: Use hi-res clock for file timestamps
-Message-ID: <20100819124413.77ca8baf@notabene>
-In-Reply-To: <20100819020803.GA30151@fieldses.org>
-References: <20100817182920.GD18161@basil.fritz.box>
-	<20100817190447.GA28049@fieldses.org>
-	<AANLkTi=w1UA5ZZDBigpxMiL7A7DnbnQhLkg62JZpC6Ri@mail.gmail.com>
-	<20100817203941.729830b7@lxorguk.ukuu.org.uk>
-	<20100817192937.GD26609@fieldses.org>
-	<20100818155359.66b9ddb6@notabene>
-	<20100818173203.GC32430@fieldses.org>
-	<0F91AB9D-0E14-4384-ADD6-0A467C3ABFAC@oracle.com>
-	<20100819094136.24fef59b@notabene>
-	<20100819105218.7620ec29@notabene>
-	<20100819020803.GA30151@fieldses.org>
-Content-Type: text/plain; charset=US-ASCII
+Received: from rcsinet10.oracle.com ([148.87.113.121]:27912 "EHLO
+	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S933030Ab0HJTR7 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 10 Aug 2010 15:17:59 -0400
+Subject: Re: Tuning NFS client write pagecache
+Content-Type: text/plain; charset=us-ascii
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <AANLkTimeSG-WFONJsopxvOXwQmeeA5yoHMfOtdoHgmM7@mail.gmail.com>
+Date: Tue, 10 Aug 2010 13:16:38 -0600
+Cc: Trond Myklebust <trond.myklebust@fys.uio.no>, Jim Rees <rees@umich.edu>,
+        Matthew Hodgson <matthew@mxtelecom.com>, linux-nfs@vger.kernel.org
+Message-Id: <A041F24E-574F-4737-85A0-47D626663392@oracle.com>
+References: <4C5BFE47.8020905@mxtelecom.com> <20100806132620.GA2921@merit.edu> <AANLkTin_pg7GCw9jcB2JK+0TbGu+MrQEcv4H_qAg_A3H@mail.gmail.com> <1281116260.2900.6.camel@heimdal.trondhjem.org> <AANLkTimArNXgDSJeHrqsdAhCQo_O0=bhRuqsQEp0ofN7@mail.gmail.com> <1281123565.2900.17.camel@heimdal.trondhjem.org> <AANLkTin7Q_X6Ovy3Q2XYqWUbNd57XauGsDQGekU=DSf1@mail.gmail.com> <98DC3FB9-72A7-44CF-AB8B-914F2379B01B@oracle.com> <AANLkTimeSG-WFONJsopxvOXwQmeeA5yoHMfOtdoHgmM7@mail.gmail.com>
+To: Peter Chacko <peterchacko35@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, 18 Aug 2010 22:08:03 -0400
-"J. Bruce Fields" <bfields@fieldses.org> wrote:
 
-> On Thu, Aug 19, 2010 at 10:52:18AM +1000, Neil Brown wrote:
-> > On Thu, 19 Aug 2010 09:41:36 +1000
-> > Neil Brown <neilb@suse.de> wrote:
-> > 
-> > > So I agree that this is probably more of an issue for directories than for
-> > > files, and that implementing it just for directories would be a sensible
-> > > first step with lower expected overhead - just my reasoning seems to be a bit
-> > > different.
-> > 
-> > Just to be sure we are on the same page:
-> >   file_update_time would always refer to current_nfsd_time, but nfsd would
-> >   only update current_nfsd_time when a directory was examined (and the other
-> >   conditions were met).
-> > 
-> > 
-> > So my current thinking on how this would look - names have been changed:
-> > 
-> >  - global timespec 'current_fs_precise_time' is zeroed when
-> >    current_kernel_time moves backwards and is protected by a seqlock
-> > 
-> >  - current_fs_time would be
-> >          now = max(current_kernel_time(), current_fs_precise_time)
-> >          return timespec_trunc(now, sb->s_time_gran)
-> >    (with appropriate seqlock protection)
-> > 
-> >  - new function in fs/inode.c
-> >          get_precise_time(timestamp)
+On Aug 10, 2010, at 11:52 AM, Peter Chacko wrote:
+
+> Dear chuck,
 > 
-> Odd name for something that returns nothing of interest;
-> bump_precise_time() might be closer?
+> Yes, if we perform a bulk cp operations, data need not go through
+> network, if both source and destination are on the NFS...if thats not
+> the case, we have to move data across network...
 > 
-> And unique_time might be better than precise_time, since the property
-> we're asking for is that mtime on a changed file by new?  (Or
-> versioned_time?)
+> Most of the time, NFS (or NAS for that matter) best serve the
+> enterprise as a D2D backup destination. Either backup server is NFS or
+> media server is NFS client.
+> 
+> Its very beneficial if NFS can start its business in DIO mode.....so
+> that backup admins can just write simple scripts to move terabytes of
+> data ...without buying any exotic backup software....
 
-Agreed on both counts, tough I'm not keen on 'bump' myself.
-  got_unique_time()
-because that it what we just did...  I prefer the name to reflect why the
-function is called, rather than what the function is expected to do about it.
-  never_use_this_timestamp_again(timestamp)
-:-?
+I believe there is a command line flag on the common utilities to operate in direct I/O mode.  I'm not in front of Linux right now, so I can't check if this is still true.  If that's the case, it would be simple to modify scripts to specify that flag when doing data copies.
 
+> And caching itself is not useful  for any streaming datapath.(Be it
+> NFS cache,or memory cache or cpu cache or even a web cache).. backup
+> is write-only operation, for all file objects...
+
+No one is suggesting otherwise.  Our user space file system interfaces allow plenty of flexibility here.  You can specify O_DIRECT or use madvise_foo(3) or fadvise_foo(3) to make the kernel behave as needed.
+
+The problem here is there really is no good way to get the kernel to guess what an application needs.  It will almost always guess wrong in some important cases.
+
+> if application needs, we should have a mechanism to mount NFS client
+> FS, without enabling client caching...
+
+We have a mechanism for disabling caching on a per-file basis.  This is fine-grained control.  I've never found a compelling reason to enable it at once across a whole file system, yet there are good reasons not to allow such a thing, and focus only on individual files and applications.
+
+> See veritas VxFS avoids disk caching for Databases, through QuickIO
+> option.....We should have a similar mechanisms for NFS....
+
+Database scalability is exactly why I wrote the Linux NFS client's O_DIRECT support.
+
+> Whats your thoughts ? what are the architectural/design level issues
+> we will encounter,
+> if we bring this feature to NFS? Is there any patch available for this ?
+
+Support for uncached I/O has been in the Linux NFS client since RHAS 2.1, and available upstream since roughly 2.4.20 (yes, 2.4, not 2.6).
+
+> How does V4 fare here ?
+
+NFSv4 supports direct I/O just like the other versions of the protocol.  Direct I/O is version agnostic.
 
 > 
-> >                 cft = current_fs_time()
-> >                 if (timestamp == cft)
-> 		     /*
-> 		      * Make sure the next mtime stored will be
-> 		      * something different from timestamp:
-> 		      */
-> >                    write_seqlock()
-> >                    if cft == current_fs_precise_time
-> >                         current_fs_precise_time.tv_nsec++
-> >                    else if cft > current_fs_precise_time
-> 
-> What's the cft < current_fs_precise_time case?
+> On Tue, Aug 10, 2010 at 9:57 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
+>> 
+>> On Aug 6, 2010, at 9:15 PM, Peter Chacko wrote:
+>> 
+>>> I think you are not understanding the use case of a  file-system wide,
+>>> non-cached IO for NFS.
+>>> 
+>>> Imagine a case when a unix shell programmer  create a backup
+>>> script,who doesn't know C programming or system calls....he just wants
+>>> to use a  cp -R sourcedir  /targetDir.  Where targetDir is an NFS
+>>> mounted share.
+>>> 
+>>> How can we use programmatical , per file-session interface to O_DIRECT
+>>> flag here ?
+>>> 
+>>> We need a file-system wide direct IO mechanisms ,the best place to
+>>> have is at the mount time. We cannot tell all sysadmins to go and
+>>> learn programming....or backup vendors to change their code that they
+>>> wrote 10 - 12 years ago...... Operating system functionalities should
+>>> cover a large audience, with different levels of  training/skills.
+>>> 
+>>> I hope you got my point here....
+>> 
+>> The reason Linux doesn't support a filesystem wide option is that direct I/O has as much potential to degrade performance as it does to improve it.  The performance degradation can affect other applications on the same file system and other clients connected to the same server.  So it can be an exceptionally unfriendly thing to do for your neighbors if an application is stupid or malicious.
+>> 
+>> To make direct I/O work well, applications have to use it sparingly and appropriately.  They usually maintain their own buffer cache in lieu of the client's generic page cache.  Applications like shells and editors depend on an NFS client's local page cache to work well.
+>> 
+>> So, we have chosen to support direct I/O only when each file is opened, not as a file system wide option.  This is a much narrower application of this feature, and has a better chance of helping performance in special cases while not destroying it broadly.
+>> 
+>> So far I haven't read anything here that clearly states a requirement we have overlooked in the past.
+>> 
+>> For your "cp" example, the NFS community is looking at ways to reduce the overhead of file copy operations by offloading them to the server.  The file data doesn't have to travel over the network to the client.  Someone recently said when you leave this kind of choice up to users, they will usually choose exactly the wrong option.  This is a clear case where the system and application developers will choose better than users who have no programming skills.
+>> 
+>> 
+>>> On Sat, Aug 7, 2010 at 1:09 AM, Trond Myklebust
+>>> <trond.myklebust@fys.uio.no> wrote:
+>>>> On Sat, 2010-08-07 at 00:59 +0530, Peter Chacko wrote:
+>>>>> Imagine a third party backup app for which a customer has no source
+>>>>> code. (that doesn't use open system call O_DIRECT mode) backing up
+>>>>> millions of files through NFS....How can we do a non-cached IO to the
+>>>>> target server ?  we cannot use O_DIRECT option here as we don't have
+>>>>> the source code....If we have mount option, its works just right
+>>>>> ....if we can have read-only mounts, why not have a dio-only mount ?
+>>>>> 
+>>>>> A true application-Yaware storage systems(in this case NFS client) ,
+>>>>> which is the next generation storage systems should do, should absorb
+>>>>> the application needs that may apply to the whole FS....
+>>>>> 
+>>>>> i don't say O_DIRECT flag is a bad idea, but it will only work with a
+>>>>> regular application that do IO to some files.....this is not the best
+>>>>> solution when NFS server is used as the storage for secondary data,
+>>>>> where NFS client runs third party applications thats otherwise run
+>>>>> best in a local storage as there is no caching issues....
+>>>>> 
+>>>>> What do you think ?
+>>>> 
+>>>> I think that we've had O_DIRECT support in the kernel for more than six
+>>>> years now. If there are backup vendors out there that haven't been
+>>>> paying attention, then I'd suggest looking at other vendors.
+>>>> 
+>>>> Trond
+>>>> 
+>>>>> On Fri, Aug 6, 2010 at 11:07 PM, Trond Myklebust
+>>>>> <trond.myklebust@fys.uio.no> wrote:
+>>>>>> On Fri, 2010-08-06 at 15:05 +0100, Peter Chacko wrote:
+>>>>>>> Some distributed file systems such as IBM's SANFS, support direct IO
+>>>>>>> to the target storage....without going through a cache... ( This
+>>>>>>> feature is useful, for write only work load....say, we are backing up
+>>>>>>> huge data to an NFS share....).
+>>>>>>> 
+>>>>>>> I think if not available, we should add a DIO mount option, that tell
+>>>>>>> the VFS not to cache any data, so that close operation will not stall.
+>>>>>> 
+>>>>>> Ugh no! Applications that need direct IO should be using open(O_DIRECT),
+>>>>>> not relying on hacks like mount options.
+>>>>>> 
+>>>>>>> With the open-to-close , cache coherence protocol of NFS, an
+>>>>>>> aggressive caching client, is a performance downer for many work-loads
+>>>>>>> that is write-mostly.
+>>>>>> 
+>>>>>> We already have full support for vectored aio/dio in the NFS for those
+>>>>>> applications that want to use it.
+>>>>>> 
+>>>>>> Trond
+>>>>>> 
+>>>>>>> 
+>>>>>>> 
+>>>>>>> 
+>>>>>>> On Fri, Aug 6, 2010 at 2:26 PM, Jim Rees <rees@umich.edu> wrote:
+>>>>>>>> Matthew Hodgson wrote:
+>>>>>>>> 
+>>>>>>>>  Is there any way to tune the linux NFSv3 client to prefer to write
+>>>>>>>>  data straight to an async-mounted server, rather than having large
+>>>>>>>>  writes to a file stack up in the local pagecache before being synced
+>>>>>>>>  on close()?
+>>>>>>>> 
+>>>>>>>> It's been a while since I've done this, but I think you can tune this with
+>>>>>>>> vm.dirty_writeback_centisecs and vm.dirty_background_ratio sysctls.  The
+>>>>>>>> data will still go through the page cache but you can reduce the amount that
+>>>>>>>> stacks up.
+>>>>>>>> 
+>>>>>>>> There are other places where the data can get buffered, like the rpc layer,
+>>>>>>>> but it won't sit there any longer than it takes for it to go out the wire.
+>>>>>>>> --
+>>>>>>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>>>>>>>> the body of a message to majordomo@vger.kernel.org
+>>>>>>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>>>>>>> 
+>>>>>>> --
+>>>>>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>>>>>>> the body of a message to majordomo@vger.kernel.org
+>>>>>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>>>>> 
+>>>>>> 
+>>>>>> 
+>>>>>> 
+>>>> 
+>>>> 
+>>>> 
+>>>> 
+>>> --
+>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>>> the body of a message to majordomo@vger.kernel.org
+>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>> 
+>> --
+>> Chuck Lever
+>> chuck[dot]lever[at]oracle[dot]com
+>> 
+>> 
+>> 
+>> 
 
-The current_fs_precise_time has been incremented with a resolution higher
-than s_time_gran.  i.e. s_time_gran > 1.
-I'm not really sure what we want to do about that.
-Maybe we should be incrementing tv_nsec by s_time_gran as long as that is
-significantly less than jiffies_to_usec(1)*1000, but I don't know what I mean
-by 'significantly'.
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
 
-The only values I can find for s_time_gran in current code are 1, 100, 1000
-and 1000000000.
-All those are either way bigger than a jiffie or significantly smaller, but
-suppose a filesystem came along that chose 1000000 (i.e. millisecond
-timestamps) - should we increment tv_nsec by 1000000, or not, or cross that
-bridge when we come to it?
 
-For reference:
-  default is 1000000000  (this would cover ext2, ext3, reiserfs, fat, sysv, ...)
-  cifs, smbfs, ntfs are 100
-  udf, ceph are 1000
-  rest (btrfs, ext4, gfs2, jfs, nilfs, ocfs2, xfs and virtual filesystems) are 1
-
-NeilBrown
 
