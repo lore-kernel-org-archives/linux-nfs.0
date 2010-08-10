@@ -1,175 +1,149 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail1-relais-roc.national.inria.fr ([192.134.164.82]:36655 "EHLO
-	mail1-relais-roc.national.inria.fr" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1754268Ab0HNPDK (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 14 Aug 2010 11:03:10 -0400
-Message-ID: <4C66ADF2.9030700@inria.fr>
-Date: Sat, 14 Aug 2010 16:53:38 +0200
-From: Guillaume Rousse <Guillaume.Rousse@inria.fr>
-To: linux-nfs@vger.kernel.org
-Subject: [patch] fix description of nfsversion mount option
-Content-Type: multipart/signed; protocol="application/pkcs7-signature"; micalg=sha1; boundary="------------ms020404070904090006010907"
+Received: from rcsinet10.oracle.com ([148.87.113.121]:53063 "EHLO
+	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932202Ab0HJQ3G convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 10 Aug 2010 12:29:06 -0400
+Subject: Re: Tuning NFS client write pagecache
+Content-Type: text/plain; charset=us-ascii
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <AANLkTin7Q_X6Ovy3Q2XYqWUbNd57XauGsDQGekU=DSf1@mail.gmail.com>
+Date: Tue, 10 Aug 2010 10:27:22 -0600
+Cc: Trond Myklebust <trond.myklebust@fys.uio.no>, Jim Rees <rees@umich.edu>,
+        Matthew Hodgson <matthew@mxtelecom.com>, linux-nfs@vger.kernel.org
+Message-Id: <98DC3FB9-72A7-44CF-AB8B-914F2379B01B@oracle.com>
+References: <4C5BFE47.8020905@mxtelecom.com> <20100806132620.GA2921@merit.edu> <AANLkTin_pg7GCw9jcB2JK+0TbGu+MrQEcv4H_qAg_A3H@mail.gmail.com> <1281116260.2900.6.camel@heimdal.trondhjem.org> <AANLkTimArNXgDSJeHrqsdAhCQo_O0=bhRuqsQEp0ofN7@mail.gmail.com> <1281123565.2900.17.camel@heimdal.trondhjem.org> <AANLkTin7Q_X6Ovy3Q2XYqWUbNd57XauGsDQGekU=DSf1@mail.gmail.com>
+To: Peter Chacko <peterchacko35@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
---------------ms020404070904090006010907
-Content-Type: multipart/mixed;
- boundary="------------010408050106000307050103"
 
-This is a multi-part message in MIME format.
---------------010408050106000307050103
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: quoted-printable
+On Aug 6, 2010, at 9:15 PM, Peter Chacko wrote:
 
-Hello list.
+> I think you are not understanding the use case of a  file-system wide,
+> non-cached IO for NFS.
+> 
+> Imagine a case when a unix shell programmer  create a backup
+> script,who doesn't know C programming or system calls....he just wants
+> to use a  cp -R sourcedir  /targetDir.  Where targetDir is an NFS
+> mounted share.
+> 
+> How can we use programmatical , per file-session interface to O_DIRECT
+> flag here ?
+> 
+> We need a file-system wide direct IO mechanisms ,the best place to
+> have is at the mount time. We cannot tell all sysadmins to go and
+> learn programming....or backup vendors to change their code that they
+> wrote 10 - 12 years ago...... Operating system functionalities should
+> cover a large audience, with different levels of  training/skills.
+> 
+> I hope you got my point here....
 
-Here is a first patch trying to update a little bit nfs-utils
-documentation. I'd like also to change the constant opposition of 'nfs'
-vs 'nfs4' filesystems in this man page, but I have no clue if the plan
-is to remove 'nfs4' filesystem completly, or to keep for compatibility
-purpose. In the first case, I'd just remove any occurence of it in the
-man page, in the second case, I'm less sure about what to do.
+The reason Linux doesn't support a filesystem wide option is that direct I/O has as much potential to degrade performance as it does to improve it.  The performance degradation can affect other applications on the same file system and other clients connected to the same server.  So it can be an exceptionally unfriendly thing to do for your neighbors if an application is stupid or malicious.
 
-Also, I really think NEWS and ChangeLOG files should be either dropped,
-or merged and updated.
---=20
-BOFH excuse #295:
+To make direct I/O work well, applications have to use it sparingly and appropriately.  They usually maintain their own buffer cache in lieu of the client's generic page cache.  Applications like shells and editors depend on an NFS client's local page cache to work well.
 
-The Token fell out of the ring. Call us when you find it.
+So, we have chosen to support direct I/O only when each file is opened, not as a file system wide option.  This is a much narrower application of this feature, and has a better chance of helping performance in special cases while not destroying it broadly.
 
---------------010408050106000307050103
-Content-Type: text/plain;
- name="0001-fix-description-of-nfsversion-mount-option.patch"
-Content-Transfer-Encoding: quoted-printable
-Content-Disposition: attachment;
- filename*0="0001-fix-description-of-nfsversion-mount-option.patch"
+So far I haven't read anything here that clearly states a requirement we have overlooked in the past.
 
-=46rom b03afedc798ff96cab3d5b174ed620fd126abb71 Mon Sep 17 00:00:00 2001
-From: Guillaume Rousse <Guillaume.Rousse@inria.fr>
-Date: Sat, 14 Aug 2010 16:46:59 +0200
-Subject: [PATCH] fix description of nfsversion mount option
-
----
- utils/mount/nfs.man |   11 +++--------
- 1 files changed, 3 insertions(+), 8 deletions(-)
-
-diff --git a/utils/mount/nfs.man b/utils/mount/nfs.man
-index c64de5f..3806635 100644
---- a/utils/mount/nfs.man
-+++ b/utils/mount/nfs.man
-@@ -623,14 +623,9 @@ in such cases.
- .TP 1.5i
- .BI nfsvers=3D n
- The NFS protocol version number used to contact the server's NFS service=
-=2E
--The Linux client supports version 2 and version 3 of the NFS protocol
--when using the file system type
--.BR nfs .
--If the server does not support the requested version,
--the mount request fails.
--If this option is not specified, the client attempts to use version 3,
--but negotiates the NFS version with the server if version 3 support
--is not available.
-+If the server does not support the requested version, the mount request =
-fails.
-+If this option is not specified, the client negociate a suitable version=
- with
-+the server, trying version 4 first, version 3 second, and version 2 last=
-=2E
- .TP 1.5i
- .BI vers=3D n
- This option is an alternative to the
---=20
-1.7.2.1
+For your "cp" example, the NFS community is looking at ways to reduce the overhead of file copy operations by offloading them to the server.  The file data doesn't have to travel over the network to the client.  Someone recently said when you leave this kind of choice up to users, they will usually choose exactly the wrong option.  This is a clear case where the system and application developers will choose better than users who have no programming skills.
 
 
---------------010408050106000307050103--
+> On Sat, Aug 7, 2010 at 1:09 AM, Trond Myklebust
+> <trond.myklebust@fys.uio.no> wrote:
+>> On Sat, 2010-08-07 at 00:59 +0530, Peter Chacko wrote:
+>>> Imagine a third party backup app for which a customer has no source
+>>> code. (that doesn't use open system call O_DIRECT mode) backing up
+>>> millions of files through NFS....How can we do a non-cached IO to the
+>>> target server ?  we cannot use O_DIRECT option here as we don't have
+>>> the source code....If we have mount option, its works just right
+>>> ....if we can have read-only mounts, why not have a dio-only mount ?
+>>> 
+>>> A true application-Yaware storage systems(in this case NFS client) ,
+>>> which is the next generation storage systems should do, should absorb
+>>> the application needs that may apply to the whole FS....
+>>> 
+>>> i don't say O_DIRECT flag is a bad idea, but it will only work with a
+>>> regular application that do IO to some files.....this is not the best
+>>> solution when NFS server is used as the storage for secondary data,
+>>> where NFS client runs third party applications thats otherwise run
+>>> best in a local storage as there is no caching issues....
+>>> 
+>>> What do you think ?
+>> 
+>> I think that we've had O_DIRECT support in the kernel for more than six
+>> years now. If there are backup vendors out there that haven't been
+>> paying attention, then I'd suggest looking at other vendors.
+>> 
+>> Trond
+>> 
+>>> On Fri, Aug 6, 2010 at 11:07 PM, Trond Myklebust
+>>> <trond.myklebust@fys.uio.no> wrote:
+>>>> On Fri, 2010-08-06 at 15:05 +0100, Peter Chacko wrote:
+>>>>> Some distributed file systems such as IBM's SANFS, support direct IO
+>>>>> to the target storage....without going through a cache... ( This
+>>>>> feature is useful, for write only work load....say, we are backing up
+>>>>> huge data to an NFS share....).
+>>>>> 
+>>>>> I think if not available, we should add a DIO mount option, that tell
+>>>>> the VFS not to cache any data, so that close operation will not stall.
+>>>> 
+>>>> Ugh no! Applications that need direct IO should be using open(O_DIRECT),
+>>>> not relying on hacks like mount options.
+>>>> 
+>>>>> With the open-to-close , cache coherence protocol of NFS, an
+>>>>> aggressive caching client, is a performance downer for many work-loads
+>>>>> that is write-mostly.
+>>>> 
+>>>> We already have full support for vectored aio/dio in the NFS for those
+>>>> applications that want to use it.
+>>>> 
+>>>> Trond
+>>>> 
+>>>>> 
+>>>>> 
+>>>>> 
+>>>>> On Fri, Aug 6, 2010 at 2:26 PM, Jim Rees <rees@umich.edu> wrote:
+>>>>>> Matthew Hodgson wrote:
+>>>>>> 
+>>>>>>  Is there any way to tune the linux NFSv3 client to prefer to write
+>>>>>>  data straight to an async-mounted server, rather than having large
+>>>>>>  writes to a file stack up in the local pagecache before being synced
+>>>>>>  on close()?
+>>>>>> 
+>>>>>> It's been a while since I've done this, but I think you can tune this with
+>>>>>> vm.dirty_writeback_centisecs and vm.dirty_background_ratio sysctls.  The
+>>>>>> data will still go through the page cache but you can reduce the amount that
+>>>>>> stacks up.
+>>>>>> 
+>>>>>> There are other places where the data can get buffered, like the rpc layer,
+>>>>>> but it won't sit there any longer than it takes for it to go out the wire.
+>>>>>> --
+>>>>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>>>>>> the body of a message to majordomo@vger.kernel.org
+>>>>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>>>>> 
+>>>>> --
+>>>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>>>>> the body of a message to majordomo@vger.kernel.org
+>>>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>>> 
+>>>> 
+>>>> 
+>>>> 
+>> 
+>> 
+>> 
+>> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
---------------ms020404070904090006010907
-Content-Type: application/pkcs7-signature; name="smime.p7s"
-Content-Transfer-Encoding: base64
-Content-Disposition: attachment; filename="smime.p7s"
-Content-Description: S/MIME Cryptographic Signature
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
 
-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
-ZSBpbmZvcm1hdGlvbiwgc2VlIGh0dHA6Ly9pZ2MubmF0aW9uYWwuaW5yaWEuZnIvSU5SSUEt
-UGx1cy8wHQYDVR0OBBYEFD+CnY/KyRES90CCG8DhJB8NbU12MFUGA1UdIwROMEyAFJHAF8Y6
-2la4MgATiUt86phKUBRWoTGkLzAtMQswCQYDVQQGEwJGUjEOMAwGA1UEChMFSU5SSUExDjAM
-BgNVBAMTBUlOUklBggEAMFcGA1UdHwRQME4wTKBKoEiGRmh0dHA6Ly9pZ2MubmF0aW9uYWwu
-aW5yaWEuZnIvY2dpLWJpbi9sb2FkLmNybD9DQT1JTlJJQS1QbHVzJmZvcm1hdD1ERVIwDQYJ
-KoZIhvcNAQEFBQADggEBAGH29zuA2RJK2k2uRm2q1zvk1qYABAsElHUoeeNZVux4GLnKR+Zc
-o/ZAzxhZGzdx57esdyIAY032g2m5PZmnjSV1WH37eA0bBn6khFiMSuAhvHFoHqTxGyzysrke
-TuC9nFjtImPfc24pGiTg7AOdHnFePq24C2uoTS7j89nTCaWcNpXSp1lu4B2P59hsE57c5tKR
-u095sPVDbqrDHQeojlPyBRq7iJORbQWhnY0rYNMR0D+iYmXANleD3OxDnudoEmJgKL2T6Epp
-dyhqhpLoxdpknogcYH8dSEacYq4w3VjIIEPKLaiWDqIQHSEoS7b7z2XdiFVGuuGejYOHcM7P
-3bgwggSRMIIDeaADAgECAgFGMA0GCSqGSIb3DQEBBQUAMDIxCzAJBgNVBAYTAkZSMQ4wDAYD
-VQQKEwVJTlJJQTETMBEGA1UEAxMKSU5SSUEtUGx1czAeFw0wOTEyMDcxMDI2MzhaFw0xMDEy
-MDcxMDI2MzhaMHMxCzAJBgNVBAYTAkZSMQ4wDAYDVQQKEwVJTlJJQTEPMA0GA1UECxMGU2Fj
-bGF5MRkwFwYDVQQDExBHdWlsbGF1bWUgUm91c3NlMSgwJgYJKoZIhvcNAQkBFhlHdWlsbGF1
-bWUuUm91c3NlQGlucmlhLmZyMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA6BzO
-Sg9EJzwAN2h4UvpoPzyFjQQihljeipMOm+2n2QpscCrgZ7JPXLP8W6hWTIhaICsuoLPHsGi2
-1Q8xsHSpv3pa0CbeTjXZwYHkHxdO+GZViiUHI6qmzZ92JlKZ58X9evjf8/XBAMPAuKQhIX0o
-6UQmsgUS4sA4WF13t2FN67i+bKBebDxj8b2pkWXlwqiVNJSEws8akdWeARKbzuA+Npzr+gmK
-YAz9UVHGSTbKmL35TuNwb6tMXeQ/0yDLVqNHSOmLClb3bBNYth+qDTw1t4DWGPEmEBl91duI
-dynUwrP5L01azCwbwUzSFSmdscqdXvr6lyiDHfnLaa39Bk1ncwIDAQABo4IBbzCCAWswDAYD
-VR0TAQH/BAIwADARBglghkgBhvhCAQEEBAMCBLAwDgYDVR0PAQH/BAQDAgXgMGkGCWCGSAGG
-+EIBDQRcFlpDZXJ0aWZpY2F0ZSBJTlJJQS1QbHVzLiBGb3IgbW9yZSBpbmZvcm1hdGlvbiwg
-c2VlIGh0dHA6Ly9pZ2MubmF0aW9uYWwuaW5yaWEuZnIvSU5SSUEtUGx1cy8wHQYDVR0OBBYE
-FD+CnY/KyRES90CCG8DhJB8NbU12MFUGA1UdIwROMEyAFJHAF8Y62la4MgATiUt86phKUBRW
-oTGkLzAtMQswCQYDVQQGEwJGUjEOMAwGA1UEChMFSU5SSUExDjAMBgNVBAMTBUlOUklBggEA
-MFcGA1UdHwRQME4wTKBKoEiGRmh0dHA6Ly9pZ2MubmF0aW9uYWwuaW5yaWEuZnIvY2dpLWJp
-bi9sb2FkLmNybD9DQT1JTlJJQS1QbHVzJmZvcm1hdD1ERVIwDQYJKoZIhvcNAQEFBQADggEB
-AGH29zuA2RJK2k2uRm2q1zvk1qYABAsElHUoeeNZVux4GLnKR+Zco/ZAzxhZGzdx57esdyIA
-Y032g2m5PZmnjSV1WH37eA0bBn6khFiMSuAhvHFoHqTxGyzysrkeTuC9nFjtImPfc24pGiTg
-7AOdHnFePq24C2uoTS7j89nTCaWcNpXSp1lu4B2P59hsE57c5tKRu095sPVDbqrDHQeojlPy
-BRq7iJORbQWhnY0rYNMR0D+iYmXANleD3OxDnudoEmJgKL2T6EppdyhqhpLoxdpknogcYH8d
-SEacYq4w3VjIIEPKLaiWDqIQHSEoS7b7z2XdiFVGuuGejYOHcM7P3bgxggKyMIICrgIBATA3
-MDIxCzAJBgNVBAYTAkZSMQ4wDAYDVQQKEwVJTlJJQTETMBEGA1UEAxMKSU5SSUEtUGx1cwIB
-RjAJBgUrDgMCGgUAoIIBUDAYBgkqhkiG9w0BCQMxCwYJKoZIhvcNAQcBMBwGCSqGSIb3DQEJ
-BTEPFw0xMDA4MTQxNDUzMzhaMCMGCSqGSIb3DQEJBDEWBBQH7rYFKGXiX1AUV7QPumy7vauk
-pjBGBgkrBgEEAYI3EAQxOTA3MDIxCzAJBgNVBAYTAkZSMQ4wDAYDVQQKEwVJTlJJQTETMBEG
-A1UEAxMKSU5SSUEtUGx1cwIBRjBIBgsqhkiG9w0BCRACCzE5oDcwMjELMAkGA1UEBhMCRlIx
-DjAMBgNVBAoTBUlOUklBMRMwEQYDVQQDEwpJTlJJQS1QbHVzAgFGMF8GCSqGSIb3DQEJDzFS
-MFAwCwYJYIZIAWUDBAECMAoGCCqGSIb3DQMHMA4GCCqGSIb3DQMCAgIAgDANBggqhkiG9w0D
-AgIBQDAHBgUrDgMCBzANBggqhkiG9w0DAgIBKDANBgkqhkiG9w0BAQEFAASCAQCKUSBJNqCI
-DOhIksmuXKo96iUJYaygj4G4nG2So7+Hi3W5uIL3sQqk9d8jGZQFC1yuTucma6A1W/tm+xb9
-PtUXG2XSjWiCTcXQsu6KrlHuA0mX6hM1FVvd7LW2ami9ut+qgeODLPEdvFt9N2sGRu0xXakT
-ijmnoHwXIMuyaZd0POfgK8svQwxb5YcHnxnp8CITazOtz3E5VB8OckzpaD6IKA7hamvUqldc
-v4wbyhd+2apwsAZEM6Vzq/62PjPP05Dxk1yFTp7BxizNXQNN8bPwlMtvY8v+qKOupgZmXCN8
-Lj09ql6nsFOVWOzqkG+i2BPNp7DE7FOAwLP7UHeWf1eIAAAAAAAA
 
---------------ms020404070904090006010907--
+
