@@ -1,95 +1,190 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ew0-f46.google.com ([209.85.215.46]:49377 "EHLO
-	mail-ew0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751050Ab0HSFtY (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 19 Aug 2010 01:49:24 -0400
-Received: by ewy23 with SMTP id 23so963709ewy.19
-        for <linux-nfs@vger.kernel.org>; Wed, 18 Aug 2010 22:49:23 -0700 (PDT)
-Message-ID: <4C6CC5DF.7060708@panasas.com>
-Date: Thu, 19 Aug 2010 08:49:19 +0300
-From: Benny Halevy <bhalevy@panasas.com>
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 1/4] sunrpc: don't shorten buflen twice in xdr_shrink_pagelen
-References: <4C6C4565.1070603@panasas.com>	 <1282164159-20283-1-git-send-email-bhalevy@panasas.com>	 <1282166814.8540.119.camel@heimdal.trondhjem.org> <1282169797.8540.125.camel@heimdal.trondhjem.org>
-In-Reply-To: <1282169797.8540.125.camel@heimdal.trondhjem.org>
-Content-Type: text/plain; charset=UTF-8
+Received: from mail-fx0-f46.google.com ([209.85.161.46]:51063 "EHLO
+	mail-fx0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932260Ab0HJRwJ convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 10 Aug 2010 13:52:09 -0400
+Received: by fxm13 with SMTP id 13so869054fxm.19
+        for <linux-nfs@vger.kernel.org>; Tue, 10 Aug 2010 10:52:07 -0700 (PDT)
+In-Reply-To: <98DC3FB9-72A7-44CF-AB8B-914F2379B01B@oracle.com>
+References: <4C5BFE47.8020905@mxtelecom.com>
+	<20100806132620.GA2921@merit.edu>
+	<AANLkTin_pg7GCw9jcB2JK+0TbGu+MrQEcv4H_qAg_A3H@mail.gmail.com>
+	<1281116260.2900.6.camel@heimdal.trondhjem.org>
+	<AANLkTimArNXgDSJeHrqsdAhCQo_O0=bhRuqsQEp0ofN7@mail.gmail.com>
+	<1281123565.2900.17.camel@heimdal.trondhjem.org>
+	<AANLkTin7Q_X6Ovy3Q2XYqWUbNd57XauGsDQGekU=DSf1@mail.gmail.com>
+	<98DC3FB9-72A7-44CF-AB8B-914F2379B01B@oracle.com>
+Date: Tue, 10 Aug 2010 23:22:07 +0530
+Message-ID: <AANLkTimeSG-WFONJsopxvOXwQmeeA5yoHMfOtdoHgmM7@mail.gmail.com>
+Subject: Re: Tuning NFS client write pagecache
+From: Peter Chacko <peterchacko35@gmail.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: Trond Myklebust <trond.myklebust@fys.uio.no>, Jim Rees <rees@umich.edu>,
+        Matthew Hodgson <matthew@mxtelecom.com>, linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Aug. 19, 2010, 1:16 +0300, Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
-> On Wed, 2010-08-18 at 17:26 -0400, Trond Myklebust wrote:
->> On Wed, 2010-08-18 at 23:42 +0300, Benny Halevy wrote:
->>> On Jan. 14, 2009, 2:50 +0200, andros@netapp.com wrote:
->>>> From: Andy Adamson <andros@netapp.com>
+Dear chuck,
+
+Yes, if we perform a bulk cp operations, data need not go through
+network, if both source and destination are on the NFS...if thats not
+the case, we have to move data across network...
+
+Most of the time, NFS (or NAS for that matter) best serve the
+enterprise as a D2D backup destination. Either backup server is NFS or
+media server is NFS client.
+
+Its very beneficial if NFS can start its business in DIO mode.....so
+that backup admins can just write simple scripts to move terabytes of
+data ...without buying any exotic backup software....
+
+And caching itself is not useful  for any streaming datapath.(Be it
+NFS cache,or memory cache or cpu cache or even a web cache).. backup
+is write-only operation, for all file objects...
+
+if application needs, we should have a mechanism to mount NFS client
+FS, without enabling client caching...
+
+See veritas VxFS avoids disk caching for Databases, through QuickIO
+option.....We should have a similar mechanisms for NFS....
+
+Whats your thoughts ? what are the architectural/design level issues
+we will encounter,
+if we bring this feature to NFS? Is there any patch available for this ?
+
+How does V4 fare here ?
+
+On Tue, Aug 10, 2010 at 9:57 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
+>
+> On Aug 6, 2010, at 9:15 PM, Peter Chacko wrote:
+>
+>> I think you are not understanding the use case of a  file-system wide,
+>> non-cached IO for NFS.
+>>
+>> Imagine a case when a unix shell programmer  create a backup
+>> script,who doesn't know C programming or system calls....he just wants
+>> to use a  cp -R sourcedir  /targetDir.  Where targetDir is an NFS
+>> mounted share.
+>>
+>> How can we use programmatical , per file-session interface to O_DIRECT
+>> flag here ?
+>>
+>> We need a file-system wide direct IO mechanisms ,the best place to
+>> have is at the mount time. We cannot tell all sysadmins to go and
+>> learn programming....or backup vendors to change their code that they
+>> wrote 10 - 12 years ago...... Operating system functionalities should
+>> cover a large audience, with different levels of  training/skills.
+>>
+>> I hope you got my point here....
+>
+> The reason Linux doesn't support a filesystem wide option is that direct I/O has as much potential to degrade performance as it does to improve it.  The performance degradation can affect other applications on the same file system and other clients connected to the same server.  So it can be an exceptionally unfriendly thing to do for your neighbors if an application is stupid or malicious.
+>
+> To make direct I/O work well, applications have to use it sparingly and appropriately.  They usually maintain their own buffer cache in lieu of the client's generic page cache.  Applications like shells and editors depend on an NFS client's local page cache to work well.
+>
+> So, we have chosen to support direct I/O only when each file is opened, not as a file system wide option.  This is a much narrower application of this feature, and has a better chance of helping performance in special cases while not destroying it broadly.
+>
+> So far I haven't read anything here that clearly states a requirement we have overlooked in the past.
+>
+> For your "cp" example, the NFS community is looking at ways to reduce the overhead of file copy operations by offloading them to the server.  The file data doesn't have to travel over the network to the client.  Someone recently said when you leave this kind of choice up to users, they will usually choose exactly the wrong option.  This is a clear case where the system and application developers will choose better than users who have no programming skills.
+>
+>
+>> On Sat, Aug 7, 2010 at 1:09 AM, Trond Myklebust
+>> <trond.myklebust@fys.uio.no> wrote:
+>>> On Sat, 2010-08-07 at 00:59 +0530, Peter Chacko wrote:
+>>>> Imagine a third party backup app for which a customer has no source
+>>>> code. (that doesn't use open system call O_DIRECT mode) backing up
+>>>> millions of files through NFS....How can we do a non-cached IO to the
+>>>> target server ?  we cannot use O_DIRECT option here as we don't have
+>>>> the source code....If we have mount option, its works just right
+>>>> ....if we can have read-only mounts, why not have a dio-only mount ?
 >>>>
->>>> The buflen is reset for all cases at the end of xdr_shrink_pagelen.
->>>> The data left in the tail after xdr_read_pages is not processed when the
->>>> buflen is incorrectly set.
+>>>> A true application-Yaware storage systems(in this case NFS client) ,
+>>>> which is the next generation storage systems should do, should absorb
+>>>> the application needs that may apply to the whole FS....
+>>>>
+>>>> i don't say O_DIRECT flag is a bad idea, but it will only work with a
+>>>> regular application that do IO to some files.....this is not the best
+>>>> solution when NFS server is used as the storage for secondary data,
+>>>> where NFS client runs third party applications thats otherwise run
+>>>> best in a local storage as there is no caching issues....
+>>>>
+>>>> What do you think ?
 >>>
->>> Note that in this case we also lose (len - tail->iov_len)
->>> bytes from the buffered data in pages.
->>
->> We don't really need to do that. The amount of free space in the tail
->> (as opposed to space occupied by data) can be calculated as:
->>
->> buf->buflen - buf->head->iov_len - buf->page_len - buf->tail->iov_len;
->>
-> Something like the following:
-> 
-> ---------------------------------------------------------------------------------------------
-> SUNRPC: Don't truncate tail data unnecessarily in xdr_shrink_pagelen
-> 
-> From: Trond Myklebust <Trond.Myklebust@netapp.com>
-> 
-> If we have unused buffer space, then we should make use of that rather
-> than unnecessarily truncating the message.
-
-Makes sense.
-The patch looks good to me.
-
-Benny
-
-> 
-> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-> ---
-> 
->  net/sunrpc/xdr.c |   11 ++++++++++-
->  1 files changed, 10 insertions(+), 1 deletions(-)
-> 
-> 
-> diff --git a/net/sunrpc/xdr.c b/net/sunrpc/xdr.c
-> index 3317db3..3bbef7f 100644
-> --- a/net/sunrpc/xdr.c
-> +++ b/net/sunrpc/xdr.c
-> @@ -396,12 +396,21 @@ xdr_shrink_pagelen(struct xdr_buf *buf, size_t len)
->  	struct kvec *tail;
->  	size_t copy;
->  	unsigned int pglen = buf->page_len;
-> +	unsigned int tailbuf_len;
->  
->  	tail = buf->tail;
->  	BUG_ON (len > pglen);
->  
-> +	tailbuf_len = buf->buflen - buf->head->iov_len - buf->page_len;
-> +
->  	/* Shift the tail first */
-> -	if (tail->iov_len != 0) {
-> +	if (tailbuf_len != 0) {
-> +		unsigned int free_space = tailbuf_len - tail->iov_len;
-> +
-> +		if (len < free_space)
-> +			free_space = len;
-> +		tail->iov_len += free_space;
-> +
->  		copy = len;
->  		if (tail->iov_len > len) {
->  			char *p = (char *)tail->iov_base + len;
-> 
-> 
+>>> I think that we've had O_DIRECT support in the kernel for more than six
+>>> years now. If there are backup vendors out there that haven't been
+>>> paying attention, then I'd suggest looking at other vendors.
+>>>
+>>> Trond
+>>>
+>>>> On Fri, Aug 6, 2010 at 11:07 PM, Trond Myklebust
+>>>> <trond.myklebust@fys.uio.no> wrote:
+>>>>> On Fri, 2010-08-06 at 15:05 +0100, Peter Chacko wrote:
+>>>>>> Some distributed file systems such as IBM's SANFS, support direct IO
+>>>>>> to the target storage....without going through a cache... ( This
+>>>>>> feature is useful, for write only work load....say, we are backing up
+>>>>>> huge data to an NFS share....).
+>>>>>>
+>>>>>> I think if not available, we should add a DIO mount option, that tell
+>>>>>> the VFS not to cache any data, so that close operation will not stall.
+>>>>>
+>>>>> Ugh no! Applications that need direct IO should be using open(O_DIRECT),
+>>>>> not relying on hacks like mount options.
+>>>>>
+>>>>>> With the open-to-close , cache coherence protocol of NFS, an
+>>>>>> aggressive caching client, is a performance downer for many work-loads
+>>>>>> that is write-mostly.
+>>>>>
+>>>>> We already have full support for vectored aio/dio in the NFS for those
+>>>>> applications that want to use it.
+>>>>>
+>>>>> Trond
+>>>>>
+>>>>>>
+>>>>>>
+>>>>>>
+>>>>>> On Fri, Aug 6, 2010 at 2:26 PM, Jim Rees <rees@umich.edu> wrote:
+>>>>>>> Matthew Hodgson wrote:
+>>>>>>>
+>>>>>>>  Is there any way to tune the linux NFSv3 client to prefer to write
+>>>>>>>  data straight to an async-mounted server, rather than having large
+>>>>>>>  writes to a file stack up in the local pagecache before being synced
+>>>>>>>  on close()?
+>>>>>>>
+>>>>>>> It's been a while since I've done this, but I think you can tune this with
+>>>>>>> vm.dirty_writeback_centisecs and vm.dirty_background_ratio sysctls.  The
+>>>>>>> data will still go through the page cache but you can reduce the amount that
+>>>>>>> stacks up.
+>>>>>>>
+>>>>>>> There are other places where the data can get buffered, like the rpc layer,
+>>>>>>> but it won't sit there any longer than it takes for it to go out the wire.
+>>>>>>> --
+>>>>>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>>>>>>> the body of a message to majordomo@vger.kernel.org
+>>>>>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>>>>>>
+>>>>>> --
+>>>>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>>>>>> the body of a message to majordomo@vger.kernel.org
+>>>>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>>>>
+>>>>>
+>>>>>
+>>>>>
+>>>
+>>>
+>>>
+>>>
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
 > --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
+> Chuck Lever
+> chuck[dot]lever[at]oracle[dot]com
+>
+>
+>
+>
