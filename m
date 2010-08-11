@@ -1,156 +1,239 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ey0-f174.google.com ([209.85.215.174]:57553 "EHLO
-	mail-ey0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755826Ab0H3QTb convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Aug 2010 12:19:31 -0400
-Received: by eyg5 with SMTP id 5so3317354eyg.19
-        for <linux-nfs@vger.kernel.org>; Mon, 30 Aug 2010 09:19:30 -0700 (PDT)
-In-Reply-To: <alpine.DEB.2.00.1008301101560.10316@router.home>
-References: <AANLkTikWR_YSnx=4=KAodATpX+xO9+hj-cf7_e158f4d@mail.gmail.com>
-	<AANLkTi=gj901aF_84+40j9MhvAwNJSNB8qRnpY8o0gBZ@mail.gmail.com>
-	<AANLkTinEoMgXLvN4MvfnCHjHtHCwV1HDP67BoKQ3ZbQx@mail.gmail.com>
-	<alpine.DEB.2.00.1008301101560.10316@router.home>
-Date: Mon, 30 Aug 2010 09:19:30 -0700
-Message-ID: <AANLkTinieSM_-x4qra7_HOCsONFAdyjn3LQbyBDJRebT@mail.gmail.com>
-Subject: Re: fsync/wb deadlocks in 2.6.32
-From: Kian Mohageri <kian.mohageri@gmail.com>
-To: Christoph Lameter <cl@linux.com>
-Cc: davidr@ressman.org, linux-nfs@vger.kernel.org, cl@linux-foundation.com
-Content-Type: text/plain; charset=UTF-8
+Received: from mx1.redhat.com ([209.132.183.28]:1971 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932612Ab0HKIiv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 11 Aug 2010 04:38:51 -0400
+From: David Howells <dhowells@redhat.com>
+Subject: [PATCH 2/3] DNS: If the DNS server returns an error,
+	allow that to be cached [ver #2]
+To: smfrench@gmail.com, torvalds@osdl.org, akpm@linux-foundation.org
+Cc: linux-afs@lists.infradead.org, linux-kernel@vger.kernel.org,
+        linux-cifs@vger.kernel.org, linux-nfs@vger.kernel.org,
+        Wang Lei <wang840925@gmail.com>, David Howells <dhowells@redhat.com>,
+        Jeff Layton <jlayton@redhat.com>
+Date: Wed, 11 Aug 2010 09:37:58 +0100
+Message-ID: <20100811083758.19001.88653.stgit@warthog.procyon.org.uk>
+In-Reply-To: <20100811083753.19001.28878.stgit@warthog.procyon.org.uk>
+References: <20100811083753.19001.28878.stgit@warthog.procyon.org.uk>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Mon, Aug 30, 2010 at 9:04 AM, Christoph Lameter <cl@linux.com> wrote:
-> On Fri, 27 Aug 2010, Kian Mohageri wrote:
->
->> Just happened upon this message.  My symptoms are a little different,
->> however, and I'm still investigating the possibility of a faulty drive
->> on the NFS server.... but thought I'd chime in anyway:
->
-> Its a bit troublesome that a faulty drive on an NFS server could cause
-> kernel backtraces to show up on the NFS client. The faulty NFS server
-> should also give you some indication that there are issues with the drive.
-> Does it?
->
+From: Wang Lei <wang840925@gmail.com>
 
-Some other messages in the logs on the NFS server pointed me to the
-possibility of disk failure, for example (there are more instances of
-similar messages, and they correspond to times when I see NFS
-problems):
+If the DNS server returns an error, allow that to be cached in the DNS resolver
+key in lieu of a value.  Userspace passes the desired error number as an option
+in the payload:
 
-Aug 24 08:17:51 www01 kernel: [143799.812353] ata3.00: configured for UDMA/133
-Aug 24 08:17:51 www01 kernel: [143799.812365] ata3: EH complete
-Aug 24 08:17:58 www01 kernel: [143806.844363] ata3.00: configured for UDMA/133
-Aug 24 08:17:58 www01 kernel: [143806.844372] ata3: EH complete
-Aug 24 08:18:05 www01 kernel: [143813.868368] ata3.00: configured for UDMA/133
-Aug 24 08:18:05 www01 kernel: [143813.868382] sd 2:0:0:0: [sda]
-Unhandled sense code
-Aug 24 08:18:05 www01 kernel: [143813.868383] sd 2:0:0:0: [sda]
-Result: hostbyte=DID_OK driverbyte=DRIVER_SENSE
-Aug 24 08:18:05 www01 kernel: [143813.868386] sd 2:0:0:0: [sda] Sense
-Key : Medium Error [current] [descriptor]
-Aug 24 08:18:05 www01 kernel: [143813.868390] Descriptor sense data
-with sense descriptors (in hex):
-Aug 24 08:18:05 www01 kernel: [143813.868392]         72 03 11 04 00
-00 00 0c 00 0a 80 00 00 00 00 00
-Aug 24 08:18:05 www01 kernel: [143813.868398]         03 41 18 c8
-Aug 24 08:18:05 www01 kernel: [143813.868400] sd 2:0:0:0: [sda] Add.
-Sense: Unrecovered read error - auto reallocate failed
-Aug 24 08:18:05 www01 kernel: [143813.868404] sd 2:0:0:0: [sda] CDB:
-Read(10): 28 00 03 41 18 c8 00 00 08 00
-Aug 24 08:18:05 www01 kernel: [143813.868456] ata3: EH complete
-Aug 24 08:18:12 www01 kernel: [143820.892365] ata3.00: configured for UDMA/133
-Aug 24 08:18:12 www01 kernel: [143820.892375] ata3: EH complete
-Aug 24 08:18:19 www01 kernel: [143827.917368] ata3.00: configured for UDMA/133
-Aug 24 08:18:19 www01 kernel: [143827.917381] ata3: EH complete
-Aug 24 08:18:26 www01 kernel: [143834.940364] ata3.00: configured for UDMA/133
-Aug 24 08:18:26 www01 kernel: [143834.940378] ata3: EH complete
-Aug 24 08:18:33 www01 kernel: [143841.964365] ata3.00: configured for UDMA/133
-Aug 24 08:18:33 www01 kernel: [143841.964372] ata3: EH complete
-Aug 24 08:18:41 www01 kernel: [143848.992358] ata3.00: configured for UDMA/133
-Aug 24 08:18:41 www01 kernel: [143848.992374] ata3: EH complete
-Aug 24 08:18:48 www01 kernel: [143856.016368] ata3.00: configured for UDMA/133
-Aug 24 08:18:48 www01 kernel: [143856.016381] sd 2:0:0:0: [sda]
-Unhandled sense code
-Aug 24 08:18:48 www01 kernel: [143856.016383] sd 2:0:0:0: [sda]
-Result: hostbyte=DID_OK driverbyte=DRIVER_SENSE
-Aug 24 08:18:48 www01 kernel: [143856.016386] sd 2:0:0:0: [sda] Sense
-Key : Medium Error [current] [descriptor]
-Aug 24 08:18:48 www01 kernel: [143856.016389] Descriptor sense data
-with sense descriptors (in hex):
-Aug 24 08:18:48 www01 kernel: [143856.016391]         72 03 11 04 00
-00 00 0c 00 0a 80 00 00 00 00 00
-Aug 24 08:18:48 www01 kernel: [143856.016397]         03 ca d8 a0
-Aug 24 08:18:48 www01 kernel: [143856.016400] sd 2:0:0:0: [sda] Add.
-Sense: Unrecovered read error - auto reallocate failed
-Aug 24 08:18:48 www01 kernel: [143856.016403] sd 2:0:0:0: [sda] CDB:
-Read(10): 28 00 03 ca d8 a0 00 00 08 00
-Aug 24 08:18:48 www01 kernel: [143856.016459] ata3: EH complete
-Aug 24 08:18:55 www01 kernel: [143863.040364] ata3.00: configured for UDMA/133
-Aug 24 08:18:55 www01 kernel: [143863.040374] ata3: EH complete
-Aug 24 08:19:02 www01 kernel: [143870.064363] ata3.00: configured for UDMA/133
-Aug 24 08:19:02 www01 kernel: [143870.064379] ata3: EH complete
-Aug 24 08:19:09 www01 kernel: [143877.088360] ata3.00: configured for UDMA/133
-Aug 24 08:19:09 www01 kernel: [143877.088376] ata3: EH complete
-Aug 24 08:19:12 www01 kernel: [143880.704093] kjournald     D
-0000000000000002     0   309      2 0x00000000
-Aug 24 08:19:12 www01 kernel: [143880.704097]  ffff88012fad8710
-0000000000000046 0000000000000002 0000000000015640
-Aug 24 08:19:12 www01 kernel: [143880.704101]  0000000000015640
-0000000000015640 000000000000f8a0 ffff88012bcbdfd8
-Aug 24 08:19:12 www01 kernel: [143880.704104]  0000000000015640
-0000000000015640 ffff88012bccb170 ffff88012bccb468
-Aug 24 08:19:12 www01 kernel: [143880.704107] Call Trace:
-Aug 24 08:19:12 www01 kernel: [143880.704116]  [<ffffffff8103fe62>] ?
-update_curr+0xa6/0x147
-Aug 24 08:19:12 www01 kernel: [143880.704121]  [<ffffffff810170d9>] ?
-read_tsc+0xa/0x20
-Aug 24 08:19:12 www01 kernel: [143880.704125]  [<ffffffff8110d2f8>] ?
-sync_buffer+0x0/0x40
-Aug 24 08:19:12 www01 kernel: [143880.704129]  [<ffffffff812f9549>] ?
-io_schedule+0x73/0xb7
-Aug 24 08:19:12 www01 kernel: [143880.704132]  [<ffffffff8110d333>] ?
-sync_buffer+0x3b/0x40
-Aug 24 08:19:12 www01 kernel: [143880.704134]  [<ffffffff812f9a56>] ?
-__wait_on_bit+0x41/0x70
-Aug 24 08:19:12 www01 kernel: [143880.704136]  [<ffffffff8110d2f8>] ?
-sync_buffer+0x0/0x40
-Aug 24 08:19:12 www01 kernel: [143880.704139]  [<ffffffff812f9af0>] ?
-out_of_line_wait_on_bit+0x6b/0x77
-Aug 24 08:19:12 www01 kernel: [143880.704143]  [<ffffffff81064b28>] ?
-wake_bit_function+0x0/0x23
-Aug 24 08:19:12 www01 kernel: [143880.704158]  [<ffffffffa01391d1>] ?
-journal_commit_transaction+0x508/0xe2b [jbd]
-Aug 24 08:19:12 www01 kernel: [143880.704163]  [<ffffffff8105a4ac>] ?
-lock_timer_base+0x26/0x4b
-Aug 24 08:19:12 www01 kernel: [143880.704167]  [<ffffffffa013c423>] ?
-kjournald+0xdf/0x226 [jbd]
-Aug 24 08:19:12 www01 kernel: [143880.704169]  [<ffffffff81064afa>] ?
-autoremove_wake_function+0x0/0x2e
-Aug 24 08:19:12 www01 kernel: [143880.704173]  [<ffffffffa013c344>] ?
-kjournald+0x0/0x226 [jbd]
-Aug 24 08:19:12 www01 kernel: [143880.704176]  [<ffffffff8106482d>] ?
-kthread+0x79/0x81
-Aug 24 08:19:12 www01 kernel: [143880.704179]  [<ffffffff81011baa>] ?
-child_rip+0xa/0x20
-Aug 24 08:19:12 www01 kernel: [143880.704181]  [<ffffffff810647b4>] ?
-kthread+0x0/0x81
-Aug 24 08:19:12 www01 kernel: [143880.704183]  [<ffffffff81011ba0>] ?
-child_rip+0x0/0x20
+	"#dnserror=<number>"
+
+Userspace must map h_errno from the name resolution routines to an appropriate
+Linux error before passing it up.  Something like the following mapping is
+recommended:
+
+	[HOST_NOT_FOUND]	= ENODATA,
+	[TRY_AGAIN]		= EAGAIN,
+	[NO_RECOVERY]		= ECONNREFUSED,
+	[NO_DATA]		= ENODATA,
+
+in lieu of Linux errors specifically for representing name service errors.  The
+filesystem must map these errors appropropriately before passing them to
+userspace.  AFS is made to map ENODATA and EAGAIN to EDESTADDRREQ for the
+return to userspace; ECONNREFUSED is allowed to stand as is.
+
+The error can be seen in /proc/keys as a negative number after the description
+of the key.  Compare, for example, the following key entries:
+
+2f97238c I--Q--     1  53s 3f010000     0     0 dns_resol afsdb:grand.centrall.org: -61
+338bfbbe I--Q--     1  59m 3f010000     0     0 dns_resol afsdb:grand.central.org: 37
 
 
-I'm still running diagnostics on the disk, but SMART did complain
-about at least 1 thing:
+If the error option is supplied in the payload, the main part of the payload is
+discarded.  The key should have an expiry time set by userspace.
 
- Currently unreadable (pending) sectors detected:
- 	/dev/sda [SAT] - 48 Time(s)
- 	5 unreadable sectors detected
+Signed-off-by: Wang Lei <wang840925@gmail.com>
+Signed-off-by: David Howells <dhowells@redhat.com>
+Acked-by: Jeff Layton <jlayton@redhat.com>
+---
 
-Though the numbers are all within their "safe" ranges, and I ran an
-extended test last night which the drive passed :\  Of course
-hardware/software doesn't always fail predictably, but the server ran
-seemingly fine all weekend.
+ fs/afs/cell.c                |    4 ++
+ net/dns_resolver/dns_key.c   |   92 ++++++++++++++++++++++++++++++++++++++++--
+ net/dns_resolver/dns_query.c |    5 ++
+ 3 files changed, 96 insertions(+), 5 deletions(-)
 
-Not sure if there's other information that would be valuable, but let
-me know and I'll provide what I can if it's of use to anyone.
+diff --git a/fs/afs/cell.c b/fs/afs/cell.c
+index ffea35c..d076588 100644
+--- a/fs/afs/cell.c
++++ b/fs/afs/cell.c
+@@ -73,6 +73,10 @@ static struct afs_cell *afs_cell_alloc(const char *name, char *vllist)
+ 	if (!vllist || strlen(vllist) < 7) {
+ 		ret = dns_query("afsdb", name, namelen, "ipv4", &dvllist, NULL);
+ 		if (ret < 0) {
++			if (ret == -ENODATA || ret == -EAGAIN || ret == -ENOKEY)
++				/* translate these errors into something
++				 * userspace might understand */
++				ret = -EDESTADDRREQ;
+ 			_leave(" = %d", ret);
+ 			return ERR_PTR(ret);
+ 		}
+diff --git a/net/dns_resolver/dns_key.c b/net/dns_resolver/dns_key.c
+index 400a04d..739435a 100644
+--- a/net/dns_resolver/dns_key.c
++++ b/net/dns_resolver/dns_key.c
+@@ -29,6 +29,7 @@
+ #include <linux/kernel.h>
+ #include <linux/keyctl.h>
+ #include <linux/err.h>
++#include <linux/seq_file.h>
+ #include <keys/dns_resolver-type.h>
+ #include <keys/user-type.h>
+ #include "internal.h"
+@@ -43,6 +44,8 @@ MODULE_PARM_DESC(debug, "DNS Resolver debugging mask");
+ 
+ const struct cred *dns_resolver_cache;
+ 
++#define	DNS_ERRORNO_OPTION	"dnserror"
++
+ /*
+  * Instantiate a user defined key for dns_resolver.
+  *
+@@ -59,9 +62,10 @@ static int
+ dns_resolver_instantiate(struct key *key, const void *_data, size_t datalen)
+ {
+ 	struct user_key_payload *upayload;
++	unsigned long derrno;
+ 	int ret;
+ 	size_t result_len = 0;
+-	const char *data = _data, *opt;
++	const char *data = _data, *end, *opt;
+ 
+ 	kenter("%%%d,%s,'%s',%zu",
+ 	       key->serial, key->description, data, datalen);
+@@ -71,13 +75,77 @@ dns_resolver_instantiate(struct key *key, const void *_data, size_t datalen)
+ 	datalen--;
+ 
+ 	/* deal with any options embedded in the data */
++	end = data + datalen;
+ 	opt = memchr(data, '#', datalen);
+ 	if (!opt) {
+-		kdebug("no options currently supported");
+-		return -EINVAL;
++		/* no options: the entire data is the result */
++		kdebug("no options");
++		result_len = datalen;
++	} else {
++		const char *next_opt;
++
++		result_len = opt - data;
++		opt++;
++		kdebug("options: '%s'", opt);
++		do {
++			const char *eq;
++			int opt_len, opt_nlen, opt_vlen, tmp;
++
++			next_opt = memchr(opt, '#', end - opt) ?: end;
++			opt_len = next_opt - opt;
++			if (!opt_len) {
++				printk(KERN_WARNING
++				       "Empty option to dns_resolver key %d\n",
++				       key->serial);
++				return -EINVAL;
++			}
++
++			eq = memchr(opt, '=', opt_len) ?: end;
++			opt_nlen = eq - opt;
++			eq++;
++			opt_vlen = next_opt - eq; /* will be -1 if no value */
++
++			tmp = opt_vlen >= 0 ? opt_vlen : 0;
++			kdebug("option '%*.*s' val '%*.*s'",
++			       opt_nlen, opt_nlen, opt, tmp, tmp, eq);
++
++			/* see if it's an error number representing a DNS error
++			 * that's to be recorded as the result in this key */
++			if (opt_nlen == sizeof(DNS_ERRORNO_OPTION) - 1 &&
++			    memcmp(opt, DNS_ERRORNO_OPTION, opt_nlen) == 0) {
++				kdebug("dns error number option");
++				if (opt_vlen <= 0)
++					goto bad_option_value;
++
++				ret = strict_strtoul(eq, 10, &derrno);
++				if (ret < 0)
++					goto bad_option_value;
++
++				if (derrno < 1 || derrno > 511)
++					goto bad_option_value;
++
++				kdebug("dns error no. = %lu", derrno);
++				key->type_data.x[0] = -derrno;
++				continue;
++			}
++
++		bad_option_value:
++			printk(KERN_WARNING
++			       "Option '%*.*s' to dns_resolver key %d:"
++			       " bad/missing value\n",
++			       opt_nlen, opt_nlen, opt, key->serial);
++			return -EINVAL;
++		} while (opt = next_opt + 1, opt < end);
++	}
++
++	/* don't cache the result if we're caching an error saying there's no
++	 * result */
++	if (key->type_data.x[0]) {
++		kleave(" = 0 [h_error %ld]", key->type_data.x[0]);
++		return 0;
+ 	}
+ 
+-	result_len = datalen;
++	kdebug("store result");
+ 	ret = key_payload_reserve(key, result_len);
+ 	if (ret < 0)
+ 		return -EINVAL;
+@@ -135,13 +203,27 @@ no_match:
+ 	return ret;
+ }
+ 
++/*
++ * Describe a DNS key
++ */
++static void dns_resolver_describe(const struct key *key, struct seq_file *m)
++{
++	int err = key->type_data.x[0];
++
++	seq_puts(m, key->description);
++	if (err)
++		seq_printf(m, ": %d", err);
++	else
++		seq_printf(m, ": %u", key->datalen);
++}
++
+ struct key_type key_type_dns_resolver = {
+ 	.name		= "dns_resolver",
+ 	.instantiate	= dns_resolver_instantiate,
+ 	.match		= dns_resolver_match,
+ 	.revoke		= user_revoke,
+ 	.destroy	= user_destroy,
+-	.describe	= user_describe,
++	.describe	= dns_resolver_describe,
+ 	.read		= user_read,
+ };
+ 
+diff --git a/net/dns_resolver/dns_query.c b/net/dns_resolver/dns_query.c
+index 03d5255..c32be29 100644
+--- a/net/dns_resolver/dns_query.c
++++ b/net/dns_resolver/dns_query.c
+@@ -136,6 +136,11 @@ int dns_query(const char *type, const char *name, size_t namelen,
+ 	if (ret < 0)
+ 		goto put;
+ 
++	/* If the DNS server gave an error, return that to the caller */
++	ret = rkey->type_data.x[0];
++	if (ret)
++		goto put;
++
+ 	upayload = rcu_dereference_protected(rkey->payload.data,
+ 					     lockdep_is_held(&rkey->sem));
+ 	len = upayload->datalen;
+
