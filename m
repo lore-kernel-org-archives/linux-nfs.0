@@ -1,52 +1,46 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:41859 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1760574Ab0HEOSJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 5 Aug 2010 10:18:09 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 4/5] NFS: NFS_V4 is no longer an EXPERIMENTAL feature
-Date: Thu,  5 Aug 2010 10:17:51 -0400
-Message-Id: <1281017872-6043-5-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1281017872-6043-4-git-send-email-Trond.Myklebust@netapp.com>
-References: <1281017872-6043-1-git-send-email-Trond.Myklebust@netapp.com>
- <1281017872-6043-2-git-send-email-Trond.Myklebust@netapp.com>
- <1281017872-6043-3-git-send-email-Trond.Myklebust@netapp.com>
- <1281017872-6043-4-git-send-email-Trond.Myklebust@netapp.com>
+Received: from hapkido.dreamhost.com ([66.33.216.122]:57479 "EHLO
+	hapkido.dreamhost.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752251Ab0HKNKs (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 11 Aug 2010 09:10:48 -0400
+Received: from homiemail-a5.g.dreamhost.com (caiajhbdcagg.dreamhost.com [208.97.132.66])
+	by hapkido.dreamhost.com (Postfix) with ESMTP id 375A417AC7F
+	for <linux-nfs@vger.kernel.org>; Wed, 11 Aug 2010 06:10:48 -0700 (PDT)
+Subject: [PATCH] nfs: Remove redundant NULL check upon kfree()
+From: Davidlohr Bueso <dave@gnu.org>
+Reply-To: dave@gnu.org
+To: Trond.Myklebust@netapp.com, linux-nfs@vger.kernel.org
+Cc: linux-fsdevel@vger.kernel.org, LKML <linux-kernel@vger.kernel.org>
+Content-Type: text/plain; charset="UTF-8"
+Date: Wed, 11 Aug 2010 09:10:00 -0400
+Message-ID: <1281532200.2067.7.camel@cowboy>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- fs/nfs/Kconfig |    6 +++---
- 1 files changed, 3 insertions(+), 3 deletions(-)
+nfs: Remove redundant NULL check upon kfree().
 
-diff --git a/fs/nfs/Kconfig b/fs/nfs/Kconfig
-index a43d07e..d55f3f5 100644
---- a/fs/nfs/Kconfig
-+++ b/fs/nfs/Kconfig
-@@ -61,8 +61,8 @@ config NFS_V3_ACL
- 	  If unsure, say N.
+Signed-off-by: Davidlohr Bueso <dave@gnu.org>
+---
+ fs/nfs/nfs4proc.c |    3 +--
+ 1 files changed, 1 insertions(+), 2 deletions(-)
+
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 7ffbb98..6b44bbf 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -2273,8 +2273,7 @@ static int nfs4_get_referral(struct inode *dir, const struct qstr *name, struct
+ out:
+ 	if (page)
+ 		__free_page(page);
+-	if (locations)
+-		kfree(locations);
++	kfree(locations);
+ 	return status;
+ }
  
- config NFS_V4
--	bool "NFS client support for NFS version 4 (EXPERIMENTAL)"
--	depends on NFS_FS && EXPERIMENTAL
-+	bool "NFS client support for NFS version 4"
-+	depends on NFS_FS
- 	select RPCSEC_GSS_KRB5
- 	help
- 	  This option enables support for version 4 of the NFS protocol
-@@ -72,7 +72,7 @@ config NFS_V4
- 	  space programs which can be found in the Linux nfs-utils package,
- 	  available from http://linux-nfs.org/.
- 
--	  If unsure, say N.
-+	  If unsure, say Y.
- 
- config NFS_V4_1
- 	bool "NFS client support for NFSv4.1 (DEVELOPER ONLY)"
 -- 
-1.7.2
+1.7.0.4
+
+
 
