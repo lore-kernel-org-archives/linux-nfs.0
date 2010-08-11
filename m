@@ -1,123 +1,41 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:33864 "EHLO fieldses.org"
+Received: from cantor2.suse.de ([195.135.220.15]:54305 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752072Ab0HSWVP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 19 Aug 2010 18:21:15 -0400
-Date: Thu, 19 Aug 2010 18:19:03 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Bian Naimeng <biannm@cn.fujitsu.com>
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>, linux-nfs@vger.kernel.org,
-        Christoph Hellwig <hch@infradead.org>
-Subject: Re: [PATCH] Server should allow offset larger than LLONG_MAX at
- commit procedure
-Message-ID: <20100819221903.GB9275@fieldses.org>
-References: <4C6B9538.2020608@cn.fujitsu.com>
- <20100819001647.GD18367@fieldses.org>
- <4C6CA739.5030504@cn.fujitsu.com>
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <4C6CA739.5030504@cn.fujitsu.com>
+	id S1757404Ab0HKXKs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 11 Aug 2010 19:10:48 -0400
+Date: Thu, 12 Aug 2010 09:10:41 +1000
+From: Neil Brown <neilb@suse.de>
+To: David Brodbeck <brodbd@u.washington.edu>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: numeric UIDs
+Message-ID: <20100812091041.45362cd9@notabene>
+In-Reply-To: <0969EC03-E225-4265-BADC-582F2089D13E@u.washington.edu>
+References: <201008030401.33552.dreck@vmsd.ath.cx>
+	<20100803164318.GB13896@merit.edu>
+	<20100803192216.GC31579@fieldses.org>
+	<DE966DA98A4ABE438D726BDF1699CF61403FAF9D@MX05A.corp.emc.com>
+	<20100803215704.GA15494@merit.edu>
+	<1280873719.14520.17.camel@heimdal.trondhjem.org>
+	<20100803222337.GA9752@fieldses.org>
+	<1280874675.14520.23.camel@heimdal.trondhjem.org>
+	<20100803224245.GB9752@fieldses.org>
+	<1280887336.24669.23.camel@heimdal.trondhjem.org>
+	<0969EC03-E225-4265-BADC-582F2089D13E@u.washington.edu>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Thu, Aug 19, 2010 at 11:38:33AM +0800, Bian Naimeng wrote:
-> 
-> 
-> J. Bruce Fields 写道:
-> > On Wed, Aug 18, 2010 at 04:09:28PM +0800, Bian Naimeng wrote:
-> >> When offset larger than LLONG_MAX, it's better to sync all the data of file
-> >> than return nfserr_inval.
-> > 
-> > I believe the current behavior is correct.
-> > 
-> > See http://marc.info/?l=linux-nfs&m=128200558207974&w=2 for a pynfs-side
-> > fix.
-> > 
-> 
->   Thanks.
-> 
->   But why we must return nfserr_inval at nfs layer, the commitarg.offset and
->   writearg.offset are the U64 type, i think maybe we should set the vfs as the
->   authority not nfs for whether the offset is valid when it over 2^63-1.
+On Wed, 4 Aug 2010 10:06:05 -0700
+David Brodbeck <brodbd@u.washington.edu> wrote:
 
-Hm, good question.  I took a quick look at vfs_fsync_range() and its
-other callers but couldn't immediately tell whether checking the
-validity of the range is its responsibility or the caller's.
-
-If you can demonstrate that vfs_fsync_range() takes responsibility for
-the range-checking, then I'd be fine with removing the checks here.
-
->   Maybe some day, VFS can support lager offset,
-
-But then I think LLONG_MAX and/or the definition of loff_t would have to
-change.
-
---b.
-
-> we need modify our nfs code again
->   to fit it. So i think which check offset at nfsd4_write and nfsd4_commit is 
->   unnecessary, looks like VFS can return EINVAL for it.
-
-
+> I've been looking at it for a while, because the 16-group limit is a problem for us, but it's a huge ball of wax.  I understand the security benefits, but the sheer complexity of setting it up and then coming up with workarounds for ticket expiration has me a bit cowed.
 > 
-> -- 
-> Regards
-> Bian Naimeng
-> 
-> > --b.
-> > 
-> >> Signed-off-by: Bian Naimeng <biannm@cn.fujitsu.com>
-> >>
-> >> ---
-> >>  fs/nfsd/vfs.c |   14 ++++++++------
-> >>  1 files changed, 8 insertions(+), 6 deletions(-)
-> >>
-> >> diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-> >> index 96360a8..f67fe31 100644
-> >> --- a/fs/nfsd/vfs.c
-> >> +++ b/fs/nfsd/vfs.c
-> >> @@ -1174,20 +1174,23 @@ nfsd_commit(struct svc_rqst *rqstp, struct svc_fh *fhp,
-> >>  {
-> >>  	struct file	*file;
-> >>  	loff_t		end = LLONG_MAX;
-> >> -	__be32		err = nfserr_inval;
-> >> +	__be32		err;
-> >> +
-> >> +	if ((u64)count > ‾(u64)offset)
-> >> +		return nfserr_inval;
-> >>  
-> >>  	if (offset < 0)
-> >> -		goto out;
-> >> -	if (count != 0) {
-> >> +		offset = 0;
-> >> +	else if (count != 0) {
-> >>  		end = offset + (loff_t)count - 1;
-> >>  		if (end < offset)
-> >> -			goto out;
-> >> +			end = LLONG_MAX;
-> >>  	}
-> >>  
-> >>  	err = nfsd_open(rqstp, fhp, S_IFREG,
-> >>  			NFSD_MAY_WRITE|NFSD_MAY_NOT_BREAK_LEASE, &file);
-> >>  	if (err)
-> >> -		goto out;
-> >> +		return err;
-> >>  	if (EX_ISSYNC(fhp->fh_export)) {
-> >>  		int err2 = vfs_fsync_range(file, offset, end, 0);
-> >>  
-> >> @@ -1198,7 +1201,6 @@ nfsd_commit(struct svc_rqst *rqstp, struct svc_fh *fhp,
-> >>  	}
-> >>  
-> >>  	nfsd_close(file);
-> >> -out:
-> >>  	return err;
-> >>  }
-> >>  #endif /* CONFIG_NFSD_V3 */
-> >> -- 
-> >> 1.6.5.2
-> 
-> 
-> -- 
-> Regards
-> Bian Naimeng
-> 
+
+The 16-group limit is easily avoidable if you use Linux as your NFS server
+and a given uid maps to the same gids on both client and server.
+Just run mounted with "--manage-gids".
+Then the gid list on an incoming request will be ignored, and replace with a
+gid list obtained by doing a password/group lookup on the server.
+
+NeilBrown
