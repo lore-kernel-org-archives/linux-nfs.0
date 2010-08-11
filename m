@@ -1,68 +1,62 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:41859 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1760574Ab0HEOSG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 5 Aug 2010 10:18:06 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 3/5] NFS: Fix /proc/mount for legacy binary interface
-Date: Thu,  5 Aug 2010 10:17:50 -0400
-Message-Id: <1281017872-6043-4-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1281017872-6043-3-git-send-email-Trond.Myklebust@netapp.com>
-References: <1281017872-6043-1-git-send-email-Trond.Myklebust@netapp.com>
- <1281017872-6043-2-git-send-email-Trond.Myklebust@netapp.com>
- <1281017872-6043-3-git-send-email-Trond.Myklebust@netapp.com>
+Received: from rcsinet10.oracle.com ([148.87.113.121]:24454 "EHLO
+	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754327Ab0HKQGl convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 11 Aug 2010 12:06:41 -0400
+Subject: Re: Tuning NFS client write pagecache
+Content-Type: text/plain; charset=us-ascii
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <AANLkTin-6OWetGMi-F7n3VnuJg0dh27tdN-C=jHR5hw+@mail.gmail.com>
+Date: Wed, 11 Aug 2010 10:05:32 -0600
+Cc: "linux-nfs@vger.kernel.org Mailing list" <linux-nfs@vger.kernel.org>
+Message-Id: <1EDC250A-9F5E-4353-A78D-0A16B2612BBD@oracle.com>
+References: <4C5BFE47.8020905@mxtelecom.com> <20100806132620.GA2921@merit.edu> <AANLkTin_pg7GCw9jcB2JK+0TbGu+MrQEcv4H_qAg_A3H@mail.gmail.com> <1281116260.2900.6.camel@heimdal.trondhjem.org> <AANLkTimArNXgDSJeHrqsdAhCQo_O0=bhRuqsQEp0ofN7@mail.gmail.com> <1281123565.2900.17.camel@heimdal.trondhjem.org> <AANLkTin7Q_X6Ovy3Q2XYqWUbNd57XauGsDQGekU=DSf1@mail.gmail.com> <98DC3FB9-72A7-44CF-AB8B-914F2379B01B@oracle.com> <0A97A441BFADC74EA1E299A79C69DF9213F109F3B2@orsmsx504.amr.corp.intel.com> <3DFB27D5-7AFE-4D03-AB35-9BCCBD5C6CA6@oracle.com> <AANLkTin-6OWetGMi-F7n3VnuJg0dh27tdN-C=jHR5hw+@mail.gmail.com>
+To: Peter Chacko <peterchacko35@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Bryan Schumaker <bjschuma@netapp.com>
+[ Trimming CC: list ]
 
-Add a flag so we know if we mounted the NFS server using the legacy
-binary interface.  If we used the legacy interface, then we should not
-show the mountd options.
+On Aug 10, 2010, at 8:09 PM, Peter Chacko wrote:
 
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- fs/nfs/super.c            |    4 ++++
- include/linux/nfs_mount.h |    1 +
- 2 files changed, 5 insertions(+), 0 deletions(-)
+> Chuck,
+> 
+> Ok i will then check to see the command line option to request the DIO
+> mode for NFS, as you suggested.
+> 
+> yes i other wise I fully understand the need of client caching.....for
+> desktop bound or any general purpose applications... AFS, cacheFS are
+> all good products in its own right.....but the only problem in such
+> cases are cache coherence issues...(i mean other application clientss
+> are not guaranteed to get the latest data,on their read) ..as NFS
+> honor only open-to-close session semantics.
+> 
+> The situation i have is that,
+> 
+> we have a data protection product, that has agents on indvidual
+> servers and a  storage gateway.(which is an NFS mounted box). The only
+> purpose of this box is to store all data, in a streaming write
+> mode.....for all the data coming from 10s of agents....essentially
+> this acts like a VTL target....from this node, to NFS server node,
+> there is no data travelling in the reverse path (or from the client
+> cache to the application).
+> 
+> THis is the only use we put NFS under....
+> 
+> For recovery, its again a streamed read...... we never updating the
+> read data, or re-reading the updated data....This is special , single
+> function box.....
+> 
+> What do you think the best mount options for this scenario ?
 
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index f9df16d..f1ae39f 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -546,6 +546,9 @@ static void nfs_show_mountd_options(struct seq_file *m, struct nfs_server *nfss,
- {
- 	struct sockaddr *sap = (struct sockaddr *)&nfss->mountd_address;
- 
-+	if (nfss->flags & NFS_MOUNT_LEGACY_INTERFACE)
-+		return;
-+
- 	switch (sap->sa_family) {
- 	case AF_INET: {
- 		struct sockaddr_in *sin = (struct sockaddr_in *)sap;
-@@ -1780,6 +1783,7 @@ static int nfs_validate_mount_data(void *options,
- 		 * can deal with.
- 		 */
- 		args->flags		= data->flags & NFS_MOUNT_FLAGMASK;
-+		args->flags		|= NFS_MOUNT_LEGACY_INTERFACE;
- 		args->rsize		= data->rsize;
- 		args->wsize		= data->wsize;
- 		args->timeo		= data->timeo;
-diff --git a/include/linux/nfs_mount.h b/include/linux/nfs_mount.h
-index 4499016..5d59ae8 100644
---- a/include/linux/nfs_mount.h
-+++ b/include/linux/nfs_mount.h
-@@ -69,5 +69,6 @@ struct nfs_mount_data {
- #define NFS_MOUNT_LOOKUP_CACHE_NONEG	0x10000
- #define NFS_MOUNT_LOOKUP_CACHE_NONE	0x20000
- #define NFS_MOUNT_NORESVPORT		0x40000
-+#define NFS_MOUNT_LEGACY_INTERFACE	0x80000
- 
- #endif
--- 
-1.7.2
+What is the data rate (both IOPS and data throughput) of both the read and write cases?  How large are application read and write ops, on average?  What kind of networking is deployed?  What is the server and clients (hardware and OS)?
+
+And, I assume you are asking because the environment is not performing as you expect.  Can you detail your performance issues?
+
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
 
