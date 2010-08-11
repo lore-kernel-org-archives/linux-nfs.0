@@ -1,93 +1,68 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from adsl-99-17-64-89.dsl.sfldmi.sbcglobal.net ([99.17.64.89]:43734
-	"EHLO crunch.scalableinformatics.com" rhost-flags-OK-FAIL-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1750836Ab0HYRRg (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 25 Aug 2010 13:17:36 -0400
-Message-ID: <4C754DB4.5060608@scalableinformatics.com>
-Date: Wed, 25 Aug 2010 13:07:00 -0400
-From: Joe Landman <landman@scalableinformatics.com>
-Reply-To: landman@scalableinformatics.com
-To: davidr@ressman.org
-CC: linux-nfs@vger.kernel.org
-Subject: Re: fsync/wb deadlocks in 2.6.32
-References: <AANLkTikWR_YSnx=4=KAodATpX+xO9+hj-cf7_e158f4d@mail.gmail.com>
-In-Reply-To: <AANLkTikWR_YSnx=4=KAodATpX+xO9+hj-cf7_e158f4d@mail.gmail.com>
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Received: from cantor.suse.de ([195.135.220.2]:32821 "EHLO mx1.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755907Ab0HKXGL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 11 Aug 2010 19:06:11 -0400
+Date: Thu, 12 Aug 2010 09:06:02 +1000
+From: Neil Brown <neilb@suse.de>
+To: David Brodbeck <brodbd@u.washington.edu>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: numeric UIDs
+Message-ID: <20100812090602.3a24c2bd@notabene>
+In-Reply-To: <03068BD0-0613-469E-B918-07019EC54055@u.washington.edu>
+References: <201008030401.33552.dreck@vmsd.ath.cx>
+	<20100803164318.GB13896@merit.edu>
+	<20100803192216.GC31579@fieldses.org>
+	<DE966DA98A4ABE438D726BDF1699CF61403FAF9D@MX05A.corp.emc.com>
+	<20100803215704.GA15494@merit.edu>
+	<1280873719.14520.17.camel@heimdal.trondhjem.org>
+	<20100803222337.GA9752@fieldses.org>
+	<1280874675.14520.23.camel@heimdal.trondhjem.org>
+	<20100803224245.GB9752@fieldses.org>
+	<1280887336.24669.23.camel@heimdal.trondhjem.org>
+	<0969EC03-E225-4265-BADC-582F2089D13E@u.washington.edu>
+	<C2AFF31B-A4A4-432C-A152-B28676B8C3A4@netapp.com>
+	<03068BD0-0613-469E-B918-07019EC54055@u.washington.edu>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-davidr@ressman.org wrote:
-> Hello all,
-> 
-> I have ~100 nfs clients running Ubuntu 10.04 LTS, and under moderate and
-> heavy v3 write loads, I will periodically get deadlocks in nfs_do_fsync().
-> Unfortunately, it's rare enough that I've not been able to come up with
-> a test case that works reliably. The usage pattern looks like this:
-> 
-> 1. 8 jobs are started on each of 100 nodes (each node has 8 cores)
-> 2. These jobs stat(), read() and close() unique files of size 10-20MB
->    on the source NFS filesystem.
-> 3. They open(), write(), and close() the files on the target NFS
->    filesystem (not the same as the source filesystem). Occasionally, the
->    clients will insert a mkdir() before the open().
-> 4. Steps 2-3 are repeated for a total of ~20m files (as in, all clients copy a
->    total of 20m files cumulatively)
-> 
-> After an hour or two, at least one of these nodes gives a series of these
-> messages:
-> 
-> [88792.122324] INFO: task awk:7184 blocked for more than 120 seconds.
-
-Did you get an "nfs server not responding" type message in the logs?
-
-[...]
-
-> Here are the current mount options:
->   async,nocto,proto=udp,auto,intr,noatime,nodiratime, \
->   rsize=32768,rw,vers=3,wsize=32768
-> 
-> I've tried tcp/udp, cto/nocto (i.e., grasping at straws), and none of
-> those options appear to have any effect either.
-
-If you get the nfs server not responding message, you might switch to
-	
-	proto=tcp,retrans=10
-
-or similar (try retrans=N if you just want to play with that).
-
-> As far as I can tell, the problem appears to be unrelated to the
-> NFS server. We've seen these hangs while writing to a RHEL server
-> (2.6.18-92.1.22.el5) as well as an F5 ARX NFS proxy.
-
-Is it possible that a server or switch was overloaded during this 
-interval?
-
-> If anyone has seen this before, knows what it is, or needs more info
-> from me, please let me know.
-
-Things like this, usually under heavy load situations, when we hit a 
-spot of resource contention (usually network or server being too busy).
-
-
+On Wed, 4 Aug 2010 14:32:06 -0700
+David Brodbeck <brodbd@u.washington.edu> wrote:
 
 > 
-> Thanks,
+> On Aug 4, 2010, at 11:30 AM, Andy Adamson wrote:
 > 
-> David
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> > 
+> > On Aug 4, 2010, at 1:06 PM, David Brodbeck wrote:
+> > 
+> >> 
+> >> On Aug 3, 2010, at 7:02 PM, Trond Myklebust wrote:
+> >> 
+> >>> On Tue, 2010-08-03 at 18:42 -0400, J. Bruce Fields wrote:
+> >>>> On Tue, Aug 03, 2010 at 06:31:15PM -0400, Trond Myklebust wrote:
+> >>>>> On Tue, 2010-08-03 at 18:23 -0400, J. Bruce Fields wrote:
+> >>>>>> On Tue, Aug 03, 2010 at 06:15:19PM -0400, Trond Myklebust wrote:
+> >>>> 
+> >>>>> 2) Why is AUTH_SYS so sacrosanct?
+> >>>> 
+> >>>> Because it's what almost everyone uses.
+> >>> 
+> >>> No. It's the _default_. ...and a really really bad default.
+> >> 
+> >> The problem is the only supported alternative is to set up Kerberos.  This is a lot of work, especially for established sites where it essentially requires every user to change their password during the migration.  It also creates problems with ticket expiration if you have daemons or batch jobs that need continuous access to NFS filesystems.
+> > 
+> > Changing passwords is a good thing - should be done on a regular basis anyway.
+> 
+> True, 
 
+Not true.  Forced password changing encourages poor choice of passwords and
+other poor practices.
+Much better to choose a really good password and only change it when you have
+reason to believe that it has been compromised, or when you get bored of the
+old one.
 
--- 
-Joseph Landman, Ph.D
-Founder and CEO
-Scalable Informatics Inc.
-email: landman@scalableinformatics.com
-web  : http://scalableinformatics.com
-        http://scalableinformatics.com/jackrabbit
-phone: +1 734 786 8423 x121
-fax  : +1 866 888 3112
-cell : +1 734 612 4615
+(better still is two-factor authentication of course).
+
+NeilBrown
