@@ -1,30 +1,61 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from magus.merit.edu ([198.108.1.13]:34113 "EHLO magus.merit.edu"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757820Ab0HCV5G (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 3 Aug 2010 17:57:06 -0400
-Date: Tue, 3 Aug 2010 17:57:04 -0400
-From: Jim Rees <rees@umich.edu>
-To: Daniel.Muntz@emc.com
-Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org
-Subject: Re: numeric UIDs
-Message-ID: <20100803215704.GA15494@merit.edu>
-References: <201008030401.33552.dreck@vmsd.ath.cx>
- <20100803164318.GB13896@merit.edu>
- <20100803192216.GC31579@fieldses.org>
- <DE966DA98A4ABE438D726BDF1699CF61403FAF9D@MX05A.corp.emc.com>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <DE966DA98A4ABE438D726BDF1699CF61403FAF9D@MX05A.corp.emc.com>
+Received: from mail-ey0-f174.google.com ([209.85.215.174]:54397 "EHLO
+	mail-ey0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753956Ab0HLSue (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 12 Aug 2010 14:50:34 -0400
+Received: by eya25 with SMTP id 25so879602eya.19
+        for <linux-nfs@vger.kernel.org>; Thu, 12 Aug 2010 11:50:33 -0700 (PDT)
+In-Reply-To: <1281634004.14329.14.camel@heimdal.trondhjem.org>
+References: <87lj8ckb1e.fsf@patl.com>
+	<8762zgmmer.fsf@patl.com>
+	<1281628195.2873.12.camel@heimdal.trondhjem.org>
+	<AANLkTi=WzNzq7wKf0qa+VFuOBYy4yW==0QvdKsTQ88+x@mail.gmail.com>
+	<1281634004.14329.14.camel@heimdal.trondhjem.org>
+Date: Thu, 12 Aug 2010 11:50:27 -0700
+Message-ID: <AANLkTikStDSBi2Dm0oMAEpVbE9PFZOTmOkW6Wy92wjj-@mail.gmail.com>
+Subject: Re: [PATCH] nfs: lookupcache coherence bugs in WCC update path (revised)
+From: "Patrick J. LoPresti" <lopresti@gmail.com>
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+Cc: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Daniel.Muntz@emc.com wrote:
+On Thu, Aug 12, 2010 at 10:26 AM, Trond Myklebust
+<trond.myklebust@fys.uio.no> wrote:
+>
+> My hunch is that you are seeing a server bug rather than a client bug
+> here...
 
-  I'll fourth this motion.  The spec goes out of its way to declare this a
-  violation.  IMHO, the NFSv4.[0-n] specs should adopt the convention that a
-  uid string consisting of [0-9]+ be interpreted as the string
-  representation of a numeric UID--just as valid as a "user@domain" string.
+I believe I am close to finding the actual bug, but there is some code
+in the NFS server that is confusing me.
 
-I argued for this as an option in the early days but was shouted down.
-Sorry I can't remember the details, it was many years ago.
+Here is linux-2.6.35/fs/nfsd/vfs.c, lines 212-227 (in function
+nfsd_lookup_dentry):
+
+        } else {
+                fh_lock(fhp);
+                dentry = lookup_one_len(name, dparent, len);
+                host_err = PTR_ERR(dentry);
+                if (IS_ERR(dentry))
+                        goto out_nfserr;
+                /*
+                 * check if we have crossed a mount point ...
+                 */
+                if (nfsd_mountpoint(dentry, exp)) {
+                        if ((host_err = nfsd_cross_mnt(rqstp, &dentry, &exp))) {
+                                dput(dentry);
+                                goto out_nfserr;
+                        }
+                }
+        }
+
+
+Shouldn't there be a call to "fh_unlock()" to match the call to
+"fh_lock()"?  Can anyone tell me where the corresponding fh_unlock()
+call appears, or if it does not appear, why it is not needed?
+
+Thanks...
+
+ - Pat
