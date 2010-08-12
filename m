@@ -1,258 +1,172 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:6955 "EHLO mx2.netapp.com"
+Received: from cantor2.suse.de ([195.135.220.15]:35495 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752227Ab0HROoX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 18 Aug 2010 10:44:23 -0400
-From: andros@netapp.com
-To: bhalevy@panasas.com
-Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
-Subject: [PATCH 01/11] SQUASHME pnfs-submit: rename pnfs_layout_type 1
-Date: Wed, 18 Aug 2010 10:44:08 -0400
-Message-Id: <1282142658-21579-2-git-send-email-andros@netapp.com>
-In-Reply-To: <1282142658-21579-1-git-send-email-andros@netapp.com>
-References: <1282142658-21579-1-git-send-email-andros@netapp.com>
+	id S1758066Ab0HLHFy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 12 Aug 2010 03:05:54 -0400
+From: NeilBrown <neilb@suse.de>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Date: Thu, 12 Aug 2010 17:04:07 +1000
+Subject: [PATCH 3/6] sunrpc: close connection when a request is irretrievably
+	lost.
+Cc: linux-nfs@vger.kernel.org
+Message-ID: <20100812070406.11459.61914.stgit@localhost.localdomain>
+In-Reply-To: <20100812065722.11459.18978.stgit@localhost.localdomain>
+References: <20100812065722.11459.18978.stgit@localhost.localdomain>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Andy Adamson <andros@netapp.com>
+If we drop a request in the sunrpc layer, either due kmalloc failure,
+or due to a cache miss when we could not queue the request for later
+replay, then close the connection to encourage the client to retry sooner.
 
-squash into pnfs_submit: layout header alloc,reference, and destroy
+Note that if the drop happens in the NFS layer, NFSERR_JUKEBOX
+(aka NFS4ERR_DELAY) is returned to guide the client concerning
+replay.
 
-Signed-off-by: Andy Adamson <andros@netapp.com>
+Signed-off-by: NeilBrown <neilb@suse.de>
 ---
- fs/nfs/pnfs.c             |   32 ++++++++++++++++----------------
- fs/nfs/pnfs.h             |    4 ++--
- include/linux/nfs4_pnfs.h |   16 ++++++++--------
- include/linux/nfs_fs.h    |    4 ++--
- 4 files changed, 28 insertions(+), 28 deletions(-)
+ include/linux/sunrpc/svcauth.h    |   10 +++++++---
+ net/sunrpc/auth_gss/svcauth_gss.c |   12 ++++++------
+ net/sunrpc/svc.c                  |    3 +++
+ net/sunrpc/svcauth_unix.c         |   11 ++++++++---
+ 4 files changed, 24 insertions(+), 12 deletions(-)
 
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 393855e..bf86975 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -57,9 +57,9 @@
+diff --git a/include/linux/sunrpc/svcauth.h b/include/linux/sunrpc/svcauth.h
+index d39dbdc..1126693 100644
+--- a/include/linux/sunrpc/svcauth.h
++++ b/include/linux/sunrpc/svcauth.h
+@@ -108,9 +108,13 @@ struct auth_ops {
+ #define	SVC_NEGATIVE	4
+ #define	SVC_OK		5
+ #define	SVC_DROP	6
+-#define	SVC_DENIED	7
+-#define	SVC_PENDING	8
+-#define	SVC_COMPLETE	9
++#define	SVC_CLOSE	7	/* Like SVC_DROP, but request is definitely
++				 * lost so if there is a tcp connection, it
++				 * should be closed
++				 */
++#define	SVC_DENIED	8
++#define	SVC_PENDING	9
++#define	SVC_COMPLETE	10
  
- static int pnfs_initialized;
  
--static void pnfs_free_layout(struct pnfs_layout_type *lo,
-+static void pnfs_free_layout(struct pnfs_layout_hdr *lo,
- 			     struct nfs4_pnfs_layout_segment *range);
--static inline void get_layout(struct pnfs_layout_type *lo);
-+static inline void get_layout(struct pnfs_layout_hdr *lo);
- 
- /* Locking:
-  *
-@@ -314,14 +314,14 @@ pnfs_unregister_layoutdriver(struct pnfs_layoutdriver_type *ld_type)
- #endif /* CONFIG_SMP */
- 
- static inline void
--get_layout(struct pnfs_layout_type *lo)
-+get_layout(struct pnfs_layout_hdr *lo)
- {
- 	BUG_ON_UNLOCKED_LO(lo);
- 	lo->refcount++;
+ extern int	svc_authenticate(struct svc_rqst *rqstp, __be32 *authp);
+diff --git a/net/sunrpc/auth_gss/svcauth_gss.c b/net/sunrpc/auth_gss/svcauth_gss.c
+index cc385b3..ed005af 100644
+--- a/net/sunrpc/auth_gss/svcauth_gss.c
++++ b/net/sunrpc/auth_gss/svcauth_gss.c
+@@ -964,7 +964,7 @@ svcauth_gss_set_client(struct svc_rqst *rqstp)
+ 	if (rqstp->rq_gssclient == NULL)
+ 		return SVC_DENIED;
+ 	stat = svcauth_unix_set_client(rqstp);
+-	if (stat == SVC_DROP)
++	if (stat == SVC_DROP || stat == SVC_CLOSE)
+ 		return stat;
+ 	return SVC_OK;
  }
+@@ -1018,7 +1018,7 @@ static int svcauth_gss_handle_init(struct svc_rqst *rqstp,
+ 		return SVC_DENIED;
+ 	memset(&rsikey, 0, sizeof(rsikey));
+ 	if (dup_netobj(&rsikey.in_handle, &gc->gc_ctx))
+-		return SVC_DROP;
++		return SVC_CLOSE;
+ 	*authp = rpc_autherr_badverf;
+ 	if (svc_safe_getnetobj(argv, &tmpobj)) {
+ 		kfree(rsikey.in_handle.data);
+@@ -1026,22 +1026,22 @@ static int svcauth_gss_handle_init(struct svc_rqst *rqstp,
+ 	}
+ 	if (dup_netobj(&rsikey.in_token, &tmpobj)) {
+ 		kfree(rsikey.in_handle.data);
+-		return SVC_DROP;
++		return SVC_CLOSE;
+ 	}
  
- static inline void
--put_layout_locked(struct pnfs_layout_type *lo)
-+put_layout_locked(struct pnfs_layout_hdr *lo)
- {
- 	BUG_ON_UNLOCKED_LO(lo);
- 	BUG_ON(lo->refcount <= 0);
-@@ -368,7 +368,7 @@ pnfs_layout_release(struct pnfs_layout_type *lo,
- void
- pnfs_destroy_layout(struct nfs_inode *nfsi)
- {
--	struct pnfs_layout_type *lo;
-+	struct pnfs_layout_hdr *lo;
- 	struct nfs4_pnfs_layout_segment range = {
- 		.iomode = IOMODE_ANY,
- 		.offset = 0,
-@@ -400,10 +400,10 @@ pnfs_destroy_layout(struct nfs_inode *nfsi)
- void
- pnfs_destroy_all_layouts(struct nfs_client *clp)
- {
--	struct pnfs_layout_type *lo;
-+	struct pnfs_layout_hdr *lo;
+ 	/* Perform upcall, or find upcall result: */
+ 	rsip = rsi_lookup(&rsikey);
+ 	rsi_free(&rsikey);
+ 	if (!rsip)
+-		return SVC_DROP;
++		return SVC_CLOSE;
+ 	switch (cache_check(&rsi_cache, &rsip->h, &rqstp->rq_chandle)) {
+ 	case -EAGAIN:
+ 	case -ETIMEDOUT:
+ 	case -ENOENT:
+ 		/* No upcall result: */
+-		return SVC_DROP;
++		return SVC_CLOSE;
+ 	case 0:
+-		ret = SVC_DROP;
++		ret = SVC_CLOSE;
+ 		/* Got an answer to the upcall; use it: */
+ 		if (gss_write_init_verf(rqstp, rsip))
+ 			goto out;
+diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
+index d9017d6..6359c42 100644
+--- a/net/sunrpc/svc.c
++++ b/net/sunrpc/svc.c
+@@ -1055,6 +1055,9 @@ svc_process_common(struct svc_rqst *rqstp, struct kvec *argv, struct kvec *resv)
+ 		goto err_bad;
+ 	case SVC_DENIED:
+ 		goto err_bad_auth;
++	case SVC_CLOSE:
++		if (test_bit(XPT_TEMP, &rqstp->rq_xprt->xpt_flags))
++			svc_close_xprt(rqstp->rq_xprt);
+ 	case SVC_DROP:
+ 		goto dropit;
+ 	case SVC_COMPLETE:
+diff --git a/net/sunrpc/svcauth_unix.c b/net/sunrpc/svcauth_unix.c
+index 2073116..e91b550 100644
+--- a/net/sunrpc/svcauth_unix.c
++++ b/net/sunrpc/svcauth_unix.c
+@@ -674,6 +674,8 @@ static struct group_info *unix_gid_find(uid_t uid, struct svc_rqst *rqstp)
+ 	switch (ret) {
+ 	case -ENOENT:
+ 		return ERR_PTR(-ENOENT);
++	case -ETIMEDOUT:
++		return ERR_PTR(-ESHUTDOWN);
+ 	case 0:
+ 		gi = get_group_info(ug->gi);
+ 		cache_put(&ug->h, &unix_gid_cache);
+@@ -720,8 +722,9 @@ svcauth_unix_set_client(struct svc_rqst *rqstp)
+ 	switch (cache_check(&ip_map_cache, &ipm->h, &rqstp->rq_chandle)) {
+ 		default:
+ 			BUG();
+-		case -EAGAIN:
+ 		case -ETIMEDOUT:
++			return SVC_CLOSE;
++		case -EAGAIN:
+ 			return SVC_DROP;
+ 		case -ENOENT:
+ 			return SVC_DENIED;
+@@ -736,6 +739,8 @@ svcauth_unix_set_client(struct svc_rqst *rqstp)
+ 	switch (PTR_ERR(gi)) {
+ 	case -EAGAIN:
+ 		return SVC_DROP;
++	case -ESHUTDOWN:
++		return SVC_CLOSE;
+ 	case -ENOENT:
+ 		break;
+ 	default:
+@@ -776,7 +781,7 @@ svcauth_null_accept(struct svc_rqst *rqstp, __be32 *authp)
+ 	cred->cr_gid = (gid_t) -1;
+ 	cred->cr_group_info = groups_alloc(0);
+ 	if (cred->cr_group_info == NULL)
+-		return SVC_DROP; /* kmalloc failure - client must retry */
++		return SVC_CLOSE; /* kmalloc failure - client must retry */
  
- 	while (!list_empty(&clp->cl_layouts)) {
--		lo = list_entry(clp->cl_layouts.next, struct pnfs_layout_type,
-+		lo = list_entry(clp->cl_layouts.next, struct pnfs_layout_hdr,
- 				lo_layouts);
- 		dprintk("%s freeing layout for inode %lu\n", __func__,
- 			lo->lo_inode->i_ino);
-@@ -472,7 +472,7 @@ put_lseg(struct pnfs_layout_segment *lseg)
- EXPORT_SYMBOL(put_lseg);
- 
- void
--pnfs_set_layout_stateid(struct pnfs_layout_type *lo,
-+pnfs_set_layout_stateid(struct pnfs_layout_hdr *lo,
- 			const nfs4_stateid *stateid)
- {
- 	write_seqlock(&lo->seqlock);
-@@ -481,7 +481,7 @@ pnfs_set_layout_stateid(struct pnfs_layout_type *lo,
- }
- 
- void
--pnfs_get_layout_stateid(nfs4_stateid *dst, struct pnfs_layout_type *lo)
-+pnfs_get_layout_stateid(nfs4_stateid *dst, struct pnfs_layout_hdr *lo)
- {
- 	int seq;
- 
-@@ -497,7 +497,7 @@ pnfs_get_layout_stateid(nfs4_stateid *dst, struct pnfs_layout_type *lo)
- }
- 
- static void
--pnfs_layout_from_open_stateid(struct pnfs_layout_type *lo,
-+pnfs_layout_from_open_stateid(struct pnfs_layout_hdr *lo,
- 			      struct nfs4_state *state)
- {
- 	int seq;
-@@ -616,7 +616,7 @@ _pnfs_can_return_lseg(struct pnfs_layout_segment *lseg)
- 
- 
- static void
--pnfs_free_layout(struct pnfs_layout_type *lo,
-+pnfs_free_layout(struct pnfs_layout_hdr *lo,
- 		 struct nfs4_pnfs_layout_segment *range)
- {
- 	struct pnfs_layout_segment *lseg, *next;
-@@ -833,14 +833,14 @@ pnfs_insert_layout(struct pnfs_layout_type *lo,
- }
- 
- /*
-- * Each layoutdriver embeds pnfs_layout_type as the first field in it's
-+ * Each layoutdriver embeds pnfs_layout_hdr as the first field in it's
-  * per-layout type layout cache structure and returns it ZEROed
-  * from layoutdriver_io_ops->alloc_layout
-  */
--static struct pnfs_layout_type *
-+static struct pnfs_layout_hdr *
- alloc_init_layout(struct inode *ino)
- {
--	struct pnfs_layout_type *lo;
-+	struct pnfs_layout_hdr *lo;
- 	struct layoutdriver_io_operations *io_ops;
- 
- 	io_ops = NFS_SERVER(ino)->pnfs_curr_ld->ld_io_ops;
-@@ -864,11 +864,11 @@ alloc_init_layout(struct inode *ino)
-  *
-  * ino->i_lock must be taken by the caller.
-  */
--static struct pnfs_layout_type *
-+static struct pnfs_layout_hdr *
- pnfs_alloc_layout(struct inode *ino)
- {
- 	struct nfs_inode *nfsi = NFS_I(ino);
--	struct pnfs_layout_type *new = NULL;
-+	struct pnfs_layout_hdr *new = NULL;
- 
- 	dprintk("%s Begin ino=%p layout=%p\n", __func__, ino, nfsi->layout);
- 
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index 80f67c7..7da54fe 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -59,12 +59,12 @@ void pnfs_pageio_init_write(struct nfs_pageio_descriptor *, struct inode *);
- void pnfs_get_layout_done(struct nfs4_pnfs_layoutget *, int rpc_status);
- int pnfs_layout_process(struct nfs4_pnfs_layoutget *lgp);
- void pnfs_layout_release(struct pnfs_layout_type *, struct nfs4_pnfs_layout_segment *range);
--void pnfs_set_layout_stateid(struct pnfs_layout_type *lo,
-+void pnfs_set_layout_stateid(struct pnfs_layout_hdr *lo,
- 			     const nfs4_stateid *stateid);
- void pnfs_destroy_layout(struct nfs_inode *);
- void pnfs_destroy_all_layouts(struct nfs_client *);
- void put_layout(struct inode *inode);
--void pnfs_get_layout_stateid(nfs4_stateid *dst, struct pnfs_layout_type *lo);
-+void pnfs_get_layout_stateid(nfs4_stateid *dst, struct pnfs_layout_hdr *lo);
- 
- #define PNFS_EXISTS_LDIO_OP(srv, opname) ((srv)->pnfs_curr_ld &&	\
- 				     (srv)->pnfs_curr_ld->ld_io_ops &&	\
-diff --git a/include/linux/nfs4_pnfs.h b/include/linux/nfs4_pnfs.h
-index ef160e6..59a1a12 100644
---- a/include/linux/nfs4_pnfs.h
-+++ b/include/linux/nfs4_pnfs.h
-@@ -31,31 +31,31 @@ struct pnfs_layoutdriver_type {
- #if defined(CONFIG_NFS_V4_1)
- 
- static inline struct nfs_inode *
--PNFS_NFS_INODE(struct pnfs_layout_type *lo)
-+PNFS_NFS_INODE(struct pnfs_layout_hdr *lo)
- {
- 	return NFS_I(lo->lo_inode);
- }
- 
- static inline struct inode *
--PNFS_INODE(struct pnfs_layout_type *lo)
-+PNFS_INODE(struct pnfs_layout_hdr *lo)
- {
- 	return lo->lo_inode;
- }
- 
- static inline struct nfs_server *
--PNFS_NFS_SERVER(struct pnfs_layout_type *lo)
-+PNFS_NFS_SERVER(struct pnfs_layout_hdr *lo)
- {
- 	return NFS_SERVER(PNFS_INODE(lo));
- }
- 
- static inline struct pnfs_layoutdriver_type *
--PNFS_LD(struct pnfs_layout_type *lo)
-+PNFS_LD(struct pnfs_layout_hdr *lo)
- {
- 	return NFS_SERVER(PNFS_INODE(lo))->pnfs_curr_ld;
- }
- 
- static inline struct layoutdriver_io_operations *
--PNFS_LD_IO_OPS(struct pnfs_layout_type *lo)
-+PNFS_LD_IO_OPS(struct pnfs_layout_hdr *lo)
- {
- 	return PNFS_LD(lo)->ld_io_ops;
- }
-@@ -94,7 +94,7 @@ struct pnfs_layout_segment {
- 	struct nfs4_pnfs_layout_segment range;
- 	struct kref kref;
- 	bool valid;
--	struct pnfs_layout_type *layout;
-+	struct pnfs_layout_hdr *layout;
- 	struct nfs4_deviceid *deviceid;
- 	u8 ld_data[];			/* layout driver private data */
- };
-@@ -135,8 +135,8 @@ struct layoutdriver_io_operations {
- 	/* Layout information. For each inode, alloc_layout is executed once to retrieve an
- 	 * inode specific layout structure.  Each subsequent layoutget operation results in
- 	 * a set_layout call to set the opaque layout in the layout driver.*/
--	struct pnfs_layout_type * (*alloc_layout) (struct inode *inode);
--	void (*free_layout) (struct pnfs_layout_type *);
-+	struct pnfs_layout_hdr * (*alloc_layout) (struct inode *inode);
-+	void (*free_layout) (struct pnfs_layout_hdr *);
- 	struct pnfs_layout_segment * (*alloc_lseg) (struct pnfs_layout_type *layoutid, struct nfs4_pnfs_layoutget_res *lgr);
- 	void (*free_lseg) (struct pnfs_layout_segment *lseg);
- 
-diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
-index 6f67aec..420932a 100644
---- a/include/linux/nfs_fs.h
-+++ b/include/linux/nfs_fs.h
-@@ -104,7 +104,7 @@ struct nfs_delegation;
- 
- struct posix_acl;
- 
--struct pnfs_layout_type {
-+struct pnfs_layout_hdr {
- 	int refcount;
- 	struct list_head lo_layouts;	/* other client layouts */
- 	struct list_head segs;		/* layout segments list */
-@@ -212,7 +212,7 @@ struct nfs_inode {
- 	/* pNFS layout information */
- #if defined(CONFIG_NFS_V4_1)
- 	wait_queue_head_t lo_waitq;
--	struct pnfs_layout_type *layout;
-+	struct pnfs_layout_hdr *layout;
- 	time_t pnfs_layout_suspend;
- #endif /* CONFIG_NFS_V4_1 */
- #endif /* CONFIG_NFS_V4*/
--- 
-1.6.2.5
+ 	/* Put NULL verifier */
+ 	svc_putnl(resv, RPC_AUTH_NULL);
+@@ -840,7 +845,7 @@ svcauth_unix_accept(struct svc_rqst *rqstp, __be32 *authp)
+ 		goto badcred;
+ 	cred->cr_group_info = groups_alloc(slen);
+ 	if (cred->cr_group_info == NULL)
+-		return SVC_DROP;
++		return SVC_CLOSE;
+ 	for (i = 0; i < slen; i++)
+ 		GROUP_AT(cred->cr_group_info, i) = svc_getnl(argv);
+ 	if (svc_getu32(argv) != htonl(RPC_AUTH_NULL) || svc_getu32(argv) != 0) {
+
 
