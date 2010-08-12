@@ -1,183 +1,130 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:45275 "EHLO mx2.netapp.com"
+Received: from cantor.suse.de ([195.135.220.2]:42412 "EHLO mx1.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754293Ab0HMVdU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 13 Aug 2010 17:33:20 -0400
-From: andros@netapp.com
-To: bhalevy@panasas.com
-Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
-Subject: [PATCH 43/50] pnfs_submit: data server commit with no getattr
-Date: Fri, 13 Aug 2010 17:31:55 -0400
-Message-Id: <1281735122-1496-44-git-send-email-andros@netapp.com>
-In-Reply-To: <1281735122-1496-43-git-send-email-andros@netapp.com>
-References: <1281735122-1496-1-git-send-email-andros@netapp.com>
- <1281735122-1496-2-git-send-email-andros@netapp.com>
- <1281735122-1496-3-git-send-email-andros@netapp.com>
- <1281735122-1496-4-git-send-email-andros@netapp.com>
- <1281735122-1496-5-git-send-email-andros@netapp.com>
- <1281735122-1496-6-git-send-email-andros@netapp.com>
- <1281735122-1496-7-git-send-email-andros@netapp.com>
- <1281735122-1496-8-git-send-email-andros@netapp.com>
- <1281735122-1496-9-git-send-email-andros@netapp.com>
- <1281735122-1496-10-git-send-email-andros@netapp.com>
- <1281735122-1496-11-git-send-email-andros@netapp.com>
- <1281735122-1496-12-git-send-email-andros@netapp.com>
- <1281735122-1496-13-git-send-email-andros@netapp.com>
- <1281735122-1496-14-git-send-email-andros@netapp.com>
- <1281735122-1496-15-git-send-email-andros@netapp.com>
- <1281735122-1496-16-git-send-email-andros@netapp.com>
- <1281735122-1496-17-git-send-email-andros@netapp.com>
- <1281735122-1496-18-git-send-email-andros@netapp.com>
- <1281735122-1496-19-git-send-email-andros@netapp.com>
- <1281735122-1496-20-git-send-email-andros@netapp.com>
- <1281735122-1496-21-git-send-email-andros@netapp.com>
- <1281735122-1496-22-git-send-email-andros@netapp.com>
- <1281735122-1496-23-git-send-email-andros@netapp.com>
- <1281735122-1496-24-git-send-email-andros@netapp.com>
- <1281735122-1496-25-git-send-email-andros@netapp.com>
- <1281735122-1496-26-git-send-email-andros@netapp.com>
- <1281735122-1496-27-git-send-email-andros@netapp.com>
- <1281735122-1496-28-git-send-email-andros@netapp.com>
- <1281735122-1496-29-git-send-email-andros@netapp.com>
- <1281735122-1496-30-git-send-email-andros@netapp.com>
- <1281735122-1496-31-git-send-email-andros@netapp.com>
- <1281735122-1496-32-git-send-email-andros@netapp.com>
- <1281735122-1496-33-git-send-email-andros@netapp.com>
- <1281735122-1496-34-git-send-email-andros@netapp.com>
- <1281735122-1496-35-git-send-email-andros@netapp.com>
- <1281735122-1496-36-git-send-email-andros@netapp.com>
- <1281735122-1496-37-git-send-email-andros@netapp.com>
- <1281735122-1496-38-git-send-email-andros@netapp.com>
- <1281735122-1496-39-git-send-email-andros@netapp.com>
- <1281735122-1496-40-git-send-email-andros@netapp.com>
- <1281735122-1496-41-git-send-email-andros@netapp.com>
- <1281735122-1496-42-git-send-email-andros@netapp.com>
- <1281735122-1496-43-git-send-email-andros@netapp.com>
+	id S1752416Ab0HLHGK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 12 Aug 2010 03:06:10 -0400
+From: NeilBrown <neilb@suse.de>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Date: Thu, 12 Aug 2010 17:04:08 +1000
+Subject: [PATCH 6/6] sunrpc/cache: change deferred-request hash table to use
+	hlist.
+Cc: linux-nfs@vger.kernel.org
+Message-ID: <20100812070407.11459.94426.stgit@localhost.localdomain>
+In-Reply-To: <20100812065722.11459.18978.stgit@localhost.localdomain>
+References: <20100812065722.11459.18978.stgit@localhost.localdomain>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: The pNFS Team <linux-nfs@vger.kernel.org>
+Being a hash table, hlist is the best option.
 
-Signed-off-by: Andy Adamson <andros@netapp.com>
+There is currently some ugliness were we treat "->next == NULL" as
+a special case to avoid having to initialise the whole array.
+This change nicely gets rid of that case.
+
+Signed-off-by: NeilBrown <neilb@suse.de>
 ---
- fs/nfs/nfs4proc.c    |    6 ++++++
- fs/nfs/nfs4xdr.c     |   50 ++++++++++++++++++++++++++++++++++++++++++++++++++
- include/linux/nfs4.h |    1 +
- 3 files changed, 57 insertions(+), 0 deletions(-)
+ include/linux/sunrpc/cache.h |    2 +-
+ net/sunrpc/cache.c           |   28 +++++++++++-----------------
+ 2 files changed, 12 insertions(+), 18 deletions(-)
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 55aba4c..8879fab 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -3262,6 +3262,12 @@ static void nfs4_proc_commit_setup(struct nfs_write_data *data, struct rpc_messa
- 	
- 	data->args.bitmask = server->cache_consistency_bitmask;
- 	data->res.server = server;
-+#if defined(CONFIG_NFS_V4_1)
-+	if (data->fldata.ds_nfs_client) {
-+		msg->rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_PNFS_COMMIT];
-+		return;
-+	}
-+#endif /* CONFIG_NFS_V4_1 */
- 	msg->rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_COMMIT];
- }
+diff --git a/include/linux/sunrpc/cache.h b/include/linux/sunrpc/cache.h
+index 61f521f..5782154 100644
+--- a/include/linux/sunrpc/cache.h
++++ b/include/linux/sunrpc/cache.h
+@@ -133,7 +133,7 @@ struct cache_req {
+  * delayed awaiting cache-fill
+  */
+ struct cache_deferred_req {
+-	struct list_head	hash;	/* on hash chain */
++	struct hlist_node	hash;	/* on hash chain */
+ 	struct list_head	recent; /* on fifo */
+ 	struct cache_head	*item;  /* cache item we wait on */
+ 	void			*owner; /* we might need to discard all defered requests
+diff --git a/net/sunrpc/cache.c b/net/sunrpc/cache.c
+index 2fdd66b..551ed44 100644
+--- a/net/sunrpc/cache.c
++++ b/net/sunrpc/cache.c
+@@ -506,7 +506,7 @@ EXPORT_SYMBOL_GPL(cache_purge);
  
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index 520b589..bb2cb86 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -765,6 +765,12 @@ static int nfs4_stat_to_errno(int);
- 				decode_sequence_maxsz + \
- 				decode_putfh_maxsz + \
- 				decode_write_maxsz)
-+#define NFS4_enc_dscommit_sz	(compound_encode_hdr_maxsz + \
-+				encode_putfh_maxsz + \
-+				encode_commit_maxsz)
-+#define NFS4_dec_dscommit_sz	(compound_decode_hdr_maxsz + \
-+				decode_putfh_maxsz + \
-+				decode_commit_maxsz)
+ static DEFINE_SPINLOCK(cache_defer_lock);
+ static LIST_HEAD(cache_defer_list);
+-static struct list_head cache_defer_hash[DFR_HASHSIZE];
++static struct hlist_head cache_defer_hash[DFR_HASHSIZE];
+ static int cache_defer_cnt;
  
- const u32 nfs41_maxwrite_overhead = ((RPC_MAX_HEADER_WITH_AUTH +
- 				      compound_encode_hdr_maxsz +
-@@ -2844,6 +2850,25 @@ static int nfs4_xdr_enc_dswrite(struct rpc_rqst *req, uint32_t *p,
- 	return 0;
- }
+ struct thread_deferred_req {
+@@ -551,9 +551,7 @@ static int cache_defer_req(struct cache_req *req, struct cache_head *item)
  
-+/*
-+ * Encode a pNFS File Layout Data Server COMMIT request
-+ */
-+static int nfs4_xdr_enc_dscommit(struct rpc_rqst *req, uint32_t *p,
-+				 struct nfs_writeargs *args)
-+{
-+	struct xdr_stream xdr;
-+	struct compound_hdr hdr = {
-+		.minorversion = nfs4_xdr_minorversion(&args->seq_args),
-+	};
+ 	list_add(&dreq->recent, &cache_defer_list);
+ 
+-	if (cache_defer_hash[hash].next == NULL)
+-		INIT_LIST_HEAD(&cache_defer_hash[hash]);
+-	list_add(&dreq->hash, &cache_defer_hash[hash]);
++	hlist_add_head(&dreq->hash, &cache_defer_hash[hash]);
+ 
+ 	/* it is in, now maybe clean up */
+ 	discard = NULL;
+@@ -561,7 +559,7 @@ static int cache_defer_req(struct cache_req *req, struct cache_head *item)
+ 		discard = list_entry(cache_defer_list.prev,
+ 				     struct cache_deferred_req, recent);
+ 		list_del_init(&discard->recent);
+-		list_del_init(&discard->hash);
++		hlist_del_init(&discard->hash);
+ 		cache_defer_cnt--;
+ 	}
+ 	spin_unlock(&cache_defer_lock);
+@@ -580,9 +578,9 @@ static int cache_defer_req(struct cache_req *req, struct cache_head *item)
+ 		wait_for_completion_interruptible_timeout(
+ 			&sleeper.completion, req->thread_wait);
+ 		spin_lock(&cache_defer_lock);
+-		if (!list_empty(&sleeper.handle.hash)) {
++		if (!hlist_unhashed(&sleeper.handle.hash)) {
+ 			list_del_init(&sleeper.handle.recent);
+-			list_del_init(&sleeper.handle.hash);
++			hlist_del_init(&sleeper.handle.hash);
+ 			cache_defer_cnt--;
+ 		}
+ 		spin_unlock(&cache_defer_lock);
+@@ -608,24 +606,20 @@ static void cache_revisit_request(struct cache_head *item)
+ 	struct cache_deferred_req *dreq;
+ 	struct list_head pending;
+ 
+-	struct list_head *lp;
++	struct hlist_node *lp, *tmp;
+ 	int hash = DFR_HASH(item);
+ 
+ 	INIT_LIST_HEAD(&pending);
+ 	spin_lock(&cache_defer_lock);
+ 
+-	lp = cache_defer_hash[hash].next;
+-	if (lp) {
+-		while (lp != &cache_defer_hash[hash]) {
+-			dreq = list_entry(lp, struct cache_deferred_req, hash);
+-			lp = lp->next;
++	hlist_for_each_entry_safe(dreq, lp, tmp,
++				  &cache_defer_hash[hash], hash)
+ 			if (dreq->item == item) {
+-				list_del_init(&dreq->hash);
++				hlist_del_init(&dreq->hash);
+ 				list_move(&dreq->recent, &pending);
+ 				cache_defer_cnt--;
+ 			}
+-		}
+-	}
 +
-+	xdr_init_encode(&xdr, &req->rq_snd_buf, p);
-+	encode_compound_hdr(&xdr, req, &hdr);
-+	encode_sequence(&xdr, &args->seq_args, &hdr);
-+	encode_putfh(&xdr, args->fh, &hdr);
-+	encode_commit(&xdr, args, &hdr);
-+	encode_nops(&hdr);
-+	return 0;
-+}
- #endif /* CONFIG_NFS_V4_1 */
+ 	spin_unlock(&cache_defer_lock);
  
- static void print_overflow_msg(const char *func, const struct xdr_stream *xdr)
-@@ -6424,6 +6449,30 @@ out:
- 	return status;
- }
+ 	while (!list_empty(&pending)) {
+@@ -646,7 +640,7 @@ void cache_clean_deferred(void *owner)
  
-+/*
-+ * Decode pNFS File Layout Data Server COMMIT response
-+ */
-+static int nfs4_xdr_dec_dscommit(struct rpc_rqst *rqstp, uint32_t *p,
-+				 struct nfs_writeres *res)
-+{
-+	struct xdr_stream xdr;
-+	struct compound_hdr hdr;
-+	int status;
-+
-+	xdr_init_decode(&xdr, &rqstp->rq_rcv_buf, p);
-+	status = decode_compound_hdr(&xdr, &hdr);
-+	if (status)
-+		goto out;
-+	status = decode_sequence(&xdr, &res->seq_res, rqstp);
-+	if (status)
-+		goto out;
-+	status = decode_putfh(&xdr);
-+	if (status)
-+		goto out;
-+	status = decode_commit(&xdr, res);
-+out:
-+	return status;
-+}
- #endif /* CONFIG_NFS_V4_1 */
- 
- __be32 *nfs4_decode_dirent(__be32 *p, struct nfs_entry *entry, int plus)
-@@ -6607,6 +6656,7 @@ struct rpc_procinfo	nfs4_procedures[] = {
-   PROC(PNFS_LAYOUTCOMMIT, enc_layoutcommit,  dec_layoutcommit),
-   PROC(PNFS_LAYOUTRETURN, enc_layoutreturn,  dec_layoutreturn),
-   PROC(PNFS_WRITE, enc_dswrite,  dec_dswrite),
-+  PROC(PNFS_COMMIT, enc_dscommit,  dec_dscommit),
- #endif /* CONFIG_NFS_V4_1 */
- };
- 
-diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
-index d5509b7..6ee7357 100644
---- a/include/linux/nfs4.h
-+++ b/include/linux/nfs4.h
-@@ -558,6 +558,7 @@ enum {
- 	NFSPROC4_CLNT_PNFS_LAYOUTRETURN,
- 	NFSPROC4_CLNT_PNFS_GETDEVICEINFO,
- 	NFSPROC4_CLNT_PNFS_WRITE,
-+	NFSPROC4_CLNT_PNFS_COMMIT,
- };
- 
- /* nfs41 types */
--- 
-1.6.2.5
+ 	list_for_each_entry_safe(dreq, tmp, &cache_defer_list, recent) {
+ 		if (dreq->owner == owner) {
+-			list_del_init(&dreq->hash);
++			hlist_del_init(&dreq->hash);
+ 			list_move(&dreq->recent, &pending);
+ 			cache_defer_cnt--;
+ 		}
+
 
