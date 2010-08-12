@@ -1,61 +1,97 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:50642 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750805Ab0HRTcz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 18 Aug 2010 15:32:55 -0400
-Date: Wed, 18 Aug 2010 15:30:43 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Andi Kleen <andi@firstfloor.org>
-Cc: Neil Brown <neilb@suse.de>, Alan Cox <alan@lxorguk.ukuu.org.uk>,
-        "Patrick J. LoPresti" <lopresti@gmail.com>,
-        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-kernel <linux-kernel@vger.kernel.org>
-Subject: Re: Proposal: Use hi-res clock for file timestamps
-Message-ID: <20100818193043.GG13050@fieldses.org>
-References: <20100817174134.GA23176@fieldses.org>
- <20100817182920.GD18161@basil.fritz.box>
- <20100817190447.GA28049@fieldses.org>
- <AANLkTi=w1UA5ZZDBigpxMiL7A7DnbnQhLkg62JZpC6Ri@mail.gmail.com>
- <20100817203941.729830b7@lxorguk.ukuu.org.uk>
- <20100817192937.GD26609@fieldses.org>
- <20100818155359.66b9ddb6@notabene>
- <20100818175040.GA6567@basil.fritz.box>
- <20100818185456.GD13050@fieldses.org>
- <20100818192508.GC6567@basil.fritz.box>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20100818192508.GC6567@basil.fritz.box>
+Received: from mail-ew0-f46.google.com ([209.85.215.46]:32833 "EHLO
+	mail-ew0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752602Ab0HLRNe (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 12 Aug 2010 13:13:34 -0400
+In-Reply-To: <1281628195.2873.12.camel@heimdal.trondhjem.org>
+References: <87lj8ckb1e.fsf@patl.com>
+	<8762zgmmer.fsf@patl.com>
+	<1281628195.2873.12.camel@heimdal.trondhjem.org>
+Date: Thu, 12 Aug 2010 10:13:30 -0700
+Message-ID: <AANLkTi=WzNzq7wKf0qa+VFuOBYy4yW==0QvdKsTQ88+x@mail.gmail.com>
+Subject: Re: [PATCH] nfs: lookupcache coherence bugs in WCC update path (revised)
+From: "Patrick J. LoPresti" <lopresti@gmail.com>
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, Aug 18, 2010 at 09:25:08PM +0200, Andi Kleen wrote:
-> On Wed, Aug 18, 2010 at 02:54:56PM -0400, J. Bruce Fields wrote:
-> > On Wed, Aug 18, 2010 at 07:50:40PM +0200, Andi Kleen wrote:
-> > > >  - nfsd updates it whenever it reads an mtime out of an inode that matches
-> > > >    current_fs_time to the granularity of 1/HZ.
-> > > 
-> > > That means you have a very very hot cache line on a larger system
-> > > if there are a lot of mtime changes. Probably a bad idea.
-> > 
-> > Only if those mtime changes are also followed immediately by nfsd reads
-> > of the mtime.
-> 
-> If multiple writers are changing the same location in quick succession 
-> you have a hot cache line that gets bounced around.  It doesn't need reads,
-> although reads make it even worse.
+On Thu, Aug 12, 2010 at 8:49 AM, Trond Myklebust
+<trond.myklebust@fys.uio.no> wrote:
+>
+> This looks less than obviously correct to me.
 
-OK, at this point one of us is confused, and I'm not sure which.
+I just meant my patch obviously fixes a bug even if you do not believe
+it is the bug I am encountering.  I claim it is "obvious" based on:
 
-Is the "same location" that you're referring to the current_nfsd_time?
+Obvious statement #1:  It is a bug if a directory inode's mtime is
+EVER updated without invalidating the lookup cache, because that
+results in a stale cache that does not know it is stale and can
+persist indefinitely.
 
-Neil's suggestion is to only modify current_nfsd_time on nfsd getattr,
-*not* on the write operation that modifies the file data.
+Obvious statement #2:  The current nfs_wcc_update_inode() code updates
+the directory inode's mtime without invalidating the lookup cache.
 
-Or are you talking about something else?
+So the current code would be wrong even if it never created a problem
+in practice.  (Although it does create a problem in practice).
 
-> There's a lot of effort currently to make the VFS more parallel
-> and less synchronized and it would be bad again to regress here again.
+> The wcc case is invoked when the ctime/mtime/.... change is known to have occurred due to a file
+> creation/unlink/... from this client. It is a weak cache consistency case.
+>
+> If your client is seeing ENOENT after it created the file itself, then
+> the problem isn't cache coherency, but a bug in the file creation code.
 
-Understood.
+The client did not create the file itself.
 
---b.
+The sequence of operations goes like this:
+
+1) Client looks up non-existent file, creates negative dentry.
+2) File is created by a process on the server.
+3) Something causes the client to update its mtime for the directory
+without invalidating the dentry lookup cache.  (I have not figured out
+exactly what, but I have "caught it in the act"; see below).
+4) Client incorrectly returns ENOENT when application next attempts to
+access file.
+
+You may think this is the usual "multiple updates within one second"
+issue.  That is what I thought at first, anyway.  But I know it is
+not, for three reasons...
+
+First, my server is using XFS, which supports sub-second timestamps.
+
+Second, I instrumented nfs_update_inode() to record the inode's mtime
+and cache_change_attribute on function entry, then to log a message on
+function return if the inode is a directory whose mtime got updated
+without also updating cache_change_attribute.  Then I reproduced my
+issue.  My new log message appeared precisely in those runs where the
+issue occurred.  (I also instrumented the code to follow the actual
+sequence of events; I can see that the faulty ENOENT is being returned
+because the inode's cache_change_attribute matches the stale dentry's
+d_time.)
+
+Third, my testing confirms that the issue disappears after I apply my
+patch.  If the problem were the usual "multiple updates in one
+second", or indeed any server-side issue whatsoever, my patch could
+not have fixed it.
+
+Unfortunately, the only test case I have is my real-world application,
+which I cannot share.  It takes ~30 minutes of running to reproduce
+every time, and it only happens on maybe 2/3 of the runs, so it has
+taken me over a week to track this down.  I still do not know the
+exact sequence of operations that causes the problem; I just know it
+really is happening.
+
+In summary, the current code is "obviously wrong" because it violates
+its own invariants by potentially updating a directory's mtime without
+invalidating its lookup cache.  And it really is happening to me in
+practice.  My patch fixes both the potential problem (which you can
+see for yourself) and the actual problem (for which you have only my
+word).
+
+Are you unwilling to fix such a bug unless I can provide you a test case?
+
+Thanks!
+
+ - Pat
