@@ -1,73 +1,54 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp.opengridcomputing.com ([209.198.142.2]:35147 "EHLO
-	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S932352Ab0HCQpS (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 3 Aug 2010 12:45:18 -0400
-From: Tom Tucker <tom@ogc.us>
-Subject: [PATCH 4/4] rpcrdma: Fix SQ size calculation when memreg is FRMR
-To: trond.myklebust@netapp.com, bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org, swise@ogc.us, tom@ogc.us
-Date: Tue, 03 Aug 2010 11:45:17 -0500
-Message-ID: <20100803164517.2567.50208.stgit@build.ogc.int>
-In-Reply-To: <20100803164411.2567.31416.stgit@build.ogc.int>
-References: <20100803164411.2567.31416.stgit@build.ogc.int>
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-out1.uio.no ([129.240.10.57]:33554 "EHLO mail-out1.uio.no"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1760259Ab0HLPuJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 12 Aug 2010 11:50:09 -0400
+Subject: Re: [PATCH] nfs: lookupcache coherence bugs in WCC update path
+ (revised)
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+To: "Patrick J. LoPresti" <lopresti@gmail.com>
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+In-Reply-To: <8762zgmmer.fsf@patl.com>
+References: <87lj8ckb1e.fsf@patl.com>  <8762zgmmer.fsf@patl.com>
+Content-Type: text/plain; charset="UTF-8"
+Date: Thu, 12 Aug 2010 11:49:55 -0400
+Message-ID: <1281628195.2873.12.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-This patch updates the computation to include the worst case situation
-where three FRMR are required to map a single RPC REQ.
+On Wed, 2010-08-11 at 22:26 -0700, Patrick J. LoPresti wrote:
+> (Well, crud.  I screwed up the previous diff and was missing a
+> close-curly.  This version actually compiles...)
+> 
+> This patch fixes some coherence bugs in the NFS "dentry lookup cache".
+> 
+> The NFS dentry lookup cache provides the nfs_force_lookup_revalidate()
+> call to invalidate all cached dentries associated with an inode.  In
+> general, the NFS client uses the ctime and mtime in the inode to detect
+> when changes are made on the server.
+> 
+> Therefore, to maintain cache coherence, nfs_force_lookup_revalidate()
+> must be called whenever the ctime or mtime of a directory inode is
+> updated with fresh data from the server.  There are a few spots in
+> nfs_wcc_update_inode() where this rule is violated, making it possible
+> for the lookup cache to return arbitrarily stale data.
+> 
+> This actually bit me in practice.  I have an application where a
+> negative dentry results in -ENOENT for a file that was created 30+
+> minutes earlier (despite the "noac" mount option).  Unfortunately I
+> cannot share my test case, but I believe the following simple patch is
+> "obviously correct", and I can confirm that it fixes my issue.
 
-Signed-off-by: Tom Tucker <tom@ogc.us>
----
+This looks less than obviously correct to me. The wcc case is invoked
+when the ctime/mtime/.... change is known to have occurred due to a file
+creation/unlink/... from this client. It is a weak cache consistency
+case.
 
- net/sunrpc/xprtrdma/rpc_rdma.c |    2 ++
- net/sunrpc/xprtrdma/verbs.c    |   20 ++++++++++++++++----
- 2 files changed, 18 insertions(+), 4 deletions(-)
+If your client is seeing ENOENT after it created the file itself, then
+the problem isn't cache coherency, but a bug in the file creation code.
 
-diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
-index e5e28d1..2ac3f6e 100644
---- a/net/sunrpc/xprtrdma/rpc_rdma.c
-+++ b/net/sunrpc/xprtrdma/rpc_rdma.c
-@@ -249,6 +249,8 @@ rpcrdma_create_chunks(struct rpc_rqst *rqst, struct xdr_buf *target,
- 	req->rl_nchunks = nchunks;
- 
- 	BUG_ON(nchunks == 0);
-+	BUG_ON((r_xprt->rx_ia.ri_memreg_strategy == RPCRDMA_FRMR)
-+	       && (nchunks > 3));
- 
- 	/*
- 	 * finish off header. If write, marshal discrim and nchunks.
-diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index 3bdbd9f..5f4c7b3 100644
---- a/net/sunrpc/xprtrdma/verbs.c
-+++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -650,10 +650,22 @@ rpcrdma_ep_create(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia,
- 	ep->rep_attr.cap.max_send_wr = cdata->max_requests;
- 	switch (ia->ri_memreg_strategy) {
- 	case RPCRDMA_FRMR:
--		/* Add room for frmr register and invalidate WRs */
--		ep->rep_attr.cap.max_send_wr *= 3;
--		if (ep->rep_attr.cap.max_send_wr > devattr.max_qp_wr)
--			return -EINVAL;
-+		/* Add room for frmr register and invalidate WRs.
-+		 * 1. FRMR reg WR for head
-+		 * 2. FRMR invalidate WR for head
-+		 * 3. FRMR reg WR for pagelist
-+		 * 4. FRMR invalidate WR for pagelist
-+		 * 5. FRMR reg WR for tail
-+		 * 6. FRMR invalidate WR for tail
-+		 * 7. The RDMA_SEND WR
-+		 */
-+		ep->rep_attr.cap.max_send_wr *= 7;
-+		if (ep->rep_attr.cap.max_send_wr > devattr.max_qp_wr) {
-+			cdata->max_requests = devattr.max_qp_wr / 7;
-+			if (!cdata->max_requests)
-+				return -EINVAL;
-+			ep->rep_attr.cap.max_send_wr = cdata->max_requests * 7;
-+		}
- 		break;
- 	case RPCRDMA_MEMWINDOWS_ASYNC:
- 	case RPCRDMA_MEMWINDOWS:
+Cheers
+  Trond
+
 
