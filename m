@@ -1,49 +1,80 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp-vbr12.xs4all.nl ([194.109.24.32]:1637 "EHLO
-	smtp-vbr12.xs4all.nl" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751708Ab0HVS3G (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 22 Aug 2010 14:29:06 -0400
-Date: Sun, 22 Aug 2010 20:28:53 +0200
-From: Miquel van Smoorenburg <mikevs@xs4all.net>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 00/03] sunrpc: a few authentication cache patches
-Message-ID: <20100822182848.GA26590@xs4all.net>
+Received: from mail-pz0-f46.google.com ([209.85.210.46]:39218 "EHLO
+	mail-pz0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750919Ab0HLF0p (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 12 Aug 2010 01:26:45 -0400
+From: "Patrick J. LoPresti" <lopresti@gmail.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH] nfs: lookupcache coherence bugs in WCC update path (revised)
+References: <87lj8ckb1e.fsf@patl.com>
+CC: linux-kernel@vger.kernel.org
+Date: Wed, 11 Aug 2010 22:26:36 -0700
+Message-ID: <8762zgmmer.fsf@patl.com>
 Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Thanks for including the configurable authcache hashtable size patches
-in 2.6.36. Yet another patch I can drop from our local builds.
+(Well, crud.  I screwed up the previous diff and was missing a
+close-curly.  This version actually compiles...)
 
-I do have a few small enhancements though. I think the first
-two should go into 2.6.36. The last one probably needs some
-discussion.
+This patch fixes some coherence bugs in the NFS "dentry lookup cache".
 
-Mike.
+The NFS dentry lookup cache provides the nfs_force_lookup_revalidate()
+call to invalidate all cached dentries associated with an inode.  In
+general, the NFS client uses the ctime and mtime in the inode to detect
+when changes are made on the server.
 
-[PATCH 01/03]: sunrpc: increase MAX_HASHTABLE_BITS to 14
+Therefore, to maintain cache coherence, nfs_force_lookup_revalidate()
+must be called whenever the ctime or mtime of a directory inode is
+updated with fresh data from the server.  There are a few spots in
+nfs_wcc_update_inode() where this rule is violated, making it possible
+for the lookup cache to return arbitrarily stale data.
 
-The maximum size of the authcache is now set to 1024 (10 bits),
-but on our server we need at least 4096 (12 bits). Increase
-MAX_HASHTABLE_BITS to 14. This is a maximum of 16384 entries,
-each containing a pointer (8 bytes on x86_64). This is
-exactly the limit of kmalloc() (128K).
+This actually bit me in practice.  I have an application where a
+negative dentry results in -ENOENT for a file that was created 30+
+minutes earlier (despite the "noac" mount option).  Unfortunately I
+cannot share my test case, but I believe the following simple patch is
+"obviously correct", and I can confirm that it fixes my issue.
 
-[PATCH 02/03]: sunrpc: make auth_hashtable_size param mode 0444
+CC: stable <stable@kernel.org>
+Signed-off-by: Patrick LoPresti <lopresti@gmail.com>
 
-The auth_hashtable_size parameter shows up in
-/sys/module/sunrpc/parameters with mode 0644. However the hashtables
-are allocated when the module is loaded, and changing the parameter
-afterwards doesn't do much. So make it read-only.
+---
 
-[PATCH 03/03] sunrpc: scale hashtable cache size with memory
-
-Set the number of entries of the authcache to 4096 on servers
-with 4G of memory or more. Because kmallocing more than a few K
-is frowned upon, change the allocator from kmalloc to __get_free_pages.
-Since the minimum allocation size of __get_free_pages is 1 page,
-set the number of entries in the authcache to PAGE_SIZE / (entry_size)
-on servers with < 4G of memory so that exactly one page is used.
-
+--- linux-2.6.35/fs/nfs/inode.c.orig	2010-08-01 15:11:14.000000000 -0700
++++ linux-2.6.35/fs/nfs/inode.c	2010-08-11 22:18:30.000000000 -0700
+@@ -819,21 +819,29 @@ static void nfs_wcc_update_inode(struct
+ 			&& (fattr->valid & NFS_ATTR_FATTR_CHANGE)
+ 			&& nfsi->change_attr == fattr->pre_change_attr) {
+ 		nfsi->change_attr = fattr->change_attr;
+-		if (S_ISDIR(inode->i_mode))
++		if (S_ISDIR(inode->i_mode)) {
+ 			nfsi->cache_validity |= NFS_INO_INVALID_DATA;
++			nfs_force_lookup_revalidate(inode);
++		}
+ 	}
+ 	/* If we have atomic WCC data, we may update some attributes */
+ 	if ((fattr->valid & NFS_ATTR_FATTR_PRECTIME)
+ 			&& (fattr->valid & NFS_ATTR_FATTR_CTIME)
+-			&& timespec_equal(&inode->i_ctime, &fattr->pre_ctime))
+-			memcpy(&inode->i_ctime, &fattr->ctime, sizeof(inode->i_ctime));
++			&& timespec_equal(&inode->i_ctime,
++					  &fattr->pre_ctime)) {
++		if (S_ISDIR(inode->i_mode))
++			nfs_force_lookup_revalidate(inode);
++		memcpy(&inode->i_ctime, &fattr->ctime, sizeof(inode->i_ctime));
++	}
+ 
+ 	if ((fattr->valid & NFS_ATTR_FATTR_PREMTIME)
+ 			&& (fattr->valid & NFS_ATTR_FATTR_MTIME)
+ 			&& timespec_equal(&inode->i_mtime, &fattr->pre_mtime)) {
+ 			memcpy(&inode->i_mtime, &fattr->mtime, sizeof(inode->i_mtime));
+-			if (S_ISDIR(inode->i_mode))
++			if (S_ISDIR(inode->i_mode)) {
+ 				nfsi->cache_validity |= NFS_INO_INVALID_DATA;
++				nfs_force_lookup_revalidate(inode);
++			}
+ 	}
+ 	if ((fattr->valid & NFS_ATTR_FATTR_PRESIZE)
+ 			&& (fattr->valid & NFS_ATTR_FATTR_SIZE)
