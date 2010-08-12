@@ -1,80 +1,179 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-pz0-f46.google.com ([209.85.210.46]:39218 "EHLO
-	mail-pz0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750919Ab0HLF0p (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 12 Aug 2010 01:26:45 -0400
-From: "Patrick J. LoPresti" <lopresti@gmail.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH] nfs: lookupcache coherence bugs in WCC update path (revised)
-References: <87lj8ckb1e.fsf@patl.com>
-CC: linux-kernel@vger.kernel.org
-Date: Wed, 11 Aug 2010 22:26:36 -0700
-Message-ID: <8762zgmmer.fsf@patl.com>
-Content-Type: text/plain; charset=us-ascii
+Received: from cantor.suse.de ([195.135.220.2]:42402 "EHLO mx1.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1758066Ab0HLHFk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 12 Aug 2010 03:05:40 -0400
+From: NeilBrown <neilb@suse.de>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Date: Thu, 12 Aug 2010 17:04:06 +1000
+Subject: [PATCH 1/6] sunrpc/cache: allow threads to block while waiting for
+	cache update.
+Cc: linux-nfs@vger.kernel.org
+Message-ID: <20100812070405.11459.91402.stgit@localhost.localdomain>
+In-Reply-To: <20100812065722.11459.18978.stgit@localhost.localdomain>
+References: <20100812065722.11459.18978.stgit@localhost.localdomain>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-(Well, crud.  I screwed up the previous diff and was missing a
-close-curly.  This version actually compiles...)
+The current practice of waiting for cache updates by queueing the
+whole request to be retried has (at least) two problems.
 
-This patch fixes some coherence bugs in the NFS "dentry lookup cache".
+1/ With NFSv4, requests can be quite complex and re-trying a whole
+  request when a later part fails should only be a last-resort, not a
+  normal practice.
 
-The NFS dentry lookup cache provides the nfs_force_lookup_revalidate()
-call to invalidate all cached dentries associated with an inode.  In
-general, the NFS client uses the ctime and mtime in the inode to detect
-when changes are made on the server.
+2/ Large requests, and in particular any 'write' request, will not be
+  queued by the current code and doing so would be undesirable.
 
-Therefore, to maintain cache coherence, nfs_force_lookup_revalidate()
-must be called whenever the ctime or mtime of a directory inode is
-updated with fresh data from the server.  There are a few spots in
-nfs_wcc_update_inode() where this rule is violated, making it possible
-for the lookup cache to return arbitrarily stale data.
+In many cases only a very sort wait is needed before the cache gets
+valid data.
 
-This actually bit me in practice.  I have an application where a
-negative dentry results in -ENOENT for a file that was created 30+
-minutes earlier (despite the "noac" mount option).  Unfortunately I
-cannot share my test case, but I believe the following simple patch is
-"obviously correct", and I can confirm that it fixes my issue.
+So, providing the underlying transport permits it by setting
+ ->thread_wait,
+arrange to wait briefly for an upcall to be completed (as reflected in
+the clearing of CACHE_PENDING).
+If the short wait was not long enough and CACHE_PENDING is still set,
+fall back on the old approach.
 
-CC: stable <stable@kernel.org>
-Signed-off-by: Patrick LoPresti <lopresti@gmail.com>
+The 'thread_wait' value is set to 5 seconds when there are spare
+threads, and 1 second when there are no spare threads.
 
+These values are probably much higher than needed, but will ensure
+some forward progress.
+
+Note that as we only request an update for a non-valid item, and as
+non-valid items are updated in place it is extremely unlikely that
+cache_check will return -ETIMEDOUT.  Normally cache_defer_req will
+sleep for a short while and then find that the item is_valid.
+
+
+Signed-off-by: NeilBrown <neilb@suse.de>
 ---
+ include/linux/sunrpc/cache.h |    3 +++
+ net/sunrpc/cache.c           |   47 +++++++++++++++++++++++++++++++++++++++++-
+ net/sunrpc/svc_xprt.c        |   11 ++++++++++
+ 3 files changed, 60 insertions(+), 1 deletions(-)
 
---- linux-2.6.35/fs/nfs/inode.c.orig	2010-08-01 15:11:14.000000000 -0700
-+++ linux-2.6.35/fs/nfs/inode.c	2010-08-11 22:18:30.000000000 -0700
-@@ -819,21 +819,29 @@ static void nfs_wcc_update_inode(struct
- 			&& (fattr->valid & NFS_ATTR_FATTR_CHANGE)
- 			&& nfsi->change_attr == fattr->pre_change_attr) {
- 		nfsi->change_attr = fattr->change_attr;
--		if (S_ISDIR(inode->i_mode))
-+		if (S_ISDIR(inode->i_mode)) {
- 			nfsi->cache_validity |= NFS_INO_INVALID_DATA;
-+			nfs_force_lookup_revalidate(inode);
-+		}
- 	}
- 	/* If we have atomic WCC data, we may update some attributes */
- 	if ((fattr->valid & NFS_ATTR_FATTR_PRECTIME)
- 			&& (fattr->valid & NFS_ATTR_FATTR_CTIME)
--			&& timespec_equal(&inode->i_ctime, &fattr->pre_ctime))
--			memcpy(&inode->i_ctime, &fattr->ctime, sizeof(inode->i_ctime));
-+			&& timespec_equal(&inode->i_ctime,
-+					  &fattr->pre_ctime)) {
-+		if (S_ISDIR(inode->i_mode))
-+			nfs_force_lookup_revalidate(inode);
-+		memcpy(&inode->i_ctime, &fattr->ctime, sizeof(inode->i_ctime));
-+	}
+diff --git a/include/linux/sunrpc/cache.h b/include/linux/sunrpc/cache.h
+index 7bf3e84..61f521f 100644
+--- a/include/linux/sunrpc/cache.h
++++ b/include/linux/sunrpc/cache.h
+@@ -125,6 +125,9 @@ struct cache_detail {
+  */
+ struct cache_req {
+ 	struct cache_deferred_req *(*defer)(struct cache_req *req);
++	int thread_wait;  /* How long (jiffies) we can block the
++			   * current thread to wait for updates.
++			   */
+ };
+ /* this must be embedded in a deferred_request that is being
+  * delayed awaiting cache-fill
+diff --git a/net/sunrpc/cache.c b/net/sunrpc/cache.c
+index 2b06410..2fdd66b 100644
+--- a/net/sunrpc/cache.c
++++ b/net/sunrpc/cache.c
+@@ -509,10 +509,22 @@ static LIST_HEAD(cache_defer_list);
+ static struct list_head cache_defer_hash[DFR_HASHSIZE];
+ static int cache_defer_cnt;
  
- 	if ((fattr->valid & NFS_ATTR_FATTR_PREMTIME)
- 			&& (fattr->valid & NFS_ATTR_FATTR_MTIME)
- 			&& timespec_equal(&inode->i_mtime, &fattr->pre_mtime)) {
- 			memcpy(&inode->i_mtime, &fattr->mtime, sizeof(inode->i_mtime));
--			if (S_ISDIR(inode->i_mode))
-+			if (S_ISDIR(inode->i_mode)) {
- 				nfsi->cache_validity |= NFS_INO_INVALID_DATA;
-+				nfs_force_lookup_revalidate(inode);
-+			}
++struct thread_deferred_req {
++	struct cache_deferred_req handle;
++	struct completion completion;
++};
++static void cache_restart_thread(struct cache_deferred_req *dreq, int too_many)
++{
++	struct thread_deferred_req *dr =
++		container_of(dreq, struct thread_deferred_req, handle);
++	complete(&dr->completion);
++}
++
+ static int cache_defer_req(struct cache_req *req, struct cache_head *item)
+ {
+ 	struct cache_deferred_req *dreq, *discard;
+ 	int hash = DFR_HASH(item);
++	struct thread_deferred_req sleeper;
+ 
+ 	if (cache_defer_cnt >= DFR_MAX) {
+ 		/* too much in the cache, randomly drop this one,
+@@ -521,7 +533,15 @@ static int cache_defer_req(struct cache_req *req, struct cache_head *item)
+ 		if (net_random()&1)
+ 			return -ENOMEM;
  	}
- 	if ((fattr->valid & NFS_ATTR_FATTR_PRESIZE)
- 			&& (fattr->valid & NFS_ATTR_FATTR_SIZE)
+-	dreq = req->defer(req);
++	if (req->thread_wait) {
++		dreq = &sleeper.handle;
++		sleeper.completion =
++			COMPLETION_INITIALIZER_ONSTACK(sleeper.completion);
++		dreq->revisit = cache_restart_thread;
++	} else
++		dreq = req->defer(req);
++
++ retry:
+ 	if (dreq == NULL)
+ 		return -ENOMEM;
+ 
+@@ -555,6 +575,31 @@ static int cache_defer_req(struct cache_req *req, struct cache_head *item)
+ 		cache_revisit_request(item);
+ 		return -EAGAIN;
+ 	}
++
++	if (dreq == &sleeper.handle) {
++		wait_for_completion_interruptible_timeout(
++			&sleeper.completion, req->thread_wait);
++		spin_lock(&cache_defer_lock);
++		if (!list_empty(&sleeper.handle.hash)) {
++			list_del_init(&sleeper.handle.recent);
++			list_del_init(&sleeper.handle.hash);
++			cache_defer_cnt--;
++		}
++		spin_unlock(&cache_defer_lock);
++		if (test_bit(CACHE_PENDING, &item->flags)) {
++			/* item is still pending, try request
++			 * deferral
++			 */
++			dreq = req->defer(req);
++			goto retry;
++		}
++		/* only return success if we actually deferred the
++		 * request.  In this case we waited until it was
++		 * answered so no deferral has happened - rather
++		 * an answer already exists.
++		 */
++		return -EEXIST;
++	}
+ 	return 0;
+ }
+ 
+diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
+index cbc0849..8ff6840 100644
+--- a/net/sunrpc/svc_xprt.c
++++ b/net/sunrpc/svc_xprt.c
+@@ -651,6 +651,11 @@ int svc_recv(struct svc_rqst *rqstp, long timeout)
+ 	if (signalled() || kthread_should_stop())
+ 		return -EINTR;
+ 
++	/* Normally we will wait up to 5 seconds for any required
++	 * cache information to be provided.
++	 */
++	rqstp->rq_chandle.thread_wait = 5*HZ;
++
+ 	spin_lock_bh(&pool->sp_lock);
+ 	xprt = svc_xprt_dequeue(pool);
+ 	if (xprt) {
+@@ -658,6 +663,12 @@ int svc_recv(struct svc_rqst *rqstp, long timeout)
+ 		svc_xprt_get(xprt);
+ 		rqstp->rq_reserved = serv->sv_max_mesg;
+ 		atomic_add(rqstp->rq_reserved, &xprt->xpt_reserved);
++
++		/* As there is a shortage of threads and this request
++		 * had to be queue, don't allow the thread to wait so
++		 * long for cache updates.
++		 */
++		rqstp->rq_chandle.thread_wait = 1*HZ;
+ 	} else {
+ 		/* No data pending. Go to sleep */
+ 		svc_thread_enqueue(pool, rqstp);
+
+
