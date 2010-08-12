@@ -1,51 +1,62 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cantor.suse.de ([195.135.220.2]:42178 "EHLO mx1.suse.de"
+Received: from cantor2.suse.de ([195.135.220.15]:35489 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752375Ab0HLG4C (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 12 Aug 2010 02:56:02 -0400
+	id S1752298Ab0HLHF1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 12 Aug 2010 03:05:27 -0400
 From: NeilBrown <neilb@suse.de>
 To: "J. Bruce Fields" <bfields@fieldses.org>
-Date: Thu, 12 Aug 2010 16:55:21 +1000
-Subject: [PATCH 0/2] Use monotonic time stamps in sunrpc auth cache.
+Date: Thu, 12 Aug 2010 17:04:05 +1000
+Subject: [PATCH 0/6] Cache deferral improvements - try N+2
 Cc: linux-nfs@vger.kernel.org
-Message-ID: <20100812064957.3408.44224.stgit@localhost.localdomain>
+Message-ID: <20100812065722.11459.18978.stgit@localhost.localdomain>
 Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-A 6 month release cycles seems to be popular these days, and it is six
-months since I last posted these, so I guess it is time to post them
-again (yes, I've been busy and forgot all about them - but I still
-think they are important).
+I don't think it is quite 6 months since I last posted these, but I've
+definitely dropped the ball... so here they are again.
 
-If you set your system time backwards, nfsd can end up caching things
-much longer than it should.  And if you set if very far forward,
-caches will get flushed too early.
+This set allows kernel threads to wait a short while for an upcall (to
+get auth info) to complete rather than having to queue and retry the
+whole request.
+It also changes NFSv4 to never use the old deferral scheme at all.
 
-So change all time keeping to use a monotonic time based on
-getboottime.
+The last two patches are just little clean-ups that I found while
+wandering around the code.
 
-A few issues were raised last time I posted these:
-   http://www.spinics.net/lists/linux-nfs/msg11515.html
-I think they have all been addressed now.
+I think I have address all the concern raised previously, e.g.
+  http://www.spinics.net/lists/linux-nfs/msg12253.html
+
+Note that there is a conflict between this patch set and the other
+one.  The other changes someing in nfs4idmap.c, and this one removes
+all the code that was changed.  Very easy to resolve.
 
 Thanks,
 NeilBrown
 
 ---
 
-NeilBrown (2):
-      sunrpc: extract some common sunrpc_cache code from nfsd
-      sunrpc: use monotonic time in expiry cache
+NeilBrown (6):
+      sunrpc/cache: allow threads to block while waiting for cache update.
+      nfsd/idmap: drop special request deferal in favour of improved default.
+      sunrpc: close connection when a request is irretrievably lost.
+      nfsd: disable deferral for NFSv4
+      svcauth_gss: replace a trivial 'switch' with an 'if'
+      sunrpc/cache: change deferred-request hash table to use hlist.
 
 
- fs/nfs/dns_resolve.c         |    6 +++---
- fs/nfsd/export.c             |    9 +++------
- fs/nfsd/nfs4idmap.c          |    2 +-
- include/linux/sunrpc/cache.h |   23 ++++++++++++++++++++++-
- net/sunrpc/cache.c           |   37 ++++++++++++++++++++-----------------
- 5 files changed, 49 insertions(+), 28 deletions(-)
+ fs/nfsd/nfs4idmap.c               |  105 ++++---------------------------------
+ fs/nfsd/nfs4proc.c                |    4 +
+ include/linux/sunrpc/cache.h      |    5 +-
+ include/linux/sunrpc/svcauth.h    |   10 ++--
+ net/sunrpc/auth_gss/svcauth_gss.c |   51 ++++++++----------
+ net/sunrpc/cache.c                |   71 +++++++++++++++++++------
+ net/sunrpc/svc.c                  |    3 +
+ net/sunrpc/svc_xprt.c             |   11 ++++
+ net/sunrpc/svcauth_unix.c         |   11 +++-
+ 9 files changed, 125 insertions(+), 146 deletions(-)
 
 -- 
+Signature
 
