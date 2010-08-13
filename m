@@ -1,45 +1,59 @@
-From: Steve Dickson <SteveD@redhat.com>
-Subject: Re: numeric UIDs
-Date: Fri, 13 Aug 2010 10:43:06 -0400
-Message-ID: <4C6559FA.5070809@RedHat.com>
-References: <201008030401.33552.dreck@vmsd.ath.cx>	<20100803164318.GB13896@merit.edu>	<20100803192216.GC31579@fieldses.org>	<DE966DA98A4ABE438D726BDF1699CF61403FAF9D@MX05A.corp.emc.com>	<20100803215704.GA15494@merit.edu>	<1280873719.14520.17.camel@heimdal.trondhjem.org>	<20100803222337.GA9752@fieldses.org>	<1280874675.14520.23.camel@heimdal.trondhjem.org>	<20100803224245.GB9752@fieldses.org>	<1280887336.24669.23.camel@heimdal.trondhjem.org>	<20100805153421.GD27141@fieldses.org> <20100812092232.344314b2@notabene>
+From: Lukas Hejtmanek <xhejtman@ics.muni.cz>
+Subject: 64bit inodes and IA32 apps over NFS
+Date: Fri, 13 Aug 2010 16:47:03 +0200
+Message-ID: <20100813144703.GP20901@ics.muni.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-	Trond Myklebust <trond.myklebust@fys.uio.no>,
-	Jim Rees <rees@umich.edu>, Daniel.Muntz@emc.com,
-	linux-nfs@vger.kernel.org
-To: Neil Brown <neilb@suse.de>
+Content-Type: text/plain; charset=iso-8859-2
+To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:21693 "EHLO mx1.redhat.com"
+Received: from minas.ics.muni.cz ([147.251.4.40]:41560 "EHLO minas.ics.muni.cz"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1761687Ab0HMOnW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 13 Aug 2010 10:43:22 -0400
-In-Reply-To: <20100812092232.344314b2@notabene>
+	id S1754468Ab0HMOqm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 13 Aug 2010 10:46:42 -0400
+Received: from anubis.ics.muni.cz (anubis.ics.muni.cz [147.251.3.109])
+	(authenticated user=xhejtman-/qMqeO8aiZrEwhJ7BL7w9Q@public.gmane.org bits=0)
+	by minas.ics.muni.cz (8.13.8/8.13.8/SuSE Linux 0.8) with ESMTP id o7DEkc9u026362
+	(version=TLSv1/SSLv3 cipher=AES256-SHA bits=256 verify=NO)
+	for <linux-nfs@vger.kernel.org>; Fri, 13 Aug 2010 16:46:39 +0200
+Received: from xhejtman by anubis.ics.muni.cz with local (Exim 4.72)
+	(envelope-from <xhejtman-muXYU8BwpB4yxAW3W1Oy7esEoJ4y9sgM@public.gmane.org>)
+	id 1OjvXD-0000Mx-GA
+	for linux-nfs@vger.kernel.org; Fri, 13 Aug 2010 16:47:03 +0200
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Hello,
+
+is there any workaround for NFSv4 when exporting XFS with 64bit inodes?
+
+IA32 apps receives:
+getdents(3, 0xb7571008, 1000)           =3D -1 EOVERFLOW (Value too lar=
+ge for defined data type)
+
+when compiling on x86_64, I got not error.
+
+=46rom the XFS man page:
+By default, with 32bit inodes, XFS places inodes only in the first 1TB =
+of
+a disk. If you have a disk with 100TB, all inodes will be stuck in the =
+first
+TB. This can lead to strange things like "disk full" when you still hav=
+e
+plenty space free, but there's no more place in the first TB to create =
+a new
+inode. Also, performance sucks.
+
+To come around this, use the inode64 mount options for filesystems >1TB=
+=2E
+Inodes will then be placed in the location where their data is, minimiz=
+ing
+disk seeks.
+
+Beware that some old programs might have problems reading 64bit inodes,
+especially over NFS.
 
 
-On 08/11/2010 07:22 PM, Neil Brown wrote:
-> 
-> I agree.  And surely it can all be solved in idmapd.
-> 
-> On the server, tell idmapd to map all users to "NUMERIC_USER:%d" and all
-> groups to "NUMERIC_GROUP:%d" (or whatever) for some given clients (i.e. stop
-> ignoring the 'authentication name'.  And of course map those names back to
-> numbers.
-> 
-> I don't know if the client can easily differentiate based on which server it
-> is talking to, but there is probably less need there (and maybe it can
-> anyway).
-> 
-> It shouldn't take more that half an hour to hack something into
-> idmapd.c:nfsdcb() for the server side and nfscb for the client side - or
-> for a quicker hack, just go directly to imconv and ignore the client name on
-> the server.  (all this in nfs-utils of course).
-I took a look... and you are right it would not be that difficult to
-hack something up... but would this only be a Linux to Linux thing? 
-Or am I missing something?
+So, is there any workaround in NFS for IA32 apps?
 
-steved.
+--=20
+Luk=E1=B9 Hejtm=E1nek
