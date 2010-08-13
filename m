@@ -1,82 +1,114 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-out1.uio.no ([129.240.10.57]:57815 "EHLO mail-out1.uio.no"
+Received: from mx2.netapp.com ([216.240.18.37]:14051 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754176Ab0H3TS4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 30 Aug 2010 15:18:56 -0400
-Subject: Re: [PATCH] sunrpc: cancel delayed connect working when conncet
- success
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-To: Mi Jinlong <mijinlong@cn.fujitsu.com>
-Cc: NFSv3 list <linux-nfs@vger.kernel.org>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Chuck Lever <chuck.lever@oracle.com>, Jeff Layton <jlayton@redhat.com>
-In-Reply-To: <4C6BACAA.2060706@cn.fujitsu.com>
-References: <4C6BACAA.2060706@cn.fujitsu.com>
-Content-Type: text/plain; charset="UTF-8"
-Date: Mon, 30 Aug 2010 15:18:47 -0400
-Message-ID: <1283195927.2920.3.camel@heimdal.trondhjem.org>
+	id S1754279Ab0HMVcd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 13 Aug 2010 17:32:33 -0400
+From: andros@netapp.com
+To: bhalevy@panasas.com
+Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
+Subject: [PATCH 34/50] pnfs_submit: filelayout policy operations
+Date: Fri, 13 Aug 2010 17:31:46 -0400
+Message-Id: <1281735122-1496-35-git-send-email-andros@netapp.com>
+In-Reply-To: <1281735122-1496-34-git-send-email-andros@netapp.com>
+References: <1281735122-1496-1-git-send-email-andros@netapp.com>
+ <1281735122-1496-2-git-send-email-andros@netapp.com>
+ <1281735122-1496-3-git-send-email-andros@netapp.com>
+ <1281735122-1496-4-git-send-email-andros@netapp.com>
+ <1281735122-1496-5-git-send-email-andros@netapp.com>
+ <1281735122-1496-6-git-send-email-andros@netapp.com>
+ <1281735122-1496-7-git-send-email-andros@netapp.com>
+ <1281735122-1496-8-git-send-email-andros@netapp.com>
+ <1281735122-1496-9-git-send-email-andros@netapp.com>
+ <1281735122-1496-10-git-send-email-andros@netapp.com>
+ <1281735122-1496-11-git-send-email-andros@netapp.com>
+ <1281735122-1496-12-git-send-email-andros@netapp.com>
+ <1281735122-1496-13-git-send-email-andros@netapp.com>
+ <1281735122-1496-14-git-send-email-andros@netapp.com>
+ <1281735122-1496-15-git-send-email-andros@netapp.com>
+ <1281735122-1496-16-git-send-email-andros@netapp.com>
+ <1281735122-1496-17-git-send-email-andros@netapp.com>
+ <1281735122-1496-18-git-send-email-andros@netapp.com>
+ <1281735122-1496-19-git-send-email-andros@netapp.com>
+ <1281735122-1496-20-git-send-email-andros@netapp.com>
+ <1281735122-1496-21-git-send-email-andros@netapp.com>
+ <1281735122-1496-22-git-send-email-andros@netapp.com>
+ <1281735122-1496-23-git-send-email-andros@netapp.com>
+ <1281735122-1496-24-git-send-email-andros@netapp.com>
+ <1281735122-1496-25-git-send-email-andros@netapp.com>
+ <1281735122-1496-26-git-send-email-andros@netapp.com>
+ <1281735122-1496-27-git-send-email-andros@netapp.com>
+ <1281735122-1496-28-git-send-email-andros@netapp.com>
+ <1281735122-1496-29-git-send-email-andros@netapp.com>
+ <1281735122-1496-30-git-send-email-andros@netapp.com>
+ <1281735122-1496-31-git-send-email-andros@netapp.com>
+ <1281735122-1496-32-git-send-email-andros@netapp.com>
+ <1281735122-1496-33-git-send-email-andros@netapp.com>
+ <1281735122-1496-34-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Wed, 2010-08-18 at 17:49 +0800, Mi Jinlong wrote:
-> As network partition or some other reason, when client connect 
-> success, maybe there is some delayed connect working in connect_work list.
-> 
-> Aug  2 12:51:32 TEST-M kernel: RPC:       xs_connect delayed xprt ccc4c800 for 96 seconds
-> Aug  2 12:51:32 TEST-M kernel: RPC:       xs_error_report client ccc4c800...
-> Aug  2 12:51:32 TEST-M kernel: RPC:       error 111
->  ... snip ...
-> Aug  2 12:53:08 TEST-M kernel: RPC:       disconnected transport ccc4c800
-> Aug  2 12:53:08 TEST-M kernel: RPC:       worker connecting xprt ccc4c800 via tcp to 192.168.0.21 (port 2049)
-> Aug  2 12:53:08 TEST-M kernel: RPC:       ccc4c800 connect status 115 connected 0 sock state 2
-> Aug  2 12:53:08 TEST-M kernel: RPC:   228 xprt_connect_status: retrying
-> Aug  2 12:53:08 TEST-M kernel: RPC:   228 xprt_prepare_transmit
-> Aug  2 12:53:08 TEST-M kernel: RPC:   228 xprt_transmit(136)
-> Aug  2 12:53:08 TEST-M kernel: RPC:       xs_tcp_send_request(136) = -11
-> Aug  2 12:53:08 TEST-M kernel: RPC:   228 xmit incomplete (136 left of 136)
-> Aug  2 12:53:08 TEST-M kernel: RPC:   228 xprt_connect xprt ccc4c800 is not connected
-> Aug  2 12:53:08 TEST-M kernel: RPC:       xs_connect delayed xprt ccc4c800 for 192 seconds
-> Aug  2 12:53:08 TEST-M kernel: RPC:       xs_tcp_state_change client ccc4c800...
-> Aug  2 12:53:08 TEST-M kernel: RPC:       state 1 conn 0 dead 0 zapped 1
-> Aug  2 12:53:08 TEST-M kernel: RPC:   228 xprt_connect_status: retrying
-> Aug  2 12:53:08 TEST-M kernel: RPC:   228 xprt_prepare_transmit
-> Aug  2 12:53:08 TEST-M kernel: RPC:   228 xprt_transmit(136)
-> Aug  2 12:53:08 TEST-M kernel: RPC:       xs_tcp_send_request(136) = 136
-> Aug  2 12:53:08 TEST-M kernel: RPC:   228 xmit complete
-> Aug  2 12:53:08 TEST-M kernel: RPC:   229 xprt_prepare_transmit
-> 
-> As the debug message show, "xs_connect delayed xprt ccc4c800 for 192 seconds"
-> means a connecting work have be delayed at connect_worker list.
-> "state 1 conn 0 dead 0 zapped 1" shows the connect have successed 
-> but a delayed work still alive at connect_worker list.
-> 
-> Signed-off-by: Mi Jinlong <mijinlong@cn.fujitsu.com>
-> 
-> ---
->  net/sunrpc/xprtsock.c |    4 ++++
->  1 files changed, 4 insertions(+), 0 deletions(-)
-> 
-> diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-> index 49a62f0..823f1db 100644
-> --- a/net/sunrpc/xprtsock.c
-> +++ b/net/sunrpc/xprtsock.c
-> @@ -1324,6 +1324,10 @@ static void xs_tcp_state_change(struct sock *sk)
->  			transport->tcp_flags =
->  				TCP_RCV_COPY_FRAGHDR | TCP_RCV_COPY_XID;
->  
-> +			if (xprt_connecting(xprt) &&
-> +			      cancel_delayed_work(&transport->connect_worker))
-> +				xprt_clear_connecting(xprt);
-> +
->  			xprt_wake_pending_tasks(xprt, -EAGAIN);
->  		}
->  		spin_unlock_bh(&xprt->transport_lock);
+From: The pNFS Team <linux-nfs@vger.kernel.org>
 
-Wait... According to the above trace, the connect request is _failing_
-due to an ECONNREFUSED error. In that case, we _want_ to delay the
-reconnection in order to give the server time to set itself up.
+Signed-off-by: Andy Adamson <andros@netapp.com>
+---
+ fs/nfs/nfs4filelayout.c |   35 +++++++++++++++++++++++++++++++++++
+ 1 files changed, 35 insertions(+), 0 deletions(-)
 
-Cheers
-  Trond
+diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+index 50620f4..4af089c 100644
+--- a/fs/nfs/nfs4filelayout.c
++++ b/fs/nfs/nfs4filelayout.c
+@@ -303,6 +303,39 @@ filelayout_free_lseg(struct pnfs_layout_segment *lseg)
+ 				   nfs4_fl_free_deviceid_callback);
+ 	_filelayout_free_lseg(lseg);
+ }
++
++/* Return the stripesize for the specified file */
++ssize_t
++filelayout_get_stripesize(struct pnfs_layout_type *layoutid)
++{
++	struct nfs4_filelayout *flo = FILE_LO(layoutid);
++
++	return flo->stripe_unit;
++}
++
++/*
++ * filelayout_pg_test(). Called by nfs_can_coalesce_requests()
++ *
++ * return 1 :  coalesce page
++ * return 0 :  don't coalesce page
++ */
++int
++filelayout_pg_test(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev,
++		   struct nfs_page *req)
++{
++	u64 p_stripe, r_stripe;
++
++	if (pgio->pg_boundary == 0)
++		return 1;
++	p_stripe = (u64)prev->wb_index << PAGE_CACHE_SHIFT;
++	r_stripe = (u64)req->wb_index << PAGE_CACHE_SHIFT;
++
++	do_div(p_stripe, pgio->pg_boundary);
++	do_div(r_stripe, pgio->pg_boundary);
++
++	return (p_stripe == r_stripe);
++}
++
+ struct layoutdriver_io_operations filelayout_io_operations = {
+ 	.alloc_layout            = filelayout_alloc_layout,
+ 	.free_layout             = filelayout_free_layout,
+@@ -313,6 +346,8 @@ struct layoutdriver_io_operations filelayout_io_operations = {
+ };
+ 
+ struct layoutdriver_policy_operations filelayout_policy_operations = {
++	.get_stripesize        = filelayout_get_stripesize,
++	.pg_test               = filelayout_pg_test,
+ };
+ 
+ struct pnfs_layoutdriver_type filelayout_type = {
+-- 
+1.6.2.5
 
