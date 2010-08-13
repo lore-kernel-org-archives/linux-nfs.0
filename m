@@ -1,131 +1,47 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:43818 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757978Ab0HDUp7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 4 Aug 2010 16:45:59 -0400
-Received: from [10.58.49.162] (cbob1-lxp.hq.netapp.com [10.58.49.162] (may be forged))
-	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id o74Kjws2028392
-	for <linux-nfs@vger.kernel.org>; Wed, 4 Aug 2010 13:45:59 -0700 (PDT)
-Message-ID: <4C59D1A3.5030406@netapp.com>
-Date: Wed, 04 Aug 2010 16:46:27 -0400
-From: Bryan Schumaker <bjschuma@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH] NFS use kernel DNS resolver
+Received: from mail-ew0-f46.google.com ([209.85.215.46]:54732 "EHLO
+	mail-ew0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753834Ab0HMSav convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 13 Aug 2010 14:30:51 -0400
+In-Reply-To: <20100813123635.GA8945@fieldses.org>
+References: <87lj8ckb1e.fsf@patl.com>
+	<8762zgmmer.fsf@patl.com>
+	<1281628195.2873.12.camel@heimdal.trondhjem.org>
+	<AANLkTi=WzNzq7wKf0qa+VFuOBYy4yW==0QvdKsTQ88+x@mail.gmail.com>
+	<1281634004.14329.14.camel@heimdal.trondhjem.org>
+	<AANLkTikStDSBi2Dm0oMAEpVbE9PFZOTmOkW6Wy92wjj-@mail.gmail.com>
+	<AANLkTi=OEkPuL+0E_VhPOn-U6neR=jJWunz-2DT755aB@mail.gmail.com>
+	<20100813123635.GA8945@fieldses.org>
+Date: Fri, 13 Aug 2010 11:30:49 -0700
+Message-ID: <AANLkTimJ8y3CgAN-bXsQVoc68wGs8hnQCoKd9vw3mZzB@mail.gmail.com>
+Subject: Re: [PATCH] nfs: lookupcache coherence bugs in WCC update path (revised)
+From: "Patrick J. LoPresti" <lopresti@gmail.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: linux-nfs@vger.kernel.org, Trond Myklebust <trond.myklebust@fys.uio.no>,
+        linux-fsdevel@vger.kernel.org
 Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Use the kernel DNS resolver to translate hostnames to IP addresses.
-Create a new config option to choose between the legacy DNS resolver and the
-new resolver.
+On Fri, Aug 13, 2010 at 5:36 AM, J. Bruce Fields <bfields@fieldses.org> wrote:
+>
+> If you have an easy reproducer it might also be worth experimenting with
+> NFSv4 exports of an ext4 system mounted with the i_version option.
 
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+I may give that a try.
 
-diff --git a/fs/nfs/Kconfig b/fs/nfs/Kconfig
-index a43d07e..b1209ac 100644
---- a/fs/nfs/Kconfig
-+++ b/fs/nfs/Kconfig
-@@ -100,3 +100,19 @@ config NFS_FSCACHE
- 	help
- 	  Say Y here if you want NFS data to be cached locally on disc through
- 	  the general filesystem cache manager
-+
-+config NFS_USE_LEGACY_DNS
-+	bool "Use the legacy NFS DNS resolver"
-+	depends on NFS_FS
-+	help
-+	  The kernel now provides a method for translating a host name into an
-+	  IP address.  Select Y here if you would rather use your own DNS
-+	  resolver script.
-+
-+	  If unsure, say N
-+
-+config NFS_USE_KERNEL_DNS
-+	bool
-+	depends on NFS_FS && !NFS_USE_LEGACY_DNS
-+	select DNS_RESOLVER
-+	default y
-diff --git a/fs/nfs/Makefile b/fs/nfs/Makefile
-index da7fda6..ec8989c 100644
---- a/fs/nfs/Makefile
-+++ b/fs/nfs/Makefile
-@@ -7,7 +7,7 @@ obj-$(CONFIG_NFS_FS) += nfs.o
- nfs-y 			:= client.o dir.o file.o getroot.o inode.o super.o nfs2xdr.o \
- 			   direct.o pagelist.o proc.o read.o symlink.o unlink.o \
- 			   write.o namespace.o mount_clnt.o \
--			   dns_resolve.o cache_lib.o
-+			   dns_resolve.o
- nfs-$(CONFIG_ROOT_NFS)	+= nfsroot.o
- nfs-$(CONFIG_NFS_V3)	+= nfs3proc.o nfs3xdr.o
- nfs-$(CONFIG_NFS_V3_ACL)	+= nfs3acl.o
-@@ -15,5 +15,6 @@ nfs-$(CONFIG_NFS_V4)	+= nfs4proc.o nfs4xdr.o nfs4state.o nfs4renewd.o \
- 			   delegation.o idmap.o \
- 			   callback.o callback_xdr.o callback_proc.o \
- 			   nfs4namespace.o
-+nfs-$(CONFIG_NFS_LEGACY_DNS) += cache_lib.o
- nfs-$(CONFIG_SYSCTL) += sysctl.o
- nfs-$(CONFIG_NFS_FSCACHE) += fscache.o fscache-index.o
-diff --git a/fs/nfs/dns_resolve.c b/fs/nfs/dns_resolve.c
-index 76fd235..a67e2a4 100644
---- a/fs/nfs/dns_resolve.c
-+++ b/fs/nfs/dns_resolve.c
-@@ -6,6 +6,28 @@
-  * Resolves DNS hostnames into valid ip addresses
-  */
+> Actually: should the NFSv4 server always be using i_version as the
+> change attribute for directories?  (Does every exportable filesystem
+> update it on every directory modification?)
 
-+#ifdef CONFIG_NFS_USE_KERNEL_DNS
-+
-+#include <linux/sunrpc/clnt.h>
-+#include <linux/dns_resolver.h>
-+
-+ssize_t nfs_dns_resolve_name(char *name, size_t namelen,
-+		struct sockaddr *sa, size_t salen)
-+{
-+	ssize_t ret;
-+	char *ip_addr = NULL;
-+	int ip_len;
-+
-+	ip_len = dns_query(NULL, name, namelen, NULL, &ip_addr, NULL);
-+	if (ip_len > 0)
-+		ret = rpc_pton(ip_addr, ip_len, sa, salen);
-+	else
-+		ret = -ESRCH;
-+	kfree(ip_addr);
-+	return ret;
-+}
-+#else
-+
- #include <linux/hash.h>
- #include <linux/string.h>
- #include <linux/kmod.h>
-@@ -346,3 +368,4 @@ void nfs_dns_resolver_destroy(void)
- 	nfs_cache_unregister(&nfs_dns_resolve);
- }
+It appears to be an option for ext4.  I do not see it referenced in XFS.
 
-+#endif
-diff --git a/fs/nfs/dns_resolve.h b/fs/nfs/dns_resolve.h
-index a3f0938..fe5c3b3 100644
---- a/fs/nfs/dns_resolve.h
-+++ b/fs/nfs/dns_resolve.h
-@@ -6,8 +6,21 @@
+> (And if so, maybe on directories we should factor the i_version into the
+> low bits of the mtime reported to NFSv3 client?)
 
- #define NFS_DNS_HOSTNAME_MAXLEN	(128)
+Probably a bad idea.  Runs the risk of "change file A then change file
+B" resulting in backwards timestamps, which is even worse than 4
+millisecond timestamps.
 
-+
-+#ifdef CONFIG_NFS_USE_KERNEL_DNS
-+static inline int nfs_dns_resolver_init(void)
-+{
-+	return 0;
-+}
-+
-+static inline void nfs_dns_resolver_destroy(void)
-+{
-+}
-+#else
- extern int nfs_dns_resolver_init(void);
- extern void nfs_dns_resolver_destroy(void);
-+#endif
-+
- extern ssize_t nfs_dns_resolve_name(char *name, size_t namelen,
- 		struct sockaddr *sa, size_t salen);
+ - Pat
