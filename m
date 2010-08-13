@@ -1,62 +1,55 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:55323 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932959Ab0HXW7E (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 24 Aug 2010 18:59:04 -0400
-Date: Tue, 24 Aug 2010 18:58:57 -0400
-To: Harry Edmon <harry@uw.edu>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: Odd problem with Stale NFS file handle - NFS v3 server under
- 2.6.35.x
-Message-ID: <20100824225857.GA7283@fieldses.org>
-References: <4C7407D2.1040304@uw.edu>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4C7407D2.1040304@uw.edu>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+Received: from mail-wy0-f174.google.com ([74.125.82.174]:51189 "EHLO
+	mail-wy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751393Ab0HMUx7 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 13 Aug 2010 16:53:59 -0400
+In-Reply-To: <1281726579.2810.10.camel@localhost.localdomain>
+References: <AANLkTimnyXKahtjaFeSsgcq=xMy-pP3na1jidQhZ-dt2@mail.gmail.com>
+	<AANLkTin2P5kcrC1SU-ANffSHyW8Ar4x4+qFuqVMFhYJE@mail.gmail.com>
+	<AANLkTin-dksybH0ANypheovXXubwd+SRCpurdVRU7-Z=@mail.gmail.com>
+	<1281726579.2810.10.camel@localhost.localdomain>
+Date: Fri, 13 Aug 2010 13:53:57 -0700
+Message-ID: <AANLkTinJ04d2Bjuv2E4OOG=35TSHArEP6cHqGUQVUoy2@mail.gmail.com>
+Subject: Re: Proposal: Use hi-res clock for file timestamps
+From: "Patrick J. LoPresti" <lopresti@gmail.com>
+To: john stultz <johnstul@us.ibm.com>
+Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-kernel <linux-kernel@vger.kernel.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Tue, Aug 24, 2010 at 10:56:34AM -0700, Harry Edmon wrote:
-> I am having a problem getting odd ESTALE (Stale NFS file handle)
-> errors.   The server and client are both amd64 architecture.   I am
-> runnning a simple csh script on the client with the following:
-> 
-> if (! -e /home/disk/data/gempak/upperair/latest ) then
->    mkdir /home/disk/data/gempak/upperair/latest
-> endif
-> 
-> The script randomly comes back with:
-> 
->  mkdir: cannot create directory
-> `/home/disk/data/gempak/model/latest': File exists
+On Fri, Aug 13, 2010 at 12:09 PM, john stultz <johnstul@us.ibm.com> wrote:
+>
+> So other then "show some numbers", my only thought that might make the
+> patch more attractive is that rather than a global change, or a static
+> CONFIG_ option, would it maybe make more sense as a mount option?
 
-Why is it "model" here and "upperair" in the above?
+I really like this idea.
 
-> 
-> When I do an strace I am seeing the following when it fails:
-> 
-> 20745 stat("/home/disk/data/gempak/model/latest", 0x7fff56ed9580) = -1 ESTALE (Stale NFS file handle)
-> 
-> ...
-> 
-> 20751 mkdir("/home/disk/data/gempak/model/latest", 0777) = -1 EEXIST (File exists)
+Consider the following "revision 2" of my proposal:
 
-Could you give a more complete description of the code that's running?
-(For example: how is "latest" being removed, and how do you know that
-"latest" isn't created after checking whether it exists but before the
-mkdir?)
+1) Add a function pointer "current_fs_time" to struct super_block.
 
---b.
+2) Replace all calls of the form:
 
-> 
-> The kernel version of the client does not matter (I have tried
-> 2.6.34.5 and 2.6.35.3).   But the server kernel does matter.   It
-> occurs with 2.6.35 and 2.6.35.3.   It does not with 2.6.34.5.
-> 
-> The ESTALE only occurs with "stat" and "lstat" in the scripts I have tried.  Attached is my configuration file from the server.  The mount on the client is:
-> 
-> imist2:/home/data on /home/disk/data type nfs (rw,noatime,intr,proto=tcp,addr=192.168.1.12)
-> 
-> 
-> Any ideas?
+    current_fs_time(sb);
+
+with
+
+  sb->current_fs_time(sb);
+
+ 3) Arrange for the default value to point to the current implementation.
+
+These first three could be one patch.  They change no functionality;
+they just enable the next step.
+
+Finally:
+
+  4) Add a mount option to cause sb->current_fs_time(sb) to use the
+hi-res implementation.
+
+Comments?
+
+ - Pat
