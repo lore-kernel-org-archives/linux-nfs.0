@@ -1,153 +1,170 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:7769 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:33152 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759343Ab0HETum convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 5 Aug 2010 15:50:42 -0400
-Subject: RE: [PATCH] [Bug 16494] NFS client over TCP hangs due to packet
- loss
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Andy Chittenden <andyc.bluearc@gmail.com>
-Cc: "'Andrew Morton'" <akpm@linux-foundation.org>,
-        "'David Miller'" <davem@davemloft.net>, kuznet@ms2.inr.ac.ru,
-        pekkas@netcore.fi, jmorris@namei.org, yoshfuji@linux-ipv6.org,
-        kaber@trash.net, eric.dumazet@gmail.com,
-        William.Allen.Simpson@gmail.com, gilad@codefidence.com,
-        ilpo.jarvinen@helsinki.fi, netdev@vger.kernel.org,
-        linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        "'J. Bruce Fields'" <bfields@fieldses.org>,
-        "'Neil Brown'" <neilb@suse.de>,
-        "'Chuck Lever'" <chuck.lever@oracle.com>,
-        "'Benny Halevy'" <bhalevy@panasas.com>,
-        "'Alexandros Batsakis'" <batsakis@netapp.com>,
-        "'Joe Perches'" <joe@perches.com>
-In-Reply-To: <4c5ad0d6.42ecd80a.47d7.0dfc@mx.google.com>
-References: <4c57cfe8.887b0e0a.2f79.4772@mx.google.com>
-	 <20100803.012144.267950450.davem@davemloft.net>
-	 <20100803021110.f0b3877b.akpm@linux-foundation.org>
-	 <4C57EE9A.7040308@gmail.com>  <4c5ad0d6.42ecd80a.47d7.0dfc@mx.google.com>
-Content-Type: text/plain; charset="UTF-8"
-Date: Thu, 05 Aug 2010 15:50:22 -0400
-Message-ID: <1281037822.2948.49.camel@heimdal.trondhjem.org>
+	id S1754405Ab0HMVcg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 13 Aug 2010 17:32:36 -0400
+From: andros@netapp.com
+To: bhalevy@panasas.com
+Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
+Subject: [PATCH 37/50] pnfs_submit: filelayout read
+Date: Fri, 13 Aug 2010 17:31:49 -0400
+Message-Id: <1281735122-1496-38-git-send-email-andros@netapp.com>
+In-Reply-To: <1281735122-1496-37-git-send-email-andros@netapp.com>
+References: <1281735122-1496-1-git-send-email-andros@netapp.com>
+ <1281735122-1496-2-git-send-email-andros@netapp.com>
+ <1281735122-1496-3-git-send-email-andros@netapp.com>
+ <1281735122-1496-4-git-send-email-andros@netapp.com>
+ <1281735122-1496-5-git-send-email-andros@netapp.com>
+ <1281735122-1496-6-git-send-email-andros@netapp.com>
+ <1281735122-1496-7-git-send-email-andros@netapp.com>
+ <1281735122-1496-8-git-send-email-andros@netapp.com>
+ <1281735122-1496-9-git-send-email-andros@netapp.com>
+ <1281735122-1496-10-git-send-email-andros@netapp.com>
+ <1281735122-1496-11-git-send-email-andros@netapp.com>
+ <1281735122-1496-12-git-send-email-andros@netapp.com>
+ <1281735122-1496-13-git-send-email-andros@netapp.com>
+ <1281735122-1496-14-git-send-email-andros@netapp.com>
+ <1281735122-1496-15-git-send-email-andros@netapp.com>
+ <1281735122-1496-16-git-send-email-andros@netapp.com>
+ <1281735122-1496-17-git-send-email-andros@netapp.com>
+ <1281735122-1496-18-git-send-email-andros@netapp.com>
+ <1281735122-1496-19-git-send-email-andros@netapp.com>
+ <1281735122-1496-20-git-send-email-andros@netapp.com>
+ <1281735122-1496-21-git-send-email-andros@netapp.com>
+ <1281735122-1496-22-git-send-email-andros@netapp.com>
+ <1281735122-1496-23-git-send-email-andros@netapp.com>
+ <1281735122-1496-24-git-send-email-andros@netapp.com>
+ <1281735122-1496-25-git-send-email-andros@netapp.com>
+ <1281735122-1496-26-git-send-email-andros@netapp.com>
+ <1281735122-1496-27-git-send-email-andros@netapp.com>
+ <1281735122-1496-28-git-send-email-andros@netapp.com>
+ <1281735122-1496-29-git-send-email-andros@netapp.com>
+ <1281735122-1496-30-git-send-email-andros@netapp.com>
+ <1281735122-1496-31-git-send-email-andros@netapp.com>
+ <1281735122-1496-32-git-send-email-andros@netapp.com>
+ <1281735122-1496-33-git-send-email-andros@netapp.com>
+ <1281735122-1496-34-git-send-email-andros@netapp.com>
+ <1281735122-1496-35-git-send-email-andros@netapp.com>
+ <1281735122-1496-36-git-send-email-andros@netapp.com>
+ <1281735122-1496-37-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Thu, 2010-08-05 at 15:55 +0100, Andy Chittenden wrote:
-> > On 2010-08-03 10:11, Andrew Morton wrote:
-> > > (cc linux-nfs)
-> > >
-> > > On Tue, 03 Aug 2010 01:21:44 -0700 (PDT) David
-> > Miller<davem@davemloft.net>  wrote:
-> > >
-> > >> From: "Andy Chittenden"<andyc.bluearc@gmail.com>
-> > >> Date: Tue, 3 Aug 2010 09:14:31 +0100
-> > >>
-> > >>> I don't know whether this patch is the correct fix or not but it
-> > enables the
-> > >>> NFS client to recover.
-> > >>>
-> > >>> Kernel version: 2.6.34.1 and 2.6.32.
-> > >>>
-> > >>> Fixes<https://bugzilla.kernel.org/show_bug.cgi?id=16494>. It clears
-> > down
-> > >>> any previous shutdown attempts so that reconnects on a socket
-> > that's been
-> > >>> shutdown leave the socket in a usable state (otherwise
-> > tcp_sendmsg() returns
-> > >>> -EPIPE).
-> > >>
-> > >> If the SunRPC code wants to close a TCP socket then use it again,
-> > >> it should disconnect by doing a connect() with sa_family ==
-> > AF_UNSPEC
-> > 
-> > There is code to do that in the SunRPC code in xs_abort_connection()
-> > but
-> > that's conditionally called from xs_tcp_reuse_connection():
-> > 
-> > static void xs_tcp_reuse_connection(struct rpc_xprt *xprt, struct
-> > sock_xprt *transport)
-> > {
-> > 	unsigned int state = transport->inet->sk_state;
-> > 
-> > 	if (state == TCP_CLOSE && transport->sock->state ==
-> > SS_UNCONNECTED)
-> > 		return;
-> > 	if ((1 << state) & (TCPF_ESTABLISHED|TCPF_SYN_SENT))
-> > 		return;
-> > 	xs_abort_connection(xprt, transport);
-> > }
-> > 
-> > That's changed since 2.6.26 where it unconditionally did the connect()
-> > with sa_family == AF_UNSPEC. FWIW we cannot reproduce this problem with
-> > 2.6.26.
-> 
-> The problem is fixed with this patch which also prints out that sk_shutdown
-> can be non-zero on entry to xs_tcp_reuse_connection:
-> 
-> # diff -up /home/company/software/src/linux-2.6.34.2/net/sunrpc/xprtsock.c
-> net/sunrpc/xprtsock.c 
-> --- /home/company/software/src/linux-2.6.34.2/net/sunrpc/xprtsock.c
-> 2010-08-02 18:30:51.000000000 +0100
-> +++ net/sunrpc/xprtsock.c       2010-08-05 12:21:11.000000000 +0100
-> @@ -1322,10 +1322,11 @@ static void xs_tcp_state_change(struct s
->         if (!(xprt = xprt_from_sock(sk)))
->                 goto out;
->         dprintk("RPC:       xs_tcp_state_change client %p...\n", xprt);
-> -       dprintk("RPC:       state %x conn %d dead %d zapped %d\n",
-> +       dprintk("RPC:       state %x conn %d dead %d zapped %d sk_shutdown
-> %d\n",
->                         sk->sk_state, xprt_connected(xprt),
->                         sock_flag(sk, SOCK_DEAD),
-> -                       sock_flag(sk, SOCK_ZAPPED));
-> +                       sock_flag(sk, SOCK_ZAPPED),
-> +                       sk->sk_shutdown);
->  
->         switch (sk->sk_state) {
->         case TCP_ESTABLISHED:
-> @@ -1796,10 +1797,18 @@ static void xs_tcp_reuse_connection(stru
->  {
->         unsigned int state = transport->inet->sk_state;
->  
-> -       if (state == TCP_CLOSE && transport->sock->state == SS_UNCONNECTED)
-> -               return;
-> -       if ((1 << state) & (TCPF_ESTABLISHED|TCPF_SYN_SENT))
-> -               return;
-> +       if (state == TCP_CLOSE && transport->sock->state == SS_UNCONNECTED)
-> {
-> +               if (transport->inet->sk_shutdown == 0)
-> +                       return;
-> +               printk("%s: TCP_CLOSEd and sk_shutdown set to %d\n",
-> +                       __func__, transport->inet->sk_shutdown);
-> +       }
-> +       if ((1 << state) & (TCPF_ESTABLISHED|TCPF_SYN_SENT)) {
-> +               if (transport->inet->sk_shutdown == 0)
-> +                       return;
-> +               printk("%s: sk_shutdown set to %d\n",
-> +                       __func__, transport->inet->sk_shutdown);
-> +       }
->         xs_abort_connection(xprt, transport);
->  }
-> 
-> Signed-off-by: Andy Chittenden <andyc.bluearc@gmail.com>
-> 
-> dmesg displays:
-> 
-> [ 2840.896043] xs_tcp_reuse_connection: TCP_CLOSEd and sk_shutdown set to 2
-> 
-> so previously the code was attempting to reuse the connection but wasn't
-> aborting it and thus didn't clear down sk_shutdown.
+From: The pNFS Team <linux-nfs@vger.kernel.org>
 
-Hi Andy,
+Signed-off-by: Andy Adamson <andros@netapp.com>
+---
+ fs/nfs/nfs4filelayout.c |   88 +++++++++++++++++++++++++++++++++++++++++++++++
+ 1 files changed, 88 insertions(+), 0 deletions(-)
 
-I note that you are adding in two new printk()s. Why should they be
-printk(), and not dprintk()? Are you trying to report an exception that
-the user needs to be aware of, or is this only debugging info that we'll
-want to turn off under normal operation?
+diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+index d1c0d35..c9251ca 100644
+--- a/fs/nfs/nfs4filelayout.c
++++ b/fs/nfs/nfs4filelayout.c
+@@ -124,6 +124,93 @@ filelayout_get_dserver_offset(struct pnfs_layout_segment *lseg, loff_t offset)
+ }
+ 
+ /*
++ * Call ops for the async read/write cases
++ * In the case of dense layouts, the offset needs to be reset to its
++ * original value.
++ */
++static void filelayout_read_call_done(struct rpc_task *task, void *data)
++{
++	struct nfs_read_data *rdata = (struct nfs_read_data *)data;
++
++	if (rdata->fldata.orig_offset) {
++		dprintk("%s new off %llu orig offset %llu\n", __func__,
++			rdata->args.offset, rdata->fldata.orig_offset);
++		rdata->args.offset = rdata->fldata.orig_offset;
++	}
++
++	/* Note this may cause RPC to be resent */
++	rdata->pdata.call_ops->rpc_call_done(task, data);
++}
++
++static void filelayout_read_release(void *data)
++{
++	struct nfs_read_data *rdata = (struct nfs_read_data *)data;
++
++	put_lseg(rdata->pdata.lseg);
++	rdata->pdata.lseg = NULL;
++	rdata->pdata.call_ops->rpc_release(data);
++}
++
++struct rpc_call_ops filelayout_read_call_ops = {
++	.rpc_call_prepare = nfs_read_prepare,
++	.rpc_call_done = filelayout_read_call_done,
++	.rpc_release = filelayout_read_release,
++};
++
++/* Perform sync or async reads.
++ *
++ * An optimization for the NFS file layout driver
++ * allows the original read/write data structs to be passed in the
++ * last argument.
++ *
++ * TODO: join with write_pagelist?
++ */
++static enum pnfs_try_status
++filelayout_read_pagelist(struct nfs_read_data *data, unsigned nr_pages)
++{
++	struct pnfs_layout_segment *lseg = data->pdata.lseg;
++	struct nfs4_pnfs_ds *ds;
++	loff_t offset = data->args.offset;
++	u32 idx;
++	struct nfs_fh *fh;
++
++	dprintk("--> %s ino %lu nr_pages %d pgbase %u req %Zu@%llu\n",
++		__func__, data->inode->i_ino, nr_pages,
++		data->args.pgbase, (size_t)data->args.count, offset);
++
++	/* Retrieve the correct rpc_client for the byte range */
++	idx = nfs4_fl_calc_ds_index(lseg, offset);
++	ds = nfs4_fl_prepare_ds(lseg, idx);
++	if (!ds) {
++		printk(KERN_ERR "%s: prepare_ds failed, use MDS\n", __func__);
++		return PNFS_NOT_ATTEMPTED;
++	}
++	dprintk("%s USE DS:ip %x %s\n", __func__,
++		htonl(ds->ds_ip_addr), ds->r_addr);
++
++	/* just try the first data server for the index..*/
++	data->fldata.ds_nfs_client = ds->ds_clp;
++	fh = nfs4_fl_select_ds_fh(lseg, offset);
++	if (fh)
++		data->args.fh = fh;
++
++	/*
++	 * Now get the file offset on the dserver
++	 * Set the read offset to this offset, and
++	 * save the original offset in orig_offset
++	 * In the case of aync reads, the offset will be reset in the
++	 * call_ops->rpc_call_done() routine.
++	 */
++	data->args.offset = filelayout_get_dserver_offset(lseg, offset);
++	data->fldata.orig_offset = offset;
++
++	/* Perform an asynchronous read */
++	nfs_initiate_read(data, ds->ds_clp->cl_rpcclient,
++			  &filelayout_read_call_ops);
++	return PNFS_ATTEMPTED;
++}
++
++/*
+  * Create a filelayout layout structure and return it.  The pNFS client
+  * will use the pnfs_layout_type type to refer to the layout for this
+  * inode from now on.
+@@ -377,6 +464,7 @@ filelayout_pg_test(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev,
+ }
+ 
+ struct layoutdriver_io_operations filelayout_io_operations = {
++	.read_pagelist           = filelayout_read_pagelist,
+ 	.alloc_layout            = filelayout_alloc_layout,
+ 	.free_layout             = filelayout_free_layout,
+ 	.alloc_lseg              = filelayout_alloc_lseg,
+-- 
+1.6.2.5
 
-Also, it might be useful to add a comment to the code here to remind us
-what the 'sk_shutdown == 0' case corresponds to as far as the socket
-state is concerned, so that the casual reader can see why we shouldn't
-reset the connection.
-
-Cheers
-  Trond
