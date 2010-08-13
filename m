@@ -1,59 +1,72 @@
-From: Lukas Hejtmanek <xhejtman@ics.muni.cz>
-Subject: 64bit inodes and IA32 apps over NFS
-Date: Fri, 13 Aug 2010 16:47:03 +0200
-Message-ID: <20100813144703.GP20901@ics.muni.cz>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: numeric UIDs
+Date: Fri, 13 Aug 2010 13:37:16 -0400
+Message-ID: <20100813173716.GA21834@fieldses.org>
+References: <1280873719.14520.17.camel@heimdal.trondhjem.org>
+ <20100803222337.GA9752@fieldses.org>
+ <1280874675.14520.23.camel@heimdal.trondhjem.org>
+ <20100803224245.GB9752@fieldses.org>
+ <1280887336.24669.23.camel@heimdal.trondhjem.org>
+ <20100805153421.GD27141@fieldses.org>
+ <20100812092232.344314b2@notabene>
+ <4C6559FA.5070809@RedHat.com>
+ <20100813163156.GA16863@fieldses.org>
+ <4C658146.90207@RedHat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-2
-To: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Neil Brown <neilb@suse.de>,
+	Trond Myklebust <trond.myklebust@fys.uio.no>,
+	Jim Rees <rees@umich.edu>, Daniel.Muntz@emc.com,
+	linux-nfs@vger.kernel.org
+To: Steve Dickson <SteveD@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from minas.ics.muni.cz ([147.251.4.40]:41560 "EHLO minas.ics.muni.cz"
+Received: from fieldses.org ([174.143.236.118]:48635 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754468Ab0HMOqm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 13 Aug 2010 10:46:42 -0400
-Received: from anubis.ics.muni.cz (anubis.ics.muni.cz [147.251.3.109])
-	(authenticated user=xhejtman-/qMqeO8aiZrEwhJ7BL7w9Q@public.gmane.org bits=0)
-	by minas.ics.muni.cz (8.13.8/8.13.8/SuSE Linux 0.8) with ESMTP id o7DEkc9u026362
-	(version=TLSv1/SSLv3 cipher=AES256-SHA bits=256 verify=NO)
-	for <linux-nfs@vger.kernel.org>; Fri, 13 Aug 2010 16:46:39 +0200
-Received: from xhejtman by anubis.ics.muni.cz with local (Exim 4.72)
-	(envelope-from <xhejtman-muXYU8BwpB4yxAW3W1Oy7esEoJ4y9sgM@public.gmane.org>)
-	id 1OjvXD-0000Mx-GA
-	for linux-nfs@vger.kernel.org; Fri, 13 Aug 2010 16:47:03 +0200
+	id S1761879Ab0HMRjP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 13 Aug 2010 13:39:15 -0400
+In-Reply-To: <4C658146.90207-AfCzQyP5zfLQT0dZR+AlfA@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hello,
+On Fri, Aug 13, 2010 at 01:30:46PM -0400, Steve Dickson wrote:
+> 
+> 
+> On 08/13/2010 12:31 PM, J. Bruce Fields wrote:
+> > There are four cases where translation can be done:
+> > 
+> > 	Sending id from server to client (ls, stat, getacl):
+> > 		1. server uid -> string
+> > 		2. string -> client uid
+> > 	Sending id from client to server (chown, setacl):
+> > 		3. client uid -> string
+> > 		4. string -> client uid
+> > 
+> > Cases 1 and 2 are uncontroversial.  Definitely map ascii-fied integers
+> > in both of those cases.
+> Does "ascii-fied integers" mean "3606" (a mapping without the @domain part)?
 
-is there any workaround for NFSv4 when exporting XFS with 64bit inodes?
+That's what I meant, yes.
 
-IA32 apps receives:
-getdents(3, 0xb7571008, 1000)           =3D -1 EOVERFLOW (Value too lar=
-ge for defined data type)
+> 
+> > 
+> > Case 4 violates the SHOULD on page 47.  Which would make case 3 useless
+> > if all servers respect that SHOULD.  I think we should ignore the SHOULD
+> > and implement 3 and 4 too, but Trond may not agree.
+> > 
+> > I suppose we could make this all configurable, and then argue about what
+> > the defaults should be.  If we implement all this in idmapd then that's
+> > easy.
+> I guess... I would think whatever make the v2/v3 to v4 transition
+> seamless would be the best default... 
+>  
+> > 
+> > I don't know what other clients and servers do.  Probably 1 and 2 at
+> > least, but maybe it's something to check at the next bakeathon.
+> > 
+> > Do we actually use an @-less "nobody" as suggested in the last
+> > paragraph?  If not that might be something else to fix.
+> It appears we do... see idtonameres()....
 
-when compiling on x86_64, I got not error.
+OK, good.
 
-=46rom the XFS man page:
-By default, with 32bit inodes, XFS places inodes only in the first 1TB =
-of
-a disk. If you have a disk with 100TB, all inodes will be stuck in the =
-first
-TB. This can lead to strange things like "disk full" when you still hav=
-e
-plenty space free, but there's no more place in the first TB to create =
-a new
-inode. Also, performance sucks.
-
-To come around this, use the inode64 mount options for filesystems >1TB=
-=2E
-Inodes will then be placed in the location where their data is, minimiz=
-ing
-disk seeks.
-
-Beware that some old programs might have problems reading 64bit inodes,
-especially over NFS.
-
-
-So, is there any workaround in NFS for IA32 apps?
-
---=20
-Luk=E1=B9 Hejtm=E1nek
+--b.
