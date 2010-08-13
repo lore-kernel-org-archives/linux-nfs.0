@@ -1,66 +1,45 @@
-From: Christoph Hellwig <hch@lst.de>
-Subject: Re: [PATCH] nfsd: fix NULL dereference in nfsd_statfs()
-Date: Fri, 13 Aug 2010 16:42:27 +0200
-Message-ID: <20100813144227.GA9155@lst.de>
-References: <s5h4oeywrde.wl%tiwai@suse.de>
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Re: numeric UIDs
+Date: Fri, 13 Aug 2010 10:43:06 -0400
+Message-ID: <4C6559FA.5070809@RedHat.com>
+References: <201008030401.33552.dreck@vmsd.ath.cx>	<20100803164318.GB13896@merit.edu>	<20100803192216.GC31579@fieldses.org>	<DE966DA98A4ABE438D726BDF1699CF61403FAF9D@MX05A.corp.emc.com>	<20100803215704.GA15494@merit.edu>	<1280873719.14520.17.camel@heimdal.trondhjem.org>	<20100803222337.GA9752@fieldses.org>	<1280874675.14520.23.camel@heimdal.trondhjem.org>	<20100803224245.GB9752@fieldses.org>	<1280887336.24669.23.camel@heimdal.trondhjem.org>	<20100805153421.GD27141@fieldses.org> <20100812092232.344314b2@notabene>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=ISO-8859-1
 Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-	Neil Brown <neilb@suse.de>, Al Viro <viro@zeniv.linux.org.uk>,
-	Christoph Hellwig <hch@lst.de>, linux-nfs@vger.kernel.org,
-	linux-kernel@vger.kernel.org
-To: Takashi Iwai <tiwai@suse.de>
+	Trond Myklebust <trond.myklebust@fys.uio.no>,
+	Jim Rees <rees@umich.edu>, Daniel.Muntz@emc.com,
+	linux-nfs@vger.kernel.org
+To: Neil Brown <neilb@suse.de>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from verein.lst.de ([213.95.11.210]:43326 "EHLO verein.lst.de"
+Received: from mx1.redhat.com ([209.132.183.28]:21693 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1761678Ab0HMOmc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 13 Aug 2010 10:42:32 -0400
-In-Reply-To: <s5h4oeywrde.wl%tiwai@suse.de>
+	id S1761687Ab0HMOnW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 13 Aug 2010 10:43:22 -0400
+In-Reply-To: <20100812092232.344314b2@notabene>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Aug 13, 2010 at 03:53:49PM +0200, Takashi Iwai wrote:
-> The commit ebabe9a9001af0af56c0c2780ca1576246e7a74b
->     pass a struct path to vfs_statfs
-> introduced the struct path initialization, and this seems to trigger
-> an Oops on my machine.
+
+
+On 08/11/2010 07:22 PM, Neil Brown wrote:
 > 
-> fh_dentry field may be NULL and set later in fh_verify(), thus the
-> initialization of path must be after fh_verify().
+> I agree.  And surely it can all be solved in idmapd.
+> 
+> On the server, tell idmapd to map all users to "NUMERIC_USER:%d" and all
+> groups to "NUMERIC_GROUP:%d" (or whatever) for some given clients (i.e. stop
+> ignoring the 'authentication name'.  And of course map those names back to
+> numbers.
+> 
+> I don't know if the client can easily differentiate based on which server it
+> is talking to, but there is probably less need there (and maybe it can
+> anyway).
+> 
+> It shouldn't take more that half an hour to hack something into
+> idmapd.c:nfsdcb() for the server side and nfscb for the client side - or
+> for a quicker hack, just go directly to imconv and ignore the client name on
+> the server.  (all this in nfs-utils of course).
+I took a look... and you are right it would not be that difficult to
+hack something up... but would this only be a Linux to Linux thing? 
+Or am I missing something?
 
-Thanks, the patch looks good.
-
-
-Reviewed-by: Christoph Hellwig <hch@lst.de>
-
-> diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-> index 96360a8..661a6cf 100644
-> --- a/fs/nfsd/vfs.c
-> +++ b/fs/nfsd/vfs.c
-> @@ -2033,15 +2033,17 @@ out:
->  __be32
->  nfsd_statfs(struct svc_rqst *rqstp, struct svc_fh *fhp, struct kstatfs *stat, int access)
->  {
-> -	struct path path = {
-> -		.mnt	= fhp->fh_export->ex_path.mnt,
-> -		.dentry	= fhp->fh_dentry,
-> -	};
->  	__be32 err;
->  
->  	err = fh_verify(rqstp, fhp, 0, NFSD_MAY_NOP | access);
-> -	if (!err && vfs_statfs(&path, stat))
-> -		err = nfserr_io;
-> +	if (!err) {
-> +		struct path path = {
-> +			.mnt	= fhp->fh_export->ex_path.mnt,
-> +			.dentry	= fhp->fh_dentry,
-> +		};
-> +		if (vfs_statfs(&path, stat))
-> +			err = nfserr_io;
-> +	}
->  	return err;
->  }
->  
-> -- 
-> 1.7.2.1
----end quoted text---
+steved.
