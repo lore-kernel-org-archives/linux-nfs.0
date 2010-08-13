@@ -1,97 +1,177 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-wy0-f174.google.com ([74.125.82.174]:38860 "EHLO
-	mail-wy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754548Ab0H3Vj4 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Aug 2010 17:39:56 -0400
-Received: by wyb35 with SMTP id 35so7093057wyb.19
-        for <linux-nfs@vger.kernel.org>; Mon, 30 Aug 2010 14:39:54 -0700 (PDT)
-In-Reply-To: <20100830170923.GA17103@fieldses.org>
-References: <AANLkTimog6uTdsxzFeA0YY+HK6gtcwEGXaFDJs+Aorm0@mail.gmail.com>
-	<20100830170923.GA17103@fieldses.org>
-Date: Mon, 30 Aug 2010 16:39:54 -0500
-Message-ID: <AANLkTinEPVpnKCzZS5fBhhGj9Xmh8H-758SdEJSuxZ=8@mail.gmail.com>
-Subject: Re: 30 time speed difference between using NFS and without using NFS
-From: Peng Yu <pengyu.ut@gmail.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mx2.netapp.com ([216.240.18.37]:45275 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754424Ab0HMVdU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 13 Aug 2010 17:33:20 -0400
+From: andros@netapp.com
+To: bhalevy@panasas.com
+Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
+Subject: [PATCH 41/50] pnfs_submit: signal layoutdriver commit
+Date: Fri, 13 Aug 2010 17:31:53 -0400
+Message-Id: <1281735122-1496-42-git-send-email-andros@netapp.com>
+In-Reply-To: <1281735122-1496-41-git-send-email-andros@netapp.com>
+References: <1281735122-1496-1-git-send-email-andros@netapp.com>
+ <1281735122-1496-2-git-send-email-andros@netapp.com>
+ <1281735122-1496-3-git-send-email-andros@netapp.com>
+ <1281735122-1496-4-git-send-email-andros@netapp.com>
+ <1281735122-1496-5-git-send-email-andros@netapp.com>
+ <1281735122-1496-6-git-send-email-andros@netapp.com>
+ <1281735122-1496-7-git-send-email-andros@netapp.com>
+ <1281735122-1496-8-git-send-email-andros@netapp.com>
+ <1281735122-1496-9-git-send-email-andros@netapp.com>
+ <1281735122-1496-10-git-send-email-andros@netapp.com>
+ <1281735122-1496-11-git-send-email-andros@netapp.com>
+ <1281735122-1496-12-git-send-email-andros@netapp.com>
+ <1281735122-1496-13-git-send-email-andros@netapp.com>
+ <1281735122-1496-14-git-send-email-andros@netapp.com>
+ <1281735122-1496-15-git-send-email-andros@netapp.com>
+ <1281735122-1496-16-git-send-email-andros@netapp.com>
+ <1281735122-1496-17-git-send-email-andros@netapp.com>
+ <1281735122-1496-18-git-send-email-andros@netapp.com>
+ <1281735122-1496-19-git-send-email-andros@netapp.com>
+ <1281735122-1496-20-git-send-email-andros@netapp.com>
+ <1281735122-1496-21-git-send-email-andros@netapp.com>
+ <1281735122-1496-22-git-send-email-andros@netapp.com>
+ <1281735122-1496-23-git-send-email-andros@netapp.com>
+ <1281735122-1496-24-git-send-email-andros@netapp.com>
+ <1281735122-1496-25-git-send-email-andros@netapp.com>
+ <1281735122-1496-26-git-send-email-andros@netapp.com>
+ <1281735122-1496-27-git-send-email-andros@netapp.com>
+ <1281735122-1496-28-git-send-email-andros@netapp.com>
+ <1281735122-1496-29-git-send-email-andros@netapp.com>
+ <1281735122-1496-30-git-send-email-andros@netapp.com>
+ <1281735122-1496-31-git-send-email-andros@netapp.com>
+ <1281735122-1496-32-git-send-email-andros@netapp.com>
+ <1281735122-1496-33-git-send-email-andros@netapp.com>
+ <1281735122-1496-34-git-send-email-andros@netapp.com>
+ <1281735122-1496-35-git-send-email-andros@netapp.com>
+ <1281735122-1496-36-git-send-email-andros@netapp.com>
+ <1281735122-1496-37-git-send-email-andros@netapp.com>
+ <1281735122-1496-38-git-send-email-andros@netapp.com>
+ <1281735122-1496-39-git-send-email-andros@netapp.com>
+ <1281735122-1496-40-git-send-email-andros@netapp.com>
+ <1281735122-1496-41-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Mon, Aug 30, 2010 at 12:09 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> On Fri, Aug 27, 2010 at 06:08:25PM -0500, Peng Yu wrote:
->> Hi,
->>
->> I use the following command to search for some directory.
->>
->> find -L some_dir -type d -name some_name
->>
->> If I'm on the machine that has some_dir locally, the run time is
->> real  0m0.199s
->> user  0m0.048s
->> sys   0m0.140s
->>
->> If I'm on another machine that sees the same directory by NFS (NFS3).
->> the run time is
->> real  0m6.509s
->> user  0m0.090s
->> sys   0m1.380s
->>
->> There are 30 time speed difference. Is this normal? Is there any NFS
->> parameter that I should tune to make the latter faster?
->
-> How many directories are there in some_dir?  What's the round trip time
-> (e.g. as reported by ping) to the server?  If you repeate the find
-> immediately, is it faster?
->
-> This can indeed by much slower if it requires revalidating the cached
-> attributes of each file.
+From: The pNFS Team <linux-nfs@vger.kernel.org>
 
-Please see below for the answers of you questions.
+Signed-off-by: Andy Adamson <andros@netapp.com>
+---
+ fs/nfs/pagelist.c        |    5 ++++-
+ fs/nfs/write.c           |   12 +++++++-----
+ include/linux/nfs_page.h |    3 ++-
+ include/linux/nfs_xdr.h  |    2 ++
+ 4 files changed, 15 insertions(+), 7 deletions(-)
 
-$ find . -type d|wc
-   1491    1491   53372
-
-Search the directory as a local directory
-
-$ time find . -name 'data.frame' -type d
-./library/base/data.frame
-./library/base/data.frame/data.frame
-
-real	0m0.044s
-user	0m0.012s
-sys	0m0.028s
-
-Search the directory as a NFS directory. The same command runs three 3
-times in series.
-
-$ time find . -name 'data.frame' -type d
-./library/base/data.frame
-./library/base/data.frame/data.frame
-
-real	0m2.205s
-user	0m0.040s
-sys	0m0.430s
-$ time find . -name 'data.frame' -type d
-./library/base/data.frame
-./library/base/data.frame/data.frame
-
-real	0m1.203s
-user	0m0.060s
-sys	0m0.120s
-$ time find . -name 'data.frame' -type d
-./library/base/data.frame
-./library/base/data.frame/data.frame
-
-real	0m1.227s
-user	0m0.040s
-sys	0m0.200s
-
-Ping the NFS server gives me ttl=64 time=0.156 ms.
-
-Please let me know if there is more information needed.
-
+diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
+index a014814..96e375e 100644
+--- a/fs/nfs/pagelist.c
++++ b/fs/nfs/pagelist.c
+@@ -387,6 +387,7 @@ void nfs_pageio_cond_complete(struct nfs_pageio_descriptor *desc, pgoff_t index)
+  * @idx_start: lower bound of page->index to scan
+  * @npages: idx_start + npages sets the upper bound to scan.
+  * @tag: tag to scan for
++ * @use_pnfs: will be set TRUE if commit needs to be handled by layout driver
+  *
+  * Moves elements from one of the inode request lists.
+  * If the number of requests is set to 0, the entire address_space
+@@ -396,7 +397,7 @@ void nfs_pageio_cond_complete(struct nfs_pageio_descriptor *desc, pgoff_t index)
+  */
+ int nfs_scan_list(struct nfs_inode *nfsi,
+ 		struct list_head *dst, pgoff_t idx_start,
+-		unsigned int npages, int tag)
++		  unsigned int npages, int tag, int *use_pnfs)
+ {
+ 	struct nfs_page *pgvec[NFS_SCAN_MAXENTRIES];
+ 	struct nfs_page *req;
+@@ -427,6 +428,8 @@ int nfs_scan_list(struct nfs_inode *nfsi,
+ 				radix_tree_tag_clear(&nfsi->nfs_page_tree,
+ 						req->wb_index, tag);
+ 				nfs_list_add_request(req, dst);
++				if (req->wb_lseg)
++					*use_pnfs = 1;
+ 				res++;
+ 				if (res == INT_MAX)
+ 					goto out;
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index fbc8657..18926d3 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -546,7 +546,7 @@ nfs_need_commit(struct nfs_inode *nfsi)
+  * The requests are *not* checked to ensure that they form a contiguous set.
+  */
+ static int
+-nfs_scan_commit(struct inode *inode, struct list_head *dst, pgoff_t idx_start, unsigned int npages)
++nfs_scan_commit(struct inode *inode, struct list_head *dst, pgoff_t idx_start, unsigned int npages, int *use_pnfs)
+ {
+ 	struct nfs_inode *nfsi = NFS_I(inode);
+ 	int ret;
+@@ -554,7 +554,8 @@ nfs_scan_commit(struct inode *inode, struct list_head *dst, pgoff_t idx_start, u
+ 	if (!nfs_need_commit(nfsi))
+ 		return 0;
+ 
+-	ret = nfs_scan_list(nfsi, dst, idx_start, npages, NFS_PAGE_TAG_COMMIT);
++	ret = nfs_scan_list(nfsi, dst, idx_start, npages, NFS_PAGE_TAG_COMMIT,
++			    use_pnfs);
+ 	if (ret > 0)
+ 		nfsi->ncommit -= ret;
+ 	if (nfs_need_commit(NFS_I(inode)))
+@@ -1466,21 +1467,22 @@ int nfs_commit_inode(struct inode *inode, int how)
+ 	LIST_HEAD(head);
+ 	int may_wait = how & FLUSH_SYNC;
+ 	int res = 0;
++	int use_pnfs = 0;
+ 
+ 	if (!nfs_commit_set_lock(NFS_I(inode), may_wait))
+ 		goto out_mark_dirty;
+ 	spin_lock(&inode->i_lock);
+-	res = nfs_scan_commit(inode, &head, 0, 0);
++	res = nfs_scan_commit(inode, &head, 0, 0, &use_pnfs);
+ 	spin_unlock(&inode->i_lock);
+ 	if (res) {
+ 		int error = nfs_commit_list(inode, &head, how);
+ 		if (error < 0)
+ 			return error;
+-		if (may_wait)
++		if (may_wait) {
+ 			wait_on_bit(&NFS_I(inode)->flags, NFS_INO_COMMIT,
+ 					nfs_wait_bit_killable,
+ 					TASK_KILLABLE);
+-		else
++		} else
+ 			goto out_mark_dirty;
+ 	} else
+ 		nfs_commit_clear_lock(NFS_I(inode));
+diff --git a/include/linux/nfs_page.h b/include/linux/nfs_page.h
+index ce0a1a5..287ee81 100644
+--- a/include/linux/nfs_page.h
++++ b/include/linux/nfs_page.h
+@@ -83,7 +83,8 @@ extern	void nfs_release_request(struct nfs_page *req);
+ 
+ 
+ extern	int nfs_scan_list(struct nfs_inode *nfsi, struct list_head *dst,
+-			  pgoff_t idx_start, unsigned int npages, int tag);
++			  pgoff_t idx_start, unsigned int npages, int tag,
++			  int *use_pnfs);
+ extern	void nfs_pageio_init(struct nfs_pageio_descriptor *desc,
+ 			     struct inode *inode,
+ 			     int (*doio)(struct inode *, struct list_head *, unsigned int, size_t, int),
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index 544d282..e627788 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -1012,6 +1012,8 @@ struct nfs_read_data {
+ };
+ 
+ struct nfs_write_data {
++	struct kref		refcount;	/* For pnfs commit splitting */
++	struct nfs_write_data	*parent;	/* For pnfs commit splitting */
+ 	int			flags;
+ 	struct rpc_task		task;
+ 	struct inode		*inode;
 -- 
-Regards,
-Peng
+1.6.2.5
+
