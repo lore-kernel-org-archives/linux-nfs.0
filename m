@@ -1,142 +1,195 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-pv0-f174.google.com ([74.125.83.174]:41291 "EHLO
-	mail-pv0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751241Ab0HTM0k (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 20 Aug 2010 08:26:40 -0400
-Date: Fri, 20 Aug 2010 20:26:27 +0800
-From: Wu Fengguang <fengguang.wu@gmail.com>
-To: Christoph Hellwig <hch@infradead.org>
-Cc: Jeff Layton <jlayton@redhat.com>, linux-nfs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, linux-mm@kvack.org,
-        Chris Mason <chris.mason@oracle.com>,
-        Jens Axboe <jens.axboe@oracle.com>
-Subject: Re: why are WB_SYNC_NONE COMMITs being done with FLUSH_SYNC set ?
-Message-ID: <20100820122627.GA7430@localhost>
-References: <20100819101525.076831ad@barsoom.rdu.redhat.com>
- <20100819143710.GA4752@infradead.org>
- <20100819235553.GB22747@localhost>
- <20100820091904.GB20138@infradead.org>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20100820091904.GB20138@infradead.org>
+Received: from mx2.netapp.com ([216.240.18.37]:45275 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754404Ab0HMVdT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 13 Aug 2010 17:33:19 -0400
+From: andros@netapp.com
+To: bhalevy@panasas.com
+Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netpp.com>
+Subject: [PATCH 39/50] pnfs_submit: data server write with no getattr
+Date: Fri, 13 Aug 2010 17:31:51 -0400
+Message-Id: <1281735122-1496-40-git-send-email-andros@netapp.com>
+In-Reply-To: <1281735122-1496-39-git-send-email-andros@netapp.com>
+References: <1281735122-1496-1-git-send-email-andros@netapp.com>
+ <1281735122-1496-2-git-send-email-andros@netapp.com>
+ <1281735122-1496-3-git-send-email-andros@netapp.com>
+ <1281735122-1496-4-git-send-email-andros@netapp.com>
+ <1281735122-1496-5-git-send-email-andros@netapp.com>
+ <1281735122-1496-6-git-send-email-andros@netapp.com>
+ <1281735122-1496-7-git-send-email-andros@netapp.com>
+ <1281735122-1496-8-git-send-email-andros@netapp.com>
+ <1281735122-1496-9-git-send-email-andros@netapp.com>
+ <1281735122-1496-10-git-send-email-andros@netapp.com>
+ <1281735122-1496-11-git-send-email-andros@netapp.com>
+ <1281735122-1496-12-git-send-email-andros@netapp.com>
+ <1281735122-1496-13-git-send-email-andros@netapp.com>
+ <1281735122-1496-14-git-send-email-andros@netapp.com>
+ <1281735122-1496-15-git-send-email-andros@netapp.com>
+ <1281735122-1496-16-git-send-email-andros@netapp.com>
+ <1281735122-1496-17-git-send-email-andros@netapp.com>
+ <1281735122-1496-18-git-send-email-andros@netapp.com>
+ <1281735122-1496-19-git-send-email-andros@netapp.com>
+ <1281735122-1496-20-git-send-email-andros@netapp.com>
+ <1281735122-1496-21-git-send-email-andros@netapp.com>
+ <1281735122-1496-22-git-send-email-andros@netapp.com>
+ <1281735122-1496-23-git-send-email-andros@netapp.com>
+ <1281735122-1496-24-git-send-email-andros@netapp.com>
+ <1281735122-1496-25-git-send-email-andros@netapp.com>
+ <1281735122-1496-26-git-send-email-andros@netapp.com>
+ <1281735122-1496-27-git-send-email-andros@netapp.com>
+ <1281735122-1496-28-git-send-email-andros@netapp.com>
+ <1281735122-1496-29-git-send-email-andros@netapp.com>
+ <1281735122-1496-30-git-send-email-andros@netapp.com>
+ <1281735122-1496-31-git-send-email-andros@netapp.com>
+ <1281735122-1496-32-git-send-email-andros@netapp.com>
+ <1281735122-1496-33-git-send-email-andros@netapp.com>
+ <1281735122-1496-34-git-send-email-andros@netapp.com>
+ <1281735122-1496-35-git-send-email-andros@netapp.com>
+ <1281735122-1496-36-git-send-email-andros@netapp.com>
+ <1281735122-1496-37-git-send-email-andros@netapp.com>
+ <1281735122-1496-38-git-send-email-andros@netapp.com>
+ <1281735122-1496-39-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Fri, Aug 20, 2010 at 05:19:04AM -0400, Christoph Hellwig wrote:
-> On Fri, Aug 20, 2010 at 07:55:53AM +0800, Wu Fengguang wrote:
-> > Since migration and pageout still set nonblocking for ->writepage, we
-> > may keep them in the near future, until VM does not start IO on itself.
-> 
-> Why does pageout() and memory migration need to be even more
-> non-blocking than the already non-blockig WB_SYNC_NONE writeout?
+From: The pNFS Team <linux-nfs@vger.kernel.org>
 
-Good question! So the other nonblocking checks in ->writepage are also
-redundant code, let's rip them all!
-
-Thanks,
-Fengguang
+Signed-off-by: Andy Adamson <andros@netpp.com>
 ---
+ fs/nfs/nfs4proc.c    |    8 ++++++-
+ fs/nfs/nfs4xdr.c     |   58 ++++++++++++++++++++++++++++++++++++++++++++++++++
+ include/linux/nfs4.h |    1 +
+ 3 files changed, 66 insertions(+), 1 deletions(-)
 
-diff --git a/include/linux/writeback.h b/include/linux/writeback.h
-index 72a5d64..bd11c0e 100644
---- a/include/linux/writeback.h
-+++ b/include/linux/writeback.h
-@@ -45,8 +45,6 @@ struct writeback_control {
- 	loff_t range_start;
- 	loff_t range_end;
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index a6a0e7e..44ffa33 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -3220,13 +3220,19 @@ static void nfs4_proc_write_setup(struct nfs_write_data *data, struct rpc_messag
+ 	data->res.server = server;
+ 	data->timestamp   = jiffies;
  
--	unsigned nonblocking:1;		/* Don't get stuck on request queues */
--	unsigned encountered_congestion:1; /* An output: a queue is full */
- 	unsigned for_kupdate:1;		/* A kupdate writeback */
- 	unsigned for_background:1;	/* A background writeback */
- 	unsigned for_reclaim:1;		/* Invoked from the page allocator */
-diff --git a/fs/buffer.c b/fs/buffer.c
-index 3e7dca2..c9a7a80 100644
---- a/fs/buffer.c
-+++ b/fs/buffer.c
-@@ -1706,7 +1706,7 @@ static int __block_write_full_page(struct inode *inode, struct page *page,
- 		 * and kswapd activity, but those code paths have their own
- 		 * higher-level throttling.
- 		 */
--		if (wbc->sync_mode != WB_SYNC_NONE || !wbc->nonblocking) {
-+		if (wbc->sync_mode != WB_SYNC_NONE) {
- 			lock_buffer(bh);
- 		} else if (!trylock_buffer(bh)) {
- 			redirty_page_for_writepage(wbc, page);
-diff --git a/fs/gfs2/meta_io.c b/fs/gfs2/meta_io.c
-index f3b071f..939739c 100644
---- a/fs/gfs2/meta_io.c
-+++ b/fs/gfs2/meta_io.c
-@@ -55,7 +55,7 @@ static int gfs2_aspace_writepage(struct page *page, struct writeback_control *wb
- 		 * activity, but those code paths have their own higher-level
- 		 * throttling.
- 		 */
--		if (wbc->sync_mode != WB_SYNC_NONE || !wbc->nonblocking) {
-+		if (wbc->sync_mode != WB_SYNC_NONE) {
- 			lock_buffer(bh);
- 		} else if (!trylock_buffer(bh)) {
- 			redirty_page_for_writepage(wbc, page);
-diff --git a/fs/reiserfs/inode.c b/fs/reiserfs/inode.c
-index caa7583..c1f9389 100644
---- a/fs/reiserfs/inode.c
-+++ b/fs/reiserfs/inode.c
-@@ -2438,7 +2438,7 @@ static int reiserfs_write_full_page(struct page *page,
- 		/* from this point on, we know the buffer is mapped to a
- 		 * real block and not a direct item
- 		 */
--		if (wbc->sync_mode != WB_SYNC_NONE || !wbc->nonblocking) {
-+		if (wbc->sync_mode != WB_SYNC_NONE) {
- 			lock_buffer(bh);
- 		} else {
- 			if (!trylock_buffer(bh)) {
-diff --git a/fs/xfs/linux-2.6/xfs_aops.c b/fs/xfs/linux-2.6/xfs_aops.c
-index 15412fe..ec495a4 100644
---- a/fs/xfs/linux-2.6/xfs_aops.c
-+++ b/fs/xfs/linux-2.6/xfs_aops.c
-@@ -1139,8 +1139,7 @@ xfs_vm_writepage(
- 				type = IO_DELAY;
- 				flags = BMAPI_ALLOCATE;
++#ifdef CONFIG_NFS_V4_1
++	/* writes to DS use pnfs vector */
++	if (data->fldata.ds_nfs_client) {
++		msg->rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_PNFS_WRITE];
++		return;
++	}
++#endif /* CONFIG_NFS_V4_1 */
+ 	msg->rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_WRITE];
+ }
  
--				if (wbc->sync_mode == WB_SYNC_NONE &&
--				    wbc->nonblocking)
-+				if (wbc->sync_mode == WB_SYNC_NONE)
- 					flags |= BMAPI_TRYLOCK;
- 			}
+ static int nfs4_commit_done(struct rpc_task *task, struct nfs_write_data *data)
+ {
+ 	struct inode *inode = data->inode;
+-	
+ 	if (!nfs4_sequence_done(task, &data->res.seq_res))
+ 		return -EAGAIN;
  
-diff --git a/include/trace/events/writeback.h b/include/trace/events/writeback.h
-index f345f66..0bb01ab 100644
---- a/include/trace/events/writeback.h
-+++ b/include/trace/events/writeback.h
-@@ -96,8 +96,6 @@ DECLARE_EVENT_CLASS(wbc_class,
- 		__field(long, nr_to_write)
- 		__field(long, pages_skipped)
- 		__field(int, sync_mode)
--		__field(int, nonblocking)
--		__field(int, encountered_congestion)
- 		__field(int, for_kupdate)
- 		__field(int, for_background)
- 		__field(int, for_reclaim)
-diff --git a/mm/migrate.c b/mm/migrate.c
-index 38e7cad..1e5914a 100644
---- a/mm/migrate.c
-+++ b/mm/migrate.c
-@@ -431,7 +431,6 @@ static int writeout(struct address_space *mapping, struct page *page)
- 		.nr_to_write = 1,
- 		.range_start = 0,
- 		.range_end = LLONG_MAX,
--		.nonblocking = 1,
- 		.for_reclaim = 1
- 	};
- 	int rc;
-diff --git a/mm/vmscan.c b/mm/vmscan.c
-index 225a759..3520523 100644
---- a/mm/vmscan.c
-+++ b/mm/vmscan.c
-@@ -376,7 +376,6 @@ static pageout_t pageout(struct page *page, struct address_space *mapping,
- 			.nr_to_write = SWAP_CLUSTER_MAX,
- 			.range_start = 0,
- 			.range_end = LLONG_MAX,
--			.nonblocking = 1,
- 			.for_reclaim = 1,
- 		};
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index 82a3412..520b589 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -757,6 +757,14 @@ static int nfs4_stat_to_errno(int);
+ 				decode_sequence_maxsz + \
+ 				decode_putfh_maxsz + \
+ 				decode_layoutreturn_maxsz)
++#define NFS4_enc_dswrite_sz	(compound_encode_hdr_maxsz + \
++				encode_sequence_maxsz +\
++				encode_putfh_maxsz + \
++				encode_write_maxsz)
++#define NFS4_dec_dswrite_sz	(compound_decode_hdr_maxsz + \
++				decode_sequence_maxsz + \
++				decode_putfh_maxsz + \
++				decode_write_maxsz)
  
+ const u32 nfs41_maxwrite_overhead = ((RPC_MAX_HEADER_WITH_AUTH +
+ 				      compound_encode_hdr_maxsz +
+@@ -2815,6 +2823,27 @@ static int nfs4_xdr_enc_layoutreturn(struct rpc_rqst *req, uint32_t *p,
+ 	encode_nops(&hdr);
+ 	return 0;
+ }
++
++/*
++ * Encode a pNFS File Layout Data Server WRITE request
++ */
++static int nfs4_xdr_enc_dswrite(struct rpc_rqst *req, uint32_t *p,
++				struct nfs_writeargs *args)
++{
++	struct xdr_stream xdr;
++	struct compound_hdr hdr = {
++		.minorversion = nfs4_xdr_minorversion(&args->seq_args),
++	};
++
++	xdr_init_encode(&xdr, &req->rq_snd_buf, p);
++	encode_compound_hdr(&xdr, req, &hdr);
++	encode_sequence(&xdr, &args->seq_args, &hdr);
++	encode_putfh(&xdr, args->fh, &hdr);
++	encode_write(&xdr, args, &hdr);
++	encode_nops(&hdr);
++	return 0;
++}
++
+ #endif /* CONFIG_NFS_V4_1 */
+ 
+ static void print_overflow_msg(const char *func, const struct xdr_stream *xdr)
+@@ -6367,6 +6396,34 @@ static int nfs4_xdr_dec_layoutcommit(struct rpc_rqst *rqstp, uint32_t *p,
+ out:
+ 	return status;
+ }
++
++/*
++ * Decode pNFS File Layout Data Server WRITE response
++ */
++static int nfs4_xdr_dec_dswrite(struct rpc_rqst *rqstp, uint32_t *p,
++				struct nfs_writeres *res)
++{
++	struct xdr_stream xdr;
++	struct compound_hdr hdr;
++	int status;
++
++	xdr_init_decode(&xdr, &rqstp->rq_rcv_buf, p);
++	status = decode_compound_hdr(&xdr, &hdr);
++	if (status)
++		goto out;
++	status = decode_sequence(&xdr, &res->seq_res, rqstp);
++	if (status)
++		goto out;
++	status = decode_putfh(&xdr);
++	if (status)
++		goto out;
++	status = decode_write(&xdr, res);
++	if (!status)
++		return res->count;
++out:
++	return status;
++}
++
+ #endif /* CONFIG_NFS_V4_1 */
+ 
+ __be32 *nfs4_decode_dirent(__be32 *p, struct nfs_entry *entry, int plus)
+@@ -6549,6 +6606,7 @@ struct rpc_procinfo	nfs4_procedures[] = {
+   PROC(PNFS_LAYOUTGET,  enc_layoutget,     dec_layoutget),
+   PROC(PNFS_LAYOUTCOMMIT, enc_layoutcommit,  dec_layoutcommit),
+   PROC(PNFS_LAYOUTRETURN, enc_layoutreturn,  dec_layoutreturn),
++  PROC(PNFS_WRITE, enc_dswrite,  dec_dswrite),
+ #endif /* CONFIG_NFS_V4_1 */
+ };
+ 
+diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
+index 2737013..d5509b7 100644
+--- a/include/linux/nfs4.h
++++ b/include/linux/nfs4.h
+@@ -557,6 +557,7 @@ enum {
+ 	NFSPROC4_CLNT_PNFS_LAYOUTCOMMIT,
+ 	NFSPROC4_CLNT_PNFS_LAYOUTRETURN,
+ 	NFSPROC4_CLNT_PNFS_GETDEVICEINFO,
++	NFSPROC4_CLNT_PNFS_WRITE,
+ };
+ 
+ /* nfs41 types */
+-- 
+1.6.2.5
+
