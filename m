@@ -1,46 +1,37 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:27176 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751237Ab0HRRib (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 18 Aug 2010 13:38:31 -0400
-From: andros@netapp.com
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Fred Isaman <iisaman@citi.umich.edu>,
-        Benny Halevy <bhalevy@panasas.com>
-Subject: [PATCH 1/1] nfs41: prevent exchange_id from sending server-only flag
-Date: Wed, 18 Aug 2010 13:38:12 -0400
-Message-Id: <1282153092-7228-1-git-send-email-andros@netapp.com>
+Received: from mail-wy0-f174.google.com ([74.125.82.174]:55971 "EHLO
+	mail-wy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754548Ab0HMVdg convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 13 Aug 2010 17:33:36 -0400
+Received: by wyb32 with SMTP id 32so3090807wyb.19
+        for <linux-nfs@vger.kernel.org>; Fri, 13 Aug 2010 14:33:35 -0700 (PDT)
+In-Reply-To: <0C88B758-1DE8-4CFB-9546-A30104009A12@oracle.com>
+References: <AANLkTik_gAeTWhD_=zSUrqh2eYir=q4bK4cJ6UdGQ11M@mail.gmail.com> <0C88B758-1DE8-4CFB-9546-A30104009A12@oracle.com>
+From: Rahul Nabar <rpnabar@gmail.com>
+Date: Fri, 13 Aug 2010 16:33:15 -0500
+Message-ID: <AANLkTimqTvgyvvjP2R12wsdpZRs10T+YAtUGw7u6pxWZ@mail.gmail.com>
+Subject: Re: NFS and file locking for use with sqllite
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Fred Isaman <iisaman@citi.umich.edu>
+On Fri, Aug 13, 2010 at 4:15 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
+>
+> It's really not clear what is meant by this vague warning.  Maybe you should ask for details from the sqlite development community.
 
-clp->cl_exchange_flags is used both for client output and server input.
-This causes problems in certain recovery situations, when the server
-has sent back EXCHGID4_FLAG_CONFIRMED_R, causing the client to erroneously
-use the flag in future EXCHANGE_ID requests.
+Thanks Chuck! The warning seemed pretty vague to me as well. Just
+thought I'd doublecheck if there was something obvious I was missing.
+Thanks for your comments.
 
-Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
----
- fs/nfs/nfs4proc.c |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
+>
+> You have two choices on Linux clients:  "lock" and "nolock".  They control whether file locks appear to other clients or not.  I assume >your applications cares about serialization with processes only on the same client where it is running.  Mount options almost certainly >do not matter in this case.
+>
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 198d51d..e5fea95 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -4427,7 +4427,7 @@ int nfs4_proc_exchange_id(struct nfs_client *clp, struct rpc_cred *cred)
- 	nfs4_verifier verifier;
- 	struct nfs41_exchange_id_args args = {
- 		.client = clp,
--		.flags = clp->cl_exchange_flags,
-+		.flags = clp->cl_exchange_flags & ~EXCHGID4_FLAG_CONFIRMED_R,
- 	};
- 	struct nfs41_exchange_id_res res = {
- 		.client = clp,
+I do have locking enabled. I'm not using "nolock" as a option and I
+have lockd daemon running.
+
 -- 
-1.6.2.5
-
+Rahul
