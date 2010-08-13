@@ -1,84 +1,63 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-out1.uio.no ([129.240.10.57]:60358 "EHLO mail-out1.uio.no"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750992Ab0HRWQm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 18 Aug 2010 18:16:42 -0400
-Subject: Re: [PATCH 1/4] sunrpc: don't shorten buflen twice in
- xdr_shrink_pagelen
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-To: Benny Halevy <bhalevy@panasas.com>
-Cc: linux-nfs@vger.kernel.org
-In-Reply-To: <1282166814.8540.119.camel@heimdal.trondhjem.org>
-References: <4C6C4565.1070603@panasas.com>
-	 <1282164159-20283-1-git-send-email-bhalevy@panasas.com>
-	 <1282166814.8540.119.camel@heimdal.trondhjem.org>
-Content-Type: text/plain; charset="UTF-8"
-Date: Wed, 18 Aug 2010 18:16:37 -0400
-Message-ID: <1282169797.8540.125.camel@heimdal.trondhjem.org>
+Received: from mail-ww0-f44.google.com ([74.125.82.44]:40790 "EHLO
+	mail-ww0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751640Ab0HMFQ6 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 13 Aug 2010 01:16:58 -0400
+Received: by wwj40 with SMTP id 40so2495865wwj.1
+        for <linux-nfs@vger.kernel.org>; Thu, 12 Aug 2010 22:16:57 -0700 (PDT)
+In-Reply-To: <AANLkTikStDSBi2Dm0oMAEpVbE9PFZOTmOkW6Wy92wjj-@mail.gmail.com>
+References: <87lj8ckb1e.fsf@patl.com>
+	<8762zgmmer.fsf@patl.com>
+	<1281628195.2873.12.camel@heimdal.trondhjem.org>
+	<AANLkTi=WzNzq7wKf0qa+VFuOBYy4yW==0QvdKsTQ88+x@mail.gmail.com>
+	<1281634004.14329.14.camel@heimdal.trondhjem.org>
+	<AANLkTikStDSBi2Dm0oMAEpVbE9PFZOTmOkW6Wy92wjj-@mail.gmail.com>
+Date: Thu, 12 Aug 2010 22:16:57 -0700
+Message-ID: <AANLkTi=OEkPuL+0E_VhPOn-U6neR=jJWunz-2DT755aB@mail.gmail.com>
+Subject: Re: [PATCH] nfs: lookupcache coherence bugs in WCC update path (revised)
+From: "Patrick J. LoPresti" <lopresti@gmail.com>
+To: linux-nfs@vger.kernel.org
+Cc: Trond Myklebust <trond.myklebust@fys.uio.no>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, 2010-08-18 at 17:26 -0400, Trond Myklebust wrote:
-> On Wed, 2010-08-18 at 23:42 +0300, Benny Halevy wrote:
-> > On Jan. 14, 2009, 2:50 +0200, andros@netapp.com wrote:
-> > > From: Andy Adamson <andros@netapp.com>
-> > >
-> > > The buflen is reset for all cases at the end of xdr_shrink_pagelen.
-> > > The data left in the tail after xdr_read_pages is not processed when the
-> > > buflen is incorrectly set.
-> > 
-> > Note that in this case we also lose (len - tail->iov_len)
-> > bytes from the buffered data in pages.
-> 
-> We don't really need to do that. The amount of free space in the tail
-> (as opposed to space occupied by data) can be calculated as:
-> 
-> buf->buflen - buf->head->iov_len - buf->page_len - buf->tail->iov_len;
-> 
-Something like the following:
+OK, I found the problem.  Whether it is a bug depends on your point of
+view, I suppose.
 
----------------------------------------------------------------------------------------------
-SUNRPC: Don't truncate tail data unnecessarily in xdr_shrink_pagelen
+Although I am using XFS on my file server, and XFS has
+nanosecond-granularity timestamps, the true granularity of ctime/mtime
+is ultimately determined by the resolution of current_fs_time() which
+calls current_kernel_time(); i.e. jiffies; i.e. 1/HZ.
 
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
+On my system (SLES 11 SP1), HZ is 250.  In my failing application, 4
+ms is long enough for many filesystem operations, even over NFS. (My
+network is 10GigE with a 300 microsecond round trip time, and my
+systems are very new.)
 
-If we have unused buffer space, then we should make use of that rather
-than unnecessarily truncating the message.
+Anyway, I instrumented the VFS code on the NFS server to catch it in
+the act; specifically, I saw the following sequence:
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
+file A is created on server, updating directory mtime
+NFS client does LOOKUP on file B, gets nfserr_noent
+file B created on server, does not update directory's mtime
 
- net/sunrpc/xdr.c |   11 ++++++++++-
- 1 files changed, 10 insertions(+), 1 deletions(-)
+...all within 4 milliseconds (which is why the creation of file B did
+not update the directory's mtime).
 
+The result is that the lookup cache on the client is stale and stays
+stale until some other client (or the server) updates the directory.
+Even making changes from the client does not invalidate the cache,
+thanks to the clever WCC logic that Trond had to explain to me
+earlier.
 
-diff --git a/net/sunrpc/xdr.c b/net/sunrpc/xdr.c
-index 3317db3..3bbef7f 100644
---- a/net/sunrpc/xdr.c
-+++ b/net/sunrpc/xdr.c
-@@ -396,12 +396,21 @@ xdr_shrink_pagelen(struct xdr_buf *buf, size_t len)
- 	struct kvec *tail;
- 	size_t copy;
- 	unsigned int pglen = buf->page_len;
-+	unsigned int tailbuf_len;
- 
- 	tail = buf->tail;
- 	BUG_ON (len > pglen);
- 
-+	tailbuf_len = buf->buflen - buf->head->iov_len - buf->page_len;
-+
- 	/* Shift the tail first */
--	if (tail->iov_len != 0) {
-+	if (tailbuf_len != 0) {
-+		unsigned int free_space = tailbuf_len - tail->iov_len;
-+
-+		if (len < free_space)
-+			free_space = len;
-+		tail->iov_len += free_space;
-+
- 		copy = len;
- 		if (tail->iov_len > len) {
- 			char *p = (char *)tail->iov_base + len;
+This is not exactly an NFS specific question, but I will ask anyway...
+ If I were to propose modifying current_fs_time() to call
+getnstimeofday() instead of current_kernel_time(), would the VFS folks
+laugh me out the door?
 
+1/HZ granularity for file timestamps just seems so...  90s or
+something.  4ms really is a lot of time these days.
 
+ - Pat
