@@ -1,47 +1,62 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:6166 "EHLO mx2.netapp.com"
+Received: from cantor2.suse.de ([195.135.220.15]:56088 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756860Ab0HDCmO convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 3 Aug 2010 22:42:14 -0400
-Subject: Re: [PATCH 0/4] nfsrdma: Miscellanseous Bug Fixes
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Tom Tucker <tom@ogc.us>
-Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org, swise@ogc.us
-In-Reply-To: <20100803164411.2567.31416.stgit@build.ogc.int>
-References: <20100803164411.2567.31416.stgit@build.ogc.int>
-Content-Type: text/plain; charset="UTF-8"
-Date: Tue, 03 Aug 2010 22:42:02 -0400
-Message-ID: <1280889722.24669.31.camel@heimdal.trondhjem.org>
+	id S934288Ab0HMNxu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 13 Aug 2010 09:53:50 -0400
+Date: Fri, 13 Aug 2010 15:53:49 +0200
+Message-ID: <s5h4oeywrde.wl%tiwai@suse.de>
+From: Takashi Iwai <tiwai@suse.de>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Neil Brown <neilb@suse.de>, Al Viro <viro@zeniv.linux.org.uk>,
+        Christoph Hellwig <hch@lst.de>, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Subject: [PATCH] nfsd: fix NULL dereference in nfsd_statfs()
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Tue, 2010-08-03 at 11:44 -0500, Tom Tucker wrote:
-> The following series fixes a number of bugs in the NFSRDMA transport.
-> 
-> ---
-> 
-> Steve Wise (1):
->       xprtrdma: Do not truncate iova_start values in frmr registrations.
-> 
-> Tom Tucker (3):
->       rpcrdma: Fix SQ size calculation when memreg is FRMR
->       svcrdma: Cleanup DMA unmapping in error paths.
->       svcrdma: Change DMA mapping logic to avoid the page_address kernel API
-> 
-> 
->  net/sunrpc/xprtrdma/rpc_rdma.c           |    2 +
->  net/sunrpc/xprtrdma/svc_rdma_recvfrom.c  |   19 ++++---
->  net/sunrpc/xprtrdma/svc_rdma_sendto.c    |   82 ++++++++++++++++++++++--------
->  net/sunrpc/xprtrdma/svc_rdma_transport.c |   41 +++++++--------
->  net/sunrpc/xprtrdma/verbs.c              |   22 ++++++--
->  5 files changed, 111 insertions(+), 55 deletions(-)
+The commit ebabe9a9001af0af56c0c2780ca1576246e7a74b
+    pass a struct path to vfs_statfs
+introduced the struct path initialization, and this seems to trigger
+an Oops on my machine.
 
-Hi Tom,
+fh_dentry field may be NULL and set later in fh_verify(), thus the
+initialization of path must be after fh_verify().
 
-How do you want to split these patches? The first one looks definitely
-like a client bug, and the next 2 look like server bugs, but what about
-the last patch?
+Signed-off-by: Takashi Iwai <tiwai@suse.de>
+---
+ fs/nfsd/vfs.c |   14 ++++++++------
+ 1 files changed, 8 insertions(+), 6 deletions(-)
 
-Cheers
-  Trond
+diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+index 96360a8..661a6cf 100644
+--- a/fs/nfsd/vfs.c
++++ b/fs/nfsd/vfs.c
+@@ -2033,15 +2033,17 @@ out:
+ __be32
+ nfsd_statfs(struct svc_rqst *rqstp, struct svc_fh *fhp, struct kstatfs *stat, int access)
+ {
+-	struct path path = {
+-		.mnt	= fhp->fh_export->ex_path.mnt,
+-		.dentry	= fhp->fh_dentry,
+-	};
+ 	__be32 err;
+ 
+ 	err = fh_verify(rqstp, fhp, 0, NFSD_MAY_NOP | access);
+-	if (!err && vfs_statfs(&path, stat))
+-		err = nfserr_io;
++	if (!err) {
++		struct path path = {
++			.mnt	= fhp->fh_export->ex_path.mnt,
++			.dentry	= fhp->fh_dentry,
++		};
++		if (vfs_statfs(&path, stat))
++			err = nfserr_io;
++	}
+ 	return err;
+ }
+ 
+-- 
+1.7.2.1
+
