@@ -1,141 +1,84 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-out1.uio.no ([129.240.10.57]:34925 "EHLO mail-out1.uio.no"
+Received: from fieldses.org ([174.143.236.118]:56110 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751292Ab0HQWNY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 17 Aug 2010 18:13:24 -0400
-Subject: Re: [PATCH 1/2] Teach clients to map numeric strings into valid
- uids and gids.
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-To: Steve Dickson <SteveD@redhat.com>
-Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-In-Reply-To: <4C6B081B.2070700@RedHat.com>
-References: <1282073925-18707-1-git-send-email-steved@redhat.com>
-	 <1282073925-18707-2-git-send-email-steved@redhat.com>
-	 <1282076855.12506.2.camel@heimdal.trondhjem.org>
-	 <4C6B00B1.4060206@RedHat.com>
-	 <1282081633.18385.6.camel@heimdal.trondhjem.org>
-	 <4C6B081B.2070700@RedHat.com>
-Content-Type: text/plain; charset="UTF-8"
-Date: Tue, 17 Aug 2010 18:13:19 -0400
-Message-ID: <1282083199.18385.21.camel@heimdal.trondhjem.org>
+	id S1755051Ab0HMMi0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 13 Aug 2010 08:38:26 -0400
+Date: Fri, 13 Aug 2010 08:36:35 -0400
+To: "Patrick J. LoPresti" <lopresti@gmail.com>
+Cc: linux-nfs@vger.kernel.org, Trond Myklebust <trond.myklebust@fys.uio.no>,
+        linux-fsdevel@vger.kernel.org
+Subject: Re: [PATCH] nfs: lookupcache coherence bugs in WCC update path
+ (revised)
+Message-ID: <20100813123635.GA8945@fieldses.org>
+References: <87lj8ckb1e.fsf@patl.com>
+ <8762zgmmer.fsf@patl.com>
+ <1281628195.2873.12.camel@heimdal.trondhjem.org>
+ <AANLkTi=WzNzq7wKf0qa+VFuOBYy4yW==0QvdKsTQ88+x@mail.gmail.com>
+ <1281634004.14329.14.camel@heimdal.trondhjem.org>
+ <AANLkTikStDSBi2Dm0oMAEpVbE9PFZOTmOkW6Wy92wjj-@mail.gmail.com>
+ <AANLkTi=OEkPuL+0E_VhPOn-U6neR=jJWunz-2DT755aB@mail.gmail.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <AANLkTi=OEkPuL+0E_VhPOn-U6neR=jJWunz-2DT755aB@mail.gmail.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Tue, 2010-08-17 at 18:07 -0400, Steve Dickson wrote:
+On Thu, Aug 12, 2010 at 10:16:57PM -0700, Patrick J. LoPresti wrote:
+> OK, I found the problem.  Whether it is a bug depends on your point of
+> view, I suppose.
 > 
-> On 08/17/2010 05:47 PM, Trond Myklebust wrote:
-> > On Tue, 2010-08-17 at 17:35 -0400, Steve Dickson wrote:
-> >>
-> >> On 08/17/2010 04:27 PM, Trond Myklebust wrote:
-> >>> On Tue, 2010-08-17 at 15:38 -0400, Steve Dickson wrote:
-> >>>> When a server can not map a uid or gid they can send
-> >>>> an numeric string (one that does not include the @domain)
-> >>>> of the given id. When this occurs the client will can use
-> >>>> that numeric representation iff that id exists on the client.
-> >>>>
-> >>>> Signed-off-by: Steve Dickson <steved@redhat.com>
-> >>>> ---
-> >>>>  utils/idmapd/idmapd.c |   38 ++++++++++++++++++++++++++++++++++++++
-> >>>>  1 files changed, 38 insertions(+), 0 deletions(-)
-> >>>>
-> >>>> diff --git a/utils/idmapd/idmapd.c b/utils/idmapd/idmapd.c
-> >>>> index 9ecab66..d6799c9 100644
-> >>>> --- a/utils/idmapd/idmapd.c
-> >>>> +++ b/utils/idmapd/idmapd.c
-> >>>> @@ -826,6 +826,21 @@ idtonameres(struct idmap_msg *im)
-> >>>>  		im->im_status = IDMAP_STATUS_SUCCESS;
-> >>>>  }
-> >>>>  
-> >>>> +static int
-> >>>> +alldigits(char *name)
-> >>>> +{
-> >>>> +	char *p = name;
-> >>>> +
-> >>>> +	if (name == NULL)
-> >>>> +		return 0;
-> >>>> +
-> >>>> +	while (*p != '\0') {
-> >>>> +		if (!isdigit(*p++))
-> >>>> +			return 0;
-> >>>> +	}
-> >>>> +	return 1;
-> >>>> +}
-> >>>> +
-> >>>>  static void
-> >>>>  nametoidres(struct idmap_msg *im)
-> >>>>  {
-> >>>> @@ -843,6 +858,18 @@ nametoidres(struct idmap_msg *im)
-> >>>>  		ret = nfs4_name_to_uid(im->im_name, &uid);
-> >>>>  		im->im_id = (u_int32_t) uid;
-> >>>>  		if (ret) {
-> >>>> +			/*
-> >>>> +			 * When a server sends numeric string that's
-> >>>> +			 * lacking the @domain part, and the uid exists
-> >>>> +			 * use the numeric string as the uid. 
-> >>>> +			 */
-> >>>> +			if (alldigits(im->im_name)) {
-> >>>> +				sscanf(im->im_name, "%u", &uid);
-> >>>> +				if (getpwuid(uid) != NULL) {
-> >>>> +					im->im_id = uid;	
-> >>>> +					break;
-> >>>> +				}
-> >>>> +			}
-> >>>>  			im->im_status = IDMAP_STATUS_LOOKUPFAIL;
-> >>>>  			im->im_id = nobodyuid;
-> >>>>  		}
-> >>>> @@ -851,6 +878,17 @@ nametoidres(struct idmap_msg *im)
-> >>>>  		ret = nfs4_name_to_gid(im->im_name, &gid);
-> >>>>  		im->im_id = (u_int32_t) gid;
-> >>>>  		if (ret) {
-> >>>> +			/*
-> >>>> +			 * Do the same type of mapping of a numeric string
-> >>>> +			 * sent as the gid.
-> >>>> +			 */
-> >>>> +			if (alldigits(im->im_name)) {
-> >>>> +				sscanf(im->im_name, "%u", &gid);
-> >>>> +				if (getgrgid(gid) != NULL) {
-> >>>> +					im->im_id = gid;
-> >>>> +					break;
-> >>>> +				}
-> >>>> +			}
-> >>>>  			im->im_status = IDMAP_STATUS_LOOKUPFAIL;
-> >>>>  			im->im_id = nobodygid;
-> >>>>  		}
-> >>>
-> >>> Wouldn't it make more sense to put this into libnfsidmap instead?
-> >> I did think of that but since the nobody ids are being set here I 
-> >> figured I made the most sense to do here... plus this is pretty 
-> >> simple code why hide a way in the library and make it more 
-> >> difficult to debug... 
-> > 
-> > It means that Bryan is going to have to duplicate it all in the new
-> > highly scalable idmapper.
-> Hmm... I guess I didn't realize there was a "highly scalable idmapper" on
-> drawing board... Cool... Any details... Did I miss some email?? 
+> Although I am using XFS on my file server, and XFS has
+> nanosecond-granularity timestamps, the true granularity of ctime/mtime
+> is ultimately determined by the resolution of current_fs_time() which
+> calls current_kernel_time(); i.e. jiffies; i.e. 1/HZ.
+> 
+> On my system (SLES 11 SP1), HZ is 250.  In my failing application, 4
+> ms is long enough for many filesystem operations, even over NFS. (My
+> network is 10GigE with a 300 microsecond round trip time, and my
+> systems are very new.)
+> 
+> Anyway, I instrumented the VFS code on the NFS server to catch it in
+> the act; specifically, I saw the following sequence:
+> 
+> file A is created on server, updating directory mtime
+> NFS client does LOOKUP on file B, gets nfserr_noent
+> file B created on server, does not update directory's mtime
+> 
+> ...all within 4 milliseconds (which is why the creation of file B did
+> not update the directory's mtime).
+> 
+> The result is that the lookup cache on the client is stale and stays
+> stale until some other client (or the server) updates the directory.
+> Even making changes from the client does not invalidate the cache,
+> thanks to the clever WCC logic that Trond had to explain to me
+> earlier.
+> 
+> This is not exactly an NFS specific question, but I will ask anyway...
+>  If I were to propose modifying current_fs_time() to call
+> getnstimeofday() instead of current_kernel_time(), would the VFS folks
+> laugh me out the door?
 
-Not yet. He just finished the first draft today.
+Good question.... Cc'ing linux-fsdevel.
 
-Bryan is basically reusing the keyring based design for the dns resolver
-and applying it to idmapping.
+If you have an easy reproducer it might also be worth experimenting with
+NFSv4 exports of an ext4 system mounted with the i_version option.
 
-> > 
-> > Ditto for the nobody ids.
-> > 
-> > What's the point of having the library when it doesn't do the full NFSv4
-> > idmapping for you?
-> At this point we don't do the nobody id mapping in the library... I'm just
-> going with what is there now.. I do see and understand your point about doing 
-> all id mapping in the library... and with the new scalable idmapper,  move the 
-> code... I strongly suggest you do... 
+Actually: should the NFSv4 server always be using i_version as the
+change attribute for directories?  (Does every exportable filesystem
+update it on every directory modification?)
 
-Ok...
+(And if so, maybe on directories we should factor the i_version into the
+low bits of the mtime reported to NFSv3 client?)
 
-> But at this point in time we have people doing the v4 transitioning now and
-> I can get the fix out much quicker, making their transition less painful,
-> if I put these few lines of code in nfs-utils verses the library... 
+--b.
 
-I don't see why getting it into nfs-utils is faster. Is CITI being slow
-taking patches for libnfsidmap?
-
-
+> 
+> 1/HZ granularity for file timestamps just seems so...  90s or
+> something.  4ms really is a lot of time these days.
+> 
+>  - Pat
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
