@@ -1,54 +1,42 @@
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: Re: [PATCH 4/4] sunrpc: simplify xdr_shrijk_pagelen use of "copy"
-Date: Wed, 18 Aug 2010 17:19:47 -0400
-Message-ID: <1282166387.8540.112.camel@heimdal.trondhjem.org>
-References: <4C6C4565.1070603@panasas.com>
-	 <1282164183-20389-1-git-send-email-bhalevy@panasas.com>
+From: Risto Bell <reb-+wT8y+m8/X5BDgjK7y7TUQ@public.gmane.org>
+Subject: Re: NFS and file locking for use with sqllite
+Date: Fri, 13 Aug 2010 15:09:39 -0700
+Message-ID: <4C65C2A3.40404@cypress.com>
+References: <AANLkTik_gAeTWhD_=zSUrqh2eYir=q4bK4cJ6UdGQ11M@mail.gmail.com> <0C88B758-1DE8-4CFB-9546-A30104009A12@oracle.com> <AANLkTimqTvgyvvjP2R12wsdpZRs10T+YAtUGw7u6pxWZ@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Cc: linux-nfs@vger.kernel.org
-To: Benny Halevy <bhalevy@panasas.com>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:63893 "EHLO mx2.netapp.com"
+Received: from ns2.cypress.com ([157.95.67.5]:52108 "EHLO ns2.cypress.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753118Ab0HRVUG convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 18 Aug 2010 17:20:06 -0400
-In-Reply-To: <1282164183-20389-1-git-send-email-bhalevy@panasas.com>
+	id S1755055Ab0HMWWG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 13 Aug 2010 18:22:06 -0400
+Received: from corpmail.cypress.com (corpmail [157.95.1.2])
+	by ns2.cypress.com (8.12.10/8.12.10) with ESMTP id o7DM9l0n014771
+	for <linux-nfs@vger.kernel.org>; Fri, 13 Aug 2010 15:09:47 -0700 (PDT)
+Received: from cobweb.mis.cypress.com (cobweb.mis.cypress.com [172.16.2.5])
+	by corpmail.cypress.com (8.12.10/8.12.10) with ESMTP id o7DM9foX000909
+	for <linux-nfs@vger.kernel.org>; Fri, 13 Aug 2010 15:09:41 -0700 (PDT)
+Received: from meson.design.cypress.com (meson.design.cypress.com [172.17.2.36])
+	by cobweb.mis.cypress.com (8.12.11/8.12.11) with ESMTP id o7DM9egb002729
+	for <linux-nfs@vger.kernel.org>; Fri, 13 Aug 2010 15:09:40 -0700 (PDT)
+Received: from lucas.design.cypress.com (lucas [172.17.14.37])
+	by meson.design.cypress.com (8.9.3+Sun/8.9.3) with ESMTP id PAA06486
+	for <linux-nfs@vger.kernel.org>; Fri, 13 Aug 2010 15:09:39 -0700 (PDT)
+Received: from lucas.design.cypress.com (localhost [127.0.0.1])
+	by lucas.design.cypress.com (8.13.8/8.13.8) with ESMTP id o7DM9dXM029512
+	for <linux-nfs@vger.kernel.org>; Fri, 13 Aug 2010 15:09:39 -0700
+In-Reply-To: <AANLkTimqTvgyvvjP2R12wsdpZRs10T+YAtUGw7u6pxWZ-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 2010-08-18 at 23:43 +0300, Benny Halevy wrote:
-> The "copy" variable value can be computed using the existing
-> logic rather than repeating it.
-> 
-> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-> ---
->  net/sunrpc/xdr.c |    6 +++---
->  1 files changed, 3 insertions(+), 3 deletions(-)
-> 
-> diff --git a/net/sunrpc/xdr.c b/net/sunrpc/xdr.c
-> index 42a7ebf..2ab59c3 100644
-> --- a/net/sunrpc/xdr.c
-> +++ b/net/sunrpc/xdr.c
-> @@ -402,14 +402,14 @@ xdr_shrink_pagelen(struct xdr_buf *buf, size_t len)
->  
->  	/* Shift the tail first */
->  	if (tail->iov_len != 0) {
-> +		copy = len;
->  		if (tail->iov_len > len) {
->  			char *p = (char *)tail->iov_base + len;
->  			memmove(p, tail->iov_base, tail->iov_len - len);
-> +		} else {
-> +			copy = tail->iov_len;
->  		}
-                 ^^^ We don't need a C block for the 'else' case.
+ From client, how to remotely query server for list of locks held?
+Helpful if debugging lock recovery failures.
 
->  		/* Copy from the inlined pages into the tail */
-> -		copy = len;
-> -		if (copy > tail->iov_len)
-> -			copy = tail->iov_len;
->  		_copy_from_pages((char *)tail->iov_base,
->  				buf->pages, buf->page_base + pglen - len,
->  				copy);
-
+---------------------------------------------------------------
+This message and any attachments may contain Cypress (or its
+subsidiaries) confidential information. If it has been received
+in error, please advise the sender and immediately delete this
+message.
+---------------------------------------------------------------
 
