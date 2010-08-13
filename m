@@ -1,78 +1,229 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fn.samba.org ([216.83.154.106]:37431 "EHLO lists.samba.org"
+Received: from mx2.netapp.com ([216.240.18.37]:48989 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755720Ab0HPTH0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 16 Aug 2010 15:07:26 -0400
-Date: Mon, 16 Aug 2010 12:07:24 -0700
-From: Jeremy Allison <jra@samba.org>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Jeremy Allison <jra@samba.org>, Jeff Layton <jlayton@redhat.com>,
-        Neil Brown <neilb@suse.de>, utz lehmann <lkml123@s2y4n2c.de>,
-        Linus Torvalds <torvalds@linux-foundation.org>,
-        Volker.Lendecke@sernet.de, David Howells <dhowells@redhat.com>,
-        Jan Engelhardt <jengelh@medozas.de>, linux-cifs@vger.kernel.org,
-        linux-nfs@vger.kernel.org, samba-technical@lists.samba.org,
-        linux-kernel@vger.kernel.org, viro@zeniv.linux.org.uk,
-        linux-fsde@jasper.es
-Subject: Re: [PATCH 02/18] xstat: Add a pair of system calls to make
- extended  file stats available [ver #6]
-Message-ID: <20100816190724.GA23812@samba1>
-Reply-To: Jeremy Allison <jra@samba.org>
-References: <1280524978.2452.9.camel@segv.aura.of.mankind>
- <20100801092529.5e6ba0e0@corrin.poochiereds.net>
- <20100805235218.GB31233@jeremy-laptop>
- <20100806133836.49757af9@notabene>
- <20100808121208.GA7329@jeremy-laptop>
- <20100808085301.24f53e5a@tlielax.poochiereds.net>
- <20100808130501.GA9851@jeremy-laptop>
- <20100813125432.GB8945@fieldses.org>
- <20100813175410.GA8202@samba1>
- <20100816180828.GB7764@fieldses.org>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20100816180828.GB7764@fieldses.org>
+	id S1754132Ab0HMVc3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 13 Aug 2010 17:32:29 -0400
+From: andros@netapp.com
+To: bhalevy@panasas.com
+Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
+Subject: [PATCH 29/50] pnfs_submit: add data server session to nfs4_setup_sequence
+Date: Fri, 13 Aug 2010 17:31:41 -0400
+Message-Id: <1281735122-1496-30-git-send-email-andros@netapp.com>
+In-Reply-To: <1281735122-1496-29-git-send-email-andros@netapp.com>
+References: <1281735122-1496-1-git-send-email-andros@netapp.com>
+ <1281735122-1496-2-git-send-email-andros@netapp.com>
+ <1281735122-1496-3-git-send-email-andros@netapp.com>
+ <1281735122-1496-4-git-send-email-andros@netapp.com>
+ <1281735122-1496-5-git-send-email-andros@netapp.com>
+ <1281735122-1496-6-git-send-email-andros@netapp.com>
+ <1281735122-1496-7-git-send-email-andros@netapp.com>
+ <1281735122-1496-8-git-send-email-andros@netapp.com>
+ <1281735122-1496-9-git-send-email-andros@netapp.com>
+ <1281735122-1496-10-git-send-email-andros@netapp.com>
+ <1281735122-1496-11-git-send-email-andros@netapp.com>
+ <1281735122-1496-12-git-send-email-andros@netapp.com>
+ <1281735122-1496-13-git-send-email-andros@netapp.com>
+ <1281735122-1496-14-git-send-email-andros@netapp.com>
+ <1281735122-1496-15-git-send-email-andros@netapp.com>
+ <1281735122-1496-16-git-send-email-andros@netapp.com>
+ <1281735122-1496-17-git-send-email-andros@netapp.com>
+ <1281735122-1496-18-git-send-email-andros@netapp.com>
+ <1281735122-1496-19-git-send-email-andros@netapp.com>
+ <1281735122-1496-20-git-send-email-andros@netapp.com>
+ <1281735122-1496-21-git-send-email-andros@netapp.com>
+ <1281735122-1496-22-git-send-email-andros@netapp.com>
+ <1281735122-1496-23-git-send-email-andros@netapp.com>
+ <1281735122-1496-24-git-send-email-andros@netapp.com>
+ <1281735122-1496-25-git-send-email-andros@netapp.com>
+ <1281735122-1496-26-git-send-email-andros@netapp.com>
+ <1281735122-1496-27-git-send-email-andros@netapp.com>
+ <1281735122-1496-28-git-send-email-andros@netapp.com>
+ <1281735122-1496-29-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Mon, Aug 16, 2010 at 02:08:29PM -0400, J. Bruce Fields wrote:
-> On Fri, Aug 13, 2010 at 10:54:10AM -0700, Jeremy Allison wrote:
-> > On Fri, Aug 13, 2010 at 08:54:32AM -0400, J. Bruce Fields wrote:
-> > > On Sun, Aug 08, 2010 at 06:05:01AM -0700, Jeremy Allison wrote:
-> > > > We don't need to ape Windows in everything.
-> > > > The coming ACL disaster will show that (we will go from an ACL
-> > > > model that is slightly too complex to use, to one that is impossibly
-> > > > complex to use :-).
-> > > 
-> > > Care to elaborate?
-> > 
-> > POSIX ACLs -> RichACLs (NT-style). Not criticising Andreas here,
-> > people are asking for this. But Windows ACLs are a nightmare
-> > beyond human comprehension :-). In the "too complex to be
-> > usable" camp.
-> > 
-> > > And what would native ACL support mean for Samba?
-> > 
-> > RichACLs'll do it, but I feel sorry for the admins :-).
-> 
-> I was curious whether you can support that with any data (or even just
-> anecdotes) about real-world sysadmins.
+From: The pNFS Team <linux-nfs@vger.kernel.org>
 
-Just an anecdote, but I remember giving a talk to a room full
-of admins, all of whom told me it was essential for Samba to
-implement "full Windows ACL compatibility" (we were in the process
-of coding it up at the time). I asked them to tell me the difference
-between object inherit, container inherit, and inherit only. Only
-one hand remained up (out of a room containing a couple of hundred
-Windows admins). I asked him where he worked, and the reply was
-"the US Marine Corps." :-).
+Note: original patch of same name...
 
-> The NT-style ACLs give me a headache, honestly.  But that may just be
-> because I've been involved with the implementation.  Admins may have the
-> luxury of using only the subset that they're comfortable with.
+Signed-off-by: Andy Adamson <andros@netapp.com>
+Signed-off_by: Benny Halevy <bhalevy@panasas.com>
+---
+ fs/nfs/nfs4_fs.h  |    3 +++
+ fs/nfs/nfs4proc.c |   21 ++++++++++++---------
+ fs/nfs/read.c     |    2 +-
+ fs/nfs/unlink.c   |    2 +-
+ fs/nfs/write.c    |    2 +-
+ 5 files changed, 18 insertions(+), 12 deletions(-)
 
-Yeah. I think most sites set a group as the owner of a share
-and the directory so exported, set the directory to inherit
-everything down below, and just leave it up to the members
-of that group without getting further involved :-).
+diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
+index 311e15c..ef70bef 100644
+--- a/fs/nfs/nfs4_fs.h
++++ b/fs/nfs/nfs4_fs.h
+@@ -256,10 +256,12 @@ static inline struct nfs4_session *nfs4_get_session(const struct nfs_server *ser
+ }
+ 
+ extern int nfs4_setup_sequence(const struct nfs_server *server,
++		struct nfs4_session *ds_session,
+ 		struct nfs4_sequence_args *args, struct nfs4_sequence_res *res,
+ 		int cache_reply, struct rpc_task *task);
+ extern void nfs4_destroy_session(struct nfs4_session *session);
+ extern struct nfs4_session *nfs4_alloc_session(struct nfs_client *clp);
++extern int nfs4_proc_exchange_id(struct nfs_client *, struct rpc_cred *);
+ extern int nfs4_proc_create_session(struct nfs_client *);
+ extern int nfs4_proc_destroy_session(struct nfs4_session *);
+ extern int nfs4_init_session(struct nfs_server *server);
+@@ -272,6 +274,7 @@ static inline struct nfs4_session *nfs4_get_session(const struct nfs_server *ser
+ }
+ 
+ static inline int nfs4_setup_sequence(const struct nfs_server *server,
++		struct nfs4_session *ds_session,
+ 		struct nfs4_sequence_args *args, struct nfs4_sequence_res *res,
+ 		int cache_reply, struct rpc_task *task)
+ {
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 2f00a67..e8b1620 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -570,6 +570,7 @@ static int nfs41_setup_sequence(struct nfs4_session *session,
+ }
+ 
+ int nfs4_setup_sequence(const struct nfs_server *server,
++		struct nfs4_session *ds_session,
+ 			struct nfs4_sequence_args *args,
+ 			struct nfs4_sequence_res *res,
+ 			int cache_reply,
+@@ -578,6 +579,8 @@ int nfs4_setup_sequence(const struct nfs_server *server,
+ 	struct nfs4_session *session = nfs4_get_session(server);
+ 	int ret = 0;
+ 
++	if (ds_session)
++		session = ds_session;
+ 	if (session == NULL) {
+ 		args->sa_session = NULL;
+ 		res->sr_session = NULL;
+@@ -607,7 +610,7 @@ static void nfs41_call_sync_prepare(struct rpc_task *task, void *calldata)
+ 
+ 	dprintk("--> %s data->seq_server %p\n", __func__, data->seq_server);
+ 
+-	if (nfs4_setup_sequence(data->seq_server, data->seq_args,
++	if (nfs4_setup_sequence(data->seq_server, NULL, data->seq_args,
+ 				data->seq_res, data->cache_reply, task))
+ 		return;
+ 	rpc_call_start(task);
+@@ -1396,7 +1399,7 @@ static void nfs4_open_prepare(struct rpc_task *task, void *calldata)
+ 		nfs_copy_fh(&data->o_res.fh, data->o_arg.fh);
+ 	}
+ 	data->timestamp = jiffies;
+-	if (nfs4_setup_sequence(data->o_arg.server,
++	if (nfs4_setup_sequence(data->o_arg.server, NULL,
+ 				&data->o_arg.seq_args,
+ 				&data->o_res.seq_res, 1, task))
+ 		return;
+@@ -1938,7 +1941,7 @@ static void nfs4_close_prepare(struct rpc_task *task, void *data)
+ 
+ 	nfs_fattr_init(calldata->res.fattr);
+ 	calldata->timestamp = jiffies;
+-	if (nfs4_setup_sequence(NFS_SERVER(calldata->inode),
++	if (nfs4_setup_sequence(NFS_SERVER(calldata->inode), NULL,
+ 				&calldata->arg.seq_args, &calldata->res.seq_res,
+ 				1, task))
+ 		return;
+@@ -3705,7 +3708,7 @@ static void nfs4_delegreturn_prepare(struct rpc_task *task, void *data)
+ 
+ 	d_data = (struct nfs4_delegreturndata *)data;
+ 
+-	if (nfs4_setup_sequence(d_data->res.server,
++	if (nfs4_setup_sequence(d_data->res.server, NULL,
+ 				&d_data->args.seq_args,
+ 				&d_data->res.seq_res, 1, task))
+ 		return;
+@@ -3961,7 +3964,7 @@ static void nfs4_locku_prepare(struct rpc_task *task, void *data)
+ 		return;
+ 	}
+ 	calldata->timestamp = jiffies;
+-	if (nfs4_setup_sequence(calldata->server,
++	if (nfs4_setup_sequence(calldata->server, NULL,
+ 				&calldata->arg.seq_args,
+ 				&calldata->res.seq_res, 1, task))
+ 		return;
+@@ -4116,7 +4119,7 @@ static void nfs4_lock_prepare(struct rpc_task *task, void *calldata)
+ 	} else
+ 		data->arg.new_lock_owner = 0;
+ 	data->timestamp = jiffies;
+-	if (nfs4_setup_sequence(data->server,
++	if (nfs4_setup_sequence(data->server, NULL,
+ 				&data->arg.seq_args,
+ 				&data->res.seq_res, 1, task))
+ 		return;
+@@ -5374,7 +5377,7 @@ nfs4_pnfs_layoutget_prepare(struct rpc_task *task, void *calldata)
+ 	struct nfs_server *server = NFS_SERVER(ino);
+ 
+ 	dprintk("--> %s\n", __func__);
+-	if (nfs4_setup_sequence(server, &lgp->args.seq_args,
++	if (nfs4_setup_sequence(server, NULL, &lgp->args.seq_args,
+ 				&lgp->res.seq_res, 0, task))
+ 		return;
+ 	rpc_call_start(task);
+@@ -5486,7 +5489,7 @@ static void pnfs_layoutcommit_prepare(struct rpc_task *task, void *data)
+ 		(struct pnfs_layoutcommit_data *)data;
+ 	struct nfs_server *server = NFS_SERVER(ldata->args.inode);
+ 
+-	if (nfs4_setup_sequence(server, &ldata->args.seq_args,
++	if (nfs4_setup_sequence(server, NULL, &ldata->args.seq_args,
+ 				&ldata->res.seq_res, 1, task))
+ 		return;
+ 	rpc_call_start(task);
+@@ -5595,7 +5598,7 @@ nfs4_pnfs_layoutreturn_prepare(struct rpc_task *task, void *calldata)
+ 	struct nfs_server *server = NFS_SERVER(ino);
+ 
+ 	dprintk("--> %s\n", __func__);
+-	if (nfs4_setup_sequence(server, &lrp->args.seq_args,
++	if (nfs4_setup_sequence(server, NULL, &lrp->args.seq_args,
+ 				&lrp->res.seq_res, 0, task))
+ 		return;
+ 	rpc_call_start(task);
+diff --git a/fs/nfs/read.c b/fs/nfs/read.c
+index 87adc27..8f3a894 100644
+--- a/fs/nfs/read.c
++++ b/fs/nfs/read.c
+@@ -411,7 +411,7 @@ void nfs_read_prepare(struct rpc_task *task, void *calldata)
+ {
+ 	struct nfs_read_data *data = calldata;
+ 
+-	if (nfs4_setup_sequence(NFS_SERVER(data->inode),
++	if (nfs4_setup_sequence(NFS_SERVER(data->inode), NULL,
+ 				&data->args.seq_args, &data->res.seq_res,
+ 				0, task))
+ 		return;
+diff --git a/fs/nfs/unlink.c b/fs/nfs/unlink.c
+index 2f84ada..51ae53b 100644
+--- a/fs/nfs/unlink.c
++++ b/fs/nfs/unlink.c
+@@ -110,7 +110,7 @@ void nfs_unlink_prepare(struct rpc_task *task, void *calldata)
+ 	struct nfs_unlinkdata *data = calldata;
+ 	struct nfs_server *server = NFS_SERVER(data->dir);
+ 
+-	if (nfs4_setup_sequence(server, &data->args.seq_args,
++	if (nfs4_setup_sequence(server, NULL, &data->args.seq_args,
+ 				&data->res.seq_res, 1, task))
+ 		return;
+ 	rpc_call_start(task);
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index 4d37229..5937247 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -1052,7 +1052,7 @@ void nfs_write_prepare(struct rpc_task *task, void *calldata)
+ {
+ 	struct nfs_write_data *data = calldata;
+ 
+-	if (nfs4_setup_sequence(NFS_SERVER(data->inode),
++	if (nfs4_setup_sequence(NFS_SERVER(data->inode), NULL,
+ 				&data->args.seq_args,
+ 				&data->res.seq_res, 1, task))
+ 		return;
+-- 
+1.6.2.5
 
-Jeremy.
