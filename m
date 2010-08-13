@@ -1,47 +1,121 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:52504 "EHLO mx1.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:45275 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932087Ab0HXWM3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 24 Aug 2010 18:12:29 -0400
-Received: from int-mx08.intmail.prod.int.phx2.redhat.com (int-mx08.intmail.prod.int.phx2.redhat.com [10.5.11.21])
-	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id o7OMCSfl025786
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Tue, 24 Aug 2010 18:12:28 -0400
-Received: from badhat.bos.devel.redhat.com (vpn-235-243.phx2.redhat.com [10.3.235.243])
-	by int-mx08.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id o7OMCRmR022707
-	for <linux-nfs@vger.kernel.org>; Tue, 24 Aug 2010 18:12:27 -0400
-Message-ID: <4C7443CB.1090304@RedHat.com>
-Date: Tue, 24 Aug 2010 18:12:27 -0400
-From: Steve Dickson <SteveD@redhat.com>
-To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Updated pNFS Developmental kernel repository
-Content-Type: text/plain; charset=ISO-8859-1
+	id S1754424Ab0HMVdV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 13 Aug 2010 17:33:21 -0400
+From: andros@netapp.com
+To: bhalevy@panasas.com
+Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
+Subject: [PATCH 49/50] SQUASHME pnfs_post_submit: cb notify deviceid declarations
+Date: Fri, 13 Aug 2010 17:32:01 -0400
+Message-Id: <1281735122-1496-50-git-send-email-andros@netapp.com>
+In-Reply-To: <1281735122-1496-49-git-send-email-andros@netapp.com>
+References: <1281735122-1496-1-git-send-email-andros@netapp.com>
+ <1281735122-1496-2-git-send-email-andros@netapp.com>
+ <1281735122-1496-3-git-send-email-andros@netapp.com>
+ <1281735122-1496-4-git-send-email-andros@netapp.com>
+ <1281735122-1496-5-git-send-email-andros@netapp.com>
+ <1281735122-1496-6-git-send-email-andros@netapp.com>
+ <1281735122-1496-7-git-send-email-andros@netapp.com>
+ <1281735122-1496-8-git-send-email-andros@netapp.com>
+ <1281735122-1496-9-git-send-email-andros@netapp.com>
+ <1281735122-1496-10-git-send-email-andros@netapp.com>
+ <1281735122-1496-11-git-send-email-andros@netapp.com>
+ <1281735122-1496-12-git-send-email-andros@netapp.com>
+ <1281735122-1496-13-git-send-email-andros@netapp.com>
+ <1281735122-1496-14-git-send-email-andros@netapp.com>
+ <1281735122-1496-15-git-send-email-andros@netapp.com>
+ <1281735122-1496-16-git-send-email-andros@netapp.com>
+ <1281735122-1496-17-git-send-email-andros@netapp.com>
+ <1281735122-1496-18-git-send-email-andros@netapp.com>
+ <1281735122-1496-19-git-send-email-andros@netapp.com>
+ <1281735122-1496-20-git-send-email-andros@netapp.com>
+ <1281735122-1496-21-git-send-email-andros@netapp.com>
+ <1281735122-1496-22-git-send-email-andros@netapp.com>
+ <1281735122-1496-23-git-send-email-andros@netapp.com>
+ <1281735122-1496-24-git-send-email-andros@netapp.com>
+ <1281735122-1496-25-git-send-email-andros@netapp.com>
+ <1281735122-1496-26-git-send-email-andros@netapp.com>
+ <1281735122-1496-27-git-send-email-andros@netapp.com>
+ <1281735122-1496-28-git-send-email-andros@netapp.com>
+ <1281735122-1496-29-git-send-email-andros@netapp.com>
+ <1281735122-1496-30-git-send-email-andros@netapp.com>
+ <1281735122-1496-31-git-send-email-andros@netapp.com>
+ <1281735122-1496-32-git-send-email-andros@netapp.com>
+ <1281735122-1496-33-git-send-email-andros@netapp.com>
+ <1281735122-1496-34-git-send-email-andros@netapp.com>
+ <1281735122-1496-35-git-send-email-andros@netapp.com>
+ <1281735122-1496-36-git-send-email-andros@netapp.com>
+ <1281735122-1496-37-git-send-email-andros@netapp.com>
+ <1281735122-1496-38-git-send-email-andros@netapp.com>
+ <1281735122-1496-39-git-send-email-andros@netapp.com>
+ <1281735122-1496-40-git-send-email-andros@netapp.com>
+ <1281735122-1496-41-git-send-email-andros@netapp.com>
+ <1281735122-1496-42-git-send-email-andros@netapp.com>
+ <1281735122-1496-43-git-send-email-andros@netapp.com>
+ <1281735122-1496-44-git-send-email-andros@netapp.com>
+ <1281735122-1496-45-git-send-email-andros@netapp.com>
+ <1281735122-1496-46-git-send-email-andros@netapp.com>
+ <1281735122-1496-47-git-send-email-andros@netapp.com>
+ <1281735122-1496-48-git-send-email-andros@netapp.com>
+ <1281735122-1496-49-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-Hello,
+From: Andy Adamson <andros@netapp.com>
 
-I've updated the Fedora pNFS development repository to include the
-Fedora 13, 14 and Devel kernels that have the latest pNFS bits:
-    Tag: pnfs-all-2.6.35-2010-08-19
+Signed-off-by: Andy Adamson <andros@netapp.com>
+---
+ fs/nfs/callback.h    |   17 +++++++++++++++++
+ include/linux/nfs4.h |    5 +++++
+ 2 files changed, 22 insertions(+), 0 deletions(-)
 
-The Fedora 13 kernel is kernel-2.6.34.5-43.pnfs34.2010.08.19.fc13.<arch>.rpm
-The Fedora 14/Devel kernel is kernel-2.6.35.2-9.pnfs35.2010.08.19.fc14.<arch>.rpm
-(Note: there are also kernel-debuginfo and kernel-devel rpms for people who 
-use things like systemtap probes).
+diff --git a/fs/nfs/callback.h b/fs/nfs/callback.h
+index ab9b421..b39ac86 100644
+--- a/fs/nfs/callback.h
++++ b/fs/nfs/callback.h
+@@ -152,6 +152,23 @@ struct cb_pnfs_layoutrecallargs {
+ extern unsigned pnfs_cb_layoutrecall(struct cb_pnfs_layoutrecallargs *args,
+ 				     void *dummy);
+ 
++struct cb_pnfs_devicenotifyitem {
++	uint32_t		cbd_notify_type;
++	uint32_t		cbd_layout_type;
++	struct pnfs_deviceid	cbd_dev_id;
++	uint32_t		cbd_immediate;
++};
++
++/* XXX: Should be dynamic up to max compound size */
++#define NFS4_DEV_NOTIFY_MAXENTRIES 10
++struct cb_pnfs_devicenotifyargs {
++	struct sockaddr			*addr;
++	int				 ndevs;
++	struct cb_pnfs_devicenotifyitem	 devs[NFS4_DEV_NOTIFY_MAXENTRIES];
++};
++
++extern unsigned pnfs_cb_devicenotify(struct cb_pnfs_devicenotifyargs *args,
++				     void *dummy);
+ #endif /* CONFIG_NFS_V4_1 */
+ 
+ extern __be32 nfs4_callback_getattr(struct cb_getattrargs *args, struct cb_getattrres *res);
+diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
+index 2d3d277..e947a32 100644
+--- a/include/linux/nfs4.h
++++ b/include/linux/nfs4.h
+@@ -596,6 +596,11 @@ enum pnfs_iomode {
+ 	IOMODE_ANY = 3,
+ };
+ 
++enum pnfs_notify_deviceid_type4 {
++	NOTIFY_DEVICEID4_CHANGE = 1 << 1,
++	NOTIFY_DEVICEID4_DELETE = 1 << 2,
++};
++
+ #define NFL4_UFLG_MASK			0x0000003F
+ #define NFL4_UFLG_DENSE			0x00000001
+ #define NFL4_UFLG_COMMIT_THRU_MDS	0x00000002
+-- 
+1.6.2.5
 
-There is no longer support for Fedora 12 kernels.
-
-Instructions on how to install and use these kernels are at:
-http://wiki.linux-nfs.org/wiki/index.php/Fedora_pNFS_Client_Setup
-
- If/when bugs are found with these rpms please enter them
-in to the NFS Bugzilla Main Page at:
-    https://bugzilla.linux-nfs.org/index.cgi
-
-Please use the "pNFS" keyword.. 
-
-Any question or issues please feel free to contact me... 
-
-steved.
