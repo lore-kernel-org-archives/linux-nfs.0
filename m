@@ -1,125 +1,34 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:48685 "EHLO mx1.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:50613 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932761Ab0HKIjI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 11 Aug 2010 04:39:08 -0400
-From: David Howells <dhowells@redhat.com>
-Subject: [PATCH 1/3] NFS: Use kernel DNS resolver [ver #2]
-To: smfrench@gmail.com, torvalds@osdl.org, akpm@linux-foundation.org
-Cc: linux-afs@lists.infradead.org, linux-kernel@vger.kernel.org,
-        linux-cifs@vger.kernel.org, linux-nfs@vger.kernel.org,
-        Bryan Schumaker <bjschuma@netapp.com>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        David Howells <dhowells@redhat.com>
-Date: Wed, 11 Aug 2010 09:37:53 +0100
-Message-ID: <20100811083753.19001.28878.stgit@warthog.procyon.org.uk>
-Content-Type: text/plain; charset="utf-8"
+	id S1752880Ab0HMVcE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 13 Aug 2010 17:32:04 -0400
+From: andros@netapp.com
+To: bhalevy@panasas.com
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH 0/50] Squashed and re-organized pnfs-submit tree
+Date: Fri, 13 Aug 2010 17:31:12 -0400
+Message-Id: <1281735122-1496-1-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Bryan Schumaker <bjschuma@netapp.com>
 
-Use the kernel DNS resolver to translate hostnames to IP addresses.  Create a
-new config option to choose between the legacy DNS resolver and the new
-resolver.
 
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
-Acked-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-Signed-off-by: David Howells <dhowells@redhat.com>
----
+Here is the pnfs-submit tree all squashed and reorganized. The resultant tree
+is unchanged. The patch comments and Signed-off-by's need to be added.
 
- fs/nfs/Kconfig       |   16 ++++++++++++++++
- fs/nfs/dns_resolve.c |   24 ++++++++++++++++++++++++
- fs/nfs/dns_resolve.h |   12 ++++++++++++
- 3 files changed, 52 insertions(+), 0 deletions(-)
+We may want to split or re-order some of the patches. I left the "introduce
+new file" patches #6-9 unsquashed, but we probably want to squash them into
+the patch that uses them first.
 
-diff --git a/fs/nfs/Kconfig b/fs/nfs/Kconfig
-index cc1bb33..c5bbdca 100644
---- a/fs/nfs/Kconfig
-+++ b/fs/nfs/Kconfig
-@@ -100,3 +100,19 @@ config NFS_FSCACHE
- 	help
- 	  Say Y here if you want NFS data to be cached locally on disc through
- 	  the general filesystem cache manager
-+
-+config NFS_USE_LEGACY_DNS
-+	bool "Use the legacy NFS DNS resolver"
-+	depends on NFS_V4
-+	help
-+	  The kernel now provides a method for translating a host name into an
-+	  IP address.  Select Y here if you would rather use your own DNS
-+	  resolver script.
-+
-+	  If unsure, say N
-+
-+config NFS_USE_KERNEL_DNS
-+	bool
-+	depends on NFS_V4 && !NFS_USE_LEGACY_DNS
-+	select DNS_RESOLVER
-+	default y
-diff --git a/fs/nfs/dns_resolve.c b/fs/nfs/dns_resolve.c
-index 76fd235..dba50a5 100644
---- a/fs/nfs/dns_resolve.c
-+++ b/fs/nfs/dns_resolve.c
-@@ -6,6 +6,29 @@
-  * Resolves DNS hostnames into valid ip addresses
-  */
- 
-+#ifdef CONFIG_NFS_USE_KERNEL_DNS
-+
-+#include <linux/sunrpc/clnt.h>
-+#include <linux/dns_resolver.h>
-+
-+ssize_t nfs_dns_resolve_name(char *name, size_t namelen,
-+		struct sockaddr *sa, size_t salen)
-+{
-+	ssize_t ret;
-+	char *ip_addr = NULL;
-+	int ip_len;
-+
-+	ip_len = dns_query(NULL, name, namelen, NULL, &ip_addr, NULL);
-+	if (ip_len > 0)
-+		ret = rpc_pton(ip_addr, ip_len, sa, salen);
-+	else
-+		ret = -ESRCH;
-+	kfree(ip_addr);
-+	return ret;
-+}
-+
-+#else
-+
- #include <linux/hash.h>
- #include <linux/string.h>
- #include <linux/kmod.h>
-@@ -346,3 +369,4 @@ void nfs_dns_resolver_destroy(void)
- 	nfs_cache_unregister(&nfs_dns_resolve);
- }
- 
-+#endif
-diff --git a/fs/nfs/dns_resolve.h b/fs/nfs/dns_resolve.h
-index a3f0938..199bb55 100644
---- a/fs/nfs/dns_resolve.h
-+++ b/fs/nfs/dns_resolve.h
-@@ -6,8 +6,20 @@
- 
- #define NFS_DNS_HOSTNAME_MAXLEN	(128)
- 
-+
-+#ifdef CONFIG_NFS_USE_KERNEL_DNS
-+static inline int nfs_dns_resolver_init(void)
-+{
-+	return 0;
-+}
-+
-+static inline void nfs_dns_resolver_destroy(void)
-+{}
-+#else
- extern int nfs_dns_resolver_init(void);
- extern void nfs_dns_resolver_destroy(void);
-+#endif
-+
- extern ssize_t nfs_dns_resolve_name(char *name, size_t namelen,
- 		struct sockaddr *sa, size_t salen);
- 
+Patches 1-4 are not pnfs patches, and should be submitted to Trond/Bruce.
+
+Patch #50 "SQUASHME pnfs_submit: remove this unused code"
+should not be squashed, but removed.
+
+Patches 47,-49 are for the post-submit trees.
+
+-->Andy
 
