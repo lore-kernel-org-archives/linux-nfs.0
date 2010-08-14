@@ -1,42 +1,72 @@
-From: Risto Bell <reb-+wT8y+m8/X5BDgjK7y7TUQ@public.gmane.org>
-Subject: Re: NFS and file locking for use with sqllite
-Date: Fri, 13 Aug 2010 15:09:39 -0700
-Message-ID: <4C65C2A3.40404@cypress.com>
-References: <AANLkTik_gAeTWhD_=zSUrqh2eYir=q4bK4cJ6UdGQ11M@mail.gmail.com> <0C88B758-1DE8-4CFB-9546-A30104009A12@oracle.com> <AANLkTimqTvgyvvjP2R12wsdpZRs10T+YAtUGw7u6pxWZ@mail.gmail.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH] nfsd: fix NULL dereference in nfsd_statfs()
+Date: Sat, 14 Aug 2010 09:02:35 -0400
+Message-ID: <20100814130235.GA28304@fieldses.org>
+References: <s5h4oeywrde.wl%tiwai@suse.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Neil Brown <neilb@suse.de>, Al Viro <viro@zeniv.linux.org.uk>,
+	Christoph Hellwig <hch@lst.de>, linux-nfs@vger.kernel.org,
+	linux-kernel@vger.kernel.org
+To: Takashi Iwai <tiwai@suse.de>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from ns2.cypress.com ([157.95.67.5]:52108 "EHLO ns2.cypress.com"
+Received: from fieldses.org ([174.143.236.118]:51906 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755055Ab0HMWWG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 13 Aug 2010 18:22:06 -0400
-Received: from corpmail.cypress.com (corpmail [157.95.1.2])
-	by ns2.cypress.com (8.12.10/8.12.10) with ESMTP id o7DM9l0n014771
-	for <linux-nfs@vger.kernel.org>; Fri, 13 Aug 2010 15:09:47 -0700 (PDT)
-Received: from cobweb.mis.cypress.com (cobweb.mis.cypress.com [172.16.2.5])
-	by corpmail.cypress.com (8.12.10/8.12.10) with ESMTP id o7DM9foX000909
-	for <linux-nfs@vger.kernel.org>; Fri, 13 Aug 2010 15:09:41 -0700 (PDT)
-Received: from meson.design.cypress.com (meson.design.cypress.com [172.17.2.36])
-	by cobweb.mis.cypress.com (8.12.11/8.12.11) with ESMTP id o7DM9egb002729
-	for <linux-nfs@vger.kernel.org>; Fri, 13 Aug 2010 15:09:40 -0700 (PDT)
-Received: from lucas.design.cypress.com (lucas [172.17.14.37])
-	by meson.design.cypress.com (8.9.3+Sun/8.9.3) with ESMTP id PAA06486
-	for <linux-nfs@vger.kernel.org>; Fri, 13 Aug 2010 15:09:39 -0700 (PDT)
-Received: from lucas.design.cypress.com (localhost [127.0.0.1])
-	by lucas.design.cypress.com (8.13.8/8.13.8) with ESMTP id o7DM9dXM029512
-	for <linux-nfs@vger.kernel.org>; Fri, 13 Aug 2010 15:09:39 -0700
-In-Reply-To: <AANLkTimqTvgyvvjP2R12wsdpZRs10T+YAtUGw7u6pxWZ-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
+	id S1756356Ab0HNNEd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 14 Aug 2010 09:04:33 -0400
+In-Reply-To: <s5h4oeywrde.wl%tiwai@suse.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
- From client, how to remotely query server for list of locks held?
-Helpful if debugging lock recovery failures.
+On Fri, Aug 13, 2010 at 03:53:49PM +0200, Takashi Iwai wrote:
+> The commit ebabe9a9001af0af56c0c2780ca1576246e7a74b
+>     pass a struct path to vfs_statfs
+> introduced the struct path initialization, and this seems to trigger
+> an Oops on my machine.
+> 
+> fh_dentry field may be NULL and set later in fh_verify(), thus the
+> initialization of path must be after fh_verify().
+> 
+> Signed-off-by: Takashi Iwai <tiwai@suse.de>
 
----------------------------------------------------------------
-This message and any attachments may contain Cypress (or its
-subsidiaries) confidential information. If it has been received
-in error, please advise the sender and immediately delete this
-message.
----------------------------------------------------------------
+I'm travelling, but, looks good:
 
+	Acked-by: J. Bruce Fields <bfields@redhat.com>
+
+--b.
+
+> ---
+>  fs/nfsd/vfs.c |   14 ++++++++------
+>  1 files changed, 8 insertions(+), 6 deletions(-)
+> 
+> diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+> index 96360a8..661a6cf 100644
+> --- a/fs/nfsd/vfs.c
+> +++ b/fs/nfsd/vfs.c
+> @@ -2033,15 +2033,17 @@ out:
+>  __be32
+>  nfsd_statfs(struct svc_rqst *rqstp, struct svc_fh *fhp, struct kstatfs *stat, int access)
+>  {
+> -	struct path path = {
+> -		.mnt	= fhp->fh_export->ex_path.mnt,
+> -		.dentry	= fhp->fh_dentry,
+> -	};
+>  	__be32 err;
+>  
+>  	err = fh_verify(rqstp, fhp, 0, NFSD_MAY_NOP | access);
+> -	if (!err && vfs_statfs(&path, stat))
+> -		err = nfserr_io;
+> +	if (!err) {
+> +		struct path path = {
+> +			.mnt	= fhp->fh_export->ex_path.mnt,
+> +			.dentry	= fhp->fh_dentry,
+> +		};
+> +		if (vfs_statfs(&path, stat))
+> +			err = nfserr_io;
+> +	}
+>  	return err;
+>  }
+>  
+> -- 
+> 1.7.2.1
+> 
