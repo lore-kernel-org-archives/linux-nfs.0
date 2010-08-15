@@ -1,100 +1,64 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:46092 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751237Ab0HRReV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 18 Aug 2010 13:34:21 -0400
-Date: Wed, 18 Aug 2010 13:32:03 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Neil Brown <neilb@suse.de>
-Cc: Alan Cox <alan@lxorguk.ukuu.org.uk>,
-        "Patrick J. LoPresti" <lopresti@gmail.com>,
-        Andi Kleen <andi@firstfloor.org>, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-kernel <linux-kernel@vger.kernel.org>
-Subject: Re: Proposal: Use hi-res clock for file timestamps
-Message-ID: <20100818173203.GC32430@fieldses.org>
+Received: from mail-qy0-f181.google.com ([209.85.216.181]:57272 "EHLO
+	mail-qy0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756876Ab0HOBuv convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 14 Aug 2010 21:50:51 -0400
+In-Reply-To: <AANLkTinJ04d2Bjuv2E4OOG=35TSHArEP6cHqGUQVUoy2@mail.gmail.com>
 References: <AANLkTimnyXKahtjaFeSsgcq=xMy-pP3na1jidQhZ-dt2@mail.gmail.com>
- <87aaolwar8.fsf@basil.nowhere.org>
- <20100817174134.GA23176@fieldses.org>
- <20100817182920.GD18161@basil.fritz.box>
- <20100817190447.GA28049@fieldses.org>
- <AANLkTi=w1UA5ZZDBigpxMiL7A7DnbnQhLkg62JZpC6Ri@mail.gmail.com>
- <20100817203941.729830b7@lxorguk.ukuu.org.uk>
- <20100817192937.GD26609@fieldses.org>
- <20100818155359.66b9ddb6@notabene>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20100818155359.66b9ddb6@notabene>
+	<AANLkTin2P5kcrC1SU-ANffSHyW8Ar4x4+qFuqVMFhYJE@mail.gmail.com>
+	<AANLkTin-dksybH0ANypheovXXubwd+SRCpurdVRU7-Z=@mail.gmail.com>
+	<1281726579.2810.10.camel@localhost.localdomain>
+	<AANLkTinJ04d2Bjuv2E4OOG=35TSHArEP6cHqGUQVUoy2@mail.gmail.com>
+Date: Sat, 14 Aug 2010 18:50:50 -0700
+Message-ID: <AANLkTimOoQKm3mcPN4VSekoUkxkdJH7Ga2ma_xryGVF6@mail.gmail.com>
+Subject: Re: Proposal: Use hi-res clock for file timestamps
+From: Bret Towe <magnade@gmail.com>
+To: "Patrick J. LoPresti" <lopresti@gmail.com>
+Cc: john stultz <johnstul@us.ibm.com>, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-kernel <linux-kernel@vger.kernel.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, Aug 18, 2010 at 03:53:59PM +1000, Neil Brown wrote:
-> I'm not sure you even want to pay for a per-filesystem atomic access when
-> updating mtime.  mnt_want_write - called at the same time - seems to go to
-> some lengths to avoid an atomic operation.
-> 
-> I think that nfsd should be the only place that has to pay the atomic
-> penalty, as it is where the need is.
-> 
-> I imagine something like this:
->  - Create a global struct timespec which is protected by a seqlock
->    Call it current_nfsd_time or similar.
->  - file_update_time reads this and uses it if it is newer than
->    current_fs_time.
->  - nfsd updates it whenever it reads an mtime out of an inode that matches
->    current_fs_time to the granularity of 1/HZ.
+On Fri, Aug 13, 2010 at 1:53 PM, Patrick J. LoPresti <lopresti@gmail.com> wrote:
+> On Fri, Aug 13, 2010 at 12:09 PM, john stultz <johnstul@us.ibm.com> wrote:
+>>
+>> So other then "show some numbers", my only thought that might make the
+>> patch more attractive is that rather than a global change, or a static
+>> CONFIG_ option, would it maybe make more sense as a mount option?
+>
+> I really like this idea.
+>
+> Consider the following "revision 2" of my proposal:
+>
+> 1) Add a function pointer "current_fs_time" to struct super_block.
+>
+> 2) Replace all calls of the form:
+>
+>    current_fs_time(sb);
+>
+> with
+>
+>  sb->current_fs_time(sb);
+>
+>  3) Arrange for the default value to point to the current implementation.
+>
+> These first three could be one patch.  They change no functionality;
+> they just enable the next step.
+>
+> Finally:
+>
+>  4) Add a mount option to cause sb->current_fs_time(sb) to use the
+> hi-res implementation.
+>
+> Comments?
 
-We can also skip the update whenever current_nfsd_time is greater than
-the inode's mtime--that's enough to ensure that the next
-file_update_time() call will get a time different from the inode's
-current mtime.
+I'm not sure how nfs works but if this is a client side issue I don't
+see anything wrong
+with a CONFIG_ item but if its server side it might be better off as a
+procfs or sysfs tunable
+so reboots are not required to change the setting
 
-And that means that a sequence like
-
-	file_update_time()
-	N nfsd_getattr()'s
-
-doesn't make N updates to current_nfsd_time, when only 1 was necessary.
-
->    If the current value is before current_kernel_time, it
->    is set to current_kernel_time, otherwise tv_nsec is incremented -
->    unless that increases
->    beyond jiffies_to_usec(1)*1000 beyond current_kernel_time.
-
-... which would only happen on hardware that could process a getattr and
-a data update per nanosecond continuously for a jiffy.
-
->  - the global 'struct timespec' is zeroed whenever system time is set
->    backwards.
-
-OK, got it, I think: so this is the same as a global version of Alan's
-clock, except that the extra ticks only happen when they need to.
-
-The properties it satisfies:
-
-	- It's still a single global clock, so it's consistent between
-	  files.
-	- It degenerates to jiffies in the absence of getattr's from
-	  nfsd.
-	- It need only invalidate the other cpus' cached value of the
-	  clock on the first getattr of a file that follows less than a
-	  jiffy after an update of the file's data.
-	- Absent utime(), time going backwards, or futuristic hardware,
-	  it guarantees that two nfsd reads of an inode's mtime will
-	  return different values iff the inode's data was modified in
-	  between the two.
-
-Shortcomings:
-
-	- The clock advances in units only of either 1 jiffy or 1 ns.
-	  This will look odd.  But when the alternative is units of 1
-	  jiffy or 0 ns, it seems an improvement....
-	- A slowdown due to inodes being file_update_time() marking inodes
-	  dirty more frequently?
-	- Doesn't help with ext3.  Oh well.
-
-Would the extra expense rule out treating sys_stat() the same as nfsd?
-It would be nice to be able to solve the same problem for userspace
-nfsd's (or any other application that might be using mtime to save
-rereading data).
-
---b.
+performance wise why would there be any difference the same amount of
+bits are being set on the disk drive no?
