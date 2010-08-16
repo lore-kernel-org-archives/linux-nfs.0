@@ -1,35 +1,68 @@
-From: Shehjar Tikoo <shehjart-+FkPdpiNhgJBDgjK7y7TUQ@public.gmane.org>
-Subject: NFS illustrated book
-Date: Mon, 16 Aug 2010 12:43:29 +0530
-Message-ID: <4C68E519.5070400@gluster.com>
+From: Neil Brown <neilb@suse.de>
+Subject: Re: numeric UIDs
+Date: Mon, 16 Aug 2010 18:30:04 +1000
+Message-ID: <20100816183004.054ac505@notabene>
+References: <201008030401.33552.dreck@vmsd.ath.cx>
+	<20100803164318.GB13896@merit.edu>
+	<20100803192216.GC31579@fieldses.org>
+	<DE966DA98A4ABE438D726BDF1699CF61403FAF9D@MX05A.corp.emc.com>
+	<20100803215704.GA15494@merit.edu>
+	<1280873719.14520.17.camel@heimdal.trondhjem.org>
+	<20100803222337.GA9752@fieldses.org>
+	<1280874675.14520.23.camel@heimdal.trondhjem.org>
+	<20100803224245.GB9752@fieldses.org>
+	<1280887336.24669.23.camel@heimdal.trondhjem.org>
+	<20100805153421.GD27141@fieldses.org>
+	<20100812092232.344314b2@notabene>
+	<4C6559FA.5070809@RedHat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-To: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=US-ASCII
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+	Trond Myklebust <trond.myklebust@fys.uio.no>,
+	Jim Rees <rees@umich.edu>, Daniel.Muntz@emc.com,
+	linux-nfs@vger.kernel.org
+To: Steve Dickson <SteveD@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from zp3.zcs.datasyncintra.net ([208.88.241.29]:34260 "EHLO
-	zp3.zcs.datasyncintra.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751339Ab0HPHU1 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 16 Aug 2010 03:20:27 -0400
-Received: from localhost (localhost [127.0.0.1])
-	by zp3.zcs.datasyncintra.net (Postfix) with ESMTP id 6C82720EE
-	for <linux-nfs@vger.kernel.org>; Mon, 16 Aug 2010 02:13:31 -0500 (CDT)
-Received: from zp3.zcs.datasyncintra.net ([127.0.0.1])
-	by localhost (zp3.zcs.datasyncintra.net [127.0.0.1]) (amavisd-new, port 10024)
-	with ESMTP id aB+MqRiA2V1p for <linux-nfs@vger.kernel.org>;
-	Mon, 16 Aug 2010 02:13:30 -0500 (CDT)
-Received: from [192.168.1.109] (unknown [122.166.12.104])
-	by zp3.zcs.datasyncintra.net (Postfix) with ESMTPSA id 5AA2C20E6
-	for <linux-nfs@vger.kernel.org>; Mon, 16 Aug 2010 02:13:30 -0500 (CDT)
+Received: from cantor.suse.de ([195.135.220.2]:39848 "EHLO mx1.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753159Ab0HPIaY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 16 Aug 2010 04:30:24 -0400
+In-Reply-To: <4C6559FA.5070809-AfCzQyP5zfLQT0dZR+AlfA@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi
+On Fri, 13 Aug 2010 10:43:06 -0400
+Steve Dickson <SteveD@redhat.com> wrote:
 
-I am finding it impossible to find a copy of the "NFS Illustrated" book 
-here in Bangalore. Nor am I able to locate ebook stores for this 
-particular book.
+> 
+> 
+> On 08/11/2010 07:22 PM, Neil Brown wrote:
+> > 
+> > I agree.  And surely it can all be solved in idmapd.
+> > 
+> > On the server, tell idmapd to map all users to "NUMERIC_USER:%d" and all
+> > groups to "NUMERIC_GROUP:%d" (or whatever) for some given clients (i.e. stop
+> > ignoring the 'authentication name'.  And of course map those names back to
+> > numbers.
+> > 
+> > I don't know if the client can easily differentiate based on which server it
+> > is talking to, but there is probably less need there (and maybe it can
+> > anyway).
+> > 
+> > It shouldn't take more that half an hour to hack something into
+> > idmapd.c:nfsdcb() for the server side and nfscb for the client side - or
+> > for a quicker hack, just go directly to imconv and ignore the client name on
+> > the server.  (all this in nfs-utils of course).
+> I took a look... and you are right it would not be that difficult to
+> hack something up... but would this only be a Linux to Linux thing? 
+> Or am I missing something?
+> 
+> steved.
 
-Do you know where I could buy this online?
+Yes, I was thinking only Linux to Linux.
 
-Thanks
--Shehjar
+But if it works, is well designed, and if there is a customer demand, then one
+can expect it to spread (which I think is a much better way of creating
+standards than the IETF process..)
+
+NeilBrown
