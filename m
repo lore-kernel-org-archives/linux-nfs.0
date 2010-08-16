@@ -1,88 +1,50 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:52094 "EHLO mx2.netapp.com"
+Received: from cantor2.suse.de ([195.135.220.15]:36735 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754283Ab0HMVcb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 13 Aug 2010 17:32:31 -0400
-From: andros@netapp.com
-To: bhalevy@panasas.com
-Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
-Subject: [PATCH 31/50] pnfs_submit: update state renewal for data servers
-Date: Fri, 13 Aug 2010 17:31:43 -0400
-Message-Id: <1281735122-1496-32-git-send-email-andros@netapp.com>
-In-Reply-To: <1281735122-1496-31-git-send-email-andros@netapp.com>
-References: <1281735122-1496-1-git-send-email-andros@netapp.com>
- <1281735122-1496-2-git-send-email-andros@netapp.com>
- <1281735122-1496-3-git-send-email-andros@netapp.com>
- <1281735122-1496-4-git-send-email-andros@netapp.com>
- <1281735122-1496-5-git-send-email-andros@netapp.com>
- <1281735122-1496-6-git-send-email-andros@netapp.com>
- <1281735122-1496-7-git-send-email-andros@netapp.com>
- <1281735122-1496-8-git-send-email-andros@netapp.com>
- <1281735122-1496-9-git-send-email-andros@netapp.com>
- <1281735122-1496-10-git-send-email-andros@netapp.com>
- <1281735122-1496-11-git-send-email-andros@netapp.com>
- <1281735122-1496-12-git-send-email-andros@netapp.com>
- <1281735122-1496-13-git-send-email-andros@netapp.com>
- <1281735122-1496-14-git-send-email-andros@netapp.com>
- <1281735122-1496-15-git-send-email-andros@netapp.com>
- <1281735122-1496-16-git-send-email-andros@netapp.com>
- <1281735122-1496-17-git-send-email-andros@netapp.com>
- <1281735122-1496-18-git-send-email-andros@netapp.com>
- <1281735122-1496-19-git-send-email-andros@netapp.com>
- <1281735122-1496-20-git-send-email-andros@netapp.com>
- <1281735122-1496-21-git-send-email-andros@netapp.com>
- <1281735122-1496-22-git-send-email-andros@netapp.com>
- <1281735122-1496-23-git-send-email-andros@netapp.com>
- <1281735122-1496-24-git-send-email-andros@netapp.com>
- <1281735122-1496-25-git-send-email-andros@netapp.com>
- <1281735122-1496-26-git-send-email-andros@netapp.com>
- <1281735122-1496-27-git-send-email-andros@netapp.com>
- <1281735122-1496-28-git-send-email-andros@netapp.com>
- <1281735122-1496-29-git-send-email-andros@netapp.com>
- <1281735122-1496-30-git-send-email-andros@netapp.com>
- <1281735122-1496-31-git-send-email-andros@netapp.com>
+	id S1753336Ab0HPKJQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 16 Aug 2010 06:09:16 -0400
+Date: Mon, 16 Aug 2010 12:09:12 +0200
+Message-ID: <s5h39uedg3b.wl%tiwai@suse.de>
+From: Takashi Iwai <tiwai@suse.de>
+To: Shaohua Li <shaohua.li@intel.com>
+Cc: Trond.Myklebust@netapp.com, rjw@sisk.pl, linux-kernel@vger.kernel.org,
+        linux-nfs@vger.kernel.org
+Subject: Re: nfs regression 2.6.35+
+In-Reply-To: <20100816070626.GA10503@sli10-desk.sh.intel.com>
+References: <20100816070626.GA10503@sli10-desk.sh.intel.com>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: The pNFS Team <linux-nfs@vger.kernel.org>
+[Added linux-nfs to Cc]
 
-Signed-off-by: Andy Adamson <andros@netapp.com>
----
- fs/nfs/nfs4renewd.c |    2 +-
- fs/nfs/nfs4state.c  |    5 +++++
- 2 files changed, 6 insertions(+), 1 deletions(-)
+At Mon, 16 Aug 2010 15:06:26 +0800,
+Shaohua Li wrote:
+> 
+> NFS client runs latest git. At client side, use vim to edit a file located at
+> NFS server. If I save the file, vim always reports 'E667: Fsync failed'. If I
+> revert f7fa16506bf9b6323e862a61e14c20555152bb3, vim works. No kernel errors
+> reported.
 
-diff --git a/fs/nfs/nfs4renewd.c b/fs/nfs/nfs4renewd.c
-index 72b6c58..b57f41f 100644
---- a/fs/nfs/nfs4renewd.c
-+++ b/fs/nfs/nfs4renewd.c
-@@ -64,7 +64,7 @@ nfs4_renew_state(struct work_struct *work)
- 	ops = clp->cl_mvops->state_renewal_ops;
- 	dprintk("%s: start\n", __func__);
- 	/* Are there any active superblocks? */
--	if (list_empty(&clp->cl_superblocks))
-+	if (list_empty(&clp->cl_superblocks) && !is_ds_only_client(clp))
- 		goto out;
- 	spin_lock(&clp->cl_lock);
- 	lease = clp->cl_lease_time;
-diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-index a674452..18284bd 100644
---- a/fs/nfs/nfs4state.c
-+++ b/fs/nfs/nfs4state.c
-@@ -129,6 +129,11 @@ static int nfs41_setup_state_renewal(struct nfs_client *clp)
- 	int status;
- 	struct nfs_fsinfo fsinfo;
- 
-+	if (is_ds_only_client(clp)) {
-+		nfs4_schedule_state_renewal(clp);
-+		return 0;
-+	}
-+
- 	status = nfs4_proc_get_lease_time(clp, &fsinfo);
- 	if (status == 0) {
- 		/* Update lease time and schedule renewal */
--- 
-1.6.2.5
+This hits me, too.  Reverting it cures the problem.
+(BTW, the correct commit id of the affecting patch is
+ af7fa16506bf9b6323e862a61e14c20555152bb3
+ "NFS: Fix up the fsync code")
 
+Reproduced on 2.6.36-rc1.
+
+Looking at strace output, 
+
+  open("afo", O_WRONLY|O_CREAT|O_TRUNC, 0666) = 4
+  write(4, "#!/bin\n", 7)                 = 7
+  fsync(4)                                = 1
+  stat("afo", {st_mode=S_IFREG|0644, st_size=7, ...}) = 0
+  close(4)                                = 0
+
+So, fsync() returns 1 wrongly.
+
+
+thanks,
+
+Takashi
