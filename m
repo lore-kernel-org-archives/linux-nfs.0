@@ -1,30 +1,35 @@
-From: "Patrick J. LoPresti" <lopresti@gmail.com>
-Subject: Re: Proposal: Use hi-res clock for file timestamps
-Date: Sat, 14 Aug 2010 09:45:11 -0700
-Message-ID: <AANLkTinqHKvN_2rApcBe4+8gLSBbPJdCAAFy9GRO9Jj3@mail.gmail.com>
-References: <AANLkTimnyXKahtjaFeSsgcq=xMy-pP3na1jidQhZ-dt2@mail.gmail.com>
-	<AANLkTin2P5kcrC1SU-ANffSHyW8Ar4x4+qFuqVMFhYJE@mail.gmail.com>
-	<AANLkTin-dksybH0ANypheovXXubwd+SRCpurdVRU7-Z=@mail.gmail.com>
-	<1281726579.2810.10.camel@localhost.localdomain>
-	<AANLkTinJ04d2Bjuv2E4OOG=35TSHArEP6cHqGUQVUoy2@mail.gmail.com>
+From: Shehjar Tikoo <shehjart-+FkPdpiNhgJBDgjK7y7TUQ@public.gmane.org>
+Subject: NFS illustrated book
+Date: Mon, 16 Aug 2010 12:43:29 +0530
+Message-ID: <4C68E519.5070400@gluster.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-	linux-kernel <linux-kernel@vger.kernel.org>
-To: john stultz <johnstul@us.ibm.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <AANLkTinJ04d2Bjuv2E4OOG=35TSHArEP6cHqGUQVUoy2@mail.gmail.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+To: linux-nfs@vger.kernel.org
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from zp3.zcs.datasyncintra.net ([208.88.241.29]:34260 "EHLO
+	zp3.zcs.datasyncintra.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751339Ab0HPHU1 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 16 Aug 2010 03:20:27 -0400
+Received: from localhost (localhost [127.0.0.1])
+	by zp3.zcs.datasyncintra.net (Postfix) with ESMTP id 6C82720EE
+	for <linux-nfs@vger.kernel.org>; Mon, 16 Aug 2010 02:13:31 -0500 (CDT)
+Received: from zp3.zcs.datasyncintra.net ([127.0.0.1])
+	by localhost (zp3.zcs.datasyncintra.net [127.0.0.1]) (amavisd-new, port 10024)
+	with ESMTP id aB+MqRiA2V1p for <linux-nfs@vger.kernel.org>;
+	Mon, 16 Aug 2010 02:13:30 -0500 (CDT)
+Received: from [192.168.1.109] (unknown [122.166.12.104])
+	by zp3.zcs.datasyncintra.net (Postfix) with ESMTPSA id 5AA2C20E6
+	for <linux-nfs@vger.kernel.org>; Mon, 16 Aug 2010 02:13:30 -0500 (CDT)
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Aug 13, 2010 at 1:53 PM, Patrick J. LoPresti <lopresti@gmail.com> wrote:
->
-> Consider the following "revision 2" of my proposal:
->
+Hi
 
-In case I was not clear...
+I am finding it impossible to find a copy of the "NFS Illustrated" book 
+here in Bangalore. Nor am I able to locate ebook stores for this 
+particular book.
 
-I am volunteering to implement this myself, but only if there is a
-realistic chance my patches will be accepted.
+Do you know where I could buy this online?
 
- - Pat
+Thanks
+-Shehjar
