@@ -1,69 +1,59 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:41630 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751676Ab0HFWHI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 6 Aug 2010 18:07:08 -0400
-Date: Fri, 6 Aug 2010 18:05:37 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Tetsuo Handa <penguin-kernel@I-love.SAKURA.ne.jp>
-Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        jlayton@redhat.com
-Subject: Re: linux-next NFSD: NULL pointer dereference at nfsd_svc()
-Message-ID: <20100806220537.GE29536@fieldses.org>
-References: <20100802103620.5638dac1@corrin.poochiereds.net>
- <20100802181634.GD12637@fieldses.org>
- <201008030109.o73193bp094241@www262.sakura.ne.jp>
- <20100803154851.GA23467@fieldses.org>
- <201008040013.o740DmYK024832@www262.sakura.ne.jp>
- <20100804194045.GD18200@fieldses.org>
- <201008050110.o751AG18066496@www262.sakura.ne.jp>
- <20100805204612.GA13821@fieldses.org>
- <20100805213107.GB13821@fieldses.org>
- <20100806212727.GC29536@fieldses.org>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20100806212727.GC29536@fieldses.org>
+Received: from cn.fujitsu.com ([222.73.24.84]:50011 "EHLO song.cn.fujitsu.com"
+	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
+	id S1752769Ab0HPHvi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 16 Aug 2010 03:51:38 -0400
+Message-ID: <4C68EDAE.5000201@cn.fujitsu.com>
+Date: Mon, 16 Aug 2010 15:50:06 +0800
+From: Bian Naimeng <biannm@cn.fujitsu.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 2/2] We should clear NFS_DELEGATED_STATE after return
+ delegation
+References: <4C592F85.8070308@cn.fujitsu.com>	 <4C59306A.9090302@cn.fujitsu.com>	 <1280925913.3011.23.camel@heimdal.trondhjem.org>	 <4C5A213F.9000506@cn.fujitsu.com>	 <1281013423.2948.1.camel@heimdal.trondhjem.org>	 <4C5B8B48.4050008@cn.fujitsu.com> <1281101448.3586.11.camel@heimdal.trondhjem.org>
+In-Reply-To: <1281101448.3586.11.camel@heimdal.trondhjem.org>
+Content-Type: text/plain; charset=Shift_JIS
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Fri, Aug 06, 2010 at 05:27:28PM -0400, J. Bruce Fields wrote:
-> Bah, so what you were hitting was simple--I just moved the
-> nfsd_reset_versions() call to the wrong place; the below should fix it.
+>>>>>> We should clear NFS_DELEGATED_STATE bit for inode->open_states after return delegation.
+
+ ... snip ...
+
+>> +
+>> +	list_for_each_entry(state, &nfsi->open_states, inode_states) {
+>> +		clear_bit(NFS_DELEGATED_STATE, &state->flags);
+>> +	}
+>> +
+>>  	spin_unlock(&inode->i_lock);
+>> -	return 0;
+>> +	return err;
+>>  }
+>>  
 > 
-> There's also a couple other bugs in the area.
+> I still don't see why this should be necessary. In the case of a server
+> reboot or network partition, the state recovery thread ought to be
+> taking care of this for us.
+> 
 
-This isn't a serious bug, but I think it makes sense to fix it.
+   A open state can be found at nfsi->open_states and owner->so_states always, but
+  it not be found at nfsi->open_files until we call nfs4_intent_set_file.
 
---b.
+   At _nfs4_do_open, we will invoke nfs4_return_incompatible_delegation to return a 
+  delegation,  a open stateid which set NFS_DELEGATED_STATE bit may not be found at
+  nfsi->open_files, but it still at nfsi->open_states, so we do not clear 
+  NFS_DELEGATED_STATE bit for it.
 
-commit 7fa53cc872332b265bc5ba1266f39586f218ad4a
-Author: J. Bruce Fields <bfields@redhat.com>
-Date:   Fri Aug 6 18:00:33 2010 -0400
+   Then _nfs4_do_open will find it by nfs4_get_open_state, and we still use it
+  as a delegation, some error will occur.
 
-    nfsd: don't allow setting maxblksize after svc created
-    
-    It's harmless to set this after the server is created, but also
-    ineffective, since the value is only used at the time of
-    svc_create_pooled().  So fail the attempt, in keeping with the pattern
-    set by write_versions, write_{lease,grace}time and write_recoverydir.
-    
-    (This could break userspace that tried to write to nfsd/max_block_size
-    between setting up sockets and starting the server.  However, such code
-    wouldn't have worked anyway, and I don't know of any examples--rpc.nfsd
-    in nfs-utils, probably the only user of the interface, doesn't do that.)
-    
-    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+-- 
+Regards
+Bian Naimeng
 
-diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
-index 12f0ee7..b53b1d0 100644
---- a/fs/nfsd/nfsctl.c
-+++ b/fs/nfsd/nfsctl.c
-@@ -1190,7 +1190,7 @@ static ssize_t write_maxblksize(struct file *file, char *buf, size_t size)
- 			bsize = NFSSVC_MAXBLKSIZE;
- 		bsize &= ~(1024-1);
- 		mutex_lock(&nfsd_mutex);
--		if (nfsd_serv && nfsd_serv->sv_nrthreads) {
-+		if (nfsd_serv) {
- 			mutex_unlock(&nfsd_mutex);
- 			return -EBUSY;
- 		}
+> Cheers
+>   Trond
+
+
+
