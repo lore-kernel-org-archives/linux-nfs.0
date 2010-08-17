@@ -1,99 +1,76 @@
 From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: [PATCH 1/2] Teach clients to map numeric strings into valid
- uids and gids.
-Date: Tue, 17 Aug 2010 16:27:35 -0400
-Message-ID: <1282076855.12506.2.camel@heimdal.trondhjem.org>
+Subject: Re: [PATCH 2/2] Add server support to use of numeric strings for
+ uid and gids.
+Date: Tue, 17 Aug 2010 16:28:16 -0400
+Message-ID: <1282076896.12506.3.camel@heimdal.trondhjem.org>
 References: <1282073925-18707-1-git-send-email-steved@redhat.com>
-	 <1282073925-18707-2-git-send-email-steved@redhat.com>
+	 <1282073925-18707-3-git-send-email-steved@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="UTF-8"
 Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
 To: Steve Dickson <steved@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-out1.uio.no ([129.240.10.57]:46584 "EHLO mail-out1.uio.no"
+Received: from mail-out1.uio.no ([129.240.10.57]:40709 "EHLO mail-out1.uio.no"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750740Ab0HQU1l (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 17 Aug 2010 16:27:41 -0400
-In-Reply-To: <1282073925-18707-2-git-send-email-steved@redhat.com>
+	id S1750789Ab0HQU2W (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 17 Aug 2010 16:28:22 -0400
+In-Reply-To: <1282073925-18707-3-git-send-email-steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 On Tue, 2010-08-17 at 15:38 -0400, Steve Dickson wrote:
-> When a server can not map a uid or gid they can send
-> an numeric string (one that does not include the @domain)
-> of the given id. When this occurs the client will can use
-> that numeric representation iff that id exists on the client.
+> When a uid or gid does not map into the a domain and the
+> new 'NumericIDs' variable is enabled in idmapd.conf, the server
+> will send out numeric representations, strings without the
+> @domain part, of the given id.
 > 
 > Signed-off-by: Steve Dickson <steved@redhat.com>
 > ---
->  utils/idmapd/idmapd.c |   38 ++++++++++++++++++++++++++++++++++++++
->  1 files changed, 38 insertions(+), 0 deletions(-)
+>  utils/idmapd/idmapd.c |   14 +++++++++++++-
+>  1 files changed, 13 insertions(+), 1 deletions(-)
 > 
 > diff --git a/utils/idmapd/idmapd.c b/utils/idmapd/idmapd.c
-> index 9ecab66..d6799c9 100644
+> index d6799c9..7f1291d 100644
 > --- a/utils/idmapd/idmapd.c
 > +++ b/utils/idmapd/idmapd.c
-> @@ -826,6 +826,21 @@ idtonameres(struct idmap_msg *im)
->  		im->im_status = IDMAP_STATUS_SUCCESS;
->  }
->  
-> +static int
-> +alldigits(char *name)
-> +{
-> +	char *p = name;
-> +
-> +	if (name == NULL)
-> +		return 0;
-> +
-> +	while (*p != '\0') {
-> +		if (!isdigit(*p++))
-> +			return 0;
-> +	}
-> +	return 1;
-> +}
-> +
+> @@ -794,15 +794,22 @@ nfsopen(struct idmap_client *ic)
 >  static void
->  nametoidres(struct idmap_msg *im)
+>  idtonameres(struct idmap_msg *im)
 >  {
-> @@ -843,6 +858,18 @@ nametoidres(struct idmap_msg *im)
->  		ret = nfs4_name_to_uid(im->im_name, &uid);
->  		im->im_id = (u_int32_t) uid;
+> -	char domain[NFS4_MAX_DOMAIN_LEN];
+> +	char domain[NFS4_MAX_DOMAIN_LEN], *numids;
+>  	int ret = 0;
+>  
+>  	ret = nfs4_get_default_domain(NULL, domain, sizeof(domain));
+> +	numids = conf_get_str("Mapping", "NumericIDs");
+> +
+>  	switch (im->im_type) {
+>  	case IDMAP_TYPE_USER:
+>  		ret = nfs4_uid_to_name(im->im_id, domain, im->im_name,
+>  				sizeof(im->im_name));
 >  		if (ret) {
-> +			/*
-> +			 * When a server sends numeric string that's
-> +			 * lacking the @domain part, and the uid exists
-> +			 * use the numeric string as the uid. 
-> +			 */
-> +			if (alldigits(im->im_name)) {
-> +				sscanf(im->im_name, "%u", &uid);
-> +				if (getpwuid(uid) != NULL) {
-> +					im->im_id = uid;	
-> +					break;
-> +				}
+> +			if (numids && strcasecmp(numids, "yes") == 0) {
+> +				sprintf(im->im_name, "%d", im->im_id);
+> +				ret=0;
+> +				break;
 > +			}
->  			im->im_status = IDMAP_STATUS_LOOKUPFAIL;
->  			im->im_id = nobodyuid;
->  		}
-> @@ -851,6 +878,17 @@ nametoidres(struct idmap_msg *im)
->  		ret = nfs4_name_to_gid(im->im_name, &gid);
->  		im->im_id = (u_int32_t) gid;
+>  			if (strlen(nobodyuser) < sizeof(im->im_name))
+>  				strcpy(im->im_name, nobodyuser);
+>  			else
+> @@ -813,6 +820,11 @@ idtonameres(struct idmap_msg *im)
+>  		ret = nfs4_gid_to_name(im->im_id, domain, im->im_name,
+>  				sizeof(im->im_name));
 >  		if (ret) {
-> +			/*
-> +			 * Do the same type of mapping of a numeric string
-> +			 * sent as the gid.
-> +			 */
-> +			if (alldigits(im->im_name)) {
-> +				sscanf(im->im_name, "%u", &gid);
-> +				if (getgrgid(gid) != NULL) {
-> +					im->im_id = gid;
-> +					break;
-> +				}
+> +			if (numids && strcasecmp(numids, "yes") == 0) {
+> +				sprintf(im->im_name, "%d", im->im_id);
+> +				ret=0;
+> +				break;
 > +			}
->  			im->im_status = IDMAP_STATUS_LOOKUPFAIL;
->  			im->im_id = nobodygid;
->  		}
+>  			if (strlen(nobodygroup) < sizeof(im->im_name))
+>  				strcpy(im->im_name, nobodygroup);
+>  			else
 
-Wouldn't it make more sense to put this into libnfsidmap instead?
+Ditto...
 
 Cheers
   Trond
