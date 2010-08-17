@@ -1,78 +1,86 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yx0-f174.google.com ([209.85.213.174]:33931 "EHLO
-	mail-yx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751067Ab0HTAdb (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 19 Aug 2010 20:33:31 -0400
-Date: Fri, 20 Aug 2010 08:33:08 +0800
-From: Wu Fengguang <fengguang.wu@gmail.com>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
-        Christoph Hellwig <hch@infradead.org>, linux-nfs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, linux-mm@kvack.org
-Subject: Re: why are WB_SYNC_NONE COMMITs being done with FLUSH_SYNC set ?
-Message-ID: <20100820003308.GA30548@localhost>
-References: <20100819101525.076831ad@barsoom.rdu.redhat.com>
- <20100819143710.GA4752@infradead.org>
- <1282229905.6199.19.camel@heimdal.trondhjem.org>
- <20100819151618.5f769dc9@tlielax.poochiereds.net>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20100819151618.5f769dc9@tlielax.poochiereds.net>
+Received: from fieldses.org ([174.143.236.118]:44717 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932822Ab0HQS0C (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 17 Aug 2010 14:26:02 -0400
+Date: Tue, 17 Aug 2010 14:24:00 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Tom Haynes <tdh@excfb.com>
+Cc: Victor =?utf-8?Q?Matar=C3=A9?= <dreck@vmsd.ath.cx>,
+        linux-nfs@vger.kernel.org
+Subject: Re: numeric UIDs
+Message-ID: <20100817182400.GE23176@fieldses.org>
+References: <201008030401.33552.dreck@vmsd.ath.cx>
+ <20100803192241.GD31579@fieldses.org>
+ <4C6ACB70.7080409@excfb.com>
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <4C6ACB70.7080409@excfb.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-> Here's a lightly tested patch that turns the check for the two flags
-> into a check for WB_SYNC_NONE. It seems to do the right thing, but I
-> don't have a clear testcase for it. Does this look reasonable?
- 
-Yes, I don't see any problems.
-
-> ------------------[snip]------------------------
+On Tue, Aug 17, 2010 at 12:48:32PM -0500, Tom Haynes wrote:
+> J. Bruce Fields wrote:
+> >On Tue, Aug 03, 2010 at 04:01:32AM +0200, Victor Mataré wrote:
+> >>Hello,
+> >>
+> >>I still hope I'm mistaken in assuming I have to go back to NFSv3
+> >>if I want to skip NFSv4 UID mapping altogether and just use the
+> >>numeric UIDs the way they're stored on-disk. However if that's
+> >>actually true, I'd like to try and make a case for implementing
+> >>an option to turn off UID mapping completely (or at least for
+> >>unknown UIDs). If this is already work in progress, just ignore
+> >>this mail.
+> >>
+> >>Thing is, the forced UID mapping seems to make tasks like
+> >>backing up data a little inconvenient. You might want to
+> >>preserve UIDs that are only known to the client.
+> >>But when you copy an entire root filesystem, it becomes outright
+> >>destructive, because the rootfs will probably have several
+> >>accounts that the server can't be expected know. Just imagine a
+> >>server that's used for maintenance (like backing up and
+> >>replacing hard drives) of random (foreign) systems. Idmapd will
+> >>map all unknown UIDs to a single value and thereby destroy that
+> >>information.
+> >>
+> >>I think I read somewhere
+> >
+> >Pointer?
+> >
 > 
-> NFS: don't use FLUSH_SYNC on WB_SYNC_NONE COMMIT calls
+> http://www.unix.com/man-page/OpenSolaris/4/nfs/
 > 
-> WB_SYNC_NONE is supposed to mean "don't wait on anything". That should
-> also include not waiting for COMMIT calls to complete.
+>       If  a  domainname  is still not obtained following all of the preceding
+>       steps, nfsmapid will have no domain configured.	This  results  in  the
+>       following behavior:
 > 
-> WB_SYNC_NONE is also implied when wbc->nonblocking or
-> wbc->for_background are set, so we can replace those checks in
-> nfs_commit_unstable_pages with a check for WB_SYNC_NONE.
->
-> Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> ---
->  fs/nfs/write.c |   10 +++++-----
->  1 files changed, 5 insertions(+), 5 deletions(-)
+> 	   o	  Outbound  "owner"  and  "owner_group"  attribute strings are
+> 		  encoded as literal id's.  For  example,  the	UID  12345  is
+> 		  encoded as 12345.
 > 
-> diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-> index 874972d..35bd7d0 100644
-> --- a/fs/nfs/write.c
-> +++ b/fs/nfs/write.c
-> @@ -1436,12 +1436,12 @@ static int nfs_commit_unstable_pages(struct inode *inode, struct writeback_contr
->  	/* Don't commit yet if this is a non-blocking flush and there are
->  	 * lots of outstanding writes for this mapping.
->  	 */
-> -	if (wbc->sync_mode == WB_SYNC_NONE &&
-> -	    nfsi->ncommit <= (nfsi->npages >> 1))
-> -		goto out_mark_dirty;
-> -
-> -	if (wbc->nonblocking || wbc->for_background)
-> +	if (wbc->sync_mode == WB_SYNC_NONE) {
-> +		if (nfsi->ncommit <= (nfsi->npages >> 1))
-> +			goto out_mark_dirty;
->  		flags = 0;
-> +	}
-> +
+> 	   o	  nfsmapid   ignores  the  "domain"  portion  of  the  inbound
+> 		  attribute string and performs name service lookups only  for
+> 		  the  user  or  group.  If the user/group exists in the local
+> 		  system name service databases, then the proper uid/gid  will
+> 		  be mapped even when no domain has been configured.
+> 
+> 		  This	 behavior   implies   that   the  same	administrative
+> 		  user/group domain exists between  NFSv4  client  and	server
+> 		  (that is, the same uid/gid's for users/groups on both client
+> 		  and server). In the  case  of  overlapping  id  spaces,  the
+> 		  inbound  attribute string could potentially be mapped to the
+> 		  wrong id. However, this is not functionally  different  from
+> 		  mapping  the	inbound string to nobody, yet provides greater
+> 		  flexibility.
 
-nitpick: I'd slightly prefer an one-line change
+Thanks!
 
--       if (wbc->nonblocking || wbc->for_background)
-+       if (wbc->sync_mode == WB_SYNC_NONE)
-                flags = 0;
+So the server rejects any attempts to set a numeric uid?
 
-That way the patch will look more obvious and "git blame" friendly,
-and the original "Don't commit.." comment will best match its code.
+That means the sort of dumb-backup scenario required above would, as in
+Linux, succeed over v3, but fail over v4?
 
-Reviewed-by: Wu Fengguang <fengguang.wu@intel.com>
+And have there been reports of users hitting that issue, or does it
+remain a completely hypothetical problem?
 
-Thanks,
-Fengguang
+--b.
