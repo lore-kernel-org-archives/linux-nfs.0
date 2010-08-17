@@ -1,71 +1,59 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cn.fujitsu.com ([222.73.24.84]:64228 "EHLO song.cn.fujitsu.com"
-	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
-	id S1754453Ab0HXKSK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 24 Aug 2010 06:18:10 -0400
-Message-ID: <4C739CD3.2070708@cn.fujitsu.com>
-Date: Tue, 24 Aug 2010 18:20:03 +0800
-From: Mi Jinlong <mijinlong@cn.fujitsu.com>
-To: NFSv3 list <linux-nfs@vger.kernel.org>
-CC: "J. Bruce Fields" <bfields@fieldses.org>,
-        "Trond.Myklebust" <trond.myklebust@fys.uio.no>,
-        Chuck Lever <chuck.lever@oracle.com>
-Subject: [RFC][PATCH] sunrpc: cancel delayed connect working after connceting
- success
-Content-Type: text/plain; charset=ISO-2022-JP
+Received: from fieldses.org ([174.143.236.118]:40212 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751197Ab0HQTrI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 17 Aug 2010 15:47:08 -0400
+Date: Tue, 17 Aug 2010 15:45:04 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: "Patrick J. LoPresti" <lopresti@gmail.com>
+Cc: Alan Cox <alan@lxorguk.ukuu.org.uk>, Andi Kleen <andi@firstfloor.org>,
+        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-kernel <linux-kernel@vger.kernel.org>
+Subject: Re: Proposal: Use hi-res clock for file timestamps
+Message-ID: <20100817194504.GF26609@fieldses.org>
+References: <AANLkTimnyXKahtjaFeSsgcq=xMy-pP3na1jidQhZ-dt2@mail.gmail.com>
+ <87aaolwar8.fsf@basil.nowhere.org>
+ <20100817174134.GA23176@fieldses.org>
+ <20100817182920.GD18161@basil.fritz.box>
+ <20100817190447.GA28049@fieldses.org>
+ <AANLkTi=w1UA5ZZDBigpxMiL7A7DnbnQhLkg62JZpC6Ri@mail.gmail.com>
+ <20100817203941.729830b7@lxorguk.ukuu.org.uk>
+ <AANLkTi=sOW0Cgci+xX6rRmz+B-is0xb8DoKD350bFJN1@mail.gmail.com>
+ <20100817205441.200ab9a4@lxorguk.ukuu.org.uk>
+ <AANLkTi=BB-zVFyCLgC+RWai9FFecaOad=pUC2=XFnY3J@mail.gmail.com>
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <AANLkTi=BB-zVFyCLgC+RWai9FFecaOad=pUC2=XFnY3J@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-The SUNRPC's TCP connecting is asynchronous, but the tcp_connect()
-only send a SYN but don't waiting for the ACK reply.
+On Tue, Aug 17, 2010 at 12:43:10PM -0700, Patrick J. LoPresti wrote:
+> On Tue, Aug 17, 2010 at 12:54 PM, Alan Cox <alan@lxorguk.ukuu.org.uk> wrote:
+> >> Is there any objection to the mount option I am proposing?
+> >
+> > I have none. I doubt I'd use it as it would be too expensive on system
+> > performance for some of my boxes, while having an incrementing value is
+> > cheap.
+> >
+> > I don't see the two as conflicting - in fact the bits you need to do the
+> > mount option are the bits you also need to do the counter version as
+> > well. One fixes ordering at no real cost, the other adds high res
+> > timestamps, both are useful.
+> 
+> A mount option could also allow a choice of timestamp resolutions:
+> 
+> Traditional (i.e., fast)
+> Alan Cox NFS hack (a tad slower but should fix NFS)
+> High-res time (slowest but most accurate)
+> 
+> I will work on a patch this week (weekend at the latest).
 
-The below will cause a delayed connect working exist after connecting success.
+I kind of hate to have mount options that are required for nfs exports
+to work correctly; it soon makes things too complicated for users to
+realiably get right, so distributions end up setting them, and then we
+all end up taking the performance tradeoff anyway.
 
-    CLIENT                                   SERVER
+But a mount-option-based version may at least be useful for further
+experiments.
 
-  1. The first connecting
-
-    |-xs_connect()
-     |-kernel_connect(O_NONBLOCK)
-       |-tcp_connet()  -------- SYN --------->
-
-   xs_connect() return with EINPROGRESS and the ACK have not reply. 
-
-  2. a reconnecting of 1
-    |-xs_connect()
-        queue_delayed_work(rpciod_workqueue,
-                            &transport->connect_worker,
-                            xprt->reestablish_timeout);
-
-              <---------------ACK SYN--------------
-
-   After the reconnecting have put the connect working to connect_worker,
-   the ACK-SYN for the first connecting reply.
-
-At this instance, a delayed connect working will be exist at connect_worker
-after connecting success, we should cancel the working.
-
-Signed-off-by: Mi Jinlong <mijinlong@cn.fujitsu.com>
-
----
- net/sunrpc/xprtsock.c |    4 ++++
- 1 files changed, 4 insertions(+), 0 deletions(-)
-
-diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index 49a62f0..823f1db 100644
---- a/net/sunrpc/xprtsock.c
-+++ b/net/sunrpc/xprtsock.c
-@@ -1324,6 +1324,10 @@ static void xs_tcp_state_change(struct sock *sk)
- 			transport->tcp_flags =
- 				TCP_RCV_COPY_FRAGHDR | TCP_RCV_COPY_XID;
- 
-+			if (xprt_connecting(xprt) &&
-+			      cancel_delayed_work(&transport->connect_worker))
-+				xprt_clear_connecting(xprt);
-+
- 			xprt_wake_pending_tasks(xprt, -EAGAIN);
- 		}
- 		spin_unlock_bh(&xprt->transport_lock);
--- 1.7.0
-
+--b.
