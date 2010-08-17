@@ -1,159 +1,103 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:45846 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1762142Ab0HFWgP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 6 Aug 2010 18:36:15 -0400
-From: Valerie Aurora <vaurora@redhat.com>
-To: Alexander Viro <viro@zeniv.linux.org.uk>
-Cc: Miklos Szeredi <miklos@szeredi.hu>, Jan Blunck <jblunck@suse.de>,
-        Christoph Hellwig <hch@infradead.org>, linux-kernel@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, David Woodhouse <dwmw2@infradead.org>,
-        Valerie Aurora <vaurora@redhat.com>, linux-nfs@vger.kernel.org,
-        "J. Bruce Fields" <bfields@fieldses.org>, Neil Brown <neilb@suse.de>
-Subject: [PATCH 05/38] whiteout/NFSD: Don't return information about whiteouts to userspace
-Date: Fri,  6 Aug 2010 15:34:51 -0700
-Message-Id: <1281134124-17041-6-git-send-email-vaurora@redhat.com>
-In-Reply-To: <1281134124-17041-1-git-send-email-vaurora@redhat.com>
-References: <1281134124-17041-1-git-send-email-vaurora@redhat.com>
+Received: from eastrmmtao104.cox.net ([68.230.240.46]:33252 "EHLO
+	eastrmmtao104.cox.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1762823Ab0HQTBK (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 17 Aug 2010 15:01:10 -0400
+Message-ID: <4C6ADC57.80802@excfb.com>
+Date: Tue, 17 Aug 2010 14:00:39 -0500
+From: Tom Haynes <tdh@excfb.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: =?UTF-8?B?VmljdG9yIE1hdGFyw6k=?= <dreck@vmsd.ath.cx>,
+        linux-nfs@vger.kernel.org
+Subject: Re: numeric UIDs
+References: <201008030401.33552.dreck@vmsd.ath.cx> <20100803192241.GD31579@fieldses.org> <4C6ACB70.7080409@excfb.com> <20100817182400.GE23176@fieldses.org>
+In-Reply-To: <20100817182400.GE23176@fieldses.org>
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Jan Blunck <jblunck@suse.de>
+J. Bruce Fields wrote:
+> On Tue, Aug 17, 2010 at 12:48:32PM -0500, Tom Haynes wrote:
+>   
+>> J. Bruce Fields wrote:
+>>     
+>>> On Tue, Aug 03, 2010 at 04:01:32AM +0200, Victor Mataré wrote:
+>>>       
+>>>> Hello,
+>>>>
+>>>> I still hope I'm mistaken in assuming I have to go back to NFSv3
+>>>> if I want to skip NFSv4 UID mapping altogether and just use the
+>>>> numeric UIDs the way they're stored on-disk. However if that's
+>>>> actually true, I'd like to try and make a case for implementing
+>>>> an option to turn off UID mapping completely (or at least for
+>>>> unknown UIDs). If this is already work in progress, just ignore
+>>>> this mail.
+>>>>
+>>>> Thing is, the forced UID mapping seems to make tasks like
+>>>> backing up data a little inconvenient. You might want to
+>>>> preserve UIDs that are only known to the client.
+>>>> But when you copy an entire root filesystem, it becomes outright
+>>>> destructive, because the rootfs will probably have several
+>>>> accounts that the server can't be expected know. Just imagine a
+>>>> server that's used for maintenance (like backing up and
+>>>> replacing hard drives) of random (foreign) systems. Idmapd will
+>>>> map all unknown UIDs to a single value and thereby destroy that
+>>>> information.
+>>>>
+>>>> I think I read somewhere
+>>>>         
+>>> Pointer?
+>>>
+>>>       
+>> http://www.unix.com/man-page/OpenSolaris/4/nfs/
+>>
+>>       If  a  domainname  is still not obtained following all of the preceding
+>>       steps, nfsmapid will have no domain configured.	This  results  in  the
+>>       following behavior:
+>>
+>> 	   o	  Outbound  "owner"  and  "owner_group"  attribute strings are
+>> 		  encoded as literal id's.  For  example,  the	UID  12345  is
+>> 		  encoded as 12345.
+>>
+>> 	   o	  nfsmapid   ignores  the  "domain"  portion  of  the  inbound
+>> 		  attribute string and performs name service lookups only  for
+>> 		  the  user  or  group.  If the user/group exists in the local
+>> 		  system name service databases, then the proper uid/gid  will
+>> 		  be mapped even when no domain has been configured.
+>>
+>> 		  This	 behavior   implies   that   the  same	administrative
+>> 		  user/group domain exists between  NFSv4  client  and	server
+>> 		  (that is, the same uid/gid's for users/groups on both client
+>> 		  and server). In the  case  of  overlapping  id  spaces,  the
+>> 		  inbound  attribute string could potentially be mapped to the
+>> 		  wrong id. However, this is not functionally  different  from
+>> 		  mapping  the	inbound string to nobody, yet provides greater
+>> 		  flexibility.
+>>     
+>
+> Thanks!
+>
+> So the server rejects any attempts to set a numeric uid?
+>   
 
-Userspace isn't ready for handling another file type, so silently drop
-whiteout directory entries before they leave the kernel.
+No, only ones which do not have a valid mapping in /etc/passwd.
 
-Signed-off-by: Jan Blunck <jblunck@suse.de>
-Signed-off-by: David Woodhouse <dwmw2@infradead.org>
-Signed-off-by: Valerie Aurora <vaurora@redhat.com>
-Cc: linux-nfs@vger.kernel.org
-Cc: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Neil Brown <neilb@suse.de>
----
- fs/compat.c       |    9 +++++++++
- fs/nfsd/nfs3xdr.c |    5 +++++
- fs/nfsd/nfs4xdr.c |    5 +++++
- fs/nfsd/nfsxdr.c  |    4 ++++
- fs/readdir.c      |    9 +++++++++
- 5 files changed, 32 insertions(+), 0 deletions(-)
+> That means the sort of dumb-backup scenario required above would, as in
+> Linux, succeed over v3, but fail over v4?
+>   
 
-diff --git a/fs/compat.c b/fs/compat.c
-index 6490d21..7e7b3a4 100644
---- a/fs/compat.c
-+++ b/fs/compat.c
-@@ -912,6 +912,9 @@ static int compat_fillonedir(void *__buf, const char *name, int namlen,
- 	struct compat_old_linux_dirent __user *dirent;
- 	compat_ulong_t d_ino;
- 
-+	if (d_type == DT_WHT)
-+		return 0;
-+
- 	if (buf->result)
- 		return -EINVAL;
- 	d_ino = ino;
-@@ -983,6 +986,9 @@ static int compat_filldir(void *__buf, const char *name, int namlen,
- 	compat_ulong_t d_ino;
- 	int reclen = ALIGN(NAME_OFFSET(dirent) + namlen + 2, sizeof(compat_long_t));
- 
-+	if (d_type == DT_WHT)
-+		return 0;
-+
- 	buf->error = -EINVAL;	/* only used if we fail.. */
- 	if (reclen > buf->count)
- 		return -EINVAL;
-@@ -1072,6 +1078,9 @@ static int compat_filldir64(void * __buf, const char * name, int namlen, loff_t
- 	int reclen = ALIGN(jj + namlen + 1, sizeof(u64));
- 	u64 off;
- 
-+	if (d_type == DT_WHT)
-+		return 0;
-+
- 	buf->error = -EINVAL;	/* only used if we fail.. */
- 	if (reclen > buf->count)
- 		return -EINVAL;
-diff --git a/fs/nfsd/nfs3xdr.c b/fs/nfsd/nfs3xdr.c
-index 2a533a0..9b96f5a 100644
---- a/fs/nfsd/nfs3xdr.c
-+++ b/fs/nfsd/nfs3xdr.c
-@@ -885,6 +885,11 @@ encode_entry(struct readdir_cd *ccd, const char *name, int namlen,
- 	int		elen;		/* estimated entry length in words */
- 	int		num_entry_words = 0;	/* actual number of words */
- 
-+	if (d_type == DT_WHT) {
-+		cd->common.err = nfs_ok;
-+		return 0;
-+	}
-+
- 	if (cd->offset) {
- 		u64 offset64 = offset;
- 
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index ac17a70..fb67254 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -2279,6 +2279,11 @@ nfsd4_encode_dirent(void *ccdv, const char *name, int namlen,
- 		return 0;
- 	}
- 
-+	if (d_type == DT_WHT) {
-+		cd->common.err = nfs_ok;
-+		return 0;
-+	}
-+
- 	if (cd->offset)
- 		xdr_encode_hyper(cd->offset, (u64) offset);
- 
-diff --git a/fs/nfsd/nfsxdr.c b/fs/nfsd/nfsxdr.c
-index 4ce005d..0e57d4b 100644
---- a/fs/nfsd/nfsxdr.c
-+++ b/fs/nfsd/nfsxdr.c
-@@ -503,6 +503,10 @@ nfssvc_encode_entry(void *ccdv, const char *name,
- 			namlen, name, offset, ino);
- 	 */
- 
-+	if (d_type == DT_WHT) {
-+		cd->common.err = nfs_ok;
-+		return 0;
-+	}
- 	if (offset > ~((u32) 0)) {
- 		cd->common.err = nfserr_fbig;
- 		return -EINVAL;
-diff --git a/fs/readdir.c b/fs/readdir.c
-index 7723401..3a48491 100644
---- a/fs/readdir.c
-+++ b/fs/readdir.c
-@@ -77,6 +77,9 @@ static int fillonedir(void * __buf, const char * name, int namlen, loff_t offset
- 	struct old_linux_dirent __user * dirent;
- 	unsigned long d_ino;
- 
-+	if (d_type == DT_WHT)
-+		return 0;
-+
- 	if (buf->result)
- 		return -EINVAL;
- 	d_ino = ino;
-@@ -154,6 +157,9 @@ static int filldir(void * __buf, const char * name, int namlen, loff_t offset,
- 	unsigned long d_ino;
- 	int reclen = ALIGN(NAME_OFFSET(dirent) + namlen + 2, sizeof(long));
- 
-+	if (d_type == DT_WHT)
-+		return 0;
-+
- 	buf->error = -EINVAL;	/* only used if we fail.. */
- 	if (reclen > buf->count)
- 		return -EINVAL;
-@@ -239,6 +245,9 @@ static int filldir64(void * __buf, const char * name, int namlen, loff_t offset,
- 	struct getdents_callback64 * buf = (struct getdents_callback64 *) __buf;
- 	int reclen = ALIGN(NAME_OFFSET(dirent) + namlen + 1, sizeof(u64));
- 
-+	if (d_type == DT_WHT)
-+		return 0;
-+
- 	buf->error = -EINVAL;	/* only used if we fail.. */
- 	if (reclen > buf->count)
- 		return -EINVAL;
--- 
-1.6.3.3
+Yes, it appears so.
+
+> And have there been reports of users hitting that issue, or does it
+> remain a completely hypothetical problem?
+>
+> --b.
+>   
+
+It is all hypothetical. I think you would have to work pretty hard to 
+get a system in such a state.
+
+And the key would be whether or not the admin populates the local 
+/etc/passwd.
 
