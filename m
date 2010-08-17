@@ -1,53 +1,100 @@
-From: Tom Haynes <tdh-8AdZ+HgO7noAvxtiuMwx3w@public.gmane.org>
-Subject: Re: [PATCH 0/2] Support for Numeric Representations of UIDs and GIDs.
-Date: Tue, 17 Aug 2010 14:51:58 -0500
-Message-ID: <4C6AE85E.4000305@excfb.com>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: [PATCH 1/2] Teach clients to map numeric strings into valid
+ uids and gids.
+Date: Tue, 17 Aug 2010 16:27:35 -0400
+Message-ID: <1282076855.12506.2.camel@heimdal.trondhjem.org>
 References: <1282073925-18707-1-git-send-email-steved@redhat.com>
+	 <1282073925-18707-2-git-send-email-steved@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Type: text/plain; charset="UTF-8"
 Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
 To: Steve Dickson <steved@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from eastrmmtao101.cox.net ([68.230.240.7]:43360 "EHLO
-	eastrmmtao101.cox.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751006Ab0HQTw2 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 17 Aug 2010 15:52:28 -0400
-In-Reply-To: <1282073925-18707-1-git-send-email-steved@redhat.com>
+Received: from mail-out1.uio.no ([129.240.10.57]:46584 "EHLO mail-out1.uio.no"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750740Ab0HQU1l (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 17 Aug 2010 16:27:41 -0400
+In-Reply-To: <1282073925-18707-2-git-send-email-steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Steve Dickson wrote:
-> In recent NFS v2/v3 to v4 transitions, one of the sticking 
-> points have been that fact v4 uses strings in the format
-> of "user@domain" instead of 32bit integers for uids and 
-> gids.
->
-> When the string can not be mapped, its mapped to the 'nobody'
-> user which is not optimal for things like backup servers and
-> such where the ids will not be know by both sides.
->
-> So this patch series enables the server to send out numeric 
-> string of uids and gids that do not have the '@domain' part.
-> The series also adds functionality to the client that parse these
-> type of strings and will use the numeric representation
-> of the ids iff the id exists on the client, which is 
-> sightly different that Solaris. Solaris dose not have that
-> "id must exist" restriction.
->   
+On Tue, 2010-08-17 at 15:38 -0400, Steve Dickson wrote:
+> When a server can not map a uid or gid they can send
+> an numeric string (one that does not include the @domain)
+> of the given id. When this occurs the client will can use
+> that numeric representation iff that id exists on the client.
+> 
+> Signed-off-by: Steve Dickson <steved@redhat.com>
+> ---
+>  utils/idmapd/idmapd.c |   38 ++++++++++++++++++++++++++++++++++++++
+>  1 files changed, 38 insertions(+), 0 deletions(-)
+> 
+> diff --git a/utils/idmapd/idmapd.c b/utils/idmapd/idmapd.c
+> index 9ecab66..d6799c9 100644
+> --- a/utils/idmapd/idmapd.c
+> +++ b/utils/idmapd/idmapd.c
+> @@ -826,6 +826,21 @@ idtonameres(struct idmap_msg *im)
+>  		im->im_status = IDMAP_STATUS_SUCCESS;
+>  }
+>  
+> +static int
+> +alldigits(char *name)
+> +{
+> +	char *p = name;
+> +
+> +	if (name == NULL)
+> +		return 0;
+> +
+> +	while (*p != '\0') {
+> +		if (!isdigit(*p++))
+> +			return 0;
+> +	}
+> +	return 1;
+> +}
+> +
+>  static void
+>  nametoidres(struct idmap_msg *im)
+>  {
+> @@ -843,6 +858,18 @@ nametoidres(struct idmap_msg *im)
+>  		ret = nfs4_name_to_uid(im->im_name, &uid);
+>  		im->im_id = (u_int32_t) uid;
+>  		if (ret) {
+> +			/*
+> +			 * When a server sends numeric string that's
+> +			 * lacking the @domain part, and the uid exists
+> +			 * use the numeric string as the uid. 
+> +			 */
+> +			if (alldigits(im->im_name)) {
+> +				sscanf(im->im_name, "%u", &uid);
+> +				if (getpwuid(uid) != NULL) {
+> +					im->im_id = uid;	
+> +					break;
+> +				}
+> +			}
+>  			im->im_status = IDMAP_STATUS_LOOKUPFAIL;
+>  			im->im_id = nobodyuid;
+>  		}
+> @@ -851,6 +878,17 @@ nametoidres(struct idmap_msg *im)
+>  		ret = nfs4_name_to_gid(im->im_name, &gid);
+>  		im->im_id = (u_int32_t) gid;
+>  		if (ret) {
+> +			/*
+> +			 * Do the same type of mapping of a numeric string
+> +			 * sent as the gid.
+> +			 */
+> +			if (alldigits(im->im_name)) {
+> +				sscanf(im->im_name, "%u", &gid);
+> +				if (getgrgid(gid) != NULL) {
+> +					im->im_id = gid;
+> +					break;
+> +				}
+> +			}
+>  			im->im_status = IDMAP_STATUS_LOOKUPFAIL;
+>  			im->im_id = nobodygid;
+>  		}
 
-No, Solaris does have that restriction.
+Wouldn't it make more sense to put this into libnfsidmap instead?
 
-
-> Steve Dickson (2):
->   Teach clients to map numeric strings into valid uids and gids.
->   Add server support to use of numeric strings for uid and gids.
->
->  utils/idmapd/idmapd.c |   52 ++++++++++++++++++++++++++++++++++++++++++++++++-
->  1 files changed, 51 insertions(+), 1 deletions(-)
->
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->   
+Cheers
+  Trond
 
