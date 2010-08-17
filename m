@@ -1,94 +1,68 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:37198 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:55214 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756811Ab0HaMkC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 31 Aug 2010 08:40:02 -0400
-Date: Tue, 31 Aug 2010 08:43:23 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: Steve Dickson <SteveD@redhat.com>
-Cc: linux-nfs@vger.kernel.org, bfields@fieldses.org, chuck.lever@oracle.com
-Subject: Re: [PATCH] rpc.nfsd: mount up nfsdfs is it doesn't appear to be
- mounted yet
-Message-ID: <20100831084323.02a1abf5@corrin.poochiereds.net>
-In-Reply-To: <4C7CF499.5090003@RedHat.com>
-References: <1282995314-8317-1-git-send-email-jlayton@redhat.com>
-	<4C7BD394.3030705@RedHat.com>
-	<20100830121600.529669bd@tlielax.poochiereds.net>
-	<4C7BE1FC.2020400@RedHat.com>
-	<20100830134801.1696dffa@tlielax.poochiereds.net>
-	<4C7CF499.5090003@RedHat.com>
-Content-Type: text/plain; charset=US-ASCII
+	id S1754480Ab0HQRr0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 17 Aug 2010 13:47:26 -0400
+Date: Tue, 17 Aug 2010 13:45:24 -0400
+To: Guillaume Rousse <Guillaume.Rousse@inria.fr>
+Cc: Kevin Coffman <kwc@citi.umich.edu>, linux-nfs@vger.kernel.org
+Subject: Re: trouble using kerberos between linux client and server
+Message-ID: <20100817174523.GB23176@fieldses.org>
+References: <4BCFE979.2000406@inria.fr>
+ <4BE1E099.9050902@inria.fr>
+ <4BEB1FA2.1060001@inria.fr>
+ <AANLkTinNTYrEe9G6urXBxv-hogZPatOe9zWbbjnVTbWz@mail.gmail.com>
+ <4BEBC1B0.8030502@inria.fr>
+ <AANLkTinPfbYgqFxcIuT3975TAtk0e1D84bMAeez5Z06T@mail.gmail.com>
+ <4BEC6B6E.9090705@inria.fr>
+ <4C66B207.5060101@inria.fr>
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <4C66B207.5060101@inria.fr>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Tue, 31 Aug 2010 08:24:57 -0400
-Steve Dickson <SteveD@redhat.com> wrote:
-
-> 
-> 
-> On 08/30/2010 01:48 PM, Jeff Layton wrote:
-> > On Mon, 30 Aug 2010 12:53:16 -0400
-> > Steve Dickson <SteveD@redhat.com> wrote:
-> >>>
-> >>> Hmmm...if I had known that it was ok to stop supporting old kernels,
-> >>> the IPv6 support for rpc.nfsd would have been a heck of a lot easier to
-> >>> implement.
-> >> I thought you said the legacy interface would not work with IPV6 or
-> >> did I misunderstand you? 
+On Sat, Aug 14, 2010 at 05:11:03PM +0200, Guillaume Rousse wrote:
+> Le 13/05/2010 23:13, Guillaume Rousse a écrit :
+> > Le 13/05/2010 14:55, Kevin Coffman a écrit :
+> >> On Thu, May 13, 2010 at 5:09 AM, Guillaume Rousse
+> >> <Guillaume.Rousse@inria.fr> wrote:
+> >>> Le 13/05/2010 01:21, Kevin Coffman a écrit :
+> >>>> On Wed, May 12, 2010 at 5:37 PM, Guillaume Rousse
+> >>>> <Guillaume.Rousse@inria.fr> wrote:
+> >>>>> Le 05/05/2010 23:18, Guillaume Rousse a écrit :
+> >>>>>> I'm attaching network capture, even I can't figure additional
+> >>>>>> information from it by myself.
+> >>>>> Reading https://bugzilla.redhat.com/show_bug.cgi?id=562807, I rebuild
+> >>>>> libtirpc with patch applied and -DDEBUG. Unfortunatly, it doesn't bring
+> >>>>> additional information about the server-side failure :(
+> >>>>
+> >>>> It looks to me like fflush(), called in qword_eol(), may be returning
+> >>>> the number of bytes flushed (95) rather than zero for success?  I
+> >>>> don't immediately see any changes that would cause this.  But I
+> >>>> haven't looked extensively...
+> >>> Not necessarily a change: I never used a kerberized server sofar, only
+> >>> clients.
 > >>
-> > 
-> > Sorry, forgot to answer this part. IPv6 indeed will not work when using
-> > the legacy interface. In order to get the IPv6 code in though, I ended
-> > up rewriting a large swath of rpc.nfsd. That task would have been
-> > easier had I not needed to deal with the legacy nfsctl() interface.
-> > 
-> So I'm thinking this the final nail in the coffin of the legacy interface
-> at least in rpc.nfsd. So if /proc/fs/nfsd filesystem is not or can not
-> be mounted then rpc.nfsd should fail... IMHO...
+> >> Well, I've not seen that issue before, so I assumed it was a change.
+> >> I looked back a bit, but didn't see: what versions of nfs-utils and
+> >> kernel are on the server?
+> > The same on both sides: kernel 2.6.33.3 + nfs-utils 1.2.2
+> Hello.
 > 
-> Maybe something like:
-> 
-> if (stat("/proc/fs/nfsd") < 0) {
+> I finally managed to understand the issue: I also need rpc.svcgssd _and_
+> rpc.gssd on server side, whereas I thought rpc.gssd was needed on client
+> side only
+> (http://wiki.linux-nfs.org/wiki/index.php/Enduser_doc_kerberos). Is this
+> expected behaviour ?
 
-This needs to check a file within /proc/fs/nfsd. The nfsd "dir" may
-already exist even if it's not mounted. I chose "threads" but any file
-in there would do...
+If you want krb5 callbacks to work (for example, if you want delegations
+to be granted when using krb5 with NFSv4.0), then rpc.gssd needs to be
+run on the server.
 
->     if (system("mount /proc/fs/nfsd") < 0) {
->         xlog(L_ERROR, "Unable to mount /proc/fs/nfsd");
->         exit 0;
->     }
-> }
-> 
-> steved.
+If rpc.gssd isn't running on the server, then I'd expect the only
+symptom to be that delegations aren't given out; if you're seeing a more
+serious failure than that, then that's a bug.
 
-That will universally fail, at least on most distros.
-
-When you go to mount /proc/fs/nfsd, the system does a request_module()
-for nfsd.ko. On most distros (e.g. Fedora or RHEL), modprobe will then
-automatically mount up /proc/fs/nfsd. request_module will then return
-and the mount attempt will proceed. The mount will then fail because
-it's now already mounted, and the system() call will return non-zero.
-
-That's the main reason I ignored the return code from system() in the
-original patch. What you could do is recheck whether the file exists
-after the mount attempt, and then fail if it doesn't.
-
-Is that really what we want to do here though? How does ditching the
-legacy interface move us forward now? If we had decided to do this a
-year ago when I was overhauling rpc.nfsd, it might have made sense. The
-code exists now though and it works. Ripping this out seems more
-disruptive than just leaving it in.
-
-To keep this on track, I think we need to treat this as 2 separate
-discussions:
-
-1) how to we ensure that /proc/fs/nfsd is actually mounted when
-rpc.nfsd is run?
-
-2) what do we do about the legacy nfsctl() interface?
-
-These are separate but related questions...
--- 
-Jeff Layton <jlayton@redhat.com>
+--b.
