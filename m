@@ -1,68 +1,54 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:55214 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754480Ab0HQRr0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 17 Aug 2010 13:47:26 -0400
-Date: Tue, 17 Aug 2010 13:45:24 -0400
-To: Guillaume Rousse <Guillaume.Rousse@inria.fr>
-Cc: Kevin Coffman <kwc@citi.umich.edu>, linux-nfs@vger.kernel.org
-Subject: Re: trouble using kerberos between linux client and server
-Message-ID: <20100817174523.GB23176@fieldses.org>
-References: <4BCFE979.2000406@inria.fr>
- <4BE1E099.9050902@inria.fr>
- <4BEB1FA2.1060001@inria.fr>
- <AANLkTinNTYrEe9G6urXBxv-hogZPatOe9zWbbjnVTbWz@mail.gmail.com>
- <4BEBC1B0.8030502@inria.fr>
- <AANLkTinPfbYgqFxcIuT3975TAtk0e1D84bMAeez5Z06T@mail.gmail.com>
- <4BEC6B6E.9090705@inria.fr>
- <4C66B207.5060101@inria.fr>
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <4C66B207.5060101@inria.fr>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+Received: from mail-ww0-f44.google.com ([74.125.82.44]:53237 "EHLO
+	mail-ww0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751241Ab0HQTSO (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 17 Aug 2010 15:18:14 -0400
+In-Reply-To: <20100817190447.GA28049@fieldses.org>
+References: <AANLkTimnyXKahtjaFeSsgcq=xMy-pP3na1jidQhZ-dt2@mail.gmail.com>
+	<87aaolwar8.fsf@basil.nowhere.org>
+	<20100817174134.GA23176@fieldses.org>
+	<20100817182920.GD18161@basil.fritz.box>
+	<20100817190447.GA28049@fieldses.org>
+Date: Tue, 17 Aug 2010 12:18:12 -0700
+Message-ID: <AANLkTi=w1UA5ZZDBigpxMiL7A7DnbnQhLkg62JZpC6Ri@mail.gmail.com>
+Subject: Re: Proposal: Use hi-res clock for file timestamps
+From: "Patrick J. LoPresti" <lopresti@gmail.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Andi Kleen <andi@firstfloor.org>, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-kernel <linux-kernel@vger.kernel.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Sat, Aug 14, 2010 at 05:11:03PM +0200, Guillaume Rousse wrote:
-> Le 13/05/2010 23:13, Guillaume Rousse a écrit :
-> > Le 13/05/2010 14:55, Kevin Coffman a écrit :
-> >> On Thu, May 13, 2010 at 5:09 AM, Guillaume Rousse
-> >> <Guillaume.Rousse@inria.fr> wrote:
-> >>> Le 13/05/2010 01:21, Kevin Coffman a écrit :
-> >>>> On Wed, May 12, 2010 at 5:37 PM, Guillaume Rousse
-> >>>> <Guillaume.Rousse@inria.fr> wrote:
-> >>>>> Le 05/05/2010 23:18, Guillaume Rousse a écrit :
-> >>>>>> I'm attaching network capture, even I can't figure additional
-> >>>>>> information from it by myself.
-> >>>>> Reading https://bugzilla.redhat.com/show_bug.cgi?id=562807, I rebuild
-> >>>>> libtirpc with patch applied and -DDEBUG. Unfortunatly, it doesn't bring
-> >>>>> additional information about the server-side failure :(
-> >>>>
-> >>>> It looks to me like fflush(), called in qword_eol(), may be returning
-> >>>> the number of bytes flushed (95) rather than zero for success?  I
-> >>>> don't immediately see any changes that would cause this.  But I
-> >>>> haven't looked extensively...
-> >>> Not necessarily a change: I never used a kerberized server sofar, only
-> >>> clients.
-> >>
-> >> Well, I've not seen that issue before, so I assumed it was a change.
-> >> I looked back a bit, but didn't see: what versions of nfs-utils and
-> >> kernel are on the server?
-> > The same on both sides: kernel 2.6.33.3 + nfs-utils 1.2.2
-> Hello.
-> 
-> I finally managed to understand the issue: I also need rpc.svcgssd _and_
-> rpc.gssd on server side, whereas I thought rpc.gssd was needed on client
-> side only
-> (http://wiki.linux-nfs.org/wiki/index.php/Enduser_doc_kerberos). Is this
-> expected behaviour ?
+On Tue, Aug 17, 2010 at 12:04 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
+>
+> Right, I think that we probably have to give up ext3 as a lost cause.
+> But perhaps we could get away with a hack like this on filesystems that
+> can store nanoseconds.
 
-If you want krb5 callbacks to work (for example, if you want delegations
-to be granted when using krb5 with NFSv4.0), then rpc.gssd needs to be
-run on the server.
+I do not think so.
 
-If rpc.gssd isn't running on the server, then I'd expect the only
-symptom to be that delegations aren't given out; if you're seeing a more
-serious failure than that, then that's a bug.
+The problem with "increment mtime by a nanosecond when necessary" is
+that timestamps can wind up out of order.  As in:
 
---b.
+1) Do a bunch of operations on file A
+2) Do one operation on file B
+
+Imagine each operation on A incrementing its timestamp by a nanosecond
+"just because".  If all of these operations happen in less than 4 ms,
+you can wind up with the timestamp on B being EARLIER than the
+timestamp on A.  That is a big no-no (think "make" or anything else
+relying on timestamps for relative times).
+
+If you can prove that the last modification on B happens after the
+last modification on A, then it is very bad for the mtime on B to be
+earlier than the mtime on A.  I guarantee that will break things in
+the real world.
+
+As you say, high-resolution timestamps "will extend the useful
+lifetime of NFSv3 by quite a bit".  They are also a good idea in
+principle, IMO.  Correctness is almost always more important than
+performance.
+
+ - Pat
