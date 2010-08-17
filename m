@@ -1,144 +1,104 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 03/22] SUNRPC: Refactor logic to NUL-terminate strings in pages
-Date: Fri, 02 Jul 2010 13:18:57 -0400
-Message-ID: <20100702171857.8761.49735.stgit@ellison.1015granger.net>
-References: <20100702165935.8761.88528.stgit@ellison.1015granger.net>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-To: linux-nfs@vger.kernel.org
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-iw0-f174.google.com ([209.85.214.174]:51418 "EHLO
-	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1759321Ab0GBRTA (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 2 Jul 2010 13:19:00 -0400
-Received: by mail-iw0-f174.google.com with SMTP id 7so3461836iwn.19
-        for <linux-nfs@vger.kernel.org>; Fri, 02 Jul 2010 10:19:00 -0700 (PDT)
-In-Reply-To: <20100702165935.8761.88528.stgit-ewv44WTpT0t9HhUboXbp9zCvJB+x5qRC@public.gmane.org>
+Return-Path: <linux-nfs-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:34139 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750855Ab0HQVfy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 17 Aug 2010 17:35:54 -0400
+Message-ID: <4C6B00B1.4060206@RedHat.com>
+Date: Tue, 17 Aug 2010 17:35:45 -0400
+From: Steve Dickson <SteveD@redhat.com>
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+CC: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 1/2] Teach clients to map numeric strings into valid uids
+ and gids.
+References: <1282073925-18707-1-git-send-email-steved@redhat.com>	 <1282073925-18707-2-git-send-email-steved@redhat.com> <1282076855.12506.2.camel@heimdal.trondhjem.org>
+In-Reply-To: <1282076855.12506.2.camel@heimdal.trondhjem.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+MIME-Version: 1.0
 
-Clean up: Introduce a helper to '\0'-terminate XDR strings
-that are placed in a page in the page cache.
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
 
- fs/nfs/nfs2xdr.c           |    6 +-----
- fs/nfs/nfs3xdr.c           |    6 +-----
- fs/nfs/nfs4xdr.c           |    5 +----
- include/linux/sunrpc/xdr.h |    1 +
- net/sunrpc/xdr.c           |   17 +++++++++++++++++
- 5 files changed, 21 insertions(+), 14 deletions(-)
+On 08/17/2010 04:27 PM, Trond Myklebust wrote:
+> On Tue, 2010-08-17 at 15:38 -0400, Steve Dickson wrote:
+>> When a server can not map a uid or gid they can send
+>> an numeric string (one that does not include the @domain)
+>> of the given id. When this occurs the client will can use
+>> that numeric representation iff that id exists on the client.
+>>
+>> Signed-off-by: Steve Dickson <steved@redhat.com>
+>> ---
+>>  utils/idmapd/idmapd.c |   38 ++++++++++++++++++++++++++++++++++++++
+>>  1 files changed, 38 insertions(+), 0 deletions(-)
+>>
+>> diff --git a/utils/idmapd/idmapd.c b/utils/idmapd/idmapd.c
+>> index 9ecab66..d6799c9 100644
+>> --- a/utils/idmapd/idmapd.c
+>> +++ b/utils/idmapd/idmapd.c
+>> @@ -826,6 +826,21 @@ idtonameres(struct idmap_msg *im)
+>>  		im->im_status = IDMAP_STATUS_SUCCESS;
+>>  }
+>>  
+>> +static int
+>> +alldigits(char *name)
+>> +{
+>> +	char *p = name;
+>> +
+>> +	if (name == NULL)
+>> +		return 0;
+>> +
+>> +	while (*p != '\0') {
+>> +		if (!isdigit(*p++))
+>> +			return 0;
+>> +	}
+>> +	return 1;
+>> +}
+>> +
+>>  static void
+>>  nametoidres(struct idmap_msg *im)
+>>  {
+>> @@ -843,6 +858,18 @@ nametoidres(struct idmap_msg *im)
+>>  		ret = nfs4_name_to_uid(im->im_name, &uid);
+>>  		im->im_id = (u_int32_t) uid;
+>>  		if (ret) {
+>> +			/*
+>> +			 * When a server sends numeric string that's
+>> +			 * lacking the @domain part, and the uid exists
+>> +			 * use the numeric string as the uid. 
+>> +			 */
+>> +			if (alldigits(im->im_name)) {
+>> +				sscanf(im->im_name, "%u", &uid);
+>> +				if (getpwuid(uid) != NULL) {
+>> +					im->im_id = uid;	
+>> +					break;
+>> +				}
+>> +			}
+>>  			im->im_status = IDMAP_STATUS_LOOKUPFAIL;
+>>  			im->im_id = nobodyuid;
+>>  		}
+>> @@ -851,6 +878,17 @@ nametoidres(struct idmap_msg *im)
+>>  		ret = nfs4_name_to_gid(im->im_name, &gid);
+>>  		im->im_id = (u_int32_t) gid;
+>>  		if (ret) {
+>> +			/*
+>> +			 * Do the same type of mapping of a numeric string
+>> +			 * sent as the gid.
+>> +			 */
+>> +			if (alldigits(im->im_name)) {
+>> +				sscanf(im->im_name, "%u", &gid);
+>> +				if (getgrgid(gid) != NULL) {
+>> +					im->im_id = gid;
+>> +					break;
+>> +				}
+>> +			}
+>>  			im->im_status = IDMAP_STATUS_LOOKUPFAIL;
+>>  			im->im_id = nobodygid;
+>>  		}
+> 
+> Wouldn't it make more sense to put this into libnfsidmap instead?
+I did think of that but since the nobody ids are being set here I 
+figured I made the most sense to do here... plus this is pretty 
+simple code why hide a way in the library and make it more 
+difficult to debug... 
 
-diff --git a/fs/nfs/nfs2xdr.c b/fs/nfs/nfs2xdr.c
-index 81cf142..279883c 100644
---- a/fs/nfs/nfs2xdr.c
-+++ b/fs/nfs/nfs2xdr.c
-@@ -597,7 +597,6 @@ nfs_xdr_readlinkres(struct rpc_rqst *req, __be32 *p, void *dummy)
- 	struct kvec *iov = rcvbuf->head;
- 	size_t hdrlen;
- 	u32 len, recvd;
--	char	*kaddr;
- 	int	status;
- 
- 	if ((status = ntohl(*p++)))
-@@ -624,10 +623,7 @@ nfs_xdr_readlinkres(struct rpc_rqst *req, __be32 *p, void *dummy)
- 		return -EIO;
- 	}
- 
--	/* NULL terminate the string we got */
--	kaddr = (char *)kmap_atomic(rcvbuf->pages[0], KM_USER0);
--	kaddr[len+rcvbuf->page_base] = '\0';
--	kunmap_atomic(kaddr, KM_USER0);
-+	xdr_terminate_string(rcvbuf, len);
- 	return 0;
- }
- 
-diff --git a/fs/nfs/nfs3xdr.c b/fs/nfs/nfs3xdr.c
-index 75dcfc7..624ffe9 100644
---- a/fs/nfs/nfs3xdr.c
-+++ b/fs/nfs/nfs3xdr.c
-@@ -824,7 +824,6 @@ nfs3_xdr_readlinkres(struct rpc_rqst *req, __be32 *p, struct nfs_fattr *fattr)
- 	struct kvec *iov = rcvbuf->head;
- 	size_t hdrlen;
- 	u32 len, recvd;
--	char	*kaddr;
- 	int	status;
- 
- 	status = ntohl(*p++);
-@@ -857,10 +856,7 @@ nfs3_xdr_readlinkres(struct rpc_rqst *req, __be32 *p, struct nfs_fattr *fattr)
- 		return -EIO;
- 	}
- 
--	/* NULL terminate the string we got */
--	kaddr = (char*)kmap_atomic(rcvbuf->pages[0], KM_USER0);
--	kaddr[len+rcvbuf->page_base] = '\0';
--	kunmap_atomic(kaddr, KM_USER0);
-+	xdr_terminate_string(rcvbuf, len);
- 	return 0;
- }
- 
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index 65c8dae..e38e43b 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -4250,7 +4250,6 @@ static int decode_readlink(struct xdr_stream *xdr, struct rpc_rqst *req)
- 	size_t hdrlen;
- 	u32 len, recvd;
- 	__be32 *p;
--	char *kaddr;
- 	int status;
- 
- 	status = decode_op_hdr(xdr, OP_READLINK);
-@@ -4281,9 +4280,7 @@ static int decode_readlink(struct xdr_stream *xdr, struct rpc_rqst *req)
- 	 * and and null-terminate the text (the VFS expects
- 	 * null-termination).
- 	 */
--	kaddr = (char *)kmap_atomic(rcvbuf->pages[0], KM_USER0);
--	kaddr[len+rcvbuf->page_base] = '\0';
--	kunmap_atomic(kaddr, KM_USER0);
-+	xdr_terminate_string(rcvbuf, len);
- 	return 0;
- out_overflow:
- 	print_overflow_msg(__func__, xdr);
-diff --git a/include/linux/sunrpc/xdr.h b/include/linux/sunrpc/xdr.h
-index 35cf2e8..8c1dcbb 100644
---- a/include/linux/sunrpc/xdr.h
-+++ b/include/linux/sunrpc/xdr.h
-@@ -108,6 +108,7 @@ void	xdr_encode_pages(struct xdr_buf *, struct page **, unsigned int,
- 			 unsigned int);
- void	xdr_inline_pages(struct xdr_buf *, unsigned int,
- 			 struct page **, unsigned int, unsigned int);
-+void	xdr_terminate_string(struct xdr_buf *, const u32);
- 
- static inline __be32 *xdr_encode_array(__be32 *p, const void *s, unsigned int len)
- {
-diff --git a/net/sunrpc/xdr.c b/net/sunrpc/xdr.c
-index a1f82a8..d463d20 100644
---- a/net/sunrpc/xdr.c
-+++ b/net/sunrpc/xdr.c
-@@ -111,6 +111,23 @@ xdr_decode_string_inplace(__be32 *p, char **sp,
- }
- EXPORT_SYMBOL_GPL(xdr_decode_string_inplace);
- 
-+/**
-+ * xdr_terminate_string - '\0'-terminate a string residing in an xdr_buf
-+ * @buf: XDR buffer where string resides
-+ * @len: length of string, in bytes
-+ *
-+ */
-+void
-+xdr_terminate_string(struct xdr_buf *buf, const u32 len)
-+{
-+	char *kaddr;
-+
-+	kaddr = kmap_atomic(buf->pages[0], KM_USER0);
-+	kaddr[buf->page_base + len] = '\0';
-+	kunmap_atomic(kaddr, KM_USER0);
-+}
-+EXPORT_SYMBOL(xdr_terminate_string);
-+
- void
- xdr_encode_pages(struct xdr_buf *xdr, struct page **pages, unsigned int base,
- 		 unsigned int len)
-
+steved.
