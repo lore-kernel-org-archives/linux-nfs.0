@@ -1,62 +1,98 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:38451 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751699Ab0H0VGm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 27 Aug 2010 17:06:42 -0400
-Date: Fri, 27 Aug 2010 17:06:26 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Artem.Bityutskiy@nokia.com
-Cc: bjschuma@netapp.com, jaxboe@fusionio.com, linux-nfs@vger.kernel.org,
-        trond@netapp.com, hch@lst.de
-Subject: Re: hang in writeback code on nfsv4 mount
-Message-ID: <20100827210626.GB27694@fieldses.org>
-References: <20100825023425.GA24591@fieldses.org>
- <1282889595.2763.14.camel@localhost>
- <1282901780.12016.54.camel@localhost>
- <4C77B873.8010306@netapp.com>
- <20100827160912.GA18790@fieldses.org>
- <10B234E0D3A1CA469E00963BF106CA392D0DB78354@NOK-EUMSG-02.mgdnok.nokia.com>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <10B234E0D3A1CA469E00963BF106CA392D0DB78354@NOK-EUMSG-02.mgdnok.nokia.com>
+Received: from eastrmpop111.cox.net ([68.230.240.53]:37640 "EHLO
+	eastrmpop111.cox.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758089Ab0HQSF1 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 17 Aug 2010 14:05:27 -0400
+Message-ID: <4C6ACB70.7080409@excfb.com>
+Date: Tue, 17 Aug 2010 12:48:32 -0500
+From: Tom Haynes <tdh@excfb.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: =?UTF-8?B?VmljdG9yIE1hdGFyw6k=?= <dreck@vmsd.ath.cx>,
+        linux-nfs@vger.kernel.org
+Subject: Re: numeric UIDs
+References: <201008030401.33552.dreck@vmsd.ath.cx> <20100803192241.GD31579@fieldses.org>
+In-Reply-To: <20100803192241.GD31579@fieldses.org>
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Fri, Aug 27, 2010 at 06:17:36PM +0200, Artem.Bityutskiy@nokia.com wrote:
-> I need to look more. But so far I do not really understand what could make kthread_stop() wait
-> forever. I looked into the code, and thought may be barriers are missing there, but I is unlikely
-> this generic type of code would have bugs.
+J. Bruce Fields wrote:
+> On Tue, Aug 03, 2010 at 04:01:32AM +0200, Victor Mataré wrote:
+>   
+>> Hello,
+>>
+>> I still hope I'm mistaken in assuming I have to go back to NFSv3 if I want to 
+>> skip NFSv4 UID mapping altogether and just use the numeric UIDs the way 
+>> they're stored on-disk. However if that's actually true, I'd like to try and 
+>> make a case for implementing an option to turn off UID mapping completely (or 
+>> at least for unknown UIDs). If this is already work in progress, just ignore 
+>> this mail.
+>>
+>> Thing is, the forced UID mapping seems to make tasks like backing up data a 
+>> little inconvenient. You might want to preserve UIDs that are only known to 
+>> the client.
+>> But when you copy an entire root filesystem, it becomes outright destructive, 
+>> because the rootfs will probably have several accounts that the server can't 
+>> be expected know. Just imagine a server that's used for maintenance (like 
+>> backing up and replacing hard drives) of random (foreign) systems. Idmapd will 
+>> map all unknown UIDs to a single value and thereby destroy that information.
+>>
+>> I think I read somewhere
+>>     
+>
+> Pointer?
+>
+>   
 
-Hm, is the way you go to sleep in the writeback thread safe?  Surely
-there's a race like:
+http://www.unix.com/man-page/OpenSolaris/4/nfs/
 
-while(!kthread_should_stop()) {
+       If  a  domainname  is still not obtained following all of the preceding
+       steps, nfsmapid will have no domain configured.	This  results  in  the
+       following behavior:
 
-				kthread_stop():
-					kthread->should_stop = 1;
-					wake_up_process(k);
-					wait_for_completion(&kthread->exited);
+	   o	  Outbound  "owner"  and  "owner_group"  attribute strings are
+		  encoded as literal id's.  For  example,  the	UID  12345  is
+		  encoded as 12345.
 
-	/* oops, lose the wake_up here: */
-	set_current_state(TASK_INTERRUPTIBLE);
-	...
-	/* sleep forever: */
-	schedule();
+	   o	  nfsmapid   ignores  the  "domain"  portion  of  the  inbound
+		  attribute string and performs name service lookups only  for
+		  the  user  or  group.  If the user/group exists in the local
+		  system name service databases, then the proper uid/gid  will
+		  be mapped even when no domain has been configured.
 
-Maybe the following?
+		  This	 behavior   implies   that   the  same	administrative
+		  user/group domain exists between  NFSv4  client  and	server
+		  (that is, the same uid/gid's for users/groups on both client
+		  and server). In the  case  of  overlapping  id  spaces,  the
+		  inbound  attribute string could potentially be mapped to the
+		  wrong id. However, this is not functionally  different  from
+		  mapping  the	inbound string to nobody, yet provides greater
+		  flexibility.
 
---b.
 
-diff --git a/fs/fs-writeback.c b/fs/fs-writeback.c
-index 7d9d06b..ea76550 100644
---- a/fs/fs-writeback.c
-+++ b/fs/fs-writeback.c
-@@ -808,7 +808,7 @@ int bdi_writeback_thread(void *data)
- 			wb->last_active = jiffies;
- 
- 		set_current_state(TASK_INTERRUPTIBLE);
--		if (!list_empty(&bdi->work_list)) {
-+		if (!list_empty(&bdi->work_list) || kthread_should_stop()) {
- 			__set_current_state(TASK_RUNNING);
- 			continue;
- 		}
+
+
+
+> --b.
+>
+>   
+>> that the Sun people already have a way of handling 
+>> this. Any chance Linux could do that, too?
+>>
+>> Please excuse me if I'm barking up the wrong tree. If this has already been 
+>> discussed, I'd appreciate a pointer.
+>>
+>> Thanks,
+>> Victor
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>     
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>   
+
