@@ -1,69 +1,95 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:56532 "EHLO mx2.suse.de"
+Received: from fieldses.org ([174.143.236.118]:57997 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752357Ab0HZAcD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 25 Aug 2010 20:32:03 -0400
-Date: Thu, 26 Aug 2010 10:31:52 +1000
-From: Neil Brown <neilb@suse.de>
-To: sfaibish <sfaibish@emc.com>
-Cc: "Peng Yu" <pengyu.ut@gmail.com>, linux-nfs@vger.kernel.org
-Subject: Re: Does the machine need to be restarted after RPCNFSDCOUNT in
- /etc/default/nfs-kernel-server (ubuntu) is edited?
-Message-ID: <20100826103152.05627abb@notabene>
-In-Reply-To: <op.vh0qucfsunckof@usensfaibisl2e.eng.emc.com>
-References: <AANLkTi=8rnEtOikhVqsH5Pj1QUhc5MiSHMfncZO1xCem@mail.gmail.com>
-	<20100826093648.26d03c1c@notabene>
-	<op.vh0qucfsunckof@usensfaibisl2e.eng.emc.com>
-Content-Type: text/plain; charset=US-ASCII
+	id S1750759Ab0HQTXq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 17 Aug 2010 15:23:46 -0400
+Date: Tue, 17 Aug 2010 15:21:32 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Tom Haynes <tdh@excfb.com>
+Cc: Chuck Lever <chuck.lever@oracle.com>, Steve Dickson <SteveD@redhat.com>,
+        Neil Brown <neilb@suse.de>,
+        Trond Myklebust <trond.myklebust@fys.uio.no>,
+        Jim Rees <rees@umich.edu>, Daniel.Muntz@emc.com,
+        linux-nfs@vger.kernel.org, nfsv4@ietf.org,
+        Victor =?utf-8?Q?Matar=C3=A9?= <dreck@vmsd.ath.cx>
+Subject: Re: numeric UIDs
+Message-ID: <20100817192132.GC26609@fieldses.org>
+References: <1280887336.24669.23.camel@heimdal.trondhjem.org>
+ <20100805153421.GD27141@fieldses.org>
+ <20100812092232.344314b2@notabene>
+ <4C6559FA.5070809@RedHat.com>
+ <20100813163156.GA16863@fieldses.org>
+ <1CE074A1-2371-40E5-B0E5-F80474B02FA2@oracle.com>
+ <4C6ACAE1.6060100@excfb.com>
+ <20100817181842.GD23176@fieldses.org>
+ <4C6AD861.4010506@excfb.com>
+ <20100817184910.GB26609@fieldses.org>
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <20100817184910.GB26609@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, 25 Aug 2010 20:12:02 -0400
-sfaibish <sfaibish@emc.com> wrote:
 
-> On Wed, 25 Aug 2010 19:36:48 -0400, Neil Brown <neilb@suse.de> wrote:
-> 
-> > On Wed, 25 Aug 2010 15:02:14 -0500
-> > Peng Yu <pengyu.ut@gmail.com> wrote:
-> >
-> >> Hi,
-> >>
-> >> I changed the value of RPCNFSDCOUNT in /etc/default/nfs-kernel-server
-> >> (ubuntu). Do I need to restart the machine?
-> >>
-> >> Or I need to restart nfsd? If so, would you please let me know how to
-> >> restart nfsd?
-> >>
-> >
-> > Easiest thing to do is simply
-> >
-> >    rpc.nfsd $NUMBER
-> >
-> > it will change the number of running threads to match the number that you
-> > give.
-> You still need to stop and restart the nfs for this to take effect.
+Tom Haynes said:
+> > While various ways pop to mind to hack this up, why not bring it up
+> > to the working group and get consensus? Perhaps whomever struck down
+> > Jim Rees will recall why it is such a bad idea and convince us all
+> > to stay away from it. Or perhaps after years of enduring customers
+> > who can't do the above, they will capitulate.
 
-Have you tried it?
+Adding nfsv4 list to the cc.
 
-I assure you that running rpc.nfsd like this does change the number of
-threads from whatever it is to the given number. (I should know, I wrote the
-code :-)
+So, to summarize: every now and then somebody asks why the Linux NFSv4
+implementation doesn't allow (ascii-encoded) numerical uid's and gid's;
+most recently:
 
-NeilBrown
+> On Tue, Aug 03, 2010 at 04:01:32AM +0200, Victor Mataré wrote:
+>> I still hope I'm mistaken in assuming I have to go back to NFSv3 if I
+>> want to skip NFSv4 UID mapping altogether and just use the numeric
+>> UIDs the way they're stored on-disk....
 
-> 
-> /Sorin
-> 
-> >
-> > NeilBrown
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> >
-> >
-> 
-> 
-> 
+They went on to describe a situation (apparently hypothetical) where NFS
+is used to perform backups of a filesystem when the server storing the
+backup (and maybe even the client performing the backup) lack mappings
+referred to by the filesystem.
 
+This is a use case that would work over v3 but likely not v4, as v4
+implementors are advised against allowing this on page 47 of rfc 3530:
+
+> >   To avoid this mechanism being used to subvert user and
+> >   group translation, so that a client might pass all of the owners and
+> >   groups in numeric form, a server SHOULD return an NFS4ERR_BADOWNER
+> >   error when there is a valid translation for the user or owner
+> >   designated in this way.  In that case, the client must use the
+> >   appropriate name@domain string and not the special form for
+> >   compatibility.
+
+String uid's have advantages, but I've been arguing that:
+
+> > >In the case of a user upgrading from NFSv3 to NFSv4, that's the behavior
+> > >they've always had, so presumably they can live with it.  I'd prefer to
+> > >avoid situations where something that previously worked over v3 fails
+> > >when you upgrade the protocol version.
+> > >
+> > >I assume that most users arrive at NFSv4 by an upgrade from a previous
+> > >version of NFS.
+> > >
+> > >So my priorities would be 1) to ensure the NFSv3->NFSv4 upgrade goes
+> > >smoothly, then 2) to make it easy for users to switch from ids to
+> > >strings, rather than forcing both at once.
+
+So the question is whether there's still consensus for that SHOULD.
+
+As Tom says:
+> > I'd say that problem breaks down to being able to correctly
+> > configure your id domain or to allowing a server which is not
+> > connected to NIS/LDAP to be able to accept random users.  With
+> > NFSv3, a server will happily serve up data in these situations.
+
+So I suppose it comes down in part to a question of whether users of the
+various implementations have actually seen these problems in practice
+and, if so, whether diagnosing the problem, and setting up the required
+mapping, has been an obstacle to NFSv4 adoption.
+
+--b.
