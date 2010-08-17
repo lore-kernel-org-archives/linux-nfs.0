@@ -1,45 +1,54 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp.opengridcomputing.com ([209.198.142.2]:35127 "EHLO
-	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1756737Ab0HCQpC (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 3 Aug 2010 12:45:02 -0400
-From: Tom Tucker <tom@ogc.us>
-Subject: [PATCH 1/4] xprtrdma: Do not truncate iova_start values in frmr
-	registrations.
-To: trond.myklebust@netapp.com, bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org, swise@ogc.us, tom@ogc.us
-Date: Tue, 03 Aug 2010 11:45:01 -0500
-Message-ID: <20100803164501.2567.8549.stgit@build.ogc.int>
-In-Reply-To: <20100803164411.2567.31416.stgit@build.ogc.int>
-References: <20100803164411.2567.31416.stgit@build.ogc.int>
-Content-Type: text/plain; charset="utf-8"
+Received: from mx2.netapp.com ([216.240.18.37]:13566 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751145Ab0HQWC3 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 17 Aug 2010 18:02:29 -0400
+Subject: Re: should sillyrename be an asynchronous operation?
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Jeff Layton <jlayton@redhat.com>
+Cc: linux-nfs@vger.kernel.org
+In-Reply-To: <20100817093009.74800ec7@tlielax.poochiereds.net>
+References: <20100817093009.74800ec7@tlielax.poochiereds.net>
+Content-Type: text/plain; charset="UTF-8"
+Date: Tue, 17 Aug 2010 18:02:12 -0400
+Message-ID: <1282082532.18385.18.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-From: Steve Wise <swise@opengridcomputing.com>
+On Tue, 2010-08-17 at 09:30 -0400, Jeff Layton wrote:
+> We had a bug report recently where someone was complaining about
+> silly-renamed files being left around:
+> 
+> https://bugzilla.redhat.com/show_bug.cgi?id=511901
+> 
+> ...they attached a reproducer to the bug which involves a
+> pthreads-based program killing a child thread that's unlinking and
+> closing a file.
+> 
+> The unlink triggers a sillyrename (since the file is still open). The
+> parent kills the child thread and if timed just right, the child thread
+> will be killed after the RENAME call is issued but before the reply is
+> processed. The file will end up renamed on the server, but the client
+> won't be aware of it and won't unlink it during dentry_iput.
+> 
+> It's a bit of work, but the best way I can envision to fix this would
+> be to make sillyrename do an asynchronous RENAME call, and have it wait
+> for the reply. If the task is killed, then the RENAME can proceed and
+> the file would be unlinked when the dput is done by the rpc_release
+> call.
+> 
+> At this point, I just want to know whether this approach is acceptable
+> before I spend time on it. Is there a better way to handle this?
 
-A bad cast causes the iova_start, which in this case is a 64b DMA
-bus address, to be truncated on 32b systems.  This breaks frmrs on
-32b systems.  No cast is needed.
+Well... The rpc_release cannot allocate memory, so you're going to have
+to preallocate the struct nfs_unlinkdata afaics.
 
-Signed-off-by: Steve Wise <swise@opengridcomputing.com>
----
+I suppose one way to do that would be to call nfs_async_unlink() first,
+then do the rename, then cancel the async_unlink if the rename attempt
+fails.
+We already do something like that in nfs_do_call_unlink if we race with
+a lookup...
 
- net/sunrpc/xprtrdma/verbs.c |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
-
-diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index 27015c6..3bdbd9f 100644
---- a/net/sunrpc/xprtrdma/verbs.c
-+++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -1490,7 +1490,7 @@ rpcrdma_register_frmr_external(struct rpcrdma_mr_seg *seg,
- 	memset(&frmr_wr, 0, sizeof frmr_wr);
- 	frmr_wr.opcode = IB_WR_FAST_REG_MR;
- 	frmr_wr.send_flags = 0;			/* unsignaled */
--	frmr_wr.wr.fast_reg.iova_start = (unsigned long)seg1->mr_dma;
-+	frmr_wr.wr.fast_reg.iova_start = seg1->mr_dma;
- 	frmr_wr.wr.fast_reg.page_list = seg1->mr_chunk.rl_mw->r.frmr.fr_pgl;
- 	frmr_wr.wr.fast_reg.page_list_len = i;
- 	frmr_wr.wr.fast_reg.page_shift = PAGE_SHIFT;
-
+Cheers
+  Trond
