@@ -1,55 +1,67 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:36417 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:56307 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753591Ab0H2Thh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 29 Aug 2010 15:37:37 -0400
-Date: Sun, 29 Aug 2010 15:37:17 -0400
+	id S1750705Ab0HQTbq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 17 Aug 2010 15:31:46 -0400
+Date: Tue, 17 Aug 2010 15:29:38 -0400
 From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: Neil Brown <neilb@suse.de>, linux-nfs@vger.kernel.org,
-        chuck.lever@oracle.com, steved@redhat.com
-Subject: Re: [PATCH] rpc.nfsd: mount up nfsdfs is it doesn't appear to be
- mounted yet
-Message-ID: <20100829193717.GB1627@fieldses.org>
-References: <1282995314-8317-1-git-send-email-jlayton@redhat.com>
- <20100829083853.4e95d2ee@notabene>
- <20100828222450.7ca62e49@corrin.poochiereds.net>
+To: Alan Cox <alan@lxorguk.ukuu.org.uk>
+Cc: "Patrick J. LoPresti" <lopresti@gmail.com>,
+        Andi Kleen <andi@firstfloor.org>, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-kernel <linux-kernel@vger.kernel.org>
+Subject: Re: Proposal: Use hi-res clock for file timestamps
+Message-ID: <20100817192937.GD26609@fieldses.org>
+References: <AANLkTimnyXKahtjaFeSsgcq=xMy-pP3na1jidQhZ-dt2@mail.gmail.com>
+ <87aaolwar8.fsf@basil.nowhere.org>
+ <20100817174134.GA23176@fieldses.org>
+ <20100817182920.GD18161@basil.fritz.box>
+ <20100817190447.GA28049@fieldses.org>
+ <AANLkTi=w1UA5ZZDBigpxMiL7A7DnbnQhLkg62JZpC6Ri@mail.gmail.com>
+ <20100817203941.729830b7@lxorguk.ukuu.org.uk>
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20100828222450.7ca62e49@corrin.poochiereds.net>
+In-Reply-To: <20100817203941.729830b7@lxorguk.ukuu.org.uk>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Sat, Aug 28, 2010 at 10:24:50PM -0400, Jeff Layton wrote:
-> On Sun, 29 Aug 2010 08:38:53 +1000
-> Neil Brown <neilb@suse.de> wrote:
-> > I don't think it is all that bad.  It is a shame you have to use system()
-> > rather than just calling mount() directly but I guess we need that to
-> > update /etc/mtab.
+On Tue, Aug 17, 2010 at 08:39:41PM +0100, Alan Cox wrote:
+> > The problem with "increment mtime by a nanosecond when necessary" is
+> > that timestamps can wind up out of order.  As in:
+> 
+> Surely that depends on your implementation ?
+> 
+> > 1) Do a bunch of operations on file A
+> > 2) Do one operation on file B
 > > 
+> > Imagine each operation on A incrementing its timestamp by a nanosecond
+> > "just because".  If all of these operations happen in less than 4 ms,
+> > you can wind up with the timestamp on B being EARLIER than the
+> > timestamp on A.  That is a big no-no (think "make" or anything else
+> > relying on timestamps for relative times).
 > 
-> Yeah, that's the main reason I went with system(). It's worthwhile to
-> note that I'm using the exact same command that's in modprobe.conf on
-> fedora/RHEL.
 > 
-> > Suggestions:
-> > 
-> >  - just don't do that.  Use /etc/init.d/nfsserver start (or whatever the
-> >    distro uses).
+> [time resolution bits of data][value incremented value for that time]
 > 
-> I don't think we should count on that. Most people will use that, but
-> it seems like we shouldn't require that for this to work as expected...
 > 
-> >  - Make /proc/fs/nfsd and auto-mount point.  That sounds like the systemd
-> >    approach.
+> 	if (time_now == time_last)
+> 		return { time_last , ++ct };
+> 	else {
+> 		ct = 0;
+> 		time_last = time_now
+> 		return { time_last , 0 };
+> 	}
 > 
-> Yes, I think systemd will take care of this eventually, but I think we
-> need something for existing distros that aren't using it yet.
+> providing it is done with the same 'ct' across the fs and you can't do
+> enough ops/second to wrap the nanosecs - which should be fine for now,
+> your ordering is still safe is it not ?
 
-I thought Neil was saying that this would be a "systemd-like" approach,
-not that it would actually require systemd.  Am I missing something?
+Right, so if I understand correctly, you're proposing a time source
+that's global to the filesystem and that guarantees it will always
+return a unique value by incrementing the nanoseconds field if jiffies
+haven't changed since the last time it was called.
 
-I can't come up with an immediate objection.  I'm also not opposed to
-your patch as it stands.
+(Does it really need to be global across all filesystems?  Or is it
+unreasonable to expect your unbelievably-fast make's to behave well when
+sources and targets live on different filesystems?)
 
 --b.
