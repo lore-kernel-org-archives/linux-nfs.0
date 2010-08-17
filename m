@@ -1,74 +1,100 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-iw0-f174.google.com ([209.85.214.174]:48094 "EHLO
-	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755707Ab0HXQf1 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 24 Aug 2010 12:35:27 -0400
-Received: by iwn5 with SMTP id 5so4689906iwn.19
-        for <linux-nfs@vger.kernel.org>; Tue, 24 Aug 2010 09:35:26 -0700 (PDT)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 1/5] libexport.a: Prepare to recognize IPv6 addresses in
-	client_gettype()
-To: steved@redhat.com
-Cc: linux-nfs@vger.kernel.org
-Date: Tue, 24 Aug 2010 12:35:22 -0400
-Message-ID: <20100824163522.2433.38923.stgit@matisse.1015granger.net>
-In-Reply-To: <20100824162926.2433.7535.stgit@matisse.1015granger.net>
-References: <20100824162926.2433.7535.stgit@matisse.1015granger.net>
-Content-Type: text/plain; charset="utf-8"
+Received: from mx1.redhat.com ([209.132.183.28]:19280 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750936Ab0HQTio (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 17 Aug 2010 15:38:44 -0400
+Received: from int-mx02.intmail.prod.int.phx2.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
+	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id o7HJchEM023648
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Tue, 17 Aug 2010 15:38:43 -0400
+Received: from fathat.boston.devel.redhat.com (fathat.boston.devel.redhat.com [10.16.60.125])
+	by int-mx02.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id o7HJcgrk011196
+	for <linux-nfs@vger.kernel.org>; Tue, 17 Aug 2010 15:38:43 -0400
+From: Steve Dickson <steved@redhat.com>
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: [PATCH 1/2] Teach clients to map numeric strings into valid uids and gids.
+Date: Tue, 17 Aug 2010 15:38:44 -0400
+Message-Id: <1282073925-18707-2-git-send-email-steved@redhat.com>
+In-Reply-To: <1282073925-18707-1-git-send-email-steved@redhat.com>
+References: <1282073925-18707-1-git-send-email-steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-The current open-coded parsing logic in client_gettype() will be hard
-to modify to recognize IPv6 addresses.  Use a more generic mechanism
-for detecting IP presentation addresses.
+When a server can not map a uid or gid they can send
+an numeric string (one that does not include the @domain)
+of the given id. When this occurs the client will can use
+that numeric representation iff that id exists on the client.
 
-IPv6 will be enabled automatically in client_gettype() when host_pton()
-is changed to support IPv6 addresses.
-
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Signed-off-by: Steve Dickson <steved@redhat.com>
 ---
+ utils/idmapd/idmapd.c |   38 ++++++++++++++++++++++++++++++++++++++
+ 1 files changed, 38 insertions(+), 0 deletions(-)
 
- support/export/client.c |   23 ++++++++++++++---------
- 1 files changed, 14 insertions(+), 9 deletions(-)
-
-diff --git a/support/export/client.c b/support/export/client.c
-index 21001ce..3e797c9 100644
---- a/support/export/client.c
-+++ b/support/export/client.c
-@@ -602,7 +602,8 @@ client_check(const nfs_client *clp, const struct addrinfo *ai)
- int
- client_gettype(char *ident)
- {
--	char	*sp;
-+	struct addrinfo *ai;
-+	char *sp;
- 
- 	if (ident[0] == '\0' || strcmp(ident, "*")==0)
- 		return MCL_ANONYMOUS;
-@@ -622,12 +623,16 @@ client_gettype(char *ident)
- 		if (*sp == '\\' && sp[1])
- 			sp++;
- 	}
--	/* check for N.N.N.N */
--	sp = ident;
--	if(!isdigit(*sp) || strtoul(sp, &sp, 10) > 255 || *sp != '.') return MCL_FQDN;
--	sp++; if(!isdigit(*sp) || strtoul(sp, &sp, 10) > 255 || *sp != '.') return MCL_FQDN;
--	sp++; if(!isdigit(*sp) || strtoul(sp, &sp, 10) > 255 || *sp != '.') return MCL_FQDN;
--	sp++; if(!isdigit(*sp) || strtoul(sp, &sp, 10) > 255 || *sp != '\0') return MCL_FQDN;
--	/* we lie here a bit. but technically N.N.N.N == N.N.N.N/32 :) */
--	return MCL_SUBNETWORK;
-+
-+	/*
-+	 * Treat unadorned IP addresses as MCL_SUBNETWORK.
-+	 * Everything else is MCL_FQDN.
-+	 */
-+	ai = host_pton(ident);
-+	if (ai != NULL) {
-+		freeaddrinfo(ai);
-+		return MCL_SUBNETWORK;
-+	}
-+
-+	return MCL_FQDN;
+diff --git a/utils/idmapd/idmapd.c b/utils/idmapd/idmapd.c
+index 9ecab66..d6799c9 100644
+--- a/utils/idmapd/idmapd.c
++++ b/utils/idmapd/idmapd.c
+@@ -826,6 +826,21 @@ idtonameres(struct idmap_msg *im)
+ 		im->im_status = IDMAP_STATUS_SUCCESS;
  }
+ 
++static int
++alldigits(char *name)
++{
++	char *p = name;
++
++	if (name == NULL)
++		return 0;
++
++	while (*p != '\0') {
++		if (!isdigit(*p++))
++			return 0;
++	}
++	return 1;
++}
++
+ static void
+ nametoidres(struct idmap_msg *im)
+ {
+@@ -843,6 +858,18 @@ nametoidres(struct idmap_msg *im)
+ 		ret = nfs4_name_to_uid(im->im_name, &uid);
+ 		im->im_id = (u_int32_t) uid;
+ 		if (ret) {
++			/*
++			 * When a server sends numeric string that's
++			 * lacking the @domain part, and the uid exists
++			 * use the numeric string as the uid. 
++			 */
++			if (alldigits(im->im_name)) {
++				sscanf(im->im_name, "%u", &uid);
++				if (getpwuid(uid) != NULL) {
++					im->im_id = uid;	
++					break;
++				}
++			}
+ 			im->im_status = IDMAP_STATUS_LOOKUPFAIL;
+ 			im->im_id = nobodyuid;
+ 		}
+@@ -851,6 +878,17 @@ nametoidres(struct idmap_msg *im)
+ 		ret = nfs4_name_to_gid(im->im_name, &gid);
+ 		im->im_id = (u_int32_t) gid;
+ 		if (ret) {
++			/*
++			 * Do the same type of mapping of a numeric string
++			 * sent as the gid.
++			 */
++			if (alldigits(im->im_name)) {
++				sscanf(im->im_name, "%u", &gid);
++				if (getgrgid(gid) != NULL) {
++					im->im_id = gid;
++					break;
++				}
++			}
+ 			im->im_status = IDMAP_STATUS_LOOKUPFAIL;
+ 			im->im_id = nobodygid;
+ 		}
+-- 
+1.7.1
 
