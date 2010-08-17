@@ -1,51 +1,38 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:58434 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757250Ab0HaMZH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 31 Aug 2010 08:25:07 -0400
-Message-ID: <4C7CF499.5090003@RedHat.com>
-Date: Tue, 31 Aug 2010 08:24:57 -0400
-From: Steve Dickson <SteveD@redhat.com>
-To: Jeff Layton <jlayton@redhat.com>
-CC: linux-nfs@vger.kernel.org, bfields@fieldses.org, chuck.lever@oracle.com
-Subject: Re: [PATCH] rpc.nfsd: mount up nfsdfs is it doesn't appear to be
- mounted yet
-References: <1282995314-8317-1-git-send-email-jlayton@redhat.com>	<4C7BD394.3030705@RedHat.com>	<20100830121600.529669bd@tlielax.poochiereds.net>	<4C7BE1FC.2020400@RedHat.com> <20100830134801.1696dffa@tlielax.poochiereds.net>
-In-Reply-To: <20100830134801.1696dffa@tlielax.poochiereds.net>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from earthlight.etchedpixels.co.uk ([81.2.110.250]:45538 "EHLO
+	www.etchedpixels.co.uk" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1750705Ab0HQTgy (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 17 Aug 2010 15:36:54 -0400
+Date: Tue, 17 Aug 2010 20:52:20 +0100
+From: Alan Cox <alan@lxorguk.ukuu.org.uk>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: "Patrick J. LoPresti" <lopresti@gmail.com>,
+        Andi Kleen <andi@firstfloor.org>, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-kernel <linux-kernel@vger.kernel.org>
+Subject: Re: Proposal: Use hi-res clock for file timestamps
+Message-ID: <20100817205220.44edb294@lxorguk.ukuu.org.uk>
+In-Reply-To: <20100817192937.GD26609@fieldses.org>
+References: <AANLkTimnyXKahtjaFeSsgcq=xMy-pP3na1jidQhZ-dt2@mail.gmail.com>
+	<87aaolwar8.fsf@basil.nowhere.org>
+	<20100817174134.GA23176@fieldses.org>
+	<20100817182920.GD18161@basil.fritz.box>
+	<20100817190447.GA28049@fieldses.org>
+	<AANLkTi=w1UA5ZZDBigpxMiL7A7DnbnQhLkg62JZpC6Ri@mail.gmail.com>
+	<20100817203941.729830b7@lxorguk.ukuu.org.uk>
+	<20100817192937.GD26609@fieldses.org>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+> (Does it really need to be global across all filesystems?  Or is it
+> unreasonable to expect your unbelievably-fast make's to behave well when
+> sources and targets live on different filesystems?)
 
+I don't believe it does for the NFS semantics. You can't do it globally
+because then you get weirdness between local file systems that support
+u/nsecs and those that don't.
 
-On 08/30/2010 01:48 PM, Jeff Layton wrote:
-> On Mon, 30 Aug 2010 12:53:16 -0400
-> Steve Dickson <SteveD@redhat.com> wrote:
->>>
->>> Hmmm...if I had known that it was ok to stop supporting old kernels,
->>> the IPv6 support for rpc.nfsd would have been a heck of a lot easier to
->>> implement.
->> I thought you said the legacy interface would not work with IPV6 or
->> did I misunderstand you? 
->>
-> 
-> Sorry, forgot to answer this part. IPv6 indeed will not work when using
-> the legacy interface. In order to get the IPv6 code in though, I ended
-> up rewriting a large swath of rpc.nfsd. That task would have been
-> easier had I not needed to deal with the legacy nfsctl() interface.
-> 
-So I'm thinking this the final nail in the coffin of the legacy interface
-at least in rpc.nfsd. So if /proc/fs/nfsd filesystem is not or can not
-be mounted then rpc.nfsd should fail... IMHO...
+It's enough to fix NFS I believe.
 
-Maybe something like:
-
-if (stat("/proc/fs/nfsd") < 0) {
-    if (system("mount /proc/fs/nfsd") < 0) {
-        xlog(L_ERROR, "Unable to mount /proc/fs/nfsd");
-        exit 0;
-    }
-}
-
-steved.
+Alan
