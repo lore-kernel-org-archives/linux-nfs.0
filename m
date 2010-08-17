@@ -1,61 +1,139 @@
-From: Tom Haynes <tdh-8AdZ+HgO7noAvxtiuMwx3w@public.gmane.org>
-Subject: Re: [PATCH 0/2] Support for Numeric Representations of UIDs and GIDs.
-Date: Tue, 17 Aug 2010 15:30:35 -0500
-Message-ID: <4C6AF16B.2010807@excfb.com>
-References: <1282073925-18707-1-git-send-email-steved@redhat.com> <4C6AE85E.4000305@excfb.com> <4C6AEB43.5080508@RedHat.com>
+From: Randy Dunlap <randy.dunlap@oracle.com>
+Subject: Re: linux-next: Tree for August 9 (nfs)
+Date: Tue, 17 Aug 2010 14:39:08 -0700
+Message-ID: <4C6B017C.8030404@oracle.com>
+References: <20100809132314.789e13f3.sfr@canb.auug.org.au>	 <20100809100856.b03a9bc1.randy.dunlap@oracle.com>	 <20100812091842.6a3b84b9.randy.dunlap@oracle.com>	 <1281634268.14329.18.camel@heimdal.trondhjem.org>	 <4C643136.5090808@oracle.com> <1282080208.12506.7.camel@heimdal.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-To: Steve Dickson <SteveD@redhat.com>
+Content-Type: text/plain; charset=UTF-8
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+	linux-nfs@vger.kernel.org, Stephen Rothwell <sfr@canb.auug.org.au>,
+	linux-next@vger.kernel.org, LKML <linux-kernel@vger.kernel.org>
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from eastrmmtao106.cox.net ([68.230.240.48]:54952 "EHLO
-	eastrmmtao106.cox.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750853Ab0HQUb3 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 17 Aug 2010 16:31:29 -0400
-In-Reply-To: <4C6AEB43.5080508-AfCzQyP5zfLQT0dZR+AlfA@public.gmane.org>
+Received: from rcsinet10.oracle.com ([148.87.113.121]:54057 "EHLO
+	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750746Ab0HQVl1 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 17 Aug 2010 17:41:27 -0400
+In-Reply-To: <1282080208.12506.7.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Steve Dickson wrote:
-> On 08/17/2010 03:51 PM, Tom Haynes wrote:
->   
->> Steve Dickson wrote:
->>     
->>> In recent NFS v2/v3 to v4 transitions, one of the sticking points have been that fact v4 uses strings in the format
->>> of "user@domain" instead of 32bit integers for uids and gids.
+On 08/17/10 14:23, Trond Myklebust wrote:
+> On Thu, 2010-08-12 at 10:36 -0700, Randy Dunlap wrote:
+>> On 08/12/10 10:31, Trond Myklebust wrote:
+>>> On Thu, 2010-08-12 at 09:18 -0700, Randy Dunlap wrote:
+>>>> On Mon, 9 Aug 2010 10:08:56 -0700 Randy Dunlap wrote:
+>>>>
+>>>> ping??
 >>>
->>> When the string can not be mapped, its mapped to the 'nobody'
->>> user which is not optimal for things like backup servers and
->>> such where the ids will not be know by both sides.
+>>> Hi Randy,
 >>>
->>> So this patch series enables the server to send out numeric string of uids and gids that do not have the '@domain' part.
->>> The series also adds functionality to the client that parse these
->>> type of strings and will use the numeric representation
->>> of the ids iff the id exists on the client, which is sightly different that Solaris. Solaris dose not have that
->>> "id must exist" restriction.
->>>   
->>>       
->> No, Solaris does have that restriction.
->>     
-> I thought so too.... but when I had an Open Solaris client 
-> access an directory, on a Linux server, that was owned by a 
-> user that was non-existent on either the server or client, 
-> I got the numeric representation as the owner.... 
-> Basically:
->
-> osol# mount Linux-server:/home /mnt/home
-> osol# ls -ld /mnt/home/noid
-> drwxr-xr-x+  2 111      111         4096 Aug 17 11:37 /mnt/home/noid/
-> osol# grep 111 /etc/passwd
-> osol#
->
-> steved.
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->   
+>>> I'm sorry. A heavy travel schedule is affecting my response time at the
+>>> moment. I'll try to take care of this by Tuesday (when I get back home)
+>>> if not before.
+>>
+>> No problem.  Just wanted to make sure that it's not lost.
+> 
+> Hi Randy,
+> 
+> How about the following fix?
 
-That is what I get for reading code instead of running it. :->
+Thanks, this fixes the build error.
 
-Actually, it might be that the server acts that way and not the client.
+Acked-by: Randy Dunlap <randy.dunlap@oracle.com>
+
+
+> Cheers
+>   Trond
+> 
+> ------------------------------------------------------------------------------------
+> Subject: [PATCH] NFS: Fix the selection of security flavours in Kconfig
+> From: Trond Myklebust <Trond.Myklebust@netapp.com>
+> 
+> Randy Dunlap reports:
+> 
+> ERROR: "svc_gss_principal" [fs/nfs/nfs.ko] undefined!
+> 
+> 
+> because in fs/nfs/Kconfig, NFS_V4 selects RPCSEC_GSS_KRB5
+> and/or in fs/nfsd/Kconfig, NFSD_V4 selects RPCSEC_GSS_KRB5.
+> 
+> RPCSEC_GSS_KRB5 does 5 selects, but none of these is enforced/followed
+> by the fs/nfs[d]/Kconfig configs:
+> 
+> 	select SUNRPC_GSS
+> 	select CRYPTO
+> 	select CRYPTO_MD5
+> 	select CRYPTO_DES
+> 	select CRYPTO_CBC
+> 
+> Reported-by: Randy Dunlap <randy.dunlap@oracle.com>
+> Cc: J. Bruce Fields <bfields@fieldses.org>
+> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+> ---
+> 
+>  fs/nfs/Kconfig     |    1 -
+>  fs/nfsd/Kconfig    |    1 -
+>  net/sunrpc/Kconfig |    9 +++++----
+>  3 files changed, 5 insertions(+), 6 deletions(-)
+> 
+> 
+> diff --git a/fs/nfs/Kconfig b/fs/nfs/Kconfig
+> index cc1bb33..2ddc384 100644
+> --- a/fs/nfs/Kconfig
+> +++ b/fs/nfs/Kconfig
+> @@ -63,7 +63,6 @@ config NFS_V3_ACL
+>  config NFS_V4
+>  	bool "NFS client support for NFS version 4"
+>  	depends on NFS_FS
+> -	select RPCSEC_GSS_KRB5
+>  	help
+>  	  This option enables support for version 4 of the NFS protocol
+>  	  (RFC 3530) in the kernel's NFS client.
+> diff --git a/fs/nfsd/Kconfig b/fs/nfsd/Kconfig
+> index 503b9da..95932f5 100644
+> --- a/fs/nfsd/Kconfig
+> +++ b/fs/nfsd/Kconfig
+> @@ -69,7 +69,6 @@ config NFSD_V4
+>  	depends on NFSD && PROC_FS && EXPERIMENTAL
+>  	select NFSD_V3
+>  	select FS_POSIX_ACL
+> -	select RPCSEC_GSS_KRB5
+>  	help
+>  	  This option enables support in your system's NFS server for
+>  	  version 4 of the NFS protocol (RFC 3530).
+> diff --git a/net/sunrpc/Kconfig b/net/sunrpc/Kconfig
+> index 443c161..3376d76 100644
+> --- a/net/sunrpc/Kconfig
+> +++ b/net/sunrpc/Kconfig
+> @@ -18,10 +18,11 @@ config SUNRPC_XPRT_RDMA
+>  	  If unsure, say N.
+>  
+>  config RPCSEC_GSS_KRB5
+> -	tristate "Secure RPC: Kerberos V mechanism (EXPERIMENTAL)"
+> -	depends on SUNRPC && EXPERIMENTAL
+> +	tristate
+> +	depends on SUNRPC && CRYPTO
+> +	prompt "Secure RPC: Kerberos V mechanism" if !(NFS_V4 || NFSD_V4)
+> +	default y
+>  	select SUNRPC_GSS
+> -	select CRYPTO
+>  	select CRYPTO_MD5
+>  	select CRYPTO_DES
+>  	select CRYPTO_CBC
+> @@ -34,7 +35,7 @@ config RPCSEC_GSS_KRB5
+>  	  available from http://linux-nfs.org/.  In addition, user-space
+>  	  Kerberos support should be installed.
+>  
+> -	  If unsure, say N.
+> +	  If unsure, say Y.
+>  
+>  config RPCSEC_GSS_SPKM3
+>  	tristate "Secure RPC: SPKM3 mechanism (EXPERIMENTAL)"
+> 
+> 
+
+
+-- 
+~Randy
+*** Remember to use Documentation/SubmitChecklist when testing your code ***
