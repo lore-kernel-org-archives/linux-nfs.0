@@ -1,39 +1,81 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([18.85.46.34]:33931 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751947Ab0HZKpm (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Aug 2010 06:45:42 -0400
-Date: Thu, 26 Aug 2010 06:45:41 -0400
-From: Christoph Hellwig <hch@infradead.org>
-To: Harry Edmon <harry@uw.edu>
-Cc: Christoph Hellwig <hch@infradead.org>, linux-nfs@vger.kernel.org
-Subject: Re: Odd problem with Stale NFS file handle - NFS v3 server under
- 2.6.35.x
-Message-ID: <20100826104541.GA23693@infradead.org>
-References: <4C7407D2.1040304@uw.edu>
- <20100825105320.GA17190@infradead.org>
- <4C75948D.4040400@uw.edu>
+Received: from fieldses.org ([174.143.236.118]:32983 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754480Ab0HQRnj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 17 Aug 2010 13:43:39 -0400
+Date: Tue, 17 Aug 2010 13:41:34 -0400
+To: Andi Kleen <andi@firstfloor.org>
+Cc: "Patrick J. LoPresti" <lopresti@gmail.com>, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-kernel <linux-kernel@vger.kernel.org>
+Subject: Re: Proposal: Use hi-res clock for file timestamps
+Message-ID: <20100817174134.GA23176@fieldses.org>
+References: <AANLkTimnyXKahtjaFeSsgcq=xMy-pP3na1jidQhZ-dt2@mail.gmail.com>
+ <87aaolwar8.fsf@basil.nowhere.org>
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4C75948D.4040400@uw.edu>
+In-Reply-To: <87aaolwar8.fsf@basil.nowhere.org>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, Aug 25, 2010 at 03:09:17PM -0700, Harry Edmon wrote:
-> Christoph Hellwig wrote:
-> >Are you running xfs on this machine?  If so can you please try
-> >this patch:
-> >
-> >	http://git.kernel.org/?p=linux/kernel/git/dgc/xfsdev.git;a=commitdiff;h=4536f2ad8b330453d7ebec0746c4374eadd649b1
-> >
-> This looks very good so far.   I have been running it for 7 hours
-> with no problems.  That is much longer than I was able to run before
-> the patch.
+On Tue, Aug 17, 2010 at 04:54:03PM +0200, Andi Kleen wrote:
+> "Patrick J. LoPresti" <lopresti@gmail.com> writes:
 > 
-> I notice that this patch (along with other xfs patches) has been
-> submitted for 2.6.36-rc3.   Do you plan to try to get this into
-> 2.6.35.5+ (2.6.35.4 is already in testing)?
+> >
+> > 1) Anybody who cares about file system performance is already using
+> > "noatime" or "relatime", which mitigates the hit greatly.
+> 
+> Consider mtime.
+> 
+> > If the above patch is too slow for some architectures, how about
+> > making it a configuration option?  Call it "CONFIG_1980S_FILE_TICK",
+> > have it default to YES on the architectures that care and NO on
+> > anything remotely modern and sane.
+> >
+> > OK that's my proposal.  Bash away.
+> 
+> I suspect it will be a performance disaster on x86 for VFS intensive
+> applications on capable file systems. VFS is very performance
+> critical. These checks lurk on unexpected places too, e.g. on /dev
+> access.
+> 
+> Even TSC is much slower than just reading the variable.
+> 
+> Also you should check if the file system granuality 
+> even supports it, it's completely wasted on a ext3 for example.
 
-The commit was Cc'ed to the stable team, so it's expect that they will
-pick it up.
+Agreed, ext3's probably a lost cause here.
 
+> Maybe as a optional sysctl, default to off.
+
+OK, so that leaves us with the race, even on newer filesystems:
+
+	1. File is modified, mtime updated
+	2. Client fetches mtime to revalidate cache
+	3. File is modified again, mtime updated
+	4. Client fetches new mtime to revalidate cache
+
+If step 3 doesn't change the mtime, then step 4 (no matter how much
+later it is performed) will return the wrong result, and client
+applications will see stale data.
+
+If we want to avoid that race, every modification of file data must
+result in the mtime being updated to something different from the last
+mtime seen by the client.
+
+(A slight window between data modification and mtime update may be OK,
+as long as the update happens eventually, and before the change is
+committed to disk--close-to-open semantics mean that NFS clients can
+live with not seeing changes until data is written to disk.)
+
+Possible responses:
+
+	- Tell everyone to use NFSv4 (and make sure we have
+	  changeattr/i_version working correctly).
+	- Use a finer-grained time source.  (I believe you when you say
+	  the TSC is too slow, but maybe we should run some tests to
+	  make sure.)
+	- Increment mtime by a nanosecond when necessary.  
+	- ?
+
+--b.
