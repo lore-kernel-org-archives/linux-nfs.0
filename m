@@ -1,49 +1,95 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:24295 "EHLO
-	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1755203Ab0HXOmh (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 24 Aug 2010 10:42:37 -0400
-Message-ID: <4C73DA58.9090408@panasas.com>
-Date: Tue, 24 Aug 2010 17:42:32 +0300
-From: Benny Halevy <bhalevy@panasas.com>
-To: "William A. (Andy) Adamson" <androsadamson@gmail.com>,
-        NFS list <linux-nfs@vger.kernel.org>
-Subject: Re: The pnfs-submit tree with renaming done.
-References: <AANLkTinPR+vKXFvptrh7vKHgf1fSqQ2Fq7YjYNDw0_rp@mail.gmail.com>	<4C72171F.8010802@panasas.com>	<4C72318C.4080402@panasas.com> <AANLkTimw2oFRvLbrHAgTY7zoWQG15qhyz33k9+t69Xv=@mail.gmail.com>
-In-Reply-To: <AANLkTimw2oFRvLbrHAgTY7zoWQG15qhyz33k9+t69Xv=@mail.gmail.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from cantor2.suse.de ([195.135.220.15]:44086 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751041Ab0HQFTA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 17 Aug 2010 01:19:00 -0400
+From: NeilBrown <neilb@suse.de>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Date: Tue, 17 Aug 2010 15:15:09 +1000
+Subject: [PATCH 1.5/6] Fix race in new request delay code.
+Cc: linux-nfs@vger.kernel.org, Anton Blanchard <anton@au1.ibm.com>
+Message-ID: <20100817051509.26151.91127.stgit@localhost.localdomain>
+In-Reply-To: <20100812065722.11459.18978.stgit@localhost.localdomain>
+References: <20100812065722.11459.18978.stgit@localhost.localdomain>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Hi Andy, 
+If the 'wait_for_completion_interruptible_timeout' completes due
+to interrupt or timeout, just before cache_revisit request gets around
+to calling ->revisit and thus the completion, we have a race with bad
+consequences.
 
-Thanks for the tarball you sent with the pnfs-submit patchset
-with renamed types.
+cache_defer_req will see that sleeper.handle.hash is empty (because
+cache_revisit_request has already done the list_del_init), and that
+CACHE_PENDING is clear, and so will exit that function leaving any
+local variables such as 'sleeper' undefined.
 
-I merged into the tree and applied the renames onto the post submit patches
-and obj/block layout drivers.
+Meanwhile cache_revisit_request could delete sleeper.handle.recent
+from the 'pending' list, and call sleeper.hande.revisit, any of which
+could have new garbage values and so could trigger a BUG.
 
-I added some renames for the callback code to match
-the existing naming convention and did a bit of cleanup of the patchset
-and the post submit series, including splicing the tail of the submit patchset
-into the post submit branch head.
+Reported-by: Anton Blanchard <anton@au1.ibm.com>
+Signed-off-by: NeilBrown <neilb@suse.de>
+---
 
-I revived the "pnfsd, pnfs: protocol level pnfs constants" preliminary patch
-as it contains no-brainer nfsv4.1 definitions that Trond already agreed
-can be submitted as a whole and not per use.
-This simplifies rebasing of the pnfs-submit branch as pnfs-submit-all
-and makes more sense overall IMO.
+Hi Bruce,
 
-I also resurrected Bruce's stats code in the "remove this unused code"
-patch, and added a question mark for this patch as I think it requires
-more through review to agree exactly what should go away for good.
-(Some of it is obvious and I should've probably put it aside...)
+This should probably be merged into the patch 1/6 of the earlier
+series.
 
-I released this clean version as pnfs-all-2.6.35-2010-08-24
-ad I'm working on rebasing onto 2.6.36-rc1.
+I'm not certain this actually fixed what Anton reported (against
+SLES), but there is a fair chance and I only found it because of the
+report.
 
-At this point, I'd like to close the 2.6.35 stream for new features
-and release only fixes to it from now on.
+Thanks,
+NeilBrown
 
-Benny
+
+
+ net/sunrpc/cache.c |   28 ++++++++++++++++++++--------
+ 1 files changed, 20 insertions(+), 8 deletions(-)
+
+diff --git a/net/sunrpc/cache.c b/net/sunrpc/cache.c
+index 2fdd66b..ee4f799 100644
+--- a/net/sunrpc/cache.c
++++ b/net/sunrpc/cache.c
+@@ -577,15 +577,27 @@ static int cache_defer_req(struct cache_req *req, struct cache_head *item)
+ 	}
+ 
+ 	if (dreq == &sleeper.handle) {
+-		wait_for_completion_interruptible_timeout(
+-			&sleeper.completion, req->thread_wait);
+-		spin_lock(&cache_defer_lock);
+-		if (!list_empty(&sleeper.handle.hash)) {
+-			list_del_init(&sleeper.handle.recent);
+-			list_del_init(&sleeper.handle.hash);
+-			cache_defer_cnt--;
++		if (wait_for_completion_interruptible_timeout(
++			    &sleeper.completion, req->thread_wait) <= 0) {
++			/* The completion wasn't completed, so we need
++			 * to clean up
++			 */
++			spin_lock(&cache_defer_lock);
++			if (!list_empty(&sleeper.handle.hash)) {
++				list_del_init(&sleeper.handle.recent);
++				list_del_init(&sleeper.handle.hash);
++				cache_defer_cnt--;
++				spin_unlock(&cache_defer_lock);
++			} else {
++				/* cache_revisit_request already removed
++				 * this from the hash table, but hasn't
++				 * called ->revisit yet.  It will very soon
++				 * and we need to wait for it.
++				 */
++				spin_unlock(&cache_defer_lock);
++				wait_for_completion(&sleeper.completion);
++			}
+ 		}
+-		spin_unlock(&cache_defer_lock);
+ 		if (test_bit(CACHE_PENDING, &item->flags)) {
+ 			/* item is still pending, try request
+ 			 * deferral
+
+
