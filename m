@@ -1,70 +1,42 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:25364 "EHLO
-	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1752491Ab0HEPxu (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 5 Aug 2010 11:53:50 -0400
-From: Benny Halevy <bhalevy@panasas.com>
-To: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
-Cc: linux-nfs@vger.kernel.org, Benny Halevy <bhalevy@panasas.com>
-Subject: [PATCH] SQUASHME: pnfs-submit: reduce nesting level in set_pnfs_layoutdriver
-Date: Thu,  5 Aug 2010 18:53:44 +0300
-Message-Id: <1281023624-27452-1-git-send-email-bhalevy@panasas.com>
-In-Reply-To: <1280193018-1628-1-git-send-email-Ricardo.Labiaga@netapp.com>
-References: <1280193018-1628-1-git-send-email-Ricardo.Labiaga@netapp.com>
+Received: from earthlight.etchedpixels.co.uk ([81.2.110.250]:35009 "EHLO
+	www.etchedpixels.co.uk" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1751316Ab0HQTjO (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 17 Aug 2010 15:39:14 -0400
+Date: Tue, 17 Aug 2010 20:54:41 +0100
+From: Alan Cox <alan@lxorguk.ukuu.org.uk>
+To: "Patrick J. LoPresti" <lopresti@gmail.com>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>, Andi Kleen <andi@firstfloor.org>,
+        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-kernel <linux-kernel@vger.kernel.org>
+Subject: Re: Proposal: Use hi-res clock for file timestamps
+Message-ID: <20100817205441.200ab9a4@lxorguk.ukuu.org.uk>
+In-Reply-To: <AANLkTi=sOW0Cgci+xX6rRmz+B-is0xb8DoKD350bFJN1@mail.gmail.com>
+References: <AANLkTimnyXKahtjaFeSsgcq=xMy-pP3na1jidQhZ-dt2@mail.gmail.com>
+	<87aaolwar8.fsf@basil.nowhere.org>
+	<20100817174134.GA23176@fieldses.org>
+	<20100817182920.GD18161@basil.fritz.box>
+	<20100817190447.GA28049@fieldses.org>
+	<AANLkTi=w1UA5ZZDBigpxMiL7A7DnbnQhLkg62JZpC6Ri@mail.gmail.com>
+	<20100817203941.729830b7@lxorguk.ukuu.org.uk>
+	<AANLkTi=sOW0Cgci+xX6rRmz+B-is0xb8DoKD350bFJN1@mail.gmail.com>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-Simplify the code a bit.
+> I am having trouble seeing why this is a better idea than a simple
+> mount option to obtain decent resolution timestamps.  (Not that we
+> can't have both...)  Is there any objection to the mount option I am
+> proposing?
 
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
----
- fs/nfs/pnfs.c |   26 ++++++++++++++------------
- 1 files changed, 14 insertions(+), 12 deletions(-)
+I have none. I doubt I'd use it as it would be too expensive on system
+performance for some of my boxes, while having an incrementing value is
+cheap.
 
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 5f91763..393855e 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -214,23 +214,25 @@ set_pnfs_layoutdriver(struct nfs_server *server, u32 id)
- 		find_pnfs(id, &mod);
- 	}
- 
--	if (mod) {
--		server->pnfs_curr_ld = mod->pnfs_ld_type;
--		if (mod->pnfs_ld_type->ld_io_ops->initialize_mountpoint(
--			server->nfs_client)) {
--			printk(KERN_ERR "%s: Error initializing mount point "
--			       "for layout driver %u. ", __func__, id);
--			goto out_err;
--		}
--		dprintk("%s: pNFS module for %u set\n", __func__, id);
--		return;
-+	if (!mod) {
-+		dprintk("%s: No pNFS module found for %u. ", __func__, id);
-+		goto out_err;
-+	}
-+
-+	server->pnfs_curr_ld = mod->pnfs_ld_type;
-+	if (mod->pnfs_ld_type->ld_io_ops->initialize_mountpoint(
-+							server->nfs_client)) {
-+		printk(KERN_ERR "%s: Error initializing mount point "
-+		       "for layout driver %u. ", __func__, id);
-+		goto out_err;
- 	}
- 
--	dprintk("%s: No pNFS module found for %u. ", __func__, id);
-+	dprintk("%s: pNFS module for %u set\n", __func__, id);
-+	return;
-+
- out_err:
- 	dprintk("Using NFSv4 I/O\n");
- 	server->pnfs_curr_ld = NULL;
--	return;
- }
- 
- /* Allow I/O module to set its functions structure */
--- 
-1.7.2
+I don't see the two as conflicting - in fact the bits you need to do the
+mount option are the bits you also need to do the counter version as
+well. One fixes ordering at no real cost, the other adds high res
+timestamps, both are useful.
 
+Alan
