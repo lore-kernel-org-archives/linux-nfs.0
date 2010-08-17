@@ -1,82 +1,77 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:35044 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:12939 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757281Ab0HDNug (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 4 Aug 2010 09:50:36 -0400
-Message-ID: <4C597028.9040404@RedHat.com>
-Date: Wed, 04 Aug 2010 09:50:32 -0400
-From: Steve Dickson <SteveD@redhat.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 08/24] Removed warnings from mountd.c
-References: <1279669057-17509-1-git-send-email-steved@redhat.com> <1279669057-17509-9-git-send-email-steved@redhat.com> <4C472D28.6050608@oracle.com>
-In-Reply-To: <4C472D28.6050608@oracle.com>
-Content-Type: text/plain; charset=ISO-8859-1
+	id S1751473Ab0HQTio (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 17 Aug 2010 15:38:44 -0400
+Received: from int-mx02.intmail.prod.int.phx2.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
+	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id o7HJciNj024464
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Tue, 17 Aug 2010 15:38:44 -0400
+Received: from fathat.boston.devel.redhat.com (fathat.boston.devel.redhat.com [10.16.60.125])
+	by int-mx02.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id o7HJcgrl011196
+	for <linux-nfs@vger.kernel.org>; Tue, 17 Aug 2010 15:38:43 -0400
+From: Steve Dickson <steved@redhat.com>
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: [PATCH 2/2] Add server support to use of numeric strings for uid and gids.
+Date: Tue, 17 Aug 2010 15:38:45 -0400
+Message-Id: <1282073925-18707-3-git-send-email-steved@redhat.com>
+In-Reply-To: <1282073925-18707-1-git-send-email-steved@redhat.com>
+References: <1282073925-18707-1-git-send-email-steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
+When a uid or gid does not map into the a domain and the
+new 'NumericIDs' variable is enabled in idmapd.conf, the server
+will send out numeric representations, strings without the
+@domain part, of the given id.
 
+Signed-off-by: Steve Dickson <steved@redhat.com>
+---
+ utils/idmapd/idmapd.c |   14 +++++++++++++-
+ 1 files changed, 13 insertions(+), 1 deletions(-)
 
-On 07/21/2010 01:23 PM, Chuck Lever wrote:
-> Hi Steve-
-> 
->>
->> diff --git a/utils/mountd/mountd.c b/utils/mountd/mountd.c
->> index 6571454..43aec11 100644
->> --- a/utils/mountd/mountd.c
->> +++ b/utils/mountd/mountd.c
->> @@ -194,6 +194,9 @@ sig_hup (int sig)
->>   bool_t
->>   mount_null_1_svc(struct svc_req *rqstp, void *argp, void *resp)
->>   {
->> +    xlog(D_CALL, "MNT1(%s) null: rqstp %p argp %p resp %p",
->> +        rqstp, argp, resp);
->> +
->>       return 1;
->>   }
->>
-> 
-> I have to agree with Bruce: adding xlog() calls here is the wrong thing
-> to do.  Instead, use
-> 
->    __attribute__((unused))
-> 
-> for the unused parameters.
-Boy... using those really make the code look ugly...
-bool_t
-mount_null_1_svc(
-    __attribute__((unused))struct svc_req *rqstp , 
-    __attribute__((unused))void *argp, 
-    __attribute__((unused))void *resp)
-{
-    return 1;
-}
-So ugly up the code verses adding a bit more debugging... I must
-say I'm leaning toward the latter... 
+diff --git a/utils/idmapd/idmapd.c b/utils/idmapd/idmapd.c
+index d6799c9..7f1291d 100644
+--- a/utils/idmapd/idmapd.c
++++ b/utils/idmapd/idmapd.c
+@@ -794,15 +794,22 @@ nfsopen(struct idmap_client *ic)
+ static void
+ idtonameres(struct idmap_msg *im)
+ {
+-	char domain[NFS4_MAX_DOMAIN_LEN];
++	char domain[NFS4_MAX_DOMAIN_LEN], *numids;
+ 	int ret = 0;
+ 
+ 	ret = nfs4_get_default_domain(NULL, domain, sizeof(domain));
++	numids = conf_get_str("Mapping", "NumericIDs");
++
+ 	switch (im->im_type) {
+ 	case IDMAP_TYPE_USER:
+ 		ret = nfs4_uid_to_name(im->im_id, domain, im->im_name,
+ 				sizeof(im->im_name));
+ 		if (ret) {
++			if (numids && strcasecmp(numids, "yes") == 0) {
++				sprintf(im->im_name, "%d", im->im_id);
++				ret=0;
++				break;
++			}
+ 			if (strlen(nobodyuser) < sizeof(im->im_name))
+ 				strcpy(im->im_name, nobodyuser);
+ 			else
+@@ -813,6 +820,11 @@ idtonameres(struct idmap_msg *im)
+ 		ret = nfs4_gid_to_name(im->im_id, domain, im->im_name,
+ 				sizeof(im->im_name));
+ 		if (ret) {
++			if (numids && strcasecmp(numids, "yes") == 0) {
++				sprintf(im->im_name, "%d", im->im_id);
++				ret=0;
++				break;
++			}
+ 			if (strlen(nobodygroup) < sizeof(im->im_name))
+ 				strcpy(im->im_name, nobodygroup);
+ 			else
+-- 
+1.7.1
 
-> 
->>       if (!(exp = auth_authenticate("unmount", sin, p))) {
->>           return 1;
->> @@ -247,10 +253,15 @@ mount_umnt_1_svc(struct svc_req *rqstp, dirpath
->> *argp, void *resp)
->>   bool_t
->>   mount_umntall_1_svc(struct svc_req *rqstp, void *argp, void *resp)
->>   {
->> +    struct sockaddr_in *sin = nfs_getrpccaller_in(rqstp->rq_xprt);
->> +
->> +    xlog(D_CALL, "UMNT1(%s) unmountall: argp %s resp %p",
->> +        inet_ntoa(sin->sin_addr), argp, resp);
->> +
->>       /* Reload /etc/xtab if necessary */
->>       auth_reload();
->>
->> -    mountlist_del_all(nfs_getrpccaller_in(rqstp->rq_xprt));
->> +    mountlist_del_all(sin);
-> 
-> You couldn't wait until the rest of my IPv6 mountd patches are
-> integrated?  I address a lot of these problems in those patches, and now
-> I'm going to have to rebase all of that work.  What's the rush?
-No rush.. I just wanted to clean things up... 
-
-steved.
