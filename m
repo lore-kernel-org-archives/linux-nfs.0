@@ -1,95 +1,57 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:44086 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751041Ab0HQFTA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 17 Aug 2010 01:19:00 -0400
-From: NeilBrown <neilb@suse.de>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Date: Tue, 17 Aug 2010 15:15:09 +1000
-Subject: [PATCH 1.5/6] Fix race in new request delay code.
-Cc: linux-nfs@vger.kernel.org, Anton Blanchard <anton@au1.ibm.com>
-Message-ID: <20100817051509.26151.91127.stgit@localhost.localdomain>
-In-Reply-To: <20100812065722.11459.18978.stgit@localhost.localdomain>
-References: <20100812065722.11459.18978.stgit@localhost.localdomain>
-Content-Type: text/plain; charset="utf-8"
+Received: from mxout12.cac.washington.edu ([140.142.33.31]:41464 "EHLO
+	mxout12.cac.washington.edu" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1750713Ab0HQUMF convert rfc822-to-8bit
+	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 17 Aug 2010 16:12:05 -0400
+Received: from smtp.washington.edu (smtp.washington.edu [140.142.33.34] (may be forged))
+	by mxout12.cac.washington.edu (8.14.3+UW09.11/8.14.3+UW09.11) with ESMTP id o7HK8hXl011793
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Tue, 17 Aug 2010 13:08:43 -0700
+Content-Type: text/plain; charset=us-ascii
+Subject: Re: numeric UIDs
+From: David Brodbeck <brodbd@u.washington.edu>
+In-Reply-To: <4C6ADC57.80802@excfb.com>
+Date: Tue, 17 Aug 2010 13:08:42 -0700
+Message-Id: <F8D43B26-2795-4D8A-9429-0DBF0E75031D@u.washington.edu>
+References: <201008030401.33552.dreck@vmsd.ath.cx> <20100803192241.GD31579@fieldses.org> <4C6ACB70.7080409@excfb.com> <20100817182400.GE23176@fieldses.org> <4C6ADC57.80802@excfb.com>
+To: linux-nfs@vger.kernel.org
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-If the 'wait_for_completion_interruptible_timeout' completes due
-to interrupt or timeout, just before cache_revisit request gets around
-to calling ->revisit and thus the completion, we have a race with bad
-consequences.
 
-cache_defer_req will see that sleeper.handle.hash is empty (because
-cache_revisit_request has already done the list_del_init), and that
-CACHE_PENDING is clear, and so will exit that function leaving any
-local variables such as 'sleeper' undefined.
+On Aug 17, 2010, at 12:00 PM, Tom Haynes wrote:
 
-Meanwhile cache_revisit_request could delete sleeper.handle.recent
-from the 'pending' list, and call sleeper.hande.revisit, any of which
-could have new garbage values and so could trigger a BUG.
+> J. Bruce Fields wrote:
+>> 
+>> So the server rejects any attempts to set a numeric uid?
+>>  
+> 
+> No, only ones which do not have a valid mapping in /etc/passwd.
+> 
+>> That means the sort of dumb-backup scenario required above would, as in
+>> Linux, succeed over v3, but fail over v4?
+>>  
+> 
+> Yes, it appears so.
+> 
+>> And have there been reports of users hitting that issue, or does it
+>> remain a completely hypothetical problem?
+>> 
+>> --b.
+>>  
+> 
+> It is all hypothetical. I think you would have to work pretty hard to get a system in such a state.
 
-Reported-by: Anton Blanchard <anton@au1.ibm.com>
-Signed-off-by: NeilBrown <neilb@suse.de>
----
+It comes up pretty regularly when extracting "foreign" tar files on an NFSv4 mount, ones that contain numeric UIDs that don't correspond to a valid user on your system.  You get one error message printed for each file as tar tries to set the numeric UID.  Of course, in that case you can get around it by specifying --no-same-owner, and in most applications it doesn't matter.  It's noticeably different behavior than NFSv3, though.
 
-Hi Bruce,
+-- 
 
-This should probably be merged into the patch 1/6 of the earlier
-series.
-
-I'm not certain this actually fixed what Anton reported (against
-SLES), but there is a fair chance and I only found it because of the
-report.
-
-Thanks,
-NeilBrown
+David Brodbeck
+System Administrator, Linguistics
+University of Washington
 
 
-
- net/sunrpc/cache.c |   28 ++++++++++++++++++++--------
- 1 files changed, 20 insertions(+), 8 deletions(-)
-
-diff --git a/net/sunrpc/cache.c b/net/sunrpc/cache.c
-index 2fdd66b..ee4f799 100644
---- a/net/sunrpc/cache.c
-+++ b/net/sunrpc/cache.c
-@@ -577,15 +577,27 @@ static int cache_defer_req(struct cache_req *req, struct cache_head *item)
- 	}
- 
- 	if (dreq == &sleeper.handle) {
--		wait_for_completion_interruptible_timeout(
--			&sleeper.completion, req->thread_wait);
--		spin_lock(&cache_defer_lock);
--		if (!list_empty(&sleeper.handle.hash)) {
--			list_del_init(&sleeper.handle.recent);
--			list_del_init(&sleeper.handle.hash);
--			cache_defer_cnt--;
-+		if (wait_for_completion_interruptible_timeout(
-+			    &sleeper.completion, req->thread_wait) <= 0) {
-+			/* The completion wasn't completed, so we need
-+			 * to clean up
-+			 */
-+			spin_lock(&cache_defer_lock);
-+			if (!list_empty(&sleeper.handle.hash)) {
-+				list_del_init(&sleeper.handle.recent);
-+				list_del_init(&sleeper.handle.hash);
-+				cache_defer_cnt--;
-+				spin_unlock(&cache_defer_lock);
-+			} else {
-+				/* cache_revisit_request already removed
-+				 * this from the hash table, but hasn't
-+				 * called ->revisit yet.  It will very soon
-+				 * and we need to wait for it.
-+				 */
-+				spin_unlock(&cache_defer_lock);
-+				wait_for_completion(&sleeper.completion);
-+			}
- 		}
--		spin_unlock(&cache_defer_lock);
- 		if (test_bit(CACHE_PENDING, &item->flags)) {
- 			/* item is still pending, try request
- 			 * deferral
 
 
