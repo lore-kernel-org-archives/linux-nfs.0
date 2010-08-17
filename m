@@ -1,77 +1,61 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: [PATCH 2/2] Add server support to use of numeric strings for
- uid and gids.
-Date: Tue, 17 Aug 2010 16:28:16 -0400
-Message-ID: <1282076896.12506.3.camel@heimdal.trondhjem.org>
-References: <1282073925-18707-1-git-send-email-steved@redhat.com>
-	 <1282073925-18707-3-git-send-email-steved@redhat.com>
+From: Tom Haynes <tdh-8AdZ+HgO7noAvxtiuMwx3w@public.gmane.org>
+Subject: Re: [PATCH 0/2] Support for Numeric Representations of UIDs and GIDs.
+Date: Tue, 17 Aug 2010 15:30:35 -0500
+Message-ID: <4C6AF16B.2010807@excfb.com>
+References: <1282073925-18707-1-git-send-email-steved@redhat.com> <4C6AE85E.4000305@excfb.com> <4C6AEB43.5080508@RedHat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-To: Steve Dickson <steved@redhat.com>
+To: Steve Dickson <SteveD@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-out1.uio.no ([129.240.10.57]:40709 "EHLO mail-out1.uio.no"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750789Ab0HQU2W (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 17 Aug 2010 16:28:22 -0400
-In-Reply-To: <1282073925-18707-3-git-send-email-steved@redhat.com>
+Received: from eastrmmtao106.cox.net ([68.230.240.48]:54952 "EHLO
+	eastrmmtao106.cox.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750853Ab0HQUb3 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 17 Aug 2010 16:31:29 -0400
+In-Reply-To: <4C6AEB43.5080508-AfCzQyP5zfLQT0dZR+AlfA@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 2010-08-17 at 15:38 -0400, Steve Dickson wrote:
-> When a uid or gid does not map into the a domain and the
-> new 'NumericIDs' variable is enabled in idmapd.conf, the server
-> will send out numeric representations, strings without the
-> @domain part, of the given id.
-> 
-> Signed-off-by: Steve Dickson <steved@redhat.com>
-> ---
->  utils/idmapd/idmapd.c |   14 +++++++++++++-
->  1 files changed, 13 insertions(+), 1 deletions(-)
-> 
-> diff --git a/utils/idmapd/idmapd.c b/utils/idmapd/idmapd.c
-> index d6799c9..7f1291d 100644
-> --- a/utils/idmapd/idmapd.c
-> +++ b/utils/idmapd/idmapd.c
-> @@ -794,15 +794,22 @@ nfsopen(struct idmap_client *ic)
->  static void
->  idtonameres(struct idmap_msg *im)
->  {
-> -	char domain[NFS4_MAX_DOMAIN_LEN];
-> +	char domain[NFS4_MAX_DOMAIN_LEN], *numids;
->  	int ret = 0;
->  
->  	ret = nfs4_get_default_domain(NULL, domain, sizeof(domain));
-> +	numids = conf_get_str("Mapping", "NumericIDs");
-> +
->  	switch (im->im_type) {
->  	case IDMAP_TYPE_USER:
->  		ret = nfs4_uid_to_name(im->im_id, domain, im->im_name,
->  				sizeof(im->im_name));
->  		if (ret) {
-> +			if (numids && strcasecmp(numids, "yes") == 0) {
-> +				sprintf(im->im_name, "%d", im->im_id);
-> +				ret=0;
-> +				break;
-> +			}
->  			if (strlen(nobodyuser) < sizeof(im->im_name))
->  				strcpy(im->im_name, nobodyuser);
->  			else
-> @@ -813,6 +820,11 @@ idtonameres(struct idmap_msg *im)
->  		ret = nfs4_gid_to_name(im->im_id, domain, im->im_name,
->  				sizeof(im->im_name));
->  		if (ret) {
-> +			if (numids && strcasecmp(numids, "yes") == 0) {
-> +				sprintf(im->im_name, "%d", im->im_id);
-> +				ret=0;
-> +				break;
-> +			}
->  			if (strlen(nobodygroup) < sizeof(im->im_name))
->  				strcpy(im->im_name, nobodygroup);
->  			else
+Steve Dickson wrote:
+> On 08/17/2010 03:51 PM, Tom Haynes wrote:
+>   
+>> Steve Dickson wrote:
+>>     
+>>> In recent NFS v2/v3 to v4 transitions, one of the sticking points have been that fact v4 uses strings in the format
+>>> of "user@domain" instead of 32bit integers for uids and gids.
+>>>
+>>> When the string can not be mapped, its mapped to the 'nobody'
+>>> user which is not optimal for things like backup servers and
+>>> such where the ids will not be know by both sides.
+>>>
+>>> So this patch series enables the server to send out numeric string of uids and gids that do not have the '@domain' part.
+>>> The series also adds functionality to the client that parse these
+>>> type of strings and will use the numeric representation
+>>> of the ids iff the id exists on the client, which is sightly different that Solaris. Solaris dose not have that
+>>> "id must exist" restriction.
+>>>   
+>>>       
+>> No, Solaris does have that restriction.
+>>     
+> I thought so too.... but when I had an Open Solaris client 
+> access an directory, on a Linux server, that was owned by a 
+> user that was non-existent on either the server or client, 
+> I got the numeric representation as the owner.... 
+> Basically:
+>
+> osol# mount Linux-server:/home /mnt/home
+> osol# ls -ld /mnt/home/noid
+> drwxr-xr-x+  2 111      111         4096 Aug 17 11:37 /mnt/home/noid/
+> osol# grep 111 /etc/passwd
+> osol#
+>
+> steved.
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>   
 
-Ditto...
+That is what I get for reading code instead of running it. :->
 
-Cheers
-  Trond
-
+Actually, it might be that the server acts that way and not the client.
