@@ -1,35 +1,54 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from lvps87-230-0-242.dedicated.hosteurope.de ([87.230.0.242]:48025
-	"EHLO lvps87-230-0-242.dedicated.hosteurope.de" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752192Ab0HCVTQ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 3 Aug 2010 17:19:16 -0400
-Date: Tue, 3 Aug 2010 23:19:06 +0200
-From: Michael Guntsche <mike@it-loops.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: Kerberos auth Problem with nfs3/4
-Message-ID: <20100803211906.GA24236@gibson.comsick.at>
-References: <20100803154556.GA6262@gibson.comsick.at>
- <20100803194342.GE31579@fieldses.org>
+Received: from fieldses.org ([174.143.236.118]:50145 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752333Ab0HRTTb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 18 Aug 2010 15:19:31 -0400
+Date: Wed, 18 Aug 2010 15:17:27 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Steve Dickson <SteveD@redhat.com>
+Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 0/2] Support for Numeric Representations of UIDs and
+ GIDs.
+Message-ID: <20100818191726.GF13050@fieldses.org>
+References: <1282073925-18707-1-git-send-email-steved@redhat.com>
+ <20100818182053.GB13050@fieldses.org>
+ <4C6C3000.5010003@RedHat.com>
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20100803194342.GE31579@fieldses.org>
+In-Reply-To: <4C6C3000.5010003@RedHat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Hello Bruce.
+On Wed, Aug 18, 2010 at 03:09:52PM -0400, Steve Dickson wrote:
+> 
+> 
+> On 08/18/2010 02:20 PM, J. Bruce Fields wrote:
+> > On Tue, Aug 17, 2010 at 03:38:43PM -0400, Steve Dickson wrote:
+> >> In recent NFS v2/v3 to v4 transitions, one of the sticking 
+> >> points have been that fact v4 uses strings in the format
+> >> of "user@domain" instead of 32bit integers for uids and 
+> >> gids.
+> >>
+> >> When the string can not be mapped, its mapped to the 'nobody'
+> >> user which is not optimal for things like backup servers and
+> >> such where the ids will not be know by both sides.
+> >>
+> >> So this patch series enables the server to send out numeric 
+> >> string of uids and gids that do not have the '@domain' part.
+> >> The series also adds functionality to the client that parse these
+> >> type of strings and will use the numeric representation
+> >> of the ids iff the id exists on the client, which is 
+> >> sightly different that Solaris. Solaris dose not have that
+> >> "id must exist" restriction.
+> > 
+> > Why did you decide to impose that restriction?
+> I just thought it made sense, from a security standpoint to make sure the 
+> ids were at least valid on the client...  if they are not valid the id 
+> becomes 'nobody' which how it works today... but is different than how 
+> OpenSolaris does it... they just use whatever the server tells to... 
 
-I was a little bit early with my success report. I can now successfully
-mount the exports with sec=krb5 and can also read and write from linux
-clients. But now I get the following messages from the kernel on the
-server itself. This apparently happens when I try to read/write to the
-export.
+If we don't have a strong reason to do something different, let's just
+do the same as OpenSolaris and save any restrictions for the
+client-to-server (acl/owner-setting) path.
 
-Aug  3 23:12:23 gibson kernel: RPC: AUTH_GSS upcall timed out.
-Aug  3 23:12:23 gibson kernel: Please check user daemon is running.
-
-Of course all the daemons on the server are running and the system seems
-to work fine otherwise.
-
-Kind regards,
-Michael
+--b.
