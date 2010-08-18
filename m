@@ -1,46 +1,72 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from dsl-67-204-24-19.acanac.net ([67.204.24.19]:46260 "EHLO
-	emergent.ellipticsemi.com" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1752108Ab0HPSSY (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 16 Aug 2010 14:18:24 -0400
-Date: Mon, 16 Aug 2010 14:17:51 -0400
-From: Nick Bowler <nbowler@elliptictech.com>
-To: Takashi Iwai <tiwai@suse.de>
-Cc: Shaohua Li <shaohua.li@intel.com>, Trond.Myklebust@netapp.com, rjw@sisk.pl,
-        linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org
-Subject: Re: nfs regression 2.6.35+
-Message-ID: <20100816181751.GA2439@elliptictech.com>
-References: <20100816070626.GA10503@sli10-desk.sh.intel.com>
- <s5h39uedg3b.wl%tiwai@suse.de>
- <s5hfwyelu28.wl%tiwai@suse.de>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <s5hfwyelu28.wl%tiwai@suse.de>
+Received: from cantor.suse.de ([195.135.220.2]:47397 "EHLO mx1.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752074Ab0HRXrr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 18 Aug 2010 19:47:47 -0400
+Date: Thu, 19 Aug 2010 09:47:38 +1000
+From: Neil Brown <neilb@suse.de>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Alan Cox <alan@lxorguk.ukuu.org.uk>,
+        "Patrick J. LoPresti" <lopresti@gmail.com>,
+        Andi Kleen <andi@firstfloor.org>, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-kernel <linux-kernel@vger.kernel.org>
+Subject: Re: Proposal: Use hi-res clock for file timestamps
+Message-ID: <20100819094738.37cfa566@notabene>
+In-Reply-To: <20100818173203.GC32430@fieldses.org>
+References: <AANLkTimnyXKahtjaFeSsgcq=xMy-pP3na1jidQhZ-dt2@mail.gmail.com>
+	<87aaolwar8.fsf@basil.nowhere.org>
+	<20100817174134.GA23176@fieldses.org>
+	<20100817182920.GD18161@basil.fritz.box>
+	<20100817190447.GA28049@fieldses.org>
+	<AANLkTi=w1UA5ZZDBigpxMiL7A7DnbnQhLkg62JZpC6Ri@mail.gmail.com>
+	<20100817203941.729830b7@lxorguk.ukuu.org.uk>
+	<20100817192937.GD26609@fieldses.org>
+	<20100818155359.66b9ddb6@notabene>
+	<20100818173203.GC32430@fieldses.org>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 2010-08-16 12:40 +0200, Takashi Iwai wrote:
-> At Mon, 16 Aug 2010 12:09:12 +0200, Takashi Iwai wrote:
-> > This hits me, too.  Reverting it cures the problem.
-> > (BTW, the correct commit id of the affecting patch is
-> >  af7fa16506bf9b6323e862a61e14c20555152bb3
-> >  "NFS: Fix up the fsync code")
+On Wed, 18 Aug 2010 13:32:03 -0400
+"J. Bruce Fields" <bfields@fieldses.org> wrote:
+
+> On Wed, Aug 18, 2010 at 03:53:59PM +1000, Neil Brown wrote:
+> > I'm not sure you even want to pay for a per-filesystem atomic access when
+> > updating mtime.  mnt_want_write - called at the same time - seems to go to
+> > some lengths to avoid an atomic operation.
 > > 
-> > Reproduced on 2.6.36-rc1.
+> > I think that nfsd should be the only place that has to pay the atomic
+> > penalty, as it is where the need is.
 > > 
-> > So, fsync() returns 1 wrongly.
+> > I imagine something like this:
+> >  - Create a global struct timespec which is protected by a seqlock
+> >    Call it current_nfsd_time or similar.
+> >  - file_update_time reads this and uses it if it is newer than
+> >    current_fs_time.
+> >  - nfsd updates it whenever it reads an mtime out of an inode that matches
+> >    current_fs_time to the granularity of 1/HZ.
+> 
+> We can also skip the update whenever current_nfsd_time is greater than
+> the inode's mtime--that's enough to ensure that the next
+> file_update_time() call will get a time different from the inode's
+> current mtime.
 
-Apparently this breaks NFS file locks as well:  
+Yes, I agree with you and Patrick - very sensible optimisation.
 
-  fetchmail: starting fetchmail 6.3.17 daemon
-  /home/nbowler/.fetchmail.pid: Bad file descriptor
-  fetchmail: lock creation failed.
+> 
+> Would the extra expense rule out treating sys_stat() the same as nfsd?
+> It would be nice to be able to solve the same problem for userspace
+> nfsd's (or any other application that might be using mtime to save
+> rereading data).
 
-> How about a band-aid fix below?
-[...]
-> Subject: [PATCH] NFS: fix fsync return code
+It would be nice, but I would be loathe to add any cost to 'stat' unless we
+knew it was needed.
+If we had an xstat() which could explicitly ask for
+high-precision-time-stamps, then yes - otherwise maybe not.
 
-and this fixes all the problems for me.
+(or maybe define a system:linux.xxxx xattr which would read as a
+high-precision time stamp...  I seem to be warming to the idea of using the
+xattr interface for enhancing stat).
 
--- 
-Nick Bowler, Elliptic Technologies (http://www.elliptictech.com/)
+NeilBrown
