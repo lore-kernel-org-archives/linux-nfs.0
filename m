@@ -1,54 +1,60 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mga01.intel.com ([192.55.52.88]:47348 "EHLO mga01.intel.com"
+Received: from fieldses.org ([174.143.236.118]:57959 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751083Ab0HTFph (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 20 Aug 2010 01:45:37 -0400
-Date: Fri, 20 Aug 2010 13:45:33 +0800
-From: Wu Fengguang <fengguang.wu@intel.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: Ram Pai <ram.n.pai@gmail.com>, linux-mm@kvack.org,
-        linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] VM: kswapd should not do blocking memory allocations
-Message-ID: <20100820054533.GB11847@localhost>
-References: <1282158241.8540.85.camel@heimdal.trondhjem.org>
- <AANLkTi=WkoxjwZbt6Vd0VhbuA7_k2WM-NUXZnrmzOOPy@mail.gmail.com>
- <1282159872.8540.96.camel@heimdal.trondhjem.org>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1282159872.8540.96.camel@heimdal.trondhjem.org>
+	id S1752150Ab0HRSOu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 18 Aug 2010 14:14:50 -0400
+Date: Wed, 18 Aug 2010 14:12:40 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: "Patrick J. LoPresti" <lopresti@gmail.com>
+Cc: Alan Cox <alan@lxorguk.ukuu.org.uk>, Andi Kleen <andi@firstfloor.org>,
+        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-kernel <linux-kernel@vger.kernel.org>
+Subject: Re: Proposal: Use hi-res clock for file timestamps
+Message-ID: <20100818181240.GA13050@fieldses.org>
+References: <AANLkTimnyXKahtjaFeSsgcq=xMy-pP3na1jidQhZ-dt2@mail.gmail.com>
+ <87aaolwar8.fsf@basil.nowhere.org>
+ <20100817174134.GA23176@fieldses.org>
+ <20100817182920.GD18161@basil.fritz.box>
+ <20100817190447.GA28049@fieldses.org>
+ <AANLkTi=w1UA5ZZDBigpxMiL7A7DnbnQhLkg62JZpC6Ri@mail.gmail.com>
+ <20100817203941.729830b7@lxorguk.ukuu.org.uk>
+ <AANLkTi=sOW0Cgci+xX6rRmz+B-is0xb8DoKD350bFJN1@mail.gmail.com>
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <AANLkTi=sOW0Cgci+xX6rRmz+B-is0xb8DoKD350bFJN1@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-> Hi Ram,
+On Tue, Aug 17, 2010 at 12:34:58PM -0700, Patrick J. LoPresti wrote:
+> On Tue, Aug 17, 2010 at 12:39 PM, Alan Cox <alan@lxorguk.ukuu.org.uk> wrote:
 > 
-> I was seeing it on NFS until I put in the following kswapd-specific hack
-> into nfs_release_page():
+> >        if (time_now == time_last)
+> >                return { time_last , ++ct };
+> >        else {
+> >                ct = 0;
+> >                time_last = time_now
+> >                return { time_last , 0 };
+> >        }
+> >
+> > providing it is done with the same 'ct' across the fs and you can't do
+> > enough ops/second to wrap the nanosecs - which should be fine for now,
+> > your ordering is still safe is it not ?
 > 
-> 	/* Only do I/O if gfp is a superset of GFP_KERNEL */
-> 	if (mapping && (gfp & GFP_KERNEL) == GFP_KERNEL) {
-> 		int how = FLUSH_SYNC;
+> Yes, that would work.   Assuming you use atomic counters, else there
+> is a risk of the visible time ticking backwards.  It seems like a lot
+> of effort just to avoid having accurate timestamps on your files,
+> though.
 > 
-> 		/* Don't let kswapd deadlock waiting for OOM RPC calls */
-> 		if (current_is_kswapd())
-> 			how = 0;
+> I am having trouble seeing why this is a better idea than a simple
+> mount option to obtain decent resolution timestamps.  (Not that we
+> can't have both...)  Is there any objection to the mount option I am
+> proposing?
 
-So the patch can remove the above workaround together, and add comment
-that NFS exploits the gfp mask to avoid complex operations involving
-recursive memory allocation and hence deadlock?
+I'm completely ignorant about higher-resolution time sources.  Any
+recommended reading?  What resolution do they actually provide, what's
+the expense of reading them, how reliable are they, and how do the
+answers to those questions vary across different hardware and kernel
+versions?  A quick look at drivers/clocksource/ doesn't suggest
+simple answers.
 
-Thanks,
-Fengguang
-
-> 		nfs_commit_inode(mapping->host, how);
-> 	}
-> 
-> Remove the 'if (current_is_kswapd())' line, and run an mmap() write
-> intensive workload, and it should hang pretty much every time.
-> 
-> Cheers
->   Trond
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-kernel" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> Please read the FAQ at  http://www.tux.org/lkml/
+-b.
