@@ -1,90 +1,36 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:54632 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753697Ab0HQAje (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 16 Aug 2010 20:39:34 -0400
-Date: Mon, 16 Aug 2010 20:37:34 -0400
-To: iisaman@umich.edu
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 1/2] TESTS: Allow server to reject commits with large
- offsets
-Message-ID: <20100817003734.GD7764@fieldses.org>
+Received: from rcsinet10.oracle.com ([148.87.113.121]:46445 "EHLO
+	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751185Ab0HRTe5 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 18 Aug 2010 15:34:57 -0400
+Date: Wed, 18 Aug 2010 15:34:40 -0400
+From: Chris Mason <chris.mason@oracle.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: linux-mm@kvack.org, linux-kernel@vger.kernel.org,
+        linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] VM: kswapd should not do blocking memory allocations
+Message-ID: <20100818193440.GZ5854@think>
+References: <1282158241.8540.85.camel@heimdal.trondhjem.org>
 Content-Type: text/plain; charset=us-ascii
-From: "J. Bruce Fields" <bfields@fieldses.org>
+In-Reply-To: <1282158241.8540.85.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-From: Muneet Parhar <mparhar@umich.edu>
+On Wed, Aug 18, 2010 at 03:04:01PM -0400, Trond Myklebust wrote:
+> From: Trond Myklebust <Trond.Myklebust@netapp.com>
+> 
+> Allowing kswapd to do GFP_KERNEL memory allocations (or any blocking memory
+> allocations) is wrong and can cause deadlocks in try_to_release_page(), as
+> the filesystem believes it is safe to allocate new memory and block,
+> whereas kswapd is there specifically to clear a low-memory situation...
+> 
+> Set the gfp_mask to GFP_IOFS instead.
 
-These two tests insist that a server must accept commits with offset
-2^64-1 and 2^64-2.  I can find no justification in the spec for this
-requirement.
+I always thought releasepage was supposed to do almost zero work.  It
+could release an instantly freeable page but it wasn't supposed to dive
+in and solve world hunger or anything.
 
-The linux server was recently changed to reject (with INVAL) offsets
-over 2^63-1, which is the maximum that the vfs commit routine can
-accept.  That behavior is consistent with the NFSv3 commit
-implementation and with the NFSv4 write implementation.
+I thought the VM would be using writepage for that.
 
-The maximum offset allowed may vary depending on filesystem or server,
-so we should allow either success or INVAL here.
-
-Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
----
- lib/nfs4/servertests/st_commit.py |   11 +++++------
- 1 files changed, 5 insertions(+), 6 deletions(-)
-
-diff --git a/lib/nfs4/servertests/st_commit.py b/lib/nfs4/servertests/st_commit.py
-index 2955d79..b7f536e 100644
---- a/lib/nfs4/servertests/st_commit.py
-+++ b/lib/nfs4/servertests/st_commit.py
-@@ -1,9 +1,9 @@
- from nfs4.nfs4_const import *
--from environment import check
-+from environment import check, checklist
- 
- _text = "Random data to write"
- 
--def _commit(t, c, offset=0, count=0):
-+def _commit(t, c, offset=0, count=0, statlist=[NFS4_OK]):
-     """COMMIT
- 
-     FLAGS: commit all
-@@ -15,7 +15,7 @@ def _commit(t, c, offset=0, count=0):
-     res = c.write_file(fh, _text, 0, stateid, how=UNSTABLE4)
-     check(res, msg="WRITE with how=UNSTABLE4")
-     res = c.commit_file(fh, offset, count)
--    check(res, msg="COMMIT with offset=%x, count=%x" % (offset, count))
-+    checklist(res, statlist, msg="COMMIT with offset=%x, count=%x" % (offset, count))
- 
- def testCommitOffset0(t, env):
-     """COMMIT
-@@ -42,7 +42,7 @@ def testCommitOffsetMax1(t, env):
-     DEPEND: MKFILE
-     CODE: CMT1c
-     """
--    _commit(t, env.c1, 0xffffffffffffffffL)
-+    _commit(t, env.c1, 0xffffffffffffffffL, statlist=[NFS4_OK, NFS4ERR_INVAL])
- 
- def testCommitOffsetMax2(t, env):
-     """COMMIT
-@@ -51,7 +51,7 @@ def testCommitOffsetMax2(t, env):
-     DEPEND: MKFILE
-     CODE: CMT1d
-     """
--    _commit(t, env.c1, 0xfffffffffffffffeL)
-+    _commit(t, env.c1, 0xfffffffffffffffeL, statlist=[NFS4_OK, NFS4ERR_INVAL])
- 
- def testCommitCount1(t, env):
-     """COMMIT
-@@ -71,7 +71,6 @@ def testCommitCountMax(t, env):
-     """
-     _commit(t, env.c1, 0, 0xffffffffL)
- 
--
- def testLink(t, env):
-     """COMMIT
- 
--- 
-1.7.0.4
-
+-chris
