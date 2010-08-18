@@ -1,74 +1,90 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:6955 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:25752 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753082Ab0HROoe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 18 Aug 2010 10:44:34 -0400
-From: andros@netapp.com
-To: bhalevy@panasas.com
-Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
-Subject: [PATCH 09/11] SQUASHME pnfs_submit rename pnfs_layout_type 9
-Date: Wed, 18 Aug 2010 10:44:16 -0400
-Message-Id: <1282142658-21579-10-git-send-email-andros@netapp.com>
-In-Reply-To: <1282142658-21579-9-git-send-email-andros@netapp.com>
-References: <1282142658-21579-1-git-send-email-andros@netapp.com>
- <1282142658-21579-2-git-send-email-andros@netapp.com>
- <1282142658-21579-3-git-send-email-andros@netapp.com>
- <1282142658-21579-4-git-send-email-andros@netapp.com>
- <1282142658-21579-5-git-send-email-andros@netapp.com>
- <1282142658-21579-6-git-send-email-andros@netapp.com>
- <1282142658-21579-7-git-send-email-andros@netapp.com>
- <1282142658-21579-8-git-send-email-andros@netapp.com>
- <1282142658-21579-9-git-send-email-andros@netapp.com>
+	id S1753478Ab0HRTbO convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 18 Aug 2010 15:31:14 -0400
+Subject: Re: [PATCH] VM: kswapd should not do blocking memory allocations
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Ram Pai <ram.n.pai@gmail.com>
+Cc: linux-mm@kvack.org, linux-kernel@vger.kernel.org,
+        linux-nfs@vger.kernel.org
+In-Reply-To: <AANLkTi=WkoxjwZbt6Vd0VhbuA7_k2WM-NUXZnrmzOOPy@mail.gmail.com>
+References: <1282158241.8540.85.camel@heimdal.trondhjem.org>
+	 <AANLkTi=WkoxjwZbt6Vd0VhbuA7_k2WM-NUXZnrmzOOPy@mail.gmail.com>
+Content-Type: text/plain; charset="UTF-8"
+Date: Wed, 18 Aug 2010 15:31:12 -0400
+Message-ID: <1282159872.8540.96.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Andy Adamson <andros@netapp.com>
+On Wed, 2010-08-18 at 12:24 -0700, Ram Pai wrote:
+> 
+> 
+> On Wed, Aug 18, 2010 at 12:04 PM, Trond Myklebust
+> <Trond.Myklebust@netapp.com> wrote:
+>         From: Trond Myklebust <Trond.Myklebust@netapp.com>
+>         
+>         Allowing kswapd to do GFP_KERNEL memory allocations (or any
+>         blocking memory
+>         allocations) is wrong and can cause deadlocks in
+>         try_to_release_page(), as
+>         the filesystem believes it is safe to allocate new memory and
+>         block,
+>         whereas kswapd is there specifically to clear a low-memory
+>         situation...
+>         
+>         Set the gfp_mask to GFP_IOFS instead.
+>         
+>         Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+>         ---
+>         
+>          mm/vmscan.c |    2 +-
+>          1 files changed, 1 insertions(+), 1 deletions(-)
+>         
+>         
+>         diff --git a/mm/vmscan.c b/mm/vmscan.c
+>         index ec5ddcc..716dd16 100644
+>         --- a/mm/vmscan.c
+>         +++ b/mm/vmscan.c
+>         @@ -2095,7 +2095,7 @@ static unsigned long
+>         balance_pgdat(pg_data_t *pgdat, int order)
+>                unsigned long total_scanned;
+>                struct reclaim_state *reclaim_state =
+>         current->reclaim_state;
+>                struct scan_control sc = {
+>         -               .gfp_mask = GFP_KERNEL,
+>         +               .gfp_mask = GFP_IOFS,
+>                        .may_unmap = 1,
+>                        .may_swap = 1,
+>                        /*
+> 
+> Trond,
+> 
+>            Has anyone hit this issue? Or is this based on code
+> inspection?  
+> 
+>            The reason I  ask is we are seeing a problem, similar to
+> the symptom described, on RH based kernel but have not been able to
+> reproduce on 2.6.35.
 
-squash into pnfs_submit-pageio-helpers
+Hi Ram,
 
-Signed-of-by: Andy Adamson <andros@netapp.com>
----
- fs/nfs/pnfs.c             |    6 +++---
- include/linux/nfs4_pnfs.h |    2 +-
- 2 files changed, 4 insertions(+), 4 deletions(-)
+I was seeing it on NFS until I put in the following kswapd-specific hack
+into nfs_release_page():
 
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index b9bf9d6..52d1a79 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -1163,14 +1163,14 @@ out:
- void
- pnfs_set_pg_test(struct inode *inode, struct nfs_pageio_descriptor *pgio)
- {
--	struct pnfs_layout_type *laytype;
-+	struct pnfs_layout_hdr *lo;
- 	struct pnfs_layoutdriver_type *ld;
- 
- 	pgio->pg_test = NULL;
- 
--	laytype = NFS_I(inode)->layout;
-+	lo = NFS_I(inode)->layout;
- 	ld = NFS_SERVER(inode)->pnfs_curr_ld;
--	if (!pnfs_enabled_sb(NFS_SERVER(inode)) || !laytype)
-+	if (!pnfs_enabled_sb(NFS_SERVER(inode)) || !lo)
- 		return;
- 
- 	if (ld->ld_policy_ops)
-diff --git a/include/linux/nfs4_pnfs.h b/include/linux/nfs4_pnfs.h
-index 89d0e7e..cbb98f1 100644
---- a/include/linux/nfs4_pnfs.h
-+++ b/include/linux/nfs4_pnfs.h
-@@ -148,7 +148,7 @@ struct layoutdriver_io_operations {
- 
- struct layoutdriver_policy_operations {
- 	/* The stripe size of the file system */
--	ssize_t (*get_stripesize) (struct pnfs_layout_type *layoutid);
-+	ssize_t (*get_stripesize) (struct pnfs_layout_hdr *layoutid);
- 
- 	/* test for nfs page cache coalescing */
- 	int (*pg_test)(struct nfs_pageio_descriptor *, struct nfs_page *, struct nfs_page *);
--- 
-1.6.2.5
+	/* Only do I/O if gfp is a superset of GFP_KERNEL */
+	if (mapping && (gfp & GFP_KERNEL) == GFP_KERNEL) {
+		int how = FLUSH_SYNC;
 
+		/* Don't let kswapd deadlock waiting for OOM RPC calls */
+		if (current_is_kswapd())
+			how = 0;
+		nfs_commit_inode(mapping->host, how);
+	}
+
+Remove the 'if (current_is_kswapd())' line, and run an mmap() write
+intensive workload, and it should hang pretty much every time.
+
+Cheers
+  Trond
