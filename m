@@ -1,87 +1,79 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:43173 "EHLO fieldses.org"
+Received: from cantor.suse.de ([195.135.220.2]:47232 "EHLO mx1.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932857Ab0HXXi0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 24 Aug 2010 19:38:26 -0400
-Date: Tue, 24 Aug 2010 19:38:19 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Harry Edmon <harry@uw.edu>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: Odd problem with Stale NFS file handle - NFS v3 server under
- 2.6.35.x
-Message-ID: <20100824233819.GC7283@fieldses.org>
-References: <4C7407D2.1040304@uw.edu>
- <20100824225857.GA7283@fieldses.org>
- <4C745182.2080206@uw.edu>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4C745182.2080206@uw.edu>
+	id S1751387Ab0HRXlq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 18 Aug 2010 19:41:46 -0400
+Date: Thu, 19 Aug 2010 09:41:36 +1000
+From: Neil Brown <neilb@suse.de>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+        Alan Cox <alan@lxorguk.ukuu.org.uk>,
+        "Patrick J. LoPresti" <lopresti@gmail.com>,
+        Andi Kleen <andi@firstfloor.org>, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-kernel <linux-kernel@vger.kernel.org>
+Subject: Re: Proposal: Use hi-res clock for file timestamps
+Message-ID: <20100819094136.24fef59b@notabene>
+In-Reply-To: <0F91AB9D-0E14-4384-ADD6-0A467C3ABFAC@oracle.com>
+References: <AANLkTimnyXKahtjaFeSsgcq=xMy-pP3na1jidQhZ-dt2@mail.gmail.com>
+	<87aaolwar8.fsf@basil.nowhere.org>
+	<20100817174134.GA23176@fieldses.org>
+	<20100817182920.GD18161@basil.fritz.box>
+	<20100817190447.GA28049@fieldses.org>
+	<AANLkTi=w1UA5ZZDBigpxMiL7A7DnbnQhLkg62JZpC6Ri@mail.gmail.com>
+	<20100817203941.729830b7@lxorguk.ukuu.org.uk>
+	<20100817192937.GD26609@fieldses.org>
+	<20100818155359.66b9ddb6@notabene>
+	<20100818173203.GC32430@fieldses.org>
+	<0F91AB9D-0E14-4384-ADD6-0A467C3ABFAC@oracle.com>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Tue, Aug 24, 2010 at 04:10:58PM -0700, Harry Edmon wrote:
-> J. Bruce Fields wrote:
-> >On Tue, Aug 24, 2010 at 10:56:34AM -0700, Harry Edmon wrote:
-> >>I am having a problem getting odd ESTALE (Stale NFS file handle)
-> >>errors.   The server and client are both amd64 architecture.   I am
-> >>runnning a simple csh script on the client with the following:
-> >>
-> >>if (! -e /home/disk/data/gempak/upperair/latest ) then
-> >>   mkdir /home/disk/data/gempak/upperair/latest
-> >>endif
-> >>
-> >>The script randomly comes back with:
-> >>
-> >> mkdir: cannot create directory
-> >>`/home/disk/data/gempak/model/latest': File exists
-> >
-> >Why is it "model" here and "upperair" in the above?
-> OOPS.  The actual script has both, and I have had failure on both.
-> I was trying to simplify my report, and ended up mixed the two.   So
-> change above the script to:
+On Wed, 18 Aug 2010 14:15:51 -0400
+Chuck Lever <chuck.lever@oracle.com> wrote:
+
 > 
-> if (! -e /home/disk/data/gempak/model/latest ) then
->   mkdir /home/disk/data/gempak/model/latest
-> endif
+> On Aug 18, 2010, at 1:32 PM, J. Bruce Fields wrote:
+> 
+> > On Wed, Aug 18, 2010 at 03:53:59PM +1000, Neil Brown wrote:
+> >> I'm not sure you even want to pay for a per-filesystem atomic access when
+> >> updating mtime.  mnt_want_write - called at the same time - seems to go to
+> >> some lengths to avoid an atomic operation.
+> >> 
+> >> I think that nfsd should be the only place that has to pay the atomic
+> >> penalty, as it is where the need is.
+> >> 
+> >> I imagine something like this:
+> >> - Create a global struct timespec which is protected by a seqlock
+> >>   Call it current_nfsd_time or similar.
+> >> - file_update_time reads this and uses it if it is newer than
+> >>   current_fs_time.
+> >> - nfsd updates it whenever it reads an mtime out of an inode that matches
+> >>   current_fs_time to the granularity of 1/HZ.
+> > 
+> > We can also skip the update whenever current_nfsd_time is greater than
+> > the inode's mtime--that's enough to ensure that the next
+> > file_update_time() call will get a time different from the inode's
+> > current mtime.
+> 
+> Would it help if we only did this for directories, for now?
+> 
+> Files have close-to-open.  Directories... don't.  So we have the problem where directory changes (ie file creation and deletion) takes a long time (some times an infinitely long time) to propagate to clients.  Plus: directories don't change very often, so using fine-grained time stamps only on directories wouldn't impact heavy I/O workloads.
 
-Got it, thanks.
+I'm don't quite see how close-to-open really affects this issue - it still
+relies on the timestamps and so can cache old data if a file update didn't
+change the timestamp.
 
-> >>When I do an strace I am seeing the following when it fails:
-> >>
-> >>20745 stat("/home/disk/data/gempak/model/latest", 0x7fff56ed9580) = -1 ESTALE (Stale NFS file handle)
-> >>
-> >>...
-> >>
-> >>20751 mkdir("/home/disk/data/gempak/model/latest", 0777) = -1 EEXIST (File exists)
-> >
-> >Could you give a more complete description of the code that's running?
-> >(For example: how is "latest" being removed, and how do you know that
-> >"latest" isn't created after checking whether it exists but before the
-> >mkdir?)
-> >
-> >--b
-> Actually, the directory never gets removed.   This code is in the
-> script just as a emergency check in case it is moved to a different
-> disk and the directory structure has not yet been created.  So it
-> should never get to the "mkdir", in fact the directory has entries
-> that date from 2007.   I have other files that never change in other
-> scripts that I am seeing the "ESTALE" error when "stat" is run on
-> them, so it is a more universal problem on this client/server setup
-> than just this example.
+In my mind the difference is that near-concurrent access to files usually
+involves file locking which flushes caches (and if it doesn't then you have
+bigger problems) while near-concurrent access to directories relies on the
+natural atomicity of dir operations so no locking or flushing occurs.
 
-What filesystem are you exporting?  (ext3, xfs, ?)
+So I agree that this is probably more of an issue for directories than for
+files, and that implementing it just for directories would be a sensible
+first step with lower expected overhead - just my reasoning seems to be a bit
+different.
 
-And what do your exports look like?
-
---b.
-
-> >>The kernel version of the client does not matter (I have tried
-> >>2.6.34.5 and 2.6.35.3).   But the server kernel does matter.   It
-> >>occurs with 2.6.35 and 2.6.35.3.   It does not with 2.6.34.5.
-> >>
-> >>The ESTALE only occurs with "stat" and "lstat" in the scripts I have tried.  Attached is my configuration file from the server.  The mount on the client is:
-> >>
-> >>imist2:/home/data on /home/disk/data type nfs (rw,noatime,intr,proto=tcp,addr=192.168.1.12)
-> >>
-> >>
-> >>Any ideas?
+Thanks,
+NeilBrown
