@@ -1,87 +1,91 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:45533 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:6955 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751893Ab0HBSR5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 2 Aug 2010 14:17:57 -0400
-Date: Mon, 2 Aug 2010 14:16:34 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: Tetsuo Handa <penguin-kernel@I-love.SAKURA.ne.jp>,
-        linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org
-Subject: Re: linux-next NFSD: NULL pointer dereference at nfsd_svc()
-Message-ID: <20100802181634.GD12637@fieldses.org>
-References: <201008020747.o727lqXs064715@www262.sakura.ne.jp>
- <20100802103214.7eea09eb@corrin.poochiereds.net>
- <20100802103620.5638dac1@corrin.poochiereds.net>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20100802103620.5638dac1@corrin.poochiereds.net>
+	id S1752227Ab0HROo2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 18 Aug 2010 10:44:28 -0400
+From: andros@netapp.com
+To: bhalevy@panasas.com
+Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
+Subject: [PATCH 05/11] SQUASHME pnfs-submit: rename pnfs_layout_type 5
+Date: Wed, 18 Aug 2010 10:44:12 -0400
+Message-Id: <1282142658-21579-6-git-send-email-andros@netapp.com>
+In-Reply-To: <1282142658-21579-5-git-send-email-andros@netapp.com>
+References: <1282142658-21579-1-git-send-email-andros@netapp.com>
+ <1282142658-21579-2-git-send-email-andros@netapp.com>
+ <1282142658-21579-3-git-send-email-andros@netapp.com>
+ <1282142658-21579-4-git-send-email-andros@netapp.com>
+ <1282142658-21579-5-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Mon, Aug 02, 2010 at 10:36:20AM -0400, Jeff Layton wrote:
-> nevermind...that patch will probably fix this panic, but there's another
-> possible one in nfsd_init_socks. We'll have to fix that one too.
+From: Andy Adamson <andros@netapp.com>
 
-(After private conversation with Jeff): something like this?
-Compile-tested only.
+squash into pnfs_submit: layout helper functions
 
---b.
+Signed-off-by: Andy Adamson <andros@netapp.com>
+---
+ fs/nfs/pnfs.c |   12 ++++++------
+ 1 files changed, 6 insertions(+), 6 deletions(-)
 
-commit 86d0cc3b91315c475c1c38ee7a06b5ebe5c01755
-Author: J. Bruce Fields <bfields@redhat.com>
-Date:   Mon Aug 2 14:12:44 2010 -0400
-
-    nfsd: fix startup/shutdown order bug
-    
-    We must create the server before we can call init_socks or check the
-    number of threads.
-    
-    Symptoms were a NULL pointer dereference in nfsd_svc().  Problem
-    identified by Jeff Layton.
-    
-    Reported-by: Tetsuo Handa <penguin-kernel@I-love.SAKURA.ne.jp>
-    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-
-diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
-index 92173bd..1de1cb3 100644
---- a/fs/nfsd/nfssvc.c
-+++ b/fs/nfsd/nfssvc.c
-@@ -432,29 +432,30 @@ nfsd_svc(unsigned short port, int nrservs)
- 	if (nrservs == 0 && nfsd_serv == NULL)
- 		goto out;
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index fdc4028..a10143e 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -526,7 +526,7 @@ send_layoutget(struct inode *ino,
+ 	   struct nfs_open_context *ctx,
+ 	   struct nfs4_pnfs_layout_segment *range,
+ 	   struct pnfs_layout_segment **lsegpp,
+-	   struct pnfs_layout_type *lo)
++	   struct pnfs_layout_hdr *lo)
+ {
+ 	int status;
+ 	struct nfs_server *server = NFS_SERVER(ino);
+@@ -789,7 +789,7 @@ cmp_layout(struct nfs4_pnfs_layout_segment *l1,
+ }
  
-+	error = nfsd_create_serv();
-+	if (error)
-+		goto out;
-+
- 	first_thread = (nfsd_serv->sv_nrthreads == 0) && (nrservs != 0);
+ static void
+-pnfs_insert_layout(struct pnfs_layout_type *lo,
++pnfs_insert_layout(struct pnfs_layout_hdr *lo,
+ 		   struct pnfs_layout_segment *lseg)
+ {
+ 	struct pnfs_layout_segment *lp;
+@@ -915,7 +915,7 @@ has_matching_lseg(struct pnfs_layout_segment *lseg,
+  * lookup range in layout
+  */
+ static struct pnfs_layout_segment *
+-pnfs_has_layout(struct pnfs_layout_type *lo,
++pnfs_has_layout(struct pnfs_layout_hdr *lo,
+ 		struct nfs4_pnfs_layout_segment *range)
+ {
+ 	struct pnfs_layout_segment *lseg, *ret = NULL;
+@@ -955,14 +955,14 @@ _pnfs_update_layout(struct inode *ino,
+ 		.length = NFS4_MAX_UINT64,
+ 	};
+ 	struct nfs_inode *nfsi = NFS_I(ino);
+-	struct pnfs_layout_type *lo;
++	struct pnfs_layout_hdr *lo;
+ 	struct pnfs_layout_segment *lseg = NULL;
  
- 	if (first_thread) {
- 		error = nfsd_startup(port, nrservs);
- 		if (error)
--			goto out;
-+			goto out_destroy;
+ 	*lsegpp = NULL;
+ 	spin_lock(&ino->i_lock);
+ 	lo = pnfs_alloc_layout(ino);
+ 	if (lo == NULL) {
+-		dprintk("%s ERROR: can't get pnfs_layout_type\n", __func__);
++		dprintk("%s ERROR: can't get pnfs_layout_hdr\n", __func__);
+ 		goto out_unlock;
  	}
--	error = nfsd_create_serv();
--	if (error)
--		goto out_shutdown;
- 	error = svc_set_num_threads(nfsd_serv, NULL, nrservs);
- 	if (error)
--		goto out_destroy;
-+		goto out_shutdown;
- 	/* We are holding a reference to nfsd_serv which
- 	 * we don't want to count in the return value,
- 	 * so subtract 1
- 	 */
- 	error = nfsd_serv->sv_nrthreads - 1;
--out_destroy:
--	svc_destroy(nfsd_serv);		/* Release server */
- out_shutdown:
- 	if (error < 0 && first_thread)
- 		nfsd_shutdown();
-+out_destroy:
-+	svc_destroy(nfsd_serv);		/* Release server */
- out:
- 	mutex_unlock(&nfsd_mutex);
- 	return error;
+ 
+@@ -1120,7 +1120,7 @@ out:
+ int
+ pnfs_layout_process(struct nfs4_pnfs_layoutget *lgp)
+ {
+-	struct pnfs_layout_type *lo = NFS_I(lgp->args.inode)->layout;
++	struct pnfs_layout_hdr *lo = NFS_I(lgp->args.inode)->layout;
+ 	struct nfs4_pnfs_layoutget_res *res = &lgp->res;
+ 	struct pnfs_layout_segment *lseg;
+ 	struct inode *ino = PNFS_INODE(lo);
+-- 
+1.6.2.5
+
