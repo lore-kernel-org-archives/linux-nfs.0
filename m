@@ -1,88 +1,59 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yw0-f46.google.com ([209.85.213.46]:52937 "EHLO
-	mail-yw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932599Ab0HEUNy (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 5 Aug 2010 16:13:54 -0400
-Received: by ywh1 with SMTP id 1so2615617ywh.19
-        for <linux-nfs@vger.kernel.org>; Thu, 05 Aug 2010 13:13:53 -0700 (PDT)
-In-Reply-To: <AANLkTinD=CVHU9wMhmKRZk4YgaA4kZ1bZVKn5DSNF2jr@mail.gmail.com>
-References: <AANLkTi=2KYZ-8qaXMG=C_s617q3k1Ocs7h1gyd8=RpY6@mail.gmail.com>
-	<AANLkTimr9QfF0+MJ47hUihJgSLVOfquR=Atp4iV5D2gr@mail.gmail.com>
-	<97A00951-577C-4365-AA38-3C6E2D03B372@netapp.com> <AANLkTimi9CSa=XfoKBMCm-XAKcVQKVi0bEXgtA+XHexE@mail.gmail.com>
-	<1280956937.2865.13.camel@heimdal.trondhjem.org> <AANLkTi=FivAoO+Rqin82h885_8bj1=Ck5mjqPqV2rif4@mail.gmail.com>
-	<1280969564.2865.23.camel@heimdal.trondhjem.org> <AANLkTinq-q5f5QjCBiXuZMJY6dHajpDPZ7aO55ipNZcE@mail.gmail.com>
-	<1280971521.2865.30.camel@heimdal.trondhjem.org> <AANLkTinD=CVHU9wMhmKRZk4YgaA4kZ1bZVKn5DSNF2jr@mail.gmail.com>
-From: Yudong Gao <stgyd@umich.edu>
-Date: Thu, 5 Aug 2010 13:13:33 -0700
-Message-ID: <AANLkTik4QjtVTZNovJOCFkCrsYrQcTD3qW-h-p0EXQgt@mail.gmail.com>
-Subject: Re: Write delegation
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-Cc: Andy Adamson <andros@netapp.com>, linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mx2.netapp.com ([216.240.18.37]:6955 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752227Ab0HROoZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 18 Aug 2010 10:44:25 -0400
+From: andros@netapp.com
+To: bhalevy@panasas.com
+Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
+Subject: [PATCH 03/11] SQUASHME pnfs-submit rename pnfs_layout_type 3
+Date: Wed, 18 Aug 2010 10:44:10 -0400
+Message-Id: <1282142658-21579-4-git-send-email-andros@netapp.com>
+In-Reply-To: <1282142658-21579-3-git-send-email-andros@netapp.com>
+References: <1282142658-21579-1-git-send-email-andros@netapp.com>
+ <1282142658-21579-2-git-send-email-andros@netapp.com>
+ <1282142658-21579-3-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-Hi Trond,
+From: Andy Adamson <andros@netapp.com>
 
-I just find the function nfs_fscache_set_inode_cookie() that checks
-the access flag and allows only read-only files to use the cache.
+squash into pnfs_submit: layout segment alloc, reference, destroy
 
-Thanks!
+Signed-off-by: Andy Adamson <andros@netapp.com>
+---
+ fs/nfs/pnfs.c             |    2 +-
+ include/linux/nfs4_pnfs.h |    2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
 
-best,
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index bf86975..98f53c2 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -412,7 +412,7 @@ pnfs_destroy_all_layouts(struct nfs_client *clp)
+ }
+ 
+ static inline void
+-init_lseg(struct pnfs_layout_type *lo, struct pnfs_layout_segment *lseg)
++init_lseg(struct pnfs_layout_hdr *lo, struct pnfs_layout_segment *lseg)
+ {
+ 	INIT_LIST_HEAD(&lseg->fi_list);
+ 	kref_init(&lseg->kref);
+diff --git a/include/linux/nfs4_pnfs.h b/include/linux/nfs4_pnfs.h
+index 59a1a12..89d0e7e 100644
+--- a/include/linux/nfs4_pnfs.h
++++ b/include/linux/nfs4_pnfs.h
+@@ -137,7 +137,7 @@ struct layoutdriver_io_operations {
+ 	 * a set_layout call to set the opaque layout in the layout driver.*/
+ 	struct pnfs_layout_hdr * (*alloc_layout) (struct inode *inode);
+ 	void (*free_layout) (struct pnfs_layout_hdr *);
+-	struct pnfs_layout_segment * (*alloc_lseg) (struct pnfs_layout_type *layoutid, struct nfs4_pnfs_layoutget_res *lgr);
++	struct pnfs_layout_segment * (*alloc_lseg) (struct pnfs_layout_hdr *layoutid, struct nfs4_pnfs_layoutget_res *lgr);
+ 	void (*free_lseg) (struct pnfs_layout_segment *lseg);
+ 
+ 	/* Registration information for a new mounted file system
+-- 
+1.6.2.5
 
-Yudong
-
-On Thu, Aug 5, 2010 at 11:10 AM, Yudong Gao <stgyd@umich.edu> wrote:
-> I see. I was kind of confused before. Sorry about that.
->
-> I am trying to figure out how this read-only is supported in the
-> source code. When a page is read from the network through
-> nfs_readpage(), it will be cached to fscache, as implemented in
-> nfs_readpage_release(). The code in nfs_readpage_release() only checks
-> whether fscache is available, and if so, the page will be cached to
-> fscache.
->
-> If a page is modified locally in memory (the page cache), then it
-> becomes dirty. But since the fscache is read-only, the copy of the
-> page in fscache becomes stale. When the file is close, the dirty page
-> will be written back to the server. Later when it is not used for a
-> while, it will be removed from the page cache. Here I suppose the copy
-> in fscache will not be deleted, or fscache becomes useless: it can
-> only mirror the pages in the page cache and does not provide extra
-> cache. And actually in the source code, I can not find the code to
-> uncache the page in fscache().
->
-> So far so good. But if later this page is read again, the behavior
-> becomes strange. The nfs_readpage() checks first try to read the page
-> from fscache. In this case, it will read the stale page and oops!
->
-> I think the problem here is that when a page become dirty in page
-> cache, it should be removed from fscache. So my question is where is
-> this implemented?
->
-> Thanks a lot!
->
-> best,
->
-> Yudong
->
-> On Wed, Aug 4, 2010 at 6:25 PM, Trond Myklebust
-> <trond.myklebust@fys.uio.no> wrote:
->> On Wed, 2010-08-04 at 18:22 -0700, Yudong Gao wrote:
->>
->>> But for the integration with NFS, it is confusing. The
->>> fscache_write_page() is called only in one place:
->>> nfs_readpage_release(). So a NFS page is only written to fscache after
->>> it is read from the server in nfs_readpage. So my question is, if a
->>> page is locally modified, when its data is propagated to fscache? I
->>> check the nfs_write_begin() and nfs_write_end() but cannot find any
->>> relative implementation.
->>
->> See my previous answer. fscache only supports read-only files in NFS.
->>
->> Trond
->>
->>
->
