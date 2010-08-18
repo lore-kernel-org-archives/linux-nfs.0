@@ -1,125 +1,74 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:45923 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1761664Ab0HFVBs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 6 Aug 2010 17:01:48 -0400
-From: David Howells <dhowells@redhat.com>
-Subject: [PATCH] NFS: Use kernel DNS resolver
-To: smfrench@gmail.com, jlayton@redhat.com
-Cc: linux-fsdevel@vger.kernel.org, linux-cifs@vger.kernel.org,
-        linux-afs@lists.infradead.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        David Howells <dhowells@redhat.com>
-Date: Fri, 06 Aug 2010 22:01:39 +0100
-Message-ID: <20100806210139.11486.77708.stgit@warthog.procyon.org.uk>
-Content-Type: text/plain; charset="utf-8"
+Received: from cn.fujitsu.com ([222.73.24.84]:53966 "EHLO song.cn.fujitsu.com"
+	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
+	id S1752195Ab0HRJrq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 18 Aug 2010 05:47:46 -0400
+Message-ID: <4C6BACAA.2060706@cn.fujitsu.com>
+Date: Wed, 18 Aug 2010 17:49:30 +0800
+From: Mi Jinlong <mijinlong@cn.fujitsu.com>
+To: NFSv3 list <linux-nfs@vger.kernel.org>,
+        "Trond.Myklebust" <trond.myklebust@fys.uio.no>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        Chuck Lever <chuck.lever@oracle.com>, Jeff Layton <jlayton@redhat.com>
+Subject: [PATCH] sunrpc: cancel delayed connect working when conncet success
+Content-Type: text/plain; charset=ISO-2022-JP
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-From: Bryan Schumaker <bjschuma@netapp.com>
+As network partition or some other reason, when client connect 
+success, maybe there is some delayed connect working in connect_work list.
 
-Use the kernel DNS resolver to translate hostnames to IP addresses.  Create a
-new config option to choose between the legacy DNS resolver and the new
-resolver.
+Aug  2 12:51:32 TEST-M kernel: RPC:       xs_connect delayed xprt ccc4c800 for 96 seconds
+Aug  2 12:51:32 TEST-M kernel: RPC:       xs_error_report client ccc4c800...
+Aug  2 12:51:32 TEST-M kernel: RPC:       error 111
+ ... snip ...
+Aug  2 12:53:08 TEST-M kernel: RPC:       disconnected transport ccc4c800
+Aug  2 12:53:08 TEST-M kernel: RPC:       worker connecting xprt ccc4c800 via tcp to 192.168.0.21 (port 2049)
+Aug  2 12:53:08 TEST-M kernel: RPC:       ccc4c800 connect status 115 connected 0 sock state 2
+Aug  2 12:53:08 TEST-M kernel: RPC:   228 xprt_connect_status: retrying
+Aug  2 12:53:08 TEST-M kernel: RPC:   228 xprt_prepare_transmit
+Aug  2 12:53:08 TEST-M kernel: RPC:   228 xprt_transmit(136)
+Aug  2 12:53:08 TEST-M kernel: RPC:       xs_tcp_send_request(136) = -11
+Aug  2 12:53:08 TEST-M kernel: RPC:   228 xmit incomplete (136 left of 136)
+Aug  2 12:53:08 TEST-M kernel: RPC:   228 xprt_connect xprt ccc4c800 is not connected
+Aug  2 12:53:08 TEST-M kernel: RPC:       xs_connect delayed xprt ccc4c800 for 192 seconds
+Aug  2 12:53:08 TEST-M kernel: RPC:       xs_tcp_state_change client ccc4c800...
+Aug  2 12:53:08 TEST-M kernel: RPC:       state 1 conn 0 dead 0 zapped 1
+Aug  2 12:53:08 TEST-M kernel: RPC:   228 xprt_connect_status: retrying
+Aug  2 12:53:08 TEST-M kernel: RPC:   228 xprt_prepare_transmit
+Aug  2 12:53:08 TEST-M kernel: RPC:   228 xprt_transmit(136)
+Aug  2 12:53:08 TEST-M kernel: RPC:       xs_tcp_send_request(136) = 136
+Aug  2 12:53:08 TEST-M kernel: RPC:   228 xmit complete
+Aug  2 12:53:08 TEST-M kernel: RPC:   229 xprt_prepare_transmit
 
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
-Acked-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-Signed-off-by: David Howells <dhowells@redhat.com>
+As the debug message show, "xs_connect delayed xprt ccc4c800 for 192 seconds"
+means a connecting work have be delayed at connect_worker list.
+"state 1 conn 0 dead 0 zapped 1" shows the connect have successed 
+but a delayed work still alive at connect_worker list.
+
+Signed-off-by: Mi Jinlong <mijinlong@cn.fujitsu.com>
+
 ---
+ net/sunrpc/xprtsock.c |    4 ++++
+ 1 files changed, 4 insertions(+), 0 deletions(-)
 
- fs/nfs/Kconfig       |   16 ++++++++++++++++
- fs/nfs/dns_resolve.c |   24 ++++++++++++++++++++++++
- fs/nfs/dns_resolve.h |   12 ++++++++++++
- 3 files changed, 52 insertions(+), 0 deletions(-)
+diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+index 49a62f0..823f1db 100644
+--- a/net/sunrpc/xprtsock.c
++++ b/net/sunrpc/xprtsock.c
+@@ -1324,6 +1324,10 @@ static void xs_tcp_state_change(struct sock *sk)
+ 			transport->tcp_flags =
+ 				TCP_RCV_COPY_FRAGHDR | TCP_RCV_COPY_XID;
+ 
++			if (xprt_connecting(xprt) &&
++			      cancel_delayed_work(&transport->connect_worker))
++				xprt_clear_connecting(xprt);
++
+ 			xprt_wake_pending_tasks(xprt, -EAGAIN);
+ 		}
+ 		spin_unlock_bh(&xprt->transport_lock);
+-- 
+1.7.0
 
-diff --git a/fs/nfs/Kconfig b/fs/nfs/Kconfig
-index a43d07e..10eebc5 100644
---- a/fs/nfs/Kconfig
-+++ b/fs/nfs/Kconfig
-@@ -100,3 +100,19 @@ config NFS_FSCACHE
- 	help
- 	  Say Y here if you want NFS data to be cached locally on disc through
- 	  the general filesystem cache manager
-+
-+config NFS_USE_LEGACY_DNS
-+	bool "Use the legacy NFS DNS resolver"
-+	depends on NFS_V4
-+	help
-+	  The kernel now provides a method for translating a host name into an
-+	  IP address.  Select Y here if you would rather use your own DNS
-+	  resolver script.
-+
-+	  If unsure, say N
-+
-+config NFS_USE_KERNEL_DNS
-+	bool
-+	depends on NFS_V4 && !NFS_USE_LEGACY_DNS
-+	select DNS_RESOLVER
-+	default y
-diff --git a/fs/nfs/dns_resolve.c b/fs/nfs/dns_resolve.c
-index 76fd235..dba50a5 100644
---- a/fs/nfs/dns_resolve.c
-+++ b/fs/nfs/dns_resolve.c
-@@ -6,6 +6,29 @@
-  * Resolves DNS hostnames into valid ip addresses
-  */
- 
-+#ifdef CONFIG_NFS_USE_KERNEL_DNS
-+
-+#include <linux/sunrpc/clnt.h>
-+#include <linux/dns_resolver.h>
-+
-+ssize_t nfs_dns_resolve_name(char *name, size_t namelen,
-+		struct sockaddr *sa, size_t salen)
-+{
-+	ssize_t ret;
-+	char *ip_addr = NULL;
-+	int ip_len;
-+
-+	ip_len = dns_query(NULL, name, namelen, NULL, &ip_addr, NULL);
-+	if (ip_len > 0)
-+		ret = rpc_pton(ip_addr, ip_len, sa, salen);
-+	else
-+		ret = -ESRCH;
-+	kfree(ip_addr);
-+	return ret;
-+}
-+
-+#else
-+
- #include <linux/hash.h>
- #include <linux/string.h>
- #include <linux/kmod.h>
-@@ -346,3 +369,4 @@ void nfs_dns_resolver_destroy(void)
- 	nfs_cache_unregister(&nfs_dns_resolve);
- }
- 
-+#endif
-diff --git a/fs/nfs/dns_resolve.h b/fs/nfs/dns_resolve.h
-index a3f0938..199bb55 100644
---- a/fs/nfs/dns_resolve.h
-+++ b/fs/nfs/dns_resolve.h
-@@ -6,8 +6,20 @@
- 
- #define NFS_DNS_HOSTNAME_MAXLEN	(128)
- 
-+
-+#ifdef CONFIG_NFS_USE_KERNEL_DNS
-+static inline int nfs_dns_resolver_init(void)
-+{
-+	return 0;
-+}
-+
-+static inline void nfs_dns_resolver_destroy(void)
-+{}
-+#else
- extern int nfs_dns_resolver_init(void);
- extern void nfs_dns_resolver_destroy(void);
-+#endif
-+
- extern ssize_t nfs_dns_resolve_name(char *name, size_t namelen,
- 		struct sockaddr *sa, size_t salen);
- 
 
