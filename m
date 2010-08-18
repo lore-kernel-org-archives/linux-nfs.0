@@ -1,65 +1,56 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:54159 "EHLO
-	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758259Ab0HDPJC convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 4 Aug 2010 11:09:02 -0400
-Subject: Re: [PATCH 0/3] Some IPv6 enhancements for nfs-utils
-Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20100804064553.16641.92857.stgit@localhost.localdomain>
-Date: Wed, 4 Aug 2010 11:08:07 -0400
-Cc: Steve Dickson <steved@redhat.com>, linux-nfs@vger.kernel.org
-Message-Id: <FDC92B80-A12A-478D-95D1-2E75194BBFAA@oracle.com>
-References: <20100804064553.16641.92857.stgit@localhost.localdomain>
-To: Neil Brown <neilb@suse.de>
+Received: from mx2.netapp.com ([216.240.18.37]:6955 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753082Ab0HROog (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 18 Aug 2010 10:44:36 -0400
+From: andros@netapp.com
+To: bhalevy@panasas.com
+Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
+Subject: [PATCH 11/11] SQUASHME pnfs_submit rename pnfs_layout_type 11
+Date: Wed, 18 Aug 2010 10:44:18 -0400
+Message-Id: <1282142658-21579-12-git-send-email-andros@netapp.com>
+In-Reply-To: <1282142658-21579-11-git-send-email-andros@netapp.com>
+References: <1282142658-21579-1-git-send-email-andros@netapp.com>
+ <1282142658-21579-2-git-send-email-andros@netapp.com>
+ <1282142658-21579-3-git-send-email-andros@netapp.com>
+ <1282142658-21579-4-git-send-email-andros@netapp.com>
+ <1282142658-21579-5-git-send-email-andros@netapp.com>
+ <1282142658-21579-6-git-send-email-andros@netapp.com>
+ <1282142658-21579-7-git-send-email-andros@netapp.com>
+ <1282142658-21579-8-git-send-email-andros@netapp.com>
+ <1282142658-21579-9-git-send-email-andros@netapp.com>
+ <1282142658-21579-10-git-send-email-andros@netapp.com>
+ <1282142658-21579-11-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-Hi Neil-
+From: Andy Adamson <andros@netapp.com>
 
-On Aug 4, 2010, at 2:49 AM, Neil Brown wrote:
+squash into pnfs_submit: filelayout policy operations
 
-> Hi Chuck et al,
-> I've been playing with IPv6 server support and offer these patches
-> which get us a little bit closer.
-> I realise that you may already have similar patches queued in which
-> case feel free to ignore these.
+Signed-off-by: Andy Adamson <andros@netapp.com>
+---
+ fs/nfs/nfs4filelayout.c |    4 ++--
+ 1 files changed, 2 insertions(+), 2 deletions(-)
 
-The full series of patches giving mountd IPv6 support is in my git repo on linux-nfs.org.  See:
-
-  http://git.linux-nfs.org/?p=cel/nfs-utils.git;a=summary
-
-This is what we have queued up.  We're taking a resting stop for the next nfs-utils release since the pre-requisite patches touched so many parts of mountd, and we'd like to give them some soak time.
-
-If SuSE requires NFS server-side IPv6 support, would it be possible for you to try out my series?  It looks like you touched all the important bases in your patch set.
-
-> With these plus a couple of #defines of IPV6_SUPPORTED I can export
-> with NFSv4 over IPv6 quite successfully.
-> 
-> NeilBrown
-> 
-> ---
-> 
-> Neil Brown (3):
->      Make buffers large enough for IPv6 addresses
->      Give hostname.c more support for IPv6
->      Allow check_fqdn to compare IPv6 addresses
-> 
-> 
-> support/export/client.c   |   23 +----------------------
-> support/export/hostname.c |   28 +++++++++++++++++++---------
-> utils/mountd/cache.c      |    6 +++---
-> utils/mountd/rmtab.c      |    2 +-
-> 4 files changed, 24 insertions(+), 35 deletions(-)
-> 
-> -- 
-> Signature
-> 
-
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
+diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+index 87c8fe0..eb9c907 100644
+--- a/fs/nfs/nfs4filelayout.c
++++ b/fs/nfs/nfs4filelayout.c
+@@ -673,9 +673,9 @@ filelayout_commit(struct nfs_write_data *data, int sync)
+ 
+ /* Return the stripesize for the specified file */
+ ssize_t
+-filelayout_get_stripesize(struct pnfs_layout_type *layoutid)
++filelayout_get_stripesize(struct pnfs_layout_hdr *lo)
+ {
+-	struct nfs4_filelayout *flo = FILE_LO(layoutid);
++	struct nfs4_filelayout *flo = FILE_LO(lo);
+ 
+ 	return flo->stripe_unit;
+ }
+-- 
+1.6.2.5
 
