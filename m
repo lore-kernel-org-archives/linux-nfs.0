@@ -1,47 +1,84 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:10670 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752308Ab0HRTJ5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 18 Aug 2010 15:09:57 -0400
-Message-ID: <4C6C3000.5010003@RedHat.com>
-Date: Wed, 18 Aug 2010 15:09:52 -0400
-From: Steve Dickson <SteveD@redhat.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 0/2] Support for Numeric Representations of UIDs and GIDs.
-References: <1282073925-18707-1-git-send-email-steved@redhat.com> <20100818182053.GB13050@fieldses.org>
-In-Reply-To: <20100818182053.GB13050@fieldses.org>
+Received: from mail-ey0-f174.google.com ([209.85.215.174]:48348 "EHLO
+	mail-ey0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753148Ab0HROq6 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 18 Aug 2010 10:46:58 -0400
+In-Reply-To: <20100818155359.66b9ddb6@notabene>
+References: <AANLkTimnyXKahtjaFeSsgcq=xMy-pP3na1jidQhZ-dt2@mail.gmail.com>
+	<87aaolwar8.fsf@basil.nowhere.org>
+	<20100817174134.GA23176@fieldses.org>
+	<20100817182920.GD18161@basil.fritz.box>
+	<20100817190447.GA28049@fieldses.org>
+	<AANLkTi=w1UA5ZZDBigpxMiL7A7DnbnQhLkg62JZpC6Ri@mail.gmail.com>
+	<20100817203941.729830b7@lxorguk.ukuu.org.uk>
+	<20100817192937.GD26609@fieldses.org>
+	<20100818155359.66b9ddb6@notabene>
+Date: Wed, 18 Aug 2010 07:46:57 -0700
+Message-ID: <AANLkTim9qTjB15Hr+Te8UzgUpZWj41JMXLWf_gJrthc3@mail.gmail.com>
+Subject: Re: Proposal: Use hi-res clock for file timestamps
+From: "Patrick J. LoPresti" <lopresti@gmail.com>
+To: Neil Brown <neilb@suse.de>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+        Alan Cox <alan@lxorguk.ukuu.org.uk>, Andi Kleen <andi@firstfloor.org>,
+        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-kernel <linux-kernel@vger.kernel.org>
 Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+On Tue, Aug 17, 2010 at 10:53 PM, Neil Brown <neilb@suse.de> wrote:
+>
+> I imagine something like this:
+>  - Create a global struct timespec which is protected by a seqlock
+>   Call it current_nfsd_time or similar.
+>  - file_update_time reads this and uses it if it is newer than
+>   current_fs_time.
+>  - nfsd updates it whenever it reads an mtime out of an inode that matches
+>   current_fs_time to the granularity of 1/HZ.
 
+I think nfsd can simply update current_nfsd_time whenever the mtime it
+reads from an inode is >= current_nfsd_time.  (The invariant you need
+to maintain is that whenever nfsd reads an mtime, any timestamps
+produced after that have a later time.  So just code it that way
+directly.)
 
-On 08/18/2010 02:20 PM, J. Bruce Fields wrote:
-> On Tue, Aug 17, 2010 at 03:38:43PM -0400, Steve Dickson wrote:
->> In recent NFS v2/v3 to v4 transitions, one of the sticking 
->> points have been that fact v4 uses strings in the format
->> of "user@domain" instead of 32bit integers for uids and 
->> gids.
->>
->> When the string can not be mapped, its mapped to the 'nobody'
->> user which is not optimal for things like backup servers and
->> such where the ids will not be know by both sides.
->>
->> So this patch series enables the server to send out numeric 
->> string of uids and gids that do not have the '@domain' part.
->> The series also adds functionality to the client that parse these
->> type of strings and will use the numeric representation
->> of the ids iff the id exists on the client, which is 
->> sightly different that Solaris. Solaris dose not have that
->> "id must exist" restriction.
-> 
-> Why did you decide to impose that restriction?
-I just thought it made sense, from a security standpoint to make sure the 
-ids were at least valid on the client... if they are not valid the id 
-becomes 'nobody' which how it works today... but is different than how 
-OpenSolaris does it... they just use whatever the server tells to... 
+>   If the current value is before current_kernel_time, it
+>   is set to current_kernel_time, otherwise tv_nsec is incremented -
+>   unless that increases
+>   beyond jiffies_to_usec(1)*1000 beyond current_kernel_time.
+>  - the global 'struct timespec' is zeroed whenever system time is set
+>   backwards.
 
-steved.
+I believe this works.
 
+> [[You could probably make ext3 work reasonably well by adding a mount option
+>  which:
+>    - advertises s_time_gran as 1
+>    - when storing: rounds timestamps up to the next second if tv_nsec != 0
+>    - when loading, setting the timestamp to the current time if the stored
+>      number matches current_kernel_time().tv_sec+1
+>  You would get occasional forward jumps in mtime, but usually when you
+>  aren't looking, and at least you would not get real changes that are not
+>  reflected in mtime
+> ]]
+
+But I do not believe this works.
+
+1) Modify file A
+2) Modify file B
+3) File A experiences one of those "occasional forward jumps in mtime"
+(inode evicted + read back within 1 second)
+4) mtimes on A and B are now out of order -- very bad
+
+As Bruce mentioned, ext3 is a lost cause.
+
+Regardless of any of this, however, the first step is to provide a
+mount option to select the timestamp algorithm...  Because it is still
+absurd that I cannot have accurate timestamps on my files here in the
+21st century.
+
+Once that is done, the rest is just providing the alternative
+implementations and choosing defaults.
+
+ - Pat
