@@ -1,58 +1,51 @@
-From: Steve Dickson <SteveD@redhat.com>
-Subject: Re: [PATCH 0/2] Support for Numeric Representations of UIDs and GIDs.
-Date: Wed, 18 Aug 2010 15:33:19 -0400
-Message-ID: <4C6C357F.8030104@RedHat.com>
-References: <1282073925-18707-1-git-send-email-steved@redhat.com>	 <20100818182053.GB13050@fieldses.org>  <4C6C3000.5010003@RedHat.com> <1282159391.8540.90.camel@heimdal.trondhjem.org>
+From: Christoph Hellwig <hch@infradead.org>
+Subject: Re: [PATCH 06/50] pnfs_submit: introduce include/linux/nfs4_pnfs.h
+Date: Wed, 18 Aug 2010 16:27:18 -0400
+Message-ID: <20100818202718.GB16851@infradead.org>
+References: <1281735122-1496-1-git-send-email-andros@netapp.com>
+ <1281735122-1496-2-git-send-email-andros@netapp.com>
+ <1281735122-1496-3-git-send-email-andros@netapp.com>
+ <1281735122-1496-4-git-send-email-andros@netapp.com>
+ <1281735122-1496-5-git-send-email-andros@netapp.com>
+ <1281735122-1496-6-git-send-email-andros@netapp.com>
+ <1281735122-1496-7-git-send-email-andros@netapp.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-	Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
+Content-Type: text/plain; charset=us-ascii
+Cc: bhalevy@panasas.com, linux-nfs@vger.kernel.org,
+	Dean Hildebrand <seattleplus@gmail.com>
+To: andros@netapp.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:26096 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753641Ab0HRTdW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 18 Aug 2010 15:33:22 -0400
-In-Reply-To: <1282159391.8540.90.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
+Received: from bombadil.infradead.org ([18.85.46.34]:42918 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752976Ab0HRU1T (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 18 Aug 2010 16:27:19 -0400
+In-Reply-To: <1281735122-1496-7-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+> +++ b/include/linux/nfs4_pnfs.h
+> @@ -0,0 +1,15 @@
+> +/*
+> + *  include/linux/nfs4_pnfs.h
 
+Please don't include these kinds of comments, they only purpose they
+serve is frequently getting out of date.  That applies to just about
+every file added in this series.
 
-On 08/18/2010 03:23 PM, Trond Myklebust wrote:
-> On Wed, 2010-08-18 at 15:09 -0400, Steve Dickson wrote:
->>
->> On 08/18/2010 02:20 PM, J. Bruce Fields wrote:
->>> On Tue, Aug 17, 2010 at 03:38:43PM -0400, Steve Dickson wrote:
->>>> In recent NFS v2/v3 to v4 transitions, one of the sticking 
->>>> points have been that fact v4 uses strings in the format
->>>> of "user@domain" instead of 32bit integers for uids and 
->>>> gids.
->>>>
->>>> When the string can not be mapped, its mapped to the 'nobody'
->>>> user which is not optimal for things like backup servers and
->>>> such where the ids will not be know by both sides.
->>>>
->>>> So this patch series enables the server to send out numeric 
->>>> string of uids and gids that do not have the '@domain' part.
->>>> The series also adds functionality to the client that parse these
->>>> type of strings and will use the numeric representation
->>>> of the ids iff the id exists on the client, which is 
->>>> sightly different that Solaris. Solaris dose not have that
->>>> "id must exist" restriction.
->>>
->>> Why did you decide to impose that restriction?
->> I just thought it made sense, from a security standpoint to make sure the 
->> ids were at least valid on the client... if they are not valid the id 
->> becomes 'nobody' which how it works today... but is different than how 
->> OpenSolaris does it... they just use whatever the server tells to... 
-> 
-> As I read RFC3530, the recommendation is that the server SHOULD reject
-> an attempt by the client to use numeric ids if it knows of a valid
-> name@domain mapping for that uid or gid.
-> 
-> The client has no such restriction. It probably should just accept the
-> numeric uid or gid if that is what the server supplies.
-Fine... I will commit the patches without that check... 
+> + *
+> + *  Common data structures needed by the pnfs client and pnfs layout driver.
+> + *
+> + *  Copyright (c) 2002 The Regents of the University of Michigan.
+> + *  All rights reserved.
+> + *
+> + *  Dean Hildebrand   <dhildebz-nNDzPDmKTdnSiEDVxGk4TQ@public.gmane.org>
+> + */
+> +
+> +#ifndef LINUX_NFS4_PNFS_H
+> +#define LINUX_NFS4_PNFS_H
+> +
+> +#endif /* LINUX_NFS4_PNFS_H */
 
-steved.
+Adding a file that only contains copyrights and inclusion headers is
+rather odd.  I think you want your split a little more corse grained.
+
