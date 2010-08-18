@@ -1,106 +1,82 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from bronze.cs.yorku.ca ([130.63.90.34]:55609 "EHLO
-	bronze.cs.yorku.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S934131Ab0HFBmL (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 5 Aug 2010 21:42:11 -0400
-Date: Thu, 5 Aug 2010 21:42:09 -0400 (EDT)
-From: Jason Keltz <jas@cse.yorku.ca>
-To: Neil Brown <neilb@suse.de>
-cc: linux-nfs@vger.kernel.org
-Subject: Re: exporting to a list of IPs
-In-Reply-To: <20100805081311.727e9185@notabene>
-Message-ID: <Pine.LNX.4.63.1008052140560.25210@indigo.cs.yorku.ca>
-References: <4C583B63.4050903@cse.yorku.ca> <20100804134527.146397ff@notabene>
- <4C596F81.6010409@cse.yorku.ca> <20100805081311.727e9185@notabene>
-Content-Type: TEXT/PLAIN; charset=US-ASCII; format=flowed
+Received: from mx2.netapp.com ([216.240.18.37]:41810 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753278Ab0HRUQn convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 18 Aug 2010 16:16:43 -0400
+Subject: Re: [PATCH 1/1] nfs41: prevent exchange_id from sending
+ server-only flag
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Benny Halevy <bhalevy@panasas.com>
+Cc: andros@netapp.com, linux-nfs@vger.kernel.org,
+        Fred Isaman <iisaman@citi.umich.edu>
+In-Reply-To: <4C6C3B0D.2080005@panasas.com>
+References: <1282153092-7228-1-git-send-email-andros@netapp.com>
+	 <1282154873.8540.69.camel@heimdal.trondhjem.org>
+	 <4C6C3B0D.2080005@panasas.com>
+Content-Type: text/plain; charset="UTF-8"
+Date: Wed, 18 Aug 2010 16:16:41 -0400
+Message-ID: <1282162601.8540.106.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Thu, 5 Aug 2010, Neil Brown wrote:
+On Wed, 2010-08-18 at 22:57 +0300, Benny Halevy wrote:
+> On Aug. 18, 2010, 21:07 +0300, Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
+> > On Wed, 2010-08-18 at 13:38 -0400, andros@netapp.com wrote:
+> >> From: Fred Isaman <iisaman@citi.umich.edu>
+> >>
+> >> clp->cl_exchange_flags is used both for client output and server input.
+> >> This causes problems in certain recovery situations, when the server
+> >> has sent back EXCHGID4_FLAG_CONFIRMED_R, causing the client to erroneously
+> >> use the flag in future EXCHANGE_ID requests.
+> >>
+> >> Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
+> >> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+> >> ---
+> >>  fs/nfs/nfs4proc.c |    2 +-
+> >>  1 files changed, 1 insertions(+), 1 deletions(-)
+> >>
+> >> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+> >> index 198d51d..e5fea95 100644
+> >> --- a/fs/nfs/nfs4proc.c
+> >> +++ b/fs/nfs/nfs4proc.c
+> >> @@ -4427,7 +4427,7 @@ int nfs4_proc_exchange_id(struct nfs_client *clp, struct rpc_cred *cred)
+> >>  	nfs4_verifier verifier;
+> >>  	struct nfs41_exchange_id_args args = {
+> >>  		.client = clp,
+> >> -		.flags = clp->cl_exchange_flags,
+> >> +		.flags = clp->cl_exchange_flags & ~EXCHGID4_FLAG_CONFIRMED_R,
+> >>  	};
+> >>  	struct nfs41_exchange_id_res res = {
+> >>  		.client = clp,
+> > 
+> > Wait... This is utterly silly...
+> > 
+> > So we start be passing in clp->cl_exchange_flags == 0, then the server
+> > modifies that to some other value, and then from there on we always use
+> > the latest value of clp->cl_exchange_flags that resulted from the last
+> > call to EXCHANGE_ID????
+> > 
+> > We should be setting .flags according to the client capabilities, not
+> > according to the server reply...
+> > 
+> > IOW:
+> > args.flags = EXCHGID4_FLAG_SUPP_MOVED_REFER | EXCHGID4_FLAG_USE_NON_PNFS;
+> > 
+> > 
+> 
+> Makes sense for upstream.
+> 
+> For pNFS, besides dropping EXCHGID4_FLAG_USE_NON_PNFS we should retain
+> EXCHGID4_FLAG_USE_PNFS_MDS | EXCHGID4_FLAG_USE_PNFS_DS as exchange_id
+> is called from both the MDS and the DS paths.
 
-> On Wed, 04 Aug 2010 09:47:45 -0400
-> Jason Keltz <jas@cse.yorku.ca> wrote:
->
->> Neil Brown wrote:
->>> On Tue, 03 Aug 2010 11:53:07 -0400
->>> Jason Keltz <jas@cse.yorku.ca> wrote:
->>>
->>>> Hi.
->>>>
->>>> Why is it that you cannot NFS export to a list of IPs and have exportfs
->>>> leave the list of IPs in etab without converting over to FQDN?
->>>
->>> My memory is that if you only list IP addresses in /etc/exports then it will
->>> do just want you want.  But if you list any host names or net groups then it
->>> has to do a DNS lookup on everything to see if either of those matches.
->>
->> Hi Neil.
->>
->> Thanks for your response!
->>
->> Actually, if I list ONLY IPs in /etc/exports, and nothing else, then
->> etab gets converted over to using hostnames:
->>
->> For example:
->>
->> # cat /etc/exports
->> /test 130.63.92.24(ro,sync)
->>
->> # cat /var/lib/nfs/etab
->> (it's empty)
->> # exportfs -a
->> # cat /var/lib/nfs/etab
->> /test
->> gold.cs.yorku.ca(ro,sync,wdelay,hide,nocrossmnt,secure,root_squash,no_all_squash,subtree_check,secure_locks,mapping=identity,anonuid=-2,anongid=-2)
->>
->> In fact, I see two problems here.  First, exportfs shouldn't convert
->> etab over to using FQDN.  Second, if it does do this, I don't see why
->> rpc.mountd needs to RE-resolve each hostname in etab.    During this
->> time (right after exportfs exits), all of my NFS shares hang, and an
->> strace of rpc.mountd shows that it is re-resolving all the hostnames
->> from etab.  When it finishes, all activity continues.  On one system
->> with a total of 30,000 hostnames listed, this ends up in a 30 second
->> hang time for all NFS exports!  I was able to shrink this time slightly
->> by putting a caching name server on the NFS server, so that the NFS
->> server wasn't killing the DNS, but this didn't help enough.  If exportfs
->> truly has to convert IPs over to hostname, I can live with that, but
->> then rpc.mountd shouldn't re-resolve the names.  If both can live with
->> IPs, I'm good with that as well.
->>
->> Now, albeit, I'm using an older nfs-utils that comes with RHEL4
->> installation.  Compiling a later version is a bit tricky because some
->> libraries have changed.  That being said, reviewing the source (given
->> that I don't really know it that well) for the newest nfs-utils, I don't
->> see how this behavior would really be any different.  For example, in
->> client_lookup in support/export/client.c, adding some printfs, I can see
->> that the IPs always get into the ...
->>
->>    if (htype == MCL_FQDN && !canonical) {
->> ... where there's a call to gethostbyname.
->>
->> This is the same in nfs-utils-1.0.6 as it is in 1.2.2.
->
-> True, but client_gettype is different.
-> In 1.0.6, w.x.y.z is treated as MCL_FQDN
-> In 1.2.2, w.x.y.z is treated as MCL_SUBNETWORK
->
-> If you use w.x.y.z/32 then it will be treated as MCL_SUBNETWORK and should do
-> what you want.
+No. As I read the spec, a pNFS-capable client should _retain_
+EXCHGID4_FLAG_USE_NON_PNFS, and OR in the EXCHGID4_FLAG_USE_PNFS_MDS |
+EXCHGID4_FLAG_USE_PNFS_DS flags too (see section 13.1).
 
-Hi Neil,
+The server will then reply with a subset of those 3 flags that tells the
+client whether it is an MDS, a DS, or a non-MDS (or a valid combination
+of 2 of those flags).
 
-I tried this, and it worked wonderfully! Well, sort of.  It appears that 
-mountd doesn't care about the mask, since I can set it to /1, /24, or /32 
-and it works...  I'm disappointed to say that after exportfs exits, my NFS 
-shares still hang for around 20 seconds.  Now it seems like this is 
-happening while rpc.mountd is doing a whole bunch of lstat64 calls! I 
-guess that comes after what used to be the name lookups.  I just don't get 
-it.  I wrote a small program to loop through 38,000 lstat64 calls in a 
-matter of a second... if you could look at the lstat output here 
-(http://www.cse.yorku.ca/~jas/lstat.txt), it would be really helpful .. i 
-added the times so you can see how long all the lstats take.  It's crazy.
-
-Jason.
-
-
+Trond
