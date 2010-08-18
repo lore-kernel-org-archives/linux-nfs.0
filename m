@@ -1,85 +1,110 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cantor.suse.de ([195.135.220.2]:48280 "EHLO mx1.suse.de"
+Received: from cantor2.suse.de ([195.135.220.15]:60242 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754946Ab0HHXHd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 8 Aug 2010 19:07:33 -0400
-Date: Mon, 9 Aug 2010 09:07:03 +1000
+	id S1751586Ab0HRFyJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 18 Aug 2010 01:54:09 -0400
+Date: Wed, 18 Aug 2010 15:53:59 +1000
 From: Neil Brown <neilb@suse.de>
-To: Jeremy Allison <jra@samba.org>
-Cc: Jeff Layton <jlayton@redhat.com>, utz lehmann <lkml123@s2y4n2c.de>,
-        Linus Torvalds <torvalds@linux-foundation.org>,
-        Volker.Lendecke@sernet.de, David Howells <dhowells@redhat.com>,
-        Jan Engelhardt <jengelh@medozas.de>, linux-cifs@vger.kernel.org,
-        linux-nfs@vger.kernel.org, samba-technical@lists.samba.org,
-        linux-kernel@vger.kernel.org, viro@zeniv.linux.org.uk,
-        linux-fsde@jasper.es
-Subject: Re: [PATCH 02/18] xstat: Add a pair of system calls to make
- extended  file stats available [ver #6]
-Message-ID: <20100809090703.304d21c7@notabene>
-In-Reply-To: <20100808121208.GA7329@jeremy-laptop>
-References: <alpine.LSU.2.01.1007221228260.6115@obet.zrqbmnf.qr>
-	<20100715021709.5544.64506.stgit@warthog.procyon.org.uk>
-	<20100715021712.5544.44845.stgit@warthog.procyon.org.uk>
-	<30448.1279800887@redhat.com>
-	<E1Obuiy-00C9jr-Al@intern.SerNet.DE>
-	<AANLkTimdFCGSKLn7aGMpBMIauHTsHY7hpAAmpo6uTcnD@mail.gmail.com>
-	<1280524978.2452.9.camel@segv.aura.of.mankind>
-	<20100801092529.5e6ba0e0@corrin.poochiereds.net>
-	<20100805235218.GB31233@jeremy-laptop>
-	<20100806133836.49757af9@notabene>
-	<20100808121208.GA7329@jeremy-laptop>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Alan Cox <alan@lxorguk.ukuu.org.uk>,
+        "Patrick J. LoPresti" <lopresti@gmail.com>,
+        Andi Kleen <andi@firstfloor.org>, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-kernel <linux-kernel@vger.kernel.org>
+Subject: Re: Proposal: Use hi-res clock for file timestamps
+Message-ID: <20100818155359.66b9ddb6@notabene>
+In-Reply-To: <20100817192937.GD26609@fieldses.org>
+References: <AANLkTimnyXKahtjaFeSsgcq=xMy-pP3na1jidQhZ-dt2@mail.gmail.com>
+	<87aaolwar8.fsf@basil.nowhere.org>
+	<20100817174134.GA23176@fieldses.org>
+	<20100817182920.GD18161@basil.fritz.box>
+	<20100817190447.GA28049@fieldses.org>
+	<AANLkTi=w1UA5ZZDBigpxMiL7A7DnbnQhLkg62JZpC6Ri@mail.gmail.com>
+	<20100817203941.729830b7@lxorguk.ukuu.org.uk>
+	<20100817192937.GD26609@fieldses.org>
 Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Sun, 8 Aug 2010 05:12:09 -0700
-Jeremy Allison <jra@samba.org> wrote:
+On Tue, 17 Aug 2010 15:29:38 -0400
+"J. Bruce Fields" <bfields@fieldses.org> wrote:
 
-> On Fri, Aug 06, 2010 at 01:38:36PM +1000, Neil Brown wrote:
-> > I'm curious.  Why do you particularly care what interface the kernel uses to
-> > provide you with access to this attribute?
+> On Tue, Aug 17, 2010 at 08:39:41PM +0100, Alan Cox wrote:
+> > > The problem with "increment mtime by a nanosecond when necessary" is
+> > > that timestamps can wind up out of order.  As in:
+> > 
+> > Surely that depends on your implementation ?
+> > 
+> > > 1) Do a bunch of operations on file A
+> > > 2) Do one operation on file B
+> > > 
+> > > Imagine each operation on A incrementing its timestamp by a nanosecond
+> > > "just because".  If all of these operations happen in less than 4 ms,
+> > > you can wind up with the timestamp on B being EARLIER than the
+> > > timestamp on A.  That is a big no-no (think "make" or anything else
+> > > relying on timestamps for relative times).
+> > 
+> > 
+> > [time resolution bits of data][value incremented value for that time]
+> > 
+> > 
+> > 	if (time_now == time_last)
+> > 		return { time_last , ++ct };
+> > 	else {
+> > 		ct = 0;
+> > 		time_last = time_now;
+> > 		return { time_last , 0 };
+> > 	}
+> > 
+> > providing it is done with the same 'ct' across the fs and you can't do
+> > enough ops/second to wrap the nanosecs - which should be fine for now,
+> > your ordering is still safe is it not ?
 > 
-> It's a matter of taste. The *BSD's have this right IMHO. It
-> should be part of the stat information. A file timestamp is not
-> an EA. Making it available that way just feels like an appalingly
-> tasteless kludge. It offends the artist in me :-).
-
-Unfortunately whenever you work on a collaborative project someone has to make
-concessions to taste, as we all taste different.. (or have different taste..
-or something).
-
-So I think it is very important to clearly differentiate the practical issues
-from the aesthetic issues as I think we can hope for unity on the former, but
-never on the latter.
-
+> Right, so if I understand correctly, you're proposing a time source
+> that's global to the filesystem and that guarantees it will always
+> return a unique value by incrementing the nanoseconds field if jiffies
+> haven't changed since the last time it was called.
 > 
-> > Or do you really want something like BSD's 'btime' which as I understand it
-> > cannot be set.  Would that be really useful to you?
-> 
-> It is *already* useful to us, and is widely used in
-> existing code. The occasions when btime is set are
-> relatively rare, and at that point we store it in a
-> separate EA for Windows reporting purposes.
+> (Does it really need to be global across all filesystems?  Or is it
+> unreasonable to expect your unbelievably-fast make's to behave well when
+> sources and targets live on different filesystems?)
+>
 
-I'm probably sounding like a scratched record, but when you say "is widely
-used" do you mean "is used in samba which is widely used" or do you mean "is
-used in a wide variety of applications"?
+I'm not sure you even want to pay for a per-filesystem atomic access when
+updating mtime.  mnt_want_write - called at the same time - seems to go to
+some lengths to avoid an atomic operation.
 
-Because if you are only saying the former, then I don't think we should copy
-BSD, but rather I think we should provide exactly the semantics that are most
-useful to samba - and that would seem to be creation-time and DOS flags which
-the filesystem can store directly in the inode and which samba can access
-cheaply.
-(and I would prefer to use xattrs, but that is a taste thing and as I'm not
-writing the code, I don't get to choose the taste).
+I think that nfsd should be the only place that has to pay the atomic
+penalty, as it is where the need is.
 
-But if you are saying the later, then sharing those details might help us see
-that copying bsd is actually the best thing to do, or maybe that something
-else is better.
+I imagine something like this:
+ - Create a global struct timespec which is protected by a seqlock
+   Call it current_nfsd_time or similar.
+ - file_update_time reads this and uses it if it is newer than
+   current_fs_time.
+ - nfsd updates it whenever it reads an mtime out of an inode that matches
+   current_fs_time to the granularity of 1/HZ.
+   If the current value is before current_kernel_time, it
+   is set to current_kernel_time, otherwise tv_nsec is incremented -
+   unless that increases
+   beyond jiffies_to_usec(1)*1000 beyond current_kernel_time.
+ - the global 'struct timespec' is zeroed whenever system time is set
+   backwards.
 
-I'm just afraid that if some new interface is added without clear,
-comprehensive and up-front justification then we will end up getting a
-sub-optimal interface.
+Then - providing the fs stores nanosecond timestamps - we should have stable,
+globally ordered, precise (if not entirely accurate) time stamps, and a
+penalty would only be paid when nfsd actually needs the information.
+
+
+[[You could probably make ext3 work reasonably well by adding a mount option
+  which:
+    - advertises s_time_gran as 1
+    - when storing: rounds timestamps up to the next second if tv_nsec != 0
+    - when loading, setting the timestamp to the current time if the stored
+      number matches current_kernel_time().tv_sec+1
+  You would get occasional forward jumps in mtime, but usually when you
+  aren't looking, and at least you would not get real changes that are not
+  reflected in mtime
+]]
 
 NeilBrown
