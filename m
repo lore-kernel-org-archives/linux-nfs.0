@@ -1,125 +1,258 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-gw0-f46.google.com ([74.125.83.46]:49431 "EHLO
-	mail-gw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752620Ab0HDVka convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 4 Aug 2010 17:40:30 -0400
-Received: by gwb20 with SMTP id 20so2188743gwb.19
-        for <linux-nfs@vger.kernel.org>; Wed, 04 Aug 2010 14:40:29 -0700 (PDT)
-In-Reply-To: <1280956937.2865.13.camel@heimdal.trondhjem.org>
-References: <AANLkTi=2KYZ-8qaXMG=C_s617q3k1Ocs7h1gyd8=RpY6@mail.gmail.com>
-	<AANLkTimr9QfF0+MJ47hUihJgSLVOfquR=Atp4iV5D2gr@mail.gmail.com>
-	<97A00951-577C-4365-AA38-3C6E2D03B372@netapp.com> <AANLkTimi9CSa=XfoKBMCm-XAKcVQKVi0bEXgtA+XHexE@mail.gmail.com>
-	<1280956937.2865.13.camel@heimdal.trondhjem.org>
-From: Yudong Gao <stgyd@umich.edu>
-Date: Wed, 4 Aug 2010 14:40:09 -0700
-Message-ID: <AANLkTi=FivAoO+Rqin82h885_8bj1=Ck5mjqPqV2rif4@mail.gmail.com>
-Subject: Re: Write delegation
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-Cc: Andy Adamson <andros@netapp.com>, linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mx2.netapp.com ([216.240.18.37]:6955 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752227Ab0HROoX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 18 Aug 2010 10:44:23 -0400
+From: andros@netapp.com
+To: bhalevy@panasas.com
+Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
+Subject: [PATCH 01/11] SQUASHME pnfs-submit: rename pnfs_layout_type 1
+Date: Wed, 18 Aug 2010 10:44:08 -0400
+Message-Id: <1282142658-21579-2-git-send-email-andros@netapp.com>
+In-Reply-To: <1282142658-21579-1-git-send-email-andros@netapp.com>
+References: <1282142658-21579-1-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-I see. But according to the spec, the write delegation is supposed to
-break the close-to-open consistency so that the client can avoid
-flushing dirty page to server when closing the file. Is this part
-implemented? I can not find it in the source code...
+From: Andy Adamson <andros@netapp.com>
 
-Another question is how the nfs file write interacts with fscache? I
-was not able to find the code that update the page copy in fscache
-when the page in memory is modified.
+squash into pnfs_submit: layout header alloc,reference, and destroy
 
-Thanks a lot!
+Signed-off-by: Andy Adamson <andros@netapp.com>
+---
+ fs/nfs/pnfs.c             |   32 ++++++++++++++++----------------
+ fs/nfs/pnfs.h             |    4 ++--
+ include/linux/nfs4_pnfs.h |   16 ++++++++--------
+ include/linux/nfs_fs.h    |    4 ++--
+ 4 files changed, 28 insertions(+), 28 deletions(-)
 
-best,
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 393855e..bf86975 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -57,9 +57,9 @@
+ 
+ static int pnfs_initialized;
+ 
+-static void pnfs_free_layout(struct pnfs_layout_type *lo,
++static void pnfs_free_layout(struct pnfs_layout_hdr *lo,
+ 			     struct nfs4_pnfs_layout_segment *range);
+-static inline void get_layout(struct pnfs_layout_type *lo);
++static inline void get_layout(struct pnfs_layout_hdr *lo);
+ 
+ /* Locking:
+  *
+@@ -314,14 +314,14 @@ pnfs_unregister_layoutdriver(struct pnfs_layoutdriver_type *ld_type)
+ #endif /* CONFIG_SMP */
+ 
+ static inline void
+-get_layout(struct pnfs_layout_type *lo)
++get_layout(struct pnfs_layout_hdr *lo)
+ {
+ 	BUG_ON_UNLOCKED_LO(lo);
+ 	lo->refcount++;
+ }
+ 
+ static inline void
+-put_layout_locked(struct pnfs_layout_type *lo)
++put_layout_locked(struct pnfs_layout_hdr *lo)
+ {
+ 	BUG_ON_UNLOCKED_LO(lo);
+ 	BUG_ON(lo->refcount <= 0);
+@@ -368,7 +368,7 @@ pnfs_layout_release(struct pnfs_layout_type *lo,
+ void
+ pnfs_destroy_layout(struct nfs_inode *nfsi)
+ {
+-	struct pnfs_layout_type *lo;
++	struct pnfs_layout_hdr *lo;
+ 	struct nfs4_pnfs_layout_segment range = {
+ 		.iomode = IOMODE_ANY,
+ 		.offset = 0,
+@@ -400,10 +400,10 @@ pnfs_destroy_layout(struct nfs_inode *nfsi)
+ void
+ pnfs_destroy_all_layouts(struct nfs_client *clp)
+ {
+-	struct pnfs_layout_type *lo;
++	struct pnfs_layout_hdr *lo;
+ 
+ 	while (!list_empty(&clp->cl_layouts)) {
+-		lo = list_entry(clp->cl_layouts.next, struct pnfs_layout_type,
++		lo = list_entry(clp->cl_layouts.next, struct pnfs_layout_hdr,
+ 				lo_layouts);
+ 		dprintk("%s freeing layout for inode %lu\n", __func__,
+ 			lo->lo_inode->i_ino);
+@@ -472,7 +472,7 @@ put_lseg(struct pnfs_layout_segment *lseg)
+ EXPORT_SYMBOL(put_lseg);
+ 
+ void
+-pnfs_set_layout_stateid(struct pnfs_layout_type *lo,
++pnfs_set_layout_stateid(struct pnfs_layout_hdr *lo,
+ 			const nfs4_stateid *stateid)
+ {
+ 	write_seqlock(&lo->seqlock);
+@@ -481,7 +481,7 @@ pnfs_set_layout_stateid(struct pnfs_layout_type *lo,
+ }
+ 
+ void
+-pnfs_get_layout_stateid(nfs4_stateid *dst, struct pnfs_layout_type *lo)
++pnfs_get_layout_stateid(nfs4_stateid *dst, struct pnfs_layout_hdr *lo)
+ {
+ 	int seq;
+ 
+@@ -497,7 +497,7 @@ pnfs_get_layout_stateid(nfs4_stateid *dst, struct pnfs_layout_type *lo)
+ }
+ 
+ static void
+-pnfs_layout_from_open_stateid(struct pnfs_layout_type *lo,
++pnfs_layout_from_open_stateid(struct pnfs_layout_hdr *lo,
+ 			      struct nfs4_state *state)
+ {
+ 	int seq;
+@@ -616,7 +616,7 @@ _pnfs_can_return_lseg(struct pnfs_layout_segment *lseg)
+ 
+ 
+ static void
+-pnfs_free_layout(struct pnfs_layout_type *lo,
++pnfs_free_layout(struct pnfs_layout_hdr *lo,
+ 		 struct nfs4_pnfs_layout_segment *range)
+ {
+ 	struct pnfs_layout_segment *lseg, *next;
+@@ -833,14 +833,14 @@ pnfs_insert_layout(struct pnfs_layout_type *lo,
+ }
+ 
+ /*
+- * Each layoutdriver embeds pnfs_layout_type as the first field in it's
++ * Each layoutdriver embeds pnfs_layout_hdr as the first field in it's
+  * per-layout type layout cache structure and returns it ZEROed
+  * from layoutdriver_io_ops->alloc_layout
+  */
+-static struct pnfs_layout_type *
++static struct pnfs_layout_hdr *
+ alloc_init_layout(struct inode *ino)
+ {
+-	struct pnfs_layout_type *lo;
++	struct pnfs_layout_hdr *lo;
+ 	struct layoutdriver_io_operations *io_ops;
+ 
+ 	io_ops = NFS_SERVER(ino)->pnfs_curr_ld->ld_io_ops;
+@@ -864,11 +864,11 @@ alloc_init_layout(struct inode *ino)
+  *
+  * ino->i_lock must be taken by the caller.
+  */
+-static struct pnfs_layout_type *
++static struct pnfs_layout_hdr *
+ pnfs_alloc_layout(struct inode *ino)
+ {
+ 	struct nfs_inode *nfsi = NFS_I(ino);
+-	struct pnfs_layout_type *new = NULL;
++	struct pnfs_layout_hdr *new = NULL;
+ 
+ 	dprintk("%s Begin ino=%p layout=%p\n", __func__, ino, nfsi->layout);
+ 
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index 80f67c7..7da54fe 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -59,12 +59,12 @@ void pnfs_pageio_init_write(struct nfs_pageio_descriptor *, struct inode *);
+ void pnfs_get_layout_done(struct nfs4_pnfs_layoutget *, int rpc_status);
+ int pnfs_layout_process(struct nfs4_pnfs_layoutget *lgp);
+ void pnfs_layout_release(struct pnfs_layout_type *, struct nfs4_pnfs_layout_segment *range);
+-void pnfs_set_layout_stateid(struct pnfs_layout_type *lo,
++void pnfs_set_layout_stateid(struct pnfs_layout_hdr *lo,
+ 			     const nfs4_stateid *stateid);
+ void pnfs_destroy_layout(struct nfs_inode *);
+ void pnfs_destroy_all_layouts(struct nfs_client *);
+ void put_layout(struct inode *inode);
+-void pnfs_get_layout_stateid(nfs4_stateid *dst, struct pnfs_layout_type *lo);
++void pnfs_get_layout_stateid(nfs4_stateid *dst, struct pnfs_layout_hdr *lo);
+ 
+ #define PNFS_EXISTS_LDIO_OP(srv, opname) ((srv)->pnfs_curr_ld &&	\
+ 				     (srv)->pnfs_curr_ld->ld_io_ops &&	\
+diff --git a/include/linux/nfs4_pnfs.h b/include/linux/nfs4_pnfs.h
+index ef160e6..59a1a12 100644
+--- a/include/linux/nfs4_pnfs.h
++++ b/include/linux/nfs4_pnfs.h
+@@ -31,31 +31,31 @@ struct pnfs_layoutdriver_type {
+ #if defined(CONFIG_NFS_V4_1)
+ 
+ static inline struct nfs_inode *
+-PNFS_NFS_INODE(struct pnfs_layout_type *lo)
++PNFS_NFS_INODE(struct pnfs_layout_hdr *lo)
+ {
+ 	return NFS_I(lo->lo_inode);
+ }
+ 
+ static inline struct inode *
+-PNFS_INODE(struct pnfs_layout_type *lo)
++PNFS_INODE(struct pnfs_layout_hdr *lo)
+ {
+ 	return lo->lo_inode;
+ }
+ 
+ static inline struct nfs_server *
+-PNFS_NFS_SERVER(struct pnfs_layout_type *lo)
++PNFS_NFS_SERVER(struct pnfs_layout_hdr *lo)
+ {
+ 	return NFS_SERVER(PNFS_INODE(lo));
+ }
+ 
+ static inline struct pnfs_layoutdriver_type *
+-PNFS_LD(struct pnfs_layout_type *lo)
++PNFS_LD(struct pnfs_layout_hdr *lo)
+ {
+ 	return NFS_SERVER(PNFS_INODE(lo))->pnfs_curr_ld;
+ }
+ 
+ static inline struct layoutdriver_io_operations *
+-PNFS_LD_IO_OPS(struct pnfs_layout_type *lo)
++PNFS_LD_IO_OPS(struct pnfs_layout_hdr *lo)
+ {
+ 	return PNFS_LD(lo)->ld_io_ops;
+ }
+@@ -94,7 +94,7 @@ struct pnfs_layout_segment {
+ 	struct nfs4_pnfs_layout_segment range;
+ 	struct kref kref;
+ 	bool valid;
+-	struct pnfs_layout_type *layout;
++	struct pnfs_layout_hdr *layout;
+ 	struct nfs4_deviceid *deviceid;
+ 	u8 ld_data[];			/* layout driver private data */
+ };
+@@ -135,8 +135,8 @@ struct layoutdriver_io_operations {
+ 	/* Layout information. For each inode, alloc_layout is executed once to retrieve an
+ 	 * inode specific layout structure.  Each subsequent layoutget operation results in
+ 	 * a set_layout call to set the opaque layout in the layout driver.*/
+-	struct pnfs_layout_type * (*alloc_layout) (struct inode *inode);
+-	void (*free_layout) (struct pnfs_layout_type *);
++	struct pnfs_layout_hdr * (*alloc_layout) (struct inode *inode);
++	void (*free_layout) (struct pnfs_layout_hdr *);
+ 	struct pnfs_layout_segment * (*alloc_lseg) (struct pnfs_layout_type *layoutid, struct nfs4_pnfs_layoutget_res *lgr);
+ 	void (*free_lseg) (struct pnfs_layout_segment *lseg);
+ 
+diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
+index 6f67aec..420932a 100644
+--- a/include/linux/nfs_fs.h
++++ b/include/linux/nfs_fs.h
+@@ -104,7 +104,7 @@ struct nfs_delegation;
+ 
+ struct posix_acl;
+ 
+-struct pnfs_layout_type {
++struct pnfs_layout_hdr {
+ 	int refcount;
+ 	struct list_head lo_layouts;	/* other client layouts */
+ 	struct list_head segs;		/* layout segments list */
+@@ -212,7 +212,7 @@ struct nfs_inode {
+ 	/* pNFS layout information */
+ #if defined(CONFIG_NFS_V4_1)
+ 	wait_queue_head_t lo_waitq;
+-	struct pnfs_layout_type *layout;
++	struct pnfs_layout_hdr *layout;
+ 	time_t pnfs_layout_suspend;
+ #endif /* CONFIG_NFS_V4_1 */
+ #endif /* CONFIG_NFS_V4*/
+-- 
+1.6.2.5
 
-Yudong
-
-On Wed, Aug 4, 2010 at 2:22 PM, Trond Myklebust
-<trond.myklebust@fys.uio.no> wrote:
-> On Wed, 2010-08-04 at 14:11 -0700, Yudong Gao wrote:
->> Thanks for the reply, Andy!
->>
->> So the write delegation can only reduce the unnecessary open/close and
->> lock/locku. But if a client modify the same page for multiple times,
->> e.g. editing the file in a editor, is there any optimization to
->> prevent the client from sending the half-updated pages? Ideally only
->> the final update need to be put on the wire.
->>
->
-> Yes. However that optimisation is not linked to whether or not we hold a
-> write delegation. The NFS client assumes close-to-open cache
-> consistency, and so will cache writes until either the VM tries to
-> reclaim memory by writing out dirty page, or the application calls one
-> of fcntl(F_UNLCK), fsync() or close().
->
-> Trond
->
->> Thanks!
->>
->> best,
->>
->> Yudong
->>
->> On Wed, Aug 4, 2010 at 1:59 PM, Andy Adamson <andros@netapp.com> wrote:
->> >
->> > On Aug 4, 2010, at 3:21 PM, Yudong Gao wrote:
->> >
->> >> Hi,
->> >>
->> >> I am not able to find the implementation of directory delegation,
->> >> either. Similarly, the callback functions CB_NOTIFY is not
->> >> implemented, either. I find that in preprocss_nfs41_op() in
->> >> callback_xdr.c, whenever a CB_NOTIFY is encountered, an
->> >> NFS4ERR_NOTSUPP is returned directly.
->> >
->> > CB_NOTIFY is not currently supported on the Linux NFS client.
->> >
->> >>
->> >> Am I missing something? Or they are just not supported in the current version?
->> >>
->> >> Thanks a lot!
->> >>
->> >> best,
->> >>
->> >> Yudong
->> >>
->> >> On Mon, Aug 2, 2010 at 5:17 PM, Yudong Gao <stgyd@umich.edu> wrote:
->> >>> Hi,
->> >>>
->> >>> I am looking at the delegation implementation in the source code of
->> >>> NFS 4.1 in kernel 2.6.32.15. I can find the code for read delegation,
->> >>> which is working and can serve the read requests locally. But I can
->> >>> never find the code about write delegation, which is supposed to cache
->> >>> the write update locally. I try to look at the functions including
->> >>> nfs_writepage(s), nfs_file_flush() but none of them checks or uses the
->> >>> write delegation.
->> >>>
->> >>> Is write delegation currently implemented in NFS 4.1?
->> >
->> > Write delegation is supported but I don't think write behavior changes - writes are still cached and flushed as without a write delegation. The write delegation does prevent open/close and lock/locku from being put on the wire.
->> >
->> > -->Andy
->> >
->> >>>
->> >>> Thanks!
->> >>>
->> >>> best,
->> >>>
->> >>> Yudong
->> >>>
->> >> --
->> >> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> >> the body of a message to majordomo@vger.kernel.org
->> >> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->> >
->> >
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->
->
->
->
