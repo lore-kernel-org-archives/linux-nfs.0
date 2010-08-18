@@ -1,66 +1,91 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-out1.uio.no ([129.240.10.57]:49842 "EHLO mail-out1.uio.no"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752704Ab0HSO6r (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 19 Aug 2010 10:58:47 -0400
-Subject: Re: why are WB_SYNC_NONE COMMITs being done with FLUSH_SYNC set ?
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-To: Christoph Hellwig <hch@infradead.org>
-Cc: Jeff Layton <jlayton@redhat.com>, fengguang.wu@gmail.com,
-        linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-mm@kvack.org
-In-Reply-To: <20100819143710.GA4752@infradead.org>
-References: <20100819101525.076831ad@barsoom.rdu.redhat.com>
-	 <20100819143710.GA4752@infradead.org>
-Content-Type: text/plain; charset="UTF-8"
-Date: Thu, 19 Aug 2010 10:58:25 -0400
-Message-ID: <1282229905.6199.19.camel@heimdal.trondhjem.org>
+Received: from cn.fujitsu.com ([222.73.24.84]:57015 "EHLO song.cn.fujitsu.com"
+	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
+	id S1751149Ab0HRCum (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 17 Aug 2010 22:50:42 -0400
+Message-ID: <4C6B4A20.60507@cn.fujitsu.com>
+Date: Wed, 18 Aug 2010 10:49:04 +0800
+From: Bian Naimeng <biannm@cn.fujitsu.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+CC: Adam Lackorzynski <adam@os.inf.tu-dresden.de>,
+        linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        stable@kernel.org
+Subject: Re: 2.6.35.2: NFS related Oops
+References: <20100816215056.GA5376@os.inf.tu-dresden.de>	 <4C6A5FF1.3070209@cn.fujitsu.com>	 <20100817171454.GB11366@os.inf.tu-dresden.de> <1282084985.18385.24.camel@heimdal.trondhjem.org> <4C6B4181.50100@cn.fujitsu.com>
+In-Reply-To: <4C6B4181.50100@cn.fujitsu.com>
+Content-Type: text/plain; charset=Shift_JIS
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Thu, 2010-08-19 at 10:37 -0400, Christoph Hellwig wrote:
-> On Thu, Aug 19, 2010 at 10:15:25AM -0400, Jeff Layton wrote:
-> > I'm looking at backporting some upstream changes to earlier kernels,
-> > and ran across something I don't quite understand...
-> > 
-> > In nfs_commit_unstable_pages, we set the flags to FLUSH_SYNC. We then
-> > zero out the flags if wbc->nonblocking or wbc->for_background is set.
-> > 
-> > Shouldn't we also clear it out if wbc->sync_mode == WB_SYNC_NONE ?
-> > WB_SYNC_NONE means "don't wait on anything", so shouldn't that include
-> > not waiting on the COMMIT to complete?
+>>>  	/* We can't create new files, or truncate existing ones here */
+>>>  	openflags &= ~(O_CREAT|O_TRUNC);
+>>> -- 
+>> Nope. The problem is the recent switch to LOOKUP_EXCL as the authority
+>> for whether or not we're doing an exclusive create.
+>>
+>> Does the following patch work?
+>>
 > 
-> I've been trying to figure out what the nonblocking flag is supposed
-> to mean for a while now.
+>   Hi Trond, i guess it's not work.
 > 
-> It basically disappeared in commit 0d99519efef15fd0cf84a849492c7b1deee1e4b7
+>   As i see, if we want get LOOKUP_EXCL at nd->flags,  we must open file with 
+>   O_CREAT and O_EXCL, "nd->flags & LOOKUP_EXCL" have the same effect with
+>   "(openflags & (O_CREAT|O_EXCL)) == (O_CREAT|O_EXCL)", so i think the kernel
+>   still crash, right?
 > 
-> 	"writeback: remove unused nonblocking and congestion checks"
-> 
-> from Wu.  What's left these days is a couple of places in local copies
-> of write_cache_pages (afs, cifs), and a couple of checks in random
-> writepages instances (afs, block_write_full_page, ceph, nfs, reiserfs, xfs)
-> and the use in nfs_write_inode.  It's only actually set for memory
-> migration and pageout, that is VM writeback.
-> 
-> To me it really doesn't make much sense, but maybe someone has a better
-> idea what it is for.
-> 
-> > +	if (wbc->nonblocking || wbc->for_background ||
-> > +	    wbc->sync_mode == WB_SYNC_NONE)
-> 
-> You could remove the nonblocking and for_background checks as
-> these impliy WB_SYNC_NONE.
 
-To me that sounds fine. I've also been trying to wrap my head around the
-differences between 'nonblocking', 'for_background', 'for_reclaim' and
-'for_kupdate' and how the filesystem is supposed to treat them.
+What about this one?
 
-Aside from the above, I've used 'for_reclaim', 'for_kupdate' and
-'for_background' in order to adjust the RPC request's queuing priority
-(high in the case of 'for_reclaim' and low for the other two).
+-- 
+Regards
+Bian Naimeng
 
-Cheers
-  Trond
+-------------------------------------------------------------------------------------
+
+   We we open a positive file just with O_EXCL but no O_CREAT, may cause kernel crash.
+
+  Signed-off-by: Bian Naimeng <biannm@cn.fujitsu.com>
+
+---
+ fs/namei.c   |    7 +++----
+ fs/nfs/dir.c |    2 +-
+ 2 files changed, 4 insertions(+), 5 deletions(-)
+
+diff --git a/fs/namei.c b/fs/namei.c
+index 17ea76b..6680a38 100644
+--- a/fs/namei.c
++++ b/fs/namei.c
+@@ -1813,11 +1813,10 @@ reval:
+ 	nd.intent.open.create_mode = mode;
+ 	nd.flags &= ~LOOKUP_PARENT;
+ 	nd.flags |= LOOKUP_OPEN;
+-	if (open_flag & O_CREAT) {
++	if (open_flag & O_CREAT)
+ 		nd.flags |= LOOKUP_CREATE;
+-		if (open_flag & O_EXCL)
+-			nd.flags |= LOOKUP_EXCL;
+-	}
++	if (open_flag & O_EXCL)
++		nd.flags |= LOOKUP_EXCL;
+ 	if (open_flag & O_DIRECTORY)
+ 		nd.flags |= LOOKUP_DIRECTORY;
+ 	if (!(open_flag & O_NOFOLLOW))
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index 29539ce..bc25da9 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -1100,7 +1100,7 @@ static int nfs_open_revalidate(struct dentry *dentry, struct nameidata *nd)
+ 		goto no_open_dput;
+ 	openflags = nd->intent.open.flags;
+ 	/* We cannot do exclusive creation on a positive dentry */
+-	if ((openflags & (O_CREAT|O_EXCL)) == (O_CREAT|O_EXCL))
++	if (nd->flags & LOOKUP_EXCL)
+ 		goto no_open_dput;
+ 	/* We can't create new files, or truncate existing ones here */
+ 	openflags &= ~(O_CREAT|O_TRUNC);
+-- 
+1.7.0
+
+
 
