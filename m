@@ -1,99 +1,67 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-pz0-f46.google.com ([209.85.210.46]:41485 "EHLO
-	mail-pz0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751724Ab0HTNUt (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 20 Aug 2010 09:20:49 -0400
-Date: Fri, 20 Aug 2010 21:20:39 +0800
-From: Wu Fengguang <fengguang.wu@gmail.com>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
-        Christoph Hellwig <hch@infradead.org>, linux-nfs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, linux-mm@kvack.org
-Subject: Re: why are WB_SYNC_NONE COMMITs being done with FLUSH_SYNC set ?
-Message-ID: <20100820132039.GA20126@localhost>
-References: <20100819101525.076831ad@barsoom.rdu.redhat.com>
- <20100819143710.GA4752@infradead.org>
- <1282229905.6199.19.camel@heimdal.trondhjem.org>
- <20100819151618.5f769dc9@tlielax.poochiereds.net>
- <20100820003308.GA30548@localhost>
- <20100819205332.5ea929ee@corrin.poochiereds.net>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20100819205332.5ea929ee@corrin.poochiereds.net>
+Received: from mx2.netapp.com ([216.240.18.37]:6955 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753378Ab0HROoc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 18 Aug 2010 10:44:32 -0400
+From: andros@netapp.com
+To: bhalevy@panasas.com
+Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
+Subject: [PATCH 07/11] SQUASHME pnfs_submit: rename pnfs_layout_type 7
+Date: Wed, 18 Aug 2010 10:44:14 -0400
+Message-Id: <1282142658-21579-8-git-send-email-andros@netapp.com>
+In-Reply-To: <1282142658-21579-7-git-send-email-andros@netapp.com>
+References: <1282142658-21579-1-git-send-email-andros@netapp.com>
+ <1282142658-21579-2-git-send-email-andros@netapp.com>
+ <1282142658-21579-3-git-send-email-andros@netapp.com>
+ <1282142658-21579-4-git-send-email-andros@netapp.com>
+ <1282142658-21579-5-git-send-email-andros@netapp.com>
+ <1282142658-21579-6-git-send-email-andros@netapp.com>
+ <1282142658-21579-7-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Thu, Aug 19, 2010 at 08:53:32PM -0400, Jeff Layton wrote:
-> On Fri, 20 Aug 2010 08:33:08 +0800
-> Wu Fengguang <fengguang.wu@gmail.com> wrote:
-> 
-> > > Here's a lightly tested patch that turns the check for the two flags
-> > > into a check for WB_SYNC_NONE. It seems to do the right thing, but I
-> > > don't have a clear testcase for it. Does this look reasonable?
-> >  
-> > Yes, I don't see any problems.
-> > 
-> > > ------------------[snip]------------------------
-> > > 
-> > > NFS: don't use FLUSH_SYNC on WB_SYNC_NONE COMMIT calls
-> > > 
-> > > WB_SYNC_NONE is supposed to mean "don't wait on anything". That should
-> > > also include not waiting for COMMIT calls to complete.
-> > > 
-> > > WB_SYNC_NONE is also implied when wbc->nonblocking or
-> > > wbc->for_background are set, so we can replace those checks in
-> > > nfs_commit_unstable_pages with a check for WB_SYNC_NONE.
-> > >
-> > > Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> > > ---
-> > >  fs/nfs/write.c |   10 +++++-----
-> > >  1 files changed, 5 insertions(+), 5 deletions(-)
-> > > 
-> > > diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-> > > index 874972d..35bd7d0 100644
-> > > --- a/fs/nfs/write.c
-> > > +++ b/fs/nfs/write.c
-> > > @@ -1436,12 +1436,12 @@ static int nfs_commit_unstable_pages(struct inode *inode, struct writeback_contr
-> > >  	/* Don't commit yet if this is a non-blocking flush and there are
-> > >  	 * lots of outstanding writes for this mapping.
-> > >  	 */
-> > > -	if (wbc->sync_mode == WB_SYNC_NONE &&
-> > > -	    nfsi->ncommit <= (nfsi->npages >> 1))
-> > > -		goto out_mark_dirty;
-> > > -
-> > > -	if (wbc->nonblocking || wbc->for_background)
-> > > +	if (wbc->sync_mode == WB_SYNC_NONE) {
-> > > +		if (nfsi->ncommit <= (nfsi->npages >> 1))
-> > > +			goto out_mark_dirty;
-> > >  		flags = 0;
-> > > +	}
-> > > +
-> > 
-> > nitpick: I'd slightly prefer an one-line change
-> > 
-> > -       if (wbc->nonblocking || wbc->for_background)
-> > +       if (wbc->sync_mode == WB_SYNC_NONE)
-> >                 flags = 0;
-> > 
-> > That way the patch will look more obvious and "git blame" friendly,
-> > and the original "Don't commit.." comment will best match its code.
-> > 
-> > Reviewed-by: Wu Fengguang <fengguang.wu@intel.com>
-> > 
-> > Thanks,
-> > Fengguang
-> 
-> Either way. I figured it would be slightly more efficient to just check
-> WB_SYNC_NONE once in that function. I suppose we could just fix up the
-> comments instead. Let me know if I should respin the patch with updated
-> comments...
+From: Andy Adamson <andros@netapp.com>
 
-OK, please do the comments.
+squash into pnfs_submit: layoutreturn helper functions
 
-> Thanks for the review...
+Signed-off-by: Andy Adamson <andros@netapp.com>
+---
+ fs/nfs/pnfs.c |    6 +++---
+ 1 files changed, 3 insertions(+), 3 deletions(-)
 
-You are welcome.
-
-Thanks,
-Fengguang
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index a10143e..b9bf9d6 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -590,7 +590,7 @@ should_free_lseg(struct pnfs_layout_segment *lseg,
+ }
+ 
+ static struct pnfs_layout_segment *
+-has_layout_to_return(struct pnfs_layout_type *lo,
++has_layout_to_return(struct pnfs_layout_hdr *lo,
+ 		     struct nfs4_pnfs_layout_segment *range)
+ {
+ 	struct pnfs_layout_segment *out = NULL, *lseg;
+@@ -674,7 +674,7 @@ pnfs_return_layout_barrier(struct nfs_inode *nfsi,
+ 
+ static int
+ return_layout(struct inode *ino, struct nfs4_pnfs_layout_segment *range,
+-	      enum pnfs_layoutreturn_type type, struct pnfs_layout_type *lo,
++	      enum pnfs_layoutreturn_type type, struct pnfs_layout_hdr *lo,
+ 	      bool wait)
+ {
+ 	struct nfs4_pnfs_layoutreturn *lrp;
+@@ -709,7 +709,7 @@ _pnfs_return_layout(struct inode *ino, struct nfs4_pnfs_layout_segment *range,
+ 		    enum pnfs_layoutreturn_type type,
+ 		    bool wait)
+ {
+-	struct pnfs_layout_type *lo = NULL;
++	struct pnfs_layout_hdr *lo = NULL;
+ 	struct nfs_inode *nfsi = NFS_I(ino);
+ 	struct nfs4_pnfs_layout_segment arg;
+ 	int status = 0;
+-- 
+1.6.2.5
 
