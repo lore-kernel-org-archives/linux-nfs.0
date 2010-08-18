@@ -1,84 +1,43 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cantor.suse.de ([195.135.220.2]:42186 "EHLO mx1.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752375Ab0HLG4H (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 12 Aug 2010 02:56:07 -0400
-From: NeilBrown <neilb@suse.de>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Date: Thu, 12 Aug 2010 16:55:22 +1000
-Subject: [PATCH 1/2] sunrpc: extract some common sunrpc_cache code from nfsd
-Cc: linux-nfs@vger.kernel.org
-Message-ID: <20100812065522.3408.34827.stgit@localhost.localdomain>
-In-Reply-To: <20100812064957.3408.44224.stgit@localhost.localdomain>
-References: <20100812064957.3408.44224.stgit@localhost.localdomain>
-Content-Type: text/plain; charset="utf-8"
+Received: from daytona.panasas.com ([67.152.220.89]:6282 "EHLO
+	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1753277Ab0HRUm6 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 18 Aug 2010 16:42:58 -0400
+From: Benny Halevy <bhalevy@panasas.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: linux-nfs@vger.kernel.org, Benny Halevy <bhalevy@panasas.com>
+Subject: [PATCH 3/4] sunrpc: don't use the copy variable in nested block
+Date: Wed, 18 Aug 2010 23:42:56 +0300
+Message-Id: <1282164176-20354-1-git-send-email-bhalevy@panasas.com>
+In-Reply-To: <4C6C4565.1070603@panasas.com>
+References: <4C6C4565.1070603@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-Rather can duplicating this idiom twice, put it in an inline function.
-This reduces the usage of 'expiry_time' out side the sunrpc/cache.c
-code and thus the impact of a change that is about to be made to that
-field.
+to clean up the code "copy" will be set prior to the block
+hence it mustn't be used there.
 
-Signed-off-by: NeilBrown <neilb@suse.de>
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 ---
- fs/nfsd/export.c             |    9 +++------
- include/linux/sunrpc/cache.h |    6 ++++++
- 2 files changed, 9 insertions(+), 6 deletions(-)
+ net/sunrpc/xdr.c |    3 +--
+ 1 files changed, 1 insertions(+), 2 deletions(-)
 
-diff --git a/fs/nfsd/export.c b/fs/nfsd/export.c
-index c2a4f71..e56827b 100644
---- a/fs/nfsd/export.c
-+++ b/fs/nfsd/export.c
-@@ -935,10 +935,9 @@ static void exp_fsid_unhash(struct svc_export *exp)
- 
- 	ek = exp_get_fsid_key(exp->ex_client, exp->ex_fsid);
- 	if (!IS_ERR(ek)) {
--		ek->h.expiry_time = get_seconds()-1;
-+		sunrpc_invalidate(&ek->h, &svc_expkey_cache);
- 		cache_put(&ek->h, &svc_expkey_cache);
- 	}
--	svc_expkey_cache.nextcheck = get_seconds();
- }
- 
- static int exp_fsid_hash(svc_client *clp, struct svc_export *exp)
-@@ -973,10 +972,9 @@ static void exp_unhash(struct svc_export *exp)
- 
- 	ek = exp_get_key(exp->ex_client, inode->i_sb->s_dev, inode->i_ino);
- 	if (!IS_ERR(ek)) {
--		ek->h.expiry_time = get_seconds()-1;
-+		sunrpc_invalidate(&ek->h, &svc_expkey_cache);
- 		cache_put(&ek->h, &svc_expkey_cache);
- 	}
--	svc_expkey_cache.nextcheck = get_seconds();
- }
- 	
- /*
-@@ -1097,8 +1095,7 @@ out:
- static void
- exp_do_unexport(svc_export *unexp)
- {
--	unexp->h.expiry_time = get_seconds()-1;
--	svc_export_cache.nextcheck = get_seconds();
-+	sunrpc_invalidate(&unexp->h, &svc_export_cache);
- 	exp_unhash(unexp);
- 	exp_fsid_unhash(unexp);
- }
-diff --git a/include/linux/sunrpc/cache.h b/include/linux/sunrpc/cache.h
-index 7bf3e84..0e1febf 100644
---- a/include/linux/sunrpc/cache.h
-+++ b/include/linux/sunrpc/cache.h
-@@ -228,4 +228,10 @@ static inline time_t get_expiry(char **bpp)
- 	return rv;
- }
- 
-+static inline void sunrpc_invalidate(struct cache_head *h,
-+				     struct cache_detail *detail)
-+{
-+	h->expiry_time = get_seconds() - 1;
-+	detail->nextcheck = get_seconds();
-+}
- #endif /*  _LINUX_SUNRPC_CACHE_H_ */
-
+diff --git a/net/sunrpc/xdr.c b/net/sunrpc/xdr.c
+index 41be21f..42a7ebf 100644
+--- a/net/sunrpc/xdr.c
++++ b/net/sunrpc/xdr.c
+@@ -404,8 +404,7 @@ xdr_shrink_pagelen(struct xdr_buf *buf, size_t len)
+ 	if (tail->iov_len != 0) {
+ 		if (tail->iov_len > len) {
+ 			char *p = (char *)tail->iov_base + len;
+-			copy = tail->iov_len - len;
+-			memmove(p, tail->iov_base, copy);
++			memmove(p, tail->iov_base, tail->iov_len - len);
+ 		}
+ 		/* Copy from the inlined pages into the tail */
+ 		copy = len;
+-- 
+1.7.2.1
 
