@@ -1,69 +1,50 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cantor.suse.de ([195.135.220.2]:58067 "EHLO mx1.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751834Ab0HZCGn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 25 Aug 2010 22:06:43 -0400
-Date: Thu, 26 Aug 2010 12:06:35 +1000
-From: Neil Brown <neilb@suse.de>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: mount.nfs: protocol fallback when server doesn't support TCP
-Message-ID: <20100826120635.4c3157bc@notabene>
-Content-Type: text/plain; charset=US-ASCII
+Received: from mail-ey0-f174.google.com ([209.85.215.174]:35954 "EHLO
+	mail-ey0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753008Ab0HRScW (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 18 Aug 2010 14:32:22 -0400
+In-Reply-To: <1282155658.13405.36.camel@localhost>
+References: <AANLkTimnyXKahtjaFeSsgcq=xMy-pP3na1jidQhZ-dt2@mail.gmail.com>
+	<87aaolwar8.fsf@basil.nowhere.org>
+	<20100817174134.GA23176@fieldses.org>
+	<20100817182920.GD18161@basil.fritz.box>
+	<1282155658.13405.36.camel@localhost>
+Date: Wed, 18 Aug 2010 11:32:20 -0700
+Message-ID: <AANLkTin2EOzA5grh5qjZghAs0Y4DbcGBhmdfqp=u1S_4@mail.gmail.com>
+Subject: Re: Proposal: Use hi-res clock for file timestamps
+From: "Patrick J. LoPresti" <lopresti@gmail.com>
+To: David Woodhouse <dwmw2@infradead.org>
+Cc: Andi Kleen <andi@firstfloor.org>, "J. Bruce Fields" <bfields@fieldses.org>,
+        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-kernel <linux-kernel@vger.kernel.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+On Wed, Aug 18, 2010 at 11:20 AM, David Woodhouse <dwmw2@infradead.org> wrote:
+>
+> Um, can't you? You can't *store* timestamps which are more precise, but
+> they can be in cache can't they?
 
-Currently if the server doesn't support TCP (and so doesn't support NFSv4)
-we don't fall-back to NFSv3.  This is because 'ECONNREFUSED' isn't deemed to
-be a suitable error for falling back.  Rather we wait for about 2 minutes,
-then give up.
+No.  That is how Linux used to work, and it caused many problems,
+which is why the current_fs_time() function was invented.
 
-There is some justification for this:  ECONNREFUSED could just mean that the
-server isn't quite ready yet.
+> And since you're not going to drop it from cache and bring it back in
+> again within 4ms, that ought to suffice?
 
-I'm not really sure what the best thing to do here would be.  We don't really
-want to try v3 and have fail only because it was just enough later that nfsd
-is now responding.
+Not the problem.  As usual, the problem is out-of-order timestamps:
 
-Maybe the ideal would be to do a portmap probe and only fall back to v3 if
-portmap confirm that v3 is supported and v4 isn't.
+1) Modify file A
+2) Modify file B
+3) File B's inode gets evicted, truncating its timestamp to disk resolution
+4) Call stat() on B, bringing it back in with truncated resolution
 
-For now I just present this patch which allows fallback to v3 providing tcp
-wasn't explicitly requested.
+And boom, B appears to be OLDER than A.  Which is not allowed.
 
-Thoughts?
+This is exactly what happened when Linux first added sub-second
+timestamps to the generic VFS layer.  Many complaints about "make"
+rebuilding files unecessarily, among other things.  Eventually it got
+fixed by the introduction of current_fs_time().
 
-NeilBrown
-
-diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
-index 0241400..fb8c108 100644
---- a/utils/mount/stropts.c
-+++ b/utils/mount/stropts.c
-@@ -762,6 +762,25 @@ static int nfs_try_mount(struct nfsmount_info *mi)
- 			errno = 0;
- 			result = nfs_try_mount_v4(mi);
- 			if (errno != EPROTONOSUPPORT) {
-+				/* If server only handles UDP, then v4 will have
-+				 * received ECONNREFUSED for TCP, so fall through
-+				 * to v3v2 which can try udp, but only if tcp
-+				 * wasn't explicitly requested
-+				 */
-+				if (errno == ECONNREFUSED) {
-+					static const char *nfs_proto_tbl[] = {
-+						"udp",
-+						"tcp",
-+						NULL
-+					};
-+					char *p;
-+
-+					if (po_rightmost(mi->options, nfs_proto_tbl) == 1)
-+						break;
-+					p = po_get(mi->options, "proto");
-+					if (p && strcmp(p, "tcp") == 0)
-+						break;
-+				} else
- 				/* 
- 				 * To deal with legacy Linux servers that don't
- 				 * automatically export a pseudo root, retry
+ - Pat
