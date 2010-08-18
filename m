@@ -1,63 +1,72 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:40313 "EHLO
-	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1752147Ab0H3QeX (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Aug 2010 12:34:23 -0400
-Message-ID: <4C7BDD8C.40509@panasas.com>
-Date: Mon, 30 Aug 2010 19:34:20 +0300
-From: Benny Halevy <bhalevy@panasas.com>
-To: NFS list <linux-nfs@vger.kernel.org>
-Subject: pnfs git tree status pnfs-all-2.6.36-rc3-2010-08-30
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mx2.netapp.com ([216.240.18.37]:6955 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753082Ab0HROog (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 18 Aug 2010 10:44:36 -0400
+From: andros@netapp.com
+To: bhalevy@panasas.com
+Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
+Subject: [PATCH 10/11] SQUASHME pnfs_submit rename pnfs_layout_type 10
+Date: Wed, 18 Aug 2010 10:44:17 -0400
+Message-Id: <1282142658-21579-11-git-send-email-andros@netapp.com>
+In-Reply-To: <1282142658-21579-10-git-send-email-andros@netapp.com>
+References: <1282142658-21579-1-git-send-email-andros@netapp.com>
+ <1282142658-21579-2-git-send-email-andros@netapp.com>
+ <1282142658-21579-3-git-send-email-andros@netapp.com>
+ <1282142658-21579-4-git-send-email-andros@netapp.com>
+ <1282142658-21579-5-git-send-email-andros@netapp.com>
+ <1282142658-21579-6-git-send-email-andros@netapp.com>
+ <1282142658-21579-7-git-send-email-andros@netapp.com>
+ <1282142658-21579-8-git-send-email-andros@netapp.com>
+ <1282142658-21579-9-git-send-email-andros@netapp.com>
+ <1282142658-21579-10-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-This is the first rebased version of the tree over 2.6.36-rc*.
-The tree's branches are structured the same (see details below).
+From: Andy Adamson <andros@netapp.com>
 
-Cumulative patches can be generated from
-git://linux-nfs.org/~bhalevy/linux-pnfs.git
-using
-git diff v2.6.36-rc3 pnfs-all-2.6.36-rc3-2010-08-30
-git diff v2.6.35 pnfs-all-2.6.35-2010-08-24
+squash into pnfs_submit: cb_layoutrecall
 
-Or, they can be downloaded from the wiki at:
-http://wiki.linux-nfs.org/wiki/index.php/PNFS_Development_Git_tree
+Signed-off-by: Andy Adamson <andros@netapp.com>
+---
+ fs/nfs/callback_proc.c |    8 ++++----
+ 1 files changed, 4 insertions(+), 4 deletions(-)
 
-Latest patches (since pnfs-all-2.6.35-2010-08-24):
-pnfs-submit:
-  Benny Halevy     32fb90a SQUASHME: pnfs-submit: do not use NIPQUAD in nfs4_callback_layoutrecall dprintk
-  Benny Halevy     133b759 SQUASHME: pnfs-submit: get machince creds for getdeviceinfo
+diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
+index e2ea2be..638f074 100644
+--- a/fs/nfs/callback_proc.c
++++ b/fs/nfs/callback_proc.c
+@@ -120,7 +120,7 @@ int nfs4_validate_delegation_stateid(struct nfs_delegation *delegation, const nf
+ #if defined(CONFIG_NFS_V4_1)
+ 
+ static bool
+-pnfs_is_next_layout_stateid(const struct pnfs_layout_type *lo,
++pnfs_is_next_layout_stateid(const struct pnfs_layout_hdr *lo,
+ 			    const nfs4_stateid stateid)
+ {
+ 	int seqlock;
+@@ -161,7 +161,7 @@ nfs_layoutrecall_find_inode(struct nfs_client *clp,
+ 			    const struct cb_pnfs_layoutrecallargs *args)
+ {
+ 	struct nfs_inode *nfsi;
+-	struct pnfs_layout_type *layout;
++	struct pnfs_layout_hdr *lo;
+ 	struct nfs_server *server;
+ 	struct inode *ino = NULL;
+ 
+@@ -169,8 +169,8 @@ nfs_layoutrecall_find_inode(struct nfs_client *clp,
+ 		__func__, args->cbl_recall_type, clp);
+ 
+ 	spin_lock(&clp->cl_lock);
+-	list_for_each_entry(layout, &clp->cl_layouts, lo_layouts) {
+-		nfsi = PNFS_NFS_INODE(layout);
++	list_for_each_entry(lo, &clp->cl_layouts, lo_layouts) {
++		nfsi = PNFS_NFS_INODE(lo);
+ 		if (!nfsi)
+ 			continue;
+ 
+-- 
+1.6.2.5
 
-pnfs:
-  Benny Halevy     247fe09 SQUASHME: pnfs: get machince creds for getdevicelist
-
-pnfs-obj-all:
-  Benny Halevy     c384327 SQUASHME: pnfs-obj use REQ flags rather than BIO flags
-
-The full tree structure is:
-master (v2.6.36-rc3)
-	nfsd-upstream
-		nfsd41-all
-			nfs-upstream
-				nfs41-all
-					nfs41-all-latest
-					pnfs-submit
-						pnfs
-							pnfs-block
-					pnfsd-files
-						pnfsd
-							spnfs
-								spnfs-block
-							pnfsd-lexp
-								pnfs-submit-all
-									pnfs-all
-										pnfs-obj-all
-											pnfs-exofs-all
-												pnfs-block-all
-													spnfs-all
-														spnfs-block-all
-															pnfs-all-latest
-
-Benny
