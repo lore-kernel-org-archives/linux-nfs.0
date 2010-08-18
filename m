@@ -1,73 +1,57 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-wy0-f174.google.com ([74.125.82.174]:52723 "EHLO
-	mail-wy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753492Ab0HQR42 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 17 Aug 2010 13:56:28 -0400
-Received: by wyb32 with SMTP id 32so7300666wyb.19
-        for <linux-nfs@vger.kernel.org>; Tue, 17 Aug 2010 10:56:26 -0700 (PDT)
-In-Reply-To: <4C66B207.5060101@inria.fr>
-References: <4BCFE979.2000406@inria.fr>
-	<4BE1E099.9050902@inria.fr>
-	<4BEB1FA2.1060001@inria.fr>
-	<AANLkTinNTYrEe9G6urXBxv-hogZPatOe9zWbbjnVTbWz@mail.gmail.com>
-	<4BEBC1B0.8030502@inria.fr>
-	<AANLkTinPfbYgqFxcIuT3975TAtk0e1D84bMAeez5Z06T@mail.gmail.com>
-	<4BEC6B6E.9090705@inria.fr>
-	<4C66B207.5060101@inria.fr>
-Date: Tue, 17 Aug 2010 13:56:26 -0400
-Message-ID: <AANLkTim2LL+utWDeEUWrgyrSuNiQv0HeUTPLn7oPNKK2@mail.gmail.com>
-Subject: Re: trouble using kerberos between linux client and server
-From: Kevin Coffman <kwc@citi.umich.edu>
-To: Guillaume Rousse <Guillaume.Rousse@inria.fr>
-Cc: linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mx2.netapp.com ([216.240.18.37]:6955 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752227Ab0HROob (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 18 Aug 2010 10:44:31 -0400
+From: andros@netapp.com
+To: bhalevy@panasas.com
+Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
+Subject: [PATCH 06/11] SQUASHME pnfs-submit: rename pnfs_layout_type 6
+Date: Wed, 18 Aug 2010 10:44:13 -0400
+Message-Id: <1282142658-21579-7-git-send-email-andros@netapp.com>
+In-Reply-To: <1282142658-21579-6-git-send-email-andros@netapp.com>
+References: <1282142658-21579-1-git-send-email-andros@netapp.com>
+ <1282142658-21579-2-git-send-email-andros@netapp.com>
+ <1282142658-21579-3-git-send-email-andros@netapp.com>
+ <1282142658-21579-4-git-send-email-andros@netapp.com>
+ <1282142658-21579-5-git-send-email-andros@netapp.com>
+ <1282142658-21579-6-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Sat, Aug 14, 2010 at 11:11 AM, Guillaume Rousse
-<Guillaume.Rousse@inria.fr> wrote:
-> Le 13/05/2010 23:13, Guillaume Rousse a écrit :
->> Le 13/05/2010 14:55, Kevin Coffman a écrit :
->>> On Thu, May 13, 2010 at 5:09 AM, Guillaume Rousse
->>> <Guillaume.Rousse@inria.fr> wrote:
->>>> Le 13/05/2010 01:21, Kevin Coffman a écrit :
->>>>> On Wed, May 12, 2010 at 5:37 PM, Guillaume Rousse
->>>>> <Guillaume.Rousse@inria.fr> wrote:
->>>>>> Le 05/05/2010 23:18, Guillaume Rousse a écrit :
->>>>>>> I'm attaching network capture, even I can't figure additional
->>>>>>> information from it by myself.
->>>>>> Reading https://bugzilla.redhat.com/show_bug.cgi?id=562807, I rebuild
->>>>>> libtirpc with patch applied and -DDEBUG. Unfortunatly, it doesn't bring
->>>>>> additional information about the server-side failure :(
->>>>>
->>>>> It looks to me like fflush(), called in qword_eol(), may be returning
->>>>> the number of bytes flushed (95) rather than zero for success?  I
->>>>> don't immediately see any changes that would cause this.  But I
->>>>> haven't looked extensively...
->>>> Not necessarily a change: I never used a kerberized server sofar, only
->>>> clients.
->>>
->>> Well, I've not seen that issue before, so I assumed it was a change.
->>> I looked back a bit, but didn't see: what versions of nfs-utils and
->>> kernel are on the server?
->> The same on both sides: kernel 2.6.33.3 + nfs-utils 1.2.2
-> Hello.
->
-> I finally managed to understand the issue: I also need rpc.svcgssd _and_
-> rpc.gssd on server side, whereas I thought rpc.gssd was needed on client
-> side only
-> (http://wiki.linux-nfs.org/wiki/index.php/Enduser_doc_kerberos). Is this
-> expected behaviour ?
+From: Andy Adamson <andros@netapp.com>
 
-Wow, I'm glad you finally found it.
+squash into pnfs_submit: filelayout layout segment alloc and free
 
-rpc.svcgssd is always required on the server if you are using
-Kerberos.  rpc.gssd is required on the server if you want delegations
-to work when using Kerberos (requires authenticated callback from the
-server to the client).  It was my understanding that no ill effects
-should be seen if you do not run rpc.gssd on the server, you just
-wouldn't be able to give out delegations.  However, I may be
-mis-remembering something.
+Signed-off-by: Andy Adamson <andros@netapp.com>
+---
+ fs/nfs/nfs4filelayout.c |    4 ++--
+ 1 files changed, 2 insertions(+), 2 deletions(-)
 
-K.C.
+diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+index fa08540..87c8fe0 100644
+--- a/fs/nfs/nfs4filelayout.c
++++ b/fs/nfs/nfs4filelayout.c
+@@ -317,7 +317,7 @@ filelayout_free_layout(struct pnfs_layout_hdr *lo)
+  */
+ 
+ static int
+-filelayout_check_layout(struct pnfs_layout_type *lo,
++filelayout_check_layout(struct pnfs_layout_hdr *lo,
+ 			struct pnfs_layout_segment *lseg)
+ {
+ 	struct nfs4_filelayout_segment *fl = LSEG_LD_DATA(lseg);
+@@ -453,7 +453,7 @@ filelayout_set_layout(struct nfs4_filelayout *flo,
+ }
+ 
+ static struct pnfs_layout_segment *
+-filelayout_alloc_lseg(struct pnfs_layout_type *layoutid,
++filelayout_alloc_lseg(struct pnfs_layout_hdr *layoutid,
+ 		      struct nfs4_pnfs_layoutget_res *lgr)
+ {
+ 	struct nfs4_filelayout *flo = FILE_LO(layoutid);
+-- 
+1.6.2.5
+
