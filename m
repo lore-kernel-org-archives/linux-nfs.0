@@ -1,52 +1,60 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:41154 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:6955 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754572Ab0HaSIM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 31 Aug 2010 14:08:12 -0400
-Date: Tue, 31 Aug 2010 14:07:45 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Steve Dickson <SteveD@redhat.com>
-Cc: Jeff Layton <jlayton@redhat.com>, linux-nfs@vger.kernel.org,
-        chuck.lever@oracle.com
-Subject: Re: [PATCH] rpc.nfsd: mount up nfsdfs is it doesn't appear to be
- mounted yet
-Message-ID: <20100831180745.GA11361@fieldses.org>
-References: <4C7CF499.5090003@RedHat.com>
- <20100831084323.02a1abf5@corrin.poochiereds.net>
- <4C7D1694.6000708@RedHat.com>
- <20100831111008.157618f4@corrin.poochiereds.net>
- <20100831151342.GA3071@fieldses.org>
- <4C7D1D3B.1030607@RedHat.com>
- <20100831155128.GB3071@fieldses.org>
- <4C7D2A20.1040806@RedHat.com>
- <20100831161547.GD3071@fieldses.org>
- <4C7D3976.8070209@RedHat.com>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4C7D3976.8070209@RedHat.com>
+	id S1752227Ab0HROo1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 18 Aug 2010 10:44:27 -0400
+From: andros@netapp.com
+To: bhalevy@panasas.com
+Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
+Subject: [PATCH 04/11] SQUASHME pnfs-submit rename pnfs_layout_type 4
+Date: Wed, 18 Aug 2010 10:44:11 -0400
+Message-Id: <1282142658-21579-5-git-send-email-andros@netapp.com>
+In-Reply-To: <1282142658-21579-4-git-send-email-andros@netapp.com>
+References: <1282142658-21579-1-git-send-email-andros@netapp.com>
+ <1282142658-21579-2-git-send-email-andros@netapp.com>
+ <1282142658-21579-3-git-send-email-andros@netapp.com>
+ <1282142658-21579-4-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Tue, Aug 31, 2010 at 01:18:46PM -0400, Steve Dickson wrote:
-> I really don't think we need to rip the guts out of 
-> mountd and exportfs just to remove this one nfsctl() in rpc.nfsd.
+From: Andy Adamson <andros@netapp.com>
 
-I agree.
+squash into pnfs_submit: layoutget
 
-> > Dropping backwards compatibility may be a reasonable thing to do, but
-> > it's something that we should be very clear about, and that we should
-> > put in a patch that does that and nothing else.
-> So you are talking about doing a complete rewrite of mountd and exportfs
-> just to take out that one call from rpc.nfsd... I just don't see the
-> justification... If we are going to do that, let just think about rewriting
-> all the tools to make the more v4 friendly... something we talked about
-> at the last bakeathon...
+Signed-off-by: Andy Adamson <andros@netapp.com>
+---
+ fs/nfs/pnfs.c |    2 +-
+ fs/nfs/pnfs.h |    2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
 
-All I'm asking is that any patch which disables support for older
-kernels (by ceasing to do the nfsctl) be a *separate* patch that clearly
-states which kernels we're dropping support for.
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 98f53c2..fdc4028 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -348,7 +348,7 @@ put_layout(struct inode *inode)
+ }
+ 
+ void
+-pnfs_layout_release(struct pnfs_layout_type *lo,
++pnfs_layout_release(struct pnfs_layout_hdr *lo,
+ 		    struct nfs4_pnfs_layout_segment *range)
+ {
+ 	struct nfs_inode *nfsi = PNFS_NFS_INODE(lo);
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index 7da54fe..e39af4f 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -58,7 +58,7 @@ void pnfs_pageio_init_read(struct nfs_pageio_descriptor *, struct inode *,
+ void pnfs_pageio_init_write(struct nfs_pageio_descriptor *, struct inode *);
+ void pnfs_get_layout_done(struct nfs4_pnfs_layoutget *, int rpc_status);
+ int pnfs_layout_process(struct nfs4_pnfs_layoutget *lgp);
+-void pnfs_layout_release(struct pnfs_layout_type *, struct nfs4_pnfs_layout_segment *range);
++void pnfs_layout_release(struct pnfs_layout_hdr *, struct nfs4_pnfs_layout_segment *range);
+ void pnfs_set_layout_stateid(struct pnfs_layout_hdr *lo,
+ 			     const nfs4_stateid *stateid);
+ void pnfs_destroy_layout(struct nfs_inode *);
+-- 
+1.6.2.5
 
-Once we decide to drop such support (if we do), that might allow us to
-rip out a lot of additional code.  That can be done later.
-
---b.
