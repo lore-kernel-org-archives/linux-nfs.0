@@ -1,64 +1,49 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:51375 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758207Ab0HDDpe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 3 Aug 2010 23:45:34 -0400
-Date: Wed, 4 Aug 2010 13:45:27 +1000
-From: Neil Brown <neilb@suse.de>
-To: Jason Keltz <jas@cse.yorku.ca>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: exporting to a list of IPs
-Message-ID: <20100804134527.146397ff@notabene>
-In-Reply-To: <4C583B63.4050903@cse.yorku.ca>
-References: <4C583B63.4050903@cse.yorku.ca>
-Content-Type: text/plain; charset=US-ASCII
+Received: from cn.fujitsu.com ([222.73.24.84]:59390 "EHLO song.cn.fujitsu.com"
+	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
+	id S1750708Ab0HRDSl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 17 Aug 2010 23:18:41 -0400
+Message-ID: <4C6B50B3.4090403@cn.fujitsu.com>
+Date: Wed, 18 Aug 2010 11:17:07 +0800
+From: Bian Naimeng <biannm@cn.fujitsu.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 2/2] We should clear NFS_DELEGATED_STATE after return
+ delegation
+References: <4C592F85.8070308@cn.fujitsu.com>	 <4C59306A.9090302@cn.fujitsu.com>	 <1280925913.3011.23.camel@heimdal.trondhjem.org>	 <4C5A213F.9000506@cn.fujitsu.com>	 <1281013423.2948.1.camel@heimdal.trondhjem.org>	 <4C5B8B48.4050008@cn.fujitsu.com>	 <1281101448.3586.11.camel@heimdal.trondhjem.org>	 <4C68EDAE.5000201@cn.fujitsu.com> <1282087012.18385.30.camel@heimdal.trondhjem.org>
+In-Reply-To: <1282087012.18385.30.camel@heimdal.trondhjem.org>
+Content-Type: text/plain; charset=Shift_JIS
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Tue, 03 Aug 2010 11:53:07 -0400
-Jason Keltz <jas@cse.yorku.ca> wrote:
-
-> Hi.
+>>> I still don't see why this should be necessary. In the case of a server
+>>> reboot or network partition, the state recovery thread ought to be
+>>> taking care of this for us.
+>>>
+>>    A open state can be found at nfsi->open_states and owner->so_states always, but
+>>   it not be found at nfsi->open_files until we call nfs4_intent_set_file.
+>>
+>>    At _nfs4_do_open, we will invoke nfs4_return_incompatible_delegation to return a 
+>>   delegation,  a open stateid which set NFS_DELEGATED_STATE bit may not be found at
+>>   nfsi->open_files, but it still at nfsi->open_states, so we do not clear 
+>>   NFS_DELEGATED_STATE bit for it.
+>>
+>>    Then _nfs4_do_open will find it by nfs4_get_open_state, and we still use it
+>>   as a delegation, some error will occur.
+>>
 > 
-> Why is it that you cannot NFS export to a list of IPs and have exportfs 
-> leave the list of IPs in etab without converting over to FQDN?
-
-My memory is that if you only list IP addresses in /etc/exports then it will
-do just want you want.  But if you list any host names or net groups then it
-has to do a DNS lookup on everything to see if either of those matches.
-
+> OK. I see agree that is a race, but AFAICS, your fix means that we end
+> up with an nfs_state structure that has cleared NFS_DELEGATED_STATE, but
+> that did not recover its open stateid.
 > 
-> In Changelog:
-> 
-> 2001-09-20 NeilBrown <neilb@cse.unsw.edu.au>
->              Anne Milicia <milicia@missioncriticallinux.com>
-> 
->          * support/export/client.c (client_lookup) call gethostbyadd
->          to make sure that we have a canonical hostname, even for
->          dotted-quads
 
-I think this patch only related to netgroup lookups.
+  Hi trond, i am not sure my opinion is right.
 
-> 
-> Why does mountd need to repeat the gethostbyname() lookup on every host 
-> even though exportfs already converted over to using hostname?
+  If the state not at nfsi->open_states, i think maybe that means it's not a open stateid,
+  it just a old state we want reuse it. After we update it, it become a open stateid.
 
-exportfs doesn't convert over host hostnames.  It essentially
-copies /etc/exports to /var/lib/nfs/etab with minor formatting changes.
-
-What do you actually put in /etc/exports, what do you find
-in /var/lib/nfs/etab, and what exactly is the problem?
-
-NeilBrown
-
-
-> 
-> Thanks,
-> 
-> Jason.
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+-- 
+Regards
+Bian Naimeng
 
