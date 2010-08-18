@@ -1,54 +1,54 @@
-From: Benny Halevy <bhalevy@panasas.com>
-Subject: Re: [PATCH 06/50] pnfs_submit: introduce include/linux/nfs4_pnfs.h
-Date: Wed, 18 Aug 2010 23:50:13 +0300
-Message-ID: <4C6C4785.8040301@panasas.com>
-References: <1281735122-1496-1-git-send-email-andros@netapp.com> <1281735122-1496-2-git-send-email-andros@netapp.com> <1281735122-1496-3-git-send-email-andros@netapp.com> <1281735122-1496-4-git-send-email-andros@netapp.com> <1281735122-1496-5-git-send-email-andros@netapp.com> <1281735122-1496-6-git-send-email-andros@netapp.com> <1281735122-1496-7-git-send-email-andros@netapp.com> <20100818202718.GB16851@infradead.org>
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: Re: [PATCH 4/4] sunrpc: simplify xdr_shrijk_pagelen use of "copy"
+Date: Wed, 18 Aug 2010 17:19:47 -0400
+Message-ID: <1282166387.8540.112.camel@heimdal.trondhjem.org>
+References: <4C6C4565.1070603@panasas.com>
+	 <1282164183-20389-1-git-send-email-bhalevy@panasas.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: andros@netapp.com, linux-nfs@vger.kernel.org,
-	Dean Hildebrand <seattleplus@gmail.com>
-To: Christoph Hellwig <hch@infradead.org>
+Content-Type: text/plain; charset="UTF-8"
+Cc: linux-nfs@vger.kernel.org
+To: Benny Halevy <bhalevy@panasas.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:34729 "EHLO
-	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1754150Ab0HRUuR (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 18 Aug 2010 16:50:17 -0400
-In-Reply-To: <20100818202718.GB16851@infradead.org>
+Received: from mx2.netapp.com ([216.240.18.37]:63893 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753118Ab0HRVUG convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 18 Aug 2010 17:20:06 -0400
+In-Reply-To: <1282164183-20389-1-git-send-email-bhalevy@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Aug. 18, 2010, 23:27 +0300, Christoph Hellwig <hch@infradead.org> wrote:
->> +++ b/include/linux/nfs4_pnfs.h
->> @@ -0,0 +1,15 @@
->> +/*
->> + *  include/linux/nfs4_pnfs.h
+On Wed, 2010-08-18 at 23:43 +0300, Benny Halevy wrote:
+> The "copy" variable value can be computed using the existing
+> logic rather than repeating it.
 > 
-> Please don't include these kinds of comments, they only purpose they
-> serve is frequently getting out of date.  That applies to just about
-> every file added in this series.
+> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+> ---
+>  net/sunrpc/xdr.c |    6 +++---
+>  1 files changed, 3 insertions(+), 3 deletions(-)
 > 
+> diff --git a/net/sunrpc/xdr.c b/net/sunrpc/xdr.c
+> index 42a7ebf..2ab59c3 100644
+> --- a/net/sunrpc/xdr.c
+> +++ b/net/sunrpc/xdr.c
+> @@ -402,14 +402,14 @@ xdr_shrink_pagelen(struct xdr_buf *buf, size_t len)
+>  
+>  	/* Shift the tail first */
+>  	if (tail->iov_len != 0) {
+> +		copy = len;
+>  		if (tail->iov_len > len) {
+>  			char *p = (char *)tail->iov_base + len;
+>  			memmove(p, tail->iov_base, tail->iov_len - len);
+> +		} else {
+> +			copy = tail->iov_len;
+>  		}
+                 ^^^ We don't need a C block for the 'else' case.
 
-Agreed.
+>  		/* Copy from the inlined pages into the tail */
+> -		copy = len;
+> -		if (copy > tail->iov_len)
+> -			copy = tail->iov_len;
+>  		_copy_from_pages((char *)tail->iov_base,
+>  				buf->pages, buf->page_base + pglen - len,
+>  				copy);
 
->> + *
->> + *  Common data structures needed by the pnfs client and pnfs layout driver.
->> + *
->> + *  Copyright (c) 2002 The Regents of the University of Michigan.
->> + *  All rights reserved.
->> + *
->> + *  Dean Hildebrand   <dhildebz-nNDzPDmKTdnSiEDVxGk4TQ@public.gmane.org>
->> + */
->> +
->> +#ifndef LINUX_NFS4_PNFS_H
->> +#define LINUX_NFS4_PNFS_H
->> +
->> +#endif /* LINUX_NFS4_PNFS_H */
-> 
-> Adding a file that only contains copyrights and inclusion headers is
-> rather odd.  I think you want your split a little more corse grained.
-> 
 
-Yup. This was originally done for patch mechanics reasons.
-It can be just part of the first patch that uses the file.
-
-Benny
