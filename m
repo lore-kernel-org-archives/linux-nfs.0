@@ -1,36 +1,44 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from magus.merit.edu ([198.108.1.13]:51320 "EHLO magus.merit.edu"
+Received: from mx2.netapp.com ([216.240.18.37]:37833 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932352Ab0HCQnU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 3 Aug 2010 12:43:20 -0400
-Received: from localhost (localhost [127.0.0.1])
-	by magus.merit.edu (Postfix) with ESMTP id 5907522566D
-	for <linux-nfs@vger.kernel.org>; Tue,  3 Aug 2010 12:43:19 -0400 (EDT)
-Received: from magus.merit.edu ([127.0.0.1])
-	by localhost (magus.merit.edu [127.0.0.1]) (amavisd-new, port 10024)
-	with ESMTP id WC4Carn7h5fQ for <linux-nfs@vger.kernel.org>;
-	Tue,  3 Aug 2010 12:43:19 -0400 (EDT)
-Received: from merit.edu (unknown [198.108.18.100])
-	by magus.merit.edu (Postfix) with ESMTPSA id 2584722566B
-	for <linux-nfs@vger.kernel.org>; Tue,  3 Aug 2010 12:43:19 -0400 (EDT)
-Date: Tue, 3 Aug 2010 12:43:18 -0400
-From: Jim Rees <rees@umich.edu>
-To: linux-nfs@vger.kernel.org
-Subject: Re: numeric UIDs
-Message-ID: <20100803164318.GB13896@merit.edu>
-References: <201008030401.33552.dreck@vmsd.ath.cx>
-Content-Type: text/plain; charset=iso-8859-1
-In-Reply-To: <201008030401.33552.dreck@vmsd.ath.cx>
+	id S1754015Ab0HSP3H (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 19 Aug 2010 11:29:07 -0400
+From: andros@netpp.com
+To: bhalevy@panasas.com
+Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
+Subject: [PATCH 2/5] SQUASHME pnfs-submit: rename layoutget 1
+Date: Thu, 19 Aug 2010 11:27:54 -0400
+Message-Id: <1282231677-4412-3-git-send-email-andros@netpp.com>
+In-Reply-To: <1282231677-4412-2-git-send-email-andros@netpp.com>
+References: <1282231677-4412-1-git-send-email-andros@netpp.com>
+ <1282231677-4412-2-git-send-email-andros@netpp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-Victor Mataré wrote:
+From: Andy Adamson <andros@netapp.com>
 
-  I'd like to try and 
-  make a case for implementing an option to turn off UID mapping completely (or 
-  at least for unknown UIDs).
+squash into pnfs_submit-layout-segment-alloc-reference-destroy
 
-I've always thought this would be useful too, just as an option for auth_sys
-of course.  Some people think it's a security problem but since there is no
-security in an auth_sys mount I don't see what the issue is.
+Signed-off-by: Andy Adamson <andros@netapp.com>
+---
+ include/linux/nfs4_pnfs.h |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
+
+diff --git a/include/linux/nfs4_pnfs.h b/include/linux/nfs4_pnfs.h
+index cbb98f1..74e7b62 100644
+--- a/include/linux/nfs4_pnfs.h
++++ b/include/linux/nfs4_pnfs.h
+@@ -137,7 +137,7 @@ struct layoutdriver_io_operations {
+ 	 * a set_layout call to set the opaque layout in the layout driver.*/
+ 	struct pnfs_layout_hdr * (*alloc_layout) (struct inode *inode);
+ 	void (*free_layout) (struct pnfs_layout_hdr *);
+-	struct pnfs_layout_segment * (*alloc_lseg) (struct pnfs_layout_hdr *layoutid, struct nfs4_pnfs_layoutget_res *lgr);
++	struct pnfs_layout_segment * (*alloc_lseg) (struct pnfs_layout_hdr *layoutid, struct nfs4_layoutget_res *lgr);
+ 	void (*free_lseg) (struct pnfs_layout_segment *lseg);
+ 
+ 	/* Registration information for a new mounted file system
+-- 
+1.6.2.5
+
