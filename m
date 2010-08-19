@@ -1,106 +1,113 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-pw0-f46.google.com ([209.85.160.46]:59396 "EHLO
-	mail-pw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1760423Ab0HFX6n convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 6 Aug 2010 19:58:43 -0400
-In-Reply-To: <20100807093057.7683bedd@notabene>
-References: <alpine.LSU.2.01.1007221228260.6115@obet.zrqbmnf.qr>
-	<20100715021709.5544.64506.stgit@warthog.procyon.org.uk>
-	<20100715021712.5544.44845.stgit@warthog.procyon.org.uk>
-	<30448.1279800887@redhat.com>
-	<E1Obuiy-00C9jr-Al@intern.SerNet.DE>
-	<AANLkTimdFCGSKLn7aGMpBMIauHTsHY7hpAAmpo6uTcnD@mail.gmail.com>
-	<1280524978.2452.9.camel@segv.aura.of.mankind>
-	<20100801092529.5e6ba0e0@corrin.poochiereds.net>
-	<20100805235218.GB31233@jeremy-laptop>
-	<20100806133836.49757af9@notabene>
-	<AANLkTinVCLVpqLtA2X=1mOkxX7Re61_ZYsUix_XTvZ5D@mail.gmail.com>
-	<20100807093057.7683bedd@notabene>
-Date: Fri, 6 Aug 2010 18:58:42 -0500
-Message-ID: <AANLkTikDBg5Brt=55Tsu8ozk0aVx=srpxP=U-sFqeBYL@mail.gmail.com>
-Subject: Re: [PATCH 02/18] xstat: Add a pair of system calls to make extended
-	file stats available [ver #6]
-From: Steve French <smfrench@gmail.com>
-To: Neil Brown <neilb@suse.de>
-Cc: Jeremy Allison <jra@samba.org>, Jeff Layton <jlayton@redhat.com>,
-        utz lehmann <lkml123@s2y4n2c.de>,
-        Linus Torvalds <torvalds@linux-foundation.org>,
-        Volker.Lendecke@sernet.de, David Howells <dhowells@redhat.com>,
-        Jan Engelhardt <jengelh@medozas.de>, linux-cifs@vger.kernel.org,
-        linux-nfs@vger.kernel.org, samba-technical@lists.samba.org,
-        linux-kernel@vger.kernel.org, viro@zeniv.linux.org.uk,
-        linux-fsde@jasper.es
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from cantor.suse.de ([195.135.220.2]:50749 "EHLO mx1.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750970Ab0HSCo2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 18 Aug 2010 22:44:28 -0400
+Date: Thu, 19 Aug 2010 12:44:13 +1000
+From: Neil Brown <neilb@suse.de>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Chuck Lever <chuck.lever@oracle.com>, Alan Cox <alan@lxorguk.ukuu.org.uk>,
+        "Patrick J. LoPresti" <lopresti@gmail.com>,
+        Andi Kleen <andi@firstfloor.org>, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-kernel <linux-kernel@vger.kernel.org>
+Subject: Re: Proposal: Use hi-res clock for file timestamps
+Message-ID: <20100819124413.77ca8baf@notabene>
+In-Reply-To: <20100819020803.GA30151@fieldses.org>
+References: <20100817182920.GD18161@basil.fritz.box>
+	<20100817190447.GA28049@fieldses.org>
+	<AANLkTi=w1UA5ZZDBigpxMiL7A7DnbnQhLkg62JZpC6Ri@mail.gmail.com>
+	<20100817203941.729830b7@lxorguk.ukuu.org.uk>
+	<20100817192937.GD26609@fieldses.org>
+	<20100818155359.66b9ddb6@notabene>
+	<20100818173203.GC32430@fieldses.org>
+	<0F91AB9D-0E14-4384-ADD6-0A467C3ABFAC@oracle.com>
+	<20100819094136.24fef59b@notabene>
+	<20100819105218.7620ec29@notabene>
+	<20100819020803.GA30151@fieldses.org>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Fri, Aug 6, 2010 at 6:30 PM, Neil Brown <neilb@suse.de> wrote:
-> On Thu, 5 Aug 2010 22:55:06 -0500
-> Steve French <smfrench@gmail.com> wrote:
->
->> On Thu, Aug 5, 2010 at 10:38 PM, Neil Brown <neilb@suse.de> wrote:
->> > On Thu, 5 Aug 2010 16:52:18 -0700
->> > Jeremy Allison <jra@samba.org> wrote:
->>
->> >> Don't add it as an EA. It's *not* an EA, it's a timestamp.
->> >
->> > I'm curious.  Why do you particularly care what interface the kernel uses to
->> > provide you with access to this attribute?
->> >
->> > And given that it is an attribute that is not part of 'POSIX' or "UNIX", it
->> > would seem to be an extension - an extended attribute.
->> > As the Linux kernel does virtually nothing with this attribute except provide
->> > access, it seems to be a very different class of thing to other timestamps.
->> > Surely it is simply some storage associated with a file which is capable of
->> > storing a timestamp, which can be set or retrieved by an application, and
->> > which happens to be initialised to the current time when a file is created.
->> >
->> > Yes, to you it is a timestamp.  But to Linux it is a few bytes of
->> > user-settable metadata.  Sounds like an EA to me.
->> >
->> > Or do you really want something like BSD's 'btime' which as I understand it
->> > cannot be set.  Would that be really useful to you?
->>
->> Obviously the cifs and SMB2 protocols which  Samba server support can
->> ask the server to set the create time of a file (this is handled
->> through xattrs today along with the "dos attribute" flags such as
->> archive/hidden/system), but certainly it is much more common (and
->> important) to read the creation time of an existing file.
->>
->
-> Just a point of clarification - when you say it is common and important to be
-> able to read the creation time on an existing file, and you still talking in
-> the context of cifs/smb windows compatibility, or are you talking in the
-> broader context?
-> If you are referring to a broader context could be please give more details
-> because I have not heard any mention of any real value of creation-time out
-> side of window interoperability - have such a use clearly documented would
-> assist the conversation I think.
->
-> If on the other hand you are just referring the the windows interoperability
-> context ... given that you have to read an EA if the create-time has been
-> changed, you will always have to read and EA so having something else is
-> pointless ... or I'm missing something.
+On Wed, 18 Aug 2010 22:08:03 -0400
+"J. Bruce Fields" <bfields@fieldses.org> wrote:
 
-There are other cases, less common than cifs and smb2.   One
-that comes to mind is NFS version 4, but there are a few other
-cases that I have heard of (backup/archive applications).
-The RFC recommends that servers return attribute 50 (creation
-time).  See below text:
+> On Thu, Aug 19, 2010 at 10:52:18AM +1000, Neil Brown wrote:
+> > On Thu, 19 Aug 2010 09:41:36 +1000
+> > Neil Brown <neilb@suse.de> wrote:
+> > 
+> > > So I agree that this is probably more of an issue for directories than for
+> > > files, and that implementing it just for directories would be a sensible
+> > > first step with lower expected overhead - just my reasoning seems to be a bit
+> > > different.
+> > 
+> > Just to be sure we are on the same page:
+> >   file_update_time would always refer to current_nfsd_time, but nfsd would
+> >   only update current_nfsd_time when a directory was examined (and the other
+> >   conditions were met).
+> > 
+> > 
+> > So my current thinking on how this would look - names have been changed:
+> > 
+> >  - global timespec 'current_fs_precise_time' is zeroed when
+> >    current_kernel_time moves backwards and is protected by a seqlock
+> > 
+> >  - current_fs_time would be
+> >          now = max(current_kernel_time(), current_fs_precise_time)
+> >          return timespec_trunc(now, sb->s_time_gran)
+> >    (with appropriate seqlock protection)
+> > 
+> >  - new function in fs/inode.c
+> >          get_precise_time(timestamp)
+> 
+> Odd name for something that returns nothing of interest;
+> bump_precise_time() might be closer?
+> 
+> And unique_time might be better than precise_time, since the property
+> we're asking for is that mtime on a changed file by new?  (Or
+> versioned_time?)
 
-   time_create         50   nfstime4       R/W      The time of creation
-                                                    of the object.  This
-                                                    attribute does not
-                                                    have any relation to
-                                                    the traditional UNIX
-                                                    file attribute
-                                                    "ctime" or "change
-                                                    time".
+Agreed on both counts, tough I'm not keen on 'bump' myself.
+  got_unique_time()
+because that it what we just did...  I prefer the name to reflect why the
+function is called, rather than what the function is expected to do about it.
+  never_use_this_timestamp_again(timestamp)
+:-?
 
 
+> 
+> >                 cft = current_fs_time()
+> >                 if (timestamp == cft)
+> 		     /*
+> 		      * Make sure the next mtime stored will be
+> 		      * something different from timestamp:
+> 		      */
+> >                    write_seqlock()
+> >                    if cft == current_fs_precise_time
+> >                         current_fs_precise_time.tv_nsec++
+> >                    else if cft > current_fs_precise_time
+> 
+> What's the cft < current_fs_precise_time case?
 
--- 
-Thanks,
+The current_fs_precise_time has been incremented with a resolution higher
+than s_time_gran.  i.e. s_time_gran > 1.
+I'm not really sure what we want to do about that.
+Maybe we should be incrementing tv_nsec by s_time_gran as long as that is
+significantly less than jiffies_to_usec(1)*1000, but I don't know what I mean
+by 'significantly'.
 
-Steve
+The only values I can find for s_time_gran in current code are 1, 100, 1000
+and 1000000000.
+All those are either way bigger than a jiffie or significantly smaller, but
+suppose a filesystem came along that chose 1000000 (i.e. millisecond
+timestamps) - should we increment tv_nsec by 1000000, or not, or cross that
+bridge when we come to it?
+
+For reference:
+  default is 1000000000  (this would cover ext2, ext3, reiserfs, fat, sysv, ...)
+  cifs, smbfs, ntfs are 100
+  udf, ceph are 1000
+  rest (btrfs, ext4, gfs2, jfs, nilfs, ocfs2, xfs and virtual filesystems) are 1
+
+NeilBrown
+
