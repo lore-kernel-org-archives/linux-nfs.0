@@ -1,123 +1,158 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cn.fujitsu.com ([222.73.24.84]:54503 "EHLO song.cn.fujitsu.com"
-	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
-	id S1755817Ab0HaApi convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Aug 2010 20:45:38 -0400
-Message-ID: <4C7C5124.1060000@cn.fujitsu.com>
-Date: Tue, 31 Aug 2010 08:47:32 +0800
-From: Mi Jinlong <mijinlong@cn.fujitsu.com>
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-CC: NFSv3 list <linux-nfs@vger.kernel.org>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Chuck Lever <chuck.lever@oracle.com>, Jeff Layton <jlayton@redhat.com>
-Subject: Re: [PATCH] sunrpc: cancel delayed connect working when conncet success
-References: <4C6BACAA.2060706@cn.fujitsu.com> <1283195927.2920.3.camel@heimdal.trondhjem.org>
-In-Reply-To: <1283195927.2920.3.camel@heimdal.trondhjem.org>
-Content-Type: text/plain; charset=UTF-8
+Received: from mx2.netapp.com ([216.240.18.37]:37833 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751499Ab0HSP3F (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 19 Aug 2010 11:29:05 -0400
+From: andros@netpp.com
+To: bhalevy@panasas.com
+Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
+Subject: [PATCH 1/5] SQUASHME pnfs_submit: rename getdeviceinfo
+Date: Thu, 19 Aug 2010 11:27:53 -0400
+Message-Id: <1282231677-4412-2-git-send-email-andros@netpp.com>
+In-Reply-To: <1282231677-4412-1-git-send-email-andros@netpp.com>
+References: <1282231677-4412-1-git-send-email-andros@netpp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-Hi Trond,
+From: Andy Adamson <andros@netapp.com>
 
-Trond Myklebust 写道:
-> On Wed, 2010-08-18 at 17:49 +0800, Mi Jinlong wrote:
->> As network partition or some other reason, when client connect 
->> success, maybe there is some delayed connect working in connect_work list.
->>
->> Aug  2 12:51:32 TEST-M kernel: RPC:       xs_connect delayed xprt ccc4c800 for 96 seconds
->> Aug  2 12:51:32 TEST-M kernel: RPC:       xs_error_report client ccc4c800...
->> Aug  2 12:51:32 TEST-M kernel: RPC:       error 111
->>  ... snip ...
->> Aug  2 12:53:08 TEST-M kernel: RPC:       disconnected transport ccc4c800
->> Aug  2 12:53:08 TEST-M kernel: RPC:       worker connecting xprt ccc4c800 via tcp to 192.168.0.21 (port 2049)
->> Aug  2 12:53:08 TEST-M kernel: RPC:       ccc4c800 connect status 115 connected 0 sock state 2
->> Aug  2 12:53:08 TEST-M kernel: RPC:   228 xprt_connect_status: retrying
->> Aug  2 12:53:08 TEST-M kernel: RPC:   228 xprt_prepare_transmit
->> Aug  2 12:53:08 TEST-M kernel: RPC:   228 xprt_transmit(136)
->> Aug  2 12:53:08 TEST-M kernel: RPC:       xs_tcp_send_request(136) = -11
->> Aug  2 12:53:08 TEST-M kernel: RPC:   228 xmit incomplete (136 left of 136)
->> Aug  2 12:53:08 TEST-M kernel: RPC:   228 xprt_connect xprt ccc4c800 is not connected
->> Aug  2 12:53:08 TEST-M kernel: RPC:       xs_connect delayed xprt ccc4c800 for 192 seconds
->> Aug  2 12:53:08 TEST-M kernel: RPC:       xs_tcp_state_change client ccc4c800...
->> Aug  2 12:53:08 TEST-M kernel: RPC:       state 1 conn 0 dead 0 zapped 1
->> Aug  2 12:53:08 TEST-M kernel: RPC:   228 xprt_connect_status: retrying
->> Aug  2 12:53:08 TEST-M kernel: RPC:   228 xprt_prepare_transmit
->> Aug  2 12:53:08 TEST-M kernel: RPC:   228 xprt_transmit(136)
->> Aug  2 12:53:08 TEST-M kernel: RPC:       xs_tcp_send_request(136) = 136
->> Aug  2 12:53:08 TEST-M kernel: RPC:   228 xmit complete
->> Aug  2 12:53:08 TEST-M kernel: RPC:   229 xprt_prepare_transmit
->>
->> As the debug message show, "xs_connect delayed xprt ccc4c800 for 192 seconds"
->> means a connecting work have be delayed at connect_worker list.
->> "state 1 conn 0 dead 0 zapped 1" shows the connect have successed 
->> but a delayed work still alive at connect_worker list.
->>
->> Signed-off-by: Mi Jinlong <mijinlong@cn.fujitsu.com>
->>
->> ---
->>  net/sunrpc/xprtsock.c |    4 ++++
->>  1 files changed, 4 insertions(+), 0 deletions(-)
->>
->> diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
->> index 49a62f0..823f1db 100644
->> --- a/net/sunrpc/xprtsock.c
->> +++ b/net/sunrpc/xprtsock.c
->> @@ -1324,6 +1324,10 @@ static void xs_tcp_state_change(struct sock *sk)
->>  			transport->tcp_flags =
->>  				TCP_RCV_COPY_FRAGHDR | TCP_RCV_COPY_XID;
->>  
->> +			if (xprt_connecting(xprt) &&
->> +			      cancel_delayed_work(&transport->connect_worker))
->> +				xprt_clear_connecting(xprt);
->> +
->>  			xprt_wake_pending_tasks(xprt, -EAGAIN);
->>  		}
->>  		spin_unlock_bh(&xprt->transport_lock);
-> 
-> Wait... According to the above trace, the connect request is _failing_
-> due to an ECONNREFUSED error. In that case, we _want_ to delay the
-> reconnection in order to give the server time to set itself up.
+squash into pnfs_submit: generic getdeviceinfo
 
-  Yes, that's right.
+Signed-off-by: Andy Adamson <andros@netapp.com>
+---
+ fs/nfs/nfs4proc.c        |    8 ++++----
+ fs/nfs/nfs4xdr.c         |    8 ++++----
+ fs/nfs/pnfs.c            |    2 +-
+ fs/nfs/pnfs.h            |    2 +-
+ include/linux/nfs4.h     |    2 +-
+ include/linux/pnfs_xdr.h |    4 ++--
+ 6 files changed, 13 insertions(+), 13 deletions(-)
 
-  But, the important part of the trace is 
-  "
-   Aug  2 12:53:08 TEST-M kernel: RPC:   228 xmit incomplete (136 left of 136)
-   Aug  2 12:53:08 TEST-M kernel: RPC:   228 xprt_connect xprt ccc4c800 is not connected
-   Aug  2 12:53:08 TEST-M kernel: RPC:       xs_connect delayed xprt ccc4c800 for 192 seconds
-   Aug  2 12:53:08 TEST-M kernel: RPC:       xs_tcp_state_change client ccc4c800...
-   Aug  2 12:53:08 TEST-M kernel: RPC:       state 1 conn 0 dead 0 zapped 1
-   Aug  2 12:53:08 TEST-M kernel: RPC:   228 xprt_connect_status: retrying
-  ".
-
-  The SUNRPC's TCP connecting is asynchronous, but the tcp_connect()
-  only send a SYN but don't waiting for the ACK reply.
-
-    CLIENT                                   SERVER
-
-  1. The first connecting
-
-    |-xs_connect()
-     |-kernel_connect(O_NONBLOCK)
-       |-tcp_connet()  -------- SYN --------->
-
-   xs_connect() return with EINPROGRESS and the ACK have not reply. 
-
-  2. a reconnecting of 1
-    |-xs_connect()
-        queue_delayed_work(rpciod_workqueue,
-                            &transport->connect_worker,
-                            xprt->reestablish_timeout);
-
-              <---------------ACK SYN--------------
-
-   After the reconnecting have put the connect working to connect_worker,
-   the ACK-SYN for the first connecting reply, the connect is OK now.
-
-At this instance, a delayed connect working will be exist at connect_worker
-after connecting success, we should cancel this working.
-
-thanks,
-Mi Jinlong
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 10cf7e2..8c94e1e 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -5767,16 +5767,16 @@ int pnfs4_proc_layoutreturn(struct nfs4_pnfs_layoutreturn *lrp, bool issync)
+ 	return err;
+ }
+ 
+-int nfs4_pnfs_getdeviceinfo(struct nfs_server *server, struct pnfs_device *pdev)
++int nfs4_proc_getdeviceinfo(struct nfs_server *server, struct pnfs_device *pdev)
+ {
+-	struct nfs4_pnfs_getdeviceinfo_arg args = {
++	struct nfs4_getdeviceinfo_args args = {
+ 		.pdev = pdev,
+ 	};
+-	struct nfs4_pnfs_getdeviceinfo_res res = {
++	struct nfs4_getdeviceinfo_res res = {
+ 		.pdev = pdev,
+ 	};
+ 	struct rpc_message msg = {
+-		.rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_PNFS_GETDEVICEINFO],
++		.rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_GETDEVICEINFO],
+ 		.rpc_argp = &args,
+ 		.rpc_resp = &res,
+ 	};
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index bb2cb86..89f7139 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -1803,7 +1803,7 @@ static void encode_sequence(struct xdr_stream *xdr,
+ #ifdef CONFIG_NFS_V4_1
+ static void
+ encode_getdeviceinfo(struct xdr_stream *xdr,
+-		     const struct nfs4_pnfs_getdeviceinfo_arg *args,
++		     const struct nfs4_getdeviceinfo_args *args,
+ 		     struct compound_hdr *hdr)
+ {
+ 	int has_bitmap = (args->pdev->dev_notify_types != 0);
+@@ -2741,7 +2741,7 @@ static int nfs4_xdr_enc_reclaim_complete(struct rpc_rqst *req, uint32_t *p,
+  * Encode GETDEVICEINFO request
+  */
+ static int nfs4_xdr_enc_getdeviceinfo(struct rpc_rqst *req, uint32_t *p,
+-				      struct nfs4_pnfs_getdeviceinfo_arg *args)
++				      struct nfs4_getdeviceinfo_args *args)
+ {
+ 	struct xdr_stream xdr;
+ 	struct rpc_auth *auth = req->rq_task->tk_msg.rpc_cred->cr_auth;
+@@ -6325,7 +6325,7 @@ static int nfs4_xdr_dec_reclaim_complete(struct rpc_rqst *rqstp, uint32_t *p,
+  * Decode GETDEVINFO response
+  */
+ static int nfs4_xdr_dec_getdeviceinfo(struct rpc_rqst *rqstp, uint32_t *p,
+-				      struct nfs4_pnfs_getdeviceinfo_res *res)
++				      struct nfs4_getdeviceinfo_res *res)
+ {
+ 	struct xdr_stream xdr;
+ 	struct compound_hdr hdr;
+@@ -6651,7 +6651,7 @@ struct rpc_procinfo	nfs4_procedures[] = {
+   PROC(SEQUENCE,	enc_sequence,	dec_sequence),
+   PROC(GET_LEASE_TIME,	enc_get_lease_time,	dec_get_lease_time),
+   PROC(RECLAIM_COMPLETE, enc_reclaim_complete,  dec_reclaim_complete),
+-  PROC(PNFS_GETDEVICEINFO, enc_getdeviceinfo, dec_getdeviceinfo),
++  PROC(GETDEVICEINFO, enc_getdeviceinfo, dec_getdeviceinfo),
+   PROC(PNFS_LAYOUTGET,  enc_layoutget,     dec_layoutget),
+   PROC(PNFS_LAYOUTCOMMIT, enc_layoutcommit,  dec_layoutcommit),
+   PROC(PNFS_LAYOUTRETURN, enc_layoutreturn,  dec_layoutreturn),
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 52d1a79..7bf812f 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -1460,7 +1460,7 @@ out_free:
+ /* Callback operations for layout drivers.
+  */
+ struct pnfs_client_operations pnfs_ops = {
+-	.nfs_getdeviceinfo = nfs4_pnfs_getdeviceinfo,
++	.nfs_getdeviceinfo = nfs4_proc_getdeviceinfo,
+ };
+ 
+ EXPORT_SYMBOL(pnfs_unregister_layoutdriver);
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index e39af4f..d6ed419 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -22,7 +22,7 @@
+ #include "iostat.h"
+ 
+ /* nfs4proc.c */
+-extern int nfs4_pnfs_getdeviceinfo(struct nfs_server *server,
++extern int nfs4_proc_getdeviceinfo(struct nfs_server *server,
+ 				   struct pnfs_device *dev);
+ extern int pnfs4_proc_layoutget(struct nfs4_pnfs_layoutget *lgp);
+ extern int pnfs4_proc_layoutcommit(struct pnfs_layoutcommit_data *data,
+diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
+index 6ee7357..7c54b00 100644
+--- a/include/linux/nfs4.h
++++ b/include/linux/nfs4.h
+@@ -556,7 +556,7 @@ enum {
+ 	NFSPROC4_CLNT_PNFS_LAYOUTGET,
+ 	NFSPROC4_CLNT_PNFS_LAYOUTCOMMIT,
+ 	NFSPROC4_CLNT_PNFS_LAYOUTRETURN,
+-	NFSPROC4_CLNT_PNFS_GETDEVICEINFO,
++	NFSPROC4_CLNT_GETDEVICEINFO,
+ 	NFSPROC4_CLNT_PNFS_WRITE,
+ 	NFSPROC4_CLNT_PNFS_COMMIT,
+ };
+diff --git a/include/linux/pnfs_xdr.h b/include/linux/pnfs_xdr.h
+index ed16c65..4371c84 100644
+--- a/include/linux/pnfs_xdr.h
++++ b/include/linux/pnfs_xdr.h
+@@ -110,12 +110,12 @@ struct nfs4_pnfs_layoutreturn {
+ 	int rpc_status;
+ };
+ 
+-struct nfs4_pnfs_getdeviceinfo_arg {
++struct nfs4_getdeviceinfo_args {
+ 	struct pnfs_device *pdev;
+ 	struct nfs4_sequence_args seq_args;
+ };
+ 
+-struct nfs4_pnfs_getdeviceinfo_res {
++struct nfs4_getdeviceinfo_res {
+ 	struct pnfs_device *pdev;
+ 	struct nfs4_sequence_res seq_res;
+ };
+-- 
+1.6.2.5
 
