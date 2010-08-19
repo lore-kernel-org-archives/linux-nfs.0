@@ -1,69 +1,79 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-px0-f174.google.com ([209.85.212.174]:53508 "EHLO
-	mail-px0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751660Ab0HTMof (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 20 Aug 2010 08:44:35 -0400
-Date: Fri, 20 Aug 2010 20:44:24 +0800
-From: Wu Fengguang <fengguang.wu@gmail.com>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: Christoph Hellwig <hch@infradead.org>, linux-nfs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, linux-mm@kvack.org,
-        Chris Mason <chris.mason@oracle.com>,
-        Jens Axboe <jens.axboe@oracle.com>
-Subject: Re: why are WB_SYNC_NONE COMMITs being done with FLUSH_SYNC set ?
-Message-ID: <20100820124424.GA17022@localhost>
-References: <20100819101525.076831ad@barsoom.rdu.redhat.com>
- <20100819143710.GA4752@infradead.org>
- <20100819235553.GB22747@localhost>
- <20100820091904.GB20138@infradead.org>
- <20100820072757.6ae9741a@tlielax.poochiereds.net>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20100820072757.6ae9741a@tlielax.poochiereds.net>
+Received: from e1.ny.us.ibm.com ([32.97.182.141]:58714 "EHLO e1.ny.us.ibm.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751037Ab0HSDRX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 18 Aug 2010 23:17:23 -0400
+Subject: Re: Proposal: Use hi-res clock for file timestamps
+From: john stultz <johnstul@us.ibm.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: "Patrick J. LoPresti" <lopresti@gmail.com>,
+        Alan Cox <alan@lxorguk.ukuu.org.uk>, Andi Kleen <andi@firstfloor.org>,
+        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-kernel <linux-kernel@vger.kernel.org>
+In-Reply-To: <20100819023106.GB30151@fieldses.org>
+References: <AANLkTimnyXKahtjaFeSsgcq=xMy-pP3na1jidQhZ-dt2@mail.gmail.com>
+	 <87aaolwar8.fsf@basil.nowhere.org> <20100817174134.GA23176@fieldses.org>
+	 <20100817182920.GD18161@basil.fritz.box>
+	 <20100817190447.GA28049@fieldses.org>
+	 <AANLkTi=w1UA5ZZDBigpxMiL7A7DnbnQhLkg62JZpC6Ri@mail.gmail.com>
+	 <20100817203941.729830b7@lxorguk.ukuu.org.uk>
+	 <AANLkTi=sOW0Cgci+xX6rRmz+B-is0xb8DoKD350bFJN1@mail.gmail.com>
+	 <20100818181240.GA13050@fieldses.org>
+	 <AANLkTi=cx31Mgfe7FxJz6LUmTKFR4=9KEBgbFsNLjiSE@mail.gmail.com>
+	 <20100819023106.GB30151@fieldses.org>
+Content-Type: text/plain; charset="UTF-8"
+Date: Wed, 18 Aug 2010 20:17:14 -0700
+Message-ID: <1282187834.3575.30.camel@localhost.localdomain>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Fri, Aug 20, 2010 at 07:27:57AM -0400, Jeff Layton wrote:
-> On Fri, 20 Aug 2010 05:19:04 -0400
-> Christoph Hellwig <hch@infradead.org> wrote:
-> 
-> > On Fri, Aug 20, 2010 at 07:55:53AM +0800, Wu Fengguang wrote:
-> > > Since migration and pageout still set nonblocking for ->writepage, we
-> > > may keep them in the near future, until VM does not start IO on itself.
+On Wed, 2010-08-18 at 22:31 -0400, J. Bruce Fields wrote:
+> On Wed, Aug 18, 2010 at 06:41:02PM -0700, john stultz wrote:
+> > On Wed, Aug 18, 2010 at 11:12 AM, J. Bruce Fields <bfields@fieldses.org> wrote:
+> > > I'm completely ignorant about higher-resolution time sources.  Any
+> > > recommended reading?  What resolution do they actually provide, what's
+> > > the expense of reading them, how reliable are they, and how do the
+> > > answers to those questions vary across different hardware and kernel
+> > > versions?  A quick look at drivers/clocksource/ doesn't suggest
+> > > simple answers.
 > > 
-> > Why does pageout() and memory migration need to be even more
-> > non-blocking than the already non-blockig WB_SYNC_NONE writeout?
+> > Yea, there aren't simple answers. Clocksource hardware varies
+> > drastically in resolution and access time across systems and
+> > architectures. Further, clocksources may change while the system is
+> > up, so we don't really expose the hardware resolution.
 > > 
+> > On x86, access latency varies from ~50ns (TSC) to ~1.3us (ACPI PM).
+> > (And that is ignoring the PIT, which can be 18us per call - luckily
+> > almost no hardware uses that). The resolution similarly scales from
+> > sub-ns (TSC @ > 1ghz cpus) to ~279ns (ACPI PM). Of course, across
+> > architectures you will see even more variance.
 > 
-> Just an idle thought on this...
+> The race in question occurs when you manage to check mtime between two
+> file data updates, with all three operations occurring within a clock
+> tick.
 > 
-> I think a lot of the confusion here comes from the fact that we have
-> sync_mode and a bunch of flags, and it's not at all clear how
-> filesystems are supposed to treat the union of them. There are also
-> possible unions of flags/sync_modes that never happen in practice. It's
-> not always obvious though and as filesystem implementors we have to
-> consider the possibility that they might occur (consider WB_SYNC_ALL +
-> for_background).
-> 
-> Perhaps a lot of this confusion could be lifted by getting rid of the
-> extra flags and adding new sync_mode's. Maybe something like:
-> 
-> WB_SYNC_ALL /* wait on everything to complete */
-> WB_SYNC_NONE /* don't wait on anything */
-> WB_SYNC_FOR_RECLAIM /* sync for reclaim */
-> WB_SYNC_FOR_KUPDATED /* sync by kupdate */
-> ...etc...
-> 
-> That does mean that all of the filesystem specific code may need to be
-> touched when new modes are added and removed. I think it would be
-> clearer though about what you're supposed to do in ->writepages.
+> No idea if that's feasible in hundreds of nanoseconds.
 
-No, we are moving towards the other direction :)
+I think this is what Andi meant that you'll always race with time and
+that version counters are the only real solution here.
 
-I just removed the definition of wbc->nonblocking and
-wbc->encountered_congestion and all of the references.
+> I'm also not sure how to judge the access latency.  Certainly a
+> microsecond is a lot compared to just reading a cached mtime value.
+> 
+> Will we ever see them go backwards?  (So if I know I wrote to file B
+> after writing to file A, is there ever a case where I could end up with
+> an earlier mtime on B than A?)
 
-Sorry for the confusion!
+You should not. However, there have been bugs in the past, and there
+will probably be a few more in the future.
 
-Thanks,
-Fengguang
+There are also theoretical issues with SMP systems where the TSCs are
+not perfectly synced, but the window for those races should be small
+(ie: smaller then can be detected - otherwise we'll throw out the TSC).
+
+
+thanks
+-john
+
+
