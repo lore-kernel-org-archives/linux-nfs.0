@@ -1,82 +1,56 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:41810 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:37391 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753278Ab0HRUQn convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 18 Aug 2010 16:16:43 -0400
-Subject: Re: [PATCH 1/1] nfs41: prevent exchange_id from sending
- server-only flag
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Benny Halevy <bhalevy@panasas.com>
-Cc: andros@netapp.com, linux-nfs@vger.kernel.org,
-        Fred Isaman <iisaman@citi.umich.edu>
-In-Reply-To: <4C6C3B0D.2080005@panasas.com>
-References: <1282153092-7228-1-git-send-email-andros@netapp.com>
-	 <1282154873.8540.69.camel@heimdal.trondhjem.org>
-	 <4C6C3B0D.2080005@panasas.com>
-Content-Type: text/plain; charset="UTF-8"
-Date: Wed, 18 Aug 2010 16:16:41 -0400
-Message-ID: <1282162601.8540.106.camel@heimdal.trondhjem.org>
+	id S1753870Ab0HSPaL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 19 Aug 2010 11:30:11 -0400
+From: andros@netpp.com
+To: bhalevy@panasas.com
+Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
+Subject: [PATCH 5/5] SQUASHME pnfs-submit: rename layoutget 4
+Date: Thu, 19 Aug 2010 11:27:57 -0400
+Message-Id: <1282231677-4412-6-git-send-email-andros@netpp.com>
+In-Reply-To: <1282231677-4412-5-git-send-email-andros@netpp.com>
+References: <1282231677-4412-1-git-send-email-andros@netpp.com>
+ <1282231677-4412-2-git-send-email-andros@netpp.com>
+ <1282231677-4412-3-git-send-email-andros@netpp.com>
+ <1282231677-4412-4-git-send-email-andros@netpp.com>
+ <1282231677-4412-5-git-send-email-andros@netpp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Wed, 2010-08-18 at 22:57 +0300, Benny Halevy wrote:
-> On Aug. 18, 2010, 21:07 +0300, Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
-> > On Wed, 2010-08-18 at 13:38 -0400, andros@netapp.com wrote:
-> >> From: Fred Isaman <iisaman@citi.umich.edu>
-> >>
-> >> clp->cl_exchange_flags is used both for client output and server input.
-> >> This causes problems in certain recovery situations, when the server
-> >> has sent back EXCHGID4_FLAG_CONFIRMED_R, causing the client to erroneously
-> >> use the flag in future EXCHANGE_ID requests.
-> >>
-> >> Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
-> >> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-> >> ---
-> >>  fs/nfs/nfs4proc.c |    2 +-
-> >>  1 files changed, 1 insertions(+), 1 deletions(-)
-> >>
-> >> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-> >> index 198d51d..e5fea95 100644
-> >> --- a/fs/nfs/nfs4proc.c
-> >> +++ b/fs/nfs/nfs4proc.c
-> >> @@ -4427,7 +4427,7 @@ int nfs4_proc_exchange_id(struct nfs_client *clp, struct rpc_cred *cred)
-> >>  	nfs4_verifier verifier;
-> >>  	struct nfs41_exchange_id_args args = {
-> >>  		.client = clp,
-> >> -		.flags = clp->cl_exchange_flags,
-> >> +		.flags = clp->cl_exchange_flags & ~EXCHGID4_FLAG_CONFIRMED_R,
-> >>  	};
-> >>  	struct nfs41_exchange_id_res res = {
-> >>  		.client = clp,
-> > 
-> > Wait... This is utterly silly...
-> > 
-> > So we start be passing in clp->cl_exchange_flags == 0, then the server
-> > modifies that to some other value, and then from there on we always use
-> > the latest value of clp->cl_exchange_flags that resulted from the last
-> > call to EXCHANGE_ID????
-> > 
-> > We should be setting .flags according to the client capabilities, not
-> > according to the server reply...
-> > 
-> > IOW:
-> > args.flags = EXCHGID4_FLAG_SUPP_MOVED_REFER | EXCHGID4_FLAG_USE_NON_PNFS;
-> > 
-> > 
-> 
-> Makes sense for upstream.
-> 
-> For pNFS, besides dropping EXCHGID4_FLAG_USE_NON_PNFS we should retain
-> EXCHGID4_FLAG_USE_PNFS_MDS | EXCHGID4_FLAG_USE_PNFS_DS as exchange_id
-> is called from both the MDS and the DS paths.
+From: Andy Adamson <andros@netapp.com>
 
-No. As I read the spec, a pNFS-capable client should _retain_
-EXCHGID4_FLAG_USE_NON_PNFS, and OR in the EXCHGID4_FLAG_USE_PNFS_MDS |
-EXCHGID4_FLAG_USE_PNFS_DS flags too (see section 13.1).
+squash into pnfs_submit: filelayout layout segment alloc and free
 
-The server will then reply with a subset of those 3 flags that tells the
-client whether it is an MDS, a DS, or a non-MDS (or a valid combination
-of 2 of those flags).
+Signed-off-by: Andy Adamson <andros@netapp.com>
+---
+ fs/nfs/nfs4filelayout.c |    4 ++--
+ 1 files changed, 2 insertions(+), 2 deletions(-)
 
-Trond
+diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+index eb9c907..0cfa21c 100644
+--- a/fs/nfs/nfs4filelayout.c
++++ b/fs/nfs/nfs4filelayout.c
+@@ -385,7 +385,7 @@ static void filelayout_free_fh_array(struct nfs4_filelayout_segment *fl);
+ static int
+ filelayout_set_layout(struct nfs4_filelayout *flo,
+ 		      struct nfs4_filelayout_segment *fl,
+-		      struct nfs4_pnfs_layoutget_res *lgr)
++		      struct nfs4_layoutget_res *lgr)
+ {
+ 	uint32_t *p = (uint32_t *)lgr->layout.buf;
+ 	uint32_t nfl_util;
+@@ -454,7 +454,7 @@ filelayout_set_layout(struct nfs4_filelayout *flo,
+ 
+ static struct pnfs_layout_segment *
+ filelayout_alloc_lseg(struct pnfs_layout_hdr *layoutid,
+-		      struct nfs4_pnfs_layoutget_res *lgr)
++		      struct nfs4_layoutget_res *lgr)
+ {
+ 	struct nfs4_filelayout *flo = FILE_LO(layoutid);
+ 	struct pnfs_layout_segment *lseg;
+-- 
+1.6.2.5
+
