@@ -1,112 +1,66 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:49917 "EHLO mx1.redhat.com"
+Received: from mail-out1.uio.no ([129.240.10.57]:49842 "EHLO mail-out1.uio.no"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757511Ab0HaOuH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 31 Aug 2010 10:50:07 -0400
-Message-ID: <4C7D1694.6000708@RedHat.com>
-Date: Tue, 31 Aug 2010 10:49:56 -0400
-From: Steve Dickson <SteveD@redhat.com>
-To: Jeff Layton <jlayton@redhat.com>
-CC: linux-nfs@vger.kernel.org, bfields@fieldses.org, chuck.lever@oracle.com
-Subject: Re: [PATCH] rpc.nfsd: mount up nfsdfs is it doesn't appear to be
- mounted yet
-References: <1282995314-8317-1-git-send-email-jlayton@redhat.com>	<4C7BD394.3030705@RedHat.com>	<20100830121600.529669bd@tlielax.poochiereds.net>	<4C7BE1FC.2020400@RedHat.com>	<20100830134801.1696dffa@tlielax.poochiereds.net>	<4C7CF499.5090003@RedHat.com> <20100831084323.02a1abf5@corrin.poochiereds.net>
-In-Reply-To: <20100831084323.02a1abf5@corrin.poochiereds.net>
-Content-Type: text/plain; charset=ISO-8859-1
+	id S1752704Ab0HSO6r (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 19 Aug 2010 10:58:47 -0400
+Subject: Re: why are WB_SYNC_NONE COMMITs being done with FLUSH_SYNC set ?
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+To: Christoph Hellwig <hch@infradead.org>
+Cc: Jeff Layton <jlayton@redhat.com>, fengguang.wu@gmail.com,
+        linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-mm@kvack.org
+In-Reply-To: <20100819143710.GA4752@infradead.org>
+References: <20100819101525.076831ad@barsoom.rdu.redhat.com>
+	 <20100819143710.GA4752@infradead.org>
+Content-Type: text/plain; charset="UTF-8"
+Date: Thu, 19 Aug 2010 10:58:25 -0400
+Message-ID: <1282229905.6199.19.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+On Thu, 2010-08-19 at 10:37 -0400, Christoph Hellwig wrote:
+> On Thu, Aug 19, 2010 at 10:15:25AM -0400, Jeff Layton wrote:
+> > I'm looking at backporting some upstream changes to earlier kernels,
+> > and ran across something I don't quite understand...
+> > 
+> > In nfs_commit_unstable_pages, we set the flags to FLUSH_SYNC. We then
+> > zero out the flags if wbc->nonblocking or wbc->for_background is set.
+> > 
+> > Shouldn't we also clear it out if wbc->sync_mode == WB_SYNC_NONE ?
+> > WB_SYNC_NONE means "don't wait on anything", so shouldn't that include
+> > not waiting on the COMMIT to complete?
+> 
+> I've been trying to figure out what the nonblocking flag is supposed
+> to mean for a while now.
+> 
+> It basically disappeared in commit 0d99519efef15fd0cf84a849492c7b1deee1e4b7
+> 
+> 	"writeback: remove unused nonblocking and congestion checks"
+> 
+> from Wu.  What's left these days is a couple of places in local copies
+> of write_cache_pages (afs, cifs), and a couple of checks in random
+> writepages instances (afs, block_write_full_page, ceph, nfs, reiserfs, xfs)
+> and the use in nfs_write_inode.  It's only actually set for memory
+> migration and pageout, that is VM writeback.
+> 
+> To me it really doesn't make much sense, but maybe someone has a better
+> idea what it is for.
+> 
+> > +	if (wbc->nonblocking || wbc->for_background ||
+> > +	    wbc->sync_mode == WB_SYNC_NONE)
+> 
+> You could remove the nonblocking and for_background checks as
+> these impliy WB_SYNC_NONE.
 
+To me that sounds fine. I've also been trying to wrap my head around the
+differences between 'nonblocking', 'for_background', 'for_reclaim' and
+'for_kupdate' and how the filesystem is supposed to treat them.
 
-On 08/31/2010 08:43 AM, Jeff Layton wrote:
-> On Tue, 31 Aug 2010 08:24:57 -0400
-> Steve Dickson <SteveD@redhat.com> wrote:
-> 
->>
->>
->> On 08/30/2010 01:48 PM, Jeff Layton wrote:
->>> On Mon, 30 Aug 2010 12:53:16 -0400
->>> Steve Dickson <SteveD@redhat.com> wrote:
->>>>>
->>>>> Hmmm...if I had known that it was ok to stop supporting old kernels,
->>>>> the IPv6 support for rpc.nfsd would have been a heck of a lot easier to
->>>>> implement.
->>>> I thought you said the legacy interface would not work with IPV6 or
->>>> did I misunderstand you? 
->>>>
->>>
->>> Sorry, forgot to answer this part. IPv6 indeed will not work when using
->>> the legacy interface. In order to get the IPv6 code in though, I ended
->>> up rewriting a large swath of rpc.nfsd. That task would have been
->>> easier had I not needed to deal with the legacy nfsctl() interface.
->>>
->> So I'm thinking this the final nail in the coffin of the legacy interface
->> at least in rpc.nfsd. So if /proc/fs/nfsd filesystem is not or can not
->> be mounted then rpc.nfsd should fail... IMHO...
->>
->> Maybe something like:
->>
->> if (stat("/proc/fs/nfsd") < 0) {
-> 
-> This needs to check a file within /proc/fs/nfsd. The nfsd "dir" may
-> already exist even if it's not mounted. I chose "threads" but any file
-> in there would do...
-> 
->>     if (system("mount /proc/fs/nfsd") < 0) {
->>         xlog(L_ERROR, "Unable to mount /proc/fs/nfsd");
->>         exit 0;
->>     }
->> }
->>
->> steved.
-> 
-> That will universally fail, at least on most distros.
-By no means was I meaning this was working code... 
-I was just trying to introduced logic of: check to see if  
-/proc/fs/nfsd exists, if not, mount it. If the mount fails, exit.
-Detail to be worked out later... 
+Aside from the above, I've used 'for_reclaim', 'for_kupdate' and
+'for_background' in order to adjust the RPC request's queuing priority
+(high in the case of 'for_reclaim' and low for the other two).
 
-> 
-> 
-> When you go to mount /proc/fs/nfsd, the system does a request_module()
-> for nfsd.ko. On most distros (e.g. Fedora or RHEL), modprobe will then
-> automatically mount up /proc/fs/nfsd. request_module will then return
-> and the mount attempt will proceed. 
-Yeah I know... I am one that taught modprobe how to that... at least 
-in the RH distros... ;-) Although I believe the actual mechanics
-have changed over the years... 
+Cheers
+  Trond
 
-> The mount will then fail because
-> it's now already mounted, and the system() call will return non-zero.
-Isn't this reason to do the stat() before the mount? So you will not try to
-mount the FS if is already mounted? 
-
-> 
-> That's the main reason I ignored the return code from system() in the
-> original patch. What you could do is recheck whether the file exists
-> after the mount attempt, and then fail if it doesn't.
-My point was we need to know if the mount did or did not
-work to take the appropriate action... 
- 
-> 
-> Is that really what we want to do here though? How does ditching the
-> legacy interface move us forward now? If we had decided to do this a
-> year ago when I was overhauling rpc.nfsd, it might have made sense. The
-> code exists now though and it works. Ripping this out seems more
-> disruptive than just leaving it in.
-I believe we are talking about 4 lines of code at the bottom of nfssvc_threads()
-I don't think that would be too disruptive... 
-
-steved.
-
-> 
-> To keep this on track, I think we need to treat this as 2 separate
-> discussions:
-> 
-> 1) how to we ensure that /proc/fs/nfsd is actually mounted when
-> rpc.nfsd is run?
-> 
-> 2) what do we do about the legacy nfsctl() interface?
-> 
-> These are separate but related questions...
