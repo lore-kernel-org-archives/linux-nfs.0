@@ -1,54 +1,89 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:41859 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:58967 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759195Ab0HEOSE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 5 Aug 2010 10:18:04 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 2/5] NFS: Fix the locking in nfs4_callback_getattr
-Date: Thu,  5 Aug 2010 10:17:49 -0400
-Message-Id: <1281017872-6043-3-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1281017872-6043-2-git-send-email-Trond.Myklebust@netapp.com>
-References: <1281017872-6043-1-git-send-email-Trond.Myklebust@netapp.com>
- <1281017872-6043-2-git-send-email-Trond.Myklebust@netapp.com>
+	id S1751718Ab0HSASy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 18 Aug 2010 20:18:54 -0400
+Date: Wed, 18 Aug 2010 20:16:47 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Bian Naimeng <biannm@cn.fujitsu.com>
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>, linux-nfs@vger.kernel.org,
+        Christoph Hellwig <hch@infradead.org>
+Subject: Re: [PATCH] Server should allow offset larger than LLONG_MAX at
+ commit procedure
+Message-ID: <20100819001647.GD18367@fieldses.org>
+References: <4C6B9538.2020608@cn.fujitsu.com>
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <4C6B9538.2020608@cn.fujitsu.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-The delegation is protected by RCU now, so we need to replace the
-nfsi->rwsem protection with an rcu protected section.
+On Wed, Aug 18, 2010 at 04:09:28PM +0800, Bian Naimeng wrote:
+> When offset larger than LLONG_MAX, it's better to sync all the data of file
+> than return nfserr_inval.
 
-Reported-by: Fred Isaman <iisaman@netapp.com>
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- fs/nfs/callback_proc.c |    6 +++---
- 1 files changed, 3 insertions(+), 3 deletions(-)
+I believe the current behavior is correct.
 
-diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
-index 7445dd0..930d10f 100644
---- a/fs/nfs/callback_proc.c
-+++ b/fs/nfs/callback_proc.c
-@@ -37,8 +37,8 @@ __be32 nfs4_callback_getattr(struct cb_getattrargs *args, struct cb_getattrres *
- 	if (inode == NULL)
- 		goto out_putclient;
- 	nfsi = NFS_I(inode);
--	down_read(&nfsi->rwsem);
--	delegation = nfsi->delegation;
-+	rcu_read_lock();
-+	delegation = rcu_dereference(nfsi->delegation);
- 	if (delegation == NULL || (delegation->type & FMODE_WRITE) == 0)
- 		goto out_iput;
- 	res->size = i_size_read(inode);
-@@ -53,7 +53,7 @@ __be32 nfs4_callback_getattr(struct cb_getattrargs *args, struct cb_getattrres *
- 		args->bitmap[1];
- 	res->status = 0;
- out_iput:
--	up_read(&nfsi->rwsem);
-+	rcu_read_unlock();
- 	iput(inode);
- out_putclient:
- 	nfs_put_client(clp);
--- 
-1.7.2
+See http://marc.info/?l=linux-nfs&m=128200558207974&w=2 for a pynfs-side
+fix.
 
+--b.
+
+> 
+> Signed-off-by: Bian Naimeng <biannm@cn.fujitsu.com>
+> 
+> ---
+>  fs/nfsd/vfs.c |   14 ++++++++------
+>  1 files changed, 8 insertions(+), 6 deletions(-)
+> 
+> diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+> index 96360a8..f67fe31 100644
+> --- a/fs/nfsd/vfs.c
+> +++ b/fs/nfsd/vfs.c
+> @@ -1174,20 +1174,23 @@ nfsd_commit(struct svc_rqst *rqstp, struct svc_fh *fhp,
+>  {
+>  	struct file	*file;
+>  	loff_t		end = LLONG_MAX;
+> -	__be32		err = nfserr_inval;
+> +	__be32		err;
+> +
+> +	if ((u64)count > ‾(u64)offset)
+> +		return nfserr_inval;
+>  
+>  	if (offset < 0)
+> -		goto out;
+> -	if (count != 0) {
+> +		offset = 0;
+> +	else if (count != 0) {
+>  		end = offset + (loff_t)count - 1;
+>  		if (end < offset)
+> -			goto out;
+> +			end = LLONG_MAX;
+>  	}
+>  
+>  	err = nfsd_open(rqstp, fhp, S_IFREG,
+>  			NFSD_MAY_WRITE|NFSD_MAY_NOT_BREAK_LEASE, &file);
+>  	if (err)
+> -		goto out;
+> +		return err;
+>  	if (EX_ISSYNC(fhp->fh_export)) {
+>  		int err2 = vfs_fsync_range(file, offset, end, 0);
+>  
+> @@ -1198,7 +1201,6 @@ nfsd_commit(struct svc_rqst *rqstp, struct svc_fh *fhp,
+>  	}
+>  
+>  	nfsd_close(file);
+> -out:
+>  	return err;
+>  }
+>  #endif /* CONFIG_NFSD_V3 */
+> -- 
+> 1.6.5.2
+> 
+> 
+> 
+> 
+> -- 
+> Regards
+> Bian Naimeng
+> 
