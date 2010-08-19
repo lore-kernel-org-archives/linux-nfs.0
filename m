@@ -1,80 +1,52 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:39476 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:16286 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755606Ab0HMQd6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 13 Aug 2010 12:33:58 -0400
-Date: Fri, 13 Aug 2010 12:31:56 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Steve Dickson <SteveD@redhat.com>
-Cc: Neil Brown <neilb@suse.de>, Trond Myklebust <trond.myklebust@fys.uio.no>,
-        Jim Rees <rees@umich.edu>, Daniel.Muntz@emc.com,
-        linux-nfs@vger.kernel.org
-Subject: Re: numeric UIDs
-Message-ID: <20100813163156.GA16863@fieldses.org>
-References: <DE966DA98A4ABE438D726BDF1699CF61403FAF9D@MX05A.corp.emc.com>
- <20100803215704.GA15494@merit.edu>
- <1280873719.14520.17.camel@heimdal.trondhjem.org>
- <20100803222337.GA9752@fieldses.org>
- <1280874675.14520.23.camel@heimdal.trondhjem.org>
- <20100803224245.GB9752@fieldses.org>
- <1280887336.24669.23.camel@heimdal.trondhjem.org>
- <20100805153421.GD27141@fieldses.org>
- <20100812092232.344314b2@notabene>
- <4C6559FA.5070809@RedHat.com>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4C6559FA.5070809@RedHat.com>
+	id S1752018Ab0HSOP1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 19 Aug 2010 10:15:27 -0400
+Received: from int-mx01.intmail.prod.int.phx2.redhat.com (int-mx01.intmail.prod.int.phx2.redhat.com [10.5.11.11])
+	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id o7JEFQbM029499
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Thu, 19 Aug 2010 10:15:26 -0400
+Received: from barsoom.rdu.redhat.com (barsoom.rdu.redhat.com [10.11.228.36])
+	by int-mx01.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id o7JEFQHO029789
+	for <linux-nfs@vger.kernel.org>; Thu, 19 Aug 2010 10:15:26 -0400
+Date: Thu, 19 Aug 2010 10:15:25 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: linux-nfs@vger.kernel.org
+Subject: why are WB_SYNC_NONE COMMITs being done with FLUSH_SYNC set ?
+Message-ID: <20100819101525.076831ad@barsoom.rdu.redhat.com>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Fri, Aug 13, 2010 at 10:43:06AM -0400, Steve Dickson wrote:
-> 
-> 
-> On 08/11/2010 07:22 PM, Neil Brown wrote:
-> > 
-> > I agree.  And surely it can all be solved in idmapd.
-> > 
-> > On the server, tell idmapd to map all users to "NUMERIC_USER:%d" and all
-> > groups to "NUMERIC_GROUP:%d" (or whatever) for some given clients (i.e. stop
-> > ignoring the 'authentication name'.  And of course map those names back to
-> > numbers.
-> > 
-> > I don't know if the client can easily differentiate based on which server it
-> > is talking to, but there is probably less need there (and maybe it can
-> > anyway).
-> > 
-> > It shouldn't take more that half an hour to hack something into
-> > idmapd.c:nfsdcb() for the server side and nfscb for the client side - or
-> > for a quicker hack, just go directly to imconv and ignore the client name on
-> > the server.  (all this in nfs-utils of course).
-> I took a look... and you are right it would not be that difficult to
-> hack something up... but would this only be a Linux to Linux thing? 
-> Or am I missing something?
+I'm looking at backporting some upstream changes to earlier kernels,
+and ran across something I don't quite understand...
 
-There are four cases where translation can be done:
+In nfs_commit_unstable_pages, we set the flags to FLUSH_SYNC. We then
+zero out the flags if wbc->nonblocking or wbc->for_background is set.
 
-	Sending id from server to client (ls, stat, getacl):
-		1. server uid -> string
-		2. string -> client uid
-	Sending id from client to server (chown, setacl):
-		3. client uid -> string
-		4. string -> client uid
+Shouldn't we also clear it out if wbc->sync_mode == WB_SYNC_NONE ?
+WB_SYNC_NONE means "don't wait on anything", so shouldn't that include
+not waiting on the COMMIT to complete?
 
-Cases 1 and 2 are uncontroversial.  Definitely map ascii-fied integers
-in both of those cases.
+For discussion purposes, here's a patch that shows what I'm talking
+about (completely untested):
 
-Case 4 violates the SHOULD on page 47.  Which would make case 3 useless
-if all servers respect that SHOULD.  I think we should ignore the SHOULD
-and implement 3 and 4 too, but Trond may not agree.
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index 874972d..2fca906 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -1440,7 +1440,8 @@ static int nfs_commit_unstable_pages(struct inode *inode, struct writeback_contr
+ 	    nfsi->ncommit <= (nfsi->npages >> 1))
+ 		goto out_mark_dirty;
+ 
+-	if (wbc->nonblocking || wbc->for_background)
++	if (wbc->nonblocking || wbc->for_background ||
++	    wbc->sync_mode == WB_SYNC_NONE)
+ 		flags = 0;
+ 	ret = nfs_commit_inode(inode, flags);
+ 	if (ret >= 0) {
 
-I suppose we could make this all configurable, and then argue about what
-the defaults should be.  If we implement all this in idmapd then that's
-easy.
-
-I don't know what other clients and servers do.  Probably 1 and 2 at
-least, but maybe it's something to check at the next bakeathon.
-
-Do we actually use an @-less "nobody" as suggested in the last
-paragraph?  If not that might be something else to fix.
-
---b.
+-- 
+Jeff Layton <jlayton@redhat.com>
