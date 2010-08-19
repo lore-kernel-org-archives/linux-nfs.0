@@ -1,31 +1,39 @@
-From: Jens Axboe <jaxboe@fusionio.com>
-Subject: Re: [PATCH] Fix lost wake-up shutting down writeback thread
-Date: Mon, 30 Aug 2010 13:56:20 +0200
-Message-ID: <4C7B9C64.7010804@fusionio.com>
-References: <20100825023425.GA24591@fieldses.org> <1282889595.2763.14.camel@localhost> <1282901780.12016.54.camel@localhost> <4C77B873.8010306@netapp.com> <20100827160912.GA18790@fieldses.org> <10B234E0D3A1CA469E00963BF106CA392D0DB78354@NOK-EUMSG-02.mgdnok.nokia.com> <20100827210626.GB27694@fieldses.org> <20100827212842.GC27694@fieldses.org>,<4C78B1C8.10909@fusionio.com> <10B234E0D3A1CA469E00963BF106CA392D0DB78357@NOK-EUMSG-02.mgdnok.nokia.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH 09/50] pnfs_submit: introduce fs/nfs/pnfs.c
+Date: Thu, 19 Aug 2010 13:21:32 -0400
+Message-ID: <20100819172132.GG30151@fieldses.org>
+References: <1281735122-1496-2-git-send-email-andros@netapp.com>
+ <1281735122-1496-3-git-send-email-andros@netapp.com>
+ <1281735122-1496-4-git-send-email-andros@netapp.com>
+ <1281735122-1496-5-git-send-email-andros@netapp.com>
+ <1281735122-1496-6-git-send-email-andros@netapp.com>
+ <1281735122-1496-7-git-send-email-andros@netapp.com>
+ <1281735122-1496-8-git-send-email-andros@netapp.com>
+ <1281735122-1496-9-git-send-email-andros@netapp.com>
+ <1281735122-1496-10-git-send-email-andros@netapp.com>
+ <20100818202824.GC16851@infradead.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: "bfields@fieldses.org" <bfields@fieldses.org>,
-	"bjschuma@netapp.com" <bjschuma@netapp.com>,
-	"linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-	"trond@netapp.com" <trond@netapp.com>, "hch@lst.de" <hch@lst.de>
-To: "Artem.Bityutskiy@nokia.com" <Artem.Bityutskiy@nokia.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: andros@netapp.com, bhalevy@panasas.com, linux-nfs@vger.kernel.org,
+	Dean Hildebrand <dhildebz-nNDzPDmKTdnSiEDVxGk4TQ@public.gmane.org>
+To: Christoph Hellwig <hch@infradead.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from 0122700014.0.fullrate.dk ([95.166.99.235]:39419 "EHLO kernel.dk"
+Received: from fieldses.org ([174.143.236.118]:49381 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754026Ab0H3L4U (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 30 Aug 2010 07:56:20 -0400
-In-Reply-To: <10B234E0D3A1CA469E00963BF106CA392D0DB78357-xJW1crHCIS+8kqYwC468Frtp2NbXvJi8gfoxzgwHRXE@public.gmane.org>
+	id S1751000Ab0HSRXn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 19 Aug 2010 13:23:43 -0400
+In-Reply-To: <20100818202824.GC16851@infradead.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 2010-08-29 14:21, Artem.Bityutskiy@nokia.com wrote:
->> Thanks Bruce, I've applied this as well.
-> 
-> Thanks for picking up! But you could also add my Acked tag, just for the record.
+On Wed, Aug 18, 2010 at 04:28:24PM -0400, Christoph Hellwig wrote:
+> This file uses a different license than the rest of Linux.  I think
+> you at least need to dual-license it under the GPLv2.
 
-Thanks, added.
+It's a common BSD-like license, GPL-compatible, and already used
+elsewhere.  There's no need to dual-license.
 
--- 
-Jens Axboe
+(Agreed with point elsewhere that this should be merged with another
+patch.)
 
+--b.
