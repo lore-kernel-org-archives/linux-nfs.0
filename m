@@ -1,39 +1,79 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH 09/50] pnfs_submit: introduce fs/nfs/pnfs.c
-Date: Thu, 19 Aug 2010 13:21:32 -0400
-Message-ID: <20100819172132.GG30151@fieldses.org>
-References: <1281735122-1496-2-git-send-email-andros@netapp.com>
- <1281735122-1496-3-git-send-email-andros@netapp.com>
- <1281735122-1496-4-git-send-email-andros@netapp.com>
- <1281735122-1496-5-git-send-email-andros@netapp.com>
- <1281735122-1496-6-git-send-email-andros@netapp.com>
- <1281735122-1496-7-git-send-email-andros@netapp.com>
- <1281735122-1496-8-git-send-email-andros@netapp.com>
- <1281735122-1496-9-git-send-email-andros@netapp.com>
- <1281735122-1496-10-git-send-email-andros@netapp.com>
- <20100818202824.GC16851@infradead.org>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: why are WB_SYNC_NONE COMMITs being done with FLUSH_SYNC set ?
+Date: Thu, 19 Aug 2010 15:43:19 -0400
+Message-ID: <1282246999.7799.66.camel@heimdal.trondhjem.org>
+References: <20100819101525.076831ad@barsoom.rdu.redhat.com>
+	 <20100819143710.GA4752@infradead.org>
+	 <1282229905.6199.19.camel@heimdal.trondhjem.org>
+	 <20100819151618.5f769dc9@tlielax.poochiereds.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: andros@netapp.com, bhalevy@panasas.com, linux-nfs@vger.kernel.org,
-	Dean Hildebrand <dhildebz-nNDzPDmKTdnSiEDVxGk4TQ@public.gmane.org>
-To: Christoph Hellwig <hch@infradead.org>
+Content-Type: text/plain; charset="UTF-8"
+Cc: Christoph Hellwig <hch@infradead.org>, fengguang.wu@gmail.com,
+	linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	linux-mm@kvack.org
+To: Jeff Layton <jlayton@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:49381 "EHLO fieldses.org"
+Received: from mail-out1.uio.no ([129.240.10.57]:51368 "EHLO mail-out1.uio.no"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751000Ab0HSRXn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 19 Aug 2010 13:23:43 -0400
-In-Reply-To: <20100818202824.GC16851@infradead.org>
+	id S1751785Ab0HSTn3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 19 Aug 2010 15:43:29 -0400
+In-Reply-To: <20100819151618.5f769dc9-9yPaYZwiELC+kQycOl6kW4xkIHaj4LzF@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Aug 18, 2010 at 04:28:24PM -0400, Christoph Hellwig wrote:
-> This file uses a different license than the rest of Linux.  I think
-> you at least need to dual-license it under the GPLv2.
+On Thu, 2010-08-19 at 15:16 -0400, Jeff Layton wrote:
+> On Thu, 19 Aug 2010 10:58:25 -0400
+> Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
+> 
+> > On Thu, 2010-08-19 at 10:37 -0400, Christoph Hellwig wrote:
+> > > On Thu, Aug 19, 2010 at 10:15:25AM -0400, Jeff Layton wrote:
+> > > > I'm looking at backporting some upstream changes to earlier kernels,
+> > > > and ran across something I don't quite understand...
+> > > > 
+> > > > In nfs_commit_unstable_pages, we set the flags to FLUSH_SYNC. We then
+> > > > zero out the flags if wbc->nonblocking or wbc->for_background is set.
+> > > > 
+> > > > Shouldn't we also clear it out if wbc->sync_mode == WB_SYNC_NONE ?
+> > > > WB_SYNC_NONE means "don't wait on anything", so shouldn't that include
+> > > > not waiting on the COMMIT to complete?
+> > > 
+> > > I've been trying to figure out what the nonblocking flag is supposed
+> > > to mean for a while now.
+> > > 
+> > > It basically disappeared in commit 0d99519efef15fd0cf84a849492c7b1deee1e4b7
+> > > 
+> > > 	"writeback: remove unused nonblocking and congestion checks"
+> > > 
+> > > from Wu.  What's left these days is a couple of places in local copies
+> > > of write_cache_pages (afs, cifs), and a couple of checks in random
+> > > writepages instances (afs, block_write_full_page, ceph, nfs, reiserfs, xfs)
+> > > and the use in nfs_write_inode.  It's only actually set for memory
+> > > migration and pageout, that is VM writeback.
+> > > 
+> > > To me it really doesn't make much sense, but maybe someone has a better
+> > > idea what it is for.
+> > > 
+> > > > +	if (wbc->nonblocking || wbc->for_background ||
+> > > > +	    wbc->sync_mode == WB_SYNC_NONE)
+> > > 
+> > > You could remove the nonblocking and for_background checks as
+> > > these impliy WB_SYNC_NONE.
+> > 
+> > To me that sounds fine. I've also been trying to wrap my head around the
+> > differences between 'nonblocking', 'for_background', 'for_reclaim' and
+> > 'for_kupdate' and how the filesystem is supposed to treat them.
+> > 
+> > Aside from the above, I've used 'for_reclaim', 'for_kupdate' and
+> > 'for_background' in order to adjust the RPC request's queuing priority
+> > (high in the case of 'for_reclaim' and low for the other two).
+> > 
+> 
+> Here's a lightly tested patch that turns the check for the two flags
+> into a check for WB_SYNC_NONE. It seems to do the right thing, but I
+> don't have a clear testcase for it. Does this look reasonable?
 
-It's a common BSD-like license, GPL-compatible, and already used
-elsewhere.  There's no need to dual-license.
+Looks fine to me. I'll queue it up for the post-2.6.36 merge window...
 
-(Agreed with point elsewhere that this should be merged with another
-patch.)
+Cheers
+  Trond
 
---b.
