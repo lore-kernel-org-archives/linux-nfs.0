@@ -1,27 +1,99 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:38102 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932155Ab0HFUxx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 6 Aug 2010 16:53:53 -0400
-From: David Howells <dhowells@redhat.com>
-In-Reply-To: <1280970596.2865.28.camel@heimdal.trondhjem.org>
-References: <1280970596.2865.28.camel@heimdal.trondhjem.org> <4C59D1A3.5030406@netapp.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: dhowells@redhat.com, Bryan Schumaker <bjschuma@netapp.com>,
-        linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] NFS use kernel DNS resolver
-Date: Fri, 06 Aug 2010 21:53:48 +0100
-Message-ID: <8349.1281128028@redhat.com>
+Received: from mail-pz0-f46.google.com ([209.85.210.46]:41485 "EHLO
+	mail-pz0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751724Ab0HTNUt (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 20 Aug 2010 09:20:49 -0400
+Date: Fri, 20 Aug 2010 21:20:39 +0800
+From: Wu Fengguang <fengguang.wu@gmail.com>
+To: Jeff Layton <jlayton@redhat.com>
+Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
+        Christoph Hellwig <hch@infradead.org>, linux-nfs@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, linux-mm@kvack.org
+Subject: Re: why are WB_SYNC_NONE COMMITs being done with FLUSH_SYNC set ?
+Message-ID: <20100820132039.GA20126@localhost>
+References: <20100819101525.076831ad@barsoom.rdu.redhat.com>
+ <20100819143710.GA4752@infradead.org>
+ <1282229905.6199.19.camel@heimdal.trondhjem.org>
+ <20100819151618.5f769dc9@tlielax.poochiereds.net>
+ <20100820003308.GA30548@localhost>
+ <20100819205332.5ea929ee@corrin.poochiereds.net>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20100819205332.5ea929ee@corrin.poochiereds.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
+On Thu, Aug 19, 2010 at 08:53:32PM -0400, Jeff Layton wrote:
+> On Fri, 20 Aug 2010 08:33:08 +0800
+> Wu Fengguang <fengguang.wu@gmail.com> wrote:
+> 
+> > > Here's a lightly tested patch that turns the check for the two flags
+> > > into a check for WB_SYNC_NONE. It seems to do the right thing, but I
+> > > don't have a clear testcase for it. Does this look reasonable?
+> >  
+> > Yes, I don't see any problems.
+> > 
+> > > ------------------[snip]------------------------
+> > > 
+> > > NFS: don't use FLUSH_SYNC on WB_SYNC_NONE COMMIT calls
+> > > 
+> > > WB_SYNC_NONE is supposed to mean "don't wait on anything". That should
+> > > also include not waiting for COMMIT calls to complete.
+> > > 
+> > > WB_SYNC_NONE is also implied when wbc->nonblocking or
+> > > wbc->for_background are set, so we can replace those checks in
+> > > nfs_commit_unstable_pages with a check for WB_SYNC_NONE.
+> > >
+> > > Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> > > ---
+> > >  fs/nfs/write.c |   10 +++++-----
+> > >  1 files changed, 5 insertions(+), 5 deletions(-)
+> > > 
+> > > diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+> > > index 874972d..35bd7d0 100644
+> > > --- a/fs/nfs/write.c
+> > > +++ b/fs/nfs/write.c
+> > > @@ -1436,12 +1436,12 @@ static int nfs_commit_unstable_pages(struct inode *inode, struct writeback_contr
+> > >  	/* Don't commit yet if this is a non-blocking flush and there are
+> > >  	 * lots of outstanding writes for this mapping.
+> > >  	 */
+> > > -	if (wbc->sync_mode == WB_SYNC_NONE &&
+> > > -	    nfsi->ncommit <= (nfsi->npages >> 1))
+> > > -		goto out_mark_dirty;
+> > > -
+> > > -	if (wbc->nonblocking || wbc->for_background)
+> > > +	if (wbc->sync_mode == WB_SYNC_NONE) {
+> > > +		if (nfsi->ncommit <= (nfsi->npages >> 1))
+> > > +			goto out_mark_dirty;
+> > >  		flags = 0;
+> > > +	}
+> > > +
+> > 
+> > nitpick: I'd slightly prefer an one-line change
+> > 
+> > -       if (wbc->nonblocking || wbc->for_background)
+> > +       if (wbc->sync_mode == WB_SYNC_NONE)
+> >                 flags = 0;
+> > 
+> > That way the patch will look more obvious and "git blame" friendly,
+> > and the original "Don't commit.." comment will best match its code.
+> > 
+> > Reviewed-by: Wu Fengguang <fengguang.wu@intel.com>
+> > 
+> > Thanks,
+> > Fengguang
+> 
+> Either way. I figured it would be slightly more efficient to just check
+> WB_SYNC_NONE once in that function. I suppose we could just fix up the
+> comments instead. Let me know if I should respin the patch with updated
+> comments...
 
-> David, can you carry this as part of your 'generic DNS resolver'
-> patchset?
+OK, please do the comments.
 
-Do you have an Ack or a sign-off for this patch?
+> Thanks for the review...
 
-David
+You are welcome.
+
+Thanks,
+Fengguang
+
