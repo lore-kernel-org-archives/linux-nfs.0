@@ -1,84 +1,54 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ey0-f174.google.com ([209.85.215.174]:48348 "EHLO
-	mail-ey0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753148Ab0HROq6 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 18 Aug 2010 10:46:58 -0400
-In-Reply-To: <20100818155359.66b9ddb6@notabene>
-References: <AANLkTimnyXKahtjaFeSsgcq=xMy-pP3na1jidQhZ-dt2@mail.gmail.com>
-	<87aaolwar8.fsf@basil.nowhere.org>
-	<20100817174134.GA23176@fieldses.org>
-	<20100817182920.GD18161@basil.fritz.box>
-	<20100817190447.GA28049@fieldses.org>
-	<AANLkTi=w1UA5ZZDBigpxMiL7A7DnbnQhLkg62JZpC6Ri@mail.gmail.com>
-	<20100817203941.729830b7@lxorguk.ukuu.org.uk>
-	<20100817192937.GD26609@fieldses.org>
-	<20100818155359.66b9ddb6@notabene>
-Date: Wed, 18 Aug 2010 07:46:57 -0700
-Message-ID: <AANLkTim9qTjB15Hr+Te8UzgUpZWj41JMXLWf_gJrthc3@mail.gmail.com>
-Subject: Re: Proposal: Use hi-res clock for file timestamps
-From: "Patrick J. LoPresti" <lopresti@gmail.com>
-To: Neil Brown <neilb@suse.de>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-        Alan Cox <alan@lxorguk.ukuu.org.uk>, Andi Kleen <andi@firstfloor.org>,
-        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-kernel <linux-kernel@vger.kernel.org>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mga01.intel.com ([192.55.52.88]:47348 "EHLO mga01.intel.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751083Ab0HTFph (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 20 Aug 2010 01:45:37 -0400
+Date: Fri, 20 Aug 2010 13:45:33 +0800
+From: Wu Fengguang <fengguang.wu@intel.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: Ram Pai <ram.n.pai@gmail.com>, linux-mm@kvack.org,
+        linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] VM: kswapd should not do blocking memory allocations
+Message-ID: <20100820054533.GB11847@localhost>
+References: <1282158241.8540.85.camel@heimdal.trondhjem.org>
+ <AANLkTi=WkoxjwZbt6Vd0VhbuA7_k2WM-NUXZnrmzOOPy@mail.gmail.com>
+ <1282159872.8540.96.camel@heimdal.trondhjem.org>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1282159872.8540.96.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Tue, Aug 17, 2010 at 10:53 PM, Neil Brown <neilb@suse.de> wrote:
->
-> I imagine something like this:
->  - Create a global struct timespec which is protected by a seqlock
->   Call it current_nfsd_time or similar.
->  - file_update_time reads this and uses it if it is newer than
->   current_fs_time.
->  - nfsd updates it whenever it reads an mtime out of an inode that matches
->   current_fs_time to the granularity of 1/HZ.
+> Hi Ram,
+> 
+> I was seeing it on NFS until I put in the following kswapd-specific hack
+> into nfs_release_page():
+> 
+> 	/* Only do I/O if gfp is a superset of GFP_KERNEL */
+> 	if (mapping && (gfp & GFP_KERNEL) == GFP_KERNEL) {
+> 		int how = FLUSH_SYNC;
+> 
+> 		/* Don't let kswapd deadlock waiting for OOM RPC calls */
+> 		if (current_is_kswapd())
+> 			how = 0;
 
-I think nfsd can simply update current_nfsd_time whenever the mtime it
-reads from an inode is >= current_nfsd_time.  (The invariant you need
-to maintain is that whenever nfsd reads an mtime, any timestamps
-produced after that have a later time.  So just code it that way
-directly.)
+So the patch can remove the above workaround together, and add comment
+that NFS exploits the gfp mask to avoid complex operations involving
+recursive memory allocation and hence deadlock?
 
->   If the current value is before current_kernel_time, it
->   is set to current_kernel_time, otherwise tv_nsec is incremented -
->   unless that increases
->   beyond jiffies_to_usec(1)*1000 beyond current_kernel_time.
->  - the global 'struct timespec' is zeroed whenever system time is set
->   backwards.
+Thanks,
+Fengguang
 
-I believe this works.
-
-> [[You could probably make ext3 work reasonably well by adding a mount option
->  which:
->    - advertises s_time_gran as 1
->    - when storing: rounds timestamps up to the next second if tv_nsec != 0
->    - when loading, setting the timestamp to the current time if the stored
->      number matches current_kernel_time().tv_sec+1
->  You would get occasional forward jumps in mtime, but usually when you
->  aren't looking, and at least you would not get real changes that are not
->  reflected in mtime
-> ]]
-
-But I do not believe this works.
-
-1) Modify file A
-2) Modify file B
-3) File A experiences one of those "occasional forward jumps in mtime"
-(inode evicted + read back within 1 second)
-4) mtimes on A and B are now out of order -- very bad
-
-As Bruce mentioned, ext3 is a lost cause.
-
-Regardless of any of this, however, the first step is to provide a
-mount option to select the timestamp algorithm...  Because it is still
-absurd that I cannot have accurate timestamps on my files here in the
-21st century.
-
-Once that is done, the rest is just providing the alternative
-implementations and choosing defaults.
-
- - Pat
+> 		nfs_commit_inode(mapping->host, how);
+> 	}
+> 
+> Remove the 'if (current_is_kswapd())' line, and run an mmap() write
+> intensive workload, and it should hang pretty much every time.
+> 
+> Cheers
+>   Trond
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-kernel" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> Please read the FAQ at  http://www.tux.org/lkml/
