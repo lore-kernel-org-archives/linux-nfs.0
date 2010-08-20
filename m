@@ -1,111 +1,86 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from sentry-three.sandia.gov ([132.175.109.17]:33283 "EHLO
-	sentry-three.sandia.gov" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756272Ab0HDWAJ convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 4 Aug 2010 18:00:09 -0400
-From: "Chen, Helen Y" <hycsw@sandia.gov>
-To: "'Benny Halevy'" <bhalevy@panasas.com>,
-        "'steved@redhat.com'" <steved@redhat.com>,
-        "'NFS list'" <linux-nfs@vger.kernel.org>
-Date: Wed, 4 Aug 2010 15:59:52 -0600
-Subject: RE: pNFS file layout performance
-Message-ID: <F9F38212E2D77948B1CD89D239A7C07B138F0BAE1E@ES01SNLNT.srn.sandia.gov>
-References: <4BFD1595.1070502@panasas.com>
-In-Reply-To: <4BFD1595.1070502@panasas.com>
-Content-Type: text/plain;
- charset=us-ascii
+Received: from cobra.newdream.net ([66.33.216.30]:55208 "EHLO
+	cobra.newdream.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750817Ab0HTCfu (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 19 Aug 2010 22:35:50 -0400
+Date: Thu, 19 Aug 2010 19:36:19 -0700 (PDT)
+From: Sage Weil <sage@newdream.net>
+To: Wu Fengguang <fengguang.wu@gmail.com>
+cc: Christoph Hellwig <hch@infradead.org>, Jeff Layton <jlayton@redhat.com>,
+        linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-mm@kvack.org, Chris Mason <chris.mason@oracle.com>,
+        Jens Axboe <axboe@kernel.dk>, David Howells <dhowells@redhat.com>,
+        Steve French <sfrench@samba.org>
+Subject: Re: why are WB_SYNC_NONE COMMITs being done with FLUSH_SYNC set ?
+In-Reply-To: <20100820000258.GA30226@localhost>
+Message-ID: <Pine.LNX.4.64.1008191935420.22373@cobra.newdream.net>
+References: <20100819101525.076831ad@barsoom.rdu.redhat.com>
+ <20100819143710.GA4752@infradead.org> <20100819235553.GB22747@localhost>
+ <20100820000258.GA30226@localhost>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Steve and Benny,
+On Fri, 20 Aug 2010, Wu Fengguang wrote:
 
-Thank you very much for your help! I have successfully set up a 3-node testbed and ran some benchmark since.  Unfortunately, throughput results are very poor.  
+> [add CC to afs/cifs/ceph maintainers]
+> 
+> On Fri, Aug 20, 2010 at 07:55:53AM +0800, Wu Fengguang wrote:
+> > On Thu, Aug 19, 2010 at 10:37:10AM -0400, Christoph Hellwig wrote:
+> > > On Thu, Aug 19, 2010 at 10:15:25AM -0400, Jeff Layton wrote:
+> > > > I'm looking at backporting some upstream changes to earlier kernels,
+> > > > and ran across something I don't quite understand...
+> > > > 
+> > > > In nfs_commit_unstable_pages, we set the flags to FLUSH_SYNC. We then
+> > > > zero out the flags if wbc->nonblocking or wbc->for_background is set.
+> > > > 
+> > > > Shouldn't we also clear it out if wbc->sync_mode == WB_SYNC_NONE ?
+> > > > WB_SYNC_NONE means "don't wait on anything", so shouldn't that include
+> > > > not waiting on the COMMIT to complete?
+> > > 
+> > > I've been trying to figure out what the nonblocking flag is supposed
+> > > to mean for a while now.
+> > > 
+> > > It basically disappeared in commit 0d99519efef15fd0cf84a849492c7b1deee1e4b7
+> > > 
+> > > 	"writeback: remove unused nonblocking and congestion checks"
+> > > 
+> > > from Wu.  What's left these days is a couple of places in local copies
+> > > of write_cache_pages (afs, cifs), and a couple of checks in random
+> > > writepages instances (afs, block_write_full_page, ceph, nfs, reiserfs, xfs)
+> > > and the use in nfs_write_inode.
+> > 
+> > In principle all nonblocking checks in ->writepages should be removed.
+> > 
+> > (My original patch does have chunks for afs/cifs that somehow get
+> >  dropped in the process, and missed ceph because it's not upstream
+> >  when I started patch..)
 
-I am running Steve's 2.6.33.5-112.2.2.pnfs.fc13.x86_64 kernel, and exported a 28GB ramfs from my DS to the MDS. I was able to achieve ~400 MB/s over NFS using iozone. I then proceed to run the same test from the pNFS client and got only 50 MB/s.  After detecting that my test data had landed on both the MDS and DS, I assumed disk I/O on the MDS was the bottleneck. So I proceeded to rebuild the kernel with CONFIG_PNFSD_LOCAL_EXPORT disabled, but achieved only 6 MB/s afterward. Is this expected, or am I doing something wrong?  Please let me know if I need to provide further information.
+I'll queue up a fix for Ceph's ->writepages in my tree.
 
-Thanks,
-Helen
-
------Original Message-----
-From: Benny Halevy [mailto:bhalevy.lists@gmail.com] On Behalf Of Benny Halevy
-Sent: Wednesday, May 26, 2010 5:36 AM
-To: steved@redhat.com; NFS list
-Cc: Chen, Helen Y
-Subject: Fwd: Re: [pnfs] problem building pnfs-nfs-utils under Fedora 13
-
-Helen, please note that the pnfs@linux-nfs.org mailing list was deprecated.
-Forwarding to linux-nfs@vger.kernel.org.
-
->From a quick glance I'm not sure what went wrong with your build, Steve should know better :-)
-
-Benny
-
-On May. 19, 2010, 20:32 +0300, "Chen, Helen Y" <hycsw@sandia.gov> wrote:
+Thanks!
+sage
 
 
-
- 
-Has anyone successfully build pnfs enabled nfs utils under Fedora 13? 
-I am running the kernel from:
-http://steved.fedorapeople.org/repos/pnfs/13/x86_64/
- 
-I installed libtirpc{,-devel}, tcp_wrappers{,-devel}, libevent{,-devel}, nfs-utils-lib{,-devel}, libgssglue{,-devel}, libblkid{,-devel}, and libcap{,-devel}
- 
-per instructions from:
-_http://wiki.linux-nfs.org/wiki/index.php/Configuring_pNFS/spnfsd#Kernel_and_nfs-utils_compilati__on_
-<http://wiki.linux-nfs.org/wiki/index.php/Configuring_pNFS/spnfsd#Kernel_and_nfs-utils_compilation>
- 
-I used libnfsidmap{,-devel} bundled in:
-Nfs-utils-lib-devel-1.1.5-1.fc13.X86_64.rpm
- 
-Finally, I downloaded _nfs-utils-1.2.2-4.1.pnfs.src.rpm_
-<http://steved.fedorapeople.org/repos/pnfs/13/source/nfs-utils-1.2.2-4.1.pnfs.src.rpm>
-from _http://steved.fedorapeople.org/repos/pnfs/13/source/_
- 
-I am having trouble building these utils. I failed to generate 'configure' when I ran autogen.sh:
- 
-/c//leaning up ............. done
-//lobotomize//: putting auxiliary files in `.'.
-libtoolize: copying file `./ltmain.sh'
-libtoolize: putting macros in AC_CONFIG_MACRO_DIR, `aclocal'.
-libtoolize: copying file `aclocal/libtool.m4'
-libtoolize: copying file `aclocal/ltoptions.m4'
-libtoolize: copying file `aclocal/ltsugar.m4'
-libtoolize: copying file `aclocal/ltversion.m4'
-libtoolize: copying file `aclocal/lt~obsolete.m4'
-configure.ac:5: installing `./config.guess'
-configure.ac:5: installing `./config.sub'
-configure.ac:421: required file `tools/mountstats/Makefile.in' not found
-configure.ac:421: required file `tools/nfs-iostat/Makefile.in' not found/
- 
-I deleted the two Makefile.in requirements from line 421 in configure.ac because there were only python scripts inside those directories.
- 
-When I ran the 'configure' generated after the modification, it failed with the following output:
- 
-/checking build system type... x86_64-unknown-linux-gnu checking host system type... x86_64-unknown-linux-gnu checking for a BSD-compatible install... /usr/bin/install -c checking whether build environment is sane... yes checking for gawk... gawk checking whether make sets $(MAKE)... yes checking whether to enable maintainer-specific portions of Makefiles... no checking for style of include used by make... GNU checking for gcc... gcc checking whether the C compiler works... yes checking for C compiler default output file name... a.out checking for suffix of executables...
-checking whether we are cross compiling... no checking for suffix of object files... o checking whether we are using the GNU C compiler... yes checking whether gcc accepts -g... yes checking for gcc option to accept ISO C89... none needed checking dependency style of gcc... gcc3 checking how to run the C preprocessor... gcc -E checking for grep that handles long lines and -e... /bin/grep checking for egrep... /bin/grep -E checking for ANSI C header files... no checking for sys/types.h... yes checking for sys/stat.h... yes checking for stdlib.h... no checking for string.h... yes checking for memory.h... yes checking for strings.h... yes checking for inttypes.h... yes checking for stdint.h... yes checking for unistd.h... yes checking for clnt_tli_create in -ltirpc... yes checking /usr/include/tirpc/netconfig.h usability... yes checking /usr/include/tirpc/netconfig.h presence... yes checking for /usr/include/tirpc/netconfig.h... yes checking for prctl... yes checking for cap_ge!
- t_proc in -lcap... yes checking sys/capability.h usability... yes checking sys/capability.h presence... yes checking for sys/capability.h... yes checking for libwrap... /
- 
-But libwrap is obviously installed based on the locate command:
-#locate libwrap
-/usr/lib/libwrap.so
-/usr/lib/libwrap.so.0
-/usr/lib/libwrap.so.0.7.6
-/usr/lib64/libwrap.so
-/usr/lib64/libwrap.so.0
-/usr/lib64/libwrap.so.0.7.6
- 
-I am new at this and would appreciate any help you can provide.
- 
-Thanks,
-Helen
- 
- 
- 
- 
- 
- 
- 
- 
-
+> > 
+> > > It's only actually set for memory
+> > > migration and pageout, that is VM writeback.
+> > > 
+> > > To me it really doesn't make much sense, but maybe someone has a better
+> > > idea what it is for.
+> >  
+> > Since migration and pageout still set nonblocking for ->writepage, we
+> > may keep them in the near future, until VM does not start IO on itself.
+> > 
+> > > > +	if (wbc->nonblocking || wbc->for_background ||
+> > > > +	    wbc->sync_mode == WB_SYNC_NONE)
+> > > 
+> > > You could remove the nonblocking and for_background checks as
+> > > these impliy WB_SYNC_NONE.
+> > 
+> > Agreed.
+> > 
+> > Thanks,
+> > Fengguang
+> 
