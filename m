@@ -1,158 +1,337 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cn.fujitsu.com ([222.73.24.84]:53245 "EHLO song.cn.fujitsu.com"
-	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
-	id S1750708Ab0HRCNx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 17 Aug 2010 22:13:53 -0400
-Message-ID: <4C6B4181.50100@cn.fujitsu.com>
-Date: Wed, 18 Aug 2010 10:12:17 +0800
-From: Bian Naimeng <biannm@cn.fujitsu.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-CC: Adam Lackorzynski <adam@os.inf.tu-dresden.de>,
-        linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        stable@kernel.org
-Subject: Re: 2.6.35.2: NFS related Oops
-References: <20100816215056.GA5376@os.inf.tu-dresden.de>	 <4C6A5FF1.3070209@cn.fujitsu.com>	 <20100817171454.GB11366@os.inf.tu-dresden.de> <1282084985.18385.24.camel@heimdal.trondhjem.org>
-In-Reply-To: <1282084985.18385.24.camel@heimdal.trondhjem.org>
-Content-Type: text/plain; charset=Shift_JIS
+Received: from mga09.intel.com ([134.134.136.24]:56174 "EHLO mga09.intel.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751174Ab0HUG2o (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 21 Aug 2010 02:28:44 -0400
+Date: Sat, 21 Aug 2010 14:28:31 +0800
+From: Wu Fengguang <fengguang.wu@intel.com>
+To: Andrew Morton <akpm@linux-foundation.org>,
+        Christoph Hellwig <hch@infradead.org>
+Cc: Jeff Layton <jlayton@redhat.com>, linux-nfs@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, linux-mm@kvack.org,
+        Chris Mason <chris.mason@oracle.com>, Jens Axboe <axboe@kernel.dk>,
+        David Howells <dhowells@redhat.com>, Sage Weil <sage@newdream.net>,
+        Steve French <sfrench@samba.org>, "Theodore Ts'o" <tytso@mit.edu>
+Subject: [PATCH] writeback: remove nonblocking/encountered_congestion
+ references
+Message-ID: <20100821062831.GA19911@localhost>
+Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-> On Tue, 2010-08-17 at 19:14 +0200, Adam Lackorzynski wrote:
->> On Tue Aug 17, 2010 at 18:09:53 +0800, Bian Naimeng wrote:
->>>   Please try to apply the followed patch.
->> Thanks, this fixes the Oops. Patch is required for both 2.6.35 and
->> 2.6.36 trees.
+This removes more dead code that was somehow missed by commit 0d99519efef
+(writeback: remove unused nonblocking and congestion checks). There are no
+behavior change except for the removal of two entries from one of the ext4
+tracing interface.
 
-  ... snip ...
+The nonblocking checks in ->writepages are no longer used because the
+flusher now prefer to block on get_request_wait() than to skip inodes on
+IO congestion. The latter will lead to more seeky IO.
 
->>  	/* We can't create new files, or truncate existing ones here */
->>  	openflags &= ~(O_CREAT|O_TRUNC);
->> -- 
-> 
-> Nope. The problem is the recent switch to LOOKUP_EXCL as the authority
-> for whether or not we're doing an exclusive create.
-> 
-> Does the following patch work?
-> 
+The nonblocking checks in ->writepage are no longer used because it's
+redundant with the WB_SYNC_NONE check.
 
-  Hi Trond, i guess it's not work.
+We no long set ->nonblocking in VM page out and page migration, because
+a) it's effectively redundant with WB_SYNC_NONE in current code
+b) it's old semantic of "Don't get stuck on request queues" is mis-behavior:
+   that would skip some dirty inodes on congestion and page out others, which
+   is unfair in terms of LRU age.
 
-  As i see, if we want get LOOKUP_EXCL at nd->flags,  we must open file with 
-  O_CREAT and O_EXCL, "nd->flags & LOOKUP_EXCL" have the same effect with
-  "(openflags & (O_CREAT|O_EXCL)) == (O_CREAT|O_EXCL)", so i think the kernel
-  still crash, right?
+Inspired by Christoph Hellwig. Thanks!
 
--- 
-Regards
-Bian Naimeng
+CC: Theodore Ts'o <tytso@mit.edu>
+CC: David Howells <dhowells@redhat.com>
+CC: Sage Weil <sage@newdream.net>
+CC: Steve French <sfrench@samba.org>
+CC: Chris Mason <chris.mason@oracle.com>
+CC: Jens Axboe <axboe@kernel.dk>
+CC: Christoph Hellwig <hch@infradead.org>
+Signed-off-by: Wu Fengguang <fengguang.wu@intel.com>
+---
 
-> -----------------------------------------------------------------------------------------------
-> NFS: Fix an Oops in the NFSv4 atomic open code
-> 
-> From: Trond Myklebust <Trond.Myklebust@netapp.com>
-> 
-> Adam Lackorzynski reports:
-> 
-> with 2.6.35.2 I'm getting this reproducible Oops:
-> 
-> [  110.825396] BUG: unable to handle kernel NULL pointer dereference at
-> (null)
-> [  110.828638] IP: [<ffffffff811247b7>] encode_attrs+0x1a/0x2a4
-> [  110.828638] PGD be89f067 PUD bf18f067 PMD 0
-> [  110.828638] Oops: 0000 [#1] SMP
-> [  110.828638] last sysfs file: /sys/class/net/lo/operstate
-> [  110.828638] CPU 2
-> [  110.828638] Modules linked in: rtc_cmos rtc_core rtc_lib amd64_edac_mod
-> i2c_amd756 edac_core i2c_core dm_mirror dm_region_hash dm_log dm_snapshot
-> sg sr_mod usb_storage ohci_hcd mptspi tg3 mptscsih mptbase usbcore nls_base
-> [last unloaded: scsi_wait_scan] 
-> [  110.828638] 
-> [  110.828638] Pid: 11264, comm: setchecksum Not tainted 2.6.35.2 #1
-> [  110.828638] RIP: 0010:[<ffffffff811247b7>]  [<ffffffff811247b7>]
-> encode_attrs+0x1a/0x2a4
-> [  110.828638] RSP: 0000:ffff88003bf5b878  EFLAGS: 00010296
-> [  110.828638] RAX: ffff8800bddb48a8 RBX: ffff88003bf5bb18 RCX:
-> 0000000000000000
-> [  110.828638] RDX: ffff8800be258800 RSI: 0000000000000000 RDI:
-> ffff88003bf5b9f8
-> [  110.828638] RBP: 0000000000000000 R08: ffff8800bddb48a8 R09:
-> 0000000000000004
-> [  110.828638] R10: 0000000000000003 R11: ffff8800be779000 R12:
-> ffff8800be258800
-> [  110.828638] R13: ffff88003bf5b9f8 R14: ffff88003bf5bb20 R15:
-> ffff8800be258800
-> [  110.828638] FS:  0000000000000000(0000) GS:ffff880041e00000(0063)
-> knlGS:00000000556bd6b0
-> [  110.828638] CS:  0010 DS: 002b ES: 002b CR0: 000000008005003b
-> [  110.828638] CR2: 0000000000000000 CR3: 00000000be8ef000 CR4:
-> 00000000000006e0
-> [  110.828638] DR0: 0000000000000000 DR1: 0000000000000000 DR2:
-> 0000000000000000
-> [  110.828638] DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7:
-> 0000000000000400
-> [  110.828638] Process setchecksum (pid: 11264, threadinfo
-> ffff88003bf5a000, task ffff88003f232210)
-> [  110.828638] Stack:
-> [  110.828638]  0000000000000000 ffff8800bfbcf920 0000000000000000
-> 0000000000000ffe
-> [  110.828638] <0> 0000000000000000 0000000000000000 0000000000000000
-> 0000000000000000
-> [  110.828638] <0> 0000000000000000 0000000000000000 0000000000000000
-> 0000000000000000
-> [  110.828638] Call Trace:
-> [  110.828638]  [<ffffffff81124c1f>] ? nfs4_xdr_enc_setattr+0x90/0xb4
-> [  110.828638]  [<ffffffff81371161>] ? call_transmit+0x1c3/0x24a
-> [  110.828638]  [<ffffffff813774d9>] ? __rpc_execute+0x78/0x22a
-> [  110.828638]  [<ffffffff81371a91>] ? rpc_run_task+0x21/0x2b
-> [  110.828638]  [<ffffffff81371b7e>] ? rpc_call_sync+0x3d/0x5d
-> [  110.828638]  [<ffffffff8111e284>] ? _nfs4_do_setattr+0x11b/0x147
-> [  110.828638]  [<ffffffff81109466>] ? nfs_init_locked+0x0/0x32
-> [  110.828638]  [<ffffffff810ac521>] ? ifind+0x4e/0x90
-> [  110.828638]  [<ffffffff8111e2fb>] ? nfs4_do_setattr+0x4b/0x6e
-> [  110.828638]  [<ffffffff8111e634>] ? nfs4_do_open+0x291/0x3a6
-> [  110.828638]  [<ffffffff8111ed81>] ? nfs4_open_revalidate+0x63/0x14a
-> [  110.828638]  [<ffffffff811056c4>] ? nfs_open_revalidate+0xd7/0x161
-> [  110.828638]  [<ffffffff810a2de4>] ? do_lookup+0x1a4/0x201
-> [  110.828638]  [<ffffffff810a4733>] ? link_path_walk+0x6a/0x9d5
-> [  110.828638]  [<ffffffff810a42b6>] ? do_last+0x17b/0x58e
-> [  110.828638]  [<ffffffff810a5fbe>] ? do_filp_open+0x1bd/0x56e
-> [  110.828638]  [<ffffffff811cd5e0>] ? _atomic_dec_and_lock+0x30/0x48
-> [  110.828638]  [<ffffffff810a9b1b>] ? dput+0x37/0x152
-> [  110.828638]  [<ffffffff810ae063>] ? alloc_fd+0x69/0x10a
-> [  110.828638]  [<ffffffff81099f39>] ? do_sys_open+0x56/0x100
-> [  110.828638]  [<ffffffff81027a22>] ? ia32_sysret+0x0/0x5
-> [  110.828638] Code: 83 f1 01 e8 f5 ca ff ff 48 83 c4 50 5b 5d 41 5c c3 41
-> 57 41 56 41 55 49 89 fd 41 54 49 89 d4 55 48 89 f5 53 48 81 ec 18 01 00 00
-> <8b> 06 89 c2 83 e2 08 83 fa 01 19 db 83 e3 f8 83 c3 18 a8 01 8d
-> [  110.828638] RIP  [<ffffffff811247b7>] encode_attrs+0x1a/0x2a4
-> [  110.828638]  RSP <ffff88003bf5b878>
-> [  110.828638] CR2: 0000000000000000
-> [  112.840396] ---[ end trace 95282e83fd77358f ]---
-> 
-> It looks as if Al Viro's commit 3516586a424ea5727be089da6541cbd5644f0497
-> (make O_EXCL in nd->intent.flags visible in nd->flags) missed a case.
-> 
-> Cc: stable@kernel.org
-> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-> ---
-> 
->  fs/nfs/dir.c |    2 +-
->  1 files changed, 1 insertions(+), 1 deletions(-)
-> 
-> 
-> diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-> index bd91b27..275efac 100644
-> --- a/fs/nfs/dir.c
-> +++ b/fs/nfs/dir.c
-> @@ -1107,7 +1107,7 @@ static int nfs_open_revalidate(struct dentry *dentry, struct nameidata *nd)
->  		goto no_open_dput;
->  	openflags = nd->intent.open.flags;
->  	/* We cannot do exclusive creation on a positive dentry */
-> -	if ((openflags & (O_CREAT|O_EXCL)) == (O_CREAT|O_EXCL))
-> +	if (nd->flags & LOOKUP_EXCL)
->  		goto no_open_dput;
->  	/* We can't create new files, or truncate existing ones here */
->  	openflags &= ~(O_CREAT|O_TRUNC);
-> 
+Andrew: this passed allmodconfig and allyesconfig compile tests.
 
+This effectively removes all references to wbc->nonblocking and
+wbc->encountered_congestion. The NFS git tree has a standalone patch
+to remove one wbc->nonblocking reference. To avoid merge conflicts,
+the removal of nonblocking/encountered_congestion definitions need to
+be delayed for one more kernel release.
+
+ fs/afs/write.c                   |   19 +------------------
+ fs/buffer.c                      |    2 +-
+ fs/ceph/addr.c                   |    9 ---------
+ fs/cifs/file.c                   |   11 -----------
+ fs/gfs2/meta_io.c                |    2 +-
+ fs/nfs/write.c                   |    6 ++----
+ fs/reiserfs/inode.c              |    2 +-
+ fs/xfs/linux-2.6/xfs_aops.c      |    3 +--
+ include/trace/events/ext4.h      |    8 +++++---
+ include/trace/events/writeback.h |    2 --
+ mm/migrate.c                     |    1 -
+ mm/vmscan.c                      |    1 -
+ 12 files changed, 12 insertions(+), 54 deletions(-)
+
+Index: mmotm/fs/afs/write.c
+===================================================================
+--- mmotm.orig/fs/afs/write.c
++++ mmotm/fs/afs/write.c
+@@ -438,7 +438,6 @@ no_more:
+  */
+ int afs_writepage(struct page *page, struct writeback_control *wbc)
+ {
+-	struct backing_dev_info *bdi = page->mapping->backing_dev_info;
+ 	struct afs_writeback *wb;
+ 	int ret;
+ 
+@@ -455,8 +454,6 @@ int afs_writepage(struct page *page, str
+ 	}
+ 
+ 	wbc->nr_to_write -= ret;
+-	if (wbc->nonblocking && bdi_write_congested(bdi))
+-		wbc->encountered_congestion = 1;
+ 
+ 	_leave(" = 0");
+ 	return 0;
+@@ -469,7 +466,6 @@ static int afs_writepages_region(struct 
+ 				 struct writeback_control *wbc,
+ 				 pgoff_t index, pgoff_t end, pgoff_t *_next)
+ {
+-	struct backing_dev_info *bdi = mapping->backing_dev_info;
+ 	struct afs_writeback *wb;
+ 	struct page *page;
+ 	int ret, n;
+@@ -529,11 +525,6 @@ static int afs_writepages_region(struct 
+ 
+ 		wbc->nr_to_write -= ret;
+ 
+-		if (wbc->nonblocking && bdi_write_congested(bdi)) {
+-			wbc->encountered_congestion = 1;
+-			break;
+-		}
+-
+ 		cond_resched();
+ 	} while (index < end && wbc->nr_to_write > 0);
+ 
+@@ -548,24 +539,16 @@ static int afs_writepages_region(struct 
+ int afs_writepages(struct address_space *mapping,
+ 		   struct writeback_control *wbc)
+ {
+-	struct backing_dev_info *bdi = mapping->backing_dev_info;
+ 	pgoff_t start, end, next;
+ 	int ret;
+ 
+ 	_enter("");
+ 
+-	if (wbc->nonblocking && bdi_write_congested(bdi)) {
+-		wbc->encountered_congestion = 1;
+-		_leave(" = 0 [congest]");
+-		return 0;
+-	}
+-
+ 	if (wbc->range_cyclic) {
+ 		start = mapping->writeback_index;
+ 		end = -1;
+ 		ret = afs_writepages_region(mapping, wbc, start, end, &next);
+-		if (start > 0 && wbc->nr_to_write > 0 && ret == 0 &&
+-		    !(wbc->nonblocking && wbc->encountered_congestion))
++		if (start > 0 && wbc->nr_to_write > 0 && ret == 0)
+ 			ret = afs_writepages_region(mapping, wbc, 0, start,
+ 						    &next);
+ 		mapping->writeback_index = next;
+Index: mmotm/fs/buffer.c
+===================================================================
+--- mmotm.orig/fs/buffer.c
++++ mmotm/fs/buffer.c
+@@ -1682,7 +1682,7 @@ static int __block_write_full_page(struc
+ 		 * and kswapd activity, but those code paths have their own
+ 		 * higher-level throttling.
+ 		 */
+-		if (wbc->sync_mode != WB_SYNC_NONE || !wbc->nonblocking) {
++		if (wbc->sync_mode != WB_SYNC_NONE) {
+ 			lock_buffer(bh);
+ 		} else if (!trylock_buffer(bh)) {
+ 			redirty_page_for_writepage(wbc, page);
+Index: mmotm/fs/ceph/addr.c
+===================================================================
+--- mmotm.orig/fs/ceph/addr.c
++++ mmotm/fs/ceph/addr.c
+@@ -594,7 +594,6 @@ static int ceph_writepages_start(struct 
+ 				 struct writeback_control *wbc)
+ {
+ 	struct inode *inode = mapping->host;
+-	struct backing_dev_info *bdi = mapping->backing_dev_info;
+ 	struct ceph_inode_info *ci = ceph_inode(inode);
+ 	struct ceph_client *client;
+ 	pgoff_t index, start, end;
+@@ -636,13 +635,6 @@ static int ceph_writepages_start(struct 
+ 
+ 	pagevec_init(&pvec, 0);
+ 
+-	/* ?? */
+-	if (wbc->nonblocking && bdi_write_congested(bdi)) {
+-		dout(" writepages congested\n");
+-		wbc->encountered_congestion = 1;
+-		goto out_final;
+-	}
+-
+ 	/* where to start/end? */
+ 	if (wbc->range_cyclic) {
+ 		start = mapping->writeback_index; /* Start from prev offset */
+@@ -887,7 +879,6 @@ out:
+ 		rc = 0;  /* vfs expects us to return 0 */
+ 	ceph_put_snap_context(snapc);
+ 	dout("writepages done, rc = %d\n", rc);
+-out_final:
+ 	return rc;
+ }
+ 
+Index: mmotm/fs/cifs/file.c
+===================================================================
+--- mmotm.orig/fs/cifs/file.c
++++ mmotm/fs/cifs/file.c
+@@ -1338,7 +1338,6 @@ static int cifs_partialpagewrite(struct 
+ static int cifs_writepages(struct address_space *mapping,
+ 			   struct writeback_control *wbc)
+ {
+-	struct backing_dev_info *bdi = mapping->backing_dev_info;
+ 	unsigned int bytes_to_write;
+ 	unsigned int bytes_written;
+ 	struct cifs_sb_info *cifs_sb;
+@@ -1380,16 +1379,6 @@ static int cifs_writepages(struct addres
+ 		return generic_writepages(mapping, wbc);
+ 
+ 
+-	/*
+-	 * BB: Is this meaningful for a non-block-device file system?
+-	 * If it is, we should test it again after we do I/O
+-	 */
+-	if (wbc->nonblocking && bdi_write_congested(bdi)) {
+-		wbc->encountered_congestion = 1;
+-		kfree(iov);
+-		return 0;
+-	}
+-
+ 	xid = GetXid();
+ 
+ 	pagevec_init(&pvec, 0);
+Index: mmotm/fs/gfs2/meta_io.c
+===================================================================
+--- mmotm.orig/fs/gfs2/meta_io.c
++++ mmotm/fs/gfs2/meta_io.c
+@@ -55,7 +55,7 @@ static int gfs2_aspace_writepage(struct 
+ 		 * activity, but those code paths have their own higher-level
+ 		 * throttling.
+ 		 */
+-		if (wbc->sync_mode != WB_SYNC_NONE || !wbc->nonblocking) {
++		if (wbc->sync_mode != WB_SYNC_NONE) {
+ 			lock_buffer(bh);
+ 		} else if (!trylock_buffer(bh)) {
+ 			redirty_page_for_writepage(wbc, page);
+Index: mmotm/fs/nfs/write.c
+===================================================================
+--- mmotm.orig/fs/nfs/write.c
++++ mmotm/fs/nfs/write.c
+@@ -292,9 +292,7 @@ static int nfs_do_writepage(struct page 
+ 	nfs_add_stats(inode, NFSIOS_WRITEPAGES, 1);
+ 
+ 	nfs_pageio_cond_complete(pgio, page->index);
+-	ret = nfs_page_async_flush(pgio, page,
+-			wbc->sync_mode == WB_SYNC_NONE ||
+-			wbc->nonblocking != 0);
++	ret = nfs_page_async_flush(pgio, page, wbc->sync_mode == WB_SYNC_NONE);
+ 	if (ret == -EAGAIN) {
+ 		redirty_page_for_writepage(wbc, page);
+ 		ret = 0;
+Index: mmotm/fs/reiserfs/inode.c
+===================================================================
+--- mmotm.orig/fs/reiserfs/inode.c
++++ mmotm/fs/reiserfs/inode.c
+@@ -2437,7 +2437,7 @@ static int reiserfs_write_full_page(stru
+ 		/* from this point on, we know the buffer is mapped to a
+ 		 * real block and not a direct item
+ 		 */
+-		if (wbc->sync_mode != WB_SYNC_NONE || !wbc->nonblocking) {
++		if (wbc->sync_mode != WB_SYNC_NONE) {
+ 			lock_buffer(bh);
+ 		} else {
+ 			if (!trylock_buffer(bh)) {
+Index: mmotm/fs/xfs/linux-2.6/xfs_aops.c
+===================================================================
+--- mmotm.orig/fs/xfs/linux-2.6/xfs_aops.c
++++ mmotm/fs/xfs/linux-2.6/xfs_aops.c
+@@ -1139,8 +1139,7 @@ xfs_vm_writepage(
+ 				type = IO_DELAY;
+ 				flags = BMAPI_ALLOCATE;
+ 
+-				if (wbc->sync_mode == WB_SYNC_NONE &&
+-				    wbc->nonblocking)
++				if (wbc->sync_mode == WB_SYNC_NONE)
+ 					flags |= BMAPI_TRYLOCK;
+ 			}
+ 
+Index: mmotm/include/trace/events/ext4.h
+===================================================================
+--- mmotm.orig/include/trace/events/ext4.h
++++ mmotm/include/trace/events/ext4.h
+@@ -242,18 +242,20 @@ TRACE_EVENT(ext4_da_writepages,
+ 		__entry->pages_skipped	= wbc->pages_skipped;
+ 		__entry->range_start	= wbc->range_start;
+ 		__entry->range_end	= wbc->range_end;
+-		__entry->nonblocking	= wbc->nonblocking;
+ 		__entry->for_kupdate	= wbc->for_kupdate;
+ 		__entry->for_reclaim	= wbc->for_reclaim;
+ 		__entry->range_cyclic	= wbc->range_cyclic;
+ 		__entry->writeback_index = inode->i_mapping->writeback_index;
+ 	),
+ 
+-	TP_printk("dev %s ino %lu nr_to_write %ld pages_skipped %ld range_start %llu range_end %llu nonblocking %d for_kupdate %d for_reclaim %d range_cyclic %d writeback_index %lu",
++	TP_printk("dev %s ino %lu nr_to_write %ld pages_skipped %ld "
++		  "range_start %llu range_end %llu "
++		  "for_kupdate %d for_reclaim %d "
++		  "range_cyclic %d writeback_index %lu",
+ 		  jbd2_dev_to_name(__entry->dev),
+ 		  (unsigned long) __entry->ino, __entry->nr_to_write,
+ 		  __entry->pages_skipped, __entry->range_start,
+-		  __entry->range_end, __entry->nonblocking,
++		  __entry->range_end,
+ 		  __entry->for_kupdate, __entry->for_reclaim,
+ 		  __entry->range_cyclic,
+ 		  (unsigned long) __entry->writeback_index)
+Index: mmotm/include/trace/events/writeback.h
+===================================================================
+--- mmotm.orig/include/trace/events/writeback.h
++++ mmotm/include/trace/events/writeback.h
+@@ -96,8 +96,6 @@ DECLARE_EVENT_CLASS(wbc_class,
+ 		__field(long, nr_to_write)
+ 		__field(long, pages_skipped)
+ 		__field(int, sync_mode)
+-		__field(int, nonblocking)
+-		__field(int, encountered_congestion)
+ 		__field(int, for_kupdate)
+ 		__field(int, for_background)
+ 		__field(int, for_reclaim)
+Index: mmotm/mm/migrate.c
+===================================================================
+--- mmotm.orig/mm/migrate.c
++++ mmotm/mm/migrate.c
+@@ -431,7 +431,6 @@ static int writeout(struct address_space
+ 		.nr_to_write = 1,
+ 		.range_start = 0,
+ 		.range_end = LLONG_MAX,
+-		.nonblocking = 1,
+ 		.for_reclaim = 1
+ 	};
+ 	int rc;
+Index: mmotm/mm/vmscan.c
+===================================================================
+--- mmotm.orig/mm/vmscan.c
++++ mmotm/mm/vmscan.c
+@@ -391,7 +391,6 @@ static pageout_t pageout(struct page *pa
+ 			.nr_to_write = SWAP_CLUSTER_MAX,
+ 			.range_start = 0,
+ 			.range_end = LLONG_MAX,
+-			.nonblocking = 1,
+ 			.for_reclaim = 1,
+ 		};
+ 
