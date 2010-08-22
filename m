@@ -1,200 +1,49 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from moutng.kundenserver.de ([212.227.126.186]:55411 "EHLO
-	moutng.kundenserver.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753357Ab0H0OeV (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 27 Aug 2010 10:34:21 -0400
-Message-ID: <4C77CCE6.7090702@mudrichsystems.com>
-Date: Fri, 27 Aug 2010 16:34:14 +0200
-From: David Mudrich <dmudrich@mudrichsystems.com>
-To: Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org
-Subject: Re: Kernel BUG() in nfs_do_writepage (write.c:276)
-References: <4C767A1D.80103@mudrichsystems.com> <799B4575-8B95-4485-90E0-72E9781FE6AE@oracle.com> <4C76C85C.3010206@mudrichsystems.com> <5646E37E-C244-4AAA-ADAB-5509C3CBB532@oracle.com>
-In-Reply-To: <5646E37E-C244-4AAA-ADAB-5509C3CBB532@oracle.com>
-Content-Type: text/plain; charset=UTF-8; format=flowed
+Received: from smtp-vbr12.xs4all.nl ([194.109.24.32]:1637 "EHLO
+	smtp-vbr12.xs4all.nl" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751708Ab0HVS3G (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 22 Aug 2010 14:29:06 -0400
+Date: Sun, 22 Aug 2010 20:28:53 +0200
+From: Miquel van Smoorenburg <mikevs@xs4all.net>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH 00/03] sunrpc: a few authentication cache patches
+Message-ID: <20100822182848.GA26590@xs4all.net>
+Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+Thanks for including the configurable authcache hashtable size patches
+in 2.6.36. Yet another patch I can drop from our local builds.
 
-Am 26.08.2010 23:17, schrieb Chuck Lever:
-> On Aug 26, 2010, at 4:02 PM, David Mudrich wrote:
->
->> Am 26.08.2010 19:36, schrieb Chuck Lever:
->>> On Aug 26, 2010, at 10:28 AM, David Mudrich wrote:
->>>
->>>> Hello,
->>>>
->>>> we often get Kernel BUG().
->>>>
->>>> dmesg:
->>>>
->>>> ------------[ cut here ]------------
->>>> kernel BUG at fs/nfs/write.c:276!
->>>> invalid opcode: 0000 [#2] SMP
->>>> last sysfs file: /sys/devices/virtio-pci/virtio1/block/vda/size
->>>> CPU 0
->>>> Modules linked in:
->>>>
->>>> Pid: 2098, comm: flush-0:17 Tainted: G      D     2.6.35.3.x86_64.aufs #4 /Bochs
->>>> RIP: 0010:[<ffffffff811b66f1>]  [<ffffffff811b66f1>] nfs_do_writepage+0x201/0x210
->>>> RSP: 0018:ffff88003c601a10  EFLAGS: 00010202
->>>> RAX: 0000000000000002 RBX: ffff880037951f80 RCX: 0000000000000001
->>>> RDX: 0000000000001fa0 RSI: 000000000000000b RDI: ffff880037a8cc00
->>>> RBP: ffffea00006286f8 R08: ffff88003c601920 R09: 0000000000000000
->>>> R10: 00000000ffffffff R11: ffff88001d4895c8 R12: 0000000000000000
->>>> R13: 0000000000000001 R14: ffff88003c601bb0 R15: ffff88003c601d40
->>>> FS:  0000000000000000(0000) GS:ffff880001800000(0000) knlGS:0000000000000000
->>>> CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
->>>> CR2: 0000000000841210 CR3: 000000003daa5000 CR4: 00000000000006b0
->>>> DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
->>>> DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
->>>> Process flush-0:17 (pid: 2098, threadinfo ffff88003c600000, task ffff880037afd230)
->>>> Stack:
->>>> ffff88001d409c50 ffffffff810a7dda ffffffff811ab70b ffff88003c601a58
->>>> <0>   0000000000000286 ffffea00006286f8 ffff88001d409c50 ffffffffffffffff
->>>> <0>   ffffea00006286f8 0000000000000000 ffff88003c601ae8 ffffffff811b6d26
->>>> Call Trace:
->>>> [<ffffffff810a7dda>] ? find_get_pages_tag+0x3a/0x110
->>>> [<ffffffff811ab70b>] ? nfs_refresh_inode+0x4b/0x70
->>>> [<ffffffff811b6d26>] ? nfs_writepages_callback+0x16/0x40
->>>> [<ffffffff810af4c1>] ? write_cache_pages+0x1a1/0x370
->>>> [<ffffffff811b6d10>] ? nfs_writepages_callback+0x0/0x40
->>>> [<ffffffff811b6c86>] ? nfs_writepages+0xa6/0x130
->>>> [<ffffffff811b8000>] ? nfs_flush_one+0x0/0xe0
->>>> [<ffffffff811013a9>] ? writeback_single_inode+0xe9/0x400
->>>> [<ffffffff81101b36>] ? writeback_sb_inodes+0x196/0x270
->>>> [<ffffffff810464f0>] ? pvclock_clocksource_read+0x50/0xc0
->>>> [<ffffffff8110245c>] ? writeback_inodes_wb+0x9c/0x1a0
->>>> [<ffffffff8110279b>] ? wb_writeback+0x23b/0x2a0
->>>> [<ffffffff810575ec>] ? finish_task_switch+0x3c/0xc0
->>>> [<ffffffff81102963>] ? wb_do_writeback+0x163/0x170
->>>> [<ffffffff81406e64>] ? schedule_timeout+0x164/0x230
->>>> [<ffffffff811029b7>] ? bdi_writeback_task+0x47/0x150
->>>> [<ffffffff81075484>] ? bit_waitqueue+0x14/0xb0
->>>> [<ffffffff81408765>] ? _raw_spin_lock+0x5/0x10
->>>> [<ffffffff810bbe1e>] ? bdi_start_fn+0x7e/0x100
->>>> [<ffffffff810bbda0>] ? bdi_start_fn+0x0/0x100
->>>> [<ffffffff810750ce>] ? kthread+0x8e/0xa0
->>>> [<ffffffff8102a384>] ? kernel_thread_helper+0x4/0x10
->>>> [<ffffffff81075040>] ? kthread+0x0/0xa0
->>>> [<ffffffff8102a380>] ? kernel_thread_helper+0x0/0x10
->>>> Code: ff ff 48 63 d8 e9 0c ff ff ff 0f 0b eb fe 0f 1f 40 00 48 83 c7 48 31 f6 e8 ad 4b f0 ff e9 69 ff ff ff 48 8b 45 10 e9 36 ff ff ff<0f>   0b eb fe 66 66 2e 0f 1f 84 00 00 00 00 00 48 83 ec 68 ba 14
->>>> RIP  [<ffffffff811b66f1>] nfs_do_writepage+0x201/0x210
->>>> RSP<ffff88003c601a10>
->>>> ---[ end trace 9a06d7f037e4429e ]---
->>>>
->>>> uname -r:
->>>>
->>>> 2.6.35.3.x86_64.aufs
->>>> --------------------------------------------------------
->>>>
->>>> It is a VM on qemu-kvm, 2GB RAM, 1 Virtual CPU,
->>>> Root filesystem is a copy-on-write AUFS, changes are written via NFS.
->>> At first blush, it looks like the guest's VM subsystem is asking the NFS client to write back a clean page.  Could be a misbehavior in AUFS?
->> Maybe - can you give me a hint how to track it down? Is there any control over writeback from outside NFS?
-> If AUFS is actively supported, I would start by asking the AUFS maintainer about this.
->
-> In general, writeback is controlled by the VM (virtual memory, not virtual machine), not by file systems.  The guest's VM subsystem will choose pages based on memory pressure and application activity.  In this case, "application activity" probably also includes AUFS.
->
-> In addition, you've got a very complex stack of software here.  Something else you could do is try to reproduce this with a simpler software stack.  Take qemu and 389-ds out of the picture, if you can, and find a simple program running on an AUFS over NFS bare metal system that can trigger the problem.
->
->>> I confess I'm not familiar with AUFS; 2.6.35 doesn't list anything called AUFS in the File Systems menu, but I could be missing something.
->>>
->> It is a kernel patch maintained by Junjiro R. Okajima. It was rejected in favor of promised UnionMount, which is neglected for years now. Mr Okajima very actively maintaines the patches. Ubuntu live DVDs utilize AUFS, writing changes to tmpfs or a partition on USB stick.
->>>> This machine runs always into this error on startup, after installing Fedora 389 directory server.
->>> I'm a little confused by this.  Do you mean the BUG pops just after "service dirsrv start" during the guest's boot-up sequence?
->>>
->> Right, and it fails.
-> This suggests it could be easy to reproduce the problem with a simpler set of software, since it happens so soon after the system boots.
->
-> You could capture a network trace from the NFS server to find out which file is being accessed and written when the client dies.  That could help you identify the application and access pattern that is causing the problem.
->
->>>> We have seen this error also when memory was low, but this VM has plenty memory free.
->>> When memory is low, the VM is more likely to drive writebacks, so that could make this error occur more frequently.  But low memory is not the only reason to drive a writeback.
->>>
->>>> top:
->>>>
->>>> Tasks:  56 total,   1 running,  55 sleeping,   0 stopped,   0 zombie
->>>> Cpu(s):  0.4%us,  1.4%sy,  0.0%ni, 96.9%id,  1.0%wa,  0.0%hi,  0.2%si,  0.0%st
->>>> Mem:   2058768k total,   661556k used,  1397212k free,   157792k buffers
->>>> Swap:        0k total,        0k used,        0k free,    87844k cached
->>>>
->>>>   PID USER      PR  NI  VIRT  RES  SHR S %CPU %MEM    TIME+  COMMAND
->>>>     1 root      20   0 19284 1428 1160 S  0.0  0.1   0:00.39 init
->>>>     2 root      20   0     0    0    0 S  0.0  0.0   0:00.00 kthreadd
->>>>     3 root      20   0     0    0    0 S  0.0  0.0   0:00.00 ksoftirqd/0
->>>>     4 root      RT   0     0    0    0 S  0.0  0.0   0:00.00 migration/0
->>>>     5 root      20   0     0    0    0 S  0.0  0.0   0:00.01 events/0
->>>>     6 root      20   0     0    0    0 S  0.0  0.0   0:00.00 cpuset
->>>>     7 root      20   0     0    0    0 S  0.0  0.0   0:00.01 khelper
->>>>    12 root      20   0     0    0    0 S  0.0  0.0   0:00.00 async/mgr
->>>>   139 root      20   0     0    0    0 S  0.0  0.0   0:00.00 sync_supers
->>>>   141 root      20   0     0    0    0 S  0.0  0.0   0:00.00 bdi-default
->>>>   143 root      20   0     0    0    0 S  0.0  0.0   0:00.09 kblockd/0
->>>>   145 root      20   0     0    0    0 S  0.0  0.0   0:00.00 kacpid
->>>>   146 root      20   0     0    0    0 S  0.0  0.0   0:00.00 kacpi_notify
->>>>   147 root      20   0     0    0    0 S  0.0  0.0   0:00.00 kacpi_hotplug
->>>>   219 root      20   0     0    0    0 S  0.0  0.0   0:00.00 khubd
->>>>   222 root      20   0     0    0    0 S  0.0  0.0   0:00.00 kseriod
->>>>   246 root      20   0     0    0    0 S  0.0  0.0   0:00.19 rpciod/0
->>>>   247 root      20   0     0    0    0 S  0.0  0.0   0:00.00 kvm-irqfd-clean
->>>>   266 root      20   0     0    0    0 S  0.0  0.0   0:00.00 kswapd0
->>>>   267 root      20   0     0    0    0 S  0.0  0.0   0:00.00 aio/0
->>>>   268 root      20   0     0    0    0 S  0.0  0.0   0:00.05 nfsiod
->>>>   270 root      20   0     0    0    0 S  0.0  0.0   0:00.00 aufsd/0
->>>>   271 root      20   0     0    0    0 S  0.0  0.0   0:00.03 aufsd_pre/0
->>>>   272 root      20   0     0    0    0 S  0.0  0.0   0:00.00 crypto/0
->>>>   460 root      20   0     0    0    0 S  0.0  0.0   0:00.00 kpsmoused
->>>>   466 root      20   0     0    0    0 S  0.0  0.0   0:00.00 usbhid_resumer
->>>>   932 root      20   0     0    0    0 S  0.0  0.0   0:00.00 jbd2/vda1-8
->>>>   933 root      20   0     0    0    0 S  0.0  0.0   0:00.00 ext4-dio-unwrit
->>>> 1061 root      16  -4 11004 1056  320 S  0.0  0.1   0:00.02 udevd
->>>> 1837 root      20   0  9084  596  124 S  0.0  0.0   0:00.00 dhclient
->>>> 1966 root      20   0  238m 1420  852 S  0.0  0.1   0:00.04 rsyslogd
->>>> 1995 rpc       20   0 18916  856  612 S  0.0  0.0   0:00.02 rpcbind
->>>> 2025 rpcuser   20   0 23084 1128  844 S  0.0  0.1   0:00.00 rpc.statd
->>>> 2146 root      20   0  185m 3484 1572 S  0.0  0.2   0:00.03 httpd.worker
->>>> 2149 root      20   0  185m 2280  368 S  0.0  0.1   0:00.00 httpd.worker
->>>> 2150 LDAP      20   0  777m 3804 1168 S  0.0  0.2   0:00.00 httpd.worker
->>>> 2227 dbus      20   0 21464  908  624 S  0.0  0.0   0:00.00 dbus-daemon
->>>>
->>>> --------------------------------------------------------
->>>>
->>>> cat /proc/mounts:
->>>>
->>>> rootfs / rootfs rw 0 0
->>>> /proc /proc proc rw,relatime 0 0
->>>> /sys /sys sysfs rw,relatime 0 0
->>>> udev /dev tmpfs rw,relatime,mode=755 0 0
->>>> devpts /dev/pts devpts rw,relatime,gid=5,mode=620 0 0
->>>> tmpfs /dev/shm tmpfs rw,relatime 0 0
->>>> /dev/vda1 /dev/ro ext4 ro,relatime,barrier=1,data=ordered 0 0
->>>> aufs / aufs rw,sync,noatime,si=92ba86936973eb7c 0 0
->>>> 192.168.255.1:/dev/servers /dev/servers nfs rw,sync,noatime,vers=3,rsize=32768,wsize=32768,namlen=255,hard,nolock,proto=udp,timeo=11,retrans=20,sec=sys,mountaddr=192.168.255.1,mountvers=3,mountport=49222,mountproto=udp,addr=192.168.255.1 0 0
->>>> /proc/bus/usb /proc/bus/usb usbfs rw,relatime 0 0
->>>> none /proc/sys/fs/binfmt_misc binfmt_misc rw,relatime 0 0
->>>>
->>>> --------------------------------------------------------
->>>>
->>>> We are ready create VMs for testing.
->>>> If you need more info, please ask.
->>>>
->>>> Regards
->>>>
->>>> David Mudrich
->>>>
->>>> -- 
->>>> Mudrich Systems
->>>>
->>>> David Mudrich Geschäftsführung / Executive
->>>> Tel/Fax +49 3907 775646
->>>> E-Mail dmudrich@mudrichsystems.com
->>>> Web www.mudrichsystems.com<http://www.mudrichsystems.com>
->>>> Mudrich EDV David und Johannes Mudrich GbR
->>>> Bäckergang 1, 39638 Gardelegen, Germany
->>>> --
->>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->>>> the body of a message to majordomo@vger.kernel.org
->>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-I found that the PG_CLEAR flag, which leads to the BUG() is set in 
-nfs_mark_request_commit() (write.c: 451). Is this the reason?
+I do have a few small enhancements though. I think the first
+two should go into 2.6.36. The last one probably needs some
+discussion.
+
+Mike.
+
+[PATCH 01/03]: sunrpc: increase MAX_HASHTABLE_BITS to 14
+
+The maximum size of the authcache is now set to 1024 (10 bits),
+but on our server we need at least 4096 (12 bits). Increase
+MAX_HASHTABLE_BITS to 14. This is a maximum of 16384 entries,
+each containing a pointer (8 bytes on x86_64). This is
+exactly the limit of kmalloc() (128K).
+
+[PATCH 02/03]: sunrpc: make auth_hashtable_size param mode 0444
+
+The auth_hashtable_size parameter shows up in
+/sys/module/sunrpc/parameters with mode 0644. However the hashtables
+are allocated when the module is loaded, and changing the parameter
+afterwards doesn't do much. So make it read-only.
+
+[PATCH 03/03] sunrpc: scale hashtable cache size with memory
+
+Set the number of entries of the authcache to 4096 on servers
+with 4G of memory or more. Because kmallocing more than a few K
+is frowned upon, change the allocator from kmalloc to __get_free_pages.
+Since the minimum allocation size of __get_free_pages is 1 page,
+set the number of entries in the authcache to PAGE_SIZE / (entry_size)
+on servers with < 4G of memory so that exactly one page is used.
+
