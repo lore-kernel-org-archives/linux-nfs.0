@@ -1,45 +1,59 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from xdsl-89-0-23-204.netcologne.de ([89.0.23.204]:53146 "EHLO
-	horst.phuk.ath.cx" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751452Ab0HCCHq (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 2 Aug 2010 22:07:46 -0400
-Received: from wald.localnet (wald.phuk.ath.cx [192.168.10.252])
-	by horst.phuk.ath.cx (Postfix) with ESMTP id 32C2BC0084
-	for <linux-nfs@vger.kernel.org>; Tue,  3 Aug 2010 04:01:33 +0200 (CEST)
-From: Victor =?iso-8859-1?q?Matar=E9?= <dreck@vmsd.ath.cx>
-To: linux-nfs@vger.kernel.org
-Subject: numeric UIDs
-Date: Tue, 3 Aug 2010 04:01:32 +0200
-Content-Type: Text/Plain;
-  charset="us-ascii"
-Message-Id: <201008030401.33552.dreck@vmsd.ath.cx>
+Received: from mail-gw0-f46.google.com ([74.125.83.46]:45426 "EHLO
+	mail-gw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753294Ab0HWRL0 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Aug 2010 13:11:26 -0400
+Received: by gwj17 with SMTP id 17so2180888gwj.19
+        for <linux-nfs@vger.kernel.org>; Mon, 23 Aug 2010 10:11:25 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 4/5] exportfs: exportfs.c no longer needs #include "xmalloc.h"
+To: steved@redhat.com
+Cc: linux-nfs@vger.kernel.org
+Date: Mon, 23 Aug 2010 13:11:22 -0400
+Message-ID: <20100823171122.2123.24249.stgit@matisse.1015granger.net>
+In-Reply-To: <20100823170552.2123.43124.stgit@matisse.1015granger.net>
+References: <20100823170552.2123.43124.stgit@matisse.1015granger.net>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Hello,
+Clean up:  No calls to xmalloc() or xstrdup() here.  No need for the
+double #include of xmalloc.h.
 
-I still hope I'm mistaken in assuming I have to go back to NFSv3 if I want to 
-skip NFSv4 UID mapping altogether and just use the numeric UIDs the way 
-they're stored on-disk. However if that's actually true, I'd like to try and 
-make a case for implementing an option to turn off UID mapping completely (or 
-at least for unknown UIDs). If this is already work in progress, just ignore 
-this mail.
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
 
-Thing is, the forced UID mapping seems to make tasks like backing up data a 
-little inconvenient. You might want to preserve UIDs that are only known to 
-the client.
-But when you copy an entire root filesystem, it becomes outright destructive, 
-because the rootfs will probably have several accounts that the server can't 
-be expected know. Just imagine a server that's used for maintenance (like 
-backing up and replacing hard drives) of random (foreign) systems. Idmapd will 
-map all unknown UIDs to a single value and thereby destroy that information.
+ utils/exportfs/exportfs.c |    6 ++++--
+ 1 files changed, 4 insertions(+), 2 deletions(-)
 
-I think I read somewhere that the Sun people already have a way of handling 
-this. Any chance Linux could do that, too?
+diff --git a/utils/exportfs/exportfs.c b/utils/exportfs/exportfs.c
+index edc1625..93bad32 100644
+--- a/utils/exportfs/exportfs.c
++++ b/utils/exportfs/exportfs.c
+@@ -12,6 +12,8 @@
+ #include <config.h>
+ #endif
+ 
++#include <sys/types.h>
++#include <sys/stat.h>
+ #include <sys/vfs.h>
+ #include <sys/stat.h>
+ #include <unistd.h>
+@@ -20,13 +22,13 @@
+ #include <string.h>
+ #include <stdarg.h>
+ #include <getopt.h>
++#include <fcntl.h>
+ #include <netdb.h>
+ #include <errno.h>
+-#include "xmalloc.h"
++
+ #include "misc.h"
+ #include "nfslib.h"
+ #include "exportfs.h"
+-#include "xmalloc.h"
+ #include "xlog.h"
+ 
+ static void	export_all(int verbose);
 
-Please excuse me if I'm barking up the wrong tree. If this has already been 
-discussed, I'd appreciate a pointer.
-
-Thanks,
-Victor
