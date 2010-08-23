@@ -1,52 +1,189 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from one.firstfloor.org ([213.235.205.2]:36176 "EHLO
-	one.firstfloor.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752333Ab0HRTZK (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 18 Aug 2010 15:25:10 -0400
-Date: Wed, 18 Aug 2010 21:25:08 +0200
-From: Andi Kleen <andi@firstfloor.org>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Andi Kleen <andi@firstfloor.org>, Neil Brown <neilb@suse.de>,
-        Alan Cox <alan@lxorguk.ukuu.org.uk>,
-        "Patrick J. LoPresti" <lopresti@gmail.com>,
-        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-kernel <linux-kernel@vger.kernel.org>
-Subject: Re: Proposal: Use hi-res clock for file timestamps
-Message-ID: <20100818192508.GC6567@basil.fritz.box>
-References: <87aaolwar8.fsf@basil.nowhere.org>
- <20100817174134.GA23176@fieldses.org>
- <20100817182920.GD18161@basil.fritz.box>
- <20100817190447.GA28049@fieldses.org>
- <AANLkTi=w1UA5ZZDBigpxMiL7A7DnbnQhLkg62JZpC6Ri@mail.gmail.com>
- <20100817203941.729830b7@lxorguk.ukuu.org.uk>
- <20100817192937.GD26609@fieldses.org>
- <20100818155359.66b9ddb6@notabene>
- <20100818175040.GA6567@basil.fritz.box>
- <20100818185456.GD13050@fieldses.org>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20100818185456.GD13050@fieldses.org>
+Received: from mail-gx0-f174.google.com ([209.85.161.174]:61911 "EHLO
+	mail-gx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753608Ab0HWRLg (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Aug 2010 13:11:36 -0400
+Received: by gxk23 with SMTP id 23so2191346gxk.19
+        for <linux-nfs@vger.kernel.org>; Mon, 23 Aug 2010 10:11:35 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 5/5] exportfs: Use xlog() for error reporting
+To: steved@redhat.com
+Cc: linux-nfs@vger.kernel.org
+Date: Mon, 23 Aug 2010 13:11:32 -0400
+Message-ID: <20100823171132.2123.57600.stgit@matisse.1015granger.net>
+In-Reply-To: <20100823170552.2123.43124.stgit@matisse.1015granger.net>
+References: <20100823170552.2123.43124.stgit@matisse.1015granger.net>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, Aug 18, 2010 at 02:54:56PM -0400, J. Bruce Fields wrote:
-> On Wed, Aug 18, 2010 at 07:50:40PM +0200, Andi Kleen wrote:
-> > >  - nfsd updates it whenever it reads an mtime out of an inode that matches
-> > >    current_fs_time to the granularity of 1/HZ.
-> > 
-> > That means you have a very very hot cache line on a larger system
-> > if there are a lot of mtime changes. Probably a bad idea.
-> 
-> Only if those mtime changes are also followed immediately by nfsd reads
-> of the mtime.
+exportfs already invokes xlog_open() because libexport.a uses xlog()
+exclusively for error reporting and debugging messages.  If we can
+use xlog() throughout exportfs itself, that enables xlog debugging
+messages everywhere in the code path.
 
-If multiple writers are changing the same location in quick succession 
-you have a hot cache line that gets bounced around.  It doesn't need reads,
-although reads make it even worse.
+In addition, use xlog() instead of fprintf(stderr) for reporting
+errors in exportfs.c, to be consistent with libexport.a and other
+components of nfs-utils.
 
-There's a lot of effort currently to make the VFS more parallel
-and less synchronized and it would be bad again to regress here again.
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
 
--Andi
--- 
-ak@linux.intel.com -- Speaking for myself only.
+ utils/exportfs/exportfs.c |   56 +++++++++++++++++++++++----------------------
+ 1 files changed, 29 insertions(+), 27 deletions(-)
+
+diff --git a/utils/exportfs/exportfs.c b/utils/exportfs/exportfs.c
+index 93bad32..8496d82 100644
+--- a/utils/exportfs/exportfs.c
++++ b/utils/exportfs/exportfs.c
+@@ -37,7 +37,7 @@ static void	unexportfs(char *arg, int verbose);
+ static void	exports_update(int verbose);
+ static void	dump(int verbose);
+ static void	error(nfs_export *exp, int err);
+-static void	usage(void);
++static void	usage(const char *progname);
+ static void	validate_export(nfs_export *exp);
+ static int	matchhostname(const char *hostname1, const char *hostname2);
+ 
+@@ -45,6 +45,7 @@ int
+ main(int argc, char **argv)
+ {
+ 	char	*options = NULL;
++	char	*progname = NULL;
+ 	int	f_export = 1;
+ 	int	f_all = 0;
+ 	int	f_verbose = 0;
+@@ -54,7 +55,14 @@ main(int argc, char **argv)
+ 	int	new_cache = 0;
+ 	int	force_flush = 0;
+ 
+-	xlog_open("exportfs");
++	if ((progname = strrchr(argv[0], '/')) != NULL)
++		progname++;
++	else
++		progname = argv[0];
++
++	xlog_open(progname);
++	xlog_stderr(1);
++	xlog_syslog(0);
+ 
+ 	export_errno = 0;
+ 
+@@ -83,21 +91,21 @@ main(int argc, char **argv)
+ 			force_flush = 1;
+ 			break;
+ 		default:
+-			usage();
++			usage(progname);
+ 			break;
+ 		}
+ 	}
+ 
+ 	if (optind != argc && f_all) {
+-		fprintf(stderr,"exportfs: extra arguments are not permitted with -a or -r.\n");
++		xlog(L_ERROR, "extra arguments are not permitted with -a or -r");
+ 		return 1;
+ 	}
+ 	if (f_ignore && (f_all || ! f_export)) {
+-		fprintf(stderr,"exportfs: -i not meaningful with -a, -r or -u.\n");
++		xlog(L_ERROR, "-i not meaningful with -a, -r or -u");
+ 		return 1;
+ 	}
+ 	if (f_reexport && ! f_export) {
+-		fprintf(stderr, "exportfs: -r and -u are incompatible.\n");
++		xlog(L_ERROR, "-r and -u are incompatible");
+ 		return 1;
+ 	}
+ 	new_cache = check_new_cache();
+@@ -106,8 +114,10 @@ main(int argc, char **argv)
+ 			if (new_cache)
+ 				cache_flush(1);
+ 			else {
+-				fprintf(stderr, "exportfs: -f: only available with new cache controls: mount /proc/fs/nfsd first\n");
+-				exit(1);
++				xlog(L_ERROR, "-f is available only "
++					"with new cache controls. "
++					"Mount /proc/fs/nfsd first");
++				return 1;
+ 			}
+ 			return 0;
+ 		} else {
+@@ -245,7 +255,7 @@ exportfs(char *arg, char *options, int verbose)
+ 		*path++ = '\0';
+ 
+ 	if (!path || *path != '/') {
+-		fprintf(stderr, "Invalid exporting option: %s\n", arg);
++		xlog(L_ERROR, "Invalid exporting option: %s", arg);
+ 		return;
+ 	}
+ 
+@@ -291,8 +301,7 @@ unexportfs(char *arg, int verbose)
+ 		*path++ = '\0';
+ 
+ 	if (!path || *path != '/') {
+-		fprintf(stderr, "Invalid unexporting option: %s\n",
+-			arg);
++		xlog(L_ERROR, "Invalid unexporting option: %s", arg);
+ 		return;
+ 	}
+ 
+@@ -387,14 +396,12 @@ validate_export(nfs_export *exp)
+ 	int fs_has_fsid = 0;
+ 
+ 	if (stat(path, &stb) < 0) {
+-		fprintf(stderr, "exportfs: Warning: %s does not exist\n",
+-			path);
++		xlog(L_ERROR, "Failed to stat %s: %m \n", path);
+ 		return;
+ 	}
+ 	if (!S_ISDIR(stb.st_mode) && !S_ISREG(stb.st_mode)) {
+-		fprintf(stderr, "exportfs: Warning: %s is neither "
+-			"a directory nor a file.\n"
+-			"     remote access will fail\n", path);
++		xlog(L_ERROR, "%s is neither a directory nor a file. "
++			"Remote access will fail", path);
+ 		return;
+ 	}
+ 	if (!can_test())
+@@ -407,19 +414,14 @@ validate_export(nfs_export *exp)
+ 	if ((exp->m_export.e_flags & NFSEXP_FSID) || exp->m_export.e_uuid ||
+ 	    fs_has_fsid) {
+ 		if ( !test_export(path, 1)) {
+-			fprintf(stderr, "exportfs: Warning: %s does not "
+-				"support NFS export.\n",
+-				path);
++			xlog(L_ERROR, "%s does not support NFS export", path);
+ 			return;
+ 		}
+ 	} else if ( ! test_export(path, 0)) {
+ 		if (test_export(path, 1))
+-			fprintf(stderr, "exportfs: Warning: %s requires fsid= "
+-				"for NFS export\n", path);
++			xlog(L_ERROR, "%s requires fsid= for NFS export", path);
+ 		else
+-			fprintf(stderr, "exportfs: Warning: %s does not "
+-				"support NFS export.\n",
+-				path);
++			xlog(L_ERROR, "%s does not support NFS export", path);
+ 		return;
+ 
+ 	}
+@@ -602,13 +604,13 @@ dump(int verbose)
+ static void
+ error(nfs_export *exp, int err)
+ {
+-	fprintf(stderr, "%s:%s: %s\n", exp->m_client->m_hostname, 
++	xlog(L_ERROR, "%s:%s: %s\n", exp->m_client->m_hostname,
+ 		exp->m_export.e_path, strerror(err));
+ }
+ 
+ static void
+-usage(void)
++usage(const char *progname)
+ {
+-	fprintf(stderr, "usage: exportfs [-aruv] [host:/path]\n");
++	fprintf(stderr, "usage: %s [-aruv] [host:/path]\n", progname);
+ 	exit(1);
+ }
+
