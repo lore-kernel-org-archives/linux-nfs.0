@@ -1,92 +1,51 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH 1/2] sunrpc: extract some common sunrpc_cache code from
- nfsd
-Date: Fri, 20 Aug 2010 18:18:18 -0400
-Message-ID: <20100820221818.GE26698@fieldses.org>
-References: <20100812064957.3408.44224.stgit@localhost.localdomain>
- <20100812065522.3408.34827.stgit@localhost.localdomain>
+From: Bian Naimeng <biannm@cn.fujitsu.com>
+Subject: Re: [PATCH 2/2] We should clear NFS_DELEGATED_STATE after return
+ delegation
+Date: Mon, 23 Aug 2010 15:43:12 +0800
+Message-ID: <4C722690.6070209@cn.fujitsu.com>
+References: <4C592F85.8070308@cn.fujitsu.com>	 <4C59306A.9090302@cn.fujitsu.com>	 <1280925913.3011.23.camel@heimdal.trondhjem.org>	 <4C5A213F.9000506@cn.fujitsu.com>	 <1281013423.2948.1.camel@heimdal.trondhjem.org>	 <4C5B8B48.4050008@cn.fujitsu.com>	 <1281101448.3586.11.camel@heimdal.trondhjem.org>	 <4C68EDAE.5000201@cn.fujitsu.com> <1282087012.18385.30.camel@heimdal.trondhjem.org> <4C6B50B3.4090403@cn.fujitsu.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=Shift_JIS
 Cc: linux-nfs@vger.kernel.org
-To: NeilBrown <neilb@suse.de>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:54836 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751878Ab0HTWU2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 20 Aug 2010 18:20:28 -0400
-In-Reply-To: <20100812065522.3408.34827.stgit-bi+AKbBUZKY6gyzm1THtWbp2dZbC/Bob@public.gmane.org>
+Received: from cn.fujitsu.com ([222.73.24.84]:49929 "EHLO song.cn.fujitsu.com"
+	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
+	id S1752768Ab0HWHoz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 23 Aug 2010 03:44:55 -0400
+In-Reply-To: <4C6B50B3.4090403@cn.fujitsu.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Aug 12, 2010 at 04:55:22PM +1000, NeilBrown wrote:
-> Rather can duplicating this idiom twice, put it in an inline function.
-> This reduces the usage of 'expiry_time' out side the sunrpc/cache.c
-> code and thus the impact of a change that is about to be made to that
-> field.
+>>>> I still don't see why this should be necessary. In the case of a server
+>>>> reboot or network partition, the state recovery thread ought to be
+>>>> taking care of this for us.
+>>>>
+>>>    A open state can be found at nfsi->open_states and owner->so_states always, but
+>>>   it not be found at nfsi->open_files until we call nfs4_intent_set_file.
+>>>
+>>>    At _nfs4_do_open, we will invoke nfs4_return_incompatible_delegation to return a 
+>>>   delegation,  a open stateid which set NFS_DELEGATED_STATE bit may not be found at
+>>>   nfsi->open_files, but it still at nfsi->open_states, so we do not clear 
+>>>   NFS_DELEGATED_STATE bit for it.
+>>>
+>>>    Then _nfs4_do_open will find it by nfs4_get_open_state, and we still use it
+>>>   as a delegation, some error will occur.
+>>>
+>> OK. I see agree that is a race, but AFAICS, your fix means that we end
+>> up with an nfs_state structure that has cleared NFS_DELEGATED_STATE, but
+>> that did not recover its open stateid.
+>>
+> 
+>   Hi trond, i am not sure my opinion is right.
+> 
+>   If the state not at nfsi->open_states, i think maybe that means it's not a open stateid,
+>   it just a old state we want reuse it. After we update it, it become a open stateid.
+> 
 
-Thanks, applying for 2.6.37.
+Hi trond, have you got a idea to solve this race?
 
---b.
+-- 
+Regards
+Bian Naimeng
 
-> 
-> Signed-off-by: NeilBrown <neilb@suse.de>
-> ---
->  fs/nfsd/export.c             |    9 +++------
->  include/linux/sunrpc/cache.h |    6 ++++++
->  2 files changed, 9 insertions(+), 6 deletions(-)
-> 
-> diff --git a/fs/nfsd/export.c b/fs/nfsd/export.c
-> index c2a4f71..e56827b 100644
-> --- a/fs/nfsd/export.c
-> +++ b/fs/nfsd/export.c
-> @@ -935,10 +935,9 @@ static void exp_fsid_unhash(struct svc_export *exp)
->  
->  	ek = exp_get_fsid_key(exp->ex_client, exp->ex_fsid);
->  	if (!IS_ERR(ek)) {
-> -		ek->h.expiry_time = get_seconds()-1;
-> +		sunrpc_invalidate(&ek->h, &svc_expkey_cache);
->  		cache_put(&ek->h, &svc_expkey_cache);
->  	}
-> -	svc_expkey_cache.nextcheck = get_seconds();
->  }
->  
->  static int exp_fsid_hash(svc_client *clp, struct svc_export *exp)
-> @@ -973,10 +972,9 @@ static void exp_unhash(struct svc_export *exp)
->  
->  	ek = exp_get_key(exp->ex_client, inode->i_sb->s_dev, inode->i_ino);
->  	if (!IS_ERR(ek)) {
-> -		ek->h.expiry_time = get_seconds()-1;
-> +		sunrpc_invalidate(&ek->h, &svc_expkey_cache);
->  		cache_put(&ek->h, &svc_expkey_cache);
->  	}
-> -	svc_expkey_cache.nextcheck = get_seconds();
->  }
->  	
->  /*
-> @@ -1097,8 +1095,7 @@ out:
->  static void
->  exp_do_unexport(svc_export *unexp)
->  {
-> -	unexp->h.expiry_time = get_seconds()-1;
-> -	svc_export_cache.nextcheck = get_seconds();
-> +	sunrpc_invalidate(&unexp->h, &svc_export_cache);
->  	exp_unhash(unexp);
->  	exp_fsid_unhash(unexp);
->  }
-> diff --git a/include/linux/sunrpc/cache.h b/include/linux/sunrpc/cache.h
-> index 7bf3e84..0e1febf 100644
-> --- a/include/linux/sunrpc/cache.h
-> +++ b/include/linux/sunrpc/cache.h
-> @@ -228,4 +228,10 @@ static inline time_t get_expiry(char **bpp)
->  	return rv;
->  }
->  
-> +static inline void sunrpc_invalidate(struct cache_head *h,
-> +				     struct cache_detail *detail)
-> +{
-> +	h->expiry_time = get_seconds() - 1;
-> +	detail->nextcheck = get_seconds();
-> +}
->  #endif /*  _LINUX_SUNRPC_CACHE_H_ */
-> 
-> 
