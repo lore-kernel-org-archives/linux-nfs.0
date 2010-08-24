@@ -1,75 +1,101 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:17814 "EHLO
-	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1755371Ab0H3Qn7 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Aug 2010 12:43:59 -0400
-From: Benny Halevy <bhalevy@panasas.com>
-To: linux-nfs@vger.kernel.org
-Cc: Benny Halevy <bhalevy@panasas.com>
-Subject: [PATCH 2/2] SQUASHME: pnfs-submit: get machince creds for getdeviceinfo
-Date: Mon, 30 Aug 2010 19:43:56 +0300
-Message-Id: <1283186636-17044-1-git-send-email-bhalevy@panasas.com>
-In-Reply-To: <4C7BDD8C.40509@panasas.com>
-References: <4C7BDD8C.40509@panasas.com>
+Received: from mail-yx0-f174.google.com ([209.85.213.174]:61438 "EHLO
+	mail-yx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755664Ab0HXQf4 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 24 Aug 2010 12:35:56 -0400
+Received: by yxg6 with SMTP id 6so2593895yxg.19
+        for <linux-nfs@vger.kernel.org>; Tue, 24 Aug 2010 09:35:55 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 4/5] libexport.a: IPv6 support for client_init_subnet()
+To: steved@redhat.com
+Cc: linux-nfs@vger.kernel.org
+Date: Tue, 24 Aug 2010 12:35:52 -0400
+Message-ID: <20100824163552.2433.94979.stgit@matisse.1015granger.net>
+In-Reply-To: <20100824162926.2433.7535.stgit@matisse.1015granger.net>
+References: <20100824162926.2433.7535.stgit@matisse.1015granger.net>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
----
- fs/nfs/nfs4_fs.h  |   13 ++++++++++++-
- fs/nfs/nfs4proc.c |    2 ++
- 2 files changed, 14 insertions(+), 1 deletions(-)
+To parse and store an IPv6 host or subnet address, init_netmask()
+needs to handle 128 bit subnet masks.
 
-diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
-index 9743326..ced4a20 100644
---- a/fs/nfs/nfs4_fs.h
-+++ b/fs/nfs/nfs4_fs.h
-@@ -303,13 +303,24 @@ extern void nfs4_kill_renewd(struct nfs_client *);
- extern void nfs4_renew_state(struct work_struct *);
- 
- /* nfs4state.c */
-+struct rpc_cred *nfs4_get_machine_cred_locked(struct nfs_client *clp);
- struct rpc_cred *nfs4_get_setclientid_cred(struct nfs_client *clp);
- struct rpc_cred *nfs4_get_renew_cred_locked(struct nfs_client *clp);
- #if defined(CONFIG_NFS_V4_1)
--struct rpc_cred *nfs4_get_machine_cred_locked(struct nfs_client *clp);
- struct rpc_cred *nfs4_get_exchange_id_cred(struct nfs_client *clp);
- #endif /* CONFIG_NFS_V4_1 */
- 
-+static inline struct rpc_cred *
-+nfs4_get_machine_cred(struct nfs_client *clp)
-+{
-+	struct rpc_cred *cred;
-+
-+	spin_lock(&clp->cl_lock);
-+	cred = nfs4_get_machine_cred_locked(clp);
-+	spin_unlock(&clp->cl_lock);
-+	return cred;
-+}
-+
- extern struct nfs4_state_owner * nfs4_get_state_owner(struct nfs_server *, struct rpc_cred *);
- extern void nfs4_put_state_owner(struct nfs4_state_owner *);
- extern struct nfs4_state * nfs4_get_open_state(struct inode *, struct nfs4_state_owner *);
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 78717a7..33c4057 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -5824,11 +5824,13 @@ int nfs4_proc_getdeviceinfo(struct nfs_server *server, struct pnfs_device *pdev)
- 		.rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_GETDEVICEINFO],
- 		.rpc_argp = &args,
- 		.rpc_resp = &res,
-+		.rpc_cred = nfs4_get_machine_cred(server->nfs_client),
+Unfortunately what once was a pretty simple little function has grown
+much larger.  This logic must now not only parse IPv6 addresses
+correctly, but must also distinguish between IPv4 and IPv6.
+
+To avoid code duplication, I'm "bending" the cardinal rule of not
+using "#ifdef" inside functions.
+
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
+
+ support/export/client.c |   32 ++++++++++++++++++++++++++++++++
+ 1 files changed, 32 insertions(+), 0 deletions(-)
+
+diff --git a/support/export/client.c b/support/export/client.c
+index 780c74d..4c6cd69 100644
+--- a/support/export/client.c
++++ b/support/export/client.c
+@@ -66,6 +66,12 @@ init_netmask(nfs_client *clp, const char *slash, const sa_family_t family)
  	};
- 	int status;
+ 	unsigned long prefixlen;
+ 	uint32_t shift;
++#ifdef IPV6_SUPPORTED
++	struct sockaddr_in6 sin6 = {
++		.sin6_family		= AF_INET6,
++	};
++	int i;
++#endif
  
- 	dprintk("--> %s\n", __func__);
- 	status = nfs4_call_sync(server, &msg, &args, &res, 0);
-+	put_rpccred(msg.rpc_cred);
- 	dprintk("<-- %s status=%d\n", __func__, status);
+ 	/* No slash present; assume netmask is all ones */
+ 	if (slash == NULL) {
+@@ -73,6 +79,11 @@ init_netmask(nfs_client *clp, const char *slash, const sa_family_t family)
+ 		case AF_INET:
+ 			prefixlen = 32;
+ 			break;
++#ifdef IPV6_SUPPORTED
++		case AF_INET6:
++			prefixlen = 128;
++			break;
++#endif
+ 		default:
+ 			goto out_badfamily;
+ 		}
+@@ -87,6 +98,14 @@ init_netmask(nfs_client *clp, const char *slash, const sa_family_t family)
+ 			set_addrlist_in(clp, 1, &sin);
+ 			return 1;
+ 		}
++#ifdef IPV6_SUPPORTED
++		if (strchr(slash + 1, ':')) {
++			if (!inet_pton(AF_INET6, slash + 1, &sin6.sin6_addr))
++				goto out_badmask;
++			set_addrlist_in6(clp, 1, &sin6);
++			return 1;
++		}
++#endif
  
- 	return status;
--- 
-1.7.2.2
+ 		/* A prefixlen was given */
+ 		prefixlen = strtoul(slash + 1, &endptr, 10);
+@@ -102,6 +121,19 @@ init_netmask(nfs_client *clp, const char *slash, const sa_family_t family)
+ 		sin.sin_addr.s_addr = htonl((uint32_t)~0 << shift);
+ 		set_addrlist_in(clp, 1, &sin);
+ 		return 1;
++#ifdef IPV6_SUPPORTED
++	case AF_INET6:
++		if (prefixlen > 128)
++			goto out_badprefix;
++		for (i = 0; prefixlen > 32; i++) {
++			sin6.sin6_addr.s6_addr32[i] = 0xffffffff;
++			prefixlen -= 32;
++		}
++		shift = 32 - (uint32_t)prefixlen;
++		sin6.sin6_addr.s6_addr32[i] = htonl((uint32_t)~0 << shift);
++		set_addrlist_in6(clp, 1, &sin6);
++		return 1;
++#endif
+ 	}
+ 
+ out_badfamily:
 
