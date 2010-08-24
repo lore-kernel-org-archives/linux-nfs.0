@@ -1,52 +1,49 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:30765 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757431Ab0HaPSb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 31 Aug 2010 11:18:31 -0400
-Message-ID: <4C7D1D3B.1030607@RedHat.com>
-Date: Tue, 31 Aug 2010 11:18:19 -0400
-From: Steve Dickson <SteveD@redhat.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Jeff Layton <jlayton@redhat.com>, linux-nfs@vger.kernel.org,
-        chuck.lever@oracle.com
-Subject: Re: [PATCH] rpc.nfsd: mount up nfsdfs is it doesn't appear to be
- mounted yet
-References: <1282995314-8317-1-git-send-email-jlayton@redhat.com> <4C7BD394.3030705@RedHat.com> <20100830121600.529669bd@tlielax.poochiereds.net> <4C7BE1FC.2020400@RedHat.com> <20100830134801.1696dffa@tlielax.poochiereds.net> <4C7CF499.5090003@RedHat.com> <20100831084323.02a1abf5@corrin.poochiereds.net> <4C7D1694.6000708@RedHat.com> <20100831111008.157618f4@corrin.poochiereds.net> <20100831151342.GA3071@fieldses.org>
-In-Reply-To: <20100831151342.GA3071@fieldses.org>
+Received: from daytona.panasas.com ([67.152.220.89]:24295 "EHLO
+	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1755203Ab0HXOmh (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 24 Aug 2010 10:42:37 -0400
+Message-ID: <4C73DA58.9090408@panasas.com>
+Date: Tue, 24 Aug 2010 17:42:32 +0300
+From: Benny Halevy <bhalevy@panasas.com>
+To: "William A. (Andy) Adamson" <androsadamson@gmail.com>,
+        NFS list <linux-nfs@vger.kernel.org>
+Subject: Re: The pnfs-submit tree with renaming done.
+References: <AANLkTinPR+vKXFvptrh7vKHgf1fSqQ2Fq7YjYNDw0_rp@mail.gmail.com>	<4C72171F.8010802@panasas.com>	<4C72318C.4080402@panasas.com> <AANLkTimw2oFRvLbrHAgTY7zoWQG15qhyz33k9+t69Xv=@mail.gmail.com>
+In-Reply-To: <AANLkTimw2oFRvLbrHAgTY7zoWQG15qhyz33k9+t69Xv=@mail.gmail.com>
 Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+Hi Andy, 
 
+Thanks for the tarball you sent with the pnfs-submit patchset
+with renamed types.
 
-On 08/31/2010 11:13 AM, J. Bruce Fields wrote:
-> On Tue, Aug 31, 2010 at 11:10:08AM -0400, Jeff Layton wrote:
->> I was just pointing out that checking the return code from the system()
->> call isn't sufficient. Because of the way most people have modprobe set
->> up, it can return an error even though nfsdfs ended up being mounted
->> anyway. Checking for the presence of the file after attempting the
->> mount would be a more reliable test.
->>
->> Assuming we're in agreement there, we have another question to
->> settle...If the mount attempt fails, what should we do about it?
->>
->> With my original patch, we fall back to using nfsctl(). You're
->> suggesting that we should error out there. I'm not opposed to that, but
->> it does mean dropping support for some really old kernels. It also
->> means that we can remove some dead code in rpc.nfsd.
->>
->> OTOH, the fallback might allow nfsd to keep working for some people.
->> Maybe it would be better to just log a scary warning and fall back to
->> using nfsctl() for now.
->>
->> In a couple of releases, we could start returning an error there and
->> rip out the legacy interface code, or compile it out by default and
->> allow people to compile it in via a configure option?
-> 
-> Yes, let's just add the additional mount attempt for now, and figure out
-> what to do about the legacy interface as a next step.
-When the mount fails, I think we should exit... basically eliminating the
-legacy interface code
+I merged into the tree and applied the renames onto the post submit patches
+and obj/block layout drivers.
 
-steved.
+I added some renames for the callback code to match
+the existing naming convention and did a bit of cleanup of the patchset
+and the post submit series, including splicing the tail of the submit patchset
+into the post submit branch head.
+
+I revived the "pnfsd, pnfs: protocol level pnfs constants" preliminary patch
+as it contains no-brainer nfsv4.1 definitions that Trond already agreed
+can be submitted as a whole and not per use.
+This simplifies rebasing of the pnfs-submit branch as pnfs-submit-all
+and makes more sense overall IMO.
+
+I also resurrected Bruce's stats code in the "remove this unused code"
+patch, and added a question mark for this patch as I think it requires
+more through review to agree exactly what should go away for good.
+(Some of it is obvious and I should've probably put it aside...)
+
+I released this clean version as pnfs-all-2.6.35-2010-08-24
+ad I'm working on rebasing onto 2.6.36-rc1.
+
+At this point, I'd like to close the 2.6.35 stream for new features
+and release only fixes to it from now on.
+
+Benny
