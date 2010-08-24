@@ -1,105 +1,62 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:48989 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:55323 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753888Ab0HMVcV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 13 Aug 2010 17:32:21 -0400
-From: andros@netapp.com
-To: bhalevy@panasas.com
-Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
-Subject: [PATCH 20/50] pnfs_submit: filelayout alloc_layout and free_layout
-Date: Fri, 13 Aug 2010 17:31:32 -0400
-Message-Id: <1281735122-1496-21-git-send-email-andros@netapp.com>
-In-Reply-To: <1281735122-1496-20-git-send-email-andros@netapp.com>
-References: <1281735122-1496-1-git-send-email-andros@netapp.com>
- <1281735122-1496-2-git-send-email-andros@netapp.com>
- <1281735122-1496-3-git-send-email-andros@netapp.com>
- <1281735122-1496-4-git-send-email-andros@netapp.com>
- <1281735122-1496-5-git-send-email-andros@netapp.com>
- <1281735122-1496-6-git-send-email-andros@netapp.com>
- <1281735122-1496-7-git-send-email-andros@netapp.com>
- <1281735122-1496-8-git-send-email-andros@netapp.com>
- <1281735122-1496-9-git-send-email-andros@netapp.com>
- <1281735122-1496-10-git-send-email-andros@netapp.com>
- <1281735122-1496-11-git-send-email-andros@netapp.com>
- <1281735122-1496-12-git-send-email-andros@netapp.com>
- <1281735122-1496-13-git-send-email-andros@netapp.com>
- <1281735122-1496-14-git-send-email-andros@netapp.com>
- <1281735122-1496-15-git-send-email-andros@netapp.com>
- <1281735122-1496-16-git-send-email-andros@netapp.com>
- <1281735122-1496-17-git-send-email-andros@netapp.com>
- <1281735122-1496-18-git-send-email-andros@netapp.com>
- <1281735122-1496-19-git-send-email-andros@netapp.com>
- <1281735122-1496-20-git-send-email-andros@netapp.com>
+	id S932959Ab0HXW7E (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 24 Aug 2010 18:59:04 -0400
+Date: Tue, 24 Aug 2010 18:58:57 -0400
+To: Harry Edmon <harry@uw.edu>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: Odd problem with Stale NFS file handle - NFS v3 server under
+ 2.6.35.x
+Message-ID: <20100824225857.GA7283@fieldses.org>
+References: <4C7407D2.1040304@uw.edu>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4C7407D2.1040304@uw.edu>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: The pNFS Team <linux-nfs@vger.kernel.org>
+On Tue, Aug 24, 2010 at 10:56:34AM -0700, Harry Edmon wrote:
+> I am having a problem getting odd ESTALE (Stale NFS file handle)
+> errors.   The server and client are both amd64 architecture.   I am
+> runnning a simple csh script on the client with the following:
+> 
+> if (! -e /home/disk/data/gempak/upperair/latest ) then
+>    mkdir /home/disk/data/gempak/upperair/latest
+> endif
+> 
+> The script randomly comes back with:
+> 
+>  mkdir: cannot create directory
+> `/home/disk/data/gempak/model/latest': File exists
 
-Signed-off-by: Andy Adamson <andros@netapp.com>
----
- fs/nfs/nfs4filelayout.c |   24 ++++++++++++++++++++++++
- fs/nfs/nfs4filelayout.h |   10 ++++++++++
- 2 files changed, 34 insertions(+), 0 deletions(-)
+Why is it "model" here and "upperair" in the above?
 
-diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
-index 7039d9d..e1a09a8 100644
---- a/fs/nfs/nfs4filelayout.c
-+++ b/fs/nfs/nfs4filelayout.c
-@@ -82,7 +82,31 @@ filelayout_uninitialize_mountpoint(struct nfs_server *nfss)
- 	return 0;
- }
- 
-+/*
-+ * Create a filelayout layout structure and return it.  The pNFS client
-+ * will use the pnfs_layout_type type to refer to the layout for this
-+ * inode from now on.
-+ */
-+static struct pnfs_layout_type *
-+filelayout_alloc_layout(struct inode *inode)
-+{
-+	struct nfs4_filelayout *flp;
-+
-+	dprintk("NFS_FILELAYOUT: allocating layout\n");
-+	flp =  kzalloc(sizeof(struct nfs4_filelayout), GFP_KERNEL);
-+	return flp ? &flp->fl_layout : NULL;
-+}
-+
-+/* Free a filelayout layout structure */
-+static void
-+filelayout_free_layout(struct pnfs_layout_type *lo)
-+{
-+	dprintk("NFS_FILELAYOUT: freeing layout\n");
-+	kfree(FILE_LO(lo));
-+}
- struct layoutdriver_io_operations filelayout_io_operations = {
-+	.alloc_layout            = filelayout_alloc_layout,
-+	.free_layout             = filelayout_free_layout,
- 	.initialize_mountpoint   = filelayout_initialize_mountpoint,
- 	.uninitialize_mountpoint = filelayout_uninitialize_mountpoint,
- };
-diff --git a/fs/nfs/nfs4filelayout.h b/fs/nfs/nfs4filelayout.h
-index be3c9fe..ad975fd 100644
---- a/fs/nfs/nfs4filelayout.h
-+++ b/fs/nfs/nfs4filelayout.h
-@@ -41,6 +41,16 @@ struct nfs4_file_layout_dsaddr {
- 	struct nfs4_pnfs_ds	*ds_list[1];
- };
- 
-+struct nfs4_filelayout {
-+	struct pnfs_layout_type fl_layout;
-+	u32 stripe_unit;
-+};
-+
-+static inline struct nfs4_filelayout *
-+FILE_LO(struct pnfs_layout_type *lo)
-+{
-+	return container_of(lo, struct nfs4_filelayout, fl_layout);
-+}
- 
- extern struct pnfs_client_operations *pnfs_callback_ops;
- 
--- 
-1.6.2.5
+> 
+> When I do an strace I am seeing the following when it fails:
+> 
+> 20745 stat("/home/disk/data/gempak/model/latest", 0x7fff56ed9580) = -1 ESTALE (Stale NFS file handle)
+> 
+> ...
+> 
+> 20751 mkdir("/home/disk/data/gempak/model/latest", 0777) = -1 EEXIST (File exists)
 
+Could you give a more complete description of the code that's running?
+(For example: how is "latest" being removed, and how do you know that
+"latest" isn't created after checking whether it exists but before the
+mkdir?)
+
+--b.
+
+> 
+> The kernel version of the client does not matter (I have tried
+> 2.6.34.5 and 2.6.35.3).   But the server kernel does matter.   It
+> occurs with 2.6.35 and 2.6.35.3.   It does not with 2.6.34.5.
+> 
+> The ESTALE only occurs with "stat" and "lstat" in the scripts I have tried.  Attached is my configuration file from the server.  The mount on the client is:
+> 
+> imist2:/home/data on /home/disk/data type nfs (rw,noatime,intr,proto=tcp,addr=192.168.1.12)
+> 
+> 
+> Any ideas?
