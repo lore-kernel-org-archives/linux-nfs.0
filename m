@@ -1,69 +1,95 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from www262.sakura.ne.jp ([202.181.97.72]:59087 "EHLO
-	www262.sakura.ne.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1759363Ab0HEBKd (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 4 Aug 2010 21:10:33 -0400
-Message-Id: <201008050110.o751AG18066496@www262.sakura.ne.jp>
-Subject: Re: linux-next NFSD: NULL pointer dereference at nfsd_svc()
-From: Tetsuo Handa <penguin-kernel@I-love.SAKURA.ne.jp>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        jlayton@redhat.com
-Date: Thu, 05 Aug 2010 10:10:16 +0900
-References: <201008020747.o727lqXs064715@www262.sakura.ne.jp> <20100802103214.7eea09eb@corrin.poochiereds.net> <20100802103620.5638dac1@corrin.poochiereds.net> <20100802181634.GD12637@fieldses.org> <201008030109.o73193bp094241@www262.sakura.ne.jp> <20100803154851.GA23467@fieldses.org> <201008040013.o740DmYK024832@www262.sakura.ne.jp> <20100804194045.GD18200@fieldses.org>
-In-Reply-To: <20100804194045.GD18200@fieldses.org>
-Content-Type: text/plain; charset="ISO-2022-JP"
+Received: from mail-pv0-f174.google.com ([74.125.83.174]:50721 "EHLO
+	mail-pv0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S933619Ab0HXXLB (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 24 Aug 2010 19:11:01 -0400
+Received: by pvg2 with SMTP id 2so2825729pvg.19
+        for <linux-nfs@vger.kernel.org>; Tue, 24 Aug 2010 16:11:00 -0700 (PDT)
+Message-ID: <4C745182.2080206@uw.edu>
+Date: Tue, 24 Aug 2010 16:10:58 -0700
+From: Harry Edmon <harry@uw.edu>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: Odd problem with Stale NFS file handle - NFS v3 server under
+ 2.6.35.x
+References: <4C7407D2.1040304@uw.edu> <20100824225857.GA7283@fieldses.org>
+In-Reply-To: <20100824225857.GA7283@fieldses.org>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
 J. Bruce Fields wrote:
-> Maybe figuring out exactly hwere that is would help work out what's
-> going on.  Doing
-> 
-> 	make net/sunrpc/svc.lst
-> 
-> then looking for c1356dd4 (or just mailing me svc.lst) could help.
+> On Tue, Aug 24, 2010 at 10:56:34AM -0700, Harry Edmon wrote:
+>   
+>> I am having a problem getting odd ESTALE (Stale NFS file handle)
+>> errors.   The server and client are both amd64 architecture.   I am
+>> runnning a simple csh script on the client with the following:
+>>
+>> if (! -e /home/disk/data/gempak/upperair/latest ) then
+>>    mkdir /home/disk/data/gempak/upperair/latest
+>> endif
+>>
+>> The script randomly comes back with:
+>>
+>>  mkdir: cannot create directory
+>> `/home/disk/data/gempak/model/latest': File exists
+>>     
+>
+> Why is it "model" here and "upperair" in the above?
+>   
+OOPS.  The actual script has both, and I have had failure on both.   I 
+was trying to simplify my report, and ended up mixed the two.   So 
+change above the script to:
 
-"make net/sunrpc/svc.lst" failed due to following error.
+if (! -e /home/disk/data/gempak/model/latest ) then
+   mkdir /home/disk/data/gempak/model/latest
+endif
 
-  BFD: Dwarf Error: Abbrev offset (3238007024) greater than or equal to .debug_abbrev size (1607).
 
-Manual printk() debug reported that
-rqstp->rq_argp == rqstp->rq_resp == ZERO_SIZE_PTR and
-procp->pc_argsize == procp->pc_ressize == 4.
 
---- linux-2.6.35-next.orig/net/sunrpc/svc.c
-+++ linux-2.6.35-next/net/sunrpc/svc.c
-@@ -1084,6 +1084,11 @@ svc_process_common(struct svc_rqst *rqst
- 	procp->pc_count++;
+>   
+>> When I do an strace I am seeing the following when it fails:
+>>
+>> 20745 stat("/home/disk/data/gempak/model/latest", 0x7fff56ed9580) = -1 ESTALE (Stale NFS file handle)
+>>
+>> ...
+>>
+>> 20751 mkdir("/home/disk/data/gempak/model/latest", 0777) = -1 EEXIST (File exists)
+>>     
+>
+> Could you give a more complete description of the code that's running?
+> (For example: how is "latest" being removed, and how do you know that
+> "latest" isn't created after checking whether it exists but before the
+> mkdir?)
+>
+> --b
+>   
+Actually, the directory never gets removed.   This code is in the script 
+just as a emergency check in case it is moved to a different disk and 
+the directory structure has not yet been created.  So it should never 
+get to the "mkdir", in fact the directory has entries that date from 
+2007.   I have other files that never change in other scripts that I am 
+seeing the "ESTALE" error when "stat" is run on them, so it is a more 
+universal problem on this client/server setup than just this example.
+>   
+>> The kernel version of the client does not matter (I have tried
+>> 2.6.34.5 and 2.6.35.3).   But the server kernel does matter.   It
+>> occurs with 2.6.35 and 2.6.35.3.   It does not with 2.6.34.5.
+>>
+>> The ESTALE only occurs with "stat" and "lstat" in the scripts I have tried.  Attached is my configuration file from the server.  The mount on the client is:
+>>
+>> imist2:/home/data on /home/disk/data type nfs (rw,noatime,intr,proto=tcp,addr=192.168.1.12)
+>>
+>>
+>> Any ideas?
+>>     
 
- 	/* Initialize storage for argp and resp */
-+	printk(KERN_INFO "rqstp=%p procp=%p\n", rqstp, procp);
-+	printk(KERN_INFO "rqstp->rq_argp=%p procp->pc_argsize=%u\n",
-+	       rqstp->rq_argp, procp->pc_argsize);
-+	printk(KERN_INFO "rqstp->rq_resp=%p procp->pc_ressize=%u\n",
-+	       rqstp->rq_resp, procp->pc_ressize);
- 	memset(rqstp->rq_argp, 0, procp->pc_argsize);
- 	memset(rqstp->rq_resp, 0, procp->pc_ressize);
- 
 
-[   37.669174] NET: Registered protocol family 10
-[   38.080725] svc: failed to register lockdv1 RPC service (errno 97).
-[  122.895707] rqstp=dcb91000 procp=c154ca20
-[  122.896533] rqstp->rq_argp=00000010 procp->pc_argsize=4
-[  122.897484] rqstp->rq_resp=00000010 procp->pc_ressize=4
-[  122.898609] BUG: unable to handle kernel NULL pointer dereference at 00000010
-[  122.899964] IP: [<c1356e80>] svc_process_common+0x370/0x640
-[  122.900493] *pde = 00000000 
-[  122.900493] Oops: 0002 [#1] SMP DEBUG_PAGEALLOC
-[  122.923308] last sysfs file: /sys/devices/pci0000:00/0000:00:10.0/host0/target0:0:1/0:0:1:0/type
-[  122.923308] Modules linked in: nfs ipv6 pcnet32
+-- 
+ Dr. Harry Edmon			E-MAIL: harry@uw.edu
+ 206-543-0547 FAX: 206-543-0308			harry@atmos.washington.edu
+ Director of IT, College of the Environment and
+ Director of Computing, Dept of Atmospheric Sciences
+ University of Washington, Box 351640, Seattle, WA 98195-1640
 
-> OK, I wonder if Sarge didn't yet mount the nfsd filesystem on
-> /proc/fs/nfsd.
-
-According to /proc/mounts , the nfsd filesystem is not mounted on
-/proc/fs/nfsd . But mounting it manually before starting nfsd did not help.
-
-Regards.
