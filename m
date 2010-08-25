@@ -1,50 +1,24 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:65021 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750728Ab0HQUEZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 17 Aug 2010 16:04:25 -0400
-Message-ID: <4C6AEB43.5080508@RedHat.com>
-Date: Tue, 17 Aug 2010 16:04:19 -0400
-From: Steve Dickson <SteveD@redhat.com>
-To: Tom Haynes <tdh@excfb.com>
-CC: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 0/2] Support for Numeric Representations of UIDs and GIDs.
-References: <1282073925-18707-1-git-send-email-steved@redhat.com> <4C6AE85E.4000305@excfb.com>
-In-Reply-To: <4C6AE85E.4000305@excfb.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from bombadil.infradead.org ([18.85.46.34]:51975 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753082Ab0HYKxV (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 25 Aug 2010 06:53:21 -0400
+Date: Wed, 25 Aug 2010 06:53:20 -0400
+From: Christoph Hellwig <hch@infradead.org>
+To: Harry Edmon <harry@uw.edu>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: Odd problem with Stale NFS file handle - NFS v3 server under
+ 2.6.35.x
+Message-ID: <20100825105320.GA17190@infradead.org>
+References: <4C7407D2.1040304@uw.edu>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4C7407D2.1040304@uw.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+Are you running xfs on this machine?  If so can you please try
+this patch:
 
+	http://git.kernel.org/?p=linux/kernel/git/dgc/xfsdev.git;a=commitdiff;h=4536f2ad8b330453d7ebec0746c4374eadd649b1
 
-On 08/17/2010 03:51 PM, Tom Haynes wrote:
-> Steve Dickson wrote:
->> In recent NFS v2/v3 to v4 transitions, one of the sticking points have been that fact v4 uses strings in the format
->> of "user@domain" instead of 32bit integers for uids and gids.
->>
->> When the string can not be mapped, its mapped to the 'nobody'
->> user which is not optimal for things like backup servers and
->> such where the ids will not be know by both sides.
->>
->> So this patch series enables the server to send out numeric string of uids and gids that do not have the '@domain' part.
->> The series also adds functionality to the client that parse these
->> type of strings and will use the numeric representation
->> of the ids iff the id exists on the client, which is sightly different that Solaris. Solaris dose not have that
->> "id must exist" restriction.
->>   
-> 
-> No, Solaris does have that restriction.
-I thought so too.... but when I had an Open Solaris client 
-access an directory, on a Linux server, that was owned by a 
-user that was non-existent on either the server or client, 
-I got the numeric representation as the owner.... 
-Basically:
-
-osol# mount Linux-server:/home /mnt/home
-osol# ls -ld /mnt/home/noid
-drwxr-xr-x+  2 111      111         4096 Aug 17 11:37 /mnt/home/noid/
-osol# grep 111 /etc/passwd
-osol#
-
-steved.
