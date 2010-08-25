@@ -1,82 +1,93 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from os.inf.tu-dresden.de ([141.76.48.99]:49757 "EHLO
-	os.inf.tu-dresden.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756356Ab0HPWQ3 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 16 Aug 2010 18:16:29 -0400
-Date: Mon, 16 Aug 2010 23:50:56 +0200
-From: Adam Lackorzynski <adam@os.inf.tu-dresden.de>
-To: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org
-Subject: 2.6.35.2: NFS related Oops
-Message-ID: <20100816215056.GA5376@os.inf.tu-dresden.de>
-Content-Type: text/plain; charset=iso-8859-1
+Received: from adsl-99-17-64-89.dsl.sfldmi.sbcglobal.net ([99.17.64.89]:43734
+	"EHLO crunch.scalableinformatics.com" rhost-flags-OK-FAIL-OK-FAIL)
+	by vger.kernel.org with ESMTP id S1750836Ab0HYRRg (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 25 Aug 2010 13:17:36 -0400
+Message-ID: <4C754DB4.5060608@scalableinformatics.com>
+Date: Wed, 25 Aug 2010 13:07:00 -0400
+From: Joe Landman <landman@scalableinformatics.com>
+Reply-To: landman@scalableinformatics.com
+To: davidr@ressman.org
+CC: linux-nfs@vger.kernel.org
+Subject: Re: fsync/wb deadlocks in 2.6.32
+References: <AANLkTikWR_YSnx=4=KAodATpX+xO9+hj-cf7_e158f4d@mail.gmail.com>
+In-Reply-To: <AANLkTikWR_YSnx=4=KAodATpX+xO9+hj-cf7_e158f4d@mail.gmail.com>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Hi,
+davidr@ressman.org wrote:
+> Hello all,
+> 
+> I have ~100 nfs clients running Ubuntu 10.04 LTS, and under moderate and
+> heavy v3 write loads, I will periodically get deadlocks in nfs_do_fsync().
+> Unfortunately, it's rare enough that I've not been able to come up with
+> a test case that works reliably. The usage pattern looks like this:
+> 
+> 1. 8 jobs are started on each of 100 nodes (each node has 8 cores)
+> 2. These jobs stat(), read() and close() unique files of size 10-20MB
+>    on the source NFS filesystem.
+> 3. They open(), write(), and close() the files on the target NFS
+>    filesystem (not the same as the source filesystem). Occasionally, the
+>    clients will insert a mkdir() before the open().
+> 4. Steps 2-3 are repeated for a total of ~20m files (as in, all clients copy a
+>    total of 20m files cumulatively)
+> 
+> After an hour or two, at least one of these nodes gives a series of these
+> messages:
+> 
+> [88792.122324] INFO: task awk:7184 blocked for more than 120 seconds.
 
-with 2.6.35.2 I'm getting this reproducible Oops:
+Did you get an "nfs server not responding" type message in the logs?
 
-[  110.825396] BUG: unable to handle kernel NULL pointer dereference at (null)
-[  110.828638] IP: [<ffffffff811247b7>] encode_attrs+0x1a/0x2a4
-[  110.828638] PGD be89f067 PUD bf18f067 PMD 0
-[  110.828638] Oops: 0000 [#1] SMP
-[  110.828638] last sysfs file: /sys/class/net/lo/operstate
-[  110.828638] CPU 2
-[  110.828638] Modules linked in: rtc_cmos rtc_core rtc_lib amd64_edac_mod i2c_amd756 edac_core i2c_core dm_mirror dm_region_hash dm_log dm_snapshot sg sr_mod usb_storage ohci_hcd mptspi tg3 mptscsih mptbase usbcore nls_base [last unloaded: scsi_wait_scan] 
-[  110.828638] 
-[  110.828638] Pid: 11264, comm: setchecksum Not tainted 2.6.35.2 #1
-[  110.828638] RIP: 0010:[<ffffffff811247b7>]  [<ffffffff811247b7>] encode_attrs+0x1a/0x2a4
-[  110.828638] RSP: 0000:ffff88003bf5b878  EFLAGS: 00010296
-[  110.828638] RAX: ffff8800bddb48a8 RBX: ffff88003bf5bb18 RCX: 0000000000000000
-[  110.828638] RDX: ffff8800be258800 RSI: 0000000000000000 RDI: ffff88003bf5b9f8
-[  110.828638] RBP: 0000000000000000 R08: ffff8800bddb48a8 R09: 0000000000000004
-[  110.828638] R10: 0000000000000003 R11: ffff8800be779000 R12: ffff8800be258800
-[  110.828638] R13: ffff88003bf5b9f8 R14: ffff88003bf5bb20 R15: ffff8800be258800
-[  110.828638] FS:  0000000000000000(0000) GS:ffff880041e00000(0063) knlGS:00000000556bd6b0
-[  110.828638] CS:  0010 DS: 002b ES: 002b CR0: 000000008005003b
-[  110.828638] CR2: 0000000000000000 CR3: 00000000be8ef000 CR4: 00000000000006e0
-[  110.828638] DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
-[  110.828638] DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
-[  110.828638] Process setchecksum (pid: 11264, threadinfo ffff88003bf5a000, task ffff88003f232210)
-[  110.828638] Stack:
-[  110.828638]  0000000000000000 ffff8800bfbcf920 0000000000000000 0000000000000ffe
-[  110.828638] <0> 0000000000000000 0000000000000000 0000000000000000 0000000000000000
-[  110.828638] <0> 0000000000000000 0000000000000000 0000000000000000 0000000000000000
-[  110.828638] Call Trace:
-[  110.828638]  [<ffffffff81124c1f>] ? nfs4_xdr_enc_setattr+0x90/0xb4
-[  110.828638]  [<ffffffff81371161>] ? call_transmit+0x1c3/0x24a
-[  110.828638]  [<ffffffff813774d9>] ? __rpc_execute+0x78/0x22a
-[  110.828638]  [<ffffffff81371a91>] ? rpc_run_task+0x21/0x2b
-[  110.828638]  [<ffffffff81371b7e>] ? rpc_call_sync+0x3d/0x5d
-[  110.828638]  [<ffffffff8111e284>] ? _nfs4_do_setattr+0x11b/0x147
-[  110.828638]  [<ffffffff81109466>] ? nfs_init_locked+0x0/0x32
-[  110.828638]  [<ffffffff810ac521>] ? ifind+0x4e/0x90
-[  110.828638]  [<ffffffff8111e2fb>] ? nfs4_do_setattr+0x4b/0x6e
-[  110.828638]  [<ffffffff8111e634>] ? nfs4_do_open+0x291/0x3a6
-[  110.828638]  [<ffffffff8111ed81>] ? nfs4_open_revalidate+0x63/0x14a
-[  110.828638]  [<ffffffff811056c4>] ? nfs_open_revalidate+0xd7/0x161
-[  110.828638]  [<ffffffff810a2de4>] ? do_lookup+0x1a4/0x201
-[  110.828638]  [<ffffffff810a4733>] ? link_path_walk+0x6a/0x9d5
-[  110.828638]  [<ffffffff810a42b6>] ? do_last+0x17b/0x58e
-[  110.828638]  [<ffffffff810a5fbe>] ? do_filp_open+0x1bd/0x56e
-[  110.828638]  [<ffffffff811cd5e0>] ? _atomic_dec_and_lock+0x30/0x48
-[  110.828638]  [<ffffffff810a9b1b>] ? dput+0x37/0x152
-[  110.828638]  [<ffffffff810ae063>] ? alloc_fd+0x69/0x10a
-[  110.828638]  [<ffffffff81099f39>] ? do_sys_open+0x56/0x100
-[  110.828638]  [<ffffffff81027a22>] ? ia32_sysret+0x0/0x5
-[  110.828638] Code: 83 f1 01 e8 f5 ca ff ff 48 83 c4 50 5b 5d 41 5c c3 41 57 41 56 41 55 49 89 fd 41 54 49 89 d4 55 48 89 f5 53 48 81 ec 18 01 00 00 <8b> 06 89 c2 83 e2 08 83 fa 01 19 db 83 e3 f8 83 c3 18 a8 01 8d
-[  110.828638] RIP  [<ffffffff811247b7>] encode_attrs+0x1a/0x2a4
-[  110.828638]  RSP <ffff88003bf5b878>
-[  110.828638] CR2: 0000000000000000
-[  112.840396] ---[ end trace 95282e83fd77358f ]---
+[...]
 
+> Here are the current mount options:
+>   async,nocto,proto=udp,auto,intr,noatime,nodiratime, \
+>   rsize=32768,rw,vers=3,wsize=32768
+> 
+> I've tried tcp/udp, cto/nocto (i.e., grasping at straws), and none of
+> those options appear to have any effect either.
 
-Looks like arg->iap in encode_setattr() in nfs4xdr.c is 0.
+If you get the nfs server not responding message, you might switch to
+	
+	proto=tcp,retrans=10
+
+or similar (try retrans=N if you just want to play with that).
+
+> As far as I can tell, the problem appears to be unrelated to the
+> NFS server. We've seen these hangs while writing to a RHEL server
+> (2.6.18-92.1.22.el5) as well as an F5 ARX NFS proxy.
+
+Is it possible that a server or switch was overloaded during this 
+interval?
+
+> If anyone has seen this before, knows what it is, or needs more info
+> from me, please let me know.
+
+Things like this, usually under heavy load situations, when we hit a 
+spot of resource contention (usually network or server being too busy).
 
 
 
-Adam
+> 
+> Thanks,
+> 
+> David
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+
 -- 
-Adam                 adam@os.inf.tu-dresden.de
-  Lackorzynski         http://os.inf.tu-dresden.de/~adam/
+Joseph Landman, Ph.D
+Founder and CEO
+Scalable Informatics Inc.
+email: landman@scalableinformatics.com
+web  : http://scalableinformatics.com
+        http://scalableinformatics.com/jackrabbit
+phone: +1 734 786 8423 x121
+fax  : +1 866 888 3112
+cell : +1 734 612 4615
