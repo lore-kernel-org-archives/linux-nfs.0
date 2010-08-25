@@ -1,57 +1,82 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:28907 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751882Ab0HCRZB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 3 Aug 2010 13:25:01 -0400
-Date: Tue, 3 Aug 2010 13:24:53 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: netdev@vger.kernel.org, bfields@fieldses.org
-Subject: sunrpc: what prevents an xprt from being freed before task_cleanup
- runs?
-Message-ID: <20100803132453.4fa18444@tlielax.poochiereds.net>
-Content-Type: text/plain; charset=US-ASCII
+Received: from mail-fx0-f46.google.com ([209.85.161.46]:51859 "EHLO
+	mail-fx0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751780Ab0HYSqR (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 25 Aug 2010 14:46:17 -0400
+Received: by fxm13 with SMTP id 13so556545fxm.19
+        for <linux-nfs@vger.kernel.org>; Wed, 25 Aug 2010 11:46:15 -0700 (PDT)
+Subject: Re: hang in writeback code on nfsv4 mount
+From: Artem Bityutskiy <dedekind1@gmail.com>
+Reply-To: dedekind1@gmail.com
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Trond Myklebust <trond@netapp.com>, Christoph Hellwig <hch@lst.de>,
+        Jens Axboe <jaxboe@fusionio.com>
+In-Reply-To: <20100825154451.GB14440@fieldses.org>
+References: <20100825023425.GA24591@fieldses.org>
+	 <1282717945.24044.187.camel@localhost>
+	 <20100825154451.GB14440@fieldses.org>
+Content-Type: text/plain; charset="UTF-8"
+Date: Wed, 25 Aug 2010 21:46:11 +0300
+Message-ID: <1282761971.16502.134.camel@brekeke>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-We got a report recently about a panic in RHEL5 (2.6.18 based kernel).
-The problem appears to be that a task_cleanup workqueue job ran and got
-passed a pointer to an xprt that had been freed. The bug is here in
-case anyone is interested in the details:
+Hi,
 
-    https://bugzilla.redhat.com/show_bug.cgi?id=611938
+On Wed, 2010-08-25 at 11:44 -0400, J. Bruce Fields wrote:
+> > sudo mount -t nfs4 sauron:/home/dedekind/ /mnt/sauron_home/
+> > 
+> > works fine. Any hints about how to reproduce this are welcome.
+> 
+> Huh.  The simple mount hits it every time for me.  I'll investigate some
+> more.
 
-The situation seems to be pretty difficult to reproduce, but I don't
-see anything that's intended to ensure that this doesn't occur in RHEL5
-or mainline. The task_cleanup workqueue job doesn't hold a reference to
-the xprt, and the job isn't canceled when the xprt is torn down.
+If you have any hints for me, please let me know. Note, I do not know
+much about NFS and I very rarely use it. I'm very interested to
+investigate this and fix, but I'm going to LinuxCon Brasil soon so not
+sure I'll be able to look at this next week. But if there is a way to
+reproduce this with a single laptop (without having 2 hosts separate
+hosts, may be using localhost?) - I can look at this while being at the
+conference as well :-)
 
-Bruce had a look and suggested that we may need something like the
-patch below (pasted in, so it probably won't apply correctly). I've
-tested a backported version of it on RHEL5 and it seems to work fine.
+> > I'll try to look at the code and figure out why this could happen.
+> > 
+> > So, does the mount at some point succeed? Or it is blocked forever? And
+> > sysrq-t output would be useful to look at as well.
+> 
+> It's blocked forever as far as I can tell.  I'll get a sysrq-t trace.
+> 
+> > Also, it is strange that 'sys_mount()' involves 'nfs4_kill_super()' - is
+> > this normal or this is an error path?
+> 
+> NFSv4 uses a temporary private namespace to look up the initial mount
+> path--see c02d7adf8c5429727a98bad1d039bccad4c61c50 and preceding commits
+> for explanation.  So this may well be normal (but I haven't looked at it
+> closely).
 
-Is it reasonable to cancel task_cleanup when destroying the xprt? Or,
-am I missing something that should prevent this situation in mainline
-(and perhaps isn't in RHEL5's kernel).
+Ok, thanks.
 
-Any help is appreciated...
+> Hm, my mount path has a mountpoint in it--if sauron:/home/dedekind/
+> doesn't, then that's a difference between our setups.
 
------------------------------[snip]---------------------------------
-diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
-index dcd0132..2a1f664 100644
---- a/net/sunrpc/xprt.c
-+++ b/net/sunrpc/xprt.c
-@@ -1129,6 +1129,7 @@ static void xprt_destroy(struct kref *kref)
-  rpc_destroy_wait_queue(&xprt->sending);
-  rpc_destroy_wait_queue(&xprt->resend);
-  rpc_destroy_wait_queue(&xprt->backlog);
-+ cancel_work_sync(&xprt->task_cleanup);
-  /*
-   * Tear down transport state and free the rpc_xprt
-   */
------------------------------[snip]---------------------------------
+Err, you mean that /home/dedekind on my NFS4 server should be a mount
+point? Yes, it is an ext4 FS.
 
-Thanks,
--- 
-Jeff Layton <jlayton@redhat.com>
+> > [1]: the kernel tree does not compile on this commit, and I applied
+> > patch on top to solve the compilation issue:
+> > 387ac089361fbe5ef287e6950c5c40f6b18e5c55 "block: fix missing export of
+> > blk_types.h"
+> 
+> Maybe you only hit that if you do headers_install or headers_check?
+
+Yes, this goes from headers_check, but I only run make -j11 and it runs
+headers_check at the end, I do not do this explicitly.
+
+Anyway, I'll try to reproduce / look at this tomorrow some more. May be
+mount, then stress test, then unmount will help. I was distracted today
+and did not really spend enough time to this.
+
+Artem.
+
