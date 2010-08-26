@@ -1,48 +1,69 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-out1.uio.no ([129.240.10.57]:58741 "EHLO mail-out1.uio.no"
+Received: from cantor2.suse.de ([195.135.220.15]:56532 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752282Ab0H3TXG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 30 Aug 2010 15:23:06 -0400
-Subject: Re: why are WB_SYNC_NONE COMMITs being done with FLUSH_SYNC set ?
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-To: Wu Fengguang <fengguang.wu@gmail.com>
-Cc: Jeff Layton <jlayton@redhat.com>, Christoph Hellwig <hch@infradead.org>,
-        linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-mm@kvack.org
-In-Reply-To: <20100820132309.GB20126@localhost>
-References: <20100819101525.076831ad@barsoom.rdu.redhat.com>
-	 <20100819143710.GA4752@infradead.org>
-	 <1282229905.6199.19.camel@heimdal.trondhjem.org>
-	 <20100819151618.5f769dc9@tlielax.poochiereds.net>
-	 <1282246999.7799.66.camel@heimdal.trondhjem.org>
-	 <20100820132309.GB20126@localhost>
-Content-Type: text/plain; charset="UTF-8"
-Date: Mon, 30 Aug 2010 15:22:54 -0400
-Message-ID: <1283196174.2920.4.camel@heimdal.trondhjem.org>
+	id S1752357Ab0HZAcD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 25 Aug 2010 20:32:03 -0400
+Date: Thu, 26 Aug 2010 10:31:52 +1000
+From: Neil Brown <neilb@suse.de>
+To: sfaibish <sfaibish@emc.com>
+Cc: "Peng Yu" <pengyu.ut@gmail.com>, linux-nfs@vger.kernel.org
+Subject: Re: Does the machine need to be restarted after RPCNFSDCOUNT in
+ /etc/default/nfs-kernel-server (ubuntu) is edited?
+Message-ID: <20100826103152.05627abb@notabene>
+In-Reply-To: <op.vh0qucfsunckof@usensfaibisl2e.eng.emc.com>
+References: <AANLkTi=8rnEtOikhVqsH5Pj1QUhc5MiSHMfncZO1xCem@mail.gmail.com>
+	<20100826093648.26d03c1c@notabene>
+	<op.vh0qucfsunckof@usensfaibisl2e.eng.emc.com>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Fri, 2010-08-20 at 21:23 +0800, Wu Fengguang wrote:
-> > > Here's a lightly tested patch that turns the check for the two flags
-> > > into a check for WB_SYNC_NONE. It seems to do the right thing, but I
-> > > don't have a clear testcase for it. Does this look reasonable?
-> > 
-> > Looks fine to me. I'll queue it up for the post-2.6.36 merge window...
+On Wed, 25 Aug 2010 20:12:02 -0400
+sfaibish <sfaibish@emc.com> wrote:
+
+> On Wed, 25 Aug 2010 19:36:48 -0400, Neil Brown <neilb@suse.de> wrote:
 > 
-> Trond, I just created a patch that removes the wbc->nonblocking
-> definition and all its references except NFS. So there will be merge
-> dependencies. What should we do?  To push both patches to Andrew's -mm
-> tree?
+> > On Wed, 25 Aug 2010 15:02:14 -0500
+> > Peng Yu <pengyu.ut@gmail.com> wrote:
+> >
+> >> Hi,
+> >>
+> >> I changed the value of RPCNFSDCOUNT in /etc/default/nfs-kernel-server
+> >> (ubuntu). Do I need to restart the machine?
+> >>
+> >> Or I need to restart nfsd? If so, would you please let me know how to
+> >> restart nfsd?
+> >>
+> >
+> > Easiest thing to do is simply
+> >
+> >    rpc.nfsd $NUMBER
+> >
+> > it will change the number of running threads to match the number that you
+> > give.
+> You still need to stop and restart the nfs for this to take effect.
+
+Have you tried it?
+
+I assure you that running rpc.nfsd like this does change the number of
+threads from whatever it is to the given number. (I should know, I wrote the
+code :-)
+
+NeilBrown
+
 > 
-> Thanks,
-> Fengguang
-
-Do you want to include it as part of your series? Just remember to add
-an
-
-Acked-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-
-Cheers
-  Trond
+> /Sorin
+> 
+> >
+> > NeilBrown
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> >
+> >
+> 
+> 
+> 
 
