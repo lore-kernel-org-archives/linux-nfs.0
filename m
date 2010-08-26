@@ -1,73 +1,39 @@
-Return-Path: <nfsv4-bounces@ietf.org>
-Date: Thu, 19 Aug 2010 12:44:48 -0400
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Message-ID: <20100819164448.GF30151@fieldses.org>
-References: <1278545423.15524.26.camel@heimdal.trondhjem.org>
-	<BF3BB6D12298F54B89C8DCC1E4073D8001ADE6C8@CORPUSMX50A.corp.emc.com>
-	<1278623332.13551.47.camel@heimdal.trondhjem.org>
-In-Reply-To: <1278623332.13551.47.camel@heimdal.trondhjem.org>
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: linux-nfs@vger.kernel.org, nfsv4@ietf.org
-Subject: Re: [nfsv4] OPEN_DOWNGRADE and posix byte range locking issue
-List-Unsubscribe: <https://www.ietf.org/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@ietf.org?subject=unsubscribe>
-List-Archive: <http://www.ietf.org/mail-archive/web/nfsv4>
-List-Post: <mailto:nfsv4@ietf.org>
-List-Help: <mailto:nfsv4-request@ietf.org?subject=help>
-List-Subscribe: <https://www.ietf.org/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@ietf.org?subject=subscribe>
-Content-Type: text/plain; charset="us-ascii"
-Sender: nfsv4-bounces@ietf.org
-Errors-To: nfsv4-bounces@ietf.org
-MIME-Version: 1.0
+Return-Path: <linux-nfs-owner@vger.kernel.org>
+Received: from bombadil.infradead.org ([18.85.46.34]:33931 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751947Ab0HZKpm (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Aug 2010 06:45:42 -0400
+Date: Thu, 26 Aug 2010 06:45:41 -0400
+From: Christoph Hellwig <hch@infradead.org>
+To: Harry Edmon <harry@uw.edu>
+Cc: Christoph Hellwig <hch@infradead.org>, linux-nfs@vger.kernel.org
+Subject: Re: Odd problem with Stale NFS file handle - NFS v3 server under
+ 2.6.35.x
+Message-ID: <20100826104541.GA23693@infradead.org>
+References: <4C7407D2.1040304@uw.edu>
+ <20100825105320.GA17190@infradead.org>
+ <4C75948D.4040400@uw.edu>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4C75948D.4040400@uw.edu>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+MIME-Version: 1.0
 
-> > -----Original Message-----
-> > From: nfsv4-bounces@ietf.org [mailto:nfsv4-bounces@ietf.org] On Behalf
-> > Of Trond Myklebust
-> > Sent: Wednesday, July 07, 2010 7:30 PM
-> > To: nfsv4@ietf.org
-> > Subject: [nfsv4] OPEN_DOWNGRADE and posix byte range locking issue
-> > 
-> > Neither RFC3530, nor RFC5661 appear to list NFS4ERR_LOCKS_HELD as a
-> > valid response when the client calls OPEN_DOWNGRADE.
-> > 
-> > The question is: what should the server then do if the NFS client holds
-> > a WRITE_LT lock, but then asks for an OPEN_DOWNGRADE to
-> > OPEN4_SHARE_ACCESS_READ. I understand that this is sanctioned in Windows
-> > server environments, but it should definitely be forbidden in a POSIX
-> > environment, and NFS4ERR_LOCKS_HELD would appear to fit the bill...
+On Wed, Aug 25, 2010 at 03:09:17PM -0700, Harry Edmon wrote:
+> Christoph Hellwig wrote:
+> >Are you running xfs on this machine?  If so can you please try
+> >this patch:
+> >
+> >	http://git.kernel.org/?p=linux/kernel/git/dgc/xfsdev.git;a=commitdiff;h=4536f2ad8b330453d7ebec0746c4374eadd649b1
+> >
+> This looks very good so far.   I have been running it for 7 hours
+> with no problems.  That is much longer than I was able to run before
+> the patch.
+> 
+> I notice that this patch (along with other xfs patches) has been
+> submitted for 2.6.36-rc3.   Do you plan to try to get this into
+> 2.6.35.5+ (2.6.35.4 is already in testing)?
 
-A bizarre variation: the linux server associates vfs opens with
-stateid's.  Locks are performed on vfs opens, and the vfs will complain
-if you attempt to close a file that still has locks associated with it.
+The commit was Cc'ed to the stable team, so it's expect that they will
+pick it up.
 
-The sequence
-
-	open RW
-	lock R
-	open R
-	open downgrade to R
-
-would therefore be implemented at the vfs level as:
-
-	open RW -> f
-	lock R on f
-	open R -> g
-	close f
-
-Oops.  We're stuck with ditching the lock (or erroring out) even though
-it's still compatible with the new config option.
-
-Well, I suppose this is my problem: either I should get a new vfs open
-for the use of the lock, or represent the original RW open by two vfs
-open's.
-
-It's not something a unix-like client could do, I think, but I don't
-think it's safe for me to assume I can reject it?
-
---b.
-_______________________________________________
-nfsv4 mailing list
-nfsv4@ietf.org
-https://www.ietf.org/mailman/listinfo/nfsv4
