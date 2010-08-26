@@ -1,51 +1,55 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from moutng.kundenserver.de ([212.227.126.186]:51100 "EHLO
-	moutng.kundenserver.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752282Ab0H3TWz (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Aug 2010 15:22:55 -0400
-Message-ID: <4C7C0501.4020302@mudrichsystems.com>
-Date: Mon, 30 Aug 2010 21:22:41 +0200
-From: David Mudrich <dmudrich@mudrichsystems.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: sfjro@users.sourceforge.net, linux-nfs@vger.kernel.org
-Subject: Re: AUFS triggers Kernel BUG() in nfs_do_writepage (write.c:276)
-References: <4C7960EE.6060304@mudrichsystems.com> <3217.1283139187@jrobl> <4C7B53F3.8010709@mudrichsystems.com> <7041.1283154060@jrobl> <4C7BB8C1.40906@mudrichsystems.com> <87900623-DF1B-42EA-8E95-B7D2768D1122@oracle.com>
-In-Reply-To: <87900623-DF1B-42EA-8E95-B7D2768D1122@oracle.com>
-Content-Type: text/plain; charset=UTF-8; format=flowed
+Received: from mail-px0-f174.google.com ([209.85.212.174]:50556 "EHLO
+	mail-px0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751581Ab0HZSzn (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Aug 2010 14:55:43 -0400
+Received: by pxi10 with SMTP id 10so748401pxi.19
+        for <linux-nfs@vger.kernel.org>; Thu, 26 Aug 2010 11:55:43 -0700 (PDT)
+Message-ID: <4C76B8AD.3000109@uw.edu>
+Date: Thu, 26 Aug 2010 11:55:41 -0700
+From: Harry Edmon <harry@uw.edu>
+To: Christoph Hellwig <hch@infradead.org>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: Odd problem with Stale NFS file handle - NFS v3 server under
+ 2.6.35.x
+References: <4C7407D2.1040304@uw.edu> <20100825105320.GA17190@infradead.org> <4C75948D.4040400@uw.edu> <20100826104541.GA23693@infradead.org>
+In-Reply-To: <20100826104541.GA23693@infradead.org>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-  Am 30.08.2010 19:28, schrieb Chuck Lever:
-> On Aug 30, 2010, at 9:57 AM, David Mudrich wrote:
+Christoph Hellwig wrote:
+> On Wed, Aug 25, 2010 at 03:09:17PM -0700, Harry Edmon wrote:
+>   
+>> Christoph Hellwig wrote:
+>>     
+>>> Are you running xfs on this machine?  If so can you please try
+>>> this patch:
+>>>
+>>> 	http://git.kernel.org/?p=linux/kernel/git/dgc/xfsdev.git;a=commitdiff;h=4536f2ad8b330453d7ebec0746c4374eadd649b1
+>>>
+>>>       
+>> This looks very good so far.   I have been running it for 7 hours
+>> with no problems.  That is much longer than I was able to run before
+>> the patch.
+>>
+>> I notice that this patch (along with other xfs patches) has been
+>> submitted for 2.6.36-rc3.   Do you plan to try to get this into
+>> 2.6.35.5+ (2.6.35.4 is already in testing)?
+>>     
 >
->> Am 30.08.2010 09:41, schrieb sfjro@users.sourceforge.net:
->>> David Mudrich:
->>>> I attached the information you asked for. It seems difficult to have a
->>>> realistic test without AUFS, as it is mounted at the root directory.
->>> Thanx.
->>> It is difficult for me too.
->>> Although I am not confident, these commits (from latest mainline) are
->>> worth to try. If you have no way other than this, you should try.
->>>
->>>
->>> J. R. Okajima
->>>
->> Hello,
->>
->> I applied the patch, same issue.
->> I attached dmesg | tail -n 50.
->>
->> I just tried nfsvers=2 and it works.
->> The problem must be connected with nfs3 writeback.
-> Two-phase NFSv3 writes are not like most other file system implementations, so it's not surprising that AUFS might be tripped up.
+> The commit was Cc'ed to the stable team, so it's expect that they will
+> pick it up.
 >
-> A possible workaround: If you specify the "sync" mount option when the client mounts the NFS server, it will disable UNSTABLE NFSv3 writes.
-mount -o sync was enabled all the time.
->> A copy of this mail goes to the linux-nfs list, maybe they can help to further narrow this.
->>
->>
->> Regards
->>
->> David Mudrich
->> <log.txt>
+>   
+The problem has not occurred since I installed this patch.   Call this 
+problem solved.  Thanks again for all the help.
+
+-- 
+ Dr. Harry Edmon			E-MAIL: harry@uw.edu
+ 206-543-0547 FAX: 206-543-0308			harry@atmos.washington.edu
+ Director of IT, College of the Environment and
+ Director of Computing, Dept of Atmospheric Sciences
+ University of Washington, Box 351640, Seattle, WA 98195-1640
+
