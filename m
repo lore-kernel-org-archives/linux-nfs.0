@@ -1,48 +1,38 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from puma-mxisp.mxtelecom.com ([83.166.71.4]:53228 "EHLO
-	puma.mxtelecom.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752668Ab0HFMl4 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 6 Aug 2010 08:41:56 -0400
-Received: from wings.mxtelecom.com ([192.168.2.111])
-	by puma.mxtelecom.com with esmtp (Exim 4.66)
-	(envelope-from <matthew@mxtelecom.com>)
-	id 1OhLvS-0001Ss-OO
-	for linux-nfs@vger.kernel.org; Fri, 06 Aug 2010 13:21:26 +0100
-Message-ID: <4C5BFE47.8020905@mxtelecom.com>
-Date: Fri, 06 Aug 2010 13:21:27 +0100
-From: Matthew Hodgson <matthew@mxtelecom.com>
-To: linux-nfs@vger.kernel.org
-Subject: Tuning NFS client write pagecache
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Received: from fieldses.org ([174.143.236.118]:36649 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751536Ab0HZSzo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 26 Aug 2010 14:55:44 -0400
+Date: Thu, 26 Aug 2010 14:55:31 -0400
+To: Linus Torvalds <torvalds@linux-foundation.org>
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: nfsd bugfixes for 2.6.36
+Message-ID: <20100826185531.GA10636@fieldses.org>
+Content-Type: text/plain; charset=us-ascii
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Hi all,
+The following nfsd bugfixes are available in the for-2.6.36 branch of
+the git repository at:
 
-Is there any way to tune the linux NFSv3 client to prefer to write data 
-straight to an async-mounted server, rather than having large writes to 
-a file stack up in the local pagecache before being synced on close()?
+  git://linux-nfs.org/~bfields/linux.git for-2.6.36
 
-I have an application which (stupidly) expects system calls to return 
-fairly rapidly, otherwise an application-layer timeout occurs.  If I 
-write (say) 100MB of data to an NFS share with the app, the write()s 
-return almost immediately as the local pagecache is filled up - but then 
-close() blocks for several minutes as the data is synced to the server 
-over a slowish link.  Mounting the share as -o sync fixes this, as does 
-opening the file O_SYNC or O_DIRECT - but ideally I want to generally 
-encourage the client to flush a bit more aggressively to the server 
-without the performance hit of making every write explicitly synchronous.
+Please pull for 2.6.36.
 
-Is there a way to cap the size of pagecache that the NFS client uses?
+--b.
 
-This is currently on a 2.6.18 kernel (Centos 5.5), although I'm more 
-than happy to use something less prehistoric if that's what it takes.
+J. Bruce Fields (4):
+      nfsd4: bad BUG() in preprocess_stateid_op
+      nfsd4: typo fix in find_any_file
+      nfsd4: fix downgrade/lock logic
+      Merge commit 'v2.6.36-rc1' into HEAD
 
-M.
+Takashi Iwai (1):
+      nfsd: fix NULL dereference in nfsd_statfs()
 
--- 
-Matthew Hodgson
-Development Program Manager
-OpenMarket | www.openmarket.com/europe
-matthew.hodgson@openmarket.com
+ fs/nfsd/nfs4state.c |   26 +++++++++++++++-----------
+ fs/nfsd/state.h     |   14 +++++++-------
+ fs/nfsd/vfs.c       |   14 ++++++++------
+ 3 files changed, 30 insertions(+), 24 deletions(-)
