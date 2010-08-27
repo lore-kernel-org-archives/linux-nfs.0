@@ -1,159 +1,227 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:64680 "EHLO mx1.redhat.com"
+Received: from mail-out1.uio.no ([129.240.10.57]:53560 "EHLO mail-out1.uio.no"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754488Ab0HHPy3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 8 Aug 2010 11:54:29 -0400
-From: Valerie Aurora <vaurora@redhat.com>
-To: Alexander Viro <viro@zeniv.linux.org.uk>
-Cc: Miklos Szeredi <miklos@szeredi.hu>, Jan Blunck <jblunck@suse.de>,
-        Christoph Hellwig <hch@infradead.org>, linux-kernel@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, David Woodhouse <dwmw2@infradead.org>,
-        Valerie Aurora <vaurora@redhat.com>, linux-nfs@vger.kernel.org,
-        "J. Bruce Fields" <bfields@fieldses.org>, Neil Brown <neilb@suse.de>
-Subject: [PATCH 05/39] whiteout/NFSD: Don't return information about whiteouts to userspace
-Date: Sun,  8 Aug 2010 11:52:22 -0400
-Message-Id: <1281282776-5447-6-git-send-email-vaurora@redhat.com>
-In-Reply-To: <1281282776-5447-1-git-send-email-vaurora@redhat.com>
-References: <1281282776-5447-1-git-send-email-vaurora@redhat.com>
+	id S1754080Ab0H0Q4r (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 27 Aug 2010 12:56:47 -0400
+Subject: Re: Kernel BUG() in nfs_do_writepage (write.c:276)
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+To: David Mudrich <dmudrich@mudrichsystems.com>
+Cc: Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org
+In-Reply-To: <4C77CCE6.7090702@mudrichsystems.com>
+References: <4C767A1D.80103@mudrichsystems.com>
+	 <799B4575-8B95-4485-90E0-72E9781FE6AE@oracle.com>
+	 <4C76C85C.3010206@mudrichsystems.com>
+	 <5646E37E-C244-4AAA-ADAB-5509C3CBB532@oracle.com>
+	 <4C77CCE6.7090702@mudrichsystems.com>
+Content-Type: text/plain; charset="UTF-8"
+Date: Fri, 27 Aug 2010 09:56:40 -0700
+Message-ID: <1282928200.2655.5.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Jan Blunck <jblunck@suse.de>
+On Fri, 2010-08-27 at 16:34 +0200, David Mudrich wrote:
+> Am 26.08.2010 23:17, schrieb Chuck Lever:
+> > On Aug 26, 2010, at 4:02 PM, David Mudrich wrote:
+> >
+> >> Am 26.08.2010 19:36, schrieb Chuck Lever:
+> >>> On Aug 26, 2010, at 10:28 AM, David Mudrich wrote:
+> >>>
+> >>>> Hello,
+> >>>>
+> >>>> we often get Kernel BUG().
+> >>>>
+> >>>> dmesg:
+> >>>>
+> >>>> ------------[ cut here ]------------
+> >>>> kernel BUG at fs/nfs/write.c:276!
+> >>>> invalid opcode: 0000 [#2] SMP
+> >>>> last sysfs file: /sys/devices/virtio-pci/virtio1/block/vda/size
+> >>>> CPU 0
+> >>>> Modules linked in:
+> >>>>
+> >>>> Pid: 2098, comm: flush-0:17 Tainted: G      D     2.6.35.3.x86_64.aufs #4 /Bochs
+> >>>> RIP: 0010:[<ffffffff811b66f1>]  [<ffffffff811b66f1>] nfs_do_writepage+0x201/0x210
+> >>>> RSP: 0018:ffff88003c601a10  EFLAGS: 00010202
+> >>>> RAX: 0000000000000002 RBX: ffff880037951f80 RCX: 0000000000000001
+> >>>> RDX: 0000000000001fa0 RSI: 000000000000000b RDI: ffff880037a8cc00
+> >>>> RBP: ffffea00006286f8 R08: ffff88003c601920 R09: 0000000000000000
+> >>>> R10: 00000000ffffffff R11: ffff88001d4895c8 R12: 0000000000000000
+> >>>> R13: 0000000000000001 R14: ffff88003c601bb0 R15: ffff88003c601d40
+> >>>> FS:  0000000000000000(0000) GS:ffff880001800000(0000) knlGS:0000000000000000
+> >>>> CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
+> >>>> CR2: 0000000000841210 CR3: 000000003daa5000 CR4: 00000000000006b0
+> >>>> DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
+> >>>> DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
+> >>>> Process flush-0:17 (pid: 2098, threadinfo ffff88003c600000, task ffff880037afd230)
+> >>>> Stack:
+> >>>> ffff88001d409c50 ffffffff810a7dda ffffffff811ab70b ffff88003c601a58
+> >>>> <0>   0000000000000286 ffffea00006286f8 ffff88001d409c50 ffffffffffffffff
+> >>>> <0>   ffffea00006286f8 0000000000000000 ffff88003c601ae8 ffffffff811b6d26
+> >>>> Call Trace:
+> >>>> [<ffffffff810a7dda>] ? find_get_pages_tag+0x3a/0x110
+> >>>> [<ffffffff811ab70b>] ? nfs_refresh_inode+0x4b/0x70
+> >>>> [<ffffffff811b6d26>] ? nfs_writepages_callback+0x16/0x40
+> >>>> [<ffffffff810af4c1>] ? write_cache_pages+0x1a1/0x370
+> >>>> [<ffffffff811b6d10>] ? nfs_writepages_callback+0x0/0x40
+> >>>> [<ffffffff811b6c86>] ? nfs_writepages+0xa6/0x130
+> >>>> [<ffffffff811b8000>] ? nfs_flush_one+0x0/0xe0
+> >>>> [<ffffffff811013a9>] ? writeback_single_inode+0xe9/0x400
+> >>>> [<ffffffff81101b36>] ? writeback_sb_inodes+0x196/0x270
+> >>>> [<ffffffff810464f0>] ? pvclock_clocksource_read+0x50/0xc0
+> >>>> [<ffffffff8110245c>] ? writeback_inodes_wb+0x9c/0x1a0
+> >>>> [<ffffffff8110279b>] ? wb_writeback+0x23b/0x2a0
+> >>>> [<ffffffff810575ec>] ? finish_task_switch+0x3c/0xc0
+> >>>> [<ffffffff81102963>] ? wb_do_writeback+0x163/0x170
+> >>>> [<ffffffff81406e64>] ? schedule_timeout+0x164/0x230
+> >>>> [<ffffffff811029b7>] ? bdi_writeback_task+0x47/0x150
+> >>>> [<ffffffff81075484>] ? bit_waitqueue+0x14/0xb0
+> >>>> [<ffffffff81408765>] ? _raw_spin_lock+0x5/0x10
+> >>>> [<ffffffff810bbe1e>] ? bdi_start_fn+0x7e/0x100
+> >>>> [<ffffffff810bbda0>] ? bdi_start_fn+0x0/0x100
+> >>>> [<ffffffff810750ce>] ? kthread+0x8e/0xa0
+> >>>> [<ffffffff8102a384>] ? kernel_thread_helper+0x4/0x10
+> >>>> [<ffffffff81075040>] ? kthread+0x0/0xa0
+> >>>> [<ffffffff8102a380>] ? kernel_thread_helper+0x0/0x10
+> >>>> Code: ff ff 48 63 d8 e9 0c ff ff ff 0f 0b eb fe 0f 1f 40 00 48 83 c7 48 31 f6 e8 ad 4b f0 ff e9 69 ff ff ff 48 8b 45 10 e9 36 ff ff ff<0f>   0b eb fe 66 66 2e 0f 1f 84 00 00 00 00 00 48 83 ec 68 ba 14
+> >>>> RIP  [<ffffffff811b66f1>] nfs_do_writepage+0x201/0x210
+> >>>> RSP<ffff88003c601a10>
+> >>>> ---[ end trace 9a06d7f037e4429e ]---
+> >>>>
+> >>>> uname -r:
+> >>>>
+> >>>> 2.6.35.3.x86_64.aufs
+> >>>> --------------------------------------------------------
+> >>>>
+> >>>> It is a VM on qemu-kvm, 2GB RAM, 1 Virtual CPU,
+> >>>> Root filesystem is a copy-on-write AUFS, changes are written via NFS.
+> >>> At first blush, it looks like the guest's VM subsystem is asking the NFS client to write back a clean page.  Could be a misbehavior in AUFS?
+> >> Maybe - can you give me a hint how to track it down? Is there any control over writeback from outside NFS?
+> > If AUFS is actively supported, I would start by asking the AUFS maintainer about this.
+> >
+> > In general, writeback is controlled by the VM (virtual memory, not virtual machine), not by file systems.  The guest's VM subsystem will choose pages based on memory pressure and application activity.  In this case, "application activity" probably also includes AUFS.
+> >
+> > In addition, you've got a very complex stack of software here.  Something else you could do is try to reproduce this with a simpler software stack.  Take qemu and 389-ds out of the picture, if you can, and find a simple program running on an AUFS over NFS bare metal system that can trigger the problem.
+> >
+> >>> I confess I'm not familiar with AUFS; 2.6.35 doesn't list anything called AUFS in the File Systems menu, but I could be missing something.
+> >>>
+> >> It is a kernel patch maintained by Junjiro R. Okajima. It was rejected in favor of promised UnionMount, which is neglected for years now. Mr Okajima very actively maintaines the patches. Ubuntu live DVDs utilize AUFS, writing changes to tmpfs or a partition on USB stick.
+> >>>> This machine runs always into this error on startup, after installing Fedora 389 directory server.
+> >>> I'm a little confused by this.  Do you mean the BUG pops just after "service dirsrv start" during the guest's boot-up sequence?
+> >>>
+> >> Right, and it fails.
+> > This suggests it could be easy to reproduce the problem with a simpler set of software, since it happens so soon after the system boots.
+> >
+> > You could capture a network trace from the NFS server to find out which file is being accessed and written when the client dies.  That could help you identify the application and access pattern that is causing the problem.
+> >
+> >>>> We have seen this error also when memory was low, but this VM has plenty memory free.
+> >>> When memory is low, the VM is more likely to drive writebacks, so that could make this error occur more frequently.  But low memory is not the only reason to drive a writeback.
+> >>>
+> >>>> top:
+> >>>>
+> >>>> Tasks:  56 total,   1 running,  55 sleeping,   0 stopped,   0 zombie
+> >>>> Cpu(s):  0.4%us,  1.4%sy,  0.0%ni, 96.9%id,  1.0%wa,  0.0%hi,  0.2%si,  0.0%st
+> >>>> Mem:   2058768k total,   661556k used,  1397212k free,   157792k buffers
+> >>>> Swap:        0k total,        0k used,        0k free,    87844k cached
+> >>>>
+> >>>>   PID USER      PR  NI  VIRT  RES  SHR S %CPU %MEM    TIME+  COMMAND
+> >>>>     1 root      20   0 19284 1428 1160 S  0.0  0.1   0:00.39 init
+> >>>>     2 root      20   0     0    0    0 S  0.0  0.0   0:00.00 kthreadd
+> >>>>     3 root      20   0     0    0    0 S  0.0  0.0   0:00.00 ksoftirqd/0
+> >>>>     4 root      RT   0     0    0    0 S  0.0  0.0   0:00.00 migration/0
+> >>>>     5 root      20   0     0    0    0 S  0.0  0.0   0:00.01 events/0
+> >>>>     6 root      20   0     0    0    0 S  0.0  0.0   0:00.00 cpuset
+> >>>>     7 root      20   0     0    0    0 S  0.0  0.0   0:00.01 khelper
+> >>>>    12 root      20   0     0    0    0 S  0.0  0.0   0:00.00 async/mgr
+> >>>>   139 root      20   0     0    0    0 S  0.0  0.0   0:00.00 sync_supers
+> >>>>   141 root      20   0     0    0    0 S  0.0  0.0   0:00.00 bdi-default
+> >>>>   143 root      20   0     0    0    0 S  0.0  0.0   0:00.09 kblockd/0
+> >>>>   145 root      20   0     0    0    0 S  0.0  0.0   0:00.00 kacpid
+> >>>>   146 root      20   0     0    0    0 S  0.0  0.0   0:00.00 kacpi_notify
+> >>>>   147 root      20   0     0    0    0 S  0.0  0.0   0:00.00 kacpi_hotplug
+> >>>>   219 root      20   0     0    0    0 S  0.0  0.0   0:00.00 khubd
+> >>>>   222 root      20   0     0    0    0 S  0.0  0.0   0:00.00 kseriod
+> >>>>   246 root      20   0     0    0    0 S  0.0  0.0   0:00.19 rpciod/0
+> >>>>   247 root      20   0     0    0    0 S  0.0  0.0   0:00.00 kvm-irqfd-clean
+> >>>>   266 root      20   0     0    0    0 S  0.0  0.0   0:00.00 kswapd0
+> >>>>   267 root      20   0     0    0    0 S  0.0  0.0   0:00.00 aio/0
+> >>>>   268 root      20   0     0    0    0 S  0.0  0.0   0:00.05 nfsiod
+> >>>>   270 root      20   0     0    0    0 S  0.0  0.0   0:00.00 aufsd/0
+> >>>>   271 root      20   0     0    0    0 S  0.0  0.0   0:00.03 aufsd_pre/0
+> >>>>   272 root      20   0     0    0    0 S  0.0  0.0   0:00.00 crypto/0
+> >>>>   460 root      20   0     0    0    0 S  0.0  0.0   0:00.00 kpsmoused
+> >>>>   466 root      20   0     0    0    0 S  0.0  0.0   0:00.00 usbhid_resumer
+> >>>>   932 root      20   0     0    0    0 S  0.0  0.0   0:00.00 jbd2/vda1-8
+> >>>>   933 root      20   0     0    0    0 S  0.0  0.0   0:00.00 ext4-dio-unwrit
+> >>>> 1061 root      16  -4 11004 1056  320 S  0.0  0.1   0:00.02 udevd
+> >>>> 1837 root      20   0  9084  596  124 S  0.0  0.0   0:00.00 dhclient
+> >>>> 1966 root      20   0  238m 1420  852 S  0.0  0.1   0:00.04 rsyslogd
+> >>>> 1995 rpc       20   0 18916  856  612 S  0.0  0.0   0:00.02 rpcbind
+> >>>> 2025 rpcuser   20   0 23084 1128  844 S  0.0  0.1   0:00.00 rpc.statd
+> >>>> 2146 root      20   0  185m 3484 1572 S  0.0  0.2   0:00.03 httpd.worker
+> >>>> 2149 root      20   0  185m 2280  368 S  0.0  0.1   0:00.00 httpd.worker
+> >>>> 2150 LDAP      20   0  777m 3804 1168 S  0.0  0.2   0:00.00 httpd.worker
+> >>>> 2227 dbus      20   0 21464  908  624 S  0.0  0.0   0:00.00 dbus-daemon
+> >>>>
+> >>>> --------------------------------------------------------
+> >>>>
+> >>>> cat /proc/mounts:
+> >>>>
+> >>>> rootfs / rootfs rw 0 0
+> >>>> /proc /proc proc rw,relatime 0 0
+> >>>> /sys /sys sysfs rw,relatime 0 0
+> >>>> udev /dev tmpfs rw,relatime,mode=755 0 0
+> >>>> devpts /dev/pts devpts rw,relatime,gid=5,mode=620 0 0
+> >>>> tmpfs /dev/shm tmpfs rw,relatime 0 0
+> >>>> /dev/vda1 /dev/ro ext4 ro,relatime,barrier=1,data=ordered 0 0
+> >>>> aufs / aufs rw,sync,noatime,si=92ba86936973eb7c 0 0
+> >>>> 192.168.255.1:/dev/servers /dev/servers nfs rw,sync,noatime,vers=3,rsize=32768,wsize=32768,namlen=255,hard,nolock,proto=udp,timeo=11,retrans=20,sec=sys,mountaddr=192.168.255.1,mountvers=3,mountport=49222,mountproto=udp,addr=192.168.255.1 0 0
+> >>>> /proc/bus/usb /proc/bus/usb usbfs rw,relatime 0 0
+> >>>> none /proc/sys/fs/binfmt_misc binfmt_misc rw,relatime 0 0
+> >>>>
+> >>>> --------------------------------------------------------
+> >>>>
+> >>>> We are ready create VMs for testing.
+> >>>> If you need more info, please ask.
+> >>>>
+> >>>> Regards
+> >>>>
+> >>>> David Mudrich
+> >>>>
+> >>>> -- 
+> >>>> Mudrich Systems
+> >>>>
+> >>>> David Mudrich Geschäftsführung / Executive
+> >>>> Tel/Fax +49 3907 775646
+> >>>> E-Mail dmudrich@mudrichsystems.com
+> >>>> Web www.mudrichsystems.com<http://www.mudrichsystems.com>
+> >>>> Mudrich EDV David und Johannes Mudrich GbR
+> >>>> Bäckergang 1, 39638 Gardelegen, Germany
+> >>>> --
+> >>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> >>>> the body of a message to majordomo@vger.kernel.org
+> >>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> I found that the PG_CLEAR flag, which leads to the BUG() is set in 
+> nfs_mark_request_commit() (write.c: 451). Is this the reason?
 
-Userspace isn't ready for handling another file type, so silently drop
-whiteout directory entries before they leave the kernel.
+No. As Chuck said, the bug is that something is calling the writeback
+code on clean unstable pages.
 
-Signed-off-by: Jan Blunck <jblunck@suse.de>
-Signed-off-by: David Woodhouse <dwmw2@infradead.org>
-Signed-off-by: Valerie Aurora <vaurora@redhat.com>
-Cc: linux-nfs@vger.kernel.org
-Cc: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Neil Brown <neilb@suse.de>
----
- fs/compat.c       |    9 +++++++++
- fs/nfsd/nfs3xdr.c |    5 +++++
- fs/nfsd/nfs4xdr.c |    5 +++++
- fs/nfsd/nfsxdr.c  |    4 ++++
- fs/readdir.c      |    9 +++++++++
- 5 files changed, 32 insertions(+), 0 deletions(-)
+Normally, an nfs writeback page will go through 3 states:
 
-diff --git a/fs/compat.c b/fs/compat.c
-index 6490d21..7e7b3a4 100644
---- a/fs/compat.c
-+++ b/fs/compat.c
-@@ -912,6 +912,9 @@ static int compat_fillonedir(void *__buf, const char *name, int namlen,
- 	struct compat_old_linux_dirent __user *dirent;
- 	compat_ulong_t d_ino;
- 
-+	if (d_type == DT_WHT)
-+		return 0;
-+
- 	if (buf->result)
- 		return -EINVAL;
- 	d_ino = ino;
-@@ -983,6 +986,9 @@ static int compat_filldir(void *__buf, const char *name, int namlen,
- 	compat_ulong_t d_ino;
- 	int reclen = ALIGN(NAME_OFFSET(dirent) + namlen + 2, sizeof(compat_long_t));
- 
-+	if (d_type == DT_WHT)
-+		return 0;
-+
- 	buf->error = -EINVAL;	/* only used if we fail.. */
- 	if (reclen > buf->count)
- 		return -EINVAL;
-@@ -1072,6 +1078,9 @@ static int compat_filldir64(void * __buf, const char * name, int namlen, loff_t
- 	int reclen = ALIGN(jj + namlen + 1, sizeof(u64));
- 	u64 off;
- 
-+	if (d_type == DT_WHT)
-+		return 0;
-+
- 	buf->error = -EINVAL;	/* only used if we fail.. */
- 	if (reclen > buf->count)
- 		return -EINVAL;
-diff --git a/fs/nfsd/nfs3xdr.c b/fs/nfsd/nfs3xdr.c
-index 2a533a0..9b96f5a 100644
---- a/fs/nfsd/nfs3xdr.c
-+++ b/fs/nfsd/nfs3xdr.c
-@@ -885,6 +885,11 @@ encode_entry(struct readdir_cd *ccd, const char *name, int namlen,
- 	int		elen;		/* estimated entry length in words */
- 	int		num_entry_words = 0;	/* actual number of words */
- 
-+	if (d_type == DT_WHT) {
-+		cd->common.err = nfs_ok;
-+		return 0;
-+	}
-+
- 	if (cd->offset) {
- 		u64 offset64 = offset;
- 
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index ac17a70..fb67254 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -2279,6 +2279,11 @@ nfsd4_encode_dirent(void *ccdv, const char *name, int namlen,
- 		return 0;
- 	}
- 
-+	if (d_type == DT_WHT) {
-+		cd->common.err = nfs_ok;
-+		return 0;
-+	}
-+
- 	if (cd->offset)
- 		xdr_encode_hyper(cd->offset, (u64) offset);
- 
-diff --git a/fs/nfsd/nfsxdr.c b/fs/nfsd/nfsxdr.c
-index 4ce005d..0e57d4b 100644
---- a/fs/nfsd/nfsxdr.c
-+++ b/fs/nfsd/nfsxdr.c
-@@ -503,6 +503,10 @@ nfssvc_encode_entry(void *ccdv, const char *name,
- 			namlen, name, offset, ino);
- 	 */
- 
-+	if (d_type == DT_WHT) {
-+		cd->common.err = nfs_ok;
-+		return 0;
-+	}
- 	if (offset > ~((u32) 0)) {
- 		cd->common.err = nfserr_fbig;
- 		return -EINVAL;
-diff --git a/fs/readdir.c b/fs/readdir.c
-index 7723401..3a48491 100644
---- a/fs/readdir.c
-+++ b/fs/readdir.c
-@@ -77,6 +77,9 @@ static int fillonedir(void * __buf, const char * name, int namlen, loff_t offset
- 	struct old_linux_dirent __user * dirent;
- 	unsigned long d_ino;
- 
-+	if (d_type == DT_WHT)
-+		return 0;
-+
- 	if (buf->result)
- 		return -EINVAL;
- 	d_ino = ino;
-@@ -154,6 +157,9 @@ static int filldir(void * __buf, const char * name, int namlen, loff_t offset,
- 	unsigned long d_ino;
- 	int reclen = ALIGN(NAME_OFFSET(dirent) + namlen + 2, sizeof(long));
- 
-+	if (d_type == DT_WHT)
-+		return 0;
-+
- 	buf->error = -EINVAL;	/* only used if we fail.. */
- 	if (reclen > buf->count)
- 		return -EINVAL;
-@@ -239,6 +245,9 @@ static int filldir64(void * __buf, const char * name, int namlen, loff_t offset,
- 	struct getdents_callback64 * buf = (struct getdents_callback64 *) __buf;
- 	int reclen = ALIGN(NAME_OFFSET(dirent) + namlen + 1, sizeof(u64));
- 
-+	if (d_type == DT_WHT)
-+		return 0;
-+
- 	buf->error = -EINVAL;	/* only used if we fail.. */
- 	if (reclen > buf->count)
- 		return -EINVAL;
--- 
-1.6.3.3
+ 1) Dirty page - needs writeback
+ 2) clean unstable page (needs a call to commit)
+ 3) clean page - all done...
+
+while it is acceptable to redirty a clean unstable page, it needs to be
+done with care, and so the NFS code will actually check in
+nfs_try_to_update_request() whether or not the page is in the clean
+unstable state; if so it will take action to deal with that.
+
+IOW: If you are seeing this all the time with aufs (but not ordinary NFS
+mounts), then my guess is that aufs is doing something weird that
+circumvents the above checks.
+
+Cheers
+  Trond
 
