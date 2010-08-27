@@ -1,54 +1,47 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ww0-f44.google.com ([74.125.82.44]:53237 "EHLO
-	mail-ww0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751241Ab0HQTSO (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 17 Aug 2010 15:18:14 -0400
-In-Reply-To: <20100817190447.GA28049@fieldses.org>
-References: <AANLkTimnyXKahtjaFeSsgcq=xMy-pP3na1jidQhZ-dt2@mail.gmail.com>
-	<87aaolwar8.fsf@basil.nowhere.org>
-	<20100817174134.GA23176@fieldses.org>
-	<20100817182920.GD18161@basil.fritz.box>
-	<20100817190447.GA28049@fieldses.org>
-Date: Tue, 17 Aug 2010 12:18:12 -0700
-Message-ID: <AANLkTi=w1UA5ZZDBigpxMiL7A7DnbnQhLkg62JZpC6Ri@mail.gmail.com>
-Subject: Re: Proposal: Use hi-res clock for file timestamps
-From: "Patrick J. LoPresti" <lopresti@gmail.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Andi Kleen <andi@firstfloor.org>, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-kernel <linux-kernel@vger.kernel.org>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from jay.phy.QueensU.CA ([130.15.24.47]:57005 "EHLO
+	jay.phy.QueensU.CA" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752228Ab0H0Shr (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 27 Aug 2010 14:37:47 -0400
+Received: from jay.phy.QueensU.CA (localhost.localdomain [127.0.0.1])
+	by jay.phy.QueensU.CA (8.13.8/8.13.8) with ESMTP id o7RHmNOt029959
+	for <linux-nfs@vger.kernel.org>; Fri, 27 Aug 2010 13:48:28 -0400
+Received: (from peter@localhost)
+	by jay.phy.QueensU.CA (8.13.8/8.13.8/Submit) id o7RHmNJG029958
+	for linux-nfs@vger.kernel.org; Fri, 27 Aug 2010 13:48:23 -0400
+Date: Fri, 27 Aug 2010 13:48:23 -0400
+From: Peter Skensved <peter@jay.phy.QueensU.CA>
+To: linux-nfs@vger.kernel.org
+Subject: nfsd4_stateowners problem
+Message-ID: <20100827174823.GA26792@jay.phy.QueensU.CA>
+Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Tue, Aug 17, 2010 at 12:04 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
->
-> Right, I think that we probably have to give up ext3 as a lost cause.
-> But perhaps we could get away with a hack like this on filesystems that
-> can store nanoseconds.
 
-I do not think so.
+  I'm looking for pointers and information on how to debug and annoying NFS
+problem that has been bugging us for a long time. The problem is that the number
+of nfsd4_stateowners keeps increasing until all low memory is exhausted and
+the oom-killer is invoked. The severity of the problem has changed over time
+with different kernels. At present it takes about 5 weeks for the size to
+grow to 500 Mb  ( kernel 2.6.18-194.8.1.el5PAE, CentOS5.5 ). Restarting 
+nfs clears up the problem but it is definitely not the preferred solution. 
 
-The problem with "increment mtime by a nanosecond when necessary" is
-that timestamps can wind up out of order.  As in:
+ The increase in the number of nfsd4_stateowners appears to happen in bursts.
+Nothing happens for long times and I suddenly see a burst. I've tried ( briefly )
+to turn on all logging in rpcdebug and have run tcpdump while watching slabtop
+but there is too much output to be able to see if there is anything strange
+happening. So - my question is : how do I limit the diagnostic output to what
+is relevant ? What are the modules and flags that I should be looking at ?
+Any other info I should bemonitoring ? /proc/fs/nfsfs ?
 
-1) Do a bunch of operations on file A
-2) Do one operation on file B
+                                                        peter
+----
 
-Imagine each operation on A incrementing its timestamp by a nanosecond
-"just because".  If all of these operations happen in less than 4 ms,
-you can wind up with the timestamp on B being EARLIER than the
-timestamp on A.  That is a big no-no (think "make" or anything else
-relying on timestamps for relative times).
+Peter Skensved                          Email : peter@SNO.Phy.QueensU.CA
+Dept. of Physics,
+Queen's University,
+Kingston, Ontario,
+Canada
 
-If you can prove that the last modification on B happens after the
-last modification on A, then it is very bad for the mtime on B to be
-earlier than the mtime on A.  I guarantee that will break things in
-the real world.
-
-As you say, high-resolution timestamps "will extend the useful
-lifetime of NFSv3 by quite a bit".  They are also a good idea in
-principle, IMO.  Correctness is almost always more important than
-performance.
-
- - Pat
