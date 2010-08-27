@@ -1,38 +1,62 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from lvps87-230-0-242.dedicated.hosteurope.de ([87.230.0.242]:46960
-	"EHLO lvps87-230-0-242.dedicated.hosteurope.de" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751562Ab0HRF3h (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 18 Aug 2010 01:29:37 -0400
-Date: Wed, 18 Aug 2010 07:29:28 +0200
-From: Michael Guntsche <mike@it-loops.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: linux-nfs <linux-nfs@vger.kernel.org>
-Subject: Re: Page alloc error on nfs4 via automount
-Message-ID: <20100818052928.GA17829@gibson.comsick.at>
-References: <20100816061644.GA2401@gibson.comsick.at>
- <1282087292.18385.34.camel@heimdal.trondhjem.org>
+Received: from fieldses.org ([174.143.236.118]:38451 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751699Ab0H0VGm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 27 Aug 2010 17:06:42 -0400
+Date: Fri, 27 Aug 2010 17:06:26 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Artem.Bityutskiy@nokia.com
+Cc: bjschuma@netapp.com, jaxboe@fusionio.com, linux-nfs@vger.kernel.org,
+        trond@netapp.com, hch@lst.de
+Subject: Re: hang in writeback code on nfsv4 mount
+Message-ID: <20100827210626.GB27694@fieldses.org>
+References: <20100825023425.GA24591@fieldses.org>
+ <1282889595.2763.14.camel@localhost>
+ <1282901780.12016.54.camel@localhost>
+ <4C77B873.8010306@netapp.com>
+ <20100827160912.GA18790@fieldses.org>
+ <10B234E0D3A1CA469E00963BF106CA392D0DB78354@NOK-EUMSG-02.mgdnok.nokia.com>
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1282087292.18385.34.camel@heimdal.trondhjem.org>
+In-Reply-To: <10B234E0D3A1CA469E00963BF106CA392D0DB78354@NOK-EUMSG-02.mgdnok.nokia.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 17 Aug 10 19:21, Trond Myklebust wrote:
-> It looks like a regression in the Linux kernel memory management.
-> 
-> I agree that order 4 allocations are always going to be unreliable, but
-> if it was consistently working before, and is now consistently not
-> working, then something must have changed, and I know that part of the
-> NFS code has not changed...
+On Fri, Aug 27, 2010 at 06:17:36PM +0200, Artem.Bityutskiy@nokia.com wrote:
+> I need to look more. But so far I do not really understand what could make kthread_stop() wait
+> forever. I looked into the code, and thought may be barriers are missing there, but I is unlikely
+> this generic type of code would have bugs.
 
-Hello,
+Hm, is the way you go to sleep in the writeback thread safe?  Surely
+there's a race like:
 
-Just to clarify this. The setup with automount adn NFS4 is new so I
-while the NFS3 setup is working for years now. I never experience this
-with NFS3 so it may be a NFS4 only problem. As you can see from the
-mails I am not the only one having the problem with version 4 in this
-regard. I think setups with automount and version 3 are much more common
-so a regression there would have been noticed a lot faster.
+while(!kthread_should_stop()) {
 
-Kind regards,
-Michael
+				kthread_stop():
+					kthread->should_stop = 1;
+					wake_up_process(k);
+					wait_for_completion(&kthread->exited);
+
+	/* oops, lose the wake_up here: */
+	set_current_state(TASK_INTERRUPTIBLE);
+	...
+	/* sleep forever: */
+	schedule();
+
+Maybe the following?
+
+--b.
+
+diff --git a/fs/fs-writeback.c b/fs/fs-writeback.c
+index 7d9d06b..ea76550 100644
+--- a/fs/fs-writeback.c
++++ b/fs/fs-writeback.c
+@@ -808,7 +808,7 @@ int bdi_writeback_thread(void *data)
+ 			wb->last_active = jiffies;
+ 
+ 		set_current_state(TASK_INTERRUPTIBLE);
+-		if (!list_empty(&bdi->work_list)) {
++		if (!list_empty(&bdi->work_list) || kthread_should_stop()) {
+ 			__set_current_state(TASK_RUNNING);
+ 			continue;
+ 		}
