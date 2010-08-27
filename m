@@ -1,61 +1,39 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:50613 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:26779 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753736Ab0HMVcI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 13 Aug 2010 17:32:08 -0400
-From: andros@netapp.com
-To: bhalevy@panasas.com
-Cc: linux-nfs@vger.kernel.org, Dean Hildebrand <seattleplus@gmail.com>
-Subject: [PATCH 06/50] pnfs_submit: introduce include/linux/nfs4_pnfs.h
-Date: Fri, 13 Aug 2010 17:31:18 -0400
-Message-Id: <1281735122-1496-7-git-send-email-andros@netapp.com>
-In-Reply-To: <1281735122-1496-6-git-send-email-andros@netapp.com>
-References: <1281735122-1496-1-git-send-email-andros@netapp.com>
- <1281735122-1496-2-git-send-email-andros@netapp.com>
- <1281735122-1496-3-git-send-email-andros@netapp.com>
- <1281735122-1496-4-git-send-email-andros@netapp.com>
- <1281735122-1496-5-git-send-email-andros@netapp.com>
- <1281735122-1496-6-git-send-email-andros@netapp.com>
+	id S1752708Ab0H0NHm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 27 Aug 2010 09:07:42 -0400
+Message-ID: <4C77B873.8010306@netapp.com>
+Date: Fri, 27 Aug 2010 09:06:59 -0400
+From: Bryan Schumaker <bjschuma@netapp.com>
+To: Artem.Bityutskiy@nokia.com
+CC: "J. Bruce Fields" <bfields@fieldses.org>, Jens Axboe <jaxboe@fusionio.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Trond Myklebust <trond@netapp.com>, Christoph Hellwig <hch@lst.de>
+Subject: Re: hang in writeback code on nfsv4 mount
+References: <20100825023425.GA24591@fieldses.org>	 <1282889595.2763.14.camel@localhost> <1282901780.12016.54.camel@localhost>
+In-Reply-To: <1282901780.12016.54.camel@localhost>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: The pNFS Team <linux-nfs@vger.kernel.org>
+ The patch fixed my unmount hang.
 
-Common data structures needed by the pnfs client and pnfs layout driver.
+-Bryan
 
-[extraced from pnfsd: Initial pNFS server implementation.]
-Signed-off-by: Dean Hildebrand <seattleplus@gmail.com>
-[pnfs: nfs4_pnfs.h remove CONFIG_PNFS]
-[removed CONFIG_NFS_V4_1 altogether, always define structs]
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
----
- include/linux/nfs4_pnfs.h |   15 +++++++++++++++
- 1 files changed, 15 insertions(+), 0 deletions(-)
- create mode 100644 include/linux/nfs4_pnfs.h
-
-diff --git a/include/linux/nfs4_pnfs.h b/include/linux/nfs4_pnfs.h
-new file mode 100644
-index 0000000..04bdd10
---- /dev/null
-+++ b/include/linux/nfs4_pnfs.h
-@@ -0,0 +1,15 @@
-+/*
-+ *  include/linux/nfs4_pnfs.h
-+ *
-+ *  Common data structures needed by the pnfs client and pnfs layout driver.
-+ *
-+ *  Copyright (c) 2002 The Regents of the University of Michigan.
-+ *  All rights reserved.
-+ *
-+ *  Dean Hildebrand   <dhildebz@eecs.umich.edu>
-+ */
-+
-+#ifndef LINUX_NFS4_PNFS_H
-+#define LINUX_NFS4_PNFS_H
-+
-+#endif /* LINUX_NFS4_PNFS_H */
--- 
-1.6.2.5
+On 08/27/2010 05:36 AM, Artem Bityutskiy wrote:
+> On Fri, 2010-08-27 at 09:13 +0300, Artem Bityutskiy wrote:
+>> From aa87b87c8555151bb8e083d0dba3fd68c5b0d811 Mon Sep 17 00:00:00 2001
+>> From: Artem Bityutskiy <Artem.Bityutskiy@nokia.com>
+>> Date: Fri, 27 Aug 2010 08:21:18 +0300
+>> Subject: [PATCH] writeback: do not lose wakeup events when forking bdi threads
+> Bruce, FYI, with this patch I still cannot reproduce the issue, but
+> usually it happens faster. Again, too bad I cannot leave the test
+> running for days, because we are relocating and I have to pack all my
+> stuff. But when I come back from the conference, if the issue is still
+> there, I'll continue.
+>
+> Please, try the patch I sent.
+>
 
