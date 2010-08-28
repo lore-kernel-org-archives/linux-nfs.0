@@ -1,51 +1,36 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:32195 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750720Ab0HaS7w (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 31 Aug 2010 14:59:52 -0400
-Message-ID: <4C7D5117.6050407@RedHat.com>
-Date: Tue, 31 Aug 2010 14:59:35 -0400
-From: Steve Dickson <SteveD@redhat.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Jeff Layton <jlayton@redhat.com>, linux-nfs@vger.kernel.org,
-        chuck.lever@oracle.com
-Subject: Re: [PATCH] rpc.nfsd: mount up nfsdfs is it doesn't appear to be
- mounted yet
-References: <4C7CF499.5090003@RedHat.com> <20100831084323.02a1abf5@corrin.poochiereds.net> <4C7D1694.6000708@RedHat.com> <20100831111008.157618f4@corrin.poochiereds.net> <20100831151342.GA3071@fieldses.org> <4C7D1D3B.1030607@RedHat.com> <20100831155128.GB3071@fieldses.org> <4C7D2A20.1040806@RedHat.com> <20100831161547.GD3071@fieldses.org> <4C7D3976.8070209@RedHat.com> <20100831180745.GA11361@fieldses.org>
-In-Reply-To: <20100831180745.GA11361@fieldses.org>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from smtp.nokia.com ([192.100.105.134]:46051 "EHLO
+	mgw-mx09.nokia.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751305Ab0H1BUS convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 27 Aug 2010 21:20:18 -0400
+From: <Artem.Bityutskiy@nokia.com>
+To: <bfields@fieldses.org>
+CC: <bjschuma@netapp.com>, <jaxboe@fusionio.com>, <linux-nfs@vger.kernel.org>,
+        <trond@netapp.com>, <hch@lst.de>
+Date: Sat, 28 Aug 2010 03:17:41 +0200
+Subject: RE: [PATCH] Fix lost wake-up shutting down writeback thread
+Message-ID: <10B234E0D3A1CA469E00963BF106CA392D0DB78356@NOK-EUMSG-02.mgdnok.nokia.com>
+References: <20100825023425.GA24591@fieldses.org>
+ <1282889595.2763.14.camel@localhost> <1282901780.12016.54.camel@localhost>
+ <4C77B873.8010306@netapp.com> <20100827160912.GA18790@fieldses.org>
+ <10B234E0D3A1CA469E00963BF106CA392D0DB78354@NOK-EUMSG-02.mgdnok.nokia.com>
+ <20100827210626.GB27694@fieldses.org>,<20100827212842.GC27694@fieldses.org>
+In-Reply-To: <20100827212842.GC27694@fieldses.org>
+Content-Type: text/plain; charset="us-ascii"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-
-
-On 08/31/2010 02:07 PM, J. Bruce Fields wrote:
-> On Tue, Aug 31, 2010 at 01:18:46PM -0400, Steve Dickson wrote:
->> I really don't think we need to rip the guts out of 
->> mountd and exportfs just to remove this one nfsctl() in rpc.nfsd.
+> From: J. Bruce Fields <bfields@redhat.com>
 > 
-> I agree.
-> 
->>> Dropping backwards compatibility may be a reasonable thing to do, but
->>> it's something that we should be very clear about, and that we should
->>> put in a patch that does that and nothing else.
->> So you are talking about doing a complete rewrite of mountd and exportfs
->> just to take out that one call from rpc.nfsd... I just don't see the
->> justification... If we are going to do that, let just think about rewriting
->> all the tools to make the more v4 friendly... something we talked about
->> at the last bakeathon...
-> 
-> All I'm asking is that any patch which disables support for older
-> kernels (by ceasing to do the nfsctl) be a *separate* patch that clearly
-> states which kernels we're dropping support for.
-Fine. The taking out the nfsclt() and/or the adding of the error check
-on the mount (basically causing nfsclt() to never be called) will be in 
-a separate clearly documented patch.....
+> Setting the task state here may cause us to miss the wake up from
+> kthread_stop(), so we need to recheck kthread_should_stop() or risk
+> sleeping forever in the following schedule().
 
-> 
-> Once we decide to drop such support (if we do), that might allow us to
-> rip out a lot of additional code.  That can be done later.
-I agree... 
+Oh yeah, if my sleepy brain does not lie me, that's it! Thanks a lot and sorry
+for troubles. I believe the other patch I sent is also a valid bug fix, but fixes a
+different issue.
 
-steved.
+Acked-by: Artem Bityutskiy <Artem.Bityutskiy@nokia.com>
+
+Artem.
