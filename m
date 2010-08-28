@@ -1,105 +1,123 @@
-From: Jens Axboe <jaxboe@fusionio.com>
-Subject: Re: [PATCH] Fix lost wake-up shutting down writeback thread
-Date: Sat, 28 Aug 2010 08:50:48 +0200
-Message-ID: <4C78B1C8.10909@fusionio.com>
-References: <20100825023425.GA24591@fieldses.org> <1282889595.2763.14.camel@localhost> <1282901780.12016.54.camel@localhost> <4C77B873.8010306@netapp.com> <20100827160912.GA18790@fieldses.org> <10B234E0D3A1CA469E00963BF106CA392D0DB78354@NOK-EUMSG-02.mgdnok.nokia.com> <20100827210626.GB27694@fieldses.org> <20100827212842.GC27694@fieldses.org>
+From: Neil Brown <neilb@suse.de>
+Subject: Re: [PATCH] rpc.nfsd: mount up nfsdfs is it doesn't appear to be
+ mounted yet
+Date: Sun, 29 Aug 2010 08:29:49 +1000
+Message-ID: <20100829082949.376206ba@notabene>
+References: <1282995314-8317-1-git-send-email-jlayton@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: "Artem.Bityutskiy@nokia.com" <Artem.Bityutskiy@nokia.com>,
-	"bjschuma@netapp.com" <bjschuma@netapp.com>,
-	"linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-	"trond@netapp.com" <trond@netapp.com>, "hch@lst.de" <hch@lst.de>
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Content-Type: text/plain; charset=US-ASCII
+Cc: linux-nfs@vger.kernel.org, bfields@fieldses.org,
+	chuck.lever@oracle.com, steved@redhat.com
+To: Jeff Layton <jlayton@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from 0122700014.0.fullrate.dk ([95.166.99.235]:44375 "EHLO kernel.dk"
+Received: from cantor2.suse.de ([195.135.220.15]:51730 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751720Ab0H1Guq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 28 Aug 2010 02:50:46 -0400
-In-Reply-To: <20100827212842.GC27694@fieldses.org>
+	id S1751444Ab0H1W36 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 28 Aug 2010 18:29:58 -0400
+In-Reply-To: <1282995314-8317-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 08/27/2010 11:28 PM, J. Bruce Fields wrote:
-> From: J. Bruce Fields <bfields@redhat.com>
+On Sat, 28 Aug 2010 07:35:14 -0400
+Jeff Layton <jlayton@redhat.com> wrote:
+
+> There's a bit of a chicken and egg problem when nfsd is run the first
+> time. On Fedora/RHEL at least, /proc/fs/nfsd is mounted up whenever nfsd
+> is plugged in via a modprobe.conf "install" directive.
 > 
-> Setting the task state here may cause us to miss the wake up from
-> kthread_stop(), so we need to recheck kthread_should_stop() or risk
-> sleeping forever in the following schedule().
+> If someone runs rpc.nfsd without plugging in nfsd.ko first,
+> /proc/fs/nfsd won't be mounted and rpc.nfsd will end up using the legacy
+> nfsctl interface. After that, nfsd will be plugged in and subsequent
+> rpc.nfsd invocations will use that instead.
 > 
-> Symptom was an indefinite hang on an NFSv4 mount.  (NFSv4 may create
-> multiple mounts in a temporary namespace while traversing the mount
-> path, and since the temporary namespace is immediately destroyed, it may
-> end up destroying a mount very soon after it was created, possibly
-> making this race more likely.)
+> This is a problem as some nfsd command-line options are ignored when the
+> legacy interface is used. It'll also be a problem for people who want
+> IPv6 enabled servers. The upshot is that we really don't want to use the
+> legacy interface unless there is no other option.
 > 
-> INFO: task mount.nfs4:4314 blocked for more than 120 seconds.
-> "echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables this message.
-> mount.nfs4    D 0000000000000000  2880  4314   4313 0x00000000
->  ffff88001ed6da28 0000000000000046 ffff88001ed6dfd8 ffff88001ed6dfd8
->  ffff88001ed6c000 ffff88001ed6c000 ffff88001ed6c000 ffff88001e5003a0
->  ffff88001ed6dfd8 ffff88001e5003a8 ffff88001ed6c000 ffff88001ed6dfd8
-> Call Trace:
->  [<ffffffff8196090d>] schedule_timeout+0x1cd/0x2e0
->  [<ffffffff8106a31c>] ? mark_held_locks+0x6c/0xa0
->  [<ffffffff819639a0>] ? _raw_spin_unlock_irq+0x30/0x60
->  [<ffffffff8106a5fd>] ? trace_hardirqs_on_caller+0x14d/0x190
->  [<ffffffff819671fe>] ? sub_preempt_count+0xe/0xd0
->  [<ffffffff8195fc80>] wait_for_common+0x120/0x190
->  [<ffffffff81033c70>] ? default_wake_function+0x0/0x20
->  [<ffffffff8195fdcd>] wait_for_completion+0x1d/0x20
->  [<ffffffff810595fa>] kthread_stop+0x4a/0x150
->  [<ffffffff81061a60>] ? thaw_process+0x70/0x80
->  [<ffffffff810cc68a>] bdi_unregister+0x10a/0x1a0
->  [<ffffffff81229dc9>] nfs_put_super+0x19/0x20
->  [<ffffffff810ee8c4>] generic_shutdown_super+0x54/0xe0
->  [<ffffffff810ee9b6>] kill_anon_super+0x16/0x60
->  [<ffffffff8122d3b9>] nfs4_kill_super+0x39/0x90
->  [<ffffffff810eda45>] deactivate_locked_super+0x45/0x60
->  [<ffffffff810edfb9>] deactivate_super+0x49/0x70
->  [<ffffffff81108294>] mntput_no_expire+0x84/0xe0
->  [<ffffffff811084ef>] release_mounts+0x9f/0xc0
->  [<ffffffff81108575>] put_mnt_ns+0x65/0x80
->  [<ffffffff8122cc56>] nfs_follow_remote_path+0x1e6/0x420
->  [<ffffffff8122cfbf>] nfs4_try_mount+0x6f/0xd0
->  [<ffffffff8122d0c2>] nfs4_get_sb+0xa2/0x360
->  [<ffffffff810edcb8>] vfs_kern_mount+0x88/0x1f0
->  [<ffffffff810ede92>] do_kern_mount+0x52/0x130
->  [<ffffffff81963d9a>] ? _lock_kernel+0x6a/0x170
->  [<ffffffff81108e9e>] do_mount+0x26e/0x7f0
->  [<ffffffff81106b3a>] ? copy_mount_options+0xea/0x190
->  [<ffffffff811094b8>] sys_mount+0x98/0xf0
->  [<ffffffff810024d8>] system_call_fastpath+0x16/0x1b
-> 1 lock held by mount.nfs4/4314:
->  #0:  (&type->s_umount_key#24){+.+...}, at: [<ffffffff810edfb1>] deactivate_super+0x41/0x70
+> To avoid this situation, have rpc.nfsd check to see if the "threads"
+> file is already present. If it's not, then make an attempt to mount
+> /proc/fs/nfsd.  This is a "best-effort" sort of thing, however so we
+> just ignore the return code from the mount attempt and fall back to
+> using nfsctl() if it fails.
 > 
-> Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+> Full disclosure: I'm not 100% thrilled with this patch. It seems ugly
+> and kludgey, but I don't see a better way to handle this problem.
+> Suggestions welcome.
+> 
+> Signed-off-by: Jeff Layton <jlayton@redhat.com>
 > ---
->  fs/fs-writeback.c |    2 +-
->  1 files changed, 1 insertions(+), 1 deletions(-)
+>  utils/nfsd/nfsd.c   |    3 +++
+>  utils/nfsd/nfssvc.c |   21 +++++++++++++++++++++
+>  utils/nfsd/nfssvc.h |    1 +
+>  3 files changed, 25 insertions(+), 0 deletions(-)
 > 
-> On Fri, Aug 27, 2010 at 05:06:26PM -0400, J. Bruce Fields wrote:
->> Maybe the following?
-> 
-> I confirmed that my hang does go away after doing this.
-> 
-> Please apply if you think this makes sense....
-> 
-> diff --git a/fs/fs-writeback.c b/fs/fs-writeback.c
-> index 7d9d06b..81e086d 100644
-> --- a/fs/fs-writeback.c
-> +++ b/fs/fs-writeback.c
-> @@ -808,7 +808,7 @@ int bdi_writeback_thread(void *data)
->  			wb->last_active = jiffies;
+> diff --git a/utils/nfsd/nfsd.c b/utils/nfsd/nfsd.c
+> index 1cda1e5..6bbf697 100644
+> --- a/utils/nfsd/nfsd.c
+> +++ b/utils/nfsd/nfsd.c
+> @@ -246,6 +246,9 @@ main(int argc, char **argv)
+>  		exit(1);
+>  	}
 >  
->  		set_current_state(TASK_INTERRUPTIBLE);
-> -		if (!list_empty(&bdi->work_list)) {
-> +		if (!list_empty(&bdi->work_list) || kthread_should_stop()) {
->  			__set_current_state(TASK_RUNNING);
->  			continue;
->  		}
-
-Thanks Bruce, I've applied this as well.
-
--- 
-Jens Axboe
+> +	/* make sure nfsdfs is mounted if it's available */
+> +	nfssvc_mount_nfsdfs();
+> +
+>  	/* can only change number of threads if nfsd is already up */
+>  	if (nfssvc_inuse()) {
+>  		socket_up = 1;
+> diff --git a/utils/nfsd/nfssvc.c b/utils/nfsd/nfssvc.c
+> index 34c67ca..9ea3a1f 100644
+> --- a/utils/nfsd/nfssvc.c
+> +++ b/utils/nfsd/nfssvc.c
+> @@ -15,9 +15,11 @@
+>  #include <netdb.h>
+>  #include <netinet/in.h>
+>  #include <arpa/inet.h>
+> +#include <sys/stat.h>
+>  #include <unistd.h>
+>  #include <fcntl.h>
+>  #include <errno.h>
+> +#include <stdlib.h>
+>  
+>  #include "nfslib.h"
+>  #include "xlog.h"
+> @@ -44,6 +46,25 @@
+>  char buf[128];
+>  
+>  /*
+> + * Using the "new" interfaces for nfsd requires that /proc/fs/nfsd is
+> + * actually mounted. Make an attempt to mount it here if it doesn't appear
+> + * to be. If the mount attempt fails, no big deal -- fall back to using nfsctl
+> + * instead.
+> + */
+> +void
+> +nfssvc_mount_nfsdfs(void)
+> +{
+> +	int err;
+> +	struct stat statbuf;
+> +
+> +	err = stat(NFSD_THREAD_FILE, &statbuf);
+> +	if (err == 0 || errno != ENOENT)
+> +		return;
+> +
+> +	system("/bin/mount -t nfsd nfsd /proc/fs/nfsd >/dev/null 2>&1");
+> +}
+> +
+> +/*
+>   * Are there already sockets configured? If not, then it is safe to try to
+>   * open some and pass them through.
+>   *
+> diff --git a/utils/nfsd/nfssvc.h b/utils/nfsd/nfssvc.h
+> index 0c69bd6..ff81165 100644
+> --- a/utils/nfsd/nfssvc.h
+> +++ b/utils/nfsd/nfssvc.h
+> @@ -20,6 +20,7 @@
+>   *
+>   */
+>  
+> +void	nfssvc_mount_nfsdfs(void);
+>  int	nfssvc_inuse(void);
+>  int	nfssvc_set_sockets(const int family, const unsigned int protobits,
+>  			   const char *host, const char *port);
 
