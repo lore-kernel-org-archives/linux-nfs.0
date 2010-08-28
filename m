@@ -1,37 +1,70 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([18.85.46.34]:60178 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755534Ab0HaVuY (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 31 Aug 2010 17:50:24 -0400
-Date: Tue, 31 Aug 2010 17:50:22 -0400
-From: Christoph Hellwig <hch@infradead.org>
-To: Fred Isaman <iisaman@citi.umich.edu>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org,
-        nfsv4@linux-nfs.org
-Subject: Re: Linux pNFS status meeting 08/26
-Message-ID: <20100831215022.GA27102@infradead.org>
-References: <OFED8B9B7B.45CD28BB-ON8825777C.005B88F3-8825777C.005BC3F5@us.ibm.com>
- <OF1477B0A3.3F72D2BF-ON88257783.005FBF98-88257783.005FDE25@us.ibm.com>
- <OFF2C1BE64.0E5C418F-ON8825778B.001353F9-8825778B.00136C6A@us.ibm.com>
- <4C761A61.2070203@panasas.com>
- <273FE88A07F5D445824060902F7003440C5CDD52@SACMVEXC1-PRD.hq.netapp.com>
- <20100831162648.GF3071@fieldses.org>
- <AANLkTi=85p8qm-_RKRH60CZBJPMp5g_Qj2NHvHcDaw1S@mail.gmail.com>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <AANLkTi=85p8qm-_RKRH60CZBJPMp5g_Qj2NHvHcDaw1S@mail.gmail.com>
+Received: from cantor2.suse.de ([195.135.220.15]:51855 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752766Ab0H1WjD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 28 Aug 2010 18:39:03 -0400
+Date: Sun, 29 Aug 2010 08:38:53 +1000
+From: Neil Brown <neilb@suse.de>
+To: Jeff Layton <jlayton@redhat.com>
+Cc: linux-nfs@vger.kernel.org, bfields@fieldses.org, chuck.lever@oracle.com,
+        steved@redhat.com
+Subject: Re: [PATCH] rpc.nfsd: mount up nfsdfs is it doesn't appear to be
+ mounted yet
+Message-ID: <20100829083853.4e95d2ee@notabene>
+In-Reply-To: <1282995314-8317-1-git-send-email-jlayton@redhat.com>
+References: <1282995314-8317-1-git-send-email-jlayton@redhat.com>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Tue, Aug 31, 2010 at 10:51:11AM -0700, Fred Isaman wrote:
-> Note that the not much touches the common code, especially in our
-> first submission, so it will be a fairly small patch, which we will
-> not be adverse to breaking up at reviewers request.  Right now we are
-> trying to accommodate Cristoph's request for larger patches combined
-> with Trond's request for small, easy to review patches for anything
-> that touches common code.
 
-I'm not Cristoph, but for changes to generic code anywhere in the kernel
-small patches are indeed a requirement, adn they should do exactly one
-thing.  Adding new code is a different issue from that.
+(I might have just sent an empty reply to this - sorry 'bout that).
+
+On Sat, 28 Aug 2010 07:35:14 -0400
+Jeff Layton <jlayton@redhat.com> wrote:
+
+> There's a bit of a chicken and egg problem when nfsd is run the first
+> time. On Fedora/RHEL at least, /proc/fs/nfsd is mounted up whenever nfsd
+> is plugged in via a modprobe.conf "install" directive.
+> 
+> If someone runs rpc.nfsd without plugging in nfsd.ko first,
+> /proc/fs/nfsd won't be mounted and rpc.nfsd will end up using the legacy
+> nfsctl interface. After that, nfsd will be plugged in and subsequent
+> rpc.nfsd invocations will use that instead.
+> 
+> This is a problem as some nfsd command-line options are ignored when the
+> legacy interface is used. It'll also be a problem for people who want
+> IPv6 enabled servers. The upshot is that we really don't want to use the
+> legacy interface unless there is no other option.
+> 
+> To avoid this situation, have rpc.nfsd check to see if the "threads"
+> file is already present. If it's not, then make an attempt to mount
+> /proc/fs/nfsd.  This is a "best-effort" sort of thing, however so we
+> just ignore the return code from the mount attempt and fall back to
+> using nfsctl() if it fails.
+> 
+> Full disclosure: I'm not 100% thrilled with this patch. It seems ugly
+> and kludgey, but I don't see a better way to handle this problem.
+> Suggestions welcome.
+
+I don't think it is all that bad.  It is a shame you have to use system()
+rather than just calling mount() directly but I guess we need that to
+update /etc/mtab.
+
+Suggestions:
+
+ - just don't do that.  Use /etc/init.d/nfsserver start (or whatever the
+   distro uses).
+ - Make /proc/fs/nfsd and auto-mount point.  That sounds like the systemd
+   approach.
+ - Print a warning message if the kernel is newer than 2.6 and nfsd-fs isn't
+   mounted - see "don't do that" above.
+ - If nfsdfs isn't mounted, try a no-op via the nfsd syscall, like
+   NFSCTL_GETFD with invalid parameters.  This will trigger a mod-probe which
+   will trigger the mount.
+   Then check for the mounted filesystem again.  Yes, I think I like that one
+   the best.
+
+NeilBrown
 
