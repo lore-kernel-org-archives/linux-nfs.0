@@ -1,68 +1,118 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:50613 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:31770 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752903Ab0HMVcG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 13 Aug 2010 17:32:06 -0400
-From: andros@netapp.com
-To: bhalevy@panasas.com
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 03/50] sunrpc: don't reset buflen twice in xdr_shrink_pagelen
-Date: Fri, 13 Aug 2010 17:31:15 -0400
-Message-Id: <1281735122-1496-4-git-send-email-andros@netapp.com>
-In-Reply-To: <1281735122-1496-3-git-send-email-andros@netapp.com>
-References: <1281735122-1496-1-git-send-email-andros@netapp.com>
- <1281735122-1496-2-git-send-email-andros@netapp.com>
- <1281735122-1496-3-git-send-email-andros@netapp.com>
+	id S1753001Ab0H1Lf5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 28 Aug 2010 07:35:57 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: bfields@fieldses.org, chuck.lever@oracle.com, steved@redhat.com
+Subject: [PATCH] rpc.nfsd: mount up nfsdfs is it doesn't appear to be mounted yet
+Date: Sat, 28 Aug 2010 07:35:14 -0400
+Message-Id: <1282995314-8317-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Benny Halevy <bhalevy@panasas.com>
+There's a bit of a chicken and egg problem when nfsd is run the first
+time. On Fedora/RHEL at least, /proc/fs/nfsd is mounted up whenever nfsd
+is plugged in via a modprobe.conf "install" directive.
 
-On Jan. 14, 2009, 2:50 +0200, andros@netapp.com wrote:
-> From: Andy Adamson <andros@netapp.com>
->
-> The buflen is reset for all cases at the end of xdr_shrink_pagelen.
-> The data left in the tail after xdr_read_pages is not processed when the
-> buflen is incorrectly set.
+If someone runs rpc.nfsd without plugging in nfsd.ko first,
+/proc/fs/nfsd won't be mounted and rpc.nfsd will end up using the legacy
+nfsctl interface. After that, nfsd will be plugged in and subsequent
+rpc.nfsd invocations will use that instead.
 
-Note that in this case we also lose (len - tail->iov_len)
-bytes from the buffered data in pages.
+This is a problem as some nfsd command-line options are ignored when the
+legacy interface is used. It'll also be a problem for people who want
+IPv6 enabled servers. The upshot is that we really don't want to use the
+legacy interface unless there is no other option.
 
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-Acked-by: Andy Adamson <andros@netapp.com>
+To avoid this situation, have rpc.nfsd check to see if the "threads"
+file is already present. If it's not, then make an attempt to mount
+/proc/fs/nfsd.  This is a "best-effort" sort of thing, however so we
+just ignore the return code from the mount attempt and fall back to
+using nfsctl() if it fails.
+
+Full disclosure: I'm not 100% thrilled with this patch. It seems ugly
+and kludgey, but I don't see a better way to handle this problem.
+Suggestions welcome.
+
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
 ---
- net/sunrpc/xdr.c |   14 ++++++--------
- 1 files changed, 6 insertions(+), 8 deletions(-)
+ utils/nfsd/nfsd.c   |    3 +++
+ utils/nfsd/nfssvc.c |   21 +++++++++++++++++++++
+ utils/nfsd/nfssvc.h |    1 +
+ 3 files changed, 25 insertions(+), 0 deletions(-)
 
-diff --git a/net/sunrpc/xdr.c b/net/sunrpc/xdr.c
-index a1f82a8..b43258e 100644
---- a/net/sunrpc/xdr.c
-+++ b/net/sunrpc/xdr.c
-@@ -403,16 +403,14 @@ xdr_shrink_pagelen(struct xdr_buf *buf, size_t len)
+diff --git a/utils/nfsd/nfsd.c b/utils/nfsd/nfsd.c
+index 1cda1e5..6bbf697 100644
+--- a/utils/nfsd/nfsd.c
++++ b/utils/nfsd/nfsd.c
+@@ -246,6 +246,9 @@ main(int argc, char **argv)
+ 		exit(1);
+ 	}
  
- 	/* Shift the tail first */
- 	if (tail->iov_len != 0) {
--		p = (char *)tail->iov_base + len;
--		if (tail->iov_len > len) {
--			copy = tail->iov_len - len;
--			memmove(p, tail->iov_base, copy);
--		} else
--			buf->buflen -= len;
--		/* Copy from the inlined pages into the tail */
- 		copy = len;
--		if (copy > tail->iov_len)
-+		if (tail->iov_len > len) {
-+			p = (char *)tail->iov_base + len;
-+			memmove(p, tail->iov_base, tail->iov_len - len);
-+		} else {
- 			copy = tail->iov_len;
-+		}
-+		/* Copy from the inlined pages into the tail */
- 		_copy_from_pages((char *)tail->iov_base,
- 				buf->pages, buf->page_base + pglen - len,
- 				copy);
++	/* make sure nfsdfs is mounted if it's available */
++	nfssvc_mount_nfsdfs();
++
+ 	/* can only change number of threads if nfsd is already up */
+ 	if (nfssvc_inuse()) {
+ 		socket_up = 1;
+diff --git a/utils/nfsd/nfssvc.c b/utils/nfsd/nfssvc.c
+index 34c67ca..9ea3a1f 100644
+--- a/utils/nfsd/nfssvc.c
++++ b/utils/nfsd/nfssvc.c
+@@ -15,9 +15,11 @@
+ #include <netdb.h>
+ #include <netinet/in.h>
+ #include <arpa/inet.h>
++#include <sys/stat.h>
+ #include <unistd.h>
+ #include <fcntl.h>
+ #include <errno.h>
++#include <stdlib.h>
+ 
+ #include "nfslib.h"
+ #include "xlog.h"
+@@ -44,6 +46,25 @@
+ char buf[128];
+ 
+ /*
++ * Using the "new" interfaces for nfsd requires that /proc/fs/nfsd is
++ * actually mounted. Make an attempt to mount it here if it doesn't appear
++ * to be. If the mount attempt fails, no big deal -- fall back to using nfsctl
++ * instead.
++ */
++void
++nfssvc_mount_nfsdfs(void)
++{
++	int err;
++	struct stat statbuf;
++
++	err = stat(NFSD_THREAD_FILE, &statbuf);
++	if (err == 0 || errno != ENOENT)
++		return;
++
++	system("/bin/mount -t nfsd nfsd /proc/fs/nfsd >/dev/null 2>&1");
++}
++
++/*
+  * Are there already sockets configured? If not, then it is safe to try to
+  * open some and pass them through.
+  *
+diff --git a/utils/nfsd/nfssvc.h b/utils/nfsd/nfssvc.h
+index 0c69bd6..ff81165 100644
+--- a/utils/nfsd/nfssvc.h
++++ b/utils/nfsd/nfssvc.h
+@@ -20,6 +20,7 @@
+  *
+  */
+ 
++void	nfssvc_mount_nfsdfs(void);
+ int	nfssvc_inuse(void);
+ int	nfssvc_set_sockets(const int family, const unsigned int protobits,
+ 			   const char *host, const char *port);
 -- 
-1.6.2.5
+1.7.1
 
