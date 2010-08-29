@@ -1,54 +1,45 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fn.samba.org ([216.83.154.106]:38119 "EHLO lists.samba.org"
+Received: from fieldses.org ([174.143.236.118]:36868 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753667Ab0HHMML (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 8 Aug 2010 08:12:11 -0400
-Date: Sun, 8 Aug 2010 05:12:09 -0700
-From: Jeremy Allison <jra@samba.org>
-To: Neil Brown <neilb@suse.de>
-Cc: Jeremy Allison <jra@samba.org>, Jeff Layton <jlayton@redhat.com>,
-        utz lehmann <lkml123@s2y4n2c.de>,
-        Linus Torvalds <torvalds@linux-foundation.org>,
-        Volker.Lendecke@sernet.de, David Howells <dhowells@redhat.com>,
-        Jan Engelhardt <jengelh@medozas.de>, linux-cifs@vger.kernel.org,
-        linux-nfs@vger.kernel.org, samba-technical@lists.samba.org,
-        linux-kernel@vger.kernel.org, viro@zeniv.linux.org.uk,
-        linux-fsde@jasper.es
-Subject: Re: [PATCH 02/18] xstat: Add a pair of system calls to make
- extended  file stats available [ver #6]
-Message-ID: <20100808121208.GA7329@jeremy-laptop>
-Reply-To: Jeremy Allison <jra@samba.org>
-References: <alpine.LSU.2.01.1007221228260.6115@obet.zrqbmnf.qr>
- <20100715021709.5544.64506.stgit@warthog.procyon.org.uk>
- <20100715021712.5544.44845.stgit@warthog.procyon.org.uk>
- <30448.1279800887@redhat.com>
- <E1Obuiy-00C9jr-Al@intern.SerNet.DE>
- <AANLkTimdFCGSKLn7aGMpBMIauHTsHY7hpAAmpo6uTcnD@mail.gmail.com>
- <1280524978.2452.9.camel@segv.aura.of.mankind>
- <20100801092529.5e6ba0e0@corrin.poochiereds.net>
- <20100805235218.GB31233@jeremy-laptop>
- <20100806133836.49757af9@notabene>
+	id S1753897Ab0H2TbX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 29 Aug 2010 15:31:23 -0400
+Date: Sun, 29 Aug 2010 15:31:02 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Jeff Layton <jlayton@redhat.com>
+Cc: Neil Brown <neilb@suse.de>, linux-nfs@vger.kernel.org,
+        chuck.lever@oracle.com, steved@redhat.com
+Subject: Re: [PATCH] rpc.nfsd: mount up nfsdfs is it doesn't appear to be
+ mounted yet
+Message-ID: <20100829193102.GA1627@fieldses.org>
+References: <1282995314-8317-1-git-send-email-jlayton@redhat.com>
+ <20100829083853.4e95d2ee@notabene>
+ <20100828222450.7ca62e49@corrin.poochiereds.net>
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20100806133836.49757af9@notabene>
+In-Reply-To: <20100828222450.7ca62e49@corrin.poochiereds.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Fri, Aug 06, 2010 at 01:38:36PM +1000, Neil Brown wrote:
-> I'm curious.  Why do you particularly care what interface the kernel uses to
-> provide you with access to this attribute?
+On Sat, Aug 28, 2010 at 10:24:50PM -0400, Jeff Layton wrote:
+> I considered that when I did this, but didn't know if we could count on
+> nfsdfs automatically being mounted up when nfsd.ko is plugged in. I
+> went with calling system() since I figured we'd be making less
+> assumptions about modprobe.conf configuration.
+> 
+> FWIW, at least on fedora the /bin/mount here usually returns an
+> error. /bin/mount calls mount() and that triggers a request_module()
+> for nfsdfs. That triggers modprobe to mount the fs, and /bin/mount then
+> returns an error since it's already mounted. The error though is
+> harmless in this case since the fs gets mounted up anyway.
+> 
+> If the consensus is that using a no-op nfsctl() call is better than
+> shelling out to /bin/mount here, then I'll go with that. It seems
+> though like the patch I've already proposed would allow for nfsdfs to
+> end up mounted even when modprobe.conf isn't set up to do it.
 
-It's a matter of taste. The *BSD's have this right IMHO. It
-should be part of the stat information. A file timestamp is not
-an EA. Making it available that way just feels like an appalingly
-tasteless kludge. It offends the artist in me :-).
+I'd rather not rely on modprobe.  It's partly a personal grudge: I
+usually build nfsd into kernels when I test, and that always requires
+a minor scuffle or two with init scripts that assume nfsd should be a
+module.
 
-> Or do you really want something like BSD's 'btime' which as I understand it
-> cannot be set.  Would that be really useful to you?
-
-It is *already* useful to us, and is widely used in
-existing code. The occasions when btime is set are
-relatively rare, and at that point we store it in a
-separate EA for Windows reporting purposes.
-
-Jeremy.
+--b.
