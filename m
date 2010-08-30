@@ -1,237 +1,91 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:54453 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756697Ab0HIQXz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 9 Aug 2010 12:23:55 -0400
-From: David Howells <dhowells@redhat.com>
-Subject: [PATCH 1/2] DNS: If the DNS server returns an error,
-	allow that to be cached
-To: torvalds@osdl.org, akpm@linux-foundation.org
-Cc: linux-afs@lists.infradead.org, linux-kernel@vger.kernel.org,
-        linux-cifs@vger.kernel.org, linux-nfs@vger.kernel.org,
-        Wang Lei <wang840925@gmail.com>, David Howells <dhowells@redhat.com>,
-        Jeff Layton <jlayton@redhat.com>
-Date: Mon, 09 Aug 2010 17:22:35 +0100
-Message-ID: <20100809162235.18695.38766.stgit@warthog.procyon.org.uk>
-Content-Type: text/plain; charset="utf-8"
+Received: from metis.ext.pengutronix.de ([92.198.50.35]:47628 "EHLO
+	metis.ext.pengutronix.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755491Ab0H3MLT (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Aug 2010 08:11:19 -0400
+Date: Mon, 30 Aug 2010 14:10:22 +0200
+From: Uwe =?iso-8859-1?Q?Kleine-K=F6nig?=
+	<u.kleine-koenig@pengutronix.de>
+To: Neil Brown <neilb@suse.de>
+Cc: Randy Dunlap <randy.dunlap@oracle.com>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
+        "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
+Subject: Re: [REGRESSION PATCH] NFS: let NFS_V4 and NFSD_V4 enforce CRYPTO
+Message-ID: <20100830121022.GA14459@pengutronix.de>
+References: <20100825084912.GA10293@pengutronix.de> <1282727119-8295-1-git-send-email-u.kleine-koenig@pengutronix.de> <20100827061139.GA27851@pengutronix.de> <20100830082618.GA24402@pengutronix.de> <20100830203659.3b9884f6@notabene>
+Content-Type: text/plain; charset=iso-8859-1
+In-Reply-To: <20100830203659.3b9884f6@notabene>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-From: Wang Lei <wang840925@gmail.com>
+On Mon, Aug 30, 2010 at 08:36:59PM +1000, Neil Brown wrote:
+> On Mon, 30 Aug 2010 10:26:18 +0200
+> Uwe Kleine-König <u.kleine-koenig@pengutronix.de> wrote:
+> 
+> > [extending Cc: to contain Neil and linux-nfs]
+> > 
+> > On Fri, Aug 27, 2010 at 08:11:39AM +0200, Uwe Kleine-König wrote:
+> > > On Wed, Aug 25, 2010 at 11:05:19AM +0200, Uwe Kleine-König wrote:
+> 
+> I would tend to wait more than 2 days between pings..
 
-If the DNS server returns an error, allow that to be cached in the DNS resolver
-key in lieu of a value.  Userspace passes the desired error number as an option
-in the payload:
+	ukl@octopus:~/gsrc/linux-2.6$ git rev-parse linus/master
+	2bfc96a127bc1cc94d26bfaa40159966064f9c8c
+	ukl@octopus:~/gsrc/linux-2.6$ git grep -E CRYPTO= linus/master arch/arm/configs/ | wc -l
+	6
+	ukl@octopus:~/gsrc/linux-2.6$ git grep -E NFSD?_V4 linus/master arch/arm/configs/ | wc -l
+	37
 
-	"#dnserror=<number>"
+So I think that at least 31 arm-defconfigs don't build because of this
+issue.  And as this kind of error greatly hurts automatic bisection I
+thought this to be critical enough to be a bit impatient.
 
-Userspace must map h_errno from the name resolution routines to an appropriate
-Linux error before passing it up.  Something like the following mapping is
-recommended:
+> > > > This is a follow up to
+> > > > 
+> > > > 	df486a2 (NFS: Fix the selection of security flavours in Kconfig)
+> > > > 
+> > > > which broke (among others) arm/mx1_defconfig.
+> > > > 
+> > > > Moreover let NFS_V4 select RPCSEC_GSS_KRB5 again as it was before
+> > > > df486a2.  This make the dependency more explicit than relying on the no
+> > > > prompt + default y if !(NFS_V4 || NFSD_V4).
+> 
+> Maybe if you said a little bit about how it broke?
+  LD      .tmp_vmlinux1
+fs/built-in.o: In function `nfs_callback_authenticate':
+compr_zlib.c:(.text+0x7c040): undefined reference to `svc_gss_principal'
+make[2]: *** [.tmp_vmlinux1] Error 1
+make[1]: *** [sub-make] Error 2
+make: *** [all] Error 2
 
-	[HOST_NOT_FOUND]	= ENODATA,
-	[TRY_AGAIN]		= EAGAIN,
-	[NO_RECOVERY]		= ECONNREFUSED,
-	[NO_DATA]		= ENODATA,
+I can add this to the commit log.
 
-in lieu of Linux errors specifically for representing name service errors.  The
-filesystem must map these errors appropropriately before passing them to
-userspace.  AFS is made to map ENODATA and EAGAIN to EDESTADDRREQ for the
-return to userspace; ECONNREFUSED is allowed to stand as is.
-
-The error can be seen in /proc/keys as a negative number after the description
-of the key.  Compare, for example, the following key entries:
-
-2f97238c I--Q--     1  53s 3f010000     0     0 dns_resol afsdb:grand.centrall.org: -61
-338bfbbe I--Q--     1  59m 3f010000     0     0 dns_resol afsdb:grand.central.org: 37
-
-
-If the error option is supplied in the payload, the main part of the payload is
-discarded.  The key should have an expiry time set by userspace.
-
-Signed-off-by: Wang Lei <wang840925@gmail.com>
-Signed-off-by: David Howells <dhowells@redhat.com>
-Acked-by: Jeff Layton <jlayton@redhat.com>
----
-
- fs/afs/cell.c                |    4 ++
- net/dns_resolver/dns_key.c   |   92 ++++++++++++++++++++++++++++++++++++++++--
- net/dns_resolver/dns_query.c |    5 ++
- 3 files changed, 96 insertions(+), 5 deletions(-)
-
-diff --git a/fs/afs/cell.c b/fs/afs/cell.c
-index ffea35c..d076588 100644
---- a/fs/afs/cell.c
-+++ b/fs/afs/cell.c
-@@ -73,6 +73,10 @@ static struct afs_cell *afs_cell_alloc(const char *name, char *vllist)
- 	if (!vllist || strlen(vllist) < 7) {
- 		ret = dns_query("afsdb", name, namelen, "ipv4", &dvllist, NULL);
- 		if (ret < 0) {
-+			if (ret == -ENODATA || ret == -EAGAIN || ret == -ENOKEY)
-+				/* translate these errors into something
-+				 * userspace might understand */
-+				ret = -EDESTADDRREQ;
- 			_leave(" = %d", ret);
- 			return ERR_PTR(ret);
- 		}
-diff --git a/net/dns_resolver/dns_key.c b/net/dns_resolver/dns_key.c
-index 400a04d..739435a 100644
---- a/net/dns_resolver/dns_key.c
-+++ b/net/dns_resolver/dns_key.c
-@@ -29,6 +29,7 @@
- #include <linux/kernel.h>
- #include <linux/keyctl.h>
- #include <linux/err.h>
-+#include <linux/seq_file.h>
- #include <keys/dns_resolver-type.h>
- #include <keys/user-type.h>
- #include "internal.h"
-@@ -43,6 +44,8 @@ MODULE_PARM_DESC(debug, "DNS Resolver debugging mask");
+> And I'm not sure of the point of the "recursive dependency" comment below...
+I added this because if kconfig were a bit smarter it would select
+CRYPTO, too, if asked to select RPCSEC_GSS_KRB5.  On the
+linux-arm-kernel ML Catalin Marinas already thought about making kconfig
+smarter and so I wanted to mark the symbol.
  
- const struct cred *dns_resolver_cache;
- 
-+#define	DNS_ERRORNO_OPTION	"dnserror"
-+
- /*
-  * Instantiate a user defined key for dns_resolver.
-  *
-@@ -59,9 +62,10 @@ static int
- dns_resolver_instantiate(struct key *key, const void *_data, size_t datalen)
- {
- 	struct user_key_payload *upayload;
-+	unsigned long derrno;
- 	int ret;
- 	size_t result_len = 0;
--	const char *data = _data, *opt;
-+	const char *data = _data, *end, *opt;
- 
- 	kenter("%%%d,%s,'%s',%zu",
- 	       key->serial, key->description, data, datalen);
-@@ -71,13 +75,77 @@ dns_resolver_instantiate(struct key *key, const void *_data, size_t datalen)
- 	datalen--;
- 
- 	/* deal with any options embedded in the data */
-+	end = data + datalen;
- 	opt = memchr(data, '#', datalen);
- 	if (!opt) {
--		kdebug("no options currently supported");
--		return -EINVAL;
-+		/* no options: the entire data is the result */
-+		kdebug("no options");
-+		result_len = datalen;
-+	} else {
-+		const char *next_opt;
-+
-+		result_len = opt - data;
-+		opt++;
-+		kdebug("options: '%s'", opt);
-+		do {
-+			const char *eq;
-+			int opt_len, opt_nlen, opt_vlen, tmp;
-+
-+			next_opt = memchr(opt, '#', end - opt) ?: end;
-+			opt_len = next_opt - opt;
-+			if (!opt_len) {
-+				printk(KERN_WARNING
-+				       "Empty option to dns_resolver key %d\n",
-+				       key->serial);
-+				return -EINVAL;
-+			}
-+
-+			eq = memchr(opt, '=', opt_len) ?: end;
-+			opt_nlen = eq - opt;
-+			eq++;
-+			opt_vlen = next_opt - eq; /* will be -1 if no value */
-+
-+			tmp = opt_vlen >= 0 ? opt_vlen : 0;
-+			kdebug("option '%*.*s' val '%*.*s'",
-+			       opt_nlen, opt_nlen, opt, tmp, tmp, eq);
-+
-+			/* see if it's an error number representing a DNS error
-+			 * that's to be recorded as the result in this key */
-+			if (opt_nlen == sizeof(DNS_ERRORNO_OPTION) - 1 &&
-+			    memcmp(opt, DNS_ERRORNO_OPTION, opt_nlen) == 0) {
-+				kdebug("dns error number option");
-+				if (opt_vlen <= 0)
-+					goto bad_option_value;
-+
-+				ret = strict_strtoul(eq, 10, &derrno);
-+				if (ret < 0)
-+					goto bad_option_value;
-+
-+				if (derrno < 1 || derrno > 511)
-+					goto bad_option_value;
-+
-+				kdebug("dns error no. = %lu", derrno);
-+				key->type_data.x[0] = -derrno;
-+				continue;
-+			}
-+
-+		bad_option_value:
-+			printk(KERN_WARNING
-+			       "Option '%*.*s' to dns_resolver key %d:"
-+			       " bad/missing value\n",
-+			       opt_nlen, opt_nlen, opt, key->serial);
-+			return -EINVAL;
-+		} while (opt = next_opt + 1, opt < end);
-+	}
-+
-+	/* don't cache the result if we're caching an error saying there's no
-+	 * result */
-+	if (key->type_data.x[0]) {
-+		kleave(" = 0 [h_error %ld]", key->type_data.x[0]);
-+		return 0;
- 	}
- 
--	result_len = datalen;
-+	kdebug("store result");
- 	ret = key_payload_reserve(key, result_len);
- 	if (ret < 0)
- 		return -EINVAL;
-@@ -135,13 +203,27 @@ no_match:
- 	return ret;
- }
- 
-+/*
-+ * Describe a DNS key
-+ */
-+static void dns_resolver_describe(const struct key *key, struct seq_file *m)
-+{
-+	int err = key->type_data.x[0];
-+
-+	seq_puts(m, key->description);
-+	if (err)
-+		seq_printf(m, ": %d", err);
-+	else
-+		seq_printf(m, ": %u", key->datalen);
-+}
-+
- struct key_type key_type_dns_resolver = {
- 	.name		= "dns_resolver",
- 	.instantiate	= dns_resolver_instantiate,
- 	.match		= dns_resolver_match,
- 	.revoke		= user_revoke,
- 	.destroy	= user_destroy,
--	.describe	= user_describe,
-+	.describe	= dns_resolver_describe,
- 	.read		= user_read,
- };
- 
-diff --git a/net/dns_resolver/dns_query.c b/net/dns_resolver/dns_query.c
-index 03d5255..c32be29 100644
---- a/net/dns_resolver/dns_query.c
-+++ b/net/dns_resolver/dns_query.c
-@@ -136,6 +136,11 @@ int dns_query(const char *type, const char *name, size_t namelen,
- 	if (ret < 0)
- 		goto put;
- 
-+	/* If the DNS server gave an error, return that to the caller */
-+	ret = rkey->type_data.x[0];
-+	if (ret)
-+		goto put;
-+
- 	upayload = rcu_dereference_protected(rkey->payload.data,
- 					     lockdep_is_held(&rkey->sem));
- 	len = upayload->datalen;
+> I don't fully understand all the issues behind choosing between 'depends' and
+> 'select' (why isn't is 'selects' I wonder - that would be more consistent...)
+I think it's an imperative, not a normal present tense?!  And note this
+is different.  Here it's not depend vs. select but select vs.
 
+	config SOMESYMBOL
+		prompt "sometext" if !(NFS_V4 || NFSD_V4)
+		default y
+
+So a dependency for NFS_V4 is hidden in net/sunrpc/Kconfig.
+
+> But that patch seems to make sense to me.
+Thanks, that's an Ack?
+
+Best regards
+Uwe
+
+-- 
+Pengutronix e.K.                           | Uwe Kleine-König            |
+Industrial Linux Solutions                 | http://www.pengutronix.de/  |
