@@ -1,54 +1,88 @@
-Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp.gentoo.org ([140.211.166.183]:57891 "EHLO smtp.gentoo.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751996Ab0H1UrJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 28 Aug 2010 16:47:09 -0400
-Received: from vapier.localnet (localhost [127.0.0.1])
-	by smtp.gentoo.org (Postfix) with ESMTP id 986EC1B403D
-	for <linux-nfs@vger.kernel.org>; Sat, 28 Aug 2010 20:47:08 +0000 (UTC)
-From: Mike Frysinger <vapier@gentoo.org>
-To: NFS list <linux-nfs@vger.kernel.org>
-Subject: `rpc.nfsd #` gets hung up when loopback iface is down
-Date: Sat, 28 Aug 2010 16:46:44 -0400
-Content-Type: multipart/signed;
-  boundary="nextPart2031438.bYRsGoouUc";
-  protocol="application/pgp-signature";
-  micalg=pgp-sha1
-Message-Id: <201008281646.44883.vapier@gentoo.org>
-Sender: linux-nfs-owner@vger.kernel.org
-List-ID: <linux-nfs.vger.kernel.org>
+Return-Path: <nfsv4-bounces@linux-nfs.org>
+Subject: Re: [PATCH 0/2] Make libtirpc work with old style portmapper
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <201008301503.19783.okir@suse.de>
+Date: Mon, 30 Aug 2010 11:59:18 -0400
+Message-Id: <30F1122D-13FB-4B6B-9BA2-99112306581F@oracle.com>
+References: <201008301503.19783.okir@suse.de>
+To: Olaf Kirch <okir@suse.de>
+Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/options/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@linux-nfs.org>
+List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
+Content-Type: text/plain; charset="iso-8859-1"
+Sender: nfsv4-bounces@linux-nfs.org
+Errors-To: nfsv4-bounces@linux-nfs.org
 MIME-Version: 1.0
+List-ID: <linux-nfs.vger.kernel.org>
 
---nextPart2031438.bYRsGoouUc
-Content-Type: text/plain;
-  charset="us-ascii"
-Content-Transfer-Encoding: quoted-printable
 
-is it expected behavior that `rpc.nfsd #` gets hung up whenever the loopbac=
-k=20
-interface hasnt been configured ?  even `rpc.nfsd 0` which seems a bit odd.
-=2Dmike
+On Aug 30, 2010, at 9:03 AM, Olaf Kirch wrote:
 
---nextPart2031438.bYRsGoouUc
-Content-Type: application/pgp-signature; name=signature.asc 
-Content-Description: This is a digitally signed message part.
+>=20
+> Hi Steve et al,
+>=20
+> We recently got a bug report from a customer trying to run nfs-utils
+> (which is compiled against libtirpc on SLES 11) on a system with
+> portmapper installed instead of rpcbind. Which failed miserably,
+> because none of the RPC servers was able to register with portmap.
+>=20
+> One might argue, if it hurts don't do it, but OTOH this configuration
+> isn't totally outlandish. In particular, ISVs may decide they want
+> to compile an RPC enabled application against libtirpc, but still
+> want it to run on a wide range of Linux versions.
+>=20
+> I looked into the issue and put together the following two patches,
+> which I'm submitting for your kindly review.
 
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2.0.16 (GNU/Linux)
+I've seen a couple of other requests for this feature, and wrote some patch=
+es last year that did something similar.  I never got around to finishing t=
+hem.
 
-iQIcBAABAgAGBQJMeXW0AAoJEEFjO5/oN/WBDW8QALu4zMWRfFjAtXG+N0Mkkq5b
-r1TnMulo8UG1n7RrA1Fa3vC5iJJM6sjN0uV1mg5iRo6ValbLOGi1fdn9lO4v2ETM
-BwxDsMtqhLG5pGwnk/qwWyLHwAxPElo7yAMi2YYJhKZbupVle3DOyH4YuiOH0odz
-Xo8o6iUjeu8OKsln5iDVHbM1U2IF8x9NVwOR6XT6rlSKI5a0GVE4lND47OkOJDIn
-rxli9CGC3lfJJR6vYskx7/dFoGAZMEWd1AMVC2QHoLIC1jiIJO40ZMCNvoiPm10P
-3HXTLusGifh0FDiirgGAxSF1Sa2RCvnMED9cNPEmBsLld7U7+MDyj7pjTvlDsBE3
-sAxZ1hDu8UZQ1ncycZi5FmMTZWGIJ53CwIGV6spYm4eRQplBbZxM0KtxxHubanLK
-jtzvVT25TEQl+pzcySYqfiHlsfjSLUBlOinu18A6Uya1VI+3XUZbgaSch1IzHO0K
-IoLuc0p05iwTsfNE7j1BUxVrJQwcadlmqaOm5EaY0uhiJQHtRmUQ01RwFVG9eh/R
-WKhsQ95dZ6C72hP4nVtdqr8VWjBptfmiTbCYj+bSj3ltRUjgVL+GuFYc4LvIaIW7
-MSOFa6oKUMvPoCBRBSQhh1p9ueGxO2nzk2zH7uTi7yG5+768DltUumHNcEDZfmXQ
-J8gHSqNb5L2hR8E1wX0M
-=JX8O
------END PGP SIGNATURE-----
+I worried at the time that this might introduce a security weakness, since,=
+ after all, the rpcbind SET operation goes over AF_UNIX, which is authentic=
+ated, but pmap uses sockets with privileged ports to detect authorized user=
+s.  I see that your logic uses the pmap SET/UNSET calls by default.  This b=
+ypasses AF_UNIX completely in pretty much all local cases, which changes th=
+e behavior of rpcb_set() and rpcb_unset(), and could break the local rpcbin=
+d security model.  It might be better to use pmap_setunset() only when loca=
+l_rpcb() fails.
 
---nextPart2031438.bYRsGoouUc--
+Another minor problem I think I remember is that if libtirpc is used on a s=
+ystem (perhaps because it is statically linked with said ISV RPC-enabled ap=
+plication) that does not have /etc/netconfig installed, the transport creat=
+ion logic in rpcb_clnt.c simply doesn't work.
+
+
+> Thanks
+> Olaf
+> --=20
+> Neo didn't bring down the Matrix. SOA did. (soafacts.com)
+> --------------------------------------------
+> Olaf Kirch - Director Server (okir@novell.com)
+> SUSE LINUX Products GmbH, Maxfeldstr. 5, D-90409 N=FCrnberg
+> GF: Markus Rex, HRB 16746 (AG N=FCrnberg)
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+--=20
+chuck[dot]lever[at]oracle[dot]com
+
+
+
+
+_______________________________________________
+NOTE: THIS LIST IS DEPRECATED.  Please use linux-nfs@vger.kernel.org instea=
+d.
+(To subscribe to linux-nfs@vger.kernel.org: send "subscribe linux-nfs" in t=
+he body of a message to majordomo@vger.kernel.org.)
+
+NFSv4 mailing list
+NFSv4@linux-nfs.org
+http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4
