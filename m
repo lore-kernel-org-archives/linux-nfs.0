@@ -1,92 +1,63 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:63568 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1761148Ab0HFLPv convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 6 Aug 2010 07:15:51 -0400
-Date: Fri, 6 Aug 2010 07:18:10 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: Jeremy Allison <jra@samba.org>
-Cc: Steve French <smfrench@gmail.com>, Neil Brown <neilb@suse.de>,
-        utz lehmann <lkml123@s2y4n2c.de>,
+Received: from metis.ext.pengutronix.de ([92.198.50.35]:41298 "EHLO
+	metis.ext.pengutronix.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752714Ab0H3Mdo (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Aug 2010 08:33:44 -0400
+Date: Mon, 30 Aug 2010 14:33:05 +0200
+From: Uwe =?iso-8859-1?Q?Kleine-K=F6nig?=
+	<u.kleine-koenig@pengutronix.de>
+To: Neil Brown <neilb@suse.de>
+Cc: Randy Dunlap <randy.dunlap@oracle.com>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
         Linus Torvalds <torvalds@linux-foundation.org>,
-        Volker.Lendecke@sernet.de, David Howells <dhowells@redhat.com>,
-        Jan Engelhardt <jengelh@medozas.de>, linux-cifs@vger.kernel.org,
-        linux-nfs@vger.kernel.org, samba-technical@lists.samba.org,
-        linux-kernel@vger.kernel.org, viro@zeniv.linux.org.uk,
-        linux-fsde@jasper.es
-Subject: Re: [PATCH 02/18] xstat: Add a pair of system calls to make
- extended  file stats available [ver #6]
-Message-ID: <20100806071810.5002dc2b@corrin.poochiereds.net>
-In-Reply-To: <AANLkTinVCLVpqLtA2X=1mOkxX7Re61_ZYsUix_XTvZ5D@mail.gmail.com>
-References: <alpine.LSU.2.01.1007221228260.6115@obet.zrqbmnf.qr>
-	<20100715021709.5544.64506.stgit@warthog.procyon.org.uk>
-	<20100715021712.5544.44845.stgit@warthog.procyon.org.uk>
-	<30448.1279800887@redhat.com>
-	<E1Obuiy-00C9jr-Al@intern.SerNet.DE>
-	<AANLkTimdFCGSKLn7aGMpBMIauHTsHY7hpAAmpo6uTcnD@mail.gmail.com>
-	<1280524978.2452.9.camel@segv.aura.of.mankind>
-	<20100801092529.5e6ba0e0@corrin.poochiereds.net>
-	<20100805235218.GB31233@jeremy-laptop>
-	<20100806133836.49757af9@notabene>
-	<AANLkTinVCLVpqLtA2X=1mOkxX7Re61_ZYsUix_XTvZ5D@mail.gmail.com>
-Content-Type: text/plain; charset=ISO-8859-1
+        akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
+        "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
+Subject: Re: [REGRESSION PATCH] NFS: let NFS_V4 and NFSD_V4 enforce CRYPTO
+Message-ID: <20100830123305.GB14459@pengutronix.de>
+References: <20100825084912.GA10293@pengutronix.de> <1282727119-8295-1-git-send-email-u.kleine-koenig@pengutronix.de> <20100827061139.GA27851@pengutronix.de> <20100830082618.GA24402@pengutronix.de> <20100830203659.3b9884f6@notabene> <20100830121022.GA14459@pengutronix.de>
+Content-Type: text/plain; charset=iso-8859-1
+In-Reply-To: <20100830121022.GA14459@pengutronix.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Thu, 5 Aug 2010 22:55:06 -0500
-Steve French <smfrench@gmail.com> wrote:
+On Mon, Aug 30, 2010 at 02:10:22PM +0200, Uwe Kleine-König wrote:
+> On Mon, Aug 30, 2010 at 08:36:59PM +1000, Neil Brown wrote:
+> > On Mon, 30 Aug 2010 10:26:18 +0200
+> > Uwe Kleine-König <u.kleine-koenig@pengutronix.de> wrote:
+> > 
+> > > [extending Cc: to contain Neil and linux-nfs]
+> > > 
+> > > On Fri, Aug 27, 2010 at 08:11:39AM +0200, Uwe Kleine-König wrote:
+> > > > On Wed, Aug 25, 2010 at 11:05:19AM +0200, Uwe Kleine-König wrote:
+> > 
+> > I would tend to wait more than 2 days between pings..
+> 
+> 	ukl@octopus:~/gsrc/linux-2.6$ git rev-parse linus/master
+> 	2bfc96a127bc1cc94d26bfaa40159966064f9c8c
+> 	ukl@octopus:~/gsrc/linux-2.6$ git grep -E CRYPTO= linus/master arch/arm/configs/ | wc -l
+> 	6
+> 	ukl@octopus:~/gsrc/linux-2.6$ git grep -E NFSD?_V4 linus/master arch/arm/configs/ | wc -l
+> 	37
+This is wrong, because the last line counts configs having both NFSD_V4
+and NFS_V4 twice.  There are "only" 31 that have at least one of NFSD_V4
+and NFS_V4.  But only one of these (at572d940hfek_defconfig) has CRYPTO
+set, too.
+ 
+> So I think that at least 31 arm-defconfigs don't build because of this
+> issue.  And as this kind of error greatly hurts automatic bisection I
+> thought this to be critical enough to be a bit impatient.
+To extend the test to non-ARM land:
 
-> On Thu, Aug 5, 2010 at 10:38 PM, Neil Brown <neilb@suse.de> wrote:
-> > On Thu, 5 Aug 2010 16:52:18 -0700
-> > Jeremy Allison <jra@samba.org> wrote:
-> 
-> >> Don't add it as an EA. It's *not* an EA, it's a timestamp.
-> >
-> > I'm curious.  Why do you particularly care what interface the kernel uses to
-> > provide you with access to this attribute?
-> >
-> > And given that it is an attribute that is not part of 'POSIX' or "UNIX", it
-> > would seem to be an extension - an extended attribute.
-> > As the Linux kernel does virtually nothing with this attribute except provide
-> > access, it seems to be a very different class of thing to other timestamps.
-> > Surely it is simply some storage associated with a file which is capable of
-> > storing a timestamp, which can be set or retrieved by an application, and
-> > which happens to be initialised to the current time when a file is created.
-> >
-> > Yes, to you it is a timestamp.  But to Linux it is a few bytes of
-> > user-settable metadata.  Sounds like an EA to me.
-> >
-> > Or do you really want something like BSD's 'btime' which as I understand it
-> > cannot be set.  Would that be really useful to you?
-> 
-> Obviously the cifs and SMB2 protocols which  Samba server support can
-> ask the server to set the create time of a file (this is handled
-> through xattrs today along with the "dos attribute" flags such as
-> archive/hidden/system), but certainly it is much more common (and
-> important) to read the creation time of an existing file.
-> 
-> 
-> > Is there something important that I am missing?
-> 
-> It is another syscall that Samba server would have to make - and xattr
-> performance is extremely slow on some file systems (although
-> presumably this one would be more likely to be stored in inode and
-> perhaps not as bad on ext4, cifs and a few others such as ntfs).
-> 
-> 
+ukl@octopus:~/gsrc/linux-2.6$ git ls-tree -r --name-only linus/master | grep defconfig | xargs grep -l -E 'CONFIG_NFSD?_V4=' | xargs grep -L CONFIG_CRYPTO= | wc -l
+108
 
-Right. One has to consider that samba has to satisfy READDIRPLUS-like
-calls, and on a large directory all of those extra syscalls are likely
-to impact performance.
+(Thinking about it again probably not all of them are broken, because
+there might be other symbols selecting CRYPTO.)
 
-In my view, the ideal thing would be to add this field as an EA and
-continue work on implementing xstat(). Adding it as an EA gives
-userland a way to set this value, without needing to add a new utimes()
-variant.
-
-If/when xstat becomes available, samba could use that instead of the EA
-for reading this value.
+Best regards
+Uwe
 
 -- 
-Jeff Layton <jlayton@redhat.com>
+Pengutronix e.K.                           | Uwe Kleine-König            |
+Industrial Linux Solutions                 | http://www.pengutronix.de/  |
