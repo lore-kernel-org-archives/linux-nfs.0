@@ -1,151 +1,237 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail3-relais-sop.national.inria.fr ([192.134.164.104]:26420
-	"EHLO mail3-relais-sop.national.inria.fr" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752229Ab0HNPLF (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 14 Aug 2010 11:11:05 -0400
-Message-ID: <4C66B207.5060101@inria.fr>
-Date: Sat, 14 Aug 2010 17:11:03 +0200
-From: Guillaume Rousse <Guillaume.Rousse@inria.fr>
-To: Kevin Coffman <kwc@citi.umich.edu>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: trouble using kerberos between linux client and server
-References: <4BCFE979.2000406@inria.fr> <4BE1E099.9050902@inria.fr>	 <4BEB1FA2.1060001@inria.fr>	 <AANLkTinNTYrEe9G6urXBxv-hogZPatOe9zWbbjnVTbWz@mail.gmail.com>	 <4BEBC1B0.8030502@inria.fr> <AANLkTinPfbYgqFxcIuT3975TAtk0e1D84bMAeez5Z06T@mail.gmail.com> <4BEC6B6E.9090705@inria.fr>
-In-Reply-To: <4BEC6B6E.9090705@inria.fr>
-Content-Type: multipart/signed; protocol="application/pkcs7-signature"; micalg=sha1; boundary="------------ms060102060609060700050408"
+Received: from rcsinet10.oracle.com ([148.87.113.121]:56047 "EHLO
+	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755911Ab0H3Qyp convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Aug 2010 12:54:45 -0400
+Subject: Re: [patch] fix description of nfsversion mount option
+Content-Type: text/plain; charset=iso-8859-1
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <4C79402F.7040204@inria.fr>
+Date: Mon, 30 Aug 2010 12:54:24 -0400
+Cc: linux-nfs@vger.kernel.org
+Message-Id: <5E3BF723-4924-43DE-BF4B-7D1DE3ABF4D5@oracle.com>
+References: <4C66ADF2.9030700@inria.fr> <4C6B03DE.5040105@RedHat.com> <4C79402F.7040204@inria.fr>
+To: Guillaume Rousse <Guillaume.Rousse@inria.fr>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
---------------ms060102060609060700050408
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: quoted-printable
 
-Le 13/05/2010 23:13, Guillaume Rousse a =C3=A9crit :
-> Le 13/05/2010 14:55, Kevin Coffman a =C3=A9crit :
->> On Thu, May 13, 2010 at 5:09 AM, Guillaume Rousse
->> <Guillaume.Rousse@inria.fr> wrote:
->>> Le 13/05/2010 01:21, Kevin Coffman a =C3=A9crit :
->>>> On Wed, May 12, 2010 at 5:37 PM, Guillaume Rousse
->>>> <Guillaume.Rousse@inria.fr> wrote:
->>>>> Le 05/05/2010 23:18, Guillaume Rousse a =C3=A9crit :
->>>>>> I'm attaching network capture, even I can't figure additional
->>>>>> information from it by myself.
->>>>> Reading https://bugzilla.redhat.com/show_bug.cgi?id=3D562807, I reb=
-uild
->>>>> libtirpc with patch applied and -DDEBUG. Unfortunatly, it doesn't b=
-ring
->>>>> additional information about the server-side failure :(
->>>>
->>>> It looks to me like fflush(), called in qword_eol(), may be returnin=
-g
->>>> the number of bytes flushed (95) rather than zero for success?  I
->>>> don't immediately see any changes that would cause this.  But I
->>>> haven't looked extensively...
->>> Not necessarily a change: I never used a kerberized server sofar, onl=
-y
->>> clients.
->>
->> Well, I've not seen that issue before, so I assumed it was a change.
->> I looked back a bit, but didn't see: what versions of nfs-utils and
->> kernel are on the server?
-> The same on both sides: kernel 2.6.33.3 + nfs-utils 1.2.2
-Hello.
+On Aug 28, 2010, at 12:58 PM, Guillaume Rousse wrote:
 
-I finally managed to understand the issue: I also need rpc.svcgssd _and_
-rpc.gssd on server side, whereas I thought rpc.gssd was needed on client
-side only
-(http://wiki.linux-nfs.org/wiki/index.php/Enduser_doc_kerberos). Is this
-expected behaviour ?
---=20
-BOFH excuse #255:
+> Le 17/08/2010 23:49, Steve Dickson a écrit :
+>> 
+>> 
+>> On 08/14/2010 10:53 AM, Guillaume Rousse wrote:
+>>> Hello list.
+>>> 
+>>> Here is a first patch trying to update a little bit nfs-utils
+>>> documentation. I'd like also to change the constant opposition of 'nfs'
+>>> vs 'nfs4' filesystems in this man page, but I have no clue if the plan
+>>> is to remove 'nfs4' filesystem completly, or to keep for compatibility
+>>> purpose. In the first case, I'd just remove any occurence of it in the
+>>> man page, in the second case, I'm less sure about what to do.
+>> In the future please use the proper Signed-off-by: line in 
+>> your patch... Its cool for this time, since the change is a 
+>> minor one... 
+> Here is a now one, dealing with protocol-specific versions. This time I
+> found how to add the signoff header in git documentation :)
+> 
+> BTW, I don't what what's the exact plan for the 'nfs4' filesystem type,
+> so I just mentionned it as an old syntax. And I also supposed than
+> protocol-specific versions would just get ignored when used with another
+> version, but I'm not sure at all.
+> -- 
+> BOFH excuse #375:
+> 
+> Root name servers corrupted.
+> <0001-Drop-reference-to-the-nfs4-filesystem-type-excepted-.patch>
 
-Standing room only on the bus.
+Do not post patches as attachments.  Please post patches inline so we can easily hit "reply" and comment.  Thanks!
+
+> From 95f5f0e1a5e1edf7a34a03ee3fecd8908fa1ddad Mon Sep 17 00:00:00 2001
+> From: Guillaume Rousse <Guillaume.Rousse@inria.fr>
+> Date: Sat, 28 Aug 2010 18:50:43 +0200
+> Subject: [PATCH] Drop reference to the nfs4 filesystem type, excepted as an older
+>  syntax, and document options as specific to a protocol version
+>  rather than to a filesystem type.
+
+The Subject: field should be a short description (no more than 65 or so characters).  The body of the description should describe the patch.  What you have in the Subject: field here is a long description, and should go in the body.
+
+Not a show stopper, but for future reference.
+
+> Signed-off-by: Guillaume Rousse <Guillaume.Rousse@inria.fr>
+> ---
+>  utils/mount/nfs.man |   50 ++++++++++++++++++++------------------------------
+>  1 files changed, 20 insertions(+), 30 deletions(-)
+> 
+> diff --git a/utils/mount/nfs.man b/utils/mount/nfs.man
+> index 3806635..fe58015 100644
+> --- a/utils/mount/nfs.man
+> +++ b/utils/mount/nfs.man
+> @@ -3,8 +3,6 @@
+>  .SH NAME
+>  nfs \- fstab format and options for the
+>  .B nfs
+> -and
+> -.B nfs4
+>  file systems
+
+If you removed "nfs4" then "file systems" should be made singular.
+
+>  .SH SYNOPSIS
+>  .I /etc/fstab
+> @@ -71,14 +69,10 @@ for details on specifying raw IPv6 addresses.
+>  .P
+>  The
+>  .I fstype
+> -field contains either "nfs" (for version 2 or version 3 NFS mounts)
+> -or "nfs4" (for NFS version 4 mounts).
+> +field contains "nfs", for whatever version of the protocol.
+
+Since "nfs4" is still allowed and is not deprecated, I think a reference to it should remain here.
+
+In general, I'd rather see an emphasis of "nfs vers=4" rather than removal of "nfs4" as "nfs4" still works and is supported for now.
+
+>  The
+>  .B nfs
+> -and
+> -.B nfs4
+> -file system types share similar mount options,
+> -which are described below.
+> +allow several mount options, which are described below.
+>  .SH "MOUNT OPTIONS"
+>  Refer to
+>  .BR mount (8)
+> @@ -89,14 +83,8 @@ specify any mount options, use the generic option
+>  in
+>  .IR /etc/fstab .
+>  .DT
+> -.SS "Valid options for either the nfs or nfs4 file system type"
+> -These options are valid to use when mounting either
+> -.B nfs
+> -or
+> -.B nfs4
+> -file system types.
+> -They imply the same behavior
+> -and have the same default for both file system types.
+> +.SS "Options supported by all versions"
+> +These options are valid to use with any NFS version.
+>  .TP 1.5i
+>  .BR soft " / " hard
+>  Determines the recovery behavior of the NFS client
+> @@ -476,11 +464,9 @@ by other clients, but can impact application and server performance.
+>  .IP
+>  The DATA AND METADATA COHERENCE section contains a
+>  detailed discussion of these trade-offs.
+> -.SS "Valid options for the nfs file system type"
+> +.SS "Options for versions 2 and 3 only"
+
+For clarity, I would prefer "Options for NFS versions 2 and 3 only" .
+
+>  Use these options, along with the options in the above subsection,
+> -for mounting the
+> -.B nfs
+> -file system type.
+> +for NFSv2/v3 only. They will be ignored for newer versions.
+
+I avoided version abbreviations when I originally wrote this, for clarity.  I think
+
+ "for NFS versions 2 and 3 only.  They are ignored for newer versions."
+
+Is more clear.  And, we like to avoid the use of future tense in documentation.
+
+>  .TP 1.5i
+>  .BI proto= netid
+>  The transport protocol name and protocol family the NFS client uses
+> @@ -722,11 +708,9 @@ If this option is not specified, the NFS client uses READDIRPLUS requests
+>  on NFS version 3 mounts to read small directories.
+>  Some applications perform better if the client uses only READDIR requests
+>  for all directories.
+> -.SS "Valid options for the nfs4 file system type"
+> +.SS "Options for version 4 only"
+
+As above: "Options for NFS version 4 only"
+
+>  Use these options, along with the options in the first subsection above,
+> -for mounting the
+> -.B nfs4
+> -file system type.
+> +for NFSv4 only. They will be ignored with older versions.
+
+Better: "for NFS version 4 only.  They are ignored with older NFS versions."
+
+>  .TP 1.5i
+>  .BI proto= netid
+>  The transport protocol name and protocol family the NFS client uses
+> @@ -823,6 +807,13 @@ In the presence of multiple client network interfaces,
+>  special routing policies,
+>  or atypical network topologies,
+>  the exact address to use for callbacks may be nontrivial to determine.
+> +.SH nfs4 FILE SYSTEM TYPE
+> +The
+> +.BR nfs4
+> +file system type is an old syntax for specifying NFSv4 usage. It can still 
+> +be used with all NFSv4-specific and common options, excepted the
+> +.B nfsvers
+> +mount option.
+
+"nfs4" is not deprecated.  I think we need to keep it as a first class citizen until support for it is gone.  I'm OK with having a little section about the functional equivalence of "nfs vers=4" and "nfs4".  Let's avoid the term "old syntax" (usually we use a weaker term like "legacy" :-)
+
+And, the usual comments about using "NFS version 4" rather than "NFSv4" apply.
+
+How about:
+
+".SH nfs4 FILE SYSTEM TYPE
+The
+.B nfs4
+file system type is equivalent to using the
+.B nfs
+file system type and specifying the
+.I vers=4
+mount option.
+Mount options that are common to all NFS versions, and options that can be
+used only when
+.I vers=4
+is specified are appropriate for
+.B nfs4
+file systems.
+The use of
+.B nfs
+with the
+.I vers=4
+mount option is encouraged."
+
+>  .SH MOUNT CONFIGURATION FILE
+>  If the mount command is configured to do so, all of the mount options 
+>  described in the previous section can also be configured in the 
+> @@ -844,12 +835,11 @@ file system type and specify the
+>  .B nfsvers=3
+>  mount option.
+>  To mount using NFS version 4,
+> -use the
+> -.B nfs4
+> -file system type.
+> -The
+> -.B nfsvers
+> -mount option is not supported for the
+> +use either the
+> +.B nfs
+> +file system type, with the
+
+No comma is needed here.
+
+> +.B nfsvers=4
+> +mount option, or the 
+>  .B nfs4
+>  file system type.
+>  .P
+> -- 
+> 1.7.2.2
+
+-- 
+chuck[dot]lever[at]oracle[dot]com
 
 
---------------ms060102060609060700050408
-Content-Type: application/pkcs7-signature; name="smime.p7s"
-Content-Transfer-Encoding: base64
-Content-Disposition: attachment; filename="smime.p7s"
-Content-Description: S/MIME Cryptographic Signature
 
-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
-ZSBpbmZvcm1hdGlvbiwgc2VlIGh0dHA6Ly9pZ2MubmF0aW9uYWwuaW5yaWEuZnIvSU5SSUEt
-UGx1cy8wHQYDVR0OBBYEFD+CnY/KyRES90CCG8DhJB8NbU12MFUGA1UdIwROMEyAFJHAF8Y6
-2la4MgATiUt86phKUBRWoTGkLzAtMQswCQYDVQQGEwJGUjEOMAwGA1UEChMFSU5SSUExDjAM
-BgNVBAMTBUlOUklBggEAMFcGA1UdHwRQME4wTKBKoEiGRmh0dHA6Ly9pZ2MubmF0aW9uYWwu
-aW5yaWEuZnIvY2dpLWJpbi9sb2FkLmNybD9DQT1JTlJJQS1QbHVzJmZvcm1hdD1ERVIwDQYJ
-KoZIhvcNAQEFBQADggEBAGH29zuA2RJK2k2uRm2q1zvk1qYABAsElHUoeeNZVux4GLnKR+Zc
-o/ZAzxhZGzdx57esdyIAY032g2m5PZmnjSV1WH37eA0bBn6khFiMSuAhvHFoHqTxGyzysrke
-TuC9nFjtImPfc24pGiTg7AOdHnFePq24C2uoTS7j89nTCaWcNpXSp1lu4B2P59hsE57c5tKR
-u095sPVDbqrDHQeojlPyBRq7iJORbQWhnY0rYNMR0D+iYmXANleD3OxDnudoEmJgKL2T6Epp
-dyhqhpLoxdpknogcYH8dSEacYq4w3VjIIEPKLaiWDqIQHSEoS7b7z2XdiFVGuuGejYOHcM7P
-3bgwggSRMIIDeaADAgECAgFGMA0GCSqGSIb3DQEBBQUAMDIxCzAJBgNVBAYTAkZSMQ4wDAYD
-VQQKEwVJTlJJQTETMBEGA1UEAxMKSU5SSUEtUGx1czAeFw0wOTEyMDcxMDI2MzhaFw0xMDEy
-MDcxMDI2MzhaMHMxCzAJBgNVBAYTAkZSMQ4wDAYDVQQKEwVJTlJJQTEPMA0GA1UECxMGU2Fj
-bGF5MRkwFwYDVQQDExBHdWlsbGF1bWUgUm91c3NlMSgwJgYJKoZIhvcNAQkBFhlHdWlsbGF1
-bWUuUm91c3NlQGlucmlhLmZyMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA6BzO
-Sg9EJzwAN2h4UvpoPzyFjQQihljeipMOm+2n2QpscCrgZ7JPXLP8W6hWTIhaICsuoLPHsGi2
-1Q8xsHSpv3pa0CbeTjXZwYHkHxdO+GZViiUHI6qmzZ92JlKZ58X9evjf8/XBAMPAuKQhIX0o
-6UQmsgUS4sA4WF13t2FN67i+bKBebDxj8b2pkWXlwqiVNJSEws8akdWeARKbzuA+Npzr+gmK
-YAz9UVHGSTbKmL35TuNwb6tMXeQ/0yDLVqNHSOmLClb3bBNYth+qDTw1t4DWGPEmEBl91duI
-dynUwrP5L01azCwbwUzSFSmdscqdXvr6lyiDHfnLaa39Bk1ncwIDAQABo4IBbzCCAWswDAYD
-VR0TAQH/BAIwADARBglghkgBhvhCAQEEBAMCBLAwDgYDVR0PAQH/BAQDAgXgMGkGCWCGSAGG
-+EIBDQRcFlpDZXJ0aWZpY2F0ZSBJTlJJQS1QbHVzLiBGb3IgbW9yZSBpbmZvcm1hdGlvbiwg
-c2VlIGh0dHA6Ly9pZ2MubmF0aW9uYWwuaW5yaWEuZnIvSU5SSUEtUGx1cy8wHQYDVR0OBBYE
-FD+CnY/KyRES90CCG8DhJB8NbU12MFUGA1UdIwROMEyAFJHAF8Y62la4MgATiUt86phKUBRW
-oTGkLzAtMQswCQYDVQQGEwJGUjEOMAwGA1UEChMFSU5SSUExDjAMBgNVBAMTBUlOUklBggEA
-MFcGA1UdHwRQME4wTKBKoEiGRmh0dHA6Ly9pZ2MubmF0aW9uYWwuaW5yaWEuZnIvY2dpLWJp
-bi9sb2FkLmNybD9DQT1JTlJJQS1QbHVzJmZvcm1hdD1ERVIwDQYJKoZIhvcNAQEFBQADggEB
-AGH29zuA2RJK2k2uRm2q1zvk1qYABAsElHUoeeNZVux4GLnKR+Zco/ZAzxhZGzdx57esdyIA
-Y032g2m5PZmnjSV1WH37eA0bBn6khFiMSuAhvHFoHqTxGyzysrkeTuC9nFjtImPfc24pGiTg
-7AOdHnFePq24C2uoTS7j89nTCaWcNpXSp1lu4B2P59hsE57c5tKRu095sPVDbqrDHQeojlPy
-BRq7iJORbQWhnY0rYNMR0D+iYmXANleD3OxDnudoEmJgKL2T6EppdyhqhpLoxdpknogcYH8d
-SEacYq4w3VjIIEPKLaiWDqIQHSEoS7b7z2XdiFVGuuGejYOHcM7P3bgxggKyMIICrgIBATA3
-MDIxCzAJBgNVBAYTAkZSMQ4wDAYDVQQKEwVJTlJJQTETMBEGA1UEAxMKSU5SSUEtUGx1cwIB
-RjAJBgUrDgMCGgUAoIIBUDAYBgkqhkiG9w0BCQMxCwYJKoZIhvcNAQcBMBwGCSqGSIb3DQEJ
-BTEPFw0xMDA4MTQxNTExMDNaMCMGCSqGSIb3DQEJBDEWBBRsD1dzXw6nwLYJ76n300bwlwhn
-ZjBGBgkrBgEEAYI3EAQxOTA3MDIxCzAJBgNVBAYTAkZSMQ4wDAYDVQQKEwVJTlJJQTETMBEG
-A1UEAxMKSU5SSUEtUGx1cwIBRjBIBgsqhkiG9w0BCRACCzE5oDcwMjELMAkGA1UEBhMCRlIx
-DjAMBgNVBAoTBUlOUklBMRMwEQYDVQQDEwpJTlJJQS1QbHVzAgFGMF8GCSqGSIb3DQEJDzFS
-MFAwCwYJYIZIAWUDBAECMAoGCCqGSIb3DQMHMA4GCCqGSIb3DQMCAgIAgDANBggqhkiG9w0D
-AgIBQDAHBgUrDgMCBzANBggqhkiG9w0DAgIBKDANBgkqhkiG9w0BAQEFAASCAQDix1fxzm/c
-LUdPTrgAyxG0pB3pEPHBCng6UgENTd3ixX22iFD30BoSAD4PTq3L5K/Alal+GGipXs/xSaTi
-0CXva1GB3Ck0MbMpxaUDUY5CtgHNDtX5DJpEuhdYFfF6VzD4AvyktnfX2jbo+ZY+wuKPmmZx
-CjNSqryE114uAgtQQef1wkeD7W7RIgWbhxXmFU9CX1IBe3UCI2sZ2tjSYt0yG35FkeRzYHrP
-2jxYWOO1QuuKA40VZy6apZvZnGYMVv+rg9tBlarHCtqX8H1psxif6YrInYRXkS7q1nNA1aI7
-LeBG3YGASy+cZZDX70wZodI2ZQCGVIQCm4Yd5jhA0JWdAAAAAAAA
 
---------------ms060102060609060700050408--
