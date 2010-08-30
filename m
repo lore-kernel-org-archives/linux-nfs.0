@@ -1,47 +1,59 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:50613 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753225Ab0HMVcF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 13 Aug 2010 17:32:05 -0400
-From: andros@netapp.com
-To: bhalevy@panasas.com
-Cc: linux-nfs@vger.kernel.org, Fred Isaman <iisaman@citi.umich.edu>
-Subject: [PATCH 01/50] nfs41: prevent exchange_id from sending server-only flag
-Date: Fri, 13 Aug 2010 17:31:13 -0400
-Message-Id: <1281735122-1496-2-git-send-email-andros@netapp.com>
-In-Reply-To: <1281735122-1496-1-git-send-email-andros@netapp.com>
-References: <1281735122-1496-1-git-send-email-andros@netapp.com>
+Received: from rcsinet10.oracle.com ([148.87.113.121]:28747 "EHLO
+	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755539Ab0H3R2s convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Aug 2010 13:28:48 -0400
+Subject: Re: AUFS triggers Kernel BUG() in nfs_do_writepage (write.c:276)
+Content-Type: text/plain; charset=us-ascii
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <4C7BB8C1.40906@mudrichsystems.com>
+Date: Mon, 30 Aug 2010 13:28:26 -0400
+Cc: sfjro@users.sourceforge.net, linux-nfs@vger.kernel.org
+Message-Id: <87900623-DF1B-42EA-8E95-B7D2768D1122@oracle.com>
+References: <4C7960EE.6060304@mudrichsystems.com> <3217.1283139187@jrobl> <4C7B53F3.8010709@mudrichsystems.com> <7041.1283154060@jrobl> <4C7BB8C1.40906@mudrichsystems.com>
+To: David Mudrich <dmudrich@mudrichsystems.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Fred Isaman <iisaman@citi.umich.edu>
 
-clp->cl_exchange_flags is used both for client output and server input.
-This causes problems in certain recovery situations, when the server
-has sent back EXCHGID4_FLAG_CONFIRMED_R, causing the client to erroneously
-use the flag in future EXCHANGE_ID requests.
+On Aug 30, 2010, at 9:57 AM, David Mudrich wrote:
 
-Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
----
- fs/nfs/nfs4proc.c |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
+> Am 30.08.2010 09:41, schrieb sfjro@users.sourceforge.net:
+>> David Mudrich:
+>>> I attached the information you asked for. It seems difficult to have a
+>>> realistic test without AUFS, as it is mounted at the root directory.
+>> Thanx.
+>> It is difficult for me too.
+>> Although I am not confident, these commits (from latest mainline) are
+>> worth to try. If you have no way other than this, you should try.
+>> 
+>> 
+>> J. R. Okajima
+>> 
+> Hello,
+> 
+> I applied the patch, same issue.
+> I attached dmesg | tail -n 50.
+> 
+> I just tried nfsvers=2 and it works.
+> The problem must be connected with nfs3 writeback.
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index ba79c0e..7684817 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -4573,7 +4573,7 @@ int nfs4_proc_exchange_id(struct nfs_client *clp, struct rpc_cred *cred)
- 	nfs4_verifier verifier;
- 	struct nfs41_exchange_id_args args = {
- 		.client = clp,
--		.flags = clp->cl_exchange_flags,
-+		.flags = clp->cl_exchange_flags & ~EXCHGID4_FLAG_CONFIRMED_R,
- 	};
- 	struct nfs41_exchange_id_res res = {
- 		.client = clp,
+Two-phase NFSv3 writes are not like most other file system implementations, so it's not surprising that AUFS might be tripped up.
+
+A possible workaround: If you specify the "sync" mount option when the client mounts the NFS server, it will disable UNSTABLE NFSv3 writes.
+
+> A copy of this mail goes to the linux-nfs list, maybe they can help to further narrow this.
+> 
+> 
+> Regards
+> 
+> David Mudrich
+> <log.txt>
+
 -- 
-1.6.2.5
+chuck[dot]lever[at]oracle[dot]com
+
+
+
 
