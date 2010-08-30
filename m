@@ -1,79 +1,82 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:51079 "EHLO mx1.redhat.com"
+Received: from mail-out1.uio.no ([129.240.10.57]:57815 "EHLO mail-out1.uio.no"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753864Ab0HSPLc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 19 Aug 2010 11:11:32 -0400
-Date: Thu, 19 Aug 2010 11:11:22 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-Cc: Christoph Hellwig <hch@infradead.org>, fengguang.wu@gmail.com,
-        linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-mm@kvack.org
-Subject: Re: why are WB_SYNC_NONE COMMITs being done with FLUSH_SYNC set ?
-Message-ID: <20100819111122.562763d2@barsoom.rdu.redhat.com>
-In-Reply-To: <1282229905.6199.19.camel@heimdal.trondhjem.org>
-References: <20100819101525.076831ad@barsoom.rdu.redhat.com>
-	<20100819143710.GA4752@infradead.org>
-	<1282229905.6199.19.camel@heimdal.trondhjem.org>
-Content-Type: text/plain; charset=US-ASCII
+	id S1754176Ab0H3TS4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 30 Aug 2010 15:18:56 -0400
+Subject: Re: [PATCH] sunrpc: cancel delayed connect working when conncet
+ success
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+To: Mi Jinlong <mijinlong@cn.fujitsu.com>
+Cc: NFSv3 list <linux-nfs@vger.kernel.org>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        Chuck Lever <chuck.lever@oracle.com>, Jeff Layton <jlayton@redhat.com>
+In-Reply-To: <4C6BACAA.2060706@cn.fujitsu.com>
+References: <4C6BACAA.2060706@cn.fujitsu.com>
+Content-Type: text/plain; charset="UTF-8"
+Date: Mon, 30 Aug 2010 15:18:47 -0400
+Message-ID: <1283195927.2920.3.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Thu, 19 Aug 2010 10:58:25 -0400
-Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
-
-> On Thu, 2010-08-19 at 10:37 -0400, Christoph Hellwig wrote:
-> > On Thu, Aug 19, 2010 at 10:15:25AM -0400, Jeff Layton wrote:
-> > > I'm looking at backporting some upstream changes to earlier kernels,
-> > > and ran across something I don't quite understand...
-> > > 
-> > > In nfs_commit_unstable_pages, we set the flags to FLUSH_SYNC. We then
-> > > zero out the flags if wbc->nonblocking or wbc->for_background is set.
-> > > 
-> > > Shouldn't we also clear it out if wbc->sync_mode == WB_SYNC_NONE ?
-> > > WB_SYNC_NONE means "don't wait on anything", so shouldn't that include
-> > > not waiting on the COMMIT to complete?
-> > 
-> > I've been trying to figure out what the nonblocking flag is supposed
-> > to mean for a while now.
-> > 
-> > It basically disappeared in commit 0d99519efef15fd0cf84a849492c7b1deee1e4b7
-> > 
-> > 	"writeback: remove unused nonblocking and congestion checks"
-> > 
-> > from Wu.  What's left these days is a couple of places in local copies
-> > of write_cache_pages (afs, cifs), and a couple of checks in random
-> > writepages instances (afs, block_write_full_page, ceph, nfs, reiserfs, xfs)
-> > and the use in nfs_write_inode.  It's only actually set for memory
-> > migration and pageout, that is VM writeback.
-> > 
-> > To me it really doesn't make much sense, but maybe someone has a better
-> > idea what it is for.
-> > 
-> > > +	if (wbc->nonblocking || wbc->for_background ||
-> > > +	    wbc->sync_mode == WB_SYNC_NONE)
-> > 
-> > You could remove the nonblocking and for_background checks as
-> > these impliy WB_SYNC_NONE.
+On Wed, 2010-08-18 at 17:49 +0800, Mi Jinlong wrote:
+> As network partition or some other reason, when client connect 
+> success, maybe there is some delayed connect working in connect_work list.
 > 
-> To me that sounds fine. I've also been trying to wrap my head around the
-> differences between 'nonblocking', 'for_background', 'for_reclaim' and
-> 'for_kupdate' and how the filesystem is supposed to treat them.
+> Aug  2 12:51:32 TEST-M kernel: RPC:       xs_connect delayed xprt ccc4c800 for 96 seconds
+> Aug  2 12:51:32 TEST-M kernel: RPC:       xs_error_report client ccc4c800...
+> Aug  2 12:51:32 TEST-M kernel: RPC:       error 111
+>  ... snip ...
+> Aug  2 12:53:08 TEST-M kernel: RPC:       disconnected transport ccc4c800
+> Aug  2 12:53:08 TEST-M kernel: RPC:       worker connecting xprt ccc4c800 via tcp to 192.168.0.21 (port 2049)
+> Aug  2 12:53:08 TEST-M kernel: RPC:       ccc4c800 connect status 115 connected 0 sock state 2
+> Aug  2 12:53:08 TEST-M kernel: RPC:   228 xprt_connect_status: retrying
+> Aug  2 12:53:08 TEST-M kernel: RPC:   228 xprt_prepare_transmit
+> Aug  2 12:53:08 TEST-M kernel: RPC:   228 xprt_transmit(136)
+> Aug  2 12:53:08 TEST-M kernel: RPC:       xs_tcp_send_request(136) = -11
+> Aug  2 12:53:08 TEST-M kernel: RPC:   228 xmit incomplete (136 left of 136)
+> Aug  2 12:53:08 TEST-M kernel: RPC:   228 xprt_connect xprt ccc4c800 is not connected
+> Aug  2 12:53:08 TEST-M kernel: RPC:       xs_connect delayed xprt ccc4c800 for 192 seconds
+> Aug  2 12:53:08 TEST-M kernel: RPC:       xs_tcp_state_change client ccc4c800...
+> Aug  2 12:53:08 TEST-M kernel: RPC:       state 1 conn 0 dead 0 zapped 1
+> Aug  2 12:53:08 TEST-M kernel: RPC:   228 xprt_connect_status: retrying
+> Aug  2 12:53:08 TEST-M kernel: RPC:   228 xprt_prepare_transmit
+> Aug  2 12:53:08 TEST-M kernel: RPC:   228 xprt_transmit(136)
+> Aug  2 12:53:08 TEST-M kernel: RPC:       xs_tcp_send_request(136) = 136
+> Aug  2 12:53:08 TEST-M kernel: RPC:   228 xmit complete
+> Aug  2 12:53:08 TEST-M kernel: RPC:   229 xprt_prepare_transmit
 > 
-> Aside from the above, I've used 'for_reclaim', 'for_kupdate' and
-> 'for_background' in order to adjust the RPC request's queuing priority
-> (high in the case of 'for_reclaim' and low for the other two).
+> As the debug message show, "xs_connect delayed xprt ccc4c800 for 192 seconds"
+> means a connecting work have be delayed at connect_worker list.
+> "state 1 conn 0 dead 0 zapped 1" shows the connect have successed 
+> but a delayed work still alive at connect_worker list.
 > 
+> Signed-off-by: Mi Jinlong <mijinlong@cn.fujitsu.com>
+> 
+> ---
+>  net/sunrpc/xprtsock.c |    4 ++++
+>  1 files changed, 4 insertions(+), 0 deletions(-)
+> 
+> diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+> index 49a62f0..823f1db 100644
+> --- a/net/sunrpc/xprtsock.c
+> +++ b/net/sunrpc/xprtsock.c
+> @@ -1324,6 +1324,10 @@ static void xs_tcp_state_change(struct sock *sk)
+>  			transport->tcp_flags =
+>  				TCP_RCV_COPY_FRAGHDR | TCP_RCV_COPY_XID;
+>  
+> +			if (xprt_connecting(xprt) &&
+> +			      cancel_delayed_work(&transport->connect_worker))
+> +				xprt_clear_connecting(xprt);
+> +
+>  			xprt_wake_pending_tasks(xprt, -EAGAIN);
+>  		}
+>  		spin_unlock_bh(&xprt->transport_lock);
 
-Ok, I don't really have a great way to test the above change though
-aside from sticking it into the backport I'm working on for RHEL5
-(2.6.18).
+Wait... According to the above trace, the connect request is _failing_
+due to an ECONNREFUSED error. In that case, we _want_ to delay the
+reconnection in order to give the server time to set itself up.
 
-I suspect that the existing flag checks probably cover a lot of the
-WB_SYNC_NONE cases already. Changing it to a check for WB_SYNC_NONE
-would help me as RHEL5 doesn't have the for_background flag...
+Cheers
+  Trond
 
-Cheers,
--- 
-Jeff Layton <jlayton@redhat.com>
