@@ -1,68 +1,102 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-gw0-f46.google.com ([74.125.83.46]:57561 "EHLO
-	mail-gw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752404Ab0HaTLm (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 31 Aug 2010 15:11:42 -0400
-Received: by gwj17 with SMTP id 17so2686673gwj.19
-        for <linux-nfs@vger.kernel.org>; Tue, 31 Aug 2010 12:11:41 -0700 (PDT)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 2/2] mount.nfs: Don't try NFSv4 if UDP was requested
-To: neilb@suse.de
-Cc: linux-nfs@vger.kernel.org
-Date: Tue, 31 Aug 2010 15:11:39 -0400
-Message-ID: <20100831191138.10685.75509.stgit@matisse.1015granger.net>
-In-Reply-To: <20100831191006.10685.66951.stgit@matisse.1015granger.net>
-References: <20100831191006.10685.66951.stgit@matisse.1015granger.net>
-Content-Type: text/plain; charset="utf-8"
+Received: from mx2.netapp.com ([216.240.18.37]:2486 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754918Ab0H3NvV convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Aug 2010 09:51:21 -0400
+Subject: Re: [REGRESSION PATCH] NFS: let NFS_V4 and NFSD_V4 enforce CRYPTO
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Uwe =?ISO-8859-1?Q?Kleine-K=F6nig?=
+	<u.kleine-koenig@pengutronix.de>
+Cc: Neil Brown <neilb@suse.de>, Randy Dunlap <randy.dunlap@oracle.com>,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
+        "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
+In-Reply-To: <20100830121022.GA14459@pengutronix.de>
+References: <20100825084912.GA10293@pengutronix.de>
+	 <1282727119-8295-1-git-send-email-u.kleine-koenig@pengutronix.de>
+	 <20100827061139.GA27851@pengutronix.de>
+	 <20100830082618.GA24402@pengutronix.de> <20100830203659.3b9884f6@notabene>
+	 <20100830121022.GA14459@pengutronix.de>
+Content-Type: text/plain; charset="UTF-8"
+Date: Mon, 30 Aug 2010 09:50:24 -0400
+Message-ID: <1283176224.7073.13.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-If no version was specified on the command line, but UDP is requested,
-don't attempt an NFSv4 mount.
+On Mon, 2010-08-30 at 14:10 +0200, Uwe Kleine-König wrote:
+> On Mon, Aug 30, 2010 at 08:36:59PM +1000, Neil Brown wrote:
+> > On Mon, 30 Aug 2010 10:26:18 +0200
+> > Uwe Kleine-König <u.kleine-koenig@pengutronix.de> wrote:
+> > 
+> > > [extending Cc: to contain Neil and linux-nfs]
+> > > 
+> > > On Fri, Aug 27, 2010 at 08:11:39AM +0200, Uwe Kleine-König wrote:
+> > > > On Wed, Aug 25, 2010 at 11:05:19AM +0200, Uwe Kleine-König wrote:
+> > 
+> > I would tend to wait more than 2 days between pings..
+>
+> 	ukl@octopus:~/gsrc/linux-2.6$ git rev-parse linus/master
+> 	2bfc96a127bc1cc94d26bfaa40159966064f9c8c
+> 	ukl@octopus:~/gsrc/linux-2.6$ git grep -E CRYPTO= linus/master arch/arm/configs/ | wc -l
+> 	6
+> 	ukl@octopus:~/gsrc/linux-2.6$ git grep -E NFSD?_V4 linus/master arch/arm/configs/ | wc -l
+> 	37
+> 
+> So I think that at least 31 arm-defconfigs don't build because of this
+> issue.  And as this kind of error greatly hurts automatic bisection I
+> thought this to be critical enough to be a bit impatient.
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
+So, why aren't you first and foremost fixing the damned arm-defconfigs?
+They are clearly broken if they are auto-selecting NFSv4 without CRYPTO
+and RPCSEC_GSS.
 
- utils/mount/stropts.c |   13 ++++++++++++-
- 1 files changed, 12 insertions(+), 1 deletions(-)
+> > > > > This is a follow up to
+> > > > > 
+> > > > > 	df486a2 (NFS: Fix the selection of security flavours in Kconfig)
+> > > > > 
+> > > > > which broke (among others) arm/mx1_defconfig.
+> > > > > 
+> > > > > Moreover let NFS_V4 select RPCSEC_GSS_KRB5 again as it was before
+> > > > > df486a2.  This make the dependency more explicit than relying on the no
+> > > > > prompt + default y if !(NFS_V4 || NFSD_V4).
+> > 
+> > Maybe if you said a little bit about how it broke?
+>   LD      .tmp_vmlinux1
+> fs/built-in.o: In function `nfs_callback_authenticate':
+> compr_zlib.c:(.text+0x7c040): undefined reference to `svc_gss_principal'
+> make[2]: *** [.tmp_vmlinux1] Error 1
+> make[1]: *** [sub-make] Error 2
+> make: *** [all] Error 2
+> 
+> I can add this to the commit log.
 
-diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
-index 94e75be..17ba48a 100644
---- a/utils/mount/stropts.c
-+++ b/utils/mount/stropts.c
-@@ -92,7 +92,8 @@ struct nfsmount_info {
- 	struct mount_options	*options;	/* parsed mount options */
- 	char			**extra_opts;	/* string for /etc/mtab */
- 
--	unsigned long		version;	/* NFS version */
-+	unsigned long		version,	/* NFS version */
-+				protocol;	/* transport protocol */
- 	int			flags,		/* MS_ flags */
- 				fake,		/* actually do the mount? */
- 				child;		/* forked bg child? */
-@@ -361,6 +362,9 @@ static int nfs_validate_options(struct nfsmount_info *mi)
- 	if (!nfs_set_version(mi))
- 		return 0;
- 
-+	if (!nfs_nfs_protocol(mi->options, &mi->protocol))
-+		return 0;
-+
- 	if (!nfs_append_sloppy_option(mi->options))
- 		return 0;
- 
-@@ -761,6 +765,13 @@ static int nfs_autonegotiate(struct nfsmount_info *mi)
- 	int result;
- 
- 	/*
-+	 * Try only NFSv2/v3 if a transport protocol was
-+	 * specified on the command line.
-+	 */
-+	if (mi->protocol == IPPROTO_UDP)
-+		goto fall_back;
-+
-+	/*
- 	 * Before 2.6.31, the kernel NFS client didn't support
- 	 * "-t nfs vers=4" mounts, so we can't include NFSv4
- 	 * when autonegotiating.
+This is exactly the problem that Randy was seeing _before_ commit
+df486a2, so just reverting that patch by adding the selects back into
+NFSv4 is wrong.
 
+The right thing to do here (aside from fixing the crummy defconfigs) is
+rather to fix nfs_callback_authenticate() to stop depending on GSS
+private interfaces such as svc_gss_principal().
+
+> > And I'm not sure of the point of the "recursive dependency" comment below...
+> I added this because if kconfig were a bit smarter it would select
+> CRYPTO, too, if asked to select RPCSEC_GSS_KRB5.  On the
+> linux-arm-kernel ML Catalin Marinas already thought about making kconfig
+> smarter and so I wanted to mark the symbol.
+>  
+> > I don't fully understand all the issues behind choosing between 'depends' and
+> > 'select' (why isn't is 'selects' I wonder - that would be more consistent...)
+> I think it's an imperative, not a normal present tense?!  And note this
+> is different.  Here it's not depend vs. select but select vs.
+> 
+> 	config SOMESYMBOL
+> 		prompt "sometext" if !(NFS_V4 || NFSD_V4)
+> 		default y
+> 
+> So a dependency for NFS_V4 is hidden in net/sunrpc/Kconfig.
+
+You are simply not supposed to be given the option of turning it off if
+NFSv4 is selected.
+
+Trond
