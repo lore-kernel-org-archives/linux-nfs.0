@@ -1,286 +1,145 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cantor.suse.de ([195.135.220.2]:42535 "EHLO mx1.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933569Ab0HXXMg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 24 Aug 2010 19:12:36 -0400
-Date: Wed, 25 Aug 2010 09:12:26 +1000
-From: Neil Brown <neilb@suse.de>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 2/2] sunrpc: use monotonic time in expiry cache
-Message-ID: <20100825091226.5a68986d@notabene>
-In-Reply-To: <20100824181531.GE25706@fieldses.org>
-References: <20100812064957.3408.44224.stgit@localhost.localdomain>
-	<20100812065522.3408.25500.stgit@localhost.localdomain>
-	<20100824181531.GE25706@fieldses.org>
-Content-Type: text/plain; charset=US-ASCII
+Received: from rcsinet10.oracle.com ([148.87.113.121]:40287 "EHLO
+	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751543Ab0H3Tay convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Aug 2010 15:30:54 -0400
+Subject: Re: mount.nfs: protocol fallback when server doesn't support TCP
+Content-Type: text/plain; charset=us-ascii
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <20100830103025.70d09ec8@notabene>
+Date: Mon, 30 Aug 2010 15:29:03 -0400
+Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Message-Id: <BC2D2164-0836-4DAC-99C5-C7BE23D3B163@oracle.com>
+References: <20100826120635.4c3157bc@notabene> <659EE931-F48E-4A5D-9212-D4F8AE421029@oracle.com> <20100830103025.70d09ec8@notabene>
+To: Neil Brown <neilb@suse.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Tue, 24 Aug 2010 14:15:31 -0400
-"J. Bruce Fields" <bfields@fieldses.org> wrote:
 
-> On Thu, Aug 12, 2010 at 04:55:22PM +1000, NeilBrown wrote:
-> > this protects us from confusion when the wallclock time changes.
-> > 
-> > We convert to and from wallclock when  setting or reading expiry
-> > times.
-> > 
-> > Also use monotonic_seconds for last_clost time.
+On Aug 29, 2010, at 8:30 PM, Neil Brown wrote:
+
+> On Thu, 26 Aug 2010 10:51:23 -0400
+> Chuck Lever <chuck.lever@oracle.com> wrote:
 > 
-> Looks good to me, thanks--applying for 2.6.37.
+>> 
+>> On Aug 25, 2010, at 10:06 PM, Neil Brown wrote:
+>> 
+>>> 
+>>> Currently if the server doesn't support TCP (and so doesn't support NFSv4)
+>>> we don't fall-back to NFSv3.  This is because 'ECONNREFUSED' isn't deemed to
+>>> be a suitable error for falling back.  Rather we wait for about 2 minutes,
+>>> then give up.
+>>> 
+>>> There is some justification for this:  ECONNREFUSED could just mean that the
+>>> server isn't quite ready yet.
+>>> 
+>>> I'm not really sure what the best thing to do here would be.  We don't really
+>>> want to try v3 and have fail only because it was just enough later that nfsd
+>>> is now responding.
+>>> 
+>>> Maybe the ideal would be to do a portmap probe and only fall back to v3 if
+>>> portmap confirm that v3 is supported and v4 isn't.
+>>> 
+>>> For now I just present this patch which allows fallback to v3 providing tcp
+>>> wasn't explicitly requested.
+>>> 
+>>> Thoughts?
+>> 
+>> What are the risks of checking portmap in this case?  That seems like it would give a better chance of a desirable outcome.
 > 
-> (Apologies for the delay--partly due to my getting fed up with not
-> understanding time, and feeling I should go read some code.  Resulting
-> notes at http://fieldses.org/~bfields/kernel/time.txt.
+> True, I was just too lazy at the time.
 > 
-> The only thing I noticed was that the timekeeping code consistently uses
-> the word "monotonic" on functions that return something slightly
-> different; seconds_since_boot() might be a better name.
+> How about this:
+>  If nfs_try_mount_v4 return ECONNREFUSED we do a portmap lookup and see
+>  which versions and protocols are supported.
+>  If nothing is registered, or if any version support TCP, then we take the
+>  current approach or waiting and trying again on the assumption that the
+>  server is still starting up and wasn't quite ready yet when we got the
+>  ECONNREFUSED.
+>  However if UDP support is available but TCP isn't, and if the mount options
+>  don't specify a protocol, then fall back to v2v3.
 
-Yes.... I think I developed this against 2.6.16 which has different naming
-conventions, and then forward-parted to -current without giving too much
-thought to the names.   seconds_since_boot() does sound better.
+That doesn't sound too bad.
 
+> So here is my second draft.  The 'verbose' results will be a bit confusing
+> but I think the functionality is close to what I want - it just does the pmap
+> lookups twice.
 > 
-> Oh, and
+> NeilBrown
 > 
-> 	get_seconds() - monotonic_seconds()
 > 
-> isn't the most intuitive way possible to say "boot time in seconds".  If
-> you want to fix either of those, fine, otherwise no big deal.)
+> diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
+> index 0241400..913b563 100644
+> --- a/utils/mount/stropts.c
+> +++ b/utils/mount/stropts.c
+> @@ -93,6 +93,7 @@ struct nfsmount_info {
+> 	char			**extra_opts;	/* string for /etc/mtab */
+> 
+> 	unsigned long		version;	/* NFS version */
+> +	unsigned long		proto;		/* protocol chosen */
+> 	int			flags,		/* MS_ flags */
+> 				fake,		/* actually do the mount? */
+> 				child;		/* forked bg child? */
+> @@ -625,6 +626,9 @@ static int nfs_do_mount_v3v2(struct nfsmount_info *mi,
+> 	if (!nfs_rewrite_pmap_mount_options(options))
+> 		goto out_fail;
+> 
+> +	/* record which protocol was chosen */
+> +	nfs_nfs_protocol(options, &mi->proto);
 
-To be fair, I don't use that exactly.  I use
+Don't see why this is necessary...?
 
-      some_monotonic_based_value - monotonic_seconds() + get_seconds()
+The mount retry loop operates on a copy of the command line options; each iteration gets a fresh copy of the original options.  Maybe it's lunchtime and I'm hungry enough that I just don't understand how you are using mi->proto.
 
-to turn a monotonic_based value to a wallclock based value.
-This makes sense to me - subtract the base I don't want, and add the base
-that I do.
+> +
+> 	result = nfs_sys_mount(mi, options);
+> 
+> out_fail:
+> @@ -762,6 +766,29 @@ static int nfs_try_mount(struct nfsmount_info *mi)
+> 			errno = 0;
+> 			result = nfs_try_mount_v4(mi);
+> 			if (errno != EPROTONOSUPPORT) {
+> +				/* If server only handles UDP, then v4 will have
+> +				 * received ECONNREFUSED for TCP, so fall through
+> +				 * to v3v2 which can try udp, but only if tcp
+> +				 * wasn't explicitly requested
+> +				 */
+> +				if (errno == ECONNREFUSED) {
+> +					unsigned long proto;
+> +					if (nfs_nfs_protocol(mi->options, &proto) == 1 &&
+> +					    proto == 0) {
 
-I guess you could wrap that in convert_to_wallclock and use getboottime
-directly:
+Is the protocol setting loop-invariant?  Shouldn't you use mi->proto here?
 
-static inline time_t convert_to_wallclock(time_t sinceboot)
-{
-	struct timespec boot;
-	getboottime(&boot);
-	return sinceboot + boot.tv_sec;
-}
+> +						/* OK to try different protocols. Lets see
+> +						 * what portmap thinks.
+> +						 */
+> +						int oldfake = mi->fake;
+> +						int res;
+> +						mi->fake = 1;
+> +						res = nfs_try_mount_v3v2(mi);
 
-Following is only compile tested.
+If you just want to probe the server's portmapper, I think you can use nfs_probe_bothports() directly.
 
-Thanks,
-NeilBrown
+> +						mi->fake = oldfake;
+> +						if (!res || mi->proto != IPPROTO_UDP)
+> +							/* time out and try again */
+> +							break;
+> +					} else
+> +						break;
+> +				} else
+> 				/* 
+> 				 * To deal with legacy Linux servers that don't
+> 				 * automatically export a pseudo root, retry
+> 
+> 
 
--------
+This is a lot of logic to stuff in here, where it is already fairly congested.  I would encourage you to move it to a helper function if that's practical.
 
-Rename monotonic_seconds to seconds_since_boot
+-- 
+chuck[dot]lever[at]oracle[dot]com
 
-monotonic has a meaning in Linux timekeeping slight different to what we
-use in sunrpc_cache, so change the name.
 
-Also make the conversion from second_since_boot times to wallclock times less
-obscure.
 
-Signed-off-by: NeilBrown <neilb@suse.de>
 
-diff --git a/fs/nfs/dns_resolve.c b/fs/nfs/dns_resolve.c
-index 3e6aab2..97c03ca 100644
---- a/fs/nfs/dns_resolve.c
-+++ b/fs/nfs/dns_resolve.c
-@@ -144,7 +144,7 @@ static int nfs_dns_show(struct seq_file *m, struct cache_detail *cd,
- 		return 0;
- 	}
- 	item = container_of(h, struct nfs_dns_ent, h);
--	ttl = item->h.expiry_time - monotonic_seconds();
-+	ttl = item->h.expiry_time - seconds_since_boot();
- 	if (ttl < 0)
- 		ttl = 0;
- 
-@@ -216,7 +216,7 @@ static int nfs_dns_parse(struct cache_detail *cd, char *buf, int buflen)
- 	ttl = get_expiry(&buf);
- 	if (ttl == 0)
- 		goto out;
--	key.h.expiry_time = ttl + monotonic_seconds();
-+	key.h.expiry_time = ttl + seconds_since_boot();
- 
- 	ret = -ENOMEM;
- 	item = nfs_dns_lookup(cd, &key);
-@@ -278,7 +278,7 @@ static int do_cache_lookup_nowait(struct cache_detail *cd,
- 		goto out_err;
- 	ret = -ETIMEDOUT;
- 	if (!test_bit(CACHE_VALID, &(*item)->h.flags)
--			|| (*item)->h.expiry_time < monotonic_seconds()
-+			|| (*item)->h.expiry_time < seconds_since_boot()
- 			|| cd->flush_time > (*item)->h.last_refresh)
- 		goto out_put;
- 	ret = -ENOENT;
-diff --git a/fs/nfsd/nfs4idmap.c b/fs/nfsd/nfs4idmap.c
-index 6031a90..808b33a 100644
---- a/fs/nfsd/nfs4idmap.c
-+++ b/fs/nfsd/nfs4idmap.c
-@@ -550,7 +550,7 @@ do_idmap_lookup_nowait(struct ent *(*lookup_fn)(struct ent *),
- 		goto out_err;
- 	ret = -ETIMEDOUT;
- 	if (!test_bit(CACHE_VALID, &(*item)->h.flags)
--			|| (*item)->h.expiry_time < monotonic_seconds()
-+			|| (*item)->h.expiry_time < seconds_since_boot()
- 			|| detail->flush_time > (*item)->h.last_refresh)
- 		goto out_put;
- 	ret = -ENOENT;
-diff --git a/include/linux/sunrpc/cache.h b/include/linux/sunrpc/cache.h
-index df7c19b..ece432b 100644
---- a/include/linux/sunrpc/cache.h
-+++ b/include/linux/sunrpc/cache.h
-@@ -223,13 +223,20 @@ static inline int get_int(char **bpp, int *anint)
-  * since boot.  This is the best for measuring differences in
-  * real time.
-  */
--static inline time_t monotonic_seconds(void)
-+static inline time_t seconds_since_boot(void)
- {
- 	struct timespec boot;
- 	getboottime(&boot);
- 	return get_seconds() - boot.tv_sec;
- }
- 
-+static inline time_t convert_to_wallclock(time_t sinceboot)
-+{
-+	struct timespec boot;
-+	getboottime(&boot);
-+	return boot.tv_sec + sinceboot;
-+}
-+
- static inline time_t get_expiry(char **bpp)
- {
- 	int rv;
-@@ -246,7 +253,7 @@ static inline time_t get_expiry(char **bpp)
- static inline void sunrpc_invalidate(struct cache_head *h,
- 				     struct cache_detail *detail)
- {
--	h->expiry_time = monotonic_seconds() - 1;
--	detail->nextcheck = monotonic_seconds();
-+	h->expiry_time = seconds_since_boot() - 1;
-+	detail->nextcheck = seconds_since_boot();
- }
- #endif /*  _LINUX_SUNRPC_CACHE_H_ */
-diff --git a/net/sunrpc/cache.c b/net/sunrpc/cache.c
-index 99d852e..8dc1219 100644
---- a/net/sunrpc/cache.c
-+++ b/net/sunrpc/cache.c
-@@ -42,7 +42,7 @@ static void cache_revisit_request(struct cache_head *item);
- 
- static void cache_init(struct cache_head *h)
- {
--	time_t now = monotonic_seconds();
-+	time_t now = seconds_since_boot();
- 	h->next = NULL;
- 	h->flags = 0;
- 	kref_init(&h->ref);
-@@ -52,7 +52,7 @@ static void cache_init(struct cache_head *h)
- 
- static inline int cache_is_expired(struct cache_detail *detail, struct cache_head *h)
- {
--	return  (h->expiry_time < monotonic_seconds()) ||
-+	return  (h->expiry_time < seconds_since_boot()) ||
- 		(detail->flush_time > h->last_refresh);
- }
- 
-@@ -127,7 +127,7 @@ static void cache_dequeue(struct cache_detail *detail, struct cache_head *ch);
- static void cache_fresh_locked(struct cache_head *head, time_t expiry)
- {
- 	head->expiry_time = expiry;
--	head->last_refresh = monotonic_seconds();
-+	head->last_refresh = seconds_since_boot();
- 	set_bit(CACHE_VALID, &head->flags);
- }
- 
-@@ -238,7 +238,7 @@ int cache_check(struct cache_detail *detail,
- 
- 	/* now see if we want to start an upcall */
- 	refresh_age = (h->expiry_time - h->last_refresh);
--	age = monotonic_seconds() - h->last_refresh;
-+	age = seconds_since_boot() - h->last_refresh;
- 
- 	if (rqstp == NULL) {
- 		if (rv == -EAGAIN)
-@@ -253,7 +253,7 @@ int cache_check(struct cache_detail *detail,
- 				cache_revisit_request(h);
- 				if (rv == -EAGAIN) {
- 					set_bit(CACHE_NEGATIVE, &h->flags);
--					cache_fresh_locked(h, monotonic_seconds()+CACHE_NEW_EXPIRY);
-+					cache_fresh_locked(h, seconds_since_boot()+CACHE_NEW_EXPIRY);
- 					cache_fresh_unlocked(h, detail);
- 					rv = -ENOENT;
- 				}
-@@ -388,11 +388,11 @@ static int cache_clean(void)
- 			return -1;
- 		}
- 		current_detail = list_entry(next, struct cache_detail, others);
--		if (current_detail->nextcheck > monotonic_seconds())
-+		if (current_detail->nextcheck > seconds_since_boot())
- 			current_index = current_detail->hash_size;
- 		else {
- 			current_index = 0;
--			current_detail->nextcheck = monotonic_seconds()+30*60;
-+			current_detail->nextcheck = seconds_since_boot()+30*60;
- 		}
- 	}
- 
-@@ -477,7 +477,7 @@ EXPORT_SYMBOL_GPL(cache_flush);
- void cache_purge(struct cache_detail *detail)
- {
- 	detail->flush_time = LONG_MAX;
--	detail->nextcheck = monotonic_seconds();
-+	detail->nextcheck = seconds_since_boot();
- 	cache_flush();
- 	detail->flush_time = 1;
- }
-@@ -902,7 +902,7 @@ static int cache_release(struct inode *inode, struct file *filp,
- 		filp->private_data = NULL;
- 		kfree(rp);
- 
--		cd->last_close = monotonic_seconds();
-+		cd->last_close = seconds_since_boot();
- 		atomic_dec(&cd->readers);
- 	}
- 	module_put(cd->owner);
-@@ -1034,7 +1034,7 @@ int sunrpc_cache_pipe_upcall(struct cache_detail *detail, struct cache_head *h,
- 	int len;
- 
- 	if (atomic_read(&detail->readers) == 0 &&
--	    detail->last_close < monotonic_seconds() - 30) {
-+	    detail->last_close < seconds_since_boot() - 30) {
- 			warn_no_listener(detail);
- 			return -EINVAL;
- 	}
-@@ -1219,7 +1219,7 @@ static int c_show(struct seq_file *m, void *p)
- 
- 	ifdebug(CACHE)
- 		seq_printf(m, "# expiry=%ld refcnt=%d flags=%lx\n",
--			   cp->expiry_time - monotonic_seconds() + get_seconds(),
-+			   convert_to_wallclock(cp->expiry_time),
- 			   atomic_read(&cp->ref.refcount), cp->flags);
- 	cache_get(cp);
- 	if (cache_check(cd, cp, NULL))
-@@ -1286,8 +1286,7 @@ static ssize_t read_flush(struct file *file, char __user *buf,
- 	unsigned long p = *ppos;
- 	size_t len;
- 
--	sprintf(tbuf, "%lu\n", (cd->flush_time - monotonic_seconds()
--				+ get_seconds()));
-+	sprintf(tbuf, "%lu\n", convert_to_wallclock(cd->flush_time));
- 	len = strlen(tbuf);
- 	if (p >= len)
- 		return 0;
-@@ -1318,7 +1317,7 @@ static ssize_t write_flush(struct file *file, const char __user *buf,
- 
- 	bp = tbuf;
- 	cd->flush_time = get_expiry(&bp);
--	cd->nextcheck = monotonic_seconds();
-+	cd->nextcheck = seconds_since_boot();
- 	cache_flush();
- 
- 	*ppos += count;
