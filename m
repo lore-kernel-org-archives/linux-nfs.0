@@ -1,41 +1,97 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:54305 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757404Ab0HKXKs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 11 Aug 2010 19:10:48 -0400
-Date: Thu, 12 Aug 2010 09:10:41 +1000
-From: Neil Brown <neilb@suse.de>
-To: David Brodbeck <brodbd@u.washington.edu>
+Received: from mail-wy0-f174.google.com ([74.125.82.174]:38860 "EHLO
+	mail-wy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754548Ab0H3Vj4 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Aug 2010 17:39:56 -0400
+Received: by wyb35 with SMTP id 35so7093057wyb.19
+        for <linux-nfs@vger.kernel.org>; Mon, 30 Aug 2010 14:39:54 -0700 (PDT)
+In-Reply-To: <20100830170923.GA17103@fieldses.org>
+References: <AANLkTimog6uTdsxzFeA0YY+HK6gtcwEGXaFDJs+Aorm0@mail.gmail.com>
+	<20100830170923.GA17103@fieldses.org>
+Date: Mon, 30 Aug 2010 16:39:54 -0500
+Message-ID: <AANLkTinEPVpnKCzZS5fBhhGj9Xmh8H-758SdEJSuxZ=8@mail.gmail.com>
+Subject: Re: 30 time speed difference between using NFS and without using NFS
+From: Peng Yu <pengyu.ut@gmail.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Cc: linux-nfs@vger.kernel.org
-Subject: Re: numeric UIDs
-Message-ID: <20100812091041.45362cd9@notabene>
-In-Reply-To: <0969EC03-E225-4265-BADC-582F2089D13E@u.washington.edu>
-References: <201008030401.33552.dreck@vmsd.ath.cx>
-	<20100803164318.GB13896@merit.edu>
-	<20100803192216.GC31579@fieldses.org>
-	<DE966DA98A4ABE438D726BDF1699CF61403FAF9D@MX05A.corp.emc.com>
-	<20100803215704.GA15494@merit.edu>
-	<1280873719.14520.17.camel@heimdal.trondhjem.org>
-	<20100803222337.GA9752@fieldses.org>
-	<1280874675.14520.23.camel@heimdal.trondhjem.org>
-	<20100803224245.GB9752@fieldses.org>
-	<1280887336.24669.23.camel@heimdal.trondhjem.org>
-	<0969EC03-E225-4265-BADC-582F2089D13E@u.washington.edu>
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, 4 Aug 2010 10:06:05 -0700
-David Brodbeck <brodbd@u.washington.edu> wrote:
+On Mon, Aug 30, 2010 at 12:09 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
+> On Fri, Aug 27, 2010 at 06:08:25PM -0500, Peng Yu wrote:
+>> Hi,
+>>
+>> I use the following command to search for some directory.
+>>
+>> find -L some_dir -type d -name some_name
+>>
+>> If I'm on the machine that has some_dir locally, the run time is
+>> real  0m0.199s
+>> user  0m0.048s
+>> sys   0m0.140s
+>>
+>> If I'm on another machine that sees the same directory by NFS (NFS3).
+>> the run time is
+>> real  0m6.509s
+>> user  0m0.090s
+>> sys   0m1.380s
+>>
+>> There are 30 time speed difference. Is this normal? Is there any NFS
+>> parameter that I should tune to make the latter faster?
+>
+> How many directories are there in some_dir?  What's the round trip time
+> (e.g. as reported by ping) to the server?  If you repeate the find
+> immediately, is it faster?
+>
+> This can indeed by much slower if it requires revalidating the cached
+> attributes of each file.
 
-> I've been looking at it for a while, because the 16-group limit is a problem for us, but it's a huge ball of wax.  I understand the security benefits, but the sheer complexity of setting it up and then coming up with workarounds for ticket expiration has me a bit cowed.
-> 
+Please see below for the answers of you questions.
 
-The 16-group limit is easily avoidable if you use Linux as your NFS server
-and a given uid maps to the same gids on both client and server.
-Just run mounted with "--manage-gids".
-Then the gid list on an incoming request will be ignored, and replace with a
-gid list obtained by doing a password/group lookup on the server.
+$ find . -type d|wc
+   1491    1491   53372
 
-NeilBrown
+Search the directory as a local directory
+
+$ time find . -name 'data.frame' -type d
+./library/base/data.frame
+./library/base/data.frame/data.frame
+
+real	0m0.044s
+user	0m0.012s
+sys	0m0.028s
+
+Search the directory as a NFS directory. The same command runs three 3
+times in series.
+
+$ time find . -name 'data.frame' -type d
+./library/base/data.frame
+./library/base/data.frame/data.frame
+
+real	0m2.205s
+user	0m0.040s
+sys	0m0.430s
+$ time find . -name 'data.frame' -type d
+./library/base/data.frame
+./library/base/data.frame/data.frame
+
+real	0m1.203s
+user	0m0.060s
+sys	0m0.120s
+$ time find . -name 'data.frame' -type d
+./library/base/data.frame
+./library/base/data.frame/data.frame
+
+real	0m1.227s
+user	0m0.040s
+sys	0m0.200s
+
+Ping the NFS server gives me ttl=64 time=0.156 ms.
+
+Please let me know if there is more information needed.
+
+-- 
+Regards,
+Peng
