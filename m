@@ -1,101 +1,63 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from shadbolt.e.decadent.org.uk ([88.96.1.126]:40620 "EHLO
-	shadbolt.e.decadent.org.uk" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751248Ab0HHE7c (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 8 Aug 2010 00:59:32 -0400
-From: Ben Hutchings <ben@decadent.org.uk>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: Steven Shiau <steven@nchc.org.tw>, 579397@bugs.debian.org,
-        linux-nfs@vger.kernel.org
-In-Reply-To: <4C33624D.2070405@oracle.com>
-References: <4BF71C27.7070309@nchc.org.tw>
-	 <1274492328.11828.3.camel@localhost> <4BFA99CD.2040902@oracle.com>
-	 <4C0819C2.2020203@oracle.com> <1275769799.2870.107.camel@localhost>
-	 <4C0FA7FD.3000301@nchc.org.tw>  <4C33624D.2070405@oracle.com>
-Content-Type: multipart/signed; micalg="pgp-sha1"; protocol="application/pgp-signature"; boundary="=-eU/A7ZuKfIiy4oCPRxrk"
-Date: Sun, 08 Aug 2010 05:59:13 +0100
-Message-ID: <1281243553.7543.281.camel@localhost>
-Subject: Re: Bug#579397: STAT_FAIL to debian for SM_MON of 192.168.120.254,
- No canonical hostname found for 192.168.120.254
+Received: from daytona.panasas.com ([67.152.220.89]:40313 "EHLO
+	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1752147Ab0H3QeX (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Aug 2010 12:34:23 -0400
+Message-ID: <4C7BDD8C.40509@panasas.com>
+Date: Mon, 30 Aug 2010 19:34:20 +0300
+From: Benny Halevy <bhalevy@panasas.com>
+To: NFS list <linux-nfs@vger.kernel.org>
+Subject: pnfs git tree status pnfs-all-2.6.36-rc3-2010-08-30
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
---=-eU/A7ZuKfIiy4oCPRxrk
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
+This is the first rebased version of the tree over 2.6.36-rc*.
+The tree's branches are structured the same (see details below).
 
-On Tue, 2010-07-06 at 13:05 -0400, Chuck Lever wrote:
-> On 06/ 9/10 10:41 AM, Steven Shiau wrote:
-> >
-> >
-> > On 2010=E5=B9=B406=E6=9C=8806=E6=97=A5 04:29, Ben Hutchings wrote:
-> >> On Thu, 2010-06-03 at 17:08 -0400, Chuck Lever wrote:
-> >>> On 05/24/10 11:22 AM, Chuck Lever wrote:
-> >> [...]
-> >>>> We can probably remove the reverse mapping constraint for presentati=
-on
-> >>>> addresses. A simple fix might be to change statd_canonical_name() fr=
-om:
-> >>>>
-> >>>> freeaddrinfo(ai);
-> >>>> if (!result)
-> >>>> return NULL;
-> >>>>
-> >>>> to
-> >>>>
-> >>>> freeaddrinfo(ai);
-> >>>> if (!result)
-> >>>> return strdup(hostname);
-> >>>>
-> >>>> Let me know if this works.
-> >>> Any update? I have a patch ready for nfs-utils to fix this regression=
-,
-> >>> but I need confirmation that it addresses your problem.
-> >> Steven originally had this problem, not me. Steven, do you need me to
-> >> build a new package with this change?
-> >>
-> >> Ben.
-> >>
-> > Ben,
-> > Yes, please.
-> > Thanks.
->=20
-> Any progress on this?
+Cumulative patches can be generated from
+git://linux-nfs.org/~bhalevy/linux-pnfs.git
+using
+git diff v2.6.36-rc3 pnfs-all-2.6.36-rc3-2010-08-30
+git diff v2.6.35 pnfs-all-2.6.35-2010-08-24
 
-I've heard nothing from Steven but one positive report from another
-user.  In any case we'll include this in our package.
+Or, they can be downloaded from the wiki at:
+http://wiki.linux-nfs.org/wiki/index.php/PNFS_Development_Git_tree
 
-We now have a git repository of the nfs-utils package at
-<git://git.debian.org/kernel/nfs-utils.git>; currently our changes are
-kept in a quilt patch series in debian/patches.
+Latest patches (since pnfs-all-2.6.35-2010-08-24):
+pnfs-submit:
+  Benny Halevy     32fb90a SQUASHME: pnfs-submit: do not use NIPQUAD in nfs4_callback_layoutrecall dprintk
+  Benny Halevy     133b759 SQUASHME: pnfs-submit: get machince creds for getdeviceinfo
 
-Ben.
+pnfs:
+  Benny Halevy     247fe09 SQUASHME: pnfs: get machince creds for getdevicelist
 
---=20
-Ben Hutchings
-Once a job is fouled up, anything done to improve it makes it worse.
+pnfs-obj-all:
+  Benny Halevy     c384327 SQUASHME: pnfs-obj use REQ flags rather than BIO flags
 
---=-eU/A7ZuKfIiy4oCPRxrk
-Content-Type: application/pgp-signature; name="signature.asc"
-Content-Description: This is a digitally signed message part
+The full tree structure is:
+master (v2.6.36-rc3)
+	nfsd-upstream
+		nfsd41-all
+			nfs-upstream
+				nfs41-all
+					nfs41-all-latest
+					pnfs-submit
+						pnfs
+							pnfs-block
+					pnfsd-files
+						pnfsd
+							spnfs
+								spnfs-block
+							pnfsd-lexp
+								pnfs-submit-all
+									pnfs-all
+										pnfs-obj-all
+											pnfs-exofs-all
+												pnfs-block-all
+													spnfs-all
+														spnfs-block-all
+															pnfs-all-latest
 
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.10 (GNU/Linux)
-
-iQIVAwUATF45nOe/yOyVhhEJAQImthAAvmtIXEjCAVw2yN8IU2XwXUL4NzGpiZRn
-fg3F4RowfhieyPrhD5NDMd8Ee13GGoFTz4jbWwNaqILVR/7MWI4i79jlOmaw89mD
-iTn/rqWP5ntvWxfG7+jNQKpD24yRzvVQNOnrUWWuv7Gtv7L4vx2qWpCfgGxWzJfS
-q9gBS9DDaHDb2XgUamPw2iKjIG0GQDML/qey699XXo4uxQvyoI5lJOvFpJxR+Byw
-hr3O83pzRnoEbNXCFsJghHOYi3k4G+wJze4VlAP0IA/pKSquJJCyauRUltLS7dzc
-sGO25LgUpVhHmuAhkl+2Y2rtUMUeHsIIv3p9eIhyiZr0PNqDQ3wjMCZd7F8g6R7t
-K83HRifb+1JS1Pxq3AMZQEDmYx6YpIaqmpNf36FliTIhA7CPFUp+tjmeP1wZxghK
-35OJWExFGuIveFY6IM//k3r3nO4BysYUyjNsZq6tQVhy3wzTw5xFCtiMyijEftwg
-hkXNWZN4+MJUrz08Ivw0rcoHx+wd+9pscMq9HqwZhHWm+nSazPB+t44FD8LUA2Z+
-W0ZMtJwK4/b6ZGLYe0movNju2KP1gbL7uJOJJEI+VfCKlbnkrJ2MDIy3qFPzGlE4
-Attpsy7FF5Oj/GR8qnb5DYDmIrGF3qM2x+O1SfW3ZGJ65qigZJEGLt+Mewi8YU8s
-gYh0VsVmDYw=
-=LEjo
------END PGP SIGNATURE-----
-
---=-eU/A7ZuKfIiy4oCPRxrk--
+Benny
