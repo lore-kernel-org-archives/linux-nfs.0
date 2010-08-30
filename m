@@ -1,38 +1,31 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp-vbr1.xs4all.nl ([194.109.24.21]:2926 "EHLO
-	smtp-vbr1.xs4all.nl" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752485Ab0HVSax (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 22 Aug 2010 14:30:53 -0400
-Date: Sun, 22 Aug 2010 20:30:20 +0200
-From: Miquel van Smoorenburg <mikevs@xs4all.net>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 01/03]: sunrpc: increase MAX_HASHTABLE_BITS to 14
-Message-ID: <20100822183020.GA26607@xs4all.net>
-References: <20100822182848.GA26590@xs4all.net>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20100822182848.GA26590@xs4all.net>
+Received: from smtp109.prem.mail.ac4.yahoo.com ([76.13.13.92]:46357 "HELO
+	smtp109.prem.mail.ac4.yahoo.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with SMTP id S1753825Ab0H3QMH (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Aug 2010 12:12:07 -0400
+Date: Mon, 30 Aug 2010 11:04:43 -0500 (CDT)
+From: Christoph Lameter <cl@linux.com>
+To: Kian Mohageri <kian.mohageri@gmail.com>
+cc: davidr@ressman.org, linux-nfs@vger.kernel.org, cl@linux-foundation.com
+Subject: Re: fsync/wb deadlocks in 2.6.32
+In-Reply-To: <AANLkTinEoMgXLvN4MvfnCHjHtHCwV1HDP67BoKQ3ZbQx@mail.gmail.com>
+Message-ID: <alpine.DEB.2.00.1008301101560.10316@router.home>
+References: <AANLkTikWR_YSnx=4=KAodATpX+xO9+hj-cf7_e158f4d@mail.gmail.com> <AANLkTi=gj901aF_84+40j9MhvAwNJSNB8qRnpY8o0gBZ@mail.gmail.com> <AANLkTinEoMgXLvN4MvfnCHjHtHCwV1HDP67BoKQ3ZbQx@mail.gmail.com>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-The maximum size of the authcache is now set to 1024 (10 bits),
-but on our server we need at least 4096 (12 bits). Increase
-MAX_HASHTABLE_BITS to 14. This is a maximum of 16384 entries,
-each containing a pointer (8 bytes on x86_64). This is
-exactly the limit of kmalloc() (128K).
+On Fri, 27 Aug 2010, Kian Mohageri wrote:
 
-Signed-off-by: Miquel van Smoorenburg <mikevs@xs4all.net>
+> Just happened upon this message.  My symptoms are a little different,
+> however, and I'm still investigating the possibility of a faulty drive
+> on the NFS server.... but thought I'd chime in anyway:
 
-diff -ruN linux-2.6.36-rc1.orig/net/sunrpc/auth.c linux-2.6.36-rc1/net/sunrpc/auth.c
---- linux-2.6.36-rc1.orig/net/sunrpc/auth.c	2010-08-16 02:41:37.000000000 +0200
-+++ linux-2.6.36-rc1/net/sunrpc/auth.c	2010-08-22 17:02:27.896009116 +0200
-@@ -38,7 +39,7 @@
- static LIST_HEAD(cred_unused);
- static unsigned long number_cred_unused;
- 
--#define MAX_HASHTABLE_BITS (10) 
-+#define MAX_HASHTABLE_BITS (14)
- static int param_set_hashtbl_sz(const char *val, const struct kernel_param *kp)
- {
- 	unsigned long num;
+Its a bit troublesome that a faulty drive on an NFS server could cause
+kernel backtraces to show up on the NFS client. The faulty NFS server
+should also give you some indication that there are issues with the drive.
+Does it?
+
+Plus this is an async NFS configuration. Why does the NFS server fsync and
+wait at all?
