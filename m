@@ -1,59 +1,57 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:6955 "EHLO mx2.netapp.com"
+Received: from cantor.suse.de ([195.135.220.2]:44124 "EHLO mx1.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752227Ab0HROoZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 18 Aug 2010 10:44:25 -0400
-From: andros@netapp.com
-To: bhalevy@panasas.com
-Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
-Subject: [PATCH 03/11] SQUASHME pnfs-submit rename pnfs_layout_type 3
-Date: Wed, 18 Aug 2010 10:44:10 -0400
-Message-Id: <1282142658-21579-4-git-send-email-andros@netapp.com>
-In-Reply-To: <1282142658-21579-3-git-send-email-andros@netapp.com>
-References: <1282142658-21579-1-git-send-email-andros@netapp.com>
- <1282142658-21579-2-git-send-email-andros@netapp.com>
- <1282142658-21579-3-git-send-email-andros@netapp.com>
+	id S1755207Ab0H3QTV convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Aug 2010 12:19:21 -0400
+From: Olaf Kirch <okir@suse.de>
+To: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: [PATCH 0/2] Make libtirpc work with old style portmapper
+Date: Mon, 30 Aug 2010 18:19:18 +0200
+Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org,
+        Steve Dickson <SteveD@redhat.com>
+References: <201008301503.19783.okir@suse.de> <30F1122D-13FB-4B6B-9BA2-99112306581F@oracle.com>
+In-Reply-To: <30F1122D-13FB-4B6B-9BA2-99112306581F@oracle.com>
+Content-Type: Text/Plain;
+  charset="iso-8859-1"
+Message-Id: <201008301819.18773.okir@suse.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Andy Adamson <andros@netapp.com>
+On Monday 30 August 2010 17:59:18 Chuck Lever wrote:
+> I worried at the time that this might introduce a security weakness, since,
+>  after all, the rpcbind SET operation goes over AF_UNIX, which is
+>  authenticated, but pmap uses sockets with privileged ports to detect
+>  authorized users.  I see that your logic uses the pmap SET/UNSET calls by
+>  default. This bypasses AF_UNIX completely in pretty much all local cases,
 
-squash into pnfs_submit: layout segment alloc, reference, destroy
+That is admittedly a problem, at least for services not running as root.
+For services running as root, there's no change in behavior when talking
+to rpcbind - the registration will be owned by the superuser in both
+cases, because instead of checking the AF_LOCAL credentials for uid 0 it
+will check for a privileged source port. I agree though, that this part of
+the patch doesn't leave me totally at ease.
 
-Signed-off-by: Andy Adamson <andros@netapp.com>
----
- fs/nfs/pnfs.c             |    2 +-
- include/linux/nfs4_pnfs.h |    2 +-
- 2 files changed, 2 insertions(+), 2 deletions(-)
+>  which changes the behavior of rpcb_set() and rpcb_unset(), and could break
+>  the local rpcbind security model.  It might be better to use
+>  pmap_setunset() only when local_rpcb() fails.
 
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index bf86975..98f53c2 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -412,7 +412,7 @@ pnfs_destroy_all_layouts(struct nfs_client *clp)
- }
- 
- static inline void
--init_lseg(struct pnfs_layout_type *lo, struct pnfs_layout_segment *lseg)
-+init_lseg(struct pnfs_layout_hdr *lo, struct pnfs_layout_segment *lseg)
- {
- 	INIT_LIST_HEAD(&lseg->fi_list);
- 	kref_init(&lseg->kref);
-diff --git a/include/linux/nfs4_pnfs.h b/include/linux/nfs4_pnfs.h
-index 59a1a12..89d0e7e 100644
---- a/include/linux/nfs4_pnfs.h
-+++ b/include/linux/nfs4_pnfs.h
-@@ -137,7 +137,7 @@ struct layoutdriver_io_operations {
- 	 * a set_layout call to set the opaque layout in the layout driver.*/
- 	struct pnfs_layout_hdr * (*alloc_layout) (struct inode *inode);
- 	void (*free_layout) (struct pnfs_layout_hdr *);
--	struct pnfs_layout_segment * (*alloc_lseg) (struct pnfs_layout_type *layoutid, struct nfs4_pnfs_layoutget_res *lgr);
-+	struct pnfs_layout_segment * (*alloc_lseg) (struct pnfs_layout_hdr *layoutid, struct nfs4_pnfs_layoutget_res *lgr);
- 	void (*free_lseg) (struct pnfs_layout_segment *lseg);
- 
- 	/* Registration information for a new mounted file system
+If it helps, I could do the old PMAP calls as a fallback rather than
+trying these by default, agreed. Let me see what I can come up with
+tomorrow.
+
+> Another minor problem I think I remember is that if libtirpc is used on a
+>  system (perhaps because it is statically linked with said ISV RPC-enabled
+>  application) that does not have /etc/netconfig installed, the transport
+>  creation logic in rpcb_clnt.c simply doesn't work.
+
+Well, but that's something that's fixed easily - we can always tell
+such customer to install an /etc/netconfig on their system.
+
+Olaf
 -- 
-1.6.2.5
-
+Neo didn't bring down the Matrix. SOA did. (soafacts.com)
+--------------------------------------------
+Olaf Kirch - Director Server (okir@novell.com)
+SUSE LINUX Products GmbH, Maxfeldstr. 5, D-90409 Nürnberg
+GF: Markus Rex, HRB 16746 (AG Nürnberg)
