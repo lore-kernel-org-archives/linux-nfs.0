@@ -1,101 +1,96 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yx0-f174.google.com ([209.85.213.174]:61438 "EHLO
-	mail-yx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755664Ab0HXQf4 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 24 Aug 2010 12:35:56 -0400
-Received: by yxg6 with SMTP id 6so2593895yxg.19
-        for <linux-nfs@vger.kernel.org>; Tue, 24 Aug 2010 09:35:55 -0700 (PDT)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 4/5] libexport.a: IPv6 support for client_init_subnet()
-To: steved@redhat.com
-Cc: linux-nfs@vger.kernel.org
-Date: Tue, 24 Aug 2010 12:35:52 -0400
-Message-ID: <20100824163552.2433.94979.stgit@matisse.1015granger.net>
-In-Reply-To: <20100824162926.2433.7535.stgit@matisse.1015granger.net>
-References: <20100824162926.2433.7535.stgit@matisse.1015granger.net>
-Content-Type: text/plain; charset="utf-8"
+Received: from mx1.redhat.com ([209.132.183.28]:6507 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754508Ab0HaRS4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 31 Aug 2010 13:18:56 -0400
+Message-ID: <4C7D3976.8070209@RedHat.com>
+Date: Tue, 31 Aug 2010 13:18:46 -0400
+From: Steve Dickson <SteveD@redhat.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: Jeff Layton <jlayton@redhat.com>, linux-nfs@vger.kernel.org,
+        chuck.lever@oracle.com
+Subject: Re: [PATCH] rpc.nfsd: mount up nfsdfs is it doesn't appear to be
+ mounted yet
+References: <4C7BE1FC.2020400@RedHat.com> <20100830134801.1696dffa@tlielax.poochiereds.net> <4C7CF499.5090003@RedHat.com> <20100831084323.02a1abf5@corrin.poochiereds.net> <4C7D1694.6000708@RedHat.com> <20100831111008.157618f4@corrin.poochiereds.net> <20100831151342.GA3071@fieldses.org> <4C7D1D3B.1030607@RedHat.com> <20100831155128.GB3071@fieldses.org> <4C7D2A20.1040806@RedHat.com> <20100831161547.GD3071@fieldses.org>
+In-Reply-To: <20100831161547.GD3071@fieldses.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-To parse and store an IPv6 host or subnet address, init_netmask()
-needs to handle 128 bit subnet masks.
 
-Unfortunately what once was a pretty simple little function has grown
-much larger.  This logic must now not only parse IPv6 addresses
-correctly, but must also distinguish between IPv4 and IPv6.
 
-To avoid code duplication, I'm "bending" the cardinal rule of not
-using "#ifdef" inside functions.
+On 08/31/2010 12:15 PM, J. Bruce Fields wrote:
+> On Tue, Aug 31, 2010 at 12:13:20PM -0400, Steve Dickson wrote:
+>>
+>>
+>> On 08/31/2010 11:51 AM, J. Bruce Fields wrote:
+>>> On Tue, Aug 31, 2010 at 11:18:19AM -0400, Steve Dickson wrote:
+>>>>
+>>>>
+>>>> On 08/31/2010 11:13 AM, J. Bruce Fields wrote:
+>>>>> On Tue, Aug 31, 2010 at 11:10:08AM -0400, Jeff Layton wrote:
+>>>>>> I was just pointing out that checking the return code from the system()
+>>>>>> call isn't sufficient. Because of the way most people have modprobe set
+>>>>>> up, it can return an error even though nfsdfs ended up being mounted
+>>>>>> anyway. Checking for the presence of the file after attempting the
+>>>>>> mount would be a more reliable test.
+>>>>>>
+>>>>>> Assuming we're in agreement there, we have another question to
+>>>>>> settle...If the mount attempt fails, what should we do about it?
+>>>>>>
+>>>>>> With my original patch, we fall back to using nfsctl(). You're
+>>>>>> suggesting that we should error out there. I'm not opposed to that, but
+>>>>>> it does mean dropping support for some really old kernels. It also
+>>>>>> means that we can remove some dead code in rpc.nfsd.
+>>>>>>
+>>>>>> OTOH, the fallback might allow nfsd to keep working for some people.
+>>>>>> Maybe it would be better to just log a scary warning and fall back to
+>>>>>> using nfsctl() for now.
+>>>>>>
+>>>>>> In a couple of releases, we could start returning an error there and
+>>>>>> rip out the legacy interface code, or compile it out by default and
+>>>>>> allow people to compile it in via a configure option?
+>>>>>
+>>>>> Yes, let's just add the additional mount attempt for now, and figure out
+>>>>> what to do about the legacy interface as a next step.
+>>>> When the mount fails, I think we should exit... basically eliminating the
+>>>> legacy interface code
+>>>
+>>> Maybe.  But as I say, make it two separate steps:
+>>>
+>>> 	1. Add code to attempt the mount.
+>> But the question comes do to, what do we do when the mount 
+>> fails? It sounds like you are advocating ignoring the error
+>> and allow the nfsd threads to be started via the nfsctl(NFSCTL_SVC)
+>> call... 
+> 
+> Yes.
+Even if not failing could bring instability... Do we really know what
+will happen when the portlist and version files are not set up correctly??
+I know I do not test that configuration.... Does anybody? 
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
+> 
+>> I'm advocating that we exit on the mount error, because even thought
+>> the nfsd threads may be set up correctly, the protocols and versions
+>> will not be set up correctly because there is no nfsctl() calls to
+>> set them up correctly... especially with IPV6 enabled... 
+> 
+> Perhaps so.  But that should be done as a *separate* follow-up patch
+> that is clearly labelled "drop support for kernel versions before
+> x.y.z".
+Fine... put it in a separate patch but include it in this patch
+series... I really don't think we need to rip the guts out of 
+mountd and exportfs just to remove this one nfsctl() in rpc.nfsd.
 
- support/export/client.c |   32 ++++++++++++++++++++++++++++++++
- 1 files changed, 32 insertions(+), 0 deletions(-)
+> 
+> Dropping backwards compatibility may be a reasonable thing to do, but
+> it's something that we should be very clear about, and that we should
+> put in a patch that does that and nothing else.
+So you are talking about doing a complete rewrite of mountd and exportfs
+just to take out that one call from rpc.nfsd... I just don't see the
+justification... If we are going to do that, let just think about rewriting
+all the tools to make the more v4 friendly... something we talked about
+at the last bakeathon...
 
-diff --git a/support/export/client.c b/support/export/client.c
-index 780c74d..4c6cd69 100644
---- a/support/export/client.c
-+++ b/support/export/client.c
-@@ -66,6 +66,12 @@ init_netmask(nfs_client *clp, const char *slash, const sa_family_t family)
- 	};
- 	unsigned long prefixlen;
- 	uint32_t shift;
-+#ifdef IPV6_SUPPORTED
-+	struct sockaddr_in6 sin6 = {
-+		.sin6_family		= AF_INET6,
-+	};
-+	int i;
-+#endif
- 
- 	/* No slash present; assume netmask is all ones */
- 	if (slash == NULL) {
-@@ -73,6 +79,11 @@ init_netmask(nfs_client *clp, const char *slash, const sa_family_t family)
- 		case AF_INET:
- 			prefixlen = 32;
- 			break;
-+#ifdef IPV6_SUPPORTED
-+		case AF_INET6:
-+			prefixlen = 128;
-+			break;
-+#endif
- 		default:
- 			goto out_badfamily;
- 		}
-@@ -87,6 +98,14 @@ init_netmask(nfs_client *clp, const char *slash, const sa_family_t family)
- 			set_addrlist_in(clp, 1, &sin);
- 			return 1;
- 		}
-+#ifdef IPV6_SUPPORTED
-+		if (strchr(slash + 1, ':')) {
-+			if (!inet_pton(AF_INET6, slash + 1, &sin6.sin6_addr))
-+				goto out_badmask;
-+			set_addrlist_in6(clp, 1, &sin6);
-+			return 1;
-+		}
-+#endif
- 
- 		/* A prefixlen was given */
- 		prefixlen = strtoul(slash + 1, &endptr, 10);
-@@ -102,6 +121,19 @@ init_netmask(nfs_client *clp, const char *slash, const sa_family_t family)
- 		sin.sin_addr.s_addr = htonl((uint32_t)~0 << shift);
- 		set_addrlist_in(clp, 1, &sin);
- 		return 1;
-+#ifdef IPV6_SUPPORTED
-+	case AF_INET6:
-+		if (prefixlen > 128)
-+			goto out_badprefix;
-+		for (i = 0; prefixlen > 32; i++) {
-+			sin6.sin6_addr.s6_addr32[i] = 0xffffffff;
-+			prefixlen -= 32;
-+		}
-+		shift = 32 - (uint32_t)prefixlen;
-+		sin6.sin6_addr.s6_addr32[i] = htonl((uint32_t)~0 << shift);
-+		set_addrlist_in6(clp, 1, &sin6);
-+		return 1;
-+#endif
- 	}
- 
- out_badfamily:
-
+steved.
