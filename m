@@ -1,91 +1,78 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:41237 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:41674 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750890Ab0HTAuP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 19 Aug 2010 20:50:15 -0400
-Date: Thu, 19 Aug 2010 20:53:32 -0400
+	id S1751755Ab0HaTC1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 31 Aug 2010 15:02:27 -0400
+Date: Tue, 31 Aug 2010 15:02:17 -0400
 From: Jeff Layton <jlayton@redhat.com>
-To: Wu Fengguang <fengguang.wu@gmail.com>
-Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
-        Christoph Hellwig <hch@infradead.org>, linux-nfs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, linux-mm@kvack.org
-Subject: Re: why are WB_SYNC_NONE COMMITs being done with FLUSH_SYNC set ?
-Message-ID: <20100819205332.5ea929ee@corrin.poochiereds.net>
-In-Reply-To: <20100820003308.GA30548@localhost>
-References: <20100819101525.076831ad@barsoom.rdu.redhat.com>
-	<20100819143710.GA4752@infradead.org>
-	<1282229905.6199.19.camel@heimdal.trondhjem.org>
-	<20100819151618.5f769dc9@tlielax.poochiereds.net>
-	<20100820003308.GA30548@localhost>
+To: Steve Dickson <SteveD@redhat.com>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org,
+        chuck.lever@oracle.com
+Subject: Re: [PATCH] rpc.nfsd: mount up nfsdfs is it doesn't appear to be
+ mounted yet
+Message-ID: <20100831150217.259b9bb6@tlielax.poochiereds.net>
+In-Reply-To: <4C7D5117.6050407@RedHat.com>
+References: <4C7CF499.5090003@RedHat.com>
+	<20100831084323.02a1abf5@corrin.poochiereds.net>
+	<4C7D1694.6000708@RedHat.com>
+	<20100831111008.157618f4@corrin.poochiereds.net>
+	<20100831151342.GA3071@fieldses.org>
+	<4C7D1D3B.1030607@RedHat.com>
+	<20100831155128.GB3071@fieldses.org>
+	<4C7D2A20.1040806@RedHat.com>
+	<20100831161547.GD3071@fieldses.org>
+	<4C7D3976.8070209@RedHat.com>
+	<20100831180745.GA11361@fieldses.org>
+	<4C7D5117.6050407@RedHat.com>
 Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Fri, 20 Aug 2010 08:33:08 +0800
-Wu Fengguang <fengguang.wu@gmail.com> wrote:
+On Tue, 31 Aug 2010 14:59:35 -0400
+Steve Dickson <SteveD@redhat.com> wrote:
 
-> > Here's a lightly tested patch that turns the check for the two flags
-> > into a check for WB_SYNC_NONE. It seems to do the right thing, but I
-> > don't have a clear testcase for it. Does this look reasonable?
->  
-> Yes, I don't see any problems.
 > 
-> > ------------------[snip]------------------------
+> 
+> On 08/31/2010 02:07 PM, J. Bruce Fields wrote:
+> > On Tue, Aug 31, 2010 at 01:18:46PM -0400, Steve Dickson wrote:
+> >> I really don't think we need to rip the guts out of 
+> >> mountd and exportfs just to remove this one nfsctl() in rpc.nfsd.
 > > 
-> > NFS: don't use FLUSH_SYNC on WB_SYNC_NONE COMMIT calls
+> > I agree.
 > > 
-> > WB_SYNC_NONE is supposed to mean "don't wait on anything". That should
-> > also include not waiting for COMMIT calls to complete.
+> >>> Dropping backwards compatibility may be a reasonable thing to do, but
+> >>> it's something that we should be very clear about, and that we should
+> >>> put in a patch that does that and nothing else.
+> >> So you are talking about doing a complete rewrite of mountd and exportfs
+> >> just to take out that one call from rpc.nfsd... I just don't see the
+> >> justification... If we are going to do that, let just think about rewriting
+> >> all the tools to make the more v4 friendly... something we talked about
+> >> at the last bakeathon...
 > > 
-> > WB_SYNC_NONE is also implied when wbc->nonblocking or
-> > wbc->for_background are set, so we can replace those checks in
-> > nfs_commit_unstable_pages with a check for WB_SYNC_NONE.
-> >
-> > Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> > ---
-> >  fs/nfs/write.c |   10 +++++-----
-> >  1 files changed, 5 insertions(+), 5 deletions(-)
+> > All I'm asking is that any patch which disables support for older
+> > kernels (by ceasing to do the nfsctl) be a *separate* patch that clearly
+> > states which kernels we're dropping support for.
+> Fine. The taking out the nfsclt() and/or the adding of the error check
+> on the mount (basically causing nfsclt() to never be called) will be in 
+> a separate clearly documented patch.....
+> 
 > > 
-> > diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-> > index 874972d..35bd7d0 100644
-> > --- a/fs/nfs/write.c
-> > +++ b/fs/nfs/write.c
-> > @@ -1436,12 +1436,12 @@ static int nfs_commit_unstable_pages(struct inode *inode, struct writeback_contr
-> >  	/* Don't commit yet if this is a non-blocking flush and there are
-> >  	 * lots of outstanding writes for this mapping.
-> >  	 */
-> > -	if (wbc->sync_mode == WB_SYNC_NONE &&
-> > -	    nfsi->ncommit <= (nfsi->npages >> 1))
-> > -		goto out_mark_dirty;
-> > -
-> > -	if (wbc->nonblocking || wbc->for_background)
-> > +	if (wbc->sync_mode == WB_SYNC_NONE) {
-> > +		if (nfsi->ncommit <= (nfsi->npages >> 1))
-> > +			goto out_mark_dirty;
-> >  		flags = 0;
-> > +	}
-> > +
+> > Once we decide to drop such support (if we do), that might allow us to
+> > rip out a lot of additional code.  That can be done later.
+> I agree... 
 > 
-> nitpick: I'd slightly prefer an one-line change
-> 
-> -       if (wbc->nonblocking || wbc->for_background)
-> +       if (wbc->sync_mode == WB_SYNC_NONE)
->                 flags = 0;
-> 
-> That way the patch will look more obvious and "git blame" friendly,
-> and the original "Don't commit.." comment will best match its code.
-> 
-> Reviewed-by: Wu Fengguang <fengguang.wu@intel.com>
-> 
-> Thanks,
-> Fengguang
+> steved.
 
-Either way. I figured it would be slightly more efficient to just check
-WB_SYNC_NONE once in that function. I suppose we could just fix up the
-comments instead. Let me know if I should respin the patch with updated
-comments...
+Sounds good -- doing this as two patches makes much more sense.
 
-Thanks for the review...
+I think Steve had a good point though -- we should log a message or
+something if we tried to mount up /proc/fs/nfsd and it didn't work.
+That'll help clue in people that they have a problem and things might
+not work as expected.
+
+I'll respin the patch to do that and repost once I've tested it.
+
+Thanks,
 -- 
 Jeff Layton <jlayton@redhat.com>
