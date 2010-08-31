@@ -1,39 +1,36 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-gw0-f46.google.com ([74.125.83.46]:33754 "EHLO
-	mail-gw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755687Ab0HXQfQ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 24 Aug 2010 12:35:16 -0400
-Received: by gwj17 with SMTP id 17so2591720gwj.19
-        for <linux-nfs@vger.kernel.org>; Tue, 24 Aug 2010 09:35:15 -0700 (PDT)
+Received: from mail-yw0-f46.google.com ([209.85.213.46]:57229 "EHLO
+	mail-yw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752404Ab0HaTLW (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 31 Aug 2010 15:11:22 -0400
+Received: by ywh1 with SMTP id 1so2356272ywh.19
+        for <linux-nfs@vger.kernel.org>; Tue, 31 Aug 2010 12:11:21 -0700 (PDT)
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 0/5] Support IPv6 in libexport.a
-To: steved@redhat.com
+Subject: [PATCH 0/2] Improvements to mount's autonegotiation
+To: neilb@suse.de
 Cc: linux-nfs@vger.kernel.org
-Date: Tue, 24 Aug 2010 12:35:11 -0400
-Message-ID: <20100824162926.2433.7535.stgit@matisse.1015granger.net>
+Date: Tue, 31 Aug 2010 15:11:18 -0400
+Message-ID: <20100831191006.10685.66951.stgit@matisse.1015granger.net>
 Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Hi Steve-
+Hi Neil-
 
-This patch set should encapsulate IPv6-related changes needed in
-support/export/client.c .  It updates logic that parses presentation
-addresses and netmasks, and logic that compares socket addresses.
+While reviewing your proposed patch, a couple of ideas occurred to me
+that might be helpful.  Compile-tested only.  Let me know what you
+think.
 
 ---
 
-Chuck Lever (5):
-      libexport.a: IPv6 support in client_check()
-      libexport.a: IPv6 support for client_init_subnet()
-      libexport.a: Prepare init_subnetwork() for IPv6 support
-      libexport.a: Use host helper to parse address in client_init()
-      libexport.a: Prepare to recognize IPv6 addresses in client_gettype()
+Chuck Lever (2):
+      mount.nfs: Don't try NFSv4 if UDP was requested
+      mount.nfs: Refactor mount version and protocol autonegotiation
 
 
- support/export/client.c |  208 +++++++++++++++++++++++++++++++++++------------
- 1 files changed, 153 insertions(+), 55 deletions(-)
+ utils/mount/stropts.c |   72 +++++++++++++++++++++++++++++++++++++++----------
+ 1 files changed, 57 insertions(+), 15 deletions(-)
 
 -- 
 Chuck Lever
