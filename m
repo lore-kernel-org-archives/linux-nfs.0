@@ -1,46 +1,36 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([18.85.46.34]:47387 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750902Ab0HSJnd (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 19 Aug 2010 05:43:33 -0400
-Date: Thu, 19 Aug 2010 05:43:31 -0400
-From: Christoph Hellwig <hch@infradead.org>
-To: Benny Halevy <bhalevy@panasas.com>
-Cc: Christoph Hellwig <hch@infradead.org>, andros@netapp.com,
-        linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 11/50] pnfs_submit: set and unset pnfs layoutdriver
- modules
-Message-ID: <20100819094330.GB15610@infradead.org>
-References: <1281735122-1496-5-git-send-email-andros@netapp.com>
- <1281735122-1496-6-git-send-email-andros@netapp.com>
- <1281735122-1496-7-git-send-email-andros@netapp.com>
- <1281735122-1496-8-git-send-email-andros@netapp.com>
- <1281735122-1496-9-git-send-email-andros@netapp.com>
- <1281735122-1496-10-git-send-email-andros@netapp.com>
- <1281735122-1496-11-git-send-email-andros@netapp.com>
- <1281735122-1496-12-git-send-email-andros@netapp.com>
- <20100818203126.GE16851@infradead.org>
- <4C6C4697.3060309@panasas.com>
+Received: from rcsinet10.oracle.com ([148.87.113.121]:40880 "EHLO
+	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754572Ab0HaUaW convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 31 Aug 2010 16:30:22 -0400
+Subject: Re: mount.nfs: protocol fallback when server doesn't support TCP
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4C6C4697.3060309@panasas.com>
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <20100831110024.68e8877d@notabene>
+Date: Tue, 31 Aug 2010 16:29:59 -0400
+Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Message-Id: <4B6431AA-0FFD-4FE9-9DF4-4AF7D2B2AD20@oracle.com>
+References: <20100826120635.4c3157bc@notabene> <659EE931-F48E-4A5D-9212-D4F8AE421029@oracle.com> <20100830103025.70d09ec8@notabene> <BC2D2164-0836-4DAC-99C5-C7BE23D3B163@oracle.com> <20100831110024.68e8877d@notabene>
+To: Neil Brown <neilb@suse.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, Aug 18, 2010 at 11:46:15PM +0300, Benny Halevy wrote:
-> On Aug. 18, 2010, 23:31 +0300, Christoph Hellwig <hch@infradead.org> wrote:
-> > I don't think such a fine-grained splitup is reviewable at all.
-> > Anything more than a couple of patches for core nfs client changes, 
-> > one patch for core pnfs support and one for the file layout driver
-> > is simply too much.
-> > 
-> 
-> The whole enchilada is about 8500 lines of diff.
-> Don't you think that splitting it up to self contained bite-sized patches
-> is better for reviewing it?
 
-Depends on your defintion of self contained.  If you actually have
-a first patch with a functional and working subset and just keep adding
-optimizations or new features that's okay, but otherwise it's poinless.
-If you submit a single driver / feature it needs to be a reviewed as a
-whole and not artifical pieces.
+On Aug 30, 2010, at 9:00 PM, Neil Brown wrote:
+
+> Two observations I've made while exploring which are only tangential to the
+> current issue:
+> 
+> 1/ if I give an invalid proto name
+>          mount -o proto=fred .....
+>    the mount command fails (as it should) but gives no error message.
+
+I was not able to reproduce this.  I get an appropriate error message from mount.nfs when built either with TI-RPC or without.  I'm using the latest upstream nfs-utils + my mountd patches.
+
+-- 
+chuck[dot]lever[at]oracle[dot]com
+
+
+
+
