@@ -1,80 +1,64 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:10573 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:44018 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1761879Ab0HMRbG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 13 Aug 2010 13:31:06 -0400
-Message-ID: <4C658146.90207@RedHat.com>
-Date: Fri, 13 Aug 2010 13:30:46 -0400
-From: Steve Dickson <SteveD@redhat.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Neil Brown <neilb@suse.de>, Trond Myklebust <trond.myklebust@fys.uio.no>,
-        Jim Rees <rees@umich.edu>, Daniel.Muntz@emc.com,
-        linux-nfs@vger.kernel.org
-Subject: Re: numeric UIDs
-References: <DE966DA98A4ABE438D726BDF1699CF61403FAF9D@MX05A.corp.emc.com> <20100803215704.GA15494@merit.edu> <1280873719.14520.17.camel@heimdal.trondhjem.org> <20100803222337.GA9752@fieldses.org> <1280874675.14520.23.camel@heimdal.trondhjem.org> <20100803224245.GB9752@fieldses.org> <1280887336.24669.23.camel@heimdal.trondhjem.org> <20100805153421.GD27141@fieldses.org> <20100812092232.344314b2@notabene> <4C6559FA.5070809@RedHat.com> <20100813163156.GA16863@fieldses.org>
-In-Reply-To: <20100813163156.GA16863@fieldses.org>
-Content-Type: text/plain; charset=ISO-8859-1
+	id S932343Ab0HaPGk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 31 Aug 2010 11:06:40 -0400
+Date: Tue, 31 Aug 2010 11:10:08 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: Steve Dickson <SteveD@redhat.com>
+Cc: linux-nfs@vger.kernel.org, bfields@fieldses.org, chuck.lever@oracle.com
+Subject: Re: [PATCH] rpc.nfsd: mount up nfsdfs is it doesn't appear to be
+ mounted yet
+Message-ID: <20100831111008.157618f4@corrin.poochiereds.net>
+In-Reply-To: <4C7D1694.6000708@RedHat.com>
+References: <1282995314-8317-1-git-send-email-jlayton@redhat.com>
+	<4C7BD394.3030705@RedHat.com>
+	<20100830121600.529669bd@tlielax.poochiereds.net>
+	<4C7BE1FC.2020400@RedHat.com>
+	<20100830134801.1696dffa@tlielax.poochiereds.net>
+	<4C7CF499.5090003@RedHat.com>
+	<20100831084323.02a1abf5@corrin.poochiereds.net>
+	<4C7D1694.6000708@RedHat.com>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+On Tue, 31 Aug 2010 10:49:56 -0400
+Steve Dickson <SteveD@redhat.com> wrote:
 
+> > 
+> > To keep this on track, I think we need to treat this as 2 separate
+> > discussions:
+> > 
+> > 1) how to we ensure that /proc/fs/nfsd is actually mounted when
+> > rpc.nfsd is run?
+> > 
+> > 2) what do we do about the legacy nfsctl() interface?
+> > 
+> > These are separate but related questions...
 
-On 08/13/2010 12:31 PM, J. Bruce Fields wrote:
-> On Fri, Aug 13, 2010 at 10:43:06AM -0400, Steve Dickson wrote:
->>
->>
->> On 08/11/2010 07:22 PM, Neil Brown wrote:
->>>
->>> I agree.  And surely it can all be solved in idmapd.
->>>
->>> On the server, tell idmapd to map all users to "NUMERIC_USER:%d" and all
->>> groups to "NUMERIC_GROUP:%d" (or whatever) for some given clients (i.e. stop
->>> ignoring the 'authentication name'.  And of course map those names back to
->>> numbers.
->>>
->>> I don't know if the client can easily differentiate based on which server it
->>> is talking to, but there is probably less need there (and maybe it can
->>> anyway).
->>>
->>> It shouldn't take more that half an hour to hack something into
->>> idmapd.c:nfsdcb() for the server side and nfscb for the client side - or
->>> for a quicker hack, just go directly to imconv and ignore the client name on
->>> the server.  (all this in nfs-utils of course).
->> I took a look... and you are right it would not be that difficult to
->> hack something up... but would this only be a Linux to Linux thing? 
->> Or am I missing something?
-> 
-> There are four cases where translation can be done:
-> 
-> 	Sending id from server to client (ls, stat, getacl):
-> 		1. server uid -> string
-> 		2. string -> client uid
-> 	Sending id from client to server (chown, setacl):
-> 		3. client uid -> string
-> 		4. string -> client uid
-> 
-> Cases 1 and 2 are uncontroversial.  Definitely map ascii-fied integers
-> in both of those cases.
-Does "ascii-fied integers" mean "3606" (a mapping without the @domain part)?
+I was just pointing out that checking the return code from the system()
+call isn't sufficient. Because of the way most people have modprobe set
+up, it can return an error even though nfsdfs ended up being mounted
+anyway. Checking for the presence of the file after attempting the
+mount would be a more reliable test.
 
-> 
-> Case 4 violates the SHOULD on page 47.  Which would make case 3 useless
-> if all servers respect that SHOULD.  I think we should ignore the SHOULD
-> and implement 3 and 4 too, but Trond may not agree.
-> 
-> I suppose we could make this all configurable, and then argue about what
-> the defaults should be.  If we implement all this in idmapd then that's
-> easy.
-I guess... I would think whatever make the v2/v3 to v4 transition
-seamless would be the best default... 
- 
-> 
-> I don't know what other clients and servers do.  Probably 1 and 2 at
-> least, but maybe it's something to check at the next bakeathon.
-> 
-> Do we actually use an @-less "nobody" as suggested in the last
-> paragraph?  If not that might be something else to fix.
-It appears we do... see idtonameres()....
+Assuming we're in agreement there, we have another question to
+settle...If the mount attempt fails, what should we do about it?
 
-steved.
+With my original patch, we fall back to using nfsctl(). You're
+suggesting that we should error out there. I'm not opposed to that, but
+it does mean dropping support for some really old kernels. It also
+means that we can remove some dead code in rpc.nfsd.
+
+OTOH, the fallback might allow nfsd to keep working for some people.
+Maybe it would be better to just log a scary warning and fall back to
+using nfsctl() for now.
+
+In a couple of releases, we could start returning an error there and
+rip out the legacy interface code, or compile it out by default and
+allow people to compile it in via a configure option?
+
+-- 
+Jeff Layton <jlayton@redhat.com>
