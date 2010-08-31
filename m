@@ -1,41 +1,49 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-out1.uio.no ([129.240.10.57]:44340 "EHLO mail-out1.uio.no"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758537Ab0HDVJf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 4 Aug 2010 17:09:35 -0400
-Subject: Re: Write delegation
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-To: Yudong Gao <stgyd@umich.edu>
-Cc: linux-nfs@vger.kernel.org
-In-Reply-To: <AANLkTimr9QfF0+MJ47hUihJgSLVOfquR=Atp4iV5D2gr@mail.gmail.com>
-References: <AANLkTi=2KYZ-8qaXMG=C_s617q3k1Ocs7h1gyd8=RpY6@mail.gmail.com>
-	 <AANLkTimr9QfF0+MJ47hUihJgSLVOfquR=Atp4iV5D2gr@mail.gmail.com>
-Content-Type: text/plain; charset="UTF-8"
-Date: Wed, 04 Aug 2010 17:09:30 -0400
-Message-ID: <1280956170.2865.6.camel@heimdal.trondhjem.org>
+Received: from daytona.panasas.com ([67.152.220.89]:37501 "EHLO
+	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S932461Ab0HaPwf (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 31 Aug 2010 11:52:35 -0400
+Message-ID: <4C7D2540.1070706@panasas.com>
+Date: Tue, 31 Aug 2010 18:52:32 +0300
+From: Boaz Harrosh <bharrosh@panasas.com>
+To: andros@netapp.com
+CC: bhalevy@panasas.com, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 48/50] SQUASHME pnfs_post_submit: layout type enum
+References: <1281735122-1496-1-git-send-email-andros@netapp.com> <1281735122-1496-33-git-send-email-andros@netapp.com> <1281735122-1496-34-git-send-email-andros@netapp.com> <1281735122-1496-35-git-send-email-andros@netapp.com> <1281735122-1496-36-git-send-email-andros@netapp.com> <1281735122-1496-37-git-send-email-andros@netapp.com> <1281735122-1496-38-git-send-email-andros@netapp.com> <1281735122-1496-39-git-send-email-andros@netapp.com> <1281735122-1496-40-git-send-email-andros@netapp.com> <1281735122-1496-41-git-send-email-andros@netapp.com> <1281735122-1496-42-git-send-email-andros@netapp.com> <1281735122-1496-43-git-send-email-andros@netapp.com> <1281735122-1496-44-git-send-email-andros@netapp.com> <1281735122-1496-45-git-send-email-andros@netapp.com> <1281735122-1496-46-git-send-email-andros@netapp.com> <1281735122-1496-47-git-send-email-andros@netapp.com> <1281735122-1496-48-git-send-email-andros@netapp.com> <1281735122-1496-49-git-send-email-andros@netapp.com>
+In-Reply-To: <1281735122-1496-49-git-send-email-andros@netapp.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, 2010-08-04 at 12:21 -0700, Yudong Gao wrote:
-> Hi,
+On 08/14/2010 12:32 AM, andros@netapp.com wrote:
+> From: Andy Adamson <andros@netapp.com>
 > 
-> I am not able to find the implementation of directory delegation,
-> either. Similarly, the callback functions CB_NOTIFY is not
-> implemented, either. I find that in preprocss_nfs41_op() in
-> callback_xdr.c, whenever a CB_NOTIFY is encountered, an
-> NFS4ERR_NOTSUPP is returned directly.
+> Signed-off-by: Andy Adamson <andros@netapp.com>
+> ---
+>  include/linux/nfs4.h |    2 ++
+>  1 files changed, 2 insertions(+), 0 deletions(-)
 > 
-> Am I missing something? Or they are just not supported in the current version?
+> diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
+> index 6ee7357..2d3d277 100644
+> --- a/include/linux/nfs4.h
+> +++ b/include/linux/nfs4.h
+> @@ -579,6 +579,8 @@ enum state_protect_how4 {
+>  
+>  enum pnfs_layouttype {
+>  	LAYOUT_NFSV4_1_FILES  = 1,
+> +	LAYOUT_OSD2_OBJECTS = 2,
+> +	LAYOUT_BLOCK_VOLUME = 3,
+>  };
+>  
 
-The client currently does not request any directory delegations or
-notifications, so there is no reason for it to support CB_NOTIFY.
+Rrr, what's the point? it's just an enum.
+All STD derived types and constants should just be kept intact. 
+Implemented or not is irrelevant.
 
-Maybe we will add support for directory delegations and notifications at
-some time in the future, but before that happens, somebody needs to
-convince me that they are useful. Currently there is very little
-documentation to support any assertion that they are...
+which calls for a rename BTW.
+pnfs_layouttype => nfs4_layouttype (The name nfs4.h should be an
+hint I'd say)
 
-Cheers
-  Trond
+>  /* used for both layout return and recall */
 
