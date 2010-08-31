@@ -1,82 +1,70 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:1025 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:52207 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755911Ab0H3Qx0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 30 Aug 2010 12:53:26 -0400
-Message-ID: <4C7BE1FC.2020400@RedHat.com>
-Date: Mon, 30 Aug 2010 12:53:16 -0400
-From: Steve Dickson <SteveD@redhat.com>
-To: Jeff Layton <jlayton@redhat.com>
-CC: linux-nfs@vger.kernel.org, bfields@fieldses.org, chuck.lever@oracle.com
+	id S932359Ab0HaPvx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 31 Aug 2010 11:51:53 -0400
+Date: Tue, 31 Aug 2010 11:51:28 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Steve Dickson <SteveD@redhat.com>
+Cc: Jeff Layton <jlayton@redhat.com>, linux-nfs@vger.kernel.org,
+        chuck.lever@oracle.com
 Subject: Re: [PATCH] rpc.nfsd: mount up nfsdfs is it doesn't appear to be
  mounted yet
-References: <1282995314-8317-1-git-send-email-jlayton@redhat.com>	<4C7BD394.3030705@RedHat.com> <20100830121600.529669bd@tlielax.poochiereds.net>
-In-Reply-To: <20100830121600.529669bd@tlielax.poochiereds.net>
-Content-Type: text/plain; charset=ISO-8859-1
+Message-ID: <20100831155128.GB3071@fieldses.org>
+References: <4C7BD394.3030705@RedHat.com>
+ <20100830121600.529669bd@tlielax.poochiereds.net>
+ <4C7BE1FC.2020400@RedHat.com>
+ <20100830134801.1696dffa@tlielax.poochiereds.net>
+ <4C7CF499.5090003@RedHat.com>
+ <20100831084323.02a1abf5@corrin.poochiereds.net>
+ <4C7D1694.6000708@RedHat.com>
+ <20100831111008.157618f4@corrin.poochiereds.net>
+ <20100831151342.GA3071@fieldses.org>
+ <4C7D1D3B.1030607@RedHat.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4C7D1D3B.1030607@RedHat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 08/30/2010 12:16 PM, Jeff Layton wrote:
-> On Mon, 30 Aug 2010 11:51:48 -0400
-> Steve Dickson <SteveD@redhat.com> wrote:
+On Tue, Aug 31, 2010 at 11:18:19AM -0400, Steve Dickson wrote:
 > 
->>
->>
->> On 08/28/2010 07:35 AM, Jeff Layton wrote:
->>> There's a bit of a chicken and egg problem when nfsd is run the first
->>> time. On Fedora/RHEL at least, /proc/fs/nfsd is mounted up whenever nfsd
->>> is plugged in via a modprobe.conf "install" directive.
->>>
->>> If someone runs rpc.nfsd without plugging in nfsd.ko first,
->>> /proc/fs/nfsd won't be mounted and rpc.nfsd will end up using the legacy
->>> nfsctl interface. After that, nfsd will be plugged in and subsequent
->>> rpc.nfsd invocations will use that instead.
->>>
->>> This is a problem as some nfsd command-line options are ignored when the
->>> legacy interface is used. It'll also be a problem for people who want
->>> IPv6 enabled servers. The upshot is that we really don't want to use the
->>> legacy interface unless there is no other option.
->> Well maybe its time we stop supporting the legacy interface... I
->> would rather stop supporting something nobody uses then added
->> some questionable code... Lets just error out when /proc/fs/nfsd
->> is not mounted and log what needs to happen...
->>
->> steved.
->>
 > 
-> Hmmm...if I had known that it was ok to stop supporting old kernels,
-> the IPv6 support for rpc.nfsd would have been a heck of a lot easier to
-> implement.
-I thought you said the legacy interface would not work with IPV6 or
-did I misunderstand you? 
+> On 08/31/2010 11:13 AM, J. Bruce Fields wrote:
+> > On Tue, Aug 31, 2010 at 11:10:08AM -0400, Jeff Layton wrote:
+> >> I was just pointing out that checking the return code from the system()
+> >> call isn't sufficient. Because of the way most people have modprobe set
+> >> up, it can return an error even though nfsdfs ended up being mounted
+> >> anyway. Checking for the presence of the file after attempting the
+> >> mount would be a more reliable test.
+> >>
+> >> Assuming we're in agreement there, we have another question to
+> >> settle...If the mount attempt fails, what should we do about it?
+> >>
+> >> With my original patch, we fall back to using nfsctl(). You're
+> >> suggesting that we should error out there. I'm not opposed to that, but
+> >> it does mean dropping support for some really old kernels. It also
+> >> means that we can remove some dead code in rpc.nfsd.
+> >>
+> >> OTOH, the fallback might allow nfsd to keep working for some people.
+> >> Maybe it would be better to just log a scary warning and fall back to
+> >> using nfsctl() for now.
+> >>
+> >> In a couple of releases, we could start returning an error there and
+> >> rip out the legacy interface code, or compile it out by default and
+> >> allow people to compile it in via a configure option?
+> > 
+> > Yes, let's just add the additional mount attempt for now, and figure out
+> > what to do about the legacy interface as a next step.
+> When the mount fails, I think we should exit... basically eliminating the
+> legacy interface code
 
-> 
-> I'm not sure I like throwing up our hands and bailing out with a log
-> message. We'll be going from an at least somewhat carefully considered
-> fallback mechanism to an outright failure to start in this situation.
-> That doesn't really seem like an improvement to me...
-This case will only happen when people start rpc.nfsd by hand (i.e. not
-via some start-up script) which %99.999 of the users do not do
-.
-But the few that do start rpc.nfsd by hand, they are probably debugging
-something, so logging a message saying /proc/fs/nfsd is not mount 
-would be quite handy... IMHO... 
+Maybe.  But as I say, make it two separate steps:
 
+	1. Add code to attempt the mount.
+	2. Add code to turn off the legacy interface if the mount
+	   doesn't work.
 
-> 
-> How this as an alternate proposal?
-> 
-> We attempt to mount up nfsdfs. If the "threads" file still isn't
-> present after the attempt, we then log a warning and go with the
-> nfsctl() interface?
-Has anybody test this legacy interface lately?? Does anybody anybody
-depend on the existence of this interface??? I would guess the answer
-would be no to both questions... So I see this as an opportunity so
-simplify the code... which is always a good thing... 
+They're two separate issues with separate justifications.
 
-So I would have no problem saying from the next release of nfs-utils,
-the legacy interface is no longer supported... especially if there are
-issues with IPV6.
-
-steved.
+--b.
