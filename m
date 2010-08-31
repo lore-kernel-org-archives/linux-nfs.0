@@ -1,93 +1,93 @@
-Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:23474 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759214Ab0HENEI convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 5 Aug 2010 09:04:08 -0400
-Subject: Re: [PATCH 2/2] We should clear NFS_DELEGATED_STATE after return
- delegation
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Bian Naimeng <biannm@cn.fujitsu.com>
-Cc: linux-nfs@vger.kernel.org
-In-Reply-To: <4C5A213F.9000506@cn.fujitsu.com>
-References: <4C592F85.8070308@cn.fujitsu.com>
-	 <4C59306A.9090302@cn.fujitsu.com>
-	 <1280925913.3011.23.camel@heimdal.trondhjem.org>
-	 <4C5A213F.9000506@cn.fujitsu.com>
-Content-Type: text/plain; charset="UTF-8"
-Date: Thu, 05 Aug 2010 09:03:43 -0400
-Message-ID: <1281013423.2948.1.camel@heimdal.trondhjem.org>
-Sender: linux-nfs-owner@vger.kernel.org
-List-ID: <linux-nfs.vger.kernel.org>
+Return-Path: <nfsv4-bounces@linux-nfs.org>
+In-Reply-To: <20100831162648.GF3071@fieldses.org>
+References: <OFED8B9B7B.45CD28BB-ON8825777C.005B88F3-8825777C.005BC3F5@us.ibm.com>
+	<OF1477B0A3.3F72D2BF-ON88257783.005FBF98-88257783.005FDE25@us.ibm.com>
+	<OFF2C1BE64.0E5C418F-ON8825778B.001353F9-8825778B.00136C6A@us.ibm.com>
+	<4C761A61.2070203@panasas.com>
+	<273FE88A07F5D445824060902F7003440C5CDD52@SACMVEXC1-PRD.hq.netapp.com>
+	<20100831162648.GF3071@fieldses.org>
+Date: Tue, 31 Aug 2010 10:51:11 -0700
+Message-ID: <AANLkTi=85p8qm-_RKRH60CZBJPMp5g_Qj2NHvHcDaw1S@mail.gmail.com>
+Subject: Re: Linux pNFS status meeting 08/26
+From: Fred Isaman <iisaman@citi.umich.edu>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/options/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@linux-nfs.org>
+List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
+Content-Type: text/plain; charset="iso-8859-1"
+Sender: nfsv4-bounces@linux-nfs.org
+Errors-To: nfsv4-bounces@linux-nfs.org
 MIME-Version: 1.0
+List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 2010-08-05 at 10:26 +0800, Bian Naimeng wrote:
-> > On Wed, 2010-08-04 at 17:18 +0800, Bian Naimeng wrote:
-> >> We should clear NFS_DELEGATED_STATE bit for inode->open_states after return delegation.
-> >>
-> >> Signed-off-by: Bian Naimeng <biannm@cn.fujitsu.com>
-> >>
-> >> ---
-> >>  fs/nfs/nfs4proc.c |   15 ++++++++++++++-
-> >>  1 files changed, 14 insertions(+), 1 deletions(-)
-> >>
-> >> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-> >> index 70015dd..76cdef4 100644
-> >> --- a/fs/nfs/nfs4proc.c
-> >> +++ b/fs/nfs/nfs4proc.c
-> 
->   ... snip ...
-> 
-> >>  
-> >>  static struct nfs4_state *nfs4_try_open_cached(struct nfs4_opendata *opendata)
-> > 
-> > It is way too late to clear the NFS_DELEGATED_STATE flag _after_ we've
-> > returned the delegation. We should be doing it as part of
-> > nfs_delegation_claim_opens().
-> > 
-> > Why isn't the following patch sufficient?
-> > 
-> > Cheers
-> >   Trond
-> > 
-> > ----------------------------------------------------------------------------------
-> > NFSv4: Remember to clear NFS_DELEGATED_STATE in nfs_delegation_claim_opens
-> > 
-> > From: Trond Myklebust <Trond.Myklebust@netapp.com>
-> > 
-> > Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-> > ---
-> > 
-> >  fs/nfs/delegation.c |    4 ++--
-> >  1 files changed, 2 insertions(+), 2 deletions(-)
-> > 
-> > 
-> > diff --git a/fs/nfs/delegation.c b/fs/nfs/delegation.c
-> > index 3016345..56d5d1a 100644
-> > --- a/fs/nfs/delegation.c
-> > +++ b/fs/nfs/delegation.c
-> > @@ -102,10 +102,10 @@ again:
-> >  		state = ctx->state;
-> >  		if (state == NULL)
-> >  			continue;
-> > -		if (!test_bit(NFS_DELEGATED_STATE, &state->flags))
-> > -			continue;
-> >  		if (memcmp(state->stateid.data, stateid->data, sizeof(state->stateid.data)) != 0)
-> >  			continue;
-> > +		if (!test_and_clear_bit(NFS_DELEGATED_STATE, &state->flags))
-> > +			continue;
-> >  		get_nfs_open_context(ctx);
-> >  		spin_unlock(&inode->i_lock);
-> >  		err = nfs4_open_delegation_recall(ctx, state, stateid);
-> > 
-> 
->  Thanks Trond.
->  But why we must remove test_and_clear_bit behind memcmp?
-> 
->  Always test_bit and memcmp have same result, and I think test_and_clear_bit is fast 
->  than memcmp, so i suggest we should call test_and_clear_bit first. right?
+On Tue, Aug 31, 2010 at 9:26 AM, J. Bruce Fields <bfields@fieldses.org> wro=
+te:
+> On Mon, Aug 30, 2010 at 02:15:43PM -0700, Labiaga, Ricardo wrote:
+>> Last week Andy, Fred, Trond, and I were physically in the same location,
+>> so we took the opportunity to review the first set of patches in the
+>> pnfs-submit branch and further discussed the best way to proceed with
+>> the submission. =A0For ease of review, Trond reiterated that we submit o=
+ur
+>> patches in waves of functionality and that they be submitted as a set of
+>> few large patches.
+>>
+>> The proposal is to submit the functionality in the following order:
+>>
+>> 1st Layoutget and getdeviceinfo (together)
+>> 2nd Layoutreturn
+>> 3rd Read/ Write I/O path (could be broken into two sets)
+>> 4th Callback Path
+>> 5th Layoutcommit
+>>
+>> For the 1st wave of functionality, the suggestion is to submit three
+>> large patches:
+>>
+>> 1. Everything that touches NFS common code
+>> =A0 (such as init and uninit pNFS, pnfs_update_layout invocations)
+>> 2. Layoutget and getdeviceinfo generic code common to all layout drivers
+>> 3. File layout specific layoutget and getdeviceinfo
+>
+> I understand large patches for the latter two, but for the first, might
+> it be worth keeping smaller patches? =A0Changes to common code seem most
+> at risk of breaking existing functionality. =A0And they might be
+> individually testable (since you can test for regressions), as opposed to
+> the new stuff that may be impossible to test until it's all applied.
+>
 
-We can't clear the bit before the memcmp() test. What we could do is
-keep the current test_bit() and then do a clear_bit after the memcmp().
+Note that the not much touches the common code, especially in our
+first submission, so it will be a fairly small patch, which we will
+not be adverse to breaking up at reviewers request.  Right now we are
+trying to accommodate Cristoph's request for larger patches combined
+with Trond's request for small, easy to review patches for anything
+that touches common code.
 
-Cheers
-  Trond
+Fred
+
+> But that's all just generalities--if people who've looked at the patches
+> don't think they split up sensibly, then fine.
+>
+> --b.
+> _______________________________________________
+> NOTE: THIS LIST IS DEPRECATED. =A0Please use linux-nfs@vger.kernel.org in=
+stead.
+> (To subscribe to linux-nfs@vger.kernel.org: send "subscribe linux-nfs" in=
+ the body of a message to majordomo@vger.kernel.org.)
+>
+> NFSv4 mailing list
+> NFSv4@linux-nfs.org
+> http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4
+>
+_______________________________________________
+NOTE: THIS LIST IS DEPRECATED.  Please use linux-nfs@vger.kernel.org instea=
+d.
+(To subscribe to linux-nfs@vger.kernel.org: send "subscribe linux-nfs" in t=
+he body of a message to majordomo@vger.kernel.org.)
+
+NFSv4 mailing list
+NFSv4@linux-nfs.org
+http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4
