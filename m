@@ -1,52 +1,52 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:41839 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:30765 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752922Ab0H1RKM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 28 Aug 2010 13:10:12 -0400
-Date: Sat, 28 Aug 2010 13:09:53 -0400
-To: Trond Myklebust <trond@netapp.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: krb5 problems in 2.6.36
-Message-ID: <20100828170953.GB5104@fieldses.org>
-Content-Type: text/plain; charset=us-ascii
-From: "J. Bruce Fields" <bfields@fieldses.org>
+	id S1757431Ab0HaPSb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 31 Aug 2010 11:18:31 -0400
+Message-ID: <4C7D1D3B.1030607@RedHat.com>
+Date: Tue, 31 Aug 2010 11:18:19 -0400
+From: Steve Dickson <SteveD@redhat.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: Jeff Layton <jlayton@redhat.com>, linux-nfs@vger.kernel.org,
+        chuck.lever@oracle.com
+Subject: Re: [PATCH] rpc.nfsd: mount up nfsdfs is it doesn't appear to be
+ mounted yet
+References: <1282995314-8317-1-git-send-email-jlayton@redhat.com> <4C7BD394.3030705@RedHat.com> <20100830121600.529669bd@tlielax.poochiereds.net> <4C7BE1FC.2020400@RedHat.com> <20100830134801.1696dffa@tlielax.poochiereds.net> <4C7CF499.5090003@RedHat.com> <20100831084323.02a1abf5@corrin.poochiereds.net> <4C7D1694.6000708@RedHat.com> <20100831111008.157618f4@corrin.poochiereds.net> <20100831151342.GA3071@fieldses.org>
+In-Reply-To: <20100831151342.GA3071@fieldses.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-As of a17c2153d2e271b0cbacae9bed83b0eaa41db7e1 "SUNRPC: Move the bound
-cred to struct rpc_rqst" the NFS server crashes when using krb5.
 
-I don't have good errors--I'll get some--but what I've seen suggests
-maybe a use-after-free of an rpc client on rpc_pipefs operations by
-gssd?
 
-I need the following to compile commits in that range.
+On 08/31/2010 11:13 AM, J. Bruce Fields wrote:
+> On Tue, Aug 31, 2010 at 11:10:08AM -0400, Jeff Layton wrote:
+>> I was just pointing out that checking the return code from the system()
+>> call isn't sufficient. Because of the way most people have modprobe set
+>> up, it can return an error even though nfsdfs ended up being mounted
+>> anyway. Checking for the presence of the file after attempting the
+>> mount would be a more reliable test.
+>>
+>> Assuming we're in agreement there, we have another question to
+>> settle...If the mount attempt fails, what should we do about it?
+>>
+>> With my original patch, we fall back to using nfsctl(). You're
+>> suggesting that we should error out there. I'm not opposed to that, but
+>> it does mean dropping support for some really old kernels. It also
+>> means that we can remove some dead code in rpc.nfsd.
+>>
+>> OTOH, the fallback might allow nfsd to keep working for some people.
+>> Maybe it would be better to just log a scary warning and fall back to
+>> using nfsctl() for now.
+>>
+>> In a couple of releases, we could start returning an error there and
+>> rip out the legacy interface code, or compile it out by default and
+>> allow people to compile it in via a configure option?
+> 
+> Yes, let's just add the additional mount attempt for now, and figure out
+> what to do about the legacy interface as a next step.
+When the mount fails, I think we should exit... basically eliminating the
+legacy interface code
 
---b.
-
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index 5eccea1..4a7c3d9 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -1382,7 +1382,7 @@ static const struct rpc_call_ops nfs_commit_ops = {
- 	.rpc_release = nfs_commit_release,
- };
- 
--static int nfs_commit_inode(struct inode *inode, int how)
-+int nfs_commit_inode(struct inode *inode, int how)
- {
- 	LIST_HEAD(head);
- 	int may_wait = how & FLUSH_SYNC;
-diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
-index a9d8026..92926bf 100644
---- a/include/linux/nfs_fs.h
-+++ b/include/linux/nfs_fs.h
-@@ -504,6 +504,7 @@ extern int nfs_wb_page_cancel(struct inode *inode, struct page* page);
- #if defined(CONFIG_NFS_V3) || defined(CONFIG_NFS_V4)
- extern struct nfs_write_data *nfs_commitdata_alloc(void);
- extern void nfs_commit_free(struct nfs_write_data *wdata);
-+extern int nfs_commit_inode(struct inode *inode, int how);
- #endif
- 
- static inline int
+steved.
