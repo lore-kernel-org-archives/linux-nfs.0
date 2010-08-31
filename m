@@ -1,119 +1,57 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cn.fujitsu.com ([222.73.24.84]:51946 "EHLO song.cn.fujitsu.com"
-	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
-	id S1750974Ab0HQKL2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 17 Aug 2010 06:11:28 -0400
-Message-ID: <4C6A5FF1.3070209@cn.fujitsu.com>
-Date: Tue, 17 Aug 2010 18:09:53 +0800
-From: Bian Naimeng <biannm@cn.fujitsu.com>
-To: Adam Lackorzynski <adam@os.inf.tu-dresden.de>
-CC: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: Re: 2.6.35.2: NFS related Oops
-References: <20100816215056.GA5376@os.inf.tu-dresden.de>
-In-Reply-To: <20100816215056.GA5376@os.inf.tu-dresden.de>
-Content-Type: text/plain; charset=Shift_JIS
+Received: from fieldses.org ([174.143.236.118]:57129 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752246Ab0HaQ1Q (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 31 Aug 2010 12:27:16 -0400
+Date: Tue, 31 Aug 2010 12:26:48 -0400
+To: "Labiaga, Ricardo" <Ricardo.Labiaga@netapp.com>
+Cc: Benny Halevy <bhalevy@panasas.com>, Marc Eshel <eshel@almaden.ibm.com>,
+        linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org
+Subject: Re: Linux pNFS status meeting 08/26
+Message-ID: <20100831162648.GF3071@fieldses.org>
+References: <OFED8B9B7B.45CD28BB-ON8825777C.005B88F3-8825777C.005BC3F5@us.ibm.com>
+ <OF1477B0A3.3F72D2BF-ON88257783.005FBF98-88257783.005FDE25@us.ibm.com>
+ <OFF2C1BE64.0E5C418F-ON8825778B.001353F9-8825778B.00136C6A@us.ibm.com>
+ <4C761A61.2070203@panasas.com>
+ <273FE88A07F5D445824060902F7003440C5CDD52@SACMVEXC1-PRD.hq.netapp.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <273FE88A07F5D445824060902F7003440C5CDD52@SACMVEXC1-PRD.hq.netapp.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-> Hi,
+On Mon, Aug 30, 2010 at 02:15:43PM -0700, Labiaga, Ricardo wrote:
+> Last week Andy, Fred, Trond, and I were physically in the same location,
+> so we took the opportunity to review the first set of patches in the
+> pnfs-submit branch and further discussed the best way to proceed with
+> the submission.  For ease of review, Trond reiterated that we submit our
+> patches in waves of functionality and that they be submitted as a set of
+> few large patches.
 > 
-> with 2.6.35.2 I'm getting this reproducible Oops:
+> The proposal is to submit the functionality in the following order:
 > 
-
-  Please try to apply the followed patch.
-
-  ----
-
-   We we open a positive file just with O_EXCL but no O_CREAT, may cause kernel crash.
-
-  Signed-off-by: Bian Naimeng <biannm@cn.fujitsu.com>
-
----
- fs/nfs/dir.c |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
-
-diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index 29539ce..1a672dd 100644
---- a/fs/nfs/dir.c
-+++ b/fs/nfs/dir.c
-@@ -1100,7 +1100,7 @@ static int nfs_open_revalidate(struct dentry *dentry, struct nameidata *nd)
- 		goto no_open_dput;
- 	openflags = nd->intent.open.flags;
- 	/* We cannot do exclusive creation on a positive dentry */
--	if ((openflags & (O_CREAT|O_EXCL)) == (O_CREAT|O_EXCL))
-+	if (openflags & O_EXCL)
- 		goto no_open_dput;
- 	/* We can't create new files, or truncate existing ones here */
- 	openflags &= ~(O_CREAT|O_TRUNC);
--- 
-1.7.0
-
-
-
-> [  110.825396] BUG: unable to handle kernel NULL pointer dereference at (null)
-> [  110.828638] IP: [<ffffffff811247b7>] encode_attrs+0x1a/0x2a4
-> [  110.828638] PGD be89f067 PUD bf18f067 PMD 0
-> [  110.828638] Oops: 0000 [#1] SMP
-> [  110.828638] last sysfs file: /sys/class/net/lo/operstate
-> [  110.828638] CPU 2
-> [  110.828638] Modules linked in: rtc_cmos rtc_core rtc_lib amd64_edac_mod i2c_amd756 edac_core i2c_core dm_mirror dm_region_hash dm_log dm_snapshot sg sr_mod usb_storage ohci_hcd mptspi tg3 mptscsih mptbase usbcore nls_base [last unloaded: scsi_wait_scan] 
-> [  110.828638] 
-> [  110.828638] Pid: 11264, comm: setchecksum Not tainted 2.6.35.2 #1
-> [  110.828638] RIP: 0010:[<ffffffff811247b7>]  [<ffffffff811247b7>] encode_attrs+0x1a/0x2a4
-> [  110.828638] RSP: 0000:ffff88003bf5b878  EFLAGS: 00010296
-> [  110.828638] RAX: ffff8800bddb48a8 RBX: ffff88003bf5bb18 RCX: 0000000000000000
-> [  110.828638] RDX: ffff8800be258800 RSI: 0000000000000000 RDI: ffff88003bf5b9f8
-> [  110.828638] RBP: 0000000000000000 R08: ffff8800bddb48a8 R09: 0000000000000004
-> [  110.828638] R10: 0000000000000003 R11: ffff8800be779000 R12: ffff8800be258800
-> [  110.828638] R13: ffff88003bf5b9f8 R14: ffff88003bf5bb20 R15: ffff8800be258800
-> [  110.828638] FS:  0000000000000000(0000) GS:ffff880041e00000(0063) knlGS:00000000556bd6b0
-> [  110.828638] CS:  0010 DS: 002b ES: 002b CR0: 000000008005003b
-> [  110.828638] CR2: 0000000000000000 CR3: 00000000be8ef000 CR4: 00000000000006e0
-> [  110.828638] DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
-> [  110.828638] DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
-> [  110.828638] Process setchecksum (pid: 11264, threadinfo ffff88003bf5a000, task ffff88003f232210)
-> [  110.828638] Stack:
-> [  110.828638]  0000000000000000 ffff8800bfbcf920 0000000000000000 0000000000000ffe
-> [  110.828638] <0> 0000000000000000 0000000000000000 0000000000000000 0000000000000000
-> [  110.828638] <0> 0000000000000000 0000000000000000 0000000000000000 0000000000000000
-> [  110.828638] Call Trace:
-> [  110.828638]  [<ffffffff81124c1f>] ? nfs4_xdr_enc_setattr+0x90/0xb4
-> [  110.828638]  [<ffffffff81371161>] ? call_transmit+0x1c3/0x24a
-> [  110.828638]  [<ffffffff813774d9>] ? __rpc_execute+0x78/0x22a
-> [  110.828638]  [<ffffffff81371a91>] ? rpc_run_task+0x21/0x2b
-> [  110.828638]  [<ffffffff81371b7e>] ? rpc_call_sync+0x3d/0x5d
-> [  110.828638]  [<ffffffff8111e284>] ? _nfs4_do_setattr+0x11b/0x147
-> [  110.828638]  [<ffffffff81109466>] ? nfs_init_locked+0x0/0x32
-> [  110.828638]  [<ffffffff810ac521>] ? ifind+0x4e/0x90
-> [  110.828638]  [<ffffffff8111e2fb>] ? nfs4_do_setattr+0x4b/0x6e
-> [  110.828638]  [<ffffffff8111e634>] ? nfs4_do_open+0x291/0x3a6
-> [  110.828638]  [<ffffffff8111ed81>] ? nfs4_open_revalidate+0x63/0x14a
-> [  110.828638]  [<ffffffff811056c4>] ? nfs_open_revalidate+0xd7/0x161
-> [  110.828638]  [<ffffffff810a2de4>] ? do_lookup+0x1a4/0x201
-> [  110.828638]  [<ffffffff810a4733>] ? link_path_walk+0x6a/0x9d5
-> [  110.828638]  [<ffffffff810a42b6>] ? do_last+0x17b/0x58e
-> [  110.828638]  [<ffffffff810a5fbe>] ? do_filp_open+0x1bd/0x56e
-> [  110.828638]  [<ffffffff811cd5e0>] ? _atomic_dec_and_lock+0x30/0x48
-> [  110.828638]  [<ffffffff810a9b1b>] ? dput+0x37/0x152
-> [  110.828638]  [<ffffffff810ae063>] ? alloc_fd+0x69/0x10a
-> [  110.828638]  [<ffffffff81099f39>] ? do_sys_open+0x56/0x100
-> [  110.828638]  [<ffffffff81027a22>] ? ia32_sysret+0x0/0x5
-> [  110.828638] Code: 83 f1 01 e8 f5 ca ff ff 48 83 c4 50 5b 5d 41 5c c3 41 57 41 56 41 55 49 89 fd 41 54 49 89 d4 55 48 89 f5 53 48 81 ec 18 01 00 00 <8b> 06 89 c2 83 e2 08 83 fa 01 19 db 83 e3 f8 83 c3 18 a8 01 8d
-> [  110.828638] RIP  [<ffffffff811247b7>] encode_attrs+0x1a/0x2a4
-> [  110.828638]  RSP <ffff88003bf5b878>
-> [  110.828638] CR2: 0000000000000000
-> [  112.840396] ---[ end trace 95282e83fd77358f ]---
+> 1st Layoutget and getdeviceinfo (together)
+> 2nd Layoutreturn
+> 3rd Read/ Write I/O path (could be broken into two sets)
+> 4th Callback Path
+> 5th Layoutcommit
 > 
+> For the 1st wave of functionality, the suggestion is to submit three
+> large patches:
 > 
-> Looks like arg->iap in encode_setattr() in nfs4xdr.c is 0.
-> 
-> 
-> 
-> Adam
+> 1. Everything that touches NFS common code 
+>   (such as init and uninit pNFS, pnfs_update_layout invocations)
+> 2. Layoutget and getdeviceinfo generic code common to all layout drivers
+> 3. File layout specific layoutget and getdeviceinfo
 
--- 
-Regards
-Bian Naimeng
+I understand large patches for the latter two, but for the first, might
+it be worth keeping smaller patches?  Changes to common code seem most
+at risk of breaking existing functionality.  And they might be
+individually testable (since you can test for regressions), as opposed to
+the new stuff that may be impossible to test until it's all applied.
 
+But that's all just generalities--if people who've looked at the patches
+don't think they split up sensibly, then fine.
+
+--b.
