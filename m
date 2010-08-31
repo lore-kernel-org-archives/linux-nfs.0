@@ -1,90 +1,164 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:37239 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:51556 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751455Ab0HSWzS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 19 Aug 2010 18:55:18 -0400
-Date: Thu, 19 Aug 2010 18:53:01 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: john stultz <johnstul@us.ibm.com>
-Cc: "Patrick J. LoPresti" <lopresti@gmail.com>,
-        Alan Cox <alan@lxorguk.ukuu.org.uk>, Andi Kleen <andi@firstfloor.org>,
-        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-kernel <linux-kernel@vger.kernel.org>
-Subject: Re: Proposal: Use hi-res clock for file timestamps
-Message-ID: <20100819225300.GD9275@fieldses.org>
-References: <20100817174134.GA23176@fieldses.org>
- <20100817182920.GD18161@basil.fritz.box>
- <20100817190447.GA28049@fieldses.org>
- <AANLkTi=w1UA5ZZDBigpxMiL7A7DnbnQhLkg62JZpC6Ri@mail.gmail.com>
- <20100817203941.729830b7@lxorguk.ukuu.org.uk>
- <AANLkTi=sOW0Cgci+xX6rRmz+B-is0xb8DoKD350bFJN1@mail.gmail.com>
- <20100818181240.GA13050@fieldses.org>
- <AANLkTi=cx31Mgfe7FxJz6LUmTKFR4=9KEBgbFsNLjiSE@mail.gmail.com>
- <20100819023106.GB30151@fieldses.org>
- <1282187834.3575.30.camel@localhost.localdomain>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1282187834.3575.30.camel@localhost.localdomain>
+	id S1755227Ab0HaTeV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 31 Aug 2010 15:34:21 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: steved@redhat.com
+Cc: linux-nfs@vger.kernel.org, bfields@fieldses.org, neilb@suse.de
+Subject: [PATCH] rpc.nfsd: mount up nfsdfs is it doesn't appear to be mounted yet (try #2)
+Date: Tue, 31 Aug 2010 15:32:40 -0400
+Message-Id: <1283283160-30024-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Wed, Aug 18, 2010 at 08:17:14PM -0700, john stultz wrote:
-> On Wed, 2010-08-18 at 22:31 -0400, J. Bruce Fields wrote:
-> > On Wed, Aug 18, 2010 at 06:41:02PM -0700, john stultz wrote:
-> > > On Wed, Aug 18, 2010 at 11:12 AM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> > > > I'm completely ignorant about higher-resolution time sources.  Any
-> > > > recommended reading?  What resolution do they actually provide, what's
-> > > > the expense of reading them, how reliable are they, and how do the
-> > > > answers to those questions vary across different hardware and kernel
-> > > > versions?  A quick look at drivers/clocksource/ doesn't suggest
-> > > > simple answers.
-> > > 
-> > > Yea, there aren't simple answers. Clocksource hardware varies
-> > > drastically in resolution and access time across systems and
-> > > architectures. Further, clocksources may change while the system is
-> > > up, so we don't really expose the hardware resolution.
-> > > 
-> > > On x86, access latency varies from ~50ns (TSC) to ~1.3us (ACPI PM).
-> > > (And that is ignoring the PIT, which can be 18us per call - luckily
-> > > almost no hardware uses that). The resolution similarly scales from
-> > > sub-ns (TSC @ > 1ghz cpus) to ~279ns (ACPI PM). Of course, across
-> > > architectures you will see even more variance.
-> > 
-> > The race in question occurs when you manage to check mtime between two
-> > file data updates, with all three operations occurring within a clock
-> > tick.
-> > 
-> > No idea if that's feasible in hundreds of nanoseconds.
-> 
-> I think this is what Andi meant that you'll always race with time and
-> that version counters are the only real solution here.
+This patch is the second attempt at fixing this problem. It's basically
+the same as the first patch, but adds some xlog() calls to log info
+when there are problems. I also changed the NFSD_*_FILE definitions
+around so that they are defined based on another constant that holds
+the nfsdfs mountpoint.
 
-Yeah.  That'll work for NFSv4.  But if possible it'd be nice to have a
-solution for NFSv3.
+---------------------------[snip]-------------------------
+There's a bit of a chicken and egg problem when nfsd is run the first
+time. On Fedora/RHEL at least, /proc/fs/nfsd is mounted up whenever nfsd
+is plugged in via a modprobe.conf "install" directive.
 
-As compared to using a higher-resolution time source, a solution for
-mtime based on a global counter would provide better guarantees (on
-filesystems that can store the extra bits), and perform better.  (What
-is the worst-case latency if we're bouncing a cache line back and forth
-between two CPU's?)  Though I guess the possible performance hit would
-rule it out for users that didn't specifically ask for it.  (So, no help
-for userspace nfs servers, make, or whoever else might (wisely or not)
-already depend on mtime detecting changes reliably.)
+If someone runs rpc.nfsd without plugging in nfsd.ko first,
+/proc/fs/nfsd won't be mounted and rpc.nfsd will end up using the legacy
+nfsctl interface. After that, nfsd will be plugged in and subsequent
+rpc.nfsd invocations will use that instead.
 
-> > I'm also not sure how to judge the access latency.  Certainly a
-> > microsecond is a lot compared to just reading a cached mtime value.
-> > 
-> > Will we ever see them go backwards?  (So if I know I wrote to file B
-> > after writing to file A, is there ever a case where I could end up with
-> > an earlier mtime on B than A?)
-> 
-> You should not. However, there have been bugs in the past, and there
-> will probably be a few more in the future.
-> 
-> There are also theoretical issues with SMP systems where the TSCs are
-> not perfectly synced, but the window for those races should be small
-> (ie: smaller then can be detected - otherwise we'll throw out the TSC).
+This is a problem as some nfsd command-line options are ignored when the
+legacy interface is used. It'll also be a problem for people who want
+IPv6 enabled servers. The upshot is that we really don't want to use the
+legacy interface unless there is no other option.
 
-Got it.  Thanks for your help!
+To avoid this situation, have rpc.nfsd check to see if the "threads"
+file is already present. If it's not, then make an attempt to mount
+/proc/fs/nfsd.  This is a "best-effort" sort of thing, however so we
+just ignore the return code from the mount attempt and fall back to
+using nfsctl() if it fails.
 
---b.
+Full disclosure: I'm not 100% thrilled with this patch. It seems ugly
+and kludgey, but I don't see a better way to handle this problem.
+Suggestions welcome.
+
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ utils/nfsd/nfsd.c   |    3 ++
+ utils/nfsd/nfssvc.c |   53 ++++++++++++++++++++++++++++++++++++++++++++++++--
+ utils/nfsd/nfssvc.h |    1 +
+ 3 files changed, 54 insertions(+), 3 deletions(-)
+
+diff --git a/utils/nfsd/nfsd.c b/utils/nfsd/nfsd.c
+index 1cda1e5..6bbf697 100644
+--- a/utils/nfsd/nfsd.c
++++ b/utils/nfsd/nfsd.c
+@@ -246,6 +246,9 @@ main(int argc, char **argv)
+ 		exit(1);
+ 	}
+ 
++	/* make sure nfsdfs is mounted if it's available */
++	nfssvc_mount_nfsdfs();
++
+ 	/* can only change number of threads if nfsd is already up */
+ 	if (nfssvc_inuse()) {
+ 		socket_up = 1;
+diff --git a/utils/nfsd/nfssvc.c b/utils/nfsd/nfssvc.c
+index 34c67ca..636b403 100644
+--- a/utils/nfsd/nfssvc.c
++++ b/utils/nfsd/nfssvc.c
+@@ -15,9 +15,11 @@
+ #include <netdb.h>
+ #include <netinet/in.h>
+ #include <arpa/inet.h>
++#include <sys/stat.h>
+ #include <unistd.h>
+ #include <fcntl.h>
+ #include <errno.h>
++#include <stdlib.h>
+ 
+ #include "nfslib.h"
+ #include "xlog.h"
+@@ -31,9 +33,10 @@
+  */
+ #undef IPV6_SUPPORTED
+ 
+-#define NFSD_PORTS_FILE     "/proc/fs/nfsd/portlist"
+-#define NFSD_VERS_FILE    "/proc/fs/nfsd/versions"
+-#define NFSD_THREAD_FILE  "/proc/fs/nfsd/threads"
++#define NFSD_FS_DIR	  "/proc/fs/nfsd"
++#define NFSD_PORTS_FILE   NFSD_FS_DIR "/portlist"
++#define NFSD_VERS_FILE    NFSD_FS_DIR "/versions"
++#define NFSD_THREAD_FILE  NFSD_FS_DIR "/threads"
+ 
+ /*
+  * declaring a common static scratch buffer here keeps us from having to
+@@ -44,6 +47,50 @@
+ char buf[128];
+ 
+ /*
++ * Using the "new" interfaces for nfsd requires that /proc/fs/nfsd is
++ * actually mounted. Make an attempt to mount it here if it doesn't appear
++ * to be. If the mount attempt fails, no big deal -- fall back to using nfsctl
++ * instead.
++ */
++void
++nfssvc_mount_nfsdfs(void)
++{
++	int err;
++	struct stat statbuf;
++
++	err = stat(NFSD_THREAD_FILE, &statbuf);
++	if (err == 0)
++		return;
++	else if (errno != ENOENT) {
++		xlog(L_ERROR, "Unable to stat %s: errno %d (%m)",
++				NFSD_THREAD_FILE, errno);
++		return;
++	}
++
++	/*
++	 * this call can return an error if modprobe is set up to automatically
++	 * mount nfsdfs when nfsd.ko is plugged in. So, ignore the return
++	 * code from it and just check for the "threads" file afterward.
++	 */
++	system("/bin/mount -t nfsd nfsd " NFSD_FS_DIR " >/dev/null 2>&1");
++
++	err = stat(NFSD_THREAD_FILE, &statbuf);
++	if (err == 0)
++		return;
++
++	if (errno == ENOENT)
++		xlog(L_ERROR, "Unable to mount nfsdfs on %s. Falling back "
++			      "to legacy nfsctl() interface. Some command "
++			      "line options may not work correctly.",
++			      NFSD_FS_DIR);
++	else
++		xlog(L_ERROR, "Unable to stat %s after attempting to mount "
++			      "%s. Falling back to legacy nfsctl() interface: "
++			      "errno %d (%m)",
++				NFSD_THREAD_FILE, NFSD_FS_DIR, errno);
++}
++
++/*
+  * Are there already sockets configured? If not, then it is safe to try to
+  * open some and pass them through.
+  *
+diff --git a/utils/nfsd/nfssvc.h b/utils/nfsd/nfssvc.h
+index 0c69bd6..ff81165 100644
+--- a/utils/nfsd/nfssvc.h
++++ b/utils/nfsd/nfssvc.h
+@@ -20,6 +20,7 @@
+  *
+  */
+ 
++void	nfssvc_mount_nfsdfs(void);
+ int	nfssvc_inuse(void);
+ int	nfssvc_set_sockets(const int family, const unsigned int protobits,
+ 			   const char *host, const char *port);
+-- 
+1.7.1
+
