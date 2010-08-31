@@ -1,50 +1,47 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ey0-f174.google.com ([209.85.215.174]:35954 "EHLO
-	mail-ey0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753008Ab0HRScW (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 18 Aug 2010 14:32:22 -0400
-In-Reply-To: <1282155658.13405.36.camel@localhost>
-References: <AANLkTimnyXKahtjaFeSsgcq=xMy-pP3na1jidQhZ-dt2@mail.gmail.com>
-	<87aaolwar8.fsf@basil.nowhere.org>
-	<20100817174134.GA23176@fieldses.org>
-	<20100817182920.GD18161@basil.fritz.box>
-	<1282155658.13405.36.camel@localhost>
-Date: Wed, 18 Aug 2010 11:32:20 -0700
-Message-ID: <AANLkTin2EOzA5grh5qjZghAs0Y4DbcGBhmdfqp=u1S_4@mail.gmail.com>
-Subject: Re: Proposal: Use hi-res clock for file timestamps
-From: "Patrick J. LoPresti" <lopresti@gmail.com>
-To: David Woodhouse <dwmw2@infradead.org>
-Cc: Andi Kleen <andi@firstfloor.org>, "J. Bruce Fields" <bfields@fieldses.org>,
-        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-kernel <linux-kernel@vger.kernel.org>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mx1.redhat.com ([209.132.183.28]:61522 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751912Ab0HaTng (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 31 Aug 2010 15:43:36 -0400
+Message-ID: <4C7D5B63.9060907@RedHat.com>
+Date: Tue, 31 Aug 2010 15:43:31 -0400
+From: Steve Dickson <SteveD@redhat.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 0/5] Support IPv6 in libexport.a
+References: <20100824162926.2433.7535.stgit@matisse.1015granger.net>
+In-Reply-To: <20100824162926.2433.7535.stgit@matisse.1015granger.net>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, Aug 18, 2010 at 11:20 AM, David Woodhouse <dwmw2@infradead.org> wrote:
->
-> Um, can't you? You can't *store* timestamps which are more precise, but
-> they can be in cache can't they?
 
-No.  That is how Linux used to work, and it caused many problems,
-which is why the current_fs_time() function was invented.
 
-> And since you're not going to drop it from cache and bring it back in
-> again within 4ms, that ought to suffice?
+On 08/24/2010 12:35 PM, Chuck Lever wrote:
+> Hi Steve-
+> 
+> This patch set should encapsulate IPv6-related changes needed in
+> support/export/client.c .  It updates logic that parses presentation
+> addresses and netmasks, and logic that compares socket addresses.
+> 
+> ---
+> 
+> Chuck Lever (5):
+>       libexport.a: IPv6 support in client_check()
+>       libexport.a: IPv6 support for client_init_subnet()
+>       libexport.a: Prepare init_subnetwork() for IPv6 support
+>       libexport.a: Use host helper to parse address in client_init()
+>       libexport.a: Prepare to recognize IPv6 addresses in client_gettype()
+> 
+> 
+>  support/export/client.c |  208 +++++++++++++++++++++++++++++++++++------------
+>  1 files changed, 153 insertions(+), 55 deletions(-)
+> 
+All 5 Committed... As far as "bending the cardinal rule of not
+using "#ifdef" inside functions"... I too did not see a cleaner
+way of doing it... so I don't think its a big deal.. but maybe
+down the road we can rework things were those ifdef are not
+needed... but only time will tell...
 
-Not the problem.  As usual, the problem is out-of-order timestamps:
-
-1) Modify file A
-2) Modify file B
-3) File B's inode gets evicted, truncating its timestamp to disk resolution
-4) Call stat() on B, bringing it back in with truncated resolution
-
-And boom, B appears to be OLDER than A.  Which is not allowed.
-
-This is exactly what happened when Linux first added sub-second
-timestamps to the generic VFS layer.  Many complaints about "make"
-rebuilding files unecessarily, among other things.  Eventually it got
-fixed by the introduction of current_fs_time().
-
- - Pat
+steved.
