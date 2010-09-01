@@ -1,173 +1,44 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:18841 "EHLO mx1.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:6397 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754219Ab0IJT1V (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 10 Sep 2010 15:27:21 -0400
-Received: from int-mx02.intmail.prod.int.phx2.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
-	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id o8AJRL2E017779
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Fri, 10 Sep 2010 15:27:21 -0400
-Received: from dantu.rdu.redhat.com (dantu.rdu.redhat.com [10.11.228.66])
-	by int-mx02.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id o8AJRIBV018810
-	for <linux-nfs@vger.kernel.org>; Fri, 10 Sep 2010 15:27:21 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 4/9] nfs: standardize the rename response container
-Date: Fri, 10 Sep 2010 15:27:13 -0400
-Message-Id: <1284146838-1468-5-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1284146838-1468-1-git-send-email-jlayton@redhat.com>
-References: <1284146838-1468-1-git-send-email-jlayton@redhat.com>
+	id S1750779Ab0IAEUj convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 1 Sep 2010 00:20:39 -0400
+Subject: Re: fsync/wb deadlocks in 2.6.32
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Christoph Lameter <cl@linux.com>
+Cc: Kian Mohageri <kian.mohageri@gmail.com>, davidr@ressman.org,
+        linux-nfs@vger.kernel.org
+In-Reply-To: <alpine.DEB.2.00.1008310934150.867@router.home>
+References: <AANLkTikWR_YSnx=4=KAodATpX+xO9+hj-cf7_e158f4d@mail.gmail.com>
+	 <AANLkTi=gj901aF_84+40j9MhvAwNJSNB8qRnpY8o0gBZ@mail.gmail.com>
+	 <AANLkTinEoMgXLvN4MvfnCHjHtHCwV1HDP67BoKQ3ZbQx@mail.gmail.com>
+	 <alpine.DEB.2.00.1008301101560.10316@router.home>
+	 <AANLkTinieSM_-x4qra7_HOCsONFAdyjn3LQbyBDJRebT@mail.gmail.com>
+	 <alpine.DEB.2.00.1008310934150.867@router.home>
+Content-Type: text/plain; charset="UTF-8"
+Date: Wed, 01 Sep 2010 00:20:32 -0400
+Message-ID: <1283314832.5220.31.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-Right now, v3 and v4 have their own variants and v2 doesn't have one at
-all. Create a standard struct that will work for v3 and v4.
+On Tue, 2010-08-31 at 09:36 -0500, Christoph Lameter wrote:
+> We got another instance yesterday. A large number of machines
+> simultaneously started spewing the kernel messages. Had to reboot to get
+> the state cleared up. Very very annoying. Anyone know a reason for these
+> writeback deadlocks?
+> 
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- fs/nfs/nfs3proc.c       |   16 ++++++++--------
- fs/nfs/nfs3xdr.c        |    6 +++---
- fs/nfs/nfs4proc.c       |    2 +-
- fs/nfs/nfs4xdr.c        |    2 +-
- include/linux/nfs_xdr.h |   23 +++++++++--------------
- 5 files changed, 22 insertions(+), 27 deletions(-)
+Hi Christoph,
 
-diff --git a/fs/nfs/nfs3proc.c b/fs/nfs/nfs3proc.c
-index d8557b3..c5cccf1 100644
---- a/fs/nfs/nfs3proc.c
-+++ b/fs/nfs/nfs3proc.c
-@@ -448,7 +448,7 @@ nfs3_proc_rename(struct inode *old_dir, struct qstr *old_name,
- 		.new_dir	= NFS_FH(new_dir),
- 		.new_name	= new_name,
- 	};
--	struct nfs3_renameres res;
-+	struct nfs_renameres res;
- 	struct rpc_message msg = {
- 		.rpc_proc	= &nfs3_procedures[NFS3PROC_RENAME],
- 		.rpc_argp	= &arg,
-@@ -458,17 +458,17 @@ nfs3_proc_rename(struct inode *old_dir, struct qstr *old_name,
- 
- 	dprintk("NFS call  rename %s -> %s\n", old_name->name, new_name->name);
- 
--	res.fromattr = nfs_alloc_fattr();
--	res.toattr = nfs_alloc_fattr();
--	if (res.fromattr == NULL || res.toattr == NULL)
-+	res.old_fattr = nfs_alloc_fattr();
-+	res.new_fattr = nfs_alloc_fattr();
-+	if (res.old_fattr == NULL || res.new_fattr == NULL)
- 		goto out;
- 
- 	status = rpc_call_sync(NFS_CLIENT(old_dir), &msg, 0);
--	nfs_post_op_update_inode(old_dir, res.fromattr);
--	nfs_post_op_update_inode(new_dir, res.toattr);
-+	nfs_post_op_update_inode(old_dir, res.old_fattr);
-+	nfs_post_op_update_inode(new_dir, res.new_fattr);
- out:
--	nfs_free_fattr(res.toattr);
--	nfs_free_fattr(res.fromattr);
-+	nfs_free_fattr(res.old_fattr);
-+	nfs_free_fattr(res.new_fattr);
- 	dprintk("NFS reply rename: %d\n", status);
- 	return status;
- }
-diff --git a/fs/nfs/nfs3xdr.c b/fs/nfs/nfs3xdr.c
-index f385759..89c40f8 100644
---- a/fs/nfs/nfs3xdr.c
-+++ b/fs/nfs/nfs3xdr.c
-@@ -970,14 +970,14 @@ nfs3_xdr_createres(struct rpc_rqst *req, __be32 *p, struct nfs3_diropres *res)
-  * Decode RENAME reply
-  */
- static int
--nfs3_xdr_renameres(struct rpc_rqst *req, __be32 *p, struct nfs3_renameres *res)
-+nfs3_xdr_renameres(struct rpc_rqst *req, __be32 *p, struct nfs_renameres *res)
- {
- 	int	status;
- 
- 	if ((status = ntohl(*p++)) != 0)
- 		status = nfs_stat_to_errno(status);
--	p = xdr_decode_wcc_data(p, res->fromattr);
--	p = xdr_decode_wcc_data(p, res->toattr);
-+	p = xdr_decode_wcc_data(p, res->old_fattr);
-+	p = xdr_decode_wcc_data(p, res->new_fattr);
- 	return status;
- }
- 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index eb36784..120a8a6 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -2682,7 +2682,7 @@ static int _nfs4_proc_rename(struct inode *old_dir, struct qstr *old_name,
- 		.new_name = new_name,
- 		.bitmask = server->attr_bitmask,
- 	};
--	struct nfs4_rename_res res = {
-+	struct nfs_renameres res = {
- 		.server = server,
- 	};
- 	struct rpc_message msg = {
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index 7a098ae..b0bd7ef 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -4873,7 +4873,7 @@ out:
- /*
-  * Decode RENAME response
-  */
--static int nfs4_xdr_dec_rename(struct rpc_rqst *rqstp, __be32 *p, struct nfs4_rename_res *res)
-+static int nfs4_xdr_dec_rename(struct rpc_rqst *rqstp, __be32 *p, struct nfs_renameres *res)
- {
- 	struct xdr_stream xdr;
- 	struct compound_hdr hdr;
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index 60fa509..6265fa8 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -411,6 +411,15 @@ struct nfs_renameargs {
- 	struct nfs4_sequence_args	seq_args;
- };
- 
-+struct nfs_renameres {
-+	const struct nfs_server *	server;
-+	struct nfs4_change_info		old_cinfo;
-+	struct nfs_fattr *		old_fattr;
-+	struct nfs4_change_info		new_cinfo;
-+	struct nfs_fattr *		new_fattr;
-+	struct nfs4_sequence_res	seq_res;
-+};
-+
- /*
-  * Argument struct for decode_entry function
-  */
-@@ -623,11 +632,6 @@ struct nfs3_readlinkargs {
- 	struct page **		pages;
- };
- 
--struct nfs3_renameres {
--	struct nfs_fattr *	fromattr;
--	struct nfs_fattr *	toattr;
--};
--
- struct nfs3_linkres {
- 	struct nfs_fattr *	dir_attr;
- 	struct nfs_fattr *	fattr;
-@@ -795,15 +799,6 @@ struct nfs4_readlink_res {
- 	struct nfs4_sequence_res	seq_res;
- };
- 
--struct nfs4_rename_res {
--	const struct nfs_server *	server;
--	struct nfs4_change_info		old_cinfo;
--	struct nfs_fattr *		old_fattr;
--	struct nfs4_change_info		new_cinfo;
--	struct nfs_fattr *		new_fattr;
--	struct nfs4_sequence_res	seq_res;
--};
--
- #define NFS4_SETCLIENTID_NAMELEN	(127)
- struct nfs4_setclientid {
- 	const nfs4_verifier *		sc_verifier;
--- 
-1.7.1
+>From what I could see in your original email to me, you appear to be
+using NFS over UDP on IPoIB on a 2.6.32-18 kernel. Is that still the
+case? If so, does anything change if you change to use TCP and/or an
+ordinary NIC?
 
+Your link to https://bugs.launchpad.net/ubuntu/+source/linux/+bug/561210
+appears to be the kswapd bug, which should be hacked around in later
+2.6.32 stable versions.
+
+Cheers
+  Trond
