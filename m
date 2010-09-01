@@ -1,294 +1,198 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:50429 "EHLO
-	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1755284Ab0ITOVA (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 20 Sep 2010 10:21:00 -0400
-Message-ID: <4C976DDC.70701@panasas.com>
-Date: Mon, 20 Sep 2010 16:21:16 +0200
-From: Benny Halevy <bhalevy@panasas.com>
-To: Fred Isaman <iisaman@netapp.com>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 06/12] RFC: nfs: set layout driver
-References: <1284779874-10499-1-git-send-email-iisaman@netapp.com>	<1284779874-10499-7-git-send-email-iisaman@netapp.com>	<4C973A86.6050008@panasas.com> <AANLkTi=3CA+2e6GRytZkFTLbv6Mya7cfRm_iSkvVxXWh@mail.gmail.com>
-In-Reply-To: <AANLkTi=3CA+2e6GRytZkFTLbv6Mya7cfRm_iSkvVxXWh@mail.gmail.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mx1.redhat.com ([209.132.183.28]:19026 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755515Ab0IAU4Q (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 1 Sep 2010 16:56:16 -0400
+Date: Wed, 1 Sep 2010 16:56:05 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: steved@redhat.com, linux-nfs@vger.kernel.org, neilb@suse.de
+Subject: Re: [PATCH] rpc.nfsd: mount up nfsdfs is it doesn't appear to be
+ mounted yet (try #2)
+Message-ID: <20100901165605.41f4978d@tlielax.poochiereds.net>
+In-Reply-To: <20100901204818.GA10507@fieldses.org>
+References: <1283283160-30024-1-git-send-email-jlayton@redhat.com>
+	<20100901204818.GA10507@fieldses.org>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 2010-09-20 16:06, Fred Isaman wrote:
-> On Mon, Sep 20, 2010 at 6:42 AM, Benny Halevy <bhalevy@panasas.com> wrote:
->> On 2010-09-18 05:17, Fred Isaman wrote:
->>> From: The pNFS Team <linux-nfs@vger.kernel.org>
->>>
->>> Put in the infrastructure that uses information returned from the
->>> server at mount to select a layout driver module.
->>>
->>> In this patch, a stub is used that always returns "no driver found".
->>>
->>> Signed-off-by: TBD - melding/reorganization of several patches
->>> ---
->>>  fs/nfs/Makefile           |    1 +
->>>  fs/nfs/client.c           |    4 ++
->>>  fs/nfs/pnfs.c             |   78 +++++++++++++++++++++++++++++++++++++++++++++
->>>  fs/nfs/pnfs.h             |   56 ++++++++++++++++++++++++++++++++
->>>  include/linux/nfs_fs.h    |    1 +
->>>  include/linux/nfs_fs_sb.h |    1 +
->>>  6 files changed, 141 insertions(+), 0 deletions(-)
->>>  create mode 100644 fs/nfs/pnfs.c
->>>  create mode 100644 fs/nfs/pnfs.h
->>>
->>> diff --git a/fs/nfs/Makefile b/fs/nfs/Makefile
->>> index da7fda6..bb9e773 100644
->>> --- a/fs/nfs/Makefile
->>> +++ b/fs/nfs/Makefile
->>> @@ -15,5 +15,6 @@ nfs-$(CONFIG_NFS_V4)        += nfs4proc.o nfs4xdr.o nfs4state.o nfs4renewd.o \
->>>                          delegation.o idmap.o \
->>>                          callback.o callback_xdr.o callback_proc.o \
->>>                          nfs4namespace.o
->>> +nfs-$(CONFIG_NFS_V4_1)       += pnfs.o
->>>  nfs-$(CONFIG_SYSCTL) += sysctl.o
->>>  nfs-$(CONFIG_NFS_FSCACHE) += fscache.o fscache-index.o
->>> diff --git a/fs/nfs/client.c b/fs/nfs/client.c
->>> index 4e7df2a..eed1212 100644
->>> --- a/fs/nfs/client.c
->>> +++ b/fs/nfs/client.c
->>> @@ -48,6 +48,7 @@
->>>  #include "iostat.h"
->>>  #include "internal.h"
->>>  #include "fscache.h"
->>> +#include "pnfs.h"
->>>
->>>  #define NFSDBG_FACILITY              NFSDBG_CLIENT
->>>
->>> @@ -898,6 +899,8 @@ static void nfs_server_set_fsinfo(struct nfs_server *server, struct nfs_fsinfo *
->>>       if (server->wsize > NFS_MAX_FILE_IO_SIZE)
->>>               server->wsize = NFS_MAX_FILE_IO_SIZE;
->>>       server->wpages = (server->wsize + PAGE_CACHE_SIZE - 1) >> PAGE_CACHE_SHIFT;
->>> +     set_pnfs_layoutdriver(server, fsinfo->layouttype);
->>> +
->>
->> Originally (9170cf5 pnfs_submit: set and unset pnfs layoutdriver modules),
->> nfs4_init_pnfs called set_pnfs_layoutdriver under the following conditions:
->>
->>        if (nfs4_has_session(clp) &&
->>            (clp->cl_exchange_flags & EXCHGID4_FLAG_USE_PNFS_MDS))
->>                set_pnfs_layoutdriver(server, fsinfo->layouttype);
->>
->> So in the DS only case we don't want to set server->pnfs_curr_ld.
->> did you test your code with a standalone DS to make there are no
->> ill side effects in this case?
->>
-> 
-> This is called from the mount code.  It is never called for a DS
-> (unless the DS is also a MDS, in which case it will be called in the
-> MDS role).
-> 
-> 
->>>       server->wtmult = nfs_block_bits(fsinfo->wtmult, NULL);
->>>
->>>       server->dtsize = nfs_block_size(fsinfo->dtpref, NULL);
->>> @@ -1017,6 +1020,7 @@ void nfs_free_server(struct nfs_server *server)
->>>  {
->>>       dprintk("--> nfs_free_server()\n");
->>>
->>> +     unset_pnfs_layoutdriver(server);
->>>       spin_lock(&nfs_client_lock);
->>>       list_del(&server->client_link);
->>>       list_del(&server->master_link);
->>> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
->>> new file mode 100644
->>> index 0000000..2e5dba1
->>> --- /dev/null
->>> +++ b/fs/nfs/pnfs.c
->>> @@ -0,0 +1,78 @@
->>> +/*
->>> + *  pNFS functions to call and manage layout drivers.
->>> + *
->>> + *  Copyright (c) 2002 [year of first publication]
->>> + *  The Regents of the University of Michigan
->>> + *  All Rights Reserved
->>> + *
->>> + *  Dean Hildebrand <dhildebz@umich.edu>
->>> + *
->>> + *  Permission is granted to use, copy, create derivative works, and
->>> + *  redistribute this software and such derivative works for any purpose,
->>> + *  so long as the name of the University of Michigan is not used in
->>> + *  any advertising or publicity pertaining to the use or distribution
->>> + *  of this software without specific, written prior authorization. If
->>> + *  the above copyright notice or any other identification of the
->>> + *  University of Michigan is included in any copy of any portion of
->>> + *  this software, then the disclaimer below must also be included.
->>> + *
->>> + *  This software is provided as is, without representation or warranty
->>> + *  of any kind either express or implied, including without limitation
->>> + *  the implied warranties of merchantability, fitness for a particular
->>> + *  purpose, or noninfringement.  The Regents of the University of
->>> + *  Michigan shall not be liable for any damages, including special,
->>> + *  indirect, incidental, or consequential damages, with respect to any
->>> + *  claim arising out of or in connection with the use of the software,
->>> + *  even if it has been or is hereafter advised of the possibility of
->>> + *  such damages.
->>> + */
->>> +
->>> +#include <linux/nfs_fs.h>
->>> +#include "pnfs.h"
->>> +
->>> +#define NFSDBG_FACILITY              NFSDBG_PNFS
->>> +
->>> +/* STUB that returns the equivalent of "no module found" */
->>> +static struct pnfs_layoutdriver_type *
->>> +find_pnfs_driver(u32 id) {
->>> +     return NULL;
->>> +}
->>> +
->>> +/* Unitialize a mountpoint in a layout driver */
->>> +void
->>> +unset_pnfs_layoutdriver(struct nfs_server *nfss)
->>> +{
->>> +     nfss->pnfs_curr_ld = NULL;
->>> +}
->>> +
->>> +/*
->>> + * Try to set the server's pnfs module to the pnfs layout type specified by id.
->>> + * Currently only one pNFS layout driver per filesystem is supported.
->>> + *
->>> + * @id layout type. Zero (illegal layout type) indicates pNFS not in use.
->>> + */
->>> +void
->>> +set_pnfs_layoutdriver(struct nfs_server *server, u32 id)
->>> +{
->>> +     struct pnfs_layoutdriver_type *ld_type = NULL;
->>> +
->>> +     if (id == 0)
->>> +             goto out_no_driver;
->>> +     ld_type = find_pnfs_driver(id);
->>> +     if (!ld_type) {
->>> +             request_module("%s-%u", LAYOUT_NFSV4_1_MODULE_PREFIX, id);
->>> +             ld_type = find_pnfs_driver(id);
->>> +             if (!ld_type) {
->>> +                     dprintk("%s: No pNFS module found for %u.\n",
->>> +                             __func__, id);
->>> +                     goto out_no_driver;
->>> +             }
->>> +     }
->>> +     server->pnfs_curr_ld = ld_type;
->>> +     dprintk("%s: pNFS module for %u set\n", __func__, id);
->>> +     return;
->>> +
->>> +out_no_driver:
->>> +     dprintk("%s: Using NFSv4 I/O\n", __func__);
->>> +     server->pnfs_curr_ld = NULL;
->>> +}
->>> diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
->>> new file mode 100644
->>> index 0000000..c628ef1
->>> --- /dev/null
->>> +++ b/fs/nfs/pnfs.h
->>> @@ -0,0 +1,56 @@
->>> +/*
->>> + *  pNFS client data structures.
->>> + *
->>> + *  Copyright (c) 2002
->>> + *  The Regents of the University of Michigan
->>> + *  All Rights Reserved
->>> + *
->>> + *  Dean Hildebrand <dhildebz@umich.edu>
->>> + *
->>> + *  Permission is granted to use, copy, create derivative works, and
->>> + *  redistribute this software and such derivative works for any purpose,
->>> + *  so long as the name of the University of Michigan is not used in
->>> + *  any advertising or publicity pertaining to the use or distribution
->>> + *  of this software without specific, written prior authorization. If
->>> + *  the above copyright notice or any other identification of the
->>> + *  University of Michigan is included in any copy of any portion of
->>> + *  this software, then the disclaimer below must also be included.
->>> + *
->>> + *  This software is provided as is, without representation or warranty
->>> + *  of any kind either express or implied, including without limitation
->>> + *  the implied warranties of merchantability, fitness for a particular
->>> + *  purpose, or noninfringement.  The Regents of the University of
->>> + *  Michigan shall not be liable for any damages, including special,
->>> + *  indirect, incidental, or consequential damages, with respect to any
->>> + *  claim arising out of or in connection with the use of the software,
->>> + *  even if it has been or is hereafter advised of the possibility of
->>> + *  such damages.
->>> + */
->>> +
->>> +#ifndef FS_NFS_PNFS_H
->>> +#define FS_NFS_PNFS_H
->>> +
->>> +#ifdef CONFIG_NFS_V4_1
->>> +
->>> +#define LAYOUT_NFSV4_1_MODULE_PREFIX "nfs-layouttype4"
->>> +
->>> +/* Per-layout driver specific registration structure */
->>> +struct pnfs_layoutdriver_type {
->>> +};
->>> +
->>> +void set_pnfs_layoutdriver(struct nfs_server *, u32 id);
->>> +void unset_pnfs_layoutdriver(struct nfs_server *);
->>> +
->>> +#else  /* CONFIG_NFS_V4_1 */
->>> +
->>> +static inline void set_pnfs_layoutdriver(struct nfs_server *s, u32 id)
->>> +{
->>> +}
->>> +
->>> +static inline void unset_pnfs_layoutdriver(struct nfs_server *s)
->>> +{
->>> +}
->>> +
->>> +#endif /* CONFIG_NFS_V4_1 */
->>> +
->>> +#endif /* FS_NFS_PNFS_H */
->>> diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
->>> index d929b18..aba3da2 100644
->>> --- a/include/linux/nfs_fs.h
->>> +++ b/include/linux/nfs_fs.h
->>> @@ -615,6 +615,7 @@ nfs_fileid_to_ino_t(u64 fileid)
->>>  #define NFSDBG_CLIENT                0x0200
->>>  #define NFSDBG_MOUNT         0x0400
->>>  #define NFSDBG_FSCACHE               0x0800
->>> +#define NFSDBG_PNFS          0x1000
->>>  #define NFSDBG_ALL           0xFFFF
->>>
->>>  #ifdef __KERNEL__
->>> diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
->>> index c82ee7c..29a821d 100644
->>> --- a/include/linux/nfs_fs_sb.h
->>> +++ b/include/linux/nfs_fs_sb.h
->>> @@ -144,6 +144,7 @@ struct nfs_server {
->>>       u32                     acl_bitmask;    /* V4 bitmask representing the ACEs
->>>                                                  that are supported on this
->>>                                                  filesystem */
->>> +     struct pnfs_layoutdriver_type  *pnfs_curr_ld; /* Active layout driver */
->>
->> This is under #ifdef CONFIG_NFS_V4
->> Why not only under CONFIG_NFS_V4_1?
->> (see 9170cf5 pnfs_submit: set and unset pnfs layoutdriver modules)
-> 
-> That was part of the campaign to remove as many ifdef statements as
-> possible.  I have no preference one way or the other.
+On Wed, 1 Sep 2010 16:48:18 -0400
+"J. Bruce Fields" <bfields@fieldses.org> wrote:
 
-I'll defer this to Trond then.
-
-In any case, I think that this patch can be merged with the following
-one - "full mount/umount infrastructure" for completeness.
-
-Benny
-
+> On Tue, Aug 31, 2010 at 03:32:40PM -0400, Jeff Layton wrote:
+> > This patch is the second attempt at fixing this problem. It's basically
+> > the same as the first patch, but adds some xlog() calls to log info
+> > when there are problems. I also changed the NFSD_*_FILE definitions
+> > around so that they are defined based on another constant that holds
+> > the nfsdfs mountpoint.
+> > 
+> > ---------------------------[snip]-------------------------
+> > There's a bit of a chicken and egg problem when nfsd is run the first
+> > time. On Fedora/RHEL at least, /proc/fs/nfsd is mounted up whenever nfsd
+> > is plugged in via a modprobe.conf "install" directive.
+> > 
+> > If someone runs rpc.nfsd without plugging in nfsd.ko first,
+> > /proc/fs/nfsd won't be mounted and rpc.nfsd will end up using the legacy
+> > nfsctl interface. After that, nfsd will be plugged in and subsequent
+> > rpc.nfsd invocations will use that instead.
+> > 
+> > This is a problem as some nfsd command-line options are ignored when the
+> > legacy interface is used. It'll also be a problem for people who want
+> > IPv6 enabled servers. The upshot is that we really don't want to use the
+> > legacy interface unless there is no other option.
+> > 
+> > To avoid this situation, have rpc.nfsd check to see if the "threads"
+> > file is already present. If it's not, then make an attempt to mount
+> > /proc/fs/nfsd.  This is a "best-effort" sort of thing, however so we
+> > just ignore the return code from the mount attempt and fall back to
+> > using nfsctl() if it fails.
+> > 
+> > Full disclosure: I'm not 100% thrilled with this patch. It seems ugly
+> > and kludgey, but I don't see a better way to handle this problem.
+> > Suggestions welcome.
 > 
-> Fred
+> Seems OK to me.  If it's running /bin/mount instead of doing the mount
+> by hand that bothers you, we could just decide not to care about
+> /etc/mtab.
 > 
->>
->> Benny
->>
->>>  #endif
->>>       void (*destroy)(struct nfs_server *);
->>>
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>
+> --b.
+> 
+Thanks.
+
+Sorry, I just cut and pasted that from the original email...I should
+have probably trimmed that out.
+
+I'm less leery of it now that we've discussed it. I think the patch is
+probably ok as-is. After all, modprobe calls the exact same command.
+
+While /etc/mtab isn't what I'd call reliable info, it's probably best
+to try and keep it updated.
+
+That said, Steve mentioned to me privately that he thought the log
+messages ought to be reworded. He was going to send a new patch that
+does that. I'm sort of waiting on that at this point...
+
+> > 
+> > Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> > ---
+> >  utils/nfsd/nfsd.c   |    3 ++
+> >  utils/nfsd/nfssvc.c |   53 ++++++++++++++++++++++++++++++++++++++++++++++++--
+> >  utils/nfsd/nfssvc.h |    1 +
+> >  3 files changed, 54 insertions(+), 3 deletions(-)
+> > 
+> > diff --git a/utils/nfsd/nfsd.c b/utils/nfsd/nfsd.c
+> > index 1cda1e5..6bbf697 100644
+> > --- a/utils/nfsd/nfsd.c
+> > +++ b/utils/nfsd/nfsd.c
+> > @@ -246,6 +246,9 @@ main(int argc, char **argv)
+> >  		exit(1);
+> >  	}
+> >  
+> > +	/* make sure nfsdfs is mounted if it's available */
+> > +	nfssvc_mount_nfsdfs();
+> > +
+> >  	/* can only change number of threads if nfsd is already up */
+> >  	if (nfssvc_inuse()) {
+> >  		socket_up = 1;
+> > diff --git a/utils/nfsd/nfssvc.c b/utils/nfsd/nfssvc.c
+> > index 34c67ca..636b403 100644
+> > --- a/utils/nfsd/nfssvc.c
+> > +++ b/utils/nfsd/nfssvc.c
+> > @@ -15,9 +15,11 @@
+> >  #include <netdb.h>
+> >  #include <netinet/in.h>
+> >  #include <arpa/inet.h>
+> > +#include <sys/stat.h>
+> >  #include <unistd.h>
+> >  #include <fcntl.h>
+> >  #include <errno.h>
+> > +#include <stdlib.h>
+> >  
+> >  #include "nfslib.h"
+> >  #include "xlog.h"
+> > @@ -31,9 +33,10 @@
+> >   */
+> >  #undef IPV6_SUPPORTED
+> >  
+> > -#define NFSD_PORTS_FILE     "/proc/fs/nfsd/portlist"
+> > -#define NFSD_VERS_FILE    "/proc/fs/nfsd/versions"
+> > -#define NFSD_THREAD_FILE  "/proc/fs/nfsd/threads"
+> > +#define NFSD_FS_DIR	  "/proc/fs/nfsd"
+> > +#define NFSD_PORTS_FILE   NFSD_FS_DIR "/portlist"
+> > +#define NFSD_VERS_FILE    NFSD_FS_DIR "/versions"
+> > +#define NFSD_THREAD_FILE  NFSD_FS_DIR "/threads"
+> >  
+> >  /*
+> >   * declaring a common static scratch buffer here keeps us from having to
+> > @@ -44,6 +47,50 @@
+> >  char buf[128];
+> >  
+> >  /*
+> > + * Using the "new" interfaces for nfsd requires that /proc/fs/nfsd is
+> > + * actually mounted. Make an attempt to mount it here if it doesn't appear
+> > + * to be. If the mount attempt fails, no big deal -- fall back to using nfsctl
+> > + * instead.
+> > + */
+> > +void
+> > +nfssvc_mount_nfsdfs(void)
+> > +{
+> > +	int err;
+> > +	struct stat statbuf;
+> > +
+> > +	err = stat(NFSD_THREAD_FILE, &statbuf);
+> > +	if (err == 0)
+> > +		return;
+> > +	else if (errno != ENOENT) {
+> > +		xlog(L_ERROR, "Unable to stat %s: errno %d (%m)",
+> > +				NFSD_THREAD_FILE, errno);
+> > +		return;
+> > +	}
+> > +
+> > +	/*
+> > +	 * this call can return an error if modprobe is set up to automatically
+> > +	 * mount nfsdfs when nfsd.ko is plugged in. So, ignore the return
+> > +	 * code from it and just check for the "threads" file afterward.
+> > +	 */
+> > +	system("/bin/mount -t nfsd nfsd " NFSD_FS_DIR " >/dev/null 2>&1");
+> > +
+> > +	err = stat(NFSD_THREAD_FILE, &statbuf);
+> > +	if (err == 0)
+> > +		return;
+> > +
+> > +	if (errno == ENOENT)
+> > +		xlog(L_ERROR, "Unable to mount nfsdfs on %s. Falling back "
+> > +			      "to legacy nfsctl() interface. Some command "
+> > +			      "line options may not work correctly.",
+> > +			      NFSD_FS_DIR);
+> > +	else
+> > +		xlog(L_ERROR, "Unable to stat %s after attempting to mount "
+> > +			      "%s. Falling back to legacy nfsctl() interface: "
+> > +			      "errno %d (%m)",
+> > +				NFSD_THREAD_FILE, NFSD_FS_DIR, errno);
+> > +}
+> > +
+> > +/*
+> >   * Are there already sockets configured? If not, then it is safe to try to
+> >   * open some and pass them through.
+> >   *
+> > diff --git a/utils/nfsd/nfssvc.h b/utils/nfsd/nfssvc.h
+> > index 0c69bd6..ff81165 100644
+> > --- a/utils/nfsd/nfssvc.h
+> > +++ b/utils/nfsd/nfssvc.h
+> > @@ -20,6 +20,7 @@
+> >   *
+> >   */
+> >  
+> > +void	nfssvc_mount_nfsdfs(void);
+> >  int	nfssvc_inuse(void);
+> >  int	nfssvc_set_sockets(const int family, const unsigned int protobits,
+> >  			   const char *host, const char *port);
+> > -- 
+> > 1.7.1
+> > 
+
+
+-- 
+Jeff Layton <jlayton@redhat.com>
