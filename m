@@ -1,115 +1,60 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mailhub.sw.ru ([195.214.232.25]:20983 "EHLO relay.sw.ru"
+Received: from mx2.netapp.com ([216.240.18.37]:13963 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753524Ab0IONFD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 15 Sep 2010 09:05:03 -0400
-Message-ID: <4C90BB0D.40408@parallels.com>
-Date: Wed, 15 Sep 2010 16:24:45 +0400
-From: Pavel Emelyanov <xemul@parallels.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>, Neil Brown <neilb@suse.de>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        linux-nfs@vger.kernel.org
-Subject: [PATCH 1/9] sunrpc: Pass the ip_map_parse's cd to lower calls
-References: <4C90BADB.10700@parallels.com>
-In-Reply-To: <4C90BADB.10700@parallels.com>
-Content-Type: text/plain; charset=ISO-8859-1
+	id S1752572Ab0IANSE convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 1 Sep 2010 09:18:04 -0400
+Subject: Re: [REGRESSION PATCH v2] NFS: let NFS_V4 and NFSD_V4 enforce
+ CRYPTO
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Uwe =?ISO-8859-1?Q?Kleine-K=F6nig?=
+	<u.kleine-koenig@pengutronix.de>
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+        akpm@linux-foundation.org, "J. Bruce Fields" <bfields@fieldses.org>,
+        Randy Dunlap <randy.dunlap@oracle.com>, Neil Brown <neilb@suse.de>,
+        Linus Torvalds <torvalds@linux-foundation.org>
+In-Reply-To: <1283331170-11440-1-git-send-email-u.kleine-koenig@pengutronix.de>
+References: <20100830121022.GA14459@pengutronix.de>
+	 <1283331170-11440-1-git-send-email-u.kleine-koenig@pengutronix.de>
+Content-Type: text/plain; charset="UTF-8"
+Date: Wed, 01 Sep 2010 09:17:04 -0400
+Message-ID: <1283347024.3184.8.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-The target is to have many ip_map_cache-s in the system. This particular
-patch handles its usage by the ip_map_parse callback.
+On Wed, 2010-09-01 at 10:52 +0200, Uwe Kleine-König wrote:
+> Hello,
+> 
+> here comes a v2 of the patch that improves the commit log with a more
+> detailed analysis of the breakage introduced by df486a2
+> (= v2.6.36-rc2~34^2~1 BTW) and additionally undoes the "default y" for
+> RPCSEC_GSS_KRB5.
+> 
+> So compared to the state before df486a2 the changes are:
+> 
+>         NFS_V4 selects CRYPTO
+>         NFSD_V4 selects CRYPTO
+> 	RPCSEC_GSS_KRB5 doesn't depend on EXPERIMENTAL anymore
+> 	RPCSEC_GSS_KRB5 now depends on CRYPTO instead of selecting it
+> 
+> Best regards
+> Uwe
+> 
+> ----------------------------->8----------------------------
+> 
+> This is a follow up to
+> 
+> 	df486a2 (NFS: Fix the selection of security flavours in Kconfig)
+> 
+> Before df486a2 NFS_V4 selected RPCSEC_GSS_KRB5 but didn't enforce the
+> latter's dependency EXPERIMENTAL.  df486a2 removed RPCSEC_GSS_KRB5's
+> dependency on EXPERIMENTAL but additionally let it depend on CRYPTO
+> (instead of select CRYPTO before).  So it was still possible to have a
+> config that has NFS_V4 but not RPCSEC_GSS_KRB5.  Moreover df486a2
+> changed the dependency of NFS_V4 and NFSD_V4 on RPCSEC_GSS_KRB5 from
 
-Signed-off-by: Pavel Emelyanov <xemul@openvz.org>
+As I said, the fix is to remove that dependency. I have a fix for the
+NFS client, but the server has more insidious dependencies on RPCSEC_GSS
+due to a poorly designed SECINFO implementation.
 
----
- net/sunrpc/svcauth_unix.c |   31 +++++++++++++++++++++----------
- 1 files changed, 21 insertions(+), 10 deletions(-)
-
-diff --git a/net/sunrpc/svcauth_unix.c b/net/sunrpc/svcauth_unix.c
-index 2073116..1fe37be 100644
---- a/net/sunrpc/svcauth_unix.c
-+++ b/net/sunrpc/svcauth_unix.c
-@@ -178,8 +178,8 @@ static int ip_map_upcall(struct cache_detail *cd, struct cache_head *h)
- 	return sunrpc_cache_pipe_upcall(cd, h, ip_map_request);
- }
- 
--static struct ip_map *ip_map_lookup(char *class, struct in6_addr *addr);
--static int ip_map_update(struct ip_map *ipm, struct unix_domain *udom, time_t expiry);
-+static struct ip_map *__ip_map_lookup(struct cache_detail *cd, char *class, struct in6_addr *addr);
-+static int __ip_map_update(struct cache_detail *cd, struct ip_map *ipm, struct unix_domain *udom, time_t expiry);
- 
- static int ip_map_parse(struct cache_detail *cd,
- 			  char *mesg, int mlen)
-@@ -249,9 +249,9 @@ static int ip_map_parse(struct cache_detail *cd,
- 		dom = NULL;
- 
- 	/* IPv6 scope IDs are ignored for now */
--	ipmp = ip_map_lookup(class, &sin6.sin6_addr);
-+	ipmp = __ip_map_lookup(cd, class, &sin6.sin6_addr);
- 	if (ipmp) {
--		err = ip_map_update(ipmp,
-+		err = __ip_map_update(cd, ipmp,
- 			     container_of(dom, struct unix_domain, h),
- 			     expiry);
- 	} else
-@@ -309,14 +309,15 @@ struct cache_detail ip_map_cache = {
- 	.alloc		= ip_map_alloc,
- };
- 
--static struct ip_map *ip_map_lookup(char *class, struct in6_addr *addr)
-+static struct ip_map *__ip_map_lookup(struct cache_detail *cd, char *class,
-+		struct in6_addr *addr)
- {
- 	struct ip_map ip;
- 	struct cache_head *ch;
- 
- 	strcpy(ip.m_class, class);
- 	ipv6_addr_copy(&ip.m_addr, addr);
--	ch = sunrpc_cache_lookup(&ip_map_cache, &ip.h,
-+	ch = sunrpc_cache_lookup(cd, &ip.h,
- 				 hash_str(class, IP_HASHBITS) ^
- 				 hash_ip6(*addr));
- 
-@@ -326,7 +327,13 @@ static struct ip_map *ip_map_lookup(char *class, struct in6_addr *addr)
- 		return NULL;
- }
- 
--static int ip_map_update(struct ip_map *ipm, struct unix_domain *udom, time_t expiry)
-+static inline struct ip_map *ip_map_lookup(char *class, struct in6_addr *addr)
-+{
-+	return __ip_map_lookup(&ip_map_cache, class, addr);
-+}
-+
-+static int __ip_map_update(struct cache_detail *cd, struct ip_map *ipm,
-+		struct unix_domain *udom, time_t expiry)
- {
- 	struct ip_map ip;
- 	struct cache_head *ch;
-@@ -344,16 +351,20 @@ static int ip_map_update(struct ip_map *ipm, struct unix_domain *udom, time_t ex
- 			ip.m_add_change++;
- 	}
- 	ip.h.expiry_time = expiry;
--	ch = sunrpc_cache_update(&ip_map_cache,
--				 &ip.h, &ipm->h,
-+	ch = sunrpc_cache_update(cd, &ip.h, &ipm->h,
- 				 hash_str(ipm->m_class, IP_HASHBITS) ^
- 				 hash_ip6(ipm->m_addr));
- 	if (!ch)
- 		return -ENOMEM;
--	cache_put(ch, &ip_map_cache);
-+	cache_put(ch, cd);
- 	return 0;
- }
- 
-+static inline int ip_map_update(struct ip_map *ipm, struct unix_domain *udom, time_t expiry)
-+{
-+	return __ip_map_update(&ip_map_cache, ipm, udom, expiry);
-+}
-+
- int auth_unix_add_addr(struct in6_addr *addr, struct auth_domain *dom)
- {
- 	struct unix_domain *udom;
--- 
-1.5.5.6
-
+Trond
