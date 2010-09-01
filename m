@@ -1,98 +1,47 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-pz0-f46.google.com ([209.85.210.46]:62750 "EHLO
-	mail-pz0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753865Ab0IMRVc (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Sep 2010 13:21:32 -0400
-Received: by mail-pz0-f46.google.com with SMTP id 34so2221811pzk.19
-        for <linux-nfs@vger.kernel.org>; Mon, 13 Sep 2010 10:21:32 -0700 (PDT)
+Received: from rcsinet10.oracle.com ([148.87.113.121]:32916 "EHLO
+	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751966Ab0IAPrJ convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 1 Sep 2010 11:47:09 -0400
+Subject: Re: NFS version4 maximum on-the-wire data size.
+Content-Type: text/plain; charset=us-ascii
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 04/12] mountd: support IPv6 in mountlist_del_all()
-To: steved@redhat.com
-Cc: linux-nfs@vger.kernel.org
-Date: Mon, 13 Sep 2010 13:21:28 -0400
-Message-ID: <20100913172128.19017.28249.stgit@seurat.1015granger.net>
-In-Reply-To: <20100913171844.19017.13446.stgit@seurat.1015granger.net>
-References: <20100913171844.19017.13446.stgit@seurat.1015granger.net>
-Content-Type: text/plain; charset="utf-8"
+In-Reply-To: <0FDF651C-4620-4872-9ABA-9F8D8FA2192A@oracle.com>
+Date: Wed, 1 Sep 2010 11:46:04 -0400
+Cc: "Tayade, Nilesh" <Nilesh.Tayade@netscout.com>, <linux-nfs@vger.kernel.org>
+Message-Id: <99E0B37F-C9BE-4349-B68A-4364F4EB9C04@oracle.com>
+References: <D3F292ADF945FB49B35E96C94C2061B90CFB48D0@nsmail.netscout.com> <0FDF651C-4620-4872-9ABA-9F8D8FA2192A@oracle.com>
+To: Chuck Lever <chuck.lever@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Replace IPv4-specific code in the mountlist_del_all() path with code
-that is address family agnostic.
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
+On Sep 1, 2010, at 11:41 AM, Chuck Lever wrote:
 
- utils/mountd/mountd.c |    2 +-
- utils/mountd/mountd.h |    2 +-
- utils/mountd/rmtab.c  |   12 +++++-------
- 3 files changed, 7 insertions(+), 9 deletions(-)
+> 
+> On Sep 1, 2010, at 5:39 AM, Tayade, Nilesh wrote:
+> 
+>> Hi,
+>> 
+>> I am unable to get the exact count for the amount of on-the-wire data
+>> size that NFSv4 supports. 
+>> 
+>> I could get exact figures in case of NFSv3 (http://nfs.sourceforge.net).
+>> It's 60KB when NFSv3 is used over UDP and implementation dependent in
+>> case it is used over TCP. Any idea about NFSv4 statistics? 
+>> 
+>> Any pointers would be appreciated.
+> 
+> NFSv4 reads and writes can be as large as the maximum payload size of the underlying transport.  NFSv4 does not support UDP, but on TCP, the maximum payload size is usually approximately (2 ** 31 - 1) - (RPC header + NFS overhead).
 
-diff --git a/utils/mountd/mountd.c b/utils/mountd/mountd.c
-index 19dc4ee..98b396d 100644
---- a/utils/mountd/mountd.c
-+++ b/utils/mountd/mountd.c
-@@ -275,7 +275,7 @@ mount_umntall_1_svc(struct svc_req *rqstp, void *UNUSED(argp),
- 	/* Reload /etc/xtab if necessary */
- 	auth_reload();
- 
--	mountlist_del_all(nfs_getrpccaller_in(rqstp->rq_xprt));
-+	mountlist_del_all(nfs_getrpccaller(rqstp->rq_xprt));
- 	return 1;
- }
- 
-diff --git a/utils/mountd/mountd.h b/utils/mountd/mountd.h
-index 96e9bf1..0d31ca7 100644
---- a/utils/mountd/mountd.h
-+++ b/utils/mountd/mountd.h
-@@ -48,7 +48,7 @@ void		auth_export(nfs_export *exp);
- 
- void		mountlist_add(char *host, const char *path);
- void		mountlist_del(char *host, const char *path);
--void		mountlist_del_all(struct sockaddr_in *sin);
-+void		mountlist_del_all(const struct sockaddr *sap);
- mountlist	mountlist_list(void);
- 
- 
-diff --git a/utils/mountd/rmtab.c b/utils/mountd/rmtab.c
-index d23712b..b2c04e7 100644
---- a/utils/mountd/rmtab.c
-+++ b/utils/mountd/rmtab.c
-@@ -131,21 +131,20 @@ mountlist_del(char *hname, const char *path)
- }
- 
- void
--mountlist_del_all(struct sockaddr_in *sin)
-+mountlist_del_all(const struct sockaddr *sap)
- {
- 	char		*hostname;
- 	struct rmtabent	*rep;
--	nfs_export	*exp;
- 	FILE		*fp;
- 	int		lockid;
- 
- 	if ((lockid = xflock(_PATH_RMTABLCK, "w")) < 0)
- 		return;
--	hostname = host_canonname((struct sockaddr *)sin);
-+	hostname = host_canonname(sap);
- 	if (hostname == NULL) {
--		char buf[INET_ADDRSTRLEN];
-+		char buf[INET6_ADDRSTRLEN];
- 		xlog(L_ERROR, "can't get hostname of %s",
--			host_ntop((struct sockaddr *)sin, buf, sizeof(buf)));
-+			host_ntop(sap, buf, sizeof(buf)));
- 		goto out_unlock;
- 	}
- 
-@@ -157,8 +156,7 @@ mountlist_del_all(struct sockaddr_in *sin)
- 
- 	while ((rep = getrmtabent(1, NULL)) != NULL) {
- 		if (strcmp(rep->r_client, hostname) == 0 &&
--		    (exp = auth_authenticate("umountall",
--				(struct sockaddr *)sin, rep->r_path)))
-+		    auth_authenticate("umountall", sap, rep->r_path) != NULL)
- 			continue;
- 		fputrmtabent(fp, rep, NULL);
- 	}
+But you were probably not asking about the theoretical limits of the underlying transport.
+
+The Linux NFS client limits read and write payload size to a megabyte.  Servers may limit it further.
+
+-- 
+chuck[dot]lever[at]oracle[dot]com
+
+
+
 
