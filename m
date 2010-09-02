@@ -1,124 +1,88 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-iw0-f174.google.com ([209.85.214.174]:55573 "EHLO
-	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753343Ab0IMRXG (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Sep 2010 13:23:06 -0400
-Received: by mail-iw0-f174.google.com with SMTP id 5so5308245iwn.19
-        for <linux-nfs@vger.kernel.org>; Mon, 13 Sep 2010 10:23:05 -0700 (PDT)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 12/12] libexport.a: Enable IPv6 support in hostname.c
-To: steved@redhat.com
-Cc: linux-nfs@vger.kernel.org
-Date: Mon, 13 Sep 2010 13:23:02 -0400
-Message-ID: <20100913172302.19017.47401.stgit@seurat.1015granger.net>
-In-Reply-To: <20100913171844.19017.13446.stgit@seurat.1015granger.net>
-References: <20100913171844.19017.13446.stgit@seurat.1015granger.net>
-Content-Type: text/plain; charset="utf-8"
+Received: from mail.tpi.com ([70.99.223.143]:4281 "EHLO mail.tpi.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751279Ab0IBPNt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 2 Sep 2010 11:13:49 -0400
+Message-ID: <4C7FBF26.3090203@canonical.com>
+Date: Thu, 02 Sep 2010 09:13:42 -0600
+From: Tim Gardner <tim.gardner@canonical.com>
+Reply-To: tim.gardner@canonical.com
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: Neil Brown <neilb@suse.de>, linux-nfs@vger.kernel.org,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        Trond.Myklebust@netapp.com
+Subject: Re: nfsd deadlock, 2.6.36-rc3
+References: <4C7E73CB.7030603@canonical.com> <20100901165400.GB1201@fieldses.org> <20100902065551.079e297c@notabene> <4C7EC17B.6070509@canonical.com> <20100901211321.GC10507@fieldses.org>
+In-Reply-To: <20100901211321.GC10507@fieldses.org>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-If --enable-ipv6 is specified when building nfs-utils, libexport's
-host_foo() helpers can now return both IPv4 and IPv6 addresses.
+On 09/01/2010 03:13 PM, J. Bruce Fields wrote:
+> On Wed, Sep 01, 2010 at 03:11:23PM -0600, Tim Gardner wrote:
+>> On 09/01/2010 02:55 PM, Neil Brown wrote:
+>>> On Wed, 1 Sep 2010 12:54:01 -0400
+>>> "J. Bruce Fields"<bfields@fieldses.org>   wrote:
+>>>
+>>>> On Wed, Sep 01, 2010 at 09:39:55AM -0600, Tim Gardner wrote:
+>>>>> I've been pursuing a simple reproducer for an NFS lockup that shows
+>>>>> up under stress. There is a bunch of info (some of it extraneous) in
+>>>>> http://bugs.launchpad.net/bugs/561210. I can reproduce it by writing
+>>>>> loop mounted NFS exports:
+>>>>>
+>>>>> /etc/fstab: 127.0.0.1:/srv /mnt/srv nfs rw 0 2
+>>>>> /etc/exports: /srv 127.0.0.1(rw,insecure,no_subtree_check)
+>>>>>
+>>>>> See the attached scripts test_master.sh and test_client.sh. I simply
+>>>>> repeat './test_master.sh wait' until nfsd locks up, typically within
+>>>>> 1-3 cycles, e.g.,
+>>>>
+>>>> Without looking at the dmesg and scripts carefully to confirm, one
+>>>> possible explanation is a deadlock when the server can't allocate memory
+>>>> required to service client requests, memory which the client itself
+>>>> needs to free by writing back dirty pages, but can't because the server
+>>>> isn't processing its writes.
+>>>
+>>> Having looked closely I'd say it is almost certainly this issue.
+>>> nfsd thread 1266 is in zone_reclaim waiting on a page to be written out so
+>>> the memory can be reused.
+>>> The other nfsd threads are blocking on a mutex held by 1266.
+>>> The dd processes are waiting for pages to be written to the server
+>>>
+>>> The particular page that 1266 is waiting on is almost certainly a page on an
+>>> NFS file, so you have a cyclic deadlock.
+>>>
+>>>>
+>>>> For that reason we just don't support loopback mounts--they're OK for
+>>>> light testing, but it would be difficult to make them completely robust
+>>>> under load.
+>>>
+>>> I wonder if we could use 'containers' to partition available memory between
+>>> 'nfsd threads' and 'everything else'??  Probably not worth the effort.
+>>>
+>>> NeilBrown
+>>>
+>>
+>> I'm currently working with my support folks to reproduce this using
+>> the exact same configuration as the customer, e.g., an NFS server
+>> (running as a guest on a VMWare ESX host) serving multiple gigabit
+>> clients.
+>>
+>> I assume that is a reasonable scenario?
+>
+> Assuming no VMWare problem (which I know nothing about), sure.
+>
+> --b.
+>
 
-This means IPv6 presentation addresses and IPv6 DNS resolution
-results are handled properly in the mountd cache and /etc/exports,
-but does not yet enable IPv6 mountd listeners.
+The support folks were able to reproduce the failure using external 
+clients after about 6 hours. We're thinking that its the same symptom as 
+seen in https://bugzilla.kernel.org/show_bug.cgi?id=16056. That 
+backported patch b608b283a962caaa280756bc8563016a71712acf from Trond was 
+just incorporated into the Ubuntu 10.04 kernel, so they'll retest to see 
+if its a bona-fide fix.
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
-
- support/export/hostname.c |   31 +++++++++++++++----------------
- 1 files changed, 15 insertions(+), 16 deletions(-)
-
-diff --git a/support/export/hostname.c b/support/export/hostname.c
-index 232e040..3c55ce7 100644
---- a/support/export/hostname.c
-+++ b/support/export/hostname.c
-@@ -34,16 +34,6 @@
- #define AI_ADDRCONFIG	0
- #endif
- 
--#ifdef HAVE_GETNAMEINFO
--static socklen_t
--sockaddr_size(const struct sockaddr *sap)
--{
--	if (sap->sa_family != AF_INET)
--		return 0;
--	return (socklen_t)sizeof(struct sockaddr_in);
--}
--#endif	/* HAVE_GETNAMEINFO */
--
- /**
-  * host_ntop - generate presentation address given a sockaddr
-  * @sap: pointer to socket address
-@@ -56,7 +46,7 @@ sockaddr_size(const struct sockaddr *sap)
- char *
- host_ntop(const struct sockaddr *sap, char *buf, const size_t buflen)
- {
--	socklen_t salen = sockaddr_size(sap);
-+	socklen_t salen = nfs_sockaddr_length(sap);
- 	int error;
- 
- 	memset(buf, 0, buflen);
-@@ -117,7 +107,7 @@ host_pton(const char *paddr)
- 		.ai_family	= AF_UNSPEC,
- 	};
- 	struct sockaddr_in sin;
--	int error;
-+	int error, inet4;
- 
- 	/*
- 	 * Although getaddrinfo(3) is easier to use and supports
-@@ -129,12 +119,17 @@ host_pton(const char *paddr)
- 	 * have a real AF_INET presentation address, before invoking
- 	 * getaddrinfo(3) to generate the full addrinfo list.
- 	 */
-+	inet4 = 1;
- 	if (inet_pton(AF_INET, paddr, &sin.sin_addr) == 0)
--		return NULL;
-+		inet4 = 0;
- 
- 	error = getaddrinfo(paddr, NULL, &hint, &ai);
- 	switch (error) {
- 	case 0:
-+		if (!inet4 && ai->ai_addr->sa_family == AF_INET) {
-+			freeaddrinfo(ai);
-+			break;
-+		}
- 		return ai;
- 	case EAI_NONAME:
- 		if (paddr == NULL)
-@@ -168,7 +163,11 @@ host_addrinfo(const char *hostname)
- {
- 	struct addrinfo *ai = NULL;
- 	struct addrinfo hint = {
-+#ifdef IPV6_SUPPORTED
-+		.ai_family	= AF_UNSPEC,
-+#else
- 		.ai_family	= AF_INET,
-+#endif
- 		/* don't return duplicates */
- 		.ai_protocol	= (int)IPPROTO_UDP,
- 		.ai_flags	= AI_ADDRCONFIG | AI_CANONNAME,
-@@ -208,7 +207,7 @@ __attribute_malloc__
- char *
- host_canonname(const struct sockaddr *sap)
- {
--	socklen_t salen = sockaddr_size(sap);
-+	socklen_t salen = nfs_sockaddr_length(sap);
- 	char buf[NI_MAXHOST];
- 	int error;
- 
-@@ -298,8 +297,8 @@ __attribute_malloc__
- struct addrinfo *
- host_numeric_addrinfo(const struct sockaddr *sap)
- {
--	socklen_t salen = sockaddr_size(sap);
--	char buf[INET_ADDRSTRLEN];
-+	socklen_t salen = nfs_sockaddr_length(sap);
-+	char buf[INET6_ADDRSTRLEN];
- 	struct addrinfo *ai;
- 	int error;
- 
-
+rtg
+-- 
+Tim Gardner tim.gardner@canonical.com
