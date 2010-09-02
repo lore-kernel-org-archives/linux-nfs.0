@@ -1,122 +1,70 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:24788 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:59039 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755737Ab0I3SQs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 30 Sep 2010 14:16:48 -0400
-From: David Howells <dhowells@redhat.com>
-Subject: [PATCH 16/17] autofs4 - add v4 pseudo direct mount support
-To: viro@ftp.linux.org.uk, jmoyer@redhat.com
-Cc: linux-fs@vger.kernel.org, autofs@linux.kernel.org,
-        linux-kernel@vger.kernel.org, linux-afs@lists.infradead.org,
-        linux-nfs@vger.kernel.org, linux-cifs@vger.kernel.org,
-        Ian Kent <raven@themaw.net>, David Howells <dhowells@redhat.com>
-Date: Thu, 30 Sep 2010 19:16:17 +0100
-Message-ID: <20100930181617.30939.37248.stgit@warthog.procyon.org.uk>
-In-Reply-To: <20100930181455.30939.53914.stgit@warthog.procyon.org.uk>
-References: <20100930181455.30939.53914.stgit@warthog.procyon.org.uk>
-Content-Type: text/plain; charset="utf-8"
+	id S1752322Ab0IBQG7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 2 Sep 2010 12:06:59 -0400
+Date: Thu, 2 Sep 2010 12:06:27 -0400
+To: Greg <greg-sys@duchatelet.net>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: Relocate NFS root FS for maintenance
+Message-ID: <20100902160627.GH13117@fieldses.org>
+References: <4C7E4469.70807@duchatelet.net>
+ <4C7ECB23.60300@excfb.com>
+ <4C7F5302.30300@duchatelet.net>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4C7F5302.30300@duchatelet.net>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-From: Ian Kent <raven@themaw.net>
+On Thu, Sep 02, 2010 at 09:32:18AM +0200, Greg wrote:
+>  Tom,
+> 
+> >
+> >What you are missing here is that the client uses two things to
+> >access content on
+> >the servers - path and file handles. When you do the reshare, you
+> >would be pointing any
+> >new requests to the empty directories. But, any application which
+> >already had a
+> >file handle would have a reference to the old mount (via the fsid
+> >part of the file handle).
+> 
+> OK thanks for the precisions. It's why I'm getting those errors :
+> Sep  1 15:12:53 varan-14 kernel: [3424547.256518] NFS: server
+> filer-large-vip.local error: fileid changed
+> Sep  1 15:12:53 varan-14 kernel: [3424547.256518] fsid 0:13:
+> expected fileid 0x2, got 0x41
+> 
+> >The options I see are to:
+> >
+> >1) Shutdown NFS/remove write access to the export/etc - this is
+> >along the lines of what
+> >you have done. And the result is that the server will inform the
+> >client of an error.
+> >
+> >2) Disconnect the servers from the network. (Or partition the
+> >network). In this scenario,
+> >the client will be getting timeouts and will probably use a retry schema.
+> >
+> >3) Shutdown the NFS clients - harsh, but they will not be
+> >accessing the servers and you
+> >can easily do the upgrades.
+> >
+> >These all result in downtime for both your servers and your clients.
+> 
+> So in short there is no way to do a maintenance on attached storage,
+> could it be hard drives, RAID, iSCSI or anything.
+> Is such a "feature" in the roadmap ?
 
-Version 4 of autofs provides a pseudo direct mount implementation
-that relies on directories at the leaves of a directory tree under
-an indirect mount to trigger mounts.
+I think I just don't understand your setup, because I'm confused about
+what you're asking for.  (If the thing you're upgrading is literally the
+only path between the nfs servers and their storage, then what can we
+do?)
 
-This patch adds support for that functionality.
+Would you mind explaining again from the start exactly what you're setup
+is and what you're hoping to accomplish by moving these mountpoints?
+Apologies for being dense!
 
-Signed-off-by: Ian Kent <raven@themaw.net>
-Signed-off-by: David Howells <dhowells@redhat.com>
----
-
- fs/autofs4/root.c |   60 +++++++++++++++++++++++++++++++++++++++++++++++++++++
- 1 files changed, 60 insertions(+), 0 deletions(-)
-
-diff --git a/fs/autofs4/root.c b/fs/autofs4/root.c
-index 3b38794..135d713 100644
---- a/fs/autofs4/root.c
-+++ b/fs/autofs4/root.c
-@@ -629,6 +629,60 @@ static int autofs4_dir_unlink(struct inode *dir, struct dentry *dentry)
- 	return 0;
- }
- 
-+/*
-+ * Version 4 of autofs provides a pseudo direct mount implementation
-+ * that relies on directories at the leaves of a directory tree under
-+ * an indirect mount to trigger mounts. To allow for this we need to
-+ * set the DMANAGED_AUTOMOUNT and DMANAGED_TRANSIT flags on the leaves
-+ * of the directory tree. There is no need to clear the automount flag
-+ * following a mount or restore it after an expire because these mounts
-+ * are always covered. However, it is neccessary to ensure that these
-+ * flags are clear on non-empty directories to avoid unnecessary calls
-+ * during path walks.
-+ */
-+static void autofs_set_leaf_automount_flags(struct dentry *dentry)
-+{
-+	struct dentry *parent;
-+
-+	/* root and dentrys in the root are already handled */
-+	if (IS_ROOT(dentry->d_parent))
-+		return;
-+
-+	managed_dentry_set_managed(dentry);
-+
-+	parent = dentry->d_parent;
-+	/* only consider parents below dentrys in the root */
-+	if (IS_ROOT(parent->d_parent))
-+		return;
-+	managed_dentry_clear_managed(parent);
-+	return;
-+}
-+
-+static void autofs_clear_leaf_automount_flags(struct dentry *dentry)
-+{
-+	struct list_head *d_child;
-+	struct dentry *parent;
-+
-+	/* flags for dentrys in the root are handled elsewhere */
-+	if (IS_ROOT(dentry->d_parent))
-+		return;
-+
-+	managed_dentry_clear_managed(dentry);
-+
-+	parent = dentry->d_parent;
-+	/* only consider parents below dentrys in the root */
-+	if (IS_ROOT(parent->d_parent))
-+		return;
-+	d_child = &dentry->d_u.d_child;
-+	spin_lock(&dcache_lock);
-+	/* Set parent managed if it's becoming empty */
-+	if (d_child->next == &parent->d_subdirs &&
-+	    d_child->prev == &parent->d_subdirs)
-+		managed_dentry_set_managed(parent);
-+	spin_unlock(&dcache_lock);
-+	return;
-+}
-+
- static int autofs4_dir_rmdir(struct inode *dir, struct dentry *dentry)
- {
- 	struct autofs_sb_info *sbi = autofs4_sbi(dir->i_sb);
-@@ -652,6 +706,9 @@ static int autofs4_dir_rmdir(struct inode *dir, struct dentry *dentry)
- 	spin_unlock(&dentry->d_lock);
- 	spin_unlock(&dcache_lock);
- 
-+	if (sbi->version < 5)
-+		autofs_clear_leaf_automount_flags(dentry);
-+
- 	if (atomic_dec_and_test(&ino->count)) {
- 		p_ino = autofs4_dentry_ino(dentry->d_parent);
- 		if (p_ino && dentry->d_parent != dentry)
-@@ -694,6 +751,9 @@ static int autofs4_dir_mkdir(struct inode *dir, struct dentry *dentry, int mode)
- 	}
- 	d_add(dentry, inode);
- 
-+	if (sbi->version < 5)
-+		autofs_set_leaf_automount_flags(dentry);
-+
- 	dentry->d_fsdata = ino;
- 	ino->dentry = dget(dentry);
- 	atomic_inc(&ino->count);
-
+--b.
