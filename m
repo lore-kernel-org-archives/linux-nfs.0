@@ -1,241 +1,44 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:12249 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:30011 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753714Ab0IPOYK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 16 Sep 2010 10:24:10 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: Trond.Myklebust@netapp.com
-Cc: chuck.lever@oracle.com, linux-nfs@vger.kernel.org
-Subject: [PATCH 3/4] nfs: move nfs_sillyrename to unlink.c
-Date: Thu, 16 Sep 2010 10:24:04 -0400
-Message-Id: <1284647045-18286-4-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1284647045-18286-1-git-send-email-jlayton@redhat.com>
-References: <1284647045-18286-1-git-send-email-jlayton@redhat.com>
+	id S1753970Ab0IBQmF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 2 Sep 2010 12:42:05 -0400
+Message-ID: <4C7FD3D1.30601@RedHat.com>
+Date: Thu, 02 Sep 2010 12:41:53 -0400
+From: Steve Dickson <SteveD@redhat.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: Chuck Lever <chuck.lever@oracle.com>, Jeff Layton <jlayton@redhat.com>,
+        Neil Brown <neilb@suse.de>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] rpc.nfsd: mount up nfsdfs is it doesn't appear to be
+ mounted yet (try #2)
+References: <1283283160-30024-1-git-send-email-jlayton@redhat.com> <20100901204818.GA10507@fieldses.org> <20100901165605.41f4978d@tlielax.poochiereds.net> <20100902073156.577757b5@notabene> <4C7F8A80.3050705@RedHat.com> <20100902075518.58a1daf3@corrin.poochiereds.net> <8310F0E2-777C-4F17-B133-766FBAD30E19@oracle.com> <20100902142501.GD13117@fieldses.org>
+In-Reply-To: <20100902142501.GD13117@fieldses.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-...since that's where most of the sillyrenaming code lives. A comment
-block is added to the beginning as well to clarify how sillyrenaming
-works. Also, make nfs_async_unlink static as nfs_sillyrename is the only
-caller.
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
-Reviewed-by: Chuck Lever <chuck.lever@oracle.com>
----
- fs/nfs/dir.c           |   70 ---------------------------------------
- fs/nfs/unlink.c        |   85 +++++++++++++++++++++++++++++++++++++++++++++++-
- include/linux/nfs_fs.h |    2 +-
- 3 files changed, 85 insertions(+), 72 deletions(-)
 
-diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index e257172..d15ebc9 100644
---- a/fs/nfs/dir.c
-+++ b/fs/nfs/dir.c
-@@ -1351,76 +1351,6 @@ static int nfs_rmdir(struct inode *dir, struct dentry *dentry)
- 	return error;
- }
- 
--static int nfs_sillyrename(struct inode *dir, struct dentry *dentry)
--{
--	static unsigned int sillycounter;
--	const int      fileidsize  = sizeof(NFS_FILEID(dentry->d_inode))*2;
--	const int      countersize = sizeof(sillycounter)*2;
--	const int      slen        = sizeof(".nfs")+fileidsize+countersize-1;
--	char           silly[slen+1];
--	struct qstr    qsilly;
--	struct dentry *sdentry;
--	int            error = -EIO;
--
--	dfprintk(VFS, "NFS: silly-rename(%s/%s, ct=%d)\n",
--		dentry->d_parent->d_name.name, dentry->d_name.name, 
--		atomic_read(&dentry->d_count));
--	nfs_inc_stats(dir, NFSIOS_SILLYRENAME);
--
--	/*
--	 * We don't allow a dentry to be silly-renamed twice.
--	 */
--	error = -EBUSY;
--	if (dentry->d_flags & DCACHE_NFSFS_RENAMED)
--		goto out;
--
--	sprintf(silly, ".nfs%*.*Lx",
--		fileidsize, fileidsize,
--		(unsigned long long)NFS_FILEID(dentry->d_inode));
--
--	/* Return delegation in anticipation of the rename */
--	nfs_inode_return_delegation(dentry->d_inode);
--
--	sdentry = NULL;
--	do {
--		char *suffix = silly + slen - countersize;
--
--		dput(sdentry);
--		sillycounter++;
--		sprintf(suffix, "%*.*x", countersize, countersize, sillycounter);
--
--		dfprintk(VFS, "NFS: trying to rename %s to %s\n",
--				dentry->d_name.name, silly);
--		
--		sdentry = lookup_one_len(silly, dentry->d_parent, slen);
--		/*
--		 * N.B. Better to return EBUSY here ... it could be
--		 * dangerous to delete the file while it's in use.
--		 */
--		if (IS_ERR(sdentry))
--			goto out;
--	} while(sdentry->d_inode != NULL); /* need negative lookup */
--
--	qsilly.name = silly;
--	qsilly.len  = strlen(silly);
--	if (dentry->d_inode) {
--		error = NFS_PROTO(dir)->rename(dir, &dentry->d_name,
--				dir, &qsilly);
--		nfs_mark_for_revalidate(dentry->d_inode);
--	} else
--		error = NFS_PROTO(dir)->rename(dir, &dentry->d_name,
--				dir, &qsilly);
--	if (!error) {
--		nfs_set_verifier(dentry, nfs_save_change_attribute(dir));
--		d_move(dentry, sdentry);
--		error = nfs_async_unlink(dir, dentry);
-- 		/* If we return 0 we don't unlink */
--	}
--	dput(sdentry);
--out:
--	return error;
--}
--
- /*
-  * Remove a file after making sure there are no pending writes,
-  * and after checking that the file has only one user. 
-diff --git a/fs/nfs/unlink.c b/fs/nfs/unlink.c
-index 2f84ada..c3ce865 100644
---- a/fs/nfs/unlink.c
-+++ b/fs/nfs/unlink.c
-@@ -13,9 +13,12 @@
- #include <linux/nfs_fs.h>
- #include <linux/sched.h>
- #include <linux/wait.h>
-+#include <linux/namei.h>
- 
- #include "internal.h"
- #include "nfs4_fs.h"
-+#include "iostat.h"
-+#include "delegation.h"
- 
- struct nfs_unlinkdata {
- 	struct hlist_node list;
-@@ -244,7 +247,7 @@ void nfs_unblock_sillyrename(struct dentry *dentry)
-  * @dir: parent directory of dentry
-  * @dentry: dentry to unlink
-  */
--int
-+static int
- nfs_async_unlink(struct inode *dir, struct dentry *dentry)
- {
- 	struct nfs_unlinkdata *data;
-@@ -303,3 +306,83 @@ nfs_complete_unlink(struct dentry *dentry, struct inode *inode)
- 	if (data != NULL && (NFS_STALE(inode) || !nfs_call_unlink(dentry, data)))
- 		nfs_free_unlinkdata(data);
- }
-+
-+/**
-+ * nfs_sillyrename - Perform a silly-rename of a dentry
-+ * @dir: inode of directory that contains dentry
-+ * @dentry: dentry to be sillyrenamed
-+ *
-+ * NFSv2/3 is stateless and the server doesn't know when the client is
-+ * holding a file open. To prevent application problems when a file is
-+ * unlinked while it's still open, the client performs a "silly-rename".
-+ * That is, it renames the file to a hidden file in the same directory,
-+ * and only performs the unlink once the last reference to it is put.
-+ *
-+ * The final cleanup is done during dentry_iput.
-+ */
-+int
-+nfs_sillyrename(struct inode *dir, struct dentry *dentry)
-+{
-+	static unsigned int sillycounter;
-+	const int      fileidsize  = sizeof(NFS_FILEID(dentry->d_inode))*2;
-+	const int      countersize = sizeof(sillycounter)*2;
-+	const int      slen        = sizeof(".nfs")+fileidsize+countersize-1;
-+	char           silly[slen+1];
-+	struct qstr    qsilly;
-+	struct dentry *sdentry;
-+	int            error = -EIO;
-+
-+	dfprintk(VFS, "NFS: silly-rename(%s/%s, ct=%d)\n",
-+		dentry->d_parent->d_name.name, dentry->d_name.name,
-+		atomic_read(&dentry->d_count));
-+	nfs_inc_stats(dir, NFSIOS_SILLYRENAME);
-+
-+	/*
-+	 * We don't allow a dentry to be silly-renamed twice.
-+	 */
-+	error = -EBUSY;
-+	if (dentry->d_flags & DCACHE_NFSFS_RENAMED)
-+		goto out;
-+
-+	sprintf(silly, ".nfs%*.*Lx",
-+		fileidsize, fileidsize,
-+		(unsigned long long)NFS_FILEID(dentry->d_inode));
-+
-+	/* Return delegation in anticipation of the rename */
-+	nfs_inode_return_delegation(dentry->d_inode);
-+
-+	sdentry = NULL;
-+	do {
-+		char *suffix = silly + slen - countersize;
-+
-+		dput(sdentry);
-+		sillycounter++;
-+		sprintf(suffix, "%*.*x", countersize, countersize, sillycounter);
-+
-+		dfprintk(VFS, "NFS: trying to rename %s to %s\n",
-+				dentry->d_name.name, silly);
-+
-+		sdentry = lookup_one_len(silly, dentry->d_parent, slen);
-+		/*
-+		 * N.B. Better to return EBUSY here ... it could be
-+		 * dangerous to delete the file while it's in use.
-+		 */
-+		if (IS_ERR(sdentry))
-+			goto out;
-+	} while (sdentry->d_inode != NULL); /* need negative lookup */
-+
-+	qsilly.name = silly;
-+	qsilly.len  = strlen(silly);
-+	error = NFS_PROTO(dir)->rename(dir, &dentry->d_name, dir, &qsilly);
-+	if (dentry->d_inode)
-+		nfs_mark_for_revalidate(dentry->d_inode);
-+	if (!error) {
-+		nfs_set_verifier(dentry, nfs_save_change_attribute(dir));
-+		d_move(dentry, sdentry);
-+		error = nfs_async_unlink(dir, dentry);
-+		/* If we return 0 we don't unlink */
-+	}
-+	dput(sdentry);
-+out:
-+	return error;
-+}
-diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
-index 508f8cf..6cdf0d6 100644
---- a/include/linux/nfs_fs.h
-+++ b/include/linux/nfs_fs.h
-@@ -479,10 +479,10 @@ extern void nfs_release_automount_timer(void);
- /*
-  * linux/fs/nfs/unlink.c
-  */
--extern int  nfs_async_unlink(struct inode *dir, struct dentry *dentry);
- extern void nfs_complete_unlink(struct dentry *dentry, struct inode *);
- extern void nfs_block_sillyrename(struct dentry *dentry);
- extern void nfs_unblock_sillyrename(struct dentry *dentry);
-+extern int  nfs_sillyrename(struct inode *dir, struct dentry *dentry);
- 
- /*
-  * linux/fs/nfs/write.c
--- 
-1.7.1
+On 09/02/2010 10:25 AM, J. Bruce Fields wrote:
+> On Thu, Sep 02, 2010 at 10:04:19AM -0400, Chuck Lever wrote:
+>> Neil's patches are now in upstream nfs-utils.  You can disable all of
+>> the network listeners with command line options on mountd.
+>>
+>> It's been said that people complain that they don't like running
+>> rpc.mountd on NFSv4-only servers.  I'm not sure why that's a problem
+>> we have to fix with a code change.  Better documentation, better
+>> automatic configuration detection in the NFS start-up scripts, or
+>> simply renaming rpc.mountd could solve this issue without the need for
+>> rip-and-replace of well-tested code.
+I think a lot of the problems come from people having to open up 
+their firewalls and such... basically security issues..  was well 
+as having "extra" daemons stealing cpu cycles... 
 
+> 
+> Yeah, I've suggested a separate upcall-handling daemon before, but agree
+> that for now we should leave well enough alone.
+What would be the deciding factor to start this work? Maybe when
+Trond done splitting up kernel code into separate version modules? 
+
+steved.
