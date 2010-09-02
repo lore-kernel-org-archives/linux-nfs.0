@@ -1,230 +1,85 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yx0-f174.google.com ([209.85.213.174]:38458 "EHLO
-	mail-yx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753722Ab0IMRVC (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Sep 2010 13:21:02 -0400
-Received: by yxp4 with SMTP id 4so2096287yxp.19
-        for <linux-nfs@vger.kernel.org>; Mon, 13 Sep 2010 10:21:01 -0700 (PDT)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 01/12] libnfs.a: Fix API for getfh() & friends
-To: steved@redhat.com
-Cc: linux-nfs@vger.kernel.org
-Date: Mon, 13 Sep 2010 13:20:58 -0400
-Message-ID: <20100913172058.19017.26973.stgit@seurat.1015granger.net>
-In-Reply-To: <20100913171844.19017.13446.stgit@seurat.1015granger.net>
-References: <20100913171844.19017.13446.stgit@seurat.1015granger.net>
-Content-Type: text/plain; charset="utf-8"
+Received: from mx1.redhat.com ([209.132.183.28]:55913 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752319Ab0IBL3O (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 2 Sep 2010 07:29:14 -0400
+Message-ID: <4C7F8A80.3050705@RedHat.com>
+Date: Thu, 02 Sep 2010 07:29:04 -0400
+From: Steve Dickson <SteveD@redhat.com>
+To: Neil Brown <neilb@suse.de>
+CC: Jeff Layton <jlayton@redhat.com>, "J. Bruce Fields" <bfields@fieldses.org>,
+        linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] rpc.nfsd: mount up nfsdfs is it doesn't appear to be
+ mounted yet (try #2)
+References: <1283283160-30024-1-git-send-email-jlayton@redhat.com>	<20100901204818.GA10507@fieldses.org>	<20100901165605.41f4978d@tlielax.poochiereds.net> <20100902073156.577757b5@notabene>
+In-Reply-To: <20100902073156.577757b5@notabene>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-This is more of a clean-up than a behavioral change.
+Hey,
 
-POSIX requires that a "struct sockaddr" is the same size as a "struct
-sockaddr_in".  Therefore, a variable or field of type "struct sockaddr"
-cannot contain an AF_INET6 address.  However, "struct sockaddr *" is
-often used to reference a generic (ie non-address family specific)
-socket address, generating some confusion about this.
+On 09/01/2010 05:31 PM, Neil Brown wrote:
+> 
+> Hi,
+>  I was musing about this and thought I would share my musings - not to be
+>  taken too seriously unless they resonate with you.
+> 
+>  If rpc.nfsd is mounting /proc/fs/nfsd, should it also be starting rpc.statd,
+>  which should be running before nfsd is started?
+>  Should it 'exportfs -av' too?
+> 
+>  Should mount.nfs be mounting /var/lib/nfs/rpc_pipefs too?
+>  It already runs statd as requimred, which in-turn runs sm-notify, though it
+>  is really best to run that much earlier.
+> 
+>  How far do we really want to go with this "just do the right thing" approach?
+Good point... My original thoughts were just to exit if /proc/fs/nfsd was
+not mounted, which would be the simplest way... But in the name of "things
+just working" I feel having rpc.nfsd trying the mount makes some sense... 
 
-The nfsctl_arg struct uses a struct sockaddr (not a pointer) to pass
-the client's IP address to the kernel.  This means the legacy nfsctl()
-kernel API can never support IPv6.  Fortunately for us, this legacy
-interface was replaced by a text-based cache interface a few years
-back.  We don't need to support non-AF_INET addresses here.
+> 
+>  Should "rpc.nfsd" be a replacement for /etc/init.d/nfs-kernel-server or
+>  whatever your favourite distro calls it?  Or should it just be a tool for
+>  managing the nfsd threads?
+No and yes.. 
 
-The getfh() functions in nfs-utils provide a handy C API for the
-kernel's nfsctl interface.  The getfh() functions still take a struct
-sockaddr *, though, and that can imply that a non-IPv4 address can be
-passed via this API.  To make it abundantly clear that only IPv4
-addresses can be used with this interface, change the synopses of
-getfh() and friends to take a struct sockaddr_in * instead of a struct
-sockaddr * .
+I also see rpc.nfsd becoming the real daemon which will take care of 
+all the upcalls from the kernel. Basically ripping out all the upcall code
+out of rpc.mountd and putting it into rpc.nfsd. That way rpc.mountd will
+not have to run in V4-only environments.
 
-This makes these functions conform with other places in mountd and
-exportfs that already grok the difference between a struct sockaddr
-and a struct sockaddr_in.
+> 
+> 
+>  I could imagine that it would be OK to add a '-L' flag to say 'use legacy
+>  interface' and have rpc.nfsd fail noisily if nfsdfs wasn't mounted, and -L
+>  wasn't given.
+> 
+>  I could imagine that if protocol options were specified with -L, that would
+>  be an error.
+Hmm... The first thing that comes to my mind is slipper slope... I think
+we just deprecate interface and move on...
 
-While we're here...
+> 
+>  And if protocol options are specified which differ from what is currently
+>  in-force, and there are active threads, rpc.nfsd could:
+>     reduce the number of threads to 0
+>     change the protocol options
+>     restore the number of threads
+> 
+> 
+> 
+>  I think it is (long past) time to deprecate the legacy support in the kernel
+>  at least.  I suggest we add a printk to sys_nfsservctl to warn of pending
+>  deprecation, and probably add an entry to
+>  Documentation/feature-removal-schedule.txt.
+>  Aim for removing it all in 2.6.40 ?? and make it a CONFIG option before that.
+I second this...
 
-Introduce some nice documenting comments for the get_fh() functions,
-and...
+> 
+>  BTW, the 'new' cache has was added during 2.5 - definitely before Jan 2003.
+>  So the old stuff really is quite old now.
+Wow... it is time...
 
-Since mountd will support IPv6 in the near future, assert that the
-family of client addresses passed to this API is indeed AF_INET, in
-order to prevent non-AF_INET addresses from ever being passed to the
-legacy nfsctl() interface.
-
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
-
- support/include/nfslib.h |    9 ++++--
- support/nfs/getfh.c      |   64 ++++++++++++++++++++++++++++++++++++++++++----
- utils/mountd/mountd.c    |    7 ++---
- 3 files changed, 67 insertions(+), 13 deletions(-)
-
-diff --git a/support/include/nfslib.h b/support/include/nfslib.h
-index af242d3..3db5bec 100644
---- a/support/include/nfslib.h
-+++ b/support/include/nfslib.h
-@@ -134,9 +134,12 @@ int			nfsaddclient(struct nfsctl_client *clp);
- int			nfsdelclient(struct nfsctl_client *clp);
- int			nfsexport(struct nfsctl_export *exp);
- int			nfsunexport(struct nfsctl_export *exp);
--struct nfs_fh_len *	getfh_old(struct sockaddr *addr, dev_t dev, ino_t ino);
--struct nfs_fh_len *	getfh(struct sockaddr *addr, const char *);
--struct nfs_fh_len *	getfh_size(struct sockaddr *addr, const char *, int size);
-+
-+struct nfs_fh_len *	getfh_old(const struct sockaddr_in *sin,
-+					const dev_t dev, const ino_t ino);
-+struct nfs_fh_len *	getfh(const struct sockaddr_in *sin, const char *path);
-+struct nfs_fh_len *	getfh_size(const struct sockaddr_in *sin,
-+					const char *path, int const size);
- 
- void qword_print(FILE *f, char *str);
- void qword_printhex(FILE *f, char *str, int slen);
-diff --git a/support/nfs/getfh.c b/support/nfs/getfh.c
-index 81266fd..611459b 100644
---- a/support/nfs/getfh.c
-+++ b/support/nfs/getfh.c
-@@ -19,60 +19,112 @@
- #include <errno.h>
- #include "nfslib.h"
- 
-+/**
-+ * getfh_old - ask the kernel for an NFSv2 file handle via nfsctl()
-+ * @sin: pointer to IPv4 address of a client
-+ * @dev: device number of device where requested object resides
-+ * @ino: inode number of requested object
-+ *
-+ * Returns a pointer to an NFSv2 file handle, or NULL if some error
-+ * occurred.  errno is set to reflect the specifics of the error.
-+ */
- struct nfs_fh_len *
--getfh_old (struct sockaddr *addr, dev_t dev, ino_t ino)
-+getfh_old(const struct sockaddr_in *sin, const dev_t dev, const ino_t ino)
- {
- 	union nfsctl_res	res;
- 	struct nfsctl_arg	arg;
- 	static struct nfs_fh_len rfh;
- 
-+	if (sin->sin_family != AF_INET) {
-+		errno = EAFNOSUPPORT;
-+		return NULL;
-+	}
-+
-+	memset(&arg, 0, sizeof(arg));
-+	memset(&res, 0, sizeof(res));
-+
- 	arg.ca_version = NFSCTL_VERSION;
- 	arg.ca_getfh.gf_version = 2;	/* obsolete */
- 	arg.ca_getfh.gf_dev = dev;
- 	arg.ca_getfh.gf_ino = ino;
--	memcpy(&arg.ca_getfh.gf_addr, addr, sizeof(struct sockaddr_in));
-+	memcpy(&arg.ca_getfh.gf_addr, sin, sizeof(*sin));
- 
- 	if (nfsctl(NFSCTL_GETFH, &arg, &res) < 0)
- 		return NULL;
- 
-+	memset(&rfh, 0, sizeof(rfh));
- 	rfh.fh_size = 32;
- 	memcpy(rfh.fh_handle, &res.cr_getfh, 32);
- 	return &rfh;
- }
- 
-+/**
-+ * getfh - ask the kernel for an NFSv2 file handle via nfsctl()
-+ * @sin: pointer to IPv4 address of a client
-+ * @path: pointer to a '\0'-terminated ASCII string containing an pathname
-+ *
-+ * Returns a pointer to an NFSv2 file handle, or NULL if some error
-+ * occurred.  errno is set to reflect the specifics of the error.
-+ */
- struct nfs_fh_len *
--getfh(struct sockaddr *addr, const char *path)
-+getfh(const struct sockaddr_in *sin, const char *path)
- {
- 	static union nfsctl_res res;
-         struct nfsctl_arg       arg;
- 	static struct nfs_fh_len rfh;
- 
-+	if (sin->sin_family != AF_INET) {
-+		errno = EAFNOSUPPORT;
-+		return NULL;
-+	}
-+
-+	memset(&arg, 0, sizeof(arg));
-+	memset(&res, 0, sizeof(res));
-+
-         arg.ca_version = NFSCTL_VERSION;
-         arg.ca_getfd.gd_version = 2;    /* obsolete */
-         strncpy(arg.ca_getfd.gd_path, path,
- 		sizeof(arg.ca_getfd.gd_path) - 1);
- 	arg.ca_getfd.gd_path[sizeof (arg.ca_getfd.gd_path) - 1] = '\0';
--        memcpy(&arg.ca_getfd.gd_addr, addr, sizeof(struct sockaddr_in));
-+	memcpy(&arg.ca_getfd.gd_addr, sin, sizeof(*sin));
- 
-         if (nfsctl(NFSCTL_GETFD, &arg, &res) < 0)
-                 return NULL;
- 
-+	memset(&rfh, 0, sizeof(rfh));
- 	rfh.fh_size = 32;
- 	memcpy(rfh.fh_handle, &res.cr_getfh, 32);
- 	return &rfh;
- }
- 
-+/**
-+ * getfh_size - ask the kernel for a file handle via nfsctl()
-+ * @sin: pointer to IPv4 address of a client
-+ * @path: pointer to a '\0'-terminated ASCII string containing an pathname
-+ * @size: maximum size, in bytes, of the returned file handle
-+ *
-+ * Returns a pointer to an NFSv3 file handle, or NULL if some error
-+ * occurred.  errno is set to reflect the specifics of the error.
-+ */
- struct nfs_fh_len *
--getfh_size(struct sockaddr *addr, const char *path, int size)
-+getfh_size(const struct sockaddr_in *sin, const char *path, const int size)
- {
-         static union nfsctl_res res;
-         struct nfsctl_arg       arg;
- 
-+	if (sin->sin_family != AF_INET) {
-+		errno = EAFNOSUPPORT;
-+		return NULL;
-+	}
-+
-+	memset(&arg, 0, sizeof(arg));
-+	memset(&res, 0, sizeof(res));
-+
-         arg.ca_version = NFSCTL_VERSION;
-         strncpy(arg.ca_getfs.gd_path, path,
- 		sizeof(arg.ca_getfs.gd_path) - 1);
- 	arg.ca_getfs.gd_path[sizeof (arg.ca_getfs.gd_path) - 1] = '\0';
--        memcpy(&arg.ca_getfs.gd_addr, addr, sizeof(struct sockaddr_in));
-+	memcpy(&arg.ca_getfs.gd_addr, sin, sizeof(*sin));
- 	arg.ca_getfs.gd_maxlen = size;
- 
-         if (nfsctl(NFSCTL_GETFS, &arg, &res) < 0)
-diff --git a/utils/mountd/mountd.c b/utils/mountd/mountd.c
-index dc84404..78f26c2 100644
---- a/utils/mountd/mountd.c
-+++ b/utils/mountd/mountd.c
-@@ -484,14 +484,13 @@ get_rootfh(struct svc_req *rqstp, dirpath *path, nfs_export **expret,
- 			xtab_append(exp);
- 
- 		if (v3)
--			fh = getfh_size ((struct sockaddr *) sin, p, 64);
-+			fh = getfh_size(sin, p, 64);
- 		if (!v3 || (fh == NULL && errno == EINVAL)) {
- 			/* We first try the new nfs syscall. */
--			fh = getfh ((struct sockaddr *) sin, p);
-+			fh = getfh(sin, p);
- 			if (fh == NULL && errno == EINVAL)
- 				/* Let's try the old one. */
--				fh = getfh_old ((struct sockaddr *) sin,
--						stb.st_dev, stb.st_ino);
-+				fh = getfh_old(sin, stb.st_dev, stb.st_ino);
- 		}
- 		if (fh == NULL && !did_export) {
- 			exp->m_exported = 0;
-
+steved.
