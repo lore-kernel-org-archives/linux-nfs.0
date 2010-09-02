@@ -1,89 +1,151 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:48248 "EHLO
-	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1752980Ab0I2LMT (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 29 Sep 2010 07:12:19 -0400
-From: Benny Halevy <bhalevy@panasas.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 15/15] SQUASHME: pnfsblock: use new struct pnfs_layout_hdr
-Date: Wed, 29 Sep 2010 13:12:17 +0200
-Message-Id: <1285758737-27268-1-git-send-email-bhalevy@panasas.com>
-In-Reply-To: <4CA31DC3.8070300@panasas.com>
-References: <4CA31DC3.8070300@panasas.com>
+Received: from rcsinet10.oracle.com ([148.87.113.121]:48297 "EHLO
+	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932094Ab0IBUh4 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 2 Sep 2010 16:37:56 -0400
+Subject: Re: [PATCH 1/1] mount: RDMA processing in the mount command is broken
+Content-Type: text/plain; charset=us-ascii
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <1283457651-12010-1-git-send-email-steved@redhat.com>
+Date: Thu, 2 Sep 2010 16:35:54 -0400
+Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Message-Id: <E401A220-AAD8-42F1-AE81-3B1EEF209428@oracle.com>
+References: <1283457651-12010-1-git-send-email-steved@redhat.com>
+To: Steve Dickson <steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
----
- fs/nfs/blocklayout/blocklayout.c |   22 +++++++---------------
- 1 files changed, 7 insertions(+), 15 deletions(-)
 
-diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
-index ac53a3f..23dbe91 100644
---- a/fs/nfs/blocklayout/blocklayout.c
-+++ b/fs/nfs/blocklayout/blocklayout.c
-@@ -546,7 +546,7 @@ release_inval_marks(struct pnfs_inval_markings *marks)
- 
- /* Note we are relying on caller locking to prevent nasty races. */
- static void
--bl_free_layout(struct pnfs_layout_hdr *lo)
-+bl_free_layout_hdr(struct pnfs_layout_hdr *lo)
- {
- 	struct pnfs_block_layout *bl = BLK_LO2EXT(lo);
- 
-@@ -557,7 +557,7 @@ bl_free_layout(struct pnfs_layout_hdr *lo)
- }
- 
- static struct pnfs_layout_hdr *
--bl_alloc_layout(struct inode *inode)
-+bl_alloc_layout_hdr(struct inode *inode)
- {
- 	struct pnfs_block_layout	*bl;
- 
-@@ -1105,15 +1105,17 @@ bl_pg_test(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev,
- 		return 1;
- }
- 
--static struct layoutdriver_io_operations blocklayout_io_operations = {
-+static struct pnfs_layoutdriver_type blocklayout_type = {
-+	.id = LAYOUT_BLOCK_VOLUME,
-+	.name = "LAYOUT_BLOCK_VOLUME",
- 	.commit				= bl_commit,
- 	.read_pagelist			= bl_read_pagelist,
- 	.write_pagelist			= bl_write_pagelist,
- 	.write_begin			= bl_write_begin,
- 	.write_end			= bl_write_end,
- 	.write_end_cleanup		= bl_write_end_cleanup,
--	.alloc_layout			= bl_alloc_layout,
--	.free_layout			= bl_free_layout,
-+	.alloc_layout_hdr		= bl_alloc_layout_hdr,
-+	.free_layout_hdr		= bl_free_layout_hdr,
- 	.alloc_lseg			= bl_alloc_lseg,
- 	.free_lseg			= bl_free_lseg,
- 	.setup_layoutcommit		= bl_setup_layoutcommit,
-@@ -1121,20 +1123,10 @@ static struct layoutdriver_io_operations blocklayout_io_operations = {
- 	.cleanup_layoutcommit		= bl_cleanup_layoutcommit,
- 	.initialize_mountpoint		= bl_initialize_mountpoint,
- 	.uninitialize_mountpoint	= bl_uninitialize_mountpoint,
--};
--
--static struct layoutdriver_policy_operations blocklayout_policy_operations = {
- 	.get_stripesize			= bl_get_stripesize,
- 	.pg_test			= bl_pg_test,
- };
- 
--static struct pnfs_layoutdriver_type blocklayout_type = {
--	.id = LAYOUT_BLOCK_VOLUME,
--	.name = "LAYOUT_BLOCK_VOLUME",
--	.ld_io_ops = &blocklayout_io_operations,
--	.ld_policy_ops = &blocklayout_policy_operations,
--};
--
- static int __init nfs4blocklayout_init(void)
- {
- 	int ret;
+On Sep 2, 2010, at 4:00 PM, Steve Dickson wrote:
+
+> The mounting code that process RMDA mounts is broken in a few places
+> 
+> First with '-o proto=rdma' was broken because nfs_get_proto()
+> did not how to convert a netid of 'rdma' in to a AF_INET
+> address family.
+> 
+> Secondly, '-o rdma' was broken because po_get() was being using
+> to detect the existence of 'rdma' in the options. With '-o rdma'
+> there is no value associated with that option so po_get()
+> was always return NULL.
+
+Looking at nfs(5), "rdma" as a stand-alone option isn't documented.  Only "proto=rdma" appears to be mentioned.  Thus I would argue that this is already behaving correctly.
+
+Are you proposing to add support for "-o rdma" ?  If so what would that mean?
+
+> This patch address both those problems.
+> 
+> Signed-off-by: Steve Dickson <steved@redhat.com>
+> ---
+> support/nfs/getport.c |    8 ++++++++
+> utils/mount/stropts.c |   31 ++++++++++++++++++++++---------
+> 2 files changed, 30 insertions(+), 9 deletions(-)
+> 
+> diff --git a/support/nfs/getport.c b/support/nfs/getport.c
+> index c930539..b4c2f8f 100644
+> --- a/support/nfs/getport.c
+> +++ b/support/nfs/getport.c
+> @@ -216,6 +216,10 @@ nfs_get_proto(const char *netid, sa_family_t *family, unsigned long *protocol)
+> 	struct netconfig *nconf;
+> 	struct protoent *proto;
+> 
+> +	if (strcasecmp(netid, "rdma") == 0) {
+> +		*family = AF_INET;
+> +		return 1;
+> +	}
+> 	nconf = getnetconfigent(netid);
+> 	if (nconf == NULL)
+> 		return 0;
+> @@ -242,6 +246,10 @@ nfs_get_proto(const char *netid, sa_family_t *family, unsigned long *protocol)
+> {
+> 	struct protoent *proto;
+> 
+> +	if (strcasecmp(netid, "rdma") == 0) {
+> +		*family = AF_INET;
+> +		return 1;
+> +	}
+> 	proto = getprotobyname(netid);
+> 	if (proto == NULL)
+> 		return 0;
+> diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
+> index 0241400..d688ee8 100644
+> --- a/utils/mount/stropts.c
+> +++ b/utils/mount/stropts.c
+> @@ -98,6 +98,22 @@ struct nfsmount_info {
+> 				child;		/* forked bg child? */
+> };
+> 
+> +/*
+> + * Check the options to see if the transport is RDMA
+> + */
+> +static int rdma_enabled(struct mount_options *options)
+> +{
+> +	char *option;
+> +
+> +	if (po_contains(options, "rdma"))
+> +		return 1;
+> +	option = po_get(options, "proto");
+> +	if (option && strcmp(option, "rdma") == 0)
+> +		return 1;
+> +
+> +	return 0;
+> +}
+> +
+> #ifdef MOUNT_CONFIG
+> static void nfs_default_version(struct nfsmount_info *mi);
+> 
+> @@ -302,11 +318,8 @@ static int nfs_set_version(struct nfsmount_info *mi)
+> 
+> 	if (strncmp(mi->type, "nfs4", 4) == 0)
+> 		mi->version = 4;
+> -	else {
+> -		char *option = po_get(mi->options, "proto");
+> -		if (option && strcmp(option, "rdma") == 0)
+> -			mi->version = 3;
+> -	}
+> +	else if (rdma_enabled(mi->options))
+> +		mi->version = 3;
+> 
+> 	/*
+> 	 * If we still don't know, check for version-specific
+> @@ -346,7 +359,9 @@ static int nfs_validate_options(struct nfsmount_info *mi)
+> 	if (!nfs_parse_devname(mi->spec, &mi->hostname, NULL))
+> 		return 0;
+> 
+> -	if (!nfs_nfs_proto_family(mi->options, &family))
+> +	if (rdma_enabled(mi->options))
+> +		family = AF_INET;
+> +	else if (!nfs_nfs_proto_family(mi->options, &family))
+> 		return 0;
+> 
+> 	hint.ai_family = (int)family;
+> @@ -491,13 +506,11 @@ nfs_rewrite_pmap_mount_options(struct mount_options *options)
+> 	struct sockaddr *mnt_saddr = &mnt_address.sa;
+> 	socklen_t mnt_salen = sizeof(mnt_address);
+> 	struct pmap mnt_pmap;
+> -	char *option;
+> 
+> 	/*
+> 	 * Skip option negotiation for proto=rdma mounts.
+> 	 */
+> -	option = po_get(options, "proto");
+> -	if (option && strcmp(option, "rdma") == 0)
+> +	if (rdma_enabled(options))
+> 		goto out;
+> 
+> 	/*
+> -- 
+> 1.7.1
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
 -- 
-1.7.2.3
+chuck[dot]lever[at]oracle[dot]com
+
+
+
 
