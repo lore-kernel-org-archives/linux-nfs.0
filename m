@@ -1,138 +1,349 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-gw0-f46.google.com ([74.125.83.46]:54538 "EHLO
-	mail-gw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754700Ab0IJUEG (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Sep 2010 16:04:06 -0400
-Received: by gwj17 with SMTP id 17so1310620gwj.19
-        for <linux-nfs@vger.kernel.org>; Fri, 10 Sep 2010 13:04:05 -0700 (PDT)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 5/6] NFS: Allow NFSROOT debugging messages to be enabled
-	dynamically
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Date: Fri, 10 Sep 2010 16:04:02 -0400
-Message-ID: <20100910200401.13167.1195.stgit@seurat.1015granger.net>
-In-Reply-To: <20100910200001.13167.61153.stgit@seurat.1015granger.net>
-References: <20100910200001.13167.61153.stgit@seurat.1015granger.net>
-Content-Type: text/plain; charset="utf-8"
+Received: from mx2.netapp.com ([216.240.18.37]:47546 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755245Ab0IISKm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 9 Sep 2010 14:10:42 -0400
+Received: from localhost.localdomain (surajit-lxp.hq.netapp.com [10.58.50.95] (may be forged))
+	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id o89IAW1U002948
+	for <linux-nfs@vger.kernel.org>; Thu, 9 Sep 2010 11:10:40 -0700 (PDT)
+From: Fred Isaman <iisaman@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 09/13] RFC: nfs: create and destroy inode's layout cache
+Date: Thu,  2 Sep 2010 14:00:15 -0400
+Message-Id: <1283450419-5648-10-git-send-email-iisaman@netapp.com>
+In-Reply-To: <1283450419-5648-1-git-send-email-iisaman@netapp.com>
+References: <1283450419-5648-1-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-As a convenience, introduce a kernel command line option to enable
-NFSROOT debugging messages.
+From: The pNFS Team <linux-nfs@vger.kernel.org>
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+At the start of the io paths, try to grab the relevant layout
+information.  This will initiate the inode's layout cache, but
+stubs ensure the cache stays empty.
+
+Signed-off-by: TBD - melding/reorganization of several patches
 ---
+ fs/nfs/file.c          |    5 ++
+ fs/nfs/inode.c         |    3 +
+ fs/nfs/pnfs.c          |  140 ++++++++++++++++++++++++++++++++++++++++++++++++
+ fs/nfs/pnfs.h          |   39 +++++++++++++
+ fs/nfs/read.c          |    3 +
+ include/linux/nfs_fs.h |    3 +
+ 6 files changed, 193 insertions(+), 0 deletions(-)
 
- Documentation/filesystems/nfs/nfsroot.txt |   22 ++++++++++++++++++++++
- Documentation/kernel-parameters.txt       |    5 ++++-
- fs/nfs/nfsroot.c                          |   19 +++++++++++++------
- 3 files changed, 39 insertions(+), 7 deletions(-)
-
-diff --git a/Documentation/filesystems/nfs/nfsroot.txt b/Documentation/filesystems/nfs/nfsroot.txt
-index f2430a7..90c71c6 100644
---- a/Documentation/filesystems/nfs/nfsroot.txt
-+++ b/Documentation/filesystems/nfs/nfsroot.txt
-@@ -159,6 +159,28 @@ ip=<client-ip>:<server-ip>:<gw-ip>:<netmask>:<hostname>:<device>:<autoconf>
-                 Default: any
- 
- 
-+nfsrootdebug
-+
-+  This parameter enables debugging messages to appear in the kernel
-+  log at boot time so that administrators can verify that the correct
-+  NFS mount options, server address, and root path are passed to the
-+  NFS client.
-+
-+
-+rdinit=<executable file>
-+
-+  To specify which file contains the program that starts system
-+  initialization, administrators can use this command line parameter.
-+  The default value of this parameter is "/init".  If the specified
-+  file exists and the kernel can execute it, root filesystem related
-+  kernel command line parameters, including `nfsroot=', are ignored.
-+
-+  A description of the process of mounting the root file system can be
-+  found in:
-+
-+    Documentation/early-userspace/README
-+
-+
- 
- 
- 3.) Boot Loader
-diff --git a/Documentation/kernel-parameters.txt b/Documentation/kernel-parameters.txt
-index f084af0..0fe70b2 100644
---- a/Documentation/kernel-parameters.txt
-+++ b/Documentation/kernel-parameters.txt
-@@ -1532,12 +1532,15 @@ and is between 256 and 4096 characters. It is defined in the file
- 			1 to enable accounting
- 			Default value is 0.
- 
--	nfsaddrs=	[NFS]
-+	nfsaddrs=	[NFS] Deprecated.  Use ip= instead.
- 			See Documentation/filesystems/nfs/nfsroot.txt.
- 
- 	nfsroot=	[NFS] nfs root filesystem for disk-less boxes.
- 			See Documentation/filesystems/nfs/nfsroot.txt.
- 
-+	nfsrootdebug	[NFS] enable nfsroot debugging messages.
-+			See Documentation/filesystems/nfs/nfsroot.txt.
-+
- 	nfs.callback_tcpport=
- 			[NFS] set the TCP port on which the NFSv4 callback
- 			channel should listen.
-diff --git a/fs/nfs/nfsroot.c b/fs/nfs/nfsroot.c
-index 8e7d623..460df36 100644
---- a/fs/nfs/nfsroot.c
-+++ b/fs/nfs/nfsroot.c
-@@ -67,6 +67,7 @@
-  *				NFS over TCP.
-  *	Fabian Frederick:	Option parser rebuilt (using parser lib)
-  *	Chuck Lever	:	Use super.c's text-based mount option parsing
-+ *	Chuck Lever	:	Add "nfsrootdebug".
-  */
- 
- #include <linux/types.h>
-@@ -80,8 +81,6 @@
- 
+diff --git a/fs/nfs/file.c b/fs/nfs/file.c
+index eb51bd6..10ebdfb 100644
+--- a/fs/nfs/file.c
++++ b/fs/nfs/file.c
+@@ -36,6 +36,7 @@
  #include "internal.h"
+ #include "iostat.h"
+ #include "fscache.h"
++#include "pnfs.h"
  
--/* Define this to allow debugging output */
--#undef NFSROOT_DEBUG
- #define NFSDBG_FACILITY NFSDBG_ROOT
+ #define NFSDBG_FACILITY		NFSDBG_FILE
  
- /* Default path we try to mount. "%s" gets replaced by our IP address */
-@@ -103,6 +102,18 @@ static char nfs_export_path[NFS_MAXPATHLEN + 1] __initdata = "";
- static char nfs_root_device[NFS_MAXPATHLEN + 1] __initdata = "";
+@@ -386,6 +387,10 @@ static int nfs_write_begin(struct file *file, struct address_space *mapping,
+ 		file->f_path.dentry->d_name.name,
+ 		mapping->host->i_ino, len, (long long) pos);
  
- /*
-+ * When the "nfsrootdebug" kernel command line option is specified,
-+ * enable debugging messages for NFSROOT.
-+ */
-+static int __init nfs_root_debug(char *__unused)
++	pnfs_update_layout(mapping->host,
++			   nfs_file_open_context(file),
++			   IOMODE_RW);
++
+ start:
+ 	/*
+ 	 * Prevent starvation issues if someone is doing a consistency
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index 7d2d6c7..0dc6dad 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -48,6 +48,7 @@
+ #include "internal.h"
+ #include "fscache.h"
+ #include "dns_resolve.h"
++#include "pnfs.h"
+ 
+ #define NFSDBG_FACILITY		NFSDBG_VFS
+ 
+@@ -1409,6 +1410,7 @@ void nfs4_evict_inode(struct inode *inode)
+ {
+ 	truncate_inode_pages(&inode->i_data, 0);
+ 	end_writeback(inode);
++	pnfs_destroy_layout(NFS_I(inode));
+ 	/* If we are holding a delegation, return it! */
+ 	nfs_inode_return_delegation_noreclaim(inode);
+ 	/* First call standard NFS clear_inode() code */
+@@ -1446,6 +1448,7 @@ static inline void nfs4_init_once(struct nfs_inode *nfsi)
+ 	nfsi->delegation = NULL;
+ 	nfsi->delegation_state = 0;
+ 	init_rwsem(&nfsi->rwsem);
++	nfsi->layout = NULL;
+ #endif
+ }
+ 
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 8d503fc..65f923b 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -151,3 +151,143 @@ pnfs_unregister_layoutdriver(struct pnfs_layoutdriver_type *ld_type)
+ 	spin_unlock(&pnfs_spinlock);
+ }
+ EXPORT_SYMBOL(pnfs_unregister_layoutdriver);
++
++static void
++get_layout_hdr_locked(struct pnfs_layout_hdr *lo)
 +{
-+	nfs_debug |= NFSDBG_ROOT | NFSDBG_MOUNT;
-+	return 1;
++	assert_spin_locked(&lo->inode->i_lock);
++	lo->refcount++;
 +}
 +
-+__setup("nfsrootdebug", nfs_root_debug);
++static void
++put_layout_hdr_locked(struct pnfs_layout_hdr *lo)
++{
++	assert_spin_locked(&lo->inode->i_lock);
++	BUG_ON(lo->refcount <= 0);
++
++	lo->refcount--;
++	if (!lo->refcount) {
++		dprintk("%s: freeing layout cache %p\n", __func__, lo);
++		NFS_I(lo->inode)->layout = NULL;
++		kfree(lo);
++	}
++}
++
++void
++pnfs_destroy_layout(struct nfs_inode *nfsi)
++{
++	struct pnfs_layout_hdr *lo;
++
++	spin_lock(&nfsi->vfs_inode.i_lock);
++	lo = nfsi->layout;
++	if (lo) {
++		/* Matched by refcount set to 1 in alloc_init_layout_hdr */
++		put_layout_hdr_locked(lo);
++	}
++	spin_unlock(&nfsi->vfs_inode.i_lock);
++}
++
++/* STUB - pretend LAYOUTGET to server failed */
++static struct pnfs_layout_segment *
++send_layoutget(struct pnfs_layout_hdr *lo,
++	   struct nfs_open_context *ctx,
++	   u32 iomode)
++{
++	struct inode *ino = lo->inode;
++
++	set_bit(lo_fail_bit(iomode), &lo->state);
++	spin_lock(&ino->i_lock);
++	put_layout_hdr_locked(lo);
++	spin_unlock(&ino->i_lock);
++	return NULL;
++}
++
++static struct pnfs_layout_hdr *
++alloc_init_layout_hdr(struct inode *ino)
++{
++	struct pnfs_layout_hdr *lo;
++
++	lo = kzalloc(sizeof(struct pnfs_layout_hdr), GFP_KERNEL);
++	if (!lo)
++		return NULL;
++	lo->refcount = 1;
++	lo->inode = ino;
++	return lo;
++}
++
++static struct pnfs_layout_hdr *
++pnfs_find_alloc_layout(struct inode *ino)
++{
++	struct nfs_inode *nfsi = NFS_I(ino);
++	struct pnfs_layout_hdr *new = NULL;
++
++	dprintk("%s Begin ino=%p layout=%p\n", __func__, ino, nfsi->layout);
++
++	assert_spin_locked(&ino->i_lock);
++	if (nfsi->layout)
++		return nfsi->layout;
++
++	spin_unlock(&ino->i_lock);
++	new = alloc_init_layout_hdr(ino);
++	spin_lock(&ino->i_lock);
++
++	if (likely(nfsi->layout == NULL))	/* Won the race? */
++		nfsi->layout = new;
++	else
++		kfree(new);
++	return nfsi->layout;
++}
++
++/* STUB - LAYOUTGET never succeeds, so cache is empty */
++static struct pnfs_layout_segment *
++pnfs_has_layout(struct pnfs_layout_hdr *lo, u32 iomode)
++{
++	return NULL;
++}
 +
 +/*
-  *  Parse NFS server and directory information passed on the kernel
-  *  command line.
-  *
-@@ -282,10 +293,6 @@ out_devnametoolong:
-  */
- int __init nfs_root_data(char **root_device, char **root_data)
++ * Layout segment is retreived from the server if not cached.
++ * The appropriate layout segment is referenced and returned to the caller.
++ */
++struct pnfs_layout_segment *
++pnfs_update_layout(struct inode *ino,
++		   struct nfs_open_context *ctx,
++		   enum pnfs_iomode iomode)
++{
++	struct nfs_inode *nfsi = NFS_I(ino);
++	struct pnfs_layout_hdr *lo;
++	struct pnfs_layout_segment *lseg = NULL;
++
++	if (!pnfs_enabled_sb(NFS_SERVER(ino)))
++		return NULL;
++	spin_lock(&ino->i_lock);
++	lo = pnfs_find_alloc_layout(ino);
++	if (lo == NULL) {
++		dprintk("%s ERROR: can't get pnfs_layout_hdr\n", __func__);
++		goto out_unlock;
++	}
++
++	/* Check to see if the layout for the given range already exists */
++	lseg = pnfs_has_layout(lo, iomode);
++	if (lseg) {
++		dprintk("%s: Using cached lseg %p for iomode %d)\n",
++			__func__, lseg, iomode);
++		goto out_unlock;
++	}
++
++	/* if LAYOUTGET already failed once we don't try again */
++	if (test_bit(lo_fail_bit(iomode), &nfsi->layout->state))
++		goto out_unlock;
++
++	get_layout_hdr_locked(lo);
++	spin_unlock(&ino->i_lock);
++
++	lseg = send_layoutget(lo, ctx, iomode);
++out:
++	dprintk("%s end, state 0x%lx lseg %p\n", __func__,
++		nfsi->layout->state, lseg);
++	return lseg;
++out_unlock:
++	spin_unlock(&ino->i_lock);
++	goto out;
++}
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index 9049b9a..b63b445 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -14,6 +14,11 @@
+ 
+ #define LAYOUT_NFSV4_1_MODULE_PREFIX "nfs-layouttype4"
+ 
++enum {
++	NFS_LAYOUT_RO_FAILED = 0,	/* get ro layout failed stop trying */
++	NFS_LAYOUT_RW_FAILED,		/* get rw layout failed stop trying */
++};
++
+ /* Per-layout driver specific registration structure */
+ struct pnfs_layoutdriver_type {
+ 	struct list_head pnfs_tblid;
+@@ -22,6 +27,12 @@ struct pnfs_layoutdriver_type {
+ 	struct layoutdriver_io_operations *ld_io_ops;
+ };
+ 
++struct pnfs_layout_hdr {
++	int			refcount;
++	unsigned long		state;
++	struct inode		*inode;
++};
++
+ /* Layout driver I/O operations. */
+ struct layoutdriver_io_operations {
+ 	/* Registration information for a new mounted file system */
+@@ -32,11 +43,39 @@ struct layoutdriver_io_operations {
+ extern int pnfs_register_layoutdriver(struct pnfs_layoutdriver_type *);
+ extern void pnfs_unregister_layoutdriver(struct pnfs_layoutdriver_type *);
+ 
++struct pnfs_layout_segment *
++pnfs_update_layout(struct inode *ino, struct nfs_open_context *ctx,
++		   enum pnfs_iomode access_type);
+ void set_pnfs_layoutdriver(struct nfs_server *, u32 id);
+ void unset_pnfs_layoutdriver(struct nfs_server *);
++void pnfs_destroy_layout(struct nfs_inode *);
++
++
++static inline int lo_fail_bit(u32 iomode)
++{
++	return iomode == IOMODE_RW ?
++			 NFS_LAYOUT_RW_FAILED : NFS_LAYOUT_RO_FAILED;
++}
++
++/* Return true if a layout driver is being used for this mountpoint */
++static inline int pnfs_enabled_sb(struct nfs_server *nfss)
++{
++	return nfss->pnfs_curr_ld != NULL;
++}
+ 
+ #else  /* CONFIG_NFS_V4_1 */
+ 
++static inline void pnfs_destroy_layout(struct nfs_inode *nfsi)
++{
++}
++
++static inline struct pnfs_layout_segment *
++pnfs_update_layout(struct inode *ino, struct nfs_open_context *ctx,
++		   enum pnfs_iomode access_type)
++{
++	return NULL;
++}
++
+ static inline void set_pnfs_layoutdriver(struct nfs_server *s, u32 id)
  {
--#ifdef NFSROOT_DEBUG
--	nfs_debug |= NFSDBG_ROOT | NFSDBG_MOUNT;
--#endif	/* NFSROOT_DEBUG */
--
- 	servaddr = root_server_addr;
- 	if (servaddr == htonl(INADDR_NONE)) {
- 		printk(KERN_ERR "Root-NFS: no NFS server address\n");
+ }
+diff --git a/fs/nfs/read.c b/fs/nfs/read.c
+index 87adc27..f7eb66f 100644
+--- a/fs/nfs/read.c
++++ b/fs/nfs/read.c
+@@ -25,6 +25,7 @@
+ #include "internal.h"
+ #include "iostat.h"
+ #include "fscache.h"
++#include "pnfs.h"
+ 
+ #define NFSDBG_FACILITY		NFSDBG_PAGECACHE
+ 
+@@ -121,6 +122,7 @@ int nfs_readpage_async(struct nfs_open_context *ctx, struct inode *inode,
+ 	len = nfs_page_length(page);
+ 	if (len == 0)
+ 		return nfs_return_empty_page(page);
++	pnfs_update_layout(inode, ctx, IOMODE_READ);
+ 	new = nfs_create_request(ctx, inode, page, 0, len);
+ 	if (IS_ERR(new)) {
+ 		unlock_page(page);
+@@ -625,6 +627,7 @@ int nfs_readpages(struct file *filp, struct address_space *mapping,
+ 	if (ret == 0)
+ 		goto read_complete; /* all pages were read */
+ 
++	pnfs_update_layout(inode, desc.ctx, IOMODE_READ);
+ 	if (rsize < PAGE_CACHE_SIZE)
+ 		nfs_pageio_init(&pgio, inode, nfs_pagein_multi, rsize, 0);
+ 	else
+diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
+index a0f49a3..ebd87a9 100644
+--- a/include/linux/nfs_fs.h
++++ b/include/linux/nfs_fs.h
+@@ -188,6 +188,9 @@ struct nfs_inode {
+ 	struct nfs_delegation	*delegation;
+ 	fmode_t			 delegation_state;
+ 	struct rw_semaphore	rwsem;
++
++	/* pNFS layout information */
++	struct pnfs_layout_hdr *layout;
+ #endif /* CONFIG_NFS_V4*/
+ #ifdef CONFIG_NFS_FSCACHE
+ 	struct fscache_cookie	*fscache;
+-- 
+1.7.2.1
 
