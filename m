@@ -1,214 +1,170 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:25113 "EHLO
-	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1753391Ab0IWHqw (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 23 Sep 2010 03:46:52 -0400
-Message-ID: <4C9B05E9.5080303@panasas.com>
-Date: Thu, 23 Sep 2010 09:46:49 +0200
-From: Benny Halevy <bhalevy@panasas.com>
-To: Fred Isaman <iisaman@netapp.com>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] SQUASHME: pnfs: get layout in proper segments.
-References: <1285095654-32401-1-git-send-email-bhalevy@panasas.com> <AANLkTi=mSWun+tEOrjGUsuc2gs_79K2+NCUOrXJoaMeW@mail.gmail.com>
-In-Reply-To: <AANLkTi=mSWun+tEOrjGUsuc2gs_79K2+NCUOrXJoaMeW@mail.gmail.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mx2.netapp.com ([216.240.18.37]:47544 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755241Ab0IISKl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 9 Sep 2010 14:10:41 -0400
+Received: from localhost.localdomain (surajit-lxp.hq.netapp.com [10.58.50.95] (may be forged))
+	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id o89IAW1T002948
+	for <linux-nfs@vger.kernel.org>; Thu, 9 Sep 2010 11:10:39 -0700 (PDT)
+From: Fred Isaman <iisaman@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 08/13] RFC: pnfs: filelayout: introduce minimal file layout driver
+Date: Thu,  2 Sep 2010 14:00:14 -0400
+Message-Id: <1283450419-5648-9-git-send-email-iisaman@netapp.com>
+In-Reply-To: <1283450419-5648-1-git-send-email-iisaman@netapp.com>
+References: <1283450419-5648-1-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On 2010-09-21 21:25, Fred Isaman wrote:
-> On Tue, Sep 21, 2010 at 3:00 PM, Benny Halevy <bhalevy@panasas.com> wrote:
->> Base the LAYOUTGET arguments on the actual required byte ranges
->> rather than asking for the whole file layout.
->>
->> Add a check in readpage_async_filler that the layout segment
->> retrieved in pnfs_pageio_init_read still covers the current page
->> and if not, try getting a new one.
->>
->> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
->> ---
->>  fs/nfs/file.c |    2 +-
->>  fs/nfs/pnfs.c |   13 ++++++-------
->>  fs/nfs/pnfs.h |   21 ++++++++-------------
->>  fs/nfs/read.c |   17 ++++++++++++++++-
->>  4 files changed, 31 insertions(+), 22 deletions(-)
->>
->> diff --git a/fs/nfs/file.c b/fs/nfs/file.c
->> index b05c1ff..228f41e 100644
->> --- a/fs/nfs/file.c
->> +++ b/fs/nfs/file.c
->> @@ -390,7 +390,7 @@ static int nfs_write_begin(struct file *file, struct address_space *mapping,
->>
->>        pnfs_update_layout(mapping->host,
->>                           nfs_file_open_context(file),
->> -                          0, NFS4_MAX_UINT64, IOMODE_RW,
->> +                          pos, len, IOMODE_RW,
->>                           &lseg);
->>  start:
->>        /*
->> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
->> index e6261a3..de716f6 100644
->> --- a/fs/nfs/pnfs.c
->> +++ b/fs/nfs/pnfs.c
->> @@ -600,11 +600,10 @@ send_layoutget(struct inode *ino,
->>                pnfs_layout_release(lo, NULL);
->>                return -ENOMEM;
->>        }
->> -       lgp->args.minlength = NFS4_MAX_UINT64;
->> +       lgp->args.minlength = PAGE_CACHE_SIZE -
->> +                               (range->offset & (PAGE_CACHE_SIZE-1));
->>        lgp->args.maxcount = PNFS_LAYOUT_MAXSIZE;
->> -       lgp->args.range.iomode = range->iomode;
->> -       lgp->args.range.offset = 0;
->> -       lgp->args.range.length = NFS4_MAX_UINT64;
->> +       lgp->args.range = *range;
->>        lgp->args.type = server->pnfs_curr_ld->id;
->>        lgp->args.inode = ino;
->>        lgp->lsegpp = lsegpp;
->> @@ -1028,8 +1027,8 @@ _pnfs_update_layout(struct inode *ino,
->>  {
->>        struct pnfs_layout_range arg = {
->>                .iomode = iomode,
->> -               .offset = 0,
->> -               .length = NFS4_MAX_UINT64,
->> +               .offset = pos,
->> +               .length = count,
->>        };
->>        struct nfs_inode *nfsi = NFS_I(ino);
->>        struct pnfs_layout_hdr *lo;
->> @@ -1330,7 +1329,7 @@ pnfs_pageio_init_read(struct nfs_pageio_descriptor *pgio,
->>        readahead_range(inode, pages, &loff, &count);
->>
->>        if (count > 0) {
->> -               _pnfs_update_layout(inode, ctx, loff, count, IOMODE_READ,
->> +               pnfs_update_layout(inode, ctx, loff, count, IOMODE_READ,
-> 
-> 
-> Why this change?  the pnfs_enabled_sb check has already been done at
-> the top of the function, hasn't it?
-> 
+From: The pNFS Team <linux-nfs@vger.kernel.org>
 
-Actually, it's for the dprintk, but this is not crucial.
+This driver just registers itself and supplies trivial mount/umount functions.
 
-> 
->>                                    &pgio->pg_lseg);
->>                if (!pgio->pg_lseg)
->>                        return;
->> diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
->> index 81534aa..b666f53 100644
->> --- a/fs/nfs/pnfs.h
->> +++ b/fs/nfs/pnfs.h
->> @@ -188,19 +188,14 @@ static inline int pnfs_return_layout(struct inode *ino,
->>        return 0;
->>  }
->>
->> -static inline void pnfs_update_layout(struct inode *ino,
->> -       struct nfs_open_context *ctx,
->> -       loff_t pos, u64 count, enum pnfs_iomode access_type,
->> -       struct pnfs_layout_segment **lsegpp)
->> -{
->> -       struct nfs_server *nfss = NFS_SERVER(ino);
->> -
->> -       if (pnfs_enabled_sb(nfss))
->> -               _pnfs_update_layout(ino, ctx, pos, count, access_type, lsegpp);
->> -       else {
->> -               if (lsegpp)
->> -                       *lsegpp = NULL;
->> -       }
->> +#define pnfs_update_layout(ino, ctx, pos, count, access_type, lsegpp) { \
->> +       if (pnfs_enabled_sb(NFS_SERVER(ino))) { \
->> +               dprintk("%s: updating %s layout pos %llu count %llu\n", __func__, \
->> +                       (access_type) == IOMODE_READ ? "READ" : "WRITE", \
->> +                       (unsigned long long)(pos), (unsigned long long)(count)); \
->> +               _pnfs_update_layout(ino, ctx, pos, count, access_type, lsegpp); \
->> +       } else \
->> +               *lsegpp = NULL; \
->>  }
-> 
-> 
-> Why this change?  I much prefer the inline version to the define, and
-> I thought that this was generally being pushed.
-> 
+Signed-off-by: TBD - melding/reorganization of several patches
+---
+ fs/nfs/Kconfig          |    5 +++
+ fs/nfs/Makefile         |    3 ++
+ fs/nfs/nfs4filelayout.c |   89 +++++++++++++++++++++++++++++++++++++++++++++++
+ include/linux/nfs_fs.h  |    1 +
+ 4 files changed, 98 insertions(+), 0 deletions(-)
+ create mode 100644 fs/nfs/nfs4filelayout.c
 
-dprintk again.
-I think I'll just do this as a debug-only patch, just so we have the extra debugging
-in the development tree.
+diff --git a/fs/nfs/Kconfig b/fs/nfs/Kconfig
+index 5f1b936..980f2dc 100644
+--- a/fs/nfs/Kconfig
++++ b/fs/nfs/Kconfig
+@@ -82,6 +82,11 @@ config NFS_V4_1
+ 
+ 	  If unsure, say N.
+ 
++config PNFS_FILE_LAYOUT
++	tristate
++	depends on NFS_FS && NFS_V4_1
++	default m
++
+ config ROOT_NFS
+ 	bool "Root file system on NFS"
+ 	depends on NFS_FS=y && IP_PNP
+diff --git a/fs/nfs/Makefile b/fs/nfs/Makefile
+index bb9e773..08a8889 100644
+--- a/fs/nfs/Makefile
++++ b/fs/nfs/Makefile
+@@ -18,3 +18,6 @@ nfs-$(CONFIG_NFS_V4)	+= nfs4proc.o nfs4xdr.o nfs4state.o nfs4renewd.o \
+ nfs-$(CONFIG_NFS_V4_1)	+= pnfs.o
+ nfs-$(CONFIG_SYSCTL) += sysctl.o
+ nfs-$(CONFIG_NFS_FSCACHE) += fscache.o fscache-index.o
++
++obj-$(CONFIG_PNFS_FILE_LAYOUT) += nfs_layout_nfsv41_files.o
++nfs_layout_nfsv41_files-y := nfs4filelayout.o
+diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+new file mode 100644
+index 0000000..c685196
+--- /dev/null
++++ b/fs/nfs/nfs4filelayout.c
+@@ -0,0 +1,89 @@
++/*
++ *  Module for the pnfs nfs4 file layout driver.
++ *  Defines all I/O and Policy interface operations, plus code
++ *  to register itself with the pNFS client.
++ *
++ *  Copyright (c) 2002
++ *  The Regents of the University of Michigan
++ *  All Rights Reserved
++ *
++ *  Dean Hildebrand <dhildebz@umich.edu>
++ *
++ *  Permission is granted to use, copy, create derivative works, and
++ *  redistribute this software and such derivative works for any purpose,
++ *  so long as the name of the University of Michigan is not used in
++ *  any advertising or publicity pertaining to the use or distribution
++ *  of this software without specific, written prior authorization. If
++ *  the above copyright notice or any other identification of the
++ *  University of Michigan is included in any copy of any portion of
++ *  this software, then the disclaimer below must also be included.
++ *
++ *  This software is provided as is, without representation or warranty
++ *  of any kind either express or implied, including without limitation
++ *  the implied warranties of merchantability, fitness for a particular
++ *  purpose, or noninfringement.  The Regents of the University of
++ *  Michigan shall not be liable for any damages, including special,
++ *  indirect, incidental, or consequential damages, with respect to any
++ *  claim arising out of or in connection with the use of the software,
++ *  even if it has been or is hereafter advised of the possibility of
++ *  such damages.
++ */
++
++#include <linux/nfs_fs.h>
++#include "pnfs.h"
++
++#define NFSDBG_FACILITY         NFSDBG_PNFS_LD
++
++MODULE_LICENSE("GPL");
++MODULE_AUTHOR("Dean Hildebrand <dhildebz@umich.edu>");
++MODULE_DESCRIPTION("The NFSv4 file layout driver");
++
++int
++filelayout_initialize_mountpoint(struct nfs_client *clp)
++{
++	return 0;
++}
++
++int
++filelayout_uninitialize_mountpoint(struct nfs_client *clp)
++{
++	dprintk("--> %s\n", __func__);
++
++	return 0;
++}
++
++struct layoutdriver_io_operations filelayout_io_operations = {
++	.initialize_mountpoint   = filelayout_initialize_mountpoint,
++	.uninitialize_mountpoint = filelayout_uninitialize_mountpoint,
++};
++
++
++struct pnfs_layoutdriver_type filelayout_type = {
++	.id = LAYOUT_NFSV4_1_FILES,
++	.name = "LAYOUT_NFSV4_1_FILES",
++	.ld_io_ops = &filelayout_io_operations,
++};
++
++static int __init nfs4filelayout_init(void)
++{
++	printk(KERN_INFO "%s: NFSv4 File Layout Driver Registering...\n",
++	       __func__);
++
++	/*
++	 * Need to register file_operations struct with global list to indicate
++	 * that NFS4 file layout is a possible pNFS I/O module
++	 */
++	return pnfs_register_layoutdriver(&filelayout_type);
++}
++
++static void __exit nfs4filelayout_exit(void)
++{
++	printk(KERN_INFO "%s: NFSv4 File Layout Driver Unregistering...\n",
++	       __func__);
++
++	/* Unregister NFS4 file layout driver with pNFS client*/
++	pnfs_unregister_layoutdriver(&filelayout_type);
++}
++
++module_init(nfs4filelayout_init);
++module_exit(nfs4filelayout_exit);
+diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
+index 042c2bd..a0f49a3 100644
+--- a/include/linux/nfs_fs.h
++++ b/include/linux/nfs_fs.h
+@@ -614,6 +614,7 @@ extern void * nfs_root_data(void);
+ #define NFSDBG_MOUNT		0x0400
+ #define NFSDBG_FSCACHE		0x0800
+ #define NFSDBG_PNFS		0x1000
++#define NFSDBG_PNFS_LD		0x2000
+ #define NFSDBG_ALL		0xFFFF
+ 
+ #ifdef __KERNEL__
+-- 
+1.7.2.1
 
-> 
->>
->>  static inline int pnfs_get_write_status(struct nfs_write_data *data)
->> diff --git a/fs/nfs/read.c b/fs/nfs/read.c
->> index dde7996..36eef5e 100644
->> --- a/fs/nfs/read.c
->> +++ b/fs/nfs/read.c
->> @@ -121,12 +121,14 @@ int nfs_readpage_async(struct nfs_open_context *ctx, struct inode *inode,
->>        LIST_HEAD(one_request);
->>        struct nfs_page *new;
->>        unsigned int len;
->> +       loff_t pgoffs;
->>        struct pnfs_layout_segment *lseg;
->>
->>        len = nfs_page_length(page);
->>        if (len == 0)
->>                return nfs_return_empty_page(page);
->> -       pnfs_update_layout(inode, ctx, 0, NFS4_MAX_UINT64, IOMODE_READ, &lseg);
->> +       pgoffs = (loff_t)page->index << PAGE_CACHE_SHIFT;
->> +       pnfs_update_layout(inode, ctx, pgoffs, len, IOMODE_READ, &lseg);
->>        new = nfs_create_request(ctx, inode, page, 0, len, lseg);
->>        put_lseg(lseg);
->>        if (IS_ERR(new)) {
->> @@ -603,14 +605,27 @@ readpage_async_filler(void *data, struct page *page)
->>  {
->>        struct nfs_readdesc *desc = (struct nfs_readdesc *)data;
->>        struct inode *inode = page->mapping->host;
->> +       struct pnfs_layout_range *range;
->>        struct nfs_page *new;
->>        unsigned int len;
->> +       loff_t pgoff;
->>        int error;
->>
->>        len = nfs_page_length(page);
->>        if (len == 0)
->>                return nfs_return_empty_page(page);
->>
->> +       pgoff = (loff_t)page->index << PAGE_CACHE_SHIFT;
->> +       range = desc->pgio->pg_lseg ? &desc->pgio->pg_lseg->range : NULL;
->> +       if (!range ||
->> +           (range->offset > pgoff + len) ||
->> +           (range->offset + range->length < pgoff)) {
->> +               put_lseg(desc->pgio->pg_lseg);
->> +               desc->pgio->pg_lseg = NULL;
->> +               pnfs_update_layout(inode, desc->ctx, pgoff, len, IOMODE_READ,
->> +                                  &desc->pgio->pg_lseg);
->> +       }
->> +
->>        new = nfs_create_request(desc->ctx, inode, page, 0, len,
->>                                 desc->pgio->pg_lseg);
->>        if (IS_ERR(new))
->> --
-> 
-> 
-> Wouldn't it be easier to just trim any returned layout to page
-> boundaries, and then pnfs_can_coalesce_requests will handle this
-> automatically.
-
-Trimming the returned layout to page boundaries sounds like a good idea,
-but in this case it's not the page alignment I'm worried about, but
-working in layout segments in general.  The first segment we end with
-after pnfs_pageio_init_read and that we store in desc->pgio->pg_lseg
-may cover only part of the whole I/O so we need this check to see if
-it's exhausted and we need another layout segment to continue, otherwise
-we'll be using a layout segment that does not cover the page in hand.
-
-Benny
-
-> 
-> Fred
-> 
->> 1.7.2.3
->>
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>
