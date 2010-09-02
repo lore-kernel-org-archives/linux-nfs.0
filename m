@@ -1,145 +1,73 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yx0-f174.google.com ([209.85.213.174]:65003 "EHLO
-	mail-yx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755042Ab0IJUJL (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Sep 2010 16:09:11 -0400
-Received: by mail-yx0-f174.google.com with SMTP id 4so1305439yxp.19
-        for <linux-nfs@vger.kernel.org>; Fri, 10 Sep 2010 13:09:10 -0700 (PDT)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 03/11] SUNRPC: Refactor logic to NUL-terminate strings in pages
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Date: Fri, 10 Sep 2010 16:09:07 -0400
-Message-ID: <20100910200906.13321.33839.stgit@seurat.1015granger.net>
-In-Reply-To: <20100910200512.13321.55605.stgit@seurat.1015granger.net>
-References: <20100910200512.13321.55605.stgit@seurat.1015granger.net>
-Content-Type: text/plain; charset="utf-8"
+Received: from ecfrec.frec.bull.fr ([129.183.4.8]:47677 "EHLO
+	ecfrec.frec.bull.fr" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752469Ab0IBGw1 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 2 Sep 2010 02:52:27 -0400
+Received: from cyclope.frec.bull.fr (cyclope.frec.bull.fr [129.183.4.9])
+	by ecfrec.frec.bull.fr (Postfix) with ESMTP id 387B5712D7
+	for <linux-nfs@vger.kernel.org>; Thu,  2 Sep 2010 08:52:19 +0200 (CEST)
+Received: from [129.183.101.247] (pa-129.183.101.247.frec.bull.fr [129.183.101.247])
+	by cyclope.frec.bull.fr (Postfix) with ESMTP id 26C832728D
+	for <linux-nfs@vger.kernel.org>; Thu,  2 Sep 2010 08:52:18 +0200 (CEST)
+Message-ID: <4C7F4AB7.5020802@bull.net>
+Date: Thu, 02 Sep 2010 08:56:55 +0200
+From: Menyhart Zoltan <Zoltan.Menyhart@bull.net>
+To: linux-nfs@vger.kernel.org
+Subject: statfs() gives ESTALE error
+References: <4C7E4469.70807@duchatelet.net>
+In-Reply-To: <4C7E4469.70807@duchatelet.net>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Clean up: Introduce a helper to '\0'-terminate XDR strings
-that are placed in a page in the page cache.
+Hi,
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
+An NFS client executes a statfs("file", &buff) call.
+"file" exists / existed, the client has read / written it,
+but it has already closed it.
 
- fs/nfs/nfs2xdr.c           |    6 +-----
- fs/nfs/nfs3xdr.c           |    6 +-----
- fs/nfs/nfs4xdr.c           |    5 +----
- include/linux/sunrpc/xdr.h |    1 +
- net/sunrpc/xdr.c           |   17 +++++++++++++++++
- 5 files changed, 21 insertions(+), 14 deletions(-)
+user_path(pathname, &path) looks up "file" successfully in the
+directory-cache  and restarts the aging timer of the directory-entry.
+Even if "file" has already been removed from the server, because the
+lookupcache=positive opcion I use, keeps the entries valid for a while.
 
-diff --git a/fs/nfs/nfs2xdr.c b/fs/nfs/nfs2xdr.c
-index db8846a..43413f2 100644
---- a/fs/nfs/nfs2xdr.c
-+++ b/fs/nfs/nfs2xdr.c
-@@ -596,7 +596,6 @@ nfs_xdr_readlinkres(struct rpc_rqst *req, __be32 *p, void *dummy)
- 	struct kvec *iov = rcvbuf->head;
- 	size_t hdrlen;
- 	u32 len, recvd;
--	char	*kaddr;
- 	int	status;
- 
- 	if ((status = ntohl(*p++)))
-@@ -623,10 +622,7 @@ nfs_xdr_readlinkres(struct rpc_rqst *req, __be32 *p, void *dummy)
- 		return -EIO;
- 	}
- 
--	/* NULL terminate the string we got */
--	kaddr = (char *)kmap_atomic(rcvbuf->pages[0], KM_USER0);
--	kaddr[len+rcvbuf->page_base] = '\0';
--	kunmap_atomic(kaddr, KM_USER0);
-+	xdr_terminate_string(rcvbuf, len);
- 	return 0;
- }
- 
-diff --git a/fs/nfs/nfs3xdr.c b/fs/nfs/nfs3xdr.c
-index 9769704..a8170a0 100644
---- a/fs/nfs/nfs3xdr.c
-+++ b/fs/nfs/nfs3xdr.c
-@@ -824,7 +824,6 @@ nfs3_xdr_readlinkres(struct rpc_rqst *req, __be32 *p, struct nfs_fattr *fattr)
- 	struct kvec *iov = rcvbuf->head;
- 	size_t hdrlen;
- 	u32 len, recvd;
--	char	*kaddr;
- 	int	status;
- 
- 	status = ntohl(*p++);
-@@ -857,10 +856,7 @@ nfs3_xdr_readlinkres(struct rpc_rqst *req, __be32 *p, struct nfs_fattr *fattr)
- 		return -EIO;
- 	}
- 
--	/* NULL terminate the string we got */
--	kaddr = (char*)kmap_atomic(rcvbuf->pages[0], KM_USER0);
--	kaddr[len+rcvbuf->page_base] = '\0';
--	kunmap_atomic(kaddr, KM_USER0);
-+	xdr_terminate_string(rcvbuf, len);
- 	return 0;
- }
- 
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index 08ef912..e1ed89e 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -4299,7 +4299,6 @@ static int decode_readlink(struct xdr_stream *xdr, struct rpc_rqst *req)
- 	size_t hdrlen;
- 	u32 len, recvd;
- 	__be32 *p;
--	char *kaddr;
- 	int status;
- 
- 	status = decode_op_hdr(xdr, OP_READLINK);
-@@ -4330,9 +4329,7 @@ static int decode_readlink(struct xdr_stream *xdr, struct rpc_rqst *req)
- 	 * and and null-terminate the text (the VFS expects
- 	 * null-termination).
- 	 */
--	kaddr = (char *)kmap_atomic(rcvbuf->pages[0], KM_USER0);
--	kaddr[len+rcvbuf->page_base] = '\0';
--	kunmap_atomic(kaddr, KM_USER0);
-+	xdr_terminate_string(rcvbuf, len);
- 	return 0;
- out_overflow:
- 	print_overflow_msg(__func__, xdr);
-diff --git a/include/linux/sunrpc/xdr.h b/include/linux/sunrpc/xdr.h
-index 35cf2e8..8c1dcbb 100644
---- a/include/linux/sunrpc/xdr.h
-+++ b/include/linux/sunrpc/xdr.h
-@@ -108,6 +108,7 @@ void	xdr_encode_pages(struct xdr_buf *, struct page **, unsigned int,
- 			 unsigned int);
- void	xdr_inline_pages(struct xdr_buf *, unsigned int,
- 			 struct page **, unsigned int, unsigned int);
-+void	xdr_terminate_string(struct xdr_buf *, const u32);
- 
- static inline __be32 *xdr_encode_array(__be32 *p, const void *s, unsigned int len)
- {
-diff --git a/net/sunrpc/xdr.c b/net/sunrpc/xdr.c
-index a1f82a8..d463d20 100644
---- a/net/sunrpc/xdr.c
-+++ b/net/sunrpc/xdr.c
-@@ -111,6 +111,23 @@ xdr_decode_string_inplace(__be32 *p, char **sp,
- }
- EXPORT_SYMBOL_GPL(xdr_decode_string_inplace);
- 
-+/**
-+ * xdr_terminate_string - '\0'-terminate a string residing in an xdr_buf
-+ * @buf: XDR buffer where string resides
-+ * @len: length of string, in bytes
-+ *
-+ */
-+void
-+xdr_terminate_string(struct xdr_buf *buf, const u32 len)
-+{
-+	char *kaddr;
+nfs_statfs() returns ESTALE if "file" has already been removed from the
+server.
+
+If the user application repeats the statfs("file", &buff) call, we
+are stuck: "file" remains young forever in the directory-cache.
+
+Should not this directory-entry be cleaned up?
+
+--- linux-2.6.32.x86_64-orig/fs/nfs/super.c     2010-08-02 14:34:57.000000000 +0200
++++ linux-2.6.32.x86_64/fs/nfs/super.c  2010-08-31 16:57:30.000000000 +0200
+@@ -429,6 +429,22 @@
+         int error;
+  
+         error = server->nfs_client->rpc_ops->statfs(server, fh, &res);
++       if (unlikely(error == -ESTALE)){
 +
-+	kaddr = kmap_atomic(buf->pages[0], KM_USER0);
-+	kaddr[buf->page_base + len] = '\0';
-+	kunmap_atomic(kaddr, KM_USER0);
-+}
-+EXPORT_SYMBOL(xdr_terminate_string);
++               struct inode *pd_inode;
 +
- void
- xdr_encode_pages(struct xdr_buf *xdr, struct page **pages, unsigned int base,
- 		 unsigned int len)
++               BUG_ON(dentry->d_parent == NULL);
++               pd_inode = dentry->d_parent->d_inode;
++               BUG_ON(pd_inode == NULL);
++               /*
++                * This forces the revalidation code in nfs_lookup_revalidate() to do a
++                * full lookup on all child dentries of 'dir' whenever a change occurs
++                * on the server that might have invalidated our dcache.
++                */
++               spin_lock(&pd_inode->i_lock);
++               nfs_force_lookup_revalidate(pd_inode);
++               spin_unlock(&pd_inode->i_lock);
++       }
+         if (error < 0)
+                 goto out_err;
+         buf->f_type = NFS_SUPER_MAGIC;
 
+It's for the 2.6.32, yet the 2.6.36 dos not change from this aspect.
+
+Thanks,
+
+Zoltan Menyhart
