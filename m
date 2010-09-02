@@ -1,54 +1,157 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:46998 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753643Ab0ISSyj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 19 Sep 2010 14:54:39 -0400
-Date: Sun, 19 Sep 2010 14:53:18 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: Sachin Prabhu <sprabhu@redhat.com>, linux-nfs <linux-nfs@vger.kernel.org>
-Subject: Re: Should we be aggressively invalidating cache when using
- -onolock?
-Message-ID: <20100919185318.GE32071@fieldses.org>
-References: <1103741.22.1284726314119.JavaMail.sprabhu@dhcp-1-233.fab.redhat.com>
- <29790688.25.1284726394683.JavaMail.sprabhu@dhcp-1-233.fab.redhat.com>
- <20100917174644.GD25515@fieldses.org>
- <20100918070932.1c1bb700@corrin.poochiereds.net>
+Received: from rcsinet10.oracle.com ([148.87.113.121]:31311 "EHLO
+	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756851Ab0IBUQm convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 2 Sep 2010 16:16:42 -0400
+Subject: Re: [PATCH 1/1] mount: RDMA processing in the mount command is broken
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20100918070932.1c1bb700@corrin.poochiereds.net>
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <1283457651-12010-1-git-send-email-steved@redhat.com>
+Date: Thu, 2 Sep 2010 16:15:23 -0400
+Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Message-Id: <1FB4635E-5757-420B-A32B-47D2D1778A56@oracle.com>
+References: <1283457651-12010-1-git-send-email-steved@redhat.com>
+To: Steve Dickson <steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Sat, Sep 18, 2010 at 07:09:32AM -0400, Jeff Layton wrote:
-> On Fri, 17 Sep 2010 13:46:44 -0400
-> "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> 
-> > On Fri, Sep 17, 2010 at 08:26:39AM -0400, Sachin Prabhu wrote:
-> > > We came across an issue where the performance of an application using flocks on RHEL 4(2.6.9 kernel) was far better when compared to the performance of the same application on RHEL 5(2.6.18 kernel). The nfs client behavior when performing flocks on RHEL 4 and RHEL 5 differ. To ensure we had a level playing field, we repeated the tests using the mount option -o nolock. 
-> > > 
-> > > The performance on RHEL 5 improved slightly but was still pretty bad when compared to performance on RHEL 4. On closer observation, it was seen that there are a large number of READ requests on RHEL 5 while on RHEL 4 there were hardly any. This difference in behavior was caused by the code which invalidates the cache in the do_setlk() function and results in the RHEL 5 client performing a large number of READ requests.
-> > > 
-> > > In this case, the files were only being accessed by one client. This is why the nolock mount option was used. When running such workloads, the aggressive invalidation of the cache is unnecessary. This patch improves the performance in such a scenario.
-> > 
-> > Makes sense to me.
-> > 
-> 
-> Agreed. This is potentially a huge performance win for some workloads.
-> 
-> > (Is it possible that somebody might depend on lock/unlock to keep their
-> > meaning of "invalidate cache/flush changes" even when they don't care
-> > bout checking for inter-client lock conflicts?  That sounds like an odd
-> > use case to me.)
-> > 
-> 
-> Aye, there's the rub. It might cause anyone doing this to regress. My
-> gut feeling is that those people are a minority if any exist at all.
-> The consequences of such a change for them could be pretty ugly but I'm
-> not sure we owe them any consistency guarantees in such a case.
 
-Yeah, I haven't seen any documentation of the
-revalidate-caches-but-don't-lock mode that has been accidentally
-implemented here, and I don't think anyone could sensibly depend on it.
+On Sep 2, 2010, at 4:00 PM, Steve Dickson wrote:
 
---b.
+> The mounting code that process RMDA mounts is broken in a few places
+> 
+> First with '-o proto=rdma' was broken because nfs_get_proto()
+> did not how to convert a netid of 'rdma' in to a AF_INET
+> address family.
+
+The usual solution for that is to add appropriate definitions to /etc/netconfig.  Since "rdma" is going to become (or has become) a valid "IETF standard" netid, shouldn't this be handled just like the other netids?  At some point "rdma" is going to start showing up in rpcbind, so this is going to have to work like a normal netid.
+
+> Secondly, '-o rdma' was broken because po_get() was being using
+> to detect the existence of 'rdma' in the options. With '-o rdma'
+> there is no value associated with that option so po_get()
+> was always return NULL.
+
+This should be handled just the same way the "udp" and "tcp" mount options are handled, in nfs_nfs_protocol().  Just add an entry for "rdma" in nfs_transport_opttbl.
+
+The problem is we don't have an IPPROTO_ number for RDMA, so you'll have to make one up.
+
+What does the kernel do in these cases?
+
+> This patch address both those problems.
+
+Let's not riddle the mount code with these ad hoc string comparisons when we've already got plenty adequate generic support for adding new transport labels.
+
+> Signed-off-by: Steve Dickson <steved@redhat.com>
+> ---
+> support/nfs/getport.c |    8 ++++++++
+> utils/mount/stropts.c |   31 ++++++++++++++++++++++---------
+> 2 files changed, 30 insertions(+), 9 deletions(-)
+> 
+> diff --git a/support/nfs/getport.c b/support/nfs/getport.c
+> index c930539..b4c2f8f 100644
+> --- a/support/nfs/getport.c
+> +++ b/support/nfs/getport.c
+> @@ -216,6 +216,10 @@ nfs_get_proto(const char *netid, sa_family_t *family, unsigned long *protocol)
+> 	struct netconfig *nconf;
+> 	struct protoent *proto;
+> 
+> +	if (strcasecmp(netid, "rdma") == 0) {
+> +		*family = AF_INET;
+> +		return 1;
+> +	}
+> 	nconf = getnetconfigent(netid);
+> 	if (nconf == NULL)
+> 		return 0;
+> @@ -242,6 +246,10 @@ nfs_get_proto(const char *netid, sa_family_t *family, unsigned long *protocol)
+> {
+> 	struct protoent *proto;
+> 
+> +	if (strcasecmp(netid, "rdma") == 0) {
+> +		*family = AF_INET;
+> +		return 1;
+> +	}
+> 	proto = getprotobyname(netid);
+> 	if (proto == NULL)
+> 		return 0;
+> diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
+> index 0241400..d688ee8 100644
+> --- a/utils/mount/stropts.c
+> +++ b/utils/mount/stropts.c
+> @@ -98,6 +98,22 @@ struct nfsmount_info {
+> 				child;		/* forked bg child? */
+> };
+> 
+> +/*
+> + * Check the options to see if the transport is RDMA
+> + */
+> +static int rdma_enabled(struct mount_options *options)
+> +{
+> +	char *option;
+> +
+> +	if (po_contains(options, "rdma"))
+> +		return 1;
+> +	option = po_get(options, "proto");
+> +	if (option && strcmp(option, "rdma") == 0)
+> +		return 1;
+> +
+> +	return 0;
+> +}
+> +
+> #ifdef MOUNT_CONFIG
+> static void nfs_default_version(struct nfsmount_info *mi);
+> 
+> @@ -302,11 +318,8 @@ static int nfs_set_version(struct nfsmount_info *mi)
+> 
+> 	if (strncmp(mi->type, "nfs4", 4) == 0)
+> 		mi->version = 4;
+> -	else {
+> -		char *option = po_get(mi->options, "proto");
+> -		if (option && strcmp(option, "rdma") == 0)
+> -			mi->version = 3;
+> -	}
+> +	else if (rdma_enabled(mi->options))
+> +		mi->version = 3;
+> 
+> 	/*
+> 	 * If we still don't know, check for version-specific
+> @@ -346,7 +359,9 @@ static int nfs_validate_options(struct nfsmount_info *mi)
+> 	if (!nfs_parse_devname(mi->spec, &mi->hostname, NULL))
+> 		return 0;
+> 
+> -	if (!nfs_nfs_proto_family(mi->options, &family))
+> +	if (rdma_enabled(mi->options))
+> +		family = AF_INET;
+> +	else if (!nfs_nfs_proto_family(mi->options, &family))
+> 		return 0;
+> 
+> 	hint.ai_family = (int)family;
+> @@ -491,13 +506,11 @@ nfs_rewrite_pmap_mount_options(struct mount_options *options)
+> 	struct sockaddr *mnt_saddr = &mnt_address.sa;
+> 	socklen_t mnt_salen = sizeof(mnt_address);
+> 	struct pmap mnt_pmap;
+> -	char *option;
+> 
+> 	/*
+> 	 * Skip option negotiation for proto=rdma mounts.
+> 	 */
+> -	option = po_get(options, "proto");
+> -	if (option && strcmp(option, "rdma") == 0)
+> +	if (rdma_enabled(options))
+> 		goto out;
+> 
+> 	/*
+> -- 
+> 1.7.1
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+-- 
+chuck[dot]lever[at]oracle[dot]com
+
+
+
+
