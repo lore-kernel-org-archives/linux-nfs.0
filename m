@@ -1,196 +1,261 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ww0-f44.google.com ([74.125.82.44]:52244 "EHLO
-	mail-ww0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755896Ab0IUTZJ convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 21 Sep 2010 15:25:09 -0400
-Received: by wwi17 with SMTP id 17so69754wwi.1
-        for <linux-nfs@vger.kernel.org>; Tue, 21 Sep 2010 12:25:07 -0700 (PDT)
-In-Reply-To: <1285095654-32401-1-git-send-email-bhalevy@panasas.com>
-References: <1285095654-32401-1-git-send-email-bhalevy@panasas.com>
-Date: Tue, 21 Sep 2010 15:25:07 -0400
-Message-ID: <AANLkTi=mSWun+tEOrjGUsuc2gs_79K2+NCUOrXJoaMeW@mail.gmail.com>
-Subject: Re: [PATCH] SQUASHME: pnfs: get layout in proper segments.
-From: Fred Isaman <iisaman@netapp.com>
-To: Benny Halevy <bhalevy@panasas.com>
+Received: from mail-yx0-f174.google.com ([209.85.213.174]:47056 "EHLO
+	mail-yx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754486Ab0IBTX7 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 2 Sep 2010 15:23:59 -0400
+Received: by yxp4 with SMTP id 4so313919yxp.19
+        for <linux-nfs@vger.kernel.org>; Thu, 02 Sep 2010 12:23:58 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH] libexport.a: Refactor init_netmask()
+To: steved@redhat.com
 Cc: linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=ISO-8859-1
+Date: Thu, 02 Sep 2010 15:23:53 -0400
+Message-ID: <20100902192350.1755.66184.stgit@matisse.1015granger.net>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Tue, Sep 21, 2010 at 3:00 PM, Benny Halevy <bhalevy@panasas.com> wrote:
-> Base the LAYOUTGET arguments on the actual required byte ranges
-> rather than asking for the whole file layout.
->
-> Add a check in readpage_async_filler that the layout segment
-> retrieved in pnfs_pageio_init_read still covers the current page
-> and if not, try getting a new one.
->
-> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-> ---
->  fs/nfs/file.c |    2 +-
->  fs/nfs/pnfs.c |   13 ++++++-------
->  fs/nfs/pnfs.h |   21 ++++++++-------------
->  fs/nfs/read.c |   17 ++++++++++++++++-
->  4 files changed, 31 insertions(+), 22 deletions(-)
->
-> diff --git a/fs/nfs/file.c b/fs/nfs/file.c
-> index b05c1ff..228f41e 100644
-> --- a/fs/nfs/file.c
-> +++ b/fs/nfs/file.c
-> @@ -390,7 +390,7 @@ static int nfs_write_begin(struct file *file, struct address_space *mapping,
->
->        pnfs_update_layout(mapping->host,
->                           nfs_file_open_context(file),
-> -                          0, NFS4_MAX_UINT64, IOMODE_RW,
-> +                          pos, len, IOMODE_RW,
->                           &lseg);
->  start:
->        /*
-> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-> index e6261a3..de716f6 100644
-> --- a/fs/nfs/pnfs.c
-> +++ b/fs/nfs/pnfs.c
-> @@ -600,11 +600,10 @@ send_layoutget(struct inode *ino,
->                pnfs_layout_release(lo, NULL);
->                return -ENOMEM;
->        }
-> -       lgp->args.minlength = NFS4_MAX_UINT64;
-> +       lgp->args.minlength = PAGE_CACHE_SIZE -
-> +                               (range->offset & (PAGE_CACHE_SIZE-1));
->        lgp->args.maxcount = PNFS_LAYOUT_MAXSIZE;
-> -       lgp->args.range.iomode = range->iomode;
-> -       lgp->args.range.offset = 0;
-> -       lgp->args.range.length = NFS4_MAX_UINT64;
-> +       lgp->args.range = *range;
->        lgp->args.type = server->pnfs_curr_ld->id;
->        lgp->args.inode = ino;
->        lgp->lsegpp = lsegpp;
-> @@ -1028,8 +1027,8 @@ _pnfs_update_layout(struct inode *ino,
->  {
->        struct pnfs_layout_range arg = {
->                .iomode = iomode,
-> -               .offset = 0,
-> -               .length = NFS4_MAX_UINT64,
-> +               .offset = pos,
-> +               .length = count,
->        };
->        struct nfs_inode *nfsi = NFS_I(ino);
->        struct pnfs_layout_hdr *lo;
-> @@ -1330,7 +1329,7 @@ pnfs_pageio_init_read(struct nfs_pageio_descriptor *pgio,
->        readahead_range(inode, pages, &loff, &count);
->
->        if (count > 0) {
-> -               _pnfs_update_layout(inode, ctx, loff, count, IOMODE_READ,
-> +               pnfs_update_layout(inode, ctx, loff, count, IOMODE_READ,
+Instead of a single function that can handle both AF_INET and AF_INET6
+addresses, two separate functions might be cleaner.
 
+The original plan was to keep code redundancy at a minimum, but the
+resulting code was cumbersome at best.  I think I've traded a little
+extra code for something that will be much easier to read, understand,
+and maintain.
 
-Why this change?  the pnfs_enabled_sb check has already been done at
-the top of the function, hasn't it?
+I've also eliminated the "#if / #endif" instances inside the functions.
 
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
 
->                                    &pgio->pg_lseg);
->                if (!pgio->pg_lseg)
->                        return;
-> diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-> index 81534aa..b666f53 100644
-> --- a/fs/nfs/pnfs.h
-> +++ b/fs/nfs/pnfs.h
-> @@ -188,19 +188,14 @@ static inline int pnfs_return_layout(struct inode *ino,
->        return 0;
->  }
->
-> -static inline void pnfs_update_layout(struct inode *ino,
-> -       struct nfs_open_context *ctx,
-> -       loff_t pos, u64 count, enum pnfs_iomode access_type,
-> -       struct pnfs_layout_segment **lsegpp)
-> -{
-> -       struct nfs_server *nfss = NFS_SERVER(ino);
-> -
-> -       if (pnfs_enabled_sb(nfss))
-> -               _pnfs_update_layout(ino, ctx, pos, count, access_type, lsegpp);
-> -       else {
-> -               if (lsegpp)
-> -                       *lsegpp = NULL;
-> -       }
-> +#define pnfs_update_layout(ino, ctx, pos, count, access_type, lsegpp) { \
-> +       if (pnfs_enabled_sb(NFS_SERVER(ino))) { \
-> +               dprintk("%s: updating %s layout pos %llu count %llu\n", __func__, \
-> +                       (access_type) == IOMODE_READ ? "READ" : "WRITE", \
-> +                       (unsigned long long)(pos), (unsigned long long)(count)); \
-> +               _pnfs_update_layout(ino, ctx, pos, count, access_type, lsegpp); \
-> +       } else \
-> +               *lsegpp = NULL; \
->  }
+ support/export/client.c |  163 +++++++++++++++++++++++++++++++----------------
+ 1 files changed, 106 insertions(+), 57 deletions(-)
 
+diff --git a/support/export/client.c b/support/export/client.c
+index c74961e..dbfc2b1 100644
+--- a/support/export/client.c
++++ b/support/export/client.c
+@@ -60,86 +60,111 @@ client_free(nfs_client *clp)
+ }
+ 
+ static int
+-init_netmask(nfs_client *clp, const char *slash, const sa_family_t family)
++init_netmask4(nfs_client *clp, const char *slash)
+ {
+ 	struct sockaddr_in sin = {
+ 		.sin_family		= AF_INET,
+ 	};
+-	unsigned long prefixlen;
+ 	uint32_t shift;
+-#ifdef IPV6_SUPPORTED
+-	struct sockaddr_in6 sin6 = {
+-		.sin6_family		= AF_INET6,
+-	};
+-	int i;
+-#endif
+ 
+-	/* No slash present; assume netmask is all ones */
+-	if (slash == NULL) {
+-		switch (family) {
+-		case AF_INET:
+-			prefixlen = 32;
+-			break;
+-#ifdef IPV6_SUPPORTED
+-		case AF_INET6:
+-			prefixlen = 128;
+-			break;
+-#endif
+-		default:
+-			goto out_badfamily;
+-		}
+-	} else {
+-		char *endptr;
++	/*
++	 * Decide what kind of netmask was specified.  If there's
++	 * no '/' present, assume the netmask is all ones.  If
++	 * there is a '/' and at least one '.', look for a spelled-
++	 * out netmask.  Otherwise, assume it was a prefixlen.
++	 */
++	if (slash == NULL)
++		shift = 0;
++	else {
++		unsigned long prefixlen;
+ 
+-		/* A spelled out netmask address, perhaps? */
+ 		if (strchr(slash + 1, '.') != NULL) {
+ 			if (inet_pton(AF_INET, slash + 1,
+ 						&sin.sin_addr.s_addr) == 0)
+ 				goto out_badmask;
+ 			set_addrlist_in(clp, 1, &sin);
+ 			return 1;
++		} else {
++			char *endptr;
++
++			prefixlen = strtoul(slash + 1, &endptr, 10);
++			if (*endptr != '\0' && prefixlen != ULONG_MAX &&
++			    errno != ERANGE)
++				goto out_badprefix;
+ 		}
++		if (prefixlen > 32)
++			goto out_badprefix;
++		shift = 32 - (uint32_t)prefixlen;
++	}
++
++	/*
++	 * Now construct the full netmask bitmask in a sockaddr_in,
++	 * and plant it in the nfs_client record.
++	 */
++	sin.sin_addr.s_addr = htonl((uint32_t)~0 << shift);
++	set_addrlist_in(clp, 1, &sin);
++
++	return 1;
++
++out_badmask:
++	xlog(L_ERROR, "Invalid netmask `%s' for %s", slash + 1, clp->m_hostname);
++	return 0;
++
++out_badprefix:
++	xlog(L_ERROR, "Invalid prefix `%s' for %s", slash + 1, clp->m_hostname);
++	return 0;
++}
++
+ #ifdef IPV6_SUPPORTED
+-		if (strchr(slash + 1, ':')) {
++static int
++init_netmask6(nfs_client *clp, const char *slash)
++{
++	struct sockaddr_in6 sin6 = {
++		.sin6_family		= AF_INET6,
++	};
++	unsigned long prefixlen;
++	uint32_t shift;
++	int i;
++
++	/*
++	 * Decide what kind of netmask was specified.  If there's
++	 * no '/' present, assume the netmask is all ones.  If
++	 * there is a '/' and at least one ':', look for a spelled-
++	 * out netmask.  Otherwise, assume it was a prefixlen.
++	 */
++	if (slash == NULL)
++		prefixlen = 128;
++	else {
++		if (strchr(slash + 1, ':') != NULL) {
+ 			if (!inet_pton(AF_INET6, slash + 1, &sin6.sin6_addr))
+ 				goto out_badmask;
+ 			set_addrlist_in6(clp, 1, &sin6);
+ 			return 1;
+-		}
+-#endif
++		} else {
++			char *endptr;
+ 
+-		/* A prefixlen was given */
+-		prefixlen = strtoul(slash + 1, &endptr, 10);
+-		if (*endptr != '\0' && prefixlen != ULONG_MAX && errno != ERANGE)
++			prefixlen = strtoul(slash + 1, &endptr, 10);
++			if (*endptr != '\0' && prefixlen != ULONG_MAX &&
++			    errno != ERANGE)
++				goto out_badprefix;
++		}
++		if (prefixlen > 128)
+ 			goto out_badprefix;
+ 	}
+ 
+-	switch (family) {
+-	case AF_INET:
+-		if (prefixlen > 32)
+-			goto out_badprefix;
+-		shift = 32 - (uint32_t)prefixlen;
+-		sin.sin_addr.s_addr = htonl((uint32_t)~0 << shift);
+-		set_addrlist_in(clp, 1, &sin);
+-		return 1;
+-#ifdef IPV6_SUPPORTED
+-	case AF_INET6:
+-		if (prefixlen > 128)
+-			goto out_badprefix;
+-		for (i = 0; prefixlen > 32; i++) {
+-			sin6.sin6_addr.s6_addr32[i] = 0xffffffff;
+-			prefixlen -= 32;
+-		}
+-		shift = 32 - (uint32_t)prefixlen;
+-		sin6.sin6_addr.s6_addr32[i] = htonl((uint32_t)~0 << shift);
+-		set_addrlist_in6(clp, 1, &sin6);
+-		return 1;
+-#endif
++	/*
++	 * Now construct the full netmask bitmask in a sockaddr_in6,
++	 * and plant it in the nfs_client record.
++	 */
++	for (i = 0; prefixlen > 32; i++) {
++		sin6.sin6_addr.s6_addr32[i] = 0xffffffff;
++		prefixlen -= 32;
+ 	}
++	shift = 32 - (uint32_t)prefixlen;
++	sin6.sin6_addr.s6_addr32[i] = htonl((uint32_t)~0 << shift);
++	set_addrlist_in6(clp, 1, &sin6);
+ 
+-out_badfamily:
+-	xlog(L_ERROR, "Unsupported address family for %s", clp->m_hostname);
+-	return 0;
++	return 1;
+ 
+ out_badmask:
+ 	xlog(L_ERROR, "Invalid netmask `%s' for %s", slash + 1, clp->m_hostname);
+@@ -149,12 +174,24 @@ out_badprefix:
+ 	xlog(L_ERROR, "Invalid prefix `%s' for %s", slash + 1, clp->m_hostname);
+ 	return 0;
+ }
++#else	/* IPV6_SUPPORTED */
++static int
++init_netmask6(nfs_client *UNUSED(clp), const char *UNUSED(slash))
++{
++}
++#endif	/* IPV6_SUPPORTED */
+ 
++/*
++ * Parse the network mask for M_SUBNETWORK type clients.
++ *
++ * Return TRUE if successful, or FALSE if some error occurred.
++ */
+ static int
+ init_subnetwork(nfs_client *clp)
+ {
+ 	struct addrinfo *ai;
+ 	sa_family_t family;
++	int result = 0;
+ 	char *slash;
+ 
+ 	slash = strchr(clp->m_hostname, '/');
+@@ -166,7 +203,7 @@ init_subnetwork(nfs_client *clp)
+ 		ai = host_pton(clp->m_hostname);
+ 	if (ai == NULL) {
+ 		xlog(L_ERROR, "Invalid IP address %s", clp->m_hostname);
+-		return false;
++		return result;
+ 	}
+ 
+ 	set_addrlist(clp, 0, ai->ai_addr);
+@@ -174,7 +211,19 @@ init_subnetwork(nfs_client *clp)
+ 
+ 	freeaddrinfo(ai);
+ 
+-	return init_netmask(clp, slash, family);
++	switch (family) {
++	case AF_INET:
++		result = init_netmask4(clp, slash);
++		break;
++	case AF_INET6:
++		result = init_netmask6(clp, slash);
++		break;
++	default:
++		xlog(L_ERROR, "Unsupported address family for %s",
++			clp->m_hostname);
++	}
++
++	return result;
+ }
+ 
+ static int
 
-Why this change?  I much prefer the inline version to the define, and
-I thought that this was generally being pushed.
-
-
->
->  static inline int pnfs_get_write_status(struct nfs_write_data *data)
-> diff --git a/fs/nfs/read.c b/fs/nfs/read.c
-> index dde7996..36eef5e 100644
-> --- a/fs/nfs/read.c
-> +++ b/fs/nfs/read.c
-> @@ -121,12 +121,14 @@ int nfs_readpage_async(struct nfs_open_context *ctx, struct inode *inode,
->        LIST_HEAD(one_request);
->        struct nfs_page *new;
->        unsigned int len;
-> +       loff_t pgoffs;
->        struct pnfs_layout_segment *lseg;
->
->        len = nfs_page_length(page);
->        if (len == 0)
->                return nfs_return_empty_page(page);
-> -       pnfs_update_layout(inode, ctx, 0, NFS4_MAX_UINT64, IOMODE_READ, &lseg);
-> +       pgoffs = (loff_t)page->index << PAGE_CACHE_SHIFT;
-> +       pnfs_update_layout(inode, ctx, pgoffs, len, IOMODE_READ, &lseg);
->        new = nfs_create_request(ctx, inode, page, 0, len, lseg);
->        put_lseg(lseg);
->        if (IS_ERR(new)) {
-> @@ -603,14 +605,27 @@ readpage_async_filler(void *data, struct page *page)
->  {
->        struct nfs_readdesc *desc = (struct nfs_readdesc *)data;
->        struct inode *inode = page->mapping->host;
-> +       struct pnfs_layout_range *range;
->        struct nfs_page *new;
->        unsigned int len;
-> +       loff_t pgoff;
->        int error;
->
->        len = nfs_page_length(page);
->        if (len == 0)
->                return nfs_return_empty_page(page);
->
-> +       pgoff = (loff_t)page->index << PAGE_CACHE_SHIFT;
-> +       range = desc->pgio->pg_lseg ? &desc->pgio->pg_lseg->range : NULL;
-> +       if (!range ||
-> +           (range->offset > pgoff + len) ||
-> +           (range->offset + range->length < pgoff)) {
-> +               put_lseg(desc->pgio->pg_lseg);
-> +               desc->pgio->pg_lseg = NULL;
-> +               pnfs_update_layout(inode, desc->ctx, pgoff, len, IOMODE_READ,
-> +                                  &desc->pgio->pg_lseg);
-> +       }
-> +
->        new = nfs_create_request(desc->ctx, inode, page, 0, len,
->                                 desc->pgio->pg_lseg);
->        if (IS_ERR(new))
-> --
-
-
-Wouldn't it be easier to just trim any returned layout to page
-boundaries, and then pnfs_can_coalesce_requests will handle this
-automatically.
-
-Fred
-
-> 1.7.2.3
->
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->
