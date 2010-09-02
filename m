@@ -1,79 +1,140 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:63419 "EHLO
-	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754678Ab0IBONw convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 2 Sep 2010 10:13:52 -0400
-Subject: Re: NFS version4 maximum on-the-wire data size.
-Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <D3F292ADF945FB49B35E96C94C2061B90D066E6F@nsmail.netscout.com>
-Date: Thu, 2 Sep 2010 10:13:26 -0400
-Cc: <linux-nfs@vger.kernel.org>
-Message-Id: <AADFA0E0-7B1E-49F4-845C-E68488BA8F61@oracle.com>
-References: <D3F292ADF945FB49B35E96C94C2061B90CFB48D0@nsmail.netscout.com> <0FDF651C-4620-4872-9ABA-9F8D8FA2192A@oracle.com> <99E0B37F-C9BE-4349-B68A-4364F4EB9C04@oracle.com> <D3F292ADF945FB49B35E96C94C2061B90D066E6F@nsmail.netscout.com>
-To: "Tayade, Nilesh" <Nilesh.Tayade@netscout.com>
+Received: from mx2.netapp.com ([216.240.18.37]:47535 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754921Ab0IISKh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 9 Sep 2010 14:10:37 -0400
+Received: from localhost.localdomain (surajit-lxp.hq.netapp.com [10.58.50.95] (may be forged))
+	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id o89IAW1Q002948
+	for <linux-nfs@vger.kernel.org>; Thu, 9 Sep 2010 11:10:36 -0700 (PDT)
+From: Fred Isaman <iisaman@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 05/13] RFC: nfs: ask for layouttypes during fsinfo call
+Date: Thu,  2 Sep 2010 14:00:11 -0400
+Message-Id: <1283450419-5648-6-git-send-email-iisaman@netapp.com>
+In-Reply-To: <1283450419-5648-1-git-send-email-iisaman@netapp.com>
+References: <1283450419-5648-1-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
+From: The pNFS Team <linux-nfs@vger.kernel.org>
 
-On Sep 2, 2010, at 7:51 AM, Tayade, Nilesh wrote:
+This information will be used to determine which layout driver,
+if any, to use for subsequent IO on this filesystem.  Each driver
+is assigned an integer id, with 0 reserved to indicate no driver.
 
->> -----Original Message-----
->> From: Chuck Lever [mailto:chuck.lever@oracle.com]
->> Sent: Wednesday, September 01, 2010 9:16 PM
->> To: Chuck Lever
->> Cc: Tayade, Nilesh; linux-nfs@vger.kernel.org
->> Subject: Re: NFS version4 maximum on-the-wire data size.
->> 
->> 
->> On Sep 1, 2010, at 11:41 AM, Chuck Lever wrote:
->> 
->>> 
->>> On Sep 1, 2010, at 5:39 AM, Tayade, Nilesh wrote:
->>> 
->>>> Hi,
->>>> 
->>>> I am unable to get the exact count for the amount of on-the-wire
-> data
->>>> size that NFSv4 supports.
->>>> 
->>>> I could get exact figures in case of NFSv3
->> (http://nfs.sourceforge.net).
->>>> It's 60KB when NFSv3 is used over UDP and implementation dependent
-> in
->>>> case it is used over TCP. Any idea about NFSv4 statistics?
->>>> 
->>>> Any pointers would be appreciated.
->>> 
->>> NFSv4 reads and writes can be as large as the maximum payload size
-> of
->> the underlying transport.  NFSv4 does not support UDP, but on TCP, the
->> maximum payload size is usually approximately (2 ** 31 - 1) - (RPC
-> header
->> + NFS overhead).
->> 
->> But you were probably not asking about the theoretical limits of the
->> underlying transport.
->> 
->> The Linux NFS client limits read and write payload size to a megabyte.
->> Servers may limit it further.
-> 
-> Thanks for the information. It helps. 
-> 
-> Also we use 2.6.22 kernel version (it's old, and have no option of
-> changing it) on our Intel boxes. I was just wondering is there any
-> kernel-version Vs. NFS version mapping (I assume it's not, but just to
-> be sure about)? I have never seen NFSv2 running on our boxes. I am going
-> to write certain applications on top of NFS. So wanted to be sure if
-> NFSv2 should be supported at all (is it so widely used on recent
-> systems, compared to NFSv3/v4)?
+The server can in theory return multiple ids.  However, our current
+client implementation only notes the first entry and ignores the
+rest.
 
-With certain exceptions, applications shouldn't generally be aware of what NFS version is in use.  Without knowing more about your applications, it's hard to make any more than a very general statement.
+Signed-off-by: TBD - melding/reorganization of several patches
+---
+ fs/nfs/nfs4proc.c       |    2 +-
+ fs/nfs/nfs4xdr.c        |   57 +++++++++++++++++++++++++++++++++++++++++++++++
+ include/linux/nfs_xdr.h |    1 +
+ 3 files changed, 59 insertions(+), 1 deletions(-)
 
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 089da5b..9e6b086 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -129,7 +129,7 @@ const u32 nfs4_fsinfo_bitmap[2] = { FATTR4_WORD0_MAXFILESIZE
+ 			| FATTR4_WORD0_MAXREAD
+ 			| FATTR4_WORD0_MAXWRITE
+ 			| FATTR4_WORD0_LEASE_TIME,
+-			0
++			FATTR4_WORD1_FS_LAYOUT_TYPES
+ };
+ 
+ const u32 nfs4_fs_locations_bitmap[2] = {
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index 08ef912..60233ae 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -3868,6 +3868,60 @@ xdr_error:
+ 	return status;
+ }
+ 
++/*
++ * Decode potentially multiple layout types. Currently we only support
++ * one layout driver per file system.
++ */
++static int decode_first_pnfs_layout_type(struct xdr_stream *xdr,
++					 uint32_t *layouttype)
++{
++	uint32_t *p;
++	int num;
++
++	p = xdr_inline_decode(xdr, 4);
++	if (unlikely(!p))
++		goto out_overflow;
++	num = be32_to_cpup(p);
++
++	/* pNFS is not supported by the underlying file system */
++	if (num == 0) {
++		*layouttype = 0;
++		return 0;
++	}
++	if (num > 1)
++		printk(KERN_INFO "%s: Warning: Multiple pNFS layout drivers "
++			"per filesystem not supported\n", __func__);
++
++	/* Decode and set first layout type, move xdr->p past unused types */
++	p = xdr_inline_decode(xdr, num * 4);
++	if (unlikely(!p))
++		goto out_overflow;
++	*layouttype = be32_to_cpup(p);
++	return 0;
++out_overflow:
++	print_overflow_msg(__func__, xdr);
++	return -EIO;
++}
++
++/*
++ * The type of file system exported.
++ * Note we must ensure that layouttype is set in any non-error case.
++ */
++static int decode_attr_pnfstype(struct xdr_stream *xdr, uint32_t *bitmap,
++				uint32_t *layouttype)
++{
++	int status = 0;
++
++	dprintk("%s: bitmap is %x\n", __func__, bitmap[1]);
++	if (unlikely(bitmap[1] & (FATTR4_WORD1_FS_LAYOUT_TYPES - 1U)))
++		return -EIO;
++	if (bitmap[1] & FATTR4_WORD1_FS_LAYOUT_TYPES) {
++		status = decode_first_pnfs_layout_type(xdr, layouttype);
++		bitmap[1] &= ~FATTR4_WORD1_FS_LAYOUT_TYPES;
++	} else
++		*layouttype = 0;
++	return status;
++}
+ 
+ static int decode_fsinfo(struct xdr_stream *xdr, struct nfs_fsinfo *fsinfo)
+ {
+@@ -3894,6 +3948,9 @@ static int decode_fsinfo(struct xdr_stream *xdr, struct nfs_fsinfo *fsinfo)
+ 	if ((status = decode_attr_maxwrite(xdr, bitmap, &fsinfo->wtmax)) != 0)
+ 		goto xdr_error;
+ 	fsinfo->wtpref = fsinfo->wtmax;
++	status = decode_attr_pnfstype(xdr, bitmap, &fsinfo->layouttype);
++	if (status)
++		goto xdr_error;
+ 
+ 	status = verify_attr_len(xdr, savep, attrlen);
+ xdr_error:
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index fc46192..8a2c228 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -113,6 +113,7 @@ struct nfs_fsinfo {
+ 	__u32			dtpref;	/* pref. readdir transfer size */
+ 	__u64			maxfilesize;
+ 	__u32			lease_time; /* in seconds */
++	__u32			layouttype; /* supported pnfs layout driver */
+ };
+ 
+ struct nfs_fsstat {
 -- 
-chuck[dot]lever[at]oracle[dot]com
-
-
-
+1.7.2.1
 
