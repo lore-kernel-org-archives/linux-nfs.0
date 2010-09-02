@@ -1,169 +1,104 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:54596 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:17708 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755057Ab0IPOYP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 16 Sep 2010 10:24:15 -0400
+	id S1751735Ab0IBARl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 1 Sep 2010 20:17:41 -0400
+Date: Wed, 1 Sep 2010 20:17:30 -0400
 From: Jeff Layton <jlayton@redhat.com>
-To: Trond.Myklebust@netapp.com
-Cc: chuck.lever@oracle.com, linux-nfs@vger.kernel.org
-Subject: [PATCH 2/4] nfs: standardize the rename response container
-Date: Thu, 16 Sep 2010 10:24:03 -0400
-Message-Id: <1284647045-18286-3-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1284647045-18286-1-git-send-email-jlayton@redhat.com>
-References: <1284647045-18286-1-git-send-email-jlayton@redhat.com>
+To: Neil Brown <neilb@suse.de>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>, steved@redhat.com,
+        linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] rpc.nfsd: mount up nfsdfs is it doesn't appear to be
+ mounted yet (try #2)
+Message-ID: <20100901201730.1a7b2635@tlielax.poochiereds.net>
+In-Reply-To: <20100902073156.577757b5@notabene>
+References: <1283283160-30024-1-git-send-email-jlayton@redhat.com>
+	<20100901204818.GA10507@fieldses.org>
+	<20100901165605.41f4978d@tlielax.poochiereds.net>
+	<20100902073156.577757b5@notabene>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-Right now, v3 and v4 have their own variants. Create a standard struct
-that will work for v3 and v4. v2 doesn't get anything but a simple error
-and so isn't affected by this.
+On Thu, 2 Sep 2010 07:31:56 +1000
+Neil Brown <neilb@suse.de> wrote:
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
-Reviewed-by: Chuck Lever <chuck.lever@oracle.com>
----
- fs/nfs/nfs3proc.c       |   16 ++++++++--------
- fs/nfs/nfs3xdr.c        |    6 +++---
- fs/nfs/nfs4proc.c       |    2 +-
- fs/nfs/nfs4xdr.c        |    2 +-
- include/linux/nfs_xdr.h |   23 +++++++++--------------
- 5 files changed, 22 insertions(+), 27 deletions(-)
+> 
+> Hi,
+>  I was musing about this and thought I would share my musings - not to be
+>  taken too seriously unless they resonate with you.
+> 
+>  If rpc.nfsd is mounting /proc/fs/nfsd, should it also be starting rpc.statd,
+>  which should be running before nfsd is started?
+>  Should it 'exportfs -av' too?
+> 
+>  Should mount.nfs be mounting /var/lib/nfs/rpc_pipefs too?
+>  It already runs statd as requimred, which in-turn runs sm-notify, though it
+>  is really best to run that much earlier.
+> 
+>  How far do we really want to go with this "just do the right thing" approach?
+> 
+>  Should "rpc.nfsd" be a replacement for /etc/init.d/nfs-kernel-server or
+>  whatever your favourite distro calls it?  Or should it just be a tool for
+>  managing the nfsd threads?
+> 
 
-diff --git a/fs/nfs/nfs3proc.c b/fs/nfs/nfs3proc.c
-index d8557b3..c5cccf1 100644
---- a/fs/nfs/nfs3proc.c
-+++ b/fs/nfs/nfs3proc.c
-@@ -448,7 +448,7 @@ nfs3_proc_rename(struct inode *old_dir, struct qstr *old_name,
- 		.new_dir	= NFS_FH(new_dir),
- 		.new_name	= new_name,
- 	};
--	struct nfs3_renameres res;
-+	struct nfs_renameres res;
- 	struct rpc_message msg = {
- 		.rpc_proc	= &nfs3_procedures[NFS3PROC_RENAME],
- 		.rpc_argp	= &arg,
-@@ -458,17 +458,17 @@ nfs3_proc_rename(struct inode *old_dir, struct qstr *old_name,
- 
- 	dprintk("NFS call  rename %s -> %s\n", old_name->name, new_name->name);
- 
--	res.fromattr = nfs_alloc_fattr();
--	res.toattr = nfs_alloc_fattr();
--	if (res.fromattr == NULL || res.toattr == NULL)
-+	res.old_fattr = nfs_alloc_fattr();
-+	res.new_fattr = nfs_alloc_fattr();
-+	if (res.old_fattr == NULL || res.new_fattr == NULL)
- 		goto out;
- 
- 	status = rpc_call_sync(NFS_CLIENT(old_dir), &msg, 0);
--	nfs_post_op_update_inode(old_dir, res.fromattr);
--	nfs_post_op_update_inode(new_dir, res.toattr);
-+	nfs_post_op_update_inode(old_dir, res.old_fattr);
-+	nfs_post_op_update_inode(new_dir, res.new_fattr);
- out:
--	nfs_free_fattr(res.toattr);
--	nfs_free_fattr(res.fromattr);
-+	nfs_free_fattr(res.old_fattr);
-+	nfs_free_fattr(res.new_fattr);
- 	dprintk("NFS reply rename: %d\n", status);
- 	return status;
- }
-diff --git a/fs/nfs/nfs3xdr.c b/fs/nfs/nfs3xdr.c
-index f385759..89c40f8 100644
---- a/fs/nfs/nfs3xdr.c
-+++ b/fs/nfs/nfs3xdr.c
-@@ -970,14 +970,14 @@ nfs3_xdr_createres(struct rpc_rqst *req, __be32 *p, struct nfs3_diropres *res)
-  * Decode RENAME reply
-  */
- static int
--nfs3_xdr_renameres(struct rpc_rqst *req, __be32 *p, struct nfs3_renameres *res)
-+nfs3_xdr_renameres(struct rpc_rqst *req, __be32 *p, struct nfs_renameres *res)
- {
- 	int	status;
- 
- 	if ((status = ntohl(*p++)) != 0)
- 		status = nfs_stat_to_errno(status);
--	p = xdr_decode_wcc_data(p, res->fromattr);
--	p = xdr_decode_wcc_data(p, res->toattr);
-+	p = xdr_decode_wcc_data(p, res->old_fattr);
-+	p = xdr_decode_wcc_data(p, res->new_fattr);
- 	return status;
- }
- 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index eb36784..120a8a6 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -2682,7 +2682,7 @@ static int _nfs4_proc_rename(struct inode *old_dir, struct qstr *old_name,
- 		.new_name = new_name,
- 		.bitmask = server->attr_bitmask,
- 	};
--	struct nfs4_rename_res res = {
-+	struct nfs_renameres res = {
- 		.server = server,
- 	};
- 	struct rpc_message msg = {
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index 7a098ae..b0bd7ef 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -4873,7 +4873,7 @@ out:
- /*
-  * Decode RENAME response
-  */
--static int nfs4_xdr_dec_rename(struct rpc_rqst *rqstp, __be32 *p, struct nfs4_rename_res *res)
-+static int nfs4_xdr_dec_rename(struct rpc_rqst *rqstp, __be32 *p, struct nfs_renameres *res)
- {
- 	struct xdr_stream xdr;
- 	struct compound_hdr hdr;
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index bdda62a..bfc5417 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -411,6 +411,15 @@ struct nfs_renameargs {
- 	struct nfs4_sequence_args	seq_args;
- };
- 
-+struct nfs_renameres {
-+	const struct nfs_server		*server;
-+	struct nfs4_change_info		old_cinfo;
-+	struct nfs_fattr		*old_fattr;
-+	struct nfs4_change_info		new_cinfo;
-+	struct nfs_fattr		*new_fattr;
-+	struct nfs4_sequence_res	seq_res;
-+};
-+
- /*
-  * Argument struct for decode_entry function
-  */
-@@ -623,11 +632,6 @@ struct nfs3_readlinkargs {
- 	struct page **		pages;
- };
- 
--struct nfs3_renameres {
--	struct nfs_fattr *	fromattr;
--	struct nfs_fattr *	toattr;
--};
--
- struct nfs3_linkres {
- 	struct nfs_fattr *	dir_attr;
- 	struct nfs_fattr *	fattr;
-@@ -795,15 +799,6 @@ struct nfs4_readlink_res {
- 	struct nfs4_sequence_res	seq_res;
- };
- 
--struct nfs4_rename_res {
--	const struct nfs_server *	server;
--	struct nfs4_change_info		old_cinfo;
--	struct nfs_fattr *		old_fattr;
--	struct nfs4_change_info		new_cinfo;
--	struct nfs_fattr *		new_fattr;
--	struct nfs4_sequence_res	seq_res;
--};
--
- #define NFS4_SETCLIENTID_NAMELEN	(127)
- struct nfs4_setclientid {
- 	const nfs4_verifier *		sc_verifier;
+That's the way I envision it. rpc.nfsd is a tool for managing the nfsd
+threads, and the protocol versions and sockets that they use.
+
+Personally I see a clear delineation here. It's ok for rpc.nfsd to
+mount up /proc/fs/nfsd since it needs that interface to properly do its
+job. Doing things like starting statd or mounting up pipefs are outside
+of its scope.
+
+It just seems a little weird to me that we ought to mandate that
+someone run "modprobe nfsd" or whatever before they can actually do
+anything with rpc.nfsd.
+
+> 
+>  I could imagine that it would be OK to add a '-L' flag to say 'use legacy
+>  interface' and have rpc.nfsd fail noisily if nfsdfs wasn't mounted, and -L
+>  wasn't given.
+> 
+>  I could imagine that if protocol options were specified with -L, that would
+>  be an error.
+> 
+>  And if protocol options are specified which differ from what is currently
+>  in-force, and there are active threads, rpc.nfsd could:
+>     reduce the number of threads to 0
+>     change the protocol options
+>     restore the number of threads
+> 
+> 
+> 
+>  I think it is (long past) time to deprecate the legacy support in the kernel
+>  at least.  I suggest we add a printk to sys_nfsservctl to warn of pending
+>  deprecation, and probably add an entry to
+>  Documentation/feature-removal-schedule.txt.
+>  Aim for removing it all in 2.6.40 ?? and make it a CONFIG option before that.
+> 
+>  BTW, the 'new' cache has was added during 2.5 - definitely before Jan 2003.
+>  So the old stuff really is quite old now.
+> 
+
+Deprecating it in kernel via your plan sounds good to me.
+
+Failing noisily if /proc/fs/nfsd isn't mounted was what Steve was
+suggesting. What would be the benefit there of not attempting to mount
+nfsdfs first?
+
+It would certainly be simpler, but is it likely to lead to any harm? If
+not, it seems like a reasonable way to limit user confusion. It's hard
+to understate the value of having it "just work".
+
+The '-L' flag was sort of what I was thinking might be a good long
+term plan, though I was leaning toward a compile-time switch. For
+instance, "./configure --with-legacy-nfsd-interface".
+
+We could continue to support nfsctl() for a period of time in mainline
+nfs-utils via that switch. The actual mechanics of how to do that would
+need to be worked out though.
+
 -- 
-1.7.1
-
+Jeff Layton <jlayton@redhat.com>
