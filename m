@@ -1,158 +1,232 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:59709 "EHLO mx2.suse.de"
+Received: from mx2.netapp.com ([216.240.18.37]:47535 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751045Ab0IJEZF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 10 Sep 2010 00:25:05 -0400
-Date: Fri, 10 Sep 2010 14:24:56 +1000
-From: Neil Brown <neilb@suse.de>
-To: Suresh Jayaraman <sjayaraman@suse.de>
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Jeff Layton <jlayton@redhat.com>,
-        Linux NFS mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] nfs: introduce mount option '-olocal_lock' to make
- locks local
-Message-ID: <20100910142456.387c9fbb@notabene>
-In-Reply-To: <4C89AF05.408@suse.de>
-References: <4C893746.6090202@suse.de>
-	<20100909162037.20c4ebec@tlielax.poochiereds.net>
-	<4C896A59.8060903@suse.de>
-	<1284083063.2764.12.camel@heimdal.trondhjem.org>
-	<4C89AF05.408@suse.de>
-Content-Type: text/plain; charset=US-ASCII
+	id S1755003Ab0IISKi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 9 Sep 2010 14:10:38 -0400
+Received: from localhost.localdomain (surajit-lxp.hq.netapp.com [10.58.50.95] (may be forged))
+	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id o89IAW1R002948
+	for <linux-nfs@vger.kernel.org>; Thu, 9 Sep 2010 11:10:37 -0700 (PDT)
+From: Fred Isaman <iisaman@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 06/13] RFC: nfs: set layout driver
+Date: Thu,  2 Sep 2010 14:00:12 -0400
+Message-Id: <1283450419-5648-7-git-send-email-iisaman@netapp.com>
+In-Reply-To: <1283450419-5648-1-git-send-email-iisaman@netapp.com>
+References: <1283450419-5648-1-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Fri, 10 Sep 2010 09:37:33 +0530
-Suresh Jayaraman <sjayaraman@suse.de> wrote:
+From: The pNFS Team <linux-nfs@vger.kernel.org>
 
-> On 09/10/2010 07:14 AM, Trond Myklebust wrote:
-> > On Fri, 2010-09-10 at 04:44 +0530, Suresh Jayaraman wrote:
-> >> On 09/10/2010 01:50 AM, Jeff Layton wrote:
-> >>> On Fri, 10 Sep 2010 01:06:38 +0530
-> >>> Suresh Jayaraman <sjayaraman@suse.de> wrote:
-> >>>
-> >>>> NFS clients since 2.6.12 support flock locks by emulating fcntl byte-range
-> >>>> locks. Due to this, some windows applications which seem to use both flock
-> >>>> (share mode lock mapped as flock by Samba) and fcntl locks sequentially on
-> >>>> the same file, can't lock as they falsely assume the file is already locked.
-> >>>> The problem was reported on a setup with windows clients accessing excel files
-> >>>> on a Samba exported share which is originally a NFS mount from a NetApp filer.
-> >>>>
-> >>>> Older NFS clients (< 2.6.12) did not see this problem as flock locks were
-> >>>> considered local. To support legacy flock behavior, this patch adds a mount
-> >>>> option "-olocal_lock=" which can take the following values:
-> >>>>
-> >>>>    'none'  		- Neither flock locks or fcntl/posix locks are local
-> >>>>    'flock'/'posix' 	- flock locks are local
-> >>> 	^^^^^^^
-> >>> "posix" ought to be synonymous with "fcntl". "flock" was a BSD-ism.
-> >>
-> >> Oops, that should have read 'fcntl/posix' (though the code gets it right)..
-> > 
-> > Yup. It appears to be a changelog bug...
-> > 
-> >>> It may be better to keep it simple though and drop either "posix" or
-> >>> "fcntl". No need to add unneeded synonyms on a brand new mount option.
-> >>
-> >> Makes sense.. Trond: which one is more consistent?
-> > 
-> > I have a slight preference for 'posix'. fcntl is an extensible
-> 
-> Ok, how about this one?
-> 
-> ---
-> From: Suresh Jayaraman <sjayaraman@suse.de>
-> Subject: [PATCH] nfs: introduce mount option '-olocal_lock' to make locks local
-> 
-> NFS clients since 2.6.12 support flock locks by emulating fcntl byte-range
-> locks. Due to this, some windows applications which seem to use both flock
-> (share mode lock mapped as flock by Samba) and fcntl locks sequentially on
-> the same file, can't lock as they falsely assume the file is already locked.
-> The problem was reported on a setup with windows clients accessing excel files
-> on a Samba exported share which is originally a NFS mount from a NetApp filer.
-> 
-> Older NFS clients (< 2.6.12) did not see this problem as flock locks were
-> considered local. To support legacy flock behavior, this patch adds a mount
-> option "-olocal_lock=" which can take the following values:
-> 
->    'none'  		- Neither flock locks nor POSIX locks are local
->    'flock' 		- flock locks are local
->    'posix' 		- fcntl/POSIX locks are local
->    'all'		- Both flock locks and POSIX locks are local
-> 
-> Testing:
-> 
-> This patch was tested by using -olocal_lock option with different values and
-> the NLM calls were noted from the network packet captured.
-> 
->    'none'  - NLM calls were seen during both flock() and fcntl(), flock lock
->    	     was granted, fcntl was denied
->    'flock' - no NLM calls for flock(), NLM call was seen for fcntl(),
->    	     granted
->    'posix' - NLM call was seen for flock() - granted, no NLM call for fcntl()
->    'all'   - no NLM calls were seen during both flock() and fcntl()
-> 
-> Cc: Neil Brown <neilb@suse.de>
-> Signed-off-by: Suresh Jayaraman <sjayaraman@suse.de>
-> ---
->  fs/nfs/client.c           |    6 +++-
->  fs/nfs/file.c             |   35 +++++++++++++++++++++++----------
->  fs/nfs/super.c            |   46 +++++++++++++++++++++++++++++++++++++++++++++
->  include/linux/nfs_mount.h |    5 +++-
->  4 files changed, 78 insertions(+), 14 deletions(-)
-> 
-> diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-> index 4e7df2a..5f01f42 100644
-> --- a/fs/nfs/client.c
-> +++ b/fs/nfs/client.c
-> @@ -635,7 +635,8 @@ static int nfs_create_rpc_client(struct nfs_client *clp,
->   */
->  static void nfs_destroy_server(struct nfs_server *server)
->  {
-> -	if (!(server->flags & NFS_MOUNT_NONLM))
-> +	if (!(server->flags & NFS_MOUNT_LOCAL_FLOCK) ||
-> +			!(server->flags & NFS_MOUNT_LOCAL_FCNTL))
->  		nlmclnt_done(server->nlm_host);
->  }
->  
-> @@ -657,7 +658,8 @@ static int nfs_start_lockd(struct nfs_server *server)
->  
->  	if (nlm_init.nfs_version > 3)
->  		return 0;
-> -	if (server->flags & NFS_MOUNT_NONLM)
-> +	if ((server->flags & NFS_MOUNT_LOCAL_FLOCK) &&
-> +			(server->flags & NFS_MOUNT_LOCAL_FCNTL))
->  		return 0;
->  
->  	switch (clp->cl_proto) {
-> diff --git a/fs/nfs/file.c b/fs/nfs/file.c
-> index eb51bd6..e338d37 100644
-> --- a/fs/nfs/file.c
-> +++ b/fs/nfs/file.c
-> @@ -684,7 +684,8 @@ static ssize_t nfs_file_splice_write(struct pipe_inode_info *pipe,
->  	return ret;
->  }
->  
-> -static int do_getlk(struct file *filp, int cmd, struct file_lock *fl)
-> +static int
-> +do_getlk(struct file *filp, int cmd, struct file_lock *fl, int is_local)
->  {
->  	struct inode *inode = filp->f_mapping->host;
->  	int status = 0;
-> @@ -699,7 +700,7 @@ static int do_getlk(struct file *filp, int cmd, struct file_lock *fl)
->  	if (nfs_have_delegation(inode, FMODE_READ))
->  		goto out_noconflict;
->  
-> -	if (NFS_SERVER(inode)->flags & NFS_MOUNT_NONLM)
-> +	if ((NFS_SERVER(inode)->flags & NFS_MOUNT_NONLM) || is_local)
->  		goto out_noconflict;
+Put in the infrastructure that uses information returned from the
+server at mount to select a layout driver module.
 
-I cannot figure out why this isn't simply
-        if (is_local)
-		goto out_noconflict;
+In this patch, a stub is used that always returns "no driver found".
 
-what am I missing?
+Signed-off-by: TBD - melding/reorganization of several patches
+---
+ fs/nfs/Makefile           |    1 +
+ fs/nfs/client.c           |    4 ++
+ fs/nfs/pnfs.c             |   78 +++++++++++++++++++++++++++++++++++++++++++++
+ fs/nfs/pnfs.h             |   36 +++++++++++++++++++++
+ include/linux/nfs_fs.h    |    1 +
+ include/linux/nfs_fs_sb.h |    1 +
+ 6 files changed, 121 insertions(+), 0 deletions(-)
+ create mode 100644 fs/nfs/pnfs.c
+ create mode 100644 fs/nfs/pnfs.h
 
-Thanks,
-NeilBrown
+diff --git a/fs/nfs/Makefile b/fs/nfs/Makefile
+index da7fda6..bb9e773 100644
+--- a/fs/nfs/Makefile
++++ b/fs/nfs/Makefile
+@@ -15,5 +15,6 @@ nfs-$(CONFIG_NFS_V4)	+= nfs4proc.o nfs4xdr.o nfs4state.o nfs4renewd.o \
+ 			   delegation.o idmap.o \
+ 			   callback.o callback_xdr.o callback_proc.o \
+ 			   nfs4namespace.o
++nfs-$(CONFIG_NFS_V4_1)	+= pnfs.o
+ nfs-$(CONFIG_SYSCTL) += sysctl.o
+ nfs-$(CONFIG_NFS_FSCACHE) += fscache.o fscache-index.o
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index 4e7df2a..eed1212 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -48,6 +48,7 @@
+ #include "iostat.h"
+ #include "internal.h"
+ #include "fscache.h"
++#include "pnfs.h"
+ 
+ #define NFSDBG_FACILITY		NFSDBG_CLIENT
+ 
+@@ -898,6 +899,8 @@ static void nfs_server_set_fsinfo(struct nfs_server *server, struct nfs_fsinfo *
+ 	if (server->wsize > NFS_MAX_FILE_IO_SIZE)
+ 		server->wsize = NFS_MAX_FILE_IO_SIZE;
+ 	server->wpages = (server->wsize + PAGE_CACHE_SIZE - 1) >> PAGE_CACHE_SHIFT;
++	set_pnfs_layoutdriver(server, fsinfo->layouttype);
++
+ 	server->wtmult = nfs_block_bits(fsinfo->wtmult, NULL);
+ 
+ 	server->dtsize = nfs_block_size(fsinfo->dtpref, NULL);
+@@ -1017,6 +1020,7 @@ void nfs_free_server(struct nfs_server *server)
+ {
+ 	dprintk("--> nfs_free_server()\n");
+ 
++	unset_pnfs_layoutdriver(server);
+ 	spin_lock(&nfs_client_lock);
+ 	list_del(&server->client_link);
+ 	list_del(&server->master_link);
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+new file mode 100644
+index 0000000..2e5dba1
+--- /dev/null
++++ b/fs/nfs/pnfs.c
+@@ -0,0 +1,78 @@
++/*
++ *  pNFS functions to call and manage layout drivers.
++ *
++ *  Copyright (c) 2002 [year of first publication]
++ *  The Regents of the University of Michigan
++ *  All Rights Reserved
++ *
++ *  Dean Hildebrand <dhildebz@umich.edu>
++ *
++ *  Permission is granted to use, copy, create derivative works, and
++ *  redistribute this software and such derivative works for any purpose,
++ *  so long as the name of the University of Michigan is not used in
++ *  any advertising or publicity pertaining to the use or distribution
++ *  of this software without specific, written prior authorization. If
++ *  the above copyright notice or any other identification of the
++ *  University of Michigan is included in any copy of any portion of
++ *  this software, then the disclaimer below must also be included.
++ *
++ *  This software is provided as is, without representation or warranty
++ *  of any kind either express or implied, including without limitation
++ *  the implied warranties of merchantability, fitness for a particular
++ *  purpose, or noninfringement.  The Regents of the University of
++ *  Michigan shall not be liable for any damages, including special,
++ *  indirect, incidental, or consequential damages, with respect to any
++ *  claim arising out of or in connection with the use of the software,
++ *  even if it has been or is hereafter advised of the possibility of
++ *  such damages.
++ */
++
++#include <linux/nfs_fs.h>
++#include "pnfs.h"
++
++#define NFSDBG_FACILITY		NFSDBG_PNFS
++
++/* STUB that returns the equivalent of "no module found" */
++static struct pnfs_layoutdriver_type *
++find_pnfs_driver(u32 id) {
++	return NULL;
++}
++
++/* Unitialize a mountpoint in a layout driver */
++void
++unset_pnfs_layoutdriver(struct nfs_server *nfss)
++{
++	nfss->pnfs_curr_ld = NULL;
++}
++
++/*
++ * Try to set the server's pnfs module to the pnfs layout type specified by id.
++ * Currently only one pNFS layout driver per filesystem is supported.
++ *
++ * @id layout type. Zero (illegal layout type) indicates pNFS not in use.
++ */
++void
++set_pnfs_layoutdriver(struct nfs_server *server, u32 id)
++{
++	struct pnfs_layoutdriver_type *ld_type = NULL;
++
++	if (id == 0)
++		goto out_no_driver;
++	ld_type = find_pnfs_driver(id);
++	if (!ld_type) {
++		request_module("%s-%u", LAYOUT_NFSV4_1_MODULE_PREFIX, id);
++		ld_type = find_pnfs_driver(id);
++		if (!ld_type) {
++			dprintk("%s: No pNFS module found for %u.\n",
++				__func__, id);
++			goto out_no_driver;
++		}
++	}
++	server->pnfs_curr_ld = ld_type;
++	dprintk("%s: pNFS module for %u set\n", __func__, id);
++	return;
++
++out_no_driver:
++	dprintk("%s: Using NFSv4 I/O\n", __func__);
++	server->pnfs_curr_ld = NULL;
++}
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+new file mode 100644
+index 0000000..3281fbf
+--- /dev/null
++++ b/fs/nfs/pnfs.h
+@@ -0,0 +1,36 @@
++/*
++ *  pNFS client data structures.
++ *
++ *  Copyright (c) 2002 The Regents of the University of Michigan.
++ *  All rights reserved.
++ *
++ *  Dean Hildebrand   <dhildebz@umich.edu>
++ */
++
++#ifndef FS_NFS_PNFS_H
++#define FS_NFS_PNFS_H
++
++#ifdef CONFIG_NFS_V4_1
++
++#define LAYOUT_NFSV4_1_MODULE_PREFIX "nfs-layouttype4"
++
++/* Per-layout driver specific registration structure */
++struct pnfs_layoutdriver_type {
++};
++
++void set_pnfs_layoutdriver(struct nfs_server *, u32 id);
++void unset_pnfs_layoutdriver(struct nfs_server *);
++
++#else  /* CONFIG_NFS_V4_1 */
++
++static inline void set_pnfs_layoutdriver(struct nfs_server *s, u32 id)
++{
++}
++
++static inline void unset_pnfs_layoutdriver(struct nfs_server *s)
++{
++}
++
++#endif /* CONFIG_NFS_V4_1 */
++
++#endif /* FS_NFS_PNFS_H */
+diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
+index 508f8cf..042c2bd 100644
+--- a/include/linux/nfs_fs.h
++++ b/include/linux/nfs_fs.h
+@@ -613,6 +613,7 @@ extern void * nfs_root_data(void);
+ #define NFSDBG_CLIENT		0x0200
+ #define NFSDBG_MOUNT		0x0400
+ #define NFSDBG_FSCACHE		0x0800
++#define NFSDBG_PNFS		0x1000
+ #define NFSDBG_ALL		0xFFFF
+ 
+ #ifdef __KERNEL__
+diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
+index c82ee7c..29a821d 100644
+--- a/include/linux/nfs_fs_sb.h
++++ b/include/linux/nfs_fs_sb.h
+@@ -144,6 +144,7 @@ struct nfs_server {
+ 	u32			acl_bitmask;	/* V4 bitmask representing the ACEs
+ 						   that are supported on this
+ 						   filesystem */
++	struct pnfs_layoutdriver_type  *pnfs_curr_ld; /* Active layout driver */
+ #endif
+ 	void (*destroy)(struct nfs_server *);
+ 
+-- 
+1.7.2.1
+
