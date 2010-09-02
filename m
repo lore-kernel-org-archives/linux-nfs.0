@@ -1,53 +1,90 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:38045 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:47528 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751153Ab0INR2z (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 14 Sep 2010 13:28:55 -0400
-Date: Tue, 14 Sep 2010 13:27:48 -0400
-To: "fanpost@uninverse.de" <fanpost@uninverse.de>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: NFS strange sync issues - different versions of same file
- using multiple clients
-Message-ID: <20100914172748.GB2409@fieldses.org>
-References: <E1OvRdx-0008Pj-AQ@saphir-ld-031.synserver.de>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <E1OvRdx-0008Pj-AQ@saphir-ld-031.synserver.de>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+	id S1754728Ab0IISKh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 9 Sep 2010 14:10:37 -0400
+Received: from localhost.localdomain (surajit-lxp.hq.netapp.com [10.58.50.95] (may be forged))
+	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id o89IAW1O002948
+	for <linux-nfs@vger.kernel.org>; Thu, 9 Sep 2010 11:10:35 -0700 (PDT)
+From: Fred Isaman <iisaman@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 03/13] RFC: pnfsd, pnfs: protocol level pnfs constants
+Date: Thu,  2 Sep 2010 14:00:09 -0400
+Message-Id: <1283450419-5648-4-git-send-email-iisaman@netapp.com>
+In-Reply-To: <1283450419-5648-1-git-send-email-iisaman@netapp.com>
+References: <1283450419-5648-1-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Tue, Sep 14, 2010 at 11:17:37AM +0200, fanpost@uninverse.de wrote:
-> Hello Group,
-> 
-> I already send this post to the opensuse forum without response,
-> maybe you can help:
-> 
-> we recognized very strange behaviour of nfs:
-> 
-> Use case:
-> 
-> Users access their files on different host through nfs4 (plain sys auth no kerberos sec).
-> They modify a c++ program and change parameters,
-> recompile it and execute it on different hosts for simulation.
-> 
-> We now observed that sometimes even after modifying and recompiling
-> the binary, an o l d version of the same binary is executed
-> The Binary resides on a nfs share.
-> 
-> 1) Write changes X to the Program and compile + execute it on PC A
-> 2) Write changes Y to the Program and compile + execute it on PC B
-> 
-> Instead of executing Program Y on PC B results and logging shows that actually the old version
-> (X) is executed on PC B.
-> 
-> Neither the problem nor the working execution is 100% reproducible.
-> Seems to have something to do with caching.
+From: The pNFS Team <linux-nfs@vger.kernel.org>
 
-If you downgrade to nfs3, or if you run
+Use only layoutreturn constant for both returns and recalls.
+(return_* works better for recall_type rather the other way around)
 
-	echo 0 >/proc/sys/fs/leases-enable
+Signed-off-by: TBD - melding/reorganization of several patches
+---
+ include/linux/nfs4.h |   39 +++++++++++++++++++++++++++++++++++++++
+ 1 files changed, 39 insertions(+), 0 deletions(-)
 
-before starting the nfs server, does the problem go away?
+diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
+index 07e40c6..6798fc3 100644
+--- a/include/linux/nfs4.h
++++ b/include/linux/nfs4.h
+@@ -471,6 +471,8 @@ enum lock_type4 {
+ #define FATTR4_WORD1_TIME_MODIFY        (1UL << 21)
+ #define FATTR4_WORD1_TIME_MODIFY_SET    (1UL << 22)
+ #define FATTR4_WORD1_MOUNTED_ON_FILEID  (1UL << 23)
++#define FATTR4_WORD1_FS_LAYOUT_TYPES    (1UL << 30)
++#define FATTR4_WORD2_LAYOUT_BLKSIZE     (1UL << 1)
+ 
+ #define NFSPROC4_NULL 0
+ #define NFSPROC4_COMPOUND 1
+@@ -550,6 +552,43 @@ enum state_protect_how4 {
+ 	SP4_SSV		= 2
+ };
+ 
++enum pnfs_layouttype {
++	LAYOUT_NFSV4_1_FILES  = 1,
++	LAYOUT_OSD2_OBJECTS = 2,
++	LAYOUT_BLOCK_VOLUME = 3,
++};
++
++/* used for both layout return and recall */
++enum pnfs_layoutreturn_type {
++	RETURN_FILE = 1,
++	RETURN_FSID = 2,
++	RETURN_ALL  = 3
++};
++
++enum pnfs_iomode {
++	IOMODE_READ = 1,
++	IOMODE_RW = 2,
++	IOMODE_ANY = 3,
++};
++
++enum pnfs_notify_deviceid_type4 {
++	NOTIFY_DEVICEID4_CHANGE = 1 << 1,
++	NOTIFY_DEVICEID4_DELETE = 1 << 2,
++};
++
++#define NFL4_UFLG_MASK			0x0000003F
++#define NFL4_UFLG_DENSE			0x00000001
++#define NFL4_UFLG_COMMIT_THRU_MDS	0x00000002
++#define NFL4_UFLG_STRIPE_UNIT_SIZE_MASK	0xFFFFFFC0
++
++/* Encoded in the loh_body field of type layouthint4 */
++enum filelayout_hint_care4 {
++	NFLH4_CARE_DENSE		= NFL4_UFLG_DENSE,
++	NFLH4_CARE_COMMIT_THRU_MDS	= NFL4_UFLG_COMMIT_THRU_MDS,
++	NFLH4_CARE_STRIPE_UNIT_SIZE	= 0x00000040,
++	NFLH4_CARE_STRIPE_COUNT		= 0x00000080
++};
++
+ #endif
+ #endif
+ 
+-- 
+1.7.2.1
 
---b.
