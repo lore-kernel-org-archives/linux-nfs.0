@@ -1,256 +1,92 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:53198 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754481Ab0I3SPp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 30 Sep 2010 14:15:45 -0400
-From: David Howells <dhowells@redhat.com>
-Subject: [PATCH 03/17] NFS: Use d_automount() rather than abusing follow_link()
-To: viro@ftp.linux.org.uk, jmoyer@redhat.com
-Cc: linux-fs@vger.kernel.org, autofs@linux.kernel.org,
-        linux-kernel@vger.kernel.org, linux-afs@lists.infradead.org,
-        linux-nfs@vger.kernel.org, linux-cifs@vger.kernel.org,
-        David Howells <dhowells@redhat.com>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Ian Kent <raven@themaw.net>
-Date: Thu, 30 Sep 2010 19:15:10 +0100
-Message-ID: <20100930181510.30939.46726.stgit@warthog.procyon.org.uk>
-In-Reply-To: <20100930181455.30939.53914.stgit@warthog.procyon.org.uk>
-References: <20100930181455.30939.53914.stgit@warthog.procyon.org.uk>
-Content-Type: text/plain; charset="utf-8"
+Received: from daytona.panasas.com ([67.152.220.89]:2363 "EHLO
+	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1750802Ab0IBH7A (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 2 Sep 2010 03:59:00 -0400
+From: Benny Halevy <bhalevy@panasas.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 1/2] SQUASHME: pnfs-submit: fix getdeviceinfo decode sizing
+Date: Thu,  2 Sep 2010 10:58:56 +0300
+Message-Id: <1283414336-14878-1-git-send-email-bhalevy@panasas.com>
+In-Reply-To: <4C7F58F9.4080306@panasas.com>
+References: <4C7F58F9.4080306@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-Make NFS use the new d_automount() dentry operation rather than abusing
-follow_link() on directories.
+it looks like we forgot to adjust hdr->replen in
+encode_getdeviceinfo (and encode_getdevicelist).
 
-Signed-off-by: David Howells <dhowells@redhat.com>
-Acked-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-Acked-by: Ian Kent <raven@themaw.net>
+and decode_getdeviceinfo_maxsz is completely wrong!
+It's in bytes, not words as it should be.
+Ironically, this balanced the -8 bug above in computing replen
+for xdi_inline_pages
+
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 ---
+ fs/nfs/nfs4xdr.c |   24 ++++++++++--------------
+ 1 files changed, 10 insertions(+), 14 deletions(-)
 
- fs/nfs/dir.c           |    4 ++
- fs/nfs/inode.c         |    4 +-
- fs/nfs/internal.h      |    1 +
- fs/nfs/namespace.c     |   87 ++++++++++++++++++++++--------------------------
- include/linux/nfs_fs.h |    1 -
- 5 files changed, 46 insertions(+), 51 deletions(-)
-
-diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index e257172..46f2e12 100644
---- a/fs/nfs/dir.c
-+++ b/fs/nfs/dir.c
-@@ -734,7 +734,7 @@ int nfs_lookup_verify_inode(struct inode *inode, struct nameidata *nd)
- {
- 	struct nfs_server *server = NFS_SERVER(inode);
- 
--	if (test_bit(NFS_INO_MOUNTPOINT, &NFS_I(inode)->flags))
-+	if (IS_AUTOMOUNT(inode))
- 		return 0;
- 	if (nd != NULL) {
- 		/* VFS wants an on-the-wire revalidation */
-@@ -934,6 +934,7 @@ const struct dentry_operations nfs_dentry_operations = {
- 	.d_revalidate	= nfs_lookup_revalidate,
- 	.d_delete	= nfs_dentry_delete,
- 	.d_iput		= nfs_dentry_iput,
-+	.d_automount	= nfs_d_automount,
- };
- 
- static struct dentry *nfs_lookup(struct inode *dir, struct dentry * dentry, struct nameidata *nd)
-@@ -1009,6 +1010,7 @@ const struct dentry_operations nfs4_dentry_operations = {
- 	.d_revalidate	= nfs_open_revalidate,
- 	.d_delete	= nfs_dentry_delete,
- 	.d_iput		= nfs_dentry_iput,
-+	.d_automount	= nfs_d_automount,
- };
- 
- /*
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index 7d2d6c7..d554949 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -302,7 +302,7 @@ nfs_fhget(struct super_block *sb, struct nfs_fh *fh, struct nfs_fattr *fattr)
- 				else
- 					inode->i_op = &nfs_mountpoint_inode_operations;
- 				inode->i_fop = NULL;
--				set_bit(NFS_INO_MOUNTPOINT, &nfsi->flags);
-+				inode->i_flags |= S_AUTOMOUNT;
- 			}
- 		} else if (S_ISLNK(inode->i_mode))
- 			inode->i_op = &nfs_symlink_inode_operations;
-@@ -1205,7 +1205,7 @@ static int nfs_update_inode(struct inode *inode, struct nfs_fattr *fattr)
- 	/* Update the fsid? */
- 	if (S_ISDIR(inode->i_mode) && (fattr->valid & NFS_ATTR_FATTR_FSID) &&
- 			!nfs_fsid_equal(&server->fsid, &fattr->fsid) &&
--			!test_bit(NFS_INO_MOUNTPOINT, &nfsi->flags))
-+			!IS_AUTOMOUNT(inode))
- 		server->fsid = fattr->fsid;
- 
- 	/*
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index c961bc9..45b98e7 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -239,6 +239,7 @@ extern char *nfs_path(const char *base,
- 		      const struct dentry *droot,
- 		      const struct dentry *dentry,
- 		      char *buffer, ssize_t buflen);
-+extern struct vfsmount *nfs_d_automount(struct path *path);
- 
- /* getroot.c */
- extern struct dentry *nfs_get_root(struct super_block *, struct nfs_fh *);
-diff --git a/fs/nfs/namespace.c b/fs/nfs/namespace.c
-index db6aa36..bf80079 100644
---- a/fs/nfs/namespace.c
-+++ b/fs/nfs/namespace.c
-@@ -88,9 +88,8 @@ Elong:
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index 42a91c9..c422964 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -325,10 +325,11 @@ static int nfs4_stat_to_errno(int);
+ #define encode_getdeviceinfo_maxsz (op_encode_hdr_maxsz + 4 + \
+ 				XDR_QUADLEN(NFS4_PNFS_DEVICEID4_SIZE))
+ #define decode_getdeviceinfo_maxsz (op_decode_hdr_maxsz + \
+-				4 /*layout type */ + \
+-				4 /* opaque devaddr4 length */ +\
+-				4 /* notification bitmap length */ + \
+-				4 /* notification bitmap */)
++				1 /* layout type */ + \
++				1 /* opaque devaddr4 length */ + \
++				  /* devaddr4 payload is read into page */ \
++				1 /* notification bitmap length */ + \
++				1 /* notification bitmap */)
+ #define encode_layoutget_maxsz	(op_encode_hdr_maxsz + 10 + \
+ 				encode_stateid_maxsz)
+ #define decode_layoutget_maxsz	(op_decode_hdr_maxsz + 8 + \
+@@ -1888,6 +1889,7 @@ encode_getdeviceinfo(struct xdr_stream *xdr,
+ 	if (has_bitmap)
+ 		*p = cpu_to_be32(args->pdev->dev_notify_types);
+ 	hdr->nops++;
++	hdr->replen += decode_getdeviceinfo_maxsz;
  }
  
- /*
-- * nfs_follow_mountpoint - handle crossing a mountpoint on the server
-- * @dentry - dentry of mountpoint
-- * @nd - nameidata info
-+ * nfs_d_automount - Handle crossing a mountpoint on the server
-+ * @path - The mountpoint
-  *
-  * When we encounter a mountpoint on the server, we want to set up
-  * a mountpoint on the client too, to prevent inode numbers from
-@@ -100,87 +99,81 @@ Elong:
-  * situation, and that different filesystems may want to use
-  * different security flavours.
-  */
--static void * nfs_follow_mountpoint(struct dentry *dentry, struct nameidata *nd)
-+struct vfsmount *nfs_d_automount(struct path *path)
+ static void
+@@ -2850,26 +2852,20 @@ static int nfs4_xdr_enc_getdeviceinfo(struct rpc_rqst *req, uint32_t *p,
+ 				      struct nfs4_getdeviceinfo_args *args)
  {
- 	struct vfsmount *mnt;
--	struct nfs_server *server = NFS_SERVER(dentry->d_inode);
-+	struct nfs_server *server = NFS_SERVER(path->dentry->d_inode);
- 	struct dentry *parent;
- 	struct nfs_fh *fh = NULL;
- 	struct nfs_fattr *fattr = NULL;
- 	int err;
+ 	struct xdr_stream xdr;
+-	struct rpc_auth *auth = req->rq_task->tk_msg.rpc_cred->cr_auth;
+ 	struct compound_hdr hdr = {
+ 		.minorversion = nfs4_xdr_minorversion(&args->seq_args),
+ 	};
+-	int replen;
  
--	dprintk("--> nfs_follow_mountpoint()\n");
-+	dprintk("--> nfs_d_automount()\n");
+ 	xdr_init_encode(&xdr, &req->rq_snd_buf, p);
+ 	encode_compound_hdr(&xdr, req, &hdr);
+ 	encode_sequence(&xdr, &args->seq_args, &hdr);
+ 	encode_getdeviceinfo(&xdr, args, &hdr);
  
--	err = -ESTALE;
--	if (IS_ROOT(dentry))
--		goto out_err;
-+	mnt = ERR_PTR(-ESTALE);
-+	if (IS_ROOT(path->dentry))
-+		goto out_nofree;
+-	/* set up reply kvec. Subtract notification bitmap max size (8)
++	/* set up reply kvec. Subtract notification bitmap max size (2)
+ 	 * so that notification bitmap is put in xdr_buf tail */
+-	replen = (RPC_REPHDRSIZE + auth->au_rslack +
+-		  NFS4_dec_getdeviceinfo_sz - 8) << 2;
+-	xdr_inline_pages(&req->rq_rcv_buf, replen, args->pdev->pages,
+-			 args->pdev->pgbase, args->pdev->pglen);
+-	dprintk("%s: inlined page args = (%u, %p, %u, %u)\n",
+-		__func__, replen, args->pdev->pages,
+-		args->pdev->pgbase, args->pdev->pglen);
++	xdr_inline_pages(&req->rq_rcv_buf, (hdr.replen - 2) << 2,
++			 args->pdev->pages, args->pdev->pgbase,
++			 args->pdev->pglen);
  
--	err = -ENOMEM;
-+	mnt = ERR_PTR(-ENOMEM);
- 	fh = nfs_alloc_fhandle();
- 	fattr = nfs_alloc_fattr();
- 	if (fh == NULL || fattr == NULL)
--		goto out_err;
-+		goto out;
- 
- 	dprintk("%s: enter\n", __func__);
--	dput(nd->path.dentry);
--	nd->path.dentry = dget(dentry);
- 
--	/* Look it up again */
--	parent = dget_parent(nd->path.dentry);
-+	/* Look it up again to get its attributes */
-+	parent = dget_parent(path->dentry);
- 	err = server->nfs_client->rpc_ops->lookup(parent->d_inode,
--						  &nd->path.dentry->d_name,
-+						  &path->dentry->d_name,
- 						  fh, fattr);
- 	dput(parent);
--	if (err != 0)
--		goto out_err;
-+	if (err != 0) {
-+		mnt = ERR_PTR(err);
-+		goto out;
-+	}
- 
- 	if (fattr->valid & NFS_ATTR_FATTR_V4_REFERRAL)
--		mnt = nfs_do_refmount(nd->path.mnt, nd->path.dentry);
-+		mnt = nfs_do_refmount(path->mnt, path->dentry);
- 	else
--		mnt = nfs_do_submount(nd->path.mnt, nd->path.dentry, fh,
--				      fattr);
--	err = PTR_ERR(mnt);
-+		mnt = nfs_do_submount(path->mnt, path->dentry, fh, fattr);
- 	if (IS_ERR(mnt))
--		goto out_err;
-+		goto out;
- 
- 	mntget(mnt);
--	err = do_add_mount(mnt, &nd->path, nd->path.mnt->mnt_flags|MNT_SHRINKABLE,
-+	err = do_add_mount(mnt, path, path->mnt->mnt_flags | MNT_SHRINKABLE,
- 			   &nfs_automount_list);
--	if (err < 0) {
-+	switch (err) {
-+	case 0:
-+		dprintk("%s: done, success\n", __func__);
-+		schedule_delayed_work(&nfs_automount_task, nfs_mountpoint_expiry_timeout);
-+		break;
-+	case -EBUSY:
-+		/* someone else made a mount here whilst we were busy */
- 		mntput(mnt);
--		if (err == -EBUSY)
--			goto out_follow;
--		goto out_err;
-+		dprintk("%s: done, collision\n", __func__);
-+		mnt = NULL;
-+		break;
-+	default:
-+		mntput(mnt);
-+		dprintk("%s: done, error %d\n", __func__, err);
-+		mnt = ERR_PTR(err);
-+		break;
- 	}
--	path_put(&nd->path);
--	nd->path.mnt = mnt;
--	nd->path.dentry = dget(mnt->mnt_root);
--	schedule_delayed_work(&nfs_automount_task, nfs_mountpoint_expiry_timeout);
-+
- out:
- 	nfs_free_fattr(fattr);
- 	nfs_free_fhandle(fh);
--	dprintk("%s: done, returned %d\n", __func__, err);
--
--	dprintk("<-- nfs_follow_mountpoint() = %d\n", err);
--	return ERR_PTR(err);
--out_err:
--	path_put(&nd->path);
--	goto out;
--out_follow:
--	while (d_mountpoint(nd->path.dentry) &&
--	       follow_down(&nd->path))
--		;
--	err = 0;
--	goto out;
-+out_nofree:
-+	dprintk("<-- nfs_follow_mountpoint() = %p\n", mnt);
-+	return mnt;
- }
- 
- const struct inode_operations nfs_mountpoint_inode_operations = {
--	.follow_link	= nfs_follow_mountpoint,
- 	.getattr	= nfs_getattr,
- };
- 
- const struct inode_operations nfs_referral_inode_operations = {
--	.follow_link	= nfs_follow_mountpoint,
- };
- 
- static void nfs_expire_automounts(struct work_struct *work)
-diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
-index 508f8cf..df7ba50 100644
---- a/include/linux/nfs_fs.h
-+++ b/include/linux/nfs_fs.h
-@@ -212,7 +212,6 @@ struct nfs_inode {
- #define NFS_INO_ADVISE_RDPLUS	(0)		/* advise readdirplus */
- #define NFS_INO_STALE		(1)		/* possible stale inode */
- #define NFS_INO_ACL_LRU_SET	(2)		/* Inode is on the LRU list */
--#define NFS_INO_MOUNTPOINT	(3)		/* inode is remote mountpoint */
- #define NFS_INO_FLUSHING	(4)		/* inode is flushing out data */
- #define NFS_INO_FSCACHE		(5)		/* inode can be cached by FS-Cache */
- #define NFS_INO_FSCACHE_LOCK	(6)		/* FS-Cache cookie management lock */
+ 	encode_nops(&hdr);
+ 	return 0;
+-- 
+1.7.2.2
 
