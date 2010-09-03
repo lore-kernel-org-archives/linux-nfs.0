@@ -1,198 +1,45 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:19026 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:35309 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755515Ab0IAU4Q (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 1 Sep 2010 16:56:16 -0400
-Date: Wed, 1 Sep 2010 16:56:05 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: steved@redhat.com, linux-nfs@vger.kernel.org, neilb@suse.de
-Subject: Re: [PATCH] rpc.nfsd: mount up nfsdfs is it doesn't appear to be
- mounted yet (try #2)
-Message-ID: <20100901165605.41f4978d@tlielax.poochiereds.net>
-In-Reply-To: <20100901204818.GA10507@fieldses.org>
-References: <1283283160-30024-1-git-send-email-jlayton@redhat.com>
-	<20100901204818.GA10507@fieldses.org>
-Content-Type: text/plain; charset=US-ASCII
+	id S1754363Ab0ICP6x (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 3 Sep 2010 11:58:53 -0400
+Received: from bfields by fieldses.org with local (Exim 4.71)
+	(envelope-from <bfields@fieldses.org>)
+	id 1OrYeh-0001th-3R
+	for linux-nfs@vger.kernel.org; Fri, 03 Sep 2010 11:58:19 -0400
+Date: Fri, 3 Sep 2010 11:58:19 -0400
+To: linux-nfs@vger.kernel.org
+Subject: 4.1 testing
+Message-ID: <20100903155818.GF2245@fieldses.org>
+Content-Type: text/plain; charset=us-ascii
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, 1 Sep 2010 16:48:18 -0400
-"J. Bruce Fields" <bfields@fieldses.org> wrote:
+I added the pynfs41 tests to my regular regression tests, and have a set
+of tests that currently pass.  The version of the tests I'm running
+include some fixes to the tests necessary to get them working correctly
+against the server:
 
-> On Tue, Aug 31, 2010 at 03:32:40PM -0400, Jeff Layton wrote:
-> > This patch is the second attempt at fixing this problem. It's basically
-> > the same as the first patch, but adds some xlog() calls to log info
-> > when there are problems. I also changed the NFSD_*_FILE definitions
-> > around so that they are defined based on another constant that holds
-> > the nfsdfs mountpoint.
-> > 
-> > ---------------------------[snip]-------------------------
-> > There's a bit of a chicken and egg problem when nfsd is run the first
-> > time. On Fedora/RHEL at least, /proc/fs/nfsd is mounted up whenever nfsd
-> > is plugged in via a modprobe.conf "install" directive.
-> > 
-> > If someone runs rpc.nfsd without plugging in nfsd.ko first,
-> > /proc/fs/nfsd won't be mounted and rpc.nfsd will end up using the legacy
-> > nfsctl interface. After that, nfsd will be plugged in and subsequent
-> > rpc.nfsd invocations will use that instead.
-> > 
-> > This is a problem as some nfsd command-line options are ignored when the
-> > legacy interface is used. It'll also be a problem for people who want
-> > IPv6 enabled servers. The upshot is that we really don't want to use the
-> > legacy interface unless there is no other option.
-> > 
-> > To avoid this situation, have rpc.nfsd check to see if the "threads"
-> > file is already present. If it's not, then make an attempt to mount
-> > /proc/fs/nfsd.  This is a "best-effort" sort of thing, however so we
-> > just ignore the return code from the mount attempt and fall back to
-> > using nfsctl() if it fails.
-> > 
-> > Full disclosure: I'm not 100% thrilled with this patch. It seems ugly
-> > and kludgey, but I don't see a better way to handle this problem.
-> > Suggestions welcome.
-> 
-> Seems OK to me.  If it's running /bin/mount instead of doing the mount
-> by hand that bothers you, we could just decide not to care about
-> /etc/mtab.
-> 
-> --b.
-> 
-Thanks.
+	git://linux-nfs.org/~bfields/pynfs41.git
 
-Sorry, I just cut and pasted that from the original email...I should
-have probably trimmed that out.
+My test scripts are at
 
-I'm less leery of it now that we've discussed it. I think the patch is
-probably ok as-is. After all, modprobe calls the exact same command.
+	git://linux-nfs.org/~bfields/testd.git
 
-While /etc/mtab isn't what I'd call reliable info, it's probably best
-to try and keep it updated.
+The pynfs41 commandline is in bin/do-pynfs41, and the set of tests I'm
+currently omitting is in data/pynfs41-skip.  The latter file is roughly
+ordered with the tests I think need to be looked at first at the top.
 
-That said, Steve mentioned to me privately that he thought the log
-messages ought to be reworded. He was going to send a new patch that
-does that. I'm sort of waiting on that at this point...
+By the way, I also have a pynfs 4.0 repository:
 
-> > 
-> > Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> > ---
-> >  utils/nfsd/nfsd.c   |    3 ++
-> >  utils/nfsd/nfssvc.c |   53 ++++++++++++++++++++++++++++++++++++++++++++++++--
-> >  utils/nfsd/nfssvc.h |    1 +
-> >  3 files changed, 54 insertions(+), 3 deletions(-)
-> > 
-> > diff --git a/utils/nfsd/nfsd.c b/utils/nfsd/nfsd.c
-> > index 1cda1e5..6bbf697 100644
-> > --- a/utils/nfsd/nfsd.c
-> > +++ b/utils/nfsd/nfsd.c
-> > @@ -246,6 +246,9 @@ main(int argc, char **argv)
-> >  		exit(1);
-> >  	}
-> >  
-> > +	/* make sure nfsdfs is mounted if it's available */
-> > +	nfssvc_mount_nfsdfs();
-> > +
-> >  	/* can only change number of threads if nfsd is already up */
-> >  	if (nfssvc_inuse()) {
-> >  		socket_up = 1;
-> > diff --git a/utils/nfsd/nfssvc.c b/utils/nfsd/nfssvc.c
-> > index 34c67ca..636b403 100644
-> > --- a/utils/nfsd/nfssvc.c
-> > +++ b/utils/nfsd/nfssvc.c
-> > @@ -15,9 +15,11 @@
-> >  #include <netdb.h>
-> >  #include <netinet/in.h>
-> >  #include <arpa/inet.h>
-> > +#include <sys/stat.h>
-> >  #include <unistd.h>
-> >  #include <fcntl.h>
-> >  #include <errno.h>
-> > +#include <stdlib.h>
-> >  
-> >  #include "nfslib.h"
-> >  #include "xlog.h"
-> > @@ -31,9 +33,10 @@
-> >   */
-> >  #undef IPV6_SUPPORTED
-> >  
-> > -#define NFSD_PORTS_FILE     "/proc/fs/nfsd/portlist"
-> > -#define NFSD_VERS_FILE    "/proc/fs/nfsd/versions"
-> > -#define NFSD_THREAD_FILE  "/proc/fs/nfsd/threads"
-> > +#define NFSD_FS_DIR	  "/proc/fs/nfsd"
-> > +#define NFSD_PORTS_FILE   NFSD_FS_DIR "/portlist"
-> > +#define NFSD_VERS_FILE    NFSD_FS_DIR "/versions"
-> > +#define NFSD_THREAD_FILE  NFSD_FS_DIR "/threads"
-> >  
-> >  /*
-> >   * declaring a common static scratch buffer here keeps us from having to
-> > @@ -44,6 +47,50 @@
-> >  char buf[128];
-> >  
-> >  /*
-> > + * Using the "new" interfaces for nfsd requires that /proc/fs/nfsd is
-> > + * actually mounted. Make an attempt to mount it here if it doesn't appear
-> > + * to be. If the mount attempt fails, no big deal -- fall back to using nfsctl
-> > + * instead.
-> > + */
-> > +void
-> > +nfssvc_mount_nfsdfs(void)
-> > +{
-> > +	int err;
-> > +	struct stat statbuf;
-> > +
-> > +	err = stat(NFSD_THREAD_FILE, &statbuf);
-> > +	if (err == 0)
-> > +		return;
-> > +	else if (errno != ENOENT) {
-> > +		xlog(L_ERROR, "Unable to stat %s: errno %d (%m)",
-> > +				NFSD_THREAD_FILE, errno);
-> > +		return;
-> > +	}
-> > +
-> > +	/*
-> > +	 * this call can return an error if modprobe is set up to automatically
-> > +	 * mount nfsdfs when nfsd.ko is plugged in. So, ignore the return
-> > +	 * code from it and just check for the "threads" file afterward.
-> > +	 */
-> > +	system("/bin/mount -t nfsd nfsd " NFSD_FS_DIR " >/dev/null 2>&1");
-> > +
-> > +	err = stat(NFSD_THREAD_FILE, &statbuf);
-> > +	if (err == 0)
-> > +		return;
-> > +
-> > +	if (errno == ENOENT)
-> > +		xlog(L_ERROR, "Unable to mount nfsdfs on %s. Falling back "
-> > +			      "to legacy nfsctl() interface. Some command "
-> > +			      "line options may not work correctly.",
-> > +			      NFSD_FS_DIR);
-> > +	else
-> > +		xlog(L_ERROR, "Unable to stat %s after attempting to mount "
-> > +			      "%s. Falling back to legacy nfsctl() interface: "
-> > +			      "errno %d (%m)",
-> > +				NFSD_THREAD_FILE, NFSD_FS_DIR, errno);
-> > +}
-> > +
-> > +/*
-> >   * Are there already sockets configured? If not, then it is safe to try to
-> >   * open some and pass them through.
-> >   *
-> > diff --git a/utils/nfsd/nfssvc.h b/utils/nfsd/nfssvc.h
-> > index 0c69bd6..ff81165 100644
-> > --- a/utils/nfsd/nfssvc.h
-> > +++ b/utils/nfsd/nfssvc.h
-> > @@ -20,6 +20,7 @@
-> >   *
-> >   */
-> >  
-> > +void	nfssvc_mount_nfsdfs(void);
-> >  int	nfssvc_inuse(void);
-> >  int	nfssvc_set_sockets(const int family, const unsigned int protobits,
-> >  			   const char *host, const char *port);
-> > -- 
-> > 1.7.1
-> > 
+	git://linux-nfs.org/~bfields/pynfs.git
 
+and there's also a pynfs-skip file with the tests I'm skipping in the
+4.0 case.  (Most are not currently a high priority to fix.)
 
--- 
-Jeff Layton <jlayton@redhat.com>
+Thanks to CITI interns Michael Groshans and to Muneet Parhar for the
+pynfs 4.1 and 4.0 work.
+
+--b.
