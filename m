@@ -1,31 +1,42 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cn.fujitsu.com ([222.73.24.84]:49180 "EHLO song.cn.fujitsu.com"
-	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
-	id S1755200Ab0IFDfI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 5 Sep 2010 23:35:08 -0400
-Message-ID: <4C846162.40305@cn.fujitsu.com>
-Date: Mon, 06 Sep 2010 11:34:58 +0800
-From: Bian Naimeng <biannm@cn.fujitsu.com>
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
+Received: from mail.candelatech.com ([208.74.158.172]:58737 "EHLO
+	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753703Ab0ICQWr (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 3 Sep 2010 12:22:47 -0400
+Message-ID: <4C8120D3.9040704@candelatech.com>
+Date: Fri, 03 Sep 2010 09:22:43 -0700
+From: Ben Greear <greearb@candelatech.com>
+To: Chuck Lever <chuck.lever@oracle.com>
 CC: linux-nfs@vger.kernel.org
-Subject: [PATCH 0/2]gss:gss miss returning error to caller when import security
- context
-Content-Type: text/plain; charset=UTF-8
+Subject: Re: [nfs] nfs:  Fix nfs_sockaddr_match_ipaddr6
+References: <1283530511-20658-1-git-send-email-greearb@candelatech.com> <1D980EDC-301A-4B4D-97D3-037B96DBAF86@oracle.com>
+In-Reply-To: <1D980EDC-301A-4B4D-97D3-037B96DBAF86@oracle.com>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Gss miss returning error to caller when import security context, 
-it may be return ok though it has failed to import security context.
+On 09/03/2010 09:17 AM, Chuck Lever wrote:
+>
+> On Sep 3, 2010, at 12:15 PM, Ben Greear wrote:
+>
+>> A typo caused this method not not actually compare the
+>> two addresses passed in.  It returned true in almost all
+>> cases instead.
+>
+>  From the perspective of the local logic, that looks correct.  Have you tried this with IPv6 mounts?  Notice any overall changes in behavior?
 
-Bian Naimeng (2)
+I noticed this when getting multiple NFS mounts to work with srcaddr=
 
-----
- net/sunrpc/auth_gss/gss_krb5_mech.c  |   10 ++++++++--
- net/sunrpc/auth_gss/gss_spkm3_mech.c |    5 ++++-
- 2 files changed, 12 insertions(+), 3 deletions(-)
+The change fixed the problems I was seeing, but I haven't tested w/out
+srcaddr= logic.  Might need to have two different NFS servers to do a good
+test of this logic, and I'm not looking forward to setting up another
+open-solaris box!
+
+Thanks,
+Ben
 
 -- 
-Regards
-Bian Naimeng
+Ben Greear <greearb@candelatech.com>
+Candela Technologies Inc  http://www.candelatech.com
 
