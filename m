@@ -1,88 +1,68 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.candelatech.com ([208.74.158.172]:51296 "EHLO
-	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753136Ab0IGSdi (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Sep 2010 14:33:38 -0400
-Message-ID: <4C86857A.8040903@candelatech.com>
-Date: Tue, 07 Sep 2010 11:33:30 -0700
-From: Ben Greear <greearb@candelatech.com>
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: RFC:  support srcaddr= option to bind to local IPs.
-References: <4C81449B.4010900@candelatech.com> <1283882166.2788.48.camel@heimdal.trondhjem.org>
-In-Reply-To: <1283882166.2788.48.camel@heimdal.trondhjem.org>
-Content-Type: text/plain; charset=UTF-8; format=flowed
+Received: from mail-bw0-f46.google.com ([209.85.214.46]:51571 "EHLO
+	mail-bw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752372Ab0ICTMs convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 3 Sep 2010 15:12:48 -0400
+From: Maciej Rutecki <maciej.rutecki@gmail.com>
+Reply-To: maciej.rutecki@gmail.com
+To: tim.gardner@canonical.com
+Subject: Re: nfsd deadlock, 2.6.36-rc3
+Date: Fri, 3 Sep 2010 21:12:43 +0200
+Cc: linux-nfs@vger.kernel.org,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        neilb@suse.de, bfields@fieldses.org, Trond.Myklebust@netapp.com
+References: <4C7E73CB.7030603@canonical.com>
+In-Reply-To: <4C7E73CB.7030603@canonical.com>
+Content-Type: Text/Plain;
+  charset="utf-8"
+Message-Id: <201009032112.43524.maciej.rutecki@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 09/07/2010 10:56 AM, Trond Myklebust wrote:
-> On Fri, 2010-09-03 at 11:55 -0700, Ben Greear wrote:
->> This patch lets one bind the local side of NFS sockets to a particular
->> IP address.  This can be useful for users on multi-homed systems.
->>
->> This patch must be on top of the previous patch to fix the IPv6 address
->> comparison or it will not work.
->>
->> Comments and suggestions welcome...I'll incorporate those and post an
->> official signed-off patch after that.
->>
->> Thanks,
->> Ben
->>
->
-> The code in nfs_callback_authenticate is going to break NFSv4 callbacks.
-> Callbacks are sent to the -oclientaddr address, not srcaddr (btw, I
-> really dislike that new boolean argument to nfs_find_client(). If you
-> don't want to compare the source address, then have the caller pass a
-> NULL pointer).
+On środa, 1 września 2010 o 17:39:55 Tim Gardner wrote:
+> I've been pursuing a simple reproducer for an NFS lockup that shows up
+> under stress. There is a bunch of info (some of it extraneous) in
+> http://bugs.launchpad.net/bugs/561210. I can reproduce it by writing
+> loop mounted NFS exports:
+> 
+> /etc/fstab: 127.0.0.1:/srv /mnt/srv nfs rw 0 2
+> /etc/exports: /srv 127.0.0.1(rw,insecure,no_subtree_check)
+> 
+> See the attached scripts test_master.sh and test_client.sh. I simply
+> repeat './test_master.sh wait' until nfsd locks up, typically within 1-3
+> cycles, e.g.,
+> 
+> cd /mnt/srv
+> while true; do ./test_master.sh wait; done
+> 
+> Note that this test will run indefinitely if invoked from /srv, e.g.,
+> 
+> cd /srv
+> while true; do ./test_master.sh wait; done
+> 
+> This issue, or something like it, appears to exist as far back as I've
+> tested (Ubuntu Lucid 2.6.32.21). For now I'm assuming that, since the
+> symptoms are similar, any lockup bug found in -rc3 is the likely culprit.
+> 
+> See attached dmesg and config. Debug options of interest that I've
+> enabled are CONFIG_DEBUG_SLAB, CONFIG_DEBUG_SLAB_LEAK,
+> CONFIG_DEBUG_SPINLOCK, CONFIG_DEBUG_MUTEXES.
+> 
+> dmesg.txt contains the initial 'INFO: task nfsd:1263 blocked for more
+> than 120 seconds.' complaints as well as information dumped from
+> 
+> echo d | sudo tee /proc/sysrq-trigger
+> echo w | sudo tee /proc/sysrq-trigger
+> 
+> Anything else I can provide?
+> 
+> rtg
 
-It would break things to have clientaddr different than srcaddr, but as
-long as they are the same (or either is not specified), I think my patch
-will be fine.  I have tested NFS without specifying srcaddr and it seems
-to work fine, for instance.
-
-I think if one were to pass a flag that said 'bind-to-clientaddr' that
-would also solve my needs, but I don't think it would make the patch
-much less intrusive.
-
-I'm fine with getting rid of the boolean.
-
-> As has been pointed out to you before, all this is very intrusive, and
-> you have yet to give a description of why it is useful, and better than
-> using private socket namespaces (which is what container virtualised
-> systems will be wanting). The latter can even ensure that it all works
-> for userspace applications (such as rpc.statd) too.
-
-Namespaces can be difficult to manage and relatively heavy weight,
-so they are no good for my use.  This srcaddr patch is useful because
-it allows multiple mounts on different network adapters or IP addresses,
-(virtual or otherwise).  My particular use for this is to do load testing
-on NFS servers, but I'm sure other folks with have other uses.
-
-I really don't see how it's so intrusive.  It does add some arguments to some
-methods, but the overall logic change is quite small.
-
-It should be simple enough to fix rpc.statd to bind to IPs properly,
-but I haven't looked at that code.
-
-> IOW: I'd be quite happy to take patches to support private namespaces
-> properly: afaics, we do need to make nfs_find_client aware of them, and
-> ditto for lockd and the NFSv4 callback channel.
-> I remain less than convinced that we need to be able to specify
-> per-mountpoint source addresses...
-
-I got my hopes up because the cifs guys were interested in supporting srcaddr,
-so I thought maybe NFS folks were now of similar mind.  If you still see no use in
-it, I'll wait a few more years and try again.
-
-In the meantime, I'll fix the boolean issue and work to fix any other
-technical issues that come up.
-
-Thanks,
-Ben
+I created a Bugzilla entry at 
+https://bugzilla.kernel.org/show_bug.cgi?id=17762
+for your bug report, please add your address to the CC list in there, thanks!
 
 -- 
-Ben Greear <greearb@candelatech.com>
-Candela Technologies Inc  http://www.candelatech.com
-
+Maciej Rutecki
+http://www.maciek.unixy.pl
