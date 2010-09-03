@@ -1,28 +1,58 @@
-From: Marc Eshel <eshel@almaden.ibm.com>
-Subject: Linux pNFS status meeting 09/02
-Date: Wed, 1 Sep 2010 13:35:50 -0700
-Message-ID: <OFFA3EE8C5.4D0C75A4-ON88257791.0070F6D7-88257791.007121E6@us.ibm.com>
+From: "Tayade, Nilesh" <Nilesh.Tayade@netscout.com>
+Subject: RE: NFS version4 maximum on-the-wire data size.
+Date: Fri, 3 Sep 2010 02:54:37 -0400
+Message-ID: <D3F292ADF945FB49B35E96C94C2061B90D067398@nsmail.netscout.com>
+References: <D3F292ADF945FB49B35E96C94C2061B90CFB48D0@nsmail.netscout.com> <0FDF651C-4620-4872-9ABA-9F8D8FA2192A@oracle.com> <99E0B37F-C9BE-4349-B68A-4364F4EB9C04@oracle.com> <D3F292ADF945FB49B35E96C94C2061B90D066E6F@nsmail.netscout.com> <AADFA0E0-7B1E-49F4-845C-E68488BA8F61@oracle.com> <D3F292ADF945FB49B35E96C94C2061B90D06724D@nsmail.netscout.com> <CA6301CC-524C-46C0-BA1A-BB360B6103FB@oracle.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="US-ASCII"
-Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org
-To: Marc Eshel <eshel@almaden.ibm.com>
+Content-Type: text/plain;
+	charset="us-ascii"
+To: "Chuck Lever" <chuck.lever@oracle.com>, <linux-nfs@vger.kernel.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from e7.ny.us.ibm.com ([32.97.182.137]:47194 "EHLO e7.ny.us.ibm.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752142Ab0IAUfy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 1 Sep 2010 16:35:54 -0400
-Received: from d01relay01.pok.ibm.com (d01relay01.pok.ibm.com [9.56.227.233])
-	by e7.ny.us.ibm.com (8.14.4/8.13.1) with ESMTP id o81KLbXP014095
-	for <linux-nfs@vger.kernel.org>; Wed, 1 Sep 2010 16:21:38 -0400
-Received: from d01av04.pok.ibm.com (d01av04.pok.ibm.com [9.56.224.64])
-	by d01relay01.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id o81KZmXj148722
-	for <linux-nfs@vger.kernel.org>; Wed, 1 Sep 2010 16:35:48 -0400
-Received: from d01av04.pok.ibm.com (loopback [127.0.0.1])
-	by d01av04.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id o81KZmml001875
-	for <linux-nfs@vger.kernel.org>; Wed, 1 Sep 2010 16:35:48 -0400
+Received: from exprod6og108.obsmtp.com ([64.18.1.21]:43662 "HELO
+	exprod6og108.obsmtp.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1752603Ab0ICGym convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 3 Sep 2010 02:54:42 -0400
+In-Reply-To: <CA6301CC-524C-46C0-BA1A-BB360B6103FB@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Meeting on Thursday 09/02/10 at 9:30 AM pacific time (12:30 PM UMICH time)
+> -----Original Message-----
+> From: Chuck Lever [mailto:chuck.lever@oracle.com]
+> Sent: Friday, September 03, 2010 12:58 AM
+> To: Tayade, Nilesh
+> Cc: linux-nfs@vger.kernel.org
+> Subject: Re: NFS version4 maximum on-the-wire data size.
+> 
 
-Marc. 
+> >>
+> >> With certain exceptions, applications shouldn't generally be aware
+of
+> >> what NFS version is in use.  Without knowing more about your
+> >> applications, it's hard to make any more than a very general
+> > statement.
+> >
+> > Well, to be specific - I need to deal with packet sniffers
+(capturing
+> > the NFS packets) and so I need to consider the NFS versions as the
+> > packet contains will differ (different procedure calls, Error codes
+> > etc.).
+> 
+> NFSv3 and increasingly NFSv4 are in broad use today.  Whether or not
+to
+> support NFSv2 is dependent on your target customers.  But it's
+considered
+> a legacy protocol.
+> 
+
+Thanks. Appreciate your help.
+
+> --
+> chuck[dot]lever[at]oracle[dot]com
+> 
+
+Thanks,
+Nilesh
+nilesh.tayade@netscout.com
+ 
+ 
+
