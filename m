@@ -1,398 +1,570 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:9684 "EHLO
-	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1752781Ab0IWRUy (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 23 Sep 2010 13:20:54 -0400
-Message-ID: <4C9B8C72.2020405@panasas.com>
-Date: Thu, 23 Sep 2010 19:20:50 +0200
-From: Benny Halevy <bhalevy@panasas.com>
-To: Jeff Layton <jlayton@redhat.com>,
-        Trond Myklebust <trond.myklebust@fys.uio.no>
-CC: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
-Subject: Re: [bfields@pop.test.fieldses.org: all f08d6374 Merge branch 'nfs-for-next'
- into linux-next results]
-References: <20100918171546.GA9859@fieldses.org>	<1284831680.2787.1.camel@heimdal.trondhjem.org>	<20100919184549.GD32071@fieldses.org>	<20100920130106.GB4580@fieldses.org>	<20100920131025.GC4580@fieldses.org>	<1285091815.30222.19.camel@heimdal.trondhjem.org>	<20100921111657.330e7838@corrin.poochiereds.net>	<20100921192005.GC4385@fieldses.org>	<1285097787.30222.24.camel@heimdal.trondhjem.org>	<1285099232.30222.25.camel@heimdal.trondhjem.org>	<20100921202411.GA10570@fieldses.org>	<1285101981.30222.27.camel@heimdal.trondhjem.org> <20100921145823.2ec2a81c@corrin.poochiereds.net>
-In-Reply-To: <20100921145823.2ec2a81c@corrin.poochiereds.net>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mail.candelatech.com ([208.74.158.172]:37801 "EHLO
+	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753200Ab0ICSzZ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 3 Sep 2010 14:55:25 -0400
+Received: from [192.168.100.195] (firewall.candelatech.com [70.89.124.249])
+	(authenticated bits=0)
+	by ns3.lanforge.com (8.14.2/8.14.2) with ESMTP id o83ItOeE016792
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-nfs@vger.kernel.org>; Fri, 3 Sep 2010 11:55:24 -0700
+Message-ID: <4C81449B.4010900@candelatech.com>
+Date: Fri, 03 Sep 2010 11:55:23 -0700
+From: Ben Greear <greearb@candelatech.com>
+To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: RFC:  support srcaddr= option to bind to local IPs.
+Content-Type: multipart/mixed;
+ boundary="------------090505020904030503080105"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 2010-09-21 23:58, Jeff Layton wrote:
-> On Tue, 21 Sep 2010 16:46:21 -0400
-> Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
-> 
->> On Tue, 2010-09-21 at 16:24 -0400, J. Bruce Fields wrote:
->>> On Tue, Sep 21, 2010 at 04:00:32PM -0400, Trond Myklebust wrote:
->>>> On Tue, 2010-09-21 at 15:36 -0400, Trond Myklebust wrote:
->>>>> On Tue, 2010-09-21 at 15:20 -0400, J. Bruce Fields wrote:
->>>>>> All I need to do is mount nfs4.1 and run cthon -s.  The last output I
->>>>>> see from the test is:
->>>>>>
->>>>>> check for proper open/unlink operation
->>>>>> nfsjunk files before unlink:
->>>>>>   
->>>>>
->>>>> Oh... I bet I see what it is.
->>>>>
->>>>> It's that damned res->sr_slotid = NFS4_MAX_SLOT_TABLE and related
->>>>> initialisation junk that's biting us in the arse again...
->>>>>
->>>>> I'll fix it...
->>>>
->>>> Does this work?
->>>
->>> Yup.
->>
->> It seems to fix things for me too... Once you mentioned NFSv4.1 it was
->> easy to reproduce the bug.
->>
->> OK. I'll merge these into nfs-for-2.6.37...
-> 
-> Thanks for fixing it. I should have mentioned that the 4.1 parts were
-> written using the "cargo-cult" programming method of copying what
-> unlink does, and that they needed careful review. Mea culpa!
-> 
+--------------090505020904030503080105
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
 
-I still hate it that the sr_slotid requires explicit, non-trivial initialization.
-Once upon a time, the equivalent of sr_slotid used to be a pointer to
-struct slot.  Using a pointer, implicitly initialized to NULL is significantly
-more straight forward as in the patch below.
-(passes cthon tests over your nfs-for-2.6.37 branch + the patch I
-sent earlier that fixes __put_nfs_open_context. w/o it I readily reproduce the
-crash reported on this thread)
+This patch lets one bind the local side of NFS sockets to a particular
+IP address.  This can be useful for users on multi-homed systems.
 
->From 50221fb5bd8fbd46f6cabe1fc795db7efc71bff7 Mon Sep 17 00:00:00 2001
-From: Benny Halevy <bhalevy@panasas.com>
-Date: Thu, 23 Sep 2010 19:08:21 +0200
-Subject: [PATCH] NFSv4.1: keep seq_res.sr_slot as pointer rather than an index
+This patch must be on top of the previous patch to fix the IPv6 address
+comparison or it will not work.
 
-Having to explicitly initialize sr_slotid to NFS4_MAX_SLOT_TABLE
-resulted in numerous bugs.  Keeping the current slot as a pointer
-to the slot table is more straight forward and robust as it's
-implicitly set up to NULL wherever the seq_res member is initialized
-to zeroes.
+Comments and suggestions welcome...I'll incorporate those and post an
+official signed-off patch after that.
 
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
----
- fs/nfs/nfs4proc.c       |   52 +++++++++++++++++++----------------------------
- fs/nfs/nfs4xdr.c        |    6 +---
- fs/nfs/read.c           |    1 -
- fs/nfs/unlink.c         |    3 +-
- fs/nfs/write.c          |    2 -
- include/linux/nfs_xdr.h |    2 +-
- 6 files changed, 25 insertions(+), 41 deletions(-)
+Thanks,
+Ben
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 72aa706..7f8cc33 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -334,10 +334,12 @@ static void renew_lease(const struct nfs_server *server, unsigned long timestamp
-  * Must be called while holding tbl->slot_tbl_lock
+-- 
+Ben Greear <greearb@candelatech.com>
+Candela Technologies Inc  http://www.candelatech.com
+
+
+--------------090505020904030503080105
+Content-Type: text/plain;
+ name="nfs_srcaddr.patch"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+ filename="nfs_srcaddr.patch"
+
+diff --git a/fs/lockd/clntlock.c b/fs/lockd/clntlock.c
+index 64fd427..4d3f3f7 100644
+--- a/fs/lockd/clntlock.c
++++ b/fs/lockd/clntlock.c
+@@ -60,7 +60,8 @@ struct nlm_host *nlmclnt_init(const struct nlmclnt_initdata *nlm_init)
+ 	if (status < 0)
+ 		return ERR_PTR(status);
+ 
+-	host = nlmclnt_lookup_host(nlm_init->address, nlm_init->addrlen,
++	host = nlmclnt_lookup_host(nlm_init->address, nlm_init->srcaddr,
++				   nlm_init->addrlen,
+ 				   nlm_init->protocol, nlm_version,
+ 				   nlm_init->hostname, nlm_init->noresvport);
+ 	if (host == NULL) {
+diff --git a/fs/lockd/host.c b/fs/lockd/host.c
+index bb464d1..e0bbea9 100644
+--- a/fs/lockd/host.c
++++ b/fs/lockd/host.c
+@@ -232,15 +232,13 @@ nlm_destroy_host(struct nlm_host *host)
+  * created and returned.
   */
- static void
--nfs4_free_slot(struct nfs4_slot_table *tbl, u8 free_slotid)
-+nfs4_free_slot(struct nfs4_slot_table *tbl, struct nfs4_slot *free_slot)
+ struct nlm_host *nlmclnt_lookup_host(const struct sockaddr *sap,
++				     const struct sockaddr *srcaddr,
+ 				     const size_t salen,
+ 				     const unsigned short protocol,
+ 				     const u32 version,
+ 				     const char *hostname,
+ 				     int noresvport)
  {
-+	int free_slotid = free_slot - tbl->slots;
- 	int slotid = free_slotid;
+-	const struct sockaddr source = {
+-		.sa_family	= AF_UNSPEC,
+-	};
+ 	struct nlm_lookup_host_info ni = {
+ 		.server		= 0,
+ 		.sap		= sap,
+@@ -249,8 +247,8 @@ struct nlm_host *nlmclnt_lookup_host(const struct sockaddr *sap,
+ 		.version	= version,
+ 		.hostname	= hostname,
+ 		.hostname_len	= strlen(hostname),
+-		.src_sap	= &source,
+-		.src_len	= sizeof(source),
++		.src_sap	= srcaddr,
++		.src_len	= salen,
+ 		.noresvport	= noresvport,
+ 	};
  
-+	BUG_ON(slotid < 0 || slotid >= NFS4_MAX_SLOT_TABLE); 
- 	/* clear used bit in bitmap */
- 	__clear_bit(slotid, tbl->used_slots);
+diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
+index e17b49e..985a700 100644
+--- a/fs/nfs/callback.c
++++ b/fs/nfs/callback.c
+@@ -353,7 +353,7 @@ static int nfs_callback_authenticate(struct svc_rqst *rqstp)
+ 	int ret = SVC_OK;
  
-@@ -379,7 +381,7 @@ static void nfs41_sequence_free_slot(struct nfs4_sequence_res *res)
- 	struct nfs4_slot_table *tbl;
+ 	/* Don't talk to strangers */
+-	clp = nfs_find_client(svc_addr(rqstp), 4);
++	clp = nfs_find_client(svc_daddr(rqstp), true, svc_addr(rqstp), 4);
+ 	if (clp == NULL)
+ 		return SVC_DROP;
  
- 	tbl = &res->sr_session->fc_slot_table;
--	if (res->sr_slotid == NFS4_MAX_SLOT_TABLE) {
-+	if (!res->sr_slot) {
- 		/* just wake up the next guy waiting since
- 		 * we may have not consumed a slot after all */
- 		dprintk("%s: No slot\n", __func__);
-@@ -387,17 +389,15 @@ static void nfs41_sequence_free_slot(struct nfs4_sequence_res *res)
+diff --git a/fs/nfs/callback.h b/fs/nfs/callback.h
+index 85a7cfd..c86300b 100644
+--- a/fs/nfs/callback.h
++++ b/fs/nfs/callback.h
+@@ -50,6 +50,7 @@ struct cb_compound_hdr_res {
+ 
+ struct cb_getattrargs {
+ 	struct sockaddr *addr;
++	struct sockaddr *srcaddr;
+ 	struct nfs_fh fh;
+ 	uint32_t bitmap[2];
+ };
+@@ -65,6 +66,7 @@ struct cb_getattrres {
+ 
+ struct cb_recallargs {
+ 	struct sockaddr *addr;
++	struct sockaddr *srcaddr;
+ 	struct nfs_fh fh;
+ 	nfs4_stateid stateid;
+ 	uint32_t truncate;
+diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
+index 930d10f..7a7b0d4 100644
+--- a/fs/nfs/callback_proc.c
++++ b/fs/nfs/callback_proc.c
+@@ -26,7 +26,7 @@ __be32 nfs4_callback_getattr(struct cb_getattrargs *args, struct cb_getattrres *
+ 
+ 	res->bitmap[0] = res->bitmap[1] = 0;
+ 	res->status = htonl(NFS4ERR_BADHANDLE);
+-	clp = nfs_find_client(args->addr, 4);
++	clp = nfs_find_client(args->srcaddr, true, args->addr, 4);
+ 	if (clp == NULL)
+ 		goto out;
+ 
+@@ -69,7 +69,7 @@ __be32 nfs4_callback_recall(struct cb_recallargs *args, void *dummy)
+ 	__be32 res;
+ 	
+ 	res = htonl(NFS4ERR_BADHANDLE);
+-	clp = nfs_find_client(args->addr, 4);
++	clp = nfs_find_client(args->srcaddr, true, args->addr, 4);
+ 	if (clp == NULL)
+ 		goto out;
+ 
+@@ -197,8 +197,15 @@ validate_seqid(struct nfs4_slot_table *tbl, struct cb_sequenceargs * args)
+ 	struct nfs4_sessionid *sessionid)
+ {
+ 	struct nfs_client *clp;
++	/* This would be the IP (if any) that we are bound
++	 * to locally.  Since session-id appears to be unique,
++	 * we'll just ignore the bind-addr and match directly on
++	 * session-id.
++	 */
++	struct sockaddr_storage srcaddr;
++	memset(&srcaddr, 0, sizeof(srcaddr));
+ 
+-	clp = nfs_find_client(addr, 4);
++	clp = nfs_find_client((struct sockaddr *)&srcaddr, false, addr, 4);
+ 	if (clp == NULL)
+ 		return NULL;
+ 
+diff --git a/fs/nfs/callback_xdr.c b/fs/nfs/callback_xdr.c
+index 05af212..ad422f3 100644
+--- a/fs/nfs/callback_xdr.c
++++ b/fs/nfs/callback_xdr.c
+@@ -191,6 +191,7 @@ static __be32 decode_getattr_args(struct svc_rqst *rqstp, struct xdr_stream *xdr
+ 	if (unlikely(status != 0))
+ 		goto out;
+ 	args->addr = svc_addr(rqstp);
++	args->srcaddr = svc_daddr(rqstp);
+ 	status = decode_bitmap(xdr, args->bitmap);
+ out:
+ 	dprintk("%s: exit with status = %d\n", __func__, ntohl(status));
+@@ -203,6 +204,7 @@ static __be32 decode_recall_args(struct svc_rqst *rqstp, struct xdr_stream *xdr,
+ 	__be32 status;
+ 
+ 	args->addr = svc_addr(rqstp);
++	args->srcaddr = svc_daddr(rqstp);
+ 	status = decode_stateid(xdr, &args->stateid);
+ 	if (unlikely(status != 0))
+ 		goto out;
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index e734072..d9e8d53 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -101,6 +101,7 @@ struct rpc_program		nfsacl_program = {
+ struct nfs_client_initdata {
+ 	const char *hostname;
+ 	const struct sockaddr *addr;
++	const struct sockaddr *srcaddr;
+ 	size_t addrlen;
+ 	const struct nfs_rpc_ops *rpc_ops;
+ 	int proto;
+@@ -129,6 +130,7 @@ static struct nfs_client *nfs_alloc_client(const struct nfs_client_initdata *cl_
+ 
+ 	memcpy(&clp->cl_addr, cl_init->addr, cl_init->addrlen);
+ 	clp->cl_addrlen = cl_init->addrlen;
++	memcpy(&clp->srcaddr, cl_init->srcaddr, cl_init->addrlen);
+ 
+ 	if (cl_init->hostname) {
+ 		err = -ENOMEM;
+@@ -336,6 +338,8 @@ static int nfs_sockaddr_match_ipaddr(const struct sockaddr *sa1,
+ 		return nfs_sockaddr_match_ipaddr4(sa1, sa2);
+ 	case AF_INET6:
+ 		return nfs_sockaddr_match_ipaddr6(sa1, sa2);
++	case AF_UNSPEC:
++		return 1; /* two UNSPEC addresses match */
  	}
- 
- 	spin_lock(&tbl->slot_tbl_lock);
--	nfs4_free_slot(tbl, res->sr_slotid);
-+	nfs4_free_slot(tbl, res->sr_slot);
- 	nfs41_check_drain_session_complete(res->sr_session);
- 	spin_unlock(&tbl->slot_tbl_lock);
--	res->sr_slotid = NFS4_MAX_SLOT_TABLE;
-+	res->sr_slot = NULL;
+ 	return 0;
  }
- 
- static int nfs41_sequence_done(struct rpc_task *task, struct nfs4_sequence_res *res)
+@@ -363,7 +367,9 @@ static int nfs_sockaddr_cmp(const struct sockaddr *sa1,
+  * Find a client by IP address and protocol version
+  * - returns NULL if no such client
+  */
+-struct nfs_client *nfs_find_client(const struct sockaddr *addr, u32 nfsversion)
++struct nfs_client *nfs_find_client(const struct sockaddr *srcaddr,
++				   bool compare_srcaddr,
++				   const struct sockaddr *addr, u32 nfsversion)
  {
- 	unsigned long timestamp;
--	struct nfs4_slot_table *tbl;
--	struct nfs4_slot *slot;
  	struct nfs_client *clp;
  
- 	/*
-@@ -410,17 +410,14 @@ static int nfs41_sequence_done(struct rpc_task *task, struct nfs4_sequence_res *
- 		res->sr_status = NFS_OK;
+@@ -380,7 +386,14 @@ struct nfs_client *nfs_find_client(const struct sockaddr *addr, u32 nfsversion)
+ 		if (clp->rpc_ops->version != nfsversion)
+ 			continue;
  
- 	/* -ERESTARTSYS can result in skipping nfs41_sequence_setup */
--	if (res->sr_slotid == NFS4_MAX_SLOT_TABLE)
-+	if (!res->sr_slot)
- 		goto out;
+-		/* Match only the IP address, not the port number */
++		if (compare_srcaddr) {
++			/* Match only the IP address, not the port number */
++			const struct sockaddr *sa;
++			sa = (const struct sockaddr *)&clp->srcaddr;
++			if (!nfs_sockaddr_match_ipaddr(srcaddr, sa))
++				continue;
++		}
++
+ 		if (!nfs_sockaddr_match_ipaddr(addr, clap))
+ 			continue;
  
--	tbl = &res->sr_session->fc_slot_table;
--	slot = tbl->slots + res->sr_slotid;
--
- 	/* Check the SEQUENCE operation status */
- 	switch (res->sr_status) {
- 	case 0:
- 		/* Update the slot's sequence and clientid lease timer */
--		++slot->seq_nr;
-+		++res->sr_slot->seq_nr;
- 		timestamp = res->sr_renewal_time;
- 		clp = res->sr_session->clp;
- 		do_renew_lease(clp, timestamp);
-@@ -433,12 +430,14 @@ static int nfs41_sequence_done(struct rpc_task *task, struct nfs4_sequence_res *
- 		 * returned NFS4ERR_DELAY as per Section 2.10.6.2
- 		 * of RFC5661.
- 		 */
--		dprintk("%s: slot=%d seq=%d: Operation in progress\n",
--				__func__, res->sr_slotid, slot->seq_nr);
-+		dprintk("%s: slot=%ld seq=%d: Operation in progress\n",
-+			__func__,
-+			res->sr_slot - res->sr_session->fc_slot_table.slots,
-+			res->sr_slot->seq_nr);
- 		goto out_retry;
- 	default:
- 		/* Just update the slot sequence no. */
--		++slot->seq_nr;
-+		++res->sr_slot->seq_nr;
- 	}
- out:
- 	/* The session may be reset by one of the error handlers. */
-@@ -505,10 +504,9 @@ static int nfs41_setup_sequence(struct nfs4_session *session,
- 
- 	dprintk("--> %s\n", __func__);
- 	/* slot already allocated? */
--	if (res->sr_slotid != NFS4_MAX_SLOT_TABLE)
-+	if (res->sr_slot != NULL)
- 		return 0;
- 
--	res->sr_slotid = NFS4_MAX_SLOT_TABLE;
- 	tbl = &session->fc_slot_table;
- 
- 	spin_lock(&tbl->slot_tbl_lock);
-@@ -550,7 +548,7 @@ static int nfs41_setup_sequence(struct nfs4_session *session,
- 	dprintk("<-- %s slotid=%d seqid=%d\n", __func__, slotid, slot->seq_nr);
- 
- 	res->sr_session = session;
--	res->sr_slotid = slotid;
-+	res->sr_slot = slot;
- 	res->sr_renewal_time = jiffies;
- 	res->sr_status_flags = 0;
- 	/*
-@@ -576,8 +574,9 @@ int nfs4_setup_sequence(const struct nfs_server *server,
- 		goto out;
- 	}
- 
--	dprintk("--> %s clp %p session %p sr_slotid %d\n",
--		__func__, session->clp, session, res->sr_slotid);
-+	dprintk("--> %s clp %p session %p sr_slot %ld\n",
-+		__func__, session->clp, session, res->sr_slot ?
-+			res->sr_slot - session->fc_slot_table.slots : -1);
- 
- 	ret = nfs41_setup_sequence(session, args, res, cache_reply,
- 				   task);
-@@ -650,7 +649,7 @@ static int nfs4_call_sync_sequence(struct nfs_server *server,
- 		.callback_data = &data
- 	};
- 
--	res->sr_slotid = NFS4_MAX_SLOT_TABLE;
-+	res->sr_slot = NULL;
- 	if (privileged)
- 		task_setup.callback_ops = &nfs41_call_priv_sync_ops;
- 	task = rpc_run_task(&task_setup);
-@@ -735,7 +734,6 @@ static void nfs4_init_opendata_res(struct nfs4_opendata *p)
- 	p->o_res.server = p->o_arg.server;
- 	nfs_fattr_init(&p->f_attr);
- 	nfs_fattr_init(&p->dir_attr);
--	p->o_res.seq_res.sr_slotid = NFS4_MAX_SLOT_TABLE;
- }
- 
- static struct nfs4_opendata *nfs4_opendata_alloc(struct path *path,
-@@ -1975,7 +1973,6 @@ int nfs4_do_close(struct path *path, struct nfs4_state *state, gfp_t gfp_mask, i
- 	calldata->res.fattr = &calldata->fattr;
- 	calldata->res.seqid = calldata->arg.seqid;
- 	calldata->res.server = server;
--	calldata->res.seq_res.sr_slotid = NFS4_MAX_SLOT_TABLE;
- 	path_get(path);
- 	calldata->path = *path;
- 
-@@ -2550,7 +2547,7 @@ static void nfs4_proc_unlink_setup(struct rpc_message *msg, struct inode *dir)
- 
- 	args->bitmask = server->cache_consistency_bitmask;
- 	res->server = server;
--	res->seq_res.sr_slotid = NFS4_MAX_SLOT_TABLE;
-+	res->seq_res.sr_slot = NULL;
- 	msg->rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_REMOVE];
- }
- 
-@@ -2576,7 +2573,6 @@ static void nfs4_proc_rename_setup(struct rpc_message *msg, struct inode *dir)
- 	msg->rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_RENAME];
- 	arg->bitmask = server->attr_bitmask;
- 	res->server = server;
--	res->seq_res.sr_slotid = NFS4_MAX_SLOT_TABLE;
- }
- 
- static int nfs4_proc_rename_done(struct rpc_task *task, struct inode *old_dir,
-@@ -3646,7 +3642,6 @@ static int _nfs4_proc_delegreturn(struct inode *inode, struct rpc_cred *cred, co
- 	memcpy(&data->stateid, stateid, sizeof(data->stateid));
- 	data->res.fattr = &data->fattr;
- 	data->res.server = server;
--	data->res.seq_res.sr_slotid = NFS4_MAX_SLOT_TABLE;
- 	nfs_fattr_init(data->res.fattr);
- 	data->timestamp = jiffies;
- 	data->rpc_status = 0;
-@@ -3799,7 +3794,6 @@ static struct nfs4_unlockdata *nfs4_alloc_unlockdata(struct file_lock *fl,
- 	p->arg.fl = &p->fl;
- 	p->arg.seqid = seqid;
- 	p->res.seqid = seqid;
--	p->res.seq_res.sr_slotid = NFS4_MAX_SLOT_TABLE;
- 	p->arg.stateid = &lsp->ls_stateid;
- 	p->lsp = lsp;
- 	atomic_inc(&lsp->ls_count);
-@@ -3979,7 +3973,6 @@ static struct nfs4_lockdata *nfs4_alloc_lockdata(struct file_lock *fl,
- 	p->arg.lock_owner.clientid = server->nfs_client->cl_clientid;
- 	p->arg.lock_owner.id = lsp->ls_id.id;
- 	p->res.lock_seqid = p->arg.lock_seqid;
--	p->res.seq_res.sr_slotid = NFS4_MAX_SLOT_TABLE;
- 	p->lsp = lsp;
- 	p->server = server;
- 	atomic_inc(&lsp->ls_count);
-@@ -4612,7 +4605,6 @@ int nfs4_proc_get_lease_time(struct nfs_client *clp, struct nfs_fsinfo *fsinfo)
- 	};
- 	int status;
- 
--	res.lr_seq_res.sr_slotid = NFS4_MAX_SLOT_TABLE;
- 	dprintk("--> %s\n", __func__);
- 	task = rpc_run_task(&task_setup);
- 
-@@ -5105,12 +5097,11 @@ static struct rpc_task *_nfs41_proc_sequence(struct nfs_client *clp, struct rpc_
- 
- 	if (!atomic_inc_not_zero(&clp->cl_count))
- 		return ERR_PTR(-EIO);
--	calldata = kmalloc(sizeof(*calldata), GFP_NOFS);
-+	calldata = kzalloc(sizeof(*calldata), GFP_NOFS);
- 	if (calldata == NULL) {
- 		nfs_put_client(clp);
- 		return ERR_PTR(-ENOMEM);
- 	}
--	calldata->res.sr_slotid = NFS4_MAX_SLOT_TABLE;
- 	msg.rpc_argp = &calldata->args;
- 	msg.rpc_resp = &calldata->res;
- 	calldata->clp = clp;
-@@ -5242,7 +5233,6 @@ static int nfs41_proc_reclaim_complete(struct nfs_client *clp)
- 		goto out;
- 	calldata->clp = clp;
- 	calldata->arg.one_fs = 0;
--	calldata->res.seq_res.sr_slotid = NFS4_MAX_SLOT_TABLE;
- 
- 	msg.rpc_argp = &calldata->arg;
- 	msg.rpc_resp = &calldata->res;
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index b0bd7ef..ccf09c4 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -4668,7 +4668,6 @@ static int decode_sequence(struct xdr_stream *xdr,
- 			   struct rpc_rqst *rqstp)
+@@ -399,11 +412,14 @@ struct nfs_client *nfs_find_client(const struct sockaddr *addr, u32 nfsversion)
+ struct nfs_client *nfs_find_client_next(struct nfs_client *clp)
  {
- #if defined(CONFIG_NFS_V4_1)
--	struct nfs4_slot *slot;
- 	struct nfs4_sessionid id;
- 	u32 dummy;
- 	int status;
-@@ -4700,15 +4699,14 @@ static int decode_sequence(struct xdr_stream *xdr,
- 		goto out_overflow;
+ 	struct sockaddr *sap = (struct sockaddr *)&clp->cl_addr;
++	struct sockaddr *srcap = (struct sockaddr *)&clp->srcaddr;
+ 	u32 nfsvers = clp->rpc_ops->version;
  
- 	/* seqid */
--	slot = &res->sr_session->fc_slot_table.slots[res->sr_slotid];
- 	dummy = be32_to_cpup(p++);
--	if (dummy != slot->seq_nr) {
-+	if (dummy != res->sr_slot->seq_nr) {
- 		dprintk("%s Invalid sequence number\n", __func__);
- 		goto out_err;
- 	}
- 	/* slot id */
- 	dummy = be32_to_cpup(p++);
--	if (dummy != res->sr_slotid) {
-+	if (dummy != res->sr_slot - res->sr_session->fc_slot_table.slots) {
- 		dprintk("%s Invalid slot id\n", __func__);
- 		goto out_err;
- 	}
-diff --git a/fs/nfs/read.c b/fs/nfs/read.c
-index 87adc27..79859c8 100644
---- a/fs/nfs/read.c
-+++ b/fs/nfs/read.c
-@@ -46,7 +46,6 @@ struct nfs_read_data *nfs_readdata_alloc(unsigned int pagecount)
- 		memset(p, 0, sizeof(*p));
- 		INIT_LIST_HEAD(&p->pages);
- 		p->npages = pagecount;
--		p->res.seq_res.sr_slotid = NFS4_MAX_SLOT_TABLE;
- 		if (pagecount <= ARRAY_SIZE(p->page_array))
- 			p->pagevec = p->page_array;
- 		else {
-diff --git a/fs/nfs/unlink.c b/fs/nfs/unlink.c
-index 47530aa..9a16bad 100644
---- a/fs/nfs/unlink.c
-+++ b/fs/nfs/unlink.c
-@@ -262,7 +262,6 @@ nfs_async_unlink(struct inode *dir, struct dentry *dentry)
- 		status = PTR_ERR(data->cred);
- 		goto out_free;
- 	}
--	data->res.seq_res.sr_slotid = NFS4_MAX_SLOT_TABLE;
- 	data->res.dir_attr = &data->dir_attr;
+ 	spin_lock(&nfs_client_lock);
+ 	list_for_each_entry_continue(clp, &nfs_client_list, cl_share_link) {
+ 		struct sockaddr *clap = (struct sockaddr *)&clp->cl_addr;
++		const struct sockaddr *sa;
++		sa = (const struct sockaddr *)&clp->srcaddr;
  
- 	status = -EBUSY;
-@@ -427,7 +426,7 @@ nfs_async_rename(struct inode *old_dir, struct inode *new_dir,
- 		.flags = RPC_TASK_ASYNC,
+ 		/* Don't match clients that failed to initialise properly */
+ 		if (clp->cl_cons_state != NFS_CS_READY)
+@@ -417,6 +433,12 @@ struct nfs_client *nfs_find_client_next(struct nfs_client *clp)
+ 		if (!nfs_sockaddr_match_ipaddr(sap, clap))
+ 			continue;
+ 
++		/* Check to make sure local-IP bindings match,
++		 * but just the IP-addr.
++		 */
++		if (!nfs_sockaddr_match_ipaddr(srcap, sa))
++			continue;
++
+ 		atomic_inc(&clp->cl_count);
+ 		spin_unlock(&nfs_client_lock);
+ 		return clp;
+@@ -436,6 +458,8 @@ static struct nfs_client *nfs_match_client(const struct nfs_client_initdata *dat
+ 
+ 	list_for_each_entry(clp, &nfs_client_list, cl_share_link) {
+ 	        const struct sockaddr *clap = (struct sockaddr *)&clp->cl_addr;
++		const struct sockaddr *sa;
++		sa = (const struct sockaddr *)&clp->srcaddr;
+ 		/* Don't match clients that failed to initialise properly */
+ 		if (clp->cl_cons_state < 0)
+ 			continue;
+@@ -446,9 +470,17 @@ static struct nfs_client *nfs_match_client(const struct nfs_client_initdata *dat
+ 
+ 		if (clp->cl_proto != data->proto)
+ 			continue;
++
++		/* Check to make sure local-IP bindings match,
++		 * but just the IP-addr.
++		 */
++		if (!nfs_sockaddr_match_ipaddr(sa, data->srcaddr))
++			continue;
++
+ 		/* Match nfsv4 minorversion */
+ 		if (clp->cl_minorversion != data->minorversion)
+ 			continue;
++
+ 		/* Match the full socket address */
+ 		if (!nfs_sockaddr_cmp(sap, clap))
+ 			continue;
+@@ -494,7 +526,6 @@ install_client:
+ 	clp = new;
+ 	list_add(&clp->cl_share_link, &nfs_client_list);
+ 	spin_unlock(&nfs_client_lock);
+-	dprintk("--> nfs_get_client() = %p [new]\n", clp);
+ 	return clp;
+ 
+ 	/* found an existing client
+@@ -602,6 +633,7 @@ static int nfs_create_rpc_client(struct nfs_client *clp,
+ 	struct rpc_clnt		*clnt = NULL;
+ 	struct rpc_create_args args = {
+ 		.protocol	= clp->cl_proto,
++		.saddress	= (struct sockaddr *)&clp->srcaddr,
+ 		.address	= (struct sockaddr *)&clp->cl_addr,
+ 		.addrsize	= clp->cl_addrlen,
+ 		.timeout	= timeparms,
+@@ -649,6 +681,7 @@ static int nfs_start_lockd(struct nfs_server *server)
+ 	struct nlmclnt_initdata nlm_init = {
+ 		.hostname	= clp->cl_hostname,
+ 		.address	= (struct sockaddr *)&clp->cl_addr,
++		.srcaddr	= (struct sockaddr *)&clp->srcaddr,
+ 		.addrlen	= clp->cl_addrlen,
+ 		.nfs_version	= clp->rpc_ops->version,
+ 		.noresvport	= server->flags & NFS_MOUNT_NORESVPORT ?
+@@ -785,6 +818,7 @@ static int nfs_init_server(struct nfs_server *server,
+ 		.hostname = data->nfs_server.hostname,
+ 		.addr = (const struct sockaddr *)&data->nfs_server.address,
+ 		.addrlen = data->nfs_server.addrlen,
++		.srcaddr = (const struct sockaddr *)&data->srcaddr.address,
+ 		.rpc_ops = &nfs_v2_clientops,
+ 		.proto = data->nfs_server.protocol,
  	};
+@@ -1226,6 +1260,7 @@ static int nfs4_set_client(struct nfs_server *server,
+ 		const struct sockaddr *addr,
+ 		const size_t addrlen,
+ 		const char *ip_addr,
++		const struct sockaddr *srcaddr,
+ 		rpc_authflavor_t authflavour,
+ 		int proto, const struct rpc_timeout *timeparms,
+ 		u32 minorversion)
+@@ -1234,6 +1269,7 @@ static int nfs4_set_client(struct nfs_server *server,
+ 		.hostname = hostname,
+ 		.addr = addr,
+ 		.addrlen = addrlen,
++		.srcaddr = srcaddr,
+ 		.rpc_ops = &nfs_v4_clientops,
+ 		.proto = proto,
+ 		.minorversion = minorversion,
+@@ -1366,6 +1402,7 @@ static int nfs4_init_server(struct nfs_server *server,
+ 			(const struct sockaddr *)&data->nfs_server.address,
+ 			data->nfs_server.addrlen,
+ 			data->client_address,
++			(const struct sockaddr *)&data->srcaddr.address,
+ 			data->auth_flavors[0],
+ 			data->nfs_server.protocol,
+ 			&timeparms,
+@@ -1456,6 +1493,7 @@ struct nfs_server *nfs4_create_referral_server(struct nfs_clone_mount *data,
+ 				data->addr,
+ 				data->addrlen,
+ 				parent_client->cl_ipaddr,
++				(const struct sockaddr *)&parent_client->srcaddr,
+ 				data->authflavor,
+ 				parent_server->client->cl_xprt->prot,
+ 				parent_server->client->cl_timeout,
+@@ -1654,19 +1692,32 @@ static int nfs_server_list_show(struct seq_file *m, void *v)
  
--	data = kmalloc(sizeof(*data), GFP_KERNEL);
-+	data = kzalloc(sizeof(*data), GFP_KERNEL);
- 	if (data == NULL)
- 		return ERR_PTR(-ENOMEM);
- 	task_setup_data.callback_data = data,
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index 874972d..4d6d35d 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -55,7 +55,6 @@ struct nfs_write_data *nfs_commitdata_alloc(void)
- 	if (p) {
- 		memset(p, 0, sizeof(*p));
- 		INIT_LIST_HEAD(&p->pages);
--		p->res.seq_res.sr_slotid = NFS4_MAX_SLOT_TABLE;
+ 	/* display header on line 1 */
+ 	if (v == &nfs_client_list) {
+-		seq_puts(m, "NV SERVER   PORT USE HOSTNAME\n");
++		seq_puts(m, "NV SERVER   PORT USE HOSTNAME"
++			 "           SRCADDR\n");
+ 		return 0;
  	}
- 	return p;
- }
-@@ -75,7 +74,6 @@ struct nfs_write_data *nfs_writedata_alloc(unsigned int pagecount)
- 		memset(p, 0, sizeof(*p));
- 		INIT_LIST_HEAD(&p->pages);
- 		p->npages = pagecount;
--		p->res.seq_res.sr_slotid = NFS4_MAX_SLOT_TABLE;
- 		if (pagecount <= ARRAY_SIZE(p->page_array))
- 			p->pagevec = p->page_array;
- 		else {
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index 172df83..5772b2c 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -170,7 +170,7 @@ struct nfs4_sequence_args {
  
- struct nfs4_sequence_res {
- 	struct nfs4_session	*sr_session;
--	u8			sr_slotid;	/* slot used to send request */
-+	struct nfs4_slot	*sr_slot;	/* slot used to send request */
- 	int			sr_status;	/* sequence operation status */
- 	unsigned long		sr_renewal_time;
- 	u32			sr_status_flags;
--- 
-1.7.2.3
+ 	/* display one transport per line on subsequent lines */
+ 	clp = list_entry(v, struct nfs_client, cl_share_link);
+ 
+-	seq_printf(m, "v%u %s %s %3d %s\n",
++	seq_printf(m, "v%u %s %s %3d %s",
+ 		   clp->rpc_ops->version,
+ 		   rpc_peeraddr2str(clp->cl_rpcclient, RPC_DISPLAY_HEX_ADDR),
+ 		   rpc_peeraddr2str(clp->cl_rpcclient, RPC_DISPLAY_HEX_PORT),
+ 		   atomic_read(&clp->cl_count),
+ 		   clp->cl_hostname);
++	if (clp->srcaddr.ss_family == AF_INET) {
++		const struct sockaddr_in *sin;
++		sin = (const struct sockaddr_in *)&clp->srcaddr;
++		seq_printf(m, "   %pI4\n", &sin->sin_addr.s_addr);
++	} else if (clp->srcaddr.ss_family == AF_INET6) {
++		const struct sockaddr_in6 *sin6;
++		sin6 = (const struct sockaddr_in6 *)&clp->srcaddr;
++		seq_printf(m, "   %pI6c\n", &sin6->sin6_addr);
++	} else if (clp->srcaddr.ss_family == AF_UNSPEC)
++		seq_printf(m, "   ANY\n");
++	else
++		seq_printf(m, "   UNKNOWN_%i\n", (int)(clp->srcaddr.ss_family));
+ 
+ 	return 0;
+ }
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index c961bc9..ac7a47f 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -84,6 +84,11 @@ struct nfs_parsed_mount_data {
+ 	struct {
+ 		struct sockaddr_storage	address;
+ 		size_t			addrlen;
++	} srcaddr;
++
++	struct {
++		struct sockaddr_storage	address;
++		size_t			addrlen;
+ 		char			*hostname;
+ 		u32			version;
+ 		int			port;
+@@ -105,6 +110,7 @@ struct nfs_parsed_mount_data {
+ /* mount_clnt.c */
+ struct nfs_mount_request {
+ 	struct sockaddr		*sap;
++	struct sockaddr		*srcaddr;
+ 	size_t			salen;
+ 	char			*hostname;
+ 	char			*dirpath;
+@@ -123,7 +129,9 @@ extern void nfs_umount(const struct nfs_mount_request *info);
+ extern struct rpc_program nfs_program;
+ 
+ extern void nfs_put_client(struct nfs_client *);
+-extern struct nfs_client *nfs_find_client(const struct sockaddr *, u32);
++extern struct nfs_client *nfs_find_client(const struct sockaddr *srcaddr,
++					  bool compare_srcaddr,
++					  const struct sockaddr *, u32);
+ extern struct nfs_client *nfs_find_client_next(struct nfs_client *);
+ extern struct nfs_server *nfs_create_server(
+ 					const struct nfs_parsed_mount_data *,
+diff --git a/fs/nfs/mount_clnt.c b/fs/nfs/mount_clnt.c
+index 59047f8..91d2922 100644
+--- a/fs/nfs/mount_clnt.c
++++ b/fs/nfs/mount_clnt.c
+@@ -154,6 +154,7 @@ int nfs_mount(struct nfs_mount_request *info)
+ 	};
+ 	struct rpc_create_args args = {
+ 		.protocol	= info->protocol,
++		.saddress	= info->srcaddr,
+ 		.address	= info->sap,
+ 		.addrsize	= info->salen,
+ 		.servername	= info->hostname,
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index ec3966e..dc31cb3 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -97,7 +97,7 @@ enum {
+ 
+ 	/* Mount options that take string arguments */
+ 	Opt_sec, Opt_proto, Opt_mountproto, Opt_mounthost,
+-	Opt_addr, Opt_mountaddr, Opt_clientaddr,
++	Opt_addr, Opt_mountaddr, Opt_clientaddr, Opt_srcaddr,
+ 	Opt_lookupcache,
+ 	Opt_fscache_uniq,
+ 
+@@ -166,6 +166,7 @@ static const match_table_t nfs_mount_option_tokens = {
+ 	{ Opt_mountproto, "mountproto=%s" },
+ 	{ Opt_addr, "addr=%s" },
+ 	{ Opt_clientaddr, "clientaddr=%s" },
++	{ Opt_srcaddr, "srcaddr=%s" },
+ 	{ Opt_mounthost, "mounthost=%s" },
+ 	{ Opt_mountaddr, "mountaddr=%s" },
+ 
+@@ -653,6 +654,15 @@ static void nfs_show_mount_options(struct seq_file *m, struct nfs_server *nfss,
+ 	else
+ 		nfs_show_nfsv4_options(m, nfss, showdefaults);
+ 
++	if (clp->srcaddr.ss_family == AF_INET6) {
++		struct sockaddr_in6 *sin6;
++		sin6 = (struct sockaddr_in6 *)(&clp->srcaddr);
++		seq_printf(m, ",srcaddr=%pI6c", &sin6->sin6_addr);
++	} else if (clp->srcaddr.ss_family == AF_INET) {
++		struct sockaddr_in *sin = (struct sockaddr_in *)&clp->srcaddr;
++		seq_printf(m, ",srcaddr=%pI4", &sin->sin_addr.s_addr);
++	}
++
+ 	if (nfss->options & NFS_OPTION_FSCACHE)
+ 		seq_printf(m, ",fsc");
+ 
+@@ -1360,6 +1370,23 @@ static int nfs_parse_mount_options(char *raw,
+ 			kfree(mnt->client_address);
+ 			mnt->client_address = string;
+ 			break;
++		case Opt_srcaddr:
++			string = match_strdup(args);
++			if (string == NULL)
++				goto out_nomem;
++			mnt->srcaddr.addrlen =
++				rpc_pton(string, strlen(string),
++					 (struct sockaddr *)
++					 &mnt->srcaddr.address,
++					 sizeof(mnt->srcaddr.address));
++			kfree(string);
++			if (mnt->srcaddr.addrlen == 0) {
++				printk(KERN_WARNING
++				       "nfs: Could not parse srcaddr: %s\n",
++				       string);
++				goto out_invalid_address;
++			}
++			break;
+ 		case Opt_mounthost:
+ 			string = match_strdup(args);
+ 			if (string == NULL)
+@@ -1536,6 +1563,8 @@ static int nfs_try_mount(struct nfs_parsed_mount_data *args,
+ 	struct nfs_mount_request request = {
+ 		.sap		= (struct sockaddr *)
+ 						&args->mount_server.address,
++		.srcaddr	= (struct sockaddr *)&args->srcaddr.address,
++		.salen		= args->mount_server.addrlen,
+ 		.dirpath	= args->nfs_server.export_path,
+ 		.protocol	= args->mount_server.protocol,
+ 		.fh		= root_fh,
+diff --git a/include/linux/lockd/bind.h b/include/linux/lockd/bind.h
+index fbc48f8..94b1cd0 100644
+--- a/include/linux/lockd/bind.h
++++ b/include/linux/lockd/bind.h
+@@ -38,6 +38,7 @@ extern struct nlmsvc_binding *	nlmsvc_ops;
+ struct nlmclnt_initdata {
+ 	const char		*hostname;
+ 	const struct sockaddr	*address;
++	const struct sockaddr	*srcaddr;
+ 	size_t			addrlen;
+ 	unsigned short		protocol;
+ 	u32			nfs_version;
+diff --git a/include/linux/lockd/lockd.h b/include/linux/lockd/lockd.h
+index a34dea4..1a58107 100644
+--- a/include/linux/lockd/lockd.h
++++ b/include/linux/lockd/lockd.h
+@@ -217,6 +217,7 @@ void		  nlmclnt_next_cookie(struct nlm_cookie *);
+  * Host cache
+  */
+ struct nlm_host  *nlmclnt_lookup_host(const struct sockaddr *sap,
++					const struct sockaddr *bindaddr,
+ 					const size_t salen,
+ 					const unsigned short protocol,
+ 					const u32 version,
+diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
+index c82ee7c..b65a632 100644
+--- a/include/linux/nfs_fs_sb.h
++++ b/include/linux/nfs_fs_sb.h
+@@ -84,6 +84,9 @@ struct nfs_client {
+ 	struct nfs4_session	*cl_session; 	/* sharred session */
+ #endif /* CONFIG_NFS_V4_1 */
+ 
++	/* If we should bind to a local IP, it should be specified below. */
++	struct sockaddr_storage	srcaddr;
++
+ #ifdef CONFIG_NFS_FSCACHE
+ 	struct fscache_cookie	*fscache;	/* client index cache cookie */
+ #endif
+diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
+index 5a3085b..7c836e7 100644
+--- a/include/linux/sunrpc/svc.h
++++ b/include/linux/sunrpc/svc.h
+@@ -298,6 +298,11 @@ static inline struct sockaddr *svc_addr(const struct svc_rqst *rqst)
+ 	return (struct sockaddr *) &rqst->rq_addr;
+ }
+ 
++static inline struct sockaddr *svc_daddr(struct svc_rqst *rqst)
++{
++	return (struct sockaddr *) &rqst->rq_daddr;
++}
++
+ /*
+  * Check buffer bounds after decoding arguments
+  */
 
+--------------090505020904030503080105--
