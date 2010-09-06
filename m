@@ -1,121 +1,73 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:29772 "EHLO
-	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1755045Ab0IPPfK (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 16 Sep 2010 11:35:10 -0400
-Message-ID: <4C923933.9040907@panasas.com>
-Date: Thu, 16 Sep 2010 17:35:15 +0200
-From: Benny Halevy <bhalevy@panasas.com>
-To: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+Received: from cn.fujitsu.com ([222.73.24.84]:60861 "EHLO song.cn.fujitsu.com"
+	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
+	id S1755200Ab0IFDge (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 5 Sep 2010 23:36:34 -0400
+Message-ID: <4C8461BA.5050208@cn.fujitsu.com>
+Date: Mon, 06 Sep 2010 11:36:26 +0800
+From: Bian Naimeng <biannm@cn.fujitsu.com>
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
 CC: linux-nfs@vger.kernel.org
-Subject: Re: kernel panic
-References: <4C90C872.7080100@desy.de>
-In-Reply-To: <4C90C872.7080100@desy.de>
-Content-Type: text/plain; charset=ISO-8859-1
+Subject: [PATCH 1/2]gss:krb5 miss returning error to caller when import security
+ context
+References: <4C846162.40305@cn.fujitsu.com>
+In-Reply-To: <4C846162.40305@cn.fujitsu.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 2010-09-15 15:21, Tigran Mkrtchyan wrote:
-> 
-> This is pnfs-all-latest git fa5a03da84b02026396be0736288b3f4a8143ff2
+krb5 miss returning error to up layer when import security context, 
+it may be return ok though it has failed to import security context.
 
-Hmm, it's pnfs-all-2.6.35 by now :)
-but nevertheless, the IP below doesn't seem to agree with the assembly
-code for nfs41_sequence_done.
-Do mind running gdb on your binary (fs/nfs/nfs.ko) and locating
-the exact line and cpu instruction to see what's going on?
+Signed-off-by: Bian Naimeng <biannm@cn.fujitsu.com>
 
-Thanks,
+----
 
-Benny
+diff --git a/net/sunrpc/auth_gss/gss_krb5_mech.c b/net/sunrpc/auth_gss/gss_krb5_mech.c
+index 0326446..778e5df 100644
+--- a/net/sunrpc/auth_gss/gss_krb5_mech.c
++++ b/net/sunrpc/auth_gss/gss_krb5_mech.c
+@@ -237,6 +237,7 @@ get_key(const void *p, const void *end,
+ 	if (!supported_gss_krb5_enctype(alg)) {
+ 		printk(KERN_WARNING "gss_kerberos_mech: unsupported "
+ 			"encryption key algorithm %d\n", alg);
++		p = ERR_PTR(-EINVAL);
+ 		goto out_err;
+ 	}
+ 	p = simple_get_netobj(p, end, &key);
+@@ -282,15 +283,19 @@ gss_import_v1_context(const void *p, const void *end, struct krb5_ctx *ctx)
+ 	ctx->enctype = ENCTYPE_DES_CBC_RAW;
+ 
+ 	ctx->gk5e = get_gss_krb5_enctype(ctx->enctype);
+-	if (ctx->gk5e == NULL)
++	if (ctx->gk5e == NULL) {
++		p = ERR_PTR(-EINVAL);
+ 		goto out_err;
++	}
+ 
+ 	/* The downcall format was designed before we completely understood
+ 	 * the uses of the context fields; so it includes some stuff we
+ 	 * just give some minimal sanity-checking, and some we ignore
+ 	 * completely (like the next twenty bytes): */
+-	if (unlikely(p + 20 > end || p + 20 < p))
++	if (unlikely(p + 20 > end || p + 20 < p)) {
++		p = ERR_PTR(-EFAULT);
+ 		goto out_err;
++	}
+ 	p += 20;
+ 	p = simple_get_bytes(p, end, &tmp, sizeof(tmp));
+ 	if (IS_ERR(p))
+@@ -619,6 +624,7 @@ gss_import_v2_context(const void *p, const void *end, struct krb5_ctx *ctx,
+ 	if (ctx->seq_send64 != ctx->seq_send) {
+ 		dprintk("%s: seq_send64 %lx, seq_send %x overflow?\n", __func__,
+ 			(long unsigned)ctx->seq_send64, ctx->seq_send);
++		p = ERR_PTR(-EINVAL);
+ 		goto out_err;
+ 	}
+ 	p = simple_get_bytes(p, end, &ctx->enctype, sizeof(ctx->enctype));
 
-> $ uname -a
-> Linux anahit 2.6.35-pnfs-2 #22 SMP Fri Aug 27 17:47:27 CEST 2010 x86_64 
-> x86_64 x86_64 GNU/Linux
-> $
-> 
-> On server restart:
-> 
-> [624967.868286] BUG: unable to handle kernel NULL pointer dereference at 
-> (null)
-> [624967.868291] IP: [<ffffffffa0492f42>] nfs41_sequence_done+0x52/0x2e0 
-> [nfs]
-> [624967.868312] PGD 0
-> [624967.868315] Oops: 0002 [#1] SMP
-> [624967.868317] last sysfs file: 
-> /sys/devices/pci0000:00/0000:00:1a.7/usb1/1-5/1-5:1.0/host8/target8:0:0/8:0:0:0/block/sdb/sdb1/stat
-> [624967.868321] CPU 0
-> [624967.868322] Modules linked in: nfs_layout_nfsv41_files snd_pcm_oss 
-> snd_mixer_oss snd_seq edd rpcsec_gss_krb5 vboxnetadp vboxnetflt nfs 
-> lockd fscache nfs_acl auth_rpcgss sunrpc vboxdrv cpufreq_conservative 
-> cpufreq_userspace cpufreq_powersave acpi_cpufreq mperf fuse loop dm_mod 
-> snd_hda_codec_idt snd_usb_audio snd_hda_intel snd_hda_codec snd_hwdep 
-> iTCO_wdt snd_pcm sr_mod snd_timer iTCO_vendor_support snd_usbmidi_lib sg 
-> cdrom pcspkr serio_raw snd_rawmidi snd_seq_device ohci1394 ieee1394 
-> i2c_i801 button snd microcode e1000e snd_page_alloc ext4 jbd2 crc16 fan 
-> processor ide_pci_generic ide_core ata_generic pata_marvell thermal 
-> thermal_sys
-> [624967.868363]
-> [624967.868366] Pid: 2267, comm: rpciod/0 Tainted: G          I 
-> 2.6.35-pnfs-2 #22 DX38BT/pczW1007
-> [624967.868368] RIP: 0010:[<ffffffffa0492f42>]  [<ffffffffa0492f42>] 
-> nfs41_sequence_done+0x52/0x2e0 [nfs]
-> [624967.868382] RSP: 0018:ffff880107e8dda0  EFLAGS: 00010246
-> [624967.868384] RAX: 0000000000000000 RBX: ffff88012d28ca98 RCX: 
-> 0000000000000000
-> [624967.868386] RDX: 0000000000000000 RSI: ffff88012d28ca98 RDI: 
-> ffff880107c9e180
-> [624967.868388] RBP: ffff880107e8ddc0 R08: 0000000000000000 R09: 
-> 0000000000000000
-> [624967.868391] R10: 0000000000000000 R11: 00000000ffffffff R12: 
-> ffff880107c9e180
-> [624967.868393] R13: 0000000000000001 R14: 0000000000000000 R15: 
-> ffff880116802300
-> [624967.868396] FS:  0000000000000000(0000) GS:ffff880001a00000(0000) 
-> knlGS:0000000000000000
-> [624967.868398] CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
-> [624967.868400] CR2: 0000000000000000 CR3: 00000000015c8000 CR4: 
-> 00000000000406f0
-> [624967.868403] DR0: 0000000000000000 DR1: 0000000000000000 DR2: 
-> 0000000000000000
-> [624967.868405] DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 
-> 0000000000000400
-> [624967.868408] Process rpciod/0 (pid: 2267, threadinfo 
-> ffff880107e8c000, task ffff880116802300)
-> [624967.868410] Stack:
-> [624967.868411]  0000000000012300 ffff880107c9e180 ffff880022c5a000 
-> 0000000000000001
-> [624967.868415] <0> ffff880107e8dde0 ffffffffa04934d0 ffff880107c9e180 
-> ffff880107c9e1f0
-> [624967.868419] <0> ffff880107e8de00 ffffffffa040ab17 0000000000000001 
-> ffff880107c9e180
-> [624967.868423] Call Trace:
-> [624967.868435]  [<ffffffffa04934d0>] 
-> nfs41_sequence_call_done+0x20/0x100 [nfs]
-> [624967.868447]  [<ffffffffa040ab17>] rpc_exit_task+0x27/0x60 [sunrpc]
-> [624967.868457]  [<ffffffffa040b322>] __rpc_execute+0xa2/0x290 [sunrpc]
-> [624967.868466]  [<ffffffffa040b510>] ? rpc_async_schedule+0x0/0x20 [sunrpc]
-> [624967.868475]  [<ffffffffa040b520>] rpc_async_schedule+0x10/0x20 [sunrpc]
-> [624967.868481]  [<ffffffff81059fed>] worker_thread+0x12d/0x1f0
-> [624967.868485]  [<ffffffff8105e530>] ? autoremove_wake_function+0x0/0x40
-> [624967.868488]  [<ffffffff81059ec0>] ? worker_thread+0x0/0x1f0
-> [624967.868491]  [<ffffffff8105e08e>] kthread+0x8e/0xa0
-> [624967.868495]  [<ffffffff81003b54>] kernel_thread_helper+0x4/0x10
-> [624967.868498]  [<ffffffff8105e000>] ? kthread+0x0/0xa0
-> [624967.868501]  [<ffffffff81003b50>] ? kernel_thread_helper+0x0/0x10
-> [624967.868503] Code: 08 80 fa 80 74 73 48 8b 0b 0f b6 c2 48 c1 e0 02 48 
-> 03 41 60 8b 4b 0c 81 f9 e8 d8 ff ff 0f 84 26 01 00 00 85 c9 0f 85 fe 00 
-> 00 00 <83> 00 01 48 8b 03 4c 8b 6b 10 4c 8b a0 38 02 00 00 49 8d bc 24
-> [624967.868532] RIP  [<ffffffffa0492f42>] nfs41_sequence_done+0x52/0x2e0 
-> [nfs]
-> [624967.868544]  RSP <ffff880107e8dda0>
-> [624967.868546] CR2: 0000000000000000
-> [624967.868548] ---[ end trace a7919e7f17c0a727 ]---
-> 
-> 
-> Tigran.
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+-- 
+Regards
+Bian Naimeng
+
