@@ -1,27 +1,49 @@
-From: "desk-EMRzualFZlQ@public.gmane.org" <autocicognara-dbx96nzIXN7OeuqD6ShaSA@public.gmane.org>
-Subject: Mutual Support
-Date: Sat, 4 Sep 2010 17:40:03 +0200 (CEST)
-Message-ID: <9230417.1223821283614803164.JavaMail.defaultUser__12340.3175537989$1283616474$gmane$org@defaultHost>
-Reply-To: JU4343-DaQTI0RpDDMAvxtiuMwx3w@public.gmane.org
+From: Benny Halevy <bhalevy@panasas.com>
+Subject: Re: [pnfs] kernel panic
+Date: Mon, 06 Sep 2010 22:25:13 +0300
+Message-ID: <4C854019.6030108@panasas.com>
+References: <4C80EC83.1030606@desy.de>
 Mime-Version: 1.0
-Content-Type: text/plain;charset="UTF-8"
-To: unlisted-recipients:; (no To-header on input)
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: NFS list <linux-nfs@vger.kernel.org>
+To: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from aa012msr.fastwebnet.it ([85.18.95.72]:41496 "EHLO
-	aa012msr.fastwebnet.it" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754082Ab0IDQG0 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 4 Sep 2010 12:06:26 -0400
+Received: from daytona.panasas.com ([67.152.220.89]:16749 "EHLO
+	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1752575Ab0IFTZP (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 6 Sep 2010 15:25:15 -0400
+In-Reply-To: <4C80EC83.1030606@desy.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Dear Sir/Madam,
+Tigran, was there an actual panic or just this string of WARNINGs?
+Were there any ill effects for this warning?
+The reason I'm asking is that according to our latest analysis of the
+code the warning might be a red herring and it can happen in valid scenarios
+so we intend to remove it altogether in the revised pnfs-submit series.
 
-  I am Judith Johnson a solicitor at law, i have a proposal for you kindle get b
-ack to me for more information on my private email address at:judith4343@hotmail
-.com
+Thanks for reporting in any case!
 
-God Bless you and you Family.
+Benny
 
-Sincerely,
-Judith Johnson
+On 2010-09-03 15:39, Tigran Mkrtchyan wrote:
+>   FYI
+> 
+> kernel pnfs-all-2.6.35-2010.08-24 (git 
+> fa5a03da84b02026396be0736288b3f4a8143ff2)
+> 
+> 
+> Regards,
+>      Tigran.
+> 
+> 
+> 
+> _______________________________________________
+> NOTE: THIS LIST IS DEPRECATED.  Please use linux-nfs@vger.kernel.org
+> instead.  (To subscribe to linux-nfs@vger.kernel.org: send "subscribe
+> linux-nfs" in the body of a message to majordomo-u79uwXL29TaiAVqoAR/hOA@public.gmane.org)
+> 
+> pNFS mailing list
+> pNFS@linux-nfs.org
+> http://linux-nfs.org/cgi-bin/mailman/listinfo/pnfs
 
