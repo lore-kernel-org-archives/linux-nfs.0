@@ -1,78 +1,58 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: [PATCH 1/2]gss:krb5 miss returning error to caller when import
- security context
-Date: Tue, 07 Sep 2010 14:35:02 -0400
-Message-ID: <1283884502.2788.60.camel@heimdal.trondhjem.org>
-References: <4C846162.40305@cn.fujitsu.com>
-	 <4C8461BA.5050208@cn.fujitsu.com>
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Re: [PATCH 4/4] mount.nfs: Prepare way for "vers=4,rdma" mounts
+Date: Tue, 07 Sep 2010 16:07:12 -0400
+Message-ID: <4C869B70.4020405@RedHat.com>
+References: <20100907162156.3392.90376.stgit@seurat.1015granger.net> <20100907162638.3392.14786.stgit@seurat.1015granger.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset=UTF-8
 Cc: linux-nfs@vger.kernel.org
-To: Bian Naimeng <biannm@cn.fujitsu.com>
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-out1.uio.no ([129.240.10.57]:49750 "EHLO mail-out1.uio.no"
+Received: from mx1.redhat.com ([209.132.183.28]:40763 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753136Ab0IGSfH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 7 Sep 2010 14:35:07 -0400
-In-Reply-To: <4C8461BA.5050208@cn.fujitsu.com>
+	id S1758081Ab0IGUHP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 7 Sep 2010 16:07:15 -0400
+In-Reply-To: <20100907162638.3392.14786.stgit-x+BlCsqV7M/wdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 2010-09-06 at 11:36 +0800, Bian Naimeng wrote:
-> krb5 miss returning error to up layer when import security context, 
-> it may be return ok though it has failed to import security context.
+
+
+On 09/07/2010 12:26 PM, Chuck Lever wrote:
+> At some point, when the kernel starts to support "vers=4,rdma" mounts,
+> we will want the mount.nfs command to pass "vers=4,rdma" mounts
+> instead of rejecting them.
 > 
-> Signed-off-by: Bian Naimeng <biannm@cn.fujitsu.com>
+> Assuming that the kernel will reject these today with EPROTONOSUPPORT,
+> that would cause the version fallback logic to go to "vers=3,rdma"
+> automatically.  So the extra check we have now is not needed anyway.
 > 
-> ----
+> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> ---
 > 
-> diff --git a/net/sunrpc/auth_gss/gss_krb5_mech.c b/net/sunrpc/auth_gss/gss_krb5_mech.c
-> index 0326446..778e5df 100644
-> --- a/net/sunrpc/auth_gss/gss_krb5_mech.c
-> +++ b/net/sunrpc/auth_gss/gss_krb5_mech.c
-> @@ -237,6 +237,7 @@ get_key(const void *p, const void *end,
->  	if (!supported_gss_krb5_enctype(alg)) {
->  		printk(KERN_WARNING "gss_kerberos_mech: unsupported "
->  			"encryption key algorithm %d\n", alg);
-> +		p = ERR_PTR(-EINVAL);
->  		goto out_err;
->  	}
->  	p = simple_get_netobj(p, end, &key);
-> @@ -282,15 +283,19 @@ gss_import_v1_context(const void *p, const void *end, struct krb5_ctx *ctx)
->  	ctx->enctype = ENCTYPE_DES_CBC_RAW;
+>  utils/mount/stropts.c |    7 -------
+>  1 files changed, 0 insertions(+), 7 deletions(-)
+> 
+> diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
+> index 9695c73..a8b22ce 100644
+> --- a/utils/mount/stropts.c
+> +++ b/utils/mount/stropts.c
+> @@ -302,13 +302,6 @@ static int nfs_set_version(struct nfsmount_info *mi)
 >  
->  	ctx->gk5e = get_gss_krb5_enctype(ctx->enctype);
-> -	if (ctx->gk5e == NULL)
-> +	if (ctx->gk5e == NULL) {
-> +		p = ERR_PTR(-EINVAL);
->  		goto out_err;
-> +	}
+>  	if (strncmp(mi->type, "nfs4", 4) == 0)
+>  		mi->version = 4;
+> -	else {
+> -		unsigned long protocol;
+> -		if (!nfs_nfs_protocol(mi->options, &protocol))
+> -			return 0;
+> -		if (protocol == NFSPROTO_RDMA)
+> -			mi->version = 3;
+> -	}
 >  
->  	/* The downcall format was designed before we completely understood
->  	 * the uses of the context fields; so it includes some stuff we
->  	 * just give some minimal sanity-checking, and some we ignore
->  	 * completely (like the next twenty bytes): */
-> -	if (unlikely(p + 20 > end || p + 20 < p))
-> +	if (unlikely(p + 20 > end || p + 20 < p)) {
-> +		p = ERR_PTR(-EFAULT);
->  		goto out_err;
-> +	}
->  	p += 20;
->  	p = simple_get_bytes(p, end, &tmp, sizeof(tmp));
->  	if (IS_ERR(p))
-> @@ -619,6 +624,7 @@ gss_import_v2_context(const void *p, const void *end, struct krb5_ctx *ctx,
->  	if (ctx->seq_send64 != ctx->seq_send) {
->  		dprintk("%s: seq_send64 %lx, seq_send %x overflow?\n", __func__,
->  			(long unsigned)ctx->seq_send64, ctx->seq_send);
-> +		p = ERR_PTR(-EINVAL);
->  		goto out_err;
->  	}
->  	p = simple_get_bytes(p, end, &ctx->enctype, sizeof(ctx->enctype));
+>  	/*
+>  	 * If we still don't know, check for version-specific
 > 
+This is a show stopper... We can default to v4 because the callbacks.
 
-Those all look good. Applied!
-
-Thanks for spotting them!
-
-  Trond
-
+steved.
+ 
