@@ -1,52 +1,44 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:4166 "EHLO
-	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1754761Ab0IWQR0 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 23 Sep 2010 12:17:26 -0400
-From: Benny Halevy <bhalevy@panasas.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Received: from mx2.netapp.com ([216.240.18.37]:3711 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757217Ab0IGTDu convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Sep 2010 15:03:50 -0400
+Subject: Re: [PATCH 01/03]: sunrpc: increase MAX_HASHTABLE_BITS to 14
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Miquel van Smoorenburg <mikevs@xs4all.net>
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v2] NFS: handle inode==NULL in __put_nfs_open_context
-Date: Thu, 23 Sep 2010 18:17:20 +0200
-Message-Id: <1285258640-9599-1-git-send-email-bhalevy@panasas.com>
-In-Reply-To: <1285244570.3329.7.camel@heimdal.trondhjem.org>
-References: <1285244570.3329.7.camel@heimdal.trondhjem.org>
+In-Reply-To: <20100822183020.GA26607@xs4all.net>
+References: <20100822182848.GA26590@xs4all.net>
+	 <20100822183020.GA26607@xs4all.net>
+Content-Type: text/plain; charset="UTF-8"
+Date: Tue, 07 Sep 2010 15:03:38 -0400
+Message-ID: <1283886218.2788.73.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-inode may be NULL when put_nfs_open_context is called from nfs_atomic_lookup
-before d_add_unique(dentry, inode)
+On Sun, 2010-08-22 at 20:30 +0200, Miquel van Smoorenburg wrote:
+> The maximum size of the authcache is now set to 1024 (10 bits),
+> but on our server we need at least 4096 (12 bits). Increase
+> MAX_HASHTABLE_BITS to 14. This is a maximum of 16384 entries,
+> each containing a pointer (8 bytes on x86_64). This is
+> exactly the limit of kmalloc() (128K).
+> 
+> Signed-off-by: Miquel van Smoorenburg <mikevs@xs4all.net>
+> 
+> diff -ruN linux-2.6.36-rc1.orig/net/sunrpc/auth.c linux-2.6.36-rc1/net/sunrpc/auth.c
+> --- linux-2.6.36-rc1.orig/net/sunrpc/auth.c	2010-08-16 02:41:37.000000000 +0200
+> +++ linux-2.6.36-rc1/net/sunrpc/auth.c	2010-08-22 17:02:27.896009116 +0200
+> @@ -38,7 +39,7 @@
+>  static LIST_HEAD(cred_unused);
+>  static unsigned long number_cred_unused;
+>  
+> -#define MAX_HASHTABLE_BITS (10) 
+> +#define MAX_HASHTABLE_BITS (14)
+>  static int param_set_hashtbl_sz(const char *val, const struct kernel_param *kp)
+>  {
+>  	unsigned long num;
 
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
----
- fs/nfs/inode.c |   11 +++++++----
- 1 files changed, 7 insertions(+), 4 deletions(-)
+Fair enough. Applied...
 
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index 2ff8142..702ed09 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -654,11 +654,14 @@ static void __put_nfs_open_context(struct nfs_open_context *ctx, int is_sync)
- {
- 	struct inode *inode = ctx->path.dentry->d_inode;
- 
--	if (!atomic_dec_and_lock(&ctx->lock_context.count, &inode->i_lock))
-+	if (inode) {
-+		if (!atomic_dec_and_lock(&ctx->lock_context.count, &inode->i_lock))
-+			return;
-+		list_del(&ctx->list);
-+		spin_unlock(&inode->i_lock);
-+		NFS_PROTO(inode)->close_context(ctx, is_sync);
-+	} else if (!atomic_dec_and_test(&ctx->lock_context.count))
- 		return;
--	list_del(&ctx->list);
--	spin_unlock(&inode->i_lock);
--	NFS_PROTO(inode)->close_context(ctx, is_sync);
- 	if (ctx->cred != NULL)
- 		put_rpccred(ctx->cred);
- 	path_put(&ctx->path);
--- 
-1.7.2.3
-
+Trond
