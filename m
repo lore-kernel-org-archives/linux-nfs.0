@@ -1,51 +1,67 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-gy0-f174.google.com ([209.85.160.174]:49336 "EHLO
-	mail-gy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754700Ab0IJUDN (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Sep 2010 16:03:13 -0400
-Received: by gyd8 with SMTP id 8so1363332gyd.19
-        for <linux-nfs@vger.kernel.org>; Fri, 10 Sep 2010 13:03:12 -0700 (PDT)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 0/6] Replace NFSROOT mount option parsing
-To: trond.myklebust@netapp.com
+Received: from mail-out1.uio.no ([129.240.10.57]:56186 "EHLO mail-out1.uio.no"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1758014Ab0IGSgL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 7 Sep 2010 14:36:11 -0400
+Subject: Re: [PATCH 2/2]gss:spkm3 miss returning error to caller when
+ import security context
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+To: Bian Naimeng <biannm@cn.fujitsu.com>
 Cc: linux-nfs@vger.kernel.org
-Date: Fri, 10 Sep 2010 16:03:09 -0400
-Message-ID: <20100910200001.13167.61153.stgit@seurat.1015granger.net>
-Content-Type: text/plain; charset="utf-8"
+In-Reply-To: <4C846223.5050609@cn.fujitsu.com>
+References: <4C846162.40305@cn.fujitsu.com>
+	 <4C846223.5050609@cn.fujitsu.com>
+Content-Type: text/plain; charset="UTF-8"
+Date: Tue, 07 Sep 2010 14:36:06 -0400
+Message-ID: <1283884566.2788.61.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Trond-
+On Mon, 2010-09-06 at 11:38 +0800, Bian Naimeng wrote:
+> spkm3 miss returning error to up layer when import security context, 
+> it may be return ok though it has failed to import security context.
+> 
+> Signed-off-by: Bian Naimeng <biannm@cn.fujitsu.com>
+> 
+> 
+> ---
+>  net/sunrpc/auth_gss/gss_spkm3_mech.c |    5 ++++-
+>  1 files changed, 4 insertions(+), 1 deletions(-)
+> 
+> diff --git a/net/sunrpc/auth_gss/gss_spkm3_mech.c b/net/sunrpc/auth_gss/gss_spkm3_mech.c
+> index dc3f1f5..adade3d 100644
+> --- a/net/sunrpc/auth_gss/gss_spkm3_mech.c
+> +++ b/net/sunrpc/auth_gss/gss_spkm3_mech.c
+> @@ -100,6 +100,7 @@ gss_import_sec_context_spkm3(const void *p, size_t len,
+>  	if (version != 1) {
+>  		dprintk("RPC:       unknown spkm3 token format: "
+>  				"obsolete nfs-utils?\n");
+> +		p = ERR_PTR(-EINVAL);
+>  		goto out_err_free_ctx;
+>  	}
+>  
+> @@ -135,8 +136,10 @@ gss_import_sec_context_spkm3(const void *p, size_t len,
+>  	if (IS_ERR(p))
+>  		goto out_err_free_intg_alg;
+>  
+> -	if (p != end)
+> +	if (p != end) {
+> +		p = ERR_PTR(-EFAULT);
+>  		goto out_err_free_intg_key;
+> +	}
+>  
+>  	ctx_id->internal_ctx_id = ctx;
+>  
+> -- 
+> 1.7.0
+> 
+> 
 
-For 2.6.37, it would be nice to eliminate the redundant mount option
-parsing logic in fs/nfs/nfsroot.c.  Merged up to 2.6.36-rc, and
-compile-tested.
+Ditto. Although, I'm wondering if we shouldn't just start ripping out
+the spkm stuff at this point. It is pretty much dead as far as the IETF
+is concerned.
 
-We had discussed, as a first step, merging these into linux-next.
-I unit-tested these on late 2.6.34-rc kernels, so there might be an
-additional detail or two to clean up.
+Cheers
+  Trond
 
----
-
-Chuck Lever (6):
-      SUNRPC: Remove rpcb_getport_sync()
-      NFS: Allow NFSROOT debugging messages to be enabled dynamically
-      NFS: Clean up nfsroot.c
-      NFS: Use super.c for NFSROOT mount option parsing
-      NFS: Clean up NFSROOT command line parsing
-      NFS: Remove \t from mount debugging message
-
-
- Documentation/filesystems/nfs/nfsroot.txt |   22 +
- Documentation/kernel-parameters.txt       |    5 
- fs/nfs/mount_clnt.c                       |    2 
- fs/nfs/nfsroot.c                          |  566 +++++++++--------------------
- include/linux/nfs_fs.h                    |   10 -
- include/linux/sunrpc/clnt.h               |    1 
- init/do_mounts.c                          |   12 -
- net/sunrpc/rpcb_clnt.c                    |   51 ---
- 8 files changed, 208 insertions(+), 461 deletions(-)
-
--- 
-Chuck Lever
