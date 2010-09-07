@@ -1,58 +1,67 @@
-From: Steve Dickson <SteveD@redhat.com>
-Subject: Re: [PATCH 4/4] mount.nfs: Prepare way for "vers=4,rdma" mounts
-Date: Tue, 07 Sep 2010 16:07:12 -0400
-Message-ID: <4C869B70.4020405@RedHat.com>
-References: <20100907162156.3392.90376.stgit@seurat.1015granger.net> <20100907162638.3392.14786.stgit@seurat.1015granger.net>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH] nfs4: allow server to change forechannel max_ops
+Date: Tue, 7 Sep 2010 18:32:13 -0400
+Message-ID: <20100907223213.GA24707@fieldses.org>
+References: <20100525164224.GC4235@fieldses.org>
+ <1274806624.11283.10.camel@heimdal.trondhjem.org>
+ <20100525183223.GA6929@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: linux-nfs@vger.kernel.org
-To: Chuck Lever <chuck.lever@oracle.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:40763 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:41827 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758081Ab0IGUHP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 7 Sep 2010 16:07:15 -0400
-In-Reply-To: <20100907162638.3392.14786.stgit-x+BlCsqV7M/wdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
+	id S1751080Ab0IGWdC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 7 Sep 2010 18:33:02 -0400
+In-Reply-To: <20100525183223.GA6929@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Tue, May 25, 2010 at 02:32:23PM -0400, J. Bruce Fields wrote:
+> On Tue, May 25, 2010 at 12:57:04PM -0400, Trond Myklebust wrote:
+> > On Tue, 2010-05-25 at 12:42 -0400, J. Bruce Fields wrote: 
+> > > From: J. Bruce Fields <bfields@citi.umich.edu>
+> > > 
+> > > Section 18.36.3 of rfc 5661 says that "For the fore channel, the server
+> > > MAY change the requested value."
+> > > 
+> > > Also, there's no reason why the client would have to care if the server
+> > > is willing to accept *more* operations per compound than the client
+> > > requested.
+> > > 
+> > > Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
+> > > ---
+> > >  fs/nfs/nfs4proc.c |    1 -
+> > >  1 files changed, 0 insertions(+), 1 deletions(-)
+> > > 
+> > > On the other hand, if the server *decreases* max_ops on the forechannel,
+> > > the client may need to do something.  (Probably just fail for now.)  Why
+> > > aren't we checking for that case?
+> > > 
+> > > --b.
+> > > 
+> > > diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+> > > index 071fced..a5a3690 100644
+> > > --- a/fs/nfs/nfs4proc.c
+> > > +++ b/fs/nfs/nfs4proc.c
+> > > @@ -4880,7 +4880,6 @@ static int nfs4_verify_channel_attrs(struct nfs41_create_session_args *args,
+> > >  
+> > >  	ret |= _verify_fore_channel_attr(headerpadsz);
+> > >  	ret |= _verify_fore_channel_attr(max_resp_sz);
+> > > -	ret |= _verify_fore_channel_attr(max_ops);
+> > >  
+> > >  	ret |= _verify_back_channel_attr(headerpadsz);
+> > >  	ret |= _verify_back_channel_attr(max_rqst_sz);
+> > 
+> > Yes. That all looks wrong.
+> > 
+> > Can we please just get rid of that senseless macro, and open code those
+> > checks instead of the above patch? The current code is just pure
+> > obfuscation...
+> 
+> Sounds good to me.  I'm hoping Andy can be roped into it....
 
+Is anyone willing to work on this?
 
-On 09/07/2010 12:26 PM, Chuck Lever wrote:
-> At some point, when the kernel starts to support "vers=4,rdma" mounts,
-> we will want the mount.nfs command to pass "vers=4,rdma" mounts
-> instead of rejecting them.
-> 
-> Assuming that the kernel will reject these today with EPROTONOSUPPORT,
-> that would cause the version fallback logic to go to "vers=3,rdma"
-> automatically.  So the extra check we have now is not needed anyway.
-> 
-> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-> ---
-> 
->  utils/mount/stropts.c |    7 -------
->  1 files changed, 0 insertions(+), 7 deletions(-)
-> 
-> diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
-> index 9695c73..a8b22ce 100644
-> --- a/utils/mount/stropts.c
-> +++ b/utils/mount/stropts.c
-> @@ -302,13 +302,6 @@ static int nfs_set_version(struct nfsmount_info *mi)
->  
->  	if (strncmp(mi->type, "nfs4", 4) == 0)
->  		mi->version = 4;
-> -	else {
-> -		unsigned long protocol;
-> -		if (!nfs_nfs_protocol(mi->options, &protocol))
-> -			return 0;
-> -		if (protocol == NFSPROTO_RDMA)
-> -			mi->version = 3;
-> -	}
->  
->  	/*
->  	 * If we still don't know, check for version-specific
-> 
-This is a show stopper... We can default to v4 because the callbacks.
-
-steved.
- 
+--b.
