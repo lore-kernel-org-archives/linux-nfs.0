@@ -1,110 +1,67 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:42374 "EHLO
-	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757289Ab0I0Tkq convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 27 Sep 2010 15:40:46 -0400
-Subject: Re: [PATCH 1/8] sunrpc: Factor out rpc_xprt freeing
-Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <4CA06CA0.6060606@parallels.com>
-Date: Mon, 27 Sep 2010 15:40:26 -0400
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        linux-nfs@vger.kernel.org
-Message-Id: <02506D5E-BD8D-40AC-822F-00BBC14792E9@oracle.com>
-References: <4CA06C7A.5060307@parallels.com> <4CA06CA0.6060606@parallels.com>
-To: Pavel Emelyanov <xemul@parallels.com>
+Received: from mx1.redhat.com ([209.132.183.28]:38326 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1758258Ab0IGUWa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 7 Sep 2010 16:22:30 -0400
+Received: from int-mx01.intmail.prod.int.phx2.redhat.com (int-mx01.intmail.prod.int.phx2.redhat.com [10.5.11.11])
+	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id o87KMUtU021975
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Tue, 7 Sep 2010 16:22:30 -0400
+Received: from bighat.boston.devel.redhat.com (bighat.boston.devel.redhat.com [10.16.60.55])
+	by int-mx01.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id o87KMSnn001714
+	for <linux-nfs@vger.kernel.org>; Tue, 7 Sep 2010 16:22:29 -0400
+From: Steve Dickson <steved@redhat.com>
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: [PATCH 3/3] Document the rdma mount option in the nfs man page
+Date: Tue,  7 Sep 2010 16:22:01 -0400
+Message-Id: <1283890921-3447-4-git-send-email-steved@redhat.com>
+In-Reply-To: <1283890921-3447-1-git-send-email-steved@redhat.com>
+References: <1283890921-3447-1-git-send-email-steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
+Co-Authored-by: Chuck Lever <chuck.lever@oracle.com>
+Signed-off-by: Steve Dickson <steved@redhat.com>
+---
+ utils/mount/nfs.man |   14 +++++++++++++-
+ 1 files changed, 13 insertions(+), 1 deletions(-)
 
-On Sep 27, 2010, at 6:06 AM, Pavel Emelyanov wrote:
-
-> 
-> Signed-off-by: Pavel Emelyanov <xemul@openvz.org>
-> ---
-> net/sunrpc/xprtsock.c |   20 ++++++++++++--------
-> 1 files changed, 12 insertions(+), 8 deletions(-)
-> 
-> diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-> index b6309db..98d4b7b 100644
-> --- a/net/sunrpc/xprtsock.c
-> +++ b/net/sunrpc/xprtsock.c
-> @@ -759,6 +759,8 @@ static void xs_tcp_close(struct rpc_xprt *xprt)
-> 		xs_tcp_shutdown(xprt);
-> }
-> 
-> +static void xs_free_xprt(struct rpc_xprt *xprt);
-
-Style nit: we usually like forward declarations at the top of source files.
-
-Do you need to fix up xprtrdma too?  (eg. xprt_rdma_destroy)  It looks like it has similar logic around freeing xprts.  Even though it doesn't use sockets, do we need to be concerned about net namespaces for RDMA transports?
-
-> +
-> /**
->  * xs_destroy - prepare to shutdown a transport
->  * @xprt: doomed transport
-> @@ -774,8 +776,7 @@ static void xs_destroy(struct rpc_xprt *xprt)
-> 
-> 	xs_close(xprt);
-> 	xs_free_peer_addresses(xprt);
-> -	kfree(xprt->slot);
-> -	kfree(xprt);
-> +	xs_free_xprt(xprt);
-> 	module_put(THIS_MODULE);
-> }
-> 
-> @@ -2298,6 +2299,12 @@ static struct rpc_xprt *xs_setup_xprt(struct xprt_create *args,
-> 	return xprt;
-> }
-> 
-> +static void xs_free_xprt(struct rpc_xprt *xprt)
-> +{
-> +	kfree(xprt->slot);
-> +	kfree(xprt);
-> +}
-> +
-> static const struct rpc_timeout xs_udp_default_timeout = {
-> 	.to_initval = 5 * HZ,
-> 	.to_maxval = 30 * HZ,
-> @@ -2371,8 +2378,7 @@ static struct rpc_xprt *xs_setup_udp(struct xprt_create *args)
-> 		return xprt;
-> 	ret = ERR_PTR(-EINVAL);
-> out_err:
-> -	kfree(xprt->slot);
-> -	kfree(xprt);
-> +	xs_free_xprt(xprt);
-> 	return ret;
-> }
-> 
-> @@ -2447,8 +2453,7 @@ static struct rpc_xprt *xs_setup_tcp(struct xprt_create *args)
-> 		return xprt;
-> 	ret = ERR_PTR(-EINVAL);
-> out_err:
-> -	kfree(xprt->slot);
-> -	kfree(xprt);
-> +	xs_free_xprt(xprt);
-> 	return ret;
-> }
-> 
-> @@ -2528,8 +2533,7 @@ static struct rpc_xprt *xs_setup_bc_tcp(struct xprt_create *args)
-> 		return xprt;
-> 	ret = ERR_PTR(-EINVAL);
-> out_err:
-> -	kfree(xprt->slot);
-> -	kfree(xprt);
-> +	xs_free_xprt(xprt);
-> 	return ret;
-> }
-> 
-> -- 
-> 1.5.5.6
-> 
-
+diff --git a/utils/mount/nfs.man b/utils/mount/nfs.man
+index 3806635..8964512 100644
+--- a/utils/mount/nfs.man
++++ b/utils/mount/nfs.man
+@@ -495,9 +495,15 @@ command,
+ .I netid
+ is a valid netid listed in
+ .IR /etc/netconfig .
+-Otherwise,
++The value "rdma" may also be specified.
++If the
++.B mount.nfs
++command does not have TI-RPC support, then
+ .I netid
+ is one of "tcp," "udp," or "rdma," and only IPv4 may be used.
++Also with "rdma" the version 3 NFS protocol will be used
++unless a different protocol is specified on the command
++line.
+ .IP
+ Each transport protocol uses different default
+ .B retrans
+@@ -537,6 +543,12 @@ option is an alternative to specifying
+ .BR proto=tcp.
+ It is included for compatibility with other operating systems.
+ .TP 1.5i
++.B rdma
++The
++.B rdma
++option is an alternative to specifying
++.BR proto=rdma.
++.TP 1.5i
+ .BI port= n
+ The numeric value of the server's NFS service port.
+ If the server's NFS service is not available on the specified port,
 -- 
-chuck[dot]lever[at]oracle[dot]com
-
-
-
+1.7.2.1
 
