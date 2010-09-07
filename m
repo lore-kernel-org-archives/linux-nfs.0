@@ -1,113 +1,67 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:33307 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752119Ab0ITO6H (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 20 Sep 2010 10:58:07 -0400
-Date: Mon, 20 Sep 2010 10:56:43 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: George Mamalakis <mamalos@eng.auth.gr>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: nfsv3 gssapi client?
-Message-ID: <20100920145643.GD4580@fieldses.org>
-References: <4C938F3B.4030604@eng.auth.gr>
- <20100917174328.GC25515@fieldses.org>
- <4C972DB3.2050405@eng.auth.gr>
+Received: from rcsinet10.oracle.com ([148.87.113.121]:63663 "EHLO
+	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750827Ab0IGVPa convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Sep 2010 17:15:30 -0400
+Subject: Re: [PATCH 0/2] Make libtirpc work with old style portmapper
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4C972DB3.2050405@eng.auth.gr>
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <201009072258.22044.okir@suse.de>
+Date: Tue, 7 Sep 2010 17:15:00 -0400
+Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org,
+        Steve Dickson <SteveD@redhat.com>
+Message-Id: <F1626B79-BFE6-4616-9317-A6075AEA8B61@oracle.com>
+References: <201008301503.19783.okir@suse.de> <201009071327.07291.okir@suse.de> <F1D592E6-35AD-45DA-B69E-044D59500DFB@oracle.com> <201009072258.22044.okir@suse.de>
+To: Olaf Kirch <okir@suse.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Mon, Sep 20, 2010 at 12:47:31PM +0300, George Mamalakis wrote:
->  Hi Bruce and thanx for the reply,
-> 
-> to your questions now:
-> 
-> On 17/09/2010 20:43, J. Bruce Fields wrote:
-> >
-> >># mount -t nfs -o sec=krb5 fbsdserver:/exports /mnt
-> >>
-> >Was there supposed to be some error output there?  Or did the mount just
-> >hang?
-> >
-> The mount command stalls and no output is presented; only the
-> messages on /var/log/messages.
-> >>Sep 17 16:06:01 linuxclient kernel: svc: failed to register lockdv1
-> >>RPC service (errno 111).
-> >111 is ECONNREFUSED.  I'm not sure why that's failing.  (Should failure
-> >to register lockd fail the whole mount?  I thought it would at worst
-> >result in ENOLCK on lock requests?) Do you get better results if you
-> >mount with nolock?
-> >
-> Now this is peculiar. If run mount -o nolock then gssd segfaults.
-> This is because it creates a /tmp/krb5cc_machine_REALM ticket, and
-> when it access it, it segfaults.
 
-Ouch.  Well, that's a problem.
+On Sep 7, 2010, at 4:58 PM, Olaf Kirch wrote:
 
-(And have you checked the log files to make sure it's gssd segfaulting
-and not some kind of crash in the kernel?)
+> On Tuesday 07 September 2010 17:36:58 Chuck Lever wrote:
+>> Probably not a bad idea.  But I thought this was a problem for applications
+>> that are calling rpcb_{un,}set(3t), not apps that are invoking the legacy
+>> variants.  How does this new patch address the problem?
+> 
+> No, it's a problem with legacy apps calling pmap_set/unset. They simply
+> stop working if you use pmap_set + libtirpc + portmap.
 
---b.
+I think the crux of the problem is the latter half: libtirpc + portmap.
 
-> To overcome this issue I deleted
-> the temporary file, and ran gssd manually to see its output. So,
-> mount returned the following:
+>> What happens if you try the other way around: try the AF_UNIX mechanism
+>> first, then the legacy mechanism?  It's arguable that any application
+>> calling the pmap_{un,}set(3t) interface would likely expect the old
+>> behavior anyway, but could probably benefit from the additional security
+>> if rpcbind, rather than portmap, is running locally.
 > 
-> [root@linuxclient ~]# mount -t nfs -o sec=krb5,nolock
-> fbsdserver:/exports /mnt
-> mount.nfs: access denied by server while mounting fbsdserver:/exports
+> I don't think apps coded to the old pmap_* interface will benefit
+> in any way from the new security model. These services expect a
+> root/non-root split of privilege, and that's what they get with
+> PMAP_SET/UNSET, no matter whether they talk to rpcbind or portmap.
+
+I haven't thought carefully about it, but that's probably correct.
+
+>>  1.  rpcb_{un,}set(3t) need to work whether rpcbind or portmapper are
+>> running 2.  pmap_{un,}set(3t) should still invoke rpcb_{un,}set(3t) under
+>> the covers to ensure they get advanced security when available
+>> 
+>> This is because you can build legacy apps against libtirpc (which want
+>> robust pmap_{un,}set(3t) no matter which portmapper is running), but you
+>> can also construct TI-RPC enabled apps that may be running on a system
+>> with only portmap (which want robust rpcb_{un,}set(3t)).  So I think you
+>> have to fix both APIs.
 > 
-> and gssd console output read:
-> 
-> destroying client /var/lib/nfs/rpc_pipefs/nfs/clnt110
-> handling gssd upcall (/var/lib/nfs/rpc_pipefs/nfs/clnt112)
-> handle_gssd_upcall: 'mech=krb5 uid=0 enctypes=18,17,16,23,3,1,2 '
-> handling krb5 upcall (/var/lib/nfs/rpc_pipefs/nfs/clnt112)
-> process_krb5_upcall: service is '<null>'
-> getting credentials for client with uid 0 for server fbsdserver
-> WARNING: Failed to create krb5 context for user with uid 0 for
-> server fbsdserver
-> doing error downcall
-> destroying client /var/lib/nfs/rpc_pipefs/nfs/clnt113
-> handling gssd upcall (/var/lib/nfs/rpc_pipefs/nfs/clnt112)
-> handle_gssd_upcall: 'mech=krb5 uid=0 enctypes=18,17,16,23,3,1,2 '
-> handling krb5 upcall (/var/lib/nfs/rpc_pipefs/nfs/clnt112)
-> process_krb5_upcall: service is '<null>'
-> getting credentials for client with uid 0 for server fbsdserver
-> WARNING: Failed to create krb5 context for user with uid 0 for
-> server fbsdserver
-> doing error downcall
-> handling gssd upcall (/var/lib/nfs/rpc_pipefs/nfs/clnt112)
-> handle_gssd_upcall: 'mech=krb5 uid=0 enctypes=18,17,16,23,3,1,2 '
-> handling krb5 upcall (/var/lib/nfs/rpc_pipefs/nfs/clnt112)
-> process_krb5_upcall: service is '<null>'
-> getting credentials for client with uid 0 for server fbsdclient.ee.auth.gr
-> WARNING: Failed to create krb5 context for user with uid 0 for
-> server fbsdserver
-> doing error downcall
-> destroying client /var/lib/nfs/rpc_pipefs/nfs/clnt112
-> destroying client /var/lib/nfs/rpc_pipefs/nfs/clnt111
-> 
-> /var/log/messages shows nothing.
-> 
-> 
-> I think that's all regarding your questions.
-> 
-> Thanx again,
-> 
-> mamalos.
-> 
-> -- 
-> George Mamalakis
-> 
-> IT Officer
-> Electrical and Computer Engineer (Aristotle Un. of Thessaloniki),
-> MSc (Imperial College of London)
-> 
-> Department of Electrical and Computer Engineering
-> Faculty of Engineering
-> Aristotle University of Thessaloniki
-> 
-> phone number : +30 (2310) 994379
-> 
+> The latter is a problem indeed, and I guess we need to fix it as well.
+> The one that I wanted to address first and foremost is applications
+> using the legacy API
+
+Yes, I agree both are a problem.  The "rpcb_{un,}set(3t) + TI-RPC-enabled application running on a host with only portmap running" was the problem that was reported to me (twice, separately) a while ago.
+
+-- 
+chuck[dot]lever[at]oracle[dot]com
+
+
+
+
