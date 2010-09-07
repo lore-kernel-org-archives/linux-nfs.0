@@ -1,162 +1,85 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:25542 "EHLO
-	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1753408Ab0I2LSj (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 29 Sep 2010 07:18:39 -0400
-From: Benny Halevy <bhalevy@panasas.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH] pnfs: get layout in proper segments
-Date: Wed, 29 Sep 2010 13:18:30 +0200
-Message-Id: <1285759110-28207-1-git-send-email-bhalevy@panasas.com>
-In-Reply-To: <4CA31DC3.8070300@panasas.com>
-References: <4CA31DC3.8070300@panasas.com>
+Received: from mail.candelatech.com ([208.74.158.172]:45568 "EHLO
+	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758128Ab0IGUlY (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Sep 2010 16:41:24 -0400
+Message-ID: <4C86A36E.9010906@candelatech.com>
+Date: Tue, 07 Sep 2010 13:41:18 -0700
+From: Ben Greear <greearb@candelatech.com>
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: RFC:  support srcaddr= option to bind to local IPs.
+References: <4C81449B.4010900@candelatech.com> <1283882166.2788.48.camel@heimdal.trondhjem.org>
+In-Reply-To: <1283882166.2788.48.camel@heimdal.trondhjem.org>
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-Base the LAYOUTGET arguments on the actual required byte ranges
-rather than asking for the whole file layout.
+On 09/07/2010 10:56 AM, Trond Myklebust wrote:
+> On Fri, 2010-09-03 at 11:55 -0700, Ben Greear wrote:
+>> This patch lets one bind the local side of NFS sockets to a particular
+>> IP address.  This can be useful for users on multi-homed systems.
+>>
+>> This patch must be on top of the previous patch to fix the IPv6 address
+>> comparison or it will not work.
+>>
+>> Comments and suggestions welcome...I'll incorporate those and post an
+>> official signed-off patch after that.
+>>
+>> Thanks,
+>> Ben
+>>
+>
+> The code in nfs_callback_authenticate is going to break NFSv4 callbacks.
+> Callbacks are sent to the -oclientaddr address, not srcaddr (btw, I
+> really dislike that new boolean argument to nfs_find_client(). If you
+> don't want to compare the source address, then have the caller pass a
+> NULL pointer).
 
-Add a check in readpage_async_filler that the layout segment
-retrieved in pnfs_pageio_init_read still covers the current page
-and if not, try getting a new one.
 
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
----
- fs/nfs/file.c |    2 +-
- fs/nfs/pnfs.c |   15 ++++++++-------
- fs/nfs/pnfs.h |    4 ++--
- fs/nfs/read.c |   16 +++++++++++++++-
- 4 files changed, 26 insertions(+), 11 deletions(-)
+Would this fix the callback issue you speak of?  The idea is to
+use source and dest to match if it exists, but if we find one
+where server address matches and srcaddr isn't specified,
+then we will use that.
 
-diff --git a/fs/nfs/file.c b/fs/nfs/file.c
-index 1572817..f650ee3 100644
---- a/fs/nfs/file.c
-+++ b/fs/nfs/file.c
-@@ -390,7 +390,7 @@ static int nfs_write_begin(struct file *file, struct address_space *mapping,
- 
- 	lseg = pnfs_update_layout(mapping->host,
- 				  nfs_file_open_context(file),
--				  IOMODE_RW);
-+				  pos, len, IOMODE_RW);
- start:
- 	/*
- 	 * Prevent starvation issues if someone is doing a consistency
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index cf84f2c..4edab46 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -598,11 +598,9 @@ send_layoutget(struct pnfs_layout_hdr *lo,
- 		pnfs_layoutget_release(lo);
- 		return NULL;
- 	}
--	lgp->args.minlength = NFS4_MAX_UINT64;
-+	lgp->args.minlength = PAGE_CACHE_SIZE;
- 	lgp->args.maxcount = PNFS_LAYOUT_MAXSIZE;
--	lgp->args.range.iomode = range->iomode;
--	lgp->args.range.offset = 0;
--	lgp->args.range.length = NFS4_MAX_UINT64;
-+	lgp->args.range = *range;
- 	lgp->args.type = server->pnfs_curr_ld->id;
- 	lgp->args.inode = ino;
- 	lgp->args.ctx = get_nfs_open_context(ctx);
-@@ -937,12 +935,14 @@ EXPORT_SYMBOL_GPL(pnfs_has_layout);
- struct pnfs_layout_segment *
- pnfs_update_layout(struct inode *ino,
- 		   struct nfs_open_context *ctx,
-+		   loff_t pos,
-+		   u64 count,
- 		   enum pnfs_iomode iomode)
- {
- 	struct pnfs_layout_range arg = {
- 		.iomode = iomode,
--		.offset = 0,
--		.length = NFS4_MAX_UINT64,
-+		.offset = pos,
-+		.length = count,
- 	};
- 	struct nfs_inode *nfsi = NFS_I(ino);
- 	struct pnfs_layout_hdr *lo;
-@@ -1124,7 +1124,8 @@ pnfs_pageio_init_read(struct nfs_pageio_descriptor *pgio,
- 	readahead_range(inode, pages, &loff, &count);
- 
- 	if (count > 0) {
--		pgio->pg_lseg = pnfs_update_layout(inode, ctx, IOMODE_READ);
-+		pgio->pg_lseg = pnfs_update_layout(inode, ctx, loff, count,
-+						   IOMODE_READ);
- 		if (!pgio->pg_lseg)
- 			return;
- 
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index ee43489..0aac85f 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -195,7 +195,7 @@ struct pnfs_layout_segment *
- pnfs_has_layout(struct pnfs_layout_hdr *lo, struct pnfs_layout_range *range);
- struct pnfs_layout_segment *
- pnfs_update_layout(struct inode *ino, struct nfs_open_context *ctx,
--		   enum pnfs_iomode access_type);
-+		   loff_t pos, u64 count, enum pnfs_iomode access_type);
- int _pnfs_return_layout(struct inode *, struct pnfs_layout_range *,
- 			const nfs4_stateid *stateid, /* optional */
- 			enum pnfs_layoutreturn_type, bool wait);
-@@ -327,7 +327,7 @@ static inline void put_lseg_locked(struct pnfs_layout_segment *lseg)
- 
- static inline struct pnfs_layout_segment *
- pnfs_update_layout(struct inode *ino, struct nfs_open_context *ctx,
--		   enum pnfs_iomode access_type)
-+		   loff_t pos, u64 count, enum pnfs_iomode access_type)
- {
- 	return NULL;
- }
-diff --git a/fs/nfs/read.c b/fs/nfs/read.c
-index be29689..e4b12b5 100644
---- a/fs/nfs/read.c
-+++ b/fs/nfs/read.c
-@@ -122,12 +122,14 @@ int nfs_readpage_async(struct nfs_open_context *ctx, struct inode *inode,
- 	LIST_HEAD(one_request);
- 	struct nfs_page	*new;
- 	unsigned int len;
-+	loff_t pgoffs;
- 	struct pnfs_layout_segment *lseg;
- 
- 	len = nfs_page_length(page);
- 	if (len == 0)
- 		return nfs_return_empty_page(page);
--	lseg = pnfs_update_layout(inode, ctx, IOMODE_READ);
-+	pgoffs = (loff_t)page->index << PAGE_CACHE_SHIFT;
-+	lseg = pnfs_update_layout(inode, ctx, pgoffs, len, IOMODE_READ);
- 	new = nfs_create_request(ctx, inode, page, 0, len, lseg);
- 	put_lseg(lseg);
- 	if (IS_ERR(new)) {
-@@ -601,14 +603,26 @@ readpage_async_filler(void *data, struct page *page)
- {
- 	struct nfs_readdesc *desc = (struct nfs_readdesc *)data;
- 	struct inode *inode = page->mapping->host;
-+	struct pnfs_layout_range *range;
- 	struct nfs_page *new;
- 	unsigned int len;
-+	loff_t pgoff;
- 	int error;
- 
- 	len = nfs_page_length(page);
- 	if (len == 0)
- 		return nfs_return_empty_page(page);
- 
-+	pgoff = (loff_t)page->index << PAGE_CACHE_SHIFT;
-+	range = desc->pgio->pg_lseg ? &desc->pgio->pg_lseg->range : NULL;
-+	if (!range ||
-+	    (range->offset > pgoff + len) ||
-+	    (range->offset + range->length < pgoff)) {
-+		put_lseg(desc->pgio->pg_lseg);
-+		desc->pgio->pg_lseg = pnfs_update_layout(inode, desc->ctx,
-+			pgoff, len, IOMODE_READ);
-+	}
+@@ -384,10 +390,30 @@ struct nfs_client *nfs_find_client(const struct sockaddr *addr, u32 nfsversion)
+                 if (!nfs_sockaddr_match_ipaddr(addr, clap))
+                         continue;
+
++               if (srcaddr) {
++                       const struct sockaddr *sa;
++                       sa = (const struct sockaddr *)&clp->srcaddr;
++                       if (!nfs_sockaddr_match_ipaddr(srcaddr, sa)) {
++                               /* If clp doesn't bind to srcaddr, then
++                                * it is a potential match if we don't find
++                                * a better one.
++                                */
++                               if (sa->sa_family == AF_UNSPEC && !ok_fit)
++                                       ok_fit = clp;
++                               continue;
++                       }
++               }
++found_one:
+                 atomic_inc(&clp->cl_count);
+                 spin_unlock(&nfs_client_lock);
+                 return clp;
+         }
 +
- 	new = nfs_create_request(desc->ctx, inode, page, 0, len,
- 				 desc->pgio->pg_lseg);
- 	if (IS_ERR(new))
++       if (ok_fit) {
++               clp = ok_fit;
++               goto found_one;
++       }
++
+         spin_unlock(&nfs_client_lock);
+         return NULL;
+  }
+
+
+Thanks,
+Ben
+
 -- 
-1.7.2.3
+Ben Greear <greearb@candelatech.com>
+Candela Technologies Inc  http://www.candelatech.com
 
