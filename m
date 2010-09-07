@@ -1,165 +1,95 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:28937 "EHLO
-	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1751132Ab0IUTA7 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 21 Sep 2010 15:00:59 -0400
-From: Benny Halevy <bhalevy@panasas.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH] SQUASHME: pnfs: get layout in proper segments.
-Date: Tue, 21 Sep 2010 21:00:54 +0200
-Message-Id: <1285095654-32401-1-git-send-email-bhalevy@panasas.com>
+Received: from fieldses.org ([174.143.236.118]:50349 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751491Ab0IGFC1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 7 Sep 2010 01:02:27 -0400
+Date: Tue, 7 Sep 2010 01:01:42 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Trond Myklebust <trond@netapp.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH] Fix null dereference in call_allocate
+Message-ID: <20100907050142.GA14584@fieldses.org>
+References: <20100828170953.GB5104@fieldses.org>
+ <20100830175728.GA18764@fieldses.org>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20100830175728.GA18764@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-Base the LAYOUTGET arguments on the actual required byte ranges
-rather than asking for the whole file layout.
+From: J. Bruce Fields <bfields@redhat.com>
 
-Add a check in readpage_async_filler that the layout segment
-retrieved in pnfs_pageio_init_read still covers the current page
-and if not, try getting a new one.
+In call_allocate we need to reach the auth in order to factor au_cslack
+into the allocation.
 
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+As of a17c2153d2e271b0cbacae9bed83b0eaa41db7e1 "SUNRPC: Move the bound
+cred to struct rpc_rqst", call_allocate attempts to do this by
+dereferencing tk_client->cl_auth, however this is not guaranteed to be
+defined--cl_auth can be zero in the case of gss context destruction (see
+rpc_free_auth).
+
+Reorder the client state machine to bind credentials before allocating,
+so that we can instead reach the auth through the cred.
+
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+
 ---
- fs/nfs/file.c |    2 +-
- fs/nfs/pnfs.c |   13 ++++++-------
- fs/nfs/pnfs.h |   21 ++++++++-------------
- fs/nfs/read.c |   17 ++++++++++++++++-
- 4 files changed, 31 insertions(+), 22 deletions(-)
 
-diff --git a/fs/nfs/file.c b/fs/nfs/file.c
-index b05c1ff..228f41e 100644
---- a/fs/nfs/file.c
-+++ b/fs/nfs/file.c
-@@ -390,7 +390,7 @@ static int nfs_write_begin(struct file *file, struct address_space *mapping,
- 
- 	pnfs_update_layout(mapping->host,
- 			   nfs_file_open_context(file),
--			   0, NFS4_MAX_UINT64, IOMODE_RW,
-+			   pos, len, IOMODE_RW,
- 			   &lseg);
- start:
- 	/*
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index e6261a3..de716f6 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -600,11 +600,10 @@ send_layoutget(struct inode *ino,
- 		pnfs_layout_release(lo, NULL);
- 		return -ENOMEM;
- 	}
--	lgp->args.minlength = NFS4_MAX_UINT64;
-+	lgp->args.minlength = PAGE_CACHE_SIZE -
-+				(range->offset & (PAGE_CACHE_SIZE-1));
- 	lgp->args.maxcount = PNFS_LAYOUT_MAXSIZE;
--	lgp->args.range.iomode = range->iomode;
--	lgp->args.range.offset = 0;
--	lgp->args.range.length = NFS4_MAX_UINT64;
-+	lgp->args.range = *range;
- 	lgp->args.type = server->pnfs_curr_ld->id;
- 	lgp->args.inode = ino;
- 	lgp->lsegpp = lsegpp;
-@@ -1028,8 +1027,8 @@ _pnfs_update_layout(struct inode *ino,
- {
- 	struct pnfs_layout_range arg = {
- 		.iomode = iomode,
--		.offset = 0,
--		.length = NFS4_MAX_UINT64,
-+		.offset = pos,
-+		.length = count,
- 	};
- 	struct nfs_inode *nfsi = NFS_I(ino);
- 	struct pnfs_layout_hdr *lo;
-@@ -1330,7 +1329,7 @@ pnfs_pageio_init_read(struct nfs_pageio_descriptor *pgio,
- 	readahead_range(inode, pages, &loff, &count);
- 
- 	if (count > 0) {
--		_pnfs_update_layout(inode, ctx, loff, count, IOMODE_READ,
-+		pnfs_update_layout(inode, ctx, loff, count, IOMODE_READ,
- 				    &pgio->pg_lseg);
- 		if (!pgio->pg_lseg)
+On Mon, Aug 30, 2010 at 01:57:28PM -0400, J. Bruce Fields wrote:
+> On Sat, Aug 28, 2010 at 01:09:53PM -0400, J. Bruce Fields wrote:
+> > As of a17c2153d2e271b0cbacae9bed83b0eaa41db7e1 "SUNRPC: Move the bound
+> > cred to struct rpc_rqst" the NFS server crashes when using krb5.
+> > 
+> > I don't have good errors--I'll get some--but what I've seen suggests
+> > maybe a use-after-free of an rpc client on rpc_pipefs operations by
+> > gssd?
+
+As it turns out, there were two problems causing the crashes I saw.
+This one was the regression identified by the above commit.
+
+If this is actually the right approach, then we should probably also
+reorder these functions and fix the comments to reflect the new
+state-machine order.
+
+--b.
+
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index 2388d83..657aac6 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -931,7 +931,7 @@ call_reserveresult(struct rpc_task *task)
+ 	task->tk_status = 0;
+ 	if (status >= 0) {
+ 		if (task->tk_rqstp) {
+-			task->tk_action = call_allocate;
++			task->tk_action = call_refresh;
  			return;
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index 81534aa..b666f53 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -188,19 +188,14 @@ static inline int pnfs_return_layout(struct inode *ino,
- 	return 0;
- }
+ 		}
  
--static inline void pnfs_update_layout(struct inode *ino,
--	struct nfs_open_context *ctx,
--	loff_t pos, u64 count, enum pnfs_iomode access_type,
--	struct pnfs_layout_segment **lsegpp)
--{
--	struct nfs_server *nfss = NFS_SERVER(ino);
--
--	if (pnfs_enabled_sb(nfss))
--		_pnfs_update_layout(ino, ctx, pos, count, access_type, lsegpp);
--	else {
--		if (lsegpp)
--			*lsegpp = NULL;
--	}
-+#define pnfs_update_layout(ino, ctx, pos, count, access_type, lsegpp) { \
-+	if (pnfs_enabled_sb(NFS_SERVER(ino))) { \
-+		dprintk("%s: updating %s layout pos %llu count %llu\n", __func__, \
-+			(access_type) == IOMODE_READ ? "READ" : "WRITE", \
-+			(unsigned long long)(pos), (unsigned long long)(count)); \
-+		_pnfs_update_layout(ino, ctx, pos, count, access_type, lsegpp); \
-+	} else \
-+		*lsegpp = NULL; \
- }
- 
- static inline int pnfs_get_write_status(struct nfs_write_data *data)
-diff --git a/fs/nfs/read.c b/fs/nfs/read.c
-index dde7996..36eef5e 100644
---- a/fs/nfs/read.c
-+++ b/fs/nfs/read.c
-@@ -121,12 +121,14 @@ int nfs_readpage_async(struct nfs_open_context *ctx, struct inode *inode,
- 	LIST_HEAD(one_request);
- 	struct nfs_page	*new;
- 	unsigned int len;
-+	loff_t pgoffs;
- 	struct pnfs_layout_segment *lseg;
- 
- 	len = nfs_page_length(page);
- 	if (len == 0)
- 		return nfs_return_empty_page(page);
--	pnfs_update_layout(inode, ctx, 0, NFS4_MAX_UINT64, IOMODE_READ, &lseg);
-+	pgoffs = (loff_t)page->index << PAGE_CACHE_SHIFT;
-+	pnfs_update_layout(inode, ctx, pgoffs, len, IOMODE_READ, &lseg);
- 	new = nfs_create_request(ctx, inode, page, 0, len, lseg);
- 	put_lseg(lseg);
- 	if (IS_ERR(new)) {
-@@ -603,14 +605,27 @@ readpage_async_filler(void *data, struct page *page)
+@@ -972,7 +972,7 @@ call_reserveresult(struct rpc_task *task)
+ static void
+ call_allocate(struct rpc_task *task)
  {
- 	struct nfs_readdesc *desc = (struct nfs_readdesc *)data;
- 	struct inode *inode = page->mapping->host;
-+	struct pnfs_layout_range *range;
- 	struct nfs_page *new;
- 	unsigned int len;
-+	loff_t pgoff;
- 	int error;
+-	unsigned int slack = task->tk_client->cl_auth->au_cslack;
++	unsigned int slack = task->tk_rqstp->rq_cred->cr_auth->au_cslack;
+ 	struct rpc_rqst *req = task->tk_rqstp;
+ 	struct rpc_xprt *xprt = task->tk_xprt;
+ 	struct rpc_procinfo *proc = task->tk_msg.rpc_proc;
+@@ -980,7 +980,7 @@ call_allocate(struct rpc_task *task)
+ 	dprint_status(task);
  
- 	len = nfs_page_length(page);
- 	if (len == 0)
- 		return nfs_return_empty_page(page);
+ 	task->tk_status = 0;
+-	task->tk_action = call_refresh;
++	task->tk_action = call_bind;
  
-+	pgoff = (loff_t)page->index << PAGE_CACHE_SHIFT;
-+	range = desc->pgio->pg_lseg ? &desc->pgio->pg_lseg->range : NULL;
-+	if (!range ||
-+	    (range->offset > pgoff + len) ||
-+	    (range->offset + range->length < pgoff)) {
-+		put_lseg(desc->pgio->pg_lseg);
-+		desc->pgio->pg_lseg = NULL;
-+		pnfs_update_layout(inode, desc->ctx, pgoff, len, IOMODE_READ,
-+				   &desc->pgio->pg_lseg);
-+	}
-+
- 	new = nfs_create_request(desc->ctx, inode, page, 0, len,
- 				 desc->pgio->pg_lseg);
- 	if (IS_ERR(new))
--- 
-1.7.2.3
-
+ 	if (req->rq_buffer)
+ 		return;
+@@ -1042,7 +1042,7 @@ call_refreshresult(struct rpc_task *task)
+ 	dprint_status(task);
+ 
+ 	task->tk_status = 0;
+-	task->tk_action = call_bind;
++	task->tk_action = call_allocate;
+ 	if (status >= 0 && rpcauth_uptodatecred(task))
+ 		return;
+ 	switch (status) {
