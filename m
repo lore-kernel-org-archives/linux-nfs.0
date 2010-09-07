@@ -1,50 +1,53 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mailhub.sw.ru ([195.214.232.25]:3363 "EHLO relay.sw.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932083Ab0I3Pek (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 30 Sep 2010 11:34:40 -0400
-Message-ID: <4CA4ADEA.2010700@parallels.com>
-Date: Thu, 30 Sep 2010 19:34:02 +0400
-From: Pavel Emelyanov <xemul@parallels.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: "J. Bruce Fields" <bfields@fieldses.org>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v3 0/9] sunrpc: Create sockets in namespaces
-References: <4CA32AB4.2090808@parallels.com> <20100929214527.GC26180@fieldses.org> <0678928F-3DE0-4AB9-8CD9-7BDA3A362A20@oracle.com> <4CA42437.3090102@parallels.com> <F11D1388-D48E-48F5-9711-79960B397FBF@oracle.com>
-In-Reply-To: <F11D1388-D48E-48F5-9711-79960B397FBF@oracle.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mail-iw0-f174.google.com ([209.85.214.174]:56167 "EHLO
+	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757808Ab0IGQ0m (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Sep 2010 12:26:42 -0400
+Received: by iwn5 with SMTP id 5so5440449iwn.19
+        for <linux-nfs@vger.kernel.org>; Tue, 07 Sep 2010 09:26:41 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 4/4] mount.nfs: Prepare way for "vers=4,rdma" mounts
+To: steved@redhat.com
+Cc: linux-nfs@vger.kernel.org
+Date: Tue, 07 Sep 2010 12:26:39 -0400
+Message-ID: <20100907162638.3392.14786.stgit@seurat.1015granger.net>
+In-Reply-To: <20100907162156.3392.90376.stgit@seurat.1015granger.net>
+References: <20100907162156.3392.90376.stgit@seurat.1015granger.net>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 09/30/2010 07:16 PM, Chuck Lever wrote:
-> 
-> On Sep 30, 2010, at 1:46 AM, Pavel Emelyanov wrote:
-> 
->>>> Shall I commit this to my for-2.6.37 tree?  Objections?
->>>
->>> I think it looks OK.
->>>
->>> But I was wondering if there were any other changes needed for the RDMA 
->>> transport capability, or had we decided that would happen at a latter point, 
->>> or that changes are entirely unneeded
->>
->> We definitely need more changes in the RDMA transport, but I would like to
->> have it done later (unless someone other than me starts doing it earlier ;) ).
-> 
-> OK, thanks for clearing that up.  It makes sense to keep the scope of this socket
-> patch set narrow, but I don't want the RDMA pieces to get lost.  The more we let
-> the RDMA and socket transport capabilities differ, the harder it will be to support
-> RDMA in the long run.
+At some point, when the kernel starts to support "vers=4,rdma" mounts,
+we will want the mount.nfs command to pass "vers=4,rdma" mounts
+instead of rejecting them.
 
-OK, but I may have problems with the IB hardware. If you can advise me the
-way to test the RDMA without it, it would be very helpful.
+Assuming that the kernel will reject these today with EPROTONOSUPPORT,
+that would cause the version fallback logic to go to "vers=3,rdma"
+automatically.  So the extra check we have now is not needed anyway.
 
-> Anyway, Bruce, I have no objection to the latest version of this socket patch set, fwiw.
-> 
->>> (are namespaces already supported in the IB stack)?
->>
->> Nope. And this makes RDMA netnsization even more harder :(
-> 
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
+
+ utils/mount/stropts.c |    7 -------
+ 1 files changed, 0 insertions(+), 7 deletions(-)
+
+diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
+index 9695c73..a8b22ce 100644
+--- a/utils/mount/stropts.c
++++ b/utils/mount/stropts.c
+@@ -302,13 +302,6 @@ static int nfs_set_version(struct nfsmount_info *mi)
+ 
+ 	if (strncmp(mi->type, "nfs4", 4) == 0)
+ 		mi->version = 4;
+-	else {
+-		unsigned long protocol;
+-		if (!nfs_nfs_protocol(mi->options, &protocol))
+-			return 0;
+-		if (protocol == NFSPROTO_RDMA)
+-			mi->version = 3;
+-	}
+ 
+ 	/*
+ 	 * If we still don't know, check for version-specific
 
