@@ -1,137 +1,107 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:54491 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754150Ab0IBT7K (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 2 Sep 2010 15:59:10 -0400
-Received: from int-mx03.intmail.prod.int.phx2.redhat.com (int-mx03.intmail.prod.int.phx2.redhat.com [10.5.11.16])
-	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id o82Jx9pU017862
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Thu, 2 Sep 2010 15:59:10 -0400
-Received: from fathat.boston.devel.redhat.com (fathat.boston.devel.redhat.com [10.16.60.125])
-	by int-mx03.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id o82Jx906022535
-	for <linux-nfs@vger.kernel.org>; Thu, 2 Sep 2010 15:59:09 -0400
-From: Steve Dickson <steved@redhat.com>
-To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: [PATCH 1/1] mount: RDMA processing in the mount command is broken
-Date: Thu,  2 Sep 2010 16:00:51 -0400
-Message-Id: <1283457651-12010-1-git-send-email-steved@redhat.com>
+Received: from mail-px0-f174.google.com ([209.85.212.174]:55971 "EHLO
+	mail-px0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757808Ab0IGQ0d (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Sep 2010 12:26:33 -0400
+Received: by pxi10 with SMTP id 10so1392489pxi.19
+        for <linux-nfs@vger.kernel.org>; Tue, 07 Sep 2010 09:26:33 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 3/4] mount.nfs: Support an "rdma" mount option
+To: steved@redhat.com
+Cc: linux-nfs@vger.kernel.org
+Date: Tue, 07 Sep 2010 12:26:27 -0400
+Message-ID: <20100907162627.3392.73250.stgit@seurat.1015granger.net>
+In-Reply-To: <20100907162156.3392.90376.stgit@seurat.1015granger.net>
+References: <20100907162156.3392.90376.stgit@seurat.1015granger.net>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-The mounting code that process RMDA mounts is broken in a few places
+The kernel NFS client's mount option parser recognizes a stand-alone
+"rdma" mount option, similar to the legacy "udp" and "tcp" options.
 
-First with '-o proto=rdma' was broken because nfs_get_proto()
-did not how to convert a netid of 'rdma' in to a AF_INET
-address family.
+The mount.nfs command text-based mount option parser used to pass
+"rdma" straight to the kernel, but since we've started handling MNT in
+the kernel instead of in user space, "rdma" on the command line has
+not worked.
 
-Secondly, '-o rdma' was broken because po_get() was being using
-to detect the existence of 'rdma' in the options. With '-o rdma'
-there is no value associated with that option so po_get()
-was always return NULL.
+Until now, no-one has noticed, especially since an "rdma" mount option
+isn't documented in nfs(5).
 
-This patch address both those problems.
+Support "rdma" in mount.nfs command, and document it in nfs(5).
 
-Signed-off-by: Steve Dickson <steved@redhat.com>
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- support/nfs/getport.c |    8 ++++++++
- utils/mount/stropts.c |   31 ++++++++++++++++++++++---------
- 2 files changed, 30 insertions(+), 9 deletions(-)
 
-diff --git a/support/nfs/getport.c b/support/nfs/getport.c
-index c930539..b4c2f8f 100644
---- a/support/nfs/getport.c
-+++ b/support/nfs/getport.c
-@@ -216,6 +216,10 @@ nfs_get_proto(const char *netid, sa_family_t *family, unsigned long *protocol)
- 	struct netconfig *nconf;
- 	struct protoent *proto;
- 
-+	if (strcasecmp(netid, "rdma") == 0) {
-+		*family = AF_INET;
-+		return 1;
-+	}
- 	nconf = getnetconfigent(netid);
- 	if (nconf == NULL)
- 		return 0;
-@@ -242,6 +246,10 @@ nfs_get_proto(const char *netid, sa_family_t *family, unsigned long *protocol)
- {
- 	struct protoent *proto;
- 
-+	if (strcasecmp(netid, "rdma") == 0) {
-+		*family = AF_INET;
-+		return 1;
-+	}
- 	proto = getprotobyname(netid);
- 	if (proto == NULL)
- 		return 0;
-diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
-index 0241400..d688ee8 100644
---- a/utils/mount/stropts.c
-+++ b/utils/mount/stropts.c
-@@ -98,6 +98,22 @@ struct nfsmount_info {
- 				child;		/* forked bg child? */
+ utils/mount/network.c |    9 +++++++--
+ utils/mount/nfs.man   |   11 ++++++++++-
+ 2 files changed, 17 insertions(+), 3 deletions(-)
+
+diff --git a/utils/mount/network.c b/utils/mount/network.c
+index d6b5205..d612427 100644
+--- a/utils/mount/network.c
++++ b/utils/mount/network.c
+@@ -83,6 +83,7 @@ static const char *nfs_nfs_pgmtbl[] = {
+ static const char *nfs_transport_opttbl[] = {
+ 	"udp",
+ 	"tcp",
++	"rdma",
+ 	"proto",
+ 	NULL,
  };
- 
-+/*
-+ * Check the options to see if the transport is RDMA
-+ */
-+static int rdma_enabled(struct mount_options *options)
-+{
-+	char *option;
-+
-+	if (po_contains(options, "rdma"))
+@@ -1307,7 +1308,10 @@ nfs_nfs_protocol(struct mount_options *options, unsigned long *protocol)
+ 	case 1: /* tcp */
+ 		*protocol = IPPROTO_TCP;
+ 		return 1;
+-	case 2: /* proto */
++	case 2: /* rdma */
++		*protocol = NFSPROTO_RDMA;
 +		return 1;
-+	option = po_get(options, "proto");
-+	if (option && strcmp(option, "rdma") == 0)
-+		return 1;
-+
-+	return 0;
-+}
-+
- #ifdef MOUNT_CONFIG
- static void nfs_default_version(struct nfsmount_info *mi);
- 
-@@ -302,11 +318,8 @@ static int nfs_set_version(struct nfsmount_info *mi)
- 
- 	if (strncmp(mi->type, "nfs4", 4) == 0)
- 		mi->version = 4;
--	else {
--		char *option = po_get(mi->options, "proto");
--		if (option && strcmp(option, "rdma") == 0)
--			mi->version = 3;
--	}
-+	else if (rdma_enabled(mi->options))
-+		mi->version = 3;
- 
- 	/*
- 	 * If we still don't know, check for version-specific
-@@ -346,7 +359,9 @@ static int nfs_validate_options(struct nfsmount_info *mi)
- 	if (!nfs_parse_devname(mi->spec, &mi->hostname, NULL))
- 		return 0;
- 
--	if (!nfs_nfs_proto_family(mi->options, &family))
-+	if (rdma_enabled(mi->options))
-+		family = AF_INET;
-+	else if (!nfs_nfs_proto_family(mi->options, &family))
- 		return 0;
- 
- 	hint.ai_family = (int)family;
-@@ -491,13 +506,11 @@ nfs_rewrite_pmap_mount_options(struct mount_options *options)
- 	struct sockaddr *mnt_saddr = &mnt_address.sa;
- 	socklen_t mnt_salen = sizeof(mnt_address);
- 	struct pmap mnt_pmap;
--	char *option;
- 
- 	/*
- 	 * Skip option negotiation for proto=rdma mounts.
- 	 */
--	option = po_get(options, "proto");
--	if (option && strcmp(option, "rdma") == 0)
-+	if (rdma_enabled(options))
- 		goto out;
- 
- 	/*
--- 
-1.7.1
++	case 3: /* proto */
+ 		option = po_get(options, "proto");
+ 		if (option != NULL) {
+ 			if (!nfs_get_proto(option, &family, protocol)) {
+@@ -1396,10 +1400,11 @@ int nfs_nfs_proto_family(struct mount_options *options,
+ 	switch (po_rightmost(options, nfs_transport_opttbl)) {
+ 	case 0:	/* udp */
+ 	case 1: /* tcp */
++	case 2: /* rdma */
+ 		/* for compatibility; these are always AF_INET */
+ 		*family = AF_INET;
+ 		return 1;
+-	case 2: /* proto */
++	case 3: /* proto */
+ 		option = po_get(options, "proto");
+ 		if (option != NULL &&
+ 		    !nfs_get_proto(option, &tmp_family, &protocol)) {
+diff --git a/utils/mount/nfs.man b/utils/mount/nfs.man
+index 3806635..10ac961 100644
+--- a/utils/mount/nfs.man
++++ b/utils/mount/nfs.man
+@@ -495,7 +495,10 @@ command,
+ .I netid
+ is a valid netid listed in
+ .IR /etc/netconfig .
+-Otherwise,
++The value "rdma" may also be specified.
++If the
++.B mount.nfs
++command does not have TI-RPC support, then
+ .I netid
+ is one of "tcp," "udp," or "rdma," and only IPv4 may be used.
+ .IP
+@@ -537,6 +540,12 @@ option is an alternative to specifying
+ .BR proto=tcp.
+ It is included for compatibility with other operating systems.
+ .TP 1.5i
++.B rdma
++The
++.B rdma
++option is an alternative to specifying
++.BR proto=rdma.
++.TP 1.5i
+ .BI port= n
+ The numeric value of the server's NFS service port.
+ If the server's NFS service is not available on the specified port,
 
