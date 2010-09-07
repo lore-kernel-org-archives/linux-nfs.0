@@ -1,143 +1,84 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:32608 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753650Ab0IONYO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 15 Sep 2010 09:24:14 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 7/8] nfs: add rename_done nfs_rpc_op
-Date: Wed, 15 Sep 2010 09:24:00 -0400
-Message-Id: <1284557041-4375-8-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1284557041-4375-1-git-send-email-jlayton@redhat.com>
-References: <1284557041-4375-1-git-send-email-jlayton@redhat.com>
+Received: from exprod6og116.obsmtp.com ([64.18.1.37]:46229 "HELO
+	exprod6og116.obsmtp.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1750772Ab0IGGTd (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Sep 2010 02:19:33 -0400
+Content-Type: multipart/mixed;
+	boundary="----_=_NextPart_001_01CB4E54.A2029C95"
+Subject: RE: Query regarding NFS packet capture at application layer - umount operation.
+Date: Tue, 7 Sep 2010 02:19:28 -0400
+Message-ID: <D3F292ADF945FB49B35E96C94C2061B90D19843F@nsmail.netscout.com>
+From: "Tayade, Nilesh" <Nilesh.Tayade@netscout.com>
+To: <linux-nfs@vger.kernel.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-...for processing the rename reply.
+------_=_NextPart_001_01CB4E54.A2029C95
+Content-Type: text/plain;
+	charset="us-ascii"
+Content-Transfer-Encoding: quoted-printable
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- fs/nfs/nfs3proc.c       |   16 ++++++++++++++++
- fs/nfs/nfs4proc.c       |   18 ++++++++++++++++++
- fs/nfs/proc.c           |   12 ++++++++++++
- include/linux/nfs_xdr.h |    1 +
- 4 files changed, 47 insertions(+), 0 deletions(-)
+> -----Original Message-----
+> From: Tayade, Nilesh
+> Sent: Monday, September 06, 2010 6:03 PM
+> To: linux-nfs@vger.kernel.org
+> Subject: Query regarding NFS packet capture at application layer -
+> umount operation.
+>=20
+> Hi,
+>=20
+> I have a query related to NFS packet captured at application layer.
+> I have setup the NFS node on local system itself (just for test
+> purpose).
+> And capturing the packets for various events (mount, umount, file
+> access etc) on loop-back interface itself. However, in case of the
+> umount scenario, I do not see any NFS packet captured (I can only
+> see three TCP packets exchanged).
+>=20
+> Could someone please explain why there is no NFS packet observed
+> during an unmount? Also there seems not much information, related to
+> NFS mount point being unmounted, in TCP packet. So is there any way
+> to detect the unmount operation by hacking such packets?
+>=20
+> The last TCP packet looks like:
+>=20
+> Transmission Control Protocol, Src Port: 866 (866), Dst Port: 2049
+> (2049), Seq: 1, Ack: 1, Len: 0
+> Source port: 866 (866)
+> Destination port: 2049 (2049)
+> Sequence number: 1    (relative sequence number)
+> Acknowledgement number: 1    (relative ack number)
+> Header length: 32 bytes
+> Flags: 0x10 (ACK)
+> Checksum: 0xef2f [correct]
+> Options: (12 bytes)
+> This is an ACK to the segment in frame: 2
+> The RTT to ACK the segment was: 0.000017000 seconds
+>=20
+> Please let me know in case the capture file is required.
 
-diff --git a/fs/nfs/nfs3proc.c b/fs/nfs/nfs3proc.c
-index 0654177..b072519 100644
---- a/fs/nfs/nfs3proc.c
-+++ b/fs/nfs/nfs3proc.c
-@@ -456,6 +456,21 @@ nfs3_proc_rename_setup(struct rpc_message *msg, struct inode *dir)
- }
- 
- static int
-+nfs3_proc_rename_done(struct rpc_task *task, struct inode *old_dir,
-+		      struct inode *new_dir)
-+{
-+	struct nfs_renameres *res;
-+
-+	if (nfs3_async_handle_jukebox(task, old_dir))
-+		return 0;
-+	res = task->tk_msg.rpc_resp;
-+
-+	nfs_post_op_update_inode(old_dir, res->old_fattr);
-+	nfs_post_op_update_inode(new_dir, res->new_fattr);
-+	return 1;
-+}
-+
-+static int
- nfs3_proc_rename(struct inode *old_dir, struct qstr *old_name,
- 		 struct inode *new_dir, struct qstr *new_name)
- {
-@@ -860,6 +875,7 @@ const struct nfs_rpc_ops nfs_v3_clientops = {
- 	.unlink_done	= nfs3_proc_unlink_done,
- 	.rename		= nfs3_proc_rename,
- 	.rename_setup	= nfs3_proc_rename_setup,
-+	.rename_done	= nfs3_proc_rename_done,
- 	.link		= nfs3_proc_link,
- 	.symlink	= nfs3_proc_symlink,
- 	.mkdir		= nfs3_proc_mkdir,
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 011dc90..9c4160c 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -2691,6 +2691,23 @@ static int nfs4_proc_rename_setup(struct rpc_message *msg, struct inode *dir)
- 	return -ENOMEM;
- }
- 
-+static int nfs4_proc_rename_done(struct rpc_task *task, struct inode *old_dir,
-+				 struct inode *new_dir)
-+{
-+	struct nfs_renameres *res = task->tk_msg.rpc_resp;
-+
-+	if (!nfs4_sequence_done(task, &res->seq_res))
-+		return 0;
-+	if (nfs4_async_handle_error(task, res->server, NULL) == -EAGAIN)
-+		return 0;
-+
-+	update_changeattr(old_dir, &res->old_cinfo);
-+	nfs_post_op_update_inode(old_dir, res->old_fattr);
-+	update_changeattr(new_dir, &res->new_cinfo);
-+	nfs_post_op_update_inode(new_dir, res->new_fattr);
-+	return 1;
-+}
-+
- static int _nfs4_proc_rename(struct inode *old_dir, struct qstr *old_name,
- 		struct inode *new_dir, struct qstr *new_name)
- {
-@@ -5464,6 +5481,7 @@ const struct nfs_rpc_ops nfs_v4_clientops = {
- 	.unlink_done	= nfs4_proc_unlink_done,
- 	.rename		= nfs4_proc_rename,
- 	.rename_setup	= nfs4_proc_rename_setup,
-+	.rename_done	= nfs4_proc_rename_done,
- 	.link		= nfs4_proc_link,
- 	.symlink	= nfs4_proc_symlink,
- 	.mkdir		= nfs4_proc_mkdir,
-diff --git a/fs/nfs/proc.c b/fs/nfs/proc.c
-index 1b02dee..e2d5cae 100644
---- a/fs/nfs/proc.c
-+++ b/fs/nfs/proc.c
-@@ -377,6 +377,17 @@ nfs_proc_rename_setup(struct rpc_message *msg, struct inode *dir)
- }
- 
- static int
-+nfs_proc_rename_done(struct rpc_task *task, struct inode *old_dir,
-+		     struct inode *new_dir)
-+{
-+	if (nfs_async_handle_expired_key(task))
-+		return 0;
-+	nfs_mark_for_revalidate(old_dir);
-+	nfs_mark_for_revalidate(new_dir);
-+	return 1;
-+}
-+
-+static int
- nfs_proc_rename(struct inode *old_dir, struct qstr *old_name,
- 		struct inode *new_dir, struct qstr *new_name)
- {
-@@ -715,6 +726,7 @@ const struct nfs_rpc_ops nfs_v2_clientops = {
- 	.unlink_done	= nfs_proc_unlink_done,
- 	.rename		= nfs_proc_rename,
- 	.rename_setup	= nfs_proc_rename_setup,
-+	.rename_done	= nfs_proc_rename_done,
- 	.link		= nfs_proc_link,
- 	.symlink	= nfs_proc_symlink,
- 	.mkdir		= nfs_proc_mkdir,
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index d470751..97f7eaa 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -1019,6 +1019,7 @@ struct nfs_rpc_ops {
- 	int	(*rename)  (struct inode *, struct qstr *,
- 			    struct inode *, struct qstr *);
- 	int	(*rename_setup)  (struct rpc_message *msg, struct inode *dir);
-+	int	(*rename_done) (struct rpc_task *task, struct inode *old_dir, struct inode *new_dir);
- 	int	(*link)    (struct inode *, struct inode *, struct qstr *);
- 	int	(*symlink) (struct inode *, struct dentry *, struct page *,
- 			    unsigned int, struct iattr *);
--- 
-1.7.1
+Attached is the capture file obtained using tshark, in case required.
+Also the NFS protocol version here is NFSv3.
 
+> --
+> Thanks,
+> Nilesh
+> [nilesh(dot)tayade(at)netscout(dot)com]
+
+
+------_=_NextPart_001_01CB4E54.A2029C95
+Content-Type: application/octet-stream;
+	name="nfs_unmount"
+Content-Transfer-Encoding: base64
+Content-Description: nfs_unmount
+Content-Disposition: attachment;
+	filename="nfs_unmount"
+
+1MOyoQIABAAAAAAAAAAAAP//AAABAAAAKduETO9JDQBCAAAAQgAAAAAAAAAAAAAAAAAAAAgARQAA
+NHwMQABABsLewKg9RMCoPUQDYggBySUP3sjj2+eAEQEB/PQAAAEBCAoBRX95AUVxtynbhEz2SQ0A
+QgAAAEIAAAAAAAAAAAAAAAAAAAAIAEUAADSrr0AAQAaTO8CoPUTAqD1ECAEDYsjj2+fJJQ/fgBEB
+AO8xAAABAQgKAUV/egFFf3kp24RMB0oNAEIAAABCAAAAAAAAAAAAAAAAAAAACABFAAA0fA1AAEAG
+wt3AqD1EwKg9RANiCAHJJQ/fyOPb6IAQAQHvLwAAAQEICgFFf3oBRX96
+
+------_=_NextPart_001_01CB4E54.A2029C95--
