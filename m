@@ -1,50 +1,71 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from jay.phy.queensu.ca ([130.15.24.47]:37891 "EHLO
-	jay.phy.QueensU.CA" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755311Ab0INUYT (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 14 Sep 2010 16:24:19 -0400
-Date: Tue, 14 Sep 2010 16:24:06 -0400
-From: Peter Skensved <peter@jay.phy.QueensU.CA>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: nfsd4_stateowners problem
-Message-ID: <20100914202406.GA8880@jay.phy.QueensU.CA>
-References: <20100827174823.GA26792@jay.phy.QueensU.CA> <20100914173154.GC2409@fieldses.org> <20100914184044.GA30454@jay.phy.QueensU.CA> <20100914200054.GC4148@fieldses.org>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20100914200054.GC4148@fieldses.org>
+Received: from mx1.redhat.com ([209.132.183.28]:49882 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932379Ab0IGR5t (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 7 Sep 2010 13:57:49 -0400
+Message-ID: <4C867D14.4000203@RedHat.com>
+Date: Tue, 07 Sep 2010 13:57:40 -0400
+From: Steve Dickson <SteveD@redhat.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 0/4] Handle "proto=rdma" regressions
+References: <20100907162156.3392.90376.stgit@seurat.1015granger.net>
+In-Reply-To: <20100907162156.3392.90376.stgit@seurat.1015granger.net>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Tue, Sep 14, 2010 at 04:00:54PM -0400, J. Bruce Fields wrote:
-> On Tue, Sep 14, 2010 at 02:40:44PM -0400, Peter Skensved wrote:
-> >  Thanks for the reply.  The current RedHat EL5 kernels are all based on 2.6.18 with
-> > a lot of backported fixes so I'm not sure what version of the NFS code I'm effectively
-> > running.
-> > 
-> >  Do you know what the state_owners are used for ? What puzzles me is that in our case
-> 
-> They represent some notion of "who" is performing an open, or performing
-> a lock.
-> 
-> > we have a large number of workstations which NFS mounts some fairly large, mostly static
-> > common directories and automounts HOME directories. So I would expect the amount of state
-> > info that needs to be kept would be fairly constant. When the automounter unmounts the
-> > info ought to go away . Yet the number of stateowners for the most part just keep on
-> > growing. 
-> > 
-> >  The only work around at the moment is to reboot before it has eaten up around 500 Mb
-> > of slabs
-> 
-> Is someone doing a lot of file locking?
 
- Not that I'm aware of - 
 
+On 09/07/2010 12:25 PM, Chuck Lever wrote:
+> Steve-
 > 
-> I can't remember the logic the server uses to decide when to throw away
-> a lockowner, but it may just be inadequate.
+> This series is entirely untested, and is meant to be only an example
+> of how we could handle "proto=rdma" and "rdma" in mount.nfs.
 > 
-> The client has also had some fixes recently to be better about telling
-> the server when to throw them away.
+> The last patch in the series may not work at all.  It depends on the
+> kernel returning EPROTONOSUPPORT for "vers=4,rdma".
 > 
-> --b.
+> ---
+> 
+> Chuck Lever (4):
+>       mount.nfs: Prepare way for "vers=4,rdma" mounts
+>       mount.nfs: Support an "rdma" mount option
+>       mount.nfs: Use nfs_nfs_protocol() for checking for proto=rdma
+>       getport: Recognize "rdma" and "rdma6" netid
+> 
+> 
+>  support/include/nfsrpc.h |    6 ++++++
+>  support/nfs/getport.c    |   25 +++++++++++++++++++++++++
+>  utils/mount/network.c    |    9 +++++++--
+>  utils/mount/nfs.man      |   11 ++++++++++-
+>  utils/mount/stropts.c    |   16 ++++++++--------
+>  5 files changed, 56 insertions(+), 11 deletions(-)
+> 
+With all due respect... NACK.... Here is why...
+
+1) RDMA is not a network protocol and as I found out this
+   weekend it *never* be one, so I see absolutely no reason 
+   to treat RDMA like something it will never be. So using 
+   nfs_nfs_protocol() is incorrect. 
+ 
+2) Instead of modifying a couple if statements you are
+   now making it a two step process to handle RDMA mount,
+   which is not simpler.
+
+3) Due to potential problems with callback with v4 the default
+   version needs to be v3. But I do feel allowing the version
+   to be set on the command line should work....
+
+One thing that has become very apparent to me is, RDMA
+is not a network protocol and its not even a well defined 
+netid. RDMA a special case (to use your words) so that is
+they way we should treated.. 
+
+I will merge your man page changes as well as the comments I 
+promised and repost the simpler, one routine patch... 
+
+steved.
+
+
