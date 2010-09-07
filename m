@@ -1,90 +1,63 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:52093 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:44996 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755041Ab0IRDSd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 17 Sep 2010 23:18:33 -0400
-Received: from localhost.localdomain (scher1-lxp.hq.netapp.com [10.58.61.44] (may be forged))
-	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id o8I3IEV5012071
-	for <linux-nfs@vger.kernel.org>; Fri, 17 Sep 2010 20:18:17 -0700 (PDT)
-From: Fred Isaman <iisaman@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 03/12] RFC: pnfsd, pnfs: protocol level pnfs constants
-Date: Fri, 17 Sep 2010 23:17:45 -0400
-Message-Id: <1284779874-10499-4-git-send-email-iisaman@netapp.com>
-In-Reply-To: <1284779874-10499-1-git-send-email-iisaman@netapp.com>
-References: <1284779874-10499-1-git-send-email-iisaman@netapp.com>
+	id S1752933Ab0IGQIy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 7 Sep 2010 12:08:54 -0400
+Date: Tue, 7 Sep 2010 12:08:47 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: Suresh Jayaraman <sjayaraman@suse.de>, Neil Brown <neilb@suse.de>,
+        Linux NFS mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: [RFC][PATCH] nfs: support legacy NFS flock behavior via mount
+ option
+Message-ID: <20100907120847.692bd32e@tlielax.poochiereds.net>
+In-Reply-To: <1283869039.4291.16.camel@heimdal.trondhjem.org>
+References: <4C84DFA7.7050507@suse.de>
+	<1283869039.4291.16.camel@heimdal.trondhjem.org>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: The pNFS Team <linux-nfs@vger.kernel.org>
+On Tue, 07 Sep 2010 10:17:19 -0400
+Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
 
-Use only layoutreturn constant for both returns and recalls.
-(return_* works better for recall_type rather the other way around)
+> On Mon, 2010-09-06 at 18:03 +0530, Suresh Jayaraman wrote:
+> > NFS clients since 2.6.12 support flock()locks by emulating the
+> > BSD-style locks in terms of POSIX byte range locks. So the NFS client
+> > does not allow to lock the same file using both flock() and fcntl
+> > byte-range locks.
+> > 
+> > For some Windows applications which seem to use both share mode locks
+> > (flock()) and fcntl byte range locks sequentially on the same file,
+> > the locking is failing as the lock has already been acquired. i.e. the
+> > flock mapped as posix locks collide with actual byte range locks from
+> > the same process. The problem was observed on a setup with Windows
+> > clients accessing Excel files on a Samba exported share which is
+> > originally a NFS mount from a NetApp filer. Since kernels < 2.6.12 does
+> > not support flock, what was working (as flock locks were local) in
+> > older kernels is not working with newer kernels.
+> > 
+> > This could be seen as a bug in the implementation of the windows
+> > application or a NFS client regression, but that is debatable.
+> > In the spirit of not breaking existing setups, this patch adds mount
+> > options "flock=local" that enables older flock behavior and
+> > "flock=fcntl" that allows the current flock behavior.
+> 
+> So instead of having a special option for flock only, what say we rather
+> introduce an option of the form
+> 
+>   -olocal_lock=
+> 
+> which can take the values 'none', 'flock', 'fcntl' (or 'posix'?) and
+> 'all'?
+> 
+> Cheers
+>   Trond
 
-Signed-off-by: TBD - melding/reorganization of several patches
----
- include/linux/nfs4.h |   39 +++++++++++++++++++++++++++++++++++++++
- 1 files changed, 39 insertions(+), 0 deletions(-)
+Another thought -- we already have "-olock" and "-onolock" and we'll
+have to keep them for compatability. Maybe this should be "-oflock" and
+"-onoflock"?
 
-diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
-index 07e40c6..6798fc3 100644
---- a/include/linux/nfs4.h
-+++ b/include/linux/nfs4.h
-@@ -471,6 +471,8 @@ enum lock_type4 {
- #define FATTR4_WORD1_TIME_MODIFY        (1UL << 21)
- #define FATTR4_WORD1_TIME_MODIFY_SET    (1UL << 22)
- #define FATTR4_WORD1_MOUNTED_ON_FILEID  (1UL << 23)
-+#define FATTR4_WORD1_FS_LAYOUT_TYPES    (1UL << 30)
-+#define FATTR4_WORD2_LAYOUT_BLKSIZE     (1UL << 1)
- 
- #define NFSPROC4_NULL 0
- #define NFSPROC4_COMPOUND 1
-@@ -550,6 +552,43 @@ enum state_protect_how4 {
- 	SP4_SSV		= 2
- };
- 
-+enum pnfs_layouttype {
-+	LAYOUT_NFSV4_1_FILES  = 1,
-+	LAYOUT_OSD2_OBJECTS = 2,
-+	LAYOUT_BLOCK_VOLUME = 3,
-+};
-+
-+/* used for both layout return and recall */
-+enum pnfs_layoutreturn_type {
-+	RETURN_FILE = 1,
-+	RETURN_FSID = 2,
-+	RETURN_ALL  = 3
-+};
-+
-+enum pnfs_iomode {
-+	IOMODE_READ = 1,
-+	IOMODE_RW = 2,
-+	IOMODE_ANY = 3,
-+};
-+
-+enum pnfs_notify_deviceid_type4 {
-+	NOTIFY_DEVICEID4_CHANGE = 1 << 1,
-+	NOTIFY_DEVICEID4_DELETE = 1 << 2,
-+};
-+
-+#define NFL4_UFLG_MASK			0x0000003F
-+#define NFL4_UFLG_DENSE			0x00000001
-+#define NFL4_UFLG_COMMIT_THRU_MDS	0x00000002
-+#define NFL4_UFLG_STRIPE_UNIT_SIZE_MASK	0xFFFFFFC0
-+
-+/* Encoded in the loh_body field of type layouthint4 */
-+enum filelayout_hint_care4 {
-+	NFLH4_CARE_DENSE		= NFL4_UFLG_DENSE,
-+	NFLH4_CARE_COMMIT_THRU_MDS	= NFL4_UFLG_COMMIT_THRU_MDS,
-+	NFLH4_CARE_STRIPE_UNIT_SIZE	= 0x00000040,
-+	NFLH4_CARE_STRIPE_COUNT		= 0x00000080
-+};
-+
- #endif
- #endif
- 
 -- 
-1.7.2.1
-
+Jeff Layton <jlayton@redhat.com>
