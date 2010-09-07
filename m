@@ -1,148 +1,236 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:60394 "EHLO
-	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1752122Ab0I2LKy (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 29 Sep 2010 07:10:54 -0400
-From: Benny Halevy <bhalevy@panasas.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 8/9] SQUASHME: pnfs: refactor put_lseg{_locked}
-Date: Wed, 29 Sep 2010 13:10:51 +0200
-Message-Id: <1285758651-27008-1-git-send-email-bhalevy@panasas.com>
-In-Reply-To: <4CA31DC3.8070300@panasas.com>
-References: <4CA31DC3.8070300@panasas.com>
+Received: from mx2.netapp.com ([216.240.18.37]:39457 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932506Ab0IGUua convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Sep 2010 16:50:30 -0400
+Subject: Re: [RFC][PATCH] nfs: support legacy NFS flock behavior via mount
+ option
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Suresh Jayaraman <sjayaraman@suse.de>
+Cc: Neil Brown <neilb@suse.de>,
+        Linux NFS mailing list <linux-nfs@vger.kernel.org>,
+        Jeff Layton <jlayton@redhat.com>
+In-Reply-To: <4C869D00.8030604@suse.de>
+References: <4C84DFA7.7050507@suse.de>
+	 <1283869039.4291.16.camel@heimdal.trondhjem.org> <4C869D00.8030604@suse.de>
+Content-Type: text/plain; charset="UTF-8"
+Date: Tue, 07 Sep 2010 16:49:37 -0400
+Message-ID: <1283892577.2788.104.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-move common code into put_lseg_common
+On Wed, 2010-09-08 at 01:43 +0530, Suresh Jayaraman wrote:
+> On 09/07/2010 07:47 PM, Trond Myklebust wrote:
+> > On Mon, 2010-09-06 at 18:03 +0530, Suresh Jayaraman wrote:
+> >> NFS clients since 2.6.12 support flock()locks by emulating the
+> >> BSD-style locks in terms of POSIX byte range locks. So the NFS client
+> >> does not allow to lock the same file using both flock() and fcntl
+> >> byte-range locks.
+> >>
+> >> For some Windows applications which seem to use both share mode locks
+> >> (flock()) and fcntl byte range locks sequentially on the same file,
+> >> the locking is failing as the lock has already been acquired. i.e. the
+> >> flock mapped as posix locks collide with actual byte range locks from
+> >> the same process. The problem was observed on a setup with Windows
+> >> clients accessing Excel files on a Samba exported share which is
+> >> originally a NFS mount from a NetApp filer. Since kernels < 2.6.12 does
+> >> not support flock, what was working (as flock locks were local) in
+> >> older kernels is not working with newer kernels.
+> >>
+> >> This could be seen as a bug in the implementation of the windows
+> >> application or a NFS client regression, but that is debatable.
+> >> In the spirit of not breaking existing setups, this patch adds mount
+> >> options "flock=local" that enables older flock behavior and
+> >> "flock=fcntl" that allows the current flock behavior.
+> > 
+> > So instead of having a special option for flock only, what say we rather
+> > introduce an option of the form
+> > 
+> >   -olocal_lock=
+> > 
+> > which can take the values 'none', 'flock', 'fcntl' (or 'posix'?) and
+> > 'all'?
+> > 
+> 
+> Sounds good. I just figured out Solaris and HPUX (perhaps few other
+> Unixes too) already support "llock" mount option (short form of local
+> lock) with similar semantics. So, I think it would make sense for us to
+> adapt the same. But, if you think "local_lock" is better, please do a
+> s/llock/local_lock on the below patch.
+> 
+> ---
+> From: Suresh Jayaraman <sjayaraman@suse.de>
+> Subject: [PATCH] nfs: introduce mount option 'llock' to make locks local
+> 
+> NFS clients since 2.6.12 support flock locks by emulating fcntl byte-range
+> locks. Due to this, some windows applications which seem to use both flock and
+> fcntl locks sequentially on the same file, can't lock as they falsely assume
+> the file is already locked. The problem was reported on a setup with windows
+> clients accessing excel files on a Samba exported share which is originally a
+> NFS mount from a NetApp filer.
+> 
+> Older NFS clients (< 2.6.12) did not see this problem as flock locks were
+> considered local. To support legacy flock behavior, this patch adds a mount
+> option "-ollock=" which can take the following values:
+> 
+>    'none'  		- Neither of flock locks and fcntl/posix locks are local
+>    'flock'/'posix' 	- flock locks are local
+>    'fcntl' 		- fcntl locks are local
+>    'all'		- Both flock locks and fcntl/posix locks are local
 
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
----
- fs/nfs/nfs4proc.c |    8 ++++++++
- fs/nfs/pnfs.c     |   36 ++++++++++++++----------------------
- fs/nfs/pnfs.h     |    1 +
- 3 files changed, 23 insertions(+), 22 deletions(-)
+So, the main reason I had for not suggesting llock was because on
+Solaris, HPUX, AIX etc, llock is the same as our nolock, and doesn't
+really take an argument.
+IOW: I'm worried about introducing a syntax that is deliberately
+confusing to people who are used to administrating non-Linux systems.
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index ebf5127..52c5ddf 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -5664,9 +5664,17 @@ nfs4_layoutreturn_prepare(struct rpc_task *task, void *calldata)
- {
- 	struct nfs4_layoutreturn *lrp = calldata;
- 	struct inode *ino = lrp->args.inode;
-+	struct nfs_inode *nfsi = NFS_I(ino);
- 	struct nfs_server *server = NFS_SERVER(ino);
- 
- 	dprintk("--> %s\n", __func__);
-+	if ((lrp->args.return_type == RETURN_FILE) &&
-+	    pnfs_return_layout_barrier(nfsi, &lrp->args.range)) {
-+		dprintk("%s: waiting on barrier\n", __func__);
-+		rpc_sleep_on(&nfsi->lo_rpcwaitq, task, NULL);
-+		return;
-+	}
-+
- 	if (nfs4_setup_sequence(server, NULL, &lrp->args.seq_args,
- 				&lrp->res.seq_res, 0, task))
- 		return;
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 31a703d..4e47c2a 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -301,14 +301,10 @@ destroy_lseg(struct kref *kref)
- 	put_layout_hdr_locked(local);
- }
- 
--void
--put_lseg_locked(struct pnfs_layout_segment *lseg)
-+static void
-+put_lseg_common(struct nfs_inode *nfsi, struct pnfs_layout_segment *lseg)
- {
- 	bool do_wake_up;
--	struct nfs_inode *nfsi;
--
--	if (!lseg)
--		return;
- 
- 	dprintk("%s: lseg %p ref %d valid %d\n", __func__, lseg,
- 		atomic_read(&lseg->kref.refcount), lseg->valid);
-@@ -320,12 +316,21 @@ put_lseg_locked(struct pnfs_layout_segment *lseg)
- 		rpc_wake_up(&nfsi->lo_rpcwaitq);
- 	}
- }
-+
-+void
-+put_lseg_locked(struct pnfs_layout_segment *lseg)
-+{
-+	if (!lseg)
-+		return;
-+
-+	assert_spin_locked(&lseg->layout->inode->i_lock);
-+	put_lseg_common(NFS_I(lseg->layout->inode), lseg);
-+}
- EXPORT_SYMBOL_GPL(put_lseg_locked);
- 
- void
- put_lseg(struct pnfs_layout_segment *lseg)
- {
--	bool do_wake_up;
- 	struct nfs_inode *nfsi;
- 
- 	if (!lseg)
-@@ -333,13 +338,10 @@ put_lseg(struct pnfs_layout_segment *lseg)
- 
- 	dprintk("%s: lseg %p ref %d valid %d\n", __func__, lseg,
- 		atomic_read(&lseg->kref.refcount), lseg->valid);
--	do_wake_up = !lseg->valid;
- 	nfsi = NFS_I(lseg->layout->inode);
- 	spin_lock(&nfsi->vfs_inode.i_lock);
--	kref_put(&lseg->kref, destroy_lseg);
-+	put_lseg_common(nfsi, lseg);
- 	spin_unlock(&nfsi->vfs_inode.i_lock);
--	if (do_wake_up)
--		wake_up(&nfsi->lo_waitq);
- }
- EXPORT_SYMBOL_GPL(put_lseg);
- 
-@@ -654,7 +656,7 @@ has_layout_to_return(struct pnfs_layout_hdr *lo,
- 	return out;
- }
- 
--static bool
-+bool
- pnfs_return_layout_barrier(struct nfs_inode *nfsi,
- 			   struct pnfs_layout_range *range)
- {
-@@ -743,16 +745,6 @@ _pnfs_return_layout(struct inode *ino, struct pnfs_layout_range *range,
- 
- 		spin_unlock(&ino->i_lock);
- 
--		if (pnfs_return_layout_barrier(nfsi, &arg)) {
--			if (stateid) { /* callback */
--				status = -EAGAIN;
--				goto out_put;
--			}
--			dprintk("%s: waiting\n", __func__);
--			wait_event(nfsi->lo_waitq,
--				   !pnfs_return_layout_barrier(nfsi, &arg));
--		}
--
- 		if (layoutcommit_needed(nfsi)) {
- 			if (stateid && !wait) { /* callback */
- 				dprintk("%s: layoutcommit pending\n", __func__);
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index 36ce9fa..b143390 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -239,6 +239,7 @@ pnfs_has_layout(struct pnfs_layout_hdr *lo, struct pnfs_layout_range *range);
- struct pnfs_layout_segment *
- pnfs_update_layout(struct inode *ino, struct nfs_open_context *ctx,
- 		   loff_t pos, u64 count, enum pnfs_iomode access_type);
-+bool pnfs_return_layout_barrier(struct nfs_inode *, struct pnfs_layout_range *);
- int _pnfs_return_layout(struct inode *, struct pnfs_layout_range *,
- 			const nfs4_stateid *stateid, /* optional */
- 			enum pnfs_layoutreturn_type, bool wait);
--- 
-1.7.2.3
+> Cc: Neil Brown <neilb@suse.de>
+> Signed-off-by: Suresh Jayaraman <sjayaraman@suse.de>
+> ---
+>  fs/nfs/file.c             |   15 ++++++++++++---
+>  fs/nfs/super.c            |   44 ++++++++++++++++++++++++++++++++++++++++++++
+>  include/linux/nfs_mount.h |    3 +++
+>  3 files changed, 59 insertions(+), 3 deletions(-)
+> 
+> diff --git a/fs/nfs/file.c b/fs/nfs/file.c
+> index eb51bd6..a13a83e 100644
+> --- a/fs/nfs/file.c
+> +++ b/fs/nfs/file.c
+> @@ -800,8 +800,13 @@ static int nfs_lock(struct file *filp, int cmd, struct file_lock *fl)
+>  
+>  	nfs_inc_stats(inode, NFSIOS_VFSLOCK);
+>  
+> -	/* No mandatory locks over NFS */
+> -	if (__mandatory_lock(inode) && fl->fl_type != F_UNLCK)
+> +	/*
+> +	 * No mandatory locks over NFS.
+> +	 * fcntl lock is local if mounted with "-o llock=fcntl" or
+> +	 * "-o llock=posix"
+> +	 */
+> +	if ((__mandatory_lock(inode) && fl->fl_type != F_UNLCK) ||
+> +			(NFS_SERVER(inode)->flags & NFS_MOUNT_LOCAL_FCNTL))
+>  		goto out_err;
+>  
+>  	if (NFS_PROTO(inode)->lock_check_bounds != NULL) {
+> @@ -825,12 +830,16 @@ out_err:
+>   */
+>  static int nfs_flock(struct file *filp, int cmd, struct file_lock *fl)
+>  {
+> +	struct inode *inode = filp->f_mapping->host;
+> +
+>  	dprintk("NFS: flock(%s/%s, t=%x, fl=%x)\n",
+>  			filp->f_path.dentry->d_parent->d_name.name,
+>  			filp->f_path.dentry->d_name.name,
+>  			fl->fl_type, fl->fl_flags);
+>  
+> -	if (!(fl->fl_flags & FL_FLOCK))
+> +	/* flock is local if mounted with "-o llock=flock" */
+> +	if ((NFS_SERVER(inode)->flags & NFS_MOUNT_LOCAL_FLOCK) ||
+> +			(!(fl->fl_flags & FL_FLOCK)))
+>  		return -ENOLCK;
 
+Is this really what we want to do? Shouldn't we rather default to
+treating this as if NFS_MOUNT_NONLM were set?
+
+Also, don't we need similar code in the fcntl cases?
+
+>  	/* We're simulating flock() locks using posix locks on the server */
+> diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+> index ec3966e..7769dd3 100644
+> --- a/fs/nfs/super.c
+> +++ b/fs/nfs/super.c
+> @@ -100,6 +100,7 @@ enum {
+>  	Opt_addr, Opt_mountaddr, Opt_clientaddr,
+>  	Opt_lookupcache,
+>  	Opt_fscache_uniq,
+> +	Opt_llock,
+>  
+>  	/* Special mount options */
+>  	Opt_userspace, Opt_deprecated, Opt_sloppy,
+> @@ -171,6 +172,7 @@ static const match_table_t nfs_mount_option_tokens = {
+>  
+>  	{ Opt_lookupcache, "lookupcache=%s" },
+>  	{ Opt_fscache_uniq, "fsc=%s" },
+> +	{ Opt_llock, "llock=%s" },
+>  
+>  	{ Opt_err, NULL }
+>  };
+> @@ -236,6 +238,21 @@ static match_table_t nfs_lookupcache_tokens = {
+>  	{ Opt_lookupcache_err, NULL }
+>  };
+>  
+> +enum {
+> +	Opt_llock_all, Opt_llock_flock, Opt_llock_fcntl, Opt_llock_none,
+> +	Opt_llock_err
+> +};
+> +
+> +static match_table_t nfs_llock_tokens = {
+> +	{ Opt_llock_all, "all" },
+> +	{ Opt_llock_flock, "flock" },
+> +	{ Opt_llock_fcntl, "fcntl" },
+> +	{ Opt_llock_fcntl, "posix" },
+> +	{ Opt_llock_none, "none" },
+> +
+> +	{ Opt_llock_err, NULL }
+> +};
+> +
+>  
+>  static void nfs_umount_begin(struct super_block *);
+>  static int  nfs_statfs(struct dentry *, struct kstatfs *);
+> @@ -1412,6 +1429,33 @@ static int nfs_parse_mount_options(char *raw,
+>  			mnt->fscache_uniq = string;
+>  			mnt->options |= NFS_OPTION_FSCACHE;
+>  			break;
+> +		case Opt_llock:
+> +			string = match_strdup(args);
+> +			if (string == NULL)
+> +				goto out_nomem;
+> +			token = match_token(string, nfs_llock_tokens, args);
+> +			kfree(string);
+> +			switch (token) {
+> +			case Opt_llock_all:
+> +				mnt->flags |= (NFS_MOUNT_LOCAL_FLOCK |
+> +					       NFS_MOUNT_LOCAL_FCNTL);
+> +				break;
+> +			case Opt_llock_flock:
+> +				mnt->flags |= NFS_MOUNT_LOCAL_FLOCK;
+> +				break;
+> +			case Opt_llock_fcntl:
+> +				mnt->flags |= NFS_MOUNT_LOCAL_FCNTL;
+> +				break;
+> +			case Opt_llock_none:
+> +				mnt->flags &= ~(NFS_MOUNT_LOCAL_FLOCK |
+> +						NFS_MOUNT_LOCAL_FCNTL);
+> +				break;
+> +			default:
+> +				dfprintk(MOUNT, "NFS:	invalid	"
+> +						"llock argument\n");
+> +				return 0;
+> +			};
+> +			break;
+
+Could we perhaps also convert Opt_nolock so that it just sets
+NFS_MOUNT_LOCAL_FLOCK|NFS_MOUNT_LOCAL_FCNTL (and ditto for the legacy
+NFS_MOUNT_NONLM).
+
+>  
+>  		/*
+>  		 * Special options
+> diff --git a/include/linux/nfs_mount.h b/include/linux/nfs_mount.h
+> index 5d59ae8..576bddd 100644
+> --- a/include/linux/nfs_mount.h
+> +++ b/include/linux/nfs_mount.h
+> @@ -71,4 +71,7 @@ struct nfs_mount_data {
+>  #define NFS_MOUNT_NORESVPORT		0x40000
+>  #define NFS_MOUNT_LEGACY_INTERFACE	0x80000
+>  
+> +#define NFS_MOUNT_LOCAL_FLOCK	0x100000
+> +#define NFS_MOUNT_LOCAL_FCNTL	0x200000
+> +
+>  #endif
+> 
+> 
+
+Cheers
+  Trond
