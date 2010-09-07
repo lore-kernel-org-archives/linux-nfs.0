@@ -1,92 +1,190 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:2363 "EHLO
-	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1750802Ab0IBH7A (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 2 Sep 2010 03:59:00 -0400
-From: Benny Halevy <bhalevy@panasas.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 1/2] SQUASHME: pnfs-submit: fix getdeviceinfo decode sizing
-Date: Thu,  2 Sep 2010 10:58:56 +0300
-Message-Id: <1283414336-14878-1-git-send-email-bhalevy@panasas.com>
-In-Reply-To: <4C7F58F9.4080306@panasas.com>
-References: <4C7F58F9.4080306@panasas.com>
+Received: from rcsinet10.oracle.com ([148.87.113.121]:60335 "EHLO
+	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757881Ab0IGPjI convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Sep 2010 11:39:08 -0400
+Subject: Re: [PATCH 0/2] Make libtirpc work with old style portmapper
+Content-Type: text/plain; charset=iso-8859-1
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <201009071327.07291.okir@suse.de>
+Date: Tue, 7 Sep 2010 11:36:58 -0400
+Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org,
+        Steve Dickson <SteveD@redhat.com>
+Message-Id: <F1D592E6-35AD-45DA-B69E-044D59500DFB@oracle.com>
+References: <201008301503.19783.okir@suse.de> <201008301819.18773.okir@suse.de> <42F5CE2D-786B-464F-A6B7-D14FBF963F99@oracle.com> <201009071327.07291.okir@suse.de>
+To: Olaf Kirch <okir@suse.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-it looks like we forgot to adjust hdr->replen in
-encode_getdeviceinfo (and encode_getdevicelist).
 
-and decode_getdeviceinfo_maxsz is completely wrong!
-It's in bytes, not words as it should be.
-Ironically, this balanced the -8 bug above in computing replen
-for xdi_inline_pages
+On Sep 7, 2010, at 7:27 AM, Olaf Kirch wrote:
 
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
----
- fs/nfs/nfs4xdr.c |   24 ++++++++++--------------
- 1 files changed, 10 insertions(+), 14 deletions(-)
+> On Tuesday 31 August 2010 01:48:02 Chuck Lever wrote:
+>> On Aug 30, 2010, at 12:19 PM, Olaf Kirch wrote:
+>>> On Monday 30 August 2010 17:59:18 Chuck Lever wrote:
+>>>> Another minor problem I think I remember is that if libtirpc is used on
+>>>> a system (perhaps because it is statically linked with said ISV
+>>>> RPC-enabled application) that does not have /etc/netconfig installed,
+>>>> the transport creation logic in rpcb_clnt.c simply doesn't work.
+>>> 
+>>> Well, but that's something that's fixed easily - we can always tell
+>>> such customer to install an /etc/netconfig on their system.
+>> 
+>> Agreed, but for various reasons, the symptoms don't necessarily immediately
+>> imply what is needed to correct the problem.
+> 
+> I've updated the second patch, which now modifies pmap_set/unset
+> directly, without messing with the functionality of rpbc_set/unset.
 
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index 42a91c9..c422964 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -325,10 +325,11 @@ static int nfs4_stat_to_errno(int);
- #define encode_getdeviceinfo_maxsz (op_encode_hdr_maxsz + 4 + \
- 				XDR_QUADLEN(NFS4_PNFS_DEVICEID4_SIZE))
- #define decode_getdeviceinfo_maxsz (op_decode_hdr_maxsz + \
--				4 /*layout type */ + \
--				4 /* opaque devaddr4 length */ +\
--				4 /* notification bitmap length */ + \
--				4 /* notification bitmap */)
-+				1 /* layout type */ + \
-+				1 /* opaque devaddr4 length */ + \
-+				  /* devaddr4 payload is read into page */ \
-+				1 /* notification bitmap length */ + \
-+				1 /* notification bitmap */)
- #define encode_layoutget_maxsz	(op_encode_hdr_maxsz + 10 + \
- 				encode_stateid_maxsz)
- #define decode_layoutget_maxsz	(op_decode_hdr_maxsz + 8 + \
-@@ -1888,6 +1889,7 @@ encode_getdeviceinfo(struct xdr_stream *xdr,
- 	if (has_bitmap)
- 		*p = cpu_to_be32(args->pdev->dev_notify_types);
- 	hdr->nops++;
-+	hdr->replen += decode_getdeviceinfo_maxsz;
- }
- 
- static void
-@@ -2850,26 +2852,20 @@ static int nfs4_xdr_enc_getdeviceinfo(struct rpc_rqst *req, uint32_t *p,
- 				      struct nfs4_getdeviceinfo_args *args)
- {
- 	struct xdr_stream xdr;
--	struct rpc_auth *auth = req->rq_task->tk_msg.rpc_cred->cr_auth;
- 	struct compound_hdr hdr = {
- 		.minorversion = nfs4_xdr_minorversion(&args->seq_args),
- 	};
--	int replen;
- 
- 	xdr_init_encode(&xdr, &req->rq_snd_buf, p);
- 	encode_compound_hdr(&xdr, req, &hdr);
- 	encode_sequence(&xdr, &args->seq_args, &hdr);
- 	encode_getdeviceinfo(&xdr, args, &hdr);
- 
--	/* set up reply kvec. Subtract notification bitmap max size (8)
-+	/* set up reply kvec. Subtract notification bitmap max size (2)
- 	 * so that notification bitmap is put in xdr_buf tail */
--	replen = (RPC_REPHDRSIZE + auth->au_rslack +
--		  NFS4_dec_getdeviceinfo_sz - 8) << 2;
--	xdr_inline_pages(&req->rq_rcv_buf, replen, args->pdev->pages,
--			 args->pdev->pgbase, args->pdev->pglen);
--	dprintk("%s: inlined page args = (%u, %p, %u, %u)\n",
--		__func__, replen, args->pdev->pages,
--		args->pdev->pgbase, args->pdev->pglen);
-+	xdr_inline_pages(&req->rq_rcv_buf, (hdr.replen - 2) << 2,
-+			 args->pdev->pages, args->pdev->pgbase,
-+			 args->pdev->pglen);
- 
- 	encode_nops(&hdr);
- 	return 0;
+Probably not a bad idea.  But I thought this was a problem for applications that are calling rpcb_{un,}set(3t), not apps that are invoking the legacy variants.  How does this new patch address the problem?
+
+> With this change, the compatibility functions (pmap_{,un}set) will
+> first try the old API and then fall through to the new rpcbind
+> interface.
+
+What happens if you try the other way around: try the AF_UNIX mechanism first, then the legacy mechanism?  It's arguable that any application calling the pmap_{un,}set(3t) interface would likely expect the old behavior anyway, but could probably benefit from the additional security if rpcbind, rather than portmap, is running locally.
+
+Unless I've misunderstood the problem, you've done exactly the opposite of what needs to be done:
+
+  1.  rpcb_{un,}set(3t) need to work whether rpcbind or portmapper are running
+  2.  pmap_{un,}set(3t) should still invoke rpcb_{un,}set(3t) under the covers to ensure they get advanced security when available
+
+This is because you can build legacy apps against libtirpc (which want robust pmap_{un,}set(3t) no matter which portmapper is running), but you can also construct TI-RPC enabled apps that may be running on a system with only portmap (which want robust rpcb_{un,}set(3t)).  So I think you have to fix both APIs.
+
+> Olaf
+> -- 
+> Neo didn't bring down the Matrix. SOA did. (soafacts.com)
+> --------------------------------------------
+> Olaf Kirch - Director Server (okir@novell.com)
+> SUSE LINUX Products GmbH, Maxfeldstr. 5, D-90409 Nürnberg
+> GF: Markus Rex, HRB 16746 (AG Nürnberg)
+> -----------------------------
+> 
+> commit 30feadb3ae5a8d001aabc44f8ddad44298ec61a2
+> Author: Olaf Kirch <okir@suse.de>
+> Date:   Mon Aug 23 14:36:13 2010 +0200
+> 
+>    pmap_set/unset: allow compat functions to work with old-style portmap
+> 
+>    This change fixes a bug when running applications compiled against
+>    libtirpc on a host with old-style portmap. Without this change, the
+>    pmap_set/pmap_unset compatibility functions will actually be mapped
+>    to a RPCB_SET/UNSET call. If the server does not support anything more
+>    recent than PMAP, the operations will fail completely.
+> 
+>    This fix makes pmap_set/unset try the old portmapper functions
+>    first, and if those fail, try to fall back to the new rpcbind
+>    interface.
+> 
+>    Signed-off-by: Olaf Kirch <okir@suse.de>
+> 
+> diff --git a/src/pmap_clnt.c b/src/pmap_clnt.c
+> index 1d5d153..24cf94a 100644
+> --- a/src/pmap_clnt.c
+> +++ b/src/pmap_clnt.c
+> @@ -58,6 +58,10 @@ pmap_set(u_long program, u_long version, int protocol, int 
+> port)
+> 	struct netconfig *nconf;
+> 	char buf[32];
+> 
+> +#ifdef PORTMAP
+> +	if (__pmap_set(program, version, protocol, port))
+> +		return (TRUE);
+> +#endif
+> 	if ((protocol != IPPROTO_UDP) && (protocol != IPPROTO_TCP)) {
+> 		return (FALSE);
+> 	}
+> @@ -89,6 +93,11 @@ pmap_unset(u_long program, u_long version)
+> 	bool_t udp_rslt = FALSE;
+> 	bool_t tcp_rslt = FALSE;
+> 
+> +#ifdef PORTMAP
+> +	if (__pmap_set(program, version, IPPROTO_UDP, 0)
+> +	 && __pmap_set(program, version, IPPROTO_TCP, 0))
+> +		return (TRUE);
+> +#endif
+> 	nconf = __rpc_getconfip("udp");
+> 	if (nconf != NULL) {
+> 		udp_rslt = rpcb_unset((rpcprog_t)program, (rpcvers_t)version,
+> diff --git a/src/rpc_com.h b/src/rpc_com.h
+> index 38c2cfe..0a20a01 100644
+> --- a/src/rpc_com.h
+> +++ b/src/rpc_com.h
+> @@ -86,6 +86,9 @@ bool_t __xdrrec_getrec(XDR *, enum xprt_stat *, bool_t);
+> void __xprt_unregister_unlocked(SVCXPRT *);
+> void __xprt_set_raddr(SVCXPRT *, const struct sockaddr_storage *);
+> 
+> +#ifdef PORTMAP
+> +bool_t __pmap_set(rpcprog_t, rpcvers_t, int protocol, int port);
+> +#endif
+> 
+> SVCXPRT **__svc_xports;
+> int __svc_maxrec;
+> diff --git a/src/rpcb_clnt.c b/src/rpcb_clnt.c
+> index 531c619..9562646 100644
+> --- a/src/rpcb_clnt.c
+> +++ b/src/rpcb_clnt.c
+> @@ -476,6 +476,55 @@ getpmaphandle(nconf, hostname, tgtaddr)
+> #define IN4_LOCALHOST_STRING	"127.0.0.1"
+> #define IN6_LOCALHOST_STRING	"::1"
+> 
+> +#ifdef PORTMAP
+> +/*
+> + * Perform a PMAP_SET or PMAP_UNSET call to the
+> + * local rpcbind/portmap service.
+> + */
+> +bool_t
+> +__pmap_set(program, version, protocol, port)
+> +	rpcprog_t program;
+> +	rpcvers_t version;
+> +	int protocol;
+> +	int port;
+> +{
+> +	CLIENT *client;
+> +	rpcproc_t pmapproc;
+> +	struct pmap pmapparms;
+> +	bool_t rslt = FALSE;
+> +	enum clnt_stat clnt_st;
+> +
+> +	/* Arguments should already have been checked by caller */
+> +
+> +	pmapproc = port? PMAPPROC_SET : PMAPPROC_UNSET;
+> +	pmapparms.pm_prog = program;
+> +	pmapparms.pm_vers = version;
+> +	pmapparms.pm_prot = protocol;
+> +	pmapparms.pm_port = port;
+> +
+> +	client = getpmaphandle(NULL, IN4_LOCALHOST_STRING, NULL);
+> +	if (client == NULL)
+> +		return (FALSE);
+> +
+> +	clnt_st = CLNT_CALL(client, pmapproc,
+> +	    (xdrproc_t) xdr_pmap, (caddr_t)(void *) &pmapparms,
+> +	    (xdrproc_t) xdr_bool, (caddr_t)(void *) &rslt,
+> +	    tottimeout);
+> +
+> +	if (clnt_st == RPC_SUCCESS)
+> +		return rslt;
+> +
+> +	if (clnt_st != RPC_PROGVERSMISMATCH &&
+> +	    clnt_st != RPC_PROGUNAVAIL) {
+> +		rpc_createerr.cf_stat = RPC_PMAPFAILURE;
+> +		clnt_geterr(client, &rpc_createerr.cf_error);
+> +		return (FALSE);
+> +	}
+> +
+> +	return (TRUE);
+> +}
+> +#endif
+> +
+> /*
+>  * This routine will return a client handle that is connected to the local
+>  * rpcbind. Returns NULL on error and free's everything.
+
 -- 
-1.7.2.2
+chuck[dot]lever[at]oracle[dot]com
+
+
+
 
