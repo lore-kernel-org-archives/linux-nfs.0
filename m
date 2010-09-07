@@ -1,91 +1,37 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-pz0-f46.google.com ([209.85.210.46]:46059 "EHLO
-	mail-pz0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752521Ab0IMRRw (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Sep 2010 13:17:52 -0400
-Received: by pzk34 with SMTP id 34so2219981pzk.19
-        for <linux-nfs@vger.kernel.org>; Mon, 13 Sep 2010 10:17:52 -0700 (PDT)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 2/2] mount.nfs: Don't do anything fancy if this is a remount
-To: steved@redhat.com
+Received: from smtp-vbr13.xs4all.nl ([194.109.24.33]:1508 "EHLO
+	smtp-vbr13.xs4all.nl" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757519Ab0IGTZG (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Sep 2010 15:25:06 -0400
+Subject: Re: [PATCH 02/03]: sunrpc: make auth_hashtable_size param mode 0444
+From: Miquel van Smoorenburg <mikevs@xs4all.net>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Cc: linux-nfs@vger.kernel.org
-Date: Mon, 13 Sep 2010 13:17:47 -0400
-Message-ID: <20100913171747.18926.89540.stgit@seurat.1015granger.net>
-In-Reply-To: <20100913171100.18926.77712.stgit@seurat.1015granger.net>
-References: <20100913171100.18926.77712.stgit@seurat.1015granger.net>
-Content-Type: text/plain; charset="utf-8"
+In-Reply-To: <1283885932.2788.69.camel@heimdal.trondhjem.org>
+References: <20100822182848.GA26590@xs4all.net>
+	 <20100822183109.GB26607@xs4all.net>
+	 <1283885932.2788.69.camel@heimdal.trondhjem.org>
+Content-Type: text/plain; charset="ANSI_X3.4-1968"
+Date: Tue, 07 Sep 2010 21:24:09 +0200
+Message-ID: <1283887449.12858.208.camel@laptop>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-We don't want to append "vers=4" or perform any negotiation if the
-"remount" mount option was specified.  It will just end in tears.
+On Tue, 2010-09-07 at 14:58 -0400, Trond Myklebust wrote:
+> On Sun, 2010-08-22 at 20:31 +0200, Miquel van Smoorenburg wrote:
+> > The auth_hashtable_size parameter shows up in
+> > /sys/module/sunrpc/parameters with mode 0644. However the hashtables
+> > are allocated when the module is loaded, and changing the parameter
+> > afterwards doesn't do much. So make it read-only.
+> 
+> The above observation is only correct for AUTH_SYS. The reason for
+> making the mode 0644 was to allow users to change the value after
+> loading if they want to use RPCSEC_GSS.
 
-This attempts to address
+Right, I can see that being useful. It's confusing though. It'd be more
+clear if there was a seperate knob to tune just
+rpcsec_auth_hashtable_size. Anyway, never mind then.
 
-  https://qa.mandriva.com/show_bug.cgi?id=60311
-
-and
-
-  https://bugzilla.linux-nfs.org/show_bug.cgi?id=187
-
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
-
- utils/mount/stropts.c |   28 ++++++++++++++++++++++++++++
- 1 files changed, 28 insertions(+), 0 deletions(-)
-
-diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
-index c5c4ba1..50a1a2a 100644
---- a/utils/mount/stropts.c
-+++ b/utils/mount/stropts.c
-@@ -967,6 +967,26 @@ static int nfsmount_bg(struct nfsmount_info *mi)
- }
- 
- /*
-+ * Usually all that is needed for an NFS remount is to change
-+ * generic mount options like "sync" or "ro".  These generic
-+ * options are controlled by mi->flags, not by text-based
-+ * options, and no contact with the server is needed.
-+ *
-+ * Take care with the /etc/mtab entry for this mount; just
-+ * calling update_mtab() will change an "-t nfs -o vers=4"
-+ * mount to an "-t nfs -o remount" mount, and that will
-+ * confuse umount.nfs.
-+ *
-+ * Returns a valid mount command exit code.
-+ */
-+static int nfs_remount(struct nfsmount_info *mi)
-+{
-+	if (nfs_sys_mount(mi, mi->options))
-+		return EX_SUCCESS;
-+	return EX_FAIL;
-+}
-+
-+/*
-  * Process mount options and try a mount system call.
-  *
-  * Returns a valid mount command exit code.
-@@ -982,6 +1002,12 @@ static int nfsmount_start(struct nfsmount_info *mi)
- 	if (!nfs_validate_options(mi))
- 		return EX_FAIL;
- 
-+	/*
-+	 * Avoid retry and negotiation logic when remounting
-+	 */
-+	if (mi->flags & MS_REMOUNT)
-+		return nfs_remount(mi);
-+
- 	if (po_rightmost(mi->options, nfs_background_opttbl) == 0)
- 		return nfsmount_bg(mi);
- 	else
-@@ -998,6 +1024,8 @@ static int nfsmount_start(struct nfsmount_info *mi)
-  *		(input and output argument)
-  * @fake: flag indicating whether to carry out the whole operation
-  * @child: one if this is a mount daemon (bg)
-+ *
-+ * Returns a valid mount command exit code.
-  */
- int nfsmount_string(const char *spec, const char *node, const char *type,
- 		    int flags, char **extra_opts, int fake, int child)
+Mike.
 
