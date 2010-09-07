@@ -1,51 +1,85 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.candelatech.com ([208.74.158.172]:32851 "EHLO
-	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751831Ab0IAXuI (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 1 Sep 2010 19:50:08 -0400
-Message-ID: <4C7EE6AE.6060209@candelatech.com>
-Date: Wed, 01 Sep 2010 16:50:06 -0700
-From: Ben Greear <greearb@candelatech.com>
-To: Sorin Faibish <sfaibish@emc.com>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: Does the 2.6.34 kernel support NFS over IPv6?
-References: <4C7ECD62.7020802@candelatech.com> <op.vidoaslgrwwil4@sfaibish1.corp.emc.com>
-In-Reply-To: <op.vidoaslgrwwil4@sfaibish1.corp.emc.com>
-Content-Type: text/plain; charset=ISO-8859-15; format=flowed
+Received: from mail-out1.uio.no ([129.240.10.57]:54155 "EHLO mail-out1.uio.no"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756145Ab0IGScK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 7 Sep 2010 14:32:10 -0400
+Subject: Re: statfs() gives ESTALE error
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+To: Menyhart Zoltan <Zoltan.Menyhart@bull.net>
+Cc: linux-nfs@vger.kernel.org
+In-Reply-To: <4C7F4AB7.5020802@bull.net>
+References: <4C7E4469.70807@duchatelet.net>  <4C7F4AB7.5020802@bull.net>
+Content-Type: text/plain; charset="UTF-8"
+Date: Tue, 07 Sep 2010 14:32:05 -0400
+Message-ID: <1283884325.2788.59.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 09/01/2010 04:45 PM, Sorin Faibish wrote:
-> Yes. We tested at connectathon with Fedora.
->
->
-> On Wed, 01 Sep 2010 18:02:10 -0400, Ben Greear <greearb@candelatech.com>
-> wrote:
->
->> If not, do more recent kernels?
->>
->> I'm using Fedora 13.
-> Should work if configured properly.
+On Thu, 2010-09-02 at 08:56 +0200, Menyhart Zoltan wrote:
+> Hi,
+> 
+> An NFS client executes a statfs("file", &buff) call.
+> "file" exists / existed, the client has read / written it,
+> but it has already closed it.
+> 
+> user_path(pathname, &path) looks up "file" successfully in the
+> directory-cache  and restarts the aging timer of the directory-entry.
+> Even if "file" has already been removed from the server, because the
+> lookupcache=positive opcion I use, keeps the entries valid for a while.
+> 
+> nfs_statfs() returns ESTALE if "file" has already been removed from the
+> server.
+> 
+> If the user application repeats the statfs("file", &buff) call, we
+> are stuck: "file" remains young forever in the directory-cache.
+> 
+> Should not this directory-entry be cleaned up?
+> 
+> --- linux-2.6.32.x86_64-orig/fs/nfs/super.c     2010-08-02 14:34:57.000000000 +0200
+> +++ linux-2.6.32.x86_64/fs/nfs/super.c  2010-08-31 16:57:30.000000000 +0200
+> @@ -429,6 +429,22 @@
+>          int error;
+>   
+>          error = server->nfs_client->rpc_ops->statfs(server, fh, &res);
+> +       if (unlikely(error == -ESTALE)){
+> +
+> +               struct inode *pd_inode;
+> +
+> +               BUG_ON(dentry->d_parent == NULL);
+> +               pd_inode = dentry->d_parent->d_inode;
 
-How about as a server?  It doesn't seem to listen on IPv6
-addresses.  I tried 2.6.36-rc2+ kernel as well.
+Should be using dget_parent() to ensure that the parent directory
+doesn't disappear beneath us while we're working on it (with a matching
+d_put()).
 
-I tried setting /etc/exports to look like this:
+> +               BUG_ON(pd_inode == NULL);
 
-[root@localhost ~]# more /etc/exports
-/exports/tmp [2002::0/16](rw)
+Why the 2 BUG_ON()? If the conditions are true, then the kernel will
+Oops anyway.
 
-[root@localhost ~]# netstat -an|grep LISTEN |grep 2049
-tcp        0      0 0.0.0.0:2049                0.0.0.0:*                   LISTEN
+> +               /*
+> +                * This forces the revalidation code in nfs_lookup_revalidate() to do a
+> +                * full lookup on all child dentries of 'dir' whenever a change occurs
+> +                * on the server that might have invalidated our dcache.
+> +                */
+> +               spin_lock(&pd_inode->i_lock);
+> +               nfs_force_lookup_revalidate(pd_inode);
+> +               spin_unlock(&pd_inode->i_lock);
 
-I'm trying to test some NFS/IPv6 client changes, but I need
-at least a minimal IPv6 server to test against!
+The above should probably be a nfs_zap_caches(). We need to not only
+revalidate the lookup cache, but also to clear the readdir cache.
 
-Thanks,
-Ben
+> +       }
+>          if (error < 0)
+>                  goto out_err;
+>          buf->f_type = NFS_SUPER_MAGIC;
+> 
+> It's for the 2.6.32, yet the 2.6.36 dos not change from this aspect.
 
--- 
-Ben Greear <greearb@candelatech.com>
-Candela Technologies Inc  http://www.candelatech.com
+Can you fix the above, then resend (for 2.6.36) with a Signed-off-by:
+line?
+
+Cheers
+  Trond
 
