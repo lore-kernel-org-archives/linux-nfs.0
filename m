@@ -1,110 +1,93 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:63576 "EHLO
-	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753143Ab0IOP26 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 15 Sep 2010 11:28:58 -0400
-Subject: Re: [PATCH 3/8] nfs: eliminate nfs4_rename_arg
-Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <1284557041-4375-4-git-send-email-jlayton@redhat.com>
-Date: Wed, 15 Sep 2010 11:26:49 -0400
-Cc: trond.myklebust@netapp.com, linux-nfs@vger.kernel.org
-Message-Id: <8432F4C7-B2C0-4CB1-B3AA-63444ED6BF8E@oracle.com>
-References: <1284557041-4375-1-git-send-email-jlayton@redhat.com> <1284557041-4375-4-git-send-email-jlayton@redhat.com>
-To: Jeff Layton <jlayton@redhat.com>
+Received: from mx1.redhat.com ([209.132.183.28]:41576 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1758258Ab0IGUW3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 7 Sep 2010 16:22:29 -0400
+Received: from int-mx01.intmail.prod.int.phx2.redhat.com (int-mx01.intmail.prod.int.phx2.redhat.com [10.5.11.11])
+	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id o87KMTBJ016447
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Tue, 7 Sep 2010 16:22:29 -0400
+Received: from bighat.boston.devel.redhat.com (bighat.boston.devel.redhat.com [10.16.60.55])
+	by int-mx01.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id o87KMSnl001714
+	for <linux-nfs@vger.kernel.org>; Tue, 7 Sep 2010 16:22:29 -0400
+From: Steve Dickson <steved@redhat.com>
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: [PATCH 1/3] Added support for the the -o rdma option
+Date: Tue,  7 Sep 2010 16:21:59 -0400
+Message-Id: <1283890921-3447-2-git-send-email-steved@redhat.com>
+In-Reply-To: <1283890921-3447-1-git-send-email-steved@redhat.com>
+References: <1283890921-3447-1-git-send-email-steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
+Network transports can be specified with both
+the proto= and -o options. The patch adds support
+for the -o rdma option.
 
-On Sep 15, 2010, at 9:23 AM, Jeff Layton wrote:
+Signed-off-by: Steve Dickson <steved@redhat.com>
+---
+ utils/mount/stropts.c |   29 ++++++++++++++++++++---------
+ 1 files changed, 20 insertions(+), 9 deletions(-)
 
-> Add the missing fields to nfs_renameargs and drop nfs4_rename_arg
-> 
-> Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> ---
-> fs/nfs/nfs4proc.c       |    2 +-
-> fs/nfs/nfs4xdr.c        |    2 +-
-> include/linux/nfs_xdr.h |   19 ++++++-------------
-> 3 files changed, 8 insertions(+), 15 deletions(-)
-> 
-> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-> index 089da5b..eb36784 100644
-> --- a/fs/nfs/nfs4proc.c
-> +++ b/fs/nfs/nfs4proc.c
-> @@ -2675,7 +2675,7 @@ static int _nfs4_proc_rename(struct inode *old_dir, struct qstr *old_name,
-> 		struct inode *new_dir, struct qstr *new_name)
-> {
-> 	struct nfs_server *server = NFS_SERVER(old_dir);
-> -	struct nfs4_rename_arg arg = {
-> +	struct nfs_renameargs arg = {
-> 		.old_dir = NFS_FH(old_dir),
-> 		.new_dir = NFS_FH(new_dir),
-> 		.old_name = old_name,
-> diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-> index 08ef912..7a098ae 100644
-> --- a/fs/nfs/nfs4xdr.c
-> +++ b/fs/nfs/nfs4xdr.c
-> @@ -1823,7 +1823,7 @@ static int nfs4_xdr_enc_remove(struct rpc_rqst *req, __be32 *p, const struct nfs
-> /*
->  * Encode RENAME request
->  */
-> -static int nfs4_xdr_enc_rename(struct rpc_rqst *req, __be32 *p, const struct nfs4_rename_arg *args)
-> +static int nfs4_xdr_enc_rename(struct rpc_rqst *req, __be32 *p, const struct nfs_renameargs *args)
-> {
-> 	struct xdr_stream xdr;
-> 	struct compound_hdr hdr = {
-> diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-> index 5436680..60fa509 100644
-> --- a/include/linux/nfs_xdr.h
-> +++ b/include/linux/nfs_xdr.h
-> @@ -403,10 +403,12 @@ struct nfs_removeres {
->  * Common arguments to the rename call
->  */
-> struct nfs_renameargs {
-> -	const struct nfs_fh *	old_dir;
-> -	const struct nfs_fh *	new_dir;
-> -	const struct qstr *	old_name;
-> -	const struct qstr *	new_name;
-> +	const struct nfs_fh *		old_dir;
-> +	const struct nfs_fh *		new_dir;
-> +	const struct qstr *		old_name;
-> +	const struct qstr *		new_name;
-> +	const u32 *			bitmask;
-> +	struct nfs4_sequence_args	seq_args;
-
-Should these new fields be gated by CONFIG_NFS_V4 ?
-
-> };
-> 
-> /*
-> @@ -793,15 +795,6 @@ struct nfs4_readlink_res {
-> 	struct nfs4_sequence_res	seq_res;
-> };
-> 
-> -struct nfs4_rename_arg {
-> -	const struct nfs_fh *		old_dir;
-> -	const struct nfs_fh *		new_dir;
-> -	const struct qstr *		old_name;
-> -	const struct qstr *		new_name;
-> -	const u32 *			bitmask;
-> -	struct nfs4_sequence_args	seq_args;
-> -};
-> -
-> struct nfs4_rename_res {
-> 	const struct nfs_server *	server;
-> 	struct nfs4_change_info		old_cinfo;
-> -- 
-> 1.7.1
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
+diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
+index 0241400..eb6ecc5 100644
+--- a/utils/mount/stropts.c
++++ b/utils/mount/stropts.c
+@@ -98,6 +98,22 @@ struct nfsmount_info {
+ 				child;		/* forked bg child? */
+ };
+ 
++/*
++ * Check the options to see if the transport is RDMA
++ */
++static int nfs_rdma_option(struct mount_options *options)
++{
++	char *option;
++
++	if (po_contains(options, "rdma"))
++		return 1;
++	option = po_get(options, "proto");
++	if (option && strcmp(option, "rdma") == 0)
++		return 1;
++
++	return 0;
++}
++
+ #ifdef MOUNT_CONFIG
+ static void nfs_default_version(struct nfsmount_info *mi);
+ 
+@@ -302,11 +318,8 @@ static int nfs_set_version(struct nfsmount_info *mi)
+ 
+ 	if (strncmp(mi->type, "nfs4", 4) == 0)
+ 		mi->version = 4;
+-	else {
+-		char *option = po_get(mi->options, "proto");
+-		if (option && strcmp(option, "rdma") == 0)
+-			mi->version = 3;
+-	}
++	else if (mi->version == 0 && nfs_rdma_option(mi->options))
++		mi->version = 3; /* The default for RDMA mounts */
+ 
+ 	/*
+ 	 * If we still don't know, check for version-specific
+@@ -491,13 +504,11 @@ nfs_rewrite_pmap_mount_options(struct mount_options *options)
+ 	struct sockaddr *mnt_saddr = &mnt_address.sa;
+ 	socklen_t mnt_salen = sizeof(mnt_address);
+ 	struct pmap mnt_pmap;
+-	char *option;
+ 
+ 	/*
+-	 * Skip option negotiation for proto=rdma mounts.
++	 * Skip option negotiation for RDMA mounts.
+ 	 */
+-	option = po_get(options, "proto");
+-	if (option && strcmp(option, "rdma") == 0)
++	if (nfs_rdma_option(options))
+ 		goto out;
+ 
+ 	/*
 -- 
-chuck[dot]lever[at]oracle[dot]com
-
-
-
+1.7.2.1
 
