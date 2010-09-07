@@ -1,107 +1,53 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yx0-f174.google.com ([209.85.213.174]:48864 "EHLO
-	mail-yx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754850Ab0IJUJn (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Sep 2010 16:09:43 -0400
-Received: by yxp4 with SMTP id 4so1305854yxp.19
-        for <linux-nfs@vger.kernel.org>; Fri, 10 Sep 2010 13:09:42 -0700 (PDT)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 06/11] NFS: Move and update xdr_encode_foo() functions that
-	we're keeping
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Date: Fri, 10 Sep 2010 16:09:39 -0400
-Message-ID: <20100910200938.13321.52944.stgit@seurat.1015granger.net>
-In-Reply-To: <20100910200512.13321.55605.stgit@seurat.1015granger.net>
-References: <20100910200512.13321.55605.stgit@seurat.1015granger.net>
-Content-Type: text/plain; charset="utf-8"
+Received: from mx1.redhat.com ([209.132.183.28]:49052 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752844Ab0IGF4D convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Sep 2010 01:56:03 -0400
+Received: from int-mx02.intmail.prod.int.phx2.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
+	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id o875u3p1018863
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Tue, 7 Sep 2010 01:56:03 -0400
+Received: from sleipnir.ol (vpn-236-160.phx2.redhat.com [10.3.236.160])
+	by int-mx02.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id o875u2jZ032440
+	for <linux-nfs@vger.kernel.org>; Tue, 7 Sep 2010 01:56:03 -0400
+Date: Tue, 7 Sep 2010 02:56:01 -0300
+From: Fabio Olive Leite <fleite@redhat.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH] Remove incorrect do_vfs_lock message
+Message-ID: <20100907025601.22a5ea2f@sleipnir.ol>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Clean up.
+The do_vfs_lock function on fs/nfs/file.c is only called if NLM is
+not being used, via the -onolock mount option. Therefore it cannot
+really be "out of sync with lock manager" when the local locking
+function called returns an error, as there will be no corresponding
+call to the NLM. For details, simply check the if/else on do_setlk
+and do_unlk on fs/nfs/file.c.
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
+Signed-Off-By: Fabio Olive Leite <fleite@redhat.com>
 
- fs/nfs/nfs2xdr.c |   59 ++++++++++++++++++++++++++++++------------------------
- 1 files changed, 33 insertions(+), 26 deletions(-)
-
-diff --git a/fs/nfs/nfs2xdr.c b/fs/nfs/nfs2xdr.c
-index cd9e2d8..0a3f830 100644
---- a/fs/nfs/nfs2xdr.c
-+++ b/fs/nfs/nfs2xdr.c
-@@ -91,32 +91,6 @@ xdr_decode_fhandle(__be32 *p, struct nfs_fh *fhandle)
+diff --git a/fs/nfs/file.c b/fs/nfs/file.c
+--- a/fs/nfs/file.c
++++ b/fs/nfs/file.c
+@@ -723,10 +723,6 @@ static int do_vfs_lock(struct file *file, struct file_lock *fl)
+ 		default:
+ 			BUG();
+ 	}
+-	if (res < 0)
+-		dprintk(KERN_WARNING "%s: VFS is out of sync with lock manager"
+-			" - error %d!\n",
+-				__func__, res);
+ 	return res;
  }
  
- static inline __be32*
--xdr_encode_time(__be32 *p, const struct timespec *timep)
--{
--	*p++ = htonl(timep->tv_sec);
--	/* Convert nanoseconds into microseconds */
--	*p++ = htonl(timep->tv_nsec ? timep->tv_nsec / 1000 : 0);
--	return p;
--}
--
--static inline __be32*
--xdr_encode_current_server_time(__be32 *p, const struct timespec *timep)
--{
--	/*
--	 * Passing the invalid value useconds=1000000 is a
--	 * Sun convention for "set to current server time".
--	 * It's needed to make permissions checks for the
--	 * "touch" program across v2 mounts to Solaris and
--	 * Irix boxes work correctly. See description of
--	 * sattr in section 6.1 of "NFS Illustrated" by
--	 * Brent Callaghan, Addison-Wesley, ISBN 0-201-32750-5
--	 */
--	*p++ = htonl(timep->tv_sec);
--	*p++ = htonl(1000000);
--	return p;
--}
--
--static inline __be32*
- xdr_decode_time(__be32 *p, struct timespec *timep)
- {
- 	timep->tv_sec = ntohl(*p++);
-@@ -180,6 +154,39 @@ static void encode_fhandle(struct xdr_stream *xdr, const struct nfs_fh *fh)
- }
- 
- /*
-+ * 2.3.4.  timeval
-+ *
-+ *	struct timeval {
-+ *		unsigned int seconds;
-+ *		unsigned int useconds;
-+ *	};
-+ */
-+static __be32 *xdr_encode_time(__be32 *p, const struct timespec *timep)
-+{
-+	*p++ = cpu_to_be32(timep->tv_sec);
-+	if (timep->tv_nsec != 0)
-+		*p++ = cpu_to_be32(timep->tv_nsec / NSEC_PER_USEC);
-+	else
-+		*p++ = cpu_to_be32(0);
-+	return p;
-+}
-+
-+/*
-+ * Passing the invalid value useconds=1000000 is a Sun convention for
-+ * "set to current server time".  It's needed to make permissions checks
-+ * for the "touch" program across v2 mounts to Solaris and Irix servers
-+ * work correctly.  See description of sattr in section 6.1 of "NFS
-+ * Illustrated" by Brent Callaghan, Addison-Wesley, ISBN 0-201-32750-5.
-+ */
-+static __be32 *xdr_encode_current_server_time(__be32 *p,
-+					      const struct timespec *timep)
-+{
-+	*p++ = cpu_to_be32(timep->tv_sec);
-+	*p++ = cpu_to_be32(1000000);
-+	return p;
-+}
-+
-+/*
-  * 2.3.6.  sattr
-  *
-  *	struct sattr {
 
+Please keep me copied as I don't subscribe to the list.
+
+Regards,
+Fábio Olivé
+-- 
+TcheLinux.org, OeSC-Livre.org, Chapecó, SC
+ex sed lex awk yacc, e pluribus unix, amem
