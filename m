@@ -1,55 +1,68 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:45640 "EHLO
-	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1754676Ab0IML24 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Sep 2010 07:28:56 -0400
-Message-ID: <4C8E0AF5.1000500@panasas.com>
-Date: Mon, 13 Sep 2010 13:28:53 +0200
-From: Benny Halevy <bhalevy@panasas.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-CC: Christoph Hellwig <hch@infradead.org>, Fred Isaman <iisaman@netapp.com>,
-        linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 08/13] RFC: pnfs: filelayout: introduce minimal file layout
- driver
-References: <1283450419-5648-1-git-send-email-iisaman@netapp.com>	 <1283450419-5648-9-git-send-email-iisaman@netapp.com>	 <1284147111.10062.74.camel@heimdal.trondhjem.org>	 <20100910235600.GA11231@infradead.org>	 <1284163433.14078.102.camel@heimdal.trondhjem.org>	 <20100911000749.GA31628@infradead.org> <1284163980.14078.111.camel@heimdal.trondhjem.org>
-In-Reply-To: <1284163980.14078.111.camel@heimdal.trondhjem.org>
-Content-Type: text/plain; charset=UTF-8
+Received: from mx2.netapp.com ([216.240.18.37]:61511 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932150Ab0IGRGa convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Sep 2010 13:06:30 -0400
+Subject: Re: [RFC][PATCH] nfs: support legacy NFS flock behavior via mount
+ option
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Jeff Layton <jlayton@redhat.com>
+Cc: Suresh Jayaraman <sjayaraman@suse.de>, Neil Brown <neilb@suse.de>,
+        Linux NFS mailing list <linux-nfs@vger.kernel.org>
+In-Reply-To: <20100907120847.692bd32e@tlielax.poochiereds.net>
+References: <4C84DFA7.7050507@suse.de>
+	 <1283869039.4291.16.camel@heimdal.trondhjem.org>
+	 <20100907120847.692bd32e@tlielax.poochiereds.net>
+Content-Type: text/plain; charset="UTF-8"
+Date: Tue, 07 Sep 2010 13:06:11 -0400
+Message-ID: <1283879171.2788.4.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 2010-09-11 03:13, Trond Myklebust wrote:
-> On Fri, 2010-09-10 at 20:07 -0400, Christoph Hellwig wrote:
->> On Fri, Sep 10, 2010 at 08:03:53PM -0400, Trond Myklebust wrote:
->>> So you are saying we should simply equate CONFIG_PNFS_FILE_LAYOUT and
->>> CONFIG_NFS_V4_1 right now? Yep, I'd be fine with that... I'm still
->>> working on the patches to get rid of all these CONFIG options, but
->>> ultimately this is what I'm working towards.
->>
->> If you don't want a separate option that's up to you, but I don't think
->> forcing people to built the pnfs file layout just because they want nfs4.1
->> features is an all that smart idea.
+On Tue, 2010-09-07 at 12:08 -0400, Jeff Layton wrote:
+> On Tue, 07 Sep 2010 10:17:19 -0400
+> Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
 > 
-> IMHO it should be fine.
+> > On Mon, 2010-09-06 at 18:03 +0530, Suresh Jayaraman wrote:
+> > > NFS clients since 2.6.12 support flock()locks by emulating the
+> > > BSD-style locks in terms of POSIX byte range locks. So the NFS client
+> > > does not allow to lock the same file using both flock() and fcntl
+> > > byte-range locks.
+> > > 
+> > > For some Windows applications which seem to use both share mode locks
+> > > (flock()) and fcntl byte range locks sequentially on the same file,
+> > > the locking is failing as the lock has already been acquired. i.e. the
+> > > flock mapped as posix locks collide with actual byte range locks from
+> > > the same process. The problem was observed on a setup with Windows
+> > > clients accessing Excel files on a Samba exported share which is
+> > > originally a NFS mount from a NetApp filer. Since kernels < 2.6.12 does
+> > > not support flock, what was working (as flock locks were local) in
+> > > older kernels is not working with newer kernels.
+> > > 
+> > > This could be seen as a bug in the implementation of the windows
+> > > application or a NFS client regression, but that is debatable.
+> > > In the spirit of not breaking existing setups, this patch adds mount
+> > > options "flock=local" that enables older flock behavior and
+> > > "flock=fcntl" that allows the current flock behavior.
+> > 
+> > So instead of having a special option for flock only, what say we rather
+> > introduce an option of the form
+> > 
+> >   -olocal_lock=
+> > 
+> > which can take the values 'none', 'flock', 'fcntl' (or 'posix'?) and
+> > 'all'?
+> > 
+> > Cheers
+> >   Trond
 > 
-> Most people will be compiling NFS as a module, in which case, the pnfs
-> file layout is just another module that can be left out from the final
-> binary if people don't want it.
+> Another thought -- we already have "-olock" and "-onolock" and we'll
+> have to keep them for compatability. Maybe this should be "-oflock" and
+> "-onoflock"?
 > 
-> I'm still waiting to hear from people who want to compile NFSv4.1 in the
-> main kernel, but who want pNFS to be modularised.
 
-If a user uses a different layout driver and not the files layout driver
-than the latter is just extra baggage.  That said, the way Fred implemented
-the Kconfig option, it cannot be disabled independently anyway so it's rather
-pointless.
+No thanks. That would require us to add a -onofcntl too, since -onolock
+is already defines as being equivalent to -olocal_lock=all
 
-Benny
-
-> 
-> Cheers
->   Trond
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Trond
