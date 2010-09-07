@@ -1,43 +1,91 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:39746 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:45800 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751852Ab0INBJR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 13 Sep 2010 21:09:17 -0400
-Date: Mon, 13 Sep 2010 21:08:13 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: iisaman@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [pynfs PATCH] TESTS: fix DELEG9
-Message-ID: <20100914010813.GD27200@fieldses.org>
-References: <20100914010630.GC27200@fieldses.org>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20100914010630.GC27200@fieldses.org>
+	id S1757890Ab0IGUWa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 7 Sep 2010 16:22:30 -0400
+Received: from int-mx01.intmail.prod.int.phx2.redhat.com (int-mx01.intmail.prod.int.phx2.redhat.com [10.5.11.11])
+	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id o87KMTEu022679
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Tue, 7 Sep 2010 16:22:29 -0400
+Received: from bighat.boston.devel.redhat.com (bighat.boston.devel.redhat.com [10.16.60.55])
+	by int-mx01.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id o87KMSnm001714
+	for <linux-nfs@vger.kernel.org>; Tue, 7 Sep 2010 16:22:29 -0400
+From: Steve Dickson <steved@redhat.com>
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: [PATCH 2/3] Ensure the corrrect address family is used on RDMA mounts
+Date: Tue,  7 Sep 2010 16:22:00 -0400
+Message-Id: <1283890921-3447-3-git-send-email-steved@redhat.com>
+In-Reply-To: <1283890921-3447-1-git-send-email-steved@redhat.com>
+References: <1283890921-3447-1-git-send-email-steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Mon, Sep 13, 2010 at 09:06:30PM -0400, bfields wrote:
-> From: J. Bruce Fields <bfields@redhat.com>
-> 
-> The new server doesn't have a recall callback setup, so will never send
-> the delegreturn.  (Doing it by hand at the end as attempted here doesn't
-> work well, as the open that precedes that final delegreturn needs the
-> delegreturn before it can succeed.)
-> 
-> Also, we need to set c.cb_server for _verify_cb_occurred to get the
-> correct count.
-> 
-> After this patch, the test passes against the Linux server.
+Due to the lack of RDMA netid support and no IANA protocol
+number defined just make sure the correct address
+family is used on RDMA mounts.
 
-This patch, plus the other fixes I need to get usable results against
-the Linux server, are also available from
+Signed-off-by: Steve Dickson <steved@redhat.com>
+---
+ support/nfs/getport.c |   21 +++++++++++++++++++++
+ utils/mount/stropts.c |    4 +++-
+ 2 files changed, 24 insertions(+), 1 deletions(-)
 
-	git://linux-nfs.org/~bfields/pynfs.git
+diff --git a/support/nfs/getport.c b/support/nfs/getport.c
+index c930539..8f788d2 100644
+--- a/support/nfs/getport.c
++++ b/support/nfs/getport.c
+@@ -216,6 +216,17 @@ nfs_get_proto(const char *netid, sa_family_t *family, unsigned long *protocol)
+ 	struct netconfig *nconf;
+ 	struct protoent *proto;
+ 
++	/*
++	 * Special Case for RDMA mounts. Since
++	 * there is no RDMA netid support, just
++	 * ensure the correct address family 
++	 * is used.
++	 */
++	if (strcasecmp(netid, "rdma") == 0) {
++		*family = AF_INET;
++		return 1;
++	}
++
+ 	nconf = getnetconfigent(netid);
+ 	if (nconf == NULL)
+ 		return 0;
+@@ -242,6 +253,16 @@ nfs_get_proto(const char *netid, sa_family_t *family, unsigned long *protocol)
+ {
+ 	struct protoent *proto;
+ 
++	/*
++	 * Special Case for RDMA mounts. Since
++	 * there is not a protocol number define 
++	 * for  RDMA, just ensure the correct 
++	 * address family is used.
++	 */
++	if (strcasecmp(netid, "rdma") == 0) {
++		*family = AF_INET;
++		return 1;
++	}
+ 	proto = getprotobyname(netid);
+ 	if (proto == NULL)
+ 		return 0;
+diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
+index eb6ecc5..3f53ade 100644
+--- a/utils/mount/stropts.c
++++ b/utils/mount/stropts.c
+@@ -359,7 +359,9 @@ static int nfs_validate_options(struct nfsmount_info *mi)
+ 	if (!nfs_parse_devname(mi->spec, &mi->hostname, NULL))
+ 		return 0;
+ 
+-	if (!nfs_nfs_proto_family(mi->options, &family))
++	if (nfs_rdma_option(mi->options))
++		family = AF_INET;
++	else if (!nfs_nfs_proto_family(mi->options, &family))
+ 		return 0;
+ 
+ 	hint.ai_family = (int)family;
+-- 
+1.7.2.1
 
-(and, for 4.1, at:
-
-	git://linux-nfs.org/~bfields/pynfs41.git
-
-).
-
---b.
