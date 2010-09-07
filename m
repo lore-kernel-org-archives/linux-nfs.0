@@ -1,90 +1,80 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from vergina.eng.auth.gr ([155.207.18.1]:63297 "EHLO
-	vergina.eng.auth.gr" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757020Ab0IUIge (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 21 Sep 2010 04:36:34 -0400
-Message-ID: <4C986E82.7040003@eng.auth.gr>
-Date: Tue, 21 Sep 2010 11:36:18 +0300
-From: George Mamalakis <mamalos@eng.auth.gr>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: linux-nfs@vger.kernel.org, kwc@citi.umich.edu
-Subject: Re: nfsv3 gssapi client?
-References: <4C938F3B.4030604@eng.auth.gr> <20100917174328.GC25515@fieldses.org> <4C972DB3.2050405@eng.auth.gr> <20100920145643.GD4580@fieldses.org> <4C978008.50805@eng.auth.gr> <20100920160732.GK4580@fieldses.org>
-In-Reply-To: <20100920160732.GK4580@fieldses.org>
-Content-Type: text/plain; charset=UTF-8; format=flowed
+Received: from mx1.redhat.com ([209.132.183.28]:10859 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932260Ab0IGUa1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 7 Sep 2010 16:30:27 -0400
+Message-ID: <4C86A0E0.6050003@RedHat.com>
+Date: Tue, 07 Sep 2010 16:30:24 -0400
+From: Steve Dickson <SteveD@redhat.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 4/4] mount.nfs: Prepare way for "vers=4,rdma" mounts
+References: <20100907162156.3392.90376.stgit@seurat.1015granger.net> <20100907162638.3392.14786.stgit@seurat.1015granger.net> <4C869B70.4020405@RedHat.com> <8653371E-0798-4F57-9289-684A8D09B1C7@oracle.com>
+In-Reply-To: <8653371E-0798-4F57-9289-684A8D09B1C7@oracle.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-  Hi guys,
-
-Kevin:
-As stated in my first email, the linux box is running on a 2.6.35 
-kernel, heimdal 1.3.3-1 (the version was not mentioned in my email),  
-rpcbind-0.2.0-2, nfs-utils-1.2.2-3, and the distro is arch-linux.
-
-Bruce: I would rather find an "easier" (configuration-specific) way to 
-overcome my problem instead of delving into the code, since I am not a 
-developer (I am an admin :)). Nevertheless, when I used 
-google.com/searchcode for _gss_get_mechanism_cred I found that there is 
-a libgss/g_glue.c that defines this function in the following way (the 
-site is svn://svn.genunix.org/on/trunk 
-<http://google.com/codesearch/p?hl=en#m0BoFGhUuEY/&q=_gss_get_mechanism_cred>):
-
-/*
-  * Glue routine for returning the mechanism-specific credential from a
-  * external union credential.
-  */
-gss_cred_id_t
-__gss_get_mechanism_cred(union_cred, mech_type)
-         const  gss_union_cred_t  union_cred;
-         const  gss_OID           mech_type;
-{
-         int                      i;
-
-         if  (union_cred == (gss_union_cred_t)GSS_C_NO_CREDENTIAL)
-                 return  (GSS_C_NO_CREDENTIAL);
-
-         for  (i =0; i<  union_cred->count; i++) {
-                 if  (g_OID_equal(mech_type,&union_cred->mechs_array[i]))
-                         return  (union_cred->cred_array[i]);
-         }
-         return  (GSS_C_NO_CREDENTIAL);
-}
 
 
-where you can see that the guy returns a cred_array[i] element, that 
-obviously is null, because (most probably) the if statement above did 
-not match any "compatible" mechanisms during the recursion.
+On 09/07/2010 04:14 PM, Chuck Lever wrote:
+> 
+> On Sep 7, 2010, at 4:07 PM, Steve Dickson wrote:
+> 
+>>
+>>
+>> On 09/07/2010 12:26 PM, Chuck Lever wrote:
+>>> At some point, when the kernel starts to support "vers=4,rdma" mounts,
+>>> we will want the mount.nfs command to pass "vers=4,rdma" mounts
+>>> instead of rejecting them.
+>>>
+>>> Assuming that the kernel will reject these today with EPROTONOSUPPORT,
+>>> that would cause the version fallback logic to go to "vers=3,rdma"
+>>> automatically.  So the extra check we have now is not needed anyway.
+>>>
+>>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+>>> ---
+>>>
+>>> utils/mount/stropts.c |    7 -------
+>>> 1 files changed, 0 insertions(+), 7 deletions(-)
+>>>
+>>> diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
+>>> index 9695c73..a8b22ce 100644
+>>> --- a/utils/mount/stropts.c
+>>> +++ b/utils/mount/stropts.c
+>>> @@ -302,13 +302,6 @@ static int nfs_set_version(struct nfsmount_info *mi)
+>>>
+>>> 	if (strncmp(mi->type, "nfs4", 4) == 0)
+>>> 		mi->version = 4;
+>>> -	else {
+>>> -		unsigned long protocol;
+>>> -		if (!nfs_nfs_protocol(mi->options, &protocol))
+>>> -			return 0;
+>>> -		if (protocol == NFSPROTO_RDMA)
+>>> -			mi->version = 3;
+>>> -	}
+>>>
+>>> 	/*
+>>> 	 * If we still don't know, check for version-specific
+>>>
+>> This is a show stopper... We can default to v4 because the callbacks.
+> 
+> Again, this patch was for comments only, it isn't required.  
+I guess I missed that in your description.
 
-Maybe I am totally wrong, since I haven't checked the code thoroughly, 
-but I think that the problem is located somewhere in this code segment.
+> But I don't understand your comment.
+We can not default to v4 because of the callbacks.
 
-As I stated before, I was rather hoping to avoid this procedure, since I 
-decided to use the linux distro for my clients due to its 
-'out-of-the-box' and 'everything-is-supported' benefits as 
-(slightly-)opposed to fbsd (which I use in all my servers and personal 
-computers, and "love" as an operating system) can be a bit more 
-"demanding" when out-of-the-box-general-purpose issues are involved. The 
-thing is that the client will be used as a general-purpose student pc in 
-a university lab.
+> 
+> We don't default to NFSv4 for RDMA today, because of the if clause I remove here.  
+> If no version is specified, it defaults to vers=3 for RDMA mounts.
+no... this is not the case with the above patched applied... 
+I do have a way to test... 
 
-Thanx again for your help,
+> 
+> I suggest we make it default to v4 in this case.  What is the callback requirement?
+Its not clear they work... 
 
-if anybody could direct me somewhere else I would be delighted to know so!
-
-mamalos
-
--- 
-George Mamalakis
-
-IT Officer
-Electrical and Computer Engineer (Aristotle Un. of Thessaloniki),
-MSc (Imperial College of London)
-
-Department of Electrical and Computer Engineering
-Faculty of Engineering
-Aristotle University of Thessaloniki
-
-phone number : +30 (2310) 994379
+steved.
 
