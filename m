@@ -1,74 +1,169 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:50832 "EHLO mx2.netapp.com"
+Received: from cantor.suse.de ([195.135.220.2]:47057 "EHLO mx1.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751803Ab0IUMSR convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 21 Sep 2010 08:18:17 -0400
-Subject: Re: [PATCH 0/9] sunrpc: Start making sunrpc work in containers
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Pavel Emelyanov <xemul@parallels.com>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>, Neil Brown <neilb@suse.de>,
-        linux-nfs@vger.kernel.org
-In-Reply-To: <4C985A88.1000902@parallels.com>
-References: <4C90BADB.10700@parallels.com>
-	 <20100920161326.GL4580@fieldses.org> <4C978CE6.5080508@parallels.com>
-	 <20100920180418.GN4580@fieldses.org>  <4C97B248.1030801@parallels.com>
-	 <1285013116.2851.71.camel@heimdal.trondhjem.org>
-	 <4C985A88.1000902@parallels.com>
-Content-Type: text/plain; charset="UTF-8"
-Date: Tue, 21 Sep 2010 08:18:13 -0400
-Message-ID: <1285071493.3105.55.camel@heimdal.trondhjem.org>
+	id S1755743Ab0IGL1K convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Sep 2010 07:27:10 -0400
+From: Olaf Kirch <okir@suse.de>
+To: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: [PATCH 0/2] Make libtirpc work with old style portmapper
+Date: Tue, 7 Sep 2010 13:27:07 +0200
+Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org,
+        Steve Dickson <SteveD@redhat.com>
+References: <201008301503.19783.okir@suse.de> <201008301819.18773.okir@suse.de> <42F5CE2D-786B-464F-A6B7-D14FBF963F99@oracle.com>
+In-Reply-To: <42F5CE2D-786B-464F-A6B7-D14FBF963F99@oracle.com>
+Content-Type: Text/Plain;
+  charset="iso-8859-1"
+Message-Id: <201009071327.07291.okir@suse.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Tue, 2010-09-21 at 11:11 +0400, Pavel Emelyanov wrote:
-> > The client should be something like the following:
-> > 
-> >  1) Ensure sunrpc sockets are created using the correct net namespace
+On Tuesday 31 August 2010 01:48:02 Chuck Lever wrote:
+> On Aug 30, 2010, at 12:19 PM, Olaf Kirch wrote:
+> > On Monday 30 August 2010 17:59:18 Chuck Lever wrote:
+> >> Another minor problem I think I remember is that if libtirpc is used on
+> >> a system (perhaps because it is statically linked with said ISV
+> >> RPC-enabled application) that does not have /etc/netconfig installed,
+> >> the transport creation logic in rpcb_clnt.c simply doesn't work.
+> >
+> > Well, but that's something that's fixed easily - we can always tell
+> > such customer to install an /etc/netconfig on their system.
 > 
-> Ack
-> 
-> >  2) Convert rpc_pipefs to be per-net namespace.
-> 
-> Trond, I think this part should be done the other way.
-> 
-> You see, the rpc_pipefs is a filesystem already and we shouldn't
-> make it bound to any task-driven context. What I was thinking about
-> in that direction is make it mountable multiple times.
-> 
-> The central issue of this is - the way we say the rpc_get_mount() 
-> which vfsmount we need. Userspace will just use the per-container (i.e.
-> per-chroot) instance of it and the kernel users will work with the
-> vfsmount obtained by the rpc_get_mount() call.
-> 
-> Now, how do I plan to solve the rpc_get_mount problem. Some time ago
-> there was similar problem with the devpts filesystem - people making
-> ptys work per-container tried to solve the same problem and they
-> ended up (with Al's help) with a yet another devpts mount option which
-> explicitly stated that a new instance should be created. How do you
-> think if we do the same for rpc_pipefs (a newinstance mount option) and
-> add yet another mount option for its only client (nfs) telling it where
-> to look for the rpc mount for (e.g. rpcmount=/var/...) ?
+> Agreed, but for various reasons, the symptoms don't necessarily immediately
+>  imply what is needed to correct the problem.
 
-As long as we have some mechanism to ensure that rpc.gssd from one net
-namespace doesn't try to establish a kerberos security context on behalf
-of a NFS mount that resides in a different net namespace.
-My point is if the rpc.gssd resides in a different net namespace, then
-we have no guarantee that the IP address we pass in the upcall even
-points to the same server, so we must ensure that the namespaces match.
+I've updated the second patch, which now modifies pmap_set/unset
+directly, without messing with the functionality of rpbc_set/unset.
+With this change, the compatibility functions (pmap_{,un}set) will
+first try the old API and then fall through to the new rpcbind
+interface.
 
-> >  3) Convert the nfs_client and superblock to be per-net namespace
-> 
-> Ack about the nfs_client, but as far as the superblock is
-> concerned - I think we should tag only the nfs_server with
-> net for the same reasons as in the item 2) above.
+Olaf
+-- 
+Neo didn't bring down the Matrix. SOA did. (soafacts.com)
+--------------------------------------------
+Olaf Kirch - Director Server (okir@novell.com)
+SUSE LINUX Products GmbH, Maxfeldstr. 5, D-90409 Nürnberg
+GF: Markus Rex, HRB 16746 (AG Nürnberg)
+-----------------------------
 
-You should tag the nfs_server, and then make sure that nfs_compare_super
-does not match something that is tagged with a different net namespace
-than the current one. Otherwise, you can end up mounting the wrong NFS
-server (for the same reason as above).
+commit 30feadb3ae5a8d001aabc44f8ddad44298ec61a2
+Author: Olaf Kirch <okir@suse.de>
+Date:   Mon Aug 23 14:36:13 2010 +0200
 
-> >  4) Convert lockd's struct host to be per-net namespace
+    pmap_set/unset: allow compat functions to work with old-style portmap
+    
+    This change fixes a bug when running applications compiled against
+    libtirpc on a host with old-style portmap. Without this change, the
+    pmap_set/pmap_unset compatibility functions will actually be mapped
+    to a RPCB_SET/UNSET call. If the server does not support anything more
+    recent than PMAP, the operations will fail completely.
+    
+    This fix makes pmap_set/unset try the old portmapper functions
+    first, and if those fail, try to fall back to the new rpcbind
+    interface.
+    
+    Signed-off-by: Olaf Kirch <okir@suse.de>
 
-Cheers
-  Trond
+diff --git a/src/pmap_clnt.c b/src/pmap_clnt.c
+index 1d5d153..24cf94a 100644
+--- a/src/pmap_clnt.c
++++ b/src/pmap_clnt.c
+@@ -58,6 +58,10 @@ pmap_set(u_long program, u_long version, int protocol, int 
+port)
+ 	struct netconfig *nconf;
+ 	char buf[32];
+ 
++#ifdef PORTMAP
++	if (__pmap_set(program, version, protocol, port))
++		return (TRUE);
++#endif
+ 	if ((protocol != IPPROTO_UDP) && (protocol != IPPROTO_TCP)) {
+ 		return (FALSE);
+ 	}
+@@ -89,6 +93,11 @@ pmap_unset(u_long program, u_long version)
+ 	bool_t udp_rslt = FALSE;
+ 	bool_t tcp_rslt = FALSE;
+ 
++#ifdef PORTMAP
++	if (__pmap_set(program, version, IPPROTO_UDP, 0)
++	 && __pmap_set(program, version, IPPROTO_TCP, 0))
++		return (TRUE);
++#endif
+ 	nconf = __rpc_getconfip("udp");
+ 	if (nconf != NULL) {
+ 		udp_rslt = rpcb_unset((rpcprog_t)program, (rpcvers_t)version,
+diff --git a/src/rpc_com.h b/src/rpc_com.h
+index 38c2cfe..0a20a01 100644
+--- a/src/rpc_com.h
++++ b/src/rpc_com.h
+@@ -86,6 +86,9 @@ bool_t __xdrrec_getrec(XDR *, enum xprt_stat *, bool_t);
+ void __xprt_unregister_unlocked(SVCXPRT *);
+ void __xprt_set_raddr(SVCXPRT *, const struct sockaddr_storage *);
+ 
++#ifdef PORTMAP
++bool_t __pmap_set(rpcprog_t, rpcvers_t, int protocol, int port);
++#endif
+ 
+ SVCXPRT **__svc_xports;
+ int __svc_maxrec;
+diff --git a/src/rpcb_clnt.c b/src/rpcb_clnt.c
+index 531c619..9562646 100644
+--- a/src/rpcb_clnt.c
++++ b/src/rpcb_clnt.c
+@@ -476,6 +476,55 @@ getpmaphandle(nconf, hostname, tgtaddr)
+ #define IN4_LOCALHOST_STRING	"127.0.0.1"
+ #define IN6_LOCALHOST_STRING	"::1"
+ 
++#ifdef PORTMAP
++/*
++ * Perform a PMAP_SET or PMAP_UNSET call to the
++ * local rpcbind/portmap service.
++ */
++bool_t
++__pmap_set(program, version, protocol, port)
++	rpcprog_t program;
++	rpcvers_t version;
++	int protocol;
++	int port;
++{
++	CLIENT *client;
++	rpcproc_t pmapproc;
++	struct pmap pmapparms;
++	bool_t rslt = FALSE;
++	enum clnt_stat clnt_st;
++
++	/* Arguments should already have been checked by caller */
++
++	pmapproc = port? PMAPPROC_SET : PMAPPROC_UNSET;
++	pmapparms.pm_prog = program;
++	pmapparms.pm_vers = version;
++	pmapparms.pm_prot = protocol;
++	pmapparms.pm_port = port;
++
++	client = getpmaphandle(NULL, IN4_LOCALHOST_STRING, NULL);
++	if (client == NULL)
++		return (FALSE);
++
++	clnt_st = CLNT_CALL(client, pmapproc,
++	    (xdrproc_t) xdr_pmap, (caddr_t)(void *) &pmapparms,
++	    (xdrproc_t) xdr_bool, (caddr_t)(void *) &rslt,
++	    tottimeout);
++
++	if (clnt_st == RPC_SUCCESS)
++		return rslt;
++
++	if (clnt_st != RPC_PROGVERSMISMATCH &&
++	    clnt_st != RPC_PROGUNAVAIL) {
++		rpc_createerr.cf_stat = RPC_PMAPFAILURE;
++		clnt_geterr(client, &rpc_createerr.cf_error);
++		return (FALSE);
++	}
++
++	return (TRUE);
++}
++#endif
++
+ /*
+  * This routine will return a client handle that is connected to the local
+  * rpcbind. Returns NULL on error and free's everything.
