@@ -1,101 +1,144 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from vergina.eng.auth.gr ([155.207.18.1]:61634 "EHLO
-	vergina.eng.auth.gr" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755784Ab0ITJrp (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 20 Sep 2010 05:47:45 -0400
-Message-ID: <4C972DB3.2050405@eng.auth.gr>
-Date: Mon, 20 Sep 2010 12:47:31 +0300
-From: George Mamalakis <mamalos@eng.auth.gr>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: nfsv3 gssapi client?
-References: <4C938F3B.4030604@eng.auth.gr> <20100917174328.GC25515@fieldses.org>
-In-Reply-To: <20100917174328.GC25515@fieldses.org>
-Content-Type: text/plain; charset=UTF-8; format=flowed
+Received: from rcsinet10.oracle.com ([148.87.113.121]:42659 "EHLO
+	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932390Ab0IGRji convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Sep 2010 13:39:38 -0400
+Subject: Re: mount.nfs: protocol fallback when server doesn't support TCP
+Content-Type: text/plain; charset=us-ascii
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <20100907113225.4a018ba3@notabene>
+Date: Tue, 7 Sep 2010 13:37:40 -0400
+Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Message-Id: <597F59F8-FA58-4D44-AB2A-9F03E4C61583@oracle.com>
+References: <20100826120635.4c3157bc@notabene> <659EE931-F48E-4A5D-9212-D4F8AE421029@oracle.com> <20100830103025.70d09ec8@notabene> <BC2D2164-0836-4DAC-99C5-C7BE23D3B163@oracle.com> <20100831110024.68e8877d@notabene> <EC686BD1-834D-4060-84E7-FBF0733B7ACA@oracle.com> <20100907113225.4a018ba3@notabene>
+To: Neil Brown <neilb@suse.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-  Hi Bruce and thanx for the reply,
 
-to your questions now:
+On Sep 6, 2010, at 9:32 PM, Neil Brown wrote:
 
-On 17/09/2010 20:43, J. Bruce Fields wrote:
->
->> # mount -t nfs -o sec=krb5 fbsdserver:/exports /mnt
->>
-> Was there supposed to be some error output there?  Or did the mount just
-> hang?
->
-The mount command stalls and no output is presented; only the messages 
-on /var/log/messages.
->> Sep 17 16:06:01 linuxclient kernel: svc: failed to register lockdv1
->> RPC service (errno 111).
-> 111 is ECONNREFUSED.  I'm not sure why that's failing.  (Should failure
-> to register lockd fail the whole mount?  I thought it would at worst
-> result in ENOLCK on lock requests?) Do you get better results if you
-> mount with nolock?
->
-Now this is peculiar. If run mount -o nolock then gssd segfaults. This 
-is because it creates a /tmp/krb5cc_machine_REALM ticket, and when it 
-access it, it segfaults. To overcome this issue I deleted the temporary 
-file, and ran gssd manually to see its output. So, mount returned the 
-following:
+> On Tue, 31 Aug 2010 12:38:09 -0400
+> Chuck Lever <chuck.lever@oracle.com> wrote:
+> 
+> 
+>>>> 
+>>>>> +						/* OK to try different protocols. Lets see
+>>>>> +						 * what portmap thinks.
+>>>>> +						 */
+>>>>> +						int oldfake = mi->fake;
+>>>>> +						int res;
+>>>>> +						mi->fake = 1;
+>>>>> +						res = nfs_try_mount_v3v2(mi);
+>>>> 
+>>>> If you just want to probe the server's portmapper, I think you can use nfs_probe_bothports() directly.
+>>>> 
+>>> 
+>>> Not quite.  You would need to wrap it in a loop over all addresses in
+>>> md->address, and would need to worry about the mounthost option.  It seems
+>>> easier to just call nfs_try_mount_v3v2 which already does this.
+>> 
+>> /me smacks forehead
+>> 
+>> Complexity that I guess we have to live with.  A comment that explains the oldfake hack would be helpful.
+> 
+> And often trying to write such a comment can make it clear why the code was a
+> bad idea in the first place.... :-)
+> 
+> Rather than write a comment I wouldn't believe myself, here is something
+> quite different - my third draft.
+> This is on top of the nice tidy-up patches you posted earlier.
+> 
+> It uses nfs_getport to make very focussed requests to portmap.
+> 
+> Two things I'm still not really sure about:
+> 
+> 1/ RDMA.  How does that interact with fallback.  Do we only support v4 over
+>   RDMA?  That would be nice was we could simply avoid fallback in that case.
 
-[root@linuxclient ~]# mount -t nfs -o sec=krb5,nolock 
-fbsdserver:/exports /mnt
-mount.nfs: access denied by server while mounting fbsdserver:/exports
+My impression is that today RDMA is stable only on vers=3; someday it should be stable with vers=4 too.
 
-and gssd console output read:
+I think Steve and I need to agree on the final form of the RDMA patches before we can say with authority how fallback will work.
 
-destroying client /var/lib/nfs/rpc_pipefs/nfs/clnt110
-handling gssd upcall (/var/lib/nfs/rpc_pipefs/nfs/clnt112)
-handle_gssd_upcall: 'mech=krb5 uid=0 enctypes=18,17,16,23,3,1,2 '
-handling krb5 upcall (/var/lib/nfs/rpc_pipefs/nfs/clnt112)
-process_krb5_upcall: service is '<null>'
-getting credentials for client with uid 0 for server fbsdserver
-WARNING: Failed to create krb5 context for user with uid 0 for server 
-fbsdserver
-doing error downcall
-destroying client /var/lib/nfs/rpc_pipefs/nfs/clnt113
-handling gssd upcall (/var/lib/nfs/rpc_pipefs/nfs/clnt112)
-handle_gssd_upcall: 'mech=krb5 uid=0 enctypes=18,17,16,23,3,1,2 '
-handling krb5 upcall (/var/lib/nfs/rpc_pipefs/nfs/clnt112)
-process_krb5_upcall: service is '<null>'
-getting credentials for client with uid 0 for server fbsdserver
-WARNING: Failed to create krb5 context for user with uid 0 for server 
-fbsdserver
-doing error downcall
-handling gssd upcall (/var/lib/nfs/rpc_pipefs/nfs/clnt112)
-handle_gssd_upcall: 'mech=krb5 uid=0 enctypes=18,17,16,23,3,1,2 '
-handling krb5 upcall (/var/lib/nfs/rpc_pipefs/nfs/clnt112)
-process_krb5_upcall: service is '<null>'
-getting credentials for client with uid 0 for server fbsdclient.ee.auth.gr
-WARNING: Failed to create krb5 context for user with uid 0 for server 
-fbsdserver
-doing error downcall
-destroying client /var/lib/nfs/rpc_pipefs/nfs/clnt112
-destroying client /var/lib/nfs/rpc_pipefs/nfs/clnt111
+> 2/ IPv6.  I should possibly be checking if v3v2 are available via UDP6 as well
+>   as UDP - and similarly if v4 has become available via TCP6?? Or is that
+>   all magically handled somewhere under the hood?
 
-/var/log/messages shows nothing.
+nfs_try_mount_v4() will try all address families provided by getaddrinfo(3).  So when ECONNREFUSED finally bubbles up to nfs_try_mount(), mount.nfs should have already tried NFSv4 via both tcp and tcp6.
 
+Anyway, this seems to answer my original question about "what are the risks of trying the portmapper-based approach?"  It looks like a complex solution no matter what.
 
-I think that's all regarding your questions.
+I'm not suggesting you abandon this direction, but if the nfs_try_mount() logic does nothing more but fallback to v2/v3 if the NFSv4 mount attempt fails with ECONNREFUSED, what harm could that cause?
 
-Thanx again,
-
-mamalos.
+> From 60dae9b9c14869ae630db683e2524ad230064b19 Mon Sep 17 00:00:00 2001
+> From: Neil Brown <neilb@suse.de>
+> Date: Tue, 7 Sep 2010 11:23:02 +1000
+> Subject: [PATCH] mount: correctly handle fallback for  ECONNREFUSED during mount attempt.
+> 
+> If we get ECONNREFUSED when attempting a v4 mount, it could be that
+> the server just isn't ready yet (the current assumption) or it could
+> be that the server only support UDP - and thus only v3/v2.  The latter
+> possibility isn't handled currently.
+> 
+> So if we get ECONNREFUSED when fallback is an option, check with
+> portmap/rpcbind to see if it could be that case that v2/v3 are
+> supported over UDP, and v4 still is not.  In that case, fall back to v2v3.
+> 
+> I'm not at all sure if IPv6 possibilities are RDMA are handled correctly..
+> 
+> Signed-off-by: NeilBrown <neilb@suse.de>
+> 
+> diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
+> index 9e29a19..5ebcf3e 100644
+> --- a/utils/mount/stropts.c
+> +++ b/utils/mount/stropts.c
+> @@ -750,6 +750,7 @@ static int nfs_autonegotiate(struct nfsmount_info *mi)
+> {
+> 	unsigned long protocol;
+> 	int result;
+> +	struct addrinfo *ai;
+> 
+> 	/*
+> 	 * If UDP was requested from the command line, try
+> @@ -796,6 +797,33 @@ static int nfs_autonegotiate(struct nfsmount_info *mi)
+> 		/* Linux servers prior to 2.6.25 may return
+> 		 * EPERM when NFS version 4 is not supported. */
+> 		goto fall_back;
+> +	case ECONNREFUSED:
+> +		/* Either the server doesn't accept TCP connections,
+> +		 * or it just isn't quite ready yet.
+> +		 * In the first case, fall back to v3v2, in the second
+> +		 * return failure - as this isn't a permanent error
+> +		 * the attempt will be retried.
+> +		 * To determine which, we need to check with portmap/rpcbind.
+> +		 * If v2 or v3 are supported on UDP, but v4 isn't on TCP then fall-back.
+> +		 */
+> +		for (ai = mi->address; ai != NULL; ai = ai->ai_next) {
+> +			if (nfs_getport(ai->ai_addr, ai->ai_addrlen,
+> +					NFS_PROGRAM, 3, IPPROTO_UDP) != 0 ||
+> +			    nfs_getport(ai->ai_addr, ai->ai_addrlen,
+> +					NFS_PROGRAM, 2, IPPROTO_UDP) != 0) {
+> +				if (nfs_getport(ai->ai_addr, ai->ai_addrlen,
+> +						NFS_PROGRAM, 4, IPPROTO_TCP) != 0) {
+> +					/* v4 support is almost online, wait for it. */
+> +					errno = ECONNREFUSED;
+> +					return result;
+> +				} else
+> +					/* v2/v3 is supported, but v4 isn't, fall_back */
+> +					goto fall_back;
+> +			}
+> +		}
+> +		/* portmap is not responding yet either, so just try again */
+> +		errno = ECONNREFUSED;
+> +		return result;
+> 	default:
+> 		return result;
+> 	}
 
 -- 
-George Mamalakis
+chuck[dot]lever[at]oracle[dot]com
 
-IT Officer
-Electrical and Computer Engineer (Aristotle Un. of Thessaloniki),
-MSc (Imperial College of London)
 
-Department of Electrical and Computer Engineering
-Faculty of Engineering
-Aristotle University of Thessaloniki
 
-phone number : +30 (2310) 994379
 
