@@ -1,36 +1,116 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:37309 "EHLO fieldses.org"
+Received: from cantor.suse.de ([195.135.220.2]:61000 "EHLO mx1.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750865Ab0I0OHt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 27 Sep 2010 10:07:49 -0400
-Date: Mon, 27 Sep 2010 10:07:44 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Pavel Emelyanov <xemul@parallels.com>
-Cc: Chuck Lever <chuck.lever@oracle.com>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v2 0/9] sunrpc: Virtualize ip_map_cache
-Message-ID: <20100927140744.GA2450@fieldses.org>
-References: <4CA06A63.6090507@parallels.com>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4CA06A63.6090507@parallels.com>
+	id S1752770Ab0IGBMy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 6 Sep 2010 21:12:54 -0400
+Date: Tue, 7 Sep 2010 11:12:46 +1000
+From: Neil Brown <neilb@suse.de>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 1/3] mount.nfs: Refactor mount version and protocol
+ autonegotiation
+Message-ID: <20100907111246.7de7d757@notabene>
+In-Reply-To: <20100831212130.21061.10519.stgit@matisse.1015granger.net>
+References: <20100831212006.21061.17002.stgit@matisse.1015granger.net>
+	<20100831212130.21061.10519.stgit@matisse.1015granger.net>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Mon, Sep 27, 2010 at 01:56:51PM +0400, Pavel Emelyanov wrote:
-> Hello everyone!
+On Tue, 31 Aug 2010 17:21:31 -0400
+Chuck Lever <chuck.lever@oracle.com> wrote:
+
+> The logic that manages negotiating NFS version and protocol settings
+> is getting more complex over time, so let's split this out of
+> nfs_try_mount().
 > 
-> This is the set I sent previously re-based on the
-> git://linux-nfs.org/~bfields/linux.git nfsd-next branch
-> and with fixed comment from Bruce.
-> 
-> Please, consider it for inclusion.
+> This should make Bruce a little happier, as it eliminates the silent
+> switch case fall through in nfs_try_mount().  And it should help Neil
+> fix some bugs he's found in this logic.
 
-The patches look fine to me, and it sounds like there's a plan for
-finishing the work that Trond and Chuck are both OK with....
+Hi Chuck,
+ thanks for these..
+ One question....
 
-So I'll queue those up for 2.6.37 soon if nobody spots any further
-problem.
+.....
+> +{
+> +	int result;
+> +
+> +	/*
+> +	 * Before 2.6.32, the kernel NFS client didn't support
+> +	 * "-t nfs vers=4" mounts, so NFS version 4 cannot be
+> +	 * included when autonegotiating while running on
+> +	 * those kernels.
+> +	 */
+> +	if (linux_version_code() <= MAKE_VERSION(2, 6, 31))
+> +		goto fall_back;
+> +
+> +	errno = 0;
+> +	result = nfs_try_mount_v4(mi);
+> +	switch (errno) {
 
---b.
+Should we not have e.g.
+
+   if (result)
+         return result;
+
+before the switch(errno)??  Typically errno is 'undefined' in no error is
+reported.
+
+I realise the current code doesn't have that test either, but I still think
+it is wrong not to.
+
+Thanks
+NeilBrown
+
+
+
+> +	case EPROTONOSUPPORT:
+> +		/* A clear indication that the server or our
+> +		 * client does not support NFS version 4. */
+> +		goto fall_back;
+> +	case ENOENT:
+> +		/* Legacy Linux servers don't export an NFS
+> +		 * version 4 pseudoroot. */
+> +		goto fall_back;
+> +	case EPERM:
+> +		/* Linux servers prior to 2.6.25 may return
+> +		 * EPERM when NFS version 4 is not supported. */
+> +		goto fall_back;
+> +	default:
+> +		return result;
+> +	}
+> +
+> +fall_back:
+> +	return nfs_try_mount_v3v2(mi);
+> +}
+> +
+> +/*
+>   * This is a single pass through the fg/bg loop.
+>   *
+>   * Returns TRUE if successful, otherwise FALSE.
+> @@ -758,20 +801,8 @@ static int nfs_try_mount(struct nfsmount_info *mi)
+>  
+>  	switch (mi->version) {
+>  	case 0:
+> -		if (linux_version_code() > MAKE_VERSION(2, 6, 31)) {
+> -			errno = 0;
+> -			result = nfs_try_mount_v4(mi);
+> -			if (errno != EPROTONOSUPPORT) {
+> -				/* 
+> -				 * To deal with legacy Linux servers that don't
+> -				 * automatically export a pseudo root, retry
+> -				 * ENOENT errors using version 3. And for
+> -				 * Linux servers prior to 2.6.25, retry EPERM
+> -				 */
+> -				if (errno != ENOENT && errno != EPERM)
+> -					break;
+> -			}
+> -		}
+> +		result = nfs_autonegotiate(mi);
+> +		break;
+>  	case 2:
+>  	case 3:
+>  		result = nfs_try_mount_v3v2(mi);
+
