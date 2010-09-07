@@ -1,94 +1,71 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:31495 "EHLO
-	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1752536Ab0I2LK3 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 29 Sep 2010 07:10:29 -0400
-From: Benny Halevy <bhalevy@panasas.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 6/9] pnfs: alloc and free layout_hdr layoutdriver methods
-Date: Wed, 29 Sep 2010 13:10:26 +0200
-Message-Id: <1285758626-26934-1-git-send-email-bhalevy@panasas.com>
-In-Reply-To: <4CA31DC3.8070300@panasas.com>
-References: <4CA31DC3.8070300@panasas.com>
+Received: from mail-gx0-f174.google.com ([209.85.161.174]:48417 "EHLO
+	mail-gx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757808Ab0IGQ0U (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Sep 2010 12:26:20 -0400
+Received: by gxk23 with SMTP id 23so2014997gxk.19
+        for <linux-nfs@vger.kernel.org>; Tue, 07 Sep 2010 09:26:20 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 2/4] mount.nfs: Use nfs_nfs_protocol() for checking for
+	proto=rdma
+To: steved@redhat.com
+Cc: linux-nfs@vger.kernel.org
+Date: Tue, 07 Sep 2010 12:26:17 -0400
+Message-ID: <20100907162617.3392.21184.stgit@seurat.1015granger.net>
+In-Reply-To: <20100907162156.3392.90376.stgit@seurat.1015granger.net>
+References: <20100907162156.3392.90376.stgit@seurat.1015granger.net>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
----
- fs/nfs/pnfs.c |   21 ++++++++++++++++++---
- fs/nfs/pnfs.h |    4 ++++
- 2 files changed, 22 insertions(+), 3 deletions(-)
+Clean up: Now that nfs_get_proto() can recognize "rdma" we can re-use
+nfs_nfs_protocol() instead of ad hoc checks for "proto=rdma".
 
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index b3e1e8a..8339444 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -233,6 +233,21 @@ EXPORT_SYMBOL_GPL(pnfs_unregister_layoutdriver);
-  * pNFS client layout cache
-  */
- 
-+static struct pnfs_layout_hdr *
-+pnfs_alloc_layout_hdr(struct inode *ino)
-+{
-+	struct pnfs_layoutdriver_type *ld = NFS_SERVER(ino)->pnfs_curr_ld;
-+	return ld->alloc_layout_hdr ? ld->alloc_layout_hdr(ino) :
-+		kzalloc(sizeof(struct pnfs_layout_hdr), GFP_KERNEL);
-+}
-+
-+static void
-+pnfs_free_layout_hdr(struct pnfs_layout_hdr *lo)
-+{
-+	struct pnfs_layoutdriver_type *ld = NFS_SERVER(lo->inode)->pnfs_curr_ld;
-+	return ld->alloc_layout_hdr ? ld->free_layout_hdr(lo) : kfree(lo);
-+}
-+
- static void
- get_layout_hdr_locked(struct pnfs_layout_hdr *lo)
- {
-@@ -251,7 +266,7 @@ put_layout_hdr_locked(struct pnfs_layout_hdr *lo)
- 		dprintk("%s: freeing layout cache %p\n", __func__, lo);
- 		BUG_ON(!list_empty(&lo->layouts));
- 		NFS_I(lo->inode)->layout = NULL;
--		kfree(lo);
-+		pnfs_free_layout_hdr(lo);
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
+
+ utils/mount/stropts.c |   17 ++++++++++++-----
+ 1 files changed, 12 insertions(+), 5 deletions(-)
+
+diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
+index 0241400..9695c73 100644
+--- a/utils/mount/stropts.c
++++ b/utils/mount/stropts.c
+@@ -303,8 +303,10 @@ static int nfs_set_version(struct nfsmount_info *mi)
+ 	if (strncmp(mi->type, "nfs4", 4) == 0)
+ 		mi->version = 4;
+ 	else {
+-		char *option = po_get(mi->options, "proto");
+-		if (option && strcmp(option, "rdma") == 0)
++		unsigned long protocol;
++		if (!nfs_nfs_protocol(mi->options, &protocol))
++			return 0;
++		if (protocol == NFSPROTO_RDMA)
+ 			mi->version = 3;
  	}
- }
  
-@@ -839,7 +854,7 @@ alloc_init_layout_hdr(struct inode *ino)
- {
- 	struct pnfs_layout_hdr *lo;
+@@ -490,14 +492,19 @@ nfs_rewrite_pmap_mount_options(struct mount_options *options)
+ 	union nfs_sockaddr mnt_address;
+ 	struct sockaddr *mnt_saddr = &mnt_address.sa;
+ 	socklen_t mnt_salen = sizeof(mnt_address);
++	unsigned long protocol;
+ 	struct pmap mnt_pmap;
+ 	char *option;
  
--	lo = kzalloc(sizeof(struct pnfs_layout_hdr), GFP_KERNEL);
-+	lo = pnfs_alloc_layout_hdr(ino);
- 	if (!lo)
- 		return NULL;
- 	lo->refcount = 1;
-@@ -869,7 +884,7 @@ pnfs_find_alloc_layout(struct inode *ino)
- 	if (likely(nfsi->layout == NULL))	/* Won the race? */
- 		nfsi->layout = new;
- 	else
--		kfree(new);
-+		pnfs_free_layout_hdr(new);
- 	return nfsi->layout;
- }
+ 	/*
+-	 * Skip option negotiation for proto=rdma mounts.
++	 * Version and transport negotiation is not required
++	 * and does not work for RDMA mounts.
+ 	 */
+-	option = po_get(options, "proto");
+-	if (option && strcmp(option, "rdma") == 0)
++	if (!nfs_nfs_protocol(options, &protocol)) {
++		errno = EINVAL;
++		return 0;
++	}
++	if (protocol == NFSPROTO_RDMA)
+ 		goto out;
  
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index af29b02..36ce9fa 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -76,6 +76,10 @@ struct pnfs_layoutdriver_type {
- 	unsigned flags;
- 	int (*initialize_mountpoint) (struct nfs_server *, const struct nfs_fh *);
- 	int (*uninitialize_mountpoint) (struct nfs_server *);
-+
-+	struct pnfs_layout_hdr * (*alloc_layout_hdr) (struct inode *inode);
-+	void (*free_layout_hdr) (struct pnfs_layout_hdr *);
-+
- 	struct pnfs_layout_segment * (*alloc_lseg) (struct pnfs_layout_hdr *layoutid, struct nfs4_layoutget_res *lgr);
- 	void (*free_lseg) (struct pnfs_layout_segment *lseg);
- 
--- 
-1.7.2.3
+ 	/*
 
