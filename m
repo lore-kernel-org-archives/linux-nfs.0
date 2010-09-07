@@ -1,99 +1,132 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:17038 "EHLO mx1.redhat.com"
+Received: from cantor.suse.de ([195.135.220.2]:33005 "EHLO mx1.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752976Ab0IJT1V (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 10 Sep 2010 15:27:21 -0400
-Received: from int-mx02.intmail.prod.int.phx2.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
-	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id o8AJRKcW027167
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Fri, 10 Sep 2010 15:27:21 -0400
-Received: from dantu.rdu.redhat.com (dantu.rdu.redhat.com [10.11.228.66])
-	by int-mx02.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id o8AJRIBU018810
-	for <linux-nfs@vger.kernel.org>; Fri, 10 Sep 2010 15:27:20 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 3/9] nfs: eliminate nfs4_rename_arg
-Date: Fri, 10 Sep 2010 15:27:12 -0400
-Message-Id: <1284146838-1468-4-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1284146838-1468-1-git-send-email-jlayton@redhat.com>
-References: <1284146838-1468-1-git-send-email-jlayton@redhat.com>
+	id S1755532Ab0IGBcd convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 6 Sep 2010 21:32:33 -0400
+Date: Tue, 7 Sep 2010 11:32:25 +1000
+From: Neil Brown <neilb@suse.de>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: mount.nfs: protocol fallback when server doesn't support TCP
+Message-ID: <20100907113225.4a018ba3@notabene>
+In-Reply-To: <EC686BD1-834D-4060-84E7-FBF0733B7ACA@oracle.com>
+References: <20100826120635.4c3157bc@notabene>
+	<659EE931-F48E-4A5D-9212-D4F8AE421029@oracle.com>
+	<20100830103025.70d09ec8@notabene>
+	<BC2D2164-0836-4DAC-99C5-C7BE23D3B163@oracle.com>
+	<20100831110024.68e8877d@notabene>
+	<EC686BD1-834D-4060-84E7-FBF0733B7ACA@oracle.com>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-Add the missing fields to nfs_renameargs and drop nfs4_rename_arg
+On Tue, 31 Aug 2010 12:38:09 -0400
+Chuck Lever <chuck.lever@oracle.com> wrote:
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- fs/nfs/nfs4proc.c       |    2 +-
- fs/nfs/nfs4xdr.c        |    2 +-
- include/linux/nfs_xdr.h |   19 ++++++-------------
- 3 files changed, 8 insertions(+), 15 deletions(-)
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 089da5b..eb36784 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -2675,7 +2675,7 @@ static int _nfs4_proc_rename(struct inode *old_dir, struct qstr *old_name,
- 		struct inode *new_dir, struct qstr *new_name)
+> >> 
+> >>> +						/* OK to try different protocols. Lets see
+> >>> +						 * what portmap thinks.
+> >>> +						 */
+> >>> +						int oldfake = mi->fake;
+> >>> +						int res;
+> >>> +						mi->fake = 1;
+> >>> +						res = nfs_try_mount_v3v2(mi);
+> >> 
+> >> If you just want to probe the server's portmapper, I think you can use nfs_probe_bothports() directly.
+> >> 
+> > 
+> > Not quite.  You would need to wrap it in a loop over all addresses in
+> > md->address, and would need to worry about the mounthost option.  It seems
+> > easier to just call nfs_try_mount_v3v2 which already does this.
+> 
+> /me smacks forehead
+> 
+> Complexity that I guess we have to live with.  A comment that explains the oldfake hack would be helpful.
+
+And often trying to write such a comment can make it clear why the code was a
+bad idea in the first place.... :-)
+
+Rather than write a comment I wouldn't believe myself, here is something
+quite different - my third draft.
+This is on top of the nice tidy-up patches you posted earlier.
+
+It uses nfs_getport to make very focussed requests to portmap.
+
+Two things I'm still not really sure about:
+
+1/ RDMA.  How does that interact with fallback.  Do we only support v4 over
+   RDMA?  That would be nice was we could simply avoid fallback in that case.
+
+2/ IPv6.  I should possibly be checking if v3v2 are available via UDP6 as well
+   as UDP - and similarly if v4 has become available via TCP6?? Or is that
+   all magically handled somewhere under the hood?
+
+Thanks,
+NeilBrown
+
+>From 60dae9b9c14869ae630db683e2524ad230064b19 Mon Sep 17 00:00:00 2001
+From: Neil Brown <neilb@suse.de>
+Date: Tue, 7 Sep 2010 11:23:02 +1000
+Subject: [PATCH] mount: correctly handle fallback for  ECONNREFUSED during mount attempt.
+
+If we get ECONNREFUSED when attempting a v4 mount, it could be that
+the server just isn't ready yet (the current assumption) or it could
+be that the server only support UDP - and thus only v3/v2.  The latter
+possibility isn't handled currently.
+
+So if we get ECONNREFUSED when fallback is an option, check with
+portmap/rpcbind to see if it could be that case that v2/v3 are
+supported over UDP, and v4 still is not.  In that case, fall back to v2v3.
+
+I'm not at all sure if IPv6 possibilities are RDMA are handled correctly..
+
+Signed-off-by: NeilBrown <neilb@suse.de>
+
+diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
+index 9e29a19..5ebcf3e 100644
+--- a/utils/mount/stropts.c
++++ b/utils/mount/stropts.c
+@@ -750,6 +750,7 @@ static int nfs_autonegotiate(struct nfsmount_info *mi)
  {
- 	struct nfs_server *server = NFS_SERVER(old_dir);
--	struct nfs4_rename_arg arg = {
-+	struct nfs_renameargs arg = {
- 		.old_dir = NFS_FH(old_dir),
- 		.new_dir = NFS_FH(new_dir),
- 		.old_name = old_name,
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index 08ef912..7a098ae 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -1823,7 +1823,7 @@ static int nfs4_xdr_enc_remove(struct rpc_rqst *req, __be32 *p, const struct nfs
- /*
-  * Encode RENAME request
-  */
--static int nfs4_xdr_enc_rename(struct rpc_rqst *req, __be32 *p, const struct nfs4_rename_arg *args)
-+static int nfs4_xdr_enc_rename(struct rpc_rqst *req, __be32 *p, const struct nfs_renameargs *args)
- {
- 	struct xdr_stream xdr;
- 	struct compound_hdr hdr = {
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index 5436680..60fa509 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -403,10 +403,12 @@ struct nfs_removeres {
-  * Common arguments to the rename call
-  */
- struct nfs_renameargs {
--	const struct nfs_fh *	old_dir;
--	const struct nfs_fh *	new_dir;
--	const struct qstr *	old_name;
--	const struct qstr *	new_name;
-+	const struct nfs_fh *		old_dir;
-+	const struct nfs_fh *		new_dir;
-+	const struct qstr *		old_name;
-+	const struct qstr *		new_name;
-+	const u32 *			bitmask;
-+	struct nfs4_sequence_args	seq_args;
- };
+ 	unsigned long protocol;
+ 	int result;
++	struct addrinfo *ai;
  
- /*
-@@ -793,15 +795,6 @@ struct nfs4_readlink_res {
- 	struct nfs4_sequence_res	seq_res;
- };
- 
--struct nfs4_rename_arg {
--	const struct nfs_fh *		old_dir;
--	const struct nfs_fh *		new_dir;
--	const struct qstr *		old_name;
--	const struct qstr *		new_name;
--	const u32 *			bitmask;
--	struct nfs4_sequence_args	seq_args;
--};
--
- struct nfs4_rename_res {
- 	const struct nfs_server *	server;
- 	struct nfs4_change_info		old_cinfo;
--- 
-1.7.1
-
+ 	/*
+ 	 * If UDP was requested from the command line, try
+@@ -796,6 +797,33 @@ static int nfs_autonegotiate(struct nfsmount_info *mi)
+ 		/* Linux servers prior to 2.6.25 may return
+ 		 * EPERM when NFS version 4 is not supported. */
+ 		goto fall_back;
++	case ECONNREFUSED:
++		/* Either the server doesn't accept TCP connections,
++		 * or it just isn't quite ready yet.
++		 * In the first case, fall back to v3v2, in the second
++		 * return failure - as this isn't a permanent error
++		 * the attempt will be retried.
++		 * To determine which, we need to check with portmap/rpcbind.
++		 * If v2 or v3 are supported on UDP, but v4 isn't on TCP then fall-back.
++		 */
++		for (ai = mi->address; ai != NULL; ai = ai->ai_next) {
++			if (nfs_getport(ai->ai_addr, ai->ai_addrlen,
++					NFS_PROGRAM, 3, IPPROTO_UDP) != 0 ||
++			    nfs_getport(ai->ai_addr, ai->ai_addrlen,
++					NFS_PROGRAM, 2, IPPROTO_UDP) != 0) {
++				if (nfs_getport(ai->ai_addr, ai->ai_addrlen,
++						NFS_PROGRAM, 4, IPPROTO_TCP) != 0) {
++					/* v4 support is almost online, wait for it. */
++					errno = ECONNREFUSED;
++					return result;
++				} else
++					/* v2/v3 is supported, but v4 isn't, fall_back */
++					goto fall_back;
++			}
++		}
++		/* portmap is not responding yet either, so just try again */
++		errno = ECONNREFUSED;
++		return result;
+ 	default:
+ 		return result;
+ 	}
