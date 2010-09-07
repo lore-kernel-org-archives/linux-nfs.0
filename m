@@ -1,68 +1,107 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:18240 "EHLO
-	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1753452Ab0I2PZQ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 29 Sep 2010 11:25:16 -0400
-Message-ID: <4CA35A59.9020303@panasas.com>
-Date: Wed, 29 Sep 2010 17:25:13 +0200
-From: Benny Halevy <bhalevy@panasas.com>
-To: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
-CC: NFS list <linux-nfs@vger.kernel.org>
-Subject: Re: pnfs git tree status pnfs-all-2.6.36-rc6-2010-09-29
-References: <4C7BDD8C.40509@panasas.com> <4CA31DC3.8070300@panasas.com> <4CA34830.1040703@desy.de> <4CA34883.40005@desy.de> <4CA34B93.2010100@panasas.com> <4CA34F05.3020809@desy.de>
-In-Reply-To: <4CA34F05.3020809@desy.de>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mail-gw0-f46.google.com ([74.125.83.46]:44614 "EHLO
+	mail-gw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757791Ab0IGQ0M (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Sep 2010 12:26:12 -0400
+Received: by gwj17 with SMTP id 17so1954393gwj.19
+        for <linux-nfs@vger.kernel.org>; Tue, 07 Sep 2010 09:26:11 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 1/4] getport: Recognize "rdma" and "rdma6" netid
+To: steved@redhat.com
+Cc: linux-nfs@vger.kernel.org
+Date: Tue, 07 Sep 2010 12:26:07 -0400
+Message-ID: <20100907162607.3392.72787.stgit@seurat.1015granger.net>
+In-Reply-To: <20100907162156.3392.90376.stgit@seurat.1015granger.net>
+References: <20100907162156.3392.90376.stgit@seurat.1015granger.net>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 2010-09-29 16:36, Tigran Mkrtchyan wrote:
->   On 09/29/2010 04:22 PM, Benny Halevy wrote:
->> On 2010-09-29 16:09, Tigran Mkrtchyan wrote:
->>>    On 09/29/2010 04:07 PM, Tigran Mkrtchyan wrote:
->>>> I am support to publish first kernel crash.....
->>> sorry to publish....
->>>
->>>> this is
->>>> pnfs-all-2.6.36-rc6-2010-09-29 git
->>>> c2b3b75c6b1db1dfc3f236200de1763e14c514d8
->>>>
->>>> Regards,
->>>>     Tigran.
->>>>
->>>>
->> Thanks for testing!
->> Does the following patch help?
->>
-> 
-> No :(
-> 
+The mount.nfs command must recognize the values of "rdma" and "rdma6"
+with the "proto=" mount option.  Typically the mount.nfs command
+relies on libtirpc or getprotobyname(3) to recognize netids and
+translate them to protocol numbers.
 
-Tigran, do you have a new trace maybe?
-I cross referenced the dump you sent to the
-disassembled code and it seems like it hit NULL dereference on 
-size = fl->stripe_unit;
+RFCs 5665 and 5666 define the "rdma" and "rdma6" netids.  IANA defines
+a specific port number for NFS over RDMA (20049), but has not provided
+a protocol name and number for RDMA transports, and is not expected
+to.  The best we can do is translate these by hand, as needed, to get
+RDMA mount requests to the kernel without erroring out.
 
-I'm going to commit this patch anyway but I want to
-understand what else I missed...
+Only the forward translation is needed until such time that "rdma" and
+"rdma6" start to appear in rpcbind registries.  For now, the version
+and transport negotiation logic is skipped, avoiding rpcbind queries
+for RDMA mounts.
 
-Benny
+Note: As of kernel 2.6.36, the kernel's NFS over RDMA transport
+capability does not support IPv6.
 
->> git diff --stat -p -M
->>   fs/nfs/nfs4filelayout.c |    2 ++
->>   1 files changed, 2 insertions(+), 0 deletions(-)
->>
->> diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
->> index 75e07c8..8fbb0db 100644
->> --- a/fs/nfs/nfs4filelayout.c
->> +++ b/fs/nfs/nfs4filelayout.c
->> @@ -636,6 +636,8 @@ filelayout_get_stripesize(struct pnfs_layout_hdr *lo)
->>
->>   	/* Horrible hack...ideally upper layer would send lseg */
->>   	lseg = pnfs_has_layout(lo,&range);
->> +	if (!lseg)
->> +		return 0;
->>   	fl = container_of(lseg, struct nfs4_filelayout_segment, generic_hdr);
->>   	size = fl->stripe_unit;
->>   	put_lseg_locked(lseg);
-> 
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
+
+ support/include/nfsrpc.h |    6 ++++++
+ support/nfs/getport.c    |   25 +++++++++++++++++++++++++
+ 2 files changed, 31 insertions(+), 0 deletions(-)
+
+diff --git a/support/include/nfsrpc.h b/support/include/nfsrpc.h
+index 6ebefca..d50fe94 100644
+--- a/support/include/nfsrpc.h
++++ b/support/include/nfsrpc.h
+@@ -27,6 +27,12 @@
+ #include <rpc/clnt.h>
+ 
+ /*
++ * IANA does not define an IP protocol number for RDMA transports.
++ * Choose an arbitrary value we can use locally.
++ */
++#define NFSPROTO_RDMA		(3939)
++
++/*
+  * Conventional RPC program numbers
+  */
+ #ifndef RPCBPROG
+diff --git a/support/nfs/getport.c b/support/nfs/getport.c
+index c930539..d74400b 100644
+--- a/support/nfs/getport.c
++++ b/support/nfs/getport.c
+@@ -216,6 +216,21 @@ nfs_get_proto(const char *netid, sa_family_t *family, unsigned long *protocol)
+ 	struct netconfig *nconf;
+ 	struct protoent *proto;
+ 
++	/*
++	 * IANA does not define a protocol number for rdma netids,
++	 * since "rdma" is not an IP protocol.
++	 */
++	if (strcmp(netid, "rdma") == 0) {
++		*family = AF_INET;
++		*protocol = NFSPROTO_RDMA;
++		return 1;
++	}
++	if (strcmp(netid, "rdma6") == 0) {
++		*family = AF_INET6;
++		*protocol = NFSPROTO_RDMA;
++		return 1;
++	}
++
+ 	nconf = getnetconfigent(netid);
+ 	if (nconf == NULL)
+ 		return 0;
+@@ -242,6 +257,16 @@ nfs_get_proto(const char *netid, sa_family_t *family, unsigned long *protocol)
+ {
+ 	struct protoent *proto;
+ 
++	/*
++	 * IANA does not define a protocol number for rdma netids,
++	 * since "rdma" is not an IP protocol.
++	 */
++	if (strcmp(netid, "rdma") == 0) {
++		*family = AF_INET;
++		*protocol = NFSPROTO_RDMA;
++		return 1;
++	}
++
+ 	proto = getprotobyname(netid);
+ 	if (proto == NULL)
+ 		return 0;
+
