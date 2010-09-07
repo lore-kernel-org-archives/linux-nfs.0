@@ -1,92 +1,52 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:62381 "EHLO
-	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752833Ab0IOQvS convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 15 Sep 2010 12:51:18 -0400
-Subject: Re: [PATCH 3/8] nfs: eliminate nfs4_rename_arg
-Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <1284569125.2816.6.camel@heimdal.trondhjem.org>
-Date: Wed, 15 Sep 2010 12:50:58 -0400
-Cc: Jeff Layton <jlayton@redhat.com>, linux-nfs@vger.kernel.org
-Message-Id: <212577D9-1F9D-476F-A017-0E0A2E55F62E@oracle.com>
-References: <1284557041-4375-1-git-send-email-jlayton@redhat.com> <1284557041-4375-4-git-send-email-jlayton@redhat.com> <8432F4C7-B2C0-4CB1-B3AA-63444ED6BF8E@oracle.com> <1284569125.2816.6.camel@heimdal.trondhjem.org>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Received: from mail-out1.uio.no ([129.240.10.57]:35227 "EHLO mail-out1.uio.no"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932346Ab0IGR4M (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 7 Sep 2010 13:56:12 -0400
+Subject: Re: RFC:  support srcaddr= option to bind to local IPs.
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+To: Ben Greear <greearb@candelatech.com>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+In-Reply-To: <4C81449B.4010900@candelatech.com>
+References: <4C81449B.4010900@candelatech.com>
+Content-Type: text/plain; charset="UTF-8"
+Date: Tue, 07 Sep 2010 13:56:06 -0400
+Message-ID: <1283882166.2788.48.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-
-On Sep 15, 2010, at 12:45 PM, Trond Myklebust wrote:
-
-> On Wed, 2010-09-15 at 11:26 -0400, Chuck Lever wrote:
->> On Sep 15, 2010, at 9:23 AM, Jeff Layton wrote:
->> 
->>> Add the missing fields to nfs_renameargs and drop nfs4_rename_arg
->>> 
->>> Signed-off-by: Jeff Layton <jlayton@redhat.com>
->>> ---
->>> fs/nfs/nfs4proc.c       |    2 +-
->>> fs/nfs/nfs4xdr.c        |    2 +-
->>> include/linux/nfs_xdr.h |   19 ++++++-------------
->>> 3 files changed, 8 insertions(+), 15 deletions(-)
->>> 
->>> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
->>> index 089da5b..eb36784 100644
->>> --- a/fs/nfs/nfs4proc.c
->>> +++ b/fs/nfs/nfs4proc.c
->>> @@ -2675,7 +2675,7 @@ static int _nfs4_proc_rename(struct inode *old_dir, struct qstr *old_name,
->>> 		struct inode *new_dir, struct qstr *new_name)
->>> {
->>> 	struct nfs_server *server = NFS_SERVER(old_dir);
->>> -	struct nfs4_rename_arg arg = {
->>> +	struct nfs_renameargs arg = {
->>> 		.old_dir = NFS_FH(old_dir),
->>> 		.new_dir = NFS_FH(new_dir),
->>> 		.old_name = old_name,
->>> diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
->>> index 08ef912..7a098ae 100644
->>> --- a/fs/nfs/nfs4xdr.c
->>> +++ b/fs/nfs/nfs4xdr.c
->>> @@ -1823,7 +1823,7 @@ static int nfs4_xdr_enc_remove(struct rpc_rqst *req, __be32 *p, const struct nfs
->>> /*
->>> * Encode RENAME request
->>> */
->>> -static int nfs4_xdr_enc_rename(struct rpc_rqst *req, __be32 *p, const struct nfs4_rename_arg *args)
->>> +static int nfs4_xdr_enc_rename(struct rpc_rqst *req, __be32 *p, const struct nfs_renameargs *args)
->>> {
->>> 	struct xdr_stream xdr;
->>> 	struct compound_hdr hdr = {
->>> diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
->>> index 5436680..60fa509 100644
->>> --- a/include/linux/nfs_xdr.h
->>> +++ b/include/linux/nfs_xdr.h
->>> @@ -403,10 +403,12 @@ struct nfs_removeres {
->>> * Common arguments to the rename call
->>> */
->>> struct nfs_renameargs {
->>> -	const struct nfs_fh *	old_dir;
->>> -	const struct nfs_fh *	new_dir;
->>> -	const struct qstr *	old_name;
->>> -	const struct qstr *	new_name;
->>> +	const struct nfs_fh *		old_dir;
->>> +	const struct nfs_fh *		new_dir;
->>> +	const struct qstr *		old_name;
->>> +	const struct qstr *		new_name;
->>> +	const u32 *			bitmask;
->>> +	struct nfs4_sequence_args	seq_args;
->> 
->> Should these new fields be gated by CONFIG_NFS_V4 ?
+On Fri, 2010-09-03 at 11:55 -0700, Ben Greear wrote:
+> This patch lets one bind the local side of NFS sockets to a particular
+> IP address.  This can be useful for users on multi-homed systems.
 > 
-> No. Please don't add any more #ifdef CONFIG_NFS_V4 sections: that just
-> adds to the testing duties. The job now is to get rid of
-> CONFIG_NFS_V..., not to add more to it.
+> This patch must be on top of the previous patch to fix the IPv6 address
+> comparison or it will not work.
+> 
+> Comments and suggestions welcome...I'll incorporate those and post an
+> official signed-off patch after that.
+> 
+> Thanks,
+> Ben
+> 
 
-The underlying question was whether this builds when CONFIG_NFS_V4 is disabled, and Jeff has confirmed that it does.  Agreed that no change is needed here.
+The code in nfs_callback_authenticate is going to break NFSv4 callbacks.
+Callbacks are sent to the -oclientaddr address, not srcaddr (btw, I
+really dislike that new boolean argument to nfs_find_client(). If you
+don't want to compare the source address, then have the caller pass a
+NULL pointer).
 
--- 
-chuck[dot]lever[at]oracle[dot]com
+As has been pointed out to you before, all this is very intrusive, and
+you have yet to give a description of why it is useful, and better than
+using private socket namespaces (which is what container virtualised
+systems will be wanting). The latter can even ensure that it all works
+for userspace applications (such as rpc.statd) too.
 
+IOW: I'd be quite happy to take patches to support private namespaces
+properly: afaics, we do need to make nfs_find_client aware of them, and
+ditto for lockd and the NFSv4 callback channel.
+I remain less than convinced that we need to be able to specify
+per-mountpoint source addresses...
 
-
+Trond
 
