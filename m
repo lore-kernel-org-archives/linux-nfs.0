@@ -1,48 +1,87 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:29752 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:37288 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752984Ab0IPVCF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 16 Sep 2010 17:02:05 -0400
+	id S1751162Ab0IHB6L convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Sep 2010 21:58:11 -0400
+Subject: Re: [PATCH 2/2] We should clear NFS_DELEGATED_STATE after return
+ delegation
 From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Cc: viro@zeniv.linux.org.uk, hch@infradead.org
-Subject: [PATCH 0/6] Remove struct nameidata from lower level NFS code
-Date: Thu, 16 Sep 2010 17:01:37 -0400
-Message-Id: <1284670903-28475-1-git-send-email-Trond.Myklebust@netapp.com>
+To: Bian Naimeng <biannm@cn.fujitsu.com>
+Cc: linux-nfs@vger.kernel.org, "J. Bruce Fields" <bfields@redhat.com>
+In-Reply-To: <4C86E7FA.7020701@cn.fujitsu.com>
+References: <4C592F85.8070308@cn.fujitsu.com>
+	 <4C59306A.9090302@cn.fujitsu.com>
+	 <1280925913.3011.23.camel@heimdal.trondhjem.org>
+	 <4C5A213F.9000506@cn.fujitsu.com>
+	 <1281013423.2948.1.camel@heimdal.trondhjem.org>
+	 <4C5B8B48.4050008@cn.fujitsu.com>
+	 <1281101448.3586.11.camel@heimdal.trondhjem.org>
+	 <4C68EDAE.5000201@cn.fujitsu.com>
+	 <1282087012.18385.30.camel@heimdal.trondhjem.org>
+	 <4C7DF56B.3040206@cn.fujitsu.com>
+	 <1283897068.9097.15.camel@heimdal.trondhjem.org>
+	 <4C86E7FA.7020701@cn.fujitsu.com>
+Content-Type: text/plain; charset="UTF-8"
+Date: Tue, 07 Sep 2010 21:57:16 -0400
+Message-ID: <1283911036.16070.1.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-Hi,
+On Wed, 2010-09-08 at 09:33 +0800, Bian Naimeng wrote:
+> >>> OK. I see agree that is a race, but AFAICS, your fix means that we end
+> >>> up with an nfs_state structure that has cleared NFS_DELEGATED_STATE, but
+> >>> that did not recover its open stateid.
+> >>>
+> >> Hi trond, what do you think about this one?
+> > 
+> > Hi Bian,
+> > 
+> > See comments/questions below.
+> > 
+> 
+>   Thanks for your answer.
+> 
+> >> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+> >> index 36400d3..c0c0320 100644
+> >> --- a/fs/nfs/nfs4proc.c
+> >> +++ b/fs/nfs/nfs4proc.c
+> >> @@ -900,8 +900,18 @@ static int update_open_stateid(struct nfs4_state *state, nfs4_stateid *open_stat
+> >>  
+> >>  	rcu_read_lock();
+> >>  	deleg_cur = rcu_dereference(nfsi->delegation);
+> >> -	if (deleg_cur == NULL)
+> >> +	if (deleg_cur == NULL) {
+> >> +		if (delegation == NULL &&
+> >> +		    test_bit(NFS_DELEGATED_STATE, &state->flags)) {
+> > 
+> > Any reason why we can't ditch the 'test_bit'?
+> > 
+> 
+>   Because i am not sure it's ok that we just clear_bit at here.
+>   If you think it's ok, i'd be fine with removing this test_bit.
 
-The following patches attempt to clean up the atomic open code so that we
-keep all the functions that depend on the struct nameidata in fs/nfs/dir.c.
-Instead of passing down the struct nameidata, we have the lower layer NFSv4
-code fill in the nfs_open_context, which can then be used by nfs_atomic_lookup
-to fill in the struct file.
+How is it different from just clearing the bit?
+
+> >> +			/*FIXME: If the state has NFS_DELEGATED_STATE bit, 
+> >> +			 * we catch a race. Maybe should recover its open
+> >> +			 * stateid, here we just clear the NFS_DELEGATED_STATE
+> >> +			 * bit.
+> > 
+> > Can this ever be called with both deleg_cur==NULL and
+> > open_stateid==NULL? If so, then we still have a bug.
+> > 
+> 
+>   Yes, i will add a checking. Thanks very much.
+> 
+> >> +			 */
+> >> +			clear_bit(NFS_DELEGATED_STATE, &state->flags);
+> >> +		}
+> >>  		goto no_delegation;
+> >> +	}
+> >>  
+> >>  	spin_lock(&deleg_cur->lock);
+> >>  	if (nfsi->delegation != deleg_cur ||
 
 Cheers
   Trond
-
-Trond Myklebust (6):
-  NFSv4: Clean up nfs4_atomic_open
-  NFSv4: Further minor cleanups for nfs4_atomic_open()
-  NFSv4: Clean up nfs4_open_revalidate
-  NFSv4: Further cleanups for nfs4_open_revalidate()
-  NFS: Clean up nfs4_proc_create()
-  NFS: Add an 'open_context' element to struct nfs_rpc_ops
-
- fs/nfs/dir.c            |  179 ++++++++++++++++++++++++++++++++++++++++++----
- fs/nfs/inode.c          |    8 +-
- fs/nfs/nfs3proc.c       |    2 +-
- fs/nfs/nfs4_fs.h        |    2 -
- fs/nfs/nfs4proc.c       |  148 ++++++---------------------------------
- fs/nfs/proc.c           |    2 +-
- include/linux/nfs_fs.h  |    2 +
- include/linux/nfs_xdr.h |    6 ++-
- 8 files changed, 198 insertions(+), 151 deletions(-)
-
--- 
-1.7.2.3
-
