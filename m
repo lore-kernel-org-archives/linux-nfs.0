@@ -1,89 +1,137 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.bcm.edu ([128.249.224.14]:15596 "EHLO
-	iron2.corp.bcm.tmc.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755943Ab0IJQ5T convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Sep 2010 12:57:19 -0400
-From: "Rao, Mitchell" <mitchelr@bcm.edu>
-To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Date: Fri, 10 Sep 2010 11:47:14 -0500
-Subject: NFS4 on Ubuntu nobody/nogroup user mapping
-Message-ID: <955A7DE8C348B04B8A5F07320E171819F1D8D5756E@EXCMSMBX01.ad.bcm.edu>
-Content-Type: text/plain; charset="us-ascii"
+Received: from mx2.netapp.com ([216.240.18.37]:62497 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751289Ab0IHUiO convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 8 Sep 2010 16:38:14 -0400
+Subject: Re: [PATCH 2/2] We should clear NFS_DELEGATED_STATE after return
+ delegation
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Bian Naimeng <biannm@cn.fujitsu.com>
+Cc: linux-nfs@vger.kernel.org, "J. Bruce Fields" <bfields@redhat.com>
+In-Reply-To: <4C86FECF.2050103@cn.fujitsu.com>
+References: <4C592F85.8070308@cn.fujitsu.com>
+	 <4C59306A.9090302@cn.fujitsu.com>
+	 <1280925913.3011.23.camel@heimdal.trondhjem.org>
+	 <4C5A213F.9000506@cn.fujitsu.com>
+	 <1281013423.2948.1.camel@heimdal.trondhjem.org>
+	 <4C5B8B48.4050008@cn.fujitsu.com>
+	 <1281101448.3586.11.camel@heimdal.trondhjem.org>
+	 <4C68EDAE.5000201@cn.fujitsu.com>
+	 <1282087012.18385.30.camel@heimdal.trondhjem.org>
+	 <4C7DF56B.3040206@cn.fujitsu.com>
+	 <1283897068.9097.15.camel@heimdal.trondhjem.org>
+	 <4C86E7FA.7020701@cn.fujitsu.com>
+	 <1283911036.16070.1.camel@heimdal.trondhjem.org>
+	 <4C86FECF.2050103@cn.fujitsu.com>
+Content-Type: text/plain; charset="UTF-8"
+Date: Wed, 08 Sep 2010 16:37:25 -0400
+Message-ID: <1283978245.2905.23.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Hello,
+On Wed, 2010-09-08 at 11:11 +0800, Bian Naimeng wrote:
+> If there are not any delegation at this inode, we should clear stateid's
+> NFS_DELEGATED_STATE when update it.
+> 
+> Signed-off-by: Bian Naimeng <biannm@cn.fujitsu.com>
+> 
+> ---
+>  fs/nfs/delegation.c |    1 +
+>  fs/nfs/nfs4proc.c   |   12 +++++++++++-
+>  2 files changed, 12 insertions(+), 1 deletions(-)
+> 
+> diff --git a/fs/nfs/delegation.c b/fs/nfs/delegation.c
+> index b9c3c43..62f296e 100644
+> --- a/fs/nfs/delegation.c
+> +++ b/fs/nfs/delegation.c
+> @@ -106,6 +106,7 @@ again:
+>  			continue;
+>  		if (memcmp(state->stateid.data, stateid->data, sizeof(state->stateid.data)) != 0)
+>  			continue;
+> +		clear_bit(NFS_DELEGATED_STATE, &state->flags);
+>  		get_nfs_open_context(ctx);
+>  		spin_unlock(&inode->i_lock);
+>  		err = nfs4_open_delegation_recall(ctx, state, stateid);
+> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+> index 089da5b..f7e45b4 100644
+> --- a/fs/nfs/nfs4proc.c
+> +++ b/fs/nfs/nfs4proc.c
+> @@ -919,8 +919,18 @@ static int update_open_stateid(struct nfs4_state *state, nfs4_stateid *open_stat
+>  
+>  	rcu_read_lock();
+>  	deleg_cur = rcu_dereference(nfsi->delegation);
+> -	if (deleg_cur == NULL)
+> +	if (deleg_cur == NULL) {
+> +		if (delegation == NULL && open_stateid != NULL) {
 
-I am a junior DBA, who got put in charge of some sysadmin stuff, so forgive me if I have missed anything obvious
+Well... What I really meant was that we should make sure that we don't
+get into this situation.
 
-So I have a few Ubuntu (Hardy till we can find a replacement for Xen) boxes that I am trying move from nfs3 to nfs4.
+I think the clear_bit() should be unconditional if delegation == NULL,
+but if the (delegation == NULL && open_stateid == NULL) _can_ occur,
+then we should probably mark the nfs4_state for recovery using
+nfs4_state_mark_reclaim_nograce(), and then fire of a recovery thread.
 
-I set it up according to this guide: https://help.ubuntu.com/community/SettingUpNFSHowTo
+> +			/*
+> +			 * FIXME: If the state has NFS_DELEGATED_STATE bit
+> +			 * we catch a race. Maybe should recover its open
+> +			 * stateid, now we just clear the NFS_DELEGATED_STATE
+> +			 * bit.
+> +			 */
+> +			clear_bit(NFS_DELEGATED_STATE, &state->flags);
+> +		}
+>  		goto no_delegation;
+> +	}
+>  
+>  	spin_lock(&deleg_cur->lock);
+>  	if (nfsi->delegation != deleg_cur ||
+> -- 
+> 1.7.0
+> 
+> 
+> >>>> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+> >>>> index 36400d3..c0c0320 100644
+> >>>> --- a/fs/nfs/nfs4proc.c
+> >>>> +++ b/fs/nfs/nfs4proc.c
+> >>>> @@ -900,8 +900,18 @@ static int update_open_stateid(struct nfs4_state *state, nfs4_stateid *open_stat
+> >>>>  
+> >>>>  	rcu_read_lock();
+> >>>>  	deleg_cur = rcu_dereference(nfsi->delegation);
+> >>>> -	if (deleg_cur == NULL)
+> >>>> +	if (deleg_cur == NULL) {
+> >>>> +		if (delegation == NULL &&
+> >>>> +		    test_bit(NFS_DELEGATED_STATE, &state->flags)) {
+> >>> Any reason why we can't ditch the 'test_bit'?
+> >>>
+> >>   Because i am not sure it's ok that we just clear_bit at here.
+> >>   If you think it's ok, i'd be fine with removing this test_bit.
+> > 
+> > How is it different from just clearing the bit?
+> > 
+> >>>> +			/*FIXME: If the state has NFS_DELEGATED_STATE bit, 
+> >>>> +			 * we catch a race. Maybe should recover its open
+> >>>> +			 * stateid, here we just clear the NFS_DELEGATED_STATE
+> >>>> +			 * bit.
+> >>> Can this ever be called with both deleg_cur==NULL and
+> >>> open_stateid==NULL? If so, then we still have a bug.
+> >>>
+> >>   Yes, i will add a checking. Thanks very much.
+> >>
+> >>>> +			 */
+> >>>> +			clear_bit(NFS_DELEGATED_STATE, &state->flags);
+> >>>> +		}
+> >>>>  		goto no_delegation;
+> >>>> +	}
+> >>>>  
+> >>>>  	spin_lock(&deleg_cur->lock);
+> >>>>  	if (nfsi->delegation != deleg_cur ||
+> > 
+> > Cheers
+> >   Trond
+> > 
+> > 
+> > 
+> 
 
-However I ran into trouble when the client see's all users/groups as nobody/nogroup.
 
-The current set up is that all the boxes have synced uids/gids and all users with root access can be trusted. I read some reports that said the only way this could be fixed was by using Kerberos. However I would really prefer not having to move to Kerberos as I have heard that it is very intensive to set up. So what I am looking for here is a solution other than sticking with nfs3 or putting everything on Kerberos. However if you think that Kerberos is easier to set up than I am giving it credit for then that could be useful to hear as well.
-
-Here is all the configuration I could of including at this time:
-
-/etc/default/nfs-kernel-server
-
-# Number of servers to start up
-RPCNFSDCOUNT=8
-
-# Runtime priority of server (see nice(1))
-RPCNFSDPRIORITY=0
-
-# Options for rpc.mountd.
-# If you have a port-based firewall, you might want to set up
-# a fixed port here using the --port option. For more information,
-# see rpc.mountd(8) or http://wiki.debian.org/?SecuringNFS
-RPCMOUNTDOPTS=
-
-# Do you want to start the svcgssd daemon? It is only required for Kerberos
-# exports. Valid alternatives are "yes" and "no"; the default is "no".
-NEED_SVCGSSD= no
-
-# Options for rpc.svcgssd.
-RPCSVCGSSDOPTS=
-
-
-
-/etc/default/nfs-common
-# If you do not set values for the NEED_ options, they will be attempted
-# autodetected; this should be sufficient for most people. Valid alternatives
-# for the NEED_ options are "yes" and "no".
-
-# Do you want to start the statd daemon? It is not needed for NFSv4.
-NEED_STATD=
-
-# Options for rpc.statd.
-# Should rpc.statd listen on a specific port? This is especially useful
-# when you have a port-based firewall. To use a fixed port, set this
-# this variable to a statd argument like: "--port 4000 --outgoing-port 4001".
-# For more information, see rpc.statd(8) or http://wiki.debian.org/?SecuringNF
-S
-STATDOPTS=
-
-# Do you want to start the idmapd daemon? It is only needed for NFSv4.
-NEED_IDMAPD=yes
-
-# Do you want to start the gssd daemon? It is required for Kerberos mounts.
-NEED_GSSD=no
-
-
-/etc/exports
-
-
-/export 10.16.xx.xx(rw,fsid=0,insecure,no_subtree_check,async)
-/export/home 10.16.xx.xx(rw,insecure,no_subtree_check,async)
-
-
-
-Oh and rpc.idmapd is running on the client.
-
-I would be happy provide any information that I may have missed, although I may be out of contact on the weekend. Also this is my first time using a public listserv so if I have made an faux pas, I apologize and please let me know so that I wont repeat it.
-
-Thanks,
-Mitchell
