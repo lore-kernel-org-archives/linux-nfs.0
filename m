@@ -1,42 +1,116 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from exprod6og111.obsmtp.com ([64.18.1.27]:39753 "HELO
-	exprod6og111.obsmtp.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1752816Ab0INMLE convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 14 Sep 2010 08:11:04 -0400
-Content-Type: text/plain;
-	charset="us-ascii"
-Subject: NFS : filehandle to filename mappings.
-Date: Tue, 14 Sep 2010 08:10:51 -0400
-Message-ID: <D3F292ADF945FB49B35E96C94C2061B90D35B46C@nsmail.netscout.com>
-From: "Tayade, Nilesh" <Nilesh.Tayade@netscout.com>
-To: <linux-nfs@vger.kernel.org>
-Cc: "Tayade, Nilesh" <Nilesh.Tayade@netscout.com>
+Received: from cn.fujitsu.com ([222.73.24.84]:64102 "EHLO song.cn.fujitsu.com"
+	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
+	id S1752700Ab0IHDLX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 7 Sep 2010 23:11:23 -0400
+Message-ID: <4C86FECF.2050103@cn.fujitsu.com>
+Date: Wed, 08 Sep 2010 11:11:11 +0800
+From: Bian Naimeng <biannm@cn.fujitsu.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+CC: linux-nfs@vger.kernel.org, "J. Bruce Fields" <bfields@redhat.com>
+Subject: Re: [PATCH 2/2] We should clear NFS_DELEGATED_STATE after return
+ delegation
+References: <4C592F85.8070308@cn.fujitsu.com>	 <4C59306A.9090302@cn.fujitsu.com>	 <1280925913.3011.23.camel@heimdal.trondhjem.org>	 <4C5A213F.9000506@cn.fujitsu.com>	 <1281013423.2948.1.camel@heimdal.trondhjem.org>	 <4C5B8B48.4050008@cn.fujitsu.com>	 <1281101448.3586.11.camel@heimdal.trondhjem.org>	 <4C68EDAE.5000201@cn.fujitsu.com>	 <1282087012.18385.30.camel@heimdal.trondhjem.org>	 <4C7DF56B.3040206@cn.fujitsu.com>	 <1283897068.9097.15.camel@heimdal.trondhjem.org>	 <4C86E7FA.7020701@cn.fujitsu.com> <1283911036.16070.1.camel@heimdal.trondhjem.org>
+In-Reply-To: <1283911036.16070.1.camel@heimdal.trondhjem.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Hi,
+If there are not any delegation at this inode, we should clear stateid's
+NFS_DELEGATED_STATE when update it.
 
-Sorry, the question might sound repeated; but I am looking for some
-other details here. 
-I looked at the NFS protocol packets. I could see that in case of
-file/directory operations(e.g. vi a file) some of the NFS packets (e.g.
-GETATTR procedure) show just the filehandle. But later when the LOOKUP
-is executed the corresponding NFS packet shows the filename (I observed
-in case of regular file).
+Signed-off-by: Bian Naimeng <biannm@cn.fujitsu.com>
 
-Could someone please provide some information on how it gets the file
-name in some of the packets (i.e. related to LOOKUP, WRITE etc.)? Does
-it refer the lookup table at NFS server side and fills-in the name in
-response?
+---
+ fs/nfs/delegation.c |    1 +
+ fs/nfs/nfs4proc.c   |   12 +++++++++++-
+ 2 files changed, 12 insertions(+), 1 deletions(-)
 
-Appreciate any help.
+diff --git a/fs/nfs/delegation.c b/fs/nfs/delegation.c
+index b9c3c43..62f296e 100644
+--- a/fs/nfs/delegation.c
++++ b/fs/nfs/delegation.c
+@@ -106,6 +106,7 @@ again:
+ 			continue;
+ 		if (memcmp(state->stateid.data, stateid->data, sizeof(state->stateid.data)) != 0)
+ 			continue;
++		clear_bit(NFS_DELEGATED_STATE, &state->flags);
+ 		get_nfs_open_context(ctx);
+ 		spin_unlock(&inode->i_lock);
+ 		err = nfs4_open_delegation_recall(ctx, state, stateid);
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 089da5b..f7e45b4 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -919,8 +919,18 @@ static int update_open_stateid(struct nfs4_state *state, nfs4_stateid *open_stat
+ 
+ 	rcu_read_lock();
+ 	deleg_cur = rcu_dereference(nfsi->delegation);
+-	if (deleg_cur == NULL)
++	if (deleg_cur == NULL) {
++		if (delegation == NULL && open_stateid != NULL) {
++			/*
++			 * FIXME: If the state has NFS_DELEGATED_STATE bit
++			 * we catch a race. Maybe should recover its open
++			 * stateid, now we just clear the NFS_DELEGATED_STATE
++			 * bit.
++			 */
++			clear_bit(NFS_DELEGATED_STATE, &state->flags);
++		}
+ 		goto no_delegation;
++	}
+ 
+ 	spin_lock(&deleg_cur->lock);
+ 	if (nfsi->delegation != deleg_cur ||
+-- 
+1.7.0
 
-P.S. Request you to copy me in the reply, I am not subscribed to the
-list.
 
---
-Thanks,
-Nilesh
+>>>> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+>>>> index 36400d3..c0c0320 100644
+>>>> --- a/fs/nfs/nfs4proc.c
+>>>> +++ b/fs/nfs/nfs4proc.c
+>>>> @@ -900,8 +900,18 @@ static int update_open_stateid(struct nfs4_state *state, nfs4_stateid *open_stat
+>>>>  
+>>>>  	rcu_read_lock();
+>>>>  	deleg_cur = rcu_dereference(nfsi->delegation);
+>>>> -	if (deleg_cur == NULL)
+>>>> +	if (deleg_cur == NULL) {
+>>>> +		if (delegation == NULL &&
+>>>> +		    test_bit(NFS_DELEGATED_STATE, &state->flags)) {
+>>> Any reason why we can't ditch the 'test_bit'?
+>>>
+>>   Because i am not sure it's ok that we just clear_bit at here.
+>>   If you think it's ok, i'd be fine with removing this test_bit.
+> 
+> How is it different from just clearing the bit?
+> 
+>>>> +			/*FIXME: If the state has NFS_DELEGATED_STATE bit, 
+>>>> +			 * we catch a race. Maybe should recover its open
+>>>> +			 * stateid, here we just clear the NFS_DELEGATED_STATE
+>>>> +			 * bit.
+>>> Can this ever be called with both deleg_cur==NULL and
+>>> open_stateid==NULL? If so, then we still have a bug.
+>>>
+>>   Yes, i will add a checking. Thanks very much.
+>>
+>>>> +			 */
+>>>> +			clear_bit(NFS_DELEGATED_STATE, &state->flags);
+>>>> +		}
+>>>>  		goto no_delegation;
+>>>> +	}
+>>>>  
+>>>>  	spin_lock(&deleg_cur->lock);
+>>>>  	if (nfsi->delegation != deleg_cur ||
+> 
+> Cheers
+>   Trond
+> 
+> 
+> 
 
+-- 
+Regards
+Bian Naimeng
 
