@@ -1,59 +1,44 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-gx0-f174.google.com ([209.85.161.174]:50761 "EHLO
-	mail-gx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756890Ab0ITQc1 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 20 Sep 2010 12:32:27 -0400
-Received: by gxk23 with SMTP id 23so1361234gxk.19
-        for <linux-nfs@vger.kernel.org>; Mon, 20 Sep 2010 09:32:27 -0700 (PDT)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 0/7] The final patches for mountd IPv6 support
-To: steved@redhat.com
-Cc: linux-nfs@vger.kernel.org
-Date: Mon, 20 Sep 2010 12:32:23 -0400
-Message-ID: <20100920162616.3170.24625.stgit@ellison.1015granger.net>
-Content-Type: text/plain; charset="utf-8"
+Received: from fieldses.org ([174.143.236.118]:37671 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751554Ab0IHRvX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 8 Sep 2010 13:51:23 -0400
+Date: Wed, 8 Sep 2010 13:50:32 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Tim Gardner <tim.gardner@canonical.com>
+Cc: Neil Brown <neilb@suse.de>, linux-nfs@vger.kernel.org,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        Trond.Myklebust@netapp.com
+Subject: Re: nfsd deadlock, 2.6.36-rc3
+Message-ID: <20100908175032.GA816@fieldses.org>
+References: <4C7E73CB.7030603@canonical.com>
+ <20100901165400.GB1201@fieldses.org>
+ <20100902065551.079e297c@notabene>
+ <4C7EC17B.6070509@canonical.com>
+ <20100901211321.GC10507@fieldses.org>
+ <4C7FBF26.3090203@canonical.com>
+ <4C87BF63.3070808@canonical.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4C87BF63.3070808@canonical.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Hi Steve-
+On Wed, Sep 08, 2010 at 10:52:51AM -0600, Tim Gardner wrote:
+> The solution appears to be to twiddle with
+> /proc/sys/vm/min_free_kbytes and /proc/sys/vm/drop_caches, though
+> I'm not sure this addresses the root cause. Perhaps low memory
+> really is the root cause.
+> 
+> At any rate, their solution was to set min_free_kbytes to 4GB, and
+> to 'echo 1 > /proc/sys/vm/drop_caches' whenever free memory fell
+> below 8GB. Not particularly elegant, but it appears to have stopped
+> their server from wedging.
 
-Here's the last set of patches implementing basic IPv6 support for
-mountd.  This set enables mountd to listen on IPv6 transports, if they
-are available.
+That does sound like a workaround rather than a fix.  Were there any
+diagnostics left in the logs after the lockups?  Could you get sysrq-t
+dumps and figure out what was waiting on what?  If the system was too
+wedged for any of that to work, would any fo the watchdog deubgging
+options help?
 
-I've done a little re-arranging of Neil's recent changes to control
-the MNT version, in order to make my changes easier; hopefully you
-guys won't mind that.
-
-Also included here is an overhaul of rpc.mountd(8).
-
-As a last step, I enable IPv6 support in rpc.nfsd again.  This should
-make NFS server-side IPv6 support, in both user space and in the
-kernel, complete.
-
-I'm sure there will be bug fixes, but hopefully this is the last of
-these for a while.
-
----
-
-Chuck Lever (7):
-      nfsd: Enable IPv6 support in rpc.nfsd again.
-      mountd: Update mountd/exportfs man pages to reflect IPv6 changes
-      mountd: Use MNT status values instead of NFSERR
-      mountd: Fix up version and usage messages
-      mountd: Unregister mountd if my_svc_run() returns
-      mountd: Support TI-RPC mountd listener
-      mountd: Make NFS version checks more strict
-
-
- utils/exportfs/exportfs.man |  287 ++++++++++++++++++++++---------------------
- utils/exportfs/exports.man  |   88 ++++++++-----
- utils/mountd/mountd.c       |  136 ++++++++++++++------
- utils/mountd/mountd.man     |  240 +++++++++++++++++++++++-------------
- utils/nfsd/nfsd.c           |    9 -
- utils/nfsd/nfssvc.c         |    9 -
- 6 files changed, 445 insertions(+), 324 deletions(-)
-
--- 
-Chuck Lever
+--b.
