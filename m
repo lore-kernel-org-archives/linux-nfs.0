@@ -1,154 +1,115 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mailhub.sw.ru ([195.214.232.25]:20983 "EHLO relay.sw.ru"
+Received: from cantor2.suse.de ([195.135.220.15]:53415 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753567Ab0IONFF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 15 Sep 2010 09:05:05 -0400
-Message-ID: <4C90BB7D.5070208@parallels.com>
-Date: Wed, 15 Sep 2010 16:26:37 +0400
-From: Pavel Emelyanov <xemul@parallels.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>, Neil Brown <neilb@suse.de>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        linux-nfs@vger.kernel.org
-Subject: [PATCH 4/9] sunrpc: Add net to pure API calls
-References: <4C90BADB.10700@parallels.com>
-In-Reply-To: <4C90BADB.10700@parallels.com>
-Content-Type: text/plain; charset=ISO-8859-1
+	id S1751143Ab0IHAEv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 7 Sep 2010 20:04:51 -0400
+Date: Wed, 8 Sep 2010 10:04:43 +1000
+From: Neil Brown <neilb@suse.de>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: Suresh Jayaraman <sjayaraman@suse.de>,
+        Linux NFS mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: [RFC][PATCH] nfs: support legacy NFS flock behavior via mount
+ option
+Message-ID: <20100908100443.55dee7e0@notabene>
+In-Reply-To: <1283899362.9097.42.camel@heimdal.trondhjem.org>
+References: <4C84DFA7.7050507@suse.de>
+	<1283869039.4291.16.camel@heimdal.trondhjem.org>
+	<20100908082336.3efda031@notabene>
+	<1283899362.9097.42.camel@heimdal.trondhjem.org>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-There are two calls that operate on ip_map_cache and are
-directly called from the nfsd code. Other places will be
-handled in a different way.
+On Tue, 07 Sep 2010 18:42:42 -0400
+Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
 
-Signed-off-by: Pavel Emelyanov <xemul@openvz.org>
+> On Wed, 2010-09-08 at 08:23 +1000, Neil Brown wrote:
+> > On Tue, 07 Sep 2010 10:17:19 -0400
+> > Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
+> > 
+> > > On Mon, 2010-09-06 at 18:03 +0530, Suresh Jayaraman wrote:
+> > > > NFS clients since 2.6.12 support flock()locks by emulating the
+> > > > BSD-style locks in terms of POSIX byte range locks. So the NFS client
+> > > > does not allow to lock the same file using both flock() and fcntl
+> > > > byte-range locks.
+> > > > 
+> > > > For some Windows applications which seem to use both share mode locks
+> > > > (flock()) and fcntl byte range locks sequentially on the same file,
+> > > > the locking is failing as the lock has already been acquired. i.e. the
+> > > > flock mapped as posix locks collide with actual byte range locks from
+> > > > the same process. The problem was observed on a setup with Windows
+> > > > clients accessing Excel files on a Samba exported share which is
+> > > > originally a NFS mount from a NetApp filer. Since kernels < 2.6.12 does
+> > > > not support flock, what was working (as flock locks were local) in
+> > > > older kernels is not working with newer kernels.
+> > > > 
+> > > > This could be seen as a bug in the implementation of the windows
+> > > > application or a NFS client regression, but that is debatable.
+> > > > In the spirit of not breaking existing setups, this patch adds mount
+> > > > options "flock=local" that enables older flock behavior and
+> > > > "flock=fcntl" that allows the current flock behavior.
+> > > 
+> > > So instead of having a special option for flock only, what say we rather
+> > > introduce an option of the form
+> > > 
+> > >   -olocal_lock=
+> > > 
+> > > which can take the values 'none', 'flock', 'fcntl' (or 'posix'?) and
+> > > 'all'?
+> > 
+> > I observe that the NLM protocol has support for 'share' reservations.
+> > Requesting 'access == READ, mode==DENY_WRITE' is like a shared lock,
+> > and 'access = WRITE, mode== DENY_READ_WRITE' is like an exclusive lock.
+> > 
+> > As samba maps theh share reservations into flock locks, it could make sense
+> > for NFS to (optionally) map flock locks into share reservations.
+> > 
+> > The current Linux nfsd handles contention between these reservations entirely
+> > internally, but it could conceivably grow an option to map them into flock
+> > lock, just like samba does.
+> > 
+> > If this were at all a possible future direction, I would like to ensure that
+> > option names chosen now allowed for that extension.
+> >  flock=local and flock=fcntl naturally extends to flock=share
+> > 
+> > local_lock= doesn't really extend ... unless shared_lock=flock, but that
+> > seems a bit backwards.
+> > 
+> > Is that a direction we could ever want to go?
+> 
+> I'd be against it for several reasons:
+> 
+>       * Ordinary flock locks are advisory, whereas deny share
+>         reservations are special mandatory locks. In fact if you look at
+>         the Samba implementation, it uses a special 'LOCK_MAND' flag in
+>         addition to the usual flock() flag.
+>       * DENY_WRITE and DENY_BOTH share reservation modes break unlink()
+>         behaviour on posix systems.
+>       * Once the file has been opened with a given access mode, my
+>         interpretation of the protocol is that you cannot change the
+>         deny mode without closing any conflicting shares first. (Section
+>         8.9 says: This checking of share reservations on OPEN is done
+>         with no exception for an existing OPEN for the same open_owner.)
 
----
- fs/nfsd/export.c               |    2 +-
- fs/nfsd/nfsctl.c               |    4 ++--
- include/linux/sunrpc/svcauth.h |    4 ++--
- net/sunrpc/svcauth_unix.c      |   18 ++++++++++--------
- 4 files changed, 15 insertions(+), 13 deletions(-)
+This all seems to assume NFSv4 rather than NFSv3 and NLM - I don't think NLM
+is nearly that specific on how shares should work and doesn't mention 'open'
+at all.
 
-diff --git a/fs/nfsd/export.c b/fs/nfsd/export.c
-index c2a4f71..3195e8b 100644
---- a/fs/nfsd/export.c
-+++ b/fs/nfsd/export.c
-@@ -1563,7 +1563,7 @@ exp_addclient(struct nfsctl_client *ncp)
- 	/* Insert client into hashtable. */
- 	for (i = 0; i < ncp->cl_naddr; i++) {
- 		ipv6_addr_set_v4mapped(ncp->cl_addrlist[i].s_addr, &addr6);
--		auth_unix_add_addr(&addr6, dom);
-+		auth_unix_add_addr(&init_net, &addr6, dom);
- 	}
- 	auth_unix_forget_old(dom);
- 	auth_domain_put(dom);
-diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
-index b53b1d0..b31fe5a 100644
---- a/fs/nfsd/nfsctl.c
-+++ b/fs/nfsd/nfsctl.c
-@@ -401,7 +401,7 @@ static ssize_t write_getfs(struct file *file, char *buf, size_t size)
- 
- 	ipv6_addr_set_v4mapped(sin->sin_addr.s_addr, &in6);
- 
--	clp = auth_unix_lookup(&in6);
-+	clp = auth_unix_lookup(&init_net, &in6);
- 	if (!clp)
- 		err = -EPERM;
- 	else {
-@@ -464,7 +464,7 @@ static ssize_t write_getfd(struct file *file, char *buf, size_t size)
- 
- 	ipv6_addr_set_v4mapped(sin->sin_addr.s_addr, &in6);
- 
--	clp = auth_unix_lookup(&in6);
-+	clp = auth_unix_lookup(&init_net, &in6);
- 	if (!clp)
- 		err = -EPERM;
- 	else {
-diff --git a/include/linux/sunrpc/svcauth.h b/include/linux/sunrpc/svcauth.h
-index f656667..fb1bb2c 100644
---- a/include/linux/sunrpc/svcauth.h
-+++ b/include/linux/sunrpc/svcauth.h
-@@ -122,10 +122,10 @@ extern void	svc_auth_unregister(rpc_authflavor_t flavor);
- 
- extern struct auth_domain *unix_domain_find(char *name);
- extern void auth_domain_put(struct auth_domain *item);
--extern int auth_unix_add_addr(struct in6_addr *addr, struct auth_domain *dom);
-+extern int auth_unix_add_addr(struct net *net, struct in6_addr *addr, struct auth_domain *dom);
- extern struct auth_domain *auth_domain_lookup(char *name, struct auth_domain *new);
- extern struct auth_domain *auth_domain_find(char *name);
--extern struct auth_domain *auth_unix_lookup(struct in6_addr *addr);
-+extern struct auth_domain *auth_unix_lookup(struct net *net, struct in6_addr *addr);
- extern int auth_unix_forget_old(struct auth_domain *dom);
- extern void svcauth_unix_purge(void);
- extern void svcauth_unix_info_release(struct svc_xprt *xpt);
-diff --git a/net/sunrpc/svcauth_unix.c b/net/sunrpc/svcauth_unix.c
-index f0017ca..4500fd8 100644
---- a/net/sunrpc/svcauth_unix.c
-+++ b/net/sunrpc/svcauth_unix.c
-@@ -327,7 +327,8 @@ static struct ip_map *__ip_map_lookup(struct cache_detail *cd, char *class,
- 		return NULL;
- }
- 
--static inline struct ip_map *ip_map_lookup(char *class, struct in6_addr *addr)
-+static inline struct ip_map *ip_map_lookup(struct net *net, char *class,
-+		struct in6_addr *addr)
- {
- 	return __ip_map_lookup(&ip_map_cache, class, addr);
- }
-@@ -360,12 +361,13 @@ static int __ip_map_update(struct cache_detail *cd, struct ip_map *ipm,
- 	return 0;
- }
- 
--static inline int ip_map_update(struct ip_map *ipm, struct unix_domain *udom, time_t expiry)
-+static inline int ip_map_update(struct net *net, struct ip_map *ipm,
-+		struct unix_domain *udom, time_t expiry)
- {
- 	return __ip_map_update(&ip_map_cache, ipm, udom, expiry);
- }
- 
--int auth_unix_add_addr(struct in6_addr *addr, struct auth_domain *dom)
-+int auth_unix_add_addr(struct net *net, struct in6_addr *addr, struct auth_domain *dom)
- {
- 	struct unix_domain *udom;
- 	struct ip_map *ipmp;
-@@ -373,10 +375,10 @@ int auth_unix_add_addr(struct in6_addr *addr, struct auth_domain *dom)
- 	if (dom->flavour != &svcauth_unix)
- 		return -EINVAL;
- 	udom = container_of(dom, struct unix_domain, h);
--	ipmp = ip_map_lookup("nfsd", addr);
-+	ipmp = ip_map_lookup(net, "nfsd", addr);
- 
- 	if (ipmp)
--		return ip_map_update(ipmp, udom, NEVER);
-+		return ip_map_update(net, ipmp, udom, NEVER);
- 	else
- 		return -ENOMEM;
- }
-@@ -394,12 +396,12 @@ int auth_unix_forget_old(struct auth_domain *dom)
- }
- EXPORT_SYMBOL_GPL(auth_unix_forget_old);
- 
--struct auth_domain *auth_unix_lookup(struct in6_addr *addr)
-+struct auth_domain *auth_unix_lookup(struct net *net, struct in6_addr *addr)
- {
- 	struct ip_map *ipm;
- 	struct auth_domain *rv;
- 
--	ipm = ip_map_lookup("nfsd", addr);
-+	ipm = ip_map_lookup(net, "nfsd", addr);
- 
- 	if (!ipm)
- 		return NULL;
-@@ -723,7 +725,7 @@ svcauth_unix_set_client(struct svc_rqst *rqstp)
- 
- 	ipm = ip_map_cached_get(xprt);
- 	if (ipm == NULL)
--		ipm = ip_map_lookup(rqstp->rq_server->sv_program->pg_class,
-+		ipm = ip_map_lookup(&init_net, rqstp->rq_server->sv_program->pg_class,
- 				    &sin6->sin6_addr);
- 
- 	if (ipm == NULL)
--- 
-1.5.5.6
+However I can understand your desire to implement it the same way for v4 as
+v3 and in that case your arguments stand.
+
+My other idea was for flock to just lock one byte of the file at a very high
+offset, so it would interact properly with other flocks but almost never with
+any fcntl lock.  That would probably have other problems though....
+
+I guess 'local' or 'fcntl' are really the only options for flock.
+
+oh well...
+
+NeilBrown
+
+> 
+> Cheers
+>   Trond
 
