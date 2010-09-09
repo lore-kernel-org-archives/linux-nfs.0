@@ -1,84 +1,80 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp-out-2.desy.de ([131.169.56.85]:60788 "EHLO
-	smtp-out-2.desy.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755081Ab0I3H6v (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 30 Sep 2010 03:58:51 -0400
-Received: from smtp-map-2.desy.de (smtp-map-2.desy.de [131.169.56.67])
-	by smtp-out-2.desy.de (DESY_OUT_1) with ESMTP id B272D11A7
-	for <linux-nfs@vger.kernel.org>; Thu, 30 Sep 2010 09:58:50 +0200 (MEST)
-Received: from adserv72.win.desy.de (adserv72.win.desy.de [131.169.97.58])
-	by smtp-map-2.desy.de (DESY_MAP_2) with ESMTP id A77BD11A6
-	for <linux-nfs@vger.kernel.org>; Thu, 30 Sep 2010 09:58:50 +0200 (MEST)
-Message-ID: <4CA44321.2080904@desy.de>
-Date: Thu, 30 Sep 2010 09:58:25 +0200
-From: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
-To: Benny Halevy <bhalevy@panasas.com>
-CC: NFS list <linux-nfs@vger.kernel.org>
-Subject: Re: pnfs git tree status pnfs-all-2.6.36-rc6-2010-09-29
-References: <4C7BDD8C.40509@panasas.com> <4CA31DC3.8070300@panasas.com> <4CA34830.1040703@desy.de> <4CA34883.40005@desy.de> <4CA34B93.2010100@panasas.com> <4CA34F05.3020809@desy.de> <4CA35A59.9020303@panasas.com>
-In-Reply-To: <4CA35A59.9020303@panasas.com>
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Received: from cn.fujitsu.com ([222.73.24.84]:52280 "EHLO song.cn.fujitsu.com"
+	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
+	id S1754598Ab0IIB3x (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 8 Sep 2010 21:29:53 -0400
+Message-ID: <4C883883.7070803@cn.fujitsu.com>
+Date: Thu, 09 Sep 2010 09:29:39 +0800
+From: Bian Naimeng <biannm@cn.fujitsu.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+CC: linux-nfs@vger.kernel.org, "J. Bruce Fields" <bfields@redhat.com>
+Subject: Re: [PATCH 2/2] We should clear NFS_DELEGATED_STATE after return
+ delegation
+References: <4C592F85.8070308@cn.fujitsu.com>	 <4C59306A.9090302@cn.fujitsu.com>	 <1280925913.3011.23.camel@heimdal.trondhjem.org>	 <4C5A213F.9000506@cn.fujitsu.com>	 <1281013423.2948.1.camel@heimdal.trondhjem.org>	 <4C5B8B48.4050008@cn.fujitsu.com>	 <1281101448.3586.11.camel@heimdal.trondhjem.org>	 <4C68EDAE.5000201@cn.fujitsu.com>	 <1282087012.18385.30.camel@heimdal.trondhjem.org>	 <4C7DF56B.3040206@cn.fujitsu.com>	 <1283897068.9097.15.camel@heimdal.trondhjem.org>	 <4C86E7FA.7020701@cn.fujitsu.com>	 <1283911036.16070.1.camel@heimdal.trondhjem.org>	 <4C86FECF.2050103@cn.fujitsu.com> <1283978245.2905.23.camel@heimdal.trondhjem.org>
+In-Reply-To: <1283978245.2905.23.camel@heimdal.trondhjem.org>
+Content-Type: text/plain; charset=Shift_JIS
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-  I recompiled kernel with debug symbols and problem is gone.
-Crap!
-Or, as Fred suspected, I did not apply you patch second time.
+>> index 089da5b..f7e45b4 100644
+>> --- a/fs/nfs/nfs4proc.c
+>> +++ b/fs/nfs/nfs4proc.c
+>> @@ -919,8 +919,18 @@ static int update_open_stateid(struct nfs4_state *state, nfs4_stateid *open_stat
+>>  
+>>  	rcu_read_lock();
+>>  	deleg_cur = rcu_dereference(nfsi->delegation);
+>> -	if (deleg_cur == NULL)
+>> +	if (deleg_cur == NULL) {
+>> +		if (delegation == NULL && open_stateid != NULL) {
+> 
+> Well... What I really meant was that we should make sure that we don't
+> get into this situation.
+> 
 
-Regards,
-    Tigran.
+  Thanks very much for your explainning.
 
-On 09/29/2010 05:25 PM, Benny Halevy wrote:
-> On 2010-09-29 16:36, Tigran Mkrtchyan wrote:
->>    On 09/29/2010 04:22 PM, Benny Halevy wrote:
->>> On 2010-09-29 16:09, Tigran Mkrtchyan wrote:
->>>>     On 09/29/2010 04:07 PM, Tigran Mkrtchyan wrote:
->>>>> I am support to publish first kernel crash.....
->>>> sorry to publish....
->>>>
->>>>> this is
->>>>> pnfs-all-2.6.36-rc6-2010-09-29 git
->>>>> c2b3b75c6b1db1dfc3f236200de1763e14c514d8
->>>>>
->>>>> Regards,
->>>>>      Tigran.
->>>>>
->>>>>
->>> Thanks for testing!
->>> Does the following patch help?
->>>
->> No :(
->>
-> Tigran, do you have a new trace maybe?
-> I cross referenced the dump you sent to the
-> disassembled code and it seems like it hit NULL dereference on
-> size = fl->stripe_unit;
->
-> I'm going to commit this patch anyway but I want to
-> understand what else I missed...
->
-> Benny
->
->>> git diff --stat -p -M
->>>    fs/nfs/nfs4filelayout.c |    2 ++
->>>    1 files changed, 2 insertions(+), 0 deletions(-)
->>>
->>> diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
->>> index 75e07c8..8fbb0db 100644
->>> --- a/fs/nfs/nfs4filelayout.c
->>> +++ b/fs/nfs/nfs4filelayout.c
->>> @@ -636,6 +636,8 @@ filelayout_get_stripesize(struct pnfs_layout_hdr *lo)
->>>
->>>    	/* Horrible hack...ideally upper layer would send lseg */
->>>    	lseg = pnfs_has_layout(lo,&range);
->>> +	if (!lseg)
->>> +		return 0;
->>>    	fl = container_of(lseg, struct nfs4_filelayout_segment, generic_hdr);
->>>    	size = fl->stripe_unit;
->>>    	put_lseg_locked(lseg);
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> I think the clear_bit() should be unconditional if delegation == NULL,
+
+  en..., i have a question.
+
+  If the (deleg_cur == NULL && delegation == NULL) occured, that means
+  there are not any delegation at this nfs_inode, i think this state
+  do not need a NFS_DELEGATED_STATE bit anymore, is it right?
+
+> but if the (delegation == NULL && open_stateid == NULL) _can_ occur,
+> then we should probably mark the nfs4_state for recovery using
+> nfs4_state_mark_reclaim_nograce(), and then fire of a recovery thread.
+> 
+
+  It looks like that (delegation == NULL && open_stateid == NULL) can not
+  occur at our kernel.
+
+  And..., would you tell me  why we must start recovery with using
+  nfs4_state_mark_reclaim_nograce,  are there any hint tell us that this
+  state has expired ?
+
+-- 
+Regards
+Bian Naimeng
+
+>> +			/*
+>> +			 * FIXME: If the state has NFS_DELEGATED_STATE bit
+>> +			 * we catch a race. Maybe should recover its open
+>> +			 * stateid, now we just clear the NFS_DELEGATED_STATE
+>> +			 * bit.
+>> +			 */
+>> +			clear_bit(NFS_DELEGATED_STATE, &state->flags);
+>> +		}
+>>  		goto no_delegation;
+>> +	}
+>>  
+>>  	spin_lock(&deleg_cur->lock);
+>>  	if (nfsi->delegation != deleg_cur ||
+>> -- 
+>> 1.7.0
+
+-- 
+Regards
+Bian Naimeng
 
