@@ -1,94 +1,42 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:58453 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750780Ab0I0Ld4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 27 Sep 2010 07:33:56 -0400
-Message-ID: <4CA0811E.3040906@RedHat.com>
-Date: Mon, 27 Sep 2010 07:33:50 -0400
-From: Steve Dickson <SteveD@redhat.com>
-To: Neil Brown <neilb@suse.de>
-CC: Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 1/3] Make buffers large enough for IPv6 addresses
-References: <20100804064553.16641.92857.stgit@localhost.localdomain> <20100804064945.16641.40216.stgit@localhost.localdomain>
-In-Reply-To: <20100804064945.16641.40216.stgit@localhost.localdomain>
-Content-Type: text/plain; charset=UTF-8
+Received: from rcsinet10.oracle.com ([148.87.113.121]:44979 "EHLO
+	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754385Ab0IIVqx convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Sep 2010 17:46:53 -0400
+Received: from acsinet15.oracle.com (acsinet15.oracle.com [141.146.126.227])
+	by rcsinet10.oracle.com (Switch-3.4.2/Switch-3.4.2) with ESMTP id o89LkorF018678
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Thu, 9 Sep 2010 21:46:52 GMT
+Received: from acsmt355.oracle.com (acsmt355.oracle.com [141.146.40.155])
+	by acsinet15.oracle.com (Switch-3.4.2/Switch-3.4.1) with ESMTP id o895ujRQ031792
+	for <linux-nfs@vger.kernel.org>; Thu, 9 Sep 2010 21:46:50 GMT
+From: Chuck Lever <chuck.lever@oracle.com>
+Content-Type: text/plain; charset=us-ascii
+Subject: NFS over RDMA bug reports
+Date: Thu, 9 Sep 2010 17:45:54 -0400
+Message-Id: <65A8AD4C-41FE-49F3-899F-E5998AFDC647@oracle.com>
+To: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+This is kind of a general question.
+
+We have some internal testing of client-side RH/OEL 5 NFS over RDMA that has turned up some bugs, for example:
+
+  https://bugs.openfabrics.org/show_bug.cgi?id=2076
+
+Though it's assigned, it looks like it's been around for about 3 months with no activity.  Is filing NFS/RDMA client side bugs with openfabrics the best/only way to document them and get them addressed?  Are these scrubbed regularly?  What resources are available to address these problems?
+
+There was some talk at Connectathon about having all NFS/RDMA bugs reported as above.  However, though OFED packages are required to run NFS/RDMA on EL5 kernels, the crash documented in the above bug is in the kernel NFS client, and that appears to be unmodified EL5.4.  OFED provides only the RDMA kernel modules.  Are they triaging these issues and reporting them back to Red Hat?
+
+What resources are available to address client-side upstream NFS/RDMA issues?
+
+I'm not trying to point fingers, just wondering what the mechanisms are to get these kind of problems resolved.  If there aren't any, I'd like to see what can be done to get something in place.
+
+-- 
+chuck[dot]lever[at]oracle[dot]com
 
 
-On 08/04/2010 02:49 AM, Neil Brown wrote:
-> Each of these buffers is use to hold the presentation format for an
-> address which could be either IPv4 or IPv6, so make the buffers large
-> enough for either.
-> 
-> Signed-off-by: NeilBrown <neilb@suse.de>
-> ---
->  support/export/hostname.c |    2 +-
->  utils/mountd/cache.c      |    6 +++---
->  utils/mountd/rmtab.c      |    2 +-
->  3 files changed, 5 insertions(+), 5 deletions(-)
-> 
-> diff --git a/support/export/hostname.c b/support/export/hostname.c
-> index 232e040..f6a59f1 100644
-> --- a/support/export/hostname.c
-> +++ b/support/export/hostname.c
-> @@ -299,7 +299,7 @@ struct addrinfo *
->  host_numeric_addrinfo(const struct sockaddr *sap)
->  {
->  	socklen_t salen = sockaddr_size(sap);
-> -	char buf[INET_ADDRSTRLEN];
-> +	char buf[INET6_ADDRSTRLEN];
->  	struct addrinfo *ai;
->  	int error;
->  
-> diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c
-> index bf18a9a..736668e 100644
-> --- a/utils/mountd/cache.c
-> +++ b/utils/mountd/cache.c
-> @@ -75,7 +75,7 @@ void auth_unix_ip(FILE *f)
->  	 */
->  	char *cp;
->  	char class[20];
-> -	char ipaddr[20];
-> +	char ipaddr[INET6_ADDRSTRLEN];
->  	char *client = NULL;
->  	struct addrinfo *tmp = NULL;
->  	struct addrinfo *ai = NULL;
-> @@ -90,7 +90,7 @@ void auth_unix_ip(FILE *f)
->  	    strcmp(class, "nfsd") != 0)
->  		return;
->  
-> -	if (qword_get(&cp, ipaddr, 20) <= 0)
-> +	if (qword_get(&cp, ipaddr, sizeof(ipaddr)) <= 0)
->  		return;
->  
->  	tmp = host_pton(ipaddr);
-> @@ -920,7 +920,7 @@ int cache_export_ent(char *domain, struct exportent *exp, char *path)
->  
->  int cache_export(nfs_export *exp, char *path)
->  {
-> -	char buf[INET_ADDRSTRLEN];
-> +	char buf[INET6_ADDRSTRLEN];
->  	int err;
->  	FILE *f;
->  
-> diff --git a/utils/mountd/rmtab.c b/utils/mountd/rmtab.c
-> index ba0fcf6..d86b0db 100644
-> --- a/utils/mountd/rmtab.c
-> +++ b/utils/mountd/rmtab.c
-> @@ -143,7 +143,7 @@ mountlist_del_all(struct sockaddr_in *sin)
->  		return;
->  	hostname = host_canonname((struct sockaddr *)sin);
->  	if (hostname == NULL) {
-> -		char buf[INET_ADDRSTRLEN];
-> +		char buf[INET6_ADDRSTRLEN];
->  		xlog(L_ERROR, "can't get hostname of %s",
->  			host_ntop((struct sockaddr *)sin, buf, sizeof(buf)));
->  		goto out_unlock;
-> 
-> 
-These size changes already exist due to commit d901e32
 
-steved.
+
