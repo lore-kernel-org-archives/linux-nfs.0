@@ -1,80 +1,99 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mailhub.sw.ru ([195.214.232.25]:4394 "EHLO relay.sw.ru"
+Received: from mx1.redhat.com ([209.132.183.28]:17038 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759373Ab0I0Nll (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 27 Sep 2010 09:41:41 -0400
-Message-ID: <4CA09F03.6090407@parallels.com>
-Date: Mon, 27 Sep 2010 17:41:23 +0400
-From: Pavel Emelyanov <xemul@parallels.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        David Miller <davem@davemloft.net>
-CC: "J. Bruce Fields" <bfields@fieldses.org>,
-        Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 7/8] net: Export __sock_create
-References: <4CA06C7A.5060307@parallels.com>	 <4CA06D62.4040703@parallels.com> <1285594260.19362.40.camel@heimdal.trondhjem.org>
-In-Reply-To: <1285594260.19362.40.camel@heimdal.trondhjem.org>
-Content-Type: text/plain; charset=UTF-8
+	id S1752976Ab0IJT1V (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 10 Sep 2010 15:27:21 -0400
+Received: from int-mx02.intmail.prod.int.phx2.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
+	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id o8AJRKcW027167
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Fri, 10 Sep 2010 15:27:21 -0400
+Received: from dantu.rdu.redhat.com (dantu.rdu.redhat.com [10.11.228.66])
+	by int-mx02.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id o8AJRIBU018810
+	for <linux-nfs@vger.kernel.org>; Fri, 10 Sep 2010 15:27:20 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 3/9] nfs: eliminate nfs4_rename_arg
+Date: Fri, 10 Sep 2010 15:27:12 -0400
+Message-Id: <1284146838-1468-4-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1284146838-1468-1-git-send-email-jlayton@redhat.com>
+References: <1284146838-1468-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On 09/27/2010 05:31 PM, Trond Myklebust wrote:
-> On Mon, 2010-09-27 at 14:09 +0400, Pavel Emelyanov wrote:
->> Can we can do it not through the Dave's tree?
-> 
-> I think we will still need Dave's approval for this. Either an Ack or a
-> signed-off-by. Linus will very likely yell at us and refuse to take the
-> patch if we don't.
+Add the missing fields to nfs_renameargs and drop nfs4_rename_arg
 
-OK, I then put Dave in Cc.
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/nfs/nfs4proc.c       |    2 +-
+ fs/nfs/nfs4xdr.c        |    2 +-
+ include/linux/nfs_xdr.h |   19 ++++++-------------
+ 3 files changed, 8 insertions(+), 15 deletions(-)
 
-And a small background of the patch - I'm trying to make sunrpc layer work
-in net namespaces and in order to do this I need to turn existing calls to
-sock_create_kern() into __sock_create() to specify the net namespace the
-socket are to be created in.
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 089da5b..eb36784 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -2675,7 +2675,7 @@ static int _nfs4_proc_rename(struct inode *old_dir, struct qstr *old_name,
+ 		struct inode *new_dir, struct qstr *new_name)
+ {
+ 	struct nfs_server *server = NFS_SERVER(old_dir);
+-	struct nfs4_rename_arg arg = {
++	struct nfs_renameargs arg = {
+ 		.old_dir = NFS_FH(old_dir),
+ 		.new_dir = NFS_FH(new_dir),
+ 		.old_name = old_name,
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index 08ef912..7a098ae 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -1823,7 +1823,7 @@ static int nfs4_xdr_enc_remove(struct rpc_rqst *req, __be32 *p, const struct nfs
+ /*
+  * Encode RENAME request
+  */
+-static int nfs4_xdr_enc_rename(struct rpc_rqst *req, __be32 *p, const struct nfs4_rename_arg *args)
++static int nfs4_xdr_enc_rename(struct rpc_rqst *req, __be32 *p, const struct nfs_renameargs *args)
+ {
+ 	struct xdr_stream xdr;
+ 	struct compound_hdr hdr = {
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index 5436680..60fa509 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -403,10 +403,12 @@ struct nfs_removeres {
+  * Common arguments to the rename call
+  */
+ struct nfs_renameargs {
+-	const struct nfs_fh *	old_dir;
+-	const struct nfs_fh *	new_dir;
+-	const struct qstr *	old_name;
+-	const struct qstr *	new_name;
++	const struct nfs_fh *		old_dir;
++	const struct nfs_fh *		new_dir;
++	const struct qstr *		old_name;
++	const struct qstr *		new_name;
++	const u32 *			bitmask;
++	struct nfs4_sequence_args	seq_args;
+ };
+ 
+ /*
+@@ -793,15 +795,6 @@ struct nfs4_readlink_res {
+ 	struct nfs4_sequence_res	seq_res;
+ };
+ 
+-struct nfs4_rename_arg {
+-	const struct nfs_fh *		old_dir;
+-	const struct nfs_fh *		new_dir;
+-	const struct qstr *		old_name;
+-	const struct qstr *		new_name;
+-	const u32 *			bitmask;
+-	struct nfs4_sequence_args	seq_args;
+-};
+-
+ struct nfs4_rename_res {
+ 	const struct nfs_server *	server;
+ 	struct nfs4_change_info		old_cinfo;
+-- 
+1.7.1
 
-Dave, can we go on with this, please? :)
-
-> Cheers
->   Trond
-> 
->> Signed-off-by: Pavel Emelyanov <xemul@openvz.org>
->> ---
->>  include/linux/net.h |    2 ++
->>  net/socket.c        |    3 ++-
->>  2 files changed, 4 insertions(+), 1 deletions(-)
->>
->> diff --git a/include/linux/net.h b/include/linux/net.h
->> index dee0b11..16faa13 100644
->> --- a/include/linux/net.h
->> +++ b/include/linux/net.h
->> @@ -229,6 +229,8 @@ enum {
->>  extern int	     sock_wake_async(struct socket *sk, int how, int band);
->>  extern int	     sock_register(const struct net_proto_family *fam);
->>  extern void	     sock_unregister(int family);
->> +extern int	     __sock_create(struct net *net, int family, int type, int proto,
->> +				 struct socket **res, int kern);
->>  extern int	     sock_create(int family, int type, int proto,
->>  				 struct socket **res);
->>  extern int	     sock_create_kern(int family, int type, int proto,
->> diff --git a/net/socket.c b/net/socket.c
->> index 2270b94..0c37b00 100644
->> --- a/net/socket.c
->> +++ b/net/socket.c
->> @@ -1144,7 +1144,7 @@ call_kill:
->>  }
->>  EXPORT_SYMBOL(sock_wake_async);
->>  
->> -static int __sock_create(struct net *net, int family, int type, int protocol,
->> +int __sock_create(struct net *net, int family, int type, int protocol,
->>  			 struct socket **res, int kern)
->>  {
->>  	int err;
->> @@ -1256,6 +1256,7 @@ out_release:
->>  	rcu_read_unlock();
->>  	goto out_sock_release;
->>  }
->> +EXPORT_SYMBOL(__sock_create);
->>  
->>  int sock_create(int family, int type, int protocol, struct socket **res)
->>  {
