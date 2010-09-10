@@ -1,52 +1,42 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from exprod6og111.obsmtp.com ([64.18.1.27]:37532 "HELO
-	exprod6og111.obsmtp.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1750784Ab0IFMdH convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 6 Sep 2010 08:33:07 -0400
-Content-Type: text/plain;
-	charset="us-ascii"
-Subject: Query regarding NFS packet capture at application layer - umount operation.
-Date: Mon, 6 Sep 2010 08:33:03 -0400
-Message-ID: <D3F292ADF945FB49B35E96C94C2061B90D19835A@nsmail.netscout.com>
-From: "Tayade, Nilesh" <Nilesh.Tayade@netscout.com>
-To: <linux-nfs@vger.kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:37359 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753901Ab0IJNXG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 10 Sep 2010 09:23:06 -0400
+Received: from int-mx03.intmail.prod.int.phx2.redhat.com (int-mx03.intmail.prod.int.phx2.redhat.com [10.5.11.16])
+	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id o8ADN61E012024
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Fri, 10 Sep 2010 09:23:06 -0400
+Received: from badhat.bos.devel.redhat.com (vpn-237-31.phx2.redhat.com [10.3.237.31])
+	by int-mx03.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id o8ADN5uK025319
+	for <linux-nfs@vger.kernel.org>; Fri, 10 Sep 2010 09:23:06 -0400
+Message-ID: <4C8A3139.1060406@RedHat.com>
+Date: Fri, 10 Sep 2010 09:23:05 -0400
+From: Steve Dickson <SteveD@redhat.com>
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Updated pNFS Developmental kernel/nfs-utils repository
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Hi,
+Hello,
 
-I have a query related to NFS packet captured at application layer. I
-have setup the NFS node on local system itself (just for test purpose). 
-And capturing the packets for various events (mount, umount, file access
-etc) on loop-back interface itself. However, in case of the umount
-scenario, I do not see any NFS packet captured (I can only see three TCP
-packets exchanged). 
+I've updated the Fedora pNFS development repository to include the
+Fedora 13, 14 and Devel nfs-utils rpm which include both the blkmapd 
+andspnfsd daemons as well as the pNFS export bits.
 
-Could someone please explain why there is no NFS packet observed during
-an unmount? Also there seems not much information, related to NFS mount
-point being unmounted, in TCP packet. So is there any way to detect the
-unmount operation by hacking such packets?
 
-The last TCP packet looks like:
+Instructions on how to install and use these kernels are at:
+http://wiki.linux-nfs.org/wiki/index.php/Fedora_pNFS_Client_Setup
 
-Transmission Control Protocol, Src Port: 866 (866), Dst Port: 2049
-(2049), Seq: 1, Ack: 1, Len: 0
-Source port: 866 (866)
-Destination port: 2049 (2049)
-Sequence number: 1    (relative sequence number)
-Acknowledgement number: 1    (relative ack number)
-Header length: 32 bytes
-Flags: 0x10 (ACK)
-Checksum: 0xef2f [correct]
-Options: (12 bytes)
-This is an ACK to the segment in frame: 2
-The RTT to ACK the segment was: 0.000017000 seconds
+ If/when bugs are found with these rpms please enter them
+in to the NFS Bugzilla Main Page at:
+    https://bugzilla.linux-nfs.org/index.cgi
 
-Please let me know in case the capture file is required.
+Please use the "pNFS" keyword.. 
 
---
-Thanks,
-Nilesh
-[nilesh(dot)tayade(at)netscout(dot)com]
+Any question or issues please feel free to contact me... 
+
+steved.
 
