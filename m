@@ -1,343 +1,382 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:59322 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750801Ab0IJEHl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 10 Sep 2010 00:07:41 -0400
-Message-ID: <4C89AF05.408@suse.de>
-Date: Fri, 10 Sep 2010 09:37:33 +0530
-From: Suresh Jayaraman <sjayaraman@suse.de>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: Jeff Layton <jlayton@redhat.com>,
-        Linux NFS mailing list <linux-nfs@vger.kernel.org>,
-        Neil Brown <neilb@suse.de>
-Subject: Re: [PATCH] nfs: introduce mount option '-olocal_lock' to make locks
- local
-References: <4C893746.6090202@suse.de>	 <20100909162037.20c4ebec@tlielax.poochiereds.net>	 <4C896A59.8060903@suse.de> <1284083063.2764.12.camel@heimdal.trondhjem.org>
-In-Reply-To: <1284083063.2764.12.camel@heimdal.trondhjem.org>
-Content-Type: text/plain; charset=UTF-8
+Received: from mail-gx0-f174.google.com ([209.85.161.174]:52969 "EHLO
+	mail-gx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754546Ab0IJUUd (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Sep 2010 16:20:33 -0400
+Received: by gxk23 with SMTP id 23so1316936gxk.19
+        for <linux-nfs@vger.kernel.org>; Fri, 10 Sep 2010 13:20:32 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 05/11] NFS: Remove old NFSv2 encoder functions
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Date: Fri, 10 Sep 2010 16:09:28 -0400
+Message-ID: <20100910200928.13321.27223.stgit@seurat.1015granger.net>
+In-Reply-To: <20100910200512.13321.55605.stgit@seurat.1015granger.net>
+References: <20100910200512.13321.55605.stgit@seurat.1015granger.net>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 09/10/2010 07:14 AM, Trond Myklebust wrote:
-> On Fri, 2010-09-10 at 04:44 +0530, Suresh Jayaraman wrote:
->> On 09/10/2010 01:50 AM, Jeff Layton wrote:
->>> On Fri, 10 Sep 2010 01:06:38 +0530
->>> Suresh Jayaraman <sjayaraman@suse.de> wrote:
->>>
->>>> NFS clients since 2.6.12 support flock locks by emulating fcntl byte-range
->>>> locks. Due to this, some windows applications which seem to use both flock
->>>> (share mode lock mapped as flock by Samba) and fcntl locks sequentially on
->>>> the same file, can't lock as they falsely assume the file is already locked.
->>>> The problem was reported on a setup with windows clients accessing excel files
->>>> on a Samba exported share which is originally a NFS mount from a NetApp filer.
->>>>
->>>> Older NFS clients (< 2.6.12) did not see this problem as flock locks were
->>>> considered local. To support legacy flock behavior, this patch adds a mount
->>>> option "-olocal_lock=" which can take the following values:
->>>>
->>>>    'none'  		- Neither flock locks or fcntl/posix locks are local
->>>>    'flock'/'posix' 	- flock locks are local
->>> 	^^^^^^^
->>> "posix" ought to be synonymous with "fcntl". "flock" was a BSD-ism.
->>
->> Oops, that should have read 'fcntl/posix' (though the code gets it right)..
-> 
-> Yup. It appears to be a changelog bug...
-> 
->>> It may be better to keep it simple though and drop either "posix" or
->>> "fcntl". No need to add unneeded synonyms on a brand new mount option.
->>
->> Makes sense.. Trond: which one is more consistent?
-> 
-> I have a slight preference for 'posix'. fcntl is an extensible
+Clean up:  Remove unused encoder helper functions, and move and update
+remaining ones.  Removed unused argument encoder functions.
 
-Ok, how about this one?
-
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
-From: Suresh Jayaraman <sjayaraman@suse.de>
-Subject: [PATCH] nfs: introduce mount option '-olocal_lock' to make locks local
 
-NFS clients since 2.6.12 support flock locks by emulating fcntl byte-range
-locks. Due to this, some windows applications which seem to use both flock
-(share mode lock mapped as flock by Samba) and fcntl locks sequentially on
-the same file, can't lock as they falsely assume the file is already locked.
-The problem was reported on a setup with windows clients accessing excel files
-on a Samba exported share which is originally a NFS mount from a NetApp filer.
+ fs/nfs/nfs2xdr.c |  249 +-----------------------------------------------------
+ 1 files changed, 4 insertions(+), 245 deletions(-)
 
-Older NFS clients (< 2.6.12) did not see this problem as flock locks were
-considered local. To support legacy flock behavior, this patch adds a mount
-option "-olocal_lock=" which can take the following values:
-
-   'none'  		- Neither flock locks nor POSIX locks are local
-   'flock' 		- flock locks are local
-   'posix' 		- fcntl/POSIX locks are local
-   'all'		- Both flock locks and POSIX locks are local
-
-Testing:
-
-This patch was tested by using -olocal_lock option with different values and
-the NLM calls were noted from the network packet captured.
-
-   'none'  - NLM calls were seen during both flock() and fcntl(), flock lock
-   	     was granted, fcntl was denied
-   'flock' - no NLM calls for flock(), NLM call was seen for fcntl(),
-   	     granted
-   'posix' - NLM call was seen for flock() - granted, no NLM call for fcntl()
-   'all'   - no NLM calls were seen during both flock() and fcntl()
-
-Cc: Neil Brown <neilb@suse.de>
-Signed-off-by: Suresh Jayaraman <sjayaraman@suse.de>
----
- fs/nfs/client.c           |    6 +++-
- fs/nfs/file.c             |   35 +++++++++++++++++++++++----------
- fs/nfs/super.c            |   46 +++++++++++++++++++++++++++++++++++++++++++++
- include/linux/nfs_mount.h |    5 +++-
- 4 files changed, 78 insertions(+), 14 deletions(-)
-
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index 4e7df2a..5f01f42 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -635,7 +635,8 @@ static int nfs_create_rpc_client(struct nfs_client *clp,
+diff --git a/fs/nfs/nfs2xdr.c b/fs/nfs/nfs2xdr.c
+index 81c4d87..cd9e2d8 100644
+--- a/fs/nfs/nfs2xdr.c
++++ b/fs/nfs/nfs2xdr.c
+@@ -82,13 +82,6 @@ static void prepare_reply_buffer(struct rpc_rqst *req, struct page **pages,
+  * Common NFS XDR functions as inlines
   */
- static void nfs_destroy_server(struct nfs_server *server)
+ static inline __be32 *
+-xdr_encode_fhandle(__be32 *p, const struct nfs_fh *fhandle)
+-{
+-	memcpy(p, fhandle->data, NFS2_FHSIZE);
+-	return p + XDR_QUADLEN(NFS2_FHSIZE);
+-}
+-
+-static inline __be32 *
+ xdr_decode_fhandle(__be32 *p, struct nfs_fh *fhandle)
  {
--	if (!(server->flags & NFS_MOUNT_NONLM))
-+	if (!(server->flags & NFS_MOUNT_LOCAL_FLOCK) ||
-+			!(server->flags & NFS_MOUNT_LOCAL_FCNTL))
- 		nlmclnt_done(server->nlm_host);
+ 	/* NFSv2 handles have a fixed length */
+@@ -160,36 +153,6 @@ xdr_decode_fattr(__be32 *p, struct nfs_fattr *fattr)
+ 	return p;
  }
  
-@@ -657,7 +658,8 @@ static int nfs_start_lockd(struct nfs_server *server)
+-static inline __be32 *
+-xdr_encode_sattr(__be32 *p, struct iattr *attr)
+-{
+-	const __be32 not_set = __constant_htonl(0xFFFFFFFF);
+-
+-	*p++ = (attr->ia_valid & ATTR_MODE) ? htonl(attr->ia_mode) : not_set;
+-	*p++ = (attr->ia_valid & ATTR_UID) ? htonl(attr->ia_uid) : not_set;
+-	*p++ = (attr->ia_valid & ATTR_GID) ? htonl(attr->ia_gid) : not_set;
+-	*p++ = (attr->ia_valid & ATTR_SIZE) ? htonl(attr->ia_size) : not_set;
+-
+-	if (attr->ia_valid & ATTR_ATIME_SET) {
+-		p = xdr_encode_time(p, &attr->ia_atime);
+-	} else if (attr->ia_valid & ATTR_ATIME) {
+-		p = xdr_encode_current_server_time(p, &attr->ia_atime);
+-	} else {
+-		*p++ = not_set;
+-		*p++ = not_set;
+-	}
+-
+-	if (attr->ia_valid & ATTR_MTIME_SET) {
+-		p = xdr_encode_time(p, &attr->ia_mtime);
+-	} else if (attr->ia_valid & ATTR_MTIME) {
+-		p = xdr_encode_current_server_time(p, &attr->ia_mtime);
+-	} else {
+-		*p++ = not_set;	
+-		*p++ = not_set;
+-	}
+-  	return p;
+-}
+-
+ /*
+  * Encode/decode NFSv2 basic data types
+  *
+@@ -325,19 +288,11 @@ static void encode_diropargs(struct xdr_stream *xdr, const struct nfs_fh *fh,
  
- 	if (nlm_init.nfs_version > 3)
- 		return 0;
--	if (server->flags & NFS_MOUNT_NONLM)
-+	if ((server->flags & NFS_MOUNT_LOCAL_FLOCK) &&
-+			(server->flags & NFS_MOUNT_LOCAL_FCNTL))
- 		return 0;
  
- 	switch (clp->cl_proto) {
-diff --git a/fs/nfs/file.c b/fs/nfs/file.c
-index eb51bd6..e338d37 100644
---- a/fs/nfs/file.c
-+++ b/fs/nfs/file.c
-@@ -684,7 +684,8 @@ static ssize_t nfs_file_splice_write(struct pipe_inode_info *pipe,
- 	return ret;
- }
- 
--static int do_getlk(struct file *filp, int cmd, struct file_lock *fl)
-+static int
-+do_getlk(struct file *filp, int cmd, struct file_lock *fl, int is_local)
- {
- 	struct inode *inode = filp->f_mapping->host;
- 	int status = 0;
-@@ -699,7 +700,7 @@ static int do_getlk(struct file *filp, int cmd, struct file_lock *fl)
- 	if (nfs_have_delegation(inode, FMODE_READ))
- 		goto out_noconflict;
- 
--	if (NFS_SERVER(inode)->flags & NFS_MOUNT_NONLM)
-+	if ((NFS_SERVER(inode)->flags & NFS_MOUNT_NONLM) || is_local)
- 		goto out_noconflict;
- 
- 	status = NFS_PROTO(inode)->lock(filp, cmd, fl);
-@@ -730,7 +731,8 @@ static int do_vfs_lock(struct file *file, struct file_lock *fl)
- 	return res;
- }
- 
--static int do_unlk(struct file *filp, int cmd, struct file_lock *fl)
-+static int
-+do_unlk(struct file *filp, int cmd, struct file_lock *fl, int is_local)
- {
- 	struct inode *inode = filp->f_mapping->host;
- 	int status;
-@@ -746,14 +748,15 @@ static int do_unlk(struct file *filp, int cmd, struct file_lock *fl)
- 	 * 	still need to complete the unlock.
- 	 */
- 	/* Use local locking if mounted with "-onolock" */
--	if (!(NFS_SERVER(inode)->flags & NFS_MOUNT_NONLM))
-+	if (!(NFS_SERVER(inode)->flags & NFS_MOUNT_NONLM) || !is_local)
- 		status = NFS_PROTO(inode)->lock(filp, cmd, fl);
- 	else
- 		status = do_vfs_lock(filp, fl);
- 	return status;
- }
- 
--static int do_setlk(struct file *filp, int cmd, struct file_lock *fl)
-+static int
-+do_setlk(struct file *filp, int cmd, struct file_lock *fl, int is_local)
- {
- 	struct inode *inode = filp->f_mapping->host;
- 	int status;
-@@ -767,7 +770,7 @@ static int do_setlk(struct file *filp, int cmd, struct file_lock *fl)
- 		goto out;
- 
- 	/* Use local locking if mounted with "-onolock" */
--	if (!(NFS_SERVER(inode)->flags & NFS_MOUNT_NONLM))
-+	if (!(NFS_SERVER(inode)->flags & NFS_MOUNT_NONLM) || !is_local)
- 		status = NFS_PROTO(inode)->lock(filp, cmd, fl);
- 	else
- 		status = do_vfs_lock(filp, fl);
-@@ -791,6 +794,7 @@ static int nfs_lock(struct file *filp, int cmd, struct file_lock *fl)
- {
- 	struct inode *inode = filp->f_mapping->host;
- 	int ret = -ENOLCK;
-+	int is_local = 0;
- 
- 	dprintk("NFS: lock(%s/%s, t=%x, fl=%x, r=%lld:%lld)\n",
- 			filp->f_path.dentry->d_parent->d_name.name,
-@@ -804,6 +808,9 @@ static int nfs_lock(struct file *filp, int cmd, struct file_lock *fl)
- 	if (__mandatory_lock(inode) && fl->fl_type != F_UNLCK)
- 		goto out_err;
- 
-+	if (NFS_SERVER(inode)->flags & NFS_MOUNT_LOCAL_FCNTL)
-+		is_local = 1;
-+
- 	if (NFS_PROTO(inode)->lock_check_bounds != NULL) {
- 		ret = NFS_PROTO(inode)->lock_check_bounds(fl);
- 		if (ret < 0)
-@@ -811,11 +818,11 @@ static int nfs_lock(struct file *filp, int cmd, struct file_lock *fl)
- 	}
- 
- 	if (IS_GETLK(cmd))
--		ret = do_getlk(filp, cmd, fl);
-+		ret = do_getlk(filp, cmd, fl, is_local);
- 	else if (fl->fl_type == F_UNLCK)
--		ret = do_unlk(filp, cmd, fl);
-+		ret = do_unlk(filp, cmd, fl, is_local);
- 	else
--		ret = do_setlk(filp, cmd, fl);
-+		ret = do_setlk(filp, cmd, fl, is_local);
- out_err:
- 	return ret;
- }
-@@ -825,6 +832,9 @@ out_err:
+ /*
+- * NFS encode functions
+- */
+-/*
+- * Encode file handle argument
+- * GETATTR, READLINK, STATFS
++ * NFSv2 XDR encode functions
++ *
++ * NFSv2 argument types are defined in section 2.2 of RFC 1094:
++ * "NFS: Network File System Protocol Specification".
   */
- static int nfs_flock(struct file *filp, int cmd, struct file_lock *fl)
- {
-+	struct inode *inode = filp->f_mapping->host;
-+	int is_local = 0;
-+
- 	dprintk("NFS: flock(%s/%s, t=%x, fl=%x)\n",
- 			filp->f_path.dentry->d_parent->d_name.name,
- 			filp->f_path.dentry->d_name.name,
-@@ -833,14 +843,17 @@ static int nfs_flock(struct file *filp, int cmd, struct file_lock *fl)
- 	if (!(fl->fl_flags & FL_FLOCK))
- 		return -ENOLCK;
+-static int
+-nfs_xdr_fhandle(struct rpc_rqst *req, __be32 *p, struct nfs_fh *fh)
+-{
+-	p = xdr_encode_fhandle(p, fh);
+-	req->rq_slen = xdr_adjust_iovec(req->rq_svec, p);
+-	return 0;
+-}
  
-+	if (NFS_SERVER(inode)->flags & NFS_MOUNT_LOCAL_FLOCK)
-+		is_local = 1;
-+
- 	/* We're simulating flock() locks using posix locks on the server */
- 	fl->fl_owner = (fl_owner_t)filp;
- 	fl->fl_start = 0;
- 	fl->fl_end = OFFSET_MAX;
- 
- 	if (fl->fl_type == F_UNLCK)
--		return do_unlk(filp, cmd, fl);
--	return do_setlk(filp, cmd, fl);
-+		return do_unlk(filp, cmd, fl, is_local);
-+	return do_setlk(filp, cmd, fl, is_local);
+ static int nfs2_xdr_enc_fhandle(struct rpc_rqst *req, __be32 *p,
+ 				const struct nfs_fh *fh)
+@@ -350,18 +305,6 @@ static int nfs2_xdr_enc_fhandle(struct rpc_rqst *req, __be32 *p,
  }
  
  /*
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index ec3966e..78c08e9 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -100,6 +100,7 @@ enum {
- 	Opt_addr, Opt_mountaddr, Opt_clientaddr,
- 	Opt_lookupcache,
- 	Opt_fscache_uniq,
-+	Opt_local_lock,
+- * Encode SETATTR arguments
+- */
+-static int
+-nfs_xdr_sattrargs(struct rpc_rqst *req, __be32 *p, struct nfs_sattrargs *args)
+-{
+-	p = xdr_encode_fhandle(p, args->fh);
+-	p = xdr_encode_sattr(p, args->sattr);
+-	req->rq_slen = xdr_adjust_iovec(req->rq_svec, p);
+-	return 0;
+-}
+-
+-/*
+  * 2.2.3.  sattrargs
+  *
+  *	struct sattrargs {
+@@ -380,19 +323,6 @@ static int nfs2_xdr_enc_sattrargs(struct rpc_rqst *req, __be32 *p,
+ 	return 0;
+ }
  
- 	/* Special mount options */
- 	Opt_userspace, Opt_deprecated, Opt_sloppy,
-@@ -171,6 +172,7 @@ static const match_table_t nfs_mount_option_tokens = {
+-/*
+- * Encode directory ops argument
+- * LOOKUP, RMDIR
+- */
+-static int
+-nfs_xdr_diropargs(struct rpc_rqst *req, __be32 *p, struct nfs_diropargs *args)
+-{
+-	p = xdr_encode_fhandle(p, args->fh);
+-	p = xdr_encode_array(p, args->name, args->len);
+-	req->rq_slen = xdr_adjust_iovec(req->rq_svec, p);
+-	return 0;
+-}
+-
+ static int nfs2_xdr_enc_diropargs(struct rpc_rqst *req, __be32 *p,
+ 				  const struct nfs_diropargs *args)
+ {
+@@ -403,18 +333,6 @@ static int nfs2_xdr_enc_diropargs(struct rpc_rqst *req, __be32 *p,
+ 	return 0;
+ }
  
- 	{ Opt_lookupcache, "lookupcache=%s" },
- 	{ Opt_fscache_uniq, "fsc=%s" },
-+	{ Opt_local_lock, "local_lock=%s" },
+-/*
+- * Encode REMOVE argument
+- */
+-static int
+-nfs_xdr_removeargs(struct rpc_rqst *req, __be32 *p, const struct nfs_removeargs *args)
+-{
+-	p = xdr_encode_fhandle(p, args->fh);
+-	p = xdr_encode_array(p, args->name.name, args->name.len);
+-	req->rq_slen = xdr_adjust_iovec(req->rq_svec, p);
+-	return 0;
+-}
+-
+ static int nfs2_xdr_enc_readlinkargs(struct rpc_rqst *req, __be32 *p,
+ 				     const struct nfs_readlinkargs *args)
+ {
+@@ -428,33 +346,6 @@ static int nfs2_xdr_enc_readlinkargs(struct rpc_rqst *req, __be32 *p,
+ }
  
- 	{ Opt_err, NULL }
- };
-@@ -236,6 +238,22 @@ static match_table_t nfs_lookupcache_tokens = {
- 	{ Opt_lookupcache_err, NULL }
- };
+ /*
+- * Arguments to a READ call. Since we read data directly into the page
+- * cache, we also set up the reply iovec here so that iov[1] points
+- * exactly to the page we want to fetch.
+- */
+-static int
+-nfs_xdr_readargs(struct rpc_rqst *req, __be32 *p, struct nfs_readargs *args)
+-{
+-	struct rpc_auth	*auth = req->rq_cred->cr_auth;
+-	unsigned int replen;
+-	u32 offset = (u32)args->offset;
+-	u32 count = args->count;
+-
+-	p = xdr_encode_fhandle(p, args->fh);
+-	*p++ = htonl(offset);
+-	*p++ = htonl(count);
+-	*p++ = htonl(count);
+-	req->rq_slen = xdr_adjust_iovec(req->rq_svec, p);
+-
+-	/* Inline the page array */
+-	replen = (RPC_REPHDRSIZE + auth->au_rslack + NFS_readres_sz) << 2;
+-	xdr_inline_pages(&req->rq_rcv_buf, replen,
+-			 args->pages, args->pgbase, count);
+-	req->rq_rcv_buf.flags |= XDRBUF_READ;
+-	return 0;
+-}
+-
+-/*
+  * 2.2.7.  readargs
+  *
+  *	struct readargs {
+@@ -536,29 +427,6 @@ nfs_xdr_readres(struct rpc_rqst *req, __be32 *p, struct nfs_readres *res)
  
-+enum {
-+	Opt_local_lock_all, Opt_local_lock_flock, Opt_local_lock_posix,
-+	Opt_local_lock_none,
-+
-+	Opt_local_lock_err
-+};
-+
-+static match_table_t nfs_local_lock_tokens = {
-+	{ Opt_local_lock_all, "all" },
-+	{ Opt_local_lock_flock, "flock" },
-+	{ Opt_local_lock_posix, "posix" },
-+	{ Opt_local_lock_none, "none" },
-+
-+	{ Opt_local_lock_err, NULL }
-+};
-+
  
- static void nfs_umount_begin(struct super_block *);
- static int  nfs_statfs(struct dentry *, struct kstatfs *);
-@@ -1412,6 +1430,34 @@ static int nfs_parse_mount_options(char *raw,
- 			mnt->fscache_uniq = string;
- 			mnt->options |= NFS_OPTION_FSCACHE;
- 			break;
-+		case Opt_local_lock:
-+			string = match_strdup(args);
-+			if (string == NULL)
-+				goto out_nomem;
-+			token = match_token(string, nfs_local_lock_tokens,
-+					args);
-+			kfree(string);
-+			switch (token) {
-+			case Opt_local_lock_all:
-+				mnt->flags |= (NFS_MOUNT_LOCAL_FLOCK |
-+					       NFS_MOUNT_LOCAL_FCNTL);
-+				break;
-+			case Opt_local_lock_flock:
-+				mnt->flags |= NFS_MOUNT_LOCAL_FLOCK;
-+				break;
-+			case Opt_local_lock_posix:
-+				mnt->flags |= NFS_MOUNT_LOCAL_FCNTL;
-+				break;
-+			case Opt_local_lock_none:
-+				mnt->flags &= ~(NFS_MOUNT_LOCAL_FLOCK |
-+						NFS_MOUNT_LOCAL_FCNTL);
-+				break;
-+			default:
-+				dfprintk(MOUNT, "NFS:	invalid	"
-+						"local_lock argument\n");
-+				return 0;
-+			};
-+			break;
+ /*
+- * Write arguments. Splice the buffer to be written into the iovec.
+- */
+-static int
+-nfs_xdr_writeargs(struct rpc_rqst *req, __be32 *p, struct nfs_writeargs *args)
+-{
+-	struct xdr_buf *sndbuf = &req->rq_snd_buf;
+-	u32 offset = (u32)args->offset;
+-	u32 count = args->count;
+-
+-	p = xdr_encode_fhandle(p, args->fh);
+-	*p++ = htonl(offset);
+-	*p++ = htonl(offset);
+-	*p++ = htonl(count);
+-	*p++ = htonl(count);
+-	sndbuf->len = xdr_adjust_iovec(sndbuf->head, p);
+-
+-	/* Copy the page array */
+-	xdr_encode_pages(sndbuf, args->pages, args->pgbase, count);
+-	sndbuf->flags |= XDRBUF_WRITE;
+-	return 0;
+-}
+-
+-/*
+  * 2.2.9.  writeargs
+  *
+  *	struct writeargs {
+@@ -601,20 +469,6 @@ static int nfs2_xdr_enc_writeargs(struct rpc_rqst *req, __be32 *p,
+ }
  
- 		/*
- 		 * Special options
-diff --git a/include/linux/nfs_mount.h b/include/linux/nfs_mount.h
-index 5d59ae8..d6a16cc 100644
---- a/include/linux/nfs_mount.h
-+++ b/include/linux/nfs_mount.h
-@@ -56,7 +56,6 @@ struct nfs_mount_data {
- #define NFS_MOUNT_TCP		0x0040	/* 2 */
- #define NFS_MOUNT_VER3		0x0080	/* 3 */
- #define NFS_MOUNT_KERBEROS	0x0100	/* 3 */
--#define NFS_MOUNT_NONLM		0x0200	/* 3 */
- #define NFS_MOUNT_BROKEN_SUID	0x0400	/* 4 */
- #define NFS_MOUNT_NOACL		0x0800	/* 4 */
- #define NFS_MOUNT_STRICTLOCK	0x1000	/* reserved for NFSv4 */
-@@ -71,4 +70,8 @@ struct nfs_mount_data {
- #define NFS_MOUNT_NORESVPORT		0x40000
- #define NFS_MOUNT_LEGACY_INTERFACE	0x80000
+ /*
+- * Encode create arguments
+- * CREATE, MKDIR
+- */
+-static int
+-nfs_xdr_createargs(struct rpc_rqst *req, __be32 *p, struct nfs_createargs *args)
+-{
+-	p = xdr_encode_fhandle(p, args->fh);
+-	p = xdr_encode_array(p, args->name, args->len);
+-	p = xdr_encode_sattr(p, args->sattr);
+-	req->rq_slen = xdr_adjust_iovec(req->rq_svec, p);
+-	return 0;
+-}
+-
+-/*
+  * 2.2.10.  createargs
+  *
+  *	struct createargs {
+@@ -644,20 +498,6 @@ static int nfs2_xdr_enc_removeargs(struct rpc_rqst *req, __be32 *p,
+ }
  
-+#define NFS_MOUNT_LOCAL_FLOCK	0x100000
-+#define NFS_MOUNT_LOCAL_FCNTL	0x200000
-+#define NFS_MOUNT_NONLM		(NFS_MOUNT_LOCAL_FLOCK | NFS_MOUNT_LOCAL_FCNTL)
-+
- #endif
+ /*
+- * Encode RENAME arguments
+- */
+-static int
+-nfs_xdr_renameargs(struct rpc_rqst *req, __be32 *p, struct nfs_renameargs *args)
+-{
+-	p = xdr_encode_fhandle(p, args->fromfh);
+-	p = xdr_encode_array(p, args->fromname, args->fromlen);
+-	p = xdr_encode_fhandle(p, args->tofh);
+-	p = xdr_encode_array(p, args->toname, args->tolen);
+-	req->rq_slen = xdr_adjust_iovec(req->rq_svec, p);
+-	return 0;
+-}
+-
+-/*
+  * 2.2.12.  renameargs
+  *
+  *	struct renameargs {
+@@ -677,19 +517,6 @@ static int nfs2_xdr_enc_renameargs(struct rpc_rqst *req, __be32 *p,
+ }
+ 
+ /*
+- * Encode LINK arguments
+- */
+-static int
+-nfs_xdr_linkargs(struct rpc_rqst *req, __be32 *p, struct nfs_linkargs *args)
+-{
+-	p = xdr_encode_fhandle(p, args->fromfh);
+-	p = xdr_encode_fhandle(p, args->tofh);
+-	p = xdr_encode_array(p, args->toname, args->tolen);
+-	req->rq_slen = xdr_adjust_iovec(req->rq_svec, p);
+-	return 0;
+-}
+-
+-/*
+  * 2.2.13.  linkargs
+  *
+  *	struct linkargs {
+@@ -709,35 +536,6 @@ static int nfs2_xdr_enc_linkargs(struct rpc_rqst *req, __be32 *p,
+ }
+ 
+ /*
+- * Encode SYMLINK arguments
+- */
+-static int
+-nfs_xdr_symlinkargs(struct rpc_rqst *req, __be32 *p, struct nfs_symlinkargs *args)
+-{
+-	struct xdr_buf *sndbuf = &req->rq_snd_buf;
+-	size_t pad;
+-
+-	p = xdr_encode_fhandle(p, args->fromfh);
+-	p = xdr_encode_array(p, args->fromname, args->fromlen);
+-	*p++ = htonl(args->pathlen);
+-	sndbuf->len = xdr_adjust_iovec(sndbuf->head, p);
+-
+-	xdr_encode_pages(sndbuf, args->pages, 0, args->pathlen);
+-
+-	/*
+-	 * xdr_encode_pages may have added a few bytes to ensure the
+-	 * pathname ends on a 4-byte boundary.  Start encoding the
+-	 * attributes after the pad bytes.
+-	 */
+-	pad = sndbuf->tail->iov_len;
+-	if (pad > 0)
+-		p++;
+-	p = xdr_encode_sattr(p, args->sattr);
+-	sndbuf->len += xdr_adjust_iovec(sndbuf->tail, p) - pad;
+-	return 0;
+-}
+-
+-/*
+  * 2.2.14.  symlinkargs
+  *
+  *	struct symlinkargs {
+@@ -759,27 +557,6 @@ static int nfs2_xdr_enc_symlinkargs(struct rpc_rqst *req, __be32 *p,
+ }
+ 
+ /*
+- * Encode arguments to readdir call
+- */
+-static int
+-nfs_xdr_readdirargs(struct rpc_rqst *req, __be32 *p, struct nfs_readdirargs *args)
+-{
+-	struct rpc_auth	*auth = req->rq_cred->cr_auth;
+-	unsigned int replen;
+-	u32 count = args->count;
+-
+-	p = xdr_encode_fhandle(p, args->fh);
+-	*p++ = htonl(args->cookie);
+-	*p++ = htonl(count); /* see above */
+-	req->rq_slen = xdr_adjust_iovec(req->rq_svec, p);
+-
+-	/* Inline the page array */
+-	replen = (RPC_REPHDRSIZE + auth->au_rslack + NFS_readdirres_sz) << 2;
+-	xdr_inline_pages(&req->rq_rcv_buf, replen, args->pages, 0, count);
+-	return 0;
+-}
+-
+-/*
+  * 2.2.17.  readdirargs
+  *
+  *	struct readdirargs {
+@@ -974,24 +751,6 @@ nfs_xdr_diropres(struct rpc_rqst *req, __be32 *p, struct nfs_diropok *res)
+ }
+ 
+ /*
+- * Encode READLINK args
+- */
+-static int
+-nfs_xdr_readlinkargs(struct rpc_rqst *req, __be32 *p, struct nfs_readlinkargs *args)
+-{
+-	struct rpc_auth	*auth = req->rq_cred->cr_auth;
+-	unsigned int replen;
+-
+-	p = xdr_encode_fhandle(p, args->fh);
+-	req->rq_slen = xdr_adjust_iovec(req->rq_svec, p);
+-
+-	/* Inline the page array */
+-	replen = (RPC_REPHDRSIZE + auth->au_rslack + NFS_readlinkres_sz) << 2;
+-	xdr_inline_pages(&req->rq_rcv_buf, replen, args->pages, args->pgbase, args->pglen);
+-	return 0;
+-}
+-
+-/*
+  * Decode READLINK reply
+  */
+ static int
+
