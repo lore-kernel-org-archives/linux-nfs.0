@@ -1,61 +1,104 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:61644 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753283Ab0IMQ4S convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Sep 2010 12:56:18 -0400
-Subject: Re: [PATCH 07/13] RFC: pnfs: full mount/umount infrastructure
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Benny Halevy <bhalevy@panasas.com>
-Cc: Christoph Hellwig <hch@infradead.org>, Fred Isaman <iisaman@netapp.com>,
-        linux-nfs@vger.kernel.org
-In-Reply-To: <4C8E3733.2000607@panasas.com>
-References: <1283450419-5648-1-git-send-email-iisaman@netapp.com>
-	 <1283450419-5648-8-git-send-email-iisaman@netapp.com>
-	 <20100910235858.GB11231@infradead.org>
-	 <1284163679.14078.106.camel@heimdal.trondhjem.org>
-	 <4C8E0A03.3020500@panasas.com>
-	 <1284380997.2825.2.camel@heimdal.trondhjem.org>
-	 <4C8E3733.2000607@panasas.com>
-Content-Type: text/plain; charset="UTF-8"
-Date: Mon, 13 Sep 2010 12:55:14 -0400
-Message-ID: <1284396914.6466.7.camel@heimdal.trondhjem.org>
+Received: from mail-gy0-f174.google.com ([209.85.160.174]:34515 "EHLO
+	mail-gy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754700Ab0IJUEQ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Sep 2010 16:04:16 -0400
+Received: by gyd8 with SMTP id 8so1363707gyd.19
+        for <linux-nfs@vger.kernel.org>; Fri, 10 Sep 2010 13:04:15 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 6/6] SUNRPC: Remove rpcb_getport_sync()
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Date: Fri, 10 Sep 2010 16:04:12 -0400
+Message-ID: <20100910200412.13167.6631.stgit@seurat.1015granger.net>
+In-Reply-To: <20100910200001.13167.61153.stgit@seurat.1015granger.net>
+References: <20100910200001.13167.61153.stgit@seurat.1015granger.net>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Mon, 2010-09-13 at 16:37 +0200, Benny Halevy wrote:
-> On 2010-09-13 14:29, Trond Myklebust wrote:
-> > On Mon, 2010-09-13 at 13:24 +0200, Benny Halevy wrote:
-> >> On 2010-09-11 03:07, Trond Myklebust wrote:
-> >>> On Fri, 2010-09-10 at 19:58 -0400, Christoph Hellwig wrote:
-> >>>>> +EXPORT_SYMBOL(pnfs_register_layoutdriver);
-> >>>>
-> >>>> Al exports from nfs.ko needs to be _GPL - this is in no way a public
-> >>>> API, just an internal subdivision of the nfs client.
-> >>>
-> >>> ACK. We're not committing to supporting a stable ABI here in any way,
-> >>> shape or form...
-> >>
-> >> OK, not yet.
-> >>
-> >> However, on the longer run I'd like us to consider formalizing
-> >> the kABI for non-GPLed layout drivers.
-> >>
-> >> I think that this is a great selling point as it fully materializes the
-> >> extensibility of the layout-type / layout-driver design model.
-> > 
-> > No. I'm not committing to a kabi, ever...
-> 
-> Care to explain your reasoning in some more details?
+Clean up: rpcb_getport_sync() has no more users, so remove it.
 
-It has already been laid out in Documentation/stable_api_nonsense.txt.
-It boils down to the following:
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
 
- 1) I don't _ever_ want to have to deal with debugging problems that
-might involve binary-only modules.
- 2) I want to be able to change interfaces in order to optimise/improve
-the code as needed without having to check in with a bunch of
-out-of-tree maintainers about whether or not it is 'OK' to do so.
- 3) I don't see a need for linking to non-GPLed code.
+ include/linux/sunrpc/clnt.h |    1 -
+ net/sunrpc/rpcb_clnt.c      |   51 -------------------------------------------
+ 2 files changed, 0 insertions(+), 52 deletions(-)
 
-Trond
+diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
+index 569dc72..a1a40f0 100644
+--- a/include/linux/sunrpc/clnt.h
++++ b/include/linux/sunrpc/clnt.h
+@@ -137,7 +137,6 @@ int		rpcb_register(u32, u32, int, unsigned short);
+ int		rpcb_v4_register(const u32 program, const u32 version,
+ 				 const struct sockaddr *address,
+ 				 const char *netid);
+-int		rpcb_getport_sync(struct sockaddr_in *, u32, u32, int);
+ void		rpcb_getport_async(struct rpc_task *);
+ 
+ void		rpc_call_start(struct rpc_task *);
+diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
+index dac219a..c961094 100644
+--- a/net/sunrpc/rpcb_clnt.c
++++ b/net/sunrpc/rpcb_clnt.c
+@@ -475,57 +475,6 @@ int rpcb_v4_register(const u32 program, const u32 version,
+ 	return -EAFNOSUPPORT;
+ }
+ 
+-/**
+- * rpcb_getport_sync - obtain the port for an RPC service on a given host
+- * @sin: address of remote peer
+- * @prog: RPC program number to bind
+- * @vers: RPC version number to bind
+- * @prot: transport protocol to use to make this request
+- *
+- * Return value is the requested advertised port number,
+- * or a negative errno value.
+- *
+- * Called from outside the RPC client in a synchronous task context.
+- * Uses default timeout parameters specified by underlying transport.
+- *
+- * XXX: Needs to support IPv6
+- */
+-int rpcb_getport_sync(struct sockaddr_in *sin, u32 prog, u32 vers, int prot)
+-{
+-	struct rpcbind_args map = {
+-		.r_prog		= prog,
+-		.r_vers		= vers,
+-		.r_prot		= prot,
+-		.r_port		= 0,
+-	};
+-	struct rpc_message msg = {
+-		.rpc_proc	= &rpcb_procedures2[RPCBPROC_GETPORT],
+-		.rpc_argp	= &map,
+-		.rpc_resp	= &map,
+-	};
+-	struct rpc_clnt	*rpcb_clnt;
+-	int status;
+-
+-	dprintk("RPC:       %s(%pI4, %u, %u, %d)\n",
+-		__func__, &sin->sin_addr.s_addr, prog, vers, prot);
+-
+-	rpcb_clnt = rpcb_create(NULL, (struct sockaddr *)sin,
+-				sizeof(*sin), prot, RPCBVERS_2);
+-	if (IS_ERR(rpcb_clnt))
+-		return PTR_ERR(rpcb_clnt);
+-
+-	status = rpc_call_sync(rpcb_clnt, &msg, 0);
+-	rpc_shutdown_client(rpcb_clnt);
+-
+-	if (status >= 0) {
+-		if (map.r_port != 0)
+-			return map.r_port;
+-		status = -EACCES;
+-	}
+-	return status;
+-}
+-EXPORT_SYMBOL_GPL(rpcb_getport_sync);
+-
+ static struct rpc_task *rpcb_call_async(struct rpc_clnt *rpcb_clnt, struct rpcbind_args *map, struct rpc_procinfo *proc)
+ {
+ 	struct rpc_message msg = {
+
