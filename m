@@ -1,18 +1,19 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-gw0-f46.google.com ([74.125.83.46]:44634 "EHLO
-	mail-gw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755450Ab0IQQ0X (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 17 Sep 2010 12:26:23 -0400
-Received: by gwj17 with SMTP id 17so783842gwj.19
-        for <linux-nfs@vger.kernel.org>; Fri, 17 Sep 2010 09:26:23 -0700 (PDT)
+Received: from mail-iw0-f174.google.com ([209.85.214.174]:43660 "EHLO
+	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755089Ab0IJUKY (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Sep 2010 16:10:24 -0400
+Received: by mail-iw0-f174.google.com with SMTP id 5so2495581iwn.19
+        for <linux-nfs@vger.kernel.org>; Fri, 10 Sep 2010 13:10:24 -0700 (PDT)
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 01/22] NFS: Fix NFSv3 debugging messages in fs/nfs/nfs3proc.c
+Subject: [PATCH 10/11] NFS: Move and update xdr_decode_foo() functions that
+	we're keeping
 To: trond.myklebust@netapp.com
 Cc: linux-nfs@vger.kernel.org
-Date: Fri, 17 Sep 2010 12:26:20 -0400
-Message-ID: <20100917162620.19761.87102.stgit@seurat.1015granger.net>
-In-Reply-To: <20100917162204.19761.58249.stgit@seurat.1015granger.net>
-References: <20100917162204.19761.58249.stgit@seurat.1015granger.net>
+Date: Fri, 10 Sep 2010 16:10:21 -0400
+Message-ID: <20100910201021.13321.35071.stgit@seurat.1015granger.net>
+In-Reply-To: <20100910200512.13321.55605.stgit@seurat.1015granger.net>
+References: <20100910200512.13321.55605.stgit@seurat.1015granger.net>
 Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
@@ -23,30 +24,141 @@ Clean up.
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- fs/nfs/nfs3proc.c |    5 +++--
- 1 files changed, 3 insertions(+), 2 deletions(-)
+ fs/nfs/nfs2xdr.c |   97 +++++++++++++++++++++++++++++++-----------------------
+ 1 files changed, 56 insertions(+), 41 deletions(-)
 
-diff --git a/fs/nfs/nfs3proc.c b/fs/nfs/nfs3proc.c
-index fabb4f2..2792895 100644
---- a/fs/nfs/nfs3proc.c
-+++ b/fs/nfs/nfs3proc.c
-@@ -652,7 +652,8 @@ nfs3_proc_readdir(struct dentry *dentry, struct rpc_cred *cred,
+diff --git a/fs/nfs/nfs2xdr.c b/fs/nfs/nfs2xdr.c
+index 78c9d27..dc3841d 100644
+--- a/fs/nfs/nfs2xdr.c
++++ b/fs/nfs/nfs2xdr.c
+@@ -89,46 +89,6 @@ static void print_overflow_msg(const char *func, const struct xdr_stream *xdr)
  
- 	nfs_free_fattr(res.dir_attr);
- out:
--	dprintk("NFS reply readdir: %d\n", status);
-+	dprintk("NFS reply readdir%s: %d\n",
-+			plus? "plus" : "", status);
- 	return status;
+ 
+ /*
+- * Common NFS XDR functions as inlines
+- */
+-static inline __be32*
+-xdr_decode_time(__be32 *p, struct timespec *timep)
+-{
+-	timep->tv_sec = ntohl(*p++);
+-	/* Convert microseconds into nanoseconds */
+-	timep->tv_nsec = ntohl(*p++) * 1000;
+-	return p;
+-}
+-
+-static __be32 *
+-xdr_decode_fattr(__be32 *p, struct nfs_fattr *fattr)
+-{
+-	u32 rdev, type;
+-	type = ntohl(*p++);
+-	fattr->mode = ntohl(*p++);
+-	fattr->nlink = ntohl(*p++);
+-	fattr->uid = ntohl(*p++);
+-	fattr->gid = ntohl(*p++);
+-	fattr->size = ntohl(*p++);
+-	fattr->du.nfs2.blocksize = ntohl(*p++);
+-	rdev = ntohl(*p++);
+-	fattr->du.nfs2.blocks = ntohl(*p++);
+-	fattr->fsid.major = ntohl(*p++);
+-	fattr->fsid.minor = 0;
+-	fattr->fileid = ntohl(*p++);
+-	p = xdr_decode_time(p, &fattr->atime);
+-	p = xdr_decode_time(p, &fattr->mtime);
+-	p = xdr_decode_time(p, &fattr->ctime);
+-	fattr->valid |= NFS_ATTR_FATTR_V2;
+-	fattr->rdev = new_decode_dev(rdev);
+-	if (type == NFCHR && rdev == NFS2_FIFO_DEV) {
+-		fattr->mode = (fattr->mode & ~S_IFMT) | S_IFIFO;
+-		fattr->rdev = 0;
+-	}
+-	return p;
+-}
+-
+-/*
+  * Encode/decode NFSv2 basic data types
+  *
+  * Basic NFSv2 data types are defined in section 2.3 of RFC 1094:
+@@ -208,6 +168,27 @@ out_overflow:
  }
  
-@@ -722,7 +723,7 @@ nfs3_proc_statfs(struct nfs_server *server, struct nfs_fh *fhandle,
- 	dprintk("NFS call  fsstat\n");
- 	nfs_fattr_init(stat->fattr);
- 	status = rpc_call_sync(server->client, &msg, 0);
--	dprintk("NFS reply statfs: %d\n", status);
-+	dprintk("NFS reply fsstat: %d\n", status);
- 	return status;
+ /*
++ * 2.3.2.  ftype
++ *
++ *	enum ftype {
++ *		NFNON = 0,
++ *		NFREG = 1,
++ *		NFDIR = 2,
++ *		NFBLK = 3,
++ *		NFCHR = 4,
++ *		NFLNK = 5
++ *	};
++ *
++ */
++static __be32 *xdr_decode_ftype(__be32 *p, u32 *type)
++{
++	*type = be32_to_cpup(p++);
++	if (unlikely(*type > NF2FIFO))
++		*type = NFBAD;
++	return p;
++}
++
++/*
+  * 2.3.3.  fhandle
+  *
+  *	typedef opaque fhandle[FHSIZE];
+@@ -270,6 +251,13 @@ static __be32 *xdr_encode_current_server_time(__be32 *p,
+ 	return p;
  }
  
++static __be32 *xdr_decode_time(__be32 *p, struct timespec *timep)
++{
++	timep->tv_sec = be32_to_cpup(p++);
++	timep->tv_nsec = be32_to_cpup(p++) * NSEC_PER_USEC;
++	return p;
++}
++
+ /*
+  * 2.3.5.  fattr
+  *
+@@ -293,12 +281,39 @@ static __be32 *xdr_encode_current_server_time(__be32 *p,
+  */
+ static int decode_fattr(struct xdr_stream *xdr, struct nfs_fattr *fattr)
+ {
++	u32 rdev, type;
+ 	__be32 *p;
+ 
+ 	p = xdr_inline_decode(xdr, NFS_fattr_sz << 2);
+ 	if (unlikely(p == NULL))
+ 		goto out_overflow;
+-	xdr_decode_fattr(p, fattr);
++
++	fattr->valid |= NFS_ATTR_FATTR_V2;
++
++	p = xdr_decode_ftype(p, &type);
++
++	fattr->mode		= be32_to_cpup(p++);
++	fattr->nlink		= be32_to_cpup(p++);
++	fattr->uid		= be32_to_cpup(p++);
++	fattr->gid		= be32_to_cpup(p++);
++	fattr->size		= be32_to_cpup(p++);
++	fattr->du.nfs2.blocksize = be32_to_cpup(p++);
++
++	rdev			= be32_to_cpup(p++);
++	fattr->rdev		= new_decode_dev(rdev);
++	if (type == (u32)NFCHR && rdev == (u32)NFS2_FIFO_DEV) {
++		fattr->mode = (fattr->mode & ~S_IFMT) | S_IFIFO;
++		fattr->rdev = 0;
++	}
++
++	fattr->du.nfs2.blocks	= be32_to_cpup(p++);
++	fattr->fsid.major	= be32_to_cpup(p++);
++	fattr->fsid.minor	= 0;
++	fattr->fileid		= be32_to_cpup(p++);
++
++	p = xdr_decode_time(p, &fattr->atime);
++	p = xdr_decode_time(p, &fattr->mtime);
++	xdr_decode_time(p, &fattr->ctime);
+ 	return 0;
+ out_overflow:
+ 	print_overflow_msg(__func__, xdr);
 
