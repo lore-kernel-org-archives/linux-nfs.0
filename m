@@ -1,58 +1,63 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-out1.uio.no ([129.240.10.57]:46172 "EHLO mail-out1.uio.no"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753038Ab0IUUq3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 21 Sep 2010 16:46:29 -0400
-Subject: Re: [bfields@pop.test.fieldses.org: all f08d6374 Merge branch
- 'nfs-for-next' into linux-next results]
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Jeff Layton <jlayton@redhat.com>, linux-nfs@vger.kernel.org
-In-Reply-To: <20100921202411.GA10570@fieldses.org>
-References: <20100918171546.GA9859@fieldses.org>
-	 <1284831680.2787.1.camel@heimdal.trondhjem.org>
-	 <20100919184549.GD32071@fieldses.org> <20100920130106.GB4580@fieldses.org>
-	 <20100920131025.GC4580@fieldses.org>
-	 <1285091815.30222.19.camel@heimdal.trondhjem.org>
-	 <20100921111657.330e7838@corrin.poochiereds.net>
-	 <20100921192005.GC4385@fieldses.org>
-	 <1285097787.30222.24.camel@heimdal.trondhjem.org>
-	 <1285099232.30222.25.camel@heimdal.trondhjem.org>
-	 <20100921202411.GA10570@fieldses.org>
-Content-Type: text/plain; charset="UTF-8"
-Date: Tue, 21 Sep 2010 16:46:21 -0400
-Message-ID: <1285101981.30222.27.camel@heimdal.trondhjem.org>
+Received: from mail-yx0-f174.google.com ([209.85.213.174]:65003 "EHLO
+	mail-yx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754624Ab0IJUIj (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Sep 2010 16:08:39 -0400
+Received: by yxp4 with SMTP id 4so1305439yxp.19
+        for <linux-nfs@vger.kernel.org>; Fri, 10 Sep 2010 13:08:39 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 00/11] Overhaul NFSv2-related XDR functions
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Date: Fri, 10 Sep 2010 16:08:36 -0400
+Message-ID: <20100910200512.13321.55605.stgit@seurat.1015granger.net>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Tue, 2010-09-21 at 16:24 -0400, J. Bruce Fields wrote:
-> On Tue, Sep 21, 2010 at 04:00:32PM -0400, Trond Myklebust wrote:
-> > On Tue, 2010-09-21 at 15:36 -0400, Trond Myklebust wrote:
-> > > On Tue, 2010-09-21 at 15:20 -0400, J. Bruce Fields wrote:
-> > > > All I need to do is mount nfs4.1 and run cthon -s.  The last output I
-> > > > see from the test is:
-> > > > 
-> > > > check for proper open/unlink operation
-> > > > nfsjunk files before unlink:
-> > > >   
-> > > 
-> > > Oh... I bet I see what it is.
-> > > 
-> > > It's that damned res->sr_slotid = NFS4_MAX_SLOT_TABLE and related
-> > > initialisation junk that's biting us in the arse again...
-> > > 
-> > > I'll fix it...
-> > 
-> > Does this work?
-> 
-> Yup.
+Trond-
 
-It seems to fix things for me too... Once you mentioned NFSv4.1 it was
-easy to reproduce the bug.
+This patch series overhauls NFSv2 and NLMv3 XDR functions to
+use the same strict buffer checking tools that the NFSv4 XDR
+functions use.
 
-OK. I'll merge these into nfs-for-2.6.37...
+I did some testing with OProfile and perf to see what kind of
+CPU impact the additional checking has... didn't notice much
+if any change on the workloads I tried (fsx and cthon).  I
+was careful to structure the code (especially conditionals)
+so that the common path was as short as possible.
 
-Cheers
-  Trond
+---
 
+Chuck Lever (11):
+      lockd: Introduce new-style XDR functions for NLMv3
+      NFS: Move and update xdr_decode_foo() functions that we're keeping
+      NFS: Replace old NFSv2 decoder functions with xdr_stream-based ones
+      NFS: Introduce new-style XDR decoding functions for NFSv2
+      NFS: Use the "nfs_stat" enum for nfs_stat_to_errno()'s argument
+      NFS: Move and update xdr_encode_foo() functions that we're keeping
+      NFS: Remove old NFSv2 encoder functions
+      NFS: Introduce new-style XDR encoding functions for NFSv2
+      SUNRPC: Refactor logic to NUL-terminate strings in pages
+      SUNRPC: Correct an rpcbind debugging message
+      NFS: Fix NFSv3 debugging messages in fs/nfs/nfs3proc.c
+
+
+ fs/lockd/Makefile          |    4 
+ fs/lockd/clntxdr.c         |  657 +++++++++++++++++++++
+ fs/lockd/xdr.c             |  258 --------
+ fs/nfs/internal.h          |    4 
+ fs/nfs/nfs2xdr.c           | 1349 ++++++++++++++++++++++++++++++--------------
+ fs/nfs/nfs3proc.c          |    5 
+ fs/nfs/nfs3xdr.c           |    6 
+ fs/nfs/nfs4xdr.c           |    5 
+ fs/nfs/proc.c              |    2 
+ include/linux/sunrpc/xdr.h |    1 
+ net/sunrpc/rpcb_clnt.c     |    5 
+ net/sunrpc/xdr.c           |   17 +
+ 12 files changed, 1598 insertions(+), 715 deletions(-)
+ create mode 100644 fs/lockd/clntxdr.c
+
+-- 
+Chuck Lever
