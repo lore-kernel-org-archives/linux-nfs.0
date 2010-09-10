@@ -1,68 +1,119 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:27453 "EHLO
-	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751752Ab0IQTaO convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 17 Sep 2010 15:30:14 -0400
-Subject: Re: [PATCH] rpcbind: don't ignore bind and init_transport errors
-Content-Type: text/plain; charset=utf-8
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20100917190413.GB21111@sith.mimuw.edu.pl>
-Date: Fri, 17 Sep 2010 15:27:46 -0400
-Cc: Steve Dickson <SteveD@redhat.com>, linux-nfs <linux-nfs@vger.kernel.org>
-Message-Id: <DA851F94-8AFB-448D-B48D-BC4ACAD8F395@oracle.com>
-References: <20100917181251.GA21111@sith.mimuw.edu.pl> <690CDF34-1D1E-44E2-B077-7EDD350701CB@oracle.com> <20100917190413.GB21111@sith.mimuw.edu.pl>
-To: =?utf-8?Q?Jan_R=C4=99korajski?= <baggins@sith.mimuw.edu.pl>
+Received: from mx1.redhat.com ([209.132.183.28]:25603 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754174Ab0IJT1U (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 10 Sep 2010 15:27:20 -0400
+Received: from int-mx02.intmail.prod.int.phx2.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
+	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id o8AJRK2Y014773
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Fri, 10 Sep 2010 15:27:20 -0400
+Received: from dantu.rdu.redhat.com (dantu.rdu.redhat.com [10.11.228.66])
+	by int-mx02.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id o8AJRIBS018810
+	for <linux-nfs@vger.kernel.org>; Fri, 10 Sep 2010 15:27:19 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 1/9] nfs: eliminate nfs3_renameargs
+Date: Fri, 10 Sep 2010 15:27:10 -0400
+Message-Id: <1284146838-1468-2-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1284146838-1468-1-git-send-email-jlayton@redhat.com>
+References: <1284146838-1468-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
+It's exactly the same as nfs_renameargs, so move it to the area of the
+header where protocol-neutral defintions live and eliminate the v3
+specific variant.
 
-On Sep 17, 2010, at 3:04 PM, Jan Rękorajski wrote:
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/nfs/nfs3proc.c       |    2 +-
+ fs/nfs/nfs3xdr.c        |    2 +-
+ include/linux/nfs_xdr.h |   30 ++++++++++++------------------
+ 3 files changed, 14 insertions(+), 20 deletions(-)
 
-> On Fri, 17 Sep 2010, Chuck Lever wrote:
-> 
->> 
->> On Sep 17, 2010, at 2:12 PM, Jan Rękorajski wrote:
->> 
->>> Hi,
->>> rpcbind currently silently ignores any errors that occur during
->>> init_transport, it also happily continues if bind(2) fails for
->>> UDP socket - it's enough if just one UDP socket is bound.
->>> 
->>> This patch makes rpcbind fail if there are problems with
->>> setting up any transport, so we don't end up with
->>> semi/non functional running daemon.
->> 
->> Can you give us some details about why transport initialization was
->> failing?  There are probably some cases where we do want rpcbind to
->> soldier on in spite of such troubles.
-> 
-> An obvious example is when address given to '-h' option isn't there,
-> or daemon can't bind to it for some reason.
-> Bind fails, but rpcbind is running as if nothing happened.
-
-The usual practice is to allow an RPC daemon to run if at least one transport can be started.  That is a little more robust than failing if any one transport can't be started.
-
-If such a failure is completely silent, then it's probably reasonable to post a notice about this in the log.  But we generally like things to work automatically, if at all possible.
-
-If rpcbind couldn't use _any_ of the specified bind addresses, I guess that is when it should fail to start.  A host's networking configuration can be quite variable, especially with DHCP-configured interfaces, so these daemons have to be somewhat flexible.
-
-> And, besides, behavior for UDP and TCP sockets is currently inconsistent
-> as init_transport ignores any failed UDP bind and correctly
-> returns error for TCP.
-
-That _may_ be intentional.  UDP semantics are "unreliable," so an error may be expected even at bind time.  Who knows, it doesn't look very well documented.
-
-> The only legitimate reason for ignoring errors I may see here is when
-> IPv6 is configured in /etc/netconfig but it's not set up on net
-> interfaces, but as such case is administrative mistake it should be
-> fixed by the admin, not the daemon.
-
-Not necessarily.  ipv6.ko can be blacklisted.  Should the administrator also remember to adjust /etc/netconfig in that case, or should the rpc-related daemons simply adjust automatically?
-
+diff --git a/fs/nfs/nfs3proc.c b/fs/nfs/nfs3proc.c
+index fabb4f2..b53b1a9 100644
+--- a/fs/nfs/nfs3proc.c
++++ b/fs/nfs/nfs3proc.c
+@@ -442,7 +442,7 @@ static int
+ nfs3_proc_rename(struct inode *old_dir, struct qstr *old_name,
+ 		 struct inode *new_dir, struct qstr *new_name)
+ {
+-	struct nfs3_renameargs	arg = {
++	struct nfs_renameargs	arg = {
+ 		.fromfh		= NFS_FH(old_dir),
+ 		.fromname	= old_name->name,
+ 		.fromlen	= old_name->len,
+diff --git a/fs/nfs/nfs3xdr.c b/fs/nfs/nfs3xdr.c
+index 9769704..d6506f8 100644
+--- a/fs/nfs/nfs3xdr.c
++++ b/fs/nfs/nfs3xdr.c
+@@ -442,7 +442,7 @@ nfs3_xdr_mknodargs(struct rpc_rqst *req, __be32 *p, struct nfs3_mknodargs *args)
+  * Encode RENAME arguments
+  */
+ static int
+-nfs3_xdr_renameargs(struct rpc_rqst *req, __be32 *p, struct nfs3_renameargs *args)
++nfs3_xdr_renameargs(struct rpc_rqst *req, __be32 *p, struct nfs_renameargs *args)
+ {
+ 	p = xdr_encode_fhandle(p, args->fromfh);
+ 	p = xdr_encode_array(p, args->fromname, args->fromlen);
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index fc46192..c606f60 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -400,6 +400,18 @@ struct nfs_removeres {
+ };
+ 
+ /*
++ * Common arguments to the rename call
++ */
++struct nfs_renameargs {
++	struct nfs_fh *		fromfh;
++	const char *		fromname;
++	unsigned int		fromlen;
++	struct nfs_fh *		tofh;
++	const char *		toname;
++	unsigned int		tolen;
++};
++
++/*
+  * Argument struct for decode_entry function
+  */
+ struct nfs_entry {
+@@ -434,15 +446,6 @@ struct nfs_createargs {
+ 	struct iattr *		sattr;
+ };
+ 
+-struct nfs_renameargs {
+-	struct nfs_fh *		fromfh;
+-	const char *		fromname;
+-	unsigned int		fromlen;
+-	struct nfs_fh *		tofh;
+-	const char *		toname;
+-	unsigned int		tolen;
+-};
+-
+ struct nfs_setattrargs {
+ 	struct nfs_fh *                 fh;
+ 	nfs4_stateid                    stateid;
+@@ -586,15 +589,6 @@ struct nfs3_mknodargs {
+ 	dev_t			rdev;
+ };
+ 
+-struct nfs3_renameargs {
+-	struct nfs_fh *		fromfh;
+-	const char *		fromname;
+-	unsigned int		fromlen;
+-	struct nfs_fh *		tofh;
+-	const char *		toname;
+-	unsigned int		tolen;
+-};
+-
+ struct nfs3_linkargs {
+ 	struct nfs_fh *		fromfh;
+ 	struct nfs_fh *		tofh;
 -- 
-chuck[dot]lever[at]oracle[dot]com
-
-
-
+1.7.1
 
