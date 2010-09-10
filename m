@@ -1,252 +1,224 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:54923 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753426Ab0IVC6R (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 21 Sep 2010 22:58:17 -0400
-From: NeilBrown <neilb@suse.de>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Date: Wed, 22 Sep 2010 12:55:07 +1000
-Subject: [PATCH 7/7] nfsd: allow deprecated interface to be compiled out.
+Received: from mail-bw0-f46.google.com ([209.85.214.46]:59979 "EHLO
+	mail-bw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753835Ab0IJVLQ convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Sep 2010 17:11:16 -0400
+Received: by bwz11 with SMTP id 11so2622692bwz.19
+        for <linux-nfs@vger.kernel.org>; Fri, 10 Sep 2010 14:11:15 -0700 (PDT)
+In-Reply-To: <1284147111.10062.74.camel@heimdal.trondhjem.org>
+References: <1283450419-5648-1-git-send-email-iisaman@netapp.com>
+	<1283450419-5648-9-git-send-email-iisaman@netapp.com>
+	<1284147111.10062.74.camel@heimdal.trondhjem.org>
+Date: Fri, 10 Sep 2010 14:11:14 -0700
+Message-ID: <AANLkTi=6vcQC1k28B=aKJbN=jRBipoff3+79BpgLxtXw@mail.gmail.com>
+Subject: Re: [PATCH 08/13] RFC: pnfs: filelayout: introduce minimal file
+ layout driver
+From: Fred Isaman <iisaman@netapp.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Cc: linux-nfs@vger.kernel.org
-Message-ID: <20100922025507.31745.35688.stgit@localhost.localdomain>
-In-Reply-To: <20100922025009.31745.98237.stgit@localhost.localdomain>
-References: <20100922025009.31745.98237.stgit@localhost.localdomain>
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Add CONFIG_NFSD_DEPRECATED, default to y.
-Only include deprecated interface if this is defined.
-This allows distros to remove this interface before the official
-removal, and allows developers to test without it.
+On Fri, Sep 10, 2010 at 12:31 PM, Trond Myklebust
+<Trond.Myklebust@netapp.com> wrote:
+> On Thu, 2010-09-02 at 14:00 -0400, Fred Isaman wrote:
+>> From: The pNFS Team <linux-nfs@vger.kernel.org>
+>>
+>> This driver just registers itself and supplies trivial mount/umount functions.
+>>
+>> Signed-off-by: TBD - melding/reorganization of several patches
+>> ---
+>>  fs/nfs/Kconfig          |    5 +++
+>>  fs/nfs/Makefile         |    3 ++
+>>  fs/nfs/nfs4filelayout.c |   89 +++++++++++++++++++++++++++++++++++++++++++++++
+>>  include/linux/nfs_fs.h  |    1 +
+>>  4 files changed, 98 insertions(+), 0 deletions(-)
+>>  create mode 100644 fs/nfs/nfs4filelayout.c
+>>
+>> diff --git a/fs/nfs/Kconfig b/fs/nfs/Kconfig
+>> index 5f1b936..980f2dc 100644
+>> --- a/fs/nfs/Kconfig
+>> +++ b/fs/nfs/Kconfig
+>> @@ -82,6 +82,11 @@ config NFS_V4_1
+>>
+>>         If unsure, say N.
+>>
+>> +config PNFS_FILE_LAYOUT
+>> +     tristate
+>> +     depends on NFS_FS && NFS_V4_1
+>> +     default m
+>
+> Should be 'default y', otherwise it has an implicit dependency on
+> CONFIG_MODULES.
+>
 
-Signed-off-by: NeilBrown <neilb@suse.de>
----
- fs/Makefile      |    5 +----
- fs/compat.c      |    2 +-
- fs/nfsd/Kconfig  |   12 ++++++++++++
- fs/nfsd/export.c |   22 +++++++++++++++++++---
- fs/nfsd/nfsctl.c |   10 ++++++++++
- 5 files changed, 43 insertions(+), 8 deletions(-)
+The idea was that normally the driver would compile as a module, and
+use loading/unloading of it to control whether pnfs is supported.
 
-diff --git a/fs/Makefile b/fs/Makefile
-index e6ec1d3..26956fc 100644
---- a/fs/Makefile
-+++ b/fs/Makefile
-@@ -29,10 +29,7 @@ obj-$(CONFIG_EVENTFD)		+= eventfd.o
- obj-$(CONFIG_AIO)               += aio.o
- obj-$(CONFIG_FILE_LOCKING)      += locks.o
- obj-$(CONFIG_COMPAT)		+= compat.o compat_ioctl.o
--
--nfsd-$(CONFIG_NFSD)		:= nfsctl.o
--obj-y				+= $(nfsd-y) $(nfsd-m)
--
-+obj-$(CONFIG_NFSD_DEPRECATED)	+= nfsctl.o
- obj-$(CONFIG_BINFMT_AOUT)	+= binfmt_aout.o
- obj-$(CONFIG_BINFMT_EM86)	+= binfmt_em86.o
- obj-$(CONFIG_BINFMT_MISC)	+= binfmt_misc.o
-diff --git a/fs/compat.c b/fs/compat.c
-index 718c706..df5e671 100644
---- a/fs/compat.c
-+++ b/fs/compat.c
-@@ -1963,7 +1963,7 @@ asmlinkage long compat_sys_ppoll(struct pollfd __user *ufds,
- }
- #endif /* HAVE_SET_RESTORE_SIGMASK */
- 
--#if defined(CONFIG_NFSD) || defined(CONFIG_NFSD_MODULE)
-+#if (defined(CONFIG_NFSD) || defined(CONFIG_NFSD_MODULE)) && !defined(CONFIG_NFSD_DEPRECATED)
- /* Stuff for NFS server syscalls... */
- struct compat_nfsctl_svc {
- 	u16			svc32_port;
-diff --git a/fs/nfsd/Kconfig b/fs/nfsd/Kconfig
-index 4264377..18b3e89 100644
---- a/fs/nfsd/Kconfig
-+++ b/fs/nfsd/Kconfig
-@@ -28,6 +28,18 @@ config NFSD
- 
- 	  If unsure, say N.
- 
-+config NFSD_DEPRECATED
-+	bool "Include support for deprecated syscall interface to NFSD"
-+	depends on NFSD
-+	default y
-+	help
-+	  The syscall interface to nfsd was obsoleted in 2.6.0 by a new
-+	  filesystem based interface.  The old interface is due for removal
-+	  in 2.6.40.  If you wish to remove the interface before then
-+	  say N.
-+
-+	  In unsure, say Y.
-+
- config NFSD_V2_ACL
- 	bool
- 	depends on NFSD
-diff --git a/fs/nfsd/export.c b/fs/nfsd/export.c
-index e56827b..a3c7d0c 100644
---- a/fs/nfsd/export.c
-+++ b/fs/nfsd/export.c
-@@ -28,9 +28,6 @@
- typedef struct auth_domain	svc_client;
- typedef struct svc_export	svc_export;
- 
--static void		exp_do_unexport(svc_export *unexp);
--static int		exp_verify_string(char *cp, int max);
--
- /*
-  * We have two caches.
-  * One maps client+vfsmnt+dentry to export options - the export map
-@@ -802,6 +799,7 @@ exp_find_key(svc_client *clp, int fsid_type, u32 *fsidv, struct cache_req *reqp)
- 	return ek;
- }
- 
-+#ifdef CONFIG_NFSD_DEPRECATED
- static int exp_set_key(svc_client *clp, int fsid_type, u32 *fsidv,
- 		       struct svc_export *exp)
- {
-@@ -852,6 +850,7 @@ exp_get_fsid_key(svc_client *clp, int fsid)
- 
- 	return exp_find_key(clp, FSID_NUM, fsidv, NULL);
- }
-+#endif
- 
- static svc_export *exp_get_by_name(svc_client *clp, const struct path *path,
- 				     struct cache_req *reqp)
-@@ -893,6 +892,7 @@ static struct svc_export *exp_parent(svc_client *clp, struct path *path)
- 	return exp;
- }
- 
-+#ifdef CONFIG_NFSD_DEPRECATED
- /*
-  * Hashtable locking. Write locks are placed only by user processes
-  * wanting to modify export information.
-@@ -925,6 +925,19 @@ exp_writeunlock(void)
- {
- 	up_write(&hash_sem);
- }
-+#else
-+
-+/* hash_sem not needed once deprecated interface is removed */
-+void exp_readlock(void) {}
-+static inline void exp_writelock(void){}
-+void exp_readunlock(void) {}
-+static inline void exp_writeunlock(void){}
-+
-+#endif
-+
-+#ifdef CONFIG_NFSD_DEPRECATED
-+static void		exp_do_unexport(svc_export *unexp);
-+static int		exp_verify_string(char *cp, int max);
- 
- static void exp_fsid_unhash(struct svc_export *exp)
- {
-@@ -1147,6 +1160,7 @@ out_unlock:
- 	exp_writeunlock();
- 	return err;
- }
-+#endif /* CONFIG_NFSD_DEPRECATED */
- 
- /*
-  * Obtain the root fh on behalf of a client.
-@@ -1529,6 +1543,7 @@ const struct seq_operations nfs_exports_op = {
- 	.show	= e_show,
- };
- 
-+#ifdef CONFIG_NFSD_DEPRECATED
- /*
-  * Add or modify a client.
-  * Change requests may involve the list of host addresses. The list of
-@@ -1618,6 +1633,7 @@ exp_verify_string(char *cp, int max)
- 	printk(KERN_NOTICE "nfsd: couldn't validate string %s\n", cp);
- 	return 0;
- }
-+#endif /* CONFIG_NFSD_DEPRECATED */
- 
- /*
-  * Initialize the exports module.
-diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
-index 7f0fc88..b278e44 100644
---- a/fs/nfsd/nfsctl.c
-+++ b/fs/nfsd/nfsctl.c
-@@ -22,6 +22,7 @@
-  */
- enum {
- 	NFSD_Root = 1,
-+#ifdef CONFIG_NFSD_DEPRECATED
- 	NFSD_Svc,
- 	NFSD_Add,
- 	NFSD_Del,
-@@ -29,6 +30,7 @@ enum {
- 	NFSD_Unexport,
- 	NFSD_Getfd,
- 	NFSD_Getfs,
-+#endif
- 	NFSD_List,
- 	NFSD_Export_features,
- 	NFSD_Fh,
-@@ -54,6 +56,7 @@ enum {
- /*
-  * write() for these nodes.
-  */
-+#ifdef CONFIG_NFSD_DEPRECATED
- static ssize_t write_svc(struct file *file, char *buf, size_t size);
- static ssize_t write_add(struct file *file, char *buf, size_t size);
- static ssize_t write_del(struct file *file, char *buf, size_t size);
-@@ -61,6 +64,7 @@ static ssize_t write_export(struct file *file, char *buf, size_t size);
- static ssize_t write_unexport(struct file *file, char *buf, size_t size);
- static ssize_t write_getfd(struct file *file, char *buf, size_t size);
- static ssize_t write_getfs(struct file *file, char *buf, size_t size);
-+#endif
- static ssize_t write_filehandle(struct file *file, char *buf, size_t size);
- static ssize_t write_unlock_ip(struct file *file, char *buf, size_t size);
- static ssize_t write_unlock_fs(struct file *file, char *buf, size_t size);
-@@ -76,6 +80,7 @@ static ssize_t write_recoverydir(struct file *file, char *buf, size_t size);
- #endif
- 
- static ssize_t (*write_op[])(struct file *, char *, size_t) = {
-+#ifdef CONFIG_NFSD_DEPRECATED
- 	[NFSD_Svc] = write_svc,
- 	[NFSD_Add] = write_add,
- 	[NFSD_Del] = write_del,
-@@ -83,6 +88,7 @@ static ssize_t (*write_op[])(struct file *, char *, size_t) = {
- 	[NFSD_Unexport] = write_unexport,
- 	[NFSD_Getfd] = write_getfd,
- 	[NFSD_Getfs] = write_getfs,
-+#endif
- 	[NFSD_Fh] = write_filehandle,
- 	[NFSD_FO_UnlockIP] = write_unlock_ip,
- 	[NFSD_FO_UnlockFS] = write_unlock_fs,
-@@ -196,6 +202,7 @@ static const struct file_operations pool_stats_operations = {
-  * payload - write methods
-  */
- 
-+#ifdef CONFIG_NFSD_DEPRECATED
- /**
-  * write_svc - Start kernel's NFSD server
-  *
-@@ -491,6 +498,7 @@ static ssize_t write_getfd(struct file *file, char *buf, size_t size)
-  out:
- 	return err;
- }
-+#endif /* CONFIG_NFSD_DEPRECATED */
- 
- /**
-  * write_unlock_ip - Release all locks used by a client
-@@ -1365,6 +1373,7 @@ static ssize_t write_recoverydir(struct file *file, char *buf, size_t size)
- static int nfsd_fill_super(struct super_block * sb, void * data, int silent)
- {
- 	static struct tree_descr nfsd_files[] = {
-+#ifdef CONFIG_NFSD_DEPRECATED
- 		[NFSD_Svc] = {".svc", &transaction_ops, S_IWUSR},
- 		[NFSD_Add] = {".add", &transaction_ops, S_IWUSR},
- 		[NFSD_Del] = {".del", &transaction_ops, S_IWUSR},
-@@ -1372,6 +1381,7 @@ static int nfsd_fill_super(struct super_block * sb, void * data, int silent)
- 		[NFSD_Unexport] = {".unexport", &transaction_ops, S_IWUSR},
- 		[NFSD_Getfd] = {".getfd", &transaction_ops, S_IWUSR|S_IRUSR},
- 		[NFSD_Getfs] = {".getfs", &transaction_ops, S_IWUSR|S_IRUSR},
-+#endif
- 		[NFSD_List] = {"exports", &exports_operations, S_IRUGO},
- 		[NFSD_Export_features] = {"export_features",
- 					&export_features_operations, S_IRUGO},
+Is there a way to do this that does not introduce the implicit dependency?
 
 
+>> +
+>>  config ROOT_NFS
+>>       bool "Root file system on NFS"
+>>       depends on NFS_FS=y && IP_PNP
+>> diff --git a/fs/nfs/Makefile b/fs/nfs/Makefile
+>> index bb9e773..08a8889 100644
+>> --- a/fs/nfs/Makefile
+>> +++ b/fs/nfs/Makefile
+>> @@ -18,3 +18,6 @@ nfs-$(CONFIG_NFS_V4)        += nfs4proc.o nfs4xdr.o nfs4state.o nfs4renewd.o \
+>>  nfs-$(CONFIG_NFS_V4_1)       += pnfs.o
+>>  nfs-$(CONFIG_SYSCTL) += sysctl.o
+>>  nfs-$(CONFIG_NFS_FSCACHE) += fscache.o fscache-index.o
+>> +
+>> +obj-$(CONFIG_PNFS_FILE_LAYOUT) += nfs_layout_nfsv41_files.o
+>> +nfs_layout_nfsv41_files-y := nfs4filelayout.o
+>> diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+>> new file mode 100644
+>> index 0000000..c685196
+>> --- /dev/null
+>> +++ b/fs/nfs/nfs4filelayout.c
+>> @@ -0,0 +1,89 @@
+>> +/*
+>> + *  Module for the pnfs nfs4 file layout driver.
+>> + *  Defines all I/O and Policy interface operations, plus code
+>> + *  to register itself with the pNFS client.
+>> + *
+>> + *  Copyright (c) 2002
+>> + *  The Regents of the University of Michigan
+>> + *  All Rights Reserved
+>> + *
+>> + *  Dean Hildebrand <dhildebz@umich.edu>
+>> + *
+>> + *  Permission is granted to use, copy, create derivative works, and
+>> + *  redistribute this software and such derivative works for any purpose,
+>> + *  so long as the name of the University of Michigan is not used in
+>> + *  any advertising or publicity pertaining to the use or distribution
+>> + *  of this software without specific, written prior authorization. If
+>> + *  the above copyright notice or any other identification of the
+>> + *  University of Michigan is included in any copy of any portion of
+>> + *  this software, then the disclaimer below must also be included.
+>> + *
+>> + *  This software is provided as is, without representation or warranty
+>> + *  of any kind either express or implied, including without limitation
+>> + *  the implied warranties of merchantability, fitness for a particular
+>> + *  purpose, or noninfringement.  The Regents of the University of
+>> + *  Michigan shall not be liable for any damages, including special,
+>> + *  indirect, incidental, or consequential damages, with respect to any
+>> + *  claim arising out of or in connection with the use of the software,
+>> + *  even if it has been or is hereafter advised of the possibility of
+>> + *  such damages.
+>> + */
+>> +
+>> +#include <linux/nfs_fs.h>
+>> +#include "pnfs.h"
+>> +
+>> +#define NFSDBG_FACILITY         NFSDBG_PNFS_LD
+>> +
+>> +MODULE_LICENSE("GPL");
+>> +MODULE_AUTHOR("Dean Hildebrand <dhildebz@umich.edu>");
+>> +MODULE_DESCRIPTION("The NFSv4 file layout driver");
+>> +
+>> +int
+>> +filelayout_initialize_mountpoint(struct nfs_client *clp)
+>> +{
+>> +     return 0;
+>> +}
+>> +
+>> +int
+>> +filelayout_uninitialize_mountpoint(struct nfs_client *clp)
+>> +{
+>> +     dprintk("--> %s\n", __func__);
+>> +
+>> +     return 0;
+>> +}
+>> +
+>> +struct layoutdriver_io_operations filelayout_io_operations = {
+>
+> Should definitely be declared as 'const' (and possibly 'static').
+>
+
+OK
+
+>> +     .initialize_mountpoint   = filelayout_initialize_mountpoint,
+>> +     .uninitialize_mountpoint = filelayout_uninitialize_mountpoint,
+>> +};
+>> +
+>> +
+>> +struct pnfs_layoutdriver_type filelayout_type = {
+>
+> Ditto.
+
+This includes a list_head field which is set by the generic layer.
+
+>
+>> +     .id = LAYOUT_NFSV4_1_FILES,
+>> +     .name = "LAYOUT_NFSV4_1_FILES",
+>> +     .ld_io_ops = &filelayout_io_operations,
+>
+> Why do we need a separate 'struct layoutdriver_io_operations'? Any
+> reason those can't just be embedded in struct pnfs_layoutdriver_type?
+
+I believe this decision was primarily aesthetics.  However, keeping
+the static io_ops seperate from the variable list_head seems like a
+good idea.
+
+Perhaps having a driver structure that includes the io_ops and static
+portions of pnfs_layoutdriver_type, with the generic layer allocating
+a wrapper structure that is basically:
+struct {
+    struct list_head list;
+    struct pnfs_layoutdriver_type *driver_info;
+}
+
+
+Fred
+
+
+>
+>> +};
+>> +
+>> +static int __init nfs4filelayout_init(void)
+>> +{
+>> +     printk(KERN_INFO "%s: NFSv4 File Layout Driver Registering...\n",
+>> +            __func__);
+>> +
+>> +     /*
+>> +      * Need to register file_operations struct with global list to indicate
+>> +      * that NFS4 file layout is a possible pNFS I/O module
+>> +      */
+>> +     return pnfs_register_layoutdriver(&filelayout_type);
+>> +}
+>> +
+>> +static void __exit nfs4filelayout_exit(void)
+>> +{
+>> +     printk(KERN_INFO "%s: NFSv4 File Layout Driver Unregistering...\n",
+>> +            __func__);
+>> +
+>> +     /* Unregister NFS4 file layout driver with pNFS client*/
+>> +     pnfs_unregister_layoutdriver(&filelayout_type);
+>> +}
+>> +
+>> +module_init(nfs4filelayout_init);
+>> +module_exit(nfs4filelayout_exit);
+>> diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
+>> index 042c2bd..a0f49a3 100644
+>> --- a/include/linux/nfs_fs.h
+>> +++ b/include/linux/nfs_fs.h
+>> @@ -614,6 +614,7 @@ extern void * nfs_root_data(void);
+>>  #define NFSDBG_MOUNT         0x0400
+>>  #define NFSDBG_FSCACHE               0x0800
+>>  #define NFSDBG_PNFS          0x1000
+>> +#define NFSDBG_PNFS_LD               0x2000
+>>  #define NFSDBG_ALL           0xFFFF
+>>
+>>  #ifdef __KERNEL__
+>
+>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
