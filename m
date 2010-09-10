@@ -1,203 +1,58 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:50559 "EHLO mx2.suse.de"
+Received: from mx1.redhat.com ([209.132.183.28]:24958 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752561Ab0IFMdw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 6 Sep 2010 08:33:52 -0400
-Message-ID: <4C84DFA7.7050507@suse.de>
-Date: Mon, 06 Sep 2010 18:03:43 +0530
-From: Suresh Jayaraman <sjayaraman@suse.de>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: Neil Brown <neilb@suse.de>,
-        Linux NFS mailing list <linux-nfs@vger.kernel.org>
-Subject: [RFC][PATCH] nfs: support legacy NFS flock behavior via mount option
-Content-Type: text/plain; charset=UTF-8
+	id S1752976Ab0IJT1W (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 10 Sep 2010 15:27:22 -0400
+Received: from int-mx02.intmail.prod.int.phx2.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
+	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id o8AJRMdO017483
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Fri, 10 Sep 2010 15:27:22 -0400
+Received: from dantu.rdu.redhat.com (dantu.rdu.redhat.com [10.11.228.66])
+	by int-mx02.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id o8AJRIBX018810
+	for <linux-nfs@vger.kernel.org>; Fri, 10 Sep 2010 15:27:21 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 6/9] nfs: eliminate qsilly var from nfs_sillyrename
+Date: Fri, 10 Sep 2010 15:27:15 -0400
+Message-Id: <1284146838-1468-7-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1284146838-1468-1-git-send-email-jlayton@redhat.com>
+References: <1284146838-1468-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-NFS clients since 2.6.12 support flock()locks by emulating the
-BSD-style locks in terms of POSIX byte range locks. So the NFS client
-does not allow to lock the same file using both flock() and fcntl
-byte-range locks.
+The sdentry should already have the same info in d_name.
 
-For some Windows applications which seem to use both share mode locks
-(flock()) and fcntl byte range locks sequentially on the same file,
-the locking is failing as the lock has already been acquired. i.e. the
-flock mapped as posix locks collide with actual byte range locks from
-the same process. The problem was observed on a setup with Windows
-clients accessing Excel files on a Samba exported share which is
-originally a NFS mount from a NetApp filer. Since kernels < 2.6.12 does
-not support flock, what was working (as flock locks were local) in
-older kernels is not working with newer kernels.
-
-This could be seen as a bug in the implementation of the windows
-application or a NFS client regression, but that is debatable.
-In the spirit of not breaking existing setups, this patch adds mount
-options "flock=local" that enables older flock behavior and
-"flock=fcntl" that allows the current flock behavior.
-
-Here's the test program used to test the locking behavior:
-
-/*
- * nfs-lock: Simple program to lock a file using flock and then using fcntl
- * Used to Test flock behavior on NFS (to be run on NFS mounts)
- *      Usage: ./nfs-lock <file> 
- */
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <fcntl.h>
-#include <errno.h>
-#include <sys/file.h>
-
-void usage()
-{
-        fprintf(stdout, "Usage: nfs-lock <file>\n");
-        exit(1);
-}
-
-int main(int argc, char *argv[])
-{
-        char *file = argv[1];
-        struct flock lock;
-        int fd, rc;
-
-        if (argc !=2)
-                usage();
-
-        fd = open(file, O_RDWR);
-        if (fd < 0) {
-                perror("open");
-                return 1;
-        }
-
-        /* acquire flock */
-        printf("nfs-lock: Trying to acquire flock lock\n");
-        rc = flock(fd, LOCK_EX);
-        if (rc)
-                perror("flock");
-
-        memset(&lock, 0, sizeof(lock));
-        lock.l_type = F_WRLCK;
-        printf("nfs-lock: Trying to acquire fcntl lock\n");
-        rc = fcntl(fd, F_SETLK, &lock);
-        if (rc) {
-                perror("fcntl");
-                return 1;
-        }
-        printf("nfs-lock: fcntl obtained successfully on the file\n");
-
-        flock(fd, LOCK_UN);
-        fcntl(fd, F_UNLCK, &lock);
-        close(fd);
-
-        return 0;
-}
-
-Cc: Neil Brown <neilb@suse.de>
-Signed-off-by: Suresh Jayaraman <sjayaraman@suse.de>
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
 ---
- fs/nfs/file.c             |    6 +++++-
- fs/nfs/super.c            |   33 +++++++++++++++++++++++++++++++++
- include/linux/nfs_mount.h |    2 ++
- 3 files changed, 40 insertions(+), 1 deletions(-)
+ fs/nfs/unlink.c |    6 ++----
+ 1 files changed, 2 insertions(+), 4 deletions(-)
 
-diff --git a/fs/nfs/file.c b/fs/nfs/file.c
-index eb51bd6..2384382 100644
---- a/fs/nfs/file.c
-+++ b/fs/nfs/file.c
-@@ -825,12 +825,16 @@ out_err:
-  */
- static int nfs_flock(struct file *filp, int cmd, struct file_lock *fl)
- {
-+	struct inode *inode = filp->f_mapping->host;
-+
- 	dprintk("NFS: flock(%s/%s, t=%x, fl=%x)\n",
- 			filp->f_path.dentry->d_parent->d_name.name,
- 			filp->f_path.dentry->d_name.name,
- 			fl->fl_type, fl->fl_flags);
+diff --git a/fs/nfs/unlink.c b/fs/nfs/unlink.c
+index 42cadd1..b9e8b36 100644
+--- a/fs/nfs/unlink.c
++++ b/fs/nfs/unlink.c
+@@ -328,7 +328,6 @@ nfs_sillyrename(struct inode *dir, struct dentry *dentry)
+ 	const int      countersize = sizeof(sillycounter)*2;
+ 	const int      slen        = sizeof(".nfs")+fileidsize+countersize-1;
+ 	char           silly[slen+1];
+-	struct qstr    qsilly;
+ 	struct dentry *sdentry;
+ 	int            error = -EIO;
  
--	if (!(fl->fl_flags & FL_FLOCK))
-+	/* flock is considered local if mounted with "-o flock=local" */
-+	if ((NFS_SERVER(inode)->flags & NFS_MOUNT_FLOCK_LOCAL) ||
-+			(!(fl->fl_flags & FL_FLOCK)))
- 		return -ENOLCK;
+@@ -371,9 +370,8 @@ nfs_sillyrename(struct inode *dir, struct dentry *dentry)
+ 			goto out;
+ 	} while(sdentry->d_inode != NULL); /* need negative lookup */
  
- 	/* We're simulating flock() locks using posix locks on the server */
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index ec3966e..65c780d 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -100,6 +100,7 @@ enum {
- 	Opt_addr, Opt_mountaddr, Opt_clientaddr,
- 	Opt_lookupcache,
- 	Opt_fscache_uniq,
-+	Opt_flock,
- 
- 	/* Special mount options */
- 	Opt_userspace, Opt_deprecated, Opt_sloppy,
-@@ -171,6 +172,7 @@ static const match_table_t nfs_mount_option_tokens = {
- 
- 	{ Opt_lookupcache, "lookupcache=%s" },
- 	{ Opt_fscache_uniq, "fsc=%s" },
-+	{ Opt_flock, "flock=%s" },
- 
- 	{ Opt_err, NULL }
- };
-@@ -236,6 +238,18 @@ static match_table_t nfs_lookupcache_tokens = {
- 	{ Opt_lookupcache_err, NULL }
- };
- 
-+enum {
-+	Opt_flock_local, Opt_flock_fcntl,
-+	Opt_flock_err
-+};
-+
-+static match_table_t nfs_flock_tokens = {
-+	{ Opt_flock_local, "local" },
-+	{ Opt_flock_fcntl, "fcntl" },
-+
-+	{ Opt_flock_err, NULL }
-+};
-+
- 
- static void nfs_umount_begin(struct super_block *);
- static int  nfs_statfs(struct dentry *, struct kstatfs *);
-@@ -1412,6 +1426,25 @@ static int nfs_parse_mount_options(char *raw,
- 			mnt->fscache_uniq = string;
- 			mnt->options |= NFS_OPTION_FSCACHE;
- 			break;
-+		case Opt_flock:
-+			string = match_strdup(args);
-+			if (string == NULL)
-+				goto out_nomem;
-+			token = match_token(string, nfs_flock_tokens, args);
-+			kfree(string);
-+			switch (token) {
-+				case Opt_flock_local:
-+					mnt->flags |= NFS_MOUNT_FLOCK_LOCAL;
-+					break;
-+				case Opt_flock_fcntl:
-+					mnt->flags &= ~NFS_MOUNT_FLOCK_LOCAL;
-+					break;
-+				default:
-+					dfprintk(MOUNT, "NFS:	invalid	"
-+							"flock argument\n");
-+					return 0;
-+			};
-+			break;
- 
- 		/*
- 		 * Special options
-diff --git a/include/linux/nfs_mount.h b/include/linux/nfs_mount.h
-index 5d59ae8..ee08dae 100644
---- a/include/linux/nfs_mount.h
-+++ b/include/linux/nfs_mount.h
-@@ -71,4 +71,6 @@ struct nfs_mount_data {
- #define NFS_MOUNT_NORESVPORT		0x40000
- #define NFS_MOUNT_LEGACY_INTERFACE	0x80000
- 
-+#define NFS_MOUNT_FLOCK_LOCAL	0x100000
-+
- #endif
+-	qsilly.name = silly;
+-	qsilly.len  = strlen(silly);
+-	error = NFS_PROTO(dir)->rename(dir, &dentry->d_name, dir, &qsilly);
++	error = NFS_PROTO(dir)->rename(dir, &dentry->d_name, dir,
++					&sdentry->d_name);
+ 	if (dentry->d_inode)
+ 		nfs_mark_for_revalidate(dentry->d_inode);
+ 	if (!error) {
+-- 
+1.7.1
+
