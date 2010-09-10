@@ -1,32 +1,107 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from exprod6og103.obsmtp.com ([64.18.1.185]:36803 "HELO
-	exprod6og103.obsmtp.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1754150Ab0IAJrL convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 1 Sep 2010 05:47:11 -0400
-Content-Type: text/plain;
-	charset="us-ascii"
-Subject: NFS version4 maximum on-the-wire data size.
-Date: Wed, 1 Sep 2010 05:39:59 -0400
-Message-ID: <D3F292ADF945FB49B35E96C94C2061B90CFB48D0@nsmail.netscout.com>
-From: "Tayade, Nilesh" <Nilesh.Tayade@netscout.com>
-To: <linux-nfs@vger.kernel.org>
+Received: from mail-yx0-f174.google.com ([209.85.213.174]:48864 "EHLO
+	mail-yx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754850Ab0IJUJn (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Sep 2010 16:09:43 -0400
+Received: by yxp4 with SMTP id 4so1305854yxp.19
+        for <linux-nfs@vger.kernel.org>; Fri, 10 Sep 2010 13:09:42 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 06/11] NFS: Move and update xdr_encode_foo() functions that
+	we're keeping
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Date: Fri, 10 Sep 2010 16:09:39 -0400
+Message-ID: <20100910200938.13321.52944.stgit@seurat.1015granger.net>
+In-Reply-To: <20100910200512.13321.55605.stgit@seurat.1015granger.net>
+References: <20100910200512.13321.55605.stgit@seurat.1015granger.net>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Hi,
+Clean up.
 
-I am unable to get the exact count for the amount of on-the-wire data
-size that NFSv4 supports. 
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
 
-I could get exact figures in case of NFSv3 (http://nfs.sourceforge.net).
-It's 60KB when NFSv3 is used over UDP and implementation dependent in
-case it is used over TCP. Any idea about NFSv4 statistics? 
+ fs/nfs/nfs2xdr.c |   59 ++++++++++++++++++++++++++++++------------------------
+ 1 files changed, 33 insertions(+), 26 deletions(-)
 
-Any pointers would be appreciated.
+diff --git a/fs/nfs/nfs2xdr.c b/fs/nfs/nfs2xdr.c
+index cd9e2d8..0a3f830 100644
+--- a/fs/nfs/nfs2xdr.c
++++ b/fs/nfs/nfs2xdr.c
+@@ -91,32 +91,6 @@ xdr_decode_fhandle(__be32 *p, struct nfs_fh *fhandle)
+ }
+ 
+ static inline __be32*
+-xdr_encode_time(__be32 *p, const struct timespec *timep)
+-{
+-	*p++ = htonl(timep->tv_sec);
+-	/* Convert nanoseconds into microseconds */
+-	*p++ = htonl(timep->tv_nsec ? timep->tv_nsec / 1000 : 0);
+-	return p;
+-}
+-
+-static inline __be32*
+-xdr_encode_current_server_time(__be32 *p, const struct timespec *timep)
+-{
+-	/*
+-	 * Passing the invalid value useconds=1000000 is a
+-	 * Sun convention for "set to current server time".
+-	 * It's needed to make permissions checks for the
+-	 * "touch" program across v2 mounts to Solaris and
+-	 * Irix boxes work correctly. See description of
+-	 * sattr in section 6.1 of "NFS Illustrated" by
+-	 * Brent Callaghan, Addison-Wesley, ISBN 0-201-32750-5
+-	 */
+-	*p++ = htonl(timep->tv_sec);
+-	*p++ = htonl(1000000);
+-	return p;
+-}
+-
+-static inline __be32*
+ xdr_decode_time(__be32 *p, struct timespec *timep)
+ {
+ 	timep->tv_sec = ntohl(*p++);
+@@ -180,6 +154,39 @@ static void encode_fhandle(struct xdr_stream *xdr, const struct nfs_fh *fh)
+ }
+ 
+ /*
++ * 2.3.4.  timeval
++ *
++ *	struct timeval {
++ *		unsigned int seconds;
++ *		unsigned int useconds;
++ *	};
++ */
++static __be32 *xdr_encode_time(__be32 *p, const struct timespec *timep)
++{
++	*p++ = cpu_to_be32(timep->tv_sec);
++	if (timep->tv_nsec != 0)
++		*p++ = cpu_to_be32(timep->tv_nsec / NSEC_PER_USEC);
++	else
++		*p++ = cpu_to_be32(0);
++	return p;
++}
++
++/*
++ * Passing the invalid value useconds=1000000 is a Sun convention for
++ * "set to current server time".  It's needed to make permissions checks
++ * for the "touch" program across v2 mounts to Solaris and Irix servers
++ * work correctly.  See description of sattr in section 6.1 of "NFS
++ * Illustrated" by Brent Callaghan, Addison-Wesley, ISBN 0-201-32750-5.
++ */
++static __be32 *xdr_encode_current_server_time(__be32 *p,
++					      const struct timespec *timep)
++{
++	*p++ = cpu_to_be32(timep->tv_sec);
++	*p++ = cpu_to_be32(1000000);
++	return p;
++}
++
++/*
+  * 2.3.6.  sattr
+  *
+  *	struct sattr {
 
-[Please CC me in the email, as I am not subscribed to the list].
-
---
-Thanks,
-Nilesh
