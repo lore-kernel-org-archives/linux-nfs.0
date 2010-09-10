@@ -1,142 +1,149 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:24740 "EHLO
-	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1751412Ab0I2LLa (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 29 Sep 2010 07:11:30 -0400
-From: Benny Halevy <bhalevy@panasas.com>
+Received: from mx1.redhat.com ([209.132.183.28]:65052 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754408Ab0IJT1X (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 10 Sep 2010 15:27:23 -0400
+Received: from int-mx02.intmail.prod.int.phx2.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
+	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id o8AJRN04009493
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Fri, 10 Sep 2010 15:27:23 -0400
+Received: from dantu.rdu.redhat.com (dantu.rdu.redhat.com [10.11.228.66])
+	by int-mx02.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id o8AJRIBZ018810
+	for <linux-nfs@vger.kernel.org>; Fri, 10 Sep 2010 15:27:22 -0400
+From: Jeff Layton <jlayton@redhat.com>
 To: linux-nfs@vger.kernel.org
-Subject: [PATCH 11/15] SQUASHME: pnfsblock: use nfs4_deviceid
-Date: Wed, 29 Sep 2010 13:11:28 +0200
-Message-Id: <1285758688-27119-1-git-send-email-bhalevy@panasas.com>
-In-Reply-To: <4CA31DC3.8070300@panasas.com>
-References: <4CA31DC3.8070300@panasas.com>
+Subject: [PATCH 8/9] nfs: add rename_done nfs_rpc_op
+Date: Fri, 10 Sep 2010 15:27:17 -0400
+Message-Id: <1284146838-1468-9-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1284146838-1468-1-git-send-email-jlayton@redhat.com>
+References: <1284146838-1468-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
 MIME-Version: 1.0
 
----
- fs/nfs/blocklayout/blocklayout.c    |    2 +-
- fs/nfs/blocklayout/blocklayout.h    |   10 +++++-----
- fs/nfs/blocklayout/blocklayoutdev.c |    8 ++++----
- fs/nfs/blocklayout/extents.c        |    2 +-
- 4 files changed, 11 insertions(+), 11 deletions(-)
+...for processing the rename reply.
 
-diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
-index f49c68c..071e7ef 100644
---- a/fs/nfs/blocklayout/blocklayout.c
-+++ b/fs/nfs/blocklayout/blocklayout.c
-@@ -683,7 +683,7 @@ static void free_blk_mountid(struct block_mount_id *mid)
-  */
- static struct pnfs_block_dev *
- nfs4_blk_get_deviceinfo(struct nfs_server *server, const struct nfs_fh *fh,
--			struct pnfs_deviceid *d_id,
-+			struct nfs4_deviceid *d_id,
- 			struct list_head *sdlist)
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/nfs/nfs3proc.c       |   16 ++++++++++++++++
+ fs/nfs/nfs4proc.c       |   18 ++++++++++++++++++
+ fs/nfs/proc.c           |   12 ++++++++++++
+ include/linux/nfs_xdr.h |    1 +
+ 4 files changed, 47 insertions(+), 0 deletions(-)
+
+diff --git a/fs/nfs/nfs3proc.c b/fs/nfs/nfs3proc.c
+index 0654177..b072519 100644
+--- a/fs/nfs/nfs3proc.c
++++ b/fs/nfs/nfs3proc.c
+@@ -456,6 +456,21 @@ nfs3_proc_rename_setup(struct rpc_message *msg, struct inode *dir)
+ }
+ 
+ static int
++nfs3_proc_rename_done(struct rpc_task *task, struct inode *old_dir,
++		      struct inode *new_dir)
++{
++	struct nfs_renameres *res;
++
++	if (nfs3_async_handle_jukebox(task, old_dir))
++		return 0;
++	res = task->tk_msg.rpc_resp;
++
++	nfs_post_op_update_inode(old_dir, res->old_fattr);
++	nfs_post_op_update_inode(new_dir, res->new_fattr);
++	return 1;
++}
++
++static int
+ nfs3_proc_rename(struct inode *old_dir, struct qstr *old_name,
+ 		 struct inode *new_dir, struct qstr *new_name)
  {
- 	struct pnfs_device *dev;
-diff --git a/fs/nfs/blocklayout/blocklayout.h b/fs/nfs/blocklayout/blocklayout.h
-index fc0fb23..d62e3f9 100644
---- a/fs/nfs/blocklayout/blocklayout.h
-+++ b/fs/nfs/blocklayout/blocklayout.h
-@@ -55,7 +55,7 @@ struct block_mount_id {
+@@ -860,6 +875,7 @@ const struct nfs_rpc_ops nfs_v3_clientops = {
+ 	.unlink_done	= nfs3_proc_unlink_done,
+ 	.rename		= nfs3_proc_rename,
+ 	.rename_setup	= nfs3_proc_rename_setup,
++	.rename_done	= nfs3_proc_rename_done,
+ 	.link		= nfs3_proc_link,
+ 	.symlink	= nfs3_proc_symlink,
+ 	.mkdir		= nfs3_proc_mkdir,
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 011dc90..9c4160c 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -2691,6 +2691,23 @@ static int nfs4_proc_rename_setup(struct rpc_message *msg, struct inode *dir)
+ 	return -ENOMEM;
+ }
  
- struct pnfs_block_dev {
- 	struct list_head		bm_node;
--	struct pnfs_deviceid		bm_mdevid;    /* associated devid */
-+	struct nfs4_deviceid		bm_mdevid;    /* associated devid */
- 	struct block_device		*bm_mdev;     /* meta device itself */
- };
- 
-@@ -132,7 +132,7 @@ struct pnfs_inval_tracking {
- struct pnfs_block_extent {
- 	struct kref	be_refcnt;
- 	struct list_head be_node;	/* link into lseg list */
--	struct pnfs_deviceid be_devid;  /* STUB - remevable??? */
-+	struct nfs4_deviceid be_devid;  /* STUB - remevable??? */
- 	struct block_device *be_mdev;
- 	sector_t	be_f_offset;	/* the starting offset in the file */
- 	sector_t	be_length;	/* the size of the extent */
-@@ -144,7 +144,7 @@ struct pnfs_block_extent {
- /* Shortened extent used by LAYOUTCOMMIT */
- struct pnfs_block_short_extent {
- 	struct list_head bse_node;
--	struct pnfs_deviceid bse_devid;	/* STUB - removable??? */
-+	struct nfs4_deviceid bse_devid;	/* STUB - removable??? */
- 	struct block_device *bse_mdev;
- 	sector_t	bse_f_offset;	/* the starting offset in the file */
- 	sector_t	bse_length;	/* the size of the extent */
-@@ -226,7 +226,7 @@ uint32_t *blk_overflow(uint32_t *p, uint32_t *end, size_t nbytes);
- 	memcpy((x), p, nbytes);                 \
- 	p += XDR_QUADLEN(nbytes);               \
- } while (0)
--#define READ_DEVID(x)	COPYMEM((x)->data, NFS4_PNFS_DEVICEID4_SIZE)
-+#define READ_DEVID(x)	COPYMEM((x)->data, NFS4_DEVICEID4_SIZE)
- #define READ_SECTOR(x)     do { \
- 	READ64(tmp); \
- 	if (tmp & 0x1ff) { \
-@@ -248,7 +248,7 @@ uint32_t *blk_overflow(uint32_t *p, uint32_t *end, size_t nbytes);
- #define WRITEMEM(ptr, nbytes)     do {                          \
- 	p = xdr_encode_opaque_fixed(p, ptr, nbytes);	\
- } while (0)
--#define WRITE_DEVID(x)  WRITEMEM((x)->data, NFS4_PNFS_DEVICEID4_SIZE)
-+#define WRITE_DEVID(x)  WRITEMEM((x)->data, NFS4_DEVICEID4_SIZE)
- 
- /* blocklayoutdev.c */
- struct block_device *nfs4_blkdev_get(dev_t dev);
-diff --git a/fs/nfs/blocklayout/blocklayoutdev.c b/fs/nfs/blocklayout/blocklayoutdev.c
-index e9ea86a..17bd25a 100644
---- a/fs/nfs/blocklayout/blocklayoutdev.c
-+++ b/fs/nfs/blocklayout/blocklayoutdev.c
-@@ -133,7 +133,7 @@ nfs4_blk_decode_device(struct nfs_server *server,
- 		goto out_err;
- 
- 	rv->bm_mdev = bd;
--	memcpy(&rv->bm_mdevid, &dev->dev_id, sizeof(struct pnfs_deviceid));
-+	memcpy(&rv->bm_mdevid, &dev->dev_id, sizeof(struct nfs4_deviceid));
- 	dprintk("%s Created device %s with bd_block_size %u\n",
- 		__func__,
- 		bd->bd_disk->disk_name,
-@@ -153,7 +153,7 @@ out_err:
- 
- /* Map deviceid returned by the server to constructed block_device */
- static struct block_device *translate_devid(struct pnfs_layout_hdr *lo,
--					    struct pnfs_deviceid *id)
-+					    struct nfs4_deviceid *id)
++static int nfs4_proc_rename_done(struct rpc_task *task, struct inode *old_dir,
++				 struct inode *new_dir)
++{
++	struct nfs_renameres *res = task->tk_msg.rpc_resp;
++
++	if (!nfs4_sequence_done(task, &res->seq_res))
++		return 0;
++	if (nfs4_async_handle_error(task, res->server, NULL) == -EAGAIN)
++		return 0;
++
++	update_changeattr(old_dir, &res->old_cinfo);
++	nfs_post_op_update_inode(old_dir, res->old_fattr);
++	update_changeattr(new_dir, &res->new_cinfo);
++	nfs_post_op_update_inode(new_dir, res->new_fattr);
++	return 1;
++}
++
+ static int _nfs4_proc_rename(struct inode *old_dir, struct qstr *old_name,
+ 		struct inode *new_dir, struct qstr *new_name)
  {
- 	struct block_device *rv = NULL;
- 	struct block_mount_id *mid;
-@@ -164,7 +164,7 @@ static struct block_device *translate_devid(struct pnfs_layout_hdr *lo,
- 	spin_lock(&mid->bm_lock);
- 	list_for_each_entry(dev, &mid->bm_devlist, bm_node) {
- 		if (memcmp(id->data, dev->bm_mdevid.data,
--			   NFS4_PNFS_DEVICEID4_SIZE) == 0) {
-+			   NFS4_DEVICEID4_SIZE) == 0) {
- 			rv = dev->bm_mdev;
- 			goto out;
- 		}
-@@ -254,7 +254,7 @@ nfs4_blk_process_layoutget(struct pnfs_layout_hdr *lo,
- 	READ32(count);
+@@ -5464,6 +5481,7 @@ const struct nfs_rpc_ops nfs_v4_clientops = {
+ 	.unlink_done	= nfs4_proc_unlink_done,
+ 	.rename		= nfs4_proc_rename,
+ 	.rename_setup	= nfs4_proc_rename_setup,
++	.rename_done	= nfs4_proc_rename_done,
+ 	.link		= nfs4_proc_link,
+ 	.symlink	= nfs4_proc_symlink,
+ 	.mkdir		= nfs4_proc_mkdir,
+diff --git a/fs/nfs/proc.c b/fs/nfs/proc.c
+index 48410f9..ba28dd7 100644
+--- a/fs/nfs/proc.c
++++ b/fs/nfs/proc.c
+@@ -373,6 +373,17 @@ nfs_proc_rename_setup(struct rpc_message *msg, struct inode *dir)
+ }
  
- 	dprintk("%s enter, number of extents %i\n", __func__, count);
--	BLK_READBUF(p, end, (28 + NFS4_PNFS_DEVICEID4_SIZE) * count);
-+	BLK_READBUF(p, end, (28 + NFS4_DEVICEID4_SIZE) * count);
- 
- 	/* Decode individual extents, putting them in temporary
- 	 * staging area until whole layout is decoded to make error
-diff --git a/fs/nfs/blocklayout/extents.c b/fs/nfs/blocklayout/extents.c
-index 20cc863..40dff82 100644
---- a/fs/nfs/blocklayout/extents.c
-+++ b/fs/nfs/blocklayout/extents.c
-@@ -794,7 +794,7 @@ _prep_new_extent(struct pnfs_block_extent *new,
+ static int
++nfs_proc_rename_done(struct rpc_task *task, struct inode *old_dir,
++		     struct inode *new_dir)
++{
++	if (nfs_async_handle_expired_key(task))
++		return 0;
++	nfs_mark_for_revalidate(old_dir);
++	nfs_mark_for_revalidate(new_dir);
++	return 1;
++}
++
++static int
+ nfs_proc_rename(struct inode *old_dir, struct qstr *old_name,
+ 		struct inode *new_dir, struct qstr *new_name)
  {
- 	kref_init(&new->be_refcnt);
- 	/* don't need to INIT_LIST_HEAD(&new->be_node) */
--	memcpy(&new->be_devid, &orig->be_devid, sizeof(struct pnfs_deviceid));
-+	memcpy(&new->be_devid, &orig->be_devid, sizeof(struct nfs4_deviceid));
- 	new->be_mdev = orig->be_mdev;
- 	new->be_f_offset = offset;
- 	new->be_length = length;
+@@ -711,6 +722,7 @@ const struct nfs_rpc_ops nfs_v2_clientops = {
+ 	.unlink_done	= nfs_proc_unlink_done,
+ 	.rename		= nfs_proc_rename,
+ 	.rename_setup	= nfs_proc_rename_setup,
++	.rename_done	= nfs_proc_rename_done,
+ 	.link		= nfs_proc_link,
+ 	.symlink	= nfs_proc_symlink,
+ 	.mkdir		= nfs_proc_mkdir,
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index d470751..97f7eaa 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -1019,6 +1019,7 @@ struct nfs_rpc_ops {
+ 	int	(*rename)  (struct inode *, struct qstr *,
+ 			    struct inode *, struct qstr *);
+ 	int	(*rename_setup)  (struct rpc_message *msg, struct inode *dir);
++	int	(*rename_done) (struct rpc_task *task, struct inode *old_dir, struct inode *new_dir);
+ 	int	(*link)    (struct inode *, struct inode *, struct qstr *);
+ 	int	(*symlink) (struct inode *, struct dentry *, struct page *,
+ 			    unsigned int, struct iattr *);
 -- 
-1.7.2.3
+1.7.1
 
