@@ -1,306 +1,497 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:43301 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755016Ab0I3SPu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 30 Sep 2010 14:15:50 -0400
-From: David Howells <dhowells@redhat.com>
-Subject: [PATCH 04/17] CIFS: Use d_automount() rather than abusing
-	follow_link()
-To: viro@ftp.linux.org.uk, jmoyer@redhat.com
-Cc: linux-fs@vger.kernel.org, autofs@linux.kernel.org,
-        linux-kernel@vger.kernel.org, linux-afs@lists.infradead.org,
-        linux-nfs@vger.kernel.org, linux-cifs@vger.kernel.org,
-        David Howells <dhowells@redhat.com>, Steve French <sfrench@samba.org>
-Date: Thu, 30 Sep 2010 19:15:16 +0100
-Message-ID: <20100930181515.30939.57129.stgit@warthog.procyon.org.uk>
-In-Reply-To: <20100930181455.30939.53914.stgit@warthog.procyon.org.uk>
-References: <20100930181455.30939.53914.stgit@warthog.procyon.org.uk>
+Received: from mail-yw0-f46.google.com ([209.85.213.46]:49658 "EHLO
+	mail-yw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754700Ab0IJUDz (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Sep 2010 16:03:55 -0400
+Received: by ywh1 with SMTP id 1so1307381ywh.19
+        for <linux-nfs@vger.kernel.org>; Fri, 10 Sep 2010 13:03:54 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 4/6] NFS: Clean up nfsroot.c
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Date: Fri, 10 Sep 2010 16:03:51 -0400
+Message-ID: <20100910200351.13167.67506.stgit@seurat.1015granger.net>
+In-Reply-To: <20100910200001.13167.61153.stgit@seurat.1015granger.net>
+References: <20100910200001.13167.61153.stgit@seurat.1015granger.net>
 Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Make CIFS use the new d_automount() dentry operation rather than abusing
-follow_link() on directories.
+Clean up: now that mount option parsing for nfsroot is handled
+in fs/nfs/super.c, remove code in fs/nfs/nfsroot.c that is no
+longer used.  This includes code that constructs the legacy
+nfs_mount_data structure, and code that does a MNT call to the
+server.
 
-[NOTE: THIS IS UNTESTED!]
-
-[Question:  Why does cifs_dfs_do_refmount() when the caller has already done
-	    that and could pass the result through?]
-
-Signed-off-by: David Howells <dhowells@redhat.com>
-Cc: Steve French <sfrench@samba.org>
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- fs/cifs/cifs_dfs_ref.c |  134 +++++++++++++++++++++++-------------------------
- fs/cifs/cifsfs.h       |    6 ++
- fs/cifs/dir.c          |    2 +
- fs/cifs/inode.c        |    8 ++-
- 4 files changed, 78 insertions(+), 72 deletions(-)
+ fs/nfs/nfsroot.c |  419 ------------------------------------------------------
+ 1 files changed, 1 insertions(+), 418 deletions(-)
 
-diff --git a/fs/cifs/cifs_dfs_ref.c b/fs/cifs/cifs_dfs_ref.c
-index d6ced7a..8fc4943 100644
---- a/fs/cifs/cifs_dfs_ref.c
-+++ b/fs/cifs/cifs_dfs_ref.c
-@@ -256,35 +256,6 @@ static struct vfsmount *cifs_dfs_do_refmount(struct cifs_sb_info *cifs_sb,
+diff --git a/fs/nfs/nfsroot.c b/fs/nfs/nfsroot.c
+index cb4a6bd..8e7d623 100644
+--- a/fs/nfs/nfsroot.c
++++ b/fs/nfs/nfsroot.c
+@@ -71,22 +71,12 @@
  
- }
+ #include <linux/types.h>
+ #include <linux/string.h>
+-#include <linux/kernel.h>
+-#include <linux/time.h>
+-#include <linux/fs.h>
+ #include <linux/init.h>
+-#include <linux/sunrpc/clnt.h>
+-#include <linux/sunrpc/xprtsock.h>
+ #include <linux/nfs.h>
+ #include <linux/nfs_fs.h>
+-#include <linux/nfs_mount.h>
+-#include <linux/in.h>
+-#include <linux/major.h>
+ #include <linux/utsname.h>
+-#include <linux/inet.h>
+ #include <linux/root_dev.h>
+ #include <net/ipconfig.h>
+-#include <linux/parser.h>
  
--static int add_mount_helper(struct vfsmount *newmnt, struct nameidata *nd,
--				struct list_head *mntlist)
--{
--	/* stolen from afs code */
--	int err;
+ #include "internal.h"
+ 
+@@ -94,9 +84,6 @@
+ #undef NFSROOT_DEBUG
+ #define NFSDBG_FACILITY NFSDBG_ROOT
+ 
+-/* Default port to use if server is not running a portmapper */
+-#define NFS_MNT_PORT	627
 -
--	mntget(newmnt);
--	err = do_add_mount(newmnt, &nd->path, nd->path.mnt->mnt_flags | MNT_SHRINKABLE, mntlist);
--	switch (err) {
--	case 0:
--		path_put(&nd->path);
--		nd->path.mnt = newmnt;
--		nd->path.dentry = dget(newmnt->mnt_root);
--		schedule_delayed_work(&cifs_dfs_automount_task,
--				      cifs_dfs_mountpoint_expiry_timeout);
--		break;
--	case -EBUSY:
--		/* someone else made a mount here whilst we were busy */
--		while (d_mountpoint(nd->path.dentry) &&
--		       follow_down(&nd->path))
--			;
--		err = 0;
--	default:
--		mntput(newmnt);
--		break;
+ /* Default path we try to mount. "%s" gets replaced by our IP address */
+ #define NFS_ROOT		"/tftpboot/%s"
+ 
+@@ -107,7 +94,7 @@ static char nfs_root_parms[256] __initdata = "";
+ static char nfs_root_options[256] __initdata = "";
+ 
+ /* Address of NFS server */
+-static __be32 servaddr __initdata = 0;
++static __be32 servaddr __initdata = htonl(INADDR_NONE);
+ 
+ /* Name of directory to mount */
+ static char nfs_export_path[NFS_MAXPATHLEN + 1] __initdata = "";
+@@ -115,279 +102,6 @@ static char nfs_export_path[NFS_MAXPATHLEN + 1] __initdata = "";
+ /* server:export path string passed to super.c */
+ static char nfs_root_device[NFS_MAXPATHLEN + 1] __initdata = "";
+ 
+-/* NFS-related data */
+-static struct nfs_mount_data nfs_data __initdata = { 0, };/* NFS mount info */
+-static int nfs_port __initdata = 0;		/* Port to connect to for NFS */
+-static int mount_port __initdata = 0;		/* Mount daemon port number */
+-
+-
+-/***************************************************************************
+-
+-			     Parsing of options
+-
+- ***************************************************************************/
+-
+-enum {
+-	/* Options that take integer arguments */
+-	Opt_port, Opt_rsize, Opt_wsize, Opt_timeo, Opt_retrans, Opt_acregmin,
+-	Opt_acregmax, Opt_acdirmin, Opt_acdirmax,
+-	/* Options that take no arguments */
+-	Opt_soft, Opt_hard, Opt_intr,
+-	Opt_nointr, Opt_posix, Opt_noposix, Opt_cto, Opt_nocto, Opt_ac, 
+-	Opt_noac, Opt_lock, Opt_nolock, Opt_v2, Opt_v3, Opt_udp, Opt_tcp,
+-	Opt_acl, Opt_noacl,
+-	/* Error token */
+-	Opt_err
+-};
+-
+-static const match_table_t tokens __initconst = {
+-	{Opt_port, "port=%u"},
+-	{Opt_rsize, "rsize=%u"},
+-	{Opt_wsize, "wsize=%u"},
+-	{Opt_timeo, "timeo=%u"},
+-	{Opt_retrans, "retrans=%u"},
+-	{Opt_acregmin, "acregmin=%u"},
+-	{Opt_acregmax, "acregmax=%u"},
+-	{Opt_acdirmin, "acdirmin=%u"},
+-	{Opt_acdirmax, "acdirmax=%u"},
+-	{Opt_soft, "soft"},
+-	{Opt_hard, "hard"},
+-	{Opt_intr, "intr"},
+-	{Opt_nointr, "nointr"},
+-	{Opt_posix, "posix"},
+-	{Opt_noposix, "noposix"},
+-	{Opt_cto, "cto"},
+-	{Opt_nocto, "nocto"},
+-	{Opt_ac, "ac"},
+-	{Opt_noac, "noac"},
+-	{Opt_lock, "lock"},
+-	{Opt_nolock, "nolock"},
+-	{Opt_v2, "nfsvers=2"},
+-	{Opt_v2, "v2"},
+-	{Opt_v3, "nfsvers=3"},
+-	{Opt_v3, "v3"},
+-	{Opt_udp, "proto=udp"},
+-	{Opt_udp, "udp"},
+-	{Opt_tcp, "proto=tcp"},
+-	{Opt_tcp, "tcp"},
+-	{Opt_acl, "acl"},
+-	{Opt_noacl, "noacl"},
+-	{Opt_err, NULL}
+-	
+-};
+-
+-/*
+- *  Parse option string.
+- */
+-
+-static int __init root_nfs_parse(char *name, char *buf)
+-{
+-
+-	char *p;
+-	substring_t args[MAX_OPT_ARGS];
+-	int option;
+-
+-	if (!name)
+-		return 1;
+-
+-	/* Set the NFS remote path */
+-	p = strsep(&name, ",");
+-	if (p[0] != '\0' && strcmp(p, "default") != 0)
+-		strlcpy(buf, p, NFS_MAXPATHLEN);
+-
+-	while ((p = strsep (&name, ",")) != NULL) {
+-		int token; 
+-		if (!*p)
+-			continue;
+-		token = match_token(p, tokens, args);
+-
+-		/* %u tokens only. Beware if you add new tokens! */
+-		if (token < Opt_soft && match_int(&args[0], &option))
+-			return 0;
+-		switch (token) {
+-			case Opt_port:
+-				nfs_port = option;
+-				break;
+-			case Opt_rsize:
+-				nfs_data.rsize = option;
+-				break;
+-			case Opt_wsize:
+-				nfs_data.wsize = option;
+-				break;
+-			case Opt_timeo:
+-				nfs_data.timeo = option;
+-				break;
+-			case Opt_retrans:
+-				nfs_data.retrans = option;
+-				break;
+-			case Opt_acregmin:
+-				nfs_data.acregmin = option;
+-				break;
+-			case Opt_acregmax:
+-				nfs_data.acregmax = option;
+-				break;
+-			case Opt_acdirmin:
+-				nfs_data.acdirmin = option;
+-				break;
+-			case Opt_acdirmax:
+-				nfs_data.acdirmax = option;
+-				break;
+-			case Opt_soft:
+-				nfs_data.flags |= NFS_MOUNT_SOFT;
+-				break;
+-			case Opt_hard:
+-				nfs_data.flags &= ~NFS_MOUNT_SOFT;
+-				break;
+-			case Opt_intr:
+-			case Opt_nointr:
+-				break;
+-			case Opt_posix:
+-				nfs_data.flags |= NFS_MOUNT_POSIX;
+-				break;
+-			case Opt_noposix:
+-				nfs_data.flags &= ~NFS_MOUNT_POSIX;
+-				break;
+-			case Opt_cto:
+-				nfs_data.flags &= ~NFS_MOUNT_NOCTO;
+-				break;
+-			case Opt_nocto:
+-				nfs_data.flags |= NFS_MOUNT_NOCTO;
+-				break;
+-			case Opt_ac:
+-				nfs_data.flags &= ~NFS_MOUNT_NOAC;
+-				break;
+-			case Opt_noac:
+-				nfs_data.flags |= NFS_MOUNT_NOAC;
+-				break;
+-			case Opt_lock:
+-				nfs_data.flags &= ~NFS_MOUNT_NONLM;
+-				break;
+-			case Opt_nolock:
+-				nfs_data.flags |= NFS_MOUNT_NONLM;
+-				break;
+-			case Opt_v2:
+-				nfs_data.flags &= ~NFS_MOUNT_VER3;
+-				break;
+-			case Opt_v3:
+-				nfs_data.flags |= NFS_MOUNT_VER3;
+-				break;
+-			case Opt_udp:
+-				nfs_data.flags &= ~NFS_MOUNT_TCP;
+-				break;
+-			case Opt_tcp:
+-				nfs_data.flags |= NFS_MOUNT_TCP;
+-				break;
+-			case Opt_acl:
+-				nfs_data.flags &= ~NFS_MOUNT_NOACL;
+-				break;
+-			case Opt_noacl:
+-				nfs_data.flags |= NFS_MOUNT_NOACL;
+-				break;
+-			default:
+-				printk(KERN_WARNING "Root-NFS: unknown "
+-					"option: %s\n", p);
+-				return 0;
+-		}
 -	}
--	return err;
+-
+-	return 1;
 -}
 -
- static void dump_referral(const struct dfs_info3_param *ref)
- {
- 	cFYI(1, "DFS: ref path: %s", ref->path_name);
-@@ -294,34 +265,30 @@ static void dump_referral(const struct dfs_info3_param *ref)
- 				ref->path_consumed);
- }
- 
+-/*
+- *  Prepare the NFS data structure and parse all options.
+- */
+-static int __init root_nfs_name(char *name)
+-{
+-	static char buf[NFS_MAXPATHLEN] __initdata;
+-	char *cp;
 -
--static void*
--cifs_dfs_follow_mountpoint(struct dentry *dentry, struct nameidata *nd)
-+/*
-+ * Create a vfsmount that we can automount
-+ */
-+static struct vfsmount *cifs_dfs_do_automount(struct dentry *mntpt)
- {
- 	struct dfs_info3_param *referrals = NULL;
- 	unsigned int num_referrals = 0;
- 	struct cifs_sb_info *cifs_sb;
- 	struct cifsSesInfo *ses;
--	char *full_path = NULL;
-+	char *full_path;
- 	int xid, i;
--	int rc = 0;
--	struct vfsmount *mnt = ERR_PTR(-ENOENT);
-+	int rc;
-+	struct vfsmount *mnt;
- 
- 	cFYI(1, "in %s", __func__);
--	BUG_ON(IS_ROOT(dentry));
-+	BUG_ON(IS_ROOT(mntpt));
- 
- 	xid = GetXid();
- 
--	dput(nd->path.dentry);
--	nd->path.dentry = dget(dentry);
+-	/* Set some default values */
+-	memset(&nfs_data, 0, sizeof(nfs_data));
+-	nfs_port          = -1;
+-	nfs_data.version  = NFS_MOUNT_VERSION;
+-	nfs_data.flags    = NFS_MOUNT_NONLM;	/* No lockd in nfs root yet */
+-	nfs_data.rsize    = NFS_DEF_FILE_IO_SIZE;
+-	nfs_data.wsize    = NFS_DEF_FILE_IO_SIZE;
+-	nfs_data.acregmin = NFS_DEF_ACREGMIN;
+-	nfs_data.acregmax = NFS_DEF_ACREGMAX;
+-	nfs_data.acdirmin = NFS_DEF_ACDIRMIN;
+-	nfs_data.acdirmax = NFS_DEF_ACDIRMAX;
+-	strcpy(buf, NFS_ROOT);
 -
--	cifs_sb = CIFS_SB(dentry->d_inode->i_sb);
-+	cifs_sb = CIFS_SB(mntpt->d_inode->i_sb);
-+	mnt = ERR_PTR(-EINVAL);
- 	ses = cifs_sb->tcon->ses;
+-	/* Process options received from the remote server */
+-	root_nfs_parse(root_server_path, buf);
 -
--	if (!ses) {
--		rc = -EINVAL;
--		goto out_err;
+-	/* Override them by options set on kernel command-line */
+-	root_nfs_parse(name, buf);
+-
+-	cp = utsname()->nodename;
+-	if (strlen(buf) + strlen(cp) > NFS_MAXPATHLEN) {
+-		printk(KERN_ERR "Root-NFS: Pathname for remote directory too long.\n");
+-		return -1;
 -	}
-+	if (!ses)
-+		goto free_xid;
- 
- 	/*
- 	 * The MSDFS spec states that paths in DFS referral requests and
-@@ -329,56 +296,85 @@ cifs_dfs_follow_mountpoint(struct dentry *dentry, struct nameidata *nd)
- 	 * the double backslashes usually used in the UNC. This function
- 	 * gives us the latter, so we must adjust the result.
- 	 */
--	full_path = build_path_from_dentry(dentry);
--	if (full_path == NULL) {
--		rc = -ENOMEM;
--		goto out_err;
+-	sprintf(nfs_export_path, buf, cp);
+-
+-	return 1;
+-}
+-
+-
+-/*
+- *  Get NFS server address.
+- */
+-static int __init root_nfs_addr(void)
+-{
+-	if ((servaddr = root_server_addr) == htonl(INADDR_NONE)) {
+-		printk(KERN_ERR "Root-NFS: No NFS server available, giving up.\n");
+-		return -1;
 -	}
-+	mnt = ERR_PTR(-ENOMEM);
-+	full_path = build_path_from_dentry(mntpt);
-+	if (full_path == NULL)
-+		goto free_xid;
- 
- 	rc = get_dfs_path(xid, ses , full_path + 1, cifs_sb->local_nls,
- 		&num_referrals, &referrals,
- 		cifs_sb->mnt_cifs_flags & CIFS_MOUNT_MAP_SPECIAL_CHR);
- 
-+	mnt = ERR_PTR(-ENOENT);
- 	for (i = 0; i < num_referrals; i++) {
- 		int len;
--		dump_referral(referrals+i);
-+		dump_referral(referrals + i);
- 		/* connect to a node */
- 		len = strlen(referrals[i].node_name);
- 		if (len < 2) {
- 			cERROR(1, "%s: Net Address path too short: %s",
- 					__func__, referrals[i].node_name);
--			rc = -EINVAL;
--			goto out_err;
-+			mnt = ERR_PTR(-EINVAL);
-+			break;
- 		}
- 		mnt = cifs_dfs_do_refmount(cifs_sb,
- 				full_path, referrals + i);
- 		cFYI(1, "%s: cifs_dfs_do_refmount:%s , mnt:%p", __func__,
- 					referrals[i].node_name, mnt);
 -
--		/* complete mount procedure if we accured submount */
- 		if (!IS_ERR(mnt))
--			break;
-+			goto success;
- 	}
- 
--	/* we need it cause for() above could exit without valid submount */
--	rc = PTR_ERR(mnt);
--	if (IS_ERR(mnt))
--		goto out_err;
+-	snprintf(nfs_data.hostname, sizeof(nfs_data.hostname),
+-		 "%pI4", &servaddr);
+-	return 0;
+-}
 -
--	rc = add_mount_helper(mnt, nd, &cifs_dfs_automount_list);
-+	/* no valid submounts were found; return error from get_dfs_path() by
-+	 * preference */
-+	if (rc != 0)
-+		mnt = ERR_PTR(rc);
+-/*
+- *  Tell the user what's going on.
+- */
+-#ifdef NFSROOT_DEBUG
+-static void __init root_nfs_print(void)
+-{
+-	printk(KERN_NOTICE "Root-NFS: Mounting %s on server %s as root\n",
+-		nfs_export_path, nfs_data.hostname);
+-	printk(KERN_NOTICE "Root-NFS:     rsize = %d, wsize = %d, timeo = %d, retrans = %d\n",
+-		nfs_data.rsize, nfs_data.wsize, nfs_data.timeo, nfs_data.retrans);
+-	printk(KERN_NOTICE "Root-NFS:     acreg (min,max) = (%d,%d), acdir (min,max) = (%d,%d)\n",
+-		nfs_data.acregmin, nfs_data.acregmax,
+-		nfs_data.acdirmin, nfs_data.acdirmax);
+-	printk(KERN_NOTICE "Root-NFS:     nfsd port = %d, mountd port = %d, flags = %08x\n",
+-		nfs_port, mount_port, nfs_data.flags);
+-}
+-#endif
+-
+-
+-static int __init root_nfs_init(void)
+-{
+-#ifdef NFSROOT_DEBUG
+-	nfs_debug |= NFSDBG_ROOT;
+-#endif
+-
+-	/*
+-	 * Decode the root directory path name and NFS options from
+-	 * the kernel command line. This has to go here in order to
+-	 * be able to use the client IP address for the remote root
+-	 * directory (necessary for pure RARP booting).
+-	 */
+-	if (root_nfs_name(nfs_root_parms) < 0 ||
+-	    root_nfs_addr() < 0)
+-		return -1;
+-
+-#ifdef NFSROOT_DEBUG
+-	root_nfs_print();
+-#endif
+-
+-	return 0;
+-}
+-
+ /*
+  *  Parse NFS server and directory information passed on the kernel
+  *  command line.
+@@ -424,137 +138,6 @@ static int __init nfs_root_setup(char *line)
  
+ __setup("nfsroot=", nfs_root_setup);
+ 
+-/***************************************************************************
+-
+-	       Routines to actually mount the root directory
+-
+- ***************************************************************************/
+-
+-/*
+- *  Construct sockaddr_in from address and port number.
+- */
+-static inline void
+-set_sockaddr(struct sockaddr_in *sin, __be32 addr, __be16 port)
+-{
+-	sin->sin_family = AF_INET;
+-	sin->sin_addr.s_addr = addr;
+-	sin->sin_port = port;
+-}
+-
+-/*
+- *  Query server portmapper for the port of a daemon program.
+- */
+-static int __init root_nfs_getport(int program, int version, int proto)
+-{
+-	struct sockaddr_in sin;
+-
+-	printk(KERN_NOTICE "Looking up port of RPC %d/%d on %pI4\n",
+-		program, version, &servaddr);
+-	set_sockaddr(&sin, servaddr, 0);
+-	return rpcb_getport_sync(&sin, program, version, proto);
+-}
+-
+-
+-/*
+- *  Use portmapper to find mountd and nfsd port numbers if not overriden
+- *  by the user. Use defaults if portmapper is not available.
+- *  XXX: Is there any nfs server with no portmapper?
+- */
+-static int __init root_nfs_ports(void)
+-{
+-	int port;
+-	int nfsd_ver, mountd_ver;
+-	int nfsd_port, mountd_port;
+-	int proto;
+-
+-	if (nfs_data.flags & NFS_MOUNT_VER3) {
+-		nfsd_ver = NFS3_VERSION;
+-		mountd_ver = NFS_MNT3_VERSION;
+-		nfsd_port = NFS_PORT;
+-		mountd_port = NFS_MNT_PORT;
+-	} else {
+-		nfsd_ver = NFS2_VERSION;
+-		mountd_ver = NFS_MNT_VERSION;
+-		nfsd_port = NFS_PORT;
+-		mountd_port = NFS_MNT_PORT;
+-	}
+-
+-	proto = (nfs_data.flags & NFS_MOUNT_TCP) ? IPPROTO_TCP : IPPROTO_UDP;
+-
+-	if (nfs_port < 0) {
+-		if ((port = root_nfs_getport(NFS_PROGRAM, nfsd_ver, proto)) < 0) {
+-			printk(KERN_ERR "Root-NFS: Unable to get nfsd port "
+-					"number from server, using default\n");
+-			port = nfsd_port;
+-		}
+-		nfs_port = port;
+-		dprintk("Root-NFS: Portmapper on server returned %d "
+-			"as nfsd port\n", port);
+-	}
+-
+-	if ((port = root_nfs_getport(NFS_MNT_PROGRAM, mountd_ver, proto)) < 0) {
+-		printk(KERN_ERR "Root-NFS: Unable to get mountd port "
+-				"number from server, using default\n");
+-		port = mountd_port;
+-	}
+-	mount_port = port;
+-	dprintk("Root-NFS: mountd port is %d\n", port);
+-
+-	return 0;
+-}
+-
+-
+-/*
+- *  Get a file handle from the server for the directory which is to be
+- *  mounted.
+- */
+-static int __init root_nfs_get_handle(void)
+-{
+-	struct sockaddr_in sin;
+-	unsigned int auth_flav_len = 0;
+-	struct nfs_mount_request request = {
+-		.sap		= (struct sockaddr *)&sin,
+-		.salen		= sizeof(sin),
+-		.dirpath	= nfs_export_path,
+-		.version	= (nfs_data.flags & NFS_MOUNT_VER3) ?
+-					NFS_MNT3_VERSION : NFS_MNT_VERSION,
+-		.protocol	= (nfs_data.flags & NFS_MOUNT_TCP) ?
+-					XPRT_TRANSPORT_TCP : XPRT_TRANSPORT_UDP,
+-		.auth_flav_len	= &auth_flav_len,
+-	};
+-	int status = -ENOMEM;
+-
+-	request.fh = nfs_alloc_fhandle();
+-	if (!request.fh)
+-		goto out;
+-	set_sockaddr(&sin, servaddr, htons(mount_port));
+-	status = nfs_mount(&request);
+-	if (status < 0)
+-		printk(KERN_ERR "Root-NFS: Server returned error %d "
+-				"while mounting %s\n", status, nfs_export_path);
+-	else {
+-		nfs_data.root.size = request.fh->size;
+-		memcpy(&nfs_data.root.data, request.fh->data, request.fh->size);
+-	}
+-	nfs_free_fhandle(request.fh);
 -out:
--	FreeXid(xid);
-+success:
- 	free_dfs_info_array(referrals, num_referrals);
- 	kfree(full_path);
-+free_xid:
-+	FreeXid(xid);
- 	cFYI(1, "leaving %s" , __func__);
- 	return ERR_PTR(rc);
--out_err:
--	path_put(&nd->path);
--	goto out;
-+}
-+
-+/*
-+ * Attempt to automount the referral
-+ */
-+struct vfsmount *cifs_dfs_d_automount(struct path *path)
-+{
-+	struct vfsmount *newmnt;
-+	int err;
-+
-+	cFYI(1, "in %s", __func__);
-+
-+	newmnt = cifs_dfs_do_automount(path->dentry);
-+	if (IS_ERR(newmnt)) {
-+		cFYI(1, "leaving %s [automount failed]" , __func__);
-+		return newmnt;
-+	}
-+
-+	mntget(newmnt);
-+	err = do_add_mount(newmnt, path, MNT_SHRINKABLE,
-+			   &cifs_dfs_automount_list);
-+	switch (err) {
-+	case 0:
-+		schedule_delayed_work(&cifs_dfs_automount_task,
-+				      cifs_dfs_mountpoint_expiry_timeout);
-+		cFYI(1, "leaving %s [ok]" , __func__);
-+		return newmnt;
-+	case -EBUSY:
-+		/* someone else made a mount here whilst we were busy */
-+		mntput(newmnt);
-+		cFYI(1, "leaving %s [EBUSY]" , __func__);
-+		return NULL;
-+	default:
-+		mntput(newmnt);
-+		cFYI(1, "leaving %s [error %d]" , __func__, err);
-+		return ERR_PTR(err);
-+	}
- }
- 
- const struct inode_operations cifs_dfs_referral_inode_operations = {
--	.follow_link = cifs_dfs_follow_mountpoint,
- };
+-	return status;
+-}
 -
-diff --git a/fs/cifs/cifsfs.h b/fs/cifs/cifsfs.h
-index d82f5fb..34b18a6 100644
---- a/fs/cifs/cifsfs.h
-+++ b/fs/cifs/cifsfs.h
-@@ -95,6 +95,12 @@ extern int cifs_readdir(struct file *file, void *direntry, filldir_t filldir);
- extern const struct dentry_operations cifs_dentry_ops;
- extern const struct dentry_operations cifs_ci_dentry_ops;
- 
-+#ifdef CONFIG_CIFS_DFS_UPCALL
-+extern struct vfsmount *cifs_dfs_d_automount(struct path *path);
-+#else
-+#define cifs_dfs_d_automount NULL
-+#endif
-+
- /* Functions related to symlinks */
- extern void *cifs_follow_link(struct dentry *direntry, struct nameidata *nd);
- extern void cifs_put_link(struct dentry *direntry,
-diff --git a/fs/cifs/dir.c b/fs/cifs/dir.c
-index f9ed075..fc97233 100644
---- a/fs/cifs/dir.c
-+++ b/fs/cifs/dir.c
-@@ -795,6 +795,7 @@ cifs_d_revalidate(struct dentry *direntry, struct nameidata *nd)
- 
- const struct dentry_operations cifs_dentry_ops = {
- 	.d_revalidate = cifs_d_revalidate,
-+	.d_automount = cifs_dfs_d_automount,
- /* d_delete:       cifs_d_delete,      */ /* not needed except for debugging */
- };
- 
-@@ -835,4 +836,5 @@ const struct dentry_operations cifs_ci_dentry_ops = {
- 	.d_revalidate = cifs_d_revalidate,
- 	.d_hash = cifs_ci_hash,
- 	.d_compare = cifs_ci_compare,
-+	.d_automount = cifs_dfs_d_automount,
- };
-diff --git a/fs/cifs/inode.c b/fs/cifs/inode.c
-index 93f77d4..a1f810c 100644
---- a/fs/cifs/inode.c
-+++ b/fs/cifs/inode.c
-@@ -32,7 +32,7 @@
- #include "fscache.h"
- 
- 
--static void cifs_set_ops(struct inode *inode, const bool is_dfs_referral)
-+static void cifs_set_ops(struct inode *inode)
+-/*
+- *  Get the NFS port numbers and file handle, and return the prepared 'data'
+- *  argument for mount() if everything went OK. Return NULL otherwise.
+- */
+-void * __init old_nfs_root_data(void)
+-{
+-	if (root_nfs_init() < 0
+-	 || root_nfs_ports() < 0
+-	 || root_nfs_get_handle() < 0)
+-		return NULL;
+-	set_sockaddr((struct sockaddr_in *) &nfs_data.addr, servaddr, htons(nfs_port));
+-	return (void*)&nfs_data;
+-}
+-
+ static int __init root_nfs_copy(char *dest, const char *src,
+ 				     const size_t destlen)
  {
- 	struct cifs_sb_info *cifs_sb = CIFS_SB(inode->i_sb);
- 
-@@ -60,7 +60,7 @@ static void cifs_set_ops(struct inode *inode, const bool is_dfs_referral)
- 		break;
- 	case S_IFDIR:
- #ifdef CONFIG_CIFS_DFS_UPCALL
--		if (is_dfs_referral) {
-+		if (IS_AUTOMOUNT(inode)) {
- 			inode->i_op = &cifs_dfs_referral_inode_operations;
- 		} else {
- #else /* NO DFS support, treat as a directory */
-@@ -167,7 +167,9 @@ cifs_fattr_to_inode(struct inode *inode, struct cifs_fattr *fattr)
- 	}
- 	spin_unlock(&inode->i_lock);
- 
--	cifs_set_ops(inode, fattr->cf_flags & CIFS_FATTR_DFS_REFERRAL);
-+	if (fattr->cf_flags & CIFS_FATTR_DFS_REFERRAL)
-+		inode->i_flags |= S_AUTOMOUNT;
-+	cifs_set_ops(inode);
- }
- 
- void
 
