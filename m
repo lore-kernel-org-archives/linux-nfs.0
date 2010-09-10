@@ -1,254 +1,51 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:49123 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756697Ab0I3QTj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 30 Sep 2010 12:19:39 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: "J. Bruce Fields" <bfields@citi.umich.edu>
-Subject: [PATCH 07/16] nfsd4: Move callback setup to callback queue
-Date: Thu, 30 Sep 2010 12:19:04 -0400
-Message-Id: <1285863553-8945-8-git-send-email-bfields@redhat.com>
-In-Reply-To: <1285863553-8945-1-git-send-email-bfields@redhat.com>
-References: <1285863553-8945-1-git-send-email-bfields@redhat.com>
+Received: from mail-gy0-f174.google.com ([209.85.160.174]:49336 "EHLO
+	mail-gy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754700Ab0IJUDN (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Sep 2010 16:03:13 -0400
+Received: by gyd8 with SMTP id 8so1363332gyd.19
+        for <linux-nfs@vger.kernel.org>; Fri, 10 Sep 2010 13:03:12 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 0/6] Replace NFSROOT mount option parsing
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Date: Fri, 10 Sep 2010 16:03:09 -0400
+Message-ID: <20100910200001.13167.61153.stgit@seurat.1015granger.net>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: J. Bruce Fields <bfields@citi.umich.edu>
+Trond-
 
-Instead of creating the new rpc client from a regular server thread,
-set a flag, kick off a null call, and allow the null call to do the work
-of setting up the client on the callback workqueue.
+For 2.6.37, it would be nice to eliminate the redundant mount option
+parsing logic in fs/nfs/nfsroot.c.  Merged up to 2.6.36-rc, and
+compile-tested.
 
-Use a spinlock to ensure the callback work gets a consistent view of the
-callback parameters.
+We had discussed, as a first step, merging these into linux-next.
+I unit-tested these on late 2.6.34-rc kernels, so there might be an
+additional detail or two to clean up.
 
-This allows, for example, changing the callback from contexts where
-sleeping is not allowed.  I hope it will also keep the locking simple as
-we add more session and trunking features, by serializing most of the
-callback-specific work.
-
-This also closes a small race where the the new cb_ident could be used
-with an old connection (or vice-versa).
-
-Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
 ---
- fs/nfsd/nfs4callback.c |   73 ++++++++++++++++++++++++++++++++++--------------
- fs/nfsd/nfs4state.c    |    7 ++--
- fs/nfsd/state.h        |   10 +++++-
- 3 files changed, 63 insertions(+), 27 deletions(-)
 
-diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
-index 384a990..4019b9a 100644
---- a/fs/nfsd/nfs4callback.c
-+++ b/fs/nfsd/nfs4callback.c
-@@ -284,7 +284,7 @@ nfs4_xdr_enc_cb_recall(struct rpc_rqst *req, __be32 *p,
- 	struct xdr_stream xdr;
- 	struct nfs4_delegation *args = cb->cb_op;
- 	struct nfs4_cb_compound_hdr hdr = {
--		.ident = args->dl_ident,
-+		.ident = cb->cb_clp->cl_cb_ident,
- 		.minorversion = cb->cb_minorversion,
- 	};
- 
-@@ -505,7 +505,8 @@ int setup_callback_client(struct nfs4_client *clp, struct nfs4_cb_conn *conn)
- 			PTR_ERR(client));
- 		return PTR_ERR(client);
- 	}
--	nfsd4_set_callback_client(clp, client);
-+	clp->cl_cb_ident = conn->cb_ident;
-+	clp->cl_cb_client = client;
- 	return 0;
- 
- }
-@@ -568,15 +569,12 @@ void do_probe_callback(struct nfs4_client *clp)
-  */
- void nfsd4_probe_callback(struct nfs4_client *clp, struct nfs4_cb_conn *conn)
- {
--	int status;
--
- 	BUG_ON(atomic_read(&clp->cl_cb_set));
- 
--	status = setup_callback_client(clp, conn);
--	if (status) {
--		warn_no_callback_path(clp, status);
--		return;
--	}
-+	spin_lock(&clp->cl_lock);
-+	memcpy(&clp->cl_cb_conn, conn, sizeof(struct nfs4_cb_conn));
-+	set_bit(NFSD4_CLIENT_CB_UPDATE, &clp->cl_cb_flags);
-+	spin_unlock(&clp->cl_lock);
- 	do_probe_callback(clp);
- }
- 
-@@ -729,19 +727,16 @@ void nfsd4_destroy_callback_queue(void)
- }
- 
- /* must be called under the state lock */
--void nfsd4_set_callback_client(struct nfs4_client *clp, struct rpc_clnt *new)
-+void nfsd4_shutdown_callback(struct nfs4_client *clp)
- {
--	struct rpc_clnt *old = clp->cl_cb_client;
--
--	clp->cl_cb_client = new;
-+	set_bit(NFSD4_CLIENT_KILL, &clp->cl_cb_flags);
- 	/*
--	 * After this, any work that saw the old value of cl_cb_client will
--	 * be gone:
-+	 * Note this won't actually result in a null callback;
-+	 * instead, nfsd4_do_callback_rpc() will detect the killed
-+	 * client, destroy the rpc client, and stop:
- 	 */
-+	do_probe_callback(clp);
- 	flush_workqueue(callback_wq);
--	/* So we can safely shut it down: */
--	if (old)
--		rpc_shutdown_client(old);
- }
- 
- void nfsd4_release_cb(struct nfsd4_callback *cb)
-@@ -750,15 +745,51 @@ void nfsd4_release_cb(struct nfsd4_callback *cb)
- 		cb->cb_ops->rpc_release(cb);
- }
- 
-+void nfsd4_process_cb_update(struct nfsd4_callback *cb)
-+{
-+	struct nfs4_cb_conn conn;
-+	struct nfs4_client *clp = cb->cb_clp;
-+	int err;
-+
-+	/*
-+	 * This is either an update, or the client dying; in either case,
-+	 * kill the old client:
-+	 */
-+	if (clp->cl_cb_client) {
-+		rpc_shutdown_client(clp->cl_cb_client);
-+		clp->cl_cb_client = NULL;
-+	}
-+	if (test_bit(NFSD4_CLIENT_KILL, &clp->cl_cb_flags))
-+		return;
-+	spin_lock(&clp->cl_lock);
-+	/*
-+	 * Only serialized callback code is allowed to clear these
-+	 * flags; main nfsd code can only set them:
-+	 */
-+	BUG_ON(!clp->cl_cb_flags);
-+	clear_bit(NFSD4_CLIENT_CB_UPDATE, &clp->cl_cb_flags);
-+	memcpy(&conn, &cb->cb_clp->cl_cb_conn, sizeof(struct nfs4_cb_conn));
-+	spin_unlock(&clp->cl_lock);
-+
-+	err = setup_callback_client(clp, &conn);
-+	if (err)
-+		warn_no_callback_path(clp, err);
-+}
-+
- void nfsd4_do_callback_rpc(struct work_struct *w)
- {
- 	struct nfsd4_callback *cb = container_of(w, struct nfsd4_callback, cb_work);
- 	struct nfs4_client *clp = cb->cb_clp;
--	struct rpc_clnt *clnt = clp->cl_cb_client;
-+	struct rpc_clnt *clnt;
- 
--	if (clnt == NULL) {
-+	if (clp->cl_cb_flags)
-+		nfsd4_process_cb_update(cb);
-+
-+	clnt = clp->cl_cb_client;
-+	if (!clnt) {
-+		/* Callback channel broken, or client killed; give up: */
- 		nfsd4_release_cb(cb);
--		return; /* Client is shutting down; give up. */
-+		return;
- 	}
- 	rpc_call_async(clnt, &cb->cb_msg, RPC_TASK_SOFT | RPC_TASK_SOFTCONN,
- 			cb->cb_ops, cb);
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 2f464fb..d3f12dc 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -207,7 +207,6 @@ alloc_init_deleg(struct nfs4_client *clp, struct nfs4_stateid *stp, struct svc_f
- {
- 	struct nfs4_delegation *dp;
- 	struct nfs4_file *fp = stp->st_file;
--	struct nfs4_cb_conn *conn = &stp->st_stateowner->so_client->cl_cb_conn;
- 
- 	dprintk("NFSD alloc_init_deleg\n");
- 	/*
-@@ -234,7 +233,6 @@ alloc_init_deleg(struct nfs4_client *clp, struct nfs4_stateid *stp, struct svc_f
- 	nfs4_file_get_access(fp, O_RDONLY);
- 	dp->dl_flock = NULL;
- 	dp->dl_type = type;
--	dp->dl_ident = conn->cb_ident;
- 	dp->dl_stateid.si_boot = boot_time;
- 	dp->dl_stateid.si_stateownerid = current_delegid++;
- 	dp->dl_stateid.si_fileid = 0;
-@@ -875,7 +873,7 @@ expire_client(struct nfs4_client *clp)
- 		sop = list_entry(clp->cl_openowners.next, struct nfs4_stateowner, so_perclient);
- 		release_openowner(sop);
- 	}
--	nfsd4_set_callback_client(clp, NULL);
-+	nfsd4_shutdown_callback(clp);
- 	if (clp->cl_cb_conn.cb_xprt)
- 		svc_xprt_put(clp->cl_cb_conn.cb_xprt);
- 	list_del(&clp->cl_idhash);
-@@ -978,6 +976,7 @@ static struct nfs4_client *create_client(struct xdr_netobj name, char *recdir,
- 	INIT_LIST_HEAD(&clp->cl_delegations);
- 	INIT_LIST_HEAD(&clp->cl_sessions);
- 	INIT_LIST_HEAD(&clp->cl_lru);
-+	spin_lock_init(&clp->cl_lock);
- 	INIT_WORK(&clp->cl_cb_null.cb_work, nfsd4_do_callback_rpc);
- 	clp->cl_time = get_seconds();
- 	clear_bit(0, &clp->cl_cb_slot_busy);
-@@ -1547,7 +1546,7 @@ nfsd4_destroy_session(struct svc_rqst *r,
- 
- 	nfs4_lock_state();
- 	/* wait for callbacks */
--	nfsd4_set_callback_client(ses->se_client, NULL);
-+	nfsd4_shutdown_callback(ses->se_client);
- 	nfs4_unlock_state();
- 	nfsd4_put_session(ses);
- 	status = nfs_ok;
-diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index 2ece6be..58bc2a6 100644
---- a/fs/nfsd/state.h
-+++ b/fs/nfsd/state.h
-@@ -84,7 +84,6 @@ struct nfs4_delegation {
- 	u32			dl_type;
- 	time_t			dl_time;
- /* For recall: */
--	u32			dl_ident;
- 	stateid_t		dl_stateid;
- 	struct knfsd_fh		dl_fh;
- 	int			dl_retries;
-@@ -217,10 +216,17 @@ struct nfs4_client {
- 
- 	/* for v4.0 and v4.1 callbacks: */
- 	struct nfs4_cb_conn	cl_cb_conn;
-+#define NFSD4_CLIENT_CB_UPDATE	1
-+#define NFSD4_CLIENT_KILL	2
-+	unsigned long		cl_cb_flags;
- 	struct rpc_clnt		*cl_cb_client;
-+	u32			cl_cb_ident;
- 	atomic_t		cl_cb_set;
- 	struct nfsd4_callback	cl_cb_null;
- 
-+	/* for all client information that callback code might need: */
-+	spinlock_t		cl_lock;
-+
- 	/* for nfs41 */
- 	struct list_head	cl_sessions;
- 	struct nfsd4_clid_slot	cl_cs_slot;	/* create_session slot */
-@@ -439,7 +445,7 @@ extern void nfsd4_do_callback_rpc(struct work_struct *);
- extern void nfsd4_cb_recall(struct nfs4_delegation *dp);
- extern int nfsd4_create_callback_queue(void);
- extern void nfsd4_destroy_callback_queue(void);
--extern void nfsd4_set_callback_client(struct nfs4_client *, struct rpc_clnt *);
-+extern void nfsd4_shutdown_callback(struct nfs4_client *);
- extern void nfs4_put_delegation(struct nfs4_delegation *dp);
- extern __be32 nfs4_make_rec_clidname(char *clidname, struct xdr_netobj *clname);
- extern void nfsd4_init_recdir(char *recdir_name);
+Chuck Lever (6):
+      SUNRPC: Remove rpcb_getport_sync()
+      NFS: Allow NFSROOT debugging messages to be enabled dynamically
+      NFS: Clean up nfsroot.c
+      NFS: Use super.c for NFSROOT mount option parsing
+      NFS: Clean up NFSROOT command line parsing
+      NFS: Remove \t from mount debugging message
+
+
+ Documentation/filesystems/nfs/nfsroot.txt |   22 +
+ Documentation/kernel-parameters.txt       |    5 
+ fs/nfs/mount_clnt.c                       |    2 
+ fs/nfs/nfsroot.c                          |  566 +++++++++--------------------
+ include/linux/nfs_fs.h                    |   10 -
+ include/linux/sunrpc/clnt.h               |    1 
+ init/do_mounts.c                          |   12 -
+ net/sunrpc/rpcb_clnt.c                    |   51 ---
+ 8 files changed, 208 insertions(+), 461 deletions(-)
+
 -- 
-1.7.0.4
-
+Chuck Lever
