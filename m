@@ -1,41 +1,37 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:42071 "EHLO
-	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1755968Ab0I3Ss3 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 30 Sep 2010 14:48:29 -0400
-From: Benny Halevy <bhalevy@panasas.com>
-To: " J. Bruce Fields" <bfields@fieldses.org>
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 2/2] nfsd41: mask out unsupported pnfs attributes
-Date: Thu, 30 Sep 2010 20:47:58 +0200
-Message-Id: <1285872478-21045-1-git-send-email-bhalevy@panasas.com>
+Received: from bombadil.infradead.org ([18.85.46.34]:50466 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755007Ab0IJX4B (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Sep 2010 19:56:01 -0400
+Date: Fri, 10 Sep 2010 19:56:00 -0400
+From: Christoph Hellwig <hch@infradead.org>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: Fred Isaman <iisaman@netapp.com>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 08/13] RFC: pnfs: filelayout: introduce minimal file
+ layout driver
+Message-ID: <20100910235600.GA11231@infradead.org>
+References: <1283450419-5648-1-git-send-email-iisaman@netapp.com>
+ <1283450419-5648-9-git-send-email-iisaman@netapp.com>
+ <1284147111.10062.74.camel@heimdal.trondhjem.org>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1284147111.10062.74.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-These attributes are valid in NFSv4.1, the just doesn't support them yet.
+On Fri, Sep 10, 2010 at 03:31:51PM -0400, Trond Myklebust wrote:
+> > +	tristate
+> > +	depends on NFS_FS && NFS_V4_1
+> > +	default m
+> 
+> Should be 'default y', otherwise it has an implicit dependency on
+> CONFIG_MODULES.
 
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
----
- fs/nfsd/nfs4xdr.c |    4 ++++
- 1 files changed, 4 insertions(+), 0 deletions(-)
+No, it should not have a default statement at all.  The only reason to
+put in a default statement is to keep existing code working when it's
+split into multiple options, which this is not.  This is not just my
+opinion, btw - Linus has frequently whacked people for introducing pointless
+defaults in the past.
 
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index f48d891..bd4ce68 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -1761,6 +1761,10 @@ nfsd4_encode_fattr(struct svc_fh *fhp, struct svc_export *exp,
- 		.dentry	= dentry,
- 	};
- 
-+	/* mask out unsupported pNFS attributes */
-+	bmval1 &= ~FATTR4_WORD1_FS_LAYOUT_TYPES;
-+	bmval2 &= ~FATTR4_WORD2_LAYOUT_BLKSIZE;
-+
- 	BUG_ON(bmval1 & NFSD_WRITEONLY_ATTRS_WORD1);
- 	BUG_ON(bmval0 & ~nfsd_suppattrs0(minorversion));
- 	BUG_ON(bmval1 & ~nfsd_suppattrs1(minorversion));
--- 
-1.7.2.3
-
+And even if it was okay sometimes pnfs nowhere is near important enough
+to add it in Kconfig.
