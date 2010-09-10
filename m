@@ -1,42 +1,145 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.candelatech.com ([208.74.158.172]:58737 "EHLO
-	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753703Ab0ICQWr (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 3 Sep 2010 12:22:47 -0400
-Message-ID: <4C8120D3.9040704@candelatech.com>
-Date: Fri, 03 Sep 2010 09:22:43 -0700
-From: Ben Greear <greearb@candelatech.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [nfs] nfs:  Fix nfs_sockaddr_match_ipaddr6
-References: <1283530511-20658-1-git-send-email-greearb@candelatech.com> <1D980EDC-301A-4B4D-97D3-037B96DBAF86@oracle.com>
-In-Reply-To: <1D980EDC-301A-4B4D-97D3-037B96DBAF86@oracle.com>
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Received: from mail-yx0-f174.google.com ([209.85.213.174]:65003 "EHLO
+	mail-yx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755042Ab0IJUJL (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Sep 2010 16:09:11 -0400
+Received: by mail-yx0-f174.google.com with SMTP id 4so1305439yxp.19
+        for <linux-nfs@vger.kernel.org>; Fri, 10 Sep 2010 13:09:10 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 03/11] SUNRPC: Refactor logic to NUL-terminate strings in pages
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Date: Fri, 10 Sep 2010 16:09:07 -0400
+Message-ID: <20100910200906.13321.33839.stgit@seurat.1015granger.net>
+In-Reply-To: <20100910200512.13321.55605.stgit@seurat.1015granger.net>
+References: <20100910200512.13321.55605.stgit@seurat.1015granger.net>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 09/03/2010 09:17 AM, Chuck Lever wrote:
->
-> On Sep 3, 2010, at 12:15 PM, Ben Greear wrote:
->
->> A typo caused this method not not actually compare the
->> two addresses passed in.  It returned true in almost all
->> cases instead.
->
->  From the perspective of the local logic, that looks correct.  Have you tried this with IPv6 mounts?  Notice any overall changes in behavior?
+Clean up: Introduce a helper to '\0'-terminate XDR strings
+that are placed in a page in the page cache.
 
-I noticed this when getting multiple NFS mounts to work with srcaddr=
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
 
-The change fixed the problems I was seeing, but I haven't tested w/out
-srcaddr= logic.  Might need to have two different NFS servers to do a good
-test of this logic, and I'm not looking forward to setting up another
-open-solaris box!
+ fs/nfs/nfs2xdr.c           |    6 +-----
+ fs/nfs/nfs3xdr.c           |    6 +-----
+ fs/nfs/nfs4xdr.c           |    5 +----
+ include/linux/sunrpc/xdr.h |    1 +
+ net/sunrpc/xdr.c           |   17 +++++++++++++++++
+ 5 files changed, 21 insertions(+), 14 deletions(-)
 
-Thanks,
-Ben
-
--- 
-Ben Greear <greearb@candelatech.com>
-Candela Technologies Inc  http://www.candelatech.com
+diff --git a/fs/nfs/nfs2xdr.c b/fs/nfs/nfs2xdr.c
+index db8846a..43413f2 100644
+--- a/fs/nfs/nfs2xdr.c
++++ b/fs/nfs/nfs2xdr.c
+@@ -596,7 +596,6 @@ nfs_xdr_readlinkres(struct rpc_rqst *req, __be32 *p, void *dummy)
+ 	struct kvec *iov = rcvbuf->head;
+ 	size_t hdrlen;
+ 	u32 len, recvd;
+-	char	*kaddr;
+ 	int	status;
+ 
+ 	if ((status = ntohl(*p++)))
+@@ -623,10 +622,7 @@ nfs_xdr_readlinkres(struct rpc_rqst *req, __be32 *p, void *dummy)
+ 		return -EIO;
+ 	}
+ 
+-	/* NULL terminate the string we got */
+-	kaddr = (char *)kmap_atomic(rcvbuf->pages[0], KM_USER0);
+-	kaddr[len+rcvbuf->page_base] = '\0';
+-	kunmap_atomic(kaddr, KM_USER0);
++	xdr_terminate_string(rcvbuf, len);
+ 	return 0;
+ }
+ 
+diff --git a/fs/nfs/nfs3xdr.c b/fs/nfs/nfs3xdr.c
+index 9769704..a8170a0 100644
+--- a/fs/nfs/nfs3xdr.c
++++ b/fs/nfs/nfs3xdr.c
+@@ -824,7 +824,6 @@ nfs3_xdr_readlinkres(struct rpc_rqst *req, __be32 *p, struct nfs_fattr *fattr)
+ 	struct kvec *iov = rcvbuf->head;
+ 	size_t hdrlen;
+ 	u32 len, recvd;
+-	char	*kaddr;
+ 	int	status;
+ 
+ 	status = ntohl(*p++);
+@@ -857,10 +856,7 @@ nfs3_xdr_readlinkres(struct rpc_rqst *req, __be32 *p, struct nfs_fattr *fattr)
+ 		return -EIO;
+ 	}
+ 
+-	/* NULL terminate the string we got */
+-	kaddr = (char*)kmap_atomic(rcvbuf->pages[0], KM_USER0);
+-	kaddr[len+rcvbuf->page_base] = '\0';
+-	kunmap_atomic(kaddr, KM_USER0);
++	xdr_terminate_string(rcvbuf, len);
+ 	return 0;
+ }
+ 
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index 08ef912..e1ed89e 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -4299,7 +4299,6 @@ static int decode_readlink(struct xdr_stream *xdr, struct rpc_rqst *req)
+ 	size_t hdrlen;
+ 	u32 len, recvd;
+ 	__be32 *p;
+-	char *kaddr;
+ 	int status;
+ 
+ 	status = decode_op_hdr(xdr, OP_READLINK);
+@@ -4330,9 +4329,7 @@ static int decode_readlink(struct xdr_stream *xdr, struct rpc_rqst *req)
+ 	 * and and null-terminate the text (the VFS expects
+ 	 * null-termination).
+ 	 */
+-	kaddr = (char *)kmap_atomic(rcvbuf->pages[0], KM_USER0);
+-	kaddr[len+rcvbuf->page_base] = '\0';
+-	kunmap_atomic(kaddr, KM_USER0);
++	xdr_terminate_string(rcvbuf, len);
+ 	return 0;
+ out_overflow:
+ 	print_overflow_msg(__func__, xdr);
+diff --git a/include/linux/sunrpc/xdr.h b/include/linux/sunrpc/xdr.h
+index 35cf2e8..8c1dcbb 100644
+--- a/include/linux/sunrpc/xdr.h
++++ b/include/linux/sunrpc/xdr.h
+@@ -108,6 +108,7 @@ void	xdr_encode_pages(struct xdr_buf *, struct page **, unsigned int,
+ 			 unsigned int);
+ void	xdr_inline_pages(struct xdr_buf *, unsigned int,
+ 			 struct page **, unsigned int, unsigned int);
++void	xdr_terminate_string(struct xdr_buf *, const u32);
+ 
+ static inline __be32 *xdr_encode_array(__be32 *p, const void *s, unsigned int len)
+ {
+diff --git a/net/sunrpc/xdr.c b/net/sunrpc/xdr.c
+index a1f82a8..d463d20 100644
+--- a/net/sunrpc/xdr.c
++++ b/net/sunrpc/xdr.c
+@@ -111,6 +111,23 @@ xdr_decode_string_inplace(__be32 *p, char **sp,
+ }
+ EXPORT_SYMBOL_GPL(xdr_decode_string_inplace);
+ 
++/**
++ * xdr_terminate_string - '\0'-terminate a string residing in an xdr_buf
++ * @buf: XDR buffer where string resides
++ * @len: length of string, in bytes
++ *
++ */
++void
++xdr_terminate_string(struct xdr_buf *buf, const u32 len)
++{
++	char *kaddr;
++
++	kaddr = kmap_atomic(buf->pages[0], KM_USER0);
++	kaddr[buf->page_base + len] = '\0';
++	kunmap_atomic(kaddr, KM_USER0);
++}
++EXPORT_SYMBOL(xdr_terminate_string);
++
+ void
+ xdr_encode_pages(struct xdr_buf *xdr, struct page **pages, unsigned int base,
+ 		 unsigned int len)
 
