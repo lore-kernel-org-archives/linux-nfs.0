@@ -1,67 +1,151 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:38326 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:22931 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758258Ab0IGUWa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 7 Sep 2010 16:22:30 -0400
-Received: from int-mx01.intmail.prod.int.phx2.redhat.com (int-mx01.intmail.prod.int.phx2.redhat.com [10.5.11.11])
-	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id o87KMUtU021975
+	id S1754219Ab0IJT1X (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 10 Sep 2010 15:27:23 -0400
+Received: from int-mx02.intmail.prod.int.phx2.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
+	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id o8AJRMaW001848
 	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Tue, 7 Sep 2010 16:22:30 -0400
-Received: from bighat.boston.devel.redhat.com (bighat.boston.devel.redhat.com [10.16.60.55])
-	by int-mx01.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id o87KMSnn001714
-	for <linux-nfs@vger.kernel.org>; Tue, 7 Sep 2010 16:22:29 -0400
-From: Steve Dickson <steved@redhat.com>
-To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: [PATCH 3/3] Document the rdma mount option in the nfs man page
-Date: Tue,  7 Sep 2010 16:22:01 -0400
-Message-Id: <1283890921-3447-4-git-send-email-steved@redhat.com>
-In-Reply-To: <1283890921-3447-1-git-send-email-steved@redhat.com>
-References: <1283890921-3447-1-git-send-email-steved@redhat.com>
+	for <linux-nfs@vger.kernel.org>; Fri, 10 Sep 2010 15:27:22 -0400
+Received: from dantu.rdu.redhat.com (dantu.rdu.redhat.com [10.11.228.66])
+	by int-mx02.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id o8AJRIBY018810
+	for <linux-nfs@vger.kernel.org>; Fri, 10 Sep 2010 15:27:22 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 7/9] nfs: add a rename_setup nfs_rpc_op for async renames
+Date: Fri, 10 Sep 2010 15:27:16 -0400
+Message-Id: <1284146838-1468-8-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1284146838-1468-1-git-send-email-jlayton@redhat.com>
+References: <1284146838-1468-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
 MIME-Version: 1.0
 
-Co-Authored-by: Chuck Lever <chuck.lever@oracle.com>
-Signed-off-by: Steve Dickson <steved@redhat.com>
----
- utils/mount/nfs.man |   14 +++++++++++++-
- 1 files changed, 13 insertions(+), 1 deletions(-)
+Add a call that can set up the arguments and the response container for
+an asynchronous rename call.
 
-diff --git a/utils/mount/nfs.man b/utils/mount/nfs.man
-index 3806635..8964512 100644
---- a/utils/mount/nfs.man
-+++ b/utils/mount/nfs.man
-@@ -495,9 +495,15 @@ command,
- .I netid
- is a valid netid listed in
- .IR /etc/netconfig .
--Otherwise,
-+The value "rdma" may also be specified.
-+If the
-+.B mount.nfs
-+command does not have TI-RPC support, then
- .I netid
- is one of "tcp," "udp," or "rdma," and only IPv4 may be used.
-+Also with "rdma" the version 3 NFS protocol will be used
-+unless a different protocol is specified on the command
-+line.
- .IP
- Each transport protocol uses different default
- .B retrans
-@@ -537,6 +543,12 @@ option is an alternative to specifying
- .BR proto=tcp.
- It is included for compatibility with other operating systems.
- .TP 1.5i
-+.B rdma
-+The
-+.B rdma
-+option is an alternative to specifying
-+.BR proto=rdma.
-+.TP 1.5i
- .BI port= n
- The numeric value of the server's NFS service port.
- If the server's NFS service is not available on the specified port,
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/nfs/nfs3proc.c       |   18 ++++++++++++++++++
+ fs/nfs/nfs4proc.c       |   21 +++++++++++++++++++++
+ fs/nfs/proc.c           |    8 ++++++++
+ include/linux/nfs_xdr.h |    1 +
+ 4 files changed, 48 insertions(+), 0 deletions(-)
+
+diff --git a/fs/nfs/nfs3proc.c b/fs/nfs/nfs3proc.c
+index c5cccf1..0654177 100644
+--- a/fs/nfs/nfs3proc.c
++++ b/fs/nfs/nfs3proc.c
+@@ -439,6 +439,23 @@ nfs3_proc_unlink_done(struct rpc_task *task, struct inode *dir)
+ }
+ 
+ static int
++nfs3_proc_rename_setup(struct rpc_message *msg, struct inode *dir)
++{
++	struct nfs_renameres *res = msg->rpc_resp;
++
++	msg->rpc_proc = &nfs3_procedures[NFS3PROC_RENAME];
++
++	res->old_fattr = nfs_alloc_fattr();
++	res->new_fattr = nfs_alloc_fattr();
++	if (res->old_fattr != NULL && res->new_fattr != NULL)
++		return 0;
++
++	nfs_free_fattr(res->old_fattr);
++	nfs_free_fattr(res->new_fattr);
++	return -ENOMEM;
++}
++
++static int
+ nfs3_proc_rename(struct inode *old_dir, struct qstr *old_name,
+ 		 struct inode *new_dir, struct qstr *new_name)
+ {
+@@ -842,6 +859,7 @@ const struct nfs_rpc_ops nfs_v3_clientops = {
+ 	.unlink_setup	= nfs3_proc_unlink_setup,
+ 	.unlink_done	= nfs3_proc_unlink_done,
+ 	.rename		= nfs3_proc_rename,
++	.rename_setup	= nfs3_proc_rename_setup,
+ 	.link		= nfs3_proc_link,
+ 	.symlink	= nfs3_proc_symlink,
+ 	.mkdir		= nfs3_proc_mkdir,
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 120a8a6..011dc90 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -2671,6 +2671,26 @@ static int nfs4_proc_unlink_done(struct rpc_task *task, struct inode *dir)
+ 	return 1;
+ }
+ 
++static int nfs4_proc_rename_setup(struct rpc_message *msg, struct inode *dir)
++{
++	struct nfs_server *server = NFS_SERVER(dir);
++	struct nfs_renameargs *arg = msg->rpc_argp;
++	struct nfs_renameres *res = msg->rpc_resp;
++
++	msg->rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_RENAME];
++	arg->bitmask = server->attr_bitmask;
++	res->server = server;
++
++	res->old_fattr = nfs_alloc_fattr();
++	res->new_fattr = nfs_alloc_fattr();
++	if (res->old_fattr != NULL && res->new_fattr != NULL)
++		return 0;
++
++	nfs_free_fattr(res->old_fattr);
++	nfs_free_fattr(res->new_fattr);
++	return -ENOMEM;
++}
++
+ static int _nfs4_proc_rename(struct inode *old_dir, struct qstr *old_name,
+ 		struct inode *new_dir, struct qstr *new_name)
+ {
+@@ -5443,6 +5463,7 @@ const struct nfs_rpc_ops nfs_v4_clientops = {
+ 	.unlink_setup	= nfs4_proc_unlink_setup,
+ 	.unlink_done	= nfs4_proc_unlink_done,
+ 	.rename		= nfs4_proc_rename,
++	.rename_setup	= nfs4_proc_rename_setup,
+ 	.link		= nfs4_proc_link,
+ 	.symlink	= nfs4_proc_symlink,
+ 	.mkdir		= nfs4_proc_mkdir,
+diff --git a/fs/nfs/proc.c b/fs/nfs/proc.c
+index 5c70b58..48410f9 100644
+--- a/fs/nfs/proc.c
++++ b/fs/nfs/proc.c
+@@ -366,6 +366,13 @@ static int nfs_proc_unlink_done(struct rpc_task *task, struct inode *dir)
+ }
+ 
+ static int
++nfs_proc_rename_setup(struct rpc_message *msg, struct inode *dir)
++{
++	msg->rpc_proc = &nfs_procedures[NFSPROC_RENAME];
++	return 0;
++}
++
++static int
+ nfs_proc_rename(struct inode *old_dir, struct qstr *old_name,
+ 		struct inode *new_dir, struct qstr *new_name)
+ {
+@@ -703,6 +710,7 @@ const struct nfs_rpc_ops nfs_v2_clientops = {
+ 	.unlink_setup	= nfs_proc_unlink_setup,
+ 	.unlink_done	= nfs_proc_unlink_done,
+ 	.rename		= nfs_proc_rename,
++	.rename_setup	= nfs_proc_rename_setup,
+ 	.link		= nfs_proc_link,
+ 	.symlink	= nfs_proc_symlink,
+ 	.mkdir		= nfs_proc_mkdir,
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index 6265fa8..d470751 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -1018,6 +1018,7 @@ struct nfs_rpc_ops {
+ 	int	(*unlink_done) (struct rpc_task *, struct inode *);
+ 	int	(*rename)  (struct inode *, struct qstr *,
+ 			    struct inode *, struct qstr *);
++	int	(*rename_setup)  (struct rpc_message *msg, struct inode *dir);
+ 	int	(*link)    (struct inode *, struct inode *, struct qstr *);
+ 	int	(*symlink) (struct inode *, struct dentry *, struct page *,
+ 			    unsigned int, struct iattr *);
 -- 
-1.7.2.1
+1.7.1
 
