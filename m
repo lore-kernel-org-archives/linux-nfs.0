@@ -1,182 +1,1003 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:37612 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754140Ab0IOUJP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 15 Sep 2010 16:09:15 -0400
-Message-ID: <4C9127DE.8050003@RedHat.com>
-Date: Wed, 15 Sep 2010 16:09:02 -0400
-From: Steve Dickson <SteveD@redhat.com>
-To: Jeff Layton <jlayton@redhat.com>
-CC: linux-nfs@vger.kernel.org, bfields@fieldses.org, neilb@suse.de
-Subject: Re: [PATCH] rpc.nfsd: mount up nfsdfs is it doesn't appear to be
- mounted yet (try #2)
-References: <1283283160-30024-1-git-send-email-jlayton@redhat.com> <20100914092304.74c8aa34@corrin.poochiereds.net>
-In-Reply-To: <20100914092304.74c8aa34@corrin.poochiereds.net>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mail-iw0-f174.google.com ([209.85.214.174]:43660 "EHLO
+	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755089Ab0IJUKf (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Sep 2010 16:10:35 -0400
+Received: by mail-iw0-f174.google.com with SMTP id 5so2495581iwn.19
+        for <linux-nfs@vger.kernel.org>; Fri, 10 Sep 2010 13:10:35 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 11/11] lockd: Introduce new-style XDR functions for NLMv3
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Date: Fri, 10 Sep 2010 16:10:31 -0400
+Message-ID: <20100910201031.13321.90969.stgit@seurat.1015granger.net>
+In-Reply-To: <20100910200512.13321.55605.stgit@seurat.1015granger.net>
+References: <20100910200512.13321.55605.stgit@seurat.1015granger.net>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 09/14/2010 09:23 AM, Jeff Layton wrote:
-> On Tue, 31 Aug 2010 15:32:40 -0400
-> Jeff Layton <jlayton@redhat.com> wrote:
-> 
-> Hi Steve,
-> 
-> It's been a couple of weeks and this latest patch hasn't been committed...
-> 
-> IIRC, you wanted changes to the xlog messages and were going to send an
-> alternate patch. I'd like to see this in the next release of nfs-utils.
-> What do we need to do to move this to resolution?
-Sorry for taking so long to get to this..  
+We'd like to prevent local buffer overflows caused by malicious or
+broken servers.  New xdr_stream style decoders can do that.
 
-What I was thinking is to simply make the error messages more definitive 
-as to what the problem is and how to fix it.. Logging that we are 
-falling back to the legacy probably would not mean much to mere 
-mortals... IMHO... 
+For efficiency, we also want to be able to pass xdr_streams from
+call_encode() to all XDR encoding functions, rather than building
+an xdr_stream in every XDR encoding function in the kernel.
 
-I still think at some point nfsd should fail to start up, but logging
-an error message at this point is fine..
+To do all of this, rewrite the XDR encoding and decoding functions in
+fs/lockd/xdr.c to use xdr_streams.  This makes them more or less
+incompatible with server-side XDR helper functions, so break them out
+into a separate source file.
 
-Comments?
+SHARE-related functionality doesn't seem to be used, as those
+functions are hiding behind a #define that isn't set anywhere that I
+can find.  And, they've been in there forever (at least as far back as
+the kernel's git history goes), yet remain unused.  Let's take the
+opportunity to bin them.  It should be easy enough for someone to
+introduce proper XDR functions if at some point SHARE-related NLM
+functionality is desired.
 
-steved.
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
 
-commit 8a78cb2e651d55fc1aaacf1e4ca9c009d1cf9113
-Author: Jeff Layton <jlayton@redhat.com>
-Date:   Wed Sep 15 15:54:36 2010 -0400
+ fs/lockd/Makefile  |    4 
+ fs/lockd/clntxdr.c |  657 ++++++++++++++++++++++++++++++++++++++++++++++++++++
+ fs/lockd/xdr.c     |  258 --------------------
+ 3 files changed, 659 insertions(+), 260 deletions(-)
+ create mode 100644 fs/lockd/clntxdr.c
 
-    rpc.nfsd: mount up nfsdfs is it doesn't appear to be mounted yet (try #3)
-    
-    There's a bit of a chicken and egg problem when nfsd is run the first
-    time. On Fedora/RHEL at least, /proc/fs/nfsd is mounted up whenever nfsd
-    is plugged in via a modprobe.conf "install" directive.
-    
-    If someone runs rpc.nfsd without plugging in nfsd.ko first,
-    /proc/fs/nfsd won't be mounted and rpc.nfsd will end up using the legacy
-    nfsctl interface. After that, nfsd will be plugged in and subsequent
-    rpc.nfsd invocations will use that instead.
-    
-    This is a problem as some nfsd command-line options are ignored when the
-    legacy interface is used. It'll also be a problem for people who want
-    IPv6 enabled servers. The upshot is that we really don't want to use the
-    legacy interface unless there is no other option.
-    
-    To avoid this situation, have rpc.nfsd check to see if the "threads"
-    file is already present. If it's not, then make an attempt to mount
-    /proc/fs/nfsd.  This is a "best-effort" sort of thing, however so we
-    just ignore the return code from the mount attempt and fall back to
-    using nfsctl() if it fails.
-    
-    Signed-off-by: Steve Dickson <steved@redhat.com>
-
-diff --git a/utils/nfsd/nfsd.c b/utils/nfsd/nfsd.c
-index 1cda1e5..658b8fa 100644
---- a/utils/nfsd/nfsd.c
-+++ b/utils/nfsd/nfsd.c
-@@ -246,6 +246,9 @@ main(int argc, char **argv)
- 		exit(1);
- 	}
+diff --git a/fs/lockd/Makefile b/fs/lockd/Makefile
+index cd123e0..e2e973f 100644
+--- a/fs/lockd/Makefile
++++ b/fs/lockd/Makefile
+@@ -7,7 +7,7 @@ EXTRA_CFLAGS = -W -Wall -Wextra -Wsign-compare \
  
-+	/* make sure nfsdfs is mounted if it's available */
-+	nfssvc_mount_nfsdfs(progname);
+ obj-$(CONFIG_LOCKD) += lockd.o
+ 
+-lockd-objs-y := clntlock.o clntproc.o host.o svc.o svclock.o svcshare.o \
+-	        svcproc.o svcsubs.o mon.o xdr.o grace.o
++lockd-objs-y := clntlock.o clntproc.o clntxdr.o host.o svc.o svclock.o \
++	        svcshare.o svcproc.o svcsubs.o mon.o xdr.o grace.o
+ lockd-objs-$(CONFIG_LOCKD_V4) += xdr4.o svc4proc.o
+ lockd-objs		      := $(lockd-objs-y)
+diff --git a/fs/lockd/clntxdr.c b/fs/lockd/clntxdr.c
+new file mode 100644
+index 0000000..23b30d1
+--- /dev/null
++++ b/fs/lockd/clntxdr.c
+@@ -0,0 +1,657 @@
++/*
++ * linux/fs/lockd/clntxdr.c
++ *
++ * XDR functions to encode/decode NLM version 3 RPC arguments and results.
++ * NLM version 3 is backwards compatible with NLM versions 1 and 2.
++ *
++ * NLM client-side only.
++ *
++ * Copyright (C) 2010, Oracle.  All rights reserved.
++ */
 +
- 	/* can only change number of threads if nfsd is already up */
- 	if (nfssvc_inuse()) {
- 		socket_up = 1;
-diff --git a/utils/nfsd/nfssvc.c b/utils/nfsd/nfssvc.c
-index 34c67ca..f7edcba 100644
---- a/utils/nfsd/nfssvc.c
-+++ b/utils/nfsd/nfssvc.c
-@@ -15,9 +15,11 @@
- #include <netdb.h>
- #include <netinet/in.h>
- #include <arpa/inet.h>
-+#include <sys/stat.h>
- #include <unistd.h>
- #include <fcntl.h>
- #include <errno.h>
-+#include <stdlib.h>
- 
- #include "nfslib.h"
- #include "xlog.h"
-@@ -31,9 +33,13 @@
-  */
- #undef IPV6_SUPPORTED
- 
--#define NFSD_PORTS_FILE     "/proc/fs/nfsd/portlist"
--#define NFSD_VERS_FILE    "/proc/fs/nfsd/versions"
--#define NFSD_THREAD_FILE  "/proc/fs/nfsd/threads"
-+#ifndef NFSD_FS_DIR
-+#define NFSD_FS_DIR	  "/proc/fs/nfsd"
++#include <linux/types.h>
++#include <linux/sunrpc/xdr.h>
++#include <linux/sunrpc/clnt.h>
++#include <linux/sunrpc/stats.h>
++#include <linux/lockd/lockd.h>
++
++#define NLMDBG_FACILITY		NLMDBG_XDR
++
++#if (NLMCLNT_OHSIZE > XDR_MAX_NETOBJ)
++#  error "NLM host name cannot be larger than XDR_MAX_NETOBJ!"
 +#endif
 +
-+#define NFSD_PORTS_FILE   NFSD_FS_DIR "/portlist"
-+#define NFSD_VERS_FILE    NFSD_FS_DIR "/versions"
-+#define NFSD_THREAD_FILE  NFSD_FS_DIR "/threads"
- 
- /*
-  * declaring a common static scratch buffer here keeps us from having to
-@@ -44,6 +50,45 @@
- char buf[128];
- 
- /*
-+ * Using the "new" interfaces for nfsd requires that /proc/fs/nfsd is
-+ * actually mounted. Make an attempt to mount it here if it doesn't appear
-+ * to be. If the mount attempt fails, no big deal -- fall back to using nfsctl
-+ * instead.
++/*
++ * Declare the space requirements for NLM arguments and replies as
++ * number of 32bit-words
 + */
-+void
-+nfssvc_mount_nfsdfs(char *progname)
++#define NLM_cookie_sz		(1+(NLM_MAXCOOKIELEN>>2))
++#define NLM_caller_sz		(1+(NLMCLNT_OHSIZE>>2))
++#define NLM_owner_sz		(1+(NLMCLNT_OHSIZE>>2))
++#define NLM_fhandle_sz		(1+(NFS2_FHSIZE>>2))
++#define NLM_lock_sz		(3+NLM_caller_sz+NLM_owner_sz+NLM_fhandle_sz)
++#define NLM_holder_sz		(4+NLM_owner_sz)
++
++#define NLM_testargs_sz		(NLM_cookie_sz+1+NLM_lock_sz)
++#define NLM_lockargs_sz		(NLM_cookie_sz+4+NLM_lock_sz)
++#define NLM_cancargs_sz		(NLM_cookie_sz+2+NLM_lock_sz)
++#define NLM_unlockargs_sz	(NLM_cookie_sz+NLM_lock_sz)
++
++#define NLM_testres_sz		(NLM_cookie_sz+1+NLM_holder_sz)
++#define NLM_res_sz		(NLM_cookie_sz+1)
++#define NLM_norep_sz		(0)
++
++
++static s32 loff_t_to_s32(loff_t offset)
 +{
-+	int err;
-+	struct stat statbuf;
++	s32 res;
 +
-+	err = stat(NFSD_THREAD_FILE, &statbuf);
-+	if (err == 0)
-+		return;
-+	else if (errno != ENOENT) {
-+		xlog(L_ERROR, "Unable to stat %s: errno %d (%m)",
-+				NFSD_THREAD_FILE, errno);
-+		return;
-+	}
++	if (offset >= NLM_OFFSET_MAX)
++		res = NLM_OFFSET_MAX;
++	else if (offset <= -NLM_OFFSET_MAX)
++		res = -NLM_OFFSET_MAX;
++	else
++		res = offset;
++	return res;
++}
 +
-+	/*
-+	 * this call can return an error if modprobe is set up to automatically
-+	 * mount nfsdfs when nfsd.ko is plugged in. So, ignore the return
-+	 * code from it and just check for the "threads" file afterward.
-+	 */
-+	system("/bin/mount -t nfsd nfsd " NFSD_FS_DIR " >/dev/null 2>&1");
++static void nlm_compute_offsets(const struct nlm_lock *lock,
++				u32 *l_offset, u32 *l_len)
++{
++	const struct file_lock *fl = &lock->fl;
 +
-+	err = stat(NFSD_THREAD_FILE, &statbuf);
-+	if (err == 0)
-+		return;
++	BUG_ON(unlikely(fl->fl_start > NLM_OFFSET_MAX));
++	BUG_ON(unlikely(fl->fl_end > NLM_OFFSET_MAX &&
++				fl->fl_end != OFFSET_MAX));
 +
-+	xlog(L_ERROR, "Unable to access " NFSD_FS_DIR " errno %d (%m)." 
-+		"\nPlease try, as root, 'mount -t nfsd nfsd " NFSD_FS_DIR 
-+		"' and then restart %s to correct the problem", errno, progname);
-+
-+	return;
++	*l_offset = loff_t_to_s32(fl->fl_start);
++	if (fl->fl_end == OFFSET_MAX)
++		*l_len = 0;
++	else
++		*l_len = loff_t_to_s32(fl->fl_end - fl->fl_start + 1);
 +}
 +
 +/*
-  * Are there already sockets configured? If not, then it is safe to try to
-  * open some and pass them through.
-  *
-diff --git a/utils/nfsd/nfssvc.h b/utils/nfsd/nfssvc.h
-index 0c69bd6..1a01cec 100644
---- a/utils/nfsd/nfssvc.h
-+++ b/utils/nfsd/nfssvc.h
-@@ -20,6 +20,7 @@
-  *
-  */
++ * Handle decode buffer overflows out-of-line.
++ */
++static void print_overflow_msg(const char *func, const struct xdr_stream *xdr)
++{
++	dprintk("lockd: %s prematurely hit the end of our receive buffer. "
++		"Remaining buffer length is %tu words.\n",
++		func, xdr->end - xdr->p);
++}
++
++
++/*
++ * Encode/decode NLMv3 basic data types
++ *
++ * Basic NLMv3 data types are not defined in an IETF standards
++ * document.  X/Open has a description of these data types that
++ * is useful.  See Chapter 10 of "Protocols for Interworking:
++ * XNFS, Version 3W".
++ *
++ * Not all basic data types have their own encoding and decoding
++ * functions.  For run-time efficiency, some data types are encoded
++ * or decoded inline.
++ */
++
++static void encode_bool(struct xdr_stream *xdr, const int value)
++{
++	__be32 *p;
++
++	p = xdr_reserve_space(xdr, 4);
++	BUG_ON(unlikely(p == NULL));
++	*p = value ? xdr_one : xdr_zero;
++}
++
++static void encode_int32(struct xdr_stream *xdr, const s32 value)
++{
++	__be32 *p;
++
++	p = xdr_reserve_space(xdr, 4);
++	BUG_ON(unlikely(p == NULL));
++	*p = cpu_to_be32(value);
++}
++
++/*
++ *	typedef opaque netobj<MAXNETOBJ_SZ>
++ */
++static void encode_netobj(struct xdr_stream *xdr,
++			  const u8 *data, const unsigned int length)
++{
++	__be32 *p;
++
++	BUG_ON(unlikely(length > XDR_MAX_NETOBJ));
++	p = xdr_reserve_space(xdr, 4 + length);
++	BUG_ON(unlikely(p == NULL));
++	xdr_encode_opaque(p, data, length);
++}
++
++static int decode_netobj(struct xdr_stream *xdr,
++			 struct xdr_netobj *obj)
++{
++	u32 length;
++	__be32 *p;
++
++	p = xdr_inline_decode(xdr, 4);
++	if (unlikely(p == NULL))
++		goto out_overflow;
++	length = be32_to_cpup(p++);
++	if (unlikely(length > XDR_MAX_NETOBJ))
++		goto out_size;
++	obj->len = length;
++	obj->data = (u8 *)p;
++	return 0;
++out_size:
++	dprintk("NFS: returned netobj was too long: %u\n", length);
++	return -EIO;
++out_overflow:
++	print_overflow_msg(__func__, xdr);
++	return -EIO;
++}
++
++/*
++ *	netobj cookie;
++ */
++static void encode_cookie(struct xdr_stream *xdr,
++			  const struct nlm_cookie *cookie)
++{
++	BUG_ON(unlikely(cookie->len > NLM_MAXCOOKIELEN));
++	encode_netobj(xdr, (u8 *)&cookie->data, cookie->len);
++}
++
++static int decode_cookie(struct xdr_stream *xdr,
++			 struct nlm_cookie *cookie)
++{
++	u32 length;
++	__be32 *p;
++
++	p = xdr_inline_decode(xdr, 4);
++	if (unlikely(p == NULL))
++		goto out_overflow;
++	length = be32_to_cpup(p++);
++	/* apparently HPUX can return empty cookies */
++	if (length == 0)
++		goto out_hpux;
++	if (length > NLM_MAXCOOKIELEN)
++		goto out_size;
++	p = xdr_inline_decode(xdr, length);
++	if (unlikely(p == NULL))
++		goto out_overflow;
++	cookie->len = length;
++	memcpy(cookie->data, p, length);
++	return 0;
++out_hpux:
++	cookie->len = 4;
++	memset(cookie->data, 0, 4);
++	return 0;
++out_size:
++	dprintk("NFS: returned cookie was too long: %u\n", length);
++	return -EIO;
++out_overflow:
++	print_overflow_msg(__func__, xdr);
++	return -EIO;
++}
++
++/*
++ *	netobj fh;
++ */
++static void encode_fh(struct xdr_stream *xdr, const struct nfs_fh *fh)
++{
++	BUG_ON(unlikely(fh->size != NFS2_FHSIZE));
++	encode_netobj(xdr, (u8 *)&fh->data, NFS2_FHSIZE);
++}
++
++/*
++ *	enum nlm_stats {
++ *		LCK_GRANTED = 0,
++ *		LCK_DENIED = 1,
++ *		LCK_DENIED_NOLOCKS = 2,
++ *		LCK_BLOCKED = 3,
++ *		LCK_DENIED_GRACE_PERIOD = 4
++ *	};
++ *
++ *
++ *	struct nlm_stat {
++ *		nlm_stats stat;
++ *	};
++ *
++ */
++
++enum nlm_stats {
++	LCK_GRANTED = 0,
++	LCK_DENIED = 1,
++	LCK_DENIED_NOLOCKS = 2,
++	LCK_BLOCKED = 3,
++	LCK_DENIED_GRACE_PERIOD = 4
++};
++
++static void encode_nlm_stat(struct xdr_stream *xdr,
++			    const enum nlm_stats stat)
++{
++	__be32 *p;
++
++	BUG_ON(unlikely(stat > LCK_DENIED_GRACE_PERIOD));
++	p = xdr_reserve_space(xdr, 4);
++	BUG_ON(unlikely(p == NULL));
++	*p = cpu_to_be32(stat);
++}
++
++static int decode_nlm_stat(struct xdr_stream *xdr,
++			   enum nlm_stats *stat)
++{
++	u32 status;
++	__be32 *p;
++
++	p = xdr_inline_decode(xdr, 4);
++	if (unlikely(p == NULL))
++		goto out_overflow;
++	status = be32_to_cpup(p);
++	if (unlikely(status > LCK_DENIED_GRACE_PERIOD))
++		goto out_enum;
++	*stat = (enum nlm_stats)status;
++	return 0;
++out_enum:
++	dprintk("%s: server returned invalid nlm_stats value: %u\n",
++		__func__, status);
++	return -EIO;
++out_overflow:
++	print_overflow_msg(__func__, xdr);
++	return -EIO;
++}
++
++/*
++ *	struct nlm_holder {
++ *		bool exclusive;
++ *		int uppid;
++ *		netobj oh;
++ *		unsigned l_offset;
++ *		unsigned l_len;
++ *	};
++ */
++static void encode_nlm_holder(struct xdr_stream *xdr,
++			      const struct nlm_res *result)
++{
++	const struct nlm_lock *lock = &result->lock;
++	u32 l_offset, l_len;
++	__be32 *p;
++
++	encode_bool(xdr, lock->fl.fl_type == F_RDLCK);
++	encode_int32(xdr, lock->svid);
++	encode_netobj(xdr, lock->oh.data, lock->oh.len);
++
++	p = xdr_reserve_space(xdr, 4 + 4);
++	BUG_ON(unlikely(p == NULL));
++	nlm_compute_offsets(lock, &l_offset, &l_len);
++	*p++ = cpu_to_be32(l_offset);
++	*p   = cpu_to_be32(l_len);
++}
++
++static int decode_nlm_holder(struct xdr_stream *xdr, struct nlm_res *result)
++{
++	struct nlm_lock *lock = &result->lock;
++	struct file_lock *fl = &lock->fl;
++	u32 exclusive, l_offset, l_len;
++	int error;
++	__be32 *p;
++	s32 end;
++
++	memset(lock, 0, sizeof(*lock));
++	locks_init_lock(fl);
++
++	p = xdr_inline_decode(xdr, 4 + 4);
++	if (unlikely(p == NULL))
++		goto out_overflow;
++	exclusive = be32_to_cpup(p++);
++	lock->svid = be32_to_cpup(p);
++	fl->fl_pid = (pid_t)lock->svid;
++
++	error = decode_netobj(xdr, &lock->oh);
++	if (unlikely(error))
++		goto out;
++
++	p = xdr_inline_decode(xdr, 4 + 4);
++	if (unlikely(p == NULL))
++		goto out_overflow;
++
++	fl->fl_flags = FL_POSIX;
++	fl->fl_type  = exclusive != 0 ? F_WRLCK : F_RDLCK;
++	l_offset = be32_to_cpup(p++);
++	l_len = be32_to_cpup(p);
++	end = l_offset + l_len - 1;
++
++	fl->fl_start = (loff_t)l_offset;
++	if (l_len == 0 || end < 0)
++		fl->fl_end = OFFSET_MAX;
++	else
++		fl->fl_end = (loff_t)end;
++	error = 0;
++out:
++	return error;
++out_overflow:
++	print_overflow_msg(__func__, xdr);
++	return -EIO;
++}
++
++/*
++ *	string caller_name<LM_MAXSTRLEN>;
++ */
++static void encode_caller_name(struct xdr_stream *xdr, const char *name)
++{
++	/* NB: client-side does not set lock->len */
++	u32 length = strlen(name);
++	__be32 *p;
++
++	BUG_ON(unlikely(length > NLM_MAXSTRLEN));
++	p = xdr_reserve_space(xdr, 4 + length);
++	BUG_ON(unlikely(p == NULL));
++	xdr_encode_opaque(p, name, length);
++}
++
++/*
++ *	struct nlm_lock {
++ *		string caller_name<LM_MAXSTRLEN>;
++ *		netobj fh;
++ *		netobj oh;
++ *		int uppid;
++ *		unsigned l_offset;
++ *		unsigned l_len;
++ *	};
++ */
++static void encode_nlm_lock(struct xdr_stream *xdr,
++			    const struct nlm_lock *lock)
++{
++	u32 l_offset, l_len;
++	__be32 *p;
++
++	encode_caller_name(xdr, lock->caller);
++	encode_fh(xdr, &lock->fh);
++	encode_netobj(xdr, lock->oh.data, lock->oh.len);
++
++	p = xdr_reserve_space(xdr, 4 + 4 + 4);
++	BUG_ON(unlikely(p == NULL));
++	*p++ = cpu_to_be32(lock->svid);
++
++	nlm_compute_offsets(lock, &l_offset, &l_len);
++	*p++ = cpu_to_be32(l_offset);
++	*p   = cpu_to_be32(l_len);
++}
++
++
++/*
++ * NLMv3 XDR encode functions
++ *
++ * NLMv3 argument types are defined in Chapter 10 of The Open Group's
++ * "Protocols for Interworking: XNFS, Version 3W".
++ */
++
++/*
++ *	struct nlm_testargs {
++ *		netobj cookie;
++ *		bool exclusive;
++ *		struct nlm_lock alock;
++ *	};
++ */
++static int nlm_xdr_enc_testargs(struct rpc_rqst *req, __be32 *p,
++				const struct nlm_args *args)
++{
++	const struct nlm_lock *lock = &args->lock;
++	struct xdr_stream xdr;
++
++	xdr_init_encode(&xdr, &req->rq_snd_buf, p);
++	encode_cookie(&xdr, &args->cookie);
++	encode_bool(&xdr, lock->fl.fl_type == F_WRLCK);
++	encode_nlm_lock(&xdr, lock);
++	return 0;
++}
++
++/*
++ *	struct nlm_lockargs {
++ *		netobj cookie;
++ *		bool block;
++ *		bool exclusive;
++ *		struct nlm_lock alock;
++ *		bool reclaim;
++ *		int state;
++ *	};
++ */
++static int nlm_xdr_enc_lockargs(struct rpc_rqst *req, __be32 *p,
++				const struct nlm_args *args)
++{
++	const struct nlm_lock *lock = &args->lock;
++	struct xdr_stream xdr;
++
++	xdr_init_encode(&xdr, &req->rq_snd_buf, p);
++	encode_cookie(&xdr, &args->cookie);
++	encode_bool(&xdr, args->block);
++	encode_bool(&xdr, lock->fl.fl_type == F_WRLCK);
++	encode_nlm_lock(&xdr, lock);
++	encode_bool(&xdr, args->reclaim);
++	encode_int32(&xdr, args->state);
++	return 0;
++}
++
++/*
++ *	struct nlm_cancargs {
++ *		netobj cookie;
++ *		bool block;
++ *		bool exclusive;
++ *		struct nlm_lock alock;
++ *	};
++ */
++static int nlm_xdr_enc_cancargs(struct rpc_rqst *req, __be32 *p,
++				const struct nlm_args *args)
++{
++	const struct nlm_lock *lock = &args->lock;
++	struct xdr_stream xdr;
++
++	xdr_init_encode(&xdr, &req->rq_snd_buf, p);
++	encode_cookie(&xdr, &args->cookie);
++	encode_bool(&xdr, args->block);
++	encode_bool(&xdr, lock->fl.fl_type == F_WRLCK);
++	encode_nlm_lock(&xdr, lock);
++	return 0;
++}
++
++/*
++ *	struct nlm_unlockargs {
++ *		netobj cookie;
++ *		struct nlm_lock alock;
++ *	};
++ */
++static int nlm_xdr_enc_unlockargs(struct rpc_rqst *req, __be32 *p,
++				  const struct nlm_args *args)
++{
++	const struct nlm_lock *lock = &args->lock;
++	struct xdr_stream xdr;
++
++	xdr_init_encode(&xdr, &req->rq_snd_buf, p);
++	encode_cookie(&xdr, &args->cookie);
++	encode_nlm_lock(&xdr, lock);
++	return 0;
++}
++
++/*
++ *	struct nlm_res {
++ *		netobj cookie;
++ *		nlm_stat stat;
++ *	};
++ */
++static int nlm_xdr_enc_res(struct rpc_rqst *req, __be32 *p,
++			   const struct nlm_res *result)
++{
++	struct xdr_stream xdr;
++
++	xdr_init_encode(&xdr, &req->rq_snd_buf, p);
++	encode_cookie(&xdr, &result->cookie);
++	encode_nlm_stat(&xdr, result->status);
++	return 0;
++}
++
++/*
++ *	union nlm_testrply switch (nlm_stats stat) {
++ *	case LCK_DENIED:
++ *		struct nlm_holder holder;
++ *	default:
++ *		void;
++ *	};
++ *
++ *	struct nlm_testres {
++ *		netobj cookie;
++ *		nlm_testrply test_stat;
++ *	};
++ */
++static void encode_nlm_testrply(struct xdr_stream *xdr,
++				const struct nlm_res *result)
++{
++	if (result->status == LCK_DENIED)
++		encode_nlm_holder(xdr, result);
++}
++
++static int nlm_xdr_enc_testres(struct rpc_rqst *req, __be32 *p,
++			       const struct nlm_res *result)
++{
++	struct xdr_stream xdr;
++
++	xdr_init_encode(&xdr, &req->rq_snd_buf, p);
++	encode_cookie(&xdr, &result->cookie);
++	encode_nlm_stat(&xdr, result->status);
++	encode_nlm_testrply(&xdr, result);
++	return 0;
++}
++
++
++/*
++ * NLMv3 XDR decode functions
++ *
++ * NLMv3 result types are defined in Chapter 10 of The Open Group's
++ * "Protocols for Interworking: XNFS, Version 3W".
++ */
++
++/*
++ *	union nlm_testrply switch (nlm_stats stat) {
++ *	case LCK_DENIED:
++ *		struct nlm_holder holder;
++ *	default:
++ *		void;
++ *	};
++ *
++ *	struct nlm_testres {
++ *		netobj cookie;
++ *		nlm_testrply test_stat;
++ *	};
++ */
++static int decode_nlm_testrply(struct xdr_stream *xdr,
++			       struct nlm_res *result)
++{
++	int error;
++
++	error = decode_nlm_stat(xdr, &result->status);
++	if (unlikely(error))
++		goto out;
++	if (result->status == LCK_DENIED)
++		error = decode_nlm_holder(xdr, result);
++out:
++	return error;
++}
++
++static int nlm_xdr_dec_testres(struct rpc_rqst *req, __be32 *p,
++			       struct nlm_res *result)
++{
++	struct xdr_stream xdr;
++	int error;
++
++	xdr_init_decode(&xdr, &req->rq_rcv_buf, p);
++	error = decode_cookie(&xdr, &result->cookie);
++	if (unlikely(error))
++		goto out;
++	error = decode_nlm_testrply(&xdr, result);
++out:
++	return error;
++}
++
++/*
++ *	struct nlm_res {
++ *		netobj cookie;
++ *		nlm_stat stat;
++ *	};
++ */
++static int nlm_xdr_dec_res(struct rpc_rqst *req, __be32 *p,
++			   struct nlm_res *result)
++{
++	struct xdr_stream xdr;
++	int error;
++
++	xdr_init_decode(&xdr, &req->rq_rcv_buf, p);
++	error = decode_cookie(&xdr, &result->cookie);
++	if (unlikely(error))
++		goto out;
++	error = decode_nlm_stat(&xdr, &result->status);
++out:
++	return error;
++}
++
++
++/*
++ * For NLM, a void procedure really returns nothing
++ */
++#define nlm_xdr_dec_norep	NULL
++
++#define PROC(proc, argtype, restype)	\
++[NLMPROC_##proc] = {							\
++	.p_proc      = NLMPROC_##proc,					\
++	.p_encode    = (kxdrproc_t)nlm_xdr_enc_##argtype,		\
++	.p_decode    = (kxdrproc_t)nlm_xdr_dec_##restype,		\
++	.p_arglen    = NLM_##argtype##_sz,				\
++	.p_replen    = NLM_##restype##_sz,				\
++	.p_statidx   = NLMPROC_##proc,					\
++	.p_name      = #proc,						\
++	}
++
++static struct rpc_procinfo	nlm_procedures[] = {
++    PROC(TEST,		testargs,	testres),
++    PROC(LOCK,		lockargs,	res),
++    PROC(CANCEL,	cancargs,	res),
++    PROC(UNLOCK,	unlockargs,	res),
++    PROC(GRANTED,	testargs,	res),
++    PROC(TEST_MSG,	testargs,	norep),
++    PROC(LOCK_MSG,	lockargs,	norep),
++    PROC(CANCEL_MSG,	cancargs,	norep),
++    PROC(UNLOCK_MSG,	unlockargs,	norep),
++    PROC(GRANTED_MSG,	testargs,	norep),
++    PROC(TEST_RES,	testres,	norep),
++    PROC(LOCK_RES,	res,		norep),
++    PROC(CANCEL_RES,	res,		norep),
++    PROC(UNLOCK_RES,	res,		norep),
++    PROC(GRANTED_RES,	res,		norep),
++};
++
++static struct rpc_version	nlm_version1 = {
++		.number		= 1,
++		.nrprocs	= 16,
++		.procs		= nlm_procedures,
++};
++
++static struct rpc_version	nlm_version3 = {
++		.number		= 3,
++		.nrprocs	= 24,
++		.procs		= nlm_procedures,
++};
++
++static struct rpc_version	*nlm_versions[] = {
++	[1] = &nlm_version1,
++	[3] = &nlm_version3,
++#ifdef CONFIG_LOCKD_V4
++	[4] = &nlm_version4,
++#endif
++};
++
++static struct rpc_stat		nlm_rpc_stats;
++
++struct rpc_program		nlm_program = {
++		.name		= "lockd",
++		.number		= NLM_PROGRAM,
++		.nrvers		= ARRAY_SIZE(nlm_versions),
++		.version	= nlm_versions,
++		.stats		= &nlm_rpc_stats,
++};
+diff --git a/fs/lockd/xdr.c b/fs/lockd/xdr.c
+index b583ab0..0eb694d 100644
+--- a/fs/lockd/xdr.c
++++ b/fs/lockd/xdr.c
+@@ -149,37 +149,6 @@ nlm_decode_lock(__be32 *p, struct nlm_lock *lock)
+ }
  
-+void	nfssvc_mount_nfsdfs(char *progname);
- int	nfssvc_inuse(void);
- int	nfssvc_set_sockets(const int family, const unsigned int protobits,
- 			   const char *host, const char *port);
-
-
-
-
+ /*
+- * Encode a lock as part of an NLM call
+- */
+-static __be32 *
+-nlm_encode_lock(__be32 *p, struct nlm_lock *lock)
+-{
+-	struct file_lock	*fl = &lock->fl;
+-	__s32			start, len;
+-
+-	if (!(p = xdr_encode_string(p, lock->caller))
+-	 || !(p = nlm_encode_fh(p, &lock->fh))
+-	 || !(p = nlm_encode_oh(p, &lock->oh)))
+-		return NULL;
+-
+-	if (fl->fl_start > NLM_OFFSET_MAX
+-	 || (fl->fl_end > NLM_OFFSET_MAX && fl->fl_end != OFFSET_MAX))
+-		return NULL;
+-
+-	start = loff_t_to_s32(fl->fl_start);
+-	if (fl->fl_end == OFFSET_MAX)
+-		len = 0;
+-	else
+-		len = loff_t_to_s32(fl->fl_end - fl->fl_start + 1);
+-
+-	*p++ = htonl(lock->svid);
+-	*p++ = htonl(start);
+-	*p++ = htonl(len);
+-
+-	return p;
+-}
+-
+-/*
+  * Encode result of a TEST/TEST_MSG call
+  */
+ static __be32 *
+@@ -373,233 +342,6 @@ nlmsvc_encode_void(struct svc_rqst *rqstp, __be32 *p, void *dummy)
+ 	return xdr_ressize_check(rqstp, p);
+ }
+ 
+-/*
+- * Now, the client side XDR functions
+- */
+-#ifdef NLMCLNT_SUPPORT_SHARES
+-static int
+-nlmclt_decode_void(struct rpc_rqst *req, u32 *p, void *ptr)
+-{
+-	return 0;
+-}
+-#endif
+-
+-static int
+-nlmclt_encode_testargs(struct rpc_rqst *req, __be32 *p, nlm_args *argp)
+-{
+-	struct nlm_lock	*lock = &argp->lock;
+-
+-	if (!(p = nlm_encode_cookie(p, &argp->cookie)))
+-		return -EIO;
+-	*p++ = (lock->fl.fl_type == F_WRLCK)? xdr_one : xdr_zero;
+-	if (!(p = nlm_encode_lock(p, lock)))
+-		return -EIO;
+-	req->rq_slen = xdr_adjust_iovec(req->rq_svec, p);
+-	return 0;
+-}
+-
+-static int
+-nlmclt_decode_testres(struct rpc_rqst *req, __be32 *p, struct nlm_res *resp)
+-{
+-	if (!(p = nlm_decode_cookie(p, &resp->cookie)))
+-		return -EIO;
+-	resp->status = *p++;
+-	if (resp->status == nlm_lck_denied) {
+-		struct file_lock	*fl = &resp->lock.fl;
+-		u32			excl;
+-		s32			start, len, end;
+-
+-		memset(&resp->lock, 0, sizeof(resp->lock));
+-		locks_init_lock(fl);
+-		excl = ntohl(*p++);
+-		resp->lock.svid = ntohl(*p++);
+-		fl->fl_pid = (pid_t)resp->lock.svid;
+-		if (!(p = nlm_decode_oh(p, &resp->lock.oh)))
+-			return -EIO;
+-
+-		fl->fl_flags = FL_POSIX;
+-		fl->fl_type  = excl? F_WRLCK : F_RDLCK;
+-		start = ntohl(*p++);
+-		len = ntohl(*p++);
+-		end = start + len - 1;
+-
+-		fl->fl_start = s32_to_loff_t(start);
+-		if (len == 0 || end < 0)
+-			fl->fl_end = OFFSET_MAX;
+-		else
+-			fl->fl_end = s32_to_loff_t(end);
+-	}
+-	return 0;
+-}
+-
+-
+-static int
+-nlmclt_encode_lockargs(struct rpc_rqst *req, __be32 *p, nlm_args *argp)
+-{
+-	struct nlm_lock	*lock = &argp->lock;
+-
+-	if (!(p = nlm_encode_cookie(p, &argp->cookie)))
+-		return -EIO;
+-	*p++ = argp->block? xdr_one : xdr_zero;
+-	*p++ = (lock->fl.fl_type == F_WRLCK)? xdr_one : xdr_zero;
+-	if (!(p = nlm_encode_lock(p, lock)))
+-		return -EIO;
+-	*p++ = argp->reclaim? xdr_one : xdr_zero;
+-	*p++ = htonl(argp->state);
+-	req->rq_slen = xdr_adjust_iovec(req->rq_svec, p);
+-	return 0;
+-}
+-
+-static int
+-nlmclt_encode_cancargs(struct rpc_rqst *req, __be32 *p, nlm_args *argp)
+-{
+-	struct nlm_lock	*lock = &argp->lock;
+-
+-	if (!(p = nlm_encode_cookie(p, &argp->cookie)))
+-		return -EIO;
+-	*p++ = argp->block? xdr_one : xdr_zero;
+-	*p++ = (lock->fl.fl_type == F_WRLCK)? xdr_one : xdr_zero;
+-	if (!(p = nlm_encode_lock(p, lock)))
+-		return -EIO;
+-	req->rq_slen = xdr_adjust_iovec(req->rq_svec, p);
+-	return 0;
+-}
+-
+-static int
+-nlmclt_encode_unlockargs(struct rpc_rqst *req, __be32 *p, nlm_args *argp)
+-{
+-	struct nlm_lock	*lock = &argp->lock;
+-
+-	if (!(p = nlm_encode_cookie(p, &argp->cookie)))
+-		return -EIO;
+-	if (!(p = nlm_encode_lock(p, lock)))
+-		return -EIO;
+-	req->rq_slen = xdr_adjust_iovec(req->rq_svec, p);
+-	return 0;
+-}
+-
+-static int
+-nlmclt_encode_res(struct rpc_rqst *req, __be32 *p, struct nlm_res *resp)
+-{
+-	if (!(p = nlm_encode_cookie(p, &resp->cookie)))
+-		return -EIO;
+-	*p++ = resp->status;
+-	req->rq_slen = xdr_adjust_iovec(req->rq_svec, p);
+-	return 0;
+-}
+-
+-static int
+-nlmclt_encode_testres(struct rpc_rqst *req, __be32 *p, struct nlm_res *resp)
+-{
+-	if (!(p = nlm_encode_testres(p, resp)))
+-		return -EIO;
+-	req->rq_slen = xdr_adjust_iovec(req->rq_svec, p);
+-	return 0;
+-}
+-
+-static int
+-nlmclt_decode_res(struct rpc_rqst *req, __be32 *p, struct nlm_res *resp)
+-{
+-	if (!(p = nlm_decode_cookie(p, &resp->cookie)))
+-		return -EIO;
+-	resp->status = *p++;
+-	return 0;
+-}
+-
+-#if (NLMCLNT_OHSIZE > XDR_MAX_NETOBJ)
+-#  error "NLM host name cannot be larger than XDR_MAX_NETOBJ!"
+-#endif
+-
+-/*
+- * Buffer requirements for NLM
+- */
+-#define NLM_void_sz		0
+-#define NLM_cookie_sz		1+XDR_QUADLEN(NLM_MAXCOOKIELEN)
+-#define NLM_caller_sz		1+XDR_QUADLEN(NLMCLNT_OHSIZE)
+-#define NLM_owner_sz		1+XDR_QUADLEN(NLMCLNT_OHSIZE)
+-#define NLM_fhandle_sz		1+XDR_QUADLEN(NFS2_FHSIZE)
+-#define NLM_lock_sz		3+NLM_caller_sz+NLM_owner_sz+NLM_fhandle_sz
+-#define NLM_holder_sz		4+NLM_owner_sz
+-
+-#define NLM_testargs_sz		NLM_cookie_sz+1+NLM_lock_sz
+-#define NLM_lockargs_sz		NLM_cookie_sz+4+NLM_lock_sz
+-#define NLM_cancargs_sz		NLM_cookie_sz+2+NLM_lock_sz
+-#define NLM_unlockargs_sz	NLM_cookie_sz+NLM_lock_sz
+-
+-#define NLM_testres_sz		NLM_cookie_sz+1+NLM_holder_sz
+-#define NLM_res_sz		NLM_cookie_sz+1
+-#define NLM_norep_sz		0
+-
+-/*
+- * For NLM, a void procedure really returns nothing
+- */
+-#define nlmclt_decode_norep	NULL
+-
+-#define PROC(proc, argtype, restype)	\
+-[NLMPROC_##proc] = {							\
+-	.p_proc      = NLMPROC_##proc,					\
+-	.p_encode    = (kxdrproc_t) nlmclt_encode_##argtype,		\
+-	.p_decode    = (kxdrproc_t) nlmclt_decode_##restype,		\
+-	.p_arglen    = NLM_##argtype##_sz,				\
+-	.p_replen    = NLM_##restype##_sz,				\
+-	.p_statidx   = NLMPROC_##proc,					\
+-	.p_name      = #proc,						\
+-	}
+-
+-static struct rpc_procinfo	nlm_procedures[] = {
+-    PROC(TEST,		testargs,	testres),
+-    PROC(LOCK,		lockargs,	res),
+-    PROC(CANCEL,	cancargs,	res),
+-    PROC(UNLOCK,	unlockargs,	res),
+-    PROC(GRANTED,	testargs,	res),
+-    PROC(TEST_MSG,	testargs,	norep),
+-    PROC(LOCK_MSG,	lockargs,	norep),
+-    PROC(CANCEL_MSG,	cancargs,	norep),
+-    PROC(UNLOCK_MSG,	unlockargs,	norep),
+-    PROC(GRANTED_MSG,	testargs,	norep),
+-    PROC(TEST_RES,	testres,	norep),
+-    PROC(LOCK_RES,	res,		norep),
+-    PROC(CANCEL_RES,	res,		norep),
+-    PROC(UNLOCK_RES,	res,		norep),
+-    PROC(GRANTED_RES,	res,		norep),
+-#ifdef NLMCLNT_SUPPORT_SHARES
+-    PROC(SHARE,		shareargs,	shareres),
+-    PROC(UNSHARE,	shareargs,	shareres),
+-    PROC(NM_LOCK,	lockargs,	res),
+-    PROC(FREE_ALL,	notify,		void),
+-#endif
+-};
+-
+-static struct rpc_version	nlm_version1 = {
+-		.number		= 1,
+-		.nrprocs	= 16,
+-		.procs		= nlm_procedures,
+-};
+-
+-static struct rpc_version	nlm_version3 = {
+-		.number		= 3,
+-		.nrprocs	= 24,
+-		.procs		= nlm_procedures,
+-};
+-
+-static struct rpc_version *	nlm_versions[] = {
+-	[1] = &nlm_version1,
+-	[3] = &nlm_version3,
+-#ifdef 	CONFIG_LOCKD_V4
+-	[4] = &nlm_version4,
+-#endif
+-};
+-
+-static struct rpc_stat		nlm_stats;
+-
+-struct rpc_program		nlm_program = {
+-		.name		= "lockd",
+-		.number		= NLM_PROGRAM,
+-		.nrvers		= ARRAY_SIZE(nlm_versions),
+-		.version	= nlm_versions,
+-		.stats		= &nlm_stats,
+-};
+-
+ #ifdef RPC_DEBUG
+ const char *nlmdbg_cookie2a(const struct nlm_cookie *cookie)
+ {
 
