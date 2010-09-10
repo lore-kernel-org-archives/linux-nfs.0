@@ -1,56 +1,75 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:24429 "EHLO
-	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1754676Ab0IMLG4 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Sep 2010 07:06:56 -0400
-Message-ID: <4C8E05CD.7090407@panasas.com>
-Date: Mon, 13 Sep 2010 13:06:53 +0200
-From: Boaz Harrosh <bharrosh@panasas.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-CC: Fred Isaman <iisaman@netapp.com>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 07/13] RFC: pnfs: full mount/umount infrastructure
-References: <1283450419-5648-1-git-send-email-iisaman@netapp.com>	 <1283450419-5648-8-git-send-email-iisaman@netapp.com> <1284146604.10062.68.camel@heimdal.trondhjem.org>
-In-Reply-To: <1284146604.10062.68.camel@heimdal.trondhjem.org>
-Content-Type: text/plain; charset=UTF-8
+Received: from mx2.netapp.com ([216.240.18.37]:20594 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751991Ab0IJWhX convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Sep 2010 18:37:23 -0400
+Received: from svlrsexc1-prd.hq.netapp.com (svlrsexc1-prd.hq.netapp.com [10.57.115.30])
+	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id o8AMb4j7004229
+	for <linux-nfs@vger.kernel.org>; Fri, 10 Sep 2010 15:37:07 -0700 (PDT)
+Subject: Re: [PATCH 08/13] RFC: pnfs: filelayout: introduce minimal file
+ layout driver
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Fred Isaman <iisaman@netapp.com>
+Cc: linux-nfs@vger.kernel.org
+In-Reply-To: <AANLkTi=6vcQC1k28B=aKJbN=jRBipoff3+79BpgLxtXw@mail.gmail.com>
+References: <1283450419-5648-1-git-send-email-iisaman@netapp.com>
+	 <1283450419-5648-9-git-send-email-iisaman@netapp.com>
+	 <1284147111.10062.74.camel@heimdal.trondhjem.org>
+	 <AANLkTi=6vcQC1k28B=aKJbN=jRBipoff3+79BpgLxtXw@mail.gmail.com>
+Content-Type: text/plain; charset="UTF-8"
+Date: Fri, 10 Sep 2010 18:37:03 -0400
+Message-ID: <1284158223.14078.78.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 09/10/2010 10:23 PM, Trond Myklebust wrote:
-> On Thu, 2010-09-02 at 14:00 -0400, Fred Isaman wrote:
->>  
->>  /* Unitialize a mountpoint in a layout driver */
->>  void
->>  unset_pnfs_layoutdriver(struct nfs_server *nfss)
->>  {
->> +	if (nfss->pnfs_curr_ld)
->> +		nfss->pnfs_curr_ld->ld_io_ops->uninitialize_mountpoint(nfss->nfs_client);
+On Fri, 2010-09-10 at 14:11 -0700, Fred Isaman wrote:
+> On Fri, Sep 10, 2010 at 12:31 PM, Trond Myklebust
+> <Trond.Myklebust@netapp.com> wrote:
+> > On Thu, 2010-09-02 at 14:00 -0400, Fred Isaman wrote:
+> OK
 > 
-> That 'uninitialize_mountpoint' name doesn't make any sense. The
-> nfs_client parameter isn't associated to a particular mountpoint.
+> >> +     .initialize_mountpoint   = filelayout_initialize_mountpoint,
+> >> +     .uninitialize_mountpoint = filelayout_uninitialize_mountpoint,
+> >> +};
+> >> +
+> >> +
+> >> +struct pnfs_layoutdriver_type filelayout_type = {
+> >
+> > Ditto.
 > 
+> This includes a list_head field which is set by the generic layer.
+> 
+> >
+> >> +     .id = LAYOUT_NFSV4_1_FILES,
+> >> +     .name = "LAYOUT_NFSV4_1_FILES",
+> >> +     .ld_io_ops = &filelayout_io_operations,
+> >
+> > Why do we need a separate 'struct layoutdriver_io_operations'? Any
+> > reason those can't just be embedded in struct pnfs_layoutdriver_type?
+> 
+> I believe this decision was primarily aesthetics.  However, keeping
+> the static io_ops seperate from the variable list_head seems like a
+> good idea.
 
-Me two BTW.
-I will later need a per super-block resources, mainly slabs and work_q.
-The above is used for two things: 
-one - Per-client but after the layout-type is known which comes after first
-      mount. (For the device cache)
-Two - Per server (per mount) which will be used by objects later on.
-      (I think that there is an if somewhere that make this call only
-       once per client, right?)
+I dunno. They are in a 1-1 correspondence, so I'm not sure I see the
+need for a separation.
 
-I think we should just pass nfss to the LD and let it take care of accessing
-nfss->nfs_client for the device cache. (It is done so later in the tree, right?)
+> Perhaps having a driver structure that includes the io_ops and static
+> portions of pnfs_layoutdriver_type, with the generic layer allocating
+> a wrapper structure that is basically:
+> struct {
+>     struct list_head list;
+>     struct pnfs_layoutdriver_type *driver_info;
 
-Boaz
->>  	nfss->pnfs_curr_ld = NULL;
->>  }
->>  
->> @@ -68,6 +100,12 @@ set_pnfs_layoutdriver(struct nfs_server *server, u32 id)
->>  			goto out_no_driver;
->>  		}
->>  	}
->> +	if (ld_type->ld_io_ops->initialize_mountpoint(server->nfs_client)) {
-> 
-> Ditto.
-> 
+      Should be const...
+
+      struct module *owner = THIS_MODULE;
+
+> }
+
+...although the struct module could probably indeed be part of
+pnfs_layoutdriver_type too.
+
+Cheers
+  Trond
