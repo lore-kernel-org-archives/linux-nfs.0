@@ -1,63 +1,139 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.candelatech.com ([208.74.158.172]:44634 "EHLO
-	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752440Ab0IGVKM (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Sep 2010 17:10:12 -0400
-Message-ID: <4C86AA2F.7080906@candelatech.com>
-Date: Tue, 07 Sep 2010 14:10:07 -0700
-From: Ben Greear <greearb@candelatech.com>
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: RFC:  support srcaddr= option to bind to local IPs.
-References: <4C81449B.4010900@candelatech.com>	 <1283882166.2788.48.camel@heimdal.trondhjem.org>	 <4C86A36E.9010906@candelatech.com> <1283892851.2788.107.camel@heimdal.trondhjem.org>
-In-Reply-To: <1283892851.2788.107.camel@heimdal.trondhjem.org>
-Content-Type: text/plain; charset=UTF-8; format=flowed
+Received: from mx1.redhat.com ([209.132.183.28]:55500 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751453Ab0IJT1U (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 10 Sep 2010 15:27:20 -0400
+Received: from int-mx02.intmail.prod.int.phx2.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
+	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id o8AJRKrM023570
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Fri, 10 Sep 2010 15:27:20 -0400
+Received: from dantu.rdu.redhat.com (dantu.rdu.redhat.com [10.11.228.66])
+	by int-mx02.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id o8AJRIBT018810
+	for <linux-nfs@vger.kernel.org>; Fri, 10 Sep 2010 15:27:20 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 2/9] nfs: convert nfs_renameargs to use qstr structs
+Date: Fri, 10 Sep 2010 15:27:11 -0400
+Message-Id: <1284146838-1468-3-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1284146838-1468-1-git-send-email-jlayton@redhat.com>
+References: <1284146838-1468-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On 09/07/2010 01:54 PM, Trond Myklebust wrote:
-> On Tue, 2010-09-07 at 13:41 -0700, Ben Greear wrote:
->> On 09/07/2010 10:56 AM, Trond Myklebust wrote:
->>> On Fri, 2010-09-03 at 11:55 -0700, Ben Greear wrote:
->>>> This patch lets one bind the local side of NFS sockets to a particular
->>>> IP address.  This can be useful for users on multi-homed systems.
->>>>
->>>> This patch must be on top of the previous patch to fix the IPv6 address
->>>> comparison or it will not work.
->>>>
->>>> Comments and suggestions welcome...I'll incorporate those and post an
->>>> official signed-off patch after that.
->>>>
->>>> Thanks,
->>>> Ben
->>>>
->>>
->>> The code in nfs_callback_authenticate is going to break NFSv4 callbacks.
->>> Callbacks are sent to the -oclientaddr address, not srcaddr (btw, I
->>> really dislike that new boolean argument to nfs_find_client(). If you
->>> don't want to compare the source address, then have the caller pass a
->>> NULL pointer).
->>
->>
->> Would this fix the callback issue you speak of?  The idea is to
->> use source and dest to match if it exists, but if we find one
->> where server address matches and srcaddr isn't specified,
->> then we will use that.
->
-> No. As I said, it needs to match the clientaddr argument, not the
-> srcaddr.
->
-> The problem is that you are now potentially introducing cases where the
-> server may have multiple combinations of clientaddr and srcaddr.
+The v4 version already does this.
 
-Ok, so what do you think about allowing a flag to bind() to clientaddr
-instead of having the separate srcaddr option?
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/nfs/nfs2xdr.c        |    8 ++++----
+ fs/nfs/nfs3proc.c       |   10 ++++------
+ fs/nfs/nfs3xdr.c        |    8 ++++----
+ fs/nfs/proc.c           |   10 ++++------
+ include/linux/nfs_xdr.h |   10 ++++------
+ 5 files changed, 20 insertions(+), 26 deletions(-)
 
-Thanks,
-Ben
-
+diff --git a/fs/nfs/nfs2xdr.c b/fs/nfs/nfs2xdr.c
+index db8846a..e15bc03 100644
+--- a/fs/nfs/nfs2xdr.c
++++ b/fs/nfs/nfs2xdr.c
+@@ -337,10 +337,10 @@ nfs_xdr_createargs(struct rpc_rqst *req, __be32 *p, struct nfs_createargs *args)
+ static int
+ nfs_xdr_renameargs(struct rpc_rqst *req, __be32 *p, struct nfs_renameargs *args)
+ {
+-	p = xdr_encode_fhandle(p, args->fromfh);
+-	p = xdr_encode_array(p, args->fromname, args->fromlen);
+-	p = xdr_encode_fhandle(p, args->tofh);
+-	p = xdr_encode_array(p, args->toname, args->tolen);
++	p = xdr_encode_fhandle(p, args->old_dir);
++	p = xdr_encode_array(p, args->old_name->name, args->old_name->len);
++	p = xdr_encode_fhandle(p, args->new_dir);
++	p = xdr_encode_array(p, args->new_name->name, args->new_name->len);
+ 	req->rq_slen = xdr_adjust_iovec(req->rq_svec, p);
+ 	return 0;
+ }
+diff --git a/fs/nfs/nfs3proc.c b/fs/nfs/nfs3proc.c
+index b53b1a9..d8557b3 100644
+--- a/fs/nfs/nfs3proc.c
++++ b/fs/nfs/nfs3proc.c
+@@ -443,12 +443,10 @@ nfs3_proc_rename(struct inode *old_dir, struct qstr *old_name,
+ 		 struct inode *new_dir, struct qstr *new_name)
+ {
+ 	struct nfs_renameargs	arg = {
+-		.fromfh		= NFS_FH(old_dir),
+-		.fromname	= old_name->name,
+-		.fromlen	= old_name->len,
+-		.tofh		= NFS_FH(new_dir),
+-		.toname		= new_name->name,
+-		.tolen		= new_name->len
++		.old_dir	= NFS_FH(old_dir),
++		.old_name	= old_name,
++		.new_dir	= NFS_FH(new_dir),
++		.new_name	= new_name,
+ 	};
+ 	struct nfs3_renameres res;
+ 	struct rpc_message msg = {
+diff --git a/fs/nfs/nfs3xdr.c b/fs/nfs/nfs3xdr.c
+index d6506f8..f385759 100644
+--- a/fs/nfs/nfs3xdr.c
++++ b/fs/nfs/nfs3xdr.c
+@@ -444,10 +444,10 @@ nfs3_xdr_mknodargs(struct rpc_rqst *req, __be32 *p, struct nfs3_mknodargs *args)
+ static int
+ nfs3_xdr_renameargs(struct rpc_rqst *req, __be32 *p, struct nfs_renameargs *args)
+ {
+-	p = xdr_encode_fhandle(p, args->fromfh);
+-	p = xdr_encode_array(p, args->fromname, args->fromlen);
+-	p = xdr_encode_fhandle(p, args->tofh);
+-	p = xdr_encode_array(p, args->toname, args->tolen);
++	p = xdr_encode_fhandle(p, args->old_dir);
++	p = xdr_encode_array(p, args->old_name->name, args->old_name->len);
++	p = xdr_encode_fhandle(p, args->new_dir);
++	p = xdr_encode_array(p, args->new_name->name, args->new_name->len);
+ 	req->rq_slen = xdr_adjust_iovec(req->rq_svec, p);
+ 	return 0;
+ }
+diff --git a/fs/nfs/proc.c b/fs/nfs/proc.c
+index 611bec2..5c70b58 100644
+--- a/fs/nfs/proc.c
++++ b/fs/nfs/proc.c
+@@ -370,12 +370,10 @@ nfs_proc_rename(struct inode *old_dir, struct qstr *old_name,
+ 		struct inode *new_dir, struct qstr *new_name)
+ {
+ 	struct nfs_renameargs	arg = {
+-		.fromfh		= NFS_FH(old_dir),
+-		.fromname	= old_name->name,
+-		.fromlen	= old_name->len,
+-		.tofh		= NFS_FH(new_dir),
+-		.toname		= new_name->name,
+-		.tolen		= new_name->len
++		.old_dir	= NFS_FH(old_dir),
++		.old_name	= old_name,
++		.new_dir	= NFS_FH(new_dir),
++		.new_name	= new_name,
+ 	};
+ 	struct rpc_message msg = {
+ 		.rpc_proc	= &nfs_procedures[NFSPROC_RENAME],
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index c606f60..5436680 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -403,12 +403,10 @@ struct nfs_removeres {
+  * Common arguments to the rename call
+  */
+ struct nfs_renameargs {
+-	struct nfs_fh *		fromfh;
+-	const char *		fromname;
+-	unsigned int		fromlen;
+-	struct nfs_fh *		tofh;
+-	const char *		toname;
+-	unsigned int		tolen;
++	const struct nfs_fh *	old_dir;
++	const struct nfs_fh *	new_dir;
++	const struct qstr *	old_name;
++	const struct qstr *	new_name;
+ };
+ 
+ /*
 -- 
-Ben Greear <greearb@candelatech.com>
-Candela Technologies Inc  http://www.candelatech.com
+1.7.1
 
