@@ -1,64 +1,24 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ew0-f46.google.com ([209.85.215.46]:62431 "EHLO
-	mail-ew0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754304Ab0ITX12 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 20 Sep 2010 19:27:28 -0400
-From: Andy Shevchenko <andy.shevchenko@gmail.com>
-To: linux-kernel@vger.krenel.org
-Cc: "David S. Miller" <davem@davemloft.net>, netdev@vger.kernel.org,
-        Andy Shevchenko <andy.shevchenko@gmail.com>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        linux-nfs@vger.kernel.org
-Subject: [PATCH 2/3] sunrpc/cache: don't use custom hex_to_bin() converter
-Date: Tue, 21 Sep 2010 02:27:07 +0300
-Message-Id: <caff03788e07cab152f750489ea08d43bc13efed.1285024850.git.andy.shevchenko@gmail.com>
-In-Reply-To: <ee8a4349cc0eb3a881994b77e1e415b92ff7e669.1285024850.git.andy.shevchenko@gmail.com>
-References: <ee8a4349cc0eb3a881994b77e1e415b92ff7e669.1285024850.git.andy.shevchenko@gmail.com>
-In-Reply-To: <ee8a4349cc0eb3a881994b77e1e415b92ff7e669.1285024850.git.andy.shevchenko@gmail.com>
-References: <ee8a4349cc0eb3a881994b77e1e415b92ff7e669.1285024850.git.andy.shevchenko@gmail.com>
+Received: from bombadil.infradead.org ([18.85.46.34]:56236 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755038Ab0IJX7A (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Sep 2010 19:59:00 -0400
+Date: Fri, 10 Sep 2010 19:58:58 -0400
+From: Christoph Hellwig <hch@infradead.org>
+To: Fred Isaman <iisaman@netapp.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 07/13] RFC: pnfs: full mount/umount infrastructure
+Message-ID: <20100910235858.GB11231@infradead.org>
+References: <1283450419-5648-1-git-send-email-iisaman@netapp.com>
+ <1283450419-5648-8-git-send-email-iisaman@netapp.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1283450419-5648-8-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-Signed-off-by: Andy Shevchenko <andy.shevchenko@gmail.com>
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: linux-nfs@vger.kernel.org
----
- net/sunrpc/cache.c |   20 +++++++++++++-------
- 1 files changed, 13 insertions(+), 7 deletions(-)
+> +EXPORT_SYMBOL(pnfs_register_layoutdriver);
 
-diff --git a/net/sunrpc/cache.c b/net/sunrpc/cache.c
-index 5b7b56f..c944a24 100644
---- a/net/sunrpc/cache.c
-+++ b/net/sunrpc/cache.c
-@@ -1171,13 +1171,19 @@ int qword_get(char **bpp, char *dest, int bufsize)
- 	if (bp[0] == '\\' && bp[1] == 'x') {
- 		/* HEX STRING */
- 		bp += 2;
--		while (isxdigit(bp[0]) && isxdigit(bp[1]) && len < bufsize) {
--			int byte = isdigit(*bp) ? *bp-'0' : toupper(*bp)-'A'+10;
--			bp++;
--			byte <<= 4;
--			byte |= isdigit(*bp) ? *bp-'0' : toupper(*bp)-'A'+10;
--			*dest++ = byte;
--			bp++;
-+		while (len < bufsize) {
-+			int h, l;
-+
-+			h = hex_to_bin(bp[0]);
-+			if (h < 0)
-+				break;
-+
-+			l = hex_to_bin(bp[1]);
-+			if (l < 0)
-+				break;
-+
-+			*dest++ = (h << 4) | l;
-+			bp += 2;
- 			len++;
- 		}
- 	} else {
--- 
-1.7.2.2
+Al exports from nfs.ko needs to be _GPL - this is in no way a public
+API, just an internal subdivision of the nfs client.
 
