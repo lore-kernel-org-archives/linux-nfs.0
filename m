@@ -1,47 +1,41 @@
-From: Fred Isaman <iisaman@netapp.com>
-Subject: Re: [PATCH 10/13] RFC: nfs: client needs to maintain list of inodes
- with active layouts
-Date: Fri, 10 Sep 2010 14:18:08 -0700
-Message-ID: <AANLkTi=B7cFuXsd0C=hdf_8BSqe+ZdtgKOt64j_LLqf0@mail.gmail.com>
-References: <1283450419-5648-1-git-send-email-iisaman@netapp.com>
-	<1283450419-5648-11-git-send-email-iisaman@netapp.com>
-	<1284148768.10062.94.camel@heimdal.trondhjem.org>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH 1/3] mount.nfs: Refactor mount version and protocol
+ autonegotiation
+Date: Sat, 11 Sep 2010 00:06:19 -0400
+Message-ID: <20100911040619.GA24749@fieldses.org>
+References: <20100831212006.21061.17002.stgit@matisse.1015granger.net>
+ <20100831212130.21061.10519.stgit@matisse.1015granger.net>
+ <20100907111246.7de7d757@notabene>
+ <D0DBF3C1-0C80-4C30-8344-39974AD7CBD6@oracle.com>
+ <20100910072337.1c66dde3@notabene>
+ <1284068734.14656.39.camel@heimdal.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: linux-nfs@vger.kernel.org
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: Neil Brown <neilb@suse.de>, Chuck Lever <chuck.lever@oracle.com>,
+	linux-nfs@vger.kernel.org
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-bw0-f46.google.com ([209.85.214.46]:34071 "EHLO
-	mail-bw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752026Ab0IJVSK convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Sep 2010 17:18:10 -0400
-Received: by bwz11 with SMTP id 11so2628551bwz.19
-        for <linux-nfs@vger.kernel.org>; Fri, 10 Sep 2010 14:18:08 -0700 (PDT)
-In-Reply-To: <1284148768.10062.94.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
+Received: from fieldses.org ([174.143.236.118]:35268 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750981Ab0IKEHV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 11 Sep 2010 00:07:21 -0400
+In-Reply-To: <1284068734.14656.39.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Sep 10, 2010 at 12:59 PM, Trond Myklebust
-<Trond.Myklebust@netapp.com> wrote:
-> On Thu, 2010-09-02 at 14:00 -0400, Fred Isaman wrote:
->> From: The pNFS Team <linux-nfs@vger.kernel.org>
->
->> +static inline struct nfs_server *
->> +PNFS_NFS_SERVER(struct pnfs_layout_hdr *lo)
->> +{
->> + =A0 =A0 return NFS_SERVER(lo->inode);
->> +}
->> +
->
-> Why do we need this?
+On Thu, Sep 09, 2010 at 05:45:34PM -0400, Trond Myklebust wrote:
+> On Fri, 2010-09-10 at 07:23 +1000, Neil Brown wrote:
+> > On Thu, 9 Sep 2010 13:27:38 -0400
+> > Chuck Lever <chuck.lever@oracle.com> wrote:
+> > > 
+> > > Perhaps that violates Bruce's "too subtle" rule and I should replace it with your suggested post-call check?
+> > 
+> > He's like a guardian angel sitting on you shoulder whispering "too subtle"
+> > all the time :-)  Definitely true this time.
+> 
+> The mind boggles at the thought of Bruce perching on anyone's
+> shoulder...
 
-OK, it is gone.
+Would somebody please just offer me a chair?
 
-=46red
-
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" =
-in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at =A0http://vger.kernel.org/majordomo-info.html
->
+--b.
