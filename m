@@ -1,135 +1,97 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mailhub.sw.ru ([195.214.232.25]:27228 "EHLO relay.sw.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751263Ab0I0KIJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 27 Sep 2010 06:08:09 -0400
-Message-ID: <4CA06CFD.4050205@parallels.com>
-Date: Mon, 27 Sep 2010 14:07:57 +0400
-From: Pavel Emelyanov <xemul@parallels.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Chuck Lever <chuck.lever@oracle.com>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        linux-nfs@vger.kernel.org
-Subject: [PATCH 4/8] sunrpc: Add net to rpc_create_args
-References: <4CA06C7A.5060307@parallels.com>
-In-Reply-To: <4CA06C7A.5060307@parallels.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from daytona.panasas.com ([67.152.220.89]:59623 "EHLO
+	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1752962Ab0ILRDU (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 12 Sep 2010 13:03:20 -0400
+Message-ID: <4C8D07D5.6010006@panasas.com>
+Date: Sun, 12 Sep 2010 19:03:17 +0200
+From: Boaz Harrosh <bharrosh@panasas.com>
+To: NFS list <linux-nfs@vger.kernel.org>, Benny Halevy <bhalevy@panasas.com>,
+        Andy Adamson <andros@netapp.com>, Fred Isaman <iisaman@netapp.com>
+Subject: [RFC 1/3] SQUASHME: Generalize the device cache so it can be used
+ by all layouts
+References: <4C8D0759.6090201@panasas.com>
+In-Reply-To: <4C8D0759.6090201@panasas.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
 
-Signed-off-by: Pavel Emelyanov <xemul@openvz.org>
----
- fs/lockd/host.c             |    1 +
- fs/lockd/mon.c              |    1 +
- fs/nfs/client.c             |    1 +
- fs/nfs/mount_clnt.c         |    2 ++
- fs/nfsd/nfs4callback.c      |    1 +
- include/linux/sunrpc/clnt.h |    1 +
- net/sunrpc/rpcb_clnt.c      |    2 ++
- 7 files changed, 9 insertions(+), 0 deletions(-)
+Current code thinks that there can be a single device_id per
+layout segment. Change that to assume no relations between segments
+and device_ids. It's now up to the layout-driver to make any relations.
 
-diff --git a/fs/lockd/host.c b/fs/lockd/host.c
-index bb464d1..25e21e4 100644
---- a/fs/lockd/host.c
-+++ b/fs/lockd/host.c
-@@ -353,6 +353,7 @@ nlm_bind_host(struct nlm_host *host)
- 			.to_retries	= 5U,
- 		};
- 		struct rpc_create_args args = {
-+			.net		= &init_net,
- 			.protocol	= host->h_proto,
- 			.address	= nlm_addr(host),
- 			.addrsize	= host->h_addrlen,
-diff --git a/fs/lockd/mon.c b/fs/lockd/mon.c
-index e301546..e0c9189 100644
---- a/fs/lockd/mon.c
-+++ b/fs/lockd/mon.c
-@@ -69,6 +69,7 @@ static struct rpc_clnt *nsm_create(void)
- 		.sin_addr.s_addr	= htonl(INADDR_LOOPBACK),
- 	};
- 	struct rpc_create_args args = {
-+		.net			= &init_net,
- 		.protocol		= XPRT_TRANSPORT_UDP,
- 		.address		= (struct sockaddr *)&sin,
- 		.addrsize		= sizeof(sin),
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index e734072..351b711 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -601,6 +601,7 @@ static int nfs_create_rpc_client(struct nfs_client *clp,
- {
- 	struct rpc_clnt		*clnt = NULL;
- 	struct rpc_create_args args = {
-+		.net		= &init_net,
- 		.protocol	= clp->cl_proto,
- 		.address	= (struct sockaddr *)&clp->cl_addr,
- 		.addrsize	= clp->cl_addrlen,
-diff --git a/fs/nfs/mount_clnt.c b/fs/nfs/mount_clnt.c
-index 59047f8..4b47203 100644
---- a/fs/nfs/mount_clnt.c
-+++ b/fs/nfs/mount_clnt.c
-@@ -153,6 +153,7 @@ int nfs_mount(struct nfs_mount_request *info)
- 		.rpc_resp	= &result,
- 	};
- 	struct rpc_create_args args = {
-+		.net		= &init_net,
- 		.protocol	= info->protocol,
- 		.address	= info->sap,
- 		.addrsize	= info->salen,
-@@ -224,6 +225,7 @@ void nfs_umount(const struct nfs_mount_request *info)
- 		.to_retries = 2,
- 	};
- 	struct rpc_create_args args = {
-+		.net		= &init_net,
- 		.protocol	= IPPROTO_UDP,
- 		.address	= info->sap,
- 		.addrsize	= info->salen,
-diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
-index 014482c..1112f45 100644
---- a/fs/nfsd/nfs4callback.c
-+++ b/fs/nfsd/nfs4callback.c
-@@ -479,6 +479,7 @@ int setup_callback_client(struct nfs4_client *clp, struct nfs4_cb_conn *cb)
- 		.to_retries	= 0,
- 	};
- 	struct rpc_create_args args = {
-+		.net		= &init_net,
- 		.protocol	= XPRT_TRANSPORT_TCP,
- 		.address	= (struct sockaddr *) &cb->cb_addr,
- 		.addrsize	= cb->cb_addrlen,
-diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
-index 85f38a6..58c4473 100644
---- a/include/linux/sunrpc/clnt.h
-+++ b/include/linux/sunrpc/clnt.h
-@@ -102,6 +102,7 @@ struct rpc_procinfo {
- #ifdef __KERNEL__
+Files layout driver is fixed in next patch.
+
+Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+---
+ fs/nfs/pnfs.c             |   20 +++++---------------
+ include/linux/nfs4_pnfs.h |    6 +-----
+ 2 files changed, 6 insertions(+), 20 deletions(-)
+
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index eb4e092..f26abc0 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -1892,26 +1892,16 @@ nfs4_init_deviceid_node(struct nfs4_deviceid *d)
+ }
+ EXPORT_SYMBOL(nfs4_init_deviceid_node);
  
- struct rpc_create_args {
-+	struct net		*net;
- 	int			protocol;
- 	struct sockaddr		*address;
- 	size_t			addrsize;
-diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
-index dac219a..83af38d 100644
---- a/net/sunrpc/rpcb_clnt.c
-+++ b/net/sunrpc/rpcb_clnt.c
-@@ -177,6 +177,7 @@ static DEFINE_MUTEX(rpcb_create_local_mutex);
- static int rpcb_create_local(void)
+-/* Called from layoutdriver_io_operations->alloc_lseg */
+-void
+-nfs4_set_layout_deviceid(struct pnfs_layout_segment *l, struct nfs4_deviceid *d)
+-{
+-	dprintk("%s [%d]\n", __func__, atomic_read(&d->de_kref.refcount));
+-	l->deviceid = d;
+-}
+-EXPORT_SYMBOL(nfs4_set_layout_deviceid);
+-
+ /* Called from layoutdriver_io_operations->free_lseg */
+ void
+-nfs4_put_unset_layout_deviceid(struct pnfs_layout_segment *l,
+-			   struct nfs4_deviceid *d,
+-			   void (*free_callback)(struct kref *))
++nfs4_put_deviceid(struct nfs4_deviceid_cache *c,
++			   struct nfs4_deviceid *d)
  {
- 	struct rpc_create_args args = {
-+		.net		= &init_net,
- 		.protocol	= XPRT_TRANSPORT_TCP,
- 		.address	= (struct sockaddr *)&rpcb_inaddr_loopback,
- 		.addrsize	= sizeof(rpcb_inaddr_loopback),
-@@ -228,6 +229,7 @@ static struct rpc_clnt *rpcb_create(char *hostname, struct sockaddr *srvaddr,
- 				    size_t salen, int proto, u32 version)
- {
- 	struct rpc_create_args args = {
-+		.net		= &init_net,
- 		.protocol	= proto,
- 		.address	= srvaddr,
- 		.addrsize	= salen,
+ 	dprintk("%s [%d]\n", __func__, atomic_read(&d->de_kref.refcount));
+-	l->deviceid = NULL;
+-	kref_put(&d->de_kref, free_callback);
++	kref_put(&d->de_kref, c->dc_free_callback);
++	/* Do we need to return the deviceid_cache ref */
+ }
+-EXPORT_SYMBOL(nfs4_put_unset_layout_deviceid);
++EXPORT_SYMBOL(nfs4_put_deviceid);
+ 
+ /* Find and reference a deviceid */
+ struct nfs4_deviceid *
+diff --git a/include/linux/nfs4_pnfs.h b/include/linux/nfs4_pnfs.h
+index 577cd2b..dc3410e 100644
+--- a/include/linux/nfs4_pnfs.h
++++ b/include/linux/nfs4_pnfs.h
+@@ -111,7 +111,6 @@ struct pnfs_layout_segment {
+ 	struct kref kref;
+ 	bool valid;
+ 	struct pnfs_layout_hdr *layout;
+-	struct nfs4_deviceid *deviceid;
+ 	u8 ld_data[];			/* layout driver private data */
+ };
+ 
+@@ -287,11 +286,8 @@ extern struct nfs4_deviceid *nfs4_find_get_deviceid(
+ 				struct pnfs_deviceid *);
+ extern struct nfs4_deviceid *nfs4_add_get_deviceid(struct nfs4_deviceid_cache *,
+ 				struct nfs4_deviceid *);
+-extern void nfs4_set_layout_deviceid(struct pnfs_layout_segment *,
++extern void nfs4_put_deviceid(struct nfs4_deviceid_cache *,
+ 				struct nfs4_deviceid *);
+-extern void nfs4_put_unset_layout_deviceid(struct pnfs_layout_segment *,
+-				struct nfs4_deviceid *,
+-				void (*free_callback)(struct kref *));
+ extern void nfs4_delete_device(struct nfs4_deviceid_cache *,
+ 				struct pnfs_deviceid *);
+ 
 -- 
-1.5.5.6
+1.7.2.2
+
 
