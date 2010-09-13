@@ -1,40 +1,44 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:20990 "EHLO
-	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1752536Ab0I2LKQ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 29 Sep 2010 07:10:16 -0400
-From: Benny Halevy <bhalevy@panasas.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 5/5] NFS: clear fsinfo before sendign rpc
-Date: Wed, 29 Sep 2010 13:10:13 +0200
-Message-Id: <1285758613-26897-1-git-send-email-bhalevy@panasas.com>
-In-Reply-To: <4CA31DC3.8070300@panasas.com>
-References: <4CA31DC3.8070300@panasas.com>
+Received: from mail-gx0-f174.google.com ([209.85.161.174]:36459 "EHLO
+	mail-gx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752400Ab0IMRRa (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Sep 2010 13:17:30 -0400
+Received: by gxk23 with SMTP id 23so2100375gxk.19
+        for <linux-nfs@vger.kernel.org>; Mon, 13 Sep 2010 10:17:29 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 0/2] Two more fixes for mount.nfs
+To: steved@redhat.com
+Cc: linux-nfs@vger.kernel.org
+Date: Mon, 13 Sep 2010 13:17:25 -0400
+Message-ID: <20100913171100.18926.77712.stgit@seurat.1015granger.net>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-To initialize all values to zero, in case the server or protocol version
-do no support particular attributes.
+Here are a couple of bug fixes for mount.nfs.
 
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+The second patch in this series makes remount work again, but there is
+a lingering problem with it (and maybe some other corner cases, not
+related to "remount"). 
+
+It turns out that "remount" mounts (even legacy remount, AFAICT) have
+always completely wiped the mount options in /etc/mtab, and replaced
+them with "remount,foo".  This breaks umount.nfs, which relies on
+the contents of /etc/mtab to know how to perform the unmount request.
+
+I'm working on a solution, but it will still be some time.  I felt
+that the remount fix here was important enough to send now.
+
 ---
- fs/nfs/client.c |    1 +
- 1 files changed, 1 insertions(+), 0 deletions(-)
 
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index 23d740c..beb206e 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -942,6 +942,7 @@ static int nfs_probe_fsinfo(struct nfs_server *server, struct nfs_fh *mntfh, str
- 			goto out_error;
- 	}
- 
-+	memset(&fsinfo, 0, sizeof(fsinfo));
- 	fsinfo.fattr = fattr;
- 	error = clp->rpc_ops->fsinfo(server, mntfh, &fsinfo);
- 	if (error < 0)
+Chuck Lever (2):
+      mount.nfs: Don't do anything fancy if this is a remount
+      mount.nfs: Refactor mount version and protocol autonegotiation
+
+
+ utils/mount/stropts.c |   95 ++++++++++++++++++++++++++++++++++++++++++-------
+ 1 files changed, 81 insertions(+), 14 deletions(-)
+
 -- 
-1.7.2.3
-
+Chuck Lever
