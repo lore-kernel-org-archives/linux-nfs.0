@@ -1,133 +1,610 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:48511 "EHLO
+Received: from rcsinet10.oracle.com ([148.87.113.121]:47546 "EHLO
 	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751682Ab0IHRMB convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 8 Sep 2010 13:12:01 -0400
-Subject: Re: [PATCH 5/6] NFS: remove readdir plus limit
+	with ESMTP id S1754473Ab0IMUAm convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Sep 2010 16:00:42 -0400
+Subject: Re: [PATCH 04/11] NFS: Introduce new-style XDR encoding functions for NFSv2
 Content-Type: text/plain; charset=us-ascii
 From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <4C878B30.1010808@netapp.com>
-Date: Wed, 8 Sep 2010 13:09:48 -0400
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Message-Id: <57139469-7CCD-4BFD-9573-135AF0C8BF17@oracle.com>
-References: <4C869AA7.2030000@netapp.com> <14C46455-5738-4FBA-872D-0442B8DAB3C5@oracle.com> <4C878B30.1010808@netapp.com>
-To: Bryan Schumaker <bjschuma@netapp.com>
+In-Reply-To: <1284407560.10944.9.camel@heimdal.trondhjem.org>
+Date: Mon, 13 Sep 2010 16:00:21 -0400
+Cc: linux-nfs@vger.kernel.org
+Message-Id: <1E449DA7-5076-4B16-B47C-2C2E6E890E0A@oracle.com>
+References: <20100910200512.13321.55605.stgit@seurat.1015granger.net> <20100910200917.13321.80989.stgit@seurat.1015granger.net> <1284407560.10944.9.camel@heimdal.trondhjem.org>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
 
-On Sep 8, 2010, at 9:10 AM, Bryan Schumaker wrote:
+On Sep 13, 2010, at 3:52 PM, Trond Myklebust wrote:
 
-> Thanks for the advice.  I did some testing between my machine (server) and a virtual machine (client).  The command I ran was ls -l --color=none on a directory with 10,000 files.  With the directory cap, nfsstat had the following output for both a stock kernel and a kernel with these patches applied
-> 
-> Stock Kernel
-> ---------------------
-> calls:		10101
-> getattr:	3
-> readdir:	89
-> lookup:		10002
-> 
-> 
-> My Kernel
-> ----------------------
-> calls:		10169
-> getattr:	3
-> readdir:	157
-> lookup:		10002
-> 
-> 
-> Without the directory cap, I saw the following numbers
-> 
-> Trial 1
-> --------------------
-> calls:		1710
-> getattr:	1622
-> readdirplus:	79
-> lookup:		2
-> 
-> Trial 2
-> --------------------
-> calls:		1233
-> getattr:	1145
-> readdirplus:	79
-> lookup:		2
-> 
-> Trial 3
-> --------------------
-> calls:		217
-> getattr:	129
-> readdirplus:	79
-> lookup:		2
-> 
-> 
-> In each of these cases the number of lookups has dropped from 10,002 to 2.  The number of total calls has dropped significantly as well.  I suspect that the change in getattrs is caused by a race between items hitting the cache and the same items being used.
-> 
-> Let me know if I should run other tests.
-
-"ls -l" is, of course, an important test.  These results are as successful as one could hope, and demonstrate that there will be some benefit if the cap is, at least, raised, as I'm sure the average number of entries in directories is increasing over time.  My worry is what happens if the cap is left unlimited.  To test this, here are a few ideas:
-
-How about trying a directory with a million entries, or ten million?  What happens to system memory utilization over time when your client has 128MB of RAM or less, or has several other processes that are hogging memory?  What is the impact of "ls -l" on other processes that are using the dcache?  Did you measure how expensive (CPU and disk operations) a large readdirplus request is on the server, compared to a similar stream of READDIR and GETATTR or LOOKUP requests?  What is the average latency of readdirplus requests as they grow larger (this would test the other patch that increases the maximum size of readdirplus replies).
-
-What happens if the workload is not a long sequence of stat(2) calls but instead the application is opening files in a very large directory and reading or writing them (similar to a web server workload)?  After the directory is enumerated on the client, it will continue to issue OPEN, LOOKUP, or GETATTR calls anyway.  Is the extra attribute data returned by the READDIRPLUS of any use in this case?  Is there a difference in behavior or performance between NFSv3 and NFSv4?
-
-What is the network and server overhead when the target directory changes frequently?  In other words, is using READDIRPLUS to return this information amount to more or fewer bytes on the network, or disk operations on the server?  If files are added or removed from the directory often, will the client be doing more work or less to refresh its caches?
-
-Thanks for giving it a shot.
-
-> Bryan
-> 
-> On 09/07/2010 04:33 PM, Chuck Lever wrote:
->> Hi Bryan-
+> On Fri, 2010-09-10 at 16:09 -0400, Chuck Lever wrote:
+>> Note that none of the helper functions are explicitly inlined.  The
+>> compiler's optimizer is generally smart enough to figure out
+>> automatically which functions may be inlined to conserve executable
+>> size or streamline performance.
 >> 
->> On Sep 7, 2010, at 4:03 PM, Bryan Schumaker wrote:
+>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+>> ---
 >> 
->>> NFS remove readdir plus limit
->>> 
->>> We will now use readdir plus even on directories that are very large.
+>> fs/nfs/nfs2xdr.c |  411 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
+>> 1 files changed, 408 insertions(+), 3 deletions(-)
 >> 
->> READDIRPLUS operations on some servers may be quite expensive, since the server usually treats directories as byte streams, and can be read sequentially; but inode attributes are read by random disk seeks.  So assembling a READDIRPLUS result on a large directory that isn't in the server's cache might be an awful lot of work on a busy server.
+>> diff --git a/fs/nfs/nfs2xdr.c b/fs/nfs/nfs2xdr.c
+>> index 43413f2..81c4d87 100644
+>> --- a/fs/nfs/nfs2xdr.c
+>> +++ b/fs/nfs/nfs2xdr.c
+>> @@ -61,6 +61,23 @@
+>> #define NFS_readdirres_sz	(1)
+>> #define NFS_statfsres_sz	(1+NFS_info_sz)
 >> 
->> On large directories, there isn't much proven benefit to having all the dcache entries on hand on the client.  It can even hurt performance by pushing more useful entries out of the cache.
+>> +
+>> +/*
+>> + * While encoding arguments, set up the reply buffer in advance to
+>> + * receive reply data directly into the page cache.
+>> + */
+>> +static void prepare_reply_buffer(struct rpc_rqst *req, struct page **pages,
+>> +				 unsigned int base, unsigned int len,
+>> +				 unsigned int bufsize)
+>> +{
+>> +	struct rpc_auth	*auth = req->rq_cred->cr_auth;
+>> +	unsigned int replen;
+>> +
+>> +	replen = RPC_REPHDRSIZE + auth->au_rslack + bufsize;
+>> +	xdr_inline_pages(&req->rq_rcv_buf, replen << 2, pages, base, len);
+>> +}
+>> +
+>> +
+>> /*
+>>  * Common NFS XDR functions as inlines
+>>  */
+>> @@ -81,7 +98,7 @@ xdr_decode_fhandle(__be32 *p, struct nfs_fh *fhandle)
+>> }
 >> 
->> If we really want to take the directory size cap off, that seems like it could be a far-reaching change.  You should at least use the patch description to provide thorough rationale.  Even some benchmark results, with especially slow servers and networks, and small clients, would be nice.
+>> static inline __be32*
+>> -xdr_encode_time(__be32 *p, struct timespec *timep)
+>> +xdr_encode_time(__be32 *p, const struct timespec *timep)
+>> {
+>> 	*p++ = htonl(timep->tv_sec);
+>> 	/* Convert nanoseconds into microseconds */
+>> @@ -90,7 +107,7 @@ xdr_encode_time(__be32 *p, struct timespec *timep)
+>> }
 >> 
->>> Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
->>> ---
->>> diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
->>> index 7d2d6c7..b2e12bc 100644
->>> --- a/fs/nfs/inode.c
->>> +++ b/fs/nfs/inode.c
->>> @@ -234,9 +234,6 @@ nfs_init_locked(struct inode *inode, void *opaque)
->>> 	return 0;
->>> }
->>> 
->>> -/* Don't use READDIRPLUS on directories that we believe are too large */
->>> -#define NFS_LIMIT_READDIRPLUS (8*PAGE_SIZE)
->>> -
->>> /*
->>> * This is our front-end to iget that looks up inodes by file handle
->>> * instead of inode number.
->>> @@ -291,8 +288,7 @@ nfs_fhget(struct super_block *sb, struct nfs_fh *fh, struct nfs_fattr *fattr)
->>> 		} else if (S_ISDIR(inode->i_mode)) {
->>> 			inode->i_op = NFS_SB(sb)->nfs_client->rpc_ops->dir_inode_ops;
->>> 			inode->i_fop = &nfs_dir_operations;
->>> -			if (nfs_server_capable(inode, NFS_CAP_READDIRPLUS)
->>> -			    && fattr->size <= NFS_LIMIT_READDIRPLUS)
->>> +			if (nfs_server_capable(inode, NFS_CAP_READDIRPLUS))
->>> 				set_bit(NFS_INO_ADVISE_RDPLUS, &NFS_I(inode)->flags);
->>> 			/* Deal with crossing mountpoints */
->>> 			if ((fattr->valid & NFS_ATTR_FATTR_FSID)
->>> --
->>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->>> the body of a message to majordomo@vger.kernel.org
->>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>> static inline __be32*
+>> -xdr_encode_current_server_time(__be32 *p, struct timespec *timep)
+>> +xdr_encode_current_server_time(__be32 *p, const struct timespec *timep)
+>> {
+>> 	/*
+>> 	 * Passing the invalid value useconds=1000000 is a
+>> @@ -174,6 +191,140 @@ xdr_encode_sattr(__be32 *p, struct iattr *attr)
+>> }
+>> 
+>> /*
+>> + * Encode/decode NFSv2 basic data types
+>> + *
+>> + * Basic NFSv2 data types are defined in section 2.3 of RFC 1094:
+>> + * "NFS: Network File System Protocol Specification".
+>> + *
+>> + * Not all basic data types have their own encoding and decoding
+>> + * functions.  For run-time efficiency, some data types are encoded
+>> + * or decoded inline.
+>> + */
+>> +
+>> +/*
+>> + * 2.3.3.  fhandle
+>> + *
+>> + *	typedef opaque fhandle[FHSIZE];
+>> + */
+>> +static void encode_fhandle(struct xdr_stream *xdr, const struct nfs_fh *fh)
+>> +{
+>> +	__be32 *p;
+>> +
+>> +	BUG_ON(unlikely(fh->size != NFS2_FHSIZE));
+> 
+> Can we please stop all these 'unlikely()' declarations. Firstly, it is
+> 100% redundant here, since the definition of BUG_ON() is as follows:
+> 
+> #define BUG_ON(condition) do { if (unlikely(condition)) BUG(); }
+> while(0)
+> 
+> Secondly, we're putting way too many of these things in the code. At
+> this point they're starting to just obfuscate...
+
+Sure, I'll see what can be done.
+
+> 
+>> +	p = xdr_reserve_space(xdr, NFS2_FHSIZE);
+>> +	BUG_ON(unlikely(p == NULL));
+> 
+> This test is unnecessary. If p==NULL, we'll Oops anyway right here:
+> 
+>> +	memcpy(p, fh->data, NFS2_FHSIZE);
+>> +}
+>> +
+>> +/*
+>> + * 2.3.6.  sattr
+>> + *
+>> + *	struct sattr {
+>> + *		unsigned int	mode;
+>> + *		unsigned int	uid;
+>> + *		unsigned int	gid;
+>> + *		unsigned int	size;
+>> + *		timeval		atime;
+>> + *		timeval		mtime;
+>> + *	};
+>> + */
+>> +
+>> +#define NFS2_SATTR_NOT_SET	(0xffffffff)
+>> +
+>> +static __be32 *xdr_time_not_set(__be32 *p)
+>> +{
+>> +	*p++ = cpu_to_be32(NFS2_SATTR_NOT_SET);
+>> +	*p++ = cpu_to_be32(NFS2_SATTR_NOT_SET);
+>> +	return p;
+>> +}
+>> +
+>> +static void encode_sattr(struct xdr_stream *xdr, const struct iattr *attr)
+>> +{
+>> +	__be32 *p;
+>> +
+>> +	p = xdr_reserve_space(xdr, NFS_sattr_sz << 2);
+>> +	BUG_ON(unlikely(p == NULL));
+> 
+> The above is unnecessary. We'll Oops below anyway:
+> 
+>> +
+>> +	if (attr->ia_valid & ATTR_MODE)
+>> +		*p++ = cpu_to_be32(attr->ia_mode);
+>> +	else
+>> +		*p++ = cpu_to_be32(NFS2_SATTR_NOT_SET);
+>> +	if (attr->ia_valid & ATTR_UID)
+>> +		*p++ = cpu_to_be32(attr->ia_uid);
+>> +	else
+>> +		*p++ = cpu_to_be32(NFS2_SATTR_NOT_SET);
+>> +	if (attr->ia_valid & ATTR_GID)
+>> +		*p++ = cpu_to_be32(attr->ia_gid);
+>> +	else
+>> +		*p++ = cpu_to_be32(NFS2_SATTR_NOT_SET);
+>> +	if (attr->ia_valid & ATTR_SIZE)
+>> +		*p++ = cpu_to_be32((u32)attr->ia_size);
+>> +	else
+>> +		*p++ = cpu_to_be32(NFS2_SATTR_NOT_SET);
+>> +
+>> +	if (attr->ia_valid & ATTR_ATIME_SET)
+>> +		p = xdr_encode_time(p, &attr->ia_atime);
+>> +	else if (attr->ia_valid & ATTR_ATIME)
+>> +		p = xdr_encode_current_server_time(p, &attr->ia_atime);
+>> +	else
+>> +		p = xdr_time_not_set(p);
+>> +	if (attr->ia_valid & ATTR_MTIME_SET)
+>> +		xdr_encode_time(p, &attr->ia_mtime);
+>> +	else if (attr->ia_valid & ATTR_MTIME)
+>> +		xdr_encode_current_server_time(p, &attr->ia_mtime);
+>> +	else
+>> +		xdr_time_not_set(p);
+>> +}
+>> +
+>> +/*
+>> + * 2.3.7.  filename
+>> + *
+>> + *	typedef string filename<MAXNAMLEN>;
+>> + */
+>> +static void encode_filename(struct xdr_stream *xdr,
+>> +			    const char *name, u32 length)
+>> +{
+>> +	__be32 *p;
+>> +
+>> +	BUG_ON(unlikely(length > NFS2_MAXNAMLEN));
+> 
+> See comment on BUG_ON(unlikely()) at the top...
+> 
+>> +	p = xdr_reserve_space(xdr, 4 + length);
+>> +	BUG_ON(unlikely(p == NULL));
+> 
+> The above is unnecessary... If p==NULL, we'll find out when we do:
+> 
+>> +	xdr_encode_opaque(p, name, length);
+>> +}
+>> +
+>> +/*
+>> + * 2.3.8.  path
+>> + *
+>> + *	typedef string path<MAXPATHLEN>;
+>> + */
+>> +static void encode_path(struct xdr_stream *xdr, struct page **pages, u32 length)
+>> +{
+>> +	__be32 *p;
+>> +
+>> +	BUG_ON(unlikely(length > NFS2_MAXPATHLEN));
+> 
+> Ditto...
+> 
+>> +	p = xdr_reserve_space(xdr, 4);
+>> +	BUG_ON(unlikely(p == NULL));
+> 
+> Ditto...
+> 
+>> +	*p = cpu_to_be32(length);
+>> +	xdr_write_pages(xdr, pages, 0, length);
+>> +}
+>> +
+>> +/*
+>> + * 2.3.10.  diropargs
+>> + *
+>> + *	struct diropargs {
+>> + *		fhandle  dir;
+>> + *		filename name;
+>> + *	};
+>> + */
+>> +static void encode_diropargs(struct xdr_stream *xdr, const struct nfs_fh *fh,
+>> +			     const char *name, u32 length)
+>> +{
+>> +	encode_fhandle(xdr, fh);
+>> +	encode_filename(xdr, name, length);
+>> +}
+>> +
+>> +
+>> +/*
+>>  * NFS encode functions
+>>  */
+>> /*
+>> @@ -188,6 +339,16 @@ nfs_xdr_fhandle(struct rpc_rqst *req, __be32 *p, struct nfs_fh *fh)
+>> 	return 0;
+>> }
+>> 
+>> +static int nfs2_xdr_enc_fhandle(struct rpc_rqst *req, __be32 *p,
+>> +				const struct nfs_fh *fh)
+>> +{
+>> +	struct xdr_stream xdr;
+>> +
+>> +	xdr_init_encode(&xdr, &req->rq_snd_buf, p);
+>> +	encode_fhandle(&xdr, fh);
+>> +	return 0;
+>> +}
+>> +
+>> /*
+>>  * Encode SETATTR arguments
+>>  */
+>> @@ -201,6 +362,25 @@ nfs_xdr_sattrargs(struct rpc_rqst *req, __be32 *p, struct nfs_sattrargs *args)
+>> }
+>> 
+>> /*
+>> + * 2.2.3.  sattrargs
+>> + *
+>> + *	struct sattrargs {
+>> + *		fhandle file;
+>> + *		sattr attributes;
+>> + *	};
+>> + */
+>> +static int nfs2_xdr_enc_sattrargs(struct rpc_rqst *req, __be32 *p,
+>> +				  const struct nfs_sattrargs *args)
+>> +{
+>> +	struct xdr_stream xdr;
+>> +
+>> +	xdr_init_encode(&xdr, &req->rq_snd_buf, p);
+>> +	encode_fhandle(&xdr, args->fh);
+>> +	encode_sattr(&xdr, args->sattr);
+>> +	return 0;
+>> +}
+>> +
+>> +/*
+>>  * Encode directory ops argument
+>>  * LOOKUP, RMDIR
+>>  */
+>> @@ -213,6 +393,16 @@ nfs_xdr_diropargs(struct rpc_rqst *req, __be32 *p, struct nfs_diropargs *args)
+>> 	return 0;
+>> }
+>> 
+>> +static int nfs2_xdr_enc_diropargs(struct rpc_rqst *req, __be32 *p,
+>> +				  const struct nfs_diropargs *args)
+>> +{
+>> +	struct xdr_stream xdr;
+>> +
+>> +	xdr_init_encode(&xdr, &req->rq_snd_buf, p);
+>> +	encode_diropargs(&xdr, args->fh, args->name, args->len);
+>> +	return 0;
+>> +}
+>> +
+>> /*
+>>  * Encode REMOVE argument
+>>  */
+>> @@ -225,6 +415,18 @@ nfs_xdr_removeargs(struct rpc_rqst *req, __be32 *p, const struct nfs_removeargs
+>> 	return 0;
+>> }
+>> 
+>> +static int nfs2_xdr_enc_readlinkargs(struct rpc_rqst *req, __be32 *p,
+>> +				     const struct nfs_readlinkargs *args)
+>> +{
+>> +	struct xdr_stream xdr;
+>> +
+>> +	xdr_init_encode(&xdr, &req->rq_snd_buf, p);
+>> +	encode_fhandle(&xdr, args->fh);
+>> +	prepare_reply_buffer(req, args->pages, args->pgbase,
+>> +					args->pglen, NFS_readlinkres_sz);
+>> +	return 0;
+>> +}
+>> +
+>> /*
+>>  * Arguments to a READ call. Since we read data directly into the page
+>>  * cache, we also set up the reply iovec here so that iov[1] points
+>> @@ -253,6 +455,45 @@ nfs_xdr_readargs(struct rpc_rqst *req, __be32 *p, struct nfs_readargs *args)
+>> }
+>> 
+>> /*
+>> + * 2.2.7.  readargs
+>> + *
+>> + *	struct readargs {
+>> + *		fhandle file;
+>> + *		unsigned offset;
+>> + *		unsigned count;
+>> + *		unsigned totalcount;
+>> + *	};
+>> + */
+>> +static void encode_readargs(struct xdr_stream *xdr,
+>> +			    const struct nfs_readargs *args)
+>> +{
+>> +	u32 offset = args->offset;
+>> +	u32 count = args->count;
+>> +	__be32 *p;
+>> +
+>> +	encode_fhandle(xdr, args->fh);
+>> +
+>> +	p = xdr_reserve_space(xdr, 4 + 4 + 4);
+>> +	BUG_ON(unlikely(p == NULL));
+> 
+> Ditto...
+> 
+>> +	*p++ = cpu_to_be32(offset);
+>> +	*p++ = cpu_to_be32(count);
+>> +	*p = cpu_to_be32(count);
+>> +}
+>> +
+>> +static int nfs2_xdr_enc_readargs(struct rpc_rqst *req, __be32 *p,
+>> +				 const struct nfs_readargs *args)
+>> +{
+>> +	struct xdr_stream xdr;
+>> +
+>> +	xdr_init_encode(&xdr, &req->rq_snd_buf, p);
+>> +	encode_readargs(&xdr, args);
+>> +	prepare_reply_buffer(req, args->pages, args->pgbase,
+>> +					args->count, NFS_readres_sz);
+>> +	req->rq_rcv_buf.flags |= XDRBUF_READ;
+>> +	return 0;
+>> +}
+>> +
+>> +/*
+>>  * Decode READ reply
+>>  */
+>> static int
+>> @@ -318,6 +559,48 @@ nfs_xdr_writeargs(struct rpc_rqst *req, __be32 *p, struct nfs_writeargs *args)
+>> }
+>> 
+>> /*
+>> + * 2.2.9.  writeargs
+>> + *
+>> + *	struct writeargs {
+>> + *		fhandle file;
+>> + *		unsigned beginoffset;
+>> + *		unsigned offset;
+>> + *		unsigned totalcount;
+>> + *		nfsdata data;
+>> + *	};
+>> + */
+>> +static void encode_writeargs(struct xdr_stream *xdr,
+>> +			     const struct nfs_writeargs *args)
+>> +{
+>> +	u32 offset = args->offset;
+>> +	u32 count = args->count;
+>> +	__be32 *p;
+>> +
+>> +	encode_fhandle(xdr, args->fh);
+>> +
+>> +	p = xdr_reserve_space(xdr, 4 + 4 + 4 + 4);
+>> +	BUG_ON(unlikely(p == NULL));
+> 
+> Ditto...
+> 
+>> +	*p++ = cpu_to_be32(offset);
+>> +	*p++ = cpu_to_be32(offset);
+>> +	*p++ = cpu_to_be32(count);
+>> +
+>> +	/* nfsdata */
+>> +	*p = cpu_to_be32(count);
+>> +	xdr_write_pages(xdr, args->pages, args->pgbase, count);
+>> +}
+>> +
+>> +static int nfs2_xdr_enc_writeargs(struct rpc_rqst *req, __be32 *p,
+>> +				  const struct nfs_writeargs *args)
+>> +{
+>> +	struct xdr_stream xdr;
+>> +
+>> +	xdr_init_encode(&xdr, &req->rq_snd_buf, p);
+>> +	encode_writeargs(&xdr, args);
+>> +	xdr.buf->flags |= XDRBUF_WRITE;
+>> +	return 0;
+>> +}
+>> +
+>> +/*
+>>  * Encode create arguments
+>>  * CREATE, MKDIR
+>>  */
+>> @@ -332,6 +615,35 @@ nfs_xdr_createargs(struct rpc_rqst *req, __be32 *p, struct nfs_createargs *args)
+>> }
+>> 
+>> /*
+>> + * 2.2.10.  createargs
+>> + *
+>> + *	struct createargs {
+>> + *		diropargs where;
+>> + *		sattr attributes;
+>> + *	};
+>> + */
+>> +static int nfs2_xdr_enc_createargs(struct rpc_rqst *req, __be32 *p,
+>> +				   const struct nfs_createargs *args)
+>> +{
+>> +	struct xdr_stream xdr;
+>> +
+>> +	xdr_init_encode(&xdr, &req->rq_snd_buf, p);
+>> +	encode_diropargs(&xdr, args->fh, args->name, args->len);
+>> +	encode_sattr(&xdr, args->sattr);
+>> +	return 0;
+>> +}
+>> +
+>> +static int nfs2_xdr_enc_removeargs(struct rpc_rqst *req, __be32 *p,
+>> +				   const struct nfs_removeargs *args)
+>> +{
+>> +	struct xdr_stream xdr;
+>> +
+>> +	xdr_init_encode(&xdr, &req->rq_snd_buf, p);
+>> +	encode_diropargs(&xdr, args->fh, args->name.name, args->name.len);
+>> +	return 0;
+>> +}
+>> +
+>> +/*
+>>  * Encode RENAME arguments
+>>  */
+>> static int
+>> @@ -346,6 +658,25 @@ nfs_xdr_renameargs(struct rpc_rqst *req, __be32 *p, struct nfs_renameargs *args)
+>> }
+>> 
+>> /*
+>> + * 2.2.12.  renameargs
+>> + *
+>> + *	struct renameargs {
+>> + *		diropargs from;
+>> + *		diropargs to;
+>> + *	};
+>> + */
+>> +static int nfs2_xdr_enc_renameargs(struct rpc_rqst *req, __be32 *p,
+>> +				   const struct nfs_renameargs *args)
+>> +{
+>> +	struct xdr_stream xdr;
+>> +
+>> +	xdr_init_encode(&xdr, &req->rq_snd_buf, p);
+>> +	encode_diropargs(&xdr, args->fromfh, args->fromname, args->fromlen);
+>> +	encode_diropargs(&xdr, args->tofh, args->toname, args->tolen);
+>> +	return 0;
+>> +}
+>> +
+>> +/*
+>>  * Encode LINK arguments
+>>  */
+>> static int
+>> @@ -359,6 +690,25 @@ nfs_xdr_linkargs(struct rpc_rqst *req, __be32 *p, struct nfs_linkargs *args)
+>> }
+>> 
+>> /*
+>> + * 2.2.13.  linkargs
+>> + *
+>> + *	struct linkargs {
+>> + *		fhandle from;
+>> + *		diropargs to;
+>> + *	};
+>> + */
+>> +static int nfs2_xdr_enc_linkargs(struct rpc_rqst *req, __be32 *p,
+>> +				 const struct nfs_linkargs *args)
+>> +{
+>> +	struct xdr_stream xdr;
+>> +
+>> +	xdr_init_encode(&xdr, &req->rq_snd_buf, p);
+>> +	encode_fhandle(&xdr, args->fromfh);
+>> +	encode_diropargs(&xdr, args->tofh, args->toname, args->tolen);
+>> +	return 0;
+>> +}
+>> +
+>> +/*
+>>  * Encode SYMLINK arguments
+>>  */
+>> static int
+>> @@ -388,6 +738,27 @@ nfs_xdr_symlinkargs(struct rpc_rqst *req, __be32 *p, struct nfs_symlinkargs *arg
+>> }
+>> 
+>> /*
+>> + * 2.2.14.  symlinkargs
+>> + *
+>> + *	struct symlinkargs {
+>> + *		diropargs from;
+>> + *		path to;
+>> + *		sattr attributes;
+>> + *	};
+>> + */
+>> +static int nfs2_xdr_enc_symlinkargs(struct rpc_rqst *req, __be32 *p,
+>> +				    const struct nfs_symlinkargs *args)
+>> +{
+>> +	struct xdr_stream xdr;
+>> +
+>> +	xdr_init_encode(&xdr, &req->rq_snd_buf, p);
+>> +	encode_diropargs(&xdr, args->fromfh, args->fromname, args->fromlen);
+>> +	encode_path(&xdr, args->pages, args->pathlen);
+>> +	encode_sattr(&xdr, args->sattr);
+>> +	return 0;
+>> +}
+>> +
+>> +/*
+>>  * Encode arguments to readdir call
+>>  */
+>> static int
+>> @@ -409,6 +780,40 @@ nfs_xdr_readdirargs(struct rpc_rqst *req, __be32 *p, struct nfs_readdirargs *arg
+>> }
+>> 
+>> /*
+>> + * 2.2.17.  readdirargs
+>> + *
+>> + *	struct readdirargs {
+>> + *		fhandle dir;
+>> + *		nfscookie cookie;
+>> + *		unsigned count;
+>> + *	};
+>> + */
+>> +static void encode_readdirargs(struct xdr_stream *xdr,
+>> +			       const struct nfs_readdirargs *args)
+>> +{
+>> +	__be32 *p;
+>> +
+>> +	encode_fhandle(xdr, args->fh);
+>> +
+>> +	p = xdr_reserve_space(xdr, 4 + 4);
+>> +	BUG_ON(unlikely(p == NULL));
+> 
+> Ditto...
+> 
+>> +	*p++ = cpu_to_be32(args->cookie);
+>> +	*p = cpu_to_be32(args->count);
+>> +}
+>> +
+>> +static int nfs2_xdr_enc_readdirargs(struct rpc_rqst *req, __be32 *p,
+>> +				    const struct nfs_readdirargs *args)
+>> +{
+>> +	struct xdr_stream xdr;
+>> +
+>> +	xdr_init_encode(&xdr, &req->rq_snd_buf, p);
+>> +	encode_readdirargs(&xdr, args);
+>> +	prepare_reply_buffer(req, args->pages, 0,
+>> +					args->count, NFS_readdirres_sz);
+>> +	return 0;
+>> +}
+>> +
+>> +/*
+>>  * Decode the result of a readdir call.
+>>  * We're not really decoding anymore, we just leave the buffer untouched
+>>  * and only check that it is syntactically correct.
+>> @@ -719,7 +1124,7 @@ nfs_stat_to_errno(int stat)
+>> #define PROC(proc, argtype, restype, timer)				\
+>> [NFSPROC_##proc] = {							\
+>> 	.p_proc	    =  NFSPROC_##proc,					\
+>> -	.p_encode   =  (kxdrproc_t) nfs_xdr_##argtype,			\
+>> +	.p_encode   =  (kxdrproc_t) nfs2_xdr_enc_##argtype,		\
+>> 	.p_decode   =  (kxdrproc_t) nfs_xdr_##restype,			\
+>> 	.p_arglen   =  NFS_##argtype##_sz,				\
+>> 	.p_replen   =  NFS_##restype##_sz,				\
 >> 
 > 
+> Otherwise, the code looks fine...
 
---
-Chuck Lever
+-- 
 chuck[dot]lever[at]oracle[dot]com
+
 
 
 
