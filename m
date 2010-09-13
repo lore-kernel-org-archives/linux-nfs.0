@@ -1,40 +1,37 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:25357 "EHLO
-	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752779Ab0IAPmo convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 1 Sep 2010 11:42:44 -0400
-Subject: Re: NFS version4 maximum on-the-wire data size.
+Received: from bombadil.infradead.org ([18.85.46.34]:37122 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751414Ab0IMOsJ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Sep 2010 10:48:09 -0400
+Date: Mon, 13 Sep 2010 10:48:08 -0400
+From: Christoph Hellwig <hch@infradead.org>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: Fred Isaman <iisaman@netapp.com>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 08/13] RFC: pnfs: filelayout: introduce minimal file
+ layout driver
+Message-ID: <20100913144808.GB31105@infradead.org>
+References: <1283450419-5648-1-git-send-email-iisaman@netapp.com>
+ <1283450419-5648-9-git-send-email-iisaman@netapp.com>
+ <1284147111.10062.74.camel@heimdal.trondhjem.org>
+ <AANLkTi=6vcQC1k28B=aKJbN=jRBipoff3+79BpgLxtXw@mail.gmail.com>
+ <1284158223.14078.78.camel@heimdal.trondhjem.org>
 Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <D3F292ADF945FB49B35E96C94C2061B90CFB48D0@nsmail.netscout.com>
-Date: Wed, 1 Sep 2010 11:41:33 -0400
-Cc: <linux-nfs@vger.kernel.org>
-Message-Id: <0FDF651C-4620-4872-9ABA-9F8D8FA2192A@oracle.com>
-References: <D3F292ADF945FB49B35E96C94C2061B90CFB48D0@nsmail.netscout.com>
-To: "Tayade, Nilesh" <Nilesh.Tayade@netscout.com>
+In-Reply-To: <1284158223.14078.78.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-
-On Sep 1, 2010, at 5:39 AM, Tayade, Nilesh wrote:
-
-> Hi,
+On Fri, Sep 10, 2010 at 06:37:03PM -0400, Trond Myklebust wrote:
+>       struct module *owner = THIS_MODULE;
 > 
-> I am unable to get the exact count for the amount of on-the-wire data
-> size that NFSv4 supports. 
+> > }
 > 
-> I could get exact figures in case of NFSv3 (http://nfs.sourceforge.net).
-> It's 60KB when NFSv3 is used over UDP and implementation dependent in
-> case it is used over TCP. Any idea about NFSv4 statistics? 
-> 
-> Any pointers would be appreciated.
+> ...although the struct module could probably indeed be part of
+> pnfs_layoutdriver_type too.
 
-NFSv4 reads and writes can be as large as the maximum payload size of the underlying transport.  NFSv4 does not support UDP, but on TCP, the maximum payload size is usually approximately (2 ** 31 - 1) - (RPC header + NFS overhead).
+If we only ever have one instances of the ops per type that's absolutely
+the way to go.  const ops structures are nice to have, but if means
+making the code more complex just for that there's no point.
 
--- 
-chuck[dot]lever[at]oracle[dot]com
-
-
-
+Take a look at e.g. struct file_system_type.
 
