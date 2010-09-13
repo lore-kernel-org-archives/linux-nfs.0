@@ -1,55 +1,82 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from exprod6og108.obsmtp.com ([64.18.1.21]:50634 "HELO
-	exprod6og108.obsmtp.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1752947Ab0IHFeq convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 8 Sep 2010 01:34:46 -0400
-Content-Type: text/plain;
-	charset="us-ascii"
-Subject: RE: Query regarding NFS packet capture at application layer - umount operation.
-Date: Wed, 8 Sep 2010 01:34:42 -0400
-Message-ID: <D3F292ADF945FB49B35E96C94C2061B90D198A3F@nsmail.netscout.com>
-In-Reply-To: <20100907173118.GC13022@fieldses.org>
-References: <D3F292ADF945FB49B35E96C94C2061B90D19835A@nsmail.netscout.com> <4C85EE24.9070007@cn.fujitsu.com> <D3F292ADF945FB49B35E96C94C2061B90D198455@nsmail.netscout.com> <20100907131902.3f22b411@tlielax.poochiereds.net> <20100907173118.GC13022@fieldses.org>
-From: "Tayade, Nilesh" <Nilesh.Tayade@netscout.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>,
-        "Jeff Layton" <jlayton@redhat.com>
-Cc: "Bian Naimeng" <biannm@cn.fujitsu.com>, <linux-nfs@vger.kernel.org>
+Received: from mail-gx0-f174.google.com ([209.85.161.174]:59074 "EHLO
+	mail-gx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752250Ab0IMRWZ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Sep 2010 13:22:25 -0400
+Received: by gxk23 with SMTP id 23so2101995gxk.19
+        for <linux-nfs@vger.kernel.org>; Mon, 13 Sep 2010 10:22:25 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 08/12] exportfs: Enable IPv6 support in matchhostname()
+To: steved@redhat.com
+Cc: linux-nfs@vger.kernel.org
+Date: Mon, 13 Sep 2010 13:22:22 -0400
+Message-ID: <20100913172222.19017.22287.stgit@seurat.1015granger.net>
+In-Reply-To: <20100913171844.19017.13446.stgit@seurat.1015granger.net>
+References: <20100913171844.19017.13446.stgit@seurat.1015granger.net>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-> -----Original Message-----
-> From: J. Bruce Fields [mailto:bfields@fieldses.org]
-> Sent: Tuesday, September 07, 2010 11:01 PM
-> To: Jeff Layton
-> Cc: Tayade, Nilesh; Bian Naimeng; linux-nfs@vger.kernel.org
-> Subject: Re: Query regarding NFS packet capture at application layer
-> - umount operation.
-> 
+To gain IPv6 support in matchhostname(), simply replace the socket
+address comparison helpers with the generic versions that can handle
+IPv4 and IPv6.
 
+host_addrinfo() (called by matchhostname()) returns IPv6 addresses
+only if IPv6 support is enabled.
 
-> > > I am using NFSv3. (Sorry, I forgot to mention it in first email
-> - so I
-> > > have replied to my original email with capture file).
-> > >
-> >
-> > I'm fairly sure that's still handled by the userspace piece. Do
-> you
-> > have a /sbin/umount.nfs? If not, that may be why.
-> 
-> Or if you're only capturing traffic to port 2049, that would also
-> explain why you don't see anything.  (NFSv2/v3 mount/umount use
-> different protocol.)
-> 
-> --b.
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
 
-Thanks for the pointers. That appears to be the case. I could see the
-header of MOUNT in the packet when I mounted/umounted the node. I
-thought there will be the NFS header instead.
+ utils/exportfs/exportfs.c |   23 ++---------------------
+ 1 files changed, 2 insertions(+), 21 deletions(-)
 
---
-Thanks,
-Nilesh
-
-
+diff --git a/utils/exportfs/exportfs.c b/utils/exportfs/exportfs.c
+index 8496d82..b78957f 100644
+--- a/utils/exportfs/exportfs.c
++++ b/utils/exportfs/exportfs.c
+@@ -26,6 +26,7 @@
+ #include <netdb.h>
+ #include <errno.h>
+ 
++#include "sockaddr.h"
+ #include "misc.h"
+ #include "nfslib.h"
+ #include "exportfs.h"
+@@ -443,26 +444,6 @@ is_hostname(const char *sp)
+ 	return true;
+ }
+ 
+-static _Bool
+-compare_sockaddrs4(const struct sockaddr *sa1, const struct sockaddr *sa2)
+-{
+-	const struct sockaddr_in *sin1 = (const struct sockaddr_in *)sa1;
+-	const struct sockaddr_in *sin2 = (const struct sockaddr_in *)sa2;
+-	return sin1->sin_addr.s_addr == sin2->sin_addr.s_addr;
+-}
+-
+-static _Bool
+-compare_sockaddrs(const struct sockaddr *sa1, const struct sockaddr *sa2)
+-{
+-	if (sa1->sa_family == sa2->sa_family)
+-		switch (sa1->sa_family) {
+-		case AF_INET:
+-			return compare_sockaddrs4(sa1, sa2);
+-		}
+-
+-	return false;
+-}
+-
+ static int
+ matchhostname(const char *hostname1, const char *hostname2)
+ {
+@@ -493,7 +474,7 @@ matchhostname(const char *hostname1, const char *hostname2)
+ 
+ 	for (ai1 = results1; ai1 != NULL; ai1 = ai1->ai_next)
+ 		for (ai2 = results2; ai2 != NULL; ai2 = ai2->ai_next)
+-			if (compare_sockaddrs(ai1->ai_addr, ai2->ai_addr)) {
++			if (nfs_compare_sockaddr(ai1->ai_addr, ai2->ai_addr)) {
+ 				result = 1;
+ 				break;
+ 			}
 
