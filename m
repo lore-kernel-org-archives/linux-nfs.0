@@ -1,93 +1,98 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:40644 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754674Ab0IZRCZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 26 Sep 2010 13:02:25 -0400
-Received: from bfields by fieldses.org with local (Exim 4.71)
-	(envelope-from <bfields@fieldses.org>)
-	id 1Ozuai-0008F8-Hb
-	for linux-nfs@vger.kernel.org; Sun, 26 Sep 2010 13:00:44 -0400
-Date: Sun, 26 Sep 2010 12:59:38 -0400
-From: linux-nfs-owner@vger.kernel.org
-To: Fred Isaman <iisaman@netapp.com>
+Received: from mail-pz0-f46.google.com ([209.85.210.46]:62750 "EHLO
+	mail-pz0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753865Ab0IMRVc (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Sep 2010 13:21:32 -0400
+Received: by mail-pz0-f46.google.com with SMTP id 34so2221811pzk.19
+        for <linux-nfs@vger.kernel.org>; Mon, 13 Sep 2010 10:21:32 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 04/12] mountd: support IPv6 in mountlist_del_all()
+To: steved@redhat.com
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH] CLNT: Turn on cache_this for specific tests
-Message-ID: <20100926165938.GC25106@fieldses.org>
-Content-Type: text/plain; charset=us-ascii
+Date: Mon, 13 Sep 2010 13:21:28 -0400
+Message-ID: <20100913172128.19017.28249.stgit@seurat.1015granger.net>
+In-Reply-To: <20100913171844.19017.13446.stgit@seurat.1015granger.net>
+References: <20100913171844.19017.13446.stgit@seurat.1015granger.net>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-From: J. Bruce Fields <bfields@redhat.com>
+Replace IPv4-specific code in the mountlist_del_all() path with code
+that is address family agnostic.
 
-A previous patch turned this off by default; but we need it back on for
-anything that tests the reply cache.
-
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- nfs4.1/server41tests/st_sequence.py |   10 +++++-----
- 1 files changed, 5 insertions(+), 5 deletions(-)
 
-Also available from:
+ utils/mountd/mountd.c |    2 +-
+ utils/mountd/mountd.h |    2 +-
+ utils/mountd/rmtab.c  |   12 +++++-------
+ 3 files changed, 7 insertions(+), 9 deletions(-)
 
-	git://linux-nfs.org/~bfields/pynfs41.git
-
-I've also done a little more triage of the results and turned on another
-36 of the pynfs41 tests in my server regression testing:
-
-	git://linux-nfs.org/~bfields/testd.git
-
---b.
-
-diff --git a/nfs4.1/server41tests/st_sequence.py b/nfs4.1/server41tests/st_sequence.py
-index f939408..a5e344d 100644
---- a/nfs4.1/server41tests/st_sequence.py
-+++ b/nfs4.1/server41tests/st_sequence.py
-@@ -191,7 +191,7 @@ def testReplayCache001(t, env):
-     """
-     c1 = env.c1.new_client(env.testname(t))
-     sess1 = c1.create_session()
--    res1 = sess1.compound([op.putrootfh()])
-+    res1 = sess1.compound([op.putrootfh()], cache_this=True)
-     check(res1)
-     res2 = sess1.compound([op.putrootfh()], seq_delta=0)
-     check(res2)
-@@ -211,7 +211,7 @@ def testReplayCache002(t, env):
-     check(res)
-     ops = env.home + [op.savefh(),\
-           op.rename("%s_1" % env.testname(t), "%s_2" % env.testname(t))]
--    res1 = sess1.compound(ops)
-+    res1 = sess1.compound(ops, cache_this=True)
-     check(res1)
-     res2 = sess1.compound(ops, seq_delta=0)
-     check(res2)
-@@ -227,7 +227,7 @@ def testReplayCache003(t, env):
-     """
-     c1 = env.c1.new_client(env.testname(t))
-     sess1 = c1.create_session()
--    res1 = sess1.compound([op.putrootfh(), op.lookup("")])
-+    res1 = sess1.compound([op.putrootfh(), op.lookup("")], cache_this=True)
-     check(res1, NFS4ERR_INVAL)
-     res2 = sess1.compound([op.putrootfh(), op.lookup("")], seq_delta=0)
-     check(res2, NFS4ERR_INVAL)
-@@ -244,7 +244,7 @@ def testReplayCache004(t, env):
-     c1 = env.c1.new_client(env.testname(t))
-     sess1 = c1.create_session()
-     ops = [op.putrootfh(), op.savefh(), op.rename("", "foo")]
--    res1 = sess1.compound(ops)
-+    res1 = sess1.compound(ops, cache_this=True)
-     check(res1, NFS4ERR_INVAL)
-     res2 = sess1.compound(ops, seq_delta=0)
-     check(res2, NFS4ERR_INVAL)
-@@ -260,7 +260,7 @@ def testReplayCache005(t, env):
-     """
-     c1 = env.c1.new_client(env.testname(t))
-     sess1 = c1.create_session()
--    res1 = sess1.compound([op.illegal()])
-+    res1 = sess1.compound([op.illegal()], cache_this=True)
-     check(res1, NFS4ERR_OP_ILLEGAL)
-     res2 = sess1.compound([op.illegal()], seq_delta=0)
-     check(res2, NFS4ERR_OP_ILLEGAL)
--- 
-1.7.0.4
+diff --git a/utils/mountd/mountd.c b/utils/mountd/mountd.c
+index 19dc4ee..98b396d 100644
+--- a/utils/mountd/mountd.c
++++ b/utils/mountd/mountd.c
+@@ -275,7 +275,7 @@ mount_umntall_1_svc(struct svc_req *rqstp, void *UNUSED(argp),
+ 	/* Reload /etc/xtab if necessary */
+ 	auth_reload();
+ 
+-	mountlist_del_all(nfs_getrpccaller_in(rqstp->rq_xprt));
++	mountlist_del_all(nfs_getrpccaller(rqstp->rq_xprt));
+ 	return 1;
+ }
+ 
+diff --git a/utils/mountd/mountd.h b/utils/mountd/mountd.h
+index 96e9bf1..0d31ca7 100644
+--- a/utils/mountd/mountd.h
++++ b/utils/mountd/mountd.h
+@@ -48,7 +48,7 @@ void		auth_export(nfs_export *exp);
+ 
+ void		mountlist_add(char *host, const char *path);
+ void		mountlist_del(char *host, const char *path);
+-void		mountlist_del_all(struct sockaddr_in *sin);
++void		mountlist_del_all(const struct sockaddr *sap);
+ mountlist	mountlist_list(void);
+ 
+ 
+diff --git a/utils/mountd/rmtab.c b/utils/mountd/rmtab.c
+index d23712b..b2c04e7 100644
+--- a/utils/mountd/rmtab.c
++++ b/utils/mountd/rmtab.c
+@@ -131,21 +131,20 @@ mountlist_del(char *hname, const char *path)
+ }
+ 
+ void
+-mountlist_del_all(struct sockaddr_in *sin)
++mountlist_del_all(const struct sockaddr *sap)
+ {
+ 	char		*hostname;
+ 	struct rmtabent	*rep;
+-	nfs_export	*exp;
+ 	FILE		*fp;
+ 	int		lockid;
+ 
+ 	if ((lockid = xflock(_PATH_RMTABLCK, "w")) < 0)
+ 		return;
+-	hostname = host_canonname((struct sockaddr *)sin);
++	hostname = host_canonname(sap);
+ 	if (hostname == NULL) {
+-		char buf[INET_ADDRSTRLEN];
++		char buf[INET6_ADDRSTRLEN];
+ 		xlog(L_ERROR, "can't get hostname of %s",
+-			host_ntop((struct sockaddr *)sin, buf, sizeof(buf)));
++			host_ntop(sap, buf, sizeof(buf)));
+ 		goto out_unlock;
+ 	}
+ 
+@@ -157,8 +156,7 @@ mountlist_del_all(struct sockaddr_in *sin)
+ 
+ 	while ((rep = getrmtabent(1, NULL)) != NULL) {
+ 		if (strcmp(rep->r_client, hostname) == 0 &&
+-		    (exp = auth_authenticate("umountall",
+-				(struct sockaddr *)sin, rep->r_path)))
++		    auth_authenticate("umountall", sap, rep->r_path) != NULL)
+ 			continue;
+ 		fputrmtabent(fp, rep, NULL);
+ 	}
 
