@@ -1,107 +1,69 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-gx0-f174.google.com ([209.85.161.174]:47907 "EHLO
-	mail-gx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751783Ab0IQQ1O (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 17 Sep 2010 12:27:14 -0400
-Received: by mail-gx0-f174.google.com with SMTP id 23so788438gxk.19
-        for <linux-nfs@vger.kernel.org>; Fri, 17 Sep 2010 09:27:14 -0700 (PDT)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 06/22] NFS: Move and update xdr_encode_foo() functions that
-	we're keeping
-To: trond.myklebust@netapp.com
+Received: from mail-bw0-f46.google.com ([209.85.214.46]:46040 "EHLO
+	mail-bw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750920Ab0IMP1n convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Sep 2010 11:27:43 -0400
+Received: by bwz11 with SMTP id 11so4567957bwz.19
+        for <linux-nfs@vger.kernel.org>; Mon, 13 Sep 2010 08:27:42 -0700 (PDT)
+In-Reply-To: <20100913150700.GA3920@infradead.org>
+References: <1283450419-5648-1-git-send-email-iisaman@netapp.com>
+	<1283450419-5648-8-git-send-email-iisaman@netapp.com>
+	<20100913150700.GA3920@infradead.org>
+Date: Mon, 13 Sep 2010 08:27:41 -0700
+Message-ID: <AANLkTi=MqaawFvKK1SmnZkojchGuH60UBzsZ5p27cXo5@mail.gmail.com>
+Subject: Re: [PATCH 07/13] RFC: pnfs: full mount/umount infrastructure
+From: Fred Isaman <iisaman@netapp.com>
+To: Christoph Hellwig <hch@infradead.org>
 Cc: linux-nfs@vger.kernel.org
-Date: Fri, 17 Sep 2010 12:27:11 -0400
-Message-ID: <20100917162711.19761.92894.stgit@seurat.1015granger.net>
-In-Reply-To: <20100917162204.19761.58249.stgit@seurat.1015granger.net>
-References: <20100917162204.19761.58249.stgit@seurat.1015granger.net>
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Clean up.
+On Mon, Sep 13, 2010 at 8:07 AM, Christoph Hellwig <hch@infradead.org> wrote:
+> On Thu, Sep 02, 2010 at 02:00:13PM -0400, Fred Isaman wrote:
+>>  static struct pnfs_layoutdriver_type *
+>>  find_pnfs_driver(u32 id) {
+>> -     return NULL;
+>> +     struct  pnfs_layoutdriver_type *local;
+>> +
+>> +     spin_lock(&pnfs_spinlock);
+>> +     local = find_pnfs_driver_locked(id);
+>> +     spin_unlock(&pnfs_spinlock);
+>> +     return local;
+>
+> What about refcounting the structure?
+>
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
+The structure is pretty tightly tied to the lifetime of the driver
+module.  It seems like grabbing a reference on the module (which as
+Trond pointed out needs to be done) is enough.
 
- fs/nfs/nfs2xdr.c |   59 ++++++++++++++++++++++++++++++------------------------
- 1 files changed, 33 insertions(+), 26 deletions(-)
 
-diff --git a/fs/nfs/nfs2xdr.c b/fs/nfs/nfs2xdr.c
-index e4d6c8b..fdfa3ef 100644
---- a/fs/nfs/nfs2xdr.c
-+++ b/fs/nfs/nfs2xdr.c
-@@ -91,32 +91,6 @@ xdr_decode_fhandle(__be32 *p, struct nfs_fh *fhandle)
- }
- 
- static inline __be32*
--xdr_encode_time(__be32 *p, const struct timespec *timep)
--{
--	*p++ = htonl(timep->tv_sec);
--	/* Convert nanoseconds into microseconds */
--	*p++ = htonl(timep->tv_nsec ? timep->tv_nsec / 1000 : 0);
--	return p;
--}
--
--static inline __be32*
--xdr_encode_current_server_time(__be32 *p, const struct timespec *timep)
--{
--	/*
--	 * Passing the invalid value useconds=1000000 is a
--	 * Sun convention for "set to current server time".
--	 * It's needed to make permissions checks for the
--	 * "touch" program across v2 mounts to Solaris and
--	 * Irix boxes work correctly. See description of
--	 * sattr in section 6.1 of "NFS Illustrated" by
--	 * Brent Callaghan, Addison-Wesley, ISBN 0-201-32750-5
--	 */
--	*p++ = htonl(timep->tv_sec);
--	*p++ = htonl(1000000);
--	return p;
--}
--
--static inline __be32*
- xdr_decode_time(__be32 *p, struct timespec *timep)
- {
- 	timep->tv_sec = ntohl(*p++);
-@@ -179,6 +153,39 @@ static void encode_fhandle(struct xdr_stream *xdr, const struct nfs_fh *fh)
- }
- 
- /*
-+ * 2.3.4.  timeval
-+ *
-+ *	struct timeval {
-+ *		unsigned int seconds;
-+ *		unsigned int useconds;
-+ *	};
-+ */
-+static __be32 *xdr_encode_time(__be32 *p, const struct timespec *timep)
-+{
-+	*p++ = cpu_to_be32(timep->tv_sec);
-+	if (timep->tv_nsec != 0)
-+		*p++ = cpu_to_be32(timep->tv_nsec / NSEC_PER_USEC);
-+	else
-+		*p++ = cpu_to_be32(0);
-+	return p;
-+}
-+
-+/*
-+ * Passing the invalid value useconds=1000000 is a Sun convention for
-+ * "set to current server time".  It's needed to make permissions checks
-+ * for the "touch" program across v2 mounts to Solaris and Irix servers
-+ * work correctly.  See description of sattr in section 6.1 of "NFS
-+ * Illustrated" by Brent Callaghan, Addison-Wesley, ISBN 0-201-32750-5.
-+ */
-+static __be32 *xdr_encode_current_server_time(__be32 *p,
-+					      const struct timespec *timep)
-+{
-+	*p++ = cpu_to_be32(timep->tv_sec);
-+	*p++ = cpu_to_be32(1000000);
-+	return p;
-+}
-+
-+/*
-  * 2.3.6.  sattr
-  *
-  *	struct sattr {
+>> +     spin_lock(&pnfs_spinlock);
+>> +     if (!find_pnfs_driver_locked(ld_type->id)) {
+>> +             list_add(&ld_type->pnfs_tblid, &pnfs_modules_tbl);
+>> +             status = 0;
+>> +             dprintk("%s Registering id:%u name:%s\n", __func__, ld_type->id,
+>> +                     ld_type->name);
+>> +     } else
+>> +             printk(KERN_ERR "%s Module with id %d already loaded!\n",
+>> +                     __func__, ld_type->id);
+>> +     spin_unlock(&pnfs_spinlock);
+>
+> In other places we generally don't bother doing these checks, so for
+> pnfs with just three clients it's even more poinless.
+>
 
+But they certainly don't hurt.  If it would prevent inclusion in
+mainline, I'll take out the check, but intentionally introducing
+potential bugs just because its done in other places seems like a poor
+argument.
+
+Fred
+
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
