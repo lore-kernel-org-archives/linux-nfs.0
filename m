@@ -1,24 +1,25 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:65112 "EHLO
+Received: from daytona.panasas.com ([67.152.220.89]:52494 "EHLO
 	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1752275Ab0ITQUT (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 20 Sep 2010 12:20:19 -0400
-Message-ID: <4C9789BF.4090303@panasas.com>
-Date: Mon, 20 Sep 2010 18:20:15 +0200
-From: Boaz Harrosh <bharrosh@panasas.com>
+	with ESMTP id S1751607Ab0IMOQl (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Sep 2010 10:16:41 -0400
+Message-ID: <4C8E3246.1010707@panasas.com>
+Date: Mon, 13 Sep 2010 16:16:38 +0200
+From: Benny Halevy <bhalevy@panasas.com>
 To: Fred Isaman <iisaman@netapp.com>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 11/12] RFC: pnfs: add LAYOUTGET and GETDEVICEINFO infrastructure
-References: <1284779874-10499-1-git-send-email-iisaman@netapp.com>	<1284779874-10499-12-git-send-email-iisaman@netapp.com>	<4C965F66.7000200@panasas.com> <AANLkTinFLgys9T-JX-fU_y5KUzHiW2QBscm9EpS7D+19@mail.gmail.com>
-In-Reply-To: <AANLkTinFLgys9T-JX-fU_y5KUzHiW2QBscm9EpS7D+19@mail.gmail.com>
-Content-Type: text/plain; charset=UTF-8
+CC: Trond Myklebust <Trond.Myklebust@netapp.com>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 12/13] RFC: pnfs: add LAYOUTGET and GETDEVICEINFO infrastructure
+References: <1283450419-5648-1-git-send-email-iisaman@netapp.com>	<1283450419-5648-13-git-send-email-iisaman@netapp.com>	<1284149490.10062.107.camel@heimdal.trondhjem.org> <AANLkTimWALJj=SNEW9NoTWFByGwOytXNUjvf9qdyGTXH@mail.gmail.com>
+In-Reply-To: <AANLkTimWALJj=SNEW9NoTWFByGwOytXNUjvf9qdyGTXH@mail.gmail.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 09/20/2010 04:56 PM, Fred Isaman wrote:
-> On Sun, Sep 19, 2010 at 3:07 PM, Boaz Harrosh <bharrosh@panasas.com> wrote:
->> On 09/18/2010 05:17 AM, Fred Isaman wrote:
+On 2010-09-11 00:47, Fred Isaman wrote:
+> On Fri, Sep 10, 2010 at 1:11 PM, Trond Myklebust
+> <Trond.Myklebust@netapp.com> wrote:
+>> On Thu, 2010-09-02 at 14:00 -0400, Fred Isaman wrote:
 >>> From: The pNFS Team <linux-nfs@vger.kernel.org>
 >>>
 >>> Add the ability to actually send LAYOUTGET and GETDEVICEINFO.  This also adds
@@ -28,550 +29,754 @@ On 09/20/2010 04:56 PM, Fred Isaman wrote:
 >>> to an unknown device id embedded therein.  Annoyingly, RFC 5661 only encodes
 >>> device ids within the driver-specific opaque data.
 >>>
->>
->> Fred, In regard to device cache at least, this is a complete new code then what
->> I knew before. I wish you could send a SQUASHME diff first of what has changed.
->>
-> 
-> Many of these changes were sent off-list to you in the initial format
-> of original-code plus squashmes.  In particular,
-> there was a patch labeled "SQUASHME pnfs_submit_1 fix pnfs_submit:
-> generic pnfs deviceid cache"
-> 
-
-Sorry for that then, That was confusing and me travelling to LSF
-got everything mixed up.
-
-But you should have smacked me on the head for hacking the wrong code.
-
-> 
 >>> Signed-off-by: TBD - melding/reorganization of several patches
->>
->> <snip>
->>
->>> +/*
->>> + * Device ID cache. Currently supports one layout type per struct nfs_client.
->>> + * Add layout type to the lookup key to expand to support multiple types.
->>> + */
->>> +int
->>> +nfs4_alloc_init_deviceid_cache(struct nfs_client *clp,
->>> +                      void (*free_callback)(struct nfs4_deviceid *))
->>> +{
->>> +     struct nfs4_deviceid_cache *c;
+>>> ---
+>>>  fs/nfs/nfs4proc.c         |  134 ++++++++++++++++
+>>>  fs/nfs/nfs4xdr.c          |  302 +++++++++++++++++++++++++++++++++++
+>>>  fs/nfs/pnfs.c             |  382 ++++++++++++++++++++++++++++++++++++++++++---
+>>>  fs/nfs/pnfs.h             |   91 +++++++++++-
+>>>  include/linux/nfs4.h      |    2 +
+>>>  include/linux/nfs_fs_sb.h |    1 +
+>>>  include/linux/nfs_xdr.h   |   49 ++++++
+>>>  7 files changed, 935 insertions(+), 26 deletions(-)
+>>>
+>>> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+>>> index c7c7277..7eeea0e 100644
+>>> --- a/fs/nfs/nfs4proc.c
+>>> +++ b/fs/nfs/nfs4proc.c
+>>> @@ -55,6 +55,7 @@
+>>>  #include "internal.h"
+>>>  #include "iostat.h"
+>>>  #include "callback.h"
+>>> +#include "pnfs.h"
+>>>
+>>>  #define NFSDBG_FACILITY              NFSDBG_PROC
+>>>
+>>> @@ -5335,6 +5336,139 @@ out:
+>>>       dprintk("<-- %s status=%d\n", __func__, status);
+>>>       return status;
+>>>  }
 >>> +
->>> +     c = kzalloc(sizeof(struct nfs4_deviceid_cache), GFP_KERNEL);
->>> +     if (!c)
->>> +             return -ENOMEM;
->>> +     spin_lock(&clp->cl_lock);
->>> +     if (clp->cl_devid_cache != NULL) {
->>> +             atomic_inc(&clp->cl_devid_cache->dc_ref);
->>> +             dprintk("%s [kref [%d]]\n", __func__,
->>> +                     atomic_read(&clp->cl_devid_cache->dc_ref));
->>> +             kfree(c);
->>> +     } else {
->>> +             /* kzalloc initializes hlists */
->>> +             spin_lock_init(&c->dc_lock);
->>> +             atomic_set(&c->dc_ref, 1);
->>> +             c->dc_free_callback = free_callback;
->>> +             clp->cl_devid_cache = c;
->>> +             dprintk("%s [new]\n", __func__);
->>> +     }
->>> +     spin_unlock(&clp->cl_lock);
->>> +     return 0;
+>>> +static void
+>>> +nfs4_layoutget_prepare(struct rpc_task *task, void *calldata)
+>>> +{
+>>> +     struct nfs4_layoutget *lgp = calldata;
+>>> +     struct inode *ino = lgp->args.inode;
+>>> +     struct nfs_server *server = NFS_SERVER(ino);
+>>> +
+>>> +     dprintk("--> %s\n", __func__);
+>>> +     if (nfs4_setup_sequence(server, &lgp->args.seq_args,
+>>> +                             &lgp->res.seq_res, 0, task))
+>>> +             return;
+>>> +     rpc_call_start(task);
 >>> +}
->>> +EXPORT_SYMBOL_GPL(nfs4_alloc_init_deviceid_cache);
 >>> +
->>> +void
->>> +nfs4_init_deviceid_node(struct nfs4_deviceid *d)
+>>> +static void nfs4_layoutget_done(struct rpc_task *task, void *calldata)
 >>> +{
->>> +     INIT_HLIST_NODE(&d->de_node);
->>> +     atomic_set(&d->de_ref, 1);
->>> +}
->>> +EXPORT_SYMBOL_GPL(nfs4_init_deviceid_node);
+>>> +     struct nfs4_layoutget *lgp = calldata;
+>>> +     struct inode *ino = lgp->args.inode;
+>>> +     struct nfs_server *server = NFS_SERVER(ino);
 >>> +
->>> +/*
->>> + * Called from pnfs_layoutdriver_type->free_lseg
->>> + * last layout segment reference frees deviceid
->>> + */
->>> +void
->>> +nfs4_put_deviceid(struct nfs4_deviceid_cache *c, struct nfs4_deviceid *devid)
->>> +{
->>> +     struct pnfs_deviceid *id = &devid->de_id;
->>> +     struct nfs4_deviceid *d;
->>> +     struct hlist_node *n;
->>> +     long h = nfs4_deviceid_hash(id);
+>>> +     dprintk("--> %s\n", __func__);
 >>> +
->>> +     dprintk("%s [%d]\n", __func__, atomic_read(&devid->de_ref));
->>> +     if (!atomic_dec_and_lock(&devid->de_ref, &c->dc_lock))
+>>> +     if (!nfs4_sequence_done(task, &lgp->res.seq_res))
 >>> +             return;
 >>> +
->>> +     hlist_for_each_entry_rcu(d, n, &c->dc_deviceids[h], de_node)
->>> +             if (!memcmp(&d->de_id, id, sizeof(*id))) {
->>> +                     hlist_del_rcu(&d->de_node);
->>> +                     spin_unlock(&c->dc_lock);
->>> +                     synchronize_rcu();
->>> +                     c->dc_free_callback(devid);
->>
->> What?!? free the devid on every put? surly something went hey-wire
->>
-> 
-> Did you miss the atomic_dec_and_lock above?
-> 
-
-Yes thanks that's what I missed, the early return.
-
-> 
->> This used to be kref(ed)
->>
-> 
-> The original code required access to the internals of the kref, which
-> was frowned upon.
-> 
->>> +                     return;
->>> +             }
->>> +     spin_unlock(&c->dc_lock);
-
-	BUG() not found then, right?
->>> +}
->>> +EXPORT_SYMBOL_GPL(nfs4_put_deviceid);
+>>> +     if (RPC_ASSASSINATED(task))
+>>> +             return;
 >>> +
->>> +/* Find and reference a deviceid */
->>> +struct nfs4_deviceid *
->>> +nfs4_find_get_deviceid(struct nfs4_deviceid_cache *c, struct pnfs_deviceid *id)
+>>> +     if (nfs4_async_handle_error(task, server, NULL) == -EAGAIN)
+>>> +             nfs_restart_rpc(task, server->nfs_client);
+>>> +
+>>> +     lgp->status = task->tk_status;
+>>> +     dprintk("<-- %s\n", __func__);
+>>> +}
+>>> +
+>>> +static void nfs4_layoutget_release(void *calldata)
 >>> +{
->>> +     struct nfs4_deviceid *d;
->>> +     struct hlist_node *n;
->>> +     long hash = nfs4_deviceid_hash(id);
+>>> +     struct nfs4_layoutget *lgp = calldata;
 >>> +
->>> +     dprintk("--> %s hash %ld\n", __func__, hash);
->>> +     rcu_read_lock();
->>> +     hlist_for_each_entry_rcu(d, n, &c->dc_deviceids[hash], de_node) {
->>> +             if (!memcmp(&d->de_id, id, sizeof(*id))) {
->>> +                     if (!atomic_inc_not_zero(&d->de_ref)) {
->>> +                             goto fail;
->>> +                     } else {
->>> +                             rcu_read_unlock();
->>> +                             return d;
->>> +                     }
->>> +             }
->>> +     }
->>> +fail:
->>> +     rcu_read_unlock();
->>> +     return NULL;
+>>> +     dprintk("--> %s\n", __func__);
+>>> +     put_layout_hdr(lgp->args.inode);
+>>> +     if (lgp->res.layout.buf != NULL)
+>>> +             free_page((unsigned long) lgp->res.layout.buf);
+>>> +     put_nfs_open_context(lgp->args.ctx);
+>>> +     kfree(calldata);
+>>> +     dprintk("<-- %s\n", __func__);
 >>> +}
->>> +EXPORT_SYMBOL_GPL(nfs4_find_get_deviceid);
+>>> +
+>>> +static const struct rpc_call_ops nfs4_layoutget_call_ops = {
+>>> +     .rpc_call_prepare = nfs4_layoutget_prepare,
+>>> +     .rpc_call_done = nfs4_layoutget_done,
+>>> +     .rpc_release = nfs4_layoutget_release,
+>>> +};
+>>> +
+>>> +static int _nfs4_proc_layoutget(struct nfs4_layoutget *lgp)
+>>> +{
+>>> +     struct nfs_server *server = NFS_SERVER(lgp->args.inode);
+>>> +     struct rpc_task *task;
+>>> +     struct rpc_message msg = {
+>>> +             .rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_LAYOUTGET],
+>>> +             .rpc_argp = &lgp->args,
+>>> +             .rpc_resp = &lgp->res,
+>>> +     };
+>>> +     struct rpc_task_setup task_setup_data = {
+>>> +             .rpc_client = server->client,
+>>> +             .rpc_message = &msg,
+>>> +             .callback_ops = &nfs4_layoutget_call_ops,
+>>> +             .callback_data = lgp,
+>>> +             .flags = RPC_TASK_ASYNC,
+>>> +     };
+>>> +     int status = 0;
+>>> +
+>>> +     dprintk("--> %s\n", __func__);
+>>> +
+>>> +     lgp->res.layout.buf = (void *)__get_free_page(GFP_NOFS);
+>>> +     if (lgp->res.layout.buf == NULL) {
+>>> +             nfs4_layoutget_release(lgp);
+>>> +             return -ENOMEM;
+>>> +     }
+>>> +
+>>> +     lgp->res.seq_res.sr_slotid = NFS4_MAX_SLOT_TABLE;
+>>> +     task = rpc_run_task(&task_setup_data);
+>>> +     if (IS_ERR(task))
+>>> +             return PTR_ERR(task);
+>>> +     status = nfs4_wait_for_completion_rpc_task(task);
+>>> +     if (status != 0)
+>>> +             goto out;
+>>> +     status = lgp->status;
+>>> +     if (status != 0)
+>>> +             goto out;
+>>> +     status = pnfs_layout_process(lgp);
+>>> +out:
+>>> +     rpc_put_task(task);
+>>> +     dprintk("<-- %s status=%d\n", __func__, status);
+>>> +     return status;
+>>> +}
+>>> +
+>>> +int nfs4_proc_layoutget(struct nfs4_layoutget *lgp)
+>>> +{
+>>> +     struct nfs_server *server = NFS_SERVER(lgp->args.inode);
+>>> +     struct nfs4_exception exception = { };
+>>> +     int err;
+>>> +     do {
+>>> +             err = nfs4_handle_exception(server, _nfs4_proc_layoutget(lgp),
+>>> +                                         &exception);
+>>> +     } while (exception.retry);
+>>> +     return err;
+>>> +}
+>>
+>> Since nfs4_layoutget_done() already calls nfs4_async_handle_error(), do
+>> you really need to call nfs4_handle_exception()?
+>>
+> 
+> 
+> Hmmm, since it is being called synchronously at the moment, we should
+> probably remove the nfs4_async_handle_error call.
+> 
+
+Agreed.  Just leave the exception handling here.
+
+> 
+>>> +
+>>> +int nfs4_proc_getdeviceinfo(struct nfs_server *server, struct pnfs_device *pdev)
+>>> +{
+>>> +     struct nfs4_getdeviceinfo_args args = {
+>>> +             .pdev = pdev,
+>>> +     };
+>>> +     struct nfs4_getdeviceinfo_res res = {
+>>> +             .pdev = pdev,
+>>> +     };
+>>> +     struct rpc_message msg = {
+>>> +             .rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_GETDEVICEINFO],
+>>> +             .rpc_argp = &args,
+>>> +             .rpc_resp = &res,
+>>> +     };
+>>> +     int status;
+>>> +
+>>> +     dprintk("--> %s\n", __func__);
+>>> +     status = nfs4_call_sync(server, &msg, &args, &res, 0);
+>>> +     dprintk("<-- %s status=%d\n", __func__, status);
+>>> +
+>>> +     return status;
+>>> +}
+>>> +EXPORT_SYMBOL_GPL(nfs4_proc_getdeviceinfo);
+>>> +
+>>
+>> This, on the other hand, might need a 'handle exception' wrapper.
+> 
+> I agree.
+> 
+> 
+>>
+>>>  #endif /* CONFIG_NFS_V4_1 */
+>>>
+>>>  struct nfs4_state_recovery_ops nfs40_reboot_recovery_ops = {
+>>> diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+>>> index 60233ae..aaf6fe5 100644
+>>> --- a/fs/nfs/nfs4xdr.c
+>>> +++ b/fs/nfs/nfs4xdr.c
+>>> @@ -52,6 +52,7 @@
+>>>  #include <linux/nfs_idmap.h>
+>>>  #include "nfs4_fs.h"
+>>>  #include "internal.h"
+>>> +#include "pnfs.h"
+>>>
+>>>  #define NFSDBG_FACILITY              NFSDBG_XDR
+>>>
+>>> @@ -310,6 +311,19 @@ static int nfs4_stat_to_errno(int);
+>>>                               XDR_QUADLEN(NFS4_MAX_SESSIONID_LEN) + 5)
+>>>  #define encode_reclaim_complete_maxsz        (op_encode_hdr_maxsz + 4)
+>>>  #define decode_reclaim_complete_maxsz        (op_decode_hdr_maxsz + 4)
+>>> +#define encode_getdeviceinfo_maxsz (op_encode_hdr_maxsz + 4 + \
+>>> +                             XDR_QUADLEN(NFS4_PNFS_DEVICEID4_SIZE))
+>>> +#define decode_getdeviceinfo_maxsz (op_decode_hdr_maxsz + \
+>>> +                             1 /* layout type */ + \
+>>> +                             1 /* opaque devaddr4 length */ + \
+>>> +                               /* devaddr4 payload is read into page */ \
+>>> +                             1 /* notification bitmap length */ + \
+>>> +                             1 /* notification bitmap */)
+>>> +#define encode_layoutget_maxsz       (op_encode_hdr_maxsz + 10 + \
+>>> +                             encode_stateid_maxsz)
+>>> +#define decode_layoutget_maxsz       (op_decode_hdr_maxsz + 8 + \
+>>> +                             decode_stateid_maxsz + \
+>>> +                             XDR_QUADLEN(PNFS_LAYOUT_MAXSIZE))
+>>>  #else /* CONFIG_NFS_V4_1 */
+>>>  #define encode_sequence_maxsz        0
+>>>  #define decode_sequence_maxsz        0
+>>> @@ -699,6 +713,20 @@ static int nfs4_stat_to_errno(int);
+>>>  #define NFS4_dec_reclaim_complete_sz (compound_decode_hdr_maxsz + \
+>>>                                        decode_sequence_maxsz + \
+>>>                                        decode_reclaim_complete_maxsz)
+>>> +#define NFS4_enc_getdeviceinfo_sz (compound_encode_hdr_maxsz +    \
+>>> +                             encode_sequence_maxsz +\
+>>> +                             encode_getdeviceinfo_maxsz)
+>>> +#define NFS4_dec_getdeviceinfo_sz (compound_decode_hdr_maxsz +    \
+>>> +                             decode_sequence_maxsz + \
+>>> +                             decode_getdeviceinfo_maxsz)
+>>> +#define NFS4_enc_layoutget_sz        (compound_encode_hdr_maxsz + \
+>>> +                             encode_sequence_maxsz + \
+>>> +                             encode_putfh_maxsz +        \
+>>> +                             encode_layoutget_maxsz)
+>>> +#define NFS4_dec_layoutget_sz        (compound_decode_hdr_maxsz + \
+>>> +                             decode_sequence_maxsz + \
+>>> +                             decode_putfh_maxsz +        \
+>>> +                             decode_layoutget_maxsz)
+>>>
+>>>  const u32 nfs41_maxwrite_overhead = ((RPC_MAX_HEADER_WITH_AUTH +
+>>>                                     compound_encode_hdr_maxsz +
+>>> @@ -1726,6 +1754,61 @@ static void encode_sequence(struct xdr_stream *xdr,
+>>>  #endif /* CONFIG_NFS_V4_1 */
+>>>  }
+>>>
+>>> +#ifdef CONFIG_NFS_V4_1
+>>> +static void
+>>> +encode_getdeviceinfo(struct xdr_stream *xdr,
+>>> +                  const struct nfs4_getdeviceinfo_args *args,
+>>> +                  struct compound_hdr *hdr)
+>>> +{
+>>> +     int has_bitmap = (args->pdev->dev_notify_types != 0);
+>>> +     int len = 16 + NFS4_PNFS_DEVICEID4_SIZE + (has_bitmap * 4);
+>>> +     __be32 *p;
+>>> +
+>>> +     p = reserve_space(xdr, len);
+>>> +     *p++ = cpu_to_be32(OP_GETDEVICEINFO);
+>>> +     p = xdr_encode_opaque_fixed(p, args->pdev->dev_id.data,
+>>> +                                 NFS4_PNFS_DEVICEID4_SIZE);
+>>> +     *p++ = cpu_to_be32(args->pdev->layout_type);
+>>> +     *p++ = cpu_to_be32(args->pdev->pglen);          /* gdia_maxcount */
+>>> +     *p++ = cpu_to_be32(has_bitmap);                 /* bitmap length [01] */
+>>> +     if (has_bitmap)
+>>> +             *p = cpu_to_be32(args->pdev->dev_notify_types);
+>>
+>> We don't support notification callbacks yet.
+>>
+> 
+> OK, I'll rip this out and just set the bitmap to zero.
+> 
+>>> +     hdr->nops++;
+>>> +     hdr->replen += decode_getdeviceinfo_maxsz;
+>>> +}
+>>> +
+>>> +static void
+>>> +encode_layoutget(struct xdr_stream *xdr,
+>>> +                   const struct nfs4_layoutget_args *args,
+>>> +                   struct compound_hdr *hdr)
+>>> +{
+>>> +     nfs4_stateid stateid;
+>>> +     __be32 *p;
+>>> +
+>>> +     p = reserve_space(xdr, 44 + NFS4_STATEID_SIZE);
+>>> +     *p++ = cpu_to_be32(OP_LAYOUTGET);
+>>> +     *p++ = cpu_to_be32(0);     /* Signal layout available */
+>>> +     *p++ = cpu_to_be32(args->type);
+>>> +     *p++ = cpu_to_be32(args->range.iomode);
+>>> +     p = xdr_encode_hyper(p, args->range.offset);
+>>> +     p = xdr_encode_hyper(p, args->range.length);
+>>> +     p = xdr_encode_hyper(p, args->minlength);
+>>> +     pnfs_get_layout_stateid(&stateid, NFS_I(args->inode)->layout);
+>>> +     p = xdr_encode_opaque_fixed(p, &stateid.data, NFS4_STATEID_SIZE);
+>>> +     *p = cpu_to_be32(args->maxcount);
+>>> +
+>>> +     dprintk("%s: 1st type:0x%x iomode:%d off:%lu len:%lu mc:%d\n",
+>>> +             __func__,
+>>> +             args->type,
+>>> +             args->range.iomode,
+>>> +             (unsigned long)args->range.offset,
+>>> +             (unsigned long)args->range.length,
+>>> +             args->maxcount);
+>>> +     hdr->nops++;
+>>> +     hdr->replen += decode_layoutget_maxsz;
+>>> +}
+>>> +#endif /* CONFIG_NFS_V4_1 */
+>>> +
+>>>  /*
+>>>   * END OF "GENERIC" ENCODE ROUTINES.
+>>>   */
+>>> @@ -2543,6 +2626,51 @@ static int nfs4_xdr_enc_reclaim_complete(struct rpc_rqst *req, uint32_t *p,
+>>>       return 0;
+>>>  }
+>>>
+>>> +/*
+>>> + * Encode GETDEVICEINFO request
+>>> + */
+>>> +static int nfs4_xdr_enc_getdeviceinfo(struct rpc_rqst *req, uint32_t *p,
+>>> +                                   struct nfs4_getdeviceinfo_args *args)
+>>> +{
+>>> +     struct xdr_stream xdr;
+>>> +     struct compound_hdr hdr = {
+>>> +             .minorversion = nfs4_xdr_minorversion(&args->seq_args),
+>>> +     };
+>>> +
+>>> +     xdr_init_encode(&xdr, &req->rq_snd_buf, p);
+>>> +     encode_compound_hdr(&xdr, req, &hdr);
+>>> +     encode_sequence(&xdr, &args->seq_args, &hdr);
+>>> +     encode_getdeviceinfo(&xdr, args, &hdr);
+>>> +
+>>> +     /* set up reply kvec. Subtract notification bitmap max size (2)
+>>> +      * so that notification bitmap is put in xdr_buf tail */
+>>> +     xdr_inline_pages(&req->rq_rcv_buf, (hdr.replen - 2) << 2,
+>>> +                      args->pdev->pages, args->pdev->pgbase,
+>>> +                      args->pdev->pglen);
+>>> +
+>>> +     encode_nops(&hdr);
+>>> +     return 0;
+>>> +}
 >>> +
 >>> +/*
->>> + * Add a deviceid to the cache.
->>> + * GETDEVICEINFOs for same deviceid can race. If deviceid is found, discard new
+>>> + *  Encode LAYOUTGET request
 >>> + */
->>> +struct nfs4_deviceid *
->>> +nfs4_add_deviceid(struct nfs4_deviceid_cache *c, struct nfs4_deviceid *new)
+>>> +static int nfs4_xdr_enc_layoutget(struct rpc_rqst *req, uint32_t *p,
+>>> +                               struct nfs4_layoutget_args *args)
 >>> +{
->>> +     struct nfs4_deviceid *d;
->>> +     struct hlist_node *n;
->>> +     long hash = nfs4_deviceid_hash(&new->de_id);
+>>> +     struct xdr_stream xdr;
+>>> +     struct compound_hdr hdr = {
+>>> +             .minorversion = nfs4_xdr_minorversion(&args->seq_args),
+>>> +     };
 >>> +
->>> +     dprintk("--> %s hash %ld\n", __func__, hash);
->>> +     spin_lock(&c->dc_lock);
->>> +     hlist_for_each_entry_rcu(d, n, &c->dc_deviceids[hash], de_node) {
->>> +             if (!memcmp(&d->de_id, &new->de_id, sizeof(new->de_id))) {
->>> +                     spin_unlock(&c->dc_lock);
-
-			  did_get(d); Right?
-
->>> +                     dprintk("%s [discard]\n", __func__);
->>> +                     c->dc_free_callback(new);
->>> +                     return d;
->>
->> I am totally confused and should be smacked on the head strong. As said above
->> one alloc_lseg adds the first, second comes in, but same deviceid, finds the first
->> and returns it (no refcounting). Then a first free_lseg nfs4_put_deviceid is called,
->> so the second lseg holds free memory?
->>
-> 
-> You are right, there is a missing increment of the refcount here.
-> 
-> Part of the problem here is that the flow is obscurd because it is
-> being called form the driver layer.
-> I think it might be better if nfs4_find_get_deviceid did the
-> GETDEVICEINFO on a cache miss, instead of relying on the driver to do
-> it.
-> 
-
-That's fine. It means nothing the failing-find and _add_ are not locked
-so it changes nothing. The _add_ should be self-sustained regardless.
-
->>> +             }
->>> +     }
->>> +     hlist_add_head_rcu(&new->de_node, &c->dc_deviceids[hash]);
-
-See below I would like to add here;
-	  did_get(new);
-
->>> +     spin_unlock(&c->dc_lock);
->>> +     dprintk("%s [new]\n", __func__);
->>> +     return new;
+>>> +     xdr_init_encode(&xdr, &req->rq_snd_buf, p);
+>>> +     encode_compound_hdr(&xdr, req, &hdr);
+>>> +     encode_sequence(&xdr, &args->seq_args, &hdr);
+>>> +     encode_putfh(&xdr, NFS_FH(args->inode), &hdr);
+>>> +     encode_layoutget(&xdr, args, &hdr);
+>>> +     encode_nops(&hdr);
+>>> +     return 0;
 >>> +}
->>> +EXPORT_SYMBOL_GPL(nfs4_add_deviceid);
+>>>  #endif /* CONFIG_NFS_V4_1 */
+>>>
+>>>  static void print_overflow_msg(const char *func, const struct xdr_stream *xdr)
+>>> @@ -4788,6 +4916,131 @@ out_overflow:
+>>>  #endif /* CONFIG_NFS_V4_1 */
+>>>  }
+>>>
+>>> +#if defined(CONFIG_NFS_V4_1)
+>>> +
+>>> +static int decode_getdeviceinfo(struct xdr_stream *xdr,
+>>> +                             struct pnfs_device *pdev)
+>>> +{
+>>> +     __be32 *p;
+>>> +     uint32_t len, type;
+>>> +     int status;
+>>> +
+>>> +     status = decode_op_hdr(xdr, OP_GETDEVICEINFO);
+>>> +     if (status) {
+>>> +             if (status == -ETOOSMALL) {
+>>> +                     p = xdr_inline_decode(xdr, 4);
+>>> +                     if (unlikely(!p))
+>>> +                             goto out_overflow;
+>>> +                     pdev->mincount = be32_to_cpup(p);
+>>> +                     dprintk("%s: Min count too small. mincnt = %u\n",
+>>> +                             __func__, pdev->mincount);
+>>> +             }
+>>> +             return status;
+>>> +     }
+>>> +
+>>> +     p = xdr_inline_decode(xdr, 8);
+>>> +     if (unlikely(!p))
+>>> +             goto out_overflow;
+>>> +     type = be32_to_cpup(p++);
+>>> +     if (type != pdev->layout_type) {
+>>> +             dprintk("%s: layout mismatch req: %u pdev: %u\n",
+>>> +                     __func__, pdev->layout_type, type);
+>>> +             return -EINVAL;
+>>> +     }
+>>> +     /*
+>>> +      * Get the length of the opaque device_addr4. xdr_read_pages places
+>>> +      * the opaque device_addr4 in the xdr_buf->pages (pnfs_device->pages)
+>>> +      * and places the remaining xdr data in xdr_buf->tail
+>>> +      */
+>>> +     pdev->mincount = be32_to_cpup(p);
+>>> +     xdr_read_pages(xdr, pdev->mincount); /* include space for the length */
+>>> +
+>>> +     /*
+>>> +      * At most one bitmap word. If the server returns a bitmap of more
+>>> +      * than one word we ignore the extra invalid words given that
+>>> +      * getdeviceinfo is the final operation in the compound.
+>>> +      */
+>>> +     p = xdr_inline_decode(xdr, 4);
+>>> +     if (unlikely(!p))
+>>> +             goto out_overflow;
+>>> +     len = be32_to_cpup(p);
+>>> +     if (len) {
+>>> +             p = xdr_inline_decode(xdr, 4);
+>>> +             if (unlikely(!p))
+>>> +                     goto out_overflow;
+>>> +             pdev->dev_notify_types = be32_to_cpup(p);
+>>> +     } else
+>>> +             pdev->dev_notify_types = 0;
+>>
+>> Again, we don't support notifications.
+>>
+> 
+> OK.
+> 
+> 
+>>> +     return 0;
+>>> +out_overflow:
+>>> +     print_overflow_msg(__func__, xdr);
+>>> +     return -EIO;
+>>> +}
+>>> +
+>>> +static int decode_layoutget(struct xdr_stream *xdr, struct rpc_rqst *req,
+>>> +                         struct nfs4_layoutget_res *res)
+>>> +{
+>>> +     __be32 *p;
+>>> +     int status;
+>>> +     u32 layout_count;
+>>> +
+>>> +     status = decode_op_hdr(xdr, OP_LAYOUTGET);
+>>> +     if (status)
+>>> +             return status;
+>>> +     p = xdr_inline_decode(xdr, 8 + NFS4_STATEID_SIZE);
+>>> +     if (unlikely(!p))
+>>> +             goto out_overflow;
+>>> +     res->return_on_close = be32_to_cpup(p++);
+>>> +     p = xdr_decode_opaque_fixed(p, res->stateid.data, NFS4_STATEID_SIZE);
+>>> +     layout_count = be32_to_cpup(p);
+>>> +     if (!layout_count) {
+>>> +             dprintk("%s: server responded with empty layout array\n",
+>>> +                     __func__);
+>>> +             return -EINVAL;
+>>> +     }
+>>> +
+>>> +     p = xdr_inline_decode(xdr, 24);
+>>> +     if (unlikely(!p))
+>>> +             goto out_overflow;
+>>> +     p = xdr_decode_hyper(p, &res->range.offset);
+>>> +     p = xdr_decode_hyper(p, &res->range.length);
+>>> +     res->range.iomode = be32_to_cpup(p++);
+>>> +     res->type = be32_to_cpup(p++);
+>>> +
+>>> +     status = decode_opaque_inline(xdr, &res->layout.len, (char **)&p);
+>>> +     if (unlikely(status))
+>>> +             return status;
+>>> +
+>>> +     dprintk("%s roff:%lu rlen:%lu riomode:%d, lo_type:0x%x, lo.len:%d\n",
+>>> +             __func__,
+>>> +             (unsigned long)res->range.offset,
+>>> +             (unsigned long)res->range.length,
+>>> +             res->range.iomode,
+>>> +             res->type,
+>>> +             res->layout.len);
+>>> +
+>>> +     /* nfs4_proc_layoutget allocated a single page */
+>>> +     if (res->layout.len > PAGE_SIZE)
+>>> +             return -ENOMEM;
+>>> +     memcpy(res->layout.buf, p, res->layout.len);
+>>> +
+>>> +     if (layout_count > 1) {
+>>> +             /* We only handle a length one array at the moment.  Any
+>>> +              * further entries are just ignored.  Note that this means
+>>> +              * the client may see a response that is less than the
+>>> +              * minimum it requested.
+>>> +              */
+>>> +             dprintk("%s: server responded with %d layouts, dropping tail\n",
+>>> +                     __func__, layout_count);
+>>> +     }
+>>> +
+>>> +     return 0;
+>>> +out_overflow:
+>>> +     print_overflow_msg(__func__, xdr);
+>>> +     return -EIO;
+>>> +}
+>>> +#endif /* CONFIG_NFS_V4_1 */
+>>> +
+>>>  /*
+>>>   * END OF "GENERIC" DECODE ROUTINES.
+>>>   */
+>>> @@ -5815,6 +6068,53 @@ static int nfs4_xdr_dec_reclaim_complete(struct rpc_rqst *rqstp, uint32_t *p,
+>>>               status = decode_reclaim_complete(&xdr, (void *)NULL);
+>>>       return status;
+>>>  }
+>>> +
+>>> +/*
+>>> + * Decode GETDEVINFO response
+>>> + */
+>>> +static int nfs4_xdr_dec_getdeviceinfo(struct rpc_rqst *rqstp, uint32_t *p,
+>>> +                                   struct nfs4_getdeviceinfo_res *res)
+>>> +{
+>>> +     struct xdr_stream xdr;
+>>> +     struct compound_hdr hdr;
+>>> +     int status;
+>>> +
+>>> +     xdr_init_decode(&xdr, &rqstp->rq_rcv_buf, p);
+>>> +     status = decode_compound_hdr(&xdr, &hdr);
+>>> +     if (status != 0)
+>>> +             goto out;
+>>> +     status = decode_sequence(&xdr, &res->seq_res, rqstp);
+>>> +     if (status != 0)
+>>> +             goto out;
+>>> +     status = decode_getdeviceinfo(&xdr, res->pdev);
+>>> +out:
+>>> +     return status;
+>>> +}
+>>> +
+>>> +/*
+>>> + * Decode LAYOUTGET response
+>>> + */
+>>> +static int nfs4_xdr_dec_layoutget(struct rpc_rqst *rqstp, uint32_t *p,
+>>> +                               struct nfs4_layoutget_res *res)
+>>> +{
+>>> +     struct xdr_stream xdr;
+>>> +     struct compound_hdr hdr;
+>>> +     int status;
+>>> +
+>>> +     xdr_init_decode(&xdr, &rqstp->rq_rcv_buf, p);
+>>> +     status = decode_compound_hdr(&xdr, &hdr);
+>>> +     if (status)
+>>> +             goto out;
+>>> +     status = decode_sequence(&xdr, &res->seq_res, rqstp);
+>>> +     if (status)
+>>> +             goto out;
+>>> +     status = decode_putfh(&xdr);
+>>> +     if (status)
+>>> +             goto out;
+>>> +     status = decode_layoutget(&xdr, rqstp, res);
+>>> +out:
+>>> +     return status;
+>>> +}
+>>>  #endif /* CONFIG_NFS_V4_1 */
+>>>
+>>>  __be32 *nfs4_decode_dirent(__be32 *p, struct nfs_entry *entry, int plus)
+>>> @@ -5993,6 +6293,8 @@ struct rpc_procinfo     nfs4_procedures[] = {
+>>>    PROC(SEQUENCE,     enc_sequence,   dec_sequence),
+>>>    PROC(GET_LEASE_TIME,       enc_get_lease_time,     dec_get_lease_time),
+>>>    PROC(RECLAIM_COMPLETE, enc_reclaim_complete,  dec_reclaim_complete),
+>>> +  PROC(GETDEVICEINFO, enc_getdeviceinfo, dec_getdeviceinfo),
+>>> +  PROC(LAYOUTGET,  enc_layoutget,     dec_layoutget),
+>>>  #endif /* CONFIG_NFS_V4_1 */
+>>>  };
+>>>
+>>> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+>>> index cbce942..faf6c4c 100644
+>>> --- a/fs/nfs/pnfs.c
+>>> +++ b/fs/nfs/pnfs.c
+>>> @@ -128,6 +128,12 @@ pnfs_register_layoutdriver(struct pnfs_layoutdriver_type *ld_type)
+>>>               return status;
+>>>       }
+>>>
+>>> +     if (!io_ops->alloc_lseg || !io_ops->free_lseg) {
+>>> +             printk(KERN_ERR "%s Layout driver must provide "
+>>> +                    "alloc_lseg and free_lseg.\n", __func__);
+>>> +             return status;
+>>> +     }
+>>> +
+>>>       spin_lock(&pnfs_spinlock);
+>>>       if (!find_pnfs_driver_locked(ld_type->id)) {
+>>>               list_add(&ld_type->pnfs_tblid, &pnfs_modules_tbl);
+>>> @@ -153,6 +159,10 @@ pnfs_unregister_layoutdriver(struct pnfs_layoutdriver_type *ld_type)
+>>>  }
+>>>  EXPORT_SYMBOL(pnfs_unregister_layoutdriver);
+>>>
+>>> +/*
+>>> + * pNFS client layout cache
+>>> + */
+>>> +
+>>>  static void
+>>>  get_layout_hdr_locked(struct pnfs_layout_hdr *lo)
+>>>  {
+>>> @@ -175,6 +185,15 @@ put_layout_hdr_locked(struct pnfs_layout_hdr *lo)
+>>>       }
+>>>  }
+>>>
+>>> +void
+>>> +put_layout_hdr(struct inode *inode)
+>>> +{
+>>> +     spin_lock(&inode->i_lock);
+>>> +     put_layout_hdr_locked(NFS_I(inode)->layout);
+>>> +     spin_unlock(&inode->i_lock);
+>>> +
+>>> +}
+>>> +
+>>>  static void
+>>>  init_lseg(struct pnfs_layout_hdr *lo, struct pnfs_layout_segment *lseg)
+>>>  {
+>>> @@ -191,7 +210,7 @@ destroy_lseg(struct kref *kref)
+>>>       struct pnfs_layout_hdr *local = lseg->layout;
+>>>
+>>>       dprintk("--> %s\n", __func__);
+>>> -     kfree(lseg);
+>>> +     PNFS_LD_IO_OPS(local)->free_lseg(lseg);
+>>
+>> Where is PNFS_LD_IO_OPS() defined? Besides, I thought we agreed to get
+>> rid of that.
+> 
+> This is defined in pnfs.h as
+> PNFS_NFS_SERVER()->pnfs_curr_ld->ld_io_iops, mainly to save typing.
+> 
+> The macro that you had objected to was PNFS_EXISTS_LDIO_OP form
+> Benny's tree, which is now gone.
+> 
+>>
+>>>       /* Matched by get_layout_hdr_locked in pnfs_insert_layout */
+>>>       put_layout_hdr_locked(local);
+>>>  }
+>>> @@ -226,6 +245,7 @@ pnfs_clear_lseg_list(struct pnfs_layout_hdr *lo)
+>>>       /* List does not take a reference, so no need for put here */
+>>>       list_del_init(&lo->layouts);
+>>>       spin_unlock(&clp->cl_lock);
+>>> +     pnfs_set_layout_stateid(lo, &zero_stateid);
+>>>
+>>>       dprintk("%s:Return\n", __func__);
+>>>  }
+>>> @@ -268,40 +288,120 @@ pnfs_destroy_all_layouts(struct nfs_client *clp)
+>>>       }
+>>>  }
+>>>
+>>> -static void pnfs_insert_layout(struct pnfs_layout_hdr *lo,
+>>> -                            struct pnfs_layout_segment *lseg);
+>>> +void
+>>> +pnfs_set_layout_stateid(struct pnfs_layout_hdr *lo,
+>>> +                     const nfs4_stateid *stateid)
+>>> +{
+>>> +     write_seqlock(&lo->seqlock);
+>>> +     memcpy(lo->stateid.data, stateid->data, sizeof(lo->stateid.data));
+>>> +     write_sequnlock(&lo->seqlock);
+>>> +}
 >>> +
 >>> +void
->>> +nfs4_put_deviceid_cache(struct nfs_client *clp)
+>>> +pnfs_get_layout_stateid(nfs4_stateid *dst, struct pnfs_layout_hdr *lo)
 >>> +{
->>> +     struct nfs4_deviceid_cache *local = clp->cl_devid_cache;
+>>> +     int seq;
+>>>
+>>> -/* Get layout from server. */
+>>> +     dprintk("--> %s\n", __func__);
 >>> +
->>> +     dprintk("--> %s cl_devid_cache %p\n", __func__, clp->cl_devid_cache);
->>> +     if (atomic_dec_and_lock(&local->dc_ref, &clp->cl_lock)) {
->>
->> Don't you want to make sure there are no hanging devices on this
->> cache. Please note that an add or find does not take the cache
->> reference only server_init does, right?
->>
-> 
-> If there are any hanging devices at this point, it is a pretty serious bug.
-> 
-
-Yes therefore a BUG_ON() is do.
-But no! I would like for the code that decrements all did refs back in here.
-See below.
-
-> 
->>> +             clp->cl_devid_cache = NULL;
->>> +             spin_unlock(&clp->cl_lock);
->>> +             kfree(local);
->>> +     }
+>>> +     do {
+>>> +             seq = read_seqbegin(&lo->seqlock);
+>>> +             memcpy(dst->data, lo->stateid.data,
+>>> +                    sizeof(lo->stateid.data));
+>>> +     } while (read_seqretry(&lo->seqlock, seq));
+>>> +
+>>> +     dprintk("<-- %s\n", __func__);
 >>> +}
->>> +EXPORT_SYMBOL_GPL(nfs4_put_deviceid_cache);
->>
->> Note to self. Test code alot.
->>
->> Fred:
->>  I don't understand. A cache property I'm looking for and which I do not
->>  See in this code, perhaps because I'm clueless.
->>  (And to be honest I have not understood it before as well, since I never
->>  actually ran with that code I posted.)
->>  Is:
->>  - An _add_ to queue should magically hold two references to the item, so
->>  - A matching _put_ does not deallocate the item but keeps it referenced
->>   once.
->>  - A find/put pair does not remove the item from cache as well (+=1/-=1)
->>  - [optional] At some future out-of-memory condition or when cache is to
->>   big, according to some specified max cache. The most unused items are
->>   dereferenced and if are not used (ref==0) are then removed.
->>  - At driver shut-down all cached devices are dereferenced (and if not used
->>   which they should) are dealocated.
-> 
-> I agree.  The original deviceid code had an issue where nothing was
-> ever deallocated until shutdown.  The code as given here ties the
-> deviceid lifetime to existing references.  This is not ideal, because
-> a brief loss of reference to a deviceid will cause an unnecessary
-> GETDEVICEINFO.  However, for the current submission, it has the
-> advantage that it is simple and correct.  Adding the machinery to do
-> as you suggest above is indeed a (fairly high) priority goal, but was
-> intentionally deferred.
-> 
-
-I would like to please return it. That is deallocate it only at shut down.
-Otherwise we are for a lot of trouble. We are not yet in a situation of
-1000nd of devices where it might matter. Even up to 100rd it is still fine
-to never de-allocate. (Currently on the planet Panasas is the only one with
-1000nd of devices in a single installation)
-
-Look at it this way. Before we mounted all the NFS servers in our domain
-prior to usage, and/or as part of auto-mount which never got unmounted
-until shotdown/unmount. So we do the same with pNFS only we have the
-privilege of doing a single mount and have everything dynamically logged
-in for us. So we are just as before.
-
-For all pNFS filesystems today the first IOs will GETDEVICEINFO for the
-10s of devices deploid and keep them allocated. If we free them then
-what will happen if we need to GETDEVICEINFO when all memory is dirty
-and we need it for cleaning that dirty memory. We don't have any
-forward progress provision for that yet.
-
-The simple thing to do is keep them allocated for ever (until unmount)
-by adding a single did_get() call in the did_add() function.
-(And did_put() in cache deallocation). That's more simple then hardening
-the code.
-
-And If we don't the pNFS performance will suck big time specially for
-that humongous files-layout get_device_info. Because it will be done
-for every get_layout. A regular bash script opens a file then closes it.
-Most of the time we are not parallel as we think.
-
->>
->> So in effect if [optional] code above is not yet implemented then a
->> getdeviceinfo is never preformed twice for the same deviceid
->> (Assuming no device recall). This is what I had in osd, and is cardinal
->> for it's performance. Is that what we are aiming at?
-> 
-> Yes, that is the goal.  Right now, if a layout is still around that
-> references a deviceid, a second GETDEVICEINFO will not be sent.
-> However, if all layouts referencing a specific deviceid have been
-> returned, then yes, a second GETDEVICEINFO will be called.
-> 
-
-Then sure when we come to the situation that we need proper support
-for more then 100 machines in a cluster, then we can add the clean
-on add stage where if we are higher then x devices we start to replace
-entries.
-
-What you guys think?
-
-Boaz
-
->>
->>> diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
->>> index 1c3eb02..b7de762 100644
->>> --- a/fs/nfs/pnfs.h
->>> +++ b/fs/nfs/pnfs.h
->>> @@ -32,11 +32,13 @@
->>>
->>>  struct pnfs_layout_segment {
->>>       struct list_head fi_list;
->>> -     u32 iomode;
->>> +     struct pnfs_layout_range range;
->>>       struct kref kref;
->>>       struct pnfs_layout_hdr *layout;
->>>  };
->>>
->>> +#define NFS4_PNFS_DEVICEID4_SIZE 16
 >>> +
->>>  #ifdef CONFIG_NFS_V4_1
->>>
->>>  #define LAYOUT_NFSV4_1_MODULE_PREFIX "nfs-layouttype4"
->>> @@ -44,6 +46,7 @@ struct pnfs_layout_segment {
->>>  enum {
->>>       NFS_LAYOUT_RO_FAILED = 0,       /* get ro layout failed stop trying */
->>>       NFS_LAYOUT_RW_FAILED,           /* get rw layout failed stop trying */
->>> +     NFS_LAYOUT_STATEID_SET,         /* have a valid layout stateid */
->>>  };
->>>
->>>  /* Per-layout driver specific registration structure */
->>> @@ -54,26 +57,102 @@ struct pnfs_layoutdriver_type {
->>>       struct module *owner;
->>>       int (*initialize_mountpoint) (struct nfs_server *);
->>>       int (*uninitialize_mountpoint) (struct nfs_server *);
->>> +     struct pnfs_layout_segment * (*alloc_lseg) (struct pnfs_layout_hdr *layoutid, struct nfs4_layoutget_res *lgr);
->>> +     void (*free_lseg) (struct pnfs_layout_segment *lseg);
->>>  };
->>>
->>>  struct pnfs_layout_hdr {
->>>       unsigned long           refcount;
->>>       struct list_head        layouts;   /* other client layouts */
->>>       struct list_head        segs;      /* layout segments list */
->>> +     seqlock_t               seqlock;   /* Protects the stateid */
->>> +     nfs4_stateid            stateid;
->>>       unsigned long           state;
->>>       struct inode            *inode;
->>>  };
->>>
->>> +struct pnfs_deviceid {
->>
->> Please for my own sanity, could we change those names.
->> I'll post a patch once we settle on final code. I want this
->> to be nfs4_deviceid (And perhaps in that other header)
->>
->>> +     char data[NFS4_PNFS_DEVICEID4_SIZE];
->>> +};
+>>> +static void
+>>> +pnfs_layout_from_open_stateid(struct pnfs_layout_hdr *lo,
+>>> +                           struct nfs4_state *state)
+>>> +{
+>>> +     int seq;
 >>> +
->>> +struct pnfs_device {
->>> +     struct pnfs_deviceid dev_id;
->>> +     unsigned int  layout_type;
->>> +     unsigned int  mincount;
->>> +     struct page **pages;
->>> +     void          *area;
->>> +     unsigned int  pgbase;
->>> +     unsigned int  pglen;
->>> +};
+>>> +     dprintk("--> %s\n", __func__);
+>>> +
+>>> +     write_seqlock(&lo->seqlock);
+>>> +     /* Zero stateid, which is illegal to use in layout, is our
+>>> +      * marker for an un-initialized stateid.
+>>> +      */
+>>
+>> Isn't it easier just to have a flag in the layout?
+>>
+
+It's possible.
+
+>>> +     if (!memcmp(lo->stateid.data, &zero_stateid, NFS4_STATEID_SIZE))
+>>> +             do {
+>>> +                     seq = read_seqbegin(&state->seqlock);
+>>> +                     memcpy(lo->stateid.data, state->stateid.data,
+>>> +                                     sizeof(state->stateid.data));
+>>> +             } while (read_seqretry(&state->seqlock, seq));
+>>> +     write_sequnlock(&lo->seqlock);
+>>
+>> ...and if memcmp(), is the caller supposed to detect that nothing was
+>> done?
+>>
+
+Not sure I understand your question...
+You mean in case state->stateid.data is zero as well?
+
+>>> +     dprintk("<-- %s\n", __func__);
+>>> +}
 >>> +
 >>> +/*
->>> + * Device ID RCU cache. A device ID is unique per client ID and layout type.
->>> + */
->>> +#define NFS4_DEVICE_ID_HASH_BITS     5
->>> +#define NFS4_DEVICE_ID_HASH_SIZE     (1 << NFS4_DEVICE_ID_HASH_BITS)
->>> +#define NFS4_DEVICE_ID_HASH_MASK     (NFS4_DEVICE_ID_HASH_SIZE - 1)
+>>> +* Get layout from server.
+>>> +*    for now, assume that whole file layouts are requested.
+>>> +*    arg->offset: 0
+>>> +*    arg->length: all ones
+>>> +*/
+>>>  static struct pnfs_layout_segment *
+>>>  send_layoutget(struct pnfs_layout_hdr *lo,
+>>>          struct nfs_open_context *ctx,
+>>>          u32 iomode)
+>>>  {
+>>>       struct inode *ino = lo->inode;
+>>> -     struct pnfs_layout_segment *lseg;
+>>> +     struct nfs_server *server = NFS_SERVER(ino);
+>>> +     struct nfs4_layoutget *lgp;
+>>> +     struct pnfs_layout_segment *lseg = NULL;
+>>>
+>>> -     /* Lets pretend we sent LAYOUTGET and got a response */
+>>> -     lseg = kzalloc(sizeof(*lseg), GFP_KERNEL);
+>>> +     dprintk("--> %s\n", __func__);
 >>> +
->>> +static inline u32
->>> +nfs4_deviceid_hash(struct pnfs_deviceid *id)
->>> +{
->>> +     unsigned char *cptr = (unsigned char *)id->data;
->>> +     unsigned int nbytes = NFS4_PNFS_DEVICEID4_SIZE;
->>> +     u32 x = 0;
->>> +
->>> +     while (nbytes--) {
->>> +             x *= 37;
->>> +             x += *cptr++;
+>>> +     BUG_ON(ctx == NULL);
+>>> +     lgp = kzalloc(sizeof(*lgp), GFP_KERNEL);
+>>> +     if (lgp == NULL) {
+>>> +             put_layout_hdr(lo->inode);
+>>> +             return NULL;
 >>> +     }
->>> +     return x & NFS4_DEVICE_ID_HASH_MASK;
->>> +}
+>>> +     lgp->args.minlength = NFS4_MAX_UINT64;
+>>> +     lgp->args.maxcount = PNFS_LAYOUT_MAXSIZE;
+>>> +     lgp->args.range.iomode = iomode;
+>>> +     lgp->args.range.offset = 0;
+>>> +     lgp->args.range.length = NFS4_MAX_UINT64;
+>>> +     lgp->args.type = server->pnfs_curr_ld->id;
+>>> +     lgp->args.inode = ino;
+>>> +     lgp->args.ctx = get_nfs_open_context(ctx);
+>>> +     lgp->lsegpp = &lseg;
 >>> +
->>> +/* Device ID cache node */
->>> +struct nfs4_deviceid {
+>>> +     if (!memcmp(lo->stateid.data, &zero_stateid, NFS4_STATEID_SIZE))
+>>> +             pnfs_layout_from_open_stateid(NFS_I(ino)->layout, ctx->state);
 >>
->> And this one rename to pnfs_deviceid_node
->>
->>> +     struct hlist_node       de_node;
->>> +     struct pnfs_deviceid    de_id;
->>> +     atomic_t                de_ref;
->>> +};
->>> +
->>> +struct nfs4_deviceid_cache {
->>> +     spinlock_t              dc_lock;
->>> +     atomic_t                dc_ref;
->>> +     void                    (*dc_free_callback)(struct nfs4_deviceid *);
->>> +     struct hlist_head       dc_deviceids[NFS4_DEVICE_ID_HASH_SIZE];
->>> +     struct hlist_head       dc_to_free;
->>> +};
->>> +
->>
->> All these cache APIs below, the naming convention in this header is
->> to call them pnfs_xxx. They don't have any use in general nfs4.
->> (and are implemented in pnfs.c)
+>> Why do an extra memcmp() here?
+
+Yeah, actually the one in pnfs_layout_from_open_stateid() can be removed,
+or it can be open coded here since this is the only call site.
+
+Benny
+
 > 
-> I'll defer to Andy regarding naming.
-> 
-> 
->>
->>> +extern int nfs4_alloc_init_deviceid_cache(struct nfs_client *,
->>> +                             void (*free_callback)(struct nfs4_deviceid *));
->>> +extern void nfs4_put_deviceid_cache(struct nfs_client *);
->>> +extern void nfs4_init_deviceid_node(struct nfs4_deviceid *);
->>
->> Why is above exported? Can't we just call it from _add_
->>
-> 
-> You are right.  It is a remnant of older code organization.
+> OK, clearly the function and call to pnfs_layout_from_open_stateid
+> need to be reexamined.
 > 
 > Fred
 > 
->> Boaz
->>
->>> +extern struct nfs4_deviceid *nfs4_find_get_deviceid(
->>> +                             struct nfs4_deviceid_cache *,
->>> +                             struct pnfs_deviceid *);
->>> +extern struct nfs4_deviceid *nfs4_add_deviceid(struct nfs4_deviceid_cache *,
->>> +                             struct nfs4_deviceid *);
->>> +extern void nfs4_put_deviceid(struct nfs4_deviceid_cache *c,
->>> +                           struct nfs4_deviceid *devid);
->>> +
->>>  extern int pnfs_register_layoutdriver(struct pnfs_layoutdriver_type *);
->>>  extern void pnfs_unregister_layoutdriver(struct pnfs_layoutdriver_type *);
->>>
->>> +/* nfs4proc.c */
->>> +extern int nfs4_proc_getdeviceinfo(struct nfs_server *server,
->>> +                                struct pnfs_device *dev);
->>> +extern int nfs4_proc_layoutget(struct nfs4_layoutget *lgp);
->>> +
->>> +/* pnfs.c */
->>>  struct pnfs_layout_segment *
->>>  pnfs_update_layout(struct inode *ino, struct nfs_open_context *ctx,
->>>                  enum pnfs_iomode access_type);
->>>  void set_pnfs_layoutdriver(struct nfs_server *, u32 id);
->>>  void unset_pnfs_layoutdriver(struct nfs_server *);
->>> +int pnfs_layout_process(struct nfs4_layoutget *lgp);
->>>  void pnfs_destroy_layout(struct nfs_inode *);
->>>  void pnfs_destroy_all_layouts(struct nfs_client *);
->>> +void put_layout_hdr(struct inode *inode);
->>> +void pnfs_get_layout_stateid(nfs4_stateid *dst, struct pnfs_layout_hdr *lo,
->>> +                          struct nfs4_state *open_state);
->>>
->>>
->>>  static inline int lo_fail_bit(u32 iomode)
->>> diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
->>> index 2dde7c8..dcdd11c 100644
->>> --- a/include/linux/nfs4.h
->>> +++ b/include/linux/nfs4.h
->>> @@ -545,6 +545,8 @@ enum {
->>>       NFSPROC4_CLNT_SEQUENCE,
->>>       NFSPROC4_CLNT_GET_LEASE_TIME,
->>>       NFSPROC4_CLNT_RECLAIM_COMPLETE,
->>> +     NFSPROC4_CLNT_LAYOUTGET,
->>> +     NFSPROC4_CLNT_GETDEVICEINFO,
->>>  };
->>>
->>>  /* nfs41 types */
->>> diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
->>> index e670a9c..7512886 100644
->>> --- a/include/linux/nfs_fs_sb.h
->>> +++ b/include/linux/nfs_fs_sb.h
->>> @@ -83,6 +83,7 @@ struct nfs_client {
->>>       u32                     cl_exchange_flags;
->>>       struct nfs4_session     *cl_session;    /* sharred session */
->>>       struct list_head        cl_layouts;
->>> +     struct nfs4_deviceid_cache *cl_devid_cache; /* pNFS deviceid cache */
->>>  #endif /* CONFIG_NFS_V4_1 */
->>>
->>>  #ifdef CONFIG_NFS_FSCACHE
->>> diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
->>> index 7d68a5c..4953b58 100644
->>> --- a/include/linux/nfs_xdr.h
->>> +++ b/include/linux/nfs_xdr.h
->>> @@ -186,6 +186,55 @@ struct nfs4_get_lease_time_res {
->>>       struct nfs4_sequence_res        lr_seq_res;
->>>  };
->>>
->>> +#define PNFS_LAYOUT_MAXSIZE 4096
->>> +
->>> +struct nfs4_layoutdriver_data {
->>> +     __u32 len;
->>> +     void *buf;
->>> +};
->>> +
->>> +struct pnfs_layout_range {
->>> +     u32 iomode;
->>> +     u64 offset;
->>> +     u64 length;
->>> +};
->>> +
->>> +struct nfs4_layoutget_args {
->>> +     __u32 type;
->>> +     struct pnfs_layout_range range;
->>> +     __u64 minlength;
->>> +     __u32 maxcount;
->>> +     struct inode *inode;
->>> +     struct nfs_open_context *ctx;
->>> +     struct nfs4_sequence_args seq_args;
->>> +};
->>> +
->>> +struct nfs4_layoutget_res {
->>> +     __u32 return_on_close;
->>> +     struct pnfs_layout_range range;
->>> +     __u32 type;
->>> +     nfs4_stateid stateid;
->>> +     struct nfs4_layoutdriver_data layout;
->>> +     struct nfs4_sequence_res seq_res;
->>> +};
->>> +
->>> +struct nfs4_layoutget {
->>> +     struct nfs4_layoutget_args args;
->>> +     struct nfs4_layoutget_res res;
->>> +     struct pnfs_layout_segment **lsegpp;
->>> +     int status;
->>> +};
->>> +
->>> +struct nfs4_getdeviceinfo_args {
->>> +     struct pnfs_device *pdev;
->>> +     struct nfs4_sequence_args seq_args;
->>> +};
->>> +
->>> +struct nfs4_getdeviceinfo_res {
->>> +     struct pnfs_device *pdev;
->>> +     struct nfs4_sequence_res seq_res;
->>> +};
->>> +
->>>  /*
->>>   * Arguments to the open call.
->>>   */
->>
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-
