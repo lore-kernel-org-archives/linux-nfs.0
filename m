@@ -1,78 +1,61 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yx0-f174.google.com ([209.85.213.174]:36552 "EHLO
-	mail-yx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754633Ab0IQQ0N (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 17 Sep 2010 12:26:13 -0400
-Received: by yxp4 with SMTP id 4so788641yxp.19
-        for <linux-nfs@vger.kernel.org>; Fri, 17 Sep 2010 09:26:13 -0700 (PDT)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 00/22] Full NFSv2/v3 XDR overhaul series
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Date: Fri, 17 Sep 2010 12:26:09 -0400
-Message-ID: <20100917162204.19761.58249.stgit@seurat.1015granger.net>
-Content-Type: text/plain; charset="utf-8"
+Received: from mx2.netapp.com ([216.240.18.37]:61644 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753283Ab0IMQ4S convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Sep 2010 12:56:18 -0400
+Subject: Re: [PATCH 07/13] RFC: pnfs: full mount/umount infrastructure
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Benny Halevy <bhalevy@panasas.com>
+Cc: Christoph Hellwig <hch@infradead.org>, Fred Isaman <iisaman@netapp.com>,
+        linux-nfs@vger.kernel.org
+In-Reply-To: <4C8E3733.2000607@panasas.com>
+References: <1283450419-5648-1-git-send-email-iisaman@netapp.com>
+	 <1283450419-5648-8-git-send-email-iisaman@netapp.com>
+	 <20100910235858.GB11231@infradead.org>
+	 <1284163679.14078.106.camel@heimdal.trondhjem.org>
+	 <4C8E0A03.3020500@panasas.com>
+	 <1284380997.2825.2.camel@heimdal.trondhjem.org>
+	 <4C8E3733.2000607@panasas.com>
+Content-Type: text/plain; charset="UTF-8"
+Date: Mon, 13 Sep 2010 12:55:14 -0400
+Message-ID: <1284396914.6466.7.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Hi Trond-
+On Mon, 2010-09-13 at 16:37 +0200, Benny Halevy wrote:
+> On 2010-09-13 14:29, Trond Myklebust wrote:
+> > On Mon, 2010-09-13 at 13:24 +0200, Benny Halevy wrote:
+> >> On 2010-09-11 03:07, Trond Myklebust wrote:
+> >>> On Fri, 2010-09-10 at 19:58 -0400, Christoph Hellwig wrote:
+> >>>>> +EXPORT_SYMBOL(pnfs_register_layoutdriver);
+> >>>>
+> >>>> Al exports from nfs.ko needs to be _GPL - this is in no way a public
+> >>>> API, just an internal subdivision of the nfs client.
+> >>>
+> >>> ACK. We're not committing to supporting a stable ABI here in any way,
+> >>> shape or form...
+> >>
+> >> OK, not yet.
+> >>
+> >> However, on the longer run I'd like us to consider formalizing
+> >> the kABI for non-GPLed layout drivers.
+> >>
+> >> I think that this is a great selling point as it fully materializes the
+> >> extensibility of the layout-type / layout-driver design model.
+> > 
+> > No. I'm not committing to a kabi, ever...
+> 
+> Care to explain your reasoning in some more details?
 
-Here's the full XDR overhaul series.  Superfluous BUG_ON()'s have been
-removed from both the NFSv2 and the NFSv3 components.
+It has already been laid out in Documentation/stable_api_nonsense.txt.
+It boils down to the following:
 
-There may be some minor merge conflicts with Bryan's readdir changes
-and with Jeff's async sillyrename patches.  I volunteer to take care
-of those when you can set up a for-2.6.37 branch with everything you
-have so far.
+ 1) I don't _ever_ want to have to deal with debugging problems that
+might involve binary-only modules.
+ 2) I want to be able to change interfaces in order to optimise/improve
+the code as needed without having to check in with a bunch of
+out-of-tree maintainers about whether or not it is 'OK' to do so.
+ 3) I don't see a need for linking to non-GPLed code.
 
----
-
-Chuck Lever (22):
-      NFS: Fix hdrlen calculation in NFSv4's decode_read()
-      lockd: Move nlmdbg_cookie2a() to svclock.c
-      lockd: Introduce new-style XDR functions for NLMv4
-      NFS: Move and update xdr_decode_foo() functions that we're keeping
-      NFS: Remove unused old NFSv3 decoder functions
-      NFS: Switch in new NFSv3 decoder functions
-      NFS: Introduce new-style XDR decoding functions for NFSv2
-      NFS: Move and update xdr_encode_foo() functions that we're keeping
-      NFS: Remove unused old NFSv3 encoder functions
-      NFS: Replace old NFSv3 encoder functions with xdr_stream-based ones
-      NFS: Introduce new-style XDR encoding functions for NFSv3
-      lockd: Introduce new-style XDR functions for NLMv3
-      NFS: Move and update xdr_decode_foo() functions that we're keeping
-      NFS: Replace old NFSv2 decoder functions with xdr_stream-based ones
-      NFS: Introduce new-style XDR decoding functions for NFSv2
-      NFS: Use the "nfs_stat" enum for nfs_stat_to_errno()'s argument
-      NFS: Move and update xdr_encode_foo() functions that we're keeping
-      NFS: Remove old NFSv2 encoder functions
-      NFS: Introduce new-style XDR encoding functions for NFSv2
-      SUNRPC: Refactor logic to NUL-terminate strings in pages
-      SUNRPC: Correct an rpcbind debugging message
-      NFS: Fix NFSv3 debugging messages in fs/nfs/nfs3proc.c
-
-
- fs/lockd/Makefile           |    6 
- fs/lockd/clnt4xdr.c         |  633 +++++++++
- fs/lockd/clntxdr.c          |  650 ++++++++++
- fs/lockd/svclock.c          |   30 
- fs/lockd/xdr.c              |  287 ----
- fs/lockd/xdr4.c             |  255 ----
- fs/nfs/internal.h           |    4 
- fs/nfs/nfs2xdr.c            | 1342 +++++++++++++-------
- fs/nfs/nfs3proc.c           |    5 
- fs/nfs/nfs3xdr.c            | 2929 ++++++++++++++++++++++++++++++++-----------
- fs/nfs/nfs4xdr.c            |    7 
- fs/nfs/proc.c               |    2 
- include/linux/lockd/debug.h |   10 
- include/linux/nfs3.h        |    3 
- include/linux/sunrpc/xdr.h  |    1 
- net/sunrpc/rpcb_clnt.c      |    5 
- net/sunrpc/xdr.c            |   17 
- 17 files changed, 4403 insertions(+), 1783 deletions(-)
- create mode 100644 fs/lockd/clnt4xdr.c
- create mode 100644 fs/lockd/clntxdr.c
-
--- 
-Chuck Lever
+Trond
