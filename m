@@ -1,50 +1,42 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from ecfrec.frec.bull.fr ([129.183.4.8]:43402 "EHLO
-	ecfrec.frec.bull.fr" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753111Ab0ITMt2 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 20 Sep 2010 08:49:28 -0400
-Received: from cyclope.frec.bull.fr (cyclope.frec.bull.fr [129.183.4.9])
-	by ecfrec.frec.bull.fr (Postfix) with ESMTP id 0341B6F59F
-	for <linux-nfs@vger.kernel.org>; Mon, 20 Sep 2010 14:49:20 +0200 (CEST)
-Received: from [129.183.101.247] (pa-129.183.101.247.frec.bull.fr [129.183.101.247])
-	by cyclope.frec.bull.fr (Postfix) with ESMTP id C39032728D
-	for <linux-nfs@vger.kernel.org>; Mon, 20 Sep 2010 14:49:16 +0200 (CEST)
-Message-ID: <4C97584F.4020104@bull.net>
-Date: Mon, 20 Sep 2010 14:49:19 +0200
-From: Menyhart Zoltan <Zoltan.Menyhart@bull.net>
-To: linux-nfs@vger.kernel.org
-Subject: Locking question around "...PagePrivate()"
-References: <4C7E4469.70807@duchatelet.net>
-In-Reply-To: <4C7E4469.70807@duchatelet.net>
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Received: from mail.perches.com ([173.55.12.10]:1920 "EHLO mail.perches.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755428Ab0IMTsn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 13 Sep 2010 15:48:43 -0400
+From: Joe Perches <joe@perches.com>
+To: linux-kernel@vger.kernel.org
+Cc: "J. Bruce Fields" <bfields@fieldses.org>, Neil Brown <neilb@suse.de>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "David S. Miller" <davem@davemloft.net>, linux-nfs@vger.kernel.org,
+        netdev@vger.kernel.org
+Subject: [PATCH 23/25] net/sunrpc: Use static const char arrays
+Date: Mon, 13 Sep 2010 12:48:01 -0700
+Message-Id: <c87c4e9337ce9af6a3b17baee29ec0dda5a4d392.1284406639.git.joe@perches.com>
+In-Reply-To: <cover.1284406638.git.joe@perches.com>
+References: <cover.1284406638.git.joe@perches.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-Hi,
+Signed-off-by: Joe Perches <joe@perches.com>
+---
+ net/sunrpc/auth_gss/gss_krb5_mech.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
 
-nfs_inode_add_request() runs under the protection of the Page Lock
-while setting up SetPagePrivate(), set_page_private().
+diff --git a/net/sunrpc/auth_gss/gss_krb5_mech.c b/net/sunrpc/auth_gss/gss_krb5_mech.c
+index 0326446..8a4d083 100644
+--- a/net/sunrpc/auth_gss/gss_krb5_mech.c
++++ b/net/sunrpc/auth_gss/gss_krb5_mech.c
+@@ -422,7 +422,7 @@ static int
+ context_derive_keys_rc4(struct krb5_ctx *ctx)
+ {
+ 	struct crypto_hash *hmac;
+-	char sigkeyconstant[] = "signaturekey";
++	static const char sigkeyconstant[] = "signaturekey";
+ 	int slen = strlen(sigkeyconstant) + 1;	/* include null terminator */
+ 	struct hash_desc desc;
+ 	struct scatterlist sg[1];
+-- 
+1.7.3.rc1
 
-The consumers of PagePrivate() run also under the protection of the Page Lock.
-
-On the other hand, nfs_inode_remove_request() invoked by
-nfs_writeback_release_full() and nfs_commit_release() apparently does
-not take the Page Lock.
-
-nfs_inode_remove_request() includes the sequence of
-
-         set_page_private(req->wb_page, 0);
-         ClearPagePrivate(req->wb_page);
-
-When the base kernel calls e.g.
-
-	mapping->a_ops->releasepage(page, gfp_mask)
-
-then nfs_release_page() may see an incoherent "private" state.
-
-Should not all the "private" operations be protected by the Page Lock?
-
-Thanks,
-
-Zoltan Menyhart
