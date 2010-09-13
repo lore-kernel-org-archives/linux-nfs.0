@@ -1,125 +1,56 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mailhub.sw.ru ([195.214.232.25]:1207 "EHLO relay.sw.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754792Ab0I1PP6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 28 Sep 2010 11:15:58 -0400
-Message-ID: <4CA206A2.7070409@parallels.com>
-Date: Tue, 28 Sep 2010 19:15:46 +0400
-From: Pavel Emelyanov <xemul@parallels.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Chuck Lever <chuck.lever@oracle.com>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        linux-nfs@vger.kernel.org
-Subject: [PATCH 2/7] sunrpc: Factor out rpc_xprt freeing
-References: <4CA20651.4070605@parallels.com>
-In-Reply-To: <4CA20651.4070605@parallels.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from daytona.panasas.com ([67.152.220.89]:24429 "EHLO
+	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1754676Ab0IMLG4 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Sep 2010 07:06:56 -0400
+Message-ID: <4C8E05CD.7090407@panasas.com>
+Date: Mon, 13 Sep 2010 13:06:53 +0200
+From: Boaz Harrosh <bharrosh@panasas.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+CC: Fred Isaman <iisaman@netapp.com>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 07/13] RFC: pnfs: full mount/umount infrastructure
+References: <1283450419-5648-1-git-send-email-iisaman@netapp.com>	 <1283450419-5648-8-git-send-email-iisaman@netapp.com> <1284146604.10062.68.camel@heimdal.trondhjem.org>
+In-Reply-To: <1284146604.10062.68.camel@heimdal.trondhjem.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Signed-off-by: Pavel Emelyanov <xemul@openvz.org>
----
- include/linux/sunrpc/xprt.h     |    1 +
- net/sunrpc/xprtrdma/transport.c |    7 ++-----
- net/sunrpc/xprtsock.c           |   19 +++++++++++--------
- 3 files changed, 14 insertions(+), 13 deletions(-)
+On 09/10/2010 10:23 PM, Trond Myklebust wrote:
+> On Thu, 2010-09-02 at 14:00 -0400, Fred Isaman wrote:
+>>  
+>>  /* Unitialize a mountpoint in a layout driver */
+>>  void
+>>  unset_pnfs_layoutdriver(struct nfs_server *nfss)
+>>  {
+>> +	if (nfss->pnfs_curr_ld)
+>> +		nfss->pnfs_curr_ld->ld_io_ops->uninitialize_mountpoint(nfss->nfs_client);
+> 
+> That 'uninitialize_mountpoint' name doesn't make any sense. The
+> nfs_client parameter isn't associated to a particular mountpoint.
+> 
 
-diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
-index 00f6e3f..af4b560 100644
---- a/include/linux/sunrpc/xprt.h
-+++ b/include/linux/sunrpc/xprt.h
-@@ -281,6 +281,7 @@ void			xprt_release(struct rpc_task *task);
- struct rpc_xprt *	xprt_get(struct rpc_xprt *xprt);
- void			xprt_put(struct rpc_xprt *xprt);
- struct rpc_xprt *	xprt_alloc(int size, int max_req);
-+void			xprt_free(struct rpc_xprt *);
- 
- static inline __be32 *xprt_skip_transport_header(struct rpc_xprt *xprt, __be32 *p)
- {
-diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
-index 9d77bf2..0f7a1b9 100644
---- a/net/sunrpc/xprtrdma/transport.c
-+++ b/net/sunrpc/xprtrdma/transport.c
-@@ -251,9 +251,7 @@ xprt_rdma_destroy(struct rpc_xprt *xprt)
- 
- 	xprt_rdma_free_addresses(xprt);
- 
--	kfree(xprt->slot);
--	xprt->slot = NULL;
--	kfree(xprt);
-+	xprt_free(xprt);
- 
- 	dprintk("RPC:       %s: returning\n", __func__);
- 
-@@ -401,8 +399,7 @@ out3:
- out2:
- 	rpcrdma_ia_close(&new_xprt->rx_ia);
- out1:
--	kfree(xprt->slot);
--	kfree(xprt);
-+	xprt_free(xprt);
- 	return ERR_PTR(rc);
- }
- 
-diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index 9f2dd3b..77cb595 100644
---- a/net/sunrpc/xprtsock.c
-+++ b/net/sunrpc/xprtsock.c
-@@ -781,6 +781,13 @@ out:
- }
- EXPORT_SYMBOL_GPL(xprt_alloc);
- 
-+void xprt_free(struct rpc_xprt *xprt)
-+{
-+	kfree(xprt->slot);
-+	kfree(xprt);
-+}
-+EXPORT_SYMBOL_GPL(xprt_free);
-+
- /**
-  * xs_destroy - prepare to shutdown a transport
-  * @xprt: doomed transport
-@@ -796,8 +803,7 @@ static void xs_destroy(struct rpc_xprt *xprt)
- 
- 	xs_close(xprt);
- 	xs_free_peer_addresses(xprt);
--	kfree(xprt->slot);
--	kfree(xprt);
-+	xprt_free(xprt);
- 	module_put(THIS_MODULE);
- }
- 
-@@ -2384,8 +2390,7 @@ static struct rpc_xprt *xs_setup_udp(struct xprt_create *args)
- 		return xprt;
- 	ret = ERR_PTR(-EINVAL);
- out_err:
--	kfree(xprt->slot);
--	kfree(xprt);
-+	xprt_free(xprt);
- 	return ret;
- }
- 
-@@ -2460,8 +2465,7 @@ static struct rpc_xprt *xs_setup_tcp(struct xprt_create *args)
- 		return xprt;
- 	ret = ERR_PTR(-EINVAL);
- out_err:
--	kfree(xprt->slot);
--	kfree(xprt);
-+	xprt_free(xprt);
- 	return ret;
- }
- 
-@@ -2541,8 +2545,7 @@ static struct rpc_xprt *xs_setup_bc_tcp(struct xprt_create *args)
- 		return xprt;
- 	ret = ERR_PTR(-EINVAL);
- out_err:
--	kfree(xprt->slot);
--	kfree(xprt);
-+	xprt_free(xprt);
- 	return ret;
- }
- 
--- 
-1.5.5.6
+Me two BTW.
+I will later need a per super-block resources, mainly slabs and work_q.
+The above is used for two things: 
+one - Per-client but after the layout-type is known which comes after first
+      mount. (For the device cache)
+Two - Per server (per mount) which will be used by objects later on.
+      (I think that there is an if somewhere that make this call only
+       once per client, right?)
 
+I think we should just pass nfss to the LD and let it take care of accessing
+nfss->nfs_client for the device cache. (It is done so later in the tree, right?)
+
+Boaz
+>>  	nfss->pnfs_curr_ld = NULL;
+>>  }
+>>  
+>> @@ -68,6 +100,12 @@ set_pnfs_layoutdriver(struct nfs_server *server, u32 id)
+>>  			goto out_no_driver;
+>>  		}
+>>  	}
+>> +	if (ld_type->ld_io_ops->initialize_mountpoint(server->nfs_client)) {
+> 
+> Ditto.
+> 
