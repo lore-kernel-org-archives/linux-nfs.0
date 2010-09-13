@@ -1,218 +1,107 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:32896 "EHLO
+Received: from daytona.panasas.com ([67.152.220.89]:33252 "EHLO
 	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1753927Ab0INMkD (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 14 Sep 2010 08:40:03 -0400
-Message-ID: <4C8F6D23.5060204@panasas.com>
-Date: Tue, 14 Sep 2010 14:40:03 +0200
-From: Benny Halevy <bhalevy@panasas.com>
-To: Fred Isaman <iisaman@umich.edu>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 2/4] pnfs: allow nfs4_proc_layoutget to sleep on invalid
- lsegs
-References: <4C8F53FA.5060308@panasas.com>	<1284461616-4588-1-git-send-email-bhalevy@panasas.com> <AANLkTimFyGbg_bfu1MwjarhRC63Osg8Depwn8E0dfimL@mail.gmail.com>
-In-Reply-To: <AANLkTimFyGbg_bfu1MwjarhRC63Osg8Depwn8E0dfimL@mail.gmail.com>
-Content-Type: text/plain; charset=ISO-8859-1
+	with ESMTP id S1750920Ab0IMJuc (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Sep 2010 05:50:32 -0400
+Message-ID: <4C8DF3E5.4050108@panasas.com>
+Date: Mon, 13 Sep 2010 11:50:29 +0200
+From: Boaz Harrosh <bharrosh@panasas.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+CC: NFS list <linux-nfs@vger.kernel.org>, Benny Halevy <bhalevy@panasas.com>,
+        Andy Adamson <andros@netapp.com>, Fred Isaman <iisaman@netapp.com>
+Subject: Re: [RFC 1/3] SQUASHME: Generalize the device cache so it can be
+ used by all layouts
+References: <4C8D0759.6090201@panasas.com>  <4C8D07D5.6010006@panasas.com> <1284320533.7880.131.camel@heimdal.trondhjem.org>
+In-Reply-To: <1284320533.7880.131.camel@heimdal.trondhjem.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 2010-09-14 14:00, Fred Isaman wrote:
-> Note that this waits on any range that overlaps both an outstanding
-> LAYOUTRETURN and a current layout.  Whereas what you really want is to
-> wait on any range that overlaps an outstanding LAYOUTRETURN.  One way
-> to get the desired behavior would be to have LAYOUTRETURN insert an
-> "invalid" lseg covering its range.
-
-What do you mean by "current layout"?
-The way it works now is that layout return does mark the layout segments
-it's about to return as invalid (in pnfs_return_layout_barrier).
-layout get inserts a valid layout segment only upon completion
-(in pnfs_layout_process) and it does not yet insert an invalid one
-before sending the RPC, something we may wan to consider in the future
-to prevent superfluous parallel gets.
-
-Benny
-
-> 
-> Fred
-> 
-> 
-> On Tue, Sep 14, 2010 at 3:53 AM, Benny Halevy <bhalevy@panasas.com> wrote:
->> Introduce lo_rpcwaitq and sleep on it while there's an lseg marked invalid,
->> i.e. it is being returned (in the future, it could also be layoutget in progress).
+On 09/12/2010 09:42 PM, Trond Myklebust wrote:
+> On Sun, 2010-09-12 at 19:03 +0200, Boaz Harrosh wrote:
+>> Current code thinks that there can be a single device_id per
+>> layout segment. Change that to assume no relations between segments
+>> and device_ids. It's now up to the layout-driver to make any relations.
 >>
->> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+>> Files layout driver is fixed in next patch.
+>>
+>> Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
 >> ---
->>  fs/nfs/inode.c         |    1 +
->>  fs/nfs/nfs4proc.c      |   25 ++++++++++++++++++++++---
->>  fs/nfs/pnfs.c          |   37 ++++++++++++++++++-------------------
->>  fs/nfs/pnfs.h          |    3 +++
->>  include/linux/nfs_fs.h |    1 +
->>  5 files changed, 45 insertions(+), 22 deletions(-)
+>>  fs/nfs/pnfs.c             |   20 +++++---------------
+>>  include/linux/nfs4_pnfs.h |    6 +-----
+>>  2 files changed, 6 insertions(+), 20 deletions(-)
 >>
->> diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
->> index 7621cfc..059bdf7 100644
->> --- a/fs/nfs/inode.c
->> +++ b/fs/nfs/inode.c
->> @@ -1462,6 +1462,7 @@ static inline void nfs4_init_once(struct nfs_inode *nfsi)
->>        init_rwsem(&nfsi->rwsem);
->>  #ifdef CONFIG_NFS_V4_1
->>        init_waitqueue_head(&nfsi->lo_waitq);
->> +       rpc_init_wait_queue(&nfsi->lo_rpcwaitq, "pNFS Layout");
->>        nfsi->pnfs_layout_suspend = 0;
->>        nfsi->layout = NULL;
->>  #endif /* CONFIG_NFS_V4_1 */
->> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
->> index 48a763e..f12568d 100644
->> --- a/fs/nfs/nfs4proc.c
->> +++ b/fs/nfs/nfs4proc.c
->> @@ -5442,13 +5442,32 @@ nfs4_layoutget_prepare(struct rpc_task *task, void *calldata)
->>  {
->>        struct nfs4_layoutget *lgp = calldata;
->>        struct inode *ino = lgp->args.inode;
->> +       struct nfs_inode *nfsi = NFS_I(ino);
->>        struct nfs_server *server = NFS_SERVER(ino);
->> +       struct pnfs_layout_segment *lseg;
->>
->>        dprintk("--> %s\n", __func__);
->> -       if (nfs4_setup_sequence(server, NULL, &lgp->args.seq_args,
->> -                               &lgp->res.seq_res, 0, task))
->> +       spin_lock(&ino->i_lock);
->> +       lseg = pnfs_has_layout(nfsi->layout, &lgp->args.range);
->> +       if (likely(!lseg)) {
->> +               spin_unlock(&ino->i_lock);
->> +               dprintk("%s: no lseg found, proceeding\n", __func__);
->> +               if (!nfs4_setup_sequence(server, NULL, &lgp->args.seq_args,
->> +                                        &lgp->res.seq_res, 0, task))
->> +                       rpc_call_start(task);
->>                return;
->> -       rpc_call_start(task);
->> +       }
->> +       if (!lseg->valid) {
->> +               put_lseg_locked(lseg);
->> +               spin_unlock(&ino->i_lock);
->> +               dprintk("%s: invalid lseg found, waiting\n", __func__);
->> +               rpc_sleep_on(&nfsi->lo_rpcwaitq, task, NULL);
->> +               return;
->> +       }
->> +       *lgp->lsegpp = lseg;
->> +       spin_unlock(&ino->i_lock);
->> +       dprintk("%s: valid lseg found, no rpc required\n", __func__);
->> +       rpc_exit(task, NFS4_OK);
->>  }
->>
->>  static void nfs4_layoutget_done(struct rpc_task *task, void *calldata)
 >> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
->> index bc4f0c1..2450383 100644
+>> index eb4e092..f26abc0 100644
 >> --- a/fs/nfs/pnfs.c
 >> +++ b/fs/nfs/pnfs.c
->> @@ -430,7 +430,7 @@ destroy_lseg(struct kref *kref)
->>        PNFS_LD_IO_OPS(lseg->layout)->free_lseg(lseg);
+>> @@ -1892,26 +1892,16 @@ nfs4_init_deviceid_node(struct nfs4_deviceid *d)
 >>  }
->>
->> -static void
->> +void
->>  put_lseg_locked(struct pnfs_layout_segment *lseg)
->>  {
->>        bool do_wake_up;
->> @@ -444,8 +444,10 @@ put_lseg_locked(struct pnfs_layout_segment *lseg)
->>        do_wake_up = !lseg->valid;
->>        nfsi = PNFS_NFS_INODE(lseg->layout);
->>        kref_put(&lseg->kref, destroy_lseg);
->> -       if (do_wake_up)
->> +       if (do_wake_up) {
->>                wake_up(&nfsi->lo_waitq);
->> +               rpc_wake_up(&nfsi->lo_rpcwaitq);
->> +       }
->>  }
->>
->>  void
->> @@ -999,7 +1001,7 @@ has_matching_lseg(struct pnfs_layout_segment *lseg,
->>  /*
->>  * lookup range in layout
->>  */
->> -static struct pnfs_layout_segment *
->> +struct pnfs_layout_segment *
->>  pnfs_has_layout(struct pnfs_layout_hdr *lo,
->>                struct pnfs_layout_range *range)
->>  {
->> @@ -1057,22 +1059,20 @@ _pnfs_update_layout(struct inode *ino,
->>
->>        /* Check to see if the layout for the given range already exists */
->>        lseg = pnfs_has_layout(lo, &arg);
->> -       if (lseg && !lseg->valid) {
->> -               put_lseg_locked(lseg);
->> -               /* someone is cleaning the layout */
->> -               lseg = NULL;
->> -               goto out_unlock;
->> -       }
+>>  EXPORT_SYMBOL(nfs4_init_deviceid_node);
+>>  
+>> -/* Called from layoutdriver_io_operations->alloc_lseg */
+>> -void
+>> -nfs4_set_layout_deviceid(struct pnfs_layout_segment *l, struct nfs4_deviceid *d)
+>> -{
+>> -	dprintk("%s [%d]\n", __func__, atomic_read(&d->de_kref.refcount));
+>> -	l->deviceid = d;
+>> -}
+>> -EXPORT_SYMBOL(nfs4_set_layout_deviceid);
 >> -
->>        if (lseg) {
->> -               dprintk("%s: Using cached lseg %p for %llu@%llu iomode %d)\n",
->> -                       __func__,
->> -                       lseg,
->> -                       arg.length,
->> -                       arg.offset,
->> -                       arg.iomode);
->> +               if (lseg->valid) {
->> +                       dprintk("%s: Using cached lseg %p for %llu@%llu "
->> +                               "iomode %d)\n",
->> +                               __func__,
->> +                               lseg,
->> +                               arg.length,
->> +                               arg.offset,
->> +                               arg.iomode);
->>
->> -               goto out_unlock;
->> +                       goto out_unlock;
->> +               }
->> +               /* someone is cleaning the layout */
->> +               put_lseg_locked(lseg);
->>        }
->>
->>        /* if get layout already failed once goto out */
->> @@ -1097,8 +1097,7 @@ out:
->>                nfsi->layout->state, lseg);
->>        return;
->>  out_unlock:
->> -       if (lsegpp)
->> -               *lsegpp = lseg;
->> +       *lsegpp = lseg;
->>        spin_unlock(&ino->i_lock);
->>        goto out;
+>>  /* Called from layoutdriver_io_operations->free_lseg */
+>>  void
+>> -nfs4_put_unset_layout_deviceid(struct pnfs_layout_segment *l,
+>> -			   struct nfs4_deviceid *d,
+>> -			   void (*free_callback)(struct kref *))
+>> +nfs4_put_deviceid(struct nfs4_deviceid_cache *c,
+>> +			   struct nfs4_deviceid *d)
+>>  {
+>>  	dprintk("%s [%d]\n", __func__, atomic_read(&d->de_kref.refcount));
+>> -	l->deviceid = NULL;
+>> -	kref_put(&d->de_kref, free_callback);
+>> +	kref_put(&d->de_kref, c->dc_free_callback);
+>> +	/* Do we need to return the deviceid_cache ref */
 >>  }
->> diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
->> index ea70385..f7f567e 100644
->> --- a/fs/nfs/pnfs.h
->> +++ b/fs/nfs/pnfs.h
->> @@ -34,6 +34,9 @@ extern int nfs4_proc_layoutreturn(struct nfs4_layoutreturn *lrp, bool wait);
->>  /* pnfs.c */
->>  extern const nfs4_stateid zero_stateid;
->>
->> +void put_lseg_locked(struct pnfs_layout_segment *);
->> +struct pnfs_layout_segment *pnfs_has_layout(struct pnfs_layout_hdr *,
->> +                                           struct pnfs_layout_range *);
->>  void _pnfs_update_layout(struct inode *ino, struct nfs_open_context *ctx,
->>        loff_t pos, u64 count, enum pnfs_iomode access_type,
->>        struct pnfs_layout_segment **lsegpp);
->> diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
->> index 5bafa95..196c0c6 100644
->> --- a/include/linux/nfs_fs.h
->> +++ b/include/linux/nfs_fs.h
->> @@ -213,6 +213,7 @@ struct nfs_inode {
->>        /* pNFS layout information */
->>  #if defined(CONFIG_NFS_V4_1)
->>        wait_queue_head_t lo_waitq;
->> +       struct rpc_wait_queue lo_rpcwaitq;
->>        struct pnfs_layout_hdr *layout;
->>        time_t pnfs_layout_suspend;
->>  #endif /* CONFIG_NFS_V4_1 */
->> --
->> 1.7.2.2
->>
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>
+>> -EXPORT_SYMBOL(nfs4_put_unset_layout_deviceid);
+>> +EXPORT_SYMBOL(nfs4_put_deviceid);
+>>  
+>>  /* Find and reference a deviceid */
+>>  struct nfs4_deviceid *
+>> diff --git a/include/linux/nfs4_pnfs.h b/include/linux/nfs4_pnfs.h
+>> index 577cd2b..dc3410e 100644
+>> --- a/include/linux/nfs4_pnfs.h
+>> +++ b/include/linux/nfs4_pnfs.h
+>> @@ -111,7 +111,6 @@ struct pnfs_layout_segment {
+>>  	struct kref kref;
+>>  	bool valid;
+>>  	struct pnfs_layout_hdr *layout;
+>> -	struct nfs4_deviceid *deviceid;
+>>  	u8 ld_data[];			/* layout driver private data */
+>>  };
+>>  
+>> @@ -287,11 +286,8 @@ extern struct nfs4_deviceid *nfs4_find_get_deviceid(
+>>  				struct pnfs_deviceid *);
+>>  extern struct nfs4_deviceid *nfs4_add_get_deviceid(struct nfs4_deviceid_cache *,
+>>  				struct nfs4_deviceid *);
+>> -extern void nfs4_set_layout_deviceid(struct pnfs_layout_segment *,
+>> +extern void nfs4_put_deviceid(struct nfs4_deviceid_cache *,
+>>  				struct nfs4_deviceid *);
+>> -extern void nfs4_put_unset_layout_deviceid(struct pnfs_layout_segment *,
+>> -				struct nfs4_deviceid *,
+>> -				void (*free_callback)(struct kref *));
+>>  extern void nfs4_delete_device(struct nfs4_deviceid_cache *,
+>>  				struct pnfs_deviceid *);
+>>  
+> 
+> This doesn't look like it needs to be part of the initial single-layout
+> submission. Why is it being labelled as a squashme?
+> 
+> Trond
+
+No, this is a device_id cache per nfs-client it is part of the initial
+getdeviceinfo call. Many "single-layout" may refer to the same device_id
+therefor it is cached so the long getdeviceinfo call can be done only once.
+
+Cheers
+Boaz
