@@ -1,122 +1,93 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:52836 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750830Ab0IVDBL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 21 Sep 2010 23:01:11 -0400
-Date: Tue, 21 Sep 2010 22:59:44 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: NeilBrown <neilb@suse.de>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 3/7] sunrpc/cache: change deferred-request hash table
- to use hlist.
-Message-ID: <20100922025944.GC22021@fieldses.org>
-References: <20100922025009.31745.98237.stgit@localhost.localdomain>
- <20100922025506.31745.9409.stgit@localhost.localdomain>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20100922025506.31745.9409.stgit@localhost.localdomain>
+Received: from daytona.panasas.com ([67.152.220.89]:64644 "EHLO
+	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1754866Ab0IMKcr (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Sep 2010 06:32:47 -0400
+Message-ID: <4C8DFDCC.8060906@panasas.com>
+Date: Mon, 13 Sep 2010 12:32:44 +0200
+From: Benny Halevy <bhalevy@panasas.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Fred Isaman <iisaman@netapp.com>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 08/13] RFC: pnfs: filelayout: introduce minimal file layout
+ driver
+References: <1283450419-5648-1-git-send-email-iisaman@netapp.com>	 <1283450419-5648-9-git-send-email-iisaman@netapp.com>	 <1284147111.10062.74.camel@heimdal.trondhjem.org>	 <AANLkTi=6vcQC1k28B=aKJbN=jRBipoff3+79BpgLxtXw@mail.gmail.com> <1284158223.14078.78.camel@heimdal.trondhjem.org>
+In-Reply-To: <1284158223.14078.78.camel@heimdal.trondhjem.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, Sep 22, 2010 at 12:55:07PM +1000, NeilBrown wrote:
-> Being a hash table, hlist is the best option.
+On 2010-09-11 01:37, Trond Myklebust wrote:
+> On Fri, 2010-09-10 at 14:11 -0700, Fred Isaman wrote:
+>> On Fri, Sep 10, 2010 at 12:31 PM, Trond Myklebust
+>> <Trond.Myklebust@netapp.com> wrote:
+>>> On Thu, 2010-09-02 at 14:00 -0400, Fred Isaman wrote:
+>> OK
+>>
+>>>> +     .initialize_mountpoint   = filelayout_initialize_mountpoint,
+>>>> +     .uninitialize_mountpoint = filelayout_uninitialize_mountpoint,
+>>>> +};
+>>>> +
+>>>> +
+>>>> +struct pnfs_layoutdriver_type filelayout_type = {
+>>>
+>>> Ditto.
+>>
+>> This includes a list_head field which is set by the generic layer.
+>>
+>>>
+>>>> +     .id = LAYOUT_NFSV4_1_FILES,
+>>>> +     .name = "LAYOUT_NFSV4_1_FILES",
+>>>> +     .ld_io_ops = &filelayout_io_operations,
+>>>
+>>> Why do we need a separate 'struct layoutdriver_io_operations'? Any
+>>> reason those can't just be embedded in struct pnfs_layoutdriver_type?
+>>
+>> I believe this decision was primarily aesthetics.  However, keeping
+>> the static io_ops seperate from the variable list_head seems like a
+>> good idea.
 > 
-> There is currently some ugliness were we treat "->next == NULL" as
-> a special case to avoid having to initialise the whole array.
-> This change nicely gets rid of that case.
+> I dunno. They are in a 1-1 correspondence, so I'm not sure I see the
+> need for a separation.
+> 
 
-This (or some hopefully correct variant!) should already be applied;
-could you check that it looks right?
+Later in the game we introduce the layout driver policy ops.
+That said, they could be added to the same vector as the io ops.
 
---b.
+>> Perhaps having a driver structure that includes the io_ops and static
+>> portions of pnfs_layoutdriver_type, with the generic layer allocating
+>> a wrapper structure that is basically:
+>> struct {
+>>     struct list_head list;
+>>     struct pnfs_layoutdriver_type *driver_info;
+> 
+>       Should be const...
+> 
+>       struct module *owner = THIS_MODULE;
+> 
+>> }
+> 
+> ...although the struct module could probably indeed be part of
+> pnfs_layoutdriver_type too.
+
+Agreed.
+I think we should just have
+
+struct pnfs_layoutdriver_type {
+	struct list_head pnfs_tblid;
+	const u32 id;
+	const char *name;
+	const struct module *owner;
+	const struct layoutdriver_operations *ld_ops;
+ };
+
+Benny
 
 > 
-> Signed-off-by: NeilBrown <neilb@suse.de>
-> ---
->  include/linux/sunrpc/cache.h |    2 +-
->  net/sunrpc/cache.c           |   22 ++++++++--------------
->  2 files changed, 9 insertions(+), 15 deletions(-)
-> 
-> diff --git a/include/linux/sunrpc/cache.h b/include/linux/sunrpc/cache.h
-> index 52a7d72..0349635 100644
-> --- a/include/linux/sunrpc/cache.h
-> +++ b/include/linux/sunrpc/cache.h
-> @@ -133,7 +133,7 @@ struct cache_req {
->   * delayed awaiting cache-fill
->   */
->  struct cache_deferred_req {
-> -	struct list_head	hash;	/* on hash chain */
-> +	struct hlist_node	hash;	/* on hash chain */
->  	struct list_head	recent; /* on fifo */
->  	struct cache_head	*item;  /* cache item we wait on */
->  	void			*owner; /* we might need to discard all defered requests
-> diff --git a/net/sunrpc/cache.c b/net/sunrpc/cache.c
-> index a9e850e..466f65c 100644
-> --- a/net/sunrpc/cache.c
-> +++ b/net/sunrpc/cache.c
-> @@ -506,13 +506,13 @@ EXPORT_SYMBOL_GPL(cache_purge);
->  
->  static DEFINE_SPINLOCK(cache_defer_lock);
->  static LIST_HEAD(cache_defer_list);
-> -static struct list_head cache_defer_hash[DFR_HASHSIZE];
-> +static struct hlist_head cache_defer_hash[DFR_HASHSIZE];
->  static int cache_defer_cnt;
->  
->  static void __unhash_deferred_req(struct cache_deferred_req *dreq)
->  {
->  	list_del_init(&dreq->recent);
-> -	list_del_init(&dreq->hash);
-> +	hlist_del_init(&dreq->hash);
->  	cache_defer_cnt--;
->  }
->  
-> @@ -521,9 +521,7 @@ static void __hash_deferred_req(struct cache_deferred_req *dreq, struct cache_he
->  	int hash = DFR_HASH(item);
->  
->  	list_add(&dreq->recent, &cache_defer_list);
-> -	if (cache_defer_hash[hash].next == NULL)
-> -		INIT_LIST_HEAD(&cache_defer_hash[hash]);
-> -	list_add(&dreq->hash, &cache_defer_hash[hash]);
-> +	hlist_add_head(&dreq->hash, &cache_defer_hash[hash]);
->  }
->  
->  static int setup_deferral(struct cache_deferred_req *dreq, struct cache_head *item)
-> @@ -587,7 +585,7 @@ static int cache_wait_req(struct cache_req *req, struct cache_head *item)
->  		 * to clean up
->  		 */
->  		spin_lock(&cache_defer_lock);
-> -		if (!list_empty(&sleeper.handle.hash)) {
-> +		if (!hlist_unhashed(&sleeper.handle.hash)) {
->  			__unhash_deferred_req(&sleeper.handle);
->  			spin_unlock(&cache_defer_lock);
->  		} else {
-> @@ -642,23 +640,19 @@ static void cache_revisit_request(struct cache_head *item)
->  	struct cache_deferred_req *dreq;
->  	struct list_head pending;
->  
-> -	struct list_head *lp;
-> +	struct hlist_node *lp, *tmp;
->  	int hash = DFR_HASH(item);
->  
->  	INIT_LIST_HEAD(&pending);
->  	spin_lock(&cache_defer_lock);
->  
-> -	lp = cache_defer_hash[hash].next;
-> -	if (lp) {
-> -		while (lp != &cache_defer_hash[hash]) {
-> -			dreq = list_entry(lp, struct cache_deferred_req, hash);
-> -			lp = lp->next;
-> +	hlist_for_each_entry_safe(dreq, lp, tmp,
-> +				  &cache_defer_hash[hash], hash)
->  			if (dreq->item == item) {
->  				__unhash_deferred_req(dreq);
->  				list_add(&dreq->recent, &pending);
->  			}
-> -		}
-> -	}
-> +
->  	spin_unlock(&cache_defer_lock);
->  
->  	while (!list_empty(&pending)) {
-> 
-> 
+> Cheers
+>   Trond
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
