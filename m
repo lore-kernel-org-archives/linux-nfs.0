@@ -1,183 +1,46 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:31417 "EHLO
-	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752536Ab0IHSxc convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 8 Sep 2010 14:53:32 -0400
-Subject: Re: mount.nfs: protocol fallback when server doesn't support TCP
+Received: from bombadil.infradead.org ([18.85.46.34]:40686 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752222Ab0IMPHC (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Sep 2010 11:07:02 -0400
+Date: Mon, 13 Sep 2010 11:07:00 -0400
+From: Christoph Hellwig <hch@infradead.org>
+To: Fred Isaman <iisaman@netapp.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 07/13] RFC: pnfs: full mount/umount infrastructure
+Message-ID: <20100913150700.GA3920@infradead.org>
+References: <1283450419-5648-1-git-send-email-iisaman@netapp.com>
+ <1283450419-5648-8-git-send-email-iisaman@netapp.com>
 Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20100908123526.09cf7e08@notabene>
-Date: Wed, 8 Sep 2010 14:52:15 -0400
-Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Message-Id: <A5390299-5FD5-4B1E-9C48-611B6C21305D@oracle.com>
-References: <20100826120635.4c3157bc@notabene> <659EE931-F48E-4A5D-9212-D4F8AE421029@oracle.com> <20100830103025.70d09ec8@notabene> <BC2D2164-0836-4DAC-99C5-C7BE23D3B163@oracle.com> <20100831110024.68e8877d@notabene> <EC686BD1-834D-4060-84E7-FBF0733B7ACA@oracle.com> <20100907113225.4a018ba3@notabene> <597F59F8-FA58-4D44-AB2A-9F03E4C61583@oracle.com> <20100908123526.09cf7e08@notabene>
-To: Neil Brown <neilb@suse.de>
+In-Reply-To: <1283450419-5648-8-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+On Thu, Sep 02, 2010 at 02:00:13PM -0400, Fred Isaman wrote:
+>  static struct pnfs_layoutdriver_type *
+>  find_pnfs_driver(u32 id) {
+> -	return NULL;
+> +	struct  pnfs_layoutdriver_type *local;
+> +
+> +	spin_lock(&pnfs_spinlock);
+> +	local = find_pnfs_driver_locked(id);
+> +	spin_unlock(&pnfs_spinlock);
+> +	return local;
 
-On Sep 7, 2010, at 10:35 PM, Neil Brown wrote:
+What about refcounting the structure?
 
-> On Tue, 7 Sep 2010 13:37:40 -0400
-> Chuck Lever <chuck.lever@oracle.com> wrote:
-> 
->> 
->> On Sep 6, 2010, at 9:32 PM, Neil Brown wrote:
->> 
->>> On Tue, 31 Aug 2010 12:38:09 -0400
->>> Chuck Lever <chuck.lever@oracle.com> wrote:
->>> 
->>> 
->>>>>> 
->>>>>>> +						/* OK to try different protocols. Lets see
->>>>>>> +						 * what portmap thinks.
->>>>>>> +						 */
->>>>>>> +						int oldfake = mi->fake;
->>>>>>> +						int res;
->>>>>>> +						mi->fake = 1;
->>>>>>> +						res = nfs_try_mount_v3v2(mi);
->>>>>> 
->>>>>> If you just want to probe the server's portmapper, I think you can use nfs_probe_bothports() directly.
->>>>>> 
->>>>> 
->>>>> Not quite.  You would need to wrap it in a loop over all addresses in
->>>>> md->address, and would need to worry about the mounthost option.  It seems
->>>>> easier to just call nfs_try_mount_v3v2 which already does this.
->>>> 
->>>> /me smacks forehead
->>>> 
->>>> Complexity that I guess we have to live with.  A comment that explains the oldfake hack would be helpful.
->>> 
->>> And often trying to write such a comment can make it clear why the code was a
->>> bad idea in the first place.... :-)
->>> 
->>> Rather than write a comment I wouldn't believe myself, here is something
->>> quite different - my third draft.
->>> This is on top of the nice tidy-up patches you posted earlier.
->>> 
->>> It uses nfs_getport to make very focussed requests to portmap.
->>> 
->>> Two things I'm still not really sure about:
->>> 
->>> 1/ RDMA.  How does that interact with fallback.  Do we only support v4 over
->>>  RDMA?  That would be nice was we could simply avoid fallback in that case.
->> 
->> My impression is that today RDMA is stable only on vers=3; someday it should be stable with vers=4 too.
->> 
->> I think Steve and I need to agree on the final form of the RDMA patches before we can say with authority how fallback will work.
->> 
->>> 2/ IPv6.  I should possibly be checking if v3v2 are available via UDP6 as well
->>>  as UDP - and similarly if v4 has become available via TCP6?? Or is that
->>>  all magically handled somewhere under the hood?
->> 
->> nfs_try_mount_v4() will try all address families provided by getaddrinfo(3).  So when ECONNREFUSED finally bubbles up to nfs_try_mount(), mount.nfs should have already tried NFSv4 via both tcp and tcp6.
->> 
->> Anyway, this seems to answer my original question about "what are the risks of trying the portmapper-based approach?"  It looks like a complex solution no matter what.
->> 
->> I'm not suggesting you abandon this direction, but if the nfs_try_mount() logic does nothing more but fallback to v2/v3 if the NFSv4 mount attempt fails with ECONNREFUSED, what harm could that cause?
-> 
-> The risk is slightly unpredictable behaviour.
-> If we just fall-back it should normally do "the right thing".
-> However it could sometimes end up mounting with v3 even though the server
-> supports v4.  This would happen if the server and client were starting up at
-> much the same time and when the client attempts a v4 mount the server hasn't
-> started nfsd yet, but when the client then tries v3, the server has started
-> nfsd.
-> 
-> If the server supports v4 it would seem reasonable for the sysadmin not to
-> explicitly request v4 in fstab, and could be quite annoying and very hard to
-> debug if very occasionally clients ended up with a v3 mount.
-> 
-> Dunno - maybe I'm trying too hard.  Maybe just a comment in the man page that
-> "if version and/or protocol are not specified, mount.nfs will make
-> best-effort to mount something but does not guarantee to always provide the
-> same result".
+> +	spin_lock(&pnfs_spinlock);
+> +	if (!find_pnfs_driver_locked(ld_type->id)) {
+> +		list_add(&ld_type->pnfs_tblid, &pnfs_modules_tbl);
+> +		status = 0;
+> +		dprintk("%s Registering id:%u name:%s\n", __func__, ld_type->id,
+> +			ld_type->name);
+> +	} else
+> +		printk(KERN_ERR "%s Module with id %d already loaded!\n",
+> +			__func__, ld_type->id);
+> +	spin_unlock(&pnfs_spinlock);
 
-Yeah, I think that describes already the behavior of NFS autonegotiation.  If the user didn't bother to specify a version, then she shouldn't care if sometimes the mount command gets a lower than expected version.  To force the version setting, the admin can either disable v3 on the server, or specify "vers=4" on the client.
-
-The problem with that kind of flexibility, of course, is that we assume that an NFSv4 mount will behave identically to an NFSv3 mount.
-
-> Certainly just fall-through on ECONNREFUSED with be much the easiest option.
-
-That might be appropriate for at least a short-term fix.  Not mounting a UDP-only server is clearly a regression.
-
-> 
-> NeilBrown
-> 
-> 
-> 
->> 
->>> From 60dae9b9c14869ae630db683e2524ad230064b19 Mon Sep 17 00:00:00 2001
->>> From: Neil Brown <neilb@suse.de>
->>> Date: Tue, 7 Sep 2010 11:23:02 +1000
->>> Subject: [PATCH] mount: correctly handle fallback for  ECONNREFUSED during mount attempt.
->>> 
->>> If we get ECONNREFUSED when attempting a v4 mount, it could be that
->>> the server just isn't ready yet (the current assumption) or it could
->>> be that the server only support UDP - and thus only v3/v2.  The latter
->>> possibility isn't handled currently.
->>> 
->>> So if we get ECONNREFUSED when fallback is an option, check with
->>> portmap/rpcbind to see if it could be that case that v2/v3 are
->>> supported over UDP, and v4 still is not.  In that case, fall back to v2v3.
->>> 
->>> I'm not at all sure if IPv6 possibilities are RDMA are handled correctly..
->>> 
->>> Signed-off-by: NeilBrown <neilb@suse.de>
->>> 
->>> diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
->>> index 9e29a19..5ebcf3e 100644
->>> --- a/utils/mount/stropts.c
->>> +++ b/utils/mount/stropts.c
->>> @@ -750,6 +750,7 @@ static int nfs_autonegotiate(struct nfsmount_info *mi)
->>> {
->>> 	unsigned long protocol;
->>> 	int result;
->>> +	struct addrinfo *ai;
->>> 
->>> 	/*
->>> 	 * If UDP was requested from the command line, try
->>> @@ -796,6 +797,33 @@ static int nfs_autonegotiate(struct nfsmount_info *mi)
->>> 		/* Linux servers prior to 2.6.25 may return
->>> 		 * EPERM when NFS version 4 is not supported. */
->>> 		goto fall_back;
->>> +	case ECONNREFUSED:
->>> +		/* Either the server doesn't accept TCP connections,
->>> +		 * or it just isn't quite ready yet.
->>> +		 * In the first case, fall back to v3v2, in the second
->>> +		 * return failure - as this isn't a permanent error
->>> +		 * the attempt will be retried.
->>> +		 * To determine which, we need to check with portmap/rpcbind.
->>> +		 * If v2 or v3 are supported on UDP, but v4 isn't on TCP then fall-back.
->>> +		 */
->>> +		for (ai = mi->address; ai != NULL; ai = ai->ai_next) {
->>> +			if (nfs_getport(ai->ai_addr, ai->ai_addrlen,
->>> +					NFS_PROGRAM, 3, IPPROTO_UDP) != 0 ||
->>> +			    nfs_getport(ai->ai_addr, ai->ai_addrlen,
->>> +					NFS_PROGRAM, 2, IPPROTO_UDP) != 0) {
->>> +				if (nfs_getport(ai->ai_addr, ai->ai_addrlen,
->>> +						NFS_PROGRAM, 4, IPPROTO_TCP) != 0) {
->>> +					/* v4 support is almost online, wait for it. */
->>> +					errno = ECONNREFUSED;
->>> +					return result;
->>> +				} else
->>> +					/* v2/v3 is supported, but v4 isn't, fall_back */
->>> +					goto fall_back;
->>> +			}
->>> +		}
->>> +		/* portmap is not responding yet either, so just try again */
->>> +		errno = ECONNREFUSED;
->>> +		return result;
->>> 	default:
->>> 		return result;
->>> 	}
->> 
-> 
-
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
+In other places we generally don't bother doing these checks, so for
+pnfs with just three clients it's even more poinless.
 
