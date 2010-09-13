@@ -1,109 +1,67 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:49149 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932225Ab0I3QTp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 30 Sep 2010 12:19:45 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 15/16] nfsd4: add new connections to session
-Date: Thu, 30 Sep 2010 12:19:12 -0400
-Message-Id: <1285863553-8945-16-git-send-email-bfields@redhat.com>
-In-Reply-To: <1285863553-8945-1-git-send-email-bfields@redhat.com>
-References: <1285863553-8945-1-git-send-email-bfields@redhat.com>
+Received: from mail-iw0-f174.google.com ([209.85.214.174]:59624 "EHLO
+	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752250Ab0IMRVz (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Sep 2010 13:21:55 -0400
+Received: by iwn5 with SMTP id 5so5307707iwn.19
+        for <linux-nfs@vger.kernel.org>; Mon, 13 Sep 2010 10:21:55 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 05/12] mountd: Add mountlist_freeall()
+To: steved@redhat.com
+Cc: linux-nfs@vger.kernel.org
+Date: Mon, 13 Sep 2010 13:21:40 -0400
+Message-ID: <20100913172140.19017.17536.stgit@seurat.1015granger.net>
+In-Reply-To: <20100913171844.19017.13446.stgit@seurat.1015granger.net>
+References: <20100913171844.19017.13446.stgit@seurat.1015granger.net>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-As long as we're not implementing any session security, we should just
-automatically add any new connections that come along to the list of
-sessions associated with the session.
+I'm about to add a second bit of logic that needs to free all
+mountlist records, so introduce a helper for freeing them.
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- fs/nfsd/nfs4state.c |   49 +++++++++++++++++++++++++++++++++++++++++++++++--
- 1 files changed, 47 insertions(+), 2 deletions(-)
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 3b4d74c..596702e 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -658,13 +658,18 @@ static struct nfsd4_conn *alloc_conn(struct svc_rqst *rqstp)
- 	return conn;
+ utils/mountd/rmtab.c |   19 +++++++++++++------
+ 1 files changed, 13 insertions(+), 6 deletions(-)
+
+diff --git a/utils/mountd/rmtab.c b/utils/mountd/rmtab.c
+index b2c04e7..854d519 100644
+--- a/utils/mountd/rmtab.c
++++ b/utils/mountd/rmtab.c
+@@ -173,6 +173,18 @@ out_unlock:
+ 	xfunlock(lockid);
  }
  
-+static void __nfsd4_hash_conn(struct nfsd4_conn *conn, struct nfsd4_session *ses)
++static void
++mountlist_freeall(mountlist list)
 +{
-+	conn->cn_session = ses;
-+	list_add(&conn->cn_persession, &ses->se_conns);
++	while (list != NULL) {
++		mountlist m = list;
++		list = m->ml_next;
++		xfree(m->ml_hostname);
++		xfree(m->ml_directory);
++		xfree(m);
++	}
 +}
 +
- static void nfsd4_hash_conn(struct nfsd4_conn *conn, struct nfsd4_session *ses)
+ mountlist
+ mountlist_list(void)
  {
- 	struct nfs4_client *clp = ses->se_client;
+@@ -194,12 +206,7 @@ mountlist_list(void)
+ 		return NULL;
+ 	}
+ 	if (stb.st_mtime != last_mtime) {
+-		while (mlist) {
+-			mlist = (m = mlist)->ml_next;
+-			xfree(m->ml_hostname);
+-			xfree(m->ml_directory);
+-			xfree(m);
+-		}
++		mountlist_freeall(mlist);
+ 		last_mtime = stb.st_mtime;
  
- 	spin_lock(&clp->cl_lock);
--	conn->cn_session = ses;
--	list_add(&conn->cn_persession, &ses->se_conns);
-+	__nfsd4_hash_conn(conn, ses);
- 	spin_unlock(&clp->cl_lock);
- }
- 
-@@ -1612,6 +1617,44 @@ out:
- 	return status;
- }
- 
-+static struct nfsd4_conn *__nfsd4_find_conn(struct svc_rqst *r, struct nfsd4_session *s)
-+{
-+	struct nfsd4_conn *c;
-+
-+	list_for_each_entry(c, &s->se_conns, cn_persession) {
-+		if (c->cn_xprt == r->rq_xprt) {
-+			return c;
-+		}
-+	}
-+	return NULL;
-+}
-+
-+static void nfsd4_sequence_check_conn(struct svc_rqst *rqstp, struct nfsd4_session *ses)
-+{
-+	struct nfs4_client *clp = ses->se_client;
-+	struct nfsd4_conn *c, *new = NULL;
-+
-+	spin_lock(&clp->cl_lock);
-+	c = __nfsd4_find_conn(rqstp, ses);
-+	spin_unlock(&clp->cl_lock);
-+	if (c)
-+		return;
-+
-+	new = alloc_conn(rqstp);
-+
-+	spin_lock(&clp->cl_lock);
-+	c = __nfsd4_find_conn(rqstp, ses);
-+	if (c) {
-+		spin_unlock(&clp->cl_lock);
-+		free_conn(new);
-+		return;
-+	}
-+	__nfsd4_hash_conn(new, ses);
-+	spin_unlock(&clp->cl_lock);
-+	nfsd4_register_conn(new);
-+	return;
-+}
-+
- __be32
- nfsd4_sequence(struct svc_rqst *rqstp,
- 	       struct nfsd4_compound_state *cstate,
-@@ -1656,6 +1699,8 @@ nfsd4_sequence(struct svc_rqst *rqstp,
- 	if (status)
- 		goto out;
- 
-+	nfsd4_sequence_check_conn(rqstp, session);
-+
- 	/* Success! bump slot seqid */
- 	slot->sl_inuse = true;
- 	slot->sl_seqid = seq->seqid;
--- 
-1.7.0.4
+ 		setrmtabent("r");
 
