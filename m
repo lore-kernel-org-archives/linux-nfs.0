@@ -1,60 +1,116 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from vergina.eng.auth.gr ([155.207.18.1]:54810 "EHLO
-	vergina.eng.auth.gr" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754248Ab0ITJyv (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 20 Sep 2010 05:54:51 -0400
-Message-ID: <4C972F4D.3050409@eng.auth.gr>
-Date: Mon, 20 Sep 2010 12:54:21 +0300
-From: George Mamalakis <mamalos@eng.auth.gr>
-To: Jeff Layton <jlayton@redhat.com>
-CC: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
-Subject: Re: nfsv3 gssapi client?
-References: <4C938F3B.4030604@eng.auth.gr>	<20100917174328.GC25515@fieldses.org> <20100917143506.0b85a04b@tlielax.poochiereds.net>
-In-Reply-To: <20100917143506.0b85a04b@tlielax.poochiereds.net>
-Content-Type: text/plain; charset=UTF-8; format=flowed
+Received: from mail-bw0-f46.google.com ([209.85.214.46]:34731 "EHLO
+	mail-bw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751116Ab0IMNBE convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Sep 2010 09:01:04 -0400
+Received: by bwz11 with SMTP id 11so4427254bwz.19
+        for <linux-nfs@vger.kernel.org>; Mon, 13 Sep 2010 06:01:03 -0700 (PDT)
+In-Reply-To: <4C8DFDCC.8060906@panasas.com>
+References: <1283450419-5648-1-git-send-email-iisaman@netapp.com>
+	<1283450419-5648-9-git-send-email-iisaman@netapp.com>
+	<1284147111.10062.74.camel@heimdal.trondhjem.org>
+	<AANLkTi=6vcQC1k28B=aKJbN=jRBipoff3+79BpgLxtXw@mail.gmail.com>
+	<1284158223.14078.78.camel@heimdal.trondhjem.org>
+	<4C8DFDCC.8060906@panasas.com>
+Date: Mon, 13 Sep 2010 06:01:03 -0700
+Message-ID: <AANLkTimONZfA6ZX4xtzbmy0NdfEtbwMAi+__PhFYznTn@mail.gmail.com>
+Subject: Re: [PATCH 08/13] RFC: pnfs: filelayout: introduce minimal file
+ layout driver
+From: Fred Isaman <iisaman@netapp.com>
+To: Benny Halevy <bhalevy@panasas.com>
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>, linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-  Hi Jeff, and thanx for your answer,
->> 111 is ECONNREFUSED.  I'm not sure why that's failing.  (Should failure
->> to register lockd fail the whole mount?  I thought it would at worst
->> result in ENOLCK on lock requests?) Do you get better results if you
->> mount with nolock?
+On Mon, Sep 13, 2010 at 3:32 AM, Benny Halevy <bhalevy@panasas.com> wrote:
+> On 2010-09-11 01:37, Trond Myklebust wrote:
+>> On Fri, 2010-09-10 at 14:11 -0700, Fred Isaman wrote:
+>>> On Fri, Sep 10, 2010 at 12:31 PM, Trond Myklebust
+>>> <Trond.Myklebust@netapp.com> wrote:
+>>>> On Thu, 2010-09-02 at 14:00 -0400, Fred Isaman wrote:
+>>> OK
+>>>
+>>>>> +     .initialize_mountpoint   = filelayout_initialize_mountpoint,
+>>>>> +     .uninitialize_mountpoint = filelayout_uninitialize_mountpoint,
+>>>>> +};
+>>>>> +
+>>>>> +
+>>>>> +struct pnfs_layoutdriver_type filelayout_type = {
+>>>>
+>>>> Ditto.
+>>>
+>>> This includes a list_head field which is set by the generic layer.
+>>>
+>>>>
+>>>>> +     .id = LAYOUT_NFSV4_1_FILES,
+>>>>> +     .name = "LAYOUT_NFSV4_1_FILES",
+>>>>> +     .ld_io_ops = &filelayout_io_operations,
+>>>>
+>>>> Why do we need a separate 'struct layoutdriver_io_operations'? Any
+>>>> reason those can't just be embedded in struct pnfs_layoutdriver_type?
+>>>
+>>> I believe this decision was primarily aesthetics.  However, keeping
+>>> the static io_ops seperate from the variable list_head seems like a
+>>> good idea.
 >>
-> Firewalling issues maybe?
+>> I dunno. They are in a 1-1 correspondence, so I'm not sure I see the
+>> need for a separation.
+>>
 >
-The fbsd box runs no firewall whatsoever, and nvsv3 mounts work just 
-fine if sec=sys is given in the mount command instead of sec=krb5(ip). 
-On the linux box I haven't setup any iptables whatsoever. My 
-/etc/hosts.allow on the linuxbox reads:
-[root@linuxclient ~]# cat /etc/hosts.allow
-#
-# /etc/hosts.allow
-#
-ALL:ALL
+> Later in the game we introduce the layout driver policy ops.
+> That said, they could be added to the same vector as the io ops.
 
 
-So I guess that there is no problem from this side too.
-
-Thanx again,
-
-mamalos
+Yes, I think they should be merged when we get to that stage.
 
 
-PS. Sorry I haven't answered to your question in my previous email, I 
-saw your email after sending the previous answer.
+>
+>>> Perhaps having a driver structure that includes the io_ops and static
+>>> portions of pnfs_layoutdriver_type, with the generic layer allocating
+>>> a wrapper structure that is basically:
+>>> struct {
+>>>     struct list_head list;
+>>>     struct pnfs_layoutdriver_type *driver_info;
+>>
+>>       Should be const...
+>>
+>>       struct module *owner = THIS_MODULE;
+>>
+>>> }
+>>
+>> ...although the struct module could probably indeed be part of
+>> pnfs_layoutdriver_type too.
+>
+> Agreed.
+> I think we should just have
+>
+> struct pnfs_layoutdriver_type {
+>        struct list_head pnfs_tblid;
+>        const u32 id;
+>        const char *name;
+>        const struct module *owner;
+>        const struct layoutdriver_operations *ld_ops;
+>  };
+>
+> Benny
+>
 
--- 
-George Mamalakis
+I'll point out that what I took from the above conversation, was that
+the fields id, name, and possibly owner should be placed inside struct
+layoutdriver_operations (which should probably be renamed slightly).
 
-IT Officer
-Electrical and Computer Engineer (Aristotle Un. of Thessaloniki),
-MSc (Imperial College of London)
 
-Department of Electrical and Computer Engineering
-Faculty of Engineering
-Aristotle University of Thessaloniki
-
-phone number : +30 (2310) 994379
-
+>>
+>> Cheers
+>>   Trond
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
