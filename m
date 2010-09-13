@@ -1,76 +1,63 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cn.fujitsu.com ([222.73.24.84]:59305 "EHLO song.cn.fujitsu.com"
-	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
-	id S1750946Ab0IHBd6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 7 Sep 2010 21:33:58 -0400
-Message-ID: <4C86E7FA.7020701@cn.fujitsu.com>
-Date: Wed, 08 Sep 2010 09:33:46 +0800
-From: Bian Naimeng <biannm@cn.fujitsu.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-CC: linux-nfs@vger.kernel.org, "J. Bruce Fields" <bfields@redhat.com>
-Subject: Re: [PATCH 2/2] We should clear NFS_DELEGATED_STATE after return
- delegation
-References: <4C592F85.8070308@cn.fujitsu.com>	 <4C59306A.9090302@cn.fujitsu.com>	 <1280925913.3011.23.camel@heimdal.trondhjem.org>	 <4C5A213F.9000506@cn.fujitsu.com>	 <1281013423.2948.1.camel@heimdal.trondhjem.org>	 <4C5B8B48.4050008@cn.fujitsu.com>	 <1281101448.3586.11.camel@heimdal.trondhjem.org>	 <4C68EDAE.5000201@cn.fujitsu.com>	 <1282087012.18385.30.camel@heimdal.trondhjem.org>	 <4C7DF56B.3040206@cn.fujitsu.com> <1283897068.9097.15.camel@heimdal.trondhjem.org>
-In-Reply-To: <1283897068.9097.15.camel@heimdal.trondhjem.org>
-Content-Type: text/plain; charset=Shift_JIS
+Received: from daytona.panasas.com ([67.152.220.89]:57866 "EHLO
+	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1751867Ab0IMKQg (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Sep 2010 06:16:36 -0400
+Message-ID: <4C8DF9FE.5020506@panasas.com>
+Date: Mon, 13 Sep 2010 12:16:30 +0200
+From: Benny Halevy <bhalevy@panasas.com>
+To: Fred Isaman <iisaman@netapp.com>
+CC: Trond Myklebust <Trond.Myklebust@netapp.com>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 08/13] RFC: pnfs: filelayout: introduce minimal file layout
+ driver
+References: <1283450419-5648-1-git-send-email-iisaman@netapp.com>	<1283450419-5648-9-git-send-email-iisaman@netapp.com>	<1284147111.10062.74.camel@heimdal.trondhjem.org> <AANLkTi=6vcQC1k28B=aKJbN=jRBipoff3+79BpgLxtXw@mail.gmail.com>
+In-Reply-To: <AANLkTi=6vcQC1k28B=aKJbN=jRBipoff3+79BpgLxtXw@mail.gmail.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
->>> OK. I see agree that is a race, but AFAICS, your fix means that we end
->>> up with an nfs_state structure that has cleared NFS_DELEGATED_STATE, but
->>> that did not recover its open stateid.
+On 2010-09-11 00:11, Fred Isaman wrote:
+> On Fri, Sep 10, 2010 at 12:31 PM, Trond Myklebust
+> <Trond.Myklebust@netapp.com> wrote:
+>> On Thu, 2010-09-02 at 14:00 -0400, Fred Isaman wrote:
+>>> From: The pNFS Team <linux-nfs@vger.kernel.org>
 >>>
->> Hi trond, what do you think about this one?
+>>> This driver just registers itself and supplies trivial mount/umount functions.
+>>>
+>>> Signed-off-by: TBD - melding/reorganization of several patches
+>>> ---
+>>>  fs/nfs/Kconfig          |    5 +++
+>>>  fs/nfs/Makefile         |    3 ++
+>>>  fs/nfs/nfs4filelayout.c |   89 +++++++++++++++++++++++++++++++++++++++++++++++
+>>>  include/linux/nfs_fs.h  |    1 +
+>>>  4 files changed, 98 insertions(+), 0 deletions(-)
+>>>  create mode 100644 fs/nfs/nfs4filelayout.c
+>>>
+>>> diff --git a/fs/nfs/Kconfig b/fs/nfs/Kconfig
+>>> index 5f1b936..980f2dc 100644
+>>> --- a/fs/nfs/Kconfig
+>>> +++ b/fs/nfs/Kconfig
+>>> @@ -82,6 +82,11 @@ config NFS_V4_1
+>>>
+>>>         If unsure, say N.
+>>>
+>>> +config PNFS_FILE_LAYOUT
+>>> +     tristate
+>>> +     depends on NFS_FS && NFS_V4_1
+>>> +     default m
+>>
+>> Should be 'default y', otherwise it has an implicit dependency on
+>> CONFIG_MODULES.
+>>
 > 
-> Hi Bian,
+> The idea was that normally the driver would compile as a module, and
+> use loading/unloading of it to control whether pnfs is supported.
 > 
-> See comments/questions below.
-> 
-
-  Thanks for your answer.
-
->> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
->> index 36400d3..c0c0320 100644
->> --- a/fs/nfs/nfs4proc.c
->> +++ b/fs/nfs/nfs4proc.c
->> @@ -900,8 +900,18 @@ static int update_open_stateid(struct nfs4_state *state, nfs4_stateid *open_stat
->>  
->>  	rcu_read_lock();
->>  	deleg_cur = rcu_dereference(nfsi->delegation);
->> -	if (deleg_cur == NULL)
->> +	if (deleg_cur == NULL) {
->> +		if (delegation == NULL &&
->> +		    test_bit(NFS_DELEGATED_STATE, &state->flags)) {
-> 
-> Any reason why we can't ditch the 'test_bit'?
-> 
-
-  Because i am not sure it's ok that we just clear_bit at here.
-  If you think it's ok, i'd be fine with removing this test_bit.
-
->> +			/*FIXME: If the state has NFS_DELEGATED_STATE bit, 
->> +			 * we catch a race. Maybe should recover its open
->> +			 * stateid, here we just clear the NFS_DELEGATED_STATE
->> +			 * bit.
-> 
-> Can this ever be called with both deleg_cur==NULL and
-> open_stateid==NULL? If so, then we still have a bug.
+> Is there a way to do this that does not introduce the implicit dependency?
 > 
 
-  Yes, i will add a checking. Thanks very much.
+The explicit dependency on NFS_FS does the trick for you (as it is currently in the
+pnfs tree), so the default is set to m iff NFS_FS==m
 
->> +			 */
->> +			clear_bit(NFS_DELEGATED_STATE, &state->flags);
->> +		}
->>  		goto no_delegation;
->> +	}
->>  
->>  	spin_lock(&deleg_cur->lock);
->>  	if (nfsi->delegation != deleg_cur ||
-
-
--- 
-Regards
-Bian Naimeng
-
+Benny
