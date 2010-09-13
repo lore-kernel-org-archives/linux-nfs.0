@@ -1,164 +1,255 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-iw0-f174.google.com ([209.85.214.174]:43660 "EHLO
-	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755089Ab0IJUKY (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Sep 2010 16:10:24 -0400
-Received: by mail-iw0-f174.google.com with SMTP id 5so2495581iwn.19
-        for <linux-nfs@vger.kernel.org>; Fri, 10 Sep 2010 13:10:24 -0700 (PDT)
+Received: from mail-pz0-f46.google.com ([209.85.210.46]:62750 "EHLO
+	mail-pz0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753747Ab0IMRVW (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Sep 2010 13:21:22 -0400
+Received: by pzk34 with SMTP id 34so2221811pzk.19
+        for <linux-nfs@vger.kernel.org>; Mon, 13 Sep 2010 10:21:21 -0700 (PDT)
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 10/11] NFS: Move and update xdr_decode_foo() functions that
-	we're keeping
-To: trond.myklebust@netapp.com
+Subject: [PATCH 03/12] mountd: Support IPv6 in mountd's svc routines
+To: steved@redhat.com
 Cc: linux-nfs@vger.kernel.org
-Date: Fri, 10 Sep 2010 16:10:21 -0400
-Message-ID: <20100910201021.13321.35071.stgit@seurat.1015granger.net>
-In-Reply-To: <20100910200512.13321.55605.stgit@seurat.1015granger.net>
-References: <20100910200512.13321.55605.stgit@seurat.1015granger.net>
+Date: Mon, 13 Sep 2010 13:21:18 -0400
+Message-ID: <20100913172118.19017.73274.stgit@seurat.1015granger.net>
+In-Reply-To: <20100913171844.19017.13446.stgit@seurat.1015granger.net>
+References: <20100913171844.19017.13446.stgit@seurat.1015granger.net>
 Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Clean up.
+Replace IPv4-specific code with use of our generic hostname helpers
+in the routines that handle incoming MNT RPC requests.
+
+These functions will support IPv6 without additional changes, once
+IPv6 is enabled in the generic hostname helpers.
+
+As part of this update, I've modified all of mountd's _svc routines
+to use a debug message format that is consistent with statd.  It may
+be overkill for some of these; if so we can pull them out later.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- fs/nfs/nfs2xdr.c |   97 +++++++++++++++++++++++++++++++-----------------------
- 1 files changed, 56 insertions(+), 41 deletions(-)
+ utils/mountd/mountd.c |   79 +++++++++++++++++++++++++++++++++++++------------
+ 1 files changed, 59 insertions(+), 20 deletions(-)
 
-diff --git a/fs/nfs/nfs2xdr.c b/fs/nfs/nfs2xdr.c
-index 78c9d27..dc3841d 100644
---- a/fs/nfs/nfs2xdr.c
-+++ b/fs/nfs/nfs2xdr.c
-@@ -89,46 +89,6 @@ static void print_overflow_msg(const char *func, const struct xdr_stream *xdr)
- 
- 
- /*
-- * Common NFS XDR functions as inlines
-- */
--static inline __be32*
--xdr_decode_time(__be32 *p, struct timespec *timep)
--{
--	timep->tv_sec = ntohl(*p++);
--	/* Convert microseconds into nanoseconds */
--	timep->tv_nsec = ntohl(*p++) * 1000;
--	return p;
--}
--
--static __be32 *
--xdr_decode_fattr(__be32 *p, struct nfs_fattr *fattr)
--{
--	u32 rdev, type;
--	type = ntohl(*p++);
--	fattr->mode = ntohl(*p++);
--	fattr->nlink = ntohl(*p++);
--	fattr->uid = ntohl(*p++);
--	fattr->gid = ntohl(*p++);
--	fattr->size = ntohl(*p++);
--	fattr->du.nfs2.blocksize = ntohl(*p++);
--	rdev = ntohl(*p++);
--	fattr->du.nfs2.blocks = ntohl(*p++);
--	fattr->fsid.major = ntohl(*p++);
--	fattr->fsid.minor = 0;
--	fattr->fileid = ntohl(*p++);
--	p = xdr_decode_time(p, &fattr->atime);
--	p = xdr_decode_time(p, &fattr->mtime);
--	p = xdr_decode_time(p, &fattr->ctime);
--	fattr->valid |= NFS_ATTR_FATTR_V2;
--	fattr->rdev = new_decode_dev(rdev);
--	if (type == NFCHR && rdev == NFS2_FIFO_DEV) {
--		fattr->mode = (fattr->mode & ~S_IFMT) | S_IFIFO;
--		fattr->rdev = 0;
--	}
--	return p;
--}
--
--/*
-  * Encode/decode NFSv2 basic data types
-  *
-  * Basic NFSv2 data types are defined in section 2.3 of RFC 1094:
-@@ -208,6 +168,27 @@ out_overflow:
+diff --git a/utils/mountd/mountd.c b/utils/mountd/mountd.c
+index c8ea3f7..19dc4ee 100644
+--- a/utils/mountd/mountd.c
++++ b/utils/mountd/mountd.c
+@@ -192,18 +192,28 @@ sig_hup (int sig)
  }
  
- /*
-+ * 2.3.2.  ftype
-+ *
-+ *	enum ftype {
-+ *		NFNON = 0,
-+ *		NFREG = 1,
-+ *		NFDIR = 2,
-+ *		NFBLK = 3,
-+ *		NFCHR = 4,
-+ *		NFLNK = 5
-+ *	};
-+ *
-+ */
-+static __be32 *xdr_decode_ftype(__be32 *p, u32 *type)
-+{
-+	*type = be32_to_cpup(p++);
-+	if (unlikely(*type > NF2FIFO))
-+		*type = NFBAD;
-+	return p;
-+}
-+
-+/*
-  * 2.3.3.  fhandle
-  *
-  *	typedef opaque fhandle[FHSIZE];
-@@ -270,6 +251,13 @@ static __be32 *xdr_encode_current_server_time(__be32 *p,
- 	return p;
- }
- 
-+static __be32 *xdr_decode_time(__be32 *p, struct timespec *timep)
-+{
-+	timep->tv_sec = be32_to_cpup(p++);
-+	timep->tv_nsec = be32_to_cpup(p++) * NSEC_PER_USEC;
-+	return p;
-+}
-+
- /*
-  * 2.3.5.  fattr
-  *
-@@ -293,12 +281,39 @@ static __be32 *xdr_encode_current_server_time(__be32 *p,
-  */
- static int decode_fattr(struct xdr_stream *xdr, struct nfs_fattr *fattr)
+ bool_t
+-mount_null_1_svc(struct svc_req *UNUSED(rqstp), void *UNUSED(argp), 
++mount_null_1_svc(struct svc_req *rqstp, void *UNUSED(argp), 
+ 	void *UNUSED(resp))
  {
-+	u32 rdev, type;
- 	__be32 *p;
++	struct sockaddr *sap = nfs_getrpccaller(rqstp->rq_xprt);
++	char buf[INET6_ADDRSTRLEN];
++
++	xlog(D_CALL, "Received NULL request from %s",
++		host_ntop(sap, buf, sizeof(buf)));
++
+ 	return 1;
+ }
  
- 	p = xdr_inline_decode(xdr, NFS_fattr_sz << 2);
- 	if (unlikely(p == NULL))
- 		goto out_overflow;
--	xdr_decode_fattr(p, fattr);
+ bool_t
+ mount_mnt_1_svc(struct svc_req *rqstp, dirpath *path, fhstatus *res)
+ {
++	struct sockaddr *sap = nfs_getrpccaller(rqstp->rq_xprt);
++	char buf[INET6_ADDRSTRLEN];
+ 	struct nfs_fh_len *fh;
+ 
+-	xlog(D_CALL, "MNT1(%s) called", *path);
++	xlog(D_CALL, "Received MNT1(%s) request from %s", *path,
++		host_ntop(sap, buf, sizeof(buf)));
 +
-+	fattr->valid |= NFS_ATTR_FATTR_V2;
+ 	fh = get_rootfh(rqstp, path, NULL, &res->fhs_status, 0);
+ 	if (fh)
+ 		memcpy(&res->fhstatus_u.fhs_fhandle, fh->fh_handle, 32);
+@@ -213,9 +223,12 @@ mount_mnt_1_svc(struct svc_req *rqstp, dirpath *path, fhstatus *res)
+ bool_t
+ mount_dump_1_svc(struct svc_req *rqstp, void *UNUSED(argp), mountlist *res)
+ {
+-	struct sockaddr_in *addr = nfs_getrpccaller_in(rqstp->rq_xprt);
++	struct sockaddr *sap = nfs_getrpccaller(rqstp->rq_xprt);
++	char buf[INET6_ADDRSTRLEN];
 +
-+	p = xdr_decode_ftype(p, &type);
++	xlog(D_CALL, "Received DUMP request from %s",
++		host_ntop(sap, buf, sizeof(buf)));
+ 
+-	xlog(D_CALL, "dump request from %s.", inet_ntoa(addr->sin_addr));
+ 	*res = mountlist_list();
+ 
+ 	return 1;
+@@ -224,10 +237,11 @@ mount_dump_1_svc(struct svc_req *rqstp, void *UNUSED(argp), mountlist *res)
+ bool_t
+ mount_umnt_1_svc(struct svc_req *rqstp, dirpath *argp, void *UNUSED(resp))
+ {
+-	struct sockaddr_in *sin = nfs_getrpccaller_in(rqstp->rq_xprt);
++	struct sockaddr *sap = nfs_getrpccaller(rqstp->rq_xprt);
+ 	nfs_export	*exp;
+ 	char		*p = *argp;
+ 	char		rpath[MAXPATHLEN+1];
++	char		buf[INET6_ADDRSTRLEN];
+ 
+ 	if (*p == '\0')
+ 		p = "/";
+@@ -237,11 +251,14 @@ mount_umnt_1_svc(struct svc_req *rqstp, dirpath *argp, void *UNUSED(resp))
+ 		p = rpath;
+ 	}
+ 
+-	exp = auth_authenticate("unmount", (struct sockaddr *)sin, p);
++	xlog(D_CALL, "Received UMNT(%s) request from %s", p,
++		host_ntop(sap, buf, sizeof(buf)));
 +
-+	fattr->mode		= be32_to_cpup(p++);
-+	fattr->nlink		= be32_to_cpup(p++);
-+	fattr->uid		= be32_to_cpup(p++);
-+	fattr->gid		= be32_to_cpup(p++);
-+	fattr->size		= be32_to_cpup(p++);
-+	fattr->du.nfs2.blocksize = be32_to_cpup(p++);
++	exp = auth_authenticate("unmount", sap, p);
+ 	if (exp == NULL)
+ 		return 1;
+ 
+-	mountlist_del(inet_ntoa(sin->sin_addr), p);
++	mountlist_del(host_ntop(sap, buf, sizeof(buf)), p);
+ 	return 1;
+ }
+ 
+@@ -249,6 +266,12 @@ bool_t
+ mount_umntall_1_svc(struct svc_req *rqstp, void *UNUSED(argp), 
+ 	void *UNUSED(resp))
+ {
++	struct sockaddr *sap = nfs_getrpccaller(rqstp->rq_xprt);
++	char		buf[INET6_ADDRSTRLEN];
 +
-+	rdev			= be32_to_cpup(p++);
-+	fattr->rdev		= new_decode_dev(rdev);
-+	if (type == (u32)NFCHR && rdev == (u32)NFS2_FIFO_DEV) {
-+		fattr->mode = (fattr->mode & ~S_IFMT) | S_IFIFO;
-+		fattr->rdev = 0;
-+	}
++	xlog(D_CALL, "Received UMNTALL request from %s",
++		host_ntop(sap, buf, sizeof(buf)));
 +
-+	fattr->du.nfs2.blocks	= be32_to_cpup(p++);
-+	fattr->fsid.major	= be32_to_cpup(p++);
-+	fattr->fsid.minor	= 0;
-+	fattr->fileid		= be32_to_cpup(p++);
+ 	/* Reload /etc/xtab if necessary */
+ 	auth_reload();
+ 
+@@ -259,9 +282,12 @@ mount_umntall_1_svc(struct svc_req *rqstp, void *UNUSED(argp),
+ bool_t
+ mount_export_1_svc(struct svc_req *rqstp, void *UNUSED(argp), exports *resp)
+ {
+-	struct sockaddr_in *addr = nfs_getrpccaller_in(rqstp->rq_xprt);
++	struct sockaddr *sap = nfs_getrpccaller(rqstp->rq_xprt);
++	char buf[INET6_ADDRSTRLEN];
 +
-+	p = xdr_decode_time(p, &fattr->atime);
-+	p = xdr_decode_time(p, &fattr->mtime);
-+	xdr_decode_time(p, &fattr->ctime);
- 	return 0;
- out_overflow:
- 	print_overflow_msg(__func__, xdr);
++	xlog(D_CALL, "Received EXPORT request from %s.",
++		host_ntop(sap, buf, sizeof(buf)));
+ 
+-	xlog(D_CALL, "export request from %s.", inet_ntoa(addr->sin_addr));
+ 	*resp = get_exportlist();
+ 		
+ 	return 1;
+@@ -270,9 +296,12 @@ mount_export_1_svc(struct svc_req *rqstp, void *UNUSED(argp), exports *resp)
+ bool_t
+ mount_exportall_1_svc(struct svc_req *rqstp, void *UNUSED(argp), exports *resp)
+ {
+-	struct sockaddr_in *addr = nfs_getrpccaller_in(rqstp->rq_xprt);
++	struct sockaddr *sap = nfs_getrpccaller(rqstp->rq_xprt);
++	char buf[INET6_ADDRSTRLEN];
++
++	xlog(D_CALL, "Received EXPORTALL request from %s.",
++		host_ntop(sap, buf, sizeof(buf)));
+ 
+-	xlog(D_CALL, "exportall request from %s.", inet_ntoa(addr->sin_addr));
+ 	*resp = get_exportlist();
+ 
+ 	return 1;
+@@ -292,11 +321,12 @@ mount_exportall_1_svc(struct svc_req *rqstp, void *UNUSED(argp), exports *resp)
+ bool_t
+ mount_pathconf_2_svc(struct svc_req *rqstp, dirpath *path, ppathcnf *res)
+ {
+-	struct sockaddr_in *sin = nfs_getrpccaller_in(rqstp->rq_xprt);
++	struct sockaddr *sap = nfs_getrpccaller(rqstp->rq_xprt);
+ 	struct stat	stb;
+ 	nfs_export	*exp;
+ 	char		rpath[MAXPATHLEN+1];
+ 	char		*p = *path;
++	char buf[INET6_ADDRSTRLEN];
+ 
+ 	memset(res, 0, sizeof(*res));
+ 
+@@ -312,8 +342,11 @@ mount_pathconf_2_svc(struct svc_req *rqstp, dirpath *path, ppathcnf *res)
+ 		p = rpath;
+ 	}
+ 
++	xlog(D_CALL, "Received PATHCONF(%s) request from %s", p,
++		host_ntop(sap, buf, sizeof(buf)));
++
+ 	/* Now authenticate the intruder... */
+-	exp = auth_authenticate("pathconf", (struct sockaddr *)sin, p);
++	exp = auth_authenticate("pathconf", sap, p);
+ 	if (exp == NULL)
+ 		return 1;
+ 	else if (stat(p, &stb) < 0) {
+@@ -376,11 +409,15 @@ static void set_authflavors(struct mountres3_ok *ok, nfs_export *exp)
+ bool_t
+ mount_mnt_3_svc(struct svc_req *rqstp, dirpath *path, mountres3 *res)
+ {
++	struct sockaddr *sap = nfs_getrpccaller(rqstp->rq_xprt);
+ 	struct mountres3_ok *ok = &res->mountres3_u.mountinfo;
++	char buf[INET6_ADDRSTRLEN];
+ 	nfs_export *exp;
+ 	struct nfs_fh_len *fh;
+ 
+-	xlog(D_CALL, "MNT3(%s) called", *path);
++	xlog(D_CALL, "Received MNT3(%s) request from %s", *path,
++		host_ntop(sap, buf, sizeof(buf)));
++
+ 	fh = get_rootfh(rqstp, path, &exp, &res->fhs_status, 1);
+ 	if (!fh)
+ 		return 1;
+@@ -395,12 +432,13 @@ static struct nfs_fh_len *
+ get_rootfh(struct svc_req *rqstp, dirpath *path, nfs_export **expret,
+ 		mountstat3 *error, int v3)
+ {
+-	struct sockaddr_in *sin = nfs_getrpccaller_in(rqstp->rq_xprt);
++	struct sockaddr *sap = nfs_getrpccaller(rqstp->rq_xprt);
+ 	struct stat	stb, estb;
+ 	nfs_export	*exp;
+ 	struct nfs_fh_len *fh;
+ 	char		rpath[MAXPATHLEN+1];
+ 	char		*p = *path;
++	char		buf[INET6_ADDRSTRLEN];
+ 
+ 	if (*p == '\0')
+ 		p = "/";
+@@ -415,7 +453,7 @@ get_rootfh(struct svc_req *rqstp, dirpath *path, nfs_export **expret,
+ 	}
+ 
+ 	/* Now authenticate the intruder... */
+-	exp = auth_authenticate("mount", (struct sockaddr *)sin, p);
++	exp = auth_authenticate("mount", sap, p);
+ 	if (exp == NULL) {
+ 		*error = NFSERR_ACCES;
+ 		return NULL;
+@@ -484,13 +522,14 @@ get_rootfh(struct svc_req *rqstp, dirpath *path, nfs_export **expret,
+ 			xtab_append(exp);
+ 
+ 		if (v3)
+-			fh = getfh_size(sin, p, 64);
++			fh = getfh_size((struct sockaddr_in *)sap, p, 64);
+ 		if (!v3 || (fh == NULL && errno == EINVAL)) {
+ 			/* We first try the new nfs syscall. */
+-			fh = getfh(sin, p);
++			fh = getfh((struct sockaddr_in *)sap, p);
+ 			if (fh == NULL && errno == EINVAL)
+ 				/* Let's try the old one. */
+-				fh = getfh_old(sin, stb.st_dev, stb.st_ino);
++				fh = getfh_old((struct sockaddr_in *)sap,
++						stb.st_dev, stb.st_ino);
+ 		}
+ 		if (fh == NULL && !did_export) {
+ 			exp->m_exported = 0;
+@@ -504,7 +543,7 @@ get_rootfh(struct svc_req *rqstp, dirpath *path, nfs_export **expret,
+ 		}
+ 	}
+ 	*error = NFS_OK;
+-	mountlist_add(inet_ntoa(sin->sin_addr), p);
++	mountlist_add(host_ntop(sap, buf, sizeof(buf)), p);
+ 	if (expret)
+ 		*expret = exp;
+ 	return fh;
 
