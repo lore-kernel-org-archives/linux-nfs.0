@@ -1,39 +1,42 @@
-From: Benny Halevy <bhalevy@panasas.com>
-Subject: Re: [PATCH 07/13] RFC: pnfs: full mount/umount infrastructure
-Date: Mon, 13 Sep 2010 16:39:30 +0200
-Message-ID: <4C8E37A2.4090103@panasas.com>
-References: <1283450419-5648-1-git-send-email-iisaman@netapp.com> <1283450419-5648-8-git-send-email-iisaman@netapp.com> <20100910235858.GB11231@infradead.org> <1284163679.14078.106.camel@heimdal.trondhjem.org> <4C8E0A03.3020500@panasas.com> <20100913142851.GA10170@infradead.org>
+From: Christoph Hellwig <hch@infradead.org>
+Subject: Re: [PATCH 08/13] RFC: pnfs: filelayout: introduce minimal file
+ layout driver
+Date: Mon, 13 Sep 2010 11:08:44 -0400
+Message-ID: <20100913150844.GB3920@infradead.org>
+References: <1283450419-5648-1-git-send-email-iisaman@netapp.com>
+ <1283450419-5648-9-git-send-email-iisaman@netapp.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
-	Fred Isaman <iisaman@netapp.com>, linux-nfs@vger.kernel.org
-To: Christoph Hellwig <hch@infradead.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-nfs@vger.kernel.org
+To: Fred Isaman <iisaman@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:39173 "EHLO
-	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1751208Ab0IMOjd (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Sep 2010 10:39:33 -0400
-In-Reply-To: <20100913142851.GA10170@infradead.org>
+Received: from bombadil.infradead.org ([18.85.46.34]:40288 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751917Ab0IMPIo (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Sep 2010 11:08:44 -0400
+In-Reply-To: <1283450419-5648-9-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 2010-09-13 16:28, Christoph Hellwig wrote:
-> On Mon, Sep 13, 2010 at 01:24:51PM +0200, Benny Halevy wrote:
->> However, on the longer run I'd like us to consider formalizing
->> the kABI for non-GPLed layout drivers.
-> 
-> No.  Non-GPLed drivers will have a very hard way to stand against the
-> derived work clauses for some specificly written new code anyway, and
-> if you haven't noticed yet there's no kABI in mainline anyway.  
-> 
->> I think that this is a great selling point as it fully materializes the
->> extensibility of the layout-type / layout-driver design model.
-> 
-> Drinking again?
-> 
+On Thu, Sep 02, 2010 at 02:00:14PM -0400, Fred Isaman wrote:
+> +static int __init nfs4filelayout_init(void)
+> +{
+> +	printk(KERN_INFO "%s: NFSv4 File Layout Driver Registering...\n",
+> +	       __func__);
+> +
+> +	/*
+> +	 * Need to register file_operations struct with global list to indicate
+> +	 * that NFS4 file layout is a possible pNFS I/O module
+> +	 */
+> +	return pnfs_register_layoutdriver(&filelayout_type);
 
-Heh, just water :-)
+And I thought we were dealing with an UFO detection device here..
 
-I guess I'll have to agree to disagree.
+Sarcasm aside, this is one of the most pointless and incorrect comments I've
+seen for a while.
 
-Benny
+> +	/* Unregister NFS4 file layout driver with pNFS client*/
+> +	pnfs_unregister_layoutdriver(&filelayout_type);
+
+This one is not too useful either.
+
