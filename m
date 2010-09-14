@@ -1,81 +1,43 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from sith.mimuw.edu.pl ([193.0.96.4]:24463 "EHLO sith.mimuw.edu.pl"
+Received: from fieldses.org ([174.143.236.118]:39746 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753778Ab0I3R2n (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 30 Sep 2010 13:28:43 -0400
-Date: Thu, 30 Sep 2010 19:28:42 +0200
-From: Jan =?utf-8?Q?R=C4=99korajski?= <baggins@sith.mimuw.edu.pl>
-To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Cc: Steve Dickson <SteveD@redhat.com>, Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: ANNOUNCE: nfs-utils-1.2.3 released.
-Message-ID: <20100930172842.GA12882@sith.mimuw.edu.pl>
-References: <4CA1E5E4.1070404@RedHat.com>
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <4CA1E5E4.1070404@RedHat.com>
+	id S1751852Ab0INBJR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 13 Sep 2010 21:09:17 -0400
+Date: Mon, 13 Sep 2010 21:08:13 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: iisaman@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [pynfs PATCH] TESTS: fix DELEG9
+Message-ID: <20100914010813.GD27200@fieldses.org>
+References: <20100914010630.GC27200@fieldses.org>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20100914010630.GC27200@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Tue, 28 Sep 2010, Steve Dickson wrote:
-
-> New Features in this release:
+On Mon, Sep 13, 2010 at 09:06:30PM -0400, bfields wrote:
+> From: J. Bruce Fields <bfields@redhat.com>
 > 
->    * Both Client and server IPv6 support is available with the 
->      --enable-ipv6 configuration flag (which is on by default)
+> The new server doesn't have a recall callback setup, so will never send
+> the delegreturn.  (Doing it by hand at the end as attempted here doesn't
+> work well, as the open that precedes that final delegreturn needs the
+> delegreturn before it can succeed.)
 > 
->    * NFSoverRDMA mount support.
+> Also, we need to set c.cb_server for _verify_cb_occurred to get the
+> correct count.
 > 
->    * A large number of bug fixes.
+> After this patch, the test passes against the Linux server.
 
-Unfortunately there is a new misfeature in rpc.mountd that crept in
-with IPv6 support.
-Option '-p <port>' is no longer working, mountd succesfully registers
-MNT1 and then fails with -EADDRINUSE for MNT2 and MNT3 on ip4/tcp,udp and
-ip6/tcp,udp transports.
+This patch, plus the other fixes I need to get usable results against
+the Linux server, are also available from
 
-[root@home ~]# rpc.mountd -d all -F -p 4444
-rpc.mountd: svc_tli_create: could not bind to requested address
-rpc.mountd: Failed to create listener xprt (mountd, 2, udp)
-rpc.mountd: svc_tli_create: could not bind to requested address
-rpc.mountd: Failed to create listener xprt (mountd, 2, tcp)
-rpc.mountd: svc_tli_create: could not bind to requested address
-rpc.mountd: Failed to create listener xprt (mountd, 2, udp6)
-rpc.mountd: svc_tli_create: could not bind to requested address
-rpc.mountd: Failed to create listener xprt (mountd, 2, tcp6)
-rpc.mountd: svc_tli_create: could not bind to requested address
-rpc.mountd: Failed to create listener xprt (mountd, 3, udp)
-rpc.mountd: svc_tli_create: could not bind to requested address
-rpc.mountd: Failed to create listener xprt (mountd, 3, tcp)
-rpc.mountd: svc_tli_create: could not bind to requested address
-rpc.mountd: Failed to create listener xprt (mountd, 3, udp6)
-rpc.mountd: svc_tli_create: could not bind to requested address
-rpc.mountd: Failed to create listener xprt (mountd, 3, tcp6)
-rpc.mountd: Kernel does not have pseudo root support.
-rpc.mountd: NFS v4 mounts will be disabled unless fsid=0
-rpc.mountd: is specfied in /etc/exports file.
-rpc.mountd: Version 1.2.3 starting
+	git://linux-nfs.org/~bfields/pynfs.git
 
-[root@home ~]# rpcinfo -t localhost 100005
-program 100005 version 1 ready and waiting
+(and, for 4.1, at:
 
-If I start mountd without '-p' it succesfully registers all versions
-on random ports.
+	git://linux-nfs.org/~bfields/pynfs41.git
 
-[root@home ~]# rpc.mountd -d all -F 
-rpc.mountd: Kernel does not have pseudo root support.
-rpc.mountd: NFS v4 mounts will be disabled unless fsid=0
-rpc.mountd: is specfied in /etc/exports file.
-rpc.mountd: Version 1.2.3 starting
+).
 
-[root@home ~]# rpcinfo -t localhost 100005
-program 100005 version 1 ready and waiting
-program 100005 version 2 ready and waiting
-program 100005 version 3 ready and waiting
-
-Reverting b551b1fd0052de9b8c674b30c39d9f2a1e9d79cc cures the problem.
-but I guess it's not the right thing to do.
-
--- 
-Jan Rękorajski            |  ALL SUSPECTS ARE GUILTY. PERIOD!
-baggins<at>mimuw.edu.pl   |  OTHERWISE THEY WOULDN'T BE SUSPECTS, WOULD THEY?
-BOFH, MANIAC              |                   -- TROOPS by Kevin Rubio
+--b.
