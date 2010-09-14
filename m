@@ -1,164 +1,90 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-gw0-f46.google.com ([74.125.83.46]:59796 "EHLO
-	mail-gw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752224Ab0IQQ15 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 17 Sep 2010 12:27:57 -0400
-Received: by mail-gw0-f46.google.com with SMTP id 17so784191gwj.19
-        for <linux-nfs@vger.kernel.org>; Fri, 17 Sep 2010 09:27:56 -0700 (PDT)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 10/22] NFS: Move and update xdr_decode_foo() functions that
-	we're keeping
-To: trond.myklebust@netapp.com
+Received: from mail-bw0-f46.google.com ([209.85.214.46]:59160 "EHLO
+	mail-bw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751852Ab0INLhR convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 14 Sep 2010 07:37:17 -0400
+Received: by bwz11 with SMTP id 11so5362406bwz.19
+        for <linux-nfs@vger.kernel.org>; Tue, 14 Sep 2010 04:37:15 -0700 (PDT)
+In-Reply-To: <1284461087-4498-1-git-send-email-bhalevy@panasas.com>
+References: <1284461087-4498-1-git-send-email-bhalevy@panasas.com>
+Date: Tue, 14 Sep 2010 04:37:15 -0700
+Message-ID: <AANLkTimsoKRwx+_-LOk6ZPZtTzfa+jaovD5Ru82gY-nv@mail.gmail.com>
+Subject: Re: [PATCH 1/1] SQUASHME: pnfs: clean up layoutcommit_mempool
+From: Fred Isaman <iisaman@umich.edu>
+To: Benny Halevy <bhalevy@panasas.com>
 Cc: linux-nfs@vger.kernel.org
-Date: Fri, 17 Sep 2010 12:27:52 -0400
-Message-ID: <20100917162752.19761.96997.stgit@seurat.1015granger.net>
-In-Reply-To: <20100917162204.19761.58249.stgit@seurat.1015granger.net>
-References: <20100917162204.19761.58249.stgit@seurat.1015granger.net>
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Clean up.
+Note that in an internal review, Trond suggested that we can get rid
+of the mempool entirely, relying instead on kmalloc.  This has the
+advantage that it basically makes pnfs_init/uninit no-ops that can be
+removed.  This idea was integrated into the submission patches.  I
+also have a rebase (that still needs some cleanup) that carries the
+removal up to your pnfs-submit branch.
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
+Fred
 
- fs/nfs/nfs2xdr.c |   97 +++++++++++++++++++++++++++++++-----------------------
- 1 files changed, 56 insertions(+), 41 deletions(-)
 
-diff --git a/fs/nfs/nfs2xdr.c b/fs/nfs/nfs2xdr.c
-index 0d8864f..d0043e4 100644
---- a/fs/nfs/nfs2xdr.c
-+++ b/fs/nfs/nfs2xdr.c
-@@ -89,46 +89,6 @@ static void print_overflow_msg(const char *func, const struct xdr_stream *xdr)
- 
- 
- /*
-- * Common NFS XDR functions as inlines
-- */
--static inline __be32*
--xdr_decode_time(__be32 *p, struct timespec *timep)
--{
--	timep->tv_sec = ntohl(*p++);
--	/* Convert microseconds into nanoseconds */
--	timep->tv_nsec = ntohl(*p++) * 1000;
--	return p;
--}
--
--static __be32 *
--xdr_decode_fattr(__be32 *p, struct nfs_fattr *fattr)
--{
--	u32 rdev, type;
--	type = ntohl(*p++);
--	fattr->mode = ntohl(*p++);
--	fattr->nlink = ntohl(*p++);
--	fattr->uid = ntohl(*p++);
--	fattr->gid = ntohl(*p++);
--	fattr->size = ntohl(*p++);
--	fattr->du.nfs2.blocksize = ntohl(*p++);
--	rdev = ntohl(*p++);
--	fattr->du.nfs2.blocks = ntohl(*p++);
--	fattr->fsid.major = ntohl(*p++);
--	fattr->fsid.minor = 0;
--	fattr->fileid = ntohl(*p++);
--	p = xdr_decode_time(p, &fattr->atime);
--	p = xdr_decode_time(p, &fattr->mtime);
--	p = xdr_decode_time(p, &fattr->ctime);
--	fattr->valid |= NFS_ATTR_FATTR_V2;
--	fattr->rdev = new_decode_dev(rdev);
--	if (type == NFCHR && rdev == NFS2_FIFO_DEV) {
--		fattr->mode = (fattr->mode & ~S_IFMT) | S_IFIFO;
--		fattr->rdev = 0;
--	}
--	return p;
--}
--
--/*
-  * Encode/decode NFSv2 basic data types
-  *
-  * Basic NFSv2 data types are defined in section 2.3 of RFC 1094:
-@@ -208,6 +168,27 @@ out_overflow:
- }
- 
- /*
-+ * 2.3.2.  ftype
-+ *
-+ *	enum ftype {
-+ *		NFNON = 0,
-+ *		NFREG = 1,
-+ *		NFDIR = 2,
-+ *		NFBLK = 3,
-+ *		NFCHR = 4,
-+ *		NFLNK = 5
-+ *	};
-+ *
-+ */
-+static __be32 *xdr_decode_ftype(__be32 *p, u32 *type)
-+{
-+	*type = be32_to_cpup(p++);
-+	if (unlikely(*type > NF2FIFO))
-+		*type = NFBAD;
-+	return p;
-+}
-+
-+/*
-  * 2.3.3.  fhandle
-  *
-  *	typedef opaque fhandle[FHSIZE];
-@@ -269,6 +250,13 @@ static __be32 *xdr_encode_current_server_time(__be32 *p,
- 	return p;
- }
- 
-+static __be32 *xdr_decode_time(__be32 *p, struct timespec *timep)
-+{
-+	timep->tv_sec = be32_to_cpup(p++);
-+	timep->tv_nsec = be32_to_cpup(p++) * NSEC_PER_USEC;
-+	return p;
-+}
-+
- /*
-  * 2.3.5.  fattr
-  *
-@@ -292,12 +280,39 @@ static __be32 *xdr_encode_current_server_time(__be32 *p,
-  */
- static int decode_fattr(struct xdr_stream *xdr, struct nfs_fattr *fattr)
- {
-+	u32 rdev, type;
- 	__be32 *p;
- 
- 	p = xdr_inline_decode(xdr, NFS_fattr_sz << 2);
- 	if (unlikely(p == NULL))
- 		goto out_overflow;
--	xdr_decode_fattr(p, fattr);
-+
-+	fattr->valid |= NFS_ATTR_FATTR_V2;
-+
-+	p = xdr_decode_ftype(p, &type);
-+
-+	fattr->mode		= be32_to_cpup(p++);
-+	fattr->nlink		= be32_to_cpup(p++);
-+	fattr->uid		= be32_to_cpup(p++);
-+	fattr->gid		= be32_to_cpup(p++);
-+	fattr->size		= be32_to_cpup(p++);
-+	fattr->du.nfs2.blocksize = be32_to_cpup(p++);
-+
-+	rdev			= be32_to_cpup(p++);
-+	fattr->rdev		= new_decode_dev(rdev);
-+	if (type == (u32)NFCHR && rdev == (u32)NFS2_FIFO_DEV) {
-+		fattr->mode = (fattr->mode & ~S_IFMT) | S_IFIFO;
-+		fattr->rdev = 0;
-+	}
-+
-+	fattr->du.nfs2.blocks	= be32_to_cpup(p++);
-+	fattr->fsid.major	= be32_to_cpup(p++);
-+	fattr->fsid.minor	= 0;
-+	fattr->fileid		= be32_to_cpup(p++);
-+
-+	p = xdr_decode_time(p, &fattr->atime);
-+	p = xdr_decode_time(p, &fattr->mtime);
-+	xdr_decode_time(p, &fattr->ctime);
- 	return 0;
- out_overflow:
- 	print_overflow_msg(__func__, xdr);
-
+On Tue, Sep 14, 2010 at 3:44 AM, Benny Halevy <bhalevy@panasas.com> wrote:
+> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+> ---
+>  fs/nfs/pnfs.c |   16 +++++++---------
+>  1 files changed, 7 insertions(+), 9 deletions(-)
+>
+> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+> index 61dbc0a..b576470 100644
+> --- a/fs/nfs/pnfs.c
+> +++ b/fs/nfs/pnfs.c
+> @@ -71,7 +71,7 @@ static spinlock_t pnfs_spinlock = __SPIN_LOCK_UNLOCKED(pnfs_spinlock);
+>  * pnfs_modules_tbl holds all pnfs modules
+>  */
+>  static struct list_head        pnfs_modules_tbl;
+> -static struct kmem_cache *pnfs_cachep;
+> +static struct kmem_cache *pnfs_layoutcommit_cachep;
+>  static mempool_t *pnfs_layoutcommit_mempool;
+>
+>  static inline struct nfs4_layoutcommit_data *pnfs_layoutcommit_alloc(void)
+> @@ -102,18 +102,16 @@ pnfs_initialize(void)
+>  {
+>        INIT_LIST_HEAD(&pnfs_modules_tbl);
+>
+> -       pnfs_cachep = kmem_cache_create("nfs4_layoutcommit_data",
+> +       pnfs_layoutcommit_cachep = kmem_cache_create("nfs4_layoutcommit_data",
+>                                        sizeof(struct nfs4_layoutcommit_data),
+>                                        0, SLAB_HWCACHE_ALIGN, NULL);
+> -       if (pnfs_cachep == NULL)
+> +       if (pnfs_layoutcommit_cachep == NULL)
+>                return -ENOMEM;
+>
+> -       pnfs_layoutcommit_mempool = mempool_create(MIN_POOL_LC,
+> -                                                  mempool_alloc_slab,
+> -                                                  mempool_free_slab,
+> -                                                  pnfs_cachep);
+> +       pnfs_layoutcommit_mempool = mempool_create_slab_pool(MIN_POOL_LC,
+> +                                               pnfs_layoutcommit_cachep);
+>        if (pnfs_layoutcommit_mempool == NULL) {
+> -               kmem_cache_destroy(pnfs_cachep);
+> +               kmem_cache_destroy(pnfs_layoutcommit_cachep);
+>                return -ENOMEM;
+>        }
+>
+> @@ -124,7 +122,7 @@ pnfs_initialize(void)
+>  void pnfs_uninitialize(void)
+>  {
+>        mempool_destroy(pnfs_layoutcommit_mempool);
+> -       kmem_cache_destroy(pnfs_cachep);
+> +       kmem_cache_destroy(pnfs_layoutcommit_cachep);
+>  }
+>
+>  /* search pnfs_modules_tbl for right pnfs module */
+> --
+> 1.7.2.2
+>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
