@@ -1,42 +1,61 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:37359 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753901Ab0IJNXG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 10 Sep 2010 09:23:06 -0400
-Received: from int-mx03.intmail.prod.int.phx2.redhat.com (int-mx03.intmail.prod.int.phx2.redhat.com [10.5.11.16])
-	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id o8ADN61E012024
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Fri, 10 Sep 2010 09:23:06 -0400
-Received: from badhat.bos.devel.redhat.com (vpn-237-31.phx2.redhat.com [10.3.237.31])
-	by int-mx03.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id o8ADN5uK025319
-	for <linux-nfs@vger.kernel.org>; Fri, 10 Sep 2010 09:23:06 -0400
-Message-ID: <4C8A3139.1060406@RedHat.com>
-Date: Fri, 10 Sep 2010 09:23:05 -0400
-From: Steve Dickson <SteveD@redhat.com>
-To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Updated pNFS Developmental kernel/nfs-utils repository
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from jay.phy.queensu.ca ([130.15.24.47]:56277 "EHLO
+	jay.phy.QueensU.CA" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751960Ab0INSk5 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 14 Sep 2010 14:40:57 -0400
+Date: Tue, 14 Sep 2010 14:40:44 -0400
+From: Peter Skensved <peter@jay.phy.QueensU.CA>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: nfsd4_stateowners problem
+Message-ID: <20100914184044.GA30454@jay.phy.QueensU.CA>
+References: <20100827174823.GA26792@jay.phy.QueensU.CA> <20100914173154.GC2409@fieldses.org>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20100914173154.GC2409@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Hello,
+On Tue, Sep 14, 2010 at 01:31:54PM -0400, J. Bruce Fields wrote:
+> On Fri, Aug 27, 2010 at 01:48:23PM -0400, Peter Skensved wrote:
+> > 
+> >   I'm looking for pointers and information on how to debug and annoying NFS
+> > problem that has been bugging us for a long time. The problem is that the number
+> > of nfsd4_stateowners keeps increasing until all low memory is exhausted and
+> > the oom-killer is invoked. The severity of the problem has changed over time
+> > with different kernels. At present it takes about 5 weeks for the size to
+> > grow to 500 Mb  ( kernel 2.6.18-194.8.1.el5PAE, CentOS5.5 ). Restarting 
+> > nfs clears up the problem but it is definitely not the preferred solution. 
+> > 
+> >  The increase in the number of nfsd4_stateowners appears to happen in bursts.
+> > Nothing happens for long times and I suddenly see a burst. I've tried ( briefly )
+> > to turn on all logging in rpcdebug and have run tcpdump while watching slabtop
+> > but there is too much output to be able to see if there is anything strange
+> > happening. So - my question is : how do I limit the diagnostic output to what
+> > is relevant ? What are the modules and flags that I should be looking at ?
+> > Any other info I should bemonitoring ? /proc/fs/nfsfs ?
+> 
+> >From the point of view of upstream, 2.6.18 is a bit old.
+> 
+> I can't think of any existing logging or statistics that would answer
+> the question; we'd probably need to add some more.
+> 
+> --b.
 
-I've updated the Fedora pNFS development repository to include the
-Fedora 13, 14 and Devel nfs-utils rpm which include both the blkmapd 
-andspnfsd daemons as well as the pNFS export bits.
 
+ Thanks for the reply.  The current RedHat EL5 kernels are all based on 2.6.18 with
+a lot of backported fixes so I'm not sure what version of the NFS code I'm effectively
+running.
 
-Instructions on how to install and use these kernels are at:
-http://wiki.linux-nfs.org/wiki/index.php/Fedora_pNFS_Client_Setup
+ Do you know what the state_owners are used for ? What puzzles me is that in our case
+we have a large number of workstations which NFS mounts some fairly large, mostly static
+common directories and automounts HOME directories. So I would expect the amount of state
+info that needs to be kept would be fairly constant. When the automounter unmounts the
+info ought to go away . Yet the number of stateowners for the most part just keep on
+growing. 
 
- If/when bugs are found with these rpms please enter them
-in to the NFS Bugzilla Main Page at:
-    https://bugzilla.linux-nfs.org/index.cgi
+ The only work around at the moment is to reboot before it has eaten up around 500 Mb
+of slabs
+ 
 
-Please use the "pNFS" keyword.. 
-
-Any question or issues please feel free to contact me... 
-
-steved.
-
+                                                                   peter
