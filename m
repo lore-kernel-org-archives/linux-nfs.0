@@ -1,111 +1,48 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mailhub.sw.ru ([195.214.232.25]:43052 "EHLO relay.sw.ru"
+Received: from fieldses.org ([174.143.236.118]:38620 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752536Ab0I2MF5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 29 Sep 2010 08:05:57 -0400
-Message-ID: <4CA32B97.9000802@parallels.com>
-Date: Wed, 29 Sep 2010 16:05:43 +0400
-From: Pavel Emelyanov <xemul@parallels.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Chuck Lever <chuck.lever@oracle.com>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        linux-nfs@vger.kernel.org
-Subject: [PATCH 7/9] sunrpc: Tag rpc_xprt with net
-References: <4CA32AB4.2090808@parallels.com>
-In-Reply-To: <4CA32AB4.2090808@parallels.com>
-Content-Type: text/plain; charset=ISO-8859-1
+	id S1751710Ab0INUCB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 14 Sep 2010 16:02:01 -0400
+Date: Tue, 14 Sep 2010 16:00:54 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Peter Skensved <peter@jay.phy.QueensU.CA>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: nfsd4_stateowners problem
+Message-ID: <20100914200054.GC4148@fieldses.org>
+References: <20100827174823.GA26792@jay.phy.QueensU.CA>
+ <20100914173154.GC2409@fieldses.org>
+ <20100914184044.GA30454@jay.phy.QueensU.CA>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20100914184044.GA30454@jay.phy.QueensU.CA>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-The net is known from the xprt_create and this tagging will also
-give un the context in the conntection workers where real sockets
-are created.
+On Tue, Sep 14, 2010 at 02:40:44PM -0400, Peter Skensved wrote:
+>  Thanks for the reply.  The current RedHat EL5 kernels are all based on 2.6.18 with
+> a lot of backported fixes so I'm not sure what version of the NFS code I'm effectively
+> running.
+> 
+>  Do you know what the state_owners are used for ? What puzzles me is that in our case
 
-Signed-off-by: Pavel Emelyanov <xemul@openvz.org>
----
- include/linux/sunrpc/xprt.h     |    3 ++-
- net/sunrpc/xprt.c               |    4 +++-
- net/sunrpc/xprtrdma/transport.c |    2 +-
- net/sunrpc/xprtsock.c           |    2 +-
- 4 files changed, 7 insertions(+), 4 deletions(-)
+They represent some notion of "who" is performing an open, or performing
+a lock.
 
-diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
-index c4f9315..89d10d2 100644
---- a/include/linux/sunrpc/xprt.h
-+++ b/include/linux/sunrpc/xprt.h
-@@ -224,6 +224,7 @@ struct rpc_xprt {
- 					bklog_u;	/* backlog queue utilization */
- 	} stat;
- 
-+	struct net		*xprt_net;
- 	const char		*address_strings[RPC_DISPLAY_MAX];
- };
- 
-@@ -281,7 +282,7 @@ void			xprt_release_xprt_cong(struct rpc_xprt *xprt, struct rpc_task *task);
- void			xprt_release(struct rpc_task *task);
- struct rpc_xprt *	xprt_get(struct rpc_xprt *xprt);
- void			xprt_put(struct rpc_xprt *xprt);
--struct rpc_xprt *	xprt_alloc(int size, int max_req);
-+struct rpc_xprt *	xprt_alloc(struct net *net, int size, int max_req);
- void			xprt_free(struct rpc_xprt *);
- 
- static inline __be32 *xprt_skip_transport_header(struct rpc_xprt *xprt, __be32 *p)
-diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
-index 0637340..953206d 100644
---- a/net/sunrpc/xprt.c
-+++ b/net/sunrpc/xprt.c
-@@ -962,7 +962,7 @@ static void xprt_free_slot(struct rpc_xprt *xprt, struct rpc_rqst *req)
- 	spin_unlock(&xprt->reserve_lock);
- }
- 
--struct rpc_xprt *xprt_alloc(int size, int max_req)
-+struct rpc_xprt *xprt_alloc(struct net *net, int size, int max_req)
- {
- 	struct rpc_xprt *xprt;
- 
-@@ -975,6 +975,7 @@ struct rpc_xprt *xprt_alloc(int size, int max_req)
- 	if (xprt->slot == NULL)
- 		goto out_free;
- 
-+	xprt->xprt_net = get_net(net);
- 	return xprt;
- 
- out_free:
-@@ -986,6 +987,7 @@ EXPORT_SYMBOL_GPL(xprt_alloc);
- 
- void xprt_free(struct rpc_xprt *xprt)
- {
-+	put_net(xprt->xprt_net);
- 	kfree(xprt->slot);
- 	kfree(xprt);
- }
-diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
-index 0f7a1b9..2da32b4 100644
---- a/net/sunrpc/xprtrdma/transport.c
-+++ b/net/sunrpc/xprtrdma/transport.c
-@@ -283,7 +283,7 @@ xprt_setup_rdma(struct xprt_create *args)
- 		return ERR_PTR(-EBADF);
- 	}
- 
--	xprt = xprt_alloc(sizeof(struct rpcrdma_xprt),
-+	xprt = xprt_alloc(args->net, sizeof(struct rpcrdma_xprt),
- 			xprt_rdma_slot_table_entries);
- 	if (xprt == NULL) {
- 		dprintk("RPC:       %s: couldn't allocate rpcrdma_xprt\n",
-diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index b1e36ec..4ef3a6a 100644
---- a/net/sunrpc/xprtsock.c
-+++ b/net/sunrpc/xprtsock.c
-@@ -2272,7 +2272,7 @@ static struct rpc_xprt *xs_setup_xprt(struct xprt_create *args,
- 		return ERR_PTR(-EBADF);
- 	}
- 
--	xprt = xprt_alloc(sizeof(*new), slot_table_size);
-+	xprt = xprt_alloc(args->net, sizeof(*new), slot_table_size);
- 	if (xprt == NULL) {
- 		dprintk("RPC:       xs_setup_xprt: couldn't allocate "
- 				"rpc_xprt\n");
--- 
-1.5.5.6
+> we have a large number of workstations which NFS mounts some fairly large, mostly static
+> common directories and automounts HOME directories. So I would expect the amount of state
+> info that needs to be kept would be fairly constant. When the automounter unmounts the
+> info ought to go away . Yet the number of stateowners for the most part just keep on
+> growing. 
+> 
+>  The only work around at the moment is to reboot before it has eaten up around 500 Mb
+> of slabs
 
+Is someone doing a lot of file locking?
+
+I can't remember the logic the server uses to decide when to throw away
+a lockowner, but it may just be inadequate.
+
+The client has also had some fixes recently to be better about telling
+the server when to throw them away.
+
+--b.
