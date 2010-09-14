@@ -1,49 +1,51 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mailhub.sw.ru ([195.214.232.25]:4747 "EHLO relay.sw.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756895Ab0ITQeP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 20 Sep 2010 12:34:15 -0400
-Message-ID: <4C978CE6.5080508@parallels.com>
-Date: Mon, 20 Sep 2010 20:33:42 +0400
-From: Pavel Emelyanov <xemul@parallels.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Neil Brown <neilb@suse.de>, Trond Myklebust <Trond.Myklebust@netapp.com>,
-        linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 0/9] sunrpc: Start making sunrpc work in containers
-References: <4C90BADB.10700@parallels.com> <20100920161326.GL4580@fieldses.org>
-In-Reply-To: <20100920161326.GL4580@fieldses.org>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from smtp-out-105.synserver.de ([212.40.180.105]:1072 "HELO
+	smtp-out-099.synserver.de" rhost-flags-OK-OK-OK-FAIL)
+	by vger.kernel.org with SMTP id S1752113Ab0INJrF (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 14 Sep 2010 05:47:05 -0400
+Received: from www-data by saphir-ld-031.synserver.de with local (Exim 4.63)
+	(envelope-from <fanpost@uninverse.de>)
+	id 1OvRdx-0008Pj-AQ
+	for linux-nfs@vger.kernel.org; Tue, 14 Sep 2010 11:17:37 +0200
+To: linux-nfs@vger.kernel.org
+Subject: NFS strange sync issues - different versions of same file using multiple clients 
+From: "fanpost@uninverse.de" <fanpost@uninverse.de>
+Content-Type: text/plain;
+	charset="iso-8859-1"
+Message-Id: <E1OvRdx-0008Pj-AQ@saphir-ld-031.synserver.de>
+Date: Tue, 14 Sep 2010 11:17:37 +0200
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
->> Looking forward to your feedback.
-> 
-> What are you thinking of as a use-case for this?
+Hello Group,
 
-To make it possible run both NFS server and client in containers.
-I know, that the NFS client is already a filesystem, but such
-things as its internal servers and clients abstraction require
-isolation from each other in containers terms.
+I already send this post to the opensuse forum without response,
+maybe you can help:
 
-> I think it would be useful to able to run what appear to be multiple NFS
-> servers on a single host; 
+we recognized very strange behaviour of nfs:
 
-Yup, this is one of the goals.
+Use case:
 
-> and for that, we would want to vary more than
-> just the ip_map_cache.  The export-related caches (nfsd.fh and
-> nfsd.export), at least.
+Users access their files on different host through nfs4 (plain sys auth no kerberos sec).
+They modify a c++ program and change parameters,
+recompile it and execute it on different hosts for simulation.
 
-Sure! The thing is that the full containerization of that stuff is
-too many patches and I'm not sure that you and other maintainers wish
-to review the 100-patch set in one go ;)
+We now observed that sometimes even after modifying and recompiling
+the binary, an o l d version of the same binary is executed
+The Binary resides on a nfs share.
 
-I want to find out what git tree to hack on and prepare small patch
-sets making things step-by-step. This one is just the first in a row.
+1) Write changes X to the Program and compile + execute it on PC A
+2) Write changes Y to the Program and compile + execute it on PC B
 
-> --b.
-> 
+Instead of executing Program Y on PC B results and logging shows that actually the old version
+(X) is executed on PC B.
 
-Thanks,
-Pavel
+Neither the problem nor the working execution is 100% reproducible.
+Seems to have something to do with caching.
+
+Ciao,
+
+Josh
+
+
