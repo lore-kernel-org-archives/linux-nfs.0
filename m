@@ -1,85 +1,69 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:55913 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752319Ab0IBL3O (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 2 Sep 2010 07:29:14 -0400
-Message-ID: <4C7F8A80.3050705@RedHat.com>
-Date: Thu, 02 Sep 2010 07:29:04 -0400
-From: Steve Dickson <SteveD@redhat.com>
-To: Neil Brown <neilb@suse.de>
-CC: Jeff Layton <jlayton@redhat.com>, "J. Bruce Fields" <bfields@fieldses.org>,
-        linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] rpc.nfsd: mount up nfsdfs is it doesn't appear to be
- mounted yet (try #2)
-References: <1283283160-30024-1-git-send-email-jlayton@redhat.com>	<20100901204818.GA10507@fieldses.org>	<20100901165605.41f4978d@tlielax.poochiereds.net> <20100902073156.577757b5@notabene>
-In-Reply-To: <20100902073156.577757b5@notabene>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from daytona.panasas.com ([67.152.220.89]:43627 "EHLO
+	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1753457Ab0INKot (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 14 Sep 2010 06:44:49 -0400
+From: Benny Halevy <bhalevy@panasas.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 1/1] SQUASHME: pnfs: clean up layoutcommit_mempool
+Date: Tue, 14 Sep 2010 12:44:47 +0200
+Message-Id: <1284461087-4498-1-git-send-email-bhalevy@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-Hey,
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+---
+ fs/nfs/pnfs.c |   16 +++++++---------
+ 1 files changed, 7 insertions(+), 9 deletions(-)
 
-On 09/01/2010 05:31 PM, Neil Brown wrote:
-> 
-> Hi,
->  I was musing about this and thought I would share my musings - not to be
->  taken too seriously unless they resonate with you.
-> 
->  If rpc.nfsd is mounting /proc/fs/nfsd, should it also be starting rpc.statd,
->  which should be running before nfsd is started?
->  Should it 'exportfs -av' too?
-> 
->  Should mount.nfs be mounting /var/lib/nfs/rpc_pipefs too?
->  It already runs statd as requimred, which in-turn runs sm-notify, though it
->  is really best to run that much earlier.
-> 
->  How far do we really want to go with this "just do the right thing" approach?
-Good point... My original thoughts were just to exit if /proc/fs/nfsd was
-not mounted, which would be the simplest way... But in the name of "things
-just working" I feel having rpc.nfsd trying the mount makes some sense... 
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 61dbc0a..b576470 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -71,7 +71,7 @@ static spinlock_t pnfs_spinlock = __SPIN_LOCK_UNLOCKED(pnfs_spinlock);
+  * pnfs_modules_tbl holds all pnfs modules
+  */
+ static struct list_head	pnfs_modules_tbl;
+-static struct kmem_cache *pnfs_cachep;
++static struct kmem_cache *pnfs_layoutcommit_cachep;
+ static mempool_t *pnfs_layoutcommit_mempool;
+ 
+ static inline struct nfs4_layoutcommit_data *pnfs_layoutcommit_alloc(void)
+@@ -102,18 +102,16 @@ pnfs_initialize(void)
+ {
+ 	INIT_LIST_HEAD(&pnfs_modules_tbl);
+ 
+-	pnfs_cachep = kmem_cache_create("nfs4_layoutcommit_data",
++	pnfs_layoutcommit_cachep = kmem_cache_create("nfs4_layoutcommit_data",
+ 					sizeof(struct nfs4_layoutcommit_data),
+ 					0, SLAB_HWCACHE_ALIGN, NULL);
+-	if (pnfs_cachep == NULL)
++	if (pnfs_layoutcommit_cachep == NULL)
+ 		return -ENOMEM;
+ 
+-	pnfs_layoutcommit_mempool = mempool_create(MIN_POOL_LC,
+-						   mempool_alloc_slab,
+-						   mempool_free_slab,
+-						   pnfs_cachep);
++	pnfs_layoutcommit_mempool = mempool_create_slab_pool(MIN_POOL_LC,
++						pnfs_layoutcommit_cachep);
+ 	if (pnfs_layoutcommit_mempool == NULL) {
+-		kmem_cache_destroy(pnfs_cachep);
++		kmem_cache_destroy(pnfs_layoutcommit_cachep);
+ 		return -ENOMEM;
+ 	}
+ 
+@@ -124,7 +122,7 @@ pnfs_initialize(void)
+ void pnfs_uninitialize(void)
+ {
+ 	mempool_destroy(pnfs_layoutcommit_mempool);
+-	kmem_cache_destroy(pnfs_cachep);
++	kmem_cache_destroy(pnfs_layoutcommit_cachep);
+ }
+ 
+ /* search pnfs_modules_tbl for right pnfs module */
+-- 
+1.7.2.2
 
-> 
->  Should "rpc.nfsd" be a replacement for /etc/init.d/nfs-kernel-server or
->  whatever your favourite distro calls it?  Or should it just be a tool for
->  managing the nfsd threads?
-No and yes.. 
-
-I also see rpc.nfsd becoming the real daemon which will take care of 
-all the upcalls from the kernel. Basically ripping out all the upcall code
-out of rpc.mountd and putting it into rpc.nfsd. That way rpc.mountd will
-not have to run in V4-only environments.
-
-> 
-> 
->  I could imagine that it would be OK to add a '-L' flag to say 'use legacy
->  interface' and have rpc.nfsd fail noisily if nfsdfs wasn't mounted, and -L
->  wasn't given.
-> 
->  I could imagine that if protocol options were specified with -L, that would
->  be an error.
-Hmm... The first thing that comes to my mind is slipper slope... I think
-we just deprecate interface and move on...
-
-> 
->  And if protocol options are specified which differ from what is currently
->  in-force, and there are active threads, rpc.nfsd could:
->     reduce the number of threads to 0
->     change the protocol options
->     restore the number of threads
-> 
-> 
-> 
->  I think it is (long past) time to deprecate the legacy support in the kernel
->  at least.  I suggest we add a printk to sys_nfsservctl to warn of pending
->  deprecation, and probably add an entry to
->  Documentation/feature-removal-schedule.txt.
->  Aim for removing it all in 2.6.40 ?? and make it a CONFIG option before that.
-I second this...
-
-> 
->  BTW, the 'new' cache has was added during 2.5 - definitely before Jan 2003.
->  So the old stuff really is quite old now.
-Wow... it is time...
-
-steved.
