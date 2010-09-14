@@ -1,133 +1,126 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:49117 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932197Ab0I3QTi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 30 Sep 2010 12:19:38 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
+Received: from daytona.panasas.com ([67.152.220.89]:10214 "EHLO
+	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1753652Ab0INKxu (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 14 Sep 2010 06:53:50 -0400
+From: Benny Halevy <bhalevy@panasas.com>
 To: linux-nfs@vger.kernel.org
-Cc: "J. Bruce Fields" <bfields@citi.umich.edu>
-Subject: [PATCH 05/16] nfsd4: use generic callback code in null case
-Date: Thu, 30 Sep 2010 12:19:02 -0400
-Message-Id: <1285863553-8945-6-git-send-email-bfields@redhat.com>
-In-Reply-To: <1285863553-8945-1-git-send-email-bfields@redhat.com>
-References: <1285863553-8945-1-git-send-email-bfields@redhat.com>
+Subject: [PATCH 4/4] SQUASHME: pnfs: get rid of lo_waitq
+Date: Tue, 14 Sep 2010 12:53:51 +0200
+Message-Id: <1284461631-4662-1-git-send-email-bhalevy@panasas.com>
+In-Reply-To: <4C8F53FA.5060308@panasas.com>
+References: <4C8F53FA.5060308@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
 MIME-Version: 1.0
 
-From: J. Bruce Fields <bfields@citi.umich.edu>
+it has no more users at this point.
 
-This will eventually allow us, for example, to kick off null callback
-from contexts where we can't sleep.
+SPLITME: refactor put_lseg{,_locked}
 
-Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 ---
- fs/nfsd/nfs4callback.c |   33 ++++++++++++++++++---------------
- fs/nfsd/nfs4state.c    |    1 +
- fs/nfsd/state.h        |    1 +
- 3 files changed, 20 insertions(+), 15 deletions(-)
+ fs/nfs/inode.c         |    1 -
+ fs/nfs/pnfs.c          |   32 ++++++++++++++------------------
+ include/linux/nfs_fs.h |    1 -
+ 3 files changed, 14 insertions(+), 20 deletions(-)
 
-diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
-index 2289ad5..3b06212 100644
---- a/fs/nfsd/nfs4callback.c
-+++ b/fs/nfsd/nfs4callback.c
-@@ -518,7 +518,7 @@ static void warn_no_callback_path(struct nfs4_client *clp, int reason)
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index 059bdf7..8e5fbb5 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -1461,7 +1461,6 @@ static inline void nfs4_init_once(struct nfs_inode *nfsi)
+ 	nfsi->delegation_state = 0;
+ 	init_rwsem(&nfsi->rwsem);
+ #ifdef CONFIG_NFS_V4_1
+-	init_waitqueue_head(&nfsi->lo_waitq);
+ 	rpc_init_wait_queue(&nfsi->lo_rpcwaitq, "pNFS Layout");
+ 	nfsi->pnfs_layout_suspend = 0;
+ 	nfsi->layout = NULL;
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 0e8bb6f..e6261a3 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -360,7 +360,6 @@ pnfs_layout_release(struct pnfs_layout_hdr *lo,
+ 	 */
+ 	put_layout_locked(lo);
+ 	spin_unlock(&nfsi->vfs_inode.i_lock);
+-	wake_up_all(&nfsi->lo_waitq);
+ }
  
- static void nfsd4_cb_probe_done(struct rpc_task *task, void *calldata)
+ void
+@@ -430,44 +429,41 @@ destroy_lseg(struct kref *kref)
+ 	PNFS_LD_IO_OPS(lseg->layout)->free_lseg(lseg);
+ }
+ 
+-void
+-put_lseg_locked(struct pnfs_layout_segment *lseg)
++static void
++put_lseg_common(struct nfs_inode *nfsi, struct pnfs_layout_segment *lseg)
  {
--	struct nfs4_client *clp = calldata;
-+	struct nfs4_client *clp = container_of(calldata, struct nfs4_client, cl_cb_null);
- 
- 	if (task->tk_status)
- 		warn_no_callback_path(clp, task->tk_status);
-@@ -527,6 +527,8 @@ static void nfsd4_cb_probe_done(struct rpc_task *task, void *calldata)
- }
- 
- static const struct rpc_call_ops nfsd4_cb_probe_ops = {
-+	/* XXX: release method to ensure we set the cb channel down if
-+	 * necessary on early failure? */
- 	.rpc_call_done = nfsd4_cb_probe_done,
- };
- 
-@@ -542,21 +544,23 @@ int set_callback_cred(void)
- 	return 0;
- }
- 
-+static struct workqueue_struct *callback_wq;
- 
- void do_probe_callback(struct nfs4_client *clp)
- {
--	struct rpc_message msg = {
--		.rpc_proc       = &nfs4_cb_procedures[NFSPROC4_CLNT_CB_NULL],
--		.rpc_argp       = clp,
--		.rpc_cred	= callback_cred
--	};
--	int status;
-+	struct nfsd4_callback *cb = &clp->cl_cb_null;
- 
--	status = rpc_call_async(clp->cl_cb_client, &msg,
--				RPC_TASK_SOFT | RPC_TASK_SOFTCONN,
--				&nfsd4_cb_probe_ops, (void *)clp);
--	if (status)
--		warn_no_callback_path(clp, status);
-+	cb->cb_args.args_op = NULL;
-+	cb->cb_args.args_clp = clp;
-+
-+	cb->cb_msg.rpc_proc = &nfs4_cb_procedures[NFSPROC4_CLNT_CB_NULL];
-+	cb->cb_msg.rpc_argp = NULL;
-+	cb->cb_msg.rpc_resp = NULL;
-+	cb->cb_msg.rpc_cred = callback_cred;
-+
-+	cb->cb_ops = &nfsd4_cb_probe_ops;
-+
-+	queue_work(callback_wq, &cb->cb_work);
- }
- 
- /*
-@@ -712,8 +716,6 @@ static const struct rpc_call_ops nfsd4_cb_recall_ops = {
- 	.rpc_release = nfsd4_cb_recall_release,
- };
- 
--static struct workqueue_struct *callback_wq;
+ 	bool do_wake_up;
+-	struct nfs_inode *nfsi;
 -
- int nfsd4_create_callback_queue(void)
- {
- 	callback_wq = create_singlethread_workqueue("nfsd4_callbacks");
-@@ -759,7 +761,8 @@ void nfsd4_do_callback_rpc(struct work_struct *w)
- 		nfsd4_release_cb(cb);
- 		return; /* Client is shutting down; give up. */
- 	}
--	rpc_call_async(clnt, &cb->cb_msg, RPC_TASK_SOFT, cb->cb_ops, cb);
-+	rpc_call_async(clnt, &cb->cb_msg, RPC_TASK_SOFT | RPC_TASK_SOFTCONN,
-+			cb->cb_ops, cb);
+-	if (!lseg)
+-		return;
+ 
+ 	dprintk("%s: lseg %p ref %d valid %d\n", __func__, lseg,
+ 		atomic_read(&lseg->kref.refcount), lseg->valid);
+ 	do_wake_up = !lseg->valid;
+-	nfsi = PNFS_NFS_INODE(lseg->layout);
+ 	kref_put(&lseg->kref, destroy_lseg);
+-	if (do_wake_up) {
+-		wake_up(&nfsi->lo_waitq);
++	if (do_wake_up)
+ 		rpc_wake_up(&nfsi->lo_rpcwaitq);
+-	}
++}
++
++void
++put_lseg_locked(struct pnfs_layout_segment *lseg)
++{
++	if (!lseg)
++		return;
++
++	BUG_ON_UNLOCKED_LO(lseg->layout);
++	put_lseg_common(PNFS_NFS_INODE(lseg->layout), lseg);
  }
  
- void nfsd4_cb_recall(struct nfs4_delegation *dp)
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index d347180..2f464fb 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -978,6 +978,7 @@ static struct nfs4_client *create_client(struct xdr_netobj name, char *recdir,
- 	INIT_LIST_HEAD(&clp->cl_delegations);
- 	INIT_LIST_HEAD(&clp->cl_sessions);
- 	INIT_LIST_HEAD(&clp->cl_lru);
-+	INIT_WORK(&clp->cl_cb_null.cb_work, nfsd4_do_callback_rpc);
- 	clp->cl_time = get_seconds();
- 	clear_bit(0, &clp->cl_cb_slot_busy);
- 	rpc_init_wait_queue(&clp->cl_cb_waitq, "Backchannel slot table");
-diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index 6e59214..19732d5 100644
---- a/fs/nfsd/state.h
-+++ b/fs/nfsd/state.h
-@@ -223,6 +223,7 @@ struct nfs4_client {
- 	struct nfs4_cb_conn	cl_cb_conn;
- 	struct rpc_clnt		*cl_cb_client;
- 	atomic_t		cl_cb_set;
-+	struct nfsd4_callback	cl_cb_null;
+ void
+ put_lseg(struct pnfs_layout_segment *lseg)
+ {
+-	bool do_wake_up;
+ 	struct nfs_inode *nfsi;
  
- 	/* for nfs41 */
- 	struct list_head	cl_sessions;
+ 	if (!lseg)
+ 		return;
+ 
+-	dprintk("%s: lseg %p ref %d valid %d\n", __func__, lseg,
+-		atomic_read(&lseg->kref.refcount), lseg->valid);
+-	do_wake_up = !lseg->valid;
+ 	nfsi = PNFS_NFS_INODE(lseg->layout);
+ 	spin_lock(&nfsi->vfs_inode.i_lock);
+-	kref_put(&lseg->kref, destroy_lseg);
++	put_lseg_common(nfsi, lseg);
+ 	spin_unlock(&nfsi->vfs_inode.i_lock);
+-	if (do_wake_up)
+-		wake_up(&nfsi->lo_waitq);
+ }
+ EXPORT_SYMBOL(put_lseg);
+ 
+diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
+index 196c0c6..745d14e 100644
+--- a/include/linux/nfs_fs.h
++++ b/include/linux/nfs_fs.h
+@@ -212,7 +212,6 @@ struct nfs_inode {
+ 
+ 	/* pNFS layout information */
+ #if defined(CONFIG_NFS_V4_1)
+-	wait_queue_head_t lo_waitq;
+ 	struct rpc_wait_queue lo_rpcwaitq;
+ 	struct pnfs_layout_hdr *layout;
+ 	time_t pnfs_layout_suspend;
 -- 
-1.7.0.4
+1.7.2.2
 
