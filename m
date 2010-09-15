@@ -1,73 +1,110 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.tpi.com ([70.99.223.143]:4625 "EHLO mail.tpi.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751844Ab0IAVLe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 1 Sep 2010 17:11:34 -0400
-Message-ID: <4C7EC17B.6070509@canonical.com>
-Date: Wed, 01 Sep 2010 15:11:23 -0600
-From: Tim Gardner <tim.gardner@canonical.com>
-Reply-To: tim.gardner@canonical.com
-To: Neil Brown <neilb@suse.de>
-CC: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        Trond.Myklebust@netapp.com
-Subject: Re: nfsd deadlock, 2.6.36-rc3
-References: <4C7E73CB.7030603@canonical.com>	<20100901165400.GB1201@fieldses.org> <20100902065551.079e297c@notabene>
-In-Reply-To: <20100902065551.079e297c@notabene>
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Received: from rcsinet10.oracle.com ([148.87.113.121]:63576 "EHLO
+	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753143Ab0IOP26 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 15 Sep 2010 11:28:58 -0400
+Subject: Re: [PATCH 3/8] nfs: eliminate nfs4_rename_arg
+Content-Type: text/plain; charset=us-ascii
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <1284557041-4375-4-git-send-email-jlayton@redhat.com>
+Date: Wed, 15 Sep 2010 11:26:49 -0400
+Cc: trond.myklebust@netapp.com, linux-nfs@vger.kernel.org
+Message-Id: <8432F4C7-B2C0-4CB1-B3AA-63444ED6BF8E@oracle.com>
+References: <1284557041-4375-1-git-send-email-jlayton@redhat.com> <1284557041-4375-4-git-send-email-jlayton@redhat.com>
+To: Jeff Layton <jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 09/01/2010 02:55 PM, Neil Brown wrote:
-> On Wed, 1 Sep 2010 12:54:01 -0400
-> "J. Bruce Fields"<bfields@fieldses.org>  wrote:
->
->> On Wed, Sep 01, 2010 at 09:39:55AM -0600, Tim Gardner wrote:
->>> I've been pursuing a simple reproducer for an NFS lockup that shows
->>> up under stress. There is a bunch of info (some of it extraneous) in
->>> http://bugs.launchpad.net/bugs/561210. I can reproduce it by writing
->>> loop mounted NFS exports:
->>>
->>> /etc/fstab: 127.0.0.1:/srv /mnt/srv nfs rw 0 2
->>> /etc/exports: /srv 127.0.0.1(rw,insecure,no_subtree_check)
->>>
->>> See the attached scripts test_master.sh and test_client.sh. I simply
->>> repeat './test_master.sh wait' until nfsd locks up, typically within
->>> 1-3 cycles, e.g.,
->>
->> Without looking at the dmesg and scripts carefully to confirm, one
->> possible explanation is a deadlock when the server can't allocate memory
->> required to service client requests, memory which the client itself
->> needs to free by writing back dirty pages, but can't because the server
->> isn't processing its writes.
->
-> Having looked closely I'd say it is almost certainly this issue.
-> nfsd thread 1266 is in zone_reclaim waiting on a page to be written out so
-> the memory can be reused.
-> The other nfsd threads are blocking on a mutex held by 1266.
-> The dd processes are waiting for pages to be written to the server
->
-> The particular page that 1266 is waiting on is almost certainly a page on an
-> NFS file, so you have a cyclic deadlock.
->
->>
->> For that reason we just don't support loopback mounts--they're OK for
->> light testing, but it would be difficult to make them completely robust
->> under load.
->
-> I wonder if we could use 'containers' to partition available memory between
-> 'nfsd threads' and 'everything else'??  Probably not worth the effort.
->
-> NeilBrown
->
 
-I'm currently working with my support folks to reproduce this using the 
-exact same configuration as the customer, e.g., an NFS server (running 
-as a guest on a VMWare ESX host) serving multiple gigabit clients.
+On Sep 15, 2010, at 9:23 AM, Jeff Layton wrote:
 
-I assume that is a reasonable scenario?
+> Add the missing fields to nfs_renameargs and drop nfs4_rename_arg
+> 
+> Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> ---
+> fs/nfs/nfs4proc.c       |    2 +-
+> fs/nfs/nfs4xdr.c        |    2 +-
+> include/linux/nfs_xdr.h |   19 ++++++-------------
+> 3 files changed, 8 insertions(+), 15 deletions(-)
+> 
+> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+> index 089da5b..eb36784 100644
+> --- a/fs/nfs/nfs4proc.c
+> +++ b/fs/nfs/nfs4proc.c
+> @@ -2675,7 +2675,7 @@ static int _nfs4_proc_rename(struct inode *old_dir, struct qstr *old_name,
+> 		struct inode *new_dir, struct qstr *new_name)
+> {
+> 	struct nfs_server *server = NFS_SERVER(old_dir);
+> -	struct nfs4_rename_arg arg = {
+> +	struct nfs_renameargs arg = {
+> 		.old_dir = NFS_FH(old_dir),
+> 		.new_dir = NFS_FH(new_dir),
+> 		.old_name = old_name,
+> diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+> index 08ef912..7a098ae 100644
+> --- a/fs/nfs/nfs4xdr.c
+> +++ b/fs/nfs/nfs4xdr.c
+> @@ -1823,7 +1823,7 @@ static int nfs4_xdr_enc_remove(struct rpc_rqst *req, __be32 *p, const struct nfs
+> /*
+>  * Encode RENAME request
+>  */
+> -static int nfs4_xdr_enc_rename(struct rpc_rqst *req, __be32 *p, const struct nfs4_rename_arg *args)
+> +static int nfs4_xdr_enc_rename(struct rpc_rqst *req, __be32 *p, const struct nfs_renameargs *args)
+> {
+> 	struct xdr_stream xdr;
+> 	struct compound_hdr hdr = {
+> diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+> index 5436680..60fa509 100644
+> --- a/include/linux/nfs_xdr.h
+> +++ b/include/linux/nfs_xdr.h
+> @@ -403,10 +403,12 @@ struct nfs_removeres {
+>  * Common arguments to the rename call
+>  */
+> struct nfs_renameargs {
+> -	const struct nfs_fh *	old_dir;
+> -	const struct nfs_fh *	new_dir;
+> -	const struct qstr *	old_name;
+> -	const struct qstr *	new_name;
+> +	const struct nfs_fh *		old_dir;
+> +	const struct nfs_fh *		new_dir;
+> +	const struct qstr *		old_name;
+> +	const struct qstr *		new_name;
+> +	const u32 *			bitmask;
+> +	struct nfs4_sequence_args	seq_args;
 
-rtg
+Should these new fields be gated by CONFIG_NFS_V4 ?
+
+> };
+> 
+> /*
+> @@ -793,15 +795,6 @@ struct nfs4_readlink_res {
+> 	struct nfs4_sequence_res	seq_res;
+> };
+> 
+> -struct nfs4_rename_arg {
+> -	const struct nfs_fh *		old_dir;
+> -	const struct nfs_fh *		new_dir;
+> -	const struct qstr *		old_name;
+> -	const struct qstr *		new_name;
+> -	const u32 *			bitmask;
+> -	struct nfs4_sequence_args	seq_args;
+> -};
+> -
+> struct nfs4_rename_res {
+> 	const struct nfs_server *	server;
+> 	struct nfs4_change_info		old_cinfo;
+> -- 
+> 1.7.1
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
 -- 
-Tim Gardner tim.gardner@canonical.com
+chuck[dot]lever[at]oracle[dot]com
+
+
+
+
