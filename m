@@ -1,43 +1,51 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:38128 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753026Ab0I3RXu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 30 Sep 2010 13:23:50 -0400
-Date: Thu, 30 Sep 2010 13:23:37 -0400
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: Chuck Lever <chuck.lever@oracle.com>,
-        Bryan Schumaker <bjschuma@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        SteveD@redhat.com
-Subject: Re: [PATCH] nfs-utils: Add nfs.upcall for idmapper
-Message-ID: <20100930172336.GA9385@fieldses.org>
-References: <4CA39681.3000104@netapp.com>
- <1285798396.3557.18.camel@heimdal.trondhjem.org>
- <4CA48CEF.9060600@netapp.com>
- <59CA8CDE-0A68-4F99-BB09-804D24452148@oracle.com>
- <1285866437.14635.27.camel@heimdal.trondhjem.org>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1285866437.14635.27.camel@heimdal.trondhjem.org>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+Received: from seldrel01.sonyericsson.com ([212.209.106.2]:7724 "EHLO
+	seldrel01.sonyericsson.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752724Ab0IOMyd convert rfc822-to-8bit
+	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 15 Sep 2010 08:54:33 -0400
+From: "Assarsson, Emil" <Emil.Assarsson@sonyericsson.com>
+To: "'linux-nfs@vger.kernel.org'" <linux-nfs@vger.kernel.org>
+Date: Wed, 15 Sep 2010 14:44:31 +0200
+Subject: NFSv4 with Winbind: successfull mount but no user access
+Message-ID: <2BF070A7A2375D46BA1B6087F8D5DCB678B5D18A01@seldmbx01.corpusers.net>
+Content-Type: text/plain; charset="us-ascii"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Thu, Sep 30, 2010 at 01:07:17PM -0400, Trond Myklebust wrote:
-> On Thu, 2010-09-30 at 11:42 -0400, Chuck Lever wrote:
-> > Finally, if at all possible, it would be better if the kernel could automatically recognize and use nfs.upcall rather than the legacy idmapping mechanism.  My experience with CONFIG options is that people will almost always choose the wrong setting no matter how many large neon arrows you add.  I know there are likely some technical challenges here.
-> 
-> I don't think that is easy to do. The keyring upcall mechanism will
-> almost always succeed, no matter whether or not there is a handler for
-> the type of key requested. Instead, it will result in a negative lookup.
-> Unfortunately, seeing a negative key isn't sufficient to determine that
-> no handler exists.
+Hi all,
 
-If we could just find out whether there's an executable at the right
-path, that would be enough to catch most misconfigurations.  Would it be
-hard to get back at least that much information?
+I'm currently trying to iron out a procedure how to setup NFSv4 with Winbind.
 
-I'm inclined to agree with Chuck that this is a likely trap for the
-unwary....
+We use a setup with:
+Ubuntu Lucid (10.04)
+Windows A 2003
+Winbind
 
---b.
+I have successfully configured NFSv4 with MIT KRB5 KDC but with AD there is still some problems...
+
+By default rpc.gssd tries to login with a principal name like host/client01.test.net. The AD KDC rejects this and tells me that it does not exist. It seems to me that AD makes a difference between userPrincipalName and servicePrincipalName when an AS-REQ is done. The userPrincipalName on my client is CLIENT01\$ and I can kinit with this name.
+
+rpc.gssd have an "-n" option that allows me to do a kinit before I start this daemon:
+# kinit -Rk CLIENT01\$
+# rpc.gssd -n
+I can mount (krb5i) with this setup and I can get access to the share 
+*** But only if I use the same Kerberos machine credentials ***
+I have tried to get any useful information with Wireshark and verbose logging, but all seems to be successful (KRB and NFS packages); The user gets an access denied message.
+
+I have two theories about this:
+1. Rpc.gssd with the -n option behaves different and I need to make it use the correct keytab by modifying the code (maybe with a new option like "-P CLIENT\$@TEST.NET").
+2. Rpc.svcgssd needs to be extended in the same way with an -n option
+
+Does this seem likely? 
+
+
+Best regards
+
+Emil Assarsson
+Sony Ericsson Mobile Communications AB
+
+"The information in this email, and attachment(s) thereto, is strictly confidential and may be legally privileged. It is intended solely for the named recipient(s), and access to this e-mail, or any attachment(s) thereto, by anyone else is unauthorized. Violations hereof may result in legal actions. Any attachment(s) to this e-mail has been checked for viruses, but please rely on your own virus-checker and procedures. If you contact us by e-mail, we will store your name and address to facilitate communications in the matter concerned. If you do not consent to us storing your name and address for above stated purpose, please notify the sender promptly. Also, if you are not the intended recipient please inform the sender by replying to this transmission, and delete the e-mail, its attachment(s), and any copies of it without, disclosing it."
+
+
