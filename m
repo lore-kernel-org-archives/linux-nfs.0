@@ -1,59 +1,114 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:25987 "EHLO
-	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753836Ab0ICPC0 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 3 Sep 2010 11:02:26 -0400
-Subject: Re: [PATCH 1/1] mount: RDMA processing in the mount command is broken
-Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <4C801F67.50604@RedHat.com>
-Date: Fri, 3 Sep 2010 11:01:12 -0400
-Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Message-Id: <E8DF9F75-7AFE-48C8-B659-90E73EC4F502@oracle.com>
-References: <1283457651-12010-1-git-send-email-steved@redhat.com> <E401A220-AAD8-42F1-AE81-3B1EEF209428@oracle.com> <4C801F67.50604@RedHat.com>
-To: Steve Dickson <SteveD@redhat.com>
+Received: from smtp-out-3.desy.de ([131.169.56.86]:38407 "EHLO
+	smtp-out-3.desy.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752546Ab0IONWc (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 15 Sep 2010 09:22:32 -0400
+Received: from smtp-map-3.desy.de (smtp-map-3.desy.de [131.169.56.68])
+	by smtp-out-3.desy.de (DESY_OUT_3) with ESMTP id F26EE10DA
+	for <linux-nfs@vger.kernel.org>; Wed, 15 Sep 2010 15:22:30 +0200 (MEST)
+Received: from adserv71.win.desy.de (adserv71.win.desy.de [131.169.97.57])
+	by smtp-map-3.desy.de (DESY_MAP_3) with ESMTP id EB42410AC
+	for <linux-nfs@vger.kernel.org>; Wed, 15 Sep 2010 15:22:30 +0200 (MEST)
+Received: from smtp-intra-2.desy.de (lb-40-253-floating.desy.de) by adserv71.win.desy.de
+ (Clearswift SMTPRS 5.3.4) with ESMTP id <T9822662e8583a96139166c@adserv71.win.desy.de> for <linux-nfs@vger.kernel.org>;
+ Wed, 15 Sep 2010 15:22:30 +0200
+Received: from [131.169.185.68] (anahit.desy.de [131.169.185.68])
+	by smtp-intra-2.desy.de (DESY-INTRA-2) with ESMTP id 65043C8E
+	for <linux-nfs@vger.kernel.org>; Wed, 15 Sep 2010 15:22:30 +0200 (MEST)
+Message-ID: <4C90C872.7080100@desy.de>
+Date: Wed, 15 Sep 2010 15:21:54 +0200
+From: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+To: linux-nfs@vger.kernel.org
+Subject: kernel panic
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
 
-On Sep 2, 2010, at 6:04 PM, Steve Dickson wrote:
+This is pnfs-all-latest git fa5a03da84b02026396be0736288b3f4a8143ff2
+$ uname -a
+Linux anahit 2.6.35-pnfs-2 #22 SMP Fri Aug 27 17:47:27 CEST 2010 x86_64 
+x86_64 x86_64 GNU/Linux
+$
 
-> 
-> 
-> On 09/02/2010 04:35 PM, Chuck Lever wrote:
->> 
->> On Sep 2, 2010, at 4:00 PM, Steve Dickson wrote:
->> 
->>> The mounting code that process RMDA mounts is broken in a few places
->>> 
->>> First with '-o proto=rdma' was broken because nfs_get_proto()
->>> did not how to convert a netid of 'rdma' in to a AF_INET
->>> address family.
->>> 
->>> Secondly, '-o rdma' was broken because po_get() was being using
->>> to detect the existence of 'rdma' in the options. With '-o rdma'
->>> there is no value associated with that option so po_get()
->>> was always return NULL.
->> 
->> Looking at nfs(5), "rdma" as a stand-alone option isn't documented.  Only "proto=rdma" appears to be mentioned.  Thus I would argue that this is already behaving correctly.
->> 
->> Are you proposing to add support for "-o rdma" ?  If so what would that mean?
-> See Documentation/filesystems/nfs/nfs-rdma.txt
-> 
-> I see no problem in handing this same why we handle 'udp' and 'tcp'
+On server restart:
 
-I used nfs(5) as the specification for the text-based option parsing support in the mount.nfs command, since that's generally what administrators and packagers look to when trying to figure out how to use mount.
+[624967.868286] BUG: unable to handle kernel NULL pointer dereference at 
+(null)
+[624967.868291] IP: [<ffffffffa0492f42>] nfs41_sequence_done+0x52/0x2e0 
+[nfs]
+[624967.868312] PGD 0
+[624967.868315] Oops: 0002 [#1] SMP
+[624967.868317] last sysfs file: 
+/sys/devices/pci0000:00/0000:00:1a.7/usb1/1-5/1-5:1.0/host8/target8:0:0/8:0:0:0/block/sdb/sdb1/stat
+[624967.868321] CPU 0
+[624967.868322] Modules linked in: nfs_layout_nfsv41_files snd_pcm_oss 
+snd_mixer_oss snd_seq edd rpcsec_gss_krb5 vboxnetadp vboxnetflt nfs 
+lockd fscache nfs_acl auth_rpcgss sunrpc vboxdrv cpufreq_conservative 
+cpufreq_userspace cpufreq_powersave acpi_cpufreq mperf fuse loop dm_mod 
+snd_hda_codec_idt snd_usb_audio snd_hda_intel snd_hda_codec snd_hwdep 
+iTCO_wdt snd_pcm sr_mod snd_timer iTCO_vendor_support snd_usbmidi_lib sg 
+cdrom pcspkr serio_raw snd_rawmidi snd_seq_device ohci1394 ieee1394 
+i2c_i801 button snd microcode e1000e snd_page_alloc ext4 jbd2 crc16 fan 
+processor ide_pci_generic ide_core ata_generic pata_marvell thermal 
+thermal_sys
+[624967.868363]
+[624967.868366] Pid: 2267, comm: rpciod/0 Tainted: G          I 
+2.6.35-pnfs-2 #22 DX38BT/pczW1007
+[624967.868368] RIP: 0010:[<ffffffffa0492f42>]  [<ffffffffa0492f42>] 
+nfs41_sequence_done+0x52/0x2e0 [nfs]
+[624967.868382] RSP: 0018:ffff880107e8dda0  EFLAGS: 00010246
+[624967.868384] RAX: 0000000000000000 RBX: ffff88012d28ca98 RCX: 
+0000000000000000
+[624967.868386] RDX: 0000000000000000 RSI: ffff88012d28ca98 RDI: 
+ffff880107c9e180
+[624967.868388] RBP: ffff880107e8ddc0 R08: 0000000000000000 R09: 
+0000000000000000
+[624967.868391] R10: 0000000000000000 R11: 00000000ffffffff R12: 
+ffff880107c9e180
+[624967.868393] R13: 0000000000000001 R14: 0000000000000000 R15: 
+ffff880116802300
+[624967.868396] FS:  0000000000000000(0000) GS:ffff880001a00000(0000) 
+knlGS:0000000000000000
+[624967.868398] CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
+[624967.868400] CR2: 0000000000000000 CR3: 00000000015c8000 CR4: 
+00000000000406f0
+[624967.868403] DR0: 0000000000000000 DR1: 0000000000000000 DR2: 
+0000000000000000
+[624967.868405] DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 
+0000000000000400
+[624967.868408] Process rpciod/0 (pid: 2267, threadinfo 
+ffff880107e8c000, task ffff880116802300)
+[624967.868410] Stack:
+[624967.868411]  0000000000012300 ffff880107c9e180 ffff880022c5a000 
+0000000000000001
+[624967.868415] <0> ffff880107e8dde0 ffffffffa04934d0 ffff880107c9e180 
+ffff880107c9e1f0
+[624967.868419] <0> ffff880107e8de00 ffffffffa040ab17 0000000000000001 
+ffff880107c9e180
+[624967.868423] Call Trace:
+[624967.868435]  [<ffffffffa04934d0>] 
+nfs41_sequence_call_done+0x20/0x100 [nfs]
+[624967.868447]  [<ffffffffa040ab17>] rpc_exit_task+0x27/0x60 [sunrpc]
+[624967.868457]  [<ffffffffa040b322>] __rpc_execute+0xa2/0x290 [sunrpc]
+[624967.868466]  [<ffffffffa040b510>] ? rpc_async_schedule+0x0/0x20 [sunrpc]
+[624967.868475]  [<ffffffffa040b520>] rpc_async_schedule+0x10/0x20 [sunrpc]
+[624967.868481]  [<ffffffff81059fed>] worker_thread+0x12d/0x1f0
+[624967.868485]  [<ffffffff8105e530>] ? autoremove_wake_function+0x0/0x40
+[624967.868488]  [<ffffffff81059ec0>] ? worker_thread+0x0/0x1f0
+[624967.868491]  [<ffffffff8105e08e>] kthread+0x8e/0xa0
+[624967.868495]  [<ffffffff81003b54>] kernel_thread_helper+0x4/0x10
+[624967.868498]  [<ffffffff8105e000>] ? kthread+0x0/0xa0
+[624967.868501]  [<ffffffff81003b50>] ? kernel_thread_helper+0x0/0x10
+[624967.868503] Code: 08 80 fa 80 74 73 48 8b 0b 0f b6 c2 48 c1 e0 02 48 
+03 41 60 8b 4b 0c 81 f9 e8 d8 ff ff 0f 84 26 01 00 00 85 c9 0f 85 fe 00 
+00 00 <83> 00 01 48 8b 03 4c 8b 6b 10 4c 8b a0 38 02 00 00 49 8d bc 24
+[624967.868532] RIP  [<ffffffffa0492f42>] nfs41_sequence_done+0x52/0x2e0 
+[nfs]
+[624967.868544]  RSP <ffff880107e8dda0>
+[624967.868546] CR2: 0000000000000000
+[624967.868548] ---[ end trace a7919e7f17c0a727 ]---
 
-I don't see any evidence in utils/mount/* that a stand-alone "rdma" option was ever supported.  The kernel documentation could be wrong, or could be based on the kernel's mount option parser, which does support a stand-alone "rdma" mount option.  So, my opinion is that, today, mount.nfs is not misbehaving by rejecting the "rdma" mount option.  This is not a bug, it's working as designed.
 
-To add an "rdma" mount option, therefore, is really introducing a new feature to mount.nfs.  So, I think such a patch needs appropriate changes to user documentation, and this mode of invoking rdma needs testing, since clearly no-one noticed it was missing until now.
-
-As with the rpc.nfsd changes, these mount option changes are two logically distinct but related changes that belong in separate patches.
-
--- 
-chuck[dot]lever[at]oracle[dot]com
-
-
-
-
+Tigran.
