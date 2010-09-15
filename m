@@ -1,49 +1,77 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:51133 "EHLO
-	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753205Ab0I2Vts convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 29 Sep 2010 17:49:48 -0400
-Subject: Re: [PATCH v3 0/9] sunrpc: Create sockets in namespaces
-Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20100929214527.GC26180@fieldses.org>
-Date: Wed, 29 Sep 2010 17:49:31 -0400
-Cc: Pavel Emelyanov <xemul@parallels.com>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        linux-nfs@vger.kernel.org
-Message-Id: <0678928F-3DE0-4AB9-8CD9-7BDA3A362A20@oracle.com>
-References: <4CA32AB4.2090808@parallels.com> <20100929214527.GC26180@fieldses.org>
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Received: from mx1.redhat.com ([209.132.183.28]:1025 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753392Ab0IOPFR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 15 Sep 2010 11:05:17 -0400
+Date: Wed, 15 Sep 2010 11:04:44 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 8/8] nfs: make sillyrename an async operation
+Message-ID: <20100915110444.2c5f5419@corrin.poochiereds.net>
+In-Reply-To: <20100915093721.45ed71b3@corrin.poochiereds.net>
+References: <1284557041-4375-1-git-send-email-jlayton@redhat.com>
+	<1284557041-4375-9-git-send-email-jlayton@redhat.com>
+	<20100915093721.45ed71b3@corrin.poochiereds.net>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+On Wed, 15 Sep 2010 09:37:21 -0400
+Jeff Layton <jlayton@redhat.com> wrote:
 
-On Sep 29, 2010, at 5:45 PM, J. Bruce Fields wrote:
-
-> On Wed, Sep 29, 2010 at 04:01:56PM +0400, Pavel Emelyanov wrote:
->> v3 changes:
->> Moved the generic xprt alloc/free code to xprt.c.
->> Got David's ack on the 8th patch :)
->> 
->> v2 changes:
->> Fixed comments from Chuck and Trond.
->> Added one patch, that factors out rpc_xprt allocation as well.
->> 
->> v1:
->> This set implements pulling the net * argument down to the existing
->> sock_create_kern calls in the sunrpc layer and creating the sockets
->> in the given net.
+> On Wed, 15 Sep 2010 09:24:01 -0400
+> Jeff Layton <jlayton@redhat.com> wrote:
 > 
-> Shall I commit this to my for-2.6.37 tree?  Objections?
+> > +/**
+> > + * nfs_async_rename - perform an asynchronous rename operation
+> > + * @old_dir: directory that currently holds the dentry to be renamed
+> > + * @new_dir: target directory for the rename
+> > + * @old_dentry: original dentry to be renamed
+> > + * @new_dentry: dentry to which the old_dentry should be renamed
+> > + */
+> > +static struct rpc_task *
+> > +nfs_async_rename(struct inode *old_dir, struct inode *new_dir,
+> > +		 struct dentry *old_dentry, struct dentry *new_dentry)
+> > +{
+> > +	int error;
+> > +	struct nfs_renamedata *data;
+> > +	struct rpc_message msg = { };
+> > +	struct rpc_task_setup task_setup_data = {
+> > +		.rpc_message = &msg,
+> > +		.callback_ops = &nfs_rename_ops,
+> > +		.workqueue = nfsiod_workqueue,
+> > +		.rpc_client = NFS_CLIENT(old_dir),
+> > +		.flags = RPC_TASK_ASYNC,
+> > +	};
+> > +	struct rpc_task *task;
+> > +
+> > +	data = kzalloc(sizeof(*data), GFP_KERNEL);
+> > +	if (data == NULL)
+> > +		return ERR_PTR(-ENOMEM);
+> > +	task_setup_data.callback_data = data,
+> > +
+> > +	data->cred = rpc_lookup_cred();
+> > +	if (IS_ERR(data->cred)) {
+> > +		kfree(data);
+> > +		return (struct rpc_task *)data->cred;
+> > +	}
+> > +	msg.rpc_argp = &data->args,
+> > +	msg.rpc_resp = &data->res,
+> 				^^^
+> Eek! Just noticed the commas at the EOL in this patch. Not quite sure
+> how this compiled, but I'll fix, retest and resend. Review of the rest
+> of the patch would be appreciated though.
+> 
 
-I think it looks OK.
+Ahh, false alarm. It's legit if a little weird:
 
-But I was wondering if there were any other changes needed for the RDMA transport capability, or had we decided that would happen at a latter point, or that changes are entirely unneeded (are namespaces already supported in the IB stack)?
+    http://en.wikipedia.org/wiki/Comma_operator
 
+Regardless, I've done some other cleanups too so I'll resend the set
+after I retest it.
+
+Sorry for the noise...
 -- 
-chuck[dot]lever[at]oracle[dot]com
-
-
-
-
+Jeff Layton <jlayton@redhat.com>
