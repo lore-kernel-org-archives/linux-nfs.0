@@ -1,81 +1,85 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:61631 "EHLO
-	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1755985Ab0I3TwX (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 30 Sep 2010 15:52:23 -0400
-Message-ID: <4CA4EA74.8070701@panasas.com>
-Date: Thu, 30 Sep 2010 21:52:20 +0200
-From: Benny Halevy <bhalevy@panasas.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: pnfs-all-latest client crash
-References: <20100921164211.GK26473@fieldses.org> <4C98FCC3.50803@panasas.com> <20100921190108.GA4385@fieldses.org> <4CA4ABED.7080706@panasas.com> <20100930152944.GA6598@fieldses.org> <4CA4ADFA.2090807@panasas.com> <20100930154350.GB6598@fieldses.org>
-In-Reply-To: <20100930154350.GB6598@fieldses.org>
+Received: from mailhub.sw.ru ([195.214.232.25]:20983 "EHLO relay.sw.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752923Ab0IONEy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 15 Sep 2010 09:04:54 -0400
+Message-ID: <4C90BB53.2060401@parallels.com>
+Date: Wed, 15 Sep 2010 16:25:55 +0400
+From: Pavel Emelyanov <xemul@parallels.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>, Neil Brown <neilb@suse.de>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        linux-nfs@vger.kernel.org
+Subject: [PATCH 3/9] sunrpc: Pass xprt to cached get/put routines
+References: <4C90BADB.10700@parallels.com>
+In-Reply-To: <4C90BADB.10700@parallels.com>
 Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 2010-09-30 17:43, J. Bruce Fields wrote:
-> On Thu, Sep 30, 2010 at 05:34:18PM +0200, Benny Halevy wrote:
->> On 2010-09-30 17:29, J. Bruce Fields wrote:
->>> On Thu, Sep 30, 2010 at 05:25:33PM +0200, Benny Halevy wrote:
->>>> On 2010-09-21 21:01, J. Bruce Fields wrote:
->>>>> On Tue, Sep 21, 2010 at 08:43:15PM +0200, Benny Halevy wrote:
->>>>>> On 2010-09-21 18:42, J. Bruce Fields wrote:
->>>>>>> I get the following on pnfs-all-latest, while doing a non-pnfs 4.1 mount.
->>>>>>
->>>>>> Bruce, can you please provide you .config file?
->>>>>> >From the registers value it's possible the calldata is used
->>>>>> after free...
->>>>>
->>>>> Yep.  I ran a 'make oldconfig' on the appended and built from that.
->>>>>
->>>>> We've seen poisoning in trond's latest for-next as well.  Which I don't
->>>>> think you're including.  But I'll add linux-nfs to the cc for that.
->>>>>
->>>>> --b.
->>>>>
->>>>> #
->>>>> # Automatically generated make config: don't edit
->>>>> # Linux kernel version: 2.6.36-rc4
->>>>> # Wed Sep 15 14:57:18 2010
->>>>> #
->>> ...
->>>>> # CONFIG_INPUT_TABL
->>>>
->>>> Looks like the message got truncated :-(
->>>
->>> Huh.  Sorry about that!
->>
->> And I presume you config all pNFS options as 'N', right?
-> 
-> I'm just running make oldconfig over that.  Unless the pnfs patches are
-> defaulting those options to 'Y', then yes, that must be what it's
-> doing....
-> 
-> --b.
+They do not require the rqst actually and having the xprt simplifies
+further patching.
 
-That's really odd.
+Signed-off-by: Pavel Emelyanov <xemul@openvz.org>
 
-with your .config and !CONFIG_PNFSD
-and with no modules configured
-though with modules enabled:
-CONFIG_MODULES=y
-# CONFIG_MODULE_FORCE_LOAD is not set
-CONFIG_MODULE_UNLOAD=y
-# CONFIG_MODULE_FORCE_UNLOAD is not set
-# CONFIG_MODVERSIONS is not set
-# CONFIG_MODULE_SRCVERSION_ALL is not set
+---
+ net/sunrpc/svcauth_unix.c |   12 +++++-------
+ 1 files changed, 5 insertions(+), 7 deletions(-)
 
-when turning on rpc debugging I see the server rejecting
-I believe the EXCHANGE_ID RPC on BADCRED:
+diff --git a/net/sunrpc/svcauth_unix.c b/net/sunrpc/svcauth_unix.c
+index aef0feb..f0017ca 100644
+--- a/net/sunrpc/svcauth_unix.c
++++ b/net/sunrpc/svcauth_unix.c
+@@ -426,10 +426,9 @@ void svcauth_unix_purge(void)
+ EXPORT_SYMBOL_GPL(svcauth_unix_purge);
+ 
+ static inline struct ip_map *
+-ip_map_cached_get(struct svc_rqst *rqstp)
++ip_map_cached_get(struct svc_xprt *xprt)
+ {
+ 	struct ip_map *ipm = NULL;
+-	struct svc_xprt *xprt = rqstp->rq_xprt;
+ 
+ 	if (test_bit(XPT_CACHE_AUTH, &xprt->xpt_flags)) {
+ 		spin_lock(&xprt->xpt_lock);
+@@ -454,10 +453,8 @@ ip_map_cached_get(struct svc_rqst *rqstp)
+ }
+ 
+ static inline void
+-ip_map_cached_put(struct svc_rqst *rqstp, struct ip_map *ipm)
++ip_map_cached_put(struct svc_xprt *xprt, struct ip_map *ipm)
+ {
+-	struct svc_xprt *xprt = rqstp->rq_xprt;
+-
+ 	if (test_bit(XPT_CACHE_AUTH, &xprt->xpt_flags)) {
+ 		spin_lock(&xprt->xpt_lock);
+ 		if (xprt->xpt_auth_cache == NULL) {
+@@ -705,6 +702,7 @@ svcauth_unix_set_client(struct svc_rqst *rqstp)
+ 	struct ip_map *ipm;
+ 	struct group_info *gi;
+ 	struct svc_cred *cred = &rqstp->rq_cred;
++	struct svc_xprt *xprt = rqstp->rq_xprt;
+ 
+ 	switch (rqstp->rq_addr.ss_family) {
+ 	case AF_INET:
+@@ -723,7 +721,7 @@ svcauth_unix_set_client(struct svc_rqst *rqstp)
+ 	if (rqstp->rq_proc == 0)
+ 		return SVC_OK;
+ 
+-	ipm = ip_map_cached_get(rqstp);
++	ipm = ip_map_cached_get(xprt);
+ 	if (ipm == NULL)
+ 		ipm = ip_map_lookup(rqstp->rq_server->sv_program->pg_class,
+ 				    &sin6->sin6_addr);
+@@ -742,7 +740,7 @@ svcauth_unix_set_client(struct svc_rqst *rqstp)
+ 		case 0:
+ 			rqstp->rq_client = &ipm->m_client->h;
+ 			kref_get(&rqstp->rq_client->ref);
+-			ip_map_cached_put(rqstp, ipm);
++			ip_map_cached_put(xprt, ipm);
+ 			break;
+ 	}
+ 
+-- 
+1.5.5.6
 
-svc: svc_authenticate (1)
-svc: authentication failed (1)
-
-I see this also over NFSv4.0...
-
-Is this what you're seeing too?
-
-Benny
