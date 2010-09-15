@@ -1,46 +1,113 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:45687 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:11335 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751786Ab0ITQOx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 20 Sep 2010 12:14:53 -0400
-Date: Mon, 20 Sep 2010 12:13:26 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Pavel Emelyanov <xemul@parallels.com>
-Cc: Neil Brown <neilb@suse.de>, Trond Myklebust <Trond.Myklebust@netapp.com>,
-        linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 0/9] sunrpc: Start making sunrpc work in containers
-Message-ID: <20100920161326.GL4580@fieldses.org>
-References: <4C90BADB.10700@parallels.com>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4C90BADB.10700@parallels.com>
+	id S1753113Ab0IONYE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 15 Sep 2010 09:24:04 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH 1/8] nfs: eliminate nfs3_renameargs
+Date: Wed, 15 Sep 2010 09:23:54 -0400
+Message-Id: <1284557041-4375-2-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1284557041-4375-1-git-send-email-jlayton@redhat.com>
+References: <1284557041-4375-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Wed, Sep 15, 2010 at 04:23:55PM +0400, Pavel Emelyanov wrote:
-> Hello everyone!
-> 
-> I would like to prepare the sunrpc layer for working in a containerized
-> environments. The ultimate goal is to make both nfs client and server
-> work in containers. Hopefully you won't object :)
+It's exactly the same as nfs_renameargs, so move it to the area of the
+header where protocol-neutral defintions live and eliminate the v3
+specific variant.
 
-Neat, thanks.
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/nfs/nfs3proc.c       |    2 +-
+ fs/nfs/nfs3xdr.c        |    2 +-
+ include/linux/nfs_xdr.h |   30 ++++++++++++------------------
+ 3 files changed, 14 insertions(+), 20 deletions(-)
 
-> Not to look like an idle talker I've prepared this set which makes the
-> /proc/net/rpc appear in net namespaces and made the ip_map_cache be per-net.
-> 
-> I do not have any plans about when this patches appear at Linus tree and
-> thus do not know which git tree to hack on. That said I prepared the patches
-> against the net-next tree (I have some custom netns debugging code in it
-> and don't want to port it around in vain).
-> 
-> Looking forward to your feedback.
+diff --git a/fs/nfs/nfs3proc.c b/fs/nfs/nfs3proc.c
+index fabb4f2..b53b1a9 100644
+--- a/fs/nfs/nfs3proc.c
++++ b/fs/nfs/nfs3proc.c
+@@ -442,7 +442,7 @@ static int
+ nfs3_proc_rename(struct inode *old_dir, struct qstr *old_name,
+ 		 struct inode *new_dir, struct qstr *new_name)
+ {
+-	struct nfs3_renameargs	arg = {
++	struct nfs_renameargs	arg = {
+ 		.fromfh		= NFS_FH(old_dir),
+ 		.fromname	= old_name->name,
+ 		.fromlen	= old_name->len,
+diff --git a/fs/nfs/nfs3xdr.c b/fs/nfs/nfs3xdr.c
+index 9769704..d6506f8 100644
+--- a/fs/nfs/nfs3xdr.c
++++ b/fs/nfs/nfs3xdr.c
+@@ -442,7 +442,7 @@ nfs3_xdr_mknodargs(struct rpc_rqst *req, __be32 *p, struct nfs3_mknodargs *args)
+  * Encode RENAME arguments
+  */
+ static int
+-nfs3_xdr_renameargs(struct rpc_rqst *req, __be32 *p, struct nfs3_renameargs *args)
++nfs3_xdr_renameargs(struct rpc_rqst *req, __be32 *p, struct nfs_renameargs *args)
+ {
+ 	p = xdr_encode_fhandle(p, args->fromfh);
+ 	p = xdr_encode_array(p, args->fromname, args->fromlen);
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index fc46192..c606f60 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -400,6 +400,18 @@ struct nfs_removeres {
+ };
+ 
+ /*
++ * Common arguments to the rename call
++ */
++struct nfs_renameargs {
++	struct nfs_fh *		fromfh;
++	const char *		fromname;
++	unsigned int		fromlen;
++	struct nfs_fh *		tofh;
++	const char *		toname;
++	unsigned int		tolen;
++};
++
++/*
+  * Argument struct for decode_entry function
+  */
+ struct nfs_entry {
+@@ -434,15 +446,6 @@ struct nfs_createargs {
+ 	struct iattr *		sattr;
+ };
+ 
+-struct nfs_renameargs {
+-	struct nfs_fh *		fromfh;
+-	const char *		fromname;
+-	unsigned int		fromlen;
+-	struct nfs_fh *		tofh;
+-	const char *		toname;
+-	unsigned int		tolen;
+-};
+-
+ struct nfs_setattrargs {
+ 	struct nfs_fh *                 fh;
+ 	nfs4_stateid                    stateid;
+@@ -586,15 +589,6 @@ struct nfs3_mknodargs {
+ 	dev_t			rdev;
+ };
+ 
+-struct nfs3_renameargs {
+-	struct nfs_fh *		fromfh;
+-	const char *		fromname;
+-	unsigned int		fromlen;
+-	struct nfs_fh *		tofh;
+-	const char *		toname;
+-	unsigned int		tolen;
+-};
+-
+ struct nfs3_linkargs {
+ 	struct nfs_fh *		fromfh;
+ 	struct nfs_fh *		tofh;
+-- 
+1.7.1
 
-What are you thinking of as a use-case for this?
-
-I think it would be useful to able to run what appear to be multiple NFS
-servers on a single host; and for that, we would want to vary more than
-just the ip_map_cache.  The export-related caches (nfsd.fh and
-nfsd.export), at least.
-
---b.
