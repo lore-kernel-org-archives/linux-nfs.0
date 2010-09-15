@@ -1,108 +1,220 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:58313 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:32722 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932481Ab0IGUDu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 7 Sep 2010 16:03:50 -0400
-Received: from [10.58.61.36] (panchal1-lxp.hq.netapp.com [10.58.61.36] (may be forged))
-	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id o87K3nYM027358
-	for <linux-nfs@vger.kernel.org>; Tue, 7 Sep 2010 13:03:49 -0700 (PDT)
-Message-ID: <4C869AA5.60909@netapp.com>
-Date: Tue, 07 Sep 2010 16:03:49 -0400
-From: Bryan Schumaker <bjschuma@netapp.com>
-To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: [PATCH 4/6] NFS: re-add readdir plus
-Content-Type: text/plain; charset=ISO-8859-1
+	id S1751789Ab0IOWbV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 15 Sep 2010 18:31:21 -0400
+Date: Wed, 15 Sep 2010 18:31:10 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: Steve Dickson <SteveD@redhat.com>
+Cc: linux-nfs@vger.kernel.org, bfields@fieldses.org, neilb@suse.de
+Subject: Re: [PATCH] rpc.nfsd: mount up nfsdfs is it doesn't appear to be
+ mounted yet (try #2)
+Message-ID: <20100915183110.7d075052@tlielax.poochiereds.net>
+In-Reply-To: <4C9127DE.8050003@RedHat.com>
+References: <1283283160-30024-1-git-send-email-jlayton@redhat.com>
+	<20100914092304.74c8aa34@corrin.poochiereds.net>
+	<4C9127DE.8050003@RedHat.com>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-NFS: re-add readdir plus
+On Wed, 15 Sep 2010 16:09:02 -0400
+Steve Dickson <SteveD@redhat.com> wrote:
 
-This patch adds readdir plus support to the cache array.
+> On 09/14/2010 09:23 AM, Jeff Layton wrote:
+> > On Tue, 31 Aug 2010 15:32:40 -0400
+> > Jeff Layton <jlayton@redhat.com> wrote:
+> > 
+> > Hi Steve,
+> > 
+> > It's been a couple of weeks and this latest patch hasn't been committed...
+> > 
+> > IIRC, you wanted changes to the xlog messages and were going to send an
+> > alternate patch. I'd like to see this in the next release of nfs-utils.
+> > What do we need to do to move this to resolution?
+> Sorry for taking so long to get to this..  
+> 
+> What I was thinking is to simply make the error messages more definitive 
+> as to what the problem is and how to fix it.. Logging that we are 
+> falling back to the legacy probably would not mean much to mere 
+> mortals... IMHO... 
+> 
+> I still think at some point nfsd should fail to start up, but logging
+> an error message at this point is fine..
+> 
+> Comments?
+> 
+> steved.
+> 
+> commit 8a78cb2e651d55fc1aaacf1e4ca9c009d1cf9113
+> Author: Jeff Layton <jlayton@redhat.com>
+> Date:   Wed Sep 15 15:54:36 2010 -0400
+> 
+>     rpc.nfsd: mount up nfsdfs is it doesn't appear to be mounted yet (try #3)
+>     
+>     There's a bit of a chicken and egg problem when nfsd is run the first
+>     time. On Fedora/RHEL at least, /proc/fs/nfsd is mounted up whenever nfsd
+>     is plugged in via a modprobe.conf "install" directive.
+>     
+>     If someone runs rpc.nfsd without plugging in nfsd.ko first,
+>     /proc/fs/nfsd won't be mounted and rpc.nfsd will end up using the legacy
+>     nfsctl interface. After that, nfsd will be plugged in and subsequent
+>     rpc.nfsd invocations will use that instead.
+>     
+>     This is a problem as some nfsd command-line options are ignored when the
+>     legacy interface is used. It'll also be a problem for people who want
+>     IPv6 enabled servers. The upshot is that we really don't want to use the
+>     legacy interface unless there is no other option.
+>     
+>     To avoid this situation, have rpc.nfsd check to see if the "threads"
+>     file is already present. If it's not, then make an attempt to mount
+>     /proc/fs/nfsd.  This is a "best-effort" sort of thing, however so we
+>     just ignore the return code from the mount attempt and fall back to
+>     using nfsctl() if it fails.
+>     
+>     Signed-off-by: Steve Dickson <steved@redhat.com>
+> 
+> diff --git a/utils/nfsd/nfsd.c b/utils/nfsd/nfsd.c
+> index 1cda1e5..658b8fa 100644
+> --- a/utils/nfsd/nfsd.c
+> +++ b/utils/nfsd/nfsd.c
+> @@ -246,6 +246,9 @@ main(int argc, char **argv)
+>  		exit(1);
+>  	}
+>  
+> +	/* make sure nfsdfs is mounted if it's available */
+> +	nfssvc_mount_nfsdfs(progname);
+> +
+>  	/* can only change number of threads if nfsd is already up */
+>  	if (nfssvc_inuse()) {
+>  		socket_up = 1;
+> diff --git a/utils/nfsd/nfssvc.c b/utils/nfsd/nfssvc.c
+> index 34c67ca..f7edcba 100644
+> --- a/utils/nfsd/nfssvc.c
+> +++ b/utils/nfsd/nfssvc.c
+> @@ -15,9 +15,11 @@
+>  #include <netdb.h>
+>  #include <netinet/in.h>
+>  #include <arpa/inet.h>
+> +#include <sys/stat.h>
+>  #include <unistd.h>
+>  #include <fcntl.h>
+>  #include <errno.h>
+> +#include <stdlib.h>
+>  
+>  #include "nfslib.h"
+>  #include "xlog.h"
+> @@ -31,9 +33,13 @@
+>   */
+>  #undef IPV6_SUPPORTED
+>  
+> -#define NFSD_PORTS_FILE     "/proc/fs/nfsd/portlist"
+> -#define NFSD_VERS_FILE    "/proc/fs/nfsd/versions"
+> -#define NFSD_THREAD_FILE  "/proc/fs/nfsd/threads"
+> +#ifndef NFSD_FS_DIR
+> +#define NFSD_FS_DIR	  "/proc/fs/nfsd"
+> +#endif
+> +
+> +#define NFSD_PORTS_FILE   NFSD_FS_DIR "/portlist"
+> +#define NFSD_VERS_FILE    NFSD_FS_DIR "/versions"
+> +#define NFSD_THREAD_FILE  NFSD_FS_DIR "/threads"
+>  
+>  /*
+>   * declaring a common static scratch buffer here keeps us from having to
+> @@ -44,6 +50,45 @@
+>  char buf[128];
+>  
+>  /*
+> + * Using the "new" interfaces for nfsd requires that /proc/fs/nfsd is
+> + * actually mounted. Make an attempt to mount it here if it doesn't appear
+> + * to be. If the mount attempt fails, no big deal -- fall back to using nfsctl
+> + * instead.
+> + */
+> +void
+> +nfssvc_mount_nfsdfs(char *progname)
+> +{
+> +	int err;
+> +	struct stat statbuf;
+> +
+> +	err = stat(NFSD_THREAD_FILE, &statbuf);
+> +	if (err == 0)
+> +		return;
+> +	else if (errno != ENOENT) {
+> +		xlog(L_ERROR, "Unable to stat %s: errno %d (%m)",
+> +				NFSD_THREAD_FILE, errno);
+> +		return;
+> +	}
+> +
+> +	/*
+> +	 * this call can return an error if modprobe is set up to automatically
+> +	 * mount nfsdfs when nfsd.ko is plugged in. So, ignore the return
+> +	 * code from it and just check for the "threads" file afterward.
+> +	 */
+> +	system("/bin/mount -t nfsd nfsd " NFSD_FS_DIR " >/dev/null 2>&1");
+> +
+> +	err = stat(NFSD_THREAD_FILE, &statbuf);
+> +	if (err == 0)
+> +		return;
+> +
+> +	xlog(L_ERROR, "Unable to access " NFSD_FS_DIR " errno %d (%m)." 
+> +		"\nPlease try, as root, 'mount -t nfsd nfsd " NFSD_FS_DIR 
+> +		"' and then restart %s to correct the problem", errno, progname);
+> +
 
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
----
-diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index 87f74bb..6971946 100644
---- a/fs/nfs/dir.c
-+++ b/fs/nfs/dir.c
-@@ -321,6 +321,70 @@ int xdr_decode(nfs_readdir_descriptor_t *desc, struct nfs_entry *entry, __be32 *
- 	return 0;
- }
- 
-+static inline
-+int nfs_same_file(struct dentry *dentry, struct nfs_entry *entry)
-+{
-+	struct nfs_inode *node;
-+	if (dentry->d_inode == NULL)
-+		goto different;
-+	node = NFS_I(dentry->d_inode);
-+	if (node->fh.size != entry->fh->size)
-+		goto different;
-+	if (strncmp(node->fh.data, entry->fh->data, node->fh.size) != 0)
-+		goto different;
-+	return 1;
-+different:
-+	return 0;
-+}
-+
-+static
-+void nfs_prime_dcache(struct dentry *parent, struct nfs_entry *entry)
-+{
-+	struct qstr filename = nfs_readdir_make_qstr(entry->name, entry->len);
-+	struct dentry *dentry = NULL;
-+	struct dentry *alias = NULL;
-+	struct inode *dir = parent->d_inode;
-+	struct inode *inode;
-+
-+	if (filename.len == 1 && filename.name[0] == '.')
-+		dentry = dget(parent);
-+	else if (filename.len == 2 && filename.name[0] == '.'
-+				   && filename.name[1] == '.')
-+		dentry = dget_parent(parent);
-+	else
-+		dentry = d_lookup(parent, &filename);
-+
-+	if (dentry != NULL) {
-+		if (nfs_same_file(dentry, entry)) {
-+			nfs_refresh_inode(dentry->d_inode, entry->fattr);
-+			goto out;
-+		} else {
-+			d_drop(dentry);
-+			dput(dentry);
-+		}
-+	}
-+
-+	dentry = d_alloc(parent, &filename);
-+	dentry->d_op = NFS_PROTO(dir)->dentry_ops;
-+	inode = nfs_fhget(dentry->d_sb, entry->fh, entry->fattr);
-+	if (IS_ERR(inode))
-+		goto out;
-+
-+	alias = d_materialise_unique(dentry, inode);
-+	if (IS_ERR(alias))
-+		goto out;
-+	else if (alias) {
-+		nfs_set_verifier(alias, nfs_save_change_attribute(dir));
-+		dput(alias);
-+	} else
-+		nfs_set_verifier(dentry, nfs_save_change_attribute(dir));
-+
-+out:
-+	dput(dentry);
-+	kfree(filename.name);
-+	return;
-+}
-+
- /* Perform conversion from xdr to cache array */
- static inline
- void nfs_readdir_page_filler(nfs_readdir_descriptor_t *desc, struct nfs_entry *entry,
-@@ -330,6 +394,8 @@ void nfs_readdir_page_filler(nfs_readdir_descriptor_t *desc, struct nfs_entry *e
- 	while (xdr_decode(desc, entry, &ptr) == 0) {
- 		if (nfs_readdir_add_to_array(entry, page) == -1)
- 			break;
-+		if (desc->plus == 1)
-+			nfs_prime_dcache(desc->file->f_path.dentry, entry);
- 	}
- 	kunmap(xdr_page);
- }
+A few of problems with that log message...
+
+First, it looks like something failed, but nfsd will probably end up
+getting started anyway. We recommend starting nfsd to correct the
+problem, but it's not clear what the problem actually is. nfsd got
+started right?
+
+Second, it says to restart nfsd to correct the problem, but restarting
+nfsd isn't exactly straightforward (you need to run "nfsd 0" and then
+nfsd <some positive int>).
+
+Third, there could be other problems than just the fact that nfsdfs
+didn't get mounted. Maybe there was some weird SELinux permissions
+problem? In that case, trying to mount nfsdfs won't help anything and
+that message will just confuse the issue.
+
+I think it's going to be really difficult to explain the problem and
+solution in a terse xlog message. My expectation was mainly that we
+should pop up a message to give the user a heads up that "something" is
+wrong. I think it's tough to offer specific solutions in such a message
+though.
+
+
+> +	return;
+> +}
+> +
+> +/*
+>   * Are there already sockets configured? If not, then it is safe to try to
+>   * open some and pass them through.
+>   *
+> diff --git a/utils/nfsd/nfssvc.h b/utils/nfsd/nfssvc.h
+> index 0c69bd6..1a01cec 100644
+> --- a/utils/nfsd/nfssvc.h
+> +++ b/utils/nfsd/nfssvc.h
+> @@ -20,6 +20,7 @@
+>   *
+>   */
+>  
+> +void	nfssvc_mount_nfsdfs(char *progname);
+>  int	nfssvc_inuse(void);
+>  int	nfssvc_set_sockets(const int family, const unsigned int protobits,
+>  			   const char *host, const char *port);
+> 
+> 
+> 
+> 
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+
+
+-- 
+Jeff Layton <jlayton@redhat.com>
