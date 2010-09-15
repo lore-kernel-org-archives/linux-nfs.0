@@ -1,49 +1,80 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:23750 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:42769 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754147Ab0IRLJg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 18 Sep 2010 07:09:36 -0400
-Date: Sat, 18 Sep 2010 07:09:32 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Sachin Prabhu <sprabhu@redhat.com>, linux-nfs <linux-nfs@vger.kernel.org>
-Subject: Re: Should we be aggressively invalidating cache when using
- -onolock?
-Message-ID: <20100918070932.1c1bb700@corrin.poochiereds.net>
-In-Reply-To: <20100917174644.GD25515@fieldses.org>
-References: <1103741.22.1284726314119.JavaMail.sprabhu@dhcp-1-233.fab.redhat.com>
-	<29790688.25.1284726394683.JavaMail.sprabhu@dhcp-1-233.fab.redhat.com>
-	<20100917174644.GD25515@fieldses.org>
-Content-Type: text/plain; charset=US-ASCII
+	id S1754398Ab0IOSB6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 15 Sep 2010 14:01:58 -0400
+Date: Wed, 15 Sep 2010 14:00:47 -0400
+To: "Tayade, Nilesh" <Nilesh.Tayade@netscout.com>
+Cc: Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org
+Subject: Re: NFS : filehandle to filename mappings.
+Message-ID: <20100915180047.GA23147@fieldses.org>
+References: <D3F292ADF945FB49B35E96C94C2061B90D35B46C@nsmail.netscout.com>
+ <0D214280-7942-470B-B736-5299619A41E3@oracle.com>
+ <D3F292ADF945FB49B35E96C94C2061B90D35BB4D@nsmail.netscout.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <D3F292ADF945FB49B35E96C94C2061B90D35BB4D@nsmail.netscout.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Fri, 17 Sep 2010 13:46:44 -0400
-"J. Bruce Fields" <bfields@fieldses.org> wrote:
-
-> On Fri, Sep 17, 2010 at 08:26:39AM -0400, Sachin Prabhu wrote:
-> > We came across an issue where the performance of an application using flocks on RHEL 4(2.6.9 kernel) was far better when compared to the performance of the same application on RHEL 5(2.6.18 kernel). The nfs client behavior when performing flocks on RHEL 4 and RHEL 5 differ. To ensure we had a level playing field, we repeated the tests using the mount option -o nolock. 
+On Wed, Sep 15, 2010 at 02:35:43AM -0400, Tayade, Nilesh wrote:
+> > -----Original Message-----
+> > From: Chuck Lever [mailto:chuck.lever@oracle.com]
+> > Sent: Tuesday, September 14, 2010 8:50 PM
+> > To: Tayade, Nilesh
+> > Cc: linux-nfs@vger.kernel.org
+> > Subject: Re: NFS : filehandle to filename mappings.
 > > 
-> > The performance on RHEL 5 improved slightly but was still pretty bad when compared to performance on RHEL 4. On closer observation, it was seen that there are a large number of READ requests on RHEL 5 while on RHEL 4 there were hardly any. This difference in behavior was caused by the code which invalidates the cache in the do_setlk() function and results in the RHEL 5 client performing a large number of READ requests.
 > > 
-> > In this case, the files were only being accessed by one client. This is why the nolock mount option was used. When running such workloads, the aggressive invalidation of the cache is unnecessary. This patch improves the performance in such a scenario.
+> > On Sep 14, 2010, at 8:10 AM, Tayade, Nilesh wrote:
+> > 
 > 
-> Makes sense to me.
+> > >
+> > > Could someone please provide some information on how it gets the
+> > file
+> > > name in some of the packets (i.e. related to LOOKUP, WRITE etc.)?
+> > Does
+> > > it refer the lookup table at NFS server side and fills-in the name
+> > in
+> > > response?
+> > 
+> > Some NFS operations include a filename.  LOOKUP includes a filename
+> > because it is the premier way to convert a filename + directory to a
+> > file handle.  By and large, though, the NFS protocol deals in file
+> > handles, so that's what you will see in most NFS wire operations.
+> > 
+> > If you want to see the filename associated with a file handle,
+> > you'll need to manage a table of mappings based on what has gone by
+> > on the wire.  This is, for example, what wireshark does for it's NFS
+> > protocol display.  NFS clients cache this information as well.
 > 
+> Thanks for the response. So filename-filehandle mapping extraction seems
+> implementation dependent.
 
-Agreed. This is potentially a huge performance win for some workloads.
+Keep in mind also that unlink, link, and rename mean that the mapping is
+many-to-one and changes over time.
 
-> (Is it possible that somebody might depend on lock/unlock to keep their
-> meaning of "invalidate cache/flush changes" even when they don't care
-> bout checking for inter-client lock conflicts?  That sounds like an odd
-> use case to me.)
+--b.
+
 > 
-
-Aye, there's the rub. It might cause anyone doing this to regress. My
-gut feeling is that those people are a minority if any exist at all.
-The consequences of such a change for them could be pretty ugly but I'm
-not sure we owe them any consistency guarantees in such a case.
-
--- 
-Jeff Layton <jlayton@redhat.com>
+> > 
+> > I recommend Brent Callaghan's seminal reference "NFS Illustrated"
+> > for a full overview of NFS operation.
+> > 
+> > 
+> > http://www.pearsonhighered.com/educator/academic/product/0,,02013257
+> > 05,00%2Ben-USS_01DBC.html?type=ABI
+> 
+> Thanks. I shall take a look.
+> 
+> > 
+> > --
+> > Chuck Lever
+> > chuck[dot]lever[at]oracle[dot]com
+> > 
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
