@@ -1,148 +1,93 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:50703 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:40686 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751143Ab0IGXEN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 7 Sep 2010 19:04:13 -0400
-Date: Tue, 7 Sep 2010 19:03:24 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Trond Myklebust <trond@netapp.com>
+	id S1753218Ab0IONYZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 15 Sep 2010 09:24:25 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: trond.myklebust@netapp.com
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH] SUNRPC: cleanup state-machine ordering
-Message-ID: <20100907230323.GC24707@fieldses.org>
-References: <20100828170953.GB5104@fieldses.org>
- <20100830175728.GA18764@fieldses.org>
- <20100907050142.GA14584@fieldses.org>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20100907050142.GA14584@fieldses.org>
+Subject: [PATCH 3/8] nfs: eliminate nfs4_rename_arg
+Date: Wed, 15 Sep 2010 09:23:56 -0400
+Message-Id: <1284557041-4375-4-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1284557041-4375-1-git-send-email-jlayton@redhat.com>
+References: <1284557041-4375-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-From: J. Bruce Fields <bfields@redhat.com>
+Add the missing fields to nfs_renameargs and drop nfs4_rename_arg
 
-This is just a minor cleanup: net/sunrpc/clnt.c clarifies the rpc client
-state machine by commenting each state and by laying out the functions
-implementing each state in the order that each state is normally
-executed (in the absence of errors).
-
-The previous patch "Fix null dereference in call_allocate" changed the
-order of the states.  Move the functions and update the comments to
-reflect the change.
-
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
 ---
- net/sunrpc/clnt.c |   84 ++++++++++++++++++++++++++--------------------------
- 1 files changed, 42 insertions(+), 42 deletions(-)
+ fs/nfs/nfs4proc.c       |    2 +-
+ fs/nfs/nfs4xdr.c        |    2 +-
+ include/linux/nfs_xdr.h |   19 ++++++-------------
+ 3 files changed, 8 insertions(+), 15 deletions(-)
 
-On Tue, Sep 07, 2010 at 01:01:42AM -0400, J. Bruce Fields wrote:
-> If this is actually the right approach, then we should probably also
-> reorder these functions and fix the comments to reflect the new
-> state-machine order.
-
-Here you go.  Trivial cut-and-paste, but compile-tested only.--b.
-
-diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index 657aac6..68e653f 100644
---- a/net/sunrpc/clnt.c
-+++ b/net/sunrpc/clnt.c
-@@ -966,7 +966,48 @@ call_reserveresult(struct rpc_task *task)
- }
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 089da5b..eb36784 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -2675,7 +2675,7 @@ static int _nfs4_proc_rename(struct inode *old_dir, struct qstr *old_name,
+ 		struct inode *new_dir, struct qstr *new_name)
+ {
+ 	struct nfs_server *server = NFS_SERVER(old_dir);
+-	struct nfs4_rename_arg arg = {
++	struct nfs_renameargs arg = {
+ 		.old_dir = NFS_FH(old_dir),
+ 		.new_dir = NFS_FH(new_dir),
+ 		.old_name = old_name,
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index 08ef912..7a098ae 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -1823,7 +1823,7 @@ static int nfs4_xdr_enc_remove(struct rpc_rqst *req, __be32 *p, const struct nfs
+ /*
+  * Encode RENAME request
+  */
+-static int nfs4_xdr_enc_rename(struct rpc_rqst *req, __be32 *p, const struct nfs4_rename_arg *args)
++static int nfs4_xdr_enc_rename(struct rpc_rqst *req, __be32 *p, const struct nfs_renameargs *args)
+ {
+ 	struct xdr_stream xdr;
+ 	struct compound_hdr hdr = {
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index 5436680..60fa509 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -403,10 +403,12 @@ struct nfs_removeres {
+  * Common arguments to the rename call
+  */
+ struct nfs_renameargs {
+-	const struct nfs_fh *	old_dir;
+-	const struct nfs_fh *	new_dir;
+-	const struct qstr *	old_name;
+-	const struct qstr *	new_name;
++	const struct nfs_fh *		old_dir;
++	const struct nfs_fh *		new_dir;
++	const struct qstr *		old_name;
++	const struct qstr *		new_name;
++	const u32 *			bitmask;
++	struct nfs4_sequence_args	seq_args;
+ };
  
  /*
-- * 2.	Allocate the buffer. For details, see sched.c:rpc_malloc.
-+ * 2.	Bind and/or refresh the credentials
-+ */
-+static void
-+call_refresh(struct rpc_task *task)
-+{
-+	dprint_status(task);
-+
-+	task->tk_action = call_refreshresult;
-+	task->tk_status = 0;
-+	task->tk_client->cl_stats->rpcauthrefresh++;
-+	rpcauth_refreshcred(task);
-+}
-+
-+/*
-+ * 2a.	Process the results of a credential refresh
-+ */
-+static void
-+call_refreshresult(struct rpc_task *task)
-+{
-+	int status = task->tk_status;
-+
-+	dprint_status(task);
-+
-+	task->tk_status = 0;
-+	task->tk_action = call_allocate;
-+	if (status >= 0 && rpcauth_uptodatecred(task))
-+		return;
-+	switch (status) {
-+	case -EACCES:
-+		rpc_exit(task, -EACCES);
-+		return;
-+	case -ENOMEM:
-+		rpc_exit(task, -ENOMEM);
-+		return;
-+	case -ETIMEDOUT:
-+		rpc_delay(task, 3*HZ);
-+	}
-+	task->tk_action = call_refresh;
-+}
-+
-+/*
-+ * 2b.	Allocate the buffer. For details, see sched.c:rpc_malloc.
-  *	(Note: buffer memory is freed in xprt_release).
-  */
- static void
-@@ -1017,47 +1058,6 @@ call_allocate(struct rpc_task *task)
- 	rpc_exit(task, -ERESTARTSYS);
- }
+@@ -793,15 +795,6 @@ struct nfs4_readlink_res {
+ 	struct nfs4_sequence_res	seq_res;
+ };
  
--/*
-- * 2a.	Bind and/or refresh the credentials
-- */
--static void
--call_refresh(struct rpc_task *task)
--{
--	dprint_status(task);
+-struct nfs4_rename_arg {
+-	const struct nfs_fh *		old_dir;
+-	const struct nfs_fh *		new_dir;
+-	const struct qstr *		old_name;
+-	const struct qstr *		new_name;
+-	const u32 *			bitmask;
+-	struct nfs4_sequence_args	seq_args;
+-};
 -
--	task->tk_action = call_refreshresult;
--	task->tk_status = 0;
--	task->tk_client->cl_stats->rpcauthrefresh++;
--	rpcauth_refreshcred(task);
--}
--
--/*
-- * 2b.	Process the results of a credential refresh
-- */
--static void
--call_refreshresult(struct rpc_task *task)
--{
--	int status = task->tk_status;
--
--	dprint_status(task);
--
--	task->tk_status = 0;
--	task->tk_action = call_allocate;
--	if (status >= 0 && rpcauth_uptodatecred(task))
--		return;
--	switch (status) {
--	case -EACCES:
--		rpc_exit(task, -EACCES);
--		return;
--	case -ENOMEM:
--		rpc_exit(task, -ENOMEM);
--		return;
--	case -ETIMEDOUT:
--		rpc_delay(task, 3*HZ);
--	}
--	task->tk_action = call_refresh;
--}
--
- static inline int
- rpc_task_need_encode(struct rpc_task *task)
- {
+ struct nfs4_rename_res {
+ 	const struct nfs_server *	server;
+ 	struct nfs4_change_info		old_cinfo;
 -- 
-1.7.0.4
+1.7.1
 
