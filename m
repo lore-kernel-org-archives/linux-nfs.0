@@ -1,285 +1,92 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:40164 "EHLO
-	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1751725Ab0IMLU7 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Sep 2010 07:20:59 -0400
-Message-ID: <4C8E0918.4060003@panasas.com>
-Date: Mon, 13 Sep 2010 13:20:56 +0200
-From: Benny Halevy <bhalevy@panasas.com>
+Received: from rcsinet10.oracle.com ([148.87.113.121]:62381 "EHLO
+	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752833Ab0IOQvS convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 15 Sep 2010 12:51:18 -0400
+Subject: Re: [PATCH 3/8] nfs: eliminate nfs4_rename_arg
+Content-Type: text/plain; charset=us-ascii
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <1284569125.2816.6.camel@heimdal.trondhjem.org>
+Date: Wed, 15 Sep 2010 12:50:58 -0400
+Cc: Jeff Layton <jlayton@redhat.com>, linux-nfs@vger.kernel.org
+Message-Id: <212577D9-1F9D-476F-A017-0E0A2E55F62E@oracle.com>
+References: <1284557041-4375-1-git-send-email-jlayton@redhat.com> <1284557041-4375-4-git-send-email-jlayton@redhat.com> <8432F4C7-B2C0-4CB1-B3AA-63444ED6BF8E@oracle.com> <1284569125.2816.6.camel@heimdal.trondhjem.org>
 To: Trond Myklebust <Trond.Myklebust@netapp.com>
-CC: Fred Isaman <iisaman@netapp.com>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 07/13] RFC: pnfs: full mount/umount infrastructure
-References: <1283450419-5648-1-git-send-email-iisaman@netapp.com>	 <1283450419-5648-8-git-send-email-iisaman@netapp.com> <1284146604.10062.68.camel@heimdal.trondhjem.org>
-In-Reply-To: <1284146604.10062.68.camel@heimdal.trondhjem.org>
-Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 2010-09-10 22:23, Trond Myklebust wrote:
-> On Thu, 2010-09-02 at 14:00 -0400, Fred Isaman wrote:
->> From: The pNFS Team <linux-nfs@vger.kernel.org>
->>
->> Allow a module implementing a layout type to register, and
->> have its mount/umount routines called for filesystems that
->> the server declares support it.
->>
->> Signed-off-by: TBD - melding/reorganization of several patches
->> ---
->>  Documentation/filesystems/nfs/00-INDEX |    2 +
->>  Documentation/filesystems/nfs/pnfs.txt |   48 +++++++++++++++++++
->>  fs/nfs/Kconfig                         |    2 +-
->>  fs/nfs/pnfs.c                          |   79 +++++++++++++++++++++++++++++++-
->>  fs/nfs/pnfs.h                          |   14 ++++++
->>  5 files changed, 142 insertions(+), 3 deletions(-)
->>  create mode 100644 Documentation/filesystems/nfs/pnfs.txt
->>
->> diff --git a/Documentation/filesystems/nfs/00-INDEX b/Documentation/filesystems/nfs/00-INDEX
->> index 2f68cd6..8d930b9 100644
->> --- a/Documentation/filesystems/nfs/00-INDEX
->> +++ b/Documentation/filesystems/nfs/00-INDEX
->> @@ -12,5 +12,7 @@ nfs-rdma.txt
->>  	- how to install and setup the Linux NFS/RDMA client and server software
->>  nfsroot.txt
->>  	- short guide on setting up a diskless box with NFS root filesystem.
->> +pnfs.txt
->> +	- short explanation of some of the internals of the pnfs code
->>  rpc-cache.txt
->>  	- introduction to the caching mechanisms in the sunrpc layer.
->> diff --git a/Documentation/filesystems/nfs/pnfs.txt b/Documentation/filesystems/nfs/pnfs.txt
->> new file mode 100644
->> index 0000000..bc0b9cf
->> --- /dev/null
->> +++ b/Documentation/filesystems/nfs/pnfs.txt
->> @@ -0,0 +1,48 @@
->> +Reference counting in pnfs:
->> +==========================
->> +
->> +The are several inter-related caches.  We have layouts which can
->> +reference multiple devices, each of which can reference multiple data servers.
->> +Each data server can be referenced by multiple devices.  Each device
->> +can be referenced by multiple layouts.  To keep all of this straight,
->> +we need to reference count.
->> +
->> +
->> +struct pnfs_layout_hdr
->> +----------------------
->> +The on-the-wire command LAYOUTGET corresponds to struct
->> +pnfs_layout_segment, usually referred to by the variable name lseg.
->> +Each nfs_inode may hold a pointer to a cache of of these layout
->> +segments in nfsi->layout, of type struct pnfs_layout_hdr.
->> +
->> +We reference the header for the inode pointing to it, across each
->> +outstanding RPC call that references it (LAYOUTGET, LAYOUTRETURN,
->> +LAYOUTCOMMIT), and for each lseg held within.
->> +
->> +Each header is also (when non-empty) put on a list associated with
->> +struct nfs_client (cl_layouts).  Being put on this list does not bump
->> +the reference count, as the layout is kept around by the lseg that
->> +keeps it in the list.
->> +
->> +deviceid_cache
->> +--------------
->> +lsegs reference device ids, which are resolved per nfs_client and
->> +layout driver type.  The device ids are held in a RCU cache (struct
->> +nfs4_deviceid_cache).  The cache itself is referenced across each
->> +mount.  The entries (struct nfs4_deviceid) themselves are held across
->> +the lifetime of each lseg referencing them.
->> +
->> +RCU is used because the deviceid is basically a write once, read many
->> +data structure.  The hlist size of 32 buckets needs better
->> +justification, but seems reasonable given that we can have multiple
->> +deviceid's per filesystem, and multiple filesystems per nfs_client.
->> +
->> +The hash code is copied from the nfsd code base.  A discussion of
->> +hashing and variations of this algorithm can be found at:
->> +http://groups.google.com/group/comp.lang.c/browse_thread/thread/9522965e2b8d3809
->> +
->> +data server cache
->> +-----------------
->> +file driver devices refer to data servers, which are kept in a module
->> +level cache.  Its reference is held over the lifetime of the deviceid
->> +pointing to it.
->> diff --git a/fs/nfs/Kconfig b/fs/nfs/Kconfig
->> index 6c2aad4..5f1b936 100644
->> --- a/fs/nfs/Kconfig
->> +++ b/fs/nfs/Kconfig
->> @@ -78,7 +78,7 @@ config NFS_V4_1
->>  	depends on NFS_V4 && EXPERIMENTAL
->>  	help
->>  	  This option enables support for minor version 1 of the NFSv4 protocol
->> -	  (draft-ietf-nfsv4-minorversion1) in the kernel's NFS client.
->> +	  (RFC 5661) in the kernel's NFS client.
->>  
->>  	  If unsure, say N.
->>  
->> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
->> index 2e5dba1..8d503fc 100644
->> --- a/fs/nfs/pnfs.c
->> +++ b/fs/nfs/pnfs.c
->> @@ -32,16 +32,48 @@
->>  
->>  #define NFSDBG_FACILITY		NFSDBG_PNFS
->>  
->> -/* STUB that returns the equivalent of "no module found" */
->> +/* Locking:
->> + *
->> + * pnfs_spinlock:
->> + *      protects pnfs_modules_tbl.
->> + */
->> +static DEFINE_SPINLOCK(pnfs_spinlock);
->> +
->> +/*
->> + * pnfs_modules_tbl holds all pnfs modules
->> + */
->> +static LIST_HEAD(pnfs_modules_tbl);
->> +
->> +/* Return the registered pnfs layout driver module matching given id */
->> +static struct pnfs_layoutdriver_type *
->> +find_pnfs_driver_locked(u32 id) {
->> +	struct  pnfs_layoutdriver_type *local;
->> +
->> +	dprintk("PNFS: %s: Searching for %u\n", __func__, id);
->> +	list_for_each_entry(local, &pnfs_modules_tbl, pnfs_tblid)
->> +		if (local->id == id)
->> +			goto out;
->> +	local = NULL;
->> +out:
->> +	return local;
->> +}
->> +
->>  static struct pnfs_layoutdriver_type *
->>  find_pnfs_driver(u32 id) {
->> -	return NULL;
->> +	struct  pnfs_layoutdriver_type *local;
->> +
->> +	spin_lock(&pnfs_spinlock);
->> +	local = find_pnfs_driver_locked(id);
-> 
-> Don't you want some kind of reference count on this? I'd assume that you
-> probably need a module_get() with a corresponding module_put() when you
-> are done using the layoutdriver.
-> 
->> +	spin_unlock(&pnfs_spinlock);
->> +	return local;
->>  }
->>  
->>  /* Unitialize a mountpoint in a layout driver */
->>  void
->>  unset_pnfs_layoutdriver(struct nfs_server *nfss)
->>  {
->> +	if (nfss->pnfs_curr_ld)
->> +		nfss->pnfs_curr_ld->ld_io_ops->uninitialize_mountpoint(nfss->nfs_client);
-> 
-> That 'uninitialize_mountpoint' name doesn't make any sense. The
-> nfs_client parameter isn't associated to a particular mountpoint.
-> 
 
-We call these methods upon creating and destroying the nfs_server,
-respectively. Later on, in the post-submit world, we change this parameter
-to a struct nfs_server * for the blocks layout driver.
-The motivation is to issue GETDEVICELIST at mount time.
+On Sep 15, 2010, at 12:45 PM, Trond Myklebust wrote:
 
-For the file layout at its present state we only use the nfs_client
-for the deviceid cache.  Note that to support multiple layout types
-per server (possibly for different filesystems exported by that server
-we'll need per-layouttype deviceid cache on the nfs_client.
+> On Wed, 2010-09-15 at 11:26 -0400, Chuck Lever wrote:
+>> On Sep 15, 2010, at 9:23 AM, Jeff Layton wrote:
+>> 
+>>> Add the missing fields to nfs_renameargs and drop nfs4_rename_arg
+>>> 
+>>> Signed-off-by: Jeff Layton <jlayton@redhat.com>
+>>> ---
+>>> fs/nfs/nfs4proc.c       |    2 +-
+>>> fs/nfs/nfs4xdr.c        |    2 +-
+>>> include/linux/nfs_xdr.h |   19 ++++++-------------
+>>> 3 files changed, 8 insertions(+), 15 deletions(-)
+>>> 
+>>> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+>>> index 089da5b..eb36784 100644
+>>> --- a/fs/nfs/nfs4proc.c
+>>> +++ b/fs/nfs/nfs4proc.c
+>>> @@ -2675,7 +2675,7 @@ static int _nfs4_proc_rename(struct inode *old_dir, struct qstr *old_name,
+>>> 		struct inode *new_dir, struct qstr *new_name)
+>>> {
+>>> 	struct nfs_server *server = NFS_SERVER(old_dir);
+>>> -	struct nfs4_rename_arg arg = {
+>>> +	struct nfs_renameargs arg = {
+>>> 		.old_dir = NFS_FH(old_dir),
+>>> 		.new_dir = NFS_FH(new_dir),
+>>> 		.old_name = old_name,
+>>> diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+>>> index 08ef912..7a098ae 100644
+>>> --- a/fs/nfs/nfs4xdr.c
+>>> +++ b/fs/nfs/nfs4xdr.c
+>>> @@ -1823,7 +1823,7 @@ static int nfs4_xdr_enc_remove(struct rpc_rqst *req, __be32 *p, const struct nfs
+>>> /*
+>>> * Encode RENAME request
+>>> */
+>>> -static int nfs4_xdr_enc_rename(struct rpc_rqst *req, __be32 *p, const struct nfs4_rename_arg *args)
+>>> +static int nfs4_xdr_enc_rename(struct rpc_rqst *req, __be32 *p, const struct nfs_renameargs *args)
+>>> {
+>>> 	struct xdr_stream xdr;
+>>> 	struct compound_hdr hdr = {
+>>> diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+>>> index 5436680..60fa509 100644
+>>> --- a/include/linux/nfs_xdr.h
+>>> +++ b/include/linux/nfs_xdr.h
+>>> @@ -403,10 +403,12 @@ struct nfs_removeres {
+>>> * Common arguments to the rename call
+>>> */
+>>> struct nfs_renameargs {
+>>> -	const struct nfs_fh *	old_dir;
+>>> -	const struct nfs_fh *	new_dir;
+>>> -	const struct qstr *	old_name;
+>>> -	const struct qstr *	new_name;
+>>> +	const struct nfs_fh *		old_dir;
+>>> +	const struct nfs_fh *		new_dir;
+>>> +	const struct qstr *		old_name;
+>>> +	const struct qstr *		new_name;
+>>> +	const u32 *			bitmask;
+>>> +	struct nfs4_sequence_args	seq_args;
+>> 
+>> Should these new fields be gated by CONFIG_NFS_V4 ?
+> 
+> No. Please don't add any more #ifdef CONFIG_NFS_V4 sections: that just
+> adds to the testing duties. The job now is to get rid of
+> CONFIG_NFS_V..., not to add more to it.
 
-We can have different methods for the per-nfs_client event
-and the per-nfs_server event and call them correspondingly.
+The underlying question was whether this builds when CONFIG_NFS_V4 is disabled, and Jeff has confirmed that it does.  Agreed that no change is needed here.
 
-Benny
+-- 
+chuck[dot]lever[at]oracle[dot]com
 
->>  	nfss->pnfs_curr_ld = NULL;
->>  }
->>  
->> @@ -68,6 +100,12 @@ set_pnfs_layoutdriver(struct nfs_server *server, u32 id)
->>  			goto out_no_driver;
->>  		}
->>  	}
->> +	if (ld_type->ld_io_ops->initialize_mountpoint(server->nfs_client)) {
-> 
-> Ditto.
-> 
->> +		printk(KERN_ERR
->> +		       "%s: Error initializing mount point for layout driver %u.\n",
->> +		       __func__, id);
->> +		goto out_no_driver;
->> +	}
->>  	server->pnfs_curr_ld = ld_type;
->>  	dprintk("%s: pNFS module for %u set\n", __func__, id);
->>  	return;
->> @@ -76,3 +114,40 @@ out_no_driver:
->>  	dprintk("%s: Using NFSv4 I/O\n", __func__);
->>  	server->pnfs_curr_ld = NULL;
->>  }
->> +
->> +int
->> +pnfs_register_layoutdriver(struct pnfs_layoutdriver_type *ld_type)
->> +{
->> +	struct layoutdriver_io_operations *io_ops = ld_type->ld_io_ops;
->> +	int status = -EINVAL;
->> +
->> +	if (!io_ops) {
->> +		printk(KERN_ERR "%s Layout driver must provide io_ops\n",
->> +			__func__);
->> +		return status;
->> +	}
->> +
->> +	spin_lock(&pnfs_spinlock);
->> +	if (!find_pnfs_driver_locked(ld_type->id)) {
->> +		list_add(&ld_type->pnfs_tblid, &pnfs_modules_tbl);
->> +		status = 0;
->> +		dprintk("%s Registering id:%u name:%s\n", __func__, ld_type->id,
->> +			ld_type->name);
->> +	} else
->> +		printk(KERN_ERR "%s Module with id %d already loaded!\n",
->> +			__func__, ld_type->id);
->> +	spin_unlock(&pnfs_spinlock);
->> +
->> +	return status;
->> +}
->> +EXPORT_SYMBOL(pnfs_register_layoutdriver);
->> +
->> +void
->> +pnfs_unregister_layoutdriver(struct pnfs_layoutdriver_type *ld_type)
->> +{
->> +	dprintk("%s Deregistering id:%u\n", __func__, ld_type->id);
->> +	spin_lock(&pnfs_spinlock);
->> +	list_del(&ld_type->pnfs_tblid);
->> +	spin_unlock(&pnfs_spinlock);
->> +}
->> +EXPORT_SYMBOL(pnfs_unregister_layoutdriver);
->> diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
->> index 3281fbf..9049b9a 100644
->> --- a/fs/nfs/pnfs.h
->> +++ b/fs/nfs/pnfs.h
->> @@ -16,8 +16,22 @@
->>  
->>  /* Per-layout driver specific registration structure */
->>  struct pnfs_layoutdriver_type {
->> +	struct list_head pnfs_tblid;
->> +	const u32 id;
->> +	const char *name;
->> +	struct layoutdriver_io_operations *ld_io_ops;
->>  };
->>  
->> +/* Layout driver I/O operations. */
->> +struct layoutdriver_io_operations {
->> +	/* Registration information for a new mounted file system */
->> +	int (*initialize_mountpoint) (struct nfs_client *);
->> +	int (*uninitialize_mountpoint) (struct nfs_client *);
->> +};
->> +
->> +extern int pnfs_register_layoutdriver(struct pnfs_layoutdriver_type *);
->> +extern void pnfs_unregister_layoutdriver(struct pnfs_layoutdriver_type *);
->> +
->>  void set_pnfs_layoutdriver(struct nfs_server *, u32 id);
->>  void unset_pnfs_layoutdriver(struct nfs_server *);
->>  
-> 
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+
+
