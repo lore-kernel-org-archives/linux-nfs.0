@@ -1,32 +1,43 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-out1.uio.no ([129.240.10.57]:44710 "EHLO mail-out1.uio.no"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755038Ab0IKAII (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 10 Sep 2010 20:08:08 -0400
-Subject: Re: [PATCH 07/13] RFC: pnfs: full mount/umount infrastructure
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-To: Christoph Hellwig <hch@infradead.org>
-Cc: Fred Isaman <iisaman@netapp.com>, linux-nfs@vger.kernel.org
-In-Reply-To: <20100910235858.GB11231@infradead.org>
-References: <1283450419-5648-1-git-send-email-iisaman@netapp.com>
-	 <1283450419-5648-8-git-send-email-iisaman@netapp.com>
-	 <20100910235858.GB11231@infradead.org>
-Content-Type: text/plain; charset="UTF-8"
-Date: Fri, 10 Sep 2010 20:07:59 -0400
-Message-ID: <1284163679.14078.106.camel@heimdal.trondhjem.org>
+Received: from cn.fujitsu.com ([222.73.24.84]:52183 "EHLO song.cn.fujitsu.com"
+	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
+	id S1751284Ab0IOJ2a (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 15 Sep 2010 05:28:30 -0400
+Message-ID: <4C9091A7.7030502@cn.fujitsu.com>
+Date: Wed, 15 Sep 2010 17:28:07 +0800
+From: Bian Naimeng <biannm@cn.fujitsu.com>
+To: =?UTF-8?B?5a6r5YuQ?= <shadowinlife@gmail.com>
+CC: linux-nfs <linux-nfs@vger.kernel.org>
+Subject: Re: pNFS: trouble test with fscache
+References: <AANLkTima6ASRztdzgm413VaBKLPEFt2SSa4JUkKQ9TqV@mail.gmail.com>
+In-Reply-To: <AANLkTima6ASRztdzgm413VaBKLPEFt2SSa4JUkKQ9TqV@mail.gmail.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Fri, 2010-09-10 at 19:58 -0400, Christoph Hellwig wrote:
-> > +EXPORT_SYMBOL(pnfs_register_layoutdriver);
+> S:
 > 
-> Al exports from nfs.ko needs to be _GPL - this is in no way a public
-> API, just an internal subdivision of the nfs client.
+> I want to get benchmark from pNFS+ fscache with iozone
+> 
+> But  iozone can't work well
+> /proc/fs/nfsfs/volumes   show that  the fsc is YES
+> 
+> I have open cachefiled and mount a ssd (ext3/user_xattr) on /var/fscache
+> 
+> When I use iozone to test read/re-read   it can't write page to the SSD DISK
+> 
+> /var/log/messages  show that  first it can write 4 pages successfully
+> 
+> after NFS: nfs_getpages_from_fscache: no page: -105
 
-ACK. We're not committing to supporting a stable ABI here in any way,
-shape or form...
+  Please confirm whether do you have enough memory when get this error,
+  i guess iozone eats lot of memory.
 
-Cheers
-  Trond
+  And, maybe the information of /proc/fs/fscache/states is useful, please
+  puts it.
+
+-- 
+Regards
+Bian Naimeng
 
