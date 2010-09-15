@@ -1,204 +1,266 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:49121 "EHLO fieldses.org"
+Received: from mailhub.sw.ru ([195.214.232.25]:20983 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754737Ab0I3QTj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 30 Sep 2010 12:19:39 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: "J. Bruce Fields" <bfields@citi.umich.edu>
-Subject: [PATCH 06/16] nfsd4: remove separate cb_args struct
-Date: Thu, 30 Sep 2010 12:19:03 -0400
-Message-Id: <1285863553-8945-7-git-send-email-bfields@redhat.com>
-In-Reply-To: <1285863553-8945-1-git-send-email-bfields@redhat.com>
-References: <1285863553-8945-1-git-send-email-bfields@redhat.com>
+	id S1753567Ab0IONFH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 15 Sep 2010 09:05:07 -0400
+Message-ID: <4C90BC08.5070208@parallels.com>
+Date: Wed, 15 Sep 2010 16:28:56 +0400
+From: Pavel Emelyanov <xemul@parallels.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>, Neil Brown <neilb@suse.de>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        linux-nfs@vger.kernel.org
+Subject: [PATCH 8/9] sunrpc: Make the /proc/net/rpc appear in net namespaces
+References: <4C90BADB.10700@parallels.com>
+In-Reply-To: <4C90BADB.10700@parallels.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: J. Bruce Fields <bfields@citi.umich.edu>
+Signed-off-by: Pavel Emelyanov <xemul@openvz.org>
 
-I don't see the point of the separate struct.  It seems to just be
-getting in the way.
-
-Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
 ---
- fs/nfsd/nfs4callback.c |   45 ++++++++++++++++++++++-----------------------
- fs/nfsd/state.h        |   10 +++-------
- 2 files changed, 25 insertions(+), 30 deletions(-)
+ include/linux/sunrpc/stats.h |   23 ++++++++++++++-------
+ net/sunrpc/cache.c           |   10 +++++++-
+ net/sunrpc/netns.h           |    1 +
+ net/sunrpc/stats.c           |   43 ++++++++++++++++++++++++-----------------
+ net/sunrpc/sunrpc_syms.c     |   16 +++++++++-----
+ 5 files changed, 59 insertions(+), 34 deletions(-)
 
-diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
-index 3b06212..384a990 100644
---- a/fs/nfsd/nfs4callback.c
-+++ b/fs/nfsd/nfs4callback.c
-@@ -247,7 +247,7 @@ encode_cb_recall(struct xdr_stream *xdr, struct nfs4_delegation *dp,
+diff --git a/include/linux/sunrpc/stats.h b/include/linux/sunrpc/stats.h
+index 5fa0f20..680471d 100644
+--- a/include/linux/sunrpc/stats.h
++++ b/include/linux/sunrpc/stats.h
+@@ -38,8 +38,21 @@ struct svc_stat {
+ 				rpcbadclnt;
+ };
+ 
+-void			rpc_proc_init(void);
+-void			rpc_proc_exit(void);
++struct net;
++#ifdef CONFIG_PROC_FS
++int			rpc_proc_init(struct net *);
++void			rpc_proc_exit(struct net *);
++#else
++static inline int rpc_proc_init(struct net *net)
++{
++	return 0;
++}
++
++static inline void rpc_proc_exit(struct net *net)
++{
++}
++#endif
++
+ #ifdef MODULE
+ void			rpc_modcount(struct inode *, int);
+ #endif
+@@ -54,9 +67,6 @@ void			svc_proc_unregister(const char *);
+ 
+ void			svc_seq_show(struct seq_file *,
+ 				     const struct svc_stat *);
+-
+-extern struct proc_dir_entry	*proc_net_rpc;
+-
+ #else
+ 
+ static inline struct proc_dir_entry *rpc_proc_register(struct rpc_stat *s) { return NULL; }
+@@ -69,9 +79,6 @@ static inline void svc_proc_unregister(const char *p) {}
+ 
+ static inline void svc_seq_show(struct seq_file *seq,
+ 				const struct svc_stat *st) {}
+-
+-#define proc_net_rpc NULL
+-
+ #endif
+ 
+ #endif /* _LINUX_SUNRPC_STATS_H */
+diff --git a/net/sunrpc/cache.c b/net/sunrpc/cache.c
+index 27e12ae..8e647a5 100644
+--- a/net/sunrpc/cache.c
++++ b/net/sunrpc/cache.c
+@@ -34,6 +34,7 @@
+ #include <linux/sunrpc/cache.h>
+ #include <linux/sunrpc/stats.h>
+ #include <linux/sunrpc/rpc_pipe_fs.h>
++#include "netns.h"
+ 
+ #define	 RPCDBG_FACILITY RPCDBG_CACHE
+ 
+@@ -1445,6 +1446,8 @@ static const struct file_operations cache_flush_operations_procfs = {
+ 
+ static void remove_cache_proc_entries(struct cache_detail *cd, struct net *net)
+ {
++	struct sunrpc_net *sn;
++
+ 	if (cd->u.procfs.proc_ent == NULL)
+ 		return;
+ 	if (cd->u.procfs.flush_ent)
+@@ -1454,15 +1457,18 @@ static void remove_cache_proc_entries(struct cache_detail *cd, struct net *net)
+ 	if (cd->u.procfs.content_ent)
+ 		remove_proc_entry("content", cd->u.procfs.proc_ent);
+ 	cd->u.procfs.proc_ent = NULL;
+-	remove_proc_entry(cd->name, proc_net_rpc);
++	sn = net_generic(net, sunrpc_net_id);
++	remove_proc_entry(cd->name, sn->proc_net_rpc);
  }
  
- static void
--encode_cb_sequence(struct xdr_stream *xdr, struct nfsd4_cb_args *args,
-+encode_cb_sequence(struct xdr_stream *xdr, struct nfsd4_callback *cb,
- 		   struct nfs4_cb_compound_hdr *hdr)
+ #ifdef CONFIG_PROC_FS
+ static int create_cache_proc_entries(struct cache_detail *cd, struct net *net)
  {
- 	__be32 *p;
-@@ -258,8 +258,8 @@ encode_cb_sequence(struct xdr_stream *xdr, struct nfsd4_cb_args *args,
- 	RESERVE_SPACE(1 + NFS4_MAX_SESSIONID_LEN + 20);
+ 	struct proc_dir_entry *p;
++	struct sunrpc_net *sn;
  
- 	WRITE32(OP_CB_SEQUENCE);
--	WRITEMEM(args->args_clp->cl_sessionid.data, NFS4_MAX_SESSIONID_LEN);
--	WRITE32(args->args_clp->cl_cb_seq_nr);
-+	WRITEMEM(cb->cb_clp->cl_sessionid.data, NFS4_MAX_SESSIONID_LEN);
-+	WRITE32(cb->cb_clp->cl_cb_seq_nr);
- 	WRITE32(0);		/* slotid, always 0 */
- 	WRITE32(0);		/* highest slotid always 0 */
- 	WRITE32(0);		/* cachethis always 0 */
-@@ -279,18 +279,18 @@ nfs4_xdr_enc_cb_null(struct rpc_rqst *req, __be32 *p)
+-	cd->u.procfs.proc_ent = proc_mkdir(cd->name, proc_net_rpc);
++	sn = net_generic(net, sunrpc_net_id);
++	cd->u.procfs.proc_ent = proc_mkdir(cd->name, sn->proc_net_rpc);
+ 	if (cd->u.procfs.proc_ent == NULL)
+ 		goto out_nomem;
+ 	cd->u.procfs.channel_ent = NULL;
+diff --git a/net/sunrpc/netns.h b/net/sunrpc/netns.h
+index b2d18af..e52ce89 100644
+--- a/net/sunrpc/netns.h
++++ b/net/sunrpc/netns.h
+@@ -5,6 +5,7 @@
+ #include <net/netns/generic.h>
  
- static int
- nfs4_xdr_enc_cb_recall(struct rpc_rqst *req, __be32 *p,
--		struct nfsd4_cb_args *rpc_args)
-+		struct nfsd4_callback *cb)
+ struct sunrpc_net {
++	struct proc_dir_entry *proc_net_rpc;
+ };
+ 
+ extern int sunrpc_net_id;
+diff --git a/net/sunrpc/stats.c b/net/sunrpc/stats.c
+index ea1046f..f71a731 100644
+--- a/net/sunrpc/stats.c
++++ b/net/sunrpc/stats.c
+@@ -22,11 +22,10 @@
+ #include <linux/sunrpc/clnt.h>
+ #include <linux/sunrpc/svcsock.h>
+ #include <linux/sunrpc/metrics.h>
+-#include <net/net_namespace.h>
+ 
+-#define RPCDBG_FACILITY	RPCDBG_MISC
++#include "netns.h"
+ 
+-struct proc_dir_entry	*proc_net_rpc = NULL;
++#define RPCDBG_FACILITY	RPCDBG_MISC
+ 
+ /*
+  * Get RPC client stats
+@@ -218,10 +217,11 @@ EXPORT_SYMBOL_GPL(rpc_print_iostats);
+ static inline struct proc_dir_entry *
+ do_register(const char *name, void *data, const struct file_operations *fops)
  {
- 	struct xdr_stream xdr;
--	struct nfs4_delegation *args = rpc_args->args_op;
-+	struct nfs4_delegation *args = cb->cb_op;
- 	struct nfs4_cb_compound_hdr hdr = {
- 		.ident = args->dl_ident,
--		.minorversion = rpc_args->args_minorversion,
-+		.minorversion = cb->cb_minorversion,
- 	};
+-	rpc_proc_init();
+-	dprintk("RPC:       registering /proc/net/rpc/%s\n", name);
++	struct sunrpc_net *sn;
  
- 	xdr_init_encode(&xdr, &req->rq_snd_buf, p);
- 	encode_cb_compound_hdr(&xdr, &hdr);
--	encode_cb_sequence(&xdr, rpc_args, &hdr);
-+	encode_cb_sequence(&xdr, cb, &hdr);
- 	encode_cb_recall(&xdr, args, &hdr);
- 	encode_cb_nops(&hdr);
+-	return proc_create_data(name, 0, proc_net_rpc, fops, data);
++	dprintk("RPC:       registering /proc/net/rpc/%s\n", name);
++	sn = net_generic(&init_net, sunrpc_net_id);
++	return proc_create_data(name, 0, sn->proc_net_rpc, fops, data);
+ }
+ 
+ struct proc_dir_entry *
+@@ -234,7 +234,10 @@ EXPORT_SYMBOL_GPL(rpc_proc_register);
+ void
+ rpc_proc_unregister(const char *name)
+ {
+-	remove_proc_entry(name, proc_net_rpc);
++	struct sunrpc_net *sn;
++
++	sn = net_generic(&init_net, sunrpc_net_id);
++	remove_proc_entry(name, sn->proc_net_rpc);
+ }
+ EXPORT_SYMBOL_GPL(rpc_proc_unregister);
+ 
+@@ -248,25 +251,29 @@ EXPORT_SYMBOL_GPL(svc_proc_register);
+ void
+ svc_proc_unregister(const char *name)
+ {
+-	remove_proc_entry(name, proc_net_rpc);
++	struct sunrpc_net *sn;
++
++	sn = net_generic(&init_net, sunrpc_net_id);
++	remove_proc_entry(name, sn->proc_net_rpc);
+ }
+ EXPORT_SYMBOL_GPL(svc_proc_unregister);
+ 
+-void
+-rpc_proc_init(void)
++int rpc_proc_init(struct net *net)
+ {
++	struct sunrpc_net *sn;
++
+ 	dprintk("RPC:       registering /proc/net/rpc\n");
+-	if (!proc_net_rpc)
+-		proc_net_rpc = proc_mkdir("rpc", init_net.proc_net);
++	sn = net_generic(net, sunrpc_net_id);
++	sn->proc_net_rpc = proc_mkdir("rpc", net->proc_net);
++	if (sn->proc_net_rpc == NULL)
++		return -ENOMEM;
++
++	return 0;
+ }
+ 
+-void
+-rpc_proc_exit(void)
++void rpc_proc_exit(struct net *net)
+ {
+ 	dprintk("RPC:       unregistering /proc/net/rpc\n");
+-	if (proc_net_rpc) {
+-		proc_net_rpc = NULL;
+-		remove_proc_entry("rpc", init_net.proc_net);
+-	}
++	remove_proc_entry("rpc", net->proc_net);
+ }
+ 
+diff --git a/net/sunrpc/sunrpc_syms.c b/net/sunrpc/sunrpc_syms.c
+index d552a6a..7d894e5 100644
+--- a/net/sunrpc/sunrpc_syms.c
++++ b/net/sunrpc/sunrpc_syms.c
+@@ -28,11 +28,21 @@ int sunrpc_net_id;
+ 
+ static __net_init int sunrpc_init_net(struct net *net)
+ {
++	int err;
++
++	err = rpc_proc_init(net);
++	if (err)
++		goto err_proc;
++
  	return 0;
-@@ -338,7 +338,7 @@ decode_cb_op_hdr(struct xdr_stream *xdr, enum nfs_opnum4 expected)
-  * with a single slot.
-  */
- static int
--decode_cb_sequence(struct xdr_stream *xdr, struct nfsd4_cb_args *res,
-+decode_cb_sequence(struct xdr_stream *xdr, struct nfsd4_callback *cb,
- 		   struct rpc_rqst *rqstp)
++
++err_proc:
++	return err;
+ }
+ 
+ static __net_exit void sunrpc_exit_net(struct net *net)
  {
- 	struct nfs4_sessionid id;
-@@ -346,7 +346,7 @@ decode_cb_sequence(struct xdr_stream *xdr, struct nfsd4_cb_args *res,
- 	u32 dummy;
- 	__be32 *p;
++	rpc_proc_exit(net);
+ }
  
--	if (res->args_minorversion == 0)
-+	if (cb->cb_minorversion == 0)
- 		return 0;
- 
- 	status = decode_cb_op_hdr(xdr, OP_CB_SEQUENCE);
-@@ -362,13 +362,13 @@ decode_cb_sequence(struct xdr_stream *xdr, struct nfsd4_cb_args *res,
- 	READ_BUF(NFS4_MAX_SESSIONID_LEN + 16);
- 	memcpy(id.data, p, NFS4_MAX_SESSIONID_LEN);
- 	p += XDR_QUADLEN(NFS4_MAX_SESSIONID_LEN);
--	if (memcmp(id.data, res->args_clp->cl_sessionid.data,
-+	if (memcmp(id.data, cb->cb_clp->cl_sessionid.data,
- 		   NFS4_MAX_SESSIONID_LEN)) {
- 		dprintk("%s Invalid session id\n", __func__);
- 		goto out;
- 	}
- 	READ32(dummy);
--	if (dummy != res->args_clp->cl_cb_seq_nr) {
-+	if (dummy != cb->cb_clp->cl_cb_seq_nr) {
- 		dprintk("%s Invalid sequence number\n", __func__);
- 		goto out;
- 	}
-@@ -392,7 +392,7 @@ nfs4_xdr_dec_cb_null(struct rpc_rqst *req, __be32 *p)
- 
- static int
- nfs4_xdr_dec_cb_recall(struct rpc_rqst *rqstp, __be32 *p,
--		struct nfsd4_cb_args *args)
-+		struct nfsd4_callback *cb)
- {
- 	struct xdr_stream xdr;
- 	struct nfs4_cb_compound_hdr hdr;
-@@ -402,8 +402,8 @@ nfs4_xdr_dec_cb_recall(struct rpc_rqst *rqstp, __be32 *p,
- 	status = decode_cb_compound_hdr(&xdr, &hdr);
- 	if (status)
- 		goto out;
--	if (args) {
--		status = decode_cb_sequence(&xdr, args, rqstp);
-+	if (cb) {
-+		status = decode_cb_sequence(&xdr, cb, rqstp);
- 		if (status)
- 			goto out;
- 	}
-@@ -550,8 +550,8 @@ void do_probe_callback(struct nfs4_client *clp)
- {
- 	struct nfsd4_callback *cb = &clp->cl_cb_null;
- 
--	cb->cb_args.args_op = NULL;
--	cb->cb_args.args_clp = clp;
-+	cb->cb_op = NULL;
-+	cb->cb_clp = clp;
- 
- 	cb->cb_msg.rpc_proc = &nfs4_cb_procedures[NFSPROC4_CLNT_CB_NULL];
- 	cb->cb_msg.rpc_argp = NULL;
-@@ -614,11 +614,10 @@ static void nfsd4_cb_prepare(struct rpc_task *task, void *calldata)
- 	struct nfsd4_callback *cb = calldata;
- 	struct nfs4_delegation *dp = container_of(cb, struct nfs4_delegation, dl_recall);
- 	struct nfs4_client *clp = dp->dl_client;
--	struct nfsd4_cb_args *args = task->tk_msg.rpc_argp;
- 	u32 minorversion = clp->cl_cb_conn.cb_minorversion;
- 	int status = 0;
- 
--	args->args_minorversion = minorversion;
-+	cb->cb_minorversion = minorversion;
- 	if (minorversion) {
- 		status = nfsd41_cb_setup_sequence(clp, task);
- 		if (status) {
-@@ -754,7 +753,7 @@ void nfsd4_release_cb(struct nfsd4_callback *cb)
- void nfsd4_do_callback_rpc(struct work_struct *w)
- {
- 	struct nfsd4_callback *cb = container_of(w, struct nfsd4_callback, cb_work);
--	struct nfs4_client *clp = cb->cb_args.args_clp;
-+	struct nfs4_client *clp = cb->cb_clp;
- 	struct rpc_clnt *clnt = clp->cl_cb_client;
- 
- 	if (clnt == NULL) {
-@@ -770,11 +769,11 @@ void nfsd4_cb_recall(struct nfs4_delegation *dp)
- 	struct nfsd4_callback *cb = &dp->dl_recall;
- 
- 	dp->dl_retries = 1;
--	cb->cb_args.args_op = dp;
--	cb->cb_args.args_clp = dp->dl_client;
-+	cb->cb_op = dp;
-+	cb->cb_clp = dp->dl_client;
- 	cb->cb_msg.rpc_proc = &nfs4_cb_procedures[NFSPROC4_CLNT_CB_RECALL];
--	cb->cb_msg.rpc_argp = &cb->cb_args;
--	cb->cb_msg.rpc_resp = &cb->cb_args;
-+	cb->cb_msg.rpc_argp = cb;
-+	cb->cb_msg.rpc_resp = cb;
- 	cb->cb_msg.rpc_cred = callback_cred;
- 
- 	cb->cb_ops = &nfsd4_cb_recall_ops;
-diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index 19732d5..2ece6be 100644
---- a/fs/nfsd/state.h
-+++ b/fs/nfsd/state.h
-@@ -64,14 +64,10 @@ typedef struct {
- 	(s)->si_fileid, \
- 	(s)->si_generation
- 
--struct nfsd4_cb_args {
--	void			*args_op;
--	struct nfs4_client	*args_clp;
--	u32			args_minorversion;
--};
--
- struct nfsd4_callback {
--	struct nfsd4_cb_args cb_args;
-+	void *cb_op;
-+	struct nfs4_client *cb_clp;
-+	u32 cb_minorversion;
- 	struct rpc_message cb_msg;
- 	const struct rpc_call_ops *cb_ops;
- 	struct work_struct cb_work;
+ static struct pernet_operations sunrpc_net_ops = {
+@@ -67,9 +77,6 @@ init_sunrpc(void)
+ #ifdef RPC_DEBUG
+ 	rpc_register_sysctl();
+ #endif
+-#ifdef CONFIG_PROC_FS
+-	rpc_proc_init();
+-#endif
+ 	cache_register(&ip_map_cache);
+ 	cache_register(&unix_gid_cache);
+ 	svc_init_xprt_sock();	/* svc sock transport */
+@@ -101,9 +108,6 @@ cleanup_sunrpc(void)
+ #ifdef RPC_DEBUG
+ 	rpc_unregister_sysctl();
+ #endif
+-#ifdef CONFIG_PROC_FS
+-	rpc_proc_exit();
+-#endif
+ 	rcu_barrier(); /* Wait for completion of call_rcu()'s */
+ }
+ MODULE_LICENSE("GPL");
 -- 
-1.7.0.4
+1.5.5.6
 
