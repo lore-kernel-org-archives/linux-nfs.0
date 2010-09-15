@@ -1,60 +1,168 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-pv0-f174.google.com ([74.125.83.174]:32870 "EHLO
-	mail-pv0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751037Ab0I2OVK convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 29 Sep 2010 10:21:10 -0400
-Received: by pvg2 with SMTP id 2so185686pvg.19
-        for <linux-nfs@vger.kernel.org>; Wed, 29 Sep 2010 07:21:10 -0700 (PDT)
-In-Reply-To: <D4AFE98FB48D2F4CBFEACD015C9642DF026628@sha2122.hamburg.rwedea.de>
-References: <D4AFE98FB48D2F4CBFEACD015C9642DF026628@sha2122.hamburg.rwedea.de>
-Date: Wed, 29 Sep 2010 10:21:06 -0400
-Message-ID: <AANLkTimHnNCaQrj2T4vuC8m3R_S8oqc9o6zQBW_GOGoo@mail.gmail.com>
-Subject: Re: NFS4 / GSS: Problem with users accessing the mounted directories
- (with root, everything ist okay)
-From: Kevin Coffman <kwc@citi.umich.edu>
-To: "Beyersdorf, Wolfgang" <Wolfgang.Beyersdorf.Fa.Kontraktor@rwedea.com>
-Cc: linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from rcsinet10.oracle.com ([148.87.113.121]:52003 "EHLO
+	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753359Ab0IOPln convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 15 Sep 2010 11:41:43 -0400
+Subject: Re: [PATCH 6/8] nfs: add a rename_setup nfs_rpc_op for async renames
+Content-Type: text/plain; charset=us-ascii
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <1284557041-4375-7-git-send-email-jlayton@redhat.com>
+Date: Wed, 15 Sep 2010 11:39:38 -0400
+Cc: trond.myklebust@netapp.com, linux-nfs@vger.kernel.org
+Message-Id: <1683BE39-BC28-4A0E-969F-792D4D29B985@oracle.com>
+References: <1284557041-4375-1-git-send-email-jlayton@redhat.com> <1284557041-4375-7-git-send-email-jlayton@redhat.com>
+To: Jeff Layton <jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, Sep 29, 2010 at 5:02 AM, Beyersdorf, Wolfgang
-<Wolfgang.Beyersdorf.Fa.Kontraktor@rwedea.com> wrote:
->
->
->
-> Dear all,
->
-> I got NFS4 with GSS running on CentOS 5. Everything is okay, all TGTs are okay and is working fine for the user ROOT.
->
-> When I change to an other user, I got a permission denied, when I try to access the dierctory (e.g. ls -la)
->
-> Here is the /var/log/messages part for this access (with full debugging on ndf, ndfs and rcp):
->
-> Sep 29 10:11:59 sha9013 rpc.gssd[1645]: creating context with server nfs@sha9012.hamburg.rwedea.de                      <================================== system ist wating for 25 seconds
-> Sep 29 10:12:23 sha9013 rpc.gssd[1645]: WARNING: Failed to create krb5 context for user with uid 569926353 for server sha9012.hamburg.rwedea.de
-> Sep 29 10:12:23 sha9013 rpc.gssd[1645]: WARNING: Failed to create krb5 context for user with uid 569926353 for server sha9012.hamburg.rwedea.de
 
-> [ ... ]
+On Sep 15, 2010, at 9:23 AM, Jeff Layton wrote:
 
-> Sep 29 10:12:23 sha9013 rpc.gssd[1645]: creating context with server nfs@sha9012.hamburg.rwedea.de
-> Sep 29 10:12:48 sha9013 rpc.gssd[1645]: WARNING: Failed to create krb5 context for user with uid 569926353 for server sha9012.hamburg.rwedea.de
-> Sep 29 10:12:48 sha9013 rpc.gssd[1645]: WARNING: Failed to create krb5 context for user with uid 569926353 for server sha9012.hamburg.rwedea.de
->
-> A  klist gives the following result:
-> ========================
+> Add a call that can set up the arguments and the response container for
+> an asynchronous rename call.
+> 
+> Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> ---
+> fs/nfs/nfs3proc.c       |   18 ++++++++++++++++++
+> fs/nfs/nfs4proc.c       |   21 +++++++++++++++++++++
+> fs/nfs/proc.c           |   12 ++++++++++++
+> include/linux/nfs_xdr.h |    1 +
+> 4 files changed, 52 insertions(+), 0 deletions(-)
+> 
+> diff --git a/fs/nfs/nfs3proc.c b/fs/nfs/nfs3proc.c
+> index c5cccf1..0654177 100644
+> --- a/fs/nfs/nfs3proc.c
+> +++ b/fs/nfs/nfs3proc.c
+> @@ -439,6 +439,23 @@ nfs3_proc_unlink_done(struct rpc_task *task, struct inode *dir)
+> }
+> 
+> static int
+> +nfs3_proc_rename_setup(struct rpc_message *msg, struct inode *dir)
+> +{
+> +	struct nfs_renameres *res = msg->rpc_resp;
+> +
+> +	msg->rpc_proc = &nfs3_procedures[NFS3PROC_RENAME];
+> +
+> +	res->old_fattr = nfs_alloc_fattr();
+> +	res->new_fattr = nfs_alloc_fattr();
+> +	if (res->old_fattr != NULL && res->new_fattr != NULL)
+> +		return 0;
+> +
+> +	nfs_free_fattr(res->old_fattr);
+> +	nfs_free_fattr(res->new_fattr);
+> +	return -ENOMEM;
+> +}
 
-What does "klist -e" show?
+This is just a style nit, but my understanding is that there is a stated preference for the error case to be handled in the statement block after the NULL checks, and the common case should exit through the tail of the function.
 
->
-> On the server, there is nothing inside the /var/log/messages
->
+I suspect that these last three patches can be merged together for submission.  I read somewhere recently that the powers that be do not like patches that introduce new code that isn't used by anything.
 
-I assume there is output from svcgssd on the server when root accesses it?
+> +
+> +static int
+> nfs3_proc_rename(struct inode *old_dir, struct qstr *old_name,
+> 		 struct inode *new_dir, struct qstr *new_name)
+> {
+> @@ -842,6 +859,7 @@ const struct nfs_rpc_ops nfs_v3_clientops = {
+> 	.unlink_setup	= nfs3_proc_unlink_setup,
+> 	.unlink_done	= nfs3_proc_unlink_done,
+> 	.rename		= nfs3_proc_rename,
+> +	.rename_setup	= nfs3_proc_rename_setup,
+> 	.link		= nfs3_proc_link,
+> 	.symlink	= nfs3_proc_symlink,
+> 	.mkdir		= nfs3_proc_mkdir,
+> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+> index 120a8a6..011dc90 100644
+> --- a/fs/nfs/nfs4proc.c
+> +++ b/fs/nfs/nfs4proc.c
+> @@ -2671,6 +2671,26 @@ static int nfs4_proc_unlink_done(struct rpc_task *task, struct inode *dir)
+> 	return 1;
+> }
+> 
+> +static int nfs4_proc_rename_setup(struct rpc_message *msg, struct inode *dir)
+> +{
+> +	struct nfs_server *server = NFS_SERVER(dir);
+> +	struct nfs_renameargs *arg = msg->rpc_argp;
+> +	struct nfs_renameres *res = msg->rpc_resp;
+> +
+> +	msg->rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_RENAME];
+> +	arg->bitmask = server->attr_bitmask;
+> +	res->server = server;
+> +
+> +	res->old_fattr = nfs_alloc_fattr();
+> +	res->new_fattr = nfs_alloc_fattr();
+> +	if (res->old_fattr != NULL && res->new_fattr != NULL)
+> +		return 0;
+> +
+> +	nfs_free_fattr(res->old_fattr);
+> +	nfs_free_fattr(res->new_fattr);
+> +	return -ENOMEM;
+> +}
+> +
+> static int _nfs4_proc_rename(struct inode *old_dir, struct qstr *old_name,
+> 		struct inode *new_dir, struct qstr *new_name)
+> {
+> @@ -5443,6 +5463,7 @@ const struct nfs_rpc_ops nfs_v4_clientops = {
+> 	.unlink_setup	= nfs4_proc_unlink_setup,
+> 	.unlink_done	= nfs4_proc_unlink_done,
+> 	.rename		= nfs4_proc_rename,
+> +	.rename_setup	= nfs4_proc_rename_setup,
+> 	.link		= nfs4_proc_link,
+> 	.symlink	= nfs4_proc_symlink,
+> 	.mkdir		= nfs4_proc_mkdir,
+> diff --git a/fs/nfs/proc.c b/fs/nfs/proc.c
+> index 5c70b58..1b02dee 100644
+> --- a/fs/nfs/proc.c
+> +++ b/fs/nfs/proc.c
+> @@ -366,6 +366,17 @@ static int nfs_proc_unlink_done(struct rpc_task *task, struct inode *dir)
+> }
+> 
+> static int
+> +nfs_proc_rename_setup(struct rpc_message *msg, struct inode *dir)
+> +{
+> +	struct nfs_renameres *res = msg->rpc_resp;
+> +
+> +	msg->rpc_proc = &nfs_procedures[NFSPROC_RENAME];
+> +	res->old_fattr = NULL;
+> +	res->new_fattr = NULL;
+> +	return 0;
+> +}
+> +
+> +static int
+> nfs_proc_rename(struct inode *old_dir, struct qstr *old_name,
+> 		struct inode *new_dir, struct qstr *new_name)
+> {
+> @@ -703,6 +714,7 @@ const struct nfs_rpc_ops nfs_v2_clientops = {
+> 	.unlink_setup	= nfs_proc_unlink_setup,
+> 	.unlink_done	= nfs_proc_unlink_done,
+> 	.rename		= nfs_proc_rename,
+> +	.rename_setup	= nfs_proc_rename_setup,
+> 	.link		= nfs_proc_link,
+> 	.symlink	= nfs_proc_symlink,
+> 	.mkdir		= nfs_proc_mkdir,
+> diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+> index 6265fa8..d470751 100644
+> --- a/include/linux/nfs_xdr.h
+> +++ b/include/linux/nfs_xdr.h
+> @@ -1018,6 +1018,7 @@ struct nfs_rpc_ops {
+> 	int	(*unlink_done) (struct rpc_task *, struct inode *);
+> 	int	(*rename)  (struct inode *, struct qstr *,
+> 			    struct inode *, struct qstr *);
+> +	int	(*rename_setup)  (struct rpc_message *msg, struct inode *dir);
+> 	int	(*link)    (struct inode *, struct inode *, struct qstr *);
+> 	int	(*symlink) (struct inode *, struct dentry *, struct page *,
+> 			    unsigned int, struct iattr *);
+> -- 
+> 1.7.1
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
-The 25-second pauses sound as if there is an error of some kind on the
-server and it is dropping the request rather than replying.  Perhaps a
-network trace would reveal something.
+-- 
+chuck[dot]lever[at]oracle[dot]com
 
-K.C.
+
+
+
