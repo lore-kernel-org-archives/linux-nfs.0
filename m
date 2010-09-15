@@ -1,116 +1,117 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-bw0-f46.google.com ([209.85.214.46]:34731 "EHLO
-	mail-bw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751116Ab0IMNBE convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Sep 2010 09:01:04 -0400
-Received: by bwz11 with SMTP id 11so4427254bwz.19
-        for <linux-nfs@vger.kernel.org>; Mon, 13 Sep 2010 06:01:03 -0700 (PDT)
-In-Reply-To: <4C8DFDCC.8060906@panasas.com>
-References: <1283450419-5648-1-git-send-email-iisaman@netapp.com>
-	<1283450419-5648-9-git-send-email-iisaman@netapp.com>
-	<1284147111.10062.74.camel@heimdal.trondhjem.org>
-	<AANLkTi=6vcQC1k28B=aKJbN=jRBipoff3+79BpgLxtXw@mail.gmail.com>
-	<1284158223.14078.78.camel@heimdal.trondhjem.org>
-	<4C8DFDCC.8060906@panasas.com>
-Date: Mon, 13 Sep 2010 06:01:03 -0700
-Message-ID: <AANLkTimONZfA6ZX4xtzbmy0NdfEtbwMAi+__PhFYznTn@mail.gmail.com>
-Subject: Re: [PATCH 08/13] RFC: pnfs: filelayout: introduce minimal file
- layout driver
-From: Fred Isaman <iisaman@netapp.com>
-To: Benny Halevy <bhalevy@panasas.com>
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>, linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mx1.redhat.com ([209.132.183.28]:11488 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753343Ab0IOPfB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 15 Sep 2010 11:35:01 -0400
+Date: Wed, 15 Sep 2010 11:34:30 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: trond.myklebust@netapp.com, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 3/8] nfs: eliminate nfs4_rename_arg
+Message-ID: <20100915113430.1e59d8b8@corrin.poochiereds.net>
+In-Reply-To: <8432F4C7-B2C0-4CB1-B3AA-63444ED6BF8E@oracle.com>
+References: <1284557041-4375-1-git-send-email-jlayton@redhat.com>
+	<1284557041-4375-4-git-send-email-jlayton@redhat.com>
+	<8432F4C7-B2C0-4CB1-B3AA-63444ED6BF8E@oracle.com>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Mon, Sep 13, 2010 at 3:32 AM, Benny Halevy <bhalevy@panasas.com> wrote:
-> On 2010-09-11 01:37, Trond Myklebust wrote:
->> On Fri, 2010-09-10 at 14:11 -0700, Fred Isaman wrote:
->>> On Fri, Sep 10, 2010 at 12:31 PM, Trond Myklebust
->>> <Trond.Myklebust@netapp.com> wrote:
->>>> On Thu, 2010-09-02 at 14:00 -0400, Fred Isaman wrote:
->>> OK
->>>
->>>>> +     .initialize_mountpoint   = filelayout_initialize_mountpoint,
->>>>> +     .uninitialize_mountpoint = filelayout_uninitialize_mountpoint,
->>>>> +};
->>>>> +
->>>>> +
->>>>> +struct pnfs_layoutdriver_type filelayout_type = {
->>>>
->>>> Ditto.
->>>
->>> This includes a list_head field which is set by the generic layer.
->>>
->>>>
->>>>> +     .id = LAYOUT_NFSV4_1_FILES,
->>>>> +     .name = "LAYOUT_NFSV4_1_FILES",
->>>>> +     .ld_io_ops = &filelayout_io_operations,
->>>>
->>>> Why do we need a separate 'struct layoutdriver_io_operations'? Any
->>>> reason those can't just be embedded in struct pnfs_layoutdriver_type?
->>>
->>> I believe this decision was primarily aesthetics.  However, keeping
->>> the static io_ops seperate from the variable list_head seems like a
->>> good idea.
->>
->> I dunno. They are in a 1-1 correspondence, so I'm not sure I see the
->> need for a separation.
->>
->
-> Later in the game we introduce the layout driver policy ops.
-> That said, they could be added to the same vector as the io ops.
+On Wed, 15 Sep 2010 11:26:49 -0400
+Chuck Lever <chuck.lever@oracle.com> wrote:
+
+> 
+> On Sep 15, 2010, at 9:23 AM, Jeff Layton wrote:
+> 
+> > Add the missing fields to nfs_renameargs and drop nfs4_rename_arg
+> > 
+> > Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> > ---
+> > fs/nfs/nfs4proc.c       |    2 +-
+> > fs/nfs/nfs4xdr.c        |    2 +-
+> > include/linux/nfs_xdr.h |   19 ++++++-------------
+> > 3 files changed, 8 insertions(+), 15 deletions(-)
+> > 
+> > diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+> > index 089da5b..eb36784 100644
+> > --- a/fs/nfs/nfs4proc.c
+> > +++ b/fs/nfs/nfs4proc.c
+> > @@ -2675,7 +2675,7 @@ static int _nfs4_proc_rename(struct inode *old_dir, struct qstr *old_name,
+> > 		struct inode *new_dir, struct qstr *new_name)
+> > {
+> > 	struct nfs_server *server = NFS_SERVER(old_dir);
+> > -	struct nfs4_rename_arg arg = {
+> > +	struct nfs_renameargs arg = {
+> > 		.old_dir = NFS_FH(old_dir),
+> > 		.new_dir = NFS_FH(new_dir),
+> > 		.old_name = old_name,
+> > diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+> > index 08ef912..7a098ae 100644
+> > --- a/fs/nfs/nfs4xdr.c
+> > +++ b/fs/nfs/nfs4xdr.c
+> > @@ -1823,7 +1823,7 @@ static int nfs4_xdr_enc_remove(struct rpc_rqst *req, __be32 *p, const struct nfs
+> > /*
+> >  * Encode RENAME request
+> >  */
+> > -static int nfs4_xdr_enc_rename(struct rpc_rqst *req, __be32 *p, const struct nfs4_rename_arg *args)
+> > +static int nfs4_xdr_enc_rename(struct rpc_rqst *req, __be32 *p, const struct nfs_renameargs *args)
+> > {
+> > 	struct xdr_stream xdr;
+> > 	struct compound_hdr hdr = {
+> > diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+> > index 5436680..60fa509 100644
+> > --- a/include/linux/nfs_xdr.h
+> > +++ b/include/linux/nfs_xdr.h
+> > @@ -403,10 +403,12 @@ struct nfs_removeres {
+> >  * Common arguments to the rename call
+> >  */
+> > struct nfs_renameargs {
+> > -	const struct nfs_fh *	old_dir;
+> > -	const struct nfs_fh *	new_dir;
+> > -	const struct qstr *	old_name;
+> > -	const struct qstr *	new_name;
+> > +	const struct nfs_fh *		old_dir;
+> > +	const struct nfs_fh *		new_dir;
+> > +	const struct qstr *		old_name;
+> > +	const struct qstr *		new_name;
+> > +	const u32 *			bitmask;
+> > +	struct nfs4_sequence_args	seq_args;
+> 
+> Should these new fields be gated by CONFIG_NFS_V4 ?
+> 
+
+I suppose they could be. nfs_removeargs has the same fields though and
+is not gated like that.
+
+> > };
+> > 
+> > /*
+> > @@ -793,15 +795,6 @@ struct nfs4_readlink_res {
+> > 	struct nfs4_sequence_res	seq_res;
+> > };
+> > 
+> > -struct nfs4_rename_arg {
+> > -	const struct nfs_fh *		old_dir;
+> > -	const struct nfs_fh *		new_dir;
+> > -	const struct qstr *		old_name;
+> > -	const struct qstr *		new_name;
+> > -	const u32 *			bitmask;
+> > -	struct nfs4_sequence_args	seq_args;
+> > -};
+> > -
+> > struct nfs4_rename_res {
+> > 	const struct nfs_server *	server;
+> > 	struct nfs4_change_info		old_cinfo;
+> > -- 
+> > 1.7.1
+> > 
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
 
 
-Yes, I think they should be merged when we get to that stage.
-
-
->
->>> Perhaps having a driver structure that includes the io_ops and static
->>> portions of pnfs_layoutdriver_type, with the generic layer allocating
->>> a wrapper structure that is basically:
->>> struct {
->>>     struct list_head list;
->>>     struct pnfs_layoutdriver_type *driver_info;
->>
->>       Should be const...
->>
->>       struct module *owner = THIS_MODULE;
->>
->>> }
->>
->> ...although the struct module could probably indeed be part of
->> pnfs_layoutdriver_type too.
->
-> Agreed.
-> I think we should just have
->
-> struct pnfs_layoutdriver_type {
->        struct list_head pnfs_tblid;
->        const u32 id;
->        const char *name;
->        const struct module *owner;
->        const struct layoutdriver_operations *ld_ops;
->  };
->
-> Benny
->
-
-I'll point out that what I took from the above conversation, was that
-the fields id, name, and possibly owner should be placed inside struct
-layoutdriver_operations (which should probably be renamed slightly).
-
-
->>
->> Cheers
->>   Trond
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->
+-- 
+Jeff Layton <jlayton@redhat.com>
