@@ -1,84 +1,117 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:49532 "EHLO
-	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1751458Ab0I3I3T (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 30 Sep 2010 04:29:19 -0400
-Message-ID: <4CA44A5D.7040405@panasas.com>
-Date: Thu, 30 Sep 2010 10:29:17 +0200
-From: Benny Halevy <bhalevy@panasas.com>
-To: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
-CC: NFS list <linux-nfs@vger.kernel.org>
-Subject: Re: pnfs git tree status pnfs-all-2.6.36-rc6-2010-09-29
-References: <4C7BDD8C.40509@panasas.com> <4CA31DC3.8070300@panasas.com> <4CA34830.1040703@desy.de> <4CA34883.40005@desy.de> <4CA34B93.2010100@panasas.com> <4CA34F05.3020809@desy.de> <4CA35A59.9020303@panasas.com> <4CA44321.2080904@desy.de>
-In-Reply-To: <4CA44321.2080904@desy.de>
+Received: from mailhub.sw.ru ([195.214.232.25]:20983 "EHLO relay.sw.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752923Ab0IONE4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 15 Sep 2010 09:04:56 -0400
+Message-ID: <4C90BBE9.6000105@parallels.com>
+Date: Wed, 15 Sep 2010 16:28:25 +0400
+From: Pavel Emelyanov <xemul@parallels.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>, Neil Brown <neilb@suse.de>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        linux-nfs@vger.kernel.org
+Subject: [PATCH 7/9] sunrpc: The per-net skeleton
+References: <4C90BADB.10700@parallels.com>
+In-Reply-To: <4C90BADB.10700@parallels.com>
 Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 2010-09-30 09:58, Tigran Mkrtchyan wrote:
->   I recompiled kernel with debug symbols and problem is gone.
-> Crap!
-> Or, as Fred suspected, I did not apply you patch second time.
+Register empty per-net operations for the sunrpc layer.
 
-Yeah, this was my inclination too...
+Signed-off-by: Pavel Emelyanov <xemul@openvz.org>
 
-Benny
+---
+ net/sunrpc/netns.h       |   12 ++++++++++++
+ net/sunrpc/sunrpc_syms.c |   31 ++++++++++++++++++++++++++++++-
+ 2 files changed, 42 insertions(+), 1 deletions(-)
+ create mode 100644 net/sunrpc/netns.h
 
-> 
-> Regards,
->     Tigran.
-> 
-> On 09/29/2010 05:25 PM, Benny Halevy wrote:
->> On 2010-09-29 16:36, Tigran Mkrtchyan wrote:
->>>    On 09/29/2010 04:22 PM, Benny Halevy wrote:
->>>> On 2010-09-29 16:09, Tigran Mkrtchyan wrote:
->>>>>     On 09/29/2010 04:07 PM, Tigran Mkrtchyan wrote:
->>>>>> I am support to publish first kernel crash.....
->>>>> sorry to publish....
->>>>>
->>>>>> this is
->>>>>> pnfs-all-2.6.36-rc6-2010-09-29 git
->>>>>> c2b3b75c6b1db1dfc3f236200de1763e14c514d8
->>>>>>
->>>>>> Regards,
->>>>>>      Tigran.
->>>>>>
->>>>>>
->>>> Thanks for testing!
->>>> Does the following patch help?
->>>>
->>> No :(
->>>
->> Tigran, do you have a new trace maybe?
->> I cross referenced the dump you sent to the
->> disassembled code and it seems like it hit NULL dereference on
->> size = fl->stripe_unit;
->>
->> I'm going to commit this patch anyway but I want to
->> understand what else I missed...
->>
->> Benny
->>
->>>> git diff --stat -p -M
->>>>    fs/nfs/nfs4filelayout.c |    2 ++
->>>>    1 files changed, 2 insertions(+), 0 deletions(-)
->>>>
->>>> diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
->>>> index 75e07c8..8fbb0db 100644
->>>> --- a/fs/nfs/nfs4filelayout.c
->>>> +++ b/fs/nfs/nfs4filelayout.c
->>>> @@ -636,6 +636,8 @@ filelayout_get_stripesize(struct pnfs_layout_hdr *lo)
->>>>
->>>>    	/* Horrible hack...ideally upper layer would send lseg */
->>>>    	lseg = pnfs_has_layout(lo,&range);
->>>> +	if (!lseg)
->>>> +		return 0;
->>>>    	fl = container_of(lseg, struct nfs4_filelayout_segment, generic_hdr);
->>>>    	size = fl->stripe_unit;
->>>>    	put_lseg_locked(lseg);
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+diff --git a/net/sunrpc/netns.h b/net/sunrpc/netns.h
+new file mode 100644
+index 0000000..b2d18af
+--- /dev/null
++++ b/net/sunrpc/netns.h
+@@ -0,0 +1,12 @@
++#ifndef __SUNRPC_NETNS_H__
++#define __SUNRPC_NETNS_H__
++
++#include <net/net_namespace.h>
++#include <net/netns/generic.h>
++
++struct sunrpc_net {
++};
++
++extern int sunrpc_net_id;
++
++#endif
+diff --git a/net/sunrpc/sunrpc_syms.c b/net/sunrpc/sunrpc_syms.c
+index c0d0850..d552a6a 100644
+--- a/net/sunrpc/sunrpc_syms.c
++++ b/net/sunrpc/sunrpc_syms.c
+@@ -22,6 +22,26 @@
+ #include <linux/sunrpc/rpc_pipe_fs.h>
+ #include <linux/sunrpc/xprtsock.h>
+ 
++#include "netns.h"
++
++int sunrpc_net_id;
++
++static __net_init int sunrpc_init_net(struct net *net)
++{
++	return 0;
++}
++
++static __net_exit void sunrpc_exit_net(struct net *net)
++{
++}
++
++static struct pernet_operations sunrpc_net_ops = {
++	.init = sunrpc_init_net,
++	.exit = sunrpc_exit_net,
++	.id = &sunrpc_net_id,
++	.size = sizeof(struct sunrpc_net),
++};
++
+ extern struct cache_detail ip_map_cache, unix_gid_cache;
+ 
+ extern void cleanup_rpcb_clnt(void);
+@@ -38,18 +58,26 @@ init_sunrpc(void)
+ 	err = rpcauth_init_module();
+ 	if (err)
+ 		goto out3;
++
++	cache_initialize();
++
++	err = register_pernet_subsys(&sunrpc_net_ops);
++	if (err)
++		goto out4;
+ #ifdef RPC_DEBUG
+ 	rpc_register_sysctl();
+ #endif
+ #ifdef CONFIG_PROC_FS
+ 	rpc_proc_init();
+ #endif
+-	cache_initialize();
+ 	cache_register(&ip_map_cache);
+ 	cache_register(&unix_gid_cache);
+ 	svc_init_xprt_sock();	/* svc sock transport */
+ 	init_socket_xprt();	/* clnt sock transport */
+ 	return 0;
++
++out4:
++	unregister_pernet_subsys(&sunrpc_net_ops);
+ out3:
+ 	rpc_destroy_mempool();
+ out2:
+@@ -69,6 +97,7 @@ cleanup_sunrpc(void)
+ 	rpc_destroy_mempool();
+ 	cache_unregister(&ip_map_cache);
+ 	cache_unregister(&unix_gid_cache);
++	unregister_pernet_subsys(&sunrpc_net_ops);
+ #ifdef RPC_DEBUG
+ 	rpc_unregister_sysctl();
+ #endif
+-- 
+1.5.5.6
+
