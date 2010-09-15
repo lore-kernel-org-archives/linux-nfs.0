@@ -1,110 +1,238 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:39176 "EHLO
-	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754510Ab0ITTZV convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 20 Sep 2010 15:25:21 -0400
-Subject: Re: [PATCH] rpcbind: don't ignore bind and init_transport errors
-Content-Type: text/plain; charset=utf-8
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <4C97B00A.3030300@candelatech.com>
-Date: Mon, 20 Sep 2010 15:24:31 -0400
-Cc: =?utf-8?Q?Jan_R=C4=99korajski?= <baggins@sith.mimuw.edu.pl>,
-        Steve Dickson <SteveD@redhat.com>,
-        linux-nfs <linux-nfs@vger.kernel.org>
-Message-Id: <6A427AEF-1D63-4518-B7A7-39DF8261CA27@oracle.com>
-References: <20100917181251.GA21111@sith.mimuw.edu.pl> <690CDF34-1D1E-44E2-B077-7EDD350701CB@oracle.com> <20100917190413.GB21111@sith.mimuw.edu.pl> <DA851F94-8AFB-448D-B48D-BC4ACAD8F395@oracle.com> <20100917222227.GA22144@sith.mimuw.edu.pl> <DC671AB7-F3AF-4E70-B42E-4FF991D16E43@oracle.com> <20100920153157.GA20589@sith.mimuw.edu.pl> <02C38759-5236-454B-8F7B-02F9419B1532@oracle.com> <20100920164856.GA20925@sith.mimuw.edu.pl> <FC6FA83D-52D7-411A-A18F-4A143A60992E@oracle.com> <4C97B00A.3030300@candelatech.com>
-To: Ben Greear <greearb@candelatech.com>
+Received: from mx1.redhat.com ([209.132.183.28]:40149 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753946Ab0IONY1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 15 Sep 2010 09:24:27 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH 5/8] nfs: move nfs_sillyrename to unlink.c
+Date: Wed, 15 Sep 2010 09:23:58 -0400
+Message-Id: <1284557041-4375-6-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1284557041-4375-1-git-send-email-jlayton@redhat.com>
+References: <1284557041-4375-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
+...since that's where most of the sillyrenaming code lives. Also, make
+nfs_async_unlink static as nfs_sillyrename is the only caller.
 
-On Sep 20, 2010, at 3:03 PM, Ben Greear wrote:
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/nfs/dir.c           |   70 ---------------------------------------
+ fs/nfs/unlink.c        |   85 +++++++++++++++++++++++++++++++++++++++++++++++-
+ include/linux/nfs_fs.h |    2 +-
+ 3 files changed, 85 insertions(+), 72 deletions(-)
 
-> On 09/20/2010 11:53 AM, Chuck Lever wrote:
->> 
->> On Sep 20, 2010, at 12:48 PM, Jan Rękorajski wrote:
->> 
->>> On Mon, 20 Sep 2010, Chuck Lever wrote:
->>> 
->>>> 
->>>> On Sep 20, 2010, at 11:31 AM, Jan Rękorajski wrote:
->>>> 
->>>>> On Mon, 20 Sep 2010, Chuck Lever wrote:
->>>>> 
->>>>>> 
->>>>>> On Sep 17, 2010, at 6:22 PM, Jan Rękorajski wrote:
->>>>>> 
->>>>> [snip]
->>>>>>> 
->>>>>>> What about TCP then?  My patch was a by-product of trying to make '-h<IP>'
->>>>>>> also work for tcp sockets, so if we skip unbindable addresses for UDP,
->>>>>>> then will it be ok to do the same for TCP?
->>>>>> 
->>>>>> Interesting.  Now that I've actually looked at the documentation>>
->>>>>> blush<<  rpcbind(8) explicitly says that "-h" is only for UDP.  I seem
->>>>>> to recall that the legacy portmapper had a problem on multi-homed
->>>>>> hosts where a request was received on one interface, and the reply was
->>>>>> sent out another.
->>>>>> 
->>>>>> This is certainly a problem for datagram transports, but shouldn't be
->>>>>> an issue for connection-oriented transports: the reply is always sent
->>>>>> on the same connection as the request was received.
->>>>>> 
->>>>>> Can you say a little more about why do you need "-h" to work for
->>>>>> connection-oriented sockets?
->>>>> 
->>>>> I have a multihomed nfs server, and I don't want the portmapper to even
->>>>> listen on an outside interface.
->>>> 
->>>> Understood, but that is accomplished with firewalling, these days.
->>> 
->>> It always was, but it's nice not needing to worry if I closed/opened all
->>> that's neccessary.
->>> 
->>>> Usually, NFS servers are not run on the edge of private networks
->>>> unless they are serving files to public hosts.
->>> 
->>> I would, if I could :)
->>> 
->>>> None of NFS's RPC daemons allow you to set a bind address, with one
->>>> exception.  rpc.statd allows one to specify a "bind address" in the
->>>> form of a host name for reasons specific to the NSM protocol.
->>> 
->>> I may be wrong here, but maybe it's because it was always portmapper
->>> doing the binding, so if portmapper couldn't then no one thought of
->>> adding this to RPC daemons.
->> 
->> If rpc.mountd is running on a host, and rpcbind is not, it doesn't matter.  A port scanner can still find and attack the open mountd port.  The best and safest approach, IMO, is to use a firewall, and then test it with a remote port scanner service.  Our rpcbind implementation has tcp_wrapper already built in, for instance, but I use the iptables firewall in Fedora 13 (and, I keep RPC services on hosts inside the firewall, not on the firewall itself).
-> 
-> This is true, but if the argument against adding support to various components is
-> always 'no, because the others don't support it', then we are never going
-> to make progress in this direction!
-
-I'm merely observing that none of the others support this, and have never supported it.  To add support for listener binding properly, we will need to do it across the board.  But I don't think the case has been made that adding the ability to bind to a specific listener address is exactly what is needed here.
-
-The reason that these other RPC services do not support this today is because before rpcbind, it was not possible for the portmapper to direct RPC clients to specific interfaces. The new rpcbind itself adds that support via universal addresses.
-
-However, it was decided a while ago that Linux wouldn't allow our kernel services to bind to anything but ANYADDR.  So they all register as ANYADDR:port.  rpcbind's ability to advertise a specific address was regarded as somehow insecure.
-
-The Linux NFS implementation is a mix of kernel and user space services.  It will take some understanding to see if and how the kernel NFS services will work together with multiple instances of user space services.  I personally regard that as a difficult problem.
-
->> If we want to add this feature properly, we will have to change a broad range of user space components.  Therefore it will be a non-trivial undertaking.
->> 
->> For one thing, there appears to be more than one virtualization suite available for Linux (containers, kvm, and so on).  If our NFS infrastructure (both client and server) is to be adapted for lightweight virtualization then I think we need a clear idea of how networking (host naming, interface assignment, routing, and so on) is going to work in these environments.
->> 
->> Just so you (and Ben) know, I intended to add support during the recent rpc.statd rewrite for multiple hostnames and multiple interfaces, exactly for the purpose of having our NLM and NSM implementations support container-like virtualization.  This idea was NACK'd.
-> 
-> I'm sorry to hear it was NACK'd, but even if so, I think it's not a reason to
-> reject other changes that start adding support for binding to IPs.
-
-I don't have the authority to reject anything.  I'm simply explaining the history, and requesting that we slow down and think about some of the details.
-
-If we regard binding to specific listener addresses as a good way to proceed, I think we have an architecturally complex task ahead of us.  Having a common agreed-upon vision in front of us is important to getting the details right.  I don't think we should just start hacking this stuff in while the NFS community and its reviewers don't have a clear vision about what is going to happen eventually.
-
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index e257172..d15ebc9 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -1351,76 +1351,6 @@ static int nfs_rmdir(struct inode *dir, struct dentry *dentry)
+ 	return error;
+ }
+ 
+-static int nfs_sillyrename(struct inode *dir, struct dentry *dentry)
+-{
+-	static unsigned int sillycounter;
+-	const int      fileidsize  = sizeof(NFS_FILEID(dentry->d_inode))*2;
+-	const int      countersize = sizeof(sillycounter)*2;
+-	const int      slen        = sizeof(".nfs")+fileidsize+countersize-1;
+-	char           silly[slen+1];
+-	struct qstr    qsilly;
+-	struct dentry *sdentry;
+-	int            error = -EIO;
+-
+-	dfprintk(VFS, "NFS: silly-rename(%s/%s, ct=%d)\n",
+-		dentry->d_parent->d_name.name, dentry->d_name.name, 
+-		atomic_read(&dentry->d_count));
+-	nfs_inc_stats(dir, NFSIOS_SILLYRENAME);
+-
+-	/*
+-	 * We don't allow a dentry to be silly-renamed twice.
+-	 */
+-	error = -EBUSY;
+-	if (dentry->d_flags & DCACHE_NFSFS_RENAMED)
+-		goto out;
+-
+-	sprintf(silly, ".nfs%*.*Lx",
+-		fileidsize, fileidsize,
+-		(unsigned long long)NFS_FILEID(dentry->d_inode));
+-
+-	/* Return delegation in anticipation of the rename */
+-	nfs_inode_return_delegation(dentry->d_inode);
+-
+-	sdentry = NULL;
+-	do {
+-		char *suffix = silly + slen - countersize;
+-
+-		dput(sdentry);
+-		sillycounter++;
+-		sprintf(suffix, "%*.*x", countersize, countersize, sillycounter);
+-
+-		dfprintk(VFS, "NFS: trying to rename %s to %s\n",
+-				dentry->d_name.name, silly);
+-		
+-		sdentry = lookup_one_len(silly, dentry->d_parent, slen);
+-		/*
+-		 * N.B. Better to return EBUSY here ... it could be
+-		 * dangerous to delete the file while it's in use.
+-		 */
+-		if (IS_ERR(sdentry))
+-			goto out;
+-	} while(sdentry->d_inode != NULL); /* need negative lookup */
+-
+-	qsilly.name = silly;
+-	qsilly.len  = strlen(silly);
+-	if (dentry->d_inode) {
+-		error = NFS_PROTO(dir)->rename(dir, &dentry->d_name,
+-				dir, &qsilly);
+-		nfs_mark_for_revalidate(dentry->d_inode);
+-	} else
+-		error = NFS_PROTO(dir)->rename(dir, &dentry->d_name,
+-				dir, &qsilly);
+-	if (!error) {
+-		nfs_set_verifier(dentry, nfs_save_change_attribute(dir));
+-		d_move(dentry, sdentry);
+-		error = nfs_async_unlink(dir, dentry);
+- 		/* If we return 0 we don't unlink */
+-	}
+-	dput(sdentry);
+-out:
+-	return error;
+-}
+-
+ /*
+  * Remove a file after making sure there are no pending writes,
+  * and after checking that the file has only one user. 
+diff --git a/fs/nfs/unlink.c b/fs/nfs/unlink.c
+index 2f84ada..42cadd1 100644
+--- a/fs/nfs/unlink.c
++++ b/fs/nfs/unlink.c
+@@ -13,9 +13,12 @@
+ #include <linux/nfs_fs.h>
+ #include <linux/sched.h>
+ #include <linux/wait.h>
++#include <linux/namei.h>
+ 
+ #include "internal.h"
+ #include "nfs4_fs.h"
++#include "iostat.h"
++#include "delegation.h"
+ 
+ struct nfs_unlinkdata {
+ 	struct hlist_node list;
+@@ -244,7 +247,7 @@ void nfs_unblock_sillyrename(struct dentry *dentry)
+  * @dir: parent directory of dentry
+  * @dentry: dentry to unlink
+  */
+-int
++static int
+ nfs_async_unlink(struct inode *dir, struct dentry *dentry)
+ {
+ 	struct nfs_unlinkdata *data;
+@@ -303,3 +306,83 @@ nfs_complete_unlink(struct dentry *dentry, struct inode *inode)
+ 	if (data != NULL && (NFS_STALE(inode) || !nfs_call_unlink(dentry, data)))
+ 		nfs_free_unlinkdata(data);
+ }
++
++/**
++ * nfs_sillyrename - Perform a silly-rename of a dentry
++ * @dir: inode of directory that contains dentry
++ * @dentry: dentry to be sillyrenamed
++ *
++ * NFSv2/3 is stateless, so the server doesn't know when the client is
++ * holding a file open. To prevent problems when a file is unlinked while
++ * it's still open, we perform a "silly-rename" -- that is, we rename the
++ * file to a hidden file in the same directory, and only actually perform
++ * the unlink once the last reference to it is put.
++ *
++ * The final cleanup is done via nfs_dentry_iput.
++ */
++int
++nfs_sillyrename(struct inode *dir, struct dentry *dentry)
++{
++	static unsigned int sillycounter;
++	const int      fileidsize  = sizeof(NFS_FILEID(dentry->d_inode))*2;
++	const int      countersize = sizeof(sillycounter)*2;
++	const int      slen        = sizeof(".nfs")+fileidsize+countersize-1;
++	char           silly[slen+1];
++	struct qstr    qsilly;
++	struct dentry *sdentry;
++	int            error = -EIO;
++
++	dfprintk(VFS, "NFS: silly-rename(%s/%s, ct=%d)\n",
++		dentry->d_parent->d_name.name, dentry->d_name.name,
++		atomic_read(&dentry->d_count));
++	nfs_inc_stats(dir, NFSIOS_SILLYRENAME);
++
++	/*
++	 * We don't allow a dentry to be silly-renamed twice.
++	 */
++	error = -EBUSY;
++	if (dentry->d_flags & DCACHE_NFSFS_RENAMED)
++		goto out;
++
++	sprintf(silly, ".nfs%*.*Lx",
++		fileidsize, fileidsize,
++		(unsigned long long)NFS_FILEID(dentry->d_inode));
++
++	/* Return delegation in anticipation of the rename */
++	nfs_inode_return_delegation(dentry->d_inode);
++
++	sdentry = NULL;
++	do {
++		char *suffix = silly + slen - countersize;
++
++		dput(sdentry);
++		sillycounter++;
++		sprintf(suffix, "%*.*x", countersize, countersize, sillycounter);
++
++		dfprintk(VFS, "NFS: trying to rename %s to %s\n",
++				dentry->d_name.name, silly);
++
++		sdentry = lookup_one_len(silly, dentry->d_parent, slen);
++		/*
++		 * N.B. Better to return EBUSY here ... it could be
++		 * dangerous to delete the file while it's in use.
++		 */
++		if (IS_ERR(sdentry))
++			goto out;
++	} while(sdentry->d_inode != NULL); /* need negative lookup */
++
++	qsilly.name = silly;
++	qsilly.len  = strlen(silly);
++	error = NFS_PROTO(dir)->rename(dir, &dentry->d_name, dir, &qsilly);
++	if (dentry->d_inode)
++		nfs_mark_for_revalidate(dentry->d_inode);
++	if (!error) {
++		nfs_set_verifier(dentry, nfs_save_change_attribute(dir));
++		d_move(dentry, sdentry);
++		error = nfs_async_unlink(dir, dentry);
++		/* If we return 0 we don't unlink */
++	}
++	dput(sdentry);
++out:
++	return error;
++}
+diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
+index 508f8cf..6cdf0d6 100644
+--- a/include/linux/nfs_fs.h
++++ b/include/linux/nfs_fs.h
+@@ -479,10 +479,10 @@ extern void nfs_release_automount_timer(void);
+ /*
+  * linux/fs/nfs/unlink.c
+  */
+-extern int  nfs_async_unlink(struct inode *dir, struct dentry *dentry);
+ extern void nfs_complete_unlink(struct dentry *dentry, struct inode *);
+ extern void nfs_block_sillyrename(struct dentry *dentry);
+ extern void nfs_unblock_sillyrename(struct dentry *dentry);
++extern int  nfs_sillyrename(struct inode *dir, struct dentry *dentry);
+ 
+ /*
+  * linux/fs/nfs/write.c
 -- 
-chuck[dot]lever[at]oracle[dot]com
-
-
-
+1.7.1
 
