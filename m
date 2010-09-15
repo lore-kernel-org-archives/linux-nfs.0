@@ -1,113 +1,167 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:9478 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:50213 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751410Ab0IHNKZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 8 Sep 2010 09:10:25 -0400
-Message-ID: <4C878B30.1010808@netapp.com>
-Date: Wed, 08 Sep 2010 09:10:08 -0400
-From: Bryan Schumaker <bjschuma@netapp.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 5/6] NFS: remove readdir plus limit
-References: <4C869AA7.2030000@netapp.com> <14C46455-5738-4FBA-872D-0442B8DAB3C5@oracle.com>
-In-Reply-To: <14C46455-5738-4FBA-872D-0442B8DAB3C5@oracle.com>
-Content-Type: text/plain; charset=ISO-8859-1
+	id S1753650Ab0IONYG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 15 Sep 2010 09:24:06 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH 4/8] nfs: standardize the rename response container
+Date: Wed, 15 Sep 2010 09:23:57 -0400
+Message-Id: <1284557041-4375-5-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1284557041-4375-1-git-send-email-jlayton@redhat.com>
+References: <1284557041-4375-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-Thanks for the advice.  I did some testing between my machine (server) and a virtual machine (client).  The command I ran was ls -l --color=none on a directory with 10,000 files.  With the directory cap, nfsstat had the following output for both a stock kernel and a kernel with these patches applied
+Right now, v3 and v4 have their own variants and v2 doesn't have one at
+all. Create a standard struct that will work for v3 and v4.
 
-Stock Kernel
----------------------
-calls:		10101
-getattr:	3
-readdir:	89
-lookup:		10002
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/nfs/nfs3proc.c       |   16 ++++++++--------
+ fs/nfs/nfs3xdr.c        |    6 +++---
+ fs/nfs/nfs4proc.c       |    2 +-
+ fs/nfs/nfs4xdr.c        |    2 +-
+ include/linux/nfs_xdr.h |   23 +++++++++--------------
+ 5 files changed, 22 insertions(+), 27 deletions(-)
 
-
-My Kernel
-----------------------
-calls:		10169
-getattr:	3
-readdir:	157
-lookup:		10002
-
-
-Without the directory cap, I saw the following numbers
-
-Trial 1
---------------------
-calls:		1710
-getattr:	1622
-readdirplus:	79
-lookup:		2
-
-Trial 2
---------------------
-calls:		1233
-getattr:	1145
-readdirplus:	79
-lookup:		2
-
-Trial 3
---------------------
-calls:		217
-getattr:	129
-readdirplus:	79
-lookup:		2
-
-
-In each of these cases the number of lookups has dropped from 10,002 to 2.  The number of total calls has dropped significantly as well.  I suspect that the change in getattrs is caused by a race between items hitting the cache and the same items being used.
-
-Let me know if I should run other tests.
-
-Bryan
-
-On 09/07/2010 04:33 PM, Chuck Lever wrote:
-> Hi Bryan-
-> 
-> On Sep 7, 2010, at 4:03 PM, Bryan Schumaker wrote:
-> 
->> NFS remove readdir plus limit
->>
->> We will now use readdir plus even on directories that are very large.
-> 
-> READDIRPLUS operations on some servers may be quite expensive, since the server usually treats directories as byte streams, and can be read sequentially; but inode attributes are read by random disk seeks.  So assembling a READDIRPLUS result on a large directory that isn't in the server's cache might be an awful lot of work on a busy server.
-> 
-> On large directories, there isn't much proven benefit to having all the dcache entries on hand on the client.  It can even hurt performance by pushing more useful entries out of the cache.
-> 
-> If we really want to take the directory size cap off, that seems like it could be a far-reaching change.  You should at least use the patch description to provide thorough rationale.  Even some benchmark results, with especially slow servers and networks, and small clients, would be nice.
-> 
->> Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
->> ---
->> diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
->> index 7d2d6c7..b2e12bc 100644
->> --- a/fs/nfs/inode.c
->> +++ b/fs/nfs/inode.c
->> @@ -234,9 +234,6 @@ nfs_init_locked(struct inode *inode, void *opaque)
->> 	return 0;
->> }
->>
->> -/* Don't use READDIRPLUS on directories that we believe are too large */
->> -#define NFS_LIMIT_READDIRPLUS (8*PAGE_SIZE)
->> -
->> /*
->>  * This is our front-end to iget that looks up inodes by file handle
->>  * instead of inode number.
->> @@ -291,8 +288,7 @@ nfs_fhget(struct super_block *sb, struct nfs_fh *fh, struct nfs_fattr *fattr)
->> 		} else if (S_ISDIR(inode->i_mode)) {
->> 			inode->i_op = NFS_SB(sb)->nfs_client->rpc_ops->dir_inode_ops;
->> 			inode->i_fop = &nfs_dir_operations;
->> -			if (nfs_server_capable(inode, NFS_CAP_READDIRPLUS)
->> -			    && fattr->size <= NFS_LIMIT_READDIRPLUS)
->> +			if (nfs_server_capable(inode, NFS_CAP_READDIRPLUS))
->> 				set_bit(NFS_INO_ADVISE_RDPLUS, &NFS_I(inode)->flags);
->> 			/* Deal with crossing mountpoints */
->> 			if ((fattr->valid & NFS_ATTR_FATTR_FSID)
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+diff --git a/fs/nfs/nfs3proc.c b/fs/nfs/nfs3proc.c
+index d8557b3..c5cccf1 100644
+--- a/fs/nfs/nfs3proc.c
++++ b/fs/nfs/nfs3proc.c
+@@ -448,7 +448,7 @@ nfs3_proc_rename(struct inode *old_dir, struct qstr *old_name,
+ 		.new_dir	= NFS_FH(new_dir),
+ 		.new_name	= new_name,
+ 	};
+-	struct nfs3_renameres res;
++	struct nfs_renameres res;
+ 	struct rpc_message msg = {
+ 		.rpc_proc	= &nfs3_procedures[NFS3PROC_RENAME],
+ 		.rpc_argp	= &arg,
+@@ -458,17 +458,17 @@ nfs3_proc_rename(struct inode *old_dir, struct qstr *old_name,
+ 
+ 	dprintk("NFS call  rename %s -> %s\n", old_name->name, new_name->name);
+ 
+-	res.fromattr = nfs_alloc_fattr();
+-	res.toattr = nfs_alloc_fattr();
+-	if (res.fromattr == NULL || res.toattr == NULL)
++	res.old_fattr = nfs_alloc_fattr();
++	res.new_fattr = nfs_alloc_fattr();
++	if (res.old_fattr == NULL || res.new_fattr == NULL)
+ 		goto out;
+ 
+ 	status = rpc_call_sync(NFS_CLIENT(old_dir), &msg, 0);
+-	nfs_post_op_update_inode(old_dir, res.fromattr);
+-	nfs_post_op_update_inode(new_dir, res.toattr);
++	nfs_post_op_update_inode(old_dir, res.old_fattr);
++	nfs_post_op_update_inode(new_dir, res.new_fattr);
+ out:
+-	nfs_free_fattr(res.toattr);
+-	nfs_free_fattr(res.fromattr);
++	nfs_free_fattr(res.old_fattr);
++	nfs_free_fattr(res.new_fattr);
+ 	dprintk("NFS reply rename: %d\n", status);
+ 	return status;
+ }
+diff --git a/fs/nfs/nfs3xdr.c b/fs/nfs/nfs3xdr.c
+index f385759..89c40f8 100644
+--- a/fs/nfs/nfs3xdr.c
++++ b/fs/nfs/nfs3xdr.c
+@@ -970,14 +970,14 @@ nfs3_xdr_createres(struct rpc_rqst *req, __be32 *p, struct nfs3_diropres *res)
+  * Decode RENAME reply
+  */
+ static int
+-nfs3_xdr_renameres(struct rpc_rqst *req, __be32 *p, struct nfs3_renameres *res)
++nfs3_xdr_renameres(struct rpc_rqst *req, __be32 *p, struct nfs_renameres *res)
+ {
+ 	int	status;
+ 
+ 	if ((status = ntohl(*p++)) != 0)
+ 		status = nfs_stat_to_errno(status);
+-	p = xdr_decode_wcc_data(p, res->fromattr);
+-	p = xdr_decode_wcc_data(p, res->toattr);
++	p = xdr_decode_wcc_data(p, res->old_fattr);
++	p = xdr_decode_wcc_data(p, res->new_fattr);
+ 	return status;
+ }
+ 
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index eb36784..120a8a6 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -2682,7 +2682,7 @@ static int _nfs4_proc_rename(struct inode *old_dir, struct qstr *old_name,
+ 		.new_name = new_name,
+ 		.bitmask = server->attr_bitmask,
+ 	};
+-	struct nfs4_rename_res res = {
++	struct nfs_renameres res = {
+ 		.server = server,
+ 	};
+ 	struct rpc_message msg = {
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index 7a098ae..b0bd7ef 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -4873,7 +4873,7 @@ out:
+ /*
+  * Decode RENAME response
+  */
+-static int nfs4_xdr_dec_rename(struct rpc_rqst *rqstp, __be32 *p, struct nfs4_rename_res *res)
++static int nfs4_xdr_dec_rename(struct rpc_rqst *rqstp, __be32 *p, struct nfs_renameres *res)
+ {
+ 	struct xdr_stream xdr;
+ 	struct compound_hdr hdr;
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index 60fa509..6265fa8 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -411,6 +411,15 @@ struct nfs_renameargs {
+ 	struct nfs4_sequence_args	seq_args;
+ };
+ 
++struct nfs_renameres {
++	const struct nfs_server *	server;
++	struct nfs4_change_info		old_cinfo;
++	struct nfs_fattr *		old_fattr;
++	struct nfs4_change_info		new_cinfo;
++	struct nfs_fattr *		new_fattr;
++	struct nfs4_sequence_res	seq_res;
++};
++
+ /*
+  * Argument struct for decode_entry function
+  */
+@@ -623,11 +632,6 @@ struct nfs3_readlinkargs {
+ 	struct page **		pages;
+ };
+ 
+-struct nfs3_renameres {
+-	struct nfs_fattr *	fromattr;
+-	struct nfs_fattr *	toattr;
+-};
+-
+ struct nfs3_linkres {
+ 	struct nfs_fattr *	dir_attr;
+ 	struct nfs_fattr *	fattr;
+@@ -795,15 +799,6 @@ struct nfs4_readlink_res {
+ 	struct nfs4_sequence_res	seq_res;
+ };
+ 
+-struct nfs4_rename_res {
+-	const struct nfs_server *	server;
+-	struct nfs4_change_info		old_cinfo;
+-	struct nfs_fattr *		old_fattr;
+-	struct nfs4_change_info		new_cinfo;
+-	struct nfs_fattr *		new_fattr;
+-	struct nfs4_sequence_res	seq_res;
+-};
+-
+ #define NFS4_SETCLIENTID_NAMELEN	(127)
+ struct nfs4_setclientid {
+ 	const nfs4_verifier *		sc_verifier;
+-- 
+1.7.1
 
