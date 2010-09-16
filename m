@@ -1,590 +1,288 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yw0-f46.google.com ([209.85.213.46]:55415 "EHLO
-	mail-yw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756543Ab0ITPjw (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 20 Sep 2010 11:39:52 -0400
-Received: by ywh1 with SMTP id 1so1347114ywh.19
-        for <linux-nfs@vger.kernel.org>; Mon, 20 Sep 2010 08:39:52 -0700 (PDT)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 1/2] libnfs.a: Remove support/nfs/fstab.c
-To: steved@redhat.com
-Cc: linux-nfs@vger.kernel.org
-Date: Mon, 20 Sep 2010 11:39:47 -0400
-Message-ID: <20100920153947.2604.42074.stgit@ellison.1015granger.net>
-In-Reply-To: <20100920153714.2604.50581.stgit@ellison.1015granger.net>
-References: <20100920153714.2604.50581.stgit@ellison.1015granger.net>
-Content-Type: text/plain; charset="utf-8"
+Received: from mx2.netapp.com ([216.240.18.37]:29752 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755435Ab0IPVCG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 16 Sep 2010 17:02:06 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Cc: viro@zeniv.linux.org.uk, hch@infradead.org
+Subject: [PATCH 1/6] NFSv4: Clean up nfs4_atomic_open
+Date: Thu, 16 Sep 2010 17:01:38 -0400
+Message-Id: <1284670903-28475-2-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1284670903-28475-1-git-send-email-Trond.Myklebust@netapp.com>
+References: <1284670903-28475-1-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-Clean up.  Somehow commit 40b9d523 never removed it.
+Start moving the 'struct nameidata' dependent code out of the lower level
+NFS code in preparation for the removal of open intents.
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Instead of the struct nameidata, we pass down a partially initialised
+struct nfs_open_context that will be fully initialised by the atomic open
+upon success.
+
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
+ fs/nfs/dir.c           |   77 ++++++++++++++++++++++++++++++++++++++++++++++-
+ fs/nfs/inode.c         |    8 ++--
+ fs/nfs/nfs4_fs.h       |    2 +-
+ fs/nfs/nfs4proc.c      |   40 +++++++------------------
+ include/linux/nfs_fs.h |    2 +
+ 5 files changed, 93 insertions(+), 36 deletions(-)
 
- support/nfs/fstab.c |  554 ---------------------------------------------------
- 1 files changed, 0 insertions(+), 554 deletions(-)
- delete mode 100644 support/nfs/fstab.c
-
-diff --git a/support/nfs/fstab.c b/support/nfs/fstab.c
-deleted file mode 100644
-index b4f8710..0000000
---- a/support/nfs/fstab.c
-+++ /dev/null
-@@ -1,554 +0,0 @@
--/* 1999-02-22 Arkadiusz Mi�kiewicz <misiek@pld.ORG.PL>
-- * - added Native Language Support
-- * Sun Mar 21 1999 - Arnaldo Carvalho de Melo <acme@conectiva.com.br>
-- * - fixed strerr(errno) in gettext calls
-- *
-- * 2006-06-08 Amit Gud <agud@redhat.com>
-- * - Moved code to nfs-utils/support/nfs from util-linux/mount.
-- */
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index e257172..17529b5 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -38,6 +38,7 @@
+ #include "delegation.h"
+ #include "iostat.h"
+ #include "internal.h"
++#include "fscache.h"
+ 
+ /* #define NFS_DEBUG_VERBOSE 1 */
+ 
+@@ -1029,9 +1030,61 @@ static int is_atomic_open(struct nameidata *nd)
+ 	return 1;
+ }
+ 
++static struct nfs_open_context *nameidata_to_nfs_open_context(struct dentry *dentry, struct nameidata *nd)
++{
++	struct path path = {
++		.mnt = nd->path.mnt,
++		.dentry = dentry,
++	};
++	struct nfs_open_context *ctx;
++	struct rpc_cred *cred;
++	fmode_t fmode = nd->intent.open.flags & (FMODE_READ | FMODE_WRITE | FMODE_EXEC);
++
++	cred = rpc_lookup_cred();
++	if (IS_ERR(cred))
++		return ERR_CAST(cred);
++	ctx = alloc_nfs_open_context(&path, cred, fmode);
++	put_rpccred(cred);
++	if (ctx == NULL)
++		return ERR_PTR(-ENOMEM);
++	return ctx;
++}
++
++static int do_open(struct inode *inode, struct file *filp)
++{
++	nfs_fscache_set_inode_cookie(inode, filp);
++	return 0;
++}
++
++static int nfs_intent_set_file(struct nameidata *nd, struct nfs_open_context *ctx)
++{
++	struct file *filp;
++	int ret = 0;
++
++	/* If the open_intent is for execute, we have an extra check to make */
++	if (ctx->mode & FMODE_EXEC) {
++		ret = nfs_may_open(ctx->path.dentry->d_inode,
++				ctx->cred,
++				nd->intent.open.flags);
++		if (ret < 0)
++			goto out;
++	}
++	filp = lookup_instantiate_filp(nd, ctx->path.dentry, do_open);
++	if (IS_ERR(filp))
++		ret = PTR_ERR(filp);
++	else
++		nfs_file_set_open_context(filp, ctx);
++out:
++	put_nfs_open_context(ctx);
++	return ret;
++}
++
+ static struct dentry *nfs_atomic_lookup(struct inode *dir, struct dentry *dentry, struct nameidata *nd)
+ {
++	struct nfs_open_context *ctx;
++	struct iattr attr;
+ 	struct dentry *res = NULL;
++	int open_flags;
+ 	int error;
+ 
+ 	dfprintk(VFS, "NFS: atomic_lookup(%s/%ld), %s\n",
+@@ -1054,9 +1107,27 @@ static struct dentry *nfs_atomic_lookup(struct inode *dir, struct dentry *dentry
+ 		goto out;
+ 	}
+ 
++	ctx = nameidata_to_nfs_open_context(dentry, nd);
++	res = ERR_CAST(ctx);
++	if (IS_ERR(ctx))
++		goto out;
++
++	open_flags = nd->intent.open.flags;
++	if (nd->flags & LOOKUP_CREATE) {
++		attr.ia_mode = nd->intent.open.create_mode;
++		attr.ia_valid = ATTR_MODE;
++		if (!IS_POSIXACL(dir))
++			attr.ia_mode &= ~current_umask();
++	} else {
++		open_flags &= ~O_EXCL;
++		attr.ia_valid = 0;
++		BUG_ON(open_flags & O_CREAT);
++	}
++
+ 	/* Open the file on the server */
+-	res = nfs4_atomic_open(dir, dentry, nd);
++	res = nfs4_atomic_open(dir, ctx, open_flags, &attr);
+ 	if (IS_ERR(res)) {
++		put_nfs_open_context(ctx);
+ 		error = PTR_ERR(res);
+ 		switch (error) {
+ 			/* Make a negative dentry */
+@@ -1074,8 +1145,10 @@ static struct dentry *nfs_atomic_lookup(struct inode *dir, struct dentry *dentry
+ 			default:
+ 				goto out;
+ 		}
+-	} else if (res != NULL)
++	}
++	if (res != NULL)
+ 		dentry = res;
++	nfs_intent_set_file(nd, ctx);
+ out:
+ 	return res;
+ no_open:
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index 7d2d6c7..2f92664 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -623,7 +623,7 @@ void nfs_close_context(struct nfs_open_context *ctx, int is_sync)
+ 	nfs_revalidate_inode(server, inode);
+ }
+ 
+-static struct nfs_open_context *alloc_nfs_open_context(struct path *path, struct rpc_cred *cred)
++struct nfs_open_context *alloc_nfs_open_context(struct path *path, struct rpc_cred *cred, fmode_t f_mode)
+ {
+ 	struct nfs_open_context *ctx;
+ 
+@@ -633,6 +633,7 @@ static struct nfs_open_context *alloc_nfs_open_context(struct path *path, struct
+ 		path_get(&ctx->path);
+ 		ctx->cred = get_rpccred(cred);
+ 		ctx->state = NULL;
++		ctx->mode = f_mode;
+ 		ctx->flags = 0;
+ 		ctx->error = 0;
+ 		ctx->dir_cookie = 0;
+@@ -673,7 +674,7 @@ void put_nfs_open_context(struct nfs_open_context *ctx)
+  * Ensure that mmap has a recent RPC credential for use when writing out
+  * shared pages
+  */
+-static void nfs_file_set_open_context(struct file *filp, struct nfs_open_context *ctx)
++void nfs_file_set_open_context(struct file *filp, struct nfs_open_context *ctx)
+ {
+ 	struct inode *inode = filp->f_path.dentry->d_inode;
+ 	struct nfs_inode *nfsi = NFS_I(inode);
+@@ -730,11 +731,10 @@ int nfs_open(struct inode *inode, struct file *filp)
+ 	cred = rpc_lookup_cred();
+ 	if (IS_ERR(cred))
+ 		return PTR_ERR(cred);
+-	ctx = alloc_nfs_open_context(&filp->f_path, cred);
++	ctx = alloc_nfs_open_context(&filp->f_path, cred, filp->f_mode);
+ 	put_rpccred(cred);
+ 	if (ctx == NULL)
+ 		return -ENOMEM;
+-	ctx->mode = filp->f_mode;
+ 	nfs_file_set_open_context(filp, ctx);
+ 	put_nfs_open_context(ctx);
+ 	nfs_fscache_set_inode_cookie(inode, filp);
+diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
+index 311e15c..c5cc2a6 100644
+--- a/fs/nfs/nfs4_fs.h
++++ b/fs/nfs/nfs4_fs.h
+@@ -242,7 +242,7 @@ extern int nfs4_proc_renew(struct nfs_client *, struct rpc_cred *);
+ extern int nfs4_init_clientid(struct nfs_client *, struct rpc_cred *);
+ extern int nfs41_init_clientid(struct nfs_client *, struct rpc_cred *);
+ extern int nfs4_do_close(struct path *path, struct nfs4_state *state, gfp_t gfp_mask, int wait);
+-extern struct dentry *nfs4_atomic_open(struct inode *, struct dentry *, struct nameidata *);
++extern struct dentry *nfs4_atomic_open(struct inode *, struct nfs_open_context *, int, struct iattr *);
+ extern int nfs4_open_revalidate(struct inode *, struct dentry *, int, struct nameidata *);
+ extern int nfs4_server_capabilities(struct nfs_server *server, struct nfs_fh *fhandle);
+ extern int nfs4_proc_fs_locations(struct inode *dir, const struct qstr *name,
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 089da5b..38c3bed 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -2025,39 +2025,17 @@ out_close:
+ }
+ 
+ struct dentry *
+-nfs4_atomic_open(struct inode *dir, struct dentry *dentry, struct nameidata *nd)
++nfs4_atomic_open(struct inode *dir, struct nfs_open_context *ctx, int open_flags, struct iattr *attr)
+ {
+-	struct path path = {
+-		.mnt = nd->path.mnt,
+-		.dentry = dentry,
+-	};
++	struct dentry *dentry = ctx->path.dentry;
+ 	struct dentry *parent;
+-	struct iattr attr;
+-	struct rpc_cred *cred;
+ 	struct nfs4_state *state;
+ 	struct dentry *res;
+-	int open_flags = nd->intent.open.flags;
+-	fmode_t fmode = open_flags & (FMODE_READ | FMODE_WRITE | FMODE_EXEC);
 -
--#include <errno.h>
--#include <stdio.h>
--#include <fcntl.h>
--#include <unistd.h>
--#include <string.h>
--#include <sys/stat.h>
--#include <mntent.h>
--
--#include "fstab.h"
--#include "xcommon.h"
--#include "nfs_mntent.h"
--#include "nfs_paths.h"
--#include "nls.h"
--
--#define LOCK_TIMEOUT	10
--#define streq(s, t)	(strcmp ((s), (t)) == 0)
--#define PROC_MOUNTS		"/proc/mounts"
--
--extern int verbose;
--
--/* Information about mtab. ------------------------------------*/
--static int have_mtab_info = 0;
--static int var_mtab_does_not_exist = 0;
--static int var_mtab_is_a_symlink = 0;
--
--static void
--get_mtab_info(void) {
--	struct stat mtab_stat;
--
--	if (!have_mtab_info) {
--		if (lstat(MOUNTED, &mtab_stat))
--			var_mtab_does_not_exist = 1;
--		else if (S_ISLNK(mtab_stat.st_mode))
--			var_mtab_is_a_symlink = 1;
--		have_mtab_info = 1;
+-	if (nd->flags & LOOKUP_CREATE) {
+-		attr.ia_mode = nd->intent.open.create_mode;
+-		attr.ia_valid = ATTR_MODE;
+-		if (!IS_POSIXACL(dir))
+-			attr.ia_mode &= ~current_umask();
+-	} else {
+-		open_flags &= ~O_EXCL;
+-		attr.ia_valid = 0;
+-		BUG_ON(open_flags & O_CREAT);
 -	}
--}
--
--int
--mtab_does_not_exist(void) {
--	get_mtab_info();
--	return var_mtab_does_not_exist;
--}
--
--static int
--mtab_is_a_symlink(void) {
--        get_mtab_info();
--        return var_mtab_is_a_symlink;
--}
--
--int
--mtab_is_writable() {
--	int fd;
--
--	/* Should we write to /etc/mtab upon an update?
--	   Probably not if it is a symlink to /proc/mounts, since that
--	   would create a file /proc/mounts in case the proc filesystem
--	   is not mounted. */
--	if (mtab_is_a_symlink())
--		return 0;
--
--	fd = open(MOUNTED, O_RDWR | O_CREAT, 0644);
--	if (fd >= 0) {
--		close(fd);
--		return 1;
--	} else
--		return 0;
--}
--
--/* Contents of mtab and fstab ---------------------------------*/
--
--struct mntentchn mounttable;
--static int got_mtab = 0;
--struct mntentchn fstab;
--static int got_fstab = 0;
--
--static void read_mounttable(void);
--static void read_fstab(void);
--
--static struct mntentchn *
--mtab_head(void) {
--	if (!got_mtab)
--		read_mounttable();
--	return &mounttable;
--}
--
--static struct mntentchn *
--fstab_head(void)
--{
--	if (!got_fstab)
--		read_fstab();
--	return &fstab;
--}
--
--#if 0
--static void
--my_free(const void *s) {
--	if (s)
--		free((void *) s);
--}
--
--static void
--discard_mntentchn(struct mntentchn *mc0) {
--	struct mntentchn *mc, *mc1;
--
--	for (mc = mc0->nxt; mc && mc != mc0; mc = mc1) {
--		mc1 = mc->nxt;
--		my_free(mc->m.mnt_fsname);
--		my_free(mc->m.mnt_dir);
--		my_free(mc->m.mnt_type);
--		my_free(mc->m.mnt_opts);
--		free(mc);
--	}
--}
--#endif
--
--static void
--read_mntentchn(mntFILE *mfp, const char *fnam, struct mntentchn *mc0) {
--	struct mntentchn *mc = mc0;
--	struct mntent *mnt;
--
--	while ((mnt = nfs_getmntent(mfp)) != NULL) {
--		if (!streq(mnt->mnt_type, MNTTYPE_IGNORE)) {
--			mc->nxt = (struct mntentchn *) xmalloc(sizeof(*mc));
--			mc->nxt->prev = mc;
--			mc = mc->nxt;
--			mc->m = *mnt;
--			mc->nxt = mc0;
--		}
--	}
--	mc0->prev = mc;
--	if (ferror(mfp->mntent_fp)) {
--		int errsv = errno;
--		nfs_error(_("warning: error reading %s: %s"),
--		      fnam, strerror (errsv));
--		mc0->nxt = mc0->prev = NULL;
--	}
--	nfs_endmntent(mfp);
--}
--
--/*
-- * Read /etc/mtab.  If that fails, try /proc/mounts.
-- * This produces a linked list. The list head mounttable is a dummy.
-- * Return 0 on success.
-- */
--static void
--read_mounttable() {
--        mntFILE *mfp;
--        const char *fnam;
--        struct mntentchn *mc = &mounttable;
--
--        got_mtab = 1;
--        mc->nxt = mc->prev = NULL;
--
--        fnam = MOUNTED;
--        mfp = nfs_setmntent (fnam, "r");
--        if (mfp == NULL || mfp->mntent_fp == NULL) {
--                int errsv = errno;
--                fnam = PROC_MOUNTS;
--                mfp = nfs_setmntent (fnam, "r");
--                if (mfp == NULL || mfp->mntent_fp == NULL) {
--                        nfs_error(_("warning: can't open %s: %s"),
--                              MOUNTED, strerror (errsv));
--                        return;
--                }
--                if (verbose)
--                        printf (_("mount: could not open %s - "
--                                  "using %s instead\n"),
--                                MOUNTED, PROC_MOUNTS);
--        }
--        read_mntentchn(mfp, fnam, mc);
--}
--
--static void
--read_fstab()
--{
--	mntFILE *mfp = NULL;
--	const char *fnam;
--	struct mntentchn *mc = &fstab;
--
--	got_fstab = 1;
--	mc->nxt = mc->prev = NULL;
--
--	fnam = _PATH_FSTAB;
--	mfp = nfs_setmntent (fnam, "r");
--	if (mfp == NULL || mfp->mntent_fp == NULL) {
--		int errsv = errno;
--		nfs_error(_("warning: can't open %s: %s"),
--			  _PATH_FSTAB, strerror (errsv));
--		return;
--	}
--	read_mntentchn(mfp, fnam, mc);
--}
--
--/*
-- * Given the directory name NAME, and the place MCPREV we found it last time,
-- * try to find more occurrences.
-- */ 
--struct mntentchn *
--getmntdirbackward (const char *name, struct mntentchn *mcprev) {
--	struct mntentchn *mc, *mc0;
--
--	mc0 = mtab_head();
--	if (!mcprev)
--		mcprev = mc0;
--	for (mc = mcprev->prev; mc && mc != mc0; mc = mc->prev)
--		if (streq(mc->m.mnt_dir, name))
--			return mc;
--	return NULL;
--}
--
--/*
-- * Given the device name NAME, and the place MCPREV we found it last time,
-- * try to find more occurrences.
-- */ 
--struct mntentchn *
--getmntdevbackward (const char *name, struct mntentchn *mcprev) {
--	struct mntentchn *mc, *mc0;
--
--	mc0 = mtab_head();
--	if (!mcprev)
--		mcprev = mc0;
--	for (mc = mcprev->prev; mc && mc != mc0; mc = mc->prev)
--		if (streq(mc->m.mnt_fsname, name))
--			return mc;
--	return NULL;
--}
--
--/* Find the dir FILE in fstab.  */
--struct mntentchn *
--getfsfile (const char *file)
--{
--	struct mntentchn *mc, *mc0;
--
--	mc0 = fstab_head();
--	for (mc = mc0->nxt; mc && mc != mc0; mc = mc->nxt)
--		if (streq(mc->m.mnt_dir, file))
--			return mc;
--	return NULL;
--}
--
--/* Find the device SPEC in fstab.  */
--struct mntentchn *
--getfsspec (const char *spec)
--{
--	struct mntentchn *mc, *mc0;
--
--	mc0 = fstab_head();
--	for (mc = mc0->nxt; mc && mc != mc0; mc = mc->nxt)
--		if (streq(mc->m.mnt_fsname, spec))
--			return mc;
--	return NULL;
--}
--
--/* Updating mtab ----------------------------------------------*/
--
--/* Flag for already existing lock file. */
--static int we_created_lockfile = 0;
--static int lockfile_fd = -1;
--
--/* Flag to indicate that signals have been set up. */
--static int signals_have_been_setup = 0;
--
--/* Ensure that the lock is released if we are interrupted.  */
--extern char *strsignal(int sig);	/* not always in <string.h> */
--
--static void
--handler (int sig) {
--     die(EX_USER, "%s", strsignal(sig));
--}
--
--static void
--setlkw_timeout (int sig) {
--     /* nothing, fcntl will fail anyway */
--}
--
--/* Remove lock file.  */
--void
--unlock_mtab (void) {
--	if (we_created_lockfile) {
--		close(lockfile_fd);
--		lockfile_fd = -1;
--		unlink (MOUNTED_LOCK);
--		we_created_lockfile = 0;
--	}
--}
--
--/* Create the lock file.
--   The lock file will be removed if we catch a signal or when we exit. */
--/* The old code here used flock on a lock file /etc/mtab~ and deleted
--   this lock file afterwards. However, as rgooch remarks, that has a
--   race: a second mount may be waiting on the lock and proceed as
--   soon as the lock file is deleted by the first mount, and immediately
--   afterwards a third mount comes, creates a new /etc/mtab~, applies
--   flock to that, and also proceeds, so that the second and third mount
--   now both are scribbling in /etc/mtab.
--   The new code uses a link() instead of a creat(), where we proceed
--   only if it was us that created the lock, and hence we always have
--   to delete the lock afterwards. Now the use of flock() is in principle
--   superfluous, but avoids an arbitrary sleep(). */
--
--/* Where does the link point to? Obvious choices are mtab and mtab~~.
--   HJLu points out that the latter leads to races. Right now we use
--   mtab~.<pid> instead. Use 20 as upper bound for the length of %d. */
--#define MOUNTLOCK_LINKTARGET		MOUNTED_LOCK "%d"
--#define MOUNTLOCK_LINKTARGET_LTH	(sizeof(MOUNTED_LOCK)+20)
--
--void
--lock_mtab (void) {
--	int tries = 100000, i;
--	char linktargetfile[MOUNTLOCK_LINKTARGET_LTH];
--
--	at_die = unlock_mtab;
--
--	if (!signals_have_been_setup) {
--		int sig = 0;
--		struct sigaction sa;
--
--		sa.sa_handler = handler;
--		sa.sa_flags = 0;
--		sigfillset (&sa.sa_mask);
--  
--		while (sigismember (&sa.sa_mask, ++sig) != -1
--		       && sig != SIGCHLD) {
--			if (sig == SIGALRM)
--				sa.sa_handler = setlkw_timeout;
--			else
--				sa.sa_handler = handler;
--			sigaction (sig, &sa, (struct sigaction *) 0);
--		}
--		signals_have_been_setup = 1;
--	}
--
--	sprintf(linktargetfile, MOUNTLOCK_LINKTARGET, getpid ());
--
--	i = open (linktargetfile, O_WRONLY|O_CREAT, 0);
--	if (i < 0) {
--		int errsv = errno;
--		/* linktargetfile does not exist (as a file)
--		   and we cannot create it. Read-only filesystem?
--		   Too many files open in the system?
--		   Filesystem full? */
--		die (EX_FILEIO, _("can't create lock file %s: %s "
--						  "(use -n flag to override)"),
--			 linktargetfile, strerror (errsv));
--	}
--	close(i);
--	
--	/* Repeat until it was us who made the link */
--	while (!we_created_lockfile) {
--		struct flock flock;
--		int errsv, j;
--
--		j = link(linktargetfile, MOUNTED_LOCK);
--		errsv = errno;
--
--		if (j == 0)
--			we_created_lockfile = 1;
--
--		if (j < 0 && errsv != EEXIST) {
--			(void) unlink(linktargetfile);
--			die (EX_FILEIO, _("can't link lock file %s: %s "
--			     "(use -n flag to override)"),
--			     MOUNTED_LOCK, strerror (errsv));
--		}
--
--		lockfile_fd = open (MOUNTED_LOCK, O_WRONLY);
--
--		if (lockfile_fd < 0) {
--			int errsv = errno;
--			/* Strange... Maybe the file was just deleted? */
--			if (errno == ENOENT && tries-- > 0) {
--				if (tries % 200 == 0)
--					usleep(30);
--				continue;
--			}
--			(void) unlink(linktargetfile);
--			die (EX_FILEIO, _("can't open lock file %s: %s "
--			     "(use -n flag to override)"),
--			     MOUNTED_LOCK, strerror (errsv));
--		}
--
--		flock.l_type = F_WRLCK;
--		flock.l_whence = SEEK_SET;
--		flock.l_start = 0;
--		flock.l_len = 0;
--
--		if (j == 0) {
--			/* We made the link. Now claim the lock. */
--			if (fcntl (lockfile_fd, F_SETLK, &flock) == -1) {
--				if (verbose) {
--				    int errsv = errno;
--				    printf(_("Can't lock lock file %s: %s\n"),
--					   MOUNTED_LOCK, strerror (errsv));
--				}
--				/* proceed anyway */
--			}
--			(void) unlink(linktargetfile);
--		} else {
--			static int tries = 0;
--
--			/* Someone else made the link. Wait. */
--			alarm(LOCK_TIMEOUT);
--			if (fcntl (lockfile_fd, F_SETLKW, &flock) == -1) {
--				int errsv = errno;
--				(void) unlink(linktargetfile);
--				die (EX_FILEIO, _("can't lock lock file %s: %s"),
--				     MOUNTED_LOCK, (errno == EINTR) ?
--				     _("timed out") : strerror (errsv));
--			}
--			alarm(0);
--			/* Limit the number of iterations - maybe there
--			   still is some old /etc/mtab~ */
--			++tries;
--			if (tries % 200 == 0)
--			   usleep(30);
--			if (tries > 100000) {
--				(void) unlink(linktargetfile);
--				close(lockfile_fd);
--				die (EX_FILEIO, _("Cannot create link %s\n"
--						  "Perhaps there is a stale lock file?\n"),
--					 MOUNTED_LOCK);
-- 			}
--			close(lockfile_fd);
--		}
--	}
--}
--
--/*
-- * Update the mtab.
-- *  Used by umount with null INSTEAD: remove the last DIR entry.
-- *  Used by mount upon a remount: update option part,
-- *   and complain if a wrong device or type was given.
-- *   [Note that often a remount will be a rw remount of /
-- *    where there was no entry before, and we'll have to believe
-- *    the values given in INSTEAD.]
-- */
--
--void
--update_mtab (const char *dir, struct mntent *instead)
--{
--	mntFILE *mfp, *mftmp;
--	const char *fnam = MOUNTED;
--	struct mntentchn mtabhead;	/* dummy */
--	struct mntentchn *mc, *mc0, *absent = NULL;
--
--	if (mtab_does_not_exist() || !mtab_is_writable())
--		return;
--
--	lock_mtab();
--
--	/* having locked mtab, read it again */
--	mc0 = mc = &mtabhead;
--	mc->nxt = mc->prev = NULL;
--
--	mfp = nfs_setmntent(fnam, "r");
--	if (mfp == NULL || mfp->mntent_fp == NULL) {
--		int errsv = errno;
--		nfs_error (_("cannot open %s (%s) - mtab not updated"),
--		       fnam, strerror (errsv));
--		goto leave;
--	}
--
--	read_mntentchn(mfp, fnam, mc);
--
--	/* find last occurrence of dir */
--	for (mc = mc0->prev; mc && mc != mc0; mc = mc->prev)
--		if (streq(mc->m.mnt_dir, dir))
--			break;
--	if (mc && mc != mc0) {
--		if (instead == NULL) {
--			/* An umount - remove entry */
--			if (mc && mc != mc0) {
--				mc->prev->nxt = mc->nxt;
--				mc->nxt->prev = mc->prev;
--				free(mc);
--			}
--		} else {
--			/* A remount */
--			mc->m.mnt_opts = instead->mnt_opts;
--		}
--	} else if (instead) {
--		/* not found, add a new entry */
--		absent = xmalloc(sizeof(*absent));
--		absent->m = *instead;
--		absent->nxt = mc0;
--		absent->prev = mc0->prev;
--		mc0->prev = absent;
--		if (mc0->nxt == NULL)
--			mc0->nxt = absent;
--	}
--
--	/* write chain to mtemp */
--	mftmp = nfs_setmntent (MOUNTED_TEMP, "w");
--	if (mftmp == NULL || mftmp->mntent_fp == NULL) {
--		int errsv = errno;
--		nfs_error (_("cannot open %s (%s) - mtab not updated"),
--		       MOUNTED_TEMP, strerror (errsv));
--		goto leave;
--	}
--
--	for (mc = mc0->nxt; mc && mc != mc0; mc = mc->nxt) {
--		if (nfs_addmntent(mftmp, &(mc->m)) == 1) {
--			int errsv = errno;
--			die (EX_FILEIO, _("error writing %s: %s"),
--			     MOUNTED_TEMP, strerror (errsv));
--		}
--	}
--
--#if 0
--	/* the chain might have strings copied from 'instead',
--	 * so we cannot safely free it.
--	 * And there is no need anyway because we are going to exit
--	 * shortly.  So just don't call discard_mntentchn....
--	 */
--	discard_mntentchn(mc0);
--#endif
--	if (fchmod (fileno (mftmp->mntent_fp),
--		    S_IRUSR|S_IWUSR|S_IRGRP|S_IROTH) < 0) {
--		int errsv = errno;
--		fprintf(stderr, _("error changing mode of %s: %s\n"),
--			MOUNTED_TEMP, strerror (errsv));
--	}
--	nfs_endmntent (mftmp);
--
--	{ /*
--	   * If mount is setuid and some non-root user mounts sth,
--	   * then mtab.tmp might get the group of this user. Copy uid/gid
--	   * from the present mtab before renaming.
--	   */
--	    struct stat sbuf;
--	    if (stat (MOUNTED, &sbuf) == 0)
--		chown (MOUNTED_TEMP, sbuf.st_uid, sbuf.st_gid);
--	}
--
--	/* rename mtemp to mtab */
--	if (rename (MOUNTED_TEMP, MOUNTED) < 0) {
--		int errsv = errno;
--		fprintf(stderr, _("can't rename %s to %s: %s\n"),
--			MOUNTED_TEMP, MOUNTED, strerror(errsv));
--	}
--
-- leave:
--	unlock_mtab();
--}
+ 
+-	cred = rpc_lookup_cred();
+-	if (IS_ERR(cred))
+-		return (struct dentry *)cred;
+ 	parent = dentry->d_parent;
+ 	/* Protect against concurrent sillydeletes */
+ 	nfs_block_sillyrename(parent);
+-	state = nfs4_do_open(dir, &path, fmode, open_flags, &attr, cred);
+-	put_rpccred(cred);
++	state = nfs4_do_open(dir, &ctx->path, ctx->mode, open_flags, attr, ctx->cred);
+ 	if (IS_ERR(state)) {
+ 		if (PTR_ERR(state) == -ENOENT) {
+ 			d_add(dentry, NULL);
+@@ -2067,11 +2045,15 @@ nfs4_atomic_open(struct inode *dir, struct dentry *dentry, struct nameidata *nd)
+ 		return (struct dentry *)state;
+ 	}
+ 	res = d_add_unique(dentry, igrab(state->inode));
+-	if (res != NULL)
+-		path.dentry = res;
+-	nfs_set_verifier(path.dentry, nfs_save_change_attribute(dir));
++	if (res != NULL) {
++		struct dentry *dummy = ctx->path.dentry;
++
++		ctx->path.dentry = dget(res);
++		dput(dummy);
++	}
++	ctx->state = state;
++	nfs_set_verifier(ctx->path.dentry, nfs_save_change_attribute(dir));
+ 	nfs_unblock_sillyrename(parent);
+-	nfs4_intent_set_file(nd, &path, state, fmode);
+ 	return res;
+ }
+ 
+diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
+index 508f8cf..39cb70b 100644
+--- a/include/linux/nfs_fs.h
++++ b/include/linux/nfs_fs.h
+@@ -360,6 +360,8 @@ extern void nfs_setattr_update_inode(struct inode *inode, struct iattr *attr);
+ extern struct nfs_open_context *get_nfs_open_context(struct nfs_open_context *ctx);
+ extern void put_nfs_open_context(struct nfs_open_context *ctx);
+ extern struct nfs_open_context *nfs_find_open_context(struct inode *inode, struct rpc_cred *cred, fmode_t mode);
++extern struct nfs_open_context *alloc_nfs_open_context(struct path *path, struct rpc_cred *cred, fmode_t f_mode);
++extern void nfs_file_set_open_context(struct file *filp, struct nfs_open_context *ctx);
+ extern struct nfs_lock_context *nfs_get_lock_context(struct nfs_open_context *ctx);
+ extern void nfs_put_lock_context(struct nfs_lock_context *l_ctx);
+ extern u64 nfs_compat_user_ino64(u64 fileid);
+-- 
+1.7.2.3
 
