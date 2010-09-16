@@ -1,90 +1,48 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:47528 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:29752 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754728Ab0IISKh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 9 Sep 2010 14:10:37 -0400
-Received: from localhost.localdomain (surajit-lxp.hq.netapp.com [10.58.50.95] (may be forged))
-	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id o89IAW1O002948
-	for <linux-nfs@vger.kernel.org>; Thu, 9 Sep 2010 11:10:35 -0700 (PDT)
-From: Fred Isaman <iisaman@netapp.com>
+	id S1752984Ab0IPVCF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 16 Sep 2010 17:02:05 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
 To: linux-nfs@vger.kernel.org
-Subject: [PATCH 03/13] RFC: pnfsd, pnfs: protocol level pnfs constants
-Date: Thu,  2 Sep 2010 14:00:09 -0400
-Message-Id: <1283450419-5648-4-git-send-email-iisaman@netapp.com>
-In-Reply-To: <1283450419-5648-1-git-send-email-iisaman@netapp.com>
-References: <1283450419-5648-1-git-send-email-iisaman@netapp.com>
+Cc: viro@zeniv.linux.org.uk, hch@infradead.org
+Subject: [PATCH 0/6] Remove struct nameidata from lower level NFS code
+Date: Thu, 16 Sep 2010 17:01:37 -0400
+Message-Id: <1284670903-28475-1-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
 MIME-Version: 1.0
 
-From: The pNFS Team <linux-nfs@vger.kernel.org>
+Hi,
 
-Use only layoutreturn constant for both returns and recalls.
-(return_* works better for recall_type rather the other way around)
+The following patches attempt to clean up the atomic open code so that we
+keep all the functions that depend on the struct nameidata in fs/nfs/dir.c.
+Instead of passing down the struct nameidata, we have the lower layer NFSv4
+code fill in the nfs_open_context, which can then be used by nfs_atomic_lookup
+to fill in the struct file.
 
-Signed-off-by: TBD - melding/reorganization of several patches
----
- include/linux/nfs4.h |   39 +++++++++++++++++++++++++++++++++++++++
- 1 files changed, 39 insertions(+), 0 deletions(-)
+Cheers
+  Trond
 
-diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
-index 07e40c6..6798fc3 100644
---- a/include/linux/nfs4.h
-+++ b/include/linux/nfs4.h
-@@ -471,6 +471,8 @@ enum lock_type4 {
- #define FATTR4_WORD1_TIME_MODIFY        (1UL << 21)
- #define FATTR4_WORD1_TIME_MODIFY_SET    (1UL << 22)
- #define FATTR4_WORD1_MOUNTED_ON_FILEID  (1UL << 23)
-+#define FATTR4_WORD1_FS_LAYOUT_TYPES    (1UL << 30)
-+#define FATTR4_WORD2_LAYOUT_BLKSIZE     (1UL << 1)
- 
- #define NFSPROC4_NULL 0
- #define NFSPROC4_COMPOUND 1
-@@ -550,6 +552,43 @@ enum state_protect_how4 {
- 	SP4_SSV		= 2
- };
- 
-+enum pnfs_layouttype {
-+	LAYOUT_NFSV4_1_FILES  = 1,
-+	LAYOUT_OSD2_OBJECTS = 2,
-+	LAYOUT_BLOCK_VOLUME = 3,
-+};
-+
-+/* used for both layout return and recall */
-+enum pnfs_layoutreturn_type {
-+	RETURN_FILE = 1,
-+	RETURN_FSID = 2,
-+	RETURN_ALL  = 3
-+};
-+
-+enum pnfs_iomode {
-+	IOMODE_READ = 1,
-+	IOMODE_RW = 2,
-+	IOMODE_ANY = 3,
-+};
-+
-+enum pnfs_notify_deviceid_type4 {
-+	NOTIFY_DEVICEID4_CHANGE = 1 << 1,
-+	NOTIFY_DEVICEID4_DELETE = 1 << 2,
-+};
-+
-+#define NFL4_UFLG_MASK			0x0000003F
-+#define NFL4_UFLG_DENSE			0x00000001
-+#define NFL4_UFLG_COMMIT_THRU_MDS	0x00000002
-+#define NFL4_UFLG_STRIPE_UNIT_SIZE_MASK	0xFFFFFFC0
-+
-+/* Encoded in the loh_body field of type layouthint4 */
-+enum filelayout_hint_care4 {
-+	NFLH4_CARE_DENSE		= NFL4_UFLG_DENSE,
-+	NFLH4_CARE_COMMIT_THRU_MDS	= NFL4_UFLG_COMMIT_THRU_MDS,
-+	NFLH4_CARE_STRIPE_UNIT_SIZE	= 0x00000040,
-+	NFLH4_CARE_STRIPE_COUNT		= 0x00000080
-+};
-+
- #endif
- #endif
- 
+Trond Myklebust (6):
+  NFSv4: Clean up nfs4_atomic_open
+  NFSv4: Further minor cleanups for nfs4_atomic_open()
+  NFSv4: Clean up nfs4_open_revalidate
+  NFSv4: Further cleanups for nfs4_open_revalidate()
+  NFS: Clean up nfs4_proc_create()
+  NFS: Add an 'open_context' element to struct nfs_rpc_ops
+
+ fs/nfs/dir.c            |  179 ++++++++++++++++++++++++++++++++++++++++++----
+ fs/nfs/inode.c          |    8 +-
+ fs/nfs/nfs3proc.c       |    2 +-
+ fs/nfs/nfs4_fs.h        |    2 -
+ fs/nfs/nfs4proc.c       |  148 ++++++---------------------------------
+ fs/nfs/proc.c           |    2 +-
+ include/linux/nfs_fs.h  |    2 +
+ include/linux/nfs_xdr.h |    6 ++-
+ 8 files changed, 198 insertions(+), 151 deletions(-)
+
 -- 
-1.7.2.1
+1.7.2.3
 
