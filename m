@@ -1,137 +1,159 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:62497 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:58425 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751289Ab0IHUiO convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 8 Sep 2010 16:38:14 -0400
-Subject: Re: [PATCH 2/2] We should clear NFS_DELEGATED_STATE after return
- delegation
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Bian Naimeng <biannm@cn.fujitsu.com>
-Cc: linux-nfs@vger.kernel.org, "J. Bruce Fields" <bfields@redhat.com>
-In-Reply-To: <4C86FECF.2050103@cn.fujitsu.com>
-References: <4C592F85.8070308@cn.fujitsu.com>
-	 <4C59306A.9090302@cn.fujitsu.com>
-	 <1280925913.3011.23.camel@heimdal.trondhjem.org>
-	 <4C5A213F.9000506@cn.fujitsu.com>
-	 <1281013423.2948.1.camel@heimdal.trondhjem.org>
-	 <4C5B8B48.4050008@cn.fujitsu.com>
-	 <1281101448.3586.11.camel@heimdal.trondhjem.org>
-	 <4C68EDAE.5000201@cn.fujitsu.com>
-	 <1282087012.18385.30.camel@heimdal.trondhjem.org>
-	 <4C7DF56B.3040206@cn.fujitsu.com>
-	 <1283897068.9097.15.camel@heimdal.trondhjem.org>
-	 <4C86E7FA.7020701@cn.fujitsu.com>
-	 <1283911036.16070.1.camel@heimdal.trondhjem.org>
-	 <4C86FECF.2050103@cn.fujitsu.com>
-Content-Type: text/plain; charset="UTF-8"
-Date: Wed, 08 Sep 2010 16:37:25 -0400
-Message-ID: <1283978245.2905.23.camel@heimdal.trondhjem.org>
+	id S1754452Ab0IPNDI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 16 Sep 2010 09:03:08 -0400
+Message-ID: <4C921580.2050903@RedHat.com>
+Date: Thu, 16 Sep 2010 09:02:56 -0400
+From: Steve Dickson <SteveD@redhat.com>
+To: Jeff Layton <jlayton@redhat.com>
+CC: linux-nfs@vger.kernel.org, bfields@fieldses.org, neilb@suse.de
+Subject: [PATCH] rpc.nfsd: mount up nfsdfs is it doesn't appear to be mounted
+ yet (try #4)
+References: <1283283160-30024-1-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1283283160-30024-1-git-send-email-jlayton@redhat.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, 2010-09-08 at 11:11 +0800, Bian Naimeng wrote:
-> If there are not any delegation at this inode, we should clear stateid's
-> NFS_DELEGATED_STATE when update it.
-> 
-> Signed-off-by: Bian Naimeng <biannm@cn.fujitsu.com>
-> 
-> ---
->  fs/nfs/delegation.c |    1 +
->  fs/nfs/nfs4proc.c   |   12 +++++++++++-
->  2 files changed, 12 insertions(+), 1 deletions(-)
-> 
-> diff --git a/fs/nfs/delegation.c b/fs/nfs/delegation.c
-> index b9c3c43..62f296e 100644
-> --- a/fs/nfs/delegation.c
-> +++ b/fs/nfs/delegation.c
-> @@ -106,6 +106,7 @@ again:
->  			continue;
->  		if (memcmp(state->stateid.data, stateid->data, sizeof(state->stateid.data)) != 0)
->  			continue;
-> +		clear_bit(NFS_DELEGATED_STATE, &state->flags);
->  		get_nfs_open_context(ctx);
->  		spin_unlock(&inode->i_lock);
->  		err = nfs4_open_delegation_recall(ctx, state, stateid);
-> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-> index 089da5b..f7e45b4 100644
-> --- a/fs/nfs/nfs4proc.c
-> +++ b/fs/nfs/nfs4proc.c
-> @@ -919,8 +919,18 @@ static int update_open_stateid(struct nfs4_state *state, nfs4_stateid *open_stat
->  
->  	rcu_read_lock();
->  	deleg_cur = rcu_dereference(nfsi->delegation);
-> -	if (deleg_cur == NULL)
-> +	if (deleg_cur == NULL) {
-> +		if (delegation == NULL && open_stateid != NULL) {
+Hey Jeff,
 
-Well... What I really meant was that we should make sure that we don't
-get into this situation.
+Here is the patch with the L_WARNING change and the 
+s/else if/if change I just mentioned... 
 
-I think the clear_bit() should be unconditional if delegation == NULL,
-but if the (delegation == NULL && open_stateid == NULL) _can_ occur,
-then we should probably mark the nfs4_state for recovery using
-nfs4_state_mark_reclaim_nograce(), and then fire of a recovery thread.
+steved.
 
-> +			/*
-> +			 * FIXME: If the state has NFS_DELEGATED_STATE bit
-> +			 * we catch a race. Maybe should recover its open
-> +			 * stateid, now we just clear the NFS_DELEGATED_STATE
-> +			 * bit.
-> +			 */
-> +			clear_bit(NFS_DELEGATED_STATE, &state->flags);
-> +		}
->  		goto no_delegation;
-> +	}
->  
->  	spin_lock(&deleg_cur->lock);
->  	if (nfsi->delegation != deleg_cur ||
-> -- 
-> 1.7.0
-> 
-> 
-> >>>> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-> >>>> index 36400d3..c0c0320 100644
-> >>>> --- a/fs/nfs/nfs4proc.c
-> >>>> +++ b/fs/nfs/nfs4proc.c
-> >>>> @@ -900,8 +900,18 @@ static int update_open_stateid(struct nfs4_state *state, nfs4_stateid *open_stat
-> >>>>  
-> >>>>  	rcu_read_lock();
-> >>>>  	deleg_cur = rcu_dereference(nfsi->delegation);
-> >>>> -	if (deleg_cur == NULL)
-> >>>> +	if (deleg_cur == NULL) {
-> >>>> +		if (delegation == NULL &&
-> >>>> +		    test_bit(NFS_DELEGATED_STATE, &state->flags)) {
-> >>> Any reason why we can't ditch the 'test_bit'?
-> >>>
-> >>   Because i am not sure it's ok that we just clear_bit at here.
-> >>   If you think it's ok, i'd be fine with removing this test_bit.
-> > 
-> > How is it different from just clearing the bit?
-> > 
-> >>>> +			/*FIXME: If the state has NFS_DELEGATED_STATE bit, 
-> >>>> +			 * we catch a race. Maybe should recover its open
-> >>>> +			 * stateid, here we just clear the NFS_DELEGATED_STATE
-> >>>> +			 * bit.
-> >>> Can this ever be called with both deleg_cur==NULL and
-> >>> open_stateid==NULL? If so, then we still have a bug.
-> >>>
-> >>   Yes, i will add a checking. Thanks very much.
-> >>
-> >>>> +			 */
-> >>>> +			clear_bit(NFS_DELEGATED_STATE, &state->flags);
-> >>>> +		}
-> >>>>  		goto no_delegation;
-> >>>> +	}
-> >>>>  
-> >>>>  	spin_lock(&deleg_cur->lock);
-> >>>>  	if (nfsi->delegation != deleg_cur ||
-> > 
-> > Cheers
-> >   Trond
-> > 
-> > 
-> > 
-> 
+Author: Jeff Layton <jlayton@redhat.com>
+Date:   Thu Sep 16 08:58:02 2010 -0400
+    
+There's a bit of a chicken and egg problem when nfsd is run the first
+time. On Fedora/RHEL at least, /proc/fs/nfsd is mounted up whenever nfsd
+is plugged in via a modprobe.conf "install" directive.
 
+If someone runs rpc.nfsd without plugging in nfsd.ko first,
+/proc/fs/nfsd won't be mounted and rpc.nfsd will end up using the legacy
+nfsctl interface. After that, nfsd will be plugged in and subsequent
+rpc.nfsd invocations will use that instead.
+
+This is a problem as some nfsd command-line options are ignored when the
+legacy interface is used. It'll also be a problem for people who want
+IPv6 enabled servers. The upshot is that we really don't want to use the
+legacy interface unless there is no other option.
+
+To avoid this situation, have rpc.nfsd check to see if the "threads"
+file is already present. If it's not, then make an attempt to mount
+/proc/fs/nfsd.  This is a "best-effort" sort of thing, however so we
+just ignore the return code from the mount attempt and fall back to
+using nfsctl() if it fails.
+
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+Signed-off-by: Steve Dickson <steved@redhat.com>
+
+diff --git a/utils/nfsd/nfsd.c b/utils/nfsd/nfsd.c
+index 1cda1e5..658b8fa 100644
+--- a/utils/nfsd/nfsd.c
++++ b/utils/nfsd/nfsd.c
+@@ -246,6 +246,9 @@ main(int argc, char **argv)
+ 		exit(1);
+ 	}
+ 
++	/* make sure nfsdfs is mounted if it's available */
++	nfssvc_mount_nfsdfs(progname);
++
+ 	/* can only change number of threads if nfsd is already up */
+ 	if (nfssvc_inuse()) {
+ 		socket_up = 1;
+diff --git a/utils/nfsd/nfssvc.c b/utils/nfsd/nfssvc.c
+index 34c67ca..7693626 100644
+--- a/utils/nfsd/nfssvc.c
++++ b/utils/nfsd/nfssvc.c
+@@ -15,9 +15,11 @@
+ #include <netdb.h>
+ #include <netinet/in.h>
+ #include <arpa/inet.h>
++#include <sys/stat.h>
+ #include <unistd.h>
+ #include <fcntl.h>
+ #include <errno.h>
++#include <stdlib.h>
+ 
+ #include "nfslib.h"
+ #include "xlog.h"
+@@ -31,9 +33,13 @@
+  */
+ #undef IPV6_SUPPORTED
+ 
+-#define NFSD_PORTS_FILE     "/proc/fs/nfsd/portlist"
+-#define NFSD_VERS_FILE    "/proc/fs/nfsd/versions"
+-#define NFSD_THREAD_FILE  "/proc/fs/nfsd/threads"
++#ifndef NFSD_FS_DIR
++#define NFSD_FS_DIR	  "/proc/fs/nfsd"
++#endif
++
++#define NFSD_PORTS_FILE   NFSD_FS_DIR "/portlist"
++#define NFSD_VERS_FILE    NFSD_FS_DIR "/versions"
++#define NFSD_THREAD_FILE  NFSD_FS_DIR "/threads"
+ 
+ /*
+  * declaring a common static scratch buffer here keeps us from having to
+@@ -44,6 +50,46 @@
+ char buf[128];
+ 
+ /*
++ * Using the "new" interfaces for nfsd requires that /proc/fs/nfsd is
++ * actually mounted. Make an attempt to mount it here if it doesn't appear
++ * to be. If the mount attempt fails, no big deal -- fall back to using nfsctl
++ * instead.
++ */
++void
++nfssvc_mount_nfsdfs(char *progname)
++{
++	int err;
++	struct stat statbuf;
++
++	err = stat(NFSD_THREAD_FILE, &statbuf);
++	if (err == 0)
++		return;
++
++	if (errno != ENOENT) {
++		xlog(L_ERROR, "Unable to stat %s: errno %d (%m)",
++				NFSD_THREAD_FILE, errno);
++		return;
++	}
++
++	/*
++	 * this call can return an error if modprobe is set up to automatically
++	 * mount nfsdfs when nfsd.ko is plugged in. So, ignore the return
++	 * code from it and just check for the "threads" file afterward.
++	 */
++	system("/bin/mount -t nfsd nfsd " NFSD_FS_DIR " >/dev/null 2>&1");
++
++	err = stat(NFSD_THREAD_FILE, &statbuf);
++	if (err == 0)
++		return;
++
++	xlog(L_WARNING, "Unable to access " NFSD_FS_DIR " errno %d (%m)." 
++		"\nPlease try, as root, 'mount -t nfsd nfsd " NFSD_FS_DIR 
++		"' and then restart %s to correct the problem", errno, progname);
++
++	return;
++}
++
++/*
+  * Are there already sockets configured? If not, then it is safe to try to
+  * open some and pass them through.
+  *
+diff --git a/utils/nfsd/nfssvc.h b/utils/nfsd/nfssvc.h
+index 0c69bd6..1a01cec 100644
+--- a/utils/nfsd/nfssvc.h
++++ b/utils/nfsd/nfssvc.h
+@@ -20,6 +20,7 @@
+  *
+  */
+ 
++void	nfssvc_mount_nfsdfs(char *progname);
+ int	nfssvc_inuse(void);
+ int	nfssvc_set_sockets(const int family, const unsigned int protobits,
+ 			   const char *host, const char *port);
 
