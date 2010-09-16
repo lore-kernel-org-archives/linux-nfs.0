@@ -1,64 +1,40 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:41694 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752485Ab0IWVGM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 23 Sep 2010 17:06:12 -0400
-Date: Thu, 23 Sep 2010 17:04:40 -0400
-To: Olga Kornievskaia <aglo@citi.umich.edu>
-Cc: linux-nfs <linux-nfs@vger.kernel.org>
-Subject: Re: question about nfs41 features
-Message-ID: <20100923210440.GC14610@fieldses.org>
-References: <AANLkTinvrHsQmcLCpt99dE1nU0md8zfwsh4vP8JRBJT6@mail.gmail.com>
+Received: from icebox.esperi.org.uk ([81.187.191.129]:38875 "EHLO
+	mail.esperi.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753907Ab0IPUZE (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 16 Sep 2010 16:25:04 -0400
+To: Thomas Gleixner <tglx@linutronix.de>
+Cc: LKML <linux-kernel@vger.kernel.org>, Neil Brown <nfbrown@novell.com>,
+        linux-nfs@vger.kernel.org
+Subject: Re: [PATCH RFC] x86: hpet: Avoid the readback penalty
+References: <tip-54ff7e595d763d894104d421b103a89f7becf47c@git.kernel.org>
+	<alpine.LFD.2.00.1009151500060.2416@localhost6.localdomain6>
+From: Nix <nix@esperi.org.uk>
+Date: Thu, 16 Sep 2010 21:04:50 +0100
+In-Reply-To: <alpine.LFD.2.00.1009151500060.2416@localhost6.localdomain6> (Thomas Gleixner's message of "Wed, 15 Sep 2010 15:11:57 +0200 (CEST)")
+Message-ID: <87d3sdfo9p.fsf@spindle.srvr.nix>
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <AANLkTinvrHsQmcLCpt99dE1nU0md8zfwsh4vP8JRBJT6@mail.gmail.com>
-From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Thu, Sep 23, 2010 at 02:30:49PM -0400, Olga Kornievskaia wrote:
-> I would greatly appreciate it I can get a reply from NFS41 server
-> implementers out there on the subject of whether or not the following
-> feature are (a) currently implemented by your server, (b) will be
-> implemented soon (1year), (c) having interest in being implemented
-> within the next few years and (d) are so low in priority that could be
-> said: will never be implemented.
+On 15 Sep 2010, Thomas Gleixner said:
 
-This could change depending on interest, of course, but:
+> On Tue, 14 Sep 2010, tip-bot for Thomas Gleixner wrote:
+>> x86: hpet: Work around hardware stupidity
+>
+> After my brain recovered from yesterdays exposure with the x86 timer
+> horror, I came up with a different solution for this problem, which
+> avoids the readback of the compare register completely. It works
+> nicely on my affected ATI system, but needs some exposure to the other
+> machines.
+>
+> Comments ?
 
-> volatile handles
-> named attributes
-
-Probably both (d).
-
-> directory delegations
-> SSV
-
-I'm guessing (c) or (d).  (I'd be happier if SSV were a higher priority,
-but oh well.)
-
-> trunking (session or clientid)
-
-(b)
-
-> segmented file layouts
-> 
-> recall of file layouts
-> cb_notify_deviceid
-
-Not sure.
-
-> cb_getattr
-
-(c)
-
-> cb_recall_slot
-> cb_notify_lock
-
-Probably both (c).
-
-This list doesn't necessarily get you anyone other than linux
-implementors, so you may want to ask on nfsv4@ietf.org or ask people at
-the bakeathon.
-
---b.
+Works for me. (I still have boot problems, but these seem to be
+NFS-related: -ESTALE from an apparently random subset of my mount points
+at initial mount time. Restarting rpc.mountd on the server fixes
+it. This is with nfs-utils 1.2.2, but I see it right up to 60abb98, that
+being the most recent version I tested. This doesn't happen if the
+client is running 2.6.34.x, as far as I can tell. It also doesn't happen
+with all my 2.6.35.x clients. Sigh. I hate bugs like this.)
