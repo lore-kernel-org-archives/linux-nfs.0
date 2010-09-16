@@ -1,115 +1,129 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-gx0-f174.google.com ([209.85.161.174]:47890 "EHLO
-	mail-gx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756543Ab0ITPkB (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 20 Sep 2010 11:40:01 -0400
-Received: by gxk23 with SMTP id 23so1345479gxk.19
-        for <linux-nfs@vger.kernel.org>; Mon, 20 Sep 2010 08:40:00 -0700 (PDT)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 2/2] nfs-utils: Fix source code character encoding
-To: steved@redhat.com
-Cc: linux-nfs@vger.kernel.org
-Date: Mon, 20 Sep 2010 11:39:57 -0400
-Message-ID: <20100920153957.2604.35091.stgit@ellison.1015granger.net>
-In-Reply-To: <20100920153714.2604.50581.stgit@ellison.1015granger.net>
-References: <20100920153714.2604.50581.stgit@ellison.1015granger.net>
-Content-Type: text/plain; charset="utf-8"
+Received: from mx2.netapp.com ([216.240.18.37]:42499 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754164Ab0IPVCH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 16 Sep 2010 17:02:07 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Cc: viro@zeniv.linux.org.uk, hch@infradead.org
+Subject: [PATCH 4/6] NFSv4: Further cleanups for nfs4_open_revalidate()
+Date: Thu, 16 Sep 2010 17:01:41 -0400
+Message-Id: <1284670903-28475-5-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1284670903-28475-4-git-send-email-Trond.Myklebust@netapp.com>
+References: <1284670903-28475-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1284670903-28475-2-git-send-email-Trond.Myklebust@netapp.com>
+ <1284670903-28475-3-git-send-email-Trond.Myklebust@netapp.com>
+ <1284670903-28475-4-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-Minor clean up.
-
-Most modern Linux distributions set UTF-8 locales.  Standardize the
-character encoding of source files on UTF-8, to squelch vim com-
-plaints.
-
-I probably missed a few spots.
-
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
+ fs/nfs/dir.c      |   32 ++++++++++++++++++++++++++------
+ fs/nfs/nfs4_fs.h  |    1 -
+ fs/nfs/nfs4proc.c |   28 ----------------------------
+ 3 files changed, 26 insertions(+), 35 deletions(-)
 
- support/include/conffile.h |    2 +-
- support/nfs/conffile.c     |    2 +-
- support/nfs/nfs_mntent.c   |    2 +-
- support/nfs/xcommon.c      |    2 +-
- utils/mount/fstab.c        |    2 +-
- utils/mount/nfsmount.c     |    2 +-
- 6 files changed, 6 insertions(+), 6 deletions(-)
-
-diff --git a/support/include/conffile.h b/support/include/conffile.h
-index ce7aa21..181133d 100644
---- a/support/include/conffile.h
-+++ b/support/include/conffile.h
-@@ -3,7 +3,7 @@
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index 196775c..dc93d35 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -1204,16 +1204,36 @@ static int nfs_open_revalidate(struct dentry *dentry, struct nameidata *nd)
+ 	 * operations that change the directory. We therefore save the
+ 	 * change attribute *before* we do the RPC call.
+ 	 */
+-	ret = nfs4_open_revalidate(dir, ctx, openflags);
+-	if (ret == 1)
++	inode = nfs4_atomic_open(dir, ctx, openflags, NULL);
++	if (IS_ERR(inode)) {
++		ret = PTR_ERR(inode);
++		switch (ret) {
++		case -EPERM:
++		case -EACCES:
++		case -EDQUOT:
++		case -ENOSPC:
++		case -EROFS:
++			goto out_put_ctx;
++		default:
++			goto out_drop;
++		}
++	}
++	iput(inode);
++	if (inode == dentry->d_inode) {
++		nfs_set_verifier(dentry, nfs_save_change_attribute(dir));
+ 		nfs_intent_set_file(nd, ctx);
+-	else
+-		put_nfs_open_context(ctx);
++	} else
++		goto out_drop;
+ out:
+ 	dput(parent);
+-	if (!ret)
+-		d_drop(dentry);
+ 	return ret;
++out_drop:
++	d_drop(dentry);
++	ret = 0;
++out_put_ctx:
++	put_nfs_open_context(ctx);
++	goto out;
++
+ no_open_dput:
+ 	dput(parent);
+ no_open:
+diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
+index 76ec1c6..6cf12ba 100644
+--- a/fs/nfs/nfs4_fs.h
++++ b/fs/nfs/nfs4_fs.h
+@@ -243,7 +243,6 @@ extern int nfs4_init_clientid(struct nfs_client *, struct rpc_cred *);
+ extern int nfs41_init_clientid(struct nfs_client *, struct rpc_cred *);
+ extern int nfs4_do_close(struct path *path, struct nfs4_state *state, gfp_t gfp_mask, int wait);
+ extern struct inode *nfs4_atomic_open(struct inode *, struct nfs_open_context *, int, struct iattr *);
+-extern int nfs4_open_revalidate(struct inode *, struct nfs_open_context *, int);
+ extern int nfs4_server_capabilities(struct nfs_server *server, struct nfs_fh *fhandle);
+ extern int nfs4_proc_fs_locations(struct inode *dir, const struct qstr *name,
+ 		struct nfs4_fs_locations *fs_locations, struct page *page);
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index b476246..83c5ef6 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -2037,34 +2037,6 @@ nfs4_atomic_open(struct inode *dir, struct nfs_open_context *ctx, int open_flags
+ 	return igrab(state->inode);
+ }
  
- /*
-  * Copyright (c) 1998, 1999, 2001 Niklas Hallqvist.  All rights reserved.
-- * Copyright (c) 2000, 2003 H�kan Olsson.  All rights reserved.
-+ * Copyright (c) 2000, 2003 Håkan Olsson.  All rights reserved.
-  *
-  * Redistribution and use in source and binary forms, with or without
-  * modification, are permitted provided that the following conditions
-diff --git a/support/nfs/conffile.c b/support/nfs/conffile.c
-index 24640f4..bae42c9 100644
---- a/support/nfs/conffile.c
-+++ b/support/nfs/conffile.c
-@@ -3,7 +3,7 @@
- 
- /*
-  * Copyright (c) 1998, 1999, 2000, 2001 Niklas Hallqvist.  All rights reserved.
-- * Copyright (c) 2000, 2001, 2002 H�kan Olsson.  All rights reserved.
-+ * Copyright (c) 2000, 2001, 2002 Håkan Olsson.  All rights reserved.
-  *
-  * Redistribution and use in source and binary forms, with or without
-  * modification, are permitted provided that the following conditions
-diff --git a/support/nfs/nfs_mntent.c b/support/nfs/nfs_mntent.c
-index 9c73ae0..a3e643c 100644
---- a/support/nfs/nfs_mntent.c
-+++ b/support/nfs/nfs_mntent.c
-@@ -1,7 +1,7 @@
- /* Private version of the libc *mntent() routines. */
- /* Note slightly different prototypes. */
- 
--/* 1999-02-22 Arkadiusz Mi�kiewicz <misiek@pld.ORG.PL>
-+/* 1999-02-22 Arkadiusz Miśkiewicz <misiek@pld.ORG.PL>
-  * - added Native Language Support
-  *
-  * 2006-06-08 Amit Gud <agud@redhat.com>
-diff --git a/support/nfs/xcommon.c b/support/nfs/xcommon.c
-index d862a07..068a709 100644
---- a/support/nfs/xcommon.c
-+++ b/support/nfs/xcommon.c
-@@ -3,7 +3,7 @@
-  *
-  * added fcntl locking by Kjetil T. (kjetilho@math.uio.no) - aeb, 950927
-  *
-- * 1999-02-22 Arkadiusz Mi�kiewicz <misiek@pld.ORG.PL>
-+ * 1999-02-22 Arkadiusz Miśkiewicz <misiek@pld.ORG.PL>
-  * - added Native Language Support
-  *
-  * 2006-06-06 Amit Gud <agud@redhat.com>
-diff --git a/utils/mount/fstab.c b/utils/mount/fstab.c
-index 2775d0b..a85ca7e 100644
---- a/utils/mount/fstab.c
-+++ b/utils/mount/fstab.c
-@@ -1,4 +1,4 @@
--/* 1999-02-22 Arkadiusz Mi�kiewicz <misiek@pld.ORG.PL>
-+/* 1999-02-22 Arkadiusz Miśkiewicz <misiek@pld.ORG.PL>
-  * - added Native Language Support
-  * Sun Mar 21 1999 - Arnaldo Carvalho de Melo <acme@conectiva.com.br>
-  * - fixed strerr(errno) in gettext calls
-diff --git a/utils/mount/nfsmount.c b/utils/mount/nfsmount.c
-index 5b934b5..84bb627 100644
---- a/utils/mount/nfsmount.c
-+++ b/utils/mount/nfsmount.c
-@@ -21,7 +21,7 @@
-  * Wed Oct  1 23:55:28 1997: Dick Streefland <dick_streefland@tasking.com>
-  * Implemented the "bg", "fg" and "retry" mount options for NFS.
-  *
-- * 1999-02-22 Arkadiusz Mi�kiewicz <misiek@pld.ORG.PL>
-+ * 1999-02-22 Arkadiusz Miśkiewicz <misiek@pld.ORG.PL>
-  * - added Native Language Support
-  *
-  * Modified by Olaf Kirch and Trond Myklebust for new NFS code,
+-int
+-nfs4_open_revalidate(struct inode *dir, struct nfs_open_context *ctx, int openflags)
+-{
+-	struct nfs4_state *state;
+-
+-	state = nfs4_do_open(dir, &ctx->path, ctx->mode, openflags, NULL, ctx->cred);
+-	if (IS_ERR(state)) {
+-		switch (PTR_ERR(state)) {
+-			case -EPERM:
+-			case -EACCES:
+-			case -EDQUOT:
+-			case -ENOSPC:
+-			case -EROFS:
+-				return PTR_ERR(state);
+-			default:
+-				goto out_drop;
+-		}
+-	}
+-	ctx->state = state;
+-	if (state->inode == ctx->path.dentry->d_inode) {
+-		nfs_set_verifier(ctx->path.dentry, nfs_save_change_attribute(dir));
+-		return 1;
+-	}
+-out_drop:
+-	d_drop(ctx->path.dentry);
+-	return 0;
+-}
+-
+ static void nfs4_close_context(struct nfs_open_context *ctx, int is_sync)
+ {
+ 	if (ctx->state == NULL)
+-- 
+1.7.2.3
 
