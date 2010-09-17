@@ -1,56 +1,132 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from exchange.solarflare.com ([216.237.3.220]:38286 "EHLO
-	exchange.solarflare.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754086Ab0IHUON (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 8 Sep 2010 16:14:13 -0400
-Subject: Re: NFS writes broken in net-next-2.6
-From: Ben Hutchings <bhutchings@solarflare.com>
-To: David Miller <davem@davemloft.net>
-Cc: netdev@vger.kernel.org, linux-nfs@vger.kernel.org
-In-Reply-To: <20100908.130550.115952209.davem@davemloft.net>
-References: <1283976068.2237.8.camel@achroite.uk.solarflarecom.com>
-	 <20100908.130550.115952209.davem@davemloft.net>
-Content-Type: text/plain; charset="UTF-8"
-Date: Wed, 08 Sep 2010 21:14:10 +0100
-Message-ID: <1283976850.2237.9.camel@achroite.uk.solarflarecom.com>
+Received: from mail-yx0-f174.google.com ([209.85.213.174]:59260 "EHLO
+	mail-yx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751597Ab0IQQ3v (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 17 Sep 2010 12:29:51 -0400
+Received: by yxp4 with SMTP id 4so789642yxp.19
+        for <linux-nfs@vger.kernel.org>; Fri, 17 Sep 2010 09:29:51 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 21/22] lockd: Move nlmdbg_cookie2a() to svclock.c
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Date: Fri, 17 Sep 2010 12:29:48 -0400
+Message-ID: <20100917162948.19761.54476.stgit@seurat.1015granger.net>
+In-Reply-To: <20100917162204.19761.58249.stgit@seurat.1015granger.net>
+References: <20100917162204.19761.58249.stgit@seurat.1015granger.net>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, 2010-09-08 at 13:05 -0700, David Miller wrote:
-> From: Ben Hutchings <bhutchings@solarflare.com>
-> Date: Wed, 08 Sep 2010 21:01:08 +0100
-> 
-> > In net-next-2.6, close() of a file after writing tends to return 1.
-> > This causes e.g. gcc to abort.
-> > 
-> > This appears to have been fixed in 2.6.36-rc2:
-> > 
-> > commit 0702099bd86c33c2dcdbd3963433a61f3f503901
-> > Author: J. R. Okajima <hooanon05@yahoo.co.jp>
-> > Date:   Wed Aug 11 13:10:16 2010 -0400
-> > 
-> >     NFS: fix the return value of nfs_file_fsync()
-> > 
-> > Please consider merging this fix in some way.
-> 
-> Ben, and please I've told you this before,
+Clean up.  nlmdbg_cookie2a() is used only in svclock.c.
 
-I don't think so.
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
 
-> if you need a specific
-> upstream fix do your testing on a branch that pulls in Linus's tree
-> or, alternatively, apply the fix you need by hand using "git stash" or
-> similar.
-[...]
+ fs/lockd/svclock.c          |   30 ++++++++++++++++++++++++++++++
+ fs/lockd/xdr.c              |   29 -----------------------------
+ include/linux/lockd/debug.h |   10 ----------
+ 3 files changed, 30 insertions(+), 39 deletions(-)
 
-Sure, that's what I'm doing.  But this is likely to hit more developers
-than just me.
-
-Ben.
-
--- 
-Ben Hutchings, Senior Software Engineer, Solarflare Communications
-Not speaking for my employer; that's the marketing department's job.
-They asked us to note that Solarflare product names are trademarked.
+diff --git a/fs/lockd/svclock.c b/fs/lockd/svclock.c
+index 84055d3..48d7447 100644
+--- a/fs/lockd/svclock.c
++++ b/fs/lockd/svclock.c
+@@ -47,6 +47,7 @@ static void	nlmsvc_remove_block(struct nlm_block *block);
+ static int nlmsvc_setgrantargs(struct nlm_rqst *call, struct nlm_lock *lock);
+ static void nlmsvc_freegrantargs(struct nlm_rqst *call);
+ static const struct rpc_call_ops nlmsvc_grant_ops;
++static const char *nlmdbg_cookie2a(const struct nlm_cookie *cookie);
+ 
+ /*
+  * The list of blocked locks to retry
+@@ -922,3 +923,32 @@ nlmsvc_retry_blocked(void)
+ 
+ 	return timeout;
+ }
++
++#ifdef RPC_DEBUG
++static const char *nlmdbg_cookie2a(const struct nlm_cookie *cookie)
++{
++	/*
++	 * We can get away with a static buffer because we're only
++	 * called with BKL held.
++	 */
++	static char buf[2*NLM_MAXCOOKIELEN+1];
++	unsigned int i, len = sizeof(buf);
++	char *p = buf;
++
++	len--;	/* allow for trailing \0 */
++	if (len < 3)
++		return "???";
++	for (i = 0 ; i < cookie->len ; i++) {
++		if (len < 2) {
++			strcpy(p-3, "...");
++			break;
++		}
++		sprintf(p, "%02x", cookie->data[i]);
++		p += 2;
++		len -= 2;
++	}
++	*p = '\0';
++
++	return buf;
++}
++#endif
+diff --git a/fs/lockd/xdr.c b/fs/lockd/xdr.c
+index 0eb694d..964666c 100644
+--- a/fs/lockd/xdr.c
++++ b/fs/lockd/xdr.c
+@@ -341,32 +341,3 @@ nlmsvc_encode_void(struct svc_rqst *rqstp, __be32 *p, void *dummy)
+ {
+ 	return xdr_ressize_check(rqstp, p);
+ }
+-
+-#ifdef RPC_DEBUG
+-const char *nlmdbg_cookie2a(const struct nlm_cookie *cookie)
+-{
+-	/*
+-	 * We can get away with a static buffer because we're only
+-	 * called with BKL held.
+-	 */
+-	static char buf[2*NLM_MAXCOOKIELEN+1];
+-	unsigned int i, len = sizeof(buf);
+-	char *p = buf;
+-
+-	len--;	/* allow for trailing \0 */
+-	if (len < 3)
+-		return "???";
+-	for (i = 0 ; i < cookie->len ; i++) {
+-		if (len < 2) {
+-			strcpy(p-3, "...");
+-			break;
+-		}
+-		sprintf(p, "%02x", cookie->data[i]);
+-		p += 2;
+-		len -= 2;
+-	}
+-	*p = '\0';
+-
+-	return buf;
+-}
+-#endif
+diff --git a/include/linux/lockd/debug.h b/include/linux/lockd/debug.h
+index 34b2b7f..257d377 100644
+--- a/include/linux/lockd/debug.h
++++ b/include/linux/lockd/debug.h
+@@ -44,14 +44,4 @@
+ #define NLMDBG_XDR		0x0100
+ #define NLMDBG_ALL		0x7fff
+ 
+-
+-/*
+- * Support for printing NLM cookies in dprintk()
+- */
+-#ifdef RPC_DEBUG
+-struct nlm_cookie;
+-/* Call this function with the BKL held (it uses a static buffer) */
+-extern const char *nlmdbg_cookie2a(const struct nlm_cookie *);
+-#endif
+-
+ #endif /* LINUX_LOCKD_DEBUG_H */
 
