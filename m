@@ -1,85 +1,78 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mailhub.sw.ru ([195.214.232.25]:43237 "EHLO relay.sw.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932988Ab0I0J70 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 27 Sep 2010 05:59:26 -0400
-Message-ID: <4CA06AF1.2030609@parallels.com>
-Date: Mon, 27 Sep 2010 13:59:13 +0400
-From: Pavel Emelyanov <xemul@parallels.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Chuck Lever <chuck.lever@oracle.com>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        linux-nfs@vger.kernel.org
-Subject: [PATCH 3/9] sunrpc: Pass xprt to cached get/put routines
-References: <4CA06A63.6090507@parallels.com>
-In-Reply-To: <4CA06A63.6090507@parallels.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mail-yx0-f174.google.com ([209.85.213.174]:36552 "EHLO
+	mail-yx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754633Ab0IQQ0N (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 17 Sep 2010 12:26:13 -0400
+Received: by yxp4 with SMTP id 4so788641yxp.19
+        for <linux-nfs@vger.kernel.org>; Fri, 17 Sep 2010 09:26:13 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 00/22] Full NFSv2/v3 XDR overhaul series
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Date: Fri, 17 Sep 2010 12:26:09 -0400
+Message-ID: <20100917162204.19761.58249.stgit@seurat.1015granger.net>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-They do not require the rqst actually and having the xprt simplifies
-further patching.
+Hi Trond-
 
-Signed-off-by: Pavel Emelyanov <xemul@openvz.org>
+Here's the full XDR overhaul series.  Superfluous BUG_ON()'s have been
+removed from both the NFSv2 and the NFSv3 components.
+
+There may be some minor merge conflicts with Bryan's readdir changes
+and with Jeff's async sillyrename patches.  I volunteer to take care
+of those when you can set up a for-2.6.37 branch with everything you
+have so far.
+
 ---
- net/sunrpc/svcauth_unix.c |   12 +++++-------
- 1 files changed, 5 insertions(+), 7 deletions(-)
 
-diff --git a/net/sunrpc/svcauth_unix.c b/net/sunrpc/svcauth_unix.c
-index 49e39ff..f475180 100644
---- a/net/sunrpc/svcauth_unix.c
-+++ b/net/sunrpc/svcauth_unix.c
-@@ -426,10 +426,9 @@ void svcauth_unix_purge(void)
- EXPORT_SYMBOL_GPL(svcauth_unix_purge);
- 
- static inline struct ip_map *
--ip_map_cached_get(struct svc_rqst *rqstp)
-+ip_map_cached_get(struct svc_xprt *xprt)
- {
- 	struct ip_map *ipm = NULL;
--	struct svc_xprt *xprt = rqstp->rq_xprt;
- 
- 	if (test_bit(XPT_CACHE_AUTH, &xprt->xpt_flags)) {
- 		spin_lock(&xprt->xpt_lock);
-@@ -454,10 +453,8 @@ ip_map_cached_get(struct svc_rqst *rqstp)
- }
- 
- static inline void
--ip_map_cached_put(struct svc_rqst *rqstp, struct ip_map *ipm)
-+ip_map_cached_put(struct svc_xprt *xprt, struct ip_map *ipm)
- {
--	struct svc_xprt *xprt = rqstp->rq_xprt;
--
- 	if (test_bit(XPT_CACHE_AUTH, &xprt->xpt_flags)) {
- 		spin_lock(&xprt->xpt_lock);
- 		if (xprt->xpt_auth_cache == NULL) {
-@@ -707,6 +704,7 @@ svcauth_unix_set_client(struct svc_rqst *rqstp)
- 	struct ip_map *ipm;
- 	struct group_info *gi;
- 	struct svc_cred *cred = &rqstp->rq_cred;
-+	struct svc_xprt *xprt = rqstp->rq_xprt;
- 
- 	switch (rqstp->rq_addr.ss_family) {
- 	case AF_INET:
-@@ -725,7 +723,7 @@ svcauth_unix_set_client(struct svc_rqst *rqstp)
- 	if (rqstp->rq_proc == 0)
- 		return SVC_OK;
- 
--	ipm = ip_map_cached_get(rqstp);
-+	ipm = ip_map_cached_get(xprt);
- 	if (ipm == NULL)
- 		ipm = ip_map_lookup(rqstp->rq_server->sv_program->pg_class,
- 				    &sin6->sin6_addr);
-@@ -745,7 +743,7 @@ svcauth_unix_set_client(struct svc_rqst *rqstp)
- 		case 0:
- 			rqstp->rq_client = &ipm->m_client->h;
- 			kref_get(&rqstp->rq_client->ref);
--			ip_map_cached_put(rqstp, ipm);
-+			ip_map_cached_put(xprt, ipm);
- 			break;
- 	}
- 
+Chuck Lever (22):
+      NFS: Fix hdrlen calculation in NFSv4's decode_read()
+      lockd: Move nlmdbg_cookie2a() to svclock.c
+      lockd: Introduce new-style XDR functions for NLMv4
+      NFS: Move and update xdr_decode_foo() functions that we're keeping
+      NFS: Remove unused old NFSv3 decoder functions
+      NFS: Switch in new NFSv3 decoder functions
+      NFS: Introduce new-style XDR decoding functions for NFSv2
+      NFS: Move and update xdr_encode_foo() functions that we're keeping
+      NFS: Remove unused old NFSv3 encoder functions
+      NFS: Replace old NFSv3 encoder functions with xdr_stream-based ones
+      NFS: Introduce new-style XDR encoding functions for NFSv3
+      lockd: Introduce new-style XDR functions for NLMv3
+      NFS: Move and update xdr_decode_foo() functions that we're keeping
+      NFS: Replace old NFSv2 decoder functions with xdr_stream-based ones
+      NFS: Introduce new-style XDR decoding functions for NFSv2
+      NFS: Use the "nfs_stat" enum for nfs_stat_to_errno()'s argument
+      NFS: Move and update xdr_encode_foo() functions that we're keeping
+      NFS: Remove old NFSv2 encoder functions
+      NFS: Introduce new-style XDR encoding functions for NFSv2
+      SUNRPC: Refactor logic to NUL-terminate strings in pages
+      SUNRPC: Correct an rpcbind debugging message
+      NFS: Fix NFSv3 debugging messages in fs/nfs/nfs3proc.c
+
+
+ fs/lockd/Makefile           |    6 
+ fs/lockd/clnt4xdr.c         |  633 +++++++++
+ fs/lockd/clntxdr.c          |  650 ++++++++++
+ fs/lockd/svclock.c          |   30 
+ fs/lockd/xdr.c              |  287 ----
+ fs/lockd/xdr4.c             |  255 ----
+ fs/nfs/internal.h           |    4 
+ fs/nfs/nfs2xdr.c            | 1342 +++++++++++++-------
+ fs/nfs/nfs3proc.c           |    5 
+ fs/nfs/nfs3xdr.c            | 2929 ++++++++++++++++++++++++++++++++-----------
+ fs/nfs/nfs4xdr.c            |    7 
+ fs/nfs/proc.c               |    2 
+ include/linux/lockd/debug.h |   10 
+ include/linux/nfs3.h        |    3 
+ include/linux/sunrpc/xdr.h  |    1 
+ net/sunrpc/rpcb_clnt.c      |    5 
+ net/sunrpc/xdr.c            |   17 
+ 17 files changed, 4403 insertions(+), 1783 deletions(-)
+ create mode 100644 fs/lockd/clnt4xdr.c
+ create mode 100644 fs/lockd/clntxdr.c
+
 -- 
-1.5.5.6
-
+Chuck Lever
