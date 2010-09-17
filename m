@@ -1,243 +1,490 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:43773 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751761Ab0I3NNU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 30 Sep 2010 09:13:20 -0400
-Message-ID: <4CA48CEF.9060600@netapp.com>
-Date: Thu, 30 Sep 2010 09:13:19 -0400
-From: Bryan Schumaker <bjschuma@netapp.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>, SteveD@redhat.com
-Subject: Re: [PATCH] nfs-utils: Add nfs.upcall for idmapper
-References: <4CA39681.3000104@netapp.com> <1285798396.3557.18.camel@heimdal.trondhjem.org>
-In-Reply-To: <1285798396.3557.18.camel@heimdal.trondhjem.org>
-Content-Type: text/plain; charset=UTF-8
+Received: from mail-gy0-f174.google.com ([209.85.160.174]:45842 "EHLO
+	mail-gy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752350Ab0IQQ2i (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 17 Sep 2010 12:28:38 -0400
+Received: by gyd8 with SMTP id 8so778573gyd.19
+        for <linux-nfs@vger.kernel.org>; Fri, 17 Sep 2010 09:28:38 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 14/22] NFS: Remove unused old NFSv3 encoder functions
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Date: Fri, 17 Sep 2010 12:28:35 -0400
+Message-ID: <20100917162834.19761.56417.stgit@seurat.1015granger.net>
+In-Reply-To: <20100917162204.19761.58249.stgit@seurat.1015granger.net>
+References: <20100917162204.19761.58249.stgit@seurat.1015granger.net>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 09/29/2010 06:13 PM, Trond Myklebust wrote:
-> On Wed, 2010-09-29 at 15:41 -0400, Bryan Schumaker wrote:
->> +	else
->> +		keyctl_negate(key, timeout, 0);
-> 
-> Hmm... I've been looking more closely at the design of request-key. It
-> looks as if the idea there is that you are supposed to return without
-> instantiating the key if you are unable to service the request.
-> 
-> Basically, if your program exits with a non-zero value, then request-key
-> is supposed to look at the next matching entry in /etc/request-key.conf
-> (until it hits they very last entry, which is always 'keyctl negate').
-> 
-> Sorry, Bryan. The above line was a result of me bugging you. I should
-> have checked the sources first...
-> 
->> +	free(arg);
->> +	return rc;
->> +}
-> 
-> Cheers
->   Trond
+Clean up.
 
-
-No problem.  Here is an updated patch with the line removed.
-
-Bryan
-
-
-
-This patch adds the nfs.upcall program to nfs-utils.  This program is called by
-the nfs idmapper through request-keys to map between uid / user name and
-gid / group name.
-
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
-diff --git a/aclocal/keyutils.m4 b/aclocal/keyutils.m4
-new file mode 100644
-index 0000000..84bc112
---- /dev/null
-+++ b/aclocal/keyutils.m4
-@@ -0,0 +1,11 @@
-+dnl Checks for keyutils library and headers
-+dnl
-+AC_DEFUN([AC_KEYUTILS], [
-+
-+  dnl Check for libkeyutils; do not add to LIBS if found
-+  AC_CHECK_LIB([keyutils], [keyctl_instantiate], [LIBKEYUTILS=-lkeyutils], ,)
-+  AC_SUBST(LIBKEYUTILS)
-+
-+  AC_CHECK_HEADERS([keyutils.h], ,
-+  		   [AC_MSG_ERROR([keyutils.h header not found.])])
-+])dnl
-diff --git a/configure.ac b/configure.ac
-index 3058be6..a5e8620 100644
---- a/configure.ac
-+++ b/configure.ac
-@@ -247,6 +247,9 @@ if test "$enable_nfsv4" = yes; then
-   dnl check for nfsidmap libraries and headers
-   AC_LIBNFSIDMAP
+
+ fs/nfs/nfs3xdr.c |  328 +-----------------------------------------------------
+ 1 files changed, 4 insertions(+), 324 deletions(-)
+
+diff --git a/fs/nfs/nfs3xdr.c b/fs/nfs/nfs3xdr.c
+index b1b6465..fa9b7fa 100644
+--- a/fs/nfs/nfs3xdr.c
++++ b/fs/nfs/nfs3xdr.c
+@@ -124,12 +124,6 @@ static void prepare_reply_buffer(struct rpc_rqst *req, struct page **pages,
+  * Common NFS XDR functions as inlines
+  */
+ static inline __be32 *
+-xdr_encode_fhandle(__be32 *p, const struct nfs_fh *fh)
+-{
+-	return xdr_encode_array(p, fh->data, fh->size);
+-}
+-
+-static inline __be32 *
+ xdr_decode_fhandle(__be32 *p, struct nfs_fh *fh)
+ {
+ 	if ((fh->size = ntohl(*p++)) <= NFS3_FHSIZE) {
+@@ -514,21 +508,13 @@ static void encode_diropargs3(struct xdr_stream *xdr, const struct nfs_fh *fh,
  
-+  dnl check for the keyutils libraries and headers
-+  AC_KEYUTILS
-+
-   dnl librpcsecgss already has a dependency on libgssapi,
-   dnl but we need to make sure we get the right version
-   if test "$enable_gss" = yes; then
-@@ -435,6 +438,7 @@ AC_CONFIG_FILES([
- 	utils/mountd/Makefile
- 	utils/nfsd/Makefile
- 	utils/nfsstat/Makefile
-+	utils/nfs.upcall/Makefile
- 	utils/showmount/Makefile
- 	utils/statd/Makefile
- 	tests/Makefile
-diff --git a/utils/Makefile.am b/utils/Makefile.am
-index 8665183..0104a6c 100644
---- a/utils/Makefile.am
-+++ b/utils/Makefile.am
-@@ -4,6 +4,7 @@ OPTDIRS =
  
- if CONFIG_NFSV4
- OPTDIRS += idmapd
-+OPTDIRS += nfs.upcall
- endif
+ /*
+- * NFS encode functions
++ * NFSv3 XDR encode functions
++ *
++ * NFSv3 argument types are defined in section 3.3 of RFC 1813:
++ * "NFS Version 3 Protocol Specification".
+  */
  
- if CONFIG_GSS
-diff --git a/utils/nfs.upcall/Makefile.am b/utils/nfs.upcall/Makefile.am
-new file mode 100644
-index 0000000..52afd3d
---- /dev/null
-+++ b/utils/nfs.upcall/Makefile.am
-@@ -0,0 +1,7 @@
-+## Process this file with automake to produce Makefile.in
-+
-+sbin_PROGRAMS	= nfs.upcall
-+nfs_upcall_SOURCES = nfs.upcall.c
-+nfs_upcall_LDADD = -lnfsidmap -lkeyutils
-+
-+MAINTAINERCLEANFILES = Makefile.in
-diff --git a/utils/nfs.upcall/nfs.upcall.c b/utils/nfs.upcall/nfs.upcall.c
-new file mode 100644
-index 0000000..9200972
---- /dev/null
-+++ b/utils/nfs.upcall/nfs.upcall.c
-@@ -0,0 +1,118 @@
-+
-+#include <stdarg.h>
-+#include <stdio.h>
-+#include <stdlib.h>
-+#include <string.h>
-+
-+#include <pwd.h>
-+#include <grp.h>
-+#include <keyutils.h>
-+#include <nfsidmap.h>
-+
-+#include <syslog.h>
-+
-+/* gcc nfs.upcall.c -o nfs.upcall -l nfsidmap -l keyutils */
-+
-+#define MAX_ID_LEN   11
-+#define IDMAP_NAMESZ 128
-+#define USER  1
-+#define GROUP 0
-+
-+
-+/*
-+ * Find either a user or group id based on the name@domain string
-+ */
-+int id_lookup(char *name_at_domain, key_serial_t key, int type)
-+{
-+	char id[MAX_ID_LEN];
-+	uid_t uid = 0;
-+	gid_t gid = 0;
-+	int rc;
-+
-+	if (type == USER) {
-+		rc = nfs4_owner_to_uid(name_at_domain, &uid);
-+		sprintf(id, "%u", uid);
-+	} else {
-+		rc = nfs4_group_owner_to_gid(name_at_domain, &gid);
-+		sprintf(id, "%u", gid);
-+	}
-+
-+	if (rc == 0)
-+		rc = keyctl_instantiate(key, id, strlen(id) + 1, 0);
-+
-+	return rc;
-+}
-+
-+/*
-+ * Find the name@domain string from either a user or group id
-+ */
-+int name_lookup(char *id, key_serial_t key, int type)
-+{
-+	char name[IDMAP_NAMESZ];
-+	char domain[NFS4_MAX_DOMAIN_LEN];
-+	uid_t uid;
-+	gid_t gid;
-+	int rc;
-+
-+	rc = nfs4_get_default_domain(NULL, domain, NFS4_MAX_DOMAIN_LEN);
-+	if (rc != 0) {
-+		rc = -1;
-+		goto out;
-+	}
-+
-+	if (type == USER) {
-+		uid = atoi(id);
-+		rc = nfs4_uid_to_name(uid, domain, name, IDMAP_NAMESZ);
-+	} else {
-+		gid = atoi(id);
-+		rc = nfs4_gid_to_name(gid, domain, name, IDMAP_NAMESZ);
-+	}
-+
-+	if (rc == 0)
-+		rc = keyctl_instantiate(key, &name, strlen(name), 0);
-+
-+out:
-+	return rc;
-+}
-+
-+int main(int argc, char **argv)
-+{
-+	char *arg;
-+	char *value;
-+	char *type;
-+	int rc = 1;
-+	int timeout = 600;
-+	key_serial_t key;
-+
-+	if (argc < 3)
-+		return 1;
-+
-+	arg = malloc(sizeof(char) * strlen(argv[2]) + 1);
-+	strcpy(arg, argv[2]);
-+	type = strtok(arg, ":");
-+	value = strtok(NULL, ":");
-+
-+	if (argc == 4) {
-+		timeout = atoi(argv[3]);
-+		if (timeout < 0)
-+			timeout = 0;
-+	}
-+
-+	key = strtol(argv[1], NULL, 10);
-+
-+	if (strcmp(type, "uid") == 0)
-+		rc = id_lookup(value, key, USER);
-+	else if (strcmp(type, "gid") == 0)
-+		rc = id_lookup(value, key, GROUP);
-+	else if (strcmp(type, "user") == 0)
-+		rc = name_lookup(value, key, USER);
-+	else if (strcmp(type, "group") == 0)
-+		rc = name_lookup(value, key, GROUP);
-+
-+	/* Set timeout to 5 (600 seconds) minutes */
-+	if (rc == 0)
-+		keyctl_set_timeout(key, timeout);
-+
-+	free(arg);
-+	return rc;
-+}
+ /*
+- * Encode file handle argument
+- */
+-static int
+-nfs3_xdr_fhandle(struct rpc_rqst *req, __be32 *p, struct nfs_fh *fh)
+-{
+-	p = xdr_encode_fhandle(p, fh);
+-	req->rq_slen = xdr_adjust_iovec(req->rq_svec, p);
+-	return 0;
+-}
+-
+-/*
+  * 3.3.1  GETATTR3args
+  *
+  *	struct GETATTR3args {
+@@ -546,21 +532,6 @@ static int nfs3_xdr_enc_getattr3args(struct rpc_rqst *req, __be32 *p,
+ }
+ 
+ /*
+- * Encode SETATTR arguments
+- */
+-static int
+-nfs3_xdr_sattrargs(struct rpc_rqst *req, __be32 *p, struct nfs3_sattrargs *args)
+-{
+-	p = xdr_encode_fhandle(p, args->fh);
+-	p = xdr_encode_sattr(p, args->sattr);
+-	*p++ = htonl(args->guard);
+-	if (args->guard)
+-		p = xdr_encode_time3(p, &args->guardtime);
+-	req->rq_slen = xdr_adjust_iovec(req->rq_svec, p);
+-	return 0;
+-}
+-
+-/*
+  * 3.3.2  SETATTR3args
+  *
+  *	union sattrguard3 switch (bool check) {
+@@ -604,18 +575,6 @@ static int nfs3_xdr_enc_setattr3args(struct rpc_rqst *req, __be32 *p,
+ }
+ 
+ /*
+- * Encode directory ops argument
+- */
+-static int
+-nfs3_xdr_diropargs(struct rpc_rqst *req, __be32 *p, struct nfs3_diropargs *args)
+-{
+-	p = xdr_encode_fhandle(p, args->fh);
+-	p = xdr_encode_array(p, args->name, args->len);
+-	req->rq_slen = xdr_adjust_iovec(req->rq_svec, p);
+-	return 0;
+-}
+-
+-/*
+  * 3.3.3  LOOKUP3args
+  *
+  *	struct LOOKUP3args {
+@@ -633,30 +592,6 @@ static int nfs3_xdr_enc_lookup3args(struct rpc_rqst *req, __be32 *p,
+ }
+ 
+ /*
+- * Encode REMOVE argument
+- */
+-static int
+-nfs3_xdr_removeargs(struct rpc_rqst *req, __be32 *p, const struct nfs_removeargs *args)
+-{
+-	p = xdr_encode_fhandle(p, args->fh);
+-	p = xdr_encode_array(p, args->name.name, args->name.len);
+-	req->rq_slen = xdr_adjust_iovec(req->rq_svec, p);
+-	return 0;
+-}
+-
+-/*
+- * Encode access() argument
+- */
+-static int
+-nfs3_xdr_accessargs(struct rpc_rqst *req, __be32 *p, struct nfs3_accessargs *args)
+-{
+-	p = xdr_encode_fhandle(p, args->fh);
+-	*p++ = htonl(args->access);
+-	req->rq_slen = xdr_adjust_iovec(req->rq_svec, p);
+-	return 0;
+-}
+-
+-/*
+  * 3.3.4  ACCESS3args
+  *
+  *	struct ACCESS3args {
+@@ -701,31 +636,6 @@ static int nfs3_xdr_enc_readlink3args(struct rpc_rqst *req, __be32 *p,
+ }
+ 
+ /*
+- * Arguments to a READ call. Since we read data directly into the page
+- * cache, we also set up the reply iovec here so that iov[1] points
+- * exactly to the page we want to fetch.
+- */
+-static int
+-nfs3_xdr_readargs(struct rpc_rqst *req, __be32 *p, struct nfs_readargs *args)
+-{
+-	struct rpc_auth	*auth = req->rq_cred->cr_auth;
+-	unsigned int replen;
+-	u32 count = args->count;
+-
+-	p = xdr_encode_fhandle(p, args->fh);
+-	p = xdr_encode_hyper(p, args->offset);
+-	*p++ = htonl(count);
+-	req->rq_slen = xdr_adjust_iovec(req->rq_svec, p);
+-
+-	/* Inline the page array */
+-	replen = (RPC_REPHDRSIZE + auth->au_rslack + NFS3_readres_sz) << 2;
+-	xdr_inline_pages(&req->rq_rcv_buf, replen,
+-			 args->pages, args->pgbase, count);
+-	req->rq_rcv_buf.flags |= XDRBUF_READ;
+-	return 0;
+-}
+-
+-/*
+  * 3.3.6  READ3args
+  *
+  *	struct READ3args {
+@@ -760,28 +670,6 @@ static int nfs3_xdr_enc_read3args(struct rpc_rqst *req, __be32 *p,
+ }
+ 
+ /*
+- * Write arguments. Splice the buffer to be written into the iovec.
+- */
+-static int
+-nfs3_xdr_writeargs(struct rpc_rqst *req, __be32 *p, struct nfs_writeargs *args)
+-{
+-	struct xdr_buf *sndbuf = &req->rq_snd_buf;
+-	u32 count = args->count;
+-
+-	p = xdr_encode_fhandle(p, args->fh);
+-	p = xdr_encode_hyper(p, args->offset);
+-	*p++ = htonl(count);
+-	*p++ = htonl(args->stable);
+-	*p++ = htonl(count);
+-	sndbuf->len = xdr_adjust_iovec(sndbuf->head, p);
+-
+-	/* Copy the page array */
+-	xdr_encode_pages(sndbuf, args->pages, args->pgbase, count);
+-	sndbuf->flags |= XDRBUF_WRITE;
+-	return 0;
+-}
+-
+-/*
+  * 3.3.7  WRITE3args
+  *
+  *	enum stable_how {
+@@ -828,26 +716,6 @@ static int nfs3_xdr_enc_write3args(struct rpc_rqst *req, __be32 *p,
+ }
+ 
+ /*
+- * Encode CREATE arguments
+- */
+-static int
+-nfs3_xdr_createargs(struct rpc_rqst *req, __be32 *p, struct nfs3_createargs *args)
+-{
+-	p = xdr_encode_fhandle(p, args->fh);
+-	p = xdr_encode_array(p, args->name, args->len);
+-
+-	*p++ = htonl(args->createmode);
+-	if (args->createmode == NFS3_CREATE_EXCLUSIVE) {
+-		*p++ = args->verifier[0];
+-		*p++ = args->verifier[1];
+-	} else
+-		p = xdr_encode_sattr(p, args->sattr);
+-
+-	req->rq_slen = xdr_adjust_iovec(req->rq_svec, p);
+-	return 0;
+-}
+-
+-/*
+  * 3.3.8  CREATE3args
+  *
+  *	enum createmode3 {
+@@ -898,19 +766,6 @@ static int nfs3_xdr_enc_create3args(struct rpc_rqst *req, __be32 *p,
+ }
+ 
+ /*
+- * Encode MKDIR arguments
+- */
+-static int
+-nfs3_xdr_mkdirargs(struct rpc_rqst *req, __be32 *p, struct nfs3_mkdirargs *args)
+-{
+-	p = xdr_encode_fhandle(p, args->fh);
+-	p = xdr_encode_array(p, args->name, args->len);
+-	p = xdr_encode_sattr(p, args->sattr);
+-	req->rq_slen = xdr_adjust_iovec(req->rq_svec, p);
+-	return 0;
+-}
+-
+-/*
+  * 3.3.9  MKDIR3args
+  *
+  *	struct MKDIR3args {
+@@ -930,23 +785,6 @@ static int nfs3_xdr_enc_mkdir3args(struct rpc_rqst *req, __be32 *p,
+ }
+ 
+ /*
+- * Encode SYMLINK arguments
+- */
+-static int
+-nfs3_xdr_symlinkargs(struct rpc_rqst *req, __be32 *p, struct nfs3_symlinkargs *args)
+-{
+-	p = xdr_encode_fhandle(p, args->fromfh);
+-	p = xdr_encode_array(p, args->fromname, args->fromlen);
+-	p = xdr_encode_sattr(p, args->sattr);
+-	*p++ = htonl(args->pathlen);
+-	req->rq_slen = xdr_adjust_iovec(req->rq_svec, p);
+-
+-	/* Copy the page */
+-	xdr_encode_pages(&req->rq_snd_buf, args->pages, 0, args->pathlen);
+-	return 0;
+-}
+-
+-/*
+  * 3.3.10  SYMLINK3args
+  *
+  *	struct symlinkdata3 {
+@@ -978,25 +816,6 @@ static int nfs3_xdr_enc_symlink3args(struct rpc_rqst *req, __be32 *p,
+  }
+ 
+ /*
+- * Encode MKNOD arguments
+- */
+-static int
+-nfs3_xdr_mknodargs(struct rpc_rqst *req, __be32 *p, struct nfs3_mknodargs *args)
+-{
+-	p = xdr_encode_fhandle(p, args->fh);
+-	p = xdr_encode_array(p, args->name, args->len);
+-	*p++ = htonl(args->type);
+-	p = xdr_encode_sattr(p, args->sattr);
+-	if (args->type == NF3CHR || args->type == NF3BLK) {
+-		*p++ = htonl(MAJOR(args->rdev));
+-		*p++ = htonl(MINOR(args->rdev));
+-	}
+-
+-	req->rq_slen = xdr_adjust_iovec(req->rq_svec, p);
+-	return 0;
+-}
+-
+-/*
+  * 3.3.11  MKNOD3args
+  *
+  *	struct devicedata3 {
+@@ -1077,20 +896,6 @@ static int nfs3_xdr_enc_remove3args(struct rpc_rqst *req, __be32 *p,
+ }
+ 
+ /*
+- * Encode RENAME arguments
+- */
+-static int
+-nfs3_xdr_renameargs(struct rpc_rqst *req, __be32 *p, struct nfs3_renameargs *args)
+-{
+-	p = xdr_encode_fhandle(p, args->fromfh);
+-	p = xdr_encode_array(p, args->fromname, args->fromlen);
+-	p = xdr_encode_fhandle(p, args->tofh);
+-	p = xdr_encode_array(p, args->toname, args->tolen);
+-	req->rq_slen = xdr_adjust_iovec(req->rq_svec, p);
+-	return 0;
+-}
+-
+-/*
+  * 3.3.14  RENAME3args
+  *
+  *	struct RENAME3args {
+@@ -1110,19 +915,6 @@ static int nfs3_xdr_enc_rename3args(struct rpc_rqst *req, __be32 *p,
+ }
+ 
+ /*
+- * Encode LINK arguments
+- */
+-static int
+-nfs3_xdr_linkargs(struct rpc_rqst *req, __be32 *p, struct nfs3_linkargs *args)
+-{
+-	p = xdr_encode_fhandle(p, args->fromfh);
+-	p = xdr_encode_fhandle(p, args->tofh);
+-	p = xdr_encode_array(p, args->toname, args->tolen);
+-	req->rq_slen = xdr_adjust_iovec(req->rq_svec, p);
+-	return 0;
+-}
+-
+-/*
+  * 3.3.15  LINK3args
+  *
+  *	struct LINK3args {
+@@ -1142,34 +934,6 @@ static int nfs3_xdr_enc_link3args(struct rpc_rqst *req, __be32 *p,
+ }
+ 
+ /*
+- * Encode arguments to readdir call
+- */
+-static int
+-nfs3_xdr_readdirargs(struct rpc_rqst *req, __be32 *p, struct nfs3_readdirargs *args)
+-{
+-	struct rpc_auth	*auth = req->rq_cred->cr_auth;
+-	unsigned int replen;
+-	u32 count = args->count;
+-
+-	p = xdr_encode_fhandle(p, args->fh);
+-	p = xdr_encode_hyper(p, args->cookie);
+-	*p++ = args->verf[0];
+-	*p++ = args->verf[1];
+-	if (args->plus) {
+-		/* readdirplus: need dircount + buffer size.
+-		 * We just make sure we make dircount big enough */
+-		*p++ = htonl(count >> 3);
+-	}
+-	*p++ = htonl(count);
+-	req->rq_slen = xdr_adjust_iovec(req->rq_svec, p);
+-
+-	/* Inline the page array */
+-	replen = (RPC_REPHDRSIZE + auth->au_rslack + NFS3_readdirres_sz) << 2;
+-	xdr_inline_pages(&req->rq_rcv_buf, replen, args->pages, 0, count);
+-	return 0;
+-}
+-
+-/*
+  * 3.3.16  READDIR3args
+  *
+  *	struct READDIR3args {
+@@ -1409,19 +1173,6 @@ nfs3_decode_dirent(__be32 *p, struct nfs_entry *entry, int plus)
+ }
+ 
+ /*
+- * Encode COMMIT arguments
+- */
+-static int
+-nfs3_xdr_commitargs(struct rpc_rqst *req, __be32 *p, struct nfs_writeargs *args)
+-{
+-	p = xdr_encode_fhandle(p, args->fh);
+-	p = xdr_encode_hyper(p, args->offset);
+-	*p++ = htonl(args->count);
+-	req->rq_slen = xdr_adjust_iovec(req->rq_svec, p);
+-	return 0;
+-}
+-
+-/*
+  * 3.3.21  COMMIT3args
+  *
+  *	struct COMMIT3args {
+@@ -1453,29 +1204,6 @@ static int nfs3_xdr_enc_commit3args(struct rpc_rqst *req, __be32 *p,
+ }
+ 
+ #ifdef CONFIG_NFS_V3_ACL
+-/*
+- * Encode GETACL arguments
+- */
+-static int
+-nfs3_xdr_getaclargs(struct rpc_rqst *req, __be32 *p,
+-		    struct nfs3_getaclargs *args)
+-{
+-	struct rpc_auth	*auth = req->rq_cred->cr_auth;
+-	unsigned int replen;
+-
+-	p = xdr_encode_fhandle(p, args->fh);
+-	*p++ = htonl(args->mask);
+-	req->rq_slen = xdr_adjust_iovec(req->rq_svec, p);
+-
+-	if (args->mask & (NFS_ACL | NFS_DFACL)) {
+-		/* Inline the page array */
+-		replen = (RPC_REPHDRSIZE + auth->au_rslack +
+-			  ACL3_getaclres_sz) << 2;
+-		xdr_inline_pages(&req->rq_rcv_buf, replen, args->pages, 0,
+-				 NFSACL_MAXPAGES << PAGE_SHIFT);
+-	}
+-	return 0;
+-}
+ 
+ static int nfs3_xdr_enc_getacl3args(struct rpc_rqst *req, __be32 *p,
+ 				    const struct nfs3_getaclargs *args)
+@@ -1492,39 +1220,6 @@ static int nfs3_xdr_enc_getacl3args(struct rpc_rqst *req, __be32 *p,
+ 	return 0;
+ }
+ 
+-/*
+- * Encode SETACL arguments
+- */
+-static int
+-nfs3_xdr_setaclargs(struct rpc_rqst *req, __be32 *p,
+-                   struct nfs3_setaclargs *args)
+-{
+-	struct xdr_buf *buf = &req->rq_snd_buf;
+-	unsigned int base;
+-	int err;
+-
+-	p = xdr_encode_fhandle(p, NFS_FH(args->inode));
+-	*p++ = htonl(args->mask);
+-	req->rq_slen = xdr_adjust_iovec(req->rq_svec, p);
+-	base = req->rq_slen;
+-
+-	if (args->npages != 0)
+-		xdr_encode_pages(buf, args->pages, 0, args->len);
+-	else
+-		req->rq_slen = xdr_adjust_iovec(req->rq_svec,
+-				p + XDR_QUADLEN(args->len));
+-
+-	err = nfsacl_encode(buf, base, args->inode,
+-			    (args->mask & NFS_ACL) ?
+-			    args->acl_access : NULL, 1, 0);
+-	if (err > 0)
+-		err = nfsacl_encode(buf, base + err, args->inode,
+-				    (args->mask & NFS_DFACL) ?
+-				    args->acl_default : NULL, 1,
+-				    NFS_ACL_DEFAULT);
+-	return (err > 0) ? 0 : err;
+-}
+-
+ static int nfs3_xdr_enc_setacl3args(struct rpc_rqst *req, __be32 *p,
+ 				    const struct nfs3_setaclargs *args)
+ {
+@@ -1626,21 +1321,6 @@ nfs3_xdr_accessres(struct rpc_rqst *req, __be32 *p, struct nfs3_accessres *res)
+ 	return 0;
+ }
+ 
+-static int
+-nfs3_xdr_readlinkargs(struct rpc_rqst *req, __be32 *p, struct nfs3_readlinkargs *args)
+-{
+-	struct rpc_auth	*auth = req->rq_cred->cr_auth;
+-	unsigned int replen;
+-
+-	p = xdr_encode_fhandle(p, args->fh);
+-	req->rq_slen = xdr_adjust_iovec(req->rq_svec, p);
+-
+-	/* Inline the page array */
+-	replen = (RPC_REPHDRSIZE + auth->au_rslack + NFS3_readlinkres_sz) << 2;
+-	xdr_inline_pages(&req->rq_rcv_buf, replen, args->pages, args->pgbase, args->pglen);
+-	return 0;
+-}
+-
+ /*
+  * Decode READLINK reply
+  */
 
