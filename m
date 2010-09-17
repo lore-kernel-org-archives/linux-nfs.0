@@ -1,74 +1,118 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:16444 "EHLO
-	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756894Ab0ITQWv convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 20 Sep 2010 12:22:51 -0400
-Subject: Re: [PATCH] rpcbind: don't ignore bind and init_transport errors
-Content-Type: text/plain; charset=utf-8
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20100920153157.GA20589@sith.mimuw.edu.pl>
-Date: Mon, 20 Sep 2010 12:21:45 -0400
-Cc: Steve Dickson <SteveD@redhat.com>, linux-nfs <linux-nfs@vger.kernel.org>
-Message-Id: <02C38759-5236-454B-8F7B-02F9419B1532@oracle.com>
-References: <20100917181251.GA21111@sith.mimuw.edu.pl> <690CDF34-1D1E-44E2-B077-7EDD350701CB@oracle.com> <20100917190413.GB21111@sith.mimuw.edu.pl> <DA851F94-8AFB-448D-B48D-BC4ACAD8F395@oracle.com> <20100917222227.GA22144@sith.mimuw.edu.pl> <DC671AB7-F3AF-4E70-B42E-4FF991D16E43@oracle.com> <20100920153157.GA20589@sith.mimuw.edu.pl>
-To: =?utf-8?Q?Jan_R=C4=99korajski?= <baggins@sith.mimuw.edu.pl>
+Received: from fieldses.org ([174.143.236.118]:36357 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754532Ab0IQRr7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 17 Sep 2010 13:47:59 -0400
+Date: Fri, 17 Sep 2010 13:46:44 -0400
+To: Sachin Prabhu <sprabhu@redhat.com>
+Cc: linux-nfs <linux-nfs@vger.kernel.org>
+Subject: Re: Should we be aggressively invalidating cache when using
+ -onolock?
+Message-ID: <20100917174644.GD25515@fieldses.org>
+References: <1103741.22.1284726314119.JavaMail.sprabhu@dhcp-1-233.fab.redhat.com>
+ <29790688.25.1284726394683.JavaMail.sprabhu@dhcp-1-233.fab.redhat.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <29790688.25.1284726394683.JavaMail.sprabhu@dhcp-1-233.fab.redhat.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-
-On Sep 20, 2010, at 11:31 AM, Jan Rękorajski wrote:
-
-> On Mon, 20 Sep 2010, Chuck Lever wrote:
+On Fri, Sep 17, 2010 at 08:26:39AM -0400, Sachin Prabhu wrote:
+> We came across an issue where the performance of an application using flocks on RHEL 4(2.6.9 kernel) was far better when compared to the performance of the same application on RHEL 5(2.6.18 kernel). The nfs client behavior when performing flocks on RHEL 4 and RHEL 5 differ. To ensure we had a level playing field, we repeated the tests using the mount option -o nolock. 
 > 
->> 
->> On Sep 17, 2010, at 6:22 PM, Jan Rękorajski wrote:
->> 
-> [snip]
->>> 
->>> What about TCP then?  My patch was a by-product of trying to make '-h <IP>'
->>> also work for tcp sockets, so if we skip unbindable addresses for UDP,
->>> then will it be ok to do the same for TCP?
->> 
->> Interesting.  Now that I've actually looked at the documentation >>
->> blush << rpcbind(8) explicitly says that "-h" is only for UDP.  I seem
->> to recall that the legacy portmapper had a problem on multi-homed
->> hosts where a request was received on one interface, and the reply was
->> sent out another.
->> 
->> This is certainly a problem for datagram transports, but shouldn't be
->> an issue for connection-oriented transports: the reply is always sent
->> on the same connection as the request was received.
->> 
->> Can you say a little more about why do you need "-h" to work for
->> connection-oriented sockets?
+> The performance on RHEL 5 improved slightly but was still pretty bad when compared to performance on RHEL 4. On closer observation, it was seen that there are a large number of READ requests on RHEL 5 while on RHEL 4 there were hardly any. This difference in behavior was caused by the code which invalidates the cache in the do_setlk() function and results in the RHEL 5 client performing a large number of READ requests.
 > 
-> I have a multihomed nfs server, and I don't want the portmapper to even
-> listen on an outside interface.
+> In this case, the files were only being accessed by one client. This is why the nolock mount option was used. When running such workloads, the aggressive invalidation of the cache is unnecessary. This patch improves the performance in such a scenario.
 
-Understood, but that is accomplished with firewalling, these days.  Usually, NFS servers are not run on the edge of private networks unless they are serving files to public hosts.
+Makes sense to me.
 
-None of NFS's RPC daemons allow you to set a bind address, with one exception.  rpc.statd allows one to specify a "bind address" in the form of a host name for reasons specific to the NSM protocol.
+(Is it possible that somebody might depend on lock/unlock to keep their
+meaning of "invalidate cache/flush changes" even when they don't care
+bout checking for inter-client lock conflicts?  That sounds like an odd
+use case to me.)
 
-If this is NFSv4 only, ostensibly rpcbind is not needed.  I know our implementation today still clings to rpcbind a bit, but theoretically at least, you could just leave it unstarted if you are only running an NFSv4 service.  rpc.mountd should also allow itself to be run without starting network listeners in recent versions of nfs-utils.
+--b.
 
-I'm not necessarily arguing against the idea of adding a bind address command line option, but this _would_ be a change to long established historical behavior, and it would not be consistent with many of the other Linux RPC services I'm aware of.  So, I'd like to be absolutely sure we understand what you need here, and ensure we can't address it with existing administrative controls.
+> 
+> Is this a good idea?
+> 
+> The patch will need to be respinned to accomodate Suresh Jayaraman's patch introducing '-olocal_lock'.
+> 
+> Sachin Prabhu
 
-> Second thing is a host for vservers
-> (http://linux-vserver.org), I need to run portmapper in guests but
-> rpcbind listening on INADDR_ANY is not letting me.
-
-Can you say more?  Maybe it's a bug.
-
-> And finally it's good
-> to be consistent, it's strange to me that someone may want to limit only
-> the UDP part of portmapper (modulo network issues you mentioned).
-
-"-h" was added to address an issue specific to Linux UDP sockets.  It's not a feature, but a bug fix that is UDP-specific.  TCP doesn't need this bug fix.
-
--- 
-chuck[dot]lever[at]oracle[dot]com
-
-
-
+> nfs: Skip zapping caches when using -o nolock
+> 
+> When using -onolock, it is assumed that the file will not be accessed/modified from multiple sources. In such cases, aggressive invalidation of cache is not required.
+> 
+> Signed-off-by: Sachin S. Prabhu <sprabhu@redhat.com>
+> 
+> diff --git a/fs/nfs/file.c b/fs/nfs/file.c
+> index eb51bd6..bfd9c1a 100644
+> --- a/fs/nfs/file.c
+> +++ b/fs/nfs/file.c
+> @@ -733,24 +733,22 @@ static int do_vfs_lock(struct file *file, struct file_lock *fl)
+>  static int do_unlk(struct file *filp, int cmd, struct file_lock *fl)
+>  {
+>  	struct inode *inode = filp->f_mapping->host;
+> -	int status;
+> +
+> +	/* NOTE: special case
+> +	 * If we're signalled while cleaning up locks on process exit, we
+> +	 * still need to complete the unlock.
+> +	 */
+> +
+> +	/* Use local locking if mounted with "-onolock" */
+> +	if (NFS_SERVER(inode)->flags & NFS_MOUNT_NONLM)
+> +		return do_vfs_lock(filp, fl);
+>  
+>  	/*
+>  	 * Flush all pending writes before doing anything
+>  	 * with locks..
+>  	 */
+>  	nfs_sync_mapping(filp->f_mapping);
+> -
+> -	/* NOTE: special case
+> -	 * 	If we're signalled while cleaning up locks on process exit, we
+> -	 * 	still need to complete the unlock.
+> -	 */
+> -	/* Use local locking if mounted with "-onolock" */
+> -	if (!(NFS_SERVER(inode)->flags & NFS_MOUNT_NONLM))
+> -		status = NFS_PROTO(inode)->lock(filp, cmd, fl);
+> -	else
+> -		status = do_vfs_lock(filp, fl);
+> -	return status;
+> +	return NFS_PROTO(inode)->lock(filp, cmd, fl);
+>  }
+>  
+>  static int do_setlk(struct file *filp, int cmd, struct file_lock *fl)
+> @@ -759,6 +757,15 @@ static int do_setlk(struct file *filp, int cmd, struct file_lock *fl)
+>  	int status;
+>  
+>  	/*
+> +	 * Use local locking and skip cache writeback or invalidation
+> +	 * if mounted with "-onolock"
+> +	 */
+> +	if (NFS_SERVER(inode)->flags & NFS_MOUNT_NONLM) {
+> +		status = do_vfs_lock(filp, fl);
+> +		goto out;
+> +	}
+> +
+> +	/*
+>  	 * Flush all pending writes before doing anything
+>  	 * with locks..
+>  	 */
+> @@ -766,11 +773,7 @@ static int do_setlk(struct file *filp, int cmd, struct file_lock *fl)
+>  	if (status != 0)
+>  		goto out;
+>  
+> -	/* Use local locking if mounted with "-onolock" */
+> -	if (!(NFS_SERVER(inode)->flags & NFS_MOUNT_NONLM))
+> -		status = NFS_PROTO(inode)->lock(filp, cmd, fl);
+> -	else
+> -		status = do_vfs_lock(filp, fl);
+> +	status = NFS_PROTO(inode)->lock(filp, cmd, fl);
+>  	if (status < 0)
+>  		goto out;
+>  	/*
 
