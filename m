@@ -1,78 +1,116 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from exprod6og104.obsmtp.com ([64.18.1.187]:54746 "HELO
-	exprod6og104.obsmtp.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1751677Ab0IBLvX convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 2 Sep 2010 07:51:23 -0400
-Content-Type: text/plain;
-	charset="us-ascii"
-Subject: RE: NFS version4 maximum on-the-wire data size.
-Date: Thu, 2 Sep 2010 07:51:19 -0400
-Message-ID: <D3F292ADF945FB49B35E96C94C2061B90D066E6F@nsmail.netscout.com>
-In-Reply-To: <99E0B37F-C9BE-4349-B68A-4364F4EB9C04@oracle.com>
-References: <D3F292ADF945FB49B35E96C94C2061B90CFB48D0@nsmail.netscout.com> <0FDF651C-4620-4872-9ABA-9F8D8FA2192A@oracle.com> <99E0B37F-C9BE-4349-B68A-4364F4EB9C04@oracle.com>
-From: "Tayade, Nilesh" <Nilesh.Tayade@netscout.com>
-To: "Chuck Lever" <chuck.lever@oracle.com>, <linux-nfs@vger.kernel.org>
+Received: from mx3-phx2.redhat.com ([209.132.183.24]:48868 "EHLO
+	mx01.colomx.prod.int.phx2.redhat.com" rhost-flags-OK-OK-OK-FAIL)
+	by vger.kernel.org with ESMTP id S1753655Ab0IQM0k (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 17 Sep 2010 08:26:40 -0400
+Received: from mail06.corp.redhat.com (zmail06.collab.prod.int.phx2.redhat.com [10.5.5.45])
+	by mx01.colomx.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id o8HCQdC7020041
+	for <linux-nfs@vger.kernel.org>; Fri, 17 Sep 2010 08:26:39 -0400
+Date: Fri, 17 Sep 2010 08:26:39 -0400 (EDT)
+From: Sachin Prabhu <sprabhu@redhat.com>
+To: linux-nfs <linux-nfs@vger.kernel.org>
+Message-ID: <29790688.25.1284726394683.JavaMail.sprabhu@dhcp-1-233.fab.redhat.com>
+In-Reply-To: <1103741.22.1284726314119.JavaMail.sprabhu@dhcp-1-233.fab.redhat.com>
+Subject: Should we be aggressively invalidating cache when using -onolock?
+Content-Type: multipart/mixed;
+	boundary="----=_Part_24_28750611.1284726394680"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-> -----Original Message-----
-> From: Chuck Lever [mailto:chuck.lever@oracle.com]
-> Sent: Wednesday, September 01, 2010 9:16 PM
-> To: Chuck Lever
-> Cc: Tayade, Nilesh; linux-nfs@vger.kernel.org
-> Subject: Re: NFS version4 maximum on-the-wire data size.
-> 
-> 
-> On Sep 1, 2010, at 11:41 AM, Chuck Lever wrote:
-> 
-> >
-> > On Sep 1, 2010, at 5:39 AM, Tayade, Nilesh wrote:
-> >
-> >> Hi,
-> >>
-> >> I am unable to get the exact count for the amount of on-the-wire
-data
-> >> size that NFSv4 supports.
-> >>
-> >> I could get exact figures in case of NFSv3
-> (http://nfs.sourceforge.net).
-> >> It's 60KB when NFSv3 is used over UDP and implementation dependent
-in
-> >> case it is used over TCP. Any idea about NFSv4 statistics?
-> >>
-> >> Any pointers would be appreciated.
-> >
-> > NFSv4 reads and writes can be as large as the maximum payload size
-of
-> the underlying transport.  NFSv4 does not support UDP, but on TCP, the
-> maximum payload size is usually approximately (2 ** 31 - 1) - (RPC
-header
-> + NFS overhead).
-> 
-> But you were probably not asking about the theoretical limits of the
-> underlying transport.
-> 
-> The Linux NFS client limits read and write payload size to a megabyte.
-> Servers may limit it further.
+------=_Part_24_28750611.1284726394680
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: 7bit
 
-Thanks for the information. It helps. 
+We came across an issue where the performance of an application using flocks on RHEL 4(2.6.9 kernel) was far better when compared to the performance of the same application on RHEL 5(2.6.18 kernel). The nfs client behavior when performing flocks on RHEL 4 and RHEL 5 differ. To ensure we had a level playing field, we repeated the tests using the mount option -o nolock. 
 
-Also we use 2.6.22 kernel version (it's old, and have no option of
-changing it) on our Intel boxes. I was just wondering is there any
-kernel-version Vs. NFS version mapping (I assume it's not, but just to
-be sure about)? I have never seen NFSv2 running on our boxes. I am going
-to write certain applications on top of NFS. So wanted to be sure if
-NFSv2 should be supported at all (is it so widely used on recent
-systems, compared to NFSv3/v4)?
+The performance on RHEL 5 improved slightly but was still pretty bad when compared to performance on RHEL 4. On closer observation, it was seen that there are a large number of READ requests on RHEL 5 while on RHEL 4 there were hardly any. This difference in behavior was caused by the code which invalidates the cache in the do_setlk() function and results in the RHEL 5 client performing a large number of READ requests.
 
-> 
-> --
-> chuck[dot]lever[at]oracle[dot]com
-> 
-> 
+In this case, the files were only being accessed by one client. This is why the nolock mount option was used. When running such workloads, the aggressive invalidation of the cache is unnecessary. This patch improves the performance in such a scenario.
 
-Thanks,
-Nilesh
-nilesh.tayade@netscout.com
+Is this a good idea?
 
+The patch will need to be respinned to accomodate Suresh Jayaraman's patch introducing '-olocal_lock'.
+
+Sachin Prabhu
+------=_Part_24_28750611.1284726394680
+Content-Type: text/x-patch; name=bz633834.patch
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment; filename=bz633834.patch
+
+nfs: Skip zapping caches when using -o nolock
+
+When using -onolock, it is assumed that the file will not be accessed/modified from multiple sources. In such cases, aggressive invalidation of cache is not required.
+
+Signed-off-by: Sachin S. Prabhu <sprabhu@redhat.com>
+
+diff --git a/fs/nfs/file.c b/fs/nfs/file.c
+index eb51bd6..bfd9c1a 100644
+--- a/fs/nfs/file.c
++++ b/fs/nfs/file.c
+@@ -733,24 +733,22 @@ static int do_vfs_lock(struct file *file, struct file_lock *fl)
+ static int do_unlk(struct file *filp, int cmd, struct file_lock *fl)
+ {
+ 	struct inode *inode = filp->f_mapping->host;
+-	int status;
++
++	/* NOTE: special case
++	 * If we're signalled while cleaning up locks on process exit, we
++	 * still need to complete the unlock.
++	 */
++
++	/* Use local locking if mounted with "-onolock" */
++	if (NFS_SERVER(inode)->flags & NFS_MOUNT_NONLM)
++		return do_vfs_lock(filp, fl);
+ 
+ 	/*
+ 	 * Flush all pending writes before doing anything
+ 	 * with locks..
+ 	 */
+ 	nfs_sync_mapping(filp->f_mapping);
+-
+-	/* NOTE: special case
+-	 * 	If we're signalled while cleaning up locks on process exit, we
+-	 * 	still need to complete the unlock.
+-	 */
+-	/* Use local locking if mounted with "-onolock" */
+-	if (!(NFS_SERVER(inode)->flags & NFS_MOUNT_NONLM))
+-		status = NFS_PROTO(inode)->lock(filp, cmd, fl);
+-	else
+-		status = do_vfs_lock(filp, fl);
+-	return status;
++	return NFS_PROTO(inode)->lock(filp, cmd, fl);
+ }
+ 
+ static int do_setlk(struct file *filp, int cmd, struct file_lock *fl)
+@@ -759,6 +757,15 @@ static int do_setlk(struct file *filp, int cmd, struct file_lock *fl)
+ 	int status;
+ 
+ 	/*
++	 * Use local locking and skip cache writeback or invalidation
++	 * if mounted with "-onolock"
++	 */
++	if (NFS_SERVER(inode)->flags & NFS_MOUNT_NONLM) {
++		status = do_vfs_lock(filp, fl);
++		goto out;
++	}
++
++	/*
+ 	 * Flush all pending writes before doing anything
+ 	 * with locks..
+ 	 */
+@@ -766,11 +773,7 @@ static int do_setlk(struct file *filp, int cmd, struct file_lock *fl)
+ 	if (status != 0)
+ 		goto out;
+ 
+-	/* Use local locking if mounted with "-onolock" */
+-	if (!(NFS_SERVER(inode)->flags & NFS_MOUNT_NONLM))
+-		status = NFS_PROTO(inode)->lock(filp, cmd, fl);
+-	else
+-		status = do_vfs_lock(filp, fl);
++	status = NFS_PROTO(inode)->lock(filp, cmd, fl);
+ 	if (status < 0)
+ 		goto out;
+ 	/*
+
+------=_Part_24_28750611.1284726394680--
