@@ -1,179 +1,80 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:49139 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932221Ab0I3QTn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 30 Sep 2010 12:19:43 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: "J. Bruce Fields" <bfields@citi.umich.edu>
-Subject: [PATCH 11/16] nfsd4: keep per-session list of connections
-Date: Thu, 30 Sep 2010 12:19:08 -0400
-Message-Id: <1285863553-8945-12-git-send-email-bfields@redhat.com>
-In-Reply-To: <1285863553-8945-1-git-send-email-bfields@redhat.com>
-References: <1285863553-8945-1-git-send-email-bfields@redhat.com>
+Received: from mail-gw0-f46.google.com ([74.125.83.46]:59796 "EHLO
+	mail-gw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751783Ab0IQQ1Z (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 17 Sep 2010 12:27:25 -0400
+Received: by gwj17 with SMTP id 17so784191gwj.19
+        for <linux-nfs@vger.kernel.org>; Fri, 17 Sep 2010 09:27:24 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 07/22] NFS: Use the "nfs_stat" enum for nfs_stat_to_errno()'s
+	argument
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Date: Fri, 17 Sep 2010 12:27:21 -0400
+Message-ID: <20100917162721.19761.60553.stgit@seurat.1015granger.net>
+In-Reply-To: <20100917162204.19761.58249.stgit@seurat.1015granger.net>
+References: <20100917162204.19761.58249.stgit@seurat.1015granger.net>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: J. Bruce Fields <bfields@citi.umich.edu>
+Clean up:  To distinguish more clearly between the on-the-wire NFSERR_
+value and our local errno values, use the proper type for the argument
+of nfs_stat_to_errno().
 
-The spec requires us in various places to keep track of the connections
-associated with each session.
-
-Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- fs/nfsd/nfs4state.c  |   69 +++++++++++++++++++++++++++++++++++++++-----------
- fs/nfsd/state.h      |    8 ++++++
- include/linux/nfs4.h |    3 ++
- 3 files changed, 65 insertions(+), 15 deletions(-)
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index f86476c..c7c1a7a 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -625,11 +625,58 @@ static void init_forechannel_attrs(struct nfsd4_channel_attrs *new, struct nfsd4
- 	new->maxops = min_t(u32, req->maxops, NFSD_MAX_OPS_PER_COMPOUND);
- }
+ fs/nfs/internal.h |    2 +-
+ fs/nfs/nfs2xdr.c  |   16 +++++++++-------
+ 2 files changed, 10 insertions(+), 8 deletions(-)
+
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index c65ee43..01da8d4 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -179,7 +179,7 @@ extern int __init nfs_init_directcache(void);
+ extern void nfs_destroy_directcache(void);
  
-+static __be32 nfsd4_new_conn(struct svc_rqst *rqstp, struct nfsd4_session *ses)
-+{
-+	struct nfs4_client *clp = ses->se_client;
-+	struct nfsd4_conn *conn;
-+
-+	conn = kmalloc(sizeof(struct nfsd4_conn), GFP_KERNEL);
-+	if (!conn)
-+		return nfserr_jukebox;
-+	conn->cn_flags = NFS4_CDFC4_FORE;
-+	svc_xprt_get(rqstp->rq_xprt);
-+	conn->cn_xprt = rqstp->rq_xprt;
-+
-+	spin_lock(&clp->cl_lock);
-+	list_add(&conn->cn_persession, &ses->se_conns);
-+	spin_unlock(&clp->cl_lock);
-+
-+	return nfs_ok;
-+}
-+
-+static void free_conn(struct nfsd4_conn *c)
-+{
-+	svc_xprt_put(c->cn_xprt);
-+	kfree(c);
-+}
-+
-+void free_session(struct kref *kref)
-+{
-+	struct nfsd4_session *ses;
-+	int mem;
-+
-+	ses = container_of(kref, struct nfsd4_session, se_ref);
-+	while (!list_empty(&ses->se_conns)) {
-+		struct nfsd4_conn *c;
-+		c = list_first_entry(&ses->se_conns, struct nfsd4_conn, cn_persession);
-+		list_del(&c->cn_persession);
-+		free_conn(c);
-+	}
-+	spin_lock(&nfsd_drc_lock);
-+	mem = ses->se_fchannel.maxreqs * slot_bytes(&ses->se_fchannel);
-+	nfsd_drc_mem_used -= mem;
-+	spin_unlock(&nfsd_drc_lock);
-+	free_session_slots(ses);
-+	kfree(ses);
-+}
-+
-+
- static __be32 alloc_init_session(struct svc_rqst *rqstp, struct nfs4_client *clp, struct nfsd4_create_session *cses)
+ /* nfs2xdr.c */
+-extern int nfs_stat_to_errno(int);
++extern int nfs_stat_to_errno(enum nfs_stat);
+ extern struct rpc_procinfo nfs_procedures[];
+ extern __be32 * nfs_decode_dirent(__be32 *, struct nfs_entry *, int);
+ 
+diff --git a/fs/nfs/nfs2xdr.c b/fs/nfs/nfs2xdr.c
+index fdfa3ef..186f591 100644
+--- a/fs/nfs/nfs2xdr.c
++++ b/fs/nfs/nfs2xdr.c
+@@ -863,20 +863,22 @@ static struct {
+ 	{ -1,			-EIO		}
+ };
+ 
+-/*
+- * Convert an NFS error code to a local one.
+- * This one is used jointly by NFSv2 and NFSv3.
++/**
++ * nfs_stat_to_errno - convert an NFS status code to a local errno
++ * @status: NFS status code to convert
++ *
++ * Returns a local errno value, or -EIO if the NFS status code is
++ * not recognized.  This function is used jointly by NFSv2 and NFSv3.
+  */
+-int
+-nfs_stat_to_errno(int stat)
++int nfs_stat_to_errno(enum nfs_stat status)
  {
- 	struct nfsd4_session *new;
- 	struct nfsd4_channel_attrs *fchan = &cses->fore_channel;
- 	int numslots, slotsize;
-+	int status;
- 	int idx;
+ 	int i;
  
- 	/*
-@@ -654,6 +701,8 @@ static __be32 alloc_init_session(struct svc_rqst *rqstp, struct nfs4_client *clp
- 	memcpy(clp->cl_sessionid.data, new->se_sessionid.data,
- 	       NFS4_MAX_SESSIONID_LEN);
- 
-+	INIT_LIST_HEAD(&new->se_conns);
-+
- 	new->se_flags = cses->flags;
- 	kref_init(&new->se_ref);
- 	idx = hash_sessionid(&new->se_sessionid);
-@@ -662,6 +711,11 @@ static __be32 alloc_init_session(struct svc_rqst *rqstp, struct nfs4_client *clp
- 	list_add(&new->se_perclnt, &clp->cl_sessions);
- 	spin_unlock(&client_lock);
- 
-+	status = nfsd4_new_conn(rqstp, new);
-+	if (status) {
-+		free_session(&new->se_ref);
-+		return nfserr_jukebox;
-+	}
- 	return nfs_ok;
+ 	for (i = 0; nfs_errtbl[i].stat != -1; i++) {
+-		if (nfs_errtbl[i].stat == stat)
++		if (nfs_errtbl[i].stat == (int)status)
+ 			return nfs_errtbl[i].errno;
+ 	}
+-	dprintk("nfs_stat_to_errno: bad nfs status return value: %d\n", stat);
++	dprintk("NFS: Unrecognized nfs status value: %u\n", status);
+ 	return nfs_errtbl[i].errno;
  }
  
-@@ -694,21 +748,6 @@ unhash_session(struct nfsd4_session *ses)
- 	list_del(&ses->se_perclnt);
- }
- 
--void
--free_session(struct kref *kref)
--{
--	struct nfsd4_session *ses;
--	int mem;
--
--	ses = container_of(kref, struct nfsd4_session, se_ref);
--	spin_lock(&nfsd_drc_lock);
--	mem = ses->se_fchannel.maxreqs * slot_bytes(&ses->se_fchannel);
--	nfsd_drc_mem_used -= mem;
--	spin_unlock(&nfsd_drc_lock);
--	free_session_slots(ses);
--	kfree(ses);
--}
--
- /* must be called under the client_lock */
- static inline void
- renew_client_locked(struct nfs4_client *clp)
-diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index 58bc2a6..29413c2 100644
---- a/fs/nfsd/state.h
-+++ b/fs/nfsd/state.h
-@@ -152,6 +152,13 @@ struct nfsd4_clid_slot {
- 	struct nfsd4_create_session	sl_cr_ses;
- };
- 
-+struct nfsd4_conn {
-+	struct list_head cn_persession;
-+	struct svc_xprt *cn_xprt;
-+/* CDFC4_FORE, CDFC4_BACK: */
-+	unsigned char cn_flags;
-+};
-+
- struct nfsd4_session {
- 	struct kref		se_ref;
- 	struct list_head	se_hash;	/* hash by sessionid */
-@@ -161,6 +168,7 @@ struct nfsd4_session {
- 	struct nfs4_sessionid	se_sessionid;
- 	struct nfsd4_channel_attrs se_fchannel;
- 	struct nfsd4_channel_attrs se_bchannel;
-+	struct list_head	se_conns;
- 	struct nfsd4_slot	*se_slots[];	/* forward channel slots */
- };
- 
-diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
-index 07e40c6..79b15fb 100644
---- a/include/linux/nfs4.h
-+++ b/include/linux/nfs4.h
-@@ -61,6 +61,9 @@
- #define NFS4_SHARE_SIGNAL_DELEG_WHEN_RESRC_AVAIL	0x10000
- #define NFS4_SHARE_PUSH_DELEG_WHEN_UNCONTENDED		0x20000
- 
-+#define NFS4_CDFC4_FORE	0x1
-+#define NFS4_CDFC4_BACK 0x2
-+
- #define NFS4_SET_TO_SERVER_TIME	0
- #define NFS4_SET_TO_CLIENT_TIME	1
- 
--- 
-1.7.0.4
 
