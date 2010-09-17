@@ -1,80 +1,178 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cantor.suse.de ([195.135.220.2]:41092 "EHLO mx1.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755830Ab0IWSyh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 23 Sep 2010 14:54:37 -0400
-Message-ID: <4C9BA266.1040102@suse.de>
-Date: Fri, 24 Sep 2010 00:24:30 +0530
-From: Suresh Jayaraman <sjayaraman@suse.de>
-To: steved@redhat.com
-Cc: Linux NFS mailing list <linux-nfs@vger.kernel.org>,
-        trond.myklebust@netapp.com
-Subject: [PATCH] nfs(5): document new local_lock option
-Content-Type: text/plain; charset=UTF-8
+Received: from vergina.eng.auth.gr ([155.207.18.1]:54002 "EHLO
+	vergina.eng.auth.gr" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753266Ab0IQQSq (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 17 Sep 2010 12:18:46 -0400
+Received: from [155.207.33.29] (mamalacation.ee.auth.gr [155.207.33.29])
+	by vergina.eng.auth.gr (8.14.3/8.14.1) with ESMTP id o8HFsj2R034708
+	for <linux-nfs@vger.kernel.org>; Fri, 17 Sep 2010 18:54:45 +0300 (EEST)
+	(envelope-from mamalos@eng.auth.gr)
+Message-ID: <4C938F3B.4030604@eng.auth.gr>
+Date: Fri, 17 Sep 2010 18:54:35 +0300
+From: George Mamalakis <mamalos@eng.auth.gr>
+To: linux-nfs@vger.kernel.org
+Subject: nfsv3 gssapi client?
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Kernel 2.6.37 would most likely add a new mount option: local_lock.
-Document the new option in the nfs(5) man page.
+   Hi all,
 
-Signed-off-by: Suresh Jayaraman <sjayaraman@suse.de>
----
- utils/mount/nfs.man |   44 ++++++++++++++++++++++++++++++++++++++++++++
- 1 files changed, 44 insertions(+), 0 deletions(-)
+I have a FreeBSD nfsv3 server that exports a filesystem with sec=krb5. 
+Mounting the share with sec=krb5 under a fbsd client works fine. I now 
+try to mount it under linux (archlinux, upgraded today) using nfs-utils. 
+Heimdal is configured on the linux-box, kinit -k linuxclient works fine. 
+I am also able to kinit to my user principals from it. When I try to 
+mount the nvsv3 sec=krb5 share, I get the following error:
 
-diff --git a/utils/mount/nfs.man b/utils/mount/nfs.man
-index 55d4b55..d2a4c5f 100644
---- a/utils/mount/nfs.man
-+++ b/utils/mount/nfs.man
-@@ -717,6 +717,50 @@ If this option is not specified, the NFS client uses READDIRPLUS requests
- on NFS version 3 mounts to read small directories.
- Some applications perform better if the client uses only READDIR requests
- for all directories.
-+.TP 1.5i
-+.BR local_lock= mechanism
-+Specifies whether to use local locking for any or both of the flock and the
-+POSIX locking mechanisms.
-+.I mechanism
-+can be one of
-+.BR all ,
-+.BR flock ,
-+.BR posix ,
-+or
-+.BR none .
-+This option is supported in kernels 2.6.37 and later.
-+.IP
-+The Linux NFS client provides a way to make locks local. This means, the
-+applications can lock files, but such locks provide exclusion only against
-+other applications running on the same client. Remote applications are not
-+affected by these locks.
-+.IP
-+If this option is not specified, or if
-+.B none
-+is specified, the client assumes that the locks are not local.
-+.IP
-+If
-+.BR all
-+is specified, the client assumes that both flock and POSIX locks are local.
-+.IP
-+If
-+.BR flock
-+is specified, the client assumes that only flock locks are local and uses
-+NLM sideband protocol to lock files when POSIX locks are used.
-+.IP
-+If
-+.BR posix
-+is specified, the client assumes that POSIX locks are local and uses NLM
-+sideband protocol to lock files when flock locks are used.
-+.IP
-+To support legacy flock behavior similar to that of NFS clients < 2.6.12, use
-+'local_lock=flock'. This option is required when exporting NFS mounts via
-+Samba as Samba maps Windows share mode locks as flock. Since NFS clients >
-+2.6.12 implement flock by emulating POSIX locks, this will result in
-+conflicting locks.
-+.IP
-+NOTE: When used together, the 'local_lock' mount option will be overridden
-+by 'nolock'/'lock' mount option.
- .SS "Options for version 4 only"
- Use these options, along with the options in the first subsection above,
- for NFSv4 only. They will be ignored with older versions.
+# mount -t nfs -o sec=krb5 fbsdserver:/exports /mnt
+
+# tail /var/log/messages
+Sep 17 16:05:31 linuxclient rpc.statd[27683]: Version 1.2.2 starting
+Sep 17 16:05:31 linuxclient sm-notify[27684]: Version 1.2.2 starting
+Sep 17 16:05:31 linuxclient sm-notify[27684]: Already notifying clients; 
+Exiting!
+Sep 17 16:05:31 linuxclient rpc.statd[27683]: Running as root.  chown 
+/var/lib/nfs to choose different user
+Sep 17 16:05:31 linuxclient sm-notify[27687]: Version 1.2.2 starting
+Sep 17 16:05:31 linuxclient sm-notify[27687]: Already notifying clients; 
+Exiting!
+Sep 17 16:05:53 linuxclient kernel: svc: failed to register lockdv1 RPC 
+service (errno 111).
+Sep 17 16:05:53 linuxclient kernel: lockd_up: makesock failed, error=-111
+Sep 17 16:05:54 linuxclient kernel: svc: failed to register lockdv1 RPC 
+service (errno 111).
+Sep 17 16:05:57 linuxclient kernel: svc: failed to register lockdv1 RPC 
+service (errno 111).
+Sep 17 16:06:01 linuxclient kernel: svc: failed to register lockdv1 RPC 
+service (errno 111).
+
+and it keeps on like this.
+
+My nfs-common.conf reads:
+
+[root@linuxclient ~]# cat /etc/conf.d/nfs-common.conf
+# Parameters to be passed to nfs-common (nfs clients & server) init script.
+#
+
+# If you do not set values for the NEED_ options, they will be attempted
+# autodetected; this should be sufficient for most people. Valid 
+alternatives
+# for the NEED_ options are "yes" and "no".
+
+# Do you want to start the statd daemon? It is not needed for NFSv4.
+NEED_STATD=""
+
+# Options to pass to rpc.statd.
+# See rpc.statd(8) for more details.
+# N.B. statd normally runs on both client and server, and run-time
+# options should be specified accordingly.
+# STATD_OPTS="-p 32765 -o 32766"
+STATD_OPTS=""
+
+# Options to pass to sm-notify
+# e.g. SMNOTIFY_OPTS="-p 32764"
+SMNOTIFY_OPTS=""
+
+# Do you want to start the idmapd daemon? It is only needed for NFSv4.
+NEED_IDMAPD=""
+
+# Options to pass to rpc.idmapd.
+# See rpc.idmapd(8) for more details.
+IDMAPD_OPTS="-vvv"
+
+# Do you want to start the gssd daemon? It is required for Kerberos mounts.
+NEED_GSSD="yes"
+
+# Options to pass to rpc.gssd.
+# See rpc.gssd(8) for more details.
+GSSD_OPTS="-vvv"
+#RPCGSSDOPTS="-vvv"
+# Where to mount rpc_pipefs filesystem; the default is 
+"/var/lib/nfs/rpc_pipefs".
+PIPEFS_MOUNTPOINT=""
+
+# Options used to mount rpc_pipefs filesystem; the default is "defaults".
+PIPEFS_MOUNTOPTS=""
+
+my rpc processes are:
+[root@linuxclient ~]# ps axuww  | grep -i rpc
+root      1228  0.0  0.0      0     0 ?        S    14:47   0:00 [rpciod/0]
+root     27670  0.0  0.0   6232   908 ?        Ss   16:05   0:00 
+/usr/bin/rpcbind
+root     27683  0.0  0.1   6332  1236 ?        Ss   16:05   0:00 
+/usr/sbin/rpc.statd
+root     27699  0.0  0.1   6264  1180 ?        Ss   16:05   0:00 
+/usr/sbin/rpc.gssd -vvv
+root     27720  0.0  0.0   3776   476 pts/0    S+   17:01   0:00 grep -i 
+rpc
+
+And rpcinfo shows:
+root@linuxclient ~]# rpcinfo
+    program version netid     address                service    owner
+     100000    4    tcp6      ::.0.111               portmapper superuser
+     100000    3    tcp6      ::.0.111               portmapper superuser
+     100000    4    udp6      ::.0.111               portmapper superuser
+     100000    3    udp6      ::.0.111               portmapper superuser
+     100000    4    udp       0.0.0.0.0.111          portmapper superuser
+     100000    3    udp       0.0.0.0.0.111          portmapper superuser
+     100000    2    udp       0.0.0.0.0.111          portmapper superuser
+     100000    4    local     /var/run/rpcbind.sock  portmapper superuser
+     100000    3    local     /var/run/rpcbind.sock  portmapper superuser
+     100024    1    udp       0.0.0.0.228.144        status     superuser
+     100024    1    tcp       0.0.0.0.198.8          status     superuser
+[root@linuxclient ~]# rpcinfo -s
+    program version(s) netid(s)                         service     owner
+     100000  2,3,4     local,udp,udp6,tcp6              portmapper  
+superuser
+     100024  1         tcp,udp                          status      
+superuser
+
+whereas on the fbsd box I have:
+[root@fbsdserver ~]# rpcinfo -s
+    program version(s) netid(s)                         service     owner
+     100000  2,3,4     local,udp6,tcp6,udp,tcp          rpcbind     
+superuser
+     100024  1         tcp,udp,tcp6,udp6                status      
+superuser
+     100021  4,3,1,0   tcp,udp,tcp6,udp6                nlockmgr    
+superuser
+     100003  3,2       tcp6,tcp,udp6,udp                nfs         
+superuser
+     100005  3,1       tcp,udp,tcp6,udp6                mountd      
+superuser
+
+
+The versions I use are:
+rpcbind-0.2.0-2
+nfs-utils-1.2.2-3
+
+And uname -a shows:
+
+[root@linuxclient ~]# uname -a
+Linux linuxclient 2.6.35-ARCH #1 SMP PREEMPT Fri Aug 27 16:22:18 UTC 
+2010 i686 Intel(R) Xeon(R) CPU E5310 @ 1.60GHz GenuineIntel GNU/Linux
+
+Does linux support RPCSEC_GSS security flavors over nvsv3? And if so, 
+could somebody direct me on how to establish mounting the remote share?
+
+Thank you all for your time and attention in advance,
+
+regards,
+
+mamalos
+
+-- 
+George Mamalakis
+
+IT Officer
+Electrical and Computer Engineer (Aristotle Un. of Thessaloniki),
+MSc (Imperial College of London)
+
+Department of Electrical and Computer Engineering
+Faculty of Engineering
+Aristotle University of Thessaloniki
+
+phone number : +30 (2310) 994379
+
