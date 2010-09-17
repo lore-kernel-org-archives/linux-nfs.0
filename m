@@ -1,154 +1,106 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:49110 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756697Ab0I3QTf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 30 Sep 2010 12:19:35 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: "J. Bruce Fields" <bfields@citi.umich.edu>
-Subject: [PATCH 01/16] nfsd4: minor variable renaming (cb -> conn)
-Date: Thu, 30 Sep 2010 12:18:58 -0400
-Message-Id: <1285863553-8945-2-git-send-email-bfields@redhat.com>
-In-Reply-To: <1285863553-8945-1-git-send-email-bfields@redhat.com>
-References: <1285863553-8945-1-git-send-email-bfields@redhat.com>
+Received: from rcsinet10.oracle.com ([148.87.113.121]:61673 "EHLO
+	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754362Ab0IQS1t convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 17 Sep 2010 14:27:49 -0400
+Subject: Re: [PATCH] rpcbind: don't ignore bind and init_transport errors
+Content-Type: text/plain; charset=utf-8
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <20100917181251.GA21111@sith.mimuw.edu.pl>
+Date: Fri, 17 Sep 2010 14:26:08 -0400
+Cc: Steve Dickson <SteveD@redhat.com>, linux-nfs <linux-nfs@vger.kernel.org>
+Message-Id: <690CDF34-1D1E-44E2-B077-7EDD350701CB@oracle.com>
+References: <20100917181251.GA21111@sith.mimuw.edu.pl>
+To: =?utf-8?Q?Jan_R=C4=99korajski?= <baggins@sith.mimuw.edu.pl>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: J. Bruce Fields <bfields@citi.umich.edu>
 
-Now that we have both nfsd4_callback and nfsd4_cb_conn structures, I get
-confused if variables of both types are always named cb....
+On Sep 17, 2010, at 2:12 PM, Jan Rękorajski wrote:
 
-Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
----
- fs/nfsd/nfs4callback.c |   16 ++++++++--------
- fs/nfsd/nfs4state.c    |   28 ++++++++++++++--------------
- 2 files changed, 22 insertions(+), 22 deletions(-)
+> Hi,
+> rpcbind currently silently ignores any errors that occur during
+> init_transport, it also happily continues if bind(2) fails for
+> UDP socket - it's enough if just one UDP socket is bound.
+> 
+> This patch makes rpcbind fail if there are problems with
+> setting up any transport, so we don't end up with
+> semi/non functional running daemon.
 
-diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
-index 014482c..30adfad 100644
---- a/fs/nfsd/nfs4callback.c
-+++ b/fs/nfsd/nfs4callback.c
-@@ -472,7 +472,7 @@ static int max_cb_time(void)
- /* Reference counting, callback cleanup, etc., all look racy as heck.
-  * And why is cl_cb_set an atomic? */
- 
--int setup_callback_client(struct nfs4_client *clp, struct nfs4_cb_conn *cb)
-+int setup_callback_client(struct nfs4_client *clp, struct nfs4_cb_conn *conn)
- {
- 	struct rpc_timeout	timeparms = {
- 		.to_initval	= max_cb_time(),
-@@ -480,11 +480,11 @@ int setup_callback_client(struct nfs4_client *clp, struct nfs4_cb_conn *cb)
- 	};
- 	struct rpc_create_args args = {
- 		.protocol	= XPRT_TRANSPORT_TCP,
--		.address	= (struct sockaddr *) &cb->cb_addr,
--		.addrsize	= cb->cb_addrlen,
-+		.address	= (struct sockaddr *) &conn->cb_addr,
-+		.addrsize	= conn->cb_addrlen,
- 		.timeout	= &timeparms,
- 		.program	= &cb_program,
--		.prognumber	= cb->cb_prog,
-+		.prognumber	= conn->cb_prog,
- 		.version	= 0,
- 		.authflavor	= clp->cl_flavor,
- 		.flags		= (RPC_CLNT_CREATE_NOPING | RPC_CLNT_CREATE_QUIET),
-@@ -494,8 +494,8 @@ int setup_callback_client(struct nfs4_client *clp, struct nfs4_cb_conn *cb)
- 
- 	if (!clp->cl_principal && (clp->cl_flavor >= RPC_AUTH_GSS_KRB5))
- 		return -EINVAL;
--	if (cb->cb_minorversion) {
--		args.bc_xprt = cb->cb_xprt;
-+	if (conn->cb_minorversion) {
-+		args.bc_xprt = conn->cb_xprt;
- 		args.protocol = XPRT_TRANSPORT_BC_TCP;
- 	}
- 	/* Create RPC client */
-@@ -562,13 +562,13 @@ void do_probe_callback(struct nfs4_client *clp)
- /*
-  * Set up the callback client and put a NFSPROC4_CB_NULL on the wire...
-  */
--void nfsd4_probe_callback(struct nfs4_client *clp, struct nfs4_cb_conn *cb)
-+void nfsd4_probe_callback(struct nfs4_client *clp, struct nfs4_cb_conn *conn)
- {
- 	int status;
- 
- 	BUG_ON(atomic_read(&clp->cl_cb_set));
- 
--	status = setup_callback_client(clp, cb);
-+	status = setup_callback_client(clp, conn);
- 	if (status) {
- 		warn_no_callback_path(clp, status);
- 		return;
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index cf0d2ff..d347180 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -207,7 +207,7 @@ alloc_init_deleg(struct nfs4_client *clp, struct nfs4_stateid *stp, struct svc_f
- {
- 	struct nfs4_delegation *dp;
- 	struct nfs4_file *fp = stp->st_file;
--	struct nfs4_cb_conn *cb = &stp->st_stateowner->so_client->cl_cb_conn;
-+	struct nfs4_cb_conn *conn = &stp->st_stateowner->so_client->cl_cb_conn;
- 
- 	dprintk("NFSD alloc_init_deleg\n");
- 	/*
-@@ -234,7 +234,7 @@ alloc_init_deleg(struct nfs4_client *clp, struct nfs4_stateid *stp, struct svc_f
- 	nfs4_file_get_access(fp, O_RDONLY);
- 	dp->dl_flock = NULL;
- 	dp->dl_type = type;
--	dp->dl_ident = cb->cb_ident;
-+	dp->dl_ident = conn->cb_ident;
- 	dp->dl_stateid.si_boot = boot_time;
- 	dp->dl_stateid.si_stateownerid = current_delegid++;
- 	dp->dl_stateid.si_fileid = 0;
-@@ -1098,7 +1098,7 @@ find_unconfirmed_client_by_str(const char *dname, unsigned int hashval,
- static void
- gen_callback(struct nfs4_client *clp, struct nfsd4_setclientid *se, u32 scopeid)
- {
--	struct nfs4_cb_conn *cb = &clp->cl_cb_conn;
-+	struct nfs4_cb_conn *conn = &clp->cl_cb_conn;
- 	unsigned short expected_family;
- 
- 	/* Currently, we only support tcp and tcp6 for the callback channel */
-@@ -1111,24 +1111,24 @@ gen_callback(struct nfs4_client *clp, struct nfsd4_setclientid *se, u32 scopeid)
- 	else
- 		goto out_err;
- 
--	cb->cb_addrlen = rpc_uaddr2sockaddr(se->se_callback_addr_val,
-+	conn->cb_addrlen = rpc_uaddr2sockaddr(se->se_callback_addr_val,
- 					    se->se_callback_addr_len,
--					    (struct sockaddr *) &cb->cb_addr,
--					    sizeof(cb->cb_addr));
-+					    (struct sockaddr *)&conn->cb_addr,
-+					    sizeof(conn->cb_addr));
- 
--	if (!cb->cb_addrlen || cb->cb_addr.ss_family != expected_family)
-+	if (!conn->cb_addrlen || conn->cb_addr.ss_family != expected_family)
- 		goto out_err;
- 
--	if (cb->cb_addr.ss_family == AF_INET6)
--		((struct sockaddr_in6 *) &cb->cb_addr)->sin6_scope_id = scopeid;
-+	if (conn->cb_addr.ss_family == AF_INET6)
-+		((struct sockaddr_in6 *)&conn->cb_addr)->sin6_scope_id = scopeid;
- 
--	cb->cb_minorversion = 0;
--	cb->cb_prog = se->se_callback_prog;
--	cb->cb_ident = se->se_callback_ident;
-+	conn->cb_minorversion = 0;
-+	conn->cb_prog = se->se_callback_prog;
-+	conn->cb_ident = se->se_callback_ident;
- 	return;
- out_err:
--	cb->cb_addr.ss_family = AF_UNSPEC;
--	cb->cb_addrlen = 0;
-+	conn->cb_addr.ss_family = AF_UNSPEC;
-+	conn->cb_addrlen = 0;
- 	dprintk(KERN_INFO "NFSD: this client (clientid %08x/%08x) "
- 		"will not receive delegations\n",
- 		clp->cl_clientid.cl_boot, clp->cl_clientid.cl_id);
+Can you give us some details about why transport initialization was failing?  There are probably some cases where we do want rpcbind to soldier on in spite of such troubles.
+
+> Signed-off-by: Jan Rękorajski <baggins@sith.mimuw.edu.pl>
+> 
+> diff --git a/src/rpcbind.c b/src/rpcbind.c
+> index 63023e1..06e5b08 100644
+> --- a/src/rpcbind.c
+> +++ b/src/rpcbind.c
+> @@ -179,11 +179,17 @@ main(int argc, char *argv[])
+> 	
+> 	rpc_control(RPC_SVC_CONNMAXREC_SET, &maxrec);
+> 
+> -	init_transport(nconf);
+> +	if (init_transport(nconf)) {
+> +		syslog(LOG_ERR, "%s: can't init local transport\n", argv[0]);
+> +		exit(1);
+> +	}
+> 
+> 	while ((nconf = getnetconfig(nc_handle))) {
+> 		if (nconf->nc_flag & NC_VISIBLE)
+> -			init_transport(nconf);
+> +			if (init_transport(nconf)) {
+> +				syslog(LOG_ERR, "%s: can't init %s transport\n", argv[0], nconf->nc_netid);
+> +				exit(1);
+> +			}
+> 	}
+> 	endnetconfig(nc_handle);
+> 
+> @@ -276,7 +282,6 @@ init_transport(struct netconfig *nconf)
+> 	int aicode;
+> 	int addrlen = 0;
+> 	int nhostsbak;
+> -	int checkbind;
+> 	int on = 1;
+> 	struct sockaddr *sa = NULL;
+> 	u_int32_t host_addr[4];  /* IPv4 or IPv6 */
+> @@ -358,7 +363,6 @@ init_transport(struct netconfig *nconf)
+> 	       /*
+> 		* Bind to specific IPs if asked to
+> 		*/
+> -		checkbind = 0;
+> 		while (nhostsbak > 0) {
+> 			--nhostsbak;
+> 			/*
+> @@ -425,9 +429,8 @@ init_transport(struct netconfig *nconf)
+> 					hosts[nhostsbak], nconf->nc_netid);
+> 				if (res != NULL)
+> 					freeaddrinfo(res);
+> -				continue;
+> -			} else
+> -				checkbind++;
+> +				return 1;
+> +			}
+> 			(void) umask(oldmask);
+> 
+> 			/* Copy the address */
+> @@ -476,8 +479,6 @@ init_transport(struct netconfig *nconf)
+> 				goto error;
+> 			}
+> 		}
+> -		if (!checkbind)
+> -			return 1;
+> 	} else {	/* NC_TPI_COTS */
+> 		if ((strcmp(nconf->nc_netid, "local") != 0) &&
+> 		    (strcmp(nconf->nc_netid, "unix") != 0)) {
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
 -- 
-1.7.0.4
+chuck[dot]lever[at]oracle[dot]com
+
+
+
 
